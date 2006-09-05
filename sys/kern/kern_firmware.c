@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.4 2006/09/04 07:00:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.5 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,8 +84,8 @@ firmware_destroy_image(struct fw_image *img)
 	bus_dmamap_unload(img->fw_dma_tag, img->fw_dma_map);
 	bus_dmamem_free(img->fw_dma_tag, img->fw_image, img->fw_dma_map);
 	bus_dma_tag_destroy(img->fw_dma_tag);
-	free(__DECONST(char *, img->fw_name), M_DEVBUF);
-	free(img, M_DEVBUF);	
+	kfree(__DECONST(char *, img->fw_name), M_DEVBUF);
+	kfree(img, M_DEVBUF);	
 }
 
 static void
@@ -105,7 +105,7 @@ firmware_prepare_image(const char *imgname, size_t imglen)
 	struct fw_image *img;
 	int error;
 
- 	img = malloc(sizeof(*img), M_DEVBUF, M_WAITOK | M_ZERO);
+ 	img = kmalloc(sizeof(*img), M_DEVBUF, M_WAITOK | M_ZERO);
 	img->fw_name = kstrdup(imgname, M_DEVBUF); /* XXX necessary? */
 	img->fw_refcnt = 1;
 	img->fw_imglen = imglen;
@@ -135,8 +135,8 @@ fail_dma_load:
 fail_dma_alloc:
 	bus_dma_tag_destroy(img->fw_dma_tag);
 fail_tag_create:
-	free(__DECONST(char *, img->fw_name), M_DEVBUF);
-	free(img, M_DEVBUF);
+	kfree(__DECONST(char *, img->fw_name), M_DEVBUF);
+	kfree(img, M_DEVBUF);
 	return(NULL);
 }
 
@@ -152,7 +152,7 @@ firmware_image_load_file(const char *image_name)
 	char *fw_path;
 	int error;
 
-	fw_path = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	fw_path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	snprintf(fw_path, MAXPATHLEN, "%s/%s", firmware_root, image_name);
 
 	/* XXX: access? */
@@ -192,6 +192,6 @@ fail_read:
 fail_stat:
 	fp_close(fp);
 fail_open:
-	free(fw_path, M_TEMP);
+	kfree(fw_path, M_TEMP);
 	return(NULL);
 }

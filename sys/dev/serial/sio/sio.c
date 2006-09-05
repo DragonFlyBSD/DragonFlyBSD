@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.32 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.33 2006/09/05 00:55:42 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -614,7 +614,7 @@ sioprobe(dev, xrid, rclk)
 					     NULL) == 0)
 				outb(xioport + com_mcr, 0);
 		}
-		free(devs, M_TEMP);
+		kfree(devs, M_TEMP);
 		already_init = TRUE;
 	}
 #endif
@@ -1452,7 +1452,7 @@ sioclose(struct dev_close_args *ap)
 		printf("sio%d: gone\n", com->unit);
 		crit_enter();
 		if (com->ibuf != NULL)
-			free(com->ibuf, M_DEVBUF);
+			kfree(com->ibuf, M_DEVBUF);
 		bzero(tp, sizeof *tp);
 		crit_exit();
 	}
@@ -2387,7 +2387,7 @@ comparam(tp, t)
 	crit_exit();
 	comstart(tp);
 	if (com->ibufold != NULL) {
-		free(com->ibufold, M_DEVBUF);
+		kfree(com->ibufold, M_DEVBUF);
 		com->ibufold = NULL;
 	}
 	return (0);
@@ -2421,7 +2421,7 @@ siosetwater(com, speed)
 	 * Allocate input buffer.  The extra factor of 2 in the size is
 	 * to allow for an error byte for each input byte.
 	 */
-	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	ibuf = kmalloc(2 * ibufsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* Initialize non-critical variables. */
 	com->ibufold = com->ibuf;

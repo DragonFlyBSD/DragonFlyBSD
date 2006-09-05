@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.9 2005/12/06 04:03:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.10 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -139,7 +139,7 @@ smb_rq_done(struct smb_rq *rqp)
 	md_done(&rqp->sr_rp);
 	smb_sl_destroy(&rqp->sr_slock);
 	if (rqp->sr_flags & SMBR_ALLOCED)
-		free(rqp, M_SMBRQ);
+		kfree(rqp, M_SMBRQ);
 }
 
 /*
@@ -405,7 +405,7 @@ smb_t2_done(struct smb_t2rq *t2p)
 	md_done(&t2p->t2_rparam);
 	md_done(&t2p->t2_rdata);
 	if (t2p->t2_flags & SMBT2_ALLOCED)
-		free(t2p, M_SMBRQ);
+		kfree(t2p, M_SMBRQ);
 }
 
 static int

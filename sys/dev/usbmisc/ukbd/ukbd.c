@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.15 2006/02/28 18:48:01 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.16 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -535,23 +535,23 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		fkeymap_size =
 			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
 	} else if (*kbdp == NULL) {
-		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_INTWAIT | M_ZERO);
-		state = malloc(sizeof(*state), M_DEVBUF, M_INTWAIT);
-		keymap = malloc(sizeof(key_map), M_DEVBUF, M_INTWAIT);
-		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_INTWAIT);
-		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_INTWAIT);
+		*kbdp = kbd = kmalloc(sizeof(*kbd), M_DEVBUF, M_INTWAIT | M_ZERO);
+		state = kmalloc(sizeof(*state), M_DEVBUF, M_INTWAIT);
+		keymap = kmalloc(sizeof(key_map), M_DEVBUF, M_INTWAIT);
+		accmap = kmalloc(sizeof(accent_map), M_DEVBUF, M_INTWAIT);
+		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_INTWAIT);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
 		if ((state == NULL) || (keymap == NULL) || (accmap == NULL)
 		     || (fkeymap == NULL)) {
 			if (state != NULL)
-				free(state, M_DEVBUF);
+				kfree(state, M_DEVBUF);
 			if (keymap != NULL)
-				free(keymap, M_DEVBUF);
+				kfree(keymap, M_DEVBUF);
 			if (accmap != NULL)
-				free(accmap, M_DEVBUF);
+				kfree(accmap, M_DEVBUF);
 			if (fkeymap != NULL)
-				free(fkeymap, M_DEVBUF);
-			free(kbd, M_DEVBUF);
+				kfree(fkeymap, M_DEVBUF);
+			kfree(kbd, M_DEVBUF);
 			return ENOMEM;
 		}
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
@@ -682,11 +682,11 @@ ukbd_term(keyboard_t *kbd)
 	if (error == 0) {
 		kbd->kb_flags = 0;
 		if (kbd != &default_kbd) {
-			free(kbd->kb_keymap, M_DEVBUF);
-			free(kbd->kb_accentmap, M_DEVBUF);
-			free(kbd->kb_fkeytab, M_DEVBUF);
-			free(state, M_DEVBUF);
-			free(kbd, M_DEVBUF);
+			kfree(kbd->kb_keymap, M_DEVBUF);
+			kfree(kbd->kb_accentmap, M_DEVBUF);
+			kfree(kbd->kb_fkeytab, M_DEVBUF);
+			kfree(state, M_DEVBUF);
+			kfree(kbd, M_DEVBUF);
 		}
 	}
 	crit_exit();

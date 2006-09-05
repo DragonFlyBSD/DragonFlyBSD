@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.16 2006/05/11 00:52:03 hsu Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.17 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -162,7 +162,7 @@ gre_clone_create(struct if_clone *ifc, int unit)
 {
 	struct gre_softc *sc;
 
-	sc = malloc(sizeof(struct gre_softc), M_GRE, M_WAITOK);
+	sc = kmalloc(sizeof(struct gre_softc), M_GRE, M_WAITOK);
 	memset(sc, 0, sizeof(struct gre_softc));
 
 	sc->sc_if.if_softc = sc;
@@ -199,7 +199,7 @@ gre_clone_destroy(struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 
-	free(sc, M_GRE);
+	kfree(sc, M_GRE);
 }
 
 /*

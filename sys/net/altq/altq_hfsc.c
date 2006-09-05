@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.5 2005/11/22 00:24:35 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.6 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -164,7 +164,7 @@ hfsc_add_altq(struct pf_altq *a)
 	if (!ifq_is_ready(&ifp->if_snd))
 		return (ENODEV);
 
-	hif = malloc(sizeof(struct hfsc_if), M_ALTQ, M_WAITOK | M_ZERO);
+	hif = kmalloc(sizeof(struct hfsc_if), M_ALTQ, M_WAITOK | M_ZERO);
 
 	hif->hif_eligible = ellist_alloc();
 	hif->hif_ifq = &ifp->if_snd;
@@ -189,7 +189,7 @@ hfsc_remove_altq(struct pf_altq *a)
 
 	ellist_destroy(hif->hif_eligible);
 
-	free(hif, M_ALTQ);
+	kfree(hif, M_ALTQ);
 
 	return (0);
 }
@@ -355,8 +355,8 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 	}
 #endif
 
-	cl = malloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
-	cl->cl_q = malloc(sizeof(*cl->cl_q), M_ALTQ, M_WAITOK | M_ZERO);
+	cl = kmalloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
+	cl->cl_q = kmalloc(sizeof(*cl->cl_q), M_ALTQ, M_WAITOK | M_ZERO);
 	cl->cl_actc = actlist_alloc();
 
 	if (qlimit == 0)
@@ -410,20 +410,20 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 #endif /* ALTQ_RED */
 
 	if (rsc != NULL && (rsc->m1 != 0 || rsc->m2 != 0)) {
-		cl->cl_rsc = malloc(sizeof(*cl->cl_rsc), M_ALTQ, M_WAITOK);
+		cl->cl_rsc = kmalloc(sizeof(*cl->cl_rsc), M_ALTQ, M_WAITOK);
 		sc2isc(rsc, cl->cl_rsc);
 		rtsc_init(&cl->cl_deadline, cl->cl_rsc, 0, 0);
 		rtsc_init(&cl->cl_eligible, cl->cl_rsc, 0, 0);
 	}
 	if (fsc != NULL && (fsc->m1 != 0 || fsc->m2 != 0)) {
-		cl->cl_fsc = malloc(sizeof(*cl->cl_fsc), M_ALTQ, M_WAITOK);
+		cl->cl_fsc = kmalloc(sizeof(*cl->cl_fsc), M_ALTQ, M_WAITOK);
 		if (cl->cl_fsc == NULL)
 			goto err_ret;
 		sc2isc(fsc, cl->cl_fsc);
 		rtsc_init(&cl->cl_virtual, cl->cl_fsc, 0, 0);
 	}
 	if (usc != NULL && (usc->m1 != 0 || usc->m2 != 0)) {
-		cl->cl_usc = malloc(sizeof(*cl->cl_usc), M_ALTQ, M_WAITOK);
+		cl->cl_usc = kmalloc(sizeof(*cl->cl_usc), M_ALTQ, M_WAITOK);
 		if (cl->cl_usc == NULL)
 			goto err_ret;
 		sc2isc(usc, cl->cl_usc);
@@ -492,14 +492,14 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 #endif
 	}
 	if (cl->cl_fsc != NULL)
-		free(cl->cl_fsc, M_ALTQ);
+		kfree(cl->cl_fsc, M_ALTQ);
 	if (cl->cl_rsc != NULL)
-		free(cl->cl_rsc, M_ALTQ);
+		kfree(cl->cl_rsc, M_ALTQ);
 	if (cl->cl_usc != NULL)
-		free(cl->cl_usc, M_ALTQ);
+		kfree(cl->cl_usc, M_ALTQ);
 	if (cl->cl_q != NULL)
-		free(cl->cl_q, M_ALTQ);
-	free(cl, M_ALTQ);
+		kfree(cl->cl_q, M_ALTQ);
+	kfree(cl, M_ALTQ);
 	return (NULL);
 }
 
@@ -566,13 +566,13 @@ hfsc_class_destroy(struct hfsc_class *cl)
 		cl->cl_hif->hif_defaultclass = NULL;
 
 	if (cl->cl_usc != NULL)
-		free(cl->cl_usc, M_ALTQ);
+		kfree(cl->cl_usc, M_ALTQ);
 	if (cl->cl_fsc != NULL)
-		free(cl->cl_fsc, M_ALTQ);
+		kfree(cl->cl_fsc, M_ALTQ);
 	if (cl->cl_rsc != NULL)
-		free(cl->cl_rsc, M_ALTQ);
-	free(cl->cl_q, M_ALTQ);
-	free(cl, M_ALTQ);
+		kfree(cl->cl_rsc, M_ALTQ);
+	kfree(cl->cl_q, M_ALTQ);
+	kfree(cl, M_ALTQ);
 
 	return (0);
 }
@@ -1105,7 +1105,7 @@ ellist_alloc(void)
 {
 	ellist_t *head;
 
-	head = malloc(sizeof(ellist_t *), M_ALTQ, M_WAITOK);
+	head = kmalloc(sizeof(ellist_t *), M_ALTQ, M_WAITOK);
 	TAILQ_INIT(head);
 	return (head);
 }
@@ -1113,7 +1113,7 @@ ellist_alloc(void)
 static void
 ellist_destroy(ellist_t *head)
 {
-	free(head, M_ALTQ);
+	kfree(head, M_ALTQ);
 }
 
 static void
@@ -1208,7 +1208,7 @@ actlist_alloc(void)
 {
 	actlist_t *head;
 
-	head = malloc(sizeof(*head), M_ALTQ, M_WAITOK);
+	head = kmalloc(sizeof(*head), M_ALTQ, M_WAITOK);
 	TAILQ_INIT(head);
 	return (head);
 }
@@ -1216,7 +1216,7 @@ actlist_alloc(void)
 static void
 actlist_destroy(actlist_t *head)
 {
-	free(head, M_ALTQ);
+	kfree(head, M_ALTQ);
 }
 static void
 actlist_insert(struct hfsc_class *cl)

@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/inflate.c,v 1.14 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/inflate.c,v 1.4 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/inflate.c,v 1.5 2006/09/05 00:55:45 dillon Exp $
  *
  *
  */
@@ -53,8 +53,8 @@ static const int qflag = 0;
 #ifndef _KERNEL /* want to use this file in kzip also */
 extern unsigned char *kzipmalloc (int);
 extern void kzipfree (void*);
-#define malloc(x, y, z) kzipmalloc((x))
-#define free(x, y) kzipfree((x))
+#define kmalloc(x, y, z) kzipmalloc((x))
+#define kfree(x, y) kzipfree((x))
 #endif
 
 /*
@@ -552,7 +552,7 @@ huft_build(glbl, b, n, s, d, e, t, m)
 				l[h] = j;	/* set table size in stack */
 
 				/* allocate and link in new table */
-				if ((q = (struct huft *) malloc((z + 1) * sizeof(struct huft), M_GZIP, M_WAITOK)) ==
+				if ((q = (struct huft *) kmalloc((z + 1) * sizeof(struct huft), M_GZIP, M_WAITOK)) ==
 				    (struct huft *) NULL) {
 					if (h)
 						huft_free(glbl, u[0]);
@@ -630,7 +630,7 @@ huft_free(glbl, t)
 	p = t;
 	while (p != (struct huft *) NULL) {
 		q = (--p)->v.t;
-		free(p, M_GZIP);
+		kfree(p, M_GZIP);
 		p = q;
 	}
 	return 0;
@@ -1050,7 +1050,7 @@ inflate(glbl)
 	u_char		*p = NULL;
 
 	if (!glbl->gz_slide)
-		p = glbl->gz_slide = malloc(GZ_WSIZE, M_GZIP, M_WAITOK);
+		p = glbl->gz_slide = kmalloc(GZ_WSIZE, M_GZIP, M_WAITOK);
 #endif
 	if (!glbl->gz_slide)
 #ifdef _KERNEL
@@ -1070,7 +1070,7 @@ inflate(glbl)
 	}
 #ifdef _KERNEL
 	if (p == glbl->gz_slide) {
-		free(glbl->gz_slide, M_GZIP);
+		kfree(glbl->gz_slide, M_GZIP);
 		glbl->gz_slide = NULL;
 	}
 #endif

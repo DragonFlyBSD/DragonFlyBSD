@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.10 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -216,7 +216,7 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			break;
 		}
 	}
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 
 	KKASSERT(ife->ifm_data >= 0 && ife->ifm_data < MII_NMEDIA);
 	mm = &mii_media_table[ife->ifm_data];
@@ -426,7 +426,7 @@ mlphy_status(struct mii_softc *sc)
 			break;
 		}
 	}
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 
 	if (other == NULL)
 		return;

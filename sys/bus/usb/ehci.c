@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.23 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.24 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -1049,7 +1049,7 @@ ehci_allocx(struct usbd_bus *bus)
 		}
 #endif
 	} else {
-		xfer = malloc(sizeof(struct ehci_xfer), M_USB, M_INTWAIT);
+		xfer = kmalloc(sizeof(struct ehci_xfer), M_USB, M_INTWAIT);
 	}
 	if (xfer != NULL) {
 		memset(xfer, 0, sizeof(struct ehci_xfer));

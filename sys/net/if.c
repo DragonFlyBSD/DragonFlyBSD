@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.45 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.46 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -217,10 +217,10 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 		/* grow ifindex2ifnet */
 		n = if_indexlim * sizeof(*q);
-		q = malloc(n, M_IFADDR, M_WAITOK | M_ZERO);
+		q = kmalloc(n, M_IFADDR, M_WAITOK | M_ZERO);
 		if (ifindex2ifnet) {
 			bcopy(ifindex2ifnet, q, n/2);
-			free(ifindex2ifnet, M_IFADDR);
+			kfree(ifindex2ifnet, M_IFADDR);
 		}
 		ifindex2ifnet = q;
 	}
@@ -239,7 +239,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		socksize = sizeof(*sdl);
 	socksize = ROUNDUP(socksize);
 	ifasize = sizeof(struct ifaddr) + 2 * socksize;
-	ifa = malloc(ifasize, M_IFADDR, M_WAITOK | M_ZERO);
+	ifa = kmalloc(ifasize, M_IFADDR, M_WAITOK | M_ZERO);
 	sdl = (struct sockaddr_dl *)(ifa + 1);
 	sdl->sdl_len = socksize;
 	sdl->sdl_family = AF_LINK;
@@ -636,7 +636,7 @@ if_clone_attach(struct if_clone *ifc)
 	len = maxclone >> 3;
 	if ((len << 3) < maxclone)
 		len++;
-	ifc->ifc_units = malloc(len, M_CLONE, M_WAITOK | M_ZERO);
+	ifc->ifc_units = kmalloc(len, M_CLONE, M_WAITOK | M_ZERO);
 	ifc->ifc_bmlen = len;
 
 	LIST_INSERT_HEAD(&if_cloners, ifc, ifc_list);
@@ -663,7 +663,7 @@ if_clone_detach(struct if_clone *ifc)
 {
 
 	LIST_REMOVE(ifc, ifc_list);
-	free(ifc->ifc_units, M_CLONE);
+	kfree(ifc->ifc_units, M_CLONE);
 	if_cloners_count--;
 }
 
@@ -1726,8 +1726,8 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	crit_exit();
-	free(ifma->ifma_addr, M_IFMADDR);
-	free(ifma, M_IFMADDR);
+	kfree(ifma->ifma_addr, M_IFMADDR);
+	kfree(ifma, M_IFMADDR);
 	if (sa == 0)
 		return 0;
 
@@ -1759,9 +1759,9 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
-	free(ifma->ifma_addr, M_IFMADDR);
-	free(sa, M_IFMADDR);
-	free(ifma, M_IFMADDR);
+	kfree(ifma->ifma_addr, M_IFMADDR);
+	kfree(sa, M_IFMADDR);
+	kfree(ifma, M_IFMADDR);
 
 	return 0;
 }

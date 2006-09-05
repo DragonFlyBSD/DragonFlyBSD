@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_isa.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.4 2004/09/18 20:02:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.5 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -274,17 +274,17 @@ rp_isareleaseresource(CONTROLLER_t *ctlp)
 		for (i = 0 ; i < MAX_AIOPS_PER_BOARD ; i++)
 			if (ctlp->io[i] != NULL)
 				bus_release_resource(ctlp->dev, SYS_RES_IOPORT, ctlp->io_rid[i], ctlp->io[i]);
-		free(ctlp->io, M_DEVBUF);
+		kfree(ctlp->io, M_DEVBUF);
 	}
 	if (ctlp->io_rid != NULL)
-		free(ctlp->io_rid, M_DEVBUF);
+		kfree(ctlp->io_rid, M_DEVBUF);
 	if (rp_controller != NULL && rp_controller->io[ISACTL(ctlp)->MBaseIO] != NULL) {
 		bus_release_resource(rp_controller->dev, SYS_RES_IOPORT, rp_controller->io_rid[ISACTL(ctlp)->MBaseIO], rp_controller->io[ISACTL(ctlp)->MBaseIO]);
 		rp_controller->io[ISACTL(ctlp)->MBaseIO] = NULL;
 		rp_controller->io_rid[ISACTL(ctlp)->MBaseIO] = 0;
 	}
 	if (ctlp->bus_ctlp != NULL)
-		free(ctlp->bus_ctlp, M_DEVBUF);
+		kfree(ctlp->bus_ctlp, M_DEVBUF);
 }
 
 /***************************************************************************

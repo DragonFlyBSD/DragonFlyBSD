@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.34 2006/08/19 17:27:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.35 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1646,7 +1646,7 @@ union_inactive(struct vop_inactive_args *ap)
 	if (un->un_dircache != 0) {
 		for (vpp = un->un_dircache; *vpp != NULLVP; vpp++)
 			vrele(*vpp);
-		free (un->un_dircache, M_TEMP);
+		kfree (un->un_dircache, M_TEMP);
 		un->un_dircache = 0;
 	}
 

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.38 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.39 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -2870,7 +2870,7 @@ again:
 	io.uio_td = NULL;
 	eofflag = 0;
 	if (cookies) {
-		free((caddr_t)cookies, M_TEMP);
+		kfree((caddr_t)cookies, M_TEMP);
 		cookies = NULL;
 	}
 	error = VOP_READDIR(vp, &io, cred, &eofflag, &ncookies, &cookies);
@@ -2885,9 +2885,9 @@ again:
 	if (error) {
 		vrele(vp);
 		vp = NULL;
-		free((caddr_t)rbuf, M_TEMP);
+		kfree((caddr_t)rbuf, M_TEMP);
 		if (cookies)
-			free((caddr_t)cookies, M_TEMP);
+			kfree((caddr_t)cookies, M_TEMP);
 		nfsm_reply(NFSX_POSTOPATTR(v3));
 		nfsm_srvpostop_attr(getret, &at);
 		error = 0;
@@ -3145,7 +3145,7 @@ again:
 	io.uio_td = NULL;
 	eofflag = 0;
 	if (cookies) {
-		free((caddr_t)cookies, M_TEMP);
+		kfree((caddr_t)cookies, M_TEMP);
 		cookies = NULL;
 	}
 	error = VOP_READDIR(vp, &io, cred, &eofflag, &ncookies, &cookies);
@@ -3159,8 +3159,8 @@ again:
 		vrele(vp);
 		vp = NULL;
 		if (cookies)
-			free((caddr_t)cookies, M_TEMP);
-		free((caddr_t)rbuf, M_TEMP);
+			kfree((caddr_t)cookies, M_TEMP);
+		kfree((caddr_t)rbuf, M_TEMP);
 		nfsm_reply(NFSX_V3POSTOPATTR);
 		nfsm_srvpostop_attr(getret, &at);
 		error = 0;
@@ -3228,8 +3228,8 @@ again:
 		error = NFSERR_NOTSUPP;
 		vrele(vp);
 		vp = NULL;
-		free((caddr_t)cookies, M_TEMP);
-		free((caddr_t)rbuf, M_TEMP);
+		kfree((caddr_t)cookies, M_TEMP);
+		kfree((caddr_t)rbuf, M_TEMP);
 		nfsm_reply(NFSX_V3POSTOPATTR);
 		nfsm_srvpostop_attr(getret, &at);
 		error = 0;

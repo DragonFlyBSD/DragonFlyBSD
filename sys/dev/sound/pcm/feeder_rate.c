@@ -43,7 +43,7 @@
  * testing revisions.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2.2.3 2003/02/08 02:38:21 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -51,7 +51,7 @@
 #include <dev/sound/pcm/sound.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
 
 #endif /* _KERNEL */
 
@@ -252,7 +252,7 @@ feed_rate_init(struct pcm_feeder *f)
 {
 	struct feed_rate_info *info;
 
-	info = malloc(sizeof(*info), M_RATEFEEDER, M_WAITOK | M_ZERO);
+	info = kmalloc(sizeof(*info), M_RATEFEEDER, M_WAITOK | M_ZERO);
 	if (info == NULL)
 		return ENOMEM;
 
@@ -270,7 +270,7 @@ feed_rate_free(struct pcm_feeder *f)
 	struct feed_rate_info *info = f->data;
 
 	if (info) {
-		free(info, M_RATEFEEDER);
+		kfree(info, M_RATEFEEDER);
 	}
 	f->data = NULL;
 	return 0;

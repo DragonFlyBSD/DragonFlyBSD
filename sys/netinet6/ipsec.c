@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.14 2005/11/25 17:16:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.15 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1052,14 +1052,14 @@ ipsec_newpcbpolicy(void)
 {
 	struct inpcbpolicy *p;
 
-	p = (struct inpcbpolicy *)malloc(sizeof(*p), M_SECA, M_NOWAIT);
+	p = (struct inpcbpolicy *)kmalloc(sizeof(*p), M_SECA, M_NOWAIT);
 	return p;
 }
 
 static void
 ipsec_delpcbpolicy(struct inpcbpolicy *p)
 {
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /* initialize policy in PCB */
@@ -1180,7 +1180,7 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 fail:
 	for (p = newchain; p; p = r) {
 		r = p->next;
-		free(p, M_SECA);
+		kfree(p, M_SECA);
 		p = NULL;
 	}
 	return NULL;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.25 2006/08/19 17:27:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.26 2006/09/05 00:55:51 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -482,11 +482,11 @@ udf_transname(char *cs0string, char *destname, int len, struct udf_mnt *udfmp)
 
 	/* Convert 16-bit Unicode to destname */
 	/* allocate a buffer big enough to hold an 8->16 bit expansion */
-	transname = malloc(NAME_MAX * sizeof(unicode_t), M_TEMP, M_WAITOK | M_ZERO);
+	transname = kmalloc(NAME_MAX * sizeof(unicode_t), M_TEMP, M_WAITOK | M_ZERO);
 
 	if ((unilen = udf_UncompressUnicode(len, cs0string, transname)) == -1) {
 		printf("udf: Unicode translation failed\n");
-		free(transname, M_TEMP);
+		kfree(transname, M_TEMP);
 		return(0);
 	}
 
@@ -495,7 +495,7 @@ udf_transname(char *cs0string, char *destname, int len, struct udf_mnt *udfmp)
 			destname[i] = '.';	/* Fudge the 16bit chars */
 		else
 			destname[i] = transname[i] & 0xff;
-	free(transname, M_TEMP);
+	kfree(transname, M_TEMP);
 	destname[unilen] = 0;
 	destlen = unilen;
 
@@ -515,7 +515,7 @@ udf_cmpname(char *cs0string, char *cmpname, int cs0len, int cmplen, struct udf_m
 
 	/* This is overkill, but not worth creating a new zone */
 	
-	transname = malloc(NAME_MAX * sizeof(unicode_t), M_TEMP,
+	transname = kmalloc(NAME_MAX * sizeof(unicode_t), M_TEMP,
 			   M_WAITOK | M_ZERO);
 
 	cs0len = udf_transname(cs0string, transname, cs0len, udfmp);
@@ -526,7 +526,7 @@ udf_cmpname(char *cs0string, char *cmpname, int cs0len, int cmplen, struct udf_m
 	else
 		error = bcmp(transname, cmpname, cmplen);
 
-	free(transname, M_TEMP);
+	kfree(transname, M_TEMP);
 	return(error);
 }
 
@@ -543,7 +543,7 @@ udf_opendir(struct udf_node *node, int offset, int fsize, struct udf_mnt *udfmp)
 {
 	struct udf_dirstream *ds;
 
-	ds = malloc(sizeof(*ds), M_UDFDS, M_WAITOK | M_ZERO);
+	ds = kmalloc(sizeof(*ds), M_UDFDS, M_WAITOK | M_ZERO);
 
 	ds->node = node;
 	ds->offset = offset;
@@ -584,7 +584,7 @@ udf_getfid(struct udf_dirstream *ds)
 	 */
 	if (ds->fid_fragment && ds->buf != NULL) {
 		ds->fid_fragment = 0;
-		free(ds->buf, M_UDFFID);
+		kfree(ds->buf, M_UDFFID);
 	}
 
 	fid = (struct fileid_desc*)&ds->data[ds->off];
@@ -609,7 +609,7 @@ udf_getfid(struct udf_dirstream *ds)
 		 * File ID descriptors can only be at most one
 		 * logical sector in size.
 		 */
-		ds->buf = malloc(ds->udfmp->bsize, M_UDFFID, M_WAITOK | M_ZERO);
+		ds->buf = kmalloc(ds->udfmp->bsize, M_UDFFID, M_WAITOK | M_ZERO);
 		bcopy(fid, ds->buf, frag_size);
 
 		/* Reduce all of the casting magic */
@@ -675,9 +675,9 @@ udf_closedir(struct udf_dirstream *ds)
 		brelse(ds->bp);
 
 	if (ds->fid_fragment && ds->buf != NULL)
-		free(ds->buf, M_UDFFID);
+		kfree(ds->buf, M_UDFFID);
 
-	free(ds, M_UDFDS);
+	kfree(ds, M_UDFDS);
 }
 
 static int
@@ -714,7 +714,7 @@ udf_readdir(struct vop_readdir_args *a)
 		ncookies = uio->uio_resid / 8 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		cookies = malloc(sizeof(u_long) * ncookies, M_TEMP, M_WAITOK);
+		cookies = kmalloc(sizeof(u_long) * ncookies, M_TEMP, M_WAITOK);
 		uiodir.ncookies = ncookies;
 		uiodir.cookies = cookies;
 		uiodir.acookies = 0;
@@ -728,7 +728,7 @@ udf_readdir(struct vop_readdir_args *a)
 	ds = udf_opendir(node, uio->uio_offset, node->fentry->inf_len,
 			 node->udfmp);
 
-	name = malloc(NAME_MAX, M_TEMP, M_WAITOK);
+	name = kmalloc(NAME_MAX, M_TEMP, M_WAITOK);
 
 	while ((fid = udf_getfid(ds)) != NULL) {
 
@@ -810,7 +810,7 @@ udf_readdir(struct vop_readdir_args *a)
 
 	}
 
-	free(name, M_TEMP);
+	kfree(name, M_TEMP);
 
 	/* tell the calling layer whether we need to be called again */
 	*a->a_eofflag = uiodir.eofflag;
@@ -823,7 +823,7 @@ udf_readdir(struct vop_readdir_args *a)
 
 	if (a->a_ncookies != NULL) {
 		if (error)
-			free(cookies, M_TEMP);
+			kfree(cookies, M_TEMP);
 		else {
 			*a->a_ncookies = uiodir.acookies;
 			*a->a_cookies = cookies;
@@ -1056,8 +1056,8 @@ udf_reclaim(struct vop_reclaim_args *a)
 		}
 
 		if (unode->fentry != NULL)
-			free(unode->fentry, M_UDFFENTRY);
-		free(unode, M_UDFNODE);
+			kfree(unode->fentry, M_UDFFENTRY);
+		kfree(unode, M_UDFNODE);
 		vp->v_data = NULL;
 	}
 

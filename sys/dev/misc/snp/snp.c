@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.15 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,7 +138,7 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 	snp = tp->t_sc;
 	while (uio->uio_resid > 0) {
 		ilen = imin(512, uio->uio_resid);
-		ibuf = malloc(ilen, M_SNP, M_WAITOK);
+		ibuf = kmalloc(ilen, M_SNP, M_WAITOK);
 		error = uiomove(ibuf, ilen, uio);
 		if (error != 0)
 			break;
@@ -156,11 +156,11 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 		error = ttwrite(tp, &uio2, flag);
 		if (error != 0)
 			break;
-		free(ibuf, M_SNP);
+		kfree(ibuf, M_SNP);
 		ibuf = NULL;
 	}
 	if (ibuf != NULL)
-		free(ibuf, M_SNP);
+		kfree(ibuf, M_SNP);
 	return (error);
 }
 
@@ -266,9 +266,9 @@ snpread(struct dev_read_args *ap)
 	if (((nblen / 2) >= SNOOP_MINLEN) && (nblen / 2) >= snp->snp_len) {
 		while (nblen / 2 >= snp->snp_len && nblen / 2 >= SNOOP_MINLEN)
 			nblen = nblen / 2;
-		if ((nbuf = malloc(nblen, M_SNP, M_NOWAIT)) != NULL) {
+		if ((nbuf = kmalloc(nblen, M_SNP, M_NOWAIT)) != NULL) {
 			bcopy(snp->snp_buf + snp->snp_base, nbuf, snp->snp_len);
-			free(snp->snp_buf, M_SNP);
+			kfree(snp->snp_buf, M_SNP);
 			snp->snp_buf = nbuf;
 			snp->snp_blen = nblen;
 			snp->snp_base = 0;
@@ -319,9 +319,9 @@ snp_in(struct snoop *snp, char *buf, int n)
 			nblen = snp->snp_blen * 2;
 			s_free = nblen - (snp->snp_len + snp->snp_base);
 		}
-		if ((n <= s_free) && (nbuf = malloc(nblen, M_SNP, M_NOWAIT))) {
+		if ((n <= s_free) && (nbuf = kmalloc(nblen, M_SNP, M_NOWAIT))) {
 			bcopy(snp->snp_buf + snp->snp_base, nbuf, snp->snp_len);
-			free(snp->snp_buf, M_SNP);
+			kfree(snp->snp_buf, M_SNP);
 			snp->snp_buf = nbuf;
 			snp->snp_blen = nblen;
 			snp->snp_base = 0;
@@ -366,7 +366,7 @@ snpopen(struct dev_open_args *ap)
 	if (dev->si_drv1 == NULL) {
 		make_dev(&snp_ops, minor(dev), UID_ROOT, GID_WHEEL,
 		    0600, "snp%d", minor(dev));
-		dev->si_drv1 = snp = malloc(sizeof(*snp), M_SNP,
+		dev->si_drv1 = snp = kmalloc(sizeof(*snp), M_SNP,
 		    M_WAITOK | M_ZERO);
 	} else {
 		return (EBUSY);
@@ -378,7 +378,7 @@ snpopen(struct dev_open_args *ap)
 	 */
 	snp->snp_flags = SNOOP_OPEN;
 
-	snp->snp_buf = malloc(SNOOP_MINLEN, M_SNP, M_WAITOK);
+	snp->snp_buf = kmalloc(SNOOP_MINLEN, M_SNP, M_WAITOK);
 	snp->snp_blen = SNOOP_MINLEN;
 	snp->snp_base = 0;
 	snp->snp_len = 0;
@@ -425,7 +425,7 @@ detach_notty:
 	selwakeup(&snp->snp_sel);
 	snp->snp_sel.si_pid = 0;
 	if ((snp->snp_flags & SNOOP_OPEN) == 0) 
-		free(snp, M_SNP);
+		kfree(snp, M_SNP);
 
 	return (0);
 }
@@ -439,7 +439,7 @@ snpclose(struct dev_close_args *ap)
 	snp = dev->si_drv1;
 	snp->snp_blen = 0;
 	LIST_REMOVE(snp, snp_list);
-	free(snp->snp_buf, M_SNP);
+	kfree(snp->snp_buf, M_SNP);
 	snp->snp_flags &= ~SNOOP_OPEN;
 	dev->si_drv1 = NULL;
 
@@ -451,8 +451,8 @@ snp_down(struct snoop *snp)
 {
 
 	if (snp->snp_blen != SNOOP_MINLEN) {
-		free(snp->snp_buf, M_SNP);
-		snp->snp_buf = malloc(SNOOP_MINLEN, M_SNP, M_WAITOK);
+		kfree(snp->snp_buf, M_SNP);
+		snp->snp_buf = kmalloc(SNOOP_MINLEN, M_SNP, M_WAITOK);
 		snp->snp_blen = SNOOP_MINLEN;
 	}
 	snp->snp_flags |= SNOOP_DOWN;

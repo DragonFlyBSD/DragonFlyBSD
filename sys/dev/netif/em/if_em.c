@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.47 2006/08/12 13:03:44 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.48 2006/09/05 00:55:40 dillon Exp $
  * $FreeBSD$
  */
 /*
@@ -2426,7 +2426,7 @@ em_free_transmit_structures(struct adapter * adapter)
 		}
 	}
 	if (adapter->tx_buffer_area != NULL) {
-		free(adapter->tx_buffer_area, M_DEVBUF);
+		kfree(adapter->tx_buffer_area, M_DEVBUF);
 		adapter->tx_buffer_area = NULL;
 	}
 	if (adapter->txtag != NULL) {
@@ -2656,7 +2656,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	struct em_buffer *rx_buffer;
 
 	size = adapter->num_rx_desc * sizeof(struct em_buffer);
-	adapter->rx_buffer_area = malloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
+	adapter->rx_buffer_area = kmalloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL,		/* parent */
 				   1, 0,		/* alignment, bounds */
@@ -2705,7 +2705,7 @@ fail_1:
 	bus_dma_tag_destroy(adapter->rxtag);
 fail_0:
 	adapter->rxtag = NULL;
-	free(adapter->rx_buffer_area, M_DEVBUF);
+	kfree(adapter->rx_buffer_area, M_DEVBUF);
 	adapter->rx_buffer_area = NULL;
 	return(error);
 }
@@ -2842,7 +2842,7 @@ em_free_receive_structures(struct adapter *adapter)
 		}
 	}
 	if (adapter->rx_buffer_area != NULL) {
-		free(adapter->rx_buffer_area, M_DEVBUF);
+		kfree(adapter->rx_buffer_area, M_DEVBUF);
 		adapter->rx_buffer_area = NULL;
 	}
 	if (adapter->rxtag != NULL) {

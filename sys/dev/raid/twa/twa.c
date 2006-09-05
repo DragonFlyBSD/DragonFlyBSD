@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.4 2005/06/26 22:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.5 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -173,7 +173,7 @@ twa_flash_firmware(struct twa_softc *sc)
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 	/* Allocate sufficient memory to hold a chunk of the firmware image. */
 	fw_img_chunk_size = ((twa_fw_img_size/NUM_FW_IMAGE_CHUNKS) + 511) & ~511;
-	if ((tr->tr_data = malloc(fw_img_chunk_size, M_DEVBUF, M_WAITOK)) == NULL) {
+	if ((tr->tr_data = kmalloc(fw_img_chunk_size, M_DEVBUF, M_WAITOK)) == NULL) {
 		twa_printf (sc, "Could not allocate memory for firmware image.\n"); 
 		error = ENOMEM;
 		goto out;
@@ -251,7 +251,7 @@ twa_flash_firmware(struct twa_softc *sc)
 	} /* for */
 
 	if (tr->tr_data)
-		free(tr->tr_data, M_DEVBUF);
+		kfree(tr->tr_data, M_DEVBUF);
 out:
 	if (tr)
 		twa_release_request(tr);
@@ -583,7 +583,7 @@ twa_ioctl(struct twa_softc *sc, int cmd, void *buf)
 		 */
   		data_buf_size_adjusted = (user_buf->twa_drvr_pkt.buffer_length + 511) & ~511;
 		if ((tr->tr_length = data_buf_size_adjusted)) {
-			if ((tr->tr_data = malloc(data_buf_size_adjusted, M_DEVBUF, M_WAITOK)) == NULL) {
+			if ((tr->tr_data = kmalloc(data_buf_size_adjusted, M_DEVBUF, M_WAITOK)) == NULL) {
 				twa_printf(sc, "Could not alloc mem for fw_passthru data_buf.\n");
 				error = ENOMEM;
 				goto fw_passthru_done;
@@ -634,7 +634,7 @@ twa_ioctl(struct twa_softc *sc, int cmd, void *buf)
 fw_passthru_done:
 		/* Free resources. */
 		if (tr->tr_data)
-			free(tr->tr_data, M_DEVBUF);
+			kfree(tr->tr_data, M_DEVBUF);
 		if (tr)
 			twa_release_request(tr);
 		break;
@@ -941,7 +941,7 @@ twa_get_param(struct twa_softc *sc, int table_id, int param_id,
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 
 	/* Allocate memory to read data into. */
-	param = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
+	param = kmalloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
 	bzero(param, sizeof(struct twa_param_9k) - 1 + param_size);
 	tr->tr_data = param;
 	tr->tr_length = TWA_SECTOR_SIZE;
@@ -998,7 +998,7 @@ twa_get_param(struct twa_softc *sc, int table_id, int param_id,
 out:
 	twa_printf(sc, "get_param failed. error = 0x%x\n", error);
 	if (param)
-		free(param, M_DEVBUF);
+		kfree(param, M_DEVBUF);
 	if (tr)
 		twa_release_request(tr);
 	return(NULL);
@@ -1037,7 +1037,7 @@ twa_set_param(struct twa_softc *sc, int table_id,
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 
 	/* Allocate memory to send data using. */
-	param = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
+	param = kmalloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
 	bzero(param, sizeof(struct twa_param_9k) - 1 + param_size);
 	tr->tr_data = param;
 	tr->tr_length = TWA_SECTOR_SIZE;
@@ -1079,7 +1079,7 @@ twa_set_param(struct twa_softc *sc, int table_id,
 					tr->tr_command->cmd_hdr.err_specific_desc);
 			goto out; /* twa_drain_complete_queue will have done the unmapping */
 		}
-		free(param, M_DEVBUF);
+		kfree(param, M_DEVBUF);
 		twa_release_request(tr);
 		return(error);
 	} else {
@@ -1096,7 +1096,7 @@ twa_set_param(struct twa_softc *sc, int table_id,
 out:
 	twa_printf(sc, "set_param failed. error = 0x%x\n", error);
 	if (param)
-		free(param, M_DEVBUF);
+		kfree(param, M_DEVBUF);
 	if (tr)
 		twa_release_request(tr);
 	return(error);
@@ -1264,7 +1264,7 @@ twa_wait_request(struct twa_request *tr, u_int32_t timeout)
 				twa_remove_pending(tr);
 				twa_unmap_request(tr);
 				if (tr->tr_data)
-					free(tr->tr_data, M_DEVBUF);
+					kfree(tr->tr_data, M_DEVBUF);
 				twa_release_request(tr);
 			}
 			return(ETIMEDOUT);
@@ -1336,7 +1336,7 @@ twa_immediate_request(struct twa_request *tr, u_int32_t timeout)
 		twa_remove_pending(tr);
 		twa_unmap_request(tr);
 		if (tr->tr_data)
-			free(tr->tr_data, M_DEVBUF);
+			kfree(tr->tr_data, M_DEVBUF);
 		twa_release_request(tr);
 	}
 	return(ETIMEDOUT);
@@ -1854,7 +1854,7 @@ twa_fetch_aen(struct twa_softc *sc)
 	tr->tr_callback = twa_aen_callback;
 	if ((error = twa_send_scsi_cmd(tr, 0x03 /* REQUEST_SENSE */))) {
 		if (tr->tr_data)
-			free(tr->tr_data, M_DEVBUF);
+			kfree(tr->tr_data, M_DEVBUF);
 		twa_release_request(tr);
 	}
 	return(error);
@@ -1906,7 +1906,7 @@ twa_aen_callback(struct twa_request *tr)
 	}
 
 	if (tr->tr_data)
-		free(tr->tr_data, M_DEVBUF);
+		kfree(tr->tr_data, M_DEVBUF);
 	twa_release_request(tr);
 }
 
@@ -1962,13 +1962,13 @@ twa_drain_aen_queue(struct twa_softc *sc)
 			break;
 		twa_enqueue_aen(sc, cmd_hdr);
 
-		free(tr->tr_data, M_DEVBUF);
+		kfree(tr->tr_data, M_DEVBUF);
 		twa_release_request(tr);
 	}
 
 	if (tr) {
 		if (tr->tr_data)
-			free(tr->tr_data, M_DEVBUF);
+			kfree(tr->tr_data, M_DEVBUF);
 		twa_release_request(tr);
 	}
 	return(error);
@@ -2224,7 +2224,7 @@ twa_describe_controller(struct twa_softc *sc)
 				TWA_PARAM_CONTROLLER_PORT_COUNT, 1, NULL);
 	if (p[0]) {
 		num_ports = *(u_int8_t *)(p[0]->data);
-		free(p[0], M_DEVBUF);
+		kfree(p[0], M_DEVBUF);
 	}
 
 	/* Get the firmware and BIOS versions. */
@@ -2251,18 +2251,18 @@ twa_describe_controller(struct twa_softc *sc)
 				p[4]?(p[4]->data):NULL, p[5]?(p[5]->data):NULL);
 
 		if (p[2])
-			free(p[2], M_DEVBUF);
+			kfree(p[2], M_DEVBUF);
 		if (p[3])
-			free(p[3], M_DEVBUF);
+			kfree(p[3], M_DEVBUF);
 		if (p[4])
-			free(p[4], M_DEVBUF);
+			kfree(p[4], M_DEVBUF);
 		if (p[5])
-			free(p[5], M_DEVBUF);
+			kfree(p[5], M_DEVBUF);
 	}
 	if (p[0])
-		free(p[0], M_DEVBUF);
+		kfree(p[0], M_DEVBUF);
 	if (p[1])
-		free(p[1], M_DEVBUF);
+		kfree(p[1], M_DEVBUF);
 }
 
 

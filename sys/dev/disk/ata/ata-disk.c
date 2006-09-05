@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.29 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.30 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -108,7 +108,7 @@ ad_attach(struct ata_device *atadev, int alreadylocked)
     struct ad_softc *adp;
     dev_t dev;
 
-    adp = malloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO);
+    adp = kmalloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO);
 
     KKASSERT(atadev->channel->req_mpipe.max_count != 0);
 
@@ -264,7 +264,7 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
     ata_free_lun(&adp_lun_map, adp->lun);
     atadev->driver = NULL;
     atadev->flags = 0;
-    free(adp, M_AD);
+    kfree(adp, M_AD);
 }
 
 static int

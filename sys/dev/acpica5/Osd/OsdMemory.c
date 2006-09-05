@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.11 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.3 2004/06/27 08:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.4 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -55,13 +55,13 @@ static acpi_memtrack_t acpi_mapbase;
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
-    return (malloc(Size, M_ACPICA, M_INTWAIT));
+    return (kmalloc(Size, M_ACPICA, M_INTWAIT));
 }
 
 void
 AcpiOsFree(void *Memory)
 {
-    free(Memory, M_ACPICA);
+    kfree(Memory, M_ACPICA);
 }
 
 ACPI_STATUS
@@ -74,7 +74,7 @@ AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length,
     if (*LogicalAddress == NULL)
 	return(AE_BAD_ADDRESS);
     else {
-	track = malloc(sizeof(struct acpi_memtrack), M_ACPICA, M_INTWAIT);
+	track = kmalloc(sizeof(struct acpi_memtrack), M_ACPICA, M_INTWAIT);
 	track->next = acpi_mapbase;
 	track->base = *LogicalAddress;
 	track->size = Length;
@@ -97,7 +97,7 @@ again:
 	if (track->base == LogicalAddress && track->size == Length) {
 	    *ptrack = track->next;
 	    pmap_unmapdev((vm_offset_t)track->base, track->size);
-	    free(track, M_ACPICA);
+	    kfree(track, M_ACPICA);
 	    return;
 	}
 	/*
@@ -112,7 +112,7 @@ again:
 		   " large! %p/%08x (actual was %p/%08x)\n",
 		   LogicalAddress, Length,
 		   track->base, track->size);
-	    free(track, M_ACPICA);
+	    kfree(track, M_ACPICA);
 	    goto again;
 	}
 

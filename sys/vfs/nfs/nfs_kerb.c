@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_kerb.c,v 1.2 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_kerb.c,v 1.3 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ nfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 	TAILQ_FOREACH_MUTABLE(nuidp, &nmp->nm_uidlruhead, nu_lru, nnuidp) {
 		LIST_REMOVE(nuidp, nu_hash);
 		TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp, nu_lru);
-		free((caddr_t)nuidp, M_NFSUID);
+		kfree((caddr_t)nuidp, M_NFSUID);
 	}
 	nfs_free_mount(nmp);
 	if (error == EWOULDBLOCK)

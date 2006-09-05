@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.6 2006/01/14 11:10:47 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.7 2006/09/05 00:55:48 dillon Exp $
  *
  */
 
@@ -272,7 +272,7 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	printf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
-	new_connection = malloc(sizeof(struct ngd_connection), M_DEVBUF, M_NOWAIT);
+	new_connection = kmalloc(sizeof(struct ngd_connection), M_DEVBUF, M_NOWAIT);
 	if(new_connection == NULL) {
 		printf("%s(): ERROR: new_connection == NULL\n", __func__);
 		return(-1);
@@ -282,7 +282,7 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	if(new_connection->unit<0) {
 		printf("%s: No free unit found by get_free_unit(), "
 				"increas MAX_NGD\n", __func__);
-		free(new_connection, M_DEVBUF);
+		kfree(new_connection, M_DEVBUF);
 		return(-1);
 	}
 	new_connection->ngddev = make_dev(&ngd_cdevsw,
@@ -290,17 +290,17 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	if(new_connection->ngddev == NULL) {
 		printf("%s(): make_dev failed\n", __func__);
 		SLIST_REMOVE(&sc->head, new_connection, ngd_connection, links);
-		free(new_connection, M_DEVBUF);
+		kfree(new_connection, M_DEVBUF);
 		return(-1);
 	}
 
 	new_connection->readq =
-	    malloc(sizeof(char)*NGD_QUEUE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
+	    kmalloc(sizeof(char)*NGD_QUEUE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if(new_connection->readq == NULL) {
 		printf("%s(): readq malloc failed\n", __func__);
 		destroy_dev(new_connection->ngddev);
 		SLIST_REMOVE(&sc->head, new_connection, ngd_connection, links);
-		free(new_connection, M_DEVBUF);
+		kfree(new_connection, M_DEVBUF);
 		return(-1);
 	}
 
@@ -362,7 +362,7 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		return(-1);
 	}
 
-	buffer = malloc(sizeof(char)*m->m_len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	buffer = kmalloc(sizeof(char)*m->m_len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if(buffer == NULL) {
 		printf("%s(): ERROR: buffer malloc failed\n", __func__);
 		return(-1);
@@ -376,7 +376,7 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	} else
 		printf("%s(): queue full, first read out a bit\n", __func__);
 
-	free(buffer, M_DEVBUF);
+	kfree(buffer, M_DEVBUF);
 
 	return(0);
 }
@@ -406,7 +406,7 @@ ng_device_disconnect(hook_p hook)
 		return(-1);
 	}
 
-        free(connection->readq, M_DEVBUF);
+        kfree(connection->readq, M_DEVBUF);
 
 	destroy_dev(connection->ngddev);
 

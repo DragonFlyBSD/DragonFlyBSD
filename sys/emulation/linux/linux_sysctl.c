@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_sysctl.c,v 1.2.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.7 2006/06/05 07:26:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -89,10 +89,10 @@ sys_linux_sysctl(struct linux_sysctl_args *args)
 	if (la.nlen <= 0 || la.nlen > LINUX_CTL_MAXNAME)
 		return (ENOTDIR);
 
-	mib = malloc(la.nlen * sizeof(l_int), M_TEMP, M_WAITOK);
+	mib = kmalloc(la.nlen * sizeof(l_int), M_TEMP, M_WAITOK);
 	error = copyin(la.name, mib, la.nlen * sizeof(l_int));
 	if (error) {
-		free(mib, M_TEMP);
+		kfree(mib, M_TEMP);
 		return (error);
 	}
 
@@ -103,7 +103,7 @@ sys_linux_sysctl(struct linux_sysctl_args *args)
 
 		switch (mib[1]) {
 		case LINUX_KERN_VERSION:
-			free(mib, M_TEMP);
+			kfree(mib, M_TEMP);
 			return (handle_string(&la, version));
 		default:
 			break;
@@ -118,6 +118,6 @@ sys_linux_sysctl(struct linux_sysctl_args *args)
 		printf("%c%d", (i) ? ',' : '{', mib[i]);
 	printf("}\n");
 
-	free(mib, M_TEMP);
+	kfree(mib, M_TEMP);
 	return (ENOTDIR);
 }

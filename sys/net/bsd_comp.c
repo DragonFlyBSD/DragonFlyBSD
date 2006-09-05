@@ -41,7 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.9 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.10 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -365,8 +365,8 @@ bsd_free(void *state)
     struct bsd_db *db = (struct bsd_db *) state;
 
     if (db->lens)
-	free(db->lens, M_DEVBUF);
-    free(db, M_DEVBUF);
+	kfree(db->lens, M_DEVBUF);
+    kfree(db, M_DEVBUF);
 }
 
 static void *

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.24 2006/05/06 02:43:14 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.25 2006/09/05 00:55:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -105,7 +105,7 @@ msdosfs_init(struct vfsconf *vfsp)
 	dehash = 16;
 	while (dehash < desiredvnodes)
 		dehash <<= 1;
-	dehashtbl = malloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
+	dehashtbl = kmalloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
 			   M_WAITOK|M_ZERO);
 	--dehash;
 	lwkt_token_init(&dehash_token);
@@ -117,7 +117,7 @@ msdosfs_uninit(struct vfsconf *vfsp)
 {
 
 	if (dehashtbl)
-		free(dehashtbl, M_MSDOSFSMNT);
+		kfree(dehashtbl, M_MSDOSFSMNT);
 	return (0);
 }
 
@@ -315,7 +315,7 @@ again:
 	if (msdosfs_hashins(ldep) != 0) {
 		printf("debug: msdosfs: hashins collision, retrying\n");
 		vx_put(nvp);
-		free(ldep, M_MSDOSFSNODE);
+		kfree(ldep, M_MSDOSFSNODE);
 		goto again;
 	}
 	nvp->v_data = ldep;
@@ -671,7 +671,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 			vrele(dep->de_devvp);
 			dep->de_devvp = 0;
 		}
-		free(dep, M_MSDOSFSNODE);
+		kfree(dep, M_MSDOSFSNODE);
 	}
 	return (0);
 }

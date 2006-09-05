@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.17 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.18 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -309,13 +309,13 @@ do { \
 
 #if 1
 #define KMALLOC(p, t, n)                                                     \
-	((p) = (t) malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK))
+	((p) = (t) kmalloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK))
 #define KFREE(p)                                                             \
-	free((caddr_t)(p), M_SECA);
+	kfree((caddr_t)(p), M_SECA);
 #else
 #define KMALLOC(p, t, n) \
 do { \
-	((p) = (t)malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
+	((p) = (t)kmalloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
 	printf("%s %d: %p <- KMALLOC(%s, %d)\n",                             \
 		__FILE__, __LINE__, (p), #t, n);                             \
 } while (0)
@@ -323,7 +323,7 @@ do { \
 #define KFREE(p)                                                             \
 	do {                                                                 \
 		printf("%s %d: %p -> KFREE()\n", __FILE__, __LINE__, (p));   \
-		free((caddr_t)(p), M_SECA);                                  \
+		kfree((caddr_t)(p), M_SECA);                                  \
 	} while (0)
 #endif
 

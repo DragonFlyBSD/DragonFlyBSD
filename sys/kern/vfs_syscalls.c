@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.101 2006/08/19 17:27:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.102 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -290,7 +290,7 @@ sys_mount(struct mount_args *uap)
 	/*
 	 * Allocate and initialize the filesystem.
 	 */
-	mp = malloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
+	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	TAILQ_INIT(&mp->mnt_jlist);
@@ -384,7 +384,7 @@ update:
 		vp->v_flag &= ~VMOUNT;
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
-		free(mp, M_MOUNT);
+		kfree(mp, M_MOUNT);
 		cache_drop(ncp);
 		vput(vp);
 	}
@@ -647,7 +647,7 @@ dounmount(struct mount *mp, int flags)
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
 		wakeup(mp);
-	free(mp, M_MOUNT);
+	kfree(mp, M_MOUNT);
 	return (0);
 }
 
@@ -781,13 +781,13 @@ sys_mountctl(struct mountctl_args *uap)
 		goto done;
 
 	if (uap->ctllen) {
-		ctl = malloc(uap->ctllen + 1, M_TEMP, M_WAITOK|M_ZERO);
+		ctl = kmalloc(uap->ctllen + 1, M_TEMP, M_WAITOK|M_ZERO);
 		error = copyin(uap->ctl, ctl, uap->ctllen);
 		if (error)
 			goto done;
 	}
 	if (uap->buflen)
-		buf = malloc(uap->buflen + 1, M_TEMP, M_WAITOK|M_ZERO);
+		buf = kmalloc(uap->buflen + 1, M_TEMP, M_WAITOK|M_ZERO);
 
 	/*
 	 * Validate the descriptor
@@ -810,9 +810,9 @@ done:
 	if (path)
 		objcache_put(namei_oc, path);
 	if (ctl)
-		free(ctl, M_TEMP);
+		kfree(ctl, M_TEMP);
 	if (buf)
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 	return (error);
 }
 
@@ -878,7 +878,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 		return(error);
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
-	free(freepath, M_TEMP);
+	kfree(freepath, M_TEMP);
 
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
@@ -940,7 +940,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 		goto done;
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
-	free(freepath, M_TEMP);
+	kfree(freepath, M_TEMP);
 
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
@@ -1052,7 +1052,7 @@ getfsstat_callback(struct mount *mp, void *data)
 		}
 		bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 		strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
-		free(freepath, M_TEMP);
+		kfree(freepath, M_TEMP);
 
 		error = copyout(sp, info->sfsp, sizeof(*sp));
 		if (error) {
@@ -3373,7 +3373,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 		return(error);
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
-	free(freepath, M_TEMP);
+	kfree(freepath, M_TEMP);
 
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	if (suser(td)) {

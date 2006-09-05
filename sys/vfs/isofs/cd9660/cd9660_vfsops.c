@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.39 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.40 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -401,7 +401,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 		 pri_sierra->root_directory_record:
 		 pri->root_directory_record);
 
-	isomp = malloc(sizeof *isomp, M_ISOFSMNT, M_WAITOK | M_ZERO);
+	isomp = kmalloc(sizeof *isomp, M_ISOFSMNT, M_WAITOK | M_ZERO);
 	isomp->logical_block_size = logical_block_size;
 	isomp->volume_space_size =
 		isonum_733 (high_sierra?
@@ -518,7 +518,7 @@ out:
 	if (needclose)
 		VOP_CLOSE(devvp, FREAD);
 	if (isomp) {
-		free((caddr_t)isomp, M_ISOFSMNT);
+		kfree((caddr_t)isomp, M_ISOFSMNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return error;
@@ -548,7 +548,7 @@ cd9660_unmount(struct mount *mp, int mntflags)
 	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(isomp->im_devvp, FREAD);
 	vrele(isomp->im_devvp);
-	free((caddr_t)isomp, M_ISOFSMNT);
+	kfree((caddr_t)isomp, M_ISOFSMNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);
@@ -719,7 +719,7 @@ again:
 	if (cd9660_ihashins(ip) != 0) {
 		printf("debug: cd9660 ihashins collision, retrying\n");
 		vx_put(vp);
-		free(ip, M_ISOFSNODE);
+		kfree(ip, M_ISOFSNODE);
 		goto again;
 	}
 	vp->v_data = ip;

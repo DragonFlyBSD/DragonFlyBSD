@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.3 2004/05/31 20:48:41 eirikn Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.4 2006/09/05 00:55:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -147,7 +147,7 @@ sio_pccard_detach(dev)
 		ttwwakeup(com->tp);
 	} else {
 		if (com->ibuf != NULL)
-			free(com->ibuf, M_DEVBUF);
+			kfree(com->ibuf, M_DEVBUF);
 	}
 	device_printf(dev, "unloaded\n");
 	return (0);

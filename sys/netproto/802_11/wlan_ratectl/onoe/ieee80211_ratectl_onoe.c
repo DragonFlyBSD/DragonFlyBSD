@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.1 2006/09/01 15:12:12 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.2 2006/09/05 00:55:49 dillon Exp $
  */
 
 /*
@@ -445,7 +445,7 @@ onoe_attach(struct ieee80211com *ic)
 
 	onoe_nrefs++;
 
-	osc = malloc(sizeof(struct onoe_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	osc = kmalloc(sizeof(struct onoe_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	osc->ic = ic;
 	callout_init(&osc->timer);
@@ -475,7 +475,7 @@ onoe_detach(void *arg)
 
 	if (osc->sysctl_oid != NULL)
 		sysctl_ctx_free(&osc->sysctl_ctx);
-	free(osc, M_DEVBUF);
+	kfree(osc, M_DEVBUF);
 
 	onoe_nrefs--;
 }
@@ -484,7 +484,7 @@ static void
 onoe_data_free(struct ieee80211_node *ni)
 {
 	if (ni->ni_rate_data != NULL) {
-		free(ni->ni_rate_data, M_ONOE_RATECTL_DATA);
+		kfree(ni->ni_rate_data, M_ONOE_RATECTL_DATA);
 		ni->ni_rate_data = NULL;
 	}
 }

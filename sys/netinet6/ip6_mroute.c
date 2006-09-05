@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.12 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.13 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -477,12 +477,12 @@ ip6_mrouter_done(void)
 				struct rtdetq *n = rte->next;
 
 				m_free(rte->m);
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				rte = n;
 			}
 			frt = rt;
 			rt = rt->mf6c_next;
-			free(frt, M_MRTABLE);
+			kfree(frt, M_MRTABLE);
 		}
 	}
 
@@ -712,7 +712,7 @@ add_m6fc(struct mf6cctl *mfccp)
 #ifdef UPCALL_TIMING
 				collate(&(rte->t));
 #endif /* UPCALL_TIMING */
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				rte = n;
 			}
 			rt->mf6c_stall = NULL;
@@ -755,7 +755,7 @@ add_m6fc(struct mf6cctl *mfccp)
 		}
 		if (rt == NULL) {
 			/* no upcall, so make a new entry */
-			rt = (struct mf6c *)malloc(sizeof(*rt), M_MRTABLE,
+			rt = (struct mf6c *)kmalloc(sizeof(*rt), M_MRTABLE,
 						  M_NOWAIT);
 			if (rt == NULL) {
 				crit_exit();
@@ -851,7 +851,7 @@ del_m6fc(struct mf6cctl *mfccp)
 	}
 
 	*nptr = rt->mf6c_next;
-	free(rt, M_MRTABLE);
+	kfree(rt, M_MRTABLE);
 
 	crit_exit();
 
@@ -969,7 +969,7 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 		 * Allocate mbufs early so that we don't do extra work if we
 		 * are just going to fail anyway.
 		 */
-		rte = (struct rtdetq *)malloc(sizeof(*rte), M_MRTABLE,
+		rte = (struct rtdetq *)kmalloc(sizeof(*rte), M_MRTABLE,
 					      M_NOWAIT);
 		if (rte == NULL) {
 			crit_exit();
@@ -984,7 +984,7 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 		    (M_HASCL(mb0) || mb0->m_len < sizeof(struct ip6_hdr)))
 			mb0 = m_pullup(mb0, sizeof(struct ip6_hdr));
 		if (mb0 == NULL) {
-			free(rte, M_MRTABLE);
+			kfree(rte, M_MRTABLE);
 			crit_exit();
 			return ENOBUFS;
 		}
@@ -1007,10 +1007,10 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 #endif
 
 			/* no upcall, so make a new entry */
-			rt = (struct mf6c *)malloc(sizeof(*rt), M_MRTABLE,
+			rt = (struct mf6c *)kmalloc(sizeof(*rt), M_MRTABLE,
 						  M_NOWAIT);
 			if (rt == NULL) {
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				m_freem(mb0);
 				crit_exit();
 				return ENOBUFS;
@@ -1022,9 +1022,9 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 			mm = m_copy(mb0, 0, sizeof(struct ip6_hdr));
 
 			if (mm == NULL) {
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				m_freem(mb0);
-				free(rt, M_MRTABLE);
+				kfree(rt, M_MRTABLE);
 				crit_exit();
 				return ENOBUFS;
 			}
@@ -1052,9 +1052,9 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 				im->im6_mbz = 0;
 				break;
 			default:
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				m_freem(mb0);
-				free(rt, M_MRTABLE);
+				kfree(rt, M_MRTABLE);
 				crit_exit();
 				return EINVAL;
 			}
@@ -1085,9 +1085,9 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 				log(LOG_WARNING, "ip6_mforward: ip6_mrouter "
 				    "socket queue full\n");
 				mrt6stat.mrt6s_upq_sockfull++;
-				free(rte, M_MRTABLE);
+				kfree(rte, M_MRTABLE);
 				m_freem(mb0);
-				free(rt, M_MRTABLE);
+				kfree(rt, M_MRTABLE);
 				crit_exit();
 				return ENOBUFS;
 			}
@@ -1119,7 +1119,7 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 			for (p = &rt->mf6c_stall; *p != NULL; p = &(*p)->next)
 				if (++npkts > MAX_UPQ6) {
 					mrt6stat.mrt6s_upq_ovflw++;
-					free(rte, M_MRTABLE);
+					kfree(rte, M_MRTABLE);
 					m_freem(mb0);
 					crit_exit();
 					return 0;
@@ -1181,14 +1181,14 @@ expire_upcalls(void *unused)
 				do {
 					struct rtdetq *n = rte->next;
 					m_freem(rte->m);
-					free(rte, M_MRTABLE);
+					kfree(rte, M_MRTABLE);
 					rte = n;
 				} while (rte != NULL);
 				mrt6stat.mrt6s_cache_cleanups++;
 				n6expire[i]--;
 
 				*nptr = mfc->mf6c_next;
-				free(mfc, M_MRTABLE);
+				kfree(mfc, M_MRTABLE);
 			} else {
 				nptr = &mfc->mf6c_next;
 			}

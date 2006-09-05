@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.2 2006/07/02 10:03:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.3 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -539,7 +539,7 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 		goto fail;
 	}
 
-	ring->data = malloc(count * sizeof (struct rt2661_tx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct rt2661_tx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
@@ -639,7 +639,7 @@ rt2661_free_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring)
 			}
 		}
 
-		free(ring->data, M_DEVBUF);
+		kfree(ring->data, M_DEVBUF);
 		ring->data = NULL;
 	}
 
@@ -687,7 +687,7 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
 		goto fail;
 	}
 
-	ring->data = malloc(count * sizeof (struct rt2661_rx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct rt2661_rx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	/*
@@ -793,7 +793,7 @@ rt2661_free_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring)
 			}
 		}
 
-		free(ring->data, M_DEVBUF);
+		kfree(ring->data, M_DEVBUF);
 		ring->data = NULL;
 	}
 
@@ -808,7 +808,7 @@ rt2661_node_alloc(struct ieee80211_node_table *nt)
 {
 	struct rt2661_node *rn;
 
-	rn = malloc(sizeof (struct rt2661_node), M_80211_NODE,
+	rn = kmalloc(sizeof (struct rt2661_node), M_80211_NODE,
 	    M_NOWAIT | M_ZERO);
 
 	return (rn != NULL) ? &rn->ni : NULL;

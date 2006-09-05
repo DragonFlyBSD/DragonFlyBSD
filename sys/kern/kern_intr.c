@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.41 2006/01/25 19:56:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.42 2006/09/05 00:55:45 dillon Exp $
  *
  */
 
@@ -189,8 +189,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     /*
      * Construct an interrupt handler record
      */
-    rec = malloc(sizeof(struct intrec), M_DEVBUF, M_INTWAIT);
-    rec->name = malloc(strlen(name) + 1, M_DEVBUF, M_INTWAIT);
+    rec = kmalloc(sizeof(struct intrec), M_DEVBUF, M_INTWAIT);
+    rec->name = kmalloc(strlen(name) + 1, M_DEVBUF, M_INTWAIT);
     strcpy(rec->name, name);
 
     rec->info = info;
@@ -353,8 +353,8 @@ unregister_int(void *id)
      * Free the record.
      */
     if (rec != NULL) {
-	free(rec->name, M_DEVBUF);
-	free(rec, M_DEVBUF);
+	kfree(rec->name, M_DEVBUF);
+	kfree(rec, M_DEVBUF);
     } else {
 	printf("warning: unregister_int: int %d handler for %s not found\n",
 		intr, ((intrec_t)id)->name);

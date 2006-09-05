@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.52 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.53 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1576,7 +1576,7 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 	char *format = corefilename;
 	size_t namelen;
 
-	temp = malloc(MAXPATHLEN + 1, M_TEMP, M_NOWAIT);
+	temp = kmalloc(MAXPATHLEN + 1, M_TEMP, M_NOWAIT);
 	if (temp == NULL)
 		return NULL;
 	namelen = strlen(name);
@@ -1593,7 +1593,7 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + namelen) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, name, namelen);
@@ -1604,7 +1604,7 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, buf, l);
@@ -1615,7 +1615,7 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, buf, l);
@@ -1676,7 +1676,7 @@ coredump(struct proc *p)
 	error = nlookup_init(&nd, name, UIO_SYSSPACE, NLC_LOCKVP);
 	if (error == 0)
 		error = vn_open(&nd, NULL, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
-	free(name, M_TEMP);
+	kfree(name, M_TEMP);
 	if (error) {
 		nlookup_done(&nd);
 		return (error);

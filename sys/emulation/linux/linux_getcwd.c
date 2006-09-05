@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.21 2006/06/05 07:26:09 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.22 2006/09/05 00:55:45 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -87,14 +87,14 @@ sys_linux_getcwd(struct linux_getcwd_args *args)
 	if (buflen > MAXPATHLEN)
 		buflen = MAXPATHLEN;
 
-	buf = malloc(buflen, M_TEMP, M_WAITOK);
+	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
 	bp = kern_getcwd(buf, buflen, &error);
 	if (error == 0) {
 		buflen = strlen(bp) + 1;
 		error = copyout(bp, args->buf, buflen);
 		args->sysmsg_result = buflen;
 	}
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (error);
 }
 

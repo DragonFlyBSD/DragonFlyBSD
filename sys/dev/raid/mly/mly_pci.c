@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_pci.c,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.6 2005/10/12 17:35:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.7 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -537,11 +537,11 @@ mly_free(struct mly_softc *sc)
 
     /* throw away the controllerinfo structure */
     if (sc->mly_controllerinfo != NULL)
-	free(sc->mly_controllerinfo, M_DEVBUF);
+	kfree(sc->mly_controllerinfo, M_DEVBUF);
 
     /* throw away the controllerparam structure */
     if (sc->mly_controllerparam != NULL)
-	free(sc->mly_controllerparam, M_DEVBUF);
+	kfree(sc->mly_controllerparam, M_DEVBUF);
 
     /* destroy data-transfer DMA tag */
     if (sc->mly_buffer_dmat)

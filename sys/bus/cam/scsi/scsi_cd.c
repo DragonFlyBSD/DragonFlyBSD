@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.23 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.24 2006/09/05 00:55:32 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -529,7 +529,7 @@ cdcleanup(struct cam_periph *periph)
 			      changer_links);
 		xpt_print_path(periph->path);
 		printf("removing changer entry\n");
-		free(softc->changer, M_DEVBUF);
+		kfree(softc->changer, M_DEVBUF);
 		num_changers--;
 	}
 	devstat_remove_entry(&softc->device_stats);
@@ -537,7 +537,7 @@ cdcleanup(struct cam_periph *periph)
 	if (softc->disk.d_rawdev) {
 		disk_destroy(&softc->disk);
 	}
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 	crit_exit();
 }
 
@@ -694,7 +694,7 @@ cdregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	STAILQ_INIT(&softc->mode_queue);
 	softc->state = CD_STATE_PROBE;
@@ -899,7 +899,7 @@ cdregister(struct cam_periph *periph, void *arg)
 		 * been marked as part of the changer.)
 		 */
 		else {
-			nchanger = malloc(sizeof(struct cdchanger),
+			nchanger = kmalloc(sizeof(struct cdchanger),
 					M_DEVBUF, M_INTWAIT | M_ZERO);
 			callout_init(&nchanger->short_handle);
 			callout_init(&nchanger->long_handle);
@@ -1589,7 +1589,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 	case CD_STATE_PROBE:
 	{
 
-		rcap = malloc(sizeof(*rcap), M_TEMP, M_INTWAIT);
+		rcap = kmalloc(sizeof(*rcap), M_TEMP, M_INTWAIT);
 		csio = &start_ccb->csio;
 		scsi_read_capacity(csio,
 				   /*retries*/1,
@@ -1854,7 +1854,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				}
 			}
 		}
-		free(rdcap, M_TEMP);
+		kfree(rdcap, M_TEMP);
 		if (announce_buf[0] != '\0') {
 			xpt_announce_periph(periph, announce_buf);
 			if (softc->flags & CD_FLAG_CHANGER)
@@ -1973,7 +1973,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			union cd_pages *page;
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
@@ -1981,7 +1981,7 @@ cdioctl(struct dev_ioctl_args *ap)
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -1989,7 +1989,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.flags &= ~CD_PA_SOTC;
 			page->audio.flags |= CD_PA_IMMED;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 			if (error)
 				break;
 
@@ -2063,7 +2063,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			union cd_pages *page;
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
@@ -2071,7 +2071,7 @@ cdioctl(struct dev_ioctl_args *ap)
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2079,7 +2079,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.flags &= ~CD_PA_SOTC;
 			page->audio.flags |= CD_PA_IMMED;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 			if (error)
 				break;
 			error = cdplaymsf(periph,
@@ -2102,12 +2102,12 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCPLAYBLOCKS\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2115,7 +2115,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.flags &= ~CD_PA_SOTC;
 			page->audio.flags |= CD_PA_IMMED;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 			if (error)
 				break;
 			error = cdplay(periph, args->blk, args->len);
@@ -2131,7 +2131,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOCREADSUBCHANNEL\n"));
 
-			data = malloc(sizeof(struct cd_sub_channel_info), 
+			data = kmalloc(sizeof(struct cd_sub_channel_info), 
 				      M_TEMP, M_WAITOK);
 
 			if ((len > sizeof(struct cd_sub_channel_info)) ||
@@ -2141,7 +2141,7 @@ cdioctl(struct dev_ioctl_args *ap)
 					"cdioreadsubchannel: error, len=%d\n",
 					len);
 				error = EINVAL;
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 				break;
 			}
 
@@ -2152,7 +2152,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				args->data_format, args->track, data, len);
 
 			if (error) {
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 	 			break;
 			}
 			if (softc->quirks & CD_Q_BCD_TRACKS)
@@ -2164,7 +2164,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			if (copyout(data, args->data, len) != 0) {
 				error = EFAULT;
 			}
-			free(data, M_TEMP);
+			kfree(data, M_TEMP);
 		}
 		break;
 
@@ -2175,12 +2175,12 @@ cdioctl(struct dev_ioctl_args *ap)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOREADTOCHEADER\n"));
 
-			th = malloc(sizeof(struct ioc_toc_header), M_TEMP,
+			th = kmalloc(sizeof(struct ioc_toc_header), M_TEMP,
 				    M_WAITOK);
 			error = cdreadtoc(periph, 0, 0, (u_int8_t *)th, 
 				          sizeof (*th), /*sense_flags*/0);
 			if (error) {
-				free(th, M_TEMP);
+				kfree(th, M_TEMP);
 				break;
 			}
 			if (softc->quirks & CD_Q_BCD_TRACKS) {
@@ -2193,7 +2193,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			}
 			th->len = ntohs(th->len);
 			bcopy(th, addr, sizeof(*th));
-			free(th, M_TEMP);
+			kfree(th, M_TEMP);
 		}
 		break;
 	case CDIOREADTOCENTRYS:
@@ -2209,8 +2209,8 @@ cdioctl(struct dev_ioctl_args *ap)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOREADTOCENTRYS\n"));
 
-			data = malloc(sizeof(*data), M_TEMP, M_WAITOK);
-			lead = malloc(sizeof(*lead), M_TEMP, M_WAITOK);
+			data = kmalloc(sizeof(*data), M_TEMP, M_WAITOK);
+			lead = kmalloc(sizeof(*lead), M_TEMP, M_WAITOK);
 
 			if (te->data_len < sizeof(struct cd_toc_entry)
 			 || (te->data_len % sizeof(struct cd_toc_entry)) != 0
@@ -2219,8 +2219,8 @@ cdioctl(struct dev_ioctl_args *ap)
 				error = EINVAL;
 				printf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
-				free(data, M_TEMP);
-				free(lead, M_TEMP);
+				kfree(data, M_TEMP);
+				kfree(lead, M_TEMP);
 				break;
 			}
 
@@ -2228,8 +2228,8 @@ cdioctl(struct dev_ioctl_args *ap)
 			error = cdreadtoc(periph, 0, 0, (u_int8_t *)th, 
 					  sizeof (*th), /*sense_flags*/0);
 			if (error) {
-				free(data, M_TEMP);
-				free(lead, M_TEMP);
+				kfree(data, M_TEMP);
+				kfree(lead, M_TEMP);
 				break;
 			}
 
@@ -2250,8 +2250,8 @@ cdioctl(struct dev_ioctl_args *ap)
 				 starting_track > th->ending_track + 1) {
 				printf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
-				free(data, M_TEMP);
-				free(lead, M_TEMP);
+				kfree(data, M_TEMP);
+				kfree(lead, M_TEMP);
 				error = EINVAL;
 				break;
 			}
@@ -2271,8 +2271,8 @@ cdioctl(struct dev_ioctl_args *ap)
 				printf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
 				error = EINVAL;
-				free(data, M_TEMP);
-				free(lead, M_TEMP);
+				kfree(data, M_TEMP);
+				kfree(lead, M_TEMP);
 				break;
 			}
 			num = len / sizeof(struct cd_toc_entry);
@@ -2284,8 +2284,8 @@ cdioctl(struct dev_ioctl_args *ap)
 						  readlen + sizeof (*th),
 						  /*sense_flags*/0);
 				if (error) {
-					free(data, M_TEMP);
-					free(lead, M_TEMP);
+					kfree(data, M_TEMP);
+					kfree(lead, M_TEMP);
 					break;
 				}
 			}
@@ -2300,8 +2300,8 @@ cdioctl(struct dev_ioctl_args *ap)
 						  sizeof(*lead),
 						  /*sense_flags*/0);
 				if (error) {
-					free(data, M_TEMP);
-					free(lead, M_TEMP);
+					kfree(data, M_TEMP);
+					kfree(lead, M_TEMP);
 					break;
 				}
 				data->entries[idx - starting_track] = 
@@ -2315,8 +2315,8 @@ cdioctl(struct dev_ioctl_args *ap)
 			}
 
 			error = copyout(data->entries, te->data, len);
-			free(data, M_TEMP);
-			free(lead, M_TEMP);
+			kfree(data, M_TEMP);
+			kfree(lead, M_TEMP);
 		}
 		break;
 	case CDIOREADTOCENTRY:
@@ -2330,13 +2330,13 @@ cdioctl(struct dev_ioctl_args *ap)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOREADTOCENTRY\n"));
 
-			data = malloc(sizeof(*data), M_TEMP, M_WAITOK);
+			data = kmalloc(sizeof(*data), M_TEMP, M_WAITOK);
 
 			if (te->address_format != CD_MSF_FORMAT
 			    && te->address_format != CD_LBA_FORMAT) {
 				printf("error in readtocentry, "
 				       " returning EINVAL\n");
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 				error = EINVAL;
 				break;
 			}
@@ -2345,7 +2345,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			error = cdreadtoc(periph, 0, 0, (u_int8_t *)th,
 					  sizeof (*th), /*sense_flags*/0);
 			if (error) {
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 				break;
 			}
 
@@ -2366,7 +2366,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				 track > th->ending_track + 1) {
 				printf("error in readtocentry, "
 				       " returning EINVAL\n");
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 				error = EINVAL;
 				break;
 			}
@@ -2375,7 +2375,7 @@ cdioctl(struct dev_ioctl_args *ap)
 					  (u_int8_t *)data, sizeof(*data),
 					  /*sense_flags*/0);
 			if (error) {
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 				break;
 			}
 
@@ -2383,7 +2383,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				data->entry.track = bcd2bin(data->entry.track);
 			bcopy(&data->entry, &te->entry,
 			      sizeof(struct cd_toc_entry));
-			free(data, M_TEMP);
+			kfree(data, M_TEMP);
 		}
 		break;
 	case CDIOCSETPATCH:
@@ -2396,11 +2396,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETPATCH\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP, 
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2412,7 +2412,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = arg->patch[2];
 			page->audio.port[3].channels = arg->patch[3];
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCGETVOL:
@@ -2425,11 +2425,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCGETVOL\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP, 
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2440,7 +2440,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				page->audio.port[RIGHT_PORT].volume;
 			arg->vol[2] = page->audio.port[2].volume;
 			arg->vol[3] = page->audio.port[3].volume;
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETVOL:
@@ -2453,11 +2453,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETVOL\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP, 
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2471,7 +2471,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].volume = arg->vol[2];
 			page->audio.port[3].volume = arg->vol[3];
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETMONO:
@@ -2483,11 +2483,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETMONO\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2499,7 +2499,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = 0;
 			page->audio.port[3].channels = 0;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETSTEREO:
@@ -2511,11 +2511,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETSTEREO\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2527,7 +2527,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = 0;
 			page->audio.port[3].channels = 0;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETMUTE:
@@ -2539,11 +2539,11 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETMUTE\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(&params, M_TEMP);
+				kfree(&params, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2553,7 +2553,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = 0;
 			page->audio.port[3].channels = 0;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETLEFT:
@@ -2565,12 +2565,12 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETLEFT\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 			
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2580,7 +2580,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = 0;
 			page->audio.port[3].channels = 0;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCSETRIGHT:
@@ -2592,12 +2592,12 @@ cdioctl(struct dev_ioctl_args *ap)
 				  ("trying to do CDIOCSETRIGHT\n"));
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
-			params.mode_buf = malloc(params.alloc_len, M_TEMP,
+			params.mode_buf = kmalloc(params.alloc_len, M_TEMP,
 						 M_WAITOK | M_ZERO);
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
-				free(params.mode_buf, M_TEMP);
+				kfree(params.mode_buf, M_TEMP);
 				break;
 			}
 			page = cdgetpage(&params);
@@ -2607,7 +2607,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			page->audio.port[2].channels = 0;
 			page->audio.port[3].channels = 0;
 			error = cdsetmode(periph, &params);
-			free(params.mode_buf, M_TEMP);
+			kfree(params.mode_buf, M_TEMP);
 		}
 		break;
 	case CDIOCRESUME:
@@ -3045,7 +3045,7 @@ cdsize(struct cam_periph *periph, u_int32_t *size)
              
 	ccb = cdgetccb(periph, /* priority */ 1);
 
-	rcap_buf = malloc(sizeof(struct scsi_read_capacity_data), 
+	rcap_buf = kmalloc(sizeof(struct scsi_read_capacity_data), 
 			  M_TEMP, M_INTWAIT | M_ZERO);
 
 	scsi_read_capacity(&ccb->csio, 
@@ -3074,7 +3074,7 @@ cdsize(struct cam_periph *periph, u_int32_t *size)
 	if (softc->params.blksize > 2048 && softc->params.blksize <= 2352)
 		softc->params.blksize = 2048;
 
-	free(rcap_buf, M_TEMP);
+	kfree(rcap_buf, M_TEMP);
 	*size = softc->params.disksize;
 
 	return (error);
@@ -3904,7 +3904,7 @@ cdreportkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 	}
 
 	if (length != 0) {
-		databuf = malloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
+		databuf = kmalloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
 	} else {
 		databuf = NULL;
 	}
@@ -4012,7 +4012,7 @@ cdreportkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 	}
 bailout:
 	if (databuf != NULL)
-		free(databuf, M_DEVBUF);
+		kfree(databuf, M_DEVBUF);
 
 	xpt_release_ccb(ccb);
 
@@ -4038,7 +4038,7 @@ cdsendkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 
 		length = sizeof(*challenge_data);
 
-		challenge_data = malloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
+		challenge_data = kmalloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		databuf = (u_int8_t *)challenge_data;
 
@@ -4055,7 +4055,7 @@ cdsendkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 
 		length = sizeof(*key2_data);
 
-		key2_data = malloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
+		key2_data = kmalloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		databuf = (u_int8_t *)key2_data;
 
@@ -4072,7 +4072,7 @@ cdsendkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 
 		length = sizeof(*rpc_data);
 
-		rpc_data = malloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
+		rpc_data = kmalloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		databuf = (u_int8_t *)rpc_data;
 
@@ -4105,7 +4105,7 @@ cdsendkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 bailout:
 
 	if (databuf != NULL)
-		free(databuf, M_DEVBUF);
+		kfree(databuf, M_DEVBUF);
 
 	xpt_release_ccb(ccb);
 
@@ -4214,7 +4214,7 @@ cdreaddvdstructure(struct cam_periph *periph, struct dvd_struct *dvdstruct)
 	}
 
 	if (length != 0) {
-		databuf = malloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
+		databuf = kmalloc(length, M_DEVBUF, M_INTWAIT | M_ZERO);
 	} else {
 		databuf = NULL;
 	}
@@ -4309,7 +4309,7 @@ cdreaddvdstructure(struct cam_periph *periph, struct dvd_struct *dvdstruct)
 bailout:
 
 	if (databuf != NULL)
-		free(databuf, M_DEVBUF);
+		kfree(databuf, M_DEVBUF);
 
 	xpt_release_ccb(ccb);
 

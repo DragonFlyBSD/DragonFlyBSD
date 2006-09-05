@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.28 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -244,7 +244,7 @@ journal_attach(struct mount *mp)
 {
     KKASSERT(mp->mnt_jbitmap == NULL);
     vfs_add_vnodeops(mp, &journal_vnode_vops, &mp->mnt_vn_journal_ops);
-    mp->mnt_jbitmap = malloc(JREC_STREAMID_JMAX/8, M_JOURNAL, M_WAITOK|M_ZERO);
+    mp->mnt_jbitmap = kmalloc(JREC_STREAMID_JMAX/8, M_JOURNAL, M_WAITOK|M_ZERO);
     mp->mnt_streamid = JREC_STREAMID_JMIN;
     return(0);
 }
@@ -255,7 +255,7 @@ journal_detach(struct mount *mp)
     KKASSERT(mp->mnt_jbitmap != NULL);
     if (mp->mnt_vn_journal_ops)
 	vfs_rm_vnodeops(mp, &journal_vnode_vops, &mp->mnt_vn_journal_ops);
-    free(mp->mnt_jbitmap, M_JOURNAL);
+    kfree(mp->mnt_jbitmap, M_JOURNAL);
     mp->mnt_jbitmap = NULL;
 }
 
@@ -274,7 +274,7 @@ journal_install_vfs_journal(struct mount *mp, struct file *fp,
     int error = 0;
     int size;
 
-    jo = malloc(sizeof(struct journal), M_JOURNAL, M_WAITOK|M_ZERO);
+    jo = kmalloc(sizeof(struct journal), M_JOURNAL, M_WAITOK|M_ZERO);
     bcopy(info->id, jo->id, sizeof(jo->id));
     jo->flags = info->flags & ~(MC_JOURNAL_WACTIVE | MC_JOURNAL_RACTIVE |
 				MC_JOURNAL_STOP_REQ);
@@ -314,7 +314,7 @@ journal_install_vfs_journal(struct mount *mp, struct file *fp,
      * Allocate the memory FIFO
      */
     jo->fifo.mask = jo->fifo.size - 1;
-    jo->fifo.membase = malloc(jo->fifo.size, M_JFIFO, M_WAITOK|M_ZERO|M_NULLOK);
+    jo->fifo.membase = kmalloc(jo->fifo.size, M_JFIFO, M_WAITOK|M_ZERO|M_NULLOK);
     if (jo->fifo.membase == NULL)
 	error = ENOMEM;
 
@@ -322,7 +322,7 @@ journal_install_vfs_journal(struct mount *mp, struct file *fp,
      * Create the worker threads and generate the association record.
      */
     if (error) {
-	free(jo, M_JOURNAL);
+	kfree(jo, M_JOURNAL);
     } else {
 	fhold(fp);
 	journal_create_threads(jo);
@@ -452,8 +452,8 @@ journal_destroy(struct mount *mp, struct journal *jo, int flags)
     if (jo->fp)
 	fdrop(jo->fp);
     if (jo->fifo.membase)
-	free(jo->fifo.membase, M_JFIFO);
-    free(jo, M_JOURNAL);
+	kfree(jo->fifo.membase, M_JFIFO);
+    kfree(jo, M_JOURNAL);
 
     return(0);
 }
@@ -573,7 +573,7 @@ jreclist_init(struct mount *mp, struct jrecord_list *jreclist,
 	if (count == 0)
 	    jrec = jreccache;
 	else
-	    jrec = malloc(sizeof(*jrec), M_JOURNAL, M_WAITOK);
+	    jrec = kmalloc(sizeof(*jrec), M_JOURNAL, M_WAITOK);
 	jrecord_init(jo, jrec, streamid);
 	jrec->user_save = jrecord_push(jrec, rectype);
 	TAILQ_INSERT_TAIL(&jreclist->list, jrec, user_entry);
@@ -610,7 +610,7 @@ jreclist_done(struct mount *mp, struct jrecord_list *jreclist, int error)
     while ((jrec = TAILQ_FIRST(&jreclist->list)) != NULL) {
 	TAILQ_REMOVE(&jreclist->list, jrec, user_entry);
 	if (count)
-	    free(jrec, M_JOURNAL);
+	    kfree(jrec, M_JOURNAL);
 	++count;
     }
 
@@ -737,7 +737,7 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
 	struct uio auio;
 	char *buf;
 
-	buf = malloc(PATH_MAX, M_JOURNAL, M_WAITOK);
+	buf = kmalloc(PATH_MAX, M_JOURNAL, M_WAITOK);
 	aiov.iov_base = buf;
 	aiov.iov_len = PATH_MAX;
 	auio.uio_iov = &aiov;
@@ -752,7 +752,7 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
 		jrecord_leaf(jrec, JLEAF_SYMLINKDATA, buf, 
 				PATH_MAX - auio.uio_resid);
 	}
-	free(buf, M_JOURNAL);
+	kfree(buf, M_JOURNAL);
     }
 done:
     if (error)
@@ -900,7 +900,7 @@ journal_write(struct vop_write_args *ap)
     jreclist_done(mp, &jreclist, error);
 
     if (uio_copy.uio_iov != &uio_one_iovec)
-	free(uio_copy.uio_iov, M_JOURNAL);
+	kfree(uio_copy.uio_iov, M_JOURNAL);
     return (error);
 }
 

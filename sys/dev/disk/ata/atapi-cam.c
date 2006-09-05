@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.8 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.9 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ atapi_cam_attach_bus(struct ata_channel *ata_ch)
 	    return;
     }
 
-    scp = malloc(sizeof(struct atapi_xpt_softc), M_ATACAM, M_INTWAIT | M_ZERO);
+    scp = kmalloc(sizeof(struct atapi_xpt_softc), M_ATACAM, M_INTWAIT | M_ZERO);
     scp->ata_ch = ata_ch;
     TAILQ_INIT(&scp->pending_hcbs);
     LIST_INSERT_HEAD(&all_buses, scp, chain);
@@ -485,7 +485,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if ((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_IN && (len & 1)) {
 	    /* ATA always transfers an even number of bytes */
 	    ++len;
-	    buf = hcb->dxfer_alloc = malloc(len, M_ATACAM, M_INTWAIT | M_ZERO);
+	    buf = hcb->dxfer_alloc = kmalloc(len, M_ATACAM, M_INTWAIT | M_ZERO);
 	}
 	crit_enter();
 	TAILQ_INSERT_TAIL(&softc->pending_hcbs, hcb, chain);
@@ -628,14 +628,14 @@ cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 	    	      ("Rescan succeeded\n"));
 	}
 	xpt_free_path(ccb->ccb_h.path);
-	free(ccb, M_ATACAM);
+	kfree(ccb, M_ATACAM);
 }
 
 static void
 cam_rescan(struct cam_sim *sim)
 {
     struct cam_path *path;
-    union ccb *ccb = malloc(sizeof(union ccb), M_ATACAM, M_INTWAIT | M_ZERO);
+    union ccb *ccb = kmalloc(sizeof(union ccb), M_ATACAM, M_INTWAIT | M_ZERO);
     
     if (xpt_create_path(&path, xpt_periph, cam_sim_path(sim),
 			CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP)
@@ -655,7 +655,7 @@ allocate_hcb(struct atapi_xpt_softc *softc, int unit, int bus, union ccb *ccb)
 {
     struct atapi_hcb *hcb;
 
-    hcb = malloc(sizeof(struct atapi_hcb), M_ATACAM, M_INTWAIT | M_ZERO);
+    hcb = kmalloc(sizeof(struct atapi_hcb), M_ATACAM, M_INTWAIT | M_ZERO);
 
     if (hcb != NULL) {
 	hcb->softc = softc;
@@ -671,8 +671,8 @@ free_hcb(struct atapi_hcb *hcb)
 {
     TAILQ_REMOVE(&hcb->softc->pending_hcbs, hcb, chain);
     if (hcb->dxfer_alloc != NULL)
-	free(hcb->dxfer_alloc, M_ATACAM);
-    free(hcb, M_ATACAM);
+	kfree(hcb->dxfer_alloc, M_ATACAM);
+    kfree(hcb, M_ATACAM);
 }
 
 static void
@@ -700,7 +700,7 @@ free_softc(struct atapi_xpt_softc *scp)
 		       cam_sim_name(scp->sim));
 	}
 	LIST_REMOVE(scp, chain);
-	free(scp, M_ATACAM);
+	kfree(scp, M_ATACAM);
     }
 }
 

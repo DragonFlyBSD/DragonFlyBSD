@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.20 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.21 2006/09/05 00:55:48 dillon Exp $
  */
 
 /*
@@ -155,14 +155,14 @@ vlan_setmulti(struct ifnet *ifp)
 		if (error)
 			return(error);
 		SLIST_REMOVE_HEAD(&sc->vlan_mc_listhead, mc_entries);
-		free(mc, M_VLAN);
+		kfree(mc, M_VLAN);
 	}
 
 	/* Now program new ones. */
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		mc = malloc(sizeof(struct vlan_mc_entry), M_VLAN, M_WAITOK);
+		mc = kmalloc(sizeof(struct vlan_mc_entry), M_VLAN, M_WAITOK);
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
 		    (char *)&mc->mc_addr, ETHER_ADDR_LEN);
 		SLIST_INSERT_HEAD(&sc->vlan_mc_listhead, mc, mc_entries);
@@ -212,7 +212,7 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	struct ifvlan *ifv;
 	struct ifnet *ifp;
 
-	ifv = malloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK | M_ZERO);
+	ifv = kmalloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK | M_ZERO);
 	ifp = &ifv->ifv_if;
 	SLIST_INIT(&ifv->vlan_mc_listhead);
 
@@ -253,7 +253,7 @@ vlan_clone_destroy(struct ifnet *ifp)
 
 	crit_exit();
 
-	free(ifv, M_VLAN);
+	kfree(ifv, M_VLAN);
 }
 
 static void
@@ -553,7 +553,7 @@ vlan_unconfig(struct ifnet *ifp)
 			if (error)
 				return(error);
 			SLIST_REMOVE_HEAD(&ifv->vlan_mc_listhead, mc_entries);
-			free(mc, M_VLAN);
+			kfree(mc, M_VLAN);
 		}
 	}
 

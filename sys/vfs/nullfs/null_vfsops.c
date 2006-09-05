@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.24 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.25 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -164,7 +164,7 @@ nullfs_unmount(struct mount *mp, int mntflags)
 	 */
 	mntdata = mp->mnt_data;
 	mp->mnt_data = 0;
-	free(mntdata, M_NULLFSMNT);
+	kfree(mntdata, M_NULLFSMNT);
 	return 0;
 }
 

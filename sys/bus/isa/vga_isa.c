@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.10 2006/07/28 02:17:34 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -193,13 +193,13 @@ isavga_suspend(device_t dev)
 
 	/* Save the video state across the suspend. */
 	if (sc->state_buf != NULL) {
-		free(sc->state_buf, M_TEMP);
+		kfree(sc->state_buf, M_TEMP);
 		sc->state_buf = NULL;
 	}
 	nbytes = (*vidsw[sc->adp->va_index]->save_state)(sc->adp, NULL, 0);
 	if (nbytes <= 0)
 		return (0);
-	sc->state_buf = malloc(nbytes, M_TEMP, M_NOWAIT | M_ZERO);
+	sc->state_buf = kmalloc(nbytes, M_TEMP, M_NOWAIT | M_ZERO);
 	if (sc->state_buf == NULL)
 		return (0);
 	if (bootverbose)
@@ -208,7 +208,7 @@ isavga_suspend(device_t dev)
 	    nbytes) != 0) {
 		device_printf(dev, "failed to save state (nbytes=%d)\n",
 		    nbytes);
-		free(sc->state_buf, M_TEMP);
+		kfree(sc->state_buf, M_TEMP);
 		sc->state_buf = NULL;
 	}
 	return (0);
@@ -224,7 +224,7 @@ isavga_resume(device_t dev)
 		if ((*vidsw[sc->adp->va_index]->load_state)(sc->adp,
 		    sc->state_buf) != 0)
 			device_printf(dev, "failed to reload state\n");
-		free(sc->state_buf, M_TEMP);
+		kfree(sc->state_buf, M_TEMP);
 		sc->state_buf = NULL;
 	}
 

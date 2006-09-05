@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.18 2006/09/05 00:55:38 dillon Exp $
  *
  */
 
@@ -396,7 +396,7 @@ labpcinit(void)
 	if (NLABPC > MAX_UNITS)
 		return 0;
 
-	labpcs = malloc(NLABPC * sizeof(struct ctlr *), M_DEVBUF, 
+	labpcs = kmalloc(NLABPC * sizeof(struct ctlr *), M_DEVBUF, 
 			M_WAITOK | M_ZERO);
 	/*
 	 * XXX this is really odd code, adding the device only if
@@ -454,7 +454,7 @@ labpcprobe(struct isa_device *dev)
 	 */
 	reset(ctlr);
 
-	l = malloc(sizeof(struct ctlr), M_DEVBUF, M_WAITOK | M_ZERO);
+	l = kmalloc(sizeof(struct ctlr), M_DEVBUF, M_WAITOK | M_ZERO);
 	l->base = ctlr->base;
 	l->unit = unit;
 	labpcs[unit] = l;

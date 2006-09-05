@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.16 2006/08/03 16:40:46 swildner Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.17 2006/09/05 00:55:32 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -125,8 +125,8 @@ static int safte_set_objstat(ses_softc_t *, ses_objstat *, int);
 #define	SES_DLOG		if (0) ses_log
 #endif
 #define	SES_VLOG		if (bootverbose) ses_log
-#define	SES_MALLOC(amt)		malloc(amt, M_DEVBUF, M_INTWAIT)
-#define	SES_FREE(ptr, amt)	free(ptr, M_DEVBUF)
+#define	SES_MALLOC(amt)		kmalloc(amt, M_DEVBUF, M_INTWAIT)
+#define	SES_FREE(ptr, amt)	kfree(ptr, M_DEVBUF)
 #define	MEMZERO			bzero
 #define	MEMCPY(dest, src, amt)	bcopy(src, dest, amt)
 
@@ -263,7 +263,7 @@ sescleanup(struct cam_periph *periph)
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
 	dev_ops_remove(&ses_ops, -1, periph->unit_number);
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 }
 
 static void
@@ -331,7 +331,7 @@ sesregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof (struct ses_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof (struct ses_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	periph->softc = softc;
 	softc->periph = periph;
 
@@ -360,7 +360,7 @@ sesregister(struct cam_periph *periph, void *arg)
 		break;
 	case SES_NONE:
 	default:
-		free(softc, M_DEVBUF);
+		kfree(softc, M_DEVBUF);
 		return (CAM_REQ_CMP_ERR);
 	}
 

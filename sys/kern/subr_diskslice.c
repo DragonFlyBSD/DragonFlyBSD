@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.21 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.22 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,7 +94,7 @@ clone_label(struct disklabel *lp)
 {
 	struct disklabel *lp1;
 
-	lp1 = malloc(sizeof *lp1, M_DEVBUF, M_WAITOK);
+	lp1 = kmalloc(sizeof *lp1, M_DEVBUF, M_WAITOK);
 	*lp1 = *lp;
 	lp = NULL;
 	if (lp1->d_typename[0] == '\0')
@@ -342,7 +342,7 @@ dsgone(struct diskslices **sspp)
 		sp = &ssp->dss_slices[slice];
 		free_ds_label(ssp, slice);
 	}
-	free(ssp, M_DEVBUF);
+	kfree(ssp, M_DEVBUF);
 	*sspp = NULL;
 }
 
@@ -435,7 +435,7 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 			return (ENODEV);
 		if (!(flags & FWRITE))
 			return (EBADF);
-		lp = malloc(sizeof *lp, M_DEVBUF, M_WAITOK);
+		lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK);
 		if (sp->ds_label == NULL)
 			bzero(lp, sizeof *lp);
 		else
@@ -464,7 +464,7 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 					error = ENOSPC;
 		}
 		if (error != 0) {
-			free(lp, M_DEVBUF);
+			kfree(lp, M_DEVBUF);
 			return (error);
 		}
 		free_ds_label(ssp, slice);
@@ -490,11 +490,11 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 		 * complete, then lock out future accesses and opens.
 		 */
 		*sspp = NULL;
-		lp = malloc(sizeof *lp, M_DEVBUF, M_WAITOK);
+		lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK);
 		*lp = *ssp->dss_slices[WHOLE_DISK_SLICE].ds_label;
 		error = dsopen(dev, S_IFCHR, ssp->dss_oflags, sspp, lp);
 		if (error != 0) {
-			free(lp, M_DEVBUF);
+			kfree(lp, M_DEVBUF);
 			*sspp = ssp;
 			return (error);
 		}
@@ -514,14 +514,14 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 					       S_IFCHR, ssp->dss_oflags, sspp,
 					       lp);
 				if (error != 0) {
-					free(lp, M_DEVBUF);
+					kfree(lp, M_DEVBUF);
 					*sspp = ssp;
 					return (EBUSY);
 				}
 			}
 		}
 
-		free(lp, M_DEVBUF);
+		kfree(lp, M_DEVBUF);
 		dsgone(&ssp);
 		return (0);
 
@@ -770,7 +770,7 @@ dsopen(dev_t dev, int mode, u_int flags,
 			 */
 			if (msg != NULL && (flags & DSO_COMPATLABEL)) {
 				msg = NULL;
-				free(lp1, M_DEVBUF);
+				kfree(lp1, M_DEVBUF);
 				lp1 = clone_label(lp);
 			}
 		}
@@ -782,13 +782,13 @@ dsopen(dev_t dev, int mode, u_int flags,
 			if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
 				log(LOG_WARNING, "%s: cannot find label (%s)\n",
 				    sname, msg);
-			free(lp1, M_DEVBUF);
+			kfree(lp1, M_DEVBUF);
 			continue;
 		}
 		if (lp1->d_flags & D_BADSECT) {
 			log(LOG_ERR, "%s: bad sector table not supported\n",
 			    sname);
-			free(lp1, M_DEVBUF);
+			kfree(lp1, M_DEVBUF);
 			continue;
 		}
 		set_ds_label(ssp, slice, lp1);
@@ -842,7 +842,7 @@ free_ds_label(struct diskslices *ssp, int slice)
 	lp = sp->ds_label;
 	if (lp == NULL)
 		return;
-	free(lp, M_DEVBUF);
+	kfree(lp, M_DEVBUF);
 	set_ds_label(ssp, slice, (struct disklabel *)NULL);
 }
 

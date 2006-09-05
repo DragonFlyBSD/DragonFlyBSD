@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.9 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.10 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -220,7 +220,7 @@ ctxopen(struct dev_open_args *ap)
 
 	/* get space for the LUT buffer */
 
-	sr->lutp = malloc(LUTSIZE, M_DEVBUF, M_WAITOK);
+	sr->lutp = kmalloc(LUTSIZE, M_DEVBUF, M_WAITOK);
 	if (sr->lutp == NULL)
 		return (ENOMEM);
 
@@ -263,7 +263,7 @@ ctxclose(struct dev_close_args *ap)
 
 	unit = UNIT(minor(dev));
 	ctx_sr[unit].flag = 0;
-	free(ctx_sr[unit].lutp, M_DEVBUF);
+	kfree(ctx_sr[unit].lutp, M_DEVBUF);
 	ctx_sr[unit].lutp = NULL;
 	return (0);
 }

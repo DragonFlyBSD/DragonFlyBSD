@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.38 2006/01/31 19:05:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.39 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -660,7 +660,7 @@ in_setsockaddr(struct socket *so, struct sockaddr **nam)
 	inp = so->so_pcb;
 	if (!inp) {
 		crit_exit();
-		free(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 		return (ECONNRESET);
 	}
 	sin->sin_port = inp->inp_lport;
@@ -689,7 +689,7 @@ in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	inp = so->so_pcb;
 	if (!inp) {
 		crit_exit();
-		free(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 		return (ECONNRESET);
 	}
 	sin->sin_port = inp->inp_fport;
@@ -1040,7 +1040,7 @@ in_pcbinswildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	bucket = &pcbinfo->wildcardhashbase[
 	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
 
-	ic = malloc(sizeof(struct inpcontainer), M_TEMP, M_INTWAIT);
+	ic = kmalloc(sizeof(struct inpcontainer), M_TEMP, M_INTWAIT);
 	ic->ic_inp = inp;
 	LIST_INSERT_HEAD(bucket, ic, ic_list);
 }
@@ -1077,7 +1077,7 @@ in_pcbremwildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 
 found:
 	LIST_REMOVE(ic, ic_list);	/* remove container from bucket chain */
-	free(ic, M_TEMP);		/* deallocate container */
+	kfree(ic, M_TEMP);		/* deallocate container */
 }
 
 /*
@@ -1105,7 +1105,7 @@ in_pcbremlists(struct inpcb *inp)
 		LIST_REMOVE(inp, inp_portlist);
 		if (LIST_FIRST(&phd->phd_pcblist) == NULL) {
 			LIST_REMOVE(phd, phd_hash);
-			free(phd, M_PCB);
+			kfree(phd, M_PCB);
 		}
 	}
 	if (inp->inp_flags & INP_WILDCARD) {
@@ -1161,7 +1161,7 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	gencnt = pcbinfo->ipi_gencnt;
 	n = pcbinfo->ipi_count;
 
-	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
 	marker->inp_flags |= INP_PLACEMARKER;
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
 
@@ -1196,6 +1196,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 			++i;
 		}
 	}
-	free(marker, M_TEMP);
+	kfree(marker, M_TEMP);
 	return(error);
 }

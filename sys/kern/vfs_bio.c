@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.78 2006/07/07 13:00:37 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.79 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -2457,7 +2457,7 @@ allocbuf(struct buf *bp, int size)
 				if (newbsize) {
 					bp->b_bcount = size;
 				} else {
-					free(bp->b_data, M_BIOBUF);
+					kfree(bp->b_data, M_BIOBUF);
 					if (bp->b_bufsize) {
 						bufmallocspace -= bp->b_bufsize;
 						bufspacewakeup();
@@ -2483,7 +2483,7 @@ allocbuf(struct buf *bp, int size)
 				(bp->b_bufsize == 0) &&
 				(mbsize <= PAGE_SIZE/2)) {
 
-				bp->b_data = malloc(mbsize, M_BIOBUF, M_WAITOK);
+				bp->b_data = kmalloc(mbsize, M_BIOBUF, M_WAITOK);
 				bp->b_bufsize = mbsize;
 				bp->b_bcount = size;
 				bp->b_flags |= B_MALLOC;
@@ -2515,7 +2515,7 @@ allocbuf(struct buf *bp, int size)
 			    (vm_offset_t) bp->b_data + newbsize);
 			if (origbuf) {
 				bcopy(origbuf, bp->b_data, origbufsize);
-				free(origbuf, M_BIOBUF);
+				kfree(origbuf, M_BIOBUF);
 			}
 		}
 	} else {

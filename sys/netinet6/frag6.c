@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.9 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.10 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -232,7 +232,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 		else if (frag6_nfragpackets >= (u_int)ip6_maxfragpackets)
 			goto dropfrag;
 		frag6_nfragpackets++;
-		q6 = (struct ip6q *)malloc(sizeof(struct ip6q), M_FTABLE,
+		q6 = (struct ip6q *)kmalloc(sizeof(struct ip6q), M_FTABLE,
 			M_NOWAIT);
 		if (q6 == NULL)
 			goto dropfrag;
@@ -304,7 +304,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 
 				/* dequeue the fragment. */
 				frag6_deq(af6);
-				free(af6, M_FTABLE);
+				kfree(af6, M_FTABLE);
 
 				/* adjust pointer. */
 				ip6err = mtod(merr, struct ip6_hdr *);
@@ -324,7 +324,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 		}
 	}
 
-	ip6af = (struct ip6asfrag *)malloc(sizeof(struct ip6asfrag), M_FTABLE,
+	ip6af = (struct ip6asfrag *)kmalloc(sizeof(struct ip6asfrag), M_FTABLE,
 	    M_NOWAIT);
 	if (ip6af == NULL)
 		goto dropfrag;
@@ -402,7 +402,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 			    "overlaps the previous fragment\n",
 			    i, ip6_sprintf(&q6->ip6q_src));
 #endif
-			free(ip6af, M_FTABLE);
+			kfree(ip6af, M_FTABLE);
 			goto dropfrag;
 		}
 	}
@@ -414,7 +414,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 			    "overlaps the succeeding fragment",
 			    i, ip6_sprintf(&q6->ip6q_src));
 #endif
-			free(ip6af, M_FTABLE);
+			kfree(ip6af, M_FTABLE);
 			goto dropfrag;
 		}
 	}
@@ -463,13 +463,13 @@ insert:
 			t = t->m_next;
 		t->m_next = IP6_REASS_MBUF(af6);
 		m_adj(t->m_next, af6->ip6af_offset);
-		free(af6, M_FTABLE);
+		kfree(af6, M_FTABLE);
 		af6 = af6dwn;
 	}
 
 	/* adjust offset to point where the original next header starts */
 	offset = ip6af->ip6af_offset - sizeof(struct ip6_frag);
-	free(ip6af, M_FTABLE);
+	kfree(ip6af, M_FTABLE);
 	ip6 = mtod(m, struct ip6_hdr *);
 	ip6->ip6_plen = htons((u_short)next + offset - sizeof(struct ip6_hdr));
 	ip6->ip6_src = q6->ip6q_src;
@@ -491,7 +491,7 @@ insert:
 		/* this comes with no copy if the boundary is on cluster */
 		if ((t = m_split(m, offset, MB_DONTWAIT)) == NULL) {
 			frag6_remque(q6);
-			free(q6, M_FTABLE);
+			kfree(q6, M_FTABLE);
 			frag6_nfragpackets--;
 			goto dropfrag;
 		}
@@ -508,7 +508,7 @@ insert:
 	}
 
 	frag6_remque(q6);
-	free(q6, M_FTABLE);
+	kfree(q6, M_FTABLE);
 	frag6_nfragpackets--;
 
 	if (m->m_flags & M_PKTHDR) { /* Isn't it always true? */
@@ -573,10 +573,10 @@ frag6_freef(struct ip6q *q6)
 				    ICMP6_TIME_EXCEED_REASSEMBLY, 0);
 		} else
 			m_freem(m);
-		free(af6, M_FTABLE);
+		kfree(af6, M_FTABLE);
 	}
 	frag6_remque(q6);
-	free(q6, M_FTABLE);
+	kfree(q6, M_FTABLE);
 	frag6_nfragpackets--;
 }
 

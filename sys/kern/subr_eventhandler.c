@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_eventhandler.c,v 1.3 1999/11/16 16:28:57 phk Exp $
- * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.3 2004/08/06 22:32:07 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.4 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,13 +112,13 @@ eventhandler_deregister(struct eventhandler_list *list, eventhandler_tag tag)
     if (ep != NULL) {
 	/* remove just this entry */
 	TAILQ_REMOVE(&list->el_entries, ep, ee_link);
-	free(ep, M_EVENTHANDLER);
+	kfree(ep, M_EVENTHANDLER);
     } else {
 	/* remove entire list */
 	while (!TAILQ_EMPTY(&list->el_entries)) {
 	    ep = TAILQ_FIRST(&list->el_entries);
 	    TAILQ_REMOVE(&list->el_entries, ep, ee_link);
-	    free(ep, M_EVENTHANDLER);
+	    kfree(ep, M_EVENTHANDLER);
 	}
     }
 }

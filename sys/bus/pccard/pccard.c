@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.15 2005/12/19 01:18:57 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.16 2006/09/05 00:55:36 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -224,7 +224,7 @@ pccard_attach_card(device_t dev)
 		 * are combination cards, but only one of these units
 		 * can be on at a time.
 		 */
-		ivar = malloc(sizeof(struct pccard_ivar), M_DEVBUF,
+		ivar = kmalloc(sizeof(struct pccard_ivar), M_DEVBUF,
 		    M_INTWAIT | M_ZERO);
 		child = device_add_child(dev, NULL, -1);
 		device_set_ivars(child, ivar);
@@ -286,10 +286,10 @@ pccard_detach_card(device_t dev)
 	while (NULL != (pf = STAILQ_FIRST(&sc->card.pf_head))) {
 		while (NULL != (cfe = STAILQ_FIRST(&pf->cfe_head))) {
 			STAILQ_REMOVE_HEAD(&pf->cfe_head, cfe_list);
-			free(cfe, M_DEVBUF);
+			kfree(cfe, M_DEVBUF);
 		}
 		STAILQ_REMOVE_HEAD(&sc->card.pf_head, pf_list);
-		free(pf, M_DEVBUF);
+		kfree(pf, M_DEVBUF);
 	}
 	return (0);
 }

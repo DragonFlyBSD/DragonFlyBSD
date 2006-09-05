@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.20 2006/08/03 16:40:47 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.21 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -435,7 +435,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
 	debug(1, "AMR_IO_COMMAND  0x%x", au->au_cmd[0]);
 	/* handle inbound data buffer */
 	if (au->au_length != 0) {
-	    if ((dp = malloc(au->au_length, M_DEVBUF, M_WAITOK)) == NULL) {
+	    if ((dp = kmalloc(au->au_length, M_DEVBUF, M_WAITOK)) == NULL) {
 		error = ENOMEM;
 		break;
 	    }
@@ -451,7 +451,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
 
 	/* handle SCSI passthrough command */
 	if (au->au_cmd[0] == AMR_CMD_PASS) {
-	    if ((apt = malloc(sizeof(*apt), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
+	    if ((apt = kmalloc(sizeof(*apt), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
 		error = ENOMEM;
 		break;
 	    }
@@ -524,9 +524,9 @@ amr_ioctl(struct dev_ioctl_args *ap)
     }
 
     if (dp != NULL)
-	free(dp, M_DEVBUF);
+	kfree(dp, M_DEVBUF);
     if (apt != NULL)
-	free(apt, M_DEVBUF);
+	kfree(apt, M_DEVBUF);
     if (ac != NULL)
 	amr_releasecmd(ac);
     return(error);
@@ -606,7 +606,7 @@ amr_query_controller(struct amr_softc *sc)
 	    debug(2, "  drive %d: %d state %x properties %x\n", ldrv, sc->amr_drive[ldrv].al_size,
 		  sc->amr_drive[ldrv].al_state, sc->amr_drive[ldrv].al_properties);
 	}
-	free(aex, M_DEVBUF);
+	kfree(aex, M_DEVBUF);
 
 	/*
 	 * Get product info for channel count.
@@ -619,7 +619,7 @@ amr_query_controller(struct amr_softc *sc)
 	sc->amr_maxchan = ap->ap_nschan;
 	sc->amr_maxio = ap->ap_maxio;
 	sc->amr_type |= AMR_TYPE_40LD;
-	free(ap, M_DEVBUF);
+	kfree(ap, M_DEVBUF);
 
     } else {
 
@@ -646,7 +646,7 @@ amr_query_controller(struct amr_softc *sc)
 	sc->amr_maxdrives = 8;
 	sc->amr_maxchan = ae->ae_adapter.aa_channels;
 	sc->amr_maxio = ae->ae_adapter.aa_maxio;
-	free(ae, M_DEVBUF);
+	kfree(ae, M_DEVBUF);
     }
 
     /*
@@ -684,7 +684,7 @@ amr_enquiry(struct amr_softc *sc, size_t bufsize, u_int8_t cmd, u_int8_t cmdsub,
     if ((ac = amr_alloccmd(sc)) == NULL)
 	goto out;
     /* allocate the response structure */
-    result = malloc(bufsize, M_DEVBUF, M_INTWAIT);
+    result = kmalloc(bufsize, M_DEVBUF, M_INTWAIT);
     /* set command flags */
     ac->ac_flags |= AMR_CMD_PRIORITY | AMR_CMD_DATAOUT;
     
@@ -707,7 +707,7 @@ amr_enquiry(struct amr_softc *sc, size_t bufsize, u_int8_t cmd, u_int8_t cmdsub,
     if (ac != NULL)
 	amr_releasecmd(ac);
     if ((error != 0) && (result != NULL)) {
-	free(result, M_DEVBUF);
+	kfree(result, M_DEVBUF);
 	result = NULL;
     }
     return(result);
@@ -1485,7 +1485,7 @@ amr_alloccmd_cluster(struct amr_softc *sc)
     struct amr_command		*ac;
     int				i;
 
-    acc = malloc(AMR_CMD_CLUSTERSIZE, M_DEVBUF, M_INTWAIT);
+    acc = kmalloc(AMR_CMD_CLUSTERSIZE, M_DEVBUF, M_INTWAIT);
     crit_enter();
     TAILQ_INSERT_TAIL(&sc->amr_cmd_clusters, acc, acc_link);
     crit_exit();
@@ -1510,7 +1510,7 @@ amr_freecmd_cluster(struct amr_command_cluster *acc)
 
     for (i = 0; i < AMR_CMD_CLUSTERCOUNT; i++)
 	bus_dmamap_destroy(sc->amr_buffer_dmat, acc->acc_command[i].ac_dmamap);
-    free(acc, M_DEVBUF);
+    kfree(acc, M_DEVBUF);
 }
 
 /********************************************************************************
@@ -1721,7 +1721,7 @@ amr_describe_controller(struct amr_softc *sc)
 		      ap->ap_product, ap->ap_firmware, ap->ap_bios,
 		      ap->ap_memsize);
 
-	free(ap, M_DEVBUF);
+	kfree(ap, M_DEVBUF);
 	return;
     }
 
@@ -1787,7 +1787,7 @@ amr_describe_controller(struct amr_softc *sc)
 		      prod, ae->ae_adapter.aa_firmware, ae->ae_adapter.aa_bios,
 		      ae->ae_adapter.aa_memorysize);
     }    	
-    free(ae, M_DEVBUF);
+    kfree(ae, M_DEVBUF);
 }
 
 int

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.29 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.30 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -831,7 +831,7 @@ aue_tx_list_init(struct aue_softc *sc)
 			if (c->aue_xfer == NULL)
 				return (ENOBUFS);
 		}
-		c->aue_buf = malloc(AUE_BUFSZ, M_USBDEV, M_WAITOK);
+		c->aue_buf = kmalloc(AUE_BUFSZ, M_USBDEV, M_WAITOK);
 		if (c->aue_buf == NULL)
 			return (ENOBUFS);
 	}
@@ -1210,7 +1210,7 @@ aue_init(void *xsc)
 	}
 
 #ifdef AUE_INTR_PIPE
-	sc->aue_cdata.aue_ibuf = malloc(AUE_INTR_PKTLEN, M_USBDEV, M_WAITOK);
+	sc->aue_cdata.aue_ibuf = kmalloc(AUE_INTR_PKTLEN, M_USBDEV, M_WAITOK);
 #endif
 
 	/* Load the multicast filter. */
@@ -1449,7 +1449,7 @@ aue_stop(struct aue_softc *sc)
 	/* Free RX resources. */
 	for (i = 0; i < AUE_RX_LIST_CNT; i++) {
 		if (sc->aue_cdata.aue_rx_chain[i].aue_buf != NULL) {
-			free(sc->aue_cdata.aue_rx_chain[i].aue_buf, M_USBDEV);
+			kfree(sc->aue_cdata.aue_rx_chain[i].aue_buf, M_USBDEV);
 			sc->aue_cdata.aue_rx_chain[i].aue_buf = NULL;
 		}
 		if (sc->aue_cdata.aue_rx_chain[i].aue_mbuf != NULL) {
@@ -1465,7 +1465,7 @@ aue_stop(struct aue_softc *sc)
 	/* Free TX resources. */
 	for (i = 0; i < AUE_TX_LIST_CNT; i++) {
 		if (sc->aue_cdata.aue_tx_chain[i].aue_buf != NULL) {
-			free(sc->aue_cdata.aue_tx_chain[i].aue_buf, M_USBDEV);
+			kfree(sc->aue_cdata.aue_tx_chain[i].aue_buf, M_USBDEV);
 			sc->aue_cdata.aue_tx_chain[i].aue_buf = NULL;
 		}
 		if (sc->aue_cdata.aue_tx_chain[i].aue_mbuf != NULL) {
@@ -1480,7 +1480,7 @@ aue_stop(struct aue_softc *sc)
 
 #ifdef AUE_INTR_PIPE
 	if (sc->aue_cdata.aue_ibuf != NULL) {
-		free(sc->aue_cdata.aue_ibuf, M_USBDEV);
+		kfree(sc->aue_cdata.aue_ibuf, M_USBDEV);
 		sc->aue_cdata.aue_ibuf = NULL;
 	}
 #endif

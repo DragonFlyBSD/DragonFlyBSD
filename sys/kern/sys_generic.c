@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.35 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.36 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -647,7 +647,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 
 	memp = NULL;
 	if (size > sizeof (ubuf.stkbuf)) {
-		memp = malloc(size, M_IOCTLOPS, M_WAITOK);
+		memp = kmalloc(size, M_IOCTLOPS, M_WAITOK);
 		data = memp;
 	} else {
 		data = ubuf.stkbuf;
@@ -657,7 +657,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			error = copyin(uspc_data, data, (u_int)size);
 			if (error) {
 				if (memp != NULL)
-					free(memp, M_IOCTLOPS);
+					kfree(memp, M_IOCTLOPS);
 				goto done;
 			}
 		} else {
@@ -708,7 +708,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		break;
 	}
 	if (memp != NULL)
-		free(memp, M_IOCTLOPS);
+		kfree(memp, M_IOCTLOPS);
 done:
 	fdrop(fp);
 	return(error);
@@ -722,7 +722,7 @@ mapped_ioctl_register_handler(struct ioctl_map_handler *he)
 	KKASSERT(he != NULL && he->map != NULL && he->cmd_ranges != NULL &&
 		 he->subsys != NULL && *he->subsys != '\0');
 
-	ne = malloc(sizeof(struct ioctl_map_entry), M_IOCTLMAP, M_WAITOK);
+	ne = kmalloc(sizeof(struct ioctl_map_entry), M_IOCTLMAP, M_WAITOK);
 
 	ne->subsys = he->subsys;
 	ne->cmd_ranges = he->cmd_ranges;
@@ -743,7 +743,7 @@ mapped_ioctl_unregister_handler(struct ioctl_map_handler *he)
 		if (ne->cmd_ranges != he->cmd_ranges)
 			continue;
 		LIST_REMOVE(ne, entries);
-		free(ne, M_IOCTLMAP);
+		kfree(ne, M_IOCTLMAP);
 		return(0);
 	}
 	return(EINVAL);
@@ -794,7 +794,7 @@ sys_select(struct select_args *uap)
 	if (nbufbytes <= sizeof s_selbits)
 		selbits = &s_selbits[0];
 	else
-		selbits = malloc(nbufbytes, M_SELECT, M_WAITOK);
+		selbits = kmalloc(nbufbytes, M_SELECT, M_WAITOK);
 
 	/*
 	 * Assign pointers into the bit buffers and fetch the input bits.
@@ -884,7 +884,7 @@ done:
 #undef putbits
 	}
 	if (selbits != &s_selbits[0])
-		free(selbits, M_SELECT);
+		kfree(selbits, M_SELECT);
 	return (error);
 }
 
@@ -949,7 +949,7 @@ sys_poll(struct poll_args *uap)
 		return (EINVAL);
 	ni = nfds * sizeof(struct pollfd);
 	if (ni > sizeof(smallbits))
-		bits = malloc(ni, M_TEMP, M_WAITOK);
+		bits = kmalloc(ni, M_TEMP, M_WAITOK);
 	else
 		bits = smallbits;
 	error = copyin(uap->fds, bits, ni);
@@ -1008,7 +1008,7 @@ done:
 	}
 out:
 	if (ni > sizeof(smallbits))
-		free(bits, M_TEMP);
+		kfree(bits, M_TEMP);
 	return (error);
 }
 

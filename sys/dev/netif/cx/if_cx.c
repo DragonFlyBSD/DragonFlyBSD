@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.21 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.22 2006/09/05 00:55:39 dillon Exp $
  *
  */
 #undef DEBUG
@@ -248,10 +248,10 @@ cxattach (struct isa_device *id)
 			continue;
 
 		/* Allocate the buffer memory. */
-		c->arbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
-		c->brbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
-		c->atbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
-		c->btbuf = malloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->arbuf = kmalloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->brbuf = kmalloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->atbuf = kmalloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
+		c->btbuf = kmalloc (DMABUFSZ, M_DEVBUF, M_WAITOK);
 
 #if 0
 		/* All buffers should be located in lower 16M of memory! */
@@ -270,7 +270,7 @@ cxattach (struct isa_device *id)
 		case T_UNIV_RS232:
 		case T_UNIV_RS449:
 		case T_UNIV_V35:
-			c->ifp = malloc (IFSTRUCTSZ, M_DEVBUF, M_WAITOK | M_ZERO);
+			c->ifp = kmalloc (IFSTRUCTSZ, M_DEVBUF, M_WAITOK | M_ZERO);
 			c->master = c->ifp;
 			c->ifp->if_softc = c;
 			if_initname(c->ifp, "cx", u);

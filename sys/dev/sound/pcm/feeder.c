@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.3 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.3 2003/11/15 21:05:42 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
 
 MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 
@@ -62,7 +62,7 @@ feeder_register(void *p)
 		KASSERT(fc->desc == NULL, ("first feeder not root: %s", fc->name));
 
 		SLIST_INIT(&feedertab);
-		fte = malloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
 			printf("can't allocate memory for root feeder\n");
 			return;
@@ -85,7 +85,7 @@ feeder_register(void *p)
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
 		/* printf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
-		fte = malloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
 			printf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
 
@@ -112,7 +112,7 @@ feeder_unregisterall(void *p)
 	while (next != NULL) {
 		fte = next;
 		next = SLIST_NEXT(fte, link);
-		free(fte, M_FEEDER);
+		kfree(fte, M_FEEDER);
 	}
 }
 

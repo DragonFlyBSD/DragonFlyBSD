@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.17 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.18 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1541,7 +1541,7 @@ bootpc_init(void)
 	while (time_second == 0)
 		tsleep(&time_second, 0, "arpkludge", 10);
 	
-	gctx = malloc(sizeof(*gctx), M_TEMP, M_WAITOK);
+	gctx = kmalloc(sizeof(*gctx), M_TEMP, M_WAITOK);
 	if (gctx == NULL)
 		panic("Failed to allocate bootp global context structure");
 	
@@ -1580,7 +1580,7 @@ bootpc_init(void)
 		gctx->lastinterface = ifctx;
 		ifctx = allocifctx(gctx);
 	}
-	free(ifctx, M_TEMP);
+	kfree(ifctx, M_TEMP);
 	
 	if (gctx->interfaces == NULL) {
 #ifdef BOOTP_WIRED_TO
@@ -1687,8 +1687,8 @@ bootpc_init(void)
 out:
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = nctx) {
 		nctx = ifctx->next;
-		free(ifctx, M_TEMP);
+		kfree(ifctx, M_TEMP);
 	}
-	free(gctx, M_TEMP);
+	kfree(gctx, M_TEMP);
 }
 

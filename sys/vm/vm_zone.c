@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.20 2006/05/21 20:23:29 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.21 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -237,13 +237,13 @@ zinit(char *name, int size, int nentries, int flags, int zalloc)
 {
 	vm_zone_t z;
 
-	z = (vm_zone_t) malloc(sizeof (struct vm_zone), M_ZONE, M_NOWAIT);
+	z = (vm_zone_t) kmalloc(sizeof (struct vm_zone), M_ZONE, M_NOWAIT);
 	if (z == NULL)
 		return NULL;
 
 	z->zflags = 0;
 	if (zinitna(z, NULL, name, size, nentries, flags, zalloc) == 0) {
-		free(z, M_ZONE);
+		kfree(z, M_ZONE);
 		return NULL;
 	}
 

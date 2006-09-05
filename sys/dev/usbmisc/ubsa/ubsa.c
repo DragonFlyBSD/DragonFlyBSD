@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.7 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.8 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -288,7 +288,7 @@ USB_ATTACH(ubsa)
 	int i;
 
 	dev = uaa->device;
-	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
+	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct ubsa_softc));
@@ -418,11 +418,11 @@ USB_ATTACH(ubsa)
  
 	ucom_attach(ucom);
 
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_SUCCESS_RETURN;
 
 error:
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -437,7 +437,7 @@ USB_DETACH(ubsa)
 	if (sc->sc_intr_pipe != NULL) {
 		usbd_abort_pipe(sc->sc_intr_pipe);
 		usbd_close_pipe(sc->sc_intr_pipe);
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 
@@ -662,7 +662,7 @@ ubsa_open(void *addr, int portno)
 	DPRINTF(("ubsa_open: sc = %p\n", sc));
 
 	if (sc->sc_intr_number != -1 && sc->sc_intr_pipe == NULL) {
-		sc->sc_intr_buf = malloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+		sc->sc_intr_buf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
 		err = usbd_open_pipe_intr(sc->sc_intr_iface,
 		    sc->sc_intr_number,
 		    USBD_SHORT_XFER_OK,
@@ -706,7 +706,7 @@ ubsa_close(void *addr, int portno)
 			printf("%s: close interrupt pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev),
 			    usbd_errstr(err));
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 }

@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.25 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.26 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1038,7 +1038,7 @@ sppp_attach(struct ifnet *ifp)
 #ifdef INET6
 	sp->confflags |= CONF_ENABLE_IPV6;
 #endif
-	sp->pp_comp = malloc(sizeof(struct slcompress), M_TEMP, M_WAITOK);
+	sp->pp_comp = kmalloc(sizeof(struct slcompress), M_TEMP, M_WAITOK);
 	sl_compress_init(sp->pp_comp, -1);
 	sppp_lcp_init(sp);
 	sppp_ipcp_init(sp);
@@ -2269,7 +2269,7 @@ sppp_lcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 
 	len -= 4;
 	origlen = len;
-	buf = r = malloc (len, M_TEMP, M_INTWAIT);
+	buf = r = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp parse opts: ",
@@ -2483,11 +2483,11 @@ sppp_lcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 			      h->ident, origlen, h+1);
 	}
 
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return (rlen == 0);
 
 drop:
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (-1);
 }
 
@@ -2502,7 +2502,7 @@ sppp_lcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	u_char *buf, *p;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp rej opts: ",
@@ -2559,7 +2559,7 @@ sppp_lcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	if (debug)
 		addlog("\n");
 drop:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 
@@ -2575,7 +2575,7 @@ sppp_lcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	u_long magic;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp nak opts: ",
@@ -2652,7 +2652,7 @@ sppp_lcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	if (debug)
 		addlog("\n");
 drop:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 
@@ -2976,7 +2976,7 @@ sppp_ipcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 	 * Make sure to allocate a buf that can at least hold a
 	 * conf-nak with an `address' option.  We might need it below.
 	 */
-	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
+	buf = r = kmalloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
 
 	/* pass 1: see if we can recognize them */
 	if (debug)
@@ -3163,11 +3163,11 @@ sppp_ipcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 			      h->ident, origlen, h+1);
 	}
 
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return (rlen == 0);
 
 drop:
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (-1);
 }
 
@@ -3183,7 +3183,7 @@ sppp_ipcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	int debug = ifp->if_flags & IFF_DEBUG;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipcp rej opts: ",
@@ -3217,7 +3217,7 @@ sppp_ipcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	if (debug)
 		addlog("\n");
 drop:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 
@@ -3235,7 +3235,7 @@ sppp_ipcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	u_long wantaddr;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipcp nak opts: ",
@@ -3303,7 +3303,7 @@ sppp_ipcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	}
 	if (debug)
 		addlog("\n");
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 
@@ -3469,7 +3469,7 @@ sppp_ipv6cp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 	 * Make sure to allocate a buf that can at least hold a
 	 * conf-nak with an `address' option.  We might need it below.
 	 */
-	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
+	buf = r = kmalloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
 
 	/* pass 1: see if we can recognize them */
 	if (debug)
@@ -3608,11 +3608,11 @@ sppp_ipv6cp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 	}
 
  end:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return (rlen == 0);
 
 drop:
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (-1);
 }
 
@@ -3628,7 +3628,7 @@ sppp_ipv6cp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	int debug = ifp->if_flags & IFF_DEBUG;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipv6cp rej opts:",
@@ -3662,7 +3662,7 @@ sppp_ipv6cp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	if (debug)
 		addlog("\n");
 drop:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 
@@ -3679,7 +3679,7 @@ sppp_ipv6cp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	struct in6_addr suggestaddr;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_INTWAIT);
+	buf = kmalloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipv6cp nak opts:",
@@ -3764,7 +3764,7 @@ sppp_ipv6cp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	if (debug)
 		addlog("\n");
 drop:
-	free (buf, M_TEMP);
+	kfree (buf, M_TEMP);
 	return;
 }
 static void
@@ -5130,7 +5130,7 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 	struct spppreq *spr;
 	int rv = 0;
 
-	spr = malloc(sizeof(struct spppreq), M_TEMP, M_INTWAIT);
+	spr = kmalloc(sizeof(struct spppreq), M_TEMP, M_INTWAIT);
 
 	/*
 	 * ifr->ifr_data is supposed to point to a struct spppreq.
@@ -5272,7 +5272,7 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 	}
 
  quit:
-	free(spr, M_TEMP);
+	kfree(spr, M_TEMP);
 
 	return (rv);
 }

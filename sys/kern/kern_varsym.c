@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.7 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -137,7 +137,7 @@ sys_varsym_set(struct varsym_set_args *uap)
 
     if ((error = copyinstr(uap->name, name, sizeof(name), NULL)) != 0)
 	goto done2;
-    buf = malloc(MAXVARSYM_DATA, M_TEMP, M_WAITOK);
+    buf = kmalloc(MAXVARSYM_DATA, M_TEMP, M_WAITOK);
     if (uap->data && 
 	(error = copyinstr(uap->data, buf, MAXVARSYM_DATA, NULL)) != 0)
     {
@@ -165,7 +165,7 @@ sys_varsym_set(struct varsym_set_args *uap)
 	break;
     }
 done1:
-    free(buf, M_TEMP);
+    kfree(buf, M_TEMP);
 done2:
     return(error);
 }
@@ -401,8 +401,8 @@ varsymmake(int level, const char *name, const char *data)
 	error = E2BIG;
     } else if (data) {
 	datalen = strlen(data);
-	ve = malloc(sizeof(struct varsyment), M_VARSYM, M_WAITOK|M_ZERO);
-	sym = malloc(sizeof(struct varsym) + namelen + datalen + 2, M_VARSYM, M_WAITOK);
+	ve = kmalloc(sizeof(struct varsyment), M_VARSYM, M_WAITOK|M_ZERO);
+	sym = kmalloc(sizeof(struct varsym) + namelen + datalen + 2, M_VARSYM, M_WAITOK);
 	ve->ve_sym = sym;
 	sym->vs_refs = 1;
 	sym->vs_namelen = namelen;
@@ -418,7 +418,7 @@ varsymmake(int level, const char *name, const char *data)
 	    TAILQ_REMOVE(&vss->vx_queue, ve, ve_entry);
 	    vss->vx_setsize -= sizeof(struct varsyment) + sizeof(struct varsym) + namelen + strlen(ve->ve_sym->vs_data) + 8;
 	    varsymdrop(ve->ve_sym);
-	    free(ve, M_VARSYM);
+	    kfree(ve, M_VARSYM);
 	    error = 0;
 	} else {
 	    error = ENOENT;
@@ -432,7 +432,7 @@ varsymdrop(varsym_t sym)
 {
     KKASSERT(sym->vs_refs > 0);
     if (--sym->vs_refs == 0) {
-	free(sym, M_VARSYM);
+	kfree(sym, M_VARSYM);
     }
 }
 
@@ -441,7 +441,7 @@ varsymdup(struct varsymset *vss, struct varsyment *ve)
 {
     struct varsyment *nve;
 
-    nve = malloc(sizeof(struct varsyment), M_VARSYM, M_WAITOK|M_ZERO);
+    nve = kmalloc(sizeof(struct varsyment), M_VARSYM, M_WAITOK|M_ZERO);
     nve->ve_sym = ve->ve_sym;
     ++nve->ve_sym->vs_refs;
     TAILQ_INSERT_TAIL(&vss->vx_queue, nve, ve_entry);
@@ -469,7 +469,7 @@ varsymset_clean(struct varsymset *vss)
     while ((ve = TAILQ_FIRST(&vss->vx_queue)) != NULL) {
 	TAILQ_REMOVE(&vss->vx_queue, ve, ve_entry);
 	varsymdrop(ve->ve_sym);
-	free(ve, M_VARSYM);
+	kfree(ve, M_VARSYM);
     }
     vss->vx_setsize = 0;
 }

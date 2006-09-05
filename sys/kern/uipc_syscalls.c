@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.74 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.75 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1348,7 +1348,7 @@ freeit:
 				vm_page_try_to_free(m);
 			crit_exit();
 			rel_mplock();
-			free(sfm, M_SENDFILE);
+			kfree(sfm, M_SENDFILE);
 		} else {
 			lwkt_serialize_exit(&sfm->serializer);
 		}
@@ -1658,7 +1658,7 @@ retry_lookup:
 		/*
 		 * sfm is a temporary hack, use a per-cpu cache for this.
 		 */
-		sfm = malloc(sizeof(struct sfbuf_mref), M_SENDFILE, M_WAITOK);
+		sfm = kmalloc(sizeof(struct sfbuf_mref), M_SENDFILE, M_WAITOK);
 		sfm->sf = sf;
 		sfm->mref_count = 1;
 		lwkt_serialize_init(&sfm->serializer);

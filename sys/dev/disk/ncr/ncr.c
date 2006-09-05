@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.13 2006/08/03 16:40:47 swildner Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.14 2006/09/05 00:55:38 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3598,7 +3598,7 @@ ncr_attach (device_t dev)
 			 0, 0xffffffff, PAGE_SIZE);
 	} else {
 		np->script  = (struct script *)
-			malloc (sizeof (struct script), M_DEVBUF, M_WAITOK);
+			kmalloc (sizeof (struct script), M_DEVBUF, M_WAITOK);
 	}
 
 	/* XXX JGibbs - Use contigmalloc */
@@ -3609,7 +3609,7 @@ ncr_attach (device_t dev)
 	} else 
 		{
 		np->scripth = (struct scripth *)
-			malloc (sizeof (struct scripth), M_DEVBUF, M_WAITOK);
+			kmalloc (sizeof (struct scripth), M_DEVBUF, M_WAITOK);
 	}
 
 #ifdef SCSI_NCR_PCI_CONFIG_FIXUP
@@ -6525,7 +6525,7 @@ ncr_alloc_nccb (ncb_p np, u_long target, u_long lun)
 		/*
 		**	Allocate a lcb
 		*/
-		lp = malloc (sizeof (struct lcb), M_DEVBUF, M_WAITOK | M_ZERO);
+		lp = kmalloc (sizeof (struct lcb), M_DEVBUF, M_WAITOK | M_ZERO);
 
 		/*
 		**	Initialize it
@@ -6552,7 +6552,7 @@ ncr_alloc_nccb (ncb_p np, u_long target, u_long lun)
 	/*
 	**	Allocate a nccb
 	*/
-	cp = malloc (sizeof (struct nccb), M_DEVBUF, M_WAITOK | M_ZERO);
+	cp = kmalloc (sizeof (struct nccb), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	if (DEBUG_FLAGS & DEBUG_ALLOC) { 
 		printf ("new nccb @%p.\n", cp);

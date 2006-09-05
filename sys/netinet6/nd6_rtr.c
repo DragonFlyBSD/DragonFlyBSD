@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.12 2006/01/31 19:05:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.13 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -581,7 +581,7 @@ defrouter_delreq(struct nd_defrouter *dr, int dofree)
 	}
 
 	if (dofree)		/* XXX: necessary? */
-		free(dr, M_IP6NDP);
+		kfree(dr, M_IP6NDP);
 }
 
 void
@@ -622,7 +622,7 @@ defrtrlist_del(struct nd_defrouter *dr)
 	if (deldr)
 		defrouter_select();
 
-	free(dr, M_IP6NDP);
+	kfree(dr, M_IP6NDP);
 }
 
 /*
@@ -736,7 +736,7 @@ defrtrlist_update(struct nd_defrouter *new)
 		return(NULL);
 	}
 
-	n = (struct nd_defrouter *)malloc(sizeof(*n), M_IP6NDP, M_NOWAIT);
+	n = (struct nd_defrouter *)kmalloc(sizeof(*n), M_IP6NDP, M_NOWAIT);
 	if (n == NULL) {
 		crit_exit();
 		return(NULL);
@@ -774,7 +774,7 @@ pfxrtr_add(struct nd_prefix *pr, struct nd_defrouter *dr)
 {
 	struct nd_pfxrouter *new;
 
-	new = (struct nd_pfxrouter *)malloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
+	new = (struct nd_pfxrouter *)kmalloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
 	if (new == NULL)
 		return;
 	bzero(new, sizeof(*new));
@@ -789,7 +789,7 @@ static void
 pfxrtr_del(struct nd_pfxrouter *pfr)
 {
 	LIST_REMOVE(pfr, pfr_entry);
-	free(pfr, M_IP6NDP);
+	kfree(pfr, M_IP6NDP);
 }
 
 struct nd_prefix *
@@ -818,7 +818,7 @@ nd6_prelist_add(struct nd_prefix *pr, struct nd_defrouter *dr,
 	struct nd_prefix *new = NULL;
 	int i;
 
-	new = (struct nd_prefix *)malloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
+	new = (struct nd_prefix *)kmalloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
 	if (new == NULL)
 		return ENOMEM;
 	bzero(new, sizeof(*new));
@@ -897,11 +897,11 @@ prelist_remove(struct nd_prefix *pr)
 	for (pfr = pr->ndpr_advrtrs.lh_first; pfr; pfr = next) {
 		next = pfr->pfr_next;
 
-		free(pfr, M_IP6NDP);
+		kfree(pfr, M_IP6NDP);
 	}
 	crit_exit();
 
-	free(pr, M_IP6NDP);
+	kfree(pr, M_IP6NDP);
 
 	pfxlist_onlink_check();
 }

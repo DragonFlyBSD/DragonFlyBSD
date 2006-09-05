@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.6 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.7 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -748,7 +748,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2mount *ump, int type,
 	if (TAILQ_EMPTY(&ext2_dqfreelist) && ext2_numdquot < MAXQUOTAS * desiredvnodes)
 		ext2_desireddquot += DQUOTINC;
 	if (ext2_numdquot < ext2_desireddquot) {
-		dq = (struct ext2_dquot *)malloc(sizeof *dq, M_EXT2DQUOT, M_WAITOK);
+		dq = (struct ext2_dquot *)kmalloc(sizeof *dq, M_EXT2DQUOT, M_WAITOK);
 		bzero((char *)dq, sizeof *dq);
 		ext2_numdquot++;
 	} else {

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.7 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ rman_init(struct rman *rm)
 		panic("implement RMAN_GAUGE");
 
 	CIRCLEQ_INIT(&rm->rm_list);
-	rm->rm_slock = malloc(sizeof *rm->rm_slock, M_RMAN, M_NOWAIT);
+	rm->rm_slock = kmalloc(sizeof *rm->rm_slock, M_RMAN, M_NOWAIT);
 	if (rm->rm_slock == NULL)
 		return ENOMEM;
 	lwkt_token_init(rm->rm_slock);
@@ -117,7 +117,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 	struct resource *r, *s;
 	lwkt_tokref ilock;
 
-	r = malloc(sizeof *r, M_RMAN, M_NOWAIT);
+	r = kmalloc(sizeof *r, M_RMAN, M_NOWAIT);
 	if (r == 0)
 		return ENOMEM;
 	bzero(r, sizeof *r);
@@ -165,14 +165,14 @@ rman_fini(struct rman *rm)
 	while (!CIRCLEQ_EMPTY(&rm->rm_list)) {
 		r = CIRCLEQ_FIRST(&rm->rm_list);
 		CIRCLEQ_REMOVE(&rm->rm_list, r, r_link);
-		free(r, M_RMAN);
+		kfree(r, M_RMAN);
 	}
 	lwkt_reltoken(&ilock);
 	/* XXX what's the point of this if we are going to free the struct? */
 	lwkt_gettoken(&ilock, &rman_tok);
 	TAILQ_REMOVE(&rman_head, rm, rm_link);
 	lwkt_reltoken(&ilock);
-	free(rm->rm_slock, M_RMAN);
+	kfree(rm->rm_slock, M_RMAN);
 
 	return 0;
 }
@@ -264,7 +264,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			 * split it in two.  The first case requires
 			 * two new allocations; the second requires but one.
 			 */
-			rv = malloc(sizeof *rv, M_RMAN, M_NOWAIT);
+			rv = kmalloc(sizeof *rv, M_RMAN, M_NOWAIT);
 			if (rv == 0)
 				goto out;
 			bzero(rv, sizeof *rv);
@@ -286,9 +286,9 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 				/*
 				 * We are allocating in the middle.
 				 */
-				r = malloc(sizeof *r, M_RMAN, M_NOWAIT);
+				r = kmalloc(sizeof *r, M_RMAN, M_NOWAIT);
 				if (r == 0) {
-					free(rv, M_RMAN);
+					kfree(rv, M_RMAN);
 					rv = 0;
 					goto out;
 				}
@@ -353,7 +353,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 		rend = min(s->r_end, max(start + count, end));
 		if (s->r_start >= start && s->r_end <= end
 		    && (s->r_end - s->r_start + 1) == count) {
-			rv = malloc(sizeof *rv, M_RMAN, M_NOWAIT);
+			rv = kmalloc(sizeof *rv, M_RMAN, M_NOWAIT);
 			if (rv == 0)
 				goto out;
 			bzero(rv, sizeof *rv);
@@ -367,7 +367,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 				s->r_sharehead = malloc(sizeof *s->r_sharehead,
 							M_RMAN, M_NOWAIT);
 				if (s->r_sharehead == 0) {
-					free(rv, M_RMAN);
+					kfree(rv, M_RMAN);
 					rv = 0;
 					goto out;
 				}
@@ -553,7 +553,7 @@ int_rman_release_resource(struct rman *rm, struct resource *r)
 		 * if the resource is no longer being shared at all.
 		 */
 		if (LIST_NEXT(s, r_sharelink) == 0) {
-			free(s->r_sharehead, M_RMAN);
+			kfree(s->r_sharehead, M_RMAN);
 			s->r_sharehead = 0;
 			s->r_flags &= ~RF_FIRSTSHARE;
 		}
@@ -575,7 +575,7 @@ int_rman_release_resource(struct rman *rm, struct resource *r)
 		s->r_end = t->r_end;
 		CIRCLEQ_REMOVE(&rm->rm_list, r, r_link);
 		CIRCLEQ_REMOVE(&rm->rm_list, t, r_link);
-		free(t, M_RMAN);
+		kfree(t, M_RMAN);
 	} else if (s != (void *)&rm->rm_list
 		   && (s->r_flags & RF_ALLOCATED) == 0) {
 		/*
@@ -605,7 +605,7 @@ int_rman_release_resource(struct rman *rm, struct resource *r)
 	}
 
 out:
-	free(r, M_RMAN);
+	kfree(r, M_RMAN);
 	return 0;
 }
 

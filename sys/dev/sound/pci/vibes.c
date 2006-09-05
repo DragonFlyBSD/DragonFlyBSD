@@ -28,7 +28,7 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.6 2005/10/12 17:35:55 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -722,7 +722,7 @@ sv_attach(device_t dev) {
 
 	d = device_get_softc(dev);
 
-	sc = malloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
 		device_printf(dev, "cannot allocate softc");
 		return ENXIO;
@@ -923,7 +923,7 @@ sv_detach(device_t dev) {
 	bus_release_resource(dev, sc->dmaa_type, sc->dmaa_rid, sc->dmaa_reg);
 	bus_release_resource(dev, sc->dmac_type, sc->dmac_rid, sc->dmac_reg);
 
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return 0;
 }

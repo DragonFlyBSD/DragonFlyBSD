@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.18 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.19 2006/09/05 00:55:47 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -478,7 +478,7 @@ ef_clone(struct ef_link *efl, int ft)
 	struct ifnet *eifp;
 	struct ifnet *ifp = efl->el_ifp;
 
-	efp = (struct efnet*)malloc(sizeof(struct efnet), M_IFADDR,
+	efp = (struct efnet*)kmalloc(sizeof(struct efnet), M_IFADDR,
 	    M_WAITOK | M_ZERO);
 	if (efp == NULL)
 		return ENOMEM;
@@ -541,8 +541,8 @@ ef_load(void)
 		SLIST_FOREACH(efl, &efdev, el_next) {
 			for (d = 0; d < EF_NFT; d++)
 				if (efl->el_units[d])
-					free(efl->el_units[d], M_IFADDR);
-			free(efl, M_IFADDR);
+					kfree(efl->el_units[d], M_IFADDR);
+			kfree(efl, M_IFADDR);
 		}
 		return error;
 	}

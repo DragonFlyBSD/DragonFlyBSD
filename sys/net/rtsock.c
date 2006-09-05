@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.32 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.33 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -165,7 +165,7 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	if (sotorawcb(so) != NULL)
 		return EISCONN;	/* XXX panic? */
 
-	rp = malloc(sizeof *rp, M_PCB, M_WAITOK | M_ZERO);
+	rp = kmalloc(sizeof *rp, M_PCB, M_WAITOK | M_ZERO);
 	if (rp == NULL)
 		return ENOBUFS;
 
@@ -182,7 +182,7 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	rp = sotorawcb(so);
 	if (error) {
 		crit_exit();
-		free(rp, M_PCB);
+		kfree(rp, M_PCB);
 		return error;
 	}
 	switch(rp->rcb_proto.sp_protocol) {
@@ -352,11 +352,11 @@ reallocbuf(void *ptr, size_t len, size_t olen)
 {
 	void *newptr;
 
-	newptr = malloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
+	newptr = kmalloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
 	if (newptr == NULL)
 		return NULL;
 	bcopy(ptr, newptr, olen);
-	free(ptr, M_RTABLE);
+	kfree(ptr, M_RTABLE);
 	return (newptr);
 }
 
@@ -445,7 +445,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		rtinfo.rti_dst = NULL;
 		gotoerr(EINVAL);
 	}
-	rtm = malloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
+	rtm = kmalloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
 	if (rtm == NULL) {
 		rtinfo.rti_dst = NULL;
 		gotoerr(ENOBUFS);
@@ -549,7 +549,7 @@ flush:
 	if (!(so->so_options & SO_USELOOPBACK)) {
 		if (route_cb.any_count <= 1) {
 			if (rtm != NULL)
-				free(rtm, M_RTABLE);
+				kfree(rtm, M_RTABLE);
 			m_freem(m);
 			return (error);
 		}
@@ -563,7 +563,7 @@ flush:
 			m = NULL;
 		} else if (m->m_pkthdr.len > rtm->rtm_msglen)
 			m_adj(m, rtm->rtm_msglen - m->m_pkthdr.len);
-		free(rtm, M_RTABLE);
+		kfree(rtm, M_RTABLE);
 	}
 	if (rp != NULL)
 		rp->rcb_proto.sp_family = 0; /* Avoid us */
@@ -1138,11 +1138,11 @@ resizewalkarg(struct walkarg *w, int len)
 {
 	void *newptr;
 
-	newptr = malloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
+	newptr = kmalloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
 	if (newptr == NULL)
 		return (ENOMEM);
 	if (w->w_tmem != NULL)
-		free(w->w_tmem, M_RTABLE);
+		kfree(w->w_tmem, M_RTABLE);
 	w->w_tmem = newptr;
 	w->w_tmemsize = len;
 	return (0);
@@ -1308,7 +1308,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	}
 	crit_exit();
 	if (w.w_tmem != NULL)
-		free(w.w_tmem, M_RTABLE);
+		kfree(w.w_tmem, M_RTABLE);
 	if (origcpu >= 0)
 		lwkt_migratecpu(origcpu);
 	return (error);

@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#32 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.1.2.9 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.4 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.5 2006/09/05 00:55:37 dillon Exp $
  */
 
 #ifdef __linux__
@@ -227,7 +227,7 @@ aic7770_config(struct ahc_softc *ahc, struct aic7770_identity *entry, u_int io)
 		break;
 	}
 	if (have_seeprom == 0) {
-		free(ahc->seep_config, M_DEVBUF);
+		kfree(ahc->seep_config, M_DEVBUF);
 		ahc->seep_config = NULL;
 	}
 

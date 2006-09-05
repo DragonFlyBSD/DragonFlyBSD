@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.34 2005/12/27 18:42:31 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.35 2006/09/05 00:55:48 dillon Exp $
  */
 
 #define _IP_VHL
@@ -1776,7 +1776,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * No multicast option buffer attached to the pcb;
 		 * allocate one and initialize to default values.
 		 */
-		imo = malloc(sizeof *imo, M_IPMOPTS, M_WAITOK);
+		imo = kmalloc(sizeof *imo, M_IPMOPTS, M_WAITOK);
 
 		if (imo == NULL)
 			return (ENOBUFS);
@@ -2044,7 +2044,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 	    imo->imo_multicast_ttl == IP_DEFAULT_MULTICAST_TTL &&
 	    imo->imo_multicast_loop == IP_DEFAULT_MULTICAST_LOOP &&
 	    imo->imo_num_memberships == 0) {
-		free(*imop, M_IPMOPTS);
+		kfree(*imop, M_IPMOPTS);
 		*imop = NULL;
 	}
 
@@ -2126,7 +2126,7 @@ ip_freemoptions(struct ip_moptions *imo)
 	if (imo != NULL) {
 		for (i = 0; i < imo->imo_num_memberships; ++i)
 			in_delmulti(imo->imo_membership[i]);
-		free(imo, M_IPMOPTS);
+		kfree(imo, M_IPMOPTS);
 	}
 }
 

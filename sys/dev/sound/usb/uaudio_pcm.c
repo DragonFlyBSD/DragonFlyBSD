@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.1.2.1 2002/08/24 08:03:07 nsayer Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.3 2006/09/05 00:55:43 dillon Exp $ */
 
 /*
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -289,7 +289,7 @@ ua_attach(device_t dev)
 	char status[SND_STATUSLEN];
 	unsigned int bufsz;
 
-	ua = (struct ua_info *)malloc(sizeof *ua, M_DEVBUF, M_NOWAIT);
+	ua = (struct ua_info *)kmalloc(sizeof *ua, M_DEVBUF, M_NOWAIT);
 	if (!ua)
 		return ENXIO;
 	bzero(ua, sizeof *ua);
@@ -329,7 +329,7 @@ ua_attach(device_t dev)
 bad:
 	if (ua->parent_dmat)
 		bus_dma_tag_destroy(ua->parent_dmat);
-	free(ua, M_DEVBUF);
+	kfree(ua, M_DEVBUF);
 
 	return ENXIO;
 }
@@ -346,7 +346,7 @@ ua_detach(device_t dev)
 
 	sc = pcm_getdevinfo(dev);
 	bus_dma_tag_destroy(sc->parent_dmat);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return 0;
 }

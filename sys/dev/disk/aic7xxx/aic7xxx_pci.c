@@ -42,7 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#69 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.2.2.17 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.4 2006/09/05 00:55:37 dillon Exp $
  */
 
 #ifdef __linux__
@@ -1431,7 +1431,7 @@ check_extport(struct ahc_softc *ahc, u_int *sxfrctl1)
 		if (bootverbose)
 			printf("%s: No SEEPROM available.\n", ahc_name(ahc));
 		ahc->flags |= AHC_USEDEFAULTS;
-		free(ahc->seep_config, M_DEVBUF);
+		kfree(ahc->seep_config, M_DEVBUF);
 		ahc->seep_config = NULL;
 		sc = NULL;
 	} else {

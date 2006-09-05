@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.11 2005/12/11 01:54:09 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.12 2006/09/05 00:55:42 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -1516,7 +1516,7 @@ iir_shutdown( void *arg, int howto )
            gdt->sc_hanum);
 
     /* allocate ucmd buffer */
-    ucmd = malloc(sizeof(gdt_ucmd_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+    ucmd = kmalloc(sizeof(gdt_ucmd_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 
     /* wait for pending IOs */
     crit_enter();
@@ -1541,7 +1541,7 @@ iir_shutdown( void *arg, int howto )
         }
     }
 
-    free(ucmd, M_DEVBUF);
+    kfree(ucmd, M_DEVBUF);
     printf("Done.\n");
 }
 

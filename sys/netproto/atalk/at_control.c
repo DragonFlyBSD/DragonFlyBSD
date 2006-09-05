@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.11 2006/09/05 00:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -140,7 +140,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * allocate a fresh one. 
 	 */
 	if ( aa == (struct at_ifaddr *) 0 ) {
-	    aa0 = malloc(sizeof(struct at_ifaddr), M_IFADDR, M_WAITOK | M_ZERO);
+	    aa0 = kmalloc(sizeof(struct at_ifaddr), M_IFADDR, M_WAITOK | M_ZERO);
 	    callout_init(&aa0->aa_ch);
 	    if (( aa = at_ifaddr ) != NULL ) {
 		/*

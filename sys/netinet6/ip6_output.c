@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.19 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.20 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1738,7 +1738,7 @@ ip6_pcbopts(struct ip6_pktopts **pktopt, struct mbuf *m, struct socket *so,
 #endif
 		ip6_clearpktopts(opt, 1, -1);
 	} else
-		opt = malloc(sizeof(*opt), M_IP6OPT, M_WAITOK);
+		opt = kmalloc(sizeof(*opt), M_IP6OPT, M_WAITOK);
 	*pktopt = NULL;
 
 	if (!m || m->m_len == 0) {
@@ -1746,7 +1746,7 @@ ip6_pcbopts(struct ip6_pktopts **pktopt, struct mbuf *m, struct socket *so,
 		 * Only turning off any previous options, regardless of
 		 * whether the opt is just created or given.
 		 */
-		free(opt, M_IP6OPT);
+		kfree(opt, M_IP6OPT);
 		return(0);
 	}
 
@@ -1755,7 +1755,7 @@ ip6_pcbopts(struct ip6_pktopts **pktopt, struct mbuf *m, struct socket *so,
 		priv = 1;
 	if ((error = ip6_setpktoptions(m, opt, priv, 1)) != 0) {
 		ip6_clearpktopts(opt, 1, -1); /* XXX: discard all options */
-		free(opt, M_IP6OPT);
+		kfree(opt, M_IP6OPT);
 		return(error);
 	}
 	*pktopt = opt;
@@ -1782,29 +1782,29 @@ ip6_clearpktopts(struct ip6_pktopts *pktopt, int needfree, int optname)
 
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_pktinfo)
-			free(pktopt->ip6po_pktinfo, M_IP6OPT);
+			kfree(pktopt->ip6po_pktinfo, M_IP6OPT);
 		pktopt->ip6po_pktinfo = NULL;
 	}
 	if (optname == -1)
 		pktopt->ip6po_hlim = -1;
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_nexthop)
-			free(pktopt->ip6po_nexthop, M_IP6OPT);
+			kfree(pktopt->ip6po_nexthop, M_IP6OPT);
 		pktopt->ip6po_nexthop = NULL;
 	}
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_hbh)
-			free(pktopt->ip6po_hbh, M_IP6OPT);
+			kfree(pktopt->ip6po_hbh, M_IP6OPT);
 		pktopt->ip6po_hbh = NULL;
 	}
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_dest1)
-			free(pktopt->ip6po_dest1, M_IP6OPT);
+			kfree(pktopt->ip6po_dest1, M_IP6OPT);
 		pktopt->ip6po_dest1 = NULL;
 	}
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_rhinfo.ip6po_rhi_rthdr)
-			free(pktopt->ip6po_rhinfo.ip6po_rhi_rthdr, M_IP6OPT);
+			kfree(pktopt->ip6po_rhinfo.ip6po_rhi_rthdr, M_IP6OPT);
 		pktopt->ip6po_rhinfo.ip6po_rhi_rthdr = NULL;
 		if (pktopt->ip6po_route.ro_rt) {
 			RTFREE(pktopt->ip6po_route.ro_rt);
@@ -1813,7 +1813,7 @@ ip6_clearpktopts(struct ip6_pktopts *pktopt, int needfree, int optname)
 	}
 	if (optname == -1) {
 		if (needfree && pktopt->ip6po_dest2)
-			free(pktopt->ip6po_dest2, M_IP6OPT);
+			kfree(pktopt->ip6po_dest2, M_IP6OPT);
 		pktopt->ip6po_dest2 = NULL;
 	}
 }
@@ -1823,7 +1823,7 @@ do {\
 	if (src->type) {\
 		int hlen =\
 			(((struct ip6_ext *)src->type)->ip6e_len + 1) << 3;\
-		dst->type = malloc(hlen, M_IP6OPT, canwait);\
+		dst->type = kmalloc(hlen, M_IP6OPT, canwait);\
 		if (dst->type == NULL && canwait == M_NOWAIT)\
 			goto bad;\
 		bcopy(src->type, dst->type, hlen);\
@@ -1840,7 +1840,7 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 		return(NULL);
 	}
 
-	dst = malloc(sizeof(*dst), M_IP6OPT, canwait);
+	dst = kmalloc(sizeof(*dst), M_IP6OPT, canwait);
 	if (dst == NULL && canwait == M_NOWAIT)
 		return (NULL);
 	bzero(dst, sizeof(*dst));
@@ -1868,13 +1868,13 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 	return(dst);
 
   bad:
-	if (dst->ip6po_pktinfo) free(dst->ip6po_pktinfo, M_IP6OPT);
-	if (dst->ip6po_nexthop) free(dst->ip6po_nexthop, M_IP6OPT);
-	if (dst->ip6po_hbh) free(dst->ip6po_hbh, M_IP6OPT);
-	if (dst->ip6po_dest1) free(dst->ip6po_dest1, M_IP6OPT);
-	if (dst->ip6po_dest2) free(dst->ip6po_dest2, M_IP6OPT);
-	if (dst->ip6po_rthdr) free(dst->ip6po_rthdr, M_IP6OPT);
-	free(dst, M_IP6OPT);
+	if (dst->ip6po_pktinfo) kfree(dst->ip6po_pktinfo, M_IP6OPT);
+	if (dst->ip6po_nexthop) kfree(dst->ip6po_nexthop, M_IP6OPT);
+	if (dst->ip6po_hbh) kfree(dst->ip6po_hbh, M_IP6OPT);
+	if (dst->ip6po_dest1) kfree(dst->ip6po_dest1, M_IP6OPT);
+	if (dst->ip6po_dest2) kfree(dst->ip6po_dest2, M_IP6OPT);
+	if (dst->ip6po_rthdr) kfree(dst->ip6po_rthdr, M_IP6OPT);
+	kfree(dst, M_IP6OPT);
 	return(NULL);
 }
 #undef PKTOPT_EXTHDRCPY
@@ -1887,7 +1887,7 @@ ip6_freepcbopts(struct ip6_pktopts *pktopt)
 
 	ip6_clearpktopts(pktopt, 1, -1);
 
-	free(pktopt, M_IP6OPT);
+	kfree(pktopt, M_IP6OPT);
 }
 
 /*
@@ -1912,7 +1912,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		 * allocate one and initialize to default values.
 		 */
 		im6o = (struct ip6_moptions *)
-			malloc(sizeof(*im6o), M_IPMOPTS, M_WAITOK);
+			kmalloc(sizeof(*im6o), M_IPMOPTS, M_WAITOK);
 
 		if (im6o == NULL)
 			return(ENOBUFS);
@@ -2082,14 +2082,14 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		 * Everything looks good; add a new record to the multicast
 		 * address list for the given interface.
 		 */
-		imm = malloc(sizeof(*imm), M_IPMADDR, M_WAITOK);
+		imm = kmalloc(sizeof(*imm), M_IPMADDR, M_WAITOK);
 		if (imm == NULL) {
 			error = ENOBUFS;
 			break;
 		}
 		if ((imm->i6mm_maddr =
 		     in6_addmulti(&mreq->ipv6mr_multiaddr, ifp, &error)) == NULL) {
-			free(imm, M_IPMADDR);
+			kfree(imm, M_IPMADDR);
 			break;
 		}
 		LIST_INSERT_HEAD(&im6o->im6o_memberships, imm, i6mm_chain);
@@ -2154,7 +2154,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		 */
 		LIST_REMOVE(imm, i6mm_chain);
 		in6_delmulti(imm->i6mm_maddr);
-		free(imm, M_IPMADDR);
+		kfree(imm, M_IPMADDR);
 		break;
 
 	default:
@@ -2169,7 +2169,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 	    im6o->im6o_multicast_hlim == ip6_defmcasthlim &&
 	    im6o->im6o_multicast_loop == IPV6_DEFAULT_MULTICAST_LOOP &&
 	    im6o->im6o_memberships.lh_first == NULL) {
-		free(*im6op, M_IPMOPTS);
+		kfree(*im6op, M_IPMOPTS);
 		*im6op = NULL;
 	}
 
@@ -2235,9 +2235,9 @@ ip6_freemoptions(struct ip6_moptions *im6o)
 		LIST_REMOVE(imm, i6mm_chain);
 		if (imm->i6mm_maddr)
 			in6_delmulti(imm->i6mm_maddr);
-		free(imm, M_IPMADDR);
+		kfree(imm, M_IPMADDR);
 	}
-	free(im6o, M_IPMOPTS);
+	kfree(im6o, M_IPMOPTS);
 }
 
 /*
@@ -2362,7 +2362,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
 
 			if (needcopy) {
 				opt->ip6po_hbh =
-					malloc(hbhlen, M_IP6OPT, M_WAITOK);
+					kmalloc(hbhlen, M_IP6OPT, M_WAITOK);
 				bcopy(hbh, opt->ip6po_hbh, hbhlen);
 			} else
 				opt->ip6po_hbh = hbh;
@@ -2400,7 +2400,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
 				newdest = &opt->ip6po_dest2;
 
 			if (needcopy) {
-				*newdest = malloc(destlen, M_IP6OPT, M_WAITOK);
+				*newdest = kmalloc(destlen, M_IP6OPT, M_WAITOK);
 				bcopy(dest, *newdest, destlen);
 			} else
 				*newdest = dest;
@@ -2436,7 +2436,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
 			}
 
 			if (needcopy) {
-				opt->ip6po_rthdr = malloc(rthlen, M_IP6OPT,
+				opt->ip6po_rthdr = kmalloc(rthlen, M_IP6OPT,
 							  M_WAITOK);
 				bcopy(rth, opt->ip6po_rthdr, rthlen);
 			} else

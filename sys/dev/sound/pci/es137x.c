@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -827,7 +827,7 @@ es_pci_attach(device_t dev)
 	struct ac97_info *codec = 0;
 	kobj_class_t    ct = NULL;
 
-	if ((es = malloc(sizeof *es, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((es = kmalloc(sizeof *es, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -925,7 +925,7 @@ es_pci_attach(device_t dev)
 	if (es->ih) bus_teardown_intr(dev, es->irq, es->ih);
 	if (es->irq) bus_release_resource(dev, SYS_RES_IRQ, es->irqid, es->irq);
 	if (es->parent_dmat) bus_dma_tag_destroy(es->parent_dmat);
-	if (es) free(es, M_DEVBUF);
+	if (es) kfree(es, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -944,7 +944,7 @@ es_pci_detach(device_t dev)
 	bus_teardown_intr(dev, es->irq, es->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, es->irqid, es->irq);
 	bus_dma_tag_destroy(es->parent_dmat);
-	free(es, M_DEVBUF);
+	kfree(es, M_DEVBUF);
 
 	return 0;
 }

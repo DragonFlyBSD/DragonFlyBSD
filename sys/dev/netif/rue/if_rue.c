@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.5 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.6 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -725,7 +725,7 @@ rue_tx_list_init(struct rue_softc *sc)
 			if (c->rue_xfer == NULL)
 				return (ENOBUFS);
 		}
-		c->rue_buf = malloc(RUE_BUFSZ, M_USBDEV, M_WAITOK);
+		c->rue_buf = kmalloc(RUE_BUFSZ, M_USBDEV, M_WAITOK);
 	}
 
 	return (0);
@@ -1082,7 +1082,7 @@ rue_init(void *xsc)
 	}
 
 #ifdef RUE_INTR_PIPE
-	sc->rue_cdata.rue_ibuf = malloc(RUE_INTR_PKTLEN, M_USBDEV, M_WAITOK);
+	sc->rue_cdata.rue_ibuf = kmalloc(RUE_INTR_PKTLEN, M_USBDEV, M_WAITOK);
 #endif
 
 	/*
@@ -1342,7 +1342,7 @@ rue_stop(struct rue_softc *sc)
 	/* Free RX resources. */
 	for (i = 0; i < RUE_RX_LIST_CNT; i++) {
 		if (sc->rue_cdata.rue_rx_chain[i].rue_buf != NULL) {
-			free(sc->rue_cdata.rue_rx_chain[i].rue_buf, M_USBDEV);
+			kfree(sc->rue_cdata.rue_rx_chain[i].rue_buf, M_USBDEV);
 			sc->rue_cdata.rue_rx_chain[i].rue_buf = NULL;
 		}
 		if (sc->rue_cdata.rue_rx_chain[i].rue_mbuf != NULL) {
@@ -1358,7 +1358,7 @@ rue_stop(struct rue_softc *sc)
 	/* Free TX resources. */
 	for (i = 0; i < RUE_TX_LIST_CNT; i++) {
 		if (sc->rue_cdata.rue_tx_chain[i].rue_buf != NULL) {
-			free(sc->rue_cdata.rue_tx_chain[i].rue_buf, M_USBDEV);
+			kfree(sc->rue_cdata.rue_tx_chain[i].rue_buf, M_USBDEV);
 			sc->rue_cdata.rue_tx_chain[i].rue_buf = NULL;
 		}
 		if (sc->rue_cdata.rue_tx_chain[i].rue_mbuf != NULL) {
@@ -1373,7 +1373,7 @@ rue_stop(struct rue_softc *sc)
 
 #ifdef RUE_INTR_PIPE
 	if (sc->rue_cdata.rue_ibuf != NULL) {
-		free(sc->rue_cdata.rue_ibuf, M_USBDEV);
+		kfree(sc->rue_cdata.rue_ibuf, M_USBDEV);
 		sc->rue_cdata.rue_ibuf = NULL;
 	}
 #endif

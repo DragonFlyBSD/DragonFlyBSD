@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.43 2006/08/03 16:40:47 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.44 2006/09/05 00:55:39 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4189,8 +4189,8 @@ tulip_pci_attach(device_t dev)
 					   sc->tulip_if.if_serializer)) {
 		device_printf(dev, "couldn't map interrupt\n");
 		tulip_detach(sc);
-		free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
-		free((caddr_t) sc->tulip_txdescs, M_DEVBUF);
+		kfree((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
+		kfree((caddr_t) sc->tulip_txdescs, M_DEVBUF);
 		return ENXIO;
 	    }
 	}

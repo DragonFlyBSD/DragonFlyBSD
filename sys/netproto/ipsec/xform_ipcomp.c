@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.8 2006/04/23 17:56:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.9 2006/09/05 00:55:49 dillon Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -150,7 +150,7 @@ ipcomp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 		return ENOBUFS;
 	}
 	/* Get IPsec-specific opaque pointer */
-	tc = malloc(sizeof (*tc), M_XDATA, 
+	tc = kmalloc(sizeof (*tc), M_XDATA, 
 		    M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		m_freem(m);
@@ -272,7 +272,7 @@ ipcomp_input_cb(struct cryptop *crp)
 	clen = crp->crp_olen;		/* Length of data after processing */
 
 	/* Release the crypto descriptors */
-	free(tc, M_XDATA), tc = NULL;
+	kfree(tc, M_XDATA), tc = NULL;
 	crypto_freereq(crp), crp = NULL;
 
 	/* In case it's not done already, adjust the size of the mbuf chain */
@@ -314,7 +314,7 @@ bad:
 	if (m)
 		m_freem(m);
 	if (tc != NULL)
-		free(tc, M_XDATA);
+		kfree(tc, M_XDATA);
 	if (crp)
 		crypto_freereq(crp);
 	return error;
@@ -570,7 +570,7 @@ ipcomp_output_cb(struct cryptop *crp)
 	}
 
 	/* Release the crypto descriptor */
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 
 	/* NB: m is reclaimed by ipsec_process_done. */
@@ -584,7 +584,7 @@ bad:
 	crit_exit();
 	if (m)
 		m_freem(m);
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 	return error;
 }

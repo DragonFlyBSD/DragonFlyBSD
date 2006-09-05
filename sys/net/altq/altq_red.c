@@ -1,5 +1,5 @@
 /*	$KAME: altq_red.c,v 1.19 2004/04/17 10:54:49 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.2 2006/09/03 17:31:55 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.3 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -166,7 +166,7 @@ red_alloc(int weight, int inv_pmax, int th_min, int th_max, int flags, int pktti
 	int w, i;
 	int npkts_per_sec;
 
-	rp = malloc(sizeof(*rp), M_ALTQ, M_WAITOK | M_ZERO);
+	rp = kmalloc(sizeof(*rp), M_ALTQ, M_WAITOK | M_ZERO);
 	rp->red_avg = 0;
 	rp->red_idle = 1;
 
@@ -244,7 +244,7 @@ void
 red_destroy(red_t *rp)
 {
 	wtab_destroy(rp->red_wtab);
-	free(rp, M_ALTQ);
+	kfree(rp, M_ALTQ);
 }
 
 void
@@ -544,7 +544,7 @@ wtab_alloc(int weight)
 		}
 	}
 
-	w = malloc(sizeof(*w), M_ALTQ, M_WAITOK | M_ZERO);
+	w = kmalloc(sizeof(*w), M_ALTQ, M_WAITOK | M_ZERO);
 	w->w_weight = weight;
 	w->w_refcount = 1;
 	SLIST_INSERT_HEAD(&wtab_list, w, w_link);
@@ -567,7 +567,7 @@ wtab_destroy(struct wtab *w)
 		return (0);
 
 	SLIST_REMOVE(&wtab_list, w, wtab, w_link);
-	free(w, M_ALTQ);
+	kfree(w, M_ALTQ);
 
 	return (0);
 }

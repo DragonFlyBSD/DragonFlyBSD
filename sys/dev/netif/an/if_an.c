@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.37 2006/08/06 12:49:04 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.38 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -2668,7 +2668,7 @@ an_stop(struct an_softc *sc)
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
 
 	if (sc->an_flash_buffer) {
-		free(sc->an_flash_buffer, M_DEVBUF);
+		kfree(sc->an_flash_buffer, M_DEVBUF);
 		sc->an_flash_buffer = NULL;
 	}
 }
@@ -3465,10 +3465,10 @@ flashcard(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 		break;
 	case AIROFLSHSTFL:
 		if (sc->an_flash_buffer) {
-			free(sc->an_flash_buffer, M_DEVBUF);
+			kfree(sc->an_flash_buffer, M_DEVBUF);
 			sc->an_flash_buffer = NULL;
 		}
-		sc->an_flash_buffer = malloc(FLASH_SIZE, M_DEVBUF, 0);
+		sc->an_flash_buffer = kmalloc(FLASH_SIZE, M_DEVBUF, 0);
 		if (sc->an_flash_buffer)
 			return setflashmode(ifp);
 		else

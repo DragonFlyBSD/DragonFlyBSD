@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.20 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.21 2006/09/05 00:55:47 dillon Exp $
  */
 
 #define        DEB(x)
@@ -620,7 +620,7 @@ hash_packet(struct ipfw_flow_id *id)
 	else								\
 		head = q = q->next;					\
 	dyn_count--;							\
-	free(old_q, M_IPFW); }
+	kfree(old_q, M_IPFW); }
 
 #define TIME_LEQ(a,b)       ((int)((a)-(b)) <= 0)
 
@@ -837,7 +837,7 @@ realloc_dynamic_table(void)
 	}
 	curr_dyn_buckets = dyn_buckets;
 	if (ipfw_dyn_v != NULL)
-		free(ipfw_dyn_v, M_IPFW);
+		kfree(ipfw_dyn_v, M_IPFW);
 	for (;;) {
 		ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
 		       M_IPFW, M_WAITOK | M_ZERO);
@@ -871,7 +871,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	}
 	i = hash_packet(id);
 
-	r = malloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
+	r = kmalloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
 	if (r == NULL) {
 		printf ("sorry cannot allocate state\n");
 		return NULL;
@@ -1990,7 +1990,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	if (*head == NULL && input_rule->rulenum != IPFW_DEFAULT_RULE)
 		return (EINVAL);
 
-	rule = malloc(l, M_IPFW, M_WAITOK | M_ZERO);
+	rule = kmalloc(l, M_IPFW, M_WAITOK | M_ZERO);
 	if (rule == NULL)
 		return (ENOSPC);
 
@@ -2083,7 +2083,7 @@ delete_rule(struct ip_fw **head, struct ip_fw *prev, struct ip_fw *rule)
 
 	if (DUMMYNET_LOADED)
 		ip_dn_ruledel_ptr(rule);
-	free(rule, M_IPFW);
+	kfree(rule, M_IPFW);
 	return n;
 }
 
@@ -2498,7 +2498,7 @@ ipfw_ctl(struct sockopt *sopt)
 		 * how much room is needed, do not bother filling up the
 		 * buffer, just jump to the sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_WAITOK);
+		buf = kmalloc(size, M_TEMP, M_WAITOK);
 
 		bp = buf;
 		for (rule = layer3_chain; rule ; rule = rule->next) {
@@ -2539,7 +2539,7 @@ ipfw_ctl(struct sockopt *sopt)
 		crit_exit();
 
 		error = sooptcopyout(sopt, buf, size);
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 		break;
 
 	case IP_FW_FLUSH:

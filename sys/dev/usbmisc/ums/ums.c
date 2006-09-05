@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.17 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.18 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -189,7 +189,7 @@ USB_MATCH(ums)
 	else
 		ret = UMATCH_NONE;
 
-	free(desc, M_TEMP);
+	kfree(desc, M_TEMP);
 	return (ret);
 }
 
@@ -292,10 +292,10 @@ USB_ATTACH(ums)
 				hid_input, &sc->sc_loc_btn[i-1], 0);
 
 	sc->sc_isize = hid_report_size(desc, size, hid_input, &sc->sc_iid);
-	sc->sc_ibuf = malloc(sc->sc_isize, M_USB, M_INTWAIT);
+	sc->sc_ibuf = kmalloc(sc->sc_isize, M_USB, M_INTWAIT);
 	sc->sc_ep_addr = ed->bEndpointAddress;
 	sc->sc_disconnected = 0;
-	free(desc, M_TEMP);
+	kfree(desc, M_TEMP);
 
 #ifdef USB_DEBUG
 	DPRINTF(("ums_attach: sc=%p\n", sc));
@@ -363,8 +363,8 @@ ums_detach(device_t self)
 
 	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
 
-	free(sc->sc_loc_btn, M_USB);
-	free(sc->sc_ibuf, M_USB);
+	kfree(sc->sc_loc_btn, M_USB);
+	kfree(sc->sc_ibuf, M_USB);
 
 	/* someone waiting for data */
 	/*

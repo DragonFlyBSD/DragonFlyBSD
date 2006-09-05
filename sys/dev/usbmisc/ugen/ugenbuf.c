@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugenbuf.c,v 1.2 2004/07/08 16:18:10 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugenbuf.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,11 +65,11 @@ getugenbuf(int reqsize, int *bsize)
 
     buf = ugencache_buf;
     if (buf == NULL) {
-	buf = malloc(reqsize, M_UGENBUF, M_WAITOK);
+	buf = kmalloc(reqsize, M_UGENBUF, M_WAITOK);
     } else if (ugencache_size != reqsize) {
 	ugencache_buf = NULL;
-	free(buf, M_UGENBUF);
-	buf = malloc(reqsize, M_UGENBUF, M_WAITOK);
+	kfree(buf, M_UGENBUF);
+	buf = kmalloc(reqsize, M_UGENBUF, M_WAITOK);
     } else {
 	buf = ugencache_buf;
 	ugencache_buf = NULL;
@@ -90,7 +90,7 @@ relugenbuf(void *buf, int bsize)
 	ugencache_buf = buf;
 	ugencache_size = bsize;
     } else {
-	free(buf, M_UGENBUF);
+	kfree(buf, M_UGENBUF);
     }
 }
 

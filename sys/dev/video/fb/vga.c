@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.17 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -2826,11 +2826,11 @@ get_palette(video_adapter_t *adp, int base, int count,
 	base + count > 256)
 	return EINVAL;
 
-    r = malloc(count*3, M_DEVBUF, M_WAITOK);
+    r = kmalloc(count*3, M_DEVBUF, M_WAITOK);
     g = r + count;
     b = g + count;
     if (vga_save_palette2(adp, base, count, r, g, b)) {
-	free(r, M_DEVBUF);
+	kfree(r, M_DEVBUF);
 	return ENODEV;
     }
     copyout(r, red, count);
@@ -2840,7 +2840,7 @@ get_palette(video_adapter_t *adp, int base, int count,
 	bzero(r, count);
 	copyout(r, trans, count);
     }
-    free(r, M_DEVBUF);
+    kfree(r, M_DEVBUF);
 
     return 0;
 }
@@ -2858,7 +2858,7 @@ set_palette(video_adapter_t *adp, int base, int count,
 	base + count > 256)
 	return EINVAL;
 
-    r = malloc(count*3, M_DEVBUF, M_WAITOK);
+    r = kmalloc(count*3, M_DEVBUF, M_WAITOK);
     g = r + count;
     b = g + count;
     err = copyin(red, r, count);
@@ -2868,7 +2868,7 @@ set_palette(video_adapter_t *adp, int base, int count,
 	err = copyin(blue, b, count);
     if (!err)
 	err = vga_load_palette2(adp, base, count, r, g, b);
-    free(r, M_DEVBUF);
+    kfree(r, M_DEVBUF);
 
     return (err ? ENODEV : 0);
 }

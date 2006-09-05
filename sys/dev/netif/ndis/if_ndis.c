@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.16 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.17 2006/09/05 00:55:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -158,7 +158,7 @@ ndis_setmulti(struct ndis_softc *sc)
 	len = sizeof(mclistsz);
 	ndis_get_info(sc, OID_802_3_MAXIMUM_LIST_SIZE, &mclistsz, &len);
 
-	mclist = malloc(ETHER_ADDR_LEN * mclistsz, M_TEMP, M_NOWAIT|M_ZERO);
+	mclist = kmalloc(ETHER_ADDR_LEN * mclistsz, M_TEMP, M_NOWAIT|M_ZERO);
 
 	if (mclist == NULL) {
 		sc->ndis_filter |= NDIS_PACKET_TYPE_ALL_MULTICAST;
@@ -190,7 +190,7 @@ ndis_setmulti(struct ndis_softc *sc)
 	}
 
 out:
-	free(mclist, M_TEMP);
+	kfree(mclist, M_TEMP);
 
 	len = sizeof(sc->ndis_filter);
 	error = ndis_set_info(sc, OID_GEN_CURRENT_PACKET_FILTER,
@@ -225,7 +225,7 @@ ndis_set_offload(struct ndis_softc *sc)
 	len = sizeof(ndis_task_offload_hdr) + sizeof(ndis_task_offload) +
 	    sizeof(ndis_task_tcpip_csum);
 
-	ntoh = malloc(len, M_TEMP, M_NOWAIT|M_ZERO);
+	ntoh = kmalloc(len, M_TEMP, M_NOWAIT|M_ZERO);
 
 	if (ntoh == NULL)
 		return(ENOMEM);
@@ -255,7 +255,7 @@ ndis_set_offload(struct ndis_softc *sc)
 		nttc->nttc_v4rx = sc->ndis_v4rx;
 
 	error = ndis_set_info(sc, OID_TCP_TASK_OFFLOAD, ntoh, &len);
-	free(ntoh, M_TEMP);
+	kfree(ntoh, M_TEMP);
 
 	return(error);
 }
@@ -277,7 +277,7 @@ ndis_probe_offload(struct ndis_softc *sc)
 	if (error != ENOSPC)
 		return(error);
 
-	ntoh = malloc(len, M_TEMP, M_NOWAIT|M_ZERO);
+	ntoh = kmalloc(len, M_TEMP, M_NOWAIT|M_ZERO);
 
 	if (ntoh == NULL)
 		return(ENOMEM);
@@ -291,12 +291,12 @@ ndis_probe_offload(struct ndis_softc *sc)
 	error = ndis_get_info(sc, OID_TCP_TASK_OFFLOAD, ntoh, &len);
 
 	if (error) {
-		free(ntoh, M_TEMP);
+		kfree(ntoh, M_TEMP);
 		return(error);
 	}
 
 	if (ntoh->ntoh_vers != NDIS_TASK_OFFLOAD_VERSION) {
-		free(ntoh, M_TEMP);
+		kfree(ntoh, M_TEMP);
 		return(EINVAL);
 	}
 
@@ -321,7 +321,7 @@ ndis_probe_offload(struct ndis_softc *sc)
 	}
 
 	if (nttc == NULL) {
-		free(ntoh, M_TEMP);
+		kfree(ntoh, M_TEMP);
 		return(ENOENT);
 	}
 
@@ -345,7 +345,7 @@ ndis_probe_offload(struct ndis_softc *sc)
 	if (nttc->nttc_v4rx & NDIS_TCPSUM_FLAGS_UDP_CSUM)
 		ifp->if_capabilities |= IFCAP_RXCSUM;
 
-	free(ntoh, M_TEMP);
+	kfree(ntoh, M_TEMP);
 	return(0);
 }
 
@@ -482,11 +482,11 @@ ndis_attach(device_t dev)
 		    NULL, &len);
 		if (r != ENOSPC)
 			goto nonettypes;
-		ntl = malloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
+		ntl = kmalloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
 		r = ndis_get_info(sc, OID_802_11_NETWORK_TYPES_SUPPORTED,
 		    ntl, &len);
 		if (r != 0) {
-			free(ntl, M_DEVBUF);
+			kfree(ntl, M_DEVBUF);
 			goto nonettypes;
 		}
 
@@ -506,7 +506,7 @@ ndis_attach(device_t dev)
 				break;
 			}
 		}
-		free(ntl, M_DEVBUF);
+		kfree(ntl, M_DEVBUF);
 nonettypes:
 		len = sizeof(rates);
 		bzero((char *)&rates, len);
@@ -1602,12 +1602,12 @@ ndis_get_assoc(struct ndis_softc *sc, ndis_wlan_bssid_ex **assoc)
 		return (error);
 	}
 
-	bl = malloc(len, M_TEMP, M_NOWAIT|M_ZERO);
+	bl = kmalloc(len, M_TEMP, M_NOWAIT|M_ZERO);
 	if (bl == NULL)
 		return (ENOMEM);
 	error = ndis_get_info(sc, OID_802_11_BSSID_LIST, bl, &len);
 	if (error) {
-		free(bl, M_TEMP);
+		kfree(bl, M_TEMP);
 		device_printf(sc->ndis_dev, "bssid_list failed\n");
 		return (error);
 	}
@@ -1615,19 +1615,19 @@ ndis_get_assoc(struct ndis_softc *sc, ndis_wlan_bssid_ex **assoc)
 	bs = (ndis_wlan_bssid_ex *)&bl->nblx_bssid[0];
 	for (i = 0; i < bl->nblx_items; i++) {
 		if (bcmp(bs->nwbx_macaddr, bssid, sizeof(bssid)) == 0) {
-			*assoc = malloc(bs->nwbx_len, M_TEMP, M_NOWAIT);
+			*assoc = kmalloc(bs->nwbx_len, M_TEMP, M_NOWAIT);
 			if (*assoc == NULL) {
-				free(bl, M_TEMP);
+				kfree(bl, M_TEMP);
 				return(ENOMEM);
 			}
 			bcopy((char *)bs, (char *)*assoc, bs->nwbx_len);
-			free(bl, M_TEMP);
+			kfree(bl, M_TEMP);
 			return(0);
 		}	
 		bs = (ndis_wlan_bssid_ex *)((char *)bs + bs->nwbx_len);
 	}
 
-	free(bl, M_TEMP);
+	kfree(bl, M_TEMP);
 	return(ENOENT);
 }
 
@@ -1674,7 +1674,7 @@ ndis_getstate_80211(struct ndis_softc *sc)
 			    "unknown nettype %d\n", arg);
 			break;
 		}
-		free(bs, M_TEMP);
+		kfree(bs, M_TEMP);
 	} else {
 		return;
 	}
@@ -1885,10 +1885,10 @@ ndis_wi_ioctl_get(struct ifnet *ifp, u_long command, caddr_t data)
 		error = ndis_get_info(sc, OID_802_11_BSSID_LIST, NULL, &len);
 		if (error != ENOSPC)
 			break;
-		bl = malloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
+		bl = kmalloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
 		error = ndis_get_info(sc, OID_802_11_BSSID_LIST, bl, &len);
 		if (error) {
-			free(bl, M_DEVBUF);
+			kfree(bl, M_DEVBUF);
 			break;
 		}
 		maxaps = (2 * wreq.wi_len - sizeof(int)) / sizeof(*api);
@@ -1925,7 +1925,7 @@ ndis_wi_ioctl_get(struct ifnet *ifp, u_long command, caddr_t data)
 			api++;
 			wb = (ndis_wlan_bssid_ex *)((char *)wb + wb->nwbx_len);
 		}
-		free(bl, M_DEVBUF);
+		kfree(bl, M_DEVBUF);
 		error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	default:

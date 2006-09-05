@@ -32,7 +32,7 @@
  *
  * @(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.2 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.3 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@ ext2_ihashinit(void)
 	ext2_ihash = 16;
 	while (ext2_ihash < desiredvnodes)
 		ext2_ihash <<= 1;
-	ext2_ihashtbl = malloc(sizeof(void *) * ext2_ihash, M_EXT2IHASH, M_WAITOK|M_ZERO);
+	ext2_ihashtbl = kmalloc(sizeof(void *) * ext2_ihash, M_EXT2IHASH, M_WAITOK|M_ZERO);
 	--ext2_ihash;
 	lwkt_token_init(&ext2_ihash_token);
 }
@@ -79,7 +79,7 @@ ext2_uninit(struct vfsconf *vfc)
     
     lwkt_gettoken(&ilock, &ext2_ihash_token);
     if (ext2_ihashtbl)
-		free(ext2_ihashtbl, M_EXT2IHASH);
+		kfree(ext2_ihashtbl, M_EXT2IHASH);
     lwkt_reltoken(&ilock);
 
     return (0);

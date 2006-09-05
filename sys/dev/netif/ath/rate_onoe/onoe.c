@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_onoe/onoe.c,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_onoe/onoe.c,v 1.2 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -481,7 +481,7 @@ ath_rate_attach(struct ath_softc *sc)
 {
 	struct onoe_softc *osc;
 
-	osc = malloc(sizeof(struct onoe_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	osc = kmalloc(sizeof(struct onoe_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	osc->arc.arc_space = sizeof(struct onoe_node);
 	callout_init(&osc->timer);
 	ath_rate_sysctlattach(sc);
@@ -493,7 +493,7 @@ ath_rate_detach(struct ath_ratectrl *arc)
 {
 	struct onoe_softc *osc = (struct onoe_softc *) arc;
 
-	free(osc, M_DEVBUF);
+	kfree(osc, M_DEVBUF);
 }
 
 void

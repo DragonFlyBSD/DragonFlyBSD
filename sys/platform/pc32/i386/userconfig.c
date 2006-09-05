@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.6 2006/09/03 17:31:54 dillon Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.7 2006/09/05 00:55:45 dillon Exp $
  **/
 
 /**
@@ -576,7 +576,7 @@ addev(DEV_LIST *dev, DEV_LIST **list)
 
     DEV_LIST	*lp,*ap;
 
-    lp = (DEV_LIST *)malloc(sizeof(DEV_LIST),M_DEVL,M_WAITOK);
+    lp = (DEV_LIST *)kmalloc(sizeof(DEV_LIST),M_DEVL,M_WAITOK);
     bcopy(dev,lp,sizeof(DEV_LIST));			/* create copied record */
 
     if (*list)						/* list exists */
@@ -675,7 +675,7 @@ insdev(DEV_LIST *dev, DEV_LIST *list)
 {
     DEV_LIST	*lp,*ap;
 
-    lp = (DEV_LIST *)malloc(sizeof(DEV_LIST),M_DEVL,M_WAITOK);
+    lp = (DEV_LIST *)kmalloc(sizeof(DEV_LIST),M_DEVL,M_WAITOK);
     bcopy(dev,lp,sizeof(DEV_LIST));			/* create copied record */
 
     ap = findspot(lp,list);				/* find appropriate spot */
@@ -764,10 +764,10 @@ savelist(DEV_LIST *list, int active)
 		    name = list->device->id_name;
 		    id_pn = id_p->id_next;
 		    if (id_p->id_name)
-			    free(id_p->id_name, M_DEVL);
+			    kfree(id_p->id_name, M_DEVL);
 		    bcopy(list->device,id_p,sizeof(struct uc_device));
 		    save_resource(list->device);
-		    id_p->id_name = malloc(strlen(name) + 1, M_DEVL,M_WAITOK);
+		    id_p->id_name = kmalloc(strlen(name) + 1, M_DEVL,M_WAITOK);
 		    strcpy(id_p->id_name, name);
 		    id_pn->id_next = uc_devlist;
 		    id_p->id_next = id_pn;
@@ -777,10 +777,10 @@ savelist(DEV_LIST *list, int active)
 	    if (!id_pn)					/* not already on the list */
 	    {
 		name = list->device->id_name;
-		id_pn = malloc(sizeof(struct uc_device),M_DEVL,M_WAITOK);
+		id_pn = kmalloc(sizeof(struct uc_device),M_DEVL,M_WAITOK);
 		bcopy(list->device,id_pn,sizeof(struct uc_device));
 		save_resource(list->device);
-		id_pn->id_name = malloc(strlen(name) + 1, M_DEVL,M_WAITOK);
+		id_pn->id_name = kmalloc(strlen(name) + 1, M_DEVL,M_WAITOK);
 		strcpy(id_pn->id_name, name);
 		id_pn->id_next = uc_devlist;
 		uc_devlist = id_pn;			/* park at top of list */
@@ -810,7 +810,7 @@ nukelist(DEV_LIST *list)
     {
 	dp = list;
 	list = list->next;
-	free(dp,M_DEVL);
+	kfree(dp,M_DEVL);
     }
 }
 
@@ -3222,7 +3222,7 @@ load_devtab(void)
     char *name;
     int unit;
 
-    uc_devtab = malloc(sizeof(struct uc_device)*(count + 1),M_DEVL,M_WAITOK);
+    uc_devtab = kmalloc(sizeof(struct uc_device)*(count + 1),M_DEVL,M_WAITOK);
     bzero(uc_devtab, sizeof(struct uc_device) * (count + 1));
     dt = 0;
     for (i = 0; i < count; i++) {
@@ -3243,7 +3243,7 @@ load_devtab(void)
 	val = 0;
 	resource_int_value(name, unit, "disabled", &val);
 	uc_devtab[dt].id_enabled = !val;
-	uc_devtab[dt].id_name = malloc(strlen(name) + 1, M_DEVL,M_WAITOK);
+	uc_devtab[dt].id_name = kmalloc(strlen(name) + 1, M_DEVL,M_WAITOK);
 	strcpy(uc_devtab[dt].id_name, name);
 	dt++;
     }
@@ -3257,8 +3257,8 @@ free_devtab(void)
 
     for (i = 0; i < count; i++)
 	if (uc_devtab[i].id_name)
-	    free(uc_devtab[i].id_name, M_DEVL);
-    free(uc_devtab, M_DEVL);
+	    kfree(uc_devtab[i].id_name, M_DEVL);
+    kfree(uc_devtab, M_DEVL);
 }
     
 static struct uc_device *
@@ -3419,19 +3419,19 @@ struct uc_device 	*idev;
 		if (id_p->id_id == idev->id_id) {
 			id_pn = id_p->id_next;
 			if (id_p->id_name)
-				free(id_p->id_name, M_DEVL);
+				kfree(id_p->id_name, M_DEVL);
 			bcopy(idev,id_p,sizeof(struct uc_device));
 			save_resource(idev);
-			id_p->id_name = malloc(strlen(name)+1, M_DEVL,M_WAITOK);
+			id_p->id_name = kmalloc(strlen(name)+1, M_DEVL,M_WAITOK);
 			strcpy(id_p->id_name, name);
 			id_p->id_next = id_pn;
 			return 1;
 		}
 	}
-	id_pn = malloc(sizeof(struct uc_device),M_DEVL,M_WAITOK);
+	id_pn = kmalloc(sizeof(struct uc_device),M_DEVL,M_WAITOK);
 	bcopy(idev,id_pn,sizeof(struct uc_device));
 	save_resource(idev);
-	id_pn->id_name = malloc(strlen(name) + 1, M_DEVL,M_WAITOK);
+	id_pn->id_name = kmalloc(strlen(name) + 1, M_DEVL,M_WAITOK);
 	strcpy(id_pn->id_name, name);
 	id_pn->id_next = uc_devlist;
 	uc_devlist = id_pn;

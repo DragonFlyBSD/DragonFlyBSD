@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.17.2.14 2002/11/07 23:17:18 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.5 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.5 2005/10/12 17:35:55 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 
 struct snddev_channel {
 	SLIST_ENTRY(snddev_channel) link;
@@ -94,7 +94,7 @@ snd_mtxcreate(const char *desc, const char *type)
 #ifdef USING_MUTEX
 	struct mtx *m;
 
-	m = malloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
+	m = kmalloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (m == NULL)
 		return NULL;
 	mtx_init(m, desc, type, MTX_RECURSE);
@@ -112,7 +112,7 @@ snd_mtxfree(void *m)
 
 	mtx_assert(mtx, MA_OWNED);
 	mtx_destroy(mtx);
-	free(mtx, M_DEVBUF);
+	kfree(mtx, M_DEVBUF);
 #endif
 }
 
@@ -372,13 +372,13 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 		return NULL;
 	}
 
-	ch = malloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
+	ch = kmalloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (!ch)
 		return NULL;
 
 	ch->methods = kobj_create(cls, M_DEVBUF, M_WAITOK);
 	if (!ch->methods) {
-		free(ch, M_DEVBUF);
+		kfree(ch, M_DEVBUF);
 
 		return NULL;
 	}
@@ -395,7 +395,7 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 	if (err) {
 		device_printf(d->dev, "chn_init(%s) failed: err = %d\n", ch->name, err);
 		kobj_delete(ch->methods, M_DEVBUF);
-		free(ch, M_DEVBUF);
+		kfree(ch, M_DEVBUF);
 		(*pnum)--;
 
 		return NULL;
@@ -425,7 +425,7 @@ pcm_chn_destroy(struct pcm_channel *ch)
 		d->playcount--;
 
 	kobj_delete(ch->methods, M_DEVBUF);
-	free(ch, M_DEVBUF);
+	kfree(ch, M_DEVBUF);
 
 	return 0;
 }
@@ -438,7 +438,7 @@ pcm_chn_add(struct snddev_info *d, struct pcm_channel *ch, int mkdev)
 
 	snd_mtxlock(d->lock);
 
-	sce = malloc(sizeof(*sce), M_DEVBUF, M_WAITOK | M_ZERO);
+	sce = kmalloc(sizeof(*sce), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (!sce) {
 		snd_mtxunlock(d->lock);
 		return ENOMEM;
@@ -481,7 +481,7 @@ pcm_chn_remove(struct snddev_info *d, struct pcm_channel *ch, int rmdev)
 	return EINVAL;
 gotit:
 	SLIST_REMOVE(&d->channels, sce, snddev_channel, link);
-	free(sce, M_DEVBUF);
+	kfree(sce, M_DEVBUF);
 
 	if (rmdev) {
 		dsp_unregister(unit, --d->devcount);

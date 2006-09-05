@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.5 2005/03/12 14:33:40 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.6 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -140,7 +140,7 @@ AcpiOsQueueForExecution(UINT32 Priority, ACPI_OSD_EXEC_CALLBACK Function,
     }
 
     /* Note: Interrupt Context */
-    at = malloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
+    at = kmalloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
     lwkt_initmsg(&at->at_msg, &acpi_afree_rport, 0, 
 		lwkt_cmd_op_none, lwkt_cmd_op_none);
     at->at_function = Function;
@@ -156,7 +156,7 @@ AcpiOsQueueForExecution(UINT32 Priority, ACPI_OSD_EXEC_CALLBACK Function,
 static void
 acpi_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
-    free(msg, M_ACPITASK);
+    kfree(msg, M_ACPITASK);
 }
 
 UINT64

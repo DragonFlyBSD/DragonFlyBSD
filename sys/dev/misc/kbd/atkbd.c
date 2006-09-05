@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.10 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.11 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -354,11 +354,11 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		fkeymap_size =
 			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
 	} else if (*kbdp == NULL) {
-		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_WAITOK|M_ZERO);
-		state = malloc(sizeof(*state), M_DEVBUF, M_WAITOK|M_ZERO);
-		keymap = malloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
-		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
-		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
+		*kbdp = kbd = kmalloc(sizeof(*kbd), M_DEVBUF, M_WAITOK|M_ZERO);
+		state = kmalloc(sizeof(*state), M_DEVBUF, M_WAITOK|M_ZERO);
+		keymap = kmalloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
+		accmap = kmalloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
+		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
 		return 0;

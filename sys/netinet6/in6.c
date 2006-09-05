@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.19 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.20 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -905,7 +905,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		 * with M_NOWAIT.
 		 */
 		ia = (struct in6_ifaddr *)
-			malloc(sizeof(*ia), M_IFADDR, M_NOWAIT);
+			kmalloc(sizeof(*ia), M_IFADDR, M_NOWAIT);
 		if (ia == NULL)
 			return (ENOBUFS);
 		bzero((caddr_t)ia, sizeof(*ia));
@@ -1657,7 +1657,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 
 	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
 	   at interrupt time?  If so, need to fix if_addmulti. XXX */
-	in6m = (struct in6_multi *)malloc(sizeof(*in6m), M_IPMADDR, M_NOWAIT);
+	in6m = (struct in6_multi *)kmalloc(sizeof(*in6m), M_IPMADDR, M_NOWAIT);
 	if (in6m == NULL) {
 		crit_exit();
 		return (NULL);
@@ -1697,7 +1697,7 @@ in6_delmulti(struct in6_multi *in6m)
 		mld6_stop_listening(in6m);
 		ifma->ifma_protospec = 0;
 		LIST_REMOVE(in6m, in6m_entry);
-		free(in6m, M_IPMADDR);
+		kfree(in6m, M_IPMADDR);
 	}
 	/* XXX - should be separate API for when we have an ifma? */
 	if_delmulti(ifma->ifma_ifp, ifma->ifma_addr);
@@ -2354,7 +2354,7 @@ in6_domifattach(struct ifnet *ifp)
 {
 	struct in6_ifextra *ext;
 
-	ext = (struct in6_ifextra *)malloc(sizeof(*ext), M_IFADDR, M_WAITOK);
+	ext = (struct in6_ifextra *)kmalloc(sizeof(*ext), M_IFADDR, M_WAITOK);
 	bzero(ext, sizeof(*ext));
 
 	ext->in6_ifstat = (struct in6_ifstat *)malloc(sizeof(struct in6_ifstat),
@@ -2377,9 +2377,9 @@ in6_domifdetach(struct ifnet *ifp, void *aux)
 	struct in6_ifextra *ext = (struct in6_ifextra *)aux;
 	scope6_ifdetach(ext->scope6_id);
 	nd6_ifdetach(ext->nd_ifinfo);
-	free(ext->in6_ifstat, M_IFADDR);
-	free(ext->icmp6_ifstat, M_IFADDR);
-	free(ext, M_IFADDR);
+	kfree(ext->in6_ifstat, M_IFADDR);
+	kfree(ext->icmp6_ifstat, M_IFADDR);
+	kfree(ext, M_IFADDR);
 }
 
 /*

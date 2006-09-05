@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -839,7 +839,7 @@ cmi_attach(device_t dev)
 	char			status[SND_STATUSLEN];
 
 	d = device_get_softc(dev);
-	sc = malloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
@@ -918,7 +918,7 @@ cmi_attach(device_t dev)
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
 	if (sc)
-		free(sc, M_DEVBUF);
+		kfree(sc, M_DEVBUF);
 
 	return ENXIO;
 }
@@ -941,7 +941,7 @@ cmi_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->regid, sc->reg);
 	snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return 0;
 }

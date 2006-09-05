@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.13 2006/09/05 00:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,7 +135,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSIFDSTADDR:
 		if (ia == (struct ns_ifaddr *)0) {
 			oia = (struct ns_ifaddr *)
-				malloc(sizeof *ia, M_IFADDR, M_WAITOK);
+				kmalloc(sizeof *ia, M_IFADDR, M_WAITOK);
 			if (oia == (struct ns_ifaddr *)NULL)
 				return (ENOBUFS);
 			bzero((caddr_t)oia, sizeof(*oia));

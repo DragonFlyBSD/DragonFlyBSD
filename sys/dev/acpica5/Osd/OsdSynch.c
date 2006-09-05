@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.7 2006/06/04 21:09:48 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -103,7 +103,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
     if (InitialUnits > MaxUnits)
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
 
-    as = malloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
+    as = kmalloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
 
 #if __FreeBSD_version >= 500000
     mtx_init(&as->as_mtx, "ACPI semaphore", NULL, MTX_DEF);
@@ -136,7 +136,7 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
 #if __FreeBSD_version >= 500000
     mtx_destroy(&as->as_mtx);
 #endif
-    free(as, M_ACPISEM);
+    kfree(as, M_ACPISEM);
 #endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
@@ -350,7 +350,7 @@ AcpiOsCreateLock(ACPI_HANDLE *OutHandle)
 
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
-    lock = malloc(sizeof(*lock), M_ACPISEM, M_INTWAIT|M_ZERO);
+    lock = kmalloc(sizeof(*lock), M_ACPISEM, M_INTWAIT|M_ZERO);
     lockinit(lock, "oslck", 0, 0);
     *OutHandle = (ACPI_HANDLE)lock;
     return (AE_OK);
@@ -362,7 +362,7 @@ AcpiOsDeleteLock (ACPI_HANDLE Handle)
     struct lock *lock;
 
     if ((lock = (struct lock *)Handle) != NULL)
-	    free(lock, M_ACPISEM);
+	    kfree(lock, M_ACPISEM);
 }
 
 /*

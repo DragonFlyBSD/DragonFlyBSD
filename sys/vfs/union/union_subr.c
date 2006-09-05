@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.26 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.27 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -178,7 +178,7 @@ union_updatevp(struct union_node *un, struct vnode *uppervp,
 		if (un->un_lowervp) {
 			vrele(un->un_lowervp);
 			if (un->un_path) {
-				free(un->un_path, M_TEMP);
+				kfree(un->un_path, M_TEMP);
 				un->un_path = 0;
 			}
 		}
@@ -566,7 +566,7 @@ loop:
 	un->un_openl = 0;
 
 	if (cnp && (lowervp != NULLVP)) {
-		un->un_path = malloc(cnp->cn_namelen+1, M_TEMP, M_WAITOK);
+		un->un_path = kmalloc(cnp->cn_namelen+1, M_TEMP, M_WAITOK);
 		bcopy(cnp->cn_nameptr, un->un_path, cnp->cn_namelen);
 		un->un_path[cnp->cn_namelen] = '\0';
 	} else {
@@ -617,10 +617,10 @@ union_freevp(struct vnode *vp)
 		un->un_dirvp = NULL;
 	}
 	if (un->un_path) {
-		free(un->un_path, M_TEMP);
+		kfree(un->un_path, M_TEMP);
 		un->un_path = NULL;
 	}
-	free(un, M_TEMP);
+	kfree(un, M_TEMP);
 	return (0);
 }
 
@@ -655,7 +655,7 @@ union_copyfile(struct vnode *fvp, struct vnode *tvp, struct ucred *cred,
 	uio.uio_segflg = UIO_SYSSPACE;
 	uio.uio_offset = 0;
 
-	buf = malloc(MAXBSIZE, M_TEMP, M_WAITOK);
+	buf = kmalloc(MAXBSIZE, M_TEMP, M_WAITOK);
 
 	/* ugly loop follows... */
 	do {
@@ -704,7 +704,7 @@ union_copyfile(struct vnode *fvp, struct vnode *tvp, struct ucred *cred,
 		uio.uio_offset = offset + bufoffset;
 	} while (error == 0);
 
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (error);
 }
 
@@ -1068,7 +1068,7 @@ union_removed_upper(struct union_node *un)
 	if (un->un_dircache != 0) {
 		for (vpp = un->un_dircache; *vpp != NULLVP; vpp++)
 			vrele(*vpp);
-		free(un->un_dircache, M_TEMP);
+		kfree(un->un_dircache, M_TEMP);
 		un->un_dircache = 0;
 	}
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
 
 struct ad1816_info;
 
@@ -507,7 +507,7 @@ ad1816_release_resources(struct ad1816_info *ad1816, device_t dev)
 	if (ad1816->lock)
 		snd_mtxfree(ad1816->lock);
 
-     	free(ad1816, M_DEVBUF);
+     	kfree(ad1816, M_DEVBUF);
 }
 
 static int
@@ -588,7 +588,7 @@ ad1816_attach(device_t dev)
 	struct ad1816_info *ad1816;
     	char status[SND_STATUSLEN], status2[SND_STATUSLEN];
 
-	ad1816 = (struct ad1816_info *)malloc(sizeof *ad1816, M_DEVBUF, M_NOWAIT | M_ZERO);
+	ad1816 = (struct ad1816_info *)kmalloc(sizeof *ad1816, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (!ad1816) return ENXIO;
 
 	ad1816->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");

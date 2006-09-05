@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.12 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.13 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -223,13 +223,13 @@ en_pci_attach(pcici_t config_id, int unit)
     return;
   }
 
-  scp = malloc(sizeof(*scp), M_DEVBUF, M_WAITOK | M_ZERO);
+  scp = kmalloc(sizeof(*scp), M_DEVBUF, M_WAITOK | M_ZERO);
   sc = &scp->esc;
 
   retval = pci_map_mem(config_id, PCI_CBMA, (vm_offset_t *) &sc->en_base, &pa);
 
   if (!retval) {
-    free((caddr_t) scp, M_DEVBUF);
+    kfree((caddr_t) scp, M_DEVBUF);
     return;
   }
   enpcis[unit] = scp;			/* lock it in */

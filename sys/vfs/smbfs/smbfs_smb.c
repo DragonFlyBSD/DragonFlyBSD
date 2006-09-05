@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.7 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.8 2006/09/05 00:55:51 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1033,7 +1033,7 @@ static int
 smbfs_findopenLM2(struct smbfs_fctx *ctx, struct smbnode *dnp,
 	const char *wildcard, int wclen, int attr, struct smb_cred *scred)
 {
-	ctx->f_name = malloc(SMB_MAXFNAMELEN, M_SMBFSDATA, M_WAITOK);
+	ctx->f_name = kmalloc(SMB_MAXFNAMELEN, M_SMBFSDATA, M_WAITOK);
 	if (ctx->f_name == NULL)
 		return ENOMEM;
 	ctx->f_infolevel = SMB_DIALECT(SSTOVC(ctx->f_ssp)) < SMB_DIALECT_NTLM0_12 ?
@@ -1139,8 +1139,8 @@ smbfs_findnextLM2(struct smbfs_fctx *ctx, int limit)
 		 */
 		if (ctx->f_rnamelen <= nmlen) {
 			if (ctx->f_rname)
-				free(ctx->f_rname, M_SMBFSDATA);
-			ctx->f_rname = malloc(nmlen + 1, M_SMBFSDATA, M_WAITOK);
+				kfree(ctx->f_rname, M_SMBFSDATA);
+			ctx->f_rname = kmalloc(nmlen + 1, M_SMBFSDATA, M_WAITOK);
 			ctx->f_rnamelen = nmlen;
 		}
 		bcopy(ctx->f_name, ctx->f_rname, nmlen);
@@ -1158,7 +1158,7 @@ static int
 smbfs_findcloseLM2(struct smbfs_fctx *ctx)
 {
 	if (ctx->f_name)
-		free(ctx->f_name, M_SMBFSDATA);
+		kfree(ctx->f_name, M_SMBFSDATA);
 	if (ctx->f_t2)
 		smb_t2_done(ctx->f_t2);
 	if ((ctx->f_flags & SMBFS_RDD_NOCLOSE) == 0)
@@ -1173,7 +1173,7 @@ smbfs_findopen(struct smbnode *dnp, const char *wildcard, int wclen, int attr,
 	struct smbfs_fctx *ctx;
 	int error;
 
-	ctx = malloc(sizeof(*ctx), M_SMBFSDATA, M_WAITOK);
+	ctx = kmalloc(sizeof(*ctx), M_SMBFSDATA, M_WAITOK);
 	if (ctx == NULL)
 		return ENOMEM;
 	bzero(ctx, sizeof(*ctx));
@@ -1232,8 +1232,8 @@ smbfs_findclose(struct smbfs_fctx *ctx, struct smb_cred *scred)
 	} else
 		smbfs_findcloseLM2(ctx);
 	if (ctx->f_rname)
-		free(ctx->f_rname, M_SMBFSDATA);
-	free(ctx, M_SMBFSDATA);
+		kfree(ctx->f_rname, M_SMBFSDATA);
+	kfree(ctx, M_SMBFSDATA);
 	return 0;
 }
 

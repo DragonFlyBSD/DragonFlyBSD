@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_getdirentries.c,v 1.2 2006/06/05 07:26:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_getdirentries.c,v 1.3 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include "opt_compatdf12.h"
@@ -70,19 +70,19 @@ common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t coun
 	else
 		len = count;
 
-	buf = malloc(len, M_TEMP, M_WAITOK);
+	buf = kmalloc(len, M_TEMP, M_WAITOK);
 
 	error = kern_getdirentries(fd, buf, len,
 	    base, &bytes_transfered, UIO_SYSSPACE);
 
 	if (error) {
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 		return(error);
 	}
 
 	ndp = (struct dirent *)buf;
 	outbuf = usr_buf;
-	destdp = malloc(PADDED_SIZE(MAX_NAMELEN), M_TEMP, M_WAITOK);
+	destdp = kmalloc(PADDED_SIZE(MAX_NAMELEN), M_TEMP, M_WAITOK);
 
 	for (; (char *)ndp < buf + bytes_transfered; ndp = _DIRENT_NEXT(ndp)) {
 		if ((char *)_DIRENT_NEXT(ndp) > buf + bytes_transfered)
@@ -107,8 +107,8 @@ common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t coun
 		len -= PADDED_SIZE(destdp->df12_d_namlen);
 	}
 
-	free(destdp, M_TEMP);
-	free(buf, M_TEMP);
+	kfree(destdp, M_TEMP);
+	kfree(buf, M_TEMP);
 	*result = outbuf - usr_buf;
 	return (0);
 }

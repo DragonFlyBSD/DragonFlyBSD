@@ -1,5 +1,5 @@
 /*	$KAME: altq_rio.c,v 1.17 2003/07/10 12:07:49 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rio.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rio.c,v 1.2 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -160,7 +160,7 @@ rio_alloc(int weight, struct redparams *params, int flags, int pkttime)
 	int w, i;
 	int npkts_per_sec;
 
-	rp = malloc(sizeof(*rp), M_ALTQ, M_WAITOK | M_ZERO);
+	rp = kmalloc(sizeof(*rp), M_ALTQ, M_WAITOK | M_ZERO);
 
 	rp->rio_flags = flags;
 	if (pkttime == 0)
@@ -244,7 +244,7 @@ void
 rio_destroy(rio_t *rp)
 {
 	wtab_destroy(rp->rio_wtab);
-	free(rp, M_ALTQ);
+	kfree(rp, M_ALTQ);
 }
 
 void

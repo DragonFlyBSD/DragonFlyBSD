@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_table.c,v 1.5 2004/07/28 06:14:44 kan Exp $	*/
 /*	$OpenBSD: pf_table.c,v 1.47 2004/03/09 21:44:41 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/pf_table.c,v 1.3 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_table.c,v 1.4 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1837,9 +1837,9 @@ pfr_destroy_ktable(struct pfr_ktable *kt, int flushaddr)
 		pfr_destroy_kentries(&addrq);
 	}
 	if (kt->pfrkt_ip4 != NULL)
-		free((caddr_t)kt->pfrkt_ip4, M_RTABLE);
+		kfree((caddr_t)kt->pfrkt_ip4, M_RTABLE);
 	if (kt->pfrkt_ip6 != NULL)
-		free((caddr_t)kt->pfrkt_ip6, M_RTABLE);
+		kfree((caddr_t)kt->pfrkt_ip6, M_RTABLE);
 	if (kt->pfrkt_shadow != NULL)
 		pfr_destroy_ktable(kt->pfrkt_shadow, flushaddr);
 	if (kt->pfrkt_rs != NULL) {

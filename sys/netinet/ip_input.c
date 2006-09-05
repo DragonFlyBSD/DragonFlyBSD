@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.62 2006/05/20 06:32:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.63 2006/09/05 00:55:48 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -1099,7 +1099,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		if (port == NULL)
 			return;
 
-		msg = malloc(sizeof(struct netmsg_transport_packet), M_LWKTMSG,
+		msg = kmalloc(sizeof(struct netmsg_transport_packet), M_LWKTMSG,
 			     M_INTWAIT | M_NULLOK);
 		if (msg == NULL)
 			goto bad;

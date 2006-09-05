@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.44 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.45 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -400,9 +400,9 @@ sk_vpd_read(struct sk_softc *sc)
 	int i, pos = 0;
 
 	if (sc->sk_vpd_prodname != NULL)
-		free(sc->sk_vpd_prodname, M_DEVBUF);
+		kfree(sc->sk_vpd_prodname, M_DEVBUF);
 	if (sc->sk_vpd_readonly != NULL)
-		free(sc->sk_vpd_readonly, M_DEVBUF);
+		kfree(sc->sk_vpd_readonly, M_DEVBUF);
 	sc->sk_vpd_prodname = NULL;
 	sc->sk_vpd_readonly = NULL;
 
@@ -415,7 +415,7 @@ sk_vpd_read(struct sk_softc *sc)
 	}
 
 	pos += sizeof(res);
-	sc->sk_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
+	sc->sk_vpd_prodname = kmalloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len; i++)
 		sc->sk_vpd_prodname[i] = sk_vpd_readbyte(sc, i + pos);
 	sc->sk_vpd_prodname[i] = '\0';
@@ -430,7 +430,7 @@ sk_vpd_read(struct sk_softc *sc)
 	}
 
 	pos += sizeof(res);
-	sc->sk_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_INTWAIT);
+	sc->sk_vpd_readonly = kmalloc(res.vr_len, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len + 1; i++)
 		sc->sk_vpd_readonly[i] = sk_vpd_readbyte(sc, i + pos);
 }
@@ -1171,7 +1171,7 @@ sk_attach(device_t dev)
 	int i, port;
 
 	port = *(int *)device_get_ivars(dev);
-	free(device_get_ivars(dev), M_DEVBUF);
+	kfree(device_get_ivars(dev), M_DEVBUF);
 	device_set_ivars(dev, NULL);
 	sc_if->sk_dev = dev;
 	callout_init(&sc_if->sk_tick_timer);
@@ -1505,13 +1505,13 @@ skc_attach(device_t dev)
 	/* Announce the product name. */
 	printf("skc%d: %s\n", sc->sk_unit, sc->sk_vpd_prodname);
 	sc->sk_devs[SK_PORT_A] = device_add_child(dev, "sk", -1);
-	port = malloc(sizeof(int), M_DEVBUF, M_WAITOK);
+	port = kmalloc(sizeof(int), M_DEVBUF, M_WAITOK);
 	*port = SK_PORT_A;
 	device_set_ivars(sc->sk_devs[SK_PORT_A], port);
 
 	if (!(sk_win_read_1(sc, SK_CONFIG) & SK_CONFIG_SINGLEMAC)) {
 		sc->sk_devs[SK_PORT_B] = device_add_child(dev, "sk", -1);
-		port = malloc(sizeof(int), M_DEVBUF, M_WAITOK);
+		port = kmalloc(sizeof(int), M_DEVBUF, M_WAITOK);
 		*port = SK_PORT_B;
 		device_set_ivars(sc->sk_devs[SK_PORT_B], port);
 	}

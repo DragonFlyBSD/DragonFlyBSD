@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.29 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.30 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -646,7 +646,7 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 	inp = so->so_pcb;
 	if (!inp) {
 		crit_exit();
-		free(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 		return EINVAL;
 	}
 	sin6->sin6_port = inp->inp_lport;
@@ -681,7 +681,7 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	inp = so->so_pcb;
 	if (!inp) {
 		crit_exit();
-		free(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 		return EINVAL;
 	}
 	sin6->sin6_port = inp->inp_fport;
@@ -920,7 +920,7 @@ in6_pcbpurgeif0(struct in6pcb *head, struct ifnet *ifp)
 				if (imm->i6mm_maddr->in6m_ifp == ifp) {
 					LIST_REMOVE(imm, i6mm_chain);
 					in6_delmulti(imm->i6mm_maddr);
-					free(imm, M_IPMADDR);
+					kfree(imm, M_IPMADDR);
 				}
 			}
 		}

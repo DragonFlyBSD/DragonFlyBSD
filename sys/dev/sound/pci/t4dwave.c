@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -816,7 +816,7 @@ tr_pci_attach(device_t dev)
 	int		i;
 	char 		status[SND_STATUSLEN];
 
-	if ((tr = malloc(sizeof(*tr), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((tr = kmalloc(sizeof(*tr), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -889,7 +889,7 @@ bad:
 	if (tr->irq) bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	if (tr->parent_dmat) bus_dma_tag_destroy(tr->parent_dmat);
 	if (tr->lock) snd_mtxfree(tr->lock);
-	free(tr, M_DEVBUF);
+	kfree(tr, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -909,7 +909,7 @@ tr_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	bus_dma_tag_destroy(tr->parent_dmat);
 	snd_mtxfree(tr->lock);
-	free(tr, M_DEVBUF);
+	kfree(tr, M_DEVBUF);
 
 	return 0;
 }

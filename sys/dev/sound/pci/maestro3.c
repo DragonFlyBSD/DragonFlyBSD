@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.6 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include "gnu/maestro3_reg.h"
 #include "gnu/maestro3_dsp.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.6 2006/08/03 16:40:47 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1091,7 +1091,7 @@ m3_pci_attach(device_t dev)
 
 	M3_DEBUG(CALL, ("m3_pci_attach\n"));
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -1204,7 +1204,7 @@ m3_pci_attach(device_t dev)
 	/* Create the buffer for saving the card state during suspend */
 	len = sizeof(u_int16_t) * (REV_B_CODE_MEMORY_LENGTH +
 	    REV_B_DATA_MEMORY_LENGTH);
-	sc->savemem = (u_int16_t*)malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc->savemem = (u_int16_t*)kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc->savemem == NULL) {
 		device_printf(dev, "Failed to create suspend buffer\n");
 		goto bad;
@@ -1228,7 +1228,7 @@ m3_pci_attach(device_t dev)
 	if (sc->parent_dmat) {
 		bus_dma_tag_destroy(sc->parent_dmat);
 	}
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -1251,8 +1251,8 @@ m3_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
 	bus_dma_tag_destroy(sc->parent_dmat);
 
-	free(sc->savemem, M_DEVBUF);
-	free(sc, M_DEVBUF);
+	kfree(sc->savemem, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return 0;
 }
 

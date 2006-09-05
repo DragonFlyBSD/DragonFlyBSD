@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.7 2004/08/25 01:53:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.8 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1562,7 +1562,7 @@ ahc_alloc_tstate(struct ahc_softc *ahc, u_int scsi_id, char channel)
 	 && ahc->enabled_targets[scsi_id] != master_tstate)
 		panic("%s: ahc_alloc_tstate - Target already allocated",
 		      ahc_name(ahc));
-	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_INTWAIT);
+	tstate = kmalloc(sizeof(*tstate), M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * If we have allocated a master tstate, copy user settings from
@@ -1609,7 +1609,7 @@ ahc_free_tstate(struct ahc_softc *ahc, u_int scsi_id, char channel, int force)
 		scsi_id += 8;
 	tstate = ahc->enabled_targets[scsi_id];
 	if (tstate != NULL)
-		free(tstate, M_DEVBUF);
+		kfree(tstate, M_DEVBUF);
 	ahc->enabled_targets[scsi_id] = NULL;
 }
 #endif
@@ -3802,7 +3802,7 @@ ahc_alloc(void *platform_arg, char *name)
 	int	i;
 
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	ahc = malloc(sizeof(*ahc), M_DEVBUF, M_WAITOK);
+	ahc = kmalloc(sizeof(*ahc), M_DEVBUF, M_WAITOK);
 #else
 	ahc = device_get_softc((device_t)platform_arg);
 #endif
@@ -3937,7 +3937,7 @@ void
 ahc_set_name(struct ahc_softc *ahc, char *name)
 {
 	if (ahc->name != NULL)
-		free(ahc->name, M_DEVBUF);
+		kfree(ahc->name, M_DEVBUF);
 	ahc->name = name;
 }
 
@@ -3992,25 +3992,25 @@ ahc_free(struct ahc_softc *ahc)
 				lstate = tstate->enabled_luns[j];
 				if (lstate != NULL) {
 					xpt_free_path(lstate->path);
-					free(lstate, M_DEVBUF);
+					kfree(lstate, M_DEVBUF);
 				}
 			}
 #endif
-			free(tstate, M_DEVBUF);
+			kfree(tstate, M_DEVBUF);
 		}
 	}
 #ifdef AHC_TARGET_MODE
 	if (ahc->black_hole != NULL) {
 		xpt_free_path(ahc->black_hole->path);
-		free(ahc->black_hole, M_DEVBUF);
+		kfree(ahc->black_hole, M_DEVBUF);
 	}
 #endif
 	if (ahc->name != NULL)
-		free(ahc->name, M_DEVBUF);
+		kfree(ahc->name, M_DEVBUF);
 	if (ahc->seep_config != NULL)
-		free(ahc->seep_config, M_DEVBUF);
+		kfree(ahc->seep_config, M_DEVBUF);
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	free(ahc, M_DEVBUF);
+	kfree(ahc, M_DEVBUF);
 #endif
 	return;
 }
@@ -4391,7 +4391,7 @@ ahc_fini_scbdata(struct ahc_softc *ahc)
 			ahc_dmamem_free(ahc, scb_data->sg_dmat,
 					sg_map->sg_vaddr,
 					sg_map->sg_dmamap);
-			free(sg_map, M_DEVBUF);
+			kfree(sg_map, M_DEVBUF);
 		}
 		ahc_dma_tag_destroy(ahc, scb_data->sg_dmat);
 	}
@@ -4420,7 +4420,7 @@ ahc_fini_scbdata(struct ahc_softc *ahc)
 		break;
 	}
 	if (scb_data->scbarray != NULL)
-		free(scb_data->scbarray, M_DEVBUF);
+		kfree(scb_data->scbarray, M_DEVBUF);
 }
 
 void
@@ -4441,13 +4441,13 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 
 	next_scb = &scb_data->scbarray[scb_data->numscbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
+	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of SCBS */
 	if (ahc_dmamem_alloc(ahc, scb_data->sg_dmat,
 			     (void **)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
-		free(sg_map, M_DEVBUF);
+		kfree(sg_map, M_DEVBUF);
 		return;
 	}
 
@@ -4467,7 +4467,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 #ifndef __linux__
 		int error;
 #endif
-		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_INTWAIT);
+		pdata = kmalloc(sizeof(*pdata), M_DEVBUF, M_INTWAIT);
 		next_scb->platform_data = pdata;
 		next_scb->sg_map = sg_map;
 		next_scb->sg_list = segs;
@@ -6386,7 +6386,7 @@ ahc_loadseq(struct ahc_softc *ahc)
 	ahc->num_critical_sections = cs_count;
 	if (cs_count != 0) {
 		cs_count *= sizeof(struct cs);
-		ahc->critical_sections = malloc(cs_count, M_DEVBUF, M_INTWAIT);
+		ahc->critical_sections = kmalloc(cs_count, M_DEVBUF, M_INTWAIT);
 		memcpy(ahc->critical_sections, cs_table, cs_count);
 	}
 	ahc_outb(ahc, SEQCTL, PERRORDIS|FAILDIS|FASTMODE);
@@ -7001,13 +7001,13 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 				return;
 			}
 		}
-		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_INTWAIT | M_ZERO);
+		lstate = kmalloc(sizeof(*lstate), M_DEVBUF, M_INTWAIT | M_ZERO);
 		status = xpt_create_path(&lstate->path, /*periph*/NULL,
 					 xpt_path_path_id(ccb->ccb_h.path),
 					 xpt_path_target_id(ccb->ccb_h.path),
 					 xpt_path_lun_id(ccb->ccb_h.path));
 		if (status != CAM_REQ_CMP) {
-			free(lstate, M_DEVBUF);
+			kfree(lstate, M_DEVBUF);
 			xpt_print_path(ccb->ccb_h.path);
 			printf("Couldn't allocate path\n");
 			ccb->ccb_h.status = CAM_RESRC_UNAVAIL;
@@ -7128,7 +7128,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		xpt_print_path(ccb->ccb_h.path);
 		printf("Target mode disabled\n");
 		xpt_free_path(lstate->path);
-		free(lstate, M_DEVBUF);
+		kfree(lstate, M_DEVBUF);
 
 		ahc_pause(ahc);
 		/* Can we clean up the target too? */

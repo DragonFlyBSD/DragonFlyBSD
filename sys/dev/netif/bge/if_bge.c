@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.54 2006/08/12 05:17:03 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.55 2006/09/05 00:55:39 dillon Exp $
  *
  */
 
@@ -373,9 +373,9 @@ bge_vpd_read(struct bge_softc *sc)
 	struct vpd_res res;
 
 	if (sc->bge_vpd_prodname != NULL)
-		free(sc->bge_vpd_prodname, M_DEVBUF);
+		kfree(sc->bge_vpd_prodname, M_DEVBUF);
 	if (sc->bge_vpd_readonly != NULL)
-		free(sc->bge_vpd_readonly, M_DEVBUF);
+		kfree(sc->bge_vpd_readonly, M_DEVBUF);
 	sc->bge_vpd_prodname = NULL;
 	sc->bge_vpd_readonly = NULL;
 
@@ -389,7 +389,7 @@ bge_vpd_read(struct bge_softc *sc)
         }
 
 	pos += sizeof(res);
-	sc->bge_vpd_prodname = malloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
+	sc->bge_vpd_prodname = kmalloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len; i++)
 		sc->bge_vpd_prodname[i] = bge_vpd_readbyte(sc, i + pos);
 	sc->bge_vpd_prodname[i] = '\0';
@@ -405,7 +405,7 @@ bge_vpd_read(struct bge_softc *sc)
 	}
 
 	pos += sizeof(res);
-	sc->bge_vpd_readonly = malloc(res.vr_len, M_DEVBUF, M_INTWAIT);
+	sc->bge_vpd_readonly = kmalloc(res.vr_len, M_DEVBUF, M_INTWAIT);
 	for (i = 0; i < res.vr_len + 1; i++)
 		sc->bge_vpd_readonly[i] = bge_vpd_readbyte(sc, i + pos);
 }
@@ -1500,13 +1500,13 @@ bge_probe(device_t dev)
 	bge_vpd_read(sc);
 	device_set_desc(dev, sc->bge_vpd_prodname);
 #endif
-	descbuf = malloc(BGE_DEVDESC_MAX, M_TEMP, M_WAITOK);
+	descbuf = kmalloc(BGE_DEVDESC_MAX, M_TEMP, M_WAITOK);
 	snprintf(descbuf, BGE_DEVDESC_MAX, "%s, ASIC rev. %#04x", t->bge_name,
 	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);
 	device_set_desc_copy(dev, descbuf);
 	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL)
 		sc->bge_no_3_led = 1;
-	free(descbuf, M_TEMP);
+	kfree(descbuf, M_TEMP);
 	return(0);
 }
 
@@ -1795,10 +1795,10 @@ bge_release_resources(struct bge_softc *sc)
         dev = sc->bge_dev;
 
 	if (sc->bge_vpd_prodname != NULL)
-		free(sc->bge_vpd_prodname, M_DEVBUF);
+		kfree(sc->bge_vpd_prodname, M_DEVBUF);
 
 	if (sc->bge_vpd_readonly != NULL)
-		free(sc->bge_vpd_readonly, M_DEVBUF);
+		kfree(sc->bge_vpd_readonly, M_DEVBUF);
 
         if (sc->bge_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bge_irq);

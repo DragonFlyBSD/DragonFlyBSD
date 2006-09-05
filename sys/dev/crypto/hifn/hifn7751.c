@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.10 2005/10/12 17:35:49 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.11 2006/09/05 00:55:36 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -2221,7 +2221,7 @@ hifn_process(void *arg, struct cryptop *crp, int hint)
 		goto errout;
 	}
 
-	cmd = malloc(sizeof(struct hifn_command), M_DEVBUF, M_INTWAIT | M_ZERO);
+	cmd = kmalloc(sizeof(struct hifn_command), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	if (crp->crp_flags & CRYPTO_F_IMBUF) {
 		cmd->src_m = (struct mbuf *)crp->crp_buf;
@@ -2416,14 +2416,14 @@ hifn_process(void *arg, struct cryptop *crp, int hint)
 		if (hifn_debug)
 			device_printf(sc->sc_dev, "requeue request\n");
 #endif
-		free(cmd, M_DEVBUF);
+		kfree(cmd, M_DEVBUF);
 		sc->sc_needwakeup |= CRYPTO_SYMQ;
 		return (err);
 	}
 
 errout:
 	if (cmd != NULL)
-		free(cmd, M_DEVBUF);
+		kfree(cmd, M_DEVBUF);
 	if (err == EINVAL)
 		hifnstats.hst_invalid++;
 	else
@@ -2490,7 +2490,7 @@ hifn_abort(struct hifn_softc *sc)
 			bus_dmamap_unload(sc->sc_dmat, cmd->src_map);
 			bus_dmamap_destroy(sc->sc_dmat, cmd->src_map);
 
-			free(cmd, M_DEVBUF);
+			kfree(cmd, M_DEVBUF);
 			if (crp->crp_etype != EAGAIN)
 				crypto_done(crp);
 		}
@@ -2624,7 +2624,7 @@ hifn_callback(struct hifn_softc *sc, struct hifn_command *cmd, u_int8_t *macbuf)
 	}
 	bus_dmamap_unload(sc->sc_dmat, cmd->src_map);
 	bus_dmamap_destroy(sc->sc_dmat, cmd->src_map);
-	free(cmd, M_DEVBUF);
+	kfree(cmd, M_DEVBUF);
 	crypto_done(crp);
 }
 

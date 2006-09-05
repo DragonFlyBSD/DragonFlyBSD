@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.33 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.34 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -494,13 +494,13 @@ dump_conf(dummy)
 	char *path;
 	dev_t dev;
 
-	path = malloc(MNAMELEN, M_TEMP, M_WAITOK);
+	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
 		dev = kgetdiskbyname(path);
 		if (dev != NODEV)
 			dumpdev = dev;
 	}
-	free(path, M_TEMP);
+	kfree(path, M_TEMP);
 	if (setdumpdev(dumpdev) != 0)
 		dumpdev = NODEV;
 }

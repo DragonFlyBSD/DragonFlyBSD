@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.22 2006/08/03 16:40:46 swildner Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.23 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -144,12 +144,12 @@ agp_find_display(void)
 			if (pci_get_class(dev) == PCIC_DISPLAY
 			    && pci_get_subclass(dev) == PCIS_DISPLAY_VGA)
 				if (agp_find_caps(dev)) {
-					free(kids, M_TEMP);
+					kfree(kids, M_TEMP);
 					return dev;
 				}
 					
 		}
-		free(kids, M_TEMP);
+		kfree(kids, M_TEMP);
 	}
 
 	return 0;
@@ -172,14 +172,14 @@ agp_alloc_gatt(device_t dev)
 		return NULL;
 	}
 
-	gatt = malloc(sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
+	gatt = kmalloc(sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
 	gatt->ag_entries = entries;
 	gatt->ag_virtual = contigmalloc(entries * sizeof(u_int32_t), M_AGP, 
 					M_WAITOK, 0, ~0, PAGE_SIZE, 0);
 	if (!gatt->ag_virtual) {
 		if (bootverbose)
 			device_printf(dev, "contiguous allocation failed\n");
-		free(gatt, M_AGP);
+		kfree(gatt, M_AGP);
 		return 0;
 	}
 	bzero(gatt->ag_virtual, entries * sizeof(u_int32_t));
@@ -194,7 +194,7 @@ agp_free_gatt(struct agp_gatt *gatt)
 {
 	contigfree(gatt->ag_virtual,
 		   gatt->ag_entries * sizeof(u_int32_t), M_AGP);
-	free(gatt, M_AGP);
+	kfree(gatt, M_AGP);
 }
 
 static int agp_max[][2] = {
@@ -437,7 +437,7 @@ agp_generic_alloc_memory(device_t dev, int type, vm_size_t size)
 		return 0;
 	}
 
-	mem = malloc(sizeof *mem, M_AGP, M_INTWAIT);
+	mem = kmalloc(sizeof *mem, M_AGP, M_INTWAIT);
 	mem->am_id = sc->as_nextid++;
 	mem->am_size = size;
 	mem->am_type = 0;
@@ -462,7 +462,7 @@ agp_generic_free_memory(device_t dev, struct agp_memory *mem)
 	sc->as_allocated -= mem->am_size;
 	TAILQ_REMOVE(&sc->as_memory, mem, am_link);
 	vm_object_deallocate(mem->am_obj);
-	free(mem, M_AGP);
+	kfree(mem, M_AGP);
 	return 0;
 }
 

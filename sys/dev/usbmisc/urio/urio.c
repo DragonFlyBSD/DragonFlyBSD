@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.12 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.13 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -561,7 +561,7 @@ urioioctl(struct dev_ioctl_args *ap)
 			req.bmRequestType & UT_READ ?
 			UIO_READ : UIO_WRITE;
 		uio.uio_td = curthread;
-		ptr = malloc(len, M_TEMP, M_WAITOK);
+		ptr = kmalloc(len, M_TEMP, M_WAITOK);
 		if (uio.uio_rw == UIO_WRITE) {
 			error = uiomove(ptr, len, &uio);
 			if (error)
@@ -585,7 +585,7 @@ urioioctl(struct dev_ioctl_args *ap)
 
 ret:
 	if (ptr)
-		free(ptr, M_TEMP);
+		kfree(ptr, M_TEMP);
 	return error;
 }
 

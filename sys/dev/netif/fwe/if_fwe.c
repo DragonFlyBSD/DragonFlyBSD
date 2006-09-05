@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.24 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.25 2006/09/05 00:55:40 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -234,7 +234,7 @@ fwe_stop(struct fwe_softc *fwe)
 
 		for (i = 0; i < xferq->bnchunk; i ++)
 			m_freem(xferq->bulkxfer[i].mbuf);
-		free(xferq->bulkxfer, M_FWE);
+		kfree(xferq->bulkxfer, M_FWE);
 
 		for (xfer = STAILQ_FIRST(&fwe->xferlist); xfer != NULL;
 					xfer = next) {

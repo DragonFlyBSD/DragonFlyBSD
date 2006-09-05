@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.11 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.12 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ ida_free(struct ida_softc *ida)
 		bus_dma_tag_destroy(ida->hwqcb_dmat);
 
 	if (ida->qcbs != NULL)
-		free(ida->qcbs, M_DEVBUF);
+		kfree(ida->qcbs, M_DEVBUF);
 
 	if (ida->ih != NULL)
                 bus_teardown_intr(ida->dev, ida->irq, ida->ih);

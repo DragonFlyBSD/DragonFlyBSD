@@ -35,7 +35,7 @@
  *
  * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
  * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.26 2006/08/06 12:49:04 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.27 2006/09/05 00:55:39 dillon Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -651,7 +651,7 @@ awi_stop(struct awi_softc *sc)
 	ifq_purge(&ifp->if_snd);
 	while ((bp = TAILQ_FIRST(&sc->sc_scan)) != NULL) {
 		TAILQ_REMOVE(&sc->sc_scan, bp, list);
-		free(bp, M_DEVBUF);
+		kfree(bp, M_DEVBUF);
 	}
 }
 
@@ -1404,7 +1404,7 @@ awi_start_scan(struct awi_softc *sc)
 
 	while ((bp = TAILQ_FIRST(&sc->sc_scan)) != NULL) {
 		TAILQ_REMOVE(&sc->sc_scan, bp, list);
-		free(bp, M_DEVBUF);
+		kfree(bp, M_DEVBUF);
 	}
 	if (!sc->sc_mib_local.Network_Mode && sc->sc_no_bssid) {
 		memset(&sc->sc_bss, 0, sizeof(sc->sc_bss));
@@ -1640,7 +1640,7 @@ awi_recv_beacon(struct awi_softc *sc, struct mbuf *m0, u_int32_t rxts,
 			break;
 	}
 	if (bp == NULL) {
-		bp = malloc(sizeof(struct awi_bss), M_DEVBUF, M_INTWAIT);
+		bp = kmalloc(sizeof(struct awi_bss), M_DEVBUF, M_INTWAIT);
 		if (bp == NULL)
 			return;
 		TAILQ_INSERT_TAIL(&sc->sc_scan, bp, list);

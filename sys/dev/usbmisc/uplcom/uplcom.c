@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.17 2003/11/16 13:13:16 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.7 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.8 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*-
@@ -294,7 +294,7 @@ USB_ATTACH(uplcom)
 	usbd_status err;
 	int i;
 
-	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
+	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uplcom_softc));
@@ -463,11 +463,11 @@ USB_ATTACH(uplcom)
 
 	ucom_attach(&sc->sc_ucom);
 
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_SUCCESS_RETURN;
 
 error:
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -481,7 +481,7 @@ USB_DETACH(uplcom)
 	if (sc->sc_intr_pipe != NULL) {
 		usbd_abort_pipe(sc->sc_intr_pipe);
 		usbd_close_pipe(sc->sc_intr_pipe);
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 
@@ -719,7 +719,7 @@ uplcom_open(void *addr, int portno)
 
 	if (sc->sc_intr_number != -1 && sc->sc_intr_pipe == NULL) {
 		sc->sc_status = 0; /* clear status bit */
-		sc->sc_intr_buf = malloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+		sc->sc_intr_buf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
 		err = usbd_open_pipe_intr(sc->sc_intr_iface,
 					  sc->sc_intr_number,
 					  USBD_SHORT_XFER_OK,
@@ -762,7 +762,7 @@ uplcom_close(void *addr, int portno)
 			printf("%s: close interrupt pipe failed: %s\n",
 			       USBDEVNAME(sc->sc_ucom.sc_dev),
 			       usbd_errstr(err));
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 }

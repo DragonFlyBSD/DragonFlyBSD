@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.13 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.14 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +250,7 @@ mly_get_controllerinfo(struct mly_softc *sc)
     debug_called(1);
 
     if (sc->mly_controllerinfo != NULL)
-	free(sc->mly_controllerinfo, M_DEVBUF);
+	kfree(sc->mly_controllerinfo, M_DEVBUF);
 
     /* build the getcontrollerinfo ioctl and send it */
     bzero(&mci, sizeof(mci));
@@ -263,7 +263,7 @@ mly_get_controllerinfo(struct mly_softc *sc)
 	return(EIO);
 
     if (sc->mly_controllerparam != NULL)
-	free(sc->mly_controllerparam, M_DEVBUF);
+	kfree(sc->mly_controllerparam, M_DEVBUF);
 
     /* build the getcontrollerparameter ioctl and send it */
     bzero(&mci, sizeof(mci));
@@ -323,7 +323,7 @@ mly_rescan_btl(struct mly_softc *sc, int bus, int target)
 	return;				/* we'll be retried soon */
 
     /* set up the data buffer */
-    mc->mc_data = malloc(sizeof(union mly_devinfo), M_DEVBUF, M_INTWAIT | M_ZERO);
+    mc->mc_data = kmalloc(sizeof(union mly_devinfo), M_DEVBUF, M_INTWAIT | M_ZERO);
     mc->mc_flags |= MLY_CMD_DATAIN;
     mc->mc_complete = mly_complete_rescan;
 
@@ -409,7 +409,7 @@ mly_complete_rescan(struct mly_command *mc)
 	 * We don't care about this, so we do nothing about it.
 	 */
     }
-    free(mc->mc_data, M_DEVBUF);
+    kfree(mc->mc_data, M_DEVBUF);
     mly_release_command(mc);
 }
 
@@ -444,7 +444,7 @@ mly_get_eventstatus(struct mly_softc *sc)
 
     debug(1, "initial change counter %d, event counter %d", mh->change_counter, mh->next_event);
     
-    free(mh, M_DEVBUF);
+    kfree(mh, M_DEVBUF);
     return(0);
 }
 
@@ -557,7 +557,7 @@ mly_ioctl(struct mly_softc *sc, struct mly_command_ioctl *ioctl, void **data, si
     if (data != NULL) {
 	if (*data == NULL) {
 	    /* allocate data buffer */
-	    mc->mc_data = malloc(datasize, M_DEVBUF, M_INTWAIT);
+	    mc->mc_data = kmalloc(datasize, M_DEVBUF, M_INTWAIT);
 	    mc->mc_flags |= MLY_CMD_DATAIN;
 	} else {
 	    mc->mc_data = *data;
@@ -590,7 +590,7 @@ out:
     if (mc != NULL) {
 	/* do we need to free a data buffer we allocated? */
 	if (error && (mc->mc_data != NULL) && (*data == NULL))
-	    free(mc->mc_data, M_DEVBUF);
+	    kfree(mc->mc_data, M_DEVBUF);
 	mly_release_command(mc);
     }
     return(error);
@@ -614,7 +614,7 @@ mly_fetch_event(struct mly_softc *sc)
 	return;				/* we'll get retried the next time a command completes */
 
     /* set up the data buffer */
-    mc->mc_data = malloc(sizeof(struct mly_event), M_DEVBUF, M_INTWAIT|M_ZERO);
+    mc->mc_data = kmalloc(sizeof(struct mly_event), M_DEVBUF, M_INTWAIT|M_ZERO);
     mc->mc_length = sizeof(struct mly_event);
     mc->mc_flags |= MLY_CMD_DATAIN;
     mc->mc_complete = mly_complete_event;
@@ -678,7 +678,7 @@ mly_complete_event(struct mly_command *mc)
      */
     if (mc->mc_status == SCSI_STATUS_OK) {
 	mly_process_event(sc, me);
-	free(me, M_DEVBUF);
+	kfree(me, M_DEVBUF);
     }
     mly_release_command(mc);
 }
@@ -1764,7 +1764,7 @@ mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
     /* handle data size/direction */
     mc->mc_length = (uc->DataTransferLength >= 0) ? uc->DataTransferLength : -uc->DataTransferLength;
     if (mc->mc_length > 0)
-	mc->mc_data = malloc(mc->mc_length, M_DEVBUF, M_INTWAIT);
+	mc->mc_data = kmalloc(mc->mc_length, M_DEVBUF, M_INTWAIT);
     if (uc->DataTransferLength > 0) {
 	mc->mc_flags |= MLY_CMD_DATAIN;
 	bzero(mc->mc_data, mc->mc_length);
@@ -1809,7 +1809,7 @@ mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
 
  out:
     if (mc->mc_data != NULL)
-	free(mc->mc_data, M_DEVBUF);
+	kfree(mc->mc_data, M_DEVBUF);
     if (mc != NULL)
 	mly_release_command(mc);
     return(error);

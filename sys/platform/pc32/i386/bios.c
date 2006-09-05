@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.11 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.12 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -373,7 +373,7 @@ bios16(struct bios_args *args, char *fmt, ...)
 	/*
 	 * no page table, so create one and install it.
 	 */
-	pte = malloc(PAGE_SIZE, M_TEMP, M_WAITOK|M_ZERO);
+	pte = kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK|M_ZERO);
 	ptd = (pd_entry_t *)((vm_offset_t)ptd + KERNBASE);
 	*ptd = vtophys(pte) | PG_RW | PG_V;
     } else {
@@ -442,7 +442,7 @@ bios16(struct bios_args *args, char *fmt, ...)
 	*pte = 0;			/* remove entry */
     } else {
 	*ptd = 0;			/* remove page table */
-	free(pte, M_TEMP);		/* ... and free it */
+	kfree(pte, M_TEMP);		/* ... and free it */
     }
     /*
      * XXX only needs to be invlpg(0) but that doesn't work on the 386 

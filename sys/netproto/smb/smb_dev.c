@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.13 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.14 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -109,7 +109,7 @@ nsmb_dev_open(struct dev_open_args *ap)
 	if (sdp && (sdp->sd_flags & NSMBFL_OPEN))
 		return EBUSY;
 	if (sdp == NULL) {
-		sdp = malloc(sizeof(*sdp), M_NSMBDEV, M_WAITOK);
+		sdp = kmalloc(sizeof(*sdp), M_NSMBDEV, M_WAITOK);
 		dev->si_drv1 = (void*)sdp;
 	}
 	/*
@@ -161,7 +161,7 @@ nsmb_dev_close(struct dev_close_args *ap)
 	smb_flushq(&sdp->sd_rplist);
 */
 	dev->si_drv1 = NULL;
-	free(sdp, M_NSMBDEV);
+	kfree(sdp, M_NSMBDEV);
 	crit_exit();
 	return 0;
 }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.35 2006/08/19 17:27:20 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.36 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -295,7 +295,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 
 	buflen = max(LINUX_DIRBLKSIZ, nbytes);
 	buflen = min(buflen, MAXBSIZE);
-	buf = malloc(buflen, M_TEMP, M_WAITOK);
+	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
 
 again:
 	aiov.iov_base = buf;
@@ -309,7 +309,7 @@ again:
 	auio.uio_offset = off;
 
 	if (cookies) {
-		free(cookies, M_TEMP);
+		kfree(cookies, M_TEMP);
 		cookies = NULL;
 	}
 
@@ -432,9 +432,9 @@ eof:
 
 out:
 	if (cookies)
-		free(cookies, M_TEMP);
+		kfree(cookies, M_TEMP);
 
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 done:
 	fdrop(fp);
 	return (error);

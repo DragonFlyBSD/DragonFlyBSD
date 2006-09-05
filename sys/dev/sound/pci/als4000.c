@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.6 2005/10/12 17:35:55 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -764,7 +764,7 @@ als_pci_attach(device_t dev)
 	u_int32_t data;
 	char status[SND_STATUSLEN];
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -826,7 +826,7 @@ als_pci_attach(device_t dev)
 
  bad_attach:
 	als_resource_free(dev, sc);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -843,7 +843,7 @@ als_pci_detach(device_t dev)
 	sc = pcm_getdevinfo(dev);
 	als_uninit(sc);
 	als_resource_free(dev, sc);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return 0;
 }
 

@@ -100,13 +100,13 @@ MALLOC_DEFINE(M_ATH_HAL, "ath_hal", "ath hal data");
 void*
 ath_hal_malloc(size_t size)
 {
-	return malloc(size, M_ATH_HAL, M_NOWAIT | M_ZERO);
+	return kmalloc(size, M_ATH_HAL, M_NOWAIT | M_ZERO);
 }
 
 void
 ath_hal_free(void* p)
 {
-	return free(p, M_ATH_HAL);
+	return kfree(p, M_ATH_HAL);
 }
 
 void

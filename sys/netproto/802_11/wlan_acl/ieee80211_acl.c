@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_acl.c,v 1.3.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_acl/ieee80211_acl.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_acl/ieee80211_acl.c,v 1.2 2006/09/05 00:55:48 dillon Exp $
  */
 
 /*
@@ -98,7 +98,7 @@ acl_attach(struct ieee80211com *ic)
 {
 	struct aclstate *as;
 
-	as = malloc(sizeof(struct aclstate), M_80211_ACL, M_NOWAIT | M_ZERO);
+	as = kmalloc(sizeof(struct aclstate), M_80211_ACL, M_NOWAIT | M_ZERO);
 	if (as == NULL)
 		return 0;
 	TAILQ_INIT(&as->as_list);
@@ -115,7 +115,7 @@ acl_detach(struct ieee80211com *ic)
 
 	acl_free_all(ic);
 	ic->ic_as = NULL;
-	free(as, M_DEVBUF);
+	kfree(as, M_DEVBUF);
 }
 
 static __inline struct acl *
@@ -139,7 +139,7 @@ _acl_free(struct aclstate *as, struct acl *acl)
 
 	TAILQ_REMOVE(&as->as_list, acl, acl_list);
 	LIST_REMOVE(acl, acl_hash);
-	free(acl, M_80211_ACL);
+	kfree(acl, M_80211_ACL);
 	as->as_nacls--;
 }
 
@@ -168,7 +168,7 @@ acl_add(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
 
 	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
 
-	new = malloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
+	new = kmalloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
 	if (new == NULL) {
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
 			"ACL: add %6D failed, no memory\n", mac, ":");
@@ -287,7 +287,7 @@ acl_getioctl(struct ieee80211com *ic, struct ieee80211req *ireq)
 			ireq->i_len = space;	/* return required space */
 			return 0;		/* NB: must not error */
 		}
-		ap = malloc(space, M_TEMP, M_NOWAIT);
+		ap = kmalloc(space, M_TEMP, M_NOWAIT);
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;
@@ -300,7 +300,7 @@ acl_getioctl(struct ieee80211com *ic, struct ieee80211req *ireq)
 			ireq->i_len = space;
 		} else
 			error = copyout(ap, ireq->i_data, ireq->i_len);
-		free(ap, M_TEMP);
+		kfree(ap, M_TEMP);
 		return error;
 	}
 	return EINVAL;

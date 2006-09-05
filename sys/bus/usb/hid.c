@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.7 2005/11/11 19:34:38 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -98,7 +98,7 @@ hid_start_parse(void *d, int len, int kindset)
 {
 	struct hid_data *s;
 
-	s = malloc(sizeof *s, M_TEMP, M_INTWAIT|M_ZERO);
+	s = kmalloc(sizeof *s, M_TEMP, M_INTWAIT|M_ZERO);
 	s->start = s->p = d;
 	s->end = (char *)d + len;
 	s->kindset = kindset;
@@ -111,10 +111,10 @@ hid_end_parse(struct hid_data *s)
 
 	while (s->cur.next != NULL) {
 		struct hid_item *hi = s->cur.next->next;
-		free(s->cur.next, M_TEMP);
+		kfree(s->cur.next, M_TEMP);
 		s->cur.next = hi;
 	}
-	free(s, M_TEMP);
+	kfree(s, M_TEMP);
 }
 
 int
@@ -290,7 +290,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				c->loc.count = dval;
 				break;
 			case 10: /* Push */
-				hi = malloc(sizeof *hi, M_TEMP, M_INTWAIT);
+				hi = kmalloc(sizeof *hi, M_TEMP, M_INTWAIT);
 				*hi = s->cur;
 				c->next = hi;
 				break;
@@ -299,7 +299,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				oldpos = c->loc.pos;
 				s->cur = *hi;
 				c->loc.pos = oldpos;
-				free(hi, M_TEMP);
+				kfree(hi, M_TEMP);
 				break;
 			default:
 				printf("Global bTag=%d\n", bTag);

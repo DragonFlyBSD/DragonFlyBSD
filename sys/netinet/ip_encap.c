@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.14 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.15 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -342,7 +342,7 @@ encap_attach(int af, int proto, const struct sockaddr *sp,
 		goto fail;
 	}
 
-	ep = malloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
+	ep = kmalloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (ep == NULL) {
 		error = ENOBUFS;
 		goto fail;
@@ -383,7 +383,7 @@ encap_attach_func(int af, int proto,
 		goto fail;
 	}
 
-	ep = malloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
+	ep = kmalloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (ep == NULL) {
 		error = ENOBUFS;
 		goto fail;
@@ -415,7 +415,7 @@ encap_detach(const struct encaptab *cookie)
 	for (p = LIST_FIRST(&encaptab); p; p = LIST_NEXT(p, chain)) {
 		if (p == ep) {
 			LIST_REMOVE(p, chain);
-			free(p, M_NETADDR);	/*XXX*/
+			kfree(p, M_NETADDR);	/*XXX*/
 			return 0;
 		}
 	}

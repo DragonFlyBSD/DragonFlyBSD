@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.16 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.17 2006/09/05 00:55:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -234,7 +234,7 @@ passcleanup(struct cam_periph *periph)
 		printf("removing device entry\n");
 	}
 	dev_ops_remove(&pass_ops, -1, periph->unit_number);
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 }
 
 static void
@@ -294,7 +294,7 @@ passregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->state = PASS_STATE_NORMAL;
 	softc->pd_type = SID_TYPE(&cgd->inq_data);
 	bioq_init(&softc->bio_queue);

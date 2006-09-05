@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.24 2006/09/04 23:03:38 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.25 2006/09/05 00:55:50 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -185,8 +185,8 @@ struct kmemusage {
  * Deprecated macro versions of not-quite-malloc() and free().
  */
 #define	MALLOC(space, cast, size, type, flags) \
-	(space) = (cast)malloc((u_long)(size), (type), (flags))
-#define	FREE(addr, type) free((addr), (type))
+	(space) = (cast)kmalloc((u_long)(size), (type), (flags))
+#define	FREE(addr, type) kfree((addr), (type))
 
 /*
  * XXX this should be declared in <sys/uio.h>, but that tends to fail

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.28 2006/09/02 16:51:44 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -581,7 +581,7 @@ unp_detach(struct unpcb *unp)
 		unp_gc();
 	}
 	if (unp->unp_addr)
-		free(unp->unp_addr, M_SONAME);
+		kfree(unp->unp_addr, M_SONAME);
 	zfree(unp_zone, unp);
 }
 
@@ -823,7 +823,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	gencnt = unp_gencnt;
 	n = unp_count;
 
-	unp_list = malloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
+	unp_list = kmalloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
 	if (unp_list == NULL)
 		return ENOMEM;
 	
@@ -857,7 +857,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 			error = SYSCTL_OUT(req, &xu, sizeof xu);
 		}
 	}
-	free(unp_list, M_TEMP);
+	kfree(unp_list, M_TEMP);
 	return error;
 }
 
@@ -1180,7 +1180,7 @@ unp_gc()
 	 *
 	 * 91/09/19, bsy@cs.cmu.edu
 	 */
-	info.extra_ref = malloc(256 * sizeof(struct file *), M_FILE, M_WAITOK);
+	info.extra_ref = kmalloc(256 * sizeof(struct file *), M_FILE, M_WAITOK);
 	info.maxindex = 256;
 
 	do {
@@ -1201,7 +1201,7 @@ unp_gc()
 		for (i = info.index, fpp = info.extra_ref; --i >= 0; ++fpp)
 			closef(*fpp, NULL);
 	} while (info.index == info.maxindex);
-	free((caddr_t)info.extra_ref, M_FILE);
+	kfree((caddr_t)info.extra_ref, M_FILE);
 	unp_gcing = FALSE;
 }
 

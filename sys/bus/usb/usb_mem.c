@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.6 2005/07/18 14:50:55 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.7 2006/09/05 00:55:36 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -167,7 +167,7 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 	crit_exit();
 
 	DPRINTFN(6, ("usb_block_allocmem: no free\n"));
-	p = malloc(sizeof *p, M_USB, M_INTWAIT);
+	p = kmalloc(sizeof *p, M_USB, M_INTWAIT);
 	logmemory(blkalloc, p, NULL, size, align);
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
@@ -209,7 +209,7 @@ memfree:
 tagfree:
 	bus_dma_tag_destroy(p->tag);
 free:
-	free(p, M_USB);
+	kfree(p, M_USB);
 	return (USBD_NOMEM);
 }
 

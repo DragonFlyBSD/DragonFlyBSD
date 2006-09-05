@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.19 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.20 2006/09/05 00:55:39 dillon Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -583,7 +583,7 @@ axe_tx_list_init(struct axe_softc *sc)
 			if (c->axe_xfer == NULL)
 				return(ENOBUFS);
 		}
-		c->axe_buf = malloc(AXE_BUFSZ, M_USBDEV, M_WAITOK);
+		c->axe_buf = kmalloc(AXE_BUFSZ, M_USBDEV, M_WAITOK);
 		if (c->axe_buf == NULL)
 			return(ENOBUFS);
 	}
@@ -1037,7 +1037,7 @@ axe_stop(struct axe_softc *sc)
 	/* Free RX resources. */
 	for (i = 0; i < AXE_RX_LIST_CNT; i++) {
 		if (sc->axe_cdata.axe_rx_chain[i].axe_buf != NULL) {
-			free(sc->axe_cdata.axe_rx_chain[i].axe_buf, M_USBDEV);
+			kfree(sc->axe_cdata.axe_rx_chain[i].axe_buf, M_USBDEV);
 			sc->axe_cdata.axe_rx_chain[i].axe_buf = NULL;
 		}
 		if (sc->axe_cdata.axe_rx_chain[i].axe_mbuf != NULL) {
@@ -1053,7 +1053,7 @@ axe_stop(struct axe_softc *sc)
 	/* Free TX resources. */
 	for (i = 0; i < AXE_TX_LIST_CNT; i++) {
 		if (sc->axe_cdata.axe_tx_chain[i].axe_buf != NULL) {
-			free(sc->axe_cdata.axe_tx_chain[i].axe_buf, M_USBDEV);
+			kfree(sc->axe_cdata.axe_tx_chain[i].axe_buf, M_USBDEV);
 			sc->axe_cdata.axe_tx_chain[i].axe_buf = NULL;
 		}
 		if (sc->axe_cdata.axe_tx_chain[i].axe_mbuf != NULL) {

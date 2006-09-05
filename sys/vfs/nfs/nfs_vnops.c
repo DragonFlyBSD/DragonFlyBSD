@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.65 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.66 2006/09/05 00:55:50 dillon Exp $
  */
 
 
@@ -402,11 +402,11 @@ nfs_access(struct vop_access_args *ap)
 				error = nfs_readrpc(vp, &auio);
 			} else if (vp->v_type == VDIR) {
 				char* bp;
-				bp = malloc(NFS_DIRBLKSIZ, M_TEMP, M_WAITOK);
+				bp = kmalloc(NFS_DIRBLKSIZ, M_TEMP, M_WAITOK);
 				aiov.iov_base = bp;
 				aiov.iov_len = auio.uio_resid = NFS_DIRBLKSIZ;
 				error = nfs_readdirrpc(vp, &auio);
-				free(bp, M_TEMP);
+				kfree(bp, M_TEMP);
 			} else if (vp->v_type == VLNK) {
 				error = nfs_readlinkrpc(vp, &auio);
 			} else {
@@ -2656,7 +2656,7 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 bad:
 	vrele(sp->s_dvp);
 	crfree(sp->s_cred);
-	free((caddr_t)sp, M_NFSREQ);
+	kfree((caddr_t)sp, M_NFSREQ);
 	return (error);
 }
 
@@ -2694,10 +2694,10 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 		if (*npp) {
 		    np = *npp;
 		    if (np->n_fhsize > NFS_SMALLFH && fhlen <= NFS_SMALLFH) {
-			free((caddr_t)np->n_fhp, M_NFSBIGFH);
+			kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 			np->n_fhp = &np->n_fh;
 		    } else if (np->n_fhsize <= NFS_SMALLFH && fhlen>NFS_SMALLFH)
-			np->n_fhp =(nfsfh_t *)malloc(fhlen,M_NFSBIGFH,M_WAITOK);
+			np->n_fhp =(nfsfh_t *)kmalloc(fhlen,M_NFSBIGFH,M_WAITOK);
 		    bcopy((caddr_t)nfhp, (caddr_t)np->n_fhp, fhlen);
 		    np->n_fhsize = fhlen;
 		    newvp = NFSTOV(np);

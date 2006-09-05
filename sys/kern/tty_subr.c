@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.7 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -152,11 +152,11 @@ cblock_alloc_cblocks(int number)
 	struct cblock *cbp;
 
 	for (i = 0; i < number; ++i) {
-		cbp = malloc(sizeof *cbp, M_TTYS, M_NOWAIT);
+		cbp = kmalloc(sizeof *cbp, M_TTYS, M_NOWAIT);
 		if (cbp == NULL) {
 			printf(
 "clist_alloc_cblocks: M_NOWAIT malloc failed, trying M_WAITOK\n");
-			cbp = malloc(sizeof *cbp, M_TTYS, M_WAITOK);
+			cbp = kmalloc(sizeof *cbp, M_TTYS, M_WAITOK);
 		}
 		KKASSERT(((intptr_t)cbp & CROUND) == 0);
 		/*
@@ -215,7 +215,7 @@ cblock_free_cblocks(int number)
 	int i;
 
 	for (i = 0; i < number; ++i)
-		free(cblock_alloc(), M_TTYS);
+		kfree(cblock_alloc(), M_TTYS);
 	ctotcount -= number;
 }
 

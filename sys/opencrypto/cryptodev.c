@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.19 2006/08/02 01:25:26 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.20 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -349,7 +349,7 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop)
 	cse->uio.uio_iov = cse->iovec;
 	bzero(&cse->iovec, sizeof(cse->iovec));
 	cse->uio.uio_iov[0].iov_len = cop->len;
-	cse->uio.uio_iov[0].iov_base = malloc(cop->len, M_XDATA, M_WAITOK);
+	cse->uio.uio_iov[0].iov_base = kmalloc(cop->len, M_XDATA, M_WAITOK);
 	for (i = 0; i < cse->uio.uio_iovcnt; i++)
 		cse->uio.uio_resid += cse->uio.uio_iov[0].iov_len;
 
@@ -466,7 +466,7 @@ bail:
 	if (crp)
 		crypto_freereq(crp);
 	if (cse->uio.uio_iov[0].iov_base)
-		free(cse->uio.uio_iov[0].iov_base, M_XDATA);
+		kfree(cse->uio.uio_iov[0].iov_base, M_XDATA);
 
 	return (error);
 }
@@ -531,7 +531,7 @@ cryptodev_key(struct crypt_kop *kop)
 		return (EINVAL);
 	}
 
-	krp = (struct cryptkop *)malloc(sizeof *krp, M_XDATA, M_WAITOK);
+	krp = (struct cryptkop *)kmalloc(sizeof *krp, M_XDATA, M_WAITOK);
 	if (!krp)
 		return (ENOMEM);
 	bzero(krp, sizeof *krp);
@@ -583,7 +583,7 @@ fail:
 			if (krp->krp_param[i].crp_p)
 				FREE(krp->krp_param[i].crp_p, M_XDATA);
 		}
-		free(krp, M_XDATA);
+		kfree(krp, M_XDATA);
 	}
 	return (error);
 }

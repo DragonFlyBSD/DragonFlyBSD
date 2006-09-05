@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/immio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.5 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.6 2006/09/05 00:55:38 dillon Exp $
  *
  */
 
@@ -583,7 +583,7 @@ imm_attach(struct vpoio_data *vpo)
 	/*
 	 * Initialize microsequence code
 	 */
-	vpo->vpo_nibble_inbyte_msq = malloc(sizeof(nibble_inbyte_submicroseq),
+	vpo->vpo_nibble_inbyte_msq = kmalloc(sizeof(nibble_inbyte_submicroseq),
 						M_DEVBUF, M_WAITOK);
 
 	bcopy((void *)nibble_inbyte_submicroseq,

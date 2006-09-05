@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.37 2006/08/12 00:26:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.38 2006/09/05 00:55:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -390,7 +390,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	}
 #endif
 
-	pmp = malloc(sizeof *pmp, M_MSDOSFSMNT, M_WAITOK);
+	pmp = kmalloc(sizeof *pmp, M_MSDOSFSMNT, M_WAITOK);
 	bzero((caddr_t)pmp, sizeof *pmp);
 	pmp->pm_mountp = mp;
 
@@ -666,8 +666,8 @@ error_exit:
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
 	if (pmp) {
 		if (pmp->pm_inusemap)
-			free(pmp->pm_inusemap, M_MSDOSFSFAT);
-		free(pmp, M_MSDOSFSMNT);
+			kfree(pmp->pm_inusemap, M_MSDOSFSFAT);
+		kfree(pmp, M_MSDOSFSMNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return (error);
@@ -714,8 +714,8 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 	error = VOP_CLOSE(pmp->pm_devvp,
 		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE);
 	vrele(pmp->pm_devvp);
-	free(pmp->pm_inusemap, M_MSDOSFSFAT);
-	free(pmp, M_MSDOSFSMNT);
+	kfree(pmp->pm_inusemap, M_MSDOSFSFAT);
+	kfree(pmp, M_MSDOSFSMNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);

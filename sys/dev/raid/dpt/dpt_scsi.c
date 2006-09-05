@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.9 2005/06/10 15:46:31 swildner Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.10 2006/09/05 00:55:41 dillon Exp $"
 
 #define _DPT_C_
 
@@ -305,12 +305,12 @@ dptallocsgmap(struct dpt_softc *dpt)
 {
 	struct sg_map_node *sg_map;
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
+	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(dpt->sg_dmat, (void **)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
-		free(sg_map, M_DEVBUF);
+		kfree(sg_map, M_DEVBUF);
 		return (NULL);
 	}
 
@@ -395,7 +395,7 @@ dpt_pio_get_conf (u_int32_t base)
 	 * Allocate a dpt_conf_t
 	 */
 	if (conf == NULL)
-		conf = malloc(sizeof(dpt_conf_t), M_DEVBUF, M_INTWAIT);
+		conf = kmalloc(sizeof(dpt_conf_t), M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * If we have one, clean it up.
@@ -1205,7 +1205,7 @@ dpt_free(struct dpt_softc *dpt)
 					  sg_map->sg_dmamap);
 			bus_dmamem_free(dpt->sg_dmat, sg_map->sg_vaddr,
 					sg_map->sg_dmamap);
-			free(sg_map, M_DEVBUF);
+			kfree(sg_map, M_DEVBUF);
 		}
 		bus_dma_tag_destroy(dpt->sg_dmat);
 	}
@@ -2155,7 +2155,7 @@ valid_unit:
 			dpt->target_ccb[channel][target][lun] = ccb;
 
 			dpt->rw_buffer[channel][target][lun] =
-				malloc(DPT_RW_BUFFER_SIZE, M_DEVBUF, M_INTWAIT);
+				kmalloc(DPT_RW_BUFFER_SIZE, M_DEVBUF, M_INTWAIT);
 			dpt_set_target(0, dpt, channel, target, lun, mode,
 				       length, offset, ccb);
 			return (SUCCESSFULLY_REGISTERED);
@@ -2173,7 +2173,7 @@ valid_unit:
 				crit_enter();
 				dpt_Qpush_free(dpt, ccb);
 				crit_exit();
-				free(dpt->rw_buffer[channel][target][lun], M_DEVBUF);
+				kfree(dpt->rw_buffer[channel][target][lun], M_DEVBUF);
 				return (SUCCESSFULLY_REGISTERED);
 			} else
 				return (INVALID_CALLBACK);
@@ -2288,7 +2288,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 					    ccb->eata_ccb.cp_datalen,
 					    0x10000);
 		} else {
-			data = malloc(ccb->eata_ccb.cp_datalen, M_TEMP,
+			data = kmalloc(ccb->eata_ccb.cp_datalen, M_TEMP,
 				      M_WAITOK);
 		}
 
@@ -2317,7 +2317,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 		if (dpt_scatter_gather(dpt, ccb, ccb->eata_ccb.cp_datalen,
 				       data) != 0) {
 			if (data != NULL)
-				free(data, M_TEMP);
+				kfree(data, M_TEMP);
 			return (EFAULT);
 		}
 	}
@@ -2384,7 +2384,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 
 	/* Free allocated memory */
 	if (data != NULL)
-		free(data, M_TEMP);
+		kfree(data, M_TEMP);
 
 	return (0);
 }

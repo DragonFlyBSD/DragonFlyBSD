@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.21 2006/08/09 22:47:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.22 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ fdesc_unmount(struct mount *mp, int mntflags)
 	/*
 	 * Finally, throw away the fdescmount structure
 	 */
-	free(mp->mnt_data, M_FDESCMNT);	/* XXX */
+	kfree(mp->mnt_data, M_FDESCMNT);	/* XXX */
 	mp->mnt_data = 0;
 
 	return (0);

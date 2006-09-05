@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.45 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.46 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -536,7 +536,7 @@ nfs_mountroot(struct mount *mp)
 	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
 		if (swap_mp) {
 			mp->mnt_vfc->vfc_refcount--;
-			free(swap_mp, M_MOUNT);
+			kfree(swap_mp, M_MOUNT);
 		}
 		crit_exit();
 		return (error);
@@ -645,7 +645,7 @@ haderror:
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
 		if (didalloc)
-			free(mp, M_MOUNT);
+			kfree(mp, M_MOUNT);
 		FREE(nam, M_SONAME);
 		return (error);
 	}

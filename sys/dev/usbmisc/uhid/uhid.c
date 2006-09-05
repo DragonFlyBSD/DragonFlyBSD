@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.17 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.18 2006/09/05 00:55:43 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -239,7 +239,7 @@ USB_ATTACH(uhid)
 	    uaa->revision == 0x???? */) { /* XXX should use revision */
 		/* The report descriptor for the Wacom Graphire is broken. */
 		size = sizeof uhid_graphire_report_descr;
-		desc = malloc(size, M_USBDEV, M_INTWAIT);
+		desc = kmalloc(size, M_USBDEV, M_INTWAIT);
 		err = USBD_NORMAL_COMPLETION;
 		memcpy(desc, uhid_graphire_report_descr, size);
 	} else {
@@ -332,7 +332,7 @@ USB_DETACH(uhid)
 #endif
 
 	if (sc->sc_repdesc)
-		free(sc->sc_repdesc, M_USBDEV);
+		kfree(sc->sc_repdesc, M_USBDEV);
 
 	return (0);
 }
@@ -404,8 +404,8 @@ uhidopen(struct dev_open_args *ap)
 		return (ENOMEM);
 	}
 
-	sc->sc_ibuf = malloc(sc->sc_isize, M_USBDEV, M_WAITOK);
-	sc->sc_obuf = malloc(sc->sc_osize, M_USBDEV, M_WAITOK);
+	sc->sc_ibuf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+	sc->sc_obuf = kmalloc(sc->sc_osize, M_USBDEV, M_WAITOK);
 
 	/* Set up interrupt pipe. */
 	err = usbd_open_pipe_intr(sc->sc_iface, sc->sc_ep_addr,
@@ -414,8 +414,8 @@ uhidopen(struct dev_open_args *ap)
 	if (err) {
 		DPRINTF(("uhidopen: usbd_open_pipe_intr failed, "
 			 "error=%d\n",err));
-		free(sc->sc_ibuf, M_USBDEV);
-		free(sc->sc_obuf, M_USBDEV);
+		kfree(sc->sc_ibuf, M_USBDEV);
+		kfree(sc->sc_obuf, M_USBDEV);
 		sc->sc_ibuf = sc->sc_obuf = NULL;
 
 		sc->sc_state &= ~UHID_OPEN;
@@ -447,8 +447,8 @@ uhidclose(struct dev_close_args *ap)
 	ndflush(&sc->sc_q, sc->sc_q.c_cc);
 	clfree(&sc->sc_q);
 
-	free(sc->sc_ibuf, M_USBDEV);
-	free(sc->sc_obuf, M_USBDEV);
+	kfree(sc->sc_ibuf, M_USBDEV);
+	kfree(sc->sc_obuf, M_USBDEV);
 	sc->sc_ibuf = sc->sc_obuf = NULL;
 
 	sc->sc_state &= ~UHID_OPEN;

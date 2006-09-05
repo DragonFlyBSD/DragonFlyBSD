@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.15 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.16 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*-
@@ -1809,13 +1809,13 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	fw->ucode_size = le32toh(hdr.ucode_size);
 	p += sizeof hdr;
 
-	fw->main = malloc(fw->main_size, M_DEVBUF, M_WAITOK);
+	fw->main = kmalloc(fw->main_size, M_DEVBUF, M_WAITOK);
 	if (fw->main == NULL) {
 		error = ENOMEM;
 		goto fail1;
 	}
 
-	fw->ucode = malloc(fw->ucode_size, M_DEVBUF, M_WAITOK);
+	fw->ucode = kmalloc(fw->ucode_size, M_DEVBUF, M_WAITOK);
 	if (fw->ucode == NULL) {
 		error = ENOMEM;
 		goto fail2;
@@ -1835,8 +1835,8 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 
 	return 0;
 
-fail3:	free(fw->ucode, M_DEVBUF);
-fail2:	free(fw->main, M_DEVBUF);
+fail3:	kfree(fw->ucode, M_DEVBUF);
+fail2:	kfree(fw->main, M_DEVBUF);
 fail1:
 
 	return error;
@@ -1848,8 +1848,8 @@ ipw_free_firmware(struct ipw_softc *sc)
 	if (!(sc->flags & IPW_FLAG_FW_CACHED))
 		return;
 
-	free(sc->fw.main, M_DEVBUF);
-	free(sc->fw.ucode, M_DEVBUF);
+	kfree(sc->fw.main, M_DEVBUF);
+	kfree(sc->fw.ucode, M_DEVBUF);
 
 	sc->flags &= ~IPW_FLAG_FW_CACHED;
 }

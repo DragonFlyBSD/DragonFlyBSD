@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.27 2002/11/27 06:56:29 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.1 2004/02/10 07:55:47 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.2 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -168,18 +168,18 @@ DECODE_PROTOTYPE(copy)
 {
 	struct cis_tupleinfo *tmpbuf;
 
-	tmpbuf = malloc(sizeof(struct cis_tupleinfo) * (ncisread_buf+1),
+	tmpbuf = kmalloc(sizeof(struct cis_tupleinfo) * (ncisread_buf+1),
 	    M_DEVBUF, M_WAITOK);
 	if (ncisread_buf > 0) {
 		memcpy(tmpbuf, cisread_buf,
 		    sizeof(struct cis_tupleinfo) * ncisread_buf);
-		free(cisread_buf, M_DEVBUF);
+		kfree(cisread_buf, M_DEVBUF);
 	}
 	cisread_buf = tmpbuf;
 
 	cisread_buf[ncisread_buf].id = id;
 	cisread_buf[ncisread_buf].len = len;
-	cisread_buf[ncisread_buf].data = malloc(len, M_DEVBUF, M_WAITOK);
+	cisread_buf[ncisread_buf].data = kmalloc(len, M_DEVBUF, M_WAITOK);
 	memcpy(cisread_buf[ncisread_buf].data, tupledata, len);
 	ncisread_buf++;
 	return (0);
@@ -705,7 +705,7 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 	}
 	if (count == 0)
 		return (0);
-	barlist = malloc(sizeof(struct resource_list_entry*) * count, M_DEVBUF,
+	barlist = kmalloc(sizeof(struct resource_list_entry*) * count, M_DEVBUF,
 	    M_WAITOK);
 	count = 0;
 	SLIST_FOREACH(rle, &dinfo->pci.resources, link) {
@@ -835,7 +835,7 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 				if (barlist[tmp]->res == NULL) {
 					DEVPRINTF((cbdev, "Cannot pre-allocate "
 					    "memory for cardbus device\n"));
-					free(barlist, M_DEVBUF);
+					kfree(barlist, M_DEVBUF);
 					return (ENOMEM);
 				}
 				barlist[tmp]->start =
@@ -892,7 +892,7 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 				if (barlist[tmp]->res == NULL) {
 					DEVPRINTF((cbdev, "Cannot pre-allocate "
 					    "IO port for cardbus device\n"));
-					free(barlist, M_DEVBUF);
+					kfree(barlist, M_DEVBUF);
 					return (ENOMEM);
 				}
 				barlist[tmp]->start =
@@ -919,7 +919,7 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 	dinfo->pci.cfg.intline = rman_get_start(res);
 	pci_write_config(child, PCIR_INTLINE, rman_get_start(res), 1);
 
-	free(barlist, M_DEVBUF);
+	kfree(barlist, M_DEVBUF);
 	return (0);
 }
 
@@ -1054,9 +1054,9 @@ cardbus_cis_free(device_t cbdev, struct cis_tupleinfo *buff, int *nret)
 {
 	int i;
 	for (i = 0; i < *nret; i++)
-		free(buff[i].data, M_DEVBUF);
+		kfree(buff[i].data, M_DEVBUF);
 	if (*nret > 0)
-		free(buff, M_DEVBUF);
+		kfree(buff, M_DEVBUF);
 }
 
 int

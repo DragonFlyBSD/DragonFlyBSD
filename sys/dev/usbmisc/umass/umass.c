@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.17 2006/05/03 15:08:43 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.18 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -2181,7 +2181,7 @@ umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 #endif
 
 	xpt_free_path(ccb->ccb_h.path);
-	free(ccb, M_USBDEV);
+	kfree(ccb, M_USBDEV);
 }
 
 Static void
@@ -2191,7 +2191,7 @@ umass_cam_rescan(void *addr)
 	struct cam_path *path;
 	union ccb *ccb;
 
-	ccb = malloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
+	ccb = kmalloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
 
 	DPRINTF(UDMASS_SCSI, ("scbus%d: scanning for %s:%d:%d:%d\n",
 		cam_sim_path(sc->umass_sim),
@@ -2201,7 +2201,7 @@ umass_cam_rescan(void *addr)
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->umass_sim),
 			    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD)
 	    != CAM_REQ_CMP) {
-		free(ccb, M_USBDEV);
+		kfree(ccb, M_USBDEV);
  		return;
 	}
 

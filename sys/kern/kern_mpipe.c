@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.8 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.9 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,12 +80,12 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
 	mpipe->mflags |= M_USE_RESERVE | M_USE_INTERRUPT_RESERVE;
     mpipe->ary_count = nnom;
     mpipe->max_count = nmax;
-    mpipe->array = malloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY, 
+    mpipe->array = kmalloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY, 
 			    M_WAITOK | M_ZERO);
 
     while (mpipe->free_count < nnom) {
 	n = mpipe->free_count;
-	mpipe->array[n] = malloc(bytes, mpipe->type, M_WAITOK | mpipe->mflags);
+	mpipe->array[n] = kmalloc(bytes, mpipe->type, M_WAITOK | mpipe->mflags);
 	++mpipe->free_count;
 	++mpipe->total_count;
     }
@@ -109,12 +109,12 @@ mpipe_done(malloc_pipe_t mpipe)
 	KKASSERT(buf != NULL);
 	if (mpipe->deconstruct)
 	    mpipe->deconstruct(mpipe, buf);
-	free(buf, mpipe->type);
+	kfree(buf, mpipe->type);
     }
     mpipe->free_count = 0;
     mpipe->total_count = 0;
     if (mpipe->array) {
-	free(mpipe->array, M_MPIPEARY);
+	kfree(mpipe->array, M_MPIPEARY);
 	mpipe->array = NULL;
     }
 }
@@ -149,7 +149,7 @@ mpipe_alloc_nowait(malloc_pipe_t mpipe)
 	/*
 	 * Otherwise try to malloc() non-blocking.
 	 */
-	buf = malloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
+	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf)
 	    ++mpipe->total_count;
     }
@@ -193,7 +193,7 @@ mpipe_alloc_waitok(malloc_pipe_t mpipe)
 	 * Otherwise try to malloc() non-blocking.  If that fails loop to
 	 * recheck, and block instead of trying to malloc() again.
 	 */
-	buf = malloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
+	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf) {
 	    ++mpipe->total_count;
 	    break;
@@ -242,7 +242,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	if (mpipe->deconstruct)
 	    mpipe->deconstruct(mpipe, buf);
 	crit_exit();
-	free(buf, mpipe->type);
+	kfree(buf, mpipe->type);
     }
 }
 

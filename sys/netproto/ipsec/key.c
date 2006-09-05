@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.15 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.16 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -294,13 +294,13 @@ MALLOC_DEFINE(M_SECA, "key mgmt", "security associations, key management");
 
 #if 1
 #define KMALLOC(p, t, n)                                                     \
-	((p) = (t) malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK))
+	((p) = (t) kmalloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK))
 #define KFREE(p)                                                             \
-	free((caddr_t)(p), M_SECA)
+	kfree((caddr_t)(p), M_SECA)
 #else
 #define KMALLOC(p, t, n) \
 do { \
-	((p) = (t)malloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
+	((p) = (t)kmalloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
 	printf("%s %d: %p <- KMALLOC(%s, %d)\n",                             \
 		__FILE__, __LINE__, (p), #t, n);                             \
 } while (0)
@@ -308,7 +308,7 @@ do { \
 #define KFREE(p)                                                             \
 	do {                                                                 \
 		printf("%s %d: %p -> KFREE()\n", __FILE__, __LINE__, (p));   \
-		free((caddr_t)(p), M_SECA);                                  \
+		kfree((caddr_t)(p), M_SECA);                                  \
 	} while (0)
 #endif
 
@@ -1270,7 +1270,7 @@ key_newsp(const char* where, int tag)
 {
 	struct secpolicy *newsp = NULL;
 
-	newsp = malloc(sizeof(struct secpolicy), M_SECA,
+	newsp = kmalloc(sizeof(struct secpolicy), M_SECA,
 			M_INTWAIT | M_ZERO | M_NULLOK);
 	if (newsp) {
 		newsp->refcnt = 1;
@@ -2529,7 +2529,7 @@ key_newsah(struct secasindex *saidx)
 
 	KASSERT(saidx != NULL, ("key_newsaidx: null saidx"));
 
-	newsah = malloc(sizeof(struct secashead), M_SECA, 
+	newsah = kmalloc(sizeof(struct secashead), M_SECA, 
 			M_INTWAIT | M_ZERO | M_NULLOK);
 	if (newsah != NULL) {
 		int i;

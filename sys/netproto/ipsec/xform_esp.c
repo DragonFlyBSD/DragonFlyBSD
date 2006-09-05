@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.10 2006/03/22 19:57:32 drhodus Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.11 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -191,7 +191,7 @@ esp_init(struct secasvar *sav, struct xformsw *xsp)
 	 *      compromise is to force it to zero here.
 	 */
 	sav->ivlen = (txform == &enc_xform_null ? 0 : txform->blocksize);
-	sav->iv = (caddr_t) malloc(sav->ivlen, M_XDATA, M_WAITOK);
+	sav->iv = (caddr_t) kmalloc(sav->ivlen, M_XDATA, M_WAITOK);
 	if (sav->iv == NULL) {
 		DPRINTF(("esp_init: no memory for IV\n"));
 		return EINVAL;
@@ -545,7 +545,7 @@ esp_input_cb(struct cryptop *crp)
 	}
 
 	/* Release the crypto descriptors */
-	free(tc, M_XDATA), tc = NULL;
+	kfree(tc, M_XDATA), tc = NULL;
 	crypto_freereq(crp), crp = NULL;
 
 	/*
@@ -633,7 +633,7 @@ bad:
 	if (m != NULL)
 		m_freem(m);
 	if (tc != NULL)
-		free(tc, M_XDATA);
+		kfree(tc, M_XDATA);
 	if (crp != NULL)
 		crypto_freereq(crp);
 	return error;
@@ -929,7 +929,7 @@ esp_output_cb(struct cryptop *crp)
 		ahstat.ahs_hist[sav->alg_auth]++;
 
 	/* Release crypto descriptors. */
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 
 	/* NB: m is reclaimed by ipsec_process_done. */
@@ -943,7 +943,7 @@ bad:
 	crit_exit();
 	if (m)
 		m_freem(m);
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 	return error;
 }

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.7 2006/09/03 17:43:57 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.8 2006/09/05 00:55:37 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -455,7 +455,7 @@ mpt_dma_mem_alloc(mpt_softc_t *mpt)
 
 	len = sizeof (request_t *) * MPT_REQ_MEM_SIZE(mpt);
 #ifdef	RELENG_4
-	mpt->request_pool = (request_t *) malloc(len, M_DEVBUF, M_WAITOK);
+	mpt->request_pool = (request_t *) kmalloc(len, M_DEVBUF, M_WAITOK);
 	if (mpt->request_pool == NULL) {
 		device_printf(dev, "cannot allocate request pool\n");
 		return (1);
@@ -463,7 +463,7 @@ mpt_dma_mem_alloc(mpt_softc_t *mpt)
 	bzero(mpt->request_pool, len);
 #else
 	mpt->request_pool = (request_t *)
-	    malloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
+	    kmalloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
 	if (mpt->request_pool == NULL) {
 		device_printf(dev, "cannot allocate request pool\n");
 		return (1);
@@ -614,7 +614,7 @@ mpt_dma_mem_free(mpt_softc_t *mpt)
 	bus_dma_tag_destroy(mpt->reply_dmat);
 	bus_dma_tag_destroy(mpt->parent_dmat);
 	mpt->reply_dmat = 0;
-	free(mpt->request_pool, M_DEVBUF);
+	kfree(mpt->request_pool, M_DEVBUF);
 	mpt->request_pool = 0;
 
 }

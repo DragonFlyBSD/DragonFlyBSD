@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.6 2005/09/01 00:18:24 swildner Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.6 2005/09/01 00:18:24 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -307,7 +307,7 @@ mss_release_resources(struct mss_info *mss, device_t dev)
     	}
 	if (mss->lock) snd_mtxfree(mss->lock);
 
-     	free(mss, M_DEVBUF);
+     	kfree(mss, M_DEVBUF);
 }
 
 static int
@@ -1252,7 +1252,7 @@ mss_probe(device_t dev)
 
     	if (isa_get_logicalid(dev)) return ENXIO; /* not yet */
 
-    	mss = (struct mss_info *)malloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
+    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!mss) return ENXIO;
 
     	mss->io_rid = 0;
@@ -1752,7 +1752,7 @@ mss_attach(device_t dev)
     	struct mss_info *mss;
     	int flags = device_get_flags(dev);
 
-    	mss = (struct mss_info *)malloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
+    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!mss) return ENXIO;
 
     	mss->io_rid = 0;
@@ -1926,7 +1926,7 @@ pnpmss_attach(device_t dev)
 {
 	struct mss_info *mss;
 
-	mss = (struct mss_info *)malloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (!mss)
 	    return ENXIO;
 
@@ -2190,7 +2190,7 @@ guspcm_attach(device_t dev)
 	int base, flags;
 	unsigned char ctl;
 
-	mss = (struct mss_info *)malloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mss == NULL)
 		return ENOMEM;
 

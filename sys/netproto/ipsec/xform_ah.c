@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.8 2005/06/17 19:12:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.9 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -536,7 +536,7 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 		if (alloc) {
 			m_copyback(m, sizeof(struct ip6_hdr),
 			    skip - sizeof(struct ip6_hdr), ptr);
-			free(ptr, M_XDATA);
+			kfree(ptr, M_XDATA);
 		}
 
 		break;
@@ -676,7 +676,7 @@ ah_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 		if (error != 0) {
 			/* NB: mbuf is free'd by ah_massage_headers */
 			ahstat.ahs_hdrops++;
-			free(tc, M_XDATA);
+			kfree(tc, M_XDATA);
 			crypto_freereq(crp);
 			return error;
 		}
@@ -826,7 +826,7 @@ ah_input_cb(struct cryptop *crp)
 		m_copyback(m, protoff, sizeof(u_int8_t), &nxt);
 	}
 
-	free(tc, M_XDATA), tc = NULL;			/* No longer needed */
+	kfree(tc, M_XDATA), tc = NULL;			/* No longer needed */
 
 	/*
 	 * Header is now authenticated.
@@ -872,7 +872,7 @@ bad:
 	if (m != NULL)
 		m_freem(m);
 	if (tc != NULL)
-		free(tc, M_XDATA);
+		kfree(tc, M_XDATA);
 	if (crp != NULL)
 		crypto_freereq(crp);
 	return error;
@@ -1022,7 +1022,7 @@ ah_output(
 	crda->crd_klen = _KEYBITS(sav->key_auth);
 
 	/* Allocate IPsec-specific opaque crypto info. */
-	tc = malloc(sizeof(struct tdb_crypto) + skip, M_XDATA,
+	tc = kmalloc(sizeof(struct tdb_crypto) + skip, M_XDATA,
 		M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);
@@ -1076,7 +1076,7 @@ ah_output(
 			skip, ahx->type, 1);
 	if (error != 0) {
 		m = NULL;	/* mbuf was free'd by ah_massage_headers. */
-		free(tc, M_XDATA);
+		kfree(tc, M_XDATA);
 		crypto_freereq(crp);
 		goto bad;
 	}
@@ -1170,7 +1170,7 @@ ah_output_cb(struct cryptop *crp)
 	m_copyback(m, 0, skip, ptr);
 
 	/* No longer needed. */
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 
 	/* NB: m is reclaimed by ipsec_process_done. */
@@ -1184,7 +1184,7 @@ bad:
 	crit_exit();
 	if (m)
 		m_freem(m);
-	free(tc, M_XDATA);
+	kfree(tc, M_XDATA);
 	crypto_freereq(crp);
 	return error;
 }

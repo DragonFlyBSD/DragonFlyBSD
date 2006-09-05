@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -79,7 +79,7 @@ linker_add_class(const char* desc, void* priv,
 {
     linker_class_t lc;
 
-    lc = malloc(sizeof(struct linker_class), M_LINKER, M_NOWAIT);
+    lc = kmalloc(sizeof(struct linker_class), M_LINKER, M_NOWAIT);
     if (!lc)
 	return ENOMEM;
     bzero(lc, sizeof(*lc));
@@ -256,7 +256,7 @@ linker_load_file(const char* filename, linker_file_t* result)
 	goto out;
     }
 
-    koname = malloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
+    koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
     if (koname == NULL) {
 	error = ENOMEM;
 	goto out;
@@ -306,7 +306,7 @@ linker_load_file(const char* filename, linker_file_t* result)
 
 out:
     if (koname)
-	free(koname, M_LINKER);
+	kfree(koname, M_LINKER);
     return error;
 }
 
@@ -321,7 +321,7 @@ linker_find_file_by_name(const char* filename)
 	;
     filename += i;
 
-    koname = malloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
+    koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
     if (koname == NULL)
 	goto out;
     sprintf(koname, "%s.ko", filename);
@@ -337,7 +337,7 @@ linker_find_file_by_name(const char* filename)
 
 out:
     if (koname)
-	free(koname, M_LINKER);
+	kfree(koname, M_LINKER);
     return lf;
 }
 
@@ -371,7 +371,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
     lockmgr(&lock, LK_EXCLUSIVE);
     namelen = strlen(filename) + 1;
-    lf = malloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
+    lf = kmalloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
     if (!lf)
 	goto out;
     bzero(lf, sizeof(*lf));
@@ -475,16 +475,16 @@ linker_file_unload(linker_file_t file)
 
     for (i = 0; i < file->ndeps; i++)
 	linker_file_unload(file->deps[i]);
-    free(file->deps, M_LINKER);
+    kfree(file->deps, M_LINKER);
 
     for (cp = STAILQ_FIRST(&file->common); cp;
 	 cp = STAILQ_FIRST(&file->common)) {
 	STAILQ_REMOVE(&file->common, cp, common_symbol, link);
-	free(cp, M_LINKER);
+	kfree(cp, M_LINKER);
     }
 
     file->ops->unload(file);
-    free(file, M_LINKER);
+    kfree(file, M_LINKER);
 
 out:
     return error;
@@ -503,7 +503,7 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
 
     if (file->deps) {
 	bcopy(file->deps, newdeps, file->ndeps * sizeof(linker_file_t*));
-	free(file->deps, M_LINKER);
+	kfree(file->deps, M_LINKER);
     }
     file->deps = newdeps;
     file->deps[file->ndeps] = dep;
@@ -714,7 +714,7 @@ sys_kldload(struct kldload_args *uap)
     if ((error = suser(td)) != 0)
 	return error;
 
-    filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+    filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
@@ -737,7 +737,7 @@ sys_kldload(struct kldload_args *uap)
 
 out:
     if (filename)
-	free(filename, M_TEMP);
+	kfree(filename, M_TEMP);
     return error;
 }
 
@@ -782,7 +782,7 @@ sys_kldfind(struct kldfind_args *uap)
 
     uap->sysmsg_result = -1;
 
-    filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+    filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
@@ -798,7 +798,7 @@ sys_kldfind(struct kldfind_args *uap)
 
 out:
     if (filename)
-	free(filename, M_TEMP);
+	kfree(filename, M_TEMP);
     return error;
 }
 
@@ -910,7 +910,7 @@ sys_kldsym(struct kldsym_args *uap)
 	goto out;
     }
 
-    symstr = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+    symstr = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(lookup.symname, symstr, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
@@ -942,7 +942,7 @@ sys_kldsym(struct kldsym_args *uap)
     }
 out:
     if (symstr)
-	free(symstr, M_TEMP);
+	kfree(symstr, M_TEMP);
     return error;
 }
 
@@ -1089,7 +1089,7 @@ linker_strdup(const char *str)
 {
     char	*result;
 
-    if ((result = malloc((strlen(str) + 1), M_LINKER, M_WAITOK)) != NULL)
+    if ((result = kmalloc((strlen(str) + 1), M_LINKER, M_WAITOK)) != NULL)
 	strcpy(result, str);
     return(result);
 }
@@ -1113,7 +1113,7 @@ linker_search_path(const char *name)
 	/* find the end of this component */
 	for (ep = cp; (*ep != 0) && (*ep != ';'); ep++)
 	    ;
-	result = malloc((strlen(name) + (ep - cp) + 1), M_LINKER, M_WAITOK);
+	result = kmalloc((strlen(name) + (ep - cp) + 1), M_LINKER, M_WAITOK);
 	if (result == NULL)	/* actually ENOMEM */
 	    return(NULL);
 
@@ -1135,7 +1135,7 @@ linker_search_path(const char *name)
 	    }
 	}
 	nlookup_done(&nd);
-	free(result, M_LINKER);
+	kfree(result, M_LINKER);
 
 	if (*ep == 0)
 	    break;

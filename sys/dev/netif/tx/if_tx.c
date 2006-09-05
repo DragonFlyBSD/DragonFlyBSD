@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.35 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.36 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -319,11 +319,11 @@ epic_detach(device_t dev)
 		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
 
 	if (sc->tx_flist)
-		free(sc->tx_flist, M_DEVBUF);
+		kfree(sc->tx_flist, M_DEVBUF);
 	if (sc->tx_desc)
-		free(sc->tx_desc, M_DEVBUF);
+		kfree(sc->tx_desc, M_DEVBUF);
 	if (sc->rx_desc)
-		free(sc->rx_desc, M_DEVBUF);
+		kfree(sc->rx_desc, M_DEVBUF);
 
 	return(0);
 }

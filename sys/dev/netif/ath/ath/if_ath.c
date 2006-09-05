@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.17 2006/04/19 16:14:47 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.2 2006/08/06 12:49:04 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.3 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -2444,7 +2444,7 @@ ath_descdma_setup(struct ath_softc *sc, struct ath_descdma *dd,
 
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
-	bf = malloc(bsize, M_ATHDEV, M_WAITOK | M_ZERO);
+	bf = kmalloc(bsize, M_ATHDEV, M_WAITOK | M_ZERO);
 	dd->dd_bufptr = bf;
 
 	for (i = 0; i < nbuf; i++, bf++, ds += ndesc) {
@@ -2521,7 +2521,7 @@ ath_descdma_cleanup(struct ath_softc *sc,
 	STAILQ_INIT(head);
 
 	if (dd->dd_bufptr != NULL)
-		free(dd->dd_bufptr, M_ATHDEV);
+		kfree(dd->dd_bufptr, M_ATHDEV);
 	memset(dd, 0, sizeof(*dd));
 }
 
@@ -2573,7 +2573,7 @@ ath_node_alloc(struct ieee80211_node_table *nt)
 	const size_t space = sizeof(struct ath_node) + sc->sc_rc->arc_space;
 	struct ath_node *an;
 
-	an = malloc(space, M_80211_NODE, M_NOWAIT|M_ZERO);
+	an = kmalloc(space, M_80211_NODE, M_NOWAIT|M_ZERO);
 	if (an == NULL) {
 		/* XXX stat+msg */
 		return NULL;
@@ -4614,7 +4614,7 @@ ath_getchannels(struct ath_softc *sc, u_int cc,
 	HAL_CHANNEL *chans;
 	int i, ix, nchan;
 
-	chans = malloc(IEEE80211_CHAN_MAX * sizeof(HAL_CHANNEL), M_TEMP,
+	chans = kmalloc(IEEE80211_CHAN_MAX * sizeof(HAL_CHANNEL), M_TEMP,
 		       M_WAITOK);
 
 	if (!ath_hal_init_channels(ah, chans, IEEE80211_CHAN_MAX, &nchan,
@@ -4625,7 +4625,7 @@ ath_getchannels(struct ath_softc *sc, u_int cc,
 		ath_hal_getregdomain(ah, &rd);
 		if_printf(ifp, "unable to collect channel list from hal; "
 			"regdomain likely %u country code %u\n", rd, cc);
-		free(chans, M_TEMP);
+		kfree(chans, M_TEMP);
 		return EINVAL;
 	}
 
@@ -4668,7 +4668,7 @@ ath_getchannels(struct ath_softc *sc, u_int cc,
 			ic->ic_channels[ix].ic_flags |= flags;
 		}
 	}
-	free(chans, M_TEMP);
+	kfree(chans, M_TEMP);
 	return 0;
 #undef COMPAT
 }
@@ -4966,7 +4966,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = malloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_NOWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -4983,7 +4983,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_NOWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -5000,9 +5000,9 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 	}
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		free(indata, M_TEMP);
+		kfree(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		free(outdata, M_TEMP);
+		kfree(outdata, M_TEMP);
 	return error;
 }
 #endif /* ATH_DIAGAPI */

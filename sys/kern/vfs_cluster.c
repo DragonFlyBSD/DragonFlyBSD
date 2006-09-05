@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.26 2006/07/14 19:23:39 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.27 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -655,7 +655,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 					for (bpp = buflist->bs_children;
 					     bpp < endbp; bpp++)
 						brelse(*bpp);
-					free(buflist, M_SEGMENT);
+					kfree(buflist, M_SEGMENT);
 					if (seqcount > 1) {
 						cluster_wbuild_wb(vp, 
 						    lblocksize, vp->v_cstart, 
@@ -668,7 +668,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 					for (bpp = buflist->bs_children;
 					     bpp <= endbp; bpp++)
 						bdwrite(*bpp);
-					free(buflist, M_SEGMENT);
+					kfree(buflist, M_SEGMENT);
 					vp->v_lastw = loffset;
 					vp->v_lasta = bp->b_bio2.bio_offset;
 					return;

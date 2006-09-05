@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.8.2.9 2003/04/28 03:59:03 simokawa Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -937,7 +937,7 @@ ds_pci_attach(device_t dev)
 	struct ac97_info *codec = NULL;
 	char 		status[SND_STATUSLEN];
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -1023,7 +1023,7 @@ bad:
 		bus_dma_tag_destroy(sc->control_dmat);
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -1063,7 +1063,7 @@ ds_pci_detach(device_t dev)
 	bus_dma_tag_destroy(sc->buffer_dmat);
 	bus_dma_tag_destroy(sc->control_dmat);
 	snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
        	return 0;
 }
 

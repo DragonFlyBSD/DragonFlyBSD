@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.5 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.6 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*
@@ -104,14 +104,14 @@ static void *
 deflate_alloc(void *aux, u_int items, u_int siz)
 {
 	void *ptr;
-	ptr = malloc(items * siz, M_TEMP, M_NOWAIT);
+	ptr = kmalloc(items * siz, M_TEMP, M_NOWAIT);
 	return ptr;
 }
 
 static void
 deflate_free(void *aux, void *ptr)
 {
-	free(ptr, M_TEMP);
+	kfree(ptr, M_TEMP);
 }
 
 static int

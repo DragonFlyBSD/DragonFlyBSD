@@ -13,7 +13,7 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.c,v 1.3 1999/08/28 00:40:39 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.5 2005/05/28 01:16:30 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.6 2006/09/05 00:55:31 dillon Exp $
  */
 /*
  * XXX XXX XXX XXX  We should get DEVFS working so that we
@@ -47,7 +47,7 @@ struct extend_array
 struct extend_array *
 cam_extend_new(void)
 {
-	return(malloc(sizeof(struct extend_array), M_DEVBUF,
+	return(kmalloc(sizeof(struct extend_array), M_DEVBUF,
 	    M_INTWAIT | M_ZERO));
 }
 
@@ -56,13 +56,13 @@ cam_extend_set(struct extend_array *ea, int index, void *value)
 {
 	if (index >= ea->nelem) {
 		void **space;
-		space = malloc(sizeof(void *) * (index + EXTEND_CHUNK),
+		space = kmalloc(sizeof(void *) * (index + EXTEND_CHUNK),
 		    M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		/* Make sure we have something to copy before we copy it */
 		if (ea->nelem) {
 			bcopy(ea->ps, space, sizeof(void *) * ea->nelem);
-			free(ea->ps, M_DEVBUF);
+			kfree(ea->ps, M_DEVBUF);
 		}
 
 		ea->ps = space;

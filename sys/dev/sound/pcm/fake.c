@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.4.2.5 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
 
 static u_int32_t fk_fmt[] = {
 	AFMT_U8,
@@ -120,7 +120,7 @@ fkchan_setup(device_t dev)
     	struct snddev_info *d = device_get_softc(dev);
 	struct pcm_channel *c;
 
-	c = malloc(sizeof(*c), M_DEVBUF, M_WAITOK);
+	c = kmalloc(sizeof(*c), M_DEVBUF, M_WAITOK);
 	c->methods = kobj_create(&fkchan_class, M_DEVBUF, M_WAITOK);
 	c->parentsnddev = d;
 	snprintf(c->name, CHN_NAMELEN, "%s:fake", device_get_nameunit(dev));
@@ -133,7 +133,7 @@ fkchan_kill(struct pcm_channel *c)
 {
 	kobj_delete(c->methods, M_DEVBUF);
 	c->methods = NULL;
-	free(c, M_DEVBUF);
+	kfree(c, M_DEVBUF);
 	return 0;
 }
 

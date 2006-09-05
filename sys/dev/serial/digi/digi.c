@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.5 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.6 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*-
@@ -185,15 +185,15 @@ static void
 digi_freedata(struct digi_softc *sc)
 {
 	if (sc->fep.data != NULL) {
-		free(sc->fep.data, M_TTYS);
+		kfree(sc->fep.data, M_TTYS);
 		sc->fep.data = NULL;
 	}
 	if (sc->link.data != NULL) {
-		free(sc->link.data, M_TTYS);
+		kfree(sc->link.data, M_TTYS);
 		sc->link.data = NULL;
 	}
 	if (sc->bios.data != NULL) {
-		free(sc->bios.data, M_TTYS);
+		kfree(sc->bios.data, M_TTYS);
 		sc->bios.data = NULL;
 	}
 }
@@ -539,12 +539,12 @@ digi_init(struct digi_softc *sc)
 		    sc->numports);
 
 	if (sc->ports)
-		free(sc->ports, M_TTYS);
+		kfree(sc->ports, M_TTYS);
 	sc->ports = malloc(sizeof(struct digi_p) * sc->numports,
 	    M_TTYS, M_WAITOK | M_ZERO);
 
 	if (sc->ttys)
-		free(sc->ttys, M_TTYS);
+		kfree(sc->ttys, M_TTYS);
 	sc->ttys = malloc(sizeof(struct tty) * sc->numports,
 	    M_TTYS, M_WAITOK | M_ZERO);
 
@@ -1038,13 +1038,13 @@ digi_loaddata(struct digi_softc *sc)
 
 	sc->bios.size = bios->bios_size;
 	if (sc->bios.size != 0 && bios->bios != NULL) {
-		sc->bios.data = malloc(sc->bios.size, M_TTYS, M_WAITOK);
+		sc->bios.data = kmalloc(sc->bios.size, M_TTYS, M_WAITOK);
 		bcopy(bios->bios, sc->bios.data, sc->bios.size);
 	}
 
 	sc->fep.size = bios->fep_size;
 	if (sc->fep.size != 0 && bios->fep != NULL) {
-		sc->fep.data = malloc(sc->fep.size, M_TTYS, M_WAITOK);
+		sc->fep.data = kmalloc(sc->fep.size, M_TTYS, M_WAITOK);
 		bcopy(bios->fep, sc->fep.data, sc->fep.size);
 	}
 
@@ -1875,9 +1875,9 @@ digi_free_state(struct digi_softc *sc)
 	if (sc->numports) {
 		KASSERT(sc->ports, ("digi%d: Lost my ports ?", sc->res.unit));
 		KASSERT(sc->ttys, ("digi%d: Lost my ttys ?", sc->res.unit));
-		free(sc->ports, M_TTYS);
+		kfree(sc->ports, M_TTYS);
 		sc->ports = NULL;
-		free(sc->ttys, M_TTYS);
+		kfree(sc->ttys, M_TTYS);
 		sc->ttys = NULL;
 		sc->numports = 0;
 	}

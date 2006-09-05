@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.14 2006/07/18 02:03:11 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.15 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -598,7 +598,7 @@ uhci_detach(struct uhci_softc *sc, int flags)
 		if (xfer == NULL)
 			break;
 		SIMPLEQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
-		free(xfer, M_USB);
+		kfree(xfer, M_USB);
 	}
 
 	/* XXX free other data structures XXX */
@@ -635,7 +635,7 @@ uhci_allocx(struct usbd_bus *bus)
 		}
 #endif
 	} else {
-		xfer = malloc(sizeof(struct uhci_xfer), M_USB, M_INTWAIT);
+		xfer = kmalloc(sizeof(struct uhci_xfer), M_USB, M_INTWAIT);
 	}
 	if (xfer != NULL) {
 		memset(xfer, 0, sizeof (struct uhci_xfer));
@@ -2173,7 +2173,7 @@ uhci_device_intr_close(usbd_pipe_handle pipe)
 
 	for(i = 0; i < npoll; i++)
 		uhci_free_sqh(sc, upipe->u.intr.qhs[i]);
-	free(upipe->u.intr.qhs, M_USBHC);
+	kfree(upipe->u.intr.qhs, M_USBHC);
 
 	/* XXX free other resources */
 }
@@ -2539,7 +2539,7 @@ uhci_device_isoc_close(usbd_pipe_handle pipe)
 	}
 	crit_exit();
 
-	free(iso->stds, M_USBHC);
+	kfree(iso->stds, M_USBHC);
 }
 
 usbd_status
@@ -2593,7 +2593,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
  bad:
 	while (--i >= 0)
 		uhci_free_std(sc, iso->stds[i]);
-	free(iso->stds, M_USBHC);
+	kfree(iso->stds, M_USBHC);
 	return (USBD_NOMEM);
 }
 
@@ -2818,7 +2818,7 @@ uhci_device_setintr(uhci_softc_t *sc, struct uhci_pipe *upipe, int ival)
 
 	upipe->u.intr.npoll = npoll;
 	upipe->u.intr.qhs =
-		malloc(npoll * sizeof(uhci_soft_qh_t *), M_USBHC, M_INTWAIT);
+		kmalloc(npoll * sizeof(uhci_soft_qh_t *), M_USBHC, M_INTWAIT);
 
 	/*
 	 * Figure out which offset in the schedule that has most

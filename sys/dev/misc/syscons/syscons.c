@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.25 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.26 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -528,7 +528,7 @@ scclose(struct dev_close_args *ap)
 	    sc_vtb_destroy(&scp->scr);
 	    sc_free_history_buffer(scp, scp->ysize);
 	    SC_STAT(dev) = NULL;
-	    free(scp, M_SYSCONS);
+	    kfree(scp, M_SYSCONS);
 	}
 #else
 	scp->pid = 0;
@@ -2507,9 +2507,9 @@ scinit(int unit, int flags)
 	    sc->font_16 = font_16;
 	} else if (sc->font_8 == NULL) {
 	    /* assert(sc_malloc) */
-	    sc->font_8 = malloc(sizeof(font_8), M_SYSCONS, M_WAITOK);
-	    sc->font_14 = malloc(sizeof(font_14), M_SYSCONS, M_WAITOK);
-	    sc->font_16 = malloc(sizeof(font_16), M_SYSCONS, M_WAITOK);
+	    sc->font_8 = kmalloc(sizeof(font_8), M_SYSCONS, M_WAITOK);
+	    sc->font_14 = kmalloc(sizeof(font_14), M_SYSCONS, M_WAITOK);
+	    sc->font_16 = kmalloc(sizeof(font_16), M_SYSCONS, M_WAITOK);
 	}
 #endif
 
@@ -2537,7 +2537,7 @@ scinit(int unit, int flags)
 					 kernel_default.rev_color);
 	} else {
 	    /* assert(sc_malloc) */
-	    sc->dev = malloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
+	    sc->dev = kmalloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
 	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
@@ -2665,20 +2665,20 @@ scterm(int unit, int flags)
     if (scp->tsw)
 	(*scp->tsw->te_term)(scp, &scp->ts);
     if (scp->ts != NULL)
-	free(scp->ts, M_SYSCONS);
+	kfree(scp->ts, M_SYSCONS);
 
     /* clear the structure */
     if (!(flags & SC_KERNEL_CONSOLE)) {
 	/* XXX: We need delete_dev() for this */
-	free(sc->dev, M_SYSCONS);
+	kfree(sc->dev, M_SYSCONS);
 #if 0
 	/* XXX: We need a ttyunregister for this */
-	free(sc->tty, M_SYSCONS);
+	kfree(sc->tty, M_SYSCONS);
 #endif
 #ifndef SC_NO_FONT_LOADING
-	free(sc->font_8, M_SYSCONS);
-	free(sc->font_14, M_SYSCONS);
-	free(sc->font_16, M_SYSCONS);
+	kfree(sc->font_8, M_SYSCONS);
+	kfree(sc->font_14, M_SYSCONS);
+	kfree(sc->font_16, M_SYSCONS);
 #endif
 	/* XXX vtb, history */
     }
@@ -2755,7 +2755,7 @@ alloc_scp(sc_softc_t *sc, int vty)
 
     /* assert(sc_malloc) */
 
-    scp = malloc(sizeof(scr_stat), M_SYSCONS, M_WAITOK);
+    scp = kmalloc(sizeof(scr_stat), M_SYSCONS, M_WAITOK);
     init_scp(sc, vty, scp);
 
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -2889,7 +2889,7 @@ sc_init_emulator(scr_stat *scp, char *name)
     }
 
     if (sc_malloc && (sw->te_size > 0))
-	p = malloc(sw->te_size, M_SYSCONS, M_NOWAIT);
+	p = kmalloc(sw->te_size, M_SYSCONS, M_NOWAIT);
     else
 	p = NULL;
     error = (*sw->te_init)(scp, &p, SC_TE_COLD_INIT);
@@ -2899,7 +2899,7 @@ sc_init_emulator(scr_stat *scp, char *name)
     if (scp->tsw)
 	(*scp->tsw->te_term)(scp, &scp->ts);
     if (scp->ts != NULL)
-	free(scp->ts, M_SYSCONS);
+	kfree(scp->ts, M_SYSCONS);
     scp->tsw = sw;
     scp->ts = p;
     scp->rndr = rndr;

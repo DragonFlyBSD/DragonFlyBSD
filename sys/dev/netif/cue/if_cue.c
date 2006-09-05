@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.24 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.25 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -604,7 +604,7 @@ cue_tx_list_init(struct cue_softc *sc)
 			if (c->cue_xfer == NULL)
 				return(ENOBUFS);
 		}
-		c->cue_buf = malloc(CUE_BUFSZ, M_USBDEV, M_WAITOK);
+		c->cue_buf = kmalloc(CUE_BUFSZ, M_USBDEV, M_WAITOK);
 	}
 
 	return(0);
@@ -1106,7 +1106,7 @@ cue_stop(struct cue_softc *sc)
 	/* Free RX resources. */
 	for (i = 0; i < CUE_RX_LIST_CNT; i++) {
 		if (sc->cue_cdata.cue_rx_chain[i].cue_buf != NULL) {
-			free(sc->cue_cdata.cue_rx_chain[i].cue_buf, M_USBDEV);
+			kfree(sc->cue_cdata.cue_rx_chain[i].cue_buf, M_USBDEV);
 			sc->cue_cdata.cue_rx_chain[i].cue_buf = NULL;
 		}
 		if (sc->cue_cdata.cue_rx_chain[i].cue_mbuf != NULL) {
@@ -1122,7 +1122,7 @@ cue_stop(struct cue_softc *sc)
 	/* Free TX resources. */
 	for (i = 0; i < CUE_TX_LIST_CNT; i++) {
 		if (sc->cue_cdata.cue_tx_chain[i].cue_buf != NULL) {
-			free(sc->cue_cdata.cue_tx_chain[i].cue_buf, M_USBDEV);
+			kfree(sc->cue_cdata.cue_tx_chain[i].cue_buf, M_USBDEV);
 			sc->cue_cdata.cue_tx_chain[i].cue_buf = NULL;
 		}
 		if (sc->cue_cdata.cue_tx_chain[i].cue_mbuf != NULL) {

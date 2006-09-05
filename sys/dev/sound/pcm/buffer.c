@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.4 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.4 2006/04/30 17:22:17 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 #define SNDBUF_NAMELEN	48
 struct snd_dbuf {
@@ -60,7 +60,7 @@ sndbuf_create(device_t dev, char *drv, char *desc)
 {
 	struct snd_dbuf *b;
 
-	b = malloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
+	b = kmalloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
 	snprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 
@@ -70,7 +70,7 @@ sndbuf_create(device_t dev, char *drv, char *desc)
 void
 sndbuf_destroy(struct snd_dbuf *b)
 {
-	free(b, M_DEVBUF);
+	kfree(b, M_DEVBUF);
 }
 
 static void
@@ -115,7 +115,7 @@ void
 sndbuf_free(struct snd_dbuf *b)
 {
 	if (b->tmpbuf)
-		free(b->tmpbuf, M_DEVBUF);
+		kfree(b->tmpbuf, M_DEVBUF);
 	b->tmpbuf = NULL;
 
 	if (b->dmamap)
@@ -144,8 +144,8 @@ sndbuf_resize(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 	b->blksz = blksz;
 	b->bufsize = blkcnt * blksz;
 	if (b->tmpbuf)
-		free(b->tmpbuf, M_DEVBUF);
-	b->tmpbuf = malloc(b->bufsize, M_DEVBUF, M_WAITOK);
+		kfree(b->tmpbuf, M_DEVBUF);
+	b->tmpbuf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
 	sndbuf_reset(b);
 	return 0;
 }
@@ -163,14 +163,14 @@ sndbuf_remalloc(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 	b->bufsize = b->maxsize;
 
 	if (b->buf)
-		free(b->buf, M_DEVBUF);
-	b->buf = malloc(b->bufsize, M_DEVBUF, M_WAITOK);
+		kfree(b->buf, M_DEVBUF);
+	b->buf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
 	if (b->buf == NULL)
 		return ENOMEM;
 
 	if (b->tmpbuf)
-		free(b->tmpbuf, M_DEVBUF);
-	b->tmpbuf = malloc(b->bufsize, M_DEVBUF, M_WAITOK);
+		kfree(b->tmpbuf, M_DEVBUF);
+	b->tmpbuf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
 	if (b->tmpbuf == NULL)
 		return ENOMEM;
 

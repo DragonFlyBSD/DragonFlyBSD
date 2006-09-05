@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.23 2006/08/23 06:45:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.24 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -519,7 +519,7 @@ allocvnode(int lktimeout, int lkflags)
 		/*
 		 * A brand-new vnode (we could use malloc() here I think) XXX
 		 */
-		vp = malloc(sizeof(struct vnode), M_VNODE, M_WAITOK|M_ZERO);
+		vp = kmalloc(sizeof(struct vnode), M_VNODE, M_WAITOK|M_ZERO);
 		lwkt_token_init(&vp->v_pollinfo.vpi_token);
 		lockinit(&vp->v_lock, "vnode", lktimeout, lkflags);
 		ccms_dataspace_init(&vp->v_ccms);

@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.40 2006/08/02 01:25:25 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -357,7 +357,7 @@ pipe_create(cpipep)
 		--gd->gd_pipeqcount;
 		cpipe->pipe_peer = NULL;
 	} else {
-		cpipe = malloc(sizeof(struct pipe), M_PIPE, M_WAITOK|M_ZERO);
+		cpipe = kmalloc(sizeof(struct pipe), M_PIPE, M_WAITOK|M_ZERO);
 	}
 	*cpipep = cpipe;
 	if ((error = pipespace(cpipe, PIPE_SIZE)) != 0)
@@ -1418,7 +1418,7 @@ pipeclose(struct pipe *cpipe)
 	    cpipe->pipe_buffer.size != PIPE_SIZE
 	) {
 		pipe_free_kmem(cpipe);
-		free(cpipe, M_PIPE);
+		kfree(cpipe, M_PIPE);
 	} else {
 		KKASSERT(cpipe->pipe_map.xio_npages == 0 &&
 			cpipe->pipe_map.xio_bytes == 0 &&

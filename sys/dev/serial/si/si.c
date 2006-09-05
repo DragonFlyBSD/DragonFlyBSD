@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.17 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.18 2006/09/05 00:55:42 dillon Exp $
  */
 
 #ifndef lint
@@ -520,7 +520,7 @@ try_next:
 	/*
 	 * allocate tty structures for ports
 	 */
-	tp = malloc(sizeof(*tp) * nport, M_DEVBUF, M_WAITOK | M_ZERO);
+	tp = kmalloc(sizeof(*tp) * nport, M_DEVBUF, M_WAITOK | M_ZERO);
 	si__tty = tp;
 
 	/*

@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/sys/ccbque.h,v 1.8 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.9 2006/09/05 00:55:45 dillon Exp $
  */
 /*
  * Common command control queue funcs.
@@ -87,7 +87,7 @@ DEV##_get_ccb(void)								\
 		}							\
 		else							\
 		{							\
-			cb = malloc(sizeof(*cb), M_DEVBUF, M_INTWAIT);	\
+			cb = kmalloc(sizeof(*cb), M_DEVBUF, M_INTWAIT);	\
 			if (cb != NULL)					\
 			{						\
 				bzero(cb, sizeof(*cb));			\

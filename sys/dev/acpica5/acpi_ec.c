@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.7 2006/06/04 21:09:47 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.7 2006/06/04 21:09:47 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
   *
   */
 
@@ -414,7 +414,7 @@ acpi_ec_ecdt_probe(device_t parent)
      * before initializing devices, but in practice this function
      * should be safe to call at this point.
      */
-    params = malloc(sizeof(struct acpi_ec_params), M_TEMP, M_WAITOK | M_ZERO);
+    params = kmalloc(sizeof(struct acpi_ec_params), M_TEMP, M_WAITOK | M_ZERO);
     params->gpe_handle = NULL;
     params->gpe_bit = ecdt->gpe_bit;
     params->uid = ecdt->uid;
@@ -456,7 +456,7 @@ acpi_ec_probe(device_t dev)
 	params = acpi_get_private(dev);
 	ret = 0;
     } else if (acpi_MatchHid(dev, "PNP0C09")) {
-	params = malloc(sizeof(struct acpi_ec_params), M_TEMP,
+	params = kmalloc(sizeof(struct acpi_ec_params), M_TEMP,
 			M_WAITOK | M_ZERO);
 	h = acpi_get_handle(dev);
 
@@ -530,7 +530,7 @@ out:
     }
 
     if (ret > 0 && params)
-	free(params, M_TEMP);
+	kfree(params, M_TEMP);
     if (buf.Pointer)
 	AcpiOsFree(buf.Pointer);
     return (ret);
@@ -557,7 +557,7 @@ acpi_ec_attach(device_t dev)
     sc->ec_gpebit = params->gpe_bit;
     sc->ec_gpehandle = params->gpe_handle;
     sc->ec_uid = params->uid;
-    free(params, M_TEMP);
+    kfree(params, M_TEMP);
 
     /* Attach bus resources for data and command/status ports. */
     sc->ec_data_rid = 0;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.19 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.20 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -846,7 +846,7 @@ static int stlattach(struct isa_device *idp)
 
 /*	idp->id_intr = (inthand2_t *)stlintr; */
 
-	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
+	brdp = kmalloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((brdp->brdnr = stl_findfreeunit()) < 0) {
 		printf("STALLION: too many boards found, max=%d\n",
@@ -1017,7 +1017,7 @@ void stlpciattach(pcici_t tag, int unit)
 	printf("stlpciattach(tag=%x,unit=%x)\n", (int) &tag, unit);
 #endif
 
-	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
+	brdp = kmalloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((unit < 0) || (unit > STL_MAXBRDS)) {
 		printf("STALLION: bad PCI board unit number=%d\n", unit);
@@ -2202,7 +2202,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
  *      UART port.
  */
         for (i = 0; (i < panelp->nrports); i++) {
-                portp = malloc(sizeof(stlport_t), M_TTYS, M_WAITOK | M_ZERO);
+                portp = kmalloc(sizeof(stlport_t), M_TTYS, M_WAITOK | M_ZERO);
 
                 portp->portnr = i;
                 portp->brdnr = panelp->brdnr;
@@ -2212,7 +2212,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
                 panelp->ports[i] = portp;
 
                 j = STL_TXBUFSIZE + (2 * STL_RXBUFSIZE);
-                portp->tx.buf = malloc(j, M_TTYS, M_WAITOK);
+                portp->tx.buf = kmalloc(j, M_TTYS, M_WAITOK);
                 portp->tx.endbuf = portp->tx.buf + STL_TXBUFSIZE;
                 portp->tx.head = portp->tx.buf;
                 portp->tx.tail = portp->tx.buf;
@@ -2314,7 +2314,7 @@ static int stl_initeio(stlbrd_t *brdp)
 			((brdp->irqtype) ? EIO_INTLEVEL : EIO_INTEDGE)));
 	}
 
-	panelp = malloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
+	panelp = kmalloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
 	panelp->brdnr = brdp->brdnr;
 	panelp->panelnr = 0;
 	panelp->nrports = brdp->nrports;
@@ -2436,7 +2436,7 @@ static int stl_initech(stlbrd_t *brdp)
 		status = inb(ioaddr + ECH_PNLSTATUS);
 		if ((status & ECH_PNLIDMASK) != nxtid)
 			break;
-		panelp = malloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
+		panelp = kmalloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
 		panelp->brdnr = brdp->brdnr;
 		panelp->panelnr = panelnr;
 		panelp->iobase = ioaddr;

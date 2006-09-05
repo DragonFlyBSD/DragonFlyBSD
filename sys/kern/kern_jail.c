@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.11 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.12 2006/09/05 00:55:45 dillon Exp $
  *
  */
 
@@ -284,9 +284,9 @@ retry:
 	if (count == 0)
 		return(0);
 
-	sxp = xp = malloc(sizeof(*xp) * count, M_TEMP, M_WAITOK | M_ZERO);
+	sxp = xp = kmalloc(sizeof(*xp) * count, M_TEMP, M_WAITOK | M_ZERO);
 	if (count < prisoncount) {
-		free(sxp, M_TEMP);
+		kfree(sxp, M_TEMP);
 		goto retry;
 	}
 	count = prisoncount;
@@ -298,7 +298,7 @@ retry:
 		error = cache_fullpath(p, pr->pr_root, &fullpath, &freepath);
 		if (error == 0) {
 			strlcpy(xp->pr_path, fullpath, sizeof(xp->pr_path));
-			free(freepath, M_TEMP);
+			kfree(freepath, M_TEMP);
 		} else {
 			bzero(xp->pr_path, sizeof(xp->pr_path));
 		}
@@ -308,7 +308,7 @@ retry:
 	}
 
 	error = SYSCTL_OUT(req, sxp, sizeof(*sxp) * count);
-	free(sxp, M_TEMP);
+	kfree(sxp, M_TEMP);
 	return(error);
 }
 
@@ -333,8 +333,8 @@ prison_free(struct prison *pr)
 	prisoncount--;
 
 	if (pr->pr_linux != NULL)
-		free(pr->pr_linux, M_PRISON);
+		kfree(pr->pr_linux, M_PRISON);
 	varsymset_clean(&pr->pr_varsymset);
 	cache_drop(pr->pr_root);
-	free(pr, M_PRISON);
+	kfree(pr, M_PRISON);
 }

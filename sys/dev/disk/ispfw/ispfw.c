@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.2.2.5 2002/10/12 00:13:09 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.5 2004/03/15 01:10:43 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.6 2006/09/05 00:55:37 dillon Exp $ */
 /*
  * ISP Firmware Helper Pseudo Device for FreeBSD
  *
@@ -80,7 +80,7 @@ addcaller(const u_int16_t **caller)
 	}
 	newcallp[ncallers] = caller;
 	if (ncallers++)
-		free(callp, M_DEVBUF);
+		kfree(callp, M_DEVBUF);
 	callp = newcallp;
 	return (1);
 }
@@ -146,7 +146,7 @@ isp_module_handler(module_t mod, int what, void *arg)
 			for (i = 0; i < ncallers; i++) {
 				*callp[i] = NULL;
 			}
-			free(callp, M_DEVBUF);
+			kfree(callp, M_DEVBUF);
 		}
 		break;
 	default:

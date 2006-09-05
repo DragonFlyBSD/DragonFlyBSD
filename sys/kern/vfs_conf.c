@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.17 2006/09/03 17:43:59 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.18 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -206,8 +206,8 @@ vfs_mountroot_try(const char *mountfrom)
 	crit_exit();
 
 	/* parse vfs name and devname */
-	vfsname = malloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
-	devname = malloc(MNAMELEN, M_MOUNT, M_WAITOK);
+	vfsname = kmalloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
+	devname = kmalloc(MNAMELEN, M_MOUNT, M_WAITOK);
 	vfsname[0] = devname[0] = 0;
 	sprintf(patt, "%%%d[a-z0-9]:%%%ds", MFSNAMELEN, MNAMELEN);
 	if (sscanf(mountfrom, patt, vfsname, devname) < 1)
@@ -237,13 +237,13 @@ vfs_mountroot_try(const char *mountfrom)
 
 done:
 	if (vfsname != NULL)
-		free(vfsname, M_MOUNT);
+		kfree(vfsname, M_MOUNT);
 	if (devname != NULL)
-		free(devname, M_MOUNT);
+		kfree(devname, M_MOUNT);
 	if (error != 0) {
 		if (mp != NULL) {
 			vfs_unbusy(mp);
-			free(mp, M_MOUNT);
+			kfree(mp, M_MOUNT);
 		}
 		printf("Root mount failed: %d\n", error);
 	} else {

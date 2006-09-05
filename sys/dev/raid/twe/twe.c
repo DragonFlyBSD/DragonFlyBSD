@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.15 2006/04/30 17:22:17 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.16 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -261,9 +261,9 @@ twe_add_unit(struct twe_softc *sc, int unit)
 
 out:
     if (param != NULL)
-	free(param, M_DEVBUF);
+	kfree(param, M_DEVBUF);
     if (drives != NULL)
-	free(drives, M_DEVBUF);
+	kfree(drives, M_DEVBUF);
     return (error);
 }
 
@@ -522,7 +522,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	 */
 	tr->tr_length = (tu->tu_size + 511) & ~511;
 	if (tr->tr_length > 0) {
-	    if ((tr->tr_data = malloc(tr->tr_length, M_DEVBUF, M_WAITOK)) == NULL) {
+	    if ((tr->tr_data = kmalloc(tr->tr_length, M_DEVBUF, M_WAITOK)) == NULL) {
 		error = ENOMEM;
 		goto cmd_done;
 	    }
@@ -546,7 +546,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     cmd_done:
 	/* free resources */
 	if (tr->tr_data != NULL)
-	    free(tr->tr_data, M_DEVBUF);
+	    kfree(tr->tr_data, M_DEVBUF);
 	if (tr != NULL)
 	    twe_release_request(tr);
 
@@ -599,18 +599,18 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	    } else {
 		error = copyout(param->data, tp->tp_data, param->parameter_size_bytes);
 	    }
-	    free(param, M_DEVBUF);
+	    kfree(param, M_DEVBUF);
 	}
 	break;
 
     case TWEIO_SET_PARAM:
-	if ((data = malloc(tp->tp_size, M_DEVBUF, M_WAITOK)) == NULL) {
+	if ((data = kmalloc(tp->tp_size, M_DEVBUF, M_WAITOK)) == NULL) {
 	    error = ENOMEM;
 	} else {
 	    error = copyin(tp->tp_data, data, tp->tp_size);
 	    if (error == 0)
 		error = twe_set_param(sc, tp->tp_table_id, tp->tp_param_id, tp->tp_size, data);
-	    free(data, M_DEVBUF);
+	    kfree(data, M_DEVBUF);
 	}
 	break;
 
@@ -676,7 +676,7 @@ twe_get_param_1(struct twe_softc *sc, int table_id, int param_id, u_int8_t *resu
     if ((param = twe_get_param(sc, table_id, param_id, 1, NULL)) == NULL)
 	return(ENOENT);
     *result = *(u_int8_t *)param->data;
-    free(param, M_DEVBUF);
+    kfree(param, M_DEVBUF);
     return(0);
 }
 
@@ -688,7 +688,7 @@ twe_get_param_2(struct twe_softc *sc, int table_id, int param_id, u_int16_t *res
     if ((param = twe_get_param(sc, table_id, param_id, 2, NULL)) == NULL)
 	return(ENOENT);
     *result = *(u_int16_t *)param->data;
-    free(param, M_DEVBUF);
+    kfree(param, M_DEVBUF);
     return(0);
 }
 
@@ -700,7 +700,7 @@ twe_get_param_4(struct twe_softc *sc, int table_id, int param_id, u_int32_t *res
     if ((param = twe_get_param(sc, table_id, param_id, 4, NULL)) == NULL)
 	return(ENOENT);
     *result = *(u_int32_t *)param->data;
-    free(param, M_DEVBUF);
+    kfree(param, M_DEVBUF);
     return(0);
 }
 
@@ -729,7 +729,7 @@ twe_get_param(struct twe_softc *sc, int table_id, int param_id, size_t param_siz
 	goto err;
 
     /* get a buffer */
-    param = (TWE_Param *)malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
+    param = (TWE_Param *)kmalloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
     tr->tr_data = param;
     tr->tr_length = TWE_SECTOR_SIZE;
     tr->tr_flags = TWE_CMD_DATAIN | TWE_CMD_DATAOUT;
@@ -771,7 +771,7 @@ err:
     if (tr != NULL)
 	twe_release_request(tr);
     if (param != NULL)
-	free(param, M_DEVBUF);
+	kfree(param, M_DEVBUF);
     return(NULL);
 }
 
@@ -822,7 +822,7 @@ twe_set_param(struct twe_softc *sc, int table_id, int param_id, int param_size, 
 	goto out;
 
     /* get a buffer */
-    param = (TWE_Param *)malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
+    param = (TWE_Param *)kmalloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
     tr->tr_data = param;
     tr->tr_length = TWE_SECTOR_SIZE;
     tr->tr_flags = TWE_CMD_DATAIN | TWE_CMD_DATAOUT;
@@ -851,7 +851,7 @@ out:
     if (tr != NULL)
 	twe_release_request(tr);
     if (param != NULL)
-	free(param, M_DEVBUF);
+	kfree(param, M_DEVBUF);
     return(error);
 }
 
@@ -1353,7 +1353,7 @@ twe_handle_aen(struct twe_request *tr)
     param = (TWE_Param *)tr->tr_data;
     aen = *(u_int16_t *)(param->data);
 
-    free(tr->tr_data, M_DEVBUF);
+    kfree(tr->tr_data, M_DEVBUF);
     twe_release_request(tr);
     twe_enqueue_aen(sc, aen);
 
@@ -1583,18 +1583,18 @@ twe_describe_controller(struct twe_softc *sc)
 			p[2]->data, p[3]->data, p[4]->data, p[5]->data);
 
 	if (p[2])
-		free(p[2], M_DEVBUF);
+		kfree(p[2], M_DEVBUF);
 	if (p[3])
-		free(p[3], M_DEVBUF);
+		kfree(p[3], M_DEVBUF);
 	if (p[4])
-		free(p[4], M_DEVBUF);
+		kfree(p[4], M_DEVBUF);
 	if (p[5])
-		free(p[5], M_DEVBUF);
+		kfree(p[5], M_DEVBUF);
     }
     if (p[0])
-	free(p[0], M_DEVBUF);
+	kfree(p[0], M_DEVBUF);
     if (p[1])
-	free(p[1], M_DEVBUF);
+	kfree(p[1], M_DEVBUF);
 
     /* print attached drives */
     if (bootverbose) {
@@ -1606,13 +1606,13 @@ twe_describe_controller(struct twe_softc *sc)
 	    p[1] = twe_get_param(sc, TWE_PARAM_DRIVEINFO + i, TWE_PARAM_DRIVEINFO_Model, 40, NULL);
 	    if (p[1] != NULL) {
 		twe_printf(sc, "port %d: %.40s %dMB\n", i, p[1]->data, size / 2048);
-		free(p[1], M_DEVBUF);
+		kfree(p[1], M_DEVBUF);
 	    } else {
 		twe_printf(sc, "port %d, drive status unavailable\n", i);
 	    }
 	}
 	if (p[0])
-	    free(p[0], M_DEVBUF);
+	    kfree(p[0], M_DEVBUF);
     }
 }
 

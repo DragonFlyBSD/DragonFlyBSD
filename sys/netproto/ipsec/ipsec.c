@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.15 2006/05/01 16:24:43 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.16 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -823,7 +823,7 @@ ipsec6_setspidx_ipaddr(struct mbuf *m, struct secpolicyindex *spidx)
 static void
 ipsec_delpcbpolicy(struct inpcbpolicy *p)
 {
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /* initialize policy in PCB */
@@ -945,7 +945,7 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 fail:
 	for (p = newchain; p; p = r) {
 		r = p->next;
-		free(p, M_SECA);
+		kfree(p, M_SECA);
 		p = NULL;
 	}
 	return NULL;

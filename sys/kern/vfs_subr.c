@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.94 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.95 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -1614,7 +1614,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		return (EINVAL);
 
 	i = sizeof(struct netcred) + argp->ex_addrlen + argp->ex_masklen;
-	np = (struct netcred *) malloc(i, M_NETADDR, M_WAITOK);
+	np = (struct netcred *) kmalloc(i, M_NETADDR, M_WAITOK);
 	bzero((caddr_t) np, i);
 	saddr = (struct sockaddr *) (np + 1);
 	if ((error = copyin(argp->ex_addr, (caddr_t) saddr, argp->ex_addrlen)))
@@ -1657,7 +1657,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 	np->netc_anon.cr_ref = 1;
 	return (0);
 out:
-	free(np, M_NETADDR);
+	kfree(np, M_NETADDR);
 	return (error);
 }
 
@@ -1668,7 +1668,7 @@ vfs_free_netcred(struct radix_node *rn, void *w)
 	struct radix_node_head *rnh = (struct radix_node_head *) w;
 
 	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
-	free((caddr_t) rn, M_NETADDR);
+	kfree((caddr_t) rn, M_NETADDR);
 	return (0);
 }
 
@@ -1685,7 +1685,7 @@ vfs_free_addrlist(struct netexport *nep)
 		if ((rnh = nep->ne_rtable[i])) {
 			(*rnh->rnh_walktree) (rnh, vfs_free_netcred,
 			    (caddr_t) rnh);
-			free((caddr_t) rnh, M_RTABLE);
+			kfree((caddr_t) rnh, M_RTABLE);
 			nep->ne_rtable[i] = 0;
 		}
 }
@@ -2066,7 +2066,7 @@ vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 	if (len > uio->uio_resid)
 		return(1);
 
-	dp = malloc(len, M_TEMP, M_WAITOK | M_ZERO);
+	dp = kmalloc(len, M_TEMP, M_WAITOK | M_ZERO);
 
 	dp->d_ino = d_ino;
 	dp->d_namlen = d_namlen;
@@ -2075,7 +2075,7 @@ vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 
 	*error = uiomove((caddr_t)dp, len, uio);
 
-	free(dp, M_TEMP);
+	kfree(dp, M_TEMP);
 
 	return(0);
 }

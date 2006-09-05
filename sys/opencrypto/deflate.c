@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/deflate.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/deflate.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/deflate.c,v 1.3 2006/09/05 00:55:49 dillon Exp $	*/
 /* $OpenBSD: deflate.c,v 1.3 2001/08/20 02:45:22 hugh Exp $ */
 
 /*
@@ -178,7 +178,7 @@ z_alloc(nil, type, size)
 {
 	void *ptr;
 
-	ptr = malloc(type *size, M_CRYPTO_DATA, M_NOWAIT);
+	ptr = kmalloc(type *size, M_CRYPTO_DATA, M_NOWAIT);
 	return ptr;
 }
 
@@ -186,5 +186,5 @@ void
 z_free(nil, ptr)
 	void *nil, *ptr;
 {
-	free(ptr, M_CRYPTO_DATA);
+	kfree(ptr, M_CRYPTO_DATA);
 }

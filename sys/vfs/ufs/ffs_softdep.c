@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.48 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.49 2006/09/05 00:55:51 dillon Exp $
  */
 
 /*
@@ -940,7 +940,7 @@ top:
 		printf("pagedep_lookup: blocking race avoided\n");
 		ACQUIRE_LOCK(&lk);
 		sema_release(&pagedep_in_progress);
-		free(pagedep, M_PAGEDEP);
+		kfree(pagedep, M_PAGEDEP);
 		goto top;
 	}
 
@@ -1033,7 +1033,7 @@ top:
 		printf("inodedep_lookup: blocking race avoided\n");
 		ACQUIRE_LOCK(&lk);
 		sema_release(&inodedep_in_progress);
-		free(inodedep, M_INODEDEP);
+		kfree(inodedep, M_INODEDEP);
 		goto top;
 	}
 	inodedep->id_list.wk_type = D_INODEDEP;
@@ -1113,7 +1113,7 @@ top:
 	if (newblk_find(newblkhd, fs, newblkno)) {
 		printf("newblk_lookup: blocking race avoided\n");
 		sema_release(&pagedep_in_progress);
-		free(newblk, M_NEWBLK);
+		kfree(newblk, M_NEWBLK);
 		goto top;
 	}
 	newblk->nb_state = 0;

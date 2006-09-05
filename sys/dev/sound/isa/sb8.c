@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.62.2.5 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
 
 #define SB_DEFAULT_BUFSZ	4096
 
@@ -277,7 +277,7 @@ sb_release_resources(struct sb_info *sb, device_t dev)
 		bus_dma_tag_destroy(sb->parent_dmat);
 		sb->parent_dmat = 0;
     	}
-     	free(sb, M_DEVBUF);
+     	kfree(sb, M_DEVBUF);
 }
 
 static int
@@ -698,7 +698,7 @@ sb_attach(device_t dev)
     	char status[SND_STATUSLEN];
 	uintptr_t ver;
 
-    	sb = (struct sb_info *)malloc(sizeof *sb, M_DEVBUF, M_NOWAIT | M_ZERO);
+    	sb = (struct sb_info *)kmalloc(sizeof *sb, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!sb)
 		return ENXIO;
 

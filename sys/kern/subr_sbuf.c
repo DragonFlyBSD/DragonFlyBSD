@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.6 2005/02/17 13:59:36 joerg Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.7 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,8 +50,8 @@
 
 #ifdef _KERNEL
 MALLOC_DEFINE(M_SBUF, "sbuf", "string buffers");
-#define SBMALLOC(size)		malloc(size, M_SBUF, M_WAITOK)
-#define SBFREE(buf)		free(buf, M_SBUF)
+#define SBMALLOC(size)		kmalloc(size, M_SBUF, M_WAITOK)
+#define SBFREE(buf)		kfree(buf, M_SBUF)
 #else /* _KERNEL */
 #define KASSERT(e, m)
 #define SBMALLOC(size)		malloc(size)

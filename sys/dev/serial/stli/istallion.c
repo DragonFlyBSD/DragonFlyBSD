@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.18 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.19 2006/09/05 00:55:43 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -650,7 +650,7 @@ static stlibrd_t *stli_brdalloc(void)
 {
 	stlibrd_t	*brdp;
 
-	brdp = malloc(sizeof(stlibrd_t), M_TTYS, M_WAITOK | M_ZERO);
+	brdp = kmalloc(sizeof(stlibrd_t), M_TTYS, M_WAITOK | M_ZERO);
 	return(brdp);
 }
 
@@ -2472,7 +2472,7 @@ static int stli_initports(stlibrd_t *brdp)
 #endif
 
 	for (i = 0, panelnr = 0, panelport = 0; (i < brdp->nrports); i++) {
-		portp = malloc(sizeof(stliport_t), M_TTYS, M_WAITOK | M_ZERO);
+		portp = kmalloc(sizeof(stliport_t), M_TTYS, M_WAITOK | M_ZERO);
 		callout_init(&portp->dtr_ch);
 		portp->portnr = i;
 		portp->brdnr = brdp->brdnr;

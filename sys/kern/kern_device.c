@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.18 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -431,7 +431,7 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 	     */
     }
 
-    link = malloc(sizeof(struct dev_ops_link), M_DEVBUF, M_INTWAIT|M_ZERO);
+    link = kmalloc(sizeof(struct dev_ops_link), M_DEVBUF, M_INTWAIT|M_ZERO);
     link->mask = mask;
     link->match = match;
     link->ops = ops;
@@ -480,7 +480,7 @@ dev_ops_add_override(dev_t backing_dev, struct dev_ops *template,
 	struct dev_ops *ops;
 	struct dev_ops *backing_ops = backing_dev->si_ops;
 
-	ops = malloc(sizeof(struct dev_ops), M_DEVBUF, M_INTWAIT);
+	ops = kmalloc(sizeof(struct dev_ops), M_DEVBUF, M_INTWAIT);
 	*ops = *template;
 	ops->head.name = backing_ops->head.name;
 	ops->head.maj = backing_ops->head.maj;
@@ -532,7 +532,7 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 	} else {
 		*plink = link->next;
 		--ops->head.refs; /* XXX ops_release() / record refs */
-		free(link, M_DEVBUF);
+		kfree(link, M_DEVBUF);
 	}
 	if (dev_ops_array[maj] == NULL && ops->head.refs != 0) {
 		printf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "

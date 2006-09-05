@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.9 2006/09/03 17:43:56 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.10 2006/09/05 00:55:37 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -366,7 +366,7 @@ isp_pci_attach(device_t dev)
 		}
 	}
 
-	pcs = malloc(sizeof (struct isp_pcisoftc), M_DEVBUF, M_WAITOK | M_ZERO);
+	pcs = kmalloc(sizeof (struct isp_pcisoftc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Figure out which we should try first - memory mapping or i/o mapping?
@@ -503,7 +503,7 @@ isp_pci_attach(device_t dev)
 		    PCI_MBOX_REGS2300_OFF;
 	}
 	isp = &pcs->pci_isp;
-	isp->isp_param = malloc(psize, M_DEVBUF, M_WAITOK | M_ZERO);
+	isp->isp_param = kmalloc(psize, M_DEVBUF, M_WAITOK | M_ZERO);
 	isp->isp_mdvec = mdvp;
 	isp->isp_type = basetype;
 	isp->isp_revision = pci_get_revid(dev);
@@ -654,7 +654,7 @@ isp_pci_attach(device_t dev)
 			}
 			if (amt) {
 				FCPARAM(isp)->isp_dump_data =
-				    malloc(amt, M_DEVBUF, M_WAITOK);
+				    kmalloc(amt, M_DEVBUF, M_WAITOK);
 				bzero(FCPARAM(isp)->isp_dump_data, amt);
 			} else {
 				device_printf(dev,
@@ -731,8 +731,8 @@ bad:
 
 	if (pcs) {
 		if (pcs->pci_isp.isp_param)
-			free(pcs->pci_isp.isp_param, M_DEVBUF);
-		free(pcs, M_DEVBUF);
+			kfree(pcs->pci_isp.isp_param, M_DEVBUF);
+		kfree(pcs, M_DEVBUF);
 	}
 
 	/*
@@ -1054,17 +1054,17 @@ isp_pci_mbxdma(struct ispsoftc *isp)
 
 
 	len = sizeof (XS_T **) * isp->isp_maxcmds;
-	isp->isp_xflist = (XS_T **) malloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
+	isp->isp_xflist = (XS_T **) kmalloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
 	if (isp->isp_xflist == NULL) {
 		isp_prt(isp, ISP_LOGERR, "cannot alloc xflist array");
 		ISP_LOCK(isp);
 		return (1);
 	}
 	len = sizeof (bus_dmamap_t) * isp->isp_maxcmds;
-	pcs->dmaps = (bus_dmamap_t *) malloc(len, M_DEVBUF,  M_WAITOK);
+	pcs->dmaps = (bus_dmamap_t *) kmalloc(len, M_DEVBUF,  M_WAITOK);
 	if (pcs->dmaps == NULL) {
 		isp_prt(isp, ISP_LOGERR, "can't alloc dma map storage");
-		free(isp->isp_xflist, M_DEVBUF);
+		kfree(isp->isp_xflist, M_DEVBUF);
 		ISP_LOCK(isp);
 		return (1);
 	}
@@ -1083,8 +1083,8 @@ isp_pci_mbxdma(struct ispsoftc *isp)
 	    NULL, NULL, len, ns, slim, 0, &isp->isp_cdmat)) {
 		isp_prt(isp, ISP_LOGERR,
 		    "cannot create a dma tag for control spaces");
-		free(pcs->dmaps, M_DEVBUF);
-		free(isp->isp_xflist, M_DEVBUF);
+		kfree(pcs->dmaps, M_DEVBUF);
+		kfree(isp->isp_xflist, M_DEVBUF);
 		ISP_LOCK(isp);
 		return (1);
 	}
@@ -1094,8 +1094,8 @@ isp_pci_mbxdma(struct ispsoftc *isp)
 		isp_prt(isp, ISP_LOGERR,
 		    "cannot allocate %d bytes of CCB memory", len);
 		bus_dma_tag_destroy(isp->isp_cdmat);
-		free(isp->isp_xflist, M_DEVBUF);
-		free(pcs->dmaps, M_DEVBUF);
+		kfree(isp->isp_xflist, M_DEVBUF);
+		kfree(pcs->dmaps, M_DEVBUF);
 		ISP_LOCK(isp);
 		return (1);
 	}
@@ -1134,8 +1134,8 @@ isp_pci_mbxdma(struct ispsoftc *isp)
 bad:
 	bus_dmamem_free(isp->isp_cdmat, base, isp->isp_cdmap);
 	bus_dma_tag_destroy(isp->isp_cdmat);
-	free(isp->isp_xflist, M_DEVBUF);
-	free(pcs->dmaps, M_DEVBUF);
+	kfree(isp->isp_xflist, M_DEVBUF);
+	kfree(pcs->dmaps, M_DEVBUF);
 	ISP_LOCK(isp);
 	isp->isp_rquest = NULL;
 	return (1);

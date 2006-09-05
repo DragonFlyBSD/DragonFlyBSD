@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.14 2006/05/03 15:08:41 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.15 2006/09/05 00:55:36 dillon Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -986,7 +986,7 @@ ohci_allocx(struct usbd_bus *bus)
 		}
 #endif
 	} else {
-		xfer = malloc(sizeof(struct ohci_xfer), M_USB, M_INTWAIT);
+		xfer = kmalloc(sizeof(struct ohci_xfer), M_USB, M_INTWAIT);
 	}
 	if (xfer != NULL) {
 		memset(xfer, 0, sizeof (struct ohci_xfer));

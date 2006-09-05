@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.14 2006/01/14 11:05:18 swildner Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.15 2006/09/05 00:55:47 dillon Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -843,8 +843,8 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 	struct ip6_fw_chain *fwc = 0, *fcp, *fcpl = 0;
 	u_short nbr = 0;
 
-	fwc = malloc(sizeof *fwc, M_IP6FW, M_INTWAIT);
-	ftmp = malloc(sizeof *ftmp, M_IP6FW, M_INTWAIT);
+	fwc = kmalloc(sizeof *fwc, M_IP6FW, M_INTWAIT);
+	ftmp = kmalloc(sizeof *ftmp, M_IP6FW, M_INTWAIT);
 
 	bcopy(frwl, ftmp, sizeof(struct ip6_fw));
 	ftmp->fw_in_if.fu_via_if.name[IP6FW_IFNLEN - 1] = '\0';
@@ -859,8 +859,8 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 		crit_exit();
 		return(0);
         } else if (ftmp->fw_number == (u_short)-1) {
-		if (fwc)  free(fwc, M_IP6FW);
-		if (ftmp) free(ftmp, M_IP6FW);
+		if (fwc)  kfree(fwc, M_IP6FW);
+		if (ftmp) kfree(ftmp, M_IP6FW);
 		crit_exit();
 		dprintf(("%s bad rule number\n", err_prefix));
 		return (EINVAL);
@@ -910,8 +910,8 @@ del_entry6(struct ip6_fw_head *chainptr, u_short number)
 			if (fcp->rule->fw_number == number) {
 				LIST_REMOVE(fcp, chain);
 				crit_exit();
-				free(fcp->rule, M_IP6FW);
-				free(fcp, M_IP6FW);
+				kfree(fcp->rule, M_IP6FW);
+				kfree(fcp, M_IP6FW);
 				return 0;
 			}
 		}
@@ -1145,8 +1145,8 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 			crit_enter();
 			LIST_REMOVE(ip6_fw_chain.lh_first, chain);
 			crit_exit();
-			free(fcp->rule, M_IP6FW);
-			free(fcp, M_IP6FW);
+			kfree(fcp->rule, M_IP6FW);
+			kfree(fcp, M_IP6FW);
 		}
 		if (m) {
 			m_freem(m);
@@ -1266,8 +1266,8 @@ ip6fw_modevent(module_t mod, int type, void *unused)
 		while (LIST_FIRST(&ip6_fw_chain) != NULL) {
 			struct ip6_fw_chain *fcp = LIST_FIRST(&ip6_fw_chain);
 			LIST_REMOVE(LIST_FIRST(&ip6_fw_chain), chain);
-			free(fcp->rule, M_IP6FW);
-			free(fcp, M_IP6FW);
+			kfree(fcp->rule, M_IP6FW);
+			kfree(fcp, M_IP6FW);
 		}
 
 		crit_exit();

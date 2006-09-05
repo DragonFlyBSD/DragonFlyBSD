@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.23 2006/05/27 20:17:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.24 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -277,7 +277,7 @@ hashinit(elements, type, hashmask)
 		panic("hashinit: bad elements");
 	for (hashsize = 2; hashsize < elements; hashsize <<= 1)
 		continue;
-	hashtbl = malloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
+	hashtbl = kmalloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
 	for (i = 0; i < hashsize; i++)
 		LIST_INIT(&hashtbl[i]);
 	*hashmask = hashsize - 1;
@@ -311,7 +311,7 @@ phashinit(elements, type, nentries)
 		hashsize = primes[i];
 	}
 	hashsize = primes[i - 1];
-	hashtbl = malloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
+	hashtbl = kmalloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
 	for (i = 0; i < hashsize; i++)
 		LIST_INIT(&hashtbl[i]);
 	*nentries = hashsize;

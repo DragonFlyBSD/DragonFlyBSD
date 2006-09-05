@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.17 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.18 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -223,7 +223,7 @@ mmrw(dev_t dev, struct uio *uio, int flags)
 			 * on read, seeder on write
 			 */
 			if (buf == NULL)
-				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+				buf = kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 			c = min(iov->iov_len, PAGE_SIZE);
 			if (uio->uio_rw == UIO_WRITE) {
 				error = uiomove(buf, (int)c, uio);
@@ -233,7 +233,7 @@ mmrw(dev_t dev, struct uio *uio, int flags)
 				poolsize = read_random(buf, c);
 				if (poolsize == 0) {
 					if (buf)
-						free(buf, M_TEMP);
+						kfree(buf, M_TEMP);
 					if ((flags & IO_NDELAY) != 0)
 						return (EWOULDBLOCK);
 					return (0);
@@ -262,7 +262,7 @@ mmrw(dev_t dev, struct uio *uio, int flags)
 					continue;
 			}
 			if (buf == NULL)
-				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+				buf = kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 			poolsize = read_random_unlimited(buf, c);
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
@@ -278,7 +278,7 @@ mmrw(dev_t dev, struct uio *uio, int flags)
 			}
 			if (zbuf == NULL) {
 				zbuf = (caddr_t)
-				    malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+				    kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 				bzero(zbuf, PAGE_SIZE);
 			}
 			c = min(iov->iov_len, PAGE_SIZE);
@@ -295,7 +295,7 @@ mmrw(dev_t dev, struct uio *uio, int flags)
 		uio->uio_resid -= c;
 	}
 	if (buf)
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 	return (error);
 }
 
@@ -398,7 +398,7 @@ mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 			if (!error)
 				error = copyout(md, mo->mo_desc, 
 					nd * sizeof(struct mem_range_desc));
-			free(md, M_MEMDESC);
+			kfree(md, M_MEMDESC);
 		} else {
 			nd = mem_range_softc.mr_ndesc;
 		}
@@ -413,7 +413,7 @@ mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 		md->mr_owner[sizeof(md->mr_owner) - 1] = 0;
 		if (error == 0)
 			error = mem_range_attr_set(md, &mo->mo_arg[0]);
-		free(md, M_MEMDESC);
+		kfree(md, M_MEMDESC);
 		break;
 	}
 	return (error);

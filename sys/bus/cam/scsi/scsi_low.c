@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.15 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.16 2006/09/05 00:55:32 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -335,8 +335,8 @@ scsi_low_translate_error_code(struct slccb *cb, struct scsi_low_error_code *tp)
 /**************************************************************
  * SCSI INTERFACE (CAM)
  **************************************************************/
-#define	SCSI_LOW_MALLOC(size)		malloc((size), M_DEVBUF, M_INTWAIT)
-#define	SCSI_LOW_FREE(pt)		free((pt), M_DEVBUF)
+#define	SCSI_LOW_MALLOC(size)		kmalloc((size), M_DEVBUF, M_INTWAIT)
+#define	SCSI_LOW_FREE(pt)		kfree((pt), M_DEVBUF)
 #define	SCSI_LOW_ALLOC_CCB(flags)	scsi_low_get_ccb()
 
 static void scsi_low_poll_cam (struct cam_sim *);
@@ -402,14 +402,14 @@ static void
 scsi_low_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	free(ccb, M_DEVBUF);
+	kfree(ccb, M_DEVBUF);
 }
 
 static void
 scsi_low_rescan_bus_cam(struct scsi_low_softc *slp)
 {
   	struct cam_path *path;
-	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT | M_ZERO);
+	union ccb *ccb = kmalloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT | M_ZERO);
 	cam_status status;
 
 	status = xpt_create_path(&path, xpt_periph,

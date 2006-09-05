@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.7 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -264,7 +264,7 @@ ah_keyed_md5_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_keyed_md5_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(sizeof(MD5_CTX), M_TEMP, M_NOWAIT);
+	state->foo = (void *)kmalloc(sizeof(MD5_CTX), M_TEMP, M_NOWAIT);
 	if (state->foo == NULL)
 		return ENOBUFS;
 
@@ -332,7 +332,7 @@ ah_keyed_md5_result(struct ah_algorithm_state *state, caddr_t addr)
 			(u_int)_KEYLEN(state->sav->key_auth));
 	}
 	MD5Final(&digest[0], (MD5_CTX *)state->foo);
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 	bcopy(&digest[0], (void *)addr, sizeof(digest));
 }
 
@@ -375,7 +375,7 @@ ah_keyed_sha1_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_keyed_sha1_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(sizeof(SHA1_CTX), M_TEMP, M_NOWAIT);
+	state->foo = (void *)kmalloc(sizeof(SHA1_CTX), M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;
 
@@ -448,7 +448,7 @@ ah_keyed_sha1_result(struct ah_algorithm_state *state, caddr_t addr)
 	SHA1Final((caddr_t)&digest[0], ctxt);
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 static int
@@ -493,7 +493,7 @@ ah_hmac_md5_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_hmac_md5_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(64 + 64 + sizeof(MD5_CTX), M_TEMP, M_NOWAIT);
+	state->foo = (void *)kmalloc(64 + 64 + sizeof(MD5_CTX), M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;
 
@@ -564,7 +564,7 @@ ah_hmac_md5_result(struct ah_algorithm_state *state, caddr_t addr)
 
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 static int
@@ -682,7 +682,7 @@ ah_hmac_sha1_result(struct ah_algorithm_state *state, caddr_t addr)
 
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 static int
@@ -807,7 +807,7 @@ ah_hmac_sha2_256_result(struct ah_algorithm_state *state, caddr_t addr)
 
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 static int
@@ -933,7 +933,7 @@ ah_hmac_sha2_384_result(struct ah_algorithm_state *state, caddr_t addr)
 
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 static int
@@ -1059,7 +1059,7 @@ ah_hmac_sha2_512_result(struct ah_algorithm_state *state, caddr_t addr)
 
 	bcopy(&digest[0], (void *)addr, HMACSIZE);
 
-	free(state->foo, M_TEMP);
+	kfree(state->foo, M_TEMP);
 }
 
 /*------------------------------------------------------------*/

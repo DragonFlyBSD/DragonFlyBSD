@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)
@@ -431,7 +431,7 @@ sb16_release_resources(struct sb_info *sb, device_t dev)
 		bus_dma_tag_destroy(sb->parent_dmat);
 		sb->parent_dmat = 0;
     	}
-     	free(sb, M_DEVBUF);
+     	kfree(sb, M_DEVBUF);
 }
 
 static int
@@ -784,7 +784,7 @@ sb16_attach(device_t dev)
 	uintptr_t ver;
     	char status[SND_STATUSLEN], status2[SND_STATUSLEN];
 
-    	sb = (struct sb_info *)malloc(sizeof *sb, M_DEVBUF, M_NOWAIT | M_ZERO);
+    	sb = (struct sb_info *)kmalloc(sizeof *sb, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!sb)
 		return ENXIO;
 

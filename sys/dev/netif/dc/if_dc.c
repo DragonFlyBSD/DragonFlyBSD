@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.50 2006/04/30 02:02:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.51 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -1671,7 +1671,7 @@ dc_decode_leaf_sia(struct dc_softc *sc, struct dc_eblock_sia *l)
 {
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
+	m = kmalloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	switch (l->dc_sia_code & ~DC_SIA_CODE_EXT){
 	case DC_SIA_CODE_10BT:
 		m->dc_media = IFM_10_T;
@@ -1712,7 +1712,7 @@ dc_decode_leaf_sym(struct dc_softc *sc, struct dc_eblock_sym *l)
 {
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
+	m = kmalloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (l->dc_sym_code == DC_SYM_CODE_100BT)
 		m->dc_media = IFM_100_TX;
 
@@ -1736,7 +1736,7 @@ dc_decode_leaf_mii(struct dc_softc *sc, struct dc_eblock_mii *l)
 	u_int8_t		*p;
 	struct dc_mediainfo	*m;
 
-	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
+	m = kmalloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
 	/* We abuse IFM_AUTO to represent MII. */
 	m->dc_media = IFM_AUTO;
 	m->dc_gp_len = l->dc_gpr_len;
@@ -1761,7 +1761,7 @@ dc_read_srom(struct dc_softc *sc, int bits)
 	int size;
 
 	size = 2 << bits;
-	sc->dc_srom = malloc(size, M_DEVBUF, M_INTWAIT);
+	sc->dc_srom = kmalloc(size, M_DEVBUF, M_INTWAIT);
 	dc_read_eeprom(sc, (caddr_t)sc->dc_srom, 0, (size / 2), 0);
 }
 
@@ -1970,7 +1970,7 @@ dc_attach(device_t dev)
 		sc->dc_type = DC_TYPE_PNIC;
 		sc->dc_flags |= DC_TX_STORENFWD|DC_TX_INTR_ALWAYS;
 		sc->dc_flags |= DC_PNIC_RX_BUG_WAR;
-		sc->dc_pnic_rx_buf = malloc(DC_RXLEN * 5, M_DEVBUF, M_WAITOK);
+		sc->dc_pnic_rx_buf = kmalloc(DC_RXLEN * 5, M_DEVBUF, M_WAITOK);
 		if (revision < DC_REVISION_82C169)
 			sc->dc_pmode = DC_PMODE_SYM;
 		break;
@@ -2220,16 +2220,16 @@ dc_detach(device_t dev)
 	if (sc->dc_ldata)
 		contigfree(sc->dc_ldata, sizeof(struct dc_list_data), M_DEVBUF);
 	if (sc->dc_pnic_rx_buf != NULL)
-		free(sc->dc_pnic_rx_buf, M_DEVBUF);
+		kfree(sc->dc_pnic_rx_buf, M_DEVBUF);
 
 	while (sc->dc_mi != NULL) {
 		m = sc->dc_mi->dc_next;
-		free(sc->dc_mi, M_DEVBUF);
+		kfree(sc->dc_mi, M_DEVBUF);
 		sc->dc_mi = m;
 	}
 
 	if (sc->dc_srom)
-		free(sc->dc_srom, M_DEVBUF);
+		kfree(sc->dc_srom, M_DEVBUF);
 
 	return(0);
 }

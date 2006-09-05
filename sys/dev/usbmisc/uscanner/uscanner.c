@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.12 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.13 2006/09/05 00:55:44 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -393,8 +393,8 @@ uscanneropen(struct dev_open_args *ap)
 
 	sc->sc_state |= USCANNER_OPEN;
 
-	sc->sc_bulkin_buffer = malloc(USCANNER_BUFFERSIZE, M_USBDEV, M_WAITOK);
-	sc->sc_bulkout_buffer = malloc(USCANNER_BUFFERSIZE, M_USBDEV, M_WAITOK);
+	sc->sc_bulkin_buffer = kmalloc(USCANNER_BUFFERSIZE, M_USBDEV, M_WAITOK);
+	sc->sc_bulkout_buffer = kmalloc(USCANNER_BUFFERSIZE, M_USBDEV, M_WAITOK);
 	/* No need to check buffers for NULL since we have WAITOK */
 
 	sc->sc_bulkin_bufferlen = USCANNER_BUFFERSIZE;
@@ -485,11 +485,11 @@ uscanner_do_close(struct uscanner_softc *sc)
 	}
 
 	if (sc->sc_bulkin_buffer) {
-		free(sc->sc_bulkin_buffer, M_USBDEV);
+		kfree(sc->sc_bulkin_buffer, M_USBDEV);
 		sc->sc_bulkin_buffer = NULL;
 	}
 	if (sc->sc_bulkout_buffer) {
-		free(sc->sc_bulkout_buffer, M_USBDEV);
+		kfree(sc->sc_bulkout_buffer, M_USBDEV);
 		sc->sc_bulkout_buffer = NULL;
 	}
 

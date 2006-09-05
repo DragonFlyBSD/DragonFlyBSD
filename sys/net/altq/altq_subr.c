@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.7 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.8 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -256,11 +256,11 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 		if ((tbr = ifq->altq_tbr) == NULL)
 			return (ENOENT);
 		ifq->altq_tbr = NULL;
-		free(tbr, M_ALTQ);
+		kfree(tbr, M_ALTQ);
 		return (0);
 	}
 
-	tbr = malloc(sizeof(*tbr), M_ALTQ, M_WAITOK | M_ZERO);
+	tbr = kmalloc(sizeof(*tbr), M_ALTQ, M_WAITOK | M_ZERO);
 	tbr->tbr_rate = TBR_SCALE(profile->rate / 8) / machclk_freq;
 	tbr->tbr_depth = TBR_SCALE(profile->depth);
 	if (tbr->tbr_rate > 0)
@@ -275,7 +275,7 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 	ifq->altq_tbr = tbr;	/* set the new tbr */
 
 	if (otbr != NULL)
-		free(otbr, M_ALTQ);
+		kfree(otbr, M_ALTQ);
 	else if (tbr_timer == 0) {
 		callout_reset(&tbr_callout, 1, tbr_timeout, NULL);
 		tbr_timer = 1;

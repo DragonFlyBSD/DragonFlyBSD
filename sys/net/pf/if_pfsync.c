@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.4 2006/01/14 11:05:18 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -121,7 +121,7 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 	LIST_REMOVE(sc, sc_next);
-	free(sc, M_PFSYNC);
+	kfree(sc, M_PFSYNC);
 }
 
 static int

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.10 2006/09/04 07:00:56 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.11 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -256,7 +256,7 @@ ndis_create_kthreads(void)
 	STAILQ_INIT(&ndis_free);
 
 	for (i = 0; i < ndis_jobs; i++) {
-		r = malloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
+		r = kmalloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 	}
 
@@ -279,7 +279,7 @@ ndis_create_kthreads(void)
 	if (error) {
 		while ((r = STAILQ_FIRST(&ndis_free)) != NULL) {
 			STAILQ_REMOVE_HEAD(&ndis_free, link);
-			free(r, M_DEVBUF);
+			kfree(r, M_DEVBUF);
 		}
 		return(error);
 	}
@@ -301,7 +301,7 @@ ndis_destroy_kthreads(void)
 
 	while ((r = STAILQ_FIRST(&ndis_free)) != NULL) {
 		STAILQ_REMOVE_HEAD(&ndis_free, link);
-		free(r, M_DEVBUF);
+		kfree(r, M_DEVBUF);
 	}
 
 	lwkt_token_uninit(&ndis_thr_token);
@@ -362,7 +362,7 @@ ndis_enlarge_thrqueue(int cnt)
 	struct lwkt_tokref	tokref;
 
 	for (i = 0; i < cnt; i++) {
-		r = malloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
+		r = kmalloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
 		lwkt_gettoken(&tokref, &ndis_thr_token);
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 		ndis_jobs++;
@@ -389,7 +389,7 @@ ndis_shrink_thrqueue(int cnt)
 		STAILQ_REMOVE_HEAD(&ndis_free, link);
 		ndis_jobs--;
 		lwkt_reltoken(&tokref);
-		free(r, M_DEVBUF);
+		kfree(r, M_DEVBUF);
 	}
 
 	return(0);
@@ -655,7 +655,7 @@ ndis_add_sysctl(void *arg, char *key, char *desc, char *val, int flag)
 
 	sc = arg;
 
-	cfg = malloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_WAITOK|M_ZERO);
+	cfg = kmalloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_WAITOK|M_ZERO);
 	cfg->ndis_cfg.nc_cfgkey = kstrdup(key, M_DEVBUF);
 	if (desc == NULL) {
 		snprintf(descstr, sizeof(descstr), "%s (dynamic)", key);
@@ -693,9 +693,9 @@ ndis_flush_sysctls(void *arg)
 	while (!TAILQ_EMPTY(&sc->ndis_cfglist_head)) {
 		cfg = TAILQ_FIRST(&sc->ndis_cfglist_head);
 		TAILQ_REMOVE(&sc->ndis_cfglist_head, cfg, link);
-		free(cfg->ndis_cfg.nc_cfgkey, M_DEVBUF);
-		free(cfg->ndis_cfg.nc_cfgdesc, M_DEVBUF);
-		free(cfg, M_DEVBUF);
+		kfree(cfg->ndis_cfg.nc_cfgkey, M_DEVBUF);
+		kfree(cfg->ndis_cfg.nc_cfgdesc, M_DEVBUF);
+		kfree(cfg, M_DEVBUF);
 	}
 
 	return(0);
@@ -769,7 +769,7 @@ ndis_free_bufs(ndis_buffer *b0)
 
 	while(b0 != NULL) {
 		next = b0->nb_next;
-		free(b0, M_NDIS_BUFFER);
+		kfree(b0, M_NDIS_BUFFER);
 		b0 = next;
 	}
 
@@ -783,7 +783,7 @@ ndis_free_packet(ndis_packet *p)
 		return;
 
 	ndis_free_bufs(p->np_private.npp_head);
-	free(p, M_NDIS_PACKET);
+	kfree(p, M_NDIS_PACKET);
 
 	return;
 }
@@ -892,7 +892,7 @@ bad:
 	while (!SLIST_EMPTY(&brl_rev)) {
 		n = SLIST_FIRST(&brl_rev);
 		SLIST_REMOVE_HEAD(&brl_rev, link);
-		free (n, M_TEMP);
+		kfree (n, M_TEMP);
 	}
 
 	return(error);
@@ -989,7 +989,7 @@ ndis_mtop(struct mbuf *m0, ndis_packet **p)
 
 	/* If caller didn't supply a packet, make one. */
 	if (*p == NULL) {
-		*p = malloc(sizeof(ndis_packet), M_NDIS_PACKET, M_NOWAIT|M_ZERO);
+		*p = kmalloc(sizeof(ndis_packet), M_NDIS_PACKET, M_NOWAIT|M_ZERO);
 		if (*p == NULL)
 			return(ENOMEM);
 	}
@@ -1002,7 +1002,7 @@ ndis_mtop(struct mbuf *m0, ndis_packet **p)
 	for (m = m0; m != NULL; m = m->m_next) {
 		if (m->m_len == 0)
 			continue;
-		buf = malloc(sizeof(ndis_buffer), M_NDIS_BUFFER, M_NOWAIT|M_ZERO);
+		buf = kmalloc(sizeof(ndis_buffer), M_NDIS_BUFFER, M_NOWAIT|M_ZERO);
 		if (buf == NULL) {
 			ndis_free_packet(*p);
 			*p = NULL;
@@ -1034,12 +1034,12 @@ ndis_get_supported_oids(void *arg, ndis_oid **oids, int *oidcnt)
 	len = 0;
 	ndis_get_info(arg, OID_GEN_SUPPORTED_LIST, NULL, &len);
 
-	o = malloc(len, M_DEVBUF, M_WAITOK);
+	o = kmalloc(len, M_DEVBUF, M_WAITOK);
 
 	rval = ndis_get_info(arg, OID_GEN_SUPPORTED_LIST, o, &len);
 
 	if (rval) {
-		free(o, M_DEVBUF);
+		kfree(o, M_DEVBUF);
 		return(rval);
 	}
 
@@ -1182,7 +1182,7 @@ ndis_init_dma(void *arg)
 		error = bus_dmamap_create(sc->ndis_ttag, 0,
 		    &sc->ndis_tmaps[i]);
 		if (error) {
-			free(sc->ndis_tmaps, M_DEVBUF);
+			kfree(sc->ndis_tmaps, M_DEVBUF);
 			return(ENODEV);
 		}
 	}
@@ -1211,7 +1211,7 @@ ndis_destroy_dma(void *arg)
 		bus_dmamap_destroy(sc->ndis_ttag, sc->ndis_tmaps[i]);
 	}
 	if (sc->ndis_tmaps)
-		free(sc->ndis_tmaps, M_DEVBUF);
+		kfree(sc->ndis_tmaps, M_DEVBUF);
 	bus_dma_tag_destroy(sc->ndis_ttag);
 
 	return(0);
@@ -1474,7 +1474,7 @@ ndis_unload_driver(void *arg)
 
 	sc = arg;
 
-	free(sc->ndis_block.nmb_rlist, M_DEVBUF);
+	kfree(sc->ndis_block.nmb_rlist, M_DEVBUF);
 
 	ndis_flush_sysctls(sc);
 
@@ -1575,7 +1575,7 @@ ndis_load_driver(vm_offset_t img, void *arg)
 	 */
 	status = entry(&block->nmb_devobj, &dummystr);
 
-	free (dummystr.nus_buf, M_DEVBUF);
+	kfree (dummystr.nus_buf, M_DEVBUF);
 
 	if (status != NDIS_STATUS_SUCCESS)
 		return(ENODEV);

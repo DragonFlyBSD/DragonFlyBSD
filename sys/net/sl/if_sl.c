@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.26 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.27 2006/09/05 00:55:48 dillon Exp $
  */
 
 /*
@@ -237,7 +237,7 @@ static int
 slinit(struct sl_softc *sc)
 {
 	if (sc->sc_ep == NULL)
-		sc->sc_ep = malloc(SLBUFSIZE, M_DEVBUF, M_WAITOK);
+		sc->sc_ep = kmalloc(SLBUFSIZE, M_DEVBUF, M_WAITOK);
 	sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_mp = sc->sc_buf;
 	sl_compress_init(&sc->sc_comp, -1);
@@ -327,7 +327,7 @@ slclose(struct tty *tp, int flag)
 		sc->sc_ttyp = NULL;
 		tp->t_sc = NULL;
 		if (sc->sc_ep) {
-			free(sc->sc_ep, M_DEVBUF);
+			kfree(sc->sc_ep, M_DEVBUF);
 			sc->sc_ep = NULL;
 		}
 		sc->sc_mp = 0;
@@ -361,14 +361,14 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 				if (   nc->sc_if.if_dunit == *(u_int *)data
 				    && nc->sc_ttyp == NULL
 				   ) {
-					tmpnc = malloc(sizeof *tmpnc, M_TEMP,
+					tmpnc = kmalloc(sizeof *tmpnc, M_TEMP,
 						       M_WAITOK);
 					*tmpnc = *nc;
 					*nc = *sc;
 					nc->sc_if = tmpnc->sc_if;
 					tmpnc->sc_if = sc->sc_if;
 					*sc = *tmpnc;
-					free(tmpnc, M_TEMP);
+					kfree(tmpnc, M_TEMP);
 					if (sc->sc_if.if_flags & IFF_UP) {
 						if_down(&sc->sc_if);
 						if (!(nc->sc_if.if_flags & IFF_UP))

@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.2 2006/08/06 12:49:04 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.3 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -786,7 +786,7 @@ ath_rate_attach(struct ath_softc *sc)
 	struct sample_softc *osc;
 	
 	DPRINTF(sc, "%s:\n", __func__);
-	osc = malloc(sizeof(struct sample_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
+	osc = kmalloc(sizeof(struct sample_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
 	if (osc == NULL)
 		return NULL;
 	osc->arc.arc_space = sizeof(struct sample_node);
@@ -801,7 +801,7 @@ ath_rate_detach(struct ath_ratectrl *arc)
 {
 	struct sample_softc *osc = (struct sample_softc *) arc;
 	
-	free(osc, M_DEVBUF);
+	kfree(osc, M_DEVBUF);
 }
 
 void

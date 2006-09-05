@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.8 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.9 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.8 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.9 2006/09/05 00:55:43 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1146,12 +1146,12 @@ emu_memalloc(struct sc_info *sc, u_int32_t sz)
 	}
 	if (!found)
 		return NULL;
-	blk = malloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
+	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
 	if (blk == NULL)
 		return NULL;
 	buf = emu_malloc(sc, sz);
 	if (buf == NULL) {
-		free(blk, M_DEVBUF);
+		kfree(blk, M_DEVBUF);
 		return NULL;
 	}
 	blk->buf = buf;
@@ -1191,7 +1191,7 @@ emu_memfree(struct sc_info *sc, void *buf)
 		mem->bmap[idx >> 3] &= ~(1 << (idx & 7));
 		mem->ptb_pages[idx] = tmp | idx;
 	}
-	free(blk, M_DEVBUF);
+	kfree(blk, M_DEVBUF);
 	return 0;
 }
 
@@ -1834,7 +1834,7 @@ emu_pci_attach(device_t dev)
 	int i, gotmic;
 	char status[SND_STATUSLEN];
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -1910,7 +1910,7 @@ bad:
 	if (sc->irq) bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->parent_dmat) bus_dma_tag_destroy(sc->parent_dmat);
 	if (sc->lock) snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -1933,7 +1933,7 @@ emu_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	bus_dma_tag_destroy(sc->parent_dmat);
 	snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return 0;
 }

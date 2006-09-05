@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.18 2005/11/22 08:41:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -536,7 +536,7 @@ vm86_addpage(struct vm86context *vmc, int pagenum, vm_offset_t kva)
 		goto bad;			/* XXX grow map? */
 
 	if (kva == 0) {
-		kva = (vm_offset_t)malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+		kva = (vm_offset_t)kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 		flags = VMAP_MALLOC;
 	}
 

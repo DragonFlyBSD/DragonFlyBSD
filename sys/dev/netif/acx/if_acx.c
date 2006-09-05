@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.6 2006/09/03 05:05:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.7 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -1603,13 +1603,13 @@ acx_copyin_firmware(struct acx_softc *sc, struct ifreq *req)
 	if (ufw.base_fw_len <= 0 || ufw.radio_fw_len < 0)
 		return EINVAL;
 
-	base_fw = malloc(ufw.base_fw_len, M_DEVBUF, M_INTWAIT);
+	base_fw = kmalloc(ufw.base_fw_len, M_DEVBUF, M_INTWAIT);
 	error = copyin(ufw.base_fw, base_fw, ufw.base_fw_len);
 	if (error)
 		goto fail;
 
 	if (ufw.radio_fw_len > 0) {
-		radio_fw = malloc(ufw.radio_fw_len, M_DEVBUF, M_INTWAIT);
+		radio_fw = kmalloc(ufw.radio_fw_len, M_DEVBUF, M_INTWAIT);
 		error = copyin(ufw.radio_fw, radio_fw, ufw.radio_fw_len);
 		if (error)
 			goto fail;
@@ -1617,20 +1617,20 @@ acx_copyin_firmware(struct acx_softc *sc, struct ifreq *req)
 
 	kfw->base_fw_len = ufw.base_fw_len;
 	if (kfw->base_fw != NULL)
-		free(kfw->base_fw, M_DEVBUF);
+		kfree(kfw->base_fw, M_DEVBUF);
 	kfw->base_fw = base_fw;
 
 	kfw->radio_fw_len = ufw.radio_fw_len;
 	if (kfw->radio_fw != NULL)
-		free(kfw->radio_fw, M_DEVBUF);
+		kfree(kfw->radio_fw, M_DEVBUF);
 	kfw->radio_fw = radio_fw;
 
 	return 0;
 fail:
 	if (base_fw != NULL)
-		free(base_fw, M_DEVBUF);
+		kfree(base_fw, M_DEVBUF);
 	if (radio_fw != NULL)
-		free(radio_fw, M_DEVBUF);
+		kfree(radio_fw, M_DEVBUF);
 	return error;
 }
 
@@ -1640,12 +1640,12 @@ acx_free_firmware(struct acx_softc *sc)
 	struct acx_firmware *fw = &sc->sc_firmware;
 
 	if (fw->base_fw != NULL) {
-		free(fw->base_fw, M_DEVBUF);
+		kfree(fw->base_fw, M_DEVBUF);
 		fw->base_fw = NULL;
 		fw->base_fw_len = 0;
 	}
 	if (fw->radio_fw != NULL) {
-		free(fw->radio_fw, M_DEVBUF);
+		kfree(fw->radio_fw, M_DEVBUF);
 		fw->radio_fw = NULL;
 		fw->radio_fw_len = 0;
 	}

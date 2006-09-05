@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.27 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.28 2006/09/05 00:55:48 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -166,7 +166,7 @@ tapmodevent(module_t mod, int type, void *data)
 
 				ether_ifdetach(ifp);
 				destroy_dev(tp->tap_dev);
-				free(tp, M_TAP);
+				kfree(tp, M_TAP);
 			}
 			else
 				unit ++;

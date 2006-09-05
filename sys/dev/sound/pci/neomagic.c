@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.7.2.11 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,7 +37,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -601,7 +601,7 @@ nm_pci_probe(device_t dev)
 		/* Try to catch other non-ac97 cards */
 
 		if (i == NUM_BADCARDS) {
-			if (!(sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO))) {
+			if (!(sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO))) {
 				device_printf(dev, "cannot allocate softc\n");
 				return ENXIO;
 			}
@@ -619,7 +619,7 @@ nm_pci_probe(device_t dev)
 			if (!sc->reg) {
 				device_printf(dev, "unable to map register space\n");
 				pci_write_config(dev, PCIR_COMMAND, data, 2);
-				free(sc, M_DEVBUF);
+				kfree(sc, M_DEVBUF);
 				return ENXIO;
 			}
 
@@ -638,7 +638,7 @@ nm_pci_probe(device_t dev)
 			pci_write_config(dev, PCIR_COMMAND, data, 2);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->regid,
 					     sc->reg);
-			free(sc, M_DEVBUF);
+			kfree(sc, M_DEVBUF);
 		}
 
 		if (i == NUM_BADCARDS)
@@ -665,7 +665,7 @@ nm_pci_attach(device_t dev)
 	struct ac97_info *codec = 0;
 	char 		status[SND_STATUSLEN];
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -724,7 +724,7 @@ bad:
 	if (sc->reg) bus_release_resource(dev, SYS_RES_MEMORY, sc->regid, sc->reg);
 	if (sc->ih) bus_teardown_intr(dev, sc->irq, sc->ih);
 	if (sc->irq) bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -743,7 +743,7 @@ nm_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, sc->regid, sc->reg);
 	bus_teardown_intr(dev, sc->irq, sc->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return 0;
 }

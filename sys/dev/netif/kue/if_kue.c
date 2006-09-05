@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.19 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.20 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -521,7 +521,7 @@ kue_detach(device_ptr_t dev)
 		usbd_abort_pipe(sc->kue_ep[KUE_ENDPT_INTR]);
 
 	if (sc->kue_mcfilters != NULL)
-		free(sc->kue_mcfilters, M_USBDEV);
+		kfree(sc->kue_mcfilters, M_USBDEV);
 
 	KUE_UNLOCK(sc);
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
@@ -608,7 +608,7 @@ kue_tx_list_init(struct kue_softc *sc)
 			if (c->kue_xfer == NULL)
 				return(ENOBUFS);
 		}
-		c->kue_buf = malloc(KUE_BUFSZ, M_USBDEV, M_WAITOK);
+		c->kue_buf = kmalloc(KUE_BUFSZ, M_USBDEV, M_WAITOK);
 		if (c->kue_buf == NULL)
 			return(ENOBUFS);
 	}
@@ -1076,7 +1076,7 @@ kue_stop(struct kue_softc *sc)
 	/* Free RX resources. */
 	for (i = 0; i < KUE_RX_LIST_CNT; i++) {
 		if (sc->kue_cdata.kue_rx_chain[i].kue_buf != NULL) {
-			free(sc->kue_cdata.kue_rx_chain[i].kue_buf, M_USBDEV);
+			kfree(sc->kue_cdata.kue_rx_chain[i].kue_buf, M_USBDEV);
 			sc->kue_cdata.kue_rx_chain[i].kue_buf = NULL;
 		}
 		if (sc->kue_cdata.kue_rx_chain[i].kue_mbuf != NULL) {
@@ -1092,7 +1092,7 @@ kue_stop(struct kue_softc *sc)
 	/* Free TX resources. */
 	for (i = 0; i < KUE_TX_LIST_CNT; i++) {
 		if (sc->kue_cdata.kue_tx_chain[i].kue_buf != NULL) {
-			free(sc->kue_cdata.kue_tx_chain[i].kue_buf, M_USBDEV);
+			kfree(sc->kue_cdata.kue_tx_chain[i].kue_buf, M_USBDEV);
 			sc->kue_cdata.kue_tx_chain[i].kue_buf = NULL;
 		}
 		if (sc->kue_cdata.kue_tx_chain[i].kue_mbuf != NULL) {

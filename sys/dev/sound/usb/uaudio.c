@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.7 2005/06/10 23:07:02 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.8 2006/09/05 00:55:43 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -658,8 +658,8 @@ uaudio_mixer_add_ctl(struct uaudio_softc *sc, struct mixerctl *mc)
 	int res;
 	size_t len = sizeof(*mc) * (sc->sc_nctls + 1);
 	struct mixerctl *nmc = sc->sc_nctls == 0 ?
-	  malloc(len, M_USBDEV, M_NOWAIT) :
-	  realloc(sc->sc_ctls, len, M_USBDEV, M_NOWAIT);
+	  kmalloc(len, M_USBDEV, M_NOWAIT) :
+	  krealloc(sc->sc_ctls, len, M_USBDEV, M_NOWAIT);
 
 	if(nmc == NULL){
 		printf("uaudio_mixer_add_ctl: no memory\n");
@@ -1210,8 +1210,8 @@ uaudio_add_alt(struct uaudio_softc *sc, struct as_info *ai)
 {
 	size_t len = sizeof(*ai) * (sc->sc_nalts + 1);
 	struct as_info *nai = sc->sc_nalts == 0 ?
-	  malloc(len, M_USBDEV, M_NOWAIT) :
-	  realloc(sc->sc_alts, len, M_USBDEV, M_NOWAIT);
+	  kmalloc(len, M_USBDEV, M_NOWAIT) :
+	  krealloc(sc->sc_alts, len, M_USBDEV, M_NOWAIT);
 
 	if (nai == NULL) {
 		printf("uaudio_add_alt: no memory\n");
@@ -2888,7 +2888,7 @@ audio_attach_mi(device_t dev)
 
 	/* Attach the children. */
 	/* PCM Audio */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT);
 	if (func == NULL)
 		return (ENOMEM);
 	bzero(func, sizeof(*func));

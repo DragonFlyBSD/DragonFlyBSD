@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 
 #include "gnu/csaimg.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013
@@ -136,15 +136,15 @@ clkrun_hack(int run)
 				control &= ~0x2000;
 				control |= run? 0 : 0x2000;
 				bus_space_write_2(btag, 0x0, port, control);
-				free(pci_devices, M_TEMP);
-				free(pci_children, M_TEMP);
+				kfree(pci_devices, M_TEMP);
+				kfree(pci_children, M_TEMP);
 				return 0;
 			}
 		}
-		free(pci_children, M_TEMP);
+		kfree(pci_children, M_TEMP);
 	}
 
-	free(pci_devices, M_TEMP);
+	kfree(pci_devices, M_TEMP);
 	return ENXIO;
 #else
 	return 0;
@@ -297,7 +297,7 @@ csa_attach(device_t dev)
 	/* Attach the children. */
 
 	/* PCM Audio */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL) {
 		error = ENOMEM;
 		goto err_teardown;
@@ -308,7 +308,7 @@ csa_attach(device_t dev)
 	device_set_ivars(scp->pcm, func);
 
 	/* Midi Interface */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL) {
 		error = ENOMEM;
 		goto err_teardown;

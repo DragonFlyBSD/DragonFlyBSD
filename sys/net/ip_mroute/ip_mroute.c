@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.19 2005/12/11 13:00:16 swildner Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.20 2006/09/05 00:55:47 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -652,11 +652,11 @@ X_ip_mrouter_done(void)
 		struct rtdetq *n = rte->next;
 
 		m_freem(rte->m);
-		free(rte, M_MRTABLE);
+		kfree(rte, M_MRTABLE);
 		rte = n;
 	    }
 	    free_bw_list(rt->mfc_bw_meter);
-	    free(rt, M_MRTABLE);
+	    kfree(rt, M_MRTABLE);
 	    rt = nr;
 	}
     }
@@ -1021,7 +1021,7 @@ add_mfc(struct mfcctl2 *mfccp)
 
 		ip_mdq(rte->m, rte->ifp, rt, -1);
 		m_freem(rte->m);
-		free(rte, M_MRTABLE);
+		kfree(rte, M_MRTABLE);
 		rte = n;
 	    }
 	    rt->mfc_stall = NULL;
@@ -1049,7 +1049,7 @@ add_mfc(struct mfcctl2 *mfccp)
 	    }
 	}
 	if (rt == NULL) {		/* no upcall, so make a new entry */
-	    rt = malloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
+	    rt = kmalloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	    if (rt == NULL) {
 		    crit_exit();
 		    return ENOBUFS;
@@ -1110,7 +1110,7 @@ del_mfc(struct mfcctl2 *mfccp)
     list = rt->mfc_bw_meter;
     rt->mfc_bw_meter = NULL;
 
-    free(rt, M_MRTABLE);
+    kfree(rt, M_MRTABLE);
 
     crit_exit();
 
@@ -1244,7 +1244,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	 * just going to fail anyway.  Make sure to pullup the header so
 	 * that other people can't step on it.
 	 */
-	rte = malloc((sizeof *rte), M_MRTABLE, M_INTWAIT | M_NULLOK);
+	rte = kmalloc((sizeof *rte), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	if (rte == NULL) {
 		crit_exit();
 		return ENOBUFS;
@@ -1254,7 +1254,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	if (mb0 && (M_HASCL(mb0) || mb0->m_len < hlen))
 	    mb0 = m_pullup(mb0, hlen);
 	if (mb0 == NULL) {
-	    free(rte, M_MRTABLE);
+	    kfree(rte, M_MRTABLE);
 	    crit_exit();
 	    return ENOBUFS;
 	}
@@ -1284,7 +1284,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 		goto non_fatal;
 
 	    /* no upcall, so make a new entry */
-	    rt = malloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
+	    rt = kmalloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	    if (rt == NULL)
 		    goto fail;
 
@@ -1310,9 +1310,9 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 		log(LOG_WARNING, "ip_mforward: ip_mrouter socket queue full\n");
 		++mrtstat.mrts_upq_sockfull;
 fail1:
-		free(rt, M_MRTABLE);
+		kfree(rt, M_MRTABLE);
 fail:
-		free(rte, M_MRTABLE);
+		kfree(rte, M_MRTABLE);
 		m_freem(mb0);
 		crit_exit();
 		return ENOBUFS;
@@ -1354,7 +1354,7 @@ fail:
 	    if (npkts > MAX_UPQ) {
 		mrtstat.mrts_upq_ovflw++;
 non_fatal:
-		free(rte, M_MRTABLE);
+		kfree(rte, M_MRTABLE);
 		m_freem(mb0);
 		crit_exit();
 		return 0;
@@ -1408,7 +1408,7 @@ expire_upcalls(void *unused)
 		    struct rtdetq *n = rte->next;
 
 		    m_freem(rte->m);
-		    free(rte, M_MRTABLE);
+		    kfree(rte, M_MRTABLE);
 		    rte = n;
 		}
 		++mrtstat.mrts_cache_cleanups;
@@ -1421,11 +1421,11 @@ expire_upcalls(void *unused)
 		    struct bw_meter *x = mfc->mfc_bw_meter;
 
 		    mfc->mfc_bw_meter = x->bm_mfc_next;
-		    free(x, M_BWMETER);
+		    kfree(x, M_BWMETER);
 		}
 
 		*nptr = mfc->mfc_next;
-		free(mfc, M_MRTABLE);
+		kfree(mfc, M_MRTABLE);
 	    } else {
 		nptr = &mfc->mfc_next;
 	    }
@@ -2296,7 +2296,7 @@ add_bw_upcall(struct bw_upcall *req)
     crit_exit();
     
     /* Allocate the new bw_meter entry */
-    x = malloc(sizeof(*x), M_BWMETER, M_INTWAIT);
+    x = kmalloc(sizeof(*x), M_BWMETER, M_INTWAIT);
     
     /* Set the new bw_meter entry */
     x->bm_threshold.b_time = req->bu_threshold.b_time;
@@ -2329,7 +2329,7 @@ free_bw_list(struct bw_meter *list)
 
 	list = list->bm_mfc_next;
 	unschedule_bw_meter(x);
-	free(x, M_BWMETER);
+	kfree(x, M_BWMETER);
     }
 }
 
@@ -2387,7 +2387,7 @@ del_bw_upcall(struct bw_upcall *req)
 
 	    unschedule_bw_meter(x);
 	    /* Free the bw_meter entry */
-	    free(x, M_BWMETER);
+	    kfree(x, M_BWMETER);
 	    return 0;
 	} else {
 	    crit_exit();

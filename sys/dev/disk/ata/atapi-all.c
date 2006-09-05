@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.16 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.17 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -96,7 +96,7 @@ atapi_attach(struct ata_device *atadev, int alreadylocked)
 		    -1, -1);
     ATA_UNLOCK_CH(atadev->channel);
 
-    atadev->result = malloc(sizeof(struct atapi_reqsense), M_ATAPI,
+    atadev->result = kmalloc(sizeof(struct atapi_reqsense), M_ATAPI,
 				  M_INTWAIT | M_ZERO);
 
     switch (atadev->param->type) {
@@ -122,7 +122,7 @@ atapi_attach(struct ata_device *atadev, int alreadylocked)
 #if NATAPICAM == 0
     ata_prtdev(atadev, "<%.40s/%.8s> - NO DRIVER!\n",
 	       atadev->param->model, atadev->param->revision);
-    free(atadev->result, M_ATAPI);
+    kfree(atadev->result, M_ATAPI);
     atadev->driver = NULL;
 #endif
 }
@@ -164,9 +164,9 @@ atapi_detach(struct ata_device *atadev)
 	    biodone(bio);
 	}
 	ata_dmafree(atadev);
-	free(request, M_ATAPI);
+	kfree(request, M_ATAPI);
     }
-    free(atadev->result, M_ATAPI);
+    kfree(atadev->result, M_ATAPI);
     atadev->driver = NULL;
     atadev->flags = 0;
 
@@ -180,7 +180,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     struct atapi_request *request;
     int error;
 
-    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_INTWAIT|M_ZERO);
+    request = kmalloc(sizeof(struct atapi_request), M_ATAPI, M_INTWAIT|M_ZERO);
     request->device = atadev;
     request->data = data;
     request->bytecount = count;
@@ -224,7 +224,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     error = request->error;
     if (error)
 	 bcopy(&request->sense, atadev->result, sizeof(struct atapi_reqsense));
-    free(request, M_ATAPI);
+    kfree(request, M_ATAPI);
     return error;
 }
     
@@ -615,7 +615,7 @@ atapi_finish(struct atapi_request *request)
 #endif
     if (request->callback) {
 	if (!((request->callback)(request))) {
-	    free(request, M_ATAPI);
+	    kfree(request, M_ATAPI);
 	}
     }
     else 

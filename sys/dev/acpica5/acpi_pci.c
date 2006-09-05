@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.16 2004/05/29 04:32:50 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.4 2005/10/30 04:41:15 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.5 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -231,11 +231,11 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 		if (dinfo->ap_dinfo.cfg.func == func &&
 		    dinfo->ap_dinfo.cfg.slot == slot) {
 			dinfo->ap_handle = handle;
-			free(devlist, M_TEMP);
+			kfree(devlist, M_TEMP);
 			return_ACPI_STATUS (AE_OK);
 		}
 	}
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 	return_ACPI_STATUS (AE_OK);
 }
 

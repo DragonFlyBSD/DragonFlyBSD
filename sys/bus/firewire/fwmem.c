@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.10 2006/07/28 02:17:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -313,7 +313,7 @@ fwmem_close (struct dev_close_args *ap)
 	if (fwmem_debug)
 		printf("%s: refcount=%d\n", __func__, fms->refcount);
 	if (fms->refcount < 1) {
-		free(dev->si_drv1, M_FW);
+		kfree(dev->si_drv1, M_FW);
 		dev->si_drv1 = NULL;
 	}
 

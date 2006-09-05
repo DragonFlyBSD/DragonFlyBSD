@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.34 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.35 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -413,8 +413,8 @@ sis_find_bridge(device_t dev)
 	}
 
 done:
-	free(pci_devices, M_TEMP);
-	free(pci_children, M_TEMP);
+	kfree(pci_devices, M_TEMP);
+	kfree(pci_children, M_TEMP);
 	return(child);
 }
 

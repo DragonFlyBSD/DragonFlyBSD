@@ -1,7 +1,7 @@
 /*      $FreeBSD: src/sys/contrib/pf/net/pf_subr.c,v 1.1 2004/06/16 23:24:00 mlaier Exp $ */
 /*	from $OpenBSD: kern_subr.c,v 1.26 2003/10/31 11:10:41 markus Exp $	*/
 /*	$NetBSD: kern_subr.c,v 1.15 1996/04/09 17:21:56 ragge Exp $	*/
-/*	$DragonFly: src/sys/net/pf/pf_subr.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_subr.c,v 1.2 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -73,7 +73,7 @@ hook_establish(struct hook_desc_head *head, int tail, void (*fn)(void *),
 {
 	struct hook_desc *hdp;
 
-	hdp = (struct hook_desc *)malloc(sizeof (*hdp), M_DEVBUF, M_NOWAIT);
+	hdp = (struct hook_desc *)kmalloc(sizeof (*hdp), M_DEVBUF, M_NOWAIT);
 	if (hdp == NULL)
 		return (NULL);
 
@@ -102,7 +102,7 @@ hook_disestablish(struct hook_desc_head *head, void *vhook)
 #endif
 	hdp = vhook;
 	TAILQ_REMOVE(head, hdp, hd_list);
-	free(hdp, M_DEVBUF);
+	kfree(hdp, M_DEVBUF);
 }
 
 /*
@@ -125,7 +125,7 @@ dohooks(struct hook_desc_head *head, int flags)
 			TAILQ_REMOVE(head, hdp, hd_list);
 			(*hdp->hd_fn)(hdp->hd_arg);
 			if ((flags & HOOK_FREE) != 0)
-				free(hdp, M_DEVBUF);
+				kfree(hdp, M_DEVBUF);
 		}
 	}
 }

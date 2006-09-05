@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.21 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.22 2006/09/05 00:55:51 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -257,7 +257,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	needclose = 1;
 	dev = devvp->v_rdev;
 
-	udfmp = malloc(sizeof(*udfmp), M_UDFMOUNT, M_WAITOK | M_ZERO);
+	udfmp = kmalloc(sizeof(*udfmp), M_UDFMOUNT, M_WAITOK | M_ZERO);
 
 	mp->mnt_data = (qaddr_t)udfmp;
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
@@ -389,7 +389,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 
 bail:
 	if (udfmp != NULL)
-		free(udfmp, M_UDFMOUNT);
+		kfree(udfmp, M_UDFMOUNT);
 	if (bp != NULL)
 		brelse(bp);
 	if (needclose)
@@ -416,10 +416,10 @@ udf_unmount(struct mount *mp, int mntflags)
 	vrele(udfmp->im_devvp);
 
 	if (udfmp->s_table)
-		free(udfmp->s_table, M_UDFMOUNT);
+		kfree(udfmp->s_table, M_UDFMOUNT);
 	if (udfmp->hashtbl)
-		free(udfmp->hashtbl, M_UDFMOUNT);
-	free(udfmp, M_UDFMOUNT);
+		kfree(udfmp->hashtbl, M_UDFMOUNT);
+	kfree(udfmp, M_UDFMOUNT);
 
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
@@ -498,7 +498,7 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	 * Allocate memory and check the tag id's before grabbing a new
 	 * vnode, since it's hard to roll back if there is a problem.
 	 */
-	unode = malloc(sizeof(*unode), M_UDFNODE, M_WAITOK | M_ZERO);
+	unode = kmalloc(sizeof(*unode), M_UDFNODE, M_WAITOK | M_ZERO);
 
 	/*
 	 * Copy in the file entry.  Per the spec, the size can only be 1 block.
@@ -507,19 +507,19 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	devvp = udfmp->im_devvp;
 	if ((error = RDSECTOR(devvp, sector, udfmp->bsize, &bp)) != 0) {
 		printf("Cannot read sector %d\n", sector);
-		free(unode, M_UDFNODE);
+		kfree(unode, M_UDFNODE);
 		return(error);
 	}
 
 	fe = (struct file_entry *)bp->b_data;
 	if (udf_checktag(&fe->tag, TAGID_FENTRY)) {
 		printf("Invalid file entry!\n");
-		free(unode, M_UDFNODE);
+		kfree(unode, M_UDFNODE);
 		brelse(bp);
 		return(ENOMEM);
 	}
 	size = UDF_FENTRY_SIZE + fe->l_ea + fe->l_ad;
-	unode->fentry = malloc(size, M_UDFFENTRY, M_WAITOK | M_ZERO);
+	unode->fentry = kmalloc(size, M_UDFFENTRY, M_WAITOK | M_ZERO);
 
 	bcopy(bp->b_data, unode->fentry, size);
 	
@@ -528,7 +528,7 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	if ((error = udf_allocv(mp, &vp))) {
 		printf("Error from udf_allocv\n");
-		free(unode, M_UDFNODE);
+		kfree(unode, M_UDFNODE);
 		return(error);
 	}
 
@@ -652,7 +652,7 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		}
 
 		pms = &pmap->pms;
-		udfmp->s_table = malloc(pms->st_size, M_UDFMOUNT,
+		udfmp->s_table = kmalloc(pms->st_size, M_UDFMOUNT,
 					M_WAITOK | M_ZERO);
 		if (udfmp->s_table == NULL)
 			return(ENOMEM);

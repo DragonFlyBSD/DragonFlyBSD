@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.62 2005/08/29 10:24:10 demizu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.63 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -342,7 +342,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 				tcpstat.tcps_rcvduppack++;
 				tcpstat.tcps_rcvdupbyte += *tlenp;
 				m_freem(m);
-				free(te, M_TSEGQ);
+				kfree(te, M_TSEGQ);
 				tcp_reass_qsize--;
 				/*
 				 * Try to present any queued data
@@ -397,7 +397,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		nq = LIST_NEXT(q, tqe_q);
 		LIST_REMOVE(q, tqe_q);
 		m_freem(q->tqe_m);
-		free(q, M_TSEGQ);
+		kfree(q, M_TSEGQ);
 		tcp_reass_qsize--;
 		q = nq;
 	}
@@ -423,7 +423,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		if (!(tp->t_flags & TF_DUPSEG))
 			tp->reportblk.rblk_end = tend;
 		LIST_REMOVE(q, tqe_q);
-		free(q, M_TSEGQ);
+		kfree(q, M_TSEGQ);
 		tcp_reass_qsize--;
 	}
 
@@ -441,7 +441,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			 */
 			if (!(tp->t_flags & TF_DUPSEG))
 				tp->reportblk.rblk_start = p->tqe_th->th_seq;
-			free(te, M_TSEGQ);
+			kfree(te, M_TSEGQ);
 			tcp_reass_qsize--;
 		} else
 			LIST_INSERT_AFTER(p, te, tqe_q);
@@ -473,7 +473,7 @@ present:
 		m_freem(q->tqe_m);
 	else
 		sbappendstream(&so->so_rcv, q->tqe_m);
-	free(q, M_TSEGQ);
+	kfree(q, M_TSEGQ);
 	tcp_reass_qsize--;
 	ND6_HINT(tp);
 	sorwakeup(so);

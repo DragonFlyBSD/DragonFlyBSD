@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.6 2006/09/05 00:55:35 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -196,7 +196,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 #endif
 			&am->dma_tag)) {
 		printf("fwdma_malloc_multiseg: tag_create failed\n");
-		free(am, M_FW);
+		kfree(am, M_FW);
 		return(NULL);
 	}
 
@@ -231,5 +231,5 @@ fwdma_free_multiseg(struct fwdma_alloc_multi *am)
 			seg->v_addr, am->ssize);
 	}
 	bus_dma_tag_destroy(am->dma_tag);
-	free(am, M_FW);
+	kfree(am, M_FW);
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.14 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.15 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -385,7 +385,7 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (sotorawcb(so) != 0)
 		return EISCONN;	/* XXX panic? */
-	kp = (struct keycb *)malloc(sizeof *kp, M_PCB, M_WAITOK); /* XXX */
+	kp = (struct keycb *)kmalloc(sizeof *kp, M_PCB, M_WAITOK); /* XXX */
 	if (kp == 0)
 		return ENOBUFS;
 	bzero(kp, sizeof *kp);
@@ -402,7 +402,7 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = raw_usrreqs.pru_attach(so, proto, ai);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
-		free(kp, M_PCB);
+		kfree(kp, M_PCB);
 		so->so_pcb = (caddr_t) 0;
 		crit_exit();
 		return error;

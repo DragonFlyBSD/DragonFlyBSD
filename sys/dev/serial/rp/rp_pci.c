@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_pci.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.5 2006/08/12 05:18:31 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.6 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -232,10 +232,10 @@ rp_pcireleaseresource(CONTROLLER_t *ctlp)
 	if (ctlp->io != NULL) {
 		if (ctlp->io[0] != NULL)
 			bus_release_resource(ctlp->dev, SYS_RES_IOPORT, ctlp->io_rid[0], ctlp->io[0]);
-		free(ctlp->io, M_DEVBUF);
+		kfree(ctlp->io, M_DEVBUF);
 	}
 	if (ctlp->io_rid != NULL)
-		free(ctlp->io_rid, M_DEVBUF);
+		kfree(ctlp->io_rid, M_DEVBUF);
 }
 
 static int

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.16 2005/12/11 13:00:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.17 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -163,7 +163,7 @@ stfmodevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		stf = malloc(sizeof(struct stf_softc), M_STF, M_WAITOK);
+		stf = kmalloc(sizeof(struct stf_softc), M_STF, M_WAITOK);
 		bzero(stf, sizeof(struct stf_softc));
 		sc = stf;
 
@@ -197,7 +197,7 @@ stfmodevent(module_t mod, int type, void *data)
 		if_detach(&sc->sc_if);
 		err = encap_detach(sc->encap_cookie);
 		KASSERT(err == 0, ("Unexpected error detaching encap_cookie"));
-		free(sc, M_STF);
+		kfree(sc, M_STF);
 		break;
 	}
 

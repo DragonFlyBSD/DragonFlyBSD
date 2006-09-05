@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.25 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.26 2006/09/05 00:55:50 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -123,7 +123,7 @@ nwfs_initnls(struct nwmount *nmp) {
 		COPY_TABLE(nmp->m.nls.u2n, ncp_defnls.u2n);
 	} while(0);
 	if (error) {
-		free(pe, M_NWFSDATA);
+		kfree(pe, M_NWFSDATA);
 		return error;
 	}
 	return 0;
@@ -217,7 +217,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	return error;
 bad:
         if (nmp)
-		free(nmp, M_NWFSDATA);
+		kfree(nmp, M_NWFSDATA);
 	if (handle)
 		ncp_conn_puthandle(handle, NULL, 0);
         return error;
@@ -247,8 +247,8 @@ nwfs_unmount(struct mount *mp, int mntflags)
 	}
 	mp->mnt_data = (qaddr_t)0;
 	if (nmp->m.flags & NWFS_MOUNT_HAVE_NLS)
-		free(nmp->m.nls.to_lower, M_NWFSDATA);
-	free(nmp, M_NWFSDATA);
+		kfree(nmp->m.nls.to_lower, M_NWFSDATA);
+	kfree(nmp, M_NWFSDATA);
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);
 }

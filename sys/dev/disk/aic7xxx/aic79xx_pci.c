@@ -41,7 +41,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_pci.c#75 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.4 2006/09/05 00:55:37 dillon Exp $
  */
 
 #ifdef __linux__
@@ -627,7 +627,7 @@ ahd_check_extport(struct ahd_softc *ahd)
 		ahd->flags |= AHD_USEDEFAULTS;
 		error = ahd_default_config(ahd);
 		adapter_control = CFAUTOTERM|CFSEAUTOTERM;
-		free(ahd->seep_config, M_DEVBUF);
+		kfree(ahd->seep_config, M_DEVBUF);
 		ahd->seep_config = NULL;
 	} else {
 		error = ahd_parse_cfgdata(ahd, sc);

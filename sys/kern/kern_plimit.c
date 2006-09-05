@@ -66,7 +66,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_plimit.c,v 1.1 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_plimit.c,v 1.2 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/resource.h>
@@ -162,7 +162,7 @@ plimit_exclusive(struct plimit **limitp)
 		spin_lock_wr(&olimit->p_spin);
 		if (--olimit->p_refcnt == 0) {
 			spin_unlock_wr(&olimit->p_spin);
-			free(olimit, M_SUBPROC);
+			kfree(olimit, M_SUBPROC);
 		} else {
 			spin_unlock_wr(&olimit->p_spin);
 		}
@@ -181,7 +181,7 @@ plimit_copy(struct plimit *olimit)
 {
 	struct plimit *nlimit;
 
-	nlimit = malloc(sizeof(struct plimit), M_SUBPROC, M_WAITOK);
+	nlimit = kmalloc(sizeof(struct plimit), M_SUBPROC, M_WAITOK);
 
 	spin_lock_rd(&olimit->p_spin);
 	*nlimit = *olimit;
@@ -242,7 +242,7 @@ plimit_free(struct plimit **limitp)
 		spin_lock_wr(&limit->p_spin);
 		if (--limit->p_refcnt == 0) {
 			spin_unlock_wr(&limit->p_spin);
-			free(limit, M_SUBPROC);
+			kfree(limit, M_SUBPROC);
 		} else {
 			spin_unlock_wr(&limit->p_spin);
 		}

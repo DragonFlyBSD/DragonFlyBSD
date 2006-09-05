@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_smb.c,v 1.1.2.3 2002/12/14 14:44:19 fjoe Exp $
- * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.5 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.6 2006/09/05 00:55:49 dillon Exp $
  */
 /*
  * various SMB requests. Most of the routines merely packs data into mbufs.
@@ -245,15 +245,15 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	error = smb_rq_alloc(VCTOCP(vcp), SMB_COM_SESSION_SETUP_ANDX, scred, &rqp);
 	if (error)
 		return error;
-	pbuf = malloc(SMB_MAXPASSWORDLEN + 1, M_SMBTEMP, M_WAITOK);
-	encpass = malloc(24, M_SMBTEMP, M_WAITOK);
+	pbuf = kmalloc(SMB_MAXPASSWORDLEN + 1, M_SMBTEMP, M_WAITOK);
+	encpass = kmalloc(24, M_SMBTEMP, M_WAITOK);
 	if (vcp->vc_sopt.sv_sm & SMB_SM_USER) {
 		iconv_convstr(vcp->vc_toupper, pbuf, smb_vc_getpass(vcp));
 		iconv_convstr(vcp->vc_toserver, pbuf, pbuf);
 		if (vcp->vc_sopt.sv_sm & SMB_SM_ENCRYPT) {
 			uniplen = plen = 24;
 			smb_encrypt(pbuf, vcp->vc_ch, encpass);
-			ntencpass = malloc(uniplen, M_SMBTEMP, M_WAITOK);
+			ntencpass = kmalloc(uniplen, M_SMBTEMP, M_WAITOK);
 			iconv_convstr(vcp->vc_toserver, pbuf, smb_vc_getpass(vcp));
 			smb_ntencrypt(pbuf, vcp->vc_ch, (u_char*)ntencpass);
 			pp = encpass;
@@ -262,7 +262,7 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 			plen = strlen(pbuf) + 1;
 			pp = pbuf;
 			uniplen = plen * 2;
-			ntencpass = malloc(uniplen, M_SMBTEMP, M_WAITOK);
+			ntencpass = kmalloc(uniplen, M_SMBTEMP, M_WAITOK);
 			smb_strtouni(ntencpass, smb_vc_getpass(vcp));
 			plen--;
 
@@ -319,7 +319,7 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	}
 	smb_rq_bend(rqp);
 	if (ntencpass)
-		free(ntencpass, M_SMBTEMP);
+		kfree(ntencpass, M_SMBTEMP);
 	error = smb_rq_simple(rqp);
 	SMBSDEBUG("%d\n", error);
 	if (error) {
@@ -329,8 +329,8 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	}
 	vcp->vc_smbuid = rqp->sr_rpuid;
 bad:
-	free(encpass, M_SMBTEMP);
-	free(pbuf, M_SMBTEMP);
+	kfree(encpass, M_SMBTEMP);
+	kfree(pbuf, M_SMBTEMP);
 	smb_rq_done(rqp);
 	return error;
 }
@@ -414,8 +414,8 @@ smb_smb_treeconnect(struct smb_share *ssp, struct smb_cred *scred)
 		pbuf = NULL;
 		encpass = NULL;
 	} else {
-		pbuf = malloc(SMB_MAXPASSWORDLEN + 1, M_SMBTEMP, M_WAITOK);
-		encpass = malloc(24, M_SMBTEMP, M_WAITOK);
+		pbuf = kmalloc(SMB_MAXPASSWORDLEN + 1, M_SMBTEMP, M_WAITOK);
+		encpass = kmalloc(24, M_SMBTEMP, M_WAITOK);
 		iconv_convstr(vcp->vc_toupper, pbuf, smb_share_getpass(ssp));
 		iconv_convstr(vcp->vc_toserver, pbuf, pbuf);
 		if (vcp->vc_sopt.sv_sm & SMB_SM_ENCRYPT) {
@@ -455,9 +455,9 @@ smb_smb_treeconnect(struct smb_share *ssp, struct smb_cred *scred)
 	ssp->ss_flags |= SMBS_CONNECTED;
 bad:
 	if (encpass)
-		free(encpass, M_SMBTEMP);
+		kfree(encpass, M_SMBTEMP);
 	if (pbuf)
-		free(pbuf, M_SMBTEMP);
+		kfree(pbuf, M_SMBTEMP);
 	smb_rq_done(rqp);
 	return error;
 }

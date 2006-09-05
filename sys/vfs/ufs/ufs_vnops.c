@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.55 2006/08/19 17:27:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.56 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1667,7 +1667,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		cookies = malloc(ncookies * sizeof(u_long), M_TEMP, M_WAITOK);
+		cookies = kmalloc(ncookies * sizeof(u_long), M_TEMP, M_WAITOK);
 	} else {
 		ncookies = -1;	/* force conditionals below */
 		cookies = NULL;
@@ -1765,7 +1765,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (error && cookie_index == 0) {
 		if (cookies) {
-			free(cookies, M_TEMP);
+			kfree(cookies, M_TEMP);
 			*ap->a_ncookies = 0;
 			*ap->a_cookies = NULL;
 		}

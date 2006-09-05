@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
 /*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.4 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -114,7 +114,7 @@ pflog_clone_destroy(struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 	LIST_REMOVE(sc, sc_next);
-	free(sc, M_PFLOG);
+	kfree(sc, M_PFLOG);
 }
 
 static int

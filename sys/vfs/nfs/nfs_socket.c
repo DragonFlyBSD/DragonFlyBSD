@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.35 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.36 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -977,7 +977,7 @@ kerbauth:
 			error = nfs_getauth(nmp, rep, cred, &auth_str,
 				&auth_len, verf_str, &verf_len, key);
 			if (error) {
-				free((caddr_t)rep, M_NFSREQ);
+				kfree((caddr_t)rep, M_NFSREQ);
 				m_freem(mrest);
 				return (error);
 			}
@@ -993,7 +993,7 @@ kerbauth:
 	m = nfsm_rpchead(cred, nmp->nm_flag, procnum, auth_type, auth_len,
 	     auth_str, verf_len, verf_str, mrest, mrest_len, &mheadend, &xid);
 	if (auth_str)
-		free(auth_str, M_TEMP);
+		kfree(auth_str, M_TEMP);
 
 	/*
 	 * For stream protocols, insert a Sun RPC Record Mark.
@@ -1001,7 +1001,7 @@ kerbauth:
 	if (nmp->nm_sotype == SOCK_STREAM) {
 		M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 		if (m == NULL) {
-			free(rep, M_NFSREQ);
+			kfree(rep, M_NFSREQ);
 			return (ENOBUFS);
 		}
 		*mtod(m, u_int32_t *) = htonl(0x80000000 |
@@ -1112,7 +1112,7 @@ tryagain:
 	dpos = rep->r_dpos;
 	if (error) {
 		m_freem(rep->r_mreq);
-		free((caddr_t)rep, M_NFSREQ);
+		kfree((caddr_t)rep, M_NFSREQ);
 		return (error);
 	}
 
@@ -1136,7 +1136,7 @@ tryagain:
 			error = EACCES;
 		m_freem(mrep);
 		m_freem(rep->r_mreq);
-		free((caddr_t)rep, M_NFSREQ);
+		kfree((caddr_t)rep, M_NFSREQ);
 		return (error);
 	}
 
@@ -1186,7 +1186,7 @@ tryagain:
 			} else
 				m_freem(mrep);
 			m_freem(rep->r_mreq);
-			free((caddr_t)rep, M_NFSREQ);
+			kfree((caddr_t)rep, M_NFSREQ);
 			return (error);
 		}
 
@@ -1201,7 +1201,7 @@ tryagain:
 	error = EPROTONOSUPPORT;
 nfsmout:
 	m_freem(rep->r_mreq);
-	free((caddr_t)rep, M_NFSREQ);
+	kfree((caddr_t)rep, M_NFSREQ);
 	return (error);
 }
 
@@ -2267,7 +2267,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 	    if (slp->ns_flag & SLP_LASTFRAG) {
 		struct nfsrv_rec *rec;
 		int mf = (waitflag & MB_DONTWAIT) ? M_NOWAIT : M_WAITOK;
-		rec = malloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, mf);
+		rec = kmalloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, mf);
 		if (!rec) {
 		    m_freem(slp->ns_frag);
 		} else {
@@ -2305,7 +2305,7 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 	--slp->ns_numrec;
 	nam = rec->nr_address;
 	m = rec->nr_packet;
-	free(rec, M_NFSRVDESC);
+	kfree(rec, M_NFSRVDESC);
 	MALLOC(nd, struct nfsrv_descript *, sizeof (struct nfsrv_descript),
 		M_NFSRVDESC, M_WAITOK);
 	nd->nd_md = nd->nd_mrep = m;
@@ -2316,7 +2316,7 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 		if (nam) {
 			FREE(nam, M_SONAME);
 		}
-		free((caddr_t)nd, M_NFSRVDESC);
+		kfree((caddr_t)nd, M_NFSRVDESC);
 		return (error);
 	}
 	*ndp = nd;

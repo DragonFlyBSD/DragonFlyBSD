@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.19 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.20 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -167,7 +167,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 		if (ip->i_dirhash != NULL)
 			ufsdirhash_free(ip);
 #endif
-		free(ip, VFSTOUFS(vp->v_mount)->um_malloctype);
+		kfree(ip, VFSTOUFS(vp->v_mount)->um_malloctype);
 	}
 	return (0);
 }

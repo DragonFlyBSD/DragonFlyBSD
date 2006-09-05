@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.29 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.30 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -270,11 +270,11 @@ ata_detach(device_t dev)
     crit_exit();
 
     if (ch->device[MASTER].param) {
-	free(ch->device[MASTER].param, M_ATA);
+	kfree(ch->device[MASTER].param, M_ATA);
 	ch->device[MASTER].param = NULL;
     }
     if (ch->device[SLAVE].param) {
-	free(ch->device[SLAVE].param, M_ATA);
+	kfree(ch->device[SLAVE].param, M_ATA);
 	ch->device[SLAVE].param = NULL;
     }
     ch->device[MASTER].driver = NULL;
@@ -448,7 +448,7 @@ ataioctl(struct dev_ioctl_args *ap)
 				 ATA_ATAPI_MASTER : ATA_ATAPI_SLAVE)))
 		return ENODEV;
 
-	    buf = malloc(iocmd->u.atapi.count, M_ATA, M_INTWAIT);
+	    buf = kmalloc(iocmd->u.atapi.count, M_ATA, M_INTWAIT);
 
 	    if (iocmd->u.atapi.flags & ATAPI_CMD_WRITE) {
 		error = copyin(iocmd->u.atapi.data, buf, iocmd->u.atapi.count);
@@ -469,7 +469,7 @@ ataioctl(struct dev_ioctl_args *ap)
 	    else if (iocmd->u.atapi.flags & ATAPI_CMD_READ)
 		error = copyout(buf, iocmd->u.atapi.data, iocmd->u.atapi.count);
 
-	    free(buf, M_ATA);
+	    kfree(buf, M_ATA);
 	    return error;
 	}
 #endif
@@ -485,20 +485,20 @@ ata_getparam(struct ata_device *atadev, u_int8_t command)
     struct ata_params *ata_parm;
     int retry = 0;
 
-    ata_parm = malloc(sizeof(struct ata_params), M_ATA, M_INTWAIT);
+    ata_parm = kmalloc(sizeof(struct ata_params), M_ATA, M_INTWAIT);
 
     /* apparently some devices needs this repeated */
     do {
 	if (ata_command(atadev, command, 0, 0, 0, ATA_IMMEDIATE)) {
 	    ata_prtdev(atadev, "%s identify failed\n",
 		       command == ATA_C_ATAPI_IDENTIFY ? "ATAPI" : "ATA");
-	    free(ata_parm, M_ATA);
+	    kfree(ata_parm, M_ATA);
 	    return -1;
 	}
 	if (retry++ > 4) {
 	    ata_prtdev(atadev, "%s identify retries exceeded\n",
 		       command == ATA_C_ATAPI_IDENTIFY ? "ATAPI" : "ATA");
-	    free(ata_parm, M_ATA);
+	    kfree(ata_parm, M_ATA);
 	    return -1;
 	}
     } while (ata_wait(atadev, ((command == ATA_C_ATAPI_IDENTIFY) ?
@@ -531,7 +531,7 @@ ata_boot_attach(void)
 
     if (ata_delayed_attach) {
 	config_intrhook_disestablish(ata_delayed_attach);
-	free(ata_delayed_attach, M_TEMP);
+	kfree(ata_delayed_attach, M_TEMP);
 	ata_delayed_attach = NULL;
     }
     crit_enter();
@@ -892,12 +892,12 @@ ata_reinit(struct ata_channel *ch)
 #endif
 	if (misdev & ATA_ATA_MASTER || misdev & ATA_ATAPI_MASTER) {
 	    if (ch->device[MASTER].param)
-		free(ch->device[MASTER].param, M_ATA);
+		kfree(ch->device[MASTER].param, M_ATA);
 	    ch->device[MASTER].param = NULL;
 	}
 	if (misdev & ATA_ATA_SLAVE || misdev & ATA_ATAPI_SLAVE) {
 	    if (ch->device[SLAVE].param)
-		free(ch->device[SLAVE].param, M_ATA);
+		kfree(ch->device[SLAVE].param, M_ATA);
 	    ch->device[SLAVE].param = NULL;
 	}
     }
@@ -1423,7 +1423,7 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
 void
 ata_set_name(struct ata_device *atadev, char *name, int lun)
 {
-    atadev->name = malloc(strlen(name) + 4, M_ATA, M_INTWAIT);
+    atadev->name = kmalloc(strlen(name) + 4, M_ATA, M_INTWAIT);
     sprintf(atadev->name, "%s%d", name, lun);
 }
 
@@ -1431,7 +1431,7 @@ void
 ata_free_name(struct ata_device *atadev)
 {
     if (atadev->name)
-	free(atadev->name, M_ATA);
+	kfree(atadev->name, M_ATA);
     atadev->name = NULL;
 }
     
@@ -1580,14 +1580,14 @@ ata_init(void)
     make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 
     /* register boot attach to be run when interrupts are enabled */
-    ata_delayed_attach = malloc(sizeof(struct intr_config_hook),
+    ata_delayed_attach = kmalloc(sizeof(struct intr_config_hook),
 				      M_TEMP, M_WAITOK | M_ZERO);
 
     ata_delayed_attach->ich_func = (void*)ata_boot_attach;
     ata_delayed_attach->ich_desc = "ata";
     if (config_intrhook_establish(ata_delayed_attach) != 0) {
 	printf("ata: config_intrhook_establish failed\n");
-	free(ata_delayed_attach, M_TEMP);
+	kfree(ata_delayed_attach, M_TEMP);
     }
 }
 SYSINIT(atadev, SI_SUB_DRIVERS, SI_ORDER_SECOND, ata_init, NULL)

@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.35 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.36 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -495,7 +495,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
-			free(freepath, M_TEMP);
+			kfree(freepath, M_TEMP);
 		} else {
 			vap->va_size = sizeof("unknown") - 1;
 			error = 0;
@@ -1053,7 +1053,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
-		free(freepath, M_TEMP);
+		kfree(freepath, M_TEMP);
 		return (error);
 	default:
 		return (EINVAL);

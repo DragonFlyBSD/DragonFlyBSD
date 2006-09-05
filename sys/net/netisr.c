@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.26 2006/05/20 06:32:37 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.27 2006/09/05 00:55:46 dillon Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ lwkt_port netisr_sync_port;
 static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
-    free(msg, M_LWKTMSG);
+    kfree(msg, M_LWKTMSG);
 }
 
 static void
@@ -232,7 +232,7 @@ netmsg_service_port_init(lwkt_port_t port)
      * certain operations (such as freeing an ifnet structure) across all
      * consumers.
      */
-    reg = malloc(sizeof(*reg), M_TEMP, M_WAITOK|M_ZERO);
+    reg = kmalloc(sizeof(*reg), M_TEMP, M_WAITOK|M_ZERO);
     reg->npr_port = port;
     TAILQ_INSERT_TAIL(&netreglist, reg, npr_entry);
 }

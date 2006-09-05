@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.29 2006/07/28 02:17:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.30 2006/09/05 00:55:31 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1348,12 +1348,12 @@ xpt_init(void *dummy)
 	/*
 	 * Register a callback for when interrupts are enabled.
 	 */
-	xpt_config_hook = malloc(sizeof(struct intr_config_hook),
+	xpt_config_hook = kmalloc(sizeof(struct intr_config_hook),
 				  M_TEMP, M_INTWAIT | M_ZERO);
 	xpt_config_hook->ich_func = xpt_config;
 	xpt_config_hook->ich_desc = "xpt";
 	if (config_intrhook_establish(xpt_config_hook) != 0) {
-		free (xpt_config_hook, M_TEMP);
+		kfree (xpt_config_hook, M_TEMP);
 		printf("xpt_init: config_intrhook_establish failed "
 		       "- failing attach\n");
 	}
@@ -3123,12 +3123,12 @@ xpt_action(union ccb *start_ccb)
 				SLIST_REMOVE(async_head, cur_entry,
 					     async_node, links);
 				csa->ccb_h.path->device->refcount--;
-				free(cur_entry, M_DEVBUF);
+				kfree(cur_entry, M_DEVBUF);
 			} else {
 				cur_entry->event_enable = csa->event_enable;
 			}
 		} else {
-			cur_entry = malloc(sizeof(*cur_entry), 
+			cur_entry = kmalloc(sizeof(*cur_entry), 
 					    M_DEVBUF, M_INTWAIT);
 			cur_entry->event_enable = csa->event_enable;
 			cur_entry->callback_arg = csa->callback_arg;
@@ -3696,10 +3696,10 @@ xpt_create_path(struct cam_path **new_path_ptr, struct cam_periph *perph,
 	struct	   cam_path *path;
 	cam_status status;
 
-	path = malloc(sizeof(*path), M_DEVBUF, M_INTWAIT);
+	path = kmalloc(sizeof(*path), M_DEVBUF, M_INTWAIT);
 	status = xpt_compile_path(path, perph, path_id, target_id, lun_id);
 	if (status != CAM_REQ_CMP) {
-		free(path, M_DEVBUF);
+		kfree(path, M_DEVBUF);
 		path = NULL;
 	}
 	*new_path_ptr = path;
@@ -3802,7 +3802,7 @@ xpt_free_path(struct cam_path *path)
 {
 	CAM_DEBUG(path, CAM_DEBUG_TRACE, ("xpt_free_path\n"));
 	xpt_release_path(path);
-	free(path, M_DEVBUF);
+	kfree(path, M_DEVBUF);
 }
 
 
@@ -3969,7 +3969,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	struct ccb_pathinq cpi;
 
 	sim->bus_id = bus;
-	new_bus = malloc(sizeof(*new_bus), M_DEVBUF, M_INTWAIT);
+	new_bus = kmalloc(sizeof(*new_bus), M_DEVBUF, M_INTWAIT);
 
 	if (strcmp(sim->sim_name, "xpt") != 0) {
 		sim->path_id =
@@ -4482,14 +4482,14 @@ xpt_alloc_ccb(void)
 {
 	union ccb *new_ccb;
 
-	new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
+	new_ccb = kmalloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
 	return (new_ccb);
 }
 
 void
 xpt_free_ccb(union ccb *free_ccb)
 {
-	free(free_ccb, M_DEVBUF);
+	kfree(free_ccb, M_DEVBUF);
 }
 
 
@@ -4510,7 +4510,7 @@ xpt_get_ccb(struct cam_ed *device)
 
 	crit_enter();
 	if ((new_ccb = (union ccb *)ccb_freeq.slh_first) == NULL) {
-		new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
+		new_ccb = kmalloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
 		SLIST_INSERT_HEAD(&ccb_freeq, &new_ccb->ccb_h,
 				  xpt_links.sle);
 		xpt_ccb_count++;
@@ -4535,7 +4535,7 @@ xpt_release_bus(struct cam_eb *bus)
 		}
 		bus_generation++;
 		KKASSERT(bus->refcount == 1);
-		free(bus, M_DEVBUF);
+		kfree(bus, M_DEVBUF);
 	} else {
 		--bus->refcount;
 	}
@@ -4548,7 +4548,7 @@ xpt_alloc_target(struct cam_eb *bus, target_id_t target_id)
 	struct cam_et *target;
 	struct cam_et *cur_target;
 
-	target = malloc(sizeof(*target), M_DEVBUF, M_INTWAIT);
+	target = kmalloc(sizeof(*target), M_DEVBUF, M_INTWAIT);
 
 	TAILQ_INIT(&target->ed_entries);
 	target->bus = bus;
@@ -4586,7 +4586,7 @@ xpt_release_target(struct cam_eb *bus, struct cam_et *target)
 		bus->generation++;
 		xpt_release_bus(bus);
 		KKASSERT(target->refcount == 1);
-		free(target, M_DEVBUF);
+		kfree(target, M_DEVBUF);
 	} else {
 		--target->refcount;
 	}
@@ -4609,7 +4609,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 	if (status != CAM_REQ_CMP) {
 		device = NULL;
 	} else {
-		device = malloc(sizeof(*device), M_DEVBUF, M_INTWAIT);
+		device = kmalloc(sizeof(*device), M_DEVBUF, M_INTWAIT);
 	}
 
 	if (device != NULL) {
@@ -4623,13 +4623,13 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 		device->lun_id = lun_id;
 		/* Initialize our queues */
 		if (camq_init(&device->drvq, 0) != 0) {
-			free(device, M_DEVBUF);
+			kfree(device, M_DEVBUF);
 			return (NULL);
 		}
 		if (cam_ccbq_init(&device->ccbq,
 				  bus->sim->max_dev_openings) != 0) {
 			camq_fini(&device->drvq);
-			free(device, M_DEVBUF);
+			kfree(device, M_DEVBUF);
 			return (NULL);
 		}
 		SLIST_INIT(&device->asyncs);
@@ -4710,7 +4710,7 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
 		xpt_release_target(bus, target);
 		KKASSERT(device->refcount == 1);
-		free(device, M_DEVBUF);
+		kfree(device, M_DEVBUF);
 	} else {
 		--device->refcount;
 	}
@@ -4839,7 +4839,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 
 		/* Save some state for use while we probe for devices */
 		scan_info = (xpt_scan_bus_info *)
-		    malloc(sizeof(xpt_scan_bus_info), M_TEMP, M_INTWAIT);
+		    kmalloc(sizeof(xpt_scan_bus_info), M_TEMP, M_INTWAIT);
 		scan_info->request_ccb = request_ccb;
 		scan_info->cpi = &work_ccb->cpi;
 
@@ -4964,7 +4964,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 			if (scan_info->pending_count == 0) {
 				xpt_free_ccb((union ccb *)scan_info->cpi);
 				request_ccb = scan_info->request_ccb;
-				free(scan_info, M_TEMP);
+				kfree(scan_info, M_TEMP);
 				request_ccb->ccb_h.status = CAM_REQ_CMP;
 				xpt_done(request_ccb);
 			}
@@ -4986,7 +4986,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 					xpt_free_ccb(
 						(union ccb *)scan_info->cpi);
 					request_ccb = scan_info->request_ccb;
-					free(scan_info, M_TEMP);
+					kfree(scan_info, M_TEMP);
 					request_ccb->ccb_h.status = CAM_REQ_CMP;
 					xpt_done(request_ccb);
 					break;
@@ -5073,8 +5073,8 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 	}
 
 	if (request_ccb == NULL) {
-		request_ccb = malloc(sizeof(union ccb), M_TEMP, M_INTWAIT);
-		new_path = malloc(sizeof(*new_path), M_TEMP, M_INTWAIT);
+		request_ccb = kmalloc(sizeof(union ccb), M_TEMP, M_INTWAIT);
+		new_path = kmalloc(sizeof(*new_path), M_TEMP, M_INTWAIT);
 		status = xpt_compile_path(new_path, xpt_periph,
 					  path->bus->path_id,
 					  path->target->target_id,
@@ -5084,8 +5084,8 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 			xpt_print_path(path);
 			printf("xpt_scan_lun: can't compile path, can't "
 			       "continue\n");
-			free(request_ccb, M_TEMP);
-			free(new_path, M_TEMP);
+			kfree(request_ccb, M_TEMP);
+			kfree(new_path, M_TEMP);
 			return;
 		}
 		xpt_setup_ccb(&request_ccb->ccb_h, new_path, /*priority*/ 1);
@@ -5123,8 +5123,8 @@ static void
 xptscandone(struct cam_periph *periph, union ccb *done_ccb)
 {
 	xpt_release_path(done_ccb->ccb_h.path);
-	free(done_ccb->ccb_h.path, M_TEMP);
-	free(done_ccb, M_TEMP);
+	kfree(done_ccb->ccb_h.path, M_TEMP);
+	kfree(done_ccb, M_TEMP);
 }
 
 static cam_status
@@ -5145,7 +5145,7 @@ proberegister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_TEMP, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_TEMP, M_INTWAIT | M_ZERO);
 	TAILQ_INIT(&softc->request_ccbs);
 	TAILQ_INSERT_TAIL(&softc->request_ccbs, &request_ccb->ccb_h,
 			  periph_links.tqe);
@@ -5293,7 +5293,7 @@ probestart(struct cam_periph *periph, union ccb *start_ccb)
 		mode_buf_len = sizeof(struct scsi_mode_header_6)
 			     + sizeof(struct scsi_mode_blk_desc)
 			     + sizeof(struct scsi_control_page);
-		mode_buf = malloc(mode_buf_len, M_TEMP, M_INTWAIT);
+		mode_buf = kmalloc(mode_buf_len, M_TEMP, M_INTWAIT);
 		scsi_mode_sense(csio,
 				/*retries*/4,
 				probedone,
@@ -5318,7 +5318,7 @@ probestart(struct cam_periph *periph, union ccb *start_ccb)
 		device->serial_num_len = 0;
 
 		if ((device->quirk->quirks & CAM_QUIRK_NOSERIAL) == 0) {
-			serial_buf = malloc(sizeof(*serial_buf), M_TEMP,
+			serial_buf = kmalloc(sizeof(*serial_buf), M_TEMP,
 					    M_INTWAIT | M_ZERO);
 			scsi_inquiry(csio,
 				     /*retries*/4,
@@ -5498,7 +5498,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 					 /*count*/1, /*run_queue*/TRUE);
 		}
 		xpt_release_ccb(done_ccb);
-		free(mode_hdr, M_TEMP);
+		kfree(mode_hdr, M_TEMP);
 		softc->action = PROBE_SERIAL_NUM;
 		xpt_schedule(periph, priority);
 		return;
@@ -5520,7 +5520,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 
 		/* Clean up from previous instance of this device */
 		if (path->device->serial_num != NULL) {
-			free(path->device->serial_num, M_DEVBUF);
+			kfree(path->device->serial_num, M_DEVBUF);
 			path->device->serial_num = NULL;
 			path->device->serial_num_len = 0;
 		}
@@ -5534,7 +5534,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 
 			have_serialnum = 1;
 			path->device->serial_num =
-				malloc((serial_buf->length + 1),
+				kmalloc((serial_buf->length + 1),
 				       M_DEVBUF, M_INTWAIT);
 			bcopy(serial_buf->serial_num,
 			      path->device->serial_num,
@@ -5581,7 +5581,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 				xpt_async(AC_LOST_DEVICE, path, NULL);
 		}
 		if (serial_buf != NULL)
-			free(serial_buf, M_TEMP);
+			kfree(serial_buf, M_TEMP);
 
 		if (changed != 0) {
 			/*
@@ -5643,7 +5643,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 static void
 probecleanup(struct cam_periph *periph)
 {
-	free(periph->softc, M_TEMP);
+	kfree(periph->softc, M_TEMP);
 }
 
 static void
@@ -6102,7 +6102,7 @@ xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 
 		/* Release our hook so that the boot can continue. */
 		config_intrhook_disestablish(xpt_config_hook);
-		free(xpt_config_hook, M_TEMP);
+		kfree(xpt_config_hook, M_TEMP);
 		xpt_config_hook = NULL;
 	}
 	if (done_ccb != NULL)

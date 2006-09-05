@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.40 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.41 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -1034,14 +1034,14 @@ ti_setmulti(struct ti_softc *sc)
 		mc = sc->ti_mc_listhead.slh_first;
 		ti_del_mcast(sc, &mc->mc_addr);
 		SLIST_REMOVE_HEAD(&sc->ti_mc_listhead, mc_entries);
-		free(mc, M_DEVBUF);
+		kfree(mc, M_DEVBUF);
 	}
 
 	/* Now program new ones. */
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		mc = malloc(sizeof(struct ti_mc_entry), M_DEVBUF, M_INTWAIT);
+		mc = kmalloc(sizeof(struct ti_mc_entry), M_DEVBUF, M_INTWAIT);
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
 		    &mc->mc_addr, ETHER_ADDR_LEN);
 		SLIST_INSERT_HEAD(&sc->ti_mc_listhead, mc, mc_entries);

@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.6 2006/01/14 11:05:17 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.7 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -216,9 +216,9 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 	}
 #endif
 
-	cl = malloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
+	cl = kmalloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
 	callout_init(&cl->callout_);
-	cl->q_ = malloc(sizeof(*cl->q_), M_ALTQ, M_WAITOK | M_ZERO);
+	cl->q_ = kmalloc(sizeof(*cl->q_), M_ALTQ, M_WAITOK | M_ZERO);
 
 	/*
 	 * Class initialization.
@@ -622,8 +622,8 @@ rmc_delete_class(struct rm_ifdat *ifd, struct rm_class *cl)
 			red_destroy(cl->red_);
 #endif
 	}
-	free(cl->q_, M_ALTQ);
-	free(cl, M_ALTQ);
+	kfree(cl->q_, M_ALTQ);
+	kfree(cl, M_ALTQ);
 }
 
 /*

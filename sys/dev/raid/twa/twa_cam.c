@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.2 2004/06/21 15:39:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.3 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -173,7 +173,7 @@ twa_send_scsi_cmd(struct twa_request *tr, int cmd)
 	ccb.csio.cdb_io.cdb_bytes[0] = (u_int8_t)cmd;
 	ccb.csio.cdb_io.cdb_bytes[4] = 128;
 	ccb.csio.cdb_len = 16;
-	ccb.csio.data_ptr = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT|M_ZERO);
+	ccb.csio.data_ptr = kmalloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT|M_ZERO);
 	ccb.csio.dxfer_len = TWA_SECTOR_SIZE;
 
 	ccb.ccb_h.target_id = 0;
@@ -509,7 +509,7 @@ twa_request_bus_scan(struct twa_softc *sc)
 	struct cam_path	*path;
 	union ccb	*ccb;
 
-	if ((ccb = malloc(sizeof(union ccb), M_TEMP, M_WAITOK)) == NULL)
+	if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK)) == NULL)
 		return;
 	bzero(ccb, sizeof(union ccb));
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->twa_sim),
@@ -545,7 +545,7 @@ twa_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 		twa_dbg_print(3, "success");
 
 	xpt_free_path(ccb->ccb_h.path);
-	free(ccb, M_TEMP);
+	kfree(ccb, M_TEMP);
 }
 
 
@@ -662,7 +662,7 @@ twa_drain_busy_queue(struct twa_softc *sc)
 			(tr->tr_cmd_pkt_type & TWA_CMD_PKT_TYPE_IOCTL)) {
 			/* It's an internal/ioctl request.  Simply free it. */
 			if (tr->tr_data)
-				free(tr->tr_data, M_DEVBUF);
+				kfree(tr->tr_data, M_DEVBUF);
 		} else {
 			if ((ccb = tr->tr_private)) {
 				/* It's a SCSI request.  Complete it. */

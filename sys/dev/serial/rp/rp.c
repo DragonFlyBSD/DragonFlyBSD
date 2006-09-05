@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.17 2006/09/05 00:55:42 dillon Exp $
  */
 
 /* 
@@ -918,11 +918,11 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 			if (p_rp_table[i] == ctlp->rp)
 				p_rp_table[i] = NULL;
 		crit_exit();
-		free(ctlp->rp, M_DEVBUF);
+		kfree(ctlp->rp, M_DEVBUF);
 		ctlp->rp = NULL;
 	}
 	if (ctlp->tty != NULL) {
-		free(ctlp->tty, M_DEVBUF);
+		kfree(ctlp->tty, M_DEVBUF);
 		ctlp->tty = NULL;
 	}
 	if (ctlp->dev != NULL)

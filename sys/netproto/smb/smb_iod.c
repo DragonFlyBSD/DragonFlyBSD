@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.13 2005/12/08 19:15:12 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.14 2006/09/05 00:55:49 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -389,7 +389,7 @@ smb_iod_request(struct smbiod *iod, int event, void *ident)
 	smb_iod_wakeup(iod);
 	smb_sleep(evp, SMB_IOD_EVINTERLOCK(iod), PDROP, "90evw", 0);
 	error = evp->ev_error;
-	free(evp, M_SMBIOD);
+	kfree(evp, M_SMBIOD);
 	return error;
 }
 
@@ -621,7 +621,7 @@ smb_iod_main(struct smbiod *iod)
 			wakeup(evp);
 			SMB_IOD_EVUNLOCK(iod);
 		} else
-			free(evp, M_SMBIOD);
+			kfree(evp, M_SMBIOD);
 	}
 #if 0
 	if (iod->iod_state == SMBIOD_ST_VCACTIVE) {
@@ -679,7 +679,7 @@ smb_iod_create(struct smb_vc *vcp)
 	    RFNOWAIT, "smbiod%d", iod->iod_id);
 	if (error) {
 		SMBERROR("can't start smbiod: %d", error);
-		free(iod, M_SMBIOD);
+		kfree(iod, M_SMBIOD);
 		return error;
 	}
 	iod->iod_td = newp->p_thread;
@@ -692,7 +692,7 @@ smb_iod_destroy(struct smbiod *iod)
 	smb_iod_request(iod, SMBIOD_EV_SHUTDOWN | SMBIOD_EV_SYNC, NULL);
 	smb_sl_destroy(&iod->iod_rqlock);
 	smb_sl_destroy(&iod->iod_evlock);
-	free(iod, M_SMBIOD);
+	kfree(iod, M_SMBIOD);
 	return 0;
 }
 

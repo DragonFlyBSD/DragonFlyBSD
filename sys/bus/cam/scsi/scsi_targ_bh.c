@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.11 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.12 2006/09/05 00:55:33 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -276,7 +276,7 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_accept_tio *atio;
 
-		atio = malloc(sizeof(*atio), M_DEVBUF, M_INTWAIT);
+		atio = kmalloc(sizeof(*atio), M_DEVBUF, M_INTWAIT);
 
 		atio->ccb_h.ccb_descr = targbhallocdescr();
 
@@ -287,7 +287,7 @@ targbhenlun(struct cam_periph *periph)
 		status = atio->ccb_h.status;
 		if (status != CAM_REQ_INPROG) {
 			targbhfreedescr(atio->ccb_h.ccb_descr);
-			free(atio, M_DEVBUF);
+			kfree(atio, M_DEVBUF);
 			break;
 		}
 		((struct targbh_cmd_desc*)atio->ccb_h.ccb_descr)->atio_link =
@@ -310,7 +310,7 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_immed_notify *inot;
 
-		inot = malloc(sizeof(*inot), M_DEVBUF, M_INTWAIT);
+		inot = kmalloc(sizeof(*inot), M_DEVBUF, M_INTWAIT);
 
 		xpt_setup_ccb(&inot->ccb_h, periph->path, /*priority*/1);
 		inot->ccb_h.func_code = XPT_IMMED_NOTIFY;
@@ -318,7 +318,7 @@ targbhenlun(struct cam_periph *periph)
 		xpt_action((union ccb *)inot);
 		status = inot->ccb_h.status;
 		if (status != CAM_REQ_INPROG) {
-			free(inot, M_DEVBUF);
+			kfree(inot, M_DEVBUF);
 			break;
 		}
 		SLIST_INSERT_HEAD(&softc->immed_notify_slist, &inot->ccb_h,
@@ -394,7 +394,7 @@ targbhctor(struct cam_periph *periph, void *arg)
 	cpi = (struct ccb_pathinq *)arg;
 
 	/* Allocate our per-instance private storage */
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	TAILQ_INIT(&softc->pending_queue);
 	TAILQ_INIT(&softc->work_queue);
 	softc->accept_tio_list = NULL;
@@ -425,7 +425,7 @@ targbhdtor(struct cam_periph *periph)
 	default:
 		/* XXX Wait for callback of targbhdislun() */
 		tsleep(softc, 0, "targbh", hz/2);
-		free(softc, M_DEVBUF);
+		kfree(softc, M_DEVBUF);
 		break;
 	}
 }
@@ -539,7 +539,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || atio->ccb_h.status == CAM_REQ_ABORTED) {
 			targbhfreedescr(descr);
-			free(done_ccb, M_DEVBUF);
+			kfree(done_ccb, M_DEVBUF);
 			return;
 		}
 
@@ -666,7 +666,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 			break;
 		} else {
 			targbhfreedescr(desc);
-			free(atio, M_DEVBUF);
+			kfree(atio, M_DEVBUF);
 		}
 		break;
 	}
@@ -675,7 +675,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || done_ccb->ccb_h.status == CAM_REQ_ABORTED) {
 			printf("Freed an immediate notify\n");
-			free(done_ccb, M_DEVBUF);
+			kfree(done_ccb, M_DEVBUF);
 		}
 		break;
 	}
@@ -699,10 +699,10 @@ targbhallocdescr(void)
 	struct targbh_cmd_desc* descr;
 
 	/* Allocate the targbh_descr structure */
-	descr = malloc(sizeof(*descr), M_DEVBUF, M_INTWAIT | M_ZERO);
+	descr = kmalloc(sizeof(*descr), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	/* Allocate buffer backing store */
-	descr->backing_store = malloc(MAX_BUF_SIZE, M_DEVBUF, M_INTWAIT);
+	descr->backing_store = kmalloc(MAX_BUF_SIZE, M_DEVBUF, M_INTWAIT);
 	descr->max_size = MAX_BUF_SIZE;
 	return (descr);
 }
@@ -710,6 +710,6 @@ targbhallocdescr(void)
 static void
 targbhfreedescr(struct targbh_cmd_desc *descr)
 {
-	free(descr->backing_store, M_DEVBUF);
-	free(descr, M_DEVBUF);
+	kfree(descr->backing_store, M_DEVBUF);
+	kfree(descr, M_DEVBUF);
 }

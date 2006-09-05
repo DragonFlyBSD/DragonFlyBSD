@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.25 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.26 2006/09/05 00:55:51 dillon Exp $
  */
 
 /*
@@ -285,7 +285,7 @@ bad:
 		if (um->um_lowervp)
 			vrele(um->um_lowervp);
 		/* XXX other fields */
-		free(um, M_UNIONFSMNT);
+		kfree(um, M_UNIONFSMNT);
 	}
 	if (cred)
 		crfree(cred);
@@ -346,7 +346,7 @@ union_unmount(struct mount *mp, int mntflags)
 	/*
 	 * Finally, throw away the union_mount structure
 	 */
-	free(mp->mnt_data, M_UNIONFSMNT);	/* XXX */
+	kfree(mp->mnt_data, M_UNIONFSMNT);	/* XXX */
 	mp->mnt_data = 0;
 	return (0);
 }

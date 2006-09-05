@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.11 2006/02/28 02:02:43 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.3 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.4 2006/09/05 00:55:48 dillon Exp $
  */
 
 /*
@@ -1182,14 +1182,14 @@ ieee80211_ioctl_getstainfo(struct ieee80211com *ic, struct ieee80211req *ireq)
 
 		space = req.space;
 		/* XXX M_WAITOK after driver lock released */
-		p = malloc(space, M_TEMP, M_NOWAIT);
+		p = kmalloc(space, M_TEMP, M_NOWAIT);
 		if (p == NULL)
 			return ENOMEM;
 		req.si = p;
 		ieee80211_iterate_nodes(&ic->ic_sta, get_sta_info, &req);
 		ireq->i_len = space - req.space;
 		error = copyout(p, ireq->i_data, ireq->i_len);
-		free(p, M_TEMP);
+		kfree(p, M_TEMP);
 	} else
 		ireq->i_len = 0;
 
@@ -1537,12 +1537,12 @@ ieee80211_ioctl_setoptie(struct ieee80211com *ic, struct ieee80211req *ireq)
 	if (ireq->i_len > IEEE80211_MAX_OPT_IE)
 		return EINVAL;
 	if (ireq->i_len > 0) {
-		ie = malloc(ireq->i_len, M_DEVBUF, M_NOWAIT);
+		ie = kmalloc(ireq->i_len, M_DEVBUF, M_NOWAIT);
 		if (ie == NULL)
 			return ENOMEM;
 		error = copyin(ireq->i_data, ie, ireq->i_len);
 		if (error) {
-			free(ie, M_DEVBUF);
+			kfree(ie, M_DEVBUF);
 			return error;
 		}
 	} else {
@@ -1554,7 +1554,7 @@ ieee80211_ioctl_setoptie(struct ieee80211com *ic, struct ieee80211req *ireq)
 	ic->ic_opt_ie = ie;
 	ic->ic_opt_ie_len = ireq->i_len;
 	if (oie != NULL)
-		free(oie, M_DEVBUF);
+		kfree(oie, M_DEVBUF);
 	return 0;
 }
 

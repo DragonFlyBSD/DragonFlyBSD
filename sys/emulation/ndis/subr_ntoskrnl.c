@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.8 2006/09/03 18:52:28 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.9 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -790,13 +790,13 @@ ntoskrnl_popsl(slist_header *head)
 __stdcall static void *
 ntoskrnl_allocfunc(uint32_t pooltype, size_t size, uint32_t tag)
 {
-	return(malloc(size, M_DEVBUF, M_WAITOK));
+	return(kmalloc(size, M_DEVBUF, M_WAITOK));
 }
 
 __stdcall static void
 ntoskrnl_freefunc(void *buf)
 {
-	free(buf, M_DEVBUF);
+	kfree(buf, M_DEVBUF);
 	return;
 }
 
@@ -1011,7 +1011,7 @@ ntoskrnl_freemdl(ndis_buffer *mdl)
 	 */
 
 	if (head->nb_byteoffset && head->nb_bytecount == 0)
-		free(head, M_DEVBUF);
+		kfree(head, M_DEVBUF);
 
         return;
 }
@@ -1184,7 +1184,7 @@ ntoskrnl_free_unicode_string(ndis_unicode_string *ustr)
 {
 	if (ustr->nus_buf == NULL)
 		return;
-	free(ustr->nus_buf, M_DEVBUF);
+	kfree(ustr->nus_buf, M_DEVBUF);
 	ustr->nus_buf = NULL;
 	return;
 }
@@ -1194,7 +1194,7 @@ ntoskrnl_free_ansi_string(ndis_ansi_string *astr)
 {
 	if (astr->nas_buf == NULL)
 		return;
-	free(astr->nas_buf, M_DEVBUF);
+	kfree(astr->nas_buf, M_DEVBUF);
 	astr->nas_buf = NULL;
 	return;
 }
@@ -1346,7 +1346,7 @@ ntoskrnl_objref(ndis_handle handle, uint32_t reqaccess, void *otype,
 {
 	nt_objref		*nr;
 
-	nr = malloc(sizeof(nt_objref), M_DEVBUF, M_WAITOK|M_ZERO);
+	nr = kmalloc(sizeof(nt_objref), M_DEVBUF, M_WAITOK|M_ZERO);
 
 	INIT_LIST_HEAD((&nr->no_dh.dh_waitlisthead));
 	nr->no_obj = handle;
@@ -1364,7 +1364,7 @@ ntoskrnl_objderef(REGARGS1(void *object))
 
 	nr = object;
 	TAILQ_REMOVE(&ntoskrnl_reflist, nr, link);
-	free(nr, M_DEVBUF);
+	kfree(nr, M_DEVBUF);
 
 	return;
 }
@@ -1390,7 +1390,7 @@ ntoskrnl_thrfunc(void *arg)
 	thrctx = arg;
 	tfunc = thrctx->tc_thrfunc;
 	tctx = thrctx->tc_thrctx;
-	free(thrctx, M_TEMP);
+	kfree(thrctx, M_TEMP);
 
 	rval = tfunc(tctx);
 
@@ -1408,7 +1408,7 @@ ntoskrnl_create_thread(ndis_handle *handle, uint32_t reqaccess,
 	thread_context		*tc;
 	thread_t		td;
 
-	tc = malloc(sizeof(thread_context), M_TEMP, M_WAITOK);
+	tc = kmalloc(sizeof(thread_context), M_TEMP, M_WAITOK);
 
 	tc->tc_thrctx = thrctx;
 	tc->tc_thrfunc = thrfunc;
@@ -1497,7 +1497,7 @@ ntoskrnl_timercall(void *arg)
 			      ntoskrnl_timercall, timer);
 	} else {
 		callout_deactivate(timer->k_handle);
-		free(timer->k_handle, M_NDIS);
+		kfree(timer->k_handle, M_NDIS);
 		timer->k_handle = NULL;
 	}
 
@@ -1629,7 +1629,7 @@ ntoskrnl_set_timer_ex(ktimer *timer, int64_t duetime, uint32_t period,
 	ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
 	timer->k_header.dh_inserted = TRUE;
 	if (timer->k_handle == NULL) {
-		timer->k_handle = malloc(sizeof(struct callout), M_NDIS,
+		timer->k_handle = kmalloc(sizeof(struct callout), M_NDIS,
 					 M_INTWAIT);
 		callout_init(timer->k_handle);
 	}
@@ -1655,7 +1655,7 @@ ntoskrnl_cancel_timer(ktimer *timer)
 	if (timer->k_header.dh_inserted == TRUE) {
 		if (timer->k_handle != NULL) {
 			callout_stop(timer->k_handle);
-			free(timer->k_handle, M_NDIS);
+			kfree(timer->k_handle, M_NDIS);
 			timer->k_handle = NULL;
 		}
 		if (timer->k_dpc != NULL)

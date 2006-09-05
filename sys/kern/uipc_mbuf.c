@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.56 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.57 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -268,9 +268,9 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 	void *buf;
 
 	if (ocflags & M_NOWAIT)
-		buf = malloc(MCLBYTES, M_MBUFCL, M_NOWAIT | M_ZERO);
+		buf = kmalloc(MCLBYTES, M_MBUFCL, M_NOWAIT | M_ZERO);
 	else
-		buf = malloc(MCLBYTES, M_MBUFCL, M_INTWAIT | M_ZERO);
+		buf = kmalloc(MCLBYTES, M_MBUFCL, M_INTWAIT | M_ZERO);
 	if (buf == NULL)
 		return (FALSE);
 	cl->mcl_refs = 0;
@@ -285,7 +285,7 @@ mclmeta_dtor(void *obj, void *private)
 	struct mbcluster *mcl = obj;
 
 	KKASSERT(mcl->mcl_refs == 0);
-	free(mcl->mcl_data, M_MBUFCL);
+	kfree(mcl->mcl_data, M_MBUFCL);
 }
 
 static void

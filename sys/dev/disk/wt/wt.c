@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.16 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.17 2006/09/05 00:55:38 dillon Exp $
  *
  */
 
@@ -334,7 +334,7 @@ wtopen (struct dev_open_args *ap)
 		return (ENXIO);
 
 	t->bsize = (minor (dev) & WT_BSIZE) ? 1024 : 512;
-	t->buf = malloc (t->bsize, M_TEMP, M_WAITOK);
+	t->buf = kmalloc (t->bsize, M_TEMP, M_WAITOK);
 	if (! t->buf)
 		return (EAGAIN);
 
@@ -392,7 +392,7 @@ wtclose (struct dev_close_args *ap)
 		wtreadfm (t);
 done:
 	t->flags &= TPREW | TPRMARK | TPSTART | TPTIMER;
-	free (t->buf, M_TEMP);
+	kfree (t->buf, M_TEMP);
 	isa_dma_release(t->chan);
 	return (0);
 }

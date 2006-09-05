@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.8 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.9 2006/09/05 00:55:35 dillon Exp $
  */
 
 /*
@@ -110,13 +110,13 @@ isa_dmainit(int chan, u_int bouncebufsize)
 	dma_bouncebufsize[chan] = bouncebufsize;
 
 	/* Try malloc() first.  It works better if it works. */
-	buf = malloc(bouncebufsize, M_DEVBUF, M_NOWAIT);
+	buf = kmalloc(bouncebufsize, M_DEVBUF, M_NOWAIT);
 	if (buf != NULL) {
 		if (isa_dmarangecheck(buf, bouncebufsize, chan) == 0) {
 			dma_bouncebuf[chan] = buf;
 			return;
 		}
-		free(buf, M_DEVBUF);
+		kfree(buf, M_DEVBUF);
 	}
 	buf = contigmalloc(bouncebufsize, M_DEVBUF, M_NOWAIT, 0ul, 0xfffffful,
 			   1ul, chan & 4 ? 0x20000ul : 0x10000ul);

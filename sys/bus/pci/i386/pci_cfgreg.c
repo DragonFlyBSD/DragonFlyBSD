@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.11 2005/11/04 08:57:23 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.12 2006/09/05 00:55:36 dillon Exp $
  *
  */
 
@@ -495,10 +495,10 @@ pci_cfgintr_search(struct PIR_entry *pe, int bus, int device, int matchpin, int 
 			}
 		}
 		if (pci_children != NULL)
-			free(pci_children, M_TEMP);
+			kfree(pci_children, M_TEMP);
 	}
 	if (pci_devices != NULL)
-		free(pci_devices, M_TEMP);
+		kfree(pci_devices, M_TEMP);
 	return (irq);
 }
 

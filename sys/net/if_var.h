@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.35 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.36 2006/09/05 00:55:46 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -434,7 +434,7 @@ static __inline void
 IFAFREE(struct ifaddr *_ifa)
 {
 	if (_ifa->ifa_refcnt <= 0)
-		free(_ifa, M_IFADDR);
+		kfree(_ifa, M_IFADDR);
 	else
 		_ifa->ifa_refcnt--;
 }

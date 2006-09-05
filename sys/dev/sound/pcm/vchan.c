@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.5.2.4 2003/02/11 15:54:16 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
 
 struct vchinfo {
 	u_int32_t spd, fmt, blksz, bps, run;
@@ -125,7 +125,7 @@ vchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c,
 	struct pcm_channel *parent = devinfo;
 
 	KASSERT(dir == PCMDIR_PLAY, ("vchan_init: bad direction"));
-	ch = malloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
+	ch = kmalloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
 	ch->parent = parent;
 	ch->channel = c;
 	ch->fmt = AFMT_U8;
@@ -244,7 +244,7 @@ vchan_create(struct pcm_channel *parent)
 		return EBUSY;
 	}
 
-	pce = malloc(sizeof(*pce), M_DEVBUF, M_WAITOK | M_ZERO);
+	pce = kmalloc(sizeof(*pce), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (!pce) {
 		CHN_UNLOCK(parent);
 		return ENOMEM;
@@ -253,7 +253,7 @@ vchan_create(struct pcm_channel *parent)
 	/* create a new playback channel */
 	child = pcm_chn_create(d, parent, &vchan_class, PCMDIR_VIRTUAL, parent);
 	if (!child) {
-		free(pce, M_DEVBUF);
+		kfree(pce, M_DEVBUF);
 		CHN_UNLOCK(parent);
 		return ENODEV;
 	}
@@ -268,7 +268,7 @@ vchan_create(struct pcm_channel *parent)
 	err = pcm_chn_add(d, child, !first);
 	if (err) {
 		pcm_chn_destroy(child);
-		free(pce, M_DEVBUF);
+		kfree(pce, M_DEVBUF);
 	}
 
 	/* XXX gross ugly hack, kill murder death */
@@ -311,7 +311,7 @@ vchan_destroy(struct pcm_channel *c)
 	return EINVAL;
 gotch:
 	SLIST_REMOVE(&parent->children, pce, pcmchan_children, link);
-	free(pce, M_DEVBUF);
+	kfree(pce, M_DEVBUF);
 
 	last = SLIST_EMPTY(&parent->children);
 	if (last)

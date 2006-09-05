@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.8 2005/06/10 15:46:31 swildner Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.9 2006/09/05 00:55:41 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -559,7 +559,7 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
 		if ((dpt = dpt_minor2softc(minor_no)) == NULL)
 			return (ENXIO);
 
-		work_buffer = (u_int8_t *) malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+		work_buffer = (u_int8_t *) kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 		wbp = work_buffer;
 		work_size = 0;
 

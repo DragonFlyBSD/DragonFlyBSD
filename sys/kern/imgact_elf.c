@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.40 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -413,7 +413,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	u_long base_addr = 0;
 	int error, i, numsegs;
 
-	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
+	tempdata = kmalloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
 	nd = &tempdata->nd;
 	attr = &tempdata->attr;
 	imgp = &tempdata->image_params;
@@ -516,7 +516,7 @@ fail:
 		vrele(imgp->vp);
 		imgp->vp = NULL;
 	}
-	free(tempdata, M_TEMP);
+	kfree(tempdata, M_TEMP);
 
 	return error;
 }
@@ -792,7 +792,7 @@ exec_elf_imgact(struct image_params *imgp)
 
 	imgp->proc->p_sysent = brand_info->sysvec;
 	if (interp != NULL) {
-		path = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+		path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	        snprintf(path, MAXPATHLEN, "%s%s",
 			 brand_info->emul_path, interp);
 		if ((error = elf_load_file(imgp->proc, path, &addr,
@@ -800,17 +800,17 @@ exec_elf_imgact(struct image_params *imgp)
 		        if ((error = elf_load_file(imgp->proc, interp, &addr,
 						   &imgp->entry_addr)) != 0) {
 			        uprintf("ELF interpreter %s not found\n", path);
-				free(path, M_TEMP);
+				kfree(path, M_TEMP);
 				goto fail;
 			}
                 }
-		free(path, M_TEMP);
+		kfree(path, M_TEMP);
 	}
 
 	/*
 	 * Construct auxargs table (used by the fixup routine)
 	 */
-	elf_auxargs = malloc(sizeof(Elf_Auxargs), M_TEMP, M_WAITOK);
+	elf_auxargs = kmalloc(sizeof(Elf_Auxargs), M_TEMP, M_WAITOK);
 	elf_auxargs->execfd = -1;
 	elf_auxargs->phdr = proghdr;
 	elf_auxargs->phent = hdr->e_phentsize;
@@ -851,7 +851,7 @@ elf_freebsd_fixup(register_t **stack_base, struct image_params *imgp)
 	AUXARGS_ENTRY(pos, AT_BASE, args->base);
 	AUXARGS_ENTRY(pos, AT_NULL, 0);
 
-	free(imgp->auxargs, M_TEMP);
+	kfree(imgp->auxargs, M_TEMP);
 	imgp->auxargs = NULL;
 
 	(*stack_base)--;
@@ -977,7 +977,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	 */
 	target.off_max = target.off;
 	target.off = 0;
-	target.buf = malloc(target.off_max, M_TEMP, M_WAITOK|M_ZERO);
+	target.buf = kmalloc(target.off_max, M_TEMP, M_WAITOK|M_ZERO);
 
 	if (target.buf == NULL)
 		return EINVAL;
@@ -998,7 +998,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 			php++;
 		}
 	}
-	free(target.buf, M_TEMP);
+	kfree(target.buf, M_TEMP);
 	
 	return error;
 }
@@ -1114,7 +1114,7 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 				printf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
 			} else {
 				printf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
-				free(freepath, M_TEMP);
+				kfree(freepath, M_TEMP);
 			}
 			error = 0;
 		}
@@ -1231,7 +1231,7 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	prfpregset_t *fpregset;
 	prpsinfo_t *psinfo;
 	int nbytes;
-	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
+	tempdata = kmalloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
 	status = &tempdata->status;
 	fpregset = &tempdata->fpregset;
 	psinfo = &tempdata->psinfo;
@@ -1258,7 +1258,7 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	/* Fill in the header. */
 	error = elf_puthdr(p, target, status, fpregset, psinfo, numsegs);
 
-	free(tempdata, M_TEMP);
+	kfree(tempdata, M_TEMP);
 
 	/* Write it to the core file. */
 	if (error == 0)

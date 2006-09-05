@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.5 2004/03/24 20:42:12 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.6 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -87,7 +87,7 @@ agp_amd_alloc_gatt(device_t dev)
 			      "allocating GATT for aperture of size %dM\n",
 			      apsize / (1024*1024));
 
-	gatt = malloc(sizeof(struct agp_amd_gatt), M_AGP, M_INTWAIT);
+	gatt = kmalloc(sizeof(struct agp_amd_gatt), M_AGP, M_INTWAIT);
 
 	/*
 	 * The AMD751 uses a page directory to map a non-contiguous
@@ -102,7 +102,7 @@ agp_amd_alloc_gatt(device_t dev)
 	/*
 	 * Allocate the page directory.
 	 */
-	gatt->ag_vdir = malloc(AGP_PAGE_SIZE, M_AGP, M_INTWAIT | M_ZERO);
+	gatt->ag_vdir = kmalloc(AGP_PAGE_SIZE, M_AGP, M_INTWAIT | M_ZERO);
 	gatt->ag_pdir = vtophys((vm_offset_t) gatt->ag_vdir);
 	if(bootverbose)
 		device_printf(dev, "gatt -> ag_pdir %8x\n",
@@ -150,9 +150,9 @@ agp_amd_alloc_gatt(device_t dev)
 static void
 agp_amd_free_gatt(struct agp_amd_gatt *gatt)
 {
-	free(gatt->ag_virtual, M_AGP);
-	free(gatt->ag_vdir, M_AGP);
-	free(gatt, M_AGP);
+	kfree(gatt->ag_virtual, M_AGP);
+	kfree(gatt->ag_vdir, M_AGP);
+	kfree(gatt, M_AGP);
 }
 
 static const char*

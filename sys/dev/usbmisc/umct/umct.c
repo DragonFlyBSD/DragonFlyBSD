@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.5 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.3 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -169,7 +169,7 @@ USB_ATTACH(umct)
 	int i;
 
 	dev = uaa->device;
-	devinfo = malloc(1024, M_USBDEV, M_INTWAIT | M_ZERO);
+	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT | M_ZERO);
 	bzero(sc, sizeof(struct umct_softc));
 	ucom = &sc->sc_ucom;
 	ucom->sc_dev = self;
@@ -273,11 +273,11 @@ USB_ATTACH(umct)
 	swi_add(&umct_ithd, "ucom", umct_notify, sc, SWI_TTY, 0,
 	    &sc->sc_swicookie);
 
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_SUCCESS_RETURN;
 
 error:
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -289,7 +289,7 @@ USB_DETACH(umct)
 	if (sc->sc_intr_pipe != NULL) {
 		usbd_abort_pipe(sc->sc_intr_pipe);
 		usbd_close_pipe(sc->sc_intr_pipe);
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 
@@ -471,7 +471,7 @@ umct_open(void *addr, int portno)
 	}
 
 	if (sc->sc_intr_number != -1 && sc->sc_intr_pipe == NULL) {
-		sc->sc_intr_buf = malloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+		sc->sc_intr_buf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
 		err = usbd_open_pipe_intr(sc->sc_intr_iface, sc->sc_intr_number,
 		    USBD_SHORT_XFER_OK, &sc->sc_intr_pipe, sc, sc->sc_intr_buf,
 		    sc->sc_isize, umct_intr, UMCT_INTR_INTERVAL);
@@ -479,7 +479,7 @@ umct_open(void *addr, int portno)
 			printf("%s: cannot open interrupt pipe (addr %d)\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev),
 			    sc->sc_intr_number);
-			free(sc->sc_intr_buf, M_USBDEV);
+			kfree(sc->sc_intr_buf, M_USBDEV);
 			return (EIO);
 		}
 	}
@@ -506,7 +506,7 @@ umct_close(void *addr, int portno)
 		if (err)
 			printf("%s: close interrupt pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 }

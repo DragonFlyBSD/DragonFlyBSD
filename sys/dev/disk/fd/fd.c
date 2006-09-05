@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.31 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.32 2006/09/05 00:55:37 dillon Exp $
  *
  */
 
@@ -758,7 +758,7 @@ fdc_add_child(device_t dev, const char *name, int unit)
 	struct fdc_ivars *ivar;
 	device_t child;
 
-	ivar = malloc(sizeof *ivar, M_DEVBUF /* XXX */, M_WAITOK | M_ZERO);
+	ivar = kmalloc(sizeof *ivar, M_DEVBUF /* XXX */, M_WAITOK | M_ZERO);
 	if (resource_int_value(name, unit, "drive", &ivar->fdunit) != 0)
 		ivar->fdunit = 0;
 	child = device_add_child(dev, name, unit);

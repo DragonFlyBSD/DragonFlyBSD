@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.75 2006/08/19 17:27:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.76 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -290,9 +290,9 @@ cache_alloc(int nlen)
 {
 	struct namecache *ncp;
 
-	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
+	ncp = kmalloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
 	if (nlen)
-		ncp->nc_name = malloc(nlen + 1, M_VFSCACHE, M_WAITOK);
+		ncp->nc_name = kmalloc(nlen + 1, M_VFSCACHE, M_WAITOK);
 	ncp->nc_nlen = nlen;
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
@@ -314,8 +314,8 @@ cache_free(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs == 1 && ncp->nc_exlocks == 1);
 	if (ncp->nc_name)
-		free(ncp->nc_name, M_VFSCACHE);
-	free(ncp, M_VFSCACHE);
+		kfree(ncp->nc_name, M_VFSCACHE);
+	kfree(ncp, M_VFSCACHE);
 }
 
 /*
@@ -1244,7 +1244,7 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 		printf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
 	if ((blksize = vat.va_blocksize) == 0)
 		blksize = DEV_BSIZE;
-	rbuf = malloc(blksize, M_TEMP, M_WAITOK);
+	rbuf = kmalloc(blksize, M_TEMP, M_WAITOK);
 	rncp = NULL;
 
 	eofflag = 0;
@@ -1316,7 +1316,7 @@ again:
 			dvp, ncp->nc_name);
 		error = ENOENT;
 	}
-	free(rbuf, M_TEMP);
+	kfree(rbuf, M_TEMP);
 	return (error);
 }
 
@@ -1388,8 +1388,8 @@ cache_zap(struct namecache *ncp)
 		/* cache_unlock(ncp) not required */
 		ncp->nc_refs = -1;	/* safety */
 		if (ncp->nc_name)
-			free(ncp->nc_name, M_VFSCACHE);
-		free(ncp, M_VFSCACHE);
+			kfree(ncp->nc_name, M_VFSCACHE);
+		kfree(ncp, M_VFSCACHE);
 
 		/*
 		 * Loop on the parent (it may be NULL).  Only bother looping
@@ -2001,11 +2001,11 @@ sys___getcwd(struct __getcwd_args *uap)
 	if (buflen > MAXPATHLEN)
 		buflen = MAXPATHLEN;
 
-	buf = malloc(buflen, M_TEMP, M_WAITOK);
+	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
 	bp = kern_getcwd(buf, buflen, &error);
 	if (error == 0)
 		error = copyout(bp, uap->buf, strlen(bp) + 1);
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (error);
 }
 
@@ -2099,7 +2099,7 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 
 	numfullpathcalls--;
 
-	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	buf = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
 	*bp = '\0';
 	if (p != NULL)
@@ -2110,7 +2110,7 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 	while (ncp && ncp != fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
 		if (ncp->nc_flag & NCF_MOUNTPT) {
 			if (ncp->nc_mount == NULL) {
-				free(buf, M_TEMP);
+				kfree(buf, M_TEMP);
 				return(EBADF);
 			}
 			ncp = ncp->nc_parent;
@@ -2119,14 +2119,14 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numfullpathfail4++;
-				free(buf, M_TEMP);
+				kfree(buf, M_TEMP);
 				return(ENOMEM);
 			}
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numfullpathfail4++;
-			free(buf, M_TEMP);
+			kfree(buf, M_TEMP);
 			return(ENOMEM);
 		}
 		*--bp = '/';
@@ -2135,7 +2135,7 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 	}
 	if (ncp == NULL) {
 		numfullpathfail2++;
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 		return(ENOENT);
 	}
 	if (p != NULL && (ncp->nc_flag & NCF_ROOT) && ncp != fd_nrdir) {
@@ -2146,7 +2146,7 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numfullpathfail4++;
-			free(buf, M_TEMP);
+			kfree(buf, M_TEMP);
 			return(ENOMEM);
 		}
 		*--bp = '/';

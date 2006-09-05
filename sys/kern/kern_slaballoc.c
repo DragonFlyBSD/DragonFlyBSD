@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.40 2006/09/04 23:03:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -695,9 +695,9 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     KKASSERT((flags & M_ZERO) == 0);	/* not supported */
 
     if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
-	return(malloc(size, type, flags));
+	return(kmalloc(size, type, flags));
     if (size == 0) {
-	free(ptr, type);
+	kfree(ptr, type);
 	return(NULL);
     }
 
@@ -713,10 +713,10 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	    osize = kup->ku_pagecnt << PAGE_SHIFT;
 	    if (osize == round_page(size))
 		return(ptr);
-	    if ((nptr = malloc(size, type, flags)) == NULL)
+	    if ((nptr = kmalloc(size, type, flags)) == NULL)
 		return(NULL);
 	    bcopy(ptr, nptr, min(size, osize));
-	    free(ptr, type);
+	    kfree(ptr, type);
 	    return(nptr);
 	}
     }
@@ -737,10 +737,10 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
      * already adjusted the request size to the appropriate chunk size, which
      * should optimize our bcopy().  Then copy and return the new pointer.
      */
-    if ((nptr = malloc(size, type, flags)) == NULL)
+    if ((nptr = kmalloc(size, type, flags)) == NULL)
 	return(NULL);
     bcopy(ptr, nptr, min(size, z->z_ChunkSize));
-    free(ptr, type);
+    kfree(ptr, type);
     return(nptr);
 }
 
@@ -758,7 +758,7 @@ kstrdup(const char *str, struct malloc_type *type)
     if (str == NULL)
 	return(NULL);
     zlen = strlen(str) + 1;
-    nstr = malloc(zlen, type, M_WAITOK);
+    nstr = kmalloc(zlen, type, M_WAITOK);
     bcopy(str, nstr, zlen);
     return(nstr);
 }
@@ -774,7 +774,7 @@ void
 free_remote(void *ptr)
 {
     logmemory(free_remote, ptr, *(struct malloc_type **)ptr, -1, 0);
-    free(ptr, *(struct malloc_type **)ptr);
+    kfree(ptr, *(struct malloc_type **)ptr);
 }
 
 #endif

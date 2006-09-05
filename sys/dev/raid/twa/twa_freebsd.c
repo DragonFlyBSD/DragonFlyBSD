@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.11 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -346,12 +346,12 @@ twa_free(struct twa_softc *sc)
 
 	/* Free all memory allocated so far. */
 	if (sc->twa_req_buf)
-		free(sc->twa_req_buf, TWA_MALLOC_CLASS);
+		kfree(sc->twa_req_buf, TWA_MALLOC_CLASS);
 	if (sc->twa_cmd_pkt_buf)
 		bus_dmamem_free(sc->twa_dma_tag, sc->twa_cmd_pkt_buf,
 					sc->twa_cmd_map);
 	if (sc->twa_aen_queue[0])
-		free (sc->twa_aen_queue[0], M_DEVBUF);
+		kfree (sc->twa_aen_queue[0], M_DEVBUF);
 
 	/* Destroy the data-transfer DMA tag. */
 	if (sc->twa_dma_tag)
@@ -809,7 +809,7 @@ twa_map_request(struct twa_request *tr)
 			tr->tr_length = 512;
 			while (tr->tr_length < tr->tr_real_length)
 				tr->tr_length <<= 1;
-			tr->tr_data = malloc(tr->tr_length, TWA_MALLOC_CLASS, M_INTWAIT);
+			tr->tr_data = kmalloc(tr->tr_length, TWA_MALLOC_CLASS, M_INTWAIT);
 		}
 	
 		/*
@@ -827,7 +827,7 @@ twa_map_request(struct twa_request *tr)
 			} else {
 				/* Free alignment buffer if it was used. */
 				if (tr->tr_flags & TWA_CMD_DATA_COPY_NEEDED) {
-					free(tr->tr_data, TWA_MALLOC_CLASS);
+					kfree(tr->tr_data, TWA_MALLOC_CLASS);
 					tr->tr_data = tr->tr_real_data;	/* restore 'real' data pointer */
 					tr->tr_length = tr->tr_real_length;/* restore 'real' data length */
 				}
@@ -889,7 +889,7 @@ twa_unmap_request(struct twa_request *tr)
 
 	/* Free alignment buffer if it was used. */
 	if (tr->tr_flags & TWA_CMD_DATA_COPY_NEEDED) {
-		free(tr->tr_data, TWA_MALLOC_CLASS);
+		kfree(tr->tr_data, TWA_MALLOC_CLASS);
 		tr->tr_data = tr->tr_real_data;	/* restore 'real' data pointer */
 		tr->tr_length = tr->tr_real_length;/* restore 'real' data length */
 	}

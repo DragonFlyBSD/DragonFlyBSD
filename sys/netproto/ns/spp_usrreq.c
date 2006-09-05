@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.17 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.18 2006/09/05 00:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -509,7 +509,7 @@ update_window:
 			break;
 		}
 	}
-	nq = malloc(sizeof(struct spidp_q), M_SPIDP_Q, M_INTNOWAIT);
+	nq = kmalloc(sizeof(struct spidp_q), M_SPIDP_Q, M_INTNOWAIT);
 	if (nq == NULL) {
 		m_freem(si_m);
 		return(0);
@@ -545,7 +545,7 @@ present:
 			nq = q;
 			q = q->si_prev;
 			remque(nq);
-			free(nq, M_SPIDP_Q);
+			kfree(nq, M_SPIDP_Q);
 			wakeup = 1;
 			sppstat.spps_rcvpack++;
 #ifdef SF_NEWCALL
@@ -1332,8 +1332,8 @@ spp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	nsp = sotonspcb(so);
 
 	sb = &so->so_snd;
-	cb = malloc(sizeof(struct sppcb), M_SPPCB, M_WAITOK|M_ZERO);
-	cb->s_idp = malloc(sizeof(struct idp), M_IDP, M_WAITOK|M_ZERO);
+	cb = kmalloc(sizeof(struct sppcb), M_SPPCB, M_WAITOK|M_ZERO);
+	cb->s_idp = kmalloc(sizeof(struct idp), M_IDP, M_WAITOK|M_ZERO);
 	cb->s_state = TCPS_LISTEN;
 	cb->s_smax = -1;
 	cb->s_swl1 = -1;
@@ -1687,10 +1687,10 @@ spp_close(struct sppcb *cb)
 		m = oq->si_mbuf;
 		remque(oq);
 		m_freem(m);
-		free(oq, M_SPIDP_Q);
+		kfree(oq, M_SPIDP_Q);
 	}
-	free(cb->s_idp, M_IDP);
-	free(cb, M_SPPCB);
+	kfree(cb->s_idp, M_IDP);
+	kfree(cb, M_SPPCB);
 	nsp->nsp_pcb = 0;
 	soisdisconnected(so);
 	ns_pcbdetach(nsp);

@@ -25,7 +25,7 @@
  *
  * $Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
  * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 
 #define inline __inline
 
@@ -960,7 +960,7 @@ agg_attach(device_t dev)
 	void	*ih = NULL;
 	char	status[SND_STATUSLEN];
 
-	if ((ess = malloc(sizeof *ess, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((ess = kmalloc(sizeof *ess, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -1065,7 +1065,7 @@ agg_attach(device_t dev)
 			dma_free(ess, ess->stat);
 		if (ess->parent_dmat != NULL)
 			bus_dma_tag_destroy(ess->parent_dmat);
-		free(ess, M_DEVBUF);
+		kfree(ess, M_DEVBUF);
 	}
 
 	return ENXIO;
@@ -1094,7 +1094,7 @@ agg_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, ess->irqid, ess->irq);
 	bus_release_resource(dev, SYS_RES_IOPORT, ess->regid, ess->reg);
 	bus_dma_tag_destroy(ess->parent_dmat);
-	free(ess, M_DEVBUF);
+	kfree(ess, M_DEVBUF);
 	return 0;
 }
 

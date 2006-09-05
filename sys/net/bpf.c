@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.32 2006/07/30 09:39:27 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.33 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -340,7 +340,7 @@ bpfclose(struct dev_close_args *ap)
 	crit_exit();
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
-	free(d, M_BPF);
+	kfree(d, M_BPF);
 
 	return(0);
 }
@@ -883,7 +883,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 		reset_d(d);
 		crit_exit();
 		if (old != 0)
-			free(old, M_BPF);
+			kfree(old, M_BPF);
 		return(0);
 	}
 	flen = fp->bf_len;
@@ -891,7 +891,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 		return(EINVAL);
 
 	size = flen * sizeof *fp->bf_insns;
-	fcode = (struct bpf_insn *)malloc(size, M_BPF, M_WAITOK);
+	fcode = (struct bpf_insn *)kmalloc(size, M_BPF, M_WAITOK);
 	if (copyin(fp->bf_insns, fcode, size) == 0 &&
 	    bpf_validate(fcode, (int)flen)) {
 		crit_enter();
@@ -899,11 +899,11 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 		reset_d(d);
 		crit_exit();
 		if (old != 0)
-			free(old, M_BPF);
+			kfree(old, M_BPF);
 
 		return(0);
 	}
-	free(fcode, M_BPF);
+	kfree(fcode, M_BPF);
 	return(EINVAL);
 }
 
@@ -1216,13 +1216,13 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 static int
 bpf_allocbufs(struct bpf_d *d)
 {
-	d->bd_fbuf = malloc(d->bd_bufsize, M_BPF, M_WAITOK);
+	d->bd_fbuf = kmalloc(d->bd_bufsize, M_BPF, M_WAITOK);
 	if (d->bd_fbuf == NULL)
 		return(ENOBUFS);
 
-	d->bd_sbuf = malloc(d->bd_bufsize, M_BPF, M_WAITOK);
+	d->bd_sbuf = kmalloc(d->bd_bufsize, M_BPF, M_WAITOK);
 	if (d->bd_sbuf == NULL) {
-		free(d->bd_fbuf, M_BPF);
+		kfree(d->bd_fbuf, M_BPF);
 		return(ENOBUFS);
 	}
 	d->bd_slen = 0;
@@ -1243,14 +1243,14 @@ bpf_freed(struct bpf_d *d)
 	 * free.
 	 */
 	if (d->bd_sbuf != NULL) {
-		free(d->bd_sbuf, M_BPF);
+		kfree(d->bd_sbuf, M_BPF);
 		if (d->bd_hbuf != NULL)
-			free(d->bd_hbuf, M_BPF);
+			kfree(d->bd_hbuf, M_BPF);
 		if (d->bd_fbuf != NULL)
-			free(d->bd_fbuf, M_BPF);
+			kfree(d->bd_fbuf, M_BPF);
 	}
 	if (d->bd_filter)
-		free(d->bd_filter, M_BPF);
+		kfree(d->bd_filter, M_BPF);
 }
 
 /*
@@ -1270,7 +1270,7 @@ bpfattach_dlt(struct ifnet *ifp, u_int dlt, u_int hdrlen, struct bpf_if **driver
 {
 	struct bpf_if *bp;
 
-	bp = malloc(sizeof *bp, M_BPF, M_WAITOK | M_ZERO);
+	bp = kmalloc(sizeof *bp, M_BPF, M_WAITOK | M_ZERO);
 
 	SLIST_INIT(&bp->bif_dlist);
 	bp->bif_ifp = ifp;
@@ -1332,7 +1332,7 @@ bpfdetach(struct ifnet *ifp)
 	else
 		bpf_iflist = bp->bif_next;
 
-	free(bp, M_BPF);
+	kfree(bp, M_BPF);
 
 	crit_exit();
 }

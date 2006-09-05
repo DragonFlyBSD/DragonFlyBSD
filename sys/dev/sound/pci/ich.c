@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.9 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.10 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.9 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.10 2006/09/05 00:55:43 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -683,7 +683,7 @@ ich_pci_attach(device_t dev)
 	struct sc_info 		*sc;
 	char 			status[SND_STATUSLEN];
 
-	if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -816,7 +816,7 @@ bad:
 	if (sc->nabmbar)
 		bus_release_resource(dev, sc->regtype,
 		    sc->nabmbarid, sc->nabmbar);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -836,7 +836,7 @@ ich_pci_detach(device_t dev)
 	bus_release_resource(dev, sc->regtype, sc->nambarid, sc->nambar);
 	bus_release_resource(dev, sc->regtype, sc->nabmbarid, sc->nabmbar);
 	bus_dma_tag_destroy(sc->dmat);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return 0;
 }
 

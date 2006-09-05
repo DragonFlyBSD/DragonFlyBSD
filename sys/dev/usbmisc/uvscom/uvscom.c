@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.7 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.8 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -266,7 +266,7 @@ USB_ATTACH(uvscom)
 	usbd_status err;
 	int i;
 
-	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
+	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uvscom_softc));
@@ -382,12 +382,12 @@ USB_ATTACH(uvscom)
 
 	ucom_attach(&sc->sc_ucom);
 
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_SUCCESS_RETURN;
 
 error:
 	ucom->sc_dying = 1;
-	free(devinfo, M_USBDEV);
+	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -403,7 +403,7 @@ USB_DETACH(uvscom)
 	if (sc->sc_intr_pipe != NULL) {
 		usbd_abort_pipe(sc->sc_intr_pipe);
 		usbd_close_pipe(sc->sc_intr_pipe);
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 
@@ -729,7 +729,7 @@ uvscom_open(void *addr, int portno)
 			return (ENXIO);
 		}
 
-		sc->sc_intr_buf = malloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+		sc->sc_intr_buf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
 		err = usbd_open_pipe_intr(sc->sc_ucom.sc_iface,
 					  sc->sc_intr_number,
 					  USBD_SHORT_XFER_OK,
@@ -798,7 +798,7 @@ uvscom_close(void *addr, int portno)
 			printf("%s: close interrupt pipe failed: %s\n",
 				USBDEVNAME(sc->sc_ucom.sc_dev),
 					   usbd_errstr(err));
-		free(sc->sc_intr_buf, M_USBDEV);
+		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 }

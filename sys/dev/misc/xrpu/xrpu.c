@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.10 2006/09/05 00:55:39 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -164,7 +164,7 @@ xrpu_ioctl(struct dev_ioctl_args *ap)
 		/* Name SHALL be zero terminated */
 		xt->xt_name[sizeof xt->xt_name - 1] = '\0';
 		i = strlen(xt->xt_name);
-		sc->tc.tc_name = (char *)malloc(i + 1, M_XRPU, M_WAITOK);
+		sc->tc.tc_name = (char *)kmalloc(i + 1, M_XRPU, M_WAITOK);
 		strcpy(sc->tc.tc_name, xt->xt_name);
 		sc->tc.tc_frequency = xt->xt_frequency;
 		sc->tc.tc_get_timecount = xrpu_get_timecount;

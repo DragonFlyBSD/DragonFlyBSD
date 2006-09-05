@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.26 2006/08/12 00:26:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.27 2006/09/05 00:55:38 dillon Exp $
  */
 
 /*
@@ -176,7 +176,7 @@ vnfindvn(dev_t dev)
 		}
 	}
 	if (vn == NULL) {
-		vn = malloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
+		vn = kmalloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
 		vn->sc_unit = unit;
 		dev->si_drv1 = vn;
 		vn->sc_devlist = make_dev(&vn_ops, 0, UID_ROOT,
@@ -708,7 +708,7 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 		struct uio auio;
 		struct iovec aiov;
 
-		tmpbuf = malloc(vn->sc_secsize, M_TEMP, M_WAITOK);
+		tmpbuf = kmalloc(vn->sc_secsize, M_TEMP, M_WAITOK);
 		bzero(&auio, sizeof(auio));
 
 		aiov.iov_base = tmpbuf;
@@ -722,7 +722,7 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_READ(vn->sc_vp, &auio, 0, vn->sc_cred);
 		vn_unlock(vn->sc_vp);
-		free(tmpbuf, M_TEMP);
+		kfree(tmpbuf, M_TEMP);
 	}
 	return (error);
 }
@@ -790,7 +790,7 @@ vn_modevent(module_t mod, int type, void *data)
 				dev->si_drv1 = dev->si_drv2 = NULL;
 				destroy_dev(dev);
 			}
-			free(vn, M_DEVBUF);
+			kfree(vn, M_DEVBUF);
 		}
 		dev_ops_remove(&vn_ops, 0, 0);
 		break;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.7 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -212,7 +212,7 @@ caps_alloc_msg(caps_kinfo_t caps)
 {
     caps_kmsg_t msg;
 
-    msg = malloc(sizeof(struct caps_kmsg), M_CAPS, M_WAITOK|M_ZERO);
+    msg = kmalloc(sizeof(struct caps_kmsg), M_CAPS, M_WAITOK|M_ZERO);
     msg->km_msgid.c_id = (off_t)(uintptr_t)msg;
     return(msg);
 }
@@ -322,7 +322,7 @@ caps_free_msg(caps_kmsg_t msg)
 
     if ((rcaps = caps_free_msg_mcaps(msg)) != NULL)
 	caps_drop(rcaps);
-    free(msg, M_CAPS);
+    kfree(msg, M_CAPS);
 }
 
 /*
@@ -495,7 +495,7 @@ caps_free(caps_kinfo_t caps)
     KKASSERT(TAILQ_EMPTY(&caps->ci_msgpendq));
     KKASSERT(TAILQ_EMPTY(&caps->ci_msguserq));
     KKASSERT((caps->ci_flags & (CAPKF_HLIST|CAPKF_TDLIST)) == 0);
-    free(caps, M_CAPS);
+    kfree(caps, M_CAPS);
 }
 
 /************************************************************************

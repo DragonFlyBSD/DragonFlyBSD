@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.14 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.15 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ hpfs_hphash_uninit(struct vfsconf *vfc)
 
 	lwkt_gettoken(&ilock, &hpfs_hphash_token);
 	if (hpfs_hphashtbl)
-		free(hpfs_hphashtbl, M_HPFSHASH);
+		kfree(hpfs_hphashtbl, M_HPFSHASH);
 	lwkt_reltoken(&ilock);
 
 	return 0;

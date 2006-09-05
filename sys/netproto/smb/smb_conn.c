@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.17 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.18 2006/09/05 00:55:49 dillon Exp $
  */
 
 /*
@@ -497,9 +497,9 @@ smb_vc_free(struct smb_connobj *cp)
 	SMB_STRFREE(vcp->vc_pass);
 	SMB_STRFREE(vcp->vc_domain);
 	if (vcp->vc_paddr)
-		free(vcp->vc_paddr, M_SONAME);
+		kfree(vcp->vc_paddr, M_SONAME);
 	if (vcp->vc_laddr)
-		free(vcp->vc_laddr, M_SONAME);
+		kfree(vcp->vc_laddr, M_SONAME);
 	if (vcp->vc_tolower)
 		iconv_close(vcp->vc_tolower);
 	if (vcp->vc_toupper)
@@ -510,7 +510,7 @@ smb_vc_free(struct smb_connobj *cp)
 		iconv_close(vcp->vc_toserver);
 	smb_co_done(VCTOCP(vcp));
 	smb_sl_destroy(&vcp->vc_stlock);
-	free(vcp, M_SMBCONN);
+	kfree(vcp, M_SMBCONN);
 }
 
 /*
@@ -752,7 +752,7 @@ smb_share_free(struct smb_connobj *cp)
 	SMB_STRFREE(ssp->ss_pass);
 	smb_sl_destroy(&ssp->ss_stlock);
 	smb_co_done(SSTOCP(ssp));
-	free(ssp, M_SMBCONN);
+	kfree(ssp, M_SMBCONN);
 }
 
 static void

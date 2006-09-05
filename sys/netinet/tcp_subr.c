@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.51 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.52 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1128,7 +1128,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	if (req->newptr != NULL)
 		return (EPERM);
 
-	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
 	marker->inp_flags |= INP_PLACEMARKER;
 
 	/*
@@ -1204,7 +1204,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * on a different cpu.
 	 */
 	lwkt_setcpu_self(globaldata_find(origcpu));
-	free(marker, M_TEMP);
+	kfree(marker, M_TEMP);
 	return (error);
 }
 

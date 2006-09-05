@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.20 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.21 2006/09/05 00:55:51 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -111,7 +111,7 @@ smbfs_name_alloc(const u_char *name, int nmlen)
 
 	nmlen++;
 #ifdef SMBFS_NAME_DEBUG
-	cp = malloc(nmlen + 2 + sizeof(int), M_SMBNODENAME, M_WAITOK);
+	cp = kmalloc(nmlen + 2 + sizeof(int), M_SMBNODENAME, M_WAITOK);
 	*(int*)cp = nmlen;
 	cp += sizeof(int);
 	cp[0] = 0xfc;
@@ -119,7 +119,7 @@ smbfs_name_alloc(const u_char *name, int nmlen)
 	bcopy(name, cp, nmlen - 1);
 	cp[nmlen] = 0xfe;
 #else
-	cp = malloc(nmlen, M_SMBNODENAME, M_WAITOK);
+	cp = kmalloc(nmlen, M_SMBNODENAME, M_WAITOK);
 	bcopy(name, cp, nmlen - 1);
 #endif
 	cp[nmlen - 1] = 0;
@@ -151,9 +151,9 @@ smbfs_name_free(u_char *name)
 		printf("Last byte of name entry '%s' corrupted\n", name);
 		Debugger("ditto");
 	}
-	free(cp, M_SMBNODENAME);
+	kfree(cp, M_SMBNODENAME);
 #else
-	free(name, M_SMBNODENAME);
+	kfree(name, M_SMBNODENAME);
 #endif
 }
 

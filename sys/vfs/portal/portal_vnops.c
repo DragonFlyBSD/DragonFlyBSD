@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.31 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.32 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -153,7 +153,7 @@ portal_lookup(struct vop_old_lookup_args *ap)
 		size++;
 	cnp->cn_consume = size - cnp->cn_namelen;
 
-	pt->pt_arg = malloc(size+1, M_TEMP, M_WAITOK);
+	pt->pt_arg = kmalloc(size+1, M_TEMP, M_WAITOK);
 	pt->pt_size = size+1;
 	bcopy(pname, pt->pt_arg, pt->pt_size);
 	pt->pt_fileid = portal_fileid++;
@@ -532,7 +532,7 @@ portal_reclaim(struct vop_reclaim_args *ap)
 	struct portalnode *pt = VTOPORTAL(ap->a_vp);
 
 	if (pt->pt_arg) {
-		free((caddr_t) pt->pt_arg, M_TEMP);
+		kfree((caddr_t) pt->pt_arg, M_TEMP);
 		pt->pt_arg = 0;
 	}
 	FREE(ap->a_vp->v_data, M_TEMP);

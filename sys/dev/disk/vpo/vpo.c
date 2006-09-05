@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.6 2005/10/28 03:25:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.7 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,14 +175,14 @@ vpo_attach(device_t dev)
 static void
 vpo_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-        free(ccb, M_TEMP);
+        kfree(ccb, M_TEMP);
 }
 
 static void
 vpo_cam_rescan(struct vpo_data *vpo)
 {
         struct cam_path *path;
-        union ccb *ccb = malloc(sizeof(union ccb), M_TEMP, M_WAITOK);
+        union ccb *ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK);
 
         bzero(ccb, sizeof(union ccb));
 

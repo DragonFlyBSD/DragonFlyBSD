@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.19 2006/09/03 18:29:14 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.20 2006/09/05 00:55:36 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -603,7 +603,7 @@ usbioctl(struct dev_ioctl_args *ap)
 				ur->ucr_request.bmRequestType & UT_READ ?
 				UIO_READ : UIO_WRITE;
 			uio.uio_td = curthread;
-			ptr = malloc(len, M_TEMP, M_WAITOK);
+			ptr = kmalloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);
 				if (error)
@@ -626,7 +626,7 @@ usbioctl(struct dev_ioctl_args *ap)
 		}
 	ret:
 		if (ptr)
-			free(ptr, M_TEMP);
+			kfree(ptr, M_TEMP);
 		return (error);
 	}
 
@@ -741,7 +741,7 @@ usb_get_next_event(struct usb_event *ue)
 #endif
 	*ue = ueq->ue;
 	TAILQ_REMOVE(&usb_events, ueq, next);
-	free(ueq, M_USBDEV);
+	kfree(ueq, M_USBDEV);
 	usb_nevents--;
 	return (1);
 }
@@ -773,7 +773,7 @@ usb_add_event(int type, struct usb_event *uep)
 	struct usb_event ue;
 	struct timeval thetime;
 
-	ueq = malloc(sizeof *ueq, M_USBDEV, M_INTWAIT);
+	ueq = kmalloc(sizeof *ueq, M_USBDEV, M_INTWAIT);
 	ueq->ue = *uep;
 	ueq->ue.ue_type = type;
 	microtime(&thetime);
@@ -788,7 +788,7 @@ usb_add_event(int type, struct usb_event *uep)
 			if (ueqi->ue.u.ue_driver.ue_cookie.cookie ==
 			    uep->u.ue_device.udi_cookie.cookie) {
 				TAILQ_REMOVE(&usb_events, ueqi, next);
-				free(ueqi, M_USBDEV);
+				kfree(ueqi, M_USBDEV);
 				usb_nevents--;
 				ueqi_next = TAILQ_FIRST(&usb_events);
 			}

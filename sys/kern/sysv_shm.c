@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.17 2006/06/05 07:26:10 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.18 2006/09/05 00:55:45 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -182,7 +182,7 @@ shm_deallocate_segment(shmseg)
 
 	shm_handle = shmseg->shm_internal;
 	vm_object_deallocate(shm_handle->shm_object);
-	free((caddr_t)shm_handle, M_SHM);
+	kfree((caddr_t)shm_handle, M_SHM);
 	shmseg->shm_internal = NULL;
 	size = round_page(shmseg->shm_segsz);
 	shm_committed -= btoc(size);
@@ -254,7 +254,7 @@ sys_shmat(struct shmat_args *uap)
 	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
 	if (shmmap_s == NULL) {
 		size = shminfo.shmseg * sizeof(struct shmmap_state);
-		shmmap_s = malloc(size, M_SHM, M_WAITOK);
+		shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
 		for (i = 0; i < shminfo.shmseg; i++)
 			shmmap_s[i].shmid = -1;
 		p->p_vmspace->vm_shm = (caddr_t)shmmap_s;
@@ -508,7 +508,7 @@ shmget_allocate_segment(p, uap, mode)
 	shmseg->shm_perm.mode = SHMSEG_ALLOCATED | SHMSEG_REMOVED;
 	shmseg->shm_perm.key = uap->key;
 	shmseg->shm_perm.seq = (shmseg->shm_perm.seq + 1) & 0x7fff;
-	shm_handle = malloc(sizeof(struct shm_handle), M_SHM, M_WAITOK);
+	shm_handle = kmalloc(sizeof(struct shm_handle), M_SHM, M_WAITOK);
 	shmid = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
 	
 	/*
@@ -604,7 +604,7 @@ shmfork(p1, p2)
 	int i;
 
 	size = shminfo.shmseg * sizeof(struct shmmap_state);
-	shmmap_s = malloc(size, M_SHM, M_WAITOK);
+	shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
 	bcopy((caddr_t)p1->p_vmspace->vm_shm, (caddr_t)shmmap_s, size);
 	p2->p_vmspace->vm_shm = (caddr_t)shmmap_s;
 	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++)
@@ -624,7 +624,7 @@ shmexit(struct vmspace *vm)
 			if (shm->shmid != -1)
 				shm_delete_mapping(vm, shm);
 		}
-		free(base, M_SHM);
+		kfree(base, M_SHM);
 	}
 }
 
@@ -637,7 +637,7 @@ shmrealloc(void)
 	if (shmalloced >= shminfo.shmmni)
 		return;
 
-	newsegs = malloc(shminfo.shmmni * sizeof(*newsegs), M_SHM, M_WAITOK);
+	newsegs = kmalloc(shminfo.shmmni * sizeof(*newsegs), M_SHM, M_WAITOK);
 	if (newsegs == NULL)
 		return;
 	for (i = 0; i < shmalloced; i++)
@@ -646,7 +646,7 @@ shmrealloc(void)
 		shmsegs[i].shm_perm.mode = SHMSEG_FREE;
 		shmsegs[i].shm_perm.seq = 0;
 	}
-	free(shmsegs, M_SHM);
+	kfree(shmsegs, M_SHM);
 	shmsegs = newsegs;
 	shmalloced = shminfo.shmmni;
 }
@@ -659,7 +659,7 @@ shminit(dummy)
 
 	shminfo.shmmax = shminfo.shmall * PAGE_SIZE;
 	shmalloced = shminfo.shmmni;
-	shmsegs = malloc(shmalloced * sizeof(shmsegs[0]), M_SHM, M_WAITOK);
+	shmsegs = kmalloc(shmalloced * sizeof(shmsegs[0]), M_SHM, M_WAITOK);
 	if (shmsegs == NULL)
 		panic("cannot allocate initial memory for sysvshm");
 	for (i = 0; i < shmalloced; i++) {

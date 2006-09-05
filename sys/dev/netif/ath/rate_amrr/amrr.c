@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_amrr/amrr.c,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_amrr/amrr.c,v 1.2 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -497,7 +497,7 @@ ath_rate_attach(struct ath_softc *sc)
 {
 	struct amrr_softc *asc;
 
-	asc = malloc(sizeof(struct amrr_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
+	asc = kmalloc(sizeof(struct amrr_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
 	if (asc == NULL)
 		return NULL;
 	asc->arc.arc_space = sizeof(struct amrr_node);
@@ -512,7 +512,7 @@ ath_rate_detach(struct ath_ratectrl *arc)
 {
 	struct amrr_softc *asc = (struct amrr_softc *)arc;
 
-	free(asc, M_DEVBUF);
+	kfree(asc, M_DEVBUF);
 }
 
 void

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.4 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.5 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ ieee80211_node_lateattach(struct ieee80211com *ic)
 
 	/* XXX defer until using hostap/ibss mode */
 	ic->ic_tim_len = howmany(ic->ic_max_aid, 8) * sizeof(uint8_t);
-	ic->ic_tim_bitmap = malloc(ic->ic_tim_len, M_DEVBUF,
+	ic->ic_tim_bitmap = kmalloc(ic->ic_tim_len, M_DEVBUF,
 				   M_WAITOK | M_ZERO);
 
 	ieee80211_node_table_init(ic, &ic->ic_sta, "station",
@@ -176,11 +176,11 @@ ieee80211_node_detach(struct ieee80211com *ic)
 	ieee80211_node_table_cleanup(&ic->ic_scan);
 	ieee80211_node_table_cleanup(&ic->ic_sta);
 	if (ic->ic_aid_bitmap != NULL) {
-		free(ic->ic_aid_bitmap, M_DEVBUF);
+		kfree(ic->ic_aid_bitmap, M_DEVBUF);
 		ic->ic_aid_bitmap = NULL;
 	}
 	if (ic->ic_tim_bitmap != NULL) {
-		free(ic->ic_tim_bitmap, M_DEVBUF);
+		kfree(ic->ic_tim_bitmap, M_DEVBUF);
 		ic->ic_tim_bitmap = NULL;
 	}
 }
@@ -846,7 +846,7 @@ node_alloc(struct ieee80211_node_table *nt)
 {
 	struct ieee80211_node *ni;
 
-	ni = malloc(sizeof(struct ieee80211_node), M_80211_NODE,
+	ni = kmalloc(sizeof(struct ieee80211_node), M_80211_NODE,
 		    M_NOWAIT | M_ZERO);
 	return ni;
 }
@@ -891,7 +891,7 @@ node_cleanup(struct ieee80211_node *ni)
 
 	ni->ni_associd = 0;
 	if (ni->ni_challenge != NULL) {
-		free(ni->ni_challenge, M_DEVBUF);
+		kfree(ni->ni_challenge, M_DEVBUF);
 		ni->ni_challenge = NULL;
 	}
 	/*
@@ -925,11 +925,11 @@ node_free(struct ieee80211_node *ni)
 
 	ic->ic_node_cleanup(ni);
 	if (ni->ni_wpa_ie != NULL)
-		free(ni->ni_wpa_ie, M_DEVBUF);
+		kfree(ni->ni_wpa_ie, M_DEVBUF);
 	if (ni->ni_wme_ie != NULL)
-		free(ni->ni_wme_ie, M_DEVBUF);
+		kfree(ni->ni_wme_ie, M_DEVBUF);
 	IEEE80211_NODE_SAVEQ_DESTROY(ni);
-	free(ni, M_80211_NODE);
+	kfree(ni, M_80211_NODE);
 }
 
 static uint8_t
@@ -2327,7 +2327,7 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 				printf("%s: %s[%u] still active\n", __func__,
 				       nt->nt_name, i);
 			}
-		free(nt->nt_keyixmap, M_80211_NODE);
+		kfree(nt->nt_keyixmap, M_80211_NODE);
 		nt->nt_keyixmap = NULL;
 	}
 }

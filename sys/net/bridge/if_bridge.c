@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.8 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.9 2006/09/05 00:55:47 dillon Exp $
  */
 
 /*
@@ -423,7 +423,7 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	struct ifnet *ifp;
 	u_char eaddr[6];
 
-	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK|M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK|M_ZERO);
 	ifp = sc->sc_ifp = &sc->sc_if;
 
 	sc->sc_brtmax = BRIDGE_RTABLE_MAX;
@@ -518,7 +518,7 @@ bridge_clone_destroy(struct ifnet *ifp)
 	/* Tear down the routing table. */
 	bridge_rtable_fini(sc);
 
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 }
 
 /*
@@ -740,7 +740,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 
 	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL);
 
-	free(bif, M_DEVBUF);
+	kfree(bif, M_DEVBUF);
 
 	if (sc->sc_ifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
@@ -758,7 +758,7 @@ bridge_delete_span(struct bridge_softc *sc, struct bridge_iflist *bif)
 	    ("%s: not a span interface", __func__));
 
 	LIST_REMOVE(bif, bif_next);
-	free(bif, M_DEVBUF);
+	kfree(bif, M_DEVBUF);
 }
 
 static int
@@ -795,7 +795,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	if (ifs->if_bridge != NULL)
 		return (EBUSY);
 
-	bif = malloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
+	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
 	if (bif == NULL)
 		return (ENOMEM);
 
@@ -837,7 +837,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 out:
 	if (error) {
 		if (bif != NULL)
-			free(bif, M_DEVBUF);
+			kfree(bif, M_DEVBUF);
 	}
 	return (error);
 }
@@ -1245,7 +1245,7 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 			return (EINVAL);
 	}
 
-	bif = malloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
+	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
 	if (bif == NULL)
 		return (ENOMEM);
 
@@ -2012,7 +2012,7 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		 * initialize the expiration time and Ethernet
 		 * address.
 		 */
-		brt = malloc(sizeof(struct bridge_rtnode), M_DEVBUF, M_RNOWAIT|M_ZERO);
+		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF, M_RNOWAIT|M_ZERO);
 		if (brt == NULL)
 			return (ENOMEM);
 
@@ -2020,7 +2020,7 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		memcpy(brt->brt_addr, dst, ETHER_ADDR_LEN);
 
 		if ((error = bridge_rtnode_insert(sc, brt)) != 0) {
-			free(brt, M_DEVBUF);
+			kfree(brt, M_DEVBUF);
 			return (error);
 		}
 	}
@@ -2206,7 +2206,7 @@ static void
 bridge_rtable_fini(struct bridge_softc *sc)
 {
 
-	free(sc->sc_rthash, M_DEVBUF);
+	kfree(sc->sc_rthash, M_DEVBUF);
 }
 
 /*
@@ -2341,7 +2341,7 @@ bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
 
 	LIST_REMOVE(brt, brt_list);
 	sc->sc_brtcnt--;
-	free(brt, M_DEVBUF);
+	kfree(brt, M_DEVBUF);
 }
 
 /*

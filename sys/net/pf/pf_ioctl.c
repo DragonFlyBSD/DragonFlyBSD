@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.7 2006/09/03 17:31:55 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.8 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -499,11 +499,11 @@ pf_remove_if_empty_ruleset(struct pf_ruleset *ruleset)
 
 	anchor = ruleset->anchor;
 	TAILQ_REMOVE(&anchor->rulesets, ruleset, entries);
-	free(ruleset, M_TEMP);
+	kfree(ruleset, M_TEMP);
 
 	if (TAILQ_EMPTY(&anchor->rulesets)) {
 		TAILQ_REMOVE(&pf_anchors, anchor, entries);
-		free(anchor, M_TEMP);
+		kfree(anchor, M_TEMP);
 		pf_update_anchor_rules();
 	}
 }
@@ -642,7 +642,7 @@ tag_unref(struct pf_tags *head, u_int16_t tag)
 		if (tag == p->tag) {
 			if (--p->ref == 0) {
 				TAILQ_REMOVE(head, p, entries);
-				free(p, M_TEMP);
+				kfree(p, M_TEMP);
 			}
 			break;
 		}

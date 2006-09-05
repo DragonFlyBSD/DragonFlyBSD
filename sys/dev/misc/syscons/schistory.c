@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/schistory.c,v 1.8.2.1 2001/07/19 06:38:53 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.8 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include "use_sc.h"
@@ -113,7 +113,7 @@ sc_alloc_history_buffer(scr_stat *scp, int lines, int prev_ysize, int wait)
 	}
 
 	/* allocate a new buffer */
-	history = malloc(sizeof(*history), M_SYSCONS,
+	history = kmalloc(sizeof(*history), M_SYSCONS,
 			 (wait) ? M_WAITOK : M_NOWAIT);
 	if (history != NULL) {
 		if (lines > min_lines)
@@ -135,7 +135,7 @@ sc_alloc_history_buffer(scr_stat *scp, int lines, int prev_ysize, int wait)
 	if (prev_history != NULL) {
 		extra_history_size += delta;
 		sc_vtb_destroy(prev_history);
-		free(prev_history, M_SYSCONS);
+		kfree(prev_history, M_SYSCONS);
 	}
 
 	scp->history = history;
@@ -186,7 +186,7 @@ sc_free_history_buffer(scr_stat *scp, int prev_ysize)
 				  cur_lines - min_lines : 0;
 
 	sc_vtb_destroy(history);
-	free(history, M_SYSCONS);
+	kfree(history, M_SYSCONS);
 }
 
 /* copy entire screen into the top of the history buffer */

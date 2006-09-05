@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/splash.c,v 1.8 2000/01/29 14:42:57 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,7 +132,7 @@ splash_register(splash_decoder_t *decoder)
 				return ENOMEM;
 			if (decoder_set != NULL) {
 				bcopy(decoder_set, p, sizeof(*p)*decoders);
-				free(decoder_set, M_DEVBUF);
+				kfree(decoder_set, M_DEVBUF);
 			}
 			decoder_set = p;
 			i = decoders++;

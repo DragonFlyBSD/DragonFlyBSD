@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.15 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.16 2006/09/05 00:55:38 dillon Exp $
  */
 
 /*
@@ -542,8 +542,8 @@ lptopen(struct dev_open_args *ap)
 	ppb_wctr(ppbus, sc->sc_control);
 
 	sc->sc_state = OPEN;
-	sc->sc_inbuf = malloc(BUFSIZE, M_LPT, M_WAITOK);
-	sc->sc_statbuf = malloc(BUFSTATSIZE, M_LPT, M_WAITOK);
+	sc->sc_inbuf = kmalloc(BUFSIZE, M_LPT, M_WAITOK);
+	sc->sc_statbuf = kmalloc(BUFSTATSIZE, M_LPT, M_WAITOK);
 	sc->sc_xfercnt = 0;
 
 	crit_exit();
@@ -601,8 +601,8 @@ lptclose(struct dev_close_args *ap)
 	}
 	callout_stop(&sc->sc_callout);
 	ppb_wctr(ppbus, LPC_NINIT);
-	free(sc->sc_inbuf, M_LPT);
-	free(sc->sc_statbuf, M_LPT);
+	kfree(sc->sc_inbuf, M_LPT);
+	kfree(sc->sc_statbuf, M_LPT);
 
 end_close:
 	/* release the bus anyway

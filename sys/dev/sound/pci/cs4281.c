@@ -29,7 +29,7 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -756,7 +756,7 @@ cs4281_pci_attach(device_t dev)
     u_int32_t data;
     char status[SND_STATUSLEN];
 
-    if ((sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+    if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 	device_printf(dev, "cannot allocate softc\n");
 	return ENXIO;
     }
@@ -880,7 +880,7 @@ cs4281_pci_attach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     if (sc->parent_dmat)
 	bus_dma_tag_destroy(sc->parent_dmat);
-    free(sc, M_DEVBUF);
+    kfree(sc, M_DEVBUF);
 
     return ENXIO;
 }
@@ -905,7 +905,7 @@ cs4281_pci_detach(device_t dev)
     bus_teardown_intr(dev, sc->irq, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     bus_dma_tag_destroy(sc->parent_dmat);
-    free(sc, M_DEVBUF);
+    kfree(sc, M_DEVBUF);
 
     return 0;
 }

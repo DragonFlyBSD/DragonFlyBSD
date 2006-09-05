@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.42 2006/09/03 18:29:17 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.43 2006/09/05 00:55:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1663,7 +1663,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		}
 	}
 
-	d_name_storage = malloc(WIN_MAXLEN, M_TEMP, M_WAITOK);
+	d_name_storage = kmalloc(WIN_MAXLEN, M_TEMP, M_WAITOK);
 	off = offset;
 
 	while (uio->uio_resid > 0) {
@@ -1680,7 +1680,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
-			free(d_name_storage, M_TEMP);
+			kfree(d_name_storage, M_TEMP);
 			goto done;
 		}
 		n = min(n, blsize - bp->b_resid);
@@ -1789,7 +1789,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	}
 out:
 	if (d_name_storage != NULL)
-		free(d_name_storage, M_TEMP);
+		kfree(d_name_storage, M_TEMP);
 
 	/* Subtract unused cookies */
 	if (ap->a_ncookies)

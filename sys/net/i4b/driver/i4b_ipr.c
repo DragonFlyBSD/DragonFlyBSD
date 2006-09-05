@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.18 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.19 2006/09/05 00:55:47 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -276,7 +276,7 @@ i4biprattach(void *dummy)
 
 #ifdef IPR_VJ_USEBUFFER
 		if(!((sc->sc_cbuf =
-		   (u_char *)malloc(I4BIPRMAXMTU+128, M_DEVBUF, M_WAITOK))))
+		   (u_char *)kmalloc(I4BIPRMAXMTU+128, M_DEVBUF, M_WAITOK))))
 		{
 			panic("if_ipr.c, ipr_attach: VJ malloc failed");
 		}

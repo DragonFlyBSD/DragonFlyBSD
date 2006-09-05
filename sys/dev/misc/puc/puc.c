@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.8 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.9 2006/09/05 00:55:38 dillon Exp $
  */
 
 /*-
@@ -299,7 +299,7 @@ puc_pci_attach(device_t dev)
 		default:
 			continue;
 		}
-		pdev = malloc(sizeof(struct puc_device), M_DEVBUF,
+		pdev = kmalloc(sizeof(struct puc_device), M_DEVBUF,
 				M_WAITOK | M_ZERO);
 		resource_list_init(&pdev->resources);
 
@@ -321,10 +321,10 @@ puc_pci_attach(device_t dev)
 		if (sc->barmuxed == 0) {
 			rle->res = sc->sc_bar_mappings[bidx].res;
 		} else {
-			rle->res = malloc(sizeof(struct resource), M_DEVBUF,
+			rle->res = kmalloc(sizeof(struct resource), M_DEVBUF,
 			    M_WAITOK | M_ZERO);
 			if (rle->res == NULL) {
-				free(pdev, M_DEVBUF);
+				kfree(pdev, M_DEVBUF);
 				return (ENOMEM);
 			}
 
@@ -347,8 +347,8 @@ puc_pci_attach(device_t dev)
 				bus_space_unmap(rman_get_bustag(rle->res),
 						rman_get_bushandle(rle->res),
 						8);
-				free(rle->res, M_DEVBUF);
-				free(pdev, M_DEVBUF);
+				kfree(rle->res, M_DEVBUF);
+				kfree(pdev, M_DEVBUF);
 			}
 			continue;
 		}
@@ -370,8 +370,8 @@ puc_pci_attach(device_t dev)
 				bus_space_unmap(rman_get_bustag(rle->res),
 						rman_get_bushandle(rle->res),
 						8);
-				free(rle->res, M_DEVBUF);
-				free(pdev, M_DEVBUF);
+				kfree(rle->res, M_DEVBUF);
+				kfree(pdev, M_DEVBUF);
 			}
 		}
 	}

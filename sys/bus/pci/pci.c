@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.31 2006/08/25 22:37:08 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.32 2006/09/05 00:55:36 dillon Exp $
  *
  */
 
@@ -221,7 +221,7 @@ pci_readppb(device_t pcib, int b, int s, int f)
 {
 	pcih1cfgregs *p;
 
-	p = malloc(sizeof (pcih1cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
+	p = kmalloc(sizeof (pcih1cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (p == NULL)
 		return (NULL);
 
@@ -265,7 +265,7 @@ pci_readpcb(device_t pcib, int b, int s, int f)
 {
 	pcih2cfgregs *p;
 
-	p = malloc(sizeof (pcih2cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
+	p = kmalloc(sizeof (pcih2cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (p == NULL)
 		return (NULL);
 
@@ -337,7 +337,7 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 
 	if (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_DEVVENDOR, 4) != -1) {
 
-		devlist_entry = malloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
+		devlist_entry = kmalloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
 		if (devlist_entry == NULL)
 			return (NULL);
 
@@ -488,10 +488,10 @@ pci_freecfg(struct pci_devinfo *dinfo)
 	devlist_head = &pci_devq;
 
 	if (dinfo->cfg.hdrspec != NULL)
-		free(dinfo->cfg.hdrspec, M_DEVBUF);
+		kfree(dinfo->cfg.hdrspec, M_DEVBUF);
 	/* XXX this hasn't been tested */
 	STAILQ_REMOVE(devlist_head, dinfo, pci_devinfo, pci_links);
-	free(dinfo, M_DEVBUF);
+	kfree(dinfo, M_DEVBUF);
 
 	/* increment the generation count */
 	pci_generation++;
@@ -946,7 +946,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 			/*
 			 * Allocate a buffer to hold the patterns.
 			 */
-			pattern_buf = malloc(cio->pat_buf_len, M_TEMP,
+			pattern_buf = kmalloc(cio->pat_buf_len, M_TEMP,
 					     M_WAITOK);
 			error = copyin(cio->patterns, pattern_buf,
 				       cio->pat_buf_len);
@@ -1050,7 +1050,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 			cio->status = PCI_GETCONF_MORE_DEVS;
 
 		if (pattern_buf != NULL)
-			free(pattern_buf, M_TEMP);
+			kfree(pattern_buf, M_TEMP);
 
 		break;
 		}
@@ -1888,7 +1888,7 @@ pci_resume(device_t dev)
                 }
         }
 
-        free(children, M_TEMP);
+        kfree(children, M_TEMP);
 
         return (bus_generic_resume(dev));
 }

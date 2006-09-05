@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.60 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.61 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -618,7 +618,7 @@ at_exit(exitlist_fn function)
 		printf("WARNING: exit callout entry (%p) already present\n",
 		    function);
 #endif
-	ep = malloc(sizeof(*ep), M_ATEXIT, M_NOWAIT);
+	ep = kmalloc(sizeof(*ep), M_ATEXIT, M_NOWAIT);
 	if (ep == NULL)
 		return (ENOMEM);
 	ep->function = function;
@@ -638,7 +638,7 @@ rm_at_exit(exitlist_fn function)
 	TAILQ_FOREACH(ep, &exit_list, next) {
 		if (ep->function == function) {
 			TAILQ_REMOVE(&exit_list, ep, next);
-			free(ep, M_ATEXIT);
+			kfree(ep, M_ATEXIT);
 			return(1);
 		}
 	}	

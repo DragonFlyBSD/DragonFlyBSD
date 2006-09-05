@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.14 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.15 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -1060,7 +1060,7 @@ nd6_dad_start(struct ifaddr *ifa,
 		return;
 	}
 
-	dp = malloc(sizeof(*dp), M_IP6NDP, M_NOWAIT);
+	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_NOWAIT);
 	if (dp == NULL) {
 		log(LOG_ERR, "nd6_dad_start: memory allocation failed for "
 			"%s(%s)\n",
@@ -1121,7 +1121,7 @@ nd6_dad_stop(struct ifaddr *ifa)
 	nd6_dad_stoptimer(dp);
 
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
-	free(dp, M_IP6NDP);
+	kfree(dp, M_IP6NDP);
 	dp = NULL;
 	IFAFREE(ifa);
 }
@@ -1165,7 +1165,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 			if_name(ifa->ifa_ifp)));
 
 		TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
-		free(dp, M_IP6NDP);
+		kfree(dp, M_IP6NDP);
 		dp = NULL;
 		IFAFREE(ifa);
 		goto done;
@@ -1243,7 +1243,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 			    ip6_sprintf(&ia->ia_addr.sin6_addr)));
 
 			TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
-			free(dp, M_IP6NDP);
+			kfree(dp, M_IP6NDP);
 			dp = NULL;
 			IFAFREE(ifa);
 		}
@@ -1282,7 +1282,7 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	    if_name(ifa->ifa_ifp));
 
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
-	free(dp, M_IP6NDP);
+	kfree(dp, M_IP6NDP);
 	dp = NULL;
 	IFAFREE(ifa);
 }

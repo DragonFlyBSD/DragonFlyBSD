@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.17 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.18 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ ufs_ihashinit(void)
 	ihash = 16;
 	while (ihash < desiredvnodes)
 		ihash <<= 1;
-	ihashtbl = malloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
+	ihashtbl = kmalloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
 	--ihash;
 	lwkt_token_init(&ufs_ihash_token);
 }
@@ -78,7 +78,7 @@ ufs_uninit(struct vfsconf *vfc)
     
     lwkt_gettoken(&ilock, &ufs_ihash_token);
     if (ihashtbl)
-		free(ihashtbl, M_UFSIHASH);
+		kfree(ihashtbl, M_UFSIHASH);
     lwkt_reltoken(&ilock);
 
     return (0);

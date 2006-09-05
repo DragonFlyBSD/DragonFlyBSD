@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.10 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -181,7 +181,7 @@ tlphy_attach(device_t dev)
 				break;
 			}
 		}
-		free(devlist, M_TEMP);
+		kfree(devlist, M_TEMP);
 	}
 
 	mii->mii_instance++;

@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.12 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.13 2006/09/05 00:55:49 dillon Exp $
  *
  * Connection tables
  */
@@ -262,8 +262,8 @@ ncp_conn_free(struct ncp_conn *ncp)
 	SLIST_REMOVE(&conn_list, ncp, ncp_conn, nc_next);
 	ncp_conn_cnt--;
 	ncp_conn_unlocklist(ncp->td);
-	if (ncp->li.user) free(ncp->li.user, M_NCPDATA);
-	if (ncp->li.password) free(ncp->li.password, M_NCPDATA);
+	if (ncp->li.user) kfree(ncp->li.user, M_NCPDATA);
+	if (ncp->li.password) kfree(ncp->li.password, M_NCPDATA);
 	crfree(ncp->nc_owner);
 	FREE(ncp, M_NCPDATA);
 	return (0);

@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwphy.c,v 1.9 2006/03/08 00:24:06 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.2 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -368,7 +368,7 @@ rtw_sa2400_destroy(struct rtw_rf *rf)
 	struct rtw_sa2400 *sa = (struct rtw_sa2400 *)rf;
 
 	memset(sa, 0, sizeof(*sa));
-	free(sa, M_DEVBUF);
+	kfree(sa, M_DEVBUF);
 }
 
 static int
@@ -432,7 +432,7 @@ rtw_sa2400_create(struct rtw_regs *regs, rtw_rf_write_t rf_write, int digphy)
 	struct rtw_rf *rf;
 	struct rtw_bbpset *bb;
 
-	sa = malloc(sizeof(*sa), M_DEVBUF, M_WAITOK | M_ZERO);
+	sa = kmalloc(sizeof(*sa), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sa->sa_digphy = digphy;
 
@@ -592,7 +592,7 @@ rtw_grf5101_destroy(struct rtw_rf *rf)
 	struct rtw_grf5101 *gr = (struct rtw_grf5101 *)rf;
 
 	memset(gr, 0, sizeof(*gr));
-	free(gr, M_DEVBUF);
+	kfree(gr, M_DEVBUF);
 }
 
 struct rtw_rf *
@@ -603,7 +603,7 @@ rtw_grf5101_create(struct rtw_regs *regs, rtw_rf_write_t rf_write, int digphy)
 	struct rtw_rf *rf;
 	struct rtw_bbpset *bb;
 
-	gr = malloc(sizeof(*gr), M_DEVBUF, M_WAITOK | M_ZERO);
+	gr = kmalloc(sizeof(*gr), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	rf = &gr->gr_rf;
 	bus = &gr->gr_bus;
@@ -655,7 +655,7 @@ rtw_max2820_destroy(struct rtw_rf *rf)
 	struct rtw_max2820 *mx = (struct rtw_max2820 *)rf;
 
 	memset(mx, 0, sizeof(*mx));
-	free(mx, M_DEVBUF);
+	kfree(mx, M_DEVBUF);
 }
 
 static int
@@ -744,7 +744,7 @@ rtw_max2820_create(struct rtw_regs *regs, rtw_rf_write_t rf_write, int is_a)
 	struct rtw_rf *rf;
 	struct rtw_bbpset *bb;
 
-	mx = malloc(sizeof(*mx), M_DEVBUF, M_WAITOK | M_ZERO);
+	mx = kmalloc(sizeof(*mx), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	mx->mx_is_a = is_a;
 

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_tkip.c,v 1.9.2.2 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.2 2006/09/05 00:55:49 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ tkip_attach(struct ieee80211com *ic, struct ieee80211_key *k)
 {
 	struct tkip_ctx *ctx;
 
-	ctx = malloc(sizeof(struct tkip_ctx), M_DEVBUF, M_NOWAIT | M_ZERO);
+	ctx = kmalloc(sizeof(struct tkip_ctx), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (ctx == NULL) {
 		ic->ic_stats.is_crypto_nomem++;
 		return NULL;
@@ -127,7 +127,7 @@ tkip_detach(struct ieee80211_key *k)
 {
 	struct tkip_ctx *ctx = k->wk_private;
 
-	free(ctx, M_DEVBUF);
+	kfree(ctx, M_DEVBUF);
 	KASSERT(nrefs > 0, ("imbalanced attach/detach"));
 	nrefs--;			/* NB: we assume caller locking */
 }

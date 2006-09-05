@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.14 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.15 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -220,7 +220,7 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	optr = sc->ic_obuf;
 
 	/* allocate input buffer */
-	sc->ic_ifbuf = malloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
+	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
 	if (!sc->ic_ifbuf) {
 
 	    sc->ic_ifbuf = iptr;
@@ -230,10 +230,10 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	}
 
 	/* allocate output buffer */
-	sc->ic_ifbuf = malloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
+	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
 	if (!sc->ic_obuf) {
 
-	    free(sc->ic_ifbuf,M_DEVBUF);
+	    kfree(sc->ic_ifbuf,M_DEVBUF);
 
 	    sc->ic_ifbuf = iptr;
 	    sc->ic_obuf = optr;
@@ -242,10 +242,10 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	}
 
 	if (iptr)
-	    free(iptr,M_DEVBUF);
+	    kfree(iptr,M_DEVBUF);
 
 	if (optr)
-	    free(optr,M_DEVBUF);
+	    kfree(optr,M_DEVBUF);
 
 	sc->ic_if.if_mtu = ifr->ifr_mtu;
 	break;

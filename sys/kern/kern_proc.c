@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.27 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.28 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ pgdelete(struct pgrp *pgrp)
 		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
 	LIST_REMOVE(pgrp, pg_hash);
 	sess_rele(pgrp->pg_session);
-	free(pgrp, M_PGRP);
+	kfree(pgrp, M_PGRP);
 }
 
 /*
@@ -309,7 +309,7 @@ sess_rele(struct session *sp)
 				sp->s_ttyp->t_session = NULL;
 #endif
 		}
-		free(sp, M_SESSION);
+		kfree(sp, M_SESSION);
 	}
 }
 

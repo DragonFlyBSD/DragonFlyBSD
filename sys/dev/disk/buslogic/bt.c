@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.11 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.12 2006/09/05 00:55:37 dillon Exp $
  */
 
  /*
@@ -248,7 +248,7 @@ bt_free_softc(device_t dev)
 					  sg_map->sg_dmamap);
 			bus_dmamem_free(bt->sg_dmat, sg_map->sg_vaddr,
 					sg_map->sg_dmamap);
-			free(sg_map, M_DEVBUF);
+			kfree(sg_map, M_DEVBUF);
 		}
 		bus_dma_tag_destroy(bt->sg_dmat);
 	}
@@ -965,12 +965,12 @@ btallocccbs(struct bt_softc *bt)
 
 	next_ccb = &bt->bt_ccb_array[bt->num_ccbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
+	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(bt->sg_dmat, (void **)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
-		free(sg_map, M_DEVBUF);
+		kfree(sg_map, M_DEVBUF);
 		goto error_exit;
 	}
 

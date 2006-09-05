@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.30 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.31 2006/09/05 00:55:51 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -216,12 +216,12 @@ bad:
 		if (smp->sm_cred)
 			crfree(smp->sm_cred);
 		if (smp->sm_hash)
-			free(smp->sm_hash, M_SMBFSHASH);
+			kfree(smp->sm_hash, M_SMBFSHASH);
 		lockdestroy(&smp->sm_hashlock);
 #ifdef SMBFS_USEZONE
 		zfree(smbfsmount_zone, smp);
 #else
-		free(smp, M_SMBFSDATA);
+		kfree(smp, M_SMBFSDATA);
 #endif
 	}
 	if (ssp)
@@ -263,12 +263,12 @@ smbfs_unmount(struct mount *mp, int mntflags)
 	if (smp->sm_cred)
 		crfree(smp->sm_cred);
 	if (smp->sm_hash)
-		free(smp->sm_hash, M_SMBFSHASH);
+		kfree(smp->sm_hash, M_SMBFSHASH);
 	lockdestroy(&smp->sm_hashlock);
 #ifdef SMBFS_USEZONE
 	zfree(smbfsmount_zone, smp);
 #else
-	free(smp, M_SMBFSDATA);
+	kfree(smp, M_SMBFSDATA);
 #endif
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return error;

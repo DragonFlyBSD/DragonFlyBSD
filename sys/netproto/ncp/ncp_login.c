@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_login.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.6 2005/02/28 16:23:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.7 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -193,8 +193,8 @@ ncp_login(struct ncp_conn *conn, const char *user, int objtype,
 	conn->flags |= NCPFL_LOGGED;
 	return 0;
 bad:
-	if (conn->li.user) free(conn->li.user, M_NCPDATA);
-	if (conn->li.password) free(conn->li.password, M_NCPDATA);
+	if (conn->li.user) kfree(conn->li.user, M_NCPDATA);
+	if (conn->li.password) kfree(conn->li.password, M_NCPDATA);
 	conn->li.user = conn->li.password = NULL;
 	return error;
 }

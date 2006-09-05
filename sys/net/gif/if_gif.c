@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.16 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.17 2006/09/05 00:55:47 dillon Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -131,7 +131,7 @@ gif_clone_create(struct if_clone *ifc, int unit)
 {
 	struct gif_softc *sc;
 	
-	sc = malloc (sizeof(struct gif_softc), M_GIF, M_WAITOK);
+	sc = kmalloc (sizeof(struct gif_softc), M_GIF, M_WAITOK);
 	bzero(sc, sizeof(struct gif_softc));
 
 	sc->gif_if.if_softc = sc;
@@ -188,7 +188,7 @@ gif_clone_destroy(struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 
-	free(sc, M_GIF);
+	kfree(sc, M_GIF);
 }
 
 static int
@@ -705,12 +705,12 @@ gif_set_tunnel(struct ifnet *ifp, struct sockaddr *src, struct sockaddr *dst)
 		}
 
 	osrc = sc->gif_psrc;
-	sa = (struct sockaddr *)malloc(src->sa_len, M_IFADDR, M_WAITOK);
+	sa = (struct sockaddr *)kmalloc(src->sa_len, M_IFADDR, M_WAITOK);
 	bcopy((caddr_t)src, (caddr_t)sa, src->sa_len);
 	sc->gif_psrc = sa;
 
 	odst = sc->gif_pdst;
-	sa = (struct sockaddr *)malloc(dst->sa_len, M_IFADDR, M_WAITOK);
+	sa = (struct sockaddr *)kmalloc(dst->sa_len, M_IFADDR, M_WAITOK);
 	bcopy((caddr_t)dst, (caddr_t)sa, dst->sa_len);
 	sc->gif_pdst = sa;
 
@@ -728,17 +728,17 @@ gif_set_tunnel(struct ifnet *ifp, struct sockaddr *src, struct sockaddr *dst)
 	}
 	if (error) {
 		/* rollback */
-		free((caddr_t)sc->gif_psrc, M_IFADDR);
-		free((caddr_t)sc->gif_pdst, M_IFADDR);
+		kfree((caddr_t)sc->gif_psrc, M_IFADDR);
+		kfree((caddr_t)sc->gif_pdst, M_IFADDR);
 		sc->gif_psrc = osrc;
 		sc->gif_pdst = odst;
 		goto bad;
 	}
 
 	if (osrc)
-		free((caddr_t)osrc, M_IFADDR);
+		kfree((caddr_t)osrc, M_IFADDR);
 	if (odst)
-		free((caddr_t)odst, M_IFADDR);
+		kfree((caddr_t)odst, M_IFADDR);
 
 	if (sc->gif_psrc && sc->gif_pdst)
 		ifp->if_flags |= IFF_RUNNING;
@@ -766,11 +766,11 @@ gif_delete_tunnel(struct ifnet *ifp)
 	crit_enter();
 
 	if (sc->gif_psrc) {
-		free((caddr_t)sc->gif_psrc, M_IFADDR);
+		kfree((caddr_t)sc->gif_psrc, M_IFADDR);
 		sc->gif_psrc = NULL;
 	}
 	if (sc->gif_pdst) {
-		free((caddr_t)sc->gif_pdst, M_IFADDR);
+		kfree((caddr_t)sc->gif_pdst, M_IFADDR);
 		sc->gif_pdst = NULL;
 	}
 	/* it is safe to detach from both */

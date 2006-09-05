@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -577,7 +577,7 @@ fm801_pci_attach(device_t dev)
 	int 			mapped = 0;
 	char 			status[SND_STATUSLEN];
 
-	if ((fm801 = (struct fm801_info *)malloc(sizeof(*fm801), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((fm801 = (struct fm801_info *)kmalloc(sizeof(*fm801), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -661,7 +661,7 @@ oops:
 	if (fm801->ih) bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	if (fm801->irq) bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	if (fm801->parent_dmat) bus_dma_tag_destroy(fm801->parent_dmat);
-	free(fm801, M_DEVBUF);
+	kfree(fm801, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -693,7 +693,7 @@ fm801_pci_detach(device_t dev)
 	bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	bus_dma_tag_destroy(fm801->parent_dmat);
-	free(fm801, M_DEVBUF);
+	kfree(fm801, M_DEVBUF);
 	return 0;
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.19 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.20 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -195,7 +195,7 @@ mlx_free(struct mlx_softc *sc)
 
     /* free controller enquiry data */
     if (sc->mlx_enq2 != NULL)
-	free(sc->mlx_enq2, M_DEVBUF);
+	kfree(sc->mlx_enq2, M_DEVBUF);
 
     dev_ops_remove(&mlx_ops, -1, device_get_unit(sc->mlx_dev));
 }
@@ -421,7 +421,7 @@ mlx_attach(struct mlx_softc *sc)
 	    return(ENXIO);
 	}
 	sc->mlx_enq2->me_firmware_id = ('0' << 24) | (0 << 16) | (meo->me_fwminor << 8) | meo->me_fwmajor;
-	free(meo, M_DEVBUF);
+	kfree(meo, M_DEVBUF);
 	
 	/* XXX require 2.42 or better (PCI) or 2.14 or better (EISA) */
 	if (meo->me_fwminor < 42) {
@@ -538,7 +538,7 @@ mlx_startup(struct mlx_softc *sc)
 	    device_set_ivars(dr->ms_disk, dr);
 	}
     }
-    free(mes, M_DEVBUF);
+    kfree(mes, M_DEVBUF);
     if ((error = bus_generic_attach(sc->mlx_dev)) != 0)
 	device_printf(sc->mlx_dev, "bus_generic_attach returned %d", error);
 
@@ -1169,7 +1169,7 @@ mlx_periodic_enquiry(struct mlx_command *mc)
     }
 
  out:
-    free(mc->mc_data, M_DEVBUF);
+    kfree(mc->mc_data, M_DEVBUF);
     mlx_releasecmd(mc);
 }
 
@@ -1194,7 +1194,7 @@ mlx_periodic_eventlog_poll(struct mlx_softc *sc)
      * allocate the response structure - sizeof(struct mlx_eventlog_entry)?
      * Called from timeout - use M_NOWAIT (repoll later on failure?)
      */
-    if ((result = malloc(1024, M_DEVBUF, M_NOWAIT)) == NULL)
+    if ((result = kmalloc(1024, M_DEVBUF, M_NOWAIT)) == NULL)
 	goto out;
     /* get a command slot */
     if (mlx_getslot(mc))
@@ -1220,7 +1220,7 @@ mlx_periodic_eventlog_poll(struct mlx_softc *sc)
 	if (mc != NULL)
 	    mlx_releasecmd(mc);
 	if (result != NULL)
-	    free(result, M_DEVBUF);
+	    kfree(result, M_DEVBUF);
     }
 }
 
@@ -1302,7 +1302,7 @@ mlx_periodic_eventlog_respond(struct mlx_command *mc)
     }
 	
     /* dispose of command and data */
-    free(mc->mc_data, M_DEVBUF);
+    kfree(mc->mc_data, M_DEVBUF);
     mlx_releasecmd(mc);
 
     /* is there another message to obtain? */
@@ -1353,7 +1353,7 @@ mlx_periodic_rebuild(struct mlx_command *mc)
 	sc->mlx_rebuildstat.rs_code = MLX_REBUILDSTAT_IDLE;
 	break;
     }
-    free(mc->mc_data, M_DEVBUF);
+    kfree(mc->mc_data, M_DEVBUF);
     mlx_releasecmd(mc);
 }
 
@@ -1470,7 +1470,7 @@ mlx_enquire(struct mlx_softc *sc, int command, size_t bufsize, void (* complete)
     if ((mc = mlx_alloccmd(sc)) == NULL)
 	goto out;
     /* allocate the response structure */
-    result = malloc(bufsize, M_DEVBUF, M_INTWAIT);
+    result = kmalloc(bufsize, M_DEVBUF, M_INTWAIT);
     /* get a command slot */
     mc->mc_flags |= MLX_CMD_PRIORITY | MLX_CMD_DATAOUT;
     if (mlx_getslot(mc))
@@ -1508,7 +1508,7 @@ mlx_enquire(struct mlx_softc *sc, int command, size_t bufsize, void (* complete)
 	mlx_releasecmd(mc);
     /* we got an error, and we allocated a result */
     if ((error != 0) && (result != NULL)) {
-	free(result, M_DEVBUF);
+	kfree(result, M_DEVBUF);
 	result = NULL;
     }
     return(result);
@@ -1881,7 +1881,7 @@ mlx_user_command(struct mlx_softc *sc, struct mlx_usercommand *mu)
     if (mu->mu_datasize > 0) {
 	if (mu->mu_datasize > MAXPHYS)
 	    return (EINVAL);
-	if (((kbuf = malloc(mu->mu_datasize, M_DEVBUF, M_WAITOK)) == NULL) ||
+	if (((kbuf = kmalloc(mu->mu_datasize, M_DEVBUF, M_WAITOK)) == NULL) ||
 	    (error = copyin(mu->mu_buf, kbuf, mu->mu_datasize)))
 	    goto out;
 	debug(0, "got kernel buffer");
@@ -1940,7 +1940,7 @@ mlx_user_command(struct mlx_softc *sc, struct mlx_usercommand *mu)
  out:
     mlx_releasecmd(mc);
     if (kbuf != NULL)
-	free(kbuf, M_DEVBUF);
+	kfree(kbuf, M_DEVBUF);
     return(error);
 }
 
@@ -2268,11 +2268,11 @@ mlx_alloccmd(struct mlx_softc *sc)
 
     /* allocate a new command buffer? */
     if (mc == NULL) {
-	mc = malloc(sizeof(*mc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	mc = kmalloc(sizeof(*mc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	mc->mc_sc = sc;
 	error = bus_dmamap_create(sc->mlx_buffer_dmat, 0, &mc->mc_dmamap);
 	if (error) {
-	    free(mc, M_DEVBUF);
+	    kfree(mc, M_DEVBUF);
 	    return(NULL);
 	}
     }
@@ -2305,7 +2305,7 @@ mlx_freecmd(struct mlx_command *mc)
     
     debug_called(1);
     bus_dmamap_destroy(sc->mlx_buffer_dmat, mc->mc_dmamap);
-    free(mc, M_DEVBUF);
+    kfree(mc, M_DEVBUF);
 }
 
 

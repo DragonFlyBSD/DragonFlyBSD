@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.7 2004/09/17 00:18:16 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.8 2006/09/05 00:55:36 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -86,7 +86,7 @@ rndtest_attach(device_t dev)
 {
 	struct rndtest_state *rsp;
 
-	rsp = malloc(sizeof (*rsp), M_DEVBUF, M_INTWAIT);
+	rsp = kmalloc(sizeof (*rsp), M_DEVBUF, M_INTWAIT);
 	rsp->rs_begin = rsp->rs_buf;
 	rsp->rs_end = rsp->rs_buf + sizeof(rsp->rs_buf);
 	rsp->rs_current = rsp->rs_begin;
@@ -102,7 +102,7 @@ void
 rndtest_detach(struct rndtest_state *rsp)
 {
 	callout_stop(&rsp->rs_to);
-	free(rsp, M_DEVBUF);
+	kfree(rsp, M_DEVBUF);
 }
 
 void

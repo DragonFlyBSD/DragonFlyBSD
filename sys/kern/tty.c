@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.28 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*-
@@ -2576,7 +2576,7 @@ ttymalloc(tp)
 
 	if (tp)
 		return(tp);
-        tp = malloc(sizeof *tp, M_TTYS, M_WAITOK|M_ZERO);
+        tp = kmalloc(sizeof *tp, M_TTYS, M_WAITOK|M_ZERO);
 	ttyregister(tp);
         return (tp);
 }
@@ -2594,7 +2594,7 @@ void
 ttyfree(tp)
 	struct tty *tp;
 {
-        free(tp, M_TTYS);
+        kfree(tp, M_TTYS);
 }
 #endif /* 0 */
 

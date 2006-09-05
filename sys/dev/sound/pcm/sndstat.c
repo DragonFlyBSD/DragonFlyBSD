@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.9 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.10 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.9 2006/07/28 02:17:38 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.10 2006/09/05 00:55:43 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -193,7 +193,7 @@ sndstat_register(device_t dev, char *str, sndstat_handler handler)
 		unit = -1;
 	}
 
-	ent = malloc(sizeof *ent, M_DEVBUF, M_ZERO | M_WAITOK);
+	ent = kmalloc(sizeof *ent, M_DEVBUF, M_ZERO | M_WAITOK);
 	if (!ent)
 		return ENOSPC;
 
@@ -228,7 +228,7 @@ sndstat_unregister(device_t dev)
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == dev) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
-			free(ent, M_DEVBUF);
+			kfree(ent, M_DEVBUF);
 			crit_exit();
 
 			return 0;
@@ -248,7 +248,7 @@ sndstat_unregisterfile(char *str)
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == NULL && ent->str == str) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
-			free(ent, M_DEVBUF);
+			kfree(ent, M_DEVBUF);
 			sndstat_files--;
 			crit_exit();
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.14 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.15 2006/09/05 00:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@ ns_pcballoc(struct socket *so, struct nspcb *head)
 {
 	struct nspcb *nsp;
 
-	nsp = malloc(sizeof(struct nspcb), M_NSPCB, M_WAITOK|M_ZERO);
+	nsp = kmalloc(sizeof(struct nspcb), M_NSPCB, M_WAITOK|M_ZERO);
 	nsp->nsp_socket = so;
 	insque(nsp, head);
 	so->so_pcb = (caddr_t)nsp;
@@ -239,7 +239,7 @@ ns_pcbdetach(struct nspcb *nsp)
 	if (nsp->nsp_route.ro_rt)
 		rtfree(nsp->nsp_route.ro_rt);
 	remque(nsp);
-	free(nsp, M_NSPCB);
+	kfree(nsp, M_NSPCB);
 }
 
 void

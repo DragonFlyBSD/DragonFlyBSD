@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.22 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -107,7 +107,7 @@ ata_raiddisk_attach(struct ad_softc *adp)
     }
 
     if (!ar_table) {
-	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
+	ar_table = kmalloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 			  M_AR, M_WAITOK | M_ZERO);
     }
 
@@ -238,7 +238,7 @@ ata_raid_create(struct raid_setup *setup)
     int ctlr = 0, disk_size = 0, total_disks = 0;
 
     if (!ar_table) {
-	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
+	ar_table = kmalloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 			  M_AR, M_WAITOK | M_ZERO);
     }
     for (array = 0; array < MAX_ARRAYS; array++) {
@@ -248,14 +248,14 @@ ata_raid_create(struct raid_setup *setup)
     if (array >= MAX_ARRAYS)
 	return ENOSPC;
 
-    rdp = malloc(sizeof(struct ar_softc), M_AR, M_WAITOK | M_ZERO);
+    rdp = kmalloc(sizeof(struct ar_softc), M_AR, M_WAITOK | M_ZERO);
 
     for (disk = 0; disk < setup->total_disks; disk++) {
 	if ((atadev = ar_locate_disk(setup->disks[disk]))) {
 	    rdp->disks[disk].device = atadev;
 	    if (AD_SOFTC(rdp->disks[disk])->flags & AD_F_RAID_SUBDISK) {
 		setup->disks[disk] = -1;
-		free(rdp, M_AR);
+		kfree(rdp, M_AR);
 		return EBUSY;
 	    }
 
@@ -279,7 +279,7 @@ ata_raid_create(struct raid_setup *setup)
 	    if ((rdp->flags & (AR_F_PROMISE_RAID|AR_F_HIGHPOINT_RAID)) &&
 		(rdp->flags & (AR_F_PROMISE_RAID|AR_F_HIGHPOINT_RAID)) !=
 		 (ctlr & (AR_F_PROMISE_RAID|AR_F_HIGHPOINT_RAID))) {
-		free(rdp, M_AR);
+		kfree(rdp, M_AR);
 		return EXDEV;
 	    }
 	    else
@@ -296,12 +296,12 @@ ata_raid_create(struct raid_setup *setup)
 	}
 	else {
 	    setup->disks[disk] = -1;
-	    free(rdp, M_AR);
+	    kfree(rdp, M_AR);
 	    return ENXIO;
 	}
     }
     if (!total_disks) {
-	free(rdp, M_AR);
+	kfree(rdp, M_AR);
 	return ENODEV;
     }
 
@@ -312,14 +312,14 @@ ata_raid_create(struct raid_setup *setup)
     case 2:
 	rdp->flags |= AR_F_RAID1;
 	if (total_disks != 2) {
-	    free(rdp, M_AR);
+	    kfree(rdp, M_AR);
 	    return EPERM;
 	}
 	break;
     case 3:
 	rdp->flags |= (AR_F_RAID0 | AR_F_RAID1);
 	if (total_disks % 2 != 0) {
-	    free(rdp, M_AR);
+	    kfree(rdp, M_AR);
 	    return EPERM;
 	}
 	break;
@@ -392,7 +392,7 @@ ata_raid_delete(int array)
 	ar_highpoint_write_conf(rdp);
     disk_invalidate(&rdp->disk);
     disk_destroy(&rdp->disk);
-    free(rdp, M_AR);
+    kfree(rdp, M_AR);
     ar_table[array] = NULL;
     return 0;
 }
@@ -541,7 +541,7 @@ arstrategy(struct dev_strategy_args *ap)
 	    return(0);
 	}
 
-	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT | M_ZERO);
+	buf1 = kmalloc(sizeof(struct ar_buf), M_AR, M_INTWAIT | M_ZERO);
 	BUF_LOCKINIT(&buf1->bp);
 	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	initbufbio(&buf1->bp);
@@ -565,7 +565,7 @@ arstrategy(struct dev_strategy_args *ap)
 		!AD_SOFTC(rdp->disks[buf1->drive])->dev) {
 		rdp->disks[buf1->drive].flags &= ~AR_DF_ONLINE;
 		ar_config_changed(rdp, 1);
-		free(buf1, M_AR);
+		kfree(buf1, M_AR);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
@@ -601,7 +601,7 @@ arstrategy(struct dev_strategy_args *ap)
 		ar_config_changed(rdp, 1);
 		
 	    if (!(rdp->flags & AR_F_READY)) {
-		free(buf1, M_AR);
+		kfree(buf1, M_AR);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
@@ -624,7 +624,7 @@ arstrategy(struct dev_strategy_args *ap)
 			((rdp->flags & AR_F_REBUILDING) &&
 			 (rdp->disks[buf1->drive].flags & AR_DF_SPARE) &&
 			 buf1_blkno < rdp->lock_start)) {
-			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT);
+			buf2 = kmalloc(sizeof(struct ar_buf), M_AR, M_INTWAIT);
 			bcopy(buf1, buf2, sizeof(struct ar_buf));
 			BUF_LOCKINIT(&buf2->bp);
 			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
@@ -725,7 +725,7 @@ ar_done(struct bio *bio)
     default:
 	printf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
-    free(buf, M_AR);
+    kfree(buf, M_AR);
 }
 
 static void
@@ -829,7 +829,7 @@ ar_rebuild(struct ar_softc *rdp)
     rdp->lock_end = rdp->lock_start + 256;
     rdp->flags |= AR_F_REBUILDING;
     crit_exit();
-    buffer = malloc(256 * DEV_BSIZE, M_AR, M_WAITOK | M_ZERO);
+    buffer = kmalloc(256 * DEV_BSIZE, M_AR, M_WAITOK | M_ZERO);
 
     /* now go copy entire disk(s) */
     while (rdp->lock_end < (rdp->total_sectors / rdp->width)) {
@@ -864,7 +864,7 @@ ar_rebuild(struct ar_softc *rdp)
 	}
 	if (error) {
 	    wakeup(rdp);
-	    free(buffer, M_AR);
+	    kfree(buffer, M_AR);
 	    return error;
 	}
 	crit_enter();
@@ -873,7 +873,7 @@ ar_rebuild(struct ar_softc *rdp)
 	crit_exit();
 	wakeup(rdp);
     }
-    free(buffer, M_AR);
+    kfree(buffer, M_AR);
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if ((rdp->disks[disk].flags&(AR_DF_PRESENT|AR_DF_ONLINE|AR_DF_SPARE))==
 	    (AR_DF_PRESENT | AR_DF_SPARE)) {
@@ -897,7 +897,7 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, disk_number = 0, retval = 0;
 
-    info = malloc(sizeof(struct highpoint_raid_conf), M_AR, M_INTWAIT|M_ZERO);
+    info = kmalloc(sizeof(struct highpoint_raid_conf), M_AR, M_INTWAIT|M_ZERO);
 
     if (ar_rw(adp, HPT_LBA, sizeof(struct highpoint_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
@@ -923,7 +923,7 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     /* now convert HighPoint config info into our generic form */
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!raidp[array]) {
-	    raidp[array] = malloc(sizeof(struct ar_softc), M_AR,
+	    raidp[array] = kmalloc(sizeof(struct ar_softc), M_AR,
 					 M_INTWAIT | M_ZERO);
 	}
 	raid = raidp[array];
@@ -1022,7 +1022,7 @@ highpoint_raid01:
 	break;
     }
 highpoint_out:
-    free(info, M_AR);
+    kfree(info, M_AR);
     return retval;
 }
 
@@ -1038,7 +1038,7 @@ ar_highpoint_write_conf(struct ar_softc *rdp)
     rdp->magic_1 = timestamp.tv_sec;
    
     for (disk = 0; disk < rdp->total_disks; disk++) {
-	config = malloc(sizeof(struct highpoint_raid_conf),
+	config = kmalloc(sizeof(struct highpoint_raid_conf),
 		     M_AR, M_INTWAIT | M_ZERO);
 	if ((rdp->disks[disk].flags & (AR_DF_PRESENT | AR_DF_ONLINE)) ==
 	    (AR_DF_PRESENT | AR_DF_ONLINE))
@@ -1115,7 +1115,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
     u_int32_t magic, cksum, *ckptr;
     int array, count, disk, disksum = 0, retval = 0; 
 
-    info = malloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT | M_ZERO);
+    info = kmalloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT | M_ZERO);
 
     if (ar_rw(adp, PR_LBA(adp), sizeof(struct promise_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
@@ -1158,7 +1158,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!raidp[array]) {
-	    raidp[array] = malloc(sizeof(struct ar_softc), M_AR,
+	    raidp[array] = kmalloc(sizeof(struct ar_softc), M_AR,
 					M_INTWAIT | M_ZERO);
 	}
 	raid = raidp[array];
@@ -1236,7 +1236,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 		    raid->disks[disk].flags &= ~AR_DF_ONLINE;
 	    }
 	    if (!disksum) {
-		free(raidp[array], M_AR);
+		kfree(raidp[array], M_AR);
 		raidp[array] = NULL;
 		goto promise_out;
 	    }
@@ -1252,7 +1252,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 	break;
     }
 promise_out:
-    free(info, M_AR);
+    kfree(info, M_AR);
     return retval;
 }
 
@@ -1269,7 +1269,7 @@ ar_promise_write_conf(struct ar_softc *rdp)
     microtime(&timestamp);
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
-	config = malloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT);
+	config = kmalloc(sizeof(struct promise_raid_conf), M_AR, M_INTWAIT);
 	for (count = 0; count < sizeof(struct promise_raid_conf); count++)
 	    *(((u_int8_t *)config) + count) = 255 - (count % 256);
 
@@ -1382,8 +1382,8 @@ ar_rw_done(struct bio *bio)
 {
     struct buf *bp = bio->bio_buf;
 
-    free(bp->b_data, M_AR);
-    free(bp, M_AR);
+    kfree(bp->b_data, M_AR);
+    kfree(bp, M_AR);
 }
 
 static int
@@ -1392,7 +1392,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     struct buf *bp;
     int retry = 0, error = 0;
 
-    bp = malloc(sizeof(struct buf), M_AR, M_INTWAIT|M_ZERO);
+    bp = kmalloc(sizeof(struct buf), M_AR, M_INTWAIT|M_ZERO);
     BUF_LOCKINIT(bp);
     BUF_LOCK(bp, LK_EXCLUSIVE);
     initbufbio(bp);
@@ -1416,7 +1416,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
 	    error = tsleep(&bp->b_bio1, 0, "arrw", 10);
 	if (!error && (bp->b_flags & B_ERROR))
 	    error = bp->b_error;
-	free(bp, M_AR);
+	kfree(bp, M_AR);
     }
     return error;
 }

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.19 2005/12/08 19:15:12 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.20 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -96,7 +96,7 @@ smb_strdup(const char *s)
 	int len;
 
 	len = s ? strlen(s) + 1 : 1;
-	p = malloc(len, M_SMBSTR, M_WAITOK);
+	p = kmalloc(len, M_SMBSTR, M_WAITOK);
 	if (s)
 		bcopy(s, p, len);
 	else
@@ -122,7 +122,7 @@ smb_strdupin(char *s, int maxlen)
 		if (bt == 0)
 			break;
 	}
-	p = malloc(len, M_SMBSTR, M_WAITOK);
+	p = kmalloc(len, M_SMBSTR, M_WAITOK);
 	copyin(s, p, len);
 	return p;
 }
@@ -137,10 +137,10 @@ smb_memdupin(void *umem, int len)
 
 	if (len > 8 * 1024)
 		return NULL;
-	p = malloc(len, M_SMBSTR, M_WAITOK);
+	p = kmalloc(len, M_SMBSTR, M_WAITOK);
 	if (copyin(umem, p, len) == 0)
 		return p;
-	free(p, M_SMBSTR);
+	kfree(p, M_SMBSTR);
 	return NULL;
 }
 
@@ -154,7 +154,7 @@ smb_memdup(const void *umem, int len)
 
 	if (len > 8 * 1024)
 		return NULL;
-	p = malloc(len, M_SMBSTR, M_WAITOK);
+	p = kmalloc(len, M_SMBSTR, M_WAITOK);
 	if (p == NULL)
 		return NULL;
 	bcopy(umem, p, len);
@@ -164,20 +164,20 @@ smb_memdup(const void *umem, int len)
 void
 smb_strfree(char *s)
 {
-	free(s, M_SMBSTR);
+	kfree(s, M_SMBSTR);
 }
 
 void
 smb_memfree(void *s)
 {
-	free(s, M_SMBSTR);
+	kfree(s, M_SMBSTR);
 }
 
 void *
 smb_zmalloc(unsigned long size, struct malloc_type *type, int flags)
 {
 
-	return malloc(size, type, flags | M_ZERO);
+	return kmalloc(size, type, flags | M_ZERO);
 }
 
 void

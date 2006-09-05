@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.13 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.14 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -320,7 +320,7 @@ reread_mbr:
 	 * enlarging it while searching for logical drives would be
 	 * inconvenient.
 	 */
-	free(*sspp, M_DEVBUF);
+	kfree(*sspp, M_DEVBUF);
 	ssp = dsmakeslicestruct(MAX_SLICES, lp);
 	*sspp = ssp;
 

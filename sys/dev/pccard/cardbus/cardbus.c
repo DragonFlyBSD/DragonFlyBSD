@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.6 2005/12/18 12:02:15 sephe Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.7 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -283,7 +283,7 @@ cardbus_detach_card(device_t cbdev)
 	device_get_children(cbdev, &devlist, &numdevs);
 
 	if (numdevs == 0) {
-		free(devlist, M_TEMP);
+		kfree(devlist, M_TEMP);
 		return (ENOENT);
 	}
 
@@ -300,7 +300,7 @@ cardbus_detach_card(device_t cbdev)
 		cardbus_freecfg(dinfo);
 	}
 	POWER_DISABLE_SOCKET(device_get_parent(cbdev), cbdev);
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 	return (err);
 }
 
@@ -332,7 +332,7 @@ cardbus_driver_added(device_t cbdev, driver_t *driver)
 		}
 	}
 
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 }
 
 /************************************************************************/
@@ -425,7 +425,7 @@ cardbus_read_device(device_t brdev, int b, int s, int f)
 	struct cardbus_devinfo *devlist_entry = NULL;
 
 	if (REG(PCIR_DEVVENDOR, 4) != 0xffffffff) {
-		devlist_entry = malloc(sizeof(struct cardbus_devinfo),
+		devlist_entry = kmalloc(sizeof(struct cardbus_devinfo),
 		    M_DEVBUF, M_WAITOK | M_ZERO);
 		if (devlist_entry == NULL)
 			return (NULL);
@@ -484,7 +484,7 @@ cardbus_read_device(device_t brdev, int b, int s, int f)
 static int
 cardbus_freecfg(struct cardbus_devinfo *dinfo)
 {
-	free(dinfo, M_DEVBUF);
+	kfree(dinfo, M_DEVBUF);
 
 	return (0);
 }

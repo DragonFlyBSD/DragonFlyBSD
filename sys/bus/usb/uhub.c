@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhub.c,v 1.64 2003/02/08 03:32:51 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/uhub.c,v 1.54 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/uhub.c,v 1.6 2004/03/12 03:43:06 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhub.c,v 1.7 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -167,7 +167,7 @@ USB_ATTACH(uhub)
 	usbd_interface_handle iface;
 	usb_endpoint_descriptor_t *ed;
 
-	devinfo = malloc(1024, M_TEMP, M_WAITOK);
+	devinfo = kmalloc(1024, M_TEMP, M_WAITOK);
 	DPRINTFN(1,("uhub_attach\n"));
 	sc->sc_hub = dev;
 	usbd_devinfo(dev, 1, devinfo);
@@ -178,14 +178,14 @@ USB_ATTACH(uhub)
 	if (err) {
 		DPRINTF(("%s: configuration failed, error=%s\n",
 			 USBDEVNAME(sc->sc_dev), usbd_errstr(err)));
-		free(devinfo, M_TEMP);
+		kfree(devinfo, M_TEMP);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	if (dev->depth > USB_HUB_MAX_DEPTH) {
 		printf("%s: hub depth (%d) exceeded, hub ignored\n",
 		       USBDEVNAME(sc->sc_dev), USB_HUB_MAX_DEPTH);
-		free(devinfo, M_TEMP);
+		kfree(devinfo, M_TEMP);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -205,7 +205,7 @@ USB_ATTACH(uhub)
 	if (err) {
 		DPRINTF(("%s: getting hub descriptor failed, error=%s\n",
 			 USBDEVNAME(sc->sc_dev), usbd_errstr(err)));
-		free(devinfo, M_TEMP);
+		kfree(devinfo, M_TEMP);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -327,8 +327,8 @@ USB_ATTACH(uhub)
 	USB_ATTACH_SUCCESS_RETURN;
 
  bad:
-	free(hub, M_USBDEV);
-	free(devinfo, M_TEMP);
+	kfree(hub, M_USBDEV);
+	kfree(devinfo, M_TEMP);
 	dev->hub = 0;
 	USB_ATTACH_ERROR_RETURN;
 }
@@ -562,7 +562,7 @@ USB_DETACH(uhub)
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_hub,
 			   USBDEV(sc->sc_dev));
 
-	free(hub, M_USBDEV);
+	kfree(hub, M_USBDEV);
 	sc->sc_hub->hub = NULL;
 
 	return (0);

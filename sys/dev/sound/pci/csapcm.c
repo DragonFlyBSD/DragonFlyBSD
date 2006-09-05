@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csapcm.c,v 1.8.2.7 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <sys/soundcard.h>
@@ -41,7 +41,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 /* Buffer size on dma transfer. Fixed for CS416x. */
 #define CS461x_BUFFSIZE   (4 * 1024)
@@ -714,7 +714,7 @@ csa_releaseres(struct csa_info *csa, device_t dev)
 		csa->parent_dmat = NULL;
 	}
 	if (csa != NULL) {
-		free(csa, M_DEVBUF);
+		kfree(csa, M_DEVBUF);
 		csa = NULL;
 	}
 }
@@ -747,7 +747,7 @@ pcmcsa_attach(device_t dev)
 	struct ac97_info *codec;
 	struct sndcard_func *func;
 
-	csa = malloc(sizeof(*csa), M_DEVBUF, M_NOWAIT | M_ZERO);
+	csa = kmalloc(sizeof(*csa), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (csa == NULL)
 		return (ENOMEM);
 	unit = device_get_unit(dev);

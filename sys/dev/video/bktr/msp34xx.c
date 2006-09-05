@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.3 2005/03/12 11:35:27 corecode Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -1137,7 +1137,7 @@ int msp_attach(bktr_ptr_t bktr)
 	int		 err;
 	char		 buf[20];
 
-	msp = (struct msp3400c *) malloc(sizeof(struct msp3400c), M_DEVBUF, M_NOWAIT);
+	msp = (struct msp3400c *) kmalloc(sizeof(struct msp3400c), M_DEVBUF, M_NOWAIT);
 	if (msp == NULL)
                 return ENOMEM;
 	bktr->msp3400c_info = msp;
@@ -1148,9 +1148,9 @@ int msp_attach(bktr_ptr_t bktr)
 	msp->bass   = 32768;
 	msp->treble = 32768;
 	msp->input  = -1;
-	msp->threaddesc = malloc(15 * sizeof(char), M_DEVBUF, M_NOWAIT);
+	msp->threaddesc = kmalloc(15 * sizeof(char), M_DEVBUF, M_NOWAIT);
 	if (msp->threaddesc == NULL) {
-		free(msp, M_DEVBUF);
+		kfree(msp, M_DEVBUF);
                 return ENOMEM;
 	}
 	snprintf(msp->threaddesc, 14, "%s_msp34xx_thread", bktr->bktr_xname);
@@ -1164,8 +1164,8 @@ int msp_attach(bktr_ptr_t bktr)
 	if (-1 != rev1)
 		rev2 = msp3400c_read(bktr, I2C_MSP3400C_DFP, 0x1f);
 	if ((-1 == rev1) || (0 == rev1 && 0 == rev2)) {
-		free(msp->threaddesc, M_DEVBUF);
-		free(msp, M_DEVBUF);
+		kfree(msp->threaddesc, M_DEVBUF);
+		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;
 		printf("%s: msp3400: error while reading chip version\n", bktr_name(bktr));
 		return ENXIO;
@@ -1202,8 +1202,8 @@ int msp_attach(bktr_ptr_t bktr)
 			     bktr, &msp->kthread, msp->threaddesc);
 	if (err) {
 		printf("%s: Error returned by kthread_create: %d", bktr_name(bktr), err);
-		free(msp->threaddesc, M_DEVBUF);
-		free(msp, M_DEVBUF);
+		kfree(msp->threaddesc, M_DEVBUF);
+		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;
 		return ENXIO;
 	}
@@ -1230,7 +1230,7 @@ int msp_detach(bktr_ptr_t client)
 	}
 
 	if (client->msp3400c_info != NULL) {
-		free(client->msp3400c_info, M_DEVBUF);
+		kfree(client->msp3400c_info, M_DEVBUF);
 		client->msp3400c_info = NULL;
 	}
 

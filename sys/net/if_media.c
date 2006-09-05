@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.9 2006/01/14 11:05:17 swildner Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.10 2006/09/05 00:55:46 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -95,7 +95,7 @@ ifmedia_removeall(struct ifmedia *ifm)
 	for (entry = LIST_FIRST(&ifm->ifm_list); entry;
 	     entry = LIST_FIRST(&ifm->ifm_list)) {
 		LIST_REMOVE(entry, ifm_list);
-		free(entry, M_IFADDR);
+		kfree(entry, M_IFADDR);
 	}
 }
 
@@ -119,7 +119,7 @@ ifmedia_add(struct ifmedia *ifm, int mword, int data, void *aux)
 	}
 #endif
 
-	entry = malloc(sizeof(*entry), M_IFADDR, M_INTWAIT);
+	entry = kmalloc(sizeof(*entry), M_IFADDR, M_INTWAIT);
 	entry->ifm_media = mword;
 	entry->ifm_data = data;
 	entry->ifm_aux = aux;
@@ -320,7 +320,7 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 			error = sticky;
 
 		if (ifmr->ifm_count != 0)
-			free(kptr, M_TEMP);
+			kfree(kptr, M_TEMP);
 
 		ifmr->ifm_count = count;
 		break;

@@ -35,7 +35,7 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.8 2005/07/30 18:52:35 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.9 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -150,7 +150,7 @@ MMalloc(int size, char *file, int line)
 	return 0;					    /* can't continue */
     }
     /* Wait for malloc if we can */
-    result = malloc(size, M_DEVBUF, mycpu->gd_intr_nesting_level == 0 ? M_WAITOK : M_INTWAIT);
+    result = kmalloc(size, M_DEVBUF, mycpu->gd_intr_nesting_level == 0 ? M_WAITOK : M_INTWAIT);
     if (result == NULL)
 	log(LOG_ERR, "vinum: can't allocate %d bytes from %s:%d\n", size, file, line);
     else {
@@ -189,7 +189,7 @@ FFree(void *mem, char *file, int line)
     for (i = 0; i < malloccount; i++) {
 	if ((caddr_t) mem == malloced[i].address) {	    /* found it */
 	    bzero(mem, malloced[i].size);		    /* XXX */
-	    free(mem, M_DEVBUF);
+	    kfree(mem, M_DEVBUF);
 	    malloccount--;
 	    total_malloced -= malloced[i].size;
 	    if (debug & DEBUG_MEMFREE) {		    /* keep track of recent frees */

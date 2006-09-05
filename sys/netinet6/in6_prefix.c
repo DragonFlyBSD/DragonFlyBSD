@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.8 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.9 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -550,7 +550,7 @@ in6_prefix_remove_ifid(int iilen, struct in6_ifaddr *ia)
 		crit_exit();
 		if (rap->ra_addr)
 			IFAFREE(&rap->ra_addr->ia_ifa);
-		free(rap, M_RR_ADDR);
+		kfree(rap, M_RR_ADDR);
 	}
 
 	if (LIST_EMPTY(&ifpr2rp(ia->ia6_ifpr)->rp_addrhead))
@@ -717,7 +717,7 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 			    != NULL) {
 				if (rap->ra_addr)
 					IFAFREE(&rap->ra_addr->ia_ifa);
-				free(rap, M_RR_ADDR);
+				kfree(rap, M_RR_ADDR);
 				continue;
 			}
 			crit_enter();
@@ -729,7 +729,7 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 		 * We got a fresh prefix.
 		 */
 		/* create new prefix */
-		rpp = (struct rr_prefix *)malloc(sizeof(*rpp), M_IP6RR,
+		rpp = (struct rr_prefix *)kmalloc(sizeof(*rpp), M_IP6RR,
 						 M_NOWAIT);
 		if (rpp == NULL) {
 			log(LOG_ERR, "in6_prefix.c: rrpr_update:%d"
@@ -824,13 +824,13 @@ rp_remove(struct rr_prefix *rpp)
 	/* unlink rp_entry from rr_prefix list */
 	LIST_REMOVE(rpp, rp_entry);
 	crit_exit();
-	free(rpp, M_IP6RR);
+	kfree(rpp, M_IP6RR);
 }
 
 static int
 create_ra_entry(struct rp_addr **rapp)
 {
-	*rapp = (struct rp_addr *)malloc(sizeof(struct rp_addr), M_RR_ADDR,
+	*rapp = (struct rp_addr *)kmalloc(sizeof(struct rp_addr), M_RR_ADDR,
 					 M_NOWAIT);
 	if (*rapp == NULL) {
 		log(LOG_ERR, "in6_prefix.c: init_newprefix:%d: ENOBUFS"
@@ -907,7 +907,7 @@ free_rp_entries(struct rr_prefix *rpp)
 		LIST_REMOVE(rap, ra_entry);
 		if (rap->ra_addr)
 			IFAFREE(&rap->ra_addr->ia_ifa);
-		free(rap, M_RR_ADDR);
+		kfree(rap, M_RR_ADDR);
 	}
 }
 
@@ -972,14 +972,14 @@ delete_each_prefix(struct rr_prefix *rpp, u_char origin)
 		LIST_REMOVE(rap, ra_entry);
 		crit_exit();
 		if (rap->ra_addr == NULL) {
-			free(rap, M_RR_ADDR);
+			kfree(rap, M_RR_ADDR);
 			continue;
 		}
 		rap->ra_addr->ia6_ifpr = NULL;
 
 		in6_purgeaddr(&rap->ra_addr->ia_ifa);
 		IFAFREE(&rap->ra_addr->ia_ifa);
-		free(rap, M_RR_ADDR);
+		kfree(rap, M_RR_ADDR);
 	}
 	rp_remove(rpp);
 

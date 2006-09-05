@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.37 2006/08/03 16:40:47 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.38 2006/09/05 00:55:41 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -350,7 +350,7 @@ txp_detach(device_t dev)
 	ether_ifdetach(ifp);
 
 	for (i = 0; i < RXBUF_ENTRIES; i++)
-		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
+		kfree(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
 
 	txp_release_resources(dev);
 
@@ -798,7 +798,7 @@ txp_rxbuf_reclaim(struct txp_softc *sc)
 err_mbuf:
 	m_freem(sd->sd_mbuf);
 err_sd:
-	free(sd, M_DEVBUF);
+	kfree(sd, M_DEVBUF);
 }
 
 /*
@@ -1182,7 +1182,7 @@ txp_tick(void *vsc)
 
 out:
 	if (rsp != NULL)
-		free(rsp, M_DEVBUF);
+		kfree(rsp, M_DEVBUF);
 
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -1316,7 +1316,7 @@ txp_command(struct txp_softc *sc, u_int16_t id, u_int16_t in1, u_int32_t in2,
 		*out2 = rsp->rsp_par2;
 	if (out3 != NULL)
 		*out3 = rsp->rsp_par3;
-	free(rsp, M_DEVBUF);
+	kfree(rsp, M_DEVBUF);
 	return (0);
 }
 
@@ -1763,7 +1763,7 @@ txp_capabilities(struct txp_softc *sc)
 
 out:
 	if (rsp != NULL)
-		free(rsp, M_DEVBUF);
+		kfree(rsp, M_DEVBUF);
 
 	return;
 }

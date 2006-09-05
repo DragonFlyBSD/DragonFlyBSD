@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.9 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.10 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -275,7 +275,7 @@ usbd_close_pipe(usbd_pipe_handle pipe)
 	pipe->methods->close(pipe);
 	if (pipe->intrxfer != NULL)
 		usbd_free_xfer(pipe->intrxfer);
-	free(pipe, M_USB);
+	kfree(pipe, M_USB);
 	return (USBD_NORMAL_COMPLETION);
 }
 
@@ -670,7 +670,7 @@ usbd_set_interface(usbd_interface_handle iface, int altidx)
 
 	/* new setting works, we can free old endpoints */
 	if (endpoints != NULL)
-		free(endpoints, M_USB);
+		kfree(endpoints, M_USB);
 
 #ifdef DIAGNOSTIC
 	if (iface->idesc == NULL) {

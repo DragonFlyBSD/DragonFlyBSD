@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.9.2.8 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
 
 #define SOLO_DEFAULT_BUFSZ 16384
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -840,7 +840,7 @@ ess_release_resources(struct ess_info *sc, device_t dev)
 		sc->parent_dmat = 0;
     	}
 
-    	free(sc, M_DEVBUF);
+    	kfree(sc, M_DEVBUF);
 }
 
 static int
@@ -904,7 +904,7 @@ ess_attach(device_t dev)
 	u_int16_t ddma;
 	u_int32_t data;
 
-	sc = (struct ess_info *)malloc(sizeof *sc, M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc = (struct ess_info *)kmalloc(sizeof *sc, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!sc)
 		return ENXIO;
 

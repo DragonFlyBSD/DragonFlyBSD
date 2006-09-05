@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.43 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.44 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -959,7 +959,7 @@ exec_register(const struct execsw *execsw_arg)
 	if (execsw)
 		for (es = execsw; *es; es++)
 			count++;
-	newexecsw = malloc(count * sizeof(*es), M_TEMP, M_WAITOK);
+	newexecsw = kmalloc(count * sizeof(*es), M_TEMP, M_WAITOK);
 	if (newexecsw == NULL)
 		return ENOMEM;
 	xs = newexecsw;
@@ -969,7 +969,7 @@ exec_register(const struct execsw *execsw_arg)
 	*xs++ = execsw_arg;
 	*xs = NULL;
 	if (execsw)
-		free(execsw, M_TEMP);
+		kfree(execsw, M_TEMP);
 	execsw = newexecsw;
 	return 0;
 }
@@ -992,7 +992,7 @@ exec_unregister(const struct execsw *execsw_arg)
 	for (es = execsw; *es; es++)
 		if (*es != execsw_arg)
 			count++;
-	newexecsw = malloc(count * sizeof(*es), M_TEMP, M_WAITOK);
+	newexecsw = kmalloc(count * sizeof(*es), M_TEMP, M_WAITOK);
 	if (newexecsw == NULL)
 		return ENOMEM;
 	xs = newexecsw;
@@ -1001,7 +1001,7 @@ exec_unregister(const struct execsw *execsw_arg)
 			*xs++ = *es;
 	*xs = NULL;
 	if (execsw)
-		free(execsw, M_TEMP);
+		kfree(execsw, M_TEMP);
 	execsw = newexecsw;
 	return 0;
 }

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.18 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.19 2006/09/05 00:55:32 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1364,7 +1364,7 @@ sacleanup(struct cam_periph *periph)
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
 	dev_ops_remove(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 }
 
 static void
@@ -1429,7 +1429,7 @@ saregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof (*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof (*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->scsi_rev = SID_ANSI_REV(&cgd->inq_data);
 	softc->state = SA_STATE_NORMAL;
 	softc->fileno = (daddr_t) -1;
@@ -1906,7 +1906,7 @@ samount(struct cam_periph *periph, int oflags, dev_t dev)
 		 * blocksize on tape is and don't expect to really
 		 * read a full record.
 		 */
-		rblim = malloc(8192, M_TEMP, M_INTWAIT);
+		rblim = kmalloc(8192, M_TEMP, M_INTWAIT);
 
 		if ((softc->quirks & SA_QUIRK_NODREAD) == 0) {
 			scsi_sa_read_write(&ccb->csio, 0, sadone,
@@ -2220,7 +2220,7 @@ tryagain:
 		}
 exit:
 		if (rblim != NULL)
-			free(rblim, M_TEMP);
+			kfree(rblim, M_TEMP);
 
 		if (error != 0) {
 			softc->dsreg = MTIO_DSREG_NIL;
@@ -2524,7 +2524,7 @@ retry:
 			mode_buffer_len += sizeof (sa_comp_t);
 	}
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
+	mode_buffer = kmalloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 	mode_hdr = (struct scsi_mode_header_6 *)mode_buffer;
 	mode_blk = (struct scsi_mode_blk_desc *)&mode_hdr[1];
 
@@ -2553,7 +2553,7 @@ retry:
 			goto retry;
 		}
 		softc->quirks |= SA_QUIRK_NOCOMP;
-		free(mode_buffer, M_TEMP);
+		kfree(mode_buffer, M_TEMP);
 		goto retry;
 	} else if (status == CAM_SCSI_STATUS_ERROR) {
 		/* Tell the user about the fatal error. */
@@ -2662,7 +2662,7 @@ retry:
 sagetparamsexit:
 
 	xpt_release_ccb(ccb);
-	free(mode_buffer, M_TEMP);
+	kfree(mode_buffer, M_TEMP);
 	return (error);
 }
 
@@ -2704,7 +2704,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 
 	softc = (struct sa_softc *)periph->softc;
 
-	ccomp = malloc(sizeof (sa_comp_t), M_TEMP, M_INTWAIT);
+	ccomp = kmalloc(sizeof (sa_comp_t), M_TEMP, M_INTWAIT);
 
 	/*
 	 * Since it doesn't make sense to set the number of blocks, or
@@ -2719,7 +2719,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 	    &current_calg, ccomp);
 
 	if (error != 0) {
-		free(ccomp, M_TEMP);
+		kfree(ccomp, M_TEMP);
 		return (error);
 	}
 
@@ -2727,7 +2727,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 	if (params_to_set & SA_PARAM_COMPRESSION)
 		mode_buffer_len += sizeof (sa_comp_t);
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
+	mode_buffer = kmalloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 
 	mode_hdr = (struct scsi_mode_header_6 *)mode_buffer;
 	mode_blk = (struct scsi_mode_blk_desc *)&mode_hdr[1];
@@ -2873,7 +2873,7 @@ retry:
 			 * 'operation not supported'.
 			 */
 			if (params_to_set == SA_PARAM_NONE) {
-				free(mode_buffer, M_TEMP);
+				kfree(mode_buffer, M_TEMP);
 				xpt_release_ccb(ccb);
 				return (ENODEV);
 			}
@@ -2958,7 +2958,7 @@ retry:
 	xpt_release_ccb(ccb);
 
 	if (ccomp != NULL)
-		free(ccomp, M_TEMP);
+		kfree(ccomp, M_TEMP);
 
 	if (params_to_set & SA_PARAM_COMPRESSION) {
 		if (error) {
@@ -2977,7 +2977,7 @@ retry:
 		}
 	}
 
-	free(mode_buffer, M_TEMP);
+	kfree(mode_buffer, M_TEMP);
 	return (error);
 }
 

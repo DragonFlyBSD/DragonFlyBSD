@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.10 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.11 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -181,7 +181,7 @@ module_release(module_t mod)
 	if (mod->file) {
 	    TAILQ_REMOVE(&mod->file->modules, mod, flink);
 	}
-	free(mod, M_MODULE);
+	kfree(mod, M_MODULE);
     }
     return(rc);
 }

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.12 2006/08/09 22:47:31 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.13 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@ linux_copyin_path(char *uname, char **kname, int flags)
 	char *buf, *cp;
 	int error, length, dummy;
 
-	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	buf = (char *) kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	*kname = buf;
 
 	/*
@@ -178,7 +178,7 @@ linux_translate_path(char *path, int size)
 	char *buf;
 	int error, length, dummy;
 
-	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	buf = (char *) kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	length = strlen(linux_emul_path);
 	bcopy(linux_emul_path, buf, length);
 	error = copystr(path, buf + length, MAXPATHLEN - length, &dummy);
@@ -206,6 +206,6 @@ linux_translate_path(char *path, int size)
 
 cleanup:
 
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	return (error);
 }

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.11 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.12 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -391,7 +391,7 @@ ahballoc(u_long unit, struct resource *res)
 	/*
 	 * Allocate a storage area for us
 	 */
-	ahb = malloc(sizeof(struct ahb_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	ahb = kmalloc(sizeof(struct ahb_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	SLIST_INIT(&ahb->free_ecbs);
 	LIST_INIT(&ahb->pending_ccbs);
 	ahb->unit = unit;
@@ -425,7 +425,7 @@ ahbfree(struct ahb_softc *ahb)
 	case 0:
 		break;
 	}
-	free(ahb, M_DEVBUF);
+	kfree(ahb, M_DEVBUF);
 }
 
 /*

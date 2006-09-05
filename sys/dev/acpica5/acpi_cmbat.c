@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.29 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.6 2005/03/12 14:33:40 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.7 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -457,7 +457,7 @@ acpi_cmbat_get_total_battinfo(struct acpi_battinfo *battinfo)
     /* Allocate array of softc pointers */
     if (bat_units != acpi_cmbat_units) {
 	if (bat != NULL) {
-	    free(bat, M_ACPICMBAT);
+	    kfree(bat, M_ACPICMBAT);
 	    bat = NULL;
 	}
 	bat_units = 0;

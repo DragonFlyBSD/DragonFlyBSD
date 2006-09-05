@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.34 2006/08/12 00:26:17 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.35 2006/09/05 00:55:37 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -238,7 +238,7 @@ getccdbuf(void)
 		--numccdfreebufs;
 		reinitbufbio(&cbp->cb_buf);
 	} else {
-		cbp = malloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK|M_ZERO);
+		cbp = kmalloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK|M_ZERO);
 		initbufbio(&cbp->cb_buf);
 	}
 
@@ -272,7 +272,7 @@ putccdbuf(struct ccdbuf *cbp)
 		ccdfreebufs = cbp;
 		++numccdfreebufs;
 	} else {
-		free((caddr_t)cbp, M_DEVBUF);
+		kfree((caddr_t)cbp, M_DEVBUF);
 	}
 }
 
@@ -302,9 +302,9 @@ ccdattach(void)
 	else
 		printf("ccd0: Concatenated disk driver\n");
 
-	ccd_softc = malloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
+	ccd_softc = kmalloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
 			    M_WAITOK | M_ZERO);
-	ccddevs = malloc(num * sizeof(struct ccddevice), M_DEVBUF,
+	ccddevs = kmalloc(num * sizeof(struct ccddevice), M_DEVBUF,
 			    M_WAITOK | M_ZERO);
 	numccd = num;
 
@@ -389,7 +389,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 #endif
 			goto fail;
 		}
-		ci->ci_path = malloc(ci->ci_pathlen, M_DEVBUF, M_WAITOK);
+		ci->ci_path = kmalloc(ci->ci_pathlen, M_DEVBUF, M_WAITOK);
 		bcopy(tmppath, ci->ci_path, ci->ci_pathlen);
 
 		ci->ci_dev = vn_todev(vp);
@@ -533,9 +533,9 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 fail:
 	while (ci > cs->sc_cinfo) {
 		ci--;
-		free(ci->ci_path, M_DEVBUF);
+		kfree(ci->ci_path, M_DEVBUF);
 	}
-	free(cs->sc_cinfo, M_DEVBUF);
+	kfree(cs->sc_cinfo, M_DEVBUF);
 	return (error);
 }
 
@@ -561,7 +561,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 	 * Chances are this is too big, but we don't care.
 	 */
 	size = (cs->sc_nccdisks + 1) * sizeof(struct ccdiinfo);
-	cs->sc_itable = (struct ccdiinfo *)malloc(size, M_DEVBUF, M_WAITOK);
+	cs->sc_itable = (struct ccdiinfo *)kmalloc(size, M_DEVBUF, M_WAITOK);
 	bzero((caddr_t)cs->sc_itable, size);
 
 	/*
@@ -576,7 +576,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 
 		for (ix = 0; ix < cs->sc_nccdisks; ix++) {
 			/* Allocate space for ii_index. */
-			ii->ii_index = malloc(sizeof(int), M_DEVBUF, M_WAITOK);
+			ii->ii_index = kmalloc(sizeof(int), M_DEVBUF, M_WAITOK);
 			ii->ii_ndisk = 1;
 			ii->ii_startblk = bn;
 			ii->ii_startoff = 0;
@@ -1323,8 +1323,8 @@ ccdioctl(struct dev_ioctl_args *ap)
 		error = copyin((caddr_t)ccio->ccio_disks, (caddr_t)cpp,
 		    ccio->ccio_ndisks * sizeof(char **));
 		if (error) {
-			free(vpp, M_DEVBUF);
-			free(cpp, M_DEVBUF);
+			kfree(vpp, M_DEVBUF);
+			kfree(cpp, M_DEVBUF);
 			ccdunlock(cs);
 			return (error);
 		}
@@ -1344,8 +1344,8 @@ ccdioctl(struct dev_ioctl_args *ap)
 			if ((error = ccdlookup(cpp[i], &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
 					(void)vn_close(vpp[j], FREAD|FWRITE);
-				free(vpp, M_DEVBUF);
-				free(cpp, M_DEVBUF);
+				kfree(vpp, M_DEVBUF);
+				kfree(cpp, M_DEVBUF);
 				ccdunlock(cs);
 				return (error);
 			}
@@ -1362,8 +1362,8 @@ ccdioctl(struct dev_ioctl_args *ap)
 			for (j = 0; j < lookedup; ++j)
 				(void)vn_close(vpp[j], FREAD|FWRITE);
 			bzero(&ccd_softc[unit], sizeof(struct ccd_softc));
-			free(vpp, M_DEVBUF);
-			free(cpp, M_DEVBUF);
+			kfree(vpp, M_DEVBUF);
+			kfree(cpp, M_DEVBUF);
 			ccdunlock(cs);
 			return (error);
 		}
@@ -1416,23 +1416,23 @@ ccdioctl(struct dev_ioctl_args *ap)
 				    cs->sc_cinfo[i].ci_vp);
 #endif
 			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE);
-			free(cs->sc_cinfo[i].ci_path, M_DEVBUF);
+			kfree(cs->sc_cinfo[i].ci_path, M_DEVBUF);
 		}
 
 		/* Free interleave index. */
 		for (i = 0; cs->sc_itable[i].ii_ndisk; ++i)
-			free(cs->sc_itable[i].ii_index, M_DEVBUF);
+			kfree(cs->sc_itable[i].ii_index, M_DEVBUF);
 
 		/* Free component info and interleave table. */
-		free(cs->sc_cinfo, M_DEVBUF);
-		free(cs->sc_itable, M_DEVBUF);
+		kfree(cs->sc_cinfo, M_DEVBUF);
+		kfree(cs->sc_itable, M_DEVBUF);
 		cs->sc_flags &= ~CCDF_INITED;
 
 		/*
 		 * Free ccddevice information and clear entry.
 		 */
-		free(ccddevs[unit].ccd_cpp, M_DEVBUF);
-		free(ccddevs[unit].ccd_vpp, M_DEVBUF);
+		kfree(ccddevs[unit].ccd_cpp, M_DEVBUF);
+		kfree(ccddevs[unit].ccd_vpp, M_DEVBUF);
 		ccd.ccd_dk = -1;
 		bcopy(&ccd, &ccddevs[unit], sizeof(ccd));
 

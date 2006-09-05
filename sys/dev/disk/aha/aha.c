@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.12 2005/09/11 13:33:40 sephe Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.13 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -227,7 +227,7 @@ aha_alloc(device_t dev, bus_space_tag_t tag, bus_space_handle_t bsh)
 		}
 	}
 
-	aha = malloc(sizeof(struct aha_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	aha = kmalloc(sizeof(struct aha_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	SLIST_INIT(&aha->free_aha_ccbs);
 	LIST_INIT(&aha->pending_ccbs);
 	SLIST_INIT(&aha->sg_maps);
@@ -260,7 +260,7 @@ aha_free(struct aha_softc *aha)
 					  sg_map->sg_dmamap);
 			bus_dmamem_free(aha->sg_dmat, sg_map->sg_vaddr,
 					sg_map->sg_dmamap);
-			free(sg_map, M_DEVBUF);
+			kfree(sg_map, M_DEVBUF);
 		}
 		bus_dma_tag_destroy(aha->sg_dmat);
 	}
@@ -296,7 +296,7 @@ aha_free(struct aha_softc *aha)
 	if (unit != AHA_TEMP_UNIT) {
 		aha_softcs[unit] = NULL;
 	}
-	free(aha, M_DEVBUF);
+	kfree(aha, M_DEVBUF);
 }
 
 /*
@@ -721,12 +721,12 @@ ahaallocccbs(struct aha_softc *aha)
 
 	next_ccb = &aha->aha_ccb_array[aha->num_ccbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
+	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(aha->sg_dmat, (void **)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
-		free(sg_map, M_DEVBUF);
+		kfree(sg_map, M_DEVBUF);
 		return;
 	}
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.25 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.26 2006/09/05 00:55:39 dillon Exp $
  */
 
 /*
@@ -637,13 +637,13 @@ cs_attach(device_t dev)
 	/*
 	 * this code still in progress (DMA support)
 	 */
-	sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_WAITOK);
+	sc->recv_ring=kmalloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_WAITOK);
 	if ((sc->recv_ring-(sc->recv_ring & 0x1FFFF))
 	    < (128*1024-CS_DMA_BUFFER_SIZE))
 	    sc->recv_ring+=16*1024;
 #endif
 
-	sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_WAITOK);
+	sc->buffer=kmalloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_WAITOK);
 
 	if (sc->adapter_cnf & A_CNF_10B_T) {
 		ifmedia_add(&sc->media, IFM_ETHER|IFM_10_T, 0, NULL);
@@ -713,11 +713,11 @@ cs_detach(device_t dev)
 	 * this code still in progress (DMA support)
 	 */
 	if (sc->recv_ring != NULL)
-		free(sc->recv_ring, M_DEVBUF);
+		kfree(sc->recv_ring, M_DEVBUF);
 #endif
 
 	if (sc->buffer != NULL)
-		free(sc->buffer, M_DEVBUF);
+		kfree(sc->buffer, M_DEVBUF);
 	cs_release_resources(dev);
 	ifmedia_removeall(&sc->media);
 

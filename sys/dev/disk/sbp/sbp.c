@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.16 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.17 2006/09/05 00:55:38 dillon Exp $
  *
  */
 
@@ -521,7 +521,7 @@ END_DEBUG
 		if (sdev->dma.v_addr == NULL) {
 			printf("%s: dma space allocation failed\n",
 							__func__);
-			free(sdev, M_SBP);
+			kfree(sdev, M_SBP);
 			target->luns[lun] = NULL;
 			goto next;
 		}
@@ -963,7 +963,7 @@ END_DEBUG
 	}
 	sdev = sbp_next_dev(target, sdev->lun_id + 1);
 	if (sdev == NULL) {
-		free(ccb, M_SBP);
+		kfree(ccb, M_SBP);
 		return;
 	}
 	/* reuse ccb */
@@ -991,7 +991,7 @@ SBP_DEBUG(0)
 	sbp_show_sdev_info(sdev, 2);
 	printf("sbp_cam_scan_target\n");
 END_DEBUG
-	ccb = malloc(sizeof(union ccb), M_SBP, M_WAITOK | M_ZERO);
+	ccb = kmalloc(sizeof(union ccb), M_SBP, M_WAITOK | M_ZERO);
 	xpt_setup_ccb(&ccb->ccb_h, sdev->path, SCAN_PRI);
 	ccb->ccb_h.func_code = XPT_SCAN_LUN;
 	ccb->ccb_h.cbfcnp = sbp_cam_scan_lun;
@@ -1994,7 +1994,7 @@ sbp_free_sdev(struct sbp_dev *sdev)
 		bus_dmamap_destroy(sdev->target->sbp->dmat,
 		    sdev->ocb[i].dmamap);
 	fwdma_free(sdev->target->sbp->fd.fc, &sdev->dma);
-	free(sdev, M_SBP);
+	kfree(sdev, M_SBP);
 }
 
 static void
@@ -2017,7 +2017,7 @@ sbp_free_target(struct sbp_target *target)
 		fw_xfer_free_buf(xfer);
 	}
 	STAILQ_INIT(&target->xferlist);
-	free(target->luns, M_SBP);
+	kfree(target->luns, M_SBP);
 	target->num_lun = 0;
 	target->luns = NULL;
 	target->fwdev = NULL;
@@ -2183,7 +2183,7 @@ sbp_timeout(void *arg)
 		/* XXX give up */
 		sbp_cam_detach_target(target);
 		if (target->luns != NULL)
-			free(target->luns, M_SBP);
+			kfree(target->luns, M_SBP);
 		target->num_lun = 0;
 		target->luns = NULL;
 		target->fwdev = NULL;

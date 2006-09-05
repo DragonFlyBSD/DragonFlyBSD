@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.10 2006/06/11 08:43:34 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.11 2006/09/05 00:55:41 dillon Exp $
  */
 
  
@@ -99,7 +99,7 @@ sbni_pci_probe(device_t dev)
 	if (!sc->io_res) {
 		printf("sbni: cannot allocate io ports!\n");
 		if (sc->slave_sc)
-			free(sc->slave_sc, M_DEVBUF);
+			kfree(sc->slave_sc, M_DEVBUF);
 		return (ENOENT);
 	}
 
@@ -111,7 +111,7 @@ sbni_pci_probe(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT,
 				     sc->io_rid, sc->io_res);
 		if (sc->slave_sc)
-			free(sc->slave_sc, M_DEVBUF);
+			kfree(sc->slave_sc, M_DEVBUF);
 		return (ENXIO);
 	}
 
@@ -161,7 +161,7 @@ sbni_pci_attach(device_t dev)
 		    dev, SYS_RES_IRQ, sc->irq_rid, sc->irq_res);
 	}
 	if (sc->slave_sc)
-		free(sc->slave_sc, M_DEVBUF);
+		kfree(sc->slave_sc, M_DEVBUF);
 	return (error);
 #endif
 }

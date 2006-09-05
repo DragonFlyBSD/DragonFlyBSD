@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvtb.c,v 1.5.2.1 2001/07/16 05:21:23 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.7 2005/09/24 14:40:00 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.8 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -93,7 +93,7 @@ sc_vtb_destroy(sc_vtb_t *vtb)
 	case VTB_MEMORY:
 	case VTB_RINGBUFFER:
 		if ((vtb->vtb_flags & VTB_ALLOCED) && (p != NULL))
-			free(p, M_SYSCONS);
+			kfree(p, M_SYSCONS);
 		break;
 	default:
 		break;

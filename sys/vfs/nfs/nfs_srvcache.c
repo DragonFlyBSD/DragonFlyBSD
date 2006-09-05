@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.10 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.11 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -339,8 +339,8 @@ nfsrv_cleancache(void)
 		if (rp->rc_flag & RC_REPMBUF)
 			m_freem(rp->rc_reply);
 		if (rp->rc_flag & RC_NAM)
-			free(rp->rc_nam, M_SONAME);
-		free(rp, M_NFSD);
+			kfree(rp->rc_nam, M_SONAME);
+		kfree(rp, M_NFSD);
 	}
 	numnfsrvcache = 0;
 }

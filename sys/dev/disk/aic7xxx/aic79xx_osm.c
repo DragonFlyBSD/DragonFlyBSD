@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.9 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.10 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -1726,7 +1726,7 @@ ahd_platform_set_tags(struct ahd_softc *ahd,
 int
 ahd_platform_alloc(struct ahd_softc *ahd, void *platform_arg)
 {
-	ahd->platform_data = malloc(sizeof(struct ahd_platform_data), M_DEVBUF,
+	ahd->platform_data = kmalloc(sizeof(struct ahd_platform_data), M_DEVBUF,
 				    M_INTWAIT | M_ZERO);
 	return (0);
 }
@@ -1769,7 +1769,7 @@ ahd_platform_free(struct ahd_softc *ahd)
 		}
 		if (pdata->eh != NULL)
 			EVENTHANDLER_DEREGISTER(shutdown_final, pdata->eh);
-		free(ahd->platform_data, M_DEVBUF);
+		kfree(ahd->platform_data, M_DEVBUF);
 	}
 }
 

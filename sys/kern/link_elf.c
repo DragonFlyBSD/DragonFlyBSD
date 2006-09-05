@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.20 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.21 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ link_elf_init(void* arg)
 
     dp = (Elf_Dyn*) &_DYNAMIC;
     if (dp) {
-	ef = malloc(sizeof(struct elf_file), M_LINKER, M_INTWAIT | M_ZERO);
+	ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_INTWAIT | M_ZERO);
 	ef->address = 0;
 #ifdef SPARSE_MAPPING
 	ef->object = 0;
@@ -347,7 +347,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
     if (baseptr == NULL || sizeptr == NULL || dynptr == NULL)
 	return (EINVAL);
 
-    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
+    ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
     if (ef == NULL)
 	return (ENOMEM);
     ef->modptr = modptr;
@@ -359,7 +359,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
     ef->dynamic = (Elf_Dyn *)dp;
     lf = linker_make_file(filename, ef, &link_elf_module_ops);
     if (lf == NULL) {
-	free(ef, M_LINKER);
+	kfree(ef, M_LINKER);
 	return ENOMEM;
     }
     lf->address = ef->address;
@@ -433,7 +433,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     error = nlookup_init(&nd, pathname, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
     if (error == 0)
 	error = vn_open(&nd, NULL, FREAD, 0);
-    free(pathname, M_LINKER);
+    kfree(pathname, M_LINKER);
     if (error) {
 	nlookup_done(&nd);
 	return error;
@@ -445,7 +445,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     /*
      * Read the elf header from the file.
      */
-    firstpage = malloc(PAGE_SIZE, M_LINKER, M_WAITOK);
+    firstpage = kmalloc(PAGE_SIZE, M_LINKER, M_WAITOK);
     if (firstpage == NULL) {
 	error = ENOMEM;
 	goto out;
@@ -545,11 +545,11 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     base_vlimit = round_page(segs[1]->p_vaddr + segs[1]->p_memsz);
     mapsize = base_vlimit - base_vaddr;
 
-    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
+    ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
 #ifdef SPARSE_MAPPING
     ef->object = vm_object_allocate(OBJT_DEFAULT, mapsize >> PAGE_SHIFT);
     if (ef->object == NULL) {
-	free(ef, M_LINKER);
+	kfree(ef, M_LINKER);
 	error = ENOMEM;
 	goto out;
     }
@@ -561,11 +561,11 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 			VM_PROT_ALL, VM_PROT_ALL, 0);
     if (error) {
 	vm_object_deallocate(ef->object);
-	free(ef, M_LINKER);
+	kfree(ef, M_LINKER);
 	goto out;
     }
 #else
-    ef->address = malloc(mapsize, M_LINKER, M_WAITOK);
+    ef->address = kmalloc(mapsize, M_LINKER, M_WAITOK);
 #endif
     mapbase = ef->address;
 
@@ -584,9 +584,9 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 			  + (ef->object->size << PAGE_SHIFT));
 	    vm_object_deallocate(ef->object);
 #else
-	    free(ef->address, M_LINKER);
+	    kfree(ef->address, M_LINKER);
 #endif
-	    free(ef, M_LINKER);
+	    kfree(ef, M_LINKER);
 	    goto out;
 	}
 	bzero(segbase + segs[i]->p_filesz,
@@ -613,9 +613,9 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 		      + (ef->object->size << PAGE_SHIFT));
 	vm_object_deallocate(ef->object);
 #else
-	free(ef->address, M_LINKER);
+	kfree(ef->address, M_LINKER);
 #endif
-	free(ef, M_LINKER);
+	kfree(ef, M_LINKER);
 	error = ENOMEM;
 	goto out;
     }
@@ -636,7 +636,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     nbytes = hdr->e_shnum * hdr->e_shentsize;
     if (nbytes == 0 || hdr->e_shoff == 0)
 	goto nosyms;
-    shdr = malloc(nbytes, M_LINKER, M_WAITOK | M_ZERO);
+    shdr = kmalloc(nbytes, M_LINKER, M_WAITOK | M_ZERO);
     if (shdr == NULL) {
 	error = ENOMEM;
 	goto out;
@@ -658,9 +658,9 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	goto nosyms;
 
     symcnt = shdr[symtabindex].sh_size;
-    ef->symbase = malloc(symcnt, M_LINKER, M_WAITOK);
+    ef->symbase = kmalloc(symcnt, M_LINKER, M_WAITOK);
     strcnt = shdr[symstrindex].sh_size;
-    ef->strbase = malloc(strcnt, M_LINKER, M_WAITOK);
+    ef->strbase = kmalloc(strcnt, M_LINKER, M_WAITOK);
 
     if (ef->symbase == NULL || ef->strbase == NULL) {
 	error = ENOMEM;
@@ -692,9 +692,9 @@ out:
     if (error && lf)
 	linker_file_unload(lf);
     if (shdr)
-	free(shdr, M_LINKER);
+	kfree(shdr, M_LINKER);
     if (firstpage)
-	free(firstpage, M_LINKER);
+	kfree(firstpage, M_LINKER);
     vn_unlock(vp);
     vn_close(vp, FREAD);
 
@@ -716,13 +716,13 @@ link_elf_unload_file(linker_file_t file)
 	}
 #else
 	if (ef->address)
-	    free(ef->address, M_LINKER);
+	    kfree(ef->address, M_LINKER);
 #endif
 	if (ef->symbase)
-	    free(ef->symbase, M_LINKER);
+	    kfree(ef->symbase, M_LINKER);
 	if (ef->strbase)
-	    free(ef->strbase, M_LINKER);
-	free(ef, M_LINKER);
+	    kfree(ef->strbase, M_LINKER);
+	kfree(ef, M_LINKER);
     }
 }
 
@@ -732,7 +732,7 @@ link_elf_unload_module(linker_file_t file)
     elf_file_t ef = file->priv;
 
     if (ef)
-	free(ef, M_LINKER);
+	kfree(ef, M_LINKER);
     if (file->filename)
 	preload_delete_name(file->filename);
 }
@@ -1009,7 +1009,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
 	int len, error = 0, count;
 
 	len = strlen(name) + sizeof("__start_set_"); /* sizeof includes \0 */
-	setsym = malloc(len, M_LINKER, M_WAITOK);
+	setsym = kmalloc(len, M_LINKER, M_WAITOK);
 	if (setsym == NULL)
 	       return ENOMEM;
 
@@ -1049,7 +1049,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
 	       *countp = count;
 
 	out:
-	free(setsym, M_LINKER);
+	kfree(setsym, M_LINKER);
 	return error;
 }
 

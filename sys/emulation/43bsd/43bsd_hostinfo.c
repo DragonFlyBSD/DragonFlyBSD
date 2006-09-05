@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_hostinfo.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_hostinfo.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
  *	from: DragonFly kern/kern_xxx.c,v 1.7
  *	from: DragonFly kern/kern_sysctl.c,v 1.12
  *
@@ -60,14 +60,14 @@ sys_ogethostname(struct gethostname_args *uap)
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
 	len = MIN(uap->len, MAXHOSTNAMELEN);
-	hostname = malloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
+	hostname = kmalloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
 
 	error = kernel_sysctl(name, 2, hostname, &len, NULL, 0, NULL);
 
 	if (error == 0)
 		error = copyout(hostname, uap->hostname, len);
 
-	free(hostname, M_TEMP);
+	kfree(hostname, M_TEMP);
 	return (error);
 }
 
@@ -88,17 +88,17 @@ sys_osethostname(struct sethostname_args *uap)
 	if (error)
 		return (error);
 	len = MIN(uap->len, MAXHOSTNAMELEN);
-	hostname = malloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
+	hostname = kmalloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
 
 	error = copyin(uap->hostname, hostname, len);
 	if (error) {
-		free(hostname, M_TEMP);
+		kfree(hostname, M_TEMP);
 		return (error);
 	}
 
 	error = kernel_sysctl(name, 2, NULL, 0, hostname, len, NULL);
 
-	free(hostname, M_TEMP);
+	kfree(hostname, M_TEMP);
 	return (error);
 }
 

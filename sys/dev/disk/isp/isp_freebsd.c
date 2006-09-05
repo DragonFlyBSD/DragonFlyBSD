@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.14 2006/07/28 02:17:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.15 2006/09/05 00:55:37 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -659,11 +659,11 @@ create_lun_state(struct ispsoftc *isp, int bus,
 	if (is_lun_enabled(isp, bus, lun)) {
 		return (CAM_LUN_ALRDY_ENA);
 	}
-	new = malloc(sizeof (tstate_t), M_DEVBUF, M_WAITOK | M_ZERO);
+	new = kmalloc(sizeof (tstate_t), M_DEVBUF, M_WAITOK | M_ZERO);
 	status = xpt_create_path(&new->owner, NULL, xpt_path_path_id(path),
 	    xpt_path_target_id(path), xpt_path_lun_id(path));
 	if (status != CAM_REQ_CMP) {
-		free(new, M_DEVBUF);
+		kfree(new, M_DEVBUF);
 		return (status);
 	}
 	new->bus = bus;
@@ -715,7 +715,7 @@ destroy_lun_state(struct ispsoftc *isp, tstate_t *tptr)
 			return;
 		}
 	}
-	free(tptr, M_DEVBUF);
+	kfree(tptr, M_DEVBUF);
 }
 
 /*

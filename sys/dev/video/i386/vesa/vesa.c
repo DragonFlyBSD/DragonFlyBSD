@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.13 2006/01/14 23:04:46 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.14 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -630,7 +630,7 @@ vesa_bios_init(void)
 	vesa_vmode[0].vi_mode = EOT;
 
 	/* Allocate a buffer and add each page to the vm86 context. */
-	vesa_vm86_buf = malloc(VESA_VM86_BUFSIZE, M_DEVBUF, M_WAITOK | M_ZERO);
+	vesa_vm86_buf = kmalloc(VESA_VM86_BUFSIZE, M_DEVBUF, M_WAITOK | M_ZERO);
 	KASSERT(((vm_offset_t)vesa_vm86_buf & PAGE_MASK) == 0,
 	    ("bad vesa_vm86_buf alignment"));
 	for (i = 0; i < howmany(VESA_VM86_BUFSIZE, PAGE_SIZE); i++)
@@ -719,7 +719,7 @@ vesa_bios_init(void)
 #endif
 			if (modes > 0) {
 				bcopy(vesa_vmode, p, sizeof(*vesa_vmode)*modes);
-				free(vesa_vmode, M_DEVBUF);
+				kfree(vesa_vmode, M_DEVBUF);
 			}
 			vesa_vmode = p;
 		}
@@ -1366,7 +1366,7 @@ get_palette(video_adapter_t *adp, int base, int count,
 	if (bits <= 6)
 		return 1;
 
-	r = malloc(count*3, M_DEVBUF, M_WAITOK);
+	r = kmalloc(count*3, M_DEVBUF, M_WAITOK);
 	g = r + count;
 	b = g + count;
 	error = vesa_bios_save_palette2(base, count, r, g, b, bits);
@@ -1379,7 +1379,7 @@ get_palette(video_adapter_t *adp, int base, int count,
 			copyout(r, trans, count);
 		}
 	}
-	free(r, M_DEVBUF);
+	kfree(r, M_DEVBUF);
 
 	/* if error && bits != 6 at this point, we are in in trouble... XXX */
 	return error;
@@ -1403,7 +1403,7 @@ set_palette(video_adapter_t *adp, int base, int count,
 		|| ((bits = vesa_bios_set_dac(8)) <= 6))
 		return 1;
 
-	r = malloc(count*3, M_DEVBUF, M_WAITOK);
+	r = kmalloc(count*3, M_DEVBUF, M_WAITOK);
 	g = r + count;
 	b = g + count;
 	copyin(red, r, count);
@@ -1411,7 +1411,7 @@ set_palette(video_adapter_t *adp, int base, int count,
 	copyin(blue, b, count);
 
 	error = vesa_bios_load_palette2(base, count, r, g, b, bits);
-	free(r, M_DEVBUF);
+	kfree(r, M_DEVBUF);
 	if (error == 0)
 		return 0;
 
@@ -1652,7 +1652,7 @@ vesa_unload(void)
 	crit_exit();
 
 	if (vesa_vm86_buf != NULL)
-		free(vesa_vm86_buf, M_DEVBUF);
+		kfree(vesa_vm86_buf, M_DEVBUF);
 
 	return error;
 }

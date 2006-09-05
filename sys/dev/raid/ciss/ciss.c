@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.17 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.18 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -675,7 +675,7 @@ ciss_flush_adapter(struct ciss_softc *sc)
      * it, as we may be going to do more I/O (eg. we are emulating
      * the Synchronise Cache command).
      */
-    cbfc = malloc(sizeof(*cbfc), CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
+    cbfc = kmalloc(sizeof(*cbfc), CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_FLUSH_CACHE,
 				       (void **)&cbfc, sizeof(*cbfc))) != 0)
 	goto out;
@@ -704,7 +704,7 @@ ciss_flush_adapter(struct ciss_softc *sc)
 
 out:
     if (cbfc != NULL)
-	free(cbfc, CISS_MALLOC_CLASS);
+	kfree(cbfc, CISS_MALLOC_CLASS);
     if (cr != NULL)
 	ciss_release_request(cr);
     return(error);
@@ -879,7 +879,7 @@ ciss_identify_adapter(struct ciss_softc *sc)
 out:
     if (error) {
 	if (sc->ciss_id != NULL) {
-	    free(sc->ciss_id, CISS_MALLOC_CLASS);
+	    kfree(sc->ciss_id, CISS_MALLOC_CLASS);
 	    sc->ciss_id = NULL;
 	}
     }	
@@ -914,7 +914,7 @@ ciss_init_logical(struct ciss_softc *sc)
     if ((error = ciss_get_request(sc, &cr)) != 0)
 	goto out;
     report_size = sizeof(*cll) + CISS_MAX_LOGICAL * sizeof(union ciss_device_address);
-    cll = malloc(report_size, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
+    cll = kmalloc(report_size, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
 
     /*
      * Build the Report Logical LUNs command.
@@ -1011,7 +1011,7 @@ ciss_init_logical(struct ciss_softc *sc)
     if (cr != NULL)
 	ciss_release_request(cr);
     if (cll != NULL)
-	free(cll, CISS_MALLOC_CLASS);
+	kfree(cll, CISS_MALLOC_CLASS);
     return(error);
 }
 
@@ -1157,11 +1157,11 @@ out:
 	/* make the drive not-exist */
 	ld->cl_status = CISS_LD_NONEXISTENT;
 	if (ld->cl_ldrive != NULL) {
-	    free(ld->cl_ldrive, CISS_MALLOC_CLASS);
+	    kfree(ld->cl_ldrive, CISS_MALLOC_CLASS);
 	    ld->cl_ldrive = NULL;
 	}
 	if (ld->cl_lstatus != NULL) {
-	    free(ld->cl_lstatus, CISS_MALLOC_CLASS);
+	    kfree(ld->cl_lstatus, CISS_MALLOC_CLASS);
 	    ld->cl_lstatus = NULL;
 	}
     }
@@ -1353,7 +1353,7 @@ ciss_free(struct ciss_softc *sc)
     
     /* free the controller data */
     if (sc->ciss_id != NULL)
-	free(sc->ciss_id, CISS_MALLOC_CLASS);
+	kfree(sc->ciss_id, CISS_MALLOC_CLASS);
 
     /* release I/O resources */
     if (sc->ciss_regs_resource != NULL)
@@ -1856,7 +1856,7 @@ ciss_get_bmic_request(struct ciss_softc *sc, struct ciss_request **crp,
     dataout = 0;
     if ((bufsize > 0) && (bufp != NULL)) {
 	if (*bufp == NULL) {
-	    buf = malloc(bufsize, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
+	    buf = kmalloc(bufsize, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
 	} else {
 	    buf = *bufp;
 	    dataout = 1;	/* we are given a buffer, so we are writing */
@@ -1892,7 +1892,7 @@ out:
 	if (cr != NULL)
 	    ciss_release_request(cr);
 	if ((bufp != NULL) && (*bufp == NULL) && (buf != NULL))
-	    free(buf, CISS_MALLOC_CLASS);
+	    kfree(buf, CISS_MALLOC_CLASS);
     } else {
 	*crp = cr;
 	if ((bufp != NULL) && (*bufp == NULL) && (buf != NULL))
@@ -1928,7 +1928,7 @@ ciss_user_command(struct ciss_softc *sc, IOCTL_Command_struct *ioc)
      */
     cr->cr_length = ioc->buf_size;
     if (ioc->buf_size > 0) {
-	if ((cr->cr_data = malloc(ioc->buf_size, CISS_MALLOC_CLASS, M_WAITOK)) == NULL) {
+	if ((cr->cr_data = kmalloc(ioc->buf_size, CISS_MALLOC_CLASS, M_WAITOK)) == NULL) {
 	    error = ENOMEM;
 	    goto out;
 	}
@@ -1970,7 +1970,7 @@ ciss_user_command(struct ciss_softc *sc, IOCTL_Command_struct *ioc)
 
 out:
     if ((cr != NULL) && (cr->cr_data != NULL))
-	free(cr->cr_data, CISS_MALLOC_CLASS);
+	kfree(cr->cr_data, CISS_MALLOC_CLASS);
     if (cr != NULL)
 	ciss_release_request(cr);
     return(error);
@@ -2109,7 +2109,7 @@ ciss_cam_rescan_target(struct ciss_softc *sc, int target)
 
     debug_called(1);
 
-    if ((ccb = malloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO)) == NULL) {
+    if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO)) == NULL) {
 	ciss_printf(sc, "rescan failed (can't allocate CCB)\n");
 	return;
     }
@@ -2139,7 +2139,7 @@ static void
 ciss_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
     xpt_free_path(ccb->ccb_h.path);
-    free(ccb, M_TEMP);
+    kfree(ccb, M_TEMP);
 }
 
 /************************************************************************
@@ -2664,7 +2664,7 @@ ciss_notify_event(struct ciss_softc *sc)
      * structure.
      */
     if (cr->cr_data == NULL) {
-	cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
+	cr->cr_data = kmalloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
 	cr->cr_length = CISS_NOTIFY_DATA_SIZE;
     }
 
@@ -2701,7 +2701,7 @@ ciss_notify_event(struct ciss_softc *sc)
     if (error) {
 	if (cr != NULL) {
 	    if (cr->cr_data != NULL)
-		free(cr->cr_data, CISS_MALLOC_CLASS);
+		kfree(cr->cr_data, CISS_MALLOC_CLASS);
 	    ciss_release_request(cr);
 	}
 	sc->ciss_periodic_notify = NULL;
@@ -2831,7 +2831,7 @@ ciss_notify_abort(struct ciss_softc *sc)
 	goto out;
 
     /* get a buffer for the result */
-    cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
+    cr->cr_data = kmalloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
     cr->cr_length = CISS_NOTIFY_DATA_SIZE;
     
     /* build the CDB */
@@ -2919,7 +2919,7 @@ ciss_notify_abort(struct ciss_softc *sc)
     /* release the cancel request */
     if (cr != NULL) {
 	if (cr->cr_data != NULL)
-	    free(cr->cr_data, CISS_MALLOC_CLASS);
+	    kfree(cr->cr_data, CISS_MALLOC_CLASS);
 	ciss_release_request(cr);
     }
     if (error == 0)

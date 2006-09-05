@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.14 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.15 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -134,7 +134,7 @@ ips_cmdqueue_free(ips_softc_t *sc)
 		sc->state |= IPS_OFFLINE;
 	}
 	sc->staticcmd = NULL;
-	free(sc->commandarray, M_IPSBUF);
+	kfree(sc->commandarray, M_IPSBUF);
 	crit_exit();
 	return error;
 }

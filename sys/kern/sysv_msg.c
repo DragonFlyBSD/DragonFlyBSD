@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.14 2006/06/05 07:26:10 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.15 2006/09/05 00:55:45 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -130,16 +130,16 @@ msginit(dummy)
 	int i;
 
 	msginfo.msgmax = msginfo.msgseg * msginfo.msgssz;
-	msgpool = malloc(msginfo.msgmax, M_MSG, M_WAITOK);
+	msgpool = kmalloc(msginfo.msgmax, M_MSG, M_WAITOK);
 	if (msgpool == NULL)
 		panic("msgpool is NULL");
-	msgmaps = malloc(sizeof(struct msgmap) * msginfo.msgseg, M_MSG, M_WAITOK);
+	msgmaps = kmalloc(sizeof(struct msgmap) * msginfo.msgseg, M_MSG, M_WAITOK);
 	if (msgmaps == NULL)
 		panic("msgmaps is NULL");
-	msghdrs = malloc(sizeof(struct msg) * msginfo.msgtql, M_MSG, M_WAITOK);
+	msghdrs = kmalloc(sizeof(struct msg) * msginfo.msgtql, M_MSG, M_WAITOK);
 	if (msghdrs == NULL)
 		panic("msghdrs is NULL");
-	msqids = malloc(sizeof(struct msqid_ds) * msginfo.msgmni, M_MSG, M_WAITOK);
+	msqids = kmalloc(sizeof(struct msqid_ds) * msginfo.msgmni, M_MSG, M_WAITOK);
 	if (msqids == NULL)
 		panic("msqids is NULL");
 

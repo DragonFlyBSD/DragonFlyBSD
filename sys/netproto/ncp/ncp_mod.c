@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.9 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.10 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -350,7 +350,7 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 			password = ncp_str_dup(lip->password);
 			if (password == NULL) {
 				if (user)
-					free(user, M_NCPDATA);
+					kfree(user, M_NCPDATA);
 				return EINVAL;
 			}
 			ncp_str_upper(password);
@@ -365,8 +365,8 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 		ncp_conn_unlock(conn,td);
 		copyout(&connHandle,uap->connHandle,sizeof(connHandle));
 	}
-	if (user) free(user, M_NCPDATA);
-	if (password) free(password, M_NCPDATA);
+	if (user) kfree(user, M_NCPDATA);
+	if (password) kfree(password, M_NCPDATA);
 	uap->sysmsg_result = error;
 	return error;
 

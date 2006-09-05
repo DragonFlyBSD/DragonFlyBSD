@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.22 2005/11/30 13:35:24 sephe Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.23 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,7 +331,7 @@ oltr_pci_attach(device_t dev)
 	scratch_size = TRlldAdapterSize();
 	if (bootverbose)
 		device_printf(dev, "adapter memory block size %d bytes\n", scratch_size);
-	sc->TRlldAdapter = (TRlldAdapter_t)malloc(scratch_size, M_DEVBUF, M_NOWAIT);
+	sc->TRlldAdapter = (TRlldAdapter_t)kmalloc(scratch_size, M_DEVBUF, M_NOWAIT);
 	if (sc->TRlldAdapter == NULL) {
 		device_printf(dev, "couldn't allocate scratch buffer (%d bytes)\n", scratch_size);
 		goto config_failed;
@@ -342,18 +342,18 @@ oltr_pci_attach(device_t dev)
 	 */
 	for (i = 0; i < RING_BUFFER_LEN; i++) {
 		sc->rx_ring[i].index = i;
-		sc->rx_ring[i].data = (char *)malloc(RX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
+		sc->rx_ring[i].data = (char *)kmalloc(RX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
 		sc->rx_ring[i].address = vtophys(sc->rx_ring[i].data);
 		sc->tx_ring[i].index = i;
-		sc->tx_ring[i].data = (char *)malloc(TX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
+		sc->tx_ring[i].data = (char *)kmalloc(TX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
 		sc->tx_ring[i].address = vtophys(sc->tx_ring[i].data);
 		if ((!sc->rx_ring[i].data) || (!sc->tx_ring[i].data)) {
 			device_printf(dev, "unable to allocate ring buffers\n");
 			while (i > 0) {
 				if (sc->rx_ring[i].data)
-					free(sc->rx_ring[i].data, M_DEVBUF);
+					kfree(sc->rx_ring[i].data, M_DEVBUF);
 				if (sc->tx_ring[i].data)
-					free(sc->tx_ring[i].data, M_DEVBUF);
+					kfree(sc->tx_ring[i].data, M_DEVBUF);
 				i--;
 			}
 			goto config_failed;
@@ -450,12 +450,12 @@ oltr_pci_detach(device_t dev)
 
 	/* Deallocate all dynamic memory regions */
 	for (i = 0; i < RING_BUFFER_LEN; i++) {
-		free(sc->rx_ring[i].data, M_DEVBUF);
-		free(sc->tx_ring[i].data, M_DEVBUF);
+		kfree(sc->rx_ring[i].data, M_DEVBUF);
+		kfree(sc->tx_ring[i].data, M_DEVBUF);
 	}
 	if (sc->work_memory)
-		free(sc->work_memory, M_DEVBUF);
-	free(sc->TRlldAdapter, M_DEVBUF);
+		kfree(sc->work_memory, M_DEVBUF);
+	kfree(sc->TRlldAdapter, M_DEVBUF);
 
 	crit_exit();
 
@@ -537,7 +537,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 
 	crit_enter();
 
-	sc = malloc(sizeof(struct oltr_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(struct oltr_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
 		printf("oltr%d: no memory for softc struct!\n", unit);
 		goto config_failed;
@@ -576,7 +576,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	scratch_size = TRlldAdapterSize();
 	if (bootverbose)
 		printf("oltr%d: adapter memory block size %d bytes\n", unit, scratch_size);
-	sc->TRlldAdapter = (TRlldAdapter_t)malloc(scratch_size, M_DEVBUF, M_NOWAIT);
+	sc->TRlldAdapter = (TRlldAdapter_t)kmalloc(scratch_size, M_DEVBUF, M_NOWAIT);
 	if (sc->TRlldAdapter == NULL) {
 		printf("oltr%d: couldn't allocate scratch buffer (%d bytes)\n",unit, scratch_size);
 		goto config_failed;
@@ -587,18 +587,18 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	 */
 	for (i = 0; i < RING_BUFFER_LEN; i++) {
 		sc->rx_ring[i].index = i;
-		sc->rx_ring[i].data = (char *)malloc(RX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
+		sc->rx_ring[i].data = (char *)kmalloc(RX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
 		sc->rx_ring[i].address = vtophys(sc->rx_ring[i].data);
 		sc->tx_ring[i].index = i;
-		sc->tx_ring[i].data = (char *)malloc(TX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
+		sc->tx_ring[i].data = (char *)kmalloc(TX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
 		sc->tx_ring[i].address = vtophys(sc->tx_ring[i].data);
 		if ((!sc->rx_ring[i].data) || (!sc->tx_ring[i].data)) {
 			printf("oltr%d: unable to allocate ring buffers\n", unit);
 			while (i > 0) {
 				if (sc->rx_ring[i].data)
-					free(sc->rx_ring[i].data, M_DEVBUF);
+					kfree(sc->rx_ring[i].data, M_DEVBUF);
 				if (sc->tx_ring[i].data)
-					free(sc->tx_ring[i].data, M_DEVBUF);
+					kfree(sc->tx_ring[i].data, M_DEVBUF);
 				i--;
 			}
 			goto config_failed;
@@ -845,7 +845,7 @@ oltr_init(void * xsc)
 	}
 
 	if (work_size) {
-		if ((sc->work_memory = malloc(work_size, M_DEVBUF, M_NOWAIT)) == NULL) {
+		if ((sc->work_memory = kmalloc(work_size, M_DEVBUF, M_NOWAIT)) == NULL) {
 			printf("oltr%d: failed to allocate work memory (%d octets).\n", sc->unit, work_size);
 		} else {
 		TRlldAddMemory(sc->TRlldAdapter, sc->work_memory,

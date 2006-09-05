@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.8 2005/02/28 16:23:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.9 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -73,7 +73,7 @@ ncp_str_dup(const char *s)
 		len++;
 		if (bt == 0) break;
 	}
-	dst = malloc(len, M_NCPDATA, M_WAITOK);
+	dst = kmalloc(len, M_NCPDATA, M_WAITOK);
 	copyin(s, dst, len);
 	return(dst);
 }

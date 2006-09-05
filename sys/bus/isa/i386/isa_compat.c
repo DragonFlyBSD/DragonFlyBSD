@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.9 2005/05/24 20:58:50 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.10 2006/09/05 00:55:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -289,7 +289,7 @@ isa_wrap_old_drivers(void)
 	struct isa_compat_driver *driver;
 
 	for (i = 0, op = &old_drivers[0]; i < old_drivers_count; i++, op++) {
-		driver = malloc(sizeof(struct isa_compat_driver), M_DEVBUF, M_WAITOK | M_ZERO);
+		driver = kmalloc(sizeof(struct isa_compat_driver), M_DEVBUF, M_WAITOK | M_ZERO);
 		driver->driver.name = op->driver->name;
 		driver->driver.methods = isa_compat_methods;
 		driver->driver.size = sizeof(struct isa_device);

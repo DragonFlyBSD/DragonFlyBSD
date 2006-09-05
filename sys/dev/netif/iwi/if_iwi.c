@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.14 2006/09/03 17:31:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.15 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*-
@@ -720,7 +720,7 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 		goto fail;
 	}
 
-	ring->data = malloc(count * sizeof (struct iwi_tx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct iwi_tx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
@@ -815,7 +815,7 @@ iwi_free_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring)
 			}
 		}
 
-		free(ring->data, M_DEVBUF);
+		kfree(ring->data, M_DEVBUF);
 		ring->data = NULL;
 	}
 
@@ -834,7 +834,7 @@ iwi_alloc_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring, int count)
 	ring->count = count;
 	ring->cur = 0;
 
-	ring->data = malloc(count * sizeof (struct iwi_rx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct iwi_rx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
@@ -913,7 +913,7 @@ iwi_free_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring)
 			}
 		}
 
-		free(ring->data, M_DEVBUF);
+		kfree(ring->data, M_DEVBUF);
 		ring->data = NULL;
 	}
 
@@ -975,7 +975,7 @@ iwi_node_alloc(struct ieee80211_node_table *nt)
 {
 	struct iwi_node *in;
 
-	in = malloc(sizeof (struct iwi_node), M_80211_NODE, M_NOWAIT | M_ZERO);
+	in = kmalloc(sizeof (struct iwi_node), M_80211_NODE, M_NOWAIT | M_ZERO);
 	if (in == NULL)
 		return NULL;
 
@@ -2273,9 +2273,9 @@ iwi_cache_firmware(struct iwi_softc *sc, void *data)
 	kfw->ucode_size = ufw.ucode_size;
 	kfw->main_size  = ufw.main_size;
 
-	kfw->boot = malloc(kfw->boot_size, M_DEVBUF, M_WAITOK);
-	kfw->ucode = malloc(kfw->ucode_size, M_DEVBUF, M_WAITOK);
-	kfw->main = malloc(kfw->main_size, M_DEVBUF, M_WAITOK);
+	kfw->boot = kmalloc(kfw->boot_size, M_DEVBUF, M_WAITOK);
+	kfw->ucode = kmalloc(kfw->ucode_size, M_DEVBUF, M_WAITOK);
+	kfw->main = kmalloc(kfw->main_size, M_DEVBUF, M_WAITOK);
 
 	if ((error = copyin(ufw.boot, kfw->boot, kfw->boot_size)) != 0)
 		goto fail;
@@ -2294,9 +2294,9 @@ iwi_cache_firmware(struct iwi_softc *sc, void *data)
 	return 0;
 
 fail:
-	free(kfw->boot, M_DEVBUF);
-	free(kfw->ucode, M_DEVBUF);
-	free(kfw->main, M_DEVBUF);
+	kfree(kfw->boot, M_DEVBUF);
+	kfree(kfw->ucode, M_DEVBUF);
+	kfree(kfw->main, M_DEVBUF);
 
 	return error;
 }
@@ -2307,9 +2307,9 @@ iwi_free_firmware(struct iwi_softc *sc)
 	if (!(sc->flags & IWI_FLAG_FW_CACHED))
 		return;
 
-	free(sc->fw.boot, M_DEVBUF);
-	free(sc->fw.ucode, M_DEVBUF);
-	free(sc->fw.main, M_DEVBUF);
+	kfree(sc->fw.boot, M_DEVBUF);
+	kfree(sc->fw.ucode, M_DEVBUF);
+	kfree(sc->fw.main, M_DEVBUF);
 
 	sc->flags &= ~IWI_FLAG_FW_CACHED;
 }

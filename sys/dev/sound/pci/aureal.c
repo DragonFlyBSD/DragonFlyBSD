@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
@@ -560,7 +560,7 @@ au_pci_attach(device_t dev)
 	struct ac97_info *codec;
 	char 		status[SND_STATUSLEN];
 
-	if ((au = malloc(sizeof(*au), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((au = kmalloc(sizeof(*au), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -613,7 +613,7 @@ au_pci_attach(device_t dev)
 #if 0
 	if (j < config_id->nummaps) {
 		printf("pcm%d: unable to map a required resource\n", unit);
-		free(au, M_DEVBUF);
+		kfree(au, M_DEVBUF);
 		return;
 	}
 #endif
@@ -661,7 +661,7 @@ au_pci_attach(device_t dev)
 	return 0;
 
  bad:
-	if (au) free(au, M_DEVBUF);
+	if (au) kfree(au, M_DEVBUF);
 	for (i = 0; i < j; i++)
 		bus_release_resource(dev, type[i], regid[i], reg[i]);
 	if (ih) bus_teardown_intr(dev, irq, ih);

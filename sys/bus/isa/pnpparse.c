@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/pnpparse.c,v 1.14 2003/06/11 00:32:45 obrien Exp $
- * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.6 2004/04/07 05:54:32 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.7 2006/09/05 00:55:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -546,7 +546,7 @@ pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn)
 	if (ncfgs == 1) {
 		/* Single config without dependants */
 		ISA_ADD_CONFIG(parent, dev, priorities[0], &configs[0]);
-		free(configs, M_DEVBUF);
+		kfree(configs, M_DEVBUF);
 		return;
 	}
 
@@ -560,7 +560,7 @@ pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn)
 		ISA_ADD_CONFIG(parent, dev, priorities[i], &configs[i]);
 	}
 
-	free(configs, M_DEVBUF);
+	kfree(configs, M_DEVBUF);
 }
 
 u_char *

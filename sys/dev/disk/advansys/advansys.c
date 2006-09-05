@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.7 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.8 2006/09/05 00:55:37 dillon Exp $
  */
 /*
  * Ported from:
@@ -759,7 +759,7 @@ adv_free(struct adv_softc *adv)
 		bus_dma_tag_destroy(adv->parent_dmat);
 	case 1:
 		if (adv->ccb_infos != NULL)
-			free(adv->ccb_infos, M_DEVBUF);
+			kfree(adv->ccb_infos, M_DEVBUF);
 	case 0:
 		break;
 	}
@@ -1287,7 +1287,7 @@ adv_attach(adv)
 	 * a transaction and use it for mapping the queue to the
 	 * upper level SCSI transaction it represents.
 	 */
-	adv->ccb_infos = malloc(sizeof(*adv->ccb_infos) * adv->max_openings,
+	adv->ccb_infos = kmalloc(sizeof(*adv->ccb_infos) * adv->max_openings,
 				M_DEVBUF, M_WAITOK);
 	adv->init_level++;
 		

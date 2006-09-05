@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.6 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.7 2006/09/05 00:55:34 dillon Exp $
  */
 
 #include "opt_eisa.h"
@@ -173,7 +173,7 @@ eisa_probe(device_t dev)
 		devices_found++;
 
 		/* Prepare an eisa_device_node for this slot */
-		e_dev = malloc(sizeof(*e_dev), M_DEVBUF, M_INTWAIT | M_ZERO);
+		e_dev = kmalloc(sizeof(*e_dev), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		e_dev->id = eisa_id;
 		e_dev->ioconf.slot = slot; 
@@ -503,7 +503,7 @@ eisa_add_intr(device_t dev, int irq, int trigger)
 	struct eisa_device *e_dev = device_get_ivars(dev);
 	struct irq_node *irq_info;
  
-	irq_info = malloc(sizeof(*irq_info), M_DEVBUF, M_INTWAIT);
+	irq_info = kmalloc(sizeof(*irq_info), M_DEVBUF, M_INTWAIT);
 	irq_info->irq_no = irq;
 	irq_info->irq_trigger = trigger;
 	irq_info->idesc = NULL;
@@ -517,7 +517,7 @@ eisa_add_resvaddr(struct eisa_device *e_dev, struct resvlist *head, u_long base,
 {
 	resvaddr_t *reservation;
 
-	reservation = malloc(sizeof(resvaddr_t), M_DEVBUF, M_INTWAIT);
+	reservation = kmalloc(sizeof(resvaddr_t), M_DEVBUF, M_INTWAIT);
 	reservation->addr = base;
 	reservation->size = size;
 	reservation->flags = flags;
@@ -543,7 +543,7 @@ eisa_add_resvaddr(struct eisa_device *e_dev, struct resvlist *head, u_long base,
 				 * matches any already in here,
 				 * fail.
 				 */
-				free(reservation, M_DEVBUF);
+				kfree(reservation, M_DEVBUF);
 				return (EEXIST);
 			}
 

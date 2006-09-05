@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.17 2006/05/07 00:22:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.18 2006/09/05 00:55:45 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -121,7 +121,7 @@ msf_buf_init(void *__dummy)
 	msf_base = kmem_alloc_nofault(kernel_map,
 					msf_buf_count * XIO_INTERNAL_SIZE);
 
-	msf_bufs = malloc(msf_buf_count * sizeof(struct msf_buf), M_MSFBUF,
+	msf_bufs = kmalloc(msf_buf_count * sizeof(struct msf_buf), M_MSFBUF,
 			M_WAITOK|M_ZERO);
 
 	/* Initialize the free list with necessary information. */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.27 2006/05/08 18:45:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.28 2006/09/05 00:55:45 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -1164,7 +1164,7 @@ again:
     if (pathlen <= sizeof(buf))
 	base = buf;
     else
-	base = malloc(pathlen, M_TEMP, M_INTWAIT);
+	base = kmalloc(pathlen, M_TEMP, M_INTWAIT);
 
     /*
      * Pass 2 - generate the path buffer
@@ -1176,7 +1176,7 @@ again:
     ) {
 	if (scan->nc_nlen >= index) {
 	    if (base != buf)
-		free(base, M_TEMP);
+		kfree(base, M_TEMP);
 	    goto again;
 	}
 	if (index == pathlen)
@@ -1188,7 +1188,7 @@ again:
     }
     jrecord_leaf(jrec, rectype, base + index, pathlen - index);
     if (base != buf)
-	free(base, M_TEMP);
+	kfree(base, M_TEMP);
 }
 
 /*
@@ -1393,7 +1393,7 @@ jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
     int error;
     int n;
 
-    buf = malloc(bufsize, M_JOURNAL, M_WAITOK);
+    buf = kmalloc(bufsize, M_JOURNAL, M_WAITOK);
     jrecord_leaf(jrec, JLEAF_SEEKPOS, &off, sizeof(off));
     while (bytes) {
 	n = (bytes > bufsize) ? bufsize : (int)bytes;
@@ -1407,6 +1407,6 @@ jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
 	bytes -= n;
 	off += n;
     }
-    free(buf, M_JOURNAL);
+    kfree(buf, M_JOURNAL);
 }
 

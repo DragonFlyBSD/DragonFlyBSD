@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.6 2005/09/01 00:40:51 swildner Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.6 2005/09/01 00:40:51 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -397,21 +397,21 @@ sbc_attach(device_t dev)
 	}
 
 	/* PCM Audio */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL) goto bad;
 	func->func = SCF_PCM;
 	scp->child_pcm = device_add_child(dev, "pcm", -1);
 	device_set_ivars(scp->child_pcm, func);
 
 	/* Midi Interface */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL) goto bad;
 	func->func = SCF_MIDI;
 	scp->child_midi1 = device_add_child(dev, "midi", -1);
 	device_set_ivars(scp->child_midi1, func);
 
 	/* OPL FM Synthesizer */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL) goto bad;
 	func->func = SCF_SYNTH;
 	scp->child_midi2 = device_add_child(dev, "midi", -1);

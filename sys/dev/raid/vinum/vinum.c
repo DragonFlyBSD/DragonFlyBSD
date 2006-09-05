@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.15 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.16 2006/09/05 00:55:42 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -149,7 +149,7 @@ vinumattach(void *dummy)
 	if (rv)
 	    log(LOG_NOTICE, "vinum_scandisk() returned %d", rv);
     bailout:
-	free(drives, M_TEMP);
+	kfree(drives, M_TEMP);
     }
     if ((cp = kgetenv("vinum.root")) != NULL) {
 	for (i = 0; i < vinum_conf.volumes_used; i++) {

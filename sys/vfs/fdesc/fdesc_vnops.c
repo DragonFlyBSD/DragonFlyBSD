@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.33 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.34 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ int
 fdesc_uninit(struct vfsconf *vfsp)
 {
 	if (fdhashtbl)
-		free(fdhashtbl, M_CACHE);
+		kfree(fdhashtbl, M_CACHE);
 	return (0);
 }
 int

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.15 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.16 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -462,10 +462,10 @@ smb_nbst_done(struct smb_vc *vcp, struct thread *td)
 		return ENOTCONN;
 	smb_nbst_disconnect(vcp, td);
 	if (nbp->nbp_laddr)
-		free(nbp->nbp_laddr, M_SONAME);
+		kfree(nbp->nbp_laddr, M_SONAME);
 	if (nbp->nbp_paddr)
-		free(nbp->nbp_paddr, M_SONAME);
-	free(nbp, M_NBDATA);
+		kfree(nbp->nbp_paddr, M_SONAME);
+	kfree(nbp, M_NBDATA);
 	return 0;
 }
 
@@ -520,7 +520,7 @@ smb_nbst_connect(struct smb_vc *vcp, struct sockaddr *sap, struct thread *td)
 	if (slen < NB_MINSALEN)
 		return EINVAL;
 	if (nbp->nbp_paddr) {
-		free(nbp->nbp_paddr, M_SONAME);
+		kfree(nbp->nbp_paddr, M_SONAME);
 		nbp->nbp_paddr = NULL;
 	}
 	snb = (struct sockaddr_nb*)dup_sockaddr(sap);

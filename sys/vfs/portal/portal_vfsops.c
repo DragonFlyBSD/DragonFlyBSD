@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.22 2006/08/09 22:47:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.23 2006/09/05 00:55:50 dillon Exp $
  */
 
 /*
@@ -187,7 +187,7 @@ portal_unmount(struct mount *mp, int mntflags)
 	/*
 	 * Finally, throw away the portalmount structure
 	 */
-	free(mp->mnt_data, M_PORTALFSMNT);	/* XXX */
+	kfree(mp->mnt_data, M_PORTALFSMNT);	/* XXX */
 	mp->mnt_data = 0;
 	return (0);
 }

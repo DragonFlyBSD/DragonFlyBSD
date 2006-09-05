@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.7 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.8 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ iop_init(struct iop_softc *sc)
     sc->iop_delayed_attach->ich_desc = "pst";
     if (config_intrhook_establish(sc->iop_delayed_attach)) {
 	printf("pstiop: config_intrhook_establish failed\n");
-	free(sc->iop_delayed_attach, M_PSTIOP);
+	kfree(sc->iop_delayed_attach, M_PSTIOP);
     }
     return 1;
 }
@@ -96,7 +96,7 @@ iop_attach(struct iop_softc *sc)
 
     if (sc->iop_delayed_attach) {
 	config_intrhook_disestablish(sc->iop_delayed_attach);
-	free(sc->iop_delayed_attach, M_PSTIOP);
+	kfree(sc->iop_delayed_attach, M_PSTIOP);
 	sc->iop_delayed_attach = NULL;
     }
 

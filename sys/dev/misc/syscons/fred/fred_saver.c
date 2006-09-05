@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/daemon/daemon_saver.c,v 1.18.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/fred/fred_saver.c,v 1.5 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fred/fred_saver.c,v 1.6 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -351,7 +351,7 @@ daemon_init(video_adapter_t *adp)
 {
 	messagelen = strlen(hostname) + 3 + strlen(ostype) + 1 + 
 	    strlen(osrelease);
-	message = malloc(messagelen + 1, M_SYSCONS, M_WAITOK);
+	message = kmalloc(messagelen + 1, M_SYSCONS, M_WAITOK);
 	sprintf(message, "%s - %s %s", hostname, ostype, osrelease);
 	blanked = 0;
 	return 0;
@@ -360,7 +360,7 @@ daemon_init(video_adapter_t *adp)
 static int
 daemon_term(video_adapter_t *adp)
 {
-	free(message, M_SYSCONS);
+	kfree(message, M_SYSCONS);
 	return 0;
 }
 

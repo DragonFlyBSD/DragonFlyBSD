@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.10 2006/07/28 02:17:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -1194,7 +1194,7 @@ fwohci_db_free(struct fwohci_dbch *dbch)
 	dbch->ndb = 0;
 	db_tr = STAILQ_FIRST(&dbch->db_trq);
 	fwdma_free_multiseg(dbch->am);
-	free(db_tr, M_FW);
+	kfree(db_tr, M_FW);
 	STAILQ_INIT(&dbch->db_trq);
 	dbch->flags &= ~FWOHCI_DBCH_INIT;
 }
@@ -1242,7 +1242,7 @@ fwohci_db_init(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 		DB_SIZE(dbch), dbch->ndb, BUS_DMA_WAITOK);
 	if (dbch->am == NULL) {
 		printf("fwohci_db_init: fwdma_malloc_multiseg failed\n");
-		free(db_tr, M_FW);
+		kfree(db_tr, M_FW);
 		return;
 	}
 	/* Attach DB to DMA ch. */
@@ -1934,7 +1934,7 @@ busresetout:
 			goto sidout;
 		}
 		plen -= 4; /* chop control info */
-		buf = (u_int32_t *)malloc(OHCI_SIDSIZE, M_FW, M_INTWAIT);
+		buf = (u_int32_t *)kmalloc(OHCI_SIDSIZE, M_FW, M_INTWAIT);
 		if (buf == NULL) {
 			device_printf(fc->dev, "malloc failed\n");
 			goto sidout;
@@ -1950,7 +1950,7 @@ busresetout:
 		fw_drain_txq(fc);
 #endif
 		fw_sidrcv(fc, buf, plen);
-		free(buf, M_FW);
+		kfree(buf, M_FW);
 	}
 sidout:
 	if((stat & OHCI_INT_DMA_ATRQ )){

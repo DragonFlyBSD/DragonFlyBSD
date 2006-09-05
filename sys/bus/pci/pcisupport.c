@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.17 2006/09/05 00:55:36 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -130,7 +130,7 @@ pci_bridge_type(device_t dev)
     snprintf(tmpbuf+strlen(tmpbuf), sizeof(tmpbuf)-strlen(tmpbuf),
 	     " bridge (vendor=%04x device=%04x)",
 	     pci_get_vendor(dev), pci_get_device(dev));
-    descr = malloc (strlen(tmpbuf) +1, M_DEVBUF, M_WAITOK);
+    descr = kmalloc (strlen(tmpbuf) +1, M_DEVBUF, M_WAITOK);
     strcpy(descr, tmpbuf);
     return descr;
 }

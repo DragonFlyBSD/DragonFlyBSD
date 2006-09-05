@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.5 2005/11/22 00:24:35 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.6 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -103,7 +103,7 @@ priq_add_altq(struct pf_altq *a)
 	if (!ifq_is_ready(&ifp->if_snd))
 		return (ENODEV);
 
-	pif = malloc(sizeof(*pif), M_ALTQ, M_WAITOK | M_ZERO);
+	pif = kmalloc(sizeof(*pif), M_ALTQ, M_WAITOK | M_ZERO);
 	pif->pif_bandwidth = a->ifbandwidth;
 	pif->pif_maxpri = -1;
 	pif->pif_ifq = &ifp->if_snd;
@@ -125,7 +125,7 @@ priq_remove_altq(struct pf_altq *a)
 
 	priq_clear_interface(pif);
 
-	free(pif, M_ALTQ);
+	kfree(pif, M_ALTQ);
 	return (0);
 }
 
@@ -274,8 +274,8 @@ priq_class_create(struct priq_if *pif, int pri, int qlimit, int flags, int qid)
 			red_destroy(cl->cl_red);
 #endif
 	} else {
-		cl = malloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
-		cl->cl_q = malloc(sizeof(*cl->cl_q), M_ALTQ, M_WAITOK | M_ZERO);
+		cl = kmalloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
+		cl->cl_q = kmalloc(sizeof(*cl->cl_q), M_ALTQ, M_WAITOK | M_ZERO);
 	}
 
 	pif->pif_classes[pri] = cl;
@@ -365,8 +365,8 @@ priq_class_destroy(struct priq_class *cl)
 			red_destroy(cl->cl_red);
 #endif
 	}
-	free(cl->cl_q, M_ALTQ);
-	free(cl, M_ALTQ);
+	kfree(cl->cl_q, M_ALTQ);
+	kfree(cl, M_ALTQ);
 	return (0);
 }
 

@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.10 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,7 +201,7 @@ ipflow_free(struct ipflow *ipf)
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
 	ipflow_inuse--;
-	free(ipf, M_IPFLOW);
+	kfree(ipf, M_IPFLOW);
 }
 
 static struct ipflow *
@@ -292,7 +292,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		if (ipflow_inuse == IPFLOW_MAX) {
 			ipf = ipflow_reap();
 		} else {
-			ipf = malloc(sizeof *ipf, M_IPFLOW,
+			ipf = kmalloc(sizeof *ipf, M_IPFLOW,
 				     M_INTWAIT | M_NULLOK);
 			if (ipf == NULL)
 				return;

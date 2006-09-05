@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.11 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.12 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -494,7 +494,7 @@ mn_alloc_desc(void)
 	if (dp) 
 		mn_desc_free = dp->vnext;
 	else
-		dp = (struct trxd *)malloc(sizeof *dp, M_MN, M_INTWAIT);
+		dp = (struct trxd *)kmalloc(sizeof *dp, M_MN, M_INTWAIT);
 	return (dp);
 }
 
@@ -1312,7 +1312,7 @@ mn_attach (device_t self)
 		once++;
 	}
 
-	sc = (struct softc *)malloc(sizeof *sc, M_MN, M_WAITOK | M_ZERO);
+	sc = (struct softc *)kmalloc(sizeof *sc, M_MN, M_WAITOK | M_ZERO);
 	device_set_softc(self, sc);
 
 	sc->dev = self;

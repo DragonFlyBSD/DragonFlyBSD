@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.33 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.34 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -1329,7 +1329,7 @@ lance_init_ring(struct le_softc *sc, ln_ring_t *rp, lance_ring_t *ri,
      * our ring information data structure.  All these are
      * our copies and do not live in the LANCE RAM.
      */
-    ri->ri_first = malloc(ndescs * sizeof(*di), M_DEVBUF, M_WAITOK);
+    ri->ri_first = kmalloc(ndescs * sizeof(*di), M_DEVBUF, M_WAITOK);
     ri->ri_free = ri->ri_max = ndescs;
     ri->ri_last = ri->ri_first + ri->ri_max;
     for (di = ri->ri_first; di < ri->ri_last; di++) {

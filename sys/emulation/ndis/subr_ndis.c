@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.14 2006/08/12 00:26:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.15 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -318,7 +318,7 @@ ndis_ascii_to_unicode(char *ascii, uint16_t **unicode)
 	int			i;
 
 	if (*unicode == NULL)
-		*unicode = malloc(strlen(ascii) * 2, M_DEVBUF, M_WAITOK);
+		*unicode = kmalloc(strlen(ascii) * 2, M_DEVBUF, M_WAITOK);
 	ustr = *unicode;
 	for (i = 0; i < strlen(ascii); i++) {
 		*ustr = (uint16_t)ascii[i];
@@ -335,7 +335,7 @@ ndis_unicode_to_ascii(uint16_t *unicode, int ulen, char **ascii)
 	int			i;
 
 	if (*ascii == NULL)
-		*ascii = malloc((ulen / 2) + 1, M_DEVBUF, M_WAITOK|M_ZERO);
+		*ascii = kmalloc((ulen / 2) + 1, M_DEVBUF, M_WAITOK|M_ZERO);
 	astr = *ascii;
 	for (i = 0; i < ulen / 2; i++) {
 		*astr = (uint8_t)unicode[i];
@@ -390,7 +390,7 @@ ndis_malloc_withtag(void **vaddr, uint32_t len, uint32_t tag)
 {
 	void			*mem;
 
-	mem = malloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
+	mem = kmalloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
 	if (mem == NULL)
 		return(NDIS_STATUS_RESOURCES);
 	*vaddr = mem;
@@ -404,7 +404,7 @@ ndis_malloc(void **vaddr, uint32_t len, uint32_t flags,
 {
 	void			*mem;
 
-	mem = malloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
+	mem = kmalloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
 	if (mem == NULL)
 		return(NDIS_STATUS_RESOURCES);
 	*vaddr = mem;
@@ -417,7 +417,7 @@ ndis_free(void *vaddr, uint32_t len, uint32_t flags)
 {
 	if (len == 0)
 		return;
-	free(vaddr, M_DEVBUF);
+	kfree(vaddr, M_DEVBUF);
 
 	return;
 }
@@ -569,12 +569,12 @@ ndis_read_cfg(ndis_status *status, ndis_config_parm **parm, ndis_handle cfg,
 		oidp = e->entry;
 		if (ndis_strcasecmp(oidp->oid_name, keystr) == 0) {
 			if (strcmp((char *)oidp->oid_arg1, "UNSET") == 0) {
-				free(keystr, M_DEVBUF);
+				kfree(keystr, M_DEVBUF);
 				*status = NDIS_STATUS_FAILURE;
 				return;
 			}
 			*status = ndis_encode_parm(block, oidp, type, parm);
-			free(keystr, M_DEVBUF);
+			kfree(keystr, M_DEVBUF);
 			return;
 		}
 	}
@@ -598,7 +598,7 @@ ndis_read_cfg(ndis_status *status, ndis_config_parm **parm, ndis_handle cfg,
 		ndis_add_sysctl(sc, keystr, "(dynamic string key)",
 		    "UNSET", CTLFLAG_RW);
 
-	free(keystr, M_DEVBUF);
+	kfree(keystr, M_DEVBUF);
 	*status = NDIS_STATUS_FAILURE;
 	return;
 }
@@ -615,7 +615,7 @@ ndis_decode_parm(ndis_miniport_block *block, ndis_config_parm *parm,
 		ustr = &parm->ncp_parmdata.ncp_stringdata;
 		ndis_unicode_to_ascii(ustr->nus_buf, ustr->nus_len, &astr);
 		bcopy(astr, val, 254);
-		free(astr, M_DEVBUF);
+		kfree(astr, M_DEVBUF);
 		break;
 	case ndis_parm_int:
 		sprintf(val, "%d", parm->ncp_parmdata.ncp_intdata);
@@ -650,7 +650,7 @@ ndis_write_cfg(ndis_status *status, ndis_handle cfg, ndis_unicode_string *key,
 	bzero(val, sizeof(val));
 	*status = ndis_decode_parm(block, parm, val);
 	if (*status != NDIS_STATUS_SUCCESS) {
-		free(keystr, M_DEVBUF);
+		kfree(keystr, M_DEVBUF);
 		return;
 	}
 
@@ -665,7 +665,7 @@ ndis_write_cfg(ndis_status *status, ndis_handle cfg, ndis_unicode_string *key,
 		if (ndis_strcasecmp(oidp->oid_name, keystr) == 0) {
 			/* Found it, set the value. */
 			strcpy((char *)oidp->oid_arg1, val);
-			free(keystr, M_DEVBUF);
+			kfree(keystr, M_DEVBUF);
 			return;
 		}
 	}
@@ -674,7 +674,7 @@ ndis_write_cfg(ndis_status *status, ndis_handle cfg, ndis_unicode_string *key,
 	ndis_add_sysctl(sc, keystr, "(dynamically set key)",
 		    val, CTLFLAG_RW);
 
-	free(keystr, M_DEVBUF);
+	kfree(keystr, M_DEVBUF);
 	*status = NDIS_STATUS_SUCCESS;
 	return;
 }
@@ -1108,7 +1108,7 @@ ndis_alloc_mapreg(ndis_handle adapter, uint32_t dmachannel, uint8_t dmasize,
 	    &sc->ndis_mtag);
 
 	if (error) {
-		free(sc->ndis_mmaps, M_DEVBUF);
+		kfree(sc->ndis_mmaps, M_DEVBUF);
 		return(NDIS_STATUS_RESOURCES);
 	}
 
@@ -1133,7 +1133,7 @@ ndis_free_mapreg(ndis_handle adapter)
 	for (i = 0; i < sc->ndis_mmapcnt; i++)
 		bus_dmamap_destroy(sc->ndis_mtag, sc->ndis_mmaps[i]);
 
-	free(sc->ndis_mmaps, M_DEVBUF);
+	kfree(sc->ndis_mmaps, M_DEVBUF);
 
 	bus_dma_tag_destroy(sc->ndis_mtag);
 
@@ -1173,7 +1173,7 @@ ndis_alloc_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
 	block = (ndis_miniport_block *)adapter;
 	sc = (struct ndis_softc *)(block->nmb_ifp);
 
-	sh = malloc(sizeof(struct ndis_shmem), M_DEVBUF, M_INTWAIT|M_ZERO);
+	sh = kmalloc(sizeof(struct ndis_shmem), M_DEVBUF, M_INTWAIT|M_ZERO);
 	if (sh == NULL)
 		return;
 
@@ -1197,7 +1197,7 @@ ndis_alloc_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
 	    &sh->ndis_stag);
 
 	if (error) {
-		free(sh, M_DEVBUF);
+		kfree(sh, M_DEVBUF);
 		return;
 	}
 
@@ -1206,7 +1206,7 @@ ndis_alloc_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
 
 	if (error) {
 		bus_dma_tag_destroy(sh->ndis_stag);
-		free(sh, M_DEVBUF);
+		kfree(sh, M_DEVBUF);
 		return;
 	}
 
@@ -1216,7 +1216,7 @@ ndis_alloc_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
 	if (error) {
 		bus_dmamem_free(sh->ndis_stag, *vaddr, sh->ndis_smap);
 		bus_dma_tag_destroy(sh->ndis_stag);
-		free(sh, M_DEVBUF);
+		kfree(sh, M_DEVBUF);
 		return;
 	}
 
@@ -1256,7 +1256,7 @@ ndis_asyncmem_complete(void *arg)
 	    w->na_cached, &vaddr, &paddr);
 	donefunc(w->na_adapter, vaddr, &paddr, w->na_len, w->na_ctx);
 
-	free(arg, M_DEVBUF);
+	kfree(arg, M_DEVBUF);
 
 	return;
 }
@@ -1270,7 +1270,7 @@ ndis_alloc_sharedmem_async(ndis_handle adapter, uint32_t len,
 	if (adapter == NULL)
 		return(NDIS_STATUS_FAILURE);
 
-	w = malloc(sizeof(struct ndis_allocwork), M_TEMP, M_INTWAIT);
+	w = kmalloc(sizeof(struct ndis_allocwork), M_TEMP, M_INTWAIT);
 
 	if (w == NULL)
 		return(NDIS_STATUS_FAILURE);
@@ -1323,7 +1323,7 @@ ndis_free_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
 	else
 		prev->ndis_next = sh->ndis_next;
 
-	free(sh, M_DEVBUF);
+	kfree(sh, M_DEVBUF);
 
 	return;
 }
@@ -1466,7 +1466,7 @@ ndis_free_packetpool(ndis_handle pool)
 	/* If there are no buffers loaned out, destroy the pool. */
 
 	if (head->np_private.npp_count == 0)
-		free(pool, M_DEVBUF);
+		kfree(pool, M_DEVBUF);
 	else
 		printf("NDIS: buggy driver deleting active packet pool!\n");
 
@@ -1548,7 +1548,7 @@ ndis_release_packet(ndis_packet *packet)
 	 */
 
 	if (head->np_private.npp_totlen && head->np_private.npp_count == 0)
-		free(head, M_DEVBUF);
+		kfree(head, M_DEVBUF);
 
 	return;
 }
@@ -1649,7 +1649,7 @@ ndis_free_bufpool(ndis_handle pool)
 
 	/* If there are no buffers loaned out, destroy the pool. */
 	if (head->nb_bytecount == 0)
-		free(pool, M_DEVBUF);
+		kfree(pool, M_DEVBUF);
 	else
 		printf("NDIS: buggy driver deleting active buffer pool!\n");
 
@@ -1731,7 +1731,7 @@ ndis_release_buf(ndis_buffer *buf)
 	 */
 
 	if (head->nb_byteoffset && head->nb_bytecount == 0)
-		free(head, M_DEVBUF);
+		kfree(head, M_DEVBUF);
 
 	return;
 }
@@ -1870,15 +1870,15 @@ ndis_ansi2unicode(ndis_unicode_string *dstr, ndis_ansi_string *sstr)
 	char			*str;
 	if (dstr == NULL || sstr == NULL)
 		return(NDIS_STATUS_FAILURE);
-	str = malloc(sstr->nas_len + 1, M_DEVBUF, M_WAITOK);
+	str = kmalloc(sstr->nas_len + 1, M_DEVBUF, M_WAITOK);
 	strncpy(str, sstr->nas_buf, sstr->nas_len);
 	*(str + sstr->nas_len) = '\0';
 	if (ndis_ascii_to_unicode(str, &dstr->nus_buf)) {
-		free(str, M_DEVBUF);
+		kfree(str, M_DEVBUF);
 		return(NDIS_STATUS_FAILURE);
 	}
 	dstr->nus_len = dstr->nus_maxlen = sstr->nas_len * 2;
-	free(str, M_DEVBUF);
+	kfree(str, M_DEVBUF);
 	return (NDIS_STATUS_SUCCESS);
 }
 
@@ -2179,8 +2179,8 @@ ndis_free_string(ndis_unicode_string *str)
 	if (str == NULL)
 		return;
 	if (str->nus_buf != NULL)
-		free(str->nus_buf, M_DEVBUF);
-	free(str, M_DEVBUF);
+		kfree(str->nus_buf, M_DEVBUF);
+	kfree(str, M_DEVBUF);
 	return;
 }
 
@@ -2295,16 +2295,16 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 	    filename->nus_len, &afilename);
 
 	sprintf(path, "%s/%s", ndis_filepath, afilename);
-	free(afilename, M_DEVBUF);
+	kfree(afilename, M_DEVBUF);
 
-	fh = malloc(sizeof(ndis_fh), M_TEMP, M_WAITOK);
+	fh = kmalloc(sizeof(ndis_fh), M_TEMP, M_WAITOK);
 
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
 	if (error == 0)
 		error = vn_open(&nd, NULL, FREAD, 0);
 	if (error) {
 		*status = NDIS_STATUS_FILE_NOT_FOUND;
-		free(fh, M_TEMP);
+		kfree(fh, M_TEMP);
 		printf("NDIS: open file %s failed: %d\n", path, error);
 		goto done;
 	}
@@ -2350,7 +2350,7 @@ ndis_map_file(ndis_status *status, void **mappedbuffer, ndis_handle filehandle)
 		return;
 	}
 
-	fh->nf_map = malloc(fh->nf_maplen, M_DEVBUF, M_WAITOK);
+	fh->nf_map = kmalloc(fh->nf_maplen, M_DEVBUF, M_WAITOK);
 
 	error = vn_rdwr(UIO_READ, fh->nf_vp, fh->nf_map, fh->nf_maplen, 0,
 			UIO_SYSSPACE, 0, proc0.p_ucred, &resid);
@@ -2373,7 +2373,7 @@ ndis_unmap_file(ndis_handle filehandle)
 
 	if (fh->nf_map == NULL)
 		return;
-	free(fh->nf_map, M_DEVBUF);
+	kfree(fh->nf_map, M_DEVBUF);
 	fh->nf_map = NULL;
 
 	return;
@@ -2389,7 +2389,7 @@ ndis_close_file(ndis_handle filehandle)
 
 	fh = (ndis_fh *)filehandle;
 	if (fh->nf_map != NULL) {
-		free(fh->nf_map, M_DEVBUF);
+		kfree(fh->nf_map, M_DEVBUF);
 		fh->nf_map = NULL;
 	}
 
@@ -2399,7 +2399,7 @@ ndis_close_file(ndis_handle filehandle)
 	vn_close(fh->nf_vp, FREAD);
 
 	fh->nf_vp = NULL;
-	free(fh, M_DEVBUF);
+	kfree(fh, M_DEVBUF);
 
 	return;
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.21 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.22 2006/09/05 00:55:42 dillon Exp $
  */
 
 /*
@@ -883,7 +883,7 @@ twe_allocate_request(struct twe_softc *sc)
      */
     aligned_size = (sizeof(struct twe_request) + TWE_ALIGNMASK) &
            ~TWE_ALIGNMASK;
-    tr = malloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT|M_ZERO);
+    tr = kmalloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT|M_ZERO);
     tr->tr_sc = sc;
     if (bus_dmamap_create(sc->twe_buffer_dmat, 0, &tr->tr_cmdmap)) {
 	twe_free_request(tr);
@@ -912,7 +912,7 @@ twe_free_request(struct twe_request *tr)
     bus_dmamap_unload(sc->twe_buffer_dmat, tr->tr_cmdmap); 
     bus_dmamap_destroy(sc->twe_buffer_dmat, tr->tr_cmdmap);
     bus_dmamap_destroy(sc->twe_buffer_dmat, tr->tr_dmamap);
-    free(tr, TWE_MALLOC_CLASS);
+    kfree(tr, TWE_MALLOC_CLASS);
 }
 
 /********************************************************************************
@@ -1060,7 +1060,7 @@ twe_map_request(struct twe_request *tr)
 	    while (aligned_size < tr->tr_length)
 		aligned_size <<= 1;
 	    tr->tr_flags |= TWE_CMD_ALIGNBUF;
-	    tr->tr_data = malloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT);
+	    tr->tr_data = kmalloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT);
 	    if (tr->tr_data == NULL) {
 		twe_printf(sc, "%s: malloc failed\n", __func__);
 		tr->tr_data = tr->tr_realdata; /* restore original data pointer */
@@ -1118,7 +1118,7 @@ twe_unmap_request(struct twe_request *tr)
 
     /* free alignment buffer if it was used */
     if (tr->tr_flags & TWE_CMD_ALIGNBUF) {
-	free(tr->tr_data, TWE_MALLOC_CLASS);
+	kfree(tr->tr_data, TWE_MALLOC_CLASS);
 	tr->tr_data = tr->tr_realdata;		/* restore 'real' data pointer */
     }
 }

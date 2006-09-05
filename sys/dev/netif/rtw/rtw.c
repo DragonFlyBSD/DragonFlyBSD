@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.2 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -916,7 +916,7 @@ rtw_srom_read(struct rtw_softc *sc)
 
 	RTW_WRITE8(regs, RTW_9346CR, ecr);
 
-	sr->sr_content = malloc(sr->sr_size, M_DEVBUF, M_WAITOK | M_ZERO);
+	sr->sr_content = kmalloc(sr->sr_size, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * RTL8180 has a single 8-bit register for controlling the
@@ -940,7 +940,7 @@ rtw_srom_read(struct rtw_softc *sc)
 	/* TBD bus barriers */
 	if (!read_seeprom(&sd, sr->sr_content, 0, sr->sr_size / 2)) {
 		if_printf(&sc->sc_ic.ic_if, "could not read SROM\n");
-		free(sr->sr_content, M_DEVBUF);
+		kfree(sr->sr_content, M_DEVBUF);
 		sr->sr_content = NULL;
 		return EIO;	/* XXX */
 	}
@@ -3932,7 +3932,7 @@ rtw_detach(device_t dev)
 		rtw_rf_destroy(sc->sc_rf);
 
 	if (sc->sc_srom.sr_content != NULL)
-		free(sc->sc_srom.sr_content, M_DEVBUF);
+		kfree(sc->sc_srom.sr_content, M_DEVBUF);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,
@@ -4081,7 +4081,7 @@ rtw_txsoft_blk_free(struct rtw_softc *sc, int n_sd, int q_no)
 			bus_dmamap_destroy(sc->sc_txsoft_dmat,
 					   tsb->tsb_desc[i].ts_dmamap);
 		}
-		free(tsb->tsb_desc, M_DEVBUF);
+		kfree(tsb->tsb_desc, M_DEVBUF);
 		tsb->tsb_desc = NULL;
 	}
 }
@@ -4095,7 +4095,7 @@ rtw_txsoft_blk_alloc(struct rtw_softc *sc, int q_len, int q_no, uint8_t q_poll)
 	STAILQ_INIT(&tsb->tsb_dirtyq);
 	STAILQ_INIT(&tsb->tsb_freeq);
 	tsb->tsb_ndesc = q_len;
-	tsb->tsb_desc = malloc(q_len * sizeof(*tsb->tsb_desc), M_DEVBUF,
+	tsb->tsb_desc = kmalloc(q_len * sizeof(*tsb->tsb_desc), M_DEVBUF,
 			       M_WAITOK | M_ZERO);
 	tsb->tsb_poll = q_poll;
 

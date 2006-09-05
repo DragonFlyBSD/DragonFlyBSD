@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.23 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.24 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -1075,7 +1075,7 @@ dup_sockaddr(const struct sockaddr *sa)
 {
 	struct sockaddr *sa2;
 
-	sa2 = malloc(sa->sa_len, M_SONAME, M_INTWAIT);
+	sa2 = kmalloc(sa->sa_len, M_SONAME, M_INTWAIT);
 	bcopy(sa, sa2, sa->sa_len);
 	return (sa2);
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.21 2006/09/03 17:43:55 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.22 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -671,13 +671,13 @@ acpi_quirks_set(void)
 	    (xsdt->OemRevision == quirk->OemRevision ||
 	    quirk->OemRevision == ACPI_OEM_REV_ANY)) {
 		len += strlen(quirk->value) + 2;
-		if ((tmp = malloc(len, M_TEMP, M_NOWAIT)) == NULL)
+		if ((tmp = kmalloc(len, M_TEMP, M_NOWAIT)) == NULL)
 		    goto out;
 		sprintf(tmp, "%s %s", env ? env : "", quirk->value);
 #ifdef notyet
 		setenv("debug.acpi.disabled", tmp);
 #endif /* notyet */
-		free(tmp, M_TEMP);
+		kfree(tmp, M_TEMP);
 		break;
 	}
     }
@@ -697,7 +697,7 @@ acpi_add_child(device_t bus, device_t parent, int order,
     struct acpi_device	*ad;
     device_t		child;
 
-    ad = malloc(sizeof(*ad), M_ACPIDEV, M_INTWAIT | M_ZERO);
+    ad = kmalloc(sizeof(*ad), M_ACPIDEV, M_INTWAIT | M_ZERO);
 
     resource_list_init(&ad->ad_rl);
 
@@ -1437,7 +1437,7 @@ acpi_AllocBuffer(int size)
 {
     ACPI_BUFFER	*buf;
 
-    buf = malloc(size + sizeof(*buf), M_ACPIDEV, M_INTWAIT);
+    buf = kmalloc(size + sizeof(*buf), M_ACPIDEV, M_INTWAIT);
     buf->Length = size;
     buf->Pointer = (void *)(buf + 1);
     return (buf);
@@ -1998,7 +1998,7 @@ acpi_wake_sysctl_walk(device_t dev)
 	}
 	acpi_wake_sysctl_walk(child);
     }
-    free(devlist, M_TEMP);
+    kfree(devlist, M_TEMP);
 
     return (0);
 }
@@ -2407,7 +2407,7 @@ acpi_register_ioctl(u_long cmd, acpi_ioctl_fn fn, void *arg)
 {
     struct acpi_ioctl_hook	*hp;
 
-    hp = malloc(sizeof(*hp), M_ACPIDEV, M_INTWAIT);
+    hp = kmalloc(sizeof(*hp), M_ACPIDEV, M_INTWAIT);
     hp->cmd = cmd;
     hp->fn = fn;
     hp->arg = arg;
@@ -2433,7 +2433,7 @@ acpi_deregister_ioctl(u_long cmd, acpi_ioctl_fn fn)
 
     if (hp != NULL) {
 	TAILQ_REMOVE(&acpi_ioctl_hooks, hp, link);
-	free(hp, M_ACPIDEV);
+	kfree(hp, M_ACPIDEV);
     }
 }
 

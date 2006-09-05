@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.15 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.16 2006/09/05 00:55:47 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -652,7 +652,7 @@ i4bioctl(struct dev_ioctl_args *ap)
 
 			for(i = 0; i < r->numprotos; i++)
 			{
-				prots2[i].microcode = malloc(prots[i].bytecount, M_DEVBUF, M_WAITOK);
+				prots2[i].microcode = kmalloc(prots[i].bytecount, M_DEVBUF, M_WAITOK);
 				copyin(prots[i].microcode, prots2[i].microcode, prots[i].bytecount);
 				prots2[i].bytecount = prots[i].bytecount; 
 			}
@@ -668,15 +668,15 @@ download_done:
 				{
 					if(prots2[i].microcode)
 					{
-						free(prots2[i].microcode, M_DEVBUF);
+						kfree(prots2[i].microcode, M_DEVBUF);
 					}
 				}
-				free(prots2, M_DEVBUF);
+				kfree(prots2, M_DEVBUF);
 			}
 
 			if(prots)
 			{
-				free(prots, M_DEVBUF);
+				kfree(prots, M_DEVBUF);
 			}
 			break;
 		}
@@ -712,7 +712,7 @@ download_done:
 				    	goto diag_done;
 				}	
 
-				req.in_param = malloc(r->in_param_len, M_DEVBUF, M_WAITOK);
+				req.in_param = kmalloc(r->in_param_len, M_DEVBUF, M_WAITOK);
 
 				if(!req.in_param)
 				{
@@ -726,7 +726,7 @@ download_done:
 
 			if(req.out_param_len)
 			{
-				req.out_param = malloc(r->out_param_len, M_DEVBUF, M_WAITOK);
+				req.out_param = kmalloc(r->out_param_len, M_DEVBUF, M_WAITOK);
 
 				if(!req.out_param)
 				{
@@ -742,10 +742,10 @@ download_done:
 
 diag_done:
 			if(req.in_param)
-				free(req.in_param, M_DEVBUF);
+				kfree(req.in_param, M_DEVBUF);
 				
 			if(req.out_param)
-				free(req.out_param, M_DEVBUF);
+				kfree(req.out_param, M_DEVBUF);
 
 			break;
 		}

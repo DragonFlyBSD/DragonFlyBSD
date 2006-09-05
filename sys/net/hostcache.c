@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.7 2005/06/03 18:19:51 swildner Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.8 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -198,7 +198,7 @@ hc_delete(struct hcentry *hc)
 	LIST_REMOVE(hc, hc_link);
 	hc->hc_hct->hct_idle--;
 	crit_exit();
-	free(hc, M_HOSTCACHE);
+	kfree(hc, M_HOSTCACHE);
 	return 0;
 }
 

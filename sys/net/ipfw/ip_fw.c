@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.17 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.18 2006/09/05 00:55:47 dillon Exp $
  */
 
 #define        DEB(x)
@@ -660,7 +660,7 @@ hash_packet(struct ipfw_flow_id *id)
 	else								\
 		ipfw_dyn_v[i] = q = q->next ;				\
 	dyn_count-- ;							\
-	free(old_q, M_IPFW); }
+	kfree(old_q, M_IPFW); }
 
 #define TIME_LEQ(a,b)       ((int)((a)-(b)) <= 0)
 /**
@@ -849,7 +849,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	else {
 	    curr_dyn_buckets = dyn_buckets ;
 	    if (ipfw_dyn_v != NULL)
-		free(ipfw_dyn_v, M_IPFW);
+		kfree(ipfw_dyn_v, M_IPFW);
 	    ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof r,
                    M_IPFW, M_WAITOK | M_ZERO);
 	    if (ipfw_dyn_v == NULL)
@@ -858,7 +858,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
     }
     i = hash_packet(id);
 
-    r = malloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
+    r = kmalloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
     if (r == NULL) {
 	printf ("sorry cannot allocate state\n");
 	return NULL ;
@@ -1620,7 +1620,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 	struct ip_fw *ftmp, *fcp, *fcpl;
 	u_short nbr = 0;
 
-	ftmp = malloc(sizeof *ftmp, M_IPFW, M_WAITOK | M_ZERO);
+	ftmp = kmalloc(sizeof *ftmp, M_IPFW, M_WAITOK | M_ZERO);
 	if (!ftmp)
 		return (ENOSPC);
 	bcopy(rule, ftmp, sizeof(*ftmp));
@@ -1693,7 +1693,7 @@ free_chain(struct ip_fw *fcp)
     if (DUMMYNET_LOADED)
 	ip_dn_ruledel_ptr(fcp) ;
     flush_rule_ptrs(); /* more efficient to do outside the loop */
-    free(fcp, M_IPFW);
+    kfree(fcp, M_IPFW);
     return n;
 }
 
@@ -1939,7 +1939,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		 * bother filling up the buffer, just jump to the
 		 * sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_WAITOK);
+		buf = kmalloc(size, M_TEMP, M_WAITOK);
 
 		bp = buf ;
 		LIST_FOREACH(fcp, &ip_fw_chain_head, next) {
@@ -1973,7 +1973,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		crit_exit();
 
 		error = sooptcopyout(sopt, buf, size);
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 		break;
 
 	case IP_FW_FLUSH:

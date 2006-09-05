@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.2 2006/08/08 01:27:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.3 2006/09/05 00:55:45 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -160,7 +160,7 @@ sys_syslink(struct syslink_args *uap)
 	error = suser(curthread);
 	if (error)
 	    break;
-	sldata = malloc(sizeof(struct sldata), M_SYSLINK, M_WAITOK|M_ZERO);
+	sldata = kmalloc(sizeof(struct sldata), M_SYSLINK, M_WAITOK|M_ZERO);
 	lockinit(&sldata->rlock, "slread", 0, 0);
 	lockinit(&sldata->wlock, "slwrite", 0, 0);
 
@@ -203,7 +203,7 @@ sys_syslink(struct syslink_args *uap)
 	    }
 	}
 	if (error)
-		free(sldata, M_SYSLINK);
+		kfree(sldata, M_SYSLINK);
 	break;
     case SYSLINK_GETSYSMASK:
 	error = copyout(&sl_mask, uap->mask, sizeof(sl_mask));
@@ -408,7 +408,7 @@ void
 slbuf_alloc(struct slbuf *slbuf, int bytes)
 {
     bzero(slbuf, sizeof(*slbuf));
-    slbuf->buf = malloc(bytes, M_SYSLINK, M_WAITOK);
+    slbuf->buf = kmalloc(bytes, M_SYSLINK, M_WAITOK);
     slbuf->bufsize = bytes;
     slbuf->bufmask = bytes - 1;
 }
@@ -417,7 +417,7 @@ static
 void
 slbuf_free(struct slbuf *slbuf)
 {
-    free(slbuf->buf, M_SYSLINK);
+    kfree(slbuf->buf, M_SYSLINK);
     slbuf->buf = NULL;
 }
 
@@ -428,7 +428,7 @@ sldata_rels(struct sldata *sldata)
     if (--sldata->refs == 0) {
 	slbuf_free(&sldata->rbuf);
 	slbuf_free(&sldata->wbuf);
-	free(sldata, M_SYSLINK);
+	kfree(sldata, M_SYSLINK);
     }
 }
 

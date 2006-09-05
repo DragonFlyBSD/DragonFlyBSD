@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
 
 #define ESS_BUFFSIZE (4096)
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -307,7 +307,7 @@ ess_release_resources(struct ess_info *sc, device_t dev)
 		bus_dma_tag_destroy(sc->parent_dmat);
 		sc->parent_dmat = 0;
     	}
-     	free(sc, M_DEVBUF);
+     	kfree(sc, M_DEVBUF);
 }
 
 static int
@@ -807,7 +807,7 @@ ess_attach(device_t dev)
     	char status[SND_STATUSLEN], buf[64];
 	int ver;
 
-    	sc = (struct ess_info *)malloc(sizeof *sc, M_DEVBUF, M_NOWAIT | M_ZERO);
+    	sc = (struct ess_info *)kmalloc(sizeof *sc, M_DEVBUF, M_NOWAIT | M_ZERO);
     	if (!sc)
 		return ENXIO;
 

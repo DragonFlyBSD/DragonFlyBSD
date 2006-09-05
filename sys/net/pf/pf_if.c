@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.4 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -173,11 +173,11 @@ pfi_cleanup(void)
 	while ((p = RB_MIN(pfi_ifhead, &pfi_ifs))) {
 		RB_REMOVE(pfi_ifhead, &pfi_ifs, p);
 
-		free(p->pfik_ah_head, PFI_MTYPE);
-		free(p, PFI_MTYPE);
+		kfree(p->pfik_ah_head, PFI_MTYPE);
+		kfree(p, PFI_MTYPE);
 	}
-	free(pfi_index2kif, PFI_MTYPE);
-	free(pfi_buffer, PFI_MTYPE);
+	kfree(pfi_index2kif, PFI_MTYPE);
+	kfree(pfi_buffer, PFI_MTYPE);
 	pfi_index2kif = NULL;
 	pfi_buffer = NULL;
 	pfi_self = NULL;
@@ -250,7 +250,7 @@ pfi_attach_ifnet(struct ifnet *ifp)
 		m = oldlim * sizeof(struct pfi_kif *);
 		mp = pfi_index2kif;
 		n = pfi_indexlim * sizeof(struct pfi_kif *);
-		np = malloc(n, PFI_MTYPE, M_NOWAIT);
+		np = kmalloc(n, PFI_MTYPE, M_NOWAIT);
 		if (np == NULL)
 			panic("pfi_attach_ifnet: "
 			    "cannot allocate translation table");
@@ -259,7 +259,7 @@ pfi_attach_ifnet(struct ifnet *ifp)
 			bcopy(mp, np, m);
 		pfi_index2kif = np;
 		if (mp != NULL)
-			free(mp, PFI_MTYPE);
+			kfree(mp, PFI_MTYPE);
 	}
 
 	strlcpy(key.pfik_name, ifp->if_xname, sizeof(key.pfik_name));
@@ -611,7 +611,7 @@ pfi_address_add(struct sockaddr *sa, int af, int net)
 			    pfi_buffer_cnt, PFI_BUFFER_MAX);
 			return;
 		}
-		p = malloc(new_max * sizeof(*pfi_buffer), PFI_MTYPE,
+		p = kmalloc(new_max * sizeof(*pfi_buffer), PFI_MTYPE,
 		    M_NOWAIT);
 		if (p == NULL) {
 			printf("pfi_address_add: no memory to grow buffer "
@@ -620,7 +620,7 @@ pfi_address_add(struct sockaddr *sa, int af, int net)
 		}
 		memcpy(pfi_buffer, p, pfi_buffer_cnt * sizeof(*pfi_buffer));
 		/* no need to zero buffer */
-		free(pfi_buffer, PFI_MTYPE);
+		kfree(pfi_buffer, PFI_MTYPE);
 		pfi_buffer = p;
 		pfi_buffer_max = new_max;
 	}
@@ -692,14 +692,14 @@ pfi_if_create(const char *name, struct pfi_kif *q, int flags)
 {
 	struct pfi_kif *p;
 
-	p = malloc(sizeof(*p), PFI_MTYPE, M_NOWAIT);
+	p = kmalloc(sizeof(*p), PFI_MTYPE, M_NOWAIT);
 	if (p == NULL)
 		return (NULL);
 	bzero(p, sizeof(*p));
-	p->pfik_ah_head = malloc(sizeof(*p->pfik_ah_head), PFI_MTYPE,
+	p->pfik_ah_head = kmalloc(sizeof(*p->pfik_ah_head), PFI_MTYPE,
 	    M_NOWAIT);
 	if (p->pfik_ah_head == NULL) {
-		free(p, PFI_MTYPE);
+		kfree(p, PFI_MTYPE);
 		return (NULL);
 	}
 	bzero(p->pfik_ah_head, sizeof(*p->pfik_ah_head));
@@ -761,8 +761,8 @@ pfi_maybe_destroy(struct pfi_kif *p)
 	RB_REMOVE(pfi_ifhead, &pfi_ifs, p);
 	crit_exit();
 
-	free(p->pfik_ah_head, PFI_MTYPE);
-	free(p, PFI_MTYPE);
+	kfree(p->pfik_ah_head, PFI_MTYPE);
+	kfree(p, PFI_MTYPE);
 	return (1);
 }
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.9 2005/10/12 17:35:49 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.10 2006/09/05 00:55:37 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -382,11 +382,11 @@ ubsec_attach(device_t dev)
 	for (i = 0; i < UBS_MAX_NQUEUE; i++, dmap++) {
 		struct ubsec_q *q;
 
-		q = malloc(sizeof(struct ubsec_q), M_DEVBUF, M_WAITOK);
+		q = kmalloc(sizeof(struct ubsec_q), M_DEVBUF, M_WAITOK);
 		if (ubsec_dma_malloc(sc, sizeof(struct ubsec_dmachunk),
 		    &dmap->d_alloc, 0)) {
 			device_printf(dev, "cannot allocate dma buffers\n");
-			free(q, M_DEVBUF);
+			kfree(q, M_DEVBUF);
 			break;
 		}
 		dmap->d_dma = (struct ubsec_dmachunk *)dmap->d_alloc.dma_vaddr;
@@ -516,7 +516,7 @@ ubsec_detach(device_t dev)
 		q = SIMPLEQ_FIRST(&sc->sc_freequeue);
 		SIMPLEQ_REMOVE_HEAD(&sc->sc_freequeue, q, q_next);
 		ubsec_dma_free(sc, &q->q_dma->d_alloc);
-		free(q, M_DEVBUF);
+		kfree(q, M_DEVBUF);
 	}
 #ifndef UBSEC_NO_RNG
 	if (sc->sc_flags & UBS_FLAGS_RNG) {
@@ -874,7 +874,7 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 			    sizeof(struct ubsec_session));
 			bzero(sc->sc_sessions, sesn *
 			    sizeof(struct ubsec_session));
-			free(sc->sc_sessions, M_DEVBUF);
+			kfree(sc->sc_sessions, M_DEVBUF);
 			sc->sc_sessions = ses;
 			ses = &sc->sc_sessions[sesn];
 			sc->sc_nsessions++;
@@ -2067,7 +2067,7 @@ ubsec_kfree(struct ubsec_softc *sc, struct ubsec_q2 *q)
 		ubsec_dma_free(sc, &me->me_E);
 		ubsec_dma_free(sc, &me->me_C);
 		ubsec_dma_free(sc, &me->me_epb);
-		free(me, M_DEVBUF);
+		kfree(me, M_DEVBUF);
 		break;
 	}
 	case UBS_CTXOP_RSAPRIV: {
@@ -2077,7 +2077,7 @@ ubsec_kfree(struct ubsec_softc *sc, struct ubsec_q2 *q)
 		ubsec_dma_free(sc, &rp->rpr_q.q_ctx);
 		ubsec_dma_free(sc, &rp->rpr_msgin);
 		ubsec_dma_free(sc, &rp->rpr_msgout);
-		free(rp, M_DEVBUF);
+		kfree(rp, M_DEVBUF);
 		break;
 	}
 	default:
@@ -2135,7 +2135,7 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	int err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
-	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
+	me = kmalloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
 	me->me_krp = krp;
 	me->me_q.q_type = UBS_CTXOP_MODEXP;
 
@@ -2312,7 +2312,7 @@ errout:
 		}
 		if (me->me_epb.dma_map != NULL)
 			ubsec_dma_free(sc, &me->me_epb);
-		free(me, M_DEVBUF);
+		kfree(me, M_DEVBUF);
 	}
 	krp->krp_status = err;
 	crypto_kdone(krp);
@@ -2332,7 +2332,7 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	int err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
-	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
+	me = kmalloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
 	me->me_krp = krp;
 	me->me_q.q_type = UBS_CTXOP_MODEXP;
 
@@ -2508,7 +2508,7 @@ errout:
 		}
 		if (me->me_epb.dma_map != NULL)
 			ubsec_dma_free(sc, &me->me_epb);
-		free(me, M_DEVBUF);
+		kfree(me, M_DEVBUF);
 	}
 	krp->krp_status = err;
 	crypto_kdone(krp);
@@ -2559,7 +2559,7 @@ ubsec_kprocess_rsapriv(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 		goto errout;
 	}
 
-	rp = malloc(sizeof *rp, M_DEVBUF, M_INTWAIT | M_ZERO);
+	rp = kmalloc(sizeof *rp, M_DEVBUF, M_INTWAIT | M_ZERO);
 	rp->rpr_krp = krp;
 	rp->rpr_q.q_type = UBS_CTXOP_RSAPRIV;
 
@@ -2689,7 +2689,7 @@ errout:
 			bzero(rp->rpr_msgout.dma_vaddr, rp->rpr_msgout.dma_size);
 			ubsec_dma_free(sc, &rp->rpr_msgout);
 		}
-		free(rp, M_DEVBUF);
+		kfree(rp, M_DEVBUF);
 	}
 	krp->krp_status = err;
 	crypto_kdone(krp);

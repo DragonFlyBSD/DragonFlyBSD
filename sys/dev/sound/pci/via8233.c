@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
  */
 
 /* Some Credits:
@@ -46,7 +46,7 @@
 
 #include <dev/sound/pci/via8233.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
 
 #define VIA8233_PCI_ID 0x30591106
 
@@ -522,7 +522,7 @@ via_attach(device_t dev)
 	struct via_info *via = 0;
 	char status[SND_STATUSLEN];
 
-	if ((via = malloc(sizeof *via, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
+	if ((via = kmalloc(sizeof *via, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -627,7 +627,7 @@ bad:
 	if (via->parent_dmat) bus_dma_tag_destroy(via->parent_dmat);
 	if (via->sgd_dmamap) bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
 	if (via->sgd_dmat) bus_dma_tag_destroy(via->sgd_dmat);
-	if (via) free(via, M_DEVBUF);
+	if (via) kfree(via, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -647,7 +647,7 @@ via_detach(device_t dev)
 	bus_dma_tag_destroy(via->parent_dmat);
 	bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
 	bus_dma_tag_destroy(via->sgd_dmat);
-	free(via, M_DEVBUF);
+	kfree(via, M_DEVBUF);
 	return 0;
 }
 

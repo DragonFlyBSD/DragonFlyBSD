@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -516,7 +516,7 @@ isa_probe_children(device_t dev)
 		}
 	}
 
-	free(children, M_TEMP);
+	kfree(children, M_TEMP);
 
 	isa_running = 1;
 }
@@ -530,7 +530,7 @@ isa_add_child(device_t bus, device_t parent, int order, const char *name, int un
 	device_t child;
 	struct	isa_device *idev;
 
-	idev = malloc(sizeof(struct isa_device), M_ISADEV, M_WAITOK | M_ZERO);
+	idev = kmalloc(sizeof(struct isa_device), M_ISADEV, M_WAITOK | M_ZERO);
 
 	resource_list_init(&idev->id_resources);
 	TAILQ_INIT(&idev->id_configs);
@@ -885,7 +885,7 @@ isa_driver_added(device_t dev, driver_t *driver)
 		}
 	}
 
-	free(children, M_TEMP);
+	kfree(children, M_TEMP);
 }
 
 static int
@@ -949,7 +949,7 @@ isa_add_config(device_t dev, device_t child,
 	struct isa_device* idev = DEVTOISA(child);
 	struct isa_config_entry *newice, *ice;
 
-	newice = malloc(sizeof *ice, M_DEVBUF, M_WAITOK);
+	newice = kmalloc(sizeof *ice, M_DEVBUF, M_WAITOK);
 	newice->ice_priority = priority;
 	newice->ice_config = *config;
 	

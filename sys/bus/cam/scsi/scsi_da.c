@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.30 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.31 2006/09/05 00:55:32 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -556,7 +556,7 @@ daopen(struct dev_open_args *ap)
 		struct scsi_read_capacity_data *rcap;
 		union  ccb *ccb;
 
-		rcap = malloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
+		rcap = kmalloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
 		
 		ccb = cam_periph_getccb(periph, /*priority*/1);
 		scsi_read_capacity(&ccb->csio,
@@ -579,7 +579,7 @@ daopen(struct dev_open_args *ap)
 			dasetgeom(periph, rcap);
 		}
 
-		free(rcap, M_TEMP);
+		kfree(rcap, M_TEMP);
 	}
 
 	if (error == 0) {
@@ -1080,7 +1080,7 @@ dacleanup(struct cam_periph *periph)
 	if (softc->disk.d_rawdev) {
 		disk_destroy(&softc->disk);
 	}
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 }
 
 static void
@@ -1231,7 +1231,7 @@ daregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
 	bioq_init(&softc->bio_queue);
@@ -1440,7 +1440,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		struct ccb_scsiio *csio;
 		struct scsi_read_capacity_data *rcap;
 
-		rcap = malloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
+		rcap = kmalloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
 		csio = &start_ccb->csio;
 		scsi_read_capacity(csio,
 				   /*retries*/4,
@@ -1715,7 +1715,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				} 
 			}
 		}
-		free(rdcap, M_TEMP);
+		kfree(rdcap, M_TEMP);
 		if (announce_buf[0] != '\0') {
 			xpt_announce_periph(periph, announce_buf);
 			/*

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.32 2006/07/28 02:17:40 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.33 2006/09/05 00:55:47 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -348,19 +348,19 @@ pppdealloc(struct ppp_softc *sc)
 #endif /* PPP_COMPRESS */
 #ifdef PPP_FILTER
     if (sc->sc_pass_filt.bf_insns != 0) {
-	free(sc->sc_pass_filt.bf_insns, M_DEVBUF);
+	kfree(sc->sc_pass_filt.bf_insns, M_DEVBUF);
 	sc->sc_pass_filt.bf_insns = 0;
 	sc->sc_pass_filt.bf_len = 0;
     }
     if (sc->sc_active_filt.bf_insns != 0) {
-	free(sc->sc_active_filt.bf_insns, M_DEVBUF);
+	kfree(sc->sc_active_filt.bf_insns, M_DEVBUF);
 	sc->sc_active_filt.bf_insns = 0;
 	sc->sc_active_filt.bf_len = 0;
     }
 #endif /* PPP_FILTER */
 #ifdef VJC
     if (sc->sc_comp != 0) {
-	free(sc->sc_comp, M_DEVBUF);
+	kfree(sc->sc_comp, M_DEVBUF);
 	sc->sc_comp = 0;
     }
 #endif
@@ -550,11 +550,11 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	    }
 	    if ((error = copyin((caddr_t)nbp->bf_insns, (caddr_t)newcode,
 			       newcodelen)) != 0) {
-		free(newcode, M_DEVBUF);
+		kfree(newcode, M_DEVBUF);
 		return error;
 	    }
 	    if (!bpf_validate(newcode, nbp->bf_len)) {
-		free(newcode, M_DEVBUF);
+		kfree(newcode, M_DEVBUF);
 		return EINVAL;
 	    }
 	} else
@@ -566,7 +566,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	bp->bf_insns = newcode;
 	crit_exit();
 	if (oldcode != 0)
-	    free(oldcode, M_DEVBUF);
+	    kfree(oldcode, M_DEVBUF);
 	break;
 #endif
 

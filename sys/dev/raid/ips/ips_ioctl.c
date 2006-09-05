@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_ioctl.c,v 1.5 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.6 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.7 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -163,20 +163,20 @@ ips_ioctl_request(ips_softc_t *sc, u_long ioctl_request, caddr_t addr,
 	switch (ioctl_request) {
 	case IPS_USER_CMD:
 		user_request = (ips_user_request *)addr;
-		ioctl_cmd = malloc(sizeof(ips_ioctl_t), M_IPSBUF, M_WAITOK);
+		ioctl_cmd = kmalloc(sizeof(ips_ioctl_t), M_IPSBUF, M_WAITOK);
 		ioctl_cmd->command_buffer = malloc(sizeof(ips_generic_cmd),
 		    M_IPSBUF, M_WAITOK);
 		if (copyin(user_request->command_buffer,
 		    ioctl_cmd->command_buffer, sizeof(ips_generic_cmd))) {
-			free(ioctl_cmd->command_buffer, M_IPSBUF);
-			free(ioctl_cmd, M_IPSBUF);
+			kfree(ioctl_cmd->command_buffer, M_IPSBUF);
+			kfree(ioctl_cmd, M_IPSBUF);
 			break;
 		}
 		ioctl_cmd->readwrite = IPS_IOCTL_READ | IPS_IOCTL_WRITE;
 		ioctl_cmd->datasize = IPS_IOCTL_BUFFER_SIZE;
 		error = ips_ioctl_cmd(sc, ioctl_cmd, user_request);
-		free(ioctl_cmd->command_buffer, M_IPSBUF);
-		free(ioctl_cmd, M_IPSBUF);
+		kfree(ioctl_cmd->command_buffer, M_IPSBUF);
+		kfree(ioctl_cmd, M_IPSBUF);
 		break;
 	}
 	return error;

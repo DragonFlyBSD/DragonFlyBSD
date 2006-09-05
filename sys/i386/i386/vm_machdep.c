@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.43 2006/06/01 05:38:43 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.44 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -325,7 +325,7 @@ cpu_coredump(struct thread *td, struct vnode *vp, struct ucred *cred)
 	caddr_t tempuser;
 
 	KKASSERT(p);
-	tempuser = malloc(ctob(UPAGES), M_TEMP, M_WAITOK);
+	tempuser = kmalloc(ctob(UPAGES), M_TEMP, M_WAITOK);
 	if (!tempuser)
 		return EINVAL;
 	
@@ -339,7 +339,7 @@ cpu_coredump(struct thread *td, struct vnode *vp, struct ucred *cred)
 	error = vn_rdwr(UIO_WRITE, vp, (caddr_t) tempuser, ctob(UPAGES),
 			(off_t)0, UIO_SYSSPACE, IO_UNIT, cred, (int *)NULL);
 
-	free(tempuser, M_TEMP);
+	kfree(tempuser, M_TEMP);
 	
 	return error;
 }

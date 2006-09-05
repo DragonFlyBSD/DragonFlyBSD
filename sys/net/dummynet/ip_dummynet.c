@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.19 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.20 2006/09/05 00:55:47 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -210,10 +210,10 @@ heap_init(struct dn_heap *h, int new_size)
 	return 0 ;
     }
     new_size = (new_size + HEAP_INCREMENT ) & ~HEAP_INCREMENT ;
-    p = malloc(new_size * sizeof(*p), M_DUMMYNET, M_WAITOK | M_ZERO);
+    p = kmalloc(new_size * sizeof(*p), M_DUMMYNET, M_WAITOK | M_ZERO);
     if (h->size > 0) {
 	bcopy(h->p, p, h->size * sizeof(*p) );
-	free(h->p, M_DUMMYNET);
+	kfree(h->p, M_DUMMYNET);
     }
     h->p = p ;
     h->size = new_size ;
@@ -374,7 +374,7 @@ static void
 heap_free(struct dn_heap *h)
 {
     if (h->size >0 )
-	free(h->p, M_DUMMYNET);
+	kfree(h->p, M_DUMMYNET);
     bzero(h, sizeof(*h) );
 }
 
@@ -459,7 +459,7 @@ transmit_event(struct dn_pipe *pipe)
 	    m_freem(pkt->dn_m);
 	    break ;
 	}
-	free(pkt, M_DUMMYNET);
+	kfree(pkt, M_DUMMYNET);
     }
     /* if there are leftover packets, put into the heap for next event */
     if ( (pkt = pipe->head) )
@@ -792,7 +792,7 @@ expire_queues(struct dn_flow_set *fs)
 		else
 		    fs->rq[i] = q = q->next ;
 		fs->rq_elements-- ;
-		free(old_q, M_DUMMYNET);
+		kfree(old_q, M_DUMMYNET);
 	    }
     return initial_elements - fs->rq_elements ;
 }
@@ -815,7 +815,7 @@ create_queue(struct dn_flow_set *fs, int i)
 	if ( fs->rq[i] != NULL )
 	    return fs->rq[i] ;
     }
-    q = malloc(sizeof(*q), M_DUMMYNET, M_WAITOK | M_ZERO);
+    q = kmalloc(sizeof(*q), M_DUMMYNET, M_WAITOK | M_ZERO);
     q->fs = fs ;
     q->hash_slot = i ;
     q->next = fs->rq[i] ;
@@ -874,7 +874,7 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 		else
 		    fs->rq[i] = q = q->next ;
 		fs->rq_elements-- ;
-		free(old_q, M_DUMMYNET);
+		kfree(old_q, M_DUMMYNET);
 		continue ;
 	    }
 	    prev = q ;
@@ -1114,7 +1114,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	goto dropit ;
 
     /* XXX expensive to zero, see if we can remove it*/
-    pkt = malloc(sizeof (*pkt), M_DUMMYNET, M_INTWAIT | M_ZERO | M_NULLOK);
+    pkt = kmalloc(sizeof (*pkt), M_DUMMYNET, M_INTWAIT | M_ZERO | M_NULLOK);
     if (pkt == NULL)
 	    goto dropit;	/* cannot allocate packet header        */
 
@@ -1243,7 +1243,7 @@ dropit:
 	rt_unref ( n->ro.ro_rt ) ;		\
 	m_freem(n->dn_m);			\
 	pkt = DN_NEXT(n) ;			\
-	free(n, M_DUMMYNET) ;	}
+	kfree(n, M_DUMMYNET) ;	}
 
 /*
  * Dispose all packets and flow_queues on a flow_set.
@@ -1263,7 +1263,7 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 	    for (pkt = q->head ; pkt ; )
 		DN_FREE_PKT(pkt) ;
 	    qn = q->next ;
-	    free(q, M_DUMMYNET);
+	    kfree(q, M_DUMMYNET);
 	}
 	fs->rq[i] = NULL ;
     }
@@ -1271,12 +1271,12 @@ purge_flow_set(struct dn_flow_set *fs, int all)
     if (all) {
 	/* RED - free lookup table */
 	if (fs->w_q_lookup)
-	    free(fs->w_q_lookup, M_DUMMYNET);
+	    kfree(fs->w_q_lookup, M_DUMMYNET);
 	if (fs->rq)
-	    free(fs->rq, M_DUMMYNET);
+	    kfree(fs->rq, M_DUMMYNET);
 	/* if this fs is not part of a pipe, free it */
 	if (fs->pipe && fs != &(fs->pipe->fs) )
-	    free(fs, M_DUMMYNET);
+	    kfree(fs, M_DUMMYNET);
     }
 }
 
@@ -1337,7 +1337,7 @@ dummynet_flush(void)
 	purge_pipe(p);
 	curr_p = p ;
 	p = p->next ;
-	free(curr_p, M_DUMMYNET);
+	kfree(curr_p, M_DUMMYNET);
     }
 }
 
@@ -1405,12 +1405,12 @@ config_red(struct dn_flow_set *p, struct dn_flow_set * x)
 
     /* if the lookup table already exist, free and create it again */
     if (x->w_q_lookup) {
-	free(x->w_q_lookup, M_DUMMYNET);
+	kfree(x->w_q_lookup, M_DUMMYNET);
 	x->w_q_lookup = NULL ;
     }
     if (red_lookup_depth == 0) {
 	printf("\nnet.inet.ip.dummynet.red_lookup_depth must be > 0");
-	free(x, M_DUMMYNET);
+	kfree(x, M_DUMMYNET);
 	return EINVAL;
     }
     x->lookup_depth = red_lookup_depth;
@@ -1504,7 +1504,7 @@ config_pipe(struct dn_pipe *p)
 		 a = b , b = b->next) ;
 
 	if (b == NULL || b->pipe_nr != p->pipe_nr) { /* new pipe */
-	    x = malloc(sizeof(struct dn_pipe), M_DUMMYNET, M_WAITOK | M_ZERO);
+	    x = kmalloc(sizeof(struct dn_pipe), M_DUMMYNET, M_WAITOK | M_ZERO);
 	    x->pipe_nr = p->pipe_nr;
 	    x->fs.pipe = x ;
 	    /* idle_heap is the only one from which we extract from the middle.
@@ -1533,7 +1533,7 @@ config_pipe(struct dn_pipe *p)
 	if ( x->fs.rq == NULL ) { /* a new pipe */
 	    s = alloc_hash(&(x->fs), pfs) ;
 	    if (s) {
-		free(x, M_DUMMYNET);
+		kfree(x, M_DUMMYNET);
 		return s ;
 	    }
 	    x->next = b ;
@@ -1553,7 +1553,7 @@ config_pipe(struct dn_pipe *p)
 	if (b == NULL || b->fs_nr != pfs->fs_nr) { /* new  */
 	    if (pfs->parent_nr == 0)	/* need link to a pipe */
 		return EINVAL ;
-	    x = malloc(sizeof(struct dn_flow_set), M_DUMMYNET, M_WAITOK|M_ZERO);
+	    x = kmalloc(sizeof(struct dn_flow_set), M_DUMMYNET, M_WAITOK|M_ZERO);
 	    x->fs_nr = pfs->fs_nr;
 	    x->parent_nr = pfs->parent_nr;
 	    x->weight = pfs->weight ;
@@ -1573,7 +1573,7 @@ config_pipe(struct dn_pipe *p)
 	if ( x->rq == NULL ) { /* a new flow_set */
 	    s = alloc_hash(x, pfs) ;
 	    if (s) {
-		free(x, M_DUMMYNET);
+		kfree(x, M_DUMMYNET);
 		return s ;
 	    }
 	    x->next = b;
@@ -1694,7 +1694,7 @@ delete_pipe(struct dn_pipe *p)
 	pipe_remove_from_heap(&extract_heap, b);
 	pipe_remove_from_heap(&wfq_ready_heap, b);
 	crit_exit();
-	free(b, M_DUMMYNET);
+	kfree(b, M_DUMMYNET);
     } else { /* this is a WF2Q queue (dn_flow_set) */
 	struct dn_flow_set *a, *b;
 
@@ -1776,7 +1776,7 @@ dummynet_get(struct sockopt *sopt)
     for (set = all_flow_sets ; set ; set = set->next )
 	size += sizeof ( *set ) +
 	    set->rq_elements * sizeof(struct dn_flow_queue);
-    buf = malloc(size, M_TEMP, M_WAITOK);
+    buf = kmalloc(size, M_TEMP, M_WAITOK);
     for (p = all_pipes, bp = buf ; p ; p = p->next ) {
 	struct dn_pipe *pipe_bp = (struct dn_pipe *)bp ;
 
@@ -1815,7 +1815,7 @@ dummynet_get(struct sockopt *sopt)
     }
     crit_exit();
     error = sooptcopyout(sopt, buf, size);
-    free(buf, M_TEMP);
+    kfree(buf, M_TEMP);
     return error ;
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.13 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,7 +97,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 			error = 0;
 		} else {
 			strlcpy(in->res_file, fullpath, sizeof(in->res_file));
-			free(freepath, M_TEMP);
+			kfree(freepath, M_TEMP);
 		}
 
 		/* indicate that we are using the vnode */
@@ -202,7 +202,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     if (vp->v_resident)
 	return(EEXIST);
     vhold(vp);
-    vmres = malloc(sizeof(*vmres), M_EXEC_RES, M_WAITOK);
+    vmres = kmalloc(sizeof(*vmres), M_EXEC_RES, M_WAITOK);
     vp->v_resident = vmres;
     vmres->vr_vnode = vp;
     vmres->vr_sysent = p->p_sysent;
@@ -263,7 +263,7 @@ restart:
 		vmspace_free(vmres->vr_vmspace);
 		vmres->vr_vmspace = NULL;
 	    }
-	    free(vmres, M_EXEC_RES);
+	    kfree(vmres, M_EXEC_RES);
 	    exec_res_id--;
 	    error = 0;
 	    ++count;

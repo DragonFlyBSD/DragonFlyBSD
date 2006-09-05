@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.25 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -380,7 +380,7 @@ swap_pager_swap_init(void)
 	for (n = 1; n < n2 / 8; n *= 2)
 		;
 
-	swhash = malloc(sizeof(struct swblock *) * n, M_VMPGDATA, M_WAITOK);
+	swhash = kmalloc(sizeof(struct swblock *) * n, M_VMPGDATA, M_WAITOK);
 	bzero(swhash, sizeof(struct swblock *) * n);
 
 	swhash_mask = n - 1;

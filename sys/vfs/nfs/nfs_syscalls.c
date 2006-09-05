@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.25 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.26 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -246,13 +246,13 @@ sys_nfssvc(struct nfssvc_args *uap)
 			    if (slp->ns_numuids < nuidhash_max) {
 				slp->ns_numuids++;
 				nuidp = (struct nfsuid *)
-				   malloc(sizeof (struct nfsuid), M_NFSUID,
+				   kmalloc(sizeof (struct nfsuid), M_NFSUID,
 					M_WAITOK);
 			    } else
 				nuidp = (struct nfsuid *)0;
 			    if ((slp->ns_flag & SLP_VALID) == 0) {
 				if (nuidp)
-				    free((caddr_t)nuidp, M_NFSUID);
+				    kfree((caddr_t)nuidp, M_NFSUID);
 			    } else {
 				if (nuidp == (struct nfsuid *)0) {
 				    nuidp = TAILQ_FIRST(&slp->ns_uidlruhead);
@@ -401,7 +401,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	so->so_snd.sb_timeo = 0;
 
 	slp = (struct nfssvc_sock *)
-		malloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
+		kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
 	bzero((caddr_t)slp, sizeof (struct nfssvc_sock));
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
@@ -443,7 +443,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 #endif
 	if (nfsd == (struct nfsd *)0) {
 		nsd->nsd_nfsd = nfsd = (struct nfsd *)
-			malloc(sizeof (struct nfsd), M_NFSD, M_WAITOK);
+			kmalloc(sizeof (struct nfsd), M_NFSD, M_WAITOK);
 		bzero((caddr_t)nfsd, sizeof (struct nfsd));
 		crit_enter();
 		nfsd->nfsd_td = td;
@@ -509,7 +509,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		}
 		if (error || (slp->ns_flag & SLP_VALID) == 0) {
 			if (nd) {
-				free((caddr_t)nd, M_NFSRVDESC);
+				kfree((caddr_t)nd, M_NFSRVDESC);
 				nd = NULL;
 			}
 			nfsd->nfsd_slp = (struct nfssvc_sock *)0;
@@ -648,7 +648,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)
 				nfs_slpunlock(slp);
 			if (error == EINTR || error == ERESTART) {
-				free((caddr_t)nd, M_NFSRVDESC);
+				kfree((caddr_t)nd, M_NFSRVDESC);
 				nfsrv_slpderef(slp);
 				crit_enter();
 				goto done;
@@ -691,7 +691,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 done:
 	TAILQ_REMOVE(&nfsd_head, nfsd, nfsd_chain);
 	crit_exit();
-	free((caddr_t)nfsd, M_NFSD);
+	kfree((caddr_t)nfsd, M_NFSD);
 	nsd->nsd_nfsd = (struct nfsd *)0;
 	if (--nfs_numnfsd == 0)
 		nfsrv_init(TRUE);	/* Reinitialize everything */
@@ -733,7 +733,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			if (rec->nr_address)
 				FREE(rec->nr_address, M_SONAME);
 			m_freem(rec->nr_packet);
-			free(rec, M_NFSRVDESC);
+			kfree(rec, M_NFSRVDESC);
 		}
 		TAILQ_FOREACH_MUTABLE(nuidp, &slp->ns_uidlruhead, nu_lru,
 				      nnuidp) {
@@ -741,13 +741,13 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp, nu_lru);
 			if (nuidp->nu_flag & NU_NAM)
 				FREE(nuidp->nu_nam, M_SONAME);
-			free((caddr_t)nuidp, M_NFSUID);
+			kfree((caddr_t)nuidp, M_NFSUID);
 		}
 		crit_enter();
 		for (nwp = slp->ns_tq.lh_first; nwp; nwp = nnwp) {
 			nnwp = nwp->nd_tq.le_next;
 			LIST_REMOVE(nwp, nd_tq);
-			free((caddr_t)nwp, M_NFSRVDESC);
+			kfree((caddr_t)nwp, M_NFSRVDESC);
 		}
 		LIST_INIT(&slp->ns_tq);
 		crit_exit();
@@ -763,7 +763,7 @@ nfsrv_slpderef(struct nfssvc_sock *slp)
 {
 	if (--(slp->ns_sref) == 0 && (slp->ns_flag & SLP_VALID) == 0) {
 		TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
-		free((caddr_t)slp, M_NFSSVC);
+		kfree((caddr_t)slp, M_NFSSVC);
 	}
 }
 
@@ -820,7 +820,7 @@ nfsrv_init(int terminating)
 			if (slp->ns_flag & SLP_VALID)
 				nfsrv_zapsock(slp);
 			TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
-			free((caddr_t)slp, M_NFSSVC);
+			kfree((caddr_t)slp, M_NFSSVC);
 		}
 		nfsrv_cleancache();	/* And clear out server cache */
 	} else
@@ -838,14 +838,14 @@ nfsrv_init(int terminating)
 
 #if 0
 	nfs_udpsock = (struct nfssvc_sock *)
-	    malloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
+	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
 	bzero((caddr_t)nfs_udpsock, sizeof (struct nfssvc_sock));
 	STAILQ_INIT(&nfs_udpsock->ns_rec);
 	TAILQ_INIT(&nfs_udpsock->ns_uidlruhead);
 	TAILQ_INSERT_HEAD(&nfssvc_sockhead, nfs_udpsock, ns_chain);
 
 	nfs_cltpsock = (struct nfssvc_sock *)
-	    malloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
+	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
 	bzero((caddr_t)nfs_cltpsock, sizeof (struct nfssvc_sock));
 	STAILQ_INIT(&nfs_cltpsock->ns_rec);
 	TAILQ_INIT(&nfs_cltpsock->ns_uidlruhead);
@@ -986,7 +986,7 @@ nfs_getauth(struct nfsmount *nmp, struct nfsreq *rep,
 		}
 	}
 	nmp->nm_state &= ~(NFSSTA_WAITAUTH | NFSSTA_WANTAUTH);
-	nmp->nm_authstr = *auth_str = (char *)malloc(RPCAUTH_MAXSIZ, M_TEMP, M_WAITOK);
+	nmp->nm_authstr = *auth_str = (char *)kmalloc(RPCAUTH_MAXSIZ, M_TEMP, M_WAITOK);
 	nmp->nm_authlen = RPCAUTH_MAXSIZ;
 	nmp->nm_verfstr = verf_str;
 	nmp->nm_verflen = *verf_len;
@@ -1006,7 +1006,7 @@ nfs_getauth(struct nfsmount *nmp, struct nfsreq *rep,
 		error = EAUTH;
 	}
 	if (error)
-		free((caddr_t)*auth_str, M_TEMP);
+		kfree((caddr_t)*auth_str, M_TEMP);
 	else {
 		*auth_len = nmp->nm_authlen;
 		*verf_len = nmp->nm_verflen;
@@ -1050,7 +1050,7 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 	TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp, nu_lru);
 	TAILQ_INSERT_TAIL(&nmp->nm_uidlruhead, nuidp, nu_lru);
 
-	nickp = (u_int32_t *)malloc(2 * NFSX_UNSIGNED, M_TEMP, M_WAITOK);
+	nickp = (u_int32_t *)kmalloc(2 * NFSX_UNSIGNED, M_TEMP, M_WAITOK);
 	*nickp++ = txdr_unsigned(RPCAKN_NICKNAME);
 	*nickp = txdr_unsigned(nuidp->nu_nickname);
 	*auth_str = (char *)nickp;
@@ -1125,7 +1125,7 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 			if (nmp->nm_numuids < nuidhash_max) {
 				nmp->nm_numuids++;
 				nuidp = (struct nfsuid *)
-				   malloc(sizeof (struct nfsuid), M_NFSUID,
+				   kmalloc(sizeof (struct nfsuid), M_NFSUID,
 					M_WAITOK);
 			} else {
 				nuidp = TAILQ_FIRST(&nmp->nm_uidlruhead);

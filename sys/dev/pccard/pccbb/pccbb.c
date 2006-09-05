@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.16 2006/05/14 17:28:36 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.17 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -299,7 +299,7 @@ cbb_remove_res(struct cbb_softc *sc, struct resource *res)
 	SLIST_FOREACH(rle, &sc->rl, link) {
 		if (rle->res == res) {
 			SLIST_REMOVE(&sc->rl, rle, cbb_reslist, link);
-			free(rle, M_DEVBUF);
+			kfree(rle, M_DEVBUF);
 			return;
 		}
 	}
@@ -326,7 +326,7 @@ cbb_insert_res(struct cbb_softc *sc, struct resource *res, int type,
 	 * Need to record allocated resource so we can iterate through
 	 * it later.
 	 */
-	rle = malloc(sizeof(struct cbb_reslist), M_DEVBUF, M_NOWAIT);
+	rle = kmalloc(sizeof(struct cbb_reslist), M_DEVBUF, M_NOWAIT);
 	if (rle == NULL)
 		return (ENOMEM);
 	rle->res = res;
@@ -347,7 +347,7 @@ cbb_destroy_res(struct cbb_softc *sc)
 		    "(rid=%x, type=%d, addr=%lx)\n", rle->rid, rle->type,
 		    rman_get_start(rle->res));
 		SLIST_REMOVE_HEAD(&sc->rl, link);
-		free(rle, M_DEVBUF);
+		kfree(rle, M_DEVBUF);
 	}
 }
 
@@ -755,7 +755,7 @@ cbb_detach(device_t brdev)
 		else
 			error++;
 	}
-	free (devlist, M_TEMP);
+	kfree (devlist, M_TEMP);
 	if (error == 0)
 		cbb_release_helper(brdev);
 	else
@@ -776,7 +776,7 @@ cbb_shutdown(device_t brdev)
 		if (device_shutdown(devlist[i]) == 0)
 			; /* XXX delete the child without detach? */
 	}
-	free (devlist, M_TEMP);
+	kfree (devlist, M_TEMP);
 	cbb_release_helper(brdev);
 
 	/*
@@ -800,7 +800,7 @@ cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	 * the PCI interrupt for the status change interrupts, it can't be
 	 * free for use by the driver.  Fast interrupts must not be shared.
 	 */
-	ih = malloc(sizeof(struct cbb_intrhand), M_DEVBUF, M_WAITOK|M_ZERO);
+	ih = kmalloc(sizeof(struct cbb_intrhand), M_DEVBUF, M_WAITOK|M_ZERO);
 	if (ih == NULL)
 		return (ENOMEM);
 	*cookiep = ih;
@@ -830,7 +830,7 @@ cbb_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	/* XXX Need to do different things for ISA interrupts. */
 	ih = (struct cbb_intrhand *) cookie;
 	STAILQ_REMOVE(&sc->intr_handlers, ih, cbb_intrhand, entries);
-	free(ih, M_DEVBUF);
+	kfree(ih, M_DEVBUF);
 	return (0);
 }
 
@@ -870,7 +870,7 @@ cbb_driver_added(device_t brdev, driver_t *driver)
 				    driver->name);
 		}
 	}
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 
 	if (wake > 0) {
 		if ((cbb_get(sc, CBB_SOCKET_STATE) & CBB_SOCKET_STAT_CD)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.22 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.23 2006/09/05 00:55:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -82,7 +82,7 @@ nwfs_hash_init(void)
 void
 nwfs_hash_free(void)
 {
-	free(nwhashtbl, M_NWFSHASH);
+	kfree(nwhashtbl, M_NWFSHASH);
 }
 
 int
@@ -182,7 +182,7 @@ rescan:
 	if (nwfs_hashlookup(nmp, fid, NULL) == 0) {
 		np->n_vnode = NULL;
 		vx_put(vp);
-		free(np, M_NWNODE);
+		kfree(np, M_NWNODE);
 		goto rescan;
 	}
 	*vpp = vp;
@@ -239,7 +239,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 		nmp->n_root = NULL;
 	vp->v_data = NULL;
 	if (np)
-		free(np, M_NWNODE);
+		kfree(np, M_NWNODE);
 	if (dvp)
 		vrele(dvp);
 	return (0);

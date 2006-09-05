@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.8 2006/06/13 08:12:04 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.9 2006/09/05 00:55:50 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -435,7 +435,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 
  out:
 	if (mhead) m_freem(mhead);
-	if (from) free(from, M_SONAME);
+	if (from) kfree(from, M_SONAME);
 	soclose(so, FNONBLOCK);
 	return error;
 }

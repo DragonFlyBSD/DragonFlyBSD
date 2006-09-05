@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.19 2004/07/16 08:13:28 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.20 2006/09/05 00:55:43 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.19 2004/07/16 08:13:28 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.20 2006/09/05 00:55:43 dillon Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -691,7 +691,7 @@ ac97_create(device_t dev, void *devinfo, kobj_class_t cls)
 {
 	struct ac97_info *codec;
 
-	codec = (struct ac97_info *)malloc(sizeof *codec, M_AC97, M_NOWAIT);
+	codec = (struct ac97_info *)kmalloc(sizeof *codec, M_AC97, M_NOWAIT);
 	if (codec == NULL)
 		return NULL;
 
@@ -701,7 +701,7 @@ ac97_create(device_t dev, void *devinfo, kobj_class_t cls)
 	if (codec->methods == NULL) {
 		snd_mtxlock(codec->lock);
 		snd_mtxfree(codec->lock);
-		free(codec, M_AC97);
+		kfree(codec, M_AC97);
 		return NULL;
 	}
 
@@ -718,7 +718,7 @@ ac97_destroy(struct ac97_info *codec)
 	if (codec->methods != NULL)
 		kobj_delete(codec->methods, M_AC97);
 	snd_mtxfree(codec->lock);
-	free(codec, M_AC97);
+	kfree(codec, M_AC97);
 }
 
 void

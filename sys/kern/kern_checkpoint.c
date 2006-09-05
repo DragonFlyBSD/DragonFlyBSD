@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -191,10 +191,10 @@ elf_getnotes(struct proc *p, struct file *fp, size_t notesz)
 	if (nthreads <= 0 || nthreads > CKPT_MAXTHREADS)
 		return EINVAL;
 
-	psinfo  = malloc(sizeof(prpsinfo_t), M_TEMP, M_ZERO | M_WAITOK);
-	status  = malloc(nthreads*sizeof(prstatus_t), M_TEMP, M_WAITOK);
-	fpregset  = malloc(nthreads*sizeof(prfpregset_t), M_TEMP, M_WAITOK);
-	note = malloc(notesz, M_TEMP, M_WAITOK);
+	psinfo  = kmalloc(sizeof(prpsinfo_t), M_TEMP, M_ZERO | M_WAITOK);
+	status  = kmalloc(nthreads*sizeof(prstatus_t), M_TEMP, M_WAITOK);
+	fpregset  = kmalloc(nthreads*sizeof(prfpregset_t), M_TEMP, M_WAITOK);
+	note = kmalloc(notesz, M_TEMP, M_WAITOK);
 
 	
 	PRINTF(("reading notes section\n"));
@@ -207,13 +207,13 @@ elf_getnotes(struct proc *p, struct file *fp, size_t notesz)
 	error = elf_loadnotes(p, psinfo, status, fpregset);
  done:
 	if (psinfo)
-		free(psinfo, M_TEMP);
+		kfree(psinfo, M_TEMP);
 	if (status)
-		free(status, M_TEMP);
+		kfree(status, M_TEMP);
 	if (fpregset)
-		free(fpregset, M_TEMP);
+		kfree(fpregset, M_TEMP);
 	if (note)
-		free(note, M_TEMP);
+		kfree(note, M_TEMP);
 	return error;
 }
 
@@ -228,12 +228,12 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 
 	TRACE_ENTER;
 	
-	ehdr = malloc(sizeof(Elf_Ehdr), M_TEMP, M_ZERO | M_WAITOK);
+	ehdr = kmalloc(sizeof(Elf_Ehdr), M_TEMP, M_ZERO | M_WAITOK);
 
 	if ((error = elf_gethdr(fp, ehdr)) != 0)
 		goto done;
 	nbyte = sizeof(Elf_Phdr) * ehdr->e_phnum; 
-	phdr = malloc(nbyte, M_TEMP, M_WAITOK); 
+	phdr = kmalloc(nbyte, M_TEMP, M_WAITOK); 
 
 	/* fetch description of program writable mappings */
 	if ((error = elf_getphdrs(fp, phdr, nbyte)) != 0)
@@ -276,9 +276,9 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 	}
 done:
 	if (ehdr)
-		free(ehdr, M_TEMP);
+		kfree(ehdr, M_TEMP);
 	if (phdr)
-		free(phdr, M_TEMP);
+		kfree(phdr, M_TEMP);
 	TRACE_EXIT;
 	return error;
 }
@@ -451,7 +451,7 @@ elf_getsigs(struct proc *p, struct file *fp)
 	struct sigacts *tmpsigacts;
 
 	TRACE_ENTER;
-	csi = malloc(sizeof(struct ckpt_siginfo), M_TEMP, M_ZERO | M_WAITOK);
+	csi = kmalloc(sizeof(struct ckpt_siginfo), M_TEMP, M_ZERO | M_WAITOK);
 	if ((error = read_check(fp, csi, sizeof(struct ckpt_siginfo))) != 0)
 		goto done;
 
@@ -470,7 +470,7 @@ elf_getsigs(struct proc *p, struct file *fp)
 	p->p_sigparent = csi->csi_sigparent;
  done:
 	if (csi)
-		free(csi, M_TEMP);
+		kfree(csi, M_TEMP);
 	TRACE_EXIT;
 	return error;
 }
@@ -561,7 +561,7 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	p->p_vmspace->vm_tsize = vminfo.cvm_tsize;
 	if ((error = read_check(fp, &vpcount, sizeof(int))) != 0)
 		goto done;
-	vnh = malloc(sizeof(struct vn_hdr) * vpcount, M_TEMP, M_WAITOK);
+	vnh = kmalloc(sizeof(struct vn_hdr) * vpcount, M_TEMP, M_WAITOK);
 	if ((error = read_check(fp, vnh, sizeof(struct vn_hdr)*vpcount)) != 0)
 		goto done;
 	for (i = 0; i < vpcount; i++) {
@@ -571,7 +571,7 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	
  done:
 	if (vnh)
-		free(vnh, M_TEMP);
+		kfree(vnh, M_TEMP);
 	TRACE_EXIT;
 	return error;
 }
@@ -596,7 +596,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 	if ((error = read_check(fp, &filehdr, sizeof(filehdr))) != 0)
 		goto done;
 	filecount = filehdr.cfh_nfiles;
-	cfi_base = malloc(filecount*sizeof(struct ckpt_fileinfo), M_TEMP, M_WAITOK);
+	cfi_base = kmalloc(filecount*sizeof(struct ckpt_fileinfo), M_TEMP, M_WAITOK);
 	error = read_check(fp, cfi_base, filecount*sizeof(struct ckpt_fileinfo));
 	if (error)
 		goto done;
@@ -660,7 +660,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 
  done:
 	if (cfi_base)
-		free(cfi_base, M_TEMP);
+		kfree(cfi_base, M_TEMP);
 	TRACE_EXIT;
 	return error;
 }
@@ -780,7 +780,7 @@ checkpoint_signal_handler(struct proc *p)
 	} else {
 		printf("checkpoint failed with open - error: %d\n", error);
 	}
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 	chptinuse--;
 	return (error);
 }
@@ -816,14 +816,14 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 	char *format = ckptfilename;
 	size_t namelen;
 
-	temp = malloc(MAXPATHLEN + 1, M_TEMP, M_NOWAIT);
+	temp = kmalloc(MAXPATHLEN + 1, M_TEMP, M_NOWAIT);
 	if (temp == NULL)
 		return NULL;
 	namelen = strlen(name);
 	n = 0;
 	if (ckptfilename[0] != '/') {
 		if ((bp = kern_getcwd(temp, MAXPATHLEN - 1, &error)) == NULL) {
-			free(temp, M_TEMP);
+			kfree(temp, M_TEMP);
 			return NULL;
 		}
 		n = strlen(bp);
@@ -844,7 +844,7 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + namelen) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, name, namelen);
@@ -855,7 +855,7 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, buf, l);
@@ -866,7 +866,7 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
-					free(temp, M_TEMP);
+					kfree(temp, M_TEMP);
 					return NULL;
 				}
 				memcpy(temp+n, buf, l);

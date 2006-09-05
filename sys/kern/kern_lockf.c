@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.33 2006/08/03 16:06:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.34 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -792,7 +792,7 @@ lf_alloc_range(void)
 #ifdef INVARIANTS
 	lf_global_counter++;
 #endif
-	range = malloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
+	range = kmalloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
 	range->lf_owner = NULL;
 	return(range);
 }
@@ -829,7 +829,7 @@ lf_destroy_range(struct lockf_range *range)
 {
 	lf_printf("lf_destroy_range: %lld..%lld\n",
 		  range->lf_start, range->lf_end);
-	free(range, M_LOCKF);
+	kfree(range, M_LOCKF);
 #ifdef INVARIANTS
 	lf_global_counter--;
 	KKASSERT(lf_global_counter>=0);

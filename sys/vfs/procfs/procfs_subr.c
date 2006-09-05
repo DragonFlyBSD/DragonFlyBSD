@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.14 2006/08/11 01:55:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.15 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ loop:
 
 	error = getnewvnode(VT_PROCFS, mp, vpp, 0, 0);
 	if (error) {
-		free(pfs, M_TEMP);
+		kfree(pfs, M_TEMP);
 		goto out;
 	}
 	vp = *vpp;
@@ -251,7 +251,7 @@ procfs_freevp(struct vnode *vp)
 	KKASSERT(*pfspp);
 	*pfspp = pfs->pfs_next;
 	pfs->pfs_next = NULL;
-	free(pfs, M_TEMP);
+	kfree(pfs, M_TEMP);
 	return (0);
 }
 

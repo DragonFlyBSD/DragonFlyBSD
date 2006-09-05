@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.31 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.32 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -624,7 +624,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 
 	if (ap->a_ncookies != NULL) {
 		if (error)
-			free(cookies, M_TEMP);
+			kfree(cookies, M_TEMP);
 		else {
 			/*
 			 * Work out the number of cookies actually used.

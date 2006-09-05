@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.54 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.55 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -520,7 +520,7 @@ at_fork(forklist_fn function)
 		    function);
 	}
 #endif
-	ep = malloc(sizeof(*ep), M_ATFORK, M_WAITOK|M_ZERO);
+	ep = kmalloc(sizeof(*ep), M_ATFORK, M_WAITOK|M_ZERO);
 	ep->function = function;
 	TAILQ_INSERT_TAIL(&fork_list, ep, next);
 	return (0);
@@ -538,7 +538,7 @@ rm_at_fork(forklist_fn function)
 	TAILQ_FOREACH(ep, &fork_list, next) {
 		if (ep->function == function) {
 			TAILQ_REMOVE(&fork_list, ep, next);
-			free(ep, M_ATFORK);
+			kfree(ep, M_ATFORK);
 			return(1);
 		}
 	}	

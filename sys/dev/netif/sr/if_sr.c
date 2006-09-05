@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.17 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.18 2006/09/05 00:55:41 dillon Exp $
  */
 
 /*
@@ -2869,7 +2869,7 @@ ngsr_rcvmsg(node_p node,
 		error = EINVAL;
 		break;
 	}
-	free(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 

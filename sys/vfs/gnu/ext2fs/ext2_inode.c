@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.18 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.19 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -566,7 +566,7 @@ ext2_reclaim(struct vop_reclaim_args *ap)
 		if (ip->i_dirhash != NULL)
 			ext2dirhash_free(ip);
 #endif
-		free(ip, VFSTOEXT2(vp->v_mount)->um_malloctype);
+		kfree(ip, VFSTOEXT2(vp->v_mount)->um_malloctype);
 	}
 	return (0);
 }

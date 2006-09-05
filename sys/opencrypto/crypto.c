@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.10 2005/10/13 00:02:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.11 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -175,7 +175,7 @@ crypto_destroy(void)
 {
 	/* XXX no wait to reclaim zones */
 	if (crypto_drivers != NULL)
-		free(crypto_drivers, M_CRYPTO_DATA);
+		kfree(crypto_drivers, M_CRYPTO_DATA);
 	unregister_swi(crypto_int_id);
 }
 
@@ -371,7 +371,7 @@ crypto_get_driverid(u_int32_t flags)
 
 		crypto_drivers_num *= 2;
 
-		free(crypto_drivers, M_CRYPTO_DATA);
+		kfree(crypto_drivers, M_CRYPTO_DATA);
 		crypto_drivers = newdrv;
 	}
 
@@ -721,7 +721,7 @@ crypto_kinvoke(struct cryptkop *krp, int hint)
 	if (krp == NULL)
 		return EINVAL;
 	if (krp->krp_callback == NULL) {
-		free(krp, M_XDATA);		/* XXX allocated in cryptodev */
+		kfree(krp, M_XDATA);		/* XXX allocated in cryptodev */
 		return EINVAL;
 	}
 

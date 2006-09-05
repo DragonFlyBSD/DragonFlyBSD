@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.8 2006/05/01 16:26:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.9 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -217,7 +217,7 @@ esp_schedule(const struct esp_algorithm *algo, struct secasvar *sav)
 	sav->schedlen = (*algo->schedlen)(algo);
 	if (sav->schedlen < 0)
 		return EINVAL;
-	sav->sched = malloc(sav->schedlen, M_SECA, M_NOWAIT);
+	sav->sched = kmalloc(sav->schedlen, M_SECA, M_NOWAIT);
 	if (!sav->sched) {
 		sav->schedlen = 0;
 		return ENOBUFS;
@@ -227,7 +227,7 @@ esp_schedule(const struct esp_algorithm *algo, struct secasvar *sav)
 	if (error) {
 		ipseclog((LOG_ERR, "esp_schedule %s: error %d\n",
 		    algo->name, error));
-		free(sav->sched, M_SECA);
+		kfree(sav->sched, M_SECA);
 		sav->sched = NULL;
 		sav->schedlen = 0;
 	}

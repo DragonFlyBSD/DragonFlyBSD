@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.13 2005/06/03 17:14:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.14 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +139,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	/* Return a NULL tag on failure */
 	*dmat = NULL;
 
-	newtag = malloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT);
+	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT);
 
 	newtag->parent = parent;
 	newtag->alignment = alignment;
@@ -205,7 +205,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	}
 	
 	if (error != 0) {
-		free(newtag, M_DEVBUF);
+		kfree(newtag, M_DEVBUF);
 	} else {
 		*dmat = newtag;
 	}
@@ -227,8 +227,8 @@ bus_dma_tag_destroy(bus_dma_tag_t dmat)
 			dmat->ref_count--;
 			if (dmat->ref_count == 0) {
 				if (dmat->segments != NULL)
-					free(dmat->segments, M_DEVBUF);
-				free(dmat, M_DEVBUF);
+					kfree(dmat->segments, M_DEVBUF);
+				kfree(dmat, M_DEVBUF);
 				/*
 				 * Last reference count, so
 				 * release our reference
@@ -263,7 +263,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		/* Must bounce */
 		int maxpages;
 
-		*mapp = malloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT);
+		*mapp = kmalloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT);
 		if (*mapp == NULL) {
 			return (ENOMEM);
 		} else {
@@ -318,7 +318,7 @@ bus_dmamap_destroy(bus_dma_tag_t dmat, bus_dmamap_t map)
 	if (map != NULL) {
 		if (STAILQ_FIRST(&map->bpages) != NULL)
 			return (EBUSY);
-		free(map, M_DEVBUF);
+		kfree(map, M_DEVBUF);
 	}
 	dmat->map_count--;
 	return (0);
@@ -355,7 +355,7 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 
 	if ((dmat->maxsize <= PAGE_SIZE) &&
 	    dmat->lowaddr >= ptoa(Maxmem)) {
-		*vaddr = malloc(dmat->maxsize, M_DEVBUF, mflags);
+		*vaddr = kmalloc(dmat->maxsize, M_DEVBUF, mflags);
 		/*
 		 * XXX Check whether the allocation crossed a page boundary
 		 * and retry with power-of-2 alignment in that case.
@@ -363,11 +363,11 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 		if ((((intptr_t)*vaddr) & PAGE_MASK) !=
 		    (((intptr_t)*vaddr + dmat->maxsize) & PAGE_MASK)) {
 			size_t size;
-			free(*vaddr, M_DEVBUF);
+			kfree(*vaddr, M_DEVBUF);
 			/* XXX check for overflow? */
 			for (size = 1; size <= dmat->maxsize; size <<= 1)
 				;
-			*vaddr = malloc(size, M_DEVBUF, mflags);
+			*vaddr = kmalloc(size, M_DEVBUF, mflags);
 		}
 	} else {
 		/*
@@ -399,7 +399,7 @@ bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map)
 		panic("bus_dmamem_free: Invalid map freed\n");
 	if ((dmat->maxsize <= PAGE_SIZE) &&
 	    dmat->lowaddr >= ptoa(Maxmem))
-		free(vaddr, M_DEVBUF);
+		kfree(vaddr, M_DEVBUF);
 	else
 		contigfree(vaddr, dmat->maxsize, M_DEVBUF);
 }
@@ -780,7 +780,7 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 	while (numpages > 0) {
 		struct bounce_page *bpage;
 
-		bpage = (struct bounce_page *)malloc(sizeof(*bpage), M_DEVBUF,
+		bpage = (struct bounce_page *)kmalloc(sizeof(*bpage), M_DEVBUF,
 						     M_INTWAIT);
 
 		if (bpage == NULL)
@@ -792,7 +792,7 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 							 PAGE_SIZE,
 							 0);
 		if (bpage->vaddr == NULL) {
-			free(bpage, M_DEVBUF);
+			kfree(bpage, M_DEVBUF);
 			break;
 		}
 		bpage->busaddr = pmap_kextract(bpage->vaddr);

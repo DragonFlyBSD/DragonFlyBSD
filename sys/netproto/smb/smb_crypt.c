@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_crypt.c,v 1.1.2.3 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.4 2006/09/05 00:55:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -74,10 +74,10 @@ smb_E(const u_char *key, u_char *data, u_char *dest)
 	kk[5] = key[4] << 3 | (key[5] >> 5 & 0xfe);
 	kk[6] = key[5] << 2 | (key[6] >> 6 & 0xfe);
 	kk[7] = key[6] << 1;
-	ksp = malloc(sizeof(des_key_schedule), M_SMBTEMP, M_WAITOK);
+	ksp = kmalloc(sizeof(des_key_schedule), M_SMBTEMP, M_WAITOK);
 	des_set_key((des_cblock *)kk, *ksp);
 	des_ecb_encrypt((des_cblock *)data, (des_cblock *)dest, *ksp, 1);
-	free(ksp, M_SMBTEMP);
+	kfree(ksp, M_SMBTEMP);
 }
 #endif
 
@@ -88,7 +88,7 @@ smb_encrypt(const u_char *apwd, u_char *C8, u_char *RN)
 #ifdef NETSMBCRYPTO
 	u_char *p, *P14, *S21;
 
-	p = malloc(14 + 21, M_SMBTEMP, M_WAITOK);
+	p = kmalloc(14 + 21, M_SMBTEMP, M_WAITOK);
 	bzero(p, 14 + 21);
 	P14 = p;
 	S21 = p + 14;
@@ -102,7 +102,7 @@ smb_encrypt(const u_char *apwd, u_char *C8, u_char *RN)
 	smb_E(S21, C8, RN);
 	smb_E(S21 + 7, C8, RN + 8);
 	smb_E(S21 + 14, C8, RN + 16);
-	free(p, M_SMBTEMP);
+	kfree(p, M_SMBTEMP);
 	return 0;
 #else
 	SMBERROR("password encryption is not available\n");
@@ -121,18 +121,18 @@ smb_ntencrypt(const u_char *apwd, u_char *C8, u_char *RN)
 	int len;
 
 	len = strlen(apwd);
-	unipwd = malloc((len + 1) * sizeof(u_int16_t), M_SMBTEMP, M_WAITOK);
+	unipwd = kmalloc((len + 1) * sizeof(u_int16_t), M_SMBTEMP, M_WAITOK);
 	/*
 	 * S21 = concat(MD4(U(apwd)), zeros(5));
 	 */
 	smb_strtouni(unipwd, apwd);
-	ctxp = malloc(sizeof(MD4_CTX), M_SMBTEMP, M_WAITOK);
+	ctxp = kmalloc(sizeof(MD4_CTX), M_SMBTEMP, M_WAITOK);
 	MD4Init(ctxp);
 	MD4Update(ctxp, (u_char*)unipwd, len * sizeof(u_int16_t));
-	free(unipwd, M_SMBTEMP);
+	kfree(unipwd, M_SMBTEMP);
 	bzero(S21, 21);
 	MD4Final(S21, ctxp);
-	free(ctxp, M_SMBTEMP);
+	kfree(ctxp, M_SMBTEMP);
 
 	smb_E(S21, C8, RN);
 	smb_E(S21 + 7, C8, RN + 8);

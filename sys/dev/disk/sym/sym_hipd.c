@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.16 2005/10/12 17:35:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.17 2006/09/05 00:55:38 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -458,8 +458,8 @@ static void MDELAY(int ms) { while (ms--) UDELAY(1000); }
 #define MEMO_CLUSTER_SIZE	(1UL << MEMO_CLUSTER_SHIFT)
 #define MEMO_CLUSTER_MASK	(MEMO_CLUSTER_SIZE-1)
 
-#define get_pages()		malloc(MEMO_CLUSTER_SIZE, M_DEVBUF, M_INTWAIT)
-#define free_pages(p)		free((p), M_DEVBUF)
+#define get_pages()		kmalloc(MEMO_CLUSTER_SIZE, M_DEVBUF, M_INTWAIT)
+#define free_pages(p)		kfree((p), M_DEVBUF)
 
 typedef u_long m_addr_t;	/* Enough bits to bit-hack addresses */
 

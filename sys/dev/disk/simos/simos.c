@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.c,v 1.7 1999/08/28 00:51:06 peter Exp $
- * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.6 2005/06/06 21:48:16 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.7 2006/09/05 00:55:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ simos_attach(pcici_t config_id, int unit)
 	struct simos_softc* sc;
 	struct cam_devq *devq;
 
-	sc = malloc(sizeof(struct simos_softc), M_DEVBUF, M_WAITOK);
+	sc = kmalloc(sizeof(struct simos_softc), M_DEVBUF, M_WAITOK);
 	simosp[unit] = sc;
 	bzero(sc, sizeof *sc);
 

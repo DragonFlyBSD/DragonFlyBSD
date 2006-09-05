@@ -2,7 +2,7 @@
  * $NetBSD: usbdi_util.c,v 1.24 1999/11/17 23:00:50 augustss Exp $
  * $NetBSD: usbdi_util.c,v 1.36 2001/11/13 06:24:57 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.31 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.8 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.9 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -382,11 +382,11 @@ usbd_read_report_desc(usbd_interface_handle ifc, void **descp, int *sizep,
 	if (hid == NULL)
 		return (USBD_IOERROR);
 	*sizep = UGETW(hid->descrs[0].wDescriptorLength);
-	*descp = malloc(*sizep, mem, M_INTWAIT);
+	*descp = kmalloc(*sizep, mem, M_INTWAIT);
 	err = usbd_get_report_descriptor(dev, id->bInterfaceNumber,
 					 *sizep, *descp);
 	if (err) {
-		free(*descp, mem);
+		kfree(*descp, mem);
 		*descp = NULL;
 		return (err);
 	}

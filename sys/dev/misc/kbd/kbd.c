@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.18 2006/09/03 17:31:53 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.19 2006/09/05 00:55:38 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -91,16 +91,16 @@ kbd_realloc_array(void)
 	int newsize;
 
 	newsize = ((keyboards + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
-	new_kbd = malloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
+	new_kbd = kmalloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
 				M_WAITOK | M_ZERO);
-	new_kbdsw = malloc(sizeof(*new_kbdsw) * newsize, M_DEVBUF,
+	new_kbdsw = kmalloc(sizeof(*new_kbdsw) * newsize, M_DEVBUF,
 				M_WAITOK | M_ZERO);
 	bcopy(keyboard, new_kbd, sizeof(*keyboard)*keyboards);
 	bcopy(kbdsw, new_kbdsw, sizeof(*kbdsw)*keyboards);
 	crit_enter();
 	if (keyboards > 1) {
-		free(keyboard, M_DEVBUF);
-		free(kbdsw, M_DEVBUF);
+		kfree(keyboard, M_DEVBUF);
+		kfree(kbdsw, M_DEVBUF);
 	}
 	keyboard = new_kbd;
 	kbdsw = new_kbdsw;
@@ -470,7 +470,7 @@ kbd_attach(keyboard_t *kbd)
 	dev = make_dev(&kbd_ops, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
 		       "kbd%r", kbd->kb_index);
 	if (dev->si_drv1 == NULL)
-		dev->si_drv1 = malloc(sizeof(genkbd_softc_t), M_DEVBUF,
+		dev->si_drv1 = kmalloc(sizeof(genkbd_softc_t), M_DEVBUF,
 				      M_WAITOK);
 	bzero(dev->si_drv1, sizeof(genkbd_softc_t));
 
@@ -494,7 +494,7 @@ kbd_detach(keyboard_t *kbd)
 	 */
 	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NODEV) {
 		if (dev->si_drv1) {
-			free(dev->si_drv1, M_DEVBUF);
+			kfree(dev->si_drv1, M_DEVBUF);
 			dev->si_drv1 = NULL;
 		}
 	}

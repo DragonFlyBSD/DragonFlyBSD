@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.15 2006/09/05 00:55:44 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -87,11 +87,11 @@ vid_realloc_array(void)
 
 	crit_enter();
 	newsize = ((adapters + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
-	new_adp = malloc(sizeof(*new_adp)*newsize, M_DEVBUF, M_WAITOK | M_ZERO);
-	new_vidsw = malloc(sizeof(*new_vidsw)*newsize, M_DEVBUF,
+	new_adp = kmalloc(sizeof(*new_adp)*newsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	new_vidsw = kmalloc(sizeof(*new_vidsw)*newsize, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 #ifdef FB_INSTALL_CDEV
-	new_cdevsw = malloc(sizeof(*new_cdevsw)*newsize, M_DEVBUF,
+	new_cdevsw = kmalloc(sizeof(*new_cdevsw)*newsize, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 #endif
 	bcopy(adapter, new_adp, sizeof(*adapter)*adapters);
@@ -100,10 +100,10 @@ vid_realloc_array(void)
 	bcopy(vidcdevsw, new_cdevsw, sizeof(*vidcdevsw)*adapters);
 #endif
 	if (adapters > 1) {
-		free(adapter, M_DEVBUF);
-		free(vidsw, M_DEVBUF);
+		kfree(adapter, M_DEVBUF);
+		kfree(vidsw, M_DEVBUF);
 #ifdef FB_INSTALL_CDEV
-		free(vidcdevsw, M_DEVBUF);
+		kfree(vidcdevsw, M_DEVBUF);
 #endif
 	}
 	adapter = new_adp;

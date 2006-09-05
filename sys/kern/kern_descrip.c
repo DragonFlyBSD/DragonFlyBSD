@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.71 2006/08/02 01:25:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.72 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -634,7 +634,7 @@ funsetown(struct sigio *sigio)
 			     sigio, sio_pgsigio);
 	}
 	crfree(sigio->sio_ucred);
-	free(sigio, M_SIGIO);
+	kfree(sigio, M_SIGIO);
 }
 
 /* Free a list of sigio structures. */
@@ -700,7 +700,7 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 		proc = NULL;
 	}
 	funsetown(*sigiop);
-	sigio = malloc(sizeof(struct sigio), M_SIGIO, M_WAITOK);
+	sigio = kmalloc(sizeof(struct sigio), M_SIGIO, M_WAITOK);
 	if (pgid > 0) {
 		SLIST_INSERT_HEAD(&proc->p_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_proc = proc;
@@ -977,7 +977,7 @@ fdgrow_locked(struct filedesc *fdp, int want)
 	} while (nf <= want);
 
 	spin_unlock_wr(&fdp->fd_spin);
-	newfiles = malloc(nf * sizeof(struct fdnode), M_FILEDESC, M_WAITOK);
+	newfiles = kmalloc(nf * sizeof(struct fdnode), M_FILEDESC, M_WAITOK);
 	spin_lock_wr(&fdp->fd_spin);
 
 	/*
@@ -986,7 +986,7 @@ fdgrow_locked(struct filedesc *fdp, int want)
 	 */
 	if (fdp->fd_nfiles >= nf) {
 		spin_unlock_wr(&fdp->fd_spin);
-		free(newfiles, M_FILEDESC);
+		kfree(newfiles, M_FILEDESC);
 		spin_lock_wr(&fdp->fd_spin);
 		return;
 	}
@@ -1004,7 +1004,7 @@ fdgrow_locked(struct filedesc *fdp, int want)
 
 	if (oldfiles != fdp->fd_builtin_files) {
 		spin_unlock_wr(&fdp->fd_spin);
-		free(oldfiles, M_FILEDESC);
+		kfree(oldfiles, M_FILEDESC);
 		spin_lock_wr(&fdp->fd_spin);
 	}
 	fdexpand++;
@@ -1221,7 +1221,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	/*
 	 * Allocate a new file descriptor.
 	 */
-	fp = malloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
+	fp = kmalloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
 	spin_init(&fp->f_spin);
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
@@ -1417,7 +1417,7 @@ ffree(struct file *fp)
 	    cache_drop(fp->f_ncp);
 	    fp->f_ncp = NULL;
 	}
-	free(fp, M_FILE);
+	kfree(fp, M_FILE);
 }
 
 /*
@@ -1447,7 +1447,7 @@ fdinit(struct proc *p)
 	struct filedesc *newfdp;
 	struct filedesc *fdp = p->p_fd;
 
-	newfdp = malloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK|M_ZERO);
+	newfdp = kmalloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK|M_ZERO);
 	spin_lock_rd(&fdp->fd_spin);
 	if (fdp->fd_cdir) {
 		newfdp->fd_cdir = fdp->fd_cdir;
@@ -1525,7 +1525,7 @@ fdcopy(struct proc *p)
 	 * with operations by other threads on the fdp so we have to be
 	 * careful.
 	 */
-	newfdp = malloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK | M_ZERO);
+	newfdp = kmalloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK | M_ZERO);
 again:
 	spin_lock_rd(&fdp->fd_spin);
 	if (fdp->fd_lastfile < NDFILE) {
@@ -1552,7 +1552,7 @@ again:
 		spin_lock_rd(&fdp->fd_spin);
 		if (i <= fdp->fd_lastfile) {
 			spin_unlock_rd(&fdp->fd_spin);
-			free(newfdp->fd_files, M_FILEDESC);
+			kfree(newfdp->fd_files, M_FILEDESC);
 			goto again;
 		}
 	}
@@ -1716,7 +1716,7 @@ fdfree(struct proc *p)
 		p->p_fdtol = NULL;
 		if (fdtol != NULL) {
 			spin_unlock_wr(&fdp->fd_spin);
-			free(fdtol, M_FILEDESC_TO_LEADER);
+			kfree(fdtol, M_FILEDESC_TO_LEADER);
 			spin_lock_wr(&fdp->fd_spin);
 		}
 	}
@@ -1735,7 +1735,7 @@ fdfree(struct proc *p)
 			closef(fdp->fd_files[i].fp, td);
 	}
 	if (fdp->fd_files != fdp->fd_builtin_files)
-		free(fdp->fd_files, M_FILEDESC);
+		kfree(fdp->fd_files, M_FILEDESC);
 	if (fdp->fd_cdir) {
 		cache_drop(fdp->fd_ncdir);
 		vrele(fdp->fd_cdir);
@@ -1749,10 +1749,10 @@ fdfree(struct proc *p)
 		vrele(fdp->fd_jdir);
 	}
 	if (fdp->fd_knlist)
-		free(fdp->fd_knlist, M_KQUEUE);
+		kfree(fdp->fd_knlist, M_KQUEUE);
 	if (fdp->fd_knhash)
-		free(fdp->fd_knhash, M_KQUEUE);
-	free(fdp, M_FILEDESC);
+		kfree(fdp->fd_knhash, M_KQUEUE);
+	kfree(fdp, M_FILEDESC);
 }
 
 /*

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.22 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.23 2006/09/05 00:55:45 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -233,7 +233,7 @@ elf_linux_fixup(register_t **stack_base, struct image_params *imgp)
 	AUXARGS_ENTRY(pos, AT_EGID, imgp->proc->p_ucred->cr_svgid);
 	AUXARGS_ENTRY(pos, AT_NULL, 0);
 	
-	free(imgp->auxargs, M_TEMP);      
+	kfree(imgp->auxargs, M_TEMP);      
 	imgp->auxargs = NULL;
 
 	(*stack_base)--;

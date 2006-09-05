@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.12 2006/07/28 02:17:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.13 2006/09/05 00:55:35 dillon Exp $
  *
  */
 
@@ -123,7 +123,7 @@ fwdev_allocbuf(struct firewire_comm *fc, struct fw_xferq *q,
 			b->psize, b->nchunk * b->npacket, BUS_DMA_WAITOK);
 
 	if (q->buf == NULL) {
-		free(q->bulkxfer, M_FW);
+		kfree(q->bulkxfer, M_FW);
 		q->bulkxfer = NULL;
 		return(ENOMEM);
 	}
@@ -157,7 +157,7 @@ fwdev_freebuf(struct fw_xferq *q)
 		if (q->buf != NULL)
 			fwdma_free_multiseg(q->buf);
 		q->buf = NULL;
-		free(q->bulkxfer, M_FW);
+		kfree(q->bulkxfer, M_FW);
 		q->bulkxfer = NULL;
 		q->flag &= ~FWXFERQ_EXTBUF;
 		q->psize = 0;
@@ -190,7 +190,7 @@ fw_open (struct dev_open_args *ap)
 	}
 #endif
 
-	dev->si_drv1 = malloc(sizeof(struct fw_drv1), M_FW, M_WAITOK | M_ZERO);
+	dev->si_drv1 = kmalloc(sizeof(struct fw_drv1), M_FW, M_WAITOK | M_ZERO);
 
 	return err;
 }
@@ -239,7 +239,7 @@ fw_close (struct dev_close_args *ap)
 				fwb = STAILQ_FIRST(&ir->binds)) {
 			STAILQ_REMOVE(&fc->binds, fwb, fw_bind, fclist);
 			STAILQ_REMOVE_HEAD(&ir->binds, chlist);
-			free(fwb, M_FW);
+			kfree(fwb, M_FW);
 		}
 		ir->flag &= ~(FWXFERQ_OPEN |
 			FWXFERQ_MODEMASK | FWXFERQ_CHTAGMASK);
@@ -261,7 +261,7 @@ fw_close (struct dev_close_args *ap)
 			FWXFERQ_MODEMASK | FWXFERQ_CHTAGMASK);
 		d->it = NULL;
 	}
-	free(dev->si_drv1, M_FW);
+	kfree(dev->si_drv1, M_FW);
 	dev->si_drv1 = NULL;
 
 	return err;
@@ -614,7 +614,7 @@ out:
 		}
 		STAILQ_REMOVE(&sc->fc->binds, fwb, fw_bind, fclist);
 		STAILQ_REMOVE(&ir->binds, fwb, fw_bind, chlist);
-		free(fwb, M_FW);
+		kfree(fwb, M_FW);
 		break;
 	case FW_SBINDADDR:
 		if(bindreq->len <= 0 ){
@@ -625,7 +625,7 @@ out:
 			err = EINVAL;
 			break;
 		}
-		fwb = malloc(sizeof (struct fw_bind), M_FW, M_WAITOK);
+		fwb = kmalloc(sizeof (struct fw_bind), M_FW, M_WAITOK);
 		fwb->start = ((u_int64_t)bindreq->start.hi << 32) |
 		    bindreq->start.lo;
 		fwb->end = fwb->start +  bindreq->len;
@@ -636,7 +636,7 @@ out:
 		/* XXX alloc buf */
 		xfer = fw_xfer_alloc(M_FWXFER);
 		if(xfer == NULL){
-			free(fwb, M_FW);
+			kfree(fwb, M_FW);
 			return (ENOMEM);
 		}
 		xfer->fc = sc->fc;
@@ -684,7 +684,7 @@ out:
 				break;
 			}
 			/* myself */
-			ptr = malloc(CROMSIZE, M_FW, M_WAITOK);
+			ptr = kmalloc(CROMSIZE, M_FW, M_WAITOK);
 			len = CROMSIZE;
 			for (i = 0; i < CROMSIZE/4; i++)
 				((u_int32_t *)ptr)[i]
@@ -704,7 +704,7 @@ out:
 		err = copyout(ptr, crom_buf->ptr, len);
 		if (fwdev == NULL)
 			/* myself */
-			free(ptr, M_FW);
+			kfree(ptr, M_FW);
 		break;
 	default:
 		sc->fc->ioctl(ap);

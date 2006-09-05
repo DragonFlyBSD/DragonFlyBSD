@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.16 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.17 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ pst_add_raid(struct iop_softc *sc, struct i2o_lct_entry *lct)
 
     if (!child)
 	return ENOMEM;
-    psc = malloc(sizeof(struct pst_softc), M_PSTRAID, M_INTWAIT | M_ZERO); 
+    psc = kmalloc(sizeof(struct pst_softc), M_PSTRAID, M_INTWAIT | M_ZERO); 
     psc->iop = sc;
     psc->lct = lct;
     device_set_softc(child, psc);
@@ -134,7 +134,7 @@ pst_attach(device_t dev)
 				      I2O_BSA_DEVICE_INFO_GROUP_NO)))
 	return ENODEV;
 
-    psc->info = malloc(sizeof(struct i2o_bsa_device), M_PSTRAID, M_INTWAIT);
+    psc->info = kmalloc(sizeof(struct i2o_bsa_device), M_PSTRAID, M_INTWAIT);
     bcopy(reply->result, psc->info, sizeof(struct i2o_bsa_device));
     contigfree(reply, PAGE_SIZE, M_PSTRAID);
 
@@ -255,7 +255,7 @@ pst_start(struct pst_softc *psc)
 		iop_free_mfa(request->psc->iop, request->mfa);
 		psc->outstanding--;
 		callout_stop(&request->timeout);
-		free(request, M_PSTRAID);
+		kfree(request, M_PSTRAID);
 	    }
 	}
     }
@@ -277,7 +277,7 @@ pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
 	bp->b_flags |= B_ERROR;
     }
     biodone(request->bio);
-    free(request, M_PSTRAID);
+    kfree(request, M_PSTRAID);
     crit_enter();
     psc->iop->reg->oqueue = mfa;
     psc->outstanding--;

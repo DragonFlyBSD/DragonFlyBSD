@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.8 2004/07/04 00:24:52 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.9 2006/09/05 00:55:36 dillon Exp $
  */
 
 /*
@@ -167,11 +167,11 @@ agp_i810_find_bridge(device_t dev)
 		child = children[i];
 
 		if (pci_get_devid(child) == devid) {
-			free(children, M_TEMP);
+			kfree(children, M_TEMP);
 			return child;
 		}
 	}
-	free(children, M_TEMP);
+	kfree(children, M_TEMP);
 	return 0;
 }
 
@@ -284,7 +284,7 @@ agp_i810_attach(device_t dev)
 		return ENXIO;
 	}
 
-	gatt = malloc( sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
+	gatt = kmalloc( sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
 	sc->gatt = gatt;
 
 	gatt->ag_entries = AGP_GET_APERTURE(dev) >> AGP_PAGE_SHIFT;
@@ -302,7 +302,7 @@ agp_i810_attach(device_t dev)
 		if (!gatt->ag_virtual) {
 			if (bootverbose)
 				device_printf(dev, "contiguous allocation failed\n");
-			free(gatt, M_AGP);
+			kfree(gatt, M_AGP);
 			agp_generic_detach(dev);
 			return ENOMEM;
 		}
@@ -416,7 +416,7 @@ agp_i810_detach(device_t dev)
 	if ( sc->chiptype == CHIP_I810 ) {
 		contigfree(sc->gatt->ag_virtual, 64 * 1024, M_AGP);
 	}
-	free(sc->gatt, M_AGP);
+	kfree(sc->gatt, M_AGP);
 
 	bus_release_resource(dev, SYS_RES_MEMORY,
 			     AGP_I810_MMADR, sc->regs);
@@ -573,7 +573,7 @@ agp_i810_alloc_memory(device_t dev, int type, vm_size_t size)
 			return 0;
 	}
 
-	mem = malloc(sizeof *mem, M_AGP, M_INTWAIT);
+	mem = kmalloc(sizeof *mem, M_AGP, M_INTWAIT);
 	mem->am_id = sc->agp.as_nextid++;
 	mem->am_size = size;
 	mem->am_type = type;
@@ -628,7 +628,7 @@ agp_i810_free_memory(device_t dev, struct agp_memory *mem)
 	TAILQ_REMOVE(&sc->agp.as_memory, mem, am_link);
 	if (mem->am_obj)
 		vm_object_deallocate(mem->am_obj);
-	free(mem, M_AGP);
+	kfree(mem, M_AGP);
 	return 0;
 }
 

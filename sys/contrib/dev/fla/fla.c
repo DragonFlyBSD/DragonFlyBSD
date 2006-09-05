@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.13 2006/07/28 02:17:35 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.14 2006/09/05 00:55:36 dillon Exp $ 
  *
  */
 
@@ -73,13 +73,13 @@ static struct dev_ops fla_ops = {
 void *
 doc2k_malloc(int bytes) 
 {
-	return malloc(bytes, M_FLA, M_WAITOK);
+	return kmalloc(bytes, M_FLA, M_WAITOK);
 }
 
 void
 doc2k_free(void *ptr)
 {
-	free(ptr, M_FLA);
+	kfree(ptr, M_FLA);
 }
 
 void

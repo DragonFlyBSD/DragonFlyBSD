@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.22 2006/03/28 22:18:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.23 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,11 +74,11 @@ ata_find_dev(device_t dev, u_int32_t devid, u_int32_t revid)
     for (i = 0; i < nchildren; i++) {
 	if (pci_get_devid(children[i]) == devid &&
 	    pci_get_revid(children[i]) >= revid) {
-	    free(children, M_TEMP);
+	    kfree(children, M_TEMP);
 	    return 1;
 	}
     }
-    free(children, M_TEMP);
+    kfree(children, M_TEMP);
     return 0;
 }
 
@@ -107,7 +107,7 @@ ata_via_southbridge_fixup(device_t dev)
 	    break;
 	}
     }
-    free(children, M_TEMP);
+    kfree(children, M_TEMP);
 }
 
 static const char *
@@ -946,7 +946,7 @@ ata_pcisub_probe(device_t dev)
 	if (children[i] == dev)
 	    ch->unit = i;
     }
-    free(children, M_TEMP);
+    kfree(children, M_TEMP);
     ch->chiptype = pci_get_devid(device_get_parent(dev));
     ch->intr_func = ata_pci_intr;
     return ata_probe(dev);

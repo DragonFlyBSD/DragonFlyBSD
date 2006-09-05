@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.18 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.19 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -267,7 +267,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EADDRNOTAVAIL);
 		if (ia == (struct in_ifaddr *)0) {
 			ia = (struct in_ifaddr *)
-				malloc(sizeof *ia, M_IFADDR, M_WAITOK);
+				kmalloc(sizeof *ia, M_IFADDR, M_WAITOK);
 			if (ia == (struct in_ifaddr *)NULL)
 				return (ENOBUFS);
 			bzero(ia, sizeof *ia);
@@ -833,7 +833,7 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 
 	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
 	   at interrupt time?  If so, need to fix if_addmulti. XXX */
-	inm = malloc(sizeof *inm, M_IPMADDR, M_WAITOK | M_ZERO);
+	inm = kmalloc(sizeof *inm, M_IPMADDR, M_WAITOK | M_ZERO);
 	inm->inm_addr = *ap;
 	inm->inm_ifp = ifp;
 	inm->inm_ifma = ifma;
@@ -870,7 +870,7 @@ in_delmulti(struct in_multi *inm)
 		my_inm = *inm ;
 		ifma->ifma_protospec = 0;
 		LIST_REMOVE(inm, inm_link);
-		free(inm, M_IPMADDR);
+		kfree(inm, M_IPMADDR);
 	}
 	/* XXX - should be separate API for when we have an ifma? */
 	if_delmulti(ifma->ifma_ifp, ifma->ifma_addr);

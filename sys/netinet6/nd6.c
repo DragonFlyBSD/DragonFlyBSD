@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.18 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.19 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -153,7 +153,7 @@ nd6_ifattach(struct ifnet *ifp)
 {
 	struct nd_ifinfo *nd;
 
-	nd = (struct nd_ifinfo *)malloc(sizeof(*nd), M_IP6NDP, M_WAITOK);
+	nd = (struct nd_ifinfo *)kmalloc(sizeof(*nd), M_IP6NDP, M_WAITOK);
 	bzero(nd, sizeof(*nd));
 
 	nd->initialized = 1;
@@ -180,7 +180,7 @@ nd6_ifattach(struct ifnet *ifp)
 void
 nd6_ifdetach(struct nd_ifinfo *nd)
 {
-	free(nd, M_IP6NDP);
+	kfree(nd, M_IP6NDP);
 }
 
 /*

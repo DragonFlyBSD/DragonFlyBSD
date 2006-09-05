@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.43 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.44 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -475,10 +475,10 @@ fxp_attach(device_t dev)
 	sc->cbl_base = malloc(sizeof(struct fxp_cb_tx) * FXP_NTXCB,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
-	sc->fxp_stats = malloc(sizeof(struct fxp_stats), M_DEVBUF,
+	sc->fxp_stats = kmalloc(sizeof(struct fxp_stats), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
-	sc->mcsp = malloc(sizeof(struct fxp_cb_mcs), M_DEVBUF, M_WAITOK);
+	sc->mcsp = kmalloc(sizeof(struct fxp_cb_mcs), M_DEVBUF, M_WAITOK);
 
 	/*
 	 * Pre-allocate our receive buffers.
@@ -708,11 +708,11 @@ fxp_release(device_t dev)
 	bus_generic_detach(dev);
 
 	if (sc->cbl_base)
-		free(sc->cbl_base, M_DEVBUF);
+		kfree(sc->cbl_base, M_DEVBUF);
 	if (sc->fxp_stats)
-		free(sc->fxp_stats, M_DEVBUF);
+		kfree(sc->fxp_stats, M_DEVBUF);
 	if (sc->mcsp)
-		free(sc->mcsp, M_DEVBUF);
+		kfree(sc->mcsp, M_DEVBUF);
 	if (sc->rfa_headm)
 		m_freem(sc->rfa_headm);
 

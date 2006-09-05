@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.7 2004/04/14 18:28:29 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ kobj_class_compile(kobj_class_t cls)
 	/*
 	 * Allocate space for the compiled ops table.
 	 */
-	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT);
+	ops = kmalloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT);
 	for (i = 0; i < KOBJ_CACHE_SIZE; i++)
 		ops->cache[i] = &null_method;
 	if (cls->ops) {
@@ -123,7 +123,7 @@ kobj_class_compile(kobj_class_t cls)
 		 * but that's fine for us.
 		 */
 		if (ops)
-			free(ops, M_KOBJ);
+			kfree(ops, M_KOBJ);
 		return;
 	}	
 
@@ -213,7 +213,7 @@ kobj_class_free(kobj_class_t cls)
 	/*
 	 * Free memory and clean up.
 	 */
-	free(cls->ops, M_KOBJ);
+	kfree(cls->ops, M_KOBJ);
 	cls->ops = 0;
 }
 
@@ -259,7 +259,7 @@ kobj_create(kobj_class_t cls,
 	/*
 	 * Allocate and initialise the new object.
 	 */
-	obj = malloc(cls->size, mtype, mflags | M_ZERO);
+	obj = kmalloc(cls->size, mtype, mflags | M_ZERO);
 	if (!obj)
 		return 0;
 	kobj_init(obj, cls);
@@ -283,5 +283,5 @@ kobj_delete(kobj_t obj, struct malloc_type *mtype)
 
 	obj->ops = 0;
 	if (mtype)
-		free(obj, mtype);
+		kfree(obj, mtype);
 }

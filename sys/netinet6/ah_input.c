@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.11 2006/05/01 16:25:41 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.12 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -273,7 +273,7 @@ ah4_input(struct mbuf *m, ...)
 	 * alright, it seems sane.  now we are going to check the
 	 * cryptographic checksum.
 	 */
-	cksum = malloc(siz1, M_TEMP, M_NOWAIT);
+	cksum = kmalloc(siz1, M_TEMP, M_NOWAIT);
 	if (!cksum) {
 		ipseclog((LOG_DEBUG, "IPv4 AH input: "
 		    "couldn't alloc temporary region for cksum\n"));
@@ -288,7 +288,7 @@ ah4_input(struct mbuf *m, ...)
 	ip->ip_len = htons(ip->ip_len + hlen);
 	ip->ip_off = htons(ip->ip_off);
 	if (ah4_calccksum(m, (caddr_t)cksum, siz1, algo, sav)) {
-		free(cksum, M_TEMP);
+		kfree(cksum, M_TEMP);
 		ipsecstat.in_inval++;
 		goto fail;
 	}
@@ -314,13 +314,13 @@ ah4_input(struct mbuf *m, ...)
 		ipseclog((LOG_WARNING,
 		    "checksum mismatch in IPv4 AH input: %s %s\n",
 		    ipsec4_logpacketstr(ip, spi), ipsec_logsastr(sav)));
-		free(cksum, M_TEMP);
+		kfree(cksum, M_TEMP);
 		ipsecstat.in_ahauthfail++;
 		goto fail;
 	}
     }
 
-	free(cksum, M_TEMP);
+	kfree(cksum, M_TEMP);
 
 	m->m_flags |= M_AUTHIPHDR;
 	m->m_flags |= M_AUTHIPDGM;
@@ -701,7 +701,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 	 * alright, it seems sane.  now we are going to check the
 	 * cryptographic checksum.
 	 */
-	cksum = malloc(siz1, M_TEMP, M_NOWAIT);
+	cksum = kmalloc(siz1, M_TEMP, M_NOWAIT);
 	if (!cksum) {
 		ipseclog((LOG_DEBUG, "IPv6 AH input: "
 		    "couldn't alloc temporary region for cksum\n"));
@@ -710,7 +710,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 	}
 	
 	if (ah6_calccksum(m, (caddr_t)cksum, siz1, algo, sav)) {
-		free(cksum, M_TEMP);
+		kfree(cksum, M_TEMP);
 		ipsec6stat.in_inval++;
 		goto fail;
 	}
@@ -731,13 +731,13 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 		ipseclog((LOG_WARNING,
 		    "checksum mismatch in IPv6 AH input: %s %s\n",
 		    ipsec6_logpacketstr(ip6, spi), ipsec_logsastr(sav)));
-		free(cksum, M_TEMP);
+		kfree(cksum, M_TEMP);
 		ipsec6stat.in_ahauthfail++;
 		goto fail;
 	}
     }
 
-	free(cksum, M_TEMP);
+	kfree(cksum, M_TEMP);
 
 	m->m_flags |= M_AUTHIPHDR;
 	m->m_flags |= M_AUTHIPDGM;

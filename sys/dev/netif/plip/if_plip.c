@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.16 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.17 2006/09/05 00:55:40 dillon Exp $
  */
 
 /*
@@ -257,10 +257,10 @@ lpinittables (void)
     int i;
 
     if (!txmith)
-	txmith = malloc(4*LPIPTBLSIZE, M_DEVBUF, M_WAITOK);
+	txmith = kmalloc(4*LPIPTBLSIZE, M_DEVBUF, M_WAITOK);
 
     if (!ctxmith)
-	ctxmith = malloc(4*LPIPTBLSIZE, M_DEVBUF, M_WAITOK);
+	ctxmith = kmalloc(4*LPIPTBLSIZE, M_DEVBUF, M_WAITOK);
 
     for (i=0; i < LPIPTBLSIZE; i++) {
 	ctxmith[i] = (i & 0xF0) >> 4;
@@ -332,7 +332,7 @@ lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		return ENOBUFS;
 	    }
 
-	    sc->sc_ifbuf = malloc(sc->sc_if.if_mtu + MLPIPHDRLEN,
+	    sc->sc_ifbuf = kmalloc(sc->sc_if.if_mtu + MLPIPHDRLEN,
 				  M_DEVBUF, M_WAITOK);
 	    if (!sc->sc_ifbuf) {
 		ppb_release_bus(ppbus, dev);
@@ -354,9 +354,9 @@ lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
     case SIOCSIFMTU:
 	ptr = sc->sc_ifbuf;
-	sc->sc_ifbuf = malloc(ifr->ifr_mtu+MLPIPHDRLEN, M_DEVBUF, M_WAITOK);
+	sc->sc_ifbuf = kmalloc(ifr->ifr_mtu+MLPIPHDRLEN, M_DEVBUF, M_WAITOK);
 	if (ptr)
-	    free(ptr,M_DEVBUF);
+	    kfree(ptr,M_DEVBUF);
 	sc->sc_if.if_mtu = ifr->ifr_mtu;
 	break;
 

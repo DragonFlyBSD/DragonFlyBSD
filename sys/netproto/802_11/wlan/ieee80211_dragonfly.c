@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.3 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.4 2006/09/05 00:55:48 dillon Exp $
  */
 
 /*
@@ -89,7 +89,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 	struct sysctl_oid *oid;
 	char num[14];			/* sufficient for 32 bits */
 
-	ctx = malloc(sizeof(struct sysctl_ctx_list), M_DEVBUF,
+	ctx = kmalloc(sizeof(struct sysctl_ctx_list), M_DEVBUF,
 		     M_WAITOK | M_ZERO);
 	sysctl_ctx_init(ctx);
 
@@ -98,7 +98,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 		OID_AUTO, num, CTLFLAG_RD, NULL, "");
 	if (oid == NULL) {
 		printf("add sysctl node net.wlan.%s failed\n", num);
-		free(ctx, M_DEVBUF);
+		kfree(ctx, M_DEVBUF);
 		return;
 	}
 
@@ -144,7 +144,7 @@ ieee80211_sysctl_detach(struct ieee80211com *ic)
 {
 	if (ic->ic_sysctl != NULL) {
 		sysctl_ctx_free(ic->ic_sysctl);
-		free(ic->ic_sysctl, M_DEVBUF);
+		kfree(ic->ic_sysctl, M_DEVBUF);
 		ic->ic_sysctl = NULL;
 	}
 }

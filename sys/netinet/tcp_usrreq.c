@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.37 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.38 2006/09/05 00:55:48 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -380,7 +380,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 			continue;
 		}
 
-		msg = malloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
+		msg = kmalloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
 		    M_INTWAIT);
 		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 		    lwkt_cmd_func(in_pcbinswildcardhash_handler),
@@ -430,7 +430,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 			continue;
 		}
 
-		msg = malloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
+		msg = kmalloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
 		    M_INTWAIT);
 		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 		    lwkt_cmd_func(in_pcbinswildcardhash_handler),

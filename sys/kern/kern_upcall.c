@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
  */
 
 /*
@@ -90,7 +90,7 @@ sys_upc_register(struct upc_register_args *uap)
     if (vm->vm_upccount >= UPCALL_MAXCOUNT)
 	return(EFBIG);
 
-    vu = malloc(sizeof(struct vmupcall), M_UPCALL, M_WAITOK|M_ZERO);
+    vu = kmalloc(sizeof(struct vmupcall), M_UPCALL, M_WAITOK|M_ZERO);
     vu->vu_ctx = uap->ctxfunc;
     vu->vu_func = uap->func;
     vu->vu_data = uap->data;
@@ -207,7 +207,7 @@ sys_upc_control(struct upc_control_args *uap)
 	    ) {
 		*vupp = vu->vu_next;
 		error = 0;
-		free(vu, M_UPCALL);
+		kfree(vu, M_UPCALL);
 	    } else {
 		vupp = &vu->vu_next;
 	    }
@@ -263,7 +263,7 @@ upc_release(struct vmspace *vm, struct lwp *lp)
     while ((vu = *vupp) != NULL) {
 	if (vu->vu_lwp == lp) {
 	    *vupp = vu->vu_next;
-	    free(vu, M_UPCALL);
+	    kfree(vu, M_UPCALL);
 	    --vm->vm_upccount;
 	} else {
 	    vupp = &vu->vu_next;

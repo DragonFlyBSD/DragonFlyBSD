@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.14 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.15 2006/09/05 00:55:32 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -303,7 +303,7 @@ chcleanup(struct cam_periph *periph)
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
 	dev_ops_remove(&ch_ops, -1, periph->unit_number);
-	free(softc, M_DEVBUF);
+	kfree(softc, M_DEVBUF);
 }
 
 static void
@@ -366,7 +366,7 @@ chregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->state = CH_STATE_PROBE;
 	periph->softc = softc;
 	cam_extend_set(chperiphs, periph->unit_number, periph);
@@ -522,7 +522,7 @@ chstart(struct cam_periph *periph, union ccb *start_ccb)
 				  sizeof(struct scsi_mode_blk_desc) +
 				 sizeof(struct page_element_address_assignment);
 
-		mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
+		mode_buffer = kmalloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 		/*
 		 * Get the element address assignment page.
 		 */
@@ -663,7 +663,7 @@ chdone(struct cam_periph *periph, union ccb *done_ccb)
 		if (announce_buf[0] != '\0')
 			xpt_announce_periph(periph, announce_buf);
 		softc->state = CH_STATE_NORMAL;
-		free(mode_header, M_TEMP);
+		kfree(mode_header, M_TEMP);
 		/*
 		 * Since our peripheral may be invalidated by an error
 		 * above or an external event, we must release our CCB
@@ -1100,7 +1100,7 @@ chgetelemstatus(struct cam_periph *periph,
 	 * we can allocate enough storage for all of them.  We assume
 	 * that the first one can fit into 1k.
 	 */
-	data = (caddr_t)malloc(1024, M_DEVBUF, M_INTWAIT);
+	data = (caddr_t)kmalloc(1024, M_DEVBUF, M_INTWAIT);
 
 	ccb = cam_periph_getccb(periph, /*priority*/ 1);
 
@@ -1136,8 +1136,8 @@ chgetelemstatus(struct cam_periph *periph,
 	 * Reallocate storage for descriptors and get them from the
 	 * device.
 	 */
-	free(data, M_DEVBUF);
-	data = (caddr_t)malloc(size, M_DEVBUF, M_INTWAIT);
+	kfree(data, M_DEVBUF);
+	data = (caddr_t)kmalloc(size, M_DEVBUF, M_INTWAIT);
 
 	scsi_read_element_status(&ccb->csio,
 				 /* retries */ 1,
@@ -1198,9 +1198,9 @@ chgetelemstatus(struct cam_periph *periph,
 	xpt_release_ccb(ccb);
 
 	if (data != NULL)
-		free(data, M_DEVBUF);
+		kfree(data, M_DEVBUF);
 	if (user_data != NULL)
-		free(user_data, M_DEVBUF);
+		kfree(user_data, M_DEVBUF);
 
 	return (error);
 }
@@ -1353,7 +1353,7 @@ chgetparams(struct cam_periph *periph)
 	 */
 	mode_buffer_len = sizeof(struct scsi_mode_sense_data);
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
+	mode_buffer = kmalloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 
 	if (softc->quirks & CH_Q_NO_DBD)
 		dbd = FALSE;
@@ -1405,7 +1405,7 @@ chgetparams(struct cam_periph *periph)
 			printf("chgetparams: error getting element "
 			       "address page\n");
 			xpt_release_ccb(ccb);
-			free(mode_buffer, M_TEMP);
+			kfree(mode_buffer, M_TEMP);
 			return(error);
 		}
 	}
@@ -1468,7 +1468,7 @@ chgetparams(struct cam_periph *periph)
 			printf("chgetparams: error getting device "
 			       "capabilities page\n");
 			xpt_release_ccb(ccb);
-			free(mode_buffer, M_TEMP);
+			kfree(mode_buffer, M_TEMP);
 			return(error);
 		}
 	}
@@ -1487,7 +1487,7 @@ chgetparams(struct cam_periph *periph)
 		softc->sc_exchangemask[from] = exchanges[from];
 	}
 
-	free(mode_buffer, M_TEMP);
+	kfree(mode_buffer, M_TEMP);
 
 	return(error);
 }

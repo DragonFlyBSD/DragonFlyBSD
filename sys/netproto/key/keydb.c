@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.8 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.9 2006/09/05 00:55:49 dillon Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -68,7 +68,7 @@ keydb_newsecpolicy(void)
 {
 	struct secpolicy *p;
 
-	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
+	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -79,7 +79,7 @@ void
 keydb_delsecpolicy(struct secpolicy *p)
 {
 
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /*
@@ -91,7 +91,7 @@ keydb_newsecashead(void)
 	struct secashead *p;
 	int i;
 
-	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
+	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -104,7 +104,7 @@ void
 keydb_delsecashead(struct secashead *p)
 {
 
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /*
@@ -115,7 +115,7 @@ keydb_newsecasvar(void)
 {
 	struct secasvar *p;
 
-	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
+	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 	bzero(p, sizeof(*p));
@@ -149,7 +149,7 @@ keydb_delsecasvar(struct secasvar *p)
 	if (p->refcnt)
 		panic("keydb_delsecasvar called with refcnt != 0");
 
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /*
@@ -160,15 +160,15 @@ keydb_newsecreplay(size_t wsize)
 {
 	struct secreplay *p;
 
-	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
+	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK);
 	if (!p)
 		return p;
 
 	bzero(p, sizeof(*p));
 	if (wsize != 0) {
-		p->bitmap = (caddr_t)malloc(wsize, M_SECA, M_INTWAIT | M_NULLOK);
+		p->bitmap = (caddr_t)kmalloc(wsize, M_SECA, M_INTWAIT | M_NULLOK);
 		if (!p->bitmap) {
-			free(p, M_SECA);
+			kfree(p, M_SECA);
 			return NULL;
 		}
 		bzero(p->bitmap, wsize);
@@ -182,8 +182,8 @@ keydb_delsecreplay(struct secreplay *p)
 {
 
 	if (p->bitmap)
-		free(p->bitmap, M_SECA);
-	free(p, M_SECA);
+		kfree(p->bitmap, M_SECA);
+	kfree(p, M_SECA);
 }
 
 /*
@@ -194,7 +194,7 @@ keydb_newsecreg(void)
 {
 	struct secreg *p;
 
-	p = malloc(sizeof(*p), M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
+	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 	return p;
 }
 
@@ -202,5 +202,5 @@ void
 keydb_delsecreg(struct secreg *p)
 {
 
-	free(p, M_SECA);
+	kfree(p, M_SECA);
 }

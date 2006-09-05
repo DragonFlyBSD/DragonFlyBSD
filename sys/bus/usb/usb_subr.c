@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.11 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.12 2006/09/05 00:55:36 dillon Exp $
  */
 
 /* Also already have from NetBSD:
@@ -528,7 +528,7 @@ usbd_fill_iface_data(usbd_device_handle dev, int ifaceidx, int altidx)
 
  bad:
 	if (ifc->endpoints != NULL) {
-		free(ifc->endpoints, M_USB);
+		kfree(ifc->endpoints, M_USB);
 		ifc->endpoints = NULL;
 	}
 	return (USBD_INVAL);
@@ -539,7 +539,7 @@ usbd_free_iface_data(usbd_device_handle dev, int ifcno)
 {
 	usbd_interface_handle ifc = &dev->ifaces[ifcno];
 	if (ifc->endpoints)
-		free(ifc->endpoints, M_USB);
+		kfree(ifc->endpoints, M_USB);
 }
 
 Static usbd_status
@@ -594,8 +594,8 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 		nifc = dev->cdesc->bNumInterface;
 		for (ifcidx = 0; ifcidx < nifc; ifcidx++)
 			usbd_free_iface_data(dev, ifcidx);
-		free(dev->ifaces, M_USB);
-		free(dev->cdesc, M_USB);
+		kfree(dev->ifaces, M_USB);
+		kfree(dev->cdesc, M_USB);
 		dev->ifaces = NULL;
 		dev->cdesc = NULL;
 		dev->config = USB_UNCONFIG_NO;
@@ -616,7 +616,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 	if (err)
 		return (err);
 	len = UGETW(cd.wTotalLength);
-	cdp = malloc(len, M_USB, M_INTWAIT);
+	cdp = kmalloc(len, M_USB, M_INTWAIT);
 	/* Get the full descriptor. */
 	err = usbd_get_desc(dev, UDESC_CONFIG, index, len, cdp);
 	if (err)
@@ -727,7 +727,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 	return (USBD_NORMAL_COMPLETION);
 
  bad:
-	free(cdp, M_USB);
+	kfree(cdp, M_USB);
 	return (err);
 }
 
@@ -742,7 +742,7 @@ usbd_setup_pipe(usbd_device_handle dev, usbd_interface_handle iface,
 
 	DPRINTFN(1,("usbd_setup_pipe: dev=%p iface=%p ep=%p pipe=%p\n",
 		    dev, iface, ep, pipe));
-	p = malloc(dev->bus->pipe_size, M_USB, M_INTWAIT);
+	p = kmalloc(dev->bus->pipe_size, M_USB, M_INTWAIT);
 	p->device = dev;
 	p->iface = iface;
 	p->endpoint = ep;
@@ -759,7 +759,7 @@ usbd_setup_pipe(usbd_device_handle dev, usbd_interface_handle iface,
 		DPRINTFN(-1,("usbd_setup_pipe: endpoint=0x%x failed, error="
 			 "%s\n",
 			 ep->edesc->bEndpointAddress, usbd_errstr(err)));
-		free(p, M_USB);
+		kfree(p, M_USB);
 		return (err);
 	}
 	/* Clear any stall and make sure DATA0 toggle will be used next. */
@@ -776,7 +776,7 @@ usbd_kill_pipe(usbd_pipe_handle pipe)
 	usbd_abort_pipe(pipe);
 	pipe->methods->close(pipe);
 	pipe->endpoint->refcnt--;
-	free(pipe, M_USB);
+	kfree(pipe, M_USB);
 }
 
 int
@@ -833,7 +833,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	DPRINTF(("usbd_probe_and_attach: trying device specific drivers\n"));
 	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
 	if (dv) {
-		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_INTWAIT);
+		dev->subdevs = kmalloc(2 * sizeof dv, M_USB, M_INTWAIT);
 		dev->subdevs[0] = dv;
 		dev->subdevs[1] = 0;
 		return (USBD_NORMAL_COMPLETION);
@@ -869,7 +869,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 			ifaces[i] = &dev->ifaces[i];
 		uaa.ifaces = ifaces;
 		uaa.nifaces = nifaces;
-		dev->subdevs = malloc((nifaces+1) * sizeof dv, M_USB, M_INTWAIT);
+		dev->subdevs = kmalloc((nifaces+1) * sizeof dv, M_USB, M_INTWAIT);
 
 		found = 0;
 		for (i = 0; i < nifaces; i++) {
@@ -904,7 +904,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 #endif
 			return (USBD_NORMAL_COMPLETION);
 		}
-		free(dev->subdevs, M_USB);
+		kfree(dev->subdevs, M_USB);
 		dev->subdevs = 0;
 	}
 	/* No interfaces were attached in any of the configurations. */
@@ -921,7 +921,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	uaa.ifaceno = UHUB_UNK_INTERFACE;
 	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
 	if (dv != NULL) {
-		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_INTWAIT);
+		dev->subdevs = kmalloc(2 * sizeof dv, M_USB, M_INTWAIT);
 		dev->subdevs[0] = dv;
 		dev->subdevs[1] = 0;
 		return (USBD_NORMAL_COMPLETION);
@@ -967,7 +967,7 @@ usbd_new_device(device_ptr_t parent, usbd_bus_handle bus, int depth,
 		return (USBD_NO_ADDR);
 	}
 
-	dev = malloc(sizeof *dev, M_USB, M_INTWAIT | M_ZERO);
+	dev = kmalloc(sizeof *dev, M_USB, M_INTWAIT | M_ZERO);
 	dev->bus = bus;
 
 	/* Set up default endpoint handle. */
@@ -1129,7 +1129,7 @@ usbd_remove_device(usbd_device_handle dev, struct usbd_port *up)
 	up->device = 0;
 	dev->bus->devices[dev->address] = 0;
 
-	free(dev, M_USB);
+	kfree(dev, M_USB);
 }
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -1299,13 +1299,13 @@ usb_free_device(usbd_device_handle dev)
 		nifc = dev->cdesc->bNumInterface;
 		for (ifcidx = 0; ifcidx < nifc; ifcidx++)
 			usbd_free_iface_data(dev, ifcidx);
-		free(dev->ifaces, M_USB);
+		kfree(dev->ifaces, M_USB);
 	}
 	if (dev->cdesc != NULL)
-		free(dev->cdesc, M_USB);
+		kfree(dev->cdesc, M_USB);
 	if (dev->subdevs != NULL)
-		free(dev->subdevs, M_USB);
-	free(dev, M_USB);
+		kfree(dev->subdevs, M_USB);
+	kfree(dev, M_USB);
 }
 
 /*
@@ -1367,11 +1367,11 @@ usb_realloc(void *p, u_int size, int pool, int flags)
 {
 	void *q;
 
-	q = malloc(size, pool, flags);
+	q = kmalloc(size, pool, flags);
 	if (q == NULL)
 		return (NULL);
 	bcopy(p, q, size);
-	free(p, pool);
+	kfree(p, pool);
 	return (q);
 }
 #endif

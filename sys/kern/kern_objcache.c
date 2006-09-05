@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.9 2006/09/04 07:00:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -217,7 +217,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 	struct objcache_malloc_args *margs;
 	struct objcache *oc;
 
-	margs = malloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
+	margs = kmalloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
 	margs->objsize = objsize;
 	margs->mtype = mtype;
 	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
@@ -381,7 +381,7 @@ objcache_malloc_alloc(void *allocator_args, int ocflags)
 {
 	struct objcache_malloc_args *alloc_args = allocator_args;
 
-	return (malloc(alloc_args->objsize, alloc_args->mtype,
+	return (kmalloc(alloc_args->objsize, alloc_args->mtype,
 		       ocflags & OC_MFLAGS));
 }
 
@@ -390,7 +390,7 @@ objcache_malloc_free(void *obj, void *allocator_args)
 {
 	struct objcache_malloc_args *alloc_args = allocator_args;
 
-	free(obj, alloc_args->mtype);
+	kfree(obj, alloc_args->mtype);
 }
 
 /*
@@ -588,7 +588,7 @@ maglist_purge(struct objcache *oc, struct magazinelist *maglist,
 	while ((mag = SLIST_FIRST(maglist))) {
 		SLIST_REMOVE_HEAD(maglist, nextmagazine);
 		ndeleted += mag_purge(oc, mag);		/* could block! */
-		free(mag, M_OBJMAG);			/* could block! */
+		kfree(mag, M_OBJMAG);			/* could block! */
 		if (!purgeall && ndeleted > 0)
 			break;
 	}
@@ -687,14 +687,14 @@ objcache_destroy(struct objcache *oc)
 		cache_percpu = &oc->cache_percpu[cpuid];
 
 		mag_purge(oc, cache_percpu->loaded_magazine);
-		free(cache_percpu->loaded_magazine, M_OBJMAG);
+		kfree(cache_percpu->loaded_magazine, M_OBJMAG);
 
 		mag_purge(oc, cache_percpu->previous_magazine);
-		free(cache_percpu->previous_magazine, M_OBJMAG);
+		kfree(cache_percpu->previous_magazine, M_OBJMAG);
 	}
 
-	free(oc->name, M_TEMP);
-	free(oc, M_OBJCACHE);
+	kfree(oc->name, M_TEMP);
+	kfree(oc, M_OBJCACHE);
 }
 
 #if 0

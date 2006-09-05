@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.7 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.8 2006/09/05 00:55:44 dillon Exp $
  */
 
 /*
@@ -256,7 +256,7 @@ USB_ATTACH(uvisor)
 	usbd_status err;
 	struct ucom_softc *ucom;
 
-	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
+	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uvisor_softc));

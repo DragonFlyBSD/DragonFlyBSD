@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.20 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.21 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -556,7 +556,7 @@ cyattach_common(cy_iobase, cy_align)
 		for (cdu = 0; cdu < CD1400_NO_OF_CHANNELS; ++cdu, ++unit) {
 			struct com_s	*com;
 
-	com = malloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
+	com = kmalloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
 	com->unit = unit;
 			callout_init(&com->dtr_ch);
 			com->gfrcr_image = firmware_version;
@@ -597,7 +597,7 @@ cyattach_common(cy_iobase, cy_align)
 	}
 	if (siosetwater(com, com->it_in.c_ispeed) != 0) {
 		enable_intr();
-		free(com, M_DEVBUF);
+		kfree(com, M_DEVBUF);
 		return (0);
 	}
 	enable_intr();
@@ -2165,7 +2165,7 @@ comparam(tp, t)
 	crit_exit();
 	comstart(tp);
 	if (com->ibufold != NULL) {
-		free(com->ibufold, M_DEVBUF);
+		kfree(com->ibufold, M_DEVBUF);
 		com->ibufold = NULL;
 	}
 	return (0);
@@ -2199,7 +2199,7 @@ siosetwater(com, speed)
 	 * Allocate input buffer.  The extra factor of 2 in the size is
 	 * to allow for an error byte for each input byte.
 	 */
-	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_WAITOK);
+	ibuf = kmalloc(2 * ibufsize, M_DEVBUF, M_WAITOK);
 
 	/* Initialize non-critical variables. */
 	com->ibufold = com->ibuf;

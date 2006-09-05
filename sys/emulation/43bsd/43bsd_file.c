@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.10 2006/06/05 07:26:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.11 2006/09/05 00:55:44 dillon Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -140,19 +140,19 @@ sys_ogetdirentries(struct ogetdirentries_args *uap)
 	else
 		len = uap->count;
 
-	buf = malloc(len, M_TEMP, M_WAITOK);
+	buf = kmalloc(len, M_TEMP, M_WAITOK);
 
 	error = kern_getdirentries(uap->fd, buf, len,
 	    &base, &bytes_transfered, UIO_SYSSPACE);
 
 	if (error) {
-		free(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 		return(error);
 	}
 
 	ndp = (struct dirent *)buf;
 	outbuf = uap->buf;
-	destdp = malloc(PADDED_SIZE(MAX_NAMELEN), M_TEMP, M_WAITOK);
+	destdp = kmalloc(PADDED_SIZE(MAX_NAMELEN), M_TEMP, M_WAITOK);
 
 	for (; (char *)ndp < buf + bytes_transfered; ndp = _DIRENT_NEXT(ndp)) {
 		if ((char *)_DIRENT_NEXT(ndp) > buf + bytes_transfered)
@@ -182,8 +182,8 @@ sys_ogetdirentries(struct ogetdirentries_args *uap)
 		len -= PADDED_SIZE(destdp->od_namlen);
 	}
 
-	free(destdp, M_TEMP);
-	free(buf, M_TEMP);
+	kfree(destdp, M_TEMP);
+	kfree(buf, M_TEMP);
 	uap->sysmsg_result = outbuf - uap->buf;
 	return (0);
 }

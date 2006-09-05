@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.3 2004/07/14 08:01:16 asmodai Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.4 2006/09/05 00:55:46 dillon Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -179,7 +179,7 @@ pfil_list_add(struct pfil_head *ph,
 			return EEXIST;
 	}
 
-	pfh = (struct packet_filter_hook *)malloc(sizeof(*pfh), M_IFADDR,
+	pfh = (struct packet_filter_hook *)kmalloc(sizeof(*pfh), M_IFADDR,
 	    (flags & PFIL_WAITOK) ? M_WAITOK : M_NOWAIT);
 	if (pfh == NULL)
 		return ENOMEM;
@@ -234,7 +234,7 @@ pfil_list_remove(struct pfil_head *ph,
 	     pfh = TAILQ_NEXT(pfh, pfil_link)) {
 		if (pfh->pfil_func == func && pfh->pfil_arg == arg) {
 			TAILQ_REMOVE(list, pfh, pfil_link);
-			free(pfh, M_IFADDR);
+			kfree(pfh, M_IFADDR);
 			if (TAILQ_EMPTY(&ph->ph_in) && TAILQ_EMPTY(&ph->ph_out))
 				ph->ph_hashooks = 0;
 			return 0;

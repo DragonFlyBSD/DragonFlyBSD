@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.23 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.24 2006/09/05 00:55:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -126,7 +126,7 @@ acdattach(struct ata_device *atadev)
 			   sizeof(struct changer)>>8, sizeof(struct changer),
 			   0, 0, 0, 0, 0, 0 };
 
-	chp = malloc(sizeof(struct changer), M_ACD, M_WAITOK | M_ZERO);
+	chp = kmalloc(sizeof(struct changer), M_ACD, M_WAITOK | M_ZERO);
 	if (!atapi_queue_cmd(cdp->device, ccb, (caddr_t)chp, 
 			     sizeof(struct changer),
 			     ATPR_F_READ, 60, NULL, NULL)) {
@@ -136,7 +136,7 @@ acdattach(struct ata_device *atadev)
 	    int count;
 
 	    chp->table_length = htons(chp->table_length);
-	    cdparr = malloc(sizeof(struct acd_softc) * chp->slots,
+	    cdparr = kmalloc(sizeof(struct acd_softc) * chp->slots,
 				  M_ACD, M_WAITOK);
 	    for (count = 0; count < chp->slots; count++) {
 		if (count > 0) {
@@ -156,12 +156,12 @@ acdattach(struct ata_device *atadev)
 				  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_IDE,
 				  DEVSTAT_PRIORITY_CD);
 	    }
-	    name = malloc(strlen(atadev->name) + 2, M_ACD, M_WAITOK);
+	    name = kmalloc(strlen(atadev->name) + 2, M_ACD, M_WAITOK);
 	    strcpy(name, atadev->name);
 	    strcat(name, "-");
 	    ata_free_name(atadev);
 	    ata_set_name(atadev, name, cdp->lun + cdp->changer_info->slots - 1);
-	    free(name, M_ACD);
+	    kfree(name, M_ACD);
 	}
     }
     else {
@@ -198,15 +198,15 @@ acddetach(struct ata_device *atadev)
 	    while ((entry = TAILQ_FIRST(&cdp->driver[subdev]->dev_list))) {
 		release_dev(entry->dev);
 		TAILQ_REMOVE(&cdp->driver[subdev]->dev_list, entry, chain);
-		free(entry, M_ACD);
+		kfree(entry, M_ACD);
 	    }
 	    devstat_remove_entry(cdp->driver[subdev]->stats);
-	    free(cdp->driver[subdev]->stats, M_ACD);
+	    kfree(cdp->driver[subdev]->stats, M_ACD);
 	    ata_free_lun(&acd_lun_map, cdp->driver[subdev]->lun);
-	    free(cdp->driver[subdev], M_ACD);
+	    kfree(cdp->driver[subdev], M_ACD);
 	}
-	free(cdp->driver, M_ACD);
-	free(cdp->changer_info, M_ACD);
+	kfree(cdp->driver, M_ACD);
+	kfree(cdp->changer_info, M_ACD);
     }
     while ((bio = bioq_first(&cdp->bio_queue))) {
 	bio->bio_buf->b_flags |= B_ERROR;
@@ -216,15 +216,15 @@ acddetach(struct ata_device *atadev)
     while ((entry = TAILQ_FIRST(&cdp->dev_list))) {
 	release_dev(entry->dev);
 	TAILQ_REMOVE(&cdp->dev_list, entry, chain);
-	free(entry, M_ACD);
+	kfree(entry, M_ACD);
     }
     release_dev(cdp->dev);
     devstat_remove_entry(cdp->stats);
     dev_ops_remove(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
-    free(cdp->stats, M_ACD);
+    kfree(cdp->stats, M_ACD);
     ata_free_name(atadev);
     ata_free_lun(&acd_lun_map, cdp->lun);
-    free(cdp, M_ACD);
+    kfree(cdp, M_ACD);
     atadev->driver = NULL;
 }
 
@@ -233,7 +233,7 @@ acd_init_lun(struct ata_device *atadev)
 {
     struct acd_softc *cdp;
 
-    cdp = malloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO);
+    cdp = kmalloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO);
     TAILQ_INIT(&cdp->dev_list);
     bioq_init(&cdp->bio_queue);
     cdp->device = atadev;
@@ -241,7 +241,7 @@ acd_init_lun(struct ata_device *atadev)
     cdp->block_size = 2048;
     cdp->slot = -1;
     cdp->changer_info = NULL;
-    cdp->stats = malloc(sizeof(struct devstat), M_ACD, M_WAITOK | M_ZERO);
+    cdp->stats = kmalloc(sizeof(struct devstat), M_ACD, M_WAITOK | M_ZERO);
     return cdp;
 }
 
@@ -659,7 +659,7 @@ acdioctl(struct dev_ioctl_args *ap)
 	    if (te->address_format == CD_MSF_FORMAT) {
 		struct cd_toc_entry *entry;
 
-		toc = malloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
+		toc = kmalloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 		entry = toc->tab + (toc->hdr.ending_track + 1 -
 			toc->hdr.starting_track) + 1;
@@ -670,7 +670,7 @@ acdioctl(struct dev_ioctl_args *ap)
 	    error = copyout(toc->tab + starting_track - toc->hdr.starting_track,
 			    te->data, len);
 	    if (te->address_format == CD_MSF_FORMAT)
-		free(toc, M_ACD);
+		kfree(toc, M_ACD);
 	    break;
 	}
     case CDIOREADTOCENTRY:
@@ -704,7 +704,7 @@ acdioctl(struct dev_ioctl_args *ap)
 	    if (te->address_format == CD_MSF_FORMAT) {
 		struct cd_toc_entry *entry;
 
-		toc = malloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
+		toc = kmalloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 
 		entry = toc->tab + (track - toc->hdr.starting_track);
@@ -714,7 +714,7 @@ acdioctl(struct dev_ioctl_args *ap)
 	    bcopy(toc->tab + track - toc->hdr.starting_track,
 		  &te->entry, sizeof(struct cd_toc_entry));
 	    if (te->address_format == CD_MSF_FORMAT)
-		free(toc, M_ACD);
+		kfree(toc, M_ACD);
 	}
 	break;
 
@@ -844,7 +844,7 @@ acdioctl(struct dev_ioctl_args *ap)
 #ifndef CD_BUFFER_BLOCKS
 #define CD_BUFFER_BLOCKS 13
 #endif
-	    if (!(buffer = malloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_WAITOK))){
+	    if (!(buffer = kmalloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_WAITOK))){
 		error = ENOMEM;
 		break;
 	    }
@@ -875,7 +875,7 @@ acdioctl(struct dev_ioctl_args *ap)
 		frames -= blocks;
 		lba += blocks;
 	    }
-	    free(buffer, M_ACD);
+	    kfree(buffer, M_ACD);
 	    if (args->address_format == CD_LBA_FORMAT)
 		args->address.lba = lba;
 	    else if (args->address_format == CD_MSF_FORMAT)
@@ -1323,13 +1323,13 @@ acd_read_toc(struct acd_softc *cdp)
     while ((entry = TAILQ_FIRST(&cdp->dev_list))) {
 	destroy_dev(entry->dev);
 	TAILQ_REMOVE(&cdp->dev_list, entry, chain);
-	free(entry, M_ACD);
+	kfree(entry, M_ACD);
     }
     for (track = 1; track <= ntracks; track ++) {
 	char name[16];
 
 	sprintf(name, "acd%dt%d", cdp->lun, track);
-	entry = malloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
+	entry = kmalloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
 	entry->dev = make_dev(&acd_ops, (cdp->lun << 3) | (track << 16),
 			      0, 0, 0644, name, NULL);
 	entry->dev->si_drv1 = cdp->dev->si_drv1;
@@ -1639,7 +1639,7 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
     if ((error = acd_mode_select(cdp, (caddr_t)&param, param.page_length + 10)))
 	return error;
 
-    buffer = malloc(cuesheet->len, M_ACD, M_WAITOK);
+    buffer = kmalloc(cuesheet->len, M_ACD, M_WAITOK);
     if (!buffer)
 	return ENOMEM;
     if ((error = copyin(cuesheet->entries, buffer, cuesheet->len)))
@@ -1655,7 +1655,7 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
 #endif
     error = atapi_queue_cmd(cdp->device, ccb, buffer, cuesheet->len, 0,
 			    30, NULL, NULL);
-    free(buffer, M_ACD);
+    kfree(buffer, M_ACD);
     return error;
 }
 
@@ -1702,13 +1702,13 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     ccb[8] = (length >> 8) & 0xff;
     ccb[9] = length & 0xff;
 
-    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+    d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
     d->length = htons(length - 2);
 
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
 			    ATPR_F_READ, 10, NULL, NULL);
     if (error) {
-        free(d, M_ACD);
+        kfree(d, M_ACD);
 	return(error);
     }
 
@@ -1751,7 +1751,7 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     default:
 	error = EINVAL;
     }
-    free(d, M_ACD);
+    kfree(d, M_ACD);
     return error;
 }
 
@@ -1766,19 +1766,19 @@ acd_send_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     switch (ai->format) {
     case DVD_SEND_CHALLENGE:
 	length = 16;
-	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(ai->keychal, &d->data[0], 10);
 	break;
 
     case DVD_SEND_KEY2:
 	length = 12;
-	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(&ai->keychal[0], &d->data[0], 5);
 	break;
     
     case DVD_SEND_RPC:
 	length = 8;
-	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	d->data[0] = ai->region;
 	break;
 
@@ -1794,7 +1794,7 @@ acd_send_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     d->length = htons(length - 2);
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length, 0,
 			    10, NULL, NULL);
-    free(d, M_ACD);
+    kfree(d, M_ACD);
     return error;
 }
 
@@ -1841,7 +1841,7 @@ acd_read_structure(struct acd_softc *cdp, struct dvd_struct *s)
 	return EINVAL;
     }
 
-    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+    d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
     d->length = htons(length - 2);
 	
     bzero(ccb, sizeof(ccb));
@@ -1854,7 +1854,7 @@ acd_read_structure(struct acd_softc *cdp, struct dvd_struct *s)
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length, ATPR_F_READ,
 			    30, NULL, NULL);
     if (error) {
-	free(d, M_ACD);
+	kfree(d, M_ACD);
 	return error;
     }
 
@@ -1900,7 +1900,7 @@ acd_read_structure(struct acd_softc *cdp, struct dvd_struct *s)
     default:
 	error = EINVAL;
     }
-    free(d, M_ACD);
+    kfree(d, M_ACD);
     return error;
 }
 

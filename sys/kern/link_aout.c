@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.18 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -115,7 +115,7 @@ link_aout_init(void* arg)
     if (dp) {
 	aout_file_t af;
 
-	af = malloc(sizeof(struct aout_file), M_LINKER, M_NOWAIT);
+	af = kmalloc(sizeof(struct aout_file), M_LINKER, M_NOWAIT);
 	if (af == NULL)
 	    panic("link_aout_init: Can't create linker structures for kernel");
 	bzero(af, sizeof(*af));
@@ -158,14 +158,14 @@ link_aout_load_module(const char* filename, linker_file_t* result)
 	return(0);			/* we can't handle this */
 
     /* Looks like we can handle this one */
-    af = malloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
+    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
     bzero(af, sizeof(*af));
     af->address = baseptr;
 
     /* Assume _DYNAMIC is the first data item. */
     af->dynamic = (struct _dynamic*)(af->address + ehdr->a_text);
     if (af->dynamic->d_version != LD_VERSION_BSD) {
-	free(af, M_LINKER);
+	kfree(af, M_LINKER);
 	return(0);			/* we can't handle this */
     }
     af->dynamic->d_un.d_sdt = (struct section_dispatch_table *)
@@ -174,7 +174,7 @@ link_aout_load_module(const char* filename, linker_file_t* result)
     /* Register with kld */
     lf = linker_make_file(filename, af, &link_aout_module_ops);
     if (lf == NULL) {
-	free(af, M_LINKER);
+	kfree(af, M_LINKER);
 	return(ENOMEM);
     }
     lf->address = af->address;
@@ -219,7 +219,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     error = nlookup_init(&nd, pathname, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
     if (error == 0)
 	error = vn_open(&nd, NULL, FREAD, 0);
-    free(pathname, M_LINKER);
+    kfree(pathname, M_LINKER);
     if (error) {
 	nlookup_done(&nd);
 	return error;
@@ -242,7 +242,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     /*
      * We have an a.out file, so make some space to read it in.
      */
-    af = malloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
+    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
     bzero(af, sizeof(*af));
     af->address = malloc(header.a_text + header.a_data + header.a_bss,
 			 M_LINKER, M_WAITOK);
@@ -262,8 +262,8 @@ link_aout_load_file(const char* filename, linker_file_t* result)
      */
     af->dynamic = (struct _dynamic*) (af->address + header.a_text);
     if (af->dynamic->d_version != LD_VERSION_BSD) {
-	free(af->address, M_LINKER);
-	free(af, M_LINKER);
+	kfree(af->address, M_LINKER);
+	kfree(af, M_LINKER);
 	goto out;
     }
     af->dynamic->d_un.d_sdt = (struct section_dispatch_table *)
@@ -271,8 +271,8 @@ link_aout_load_file(const char* filename, linker_file_t* result)
 
     lf = linker_make_file(filename, af, &link_aout_file_ops);
     if (lf == NULL) {
-	free(af->address, M_LINKER);
-	free(af, M_LINKER);
+	kfree(af->address, M_LINKER);
+	kfree(af, M_LINKER);
 	error = ENOMEM;
 	goto out;
     }
@@ -302,8 +302,8 @@ link_aout_unload_file(linker_file_t file)
 
     if (af) {
 	if (af->address)
-	    free(af->address, M_LINKER);
-	free(af, M_LINKER);
+	    kfree(af->address, M_LINKER);
+	kfree(af, M_LINKER);
     }
 }
 
@@ -313,7 +313,7 @@ link_aout_unload_module(linker_file_t file)
     aout_file_t af = file->priv;
 
     if (af)
-	free(af, M_LINKER);
+	kfree(af, M_LINKER);
     if (file->filename)
 	preload_delete_name(file->filename);
 }
@@ -359,7 +359,7 @@ load_dependancies(linker_file_t lf)
 
 out:
     if (filename)
-	free(filename, M_TEMP);
+	kfree(filename, M_TEMP);
     return error;
 }
 

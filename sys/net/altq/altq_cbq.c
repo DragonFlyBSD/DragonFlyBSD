@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.3 2005/11/22 00:24:35 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.4 2006/09/05 00:55:47 dillon Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -227,7 +227,7 @@ cbq_add_altq(struct pf_altq *a)
 		return (ENODEV);
 
 	/* allocate and initialize cbq_state_t */
-	cbqp = malloc(sizeof(*cbqp), M_ALTQ, M_WAITOK | M_ZERO);
+	cbqp = kmalloc(sizeof(*cbqp), M_ALTQ, M_WAITOK | M_ZERO);
 	callout_init(&cbqp->cbq_callout);
 	cbqp->cbq_qlen = 0;
 	cbqp->ifnp.ifq_ = &ifp->if_snd;	    /* keep the ifq */
@@ -255,7 +255,7 @@ cbq_remove_altq(struct pf_altq *a)
 		cbq_class_destroy(cbqp, cbqp->ifnp.root_);
 
 	/* deallocate cbq_state_t */
-	free(cbqp, M_ALTQ);
+	kfree(cbqp, M_ALTQ);
 
 	return (0);
 }

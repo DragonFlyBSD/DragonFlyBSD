@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.22 2004/04/14 17:58:19 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.3 2004/06/27 08:52:39 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.4 2006/09/05 00:55:36 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -144,7 +144,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
 	return_ACPI_STATUS (AE_OK);		/* already know about it */
 
     /* Allocate a new resource */
-    rp = malloc(sizeof(*rp), M_ACPIPWR, M_INTWAIT | M_ZERO);
+    rp = kmalloc(sizeof(*rp), M_ACPIPWR, M_INTWAIT | M_ZERO);
     TAILQ_INIT(&rp->ap_references);
     rp->ap_resource = res;
 
@@ -188,7 +188,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
     if (buf.Pointer != NULL)
 	AcpiOsFree(buf.Pointer);
     if (ACPI_FAILURE(status) && rp != NULL)
-	free(rp, M_ACPIPWR);
+	kfree(rp, M_ACPIPWR);
     return_ACPI_STATUS (status);
 }
 
@@ -215,7 +215,7 @@ acpi_pwr_deregister_resource(ACPI_HANDLE res)
 
     /* Pull it off the list and free it */
     TAILQ_REMOVE(&acpi_powerresources, rp, ap_link);
-    free(rp, M_ACPIPWR);
+    kfree(rp, M_ACPIPWR);
 
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "deregistered power resource %s\n",
 		     acpi_name(res)));
@@ -241,7 +241,7 @@ acpi_pwr_register_consumer(ACPI_HANDLE consumer)
 	return_ACPI_STATUS (AE_OK);
     
     /* Allocate a new power consumer */
-    pc = malloc(sizeof(*pc), M_ACPIPWR, M_INTWAIT);
+    pc = kmalloc(sizeof(*pc), M_ACPIPWR, M_INTWAIT);
     TAILQ_INSERT_HEAD(&acpi_powerconsumers, pc, ac_link);
     TAILQ_INIT(&pc->ac_references);
     pc->ac_consumer = consumer;
@@ -421,7 +421,7 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
 			 acpi_name(pr->ar_resource->ap_resource)));
 	TAILQ_REMOVE(&pr->ar_resource->ap_references, pr, ar_rlink);
 	TAILQ_REMOVE(&pc->ac_references, pr, ar_clink);
-	free(pr, M_ACPIPWR);
+	kfree(pr, M_ACPIPWR);
     }
 
     /*
@@ -519,7 +519,7 @@ acpi_pwr_reference_resource(ACPI_OBJECT *obj, void *arg)
 		     acpi_name(rp->ap_resource)));
 
     /* Create a reference between the consumer and resource */
-    pr = malloc(sizeof(*pr), M_ACPIPWR, M_INTWAIT | M_ZERO);
+    pr = kmalloc(sizeof(*pr), M_ACPIPWR, M_INTWAIT | M_ZERO);
     pr->ar_consumer = pc;
     pr->ar_resource = rp;
     TAILQ_INSERT_TAIL(&pc->ac_references, pr, ar_clink);

@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.16 2005/06/10 22:34:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.17 2006/09/05 00:55:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -542,7 +542,7 @@ update_window:
 			break;
 		}
 	}
-	nq = malloc(sizeof(struct spx_q), M_SPX_Q, M_INTNOWAIT);
+	nq = kmalloc(sizeof(struct spx_q), M_SPX_Q, M_INTNOWAIT);
 	if (nq == NULL) {
 		m_freem(si_m);
 		return (0);
@@ -578,7 +578,7 @@ present:
 			nq = q;
 			q = q->si_prev;
 			remque(nq);
-			free(nq, M_SPX_Q);
+			kfree(nq, M_SPX_Q);
 			wakeup = 1;
 			spxstat.spxs_rcvpack++;
 #ifdef SF_NEWCALL
@@ -1639,7 +1639,7 @@ spx_close(struct spxpcb *cb)
 		m = oq->si_mbuf;
 		remque(oq);
 		m_freem(m);
-		free(oq, M_SPX_Q);
+		kfree(oq, M_SPX_Q);
 	}
 	m_free(cb->s_ipx_m);
 	FREE(cb, M_PCB);

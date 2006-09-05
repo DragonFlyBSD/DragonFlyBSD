@@ -90,7 +90,7 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/kern/subr_blist.c,v 1.5 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_blist.c,v 1.6 2006/09/05 00:55:45 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -121,8 +121,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define malloc(a,b,c)	malloc(a)
-#define free(a,b)	free(a)
+#define kmalloc(a,b,c)	malloc(a)
+#define kfree(a,b)	free(a)
 
 typedef unsigned int u_daddr_t;
 
@@ -182,7 +182,7 @@ blist_create(daddr_t blocks)
 		skip = (skip + 1) * BLIST_META_RADIX;
 	}
 
-	bl = malloc(sizeof(struct blist), M_SWAP, M_WAITOK);
+	bl = kmalloc(sizeof(struct blist), M_SWAP, M_WAITOK);
 
 	bzero(bl, sizeof(*bl));
 
@@ -191,7 +191,7 @@ blist_create(daddr_t blocks)
 	bl->bl_skip = skip;
 	bl->bl_rootblks = 1 +
 	    blst_radix_init(NULL, bl->bl_radix, bl->bl_skip, blocks);
-	bl->bl_root = malloc(sizeof(blmeta_t) * bl->bl_rootblks, M_SWAP, M_WAITOK);
+	bl->bl_root = kmalloc(sizeof(blmeta_t) * bl->bl_rootblks, M_SWAP, M_WAITOK);
 
 #if defined(BLIST_DEBUG)
 	printf(
@@ -211,8 +211,8 @@ blist_create(daddr_t blocks)
 void 
 blist_destroy(blist_t bl)
 {
-	free(bl->bl_root, M_SWAP);
-	free(bl, M_SWAP);
+	kfree(bl->bl_root, M_SWAP);
+	kfree(bl, M_SWAP);
 }
 
 /*

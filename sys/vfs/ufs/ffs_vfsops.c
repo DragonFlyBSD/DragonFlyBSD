@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.48 2006/09/03 18:52:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.49 2006/09/05 00:55:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -673,11 +673,11 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		error = EROFS;          /* needs translation */
 		goto out;
 	}
-	ump = malloc(sizeof *ump, M_UFSMNT, M_WAITOK);
+	ump = kmalloc(sizeof *ump, M_UFSMNT, M_WAITOK);
 	bzero((caddr_t)ump, sizeof *ump);
 	ump->um_malloctype = mtype;
 	ump->um_i_effnlink_valid = 1;
-	ump->um_fs = malloc((u_long)fs->fs_sbsize, M_UFSMNT,
+	ump->um_fs = kmalloc((u_long)fs->fs_sbsize, M_UFSMNT,
 	    M_WAITOK);
 	bcopy(bp->b_data, ump->um_fs, (uint)fs->fs_sbsize);
 	if (fs->fs_sbsize < SBSIZE)
@@ -691,7 +691,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	if (fs->fs_contigsumsize > 0)
 		size += fs->fs_ncg * sizeof(int32_t);
 	size += fs->fs_ncg * sizeof(uint8_t);
-	space = malloc((u_long)size, M_UFSMNT, M_WAITOK);
+	space = kmalloc((u_long)size, M_UFSMNT, M_WAITOK);
 	fs->fs_csp = space;
 	for (i = 0; i < blks; i += fs->fs_frag) {
 		size = fs->fs_bsize;
@@ -699,7 +699,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 			size = (blks - i) * fs->fs_fsize;
 		if ((error = bread(devvp, fsbtodoff(fs, fs->fs_csaddr + i),
 				   size, &bp)) != 0) {
-			free(fs->fs_csp, M_UFSMNT);
+			kfree(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
 		bcopy(bp->b_data, space, (uint)size);
@@ -759,7 +759,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	if (ronly == 0) {
 		if ((fs->fs_flags & FS_DOSOFTDEP) &&
 		    (error = softdep_mount(devvp, mp, fs)) != 0) {
-			free(fs->fs_csp, M_UFSMNT);
+			kfree(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
 		fs->fs_fmod = 1;
@@ -777,8 +777,8 @@ out:
 		brelse(bp);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	if (ump) {
-		free(ump->um_fs, M_UFSMNT);
-		free(ump, M_UFSMNT);
+		kfree(ump->um_fs, M_UFSMNT);
+		kfree(ump, M_UFSMNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return (error);
@@ -852,9 +852,9 @@ ffs_unmount(struct mount *mp, int mntflags)
 
 	vrele(ump->um_devvp);
 
-	free(fs->fs_csp, M_UFSMNT);
-	free(fs, M_UFSMNT);
-	free(ump, M_UFSMNT);
+	kfree(fs->fs_csp, M_UFSMNT);
+	kfree(fs, M_UFSMNT);
+	kfree(ump, M_UFSMNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);
@@ -1087,7 +1087,7 @@ restart:
 	error = getnewvnode(VT_UFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error) {
 		*vpp = NULL;
-		free(ip, ump->um_malloctype);
+		kfree(ip, ump->um_malloctype);
 		return (error);
 	}
 	bzero((caddr_t)ip, sizeof(struct inode));
@@ -1111,7 +1111,7 @@ restart:
 		printf("debug: ufs ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
 		vx_put(vp);
-		free(ip, ump->um_malloctype);
+		kfree(ip, ump->um_malloctype);
 		goto restart;
 	}
 	vp->v_data = ip;
