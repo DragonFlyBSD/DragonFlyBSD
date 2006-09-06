@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.11 2006/09/06 12:40:51 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.12 2006/09/06 17:10:26 corecode Exp $
 
 OSSLVERSION=	0.9.8c
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
@@ -33,6 +33,7 @@ CRYTPO_HDRS=	\
 	bf/blowfish.h \
 	bn/bn.h \
 	buffer/buffer.h \
+	camellia/camellia.h \
 	cast/cast.h \
 	comp/comp.h \
 	conf/conf.h conf/conf_api.h \
