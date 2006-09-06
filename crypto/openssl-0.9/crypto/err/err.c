@@ -548,9 +548,20 @@ static void build_SYS_str_reasons(void)
 	int i;
 	static int init = 1;
 
-	if (!init) return;
-
+	CRYPTO_r_lock(CRYPTO_LOCK_ERR);
+	if (!init)
+		{
+		CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
+		return;
+		}
+	
+	CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
 	CRYPTO_w_lock(CRYPTO_LOCK_ERR);
+	if (!init)
+		{
+		CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
+		return;
+		}
 
 	for (i = 1; i <= NUM_SYS_STR_REASONS; i++)
 		{
@@ -1108,7 +1119,7 @@ int ERR_pop_to_mark(void)
 		{
 		err_clear(es,es->top);
 		es->top-=1;
-		if (es->top == -1) es->top=ERR_NUM_ERRORS;
+		if (es->top == -1) es->top=ERR_NUM_ERRORS-1;
 		}
 		
 	if (es->bottom == es->top) return 0;
