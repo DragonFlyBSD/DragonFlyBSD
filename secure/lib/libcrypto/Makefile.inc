@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.10 2005/12/03 14:06:13 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.10.2.1 2006/09/06 13:25:57 corecode Exp $
 
 OSSLVERSION=	0.9.8a
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
@@ -11,6 +11,7 @@ CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
 
 .if !defined(WANT_IDEA)
 CFLAGS+=	-DOPENSSL_NO_IDEA
+_idea_h=
 .else
 _idea_h=	idea/idea.h
 .endif
