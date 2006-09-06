@@ -1,0 +1,54 @@
+$DragonFly: src/secure/lib/libcrypto/Attic/crypto,rsa,rsa_sign.c.patch,v 1.1.2.1 2006/09/06 13:23:14 corecode Exp $
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+
+http://www.openssl.org/news/secadv_20060905.txt
+
+(This patch was updated Tue Sep  5 15:54:30 UTC 2006 to also work
+against 0.9.6)
+
+(This patch was updated Wed Sep 6 08:37:55 UTC 2006 to remove the
+changes to rsa_eay.c/rsa.h/rsa_err.c which were not necessary to
+correct this vulnerability)
+
+Index: crypto/rsa/rsa_sign.c
+===================================================================
+RCS file: /e/openssl/cvs/openssl/crypto/rsa/rsa_sign.c,v
+retrieving revision 1.21
+diff -u -r1.21 rsa_sign.c
+- - - --- crypto/rsa/rsa_sign.c	26 Apr 2005 22:07:17 -0000	1.21
++++ crypto/rsa/rsa_sign.c	4 Sep 2006 15:16:57 -0000
+@@ -185,6 +185,23 @@
+ 		sig=d2i_X509_SIG(NULL,&p,(long)i);
+ 
+ 		if (sig == NULL) goto err;
++
++		/* Excess data can be used to create forgeries */
++		if(p != s+i)
++			{
++			RSAerr(RSA_F_RSA_VERIFY,RSA_R_BAD_SIGNATURE);
++			goto err;
++			}
++
++		/* Parameters to the signature algorithm can also be used to
++		   create forgeries */
++		if(sig->algor->parameter
++		   && sig->algor->parameter->type != V_ASN1_NULL)
++			{
++			RSAerr(RSA_F_RSA_VERIFY,RSA_R_BAD_SIGNATURE);
++			goto err;
++			}
++
+ 		sigtype=OBJ_obj2nid(sig->algor->algorithm);
+ 
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2.2 (GNU/Linux)
+
+iQCVAwUBRP6JWe6tTP1JpWPZAQLssAP+LZH3morviQ2DEN7yWRpVuCsP31850Ma7
+9OjH1wEkAbA3rX2XmDxYFd6dJBanksgdXUqLHlm8w8Q9aA+FKPmyFSaQ74N7nHgE
+iDGws5w1PE1U/sigQvz9FoY5DgCU0l/L+MOoj+UaIiueafLCgO4VpwB1EftXymsS
+eCQDyyI37rE=
+=MXpR
+-----END PGP SIGNATURE-----
