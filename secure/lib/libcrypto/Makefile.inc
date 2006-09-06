@@ -1,7 +1,7 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.10 2005/12/03 14:06:13 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.11 2006/09/06 12:40:51 corecode Exp $
 
-OSSLVERSION=	0.9.8a
+OSSLVERSION=	0.9.8c
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
@@ -19,7 +19,7 @@ _idea_h=	idea/idea.h
 CFLAGS+= -DL_ENDIAN
 .endif
 
-HDRS+=	\
+CRYTPO_HDRS=	\
 	../e_os.h ../e_os2.h \
 	crypto.h \
 	ebcdic.h \
@@ -69,6 +69,12 @@ HDRS+=	\
 	ui/ui.h ui/ui_compat.h ui/ui_locl.h \
 	x509/x509.h x509/x509_vfy.h x509v3/x509v3.h
 
+SSL_HDRS=	\
+	dtls1.h kssl.h ssl.h ssl2.h ssl23.h ssl3.h tls1.h
+
+HDRS+=	${CRYTPO_HDRS:S,^,crypto/,} \
+	${SSL_HDRS:S,^,ssl/,}
+
 SRCS+=		buildinf.h openssl/opensslconf.h openssl/evp.h
 CLEANFILES+=	buildinf.h openssl/opensslconf.h openssl/evp.h
 CLEANDIRS+=	openssl
@@ -92,7 +98,7 @@ openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
 .endif
 
 SRCS+=	${HDRS:T:S;^;openssl/;}
-.for h in ${HDRS:S/^/${LCRYPTO_SRC}\/crypto\//}
+.for h in ${HDRS:S,^,${LCRYPTO_SRC}/,}
 openssl/${h:T}: openssl/.dummy ${h}
 	${INSTALL} -C -m 444 ${h} openssl
 .endfor

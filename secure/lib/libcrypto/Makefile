@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.8 2005/12/03 14:06:13 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.9 2006/09/06 12:40:51 corecode Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -17,7 +17,8 @@ SRCS+=	cpt_err.c cryptlib.c cversion.c ebcdic.c ex_data.c mem.c mem_clr.c \
 	mem_dbg.c o_dir.c o_time.c tmdiff.c uid.c
 
 # aes
-SRCS+=	aes_cbc.c aes_cfb.c aes_core.c aes_ctr.c aes_ecb.c aes_misc.c aes_ofb.c
+SRCS+=	aes_cbc.c aes_cfb.c aes_core.c aes_ctr.c aes_ecb.c aes_ige.c \
+	aes_misc.c aes_ofb.c
 
 # asn1
 SRCS+=	a_bitstr.c a_bool.c a_bytes.c a_d2i_fp.c a_digest.c \
@@ -52,6 +53,11 @@ SRCS+=	bn_add.c bn_asm.c bn_blind.c bn_const.c bn_ctx.c bn_depr.c \
 
 # buffer
 SRCS+=	buf_err.c buffer.c
+
+# camellia
+# still disabled in 0.9.8
+#SRCS+=	camellia.c cmll_misc.c cmll_ecb.c cmll_cbc.c cmll_ofb.c \
+#	cmll_cfb.c cmll_ctr.c 
 
 # cast
 SRCS+=	c_cfb64.c c_ecb.c c_enc.c c_ofb64.c c_skey.c
@@ -106,13 +112,13 @@ SRCS+=	err.c err_all.c err_prn.c
 
 # evp
 SRCS+=	bio_b64.c bio_enc.c bio_md.c bio_ok.c c_all.c c_allc.c c_alld.c \
-	digest.c e_aes.c e_bf.c e_cast.c e_des.c e_des3.c e_idea.c \
-	e_null.c e_rc2.c e_rc4.c e_rc5.c e_xcbc_d.c encode.c evp_acnf.c \
-	evp_enc.c evp_err.c evp_key.c evp_lib.c evp_pbe.c evp_pkey.c \
-	m_dss.c m_dss1.c m_ecdsa.c m_md2.c m_md4.c m_md5.c m_mdc2.c m_null.c \
-	m_ripemd.c m_sha.c m_sha1.c names.c openbsd_hw.c p5_crpt.c \
-	p5_crpt2.c p_dec.c p_enc.c p_lib.c p_open.c p_seal.c p_sign.c \
-	p_verify.c
+	digest.c e_aes.c e_bf.c e_camellia.c e_cast.c e_des.c e_des3.c \
+	e_idea.c e_null.c e_rc2.c e_rc4.c e_rc5.c e_xcbc_d.c encode.c \
+	evp_acnf.c evp_enc.c evp_err.c evp_key.c evp_lib.c evp_pbe.c \
+	evp_pkey.c m_dss.c m_dss1.c m_ecdsa.c m_md2.c m_md4.c m_md5.c \
+	m_mdc2.c m_null.c m_ripemd.c m_sha.c m_sha1.c names.c openbsd_hw.c \
+	p5_crpt.c p5_crpt2.c p_dec.c p_enc.c p_lib.c p_open.c p_seal.c \
+	p_sign.c p_verify.c
 
 # hmac
 SRCS+=	hmac.c
@@ -195,9 +201,6 @@ SRCS+=	stack.c
 # store
 SRCS+=	str_err.c str_lib.c str_meth.c str_mem.c
 
-# threads
-SRCS+=	th-lock.c
-
 # txt_db
 SRCS+=	txt_db.c
 
@@ -219,8 +222,10 @@ SRCS+=	pcy_cache.c pcy_data.c pcy_lib.c pcy_map.c pcy_node.c pcy_tree.c \
 	v3_pci.c v3_pcia.c v3_pcons.c v3_pmaps.c v3_pku.c v3_prn.c v3_purp.c \
 	v3_skey.c v3_sxnet.c v3_utl.c v3err.c
 
-INCS=		${HDRS} openssl/evp.h openssl/opensslconf.h
+INCS=		${CRYTPO_HDRS} openssl/evp.h openssl/opensslconf.h
 INCSDIR=	${INCLUDEDIR}/openssl
+
+MKDEP=	-DOPENSSL_DOING_MAKEDEPEND
 
 .include <bsd.lib.mk>
 
