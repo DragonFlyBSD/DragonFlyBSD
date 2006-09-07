@@ -32,7 +32,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/move.c,v 1.6 1999/11/30 03:49:50 billf Exp $
- * $DragonFly: src/games/trek/move.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/move.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -44,7 +44,7 @@
 **	Klingons, etc.  This is passed from warp(), which gets it from
 **	either play() or ram().  Course is the course (0 -> 360) at
 **	which we want to move.  `Speed' is the speed we
-**	want to go, and `time' is the expected time.  It
+**	want to go, and `p_time' is the expected time.  It
 **	can get cut short if a long range tractor beam is to occur.  We
 **	cut short the move so that the user doesn't get docked time and
 **	energy for distance which he didn't travel.
@@ -72,11 +72,8 @@
 **	Uses trace flag 4.
 */
 
-double move(ramflag, course, time, speed)
-int	ramflag;
-int	course;
-double	time;
-double	speed;
+double
+move(int ramflag, int course, double p_time, double speed)
 {
 	double			angle;
 	double			x, y, dx, dy;
@@ -89,10 +86,11 @@ double	speed;
 	double			xn;
 	double			evtime;
 
+	ix = iy = 0;
 #	ifdef xTRACE
 	if (Trace)
 		printf("move: ramflag %d course %d time %.2f speed %.2f\n",
-			ramflag, course, time, speed);
+			ramflag, course, p_time, speed);
 #	endif
 	sectsize = NSECTS;
 	/* initialize delta factors for move */
@@ -121,15 +119,15 @@ double	speed;
 			Now.eventptr[E_LRTB]->evcode,
 			Now.eventptr[E_LRTB]->date, evtime);
 #	endif
-	if (time > evtime && Etc.nkling < 3)
+	if (p_time > evtime && Etc.nkling < 3)
 	{
 		/* then we got a LRTB */
 		evtime += 0.005;
-		time = evtime;
+		p_time = evtime;
 	}
 	else
 		evtime = -1.0e50;
-	dist = time * speed;
+	dist = p_time * speed;
 
 	/* move within quadrant */
 	Sect[Ship.sectx][Ship.secty] = EMPTY;
@@ -221,13 +219,13 @@ double	speed;
 		dx = Ship.sectx - ix;
 		dy = Ship.secty - iy;
 		dist = sqrt(dx * dx + dy * dy) / NSECTS;
-		time = dist / speed;
-		if (evtime > time)
-			time = evtime;		/* spring the LRTB trap */
+		p_time = dist / speed;
+		if (evtime > p_time)
+			p_time = evtime;		/* spring the LRTB trap */
 		Ship.sectx = ix;
 		Ship.secty = iy;
 	}
 	Sect[Ship.sectx][Ship.secty] = Ship.ship;
 	compkldist(0);
-	return (time);
+	return (p_time);
 }

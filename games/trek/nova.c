@@ -32,7 +32,7 @@
  *
  * @(#)nova.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/nova.c,v 1.4 1999/11/30 03:49:52 billf Exp $
- * $DragonFly: src/games/trek/nova.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/nova.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -51,8 +51,8 @@
 **	If the zap is too much, it gets destroyed.
 */
 
-nova(x, y)
-int	x, y;
+void
+nova(int x, int y)
 {
 	int		i, j;
 	int		se;
@@ -114,6 +114,7 @@ int	x, y;
 			  case QUEENE:
 				se = 2000;
 				if (Ship.shldup)
+				{
 					if (Ship.shield >= se)
 					{
 						Ship.shield -= se;
@@ -124,6 +125,7 @@ int	x, y;
 						se -= Ship.shield;
 						Ship.shield = 0;
 					}
+				}
 				Ship.energy -= se;
 				if (Ship.energy <= 0)
 					lose(L_SUICID);

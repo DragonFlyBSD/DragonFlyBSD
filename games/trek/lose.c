@@ -32,11 +32,11 @@
  *
  * @(#)lose.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/lose.c,v 1.2 1999/11/30 03:49:49 billf Exp $
- * $DragonFly: src/games/trek/lose.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/lose.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+# include	"getpar.h"
 # include	"trek.h"
-# include	<setjmp.h>
 
 /*
 **  PRINT OUT LOSER MESSAGES
@@ -46,7 +46,7 @@
 **	actions which need be taken are taken.
 */
 
-char	*Losemsg[] =
+const char	*Losemsg[] =
 {
 	"You ran out of time",
 	"You ran out of energy",
@@ -63,11 +63,9 @@ char	*Losemsg[] =
 	"Your last crew member died",
 };
 
-lose(why)
-int	why;
+void
+lose(int why)
 {
-	extern jmp_buf	env;
-
 	Game.killed = 1;
 	sleep(1);
 	printf("\n%s\n", Losemsg[why - 1]);

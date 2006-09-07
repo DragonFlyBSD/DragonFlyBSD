@@ -32,22 +32,21 @@
  *
  * @(#)ranf.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/ranf.c,v 1.3 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/ranf.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/ranf.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	<stdio.h>
-# include       <stdlib.h>
+#include	"trek.h"
 
-ranf(max)
-int	max;
+int
+ranf(int max)
 {
 	if (max <= 0)
 		return (0);
 	return (random() % max);
 }
 
-
-double franf()
+double
+franf(void)
 {
 	double		t;
 	t = random() & 077777;

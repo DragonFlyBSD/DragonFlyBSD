@@ -31,8 +31,16 @@
  * SUCH DAMAGE.
  *
  *	@(#)trek.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/trek/trek.h,v 1.2 2006/09/07 21:19:44 pavalos Exp $
  */
 
+#include	<math.h>
+#include	<setjmp.h>
+#include	<stdbool.h>
+#include	<stdio.h>
+#include	<stdlib.h>
+#include	<string.h>
+#include	<unistd.h>
 /*
 **  Global Declarations
 **
@@ -51,16 +59,7 @@
 **	actually allocate stuff in "externs.c"
 */
 
-/* external function definitions */
-extern double	franf();	/* floating random number function */
-extern double	sqrt();		/* square root */
-extern double	sin(), cos();	/* trig functions */
-extern double	atan2();	/* fancy arc tangent function */
-extern double	log();		/* log base e */
-extern double	pow();		/* power function */
-extern double	fabs();		/* absolute value function */
-extern double	exp();		/* exponential function */
-
+extern	jmp_buf	env;
 /*********************  GALAXY  **************************/
 
 /* galactic parameters */
@@ -96,7 +95,7 @@ struct quad		/* definition for each quadrant */
 */
 
 /* ascii names of systems */
-extern char	*Systemname[NINHAB];
+extern const char	*Systemname[NINHAB];
 
 /* quadrant definition */
 struct quad	Quad[NQUADS][NQUADS];
@@ -138,11 +137,11 @@ char	Sect[NSECTS][NSECTS];
 /* device names */
 struct device
 {
-	char	*name;		/* device name */
-	char	*person;	/* the person who fixes it */
+	const char	*name;		/* device name */
+	const char	*person;	/* the person who fixes it */
 };
 
-struct device	Device[NDEV];
+extern struct device	Device[NDEV];
 
 /***************************  EVENTS  ****************************/
 
@@ -165,10 +164,10 @@ struct device	Device[NDEV];
 
 struct event
 {
-	char	x, y;			/* coordinates */
+	short	x, y;			/* coordinates */
 	double	date;			/* trap stardate */
 	char	evcode;			/* event type */
-	char	systemname;		/* starsystem name */
+	short	systemname;		/* starsystem name */
 };
 /* systemname conventions:
  *	1 -> NINHAB	index into Systemname table for reported distress calls
@@ -188,7 +187,7 @@ struct event	Event[MAXEVENTS];	/* dynamic event list; one entry per pending even
 
 struct kling
 {
-	char	x, y;		/* coordinates */
+	short	x, y;		/* coordinates */
 	int	power;		/* power left */
 	double	dist;		/* distance to Enterprise */
 	double	avgdist;	/* average over this move */
@@ -216,7 +215,7 @@ struct kling
 
 struct xy
 {
-	char	x, y;		/* coordinates */
+	short	x, y;		/* coordinates */
 };
 
 
@@ -245,9 +244,9 @@ struct
 	int	quady;		/* quadrant y coord */
 	int	sectx;		/* sector x coord */
 	int	secty;		/* sector y coord */
-	char	cond;		/* condition code */
+	short	cond;		/* condition code */
 	char	sinsbad;	/* Space Inertial Navigation System condition */
-	char	*shipname;	/* name of current starship */
+	const char	*shipname;	/* name of current starship */
 	char	ship;		/* current starship */
 	int	distressed;	/* number of distress calls */
 }	Ship;
@@ -323,7 +322,7 @@ struct
 /* other information kept in a snapshot */
 struct
 {
-	char	bases;		/* number of starbases */
+	short	bases;		/* number of starbases */
 	char	klings;		/* number of klingons */
 	double	date;		/* stardate */
 	double	time;		/* time left */
@@ -337,7 +336,7 @@ struct
 struct
 {
 	struct kling	klingon[MAXKLQUAD];	/* sorted Klingon list */
-	char		nkling;			/* number of Klingons in this sector */
+	int		nkling;			/* number of Klingons in this sector */
 						/* < 0 means automatic override mode */
 	char		fast;			/* set if speed > 300 baud */
 	struct xy	starbase;	/* starbase in current quadrant */
@@ -379,4 +378,65 @@ struct
 # define	xTRACE		1
 int	Trace;
 
-extern char	*systemname();
+/* external function definitions */
+void	abandon(int);
+void	attack(int);
+void	autover(void);
+void	capture(int);
+int	cgetc(int);
+bool	check_out(int);
+void	checkcond(void);
+void	compkldist(bool);
+void	computer(int);
+void	damage(int, double);
+bool	damaged(int);
+void	dcrept(int);
+void	destruct(int);
+void	dock(int);
+void	undock(int);
+void	dumpgame(int);
+bool	restartgame(void);
+void	dumpme(int);
+int	dumpssradio(void);
+void	events(int);
+bool	getcodi(int *, double *);
+void	help(int);
+void	impulse(int);
+void	initquad(int);
+void	sector(int *, int *);
+void	killk(int, int);
+void	killb(int, int);
+void	kills(int, int, int);
+void	killd(int, int, int);
+void	klmove(int);
+void	lose(int);
+void	lrscan(int);
+double	move(int, int, double, double);
+void	nova(int, int);
+void	out(int);
+void	phaser(int);
+void	play(void);
+void	ram(int, int);
+int	ranf(int);
+double	franf(void);
+void	rest(int);
+struct event	*schedule(int, double, char, char, char);
+void	reschedule(struct event *, double);
+void	unschedule(struct event *);
+struct event	*xsched(int, int, int, int, int);
+void	xresched(struct event *, int, int);
+long	score(void);
+void	setup(void);
+void	setwarp(int);
+void	shield(int);
+void	snova(int, int);
+void	srscan(int);
+const char	*systemname(struct quad *);
+void	torped(int);
+char	*bmove(const void *, void *, size_t);
+bool	sequal(const char *, const char *);
+void	syserr(const char *, ...);
+void	visual(int);
+void	warp(int, int, double);
+void	dowarp(int);
+void	win(void);

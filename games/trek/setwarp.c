@@ -32,7 +32,7 @@
  *
  * @(#)setwarp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/setwarp.c,v 1.2 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/setwarp.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/setwarp.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -45,17 +45,22 @@
 **	checked for consistancy.
 */
 
-setwarp()
+void
+setwarp(__unused int unused)
 {
 	double	warpfac;
 
 	warpfac = getfltpar("Warp factor");
 	if (warpfac < 0.0)
 		return;
-	if (warpfac < 1.0)
-		return (printf("Minimum warp speed is 1.0\n"));
-	if (warpfac > 10.0)
-		return (printf("Maximum speed is warp 10.0\n"));
+	if (warpfac < 1.0) {
+		printf("Minimum warp speed is 1.0\n");
+		return;
+	}
+	if (warpfac > 10.0) {
+		printf("Maximum speed is warp 10.0\n");
+		return;
+	}
 	if (warpfac > 6.0)
 		printf("Damage to warp engines may occur above warp 6.0\n");
 	Ship.warp = warpfac;

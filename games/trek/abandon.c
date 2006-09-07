@@ -32,7 +32,7 @@
  *
  * @(#)abandon.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/abandon.c,v 1.4 1999/11/30 03:49:43 billf Exp $
- * $DragonFly: src/games/trek/abandon.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/abandon.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -62,19 +62,24 @@
 **	Uses trace flag 40
 */
 
-abandon()
+void
+abandon(__unused int unused)
 {
 	struct quad	*q;
 	int		i;
 	int			j;
 	struct event	*e;
 
-	if (Ship.ship == QUEENE)
-		return (printf("You may not abandon ye Faire Queene\n"));
+	if (Ship.ship == QUEENE) {
+		printf("You may not abandon ye Faire Queene\n");
+		return;
+	}
 	if (Ship.cond != DOCKED)
 	{
-		if (damaged(SHUTTLE))
-			return (out(SHUTTLE));
+		if (damaged(SHUTTLE)) {
+			out(SHUTTLE);
+			return;
+		}
 		printf("Officers escape in shuttlecraft\n");
 		/* decide on fate of crew */
 		q = &Quad[Ship.quadx][Ship.quady];
@@ -148,7 +153,7 @@ abandon()
 			if (Sect[Ship.sectx][Ship.secty] == EMPTY)
 			{
 				Sect[Ship.sectx][Ship.secty] = QUEENE;
-				dock();
+				dock(0);
 				compkldist(0);
 				return;
 			}

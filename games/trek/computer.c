@@ -32,12 +32,15 @@
  *
  * @(#)computer.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/computer.c,v 1.5 1999/11/30 03:49:45 billf Exp $
- * $DragonFly: src/games/trek/computer.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/computer.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
 # include	"getpar.h"
-# include	<stdio.h>
+
+static int	kalc(int, int, int, int, double *);
+static void	prkalc(int, double);
+
 /*
 **  On-Board Computer
 **
@@ -86,28 +89,28 @@
 
 struct cvntab	Cputab[] =
 {
-	"ch",			"art",			(int (*)())1,		0,
-	"t",			"rajectory",		(int (*)())2,		0,
-	"c",			"ourse",		(int (*)())3,		0,
-	"m",			"ove",			(int (*)())3,		1,
-	"s",			"core",			(int (*)())4,		0,
-	"p",			"heff",			(int (*)())5,		0,
-	"w",			"arpcost",		(int (*)())6,		0,
-	"i",			"mpcost",		(int (*)())7,		0,
-	"d",			"istresslist",		(int (*)())8,		0,
-	0
+	{ "ch",	"art",			(void (*)(int))1,	0 },
+	{ "t",	"rajectory",		(void (*)(int))2,	0 },
+	{ "c",	"ourse",		(void (*)(int))3,	0 },
+	{ "m",	"ove",			(void (*)(int))3,	1 },
+	{ "s",	"core",			(void (*)(int))4,	0 },
+	{ "p",	"heff",			(void (*)(int))5,	0 },
+	{ "w",	"arpcost",		(void (*)(int))6,	0 },
+	{ "i",	"mpcost",		(void (*)(int))7,	0 },
+	{ "d",	"istresslist",		(void (*)(int))8,	0 },
+	{ NULL,	NULL,			NULL,			0 }
 };
 
-computer()
+void
+computer(__unused int unused)
 {
 	int			ix, iy;
 	int		i, j;
-	int			numout;
 	int			tqx, tqy;
 	struct cvntab		*r;
 	int			cost;
 	int			course;
-	double			dist, time;
+	double			dist, p_time;
 	double			warpfact;
 	struct quad		*q;
 	struct event	*e;
@@ -233,9 +236,9 @@ computer()
 			if (warpfact <= 0.0)
 				warpfact = Ship.warp;
 			cost = (dist + 0.05) * warpfact * warpfact * warpfact;
-			time = Param.warptime * dist / (warpfact * warpfact);
+			p_time = Param.warptime * dist / (warpfact * warpfact);
 			printf("Warp %.2f distance %.2f cost %.2f stardates %d (%d w/ shlds up) units\n",
-				warpfact, dist, time, cost, cost + cost);
+				warpfact, dist, p_time, cost, cost + cost);
 			break;
 
 		  case 7:			/* impulse cost */
@@ -243,9 +246,9 @@ computer()
 			if (dist < 0.0)
 				break;
 			cost = 20 + 100 * dist;
-			time = dist / 0.095;
+			p_time = dist / 0.095;
 			printf("Distance %.2f cost %.2f stardates %d units\n",
-				dist, time, cost);
+				dist, p_time, cost);
 			break;
 
 		  case 8:			/* distresslist */
@@ -305,12 +308,8 @@ computer()
 **	sqx,sqy/ssx,ssy to tqx,tqy/tsx,tsy.
 */
 
-kalc(tqx, tqy, tsx, tsy, dist)
-int	tqx;
-int	tqy;
-int	tsx;
-int	tsy;
-double	*dist;
+static int
+kalc(int tqx, int tqy, int tsx, int tsy, double *dist)
 {
 	double			dx, dy;
 	double			quadsize;
@@ -334,10 +333,8 @@ double	*dist;
 	return (course);
 }
 
-
-prkalc(course, dist)
-int	course;
-double	dist;
+static void
+prkalc(int course, double dist)
 {
 	printf(": course %d  dist %.3f\n", course, dist);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)phaser.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/phaser.c,v 1.5.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/trek/phaser.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/phaser.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -73,9 +73,9 @@
 
 struct cvntab	Matab[] =
 {
-	"m",		"anual",		(int (*)())1,		0,
-	"a",		"utomatic",		0,		0,
-	0
+	{ "m",		"anual",	(void (*)(int))1,	0 },
+	{ "a",		"utomatic",	(void (*)(int))0,	0 },
+	{ NULL,		NULL,		NULL,			0 }
 };
 
 struct banks
@@ -86,8 +86,8 @@ struct banks
 };
 
 
-
-phaser()
+void
+phaser(__unused int unused)
 {
 	int		i;
 	int			j;
@@ -95,7 +95,7 @@ phaser()
 	double			dx, dy;
 	double			anglefactor, distfactor;
 	struct banks	*b;
-	int			manual, flag, extra;
+	int			manual, flag, extra = 0;
 	int			hit;
 	double			tot;
 	int			n;
@@ -103,12 +103,18 @@ phaser()
 	struct banks		bank[NBANKS];
 	struct cvntab		*ptr;
 
-	if (Ship.cond == DOCKED)
-		return(printf("Phasers cannot fire through starbase shields\n"));
-	if (damaged(PHASER))
-		return (out(PHASER));
-	if (Ship.shldup)
-		return (printf("Sulu: Captain, we cannot fire through shields.\n"));
+	if (Ship.cond == DOCKED) {
+		printf("Phasers cannot fire through starbase shields\n");
+		return;
+	}
+	if (damaged(PHASER)) {
+		out(PHASER);
+		return;
+	}
+	if (Ship.shldup) {
+		printf("Sulu: Captain, we cannot fire through shields.\n");
+		return;
+	}
 	if (Ship.cloaked)
 	{
 		printf("Sulu: Captain, surely you must realize that we cannot fire\n");
@@ -192,8 +198,10 @@ phaser()
 	else
 	{
 		/* automatic distribution of power */
-		if (Etc.nkling <= 0)
-			return (printf("Sulu: But there are no Klingons in this quadrant\n"));
+		if (Etc.nkling <= 0) {
+			printf("Sulu: But there are no Klingons in this quadrant\n");
+			return;
+		}
 		printf("Phasers locked on target.  ");
 		while (flag)
 		{

@@ -33,18 +33,16 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/main.c,v 1.7.2.1 2001/03/05 12:11:14 kris Exp $
- * $DragonFly: src/games/trek/main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/main.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+# include	"getpar.h"
 # include	"trek.h"
-# include	<stdio.h>
 # include	<sgtty.h>
-# include	<setjmp.h>
-# include       <stdlib.h>
 
 # define	PRIO		00	/* default priority */
 
-int	Mother	= 51 + (51 << 8);
+unsigned int	Mother	= 51 + (51 << 8);
 
 /*
 **	 ####  #####    #    ####          #####  ####   #####  #   #
@@ -145,9 +143,8 @@ int	Mother	= 51 + (51 << 8);
 
 jmp_buf env;
 
-main(argc, argv)
-int	argc;
-char	**argv;
+int
+main(int argc, char **argv)
 {
 	/* extern FILE		*f_log; */
 	char		opencode;
@@ -165,7 +162,7 @@ char	**argv;
 	srandomdev();
 	opencode = 'w';
 	prio = PRIO;
-	if (gtty(1, &argp) == 0)
+	if (ioctl(1, TIOCGETP, &argp) == 0)
 	{
 		if ((argp.sg_ispeed ) < B1200)
 			Etc.fast++;
@@ -229,4 +226,5 @@ char	**argv;
 	} while (getynpar("Another game"));
 
 	fflush(stdout);
+	return(0);
 }

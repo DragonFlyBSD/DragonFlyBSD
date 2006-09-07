@@ -32,7 +32,7 @@
  *
  * @(#)externs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/externs.c,v 1.2 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/externs.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/externs.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -43,25 +43,25 @@
 
 struct device	Device[NDEV] =
 {
-	"warp drive",		"Scotty",
-	"S.R. scanners",	"Scotty",
-	"L.R. scanners",	"Scotty",
-	"phasers",		"Sulu",
-	"photon tubes",		"Sulu",
-	"impulse engines",	"Scotty",
-	"shield control",	"Sulu",
-	"computer",		"Spock",
-	"subspace radio",	"Uhura",
-	"life support",		"Scotty",
-	"navigation system",	"Chekov",
-	"cloaking device",	"Scotty",
-	"transporter",		"Scotty",
-	"shuttlecraft",		"Scotty",
-	"*ERR 14*",		"Nobody",
-	"*ERR 15*",		"Nobody"
+	{ "warp drive",		"Scotty" },
+	{ "S.R. scanners",	"Scotty" },
+	{ "L.R. scanners",	"Scotty" },
+	{ "phasers",		"Sulu" },
+	{ "photon tubes",	"Sulu" },
+	{ "impulse engines",	"Scotty" },
+	{ "shield control",	"Sulu" },
+	{ "computer",		"Spock" },
+	{ "subspace radio",	"Uhura" },
+	{ "life support",	"Scotty" },
+	{ "navigation system",	"Chekov" },
+	{ "cloaking device",	"Scotty" },
+	{ "transporter",	"Scotty" },
+	{ "shuttlecraft",	"Scotty" },
+	{ "*ERR 14*",		"Nobody" },
+	{ "*ERR 15*",		"Nobody" }
 };
 
-char	*Systemname[NINHAB] =
+const char	*Systemname[NINHAB] =
 {
 	"ERROR",
 	"Talos IV",

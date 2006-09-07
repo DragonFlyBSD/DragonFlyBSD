@@ -32,7 +32,7 @@
  *
  * @(#)initquad.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/initquad.c,v 1.4 1999/11/30 03:49:49 billf Exp $
- * $DragonFly: src/games/trek/initquad.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/initquad.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -54,8 +54,8 @@
 **	to be docked, i.e., abandon() and help().
 */
 
-initquad(f)
-int	f;
+void
+initquad(int f)
 {
 	int		i, j;
 	int			rx, ry;
@@ -135,9 +135,8 @@ int	f;
 	Move.newquad = 1;
 }
 
-
-sector(x, y)
-int	*x, *y;
+void
+sector(int *x, int *y)
 {
 	int		i, j;
 

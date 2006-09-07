@@ -32,7 +32,7 @@
  *
  * @(#)help.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/help.c,v 1.4 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/help.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/help.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -57,26 +57,31 @@
 **	to drop you.  After that, it's your problem.
 */
 
-char	*Cntvect[3] =
+const char	*Cntvect[3] =
 {"first", "second", "third"};
 
-help()
+void
+help(__unused int unused)
 {
 	int		i;
 	double			dist, x;
 	int		dx, dy;
-	int			j, l;
+	int			j, l = 0;
 
 	/* check to see if calling for help is reasonable ... */
-	if (Ship.cond == DOCKED)
-		return (printf("Uhura: But Captain, we're already docked\n"));
-
+	if (Ship.cond == DOCKED) {
+		printf("Uhura: But Captain, we're already docked\n");
+		return;
+	}
 	/* or possible */
-	if (damaged(SSRADIO))
-		return (out(SSRADIO));
-	if (Now.bases <= 0)
-		return (printf("Uhura: I'm not getting any response from starbase\n"));
-
+	if (damaged(SSRADIO)) {
+		out(SSRADIO);
+		return;
+	}
+	if (Now.bases <= 0) {
+		printf("Uhura: I'm not getting any response from starbase\n");
+		return;
+	}
 	/* tut tut, there goes the score */
 	Game.helps += 1;
 
@@ -143,7 +148,7 @@ help()
 				Ship.sectx = dx;
 				Ship.secty = dy;
 				Sect[dx][dy] = Ship.ship;
-				dock();
+				dock(0);
 				compkldist(0);
 				return;
 			}

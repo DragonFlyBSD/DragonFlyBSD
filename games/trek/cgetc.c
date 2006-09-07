@@ -32,13 +32,13 @@
  *
  * @(#)cgetc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/cgetc.c,v 1.2 1999/11/30 03:49:44 billf Exp $
- * $DragonFly: src/games/trek/cgetc.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/cgetc.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	<stdio.h>
+# include	"trek.h"
 
-char	cgetc(i)
-int	i;
+int
+cgetc(__unused int i)
 {
 	return ( getchar() );
 }

@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/trek/Makefile,v 1.1.1.1.14.1 2001/04/25 09:29:03 ru Exp $
-# $DragonFly: src/games/trek/Makefile,v 1.2 2003/06/17 04:25:25 dillon Exp $
+# $DragonFly: src/games/trek/Makefile,v 1.3 2006/09/07 21:19:44 pavalos Exp $
 
 PROG=	trek
 SRCS=	abandon.c attack.c autover.c capture.c check_out.c checkcond.c \
@@ -12,8 +12,9 @@ SRCS=	abandon.c attack.c autover.c capture.c check_out.c checkcond.c \
 	shield.c snova.c srscan.c systemname.c torped.c utility.c \
 	visual.c warp.c win.c cgetc.c
 MAN=	trek.6
-DPADD=	${LIBM} ${LIBCOMPAT}
-LDADD=	-lm -lcompat
+DPADD=	${LIBM}
+LDADD=	-lm
 HIDEGAME=hidegame
+WARNS?=	6
 
 .include <bsd.prog.mk>

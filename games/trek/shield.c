@@ -32,7 +32,7 @@
  *
  * @(#)shield.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/shield.c,v 1.5 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/shield.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/shield.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -57,19 +57,18 @@
 
 struct cvntab Udtab[] =
 {
-	"u",		"p",			(int (*)())1,		0,
-	"d",		"own",			0,		0,
-	0
+	{ "u",		"p",		(void (*)(int))1,	0 },
+	{ "d",		"own",		(void (*)(int))0,	0 },
+	{ NULL,		NULL,		NULL,			0 }
 };
 
-shield(f)
-int	f;
+void
+shield(int f)
 {
 	int		i;
-	char			c;
 	struct cvntab		*r;
 	char			s[100];
-	char			*device, *dev2, *dev3;
+	const char		*device, *dev2, *dev3;
 	int			ind;
 	char			*stat;
 
@@ -78,8 +77,10 @@ int	f;
 	if (f < 0)
 	{
 		/* cloaking device */
-		if (Ship.ship == QUEENE)
-			return (printf("Ye Faire Queene does not have the cloaking device.\n"));
+		if (Ship.ship == QUEENE) {
+			printf("Ye Faire Queene does not have the cloaking device.\n");
+			return;
+		}
 		device = "Cloaking device";
 		dev2 = "is";
 		ind = CLOAK;
@@ -114,9 +115,9 @@ int	f;
 	else
 	{
 		if (*stat)
-			(void)sprintf(s, "%s %s up.  Do you want %s down", device, dev2, dev3);
+			sprintf(s, "%s %s up.  Do you want %s down", device, dev2, dev3);
 		else
-			(void)sprintf(s, "%s %s down.  Do you want %s up", device, dev2, dev3);
+			sprintf(s, "%s %s down.  Do you want %s up", device, dev2, dev3);
 		if (!getynpar(s))
 			return;
 		i = !*stat;
@@ -131,10 +132,12 @@ int	f;
 		return;
 	}
 	if (i)
+	{
 		if (f >= 0)
 			Ship.energy -= Param.shupengy;
 		else
 			Ship.cloakgood = 0;
+	}
 	Move.free = 0;
 	if (f >= 0)
 		Move.shldchg = 1;

@@ -31,15 +31,27 @@
  * SUCH DAMAGE.
  *
  *	@(#)getpar.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/trek/getpar.h,v 1.2 2006/09/07 21:19:44 pavalos Exp $
  */
 
-struct cvntab		/* used for getcodpar() paramater list */
+#include	<stdbool.h>
+
+struct cvntab		/* used for getcodpar() parameter list */
 {
-	char	*abrev;
-	char	*full;
-	int	(*value)();
+	const char	*abrev;
+	const char	*full;
+	void	(*value)(int);
 	int	value2;
 };
 
-extern double		getfltpar();
-extern struct cvntab	*getcodpar();
+extern struct cvntab	Lentab[];
+extern struct cvntab	Skitab[];
+
+int	getintpar(const char *);
+double	getfltpar(const char *);
+long	getynpar(const char *);
+struct cvntab	*getcodpar(const char *, struct cvntab *);
+void	getstrpar(const char *, char *, int, const char *);
+bool	testnl(void);
+void	skiptonl(char);
+bool	readdelim(char);

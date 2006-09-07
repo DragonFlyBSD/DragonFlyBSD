@@ -32,7 +32,7 @@
  *
  * @(#)snova.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/snova.c,v 1.4 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/snova.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/snova.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -58,11 +58,11 @@
 **	override mode.
 */
 
-snova(x, y)
-int	x, y;
+void
+snova(int x, int y)
 {
 	int			qx, qy;
-	int		ix, iy;
+	int		ix, iy = 0;
 	int			f;
 	int			dx, dy;
 	int			n;
@@ -140,12 +140,12 @@ int	x, y;
 		/* Enterprise caused supernova */
 		Game.kills += dy;
 		if (q->bases)
-			killb(qx, qy, -1);
+			killb(qx, qy);
 		Game.killk += dx;
 	}
 	else
 		if (q->bases)
-			killb(qx, qy, 0);
+			killb(qx, qy);
 	killd(qx, qy, (x >= 0));
 	q->stars = -1;
 	q->klings = 0;

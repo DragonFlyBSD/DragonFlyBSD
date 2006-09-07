@@ -32,11 +32,13 @@
  *
  * @(#)torped.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/torped.c,v 1.5 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/torped.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/torped.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	<stdio.h>
+# include	"getpar.h"
 # include	"trek.h"
+
+static int	randcourse(int);
 
 /*
 **  PHOTON TORPEDO CONTROL
@@ -57,8 +59,8 @@
 **	the misfire damages your torpedo tubes.
 */
 
-
-torped()
+void
+torped(__unused int unused)
 {
 	int		ix, iy;
 	double			x, y, dx, dy;
@@ -72,13 +74,15 @@ torped()
 
 	if (Ship.cloaked)
 	{
-		return (printf("Federation regulations do not permit attack while cloaked.\n"));
+		printf("Federation regulations do not permit attack while cloaked.\n");
+		return;
 	}
 	if (check_out(TORPED))
 		return;
 	if (Ship.torped <= 0)
 	{
-		return (printf("All photon torpedos expended\n"));
+		printf("All photon torpedos expended\n");
+		return;
 	}
 
 	/* get the course */
@@ -112,8 +116,10 @@ torped()
 		burst = getintpar("burst angle");
 		if (burst <= 0)
 			return;
-		if (burst > 15)
-			return (printf("Maximum burst angle is 15 degrees\n"));
+		if (burst > 15) {
+			printf("Maximum burst angle is 15 degrees\n");
+			return;
+		}
 	}
 	sectsize = NSECTS;
 	n = -1;
@@ -215,8 +221,8 @@ torped()
 **	to the tubes, etc.
 */
 
-randcourse(n)
-int	n;
+static int
+randcourse(int n)
 {
 	double			r;
 	int		d;

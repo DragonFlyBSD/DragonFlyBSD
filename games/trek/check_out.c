@@ -32,7 +32,7 @@
  *
  * @(#)check_out.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/check_out.c,v 1.4 1999/11/30 03:49:44 billf Exp $
- * $DragonFly: src/games/trek/check_out.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/check_out.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -48,8 +48,8 @@
 **	It prints appropriate messages too.
 */
 
-check_out(device)
-int	device;
+bool
+check_out(int device)
 {
 	int	dev;
 

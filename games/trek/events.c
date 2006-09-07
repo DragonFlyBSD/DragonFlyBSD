@@ -32,9 +32,10 @@
  *
  * @(#)events.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/events.c,v 1.4 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/events.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/events.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+# include	"getpar.h"
 # include	"trek.h"
 
 /*
@@ -45,17 +46,18 @@
 **	and so on.
 */
 
-
-events(warp)
-int	warp;		/* set if called in a time warp */
+void
+events(int t_warp)
+/* t_warp:  set if called in a time warp */
 {
 	int		i;
-	int			j;
+	int			j = 0;
 	struct kling		*k;
 	double			rtime;
 	double			xdate;
 	double			idate;
-	struct event		*ev, *xsched(), *schedule();
+	struct event		*ev = NULL;
+	char			*s;
 	int			ix, iy;
 	struct quad	*q;
 	struct event	*e;
@@ -66,7 +68,7 @@ int	warp;		/* set if called in a time warp */
 	if (Move.time <= 0.0)
 	{
 		Now.time = Now.resource / Now.klings;
-		return (0);
+		return;
 	}
 
 	/* indicate that the cloaking device is now working */
@@ -132,7 +134,7 @@ int	warp;		/* set if called in a time warp */
 
 		  case E_SNOVA:			/* supernova */
 			/* cause the supernova to happen */
-			snova(-1);
+			snova(-1, 0);
 			/* and schedule the next one */
 			xresched(e, E_SNOVA, 1);
 			break;
@@ -383,10 +385,10 @@ int	warp;		/* set if called in a time warp */
 
 		  case E_SNAP:		/* take a snapshot of the galaxy */
 			xresched(e, E_SNAP, 1);
-			i = (int) Etc.snapshot;
-			i = bmove(Quad, i, sizeof (Quad));
-			i = bmove(Event, i, sizeof (Event));
-			i = bmove(&Now, i, sizeof (Now));
+			s = Etc.snapshot;
+			s = bmove(Quad, s, sizeof (Quad));
+			s = bmove(Event, s, sizeof (Event));
+			s = bmove(&Now, s, sizeof (Now));
 			Game.snap = 1;
 			break;
 
@@ -441,10 +443,10 @@ int	warp;		/* set if called in a time warp */
 	}
 
 	/* unschedule an attack during a rest period */
-	if (e = Now.eventptr[E_ATTACK])
+	if ((e = Now.eventptr[E_ATTACK]))
 		unschedule(e);
 
-	if (!warp)
+	if (!t_warp)
 	{
 		/* eat up energy if cloaked */
 		if (Ship.cloaked)
@@ -459,5 +461,5 @@ int	warp;		/* set if called in a time warp */
 		if (damaged(LIFESUP) && Ship.cond != DOCKED)
 			Ship.reserves -= Move.time;
 	}
-	return (0);
+	return;
 }

@@ -32,10 +32,11 @@
  *
  * @(#)getcodi.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/getcodi.c,v 1.2 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/getcodi.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/getcodi.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"getpar.h"
+# include	"trek.h"
 
 /*
 **  get course and distance
@@ -47,9 +48,8 @@
 **	(meaning to drop the request).
 */
 
-getcodi(co, di)
-int	*co;
-double	*di;
+bool
+getcodi(int *co, double *di)
 {
 
 	*co = getintpar("Course");

@@ -32,27 +32,32 @@
  *
  * @(#)impulse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/impulse.c,v 1.4 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/impulse.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/impulse.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+# include	"getpar.h"
 # include	"trek.h"
 
 /**
  **	move under impulse power
  **/
 
-impulse()
+void
+impulse(__unused int unused)
 {
 	int			course;
 	int		power;
-	double			dist, time;
+	double			dist, p_time;
 	int		percent;
-	extern double		move();
 
-	if (Ship.cond == DOCKED)
-		return (printf("Scotty: Sorry captain, but we are still docked.\n"));
-	if (damaged(IMPULSE))
-		return (out(IMPULSE));
+	if (Ship.cond == DOCKED) {
+		printf("Scotty: Sorry captain, but we are still docked.\n");
+		return;
+	}
+	if (damaged(IMPULSE)) {
+		out(IMPULSE);
+		return;
+	}
 	if (getcodi(&course, &dist))
 		return;
 	power = 20 + 100 * dist;
@@ -65,8 +70,8 @@ impulse()
 			return;
 		printf("Aye aye, sir\n");
 	}
-	time = dist / 0.095;
-	percent = 100 * time / Now.time + 0.5;
+	p_time = dist / 0.095;
+	percent = 100 * p_time / Now.time + 0.5;
 	if (percent >= 85)
 	{
 		printf("Spock: That would take %d%% of our remaining time.\n",
@@ -75,6 +80,6 @@ impulse()
 			return;
 		printf("(He's finally gone mad)\n");
 	}
-	Move.time = move(0, course, time, 0.095);
+	Move.time = move(0, course, p_time, 0.095);
 	Ship.energy -= 20 + 100 * Move.time * 0.095;
 }

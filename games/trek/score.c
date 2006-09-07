@@ -32,7 +32,7 @@
  *
  * @(#)score.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/score.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/score.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/score.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -42,13 +42,13 @@
 **  PRINT OUT THE CURRENT SCORE
 */
 
-long score()
+long
+score(void)
 {
 	int		u;
 	int		t;
 	long			s;
 	double			r;
-	extern struct cvntab	Skitab[];
 
 	printf("\n*** Your score:\n");
 	s = t = Param.klingpwr / 4 * (u = Game.killk);

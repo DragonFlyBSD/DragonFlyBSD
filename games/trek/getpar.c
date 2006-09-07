@@ -32,18 +32,20 @@
  *
  * @(#)getpar.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/getpar.c,v 1.5 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/getpar.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/getpar.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	<stdio.h>
 # include	"getpar.h"
+# include	"trek.h"
+
+static bool	testterm(void);
 
 /**
  **	get integer parameter
  **/
 
-getintpar(s)
-char	*s;
+int
+getintpar(const char *s)
 {
 	int	i;
 	int		n;
@@ -66,8 +68,8 @@ char	*s;
  **	get floating parameter
  **/
 
-double getfltpar(s)
-char	*s;
+double
+getfltpar(const char *s)
 {
 	int		i;
 	double			d;
@@ -92,13 +94,13 @@ char	*s;
 
 struct cvntab	Yntab[] =
 {
-	"y",	"es",	(int (*)())1,	0,
-	"n",	"o",	(int (*)())0,	0,
-	0
+	{ "y",	"es",	(void (*)(int))1,	0 },
+	{ "n",	"o",	(void (*)(int))0,	0 },
+	{ NULL,	NULL,	NULL,			0 }
 };
 
-getynpar(s)
-char	*s;
+long
+getynpar(const char *s)
 {
 	struct cvntab		*r;
 
@@ -111,14 +113,14 @@ char	*s;
  **	get coded parameter
  **/
 
-struct cvntab *getcodpar(s, tab)
-char		*s;
-struct cvntab	tab[];
+struct cvntab *
+getcodpar(const char *s, struct cvntab tab[])
 {
 	char				input[100];
 	struct cvntab		*r;
 	int				flag;
-	char			*p, *q;
+	char			*p;
+	const char		*q;
 	int				c;
 	int				f;
 
@@ -143,7 +145,8 @@ struct cvntab	tab[];
 			c = 4;
 			for (r = tab; r->abrev; r++)
 			{
-				concat(r->abrev, r->full, input);
+				strcpy(input, r->abrev);
+				strcat(input, r->full);
 				printf("%14.14s", input);
 				if (--c > 0)
 					continue;
@@ -188,11 +191,8 @@ struct cvntab	tab[];
  **	get string parameter
  **/
 
-getstrpar(s, r, l, t)
-char	*s;
-char	*r;
-int	l;
-char	*t;
+void
+getstrpar(const char *s, char *r, int l, const char *t)
 {
 	int	i;
 	char		format[20];
@@ -200,7 +200,7 @@ char	*t;
 
 	if (t == 0)
 		t = " \t\n;";
-	(void)sprintf(format, "%%%d[^%s]", l, t);
+	sprintf(format, "%%%d[^%s]", l, t);
 	while (1)
 	{
 		if ((f = testnl()) && s)
@@ -221,7 +221,8 @@ char	*t;
  **	test if newline is next valid character
  **/
 
-testnl()
+bool
+testnl(void)
 {
 	char		c;
 
@@ -242,8 +243,8 @@ testnl()
  **	scan for newline
  **/
 
-skiptonl(c)
-char	c;
+void
+skiptonl(char c)
 {
 	while (c != '\n')
 		if (!(c = cgetc(0)))
@@ -257,7 +258,8 @@ char	c;
  **	test for valid terminator
  **/
 
-testterm()
+static bool
+testterm(void)
 {
 	char		c;
 
@@ -279,12 +281,12 @@ testterm()
 **	zero is returned.
 */
 
-readdelim(d)
-char	d;
+bool
+readdelim(char d)
 {
 	char	c;
 
-	while (c = cgetc(0))
+	while ((c = cgetc(0)))
 	{
 		if (c == d)
 			return (1);

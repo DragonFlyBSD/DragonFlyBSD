@@ -32,10 +32,9 @@
  *
  * @(#)setup.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/setup.c,v 1.6 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/setup.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/setup.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include       <stdlib.h>
 # include	"trek.h"
 # include	"getpar.h"
 
@@ -52,31 +51,31 @@
 
 struct cvntab	Lentab[] =
 {
-	"s",		"hort",			(int (*)())1,		0,
-	"m",		"edium",		(int (*)())2,		0,
-	"l",		"ong",			(int (*)())4,		0,
-	"restart",	"",			0,		0,
-	0
+	{ "s",		"hort",		(void (*)(int))1,	0 },
+	{ "m",		"edium",	(void (*)(int))2,	0 },
+	{ "l",		"ong",		(void (*)(int))4,	0 },
+	{ "restart",	"",		NULL,			0 },
+	{ NULL,		NULL,		NULL,			0 }
 };
 
 struct cvntab	Skitab[] =
 {
-	"n",		"ovice",		(int (*)())1,		0,
-	"f",		"air",			(int (*)())2,		0,
-	"g",		"ood",			(int (*)())3,		0,
-	"e",		"xpert",		(int (*)())4,		0,
-	"c",		"ommodore",		(int (*)())5,		0,
-	"i",		"mpossible",		(int (*)())6,		0,
-	0
+	{ "n",		"ovice",	(void (*)(int))1,	0 },
+	{ "f",		"air",		(void (*)(int))2,	0 },
+	{ "g",		"ood",		(void (*)(int))3,	0 },
+	{ "e",		"xpert",	(void (*)(int))4,	0 },
+	{ "c",		"ommodore",	(void (*)(int))5,	0 },
+	{ "i",		"mpossible",	(void (*)(int))6,	0 },
+	{ NULL, 	NULL,		NULL,			0 }
 };
 
-setup()
+void
+setup(void)
 {
 	struct cvntab		*r;
 	int		i, j;
 	double			f;
 	int			d;
-	int			fd;
 	int			klump;
 	int			ix, iy;
 	struct quad	*q;

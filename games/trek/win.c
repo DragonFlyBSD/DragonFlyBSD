@@ -32,12 +32,11 @@
  *
  * @(#)win.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/win.c,v 1.4 1999/11/30 03:49:56 billf Exp $
- * $DragonFly: src/games/trek/win.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/win.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
  */
 
 # include	"trek.h"
 # include	"getpar.h"
-# include	<setjmp.h>
 
 /*
 **  Signal game won
@@ -52,12 +51,10 @@
 **	pretty off the wall.
 */
 
-win()
+void
+win(void)
 {
 	long			s;
-	extern jmp_buf		env;
-	extern long		score();
-	extern struct cvntab	Skitab[];
 	struct cvntab	*p;
 
 	sleep(1);

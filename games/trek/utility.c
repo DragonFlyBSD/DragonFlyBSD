@@ -32,10 +32,12 @@
  *
  * @(#)utility.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/utility.c,v 1.5 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/utility.c,v 1.3 2005/04/29 09:22:57 joerg Exp $
+ * $DragonFly: src/games/trek/utility.c,v 1.4 2006/09/07 21:19:45 pavalos Exp $
  */
 
 #include <errno.h>
+#include <stdarg.h>
+#include "trek.h"
 
 /*
 **  ASSORTED UTILITY ROUTINES
@@ -50,19 +52,10 @@
 **	Overflow of `b' is not tested.
 */
 
-char *bmove(a, b, l)
-char	*a, *b;
-int	l;
+char *
+bmove(const void *a, void *b, size_t l)
 {
-	int		n;
-	char		*p, *q;
-
-	p = a;
-	q = b;
-	n = l;
-	while (n--)
-		*q++ = *p++;
-	return (q);
+	return((char *)memcpy(b, a, l) + l);
 }
 
 
@@ -73,65 +66,10 @@ int	l;
 **	returns one if equal, zero otherwise.
 */
 
-sequal(a, b)
-char	*a, *b;
+bool
+sequal(const char *a, const char *b)
 {
-	char		*p, *q;
-
-	p = a;
-	q = b;
-	while (*p || *q)
-		if (*p++ != *q++)
-			return(0);
-	return(1);
-}
-
-
-/*
-**  STRING CONCATENATE
-**
-**	The strings `s1' and `s2' are concatenated and stored into
-**	`s3'.  It is ok for `s1' to equal `s3', but terrible things
-**	will happen if `s2' equals `s3'.  The return value is is a
-**	pointer to the end of `s3' field.
-*/
-
-char *concat(s1, s2, s3)
-char	*s1, *s2, *s3;
-{
-	char		*p;
-	char		*q;
-
-	p = s3;
-	q = s1;
-	while (*q)
-		*p++ = *q++;
-	q = s2;
-	while (*q)
-		*p++ = *q++;
-	*p = 0;
-	return (p);
-}
-
-
-/*
-**  FIND STRING LENGTH
-**
-**	The length of string `s' (excluding the null byte which
-**		terminates the string) is returned.
-*/
-
-length(s)
-char	*s;
-{
-	int	l;
-	char	*p;
-
-	l = 0;
-	p = s;
-	while (*p++)
-		l++;
-	return(l);
+	return(!strcmp(a, b));
 }
 
 
@@ -139,12 +77,17 @@ char	*s;
 **  SYSTEM ERROR
 */
 
-syserr(p0, p1, p2, p3, p4, p5)
+void
+syserr(const char *fmt, ...)
 {
+	va_list ap;
+
+	va_start(ap, fmt);
 	printf("\n\07TREK SYSERR: ");
-	printf(p0, p1, p2, p3, p4, p5);
+	vprintf(fmt, ap);
 	printf("\n");
 	if (errno)
 		printf("\tsystem error %d\n", errno);
+	va_end(ap);
 	exit(1);
 }

@@ -32,9 +32,10 @@
  *
  * @(#)destruct.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/destruct.c,v 1.4 1999/11/30 03:49:46 billf Exp $
- * $DragonFly: src/games/trek/destruct.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/destruct.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
+# include	"getpar.h"
 # include	"trek.h"
 
 /*
@@ -57,14 +58,17 @@
 **	Uses trace flag 41
 */
 
-destruct()
+void
+destruct(__unused int unused)
 {
 	char		checkpass[15];
 	int	i, j;
 	double		zap;
 
-	if (damaged(COMPUTER))
-		return (out(COMPUTER));
+	if (damaged(COMPUTER)) {
+		out(COMPUTER);
+		return;
+	}
 	printf("\n\07 --- WORKING ---\07\n");
 	sleep(3);
 	/* output the count 10 9 8 7 6 */
@@ -79,8 +83,10 @@ destruct()
 	skiptonl(0);
 	getstrpar("Enter password verification", checkpass, 14, 0);
 	sleep(2);
-	if (!sequal(checkpass, Game.passwd))
-		return (printf("Self destruct sequence aborted\n"));
+	if (!sequal(checkpass, Game.passwd)) {
+		printf("Self destruct sequence aborted\n");
+		return;
+	}
 	printf("Password verified; self destruct sequence continues:\n");
 	sleep(2);
 	/* output count 5 4 3 2 1 0 */

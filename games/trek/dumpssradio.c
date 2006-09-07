@@ -32,7 +32,7 @@
  *
  * @(#)dumpssradio.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/dumpssradio.c,v 1.4 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/dumpssradio.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/dumpssradio.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -41,7 +41,8 @@
  **	output hidden distress calls
  **/
 
-dumpssradio()
+int
+dumpssradio(void)
 {
 	struct event	*e;
 	int		j;
@@ -58,7 +59,7 @@ dumpssradio()
 		{
 			unschedule(e);
 			printf("Starsystem %s in quadrant %d,%d is no longer distressed\n",
-				systemname(e), e->x, e->y);
+				systemname(&Quad[e->x][e->y]), e->x, e->y);
 			continue;
 		}
 
@@ -74,7 +75,7 @@ dumpssradio()
 		  case E_ENSLV:
 		  case E_REPRO:
 			printf("Starsystem %s in quadrant %d,%d is distressed\n",
-				systemname(e), e->x, e->y);
+				systemname(&Quad[e->x][e->y]), e->x, e->y);
 			chkrest++;
 			break;
 

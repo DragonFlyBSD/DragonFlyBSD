@@ -32,7 +32,7 @@
  *
  * @(#)schedule.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/schedule.c,v 1.4 1999/11/30 03:49:53 billf Exp $
- * $DragonFly: src/games/trek/schedule.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/schedule.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -47,11 +47,8 @@
 **	The address of the slot is returned.
 */
 
-struct event *schedule(type, offset, x, y, z)
-int	type;
-double	offset;
-char	x, y;
-char	z;
+struct event *
+schedule(int type, double offset, char x, char y, char z)
 {
 	struct event	*e;
 	int		i;
@@ -78,6 +75,8 @@ char	z;
 		return (e);
 	}
 	syserr("Cannot schedule event %d parm %d %d %d", type, x, y, z);
+	/* NOTREACHED */
+	return(NULL);
 }
 
 
@@ -88,9 +87,8 @@ char	z;
 **	time plus 'offset'.
 */
 
-reschedule(e1, offset)
-struct event	*e1;
-double		offset;
+void
+reschedule(struct event *e1, double offset)
 {
 	double			date;
 	struct event	*e;
@@ -114,8 +112,8 @@ double		offset;
 **	The event at slot 'e' is deleted.
 */
 
-unschedule(e1)
-struct event	*e1;
+void
+unschedule(struct event *e1)
 {
 	struct event	*e;
 
@@ -140,10 +138,8 @@ struct event	*e1;
 **	figure.
 */
 
-struct event *xsched(ev1, factor, x, y, z)
-int	ev1;
-int	factor;
-int	x, y, z;
+struct event *
+xsched(int ev1, int factor, int x, int y, int z)
 {
 	int	ev;
 
@@ -159,10 +155,8 @@ int	x, y, z;
 **	division factor.  Look at the code to see what really happens.
 */
 
-xresched(e1, ev1, factor)
-struct event	*e1;
-int		ev1;
-int		factor;
+void
+xresched(struct event *e1, int ev1, int factor)
 {
 	int		ev;
 	struct event	*e;

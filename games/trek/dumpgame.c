@@ -32,7 +32,7 @@
  *
  * @(#)dumpgame.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/dumpgame.c,v 1.6 1999/11/30 03:49:46 billf Exp $
- * $DragonFly: src/games/trek/dumpgame.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/dumpgame.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include <fcntl.h>
@@ -51,17 +51,19 @@ struct dump
 
 struct dump	Dump_template[] =
 {
-	(char *)&Ship,		sizeof (Ship),
-	(char *)&Now,		sizeof (Now),
-	(char *)&Param,		sizeof (Param),
-	(char *)&Etc,		sizeof (Etc),
-	(char *)&Game,		sizeof (Game),
-	(char *)Sect,		sizeof (Sect),
-	(char *)Quad,		sizeof (Quad),
-	(char *)&Move,		sizeof (Move),
-	(char *)Event,		sizeof (Event),
-	0
+	{ (char *)&Ship,	sizeof (Ship)	},
+	{ (char *)&Now,		sizeof (Now)	},
+	{ (char *)&Param,	sizeof (Param)	},
+	{ (char *)&Etc,		sizeof (Etc)	},
+	{ (char *)&Game,	sizeof (Game)	},
+	{ (char *)Sect,		sizeof (Sect)	},
+	{ (char *)Quad,		sizeof (Quad)	},
+	{ (char *)&Move,	sizeof (Move)	},
+	{ (char *)Event,	sizeof (Event)	},
+	{ NULL,			0		}
 };
+
+static bool	readdump(int);
 
 /*
 **  DUMP GAME
@@ -73,15 +75,18 @@ struct dump	Dump_template[] =
 **	output change.
 */
 
-dumpgame()
+void
+dumpgame(__unused int unused)
 {
 	int			version;
 	int		fd;
 	struct dump	*d;
 	int		i;
 
-	if ((fd = creat("trek.dump", 0644)) < 0)
-		return (printf("cannot dump\n"));
+	if ((fd = creat("trek.dump", 0644)) < 0) {
+		printf("cannot dump\n");
+		return;
+	}
 	version = VERSION;
 	write(fd, &version, sizeof version);
 
@@ -108,7 +113,8 @@ dumpgame()
 **	Return value is zero for success, one for failure.
 */
 
-restartgame()
+bool
+restartgame(void)
 {
 	int	fd;
 	int		version;
@@ -137,8 +143,8 @@ restartgame()
 **	Returns zero for success, one for failure.
 */
 
-readdump(fd1)
-int	fd1;
+static bool
+readdump(int fd1)
 {
 	int		fd;
 	struct dump	*d;

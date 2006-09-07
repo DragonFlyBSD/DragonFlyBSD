@@ -32,10 +32,12 @@
  *
  * @(#)capture.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/capture.c,v 1.4 1999/11/30 03:49:43 billf Exp $
- * $DragonFly: src/games/trek/capture.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/capture.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
+
+static struct kling	*selectklingon(void);
 
 /*
 **  Ask a Klingon To Surrender
@@ -51,12 +53,12 @@
 **	etc.
 */
 
-capture()
+void
+capture(__unused int unused)
 {
 	int		i;
 	struct kling	*k;
 	double			x;
-	extern struct kling	*selectklingon();
 
 	/* check for not cloaked */
 	if (Ship.cloaked)
@@ -116,7 +118,8 @@ capture()
 **	Cruddy, just takes one at random.  Should ask the captain.
 */
 
-struct kling	*selectklingon()
+static struct kling *
+selectklingon(void)
 {
 	int		i;
 

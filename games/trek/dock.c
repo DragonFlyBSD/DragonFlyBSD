@@ -32,7 +32,7 @@
  *
  * @(#)dock.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/dock.c,v 1.4 1999/11/30 03:49:46 billf Exp $
- * $DragonFly: src/games/trek/dock.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/dock.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -52,14 +52,18 @@
 **	are docked.
 */
 
-dock()
+void
+dock(__unused int unused)
 {
 	int		i, j;
 	int			ok;
 	struct event	*e;
 
 	if (Ship.cond == DOCKED)
-		return (printf("Chekov: But captain, we are already docked\n"));
+	{
+		printf("Chekov: But captain, we are already docked\n");
+		return;
+	}
 	/* check for ok to dock, i.e., adjacent to a starbase */
 	ok = 0;
 	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++)
@@ -78,7 +82,10 @@ dock()
 		}
 	}
 	if (!ok)
-		return (printf("Chekov: But captain, we are not adjacent to a starbase.\n"));
+	{
+		printf("Chekov: But captain, we are not adjacent to a starbase.\n");
+		return;
+	}
 
 	/* restore resources */
 	Ship.energy = Param.energy;
@@ -119,7 +126,8 @@ dock()
 **	is to reschedule any damages so that they will take longer.
 */
 
-undock()
+void
+undock(__unused int unused)
 {
 	struct event	*e;
 	int		i;

@@ -32,7 +32,7 @@
  *
  * @(#)kill.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/kill.c,v 1.4 1999/11/30 03:49:49 billf Exp $
- * $DragonFly: src/games/trek/kill.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/kill.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -53,10 +53,10 @@
 **	and the game is won if that was the last klingon.
 */
 
-killk(ix, iy)
-int	ix, iy;
+void
+killk(int ix, int iy)
 {
-	int		i, j;
+	int		i;
 
 	printf("   *** Klingon at %d,%d destroyed ***\n", ix, iy);
 
@@ -93,8 +93,8 @@ int	ix, iy;
 **  handle a starbase's death
 */
 
-killb(qx, qy)
-int	qx, qy;
+void
+killb(int qx, int qy)
 {
 	struct quad	*q;
 	struct xy	*b;
@@ -104,12 +104,14 @@ int	qx, qy;
 	if (q->bases <= 0)
 		return;
 	if (!damaged(SSRADIO))
+	{
 		/* then update starchart */
 		if (q->scanned < 1000)
 			q->scanned -= 10;
 		else
 			if (q->scanned > 1000)
 				q->scanned = -1;
+	}
 	q->bases = 0;
 	Now.bases -= 1;
 	for (b = Now.base; ; b++)
@@ -120,7 +122,7 @@ int	qx, qy;
 	{
 		Sect[Etc.starbase.x][Etc.starbase.y] = EMPTY;
 		if (Ship.cond == DOCKED)
-			undock();
+			undock(0);
 		printf("Starbase at %d,%d destroyed\n", Etc.starbase.x, Etc.starbase.y);
 	}
 	else
@@ -140,14 +142,14 @@ int	qx, qy;
  **	kill an inhabited starsystem
  **/
 
-kills(x, y, f)
-int	x, y;	/* quad coords if f == 0, else sector coords */
-int	f;	/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
+void
+kills(int x, int y, int f)
+/* x,y:  quad coords if f == 0, else sector coords */
+/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
 {
 	struct quad	*q;
 	struct event	*e;
-	char		*name;
-	char			*systemname();
+	const char	*name;
 
 	if (f)
 	{
@@ -184,9 +186,10 @@ int	f;	/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
  **	"kill" a distress call
  **/
 
-killd(x, y, f)
-int	x, y;		/* quadrant coordinates */
-int	f;		/* set if user is to be informed */
+void
+killd(int x, int y, int f)
+/* x,y:  quadrant coordinates */
+/* f:  set if user is to be informed */
 {
 	struct event	*e;
 	int		i;

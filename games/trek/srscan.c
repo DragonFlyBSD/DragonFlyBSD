@@ -32,7 +32,7 @@
  *
  * @(#)srscan.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/srscan.c,v 1.4 1999/11/30 03:49:55 billf Exp $
- * $DragonFly: src/games/trek/srscan.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/trek/srscan.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -53,7 +53,7 @@
 **	The current quadrant is filled in on the computer chart.
 */
 
-char	*Color[4] =
+const char	*Color[4] =
 {
 	"GREEN",
 	"DOCKED",
@@ -61,16 +61,14 @@ char	*Color[4] =
 	"RED"
 };
 
-srscan(f)
-int	f;
+void
+srscan(int f)
 {
 	int		i, j;
 	int		statinfo;
-	char			*s;
+	const char		*s;
 	int			percent;
-	struct quad		*q;
-	extern struct cvntab	Skitab[];
-	extern struct cvntab	Lentab[];
+	struct quad		*q = NULL;
 	struct cvntab		*p;
 
 	if (f >= 0 && check_out(SRSCAN))
