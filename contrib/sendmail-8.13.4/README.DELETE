@@ -1,9 +1,0 @@
-Build
-cf/cf/Build
-cf/cf/generic-*.cf
-devtools
-doc/op/op.ps
-*/Build
-[e-v]*/*.0
-sendmail/makesendmail
-sendmail/sysexits.h
