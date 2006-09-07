@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.14 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.15 2006/09/07 07:14:48 y0netan1 Exp $
  */
 
 #include "opt_vga.h"
@@ -711,7 +711,7 @@ vesa_bios_init(void)
 		/* expand the array if necessary */
 		if (modes >= vesa_vmode_max) {
 			vesa_vmode_max += MODE_TABLE_DELTA;
-			p = malloc(sizeof(*vesa_vmode)*(vesa_vmode_max + 1),
+			p = kmalloc(sizeof(*vesa_vmode)*(vesa_vmode_max + 1),
 				   M_DEVBUF, M_WAITOK);
 #if VESA_DEBUG > 1
 			printf("vesa_bios_init(): modes:%d, vesa_mode_max:%d\n",
