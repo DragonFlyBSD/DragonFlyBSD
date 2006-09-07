@@ -1,0 +1,58 @@
+$DragonFly: src/lib/libisc/Attic/dns,resolver.c.patch,v 1.1.4.2 2006/09/07 10:06:06 corecode Exp $
+diff -ruN bind-9.2.6/lib/dns/resolver.c bind-9.2.6-P1/lib/dns/resolver.c
+--- bind-9.2.6/lib/dns/resolver.c	2005-07-05 01:19:17.000000000 +0200
++++ bind-9.2.6-P1/lib/dns/resolver.c	2006-08-17 09:24:37.000000000 +0200
+@@ -3214,23 +3214,28 @@
+ 		  isc_result_t *eresultp)
+ {
+ 	isc_result_t result;
++	dns_rdataset_t rdataset;
++
++	if (ardataset == NULL) {
++		dns_rdataset_init(&rdataset);
++		ardataset = &rdataset;
++	}
+ 	result = dns_ncache_add(message, cache, node, covers, now,
+ 				maxttl, ardataset);
+-	if (result == DNS_R_UNCHANGED) {
++	if (result == DNS_R_UNCHANGED || result == ISC_R_SUCCESS) {
+ 		/*
+-		 * The data in the cache is better than the negative cache
+-		 * entry we're trying to add.
++		 * If the cache now contains a negative entry and we
++		 * care about whether it is DNS_R_NCACHENXDOMAIN or
++		 * DNS_R_NCACHENXRRSET then extract it.
+ 		 */
+-		if (ardataset != NULL && ardataset->type == 0) {
++		if (ardataset->type == 0) {
+ 			/*
+-			 * The cache data is also a negative cache
+-			 * entry.
++			 * The cache data is a negative cache entry.
+ 			 */
+ 			if (NXDOMAIN(ardataset))
+ 				*eresultp = DNS_R_NCACHENXDOMAIN;
+ 			else
+ 				*eresultp = DNS_R_NCACHENXRRSET;
+-			result = ISC_R_SUCCESS;
+ 		} else {
+ 			/*
+ 			 * Either we don't care about the nature of the
+@@ -3242,14 +3247,11 @@
+ 			 * XXXRTH  There's a CNAME/DNAME problem here.
+ 			 */
+ 			*eresultp = ISC_R_SUCCESS;
+-			result = ISC_R_SUCCESS;
+ 		}
+-	} else if (result == ISC_R_SUCCESS) {
+-		if (NXDOMAIN(ardataset))
+-			*eresultp = DNS_R_NCACHENXDOMAIN;
+-		else
+-			*eresultp = DNS_R_NCACHENXRRSET;
++		result = ISC_R_SUCCESS;
+ 	}
++	if (ardataset == &rdataset && dns_rdataset_isassociated(ardataset))
++		dns_rdataset_disassociate(ardataset);
+ 
+ 	return (result);
+ }
