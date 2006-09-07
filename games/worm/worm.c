@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worm/worm.c,v 1.9 1999/12/07 02:01:27 billf Exp $
- * $DragonFly: src/games/worm/worm.c,v 1.4 2005/03/15 20:53:40 dillon Exp $
+ * $DragonFly: src/games/worm/worm.c,v 1.5 2006/09/07 21:28:27 pavalos Exp $
  */
 
 /*
@@ -54,11 +54,6 @@
 #define LENGTH 7
 #define RUNLEN 8
 #define CNTRL(p) (p-'A'+1)
-#if 0
-#ifndef baudrate
-# define	baudrate()	_tty.sg_ospeed
-#endif
-#endif
 
 WINDOW *tv;
 WINDOW *stw;
@@ -140,7 +135,7 @@ main(int argc, char **argv)
 }
 
 void
-life()
+life(void)
 {
 	struct body *bp, *np;
 	int i;
@@ -164,9 +159,7 @@ life()
 }
 
 void
-display(pos, chr)
-struct body *pos;
-char chr;
+display(struct body *pos, char chr)
 {
 	wmove(tv, pos->y, pos->x);
 	waddch(tv, chr);
@@ -194,8 +187,7 @@ rnd(int range)
 }
 
 void
-newpos(bp)
-struct body * bp;
+newpos(struct body *bp)
 {
 	do {
 		bp->y = rnd(LINES-3)+ 2;
@@ -205,7 +197,7 @@ struct body * bp;
 }
 
 void
-prize()
+prize(void)
 {
 	int value;
 
@@ -216,8 +208,7 @@ prize()
 }
 
 void
-process(ch)
-char ch;
+process(char ch)
 {
 	int x,y;
 	struct body *nh;
