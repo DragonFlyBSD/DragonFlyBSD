@@ -1,5 +1,5 @@
 /*	$NetBSD: midwayvar.h,v 1.10 1997/03/20 21:34:46 chuck Exp $	*/
-/* $DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.5 2005/02/01 00:51:49 joerg Exp $*/	
+/* $DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.6 2006/09/09 18:54:36 dillon Exp $*/	
 
 /*
  *
@@ -38,7 +38,7 @@
  *
  * we define the en_softc here so that bus specific modules can allocate
  * it as the first item in their softc.   note that BSD-required 
- * "struct device" is in the mid_softc!
+ * "struct en_device" is in the mid_softc!
  *
  * author: Chuck Cranor <chuck@ccrc.wustl.edu>
  */
@@ -64,7 +64,7 @@
 #define EN_INTR_RET(X) return
 #define EN_IOCTL_CMDT u_long
 
-struct device {
+struct en_device {
   char dv_xname[IFNAMSIZ];
 };
 
@@ -84,7 +84,7 @@ struct cfdriver {
 
 struct en_softc {
   /* bsd glue */
-  struct device sc_dev;		/* system device */
+  struct en_device sc_dev;		/* system device */
   struct ifnet enif;		/* network ifnet handle */
 
   /* bus glue */
