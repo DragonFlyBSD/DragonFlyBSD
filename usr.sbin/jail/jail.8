@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
-.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.4 2004/11/09 08:52:46 joerg Exp $
+.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.5 2006/09/09 16:22:52 corecode Exp $
 .\"
 .Dd December 12, 2001
 .Dt JAIL 8
@@ -73,12 +73,12 @@ man page for further details.
 This example shows how to setup a jail directory tree
 containing an entire
 .Dx
-distribution:
+distribution, provided that you built world before already:
 .Bd -literal
 D=/here/is/the/jail
 cd /usr/src
 mkdir -p $D
-make world DESTDIR=$D
+make installworld DESTDIR=$D
 cd etc
 make distribution DESTDIR=$D -DNO_MAKEDEV_RUN
 cd $D/dev
