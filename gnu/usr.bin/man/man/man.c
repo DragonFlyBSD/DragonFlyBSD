@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.5 2006/09/09 16:28:44 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.6 2006/09/09 17:34:46 corecode Exp $
  */
 
 #define MAN_MAIN
@@ -85,7 +85,6 @@ static char *longsec;
 static char *colon_sep_section_list;
 static char **section_list;
 static char *roff_directive;
-static int manfile;
 static int apropos;
 static int whatis;
 static int findall;
@@ -115,15 +114,15 @@ int debug;
 
 #ifdef HAS_TROFF
 #ifdef __DragonFly__
-static char args[] = "FM:P:S:adfhkm:op:tw?";
+static char args[] = "M:P:S:adfhkm:op:tw?";
 #else
-static char args[] = "FM:P:S:adfhkm:p:tw?";
+static char args[] = "M:P:S:adfhkm:p:tw?";
 #endif
 #else
 #ifdef __DragonFly__
-static char args[] = "FM:P:S:adfhkm:op:w?";
+static char args[] = "M:P:S:adfhkm:op:w?";
 #else
-static char args[] = "FM:P:S:adfhkm:p:w?";
+static char args[] = "M:P:S:adfhkm:p:w?";
 #endif
 #endif
 
@@ -209,15 +208,6 @@ main (argc, argv)
 	do_whatis (nextarg);
 	status = (status ? 0 : 1); /* reverts status, see below */
       }
-      else if (manfile) {
-	char *bn = basename(nextarg);
-	char *dn = dirname(nextarg);
-        status = format_and_display(dn, bn, NULL);
-	if (status == 0) {
-	  fprintf(stderr, "Unable to display %s/%s\n", dn, bn);
-	  fflush(stderr);
-	}
-      }
       else
 	{
 	  status = man (nextarg);
@@ -238,28 +228,27 @@ usage ()
 #ifdef HAS_TROFF
 #ifdef __DragonFly__
   static char s1[] =
-    "usage: %s [-adFfhkotw] [section] [-M path] [-P pager] [-S list]\n\
+    "usage: %s [-adfhkotw] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
 #else
   static char s1[] =
-    "usage: %s [-adFfhktw] [section] [-M path] [-P pager] [-S list]\n\
+    "usage: %s [-adfhktw] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
 #endif
 #else
 #ifdef __DragonFly__
   static char s1[] =
-    "usage: %s [-adFfhkow] [section] [-M path] [-P pager] [-S list]\n\
+    "usage: %s [-adfhkow] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
 #else
   static char s1[] =
-    "usage: %s [-adFfhkw] [section] [-M path] [-P pager] [-S list]\n\
+    "usage: %s [-adfhkw] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
 #endif
 #endif
 
 static char s2[] = "  a : find all matching entries\n\
   d : print gobs of debugging information\n\
-  F : display specified file instead of searching\n\
   f : same as whatis(1)\n\
   h : print this help message\n\
   k : same as apropos(1)\n";
@@ -346,9 +335,6 @@ man_getopt (argc, argv)
     {
       switch (c)
 	{
-	case 'F':
-	  manfile++;
-	  break;
 	case 'M':
 	  manp = strdup (optarg);
 	  break;
@@ -1734,6 +1720,18 @@ man (name)
 	    }
 	}
     }
+
+  /* Treat name as file name as a last resort */
+  if (!found) {
+    struct stat st;
+
+    if (debug)
+      fprintf(stderr, "Trying as file name\n");
+
+    if (stat(name, &st) == 0) {
+      found += format_and_display(dirname(name), name, NULL);
+    }
+  }
   return found;
 }
 
