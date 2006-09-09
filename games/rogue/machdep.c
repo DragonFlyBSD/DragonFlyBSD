@@ -35,7 +35,7 @@
  *
  * @(#)machdep.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/machdep.c,v 1.6.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/machdep.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
+ * $DragonFly: src/games/rogue/machdep.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 /*
@@ -541,7 +541,7 @@ md_shell(const char *shell)
 	if (!fork()) {
 		/* revoke */
 		setgid(getgid());
-		execl(shell, shell, 0);
+		execl(shell, shell, (char *) NULL);
 	}
 	wait((int *)w);
 }

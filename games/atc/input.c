@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/input.c,v 1.7 2000/02/27 23:02:47 mph Exp $
- * $DragonFly: src/games/atc/input.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
+ * $DragonFly: src/games/atc/input.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 /*
@@ -364,10 +364,10 @@ gettoken(void)
 						base = shell;
 					else
 						base++;
-					execl(shell, base, 0);
+					execl(shell, base, (char *) NULL);
 				}
 				else
-					execl(_PATH_BSHELL, "sh", 0);
+					execl(_PATH_BSHELL, "sh", (char *) NULL);
 
 				exit(0);	/* oops */
 			}

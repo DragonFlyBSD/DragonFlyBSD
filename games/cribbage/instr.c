@@ -32,7 +32,7 @@
  *
  * @(#)instr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/instr.c,v 1.5 1999/12/12 03:04:15 billf Exp $
- * $DragonFly: src/games/cribbage/instr.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
+ * $DragonFly: src/games/cribbage/instr.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 #include <sys/wait.h>
@@ -70,7 +70,7 @@ instructions(void)
 		if ((pager = rindex(path, '/')) != NULL)
 			++pager;
 		pager = path;
-		execlp(path, pager, _PATH_INSTR, NULL);
+		execlp(path, pager, _PATH_INSTR, (char *) NULL);
 		fprintf(stderr, "cribbage: %s.\n", strerror(errno));
 		_exit(1);
 	default:

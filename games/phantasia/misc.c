@@ -2,7 +2,7 @@
  * misc.c  Phantasia miscellaneous support routines
  *
  * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.6 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/games/phantasia/misc.c,v 1.7 2006/09/09 02:21:49 pavalos Exp $
  */
 
 #include <string.h>
@@ -997,7 +997,7 @@ static	const char	*deathmesg[] =
 	{
 	cleanup(FALSE);
 	execl(_PATH_GAMEPROG, "phantasia", "-s",
-	    (Wizard ? "-S": (char *) NULL), 0);
+	    (Wizard ? "-S": (char *) NULL), (char *) NULL);
 	exit(0);
 	/*NOTREACHED*/
 	}

@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wump.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
- * $DragonFly: src/games/wump/wump.c,v 1.4 2005/03/15 20:53:43 dillon Exp $
+ * $DragonFly: src/games/wump/wump.c,v 1.5 2006/09/09 02:21:49 pavalos Exp $
  */
 
 /*
@@ -751,7 +751,7 @@ puff of greasy black smoke! (poof)\n");
 			err(1, "open %s", _PATH_WUMPINFO);
 		if (dup2(fd, 0) == -1)
 			err(1, "dup2");
-		(void)execl("/bin/sh", "sh", "-c", pager, NULL);
+		(void)execl("/bin/sh", "sh", "-c", pager, (char *) NULL);
 		err(1, "exec sh -c %s", pager);
 	case -1:
 		err(1, "fork");
