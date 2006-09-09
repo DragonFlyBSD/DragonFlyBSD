@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.12 2006/09/09 14:18:55 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.13 2006/09/09 14:30:41 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -352,7 +352,7 @@ struct ifmedia_description {
 	{ IFM_1000_FX,	"1000FX" },					\
 	{ IFM_10_STP,	"10STP" },					\
 	{ IFM_10_FL,	"10FL" },					\
-	{ IFM_1000_FX,	"1000SX" },					\
+	{ IFM_1000_SX,	"1000SX" },					\
 	{ IFM_1000_LX,	"1000LX" },					\
 	{ IFM_1000_CX,	"1000CX" },					\
 	{ IFM_1000_T,	"1000T" },					\
