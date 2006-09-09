@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.37 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.38 2006/09/09 18:29:09 dillon Exp $
  */
 
 /*
@@ -1174,9 +1174,19 @@ tryagain:
 			/*
 			 * If the File Handle was stale, invalidate the
 			 * lookup cache, just in case.
+			 *
+			 * To avoid namecache<->vnode deadlocks we must
+			 * release the vnode lock if we hold it.
 			 */
 			if (error == ESTALE) {
+				int ltype;
+
+				ltype = lockstatus(&vp->v_lock, curthread);
+				if (ltype == LK_EXCLUSIVE || ltype == LK_SHARED)
+					lockmgr(&vp->v_lock, LK_RELEASE);
 				cache_inval_vp(vp, CINV_CHILDREN);
+				if (ltype == LK_EXCLUSIVE || ltype == LK_SHARED)
+					lockmgr(&vp->v_lock, ltype);
 			}
 			if (nmp->nm_flag & NFSMNT_NFSV3) {
 				*mrp = mrep;
