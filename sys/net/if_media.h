@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.11 2006/08/06 10:32:23 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.12 2006/09/09 14:18:55 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -148,7 +148,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define IFM_1000_SX	14		/* 1000BaseSX Multi-mode Fiber */
 #define IFM_1000_LX	15		/* 1000BaseLX Single-mode Fiber */
 #define IFM_1000_CX	16		/* 1000BaseCX 150ohm STP */
-#define IFM_1000_T	17		/* 1000BaseTX 4 pair cat 5 */
+#define IFM_1000_T	17		/* 1000BaseT 4 pair cat 5 */
 #define IFM_HPNA_1	18		/* HomePNA media for ethernet frames */
 
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
@@ -353,9 +353,9 @@ struct ifmedia_description {
 	{ IFM_10_STP,	"10STP" },					\
 	{ IFM_10_FL,	"10FL" },					\
 	{ IFM_1000_FX,	"1000SX" },					\
-	{ IFM_1000_FX,	"1000LX" },					\
-	{ IFM_1000_FX,	"1000CX" },					\
-	{ IFM_1000_FX,	"1000TX" },					\
+	{ IFM_1000_LX,	"1000LX" },					\
+	{ IFM_1000_CX,	"1000CX" },					\
+	{ IFM_1000_T,	"1000T" },					\
 	{ 0, NULL },							\
 }
 
