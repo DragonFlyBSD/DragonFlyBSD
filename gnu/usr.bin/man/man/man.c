@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.4 2006/09/09 16:12:25 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.5 2006/09/09 16:28:44 corecode Exp $
  */
 
 #define MAN_MAIN
@@ -1373,9 +1373,6 @@ format_and_display (path, man_file, cat_file)
   if (access (man_file, R_OK) != 0)
     return 0;
 
-  if (cat_file == NULL)
-    goto format_and_display;
-
   if (troff)
     {
       roff_command = make_roff_command (man_file);
@@ -1388,6 +1385,9 @@ format_and_display (path, man_file, cat_file)
     }
   else
     {
+      if (cat_file == NULL)
+	goto format_and_display;
+
       status = is_newer (man_file, cat_file);
       if (debug)
 	fprintf (stderr, "status from is_newer() = %d\n", status);
