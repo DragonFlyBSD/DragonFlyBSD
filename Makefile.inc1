@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.86 2006/08/12 22:34:23 swildner Exp $
+# $DragonFly: src/Makefile.inc1,v 1.87 2006/09/09 15:02:10 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -126,6 +126,10 @@ OBJTREE?=		${MAKEOBJDIRPREFIX}
 # Used for stage installs and pathing
 #
 DESTDIRBASE?=		${OBJTREE}${.CURDIR}
+
+# Remove DESTDIR from MAKEFLAGS.  It is present in the environment
+# anyhow, and we need to be able to override it for stage installs
+.MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
