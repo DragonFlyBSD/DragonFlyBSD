@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.12 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.13 2006/09/09 19:07:29 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -54,10 +54,10 @@ struct disk;
 struct vnode;
 struct dev_ops;
 
-struct specinfo {
+struct cdev {
 	u_int		si_flags;
 	udev_t		si_udev;
-	LIST_ENTRY(specinfo)	si_hash;
+	LIST_ENTRY(cdev)	si_hash;
 	SLIST_HEAD(, vnode) si_hlist;
 	char		si_name[SPECNAMELEN + 1];
 	void		*si_drv1;

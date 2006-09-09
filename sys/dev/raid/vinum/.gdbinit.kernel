@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.5 2006/04/30 20:23:21 dillon Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.6 2006/09/09 19:07:27 dillon Exp $
 set remotebaud 38400
 set remotetimeout 1
 set complaints 1
@@ -602,7 +602,7 @@ set height 70
 set width 120
 define vdev
 if (vp->v_type == VBLK)
-  p *vp->v_un.vu_spec.vu_specinfo
+  p *vp->v_un.vu_cdev.vu_cdevinfo
   printf "numoutput: %d\n", vp->v_numoutput
 else
   echo "Not a block device"

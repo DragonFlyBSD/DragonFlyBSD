@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.66 2006/08/23 06:45:40 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.67 2006/09/09 19:07:29 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -208,9 +208,9 @@ struct vnode {
 		struct socket	*vu_socket;	/* unix ipc (VSOCK) */
 		struct {
 			udev_t	vu_udev;	/* device number for attach */
-			struct specinfo	*vu_specinfo; /* device (VCHR, VBLK) */
-			SLIST_ENTRY(vnode) vu_specnext;
-		} vu_spec;
+			struct cdev	*vu_cdevinfo; /* device (VCHR, VBLK) */
+			SLIST_ENTRY(vnode) vu_cdevnext;
+		} vu_cdev;
 		struct fifoinfo	*vu_fifoinfo;	/* fifo (VFIFO) */
 	} v_un;
 	off_t	v_filesize;			/* file EOF or NOOFFSET */
@@ -241,9 +241,9 @@ struct vnode {
 };
 #define	v_mountedhere	v_un.vu_mountedhere
 #define	v_socket	v_un.vu_socket
-#define v_udev		v_un.vu_spec.vu_udev
-#define	v_rdev		v_un.vu_spec.vu_specinfo
-#define	v_specnext	v_un.vu_spec.vu_specnext
+#define v_udev		v_un.vu_cdev.vu_udev
+#define	v_rdev		v_un.vu_cdev.vu_cdevinfo
+#define	v_cdevnext	v_un.vu_cdev.vu_cdevnext
 #define	v_fifoinfo	v_un.vu_fifoinfo
 #define	v_spinlock	v_lock.lk_spinlock
 

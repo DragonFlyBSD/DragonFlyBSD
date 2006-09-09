@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.9 2005/08/07 22:11:53 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.10 2006/09/09 19:07:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -259,5 +259,5 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, proc, CTLFLAG_RD,
     0, sizeof(struct proc), "sizeof(struct proc)");
 
 #include <sys/conf.h>
-SYSCTL_INT(_debug_sizeof, OID_AUTO, specinfo, CTLFLAG_RD,
-    0, sizeof(struct specinfo), "sizeof(struct specinfo)");
+SYSCTL_INT(_debug_sizeof, OID_AUTO, cdev, CTLFLAG_RD,
+    0, sizeof(struct cdev), "sizeof(struct cdev)");

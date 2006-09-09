@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.40 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.41 2006/09/09 19:07:29 dillon Exp $
  */
 
 
@@ -648,7 +648,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 		printf("ntfs_unmount: vflush failed(sysnodes): %d\n",error);
 
 	/* Check if the type of device node isn't VBAD before
-	 * touching v_specinfo.  If the device vnode is revoked, the
+	 * touching v_cdevinfo.  If the device vnode is revoked, the
 	 * field is NULL and touching it causes null pointer derefercence.
 	 */
 	if (ntmp->ntm_devvp->v_type != VBAD)

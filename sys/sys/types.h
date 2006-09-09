@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.14 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.15 2006/09/09 19:07:29 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -124,10 +124,11 @@ typedef	u_int64_t	uoff_t;
  */
 #ifdef _KERNEL
 
-struct specinfo;
+struct cdev;
 
 typedef	u_int32_t	udev_t;		/* device number */
-typedef struct specinfo	*dev_t;
+typedef struct cdev	*dev_t;		/* obsolete */
+typedef struct cdev	*cdev_t;
 
 #define offsetof(type, field) __offsetof(type, field)
 

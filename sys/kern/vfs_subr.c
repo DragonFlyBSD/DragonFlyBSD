@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.95 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.96 2006/09/09 19:07:28 dillon Exp $
  */
 
 /*
@@ -1004,7 +1004,7 @@ v_associate_rdev(struct vnode *vp, dev_t dev)
 		printf("Z1");
 	vp->v_rdev = reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
-	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_specnext);
+	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_cdevnext);
 	lwkt_reltoken(&ilock);
 	return(0);
 }
@@ -1017,7 +1017,7 @@ v_release_rdev(struct vnode *vp)
 
 	if ((dev = vp->v_rdev) != NULL) {
 		lwkt_gettoken(&ilock, &spechash_token);
-		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_specnext);
+		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_cdevnext);
 		vp->v_rdev = NULL;
 		release_dev(dev);
 		lwkt_reltoken(&ilock);
@@ -1293,7 +1293,7 @@ vfinddev(dev_t dev, enum vtype type, struct vnode **vpp)
 	struct vnode *vp;
 
 	lwkt_gettoken(&ilock, &spechash_token);
-	SLIST_FOREACH(vp, &dev->si_hlist, v_specnext) {
+	SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 		if (type == vp->v_type) {
 			*vpp = vp;
 			lwkt_reltoken(&ilock);
@@ -1319,7 +1319,7 @@ count_dev(dev_t dev)
 
 	if (SLIST_FIRST(&dev->si_hlist)) {
 		lwkt_gettoken(&ilock, &spechash_token);
-		SLIST_FOREACH(vp, &dev->si_hlist, v_specnext) {
+		SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 			count += vp->v_usecount;
 		}
 		lwkt_reltoken(&ilock);
