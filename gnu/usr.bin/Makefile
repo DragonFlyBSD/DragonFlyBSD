@@ -1,8 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/Makefile,v 1.22 2005/09/05 15:36:34 corecode Exp $
-#
-# Note that gcc2 is only built under the i386 architecture.  Other
-# architectures require gcc3.
+# $DragonFly: src/gnu/usr.bin/Makefile,v 1.23 2006/09/09 00:30:48 pavalos Exp $
 
 SUBDIR= cpio dialog diff diff3 grep groff man rcs sdiff sort tar texinfo
 
