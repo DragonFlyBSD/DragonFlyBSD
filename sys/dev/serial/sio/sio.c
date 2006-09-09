@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.33 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.34 2006/09/09 19:34:46 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -3005,7 +3005,7 @@ siocnprobe(cp)
 	 * If no gdb port has been specified, set it to be the console
 	 * as some configuration files don't specify the gdb port.
 	 */
-	if (gdbdev == NODEV && (boothowto & RB_GDB)) {
+	if (gdbdev == NOCDEV && (boothowto & RB_GDB)) {
 		printf("Warning: no GDB port specified. Defaulting to sio%d.\n",
 			siocnunit);
 		printf("Set flag 0x80 on desired GDB port in your\n");

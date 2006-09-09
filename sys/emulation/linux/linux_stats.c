@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.21 2006/08/19 01:36:39 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.22 2006/09/09 19:34:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	 * in FreeBSD but block devices under Linux.
 	 */
 	if (S_ISCHR(tbuf.st_mode) &&
-	    (dev = udev2dev(buf->st_rdev, 0)) != NODEV) {
+	    (dev = udev2dev(buf->st_rdev, 0)) != NOCDEV) {
 		if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK)) {
 			tbuf.st_mode &= ~S_IFMT;
 			tbuf.st_mode |= S_IFBLK;
@@ -320,7 +320,7 @@ sys_linux_ustat(struct linux_ustat_args *args)
 	 * ustat in that case.
 	 */
 	dev = udev2dev(makeudev(args->dev >> 8, args->dev & 0xFF), 0);
-	if (dev != NODEV && vfinddev(dev, VCHR, &vp)) {
+	if (dev != NOCDEV && vfinddev(dev, VCHR, &vp)) {
 		if (vp->v_mount == NULL) {
 			return (EINVAL);
 		}

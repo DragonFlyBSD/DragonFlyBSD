@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.11 2006/09/09 19:34:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.10 2006/07/28 02:17:38 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.11 2006/09/09 19:34:46 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -1113,7 +1113,7 @@ dsp_clone(void *arg, char *name, int namelen, dev_t *dev)
 	int devtypes[3] = {SND_DEV_DSP, SND_DEV_DSP16, SND_DEV_AUDIO};
 	char *devnames[3] = {"dsp", "dspW", "audio"};
 
-	if (*dev != NODEV)
+	if (*dev != NOCDEV)
 		return;
 	if (pcm_devclass == NULL)
 		return;

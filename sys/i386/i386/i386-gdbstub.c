@@ -92,7 +92,7 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
-/* $DragonFly: src/sys/i386/i386/Attic/i386-gdbstub.c,v 1.3 2003/08/07 21:17:22 dillon Exp $ */
+/* $DragonFly: src/sys/i386/i386/Attic/i386-gdbstub.c,v 1.4 2006/09/09 19:34:46 dillon Exp $ */
 
 #include "use_sio.h"
 #include "opt_ddb.h"
@@ -153,7 +153,7 @@ strcpy (char *dst, const char *src)
 static int
 putDebugChar (int c)		/* write a single character      */
 {
-  if (gdbdev == NODEV)
+  if (gdbdev == NOCDEV)
 	return 0;
   (*gdb_putc)(gdbdev, c);
   return 1;
@@ -162,7 +162,7 @@ putDebugChar (int c)		/* write a single character      */
 static int
 getDebugChar (void)		/* read and return a single char */
 {
-  if (gdbdev == NODEV)
+  if (gdbdev == NOCDEV)
 	return -1;
   return (*gdb_getc)(gdbdev);
 }

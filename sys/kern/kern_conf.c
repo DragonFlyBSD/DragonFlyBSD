@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.13 2006/09/09 19:07:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.14 2006/09/09 19:34:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0, "");
 int
 major(dev_t x)
 {
-	if (x == NODEV)
+	if (x == NOCDEV)
 		return NOUDEV;
 	return((x->si_udev >> 8) & 0xff);
 }
@@ -85,7 +85,7 @@ major(dev_t x)
 int
 minor(dev_t x)
 {
-	if (x == NODEV)
+	if (x == NOCDEV)
 		return NOUDEV;
 	return(x->si_udev & 0xffff00ff);
 }
@@ -95,7 +95,7 @@ lminor(dev_t x)
 {
 	int i;
 
-	if (x == NODEV)
+	if (x == NOCDEV)
 		return NOUDEV;
 	i = minor(x);
 	return ((i & 0xff) | (i >> 8));
@@ -160,7 +160,7 @@ hashdev(struct dev_ops *ops, int x, int y)
 udev_t
 dev2udev(dev_t x)
 {
-	if (x == NODEV)
+	if (x == NOCDEV)
 		return NOUDEV;
 	return (x->si_udev);
 }
@@ -171,7 +171,7 @@ dev2udev(dev_t x)
  * to keep ahold of the returned structure long term.
  *
  * The returned device is associated with the currently installed cdevsw
- * for the requested major number.  NODEV is returned if the major number
+ * for the requested major number.  NOCDEV is returned if the major number
  * has not been registered.
  */
 dev_t
@@ -181,10 +181,10 @@ udev2dev(udev_t x, int b)
 	struct dev_ops *ops;
 
 	if (x == NOUDEV || b != 0)
-		return(NODEV);
+		return(NOCDEV);
 	ops = dev_ops_get(umajor(x), uminor(x));
 	if (ops == NULL)
-		return(NODEV);
+		return(NOCDEV);
 	dev = hashdev(ops, umajor(x), uminor(x));
 	return(dev);
 }
@@ -192,7 +192,7 @@ udev2dev(udev_t x, int b)
 int
 dev_is_good(dev_t dev)
 {
-	if (dev != NODEV && dev->si_ops != &dead_dev_ops)
+	if (dev != NOCDEV && dev->si_ops != &dead_dev_ops)
 		return(1);
 	return(0);
 }
@@ -306,7 +306,7 @@ destroy_dev(dev_t dev)
 {
 	int hash;
 
-	if (dev == NODEV)
+	if (dev == NOCDEV)
 		return;
 	if ((dev->si_flags & SI_ADHOC) == 0) {
 		release_dev(dev);
@@ -393,7 +393,7 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 dev_t
 reference_dev(dev_t dev)
 {
-	if (dev != NODEV) {
+	if (dev != NOCDEV) {
 		++dev->si_refs;
 		if (dev_ref_debug) {
 			printf("reference dev %p %s(minor=%08x) refs=%d\n", 
@@ -414,7 +414,7 @@ reference_dev(dev_t dev)
 void
 release_dev(dev_t dev)
 {
-	if (dev == NODEV)
+	if (dev == NOCDEV)
 		return;
 	if (free_devt) {
 		KKASSERT(dev->si_refs > 0);
@@ -475,7 +475,7 @@ devtoname(dev_t dev)
 	char *p;
 	const char *dname;
 
-	if (dev == NODEV)
+	if (dev == NOCDEV)
 		return("#nodev");
 	if (dev->si_name[0] == '#' || dev->si_name[0] == '\0') {
 		p = dev->si_name;

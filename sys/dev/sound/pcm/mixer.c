@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.11 2006/09/09 19:34:46 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.10 2006/07/28 02:17:38 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.11 2006/09/09 19:34:46 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -490,7 +490,7 @@ mixer_clone(void *arg, char *name, int namelen, dev_t *dev)
 {
 	dev_t pdev;
 
-	if (*dev != NODEV)
+	if (*dev != NOCDEV)
 		return;
 	if (strcmp(name, "mixer") == 0) {
 		pdev = make_adhoc_dev(&mixer_ops,

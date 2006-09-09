@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.96 2006/09/09 19:07:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.97 2006/09/09 19:34:46 dillon Exp $
  */
 
 /*
@@ -973,7 +973,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 	struct vnode *nvp;
 	int error;
 
-	if (dev == NODEV) {
+	if (dev == NOCDEV) {
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
@@ -995,7 +995,7 @@ v_associate_rdev(struct vnode *vp, dev_t dev)
 {
 	lwkt_tokref ilock;
 
-	if (dev == NULL || dev == NODEV)
+	if (dev == NULL || dev == NOCDEV)
 		return(ENXIO);
 	if (dev_is_good(dev) == 0)
 		return(ENXIO);
@@ -1187,7 +1187,7 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	if (vp->v_type != VCHR && vp->v_type != VBLK)
 		return(0);
 	if ((dev = vp->v_rdev) == NULL) {
-		if ((dev = udev2dev(vp->v_udev, vp->v_type == VBLK)) == NODEV)
+		if ((dev = udev2dev(vp->v_udev, vp->v_type == VBLK)) == NOCDEV)
 			return(0);
 	}
 	reference_dev(dev);
@@ -1307,7 +1307,7 @@ vfinddev(dev_t dev, enum vtype type, struct vnode **vpp)
 /*
  * Calculate the total number of references to a special device.  This
  * routine may only be called for VBLK and VCHR vnodes since v_rdev is
- * an overloaded field.  Since udev2dev can now return NODEV, we have
+ * an overloaded field.  Since udev2dev can now return NOCDEV, we have
  * to check for a NULL v_rdev.
  */
 int
@@ -1332,7 +1332,7 @@ count_udev(udev_t udev)
 {
 	dev_t dev;
 
-	if ((dev = udev2dev(udev, 0)) == NODEV)
+	if ((dev = udev2dev(udev, 0)) == NOCDEV)
 		return(0);
 	return(count_dev(dev));
 }
@@ -1535,7 +1535,7 @@ vfs_mountedon(struct vnode *vp)
 
 	if ((dev = vp->v_rdev) == NULL)
 		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
-	if (dev != NODEV && dev->si_mountpoint)
+	if (dev != NOCDEV && dev->si_mountpoint)
 		return (EBUSY);
 	return (0);
 }
@@ -2001,7 +2001,7 @@ dev_t
 vn_todev(struct vnode *vp)
 {
 	if (vp->v_type != VBLK && vp->v_type != VCHR)
-		return (NODEV);
+		return (NOCDEV);
 	KKASSERT(vp->v_rdev != NULL);
 	return (vp->v_rdev);
 }
@@ -2023,7 +2023,7 @@ vn_isdisk(struct vnode *vp, int *errp)
 
 	if ((dev = vp->v_rdev) == NULL)
 		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
-	if (dev == NULL || dev == NODEV) {
+	if (dev == NULL || dev == NOCDEV) {
 		if (errp != NULL)
 			*errp = ENXIO;
 		return (0);
