@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.22 2006/09/05 00:55:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.23 2006/09/10 06:05:35 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -2481,8 +2481,10 @@ acpiioctl(struct dev_ioctl_args *ap)
      * Currently, other ioctls just fetch information.
      * Not changing system behavior.
      */
-    if((ap->a_fflag & FWRITE) == 0)
-	return (EPERM);
+    if((ap->a_fflag & FWRITE) == 0) {
+	error = EPERM;
+	goto out;
+    }
 
     /* Core system ioctls. */
     switch (ap->a_cmd) {
