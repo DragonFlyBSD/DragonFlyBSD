@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.19 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.20 2006/09/10 05:02:14 sephe Exp $
  *
  */
 
@@ -695,7 +695,7 @@ labpcintr(void *arg)
  */
 
 static int
-lockout_multiple_open(cdev_t current, dev_t next)
+lockout_multiple_open(cdev_t current, cdev_t next)
 {
 	return ! (DIGITAL(current) && DIGITAL(next));
 }
