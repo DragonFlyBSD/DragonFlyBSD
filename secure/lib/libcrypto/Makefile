@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.8.2.1 2006/09/06 13:28:00 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.8.2.2 2006/09/10 12:07:07 corecode Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -12,7 +12,7 @@ NOLINT=		true
 
 .include "Makefile.inc"
 
-CONTRIBDIR= ${LCRYPTO_SRC}
+CONTRIBDIR= ${LCRYPTO_SRC}/crypto/rsa
 
 # base sources
 SRCS+=	cpt_err.c cryptlib.c cversion.c ebcdic.c ex_data.c mem.c mem_clr.c \
@@ -186,7 +186,7 @@ SRCS+=	rmd_dgst.c rmd_one.c
 # rsa
 SRCS+=	rsa_asn1.c rsa_chk.c rsa_depr.c rsa_eay.c rsa_err.c rsa_gen.c \
 	rsa_lib.c rsa_none.c rsa_null.c rsa_oaep.c rsa_pk1.c rsa_pss.c \
-	rsa_saos.c crypto,rsa,rsa_sign.c.patch rsa_ssl.c rsa_x931.c
+	rsa_saos.c rsa_sign.c.patch rsa_ssl.c rsa_x931.c
 
 # sha
 SRCS+=	sha1_one.c sha1dgst.c sha256.c sha512.c sha_dgst.c sha_one.c
