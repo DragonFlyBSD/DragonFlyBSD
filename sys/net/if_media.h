@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.13 2006/09/09 14:30:41 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.14 2006/09/10 02:57:28 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -464,6 +464,8 @@ struct ifmedia_description {
 	{ IFM_IEEE80211_HOSTAP, "hostap" },				\
 	{ IFM_IEEE80211_IBSS, "ibss" },					\
 	{ IFM_IEEE80211_IBSSMASTER, "ibss-master" },			\
+	{ IFM_IEEE80211_TURBO, "turbo" },				\
+	{ IFM_IEEE80211_MONITOR, "monitor" },				\
 	{ 0, NULL },							\
 }
 
