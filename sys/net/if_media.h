@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.14 2006/09/10 02:57:28 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.15 2006/09/10 03:40:11 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -215,7 +215,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 /* operating mode for multi-mode devices */
 #define	IFM_IEEE80211_11A	0x00010000	/* 5Ghz, OFDM mode */
 #define	IFM_IEEE80211_11B	0x00020000	/* Direct Sequence mode */
-#define	IFM_IEEE80211_11G	0x00030000	/* 2Ghz, CCK mode */
+#define	IFM_IEEE80211_11G	0x00030000	/* 2Ghz, OFDM mode */
 #define	IFM_IEEE80211_FH	0x00040000	/* 2Ghz, GFSK mode */
 
 /*
