@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.11 2006/07/28 02:17:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.12 2006/09/10 01:26:32 dillon Exp $
  *
  */
 
@@ -71,7 +71,7 @@ struct fw_device{
 
 struct firewire_softc {
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	dev_t dev;
+	cdev_t dev;
 #endif
 	struct firewire_comm *fc;
 };
@@ -302,7 +302,7 @@ struct fw_bind *fw_bindlookup (struct firewire_comm *, u_int16_t, u_int32_t);
 void fw_drain_txq (struct firewire_comm *);
 int fwdev_makedev (struct firewire_softc *);
 int fwdev_destroydev (struct firewire_softc *);
-void fwdev_clone (void *, char *, int, dev_t *);
+void fwdev_clone (void *, char *, int, cdev_t *);
 
 extern int firewire_debug;
 extern devclass_t firewire_devclass;

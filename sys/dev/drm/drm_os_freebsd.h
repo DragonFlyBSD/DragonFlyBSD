@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.19 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.20 2006/09/10 01:26:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -108,7 +108,7 @@
  * of the current process.  It should be a per-open unique pointer, but
  * code for that is not yet written */
 #define DRMFILE			void *
-#define DRM_IOCTL_ARGS		dev_t kdev, u_long cmd, caddr_t data, int flags, DRM_STRUCTPROC *p, DRMFILE filp
+#define DRM_IOCTL_ARGS		cdev_t kdev, u_long cmd, caddr_t data, int flags, DRM_STRUCTPROC *p, DRMFILE filp
 #define DRM_LOCK		lockmgr(&dev->dev_lock, LK_EXCLUSIVE | LK_RETRY)
 #define DRM_UNLOCK 		lockmgr(&dev->dev_lock, LK_RELEASE)
 #define DRM_SUSER(td)		suser(td)
@@ -374,7 +374,7 @@ extern d_close_t	DRM(close);
 extern d_read_t		DRM(read);
 extern d_poll_t		DRM(poll);
 extern d_mmap_t		DRM(mmap);
-extern int		DRM(open_helper)(dev_t kdev, int flags, int fmt, 
+extern int		DRM(open_helper)(cdev_t kdev, int flags, int fmt, 
 					 DRM_STRUCTPROC *p, drm_device_t *dev);
 extern drm_file_t	*DRM(find_file_by_proc)(drm_device_t *dev, 
 					 DRM_STRUCTPROC *p);

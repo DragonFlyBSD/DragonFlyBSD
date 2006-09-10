@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.11 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.12 2006/09/10 01:26:37 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.11 2006/09/09 19:34:46 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.12 2006/09/10 01:26:37 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -86,10 +86,10 @@ static struct dev_ops mixer_ops = {
 static eventhandler_tag mixer_ehtag;
 #endif
 
-static dev_t
+static cdev_t
 mixer_get_devt(device_t dev)
 {
-	dev_t pdev;
+	cdev_t pdev;
 	int unit;
 
 	unit = device_get_unit(dev);
@@ -191,7 +191,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 {
 	struct snd_mixer *m;
 	u_int16_t v;
-	dev_t pdev;
+	cdev_t pdev;
 	int i, unit;
 
 	m = (struct snd_mixer *)kobj_create(cls, M_MIXER, M_WAITOK | M_ZERO);
@@ -233,7 +233,7 @@ mixer_uninit(device_t dev)
 	int i;
 	int unit;
 	struct snd_mixer *m;
-	dev_t pdev;
+	cdev_t pdev;
 
 	pdev = mixer_get_devt(dev);
 	m = pdev->si_drv1;
@@ -267,7 +267,7 @@ int
 mixer_reinit(device_t dev)
 {
 	struct snd_mixer *m;
-	dev_t pdev;
+	cdev_t pdev;
 	int i;
 
 	pdev = mixer_get_devt(dev);
@@ -321,7 +321,7 @@ int
 mixer_hwvol_init(device_t dev)
 {
 	struct snd_mixer *m;
-	dev_t pdev;
+	cdev_t pdev;
 
 	pdev = mixer_get_devt(dev);
 	m = pdev->si_drv1;
@@ -344,7 +344,7 @@ void
 mixer_hwvol_mute(device_t dev)
 {
 	struct snd_mixer *m;
-	dev_t pdev;
+	cdev_t pdev;
 
 	pdev = mixer_get_devt(dev);
 	m = pdev->si_drv1;
@@ -365,7 +365,7 @@ mixer_hwvol_step(device_t dev, int left_step, int right_step)
 {
 	struct snd_mixer *m;
 	int level, left, right;
-	dev_t pdev;
+	cdev_t pdev;
 
 	pdev = mixer_get_devt(dev);
 	m = pdev->si_drv1;
@@ -394,7 +394,7 @@ mixer_hwvol_step(device_t dev, int left_step, int right_step)
 static int
 mixer_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snd_mixer *m;
 
 	m = dev->si_drv1;
@@ -411,7 +411,7 @@ mixer_open(struct dev_open_args *ap)
 static int
 mixer_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snd_mixer *m;
 
 	m = dev->si_drv1;
@@ -433,7 +433,7 @@ mixer_close(struct dev_close_args *ap)
 int
 mixer_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t arg = ap->a_data;
 	struct snd_mixer *m;
 	int ret, *arg_i = (int *)arg;
@@ -486,9 +486,9 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 
 #ifdef USING_DEVFS
 static void
-mixer_clone(void *arg, char *name, int namelen, dev_t *dev)
+mixer_clone(void *arg, char *name, int namelen, cdev_t *dev)
 {
-	dev_t pdev;
+	cdev_t pdev;
 
 	if (*dev != NOCDEV)
 		return;

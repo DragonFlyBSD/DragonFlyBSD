@@ -2,7 +2,7 @@
  * random.h -- A strong random number generator
  *
  * $FreeBSD: src/sys/sys/random.h,v 1.19.2.2 2002/09/17 17:11:54 sam Exp $
- * $DragonFly: src/sys/sys/random.h,v 1.9 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/random.h,v 1.10 2006/09/10 01:26:40 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -95,7 +95,7 @@ u_int read_random_unlimited(void *buf, u_int size);
 u_int write_random(const char *buf, u_int nbytes);
 #endif
 struct thread;
-int random_poll(dev_t dev, int events);
+int random_poll(cdev_t dev, int events);
 
 #endif /* _KERNEL */
 

@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.16 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.17 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static struct linesw snpdisc = {
  */
 struct snoop {
 	LIST_ENTRY(snoop)	snp_list;	/* List glue. */
-	dev_t			snp_target;	/* Target tty device. */
+	cdev_t			snp_target;	/* Target tty device. */
 	struct tty		*snp_tty;	/* Target tty pointer. */
 	u_long			 snp_len;	/* Possible length. */
 	u_long			 snp_base;	/* Data base. */
@@ -104,7 +104,7 @@ static int snooplinedisc;
 
 static LIST_HEAD(, snoop) snp_sclist = LIST_HEAD_INITIALIZER(&snp_sclist);
 
-static struct tty	*snpdevtotty (dev_t dev);
+static struct tty	*snpdevtotty (cdev_t dev);
 static int		snp_detach (struct snoop *snp);
 static int		snp_down (struct snoop *snp);
 static int		snp_in (struct snoop *snp, char *buf, int n);
@@ -165,7 +165,7 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 }
 
 static struct tty *
-snpdevtotty(dev_t dev)
+snpdevtotty(cdev_t dev)
 {
 	if ((dev_dflags(dev) & D_TTY) == 0)
 		return (NULL);
@@ -180,7 +180,7 @@ snpdevtotty(dev_t dev)
 static int
 snpwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct snoop *snp;
 	struct tty *tp;
@@ -218,7 +218,7 @@ tty_input:
 static int
 snpread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct snoop *snp;
 	int error, len, n, nblen;
@@ -360,7 +360,7 @@ snp_in(struct snoop *snp, char *buf, int n)
 static int
 snpopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 
 	if (dev->si_drv1 == NULL) {
@@ -433,7 +433,7 @@ detach_notty:
 static int
 snpclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 
 	snp = dev->si_drv1;
@@ -463,10 +463,10 @@ snp_down(struct snoop *snp)
 static int
 snpioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 	struct tty *tp, *tpo;
-	dev_t tdev;
+	cdev_t tdev;
 
 	snp = dev->si_drv1;
 	switch (ap->a_cmd) {
@@ -511,7 +511,7 @@ snpioctl(struct dev_ioctl_args *ap)
 		 * SNPGTTY happy, else we can't know what is device
 		 * major/minor for tty.
 		 */
-		*((dev_t *)ap->a_data) = snp->snp_target;
+		*((cdev_t *)ap->a_data) = snp->snp_target;
 		break;
 
 	case FIOASYNC:
@@ -546,7 +546,7 @@ snpioctl(struct dev_ioctl_args *ap)
 static int
 snppoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 	int revents;
 

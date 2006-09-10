@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.9 2004/12/20 01:16:14 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.10 2006/09/10 01:26:31 dillon Exp $
  */
 
 /*
@@ -1239,7 +1239,7 @@ bd_getbigeom(int bunit)
 }
 
 /*
- * Return a suitable dev_t value for (dev).
+ * Return a suitable cdev_t value for (dev).
  *
  * In the case where it looks like (dev) is a SCSI disk, we allow the number of
  * IDE disks to be specified in $num_ide_disks.  There should be a Better Way.

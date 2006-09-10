@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.19 2006/09/09 19:34:46 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ static void
 vfs_mountroot(void *junk)
 {
 	int	i;
-	dev_t	save_rootdev = rootdev;
+	cdev_t	save_rootdev = rootdev;
 	
 	/* 
 	 * The root filesystem information is compiled in, and we are
@@ -265,7 +265,7 @@ vfs_mountroot_ask(void)
 {
 	char name[128];
 	int i;
-	dev_t dev;
+	cdev_t dev;
 
 	for(;;) {
 		printf("\nManual root filesystem specification:\n");
@@ -331,17 +331,17 @@ gets(char *cp)
 }
 
 /*
- * Convert a given name to the dev_t of the disk-like device
+ * Convert a given name to the cdev_t of the disk-like device
  * it refers to.
  */
-dev_t
+cdev_t
 kgetdiskbyname(const char *name) 
 {
 	char *cp;
 	int nlen;
 	int cd, unit, slice, part;
-	dev_t dev;
-	dev_t rdev;
+	cdev_t dev;
+	cdev_t rdev;
 
 	/*
 	 * Get the base name of the device
@@ -434,7 +434,7 @@ kgetdiskbyname(const char *name)
 static int
 setrootbyname(char *name)
 {
-	dev_t diskdev;
+	cdev_t diskdev;
 
 	diskdev = kgetdiskbyname(name);
 	if (diskdev != NOCDEV) {
@@ -448,7 +448,7 @@ setrootbyname(char *name)
 #ifdef DDB
 DB_SHOW_COMMAND(disk, db_getdiskbyname)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if (modif[0] == '\0') {
 		db_error("usage: show disk/devicename");
@@ -456,7 +456,7 @@ DB_SHOW_COMMAND(disk, db_getdiskbyname)
 	}
 	dev = kgetdiskbyname(modif);
 	if (dev != NOCDEV)
-		db_printf("dev_t = %p\n", dev);
+		db_printf("cdev_t = %p\n", dev);
 	else
 		db_printf("No disk device matched.\n");
 }

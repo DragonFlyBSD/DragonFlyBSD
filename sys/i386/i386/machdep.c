@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.95 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.96 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1002,9 +1002,9 @@ SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo,
 SYSCTL_INT(_machdep, CPU_WALLCLOCK, wall_cmos_clock,
 	CTLFLAG_RW, &wall_cmos_clock, 0, "");
 
-extern u_long bootdev;		/* not a dev_t - encoding is different */
+extern u_long bootdev;		/* not a cdev_t - encoding is different */
 SYSCTL_ULONG(_machdep, OID_AUTO, guessed_bootdev,
-	CTLFLAG_RD, &bootdev, 0, "Boot device (not in dev_t format)");
+	CTLFLAG_RD, &bootdev, 0, "Boot device (not in cdev_t format)");
 
 /*
  * Initialize 386 and configure to run kernel
@@ -2522,7 +2522,7 @@ Debugger(const char *msg)
  * block number, and returned.
  */
 struct bio *
-bounds_check_with_label(dev_t dev, struct bio *bio,
+bounds_check_with_label(cdev_t dev, struct bio *bio,
 			struct disklabel *lp, int wlabel)
 {
 	struct bio *nbio;

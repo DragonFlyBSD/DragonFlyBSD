@@ -37,7 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/inode.h,v 1.2 2006/04/05 21:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/inode.h,v 1.3 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_INODE_H_
@@ -80,7 +80,7 @@ struct inode {
 	struct	vnode  *i_vnode;/* Vnode associated with this inode. */
 	struct	vnode  *i_devvp;/* Vnode for block I/O. */
 	uint32_t i_flag;	/* flags, see below */
-	dev_t	  i_dev;	/* Device associated with the inode. */
+	cdev_t	  i_dev;	/* Device associated with the inode. */
 	ino_t	  i_number;	/* The identity of the inode. */
 	int	  i_effnlink;	/* i_nlink when I/O completes */
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.17 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.18 2006/09/10 01:26:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -340,7 +340,7 @@ passregister(struct cam_periph *periph, void *arg)
 static int
 passopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	int unit, error;
@@ -411,7 +411,7 @@ passopen(struct dev_open_args *ap)
 static int
 passclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct 	cam_periph *periph;
 	struct	pass_softc *softc;
 	int	unit, error;
@@ -445,7 +445,7 @@ passclose(struct dev_close_args *ap)
 static int
 passstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
@@ -631,7 +631,7 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 static int
 passioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct 	cam_periph *periph;
 	struct	pass_softc *softc;

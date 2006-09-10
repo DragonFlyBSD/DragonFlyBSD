@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.15 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.16 2006/09/10 01:26:37 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -66,8 +66,8 @@ static video_switch_t	*vidsw_ini;
        video_switch_t	**vidsw = &vidsw_ini;
 
 #ifdef FB_INSTALL_CDEV
-static dev_t	vidcdevsw_ini;
-static dev_t	*vidcdevsw = &vidcdevsw_ini;
+static cdev_t	vidcdevsw_ini;
+static cdev_t	*vidcdevsw = &vidcdevsw_ini;
 #endif
 
 #define ARRAY_DELTA	4
@@ -78,7 +78,7 @@ vid_realloc_array(void)
 	video_adapter_t **new_adp;
 	video_switch_t **new_vidsw;
 #ifdef FB_INSTALL_CDEV
-	dev_t *new_cdevsw;
+	cdev_t *new_cdevsw;
 #endif
 	int newsize;
 
@@ -379,7 +379,7 @@ PSEUDO_SET(vfbattach, fb);
  *  Note: dev represents the actual video device, not the frame buffer
  */
 int
-fb_attach(dev_t dev, video_adapter_t *adp)
+fb_attach(cdev_t dev, video_adapter_t *adp)
 {
 	if (adp->va_index >= adapters)
 		return EINVAL;
@@ -400,7 +400,7 @@ fb_attach(dev_t dev, video_adapter_t *adp)
  *  Note: dev represents the actual video device, not the frame buffer
  */
 int
-fb_detach(dev_t dev, video_adapter_t *adp)
+fb_detach(cdev_t dev, video_adapter_t *adp)
 {
 	if (adp->va_index >= adapters)
 		return EINVAL;
@@ -419,9 +419,9 @@ fb_detach(dev_t dev, video_adapter_t *adp)
 static int
 fbopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit;
-	dev_t fdev;
+	cdev_t fdev;
 
 	unit = FB_UNIT(dev);
 	if (unit < 0 || unit >= adapters)
@@ -434,9 +434,9 @@ fbopen(struct dev_open_args *ap)
 static int
 fboperate(struct dev_generic_args *ap)
 {
-	dev_t dev = ap->a_dev;
+	cdev_t dev = ap->a_dev;
 	int unit;
-	dev_t fdev;
+	cdev_t fdev;
 
 	unit = FB_UNIT(dev);
 	if ((fdev = vidcdevsw[unit]) == NULL)

@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.21 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.22 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -648,7 +648,7 @@ cyattach_common(cy_iobase, cy_align)
 static int
 sioopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -829,7 +829,7 @@ out:
 static int
 sioclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		mynor;
 	struct tty	*tp;
@@ -937,7 +937,7 @@ comhardclose(com)
 static int
 siowrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int		mynor;
 	struct tty	*tp;
@@ -1555,7 +1555,7 @@ siointr1(com)
 static int
 sioioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	u_long cmd = ap->a_cmd;
 	struct com_s	*com;

@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.13 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -101,11 +101,11 @@ SYSCTL_INT(_hw_usb_urio, OID_AUTO, debug, CTLFLAG_RW,
 #define RIO_NODIR  2
 
 #if defined(__NetBSD__)
-int urioopen(dev_t, int, int, struct proc *);
-int urioclose(dev_t, int, int, struct proc *p);
-int urioread(dev_t, struct uio *uio, int);
-int uriowrite(dev_t, struct uio *uio, int);
-int urioioctl(dev_t, u_long, caddr_t, int, struct proc *);
+int urioopen(cdev_t, int, int, struct proc *);
+int urioclose(cdev_t, int, int, struct proc *p);
+int urioread(cdev_t, struct uio *uio, int);
+int uriowrite(cdev_t, struct uio *uio, int);
+int urioioctl(cdev_t, u_long, caddr_t, int, struct proc *);
 
 cdev_decl(urio);
 #define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
@@ -280,7 +280,7 @@ USB_ATTACH(urio)
 int
 urioopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif
@@ -321,7 +321,7 @@ urioopen(struct dev_open_args *ap)
 int
 urioclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif
@@ -346,7 +346,7 @@ urioclose(struct dev_close_args *ap)
 int
 urioread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
@@ -422,7 +422,7 @@ urioread(struct dev_read_args *ap)
 int
 uriowrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
@@ -491,7 +491,7 @@ uriowrite(struct dev_write_args *ap)
 int
 urioioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif

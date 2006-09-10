@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.10 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.11 2006/09/10 01:26:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,9 +81,9 @@ SYSCTL_INT(_hw_usb_ufm, OID_AUTO, debug, CTLFLAG_RW,
 #endif
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-int ufmopen(dev_t, int, int, usb_proc_ptr);
-int ufmclose(dev_t, int, int, usb_proc_ptr);
-int ufmioctl(dev_t, u_long, caddr_t, int, usb_proc_ptr);
+int ufmopen(cdev_t, int, int, usb_proc_ptr);
+int ufmclose(cdev_t, int, int, usb_proc_ptr);
+int ufmioctl(cdev_t, u_long, caddr_t, int, usb_proc_ptr);
 
 cdev_decl(ufm);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
@@ -204,7 +204,7 @@ USB_ATTACH(ufm)
 	sc->sc_epaddr = edesc->bEndpointAddress;
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	/* XXX no error trapping, no storing of dev_t */
+	/* XXX no error trapping, no storing of cdev_t */
 	dev_ops_add(&ufm_ops, -1, device_get_unit(self));
 	make_dev(&ufm_ops, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
@@ -227,7 +227,7 @@ USB_ATTACH(ufm)
 int
 ufmopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
@@ -249,7 +249,7 @@ ufmopen(struct dev_open_args *ap)
 int
 ufmclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
@@ -373,7 +373,7 @@ ufm_get_stat(struct ufm_softc *sc, caddr_t addr)
 int
 ufmioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct ufm_softc *sc;
 

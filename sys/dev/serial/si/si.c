@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.20 2006/09/10 01:26:36 dillon Exp $
  */
 
 #ifndef lint
@@ -97,7 +97,7 @@ enum si_mctl { GET, SET, BIS, BIC };
 static void si_command(struct si_port *, int, int);
 static int si_modem(struct si_port *, enum si_mctl, int);
 static void si_write_enable(struct si_port *, int);
-static int si_Sioctl(dev_t, u_long, caddr_t, int, struct ucred *);
+static int si_Sioctl(cdev_t, u_long, caddr_t, int, struct ucred *);
 static void si_start(struct tty *);
 static void si_stop(struct tty *, int);
 static timeout_t si_lstart;
@@ -619,7 +619,7 @@ try_next2:
 static	int
 siopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error;
 	int card, port;
 	struct si_softc *sc;
@@ -789,7 +789,7 @@ out:
 static	int
 siclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct si_port *pp;
 	struct tty *tp;
 	int error = 0;
@@ -900,7 +900,7 @@ sidtrwakeup(void *chan)
 static	int
 siwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct si_port *pp;
 	struct tty *tp;
 	int error = 0;
@@ -939,7 +939,7 @@ out:
 static	int
 siioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	u_long cmd = ap->a_cmd;
 	struct si_port *pp;
@@ -1112,7 +1112,7 @@ out:
  * Handle the Specialix ioctls. All MUST be called via the CONTROL device
  */
 static int
-si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
+si_Sioctl(cdev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 {
 	struct si_softc *xsc;
 	struct si_port *xpp;

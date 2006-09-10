@@ -37,7 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.7 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.8 2006/09/10 01:26:41 dillon Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -228,7 +228,7 @@ struct iso_mnt {
 	int im_flags;
 
 	struct mount *im_mountp;
-	dev_t im_dev;
+	cdev_t im_dev;
 	struct vnode *im_devvp;
 
 	int logical_block_size;

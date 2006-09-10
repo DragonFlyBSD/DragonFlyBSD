@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.17 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.18 2006/09/10 01:26:34 dillon Exp $
  *
  */
 
@@ -273,7 +273,7 @@ struct isa_driver wtdriver = { wtprobe, wtattach, "wt", };
 static int
 wtopen (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 	int error;
@@ -356,7 +356,7 @@ wtopen (struct dev_open_args *ap)
 static int
 wtclose (struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 
@@ -406,7 +406,7 @@ done:
 static int
 wtioctl (struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t arg = ap->a_data;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
@@ -506,7 +506,7 @@ wtioctl (struct dev_ioctl_args *ap)
 static int
 wtstrategy (struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	int u = minor(dev) & T_UNIT;

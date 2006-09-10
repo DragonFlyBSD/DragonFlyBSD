@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.20 2006/09/05 00:55:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.21 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*
@@ -709,7 +709,7 @@ mlx_submit_bio(struct mlx_softc *sc, struct bio *bio)
 int
 mlx_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mlx_softc	*sc = devclass_get_softc(mlx_devclass, unit);
 
@@ -723,7 +723,7 @@ mlx_open(struct dev_open_args *ap)
 int
 mlx_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mlx_softc	*sc = devclass_get_softc(mlx_devclass, unit);
 
@@ -737,7 +737,7 @@ mlx_close(struct dev_close_args *ap)
 int
 mlx_ioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int				unit = minor(dev);
     struct mlx_softc		*sc = devclass_get_softc(mlx_devclass, unit);
     struct mlx_rebuild_request	*rb = (struct mlx_rebuild_request *)ap->a_data;

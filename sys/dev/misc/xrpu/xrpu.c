@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.10 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.11 2006/09/10 01:26:35 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -116,7 +116,7 @@ xrpu_poll_pps(struct timecounter *tc)
 static int
 xrpu_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct softc *sc = devclass_get_softc(xrpu_devclass, dev2unit(dev));
 
 	if (!sc)
@@ -134,7 +134,7 @@ xrpu_close(struct dev_close_args *ap)
 static int
 xrpu_mmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct softc *sc = dev->si_drv1;
 
 	if (ap->a_offset >= 0x1000000) 
@@ -145,7 +145,7 @@ xrpu_mmap(struct dev_mmap_args *ap)
 static int
 xrpu_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct softc *sc = dev->si_drv1;
 	int i, error;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.6 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.7 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -44,18 +44,20 @@
 #include <sys/syslink.h>
 #endif
 
+struct cdev;
+
 /*
  * This structure is at the base of every device args structure
  */
 struct dev_generic_args {
 	struct syslink_desc *a_desc;
-	dev_t		a_dev;
+	struct cdev *a_dev;
 };
 
 typedef struct dev_generic_args dev_default_args;
 
 /*
- * int d_open(dev_t dev, int oflags, int devtype, struct ucred *cred)
+ * int d_open(cdev_t dev, int oflags, int devtype, struct ucred *cred)
  */
 struct dev_open_args {
 	struct dev_generic_args a_head;
@@ -65,7 +67,7 @@ struct dev_open_args {
 };
 
 /*
- * int d_close(dev_t dev, int fflag, int devtype)
+ * int d_close(cdev_t dev, int fflag, int devtype)
  */
 struct dev_close_args {
 	struct dev_generic_args a_head;
@@ -74,7 +76,7 @@ struct dev_close_args {
 };
 
 /*
- * int d_read(dev_t dev, struct uio *uio, int ioflag)
+ * int d_read(cdev_t dev, struct uio *uio, int ioflag)
  */
 struct dev_read_args {
 	struct dev_generic_args	a_head;
@@ -83,7 +85,7 @@ struct dev_read_args {
 };
 
 /*
- * int d_write(dev_t dev, struct uio *uio, int ioflag)
+ * int d_write(cdev_t dev, struct uio *uio, int ioflag)
  */
 struct dev_write_args {
 	struct dev_generic_args a_head;
@@ -92,7 +94,7 @@ struct dev_write_args {
 };
 
 /*
- * int d_ioctl(dev_t dev, u_long cmd, caddr_t data, int fflag,
+ * int d_ioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
  *	       struct ucred *cred)
  */
 struct dev_ioctl_args {
@@ -104,7 +106,7 @@ struct dev_ioctl_args {
 };
 
 /*
- * int d_poll(dev_t dev, int events)
+ * int d_poll(cdev_t dev, int events)
  */
 struct dev_poll_args {
 	struct dev_generic_args a_head;
@@ -112,7 +114,7 @@ struct dev_poll_args {
 };
 
 /*
- * int d_mmap(dev_t dev, vm_offset_t offset, int nprot)
+ * int d_mmap(cdev_t dev, vm_offset_t offset, int nprot)
  */
 struct dev_mmap_args {
 	struct dev_generic_args a_head;
@@ -122,7 +124,7 @@ struct dev_mmap_args {
 };
 
 /*
- * void d_strategy(dev_t dev, struct bio *bio)
+ * void d_strategy(cdev_t dev, struct bio *bio)
  */
 struct dev_strategy_args {
 	struct dev_generic_args a_head;
@@ -130,7 +132,7 @@ struct dev_strategy_args {
 };
 
 /*
- * void d_dump(dev_t dev)
+ * void d_dump(cdev_t dev)
  */
 struct dev_dump_args {
 	struct dev_generic_args a_head;
@@ -140,7 +142,7 @@ struct dev_dump_args {
 };
 
 /*
- * int d_psize(dev_t dev)
+ * int d_psize(cdev_t dev)
  */
 struct dev_psize_args {
 	struct dev_generic_args	a_head;
@@ -148,7 +150,7 @@ struct dev_psize_args {
 };
 
 /*
- * int d_kqfilter(dev_t dev, struct knote *kn)
+ * int d_kqfilter(cdev_t dev, struct knote *kn)
  */
 struct dev_kqfilter_args {
 	struct dev_generic_args a_head;
@@ -263,24 +265,24 @@ extern struct dev_ops dead_dev_ops;
 
 struct disk;
 
-int dev_dopen(dev_t dev, int oflags, int devtype, struct ucred *cred);
-int dev_dclose(dev_t dev, int fflag, int devtype);
-void dev_dstrategy(dev_t dev, struct bio *bio);
-void dev_dstrategy_chain(dev_t dev, struct bio *bio);
-int dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag,
+int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred);
+int dev_dclose(cdev_t dev, int fflag, int devtype);
+void dev_dstrategy(cdev_t dev, struct bio *bio);
+void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
+int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
 		struct ucred *cred);
-int dev_ddump(dev_t dev);
-int dev_dpsize(dev_t dev);
-int dev_dread(dev_t dev, struct uio *uio, int ioflag);
-int dev_dwrite(dev_t dev, struct uio *uio, int ioflag);
-int dev_dpoll(dev_t dev, int events);
-int dev_dkqfilter(dev_t dev, struct knote *kn);
-int dev_dmmap(dev_t dev, vm_offset_t offset, int nprot);
-int dev_dclone(dev_t dev);
+int dev_ddump(cdev_t dev);
+int dev_dpsize(cdev_t dev);
+int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
+int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);
+int dev_dpoll(cdev_t dev, int events);
+int dev_dkqfilter(cdev_t dev, struct knote *kn);
+int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot);
+int dev_dclone(cdev_t dev);
 
-const char *dev_dname(dev_t dev);
-int dev_dmaj(dev_t dev);
-int dev_dflags(dev_t dev);
+const char *dev_dname(cdev_t dev);
+int dev_dmaj(cdev_t dev);
+int dev_dflags(cdev_t dev);
 int dev_doperate(struct dev_generic_args *ap);
 int dev_doperate_ops(struct dev_ops *, struct dev_generic_args *ap);
 
@@ -319,16 +321,16 @@ void compile_dev_ops(struct dev_ops *);
 int dev_ops_add(struct dev_ops *, u_int mask, u_int match);
 int dev_ops_remove(struct dev_ops *, u_int mask, u_int match);
 void dev_ops_release(struct dev_ops *);
-struct dev_ops *dev_ops_add_override(dev_t, struct dev_ops *, u_int, u_int);
+struct dev_ops *dev_ops_add_override(cdev_t, struct dev_ops *, u_int, u_int);
 
-struct dev_ops *dev_ops_intercept(dev_t, struct dev_ops *);
-void dev_ops_restore(dev_t, struct dev_ops *);
+struct dev_ops *dev_ops_intercept(cdev_t, struct dev_ops *);
+void dev_ops_restore(cdev_t, struct dev_ops *);
 struct dev_ops *dev_ops_get(int x, int y);
 
 void destroy_all_devs(struct dev_ops *, u_int mask, u_int match);
-dev_t make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
+cdev_t make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
-dev_t make_adhoc_dev (struct dev_ops *ops, int minor);
+cdev_t make_adhoc_dev (struct dev_ops *ops, int minor);
 
 #endif
 

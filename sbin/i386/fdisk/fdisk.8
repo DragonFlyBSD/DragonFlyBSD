@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.9 2006/02/28 02:25:10 swildner Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.10 2006/09/10 01:26:28 dillon Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -9,7 +9,7 @@
 .Nd PC slice table maintenance program
 .Sh SYNOPSIS
 .Nm
-.Op Fl BIaistu
+.Op Fl BCIaistu
 .Op Fl b Ar bootcode
 .Op Fl p Ar diskimage
 .Op Fl 1234
@@ -69,6 +69,12 @@ Reinitialize the boot code contained in sector 0 of the disk.  Ignored
 if
 .Fl f
 is given.
+.It Fl C
+Normally if the CHS fields for a partition are set to all 1's if they
+would otherwise wrap.  This typically causes BIOSes to properly detect
+that the disk should be put in Large mode.  If this option is specified
+the CHS fields will be set to wrapped values instead.  This option may
+be needed on very old PCs.
 .It Fl f Ar configfile
 Set slice values using the file
 .Ar configfile .

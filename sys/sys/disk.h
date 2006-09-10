@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.9 2006/07/30 16:49:34 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.10 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -62,8 +62,8 @@ struct disk {
 	struct dev_ops		*d_raw_ops;	/* the raw device switch */
 	u_int			d_flags;
 	u_int			d_dsflags;
-	dev_t			d_rawdev;	/* backing raw device */
-	dev_t			d_cdev;		/* special whole-disk part */
+	cdev_t			d_rawdev;	/* backing raw device */
+	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
 	struct disklabel	d_label;
 	LIST_ENTRY(disk)	d_list;
@@ -73,9 +73,9 @@ struct disk {
 #define DISKFLAG_WANTED		0x2
 
 #ifdef _KERNEL
-dev_t disk_create (int unit, struct disk *disk, int flags, struct dev_ops *raw_ops);
+cdev_t disk_create (int unit, struct disk *disk, int flags, struct dev_ops *raw_ops);
 void disk_destroy (struct disk *disk);
-int disk_dumpcheck (dev_t dev, u_int *count, u_int *blkno, u_int *secsize);
+int disk_dumpcheck (cdev_t dev, u_int *count, u_int *blkno, u_int *secsize);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);
 #endif /* _KERNEL */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf.h,v 1.6 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf.h,v 1.2 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf.h,v 1.3 2006/09/10 01:26:41 dillon Exp $
  */
 
 #define UDF_HASHTBLSIZE 100
@@ -34,7 +34,7 @@ struct udf_node {
 	struct vnode	*i_vnode;
 	struct vnode	*i_devvp;
 	struct udf_mnt	*udfmp;
-	dev_t		i_dev;
+	cdev_t		i_dev;
 	ino_t		hash_id;
 	long		diroff;
 	struct file_entry *fentry;
@@ -43,7 +43,7 @@ struct udf_node {
 struct udf_mnt {
 	int			im_flags;
 	struct mount		*im_mountp;
-	dev_t			im_dev;
+	cdev_t			im_dev;
 	struct vnode		*im_devvp;
 	struct netexport	im_export;
 	int			bsize;

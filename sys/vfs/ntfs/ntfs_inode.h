@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_inode.h,v 1.6 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.6 2005/11/19 17:19:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.7 2006/09/10 01:26:41 dillon Exp $
  */
 
 /* These flags are kept in i_flag. */
@@ -59,7 +59,7 @@
 
 struct ntnode {
 	struct vnode   *i_devvp;	/* vnode of blk dev we live on */
-	dev_t           i_dev;		/* Device associated with the inode. */
+	cdev_t           i_dev;		/* Device associated with the inode. */
 
 	LIST_ENTRY(ntnode)	i_hash;
 	struct ntnode  *i_next;

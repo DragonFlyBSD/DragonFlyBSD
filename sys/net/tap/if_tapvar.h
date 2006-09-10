@@ -35,7 +35,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tapvar.h,v 1.3.2.1 2000/07/27 13:57:05 nsayer Exp $
- * $DragonFly: src/sys/net/tap/if_tapvar.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tapvar.h,v 1.4 2006/09/10 01:26:40 dillon Exp $
  * $Id: if_tapvar.h,v 0.6 2000/07/11 02:16:08 max Exp $
  */
 
@@ -45,7 +45,7 @@
 struct tap_softc {
 	struct arpcom	arpcom;			/* ethernet common data      */
 #define tap_if		arpcom.ac_if
-	dev_t		tap_dev;		/* device                    */
+	cdev_t		tap_dev;		/* device                    */
 
 	u_short		tap_flags;		/* misc flags                */
 #define	TAP_OPEN	(1 << 0)

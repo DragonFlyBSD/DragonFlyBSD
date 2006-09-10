@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.14 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.15 2006/09/10 01:26:36 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -125,7 +125,7 @@
  */
 #define TWE_PLATFORM_SOFTC								\
     device_t			twe_dev;		/* bus device */		\
-    dev_t			twe_dev_t;		/* control device */		\
+    cdev_t			twe_dev_t;		/* control device */		\
     struct resource		*twe_io;		/* register interface window */	\
     bus_space_handle_t		twe_bhandle;		/* bus space handle */		\
     bus_space_tag_t		twe_btag;		/* bus space tag */		\

@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.7 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.8 2006/09/10 01:26:40 dillon Exp $
  *
  */
 
@@ -86,7 +86,7 @@ NETGRAPH_INIT(device, &typestruct);
 struct ngd_connection {
 	SLIST_ENTRY(ngd_connection) links;
 
-	dev_t 	ngddev;
+	cdev_t 	ngddev;
 	struct 	ng_hook *active_hook;
 	char	*readq;
 	int 	loc;
@@ -418,7 +418,7 @@ ng_device_disconnect(hook_p hook)
  * the device is opened 
  */
 static int
-ngdopen(dev_t dev, int flag, int mode, struct thread *td)
+ngdopen(cdev_t dev, int flag, int mode, struct thread *td)
 {
 
 #ifdef NGD_DEBUG
@@ -432,7 +432,7 @@ ngdopen(dev_t dev, int flag, int mode, struct thread *td)
  * the device is closed 
  */
 static int
-ngdclose(dev_t dev, int flag, int mode, struct thread *td)
+ngdclose(cdev_t dev, int flag, int mode, struct thread *td)
 {
 
 #ifdef NGD_DEBUG
@@ -450,7 +450,7 @@ ngdclose(dev_t dev, int flag, int mode, struct thread *td)
  * 
  */
 static int
-ngdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+ngdioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	struct ngd_softc *sc = &ngd_softc;
 	struct ngd_connection * connection = NULL;
@@ -505,7 +505,7 @@ nomsg:
  * uiomove.
  */
 static int
-ngdread(dev_t dev, struct uio *uio, int flag)
+ngdread(cdev_t dev, struct uio *uio, int flag)
 {
 	int ret = 0, amnt;
 	char buffer[uio->uio_resid+1];
@@ -556,7 +556,7 @@ error:
  *
  */
 static int
-ngdwrite(dev_t dev, struct uio *uio, int flag)
+ngdwrite(cdev_t dev, struct uio *uio, int flag)
 {
 	int ret;
 	int error = 0;
@@ -606,7 +606,7 @@ error:
  * check if there is data available for read
  */
 static int
-ngdpoll(dev_t dev, int events, struct thread *td)
+ngdpoll(cdev_t dev, int events, struct thread *td)
 {
 	int revents = 0;
 	struct ngd_softc *sc = &ngd_softc;

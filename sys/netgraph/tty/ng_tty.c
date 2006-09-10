@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.13 2006/09/10 01:26:40 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -123,7 +123,7 @@ typedef struct ngt_sc *sc_p;
 #endif
 
 /* Line discipline methods */
-static int	ngt_open(dev_t dev, struct tty *tp);
+static int	ngt_open(cdev_t dev, struct tty *tp);
 static int	ngt_close(struct tty *tp, int flag);
 static int	ngt_read(struct tty *tp, struct uio *uio, int flag);
 static int	ngt_write(struct tty *tp, struct uio *uio, int flag);
@@ -190,7 +190,7 @@ static int ngt_ldisc;
  * Called from device open routine or ttioctl() at >= splsofttty()
  */
 static int
-ngt_open(dev_t dev, struct tty *tp)
+ngt_open(cdev_t dev, struct tty *tp)
 {
 	struct thread *td = curthread;	/* XXX */
 	char name[sizeof(NG_TTY_NODE_TYPE) + 8];

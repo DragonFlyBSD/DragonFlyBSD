@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.17 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.18 2006/09/10 01:26:39 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -133,7 +133,7 @@ i4battach(void *dummy)
 PDEVSTATIC int
 i4bopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	if (minor(dev))
 		return(ENXIO);
@@ -167,7 +167,7 @@ i4bclose(struct dev_close_args *ap)
 PDEVSTATIC int
 i4bread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct mbuf *m;
 	int error = 0;
 
@@ -206,7 +206,7 @@ i4bread(struct dev_read_args *ap)
 PDEVSTATIC int
 i4bioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	call_desc_t *cd;
 	int error = 0;
@@ -766,7 +766,7 @@ diag_done:
 PDEVSTATIC int
 i4bpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int revents;
 
 	if (minor(dev))

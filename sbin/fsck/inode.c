@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.10 2006/09/10 01:26:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -380,7 +380,7 @@ cacheino(struct ufs1_dinode *dp, ino_t inumber)
 		malloc(sizeof(*inp) + (blks - 1) * sizeof(ufs_daddr_t));
 	if (inp == NULL)
 		errx(EEXIT, "cannot increase directory list");
-	inpp = &inphead[inumber % dirhash];
+	inpp = &inphead[DIRHASH(inumber)];
 	inp->i_nexthash = *inpp;
 	*inpp = inp;
 	inp->i_parent = inumber == ROOTINO ? ROOTINO : (ino_t)0;
@@ -407,7 +407,7 @@ getinoinfo(ino_t inumber)
 {
 	struct inoinfo *inp;
 
-	for (inp = inphead[inumber % dirhash]; inp; inp = inp->i_nexthash) {
+	for (inp = inphead[DIRHASH(inumber)]; inp; inp = inp->i_nexthash) {
 		if (inp->i_number != inumber)
 			continue;
 		return (inp);

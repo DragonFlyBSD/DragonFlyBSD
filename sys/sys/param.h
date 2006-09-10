@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.36 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.37 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -133,11 +133,13 @@
 #define NBPW	sizeof(int)	/* number of bytes per word (integer) */
 
 #define CMASK	022		/* default file mask: S_IWGRP|S_IWOTH */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define NOCDEV	(cdev_t)(-1)	/* non-existent device */
 #define NOUDEV	(udev_t)(-1)	/* non-existent device */
 #define NOMAJ	256		/* non-existent device */
-#else
+#endif
+
+#ifndef _KERNEL
 #define NODEV	(dev_t)(-1)	/* non-existent device */
 #endif
 

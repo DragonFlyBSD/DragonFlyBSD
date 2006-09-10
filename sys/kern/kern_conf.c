@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.14 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.15 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 
 #define cdevsw_ALLOCSTART	(NUMCDEVSW/2)
 
-MALLOC_DEFINE(M_DEVT, "dev_t", "dev_t storage");
+MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
 
 /*
  * This is the number of hash-buckets.  Experiements with 'real-life'
@@ -57,7 +57,7 @@ MALLOC_DEFINE(M_DEVT, "dev_t", "dev_t storage");
  */
 #define DEVT_HASH 83
 
-/* The number of dev_t's we can create before malloc(9) kick in.  */
+/* The number of cdev_t's we can create before malloc(9) kick in.  */
 #define DEVT_STASH 50
 
 static struct cdev devt_stash[DEVT_STASH];
@@ -70,12 +70,12 @@ int dev_ref_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0, "");
 
 /*
- * dev_t and u_dev_t primitives.  Note that the major number is always
+ * cdev_t and u_dev_t primitives.  Note that the major number is always
  * extracted from si_udev, not from si_devsw, because si_devsw is replaced
  * when a device is destroyed.
  */
 int
-major(dev_t x)
+major(cdev_t x)
 {
 	if (x == NOCDEV)
 		return NOUDEV;
@@ -83,7 +83,7 @@ major(dev_t x)
 }
 
 int
-minor(dev_t x)
+minor(cdev_t x)
 {
 	if (x == NOCDEV)
 		return NOUDEV;
@@ -91,7 +91,7 @@ minor(dev_t x)
 }
 
 int
-lminor(dev_t x)
+lminor(cdev_t x)
 {
 	int i;
 
@@ -113,7 +113,7 @@ lminor(dev_t x)
  * the caller wishes to track additional references.
  */
 static
-dev_t
+cdev_t
 hashdev(struct dev_ops *ops, int x, int y)
 {
 	struct cdev *si;
@@ -158,7 +158,7 @@ hashdev(struct dev_ops *ops, int x, int y)
  * Convert a device pointer to a device number
  */
 udev_t
-dev2udev(dev_t x)
+dev2udev(cdev_t x)
 {
 	if (x == NOCDEV)
 		return NOUDEV;
@@ -174,10 +174,10 @@ dev2udev(dev_t x)
  * for the requested major number.  NOCDEV is returned if the major number
  * has not been registered.
  */
-dev_t
+cdev_t
 udev2dev(udev_t x, int b)
 {
-	dev_t dev;
+	cdev_t dev;
 	struct dev_ops *ops;
 
 	if (x == NOUDEV || b != 0)
@@ -190,7 +190,7 @@ udev2dev(udev_t x, int b)
 }
 
 int
-dev_is_good(dev_t dev)
+dev_is_good(cdev_t dev)
 {
 	if (dev != NOCDEV && dev->si_ops != &dead_dev_ops)
 		return(1);
@@ -233,11 +233,11 @@ makeudev(int x, int y)
  * If an entry already exists, this function will set (or override)
  * its cred requirements and name (XXX DEVFS interface).
  */
-dev_t
+cdev_t
 make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid, 
 	int perms, const char *fmt, ...)
 {
-	dev_t	dev;
+	cdev_t	dev;
 	__va_list ap;
 	int i;
 
@@ -262,10 +262,10 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
  * This function is similar to make_dev() but no cred information or name
  * need be specified.
  */
-dev_t
+cdev_t
 make_adhoc_dev(struct dev_ops *ops, int minor)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	dev = hashdev(ops, ops->head.maj, minor);
 	return(dev);
@@ -275,10 +275,10 @@ make_adhoc_dev(struct dev_ops *ops, int minor)
  * This function is similar to make_dev() except the new device is created
  * using an old device as a template.
  */
-dev_t
-make_sub_dev(dev_t odev, int minor)
+cdev_t
+make_sub_dev(cdev_t odev, int minor)
 {
-	dev_t	dev;
+	cdev_t	dev;
 
 	dev = hashdev(odev->si_ops, umajor(odev->si_udev), minor);
 
@@ -302,7 +302,7 @@ make_sub_dev(dev_t odev, int minor)
  * a device must have its own reference to it first.
  */
 void
-destroy_dev(dev_t dev)
+destroy_dev(cdev_t dev)
 {
 	int hash;
 
@@ -362,8 +362,8 @@ void
 destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 {
 	int i;
-	dev_t dev;
-	dev_t ndev;
+	cdev_t dev;
+	cdev_t ndev;
 
 	mask = uminor(mask);
 	for (i = 0; i < DEVT_HASH; ++i) {
@@ -390,8 +390,8 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
  * obtain a reference on the device.  The ad-hoc reference you get with
  * make_dev() and friends is NOT sufficient to be able to call destroy_dev().
  */
-dev_t
-reference_dev(dev_t dev)
+cdev_t
+reference_dev(cdev_t dev)
 {
 	if (dev != NOCDEV) {
 		++dev->si_refs;
@@ -412,7 +412,7 @@ reference_dev(dev_t dev)
  * because si_ops could already be pointing at dead_dev_ops.
  */
 void
-release_dev(dev_t dev)
+release_dev(cdev_t dev)
 {
 	if (dev == NOCDEV)
 		return;
@@ -468,7 +468,7 @@ release_dev(dev_t dev)
 }
 
 const char *
-devtoname(dev_t dev)
+devtoname(cdev_t dev)
 {
 	int mynor;
 	int len;

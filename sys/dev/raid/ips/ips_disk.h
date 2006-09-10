@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.h,v 1.2 2003/08/22 06:00:27 imp Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.h,v 1.2 2004/10/06 02:12:31 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.h,v 1.3 2006/09/10 01:26:35 dillon Exp $
  */
 
 
@@ -62,7 +62,7 @@ typedef struct ipsdisk_softc {
 	int		disk_number;
 	u_int32_t 	state;
 	struct disk 	ipsd_disk;
-	dev_t		ipsd_dev_t;
+	cdev_t		ipsd_dev_t;
 	ips_softc_t	*sc;
 	struct devstat	stats;
 } ipsdisk_softc_t;

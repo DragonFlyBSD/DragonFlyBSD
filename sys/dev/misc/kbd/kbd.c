@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.20 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.21 2006/09/10 01:26:34 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -459,7 +459,7 @@ static struct dev_ops kbd_ops = {
 int
 kbd_attach(keyboard_t *kbd)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if (kbd->kb_index >= keyboards)
 		return EINVAL;
@@ -481,7 +481,7 @@ kbd_attach(keyboard_t *kbd)
 int
 kbd_detach(keyboard_t *kbd)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if (kbd->kb_index >= keyboards)
 		return EINVAL;
@@ -490,7 +490,7 @@ kbd_detach(keyboard_t *kbd)
 
 	/*
 	 * Deal with refs properly.  The KBD driver really ought to have
-	 * recorded the dev_t separately.
+	 * recorded the cdev_t separately.
 	 */
 	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NOCDEV) {
 		if (dev->si_drv1) {
@@ -516,7 +516,7 @@ static kbd_callback_func_t genkbd_event;
 static int
 genkbdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	int i;
@@ -556,7 +556,7 @@ genkbdopen(struct dev_open_args *ap)
 static int
 genkbdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 
@@ -582,7 +582,7 @@ genkbdclose(struct dev_close_args *ap)
 static int
 genkbdread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
@@ -636,7 +636,7 @@ genkbdread(struct dev_read_args *ap)
 static int
 genkbdwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
@@ -648,7 +648,7 @@ genkbdwrite(struct dev_write_args *ap)
 static int
 genkbdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	int error;
 
@@ -664,7 +664,7 @@ genkbdioctl(struct dev_ioctl_args *ap)
 static int
 genkbdpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	int revents;

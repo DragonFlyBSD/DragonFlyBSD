@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.17 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.18 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*
@@ -216,7 +216,7 @@ cttyioctl(struct dev_ioctl_args *ap)
 static	int
 cttypoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct vnode *ttyvp;
 	struct proc *p = curproc;
 

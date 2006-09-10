@@ -1,11 +1,11 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.15 2006/05/18 02:22:46 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.16 2006/09/10 01:26:41 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
-	/tmp/loop1 /tmp/loop2 /tmp/loop3 \
+	/tmp/loop1 /tmp/loop2 /tmp/loop3 /tmp/loop4 \
 	/tmp/call1 /tmp/call2 /tmp/call3 /tmp/cmp \
-	/tmp/mt2 /tmp/mt3 \
+	/tmp/mt2 /tmp/mt3 /tmp/mt4 \
 	/tmp/fork1 /tmp/pipe1 /tmp/pipe2 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
 	/tmp/mbw1 \
@@ -55,6 +55,9 @@ all:	$(TARGETS)
 /tmp/loop3: loop3.c blib.c
 	$(CC) $(CFLAGS) loop3.c blib.c -o /tmp/loop3
 
+/tmp/loop4: loop4.c blib.c
+	$(CC) $(CFLAGS) loop4.c blib.c -o /tmp/loop4
+
 /tmp/call1: call1.c blib.c
 	$(CC) $(CFLAGS) call1.c blib.c -o /tmp/call1
 
@@ -78,6 +81,9 @@ all:	$(TARGETS)
 
 /tmp/mt3: mutex3.c blib.c mtx.s
 	$(CC) $(CFLAGS) mutex3.c blib.c mtx.s -o /tmp/mt3
+
+/tmp/mt4: mutex4.c blib.c mtx.s
+	$(CC) $(CFLAGS) mutex4.c blib.c mtx.s -o /tmp/mt4
 
 /tmp/sw1: quicksw1.c blib.c sw.S
 	$(CC) $(CFLAGS) -DUSE_ALL quicksw1.c blib.c sw.S -o /tmp/sw1

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.12 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.13 2006/09/10 01:26:35 dillon Exp $
  */
 
 /*
@@ -100,7 +100,7 @@ static driver_t idad_driver = {
 DRIVER_MODULE(idad, ida, idad_driver, idad_devclass, 0, 0);
 
 static __inline struct idad_softc *
-idad_getsoftc(dev_t dev)
+idad_getsoftc(cdev_t dev)
 {
 
 	return ((struct idad_softc *)dev->si_drv1);
@@ -109,7 +109,7 @@ idad_getsoftc(dev_t dev)
 static int
 idad_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 	struct disklabel *label;
 
@@ -133,7 +133,7 @@ idad_open(struct dev_open_args *ap)
 static int
 idad_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 
 	drv = idad_getsoftc(dev);
@@ -151,7 +151,7 @@ idad_close(struct dev_close_args *ap)
 static int
 idad_strategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct idad_softc *drv;
@@ -198,7 +198,7 @@ done:
 static int
 idad_dump(struct dev_dump_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 	long blkcnt;
 	int i, error, dumppages;
@@ -269,7 +269,7 @@ idad_attach(device_t dev)
 	struct ida_drive_info dinfo;
 	struct idad_softc *drv;
 	device_t parent;
-	dev_t dsk;
+	cdev_t dsk;
 	int error;
 
 	drv = (struct idad_softc *)device_get_softc(dev);

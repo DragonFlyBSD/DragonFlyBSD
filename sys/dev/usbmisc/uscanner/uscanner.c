@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.13 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -375,7 +375,7 @@ USB_ATTACH(uscanner)
 int
 uscanneropen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 	int unit = USCANNERUNIT(dev);
 	usbd_status err;
@@ -439,7 +439,7 @@ uscanneropen(struct dev_open_args *ap)
 int
 uscannerclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 
 	USB_GET_SC(uscanner, USCANNERUNIT(dev), sc);
@@ -538,7 +538,7 @@ uscanner_do_read(struct uscanner_softc *sc, struct uio *uio, int flag)
 int
 uscannerread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 	int error;
 
@@ -589,7 +589,7 @@ uscanner_do_write(struct uscanner_softc *sc, struct uio *uio, int flag)
 int
 uscannerwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 	int error;
 
@@ -672,7 +672,7 @@ USB_DETACH(uscanner)
 int
 uscannerpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 	int revents = 0;
 

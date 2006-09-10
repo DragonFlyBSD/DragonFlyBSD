@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.24 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.25 2006/09/10 01:26:32 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -998,7 +998,7 @@ cdregisterexit:
 static int
 cdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	int unit, error;
@@ -1054,7 +1054,7 @@ cdopen(struct dev_open_args *ap)
 static int
 cdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;
 	int	unit, error;
@@ -1428,7 +1428,7 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
 static int
 cdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
@@ -1925,7 +1925,7 @@ cdgetpagesize(int page_num)
 static int
 cdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;

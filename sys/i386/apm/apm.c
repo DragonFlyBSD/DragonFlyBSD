@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.16 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.17 2006/09/10 01:26:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1099,7 +1099,7 @@ apm_attach(device_t dev)
 static int
 apmopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
 
@@ -1128,7 +1128,7 @@ apmopen(struct dev_open_args *ap)
 static int
 apmclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
 
@@ -1152,7 +1152,7 @@ apmclose(struct dev_close_args *ap)
 static int
 apmioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	struct apm_bios_arg *args;
 	int error = 0;
@@ -1308,7 +1308,7 @@ apmioctl(struct dev_ioctl_args *ap)
 static int
 apmwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct apm_softc *sc = &apm_softc;
 	u_int event_type;

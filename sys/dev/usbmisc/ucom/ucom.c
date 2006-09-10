@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.20 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.21 2006/09/10 01:26:37 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -169,7 +169,7 @@ ucom_attach(struct ucom_softc *sc)
 {
 	struct tty *tp;
 	int unit;
-	dev_t dev;
+	cdev_t dev;
 
 	unit = device_get_unit(sc->sc_dev);
 
@@ -253,7 +253,7 @@ ucom_shutdown(struct ucom_softc *sc)
 Static int
 ucomopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UCOMUNIT(dev);
 	struct ucom_softc *sc;
 	usbd_status err;
@@ -449,7 +449,7 @@ bad:
 static int
 ucomclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ucom_softc *sc;
 	struct tty *tp;
 
@@ -499,7 +499,7 @@ quit:
 static int
 ucomread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ucom_softc *sc;
 	struct tty *tp;
 	int error;
@@ -522,7 +522,7 @@ ucomread(struct dev_read_args *ap)
 static int
 ucomwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ucom_softc *sc;
 	struct tty *tp;
 	int error;
@@ -545,7 +545,7 @@ ucomwrite(struct dev_write_args *ap)
 static int
 ucomioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ucom_softc *sc;
 	struct tty *tp;
 	int error;

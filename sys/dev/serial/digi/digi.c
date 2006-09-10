@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.7 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.8 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*-
@@ -711,7 +711,7 @@ digi_disc_optim(struct tty *tp, struct termios *t, struct digi_p *port)
 static int
 digiopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct digi_softc *sc;
 	struct tty *tp;
 	int unit;
@@ -876,7 +876,7 @@ out:
 static int
 digiclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int unit, pnum;
@@ -956,7 +956,7 @@ digihardclose(struct digi_p *port)
 static int
 digiread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int error, unit, pnum;
@@ -983,7 +983,7 @@ digiread(struct dev_read_args *ap)
 static int
 digiwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int error, unit, pnum;
@@ -1054,7 +1054,7 @@ digi_loaddata(struct digi_softc *sc)
 static int
 digiioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	int unit, pnum, mynor, error;

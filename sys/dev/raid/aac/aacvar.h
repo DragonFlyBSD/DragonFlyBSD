@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.13 2006/06/10 20:00:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.14 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -118,7 +118,7 @@ struct aac_container
 struct aac_disk 
 {
 	device_t			ad_dev;
-	dev_t				ad_dev_t;
+	cdev_t				ad_dev_t;
 	struct aac_softc		*ad_controller;
 	struct aac_container		*ad_container;
 	struct disk			ad_disk;
@@ -348,7 +348,7 @@ struct aac_softc
 	struct intr_config_hook	aac_ich;
 
 	/* management interface */
-	dev_t			aac_dev_t;
+	cdev_t			aac_dev_t;
 	aac_lock_t		aac_aifq_lock;
 	struct aac_aif_command	aac_aifq[AAC_AIFQ_LENGTH];
 	int			aac_aifq_head;

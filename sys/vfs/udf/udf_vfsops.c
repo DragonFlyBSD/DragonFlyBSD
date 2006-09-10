@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.22 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.23 2006/09/10 01:26:41 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -230,7 +230,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	struct logvol_desc *lvd;
 	struct fileset_desc *fsd;
 	struct file_entry *root_fentry;
-	dev_t dev;
+	cdev_t dev;
 	uint32_t sector, size, mvds_start, mvds_end;
 	uint32_t fsd_offset = 0;
 	uint16_t part_num = 0, fsd_part = 0;

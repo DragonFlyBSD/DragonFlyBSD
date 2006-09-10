@@ -37,7 +37,7 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/dinode.h,v 1.2 2006/04/05 21:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/dinode.h,v 1.3 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_DINODE_H_
@@ -101,7 +101,7 @@ struct ext2_dinode {
  * The di_db fields may be overlaid with other information for
  * file types that do not have associated disk storage. Block
  * and character devices overlay the first data block with their
- * dev_t value. Short symbolic links place their path in the
+ * cdev_t value. Short symbolic links place their path in the
  * di_db area.
  */
 #define	di_inumber	di_u.inumber

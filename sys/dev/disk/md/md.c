@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.13 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.14 2006/09/10 01:26:34 dillon Exp $
  *
  */
 
@@ -70,7 +70,7 @@ struct md_s {
 	struct devstat stats;
 	struct bio_queue_head bio_queue;
 	struct disk disk;
-	dev_t dev;
+	cdev_t dev;
 	int busy;
 	enum {MD_MALLOC, MD_PRELOAD} type;
 	unsigned nsect;
@@ -89,7 +89,7 @@ static int mdunits;
 static int
 mdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
 	struct disklabel *dl;
 
@@ -115,7 +115,7 @@ mdopen(struct dev_open_args *ap)
 static int
 mdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	if (md_debug)
 		printf("mdioctl(%s %lx %p %x)\n",
@@ -127,7 +127,7 @@ mdioctl(struct dev_ioctl_args *ap)
 static int
 mdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct md_s *sc;
@@ -151,7 +151,7 @@ mdstrategy(struct dev_strategy_args *ap)
 static int
 mdstrategy_malloc(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	unsigned secno, nsec, secval, uc;
@@ -294,7 +294,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 static int
 mdstrategy_preload(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	devstat_trans_flags dop;

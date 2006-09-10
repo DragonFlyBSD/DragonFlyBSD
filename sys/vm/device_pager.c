@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.10 2006/03/27 01:54:18 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.11 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,7 +94,7 @@ dev_pager_init(void)
 static vm_object_t
 dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
-	dev_t dev;
+	cdev_t dev;
 	vm_object_t object;
 	unsigned int npages;
 	vm_offset_t off;
@@ -184,7 +184,7 @@ dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	vm_offset_t offset;
 	vm_paddr_t paddr;
 	vm_page_t page;
-	dev_t dev;
+	cdev_t dev;
 	int prot;
 	int i;
 

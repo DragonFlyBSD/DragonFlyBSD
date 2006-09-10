@@ -32,7 +32,7 @@
  *
  * @(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.3 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.4 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ ext2_uninit(struct vfsconf *vfc)
  * to it. If it is in core, return it, even if it is locked.
  */
 struct vnode *
-ext2_ihashlookup(dev_t dev, ino_t inum)
+ext2_ihashlookup(cdev_t dev, ino_t inum)
 {
 	struct inode *ip;
 	lwkt_tokref ilock;
@@ -115,7 +115,7 @@ ext2_ihashlookup(dev_t dev, ino_t inum)
  * play with the protected data structure.
  */
 struct vnode *
-ext2_ihashget(dev_t dev, ino_t inum)
+ext2_ihashget(cdev_t dev, ino_t inum)
 {
 	lwkt_tokref ilock;
 	struct inode *ip;
@@ -154,7 +154,7 @@ loop:
  * reallocate of its inode number before we have had a chance to recycle it.
  */
 int
-ext2_ihashcheck(dev_t dev, ino_t inum)
+ext2_ihashcheck(cdev_t dev, ino_t inum)
 {
 	lwkt_tokref ilock;
 	struct inode *ip;

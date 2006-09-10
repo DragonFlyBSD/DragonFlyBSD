@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.27 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.28 2006/09/10 01:26:34 dillon Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ struct vn_softc {
 	int		 sc_maxactive;	/* max # of active requests 	*/
 	struct buf	 sc_tab;	/* transfer queue 		*/
 	u_long		 sc_options;	/* options 			*/
-	dev_t		 sc_devlist;	/* devices that refer to this unit */
+	cdev_t		 sc_devlist;	/* devices that refer to this unit */
 	SLIST_ENTRY(vn_softc) sc_list;
 };
 
@@ -140,13 +140,13 @@ static u_long	vn_options;
 static int	vnsetcred (struct vn_softc *vn, struct ucred *cred);
 static void	vnclear (struct vn_softc *vn);
 static int	vn_modevent (module_t, int, void *);
-static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct ucred *cred);
-static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct ucred *cred);
+static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
+static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
 
 static	int
 vnclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn = dev->si_drv1;
 
 	IFOPT(vn, VN_LABELS)
@@ -160,7 +160,7 @@ vnclose(struct dev_close_args *ap)
  * attach the device to it.
  */
 static struct vn_softc *
-vnfindvn(dev_t dev)
+vnfindvn(cdev_t dev)
 {
 	int unit;
 	struct vn_softc *vn;
@@ -200,7 +200,7 @@ vnfindvn(dev_t dev)
 static	int
 vnopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 
 	/*
@@ -271,7 +271,7 @@ vnopen(struct dev_open_args *ap)
 static int
 vnstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp;
 	struct bio *nbio;
@@ -432,7 +432,7 @@ done:
 static	int
 vnioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 	struct vn_ioctl *vio;
 	int error;
@@ -538,7 +538,7 @@ vnioctl(struct dev_ioctl_args *ap)
  */
 
 static int
-vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
+vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		 int flag, struct ucred *cred)
 {
 	struct vattr vattr;
@@ -619,7 +619,7 @@ done:
  */
 
 static int
-vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
+vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		 int flag, struct ucred *cred)
 {
 	int error;
@@ -755,7 +755,7 @@ vnclear(struct vn_softc *vn)
 static int
 vnsize(struct dev_psize_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 
 	vn = dev->si_drv1;
@@ -771,7 +771,7 @@ static int
 vn_modevent(module_t mod, int type, void *data)
 {
 	struct vn_softc *vn;
-	dev_t dev;
+	cdev_t dev;
 
 	switch (type) {
 	case MOD_LOAD:
@@ -784,7 +784,7 @@ vn_modevent(module_t mod, int type, void *data)
 			SLIST_REMOVE_HEAD(&vn_list, sc_list);
 			if (vn->sc_flags & VNF_INITED)
 				vnclear(vn);
-			/* Cleanup all dev_t's that refer to this unit */
+			/* Cleanup all cdev_t's that refer to this unit */
 			while ((dev = vn->sc_devlist) != NULL) {
 				vn->sc_devlist = dev->si_drv2;
 				dev->si_drv1 = dev->si_drv2 = NULL;

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.15 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.16 2006/09/10 01:26:34 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -114,7 +114,7 @@ ppsattach(device_t ppsdev)
 static	int
 ppsopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 	device_t ppsdev = UNITODEVICE(unit);
@@ -144,7 +144,7 @@ ppsopen(struct dev_open_args *ap)
 static	int
 ppsclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 	device_t ppsdev = UNITODEVICE(unit);
@@ -182,7 +182,7 @@ ppsintr(void *arg)
 static int
 ppsioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 

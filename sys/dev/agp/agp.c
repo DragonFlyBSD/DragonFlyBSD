@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.23 2006/09/05 00:55:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.24 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -726,7 +726,7 @@ agp_unbind_user(device_t dev, agp_unbind *unbind)
 static int
 agp_open(struct dev_open_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 
@@ -741,7 +741,7 @@ agp_open(struct dev_open_args *ap)
 static int
 agp_close(struct dev_close_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 	struct agp_memory *mem;
@@ -765,7 +765,7 @@ agp_close(struct dev_close_args *ap)
 static int
 agp_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 
 	switch (ap->a_cmd) {
@@ -801,7 +801,7 @@ agp_ioctl(struct dev_ioctl_args *ap)
 static int
 agp_mmap(struct dev_mmap_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 

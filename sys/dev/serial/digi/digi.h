@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.h,v 1.14 2003/08/07 15:04:24 jhb Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.h,v 1.1 2004/12/22 08:42:47 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.h,v 1.2 2006/09/10 01:26:36 dillon Exp $
  */
 
 #define	W(p)				(*(u_int16_t *)(p))
@@ -74,7 +74,7 @@ struct digi_p {
 	volatile struct board_chan *bc;
 	struct tty *tp;
 
-	dev_t dev[6];
+	cdev_t dev[6];
 
 	u_char *txbuf;
 	u_char *rxbuf;
@@ -166,7 +166,7 @@ struct digi_softc {
 		int iorid;
 		void *irqHandler;
 		int unit;
-		dev_t ctldev;
+		cdev_t ctldev;
 	} res;
 
 	u_char *vmem;			/* virtual memory address */

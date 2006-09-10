@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.20 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.21 2006/09/10 01:26:39 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -190,7 +190,7 @@ i4brbchattach(void *dummy)
 PDEVSTATIC int
 i4brbchopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 	
 	if(unit >= NI4BRBCH)
@@ -216,7 +216,7 @@ i4brbchopen(struct dev_open_args *ap)
 PDEVSTATIC int
 i4brbchclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];
 	
@@ -238,7 +238,7 @@ i4brbchclose(struct dev_close_args *ap)
 PDEVSTATIC int
 i4brbchread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct mbuf *m;
 	int error = 0;
@@ -340,7 +340,7 @@ i4brbchread(struct dev_read_args *ap)
 PDEVSTATIC int
 i4brbchwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct mbuf *m;
 	int error = 0;
@@ -460,7 +460,7 @@ i4brbchwrite(struct dev_write_args *ap)
 PDEVSTATIC int
 i4brbchioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error = 0;
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];
@@ -545,7 +545,7 @@ i4brbchioctl(struct dev_ioctl_args *ap)
 PDEVSTATIC int
 i4brbchpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int revents = 0;	/* Events we found */
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];

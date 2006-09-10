@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.14 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.15 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -396,8 +396,8 @@ dkmakeunit(int unit)
 	return(dkmakeminor(unit, 0, 0));
 }
 
-static __inline dev_t
-dkmodpart(dev_t dev, int part)
+static __inline cdev_t
+dkmodpart(cdev_t dev, int part)
 {
 	int val;
 
@@ -408,14 +408,14 @@ dkmodpart(dev_t dev, int part)
 	return (make_sub_dev(dev, (minor(dev) & ~0x100007) | val));
 }
 
-static __inline dev_t
-dkmodslice(dev_t dev, int slice)
+static __inline cdev_t
+dkmodslice(cdev_t dev, int slice)
 {
 	return (make_sub_dev(dev, (minor(dev) & ~0x0f0000) | (slice << 16)));
 }
 
 static __inline int
-dkpart(dev_t dev)
+dkpart(cdev_t dev)
 {
 	return (((minor(dev) >> 17) & 0x08) | (minor(dev) & 7));
 }
@@ -424,7 +424,7 @@ dkpart(dev_t dev)
 #define	dktype(dev)       	((minor(dev) >> 25) & 0x7f)
 
 static __inline u_int
-dkunit(dev_t dev)
+dkunit(cdev_t dev)
 {
 	return (((minor(dev) >> 16) & 0x1e0) | ((minor(dev) >> 3) & 0x1f));
 }
@@ -433,16 +433,16 @@ struct	buf;
 struct	bio;
 struct	bio_queue_head;
 
-struct bio *bounds_check_with_label (dev_t dev, struct bio *bio,
+struct bio *bounds_check_with_label (cdev_t dev, struct bio *bio,
 				     struct disklabel *lp, int wlabel);
-void	diskerr (struct bio *bio, dev_t dev, const char *what, int pri,
+void	diskerr (struct bio *bio, cdev_t dev, const char *what, int pri,
 		     int donecnt, struct disklabel *lp);
 void	disksort (struct buf *ap, struct buf *bp);
-char	*readdisklabel (dev_t dev, struct disklabel *lp);
+char	*readdisklabel (cdev_t dev, struct disklabel *lp);
 void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
 			  u_long openmask);
-int	writedisklabel (dev_t dev, struct disklabel *lp);
+int	writedisklabel (cdev_t dev, struct disklabel *lp);
 
 #endif /* _KERNEL */
 

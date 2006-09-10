@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.9 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.10 2006/09/10 01:26:34 dillon Exp $
  *
  */
 
@@ -144,7 +144,7 @@ pcfclock_attach(device_t dev)
 static int 
 pcfclock_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);
 	device_t pcfclockdev = UNITODEVICE(unit);
@@ -166,7 +166,7 @@ pcfclock_open(struct dev_open_args *ap)
 static int
 pcfclock_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);
 	device_t pcfclockdev = UNITODEVICE(unit);
@@ -181,7 +181,7 @@ pcfclock_close(struct dev_close_args *ap)
 }
 
 static void
-pcfclock_write_cmd(dev_t dev, unsigned char command)
+pcfclock_write_cmd(cdev_t dev, unsigned char command)
 {
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);
@@ -201,7 +201,7 @@ pcfclock_write_cmd(dev_t dev, unsigned char command)
 }
 
 static void
-pcfclock_display_data(dev_t dev, char buf[18]) 
+pcfclock_display_data(cdev_t dev, char buf[18]) 
 {
 	u_int unit = minor(dev);
 #ifdef PCFCLOCK_VERBOSE
@@ -224,7 +224,7 @@ pcfclock_display_data(dev_t dev, char buf[18])
 }
 
 static int 
-pcfclock_read_data(dev_t dev, char *buf, ssize_t bits)
+pcfclock_read_data(cdev_t dev, char *buf, ssize_t bits)
 {
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);
@@ -263,7 +263,7 @@ pcfclock_read_data(dev_t dev, char *buf, ssize_t bits)
 }
 
 static int 
-pcfclock_read_dev(dev_t dev, char *buf, int maxretries) 
+pcfclock_read_dev(cdev_t dev, char *buf, int maxretries) 
 {
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);
@@ -295,7 +295,7 @@ pcfclock_read_dev(dev_t dev, char *buf, int maxretries)
 static int
 pcfclock_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	char buf[18];
 	int error = 0;

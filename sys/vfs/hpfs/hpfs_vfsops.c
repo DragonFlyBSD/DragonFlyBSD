@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.37 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.38 2006/09/10 01:26:40 dillon Exp $
  */
 
 
@@ -226,7 +226,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp)
 	struct hpfsmount *hpmp;
 	struct buf *bp = NULL;
 	struct vnode *vp;
-	dev_t dev;
+	cdev_t dev;
 
 	dprintf(("hpfs_mountfs():\n"));
 	/*

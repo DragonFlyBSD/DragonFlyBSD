@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.25 2006/08/03 16:40:47 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.26 2006/09/10 01:26:35 dillon Exp $
  */
 
 /*
@@ -2341,7 +2341,7 @@ aac_describe_code(struct aac_code_lookup *table, u_int32_t code)
 static int
 aac_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 
 	debug_called(2);
@@ -2360,7 +2360,7 @@ aac_open(struct dev_open_args *ap)
 static int
 aac_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 
 	debug_called(2);
@@ -2376,7 +2376,7 @@ aac_close(struct dev_close_args *ap)
 static int
 aac_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t arg = ap->a_data;
 	struct aac_softc *sc = dev->si_drv1;
 	int error = 0;
@@ -2467,7 +2467,7 @@ aac_ioctl(struct dev_ioctl_args *ap)
 static int
 aac_poll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 	int revents;
 

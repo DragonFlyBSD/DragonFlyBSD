@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.20 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.21 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -483,7 +483,7 @@ STATIC	d_ioctl_t	stlioctl;
 /*
  *	Internal function prototypes.
  */
-static stlport_t *stl_dev2port(dev_t dev);
+static stlport_t *stl_dev2port(cdev_t dev);
 static int	stl_findfreeunit(void);
 static int	stl_rawopen(stlport_t *portp);
 static int	stl_rawclose(stlport_t *portp);
@@ -506,7 +506,7 @@ static void	stl_echatintr(stlbrd_t *brdp);
 static void	stl_echmcaintr(stlbrd_t *brdp);
 static void	stl_echpciintr(stlbrd_t *brdp);
 static void	stl_echpci64intr(stlbrd_t *brdp);
-static int	stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data,
+static int	stl_memioctl(cdev_t dev, unsigned long cmd, caddr_t data,
 			int flag);
 static int	stl_getbrdstats(caddr_t data);
 static int	stl_getportstats(stlport_t *portp, caddr_t data);
@@ -1141,7 +1141,7 @@ void stlpciattach(pcici_t tag, int unit)
 
 STATIC int stlopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stlport_t	*portp;
 	int		error, callout;
@@ -1260,7 +1260,7 @@ stlopen_end:
 
 STATIC int stlclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stlport_t	*portp;
 
@@ -1319,7 +1319,7 @@ STATIC int stlstop(struct tty *tp, int rw)
 
 STATIC int stlioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct termios	*newtios, *localtios;
@@ -1500,7 +1500,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
  *	pointer. Return NULL if the device number is not a valid port.
  */
 
-STATIC stlport_t *stl_dev2port(dev_t dev)
+STATIC stlport_t *stl_dev2port(cdev_t dev)
 {
 	stlbrd_t	*brdp;
 
@@ -2701,7 +2701,7 @@ static int stl_clrportstats(stlport_t *portp, caddr_t data)
  *	The "staliomem" device is used for stats collection in this driver.
  */
 
-static int stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag)
+static int stl_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
 {
 	int		rc;
 

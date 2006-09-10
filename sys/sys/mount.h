@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.27 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.28 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -499,7 +499,7 @@ struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */
 	  (struct mount *, struct netexport *, struct sockaddr *);
 int	vfs_allocate_syncvnode (struct mount *);
 void	vfs_getnewfsid (struct mount *);
-dev_t	vfs_getrootfsid (struct mount *);
+cdev_t	vfs_getrootfsid (struct mount *);
 struct	mount *vfs_getvfs (fsid_t *);      /* return vfs given fsid */
 int	vfs_modevent (module_t, int, void *);
 int	vfs_mountedon (struct vnode *);    /* is a vfs mounted on vp */

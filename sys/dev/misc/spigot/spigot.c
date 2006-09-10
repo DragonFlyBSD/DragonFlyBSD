@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.13 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.14 2006/09/10 01:26:35 dillon Exp $
  *
  */
 
@@ -147,7 +147,7 @@ spigot_attach(struct isa_device *devp)
 static	int
 spigot_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error;
 	struct spigot_softc *ss;
 
@@ -183,7 +183,7 @@ spigot_open(struct dev_open_args *ap)
 static	int
 spigot_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct spigot_softc *ss;
 
 	ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
@@ -212,7 +212,7 @@ spigot_read(struct dev_read_args *ap)
 static	int
 spigot_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	int error;
 	struct spigot_softc *ss;

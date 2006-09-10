@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.5 2005/06/09 20:55:05 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.6 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -173,7 +173,7 @@ struct ciss_softc
 {
     /* bus connections */
     device_t			ciss_dev;		/* bus attachment */
-    dev_t			ciss_dev_t;		/* control device */
+    cdev_t			ciss_dev_t;		/* control device */
 
     struct resource		*ciss_regs_resource;	/* register interface window */
     int				ciss_regs_rid;		/* resource ID */

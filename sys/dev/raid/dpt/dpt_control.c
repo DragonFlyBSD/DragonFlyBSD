@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.9 2006/09/05 00:55:41 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.10 2006/09/10 01:26:35 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -73,11 +73,11 @@ static void     dpt_unphysmap(u_int8_t * vaddr, vm_size_t size);
 
 static void     dpt_get_sysinfo(void);
 
-static int      dpt_open(dev_t dev, int flags, int fmt, struct proc * p);
-static int      dpt_close(dev_t dev, int flags, int fmt, struct proc * p);
-static int      dpt_write(dev_t dev, struct uio * uio, int ioflag);
-static int      dpt_read(dev_t dev, struct uio * uio, int ioflag);
-static int      dpt_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p);
+static int      dpt_open(cdev_t dev, int flags, int fmt, struct proc * p);
+static int      dpt_close(cdev_t dev, int flags, int fmt, struct proc * p);
+static int      dpt_write(cdev_t dev, struct uio * uio, int ioflag);
+static int      dpt_read(cdev_t dev, struct uio * uio, int ioflag);
+static int      dpt_ioctl(cdev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p);
 
 
 /* This has to be modified as the processor and CPU are not known yet */
@@ -408,7 +408,7 @@ dpt_get_sysinfo(void)
 }
 
 static int
-dpt_open(dev_t dev, int flags, int fmt, struct proc * p)
+dpt_open(cdev_t dev, int flags, int fmt, struct proc * p)
 {
 	int             minor_no;
 	dpt_softc_t    *dpt;
@@ -446,7 +446,7 @@ dpt_open(dev_t dev, int flags, int fmt, struct proc * p)
 }
 
 static int
-dpt_close(dev_t dev, int flags, int fmt, struct proc * p)
+dpt_close(cdev_t dev, int flags, int fmt, struct proc * p)
 {
 	int             minor_no;
 	dpt_softc_t    *dpt;
@@ -464,7 +464,7 @@ dpt_close(dev_t dev, int flags, int fmt, struct proc * p)
 }
 
 static int
-dpt_write(dev_t dev, struct uio * uio, int ioflag)
+dpt_write(cdev_t dev, struct uio * uio, int ioflag)
 {
 	int             minor_no;
 	int             unit;
@@ -521,7 +521,7 @@ dpt_write(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-dpt_read(dev_t dev, struct uio * uio, int ioflag)
+dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 {
 	dpt_softc_t    *dpt;
 	int             error;
@@ -664,7 +664,7 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
  */
 
 static int
-dpt_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p)
+dpt_ioctl(cdev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p)
 {
 	int             minor_no;
 	dpt_softc_t    *dpt;

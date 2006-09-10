@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.15 2006/09/09 19:07:29 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.16 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -118,21 +118,25 @@ typedef	u_int64_t	uoff_t;
 #endif
 
 /*
- * XXX dev_t has different meanings for userland vs kernel compiles.  What
+ * XXX cdev_t has different meanings for userland vs kernel compiles.  What
  * do we do for _KERNEL_STRUCTURES ?  For the moment stick with the userland
  * meaning as being the more compatible solution.
  */
-#ifdef _KERNEL
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 struct cdev;
 
 typedef	u_int32_t	udev_t;		/* device number */
-typedef struct cdev	*dev_t;		/* obsolete */
 typedef struct cdev	*cdev_t;
+
+#endif
+
+#ifdef _KERNEL
 
 #define offsetof(type, field) __offsetof(type, field)
 
-#else /* !_KERNEL */
+#else
 
 typedef	u_int32_t	dev_t;		/* device number */
 #define udev_t dev_t

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.17 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.18 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ int
 afdattach(struct ata_device *atadev)
 {
     struct afd_softc *fdp;
-    dev_t dev;
+    cdev_t dev;
 
     fdp = kmalloc(sizeof(struct afd_softc), M_AFD, M_WAITOK | M_ZERO);
     if (!fdp) {
@@ -230,7 +230,7 @@ afd_describe(struct afd_softc *fdp)
 static int
 afdopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
     struct disklabel *label = &fdp->disk.d_label;
 
@@ -257,7 +257,7 @@ afdopen(struct dev_open_args *ap)
 static int 
 afdclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
 
     if (count_dev(dev) == 1)
@@ -268,7 +268,7 @@ afdclose(struct dev_close_args *ap)
 static int 
 afdioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
 
     switch (ap->a_cmd) {
@@ -290,7 +290,7 @@ afdioctl(struct dev_ioctl_args *ap)
 static int 
 afdstrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct afd_softc *fdp = dev->si_drv1;

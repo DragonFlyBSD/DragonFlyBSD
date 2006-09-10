@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.5 2006/09/03 17:43:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.6 2006/09/10 01:26:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,10 +135,10 @@ static struct callout dcons_callout;
 struct dcons_buf *dcons_buf;		/* for local dconschat */
 
 #ifdef __DragonFly__
-#define DEV	dev_t
+#define DEV	cdev_t
 #define THREAD	d_thread_t
 #elif __FreeBSD_version < 500000
-#define DEV	dev_t
+#define DEV	cdev_t
 #define THREAD	struct proc
 #else
 #define DEV	struct cdev *
@@ -258,7 +258,7 @@ dcons_os_putc(struct dcons_softc *dc, int c)
 static int
 dcons_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int unit, error;
 
@@ -302,7 +302,7 @@ dcons_open(struct dev_open_args *ap)
 static int
 dcons_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int	unit;
 	struct	tty *tp;
 
@@ -322,7 +322,7 @@ dcons_close(struct dev_close_args *ap)
 static int
 dcons_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int	unit;
 	struct	tty *tp;
 	int	error;

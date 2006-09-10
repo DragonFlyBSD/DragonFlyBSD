@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.15 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.16 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -769,7 +769,7 @@ write_volume_label(int volno)
     struct disklabel *dlp;
     struct volume *vol;
     int error;
-    dev_t dev;
+    cdev_t dev;
 
     lp = (struct disklabel *) Malloc((sizeof(struct disklabel) + (DEV_BSIZE - 1)) & (DEV_BSIZE - 1));
     if (lp == 0)

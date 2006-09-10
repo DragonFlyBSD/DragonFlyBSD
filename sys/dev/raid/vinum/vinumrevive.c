@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.12 2006/07/16 22:39:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.13 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -61,7 +61,7 @@ revive_block(int sdno)
     struct plex *plex;
     struct volume *vol;
     struct buf *bp;
-    dev_t dev;
+    cdev_t dev;
     int error = EAGAIN;
     int size;						    /* size of revive block, bytes */
     daddr_t plexblkno;					    /* lblkno in plex */
@@ -196,7 +196,7 @@ revive_block(int sdno)
 	while (sd->waitlist) {				    /* we have waiting requests */
 #if VINUMDEBUG
 	    struct request *rq = sd->waitlist;
-	    dev_t dev;
+	    cdev_t dev;
 
 	    if (debug & DEBUG_REVIVECONFLICT) {
 		dev = rq->bio->bio_driver_info;

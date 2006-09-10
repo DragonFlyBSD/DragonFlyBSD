@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.14 2006/09/05 00:55:36 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.15 2006/09/10 01:26:33 dillon Exp $ 
  *
  */
 
@@ -116,13 +116,13 @@ static struct fla_s {
 	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
-	dev_t dev;
+	cdev_t dev;
 } softc[NFLA];
 
 static int
 flaopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct fla_s *sc;
 	int error;
 	struct disklabel *dl;
@@ -153,7 +153,7 @@ flaopen(struct dev_open_args *ap)
 static int
 flaclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error;
 	struct fla_s *sc;
 
@@ -174,7 +174,7 @@ flaclose(struct dev_close_args *ap)
 static int
 flaioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	if (fla_debug)
 		printf("flaioctl(%s %lx %p %x)\n",
@@ -186,7 +186,7 @@ flaioctl(struct dev_ioctl_args *ap)
 static int
 flastrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	int unit, error;

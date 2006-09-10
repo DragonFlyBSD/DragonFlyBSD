@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.13 2006/09/10 01:26:39 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -113,7 +113,7 @@ i4bctlattach(void *dummy)
 PDEVSTATIC int
 i4bctlopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	if(minor(dev))
 		return (ENXIO);
 	if(openflag)
@@ -138,7 +138,7 @@ i4bctlclose(struct dev_close_args *ap)
 PDEVSTATIC int
 i4bctlioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 #if DO_I4B_DEBUG
 	ctl_debug_t *cdbg;	
 	int error = 0;

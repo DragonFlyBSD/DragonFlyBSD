@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.20 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.21 2006/09/10 01:26:33 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -466,7 +466,7 @@ usbctlprint(void *aux, const char *pnp)
 int
 usbopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = USBUNIT(dev);
 	struct usb_softc *sc;
 
@@ -489,7 +489,7 @@ usbopen(struct dev_open_args *ap)
 int
 usbread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct usb_event ue;
 	int unit = USBUNIT(dev);
@@ -525,7 +525,7 @@ usbread(struct dev_read_args *ap)
 int
 usbclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = USBUNIT(dev);
 
 	if (unit == USB_DEV_MINOR) {
@@ -539,7 +539,7 @@ usbclose(struct dev_close_args *ap)
 int
 usbioctl(struct dev_ioctl_args *ap)
 {
-	dev_t devt = ap->a_head.a_dev;
+	cdev_t devt = ap->a_head.a_dev;
 	struct usb_softc *sc;
 	int unit = USBUNIT(devt);
 
@@ -658,7 +658,7 @@ usbioctl(struct dev_ioctl_args *ap)
 int
 usbpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int revents, mask;
 	int unit = USBUNIT(dev);
 

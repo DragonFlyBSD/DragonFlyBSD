@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.16 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.17 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -88,10 +88,10 @@ static struct dev_ops cn_iops = {
 };
 
 static struct dev_ops *cn_fwd_ops;
-static dev_t	cn_dev;
+static cdev_t	cn_dev;
 static udev_t	cn_udev;
 SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
-	&cn_udev, sizeof cn_udev, "T,dev_t", "");
+	&cn_udev, sizeof cn_udev, "T,cdev_t", "");
 
 static int cn_mute;
 
@@ -102,7 +102,7 @@ int	cons_unavail = 0;	/* XXX:
 
 static u_char cn_is_open;		/* nonzero if logical console is open */
 static int openmode, openflag;		/* how /dev/console was openned */
-static dev_t cn_devfsdev;		/* represents the device private info */
+static cdev_t cn_devfsdev;		/* represents the device private info */
 static u_char cn_phys_is_open;		/* nonzero if physical device is open */
        struct consdev *cn_tab;		/* physical console device info */
 static u_char console_pausing;		/* pause after each line during probe */
@@ -284,10 +284,10 @@ cnintercept(struct dev_generic_args *ap)
 static int
 cnopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int flag = ap->a_oflags;
 	int mode = ap->a_devtype;
-	dev_t cndev, physdev;
+	cdev_t cndev, physdev;
 	int retval = 0;
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL)
@@ -339,8 +339,8 @@ cnopen(struct dev_open_args *ap)
 static int
 cnclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
-	dev_t cndev;
+	cdev_t dev = ap->a_head.a_dev;
+	cdev_t cndev;
 	struct tty *cn_tp;
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL)
@@ -397,7 +397,7 @@ static int
 cnwrite(struct dev_write_args *ap)
 {
 	struct uio *uio = ap->a_uio;
-	dev_t dev;
+	cdev_t dev;
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL) {
 		uio->uio_resid = 0; /* dump the data */

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.17 2006/09/05 00:55:32 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.18 2006/09/10 01:26:32 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -410,7 +410,7 @@ sesregister(struct cam_periph *periph, void *arg)
 static int
 sesopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
 	int error;
@@ -467,7 +467,7 @@ out:
 static int
 sesclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
 	int unit, error;
@@ -525,7 +525,7 @@ seserror(union ccb *ccb, u_int32_t cflags, u_int32_t sflags)
 static int
 sesioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	ses_encstat tmp;
 	ses_objstat objs;

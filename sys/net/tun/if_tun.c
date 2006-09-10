@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.29 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.30 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -62,7 +62,7 @@ static MALLOC_DEFINE(M_TUN, "tun", "Tunnel Interface");
 static void tunattach (void *);
 PSEUDO_SET(tunattach, if_tun);
 
-static void tuncreate (dev_t dev);
+static void tuncreate (cdev_t dev);
 
 #define TUNDEBUG	if (tundebug) if_printf
 static int tundebug = 0;
@@ -99,7 +99,7 @@ tunattach(void *dummy)
 }
 
 static void
-tuncreate(dev_t dev)
+tuncreate(cdev_t dev)
 {
 	struct tun_softc *sc;
 	struct ifnet *ifp;
@@ -134,7 +134,7 @@ tuncreate(dev_t dev)
 static	int
 tunopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ifnet	*ifp;
 	struct tun_softc *tp;
 	int	error;
@@ -163,7 +163,7 @@ tunopen(struct dev_open_args *ap)
 static	int
 tunclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp;
 	struct ifnet	*ifp;
 
@@ -389,7 +389,7 @@ tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 static	int
 tunioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp = dev->si_drv1;
  	struct tuninfo *tunp;
 
@@ -497,7 +497,7 @@ tunioctl(struct dev_ioctl_args *ap)
 static	int
 tunread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
@@ -548,7 +548,7 @@ tunread(struct dev_read_args *ap)
 static	int
 tunwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
@@ -675,7 +675,7 @@ tunwrite(struct dev_write_args *ap)
 static	int
 tunpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	int		revents = 0;

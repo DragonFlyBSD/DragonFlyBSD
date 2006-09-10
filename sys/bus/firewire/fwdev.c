@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.15 2006/09/09 19:34:43 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.16 2006/09/10 01:26:32 dillon Exp $
  *
  */
 
@@ -170,7 +170,7 @@ fwdev_freebuf(struct fw_xferq *q)
 static int
 fw_open (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int err = 0;
 
 	if (DEV_FWMEM(dev))
@@ -198,7 +198,7 @@ fw_open (struct dev_open_args *ap)
 static int
 fw_close (struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct firewire_comm *fc;
 	struct fw_drv1 *d;
@@ -273,7 +273,7 @@ fw_close (struct dev_close_args *ap)
 static int
 fw_read (struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct firewire_softc *sc;
 	struct fw_xferq *ir;
@@ -361,7 +361,7 @@ readloop:
 static int
 fw_write (struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int err = 0;
 	struct firewire_softc *sc;
@@ -426,7 +426,7 @@ isoloop:
 int
 fw_ioctl (struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct firewire_comm *fc;
 	struct fw_drv1 *d;
@@ -715,7 +715,7 @@ out:
 int
 fw_poll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct fw_xferq *ir;
 	int revents;
@@ -747,7 +747,7 @@ fw_poll(struct dev_poll_args *ap)
 static int
 fw_mmap (struct dev_mmap_args *ap)
 {  
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	int unit = DEV2UNIT(dev);
 
@@ -761,7 +761,7 @@ fw_mmap (struct dev_mmap_args *ap)
 static int
 fw_strategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 
@@ -799,7 +799,7 @@ fwdev_destroydev(struct firewire_softc *sc)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define NDEVTYPE 2
 void
-fwdev_clone(void *arg, char *name, int namelen, dev_t *dev)
+fwdev_clone(void *arg, char *name, int namelen, cdev_t *dev)
 {
 	struct firewire_softc *sc;
 	char *devnames[NDEVTYPE] = {"fw", "fwmem"};

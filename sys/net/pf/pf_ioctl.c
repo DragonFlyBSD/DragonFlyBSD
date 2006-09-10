@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.9 2006/09/05 03:48:12 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.10 2006/09/10 01:26:39 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -123,7 +123,7 @@ static void		 tag_unref(struct pf_tags *, u_int16_t);
 
 #define DPFPRINTF(n, x) if (pf_status.debug >= (n)) printf x
 
-static dev_t	pf_dev;
+static cdev_t	pf_dev;
 
 /*
  * XXX - These are new and need to be checked when moveing to a new version
@@ -291,7 +291,7 @@ pfattach(void)
 int
 pfopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	if (minor(dev) >= 1)
 		return (ENXIO);
 	return (0);
@@ -300,7 +300,7 @@ pfopen(struct dev_open_args *ap)
 int
 pfclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	if (minor(dev) >= 1)
 		return (ENXIO);
 	return (0);

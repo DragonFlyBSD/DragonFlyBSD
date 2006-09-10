@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.33 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.34 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -296,7 +296,7 @@ bpf_detachd(struct bpf_d *d)
 static int
 bpfopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d;
 
 	if (ap->a_cred->cr_prison)
@@ -327,7 +327,7 @@ bpfopen(struct dev_open_args *ap)
 static int
 bpfclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 
 	funsetown(d->bd_sigio);
@@ -362,7 +362,7 @@ bpfclose(struct dev_close_args *ap)
 static int
 bpfread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	int timed_out;
 	int error;
@@ -497,7 +497,7 @@ bpf_timed_out(void *arg)
 static	int
 bpfwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	struct ifnet *ifp;
 	struct mbuf *m;
@@ -579,7 +579,7 @@ reset_d(struct bpf_d *d)
 static int
 bpfioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	int error = 0;
 
@@ -978,7 +978,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 int
 bpfpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d;
 	int revents;
 

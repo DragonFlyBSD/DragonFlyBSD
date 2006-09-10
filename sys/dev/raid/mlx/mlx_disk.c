@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.10 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*
@@ -91,7 +91,7 @@ DRIVER_MODULE(mlxd, mlx, mlxd_driver, mlxd_devclass, 0, 0);
 static int
 mlxd_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     struct disklabel	*label;
 
@@ -121,7 +121,7 @@ mlxd_open(struct dev_open_args *ap)
 static int
 mlxd_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
 
     debug_called(1);
@@ -135,7 +135,7 @@ mlxd_close(struct dev_close_args *ap)
 static int
 mlxd_ioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     int error;
 
@@ -225,7 +225,7 @@ mlxd_attach(device_t dev)
     struct mlxd_softc	*sc = (struct mlxd_softc *)device_get_softc(dev);
     device_t		parent;
     char		*state;
-    dev_t		dsk;
+    cdev_t		dsk;
     int			s1, s2;
     
     debug_called(1);

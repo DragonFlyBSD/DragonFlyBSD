@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.11 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.12 2006/09/10 01:26:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.11 2006/09/09 19:34:46 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.12 2006/09/10 01:26:37 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -60,7 +60,7 @@ static eventhandler_tag dsp_ehtag;
 #endif
 
 static struct snddev_info *
-dsp_get_info(dev_t dev)
+dsp_get_info(cdev_t dev)
 {
 	struct snddev_info *d;
 	int unit;
@@ -74,7 +74,7 @@ dsp_get_info(dev_t dev)
 }
 
 static u_int32_t
-dsp_get_flags(dev_t dev)
+dsp_get_flags(cdev_t dev)
 {
 	device_t bdev;
 	int unit;
@@ -88,7 +88,7 @@ dsp_get_flags(dev_t dev)
 }
 
 static void
-dsp_set_flags(dev_t dev, u_int32_t flags)
+dsp_set_flags(cdev_t dev, u_int32_t flags)
 {
 	device_t bdev;
 	int unit;
@@ -108,7 +108,7 @@ dsp_set_flags(dev_t dev, u_int32_t flags)
  * lock channels specified.
  */
 static int
-getchns(dev_t dev, struct pcm_channel **rdch, struct pcm_channel **wrch, u_int32_t prio)
+getchns(cdev_t dev, struct pcm_channel **rdch, struct pcm_channel **wrch, u_int32_t prio)
 {
 	struct snddev_info *d;
 	u_int32_t flags;
@@ -152,7 +152,7 @@ getchns(dev_t dev, struct pcm_channel **rdch, struct pcm_channel **wrch, u_int32
 
 /* unlock specified channels */
 static void
-relchns(dev_t dev, struct pcm_channel *rdch, struct pcm_channel *wrch, u_int32_t prio)
+relchns(cdev_t dev, struct pcm_channel *rdch, struct pcm_channel *wrch, u_int32_t prio)
 {
 	struct snddev_info *d;
 
@@ -169,7 +169,7 @@ relchns(dev_t dev, struct pcm_channel *rdch, struct pcm_channel *wrch, u_int32_t
 static int
 dsp_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	u_int32_t fmt;
@@ -316,7 +316,7 @@ dsp_open(struct dev_open_args *ap)
 static int
 dsp_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	int exit;
@@ -381,7 +381,7 @@ dsp_close(struct dev_close_args *ap)
 static int
 dsp_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	int ret;
 
@@ -408,7 +408,7 @@ dsp_read(struct dev_read_args *ap)
 static int
 dsp_write(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	int ret;
 
@@ -435,7 +435,7 @@ dsp_write(struct dev_write_args *ap)
 static int
 dsp_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t arg = ap->a_data;
     	struct pcm_channel *wrch, *rdch;
@@ -449,7 +449,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 	 */
 
 	if (IOCGROUP(cmd) == 'M') {
-		dev_t pdev;
+		cdev_t pdev;
 
 		pdev = make_adhoc_dev(&dsp_ops, 
 				PCMMKMINOR(PCMUNIT(dev), SND_DEV_CTL, 0));
@@ -554,7 +554,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		{
 	    		snd_capabilities *p = (snd_capabilities *)arg;
 			struct pcmchan_caps *pcaps = NULL, *rcaps = NULL;
-			dev_t pdev;
+			cdev_t pdev;
 
 			if (rdch) {
 				CHN_LOCK(rdch);
@@ -973,7 +973,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 static int
 dsp_poll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *wrch = NULL, *rdch = NULL;
 	int ret, e;
 
@@ -1001,7 +1001,7 @@ dsp_poll(struct dev_poll_args *ap)
 static int
 dsp_mmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *wrch = NULL, *rdch = NULL, *c;
 	int ret;
 
@@ -1106,9 +1106,9 @@ dsp_unregisterrec(int unit, int channel)
 
 #ifdef USING_DEVFS
 static void
-dsp_clone(void *arg, char *name, int namelen, dev_t *dev)
+dsp_clone(void *arg, char *name, int namelen, cdev_t *dev)
 {
-	dev_t pdev;
+	cdev_t pdev;
 	int i, cont, unit, devtype;
 	int devtypes[3] = {SND_DEV_DSP, SND_DEV_DSP16, SND_DEV_AUDIO};
 	char *devnames[3] = {"dsp", "dspW", "audio"};

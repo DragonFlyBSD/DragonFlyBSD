@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.8 2004/07/05 06:02:35 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.11 2006/07/29 03:49:01 y0netan1 Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.12 2006/09/10 01:26:33 dillon Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -503,7 +503,10 @@ typedef	struct	ipflog	{
 
 
 #ifndef	_KERNEL
+
 struct ifnet;
+struct cdev;
+
 extern	char	*get_ifname (struct ifnet *);
 extern	int	fr_check (ip_t *, int, void *, int, mb_t **);
 extern	int	(*fr_checkp) (ip_t *, int, void *, int, mb_t **);
@@ -512,15 +515,12 @@ extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
 extern	int	ipf_log (void);
 extern	struct	ifnet *get_unit (char *, int);
 extern	int	mbuflen (mb_t *);
-# if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || \
-	  (_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
-extern	int	iplioctl (dev_t, u_long, caddr_t, int);
-# else
-extern	int	iplioctl (dev_t, int, caddr_t, int);
-# endif
-extern	int	iplopen (dev_t, int);
-extern	int	iplclose (dev_t, int);
-#else /* #ifndef _KERNEL */
+extern	int	iplioctl (struct cdev *, u_long, caddr_t, int);
+extern	int	iplopen (struct cdev *, int);
+extern	int	iplclose (struct cdev *, int);
+
+#else /* !_KERNEL */
+
 # if defined(__NetBSD__) && defined(PFIL_HOOKS)
 extern	void	ipfilterattach (int);
 # endif
@@ -529,82 +529,18 @@ extern	int	ipl_enable (void);
 extern	int	ipl_disable (void);
 extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
 extern	int	send_reset (ip_t *, fr_info_t *);
-# if	SOLARIS
-extern	int	fr_check (ip_t *, int, void *, int, qif_t *, mb_t **);
-extern	int	(*fr_checkp) (ip_t *, int, void *,
-				  int, qif_t *, mb_t **);
-#  if SOLARIS2 >= 7
-extern	int	iplioctl (dev_t, int, intptr_t, int, cred_t *, int *);
-#  else
-extern	int	iplioctl (dev_t, int, int *, int, cred_t *, int *);
-#  endif
-extern	int	iplopen (dev_t *, int, int, cred_t *);
-extern	int	iplclose (dev_t, int, int, cred_t *);
-extern	int	ipfsync (void);
-extern	int	ipfr_fastroute (ip_t *, mblk_t *, mblk_t **,
-				    fr_info_t *, frdest_t *);
-extern	void	copyin_mblk (mblk_t *, size_t, size_t, char *);
-extern	void	copyout_mblk (mblk_t *, size_t, size_t, char *);
-extern	int	fr_qin (queue_t *, mblk_t *);
-extern	int	fr_qout (queue_t *, mblk_t *);
-extern	int	iplread (dev_t, struct uio *, cred_t *);
-# else /* SOLARIS */
 extern	int	fr_check (ip_t *, int, void *, int, mb_t **);
 extern	int	(*fr_checkp) (ip_t *, int, void *, int, mb_t **);
 extern	int	ipfr_fastroute (mb_t *, mb_t **, fr_info_t *, frdest_t *);
 extern	size_t	mbufchainlen (mb_t *);
-#  ifdef	__sgi
-#   include <sys/cred.h>
-extern	int	iplioctl (dev_t, int, caddr_t, int, cred_t *, int *);
-extern	int	iplopen (dev_t *, int, int, cred_t *);
-extern	int	iplclose (dev_t, int, int, cred_t *);
-extern	int	iplread (dev_t, struct uio *, cred_t *);
-extern	int	ipfsync (void);
-extern	int	ipfilter_sgi_attach (void);
-extern	void	ipfilter_sgi_detach (void);
-extern	void	ipfilter_sgi_intfsync (void);
-#  else
 #   ifdef	IPFILTER_LKM
 extern	int	iplidentify (char *);
 #   endif
-#if	defined(__DragonFly__) || defined(__FreeBSD__)
 extern d_ioctl_t	iplioctl;
 extern d_open_t		iplopen;
 extern d_close_t	iplclose;
-#else
-#   if defined(__DragonFly__) || (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
-      (NetBSD >= 199511) || defined(__OpenBSD__)
-#    if defined(__NetBSD__) || (_BSDI_VERSION >= 199701) || \
-       defined(__OpenBSD__) || defined(__DragonFly__) || (__FreeBSD_version >= 300000)
-extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct proc *);
-#    else
-extern	int	iplioctl (dev_t, int, caddr_t, int, struct proc *);
-#    endif
-extern	int	iplopen (dev_t, int, int, struct proc *);
-extern	int	iplclose (dev_t, int, int, struct proc *);
-#   else
-#    ifndef	linux
-extern	int	iplopen (dev_t, int);
-extern	int	iplclose (dev_t, int);
-extern	int	iplioctl (dev_t, int, caddr_t, int);
-#    else
-extern	int	iplioctl(struct inode *, struct file *, u_int, u_long);
-extern	int	iplopen (struct inode *, struct file *);
-extern	void	iplclose (struct inode *, struct file *);
-#    endif /* !linux */
-#   endif /* (_BSDI_VERSION >= 199510) */
-#endif
-#   if	BSD >= 199306
 extern d_read_t	iplread;
-#   else
-#    ifndef linux
-extern	int	iplread (dev_t, struct uio *);
-#    else
-extern	int	iplread(struct inode *, struct file *, char *, int);
-#    endif /* !linux */
-#   endif /* BSD >= 199306 */
-#  endif /* __ sgi */
-# endif /* SOLARIS */
+
 #endif /* #ifndef _KERNEL */
 
 extern	char	*memstr (char *, char *, int, int);

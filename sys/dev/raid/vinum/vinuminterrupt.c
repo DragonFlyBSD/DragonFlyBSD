@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.10 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.11 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -305,7 +305,7 @@ complete_raid5_write(struct rqelement *rqe)
     struct rqgroup *rqg;				    /* and to the request group */
     struct rqelement *prqe;				    /* point to the parity block */
     struct drive *drive;				    /* drive to access */
-    dev_t dev;
+    cdev_t dev;
 
     rqg = rqe->rqg;					    /* and to our request group */
     rq = rqg->rq;					    /* point to our request */

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.12 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -237,7 +237,7 @@ isavga_resume(device_t dev)
 static int
 isavga_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	return vga_open(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_oflags,
 			ap->a_devtype, ap->a_cred);
@@ -246,7 +246,7 @@ isavga_open(struct dev_open_args *ap)
 static int
 isavga_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	return vga_close(dev, VGA_SOFTC(VGA_UNIT(dev)),
 			 ap->a_fflag, ap->a_devtype);
@@ -255,7 +255,7 @@ isavga_close(struct dev_close_args *ap)
 static int
 isavga_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	return vga_read(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_uio, ap->a_ioflag);
 }
@@ -263,7 +263,7 @@ isavga_read(struct dev_read_args *ap)
 static int
 isavga_write(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	return vga_write(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_uio, ap->a_ioflag);
 }
@@ -271,7 +271,7 @@ isavga_write(struct dev_write_args *ap)
 static int
 isavga_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	return vga_ioctl(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
 }
@@ -279,7 +279,7 @@ isavga_ioctl(struct dev_ioctl_args *ap)
 static int
 isavga_mmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	ap->a_result = vga_mmap(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_offset, ap->a_nprot);
 	return(0);

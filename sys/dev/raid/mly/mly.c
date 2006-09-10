@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.14 2006/09/05 00:55:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.15 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1697,7 +1697,7 @@ mly_print_controller(int controller)
 static int
 mly_user_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mly_softc	*sc = devclass_get_softc(devclass_find("mly"), unit);
 
@@ -1711,7 +1711,7 @@ mly_user_open(struct dev_open_args *ap)
 static int
 mly_user_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mly_softc	*sc = devclass_get_softc(devclass_find("mly"), unit);
 
@@ -1725,7 +1725,7 @@ mly_user_close(struct dev_close_args *ap)
 static int
 mly_user_ioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct mly_softc		*sc = (struct mly_softc *)dev->si_drv1;
     struct mly_user_command	*uc = (struct mly_user_command *)ap->a_data;
     struct mly_user_health	*uh = (struct mly_user_health *)ap->a_data;

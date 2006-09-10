@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.10 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -87,7 +87,7 @@ DRIVER_MODULE(ipsd, ips, ipsd_driver, ipsd_devclass, 0, 0);
 static int
 ipsd_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	ipsdisk_softc_t *dsc = dev->si_drv1;
 
 	if (dsc == NULL)
@@ -100,7 +100,7 @@ ipsd_open(struct dev_open_args *ap)
 static int
 ipsd_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	ipsdisk_softc_t *dsc = dev->si_drv1;
 
 	dsc->state &= ~IPS_DEV_OPEN;
@@ -130,7 +130,7 @@ ipsd_finish(struct bio *bio)
 static int
 ipsd_strategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	ipsdisk_softc_t *dsc;
 
@@ -257,7 +257,7 @@ static int
 ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset,
           size_t length)
 {
-	dev_t dev = arg;
+	cdev_t dev = arg;
 	ips_softc_t *sc;
 	ips_command_t *command;
 	ips_io_cmd *command_struct;

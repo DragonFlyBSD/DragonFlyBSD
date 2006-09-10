@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.8 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.9 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*
@@ -225,7 +225,7 @@ extern devclass_t	mlxd_devclass;
 struct mlxd_softc 
 {
     device_t		mlxd_dev;
-    dev_t		mlxd_dev_t;
+    cdev_t		mlxd_dev_t;
     struct mlx_softc	*mlxd_controller;
     struct mlx_sysdrive	*mlxd_drive;
     struct disk		mlxd_disk;

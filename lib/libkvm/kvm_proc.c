@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.7 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.8 2006/09/10 01:26:26 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -47,8 +47,9 @@
  * most other applications are interested only in open/close/read/nlist).
  */
 
-#include <sys/param.h>
 #include <sys/user.h>
+#include <sys/conf.h>
+#include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/exec.h>
 #include <sys/stat.h>
@@ -104,6 +105,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 	struct proc proc;
 	struct thread thread;
 	struct proc pproc;
+	struct cdev cdev;
 
 	for (; cnt < maxcnt && p != NULL; p = proc.p_list.le_next) {
 		if (KREAD(kd, (u_long)p, &proc)) {
@@ -179,7 +181,15 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 					 "can't read tty at %x", sess.s_ttyp);
 				return (-1);
 			}
-			eproc.e_tdev = tty.t_dev;
+			if (tty.t_dev && tty.t_dev != NOCDEV) {
+				if (KREAD(kd, (u_long)tty.t_dev, &cdev)) {
+					eproc.e_tdev = cdev.si_udev;
+				} else {
+					eproc.e_tdev = NODEV;
+				}
+			} else {
+				eproc.e_tdev = NODEV;
+			}
 			eproc.e_tsess = tty.t_session;
 			if (tty.t_pgrp != NULL) {
 				if (KREAD(kd, (u_long)tty.t_pgrp, &pgrp)) {

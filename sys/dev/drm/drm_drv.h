@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.14 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.15 2006/09/10 01:26:34 dillon Exp $
  */
 
 /*
@@ -288,7 +288,7 @@ static int DRM(lkmhandle)(struct lkm_table *lkmtp, int cmd);
 
 int DRM(modprobe)();
 int DRM(probe)(struct pci_attach_args *pa);
-void DRM(attach)(struct pci_attach_args *pa, dev_t kdev);
+void DRM(attach)(struct pci_attach_args *pa, cdev_t kdev);
 
 int DRM(lkmentry)(struct lkm_table *lkmtp, int cmd, int ver) {
 	DISPATCH(lkmtp, cmd, ver, DRM(lkmhandle), DRM(lkmhandle), DRM(lkmhandle));
@@ -347,7 +347,7 @@ int DRM(probe)(struct pci_attach_args *pa)
 	return 0;
 }
 
-void DRM(attach)(struct pci_attach_args *pa, dev_t kdev)
+void DRM(attach)(struct pci_attach_args *pa, cdev_t kdev)
 {
 	int i;
 	drm_device_t *dev;
@@ -817,7 +817,7 @@ int DRM(version)( DRM_IOCTL_ARGS )
 
 int DRM(open)(struct dev_open_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	drm_device_t *dev = NULL;
 	int retcode = 0;
 
@@ -844,7 +844,7 @@ int DRM(open)(struct dev_open_args *ap)
 
 int DRM(close)(struct dev_close_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	drm_file_t *priv;
 	DRM_DEVICE;
 	int retcode = 0;
@@ -965,7 +965,7 @@ int DRM(close)(struct dev_close_args *ap)
  */
 int DRM(ioctl)(struct dev_ioctl_args *ap)
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	DRM_DEVICE;
 	int retcode = 0;
 	drm_ioctl_desc_t *ioctl;

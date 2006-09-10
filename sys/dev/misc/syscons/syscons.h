@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.16 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.17 2006/09/10 01:26:35 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -201,7 +201,7 @@ typedef struct sc_softc {
 
 	int		first_vty;
 	int		vtys;
-	dev_t		*dev;
+	cdev_t		*dev;
 	struct scr_stat	*cur_scp;
 	struct scr_stat	*new_scp;
 	struct scr_stat	*old_scp;

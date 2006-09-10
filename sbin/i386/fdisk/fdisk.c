@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.11 2005/11/06 12:19:22 swildner Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.12 2006/09/10 01:26:28 dillon Exp $
  */
 
 #include <sys/disklabel.h>
@@ -94,6 +94,7 @@ int dos_cylsecs;
 
 #define DOSSECT(s,c) ((s & 0x3f) | ((c >> 2) & 0xc0))
 #define DOSCYL(c)	(c & 0xff)
+#define MAXCYL		1023
 static int partition = -1;
 
 
@@ -117,6 +118,7 @@ typedef struct cmd {
 
 
 static int B_flag  = 0;		/* replace boot code */
+static int C_flag  = 0;		/* use wrapped values for CHS */
 static int I_flag  = 0;		/* use entire disk for DragonFly */
 static int a_flag  = 0;		/* set active partition */
 static char *b_flag = NULL;	/* path to boot code */
@@ -255,10 +257,13 @@ main(int argc, char *argv[])
 {
 	int	c, i;
 
-	while ((c = getopt(argc, argv, "BIab:f:p:istuv1234")) != -1)
+	while ((c = getopt(argc, argv, "BCIab:f:p:istuv1234")) != -1)
 		switch (c) {
 		case 'B':
 			B_flag = 1;
+			break;
+		case 'C':
+			C_flag = 1;
 			break;
 		case 'I':
 			I_flag = 1;
@@ -595,9 +600,16 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 			Decimal("beginning cylinder", tcyl, tmp);
 			Decimal("beginning head", thd, tmp);
 			Decimal("beginning sector", tsec, tmp);
-			partp->dp_scyl = DOSCYL(tcyl);
-			partp->dp_ssect = DOSSECT(tsec,tcyl);
-			partp->dp_shd = thd;
+			if (tcyl > MAXCYL && C_flag == 0) {
+				printf("Warning: starting cylinder wraps, using all 1's\n");
+				partp->dp_scyl = -1;
+				partp->dp_ssect = -1;
+				partp->dp_shd = -1;
+			} else {
+				partp->dp_scyl = DOSCYL(tcyl);
+				partp->dp_ssect = DOSSECT(tsec,tcyl);
+				partp->dp_shd = thd;
+			}
 
 			tcyl = DPCYL(partp->dp_ecyl,partp->dp_esect);
 			thd = partp->dp_ehd;
@@ -605,9 +617,16 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 			Decimal("ending cylinder", tcyl, tmp);
 			Decimal("ending head", thd, tmp);
 			Decimal("ending sector", tsec, tmp);
-			partp->dp_ecyl = DOSCYL(tcyl);
-			partp->dp_esect = DOSSECT(tsec,tcyl);
-			partp->dp_ehd = thd;
+			if (tcyl > MAXCYL && C_flag == 0) {
+				printf("Warning: ending cylinder wraps, using all 1's\n");
+				partp->dp_ecyl = -1;
+				partp->dp_esect = -1;
+				partp->dp_ehd = -1;
+			} else {
+				partp->dp_ecyl = DOSCYL(tcyl);
+				partp->dp_esect = DOSSECT(tsec,tcyl);
+				partp->dp_ehd = thd;
+			}
 		} else
 			dos(partp);
 
@@ -709,19 +728,33 @@ dos(struct dos_partition *partp)
 	}
 
 	/* Start c/h/s. */
-	partp->dp_shd = partp->dp_start % dos_cylsecs / dos_sectors;
 	cy = partp->dp_start / dos_cylsecs;
 	sec = partp->dp_start % dos_sectors + 1;
-	partp->dp_scyl = DOSCYL(cy);
-	partp->dp_ssect = DOSSECT(sec, cy);
+	if (cy > MAXCYL && C_flag == 0) {
+	    printf("Warning: starting cylinder wraps, using all 1's\n");
+	    partp->dp_shd = -1;
+	    partp->dp_scyl = -1;
+	    partp->dp_ssect = -1;
+	} else {
+	    partp->dp_shd = partp->dp_start % dos_cylsecs / dos_sectors;
+	    partp->dp_scyl = DOSCYL(cy);
+	    partp->dp_ssect = DOSSECT(sec, cy);
+	}
 
 	/* End c/h/s. */
 	end = partp->dp_start + partp->dp_size - 1;
-	partp->dp_ehd = end % dos_cylsecs / dos_sectors;
 	cy = end / dos_cylsecs;
 	sec = end % dos_sectors + 1;
-	partp->dp_ecyl = DOSCYL(cy);
-	partp->dp_esect = DOSSECT(sec, cy);
+	if (cy > MAXCYL && C_flag == 0) {
+	    printf("Warning: ending cylinder wraps, using all 1's\n");
+	    partp->dp_ehd = -1;
+	    partp->dp_ecyl = -1;
+	    partp->dp_esect = -1;
+	} else {
+	    partp->dp_ehd = end % dos_cylsecs / dos_sectors;
+	    partp->dp_ecyl = DOSCYL(cy);
+	    partp->dp_esect = DOSSECT(sec, cy);
+	}
 }
 
 int fd;

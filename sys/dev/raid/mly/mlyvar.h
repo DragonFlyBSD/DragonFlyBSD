@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.6 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.7 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -158,7 +158,7 @@ struct mly_command {
 struct mly_softc {
     /* bus connections */
     device_t		mly_dev;
-    dev_t		mly_dev_t;
+    cdev_t		mly_dev_t;
     struct resource	*mly_regs_resource;	/* register interface window */
     int			mly_regs_rid;		/* resource ID */
     bus_space_handle_t	mly_bhandle;		/* bus space handle */

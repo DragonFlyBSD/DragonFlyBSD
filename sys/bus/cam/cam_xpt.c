@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.30 2006/09/05 00:55:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.31 2006/09/10 01:26:32 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -886,7 +886,7 @@ xptdone(struct cam_periph *periph, union ccb *done_ccb)
 static int
 xptopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit;
 
 	unit = minor(dev) & 0xff;
@@ -924,7 +924,7 @@ xptopen(struct dev_open_args *ap)
 static int
 xptclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit;
 
 	unit = minor(dev) & 0xff;
@@ -948,7 +948,7 @@ xptclose(struct dev_close_args *ap)
 static int
 xptioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit, error;
 
 	error = 0;

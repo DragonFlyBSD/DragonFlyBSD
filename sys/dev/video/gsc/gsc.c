@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.12 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.13 2006/09/10 01:26:38 dillon Exp $
  *
  */
 
@@ -542,7 +542,7 @@ gscattach(struct isa_device *isdp)
 static	int
 gscopen  (struct dev_open_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct gsc_unit *scu;
   int unit;
 
@@ -610,7 +610,7 @@ gscopen  (struct dev_open_args *ap)
 static	int
 gscclose (struct dev_close_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
 
@@ -644,7 +644,7 @@ gscclose (struct dev_close_args *ap)
 static	int
 gscread  (struct dev_read_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct uio *uio = ap->a_uio;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
@@ -736,7 +736,7 @@ gscread  (struct dev_read_args *ap)
 static	int
 gscioctl (struct dev_ioctl_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   caddr_t data = ap->a_data;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;

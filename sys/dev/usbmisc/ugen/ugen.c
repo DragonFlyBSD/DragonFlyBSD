@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.20 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.21 2006/09/10 01:26:37 dillon Exp $
  */
 
 /* 
@@ -110,7 +110,7 @@ SYSCTL_INT(_hw_usb_ugen, OID_AUTO, bufsize, CTLFLAG_RW,
 struct ugen_endpoint {
 	struct ugen_softc *sc;
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	dev_t dev;
+	cdev_t dev;
 #endif
 	usb_endpoint_descriptor_t *edesc;
 	usbd_interface_handle iface;
@@ -259,7 +259,7 @@ Static void
 ugen_make_devnodes(struct ugen_softc *sc)
 {
 	int endptno;
-	dev_t dev;
+	cdev_t dev;
 
 	for (endptno = 1; endptno < USB_MAX_ENDPOINTS; endptno++) {
 		if (sc->sc_endpoints[endptno][IN].sc != NULL ||
@@ -297,7 +297,7 @@ Static void
 ugen_destroy_devnodes(struct ugen_softc *sc)
 {
 	int endptno;
-	dev_t dev;
+	cdev_t dev;
 
 	/* destroy all devices for the other (existing) endpoints as well */
 	for (endptno = 1; endptno < USB_MAX_ENDPOINTS; endptno++) {
@@ -401,7 +401,7 @@ ugen_set_config(struct ugen_softc *sc, int configno)
 int
 ugenopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ugen_softc *sc;
 	int unit = UGENUNIT(dev);
 	int endpt = UGENENDPOINT(dev);
@@ -542,7 +542,7 @@ ugenopen(struct dev_open_args *ap)
 int
 ugenclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	struct ugen_endpoint *sce;
@@ -758,7 +758,7 @@ done:
 int
 ugenread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -869,7 +869,7 @@ done:
 int
 ugenwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -1430,7 +1430,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 int
 ugenioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -1447,7 +1447,7 @@ ugenioctl(struct dev_ioctl_args *ap)
 int
 ugenpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ugen_softc *sc;
 	struct ugen_endpoint *sce;
 	int revents = 0;

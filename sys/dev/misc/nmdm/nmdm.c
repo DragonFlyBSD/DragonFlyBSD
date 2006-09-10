@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.14 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.15 2006/09/10 01:26:34 dillon Exp $
  */
 
 /*
@@ -82,7 +82,7 @@ static struct dev_ops nmdm_ops = {
 
 struct softpart {
 	struct tty nm_tty;
-	dev_t	dev;
+	cdev_t	dev;
 	int	modemsignals;	/* bits defined in sys/ttycom.h */
 	int	gotbreak;
 };
@@ -118,7 +118,7 @@ do {	\
 static void
 nmdminit(int n)
 {
-	dev_t dev1, dev2;
+	cdev_t dev1, dev2;
 	struct nm_softc *pt;
 
 	/*
@@ -153,12 +153,12 @@ nmdminit(int n)
 static	int
 nmdmopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp, *tp2;
 	int error;
 	int minr;
 #if 0
-	dev_t nextdev;
+	cdev_t nextdev;
 #endif
 	struct nm_softc *pti;
 	int is_b;
@@ -257,7 +257,7 @@ nmdmopen(struct dev_open_args *ap)
 static int
 nmdmclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp, *tp2;
 	int err;
 	struct softpart *ourpart, *otherpart;
@@ -295,7 +295,7 @@ nmdmclose(struct dev_close_args *ap)
 static int
 nmdmread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error = 0;
 	struct tty *tp, *tp2;
 	struct softpart *ourpart, *otherpart;
@@ -330,7 +330,7 @@ nmdmread(struct dev_read_args *ap)
 static	int
 nmdmwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	u_char *cp = 0;
 	int cc = 0;
@@ -476,7 +476,7 @@ nmdmstop(struct tty *tp, int flush)
 static	int
 nmdmioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
 	int error;

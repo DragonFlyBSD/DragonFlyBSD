@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.16 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.17 2006/09/10 01:26:34 dillon Exp $
  */
 
 /*
@@ -451,7 +451,7 @@ lptout(void *arg)
 static	int
 lptopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int trys, err;
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
@@ -572,7 +572,7 @@ lptopen(struct dev_open_args *ap)
 static	int
 lptclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
 	device_t lptdev = UNITODEVICE(unit);
@@ -685,7 +685,7 @@ lpt_pushbytes(device_t dev)
 static int
 lptread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
         u_int	unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
@@ -732,7 +732,7 @@ error:
 static	int
 lptwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	unsigned n;
 	int err;
@@ -901,7 +901,7 @@ lptintr(device_t dev)
 static	int
 lptioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int	error = 0;
         u_int	unit = LPTUNIT(minor(dev));
         struct	lpt_data *sc = UNITOSOFTC(unit);

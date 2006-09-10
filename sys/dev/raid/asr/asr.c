@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.24 2006/09/05 00:55:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.25 2006/09/10 01:26:35 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -397,7 +397,7 @@ STATIC ATTACH_RET     domino_attach (ATTACH_ARGS);
 STATIC PROBE_RET      mode0_probe (PROBE_ARGS);
 STATIC ATTACH_RET     mode0_attach (ATTACH_ARGS);
 
-STATIC Asr_softc_t  * ASR_get_sc (dev_t dev);
+STATIC Asr_softc_t  * ASR_get_sc (cdev_t dev);
 STATIC d_ioctl_t asr_ioctl;
 STATIC d_open_t asr_open;
 STATIC d_close_t asr_close;
@@ -3254,7 +3254,7 @@ typedef U32   DPT_RTN_T;
 
 STATIC INLINE Asr_softc_t *
 ASR_get_sc (
-        IN dev_t          dev)
+        IN cdev_t          dev)
 {
         int               unit = asr_unit(dev);
         OUT Asr_softc_t * sc = Asr_softc;
@@ -3273,7 +3273,7 @@ STATIC u_int8_t ASR_ctlr_held;
 STATIC int
 asr_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
         OUT int error;
 
         if (ASR_get_sc (dev) == (Asr_softc_t *)NULL) {
@@ -3780,7 +3780,7 @@ ASR_queue_i(
 STATIC int
 asr_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
         int           i, j;
         OUT int       error = 0;

@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.18 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.19 2006/09/10 01:26:38 dillon Exp $
  */
 
 /*		Change History:
@@ -1113,7 +1113,7 @@ met_attach(pcici_t tag, int unit)
 
 #ifdef unused
 static int
-meteor_reset(dev_t dev)
+meteor_reset(cdev_t dev)
 {
 int			unit = UNIT(minor(dev));
 struct	saa7116_regs	*m;
@@ -1147,7 +1147,7 @@ struct	saa7116_regs	*m;
 int
 meteor_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	meteor_reg_t *mtr;
 	int	unit; 
 	int	i;
@@ -1192,7 +1192,7 @@ meteor_open(struct dev_open_args *ap)
 int
 meteor_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	meteor_reg_t *mtr;
 	int	unit; 
 #ifdef METEOR_DEALLOC_ABOVE
@@ -1273,7 +1273,7 @@ mreg_t *cap = &mtr->base->cap_cntl;
 int
 meteor_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	meteor_reg_t *mtr;
 	int	unit; 
@@ -1318,7 +1318,7 @@ meteor_write(struct dev_write_args *ap)
 int
 meteor_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	int	error;  
 	int	unit;   
@@ -2096,7 +2096,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 int
 meteor_mmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int	unit;
 	meteor_reg_t *mtr;
 

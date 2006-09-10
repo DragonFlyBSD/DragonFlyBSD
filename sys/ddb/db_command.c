@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.10 2006/09/09 19:34:45 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.11 2006/09/10 01:26:33 dillon Exp $
  */
 
 /*
@@ -545,7 +545,7 @@ db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 /* Enter GDB remote protocol debugger on the next trap. */
 
-dev_t	   gdbdev = NOCDEV;
+cdev_t	   gdbdev = NOCDEV;
 cn_getc_t *gdb_getc;
 cn_putc_t *gdb_putc;
 

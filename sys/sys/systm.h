@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.40 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.41 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -74,11 +74,11 @@ extern u_char curpriority;	/* priority of current process */
 
 extern int physmem;		/* physical memory */
 
-extern dev_t dumpdev;		/* dump device */
+extern cdev_t dumpdev;		/* dump device */
 extern long dumplo;		/* offset into dumpdev */
 
-extern dev_t rootdev;		/* root device */
-extern dev_t rootdevs[2];	/* possible root devices */
+extern cdev_t rootdev;		/* root device */
+extern cdev_t rootdevs[2];	/* possible root devices */
 extern char *rootdevnames[2];	/* names of possible root devices */
 
 extern int boothowto;		/* reboot flags, from console subsystem */
@@ -124,7 +124,7 @@ void	backtrace(void);
 void	mi_gdinit (struct globaldata *gd, int cpu);
 int	dumpstatus (vm_offset_t addr, off_t count);
 int	nullop (void);
-int	seltrue (dev_t dev, int which);
+int	seltrue (cdev_t dev, int which);
 int	ureadc (int, struct uio *);
 void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
@@ -309,13 +309,13 @@ void	wakeup_domain (void *chan, int domain);
 void	wakeup_domain_one (void *chan, int domain);
 
 /*
- * Common `dev_t' stuff are declared here to avoid #include poisoning
+ * Common `cdev_t' stuff are declared here to avoid #include poisoning
  */
 
-int major(dev_t x);
-int minor(dev_t x);
-udev_t dev2udev(dev_t x);
-dev_t udev2dev(udev_t x, int b);
+int major(cdev_t x);
+int minor(cdev_t x);
+udev_t dev2udev(cdev_t x);
+cdev_t udev2dev(udev_t x, int b);
 int uminor(udev_t dev);
 int umajor(udev_t dev);
 udev_t makeudev(int x, int y);

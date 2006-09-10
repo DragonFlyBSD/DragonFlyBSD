@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.7 2006/03/24 22:39:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.8 2006/09/10 01:26:41 dillon Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -65,7 +65,7 @@ MALLOC_DECLARE(M_MSDOSFSMNT);
  */
 struct msdosfsmount {
 	struct mount *pm_mountp;/* vfs mount struct for this fs */
-	dev_t pm_dev;		/* block special device mounted */
+	cdev_t pm_dev;		/* block special device mounted */
 	uid_t pm_uid;		/* uid to set as owner of the files */
 	gid_t pm_gid;		/* gid to set as owner of the files */
 	mode_t pm_mask;		/* mask to and with file protection bits */

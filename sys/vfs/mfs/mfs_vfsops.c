@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.34 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.35 2006/09/10 01:26:41 dillon Exp $
  */
 
 
@@ -121,7 +121,7 @@ VFS_SET(mfs_vfsops, mfs, 0);
 int
 mfsopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	if (ap->a_oflags & FWRITE)
 		return(EROFS);
@@ -139,7 +139,7 @@ mfsclose(struct dev_close_args *ap)
 int
 mfsstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	off_t boff = bio->bio_offset;
@@ -236,7 +236,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	size_t size;
 	int flags, err;
 	int minnum;
-	dev_t dev;
+	cdev_t dev;
 
 	/*
 	 * Use NULL path to flag a root mount

@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.14 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.15 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -119,7 +119,11 @@ struct kinfo_proc {
 		pid_t	e_ppid;			/* parent process id */
 		pid_t	e_pgid;			/* process group id */
 		short	e_jobc;			/* job control counter */
+#ifdef _KERNEL
 		udev_t	e_tdev;			/* controlling tty dev */
+#else
+		dev_t	e_tdev;			/* controlling tty dev */
+#endif
 		pid_t	e_tpgid;		/* tty process group id */
 		struct	session *e_tsess;	/* tty session pointer */
 #define	WMESGLEN	7

@@ -37,7 +37,7 @@
  *
  *	@(#)tty_conf.c	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty_conf.c,v 1.16.2.1 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/kern/tty_conf.c,v 1.4 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_conf.c,v 1.5 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -141,7 +141,7 @@ ldisc_deregister(discipline)
 
 static int
 l_noopen(dev, tp)
-	dev_t dev;
+	cdev_t dev;
 	struct tty *tp;
 {
 

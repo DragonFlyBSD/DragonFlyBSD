@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.18 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.19 2006/09/10 01:26:36 dillon Exp $
  */
 
 /* 
@@ -933,7 +933,7 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 int
 rpopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	rp_port *rp;
 	int	unit, port, mynor, umynor, flags;  /* SG */
 	struct	tty	*tp;
@@ -1094,7 +1094,7 @@ out2:
 int
 rpclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int	unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
 	struct	tty	*tp;
@@ -1168,7 +1168,7 @@ static
 int
 rpwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	rp_port *rp;
 	struct	tty	*tp;
 	int	unit, mynor, port, umynor, error = 0; /* SG */
@@ -1206,7 +1206,7 @@ rpdtrwakeup(void *chan)
 int
 rpioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct rp_port	*rp;

@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.19 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.20 2006/09/10 01:26:34 dillon Exp $
  */
 
 /*
@@ -1289,7 +1289,7 @@ psmdetach(device_t dev)
 static int
 psmopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc;
     int command_byte;
@@ -1374,7 +1374,7 @@ psmopen(struct dev_open_args *ap)
 static int
 psmclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc = PSM_SOFTC(unit);
     int stat[3];
@@ -1515,7 +1515,7 @@ tame_mouse(struct psm_softc *sc, mousestatus_t *status, unsigned char *buf)
 static int
 psmread(struct dev_read_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct uio *uio = ap->a_uio;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     unsigned char buf[PSM_SMALLBUFSIZE];
@@ -1640,7 +1640,7 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 static int
 psmioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     caddr_t addr=  ap->a_data;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     mousemode_t mode;
@@ -2378,7 +2378,7 @@ psmintr(void *arg)
 static int
 psmpoll(struct dev_poll_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     int revents = 0;
 

@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -104,7 +104,7 @@ static struct dev_ops_link *dev_ops_array[NUMCDEVSW];
  ************************************************************************/
 
 int
-dev_dopen(dev_t dev, int oflags, int devtype, struct ucred *cred)
+dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred)
 {
 	struct dev_open_args ap;
 
@@ -117,7 +117,7 @@ dev_dopen(dev_t dev, int oflags, int devtype, struct ucred *cred)
 }
 
 int
-dev_dclose(dev_t dev, int fflag, int devtype)
+dev_dclose(cdev_t dev, int fflag, int devtype)
 {
 	struct dev_close_args ap;
 
@@ -129,7 +129,7 @@ dev_dclose(dev_t dev, int fflag, int devtype)
 }
 
 int
-dev_dread(dev_t dev, struct uio *uio, int ioflag)
+dev_dread(cdev_t dev, struct uio *uio, int ioflag)
 {
 	struct dev_read_args ap;
 	int error;
@@ -145,7 +145,7 @@ dev_dread(dev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-dev_dwrite(dev_t dev, struct uio *uio, int ioflag)
+dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 {
 	struct dev_write_args ap;
 	int error;
@@ -160,7 +160,7 @@ dev_dwrite(dev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
+dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
 {
 	struct dev_ioctl_args ap;
 
@@ -174,7 +174,7 @@ dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
 }
 
 int
-dev_dpoll(dev_t dev, int events)
+dev_dpoll(cdev_t dev, int events)
 {
 	struct dev_poll_args ap;
 	int error;
@@ -189,7 +189,7 @@ dev_dpoll(dev_t dev, int events)
 }
 
 int
-dev_dmmap(dev_t dev, vm_offset_t offset, int nprot)
+dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
 {
 	struct dev_mmap_args ap;
 	int error;
@@ -205,7 +205,7 @@ dev_dmmap(dev_t dev, vm_offset_t offset, int nprot)
 }
 
 int
-dev_dclone(dev_t dev)
+dev_dclone(cdev_t dev)
 {
 	struct dev_clone_args ap;
 
@@ -222,7 +222,7 @@ dev_dclone(dev_t dev)
  * from vn_strategy.  XXX this will ultimately have to change.
  */
 void
-dev_dstrategy(dev_t dev, struct bio *bio)
+dev_dstrategy(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
 	struct bio_track *track;
@@ -243,7 +243,7 @@ dev_dstrategy(dev_t dev, struct bio *bio)
 }
 
 void
-dev_dstrategy_chain(dev_t dev, struct bio *bio)
+dev_dstrategy_chain(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
 
@@ -259,7 +259,7 @@ dev_dstrategy_chain(dev_t dev, struct bio *bio)
  * forwarding the message.
  */
 int
-dev_ddump(dev_t dev)
+dev_ddump(cdev_t dev)
 {
 	struct dev_dump_args ap;
 
@@ -272,7 +272,7 @@ dev_ddump(dev_t dev)
 }
 
 int
-dev_dpsize(dev_t dev)
+dev_dpsize(cdev_t dev)
 {
 	struct dev_psize_args ap;
 	int error;
@@ -286,7 +286,7 @@ dev_dpsize(dev_t dev)
 }
 
 int
-dev_dkqfilter(dev_t dev, struct knote *kn)
+dev_dkqfilter(cdev_t dev, struct knote *kn)
 {
 	struct dev_kqfilter_args ap;
 	int error;
@@ -305,19 +305,19 @@ dev_dkqfilter(dev_t dev, struct knote *kn)
  ************************************************************************/
 
 const char *
-dev_dname(dev_t dev)
+dev_dname(cdev_t dev)
 {
     return(dev->si_ops->head.name);
 }
 
 int
-dev_dflags(dev_t dev)
+dev_dflags(cdev_t dev)
 {
     return(dev->si_ops->head.flags);
 }
 
 int
-dev_dmaj(dev_t dev)
+dev_dmaj(cdev_t dev)
 {
     return(dev->si_ops->head.maj);
 }
@@ -474,7 +474,7 @@ dev_ops_get(int x, int y)
  * its major/minor space will no longer be visible to userland.
  */
 struct dev_ops *
-dev_ops_add_override(dev_t backing_dev, struct dev_ops *template,
+dev_ops_add_override(cdev_t backing_dev, struct dev_ops *template,
 		     u_int mask, u_int match)
 {
 	struct dev_ops *ops;
@@ -558,7 +558,7 @@ dev_ops_release(struct dev_ops *ops)
 }
 
 struct dev_ops *
-dev_ops_intercept(dev_t dev, struct dev_ops *iops)
+dev_ops_intercept(cdev_t dev, struct dev_ops *iops)
 {
 	struct dev_ops *oops = dev->si_ops;
 
@@ -572,7 +572,7 @@ dev_ops_intercept(dev_t dev, struct dev_ops *iops)
 }
 
 void
-dev_ops_restore(dev_t dev, struct dev_ops *oops)
+dev_ops_restore(cdev_t dev, struct dev_ops *oops)
 {
 	struct dev_ops *iops = dev->si_ops;
 

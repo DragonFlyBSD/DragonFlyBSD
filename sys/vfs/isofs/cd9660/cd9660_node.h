@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.9 2006/04/01 21:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.10 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include <sys/lockf.h>
@@ -68,7 +68,7 @@ struct iso_node {
 	struct	vnode *i_vnode;	/* vnode associated with this inode */
 	struct	vnode *i_devvp;	/* vnode for block I/O */
 	u_long	i_flag;		/* see below */
-	dev_t	i_dev;		/* device where inode resides */
+	cdev_t	i_dev;		/* device where inode resides */
 	ino_t	i_number;	/* the identity of the inode */
 				/* we use the actual starting block of the file */
 	struct	iso_mnt *i_mnt;	/* filesystem associated with this inode */
@@ -121,7 +121,7 @@ void cd9660_defattr (struct iso_directory_record *,
 			struct iso_node *, struct buf *, enum ISO_FTYPE);
 void cd9660_deftstamp (struct iso_directory_record *,
 			struct iso_node *, struct buf *, enum ISO_FTYPE);
-struct vnode *cd9660_ihashget (dev_t, ino_t);
+struct vnode *cd9660_ihashget (cdev_t, ino_t);
 int cd9660_ihashins (struct iso_node *);
 int cd9660_tstamp_conv7 (u_char *, struct timespec *, enum ISO_FTYPE);
 int cd9660_tstamp_conv17 (u_char *, struct timespec *);

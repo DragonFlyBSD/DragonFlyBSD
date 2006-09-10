@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.13 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -491,7 +491,7 @@ int ulptusein = 1;
 int
 ulptopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_char flags = ULPTFLAGS(dev);
 	struct ulpt_softc *sc;
 	usbd_status err;
@@ -627,7 +627,7 @@ ulpt_statusmsg(u_char status, struct ulpt_softc *sc)
 int
 ulptclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ulpt_softc *sc;
 
 	USB_GET_SC(ulpt, ULPTUNIT(dev), sc);
@@ -700,7 +700,7 @@ ulpt_do_write(struct ulpt_softc *sc, struct uio *uio, int flags)
 int
 ulptwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ulpt_softc *sc;
 	int error;
 

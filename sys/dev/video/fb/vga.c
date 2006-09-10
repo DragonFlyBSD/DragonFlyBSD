@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.17 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.18 2006/09/10 01:26:37 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -99,7 +99,7 @@ vga_attach_unit(int unit, vga_softc_t *sc, int flags)
 struct ucred;
 
 int
-vga_open(dev_t dev, vga_softc_t *sc, int flag, int mode, struct ucred *cred)
+vga_open(cdev_t dev, vga_softc_t *sc, int flag, int mode, struct ucred *cred)
 {
 	if (sc == NULL)
 		return ENXIO;
@@ -110,32 +110,32 @@ vga_open(dev_t dev, vga_softc_t *sc, int flag, int mode, struct ucred *cred)
 }
 
 int
-vga_close(dev_t dev, vga_softc_t *sc, int flag, int mode)
+vga_close(cdev_t dev, vga_softc_t *sc, int flag, int mode)
 {
 	return genfbclose(&sc->gensc, sc->adp, flag, mode);
 }
 
 int
-vga_read(dev_t dev, vga_softc_t *sc, struct uio *uio, int flag)
+vga_read(cdev_t dev, vga_softc_t *sc, struct uio *uio, int flag)
 {
 	return genfbread(&sc->gensc, sc->adp, uio, flag);
 }
 
 int
-vga_write(dev_t dev, vga_softc_t *sc, struct uio *uio, int flag)
+vga_write(cdev_t dev, vga_softc_t *sc, struct uio *uio, int flag)
 {
 	return genfbread(&sc->gensc, sc->adp, uio, flag);
 }
 
 int
-vga_ioctl(dev_t dev, vga_softc_t *sc, u_long cmd, caddr_t arg, int flag,
+vga_ioctl(cdev_t dev, vga_softc_t *sc, u_long cmd, caddr_t arg, int flag,
 	  struct ucred *cred)
 {
 	return genfbioctl(&sc->gensc, sc->adp, cmd, arg, flag, cred);
 }
 
 int
-vga_mmap(dev_t dev, vga_softc_t *sc, vm_offset_t offset, int prot)
+vga_mmap(cdev_t dev, vga_softc_t *sc, vm_offset_t offset, int prot)
 {
 	return genfbmmap(&sc->gensc, sc->adp, offset, prot);
 }

@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.10 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.11 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -107,8 +107,8 @@ vinum_daemon(void)
 			"vinum: recovering I/O request: %p\n%s dev %d.%d, offset 0x%012llx, length %d\n",
 			rq,
 			(rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-			major((dev_t)rq->bio->bio_driver_info),
-			minor((dev_t)rq->bio->bio_driver_info),
+			major((cdev_t)rq->bio->bio_driver_info),
+			minor((cdev_t)rq->bio->bio_driver_info),
 			rq->bio->bio_offset,
 			rq->bio->bio_buf->b_bcount);
 		}
@@ -206,7 +206,7 @@ recover_io(struct request *rq)
      * Negotiate with phk to get it fixed.
      * Reissue the command.
      */
-    dev_dstrategy((dev_t)rq->bio->bio_driver_info, rq->bio);
+    dev_dstrategy((cdev_t)rq->bio->bio_driver_info, rq->bio);
 }
 
 /* Functions called to interface with the daemon */

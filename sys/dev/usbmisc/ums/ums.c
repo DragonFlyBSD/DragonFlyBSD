@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.20 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -571,7 +571,7 @@ ums_disable(void *priv)
 Static int
 ums_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
 	USB_GET_SC_OPEN(ums, UMSUNIT(dev), sc);
@@ -582,7 +582,7 @@ ums_open(struct dev_open_args *ap)
 Static int
 ums_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
@@ -599,7 +599,7 @@ ums_close(struct dev_close_args *ap)
 Static int
 ums_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct ums_softc *sc;
 	char buf[sizeof(sc->qbuf)];
@@ -669,7 +669,7 @@ ums_read(struct dev_read_args *ap)
 Static int
 ums_poll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 	int revents = 0;
 
@@ -697,7 +697,7 @@ ums_poll(struct dev_poll_args *ap)
 int
 ums_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 	int error = 0;
 	mousemode_t mode;

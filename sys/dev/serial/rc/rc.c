@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.17 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.18 2006/09/10 01:26:36 dillon Exp $
  *
  */
 
@@ -713,7 +713,7 @@ rc_stop(tp, rw)
 static	int
 rcopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct rc_chans *rc;
 	struct tty      *tp;
 	int             unit, nec, error = 0;
@@ -805,7 +805,7 @@ out:
 static	int
 rcclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct rc_chans *rc;
 	struct tty      *tp;
 	int unit = GET_UNIT(dev);
@@ -1058,7 +1058,7 @@ struct rc_softc         *rcb;
 static	int
 rcioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(dev)];
 	int                   error;
 	struct tty                     *tp = rc->rc_tp;

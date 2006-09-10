@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.21 2006/09/05 00:55:41 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.22 2006/09/10 01:26:35 dillon Exp $
  */
 
 /*
@@ -351,7 +351,7 @@ amr_free(struct amr_softc *sc)
     }
 
     /* destroy control device */
-    if( sc->amr_dev_t != (dev_t)NULL)
+    if( sc->amr_dev_t != (cdev_t)NULL)
 	    destroy_dev(sc->amr_dev_t);
     dev_ops_remove(&amr_ops, -1, device_get_unit(sc->amr_dev));
 }
@@ -376,7 +376,7 @@ amr_submit_bio(struct amr_softc *sc, struct bio *bio)
 static int
 amr_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct amr_softc	*sc = devclass_get_softc(devclass_find("amr"), unit);
 
@@ -392,7 +392,7 @@ amr_open(struct dev_open_args *ap)
 static int
 amr_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct amr_softc	*sc = devclass_get_softc(devclass_find("amr"), unit);
 
@@ -408,7 +408,7 @@ amr_close(struct dev_close_args *ap)
 static int
 amr_ioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct amr_softc		*sc = (struct amr_softc *)dev->si_drv1;
     int				*arg = (int *)ap->a_data;
     struct amr_user_ioctl	*au = (struct amr_user_ioctl *)ap->a_data;

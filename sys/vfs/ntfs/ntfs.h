@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.14 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.15 2006/09/10 01:26:41 dillon Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -248,7 +248,7 @@ struct bootfile {
 struct ntfsmount {
 	struct mount   *ntm_mountp;	/* filesystem vfs structure */
 	struct bootfile ntm_bootfile;
-	dev_t           ntm_dev;	/* device mounted */
+	cdev_t           ntm_dev;	/* device mounted */
 	struct vnode   *ntm_devvp;	/* block device mounted vnode */
 	struct vnode   *ntm_sysvn[NTFS_SYSNODESNUM];
 	u_int32_t       ntm_bpmftrec;

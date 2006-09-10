@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.18 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.19 2006/09/10 01:26:35 dillon Exp $
  *
  */
 #undef DEBUG
@@ -112,7 +112,7 @@ static int cxparam (struct tty *tp, struct termios *t);
 int
 cxopen (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
 	unsigned short port;
@@ -250,7 +250,7 @@ cxopen (struct dev_open_args *ap)
 int
 cxclose (struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
 	struct tty *tp;
@@ -288,7 +288,7 @@ cxclose (struct dev_close_args *ap)
 int
 cxioctl (struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	int unit = UNIT (dev);
 	cx_chan_t *c, *m;

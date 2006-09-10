@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.19 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.20 2006/09/10 01:26:34 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -206,7 +206,7 @@ static	d_close_t	mcdclose;
 static	d_ioctl_t	mcdioctl;
 static	d_strategy_t	mcdstrategy;
 
-static	int mcdsize(dev_t dev);
+static	int mcdsize(cdev_t dev);
 
 static struct dev_ops mcd_ops = {
 	{ "mcd", MCD_CDEV_MAJOR, D_DISK },
@@ -266,7 +266,7 @@ int mcd_attach(struct isa_device *dev)
 int
 mcdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit,part,phys,r,retry;
 	struct mcd_data *cd;
 
@@ -359,7 +359,7 @@ MCD_TRACE("open: partition=%d, disksize = %ld, blksize=%d\n",
 
 int mcdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit,part;
 	struct mcd_data *cd;
 
@@ -385,7 +385,7 @@ int mcdclose(struct dev_close_args *ap)
 int
 mcdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
@@ -465,7 +465,7 @@ static void mcd_start(int unit)
 	struct partition *p;
 	struct bio *bio;
 	struct buf *bp;
-	dev_t dev;
+	cdev_t dev;
 
 	crit_enter();
 	if (cd->flags & MCDMBXBSY) {
@@ -513,7 +513,7 @@ static void mcd_start(int unit)
 int
 mcdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct mcd_data *cd;
 	int unit,part,retry,r;
@@ -675,7 +675,7 @@ static int mcd_getdisklabel(int unit)
 	return 0;
 }
 
-int mcdsize(dev_t dev)
+int mcdsize(cdev_t dev)
 {
 	int size;
 	int unit = mcd_unit(dev);

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.18 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.19 2006/09/10 01:26:37 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -384,7 +384,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 int
 uhidopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	usbd_status err;
 
@@ -432,7 +432,7 @@ uhidopen(struct dev_open_args *ap)
 int
 uhidclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
@@ -522,7 +522,7 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 int
 uhidread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
@@ -569,7 +569,7 @@ uhid_do_write(struct uhid_softc *sc, struct uio *uio, int flag)
 int
 uhidwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
@@ -701,7 +701,7 @@ uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag)
 int
 uhidioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
@@ -717,7 +717,7 @@ uhidioctl(struct dev_ioctl_args *ap)
 int
 uhidpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int revents = 0;
 

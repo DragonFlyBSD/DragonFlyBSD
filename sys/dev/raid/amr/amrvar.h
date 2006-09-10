@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.7 2006/02/17 19:18:05 dillon Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.8 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -203,7 +203,7 @@ struct amr_softc
     TAILQ_HEAD(, ccb_hdr)	amr_cam_ccbq;
 
     /* control device */
-    dev_t			amr_dev_t;
+    cdev_t			amr_dev_t;
 
     /* controller type-specific support */
     int				amr_type;
@@ -252,7 +252,7 @@ extern int		amr_cam_command(struct amr_softc *sc, struct amr_command **acp);
 struct amrd_softc 
 {
     device_t		amrd_dev;
-    dev_t		amrd_dev_t;
+    cdev_t		amrd_dev_t;
     struct amr_softc	*amrd_controller;
     struct amr_logdrive	*amrd_drive;
     struct disk		amrd_disk;

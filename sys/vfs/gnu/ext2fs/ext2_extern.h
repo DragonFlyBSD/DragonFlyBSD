@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.11 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.12 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_EXT2_EXTERN_H_
@@ -97,7 +97,7 @@ void	mark_buffer_dirty (struct buf *bh);
 
 int	ext2_getlbns(struct vnode *, ext2_daddr_t, struct indir *, int *);
 void	ext2_itimes(struct vnode *vp);
-struct vnode *ext2_ihashget(dev_t, ino_t);
+struct vnode *ext2_ihashget(cdev_t, ino_t);
 int	ext2_ihashins(struct inode *);
 void	ext2_ihashrem(struct inode *);
 void	ext2_dirbad(struct inode *, doff_t, char *);
@@ -109,8 +109,8 @@ int	ext2_vnoperatefifo(struct vop_generic_args *);
 int	ext2_vnoperatespec(struct vop_generic_args *);
 int	ext2_uninit(struct vfsconf *);
 void	ext2_ihashinit(void);
-struct vnode *ext2_ihashlookup(dev_t dev, ino_t inum);
-int	ext2_ihashcheck(dev_t dev, ino_t inum);
+struct vnode *ext2_ihashlookup(cdev_t dev, ino_t inum);
+int	ext2_ihashcheck(cdev_t dev, ino_t inum);
 
 /*
  * This macro allows the ufs code to distinguish between an EXT2 and a

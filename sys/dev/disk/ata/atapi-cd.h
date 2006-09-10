@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.h,v 1.15.2.9 2002/03/18 08:37:34 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.h,v 1.3 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.h,v 1.4 2006/09/10 01:26:33 dillon Exp $
  */
 
 /* CDROM Table Of Contents */
@@ -300,7 +300,7 @@ struct acd_track_info {
 };
 
 struct acd_devlist {
-    dev_t	dev;
+    cdev_t	dev;
     TAILQ_ENTRY(acd_devlist)	chain;		/* list management */  
 };
 
@@ -326,5 +326,5 @@ struct acd_softc {
     int				block_size;	/* blocksize currently used */
     struct disklabel		disklabel;	/* fake disk label */
     struct devstat		*stats;		/* devstat entry */
-    dev_t			dev;		/* device place holders */
+    cdev_t			dev;		/* device place holders */
 };

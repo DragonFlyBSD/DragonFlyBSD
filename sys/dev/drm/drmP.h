@@ -28,7 +28,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  * $FreeBSD: src/sys/dev/drm/drmP.h,v 1.4.2.1 2003/04/26 07:05:27 anholt Exp $
- * $DragonFly: src/sys/dev/drm/drmP.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/drmP.h,v 1.4 2006/09/10 01:26:34 dillon Exp $
  */
 
 #ifndef _DRM_P_H_
@@ -313,7 +313,7 @@ struct drm_device {
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 	device_t	  device;	/* Device instance from newbus     */
 #endif
-	dev_t		  devnode;	/* Device number for mknod	   */
+	cdev_t		  devnode;	/* Device number for mknod	   */
 
 	int		  flags;	/* Flags to open(2)		   */
 

@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.12 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.13 2006/09/10 01:26:34 dillon Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -141,7 +141,7 @@ gpattach(struct isa_device *isdp)
 static	int
 gpopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct gpib_softc *sc = &gpib_sc;
 	u_char unit;
 	int status;
@@ -216,7 +216,7 @@ enableremote(unit);
 static	int
 gpclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct gpib_softc *sc = &gpib_sc;
         unsigned char unit;
         unsigned char status;
@@ -316,7 +316,7 @@ while (!(inb(ISR1)&2)&&(status==EWOULDBLOCK));
 static	int
 gpwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int err,count;
 

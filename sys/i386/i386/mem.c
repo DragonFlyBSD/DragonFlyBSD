@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*
@@ -96,8 +96,8 @@ static int rand_bolt;
 static caddr_t	zbuf;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
-static int mem_ioctl (dev_t, u_long, caddr_t, int, struct ucred *);
-static int random_ioctl (dev_t, u_long, caddr_t, int, struct ucred *);
+static int mem_ioctl (cdev_t, u_long, caddr_t, int, struct ucred *);
+static int random_ioctl (cdev_t, u_long, caddr_t, int, struct ucred *);
 
 struct mem_range_softc mem_range_softc;
 
@@ -105,7 +105,7 @@ struct mem_range_softc mem_range_softc;
 static int
 mmopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error;
 
 	switch (minor(dev)) {
@@ -131,7 +131,7 @@ mmopen(struct dev_open_args *ap)
 static int
 mmclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	switch (minor(dev)) {
 	case 14:
@@ -145,7 +145,7 @@ mmclose(struct dev_close_args *ap)
 
 
 static int
-mmrw(dev_t dev, struct uio *uio, int flags)
+mmrw(cdev_t dev, struct uio *uio, int flags)
 {
 	int o;
 	u_int c, v;
@@ -323,7 +323,7 @@ mmwrite(struct dev_write_args *ap)
 static int
 memmmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	switch (minor(dev)) {
 	case 0:
@@ -347,7 +347,7 @@ memmmap(struct dev_mmap_args *ap)
 static int
 mmioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	switch (minor(dev)) {
 	case 0:
@@ -368,7 +368,7 @@ mmioctl(struct dev_ioctl_args *ap)
  * and mem_range_attr_set.
  */
 static int 
-mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
+mem_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 {
 	int nd, error = 0;
 	struct mem_range_op *mo = (struct mem_range_op *)data;
@@ -462,7 +462,7 @@ mem_range_AP_init(void)
 #endif
 
 static int 
-random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
+random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 {
 	int error;
 	int intr;
@@ -517,7 +517,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 int
 mmpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int revents;
 
 	switch (minor(dev)) {
@@ -535,7 +535,7 @@ mmpoll(struct dev_poll_args *ap)
 
 int
 iszerodev(dev)
-	dev_t dev;
+	cdev_t dev;
 {
 	return ((major(dev) == mem_ops.head.maj)
 	  && minor(dev) == 12);

@@ -30,7 +30,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_fops.h,v 1.7.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.5 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.6 2006/09/10 01:26:34 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -54,7 +54,7 @@ drm_file_t *DRM(find_file_by_proc)(drm_device_t *dev, DRM_STRUCTPROC *p)
 
 /* DRM(open) is called whenever a process opens /dev/drm. */
 
-int DRM(open_helper)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
+int DRM(open_helper)(cdev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		    drm_device_t *dev)
 {
 	int	     m = minor(kdev);

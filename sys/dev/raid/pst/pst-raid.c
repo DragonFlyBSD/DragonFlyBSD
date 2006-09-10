@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.18 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.19 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ struct pst_softc {
     struct iop_softc		*iop;
     struct i2o_lct_entry	*lct;
     struct i2o_bsa_device	*info;
-    dev_t			device;
+    cdev_t			device;
     struct devstat		stats;
     struct disk			disk;
     struct bio_queue_head	bio_queue;

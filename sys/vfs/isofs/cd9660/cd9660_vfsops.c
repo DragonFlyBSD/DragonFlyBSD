@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.40 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.41 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ MODULE_VERSION(cd9660, 1);
  * Called by vfs_mountroot when iso is going to be mounted as root.
  */
 
-static int iso_get_ssector (dev_t dev);
+static int iso_get_ssector (cdev_t dev);
 static int iso_mountfs (struct vnode *devvp, struct mount *mp,
 			    struct iso_args *argp);
 
@@ -110,7 +110,7 @@ static int iso_mountfs (struct vnode *devvp, struct mount *mp,
  * and return 0 if we fail, this is always a safe bet.
  */
 static int
-iso_get_ssector(dev_t dev)
+iso_get_ssector(cdev_t dev)
 {
 	struct ioc_toc_header h;
 	struct ioc_read_toc_single_entry t;
@@ -266,7 +266,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	struct iso_mnt *isomp = NULL;
 	struct buf *bp = NULL;
 	struct buf *pribp = NULL, *supbp = NULL;
-	dev_t dev;
+	cdev_t dev;
 	int error = EINVAL;
 	int needclose = 0;
 	int high_sierra = 0;
@@ -690,7 +690,7 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 	struct iso_node *ip;
 	struct buf *bp;
 	struct vnode *vp;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	imp = VFSTOISOFS(mp);

@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.17 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.18 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -1085,7 +1085,7 @@ vbi_close( bktr_ptr_t bktr )
  *
  */
 int
-video_read(bktr_ptr_t bktr, int unit, dev_t dev, struct uio *uio)
+video_read(bktr_ptr_t bktr, int unit, cdev_t dev, struct uio *uio)
 {
         int             status;
         int             count;

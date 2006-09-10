@@ -32,7 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.5 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.6 2006/09/10 01:26:27 dillon Exp $
  */
 
 #include <unistd.h>
@@ -183,8 +183,16 @@ struct inoinfo {
 	u_int	i_numblks;		/* size of block array in bytes */
 	ufs_daddr_t i_blks[1];		/* actually longer */
 } **inphead, **inpsort;
-long numdirs, dirhash, listmax, inplast;
+long numdirs, dirhash, listmax, inplast, dirhashmask;
 long countdirs;			/* number of directories we actually found */
+
+/*
+ * Be careful about cache locality of reference, large filesystems may
+ * have tens of millions of directories in them and if fsck has to swap
+ * we want it to swap efficiently.  For this reason we try to group
+ * adjacent inodes together by a reasonable factor.
+ */
+#define DIRHASH(ino)	((ino >> 3) & dirhashmask)
 
 char	*cdevname;		/* name of device being checked */
 long	dev_bsize;		/* computed value of DEV_BSIZE */

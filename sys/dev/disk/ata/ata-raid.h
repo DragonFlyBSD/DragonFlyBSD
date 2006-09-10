@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.h,v 1.2.2.8 2002/04/11 09:31:57 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.h,v 1.5 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.h,v 1.6 2006/09/10 01:26:33 dillon Exp $
  */
 
 /* misc defines */
@@ -80,7 +80,7 @@ struct ar_softc {
     u_int64_t		lock_end;	/* end of locked area for rebuild */
     struct disk		disk;		/* disklabel/slice stuff */
     struct proc		*pid;
-    dev_t		dev;		/* device place holder */
+    cdev_t		dev;		/* device place holder */
 };
 
 struct ar_buf {

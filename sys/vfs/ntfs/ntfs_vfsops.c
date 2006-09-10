@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.41 2006/09/09 19:07:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.42 2006/09/10 01:26:41 dillon Exp $
  */
 
 
@@ -393,7 +393,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 {
 	struct buf *bp;
 	struct ntfsmount *ntmp;
-	dev_t dev;
+	cdev_t dev;
 	int error, ronly, ncount, i;
 	struct vnode *vp;
 

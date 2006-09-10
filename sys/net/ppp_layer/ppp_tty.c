@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.19 2006/09/03 17:31:55 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.20 2006/09/10 01:26:39 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -103,7 +103,7 @@
 #include <net/ppp/if_ppp.h>
 #include <net/ppp/if_pppvar.h>
 
-static int	pppopen (dev_t dev, struct tty *tp);
+static int	pppopen (cdev_t dev, struct tty *tp);
 static int	pppclose (struct tty *tp, int flag);
 static int	pppread (struct tty *tp, struct uio *uio, int flag);
 static int	pppwrite (struct tty *tp, struct uio *uio, int flag);
@@ -175,7 +175,7 @@ pppasyncattach(void *dummy)
  */
 /* ARGSUSED */
 static int
-pppopen(dev_t dev, struct tty *tp)
+pppopen(cdev_t dev, struct tty *tp)
 {
     struct thread *td = curthread;	/* XXX */
     struct ppp_softc *sc;

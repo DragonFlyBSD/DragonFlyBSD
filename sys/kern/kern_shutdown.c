@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.35 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.36 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -136,7 +136,7 @@ globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 
 static void boot (int) __dead2;
 static void dumpsys (void);
-static int setdumpdev (dev_t dev);
+static int setdumpdev (cdev_t dev);
 static void poweroff_wait (void *, int);
 static void print_uptime (void);
 static void shutdown_halt (void *junk, int howto);
@@ -461,7 +461,7 @@ SYSCTL_INT(_machdep, OID_AUTO, do_dump, CTLFLAG_RW, &dodump, 0,
 
 static int
 setdumpdev(dev)
-	dev_t dev;
+	cdev_t dev;
 {
 	int psize;
 	long newdumplo;
@@ -492,7 +492,7 @@ dump_conf(dummy)
 	void *dummy;
 {
 	char *path;
-	dev_t dev;
+	cdev_t dev;
 
 	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
@@ -521,7 +521,7 @@ sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_kern, KERN_DUMPDEV, dumpdev, CTLTYPE_OPAQUE|CTLFLAG_RW,
-	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,dev_t", "");
+	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,cdev_t", "");
 
 /*
  * Doadump comes here after turning off memory management and

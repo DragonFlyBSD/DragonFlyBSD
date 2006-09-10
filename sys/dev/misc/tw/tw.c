@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.17 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.18 2006/09/10 01:26:35 dillon Exp $
  *
  */
 
@@ -405,7 +405,7 @@ twattach(struct isa_device *idp)
 int
 twopen(struct dev_open_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
   crit_enter();
@@ -422,7 +422,7 @@ twopen(struct dev_open_args *ap)
 int
 twclose(struct dev_close_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
   crit_enter();
@@ -435,7 +435,7 @@ twclose(struct dev_close_args *ap)
 int
 twread(struct dev_read_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct uio *uio = ap->a_uio;
   u_char buf[3];
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
@@ -453,7 +453,7 @@ twread(struct dev_read_args *ap)
 int
 twwrite(struct dev_write_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct uio *uio = ap->a_uio;
   struct tw_sc *sc;
   int house, key, reps;
@@ -525,7 +525,7 @@ twwrite(struct dev_write_args *ap)
 int
 twpoll(struct dev_poll_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc;
   int revents = 0;
 

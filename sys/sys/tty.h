@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.11 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.12 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -87,7 +87,7 @@ struct tty {
 	struct	clist t_outq;		/* Device output queue. */
 	long	t_outcc;		/* Output queue statistics. */
 	int	t_line;			/* Interface to device drivers. */
-	dev_t	t_dev;			/* Device. */
+	struct cdev *t_dev;		/* Device. */
 	int	t_state;		/* Device and driver (TS*) state. */
 	int	t_flags;		/* Tty flags. */
 	int     t_timeout;              /* Timeout for ttywait() */
@@ -280,7 +280,7 @@ int	 ttyinput (int c, struct tty *tp);
 int	 ttylclose (struct tty *tp, int flag);
 struct tty *ttymalloc (struct tty *tp);
 int	 ttymodem (struct tty *tp, int flag);
-int	 ttyopen (dev_t device, struct tty *tp);
+int	 ttyopen (cdev_t device, struct tty *tp);
 int	 ttypoll (struct dev_poll_args *);
 int	 ttykqfilter (struct dev_kqfilter_args *);
 int	 ttyread (struct dev_read_args *);

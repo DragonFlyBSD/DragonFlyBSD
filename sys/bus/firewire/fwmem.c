@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.12 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -278,7 +278,7 @@ fwmem_write_block(
 int
 fwmem_open (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 
 	if (dev->si_drv1 != NULL) {
@@ -305,7 +305,7 @@ fwmem_open (struct dev_open_args *ap)
 int
 fwmem_close (struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 
 	fms = (struct fwmem_softc *)dev->si_drv1;
@@ -344,7 +344,7 @@ fwmem_biodone(struct fw_xfer *xfer)
 int
 fwmem_strategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct firewire_softc *sc;
@@ -420,7 +420,7 @@ error:
 int
 fwmem_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 	int err = 0;
 

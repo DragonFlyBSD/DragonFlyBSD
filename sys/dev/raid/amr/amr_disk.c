@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.11 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.12 2006/09/10 01:26:35 dillon Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ DRIVER_MODULE(amrd, amr, amrd_driver, amrd_devclass, 0, 0);
 static int
 amrd_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
 #if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
     struct disklabel    *label;
@@ -166,7 +166,7 @@ amrd_open(struct dev_open_args *ap)
 static int
 amrd_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
 
     debug_called(1);
@@ -190,7 +190,7 @@ amrd_ioctl(struct dev_ioctl_args *ap)
 int
 amrd_dump(struct dev_dump_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
     struct amr_softc	*amr_sc;
     vm_paddr_t		addr = 0;
@@ -247,7 +247,7 @@ amrd_dump(struct dev_dump_args *ap)
 static int
 amrd_strategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct amrd_softc *sc = (struct amrd_softc *)dev->si_drv1;

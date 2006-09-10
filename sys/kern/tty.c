@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.30 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*-
@@ -216,7 +216,7 @@ static SLIST_HEAD(, tty) tty_list;
  */
 int
 ttyopen(device, tp)
-	dev_t device;
+	cdev_t device;
 	struct tty *tp;
 {
 	crit_enter();
@@ -1017,7 +1017,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	}
 	case TIOCSETD: {		/* set line discipline */
 		int t = *(int *)data;
-		dev_t device = tp->t_dev;
+		cdev_t device = tp->t_dev;
 
 		if ((u_int)t >= nlinesw)
 			return (ENXIO);
@@ -1119,7 +1119,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 int
 ttypoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int events = ap->a_events;
 	int revents = 0;
 	struct tty *tp;
@@ -1160,7 +1160,7 @@ static struct filterops ttywrite_filtops =
 int
 ttykqfilter(struct dev_kqfilter_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct knote *kn = ap->a_kn;
 	struct tty *tp = dev->si_tty;
 	struct klist *klist;
@@ -1192,7 +1192,7 @@ ttykqfilter(struct dev_kqfilter_args *ap)
 static void
 filt_ttyrdetach(struct knote *kn)
 {
-	struct tty *tp = ((dev_t)kn->kn_hook)->si_tty;
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
 	crit_enter();
 	SLIST_REMOVE(&tp->t_rsel.si_note, kn, knote, kn_selnext);
@@ -1202,7 +1202,7 @@ filt_ttyrdetach(struct knote *kn)
 static int
 filt_ttyread(struct knote *kn, long hint)
 {
-	struct tty *tp = ((dev_t)kn->kn_hook)->si_tty;
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
 	kn->kn_data = ttnread(tp);
 	if (ISSET(tp->t_state, TS_ZOMBIE)) {
@@ -1215,7 +1215,7 @@ filt_ttyread(struct knote *kn, long hint)
 static void
 filt_ttywdetach(struct knote *kn)
 {
-	struct tty *tp = ((dev_t)kn->kn_hook)->si_tty;
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
 	crit_enter();
 	SLIST_REMOVE(&tp->t_wsel.si_note, kn, knote, kn_selnext);
@@ -1227,7 +1227,7 @@ filt_ttywrite(kn, hint)
 	struct knote *kn;
 	long hint;
 {
-	struct tty *tp = ((dev_t)kn->kn_hook)->si_tty;
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
 	kn->kn_data = tp->t_outq.c_cc;
 	if (ISSET(tp->t_state, TS_ZOMBIE))
@@ -2613,7 +2613,7 @@ sysctl_kern_ttys(SYSCTL_HANDLER_ARGS)
 	SLIST_FOREACH(tp, &tty_list, t_list) {
 		t = *tp;
 		if (t.t_dev)
-			t.t_dev = (dev_t)dev2udev(t.t_dev);
+			t.t_dev = (cdev_t)dev2udev(t.t_dev);
 		error = SYSCTL_OUT(req, (caddr_t)&t, sizeof(t));
 		if (error)
 			return (error);

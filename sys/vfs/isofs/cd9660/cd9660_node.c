@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.19 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.20 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ cd9660_uninit(struct vfsconf *vfsp)
  * to it. If it is in core, but locked, wait for it.
  */
 struct vnode *
-cd9660_ihashget(dev_t dev, ino_t inum)
+cd9660_ihashget(cdev_t dev, ino_t inum)
 {
 	struct iso_node *ip;
 	lwkt_tokref ilock;

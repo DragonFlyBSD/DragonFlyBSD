@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.45 2006/08/23 06:45:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.46 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -549,7 +549,7 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int ioflag;
 	int error;
-	dev_t dev;
+	cdev_t dev;
 
 	get_mplock();
 	KASSERT(uio->uio_td == curthread,
@@ -679,7 +679,7 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int ioflag;
 	int error;
-	dev_t dev;
+	cdev_t dev;
 
 	get_mplock();
 	KASSERT(uio->uio_td == curthread,
@@ -769,7 +769,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	struct vattr *vap;
 	int error;
 	u_short mode;
-	dev_t dev;
+	cdev_t dev;
 
 	vap = &vattr;
 	error = VOP_GETATTR(vp, vap);
@@ -865,7 +865,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 * stat() call, aka v_rdev == NULL), how are we supposed
 		 * to get a valid block size out of it?
 		 */
-		dev_t dev;
+		cdev_t dev;
 
 		if ((dev = vp->v_rdev) == NULL)
 			dev = udev2dev(vp->v_udev, vp->v_type == VBLK);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.24 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.25 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -248,7 +248,7 @@ acd_init_lun(struct ata_device *atadev)
 static void
 acd_make_dev(struct acd_softc *cdp)
 {
-    dev_t dev;
+    cdev_t dev;
 
     dev_ops_add(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
     dev = make_dev(&acd_ops, dkmakeminor(cdp->lun, 0, 0),
@@ -477,7 +477,7 @@ msf2lba(u_int8_t m, u_int8_t s, u_int8_t f)
 static int
 acdopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     int timeout = 60;
     
@@ -516,7 +516,7 @@ acdopen(struct dev_open_args *ap)
 static int 
 acdclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     
     if (!cdp)
@@ -536,7 +536,7 @@ acdclose(struct dev_close_args *ap)
 static int 
 acdioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     int error = 0;
 
@@ -1082,7 +1082,7 @@ acdioctl(struct dev_ioctl_args *ap)
 static int 
 acdstrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct acd_softc *cdp = dev->si_drv1;
@@ -1118,7 +1118,7 @@ acd_start(struct ata_device *atadev)
     struct acd_softc *cdp = atadev->driver;
     struct bio *bio = bioq_first(&cdp->bio_queue);
     struct buf *bp;
-    dev_t dev;
+    cdev_t dev;
     u_int32_t lba, lastlba, count;
     int8_t ccb[16];
     int track, blocksize;

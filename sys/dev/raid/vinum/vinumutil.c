@@ -37,7 +37,7 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumutil.c,v 1.4 2005/01/25 22:58:42 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumutil.c,v 1.5 2006/09/10 01:26:36 dillon Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */
@@ -232,7 +232,7 @@ sizespec(char *spec)
  * Perform no checking.
  */
 int
-Volno(dev_t dev)
+Volno(cdev_t dev)
 {
     return (minor(dev) & MASK(VINUM_VOL_WIDTH)) >> VINUM_VOL_SHIFT;
 }
@@ -243,7 +243,7 @@ Volno(dev_t dev)
  * type.  Return -1 for invalid types.
  */
 int
-Plexno(dev_t dev)
+Plexno(cdev_t dev)
 {
     switch (DEVTYPE(dev)) {
     case VINUM_VOLUME_TYPE:
@@ -271,7 +271,7 @@ Plexno(dev_t dev)
  * type.  Return -1 for invalid types.
  */
 int
-Sdno(dev_t dev)
+Sdno(cdev_t dev)
 {
     switch (DEVTYPE(dev)) {
     case VINUM_VOLUME_TYPE:

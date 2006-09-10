@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.31 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.32 2006/09/10 01:26:32 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -515,7 +515,7 @@ static struct extend_array *daperiphs;
 static int
 daopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	struct disklabel *label;	
@@ -640,7 +640,7 @@ daopen(struct dev_open_args *ap)
 static int
 daclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	da_softc *softc;
 	int	unit;
@@ -732,7 +732,7 @@ daclose(struct dev_close_args *ap)
 static int
 dastrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
@@ -803,7 +803,7 @@ bad:
 static int
 daioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	int unit;
@@ -832,7 +832,7 @@ daioctl(struct dev_ioctl_args *ap)
 static int
 dadump(struct dev_dump_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	    cam_periph *periph;
 	struct	    da_softc *softc;
 	u_int	    unit;

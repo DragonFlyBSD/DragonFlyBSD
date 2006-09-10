@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.8 2006/07/28 02:17:34 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smb.c,v 1.9 2006/09/10 01:26:33 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -134,7 +134,7 @@ smb_attach(device_t dev)
 static int
 smbopen (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -151,7 +151,7 @@ smbopen (struct dev_open_args *ap)
 static int
 smbclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -180,7 +180,7 @@ smbread(struct dev_read_args *ap)
 static int
 smbioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	device_t smbdev = IIC_DEVICE(minor(dev));
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 	device_t parent = device_get_parent(smbdev);

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.9 2006/05/20 02:42:01 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.10 2006/09/10 01:26:33 dillon Exp $
  */
 
 /*
@@ -163,7 +163,7 @@ struct command {
 /*
  * Routines to support GDB on an sio port.
  */
-extern dev_t	   gdbdev;
+extern cdev_t	   gdbdev;
 extern cn_getc_t *gdb_getc;
 extern cn_putc_t *gdb_putc;
 #endif

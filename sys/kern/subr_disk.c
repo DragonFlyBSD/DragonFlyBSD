@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.25 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.26 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,10 +135,10 @@ static struct dev_ops disk_ops = {
  * the passed dev_ops.  The disk layer not only returns such a raw device,
  * it also uses it internally when passing (modified) commands through.
  */
-dev_t
+cdev_t
 disk_create(int unit, struct disk *dp, int flags, struct dev_ops *raw_ops)
 {
-	dev_t rawdev;
+	cdev_t rawdev;
 	struct dev_ops *dev_ops;
 
 	/*
@@ -195,7 +195,7 @@ disk_destroy(struct disk *disk)
 }
 
 int
-disk_dumpcheck(dev_t dev, u_int *count, u_int *blkno, u_int *secsize)
+disk_dumpcheck(cdev_t dev, u_int *count, u_int *blkno, u_int *secsize)
 {
 	struct disk *dp;
 	struct disklabel *dl;
@@ -274,7 +274,7 @@ static
 int
 diskopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
 
@@ -340,7 +340,7 @@ static
 int
 diskclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
 
@@ -361,7 +361,7 @@ static
 int
 diskioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
 
@@ -383,7 +383,7 @@ static
 int
 diskstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct disk *dp;
@@ -419,7 +419,7 @@ static
 int
 diskpsize(struct dev_psize_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 
 	dp = dev->si_disk;
@@ -443,7 +443,7 @@ static
 int
 diskclone(struct dev_clone_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 
 	dp = dev->si_ops->head.data;
@@ -458,7 +458,7 @@ diskclone(struct dev_clone_args *ap)
 int
 diskdump(struct dev_dump_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp = dev->si_ops->head.data;
 	int error;
 
@@ -599,7 +599,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
  * Returns NULL on success and an error string on failure.
  */
 char *
-readdisklabel(dev_t dev, struct disklabel *lp)
+readdisklabel(cdev_t dev, struct disklabel *lp)
 {
 	struct buf *bp;
 	struct disklabel *dlp;
@@ -687,7 +687,7 @@ setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_long openmask)
  * Write disk label back to device after modification.
  */
 int
-writedisklabel(dev_t dev, struct disklabel *lp)
+writedisklabel(cdev_t dev, struct disklabel *lp)
 {
 	struct buf *bp;
 	struct disklabel *dlp;
@@ -756,7 +756,7 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * or addlog, respectively.  There is no trailing space.
  */
 void
-diskerr(struct bio *bio, dev_t dev, const char *what, int pri, 
+diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, 
 	int donecnt, struct disklabel *lp)
 {
 	struct buf *bp = bio->bio_buf;

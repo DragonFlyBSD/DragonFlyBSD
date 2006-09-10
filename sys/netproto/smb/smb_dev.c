@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.15 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.16 2006/09/10 01:26:40 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -102,7 +102,7 @@ static struct dev_ops nsmb_ops = {
 static int
 nsmb_dev_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct smb_dev *sdp;
 
 	sdp = SMB_GETDEV(dev);
@@ -137,7 +137,7 @@ nsmb_dev_open(struct dev_open_args *ap)
 static int
 nsmb_dev_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -170,7 +170,7 @@ nsmb_dev_close(struct dev_close_args *ap)
 static int
 nsmb_dev_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
@@ -373,7 +373,7 @@ smb_dev2share(int fd, int mode, struct smb_cred *scred,
 	struct vnode *vp;
 	struct smb_dev *sdp;
 	struct smb_share *ssp;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	KKASSERT(scred->scr_td->td_proc);

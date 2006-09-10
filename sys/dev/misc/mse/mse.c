@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.18 2006/09/10 01:26:34 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -382,7 +382,7 @@ mse_detach(device_t dev)
 static	int
 mseopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc;
 
 	sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
@@ -418,7 +418,7 @@ mseopen(struct dev_open_args *ap)
 static	int
 mseclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 
 	crit_enter();
@@ -437,7 +437,7 @@ mseclose(struct dev_close_args *ap)
 static	int
 mseread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int xfer, error;
@@ -502,7 +502,7 @@ mseread(struct dev_read_args *ap)
 static int
 mseioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	mousestatus_t status;
@@ -614,7 +614,7 @@ mseioctl(struct dev_ioctl_args *ap)
 static	int
 msepoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int revents = 0;
 
@@ -643,10 +643,10 @@ msepoll(struct dev_poll_args *ap)
 static void
 msetimeout(void *arg)
 {
-	dev_t dev;
+	cdev_t dev;
 	mse_softc_t *sc;
 
-	dev = (dev_t)arg;
+	dev = (cdev_t)arg;
 	sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	if (sc->sc_watchdog) {
 		if (bootverbose)

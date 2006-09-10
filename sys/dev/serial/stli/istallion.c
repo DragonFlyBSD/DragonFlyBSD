@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.19 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.20 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -536,7 +536,7 @@ STATIC	d_ioctl_t	stliioctl;
 /*
  *	Internal function prototypes.
  */
-static stliport_t *stli_dev2port(dev_t dev);
+static stliport_t *stli_dev2port(cdev_t dev);
 static int	stli_isaprobe(struct isa_device *idp);
 static int	stli_eisaprobe(struct isa_device *idp);
 static int	stli_brdinit(stlibrd_t *brdp);
@@ -571,8 +571,8 @@ static void	stli_sendcmd(stlibrd_t *brdp, stliport_t *portp,
 			unsigned long cmd, void *arg, int size, int copyback);
 static void	stli_mkasyport(stliport_t *portp, asyport_t *pp,
 			struct termios *tiosp);
-static int	stli_memrw(dev_t dev, struct uio *uiop, int flag);
-static int	stli_memioctl(dev_t dev, unsigned long cmd, caddr_t data,
+static int	stli_memrw(cdev_t dev, struct uio *uiop, int flag);
+static int	stli_memioctl(cdev_t dev, unsigned long cmd, caddr_t data,
 			int flag);
 static int	stli_getbrdstats(caddr_t data);
 static int	stli_getportstats(stliport_t *portp, caddr_t data);
@@ -857,7 +857,7 @@ static int stliattach(struct isa_device *idp)
 
 STATIC int stliopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stliport_t	*portp;
 	int		error, callout;
@@ -988,7 +988,7 @@ stliopen_end:
 
 STATIC int stliclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stliport_t	*portp;
 
@@ -1019,7 +1019,7 @@ STATIC int stliclose(struct dev_close_args *ap)
 
 STATIC int stliread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	stliport_t	*portp;
 
 #if STLDEBUG
@@ -1069,7 +1069,7 @@ STATIC int stlistop(struct tty *tp, int rw)
 
 STATIC int stliwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	stliport_t	*portp;
 
 #if STLDEBUG
@@ -1091,7 +1091,7 @@ STATIC int stliwrite(struct dev_write_args *ap)
 
 STATIC int stliioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct termios	*newtios, *localtios;
@@ -1302,7 +1302,7 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
  *	pointer. Return NULL if the device number is not a valid port.
  */
 
-STATIC stliport_t *stli_dev2port(dev_t dev)
+STATIC stliport_t *stli_dev2port(cdev_t dev)
 {
 	stlibrd_t	*brdp;
 
@@ -3595,7 +3595,7 @@ static int stli_clrportstats(stliport_t *portp, caddr_t data)
  *	loading the slave image (and debugging :-)
  */
 
-STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
+STATIC int stli_memrw(cdev_t dev, struct uio *uiop, int flag)
 {
 	stlibrd_t	*brdp;
 	void		*memptr;
@@ -3643,7 +3643,7 @@ STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
  *	reset it, and start/stop it.
  */
 
-static int stli_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag)
+static int stli_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
 {
 	stlibrd_t	*brdp;
 	int		brdnr, rc;

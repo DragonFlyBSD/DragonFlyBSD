@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.6 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.7 2006/09/10 01:26:27 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -283,20 +283,28 @@ setup(char *dev)
 		goto badsb;
 	}
 	numdirs = sblock.fs_cstotal.cs_ndir;
-	dirhash = numdirs;
+
+	/*
+	 * Calculate the directory hash table size.  Do not allocate 
+	 * a ridiculous amount of memory if we have a lot of directories.
+	 */
+	for (dirhash = 16; dirhash < numdirs; dirhash <<= 1)
+		;
+	if (dirhash > 1024*1024)
+		dirhash /= 8;
+	dirhashmask = dirhash - 1;
+
 	if (numdirs == 0) {
 		printf("numdirs is zero, try using an alternate superblock\n");
 		goto badsb;
 	}
 	inplast = 0;
 	listmax = numdirs + 10;
-	inpsort = (struct inoinfo **)calloc((unsigned)listmax,
-	    sizeof(struct inoinfo *));
-	inphead = (struct inoinfo **)calloc((unsigned)numdirs,
-	    sizeof(struct inoinfo *));
+	inpsort = calloc((unsigned)listmax, sizeof(struct inoinfo *));
+	inphead = calloc((unsigned)dirhash, sizeof(struct inoinfo *));
 	if (inpsort == NULL || inphead == NULL) {
-		printf("cannot alloc %u bytes for inphead\n",
-		    (unsigned)numdirs * sizeof(struct inoinfo *));
+		printf("cannot allocate base structures for %ld directories\n",
+			numdirs);
 		goto badsb;
 	}
 	bufinit();

@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.18 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.19 2006/09/10 01:26:34 dillon Exp $
  *
  */
 
@@ -135,7 +135,7 @@ struct ctlr
 
 	int gains[8];
 
-	dev_t dev;			/* Copy of device */
+	cdev_t dev;			/* Copy of device */
 
 	void (*starter)(struct ctlr *ctlr, long count);
 	void (*stop)(struct ctlr *ctlr);
@@ -695,7 +695,7 @@ labpcintr(void *arg)
  */
 
 static int
-lockout_multiple_open(dev_t current, dev_t next)
+lockout_multiple_open(cdev_t current, dev_t next)
 {
 	return ! (DIGITAL(current) && DIGITAL(next));
 }
@@ -703,7 +703,7 @@ lockout_multiple_open(dev_t current, dev_t next)
 static	int
 labpcopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_short unit = UNIT(dev);
 
 	struct ctlr *ctlr;
@@ -741,7 +741,7 @@ labpcopen(struct dev_open_args *ap)
 static	int
 labpcclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
 	(*ctlr->stop)(ctlr);
@@ -837,7 +837,7 @@ static void
 da_strategy(struct bio *bio, struct ctlr *ctlr)
 {
 	struct buf *bp = bio->bio_buf;
-	dev_t dev = bio->bio_driver_info;
+	cdev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
@@ -920,7 +920,7 @@ static void
 digital_out_strategy(struct bio *bio, struct ctlr *ctlr)
 {
 	struct buf *bp = bio->bio_buf;
-	dev_t dev = bio->bio_driver_info;
+	cdev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
@@ -951,7 +951,7 @@ static void
 digital_in_strategy(struct bio *bio, struct ctlr *ctlr)
 {
 	struct buf *bp = bio->bio_buf;
-	dev_t dev = bio->bio_driver_info;
+	cdev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
@@ -979,7 +979,7 @@ digital_in_strategy(struct bio *bio, struct ctlr *ctlr)
 static	int
 labpcstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
@@ -1023,7 +1023,7 @@ labpcstrategy(struct dev_strategy_args *ap)
 static	int
 labpcioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t arg = ap->a_data;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mfsnode.h	8.3 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfsnode.h,v 1.12.2.2 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfsnode.h,v 1.5 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfsnode.h,v 1.6 2006/09/10 01:26:41 dillon Exp $
  */
 
 #ifndef _UFS_MFS_MFSNODE_H_
@@ -48,7 +48,7 @@ struct mfsnode {
 	long	mfs_size;		/* size of memory file system */
 	struct thread *mfs_td;		/* supporting thread */
 	struct bio_queue_head bio_queue; /* list of I/O requests */
-	dev_t	mfs_dev;		/* underlying device */
+	cdev_t	mfs_dev;		/* underlying device */
 	int	mfs_active;
 	long	mfs_spare[1];
 };

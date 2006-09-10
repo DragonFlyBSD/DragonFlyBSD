@@ -35,7 +35,7 @@
  *
  * from: @(#)nfsswapvmunix.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/conf/nfsswapkernel.c,v 1.6 1999/08/28 00:41:01 peter Exp $
- * $DragonFly: src/sys/conf/nfsswapkernel.c,v 1.3 2006/09/09 19:34:44 dillon Exp $
+ * $DragonFly: src/sys/conf/nfsswapkernel.c,v 1.4 2006/09/10 01:26:33 dillon Exp $
  */
 
 /*
@@ -56,8 +56,8 @@
 extern int nfs_mountroot();
 int (*mountroot)() = nfs_mountroot;
 
-dev_t	rootdev = NOCDEV;
-dev_t	dumpdev = NOCDEV;
+cdev_t	rootdev = NOCDEV;
+cdev_t	dumpdev = NOCDEV;
 
 struct nfs_diskless nfs_diskless = {
 	{ { 'q', 'e', '0', '\0' },

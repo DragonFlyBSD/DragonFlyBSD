@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.14 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.15 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@ static struct dos_partition historical_bogus_partition_table[NDOSPART] = {
 static int check_part (char *sname, struct dos_partition *dp,
 			   u_long offset, int nsectors, int ntracks,
 			   u_long mbr_offset);
-static void mbr_extended (dev_t dev, struct disklabel *lp,
+static void mbr_extended (cdev_t dev, struct disklabel *lp,
 			      struct diskslices *ssp, u_long ext_offset,
 			      u_long ext_size, u_long base_ext_offset,
 			      int nsectors, int ntracks, u_long mbr_offset,
@@ -152,7 +152,7 @@ check_part(char *sname, struct dos_partition *dp, u_long offset,
 }
 
 int
-dsinit(dev_t dev, struct disklabel *lp, struct diskslices **sspp)
+dsinit(cdev_t dev, struct disklabel *lp, struct diskslices **sspp)
 {
 	struct buf *bp;
 	u_char	*cp;
@@ -170,7 +170,7 @@ dsinit(dev_t dev, struct disklabel *lp, struct diskslices **sspp)
 	char	*sname;
 	struct diskslice *sp;
 	struct diskslices *ssp;
-	dev_t wdev;
+	cdev_t wdev;
 
 	mbr_offset = DOSBBSECTOR;
 reread_mbr:
@@ -361,7 +361,7 @@ done:
 }
 
 void
-mbr_extended(dev_t dev, struct disklabel *lp, struct diskslices *ssp,
+mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	    u_long ext_offset, u_long ext_size, u_long base_ext_offset,
 	    int nsectors, int ntracks, u_long mbr_offset, int level)
 {

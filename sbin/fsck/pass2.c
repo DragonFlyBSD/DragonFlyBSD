@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.10 2006/09/10 01:26:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,7 @@ pass2(void)
 	struct inodesc curino;
 	struct ufs1_dinode dino;
 	char pathbuf[MAXPATHLEN + 1];
+	long i, n;
 
 	switch (inoinfo(ROOTINO)->ino_state) {
 
@@ -118,9 +119,16 @@ pass2(void)
 		inoinfo(WINO)->ino_type = DT_WHT;
 	}
 	/*
-	 * Sort the directory list into disk block order.
+	 * Sort the directory list into disk block order.  Do this in blocks
+	 * of 1000 directories in order to maintain locality of reference
+	 * in memory in case fsck is using swap space.
 	 */
-	qsort((char *)inpsort, (size_t)inplast, sizeof *inpsort, blksort);
+	for (i = 0; i < inplast; i += 1000) {
+		if ((n = inplast - i) > 1000)
+			n = 1000;
+		qsort(inpsort + i, (size_t)n, sizeof *inpsort, blksort);
+	}
+
 	/*
 	 * Check the integrity of each directory.
 	 */

@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.22 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.23 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,7 +40,7 @@ physwakeup(struct bio *bio)
 }
 
 static int
-physio(dev_t dev, struct uio *uio, int ioflag)
+physio(cdev_t dev, struct uio *uio, int ioflag)
 {
 	int i;
 	int error;

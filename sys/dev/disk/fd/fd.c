@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.32 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.33 2006/09/10 01:26:33 dillon Exp $
  *
  */
 
@@ -234,7 +234,7 @@ static timeout_t fd_iotimeout;
 static timeout_t fd_pseudointr;
 static int fdstate(struct fdc_data *);
 static int retrier(struct fdc_data *);
-static int fdformat(dev_t, struct fd_formb *, struct ucred *);
+static int fdformat(cdev_t, struct fd_formb *, struct ucred *);
 
 static int enable_fifo(fdc_p fdc);
 
@@ -1260,7 +1260,7 @@ out_fdc(struct fdc_data *fdc, int x)
 int
 Fdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
  	fdu_t fdu = FDUNIT(minor(dev));
 	int type = FDTYPE(minor(dev));
 	fd_p	fd;
@@ -1356,7 +1356,7 @@ Fdopen(struct dev_open_args *ap)
 int
 fdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
  	fdu_t fdu = FDUNIT(minor(dev));
 	struct fd_data *fd;
 
@@ -1373,7 +1373,7 @@ fdclose(struct dev_close_args *ap)
 int
 fdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	unsigned nblocks, blknum, cando;
@@ -1573,7 +1573,7 @@ fdstate(fdc_p fdc)
 	struct buf *bp;
 	struct fd_formb *finfo = NULL;
 	size_t fdblk;
-	dev_t dev;
+	cdev_t dev;
 
 	bio = fdc->bio;
 	if (bio == NULL) {
@@ -2079,7 +2079,7 @@ retrier(struct fdc_data *fdc)
 	struct bio *bio;
 	struct buf *bp;
 	struct fd_data *fd;
-	dev_t dev;
+	cdev_t dev;
 	int fdu;
 
 	bio = fdc->bio;
@@ -2114,7 +2114,7 @@ retrier(struct fdc_data *fdc)
 				 * note: use the correct device for more
 				 * verbose error reporting.
 				 */
-				dev_t subdev;
+				cdev_t subdev;
 
 				subdev = make_sub_dev(dev,
 				    (FDUNIT(minor(dev))<<3)|RAW_PART);
@@ -2161,7 +2161,7 @@ fdformat_wakeup(struct bio *bio)
 }
 
 static int
-fdformat(dev_t dev, struct fd_formb *finfo, struct ucred *cred)
+fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 {
  	fdu_t	fdu;
  	fd_p	fd;
@@ -2224,7 +2224,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct ucred *cred)
 static int
 fdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
  	fdu_t	fdu = FDUNIT(minor(dev));
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
 	size_t fdblk;

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.49 2006/09/05 03:48:13 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.50 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -114,7 +114,7 @@ VFS_SET(ext2fs_vfsops, ext2fs, 0);
 static int ext2fs_inode_hash_lock;
 
 static int	ext2_check_sb_compat (struct ext2_super_block *es,
-					  dev_t dev, int ronly);
+					  cdev_t dev, int ronly);
 static int	compute_sb_data (struct vnode * devvp,
 				     struct ext2_super_block * es,
 				     struct ext2_sb_info * fs);
@@ -443,7 +443,7 @@ ext2_check_descriptors(struct ext2_sb_info *sb)
 }
 
 static int
-ext2_check_sb_compat(struct ext2_super_block *es, dev_t dev, int ronly)
+ext2_check_sb_compat(struct ext2_super_block *es, cdev_t dev, int ronly)
 {
 	if (es->s_magic != EXT2_SUPER_MAGIC) {
 		printf("ext2fs: %s: wrong magic number %#x (expected %#x)\n",
@@ -697,7 +697,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	struct buf *bp;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block * es;
-	dev_t dev;
+	cdev_t dev;
 	struct partinfo dpart;
 	int havepart = 0;
 	int error, i, size;
@@ -1060,7 +1060,7 @@ ext2_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	struct ext2mount *ump;
 	struct buf *bp;
 	struct vnode *vp;
-	dev_t dev;
+	cdev_t dev;
 	int i, error;
 	int used_blocks;
 

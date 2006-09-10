@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.34 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.35 2006/09/10 01:26:37 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1245,7 +1245,7 @@ determined_type: ;
 static int
 sioopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -1428,7 +1428,7 @@ out:
 static int
 sioclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		mynor;
 	struct tty	*tp;
@@ -1524,7 +1524,7 @@ comhardclose(com)
 static int
 sioread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct com_s	*com;
 
@@ -1540,7 +1540,7 @@ sioread(struct dev_read_args *ap)
 static int
 siowrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct com_s	*com;
 	int		unit;
@@ -1976,7 +1976,7 @@ cont:
 static int
 sioioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	struct com_s	*com;
 	int		error;
@@ -3031,7 +3031,7 @@ siocninit(cp)
 
 static int
 siocncheckc(dev)
-	dev_t	dev;
+	cdev_t	dev;
 {
 	int	c;
 	Port_t	iobase;
@@ -3055,7 +3055,7 @@ siocncheckc(dev)
 
 int
 siocngetc(dev)
-	dev_t	dev;
+	cdev_t	dev;
 {
 	int	c;
 	Port_t	iobase;
@@ -3077,7 +3077,7 @@ siocngetc(dev)
 
 void
 siocnputc(dev, c)
-	dev_t	dev;
+	cdev_t	dev;
 	int	c;
 {
 	struct siocnstate	sp;

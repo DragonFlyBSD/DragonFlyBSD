@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.97 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.98 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*
@@ -967,7 +967,7 @@ reassignbuf(struct buf *bp)
  * Used for mounting the root file system.
  */
 int
-bdevvp(dev_t dev, struct vnode **vpp)
+bdevvp(cdev_t dev, struct vnode **vpp)
 {
 	struct vnode *vp;
 	struct vnode *nvp;
@@ -991,7 +991,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 }
 
 int
-v_associate_rdev(struct vnode *vp, dev_t dev)
+v_associate_rdev(struct vnode *vp, cdev_t dev)
 {
 	lwkt_tokref ilock;
 
@@ -1013,7 +1013,7 @@ void
 v_release_rdev(struct vnode *vp)
 {
 	lwkt_tokref ilock;
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = vp->v_rdev) != NULL) {
 		lwkt_gettoken(&ilock, &spechash_token);
@@ -1025,7 +1025,7 @@ v_release_rdev(struct vnode *vp)
 }
 
 /*
- * Add a vnode to the alias list hung off the dev_t.  We only associate
+ * Add a vnode to the alias list hung off the cdev_t.  We only associate
  * the device number with the vnode.  The actual device is not associated
  * until the vnode is opened (usually in spec_open()), and will be 
  * disassociated on last close.
@@ -1164,7 +1164,7 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 {
 	struct vnode *vp, *vq;
 	lwkt_tokref ilock;
-	dev_t dev;
+	cdev_t dev;
 
 	KASSERT((ap->a_flags & REVOKEALL) != 0, ("vop_revoke"));
 
@@ -1287,7 +1287,7 @@ vgone_interlocked(struct vnode *vp)
  * Lookup a vnode by device number.
  */
 int
-vfinddev(dev_t dev, enum vtype type, struct vnode **vpp)
+vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
 {
 	lwkt_tokref ilock;
 	struct vnode *vp;
@@ -1311,7 +1311,7 @@ vfinddev(dev_t dev, enum vtype type, struct vnode **vpp)
  * to check for a NULL v_rdev.
  */
 int
-count_dev(dev_t dev)
+count_dev(cdev_t dev)
 {
 	lwkt_tokref ilock;
 	struct vnode *vp;
@@ -1330,7 +1330,7 @@ count_dev(dev_t dev)
 int
 count_udev(udev_t udev)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = udev2dev(udev, 0)) == NOCDEV)
 		return(0);
@@ -1531,7 +1531,7 @@ sysctl_ovfs_conf(SYSCTL_HANDLER_ARGS)
 int
 vfs_mountedon(struct vnode *vp)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
@@ -1994,10 +1994,10 @@ vn_pollgone(struct vnode *vp)
 }
 
 /*
- * extract the dev_t from a VBLK or VCHR.  The vnode must have been opened
+ * extract the cdev_t from a VBLK or VCHR.  The vnode must have been opened
  * (or v_rdev might be NULL).
  */
-dev_t
+cdev_t
 vn_todev(struct vnode *vp)
 {
 	if (vp->v_type != VBLK && vp->v_type != VCHR)
@@ -2013,7 +2013,7 @@ vn_todev(struct vnode *vp)
 int
 vn_isdisk(struct vnode *vp, int *errp)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if (vp->v_type != VBLK && vp->v_type != VCHR) {
 		if (errp != NULL)

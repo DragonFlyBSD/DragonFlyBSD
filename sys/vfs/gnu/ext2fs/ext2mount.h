@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.3 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.4 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_EXT2MOUNT_H_
@@ -73,7 +73,7 @@ struct netexport;
 /* This structure describes the UFS specific mount structure data. */
 struct ext2mount {
 	struct	mount *um_mountp;		/* filesystem vfs structure */
-	dev_t	um_dev;				/* device mounted */
+	cdev_t	um_dev;				/* device mounted */
 	struct	vnode *um_devvp;		/* block device mounted vnode */
 
 	struct	ext2_sb_info *um_e2fs;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.13 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.14 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -117,7 +117,7 @@ SYSCTL_UINT(_hw_aac, OID_AUTO, iosize_max, CTLFLAG_RD, &aac_iosize_max, 0,
 static int
 aac_disk_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
 	struct disklabel *label;
 
@@ -158,7 +158,7 @@ aac_disk_open(struct dev_open_args *ap)
 static int
 aac_disk_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
 
 	debug_called(0);
@@ -178,7 +178,7 @@ aac_disk_close(struct dev_close_args *ap)
 static int
 aac_disk_strategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct aac_disk	*sc;
@@ -219,7 +219,7 @@ aac_disk_strategy(struct dev_strategy_args *ap)
 static int
 aac_disk_dump(struct dev_dump_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk *ad;
 	struct aac_softc *sc;
 	vm_offset_t addr;

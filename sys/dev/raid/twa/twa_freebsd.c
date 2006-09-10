@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.12 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.13 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static devclass_t	twa_devclass;
 static int
 twa_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int			unit = minor(dev);
 	struct twa_softc	*sc = devclass_get_softc(twa_devclass, unit);
 
@@ -102,7 +102,7 @@ twa_open(struct dev_open_args *ap)
 static int
 twa_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int			unit = minor(dev);
 	struct twa_softc	*sc = devclass_get_softc(twa_devclass, unit);
 
@@ -131,7 +131,7 @@ twa_close(struct dev_close_args *ap)
 static int
 twa_ioctl_wrapper(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct twa_softc *sc = (struct twa_softc *)(dev->si_drv1);
 
 	return(twa_ioctl(sc, ap->a_cmd, ap->a_data));
@@ -223,7 +223,7 @@ twa_attach(device_t dev)
 	u_int32_t		command;
 	int			res_id;
 	int			error;
-	dev_t			xdev;
+	cdev_t			xdev;
 
 	twa_dbg_dprint_enter(3, sc);
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.17 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.18 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -90,7 +90,7 @@ astattach(struct ata_device *atadev)
 {
     struct ast_softc *stp;
     struct ast_readposition position;
-    dev_t dev;
+    cdev_t dev;
 
     stp = kmalloc(sizeof(struct ast_softc), M_AST, M_WAITOK | M_ZERO);
     if (!stp) {
@@ -247,7 +247,7 @@ ast_describe(struct ast_softc *stp)
 static int
 astopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
 
     if (!stp)
@@ -273,7 +273,7 @@ astopen(struct dev_open_args *ap)
 static int 
 astclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
 
     /* flush buffers, some drives fail here, they should report ctl = 0 */
@@ -302,7 +302,7 @@ astclose(struct dev_close_args *ap)
 static int 
 astioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
     int error = 0;
 
@@ -415,7 +415,7 @@ astioctl(struct dev_ioctl_args *ap)
 static int 
 aststrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ast_softc *stp = dev->si_drv1;

@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.15 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.16 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ hpfs_hphash_uninit(struct vfsconf *vfc)
  * to it. If it is in core, return it, even if it is locked.
  */
 struct hpfsnode *
-hpfs_hphashlookup(dev_t dev, lsn_t ino)
+hpfs_hphashlookup(cdev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;
@@ -109,7 +109,7 @@ hpfs_hphashlookup(dev_t dev, lsn_t ino)
 }
 
 struct vnode *
-hpfs_hphashvget(dev_t dev, lsn_t ino)
+hpfs_hphashvget(cdev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;

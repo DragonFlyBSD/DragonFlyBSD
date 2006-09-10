@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.27 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.28 2006/09/10 01:26:40 dillon Exp $
  */
 
 /*
@@ -187,7 +187,7 @@ static int	slclose (struct tty *,int);
 static int	slinput (int, struct tty *);
 static int	slioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	sltioctl (struct tty *, u_long, caddr_t, int, struct ucred *);
-static int	slopen (dev_t, struct tty *);
+static int	slopen (cdev_t, struct tty *);
 static int	sloutput (struct ifnet *,
 	    struct mbuf *, struct sockaddr *, struct rtentry *);
 static int	slstart (struct tty *);
@@ -250,7 +250,7 @@ slinit(struct sl_softc *sc)
  */
 /* ARGSUSED */
 static int
-slopen(dev_t dev, struct tty *tp)
+slopen(cdev_t dev, struct tty *tp)
 {
 	struct sl_softc *sc;
 	int nsl;

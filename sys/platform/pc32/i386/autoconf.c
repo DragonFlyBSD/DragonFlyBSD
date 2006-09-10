@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.26 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.27 2006/09/10 01:26:38 dillon Exp $
  */
 
 /*
@@ -109,8 +109,8 @@ SYSINIT(configure2, SI_SUB_CONFIGURE, SI_ORDER_THIRD, configure, NULL);
 /* SI_ORDER_MIDDLE is hookable */
 SYSINIT(configure3, SI_SUB_CONFIGURE, SI_ORDER_ANY, configure_final, NULL);
 
-dev_t	rootdev = NOCDEV;
-dev_t	dumpdev = NOCDEV;
+cdev_t	rootdev = NOCDEV;
+cdev_t	dumpdev = NOCDEV;
 
 /*
  * Determine i/o configuration for a machine.
@@ -232,7 +232,7 @@ cpu_rootconf()
 }
 SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL)
 
-u_long	bootdev = 0;		/* not a dev_t - encoding is different */
+u_long	bootdev = 0;		/* not a cdev_t - encoding is different */
 
 #if defined(FFS) && defined(FFS_ROOT)
 #define FDMAJOR 	2
@@ -270,7 +270,7 @@ static void
 setroot()
 {
 	int majdev, mindev, unit, slice, part;
-	dev_t newrootdev, dev;
+	cdev_t newrootdev, dev;
 	char partname[2];
 	char *sname;
 

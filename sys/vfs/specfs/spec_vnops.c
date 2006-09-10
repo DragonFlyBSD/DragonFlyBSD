@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.48 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.49 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,7 +138,7 @@ static int
 spec_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 	int isblk = (vp->v_type == VBLK) ? 1 : 0;
 	const char *cp;
@@ -269,7 +269,7 @@ spec_open(struct vop_open_args *ap)
 	if ((dev_dflags(dev) & D_DISK) == 0) {
 		cp = devtoname(dev);
 		if (*cp == '#') {
-			printf("WARNING: driver %s should register devices with make_dev() (dev_t = \"%s\")\n",
+			printf("WARNING: driver %s should register devices with make_dev() (cdev_t = \"%s\")\n",
 			    dev_dname(dev), cp);
 		}
 	}
@@ -308,7 +308,7 @@ spec_read(struct vop_read_args *ap)
 	struct vnode *vp;
 	struct thread *td;
 	struct uio *uio;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	vp = ap->a_vp;
@@ -340,7 +340,7 @@ spec_write(struct vop_write_args *ap)
 	struct vnode *vp;
 	struct thread *td;
 	struct uio *uio;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	vp = ap->a_vp;
@@ -367,7 +367,7 @@ spec_write(struct vop_write_args *ap)
 static int
 spec_ioctl(struct vop_ioctl_args *ap)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = ap->a_vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
@@ -383,7 +383,7 @@ spec_ioctl(struct vop_ioctl_args *ap)
 static int
 spec_poll(struct vop_poll_args *ap)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = ap->a_vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
@@ -397,7 +397,7 @@ spec_poll(struct vop_poll_args *ap)
 static int
 spec_kqfilter(struct vop_kqfilter_args *ap)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	if ((dev = ap->a_vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
@@ -542,7 +542,7 @@ spec_close(struct vop_close_args *ap)
 {
 	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
-	dev_t dev = vp->v_rdev;
+	cdev_t dev = vp->v_rdev;
 	int error;
 	int needrelock;
 

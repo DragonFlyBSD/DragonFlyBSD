@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.7 2006/09/10 01:26:36 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -78,7 +78,7 @@ struct twe_drive
 struct twed_softc 
 {
     device_t		twed_dev;
-    dev_t		twed_dev_t;
+    cdev_t		twed_dev_t;
     struct twe_softc	*twed_controller;	/* parent device softc */
     struct twe_drive	*twed_drive;		/* drive data in parent softc */
     struct disk		twed_disk;		/* generic disk handle */

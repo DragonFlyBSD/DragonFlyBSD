@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.36 2006/09/05 03:48:10 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.37 2006/09/10 01:26:33 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -202,7 +202,7 @@ static	int ccdinit (struct ccddevice *, char **, struct ucred *);
 static	int ccdlookup (char *, struct vnode **);
 static	void ccdbuffer (struct ccdbuf **ret, struct ccd_softc *,
 		struct bio *, off_t, caddr_t, long);
-static	void ccdgetdisklabel (dev_t);
+static	void ccdgetdisklabel (cdev_t);
 static	void ccdmakedisklabel (struct ccd_softc *);
 static	int ccdlock (struct ccd_softc *);
 static	void ccdunlock (struct ccd_softc *);
@@ -664,7 +664,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 static int
 ccdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs;
 	struct disklabel *lp;
@@ -711,7 +711,7 @@ ccdopen(struct dev_open_args *ap)
 static int
 ccdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs;
 	int error = 0, part;
@@ -739,7 +739,7 @@ ccdclose(struct dev_close_args *ap)
 static int
 ccdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	int unit = ccdunit(dev);
 	struct bio *nbio;
@@ -836,7 +836,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 	long bcount, rcount;
 	struct ccdbuf *cbp[4];
 	struct buf *bp = bio->bio_buf;
-	dev_t dev = bio->bio_driver_info;
+	cdev_t dev = bio->bio_driver_info;
 	/* XXX! : 2 reads and 2 writes for RAID 4/5 */
 	caddr_t addr;
 	off_t doffset;
@@ -1259,7 +1259,7 @@ ccdiodone(struct bio *bio)
 static int
 ccdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = ccdunit(dev);
 	int i, j, lookedup = 0, error = 0;
 	int part, pmask;
@@ -1482,7 +1482,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 		    (struct disklabel *)ap->a_data, 0);
 		if (error == 0) {
 			if (ap->a_cmd == DIOCWDINFO) {
-				dev_t cdev = CCDLABELDEV(dev);
+				cdev_t cdev = CCDLABELDEV(dev);
 				error = writedisklabel(cdev, &cs->sc_label);
 			}
 		}
@@ -1517,7 +1517,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 static int
 ccdsize(struct dev_psize_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ccd_softc *cs;
 	int part, size;
 
@@ -1603,14 +1603,14 @@ done:
  * up.
  */
 static void
-ccdgetdisklabel(dev_t dev)
+ccdgetdisklabel(cdev_t dev)
 {
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs = &ccd_softc[unit];
 	char *errstring;
 	struct disklabel *lp = &cs->sc_label;
 	struct ccdgeom *ccg = &cs->sc_geom;
-	dev_t cdev;
+	cdev_t cdev;
 
 	bzero(lp, sizeof(*lp));
 

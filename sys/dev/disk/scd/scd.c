@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.18 2006/07/28 02:17:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.19 2006/09/10 01:26:34 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -224,7 +224,7 @@ scd_attach(struct isa_device *dev)
 static	int
 scdopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit,part,phys;
 	int rc;
 	struct scd_data *cd;
@@ -279,7 +279,7 @@ scdopen(struct dev_open_args *ap)
 static	int
 scdclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit,part,phys;
 	struct scd_data *cd;
 
@@ -309,7 +309,7 @@ scdclose(struct dev_close_args *ap)
 static	int
 scdstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
@@ -381,7 +381,7 @@ scd_start(int unit)
 	struct scd_data *cd = scd_data + unit;
 	struct bio *bio;
 	struct partition *p;
-	dev_t dev;
+	cdev_t dev;
 
 	crit_enter();
 	if (cd->flags & SCDMBXBSY) {
@@ -416,7 +416,7 @@ scd_start(int unit)
 static	int
 scdioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct scd_data *cd;
 	int unit,part;

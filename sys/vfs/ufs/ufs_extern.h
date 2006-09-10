@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.14 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.15 2006/09/10 01:26:41 dillon Exp $
  */
 
 #ifndef _VFS_UFS_EXTERN_H_
@@ -77,12 +77,12 @@ int	 ufs_dirremove(struct vnode *, struct inode *, int, int);
 int	 ufs_dirrewrite(struct inode *, struct inode *, ino_t, int, int);
 int	 ufs_getlbns(struct vnode *, ufs_daddr_t, struct indir *, int *);
 struct vnode *
-	 ufs_ihashget(dev_t, ino_t);
-int	 ufs_ihashcheck(dev_t, ino_t);
+	 ufs_ihashget(cdev_t, ino_t);
+int	 ufs_ihashcheck(cdev_t, ino_t);
 void	 ufs_ihashinit(void);
 int	 ufs_ihashins(struct inode *);
 struct vnode *
-	 ufs_ihashlookup(dev_t, ino_t);
+	 ufs_ihashlookup(cdev_t, ino_t);
 void	 ufs_ihashrem(struct inode *);
 int	 ufs_inactive(struct vop_inactive_args *);
 int	 ufs_init(struct vfsconf *);

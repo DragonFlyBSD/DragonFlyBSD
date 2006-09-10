@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.9 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.10 2006/09/10 01:26:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, 0, 0);
 static int
 joyopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
 
@@ -170,7 +170,7 @@ joyopen(struct dev_open_args *ap)
 static int
 joyclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
 
@@ -181,7 +181,7 @@ joyclose(struct dev_close_args *ap)
 static int
 joyread(struct dev_read_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct uio *uio = ap->a_uio;
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
     bus_space_handle_t port = joy->port;
@@ -235,7 +235,7 @@ joyread(struct dev_read_args *ap)
 static int
 joyioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     caddr_t data = ap->a_data;
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
     int i = joypart (dev);

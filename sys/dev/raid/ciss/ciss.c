@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.18 2006/09/05 00:55:41 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.19 2006/09/10 01:26:35 dillon Exp $
  */
 
 /*
@@ -3368,7 +3368,7 @@ ciss_name_command_status(int status)
 static int
 ciss_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ciss_softc	*sc;
 
     debug_called(1);
@@ -3387,7 +3387,7 @@ ciss_open(struct dev_open_args *ap)
 static int
 ciss_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ciss_softc	*sc;
 
     debug_called(1);
@@ -3407,7 +3407,7 @@ ciss_close(struct dev_close_args *ap)
 static int
 ciss_ioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ciss_softc		*sc;
     int				error;
 

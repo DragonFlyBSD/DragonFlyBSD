@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
-/* $DragonFly: src/sys/sys/ccdvar.h,v 1.4 2006/05/20 02:42:13 dillon Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.5 2006/09/10 01:26:40 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 
@@ -137,9 +137,11 @@ struct ccd_ioctl {
  * Component info table.
  * Describes a single component of a concatenated disk.
  */
+struct cdev;
+
 struct ccdcinfo {
 	struct vnode	*ci_vp;			/* device's vnode */
-	dev_t		ci_dev;			/* XXX: device's dev_t */
+	struct cdev 	*ci_dev;		/* XXX: device's dev_t */
 	size_t		ci_size; 		/* size */
 	char		*ci_path;		/* path to component */
 	size_t		ci_pathlen;		/* length of component path */

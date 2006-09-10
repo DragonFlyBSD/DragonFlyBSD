@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.27 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.28 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -132,7 +132,7 @@ static	int		debugger;
 static int scvidprobe(int unit, int flags, int cons);
 static int sckbdprobe(int unit, int flags, int cons);
 static void scmeminit(void *arg);
-static int scdevtounit(dev_t dev);
+static int scdevtounit(cdev_t dev);
 static kbd_callback_func_t sckbdevent;
 static int scparam(struct tty *tp, struct termios *t);
 static void scstart(struct tty *tp);
@@ -281,7 +281,7 @@ sc_attach_unit(int unit, int flags)
     video_info_t info;
 #endif
     int vc;
-    dev_t dev;
+    cdev_t dev;
 
     flags &= ~SC_KERNEL_CONSOLE;
 
@@ -423,7 +423,7 @@ scmeminit(void *arg)
 SYSINIT(sc_mem, SI_SUB_KMEM, SI_ORDER_ANY, scmeminit, NULL);
 
 static int
-scdevtounit(dev_t dev)
+scdevtounit(cdev_t dev)
 {
     int vty = SC_VTY(dev);
 
@@ -438,7 +438,7 @@ scdevtounit(dev_t dev)
 int
 scopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int unit = scdevtounit(dev);
     sc_softc_t *sc;
     struct tty *tp;
@@ -498,7 +498,7 @@ scopen(struct dev_open_args *ap)
 int
 scclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct tty *tp = dev->si_tty;
     scr_stat *scp;
 
@@ -634,7 +634,7 @@ scparam(struct tty *tp, struct termios *t)
 int
 scioctl(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     u_long cmd = ap->a_cmd;
     caddr_t data = ap->a_data;
     int flag = ap->a_fflag;
@@ -1369,7 +1369,7 @@ sccnterm(struct consdev *cp)
 }
 
 static void
-sccnputc(dev_t dev, int c)
+sccnputc(cdev_t dev, int c)
 {
     u_char buf[1];
     scr_stat *scp = sc_console;
@@ -1410,19 +1410,19 @@ sccnputc(dev_t dev, int c)
 }
 
 static int
-sccngetc(dev_t dev)
+sccngetc(cdev_t dev)
 {
     return sccngetch(0);
 }
 
 static int
-sccncheckc(dev_t dev)
+sccncheckc(cdev_t dev)
 {
     return sccngetch(SCGETC_NONBLOCK);
 }
 
 static void
-sccndbctl(dev_t dev, int on)
+sccndbctl(cdev_t dev, int on)
 {
     /* assert(sc_console_unit >= 0) */
     /* try to switch to the kernel console screen */
@@ -2441,7 +2441,7 @@ scinit(int unit, int flags)
      * but is necessry evil for the time being.  XXX
      */
     static scr_stat main_console;
-    static dev_t main_devs[MAXCONS];
+    static cdev_t main_devs[MAXCONS];
     static struct tty main_tty;
     static u_short sc_buffer[ROW*COL];	/* XXX */
 #ifndef SC_NO_FONT_LOADING
@@ -2537,7 +2537,7 @@ scinit(int unit, int flags)
 					 kernel_default.rev_color);
 	} else {
 	    /* assert(sc_malloc) */
-	    sc->dev = kmalloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
+	    sc->dev = kmalloc(sizeof(cdev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
 	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);

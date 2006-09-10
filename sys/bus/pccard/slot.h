@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/slot.h,v 1.25.2.5 2002/09/22 20:26:58 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.5 2006/06/10 20:00:14 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.6 2006/09/10 01:26:33 dillon Exp $
  */
 
 #ifndef _PCCARD_SLOT_H
@@ -122,7 +122,7 @@ struct slot {
 	void		*cdata;		/* Controller specific data */
 	int		pwr_off_pending;/* Power status of slot */
 	device_t	dev;		/* Config system device. */
-	dev_t		d;		/* fs device */
+	cdev_t		d;		/* fs device */
 };
 
 #define PCCARD_DEVICE2SOFTC(d)	((struct slot *) device_get_softc(d))

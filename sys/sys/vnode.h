@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.67 2006/09/09 19:07:29 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.68 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -444,9 +444,9 @@ struct vattr;
 struct vnode;
 
 void	addaliasu (struct vnode *vp, udev_t nvp_udev);
-int	v_associate_rdev(struct vnode *vp, dev_t dev);
+int	v_associate_rdev(struct vnode *vp, cdev_t dev);
 void	v_release_rdev(struct vnode *vp);
-int 	bdevvp (dev_t dev, struct vnode **vpp);
+int 	bdevvp (cdev_t dev, struct vnode **vpp);
 struct vnode *allocvnode(int lktimeout, int lkflags);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);
@@ -457,7 +457,7 @@ int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
-int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
+int	vfinddev (cdev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_nadd_vnodeops_sysinit (void *);
 void	vfs_nrm_vnodeops_sysinit (void *);
 void	vfs_add_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);
@@ -507,7 +507,7 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
 	    struct ucred *cred, int *aresid);
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
-dev_t	vn_todev (struct vnode *vp);
+cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
 int	vop_stdopen (struct vop_open_args *ap);

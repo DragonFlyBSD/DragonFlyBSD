@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bioscd.c,v 1.5 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/bioscd.c,v 1.5 2004/09/09 03:47:08 joerg Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/bioscd.c,v 1.6 2006/09/10 01:26:31 dillon Exp $
  */
 /*
  * BIOS CD device handling for CD's that have been booted off of via no
@@ -322,7 +322,7 @@ bc_read(int unit, daddr_t dblk, int blks, caddr_t dest)
 }
 
 /*
- * Return a suitable dev_t value for (dev).
+ * Return a suitable cdev_t value for (dev).
  */
 int
 bc_getdev(struct i386_devdesc *dev)
@@ -341,7 +341,7 @@ bc_getdev(struct i386_devdesc *dev)
      * XXX: Need to examine device spec here to figure out if SCSI or
      * ATAPI.  No idea on how to figure out device number.  All we can
      * really pass to the kernel is what bus and device on which bus we
-     * were booted from, which dev_t isn't well suited to since those
+     * were booted from, which cdev_t isn't well suited to since those
      * number don't match to unit numbers very well.  We may just need
      * to engage in a hack where we pass -C to the boot args if we are
      * the boot device.

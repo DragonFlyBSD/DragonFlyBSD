@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.22 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.23 2006/09/10 01:26:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ static int
 newstat_copyout(struct stat *buf, void *ubuf)
 {
 	struct l_newstat tbuf;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	tbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
@@ -296,7 +296,7 @@ int
 sys_linux_ustat(struct linux_ustat_args *args)
 {
 	struct l_ustat lu;
-	dev_t dev;
+	cdev_t dev;
 	struct vnode *vp;
 	struct statfs *stat;
 	int error;
@@ -314,9 +314,9 @@ sys_linux_ustat(struct linux_ustat_args *args)
 
 	/*
 	 * XXX - Don't return an error if we can't find a vnode for the
-	 * device. Our dev_t is 32-bits whereas Linux only has a 16-bits
-	 * dev_t. The dev_t that is used now may as well be a truncated
-	 * dev_t returned from previous syscalls. Just return a bzeroed
+	 * device. Our cdev_t is 32-bits whereas Linux only has a 16-bits
+	 * cdev_t. The dev_t that is used now may as well be a truncated
+	 * cdev_t returned from previous syscalls. Just return a bzeroed
 	 * ustat in that case.
 	 */
 	dev = udev2dev(makeudev(args->dev >> 8, args->dev & 0xFF), 0);

@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.17 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.18 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -362,7 +362,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_BOOTFILE		26	/* string: name of booted kernel */
 #define	KERN_MAXFILESPERPROC	27	/* int: max open files per proc */
 #define	KERN_MAXPROCPERUID 	28	/* int: max processes per uid */
-#define KERN_DUMPDEV		29	/* dev_t: device to dump on */
+#define KERN_DUMPDEV		29	/* udev_t: device to dump on */
 #define	KERN_IPC		30	/* node: anything related to IPC */
 #define	KERN_DUMMY		31	/* unused */
 #define	KERN_PS_STRINGS		32	/* int: address of PS_STRINGS */

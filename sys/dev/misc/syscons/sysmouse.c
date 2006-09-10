@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.11 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.12 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -71,7 +71,7 @@ static int		smparam(struct tty *tp, struct termios *t);
 static int
 smopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	DPRINTF(5, ("smopen: dev:%d,%d, vty:%d\n",
@@ -107,7 +107,7 @@ smopen(struct dev_open_args *ap)
 static int
 smclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	tp = dev->si_tty;
@@ -150,7 +150,7 @@ smparam(struct tty *tp, struct termios *t)
 static int
 smioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	mousehw_t *hw;
 	mousemode_t *mode;
@@ -248,7 +248,7 @@ smioctl(struct dev_ioctl_args *ap)
 static void
 sm_attach_mouse(void *unused)
 {
-	dev_t dev;
+	cdev_t dev;
 
 	dev_ops_add(&sm_ops, -1, SC_MOUSE);
 	dev = make_dev(&sm_ops, SC_MOUSE, UID_ROOT, GID_WHEEL, 0600,

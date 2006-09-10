@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.9 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.10 2006/09/10 01:26:36 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -140,12 +140,12 @@ d_dump_t vinumdump;
 d_psize_t vinumsize;
 d_poll_t vinumpoll;
 
-int vinumstart(dev_t dev, struct bio *bio, int reviveok);
+int vinumstart(cdev_t dev, struct bio *bio, int reviveok);
 int launch_requests(struct request *rq, int reviveok);
 void sdio(struct bio *bio);
 
 /* XXX Do we need this? */
-int vinumpart(dev_t);
+int vinumpart(cdev_t);
 
 extern jmp_buf command_fail;				    /* return here if config fails */
 extern struct dev_ops vinum_ops;
@@ -169,9 +169,9 @@ struct rqgroup *allocrqg(struct request *rq, int elements);
 void deallocrqg(struct rqgroup *rqg);
 
 /* Device number decoding */
-int Volno(dev_t x);
-int Plexno(dev_t x);
-int Sdno(dev_t x);
+int Volno(cdev_t x);
+int Plexno(cdev_t x);
+int Sdno(cdev_t x);
 
 /* State transitions */
 int set_drive_state(int driveno, enum drivestate state, enum setstateflags flags);

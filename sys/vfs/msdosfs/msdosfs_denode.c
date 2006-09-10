@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.25 2006/09/05 00:55:50 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.26 2006/09/10 01:26:41 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -96,7 +96,7 @@ union _qcvt {
 }
 
 static struct denode *
-		msdosfs_hashget (dev_t dev, u_long dirclust, u_long diroff);
+		msdosfs_hashget (cdev_t dev, u_long dirclust, u_long diroff);
 
 /*ARGSUSED*/
 int 
@@ -122,7 +122,7 @@ msdosfs_uninit(struct vfsconf *vfsp)
 }
 
 static struct denode *
-msdosfs_hashget(dev_t dev, u_long dirclust, u_long diroff)
+msdosfs_hashget(cdev_t dev, u_long dirclust, u_long diroff)
 {
 	struct denode *dep;
 	lwkt_tokref ilock;
@@ -240,7 +240,7 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
       struct denode **depp)	/* returns the addr of the gotten denode */
 {
 	int error;
-	dev_t dev = pmp->pm_dev;
+	cdev_t dev = pmp->pm_dev;
 	struct mount *mntp = pmp->pm_mountp;
 	struct direntry *direntptr;
 	struct denode *ldep;

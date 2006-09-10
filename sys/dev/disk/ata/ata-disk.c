@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.30 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.31 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -106,7 +106,7 @@ void
 ad_attach(struct ata_device *atadev, int alreadylocked)
 {
     struct ad_softc *adp;
-    dev_t dev;
+    cdev_t dev;
 
     adp = kmalloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO);
 
@@ -298,7 +298,7 @@ adclose(struct dev_close_args *ap)
 static int 
 adstrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ad_softc *adp = dev->si_drv1;
@@ -320,7 +320,7 @@ adstrategy(struct dev_strategy_args *ap)
 int
 addump(struct dev_dump_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct ad_softc *adp = dev->si_drv1;
     struct ad_request request;
     vm_paddr_t addr = 0;
@@ -630,7 +630,7 @@ ad_interrupt(struct ad_request *request)
 {
     struct ad_softc *adp = request->softc;
     int dma_stat = 0;
-    dev_t dev;
+    cdev_t dev;
 
     /* finish DMA transfer */
     if (request->flags & ADR_F_DMA_USED)

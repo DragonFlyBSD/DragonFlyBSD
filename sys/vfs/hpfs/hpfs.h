@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.21 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.22 2006/09/10 01:26:40 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -314,7 +314,7 @@ struct hpfsmount {
 	struct netexport hpm_export;
 	struct mount *	hpm_mp;
 	struct vnode *	hpm_devvp;
-	dev_t		hpm_dev;
+	cdev_t		hpm_dev;
 	uid_t          	hpm_uid;
 	gid_t           hpm_gid;
 	mode_t          hpm_mode;
@@ -343,7 +343,7 @@ struct hpfsnode {
 	struct fnode 	h_fn;
 	struct vnode *	h_vp;
 	struct vnode *	h_devvp;
-	dev_t		h_dev;
+	cdev_t		h_dev;
 	lsn_t		h_no;
 	uid_t          	h_uid;
 	gid_t           h_gid;
@@ -397,9 +397,9 @@ struct vfsconf;
 /* Hash routines, too small to be separate header */
 void hpfs_hphashinit (void);
 int hpfs_hphash_uninit (struct vfsconf *);
-struct hpfsnode *hpfs_hphashlookup (dev_t, lsn_t);
-struct hpfsnode *hpfs_hphashget (dev_t, lsn_t);
-struct vnode *hpfs_hphashvget (dev_t, lsn_t);
+struct hpfsnode *hpfs_hphashlookup (cdev_t, lsn_t);
+struct hpfsnode *hpfs_hphashget (cdev_t, lsn_t);
+struct vnode *hpfs_hphashvget (cdev_t, lsn_t);
 void hpfs_hphashins (struct hpfsnode *);
 void hpfs_hphashrem (struct hpfsnode *);
 extern struct lock hpfs_hphash_lock;

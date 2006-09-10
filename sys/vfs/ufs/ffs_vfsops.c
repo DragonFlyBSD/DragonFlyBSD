@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.49 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.50 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -441,7 +441,7 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	struct buf *bp;
 	struct fs *fs, *newfs;
 	struct partinfo dpart;
-	dev_t dev;
+	cdev_t dev;
 	int i, blks, size, error;
 	struct scaninfo scaninfo;
 	int32_t *lp;
@@ -588,7 +588,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	struct ufsmount *ump;
 	struct buf *bp;
 	struct fs *fs;
-	dev_t dev;
+	cdev_t dev;
 	struct partinfo dpart;
 	void *space;
 	int error, i, blks, size, ronly;
@@ -1060,7 +1060,7 @@ ffs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	struct ufsmount *ump;
 	struct buf *bp;
 	struct vnode *vp;
-	dev_t dev;
+	cdev_t dev;
 	int error;
 
 	ump = VFSTOUFS(mp);

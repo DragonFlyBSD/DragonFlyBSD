@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.5 2005/12/11 01:54:09 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.6 2006/09/10 01:26:35 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -557,7 +557,7 @@ struct gdt_softc {
 #define GDT_SHUTDOWN    0x02
 #define GDT_POLL_WAIT   0x80
     struct callout watchdog_timer;
-    dev_t sc_dev;
+    cdev_t sc_dev;
     bus_space_tag_t sc_dpmemt;
     bus_space_handle_t sc_dpmemh;
     bus_addr_t sc_dpmembase;
@@ -688,8 +688,8 @@ gdt_dec32(u_int8_t *addr)
 extern TAILQ_HEAD(gdt_softc_list, gdt_softc) gdt_softcs;
 extern u_int8_t gdt_polling;
 
-dev_t   gdt_make_dev(int unit);
-void    gdt_destroy_dev(dev_t dev);
+cdev_t   gdt_make_dev(int unit);
+void    gdt_destroy_dev(cdev_t dev);
 void    gdt_next(struct gdt_softc *gdt);
 void gdt_free_ccb(struct gdt_softc *gdt, struct gdt_ccb *gccb);
 

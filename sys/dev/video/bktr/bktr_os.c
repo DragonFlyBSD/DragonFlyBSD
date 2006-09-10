@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.15 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -476,7 +476,7 @@ get_bktr_mem( int unit, unsigned size )
 static int
 bktr_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	int		result;
@@ -577,7 +577,7 @@ bktr_open(struct dev_open_args *ap)
 static int
 bktr_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	int		result;
@@ -617,7 +617,7 @@ bktr_close(struct dev_close_args *ap)
 static int
 bktr_read(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	
@@ -656,7 +656,7 @@ bktr_write(struct dev_write_args *ap)
 static int
 bktr_ioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 
@@ -689,7 +689,7 @@ bktr_ioctl(struct dev_ioctl_args *ap)
 static int
 bktr_mmap(struct dev_mmap_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int		unit;
 	bktr_ptr_t	bktr;
 
@@ -721,7 +721,7 @@ bktr_mmap(struct dev_mmap_args *ap)
 static int
 bktr_poll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int		unit;
 	bktr_ptr_t	bktr;
 	int revents = 0; 

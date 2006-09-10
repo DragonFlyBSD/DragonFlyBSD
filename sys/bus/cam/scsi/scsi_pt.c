@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.16 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.17 2006/09/10 01:26:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ struct pt_softc {
 	pt_flags flags;	
 	union	 ccb saved_ccb;
 	int	 io_timeout;
-	dev_t	 dev;
+	cdev_t	 dev;
 };
 
 static	d_open_t	ptopen;
@@ -140,7 +140,7 @@ static struct extend_array *ptperiphs;
 static int
 ptopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	int unit;
@@ -184,7 +184,7 @@ ptopen(struct dev_open_args *ap)
 static int
 ptclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	pt_softc *softc;
 	int	unit;
@@ -214,7 +214,7 @@ ptclose(struct dev_close_args *ap)
 static int
 ptstrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
@@ -684,7 +684,7 @@ pterror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 static int
 ptioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct cam_periph *periph;
 	struct pt_softc *softc;

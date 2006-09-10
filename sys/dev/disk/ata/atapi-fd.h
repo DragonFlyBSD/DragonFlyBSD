@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.h,v 1.10.2.5 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.h,v 1.3 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.h,v 1.4 2006/09/10 01:26:33 dillon Exp $
  */
 
 /* ATAPI Rewriteable drive Capabilities and Mechanical Status Page */
@@ -76,6 +76,6 @@ struct afd_softc {
     struct afd_cappage		cap;		/* capabilities page info */
     struct disk			disk;		/* virtual drives */
     struct devstat		stats;
-    dev_t			dev;		/* device place holder */
+    cdev_t			dev;		/* device place holder */
 };
 

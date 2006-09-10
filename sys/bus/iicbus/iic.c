@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.9 2006/07/28 02:17:34 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.10 2006/09/10 01:26:32 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -133,7 +133,7 @@ iic_attach(device_t dev)
 static int
 iicopen (struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -150,7 +150,7 @@ iicopen (struct dev_open_args *ap)
 static int
 iicclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -170,7 +170,7 @@ iicclose(struct dev_close_args *ap)
 static int
 iicwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
@@ -199,7 +199,7 @@ iicwrite(struct dev_write_args *ap)
 static int
 iicread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
@@ -233,7 +233,7 @@ iicread(struct dev_read_args *ap)
 static int
 iicioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 	device_t parent = device_get_parent(iicdev);

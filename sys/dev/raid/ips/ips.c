@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.16 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.17 2006/09/10 01:26:35 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -70,7 +70,7 @@ static const char *ips_adapter_name[] = {
 static int
 ips_open(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	ips_softc_t *sc = dev->si_drv1;
 
 	sc->state |= IPS_DEV_OPEN;
@@ -80,7 +80,7 @@ ips_open(struct dev_open_args *ap)
 static int
 ips_close(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	ips_softc_t *sc = dev->si_drv1;
 
 	sc->state &= ~IPS_DEV_OPEN;
@@ -372,7 +372,7 @@ int
 ips_adapter_init(ips_softc_t *sc)
 {
 	int i;
-	dev_t dev;
+	cdev_t dev;
 
 	DEVICE_PRINTF(1, sc->dev, "initializing\n");
 	if (bus_dma_tag_create(	/* parent    */	sc->adapter_dmatag,

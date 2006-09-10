@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.17 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.18 2006/09/10 01:26:36 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -302,7 +302,7 @@ DECLARE_MODULE(vinum, vinum_mod, SI_SUB_RAID, SI_ORDER_MIDDLE);
 int
 vinumopen(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int error;
     unsigned int index;
     struct volume *vol;
@@ -409,7 +409,7 @@ vinumopen(struct dev_open_args *ap)
 int
 vinumclose(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     unsigned int index;
     struct volume *vol;
     int devminor;
@@ -488,7 +488,7 @@ vinumclose(struct dev_close_args *ap)
 int
 vinumsize(struct dev_psize_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct volume *vol;
 
     vol = &VOL[Volno(dev)];

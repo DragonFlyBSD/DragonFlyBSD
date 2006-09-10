@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.15 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.16 2006/09/10 01:26:39 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -234,7 +234,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 PDEVSTATIC int
 i4btrcopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 
 	if(unit >= NI4BTRC)
@@ -261,7 +261,7 @@ i4btrcopen(struct dev_open_args *ap)
 PDEVSTATIC int
 i4btrcclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 	int i;
 	int cno = -1;
@@ -308,7 +308,7 @@ i4btrcclose(struct dev_close_args *ap)
 PDEVSTATIC int
 i4btrcread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct mbuf *m;
 	int error = 0;
@@ -362,7 +362,7 @@ i4btrcpoll(struct dev_poll_args *ap)
 PDEVSTATIC int
 i4btrcioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int error = 0;
 	int unit = minor(dev);
 	i4b_trace_setupa_t *tsa;

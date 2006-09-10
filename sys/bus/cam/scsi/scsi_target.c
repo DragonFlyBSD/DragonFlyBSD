@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.12 2006/07/28 02:17:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,7 +165,7 @@ static MALLOC_DEFINE(M_TARG, "TARG", "TARG data");
 
 /* Create softc and initialize it. Only one proc can open each targ device. */
 static int
-targopen(dev_t dev, int flags, int fmt, struct proc *p)
+targopen(cdev_t dev, int flags, int fmt, struct proc *p)
 {
 	struct targ_softc *softc;
 
@@ -197,7 +197,7 @@ targopen(dev_t dev, int flags, int fmt, struct proc *p)
 
 /* Disable LUN if enabled and teardown softc */
 static int
-targclose(dev_t dev, int flag, int fmt, struct proc *p)
+targclose(cdev_t dev, int flag, int fmt, struct proc *p)
 {
 	struct targ_softc     *softc;
 	int    error;
@@ -220,7 +220,7 @@ targclose(dev_t dev, int flag, int fmt, struct proc *p)
 
 /* Enable/disable LUNs, set debugging level */
 static int
-targioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+targioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 {
 	struct targ_softc *softc;
 	cam_status	   status;
@@ -312,7 +312,7 @@ targpoll(struct dev_poll_args *ap)
 }
 
 static int
-targkqfilter(dev_t dev, struct knote *kn)
+targkqfilter(cdev_t dev, struct knote *kn)
 {
 	struct  targ_softc *softc;
 
@@ -516,7 +516,7 @@ targdtor(struct cam_periph *periph)
 
 /* Receive CCBs from user mode proc and send them to the HBA */
 static int
-targwrite(dev_t dev, struct uio *uio, int ioflag)
+targwrite(cdev_t dev, struct uio *uio, int ioflag)
 {
 	union ccb *user_ccb;
 	struct targ_softc *softc;
@@ -814,7 +814,7 @@ targdone(struct cam_periph *periph, union ccb *done_ccb)
 
 /* Return CCBs to the user from the user queue and abort queue */
 static int
-targread(dev_t dev, struct uio *uio, int ioflag)
+targread(cdev_t dev, struct uio *uio, int ioflag)
 {
 	struct descr_queue	*abort_queue;
 	struct targ_cmd_descr	*user_descr;

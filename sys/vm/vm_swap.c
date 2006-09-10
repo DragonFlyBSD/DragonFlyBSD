@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.29 2006/09/09 19:34:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.30 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -232,7 +232,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	struct swdevt *sp;
 	swblk_t vsbase;
 	swblk_t dvbase;
-	dev_t dev;
+	cdev_t dev;
 	int index;
 	int error;
 	long blk;

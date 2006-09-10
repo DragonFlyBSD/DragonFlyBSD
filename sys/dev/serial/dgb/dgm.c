@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.13 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.14 2006/09/10 01:26:36 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -930,7 +930,7 @@ dgmshutdown(device_t dev)
 static int
 dgmopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct dgm_softc *sc;
 	struct tty *tp;
 	int unit;
@@ -1111,7 +1111,7 @@ out:
 static int
 dgmclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct tty	*tp;
 	int unit, pnum;
@@ -1482,7 +1482,7 @@ dgmpoll(void *unit_c)
 static int
 dgmioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct dgm_softc *sc;

@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/amd64/include/Attic/cpu.h,v 1.1 2006/07/27 00:42:46 corecode Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/cpu.h,v 1.2 2006/09/10 01:26:29 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -44,7 +44,7 @@
 /*
  * CTL_MACHDEP definitions.
  */
-#define CPU_CONSDEV		1	/* dev_t: console terminal device */
+#define CPU_CONSDEV		1	/* cdev_t: console terminal device */
 #define	CPU_ADJKERNTZ		2	/* int:	timezone offset	(seconds) */
 #define	CPU_DISRTCSET		3	/* int: disable resettodr() call */
 #define CPU_BOOTINFO		4	/* struct: bootinfo */

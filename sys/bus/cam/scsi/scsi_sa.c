@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.19 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.20 2006/09/10 01:26:32 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -398,7 +398,7 @@ static void		saprevent(struct cam_periph *periph, int action);
 static int		sarewind(struct cam_periph *periph);
 static int		saspace(struct cam_periph *periph, int count,
 				scsi_space_code code);
-static int		samount(struct cam_periph *, int, dev_t);
+static int		samount(struct cam_periph *, int, cdev_t);
 static int		saretension(struct cam_periph *periph);
 static int		sareservereleaseunit(struct cam_periph *periph,
 					     int reserve);
@@ -440,7 +440,7 @@ static struct extend_array *saperiphs;
 static int
 saopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	int unit;
@@ -504,7 +504,7 @@ saopen(struct dev_open_args *ap)
 static int
 saclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	sa_softc *softc;
 	int	unit, mode, error, writing, tmp;
@@ -656,7 +656,7 @@ saclose(struct dev_close_args *ap)
 static int
 sastrategy(struct dev_strategy_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
@@ -771,7 +771,7 @@ done:
 static int
 saioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
@@ -1799,7 +1799,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
  * Mount the tape (make sure it's ready for I/O).
  */
 static int
-samount(struct cam_periph *periph, int oflags, dev_t dev)
+samount(struct cam_periph *periph, int oflags, cdev_t dev)
 {
 	struct	sa_softc *softc;
 	union	ccb *ccb;

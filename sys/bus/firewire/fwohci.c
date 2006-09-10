@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.12 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -350,7 +350,7 @@ again:
 int
 fwohci_ioctl (struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct fwohci_softc *fc;
 	int unit = DEV2UNIT(dev);

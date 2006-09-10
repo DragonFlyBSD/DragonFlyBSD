@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.13 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.14 2006/09/10 01:26:39 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -224,7 +224,7 @@ i4btelattach(void *dummy)
 PDEVSTATIC int
 i4btelopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	
@@ -254,7 +254,7 @@ i4btelopen(struct dev_open_args *ap)
 PDEVSTATIC int
 i4btelclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	tel_sc_t *sc;
@@ -297,7 +297,7 @@ i4btelclose(struct dev_close_args *ap)
 PDEVSTATIC int
 i4btelioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	int error = 0;
@@ -419,7 +419,7 @@ i4btelioctl(struct dev_ioctl_args *ap)
 PDEVSTATIC int
 i4btelread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
@@ -539,7 +539,7 @@ i4btelread(struct dev_read_args *ap)
 PDEVSTATIC int
 i4btelwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
@@ -700,7 +700,7 @@ tel_tone(tel_sc_t *sc)
 PDEVSTATIC int
 i4btelpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int revents = 0;	/* Events we found */
 	int unit = UNIT(dev);
 	int func = FUNC(dev);	

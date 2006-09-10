@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.7 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.8 2006/09/10 01:26:37 dillon Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -170,8 +170,8 @@ int		vid_configure(int flags);
 #ifdef FB_INSTALL_CDEV
 
 /* virtual frame buffer driver functions */
-int		fb_attach(dev_t dev, video_adapter_t *adp);
-int		fb_detach(dev_t dev, video_adapter_t *adp);
+int		fb_attach(cdev_t dev, video_adapter_t *adp);
+int		fb_detach(cdev_t dev, video_adapter_t *adp);
 
 /* generic frame buffer cdev driver functions */
 

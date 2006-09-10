@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.22.2.7 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.6 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.7 2006/09/10 01:26:33 dillon Exp $
  */
 
 /* structure describing an ATA disk request */
@@ -73,7 +73,7 @@ struct ad_softc {
     struct bio_queue_head	bio_queue;	/* head of request queue */
     struct devstat		stats;		/* devstat entry */
     struct disk			disk;		/* disklabel/slice stuff */
-    dev_t			dev;		/* device place holder */
+    cdev_t			dev;		/* device place holder */
 };
 
 void ad_attach(struct ata_device *, int);

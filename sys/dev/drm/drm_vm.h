@@ -1,21 +1,21 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_vm.h,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_vm.h,v 1.4 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_vm.h,v 1.5 2006/09/10 01:26:34 dillon Exp $
  */
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500102
-static int DRM(dma_mmap)(dev_t kdev, vm_offset_t offset, vm_paddr_t *paddr, 
+static int DRM(dma_mmap)(cdev_t kdev, vm_offset_t offset, vm_paddr_t *paddr, 
     int prot)
 #elif defined(__DragonFly__)
 static int DRM(dma_mmap)(struct dev_mmap_args *ap)
 #elif defined(__FreeBSD__)
-static int DRM(dma_mmap)(dev_t kdev, vm_offset_t offset, int prot)
+static int DRM(dma_mmap)(cdev_t kdev, vm_offset_t offset, int prot)
 #elif defined(__NetBSD__)
-static paddr_t DRM(dma_mmap)(dev_t kdev, vm_offset_t offset, int prot)
+static paddr_t DRM(dma_mmap)(cdev_t kdev, vm_offset_t offset, int prot)
 #endif
 {
 #ifdef __DragonFly__
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	vm_offset_t offset = ap->a_offset;
 #endif
 	DRM_DEVICE;
@@ -42,15 +42,15 @@ static paddr_t DRM(dma_mmap)(dev_t kdev, vm_offset_t offset, int prot)
 }
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500102
-int DRM(mmap)(dev_t kdev, vm_offset_t offset, vm_paddr_t *paddr, 
+int DRM(mmap)(cdev_t kdev, vm_offset_t offset, vm_paddr_t *paddr, 
     int prot)
 #elif defined(__DragonFly__)
 int DRM(mmap)(struct dev_mmap_args *ap)
 #elif defined(__NetBSD__)
-paddr_t DRM(mmap)(dev_t kdev, off_t offset, int prot)
+paddr_t DRM(mmap)(cdev_t kdev, off_t offset, int prot)
 #endif
 {
-	dev_t kdev = ap->a_head.a_dev;
+	cdev_t kdev = ap->a_head.a_dev;
 	DRM_DEVICE;
 	drm_local_map_t *map	= NULL;
 	drm_map_list_entry_t *listentry=NULL;

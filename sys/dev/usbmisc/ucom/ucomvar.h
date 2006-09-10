@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ucomvar.h,v 1.9 2001/01/23 21:56:17 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ucomvar.h,v 1.2 2002/07/31 14:34:35 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.3 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.4 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*-
@@ -176,7 +176,7 @@ struct ucom_softc {
 	int			sc_refcnt;
 	u_char			sc_dying;	/* disconnecting */
 
-	dev_t			dev;		/* special device node */
+	cdev_t			dev;		/* special device node */
 };
 
 extern devclass_t ucom_devclass;

@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.17 2006/05/11 08:23:20 swildner Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.18 2006/09/10 01:26:38 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -936,7 +936,7 @@ load_fep:
 
 /* ARGSUSED */
 static	int
-dgbopen(dev_t dev, int flag, int mode, struct thread *td)
+dgbopen(cdev_t dev, int flag, int mode, struct thread *td)
 {
 	struct dgb_softc *sc;
 	struct tty *tp;
@@ -1110,7 +1110,7 @@ out:
 
 /*ARGSUSED*/
 static	int
-dgbclose(dev_t dev, int flag, int mode, struct thread *td)
+dgbclose(cdev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty *tp;
 	int unit, pnum;
@@ -1463,7 +1463,7 @@ dgbpoll(unit_c)
 }
 
 static	int
-dgbioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
+dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 {
 	struct dgb_softc *sc;
 	int unit, pnum;

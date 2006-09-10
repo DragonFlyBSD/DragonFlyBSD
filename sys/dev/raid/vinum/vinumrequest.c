@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.17 2006/09/10 01:26:36 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -74,7 +74,7 @@ struct rqinfo *rqip = rqinfo;
 void
 logrq(enum rqinfo_type type, union rqinfou info, struct bio *ubio)
 {
-    dev_t dev;
+    cdev_t dev;
 
     crit_enter();
 
@@ -125,7 +125,7 @@ logrq(enum rqinfo_type type, union rqinfou info, struct bio *ubio)
 int
 vinumstrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct bio *nbio = bio;
@@ -189,7 +189,7 @@ vinumstrategy(struct dev_strategy_args *ap)
  * a currently active revive operation.
  */
 int
-vinumstart(dev_t dev, struct bio *bio, int reviveok)
+vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 {
     struct buf *bp = bio->bio_buf;
     int plexno;
@@ -349,8 +349,8 @@ launch_requests(struct request *rq, int reviveok)
 		rq->sdno,
 		rq,
 		(rq->bio->bio_buf->b_cmd & BUF_CMD_READ) ? "Read" : "Write",
-		major(((dev_t)rq->bio->bio_driver_info)),
-		minor(((dev_t)rq->bio->bio_driver_info)),
+		major(((cdev_t)rq->bio->bio_driver_info)),
+		minor(((cdev_t)rq->bio->bio_driver_info)),
 		rq->bio->bio_offset,
 		rq->bio->bio_buf->b_bcount);
 	}
@@ -364,8 +364,8 @@ launch_requests(struct request *rq, int reviveok)
 	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 	    rq,
 	    (rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-	    major(((dev_t)rq->bio->bio_driver_info)),
-	    minor(((dev_t)rq->bio->bio_driver_info)),
+	    major(((cdev_t)rq->bio->bio_driver_info)),
+	    minor(((cdev_t)rq->bio->bio_driver_info)),
 	    rq->bio->bio_offset,
 	    rq->bio->bio_buf->b_bcount);
     vinum_conf.lastrq = rq;
@@ -401,7 +401,7 @@ launch_requests(struct request *rq, int reviveok)
 	    rqg->lock = lockrange(rqg->lockbase, rqg->rq->bio->bio_buf, &PLEX[rqg->plexno]);
 	rcount = rqg->count;
 	for (rqno = 0; rqno < rcount;) {
-	    dev_t dev;
+	    cdev_t dev;
 
 	    rqe = &rqg->rqe[rqno];
 
@@ -898,8 +898,8 @@ check_range_covered(struct request *rq)
 void
 sdio(struct bio *bio)
 {
-    dev_t dev;
-    dev_t sddev;
+    cdev_t dev;
+    cdev_t sddev;
     struct sd *sd;
     struct sdbuf *sbp;
     daddr_t endoffset;

@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.28 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.29 2006/09/10 01:26:40 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -84,7 +84,7 @@
 static int 		tapmodevent	(module_t, int, void *);
 
 /* device */
-static void		tapcreate	(dev_t);
+static void		tapcreate	(cdev_t);
 
 /* network interface */
 static void		tapifstart	(struct ifnet *);
@@ -189,7 +189,7 @@ tapmodevent(module_t mod, int type, void *data)
  * to create interface
  */
 static void
-tapcreate(dev_t dev)
+tapcreate(cdev_t dev)
 {
 	struct ifnet		*ifp = NULL;
 	struct tap_softc	*tp = NULL;
@@ -255,7 +255,7 @@ tapcreate(dev_t dev)
 static int
 tapopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = NULL;
 	int			 error;
 
@@ -293,7 +293,7 @@ tapopen(struct dev_open_args *ap)
 static int
 tapclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 
@@ -484,7 +484,7 @@ tapifstart(struct ifnet *ifp)
 static int
 tapioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -593,7 +593,7 @@ tapioctl(struct dev_ioctl_args *ap)
 static int
 tapread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -663,7 +663,7 @@ tapread(struct dev_read_args *ap)
 static int
 tapwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -739,7 +739,7 @@ tapwrite(struct dev_write_args *ap)
 static int
 tappoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	int		 	 revents = 0;

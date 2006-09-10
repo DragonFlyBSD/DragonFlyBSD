@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.10 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.11 2006/09/10 01:26:37 dillon Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ ctxattach(struct isa_device * devp)
 static int
 ctxopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct ctx_soft_registers *sr;
 	u_char  unit;
 	int     i;
@@ -258,7 +258,7 @@ ctxopen(struct dev_open_args *ap)
 static int
 ctxclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int     unit;
 
 	unit = UNIT(minor(dev));
@@ -271,7 +271,7 @@ ctxclose(struct dev_close_args *ap)
 static int
 ctxwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int     unit, status = 0;
 	int     page, count, offset;
@@ -325,7 +325,7 @@ ctxwrite(struct dev_write_args *ap)
 static int
 ctxread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int     unit, status = 0;
 	int     page, count, offset;
@@ -377,7 +377,7 @@ ctxread(struct dev_read_args *ap)
 static int
 ctxioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	int     error;
 	int     unit, i;
 	struct ctx_soft_registers *sr;

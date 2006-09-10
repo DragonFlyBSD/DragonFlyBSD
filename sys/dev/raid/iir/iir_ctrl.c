@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.10 2006/07/28 02:17:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.11 2006/09/10 01:26:35 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -90,12 +90,12 @@ extern gdt_statist_t gdt_stat;
 
 /*
  * Given a controller number,
- * make a special device and return the dev_t
+ * make a special device and return the cdev_t
  */
-dev_t 
+cdev_t 
 gdt_make_dev(int unit)
 {
-    dev_t dev;
+    cdev_t dev;
 
 #ifdef SDEV_PER_HBA
     dev = make_dev(&iir_ops, hba2minor(unit), UID_ROOT, GID_OPERATOR,
@@ -112,7 +112,7 @@ gdt_make_dev(int unit)
 }
 
 void
-gdt_destroy_dev(dev_t dev)
+gdt_destroy_dev(cdev_t dev)
 {
     if (dev != NULL)
         destroy_dev(dev);

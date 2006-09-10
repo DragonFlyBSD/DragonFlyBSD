@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.22 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.23 2006/09/10 01:26:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -172,7 +172,7 @@ ata_raid_attach()
 static void
 ar_attach_raid(struct ar_softc *rdp, int update)
 {
-    dev_t dev;
+    cdev_t dev;
     int disk;
 
     ar_config_changed(rdp, update);
@@ -473,7 +473,7 @@ aropen(struct dev_open_args *ap)
 static int
 arstrategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ar_softc *rdp = dev->si_drv1;

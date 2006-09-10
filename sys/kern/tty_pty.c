@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.16 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.17 2006/09/10 01:26:39 dillon Exp $
  */
 
 /*
@@ -109,7 +109,7 @@ struct	pt_ioctl {
 	u_char	pt_send;
 	u_char	pt_ucntl;
 	struct tty pt_tty;
-	dev_t	devs, devc;
+	cdev_t	devs, devc;
 	struct	prison *pt_prison;
 };
 
@@ -132,7 +132,7 @@ static void
 ptyinit(n)
 	int n;
 {
-	dev_t devs, devc;
+	cdev_t devs, devc;
 	char *names = "pqrsPQRS";
 	struct pt_ioctl *pt;
 
@@ -157,12 +157,12 @@ ptyinit(n)
 static	int
 ptsopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int error;
 	int minr;
 #if 0
-	dev_t nextdev;
+	cdev_t nextdev;
 #endif
 	struct pt_ioctl *pti;
 
@@ -216,7 +216,7 @@ ptsopen(struct dev_open_args *ap)
 static	int
 ptsclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int err;
 
@@ -230,7 +230,7 @@ ptsclose(struct dev_close_args *ap)
 static	int
 ptsread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct proc *p = curproc;
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
@@ -281,7 +281,7 @@ again:
 static	int
 ptswrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	tp = dev->si_tty;
@@ -329,7 +329,7 @@ ptcwakeup(tp, flag)
 static	int
 ptcopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	struct pt_ioctl *pti;
 
@@ -355,7 +355,7 @@ ptcopen(struct dev_open_args *ap)
 static	int
 ptcclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	tp = dev->si_tty;
@@ -382,7 +382,7 @@ ptcclose(struct dev_close_args *ap)
 static	int
 ptcread(struct dev_read_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	char buf[BUFSIZ];
@@ -466,7 +466,7 @@ ptsstop(tp, flush)
 static	int
 ptcpoll(struct dev_poll_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	int revents = 0;
@@ -516,7 +516,7 @@ ptcpoll(struct dev_poll_args *ap)
 static	int
 ptcwrite(struct dev_write_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	u_char *cp = 0;
 	int cc = 0;
@@ -625,7 +625,7 @@ block:
 static	int
 ptyioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	u_char *cc = tp->t_cc;

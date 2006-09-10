@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.15 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -535,7 +535,7 @@ ascintr(void *arg)
 STATIC int
 ascopen(struct dev_open_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct asc_unit *scu;
   int unit;
 
@@ -631,7 +631,7 @@ asc_startread(struct asc_unit *scu)
 STATIC int
 ascclose(struct dev_close_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
 
@@ -690,7 +690,7 @@ pbm_init(struct asc_unit *scu)
 STATIC int
 ascread(struct dev_read_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   struct uio *uio = ap->a_uio;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
@@ -781,7 +781,7 @@ ascread(struct dev_read_args *ap)
 STATIC int
 ascioctl(struct dev_ioctl_args *ap)
 {
-  dev_t dev = ap->a_head.a_dev;
+  cdev_t dev = ap->a_head.a_dev;
   caddr_t data = ap->a_data;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
@@ -848,7 +848,7 @@ ascioctl(struct dev_ioctl_args *ap)
 STATIC int
 ascpoll(struct dev_poll_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int unit = UNIT(minor(dev));
     struct asc_unit *scu = unittab + unit;
     struct proc *p1;

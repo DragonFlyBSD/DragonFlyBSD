@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.23 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.24 2006/09/10 01:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -140,7 +140,7 @@ clone_label(struct disklabel *lp)
  * is marked with B_ERROR.
  */
 struct bio *
-dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
+dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 {
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
@@ -321,7 +321,7 @@ done:
 }
 
 void
-dsclose(dev_t dev, int mode, struct diskslices *ssp)
+dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 {
 	u_char mask;
 	struct diskslice *sp;
@@ -351,7 +351,7 @@ dsgone(struct diskslices **sspp)
  * is subject to the same restriction as dsopen().
  */
 int
-dsioctl(dev_t dev, u_long cmd, caddr_t data, 
+dsioctl(cdev_t dev, u_long cmd, caddr_t data, 
 	int flags, struct diskslices **sspp)
 {
 	int error;
@@ -618,7 +618,7 @@ dsmakeslicestruct(int nslices, struct disklabel *lp)
 }
 
 char *
-dsname(dev_t dev, int unit, int slice, int part, char *partname)
+dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 {
 	static char name[32];
 	const char *dname;
@@ -645,10 +645,10 @@ dsname(dev_t dev, int unit, int slice, int part, char *partname)
  * strategy routine must be special to allow activity.
  */
 int
-dsopen(dev_t dev, int mode, u_int flags, 
+dsopen(cdev_t dev, int mode, u_int flags, 
 	struct diskslices **sspp, struct disklabel *lp)
 {
-	dev_t dev1;
+	cdev_t dev1;
 	int error;
 	struct disklabel *lp1;
 	char *msg;
@@ -809,7 +809,7 @@ dsopen(dev_t dev, int mode, u_int flags,
 }
 
 int
-dssize(dev_t dev, struct diskslices **sspp)
+dssize(cdev_t dev, struct diskslices **sspp)
 {
 	struct disklabel *lp;
 	int part;

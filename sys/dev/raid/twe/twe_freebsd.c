@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.22 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.23 2006/09/10 01:26:36 dillon Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ static struct dev_ops twe_ops = {
 static int
 twe_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct twe_softc	*sc = devclass_get_softc(twe_devclass, unit);
 
@@ -89,7 +89,7 @@ twe_open(struct dev_open_args *ap)
 static int
 twe_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct twe_softc	*sc = devclass_get_softc(twe_devclass, unit);
 
@@ -103,7 +103,7 @@ twe_close(struct dev_close_args *ap)
 static int
 twe_ioctl_wrapper(struct dev_ioctl_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct twe_softc *sc = (struct twe_softc *)dev->si_drv1;
     
     return(twe_ioctl(sc, ap->a_cmd, ap->a_data));
@@ -358,7 +358,7 @@ twe_free(struct twe_softc *sc)
 
 	dev_ops_remove(&twe_ops, -1, device_get_unit(sc->twe_dev));
     /* destroy control device */
-    if (sc->twe_dev_t != (dev_t)NULL)
+    if (sc->twe_dev_t != (cdev_t)NULL)
 	destroy_dev(sc->twe_dev_t);
 
     sysctl_ctx_free(&sc->sysctl_ctx);
@@ -626,7 +626,7 @@ static int		disks_registered = 0;
 static int
 twed_open(struct dev_open_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
     struct disklabel	*label;
 
@@ -660,7 +660,7 @@ twed_open(struct dev_open_args *ap)
 static int
 twed_close(struct dev_close_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
 
     debug_called(4);
@@ -678,7 +678,7 @@ twed_close(struct dev_close_args *ap)
 static int
 twed_strategy(struct dev_strategy_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct bio *bio = ap->a_bio;
     struct twed_softc *sc = dev->si_drv1;
     struct buf *bp = bio->bio_buf;
@@ -716,7 +716,7 @@ twed_strategy(struct dev_strategy_args *ap)
 static int
 twed_dump(struct dev_dump_args *ap)
 {
-    dev_t dev = ap->a_head.a_dev;
+    cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*twed_sc = (struct twed_softc *)dev->si_drv1;
     struct twe_softc	*twe_sc  = (struct twe_softc *)twed_sc->twed_controller;
     vm_paddr_t		addr = 0;
@@ -794,7 +794,7 @@ twed_attach(device_t dev)
 {
     struct twed_softc	*sc;
     device_t		parent;
-    dev_t		dsk;
+    cdev_t		dsk;
     
     debug_called(4);
 

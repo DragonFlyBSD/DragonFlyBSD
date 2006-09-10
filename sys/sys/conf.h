@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.13 2006/09/09 19:07:29 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.14 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -113,7 +113,7 @@ struct ucred;
 
 struct thread;
 
-typedef int l_open_t (dev_t dev, struct tty *tp);
+typedef int l_open_t (struct cdev *dev, struct tty *tp);
 typedef int l_close_t (struct tty *tp, int flag);
 typedef int l_read_t (struct tty *tp, struct uio *uio, int flag);
 typedef int l_write_t (struct tty *tp, struct uio *uio, int flag);
@@ -155,7 +155,7 @@ struct swdevt {
 	int	sw_flags;
 	int	sw_nblks;
 	struct	vnode *sw_vp;
-	dev_t	sw_device;
+	struct cdev *sw_device;
 };
 #define	SW_FREED	0x01
 #define	SW_SEQUENTIAL	0x02
@@ -185,21 +185,21 @@ static moduledata_t name##_mod = {					\
 };									\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
-int	count_dev (dev_t dev);
+int	count_dev (cdev_t dev);
 int	count_udev (udev_t dev);
-void	destroy_dev (dev_t dev);
-void	release_dev (dev_t dev);
-dev_t	reference_dev (dev_t dev);
-struct dev_ops *devsw (dev_t dev);
-const char *devtoname (dev_t dev);
-void	freedev (dev_t dev);
-int	iszerodev (dev_t dev);
+void	destroy_dev (cdev_t dev);
+void	release_dev (cdev_t dev);
+cdev_t	reference_dev (cdev_t dev);
+struct dev_ops *devsw (cdev_t dev);
+const char *devtoname (cdev_t dev);
+void	freedev (cdev_t dev);
+int	iszerodev (cdev_t dev);
 
-dev_t	make_sub_dev (dev_t dev, int minor);
-int	lminor (dev_t dev);
+cdev_t	make_sub_dev (cdev_t dev, int minor);
+int	lminor (cdev_t dev);
 void	setconf (void);
-dev_t	kgetdiskbyname(const char *name);
-int	dev_is_good(dev_t dev);
+cdev_t	kgetdiskbyname(const char *name);
+int	dev_is_good(cdev_t dev);
 
 /*
  * XXX: This included for when DEVFS resurfaces 

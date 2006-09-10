@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.12 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.13 2006/09/10 01:26:34 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -247,7 +247,7 @@ ppiintr(void *arg)
 static int
 ppiopen(struct dev_open_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -283,7 +283,7 @@ ppiopen(struct dev_open_args *ap)
 static int
 ppiclose(struct dev_close_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -327,7 +327,7 @@ static int
 ppiread(struct dev_read_args *ap)
 {
 #ifdef PERIPH_1284
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
@@ -413,7 +413,7 @@ static int
 ppiwrite(struct dev_write_args *ap)
 {
 #ifdef PERIPH_1284
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
@@ -501,7 +501,7 @@ error:
 static int
 ppiioctl(struct dev_ioctl_args *ap)
 {
-	dev_t dev = ap->a_head.a_dev;
+	cdev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);
         device_t ppbus = device_get_parent(ppidev);
