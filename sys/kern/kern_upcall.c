@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2006 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.11 2006/09/10 21:35:10 dillon Exp $
  */
 
 /*
@@ -100,7 +100,7 @@ sys_upc_register(struct upc_register_args *uap)
     if (vm->vm_upcalls != NULL)
 	vu->vu_id = vm->vm_upcalls->vu_id + 1;
     else
-	vu->vu_id = 1;
+	vu->vu_id = UPC_RESERVED;
     vu->vu_next = vm->vm_upcalls;
     vm->vm_upcalls = vu;
     ++vm->vm_upccount;

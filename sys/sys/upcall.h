@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/upcall.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.11 2006/09/10 21:35:11 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -60,6 +60,7 @@ struct upcall {
 #define UPC_CONTROL_WAIT		6
 
 #define UPC_CRITADD			32	/* NOTE! same as TDPRI_CRIT */
+#define UPC_RESERVED			32	/* # of reserved id's */
 
 #if defined(_KERNEL)
 /*
