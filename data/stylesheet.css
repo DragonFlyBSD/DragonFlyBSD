@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.16 2004/07/21 17:50:31 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.17 2006/09/11 21:02:13 justin Exp $
  *
  */
 
@@ -15,8 +15,9 @@ PRE,CODE,TT {
    font-size: 1.1em;
 }
 
-BODY {
-   font:12px Verdana, Arial, Helvetica, sans-serif;
+body {
+   font-size: 0.8em;
+   font-family: Verdana, Arial, Helvetica, sans-serif;
    background-color: #ffffff;
 }
 
@@ -37,19 +38,11 @@ H3 {
 }
 
 B  {
-   font-weight : bold; 
-}
-
-P  {
-   font:12px Verdana, Arial, Helvetica, sans-serif;
-}
-
-TD { 
-   font:12px Verdana, Arial, Helvetica, sans-serif;
+   font-weight: bold; 
 }
 
 TH { 
-   font:12px Verdana, Arial, Helvetica, sans-serif; font-weight: bold;
+   font-weight: bold;
 }
 
 /* main */
@@ -61,28 +54,26 @@ TH {
 
 .selected {
    font-weight : 600; 
-   font-size : 13px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
+   font-size : 1.1em; 
    background-color : #b4ec0d; 
 }
 
 .unselected {
    font-weight : 600;
-   font-size : 13px;
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
+   font-size : 1.1em;
 }
 
 .subselected {
    font-weight : 600;
-   font-size : 11px;
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
+   font-size : 0.9em;
    background-color : #b4ec0d;
+   padding-left: 1em;
 }
 
 .subunselected {
    font-weight : 600;
-   font-size : 11px;
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
+   font-size : 0.9em;
+   padding-left: 1em;
 }
 
 .nounderline {
@@ -97,7 +88,8 @@ TH {
 
 .mirrorsection {
    background-color: #eeeeee;
-   font-style: italic;: 600;
+   font-style: italic;
+   font-weight: 600;
 }
 
 /* 
