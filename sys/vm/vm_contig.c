@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.17 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.18 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -417,8 +417,11 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	}
 	vm_object_reference(kernel_object);
 	vm_map_insert(map, &count, 
-	    kernel_object, addr - VM_MIN_KERNEL_ADDRESS,
-	    addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
+		      kernel_object, addr - VM_MIN_KERNEL_ADDRESS,
+		      addr, addr + size,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 

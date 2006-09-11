@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.9 2006/05/25 07:36:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.10 2006/09/11 20:25:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,8 +176,11 @@ do_vmtotal_callback(struct proc *p, void *data)
 	paging = 0;
 	for (map = &p->p_vmspace->vm_map, entry = map->header.next;
 	    entry != &map->header; entry = entry->next) {
-		if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) ||
-		    entry->object.vm_object == NULL)
+		if (entry->maptype != VM_MAPTYPE_NORMAL &&
+		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+			continue;
+		}
+		if (entry->object.vm_object == NULL)
 			continue;
 		vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
 		paging |= entry->object.vm_object->paging_in_progress;

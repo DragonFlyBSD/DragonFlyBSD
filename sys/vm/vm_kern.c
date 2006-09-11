@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.22 2006/01/13 20:45:30 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.23 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -105,7 +105,11 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 	size = round_page(size);
 	addr = vm_map_min(map);
 	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-	    &addr, size, TRUE, VM_PROT_ALL, VM_PROT_ALL, 0);
+			     &addr, size,
+			     TRUE, 
+			     VM_MAPTYPE_NORMAL,
+			     VM_PROT_ALL, VM_PROT_ALL,
+			     0);
 	if (result != KERN_SUCCESS) {
 		return (0);
 	}
@@ -126,7 +130,11 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size)
 	size = round_page(size);
 	addr = vm_map_min(map);
 	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-	    &addr, size, TRUE, VM_PROT_ALL, VM_PROT_ALL, MAP_NOFAULT);
+			     &addr, size,
+			     TRUE,
+			     VM_MAPTYPE_NORMAL,
+			     VM_PROT_ALL, VM_PROT_ALL,
+			     MAP_NOFAULT);
 	if (result != KERN_SUCCESS) {
 		return (0);
 	}
@@ -172,8 +180,10 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
 	vm_object_reference(kernel_object);
 	vm_map_insert(map, &count,
-		kernel_object, offset, addr, addr + size,
-		VM_PROT_ALL, VM_PROT_ALL, 0);
+		      kernel_object, offset, addr, addr + size,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
 	vm_map_unlock(map);
 	if (kmflags & KM_KRESERVE)
 		vm_map_entry_krelease(count);
@@ -258,7 +268,11 @@ kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
 
 	*min = (vm_offset_t) vm_map_min(parent);
 	ret = vm_map_find(parent, NULL, (vm_offset_t) 0,
-	    min, size, TRUE, VM_PROT_ALL, VM_PROT_ALL, 0);
+			  min, size,
+			  TRUE,
+			  VM_MAPTYPE_UNSPECIFIED,
+			  VM_PROT_ALL, VM_PROT_ALL,
+			  0);
 	if (ret != KERN_SUCCESS) {
 		printf("kmem_suballoc: bad status return of %d.\n", ret);
 		panic("kmem_suballoc");
@@ -324,8 +338,10 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
 	vm_object_reference(kmem_object);
 	vm_map_insert(map, &count,
-		kmem_object, offset, addr, addr + size,
-		VM_PROT_ALL, VM_PROT_ALL, 0);
+		      kmem_object, offset, addr, addr + size,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
 
 	td = curthread;
 	wanted_reserve = 0;
@@ -467,8 +483,11 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		tsleep(map, 0, "kmaw", 0);
 	}
 	vm_map_insert(map, &count,
-		    NULL, (vm_offset_t) 0,
-		    addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
+		      NULL, (vm_offset_t) 0,
+		      addr, addr + size,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 	return (addr);
@@ -516,7 +535,10 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	kernel_map->system_map = 1;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-	    VM_MIN_KERNEL_ADDRESS, start, VM_PROT_ALL, VM_PROT_ALL, 0);
+		      VM_MIN_KERNEL_ADDRESS, start,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);
 	vm_map_entry_release(count);

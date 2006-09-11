@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.24 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.25 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -582,13 +582,18 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 	 */
 	tmpe = map->header.next;
 	while (tmpe != &map->header) {
-		if ((tmpe->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+		switch(tmpe->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
 			obj = tmpe->object.vm_object;
 			if ((obj != NULL) && (obj->shadow_count <= 1) &&
 				((bigobj == NULL) ||
 				 (bigobj->resident_page_count < obj->resident_page_count))) {
 				bigobj = obj;
 			}
+			break;
+		default:
+			break;
 		}
 		if (tmpe->wired_count > 0)
 			nothingwired = FALSE;
@@ -606,10 +611,15 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 	while (tmpe != &map->header) {
 		if (pmap_resident_count(vm_map_pmap(map)) <= desired)
 			break;
-		if ((tmpe->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+		switch(tmpe->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
 			obj = tmpe->object.vm_object;
 			if (obj)
 				vm_pageout_object_deactivate_pages(map, obj, desired, 0);
+			break;
+		default:
+			break;
 		}
 		tmpe = tmpe->next;
 	};

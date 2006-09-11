@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.18 2006/09/09 19:07:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.19 2006/09/11 20:24:57 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -417,7 +417,7 @@ dommap(struct kinfo_proc *kp)
 			return;
 		}
 
-		if (entry.eflags & MAP_ENTRY_IS_SUB_MAP)
+		if (entry.maptype == VM_MAPTYPE_SUBMAP)
 			continue;
 
 		if ((objp = entry.object.vm_object) == NULL)

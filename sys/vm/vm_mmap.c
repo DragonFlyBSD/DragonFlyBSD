@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.30 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.31 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -669,8 +669,11 @@ RestartScan:
 		/*
 		 * ignore submaps (for now) or null objects
 		 */
-		if ((current->eflags & MAP_ENTRY_IS_SUB_MAP) ||
-			current->object.vm_object == NULL)
+		if (current->maptype != VM_MAPTYPE_NORMAL &&
+		    current->maptype != VM_MAPTYPE_VPAGETABLE) {
+			continue;
+		}
+		if (current->object.vm_object == NULL)
 			continue;
 		
 		/*
@@ -691,9 +694,14 @@ RestartScan:
 			 * Check pmap first, it is likely faster, also
 			 * it can provide info as to whether we are the
 			 * one referencing or modifying the page.
+			 *
+			 * If we have to check the VM object, only mess
+			 * around with normal maps.  Do not mess around
+			 * with virtual page tables (XXX).
 			 */
 			mincoreinfo = pmap_mincore(pmap, addr);
-			if (!mincoreinfo) {
+			if (mincoreinfo == 0 &&
+			    current->maptype == VM_MAPTYPE_NORMAL) {
 				vm_pindex_t pindex;
 				vm_ooffset_t offset;
 				vm_page_t m;
@@ -1019,12 +1027,14 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = pmap_addr_hint(object, *addr, size);
 	}
 
-	if (flags & MAP_STACK)
+	if (flags & MAP_STACK) {
 		rv = vm_map_stack (map, *addr, size, prot,
 				   maxprot, docow);
-	else
+	} else {
+		/* XXX VM_MAPTYPE_VPAGETABLE if MAP_VPAGETABLE */
 		rv = vm_map_find(map, object, foff, addr, size, fitit,
-				 prot, maxprot, docow);
+				 VM_MAPTYPE_NORMAL, prot, maxprot, docow);
+	}
 
 	if (rv != KERN_SUCCESS) {
 		/*

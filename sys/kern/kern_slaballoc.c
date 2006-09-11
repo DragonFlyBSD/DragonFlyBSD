@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.42 2006/09/05 15:38:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.43 2006/09/11 20:25:01 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1068,7 +1068,9 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_object_reference(kernel_object);
     vm_map_insert(map, &count, 
 		    kernel_object, offset, addr, addr + size,
-		    VM_PROT_ALL, VM_PROT_ALL, 0);
+		    VM_MAPTYPE_NORMAL,
+		    VM_PROT_ALL, VM_PROT_ALL,
+		    0);
 
     td = curthread;
 

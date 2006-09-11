@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.79 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.80 2006/09/11 20:25:01 dillon Exp $
  */
 
 /*
@@ -1812,7 +1812,9 @@ restart:
 				vm_map_insert(buffer_map, &count,
 					NULL, 0,
 					addr, addr + maxsize,
-					VM_PROT_ALL, VM_PROT_ALL, MAP_NOFAULT);
+					VM_MAPTYPE_NORMAL,
+					VM_PROT_ALL, VM_PROT_ALL,
+					MAP_NOFAULT);
 
 				bp->b_kvabase = (caddr_t) addr;
 				bp->b_kvasize = maxsize;

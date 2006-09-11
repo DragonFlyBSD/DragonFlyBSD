@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.21 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.22 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -556,9 +556,11 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     vm_object_reference(ef->object);
     ef->address = (caddr_t) vm_map_min(kernel_map);
     error = vm_map_find(kernel_map, ef->object, 0,
-			(vm_offset_t *) &ef->address,
-			mapsize, 1,
-			VM_PROT_ALL, VM_PROT_ALL, 0);
+			(vm_offset_t *)&ef->address, mapsize,
+			1,
+			VM_MAPTYPE_NORMAL,
+			VM_PROT_ALL, VM_PROT_ALL,
+			0);
     if (error) {
 	vm_object_deallocate(ef->object);
 	kfree(ef, M_LINKER);

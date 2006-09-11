@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.42 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -307,8 +307,8 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 				      file_addr,	/* file offset */
 				      map_addr,		/* virtual start */
 				      map_addr + map_len,/* virtual end */
-				      prot,
-				      VM_PROT_ALL,
+				      VM_MAPTYPE_NORMAL,
+				      prot, VM_PROT_ALL,
 				      cow);
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
@@ -341,7 +341,9 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		rv = vm_map_insert(&vmspace->vm_map, &count,
 					NULL, 0,
 					map_addr, map_addr + map_len,
-					VM_PROT_ALL, VM_PROT_ALL, 0);
+					VM_MAPTYPE_NORMAL,
+					VM_PROT_ALL, VM_PROT_ALL,
+					0);
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {
@@ -357,8 +359,8 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 				 &data_buf,
 				 PAGE_SIZE,
 				 TRUE,
-				 VM_PROT_READ,
-				 VM_PROT_ALL,
+				 VM_MAPTYPE_NORMAL,
+				 VM_PROT_READ, VM_PROT_ALL,
 				 MAP_COPY_ON_WRITE | MAP_PREFAULT_PARTIAL);
 		if (rv != KERN_SUCCESS) {
 			vm_object_deallocate(object);
@@ -1173,12 +1175,15 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 		/*
 		 * Dont include memory segment in the coredump if
 		 * MAP_NOCORE is set in mmap(2) or MADV_NOCORE in
-		 * madvise(2).  Do not dump submaps (i.e. parts of the
-		 * kernel map).
+		 * madvise(2).
+		 *
+		 * Currently we only dump normal VM object maps.  We do
+		 * not dump submaps or virtual page tables.
 		 */
-		if (writable && entry->eflags & (MAP_ENTRY_NOCOREDUMP|MAP_ENTRY_IS_SUB_MAP))
+		if (writable && (entry->eflags & MAP_ENTRY_NOCOREDUMP))
 			continue;
-
+		if (entry->maptype != VM_MAPTYPE_NORMAL)
+			continue;
 		if ((obj = entry->object.vm_object) == NULL)
 			continue;
 

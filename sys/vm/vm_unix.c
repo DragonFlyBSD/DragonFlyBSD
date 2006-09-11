@@ -39,7 +39,7 @@
  *
  *	@(#)vm_unix.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vm_unix.c,v 1.24.2.2 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_unix.c,v 1.5 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_unix.c,v 1.6 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -96,8 +96,12 @@ sys_obreak(struct obreak_args *uap)
 		diff = new - old;
 		if (vm->vm_map.size + diff > p->p_rlimit[RLIMIT_VMEM].rlim_cur)
 			return(ENOMEM);
-		rv = vm_map_find(&vm->vm_map, NULL, 0, &old, diff, FALSE,
-			VM_PROT_ALL, VM_PROT_ALL, 0);
+		rv = vm_map_find(&vm->vm_map, NULL, 0,
+				 &old, diff,
+				 FALSE,
+				 VM_MAPTYPE_NORMAL,
+				 VM_PROT_ALL, VM_PROT_ALL,
+				 0);
 		if (rv != KERN_SUCCESS) {
 			return (ENOMEM);
 		}

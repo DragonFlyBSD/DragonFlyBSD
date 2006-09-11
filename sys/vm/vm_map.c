@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.46 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.47 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -290,21 +290,26 @@ vmspace_swap_count(struct vmspace *vmspace)
 {
 	vm_map_t map = &vmspace->vm_map;
 	vm_map_entry_t cur;
+	vm_object_t object;
 	int count = 0;
+	int n;
 
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
-		vm_object_t object;
-
-		if ((cur->eflags & MAP_ENTRY_IS_SUB_MAP) == 0 &&
-		    (object = cur->object.vm_object) != NULL &&
-		    object->type == OBJT_SWAP
-		) {
-			int n = (cur->end - cur->start) / PAGE_SIZE;
-
+		switch(cur->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			if ((object = cur->object.vm_object) == NULL)
+				break;
+			if (object->type != OBJT_SWAP)
+				break;
+			n = (cur->end - cur->start) / PAGE_SIZE;
 			if (object->un_pager.swp.swp_bcount) {
 				count += object->un_pager.swp.swp_bcount *
 				    SWAP_META_PAGES * n / object->size + 1;
 			}
+			break;
+		default:
+			break;
 		}
 	}
 	return(count);
@@ -647,7 +652,9 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
 int
 vm_map_insert(vm_map_t map, int *countp,
 	      vm_object_t object, vm_ooffset_t offset,
-	      vm_offset_t start, vm_offset_t end, vm_prot_t prot, vm_prot_t max,
+	      vm_offset_t start, vm_offset_t end,
+	      vm_maptype_t maptype,
+	      vm_prot_t prot, vm_prot_t max,
 	      int cow)
 {
 	vm_map_entry_t new_entry;
@@ -711,6 +718,7 @@ vm_map_insert(vm_map_t map, int *countp,
 		 (prev_entry->eflags == protoeflags) &&
 		 (prev_entry->end == start) &&
 		 (prev_entry->wired_count == 0) &&
+		 prev_entry->maptype == maptype &&
 		 ((prev_entry->object.vm_object == NULL) ||
 		  vm_object_coalesce(prev_entry->object.vm_object,
 				     OFF_TO_IDX(prev_entry->offset),
@@ -756,6 +764,7 @@ vm_map_insert(vm_map_t map, int *countp,
 	new_entry->start = start;
 	new_entry->end = end;
 
+	new_entry->maptype = maptype;
 	new_entry->eflags = protoeflags;
 	new_entry->object.vm_object = object;
 	new_entry->offset = offset;
@@ -909,9 +918,11 @@ retry:
  */
 int
 vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
-	    vm_offset_t *addr,	/* IN/OUT */
-	    vm_size_t length, boolean_t find_space, vm_prot_t prot,
-	    vm_prot_t max, int cow)
+	    vm_offset_t *addr,	vm_size_t length,
+	    boolean_t find_space,
+	    vm_maptype_t maptype,
+	    vm_prot_t prot, vm_prot_t max,
+	    int cow)
 {
 	vm_offset_t start;
 	int result;
@@ -930,7 +941,10 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 		start = *addr;
 	}
 	result = vm_map_insert(map, &count, object, offset,
-		start, start + length, prot, max, cow);
+			       start, start + length,
+			       maptype,
+			       prot, max,
+			       cow);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 
@@ -956,15 +970,19 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 	vm_map_entry_t next, prev;
 	vm_size_t prevsize, esize;
 
-	if (entry->eflags & (MAP_ENTRY_IN_TRANSITION | MAP_ENTRY_IS_SUB_MAP)) {
+	if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 		++mycpu->gd_cnt.v_intrans_coll;
 		return;
 	}
+
+	if (entry->maptype == VM_MAPTYPE_SUBMAP)
+		return;
 
 	prev = entry->prev;
 	if (prev != &map->header) {
 		prevsize = prev->end - prev->start;
 		if ( (prev->end == entry->start) &&
+		     (prev->maptype == entry->maptype) &&
 		     (prev->object.vm_object == entry->object.vm_object) &&
 		     (!prev->object.vm_object ||
 			(prev->offset + prevsize == entry->offset)) &&
@@ -990,6 +1008,7 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 	if (next != &map->header) {
 		esize = entry->end - entry->start;
 		if ((entry->end == next->start) &&
+		    (next->maptype == entry->maptype) &&
 		    (next->object.vm_object == entry->object.vm_object) &&
 		     (!entry->object.vm_object ||
 			(entry->offset + esize == next->offset)) &&
@@ -1065,8 +1084,13 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start, int *c
 
 	vm_map_entry_link(map, entry->prev, new_entry);
 
-	if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+	switch(entry->maptype) {
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
 		vm_object_reference(new_entry->object.vm_object);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1121,8 +1145,13 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end, int *count
 
 	vm_map_entry_link(map, entry, new_entry);
 
-	if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+	switch(entry->maptype) {
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
 		vm_object_reference(new_entry->object.vm_object);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1388,7 +1417,7 @@ vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
 	    ((entry->eflags & MAP_ENTRY_COW) == 0) &&
 	    (entry->object.vm_object == NULL)) {
 		entry->object.sub_map = submap;
-		entry->eflags |= MAP_ENTRY_IS_SUB_MAP;
+		entry->maptype = VM_MAPTYPE_SUBMAP;
 		result = KERN_SUCCESS;
 	}
 	vm_map_unlock(map);
@@ -1398,12 +1427,17 @@ vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
 }
 
 /*
- *	vm_map_protect:
+ * vm_map_protect:
  *
- *	Sets the protection of the specified address
- *	region in the target map.  If "set_max" is
- *	specified, the maximum protection is to be set;
- *	otherwise, only the current protection is affected.
+ * Sets the protection of the specified address region in the target map. 
+ * If "set_max" is specified, the maximum protection is to be set;
+ * otherwise, only the current protection is affected.
+ *
+ * The protection is not applicable to submaps, but is applicable to normal
+ * maps and maps governed by virtual page tables.  For example, when operating
+ * on a virtual page table our protection basically controls how COW occurs
+ * on the backing object, whereas the virtual page table abstraction itself
+ * is an abstraction for userland.
  */
 int
 vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
@@ -1427,10 +1461,9 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	/*
 	 * Make a first pass to check for protection violations.
 	 */
-
 	current = entry;
 	while ((current != &map->header) && (current->start < end)) {
-		if (current->eflags & MAP_ENTRY_IS_SUB_MAP) {
+		if (current->maptype == VM_MAPTYPE_SUBMAP) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_INVALID_ARGUMENT);
@@ -1455,12 +1488,13 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		vm_map_clip_end(map, current, end, &count);
 
 		old_prot = current->protection;
-		if (set_max)
+		if (set_max) {
 			current->protection =
 			    (current->max_protection = new_prot) &
 			    old_prot;
-		else
+		} else {
 			current->protection = new_prot;
+		}
 
 		/*
 		 * Update physical map if necessary. Worry about copy-on-write
@@ -1557,7 +1591,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 		     (current != &map->header) && (current->start < end);
 		     current = current->next
 		) {
-			if (current->eflags & MAP_ENTRY_IS_SUB_MAP)
+			if (current->maptype == VM_MAPTYPE_SUBMAP)
 				continue;
 
 			vm_map_clip_end(map, current, end, &count);
@@ -1600,6 +1634,9 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 		 *
 		 * Since we don't clip the vm_map_entry, we have to clip
 		 * the vm_object pindex and count.
+		 *
+		 * NOTE!  We currently do not support these functions on
+		 * virtual page tables.
 		 */
 		for (current = entry;
 		     (current != &map->header) && (current->start < end);
@@ -1607,7 +1644,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 		) {
 			vm_offset_t useStart;
 
-			if (current->eflags & MAP_ENTRY_IS_SUB_MAP)
+			if (current->maptype != VM_MAPTYPE_NORMAL)
 				continue;
 
 			pindex = OFF_TO_IDX(current->offset);
@@ -1746,7 +1783,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 * management structures and the faulting in of the
 			 * page.
 			 */
-			if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
 				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection & VM_PROT_WRITE) != 0)) {
 
@@ -1952,7 +1989,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			 * do not have to do this for entries that point to sub
 			 * maps because we won't hold the lock on the sub map.
 			 */
-			if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
 				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
 				if (copyflag &&
 				    ((entry->protection & VM_PROT_WRITE) != 0)) {
@@ -2137,7 +2174,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 	 * Make a first pass to check for holes.
 	 */
 	for (current = entry; current->start < end; current = current->next) {
-		if (current->eflags & MAP_ENTRY_IS_SUB_MAP) {
+		if (current->maptype == VM_MAPTYPE_SUBMAP) {
 			vm_map_unlock_read(map);
 			return (KERN_INVALID_ARGUMENT);
 		}
@@ -2158,7 +2195,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 	for (current = entry; current->start < end; current = current->next) {
 		offset = current->offset + (start - current->start);
 		size = (end <= current->end ? end : current->end) - start;
-		if (current->eflags & MAP_ENTRY_IS_SUB_MAP) {
+		if (current->maptype == VM_MAPTYPE_SUBMAP) {
 			vm_map_t smap;
 			vm_map_entry_t tentry;
 			vm_size_t tsize;
@@ -2211,10 +2248,23 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 			vn_lock(object->handle, LK_EXCLUSIVE | LK_RETRY);
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
 			flags |= invalidate ? OBJPC_INVAL : 0;
-			vm_object_page_clean(object,
-			    OFF_TO_IDX(offset),
-			    OFF_TO_IDX(offset + size + PAGE_MASK),
-			    flags);
+
+			/*
+			 * When operating on a virtual page table just
+			 * flush the whole object.  XXX we probably ought
+			 * to 
+			 */
+			switch(current->maptype) {
+			case VM_MAPTYPE_NORMAL:
+				vm_object_page_clean(object,
+				    OFF_TO_IDX(offset),
+				    OFF_TO_IDX(offset + size + PAGE_MASK),
+				    flags);
+				break;
+			case VM_MAPTYPE_VPAGETABLE:
+				vm_object_page_clean(object, 0, 0, flags);
+				break;
+			}
 			vn_unlock(((struct vnode *)object->handle));
 			vm_object_deallocate(object);
 		}
@@ -2224,10 +2274,17 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 			int clean_only = 
 				(object->type == OBJT_DEVICE) ? FALSE : TRUE;
 			vm_object_reference(object);
-			vm_object_page_remove(object,
-			    OFF_TO_IDX(offset),
-			    OFF_TO_IDX(offset + size + PAGE_MASK),
-			    clean_only);
+			switch(current->maptype) {
+			case VM_MAPTYPE_NORMAL:
+				vm_object_page_remove(object,
+				    OFF_TO_IDX(offset),
+				    OFF_TO_IDX(offset + size + PAGE_MASK),
+				    clean_only);
+				break;
+			case VM_MAPTYPE_VPAGETABLE:
+				vm_object_page_remove(object, 0, 0, clean_only);
+				break;
+			}
 			vm_object_deallocate(object);
 		}
 		start += size;
@@ -2264,8 +2321,13 @@ vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
 	vm_map_entry_unlink(map, entry);
 	map->size -= entry->end - entry->start;
 
-	if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) == 0) {
+	switch(entry->maptype) {
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
 		vm_object_deallocate(entry->object.vm_object);
+		break;
+	default:
+		break;
 	}
 
 	vm_map_entry_dispose(map, entry, countp);
@@ -2577,11 +2639,12 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 {
 	vm_object_t src_object;
 
-	if ((dst_entry->eflags|src_entry->eflags) & MAP_ENTRY_IS_SUB_MAP)
+	if (dst_entry->maptype == VM_MAPTYPE_SUBMAP)
+		return;
+	if (src_entry->maptype == VM_MAPTYPE_SUBMAP)
 		return;
 
 	if (src_entry->wired_count == 0) {
-
 		/*
 		 * If the source entry is marked needs_copy, it is already
 		 * write-protected.
@@ -2597,7 +2660,6 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * Make a copy of the object.
 		 */
 		if ((src_object = src_entry->object.vm_object) != NULL) {
-
 			if ((src_object->handle == NULL) &&
 				(src_object->type == OBJT_DEFAULT ||
 				 src_object->type == OBJT_SWAP)) {
@@ -2674,7 +2736,7 @@ vmspace_fork(struct vmspace *vm1)
 
 	old_entry = old_map->header.next;
 	while (old_entry != &old_map->header) {
-		if (old_entry->eflags & MAP_ENTRY_IS_SUB_MAP)
+		if (old_entry->maptype == VM_MAPTYPE_SUBMAP)
 			panic("vm_map_fork: encountered a submap");
 
 		switch (old_entry->inheritance) {
@@ -2683,7 +2745,8 @@ vmspace_fork(struct vmspace *vm1)
 
 		case VM_INHERIT_SHARE:
 			/*
-			 * Clone the entry, creating the shared object if necessary.
+			 * Clone the entry, creating the shared object if
+			 * necessary.
 			 */
 			object = old_entry->object.vm_object;
 			if (object == NULL) {
@@ -2825,7 +2888,10 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	 */
 	rv = vm_map_insert(map, &count,
 			   NULL, 0, addrbos + max_ssize - init_ssize,
-	                   addrbos + max_ssize, prot, max, cow);
+	                   addrbos + max_ssize,
+			   VM_MAPTYPE_NORMAL,
+			   prot, max,
+			   cow);
 
 	/* Now set the avail_ssize amount */
 	if (rv == KERN_SUCCESS) {
@@ -2970,8 +3036,8 @@ Retry:
 
 	rv = vm_map_insert(map, &count,
 			   NULL, 0, addr, stack_entry->start,
-			   VM_PROT_ALL,
-			   VM_PROT_ALL,
+			   VM_MAPTYPE_NORMAL,
+			   VM_PROT_ALL, VM_PROT_ALL,
 			   0);
 
 	/* Adjust the available stack space by the amount we grew. */
@@ -3137,8 +3203,7 @@ RetryLookup:
 	/*
 	 * Handle submaps.
 	 */
-
-	if (entry->eflags & MAP_ENTRY_IS_SUB_MAP) {
+	if (entry->maptype == VM_MAPTYPE_SUBMAP) {
 		vm_map_t old_map = map;
 
 		*var_map = map = entry->object.sub_map;
@@ -3330,7 +3395,7 @@ DB_SHOW_COMMAND(map, vm_map_print)
 			if (entry->wired_count != 0)
 				db_printf(", wired");
 		}
-		if (entry->eflags & MAP_ENTRY_IS_SUB_MAP) {
+		if (entry->maptype == VM_MAPTYPE_SUBMAP) {
 			/* XXX no %qd in kernel.  Truncate entry->offset. */
 			db_printf(", share=%p, offset=0x%lx\n",
 			    (void *)entry->object.sub_map,

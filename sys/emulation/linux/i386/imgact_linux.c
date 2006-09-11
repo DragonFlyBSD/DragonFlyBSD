@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/imgact_linux.c,v 1.35.2.2 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.7 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.8 2006/09/11 20:25:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,6 +129,7 @@ exec_linux_imgact(struct image_params *imgp)
 	vmaddr = virtual_offset;
 	error = vm_map_find(&vmspace->vm_map, NULL, 0, &vmaddr,
 		    	    a_out->a_text + a_out->a_data + bss_size, FALSE,
+			    VM_MAPTYPE_NORMAL,
 			    VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (error)
 	    return error;
@@ -198,7 +199,10 @@ exec_linux_imgact(struct image_params *imgp)
 	if (bss_size != 0) {
 	    vmaddr = virtual_offset + a_out->a_text + a_out->a_data;
 	    error = vm_map_find(&vmspace->vm_map, NULL, 0, &vmaddr, 
-				bss_size, FALSE, VM_PROT_ALL, VM_PROT_ALL, 0);
+				bss_size, FALSE,
+				VM_MAPTYPE_NORMAL,
+				VM_PROT_ALL, VM_PROT_ALL,
+				0);
 	    if (error)
 		return (error);
 #ifdef DEBUG

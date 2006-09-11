@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.21 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.22 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,11 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 
 	/* Find space in kernel_map for the page we're interested in */
 	rv = vm_map_find (kernel_map, object, IDX_TO_OFF(pindex),
-		&kva, PAGE_SIZE, 0, VM_PROT_ALL, VM_PROT_ALL, 0);
+			  &kva, PAGE_SIZE, 
+			  0, 
+			  VM_MAPTYPE_NORMAL,
+			  VM_PROT_ALL, VM_PROT_ALL,
+			  0);
 
 	if (!rv) {
 		vm_object_reference (object);
@@ -169,8 +173,11 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 
 	/* Find space in kernel_map for the page we're interested in */
 	rv = vm_map_find (kernel_map, object, IDX_TO_OFF(pindex),
-		&kva, PAGE_SIZE, 0,
-		VM_PROT_ALL, VM_PROT_ALL, 0);
+			  &kva, PAGE_SIZE,
+			  0,
+			  VM_MAPTYPE_NORMAL,
+			  VM_PROT_ALL, VM_PROT_ALL,
+			  0);
 	if (!rv) {
 		vm_object_reference (object);
 

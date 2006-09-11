@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.62 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.63 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -469,8 +469,12 @@ start_init(void *dummy)
 	 * Need just enough stack to hold the faked-up "execve()" arguments.
 	 */
 	addr = trunc_page(USRSTACK - PAGE_SIZE);
-	if (vm_map_find(&p->p_vmspace->vm_map, NULL, 0, &addr, PAGE_SIZE,
-			FALSE, VM_PROT_ALL, VM_PROT_ALL, 0) != 0)
+	error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0, &addr, PAGE_SIZE,
+			    FALSE, 
+			    VM_MAPTYPE_NORMAL,
+			    VM_PROT_ALL, VM_PROT_ALL,
+			    0);
+	if (error)
 		panic("init: couldn't allocate argument space");
 	p->p_vmspace->vm_maxsaddr = (caddr_t)addr;
 	p->p_vmspace->vm_ssize = 1;

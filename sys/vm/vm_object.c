@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.25 2006/05/25 07:36:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.26 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -1758,7 +1758,6 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 
 	if (map == 0)
 		return 0;
-
 	if (entry == 0) {
 		tmpe = map->header.next;
 		entcount = map->nentries;
@@ -1768,7 +1767,10 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 			}
 			tmpe = tmpe->next;
 		}
-	} else if (entry->eflags & MAP_ENTRY_IS_SUB_MAP) {
+		return (0);
+	}
+	switch(entry->maptype) {
+	case VM_MAPTYPE_SUBMAP:
 		tmpm = entry->object.sub_map;
 		tmpe = tmpm->header.next;
 		entcount = tmpm->nentries;
@@ -1778,11 +1780,18 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 			}
 			tmpe = tmpe->next;
 		}
-	} else if ((obj = entry->object.vm_object) != NULL) {
-		for(; obj; obj=obj->backing_object)
-			if( obj == object) {
+		break;
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
+		obj = entry->object.vm_object;
+		while (obj) {
+			if (obj == object)
 				return 1;
-			}
+			obj = obj->backing_object;
+		}
+		break;
+	default:
+		break;
 	}
 	return 0;
 }

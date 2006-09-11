@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.11 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.12 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,6 +186,7 @@ exec_aout_imgact(struct image_params *imgp)
 	error = vm_map_insert(map, &count, object,
 		file_offset,
 		virtual_offset, text_end,
+		VM_MAPTYPE_NORMAL,
 		VM_PROT_READ | VM_PROT_EXECUTE, VM_PROT_ALL,
 		MAP_COPY_ON_WRITE | MAP_PREFAULT);
 	if (error) {
@@ -199,6 +200,7 @@ exec_aout_imgact(struct image_params *imgp)
 		error = vm_map_insert(map, &count, object,
 			file_offset + a_out->a_text,
 			text_end, data_end,
+			VM_MAPTYPE_NORMAL,
 			VM_PROT_ALL, VM_PROT_ALL,
 			MAP_COPY_ON_WRITE | MAP_PREFAULT);
 		if (error) {
@@ -211,7 +213,9 @@ exec_aout_imgact(struct image_params *imgp)
 	if (bss_size) {
 		error = vm_map_insert(map, &count, NULL, 0,
 			data_end, data_end + bss_size,
-			VM_PROT_ALL, VM_PROT_ALL, 0);
+			VM_MAPTYPE_NORMAL,
+			VM_PROT_ALL, VM_PROT_ALL,
+			0);
 		if (error) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);

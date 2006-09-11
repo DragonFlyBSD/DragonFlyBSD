@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.42 2006/09/11 20:25:01 dillon Exp $
  */
 
 /*
@@ -318,8 +318,11 @@ pipespace(struct pipe *cpipe, int size)
 		buffer = (caddr_t) vm_map_min(kernel_map);
 
 		error = vm_map_find(kernel_map, object, 0,
-			(vm_offset_t *) &buffer, size, 1,
-			VM_PROT_ALL, VM_PROT_ALL, 0);
+				    (vm_offset_t *)&buffer, size,
+				    1,
+				    VM_MAPTYPE_NORMAL,
+				    VM_PROT_ALL, VM_PROT_ALL,
+				    0);
 
 		if (error != KERN_SUCCESS) {
 			vm_object_deallocate(object);

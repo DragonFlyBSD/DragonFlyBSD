@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.3 (Berkeley) 2/17/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_map.c,v 1.24.2.1 2001/08/04 13:12:24 rwatson Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.4 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.5 2006/09/11 20:25:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,8 +95,10 @@ procfs_domap(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		int resident, privateresident;
 		char *type;
 
-		if (entry->eflags & MAP_ENTRY_IS_SUB_MAP)
+		if (entry->maptype != VM_MAPTYPE_NORMAL &&
+		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
 			continue;
+		}
 
 		obj = entry->object.vm_object;
 		if (obj && (obj->shadow_count == 1))

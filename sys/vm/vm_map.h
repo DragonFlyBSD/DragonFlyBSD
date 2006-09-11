@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.22 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.23 2006/09/11 20:25:31 dillon Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ struct vm_map_entry {
 	union vm_map_object object;	/* object I point to */
 	vm_ooffset_t offset;		/* offset into object */
 	vm_eflags_t eflags;		/* map entry flags */
-	/* Only in task maps: */
+	vm_maptype_t maptype;		/* type of VM mapping */
 	vm_prot_t protection;		/* protection code */
 	vm_prot_t max_protection;	/* maximum protection */
 	vm_inherit_t inheritance;	/* inheritance */
@@ -136,7 +136,7 @@ struct vm_map_entry {
 };
 
 #define MAP_ENTRY_NOSYNC		0x0001
-#define MAP_ENTRY_IS_SUB_MAP		0x0002
+#define MAP_ENTRY_UNUSED0002		0x0002
 #define MAP_ENTRY_COW			0x0004
 #define MAP_ENTRY_NEEDS_COPY		0x0008
 #define MAP_ENTRY_NOFAULT		0x0010
@@ -418,11 +418,20 @@ void vm_map_entry_release(int);
 void vm_map_entry_krelease(int);
 vm_map_t vm_map_create (struct pmap *, vm_offset_t, vm_offset_t);
 int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t, int *);
-int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t *, vm_size_t, boolean_t, vm_prot_t, vm_prot_t, int);
+int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t,
+		 vm_offset_t *, vm_size_t, 
+		 boolean_t, 
+		 vm_maptype_t,
+		 vm_prot_t, vm_prot_t, 
+		 int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_offset_t, vm_offset_t *);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t);
-int vm_map_insert (vm_map_t, int *, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int);
+int vm_map_insert (vm_map_t, int *, vm_object_t, vm_ooffset_t,
+		   vm_offset_t, vm_offset_t,
+		   vm_maptype_t,
+		   vm_prot_t, vm_prot_t,
+		   int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
     vm_pindex_t *, vm_prot_t *, boolean_t *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);

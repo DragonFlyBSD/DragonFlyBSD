@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.18 2006/09/05 00:55:45 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.19 2006/09/11 20:25:01 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -297,8 +297,13 @@ sys_shmat(struct shmat_args *uap)
 
 	shm_handle = shmseg->shm_internal;
 	vm_object_reference(shm_handle->shm_object);
-	rv = vm_map_find(&p->p_vmspace->vm_map, shm_handle->shm_object,
-		0, &attach_va, size, (flags & MAP_FIXED)?0:1, prot, prot, 0);
+	rv = vm_map_find(&p->p_vmspace->vm_map, 
+			 shm_handle->shm_object, 0,
+			 &attach_va, size,
+			 ((flags & MAP_FIXED) ? 0 : 1), 
+			 VM_MAPTYPE_NORMAL,
+			 prot, prot,
+			 0);
 	if (rv != KERN_SUCCESS) {
                 vm_object_deallocate(shm_handle->shm_object);
 		return ENOMEM;

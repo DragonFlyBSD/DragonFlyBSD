@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm.h,v 1.16.2.1 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/vm/vm.h,v 1.6 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm.h,v 1.7 2006/09/11 20:25:31 dillon Exp $
  */
 
 #ifndef VM_VM_H_
@@ -88,6 +88,13 @@ typedef u_char vm_prot_t;	/* protection codes */
 #define VM_PROT_RW		(VM_PROT_READ|VM_PROT_WRITE)
 #define	VM_PROT_ALL		(VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
 #define	VM_PROT_DEFAULT		VM_PROT_ALL
+
+typedef u_char vm_maptype_t;	/* type of vm_map_entry */
+
+#define VM_MAPTYPE_UNSPECIFIED	0
+#define VM_MAPTYPE_NORMAL	1
+#define VM_MAPTYPE_VPAGETABLE	2
+#define VM_MAPTYPE_SUBMAP	3
 
 union vm_map_object;
 typedef union vm_map_object vm_map_object_t;
