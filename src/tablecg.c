@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.36 2006/05/12 02:46:23 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.37 2006/09/11 21:00:28 justin Exp $
  */
 
 #include <sys/types.h>
@@ -46,8 +46,8 @@ static char *choppath(const char *path);
 static const char *filecomp(const char *path);
 static time_t parse_http_date(const char *header);
 
-#define	SITE_ROOT	"http://www.dragonflybsd.org"
-#define HTDOCS_ROOT	"/usr/local/www/site/data"
+#define       SITE_ROOT       "http://www.dragonflybsd.org"
+#define HTDOCS_ROOT   "/usr/local/www/site/data"
 
 /*
  * Phrases work is currently commented out.  Remove comments here 
@@ -205,7 +205,7 @@ main(int ac, char **av)
      * Generate the table structure after processing the web page so
      * we can populate the tags properly.
      */
-    printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    
     printf("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" ");
     printf("\n \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
     printf("<html xmlns=\"http://www.w3.org/1999/xhtml\">\n");
@@ -307,15 +307,6 @@ generate_menu_layer(const char *dirpath, int baselen, int layer)
 	asprintf(&path, "%s/%s", dirpath, buf);
 
 	/*
-	 * Figure out if this element is part of the path to the current
-	 * page.
-	 */
-	if (strstr(FilePath, buf))
-	    selected = " class=\"selected\"";
-	else
-	    selected = " class=\"unselected\"";
-
-	/*
 	 * Generate the visible label
 	 */
 	if (strchr(buf, ' ')) {
@@ -341,9 +332,22 @@ generate_menu_layer(const char *dirpath, int baselen, int layer)
 	/*
 	 * Process a URL, directory, or terminal file
 	 */
-	printf("<tr><td%s>", selected);
-	if (layer)
-	    printf("&nbsp;&nbsp;&nbsp;");
+
+	/*
+	 * Figure out if this element is part of the path to the current
+	 * page.
+	 */
+	if (strstr(FilePath, buf))
+        if (layer)
+                printf("<tr><td class=\"subselected\">");
+        else
+                printf("<tr><td class=\"selected\">");
+	else
+        if (layer)
+                printf("<tr><td class=\"subunselected\">");
+        else
+                printf("<tr><td class=\"unselected\">");
+
 
 	if (stat(path, &st) < 0) {
 	    /*
