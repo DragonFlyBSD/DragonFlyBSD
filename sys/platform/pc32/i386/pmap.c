@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.55 2006/05/25 04:17:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.56 2006/09/12 22:03:10 dillon Exp $
  */
 
 /*
@@ -2375,6 +2375,12 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	vm_page_t m, mpte;
 	vm_object_t object;
 
+	/*
+	 * We do not currently prefault mappings that use virtual page
+	 * tables.  We do not prefault foreign pmaps.
+	 */
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
+		return;
 	if (!curproc || (pmap != vmspace_pmap(curproc->p_vmspace)))
 		return;
 

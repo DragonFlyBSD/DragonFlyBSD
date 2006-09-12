@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.10 2006/09/12 22:03:11 dillon Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -43,6 +43,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
 #endif
 
 #ifdef _KERNEL

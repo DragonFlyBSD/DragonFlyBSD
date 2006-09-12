@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.26 2006/09/12 18:41:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.27 2006/09/12 22:03:12 dillon Exp $
  */
 
 /*
@@ -81,10 +81,12 @@
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
+#include <sys/vkernel.h>
+#include <sys/sfbuf.h>
+#include <sys/lock.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_object.h>
@@ -142,15 +144,30 @@ unlock_map(struct faultstate *fs)
 	}
 }
 
+/*
+ * Clean up after a successful call to vm_fault_object() so another call
+ * to vm_fault_object() can be made.
+ */
+static void
+_cleanup_successful_fault(struct faultstate *fs, int relock)
+{
+	if (fs->object != fs->first_object) {
+		vm_page_free(fs->first_m);
+		vm_object_pip_wakeup(fs->object);
+		fs->first_m = NULL;
+	}
+	fs->object = fs->first_object;
+	if (relock && fs->lookup_still_valid == FALSE) {
+		vm_map_lock_read(fs->map);
+		fs->lookup_still_valid = TRUE;
+	}
+}
+
 static void
 _unlock_things(struct faultstate *fs, int dealloc)
 {
-	vm_object_pip_wakeup(fs->object);
-	if (fs->object != fs->first_object) {
-		vm_page_free(fs->first_m);
-		vm_object_pip_wakeup(fs->first_object);
-		fs->first_m = NULL;
-	}
+	vm_object_pip_wakeup(fs->first_object);
+	_cleanup_successful_fault(fs, 0);
 	if (dealloc) {
 		vm_object_deallocate(fs->first_object);
 	}
@@ -163,6 +180,7 @@ _unlock_things(struct faultstate *fs, int dealloc)
 
 #define unlock_things(fs) _unlock_things(fs, 0)
 #define unlock_and_deallocate(fs) _unlock_things(fs, 1)
+#define cleanup_successful_fault(fs) _cleanup_successful_fault(fs, 1)
 
 /*
  * TRYPAGER 
@@ -303,35 +321,92 @@ RetryFault:
 		fault_type = fs.prot;
 
 	/*
-	 * The page we want is at (object, pindex), but if the vm_map_entry
-	 * is VM_MAPTYPE_VPAGETABLE we have to traverse the page table to
-	 * figure out the actual pindex.
+	 * The page we want is at (first_object, first_pindex), but if the
+	 * vm_map_entry is VM_MAPTYPE_VPAGETABLE we have to traverse the
+	 * page table to figure out the actual pindex.
+	 *
+	 * NOTE!  DEVELOPMENT IN PROGRESS, THIS IS AN INITIAL IMPLEMENTATION
+	 * ONLY
 	 */
-	fs.object = fs.first_object;
-	fs.pindex = fs.first_pindex;
-#if 0
-	/* COMING SOON */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		vpte_t vpte;
+		struct sf_buf *sf;
+
+		fs.object = fs.first_object;
 		fs.pindex = fs.entry->avail_ssize;	/* page directory */
-		result = vm_fault_object(&fs, fault_type);
+
+		/*
+		 * Virtual page index must be addressable by the page table
+		 */
+		if (fs.first_pindex > VPTE_PAGE_ENTRIES * VPTE_PAGE_ENTRIES) {
+			unlock_and_deallocate(&fs);
+			return (KERN_FAILURE);
+		}
+		result = vm_fault_object(&fs, VM_PROT_READ);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
-		if (result != KERN_SUCCESS) {
-			/* unlock_and_deallocate(&fs); */
+		if (result != KERN_SUCCESS)
 			return (result);
+
+		/*
+		 * Process the returned fs.m to get the vpte from the page
+		 * directory.
+		 */
+		sf = sf_buf_alloc(fs.m, SFB_CPUPRIVATE);
+		vpte = *((vpte_t *)sf_buf_kva(sf) +
+		       (fs.first_pindex / VPTE_PAGE_ENTRIES));
+		sf_buf_free(sf);
+		vm_page_flag_set(fs.m, PG_REFERENCED);
+		vm_page_activate(fs.m);
+		vm_page_wakeup(fs.m);
+
+		if (vpte & VPTE_IV) {
+			unlock_and_deallocate(&fs);
+			return (KERN_FAILURE);
 		}
 
 		/*
-		 * fs.m is busy on return
+		 * Handle the second-level page table
 		 */
-		XXX
+		if (vpte & VPTE_PS) {
+			fs.first_pindex = (vpte >> PAGE_SHIFT) +
+					  (fs.first_pindex % VPTE_PAGE_ENTRIES);
+		} else {
+			cleanup_successful_fault(&fs);
+			fs.object = fs.first_object;
+			fs.pindex = (vpte >> PAGE_SHIFT);
+			result = vm_fault_object(&fs, VM_PROT_READ);
+			if (result == KERN_TRY_AGAIN)
+				goto RetryFault;
+			if (result != KERN_SUCCESS)
+				return (result);
+
+			sf = sf_buf_alloc(fs.m, SFB_CPUPRIVATE);
+			vpte = *((vpte_t *)sf_buf_kva(sf) +
+			       (fs.first_pindex % VPTE_PAGE_ENTRIES));
+			sf_buf_free(sf);
+			vm_page_flag_set(fs.m, PG_REFERENCED);
+			vm_page_activate(fs.m);
+			vm_page_wakeup(fs.m);
+
+			if (vpte & VPTE_IV) {
+				unlock_and_deallocate(&fs);
+				return (KERN_FAILURE);
+			}
+			fs.first_pindex = (vpte >> PAGE_SHIFT);
+		}
+		cleanup_successful_fault(&fs);
 	}
-#endif
+
+	fs.object = fs.first_object;
+	fs.pindex = fs.first_pindex;
 
 	/*
 	 * Now we have the actual (object, pindex), fault in the page.  If
 	 * vm_fault_object() fails it will unlock and deallocate the FS
-	 * data.  
+	 * data.   If it succeeds everything remains locked and fs->object
+	 * will have an additinal PIP count if it is not equal to
+	 * fs->first_object
 	 */
 	result = vm_fault_object(&fs, fault_type);
 	if (result == KERN_TRY_AGAIN)
@@ -340,11 +415,12 @@ RetryFault:
 		return (result);
 
 	/*
-	 * On success vm_fault_object() unlocks but does not deallocate, and
-	 * fs.m will contain a busied page.
+	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
+	 * will contain a busied page.
 	 *
 	 * Enter the page into the pmap and do pmap-related adjustments.
 	 */
+	unlock_things(&fs);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 
 	if (((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0) && (fs.wired == 0)) {
@@ -395,8 +471,9 @@ RetryFault:
  * do is iterate the object chain.
  *
  * On failure (fs) is unlocked and deallocated and the caller may return or
- * retry depending on the failure code.  On success (fs) is unlocked but not
- * deallocated, and fs.m will contain a resolved busied page.
+ * retry depending on the failure code.  On success (fs) is NOT unlocked or
+ * deallocated, fs.m will contained a resolved, busied page, and fs.object
+ * will have an additional PIP count if it is not equal to fs.first_object.
  */
 static
 int
@@ -908,85 +985,6 @@ readrest:
 		return (KERN_TRY_AGAIN);
 	}
 
-
-#if 0
-	/*
-	 * THIS IS THE PREVIOUS CODE, WHICH TRIED TO OPTIMIZE THE RETRY PATH.
-	 * SINCE WE HAD TO DO I/O ANYWAY, DON'T BOTHER
-	 */
-	if (!fs->lookup_still_valid &&
-	    (fs->map->timestamp != fs->map_generation)) {
-		vm_object_t retry_object;
-		vm_pindex_t retry_pindex;
-		vm_prot_t retry_prot;
-
-		/*
-		 * Since map entries may be pageable, make sure we can take a
-		 * page fault on them.
-		 */
-
-		/*
-		 * Unlock vnode before the lookup to avoid deadlock.   E.G.
-		 * avoid a deadlock between the inode and exec_map that can
-		 * occur due to locks being obtained in different orders.
-		 */
-
-		if (fs->vp != NULL) {
-			vput(fs->vp);
-			fs->vp = NULL;
-		}
-		
-		if (fs->map->infork) {
-			release_page(fs);
-			unlock_and_deallocate(fs);
-			return (KERN_TRY_AGAIN);
-		}
-
-		/*
-		 * To avoid trying to write_lock the map while another process
-		 * has it read_locked (in vm_map_wire), we do not try for
-		 * write permission.  If the page is still writable, we will
-		 * get write permission.  If it is not, or has been marked
-		 * needs_copy, we enter the mapping without write permission,
-		 * and will merely take another fault.
-		 */
-		result = vm_map_lookup(fs->map, vaddr,
-				       fault_type & ~VM_PROT_WRITE, &fs->entry,
-				       &retry_object, &retry_pindex,
-				       &retry_prot, &fs->wired);
-		fs->map_generation = fs->map->timestamp;
-
-		/*
-		 * If we don't need the page any longer, put it on the active
-		 * list (the easiest thing to do here).  If no one needs it,
-		 * pageout will grab it eventually.
-		 */
-
-		if (result != KERN_SUCCESS) {
-			release_page(&fs);
-			unlock_and_deallocate(&fs);
-			return (result);
-		}
-		fs->lookup_still_valid = TRUE;
-
-		if ((retry_object != fs->first_object) ||
-		    (retry_pindex != fs->first_pindex)) {
-			release_page(fs);
-			unlock_and_deallocate(fs);
-			return (KERN_TRY_AGAIN);
-		}
-		/*
-		 * Check whether the protection has changed or the object has
-		 * been copied while we left the map unlocked. Changing from
-		 * read to write permission is OK - we leave the page
-		 * write-protected, and catch the write fault. Changing from
-		 * write to read permission means that we can't mark the page
-		 * write-enabled after all.
-		 */
-		prot &= retry_prot;
-	}
-#endif
-
 	/*
 	 * Put this page into the physical map. We had to do the unlock above
 	 * because pmap_enter may cause other faults.   We don't put the page
@@ -1027,13 +1025,12 @@ readrest:
 	}
 
 	/*
-	 * Page had better still be busy
+	 * Page had better still be busy.  We are still locked up and 
+	 * fs->object will have another PIP reference if it is not equal
+	 * to fs->first_object.
 	 */
-
 	KASSERT(fs->m->flags & PG_BUSY,
 		("vm_fault: page %p not busy!", fs->m));
-
-	unlock_things(fs);
 
 	/*
 	 * Sanity check: page must be completely valid or it is not fit to
