@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.31 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.32 2006/09/12 18:41:32 dillon Exp $
  */
 
 /*
@@ -82,6 +82,8 @@
 
 static int max_proc_mmap;
 SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
+int vkernel_enable;
+SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
 
 /*
  * Set the maximum number of vm_map_entry structures per process.  Roughly
@@ -170,8 +172,7 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 	pos = upos;
 
 	/* make sure mapping fits into numeric range etc */
-	if ((ssize_t) ulen < 0 ||
-	    ((flags & MAP_ANON) && fd != -1))
+	if ((ssize_t) ulen < 0 || ((flags & MAP_ANON) && fd != -1))
 		return (EINVAL);
 
 	if (flags & MAP_STACK) {
@@ -180,6 +181,23 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 			return (EINVAL);
 		flags |= MAP_ANON;
 		pos = 0;
+	}
+
+	/*
+	 * Virtual page tables cannot be used with MAP_STACK.  Apart from
+	 * it not making any sense, the avail_ssize field is used by both
+	 * types.
+	 *
+	 * Because the virtual page table is stored in the backing object
+	 * and might be updated by the kernel, the mapping must be R+W.
+	 */
+	if (flags & MAP_VPAGETABLE) {
+		if (vkernel_enable == 0)
+			return (EOPNOTSUPP);
+		if (flags & MAP_STACK)
+			return (EINVAL);
+		if ((prot & (PROT_READ|PROT_WRITE)) != (PROT_READ|PROT_WRITE))
+			return (EINVAL);
 	}
 
 	/*
@@ -1027,11 +1045,16 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = pmap_addr_hint(object, *addr, size);
 	}
 
+	/*
+	 * Stack mappings need special attention.  Mappings that use virtual
+	 * page tables will default to storing the page table at offset 0.
+	 */
 	if (flags & MAP_STACK) {
-		rv = vm_map_stack (map, *addr, size, prot,
-				   maxprot, docow);
+		rv = vm_map_stack (map, *addr, size, prot, maxprot, docow);
+	} else if (flags & MAP_VPAGETABLE) {
+		rv = vm_map_find(map, object, foff, addr, size, fitit,
+				 VM_MAPTYPE_VPAGETABLE, prot, maxprot, docow);
 	} else {
-		/* XXX VM_MAPTYPE_VPAGETABLE if MAP_VPAGETABLE */
 		rv = vm_map_find(map, object, foff, addr, size, fitit,
 				 VM_MAPTYPE_NORMAL, prot, maxprot, docow);
 	}

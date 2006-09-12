@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.23 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.24 2006/09/12 18:41:32 dillon Exp $
  */
 
 /*
@@ -116,6 +116,12 @@ union vm_map_object {
  *	a VM object (or sharing map) and offset into that object,
  *	and user-exported inheritance and protection information.
  *	Also included is control information for virtual copy operations.
+ *
+ *	When used with MAP_STACK, avail_ssize is used to determine the
+ *	limits of stack growth.
+ *
+ *	When used with VM_MAPTYPE_VPAGETABLE, avail_ssize stores the
+ *	page directory index.
  */
 struct vm_map_entry {
 	struct vm_map_entry *prev;	/* previous entry */

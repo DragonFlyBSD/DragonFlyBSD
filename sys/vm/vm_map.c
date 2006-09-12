@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.47 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.48 2006/09/12 18:41:32 dillon Exp $
  */
 
 /*
@@ -3245,15 +3245,24 @@ RetryLookup:
 	 * If this page is not pageable, we have to get it for all possible
 	 * accesses.
 	 */
-
 	*wired = (entry->wired_count != 0);
 	if (*wired)
 		prot = fault_type = entry->protection;
 
 	/*
+	 * Virtual page tables may need to update the accessed (A) bit
+	 * in a page table entry.  Upgrade the fault to a write fault for
+	 * that case if the map will support it.  If the map does not support
+	 * it the page table entry simply will not be updated.
+	 */
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		if (prot & VM_PROT_WRITE)
+			fault_type |= VM_PROT_WRITE;
+	}
+
+	/*
 	 * If the entry was copy-on-write, we either ...
 	 */
-
 	if (entry->eflags & MAP_ENTRY_NEEDS_COPY) {
 		/*
 		 * If we want to write the page, we may as well handle that

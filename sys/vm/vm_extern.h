@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.16 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.17 2006/09/12 18:41:32 dillon Exp $
  */
 
 #ifndef _VM_VM_EXTERN_H_
@@ -56,6 +56,8 @@ struct mount;
 struct vnode;
 
 #ifdef _KERNEL
+
+extern int vkernel_enable;
 
 #ifdef TYPEDEF_FOR_UAP
 int getpagesize (struct proc * p, void *, int *);

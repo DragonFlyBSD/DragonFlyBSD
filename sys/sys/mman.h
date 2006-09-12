@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.4 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.5 2006/09/12 18:41:30 dillon Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -77,11 +77,6 @@
 #define	MAP_STACK	 0x0400	/* region grows down, like a stack */
 #define	MAP_NOSYNC	 0x0800 /* page to but do not sync underlying file */
 
-/*
- * Extended flags
- */
-#define	MAP_NOCORE	 0x00020000 /* dont include these pages in a coredump */
-
 #ifdef _P1003_1B_VISIBLE
 /*
  * Process memory locking
@@ -109,6 +104,12 @@
  */
 #define	MAP_FILE	0x0000	/* map from file (default) */
 #define	MAP_ANON	0x1000	/* allocated from memory, swap space */
+#define MAP_VPAGETABLE	0x2000	/* manage with virtualized page table */
+
+/*
+ * Extended flags
+ */
+#define	MAP_NOCORE	 0x00020000 /* dont include these pages in a coredump */
 
 /*
  * Advice to madvise
@@ -123,6 +124,7 @@
 #define	MADV_AUTOSYNC	7	/* revert to default flushing strategy */
 #define	MADV_NOCORE	8	/* do not include these pages in a core file */
 #define	MADV_CORE	9	/* revert to including pages in a core file */
+#define MADV_INVAL	10	/* virt page tables have changed, inval pmap */
 
 /*
  * Return bits from mincore

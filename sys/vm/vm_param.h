@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_param.h,v 1.13.2.1 2001/11/03 01:41:10 ps Exp $
- * $DragonFly: src/sys/vm/vm_param.h,v 1.4 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_param.h,v 1.5 2006/09/12 18:41:32 dillon Exp $
  */
 
 /*
@@ -122,6 +122,7 @@
 #define	KERN_RESOURCE_SHORTAGE	6
 #define	KERN_NOT_RECEIVER	7
 #define	KERN_NO_ACCESS		8
+#define	KERN_TRY_AGAIN		9
 
 #ifndef ASSEMBLER
 #ifdef _KERNEL
