@@ -56,8 +56,6 @@ doc/cvs-paper.ms
 doc/cvs.info
 doc/cvs.info-1
 doc/cvs.info-2
-doc/cvs.man.footer
-doc/cvs.man.header
 doc/cvsclient.info
 doc/i18n/.cvsignore
 doc/i18n/Makefile.am
