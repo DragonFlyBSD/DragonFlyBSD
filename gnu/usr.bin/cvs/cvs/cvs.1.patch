@@ -1,7 +1,8 @@
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/cvs.1.patch,v 1.1 2004/05/20 02:27:56 dillon Exp $
---- /usr/src/contrib/cvs-1.12.8/doc/cvs.1	Wed May 19 07:11:50 2004
-+++ cvs.1	Wed May 19 19:09:36 2004
-@@ -397,6 +398,26 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/cvs.1.patch,v 1.2 2006/09/13 19:34:24 corecode Exp $
+diff -r 93f8116a881a contrib/cvs-1.12/doc/cvs.1
+--- a/contrib/cvs-1.12/doc/cvs.1	Sat Sep 09 18:10:13 2006 +0200
++++ b/contrib/cvs-1.12/doc/cvs.1	Wed Sep 13 18:07:23 2006 +0200
+@@ -420,6 +420,26 @@ set or \fB-r\fR is given.
  set or \fB-r\fR is given.
  .SP
  .IP "" 0
@@ -28,3 +29,25 @@
  \fB-x\fR
  .IP "" 2
  .IX "Encryption"
+@@ -1079,13 +1099,20 @@ Changes: nothing.
+ .SP
+ For each file in \fIfiles\fR, print the head revision
+ of the trunk, together with information on the last
+-modification for each line.  
++modification for each line.  If \fB-b\fR is specified,
++the first modification after the revision selected by
++\fB-r\fR is shown.  
+ .SP
+ .SH "annotate options"
+ .SP
+ These standard options are supported by \fBannotate\fR
+ (see node `Common options\(aq in the CVS manual, for a complete description of
+ them):
++.SP
++.IP "" 0
++\fB-b\fR
++.IP "" 2
++Backwards, show when a line was removed.
+ .SP
+ .IP "" 0
+ \fB-l\fR

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.11 2006/05/27 11:59:44 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.12 2006/09/13 19:34:24 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -10,7 +10,7 @@
 .PATH:	${CVSDIR}
 
 PROG=	cvs
-MAN=	${.OBJDIR}/cvs.1 cvs.5
+MAN=	cvs.1 cvs.5
 
 SRCS=	add.c admin.c annotate.c buffer.c \
 	checkin.c checkout.c classify.c client.c \
@@ -25,14 +25,23 @@ SRCS=	add.c admin.c annotate.c buffer.c \
 	update.c vers_ts.c version.c watch.c wrapper.c zlib.c \
 	main.c diff.c ${PATCHES}
 
-PATCHES=main.c.patch commit.c.patch diff.c.patch root.c.patch rcs.c.patch \
-	parseinfo.c.patch cvs.h.patch zlib.c.patch
+PATCHES= \
+	annotate.c.patch \
+	commit.c.patch \
+	cvs.h.patch \
+	diff.c.patch \
+	main.c.patch \
+	parseinfo.c.patch \
+	rcs.c.patch \
+	rcs.h.patch \
+	root.c.patch \
+	zlib.c.patch
+
 CONTRIBDIR=	${CVSDIR}/src
 
-${.OBJDIR}/cvs.1: cvs.1.patch
-	patch -o ${.TARGET} -i ${.ALLSRC} ${CVSDIR}/doc/cvs.1
+CLEANFILES+=	cvs.1
 
-CLEANFILES+= ${.OBJDIR}/cvs.1
+cvs.1: _PATCHFILE ${CVSDIR}/doc/cvs.1 cvs.1.patch
 
 CFLAGS+= -I${.CURDIR} -I../lib -DHAVE_CONFIG_H \
 	 -I${CVSDIR}/src -I${CVSDIR}/lib -I${CVSDIR}/diff -I.

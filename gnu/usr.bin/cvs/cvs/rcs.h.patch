@@ -1,0 +1,13 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/rcs.h.patch,v 1.1 2006/09/13 19:34:24 corecode Exp $
+diff -r 93f8116a881a contrib/cvs-1.12/src/rcs.h
+--- a/contrib/cvs-1.12/src/rcs.h	Sat Sep 09 18:10:13 2006 +0200
++++ b/contrib/cvs-1.12/src/rcs.h	Wed Sep 13 16:33:25 2006 +0200
+@@ -189,7 +189,7 @@ struct rcsbuffer;
+ struct rcsbuffer;
+ 
+ /* What RCS_deltas is supposed to do.  */
+-enum rcs_delta_op {RCS_ANNOTATE, RCS_FETCH};
++enum rcs_delta_op {RCS_ANNOTATE, RCS_ANNOTATE_BACKWARDS, RCS_FETCH};
+ 
+ /*
+  * exported interfaces
