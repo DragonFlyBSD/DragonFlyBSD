@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.28 2006/09/13 17:10:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.29 2006/09/13 18:12:18 dillon Exp $
  */
 
 /*
@@ -108,25 +108,25 @@ struct faultstate {
 	vm_page_t m;
 	vm_object_t object;
 	vm_pindex_t pindex;
+	vm_prot_t prot;
 	vm_page_t first_m;
 	vm_object_t first_object;
-	vm_pindex_t first_pindex;
+	vm_prot_t first_prot;
 	vm_map_t map;
 	vm_map_entry_t entry;
 	int lookup_still_valid;
 	int didlimit;
 	int hardfault;
-	vm_prot_t prot;
 	int fault_flags;
 	int map_generation;
 	boolean_t wired;
 	struct vnode *vp;
 };
 
-static int vm_fault_object(struct faultstate *fs, vm_prot_t);
-static int vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte);
+static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
+static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t);
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
-static int vm_fault_ratelimit(struct vmspace *vmspace);
+static int vm_fault_ratelimit(struct vmspace *);
 
 static __inline void
 release_page(struct faultstate *fs)
@@ -215,6 +215,7 @@ int
 vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 {
 	int result;
+	vm_pindex_t first_pindex;
 	struct faultstate fs;
 
 	mycpu->gd_cnt.v_vm_faults++;
@@ -240,7 +241,7 @@ RetryFault:
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
 			       &fs.entry, &fs.first_object,
-			       &fs.first_pindex, &fs.prot, &fs.wired);
+			       &first_pindex, &fs.first_prot, &fs.wired);
 
 	/*
 	 * If the lookup failed or the map protections are incompatible,
@@ -264,7 +265,8 @@ RetryFault:
 				       VM_PROT_READ|VM_PROT_WRITE|
 				        VM_PROT_OVERRIDE_WRITE,
 				       &fs.entry, &fs.first_object,
-				       &fs.first_pindex, &fs.prot, &fs.wired);
+				       &first_pindex, &fs.first_prot,
+				       &fs.wired);
 		if (result != KERN_SUCCESS)
 			return result;
 
@@ -320,7 +322,7 @@ RetryFault:
 	 * If the entry is wired we cannot change the page protection.
 	 */
 	if (fs.wired)
-		fault_type = fs.prot;
+		fault_type = fs.first_prot;
 
 	/*
 	 * The page we want is at (first_object, first_pindex), but if the
@@ -331,7 +333,8 @@ RetryFault:
 	 * ONLY
 	 */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		result = vm_fault_vpagetable(&fs, fs.entry->aux.master_pde);
+		result = vm_fault_vpagetable(&fs, &first_pindex,
+					     fs.entry->aux.master_pde);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
 		if (result != KERN_SUCCESS)
@@ -345,9 +348,7 @@ RetryFault:
 	 * will have an additinal PIP count if it is not equal to
 	 * fs->first_object
 	 */
-	fs.object = fs.first_object;
-	fs.pindex = fs.first_pindex;
-	result = vm_fault_object(&fs, fault_type);
+	result = vm_fault_object(&fs, first_pindex, fault_type);
 
 	if (result == KERN_TRY_AGAIN)
 		goto RetryFault;
@@ -404,7 +405,7 @@ RetryFault:
 }
 
 /*
- * Translate the virtual page number (fs->first_pindex) that is relative
+ * Translate the virtual page number (first_pindex) that is relative
  * to the address space into a logical page number that is relative to the
  * backing object.  Use the virtual page table pointed to by (vpte).
  *
@@ -414,11 +415,11 @@ RetryFault:
  */
 static
 int
-vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte)
+vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex, vpte_t vpte)
 {
 	struct sf_buf *sf;
 	int vshift = 32 - PAGE_SHIFT;	/* page index bits remaining */
-	int result;
+	int result = KERN_SUCCESS;
 
 	for (;;) {
 		if ((vpte & VPTE_V) == 0) {
@@ -432,9 +433,7 @@ vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte)
 		/*
 		 * Get the page table page
 		 */
-		fs->object = fs->first_object;
-		fs->pindex = vpte >> PAGE_SHIFT;
-		result = vm_fault_object(fs, VM_PROT_READ);
+		result = vm_fault_object(fs, vpte >> PAGE_SHIFT, VM_PROT_READ);
 		if (result != KERN_SUCCESS)
 			return (result);
 
@@ -445,25 +444,24 @@ vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte)
 		vshift -= VPTE_PAGE_BITS;
 		sf = sf_buf_alloc(fs->m, SFB_CPUPRIVATE);
 		vpte = *((vpte_t *)sf_buf_kva(sf) +
-		       ((fs->first_pindex >> vshift) & VPTE_PAGE_MASK));
+		       ((*pindex >> vshift) & VPTE_PAGE_MASK));
 		sf_buf_free(sf);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_activate(fs->m);
 		vm_page_wakeup(fs->m);
 		cleanup_successful_fault(fs);
 	}
-
 	/*
 	 * Combine remaining address bits with the vpte.
 	 */
-	fs->first_pindex = (vpte >> PAGE_SHIFT) +
-			  (fs->first_pindex & ((1 << vshift) - 1));
+	*pindex = (vpte >> PAGE_SHIFT) +
+		  (*pindex & ((1 << vshift) - 1));
 	return (KERN_SUCCESS);
 }
 
 
 /*
- * Do all operations required to fault in (fs.object, fs.pindex).  Run
+ * Do all operations required to fault-in (fs.first_object, pindex).  Run
  * through the shadow chain as necessary and do required COW or virtual
  * copy operations.  The caller has already fully resolved the vm_map_entry
  * and, if appropriate, has created a copy-on-write layer.  All we need to
@@ -476,11 +474,17 @@ vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte)
  */
 static
 int
-vm_fault_object(struct faultstate *fs, vm_prot_t fault_type)
+vm_fault_object(struct faultstate *fs,
+		vm_pindex_t first_pindex, vm_prot_t fault_type)
 {
 	vm_object_t next_object;
 	vm_page_t marray[VM_FAULT_READ];
+	vm_pindex_t pindex;
 	int faultcount;
+
+	fs->prot = fs->first_prot;
+	fs->object = fs->first_object;
+	pindex = first_pindex;
 
 	for (;;) {
 		/*
@@ -498,7 +502,7 @@ vm_fault_object(struct faultstate *fs, vm_prot_t fault_type)
 		 * allocation or busy.
 		 */
 		crit_enter();
-		fs->m = vm_page_lookup(fs->object, fs->pindex);
+		fs->m = vm_page_lookup(fs->object, pindex);
 		if (fs->m != NULL) {
 			int queue;
 			/*
@@ -572,7 +576,7 @@ vm_fault_object(struct faultstate *fs, vm_prot_t fault_type)
 			/*
 			 * If the page is beyond the object size we fail
 			 */
-			if (fs->pindex >= fs->object->size) {
+			if (pindex >= fs->object->size) {
 				crit_exit();
 				unlock_and_deallocate(fs);
 				return (KERN_PROTECTION_FAILURE);
@@ -599,7 +603,7 @@ vm_fault_object(struct faultstate *fs, vm_prot_t fault_type)
 			 */
 			fs->m = NULL;
 			if (!vm_page_count_severe()) {
-				fs->m = vm_page_alloc(fs->object, fs->pindex,
+				fs->m = vm_page_alloc(fs->object, pindex,
 				    (fs->vp || fs->object->backing_object) ? VM_ALLOC_NORMAL : VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 			}
 			if (fs->m == NULL) {
@@ -635,11 +639,11 @@ readrest:
 				ahead = 0;
 				behind = 0;
 			} else {
-				behind = fs->pindex;
+				behind = pindex;
 				if (behind > VM_FAULT_READ_BEHIND)
 					behind = VM_FAULT_READ_BEHIND;
 
-				ahead = fs->object->size - fs->pindex;
+				ahead = fs->object->size - pindex;
 				if (ahead < 1)
 					ahead = 1;
 				if (ahead > VM_FAULT_READ_AHEAD)
@@ -649,15 +653,15 @@ readrest:
 			if ((fs->first_object->type != OBJT_DEVICE) &&
 			    (behavior == MAP_ENTRY_BEHAV_SEQUENTIAL ||
                                 (behavior != MAP_ENTRY_BEHAV_RANDOM &&
-                                fs->pindex >= fs->entry->lastr &&
-                                fs->pindex < fs->entry->lastr + VM_FAULT_READ))
+                                pindex >= fs->entry->lastr &&
+                                pindex < fs->entry->lastr + VM_FAULT_READ))
 			) {
 				vm_pindex_t firstpindex, tmppindex;
 
-				if (fs->first_pindex < 2 * VM_FAULT_READ)
+				if (first_pindex < 2 * VM_FAULT_READ)
 					firstpindex = 0;
 				else
-					firstpindex = fs->first_pindex - 2 * VM_FAULT_READ;
+					firstpindex = first_pindex - 2 * VM_FAULT_READ;
 
 				/*
 				 * note: partially valid pages cannot be 
@@ -670,7 +674,7 @@ readrest:
 				 * our busy check.
 				 */
 				crit_enter();
-				for (tmppindex = fs->first_pindex - 1;
+				for (tmppindex = first_pindex - 1;
 				    tmppindex >= firstpindex;
 				    --tmppindex
 				) {
@@ -720,7 +724,7 @@ readrest:
 			 * update lastr imperfectly (we do not know how much
 			 * getpages will actually read), but good enough.
 			 */
-			fs->entry->lastr = fs->pindex + faultcount - behind;
+			fs->entry->lastr = pindex + faultcount - behind;
 
 			/*
 			 * Call the pager to retrieve the data, if any, after
@@ -751,7 +755,7 @@ readrest:
 				 * It's a bad abstraction that needs to be
 				 * fixed/removed.
 				 */
-				fs->m = vm_page_lookup(fs->object, fs->pindex);
+				fs->m = vm_page_lookup(fs->object, pindex);
 				if (fs->m == NULL) {
 					unlock_and_deallocate(fs);
 					return (KERN_TRY_AGAIN);
@@ -820,7 +824,7 @@ readrest:
 		 * Move on to the next object.  Lock the next object before
 		 * unlocking the current one.
 		 */
-		fs->pindex += OFF_TO_IDX(fs->object->backing_object_offset);
+		pindex += OFF_TO_IDX(fs->object->backing_object_offset);
 		next_object = fs->object->backing_object;
 		if (next_object == NULL) {
 			/*
@@ -831,7 +835,7 @@ readrest:
 				vm_object_pip_wakeup(fs->object);
 
 				fs->object = fs->first_object;
-				fs->pindex = fs->first_pindex;
+				pindex = first_pindex;
 				fs->m = fs->first_m;
 			}
 			fs->first_m = NULL;
@@ -928,7 +932,7 @@ readrest:
 				 * process'es object.  The page is 
 				 * automatically made dirty.
 				 */
-				vm_page_rename(fs->m, fs->first_object, fs->first_pindex);
+				vm_page_rename(fs->m, fs->first_object, first_pindex);
 				fs->first_m = fs->m;
 				vm_page_busy(fs->first_m);
 				fs->m = NULL;
@@ -960,7 +964,7 @@ readrest:
 			mycpu->gd_cnt.v_cow_faults++;
 			fs->m = fs->first_m;
 			fs->object = fs->first_object;
-			fs->pindex = fs->first_pindex;
+			pindex = first_pindex;
 		} else {
 			/*
 			 * If it wasn't a write fault avoid having to copy
