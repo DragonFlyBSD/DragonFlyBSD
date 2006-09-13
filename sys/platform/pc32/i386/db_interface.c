@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.12 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.13 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -65,9 +65,7 @@ static int	db_global_jmpbuf_valid;
  *  kdb_trap - field a TRACE or BPT trap
  */
 int
-kdb_trap(type, code, regs)
-	int	type, code;
-	struct i386_saved_state *regs;
+kdb_trap(int type, int code, struct i386_saved_state *regs)
 {
 	volatile int ddb_mode = !(boothowto & RB_GDB);
 
@@ -198,10 +196,7 @@ kdb_trap(type, code, regs)
  * Read bytes from kernel address space for debugger.
  */
 void
-db_read_bytes(addr, size, data)
-	vm_offset_t	addr;
-	size_t	size;
-	char	*data;
+db_read_bytes(vm_offset_t addr, size_t size, char *data)
 {
 	char	*src;
 
@@ -218,10 +213,7 @@ db_read_bytes(addr, size, data)
  * Write bytes to kernel address space for debugger.
  */
 void
-db_write_bytes(addr, size, data)
-	vm_offset_t	addr;
-	size_t	size;
-	char	*data;
+db_write_bytes(vm_offset_t addr, size_t size, char *data)
 {
 	char	*dst;
 
@@ -317,8 +309,7 @@ BP_REGS(db_regs_t *regs)
  * installed.
  */
 void
-Debugger(msg)
-	const char *msg;
+Debugger(const char *msg)
 {
 	static volatile u_char in_Debugger;
 

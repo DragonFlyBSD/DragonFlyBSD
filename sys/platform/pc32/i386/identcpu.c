@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.10 2006/05/11 16:44:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.11 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -1279,7 +1279,7 @@ setup_tmx86_longrun(void)
 }
 
 static void
-print_transmeta_info()
+print_transmeta_info(void)
 {
 	u_int regs[4], nreg = 0;
 

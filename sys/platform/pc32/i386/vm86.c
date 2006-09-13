@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.20 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -169,8 +169,7 @@ POPL(struct vm86frame *vmf)
  * MPSAFE
  */
 int
-vm86_emulate(vmf)
-	struct vm86frame *vmf;
+vm86_emulate(struct vm86frame *vmf)
 {
 	struct vm86_kernel *vm86;
 	caddr_t addr;
@@ -656,10 +655,7 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
  * caller's cs:ip routine.  
  */
 int
-vm86_datacall(intnum, vmf, vmc)
-	int intnum;
-	struct vm86frame *vmf;
-	struct vm86context *vmc;
+vm86_datacall(int intnum, struct vm86frame *vmf, struct vm86context *vmc)
 {
 	pt_entry_t *pte = vm86paddr;
 	u_int page;
@@ -687,10 +683,7 @@ vm86_datacall(intnum, vmf, vmc)
 }
 
 vm_offset_t
-vm86_getaddr(vmc, sel, off)
-	struct vm86context *vmc;
-	u_short sel;
-	u_short off;
+vm86_getaddr(struct vm86context *vmc, u_short sel, u_short off)
 {
 	int i, page;
 	vm_offset_t addr;
@@ -704,11 +697,8 @@ vm86_getaddr(vmc, sel, off)
 }
 
 int
-vm86_getptr(vmc, kva, sel, off)
-	struct vm86context *vmc;
-	vm_offset_t kva;
-	u_short *sel;
-	u_short *off;
+vm86_getptr(struct vm86context *vmc, vm_offset_t kva, u_short *sel,
+	    u_short *off)
 {
 	int i;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/i386/isa/Attic/prof_machdep.c,v 1.5 2005/02/27 12:44:43 asmodai Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/prof_machdep.c,v 1.6 2006/09/13 18:45:12 swildner Exp $
  */
 
 #ifdef GUPROF
@@ -180,7 +180,7 @@ GMON_PROF_HIRES	=	4					\n\
  * dependent.
  */
 int
-cputime()
+cputime(void)
 {
 	u_int count;
 	int delta;
@@ -290,8 +290,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, cputime_clock, CTLTYPE_INT | CTLFLAG_RW,
  */
 
 void
-startguprof(gp)
-	struct gmonparam *gp;
+startguprof(struct gmonparam *gp)
 {
 	if (cputime_clock == CPUTIME_CLOCK_UNINITIALIZED) {
 		cputime_clock = CPUTIME_CLOCK_I8254;
@@ -336,8 +335,7 @@ startguprof(gp)
 }
 
 void
-stopguprof(gp)
-	struct gmonparam *gp;
+stopguprof(struct gmonparam *gp)
 {
 #if defined(PERFMON) && defined(I586_PMC_GUPROF)
 	if (cputime_clock_pmc_init) {

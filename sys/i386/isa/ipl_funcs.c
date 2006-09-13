@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.11 2005/11/02 22:59:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.12 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,8 @@
  * Note: setbits uses a locked or, making simple cases MP safe.
  */
 #define DO_SETBITS(name, var, bits) 					\
-void name(void)								\
+void									\
+name(void)								\
 {									\
 	struct mdglobaldata *gd = mdcpu;				\
 	atomic_set_int_nonlocked(var, bits);				\

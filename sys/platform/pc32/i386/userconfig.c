@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.7 2006/09/05 00:55:45 dillon Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.8 2006/09/13 18:45:12 swildner Exp $
  **/
 
 /**
@@ -3117,7 +3117,7 @@ introfunc(CmdParm *parms)
 
 #if NPNP > 0
 static int
-lspnp ()
+lspnp(void)
 {
     struct pnp_cinfo *c;
     int i, first = 1;
@@ -3409,8 +3409,7 @@ save_resource(struct uc_device *idev)
 }
 
 static int
-save_dev(idev)
-struct uc_device 	*idev;
+save_dev(struct uc_device *idev)
 {
 	struct uc_device	*id_p,*id_pn;
 	char *name = idev->id_name;

@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.27 2006/09/10 01:26:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.28 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -116,14 +116,12 @@ cdev_t	dumpdev = NOCDEV;
  * Determine i/o configuration for a machine.
  */
 static void
-configure_first(dummy)
-	void *dummy;
+configure_first(void *dummy)
 {
 }
 
 static void
-configure(dummy)
-	void *dummy;
+configure(void *dummy)
 {
         /*
 	 * Final interrupt support acviation, then enable hardware interrupts.
@@ -159,8 +157,7 @@ configure(dummy)
 }
 
 static void
-configure_final(dummy)
-	void *dummy;
+configure_final(void *dummy)
 {
 	int i;
 
@@ -213,7 +210,7 @@ void bootpc_init(void);
  * Do legacy root filesystem discovery.
  */
 void
-cpu_rootconf()
+cpu_rootconf(void)
 {
 #ifdef BOOTP
         bootpc_init();
@@ -267,7 +264,7 @@ boot_translate_majdev(int bmajor)
  * 'wd' or 'fd' device, and the root filesystem must be ufs.
  */
 static void
-setroot()
+setroot(void)
 {
 	int majdev, mindev, unit, slice, part;
 	cdev_t newrootdev, dev;
@@ -438,7 +435,7 @@ decode_nfshandle(char *ev, u_char *fh)
  * boot.nfsroot.nfshandle	NFS handle for root filesystem on server
  */
 static void
-pxe_setup_nfsdiskless()
+pxe_setup_nfsdiskless(void)
 {
 	struct nfs_diskless	*nd = &nfs_diskless;
 	struct ifnet		*ifp;

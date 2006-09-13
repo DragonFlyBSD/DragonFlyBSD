@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.4 2003/11/08 03:06:52 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.5 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -875,11 +875,8 @@ static db_addr_t
  * Read address at location and return updated location.
  */
 static db_addr_t
-db_read_address(loc, short_addr, regmodrm, addrp)
-	db_addr_t	loc;
-	int		short_addr;
-	int		regmodrm;
-	struct i_addr *	addrp;		/* out */
+db_read_address(db_addr_t loc, int short_addr, int regmodrm,
+		struct i_addr *addrp)
 {
 	int		mod, rm, sib, index, disp;
 
@@ -977,10 +974,7 @@ db_read_address(loc, short_addr, regmodrm, addrp)
 }
 
 static void
-db_print_address(seg, size, addrp)
-	const char *	seg;
-	int		size;
-	struct i_addr *	addrp;
+db_print_address(const char *seg, int size, struct i_addr *addrp)
 {
 	if (addrp->is_reg) {
 	    db_printf("%s", db_reg[size][addrp->disp]);
@@ -1009,12 +1003,8 @@ db_print_address(seg, size, addrp)
  * and return updated location.
  */
 static db_addr_t
-db_disasm_esc(loc, inst, short_addr, size, seg)
-	db_addr_t	loc;
-	int		inst;
-	int		short_addr;
-	int		size;
-	const char *	seg;
+db_disasm_esc(db_addr_t loc, int inst, int short_addr, int size,
+	      const char *seg)
 {
 	int		regmodrm;
 	const struct finst *	fp;

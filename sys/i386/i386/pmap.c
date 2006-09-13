@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.56 2006/09/12 22:03:10 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.57 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -304,9 +304,7 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
  *	(physical) address starting relative to 0]
  */
 void
-pmap_bootstrap(firstaddr, loadaddr)
-	vm_paddr_t firstaddr;
-	vm_paddr_t loadaddr;
+pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
@@ -544,7 +542,7 @@ pmap_init(void)
  * numbers of pv entries.
  */
 void
-pmap_init2()
+pmap_init2(void)
 {
 	int shpgperproc = PMAP_SHPGPERPROC;
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.96 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.97 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include "use_apm.h"
@@ -245,8 +245,7 @@ static vm_offset_t pager_sva, pager_eva;
 static struct trapframe proc0_tf;
 
 static void
-cpu_startup(dummy)
-	void *dummy;
+cpu_startup(void *dummy)
 {
 	caddr_t v;
 	vm_offset_t minaddr;
@@ -417,11 +416,7 @@ again:
  * specified pc, psl.
  */
 void
-sendsig(catcher, sig, mask, code)
-	sig_t catcher;
-	int sig;
-	sigset_t *mask;
-	u_long code;
+sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
@@ -882,11 +877,7 @@ cpu_idle(void)
  * Clear registers on exec
  */
 void
-setregs(p, entry, stack, ps_strings)
-	struct proc *p;
-	u_long entry;
-	u_long stack;
-	u_long ps_strings;
+setregs(struct proc *p, u_long entry, u_long stack, u_long ps_strings)
 {
 	struct trapframe *regs = p->p_md.md_regs;
 	struct pcb *pcb = p->p_thread->td_pcb;
@@ -1258,12 +1249,7 @@ static struct soft_segment_descriptor ldt_segs[] = {
 };
 
 void
-setidt(idx, func, typ, dpl, selec)
-	int idx;
-	inthand_t *func;
-	int typ;
-	int dpl;
-	int selec;
+setidt(int idx, inthand_t *func, int typ, int dpl, int selec)
 {
 	struct gate_descriptor *ip;
 
@@ -1295,9 +1281,7 @@ extern inthand_t *Xrsvdary[256];
 #endif
 
 void
-sdtossd(sd, ssd)
-	struct segment_descriptor *sd;
-	struct soft_segment_descriptor *ssd;
+sdtossd(struct segment_descriptor *sd, struct soft_segment_descriptor *ssd)
 {
 	ssd->ssd_base  = (sd->sd_hibase << 24) | sd->sd_lobase;
 	ssd->ssd_limit = (sd->sd_hilimit << 16) | sd->sd_lolimit;
@@ -2106,9 +2090,7 @@ f00f_hack(void *unused)
 #endif /* defined(I586_CPU) && !NO_F00F_HACK */
 
 int
-ptrace_set_pc(p, addr)
-	struct proc *p;
-	unsigned long addr;
+ptrace_set_pc(struct proc *p, unsigned long addr)
 {
 	p->p_md.md_regs->tf_eip = addr;
 	return (0);
@@ -2121,10 +2103,8 @@ ptrace_single_step(struct lwp *lp)
 	return (0);
 }
 
-int ptrace_read_u_check(p, addr, len)
-	struct proc *p;
-	vm_offset_t addr;
-	size_t len;
+int
+ptrace_read_u_check(struct proc *p, vm_offset_t addr, size_t len)
 {
 	vm_offset_t gap;
 
@@ -2143,10 +2123,8 @@ int ptrace_read_u_check(p, addr, len)
 	return EPERM;
 }
 
-int ptrace_write_u(p, off, data)
-	struct proc *p;
-	vm_offset_t off;
-	long data;
+int
+ptrace_write_u(struct proc *p, vm_offset_t off, long data)
 {
 	struct trapframe frame_copy;
 	vm_offset_t min;
@@ -2239,9 +2217,7 @@ set_regs(struct lwp *lp, struct reg *regs)
 
 #ifndef CPU_DISABLE_SSE
 static void
-fill_fpregs_xmm(sv_xmm, sv_87)
-	struct savexmm *sv_xmm;
-	struct save87 *sv_87;
+fill_fpregs_xmm(struct savexmm *sv_xmm, struct save87 *sv_87)
 {
 	struct env87 *penv_87 = &sv_87->sv_env;
 	struct envxmm *penv_xmm = &sv_xmm->sv_env;
@@ -2265,9 +2241,7 @@ fill_fpregs_xmm(sv_xmm, sv_87)
 }
 
 static void
-set_fpregs_xmm(sv_87, sv_xmm)
-	struct save87 *sv_87;
-	struct savexmm *sv_xmm;
+set_fpregs_xmm(struct save87 *sv_87, struct savexmm *sv_xmm)
 {
 	struct env87 *penv_87 = &sv_87->sv_env;
 	struct envxmm *penv_xmm = &sv_xmm->sv_env;

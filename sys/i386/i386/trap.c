@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.79 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.80 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -370,8 +370,7 @@ userexit(struct lwp *lp)
  */
 
 void
-trap(frame)
-	struct trapframe frame;
+trap(struct trapframe frame)
 {
 	struct globaldata *gd = mycpu;
 	struct thread *td = gd->gd_curthread;
@@ -878,10 +877,7 @@ out2:	;
  * to be made safe is the process tracing/debugging code.
  */
 static int
-trap_pfault(frame, usermode, eva)
-	struct trapframe *frame;
-	int usermode;
-	vm_offset_t eva;
+trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 {
 	vm_offset_t va;
 	struct vmspace *vm = NULL;
@@ -983,10 +979,7 @@ nogo:
 #endif
 
 int
-trap_pfault(frame, usermode, eva)
-	struct trapframe *frame;
-	int usermode;
-	vm_offset_t eva;
+trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 {
 	vm_offset_t va;
 	struct vmspace *vm = NULL;
@@ -1091,9 +1084,7 @@ nogo:
 }
 
 static void
-trap_fatal(frame, eva)
-	struct trapframe *frame;
-	vm_offset_t eva;
+trap_fatal(struct trapframe *frame, vm_offset_t eva)
 {
 	int code, type, ss, esp;
 	struct soft_segment_descriptor softseg;
@@ -1198,7 +1189,7 @@ trap_fatal(frame, eva)
  * of this is that "trace <ebp>" in ddb won't work.
  */
 void
-dblfault_handler()
+dblfault_handler(void)
 {
 	struct mdglobaldata *gd = mdcpu;
 
@@ -1221,8 +1212,8 @@ dblfault_handler()
  * it the page tables have already been faulted in and high addresses
  * are thrown out early for other reasons.
  */
-int trapwrite(addr)
-	unsigned addr;
+int
+trapwrite(unsigned addr)
 {
 	struct proc *p;
 	vm_offset_t va;
@@ -1489,9 +1480,7 @@ bad:
  * trampoline code which then runs doreti.
  */
 void
-fork_return(p, frame)
-	struct proc *p;
-	struct trapframe frame;
+fork_return(struct proc *p, struct trapframe frame)
 {
 	struct lwp *lp;
 

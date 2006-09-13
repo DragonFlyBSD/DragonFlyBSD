@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.5 2005/11/14 18:50:03 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.6 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -82,9 +82,7 @@
 #include <vm/vm_map.h>
 
 int
-procfs_read_regs(p, regs)
-	struct proc *p;
-	struct reg *regs;
+procfs_read_regs(struct proc *p, struct reg *regs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -92,9 +90,7 @@ procfs_read_regs(p, regs)
 }
 
 int
-procfs_write_regs(p, regs)
-	struct proc *p;
-	struct reg *regs;
+procfs_write_regs(struct proc *p, struct reg *regs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -102,9 +98,7 @@ procfs_write_regs(p, regs)
 }
 
 int
-procfs_read_dbregs(p, dbregs)
-	struct proc *p;
-	struct dbreg *dbregs;
+procfs_read_dbregs(struct proc *p, struct dbreg *dbregs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -112,9 +106,7 @@ procfs_read_dbregs(p, dbregs)
 }
 
 int
-procfs_write_dbregs(p, dbregs)
-	struct proc *p;
-	struct dbreg *dbregs;
+procfs_write_dbregs(struct proc *p, struct dbreg *dbregs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -127,9 +119,7 @@ procfs_write_dbregs(p, dbregs)
  */
 
 int
-procfs_read_fpregs(p, fpregs)
-	struct proc *p;
-	struct fpreg *fpregs;
+procfs_read_fpregs(struct proc *p, struct fpreg *fpregs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -137,9 +127,7 @@ procfs_read_fpregs(p, fpregs)
 }
 
 int
-procfs_write_fpregs(p, fpregs)
-	struct proc *p;
-	struct fpreg *fpregs;
+procfs_write_fpregs(struct proc *p, struct fpreg *fpregs)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
@@ -147,8 +135,7 @@ procfs_write_fpregs(p, fpregs)
 }
 
 int
-procfs_sstep(p)
-	struct proc *p;
+procfs_sstep(struct proc *p)
 {
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);

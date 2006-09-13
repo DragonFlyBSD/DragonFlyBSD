@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.15 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.16 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -876,7 +876,7 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 }
 
 void
-busdma_swi()
+busdma_swi(void)
 {
 	struct bus_dmamap *map;
 

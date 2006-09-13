@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.21 2006/09/13 18:45:12 swildner Exp $
  */
 
 /*
@@ -424,9 +424,7 @@ mem_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
  * memory range attributes.
  */
 int
-mem_range_attr_get(mrd, arg)
-	struct mem_range_desc *mrd;
-	int *arg;
+mem_range_attr_get(struct mem_range_desc *mrd, int *arg)
 {
 	/* can we handle this? */
 	if (mem_range_softc.mr_op == NULL)
@@ -441,9 +439,7 @@ mem_range_attr_get(mrd, arg)
 }
 
 int
-mem_range_attr_set(mrd, arg)
-	struct mem_range_desc *mrd;
-	int *arg;
+mem_range_attr_set(struct mem_range_desc *mrd, int *arg)
 {
 	/* can we handle this? */
 	if (mem_range_softc.mr_op == NULL)
@@ -534,8 +530,7 @@ mmpoll(struct dev_poll_args *ap)
 }
 
 int
-iszerodev(dev)
-	cdev_t dev;
+iszerodev(cdev_t dev)
 {
 	return ((major(dev) == mem_ops.head.maj)
 	  && minor(dev) == 12);

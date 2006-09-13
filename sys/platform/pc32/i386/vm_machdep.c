@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.44 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.45 2006/09/13 18:45:12 swildner Exp $
  */
 
 #include "use_npx.h"
@@ -96,9 +96,7 @@ extern int	_ucodesel, _udatasel;
  * ready to run and return to user mode.
  */
 void
-cpu_fork(p1, p2, flags)
-	struct proc *p1, *p2;
-	int flags;
+cpu_fork(struct proc *p1, struct proc *p2, int flags)
 {
 	struct pcb *pcb2;
 
@@ -216,10 +214,7 @@ cpu_fork(p1, p2, flags)
  * This is needed to make kernel threads stay in kernel mode.
  */
 void
-cpu_set_fork_handler(p, func, arg)
-	struct proc *p;
-	void (*func) (void *);
-	void *arg;
+cpu_set_fork_handler(struct proc *p, void (*func)(void *), void *arg)
 {
 	/*
 	 * Note that the trap frame follows the args, so the function
@@ -346,9 +341,7 @@ cpu_coredump(struct thread *td, struct vnode *vp, struct ucred *cred)
 
 #ifdef notyet
 static void
-setredzone(pte, vaddr)
-	u_short *pte;
-	caddr_t vaddr;
+setredzone(u_short *pte, caddr_t vaddr)
 {
 /* eventually do this by setting up an expand-down stack segment
    for ss0: selector, allowing stack access down to top of u.
@@ -381,7 +374,7 @@ kvtop(void *addr)
 
 #ifdef SMP
 static void
-cpu_reset_proxy()
+cpu_reset_proxy(void)
 {
 	u_int saved_mp_lock;
 
@@ -402,7 +395,7 @@ cpu_reset_proxy()
 #endif
 
 void
-cpu_reset()
+cpu_reset(void)
 {
 #ifdef SMP
 	if (smp_active_mask == 1) {
@@ -458,7 +451,7 @@ cpu_reset()
 }
 
 static void
-cpu_reset_real()
+cpu_reset_real(void)
 {
 	/*
 	 * Attempt to do a CPU reset via the keyboard controller,
@@ -482,9 +475,7 @@ cpu_reset_real()
 }
 
 int
-grow_stack(p, sp)
-	struct proc *p;
-	u_int sp;
+grow_stack(struct proc *p, u_int sp)
 {
 	int rv;
 
@@ -511,7 +502,7 @@ SYSCTL_INT(_vm_stats_misc, OID_AUTO,
 #define ZIDLE_HI(v)	((v) * 4 / 5)
 
 int
-vm_page_zero_idle()
+vm_page_zero_idle(void)
 {
 	static int free_rover;
 	static int zero_state;
@@ -598,8 +589,7 @@ SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_vm_setup, NULL);
  */
 
 int
-is_physical_memory(addr)
-	vm_offset_t addr;
+is_physical_memory(vm_offset_t addr)
 {
 
 #if NISA > 0
