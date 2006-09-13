@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.2 2006/09/13 17:10:40 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.3 2006/09/13 21:05:22 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -45,20 +45,11 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
-#ifndef _SYS_SYSTM_H_
-#include <sys/systm.h>
-#endif
-#ifndef _SYS_KERNEL_H_
-#include <sys/kernel.h>
-#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
-#endif
-#ifndef _SYS_PROC_H_
-#include <sys/proc.h>
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
