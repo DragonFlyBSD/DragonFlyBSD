@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.49 2006/09/13 17:10:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.50 2006/09/13 22:25:00 dillon Exp $
  */
 
 /*
@@ -144,6 +144,7 @@ static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init[MAXCPU][VMEPERCPU];
 static struct vm_map map_init[MAX_KMAP];
 
+static void vm_map_entry_shadow(vm_map_entry_t entry);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
 static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
@@ -354,6 +355,60 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 	map->hint = &map->header;
 	map->timestamp = 0;
 	lockinit(&map->lock, "thrd_sleep", 0, 0);
+}
+
+/*
+ * Shadow the vm_map_entry's object.  This typically needs to be done when
+ * a write fault is taken on an entry which had previously been cloned by
+ * fork().  The shared object (which might be NULL) must become private so
+ * we add a shadow layer above it.
+ *
+ * Object allocation for anonymous mappings is defered as long as possible.
+ * When creating a shadow, however, the underlying object must be instantiated
+ * so it can be shared.
+ *
+ * If the map segment is governed by a virtual page table then it is
+ * possible to address offsets beyond the mapped area.  Just allocate
+ * a maximally sized object for this case.
+ */
+static
+void
+vm_map_entry_shadow(vm_map_entry_t entry)
+{
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		vm_object_shadow(&entry->object.vm_object, &entry->offset,
+				 0x7FFFFFFF);	/* XXX */
+	} else {
+		vm_object_shadow(&entry->object.vm_object, &entry->offset,
+				 atop(entry->end - entry->start));
+	}
+	entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
+}
+
+/*
+ * Allocate an object for a vm_map_entry.
+ *
+ * Object allocation for anonymous mappings is defered as long as possible.
+ * This function is called when we can defer no longer, generally when a map
+ * entry might be split or forked or takes a page fault.
+ *
+ * If the map segment is governed by a virtual page table then it is
+ * possible to address offsets beyond the mapped area.  Just allocate
+ * a maximally sized object for this case.
+ */
+void 
+vm_map_entry_allocate_object(vm_map_entry_t entry)
+{
+	vm_object_t obj;
+
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		obj = vm_object_allocate(OBJT_DEFAULT, 0x7FFFFFFF); /* XXX */
+	} else {
+		obj = vm_object_allocate(OBJT_DEFAULT,
+					 atop(entry->end - entry->start));
+	}
+	entry->object.vm_object = obj;
+	entry->offset = 0;
 }
 
 /*
@@ -1072,13 +1127,8 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start, int *c
 	 * map.  This is a bit of a hack, but is also about the best place to
 	 * put this improvement.
 	 */
-
 	if (entry->object.vm_object == NULL && !map->system_map) {
-		vm_object_t object;
-		object = vm_object_allocate(OBJT_DEFAULT,
-				atop(entry->end - entry->start));
-		entry->object.vm_object = object;
-		entry->offset = 0;
+		vm_map_entry_allocate_object(entry);
 	}
 
 	new_entry = vm_map_entry_create(map, countp);
@@ -1132,11 +1182,7 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end, int *count
 	 */
 
 	if (entry->object.vm_object == NULL && !map->system_map) {
-		vm_object_t object;
-		object = vm_object_allocate(OBJT_DEFAULT,
-				atop(entry->end - entry->start));
-		entry->object.vm_object = object;
-		entry->offset = 0;
+		vm_map_entry_allocate_object(entry);
 	}
 
 	/*
@@ -1840,20 +1886,10 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
 				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection & VM_PROT_WRITE) != 0)) {
-
-					vm_object_shadow(&entry->object.vm_object,
-					    &entry->offset,
-					    atop(entry->end - entry->start));
-					entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
-
+					vm_map_entry_shadow(entry);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
-
-					entry->object.vm_object =
-					    vm_object_allocate(OBJT_DEFAULT,
-						atop(entry->end - entry->start));
-					entry->offset = (vm_offset_t) 0;
-
+					vm_map_entry_allocate_object(entry);
 				}
 			}
 			entry->wired_count++;
@@ -2047,17 +2083,10 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
 				if (copyflag &&
 				    ((entry->protection & VM_PROT_WRITE) != 0)) {
-
-					vm_object_shadow(&entry->object.vm_object,
-					    &entry->offset,
-					    atop(entry->end - entry->start));
-					entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
+					vm_map_entry_shadow(entry);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
-					entry->object.vm_object =
-					    vm_object_allocate(OBJT_DEFAULT,
-						atop(entry->end - entry->start));
-					entry->offset = (vm_offset_t) 0;
+					vm_map_entry_allocate_object(entry);
 				}
 			}
 
@@ -2804,22 +2833,17 @@ vmspace_fork(struct vmspace *vm1)
 			 */
 			object = old_entry->object.vm_object;
 			if (object == NULL) {
-				object = vm_object_allocate(OBJT_DEFAULT,
-					atop(old_entry->end - old_entry->start));
-				old_entry->object.vm_object = object;
-				old_entry->offset = (vm_offset_t) 0;
+				vm_map_entry_allocate_object(old_entry);
+				object = old_entry->object.vm_object;
 			}
 
 			/*
-			 * Add the reference before calling vm_object_shadow
+			 * Add the reference before calling vm_map_entry_shadow
 			 * to insure that a shadow object is created.
 			 */
 			vm_object_reference(object);
 			if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY) {
-				vm_object_shadow(&old_entry->object.vm_object,
-					&old_entry->offset,
-					atop(old_entry->end - old_entry->start));
-				old_entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
+				vm_map_entry_shadow(old_entry);
 				/* Transfer the second reference too. */
 				vm_object_reference(
 				    old_entry->object.vm_object);
@@ -3340,12 +3364,7 @@ RetryLookup:
 			}
 			use_read_lock = 0;
 
-			vm_object_shadow(
-			    &entry->object.vm_object,
-			    &entry->offset,
-			    atop(entry->end - entry->start));
-
-			entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
+			vm_map_entry_shadow(entry);
 		} else {
 			/*
 			 * We're attempting to read a copy-on-write page --
@@ -3366,9 +3385,7 @@ RetryLookup:
 			goto RetryLookup;
 		}
 		use_read_lock = 0;
-		entry->object.vm_object = vm_object_allocate(OBJT_DEFAULT,
-		    atop(entry->end - entry->start));
-		entry->offset = 0;
+		vm_map_entry_allocate_object(entry);
 	}
 
 	/*

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.25 2006/09/13 17:10:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.26 2006/09/13 22:25:00 dillon Exp $
  */
 
 /*
@@ -424,6 +424,7 @@ vmspace_resident_count(struct vmspace *vmspace)
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
 struct pmap;
 struct globaldata;
+void vm_map_entry_allocate_object(vm_map_entry_t);
 void vm_map_entry_reserve_cpu_init(struct globaldata *gd);
 int vm_map_entry_reserve(int);
 int vm_map_entry_kreserve(int);

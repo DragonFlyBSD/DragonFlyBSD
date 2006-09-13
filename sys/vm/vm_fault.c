@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.29 2006/09/13 18:12:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.30 2006/09/13 22:25:00 dillon Exp $
  */
 
 /*
@@ -1222,11 +1222,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 	 * Create the top-level object for the destination entry. (Doesn't
 	 * actually shadow anything - we copy the pages directly.)
 	 */
-	dst_object = vm_object_allocate(OBJT_DEFAULT,
-	    (vm_size_t) OFF_TO_IDX(dst_entry->end - dst_entry->start));
-
-	dst_entry->object.vm_object = dst_object;
-	dst_entry->offset = 0;
+	vm_map_entry_allocate_object(dst_entry);
+	dst_object = dst_entry->object.vm_object;
 
 	prot = dst_entry->max_protection;
 
