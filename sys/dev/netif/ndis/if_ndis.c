@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.17 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.18 2006/09/13 06:59:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -421,7 +421,7 @@ ndis_attach(device_t dev)
 		    &sc->ndis_maxpkts, &len);
 	}
 
-	sc->ndis_txarray = malloc(sizeof(ndis_packet *) *
+	sc->ndis_txarray = kmalloc(sizeof(ndis_packet *) *
 	    sc->ndis_maxpkts, M_DEVBUF, M_WAITOK|M_ZERO);
 
 	sc->ndis_txpending = sc->ndis_maxpkts;
