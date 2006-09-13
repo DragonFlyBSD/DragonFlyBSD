@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.patch.mk,v 1.2 2006/02/13 14:21:46 corecode Exp $
+# $DragonFly: src/share/mk/bsd.patch.mk,v 1.3 2006/09/13 19:33:14 corecode Exp $
 #
 # The include file <bsd.patch.mk> handles patching of files and sources.
 #
@@ -33,9 +33,9 @@
 # ${.OBJDIR}/include/fooconf.h and will be added to ${SRCS}.
 #
 
-.if !target(__<bsd.init.mk>__)
-.error bsd.patch.mk cannot be included directly.
-.endif
+_PATCHFILE: .USE 
+	mkdir -p ${.TARGET:H}
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${.ALLSRC:N*.patch}
 
 .if defined(SRCS)
 CLEANFILES?=
@@ -43,9 +43,7 @@ CLEANFILES?=
 .for _PSRC in ${SRCS:M*.no_obj.patch}
 .for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
 
-${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
-	mkdir -p ${.TARGET:H}
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
+${_PC}: _PATCHFILE ${CONTRIBDIR}/${_PC} ${_PSRC}
 
 beforedepend: ${PC_}
 
@@ -57,9 +55,7 @@ CLEANFILES:=	${CLEANFILES} ${_PC}
 .for _PSRC in ${SRCS:N*.no_obj.patch:M*.patch}
 .for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
 
-${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
-	mkdir -p ${.TARGET:H}
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
+${_PC}: _PATCHFILE ${CONTRIBDIR}/${_PC} ${_PSRC}
 
 SRCS:=	${SRCS:N${_PC}:S|${_PSRC}|${_PC}|}
 CLEANFILES:=	${CLEANFILES} ${_PC}
