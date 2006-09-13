@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.1 2006/09/12 22:03:11 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.2 2006/09/13 17:10:40 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -62,20 +62,6 @@
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
-#endif
-#ifndef _SYS_KTR_H_
-#include <sys/ktr.h>
-#endif
-
-#ifndef _VM_VM_MAP_H_
-#include <vm/vm_map.h>
-#endif
-
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>
-#endif
-#ifndef _SYS_SPINLOCK2_H_
-#include <sys/spinlock2.h>
 #endif
 
 struct vmspace_rb_tree;
@@ -119,8 +105,10 @@ void vkernel_drop(struct vkernel *vk);
 typedef u_int32_t	vpte_t;
 
 #define VPTE_PAGE_ENTRIES	(PAGE_SIZE / sizeof(vpte_t))
+#define VPTE_PAGE_BITS		10
+#define VPTE_PAGE_MASK		((1 << VPTE_PAGE_BITS) - 1)
 
-#define VPTE_IV		0x00000001	/* inverted valid bit (TEMPORARY) */
+#define VPTE_V		0x00000001	/* inverted valid bit (TEMPORARY) */
 #define VPTE_PS		0x00000002
 
 #endif

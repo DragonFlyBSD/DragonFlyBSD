@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.24 2006/09/12 18:41:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.25 2006/09/13 17:10:42 dillon Exp $
  */
 
 /*
@@ -80,6 +80,9 @@
 #endif
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
+#endif
+#ifndef _SYS_VKERNEL_H_
+#include <sys/vkernel.h>
 #endif
 #ifndef _VM_VM_H_
 #include <vm/vm.h>
@@ -105,10 +108,14 @@ typedef u_int vm_eflags_t;
  *	another map (called a "sharing map") which denotes read-write
  *	sharing with other maps.
  */
-
 union vm_map_object {
 	struct vm_object *vm_object;	/* object object */
 	struct vm_map *sub_map;		/* belongs to another map */
+};
+
+union vm_map_aux {
+	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
+	vpte_t master_pde;		/* virtual page table root */
 };
 
 /*
@@ -129,7 +136,7 @@ struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
 	vm_offset_t start;		/* start address */
 	vm_offset_t end;		/* end address */
-	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
+	union vm_map_aux aux;		/* auxillary data */
 	union vm_map_object object;	/* object I point to */
 	vm_ooffset_t offset;		/* offset into object */
 	vm_eflags_t eflags;		/* map entry flags */
@@ -449,7 +456,7 @@ int vm_map_protect (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t, boolean_t);
 int vm_map_remove (vm_map_t, vm_offset_t, vm_offset_t);
 void vm_map_startup (void);
 int vm_map_submap (vm_map_t, vm_offset_t, vm_offset_t, vm_map_t);
-int vm_map_madvise (vm_map_t, vm_offset_t, vm_offset_t, int);
+int vm_map_madvise (vm_map_t, vm_offset_t, vm_offset_t, int, off_t);
 void vm_map_simplify_entry (vm_map_t, vm_map_entry_t, int *);
 void vm_init2 (void);
 int vm_uiomove (vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *);

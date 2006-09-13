@@ -31,13 +31,14 @@
 .\"
 .\"	@(#)madvise.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/madvise.2,v 1.17.2.8 2003/01/06 23:33:59 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/madvise.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/madvise.2,v 1.3 2006/09/13 17:10:33 dillon Exp $
 .\"
 .Dd July 19, 1996
 .Dt MADVISE 2
 .Os
 .Sh NAME
-.Nm madvise
+.Nm madvise ,
+.Nm mcontrol
 .Nd give advice about use of memory
 .Sh LIBRARY
 .Lb libc
@@ -46,6 +47,8 @@
 .In sys/mman.h
 .Ft int
 .Fn madvise "void *addr" "size_t len" "int behav"
+.Ft int
+.Fn mcontrol "void *addr" "size_t len" "int behav" "off_t value"
 .Sh DESCRIPTION
 The
 .Fn madvise
@@ -119,6 +122,19 @@ system calls.
 Region is not included in a core file.
 .It Dv MADV_CORE
 Include region in a core file.
+.It Dv MADV_INVAL
+Invalidate the hardware page table for a region of memory, forcing
+accesses to re-fault the pages. 
+This command is primarily meant to be used in areas of memory
+governed by a virtual page table after modifications have been made
+to it.
+.It Dv MADV_SETMAP
+Set the offset of the page directory page to
+.Fa value
+for the virtual page table governing
+the specified area of memory.  The entire memory area under virtual page table
+management should be specified.  You may encounter unexpected effects
+if you only set the page directory page for part of the mapping.
 .El
 .Sh RETURN VALUES
 .Rv -std madvise

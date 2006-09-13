@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.27 2006/09/12 22:03:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.28 2006/09/13 17:10:42 dillon Exp $
  */
 
 /*
@@ -124,6 +124,7 @@ struct faultstate {
 };
 
 static int vm_fault_object(struct faultstate *fs, vm_prot_t);
+static int vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte);
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
 static int vm_fault_ratelimit(struct vmspace *vmspace);
 
@@ -313,6 +314,7 @@ RetryFault:
 
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
+	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
 
 	/*
 	 * If the entry is wired we cannot change the page protection.
@@ -329,77 +331,12 @@ RetryFault:
 	 * ONLY
 	 */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		vpte_t vpte;
-		struct sf_buf *sf;
-
-		fs.object = fs.first_object;
-		fs.pindex = fs.entry->avail_ssize;	/* page directory */
-
-		/*
-		 * Virtual page index must be addressable by the page table
-		 */
-		if (fs.first_pindex > VPTE_PAGE_ENTRIES * VPTE_PAGE_ENTRIES) {
-			unlock_and_deallocate(&fs);
-			return (KERN_FAILURE);
-		}
-		result = vm_fault_object(&fs, VM_PROT_READ);
+		result = vm_fault_vpagetable(&fs, fs.entry->aux.master_pde);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
 		if (result != KERN_SUCCESS)
 			return (result);
-
-		/*
-		 * Process the returned fs.m to get the vpte from the page
-		 * directory.
-		 */
-		sf = sf_buf_alloc(fs.m, SFB_CPUPRIVATE);
-		vpte = *((vpte_t *)sf_buf_kva(sf) +
-		       (fs.first_pindex / VPTE_PAGE_ENTRIES));
-		sf_buf_free(sf);
-		vm_page_flag_set(fs.m, PG_REFERENCED);
-		vm_page_activate(fs.m);
-		vm_page_wakeup(fs.m);
-
-		if (vpte & VPTE_IV) {
-			unlock_and_deallocate(&fs);
-			return (KERN_FAILURE);
-		}
-
-		/*
-		 * Handle the second-level page table
-		 */
-		if (vpte & VPTE_PS) {
-			fs.first_pindex = (vpte >> PAGE_SHIFT) +
-					  (fs.first_pindex % VPTE_PAGE_ENTRIES);
-		} else {
-			cleanup_successful_fault(&fs);
-			fs.object = fs.first_object;
-			fs.pindex = (vpte >> PAGE_SHIFT);
-			result = vm_fault_object(&fs, VM_PROT_READ);
-			if (result == KERN_TRY_AGAIN)
-				goto RetryFault;
-			if (result != KERN_SUCCESS)
-				return (result);
-
-			sf = sf_buf_alloc(fs.m, SFB_CPUPRIVATE);
-			vpte = *((vpte_t *)sf_buf_kva(sf) +
-			       (fs.first_pindex % VPTE_PAGE_ENTRIES));
-			sf_buf_free(sf);
-			vm_page_flag_set(fs.m, PG_REFERENCED);
-			vm_page_activate(fs.m);
-			vm_page_wakeup(fs.m);
-
-			if (vpte & VPTE_IV) {
-				unlock_and_deallocate(&fs);
-				return (KERN_FAILURE);
-			}
-			fs.first_pindex = (vpte >> PAGE_SHIFT);
-		}
-		cleanup_successful_fault(&fs);
 	}
-
-	fs.object = fs.first_object;
-	fs.pindex = fs.first_pindex;
 
 	/*
 	 * Now we have the actual (object, pindex), fault in the page.  If
@@ -408,7 +345,10 @@ RetryFault:
 	 * will have an additinal PIP count if it is not equal to
 	 * fs->first_object
 	 */
+	fs.object = fs.first_object;
+	fs.pindex = fs.first_pindex;
 	result = vm_fault_object(&fs, fault_type);
+
 	if (result == KERN_TRY_AGAIN)
 		goto RetryFault;
 	if (result != KERN_SUCCESS)
@@ -462,6 +402,65 @@ RetryFault:
 
 	return (KERN_SUCCESS);
 }
+
+/*
+ * Translate the virtual page number (fs->first_pindex) that is relative
+ * to the address space into a logical page number that is relative to the
+ * backing object.  Use the virtual page table pointed to by (vpte).
+ *
+ * This implements an N-level page table.  Any level can terminate the
+ * scan by setting VPTE_PS.   A linear mapping is accomplished by setting
+ * VPTE_PS in the master page directory entry set via mcontrol(MADV_SETMAP).
+ */
+static
+int
+vm_fault_vpagetable(struct faultstate *fs, vpte_t vpte)
+{
+	struct sf_buf *sf;
+	int vshift = 32 - PAGE_SHIFT;	/* page index bits remaining */
+	int result;
+
+	for (;;) {
+		if ((vpte & VPTE_V) == 0) {
+			unlock_and_deallocate(fs);
+			return (KERN_FAILURE);
+		}
+		if ((vpte & VPTE_PS) || vshift == 0)
+			break;
+		KKASSERT(vshift >= VPTE_PAGE_BITS);
+
+		/*
+		 * Get the page table page
+		 */
+		fs->object = fs->first_object;
+		fs->pindex = vpte >> PAGE_SHIFT;
+		result = vm_fault_object(fs, VM_PROT_READ);
+		if (result != KERN_SUCCESS)
+			return (result);
+
+		/*
+		 * Process the returned fs.m and look up the page table
+		 * entry in the page table page.
+		 */
+		vshift -= VPTE_PAGE_BITS;
+		sf = sf_buf_alloc(fs->m, SFB_CPUPRIVATE);
+		vpte = *((vpte_t *)sf_buf_kva(sf) +
+		       ((fs->first_pindex >> vshift) & VPTE_PAGE_MASK));
+		sf_buf_free(sf);
+		vm_page_flag_set(fs->m, PG_REFERENCED);
+		vm_page_activate(fs->m);
+		vm_page_wakeup(fs->m);
+		cleanup_successful_fault(fs);
+	}
+
+	/*
+	 * Combine remaining address bits with the vpte.
+	 */
+	fs->first_pindex = (vpte >> PAGE_SHIFT) +
+			  (fs->first_pindex & ((1 << vshift) - 1));
+	return (KERN_SUCCESS);
+}
+
 
 /*
  * Do all operations required to fault in (fs.object, fs.pindex).  Run

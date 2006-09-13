@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.48 2006/09/12 18:41:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.49 2006/09/13 17:10:42 dillon Exp $
  */
 
 /*
@@ -768,7 +768,7 @@ vm_map_insert(vm_map_t map, int *countp,
 	new_entry->eflags = protoeflags;
 	new_entry->object.vm_object = object;
 	new_entry->offset = offset;
-	new_entry->avail_ssize = 0;
+	new_entry->aux.master_pde = 0;
 
 	new_entry->inheritance = VM_INHERIT_DEFAULT;
 	new_entry->protection = prot;
@@ -802,7 +802,13 @@ vm_map_insert(vm_map_t map, int *countp,
 	vm_map_simplify_entry(map, new_entry, countp);
 #endif
 
-	if (cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) {
+	/*
+	 * Try to pre-populate the page table.  Mappings governed by virtual
+	 * page tables cannot be prepopulated without a lot of work, so
+	 * don't try.
+	 */
+	if ((cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) &&
+	    maptype != VM_MAPTYPE_VPAGETABLE) {
 		pmap_object_init_pt(map->pmap, start, prot,
 				    object, OFF_TO_IDX(offset), end - start,
 				    cow & MAP_PREFAULT_PARTIAL);
@@ -1528,13 +1534,16 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
  *	system call.  Advisories are classified as either those effecting
  *	the vm_map_entry structure, or those effecting the underlying 
  *	objects.
+ *
+ *	The <value> argument is used for extended madvise calls.
  */
-
 int
-vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
+vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
+	       int behav, off_t value)
 {
 	vm_map_entry_t current, entry;
 	int modify_map = 0;
+	int error = 0;
 	int count;
 
 	/*
@@ -1554,6 +1563,8 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 	case MADV_AUTOSYNC:
 	case MADV_NOCORE:
 	case MADV_CORE:
+	case MADV_SETMAP:
+	case MADV_INVAL:
 		modify_map = 1;
 		vm_map_lock(map);
 		break;
@@ -1564,7 +1575,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 		break;
 	default:
 		vm_map_entry_release(count);
-		return (KERN_INVALID_ARGUMENT);
+		return (EINVAL);
 	}
 
 	/*
@@ -1618,7 +1629,43 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 			case MADV_CORE:
 				current->eflags &= ~MAP_ENTRY_NOCOREDUMP;
 				break;
+			case MADV_INVAL:
+				/*
+				 * Invalidate the related pmap entries, used
+				 * to flush portions of the real kernel's
+				 * pmap when the caller has removed or
+				 * modified existing mappings in a virtual
+				 * page table.
+				 */
+				pmap_remove(map->pmap,
+					    current->start, current->end);
+				break;
+			case MADV_SETMAP:
+				/*
+				 * Set the page directory page for a map
+				 * governed by a virtual page table.  Mark
+				 * the entry as being governed by a virtual
+				 * page table if it is not.
+				 *
+				 * XXX the page directory page is stored
+				 * in the avail_ssize field if the map_entry.
+				 *
+				 * XXX the map simplification code does not
+				 * compare this field so weird things may
+				 * happen if you do not apply this function
+				 * to the entire mapping governed by the
+				 * virtual page table.
+				 */
+				if (current->maptype != VM_MAPTYPE_VPAGETABLE) {
+					error = EINVAL;
+					break;
+				}
+				current->aux.master_pde = value;
+				pmap_remove(map->pmap,
+					    current->start, current->end);
+				break;
 			default:
+				error = EINVAL;
 				break;
 			}
 			vm_map_simplify_entry(map, current, &count);
@@ -1664,7 +1711,14 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 
 			vm_object_madvise(current->object.vm_object,
 					  pindex, count, behav);
-			if (behav == MADV_WILLNEED) {
+
+			/*
+			 * Try to populate the page table.  Mappings governed
+			 * by virtual page tables cannot be pre-populated
+			 * without a lot of work so don't try.
+			 */
+			if (behav == MADV_WILLNEED &&
+			    current->maptype != VM_MAPTYPE_VPAGETABLE) {
 				pmap_object_init_pt(
 				    map->pmap, 
 				    useStart,
@@ -1679,7 +1733,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 		vm_map_unlock_read(map);
 	}
 	vm_map_entry_release(count);
-	return(0);
+	return(error);
 }	
 
 
@@ -2902,7 +2956,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 		    new_stack_entry->start != addrbos + max_ssize - init_ssize)
 			panic ("Bad entry start/end for new stack entry");
 		else 
-			new_stack_entry->avail_ssize = max_ssize - init_ssize;
+			new_stack_entry->aux.avail_ssize = max_ssize - init_ssize;
 	}
 
 	vm_map_unlock(map);
@@ -2945,7 +2999,7 @@ Retry:
 	if ((stack_entry = prev_entry->next) == &map->header)
 		goto done;
 	if (prev_entry == &map->header) 
-		end = stack_entry->start - stack_entry->avail_ssize;
+		end = stack_entry->start - stack_entry->aux.avail_ssize;
 	else
 		end = prev_entry->end;
 
@@ -2956,15 +3010,15 @@ Retry:
 	 * If not growable stack, return success.  This signals the
 	 * caller to proceed as he would normally with normal vm.
 	 */
-	if (stack_entry->avail_ssize < 1 ||
+	if (stack_entry->aux.avail_ssize < 1 ||
 	    addr >= stack_entry->start ||
-	    addr <  stack_entry->start - stack_entry->avail_ssize) {
+	    addr <  stack_entry->start - stack_entry->aux.avail_ssize) {
 		goto done;
 	} 
 	
 	/* Find the minimum grow amount */
 	grow_amount = roundup (stack_entry->start - addr, PAGE_SIZE);
-	if (grow_amount > stack_entry->avail_ssize) {
+	if (grow_amount > stack_entry->aux.avail_ssize) {
 		rv = KERN_NO_SPACE;
 		goto done;
 	}
@@ -2984,7 +3038,7 @@ Retry:
 			goto Retry;
 		}
 		use_read_lock = 0;
-		stack_entry->avail_ssize = stack_entry->start - end;
+		stack_entry->aux.avail_ssize = stack_entry->start - end;
 		rv = KERN_NO_SPACE;
 		goto done;
 	}
@@ -3002,8 +3056,8 @@ Retry:
 
 	/* Round up the grow amount modulo SGROWSIZ */
 	grow_amount = roundup (grow_amount, sgrowsiz);
-	if (grow_amount > stack_entry->avail_ssize) {
-		grow_amount = stack_entry->avail_ssize;
+	if (grow_amount > stack_entry->aux.avail_ssize) {
+		grow_amount = stack_entry->aux.avail_ssize;
 	}
 	if (is_procstack && (ctob(vm->vm_ssize) + grow_amount >
 	                     p->p_rlimit[RLIMIT_STACK].rlim_cur)) {
@@ -3030,7 +3084,7 @@ Retry:
 	 * to the available space.  Also, see the note above.
 	 */
 	if (addr < end) {
-		stack_entry->avail_ssize = stack_entry->start - end;
+		stack_entry->aux.avail_ssize = stack_entry->start - end;
 		addr = end;
 	}
 
@@ -3049,9 +3103,9 @@ Retry:
 		    new_stack_entry->start != addr)
 			panic ("Bad stack grow start/end in new stack entry");
 		else {
-			new_stack_entry->avail_ssize = stack_entry->avail_ssize -
-							(new_stack_entry->end -
-							 new_stack_entry->start);
+			new_stack_entry->aux.avail_ssize =
+				stack_entry->aux.avail_ssize -
+				(new_stack_entry->end - new_stack_entry->start);
 			if (is_procstack)
 				vm->vm_ssize += btoc(new_stack_entry->end -
 						     new_stack_entry->start);

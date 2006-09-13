@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.42 2006/09/03 17:11:48 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.43 2006/09/13 17:10:39 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -667,3 +667,4 @@
 488	STD	BSD	{ int vmspace_read(void *id, void *ptr, int bytes); } 
 489	STD	BSD	{ int vmspace_write(void *id, const void *ptr, \
 					  int bytes); } 
+490	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }

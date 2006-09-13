@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.20 2006/07/27 00:43:42 corecode Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.21 2006/09/13 17:10:33 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -97,6 +97,7 @@ MAN+=	sched_get_priority_max.2 sched_setparam.2 \
 .endif
 
 MLINKS+=brk.2 sbrk.2
+MLINKS+=madvise.2 mcontrol.2
 MLINKS+=caps_sys_get.2 caps_sys_wait.2
 MLINKS+=chdir.2 fchdir.2
 MLINKS+=chflags.2 fchflags.2

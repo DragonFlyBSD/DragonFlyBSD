@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.32 2006/09/12 18:41:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.33 2006/09/13 17:10:42 dillon Exp $
  */
 
 /*
@@ -185,7 +185,7 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 
 	/*
 	 * Virtual page tables cannot be used with MAP_STACK.  Apart from
-	 * it not making any sense, the avail_ssize field is used by both
+	 * it not making any sense, the aux union is used by both
 	 * types.
 	 *
 	 * Because the virtual page table is stored in the backing object
@@ -600,7 +600,7 @@ sys_madvise(struct madvise_args *uap)
 	/*
 	 * Check for illegal behavior
 	 */
-	if (uap->behav < 0 || uap->behav > MADV_CORE)
+	if (uap->behav < 0 || uap->behav >= MADV_CONTROL_END)
 		return (EINVAL);
 	/*
 	 * Check for illegal addresses.  Watch out for address wrap... Note
@@ -623,10 +623,50 @@ sys_madvise(struct madvise_args *uap)
 	start = trunc_page((vm_offset_t) uap->addr);
 	end = round_page((vm_offset_t) uap->addr + uap->len);
 	
-	if (vm_map_madvise(&p->p_vmspace->vm_map, start, end, uap->behav))
-		return (EINVAL);
-	return (0);
+	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end,
+		uap->behav, 0));
 }
+
+/*
+ * mcontrol_args(void *addr, size_t len, int behav, off_t value)
+ */
+/* ARGSUSED */
+int
+sys_mcontrol(struct mcontrol_args *uap)
+{
+	struct proc *p = curproc;
+	vm_offset_t start, end;
+
+	/*
+	 * Check for illegal behavior
+	 */
+	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END)
+		return (EINVAL);
+	/*
+	 * Check for illegal addresses.  Watch out for address wrap... Note
+	 * that VM_*_ADDRESS are not constants due to casts (argh).
+	 */
+	if (VM_MAXUSER_ADDRESS > 0 &&
+		((vm_offset_t) uap->addr + uap->len) > VM_MAXUSER_ADDRESS)
+		return (EINVAL);
+#ifndef i386
+	if (VM_MIN_ADDRESS > 0 && uap->addr < VM_MIN_ADDRESS)
+		return (EINVAL);
+#endif
+	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
+		return (EINVAL);
+
+	/*
+	 * Since this routine is only advisory, we default to conservative
+	 * behavior.
+	 */
+	start = trunc_page((vm_offset_t) uap->addr);
+	end = round_page((vm_offset_t) uap->addr + uap->len);
+	
+	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end, 
+			      uap->behav, uap->value));
+}
+
 
 /*
  * mincore_args(const void *addr, size_t len, char *vec)

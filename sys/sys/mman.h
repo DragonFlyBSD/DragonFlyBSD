@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.5 2006/09/12 18:41:30 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.6 2006/09/13 17:10:40 dillon Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -125,6 +125,13 @@
 #define	MADV_NOCORE	8	/* do not include these pages in a core file */
 #define	MADV_CORE	9	/* revert to including pages in a core file */
 #define MADV_INVAL	10	/* virt page tables have changed, inval pmap */
+#define MADV_SETMAP	11	/* set page table directory page for map */
+
+/*
+ * mcontrol() must be used for these functions instead of madvise()
+ */
+#define MADV_CONTROL_START	MADV_INVAL
+#define MADV_CONTROL_END	MADV_SETMAP
 
 /*
  * Return bits from mincore
