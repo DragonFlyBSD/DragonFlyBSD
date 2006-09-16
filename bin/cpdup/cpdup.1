@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.16 2006/09/13 19:41:41 swildner Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.17 2006/09/16 16:47:29 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os
@@ -84,7 +84,7 @@ will cause cpdup to print a summary at the end with performance counter.
 Forces file updates to occur even if the files appear to be the same.  If
 the
 .Fl H
-option is used, this option will also force a byte for byte comparison
+option is used, this option will force a byte for byte comparison
 between the original file and the file in the hardlink path, even if
 all the stat info matches, but will still use a hardlink if they match.
 .It Fl s0

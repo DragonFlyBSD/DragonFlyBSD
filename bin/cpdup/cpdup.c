@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.16 2006/08/18 16:05:00 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.17 2006/09/16 16:47:29 dillon Exp $
  */
 
 /*-
@@ -852,9 +852,15 @@ relink:
 	/*
 	 * Not quite ready to do the copy yet.  If UseHLPath is defined,
 	 * see if we can hardlink instead.
+	 *
+	 * If we can hardlink, and the target exists, we have to remove it
+	 * first or the hardlink will fail.  This can occur in a number of
+	 * situations but must typically when the '-f -H' combination is 
+	 * used.
 	 */
-
 	if (UseHLPath && (hpath = checkHLPath(&st1, spath, dpath)) != NULL) {
+		if (st2Valid)
+			hc_remove(&DstHost, dpath);
 		if (hc_link(&DstHost, hpath, dpath) == 0) {
 			if (VerboseOpt) {
 			    logstd("%-32s hardlinked(-H)\n",
