@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.75 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.76 2006/09/16 03:37:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -743,7 +743,7 @@ sys_sendmsg(struct sendmsg_args *uap)
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
 			     &auio.uio_resid);
 	if (error)
-		goto cleanup;
+		goto cleanup2;
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = msg.msg_iovlen;
 	auio.uio_offset = 0;
@@ -778,9 +778,10 @@ sys_sendmsg(struct sendmsg_args *uap)
 	    &uap->sysmsg_result);
 
 cleanup:
+	iovec_free(&iov, aiov);
+cleanup2:
 	if (sa)
 		FREE(sa, M_SONAME);
-	iovec_free(&iov, aiov);
 	return (error);
 }
 
