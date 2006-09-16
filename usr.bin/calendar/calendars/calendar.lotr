@@ -1,8 +1,8 @@
 /*
  * Lord Of The Rings
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.lotr,v 1.1.2.1 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.lotr,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: src/usr.bin/calendar/calendars/calendar.lotr,v 1.2 2003/10/09 00:31:48 grog Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/calendar.lotr,v 1.3 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #ifndef _calendar_lotr_
@@ -38,6 +38,7 @@
 09/15	Black riders enter the Shire
 09/18	Frodo and company rescued by Bombadil
 09/28	Frodo wounded at Weathertop
+10/05	Frodo crosses bridge of Mitheithel
 10/16	Boromir reaches Rivendell
 10/17	Council of Elrond
 10/25	End of War of the Ring

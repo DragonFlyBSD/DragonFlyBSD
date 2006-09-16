@@ -1,8 +1,8 @@
 /*
  * Holiday
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.holiday,v 1.9.2.5 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.holiday,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: src/usr.bin/calendar/calendars/calendar.holiday,v 1.30 2005/12/20 11:04:01 ceri Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/calendar.holiday,v 1.3 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #ifndef _calendar_holiday_
@@ -37,7 +37,6 @@
 01/23	Feast of St. Ildefonsus
 01/23	US National Handwriting Day
 01/24	Economic Liberation Day in Togo
-01/26	Australia Day in Australia
 01/26	Republic Day in India
 01/MonSecond	Adults Day in Japan
 01/MonThird	Lee-Jackson Day in Virginia (3rd Monday)
@@ -86,7 +85,7 @@
 03/16	Black Press Day; first US Black newspaper founded in 1827
 03/17	Evacuation Day in Suffolk County, Massachusetts
 03/17	St. Patrick's Day
-03/19	St. Joseph's Day, obeserved in Colombia, Costa Rica, Holy See,
+03/19	St. Joseph's Day, observed in Colombia, Costa Rica, Holy See,
 	Liechtenstein,	San Marino, Spain, Venezuela
 03/19	Tree Planting Day in Lestho
 03/20	Independence Day in Tunisia
@@ -345,7 +344,6 @@
 08/17	Independence Day in Indonesia
 08/19	Independence Day in Afghanistan
 08/20	Constitution Day in Hungary
-08/23	Liberation Days (2 days) in Romania
 08/24	National Flag Day in Liberia
 08/25	Constitution Day in Paraguay
 08/25	Independence Day in Uruguay
@@ -401,15 +399,14 @@
 09/26	Revolution Anniversary Day in Yemen
 09/27	Feast of Finding the True Cross in Ethiopia
 09/28	Confucius' Day in Taiwan
+09/29	Michaelmas
 09/29	Battle of Boqueron in Paraguay
 09/30	Botswana Day in Botswana
-09/MonSecond	Respect for the Aged Day in Japan
+09/MonThird	Respect for the Aged Day in Japan
 10/01	Armed Forces Day in South Korea
 10/01	Independence Day in Nigeria
-10/01	Labour Day in Australia (ACT, NSW and SA only)
 10/01	National Liberation Day (2 days) in China
 10/01	Public Holiday in Botswana
-10/01	Queen's Birthday in Western Australia
 10/02	Anniversary of Guinean Independence in Guinea
 10/03	Chung Yeung Festival in Hong Kong
 10/03	Francisco Morazan's Birthday in Honduras
@@ -454,6 +451,7 @@
 10/24	Independence Day in Zambia
 10/24	United Nations Day 
 10/25	Taiwan Restoration Day in Taiwan
+10/25	St. Crispin's day, patron saint of shoemakers
 10/26	Agam Day in Nauru
 10/26	Armed Forces Day in Benin and Rwanda
 10/26	National Day in Austria
@@ -518,10 +516,12 @@
 11/30	St. Andrew's Day
 11/Wed+3	Day of Prayer and Repentance (Buss- und Bettag) in Federal Republic of Germany
 12/01	Anniversary of the Restoration of Independence in Portugal
+12/01	Union Day in Romania
 12/01	Independence Day in Central African Republic
 12/01	World AIDS Day
 12/02	National Holiday in United Arab Emirates
 12/03	National Holiday in Laos
+12/05	King's Birthday in Thailand
 12/06	Independence Day in Finland
 12/07	Delaware Day in Delaware
 12/07	Independence Day in Ivory Coast

@@ -33,15 +33,15 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/io.c,v 1.13.2.3 2002/08/26 00:32:46 jmallett Exp $
- * $DragonFly: src/usr.bin/calendar/io.c,v 1.4 2004/01/06 15:29:09 eirikn Exp $
+ * $DragonFly: src/usr.bin/calendar/io.c,v 1.5 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -56,23 +56,26 @@
 #include "pathnames.h"
 #include "calendar.h"
 
-
 const char *calendarFile = "calendar.all";  /* default calendar file */
 const char *calendarHomes[] = { ".calendar", _PATH_INCLUDE }; /* HOME */
-const char *calendarNoMail = "nomail";  /* don't sent mail if this file exist */
+const char *calendarNoMail = "nomail";  /* don't send mail if this file exist */
 
 struct fixs neaster, npaskha;
 
-struct iovec header[] = {
-	{"From: ", 6},
-	{NULL, 0},
-	{" (Reminder Service)\nTo: ", 24},
-	{NULL, 0},
-	{"\nSubject: ", 10},
-	{NULL, 0},
-	{"'s Calendar\nPrecedence: bulk\n\n",  30},
-};
+char	hdr_from[] = "From: ";
+char	hdr_to[] = " (Reminder Service)\nTo: ";
+char	hdr_subj[] = "\nSubject: ";
+char	hdr_prec[] = "'s Calendar\nPrecedence: bulk\n\n";
 
+struct iovec header[] = {
+	{hdr_from, 6},
+	{NULL, 0},
+	{hdr_to, 24},
+	{NULL, 0},
+	{hdr_subj, 10},
+	{NULL, 0},
+	{hdr_prec, 30},
+};
 
 void
 cal(void)
@@ -102,7 +105,7 @@ cal(void)
 		if (buf[0] == '\0')
 			continue;
 		if (strncmp(buf, "LANG=", 5) == 0) {
-			(void) setlocale(LC_ALL, buf + 5);
+			setlocale(LC_ALL, buf + 5);
 			d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 			setnnames();
 			continue;
@@ -111,7 +114,7 @@ cal(void)
 			if (neaster.name != NULL)
 				free(neaster.name);
 			if ((neaster.name = strdup(buf + 7)) == NULL)
-				errx(1, "cannot allocate memory");
+				errx(EXIT_FAILURE, "cannot allocate memory");
 			neaster.len = strlen(buf + 7);
 			continue;
 		}
@@ -119,7 +122,7 @@ cal(void)
 			if (npaskha.name != NULL)
 				free(npaskha.name);
 			if ((npaskha.name = strdup(buf + 7)) == NULL)
-				errx(1, "cannot allocate memory");
+				errx(EXIT_FAILURE, "cannot allocate memory");
 			npaskha.len = strlen(buf + 7);
 			continue;
 		}
@@ -142,10 +145,10 @@ cal(void)
 				tm.tm_mon = month - 1;
 				tm.tm_mday = day;
 				tm.tm_year = tp->tm_year; /* unused */
-				(void)strftime(dbuf, sizeof(dbuf),
-					       d_first ? "%e %b" : "%b %e",
-					       &tm);
-				(void)fprintf(fp, "%s%c%s\n", dbuf,
+				strftime(dbuf, sizeof(dbuf),
+				    d_first ? "%e %b" : "%b %e",
+				    &tm);
+				fprintf(fp, "%s%c%s\n", dbuf,
 				    var ? '*' : ' ', p);
 			}
 		}
@@ -165,13 +168,13 @@ getfield(char *p, char **endp, int *flags)
 	if (*p == '*') {			/* `*' is current month */
 		*flags |= F_ISMONTH;
 		*endp = p+1;
-		return (tp->tm_mon + 1);
+		return(tp->tm_mon + 1);
 	}
 	if (isdigit((unsigned char)*p)) {
 		val = strtol(p, &p, 10);	/* if 0, it's failure */
 		for (; !isdigit((unsigned char)*p) && !isalpha((unsigned char)*p) && *p != '*'; ++p);
 		*endp = p;
-		return (val);
+		return(val);
 	}
 	for (start = p; isalpha((unsigned char)*++p););
 	
@@ -215,10 +218,10 @@ getfield(char *p, char **endp, int *flags)
 	}
 	for (*p = savech; !isdigit((unsigned char)*p) && !isalpha((unsigned char)*p) && *p != '*'; ++p);
 	*endp = p;
-	return (val);
+	return(val);
 }
 
-char path[MAXPATHLEN];
+static char path[MAXPATHLEN];
 
 FILE *
 opencal(void)
@@ -232,11 +235,11 @@ opencal(void)
 	if (!freopen(calendarFile, "r", stdin)) {
 		if (doall) {
 		    if (chdir(calendarHomes[0]) != 0)
-			return (NULL);
+			return(NULL);
 		    if (stat(calendarNoMail, &sbuf) == 0)
-		        return (NULL);
+		        return(NULL);
 		    if (!freopen(calendarFile, "r", stdin))
-		        return (NULL);
+		        return(NULL);
 		} else {
 		        chdir(getenv("HOME"));
 			for (found = i = 0; i < sizeof(calendarHomes) /
@@ -247,56 +250,56 @@ opencal(void)
 				    break;
 			    }
 			if (!found)
-			    errx(1, "no calendar file: ``%s''", calendarFile);
+			    errx(EXIT_FAILURE, "no calendar file: ``%s''", calendarFile);
 		}
 	}
 	if (pipe(pdes) < 0)
-		return (NULL);
+		return(NULL);
 	switch (fork()) {
 	case -1:			/* error */
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
-		return (NULL);
+		close(pdes[0]);
+		close(pdes[1]);
+		return(NULL);
 	case 0:
 		/* child -- stdin already setup, set stdout to pipe input */
 		if (pdes[1] != STDOUT_FILENO) {
-			(void)dup2(pdes[1], STDOUT_FILENO);
-			(void)close(pdes[1]);
+			dup2(pdes[1], STDOUT_FILENO);
+			close(pdes[1]);
 		}
-		(void)close(pdes[0]);
+		close(pdes[0]);
 		uid = geteuid();
 		if (setuid(getuid()) < 0) {
 			warnx("first setuid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		};
 		if (setgid(getegid()) < 0) {
 			warnx("setgid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		}
 		if (setuid(uid) < 0) {
 			warnx("setuid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		}
 		execl(_PATH_CPP, "cpp", "-P",
 		    "-traditional", "-nostdinc",	/* GCC specific opts */
 		    "-I.", "-I", _PATH_INCLUDE, (char *)NULL);
 		warn(_PATH_CPP);
-		_exit(1);
+		_exit(EXIT_FAILURE);
 	}
 	/* parent -- set stdin to pipe output */
-	(void)dup2(pdes[0], STDIN_FILENO);
-	(void)close(pdes[0]);
-	(void)close(pdes[1]);
+	dup2(pdes[0], STDIN_FILENO);
+	close(pdes[0]);
+	close(pdes[1]);
 
 	/* not reading all calendar files, just set output to stdout */
 	if (!doall)
-		return (stdout);
+		return(stdout);
 
 	/* set output to a temporary file, so if no output don't send mail */
-	(void)snprintf(path, sizeof(path), "%s/_calXXXXXX", _PATH_TMP);
+	snprintf(path, sizeof(path), "%s/_calXXXXXX", _PATH_TMP);
 	if ((fd = mkstemp(path)) < 0)
-		return (NULL);
-	return (fdopen(fd, "w+"));
+		return(NULL);
+	return(fdopen(fd, "w+"));
 }
 
 void
@@ -310,51 +313,51 @@ closecal(FILE *fp)
 	if (!doall)
 		return;
 
-	(void)rewind(fp);
+	rewind(fp);
 	if (fstat(fileno(fp), &sbuf) || !sbuf.st_size)
 		goto done;
 	if (pipe(pdes) < 0)
 		goto done;
 	switch (fork()) {
 	case -1:			/* error */
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
+		close(pdes[0]);
+		close(pdes[1]);
 		goto done;
 	case 0:
 		/* child -- set stdin to pipe output */
 		if (pdes[0] != STDIN_FILENO) {
-			(void)dup2(pdes[0], STDIN_FILENO);
-			(void)close(pdes[0]);
+			dup2(pdes[0], STDIN_FILENO);
+			close(pdes[0]);
 		}
-		(void)close(pdes[1]);
+		close(pdes[1]);
 		uid = geteuid();
 		if (setuid(getuid()) < 0) {
 			warnx("setuid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		};
 		if (setgid(getegid()) < 0) {
 			warnx("setgid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		}
 		if (setuid(uid) < 0) {
 			warnx("setuid failed");
-			_exit(1);
+			_exit(EXIT_FAILURE);
 		}
 		execl(_PATH_SENDMAIL, "sendmail", "-i", "-t", "-F",
 		    "\"Reminder Service\"", (char *)NULL);
 		warn(_PATH_SENDMAIL);
-		_exit(1);
+		_exit(EXIT_FAILURE);
 	}
 	/* parent -- write to pipe input */
-	(void)close(pdes[0]);
+	close(pdes[0]);
 
 	header[1].iov_base = header[3].iov_base = pw->pw_name;
 	header[1].iov_len = header[3].iov_len = strlen(pw->pw_name);
 	writev(pdes[1], header, 7);
 	while ((nread = read(fileno(fp), buf, sizeof(buf))) > 0)
-		(void)write(pdes[1], buf, nread);
-	(void)close(pdes[1]);
-done:	(void)fclose(fp);
-	(void)unlink(path);
+		write(pdes[1], buf, nread);
+	close(pdes[1]);
+done:	fclose(fp);
+	unlink(path);
 	while (wait(&status) >= 0);
 }

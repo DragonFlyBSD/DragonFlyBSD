@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/day.c,v 1.4 2005/05/07 22:05:41 corecode Exp $
+ * $DragonFly: src/usr.bin/calendar/day.c,v 1.5 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -50,12 +50,13 @@
 extern struct iovec header[];
 
 struct tm *tp;
-int *cumdays, offset, yrdays;
-char dayname[10];
+int *cumdays; 
 
+static char dayname[10];
+static int offset, yrdays;
 
 /* 1-based month, 0-based days, cumulative */
-int daytab[][14] = {
+static int daytab[][14] = {
 	{ 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 364 },
 	{ 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 },
 };
@@ -75,8 +76,8 @@ static struct fixs ndays[8];          /* short national days names */
 static struct fixs fnmonths[13];      /* full national months names */
 static struct fixs nmonths[13];       /* short national month names */
 
-
-void setnnames(void)
+void
+setnnames(void)
 {
 	char buf[80];
 	int i, l;
@@ -93,7 +94,7 @@ void setnnames(void)
 		if (ndays[i].name != NULL)
 			free(ndays[i].name);
 		if ((ndays[i].name = strdup(buf)) == NULL)
-			errx(1, "cannot allocate memory");
+			errx(EXIT_FAILURE, "cannot allocate memory");
 		ndays[i].len = strlen(buf);
 
 		strftime(buf, sizeof(buf), "%A", &tm);
@@ -105,7 +106,7 @@ void setnnames(void)
 		if (fndays[i].name != NULL)
 			free(fndays[i].name);
 		if ((fndays[i].name = strdup(buf)) == NULL)
-			errx(1, "cannot allocate memory");
+			errx(EXIT_FAILURE, "cannot allocate memory");
 		fndays[i].len = strlen(buf);
 	}
 
@@ -120,7 +121,7 @@ void setnnames(void)
 		if (nmonths[i].name != NULL)
 			free(nmonths[i].name);
 		if ((nmonths[i].name = strdup(buf)) == NULL)
-			errx(1, "cannot allocate memory");
+			errx(EXIT_FAILURE, "cannot allocate memory");
 		nmonths[i].len = strlen(buf);
 
 		strftime(buf, sizeof(buf), "%B", &tm);
@@ -132,7 +133,7 @@ void setnnames(void)
 		if (fnmonths[i].name != NULL)
 			free(fnmonths[i].name);
 		if ((fnmonths[i].name = strdup(buf)) == NULL)
-			errx(1, "cannot allocate memory");
+			errx(EXIT_FAILURE, "cannot allocate memory");
 		fnmonths[i].len = strlen(buf);
 	}
 }
@@ -143,7 +144,7 @@ settime(time_t now)
 	char *oldl, *lbufp;
 
 	tp = localtime(&now);
-	if ( isleap(tp->tm_year + 1900) ) {
+	if (isleap(tp->tm_year + 1900)) {
 		yrdays = 366;
 		cumdays = daytab[1];
 	} else {
@@ -157,10 +158,10 @@ settime(time_t now)
 	oldl = NULL;
 	lbufp = setlocale(LC_TIME, NULL);
 	if (lbufp != NULL && (oldl = strdup(lbufp)) == NULL)
-		errx(1, "cannot allocate memory");
-	(void) setlocale(LC_TIME, "C");
+		errx(EXIT_FAILURE, "cannot allocate memory");
+	setlocale(LC_TIME, "C");
 	header[5].iov_len = strftime(dayname, sizeof(dayname), "%A", tp);
-	(void) setlocale(LC_TIME, (oldl != NULL ? oldl : ""));
+	setlocale(LC_TIME, (oldl != NULL ? oldl : ""));
 	if (oldl != NULL)
 		free(oldl);
 
@@ -170,13 +171,14 @@ settime(time_t now)
 /* convert Day[/Month][/Year] into unix time (since 1970)
  * Day: two digits, Month: two digits, Year: digits
  */
-time_t Mktime (char *dp)
+time_t
+Mktime(char *dp)
 {
     time_t t;
     int d, m, y;
     struct tm tm;
 
-    (void)time(&t);
+    time(&t);
     tp = localtime(&t);
 
     tm.tm_sec = 0;
@@ -339,7 +341,7 @@ isnow(char *endp, int *monthp, int *dayp, int *varp)
 		    v2 = tp->tm_mday + (((day - 1) - tp->tm_wday + 7) % 7);
 
 		    /* Hurrah! matched */
-		    if ( ((v2 - 1 + 7) / 7) == v1 )
+		    if (((v2 - 1 + 7) / 7) == v1)
 			day = v2;
 
 		    /* set to yesterday */
@@ -377,15 +379,15 @@ isnow(char *endp, int *monthp, int *dayp, int *varp)
 	/* if today or today + offset days */
 	if (day >= tp->tm_yday - f_dayBefore &&
 	    day <= tp->tm_yday + offset + f_dayAfter)
-		return (1);
+		return(1);
 
 	/* if number of days left in this year + days to event in next year */
 	if (yrdays - tp->tm_yday + day <= offset + f_dayAfter ||
 	    /* a year backward, eg. 6 Jan and 10 days before -> 27. Dec */
 	    tp->tm_yday + day - f_dayBefore < 0
 	    )
-		return (1);
-	return (0);
+		return(1);
+	return(0);
 }
 
 
@@ -404,7 +406,7 @@ getmonth(char *s)
 	for (p = months; *p; ++p)
 		if (!strncasecmp(s, *p, 3))
 			return ((p - months) + 1);
-	return (0);
+	return(0);
 }
 
 
@@ -416,14 +418,14 @@ getday(char *s)
 
 	for (n = fndays; n->name; ++n)
 		if (!strncasecmp(s, n->name, n->len))
-			return ((n - fndays) + 1);
+			return((n - fndays) + 1);
 	for (n = ndays; n->name; ++n)
 		if (!strncasecmp(s, n->name, n->len))
-			return ((n - ndays) + 1);
+			return((n - ndays) + 1);
 	for (p = days; *p; ++p)
 		if (!strncasecmp(s, *p, 3))
-			return ((p - days) + 1);
-	return (0);
+			return((p - days) + 1);
+	return(0);
 }
 
 /* return offset for variable weekdays

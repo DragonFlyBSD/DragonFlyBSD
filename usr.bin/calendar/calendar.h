@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.5.2.3 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.3 2005/05/07 22:05:41 corecode Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.4 2006/09/16 18:38:00 pavalos Exp $
  */
 
 
@@ -39,7 +39,6 @@ extern struct passwd *pw;
 extern int doall;
 extern struct tm *tp;
 extern const char *calendarFile;
-extern char *optarg;
 
 void	 cal(void);
 void	 closecal(FILE *);

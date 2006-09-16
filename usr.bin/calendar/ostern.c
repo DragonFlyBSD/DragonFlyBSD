@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/ostern.c,v 1.8.2.2 2002/05/27 12:14:46 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.4 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -33,6 +33,8 @@
 #include <time.h>
 
 #include "calendar.h"
+
+extern struct fixs neaster;
 
 /* return year day for Easter */
 
@@ -61,9 +63,9 @@ int easter (int year)
     L = I - J;
 
     if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))
-	return 31 + 29 + 21 + L + 7;
+	return(31 + 29 + 21 + L + 7);
     else
-	return 31 + 28 + 21 + L + 7;
+	return(31 + 28 + 21 + L + 7);
 }
 
 /* return year day for  Easter or easter depending days 
@@ -75,14 +77,12 @@ int
 geteaster(char *s, int year)
 {
 	int offset = 0;
-	extern struct fixs neaster;
-
 #define EASTER "easter"
 #define EASTERNAMELEN (sizeof(EASTER) - 1)
 
 	if (strncasecmp(s, EASTER, EASTERNAMELEN) == 0)
 	    s += EASTERNAMELEN;
-	else if (   neaster.name != NULL
+	else if (neaster.name != NULL
 		 && strncasecmp(s, neaster.name, neaster.len) == 0
 		)
 	    s += neaster.len;
@@ -97,7 +97,6 @@ geteaster(char *s, int year)
 	 *       ^            ^   */
 
 	switch(*s) {
-
 	case '-':
 	case '+':
 	    offset = atoi(s);
@@ -107,5 +106,5 @@ geteaster(char *s, int year)
 	    offset = 0;
 	}
 	    
-	return (easter(year) + offset);
+	return(easter(year) + offset);
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/calendar.c,v 1.11.2.5 2003/04/06 20:04:56 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.c,v 1.4 2006/09/16 18:38:00 pavalos Exp $
  */
 
 #include <err.h>
@@ -42,6 +42,7 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sysexits.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -50,8 +51,6 @@
 
 struct passwd *pw;
 int doall = 0;
-time_t f_time = 0;
-
 int f_dayAfter = 0; /* days after current date */
 int f_dayBefore = 0; /* days before current date */
 int Friday = 5;	     /* day before weekend */
@@ -60,27 +59,27 @@ int
 main(int argc, char **argv)
 {
 	int ch;
+	time_t f_time = 0;
 
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
-	while ((ch = getopt(argc, argv, "-af:t:A:B:F:W:")) != -1)
+	while ((ch = getopt(argc, argv, "-af:t:A:B:F:W:")) != -1) {
 		switch (ch) {
-		case '-':		/* backward contemptible */
+		case '-':		/* backward compatible */
 		case 'a':
 			if (getuid()) {
 				errno = EPERM;
-				err(1, NULL);
+				err(EXIT_FAILURE, NULL);
 			}
 			doall = 1;
 			break;
-
 			
 		case 'f': /* other calendar file */
 		        calendarFile = optarg;
 			break;
 
 		case 't': /* other date, undocumented, for tests */
-			f_time = Mktime (optarg);
+			f_time = Mktime(optarg);
 			break;
 
 		case 'W': /* we don't need no steenking Fridays */
@@ -103,6 +102,7 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -111,33 +111,31 @@ main(int argc, char **argv)
 
 	/* use current time */
 	if (f_time <= 0) 
-	    (void)time(&f_time);
+	    time(&f_time);
 
 	settime(f_time);
 	
 	if (doall)
 		while ((pw = getpwent()) != NULL) {
-			(void)setegid(pw->pw_gid);
-			(void)initgroups(pw->pw_name, pw->pw_gid);
-			(void)seteuid(pw->pw_uid);
+			setegid(pw->pw_gid);
+			initgroups(pw->pw_name, pw->pw_gid);
+			seteuid(pw->pw_uid);
 			if (!chdir(pw->pw_dir))
 				cal();
-			(void)seteuid(0);
+			seteuid(0);
 		}
 	else
 		cal();
-	exit(0);
+	exit(EX_OK);
 }
 
 
 void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: calendar [-a] [-A days] [-B days] [-F friday] "
 	    "[-f calendarfile]",
 	    "                [-t dd[.mm[.year]]] [-W days]");
-	exit(1);
+	exit(EX_USAGE);
 }
-
-
