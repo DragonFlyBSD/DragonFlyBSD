@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.42 2006/06/27 16:38:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.43 2006/09/16 03:32:44 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -197,15 +197,22 @@ useracc(c_caddr_t addr, int len, int rw)
 void
 vslock(caddr_t addr, u_int len)
 {
-	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
-	    round_page((vm_offset_t)addr + len), 0);
+	if (len) {
+		vm_map_wire(&curproc->p_vmspace->vm_map,
+			    trunc_page((vm_offset_t)addr),
+			    round_page((vm_offset_t)addr + len), 0);
+	}
 }
 
 void
 vsunlock(caddr_t addr, u_int len)
 {
-	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
-	    round_page((vm_offset_t)addr + len), KM_PAGEABLE);
+	if (len) {
+		vm_map_wire(&curproc->p_vmspace->vm_map,
+			    trunc_page((vm_offset_t)addr),
+			    round_page((vm_offset_t)addr + len),
+			    KM_PAGEABLE);
+	}
 }
 
 /*
