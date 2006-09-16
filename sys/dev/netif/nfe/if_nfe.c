@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.2 2006/09/02 11:44:58 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.3 2006/09/16 06:37:11 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1566,7 +1566,7 @@ nfe_jref(void *arg)
 	else if (jbuf->inuse == 0)
 		panic("%s: jumbo buffer already freed\n", __func__);
 
-	atomic_subtract_int(&jbuf->inuse, 1);
+	atomic_add_int(&jbuf->inuse, 1);
 }
 
 static int
