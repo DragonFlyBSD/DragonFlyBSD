@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.7 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.8 2006/09/16 18:18:05 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -110,7 +110,7 @@ fatal(const char *ctl, ...)
 #endif
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.06 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.07 by Matt Dillon and Dima Ruban\n"
 	);
 	exit(0);
     } else {
