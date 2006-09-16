@@ -1,0 +1,24 @@
+$DragonFly: src/bin/cpdup/Attic/README,v 1.1 2006/09/16 18:24:37 dillon Exp $
+
+			    README FILE FOR CPDUP
+
+    The manual page for cpdup is "cpdup.1".  This file describes various
+    porting issues.  
+
+    Most BSDs should just be able to compile cpdup using the Makefile.
+
+Linux:
+    This script should suffice when compiling under linux.  For some reason
+    that I cannot fathom, linux defaults to using a 32 bit off_t.  It makes
+    no sense at all to me why they would want to do this, BSDs went to
+    a 64 bit default off_t over 15 years ago.  In anycase, fixing it 
+    requires a few -D options.
+
+    #!/bin/csh
+    #
+    cd cpdup
+    rm -f md5.c
+    rm -f *.o
+    cc -c -D__unused= -D_GNU_SOURCE -D__USE_FILE_OFFSET64 -DNOMD5 *.c
+    cc -D__unused= -D_GNU_SOURCE -D__USE_FILE_OFFSET64 -DNOMD5 *.o -o ~/bin/cpdup
+
