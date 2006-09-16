@@ -1,0 +1,12 @@
+# sourced by do* scripts
+#
+# do not include the BLAH/mirrors subdirectory when specifying the backup 
+# path and the remote path.  The scripts will add it themselves, as a safety
+# feature.
+#
+# $DragonFly: src/bin/cpdup/scripts/params,v 1.1 2006/09/16 21:57:10 dillon Exp $
+set backup_nfs = "/nfs"
+set backup_path = "/backup"
+set remote_host = "OFF.SITE.HOST"
+set remote_path = "/backup"
+set cleaning_path = "$backup_path"
