@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.6 2006/08/08 02:35:44 justin Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.7 2006/09/17 21:50:40 victor Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -53,14 +53,18 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top">
-<a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
-<td valign="top">Networking (commit access)</td>
+<td href="mailto:victor 'at' bsdes 'dot' net">V&iacute;ctor Balada D&iacute;az</a></td>
+<td valign="top">Anything and Everything (commit access)</td>
 </tr>
-
 
 <tr><td valign="top">
 <a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
 <td valign="top">Sun Grid Engine</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
+<td valign="top">Networking (commit access)</td>
 </tr>
 
 <tr><td valign="top">
@@ -197,6 +201,13 @@ r in Japan (AllBSD) (commit access)
 </tr>
 
 <tr><td valign="top">
+<a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
+<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build proble
+ms, testing patches (commit access)
+</td>
+</tr>
+
+<tr><td valign="top">
 <a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
 (commit access)</td>
@@ -216,13 +227,6 @@ r in Japan (AllBSD) (commit access)
 <tr><td valign="top">
 <a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
 <td valign="top">1:1 Threading library (commit access)</td>
-</tr>
-
-<tr><td valign="top">
-<a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build proble
-ms, testing patches (commit access)
-</td>
 </tr>
 
 <tr><td valign="top">
