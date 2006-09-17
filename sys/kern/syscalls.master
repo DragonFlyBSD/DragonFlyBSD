@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.43 2006/09/13 17:10:39 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.44 2006/09/17 21:07:32 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -659,12 +659,15 @@
 482	STD	BSD	{ int __accept(int s, int flags, caddr_t name, int *anamelen); }
 483	STD	BSD	{ int __connect(int s, int flags, caddr_t name, int namelen); }
 484	STD	BSD	{ int syslink(int fd, int cmd, sysid_t *mask, sysid_t *match); }
-485	STD	BSD	{ int vmspace_ctl(void *id, void *ctx, int what); } 
-486	STD	BSD	{ int vmspace_map(void *id, off_t offset, void *ptr, \
-					  int bytes, int prot); }
-487	STD	BSD	{ int vmspace_protect(void *id, off_t offset, \
-					  int bytes, int prot); } 
-488	STD	BSD	{ int vmspace_read(void *id, void *ptr, int bytes); } 
-489	STD	BSD	{ int vmspace_write(void *id, const void *ptr, \
-					  int bytes); } 
-490	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
+485	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
+486	STD	BSD	{ int vmspace_create(void *id, int type, void *data); } 
+487	STD	BSD	{ int vmspace_destroy(void *id); }
+488	STD	BSD	{ int vmspace_ctl(void *id, int cmd, void *ctx,	\
+					  int ctx_bytes, int timeout_us); }
+489	STD	BSD	{ int vmspace_mmap(void *id, void *addr, size_t len, \
+					  int prot, int flags, int fd, \
+					  off_t offset); }
+490	STD	BSD	{ int vmspace_munmap(void *id, void *addr,	\
+					  size_t len); }
+491	STD	BSD	{ int vmspace_mcontrol(void *id, void *addr, 	\
+					  size_t len, int behav, off_t value); } 

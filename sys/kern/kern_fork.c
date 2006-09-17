@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.55 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.56 2006/09/17 21:07:32 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -353,6 +353,9 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	if (p2->p_textvp)
 		vref(p2->p_textvp);
 
+	/*
+	 * Handle file descriptors
+	 */
 	if (flags & RFCFDG) {
 		p2->p_fd = fdinit(p1);
 		fdtol = NULL;
@@ -392,6 +395,13 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_flag |= P_CONTROLT;
 	if (flags & RFPPWAIT)
 		p2->p_flag |= P_PPWAIT;
+
+	/*
+	 * Inherit the virtual kernel structure (allows a virtual kernel
+	 * to fork to simulate multiple cpus).
+	 */
+	if ((p2->p_vkernel = p1->p_vkernel) != NULL)
+		vkernel_hold(p2->p_vkernel);
 
 	/*
 	 * Once we are on a pglist we may receive signals.  XXX we might

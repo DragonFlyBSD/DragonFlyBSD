@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.16 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.17 2006/09/17 21:07:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -550,7 +550,8 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 		printf("-> (%p, %d, %d, 0x%08x, %d, %lld)\n",
 		    addr, len, prot, flags, fd, pos);
 #endif
-	error = kern_mmap(addr, len, prot, flags, fd, pos, &new);
+	error = kern_mmap(curproc->p_vmspace, addr, len,
+			  prot, flags, fd, pos, &new);
 
 	if (error == 0)
 		*res = new;

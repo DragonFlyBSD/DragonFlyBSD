@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.44 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.45 2006/09/17 21:07:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -324,6 +324,16 @@ interpret:
 
 		p->p_addr->u_sigacts = *p->p_sigacts;
 		p->p_sigacts = &p->p_addr->u_sigacts;
+	}
+
+	/*
+	 * For security and other reasons virtual kernels cannot be
+	 * inherited by an exec.  This also allows a virtual kernel
+	 * to fork/exec unrelated applications.
+	 */
+	if (p->p_vkernel) {
+		vkernel_drop(p->p_vkernel);
+		p->p_vkernel = NULL;
 	}
 
 	/* Stop profiling */

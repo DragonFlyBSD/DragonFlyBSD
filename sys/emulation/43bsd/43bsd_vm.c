@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.4 2006/09/17 21:07:25 dillon Exp $
  *	from: DragonFly vm/vm_unix.c,v 1.3
  *	from: DragonFly vm/vm_mmap.c,v 1.15
  */
@@ -48,6 +48,8 @@
 #include <sys/sysproto.h>
 #include <sys/kern_syscall.h>
 #include <sys/mman.h>
+#include <sys/proc.h>
+#include <sys/thread2.h>
 
 int
 sys_ovadvise(struct ovadvise_args *uap)
@@ -98,8 +100,9 @@ sys_ommap(struct ommap_args *uap)
 	if (uap->flags & OMAP_INHERIT)
 		flags |= MAP_INHERIT;
 
-	error = kern_mmap(uap->addr, uap->len, prot, flags, uap->fd, uap->pos,
-	    &uap->sysmsg_resultp);
+	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
+			  prot, flags, uap->fd, uap->pos,
+			  &uap->sysmsg_resultp);
 
 	return (error);
 }
