@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.33 2006/09/13 17:10:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.34 2006/09/17 21:09:40 dillon Exp $
  */
 
 /*
@@ -146,8 +146,8 @@ sys_sstk(struct sstk_args *uap)
  */
 
 int
-kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd, 
-    off_t upos, void **res)
+kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
+	  int uprot, int uflags, int fd, off_t upos, void **res)
 {
 	struct thread *td = curthread;
  	struct proc *p = td->td_proc;
@@ -160,7 +160,6 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 	int flags, error;
 	int disablexworkaround;
 	off_t pos;
-	struct vmspace *vms = p->p_vmspace;
 	vm_object_t obj;
 
 	KKASSERT(p);
@@ -400,8 +399,9 @@ sys_mmap(struct mmap_args *uap)
 {
 	int error;
 
-	error = kern_mmap(uap->addr, uap->len, uap->prot, uap->flags,
-	    uap->fd, uap->pos, &uap->sysmsg_resultp);
+	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
+			  uap->prot, uap->flags,
+			  uap->fd, uap->pos, &uap->sysmsg_resultp);
 
 	return (error);
 }
@@ -974,23 +974,23 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	boolean_t fitit;
 	vm_object_t object;
 	struct vnode *vp = NULL;
+	struct proc *p;
 	objtype_t type;
 	int rv = KERN_SUCCESS;
 	off_t objsize;
 	int docow;
-	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p);
 
 	if (size == 0)
 		return (0);
 
 	objsize = size = round_page(size);
 
-	if (p->p_vmspace->vm_map.size + size >
-	    p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
-		return(ENOMEM);
+	/*
+	 * XXX messy code, fixme
+	 */
+	if ((p = curproc) != NULL && map == &p->p_vmspace->vm_map) {
+		if (map->size + size > p->p_rlimit[RLIMIT_VMEM].rlim_cur)
+			return(ENOMEM);
 	}
 
 	/*

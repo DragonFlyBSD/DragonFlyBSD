@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.32 2006/06/13 21:04:17 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.33 2006/09/17 21:09:39 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -58,6 +58,7 @@ struct stat;
 struct statfs;
 struct timeval;
 struct uio;
+struct vmspace;
 struct vnode;
 struct file;
 struct ucred;
@@ -165,7 +166,7 @@ char *kern_getcwd(char *, size_t, int *);
 /*
  * Prototypes for syscalls in vm/vm_mmap.c
  */
-int kern_mmap(caddr_t addr, size_t len, int prot, int flags, int fd,
-	off_t pos, void **res);
+int kern_mmap(struct vmspace *, caddr_t addr, size_t len,
+	      int prot, int flags, int fd, off_t pos, void **res);
 
 #endif /* !_SYS_KERN_SYSCALL_H_ */

@@ -31,91 +31,249 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.1 2006/09/03 17:11:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.2 2006/09/17 21:09:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
+#include <sys/mman.h>
+#include <sys/proc.h>
+#include <sys/malloc.h>
+#include <sys/sysctl.h>
+#include <sys/vkernel.h>
+
+#include <vm/vm_extern.h>
+#include <vm/pmap.h>
+
+static struct vmspace_entry *vkernel_find_vmspace(struct vkernel *vk, void *id);
+
+static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
 
 /*
- * vmspace_ctl {void *id, void *ctx, int what }
+ * vmspace_create (void *id, int type, void *data)
  *
- * Create, destroy, or execute a VM space.  This functions returns when
- * the VM space has run for a specified period of time, a signal occurs,
- * or the VM space traps or makes a system call.
+ * Create a VMSPACE under the control of the caller with the specified id.
+ * An id of NULL cannot be used.  The type and data fields must currently
+ * be 0.
  *
- * Execution of a VM space is accomplished by swapping out the caller's
- * current VM space.  Any signal or condition applicable to the caller
- * will swap the caller's VM space back in for processing, then return
- * EINTR.  A trap, system call, or page fault in the VM space will swap
- * the caller's VM space back in, adjust the context, and return the
- * appropriate code.
+ * The vmspace starts out completely empty.  Memory may be mapped into the
+ * VMSPACE with vmspace_mmap() and MAP_VPAGETABLE section(s) controlled
+ * with vmspace_mcontrol().
+ */
+int
+sys_vmspace_create(struct vmspace_create_args *uap)
+{
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if (vkernel_enable == 0)
+		return (EOPNOTSUPP);
+
+	/*
+	 * Create a virtual kernel side-structure for the process if one
+	 * does not exist.
+	 */
+	if ((vk = curproc->p_vkernel) == NULL) {
+		vk = kmalloc(sizeof(*vk), M_VKERNEL, M_WAITOK|M_ZERO);
+		vk->vk_refs = 1;
+		RB_INIT(&vk->vk_root);
+		curproc->p_vkernel = vk;
+	}
+
+	/*
+	 * Create a new VMSPACE
+	 */
+	if (vkernel_find_vmspace(vk, uap->id))
+		return (EEXIST);
+	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
+	ve->vmspace = vmspace_alloc(VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
+	ve->id = uap->id;
+	pmap_pinit2(vmspace_pmap(ve->vmspace));
+	RB_INSERT(vmspace_rb_tree, &vk->vk_root, ve);
+	return (0);
+}
+
+/*
+ * vmspace_destroy (void *id)
  *
- * A virtual kernel manages multiple 'process' VM spaces this way, the
- * real kernel only sees only the processes representing the virtual kernel
- * itself, typically one per virtual cpu.
+ * Destroy a VMSPACE.
+ */
+int
+sys_vmspace_destroy(struct vmspace_destroy_args *uap)
+{
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	/* XXX check if active */
+	RB_REMOVE(vmspace_rb_tree, &vk->vk_root, ve);
+	vmspace_free(ve->vmspace);
+	kfree(ve, M_VKERNEL);
+	return(0);
+}
+
+/*
+ * vmspace_ctl (void *id, int cmd, void *ctx, int ctx_bytes, int timeout_us)
+ *
+ * Transfer control to a VMSPACE.  Control is returned after the specified
+ * number of microseconds or if a page fault, signal, trap, or system call
+ * occurs.
  */
 int
 sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 {
-	return (EINVAL);
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	return(EINVAL);
 }
 
 /*
- * vmspace_map { void *id, off_t offset, void *ptr, int bytes, int prot }
+ * vmspace_mmap(id, addr, len, prot, flags, fd, offset)
  *
- * Map pages backing the specified memory in the caller's context into
- * the specified VM space and reduce their protection using 'prot'.  A
- * protection value of 0 removes the page mapping.  Page mappings can be
- * removed by the kernel at any time and cause execution of the VM space
- * to return with VMSPACE_PAGEFAULT.
+ * map memory within a VMSPACE.  This function is just like a normal mmap()
+ * but operates on the vmspace's memory map.  Most callers use this to create
+ * a MAP_VPAGETABLE mapping.
  */
 int
-sys_vmspace_map(struct vmspace_map_args *uap)
+sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 {
-	return (EINVAL);
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	return(EINVAL);
 }
 
 /*
- * vmspace_protect { void *id, off_t offset, int bytes, int prot }
+ * vmspace_munmap(id, addr, len)
  *
- * Adjust the protection of mapped pages in the specified VM context.  Pages
- * that are not mapped or whos mapping was removed by the kernel are not
- * effected.
+ * unmap memory within a VMSPACE.
  */
 int
-sys_vmspace_protect(struct vmspace_protect_args *uap)
+sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 {
-	return (EINVAL);
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	return(EINVAL);
 }
 
 /*
- * vmspace_read { void *id, void *ptr, int bytes }
+ * vmspace_mcontrol(id, addr, len, behav, value)
  *
- * Read data from the VM space.  Only data in mapped pages can be read.  If
- * an unmapped page is encountered this function will return fewer then the
- * requested number of bytes and the caller must map the additional pages
- * before restarting the call.
+ * madvise/mcontrol support for a vmspace.
  */
 int
-sys_vmspace_read(struct vmspace_read_args *uap)
+sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 {
-	return (EINVAL);
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+	vm_offset_t start, end;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+
+	/*
+	 * This code is basically copied from sys_mcontrol()
+	 */
+	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END)
+		return (EINVAL);
+
+	if (VM_MAXUSER_ADDRESS > 0 &&
+		((vm_offset_t) uap->addr + uap->len) > VM_MAXUSER_ADDRESS)
+		return (EINVAL);
+#ifndef i386
+        if (VM_MIN_ADDRESS > 0 && uap->addr < VM_MIN_ADDRESS)
+		return (EINVAL);
+#endif
+	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
+		return (EINVAL);
+
+	start = trunc_page((vm_offset_t) uap->addr);
+	end = round_page((vm_offset_t) uap->addr + uap->len);
+
+	return (vm_map_madvise(&ve->vmspace->vm_map, start, end,
+				uap->behav, uap->value));
 }
 
 /*
- * vmspace_write { void *id, const void *ptr, int bytes }
- *
- * Write data to the VM space.  Only mapped, writable pages can be written.
- * If an unmapped or read-only page is encountered this function will return
- * fewer then the requested number of bytes and the caller must map the
- * additional pages before restarting the call.
+ * Red black tree functions
  */
-int
-sys_vmspace_write(struct vmspace_write_args *uap)
+static int rb_vmspace_compare(struct vmspace_entry *, struct vmspace_entry *);
+RB_GENERATE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
+   
+/* a->start is address, and the only field has to be initialized */
+static int
+rb_vmspace_compare(struct vmspace_entry *a, struct vmspace_entry *b)
 {
-	return (EINVAL);
+        if ((char *)a->id < (char *)b->id)
+                return(-1);
+        else if ((char *)a->id > (char *)b->id)
+                return(1);
+        return(0);
+}
+
+static
+int
+rb_vmspace_delete(struct vmspace_entry *ve, void *data)
+{
+	struct vkernel *vk = data;
+
+	RB_REMOVE(vmspace_rb_tree, &vk->vk_root, ve);
+	vmspace_free(ve->vmspace);
+	kfree(ve, M_VKERNEL);
+	return(0);
+}
+
+static
+struct vmspace_entry *
+vkernel_find_vmspace(struct vkernel *vk, void *id)
+{
+	struct vmspace_entry *ve;
+	struct vmspace_entry key;
+
+	key.id = id;
+	ve = RB_FIND(vmspace_rb_tree, &vk->vk_root, &key);
+	return (ve);
+}
+
+/*
+ * Manage vkernel refs, used by the kernel when fork()ing or exit()ing
+ * a vkernel process.
+ */
+void
+vkernel_hold(struct vkernel *vk)
+{
+	++vk->vk_refs;
+}
+
+void
+vkernel_drop(struct vkernel *vk)
+{
+	KKASSERT(vk->vk_refs > 0);
+	if (--vk->vk_refs == 0) {
+		RB_SCAN(vmspace_rb_tree, &vk->vk_root, NULL,
+			rb_vmspace_delete, vk);
+		kfree(vk, M_VKERNEL);
+	}
 }
 

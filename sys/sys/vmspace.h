@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vmspace.h,v 1.1 2006/09/03 17:11:50 dillon Exp $
+ * $DragonFly: src/sys/sys/vmspace.h,v 1.2 2006/09/17 21:09:39 dillon Exp $
  */
 /*
  * VMSPACE - Virtualized Environment control from user mode.  The VMSPACE
@@ -46,9 +46,10 @@
 #include <sys/types.h>
 #endif
 
-#define VMSPACE_CTL_CREATE	1
-#define VMSPACE_CTL_DESTROY	2
-#define VMSPACE_CTL_RUN		3
+#define VMSPACE_CTL_VKERNEL	1
+#define VMSPACE_CTL_CREATE	2
+#define VMSPACE_CTL_DESTROY	3
+#define VMSPACE_CTL_RUN		4
 
 #define VMSPACE_PAGEFAULT	1
 #define VMSPACE_TIMEOUT		2

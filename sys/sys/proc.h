@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.83 2006/08/27 12:54:59 davidxu Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.84 2006/09/17 21:09:39 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -132,6 +132,7 @@ struct	pargs {
  */
 
 struct jail;
+struct vkernel;
 struct ktrace_node;
 
 struct lwp {
@@ -218,7 +219,7 @@ struct	proc {
 
 	pid_t		p_oppid;	/* Save parent pid during ptrace. XXX */
 
-	struct vmspace	*p_vmspace;	/* Address space. */
+	struct vmspace	*p_vmspace;	/* Current address space. */
 
 #define p_cpticks p_lwp.lwp_cpticks
 #define p_cpbase p_lwp.lwp_cpbase
@@ -293,6 +294,7 @@ struct	proc {
 	void		*p_emuldata;	/* process-specific emulator state */
 #define p_thread p_lwp.lwp_thread
 	struct usched	*p_usched;	/* Userland scheduling control */
+	struct vkernel	*p_vkernel;	/* Virtual kernel extension */
 	int		p_numposixlocks; /* number of POSIX locks */
 
 	struct lwp	p_lwp;		/* Embedded lwp XXX */

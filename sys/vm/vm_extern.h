@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.17 2006/09/12 18:41:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.18 2006/09/17 21:09:40 dillon Exp $
  */
 
 #ifndef _VM_VM_EXTERN_H_
@@ -53,6 +53,7 @@ struct proc;
 struct vmspace;
 struct vmtotal;
 struct mount;
+struct vmspace;
 struct vnode;
 
 #ifdef _KERNEL
