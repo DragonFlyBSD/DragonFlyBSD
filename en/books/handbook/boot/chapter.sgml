@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/boot/chapter.sgml,v 1.64 2006/02/17 17:17:17 marck Exp $
-     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.4 2006/03/09 04:42:28 justin Exp $
+     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.5 2006/09/17 18:45:52 victor Exp $
 -->
 
 <chapter id="boot">
@@ -38,10 +38,6 @@
       <listitem>
 	<para>The options you can give to the components in the &os;
 	  bootstrap to control the boot process.</para>
-      </listitem>
-      
-      <listitem>
-        <para>The basics of &man.device.hints.5;.</para>
       </listitem>
     </itemizedlist>
 
@@ -96,7 +92,7 @@
       case the boot manager usually has more code in the first
       <emphasis>track</emphasis> of the disk or within some OS's file system.
       (A  boot manager is sometimes also called a <emphasis>boot
-      loader</emphasis>, but FreeBSD uses that term for a later stage of
+      loader</emphasis>, but &os; uses that term for a later stage of
       booting.) Popular boot managers include <application>boot0</application>
       (a.k.a. <application>Boot Easy</application>, the standard &os; boot
       manager), <application>Grub</application>,
@@ -153,7 +149,7 @@
       <application>boot0</application> and <application>LILO</application>.</para>
 
     <formalpara><title>The <application>boot0</application> Boot Manager:</title>
-      <para>The MBR installed by FreeBSD's installer or &man.boot0cfg.8;, by
+      <para>The MBR installed by &os;'s installer or &man.boot0cfg.8;, by
         default, is based on <filename>/boot/boot0</filename>.
         (The <application>boot0</application> program is very simple, since the
         program in the <abbrev>MBR</abbrev> can only be 446 bytes long because of the slice
@@ -165,9 +161,8 @@
       <example id="boot-boot0-example">
 	<title><filename>boot0</filename> Screenshot</title>
 
-	<!-- todo: reed: what should be here? -->
 	<screen>F1 DOS
-F2 FreeBSD
+F2 DF/FBSD
 F3 Linux
 F4 ??
 F5 Drive 1
@@ -299,6 +294,7 @@ boot:</screen>
       <indexterm><primary>loader</primary></indexterm>
       <indexterm><primary>loader configuration</primary></indexterm>
 
+      <!-- XXX talk about the boot menu -->
       <para>The loader will then read
 	<filename>/boot/loader.rc</filename>, which by default reads
 	in <filename>/boot/defaults/loader.conf</filename> which
@@ -308,12 +304,14 @@ boot:</screen>
 	on these variables, loading whichever modules and kernel are
 	selected.</para>
 
-      <para>Finally, by default, the loader issues a 10 second wait
-	for key presses, and boots the kernel if it is not interrupted.
-	If interrupted, the user is presented with a prompt which
-	understands the easy-to-use command set, where the user may
-	adjust variables, unload all modules, load modules, and then
-	finally boot or reboot.</para>
+      <para>Finally, by default, the loader will show you the booting
+        menu where you can select different options. This menu issues
+	a 10 second wait for key presses, and boots the kernel if it
+	is not interrupted.  If the user selects
+	<option>"Escape to loader prompt"</option>, the user is presented
+	with a prompt which understands the easy-to-use command set,
+	where the user may adjust variables, unload all modules,
+	load modules, and then finally boot or reboot.</para>
 
     </sect3>
     
@@ -469,9 +467,7 @@ boot:</screen>
 	<indexterm><primary>single-user mode</primary></indexterm>
 	<listitem>
 	  <para>To simply boot your usual kernel, but in single-user
-	    mode:</para>
-
-	  <screen><userinput>boot -s</userinput></screen>
+	    mode you can select the <option>"Boot DragonFly in single user mode"</option>.</para>
 	</listitem>
 
 	<listitem>
@@ -484,9 +480,7 @@ boot:</screen>
 	  <screen><userinput>unload</userinput>
 <userinput>load <replaceable>kernel.old</replaceable></userinput></screen>
 
-	  <para>You can use <filename>kernel.GENERIC</filename> to
-	    refer to the generic kernel that comes on the install
-	    disk, or <filename>kernel.old</filename> to refer to
+	  <para>You can use <filename>kernel.old</filename> to refer to
 	    your previously installed kernel (when you have upgraded
 	    or configured your own kernel, for example).</para>
 
@@ -615,10 +609,12 @@ boot:</screen>
       
       <para>This mode can be reached through the <link
 	  linkend="boot-autoreboot">automatic reboot
-	  sequence</link>, or by the user booting with the
-	<option>-s</option> option or setting the
-	<envar>boot_single</envar> variable in
-	<command>loader</command>.</para>
+	  sequence</link>, with the
+          <option>"Boot DragonFly in single user mode"</option>
+          menu option, by the user booting with the
+	  <option>-s</option> option from the loader prompt or setting the
+	  <envar>boot_single</envar> variable in
+	  <command>loader</command>.</para>
 
       <para>It can also be reached by calling
 	&man.shutdown.8; without the reboot
