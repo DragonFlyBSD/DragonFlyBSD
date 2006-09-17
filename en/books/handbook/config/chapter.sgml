@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.169 2004/08/27 12:04:24 blackend Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.12 2006/07/18 02:02:17 justin Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.13 2006/09/17 19:00:04 victor Exp $
 -->
 
 <chapter id="config-tuning">
@@ -289,36 +289,29 @@
       system, so that they may be easily located and managed by the
       package management tools.</para>
 
-    <indexterm><primary>/usr/local/etc</primary></indexterm>
+    <indexterm><primary>/usr/pkg/etc</primary></indexterm>
 
     <para>Typically, these files are installed in
-      <filename>/usr/local/etc</filename>.  In the case where an
+      <filename>/usr/pkg/etc</filename>.  In the case where an
       application has a large number of configuration files, a
       subdirectory will be created to hold them.</para>
 
     <para>Normally, when a port or package is installed, sample
-      configuration files are also installed.  These are usually
-      identified with a <filename>.default</filename> suffix.  If there
-      are no existing
-      configuration files for the application, they will be created by
-      copying the <filename>.default</filename> files.</para>
+      configuration files are also installed.  These are usually in
+      /usr/pkg/share/examples/<replaceable>PACKAGENAME</replaceable>.  If
+      there are no existing configuration files for the application,
+      they will be created by copying the <filename>.default</filename>
+      files.</para>
 
     <para>For example, consider the contents of the directory
-    <filename>/usr/local/etc/apache</filename>:</para>
+    <filename>/usr/pkg/etc/httpd</filename>:</para>
 
-<literallayout class="monospaced">-rw-r--r--  1 root  wheel   2184 May 20  1998 access.conf
--rw-r--r--  1 root  wheel   2184 May 20  1998 access.conf.default
--rw-r--r--  1 root  wheel   9555 May 20  1998 httpd.conf
--rw-r--r--  1 root  wheel   9555 May 20  1998 httpd.conf.default
--rw-r--r--  1 root  wheel  12205 May 20  1998 magic
--rw-r--r--  1 root  wheel  12205 May 20  1998 magic.default
--rw-r--r--  1 root  wheel   2700 May 20  1998 mime.types
--rw-r--r--  1 root  wheel   2700 May 20  1998 mime.types.default
--rw-r--r--  1 root  wheel   7980 May 20  1998 srm.conf
--rw-r--r--  1 root  wheel   7933 May 20  1998 srm.conf.default</literallayout>
+<literallayout class="monospaced">-rw-r--r--  1 root  wheel  43570 Aug 20 15:26 httpd.conf
+-rw-r--r--  1 root  wheel  12965 Aug 20 15:26 magic
+-rw-r--r--  1 root  wheel  15020 Aug 20 15:26 mime.types</literallayout>
 
-    <para>The file sizes show that only the <filename>srm.conf</filename>
-      file has been changed.  A later update of the <application>Apache</application> port would not
+    <para>If you modify any file, for example <filename>httpd.conf</filename>
+      a later update of the <application>Apache</application> port would not
       overwrite this changed file.</para>
 
   </sect1>
@@ -332,11 +325,11 @@
       These may be started in several different fashions, each having
       different advantages.</para>
 
-    <indexterm><primary>/usr/local/etc/rc.d</primary></indexterm>
+    <indexterm><primary>/usr/pkg/etc/rc.d</primary></indexterm>
 
     <para>Software installed from a port or the packages collection
       will often place a script in
-      <filename>/usr/local/etc/rc.d</filename> which is invoked at
+      <filename>/usr/pkg/etc/rc.d</filename> which is invoked at
       system startup with a <option>start</option> argument, and at
       system shutdown with a <option>stop</option> argument.
       This is the recommended way for
@@ -348,14 +341,14 @@
       when the package is removed.</para>
 
     <para>A generic startup script in
-      <filename>/usr/local/etc/rc.d</filename> looks like:</para>
+      <filename>/usr/pkg/etc/rc.d</filename> looks like:</para>
 
     <programlisting>#!/bin/sh
 echo -n ' FooBar'
 
 case "$1" in
 start)
-        /usr/local/bin/foobar
+        /usr/pkg/bin/foobar
         ;;
 stop)
         kill -9 `cat /var/run/foobar.pid`
@@ -370,7 +363,7 @@ exit 0
     </programlisting>
 
     <para>The startup scripts of &os; will look in
-      <filename>/usr/local/etc/rc.d</filename> for scripts that have an
+      <filename>/usr/pkg/etc/rc.d</filename> for scripts that have an
       <literal>.sh</literal> extension and are executable by
       <username>root</username>.  Those scripts that are found are called with
       an option <option>start</option> at startup, and <option>stop</option>
@@ -378,7 +371,7 @@ exit 0
       the above sample script to be picked up and run at the proper time during
       system startup, you should save it to a file called
       <filename>FooBar.sh</filename> in
-      <filename>/usr/local/etc/rc.d</filename> and make sure it is
+      <filename>/usr/pkg/etc/rc.d</filename> and make sure it is
       executable.  You can make a shell script executable with &man.chmod.1;
       as shown below:</para>
 
@@ -401,7 +394,7 @@ exit 0
     <note><para>Do <emphasis>not</emphasis> place any commands in
       <filename>/etc/rc.conf</filename>.  To start daemons, or
       run any commands at boot time, place a script in
-      <filename>/usr/local/etc/rc.d</filename> instead.</para>
+      <filename>/usr/pkg/etc/rc.d</filename> instead.</para>
     </note>
 
     <para>It is also possible to use the &man.cron.8; daemon to start
@@ -967,7 +960,7 @@ tun0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500</screen>
 </screen>
       
       
-      <para>Manually configuring the care has the disadvantage that you 
+      <para>Manually configuring the card has the disadvantage that you 
         would have to do it after each reboot of the system.  The file
 	<filename>/etc/rc.conf</filename> is where to add the network
 	card's configuration.</para>
@@ -1231,12 +1224,12 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
                 here.</entry>
 	    </row>
 	    <row>
-	      <entry><filename>/usr/local/etc</filename></entry>
+	      <entry><filename>/usr/pkg/etc</filename></entry>
 	      <entry>Configuration files for installed applications.
 		May contain per-application subdirectories.</entry>
 	    </row>
 	    <row>
-	      <entry><filename>/usr/local/etc/rc.d</filename></entry>
+	      <entry><filename>/usr/pkg/etc/rc.d</filename></entry>
 	      <entry>Start/stop scripts for installed applications.</entry>
 	    </row>
 	    <row>
@@ -1484,9 +1477,8 @@ cron.*                                          /var/log/cron
 	running under &os;:</para>
 
       <programlisting>kern.logsigexit=0       # Do not log fatal signal exits (e.g. sig 11)
-compat.linux.osname=&os;
-<!-- todo: reed: check this -->
-compat.linux.osrelease=4.3-STABLE</programlisting>
+compat.linux.osname: Linux
+compat.linux.osrelease: 2.4.2</programlisting>
     </sect2>
   </sect1>
 
@@ -1577,35 +1569,6 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 
     <sect2>
       <title>Sysctl Variables</title>
-
-      <sect3>
-	<title><varname>vfs.vmiodirenable</varname></title>
-
-	<indexterm>
-	  <primary><varname>vfs.vmiodirenable</varname></primary>
-	</indexterm>
-
-	<para>The <varname>vfs.vmiodirenable</varname> sysctl variable
-	  may be set to either 0 (off) or 1 (on); it is 1 by default.
-	  This variable controls how directories are cached by the
-	  system.  Most directories are small, using just a single
-	  fragment (typically 1&nbsp;K) in the file system and less
-	  (typically 512&nbsp;bytes) in the buffer cache.
-	  With this variable turned off (to 0), the buffer
-	  cache will only cache a fixed number of directories even if
-	  ou have a huge amount of memory.  When turned on (to 1), this sysctl
-	  allows the buffer cache to use the VM Page Cache to cache the
-	  directories, making all the memory available for caching
-	  directories.  However,
-	  the minimum in-core memory used to cache a directory is the
-	  physical page size (typically 4&nbsp;K) rather than 512&nbsp;
-	  bytes.  We recommend keeping this option on if you are running
-	  any services which manipulate large numbers of files.  Such
-	  services can include web caches, large mail systems, and news
-	  systems.  Keeping this option on will generally not reduce
-	  performance even with the wasted memory but you should
-	  experiment to find out.</para>
-      </sect3>
 
      <sect3>
  	<title><varname>vfs.write_behind</varname></title>
@@ -1724,7 +1687,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 
       <para>Soft Updates drastically improves meta-data performance, mainly
         file creation and deletion, through the use of a memory cache.  We
-        recommend to use Soft Updates on all of your file systems.  There
+        recommend to use Soft Updates on all of your file systems but
+	<filename>/</filename>.  There
         are two downsides to Soft Updates that you should be aware of:  First,
         Soft Updates guarantees filesystem consistency in the case of a crash
         but could very easily be several seconds (even a minute!) behind
