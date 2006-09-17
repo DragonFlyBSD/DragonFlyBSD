@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.10 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.11 2006/09/17 21:10:18 dillon Exp $
  */
 
 /*
@@ -2362,11 +2362,11 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	snap = 0;
 	error = -1;	/* Default error if not error == 0 */
 
-	/* we may return with the IP fields swapped, ensure its not shared */
-	KASSERT(M_WRITABLE(*mp), ("%s: modifying a shared mbuf", __func__));
-
 	if (pfil_bridge == 0 && pfil_member == 0)
 		return (0); /* filtering is disabled */
+
+	/* we may return with the IP fields swapped, ensure its not shared */
+	KASSERT(M_WRITABLE(*mp), ("%s: modifying a shared mbuf", __func__));
 
 	i = min((*mp)->m_pkthdr.len, max_protohdr);
 	if ((*mp)->m_len < i) {
