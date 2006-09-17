@@ -1,4 +1,4 @@
-$DragonFly: src/lib/libisc/Attic/dns,resolver.c.patch,v 1.1.2.1 2006/09/07 10:06:05 corecode Exp $
+$DragonFly: src/lib/libisc/Attic/resolver.c.patch,v 1.1.2.1 2006/09/17 15:03:10 corecode Exp $
 diff -ruN bind-9.2.6/lib/dns/resolver.c bind-9.2.6-P1/lib/dns/resolver.c
 --- bind-9.2.6/lib/dns/resolver.c	2005-07-05 01:19:17.000000000 +0200
 +++ bind-9.2.6-P1/lib/dns/resolver.c	2006-08-17 09:24:37.000000000 +0200

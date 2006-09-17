@@ -1,9 +1,9 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.7.2.1 2006/09/07 10:06:05 corecode Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.7.2.2 2006/09/17 15:03:10 corecode Exp $
 
 BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 
-CONTRIBDIR=	${BIND_DIR}/lib
+CONTRIBDIR=	${BIND_DIR}/lib/dns
 
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 .include "${BIND_DIR}/lib/isc/api"
@@ -70,7 +70,7 @@ SRCS+=		lwres/context.c lwres/gai_strerror.c lwres/getaddrinfo.c \
 		lwres/lwres_noop.c lwres/lwinetaton.c lwres/lwinetpton.c \
 		lwres/lwinetntop.c
 
-SRCS+=		dns,resolver.c.patch
+SRCS+=		resolver.c.patch
 
 # contrib/bind/include/* must not override any real system includes
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named
