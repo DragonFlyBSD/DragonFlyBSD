@@ -1,0 +1,13 @@
+$DragonFly: src/usr.bin/tar/patches/Attic/bsdtar_platform.h.patch,v 1.1 2006/09/18 01:47:10 pavalos Exp $
+
+--- bsdtar_platform.h.orig	2006-09-17 12:41:40.000000000 -0700
++++ bsdtar_platform.h	2006-09-17 12:42:02.000000000 -0700
+@@ -36,7 +36,7 @@
+ #define	BSDTAR_PLATFORM_H_INCLUDED
+ 
+ #if HAVE_CONFIG_H
+-#include "../config.h"
++#include "config.h"
+ #else
+ 
+ #ifdef __FreeBSD__

@@ -1,20 +1,18 @@
-# $DragonFly: src/lib/libarchive/Makefile,v 1.4 2005/08/05 23:43:19 swildner Exp $
+# $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.5 2006/09/18 01:47:10 pavalos Exp $
 
 LIB=	archive
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-1.3.1/libarchive
 .PATH: ${CONTRIBDIR}
 
-VERSION=	1.01.015
-ARCHIVE_API_FEATURE=	2
-ARCHIVE_API_VERSION=	1
-SHLIB_MAJOR=	2
-CFLAGS+=	-DPACKAGE_NAME=\"lib${LIB}\"
-CFLAGS+=	-DPACKAGE_VERSION=\"${VERSION}\"
+VERSION= 1.3.1
+ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/\..*//'
+ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[0-9]*\.//' | sed -e 's/\..*//'
+SHLIB_MAJOR!= echo $$((${ARCHIVE_API_MAJOR} + ${ARCHIVE_API_MINOR}))
 CFLAGS+=	-DHAVE_CONFIG_H
-
-CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
+CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I-
 WARNS?=	6
 
 INCS=	archive.h archive_entry.h
@@ -29,6 +27,8 @@ SRCS=	archive.h					\
 	archive_read_extract.c				\
 	archive_read_open_fd.c				\
 	archive_read_open_file.c			\
+	archive_read_open_filename.c			\
+	archive_read_open_memory.c			\
 	archive_read_support_compression_all.c		\
 	archive_read_support_compression_bzip2.c	\
 	archive_read_support_compression_compress.c	\
@@ -45,6 +45,8 @@ SRCS=	archive.h					\
 	archive_write.c					\
 	archive_write_open_fd.c				\
 	archive_write_open_file.c			\
+	archive_write_open_filename.c			\
+	archive_write_open_memory.c			\
 	archive_write_set_compression_bzip2.c		\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
@@ -133,8 +135,11 @@ MLINKS+=	archive_read.3 archive_read_finish.3
 MLINKS+=	archive_read.3 archive_read_new.3
 MLINKS+=	archive_read.3 archive_read_next_header.3
 MLINKS+=	archive_read.3 archive_read_open.3
+MLINKS+=	archive_read.3 archive_read_open2.3
+MLINKS+=	archive_read.3 archive_read_open_FILE.3
 MLINKS+=	archive_read.3 archive_read_open_fd.3
-MLINKS+=	archive_read.3 archive_read_open_file.3
+MLINKS+=	archive_read.3 archive_read_open_filename.3
+MLINKS+=	archive_read.3 archive_read_open_memory.3
 MLINKS+=	archive_read.3 archive_read_set_bytes_per_block.3
 MLINKS+=	archive_read.3 archive_read_support_compression_all.3
 MLINKS+=	archive_read.3 archive_read_support_compression_bzip2.3
@@ -159,8 +164,8 @@ MLINKS+=	archive_write.3 archive_write_finish.3
 MLINKS+=	archive_write.3 archive_write_header.3
 MLINKS+=	archive_write.3 archive_write_new.3
 MLINKS+=	archive_write.3 archive_write_open.3
+MLINKS+=	archive_write.3 archive_write_open_FILE.3
 MLINKS+=	archive_write.3 archive_write_open_fd.3
-MLINKS+=	archive_write.3 archive_write_open_file.3
 MLINKS+=	archive_write.3 archive_write_prepare.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_per_block.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_in_last_block.3
@@ -178,8 +183,11 @@ MLINKS+=	libarchive.3 archive.3
 # Build archive.h from archive.h.in
 archive.h:	archive.h.in Makefile
 	cat ${CONTRIBDIR}/archive.h.in |				\
-		sed 's/@ARCHIVE_API_VERSION@/${ARCHIVE_API_VERSION}/' |	\
-		sed 's/@ARCHIVE_API_FEATURE@/${ARCHIVE_API_FEATURE}/' |	\
+		sed 's/@VERSION@/${VERSION}/g' | 			\
+		sed 's/@SHLIB_MAJOR@/${SHLIB_MAJOR}/g' |		\
+		sed 's/@ARCHIVE_API_MAJOR@/${ARCHIVE_API_MAJOR}/g' |	\
+		sed 's/@ARCHIVE_API_MINOR@/${ARCHIVE_API_MINOR}/g' |	\
+		sed 's|@ARCHIVE_H_INCLUDE_INTTYPES_H@|#include <inttypes.h>  /* For int64_t */|g' |			\
 		cat > archive.h
 
 # archive.h needs to be cleaned
