@@ -5,3 +5,7 @@ MD5 (libarchive-1.3.1.tar.gz) = c618d26d680ace57fcd5f59cea3151c6
 SHA1 (libarchive-1.3.1.tar.gz) = aed6eda15b012adbb88af0f0d76887920ffe7bbf
 
 A list of deleted files is in README.DELETED.
+
+This source is used in:
+	lib/libarchive
+	usr.bin/tar
