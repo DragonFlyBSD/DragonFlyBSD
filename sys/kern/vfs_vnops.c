@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.47 2006/09/18 17:42:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.48 2006/09/18 18:19:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,6 @@
 #include <sys/ttycom.h>
 #include <sys/conf.h>
 #include <sys/syslog.h>
-
-static int ncp_writechk(struct namecache *ncp);
 
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
@@ -277,15 +275,17 @@ again:
 
 	/*
 	 * Setup the fp so VOP_OPEN can override it.  No descriptor has been
-	 * associated with the fp yet so we own it clean.  f_ncp inherits
-	 * nl_ncp .
+	 * associated with the fp yet so we own it clean.  
+	 *
+	 * f_ncp inherits nl_ncp.  This used to be necessary only for
+	 * directories but now we do it unconditionally so f*() ops
+	 * such as fchmod() can access the actual namespace that was
+	 * used to open the file.
 	 */
 	if (fp) {
-		if (vp->v_type == VDIR) {
-			fp->f_ncp = nd->nl_ncp;
-			nd->nl_ncp = NULL;
-			cache_unlock(fp->f_ncp);
-		}
+		fp->f_ncp = nd->nl_ncp;
+		nd->nl_ncp = NULL;
+		cache_unlock(fp->f_ncp);
 	}
 
 	/*
@@ -373,7 +373,6 @@ vn_writechk(struct vnode *vp, struct namecache *ncp)
  * used by the underlying vnode in the case of NULLFS, so a separate
  * check is needed.
  */
-static
 int
 ncp_writechk(struct namecache *ncp)
 {

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.103 2006/09/18 17:42:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.104 2006/09/18 18:19:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1504,6 +1504,8 @@ kern_mknod(struct nlookupdata *nd, int mode, int dev)
 	ncp = nd->nl_ncp;
 	if (ncp->nc_vp)
 		return (EEXIST);
+	if ((error = ncp_writechk(ncp)) != 0)
+		return (error);
 
 	VATTR_NULL(&vattr);
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
@@ -1576,6 +1578,8 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
 	ncp = nd->nl_ncp;
 	if (ncp->nc_vp)
 		return (EEXIST);
+	if ((error = ncp_writechk(ncp)) != 0)
+		return (error);
 
 	VATTR_NULL(&vattr);
 	vattr.va_type = VFIFO;
@@ -1675,6 +1679,8 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	KKASSERT(vp != NULL);
 	if (vp->v_type == VDIR)
 		return (EPERM);		/* POSIX */
+	if ((error = ncp_writechk(nd->nl_ncp)) != 0)
+		return (error);
 	if ((error = vget(vp, LK_EXCLUSIVE)) != 0)
 		return (error);
 
@@ -1744,7 +1750,8 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
 	ncp = nd->nl_ncp;
 	if (ncp->nc_vp)
 		return (EEXIST);
-
+	if ((error = ncp_writechk(ncp)) != 0)
+		return (error);
 	VATTR_NULL(&vattr);
 	vattr.va_mode = mode;
 	error = VOP_NSYMLINK(ncp, &vp, nd->nl_cred, &vattr, path);
@@ -1799,6 +1806,8 @@ sys_undelete(struct undelete_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
+		error = ncp_writechk(nd.nl_ncp);
+	if (error == 0)
 		error = VOP_NWHITEOUT(nd.nl_ncp, nd.nl_cred, NAMEI_DELETE);
 	nlookup_done(&nd);
 	return (error);
@@ -1815,6 +1824,8 @@ kern_unlink(struct nlookupdata *nd)
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	ncp = nd->nl_ncp;
+	if ((error = ncp_writechk(ncp)) != 0)
+		return (error);
 	error = VOP_NREMOVE(ncp, nd->nl_cred);
 	return (error);
 }
@@ -2170,6 +2181,8 @@ sys_chflags(struct chflags_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
+		error = ncp_writechk(nd.nl_ncp);
+	if (error == 0)
 		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
@@ -2195,7 +2208,10 @@ sys_fchflags(struct fchflags_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	error = setfflags((struct vnode *) fp->f_data, uap->flags);
+	if (fp->f_ncp)
+		error = ncp_writechk(fp->f_ncp);
+	if (error == 0)
+		error = setfflags((struct vnode *) fp->f_data, uap->flags);
 	fdrop(fp);
 	return (error);
 }
@@ -2232,7 +2248,8 @@ kern_chmod(struct nlookupdata *nd, int mode)
 		return (error);
 	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
 		return (error);
-	error = setfmode(vp, mode);
+	if ((error = ncp_writechk(nd->nl_ncp)) == 0)
+		error = setfmode(vp, mode);
 	vrele(vp);
 	return (error);
 }
@@ -2291,7 +2308,10 @@ sys_fchmod(struct fchmod_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	error = setfmode((struct vnode *)fp->f_data, uap->mode);
+	if (fp->f_ncp)
+		error = ncp_writechk(fp->f_ncp);
+	if (error == 0)
+		error = setfmode((struct vnode *)fp->f_data, uap->mode);
 	fdrop(fp);
 	return (error);
 }
@@ -2329,7 +2349,8 @@ kern_chown(struct nlookupdata *nd, int uid, int gid)
 		return (error);
 	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
 		return (error);
-	error = setfown(vp, uid, gid);
+	if ((error = ncp_writechk(nd->nl_ncp)) == 0)
+		error = setfown(vp, uid, gid);
 	vrele(vp);
 	return (error);
 }
@@ -2386,7 +2407,10 @@ sys_fchown(struct fchown_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	error = setfown((struct vnode *)fp->f_data, uap->uid, uap->gid);
+	if (fp->f_ncp)
+		error = ncp_writechk(fp->f_ncp);
+	if (error == 0)
+		error = setfown((struct vnode *)fp->f_data, uap->uid, uap->gid);
 	fdrop(fp);
 	return (error);
 }
@@ -2442,6 +2466,8 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 		return (error);
 	/* XXX Add NLC flag indicating modifying operation? */
 	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if ((error = ncp_writechk(nd->nl_ncp)) != 0)
 		return (error);
 	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
 		return (error);
@@ -2512,7 +2538,10 @@ kern_futimes(int fd, struct timeval *tptr)
 		return (error);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
-	error =  setutimes((struct vnode *)fp->f_data, ts, tptr == NULL);
+	if (fp->f_ncp)
+		error = ncp_writechk(fp->f_ncp);
+	if (error == 0)
+		error =  setutimes((struct vnode *)fp->f_data, ts, tptr == NULL);
 	fdrop(fp);
 	return (error);
 }
@@ -2550,6 +2579,8 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		return(EINVAL);
 	/* XXX Add NLC flag indicating modifying operation? */
 	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if ((error = ncp_writechk(nd->nl_ncp)) != 0)
 		return (error);
 	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
 		return (error);
@@ -2601,6 +2632,11 @@ kern_ftruncate(int fd, off_t length)
 		return(EINVAL);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
+	if (fp->f_ncp) {
+		error = ncp_writechk(fp->f_ncp);
+		if (error)
+			goto done;
+	}
 	if ((fp->f_flag & FWRITE) == 0) {
 		error = EINVAL;
 		goto done;
@@ -2761,6 +2797,15 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	}
 
 	/*
+	 * Make sure the mount point is writable
+	 */
+	if ((error = ncp_writechk(tond->nl_ncp)) != 0) {
+		cache_drop(fncpd);
+		cache_drop(tncpd);
+		return (error);
+	}
+
+	/*
 	 * If the target exists and either the source or target is a directory,
 	 * then both must be directories.
 	 *
@@ -2853,6 +2898,8 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 	ncp = nd->nl_ncp;
 	if (ncp->nc_vp)
 		return (EEXIST);
+	if ((error = ncp_writechk(ncp)) != 0)
+		return (error);
 
 	VATTR_NULL(&vattr);
 	vattr.va_type = VDIR;
@@ -2893,6 +2940,8 @@ kern_rmdir(struct nlookupdata *nd)
 	bwillwrite();
 	nd->nl_flags |= NLC_DELETE;
 	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if ((error = ncp_writechk(nd->nl_ncp)) != 0)
 		return (error);
 
 	ncp = nd->nl_ncp;
@@ -3448,6 +3497,8 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
+		error = ncp_writechk(nd.nl_ncp);
+	if (error == 0)
 		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error) {
 		nlookup_done(&nd);
@@ -3592,6 +3643,8 @@ sys_extattr_delete_file(struct extattr_delete_file_args *uap)
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
+	if (error == 0)
+		error = ncp_writechk(nd.nl_ncp);
 	if (error == 0)
 		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error) {
