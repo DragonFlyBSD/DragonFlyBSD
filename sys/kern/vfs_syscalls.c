@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.102 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.103 2006/09/18 17:42:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1916,7 +1916,8 @@ retry:
 			flags |= VWRITE;
 		if (aflags & X_OK)
 			flags |= VEXEC;
-		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
+		if ((flags & VWRITE) == 0 || 
+		    (error = vn_writechk(vp, nd->nl_ncp)) == 0)
 			error = VOP_ACCESS(vp, flags, nd->nl_cred);
 
 		/*
@@ -2558,7 +2559,7 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	}
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	} else if ((error = vn_writechk(vp)) == 0 &&
+	} else if ((error = vn_writechk(vp, nd->nl_ncp)) == 0 &&
 	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
@@ -2608,7 +2609,7 @@ kern_ftruncate(int fd, off_t length)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	} else if ((error = vn_writechk(vp)) == 0) {
+	} else if ((error = vn_writechk(vp, NULL)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
@@ -3190,7 +3191,7 @@ sys_fhopen(struct fhopen_args *uap)
 			error = EISDIR;
 			goto bad;
 		}
-		error = vn_writechk(vp);
+		error = vn_writechk(vp, NULL);
 		if (error)
 			goto bad;
 		mode |= VWRITE;

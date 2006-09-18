@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.46 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.47 2006/09/18 17:42:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,8 @@
 #include <sys/ttycom.h>
 #include <sys/conf.h>
 #include <sys/syslog.h>
+
+static int ncp_writechk(struct namecache *ncp);
 
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
@@ -176,6 +178,8 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 again:
 	if (fmode & O_CREAT) {
 		if (ncp->nc_vp == NULL) {
+			if ((error = ncp_writechk(ncp)) != 0)
+				return (error);
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
@@ -222,7 +226,7 @@ again:
 				error = EISDIR;
 				goto bad;
 			}
-			error = vn_writechk(vp);
+			error = vn_writechk(vp, ncp);
 			if (error) {
 				/*
 				 * Special stale handling, re-resolve the
@@ -338,13 +342,10 @@ bad:
 
 /*
  * Check for write permissions on the specified vnode.
- * Prototype text segments cannot be written.
  */
 int
-vn_writechk(vp)
-	struct vnode *vp;
+vn_writechk(struct vnode *vp, struct namecache *ncp)
 {
-
 	/*
 	 * If there's shared text associated with
 	 * the vnode, try to free it up once.  If
@@ -352,7 +353,33 @@ vn_writechk(vp)
 	 */
 	if (vp->v_flag & VTEXT)
 		return (ETXTBSY);
+
+	/*
+	 * If the vnode represents a regular file, check the mount
+	 * point via the ncp.  This may be a different mount point
+	 * then the one embedded in the vnode (e.g. nullfs).
+	 *
+	 * We can still write to non-regular files (e.g. devices)
+	 * via read-only mounts.
+	 */
+	if (ncp && vp->v_type == VREG)
+		return (ncp_writechk(ncp));
 	return (0);
+}
+
+/*
+ * Check whether the underlying mount is read-only.  The mount point 
+ * referenced by the namecache may be different from the mount point
+ * used by the underlying vnode in the case of NULLFS, so a separate
+ * check is needed.
+ */
+static
+int
+ncp_writechk(struct namecache *ncp)
+{
+	if (ncp->nc_mount && (ncp->nc_mount->mnt_flag & MNT_RDONLY))
+		return (EROFS);
+	return(0);
 }
 
 /*

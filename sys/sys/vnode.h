@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.68 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.69 2006/09/18 17:42:28 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -509,7 +509,7 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
-int	vn_writechk (struct vnode *vp);
+int	vn_writechk (struct vnode *vp, struct namecache *ncp);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.17 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.18 2006/09/18 17:42:27 dillon Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
 	    error = EISDIR;
 	    goto bad2;
 	}
-	error = vn_writechk(vp);
+	error = vn_writechk(vp, NULL);
 	if (error)
 	    goto bad2;
 	vmode |= VWRITE;
