@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.56 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.57 2006/09/19 16:06:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1537,10 +1537,6 @@ ufs_rmdir(struct vop_old_rmdir_args *ap)
 	if ((dp->i_flags & APPEND)
 	    || (ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))) {
 		error = EPERM;
-		goto out;
-	}
-	if (vp->v_mountedhere != 0) {
-		error = EINVAL;
 		goto out;
 	}
 	/*

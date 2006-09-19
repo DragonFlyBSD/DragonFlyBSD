@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.39 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.40 2006/09/19 16:06:14 dillon Exp $
  */
 
 /*
@@ -2182,7 +2182,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				error = ENOTDIR;
 			goto out;
 		}
-		if (tvp->v_type == VDIR && tvp->v_mountedhere) {
+		if (tvp->v_type == VDIR && (tond.nl_ncp->nc_flag & NCF_MOUNTPT)) {
 			if (v3)
 				error = EXDEV;
 			else
@@ -2190,7 +2190,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			goto out;
 		}
 	}
-	if (fvp->v_type == VDIR && fvp->v_mountedhere) {
+	if (fvp->v_type == VDIR && (fromnd.nl_ncp->nc_flag & NCF_MOUNTPT)) {
 		if (v3)
 			error = EXDEV;
 		else

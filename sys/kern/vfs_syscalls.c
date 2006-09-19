@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.104 2006/09/18 18:19:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.105 2006/09/19 16:06:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,6 +112,7 @@ sys_mount(struct mount_args *uap)
 	struct mount *mp;
 	struct vfsconf *vfsp;
 	int error, flag = 0, flag2 = 0;
+	int hasmount;
 	struct vattr va;
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
@@ -158,6 +159,12 @@ sys_mount(struct mount_args *uap)
 	ncp = nd.nl_ncp;
 	nd.nl_ncp = NULL;
 	nlookup_done(&nd);
+
+	if ((ncp->nc_flag & NCF_MOUNTEDHERE) && cache_findmount(ncp))
+		hasmount = 1;
+	else
+		hasmount = 0;
+
 
 	/*
 	 * now we have the locked ref'd ncp and unreferenced vnode.
@@ -206,8 +213,7 @@ sys_mount(struct mount_args *uap)
 			vput(vp);
 			return (EBUSY);
 		}
-		if ((vp->v_flag & VMOUNT) != 0 ||
-		    vp->v_mountedhere != NULL) {
+		if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
 			cache_drop(ncp);
 			vfs_unbusy(mp);
 			vput(vp);
@@ -279,8 +285,7 @@ sys_mount(struct mount_args *uap)
 			return (ENODEV);
 		}
 	}
-	if ((vp->v_flag & VMOUNT) != 0 ||
-	    vp->v_mountedhere != NULL) {
+	if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
 		cache_drop(ncp);
 		vput(vp);
 		return (EBUSY);
@@ -303,7 +308,6 @@ sys_mount(struct mount_args *uap)
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
-	mp->mnt_vnodecovered = vp;
 	mp->mnt_stat.f_owner = cred->cr_uid;
 	mp->mnt_iosize_max = DFLTPHYS;
 	vn_unlock(vp);
@@ -361,20 +365,18 @@ update:
 		nlc.nlc_namelen = 0;
 		mp->mnt_ncp = cache_nlookup(ncp, &nlc);
 		cache_setunresolved(mp->mnt_ncp);
-		mp->mnt_ncp->nc_flag |= NCF_MOUNTPT;
-		mp->mnt_ncp->nc_mount = mp;
+		cache_setmountpt(mp->mnt_ncp, mp);
 		cache_drop(ncp);
 		/* XXX get the root of the fs and cache_setvp(mnt_ncp...) */
 		vp->v_flag &= ~VMOUNT;
-		vp->v_mountedhere = mp;
 		mountlist_insert(mp, MNTINS_LAST);
 		checkdirs(vp, mp->mnt_ncp);
 		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
 		vn_unlock(vp);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp);
-		if ((error = VFS_START(mp, 0)) != 0)
-			vrele(vp);
+		error = VFS_START(mp, 0);
+		vrele(vp);
 	} else {
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
@@ -417,7 +419,7 @@ checkdirs(struct vnode *olddp, struct namecache *ncp)
 
 	if (olddp->v_usecount == 1)
 		return;
-	mp = olddp->v_mountedhere;
+	mp = ncp->nc_mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
 	cache_setvp(ncp, newdp);
@@ -541,7 +543,7 @@ sys_unmount(struct unmount_args *uap)
 	/*
 	 * Must be the root of the filesystem
 	 */
-	if (! (nd.nl_ncp->nc_flag & NCF_MOUNTPT)) {
+	if (!(nd.nl_ncp->nc_flag & NCF_MOUNTPT)) {
 		error = EINVAL;
 		goto out;
 	}
@@ -568,7 +570,6 @@ dounmount_interlock(struct mount *mp)
 int
 dounmount(struct mount *mp, int flags)
 {
-	struct vnode *coveredvp;
 	int error;
 	int async_flag;
 	int lflags;
@@ -635,12 +636,12 @@ dounmount(struct mount *mp, int flags)
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
 
-	if ((coveredvp = mp->mnt_vnodecovered) != NULLVP) {
-		coveredvp->v_mountedhere = NULL;
-		vrele(coveredvp);
+	if (mp->mnt_ncp) {
+		cache_clrmountpt(mp->mnt_ncp);
 		cache_drop(mp->mnt_ncp);
 		mp->mnt_ncp = NULL;
 	}
+
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
@@ -1099,7 +1100,15 @@ sys_fchdir(struct fchdir_args *uap)
 		return (error);
 	}
 	ncp = cache_hold(fp->f_ncp);
-	while (!error && (mp = vp->v_mountedhere) != NULL) {
+
+	/*
+	 * If the ncp has become a mount point, traverse through
+	 * the mount point.
+	 */
+
+	while (!error && (ncp->nc_flag & NCF_MOUNTEDHERE) &&
+	       (mp = cache_findmount(ncp)) != NULL
+	) {
 		error = nlookup_mp(mp, &nct);
 		if (error == 0) {
 			cache_unlock(nct);	/* leave ref intact */
@@ -2753,6 +2762,17 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	}
 
 	/*
+	 * Mount points cannot be renamed or overwritten
+	 */
+	if ((fromnd->nl_ncp->nc_flag | tond->nl_ncp->nc_flag) &
+	    (NCF_MOUNTPT|NCF_MOUNTEDHERE)
+	) {
+		cache_drop(fncpd);
+		cache_drop(tncpd);
+		return (EINVAL);
+	}
+
+	/*
 	 * relock the source ncp.  NOTE AFTER RELOCKING: the source ncp
 	 * may have become invalid while it was unlocked, nc_vp and nc_mount
 	 * could be NULL.
@@ -2941,6 +2961,14 @@ kern_rmdir(struct nlookupdata *nd)
 	nd->nl_flags |= NLC_DELETE;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
+
+	/*
+	 * Do not allow directories representing mount points to be
+	 * deleted, even if empty.  Check write perms on mount point
+	 * in case the vnode is aliased (aka nullfs).
+	 */
+	if (nd->nl_ncp->nc_flag & (NCF_MOUNTEDHERE|NCF_MOUNTPT))
+		return (EINVAL);
 	if ((error = ncp_writechk(nd->nl_ncp)) != 0)
 		return (error);
 
@@ -3014,6 +3042,7 @@ unionread:
 			if (error)
 				goto done;
 		}
+#if 0
 		if ((vp->v_flag & VROOT) &&
 		    (vp->v_mount->mnt_flag & MNT_UNION)) {
 			struct vnode *tvp = vp;
@@ -3024,6 +3053,7 @@ unionread:
 			vrele(tvp);
 			goto unionread;
 		}
+#endif
 	}
 	if (basep) {
 		*basep = loff;

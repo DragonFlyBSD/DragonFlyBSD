@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.26 2006/06/04 17:33:36 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.27 2006/09/19 16:06:12 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -137,7 +137,7 @@ typedef struct namecache *namecache_t;
 #define NCF_ROOT	0x0010	/* namecache root (static) */
 #define NCF_HASHED	0x0020	/* namecache entry in hash table */
 #define NCF_LOCKREQ	0x0040
-#define NCF_UNUSED080	0x0080
+#define NCF_MOUNTEDHERE	0x0080	/* has child marked NCF_MOUNTPT */
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
@@ -162,11 +162,15 @@ void	cache_unlock(struct namecache *ncp);
 void	cache_setvp(struct namecache *ncp, struct vnode *vp);
 void	cache_settimeout(struct namecache *ncp, int nticks);
 void	cache_setunresolved(struct namecache *ncp);
+void	cache_setmountpt(struct namecache *ncp, struct mount *mp);
+void	cache_clrmountpt(struct namecache *ncp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
 struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
+struct mount *cache_findmount(struct namecache *par);
 int	cache_inval(struct namecache *ncp, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
 void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
+
 
 int	cache_resolve(struct namecache *ncp, struct ucred *cred);
 void	cache_purge(struct vnode *vp);

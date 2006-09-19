@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.70 2006/09/18 18:19:35 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.71 2006/09/19 16:06:12 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -204,7 +204,6 @@ struct vnode {
 	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	enum	vtype v_type;			/* vnode type */
 	union {
-		struct mount	*vu_mountedhere;/* ptr to mounted vfs (VDIR) */
 		struct socket	*vu_socket;	/* unix ipc (VSOCK) */
 		struct {
 			udev_t	vu_udev;	/* device number for attach */
@@ -239,7 +238,6 @@ struct vnode {
 #endif
 	void	*v_xaddr;
 };
-#define	v_mountedhere	v_un.vu_mountedhere
 #define	v_socket	v_un.vu_socket
 #define v_udev		v_un.vu_cdev.vu_udev
 #define	v_rdev		v_un.vu_cdev.vu_cdevinfo
@@ -278,7 +276,7 @@ struct vnode {
 #define	VFREE		0x80000	/* This vnode is on the freelist */
 /* open for business    0x100000 */
 #define	VONWORKLST	0x200000 /* On syncer work-list */
-#define	VMOUNT		0x400000 /* Mount in progress */
+#define VMOUNT		0x400000 /* Mount in progress */
 #define	VOBJDIRTY	0x800000 /* object might be dirty */
 
 /*

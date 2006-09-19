@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.80 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.81 2006/09/19 16:06:11 dillon Exp $
  */
 
 /*
@@ -2315,8 +2315,8 @@ loop:
 		 * will use block numbers with the proper multiple).  Beware
 		 * of using any v_* fields which are part of unions.  In
 		 * particular, in DragonFly the mount point overloading 
-		 * mechanism is such that the underlying directory (with a
-		 * non-NULL v_mountedhere) is not a special case.
+		 * mechanism uses the namecache only and the underlying
+		 * directory vnode is not a special case.
 		 */
 		int bsize, maxsize;
 

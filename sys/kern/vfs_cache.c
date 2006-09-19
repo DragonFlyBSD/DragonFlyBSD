@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.76 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.77 2006/09/19 16:06:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -606,6 +606,33 @@ cache_setunresolved(struct namecache *ncp)
 		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK|
 				  NCF_FSMID);
 	}
+}
+
+/*
+ * Mark the namecache node as containing a mount point.
+ *
+ * XXX called with a ref'd but unlocked ncp.
+ */
+void
+cache_setmountpt(struct namecache *ncp, struct mount *mp)
+{
+	ncp->nc_mount = mp;
+	ncp->nc_flag |= NCF_MOUNTPT;
+	ncp->nc_parent->nc_flag |= NCF_MOUNTEDHERE;
+}
+
+/*
+ * Clean up a mount point in the namecache topology after an unmount.
+ *
+ * XXX we probably need to traverse the entire topology and clear
+ * the nc_mount pointer.
+ */
+void
+cache_clrmountpt(struct namecache *ncp)
+{
+	if (ncp->nc_parent)
+		ncp->nc_parent->nc_flag &= ~NCF_MOUNTEDHERE;
+	ncp->nc_mount = NULL;
 }
 
 /*
@@ -1567,6 +1594,25 @@ found:
 		++gd->gd_nchstats->ncs_neghits;
 	cache_hysteresis();
 	return(ncp);
+}
+
+/*
+ * Locate the mount point under a namecache entry.  We locate a special
+ * child ncp with a 0-length name and retrieve the mount point from it.
+ */
+struct mount *
+cache_findmount(struct namecache *par)
+{
+	struct namecache *ncp;
+	u_int32_t hash;
+
+	hash = FNV1_32_INIT;	/* special 0-length name */
+	hash = fnv_32_buf(&par, sizeof(par), hash);
+	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
+		if (ncp->nc_nlen == 0 && (ncp->nc_flag & NCF_MOUNTPT))
+			return(ncp->nc_mount);
+	}
+	return(NULL);
 }
 
 /*

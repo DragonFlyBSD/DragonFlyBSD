@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.28 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.29 2006/09/19 16:06:12 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -130,7 +130,7 @@ struct mount {
 	TAILQ_ENTRY(mount) mnt_list;		/* mount list */
 	struct vfsops	*mnt_op;		/* operations on fs */
 	struct vfsconf	*mnt_vfc;		/* configuration info */
-	struct vnode	*mnt_vnodecovered;	/* vnode we mounted on */
+	void		*mnt_unused01;
 	struct vnode	*mnt_syncer;		/* syncer vnode */
 	struct vnodelst	mnt_nvnodelist;		/* list of vnodes this mount */
 	struct lock	mnt_lock;		/* mount structure lock */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.18 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.19 2006/09/19 16:06:11 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -509,13 +509,17 @@ nlookup(struct nlookupdata *nd)
 	 *
 	 * XXX NOCROSSMOUNT
 	 */
-	while ((ncp->nc_flag & NCF_ISDIR) && ncp->nc_vp->v_mountedhere &&
-		(nd->nl_flags & NLC_NOCROSSMOUNT) == 0
+	while ((ncp->nc_flag & NCF_ISDIR) && (ncp->nc_flag & NCF_MOUNTEDHERE)
+	       && (nd->nl_flags & NLC_NOCROSSMOUNT) == 0
 	) {
 	    struct mount *mp;
 	    struct vnode *tdp;
 
-	    mp = ncp->nc_vp->v_mountedhere;
+	    if ((mp = cache_findmount(ncp)) == NULL) {
+		printf("warning: nlookup(): ncp marked as a mount point which isn't one at %p %s\n", ncp, ncp->nc_name);
+		ncp->nc_flag &= ~NCF_MOUNTEDHERE;
+		break;
+	    }
 	    cache_put(ncp);
 	    ncp = cache_get(mp->mnt_ncp);
 

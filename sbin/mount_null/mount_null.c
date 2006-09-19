@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_null.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_null/mount_null.c,v 1.13 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.7 2005/04/02 22:00:18 dillon Exp $
+ * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.8 2006/09/19 16:06:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,10 +90,13 @@ main(int argc, char **argv)
 	checkpath(argv[0], target);
 	checkpath(argv[1], source);
 
-	if (subdir(target, source) || subdir(source, target))
-		errx(EX_USAGE, "%s (%s) and %s are not distinct paths",
-		    argv[0], target, argv[1]);
-
+	/*
+	 * Mount points that did not use distinct paths (e.g. / on /mnt)
+	 * used to be disallowed because mount linkages were stored in
+	 * vnodes and would lead to endlessly recursive trees.  DragonFly
+	 * stores mount linkages in the namecache topology and does not
+	 * have this problem, so paths no longer need to be distinct.
+	 */
 	args.target = target;
 
 	error = getvfsbyname("null", &vfc);

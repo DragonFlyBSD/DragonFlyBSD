@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.22 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.23 2006/09/19 16:06:11 dillon Exp $
  */
 
 /*
@@ -306,7 +306,6 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp->mnt_vfc = vfsp;
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_flag = MNT_RDONLY;
-	mp->mnt_vnodecovered = NULLVP;
 	vfsp->vfc_refcount++;
 	mp->mnt_iosize_max = DFLTPHYS;
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
