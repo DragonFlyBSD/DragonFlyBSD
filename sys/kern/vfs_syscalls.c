@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.105 2006/09/19 16:06:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.106 2006/09/19 18:17:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -570,6 +570,7 @@ dounmount_interlock(struct mount *mp)
 int
 dounmount(struct mount *mp, int flags)
 {
+	struct namecache *ncp;
 	int error;
 	int async_flag;
 	int lflags;
@@ -600,13 +601,44 @@ dounmount(struct mount *mp, int flags)
 	vfs_msync(mp, MNT_WAIT);
 	async_flag = mp->mnt_flag & MNT_ASYNC;
 	mp->mnt_flag &=~ MNT_ASYNC;
-	cache_purgevfs(mp);	/* remove cache entries for this file sys */
-	if (mp->mnt_syncer != NULL)
-		vrele(mp->mnt_syncer);
-	if (((mp->mnt_flag & MNT_RDONLY) ||
-	     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
-	    (flags & MNT_FORCE))
-		error = VFS_UNMOUNT(mp, flags);
+
+	/*
+	 * remove cache entries for this file sys and determine if anyone
+	 * other then us is still holding onto any namecache references.
+	 *
+	 * XXX need separate ref counter on mount structure to delay
+	 * kfree()ing it.
+	 */
+	cache_purgevfs(mp);
+	if ((ncp = mp->mnt_ncp) != NULL) {
+		if (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list)) {
+			char *ptr;
+			char *buf;
+
+			if ((flags & MNT_FORCE) == 0) {
+				error = EBUSY;
+			} else if (cache_fullpath(NULL, ncp, &ptr, &buf)) {
+				printf("Warning: forced unmount - "
+				       "namecache references still present\n");
+			} else {
+				printf("Warning: forced unmount of %s - "
+				       "namecache references still present\n",
+				       ptr
+				);
+				kfree(buf, M_TEMP);
+			}
+		}
+	}
+
+	if (error == 0) {
+		if (mp->mnt_syncer != NULL)
+			vrele(mp->mnt_syncer);
+		if (((mp->mnt_flag & MNT_RDONLY) ||
+		     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
+		    (flags & MNT_FORCE)) {
+			error = VFS_UNMOUNT(mp, flags);
+		}
+	}
 	if (error) {
 		if (mp->mnt_syncer == NULL)
 			vfs_allocate_syncvnode(mp);
@@ -636,9 +668,9 @@ dounmount(struct mount *mp, int flags)
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
 
-	if (mp->mnt_ncp) {
-		cache_clrmountpt(mp->mnt_ncp);
-		cache_drop(mp->mnt_ncp);
+	if ((ncp = mp->mnt_ncp) != NULL) {
+		cache_clrmountpt(ncp);
+		cache_drop(ncp);
 		mp->mnt_ncp = NULL;
 	}
 
