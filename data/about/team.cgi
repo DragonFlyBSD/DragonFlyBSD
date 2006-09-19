@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.7 2006/09/17 21:50:40 victor Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.8 2006/09/19 12:16:04 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -53,7 +53,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top">
-<td href="mailto:victor 'at' bsdes 'dot' net">V&iacute;ctor Balada D&iacute;az</a></td>
+<a href="mailto:victor 'at' bsdes 'dot' net">V&iacute;ctor Balada D&iacute;az</a></td>
 <td valign="top">Anything and Everything (commit access)</td>
 </tr>
 
