@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.45 2006/09/17 21:07:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.46 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -444,7 +444,7 @@ interpret:
 	p->p_acflag &= ~AFORK;
 
 	/* Set values passed into the program in registers. */
-	setregs(p, imgp->entry_addr, (u_long)(uintptr_t)stack_base,
+	setregs(td->td_lwp, imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
 
 	/* Free any previous argument cache */

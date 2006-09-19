@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.62 2006/09/17 21:07:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.63 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -113,8 +113,9 @@ sys_exit(struct exit_args *uap)
 void
 exit1(int rv)
 {
-	struct proc *p = curproc;
-	struct lwp *lp;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	struct proc *q, *nq;
 	struct vmspace *vm;
 	struct vnode *vtmp;
@@ -126,7 +127,7 @@ exit1(int rv)
 		panic("Going nowhere without my init!");
 	}
 
-	lp = &p->p_lwp;		/* XXX lwp kill other threads */
+	/* XXX lwp kill other threads */
 
 	caps_exit(lp->lwp_thread);
 	aio_proc_rundown(p);
@@ -162,7 +163,7 @@ exit1(int rv)
 	 * XXX what if one of these generates an error?
 	 */
 	TAILQ_FOREACH(ep, &exit_list, next) 
-		(*ep->function)(p->p_thread);
+		(*ep->function)(td);
 
 	if (p->p_flag & P_PROFIL)
 		stopprofclock(p);
@@ -425,6 +426,7 @@ int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 {
 	struct thread *td = curthread;
+	struct thread *deadtd;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
 	int nfound, error;
@@ -473,6 +475,9 @@ loop:
 
 		nfound++;
 		if (p->p_flag & P_ZOMBIE) {
+			KKASSERT((p->p_nthreads == 1));
+			deadtd = LIST_FIRST(&p->p_lwps)->lwp_thread;
+
 			/*
 			 * Other kernel threads may be in the middle of 
 			 * accessing the proc.  For example, kern/kern_proc.c
@@ -484,7 +489,7 @@ loop:
 				while (p->p_lock)
 					tsleep(p, 0, "reap3", hz);
 			}
-			lwkt_wait_free(p->p_thread);
+			lwkt_wait_free(deadtd);
 
 			/*
 			 * The process's thread may still be in the middle
@@ -497,13 +502,13 @@ loop:
 			 *
 			 * YYY no wakeup occurs so we depend on the timeout.
 			 */
-			if ((p->p_thread->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
-				tsleep(p->p_thread, 0, "reap2", 1);
+			if ((deadtd->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
+				tsleep(deadtd, 0, "reap2", 1);
 				goto loop;
 			}
 
 			/* scheduling hook for heuristic */
-			p->p_usched->heuristic_exiting(td->td_lwp, &p->p_lwp);
+			p->p_usched->heuristic_exiting(td->td_lwp, deadtd->td_lwp);
 
 			/* Take care of our return values. */
 			*res = p->p_pid;

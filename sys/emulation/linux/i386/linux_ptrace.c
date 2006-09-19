@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.10 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.11 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "opt_cpu.h"
@@ -217,29 +217,29 @@ struct linux_pt_fpxreg {
 
 #ifndef CPU_DISABLE_SSE
 static int
-linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
+linux_proc_read_fpxregs(struct thread *td, struct linux_pt_fpxreg *fpxregs)
 {
 	int error;
 
 	error = 0;
-	if (cpu_fxsr == 0 || (p->p_flag & P_SWAPPEDOUT))
+	if (cpu_fxsr == 0)
 		error = EIO;
 	else
-		bcopy(&p->p_thread->td_pcb->pcb_save.sv_xmm,
+		bcopy(&td->td_pcb->pcb_save.sv_xmm,
 		    fpxregs, sizeof(*fpxregs));
 	return (error);
 }
 
 static int
-linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
+linux_proc_write_fpxregs(struct thread *td, struct linux_pt_fpxreg *fpxregs)
 {
 	int error;
 
 	error = 0;
-	if (cpu_fxsr == 0 || (p->p_flag & P_SWAPPEDOUT))
+	if (cpu_fxsr == 0)
 		error = EIO;
 	else
-		bcopy(fpxregs, &p->p_thread->td_pcb->pcb_save.sv_xmm,
+		bcopy(fpxregs, &td->td_pcb->pcb_save.sv_xmm,
 		    sizeof(*fpxregs));
 	return (error);
 }
@@ -248,7 +248,8 @@ linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 int
 sys_linux_ptrace(struct linux_ptrace_args *uap)
 {
-	struct proc *curp = curproc;
+	struct thread *td = curthread;
+	struct proc *curp = td->td_proc;
 	union {
 		struct linux_pt_reg	reg;
 		struct linux_pt_fpreg	fpreg;
@@ -396,7 +397,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 
 		if (req == PTRACE_GETFPXREGS) {
 			PHOLD(p);
-			error = linux_proc_read_fpxregs(p, &r.fpxreg);
+			error = linux_proc_read_fpxregs(td, &r.fpxreg);
 			PRELE(p);
 			if (error == 0)
 				error = copyout(&r.fpxreg, (caddr_t)uap->data,
@@ -405,7 +406,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 			/* clear dangerous bits exactly as Linux does*/
 			r.fpxreg.mxcsr &= 0xffbf;
 			PHOLD(p);
-			error = linux_proc_write_fpxregs(p, &r.fpxreg);
+			error = linux_proc_write_fpxregs(td, &r.fpxreg);
 			PRELE(p);
 		}
 		break;

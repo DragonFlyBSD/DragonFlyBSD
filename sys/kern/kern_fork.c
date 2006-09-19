@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.56 2006/09/17 21:07:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.57 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -175,7 +175,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	if ((flags & RFPROC) == 0) {
 
-		vm_fork(p1, 0, flags);
+		vm_fork(lp1, 0, flags);
 
 		/*
 		 * Close all file descriptors.
@@ -464,7 +464,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Finish creating the child process.  It will return via a different
 	 * execution path later.  (ie: directly into user mode)
 	 */
-	vm_fork(p1, p2, flags);
+	vm_fork(lp1, p2, flags);
 	caps_fork(p1, p2, flags);
 
 	if (flags == (RFFDG | RFPROC)) {

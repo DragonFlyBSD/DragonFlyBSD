@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.13 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.14 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -195,7 +195,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     int error;
 
     p = curproc;
-    if ((error = suser(p->p_thread)) != 0)
+    if ((error = suser_cred(p->p_ucred, 0)) != 0)
 	return(error);
     if ((vp = p->p_textvp) == NULL)
 	return(ENOENT);
@@ -234,7 +234,7 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     int count;
 
     p = curproc;
-    if ((error = suser(p->p_thread)) != 0)
+    if ((error = suser_cred(p->p_ucred, 0)) != 0)
 	return(error);
 
     /*

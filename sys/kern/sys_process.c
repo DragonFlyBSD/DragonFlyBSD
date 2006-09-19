@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.22 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.23 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -318,7 +318,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* not owned by you, has done setuid (unless you're root) */
 		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
 		     (p->p_flag & P_SUGID)) {
-			if ((error = suser(curp->p_thread)) != 0)
+			if ((error = suser_cred(curp->p_ucred, 0)) != 0)
 				return error;
 		}
 

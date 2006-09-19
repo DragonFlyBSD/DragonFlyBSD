@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.30 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.31 2006/09/19 11:47:35 corecode Exp $
  */
 
 /*
@@ -871,14 +871,15 @@ static int
 aio_newproc()
 {
 	int error;
-	struct lwp *lp;
+	struct lwp *lp, *nlp;
 	struct proc *np;
 
 	lp = &proc0.p_lwp;
 	error = fork1(lp, RFPROC|RFMEM|RFNOWAIT, &np);
 	if (error)
 		return error;
-	cpu_set_fork_handler(np, aio_daemon, curproc);
+	nlp = LIST_FIRST(&np->p_lwps);
+	cpu_set_fork_handler(nlp, aio_daemon, curproc);
 	start_forked_proc(lp, np);
 
 	/*

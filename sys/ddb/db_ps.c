@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.18 2006/05/29 03:57:18 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.19 2006/09/19 11:47:35 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -59,7 +59,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 	if (db_more(&nl) < 0)
 	    return;
-	db_printf("  pid   proc     addr    uid  ppid  pgrp  flag stat wmesg   wchan   cmd\n");
+	db_printf("  pid   proc     uid  ppid  pgrp  flag stat wmesg   wchan   cmd\n");
 	while (--np >= 0) {
 		/*
 		 * XXX just take 20 for now...
@@ -74,8 +74,8 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		if (pp == NULL)
 			pp = p;
 
-		db_printf("%5d %8p %8p %4d %5d %5d %06x  %d",
-		    p->p_pid, (volatile void *)p, (void *)p->p_thread->td_pcb,
+		db_printf("%5d %8p %4d %5d %5d %06x  %d",
+		    p->p_pid, (volatile void *)p,
 		    p->p_ucred ? p->p_ucred->cr_ruid : 0, pp->p_pid,
 		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag, p->p_stat);
 		if (p->p_wchan) {
@@ -84,7 +84,6 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 			db_printf("                 ");
 		}
 		db_printf(" %s\n", p->p_comm ? p->p_comm : "");
-		db_dump_td_tokens(p->p_thread);
 
 		p = p->p_list.le_next;
 		if (p == NULL && np > 0)

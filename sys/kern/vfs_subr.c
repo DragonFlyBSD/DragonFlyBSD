@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.98 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.99 2006/09/19 11:47:36 corecode Exp $
  */
 
 /*
@@ -1550,11 +1550,7 @@ static int vfs_umountall_callback(struct mount *mp, void *data);
 void
 vfs_unmountall(void)
 {
-	struct thread *td = curthread;
 	int count;
-
-	if (td->td_proc == NULL)
-		td = initproc->p_thread;	/* XXX XXX use proc0 instead? */
 
 	do {
 		count = mountlist_scan(vfs_umountall_callback, 

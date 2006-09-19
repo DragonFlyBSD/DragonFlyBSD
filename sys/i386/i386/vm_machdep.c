@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.45 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.46 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -91,19 +91,19 @@ extern int	_ucodesel, _udatasel;
 
 
 /*
- * Finish a fork operation, with process p2 nearly set up.
+ * Finish a fork operation, with lwp lp2 nearly set up.
  * Copy and update the pcb, set up the stack so that the child
  * ready to run and return to user mode.
  */
 void
-cpu_fork(struct proc *p1, struct proc *p2, int flags)
+cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 {
 	struct pcb *pcb2;
 
 	if ((flags & RFPROC) == 0) {
 		if ((flags & RFMEM) == 0) {
 			/* unshare user LDT */
-			struct pcb *pcb1 = p1->p_thread->td_pcb;
+			struct pcb *pcb1 = lp1->lwp_thread->td_pcb;
 			struct pcb_ldt *pcb_ldt = pcb1->pcb_ldt;
 			if (pcb_ldt && pcb_ldt->ldt_refcnt > 1) {
 				pcb_ldt = user_ldt_alloc(pcb1,pcb_ldt->ldt_len);
@@ -116,19 +116,19 @@ cpu_fork(struct proc *p1, struct proc *p2, int flags)
 	}
 
 #if NNPX > 0
-	/* Ensure that p1's pcb is up to date. */
-	if (mdcpu->gd_npxthread == p1->p_thread)
-		npxsave(p1->p_thread->td_savefpu);
+	/* Ensure that lp1's pcb is up to date. */
+	if (mdcpu->gd_npxthread == lp1->lwp_thread)
+		npxsave(lp1->lwp_thread->td_savefpu);
 #endif
 	
 	/*
-	 * Copy p1's PCB.  This really only applies to the
+	 * Copy lp1's PCB.  This really only applies to the
 	 * debug registers and FP state, but its faster to just copy the
 	 * whole thing.  Because we only save the PCB at switchout time,
 	 * the register state (including pcb_gs) may not be current.
 	 */
-	pcb2 = p2->p_thread->td_pcb;
-	*pcb2 = *p1->p_thread->td_pcb;
+	pcb2 = lp2->lwp_thread->td_pcb;
+	*pcb2 = *lp1->lwp_thread->td_pcb;
 
 	/*
 	 * Create a new fresh stack for the new process.
@@ -149,24 +149,24 @@ cpu_fork(struct proc *p1, struct proc *p2, int flags)
 	 * to use the LWKT restore function directly so we can get rid of
 	 * all the extra crap we are setting up.
 	 */
-	p2->p_md.md_regs = (struct trapframe *)((char *)pcb2 - 16) - 1;
-	bcopy(p1->p_md.md_regs, p2->p_md.md_regs, sizeof(*p2->p_md.md_regs));
+	lp2->lwp_md.md_regs = (struct trapframe *)((char *)pcb2 - 16) - 1;
+	bcopy(lp1->lwp_md.md_regs, lp2->lwp_md.md_regs, sizeof(*lp2->lwp_md.md_regs));
 
 	/*
 	 * Set registers for trampoline to user mode.  Leave space for the
 	 * return address on stack.  These are the kernel mode register values.
 	 */
-	pcb2->pcb_cr3 = vtophys(vmspace_pmap(p2->p_vmspace)->pm_pdir);
+	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pdir);
 	pcb2->pcb_edi = 0;
 	pcb2->pcb_esi = (int)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_ebp = 0;
-	pcb2->pcb_esp = (int)p2->p_md.md_regs - sizeof(void *);
-	pcb2->pcb_ebx = (int)p2;		/* fork_trampoline argument */
+	pcb2->pcb_esp = (int)lp2->lwp_md.md_regs - sizeof(void *);
+	pcb2->pcb_ebx = (int)lp2;		/* fork_trampoline argument */
 	pcb2->pcb_eip = (int)fork_trampoline;
-	p2->p_thread->td_sp = (char *)(pcb2->pcb_esp - sizeof(void *));
-	*(u_int32_t *)p2->p_thread->td_sp = PSL_USER;
-	p2->p_thread->td_sp -= sizeof(void *);
-	*(void **)p2->p_thread->td_sp = (void *)cpu_heavy_restore;
+	lp2->lwp_thread->td_sp = (char *)(pcb2->pcb_esp - sizeof(void *));
+	*(u_int32_t *)lp2->lwp_thread->td_sp = PSL_USER;
+	lp2->lwp_thread->td_sp -= sizeof(void *);
+	*(void **)lp2->lwp_thread->td_sp = (void *)cpu_heavy_restore;
 
 	/*
 	 * Segment registers.
@@ -194,8 +194,8 @@ cpu_fork(struct proc *p1, struct proc *p2, int flags)
 				pcb2->pcb_ldt->ldt_len);
 		}
         }
-	bcopy(&p1->p_thread->td_tls, &p2->p_thread->td_tls,
-	      sizeof(p2->p_thread->td_tls));
+	bcopy(&lp1->lwp_thread->td_tls, &lp2->lwp_thread->td_tls,
+	      sizeof(lp2->lwp_thread->td_tls));
 	/*
 	 * Now, cpu_switch() can schedule the new process.
 	 * pcb_esp is loaded pointing to the cpu_switch() stack frame
@@ -214,14 +214,14 @@ cpu_fork(struct proc *p1, struct proc *p2, int flags)
  * This is needed to make kernel threads stay in kernel mode.
  */
 void
-cpu_set_fork_handler(struct proc *p, void (*func)(void *), void *arg)
+cpu_set_fork_handler(struct lwp *lp, void (*func)(void *), void *arg)
 {
 	/*
 	 * Note that the trap frame follows the args, so the function
 	 * is really called like this:  func(arg, frame);
 	 */
-	p->p_thread->td_pcb->pcb_esi = (int) func;	/* function */
-	p->p_thread->td_pcb->pcb_ebx = (int) arg;	/* first arg */
+	lp->lwp_thread->td_pcb->pcb_esi = (int) func;	/* function */
+	lp->lwp_thread->td_pcb->pcb_ebx = (int) arg;	/* first arg */
 }
 
 void
@@ -244,8 +244,7 @@ cpu_proc_exit(void)
 	struct pcb_ext *ext;
 
 #if NNPX > 0
-	KKASSERT(td->td_proc);
-	npxexit(td->td_proc);
+	npxexit();
 #endif	/* NNPX */
 
 	/*

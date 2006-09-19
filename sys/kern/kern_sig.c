@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.53 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.54 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1432,7 +1432,8 @@ issignal(struct proc *p)
 void
 postsig(int sig)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct sigacts *ps = p->p_sigacts;
 	sig_t action;
 	sigset_t returnmask;
@@ -1443,7 +1444,7 @@ postsig(int sig)
 	SIGDELSET(p->p_siglist, sig);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
-	if (KTRPOINT(p->p_thread, KTR_PSIG))
+	if (KTRPOINT(td, KTR_PSIG))
 		ktrpsig(p, sig, action, p->p_flag & P_OLDMASK ?
 			&p->p_oldsigmask : &p->p_sigmask, 0);
 #endif

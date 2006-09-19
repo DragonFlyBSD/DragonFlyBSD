@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.97 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.98 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "use_apm.h"
@@ -877,10 +877,10 @@ cpu_idle(void)
  * Clear registers on exec
  */
 void
-setregs(struct proc *p, u_long entry, u_long stack, u_long ps_strings)
+setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 {
-	struct trapframe *regs = p->p_md.md_regs;
-	struct pcb *pcb = p->p_thread->td_pcb;
+	struct trapframe *regs = lp->lwp_md.md_regs;
+	struct pcb *pcb = lp->lwp_thread->td_pcb;
 
 	/* Reset pc->pcb_gs and %gs before possibly invalidating it. */
 	pcb->pcb_gs = _udatasel;
@@ -931,7 +931,7 @@ setregs(struct proc *p, u_long entry, u_long stack, u_long ps_strings)
 	 * traps to the emulator (if it is done at all) mainly because
 	 * emulators don't provide an entry point for initialization.
 	 */
-	p->p_thread->td_pcb->pcb_flags &= ~FP_SOFTFP;
+	lp->lwp_thread->td_pcb->pcb_flags &= ~FP_SOFTFP;
 
 	/*
 	 * note: do not set CR0_TS here.  npxinit() must do it after clearing
@@ -2101,61 +2101,6 @@ ptrace_single_step(struct lwp *lp)
 {
 	lp->lwp_md.md_regs->tf_eflags |= PSL_T;
 	return (0);
-}
-
-int
-ptrace_read_u_check(struct proc *p, vm_offset_t addr, size_t len)
-{
-	vm_offset_t gap;
-
-	if ((vm_offset_t) (addr + len) < addr)
-		return EPERM;
-	if ((vm_offset_t) (addr + len) <= sizeof(struct user))
-		return 0;
-
-	gap = (char *) p->p_md.md_regs - (char *) p->p_addr;
-	
-	if ((vm_offset_t) addr < gap)
-		return EPERM;
-	if ((vm_offset_t) (addr + len) <= 
-	    (vm_offset_t) (gap + sizeof(struct trapframe)))
-		return 0;
-	return EPERM;
-}
-
-int
-ptrace_write_u(struct proc *p, vm_offset_t off, long data)
-{
-	struct trapframe frame_copy;
-	vm_offset_t min;
-	struct trapframe *tp;
-
-	/*
-	 * Privileged kernel state is scattered all over the user area.
-	 * Only allow write access to parts of regs and to fpregs.
-	 */
-	min = (char *)p->p_md.md_regs - (char *)p->p_addr;
-	if (off >= min && off <= min + sizeof(struct trapframe) - sizeof(int)) {
-		tp = p->p_md.md_regs;
-		frame_copy = *tp;
-		*(int *)((char *)&frame_copy + (off - min)) = data;
-		if (!EFL_SECURE(frame_copy.tf_eflags, tp->tf_eflags) ||
-		    !CS_SECURE(frame_copy.tf_cs))
-			return (EINVAL);
-		*(int*)((char *)p->p_addr + off) = data;
-		return (0);
-	}
-
-	/*
-	 * The PCB is at the end of the user area YYY
-	 */
-	min = (char *)p->p_thread->td_pcb - (char *)p->p_addr;
-	min += offsetof(struct pcb, pcb_save);
-	if (off >= min && off <= min + sizeof(union savefpu) - sizeof(int)) {
-		*(int*)((char *)p->p_addr + off) = data;
-		return (0);
-	}
-	return (EFAULT);
 }
 
 int

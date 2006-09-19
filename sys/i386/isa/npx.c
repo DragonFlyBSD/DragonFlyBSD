@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.32 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.33 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include "opt_cpu.h"
@@ -538,9 +538,9 @@ npxinit(u_short control)
  * Free coprocessor (if we have it).
  */
 void
-npxexit(struct proc *p)
+npxexit(void)
 {
-	if (p->p_thread == mdcpu->gd_npxthread)
+	if (curthread == mdcpu->gd_npxthread)
 		npxsave(curthread->td_savefpu);
 #ifdef NPX_DEBUG
 	if (npx_exists) {
@@ -556,7 +556,7 @@ npxexit(struct proc *p)
 		if (masked_exceptions & 0x0d)
 			log(LOG_ERR,
 	"pid %d (%s) exited with masked floating point exceptions 0x%02x\n",
-			    p->p_pid, p->p_comm, masked_exceptions);
+			    curproc->p_pid, curproc->p_comm, masked_exceptions);
 	}
 #endif
 }

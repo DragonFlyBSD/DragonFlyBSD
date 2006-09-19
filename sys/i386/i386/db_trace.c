@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.14 2006/09/03 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.15 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -265,9 +265,6 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	int *argp;
 	db_addr_t callpc;
 	boolean_t first;
-	struct pcb *pcb;
-	struct proc *p;
-	pid_t pid;
 	int i;
 
 	if (count == -1)
@@ -279,6 +276,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 			frame = (struct i386_frame *)(SP_REGS(&ddb_regs) - 4);
 		callpc = PC_REGS(&ddb_regs);
 	} else if (!INKERNEL(addr)) {
+#if needswork
 		pid = (addr % 16) + ((addr >> 4) % 16) * 10 +
 		    ((addr >> 8) % 16) * 100 + ((addr >> 12) % 16) * 1000 +
 		    ((addr >> 16) % 16) * 10000;
@@ -293,6 +291,10 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				    (SP_REGS(&ddb_regs) - 4);
 			callpc = PC_REGS(&ddb_regs);
 		} else {
+			pid_t pid;
+			struct proc *p;
+			struct pcb *pcb;
+
 			p = pfind(pid);
 			if (p == NULL) {
 				db_printf("pid %d not found\n", pid);
@@ -309,6 +311,11 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				    (pcb->pcb_esp - 4);
 			callpc = (db_addr_t)pcb->pcb_eip;
 		}
+#else
+		/* XXX */
+		db_printf("no kernel stack address\n");
+		return;
+#endif
 	} else {
 		/*
 		 * Look for something that might be a frame pointer, just as

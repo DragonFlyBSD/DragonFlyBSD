@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.84 2006/09/17 21:09:39 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.85 2006/09/19 11:47:36 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -475,8 +475,8 @@ void	cpu_lwkt_switch (struct thread *);
 void	cpu_proc_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
 void	exit1 (int) __dead2;
-void	cpu_fork (struct proc *, struct proc *, int);
-void	cpu_set_fork_handler (struct proc *, void (*)(void *), void *);
+void	cpu_fork (struct lwp *, struct lwp *, int);
+void	cpu_set_fork_handler (struct lwp *, void (*)(void *), void *);
 void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func, void *arg);
 int	fork1 (struct lwp *, int, struct proc **);
 void	start_forked_proc (struct lwp *, struct proc *);

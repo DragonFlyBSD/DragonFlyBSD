@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.43 2006/09/16 03:32:44 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.44 2006/09/19 11:47:36 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -224,9 +224,10 @@ vsunlock(caddr_t addr, u_int len)
  * to user mode to avoid stack copying and relocation problems.
  */
 void
-vm_fork(struct proc *p1, struct proc *p2, int flags)
+vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 {
 	struct user *up;
+	struct proc *p1 = lp1->lwp_proc;
 	struct thread *td2;
 
 	if ((flags & RFPROC) == 0) {
@@ -240,7 +241,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 				vmspace_unshare(p1);
 			}
 		}
-		cpu_fork(p1, p2, flags);
+		cpu_fork(lp1, NULL, flags);
 		return;
 	}
 
@@ -291,7 +292,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 	 * cpu_fork will copy and update the pcb, set up the kernel stack,
 	 * and make the child ready to run.
 	 */
-	cpu_fork(p1, p2, flags);
+	cpu_fork(lp1, td2->td_lwp, flags);
 }
 
 /*

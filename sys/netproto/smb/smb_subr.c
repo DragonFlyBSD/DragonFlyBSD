@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.20 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.21 2006/09/19 11:47:36 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -372,6 +372,7 @@ kthread_create2(void (*func)(void *), void *arg,
 	int error;
 	__va_list ap;
 	struct proc *p2;
+	struct lwp *lp2;
 
 	if (proc0.p_stats == NULL)
 		panic("kthread_create called too soon");
@@ -388,13 +389,15 @@ kthread_create2(void (*func)(void *), void *arg,
 	p2->p_flag |= P_SYSTEM;
 	p2->p_procsig->ps_flag |= PS_NOCLDWAIT;
 
+	lp2 = LIST_FIRST(&p2->p_lwps);
+
 	/* set up arg0 for 'ps', et al */
 	__va_start(ap, fmt);
 	vsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
 	__va_end(ap);
 
 	/* call the processes' main()... */
-	cpu_set_fork_handler(p2, func, arg);
+	cpu_set_fork_handler(lp2, func, arg);
 	start_forked_proc(&proc0.p_lwp, p2);
 
 	return 0;

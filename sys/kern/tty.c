@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.30 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.31 2006/09/19 11:47:35 corecode Exp $
  */
 
 /*-
@@ -2389,6 +2389,8 @@ ttyinfo(tp)
 
 		crit_enter();
 
+		/* XXX lwp should compare lwps */
+
 		for (pick = NULL; p != 0; p = LIST_NEXT(p, p_pglist)) {
 			if (proc_compare(pick, p))
 				pick = p;
@@ -2398,18 +2400,19 @@ ttyinfo(tp)
 		 * Figure out what wait/process-state message, and command
 		 * buffer to present
 		 */
-		if (pick->p_thread == NULL)
+		if (pick->p_flag & P_WEXIT)
 			str = "exiting";
 		else if (pick->p_stat == SRUN)
 			str = "running";
+		else if (pick->p_stat == SIDL)
+			str = "spawning";
 		else if (pick->p_wmesg)	/* p_thread must not be NULL */
 			str = pick->p_wmesg;
 		else
 			str = "iowait";
 
 		snprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
-			(pick->p_thread ? pick->p_comm : "?"),
-			pick->p_pid, str);
+			pick->p_comm, pick->p_pid, str);
 
 		/*
 		 * Calculate cpu usage, percent cpu, and cmsz.  Note that

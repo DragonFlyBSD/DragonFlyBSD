@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.30 2006/09/19 11:47:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -899,8 +899,10 @@ knote_fdclose(struct proc *p, int fd)
 {
 	struct filedesc *fdp = p->p_fd;
 	struct klist *list = &fdp->fd_knlist[fd];
+	/* Take any thread of p */
+	struct thread *td = LIST_FIRST(&p->p_lwps)->lwp_thread;
 
-	knote_remove(p->p_thread, list);
+	knote_remove(td, list);
 }
 
 static void

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.80 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.81 2006/09/19 11:47:35 corecode Exp $
  */
 
 /*
@@ -242,7 +242,7 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 	 */
 	if (p->p_flag & P_PROFIL) {
 		addupc_task(p, frame->tf_eip, 
-			(u_int)((int)p->p_thread->td_sticks - sticks));
+			(u_int)((int)lp->lwp_thread->td_sticks - sticks));
 	}
 
 recheck:
@@ -1480,13 +1480,9 @@ bad:
  * trampoline code which then runs doreti.
  */
 void
-fork_return(struct proc *p, struct trapframe frame)
+fork_return(struct lwp *lp, struct trapframe frame)
 {
-	struct lwp *lp;
-
-	KKASSERT(p->p_nthreads == 1);
-
-	lp = LIST_FIRST(&p->p_lwps);
+	struct proc *p = lp->lwp_proc;
 
 	frame.tf_eax = 0;		/* Child returns zero */
 	frame.tf_eflags &= ~PSL_C;	/* success */

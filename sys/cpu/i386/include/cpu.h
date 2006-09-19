@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.17 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.18 2006/09/19 11:47:35 corecode Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -122,13 +122,13 @@
 
 #ifdef _KERNEL
 
-struct proc;
+struct lwp;
 
 extern char	btext[];
 extern char	etext[];
 
 void	fork_trampoline (void);
-void	fork_return (struct proc *, struct trapframe);
+void	fork_return (struct lwp *, struct trapframe);
 
 #endif
 
