@@ -1,13 +1,13 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.7 2006/09/07 19:00:58 swildner Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.8 2006/09/20 21:48:39 victor Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
 
-BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.2.4rc7
+BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.3
 
-VER=		9.2.4rc7
+VER=		9.3.2-P1
 
 PS=		ps
 PIDDIR=		/var/run
@@ -52,7 +52,19 @@ LIBBIND:=	${LIBBINDDIR}/libbind.a
 DPADD+=		${LIBBIND}
 LDADD+=		${LIBBIND}
 
-CLEANFILES+=
+.endif
+
+.if defined(USE_LIBBIND9)
+
+.if exists(${.OBJDIR}/../../lib/libbind9)
+LIBBINDDIR9:=    ${.OBJDIR}/../../lib/libbind9
+.else
+LIBBINDDIR9!=    cd ${.CURDIR}/../../lib/libbind9; make -V .OBJDIR
+.endif
+LIBBIND9:=       ${LIBBINDDIR9}/libbind9.a
+
+DPADD+=         ${LIBBIND9}
+LDADD+=         ${LIBBIND9}
 
 .endif
 
@@ -67,8 +79,6 @@ LIBISC:=	${LIBISCDIR}/libisc.a
 
 DPADD+=		${LIBISC}
 LDADD+=		${LIBISC}
-
-CLEANFILES+=
 
 .endif
 

@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.33 2006/07/04 17:35:30 swildner Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.34 2006/09/20 21:48:39 victor Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -227,8 +227,6 @@ SUBDIR=	alias \
 SUBDIR+=dig \
 	host \
 	dnssec-keygen \
-	dnssec-makekeyset \
-	dnssec-signkey \
 	dnssec-signzone
 .endif
 

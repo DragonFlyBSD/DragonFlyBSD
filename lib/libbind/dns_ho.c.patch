@@ -1,8 +1,8 @@
-$DragonFly: src/lib/libbind/Attic/dns_ho.c.patch,v 1.1 2006/01/18 02:33:32 dillon Exp $
+$DragonFly: src/lib/libbind/Attic/dns_ho.c.patch,v 1.2 2006/09/20 21:48:39 victor Exp $
 
-Index: contrib/bind-9.2.4rc7/lib/bind/irs/dns_ho.c
+Index: contrib/bind-9.3/lib/bind/irs/dns_ho.c
 ===================================================================
-RCS file: /cvs/src/contrib/bind-9.2.4rc7/lib/bind/irs/dns_ho.c,v
+RCS file: /cvs/src/contrib/bind-9.3/lib/bind/irs/dns_ho.c,v
 retrieving revision 1.1
 diff -u -r1.1 dns_ho.c
 --- dns_ho.c.orig	20 Sep 2004 06:33:16 -0000	1.1

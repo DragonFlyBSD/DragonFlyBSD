@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.26 2006/07/27 00:41:38 corecode Exp $
+# $DragonFly: src/lib/Makefile,v 1.27 2006/09/20 21:48:39 victor Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -21,9 +21,9 @@
 
 SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt libm libmd \
 	libncurses libradius libskey libtacplus libutil libsbuf \
-	libalias libatm ${_libbind} libbz2 libc ${_libc_r} libcalendar \
-	libcam libcompat libdevstat libdisk libedit libfetch libftpio \
-	libipsec libipx libisc libkcore libkinfo libkvm libmagic \
+	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
+	libcalendar libcam libcompat libdevstat libdisk libedit libfetch \
+	libftpio libipsec libipx libisc libkcore libkinfo libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e librpcsvc ${_libsm} ${_libsmb} ${_libsmdb} \
 	${_libsmutil} libstand libtelnet libthread_xu libusbhid ${_libvgl} \
@@ -41,6 +41,7 @@ _libc_r=	libc_r
 
 .if !defined(NO_BIND)
 _libbind=	libbind
+_libbind9=	libbind9
 .endif
 
 .if !defined(NO_SENDMAIL)

@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libbind/port_before.h,v 1.1 2004/05/27 18:15:40 dillon Exp $ */
+/* $DragonFly: src/lib/libbind/port_before.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
 #ifndef port_before_h
 #define port_before_h
 #include <config.h>
@@ -19,9 +19,10 @@ struct timezone;        /* silence warning */
 #undef WANT_IRS_PW
 
 #undef BSD_COMP
+#undef SOLARIS2
 
 #undef DO_PTHREADS
-#define GETGROUPLIST_ARGS const char *name, int basegid, int *groups, int *ngroups
+#define GETGROUPLIST_ARGS const char *name, gid_t basegid, gid_t *groups, int *ngroups
 #define GETNETBYADDR_ADDR_T long
 #define SETPWENT_VOID 1
 #undef SETGRENT_VOID
@@ -134,6 +135,11 @@ struct timezone;        /* silence warning */
 	__attribute__((__format__(__printf__, fmt, args)))
 #else
 #define ISC_FORMAT_PRINTF(fmt, args)
+#endif
+
+/* Pull in host order macros when _XOPEN_SOURCE_EXTENDED is defined. */
+#if defined(__hpux) && defined(_XOPEN_SOURCE_EXTENDED)
+#include <sys/byteorder.h>
 #endif
 
 #endif

@@ -1,20 +1,20 @@
 /*
- * Copyright (C) 1998-2004 Internet Software Consortium.
+ * Copyright (C) 2004-2006 Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2003 Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $DragonFly: src/usr.sbin/named/include/dns/enumtype.h,v 1.1 2004/05/27 18:15:42 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/named/include/dns/enumtype.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
 
 /***************
  ***************
@@ -65,9 +65,16 @@ enum {
 	dns_rdatatype_a6 = 38,
 	dns_rdatatype_dname = 39,
 	dns_rdatatype_opt = 41,
+	dns_rdatatype_apl = 42,
+	dns_rdatatype_ds = 43,
+	dns_rdatatype_sshfp = 44,
+	dns_rdatatype_rrsig = 46,
+	dns_rdatatype_nsec = 47,
+	dns_rdatatype_dnskey = 48,
 	dns_rdatatype_unspec = 103,
 	dns_rdatatype_tkey = 249,
 	dns_rdatatype_tsig = 250,
+	dns_rdatatype_dlv = 65323,
 	dns_rdatatype_ixfr = 251,
 	dns_rdatatype_axfr = 252,
 	dns_rdatatype_mailb = 253,
@@ -113,9 +120,16 @@ enum {
 #define dns_rdatatype_a6	((dns_rdatatype_t)dns_rdatatype_a6)
 #define dns_rdatatype_dname	((dns_rdatatype_t)dns_rdatatype_dname)
 #define dns_rdatatype_opt	((dns_rdatatype_t)dns_rdatatype_opt)
+#define dns_rdatatype_apl	((dns_rdatatype_t)dns_rdatatype_apl)
+#define dns_rdatatype_ds	((dns_rdatatype_t)dns_rdatatype_ds)
+#define dns_rdatatype_sshfp	((dns_rdatatype_t)dns_rdatatype_sshfp)
+#define dns_rdatatype_rrsig	((dns_rdatatype_t)dns_rdatatype_rrsig)
+#define dns_rdatatype_nsec	((dns_rdatatype_t)dns_rdatatype_nsec)
+#define dns_rdatatype_dnskey	((dns_rdatatype_t)dns_rdatatype_dnskey)
 #define dns_rdatatype_unspec	((dns_rdatatype_t)dns_rdatatype_unspec)
 #define dns_rdatatype_tkey	((dns_rdatatype_t)dns_rdatatype_tkey)
 #define dns_rdatatype_tsig	((dns_rdatatype_t)dns_rdatatype_tsig)
+#define dns_rdatatype_dlv	((dns_rdatatype_t)dns_rdatatype_dlv)
 #define dns_rdatatype_ixfr	((dns_rdatatype_t)dns_rdatatype_ixfr)
 #define dns_rdatatype_axfr	((dns_rdatatype_t)dns_rdatatype_axfr)
 #define dns_rdatatype_mailb	((dns_rdatatype_t)dns_rdatatype_mailb)

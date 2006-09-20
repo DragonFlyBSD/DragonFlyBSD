@@ -1,7 +1,8 @@
 # $FreeBSD: src/usr.sbin/named/Makefile,v 1.25.2.5 2002/07/07 08:17:07 dougb Exp $
-# $DragonFly: src/usr.sbin/named/Makefile,v 1.4 2004/05/27 18:15:42 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile,v 1.5 2006/09/20 21:48:39 victor Exp $
 
 USE_LIBBIND=	true
+USE_LIBBIND9=	true
 .include "${.CURDIR}/Makefile.inc"
 
 .PATH: ${BIND_DIR}/bin/named
@@ -10,8 +11,9 @@ USE_LIBBIND=	true
 
 PROG=	named
 # named.conf.5 named-bootconf.8
-MAN=	named.8 nsupdate.8
-SRCS=	aclconf.c client.c config.c control.c controlconf.c interfacemgr.c \
+MAN=	named.conf.5 named.8 nsupdate.8
+SRCS=	aclconf.c builtin.c client.c config.c control.c \
+	controlconf.c interfacemgr.c \
 	listenlist.c log.c logconf.c main.c notify.c \
 	query.c server.c sortlist.c \
 	tkeyconf.c tsigconf.c update.c xfrout.c \
@@ -22,7 +24,8 @@ SRCS=	aclconf.c client.c config.c control.c controlconf.c interfacemgr.c \
 .PATH: ${BIND_DIR}/bin/named/unix
 SRCS+=	os.c
 
-CFLAGS+= -I${BIND_DIR}/bin/named/include
+CFLAGS+= -I${BIND_DIR}/bin/named/include \
+	 -I${BIND_DIR}/lib/bind9/include
 
 .if exists(${.OBJDIR}/../../lib/libisc)
 LIBISCDIR:=    ${.OBJDIR}/../../lib/libisc

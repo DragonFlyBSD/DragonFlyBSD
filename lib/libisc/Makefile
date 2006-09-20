@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.7 2005/04/21 13:42:33 joerg Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.8 2006/09/20 21:48:39 victor Exp $
 
-BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
+BIND_DIR=	${.CURDIR}/../../contrib/bind-9.3
 
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 .include "${BIND_DIR}/lib/isc/api"
@@ -13,48 +13,56 @@ SHLIB_MAJOR=	2
 SRCS+=		isc/nls/msgcat.c
 
 SRCS+=		isc/unix/app.c isc/unix/dir.c isc/unix/entropy.c \
-		isc/unix/errno2result.c isc/unix/file.c isc/unix/fsaccess.c \
-		isc/unix/interfaceiter.c isc/unix/keyboard.c isc/unix/net.c \
+		isc/unix/errno2result.c isc/unix/file.c \
+		isc/unix/fsaccess.c isc/unix/interfaceiter.c \
+		isc/unix/keyboard.c isc/unix/net.c \
 		isc/unix/os.c isc/unix/resource.c isc/unix/socket.c \
-		isc/unix/stdio.c isc/unix/stdtime.c isc/unix/strerror.c \
-		isc/unix/syslog.c isc/unix/time.c
+		isc/unix/stdio.c isc/unix/stdtime.c \
+		isc/unix/strerror.c isc/unix/syslog.c \
+		isc/unix/time.c
 
-SRCS+=		isc/assertions.c isc/base64.c isc/bitstring.c isc/buffer.c \
-		isc/bufferlist.c isc/commandline.c isc/error.c isc/event.c \
-		isc/hash.c isc/heap.c isc/hex.c isc/hmacmd5.c \
-		isc/inet_pton.c \
-		isc/lex.c isc/lfsr.c isc/lib.c isc/log.c \
-		isc/md5.c isc/mem.c isc/mutexblock.c isc/netaddr.c \
-		isc/ondestroy.c isc/quota.c isc/random.c \
-		isc/ratelimiter.c isc/result.c isc/rwlock.c \
-		isc/serial.c isc/sha1.c isc/sockaddr.c isc/string.c \
-		isc/symtab.c isc/task.c isc/taskpool.c isc/timer.c \
-		isc/version.c
+SRCS+=		isc/assertions.c isc/base64.c isc/bitstring.c \
+		isc/buffer.c isc/bufferlist.c isc/commandline.c \
+		isc/error.c isc/event.c isc/hash.c isc/heap.c \
+		isc/hex.c \
+		isc/hmacmd5.c isc/inet_pton.c isc/lex.c isc/lfsr.c \
+		isc/lib.c isc/log.c isc/md5.c isc/mem.c \
+		isc/mutexblock.c isc/netaddr.c isc/netscope.c \
+		isc/ondestroy.c isc/parseint.c isc/quota.c \
+		isc/random.c isc/ratelimiter.c isc/region.c \
+		isc/result.c \
+		isc/rwlock.c isc/serial.c isc/sha1.c \
+		isc/sockaddr.c isc/string.c isc/strtoul.c \
+		isc/symtab.c isc/task.c isc/taskpool.c \
+		isc/timer.c isc/version.c
 
-SRCS+=		isccfg/check.c isccfg/log.c isccfg/parser.c
+SRCS+=		isccfg/namedconf.c isccfg/log.c isccfg/parser.c isccfg/version.c
 
-SRCS+=		dns/a6.c dns/acl.c dns/adb.c dns/byaddr.c \
-		dns/cache.c dns/callbacks.c dns/compress.c \
-		dns/db.c dns/dbiterator.c dns/dbtable.c dns/diff.c \
-		dns/dispatch.c dns/dnssec.c dns/forward.c dns/journal.c \
-		dns/keytable.c dns/lib.c dns/log.c dns/lookup.c \
-		dns/master.c dns/masterdump.c dns/message.c \
-		dns/name.c dns/ncache.c dns/nxt.c dns/peer.c \
-		dns/rbt.c dns/rbtdb.c dns/rbtdb64.c dns/rdata.c \
-		dns/rdatalist.c dns/rdataset.c dns/rdatasetiter.c \
-		dns/rdataslab.c dns/request.c dns/resolver.c dns/result.c \
-		dns/rootns.c dns/sdb.c dns/soa.c dns/ssu.c \
-		dns/stats.c dns/tcpmsg.c dns/time.c dns/timer.c dns/tkey.c \
-		dns/tsig.c dns/ttl.c dns/validator.c \
-		dns/version.c dns/view.c dns/xfrin.c dns/zone.c \
-		dns/zonekey.c dns/zt.c
-
-SRCS+=		dns/sec/dst/dst_api.c dns/sec/dst/dst_lib.c \
-		dns/sec/dst/dst_parse.c dns/sec/dst/dst_result.c \
-		dns/sec/dst/gssapi_link.c dns/sec/dst/gssapictx.c \
-		dns/sec/dst/hmac_link.c dns/sec/dst/key.c \
-		dns/sec/dst/openssl_link.c dns/sec/dst/openssldh_link.c \
-		dns/sec/dst/openssldsa_link.c dns/sec/dst/opensslrsa_link.c
+SRCS+=		dns/acl.c dns/adb.c dns/byaddr.c dns/cache.c \
+		dns/callbacks.c dns/compress.c dns/db.c \
+		dns/dbiterator.c dns/dbtable.c dns/diff.c \
+		dns/dispatch.c dns/dnssec.c dns/ds.c \
+		dns/dst_api.c dns/dst_lib.c dns/dst_parse.c \
+		dns/dst_result.c dns/forward.c dns/gssapi_link.c \
+		dns/gssapictx.c  \
+		dns/hmac_link.c dns/journal.c dns/key.c \
+		dns/keytable.c dns/lib.c dns/log.c \
+		dns/lookup.c dns/master.c dns/masterdump.c \
+		dns/message.c dns/name.c dns/ncache.c \
+		dns/nsec.c dns/openssl_link.c \
+		dns/openssldh_link.c dns/openssldsa_link.c \
+		dns/opensslrsa_link.c dns/order.c dns/peer.c \
+		dns/portlist.c dns/rbt.c dns/rbtdb.c \
+		dns/rbtdb64.c dns/rcode.c dns/rdata.c \
+		dns/rdatalist.c dns/rdataset.c \
+		dns/rdatasetiter.c dns/rdataslab.c \
+		dns/request.c dns/resolver.c \
+		dns/result.c dns/rootns.c dns/sdb.c dns/soa.c \
+		dns/ssu.c dns/stats.c dns/tcpmsg.c dns/time.c \
+		dns/timer.c dns/tkey.c dns/tsig.c dns/ttl.c \
+		dns/validator.c dns/version.c dns/view.c \
+		dns/xfrin.c dns/zone.c dns/zonekey.c \
+		dns/zt.c
 
 SRCS+=		isccc/alist.c isccc/base64.c isccc/cc.c isccc/ccmsg.c \
 		isccc/lib.c isccc/result.c isccc/sexpr.c isccc/symtab.c \
@@ -63,10 +71,10 @@ SRCS+=		isccc/alist.c isccc/base64.c isccc/cc.c isccc/ccmsg.c \
 SRCS+=		lwres/context.c lwres/gai_strerror.c lwres/getaddrinfo.c \
 		lwres/gethost.c lwres/getipnode.c lwres/getnameinfo.c \
 		lwres/getrrset.c lwres/herror.c lwres/lwbuffer.c \
-		lwres/lwconfig.c lwres/lwpacket.c lwres/lwresutil.c \
-		lwres/lwres_gabn.c lwres/lwres_gnba.c lwres/lwres_grbn.c \
-		lwres/lwres_noop.c lwres/lwinetaton.c lwres/lwinetpton.c \
-		lwres/lwinetntop.c
+		lwres/lwconfig.c lwres/lwinetaton.c lwres/lwinetntop.c \
+		lwres/lwinetpton.c lwres/lwpacket.c lwres/lwres_gabn.c \
+		lwres/lwres_gnba.c lwres/lwres_grbn.c lwres/lwres_noop.c \
+		lwres/lwresutil.c lwres/print.c lwres/strtoul.c
 
 # contrib/bind/include/* must not override any real system includes
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named
@@ -81,15 +89,15 @@ CFLAGS+=	-DLIBINTERFACE=${LIBINTERFACE} \
 HEADERS =	app.h assertions.h base64.h bitstring.h boolean.h buffer.h \
 		bufferlist.h commandline.h entropy.h error.h event.h \
 		eventclass.h \
-		file.h formatcheck.h fsaccess.h heap.h hex.h hmacmd5.h \
+		file.h formatcheck.h fsaccess.h hash.h heap.h hex.h hmacmd5.h \
 		interfaceiter.h ipv6.h lang.h lex.h \
 		lfsr.h lib.h list.h log.h magic.h md5.h mem.h msgcat.h msgs.h \
-		mutexblock.h netaddr.h ondestroy.h os.h \
-		print.h quota.h random.h ratelimiter.h \
+		mutexblock.h netaddr.h netscope.h ondestroy.h os.h \
+		parseint.h print.h quota.h random.h ratelimiter.h \
 		refcount.h region.h resource.h \
 		result.h resultclass.h rwlock.h serial.h sha1.h sockaddr.h \
 		socket.h stdio.h string.h symtab.h task.h taskpool.h timer.h \
-		types.h util.h
+		types.h util.h version.h
 
 INCS=		${HEADERS:S/^/${BIND_DIR}\/lib\/isc\/include\/isc\//g}
 INCSDIR=	${INCLUDEDIR}/isc
