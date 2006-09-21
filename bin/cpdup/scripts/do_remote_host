@@ -1,6 +1,6 @@
 #!/bin/csh
 #
-# $DragonFly: src/bin/cpdup/scripts/do_remote_host,v 1.1 2006/09/16 21:57:10 dillon Exp $
+# $DragonFly: src/bin/cpdup/scripts/do_remote_host,v 1.2 2006/09/21 00:18:13 dillon Exp $
 
 source params
 
@@ -99,7 +99,7 @@ default:
 endsw
 
 if ( $failed == 0 ) then
-    ssh $remote_host -n "ln -sf $basename ${remote_path}/mirrors/$host"
+    ssh $remote_host -n "rm -f ${remote_path}/mirrors/$host; ln -s $basename ${remote_path}/mirrors/$host"
     sync
     echo "SUCCEEDED"
     exit 0

@@ -1,6 +1,6 @@
 #!/bin/csh
 #
-# $DragonFly: src/bin/cpdup/scripts/do_mirror_host,v 1.1 2006/09/16 21:57:10 dillon Exp $
+# $DragonFly: src/bin/cpdup/scripts/do_mirror_host,v 1.2 2006/09/21 00:18:13 dillon Exp $
 
 source params
 
@@ -95,7 +95,8 @@ end
 # rename the log file.
 #
 if ( $failed == 0 ) then
-    ln -sf "$host.$date" $backup_path/mirrors/$host
+    rm -f $backup_path/mirrors/$host
+    ln -s "$host.$date" $backup_path/mirrors/$host
     mv $backup_path/mirrors/$target/{INPROGRESS,SUCCEEDED}
     sync
     echo "SUCCEEDED"

@@ -1,4 +1,4 @@
-$DragonFly: src/bin/cpdup/BACKUPS,v 1.1 2006/09/16 21:57:08 dillon Exp $
+$DragonFly: src/bin/cpdup/BACKUPS,v 1.2 2006/09/21 00:18:11 dillon Exp $
 
 			    INCREMENTAL BACKUP HOWTO
 
@@ -72,10 +72,14 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.1 2006/09/16 21:57:08 dillon Exp $
 	cpdup -i0 -s0 /nfs/box1/var /backup/mirrors/box1.${date}/var
 
     Create a softlink to the most recently completed backup, which is your
-    level 0 backup.
+    level 0 backup.  Note that using 'ln -sf' will create a link in the
+    subdirectory pointed to by the current link, not replace the current
+    link. 'ln -shf' can be used to replace the link but is not portable.
+    'mv -f' has the same problem.
 
 	sync
-	ln -fs /backup/mirrors/box1.${date} /backup/mirrors/box1
+	rm -f /backup/mirrors/box1
+	ln -s /backup/mirrors/box1.${date} /backup/mirrors/box1
 
 			PART 3 - DO AN INCREMENTAL BACKUP
 
@@ -102,7 +106,8 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.1 2006/09/16 21:57:08 dillon Exp $
     if the cpdup's for all the partitions for that client have succeeded.
     That way the next incremental backup will be based on the previous one.
 
-	ln -fs /backup/mirrors/box1.${date} /backup/mirrors/box1
+	rm -f /backup/mirrors/box1
+	ln -s /backup/mirrors/box1.${date} /backup/mirrors/box1
 
     Since these backups are mirrors, locating a backup is as simple
     as CDing into the appropriate directory.  If your filesystem has a
@@ -169,7 +174,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.1 2006/09/16 21:57:08 dillon Exp $
 
 	if ( $status == 0 ) then
 	    ssh remote.box -n \
-		"ln -fs /backup/mirrors/$latest /backup/mirrors/box1"
+		"rm -f /backup/mirrors/box1; ln -s /backup/mirrors/$latest /backup/mirrors/box1"
 	endif
 
     Incremental backups can be accomplished using the same cpdup command,
@@ -187,7 +192,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.1 2006/09/16 21:57:08 dillon Exp $
 	      -i0 -s0 /backup/mirrors/$latest remote.box:/backup/mirrors/$latest
 	if ( $status == 0 ) then
 	    ssh remote.box -n \
-		"ln -fs /backup/mirrors/$latest /backup/mirrors/box1"
+		"rm -f /backup/mirrors/box1; ln -s /backup/mirrors/$latest /backup/mirrors/box1"
 	endif
 
     Cleaning out the remote directory works the same as cleaning out the LAN
