@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.36 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.37 2006/09/21 16:16:09 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -521,7 +521,7 @@ sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_kern, KERN_DUMPDEV, dumpdev, CTLTYPE_OPAQUE|CTLFLAG_RW,
-	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,cdev_t", "");
+	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,udev_t", "");
 
 /*
  * Doadump comes here after turning off memory management and

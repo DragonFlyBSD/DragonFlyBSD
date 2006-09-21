@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sysctl.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/sbin/sysctl/sysctl.8,v 1.23.2.17 2003/05/19 07:49:34 brueffer Exp $
-.\" $DragonFly: src/sbin/sysctl/sysctl.8,v 1.5 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/sbin/sysctl/sysctl.8,v 1.6 2006/09/21 16:16:07 dillon Exp $
 .\"
 .Dd March 10, 2002
 .Dt SYSCTL 8
@@ -122,7 +122,7 @@ few bytes.
 The information available from
 .Nm
 consists of integers, strings, devices
-.Pq Vt dev_t ,
+.Pq Vt udev_t ,
 and opaque types.
 The
 .Nm
@@ -191,7 +191,7 @@ denote
 .It "kern.osreldate	string	no
 .It "kern.bootfile	string	yes
 .It "kern.corefile	string	yes
-.It "kern.dumpdev	dev_t	yes
+.It "kern.dumpdev	udev_t	yes
 .It "kern.logsigexit	integer	yes
 .It "vm.loadavg	struct	no
 .It "hw.machine	string	no
@@ -203,7 +203,7 @@ denote
 .It "hw.pagesize	integer	no
 .It "hw.floatingpoint	integer	no
 .It "hw.machine_arch	string	no
-.It "machdep.console_device	dev_t	no
+.It "machdep.console_device	udev_t	no
 .It "machdep.adjkerntz	integer	yes
 .It "machdep.disable_rtc_set	integer	yes
 .It "user.cs_path	string	no

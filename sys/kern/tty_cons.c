@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.17 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.18 2006/09/21 16:16:09 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -91,7 +91,7 @@ static struct dev_ops *cn_fwd_ops;
 static cdev_t	cn_dev;
 static udev_t	cn_udev;
 SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
-	&cn_udev, sizeof cn_udev, "T,cdev_t", "");
+	&cn_udev, sizeof cn_udev, "T,udev_t", "");
 
 static int cn_mute;
 

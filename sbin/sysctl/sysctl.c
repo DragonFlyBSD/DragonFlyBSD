@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.12 2005/04/23 19:57:35 joerg Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.13 2006/09/21 16:16:07 dillon Exp $
  */
 
 #ifdef __i386__
@@ -237,8 +237,11 @@ parse(const char *string)
 				newsize = sizeof(quadval);
 				break;
 			case CTLTYPE_OPAQUE:
-				if (strcmp(fmt, "T,dev_t") == 0) {
-					set_T_dev_t ((char*)newval, &newval, &newsize);
+				if (strcmp(fmt, "T,dev_t") == 0 ||
+				    strcmp(fmt, "T,udev_t") == 0
+				) {
+					set_T_dev_t((char*)newval, &newval,
+						    &newsize);
 					break;
 				}
 				/* FALLTHROUGH */
@@ -595,6 +598,8 @@ show_var(int *oid, size_t nlen)
 			else if (strcmp(fmt, "S,loadavg") == 0)
 				func = S_loadavg;
 			else if (strcmp(fmt, "T,dev_t") == 0)
+				func = T_dev_t;
+			else if (strcmp(fmt, "T,udev_t") == 0)
 				func = T_dev_t;
 			else
 				func = NULL;
