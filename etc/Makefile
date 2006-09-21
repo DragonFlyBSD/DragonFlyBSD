@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.128 2006/09/20 21:48:38 victor Exp $
+# $DragonFly: src/etc/Makefile,v 1.129 2006/09/21 20:56:50 victor Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -169,8 +169,8 @@ upgrade_etc:	preupgrade
 .if exists(${DESTDIR}/usr/bin/dnssec-makekeyset)
 	rm -rf ${DESTDIR}/usr/bin/dnssec-makekeyset
 	rm -rf ${DESTDIR}/usr/bin/dnssec-signkey
-	rm -rf ${DESTDIR}/usr/share/man/man8/dnssec-makekeyset.8.gz
-	rm -rf ${DESTDIR}/usr/share/man/man8/dnssec-signkey.8.gz
+	rm -rf ${DESTDIR}/usr/share/man/{man,cat}8/dnssec-makekeyset.8.gz
+	rm -rf ${DESTDIR}/usr/share/man/{man,cat}8/dnssec-signkey.8.gz
 .endif
 .if exists(${DESTDIR}/usr/lib/crtbegin.o)
 	csh -c "rm -f ${DESTDIR}/usr/lib/gcc2/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
