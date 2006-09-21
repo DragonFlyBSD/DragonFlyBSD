@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.17 2006/09/16 16:47:29 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.18 2006/09/21 04:09:28 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os
@@ -18,6 +18,7 @@
 .Op Fl f
 .Op Fl s0
 .Op Fl i0
+.Op Fl j0
 .Op Fl q
 .Op Fl o
 .Op Fl m
@@ -93,6 +94,8 @@ safety feature is enabled by default to prevent user mistakes from blowing
 away everything accidently.
 .It Fl i0
 Do not request confirmation when removing something.
+.It Fl j0
+Do not try to recreate CHR or BLK devices.
 .It Fl q
 Quiet operation
 .It Fl o

@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.17 2006/09/16 16:47:29 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.18 2006/09/21 04:09:28 dillon Exp $
  */
 
 /*-
@@ -109,6 +109,7 @@ int DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo);
 int AskConfirmation = 1;
 int SafetyOpt = 1;
 int ForceOpt;
+int DeviceOpt = 1;
 int VerboseOpt;
 int QuietOpt;
 int NoRemoveOpt;
@@ -200,6 +201,9 @@ main(int ac, char **av)
 	    break;
 	case 'i':
 	    AskConfirmation = v;
+	    break;
+	case 'j':
+	    DeviceOpt = v;
 	    break;
 	case 's':
 	    SafetyOpt = v;
@@ -1012,7 +1016,7 @@ skip_copy:
 	    r = 1;
 	    logerr("%-32s softlink-failed\n", (dpath ? dpath : spath));
 	}
-    } else if (S_ISCHR(st1.st_mode) || S_ISBLK(st1.st_mode)) {
+    } else if ((S_ISCHR(st1.st_mode) || S_ISBLK(st1.st_mode)) && DeviceOpt) {
 	char path[2048];
 
 	if (ForceOpt ||
