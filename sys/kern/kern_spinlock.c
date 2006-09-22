@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.7 2006/06/01 19:02:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.8 2006/09/22 16:47:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -272,14 +272,17 @@ exponential_backoff(struct exponential_backoff *bo)
 		printf("spin_lock: %p, indefinite wait!\n", bo->mtx);
 		if (panicstr)
 			return (TRUE);
-#ifdef INVARIANTS
+#if defined(INVARIANTS) && defined(DDB)
 		if (spin_lock_test_mode) {
 			db_print_backtrace();
 			return (TRUE);
 		}
 #endif
-		if (++bo->nsec == 11)
+		++bo->nsec;
+#if defined(INVARIANTS) && defined(DDB)
+		if (bo->nsec == 11)
 			db_print_backtrace();
+#endif
 		if (bo->nsec == 60)
 			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);
 		splz();
