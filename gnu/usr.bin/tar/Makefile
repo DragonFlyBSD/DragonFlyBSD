@@ -1,11 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/tar/Makefile,v 1.11.6.4 2002/07/14 13:19:46 sobomax Exp $
-# $DragonFly: src/gnu/usr.bin/tar/Attic/Makefile,v 1.3 2004/11/10 00:01:54 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/tar/Attic/Makefile,v 1.4 2006/09/23 20:31:45 pavalos Exp $
 
 TARDIR=	${.CURDIR}/../../../contrib/tar
 .PATH: ${TARDIR}/lib ${TARDIR}/src
 
 PROG=	gtar
-.if !defined(WITH_BSDTAR)
+.if defined(WITH_GTAR)
 SYMLINKS=	${BINDIR}/gtar ${BINDIR}/tar
 MLINKS=	gtar.1 tar.1
 .endif
