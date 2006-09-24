@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.37 2006/09/21 16:16:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.38 2006/09/24 19:43:55 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -60,10 +60,16 @@
 #include <sys/mount.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
+#include <sys/vkernel.h>
 #include <sys/conf.h>
 #include <sys/sysproto.h>
 #include <sys/device.h>
 #include <sys/cons.h>
+#include <sys/shm.h>
+#include <sys/kern_syscall.h>
+#include <vm/vm_map.h>
+#include <vm/pmap.h>
+
 #include <sys/thread2.h>
 #include <sys/buf2.h>
 
@@ -144,6 +150,7 @@ static void shutdown_panic (void *junk, int howto);
 static void shutdown_reset (void *junk, int howto);
 static int shutdown_busycount1(struct buf *bp, void *info);
 static int shutdown_busycount2(struct buf *bp, void *info);
+static void shutdown_cleanup_proc(struct proc *p);
 
 /* register various local shutdown events */
 static void 
@@ -262,6 +269,19 @@ boot(int howto)
 	 */
 	EVENTHANDLER_INVOKE(shutdown_pre_sync, howto);
 
+	/*
+	 * Try to get rid of any remaining FS references.  The calling
+	 * process, proc0, and init may still hold references.  The
+	 * VFS cache subsystem may still hold a root reference to root.
+	 */
+	if (panicstr == NULL) {
+		shutdown_cleanup_proc(curproc);
+		shutdown_cleanup_proc(&proc0);
+		if (initproc)
+			shutdown_cleanup_proc(initproc);
+		vfs_cache_setroot(NULL, NULL);
+	}
+
 	/* 
 	 * Now sync filesystems
 	 */
@@ -317,7 +337,7 @@ boot(int howto)
 			/*
 			 * Unmount filesystems
 			 */
-			if (panicstr == 0)
+			if (panicstr == NULL)
 				vfs_unmountall();
 		}
 		tsleep(boot, 0, "shutdn", hz / 10 + 1);
@@ -442,6 +462,59 @@ shutdown_reset(void *junk, int howto)
 	/* cpu_boot(howto); */ /* doesn't do anything at the moment */
 	cpu_reset();
 	/* NOTREACHED */ /* assuming reset worked */
+}
+
+/*
+ * Try to remove FS references in the specified process.  This function
+ * is used during shutdown
+ */
+static
+void
+shutdown_cleanup_proc(struct proc *p)
+{
+	struct filedesc *fdp;
+	struct vmspace *vm;
+
+	if (p == NULL)
+		return;
+	if ((fdp = p->p_fd) != NULL) {
+		kern_closefrom(0);
+		if (fdp->fd_cdir) {
+			cache_drop(fdp->fd_ncdir);
+			vrele(fdp->fd_cdir);
+			fdp->fd_cdir = NULL;
+			fdp->fd_ncdir = NULL;
+		}
+		if (fdp->fd_rdir) {
+			cache_drop(fdp->fd_nrdir);
+			vrele(fdp->fd_rdir);
+			fdp->fd_rdir = NULL;
+			fdp->fd_nrdir = NULL;
+		}
+		if (fdp->fd_jdir) {
+			cache_drop(fdp->fd_njdir);
+			vrele(fdp->fd_jdir);
+			fdp->fd_jdir = NULL;
+			fdp->fd_njdir = NULL;
+		}
+	}
+	if (p->p_vkernel) {
+		vkernel_drop(p->p_vkernel);
+		p->p_vkernel = NULL;
+	}
+	if (p->p_textvp) {
+		vrele(p->p_textvp);
+		p->p_textvp = NULL;
+	}
+	vm = p->p_vmspace;
+	if (vm != NULL) {
+		pmap_remove_pages(vmspace_pmap(vm),
+				  VM_MIN_ADDRESS,
+				  VM_MAXUSER_ADDRESS);
+		vm_map_remove(&vm->vm_map,
+			      VM_MIN_ADDRESS,
+			      VM_MAXUSER_ADDRESS);
+	}
 }
 
 /*
