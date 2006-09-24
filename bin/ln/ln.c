@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.9 2005/03/16 07:08:04 cpressey Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.10 2006/09/24 21:28:13 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -146,6 +146,13 @@ main(int argc, char *argv[])
 	exit(exitval);
 }
 
+/*
+ * Nomenclature warning!
+ *
+ * In this source "target" and "source" are used the opposite way they
+ * are used in the ln(1) manual.  Here "target" is the existing file and
+ * "source" specifies the to-be-created link to "target".
+ */
 static int
 linkit(const char *target, const char *source, int isdir)
 {
@@ -189,6 +196,28 @@ linkit(const char *target, const char *source, int isdir)
 	}
 
 	exists = (lstat(source, &sb) == 0);
+	/*
+	 * If doing hard links and the source (destination) exists and it
+	 * actually is the same file like the target (existing file), we
+	 *  a) complain that the files are identical, unless
+	 *  b) -f is specified, in which case we just accept the job
+	 *     as already done.
+	 */
+	if (exists && !sflag) {
+		struct stat tsb;
+
+		if (stat(target, &tsb) != 0) {
+			warn("%s: disappeared", target);
+			return (1);
+		}
+
+		if (tsb.st_dev == sb.st_dev && tsb.st_ino == sb.st_ino) {
+			if (fflag)
+				return (0);
+			warnx("%s and %s are identical (not linked).", target, source);
+			return (1);
+		}
+	}
 	/*
 	 * If the file exists, then unlink it forcibly if -f was specified
 	 * and interactively if -i was specified.
