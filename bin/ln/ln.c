@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.10 2006/09/24 21:28:13 corecode Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.11 2006/09/25 09:27:21 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -199,9 +199,8 @@ linkit(const char *target, const char *source, int isdir)
 	/*
 	 * If doing hard links and the source (destination) exists and it
 	 * actually is the same file like the target (existing file), we
-	 *  a) complain that the files are identical, unless
-	 *  b) -f is specified, in which case we just accept the job
-	 *     as already done.
+	 * complain that the files are identical.  If -f is specified, we
+	 * accept the job as already done and return with success.
 	 */
 	if (exists && !sflag) {
 		struct stat tsb;
@@ -212,10 +211,11 @@ linkit(const char *target, const char *source, int isdir)
 		}
 
 		if (tsb.st_dev == sb.st_dev && tsb.st_ino == sb.st_ino) {
+			warnx("%s and %s are identical (not linked).", target, source);
 			if (fflag)
 				return (0);
-			warnx("%s and %s are identical (not linked).", target, source);
-			return (1);
+			else
+				return (1);
 		}
 	}
 	/*
