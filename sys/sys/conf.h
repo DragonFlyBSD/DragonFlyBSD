@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.14 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.15 2006/09/26 18:57:14 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -85,6 +85,7 @@ struct cdev {
 #define SI_STASHED	0x0001	/* created in stashed storage */
 #define SI_HASHED	0x0002	/* in (maj,min) hash table */
 #define SI_ADHOC	0x0004	/* created via make_adhoc_dev() or udev2dev() */
+#define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
 
 #define si_tty		__si_u.__si_tty.__sit_tty
 #define si_disk		__si_u.__si_disk.__sid_disk

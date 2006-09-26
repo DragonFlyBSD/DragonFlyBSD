@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.16 2006/09/26 18:15:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.17 2006/09/26 18:57:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,10 +111,18 @@ lminor(cdev_t x)
  * set the device will be referenced (once) and SI_ADHOC will be set.
  * The caller must explicitly add additional references to the device if
  * the caller wishes to track additional references.
+ *
+ * NOTE: The passed ops vector must normally match the device.  This is
+ * because the kernel may create shadow devices that are INVISIBLE TO
+ * USERLAND.  For example, the block device backing a disk is created
+ * as a shadow underneath the user-visible disklabel management device.
+ * Sometimes a device ops vector can be overridden, such as by /dev/console.
+ * In this case and this case only we allow a match when the ops vector
+ * otherwise would not match.
  */
 static
 cdev_t
-hashdev(struct dev_ops *ops, int x, int y, int allow_override)
+hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 {
 	struct cdev *si;
 	udev_t	udev;
@@ -124,9 +132,11 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_override)
 	udev = makeudev(x, y);
 	hash = udev % DEVT_HASH;
 	LIST_FOREACH(si, &dev_hash[hash], si_hash) {
-		if (si->si_udev == udev &&
-		    (allow_override || si->si_ops == ops)) {
-			return (si);
+		if (si->si_udev == udev) {
+			if (si->si_ops == ops)
+				return (si);
+			if (allow_intercept && (si->si_flags & SI_INTERCEPTED))
+				return (si);
 		}
 	}
 	if (stashed >= DEVT_STASH) {

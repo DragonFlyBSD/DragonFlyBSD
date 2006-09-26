@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.21 2006/09/26 18:57:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -567,6 +567,7 @@ dev_ops_intercept(cdev_t dev, struct dev_ops *iops)
 	iops->head.data = oops->head.data;
 	iops->head.flags = oops->head.flags;
 	dev->si_ops = iops;
+	dev->si_flags |= SI_INTERCEPTED;
 
 	return (oops);
 }
@@ -577,6 +578,7 @@ dev_ops_restore(cdev_t dev, struct dev_ops *oops)
 	struct dev_ops *iops = dev->si_ops;
 
 	dev->si_ops = oops;
+	dev->si_flags &= ~SI_INTERCEPTED;
 	iops->head.maj = 0;
 	iops->head.data = NULL;
 	iops->head.flags = 0;
