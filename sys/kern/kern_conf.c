@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.15 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.16 2006/09/26 18:15:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ lminor(cdev_t x)
  */
 static
 cdev_t
-hashdev(struct dev_ops *ops, int x, int y)
+hashdev(struct dev_ops *ops, int x, int y, int allow_override)
 {
 	struct cdev *si;
 	udev_t	udev;
@@ -124,8 +124,10 @@ hashdev(struct dev_ops *ops, int x, int y)
 	udev = makeudev(x, y);
 	hash = udev % DEVT_HASH;
 	LIST_FOREACH(si, &dev_hash[hash], si_hash) {
-		if (si->si_ops == ops && si->si_udev == udev)
+		if (si->si_udev == udev &&
+		    (allow_override || si->si_ops == ops)) {
 			return (si);
+		}
 	}
 	if (stashed >= DEVT_STASH) {
 		MALLOC(si, struct cdev *, sizeof(*si), M_DEVT,
@@ -185,7 +187,7 @@ udev2dev(udev_t x, int b)
 	ops = dev_ops_get(umajor(x), uminor(x));
 	if (ops == NULL)
 		return(NOCDEV);
-	dev = hashdev(ops, umajor(x), uminor(x));
+	dev = hashdev(ops, umajor(x), uminor(x), TRUE);
 	return(dev);
 }
 
@@ -245,7 +247,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * compile the cdevsw and install the device
 	 */
 	compile_dev_ops(ops);
-	dev = hashdev(ops, ops->head.maj, minor);
+	dev = hashdev(ops, ops->head.maj, minor, FALSE);
 
 	/*
 	 * Set additional fields (XXX DEVFS interface goes here)
@@ -267,7 +269,7 @@ make_adhoc_dev(struct dev_ops *ops, int minor)
 {
 	cdev_t dev;
 
-	dev = hashdev(ops, ops->head.maj, minor);
+	dev = hashdev(ops, ops->head.maj, minor, FALSE);
 	return(dev);
 }
 
@@ -280,7 +282,7 @@ make_sub_dev(cdev_t odev, int minor)
 {
 	cdev_t	dev;
 
-	dev = hashdev(odev->si_ops, umajor(odev->si_udev), minor);
+	dev = hashdev(odev->si_ops, umajor(odev->si_udev), minor, FALSE);
 
 	/*
 	 * Copy cred requirements and name info XXX DEVFS.
