@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.10 2006/01/14 22:58:17 corecode Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.11 2006/09/26 17:32:09 dillon Exp $
  */
 
 #include <sys/cdio.h>
@@ -581,10 +581,12 @@ play(char *arg)
 		goto Try_Absolute_Timed_Addresses;
 
 Play_Relative_Addresses:
-		if (! tr1)
+		if (tr1 == 0)
 			tr1 = 1;
 		else if (tr1 > n)
 			tr1 = n;
+
+		tr1--;
 
 		if (msf) {
 			tm = toc_buffer[tr1].addr.msf.minute;
@@ -598,11 +600,9 @@ Play_Relative_Addresses:
 		    && ((s1 > ts)
 		    || ((s1 == ts)
 		    && (f1 > tf))))) {
-			printf ("Track %d is not that long.\n", tr1);
+			printf ("Track %d is not that long.\n", tr1 + 1);
 			return (0);
 		}
-
-		tr1--;
 
 		f1 += tf;
 		if (f1 >= 75) {
