@@ -1,0 +1,23 @@
+$DragonFly: src/gnu/lib/gcc41/libstdc++/ctype_noninline.h.patch,v 1.1 2006/09/27 12:10:33 corecode Exp $
+
+Index: ctype_noninline.h
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.4/libstdc++-v3/config/os/bsd/netbsd/ctype_noninline.h,v
+retrieving revision 1.3
+diff -u -r1.3 ctype_noninline.h
+--- config/os/bsd/netbsd/ctype_noninline.h	2 Mar 2005 00:56:21 -0000	1.3
++++ config/os/bsd/netbsd/ctype_noninline.h	7 Mar 2005 12:15:21 -0000
+@@ -33,11 +33,11 @@
+   
+ // Information as gleaned from /usr/include/ctype.h
+ 
+-  extern "C" const u_int8_t _C_ctype_[];
++  extern "C" const __uint16_t __libc_C_ctype_[];
+ 
+   const ctype_base::mask*
+   ctype<char>::classic_table() throw()
+-  { return _C_ctype_ + 1; }
++  { return __libc_C_ctype_ + 1; }
+ 
+   ctype<char>::ctype(__c_locale, const mask* __table, bool __del, 
+ 		     size_t __refs) 

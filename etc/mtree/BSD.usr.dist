@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.43 2006/07/14 21:42:06 swildner Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.44 2006/09/27 12:10:33 corecode Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -37,6 +37,12 @@
 	    profile
 	    ..
 	..
+	gcc41
+	    debug
+	    ..
+	    profile
+	    ..
+	..
 	i18n
 	..
 	profile
@@ -59,6 +65,8 @@
 	..
 	gcc40
 	..
+	gcc41
+	..
         lint
         ..
         msdosfs
@@ -78,6 +86,8 @@
 	gcc34
 	..
 	gcc40
+	..
+	gcc41
 	..
         lpr
             ru
