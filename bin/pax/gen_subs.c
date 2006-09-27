@@ -36,7 +36,7 @@
  *
  * @(#)gen_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/gen_subs.c,v 1.12.2.4 2002/03/12 17:49:17 phantom Exp $
- * $DragonFly: src/bin/pax/gen_subs.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/gen_subs.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -123,19 +123,10 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 * print device id's for devices, or sizes for other nodes
 	 */
 	if ((arcn->type == PAX_CHR) || (arcn->type == PAX_BLK))
-#		ifdef NET2_STAT
-		fprintf(fp, "%4u,%4u ", MAJOR(sbp->st_rdev),
-		    MINOR(sbp->st_rdev));
-#		else
 		fprintf(fp, "%4lu,%4lu ", (unsigned long)MAJOR(sbp->st_rdev),
 		    (unsigned long)MINOR(sbp->st_rdev));
-#		endif
 	else {
-#		ifdef NET2_STAT
-		fprintf(fp, "%9lu ", sbp->st_size);
-#		else
 		fprintf(fp, "%9qu ", sbp->st_size);
-#		endif
 	}
 
 	/*
@@ -304,7 +295,6 @@ ul_asc(u_long val, char *str, int len, int base)
 	return(0);
 }
 
-#ifndef NET2_STAT
 /*
  * asc_uqd()
  *	convert hex/octal character string into a u_quad_t. We do not have to
@@ -400,4 +390,3 @@ uqd_asc(u_quad_t val, char *str, int len, int base)
 		return(-1);
 	return(0);
 }
-#endif

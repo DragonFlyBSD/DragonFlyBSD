@@ -36,7 +36,7 @@
  *
  * @(#)tar.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tar.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tar.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/tar.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -57,9 +57,7 @@
 static u_long tar_chksm (char *, int);
 static char *name_split (char *, int);
 static int ul_oct (u_long, char *, int, int);
-#ifndef NET2_STAT
 static int uqd_oct (u_quad_t, char *, int, int);
-#endif
 
 /*
  * Routines common to all versions of tar
@@ -190,7 +188,6 @@ ul_oct(u_long val, char *str, int len, int term)
 	return(0);
 }
 
-#ifndef NET2_STAT
 /*
  * uqd_oct()
  *	convert an u_quad_t to an octal string. one of many oddball field
@@ -244,7 +241,6 @@ uqd_oct(u_quad_t val, char *str, int len, int term)
 		return(-1);
 	return(0);
 }
-#endif
 
 /*
  * tar_chksm()
@@ -393,11 +389,7 @@ tar_rd(ARCHD *arcn, char *buf)
 	    0xfff);
 	arcn->sb.st_uid = (uid_t)asc_ul(hd->uid, sizeof(hd->uid), OCT);
 	arcn->sb.st_gid = (gid_t)asc_ul(hd->gid, sizeof(hd->gid), OCT);
-#ifdef NET2_STAT
-	arcn->sb.st_size = (off_t)asc_ul(hd->size, sizeof(hd->size), OCT);
-#else
 	arcn->sb.st_size = (off_t)asc_uqd(hd->size, sizeof(hd->size), OCT);
-#endif
 	arcn->sb.st_mtime = (time_t)asc_ul(hd->mtime, sizeof(hd->mtime), OCT);
 	arcn->sb.st_ctime = arcn->sb.st_atime = arcn->sb.st_mtime;
 
@@ -602,13 +594,8 @@ tar_wr(ARCHD *arcn)
 		 */
 		hd->linkflag = AREGTYPE;
 		memset(hd->linkname, 0, sizeof(hd->linkname));
-#		ifdef NET2_STAT
-		if (ul_oct((u_long)arcn->sb.st_size, hd->size,
-		    sizeof(hd->size), 1)) {
-#		else
 		if (uqd_oct((u_quad_t)arcn->sb.st_size, hd->size,
 		    sizeof(hd->size), 1)) {
-#		endif
 			paxwarn(1,"File is too large for tar %s", arcn->org_name);
 			return(1);
 		}
@@ -762,11 +749,7 @@ ustar_rd(ARCHD *arcn, char *buf)
 	 */
 	arcn->sb.st_mode = (mode_t)(asc_ul(hd->mode, sizeof(hd->mode), OCT) &
 	    0xfff);
-#ifdef NET2_STAT
-	arcn->sb.st_size = (off_t)asc_ul(hd->size, sizeof(hd->size), OCT);
-#else
 	arcn->sb.st_size = (off_t)asc_uqd(hd->size, sizeof(hd->size), OCT);
-#endif
 	arcn->sb.st_mtime = (time_t)asc_ul(hd->mtime, sizeof(hd->mtime), OCT);
 	arcn->sb.st_ctime = arcn->sb.st_atime = arcn->sb.st_mtime;
 
@@ -996,13 +979,8 @@ ustar_wr(ARCHD *arcn)
 		memset(hd->devmajor, 0, sizeof(hd->devmajor));
 		memset(hd->devminor, 0, sizeof(hd->devminor));
 		arcn->pad = TAR_PAD(arcn->sb.st_size);
-#		ifdef NET2_STAT
-		if (ul_oct((u_long)arcn->sb.st_size, hd->size,
-		    sizeof(hd->size), 3)) {
-#		else
 		if (uqd_oct((u_quad_t)arcn->sb.st_size, hd->size,
 		    sizeof(hd->size), 3)) {
-#		endif
 			paxwarn(1,"File is too long for ustar %s",arcn->org_name);
 			return(1);
 		}

@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/extern.h,v 1.6.2.2 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/extern.h,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/extern.h,v 1.5 2006/09/27 19:18:00 pavalos Exp $
  */
 
 /*
@@ -171,10 +171,8 @@ void ls_tty (ARCHD *);
 int l_strncpy (char *, char *, int);
 u_long asc_ul (char *, int, int);
 int ul_asc (u_long, char *, int, int);
-#ifndef NET2_STAT
 u_quad_t asc_uqd (char *, int, int);
 int uqd_asc (u_quad_t, char *, int, int);
-#endif
 
 /*
  * getoldopt.c

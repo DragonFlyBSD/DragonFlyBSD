@@ -36,7 +36,7 @@
  *
  * @(#)sel_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/sel_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/sel_subs.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -133,11 +133,7 @@ usr_add(char *str)
 		}
 		uid = (uid_t)pw->pw_uid;
 	} else
-#		ifdef NET2_STAT
-		uid = (uid_t)atoi(str+1);
-#		else
 		uid = (uid_t)strtoul(str+1, NULL, 10);
-#		endif
 	endpwent();
 
 	/*
@@ -234,11 +230,7 @@ grp_add(char *str)
 		}
 		gid = (gid_t)gr->gr_gid;
 	} else
-#		ifdef NET2_STAT
-		gid = (gid_t)atoi(str+1);
-#		else
 		gid = (gid_t)strtoul(str+1, NULL, 10);
-#		endif
 	endgrent();
 
 	/*

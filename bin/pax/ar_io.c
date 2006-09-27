@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.9 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.10 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -383,11 +383,7 @@ ar_close(void)
 	 * could have written anything yet.
 	 */
 	if (frmt == NULL) {
-#	ifdef NET2_STAT
-		fprintf(listf, "%s: unknown format, %lu bytes skipped.\n",
-#	else
 		fprintf(listf, "%s: unknown format, %qu bytes skipped.\n",
-#	endif
 		    argv0, rdcnt);
 		fflush(listf);
 		flcnt = 0;
@@ -398,11 +394,7 @@ ar_close(void)
 		fprintf(listf, "%qu blocks\n", (rdcnt ? rdcnt : wrcnt) / 5120);
 	else if (strcmp(NM_TAR, argv0) != 0)
 		fprintf(listf,
-#	ifdef NET2_STAT
-		    "%s: %s vol %d, %lu files, %lu bytes read, %lu bytes written.\n",
-#	else
 		    "%s: %s vol %d, %lu files, %qu bytes read, %qu bytes written.\n",
-#	endif
 		    argv0, frmt->name, arvol-1, flcnt, rdcnt, wrcnt);
 	fflush(listf);
 	flcnt = 0;

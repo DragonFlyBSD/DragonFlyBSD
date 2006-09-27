@@ -36,7 +36,7 @@
  *
  * @(#)cache.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cache.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cache.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/cache.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -210,12 +210,8 @@ name_uid(uid_t uid, int frc)
 			return("");
 		ptr->uid = uid;
 		ptr->valid = INVALID;
-#		ifdef NET2_STAT
-		snprintf(ptr->name, sizeof(ptr->name), "%u", uid);
-#		else
 		snprintf(ptr->name, sizeof(ptr->name), "%lu",
 			       (unsigned long)uid);
-#		endif
 		if (frc == 0)
 			return("");
 	} else {
@@ -281,12 +277,8 @@ name_gid(gid_t gid, int frc)
 			return("");
 		ptr->gid = gid;
 		ptr->valid = INVALID;
-#		ifdef NET2_STAT
-		snprintf(ptr->name, sizeof(ptr->name), "%u", gid);
-#		else
 		snprintf(ptr->name, sizeof(ptr->name), "%lu",
 			       (unsigned long)gid);
-#		endif
 		if (frc == 0)
 			return("");
 	} else {

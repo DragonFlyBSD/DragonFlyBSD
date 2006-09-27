@@ -36,7 +36,7 @@
  *
  *	@(#)pat_rep.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/pat_rep.h,v 1.5 1999/08/27 23:14:44 peter Exp $
- * $DragonFly: src/bin/pax/pat_rep.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/pat_rep.h,v 1.3 2006/09/27 19:18:00 pavalos Exp $
  */
 
 /*
@@ -44,11 +44,7 @@
  */
 typedef struct replace {
 	char		*nstr;	/* the new string we will substitute with */
-#	ifdef NET2_REGEX
-	regexp		*rcmp;	/* compiled regular expression used to match */
-#	else
 	regex_t		rcmp;	/* compiled regular expression used to match */
-#	endif
 	int		flgs;	/* print conversions? global in operation?  */
 #define	PRNT		0x1
 #define	GLOB		0x2

@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -1415,13 +1415,8 @@ str_offt(char *val)
 	char *expr;
 	off_t num, t;
 
-#	ifdef NET2_STAT
-	num = strtol(val, &expr, 0);
-	if ((num == LONG_MAX) || (num <= 0) || (expr == val))
-#	else
 	num = strtoq(val, &expr, 0);
 	if ((num == QUAD_MAX) || (num <= 0) || (expr == val))
-#	endif
 		return(0);
 
 	switch(*expr) {
