@@ -36,7 +36,7 @@
  *
  * @(#)pat_rep.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pat_rep.c,v 1.15.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/pat_rep.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/pat_rep.c,v 1.8 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -270,7 +270,7 @@ pat_chk(void)
  *	NOTE: When the -c option is used, we are called when there was no match
  *	by pat_match() (that means we did match before the inverted sense of
  *	the logic). Now this seems really strange at first, but with -c  we
- *	need to keep track of those patterns that cause a archive member to NOT
+ *	need to keep track of those patterns that cause an archive member to NOT
  *	be selected (it found an archive member with a specified pattern)
  * Return:
  *	0 if the pattern pointed at by arcn->pat was tagged as creating a
@@ -360,7 +360,7 @@ pat_sel(ARCHD *arcn)
 	 * we are then done with this pattern, so we delete it from the list
 	 * because it can never be used for another match.
 	 * Seems kind of strange to do for a -c, but the pax spec is really
-	 * vague on the interaction of -c -n and -d. We assume that when -c
+	 * vague on the interaction of -c, -n and -d. We assume that when -c
 	 * and the pattern rejects a member (i.e. it matched it) it is done.
 	 * In effect we place the order of the flags as having -c last.
 	 */
@@ -375,7 +375,7 @@ pat_sel(ARCHD *arcn)
 		/*
 		 * should never happen....
 		 */
-		paxwarn(1, "Pattern list inconsistant");
+		paxwarn(1, "Pattern list inconsistent");
 		return(-1);
 	}
 	*ppt = pt->fow;

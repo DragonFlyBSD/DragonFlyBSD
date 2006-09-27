@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.8 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -299,7 +299,7 @@ pax_options(int argc, char **argv)
 					break;
 				case 'p':
 					/*
-					 * preserver file mode bits
+					 * preserve file mode bits
 					 */
 					pmode = 1;
 					break;

@@ -36,7 +36,7 @@
  *
  * @(#)cache.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cache.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cache.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/cache.c,v 1.7 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -67,7 +67,7 @@ static GIDC **grptb = NULL;	/* group name to gid cache */
 
 /*
  * uidtb_start
- *	creates an an empty uidtb
+ *	creates an empty uidtb
  * Return:
  *	0 if ok, -1 otherwise
  */
@@ -91,7 +91,7 @@ uidtb_start(void)
 
 /*
  * gidtb_start
- *	creates an an empty gidtb
+ *	creates an empty gidtb
  * Return:
  *	0 if ok, -1 otherwise
  */
@@ -115,7 +115,7 @@ gidtb_start(void)
 
 /*
  * usrtb_start
- *	creates an an empty usrtb
+ *	creates an empty usrtb
  * Return:
  *	0 if ok, -1 otherwise
  */
@@ -139,7 +139,7 @@ usrtb_start(void)
 
 /*
  * grptb_start
- *	creates an an empty grptb
+ *	creates an empty grptb
  * Return:
  *	0 if ok, -1 otherwise
  */

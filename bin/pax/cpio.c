@@ -36,7 +36,7 @@
  *
  * @(#)cpio.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cpio.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cpio.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/cpio.c,v 1.8 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -597,7 +597,7 @@ vcpio_rd(ARCHD *arcn, char *buf)
 		return(-1);
 
 	/*
-	 * skip padding. header + filename is aligned to 4 byte boundries
+	 * skip padding. header + filename is aligned to 4 byte boundaries
 	 */
 	if (rd_skip((off_t)(VCPIO_PAD(sizeof(HD_VCPIO) + nsz))) < 0)
 		return(-1);
@@ -907,7 +907,7 @@ bcpio_rd(ARCHD *arcn, char *buf)
 		return(-1);
 
 	/*
-	 * header + file name are aligned to 2 byte boundries, skip if needed
+	 * header + file name are aligned to 2 byte boundaries, skip if needed
 	 */
 	if (rd_skip((off_t)(BCPIO_PAD(sizeof(HD_BCPIO) + nsz))) < 0)
 		return(-1);
@@ -954,8 +954,8 @@ bcpio_endrd(void)
  * bcpio_wr()
  *	copy the data in the ARCHD to buffer in old binary cpio format
  *	There is a real chance of field overflow with this critter. So we
- *	always check the conversion is ok. nobody in his their right mind
- *	should write an achive in this format...
+ *	always check the conversion is ok. nobody in their right mind
+ *	should write an archive in this format...
  * Return
  *      0 if file has data to be written after the header, 1 if file has NO
  *	data to write after the header, -1 if archive write failed

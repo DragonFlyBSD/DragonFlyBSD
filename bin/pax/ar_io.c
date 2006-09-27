@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.10 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.11 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -202,8 +202,8 @@ ar_open(char *name)
 	/*
 	 * set default blksz on read. APPNDs writes rdblksz on the last volume
 	 * On all new archive volumes, we shift to wrblksz (if the user
-	 * specified one, otherwize we will continue to use rdblksz). We
-	 * must to set blocksize based on what kind of device the archive is
+	 * specified one, otherwise we will continue to use rdblksz). We
+	 * must set blocksize based on what kind of device the archive is
 	 * stored.
 	 */
 	switch(artyp) {
@@ -283,7 +283,7 @@ ar_open(char *name)
 		break;
 	default:
 		/*
-		 * should never happen, worse case, slow...
+		 * should never happen, worst case, slow...
 		 */
 		blksz = rdblksz = BLKMULT;
 		break;
@@ -528,10 +528,10 @@ ar_read(char *buf, int cnt)
 			io_ok = 1;
 			if (res != rdblksz) {
 				/*
-				 * Record size changed. If this is happens on
+				 * Record size changed. If this happens on
 				 * any record after the first, we probably have
 				 * a tape drive which has a fixed record size
-				 * we are getting multiple records in a single
+				 * (we are getting multiple records in a single
 				 * read). Watch out for record blocking that
 				 * violates pax spec (must be a multiple of
 				 * BLKMULT).
@@ -581,7 +581,7 @@ ar_read(char *buf, int cnt)
  * Return:
  *	Number of bytes written. 0 indicates end of volume reached and with no
  *	flaws (as best that can be detected). A -1 indicates an unrecoverable
- *	error in the archive occured.
+ *	error in the archive occurred.
  */
 
 int
@@ -711,7 +711,7 @@ ar_rdsync(void)
 	struct mtop mb;
 
 	/*
-	 * Fail resync attempts at user request (done) or this is going to be
+	 * Fail resync attempts at user request (done) or if this is going to be
 	 * an update/append to a existing archive. if last i/o hit media end,
 	 * we need to go to the next volume not try a resync
 	 */
@@ -780,7 +780,7 @@ ar_rdsync(void)
 
 /*
  * ar_fow()
- *	Move the I/O position within the archive foward the specified number of
+ *	Move the I/O position within the archive forward the specified number of
  *	bytes as supported by the device. If we cannot move the requested
  *	number of bytes, return the actual number of bytes moved in skipped.
  * Return:
@@ -799,7 +799,7 @@ ar_fow(off_t sksz, off_t *skipped)
 		return(0);
 
 	/*
-	 * we cannot move foward at EOF or error
+	 * we cannot move forward at EOF or error
 	 */
 	if (lstrval <= 0)
 		return(lstrval);
@@ -808,7 +808,7 @@ ar_fow(off_t sksz, off_t *skipped)
 	 * Safer to read forward on devices where it is hard to find the end of
 	 * the media without reading to it. With tapes we cannot be sure of the
 	 * number of physical blocks to skip (we do not know physical block
-	 * size at this point), so we must only read foward on tapes!
+	 * size at this point), so we must only read forward on tapes!
 	 */
 	if (artyp != ISREG)
 		return(0);
@@ -893,8 +893,8 @@ ar_rev(off_t sksz)
 
 		/*
 		 * we may try to go backwards past the start when the archive
-		 * is only a single record. If this hapens and we are on a
-		 * multi volume archive, we need to go to the end of the
+		 * is only a single record. If this happens and we are on a
+		 * multi-volume archive, we need to go to the end of the
 		 * previous volume and continue our movement backwards from
 		 * there.
 		 */
@@ -920,7 +920,7 @@ ar_rev(off_t sksz)
 	 	 * Calculate and move the proper number of PHYSICAL tape
 		 * blocks. If the sksz is not an even multiple of the physical
 		 * tape size, we cannot do the move (this should never happen).
-		 * (We also cannot handler trailers spread over two vols).
+		 * (We also cannot handle trailers spread over two vols.)
 		 * get_phys() also makes sure we are in front of the filemark.
 	 	 */
 		if ((phyblk = get_phys()) <= 0) {
@@ -1032,7 +1032,7 @@ get_phys(void)
 	}
 
 	/*
-	 * read foward to the file mark, then back up in front of the filemark
+	 * read forward to the file mark, then back up in front of the filemark
 	 * (this is a bit paranoid, but should be safe to do).
 	 */
 	while ((res = read(arfd, scbuf, sizeof(scbuf))) > 0)

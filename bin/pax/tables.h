@@ -36,7 +36,7 @@
  *
  *	@(#)tables.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/tables.h,v 1.7 1999/08/27 23:14:47 peter Exp $
- * $DragonFly: src/bin/pax/tables.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/tables.h,v 1.3 2006/09/27 21:58:08 pavalos Exp $
  */
 
 /*
@@ -46,7 +46,7 @@
 /*
  * Hash Table Sizes MUST BE PRIME, if set too small performance suffers.
  * Probably safe to expect 500000 inodes per tape. Assuming good key
- * distribution (inodes) chains of under 50 long (worse case) is ok.
+ * distribution (inodes) chains of under 50 long (worst case) is ok.
  */
 #define L_TAB_SZ	2503		/* hard link hash table size */
 #define F_TAB_SZ	50503		/* file time hash table size */
@@ -137,7 +137,7 @@ typedef struct dlist {
 } DLIST;
 
 /*
- * ftree directory access time reset table. When we are done with with a
+ * ftree directory access time reset table. When we are done with a
  * subtree we reset the access and mod time of the directory when the tflag is
  * set. Not really explicitly specified in the pax spec, but easy and fast to
  * do (and this may have even been intended in the spec, it is not clear).

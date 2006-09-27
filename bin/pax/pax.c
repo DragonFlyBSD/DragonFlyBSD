@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pax.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $
- * $DragonFly: src/bin/pax/pax.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/pax.c,v 1.6 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -81,8 +81,8 @@ int	Dflag;			/* same as uflag except inode change time */
 int	Hflag;			/* follow command line symlinks (write only) */
 int	Lflag;			/* follow symlinks when writing */
 int	Xflag;			/* archive files with same device id only */
-int	Yflag;			/* same as Dflg except after name mode */
-int	Zflag;			/* same as uflg except after name mode */
+int	Yflag;			/* same as Dflag except after name mode */
+int	Zflag;			/* same as uflag except after name mode */
 int	vfpart;			/* is partial verbose output in progress */
 int	patime = 1;		/* preserve file access time */
 int	pmtime = 1;		/* preserve file modification times */
@@ -367,7 +367,7 @@ gen_init(void)
 	/*
 	 * signal handling to reset stored directory times and modes. Since
 	 * we deal with broken pipes via failed writes we ignore it. We also
-	 * deal with any file size limit thorugh failed writes. Cpu time
+	 * deal with any file size limit through failed writes. Cpu time
 	 * limits are caught and a cleanup is forced.
 	 */
 	if ((sigemptyset(&s_mask) < 0) || (sigaddset(&s_mask, SIGTERM) < 0) ||

@@ -36,7 +36,7 @@
  *
  * @(#)tar.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tar.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tar.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/tar.c,v 1.7 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -562,7 +562,7 @@ tar_wr(ARCHD *arcn)
 	if (arcn->type == PAX_DIR) {
 		/*
 		 * directories are the same as files, except have a filename
-		 * that ends with a /, we add the slash here. No data follows,
+		 * that ends with a /, we add the slash here. No data follows
 		 * dirs, so no pad.
 		 */
 		hd->linkflag = AREGTYPE;

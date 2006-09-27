@@ -36,7 +36,7 @@
  *
  * @(#)sel_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/sel_subs.c,v 1.7 2006/09/27 19:18:00 pavalos Exp $
+ * $DragonFly: src/bin/pax/sel_subs.c,v 1.8 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -88,7 +88,7 @@ sel_chk(ARCHD *arcn)
  * User/group selection routines
  *
  * Routines to handle user selection of files based on the file uid/gid. To
- * add an entry, the user supplies either then name or the uid/gid starting with
+ * add an entry, the user supplies either the name or the uid/gid starting with
  * a # on the command line. A \# will escape the #.
  */
 
@@ -368,7 +368,7 @@ trng_add(char *str)
 	}
 
 	/*
-	 * by default we only will check file mtime, but usee can specify
+	 * by default we only will check file mtime, but user can specify
 	 * mtime, ctime (inode change time) or both.
 	 */
 	if ((flgpt == NULL) || (*flgpt == '\0'))
