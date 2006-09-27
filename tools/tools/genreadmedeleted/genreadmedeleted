@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $DragonFly: src/tools/tools/genreadmedeleted/genreadmedeleted,v 1.1 2005/09/12 00:10:00 corecode Exp $
+# $DragonFly: src/tools/tools/genreadmedeleted/genreadmedeleted,v 1.2 2006/09/27 10:24:15 corecode Exp $
 
 if [ $# -lt 2 -o $# -gt 3 ]
 then
@@ -42,7 +42,7 @@ trimdir() {
 
 		case "$isdir" in
 		/)
-			trimdir "$curdir$f/"
+			(trimdir "$curdir$f/")
 			;;
 		esac
 	done
