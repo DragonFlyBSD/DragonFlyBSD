@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mksyntax.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/mksyntax.c,v 1.14.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mksyntax.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/mksyntax.c,v 1.4 2006/09/28 04:19:40 pavalos Exp $
  */
 
 /*
@@ -338,9 +338,10 @@ print(const char *name)
 
 static const char *macro[] = {
 	"#define is_digit(c)\t((is_type+SYNBASE)[c] & ISDIGIT)",
-	"#define is_alpha(c)\t((c) != PEOF && ((c) < CTLESC || (c) > CTLQUOTEMARK) && isalpha((unsigned char) (c)))",
-	"#define is_name(c)\t((c) != PEOF && ((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalpha((unsigned char) (c))))",
-	"#define is_in_name(c)\t((c) != PEOF && ((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalnum((unsigned char) (c))))",
+	"#define is_eof(c)\t((c) == PEOF)",
+	"#define is_alpha(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && isalpha((unsigned char) (c)))",
+	"#define is_name(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalpha((unsigned char) (c))))",
+	"#define is_in_name(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalnum((unsigned char) (c))))",
 	"#define is_special(c)\t((is_type+SYNBASE)[c] & (ISSPECL|ISDIGIT))",
 	NULL
 };

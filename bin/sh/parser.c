@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.6 2005/11/06 11:44:02 swildner Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.7 2006/09/28 04:19:40 pavalos Exp $
  */
 
 #include <stdlib.h>
@@ -1189,7 +1189,8 @@ parsesub: {
        int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
 
 	c = pgetc();
-	if (c != '(' && c != '{' && !is_name(c) && !is_special(c)) {
+	if (c != '(' && c != '{' && (is_eof(c) || !is_name(c)) &&
+	    !is_special(c)) {
 		USTPUTC('$', out);
 		pungetc();
 	} else if (c == '(') {	/* $(command) or $((arith)) */
@@ -1216,11 +1217,11 @@ parsesub: {
 			else
 				subtype = 0;
 		}
-		if (is_name(c)) {
+		if (!is_eof(c) && is_name(c)) {
 			do {
 				STPUTC(c, out);
 				c = pgetc();
-			} while (is_in_name(c));
+			} while (!is_eof(c) && is_in_name(c));
 		} else if (is_digit(c)) {
 			if (bracketed_name) {
 				do {
