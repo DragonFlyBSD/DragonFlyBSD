@@ -1,5 +1,5 @@
-.\" $OpenBSD: strtonum.3,v 1.5 2004/05/06 06:19:01 tedu Exp $
-.\" $DragonFly: src/lib/libc/stdlib/strtonum.3,v 1.4 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdlib/strtonum.3,v 1.5 2006/09/28 17:20:45 corecode Exp $
+.\" $OpenBSD: strtonum.3,v 1.13 2006/04/25 05:15:42 tedu Exp $
 .\"
 .\" Copyright (c) 2004 Ted Unangst
 .\"
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd July 25, 2004
+.Dd April 29, 2004
 .Dt STRTONUM 3
 .Os
 .Sh NAME
@@ -23,12 +23,11 @@
 .Nd "reliably convert string value to an integer"
 .Sh SYNOPSIS
 .In stdlib.h
-.In limits.h
-.Ft unsigned long long
+.Ft long long
 .Fo strtonum
 .Fa "const char *nptr"
 .Fa "long long minval"
-.Fa "unsigned long long maxval"
+.Fa "long long maxval"
 .Fa "const char **errstr"
 .Fc
 .Sh DESCRIPTION
@@ -36,10 +35,9 @@ The
 .Fn strtonum
 function converts the string in
 .Fa nptr
-to an
-.Li unsigned long long
+to a
+.Li long long
 value.
-Negative values may be obtained by casting the result.
 The
 .Fn strtonum
 function was designed to facilitate safe, robust programming
@@ -58,8 +56,8 @@ or
 .Ql -
 sign.
 .Pp
-The remainder of the string is converted to an
-.Li unsigned long long
+The remainder of the string is converted to a
+.Li long long
 value according to base 10.
 .Pp
 The value obtained is then checked against the provided
@@ -79,9 +77,17 @@ The
 .Fn strtonum
 function returns the result of the conversion,
 unless the value would exceed the provided bounds or is invalid.
-On error, 0 is returned and
+On error, 0 is returned,
+.Va errno
+is set, and
 .Fa errstr
 will point to an error message.
+.Fa *errstr
+will be set to
+.Dv NULL
+on success;
+this fact can be used to differentiate
+a successful return of 0 from an error.
 .Sh EXAMPLES
 Using
 .Fn strtonum
@@ -96,22 +102,29 @@ if (errstr)
 .Ed
 .Pp
 The above example will guarantee that the value of iterations is between
-1 and 64.
+1 and 64 (inclusive).
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er ERANGE
 The given string was out of range.
 .It Bq Er EINVAL
 The given string did not consist solely of digit characters.
+.It Bq Er EINVAL
+.Ar minval
+was larger than
+.Ar maxval .
 .El
 .Pp
-If an error occurs, errstr will be set to one of the following strings.
-.Bl -tag -width "too large"
-.It "too large"
+If an error occurs,
+.Fa errstr
+will be set to one of the following strings:
+.Pp
+.Bl -tag -width "too largeXX" -compact
+.It too large
 The result was larger than the provided maximum value.
-.It "too small"
+.It too small
 The result was smaller than the provided minimum value.
-.It "invalid"
+.It invalid
 The string did not consist solely of digit characters.
 .El
 .Sh SEE ALSO

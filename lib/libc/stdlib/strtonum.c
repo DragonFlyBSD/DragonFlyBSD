@@ -1,5 +1,6 @@
-/* $OpenBSD: strtonum.c,v 1.5 2004/07/16 18:36:05 otto Exp $ */
-/* $DragonFly: src/lib/libc/stdlib/strtonum.c,v 1.1 2004/08/15 16:01:11 joerg Exp $ */
+/* $DragonFly: src/lib/libc/stdlib/strtonum.c,v 1.2 2006/09/28 17:20:45 corecode Exp $ */
+/*	$OpenBSD: strtonum.c,v 1.6 2004/08/03 19:38:01 millert Exp $	*/
+
 /*
  * Copyright (c) 2004 Ted Unangst and Todd Miller
  * All rights reserved.
@@ -25,45 +26,28 @@
 #define TOOSMALL 	2
 #define TOOLARGE 	3
 
-static struct errval {
-	const char *errstr;
-	int err;
-} ev[4] = {
-	{ NULL,		0 },
-	{ "invalid",	EINVAL },
-	{ "too small",	ERANGE },
-	{ "too large",	ERANGE },
-};
-
-unsigned long long
-strtonum(const char *numstr, long long minval, unsigned long long umaxval,
-	 const char **errstrp)
+long long
+strtonum(const char *numstr, long long minval, long long maxval,
+    const char **errstrp)
 {
-	long long ll, maxval = (long long)umaxval;
-	unsigned long long ull = 0;
+	long long ll = 0;
 	char *ep;
 	int error = 0;
+	struct errval {
+		const char *errstr;
+		int err;
+	} ev[4] = {
+		{ NULL,		0 },
+		{ "invalid",	EINVAL },
+		{ "too small",	ERANGE },
+		{ "too large",	ERANGE },
+	};
 
 	ev[0].err = errno;
 	errno = 0;
-	if (umaxval > LLONG_MAX ) {
-		if (minval < 0) {
-			error = INVALID;
-			goto done;
-		}
-		ull = strtoull(numstr, &ep, 10);
-		if (numstr == ep || *ep != '\0')
-			error = INVALID;
-		else if ((ull == ULLONG_MAX && errno == ERANGE) ||
-			 ull > umaxval)
-			error = TOOLARGE;
-		else if (ull < minval)
-			error = TOOSMALL;
-	} else {
-		if (minval > maxval || maxval < minval) {
-			error = INVALID;
-			goto done;
-		}
+	if (minval > maxval)
+		error = INVALID;
+	else {
 		ll = strtoll(numstr, &ep, 10);
 		if (numstr == ep || *ep != '\0')
 			error = INVALID;
@@ -71,14 +55,12 @@ strtonum(const char *numstr, long long minval, unsigned long long umaxval,
 			error = TOOSMALL;
 		else if ((ll == LLONG_MAX && errno == ERANGE) || ll > maxval)
 			error = TOOLARGE;
-		ull = (unsigned long long)ll;
 	}
-done:
 	if (errstrp != NULL)
 		*errstrp = ev[error].errstr;
 	errno = ev[error].err;
 	if (error)
-		ull = 0;
+		ll = 0;
 
-	return(ull);
+	return (ll);
 }
