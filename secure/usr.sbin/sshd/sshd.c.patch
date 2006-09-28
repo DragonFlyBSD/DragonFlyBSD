@@ -1,7 +1,7 @@
-# $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
---- ./sshd.c	2004-08-12 13:08:15.000000000 +0000
-+++ /home/sullrich/openssh-3.9p1/sshd.c	2004-08-19 17:37:10.000000000 +0000
-@@ -53,6 +53,10 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.3 2006/09/28 18:42:50 corecode Exp $
+--- sshd.c	2006-09-17 06:04:46.000000000 +0200
++++ sshd.c	2006-09-28 19:58:34.000000000 +0200
+@@ -80,6 +80,10 @@
  #include <prot.h>
  #endif
  
@@ -9,12 +9,12 @@
 +#include <resolv.h>
 +#endif
 +
+ #include "xmalloc.h"
  #include "ssh.h"
  #include "ssh1.h"
- #include "ssh2.h"
-@@ -1623,6 +1627,17 @@
- 	    sizeof(on)) < 0)
- 		error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
+@@ -1630,6 +1634,17 @@
+ 	/* This is the child processing a new connection. */
+ 	setproctitle("%s", "[accepted]");
  
 +#ifdef __DragonFly__
 +       /*
@@ -28,5 +28,5 @@
 +#endif
 +
  	/*
- 	 * Register our connection.  This turns encryption off because we do
- 	 * not have a key.
+ 	 * Create a new session and process group since the 4.4BSD
+ 	 * setlogin() affects the entire process group.  We don't

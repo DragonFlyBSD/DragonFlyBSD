@@ -1,15 +1,15 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/auth2.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- auth2.c.orig	2004-07-23 14:26:51.000000000 +0200
-+++ auth2.c	2004-07-23 14:20:00.000000000 +0200
-@@ -25,6 +25,7 @@
- #include "includes.h"
- RCSID("$OpenBSD: auth2.c,v 1.104 2003/11/04 08:54:09 djm Exp $");
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth2.c.patch,v 1.2 2006/09/28 18:42:50 corecode Exp $
+--- auth2.c	2006-08-05 04:39:39.000000000 +0200
++++ auth2.c	2006-09-28 19:53:14.000000000 +0200
+@@ -32,6 +32,7 @@
+ #include <string.h>
  
+ #include "xmalloc.h"
 +#include "canohost.h"
  #include "ssh2.h"
- #include "xmalloc.h"
  #include "packet.h"
-@@ -134,6 +135,13 @@
+ #include "log.h"
+@@ -147,6 +148,13 @@
  	Authmethod *m = NULL;
  	char *user, *service, *method, *style = NULL;
  	int authenticated = 0;
@@ -23,7 +23,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/auth2.c.patch,v 1.1 2004/07/31 20:05:
  
  	if (authctxt == NULL)
  		fatal("input_userauth_request: no authctxt");
-@@ -178,6 +186,27 @@
+@@ -190,6 +198,27 @@
  		    "(%s,%s) -> (%s,%s)",
  		    authctxt->user, authctxt->service, user, service);
  	}

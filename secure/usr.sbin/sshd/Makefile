@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.12 2005/09/06 18:55:35 dillon Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.13 2006/09/28 18:42:50 corecode Exp $
 #
 
 PROG=	sshd
@@ -10,7 +10,7 @@ SRCS=	sshd.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
 	auth-bsdauth.c auth2-hostbased.c \
 	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
 	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
-	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c
+	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c platform.c
 
 # Portability layer
 SRCS+=	loginrec.c xmmap.c

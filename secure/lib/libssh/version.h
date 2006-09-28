@@ -1,12 +1,12 @@
 /* $OpenBSD: version.h,v 1.46 2006/02/01 11:27:22 markus Exp $ */
-/* $DragonFly: src/secure/lib/libssh/version.h,v 1.4 2006/02/13 14:47:58 corecode Exp $ */
+/* $DragonFly: src/secure/lib/libssh/version.h,v 1.5 2006/09/28 18:42:50 corecode Exp $ */
 
 #ifndef SSH_VERSION
 
 #define SSH_VERSION             (ssh_version_get())
 #define SSH_RELEASE		(ssh_version_get())
-#define SSH_VERSION_BASE        "OpenSSH_4.3p2"
-#define SSH_VERSION_ADDENDUM    "DragonFly-20060212"
+#define SSH_VERSION_BASE        "OpenSSH_4.4p1"
+#define SSH_VERSION_ADDENDUM    "DragonFly-20060928"
 
 const char *ssh_version_get(void);
 void ssh_version_set_addendum(const char *add);

@@ -1,9 +1,12 @@
 /*
- * $DragonFly: src/secure/usr.sbin/sshd/auth-passwd-freebsd.c,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+ * $DragonFly: src/secure/usr.sbin/sshd/auth-passwd-freebsd.c,v 1.2 2006/09/28 18:42:50 corecode Exp $
  */
 
 #include <unistd.h>
 
+#include "buffer.h"
+#include "key.h"
+#include "hostfile.h"
 #include "auth.h"
 
 int

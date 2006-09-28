@@ -1,7 +1,7 @@
-$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- ssh_config.5.orig	2004-03-08 13:12:36.000000000 +0100
-+++ ssh_config.5	2004-07-23 13:16:14.000000000 +0200
-@@ -161,7 +161,7 @@
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.2 2006/09/28 18:42:50 corecode Exp $
+--- ssh_config.5	2006-08-05 03:34:51.000000000 +0200
++++ ssh_config.5	2006-09-28 19:50:01.000000000 +0200
+@@ -165,7 +165,7 @@
  .Dq no ,
  the check will not be executed.
  The default is
@@ -10,10 +10,10 @@ $DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.1 2004/07
  .It Cm Cipher
  Specifies the cipher to use for encrypting the session
  in protocol version 1.
-@@ -714,6 +714,11 @@
- The default is
- .Dq no .
- Note that this option applies to protocol version 2 only.
+@@ -1035,6 +1035,11 @@
+ .Sx VERIFYING HOST KEYS
+ in
+ .Xr ssh 1 .
 +.It Cm VersionAddendum
 +Specifies a string to append to the regular version string to identify
 +OS- or site-specific modifications.

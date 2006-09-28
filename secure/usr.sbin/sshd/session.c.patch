@@ -1,7 +1,7 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- session.c.orig	2004-07-23 14:26:51.000000000 +0200
-+++ session.c	2004-07-23 14:20:00.000000000 +0200
-@@ -748,6 +748,24 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.2 2006/09/28 18:42:50 corecode Exp $
+--- session.c	2006-09-01 07:38:37.000000000 +0200
++++ session.c	2006-09-28 20:03:43.000000000 +0200
+@@ -776,6 +776,24 @@
  {
  	FILE *f;
  	char buf[256];
@@ -26,19 +26,18 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  
  	if (options.print_motd) {
  #ifdef HAVE_LOGIN_CAP
-@@ -972,6 +990,10 @@
- 	char buf[256];
- 	u_int i, envsize;
- 	char **env, *laddr, *path = NULL;
-+#ifdef HAVE_LOGIN_CAP
+@@ -1004,6 +1022,9 @@
+ 	struct passwd *pw = s->pw;
+ #ifndef HAVE_LOGIN_CAP
+ 	char *path = NULL;
++#else
 +	extern char **environ;
 +	char **senv, **var;
-+#endif
- 	struct passwd *pw = s->pw;
+ #endif
  
  	/* Initialize the environment. */
-@@ -987,6 +1009,9 @@
- 	copy_environment(environ, &env, &envsize);
+@@ -1025,6 +1046,9 @@
+ 	}
  #endif
  
 +	if (getenv("TZ"))
@@ -47,7 +46,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  #ifdef GSSAPI
  	/* Allow any GSSAPI methods that we've used to alter
  	 * the childs environment as they see fit
-@@ -1002,11 +1027,22 @@
+@@ -1044,11 +1068,22 @@
  		child_set_env(&env, &envsize, "LOGIN", pw->pw_name);
  #endif
  		child_set_env(&env, &envsize, "HOME", pw->pw_dir);
@@ -74,7 +73,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  #else /* HAVE_LOGIN_CAP */
  # ifndef HAVE_CYGWIN
  		/*
-@@ -1027,15 +1063,9 @@
+@@ -1069,15 +1104,9 @@
  # endif /* HAVE_CYGWIN */
  #endif /* HAVE_LOGIN_CAP */
  
@@ -90,7 +89,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  
  	/* Set custom environment options from RSA authentication. */
  	if (!options.use_login) {
-@@ -1255,7 +1285,7 @@
+@@ -1314,7 +1343,7 @@
  		}
  # endif /* USE_PAM */
  		if (setusercontext(lc, pw, pw->pw_uid,
@@ -99,7 +98,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  			perror("unable to set user context");
  			exit(1);
  		}
-@@ -1391,6 +1421,9 @@
+@@ -1472,6 +1501,9 @@
  	char *argv[10];
  	const char *shell, *shell0, *hostname = NULL;
  	struct passwd *pw = s->pw;
@@ -109,7 +108,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  
  	/* remove hostkey from the child's memory */
  	destroy_sensitive_data();
-@@ -1461,6 +1494,10 @@
+@@ -1559,6 +1591,10 @@
  	 */
  	environ = env;
  
@@ -120,7 +119,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  #if defined(KRB5) && defined(USE_AFS)
  	/*
  	 * At this point, we check to see if AFS is active and if we have
-@@ -1492,7 +1529,7 @@
+@@ -1590,7 +1626,7 @@
  		fprintf(stderr, "Could not chdir to home directory %s: %s\n",
  		    pw->pw_dir, strerror(errno));
  #ifdef HAVE_LOGIN_CAP
