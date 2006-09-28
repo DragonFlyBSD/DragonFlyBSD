@@ -1,6 +1,7 @@
-/* $OpenBSD: cleanup.c,v 1.5 2006/08/03 03:34:42 deraadt Exp $ */
+/* $Id: platform.h,v 1.1 2006/08/30 17:24:41 djm Exp $ */
+
 /*
- * Copyright (c) 2003 Markus Friedl <markus@openbsd.org>
+ * Copyright (c) 2006 Darren Tucker.  All rights reserved.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,18 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "includes.h"
-
 #include <sys/types.h>
 
-#include <unistd.h>
-#include <stdarg.h>
-
-#include "log.h"
-
-/* default implementation */
-void
-cleanup_exit(int i)
-{
-	_exit(i);
-}
+void platform_pre_fork(void);
+void platform_post_fork_parent(pid_t child_pid);
+void platform_post_fork_child(void);

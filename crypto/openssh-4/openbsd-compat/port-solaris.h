@@ -1,6 +1,7 @@
-/* $OpenBSD: cleanup.c,v 1.5 2006/08/03 03:34:42 deraadt Exp $ */
+/* $Id: port-solaris.h,v 1.1 2006/08/30 17:24:42 djm Exp $ */
+
 /*
- * Copyright (c) 2003 Markus Friedl <markus@openbsd.org>
+ * Copyright (c) 2006 Chad Mynhier.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,18 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "includes.h"
+#ifndef _PORT_SOLARIS_H
 
 #include <sys/types.h>
 
-#include <unistd.h>
-#include <stdarg.h>
+void solaris_contract_pre_fork(void);
+void solaris_contract_post_fork_child(void);
+void solaris_contract_post_fork_parent(pid_t pid);
 
-#include "log.h"
-
-/* default implementation */
-void
-cleanup_exit(int i)
-{
-	_exit(i);
-}
+#endif
