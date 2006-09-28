@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.7 2006/09/28 04:19:40 pavalos Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.8 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <stdlib.h>
@@ -96,13 +96,6 @@ STATIC int startlinno;		/* line # where last token started */
 
 /* XXX When 'noaliases' is set to one, no alias expansion takes place. */
 static int noaliases = 0;
-
-#define GDB_HACK 1 /* avoid local declarations which gdb can't handle */
-#ifdef GDB_HACK
-static const char argvars[5] = {CTLVAR, VSNORMAL|VSQUOTE, '@', '=', '\0'};
-static const char types[] = "}-+?=";
-#endif
-
 
 STATIC union node *list(int);
 STATIC union node *andor(void);
@@ -380,13 +373,10 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 			if (lasttoken != TNL && lasttoken != TSEMI)
 				synexpect(-1);
 		} else {
-#ifndef GDB_HACK
-			static const char argvars[5] = {CTLVAR, VSNORMAL|VSQUOTE,
-								   '@', '=', '\0'};
-#endif
+			static char argvars[5] = {CTLVAR, VSNORMAL|VSQUOTE, '@', '=', '\0'};
 			n2 = (union node *)stalloc(sizeof (struct narg));
 			n2->type = NARG;
-			n2->narg.text = (char *)argvars;
+			n2->narg.text = argvars;
 			n2->narg.backquote = NULL;
 			n2->narg.next = NULL;
 			n1->nfor.args = n2;
@@ -1183,9 +1173,7 @@ parsesub: {
 	int typeloc;
 	int flags;
 	char *p;
-#ifndef GDB_HACK
 	static const char types[] = "}-+?=";
-#endif
        int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
 
 	c = pgetc();
@@ -1322,24 +1310,24 @@ parsebackq: {
                 /* We must read until the closing backquote, giving special
                    treatment to some slashes, and then push the string and
                    reread it as input, interpreting it normally.  */
-                char *out;
-                int c;
-                int savelen;
-                char *str;
+                char *pout;
+                int pc;
+                int psavelen;
+                char *pstr;
 
 
-                STARTSTACKSTR(out);
+                STARTSTACKSTR(pout);
 		for (;;) {
 			if (needprompt) {
 				setprompt(2);
 				needprompt = 0;
 			}
-			switch (c = pgetc()) {
+			switch (pc = pgetc()) {
 			case '`':
 				goto done;
 
 			case '\\':
-                                if ((c = pgetc()) == '\n') {
+                                if ((pc = pgetc()) == '\n') {
 					plinno++;
 					if (doprompt)
 						setprompt(2);
@@ -1353,9 +1341,9 @@ parsebackq: {
 					 */
 					continue;
 				}
-                                if (c != '\\' && c != '`' && c != '$'
-                                    && (!dblquote || c != '"'))
-                                        STPUTC('\\', out);
+                                if (pc != '\\' && pc != '`' && pc != '$'
+                                    && (!dblquote || pc != '"'))
+                                        STPUTC('\\', pout);
 				break;
 
 			case '\n':
@@ -1371,15 +1359,15 @@ parsebackq: {
 			default:
 				break;
 			}
-			STPUTC(c, out);
+			STPUTC(pc, pout);
                 }
 done:
-                STPUTC('\0', out);
-                savelen = out - stackblock();
-                if (savelen > 0) {
-                        str = ckmalloc(savelen);
-                        memcpy(str, stackblock(), savelen);
-			setinputstring(str, 1);
+                STPUTC('\0', pout);
+                psavelen = pout - stackblock();
+                if (psavelen > 0) {
+                        pstr = ckmalloc(psavelen);
+                        memcpy(pstr, stackblock(), psavelen);
+			setinputstring(pstr, 1);
                 }
         }
 	nlpp = &bqlist;

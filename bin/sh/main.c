@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
  * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.6 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -79,6 +79,8 @@ extern int etext();
 
 STATIC void read_profile(const char *);
 STATIC const char *find_dot_file(const char *);
+
+extern int oexitstatus;
 
 /*
  * Main routine.  We initialize things, parse the arguments, execute
@@ -341,8 +343,6 @@ dotcmd(int argc, char **argv)
 int
 exitcmd(int argc, char **argv)
 {
-	extern int oexitstatus;
-
 	if (stoppedjobs())
 		return 0;
 	if (argc > 1)

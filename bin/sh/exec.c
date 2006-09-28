@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.7 2006/06/19 12:06:07 corecode Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.8 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -100,7 +100,7 @@ STATIC void printentry(struct tblentry *, int);
 STATIC struct tblentry *cmdlookup(char *, int);
 STATIC void delete_cmd_entry(void);
 
-
+extern const char *const parsekwd[];
 
 /*
  * Exec a program.  Never returns.  If you change this routine, you may
@@ -108,7 +108,7 @@ STATIC void delete_cmd_entry(void);
  */
 
 void
-shellexec(char **argv, char **envp, const char *path, int index)
+shellexec(char **argv, char **envp, const char *path, int idx)
 {
 	char *cmdname;
 	int e;
@@ -119,7 +119,7 @@ shellexec(char **argv, char **envp, const char *path, int index)
 	} else {
 		e = ENOENT;
 		while ((cmdname = padvance(&path, argv[0])) != NULL) {
-			if (--index < 0 && pathopt == NULL) {
+			if (--idx < 0 && pathopt == NULL) {
 				tryexec(cmdname, argv, envp);
 				if (errno != ENOENT && errno != ENOTDIR)
 					e = errno;
@@ -265,17 +265,17 @@ hashcmd(int argc __unused, char **argv __unused)
 STATIC void
 printentry(struct tblentry *cmdp, int verbose)
 {
-	int index;
+	int idx;
 	const char *path;
 	char *name;
 
 	if (cmdp->cmdtype == CMDNORMAL) {
-		index = cmdp->param.index;
+		idx = cmdp->param.index;
 		path = pathval();
 		do {
 			name = padvance(&path, cmdp->cmdname);
 			stunalloc(name);
-		} while (--index >= 0);
+		} while (--idx >= 0);
 		out1str(name);
 	} else if (cmdp->cmdtype == CMDBUILTIN) {
 		out1fmt("builtin %s", cmdp->cmdname);
@@ -310,7 +310,7 @@ void
 find_command(char *name, struct cmdentry *entry, int printerr, const char *path)
 {
 	struct tblentry *cmdp;
-	int index;
+	int idx;
 	int prev;
 	char *fullname;
 	struct stat statb;
@@ -348,11 +348,11 @@ find_command(char *name, struct cmdentry *entry, int printerr, const char *path)
 	}
 
 	e = ENOENT;
-	index = -1;
+	idx = -1;
 loop:
 	while ((fullname = padvance(&path, name)) != NULL) {
 		stunalloc(fullname);
-		index++;
+		idx++;
 		if (pathopt) {
 			if (prefix("builtin", pathopt)) {
 				if ((i = find_builtin(name)) < 0)
@@ -370,8 +370,8 @@ loop:
 			}
 		}
 		/* if rehash, don't redo absolute path names */
-		if (fullname[0] == '/' && index <= prev) {
-			if (index < prev)
+		if (fullname[0] == '/' && idx <= prev) {
+			if (idx < prev)
 				goto loop;
 			TRACE(("searchexec \"%s\": no change\n", name));
 			goto success;
@@ -408,7 +408,7 @@ loop:
 		INTOFF;
 		cmdp = cmdlookup(name, 1);
 		cmdp->cmdtype = CMDNORMAL;
-		cmdp->param.index = index;
+		cmdp->param.index = idx;
 		INTON;
 		goto success;
 	}
@@ -482,18 +482,18 @@ void
 changepath(const char *newval)
 {
 	const char *old, *new;
-	int index;
+	int idx;
 	int firstchange;
 	int bltin;
 
 	old = pathval();
 	new = newval;
 	firstchange = 9999;	/* assume no change */
-	index = 0;
+	idx = 0;
 	bltin = -1;
 	for (;;) {
 		if (*old != *new) {
-			firstchange = index;
+			firstchange = idx;
 			if ((*old == '\0' && *new == ':')
 			 || (*old == ':' && *new == '\0'))
 				firstchange++;
@@ -502,9 +502,9 @@ changepath(const char *newval)
 		if (*new == '\0')
 			break;
 		if (*new == '%' && bltin < 0 && prefix("builtin", new + 1))
-			bltin = index;
+			bltin = idx;
 		if (*new == ':') {
-			index++;
+			idx++;
 		}
 		new++, old++;
 	}
@@ -713,8 +713,7 @@ typecmd(int argc, char **argv)
 	const char * const *pp;
 	struct alias *ap;
 	int i;
-	int error = 0;
-	extern const char *const parsekwd[];
+	int err = 0;
 
 	for (i = 1; i < argc; i++) {
 		out1str(argv[i]);
@@ -762,7 +761,7 @@ typecmd(int argc, char **argv)
 				}
 				else {
 					out1fmt(": %s\n", strerror(errno));
-					error |= 127;
+					err |= 127;
 				}
 			}
 			break;
@@ -777,9 +776,9 @@ typecmd(int argc, char **argv)
 
 		default:
 			out1str(": not found\n");
-			error |= 127;
+			err |= 127;
 			break;
 		}
 	}
-	return error;
+	return err;
 }

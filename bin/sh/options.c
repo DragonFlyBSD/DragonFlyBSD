@@ -35,7 +35,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/options.c,v 1.15.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/options.c,v 1.4 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/sh/options.c,v 1.5 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <signal.h>
@@ -299,7 +299,7 @@ setparam(char **argv)
  */
 
 void
-freeparam(struct shparam *param)
+freeparam(volatile struct shparam *param)
 {
 	char **ap;
 
@@ -402,7 +402,7 @@ getoptscmd(int argc, char **argv)
 
 STATIC int
 getopts(char *optstr, char *optvar, char **optfirst, char ***optnext,
-    char **optptr)
+    char **optp)
 {
 	char *p, *q;
 	char c = '?';
@@ -411,7 +411,7 @@ getopts(char *optstr, char *optvar, char **optfirst, char ***optnext,
 	int err = 0;
 	char s[10];
 
-	if ((p = *optptr) == NULL || *p == '\0') {
+	if ((p = *optp) == NULL || *p == '\0') {
 		/* Current word is done, advance */
 		if (*optnext == NULL)
 			return 1;
@@ -479,7 +479,7 @@ bad:
 	*optnext = NULL;
 	p = NULL;
 out:
-	*optptr = p;
+	*optp = p;
 	fmtstr(s, sizeof(s), "%d", ind);
 	err |= setvarsafe("OPTIND", s, VNOFUNC);
 	s[0] = c;
@@ -487,7 +487,7 @@ out:
 	err |= setvarsafe(optvar, s, 0);
 	if (err) {
 		*optnext = NULL;
-		*optptr = NULL;
+		*optp = NULL;
 		flushall();
 		exraise(EXERROR);
 	}

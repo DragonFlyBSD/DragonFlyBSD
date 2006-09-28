@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.8 2006/06/05 15:55:13 dillon Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.9 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -357,14 +357,14 @@ histcmd(int argc, char **argv)
 				out1fmt("%5d ", he.num);
 			out1str(he.str);
 		} else {
-			char *s = pat ?
-			   fc_replace(he.str, pat, repl) : (char *)he.str;
+			const char *s = pat ?
+			   fc_replace(he.str, pat, repl) : he.str;
 
 			if (sflg) {
 				if (displayhist) {
 					out2str(s);
 				}
-				evalstring(s);
+				evalstring(strcpy(stalloc(strlen(s) + 1), s));
 				if (displayhist && hist) {
 					/*
 					 *  XXX what about recursive and

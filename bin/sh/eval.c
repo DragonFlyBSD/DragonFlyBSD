@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.8 2006/07/20 17:01:22 corecode Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.9 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
@@ -79,7 +79,7 @@
 #define EV_TESTED 02		/* exit status is checked; ignore -e flag */
 #define EV_BACKCMD 04		/* command executing within back quotes */
 
-MKINIT int evalskip;		/* set if we are skipping commands */
+int evalskip;			/* set if we are skipping commands */
 STATIC int skipcount;		/* number of levels to skip */
 MKINIT int loopnest;		/* current loop nesting level */
 int funcnest;			/* depth of function calls */
@@ -772,7 +772,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 		INTON;
 		if (setjmp(jmploc.loc)) {
 			if (exception == EXSHELLPROC)
-				freeparam((struct shparam *)&saveparam);
+				freeparam(&saveparam);
 			else {
 				freeparam(&shellparam);
 				shellparam = saveparam;

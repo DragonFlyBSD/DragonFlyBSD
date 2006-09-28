@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.6 2005/07/03 14:03:24 corecode Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.7 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -126,6 +126,8 @@ collate_range_cmp (int c1, int c2)
 		return (ret);
 	return (c1 - c2);
 }
+
+extern int oexitstatus;
 
 /*
  * Expand shell variables and backquotes inside a here document.
@@ -839,7 +841,6 @@ varvalue(char *name, int quoted, int allow_split)
 	int num;
 	char *p;
 	int i;
-	extern int oexitstatus;
 	char sep;
 	char **ap;
 	char const *syntax;

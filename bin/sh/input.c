@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
  * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.6 2005/11/13 11:58:30 corecode Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.7 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -93,11 +93,11 @@ struct parsefile {
 
 
 int plinno = 1;			/* input line number */
-MKINIT int parsenleft;		/* copy of parsefile->nleft */
+int parsenleft;			/* copy of parsefile->nleft */
 MKINIT int parselleft;		/* copy of parsefile->lleft */
 char *parsenextc;		/* copy of parsefile->nextc */
 MKINIT struct parsefile basepf;	/* top level input file */
-char basebuf[BUFSIZ];		/* buffer for top level input file */
+MKINIT char basebuf[BUFSIZ];	/* buffer for top level input file */
 STATIC struct parsefile *parsefile = &basepf;	/* current input file */
 int init_editline = 0;		/* editline library initialized? */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
@@ -108,12 +108,11 @@ STATIC void pushfile(void);
 static int preadfd(void);
 
 #ifdef mkinit
+INCLUDE <stdio.h>
 INCLUDE "input.h"
 INCLUDE "error.h"
 
 INIT {
-	extern char basebuf[];
-
 	basepf.nextc = basepf.buf = basebuf;
 }
 

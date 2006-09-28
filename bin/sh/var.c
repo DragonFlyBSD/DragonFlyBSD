@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.11 2006/01/12 13:43:10 corecode Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.12 2006/09/28 22:29:44 pavalos Exp $
  */
 
 #include <unistd.h>
@@ -72,7 +72,7 @@
 struct varinit {
 	struct var *var;
 	int flags;
-	char *text;
+	const char *text;
 	void (*func)(const char *);
 };
 
@@ -128,9 +128,9 @@ STATIC int localevar(const char *);
 
 #ifdef mkinit
 INCLUDE "var.h"
+MKINIT char **environ;
 INIT {
 	char **envp;
-	extern char **environ;
 
 	initvar();
 	for (envp = environ ; *envp ; envp++) {
@@ -160,7 +160,7 @@ initvar(void)
 			vpp = hashvar(ip->text);
 			vp->next = *vpp;
 			*vpp = vp;
-			vp->text = ip->text;
+			vp->text = strdup(ip->text);
 			vp->flags = ip->flags;
 			vp->func = ip->func;
 		}
@@ -172,7 +172,7 @@ initvar(void)
 		vpp = hashvar("PS1=");
 		vps1.next = *vpp;
 		*vpp = &vps1;
-		vps1.text = geteuid() ? "PS1=$ " : "PS1=# ";
+		vps1.text = strdup(geteuid() ? "PS1=$ " : "PS1=# ");
 		vps1.flags = VSTRFIXED|VTEXTFIXED;
 	}
 	if ((vppid.flags & VEXPORT) == 0) {
@@ -447,7 +447,7 @@ environment(void)
  */
 
 #ifdef mkinit
-MKINIT void shprocvar(void);
+void shprocvar(void);
 
 SHELLPROC {
 	shprocvar();
