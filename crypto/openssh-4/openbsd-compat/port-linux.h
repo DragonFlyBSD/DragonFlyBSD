@@ -1,6 +1,7 @@
-/* $OpenBSD: cleanup.c,v 1.5 2006/08/03 03:34:42 deraadt Exp $ */
+/* $Id: port-linux.h,v 1.1 2006/04/22 11:26:08 djm Exp $ */
+
 /*
- * Copyright (c) 2003 Markus Friedl <markus@openbsd.org>
+ * Copyright (c) 2006 Damien Miller <djm@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,18 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "includes.h"
+#ifndef _PORT_LINUX_H
+#define _PORT_LINUX_H
 
-#include <sys/types.h>
+#ifdef WITH_SELINUX
+void ssh_selinux_setup_pty(char *, const char *);
+void ssh_selinux_setup_exec_context(char *);
+#endif
 
-#include <unistd.h>
-#include <stdarg.h>
-
-#include "log.h"
-
-/* default implementation */
-void
-cleanup_exit(int i)
-{
-	_exit(i);
-}
+#endif /* ! _PORT_LINUX_H */
