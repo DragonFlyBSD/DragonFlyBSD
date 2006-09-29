@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.36 2006/06/14 04:39:05 y0netan1 Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.37 2006/09/29 03:37:03 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -456,6 +456,9 @@ void		m_chtype(struct mbuf *m, int type);
 
 /*
  * Allocate the right type of mbuf for the desired total length.
+ * The mbuf returned does not necessarily cover the entire requested length.
+ * This function follows mbuf chaining policy of allowing MINCLSIZE
+ * amount of chained mbufs.
  */
 static __inline struct mbuf *
 m_getl(int len, int how, int type, int flags, int *psize)
@@ -475,6 +478,26 @@ m_getl(int len, int how, int type, int flags, int *psize)
 	}
 	if (psize != NULL)
 		*psize = size;
+	return (m);
+}
+
+/*
+ * Get a single mbuf that covers the requested number of bytes.
+ * This function does not create mbuf chains.  It explicitly marks
+ * places in the code that abuse mbufs for contiguous data buffers.
+ */
+static __inline struct mbuf *
+m_getb(int len, int how, int type, int flags)
+{
+	struct mbuf *m;
+	int mbufsize = (flags & M_PKTHDR) ? MHLEN : MLEN;
+
+	if (len > mbufsize)
+		m = m_getcl(how, type, flags);
+	else if (flags & M_PKTHDR)
+		m = m_gethdr(how, type);
+	else
+		m = m_get(how, type);
 	return (m);
 }
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.11 2006/05/01 16:26:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.12 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -813,23 +813,15 @@ noreplaycheck:
 			struct mbuf *n = NULL;
 			int maxlen;
 
-			MGETHDR(n, MB_DONTWAIT, MT_HEADER);
-			maxlen = MHLEN;
-			if (n)
-				M_MOVE_PKTHDR(n, m);
-			if (n && n->m_pkthdr.len > maxlen) {
-				MCLGET(n, MB_DONTWAIT);
-				maxlen = MCLBYTES;
-				if ((n->m_flags & M_EXT) == 0) {
-					m_free(n);
-					n = NULL;
-				}
-			}
+			n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_HEADER,
+				   M_PKTHDR);
 			if (!n) {
 				printf("esp6_input: mbuf allocation failed\n");
 				goto bad;
 			}
+			M_MOVE_PKTHDR(n, m);
 
+			maxlen = (n->m_flags & M_EXT) ? MCLBYTES : MHLEN;
 			if (n->m_pkthdr.len <= maxlen) {
 				m_copydata(m, 0, n->m_pkthdr.len, mtod(n, caddr_t));
 				n->m_len = n->m_pkthdr.len;

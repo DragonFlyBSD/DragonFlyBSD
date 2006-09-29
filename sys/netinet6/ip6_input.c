@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.29 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.30 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -300,18 +300,10 @@ ip6_input(struct netmsg *msg)
 	if (m && m->m_next != NULL && m->m_pkthdr.len < MCLBYTES) {
 		struct mbuf *n;
 
-		MGETHDR(n, MB_DONTWAIT, MT_HEADER);
-		if (n)
-			M_MOVE_PKTHDR(n, m);
-		if (n && n->m_pkthdr.len > MHLEN) {
-			MCLGET(n, MB_DONTWAIT);
-			if ((n->m_flags & M_EXT) == 0) {
-				m_freem(n);
-				n = NULL;
-			}
-		}
+		n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_HEADER, M_PKTHDR);
 		if (n == NULL)
 			goto bad;
+		M_MOVE_PKTHDR(n, m);
 
 		m_copydata(m, 0, n->m_pkthdr.len, mtod(n, caddr_t));
 		n->m_len = n->m_pkthdr.len;
@@ -1392,18 +1384,11 @@ ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 	else
 		elen = (ip6e.ip6e_len + 1) << 3;
 
-	MGET(n, MB_DONTWAIT, MT_DATA);
-	if (n && elen >= MLEN) {
-		MCLGET(n, MB_DONTWAIT);
-		if ((n->m_flags & M_EXT) == 0) {
-			m_free(n);
-			n = NULL;
-		}
-	}
-	if (!n)
+	n = m_getb(elen, MB_DONTWAIT, MT_DATA, 0);
+	if (n == NULL)
 		return NULL;
-
 	n->m_len = 0;
+
 	if (elen >= M_TRAILINGSPACE(n)) {
 		m_free(n);
 		return NULL;

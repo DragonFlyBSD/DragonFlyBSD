@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.15 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.16 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -361,17 +361,9 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		return;
 	}
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
-	if (m && max_linkhdr + maxlen >= MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			m = NULL;
-		}
-	}
+	m = m_getb(max_linkhdr + maxlen, MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.rcvif = NULL;
 
 	if (daddr6 == NULL || IN6_IS_ADDR_MULTICAST(daddr6)) {
 		m->m_flags |= M_MCAST;
@@ -841,17 +833,9 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		return;
 	}
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
-	if (m && max_linkhdr + maxlen >= MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			m = NULL;
-		}
-	}
+	m = m_getb(max_linkhdr + maxlen, MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.rcvif = NULL;
 
 	if (IN6_IS_ADDR_MULTICAST(daddr6)) {
 		m->m_flags |= M_MCAST;

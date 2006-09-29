@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.21 2006/09/05 03:48:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.22 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1120,19 +1120,10 @@ ip6_copyexthdr(struct mbuf **mp, caddr_t hdr, int hlen)
 	struct mbuf *m;
 
 	if (hlen > MCLBYTES)
-		return(ENOBUFS); /* XXX */
-
-	MGET(m, MB_DONTWAIT, MT_DATA);
+		return(ENOBUFS);	/* XXX */
+	m = m_getb(hlen, MB_DONTWAIT, MT_DATA, 0);
 	if (!m)
 		return(ENOBUFS);
-
-	if (hlen > MLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			return(ENOBUFS);
-		}
-	}
 	m->m_len = hlen;
 	if (hdr)
 		bcopy(hdr, mtod(m, caddr_t), hlen);
@@ -1192,14 +1183,7 @@ ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 			 * As a consequence, we must always prepare a cluster
 			 * at this point.
 			 */
-			MGET(n, MB_DONTWAIT, MT_DATA);
-			if (n) {
-				MCLGET(n, MB_DONTWAIT);
-				if ((n->m_flags & M_EXT) == 0) {
-					m_freem(n);
-					n = NULL;
-				}
-			}
+			n = m_getcl(MB_DONTWAIT, MT_DATA, 0);
 			if (!n)
 				return(ENOBUFS);
 			n->m_len = oldoptlen + JUMBOOPTLEN;

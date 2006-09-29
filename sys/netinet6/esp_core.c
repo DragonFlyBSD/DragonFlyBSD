@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.9 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.10 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -706,15 +706,8 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 		if (!d || dn + blocklen > d->m_len) {
 			if (d)
 				dp = d;
-			MGET(d, MB_DONTWAIT, MT_DATA);
 			i = m->m_pkthdr.len - (soff + sn);
-			if (d && i > MLEN) {
-				MCLGET(d, MB_DONTWAIT);
-				if ((d->m_flags & M_EXT) == 0) {
-					m_free(d);
-					d = NULL;
-				}
-			}
+			d = m_getb(i, MB_DONTWAIT, MT_DATA, 0);
 			if (!d) {
 				m_freem(m);
 				if (d0)
@@ -726,7 +719,7 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 			if (dp)
 				dp->m_next = d;
 			d->m_len = 0;
-			d->m_len = (M_TRAILINGSPACE(d) / blocklen) * blocklen;
+			d->m_len = rounddown(M_TRAILINGSPACE(d), blocklen);
 			if (d->m_len > i)
 				d->m_len = i;
 			dn = 0;
@@ -911,15 +904,8 @@ esp_cbc_encrypt(struct mbuf *m, size_t off, size_t plen, struct secasvar *sav,
 		if (!d || dn + blocklen > d->m_len) {
 			if (d)
 				dp = d;
-			MGET(d, MB_DONTWAIT, MT_DATA);
 			i = m->m_pkthdr.len - (soff + sn);
-			if (d && i > MLEN) {
-				MCLGET(d, MB_DONTWAIT);
-				if ((d->m_flags & M_EXT) == 0) {
-					m_free(d);
-					d = NULL;
-				}
-			}
+			d = m_getb(i, MB_DONTWAIT, MT_DATA, 0);
 			if (!d) {
 				m_freem(m);
 				if (d0)
@@ -931,7 +917,7 @@ esp_cbc_encrypt(struct mbuf *m, size_t off, size_t plen, struct secasvar *sav,
 			if (dp)
 				dp->m_next = d;
 			d->m_len = 0;
-			d->m_len = (M_TRAILINGSPACE(d) / blocklen) * blocklen;
+			d->m_len = rounddown(M_TRAILINGSPACE(d), blocklen);
 			if (d->m_len > i)
 				d->m_len = i;
 			dn = 0;

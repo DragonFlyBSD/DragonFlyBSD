@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.21 2006/01/14 11:44:24 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.22 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -558,22 +558,14 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				m_freem(n0);
 				break;
 			}
-			MGETHDR(n, MB_DONTWAIT, n0->m_type);
-			n0len = n0->m_pkthdr.len;	/* save for use below */
-			if (n)
-				M_MOVE_PKTHDR(n, n0);
-			if (n && maxlen >= MHLEN) {
-				MCLGET(n, MB_DONTWAIT);
-				if ((n->m_flags & M_EXT) == 0) {
-					m_free(n);
-					n = NULL;
-				}
-			}
+			n = m_getb(maxlen, MB_DONTWAIT, n0->m_type, M_PKTHDR);
 			if (n == NULL) {
 				/* Give up remote */
 				m_freem(n0);
 				break;
 			}
+			n0len = n0->m_pkthdr.len;	/* save for use below */
+			M_MOVE_PKTHDR(n, n0);
 			/*
 			 * Copy IPv6 and ICMPv6 only.
 			 */
@@ -681,13 +673,10 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				/* Give up remote */
 				break;
 			}
-			MGETHDR(n, MB_DONTWAIT, m->m_type);
-			if (n && maxlen > MHLEN) {
-				MCLGET(n, MB_DONTWAIT);
-				if ((n->m_flags & M_EXT) == 0) {
-					m_free(n);
-					n = NULL;
-				}
+			n = m_getb(maxlen, MB_DONTWAIT, m->m_type, M_PKTHDR);
+			if (n == NULL) {
+				/* Give up remote */
+				break;
 			}
 			if (!m_dup_pkthdr(n, m, MB_DONTWAIT)) {
 				/*
@@ -698,13 +687,8 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				 * be conservative and just fail.
 				 */
 				m_free(n);
-				n = NULL;
-			}
-			if (n == NULL) {
-				/* Give up remote */
 				break;
 			}
-			n->m_pkthdr.rcvif = NULL;
 			n->m_len = 0;
 			maxhlen = M_TRAILINGSPACE(n) - maxlen;
 			if (maxhlen > hostnamelen)
@@ -1372,25 +1356,19 @@ ni6_input(struct mbuf *m, int off)
 	}
 
 	/* allocate an mbuf to reply. */
-	MGETHDR(n, MB_DONTWAIT, m->m_type);
+	if (replylen > MCLBYTES) {
+		/*
+		 * XXX: should we try to allocate more? But MCLBYTES
+		 * is probably much larger than IPV6_MMTU...
+		 */
+		goto bad;
+	}
+	n = m_getb(replylen, MB_DONTWAIT, m->m_type, M_PKTHDR);
 	if (n == NULL) {
 		m_freem(m);
 		return(NULL);
 	}
 	M_MOVE_PKTHDR(n, m); /* just for recvif */
-	if (replylen > MHLEN) {
-		if (replylen > MCLBYTES) {
-			/*
-			 * XXX: should we try to allocate more? But MCLBYTES
-			 * is probably much larger than IPV6_MMTU...
-			 */
-			goto bad;
-		}
-		MCLGET(n, MB_DONTWAIT);
-		if ((n->m_flags & M_EXT) == 0) {
-			goto bad;
-		}
-	}
 	n->m_pkthdr.len = n->m_len = replylen;
 
 	/* copy mbuf header and IPv6 + Node Information base headers */
@@ -1483,15 +1461,9 @@ ni6_nametodns(const char *name, int namelen,
 		len = MCLBYTES;
 
 	/* because MAXHOSTNAMELEN is usually 256, we use cluster mbuf */
-	MGET(m, MB_DONTWAIT, MT_DATA);
-	if (m && len > MLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0)
-			goto fail;
-	}
+	m = m_getb(len, MB_DONTWAIT, MT_DATA, 0);
 	if (!m)
 		goto fail;
-	m->m_next = NULL;
 
 	if (old) {
 		m->m_len = len;
@@ -2427,12 +2399,9 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 #if IPV6_MMTU >= MCLBYTES
 # error assumption failed about IPV6_MMTU and MCLBYTES
 #endif
-	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
-	if (m && IPV6_MMTU >= MHLEN)
-		MCLGET(m, MB_DONTWAIT);
+	m = m_getb(IPV6_MMTU, MB_DONTWAIT, MT_HEADER, M_PKTHDR);
 	if (!m)
 		goto fail;
-	m->m_pkthdr.rcvif = NULL;
 	m->m_len = 0;
 	maxlen = M_TRAILINGSPACE(m);
 	maxlen = min(IPV6_MMTU, maxlen);

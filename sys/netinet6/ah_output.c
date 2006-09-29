@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_output.c,v 1.1.2.5 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.7 2006/05/01 16:26:09 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.8 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: ah_output.c,v 1.31 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -384,18 +384,10 @@ ah6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 		return EINVAL;
 	}
 
-	MGET(mah, MB_DONTWAIT, MT_DATA);
-	if (!mah) {
+	mah = m_getb(ahlen, MB_DONTWAIT, MT_DATA, 0);
+	if (mah == NULL) {
 		m_freem(m);
 		return ENOBUFS;
-	}
-	if (ahlen > MLEN) {
-		MCLGET(mah, MB_DONTWAIT);
-		if ((mah->m_flags & M_EXT) == 0) {
-			m_free(mah);
-			m_freem(m);
-			return ENOBUFS;
-		}
 	}
 	mah->m_len = ahlen;
 	mah->m_next = md;
