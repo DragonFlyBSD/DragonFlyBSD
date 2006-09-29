@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.40 2004/02/10 10:13:21 des Exp $
- * $DragonFly: src/lib/pam_module/pam_ssh/pam_ssh.c,v 1.1 2005/07/12 23:26:49 joerg Exp $
+ * $DragonFly: src/lib/pam_module/pam_ssh/pam_ssh.c,v 1.2 2006/09/29 06:35:03 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +56,7 @@
 
 #include <openssl/evp.h>
 
+#include "buffer.h"
 #include "key.h"
 #include "authfd.h"
 #include "authfile.h"
