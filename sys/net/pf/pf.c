@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.11 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.12 2006/09/29 04:16:39 hsu Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1307,7 +1307,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.fw_flags |= PF_MBUF_GENERATED;
+	m->m_pkthdr.fw_flags = PF_MBUF_GENERATED;
 #ifdef ALTQ
 	if (r != NULL && r->qid) {
 		m->m_pkthdr.fw_flags |= ALTQ_MBUF_TAGGED;
