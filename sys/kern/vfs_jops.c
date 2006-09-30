@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.30 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.31 2006/09/30 21:10:19 swildner Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -153,9 +153,6 @@ static struct vop_ops journal_vnode_vops = {
     .vop_nrmdir =	journal_nrmdir,
     .vop_nrename =	journal_nrename
 };
-
-static MALLOC_DEFINE(M_JOURNAL, "journal", "Journaling structures");
-static MALLOC_DEFINE(M_JFIFO, "journal-fifo", "Journal FIFO");
 
 int
 journal_mountctl(struct vop_mountctl_args *ap)
