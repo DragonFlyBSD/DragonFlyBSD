@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.26 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.27 2006/09/30 00:20:27 corecode Exp $
  */
 
 /* udf_vnops.c */
@@ -946,6 +946,8 @@ udf_lookup(struct vop_old_lookup_args *a)
 	namelen = a->a_cnp->cn_namelen;
 	fsize = node->fentry->inf_len;
 	td = a->a_cnp->cn_td;
+
+	*vpp = NULL:
 
 	/*
 	 * If this is a LOOKUP and we've already partially searched through
