@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.6 2005/02/20 12:49:34 asmodai Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.7 2006/09/30 20:23:05 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -976,7 +976,7 @@ ng_bytearray_parse(const struct ng_parse_type *type,
 		struct ng_parse_type subtype;
 
 		subtype = ng_parse_bytearray_subtype;
-		(const void *)subtype.private = type->info;
+		*(const void **)&subtype.private = type->info;
 		return ng_array_parse(&subtype, s, off, start, buf, buflen);
 	}
 }
@@ -988,7 +988,7 @@ ng_bytearray_unparse(const struct ng_parse_type *type,
 	struct ng_parse_type subtype;
 
 	subtype = ng_parse_bytearray_subtype;
-	(const void *)subtype.private = type->info;
+	*(const void **)&subtype.private = type->info;
 	return ng_array_unparse(&subtype, data, off, cbuf, cbuflen);
 }
 
@@ -999,7 +999,7 @@ ng_bytearray_getDefault(const struct ng_parse_type *type,
 	struct ng_parse_type subtype;
 
 	subtype = ng_parse_bytearray_subtype;
-	(const void *)subtype.private = type->info;
+	*(const void **)&subtype.private = type->info;
 	return ng_array_getDefault(&subtype, start, buf, buflen);
 }
 

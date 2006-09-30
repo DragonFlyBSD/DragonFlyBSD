@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.57 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.58 2006/09/30 20:23:05 swildner Exp $
  */
 
 /*
@@ -1842,7 +1842,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		pdirindex = sindex / NPDEPG;
 		if (((ptpaddr = (unsigned) pmap->pm_pdir[pdirindex]) & PG_PS) != 0) {
 			pmap_inval_add(&info, pmap, -1);
-			(unsigned) pmap->pm_pdir[pdirindex] &= ~(PG_M|PG_RW);
+			pmap->pm_pdir[pdirindex] &= ~(PG_M|PG_RW);
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
 			continue;
 		}

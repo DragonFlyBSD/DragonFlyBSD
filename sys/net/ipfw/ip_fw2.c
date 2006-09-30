@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.22 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.23 2006/09/30 20:23:05 swildner Exp $
  */
 
 #define        DEB(x)
@@ -2507,8 +2507,8 @@ ipfw_ctl(struct sockopt *sopt)
 			/*
 			 * abuse 'next_rule' to store the set_disable word
 			 */
-			(u_int32_t)(((struct ip_fw *)bp)->next_rule) =
-				set_disable;
+			bcopy(&set_disable, &(((struct ip_fw *)bp)->next_rule),
+			    sizeof(set_disable));
 			bp = (struct ip_fw *)((char *)bp + i);
 		}
 		if (ipfw_dyn_v) {
@@ -2520,7 +2520,8 @@ ipfw_ctl(struct sockopt *sopt)
 				for ( p = ipfw_dyn_v[i] ; p != NULL ;
 				    p = p->next, dst++ ) {
 					bcopy(p, dst, sizeof *p);
-					(int)dst->rule = p->rule->rulenum ;
+					bcopy(&(p->rule->rulenum), &(dst->rule),
+					    sizeof(p->rule->rulenum));
 					/*
 					 * store a non-null value in "next".
 					 * The userland code will interpret a

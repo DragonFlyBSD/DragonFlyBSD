@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.9 2006/01/14 11:10:47 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.10 2006/09/30 20:23:05 swildner Exp $
  */
 
 /*
@@ -67,7 +67,7 @@
 #include "ng_ether.h"
 
 #define IFP2AC(IFP)  ((struct arpcom *)IFP)
-#define IFP2NG(ifp)  ((struct ng_node *)((struct arpcom *)(ifp))->ac_netgraph)
+#define IFP2NG(ifp)  (IFP2AC((ifp))->ac_netgraph)
 
 /* Per-node private data */
 struct private {

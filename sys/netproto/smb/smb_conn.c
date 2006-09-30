@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.18 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.19 2006/09/30 20:23:05 swildner Exp $
  */
 
 /*
@@ -124,13 +124,16 @@ static int
 smb_sm_lookupint(struct smb_vcspec *vcspec, struct smb_sharespec *shspec,
 	struct smb_cred *scred,	struct smb_vc **vcpp)
 {
+	struct smb_connobj *scp;
 	struct smb_vc *vcp;
 	int exact = 1;
 	int error;
 
 	vcspec->shspec = shspec;
 	error = ENOENT;
-	SMBCO_FOREACH((struct smb_connobj*)vcp, &smb_vclist) {
+	vcp = NULL;
+	SMBCO_FOREACH(scp, &smb_vclist) {
+		vcp = (struct smb_vc *)scp;
 		error = smb_vc_lock(vcp, LK_EXCLUSIVE);
 		if (error)
 			continue;
@@ -609,12 +612,14 @@ int
 smb_vc_lookupshare(struct smb_vc *vcp, struct smb_sharespec *dp,
 	struct smb_cred *scred,	struct smb_share **sspp)
 {
+	struct smb_connobj *scp = NULL;
 	struct smb_share *ssp = NULL;
 	int error;
 
 	*sspp = NULL;
 	dp->scred = scred;
-	SMBCO_FOREACH((struct smb_connobj*)ssp, VCTOCP(vcp)) {
+	SMBCO_FOREACH(scp, VCTOCP(vcp)) {
+		ssp = (struct smb_share *)scp;
 		error = smb_share_lock(ssp, LK_EXCLUSIVE);
 		if (error)
 			continue;
@@ -863,6 +868,7 @@ smb_sysctl_treedump(SYSCTL_HANDLER_ARGS)
 	struct thread *td = req->td;
 	struct ucred *ucred;
 	struct smb_cred scred;
+	struct smb_connobj *scp1, *scp2;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
 	struct smb_vc_info vci;
@@ -876,7 +882,8 @@ smb_sysctl_treedump(SYSCTL_HANDLER_ARGS)
 	error = smb_sm_lockvclist(LK_SHARED);
 	if (error)
 		return error;
-	SMBCO_FOREACH((struct smb_connobj*)vcp, &smb_vclist) {
+	SMBCO_FOREACH(scp1, &smb_vclist) {
+		vcp = (struct smb_vc *)scp1;
 		error = smb_vc_lock(vcp, LK_SHARED);
 		if (error)
 			continue;
@@ -886,7 +893,8 @@ smb_sysctl_treedump(SYSCTL_HANDLER_ARGS)
 			smb_vc_unlock(vcp, 0);
 			break;
 		}
-		SMBCO_FOREACH((struct smb_connobj*)ssp, VCTOCP(vcp)) {
+		SMBCO_FOREACH(scp2, VCTOCP(vcp)) {
+			ssp = (struct smb_share *)scp2;
 			error = smb_share_lock(ssp, LK_SHARED);
 			if (error) {
 				error = 0;
