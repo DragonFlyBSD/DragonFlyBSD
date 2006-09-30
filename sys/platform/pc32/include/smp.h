@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.18 2005/11/04 08:57:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.19 2006/09/30 21:28:43 swildner Exp $
  *
  */
 
@@ -36,6 +36,7 @@ extern int current_postcode;  /** XXX currently in mp_machdep.c */
 
 
 #include <arch/apic/apicreg.h>
+#include <machine/pcb.h>
 
 /* global data in mpboot.s */
 extern int			bootMP_size;
