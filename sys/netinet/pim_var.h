@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/pim_var.h,v 1.1.2.1 2003/08/24 17:04:44 hsu Exp $
- * $DragonFly: src/sys/netinet/pim_var.h,v 1.3 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/pim_var.h,v 1.4 2006/09/30 20:03:44 swildner Exp $
  */
 
 #ifndef _NETINET_PIM_VAR_H_
@@ -84,8 +84,6 @@ struct pimstat {
 }
 
 #ifdef _KERNEL
-
-extern struct pimstat pimstat;
 
 struct mbuf;
 

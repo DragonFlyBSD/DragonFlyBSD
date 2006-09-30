@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.23 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.24 2006/09/30 20:03:44 swildner Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -133,8 +133,6 @@ extern	int	ip6_getpmtu(struct route_in6 *, struct route_in6 *,
 #include <sys/in_cksum.h>
 
 static const char sccsid[] = "@(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed";
-
-extern	struct	protosw	inetsw[];
 
 #ifndef	_KERNEL
 # include "ipt.h"

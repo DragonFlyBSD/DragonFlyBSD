@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.1 2006/03/07 15:48:11 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.2 2006/09/30 20:03:44 swildner Exp $
  */
 
 #ifndef _KGDB_H_
@@ -33,7 +33,6 @@
 struct thread_info;
 
 extern kvm_t *kvm;
-extern int verbose;
 
 struct kthr {
 	struct kthr	*next;

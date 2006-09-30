@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbus.h,v 1.4 1999/08/28 00:41:58 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbus.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicbus.h,v 1.3 2006/09/30 20:03:44 swildner Exp $
  *
  */
 #ifndef __IICBUS_H
@@ -36,8 +36,6 @@ struct iicbus_softc {
 	u_char started;		/* address of the 'started' slave
 				 * 0 if no start condition succeeded */
 };
-
-extern devclass_t iicbus_devclass;
 
 extern int iicbus_generic_intr(device_t dev, int event, char *buf);
 

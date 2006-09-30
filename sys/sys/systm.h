@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.41 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.42 2006/09/30 20:03:44 swildner Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -65,8 +65,6 @@ extern int dumping;		/* system is dumping */
 extern int safepri;		/* safe ipl when cold or panicing */
 extern char version[];		/* system version */
 extern char copyright[];	/* system copyright */
-
-extern int nswap;		/* size of swap space */
 
 extern int selwait;		/* select timeout address */
 

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pci/pcib_private.h,v 1.6 2004/01/11 06:52:31 imp Exp $
- * $DragonFly: src/sys/bus/pci/pcib_private.h,v 1.2 2004/02/24 15:21:25 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pcib_private.h,v 1.3 2006/09/30 20:03:44 swildner Exp $
  */
 
 #ifndef __PCIB_PRIVATE_H__
@@ -77,7 +77,5 @@ void		pcib_write_config(device_t dev, int b, int s, int f, int reg, uint32_t val
 int		pcib_route_interrupt(device_t pcib, device_t dev, int pin);
 
 const char *	pci_bridge_type(device_t dev);
-
-extern devclass_t pcib_devclass;
 
 #endif

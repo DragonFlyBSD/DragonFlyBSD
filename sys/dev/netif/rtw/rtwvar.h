@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwvar.h,v 1.28 2006/02/16 20:17:16 perry Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.2 2006/09/30 20:03:44 swildner Exp $
  */
 
 #ifndef _DEV_IC_RTWVAR_H_
@@ -511,7 +511,6 @@ struct rtw_softc {
 #define sc_rxtap	sc_rxtapu.tap
 #define sc_txtap	sc_txtapu.tap
 
-extern int		rtw_host_rfio;
 extern devclass_t	rtw_devclass;
 
 #if 0
