@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.21 2006/09/19 11:47:36 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.22 2006/09/30 00:18:25 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -79,7 +79,7 @@ smb_proc_intr(struct thread *td)
 	sigset_t tmpset;
 	struct proc *p;
 
-	if ((p = td->td_proc) == NULL)
+	if (td == NULL || (p = td->td_proc) == NULL)
 		return 0;
 	tmpset = p->p_siglist;
 	SIGSETNAND(tmpset, p->p_sigmask);
