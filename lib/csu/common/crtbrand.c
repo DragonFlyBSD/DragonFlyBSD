@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/common/crtbrand.c,v 1.1.2.1 2000/10/30 20:32:24 obrien Exp $
- * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.4 2005/06/01 18:07:10 joerg Exp $
+ * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.5 2006/09/30 18:07:04 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@ static const struct {
     int32_t	type;
     char	name[sizeof ABI_VENDOR];
     int32_t	desc;
-} abitag __attribute__ ((section (ABI_SECTION))) = {
+} abitag __attribute__ ((section (ABI_SECTION))) __attribute__ ((used))= {
     sizeof ABI_VENDOR,
     sizeof(int32_t),
     ABI_NOTETYPE,
