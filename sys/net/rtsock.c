@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.33 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.34 2006/09/30 22:06:04 swildner Exp $
  */
 
 #include "opt_sctp.h"
@@ -1331,7 +1331,7 @@ static struct protosw routesw[] = {
 }
 };
 
-static struct domain routedomain = {
+struct domain routedomain = {
 	PF_ROUTE, "route", NULL, NULL, NULL,
 	routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])],
 };

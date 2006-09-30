@@ -20,7 +20,7 @@
  *	+1-313-763-0525
  *	netatalk@itd.umich.edu
  *
- * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.4 2005/03/04 02:21:49 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.5 2006/09/30 22:06:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@ static struct protosw atalksw[] = {
     },
 };
 
-static struct domain atalkdomain = {
+struct domain atalkdomain = {
 	AF_APPLETALK, "appletalk", NULL, NULL, NULL,
 	atalksw, &atalksw[sizeof(atalksw)/sizeof(atalksw[0])],
 	SLIST_ENTRY_INITIALIZER,
