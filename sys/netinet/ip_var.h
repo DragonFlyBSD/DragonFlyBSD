@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.19 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.20 2006/09/30 21:23:28 swildner Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -55,6 +55,9 @@
 #endif
 #ifndef _MACHINE_PARAM_H_
 #include <machine/param.h>
+#endif
+#ifndef _NET_ROUTE_H
+#include <net/route.h>
 #endif
 
 #endif
@@ -116,19 +119,6 @@ struct ip_moptions {
 	u_long	imo_multicast_vif;	/* vif num outgoing multicasts */
 };
 
-#ifdef _KERNEL
-
-#if defined(SMP)
-#define ipstat	ipstats_percpu[mycpuid]
-#else /* !SMP */
-#define ipstat	ipstats_percpu[0]
-#endif
-
-struct ip_stats;
-extern struct ip_stats	ipstats_percpu[MAXCPU];
-
-#endif
-
 /*
  * IP Statistics.
  */
@@ -165,6 +155,14 @@ struct	ip_stats {
 };
 
 #ifdef _KERNEL
+
+#if defined(SMP)
+#define ipstat	ipstats_percpu[mycpuid]
+#else /* !SMP */
+#define ipstat	ipstats_percpu[0]
+#endif
+
+extern struct ip_stats	ipstats_percpu[MAXCPU];
 
 /* flags passed to ip_output as last parameter */
 #define	IP_FORWARDING		0x1		/* most of ip header exists */

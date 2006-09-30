@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.37 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.38 2006/09/30 21:23:28 swildner Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -284,22 +284,6 @@ struct tcpcb {
 #define	ENTER_FASTRECOVERY(tp)	tp->t_flags |= TF_FASTRECOVERY
 #define	EXIT_FASTRECOVERY(tp)	tp->t_flags &= ~TF_FASTRECOVERY
 
-#ifdef _KERNEL
-
-#if defined(SMP)
-#define tcpstat	tcpstats_percpu[mycpuid]
-#else
-#define tcpstat	tcpstats_percpu[0]
-#endif
-
-struct tcp_stats;
-struct sockopt;
-
-extern struct tcp_stats		tcpstats_percpu[MAXCPU];
-
-static const int tcprexmtthresh = 3;
-#endif
-
 /*
  * TCP statistics.
  */
@@ -398,6 +382,21 @@ struct tcp_stats {
 	u_long	tcps_sc_sendcookie;	/* SYN cookie sent */
 	u_long	tcps_sc_recvcookie;	/* SYN cookie received */
 };
+
+#ifdef _KERNEL
+
+#if defined(SMP)
+#define tcpstat	tcpstats_percpu[mycpuid]
+#else
+#define tcpstat	tcpstats_percpu[0]
+#endif
+
+struct sockopt;
+
+extern struct tcp_stats		tcpstats_percpu[MAXCPU];
+
+static const int tcprexmtthresh = 3;
+#endif
 
 /*
  * Structure to hold TCP options that are only used during segment

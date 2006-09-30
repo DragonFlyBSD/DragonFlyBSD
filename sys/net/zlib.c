@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.9 2005/12/11 13:28:53 swildner Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.10 2006/09/30 21:23:28 swildner Exp $
  */
 
 /* 
@@ -95,8 +95,17 @@ typedef unsigned short ush;
 typedef ush FAR ushf;
 typedef unsigned long  ulg;
 
-extern const char *z_errmsg[10]; /* indexed by 2-zlib_error */
-/* (size given to avoid silly warnings with Visual C++) */
+static const char *z_errmsg[10] = {
+"need dictionary",     /* Z_NEED_DICT       2  */
+"stream end",          /* Z_STREAM_END      1  */
+"",                    /* Z_OK              0  */
+"file error",          /* Z_ERRNO         (-1) */
+"stream error",        /* Z_STREAM_ERROR  (-2) */
+"data error",          /* Z_DATA_ERROR    (-3) */
+"insufficient memory", /* Z_MEM_ERROR     (-4) */
+"buffer error",        /* Z_BUF_ERROR     (-5) */
+"incompatible version",/* Z_VERSION_ERROR (-6) */
+""};
 
 #define ERR_MSG(err) z_errmsg[Z_NEED_DICT-(err)]
 
@@ -5150,19 +5159,6 @@ struct internal_state      {int dummy;}; /* for buggy compilers */
 #ifndef STDC
 extern void exit OF((int));
 #endif
-
-static const char *z_errmsg[10] = {
-"need dictionary",     /* Z_NEED_DICT       2  */
-"stream end",          /* Z_STREAM_END      1  */
-"",                    /* Z_OK              0  */
-"file error",          /* Z_ERRNO         (-1) */
-"stream error",        /* Z_STREAM_ERROR  (-2) */
-"data error",          /* Z_DATA_ERROR    (-3) */
-"insufficient memory", /* Z_MEM_ERROR     (-4) */
-"buffer error",        /* Z_BUF_ERROR     (-5) */
-"incompatible version",/* Z_VERSION_ERROR (-6) */
-""};
-
 
 const char
 *zlibVersion(void)
