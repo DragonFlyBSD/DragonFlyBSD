@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.12 2004/04/30 09:44:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.13 2006/09/30 19:25:13 swildner Exp $
  */
 
 #include "use_npx.h"
@@ -54,6 +54,10 @@ memcpy_vector:
 	.globl	bcopy_vector
 bcopy_vector:
 	.long	asm_generic_bcopy
+
+	.globl	memset
+memset:
+	.long	generic_memset
 
 	.globl	bzero
 bzero:

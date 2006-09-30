@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/i386/Attic/bzero.s,v 1.2 2004/07/16 05:48:29 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bzero.s,v 1.3 2006/09/30 19:25:13 swildner Exp $
  */
 /*
  * void bzero(void *buf, u_int len)	(arguments passed on stack)
@@ -47,6 +47,19 @@
 #include "assym.s"
 
 	.text
+
+ENTRY(generic_memset)
+	pushl	%edi
+	movl	4+4(%esp),%edi
+	movl	12+4(%esp),%ecx
+	movzbl	8+4(%esp),%eax
+	movl	%eax,%edx
+	shll	$8,%edx
+	orl	%edx,%eax
+	movl	%eax,%edx
+	shll	$16,%edx
+	orl	%edx,%eax
+	jmp	2f
 
 ENTRY(generic_bzero)
 	pushl	%edi
