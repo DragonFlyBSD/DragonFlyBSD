@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.19 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.20 2006/09/30 22:38:21 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -56,7 +56,7 @@
 
 #include <netinet/igmp_var.h>
 
-static MALLOC_DEFINE(M_IPMADDR, "in_multi", "internet multicast address");
+MALLOC_DEFINE(M_IPMADDR, "in_multi", "internet multicast address");
 
 static int in_mask2len (struct in_addr *);
 static void in_len2mask (struct in_addr *, int);

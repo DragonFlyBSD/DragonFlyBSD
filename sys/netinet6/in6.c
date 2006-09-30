@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.21 2006/09/05 03:48:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.22 2006/09/30 22:38:21 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -102,10 +102,9 @@
 #include <netinet6/in6_ifattach.h>
 #include <netinet6/scope6_var.h>
 #include <netinet6/in6_pcb.h>
+#include <netinet6/in6_var.h>
 
 #include <net/net_osdep.h>
-
-MALLOC_DEFINE(M_IPMADDR, "in6_multi", "internet multicast address");
 
 /*
  * Definitions of some costant IP6 addresses.
