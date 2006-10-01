@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.21 2006/08/26 17:43:54 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.22 2006/10/01 12:09:29 victor Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -341,7 +341,7 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 /*
  * Atomic compare and set
  *
- * if (*dst == old) *dst = new (all 32 bit words)
+ * if (*_dst == _old) *_dst = _new (all 32 bit words)
  *
  * Returns 0 on failure, non-zero on success
  *
@@ -350,18 +350,18 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
  * version may be used by the dynamic linker
  */
 #if defined(KLD_MODULE)
-extern int atomic_cmpset_int(volatile u_int *dst, u_int old, u_int new);
+extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
 #else
 static __inline int
-atomic_cmpset_int(volatile u_int *dst, u_int old, u_int new)
+atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 {
-	int res = old;
+	int res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
 			 "setz %%al; " \
 			 "movzbl %%al,%0; " \
-			 : "+a" (res), "=m" (*dst) \
-			 : "r" (new), "m" (*dst) \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
 	return res;
 }
