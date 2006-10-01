@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.2 2006/08/06 12:49:05 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.3 2006/10/01 03:09:14 hsu Exp $	*/
 
 
 /*-
@@ -349,9 +349,9 @@ struct mbuf *
 lance_get(struct lance_softc *sc, int boff, int totlen)
 {
 	struct ifnet *ifp = sc->ifp;
-	struct mbuf *m, *m0, *newm;
-	caddr_t newdata;
-	int len;
+	struct mbuf *m0 = NULL, *newm;
+	struct mbuf *m;			/* really is initialized before use */
+	int mlen;
 
 	if (totlen <= ETHER_HDR_LEN || totlen > LEBLEN - ETHER_CRC_LEN) {
 #ifdef LEDEBUG
@@ -360,46 +360,36 @@ lance_get(struct lance_softc *sc, int boff, int totlen)
 		return (NULL);
 	}
 
-	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
-	if (m0 == NULL)
-		return (NULL);
-	m0->m_pkthdr.rcvif = ifp;
-	m0->m_pkthdr.len = totlen;
-	len = MHLEN;
-	m = m0;
+	do {
+		newm = m_getl(totlen, MB_DONTWAIT, MT_DATA,
+			      m0 == NULL ? M_PKTHDR : 0, &mlen);
+		if (newm == NULL)
+			goto bad;
 
-	while (totlen > 0) {
-		if (totlen >= MINCLSIZE) {
-			MCLGET(m, MB_DONTWAIT);
-			if ((m->m_flags & M_EXT) == 0)
-				goto bad;
-			len = MCLBYTES;
-		}
+		if (m0 == NULL) {
+			caddr_t newdata;
 
-		if (m == m0) {
+			m0 = newm;
+			m0->m_pkthdr.rcvif = ifp;
+			m0->m_pkthdr.len = totlen;
 			newdata = (caddr_t)
-			    ALIGN(m->m_data + ETHER_HDR_LEN) - ETHER_HDR_LEN;
-			len -= newdata - m->m_data;
-			m->m_data = newdata;
+			    ALIGN(m0->m_data + ETHER_HDR_LEN) - ETHER_HDR_LEN;
+			mlen -= newdata - m0->m_data;
+			m0->m_data = newdata;
+		} else {
+			m->m_next = newm;
 		}
+		m = newm;
 
-		m->m_len = len = min(totlen, len);
-		(*sc->sc_copyfrombuf)(sc, mtod(m, caddr_t), boff, len);
-		boff += len;
-
-		totlen -= len;
-		if (totlen > 0) {
-			MGET(newm, MB_DONTWAIT, MT_DATA);
-			if (newm == 0)
-				goto bad;
-			len = MLEN;
-			m = m->m_next = newm;
-		}
-	}
+		m->m_len = min(totlen, mlen);
+		(*sc->sc_copyfrombuf)(sc, mtod(m, caddr_t), boff, m->m_len);
+		boff += m->m_len;
+		totlen -= m->m_len;
+	} while (totlen > 0);
 
 	return (m0);
 
- bad:
+bad:
 	m_freem(m0);
 	return (NULL);
 }
