@@ -1,0 +1,28 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/packet.c.patch,v 1.1.2.1 2006/10/01 21:22:29 victor Exp $
+Index: packet.c
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/packet.c,v
+retrieving revision 1.1.1.2
+diff -u -r1.1.1.2 packet.c
+--- packet.c	13 Feb 2006 14:25:31 -0000	1.1.1.2
++++ packet.c	1 Oct 2006 15:40:00 -0000
+@@ -978,9 +978,16 @@
+ 	 * (C)1998 CORE-SDI, Buenos Aires Argentina
+ 	 * Ariel Futoransky(futo@core-sdi.com)
+ 	 */
+-	if (!receive_context.plaintext &&
+-	    detect_attack(buffer_ptr(&input), padded_len, NULL) == DEATTACK_DETECTED)
+-		packet_disconnect("crc32 compensation attack: network attack detected");
++	if (!receive_context.plaintext) {
++		switch (detect_attack(buffer_ptr(&input), padded_len, NULL)) {
++		case DEATTACK_DETECTED:
++			packet_disconnect("crc32 compensation attack: "
++			    "network attack detected");
++		case DEATTACK_DOS_DETECTED:
++			packet_disconnect("deattack denial of "
++			    "service detected");
++		}
++	}
+ 
+ 	/* Decrypt data to incoming_packet. */
+ 	buffer_clear(&incoming_packet);

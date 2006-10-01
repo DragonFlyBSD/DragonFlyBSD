@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.12 2005/09/06 18:55:35 dillon Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.12.4.1 2006/10/01 21:22:28 victor Exp $
 #
 
 PROG=	sshd
@@ -25,10 +25,15 @@ CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 	-DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
 
 SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
-	loginrec.c.patch monitor.c.patch \
-	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
+	deattack.c.patch deattack.h.patch defines.h.patch \
+	log.c.patch log.h.patch loginrec.c.patch monitor.c.patch \
+	myproposal.h.patch packet.c.patch servconf.c.patch \
+	session.c.patch sshd.c.patch 
 
 SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
+
+# Fix problems with patch infraestructure
+CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I${CONTRIBDIR}/openbsd-compat/ -I-
 
 .if defined(WANT_KERBEROS)
 DISTRIBUTION=krb5

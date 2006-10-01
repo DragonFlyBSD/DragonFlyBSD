@@ -1,4 +1,4 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+$DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1.6.1 2006/10/01 21:22:29 victor Exp $
 --- session.c.orig	2004-07-23 14:26:51.000000000 +0200
 +++ session.c	2004-07-23 14:20:00.000000000 +0200
 @@ -748,6 +748,24 @@
@@ -129,3 +129,19 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/session.c.patch,v 1.1 2004/07/31 20:0
  			exit(1);
  #endif
  	}
+Index: session.c
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/session.c,v
+retrieving revision 1.1.1.2
+diff -u -r1.1.1.2 session.c
+--- session.c	13 Feb 2006 14:25:33 -0000	1.1.1.2
++++ session.c	1 Oct 2006 15:40:38 -0000
+@@ -2436,7 +2436,7 @@
+ 		return;
+ 	called = 1;
+ 
+-	if (authctxt == NULL)
++	if (authctxt == NULL || !authctxt->authenticated)
+ 		return;
+ #ifdef KRB5
+ 	if (options.kerberos_ticket_cleanup &&

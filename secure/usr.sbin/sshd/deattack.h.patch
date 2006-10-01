@@ -1,0 +1,16 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/deattack.h.patch,v 1.1.2.1 2006/10/01 21:22:28 victor Exp $
+Index: deattack.h
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/deattack.h,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 deattack.h
+--- deattack.h	11 Jul 2005 22:44:21 -0000	1.1.1.1
++++ deattack.h	1 Oct 2006 15:21:45 -0000
+@@ -25,6 +25,7 @@
+ /* Return codes */
+ #define DEATTACK_OK		0
+ #define DEATTACK_DETECTED	1
++#define DEATTACK_DOS_DETECTED	2
+ 
+ int	 detect_attack(u_char *, u_int32_t, u_char[8]);
+ #endif

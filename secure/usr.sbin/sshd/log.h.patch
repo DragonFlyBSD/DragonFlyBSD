@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/usr.sbin/sshd/Attic/log.h.patch,v 1.1 2004/08/30 21:59:58 geekgod Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/log.h.patch,v 1.1.6.1 2006/10/01 21:22:29 victor Exp $
 --- log.h_orig	2004-08-22 16:25:25.000000000 +0000
 +++ log.h	2004-08-22 16:25:38.000000000 +0000
 @@ -15,6 +15,8 @@
@@ -10,3 +10,18 @@
  #include <syslog.h> /* Needed for LOG_AUTHPRIV (if present) */
  
  /* Supported syslog facilities and levels. */
+Index: log.h
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/log.h,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 log.h
+--- log.h	11 Jul 2005 22:44:22 -0000	1.1.1.1
++++ log.h	1 Oct 2006 15:36:21 -0000
+@@ -55,6 +55,7 @@
+ 
+ void     fatal(const char *, ...) __dead __attribute__((format(printf, 1, 2)));
+ void     error(const char *, ...) __attribute__((format(printf, 1, 2)));
++void     sigdie(const char *, ...) __attribute__((format(printf, 1, 2)));
+ void     logit(const char *, ...) __attribute__((format(printf, 1, 2)));
+ void     verbose(const char *, ...) __attribute__((format(printf, 1, 2)));
+ void     debug(const char *, ...) __attribute__((format(printf, 1, 2)));

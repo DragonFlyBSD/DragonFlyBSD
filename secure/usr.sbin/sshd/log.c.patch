@@ -1,0 +1,29 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/log.c.patch,v 1.1.2.1 2006/10/01 21:22:29 victor Exp $
+Index: log.c
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/log.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 log.c
+--- log.c	11 Jul 2005 22:44:22 -0000	1.1.1.1
++++ log.c	1 Oct 2006 15:35:05 -0000
+@@ -130,6 +130,20 @@
+ 	va_end(args);
+ }
+ 
++void
++sigdie(const char *fmt, ...)
++{
++	va_list args;
++
++#ifdef DO_LOG_SAFE_IN_SIGHAND
++	va_start(args, fmt);
++	do_log(SYSLOG_LEVEL_FATAL, fmt, args);
++	va_end(args);
++#endif
++	_exit(1);
++}
++
++
+ /* Log this message (information that usually should go to the log). */
+ 
+ void

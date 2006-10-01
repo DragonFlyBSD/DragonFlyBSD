@@ -1,0 +1,20 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/defines.h.patch,v 1.1.2.1 2006/10/01 21:22:29 victor Exp $
+Index: defines.h
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/defines.h,v
+retrieving revision 1.1.1.2
+diff -u -r1.1.1.2 defines.h
+--- defines.h	13 Feb 2006 14:25:28 -0000	1.1.1.2
++++ defines.h	1 Oct 2006 15:23:10 -0000
+@@ -544,6 +544,11 @@
+ # undef HAVE_UPDWTMPX
+ #endif
+ 
++#if defined(HAVE_OPENLOG_R) && defined(SYSLOG_DATA_INIT) && \
++    defined(SYSLOG_R_SAFE_IN_SIGHAND)
++# define DO_LOG_SAFE_IN_SIGHAND
++#endif
++
+ #if !defined(HAVE_MEMMOVE) && defined(HAVE_BCOPY)
+ # define memmove(s1, s2, n) bcopy((s2), (s1), (n))
+ #endif /* !defined(HAVE_MEMMOVE) && defined(HAVE_BCOPY) */

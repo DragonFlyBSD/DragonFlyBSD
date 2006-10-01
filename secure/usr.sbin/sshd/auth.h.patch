@@ -1,4 +1,4 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/auth.h.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth.h.patch,v 1.1.6.1 2006/10/01 21:22:28 victor Exp $
 --- auth.h.orig	2004-07-23 14:26:51.000000000 +0200
 +++ auth.h	2004-07-23 14:20:00.000000000 +0200
 @@ -185,5 +185,12 @@
@@ -14,3 +14,18 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/auth.h.patch,v 1.1 2004/07/31 20:05:0
 +#endif
 +
 +#endif
+Index: auth.h
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/auth.h,v
+retrieving revision 1.1.1.2
+diff -u -r1.1.1.2 auth.h
+--- auth.h	13 Feb 2006 14:25:25 -0000	1.1.1.2
++++ auth.h	1 Oct 2006 15:14:37 -0000
+@@ -49,6 +49,7 @@
+ 
+ struct Authctxt {
+ 	int		 success;
++	int		 authenticated; /* authenticated and alarms cancelled */
+ 	int		 postponed;	/* authentication needs another step */
+ 	int		 valid;		/* user exists and is allowed to login */
+ 	int		 attempt;

@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.2.6.1 2006/10/01 21:22:29 victor Exp $
 --- ./sshd.c	2004-08-12 13:08:15.000000000 +0000
 +++ /home/sullrich/openssh-3.9p1/sshd.c	2004-08-19 17:37:10.000000000 +0000
 @@ -53,6 +53,10 @@
@@ -30,3 +30,27 @@
  	/*
  	 * Register our connection.  This turns encryption off because we do
  	 * not have a key.
+Index: sshd.c
+===================================================================
+RCS file: /home/dcvs/src/crypto/openssh-4/sshd.c,v
+retrieving revision 1.1.1.2
+diff -u -r1.1.1.2 sshd.c
+--- sshd.c	13 Feb 2006 14:25:41 -0000	1.1.1.2
++++ sshd.c	1 Oct 2006 15:42:19 -0000
+@@ -312,7 +312,7 @@
+ 		kill(pmonitor->m_pid, SIGALRM);
+ 
+ 	/* Log error and exit. */
+-	fatal("Timeout before authentication for %s", get_remote_ipaddr());
++	sigdie("Timeout before authentication for %s", get_remote_ipaddr());
+ }
+ 
+ /*
+@@ -1731,6 +1731,7 @@
+ 	 */
+ 	alarm(0);
+ 	signal(SIGALRM, SIG_DFL);
++	authctxt->authenticated = 1;
+ 	if (startup_pipe != -1) {
+ 		close(startup_pipe);
+ 		startup_pipe = -1;
