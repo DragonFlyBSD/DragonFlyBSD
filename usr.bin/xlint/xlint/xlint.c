@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.11 2005/04/05 08:19:35 joerg Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.12 2006/10/02 13:26:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -308,9 +308,19 @@ main(int argc, char **argv)
 	libs = xcalloc(1, sizeof (char *));
 	libsrchpath = xcalloc(1, sizeof (char *));
 
-	appcstrg(&cppflags, "-lang-c");
+	appcstrg(&cppflags, "-x");
+	appcstrg(&cppflags, "c");
+	appcstrg(&cppflags, "-undef");
+	/* even with -undef cpp still identifies as GNUC */
+	appcstrg(&cppflags, "-U__GNUC__");
+#if defined(__GNUC__)
+#if __GNUC__ < 3
 	appcstrg(&cppflags, "-$");
 	appcstrg(&cppflags, "-C");
+#else
+	appcstrg(&cppflags, "-CC");
+#endif
+#endif
 	appcstrg(&cppflags, "-Wcomment");
 #ifdef __DragonFly__
 	appcstrg(&cppflags, "-D__DragonFly__=" __XSTRING(__DragonFly__));
