@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/contrib/top/machine.h,v 1.4.6.1 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/machine.h,v 1.3 2006/02/15 12:54:36 corecode Exp $
+ * $DragonFly: src/contrib/top/machine.h,v 1.4 2006/10/03 12:20:11 y0netan1 Exp $
  */
 
 /*
@@ -33,6 +33,7 @@ struct statics
 #define P_ACTIVE p_active
 #endif
 
+/* CPU1 states follow those of CPU0, and so on for SMP */
 struct system_info
 {
     int    last_pid;

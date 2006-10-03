@@ -16,14 +16,14 @@
 #define  x_brkdn	15
 #define  y_brkdn	1
 #define  x_mem		5
-#define  y_mem		3
+#define  y_mem		(y_cpustates+(smart_terminal?n_cpus:1))
 #define  x_swap		6
-#define  y_swap		4
-#define  y_message	5
+#define  y_swap		(y_mem+1)
+#define  y_message	(y_swap+1)
 #define  x_header	0
-#define  y_header	6
+#define  y_header	(y_message+1)
 #define  x_idlecursor	0
-#define  y_idlecursor	5
-#define  y_procs	7
+#define  y_idlecursor	(y_message)
+#define  y_procs	(y_header+1)
 
 #define  y_cpustates	2

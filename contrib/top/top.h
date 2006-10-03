@@ -8,7 +8,8 @@
 #define VERSION		3
 
 /* Number of lines of header information on the standard screen */
-#define Header_lines	7
+#define Header_lines	(7 + n_cpus - 1)
+extern int n_cpus;
 
 /* Maximum number of columns allowed for display */
 #define MAX_COLS	128

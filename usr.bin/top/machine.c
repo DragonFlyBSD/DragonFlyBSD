@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.18 2005/11/14 18:50:18 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.19 2006/10/03 12:20:11 y0netan1 Exp $
  */
 
 
@@ -133,7 +133,7 @@ static int ccpu;
 
 /* these are for calculating cpu state percentages */
 
-static struct kinfo_cputime cp_time, cp_old;
+static struct kinfo_cputime *cp_time, *cp_old;
 
 /* these are for detailing the process states */
 
@@ -146,7 +146,7 @@ char *procstatenames[] = {
 
 /* these are for detailing the cpu states */
 #define CPU_STATES 5
-int cpu_states[CPU_STATES];
+int *cpu_states;
 char *cpustatenames[CPU_STATES + 1] = {
     "user", "nice", "system", "interrupt", "idle", NULL
 };
@@ -195,7 +195,6 @@ cputime_percentages(int out[CPU_STATES], struct kinfo_cputime *new,
 		    struct kinfo_cputime *old)
 {
         struct kinfo_cputime diffs;
-        int i;
 	uint64_t total_change, half_total;
 
         /* initialization */
@@ -236,6 +235,10 @@ machine_init(struct statics *statics)
     size_t modelen;
     struct passwd *pw;
 
+    if (n_cpus < 1) {
+	if (kinfo_get_cpus(&n_cpus))
+	    err(1, "kinfo_get_cpus failed");
+    }
     modelen = sizeof(smpmode);
     if ((sysctlbyname("machdep.smp_active", &smpmode, &modelen, NULL, 0) < 0 &&
          sysctlbyname("smp.smp_active", &smpmode, &modelen, NULL, 0) < 0) ||
@@ -322,16 +325,41 @@ get_system_info(struct system_info *si)
     int mib[2];
     struct timeval boottime;
     size_t bt_size;
+    size_t len;
+    int cpu;
 
-    if (kinfo_get_sched_cputime(&cp_time))
-	err(1, "kinfo_get_sched_cputime failed");
+    if (cpu_states == NULL) {
+	cpu_states = malloc(sizeof(*cpu_states) * CPU_STATES * n_cpus);
+	if (cpu_states == NULL)
+	    err(1, "malloc");
+	bzero(cpu_states, sizeof(*cpu_states) * CPU_STATES * n_cpus);
+    }
+    if (cp_time == NULL) {
+	cp_time = malloc(2 * n_cpus * sizeof(cp_time[0]));
+	if (cp_time == NULL)
+	    err(1, "cp_time");
+	cp_old = cp_time + n_cpus;
+
+	len = n_cpus * sizeof(cp_old[0]);
+	bzero(cp_time, len);
+	if (sysctlbyname("kern.cputime", cp_old, &len, NULL, 0))
+	    err(1, "kern.cputime");
+    }
+
+    len = n_cpus * sizeof(cp_time[0]);
+    bzero(cp_time, len);
+    if (sysctlbyname("kern.cputime", cp_time, &len, NULL, 0))
+	err(1, "kern.cputime");
 
     getloadavg(si->load_avg, 3);
 
     lastpid = 0;
 
     /* convert cp_time counts to percentages */
-    cputime_percentages(cpu_states, &cp_time, &cp_old);
+    for (cpu = 0; cpu < n_cpus; ++cpu) {
+	cputime_percentages(cpu_states + cpu * CPU_STATES,
+			    &cp_time[cpu], &cp_old[cpu]);
+    }
 
     /* sum memory & swap statistics */
     {

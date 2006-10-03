@@ -14,7 +14,7 @@ char *copyright =
  *  Copyright (c) 1996, William LeFebvre, Group sys Consulting
  *
  * $FreeBSD: src/contrib/top/top.c,v 1.4.6.5 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/top.c,v 1.3 2006/02/15 12:54:36 corecode Exp $
+ * $DragonFly: src/contrib/top/top.c,v 1.4 2006/10/03 12:20:11 y0netan1 Exp $
  */
 
 /*
@@ -114,8 +114,8 @@ int i_loadave();
 int u_loadave();
 int i_procstates();
 int u_procstates();
-int i_cpustates();
-int u_cpustates();
+int i_cpustates(struct system_info *);
+int u_cpustates(struct system_info *);
 int i_memory();
 int u_memory();
 int i_swap();
@@ -130,13 +130,14 @@ int u_process();
 /* pointers to display routines */
 int (*d_loadave)() = i_loadave;
 int (*d_procstates)() = i_procstates;
-int (*d_cpustates)() = i_cpustates;
+int (*d_cpustates)(struct system_info *) = i_cpustates;
 int (*d_memory)() = i_memory;
 int (*d_swap)() = i_swap;
 int (*d_message)() = i_message;
 int (*d_header)() = i_header;
 int (*d_process)() = i_process;
 
+int n_cpus = 0;
 
 main(argc, argv)
 
@@ -583,14 +584,14 @@ restart:
 	/* display the cpu state percentage breakdown */
 	if (dostates)	/* but not the first time */
 	{
-	    (*d_cpustates)(system_info.cpustates);
+	    (*d_cpustates)(&system_info);
 	}
 	else
 	{
 	    /* we'll do it next time */
 	    if (smart_terminal)
 	    {
-		z_cpustates();
+		z_cpustates(&system_info);
 	    }
 	    else
 	    {
@@ -663,7 +664,7 @@ restart:
 		{
 		    d_loadave = u_loadave;
 		    d_procstates = u_procstates;
-		    d_cpustates = u_cpustates;
+		    d_cpustates = i_cpustates;
 		    d_memory = u_memory;
 		    d_swap = u_swap;
 		    d_message = u_message;

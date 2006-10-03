@@ -9,7 +9,7 @@
  *  Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
  *
  * $FreeBSD: src/contrib/top/display.c,v 1.4.6.3 2003/04/27 15:32:26 dwmalone Exp $
- * $DragonFly: src/contrib/top/display.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
+ * $DragonFly: src/contrib/top/display.c,v 1.3 2006/10/03 12:20:11 y0netan1 Exp $
  */
 
 /*
@@ -75,7 +75,6 @@ static int num_memory;
 static int num_swap;
 
 static int *lprocstates;
-static int *lcpustates;
 static int *lmemory;
 static int *lswap;
 
@@ -154,7 +153,6 @@ struct statics *statics;
 	num_swap = string_count(swap_names);
 	lswap = (int *)malloc(num_swap * sizeof(int));
 	num_cpustates = string_count(cpustate_names);
-	lcpustates = (int *)malloc(num_cpustates * sizeof(int));
 	cpustate_columns = (int *)malloc(num_cpustates * sizeof(int));
 
 	memory_names = statics->memory_names;
@@ -372,141 +370,68 @@ int *brkdn;
  *  Assumptions:  cursor is on the PREVIOUS line
  */
 
-static int cpustates_column;
-
-/* cpustates_tag() calculates the correct tag to use to label the line */
-
-char *cpustates_tag()
-
+void
+i_cpustates(struct system_info *si)
 {
-    register char *use;
-
-    static char *short_tag = "CPU: ";
-    static char *long_tag = "CPU states: ";
-
-    /* if length + strlen(long_tag) >= screen_width, then we have to
-       use the shorter tag (we subtract 2 to account for ": ") */
-    if (cpustate_total_length + (int)strlen(long_tag) - 2 >= screen_width)
-    {
-	use = short_tag;
-    }
-    else
-    {
-	use = long_tag;
-    }
-
-    /* set cpustates_column accordingly then return result */
-    cpustates_column = strlen(use);
-    return(use);
-}
-
-i_cpustates(states)
-
-register int *states;
-
-{
-    register int i = 0;
+    register int i;
     register int value;
-    register char **names = cpustate_names;
+    register char **names;
     register char *thisname;
+    int *states = si->cpustates;
+    int cpu;
 
     /* print tag and bump lastline */
-    printf("\n%s", cpustates_tag());
-    lastline++;
+    for (cpu = 0; cpu < n_cpus; ++cpu) {
+	if (n_cpus > 1)
+	    printf("\nCPU%d states: ", cpu);
+	else
+	    printf("\nCPU states: ");
+	lastline++;
 
-    /* now walk thru the names and print the line */
-    while ((thisname = *names++) != NULL)
-    {
-	if (*thisname != '\0')
+	/* now walk thru the names and print the line */
+	names = cpustate_names;
+	i = 0;
+	while ((thisname = *names++) != NULL)
 	{
-	    /* retrieve the value and remember it */
-	    value = *states++;
-
-	    /* if percentage is >= 1000, print it as 100% */
-	    printf((value >= 1000 ? "%s%4.0f%% %s" : "%s%4.1f%% %s"),
-		   i++ == 0 ? "" : ", ",
-		   ((float)value)/10.,
-		   thisname);
-	}
-    }
-
-    /* copy over values into "last" array */
-    memcpy(lcpustates, states, num_cpustates * sizeof(int));
-}
-
-u_cpustates(states)
-
-register int *states;
-
-{
-    register int value;
-    register char **names = cpustate_names;
-    register char *thisname;
-    register int *lp;
-    register int *colp;
-
-    Move_to(cpustates_column, y_cpustates);
-    lastline = y_cpustates;
-    lp = lcpustates;
-    colp = cpustate_columns;
-
-    /* we could be much more optimal about this */
-    while ((thisname = *names++) != NULL)
-    {
-	if (*thisname != '\0')
-	{
-	    /* did the value change since last time? */
-	    if (*lp != *states)
+	    if (*thisname != '\0')
 	    {
-		/* yes, move and change */
-		Move_to(cpustates_column + *colp, y_cpustates);
-		lastline = y_cpustates;
-
-		/* retrieve value and remember it */
-		value = *states;
-
+		/* retrieve the value and remember it */
+		value = *states++;
 		/* if percentage is >= 1000, print it as 100% */
-		printf((value >= 1000 ? "%4.0f" : "%4.1f"),
-		       ((double)value)/10.);
-
-		/* remember it for next time */
-		*lp = value;
+		printf((value >= 1000 ? "%s%4.0f%% %s" : "%s%4.1f%% %s"),
+		       i++ == 0 ? "" : ", ",
+		       ((float)value)/10.,
+		       thisname);
 	    }
 	}
-
-	/* increment and move on */
-	lp++;
-	states++;
-	colp++;
     }
 }
 
-z_cpustates()
-
+void
+z_cpustates(struct system_info *si)
 {
-    register int i = 0;
-    register char **names = cpustate_names;
+    register int i;
+    register char **names;
     register char *thisname;
-    register int *lp;
+    int cpu;
 
     /* show tag and bump lastline */
-    printf("\n%s", cpustates_tag());
-    lastline++;
+    for (cpu = 0; cpu < n_cpus; ++cpu) {
+	if (n_cpus > 1)
+	    printf("\nCPU%d states: ", cpu);
+	else
+	    printf("\nCPU states: ");
+	lastline++;
 
-    while ((thisname = *names++) != NULL)
-    {
-	if (*thisname != '\0')
+	i = 0;
+	names = cpustate_names;
+	while ((thisname = *names++) != NULL)
 	{
-	    printf("%s    %% %s", i++ == 0 ? "" : ", ", thisname);
+	    if (*thisname != '\0')
+	    {
+		printf("%s    %% %s", i++ == 0 ? "" : ", ", thisname);
+	    }
 	}
-    }
-
-    /* fill the "last" array with all -1s, to insure correct updating */
-    lp = lcpustates;
-    i = num_cpustates;
-    while (--i >= 0)
-    {
-	*lp++ = -1;
     }
 }
 
