@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.40 2006/09/10 01:26:41 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.41 2006/10/03 01:32:41 swildner Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -433,17 +433,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	} else {
 		pmp->pm_HiddenSects = getushort(b33->bpbHiddenSecs);
 		pmp->pm_HugeSectors = pmp->pm_Sectors;
-	}
-	if (pmp->pm_HugeSectors > 0xffffffff / 
-	    (pmp->pm_BytesPerSec / sizeof(struct direntry)) + 1) {
-		/*
-		 * We cannot deal currently with this size of disk
-		 * due to fileid limitations (see msdosfs_getattr and
-		 * msdosfs_readdir)
-		 */
-		error = EINVAL;
-		printf("mountmsdosfs(): disk too big, sorry\n");
-		goto error_exit;
 	}
 
 	if (pmp->pm_RootDirEnts == 0) {
