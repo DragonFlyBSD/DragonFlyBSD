@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.18 2006/09/21 04:09:28 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.19 2006/10/03 10:21:40 swildner Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os
@@ -164,7 +164,9 @@ has been completed and
 will loop on that directory or file until it is sure it has an exact copy.
 .Pp
 Warning: FSMID is not always supported by a filesystem and may not be
-synchronized if a crash occurs.  DragonFly will simulate an FSMID when
+synchronized if a crash occurs.
+.Dx
+will simulate an FSMID when
 it is otherwise not supported by the filesystem, and users should be aware
 that simulated FSMIDs may change state in such cases even if the underlying
 hierarchy does not due to cache flushes.
