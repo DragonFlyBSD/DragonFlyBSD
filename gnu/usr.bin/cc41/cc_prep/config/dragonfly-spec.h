@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.1 2006/09/27 12:10:33 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.2 2006/10/04 13:18:57 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -134,14 +134,14 @@ is built with the --enable-threads configure-time option.}		\
 #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
 #define PRE_LIB_SPEC "							\
-  %{pg: -L"PREFIX2"/lib/gcc34/profiling 				\
-    %{!static: -rpath /usr/lib/gcc34/profiling 				\
-      -rpath-link "PREFIX2"/lib/gcc34/profiling}}			\
-  %{g: -L"PREFIX2"/lib/gcc34/debug 					\
-    %{!static: -rpath /usr/lib/gcc34/debug				\
-      -rpath-link "PREFIX2"/lib/gcc34/debug}}				\
-  -L"PREFIX2"/lib/gcc34							\
-  %{!static: -rpath /usr/lib/gcc34  -rpath-link "PREFIX2"/lib/gcc34} 	\
+  %{pg: -L"PREFIX2"/lib/gcc41/profiling 				\
+    %{!static: -rpath /usr/lib/gcc41/profiling 				\
+      -rpath-link "PREFIX2"/lib/gcc41/profiling}}			\
+  %{g: -L"PREFIX2"/lib/gcc41/debug 					\
+    %{!static: -rpath /usr/lib/gcc41/debug				\
+      -rpath-link "PREFIX2"/lib/gcc41/debug}}				\
+  -L"PREFIX2"/lib/gcc41							\
+  %{!static: -rpath /usr/lib/gcc41  -rpath-link "PREFIX2"/lib/gcc41} 	\
   %{pg: -L"PREFIX2"/lib/profiling 					\
     %{!static: -rpath /usr/lib/profiling				\
       -rpath-link "PREFIX2"/lib/profiling}} 				\
