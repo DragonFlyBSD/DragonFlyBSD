@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.34 2006/09/17 21:09:40 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.35 2006/10/04 18:28:32 dillon Exp $
  */
 
 /*
@@ -276,11 +276,12 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		if (fp->f_flag & FPOSIXSHM)
 			flags |= MAP_NOSYNC;
 		vp = (struct vnode *) fp->f_data;
-		if (vp->v_type != VREG && vp->v_type != VCHR) {
-			error = EINVAL;
-			goto done;
-		}
-		if (vp->v_type == VREG) {
+
+		/*
+		 * Validate the vnode for the operation.
+		 */
+		switch(vp->v_type) {
+		case VREG:
 			/*
 			 * Get the proper underlying object
 			 */
@@ -288,7 +289,24 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 				error = EINVAL;
 				goto done;
 			}
-			KKASSERT(vp == (struct vnode *)obj->handle);
+			KKASSERT((struct vnode *)obj->handle == vp);
+			break;
+		case VCHR:
+			/*
+			 * Make sure a device has not been revoked.  
+			 * Mappability is handled by the device layer.
+			 */
+			if (vp->v_rdev == NULL) {
+				error = EBADF;
+				goto done;
+			}
+			break;
+		default:
+			/*
+			 * Nothing else is mappable.
+			 */
+			error = EINVAL;
+			goto done;
 		}
 
 		/*
