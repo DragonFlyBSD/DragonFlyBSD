@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.146 2005/11/05 15:35:10 swildner Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.147 2006/10/04 20:13:53 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -501,6 +501,16 @@ SigHandler(void)
 #endif
 }
 
+static
+sig_t
+getsignal(int signo)
+{
+	struct sigaction sa;
+	if (sigaction(signo, NULL, &sa) < 0)
+		sa.sa_handler = SIG_IGN;
+	return(sa.sa_handler);
+}
+
 void
 Sig_Init(bool compat)
 {
@@ -537,16 +547,16 @@ Sig_Init(bool compat)
 	sa.sa_handler = SigCatcher;
 	sa.sa_flags = 0;
 
-	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
+	if (getsignal(SIGINT) != SIG_IGN) {
 		sigaction(SIGINT, &sa, NULL);
 	}
-	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
+	if (getsignal(SIGHUP) != SIG_IGN) {
 		sigaction(SIGHUP, &sa, NULL);
 	}
-	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
+	if (getsignal(SIGQUIT) != SIG_IGN) {
 		sigaction(SIGQUIT, &sa, NULL);
 	}
-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
+	if (getsignal(SIGTERM) != SIG_IGN) {
 		sigaction(SIGTERM, &sa, NULL);
 	}
 
@@ -559,16 +569,16 @@ Sig_Init(bool compat)
 		 * process group (since then it won't get signals from the
 		 * terminal driver as we own the terminal)
 		 */
-		if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
+		if (getsignal(SIGTSTP) != SIG_IGN) {
 			sigaction(SIGTSTP, &sa, NULL);
 		}
-		if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
+		if (getsignal(SIGTTOU) != SIG_IGN) {
 			sigaction(SIGTTOU, &sa, NULL);
 		}
-		if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
+		if (getsignal(SIGTTIN) != SIG_IGN) {
 			sigaction(SIGTTIN, &sa, NULL);
 		}
-		if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
+		if (getsignal(SIGWINCH) != SIG_IGN) {
 			sigaction(SIGWINCH, &sa, NULL);
 		}
 	}
