@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.17 2006/09/17 21:07:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.18 2006/10/06 13:40:40 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -347,6 +347,7 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	int error;
 
 	newargs.sysmsg_result = 0;
+	newargs.rval = args->rval;
 	error = sys_exit(&newargs);
 	args->sysmsg_result = newargs.sysmsg_result;
 	return (error);
