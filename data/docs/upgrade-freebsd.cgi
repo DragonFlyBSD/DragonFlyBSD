@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.3 2004/08/25 18:04:01 justin Exp $
+# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.4 2006/10/06 14:23:34 justin Exp $
 
 $TITLE(DragonFly - Upgrading From FreeBSD 4)
 
@@ -35,7 +35,7 @@ rehash
 <LI> Fetch a configuration file for cvsup and run cvsup using that file:
 <P>
 <code>
-fetch http://www.dragonflybsd.org/main/dragonfly-cvs-supfile
+fetch http://www.dragonflybsd.org/community/dragonfly-cvs-supfile
 </code>
 <P>
 Comment out the lines that say:
