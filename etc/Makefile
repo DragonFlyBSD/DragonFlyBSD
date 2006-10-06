@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.130 2006/09/22 09:46:48 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.131 2006/10/06 13:08:45 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -123,7 +123,7 @@ upgrade_etc:	preupgrade
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
-	# "../share/termcap/make etc-termap" expanded inline here:
+	# "../share/termcap/make etc-termcap" expanded inline here:
 	${LN} -fs ${DESTDIR}/usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
 	${LN} -fs ${DESTDIR}/usr/sbin/rmt ${DESTDIR}/etc/rmt
