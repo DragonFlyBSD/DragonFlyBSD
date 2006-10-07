@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.32 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.33 2006/10/07 02:57:30 sephe Exp $
  */
 
 /*
@@ -1604,15 +1604,11 @@ rl_watchdog(struct ifnet *ifp)
 
 	device_printf(sc->rl_dev, "watchdog timeout\n");
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	ifp->if_oerrors++;
 
 	rl_txeof(sc);
 	rl_rxeof(sc);
 	rl_init(sc);
-
-	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
