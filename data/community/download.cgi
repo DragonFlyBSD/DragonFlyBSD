@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/download.cgi,v 1.4 2006/09/02 03:52:27 justin Exp $
+# $DragonFly: site/data/community/Attic/download.cgi,v 1.5 2006/10/07 18:45:31 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -513,6 +513,17 @@ distributions on CD and DVD to New Zealand and the rest of the world.
 </td>
 <td><a href="http://www.linuxcdmall.com/dragonfly.html">http://www.linuxcdmall.com/dragonfly.html</a></td>
 </tr>
+
+<tr>
+<td><b>LinuxDownloads.co.uk</b><br />
+LinuxDownload.co.uk provides Linux, BSD and Open Source software on CD and
+DVD. We aim to dispatch orders within 24 hours and offer free delivery to
+the UK and worldwide shipping is available too.
+</td>
+<td><a href="http://www.linuxdownload.co.uk">http://www.linuxdownload.co.uk</a><br/>
+sales@linuxdownload.co.uk</td>
+</tr>
+
 
 <tr>
 <td><b>Tetrad Digital Integrity</b><br/>
