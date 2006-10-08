@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/hack/Makefile,v 1.20.2.4 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/hack/Makefile,v 1.5 2006/08/21 19:45:32 pavalos Exp $
+# $DragonFly: src/games/hack/Makefile,v 1.6 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	hack
 SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
@@ -25,7 +25,6 @@ FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
 HIDEGAME=hidegame
 CLEANFILES=hack.onames.h makedefs.nx makedefs.no
-WARNS?=	6
 
 build-tools: makedefs.nx
 

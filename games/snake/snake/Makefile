@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/snake/snake/Makefile,v 1.5.2.3 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/snake/snake/Makefile,v 1.4 2006/09/03 23:47:56 pavalos Exp $
+# $DragonFly: src/games/snake/snake/Makefile,v 1.5 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	snake
 SRCS=	snake.c
@@ -9,7 +9,6 @@ DPADD=	${LIBM} ${LIBCURSES}
 LDADD=	-lm -lcurses
 HIDEGAME=hidegame
 MLINKS=	snake.6 snscore.6
-WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/snakerawscores)

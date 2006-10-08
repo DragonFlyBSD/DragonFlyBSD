@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/battlestar/Makefile,v 1.5.2.3 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/battlestar/Makefile,v 1.3 2006/08/08 16:47:20 pavalos Exp $
+# $DragonFly: src/games/battlestar/Makefile,v 1.4 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	battlestar
 SRCS=	battlestar.c com1.c com2.c com3.c com4.c com5.c com6.c com7.c \
@@ -10,7 +10,6 @@ MAN=	battlestar.6
 DPADD=	${LIBCURSES} ${LIBTERMCAP}
 LDADD=	-lcurses -ltermcap
 HIDEGAME=hidegame
-WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/battlestar.log)

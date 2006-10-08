@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/rogue/Makefile,v 1.4.2.5 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/rogue/Makefile,v 1.4 2006/09/02 19:31:07 pavalos Exp $
+# $DragonFly: src/games/rogue/Makefile,v 1.5 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	rogue
 CFLAGS+=-DUNIX
@@ -11,7 +11,6 @@ DPADD=	${LIBCURSES} ${LIBTERMCAP}
 LDADD=	-lcurses
 HIDEGAME=hidegame
 MAN=	rogue.6
-WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/rogue.scores)

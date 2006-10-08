@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/robots/Makefile,v 1.5.2.3 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/robots/Makefile,v 1.3 2006/08/27 21:45:07 pavalos Exp $
+# $DragonFly: src/games/robots/Makefile,v 1.4 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	robots
 CFLAGS+=-DMAX_PER_UID=5
@@ -10,7 +10,6 @@ MAN=	robots.6
 DPADD=	${LIBCURSES}
 LDADD=	-lcurses
 HIDEGAME=hidegame
-WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/robots_roll)

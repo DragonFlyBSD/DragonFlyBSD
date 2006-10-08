@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.12 (Berkeley) 5/30/93
 # $FreeBSD: src/games/larn/Makefile,v 1.6.2.5 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/larn/Makefile,v 1.4 2006/08/26 17:05:05 pavalos Exp $
+# $DragonFly: src/games/larn/Makefile,v 1.5 2006/10/08 16:22:35 pavalos Exp $
 
 # EXTRA
 #	Incorporates code to gather additional performance statistics
@@ -64,7 +64,6 @@ LDADD=	-ltermcap
 FILES=	larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
 HIDEGAME=hidegame
-WARNS?=	6
 
 .PATH: ${.CURDIR}/datfiles
 

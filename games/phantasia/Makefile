@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/phantasia/Makefile,v 1.16.2.2 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/phantasia/Makefile,v 1.4 2005/05/31 00:06:26 swildner Exp $
+# $DragonFly: src/games/phantasia/Makefile,v 1.5 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	phantasia
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c
@@ -11,7 +11,6 @@ DATAFILES=characs gold lastdead mess monsters motd scoreboard void
 HIDEGAME=hidegame
 MAN=	phantasia.6
 CLEANFILES=${DATAFILES} cross-phantglobs.no map setup.nx setup.no stamp.setuprun
-WARNS?=	6
 
 all: stamp.setuprun
 

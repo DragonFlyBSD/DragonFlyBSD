@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/sail/Makefile,v 1.4.2.3 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/sail/Makefile,v 1.3 2006/09/03 17:33:13 pavalos Exp $
+# $DragonFly: src/games/sail/Makefile,v 1.4 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	sail
 SRCS=	main.c pl_main.c pl_1.c pl_2.c pl_3.c pl_4.c pl_5.c pl_6.c pl_7.c \
@@ -10,7 +10,6 @@ MAN=	sail.6
 DPADD=	${LIBCURSES}
 LDADD=	-lcurses
 HIDEGAME=hidegame
-WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/saillog)
