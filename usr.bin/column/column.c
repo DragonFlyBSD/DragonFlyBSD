@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/column/column.c,v 1.4.6.2 2001/08/02 01:34:19 obrien Exp $
- * $DragonFly: src/usr.bin/column/column.c,v 1.5 2005/01/16 04:28:00 cpressey Exp $
+ * $DragonFly: src/usr.bin/column/column.c,v 1.6 2006/10/08 09:12:32 corecode Exp $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)column.c	8.4 (Berkeley) 5/4/95
@@ -217,10 +217,10 @@ maketbl(void)
 		for (coloff = 0, p = *lp; (cols[coloff] = strtok(p, separator));
 		    p = NULL)
 			if (++coloff == maxcols) {
-				if (!(cols = realloc(cols, (u_int)maxcols +
-				    DEFCOLS * sizeof(char *))) ||
+				if (!(cols = realloc(cols, ((u_int)maxcols +
+				    DEFCOLS) * sizeof(char *))) ||
 				    !(lens = realloc(lens,
-				    (u_int)maxcols + DEFCOLS * sizeof(int))))
+				    ((u_int)maxcols + DEFCOLS) * sizeof(int))))
 					err(1, NULL);
 				memset((char *)lens + maxcols * sizeof(int),
 				    0, DEFCOLS * sizeof(int));
