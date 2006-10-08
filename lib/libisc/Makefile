@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.7.2.2 2006/09/17 15:03:10 corecode Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.7.2.3 2006/10/08 20:33:47 corecode Exp $
 
 BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 
@@ -44,7 +44,7 @@ SRCS+=		dns/a6.c dns/acl.c dns/adb.c dns/byaddr.c \
 		dns/name.c dns/ncache.c dns/nxt.c dns/peer.c \
 		dns/rbt.c dns/rbtdb.c dns/rbtdb64.c dns/rdata.c \
 		dns/rdatalist.c dns/rdataset.c dns/rdatasetiter.c \
-		dns/rdataslab.c dns/request.c dns/resolver.c dns/result.c \
+		dns/rdataslab.c dns/request.c dns/result.c \
 		dns/rootns.c dns/sdb.c dns/soa.c dns/ssu.c \
 		dns/stats.c dns/tcpmsg.c dns/time.c dns/timer.c dns/tkey.c \
 		dns/tsig.c dns/ttl.c dns/validator.c \
