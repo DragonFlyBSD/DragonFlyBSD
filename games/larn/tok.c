@@ -1,6 +1,6 @@
 /* tok.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/tok.c,v 1.5 1999/11/16 02:57:25 billf Exp $ */
-/* $DragonFly: src/games/larn/tok.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $ */
+/* $DragonFly: src/games/larn/tok.c,v 1.5 2006/10/08 17:11:30 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/wait.h>
 #ifdef SYSV
@@ -77,7 +77,7 @@ yylex(void)
 				{
 				/* revoke */
 				setgid(getgid());
-				execl("/bin/csh",0);    exit(1);
+				execl("/bin/csh", "csh", (char *) NULL);    exit(1);
 				}
 			wait(0);
 			if (ic<0) /* error */

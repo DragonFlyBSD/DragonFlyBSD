@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/main.c,v 1.9 1999/11/30 03:48:21 billf Exp $
- * $DragonFly: src/games/atc/main.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
+ * $DragonFly: src/games/atc/main.c,v 1.4 2006/10/08 17:11:30 pavalos Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ main(__unused int ac, char **av)
 	while (*av) {
 #ifndef SAVEDASH
 		if (**av == '-')
-			*++*av;
+			++*av;
 		else
 			break;
 #endif

@@ -32,7 +32,7 @@
  *
  * @(#)klmove.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/klmove.c,v 1.4 1999/11/30 03:49:49 billf Exp $
- * $DragonFly: src/games/trek/klmove.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
+ * $DragonFly: src/games/trek/klmove.c,v 1.4 2006/10/08 17:11:30 pavalos Exp $
  */
 
 # include	"trek.h"
@@ -78,7 +78,7 @@ klmove(int fl)
 	if (Trace)
 		printf("klmove: fl = %d, Etc.nkling = %d\n", fl, Etc.nkling);
 #	endif
-	for (n = 0; n < Etc.nkling; k && n++)
+	for (n = 0; n < Etc.nkling; n++)
 	{
 		k = &Etc.klingon[n];
 		i = 100;
