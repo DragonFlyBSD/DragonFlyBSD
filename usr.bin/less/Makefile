@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/less/Makefile,v 1.4.2.5 2003/02/02 10:04:50 johan Exp $
-# $DragonFly: src/usr.bin/less/Makefile,v 1.6 2005/08/09 18:08:42 corecode Exp $
+# $DragonFly: src/usr.bin/less/Makefile,v 1.7 2006/10/08 14:52:37 pavalos Exp $
 
 PROG=	less
 SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
@@ -8,7 +8,7 @@ SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
 	lsystem.c mark.c optfunc.c option.c opttbl.c os.c \
 	output.c position.c prompt.c search.c signal.c \
 	tags.c ttyin.c version.c
-CFLAGS=	-I${.CURDIR} -DSYSDIR="/etc"
+CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
 DPADD=	${LIBTERMCAP}
 LDADD=	-ltermcap
 
