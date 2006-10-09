@@ -32,7 +32,7 @@
  *
  * @(#)mbuf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/mbuf.c,v 1.17.2.3 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.6 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.7 2006/10/09 22:30:48 hsu Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -68,7 +68,7 @@ static struct mbtypenames {
 void
 mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 {
-	u_long totmem, totpossible, totmbufs;
+	u_long totmem, totpossible;
 	int i;
 	struct mbstat mbstat;
 	struct mbtypenames *mp;
@@ -144,26 +144,21 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 #undef MCLBYTES
 #define	MCLBYTES	(mbstat.m_mclbytes)
 
-	totmbufs = 0;
-	for (mp = mbtypenames; mp->mt_name; mp++)
-		totmbufs += mbtypes[mp->mt_type];
-	printf("%lu/%lu/%u mbufs in use (current/peak/max):\n", totmbufs,
-	    mbstat.m_mbufs, nmbufs);
+	printf("%lu/%u mbufs in use (current/max):\n", mbstat.m_mbufs, nmbufs);
+	printf("%lu/%u mbuf clusters in use (current/max)\n",
+		mbstat.m_clusters, nmbclusters);
 	for (mp = mbtypenames; mp->mt_name; mp++)
 		if (mbtypes[mp->mt_type]) {
 			seen[mp->mt_type] = YES;
-			printf("\t%lu mbufs allocated to %s\n",
+			printf("\t%lu mbufs and mbuf clusters allocated to %s\n",
 			    mbtypes[mp->mt_type], mp->mt_name);
 		}
 	seen[MT_FREE] = YES;
 	for (i = 0; i < nmbtypes; i++)
 		if (!seen[i] && mbtypes[i]) {
-			printf("\t%lu mbufs allocated to <mbuf type %d>\n",
+			printf("\t%lu mbufs and mbuf clusters allocated to <mbuf type %d>\n",
 			    mbtypes[i], i);
 		}
-	printf("%lu/%lu/%u mbuf clusters in use (current/peak/max)\n",
-		mbstat.m_clusters - mbstat.m_clfree, mbstat.m_clusters,
-		nmbclusters);
 	totmem = mbstat.m_mbufs * MSIZE + mbstat.m_clusters * MCLBYTES;
 	totpossible = nmbclusters * MCLBYTES + MSIZE * nmbufs; 
 	printf("%lu Kbytes allocated to network (%lu%% of mb_map in use)\n",
