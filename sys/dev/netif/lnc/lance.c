@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.3 2006/10/01 03:09:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.4 2006/10/10 00:04:10 hsu Exp $	*/
 
 
 /*-
@@ -316,21 +316,14 @@ lance_init_locked(struct lance_softc *sc)
 int
 lance_put(struct lance_softc *sc, int boff, struct mbuf *m)
 {
-	struct mbuf *n;
-	int len, tlen = 0;
+	int tlen = 0;
 
-	for (; m; m = n) {
-		len = m->m_len;
-		if (len == 0) {
-			n = m_free(m);
-			m = NULL;
+	for (; m; m = m_free(m)) {
+		if (m->m_len == 0)
 			continue;
-		}
-		(*sc->sc_copytobuf)(sc, mtod(m, caddr_t), boff, len);
-		boff += len;
-		tlen += len;
-		n = m_free(m);
-		m = NULL;
+		(*sc->sc_copytobuf)(sc, mtod(m, caddr_t), boff, m->m_len);
+		boff += m->m_len;
+		tlen += m->m_len;
 	}
 	if (tlen < LEMINSIZE) {
 		(*sc->sc_zerobuf)(sc, boff, LEMINSIZE - tlen);
