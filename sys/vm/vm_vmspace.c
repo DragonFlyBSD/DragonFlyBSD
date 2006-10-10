@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.2 2006/09/17 21:09:40 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.3 2006/10/10 15:43:16 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
+#include <sys/kern_syscall.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
@@ -122,7 +123,7 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
  *
  * Transfer control to a VMSPACE.  Control is returned after the specified
  * number of microseconds or if a page fault, signal, trap, or system call
- * occurs.
+ * occurs.  The context is updated as appropriate.
  */
 int
 sys_vmspace_ctl(struct vmspace_ctl_args *uap)
@@ -149,12 +150,16 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 {
 	struct vkernel *vk;
 	struct vmspace_entry *ve;
+	int error;
 
 	if ((vk = curproc->p_vkernel) == NULL)
 		return (EINVAL);
 	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
 		return (ENOENT);
-	return(EINVAL);
+	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
+			  uap->prot, uap->flags,
+			  uap->fd, uap->offset, &uap->sysmsg_resultp);
+	return (error);
 }
 
 /*
@@ -167,12 +172,83 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 {
 	struct vkernel *vk;
 	struct vmspace_entry *ve;
+	vm_offset_t addr;
+	vm_size_t size, pageoff;
+	vm_map_t map;
 
 	if ((vk = curproc->p_vkernel) == NULL)
 		return (EINVAL);
 	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
 		return (ENOENT);
-	return(EINVAL);
+
+	/*
+	 * Copied from sys_munmap()
+	 */
+	addr = (vm_offset_t)uap->addr;
+	size = uap->len;
+
+	pageoff = (addr & PAGE_MASK);
+	addr -= pageoff;
+	size += pageoff;
+	size = (vm_size_t)round_page(size);
+	if (addr + size < addr)
+		return (EINVAL);
+	if (size == 0)
+		return (0);
+
+	if (VM_MAXUSER_ADDRESS > 0 && addr + size > VM_MAXUSER_ADDRESS)
+		return (EINVAL);
+#ifndef i386
+	if (VM_MIN_ADDRESS > 0 && addr < VM_MIN_ADDRESS)
+		return (EINVAL);
+#endif
+	map = &ve->vmspace->vm_map;
+	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE))
+		return (EINVAL);
+	vm_map_remove(map, addr, addr + size);
+	return (0);
+}
+
+/* 
+ * vmspace_pread(id, buf, nbyte, flags, offset)
+ *
+ * Read data from a vmspace.  The number of bytes read is returned or
+ * -1 if an unrecoverable error occured.  If the number of bytes read is
+ * less then the request size, a page fault occured in the VMSPACE which
+ * the caller must resolve in order to proceed.
+ */
+int
+sys_vmspace_pread(struct vmspace_pread_args *uap)
+{
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	return (EINVAL);
+}
+
+/*
+ * vmspace_pwrite(id, buf, nbyte, flags, offset)
+ *
+ * Write data to a vmspace.  The number of bytes written is returned or
+ * -1 if an unrecoverable error occured.  If the number of bytes written is
+ * less then the request size, a page fault occured in the VMSPACE which
+ * the caller must resolve in order to proceed.
+ */
+int
+sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
+{
+	struct vkernel *vk;
+	struct vmspace_entry *ve;
+
+	if ((vk = curproc->p_vkernel) == NULL)
+		return (EINVAL);
+	if ((ve = vkernel_find_vmspace(vk, uap->id)) == NULL)
+		return (ENOENT);
+	return (EINVAL);
 }
 
 /*

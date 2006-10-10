@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vmspace.h,v 1.2 2006/09/17 21:09:39 dillon Exp $
+ * $DragonFly: src/sys/sys/vmspace.h,v 1.3 2006/10/10 15:43:15 dillon Exp $
  */
 /*
  * VMSPACE - Virtualized Environment control from user mode.  The VMSPACE
@@ -46,10 +46,7 @@
 #include <sys/types.h>
 #endif
 
-#define VMSPACE_CTL_VKERNEL	1
-#define VMSPACE_CTL_CREATE	2
-#define VMSPACE_CTL_DESTROY	3
-#define VMSPACE_CTL_RUN		4
+#define VMSPACE_CTL_RUN		1
 
 #define VMSPACE_PAGEFAULT	1
 #define VMSPACE_TIMEOUT		2
@@ -58,11 +55,16 @@
 
 #ifndef _KERNEL
 
-int vmspace_ctl(void *id, void *ctx, int what);
-int vmspace_map(void *id, off_t offset, void *ptr, int bytes, int prot);
-int vmspace_protect(void *id, off_t offset, int bytes, int prot);
-int vmspace_read(void *id, void *ptr, int bytes);
-int vmspace_write(void *id, const void *ptr, int bytes);
+int vmspace_create(void *, int, void *);
+int vmspace_destroy(void *);
+int vmspace_ctl(void *, int, void *, int, int);
+int vmspace_mmap(void *, void *, size_t, int, int, int, off_t);
+int vmspace_munmap(void *, void *, size_t);
+int vmspace_mcontrol(void *, void *, size_t, int, off_t);
+ssize_t vmspace_pread(void *, void *, size_t, int, off_t);
+ssize_t vmspace_pwrite(void *, const void *, size_t, int, off_t);
+
+#endif
 
 #endif
 
