@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47.2.2 2006/01/01 00:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47.2.3 2006/10/10 12:24:19 sephe Exp $
  */
 
 /*
@@ -2066,6 +2066,7 @@ dc_attach(device_t dev)
 		mac = pci_get_ether(dev);
 		if (!mac) {
 			device_printf(dev, "No station address in CIS!\n");
+			error = ENXIO;
 			goto fail;
 		}
 		bcopy(mac, eaddr, ETHER_ADDR_LEN);
