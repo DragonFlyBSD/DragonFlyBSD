@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.57 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.58 2006/10/10 15:40:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -93,7 +93,7 @@ sys_fork(struct fork_args *uap)
 	struct proc *p2;
 	int error;
 
-	error = fork1(lp, RFFDG | RFPROC, &p2);
+	error = fork1(lp, RFFDG | RFPROC | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
@@ -110,7 +110,7 @@ sys_vfork(struct vfork_args *uap)
 	struct proc *p2;
 	int error;
 
-	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
+	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
@@ -140,7 +140,7 @@ sys_rfork(struct rfork_args *uap)
 	if ((uap->flags & RFKERNELONLY) != 0)
 		return (EINVAL);
 
-	error = fork1(lp, uap->flags, &p2);
+	error = fork1(lp, uap->flags | RFPGLOCK, &p2);
 	if (error == 0) {
 		if (p2)
 			start_forked_proc(lp, p2);
@@ -158,9 +158,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 {
 	struct proc *p1 = lp1->lwp_proc;
 	struct proc *p2, *pptr;
+	struct pgrp *pgrp;
 	struct lwp *lp2;
 	uid_t uid;
-	int ok;
+	int ok, error;
 	static int curfail = 0;
 	static struct timeval lastfail;
 	struct forklist *ep;
@@ -203,6 +204,26 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	}
 
 	/*
+	 * Interlock against process group signal delivery.  If signals
+	 * are pending after the interlock is obtained we have to restart
+	 * the system call to process the signals.  If we don't the child
+	 * can miss a pgsignal (such as ^C) sent during the fork.
+	 *
+	 * We can't use CURSIG() here because it will process any STOPs
+	 * and cause the process group lock to be held indefinitely.  If
+	 * a STOP occurs, the fork will be restarted after the CONT.
+	 */
+	error = 0;
+	pgrp = NULL;
+	if ((flags & RFPGLOCK) && (pgrp = p1->p_pgrp) != NULL) {
+		lockmgr(&pgrp->pg_lock, LK_SHARED);
+		if (CURSIGNB(p1)) {
+			error = ERESTART;
+			goto done;
+		}
+	}
+
+	/*
 	 * Although process entries are dynamically created, we still keep
 	 * a global limit on the maximum number we will create.  Don't allow
 	 * a nonprivileged user to use the last ten processes; don't let root
@@ -215,7 +236,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			printf("maxproc limit exceeded by uid %d, please "
 			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
-		return (EAGAIN);
+		error = EAGAIN;
+		goto done;
 	}
 	/*
 	 * Increment the nprocs resource before blocking can occur.  There
@@ -238,7 +260,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			printf("maxproc limit exceeded by uid %d, please "
 			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
-		return (EAGAIN);
+		error = EAGAIN;
+		goto done;
 	}
 
 	/* Allocate new proc. */
@@ -506,7 +529,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Return child proc pointer to parent.
 	 */
 	*procp = p2;
-	return (0);
+done:
+	if (pgrp)
+		lockmgr(&pgrp->pg_lock, LK_RELEASE);
+	return (error);
 }
 
 /*

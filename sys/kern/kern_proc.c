@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.28 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.29 2006/10/10 15:40:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -228,6 +228,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 		LIST_INSERT_HEAD(PGRPHASH(pgid), pgrp, pg_hash);
 		pgrp->pg_jobc = 0;
 		SLIST_INIT(&pgrp->pg_sigiolst);
+		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
 	} else if (pgrp == p->p_pgrp)
 		return (0);
 

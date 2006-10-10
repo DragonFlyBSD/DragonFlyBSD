@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.86 2006/09/30 22:14:31 swildner Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.87 2006/10/10 15:40:47 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -54,6 +54,7 @@
 #include <sys/queue.h>
 #include <sys/rtprio.h>			/* For struct rtprio. */
 #include <sys/signal.h>
+#include <sys/lock.h>
 #ifndef _KERNEL
 #include <sys/time.h>			/* For structs itimerval, timeval. */
 #endif
@@ -92,6 +93,7 @@ struct	pgrp {
 	struct  sigiolst pg_sigiolst;	/* List of sigio sources. */
 	pid_t	pg_id;			/* Pgrp id. */
 	int	pg_jobc;	/* # procs qualifying pgrp for job control */
+	struct lock pg_lock;		/* Lock during fork */
 };
 
 struct	procsig {

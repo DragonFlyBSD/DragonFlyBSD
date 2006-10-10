@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.54 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.55 2006/10/10 15:40:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -56,6 +56,7 @@
 #include <sys/systm.h>
 #include <sys/acct.h>
 #include <sys/fcntl.h>
+#include <sys/lock.h>
 #include <sys/wait.h>
 #include <sys/ktrace.h>
 #include <sys/syslog.h>
@@ -630,6 +631,7 @@ killpg(int sig, int pgid, int all)
 			if (pgrp == NULL)
 				return (ESRCH);
 		}
+		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (p->p_pid <= 1 || 
 			    (p->p_flag & (P_SYSTEM | P_ZOMBIE)) ||
@@ -640,6 +642,7 @@ killpg(int sig, int pgid, int all)
 			if (sig)
 				ksignal(p, sig);
 		}
+		lockmgr(&pgrp->pg_lock, LK_RELEASE);
 	}
 	return (info.nfound ? 0 : ESRCH);
 }
@@ -713,16 +716,23 @@ gsignal(int pgid, int sig)
 /*
  * Send a signal to a process group.  If checktty is 1,
  * limit to members which have a controlling terminal.
+ *
+ * pg_lock interlocks against a fork that might be in progress, to
+ * ensure that the new child process picks up the signal.
  */
 void
 pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 {
 	struct proc *p;
 
-	if (pgrp)
-		LIST_FOREACH(p, &pgrp->pg_members, p_pglist)
+	if (pgrp) {
+		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
+		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (checkctty == 0 || p->p_flag & P_CONTROLT)
 				ksignal(p, sig);
+		}
+		lockmgr(&pgrp->pg_lock, LK_RELEASE);
+	}
 }
 
 /*
@@ -1751,10 +1761,13 @@ pgsigio(struct sigio *sigio, int sig, int checkctty)
 	} else if (sigio->sio_pgid < 0) {
 		struct proc *p;
 
-		LIST_FOREACH(p, &sigio->sio_pgrp->pg_members, p_pglist)
+		lockmgr(&sigio->sio_pgrp->pg_lock, LK_EXCLUSIVE);
+		LIST_FOREACH(p, &sigio->sio_pgrp->pg_members, p_pglist) {
 			if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred, p) &&
 			    (checkctty == 0 || (p->p_flag & P_CONTROLT)))
 				ksignal(p, sig);
+		}
+		lockmgr(&sigio->sio_pgrp->pg_lock, LK_RELEASE);
 	}
 }
 

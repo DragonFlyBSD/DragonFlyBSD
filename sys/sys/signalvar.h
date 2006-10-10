@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.14 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.15 2006/10/10 15:40:47 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -212,6 +212,7 @@ int	checkpoint_signal_handler(struct proc *p);
  * Inline functions:
  */
 #define	CURSIG(p)	__cursig(p)
+#define CURSIGNB(p)	__cursignb(p)
 
 /*
  * Determine signal that should be delivered to process p, the current
@@ -220,7 +221,9 @@ int	checkpoint_signal_handler(struct proc *p);
  *
  * MP SAFE
  */
-static __inline int __cursig(struct proc *p)
+static __inline
+int
+__cursig(struct proc *p)
 {
 	sigset_t tmpset;
 	int r;
@@ -233,6 +236,21 @@ static __inline int __cursig(struct proc *p)
 	}
 	r = issignal(p);
 	return(r);
+}
+
+static __inline
+int
+__cursignb(struct proc *p)
+{
+	sigset_t tmpset;
+
+	tmpset = p->p_siglist;
+	SIGSETNAND(tmpset, p->p_sigmask);
+	if (SIGISEMPTY(p->p_siglist) ||
+	     (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
+		return(FALSE);
+	}
+	return (TRUE);
 }
 
 #endif	/* _KERNEL */
