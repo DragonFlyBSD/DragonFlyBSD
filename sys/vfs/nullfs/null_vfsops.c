@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.26 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.27 2006/10/10 16:21:02 dillon Exp $
  */
 
 /*
@@ -151,7 +151,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 static int
 nullfs_unmount(struct mount *mp, int mntflags)
 {
-	void *mntdata;
+	struct null_mount *xmp;
 	int flags = 0;
 
 	NULLFSDEBUG("nullfs_unmount: mp = %p\n", (void *)mp);
@@ -162,9 +162,13 @@ nullfs_unmount(struct mount *mp, int mntflags)
 	/*
 	 * Finally, throw away the null_mount structure
 	 */
-	mntdata = mp->mnt_data;
+	xmp = mp->mnt_data;
 	mp->mnt_data = 0;
-	kfree(mntdata, M_NULLFSMNT);
+	if (xmp->nullm_rootvp) {
+		vrele(xmp->nullm_rootvp);
+		xmp->nullm_rootvp = NULL;
+	}
+	kfree(xmp, M_NULLFSMNT);
 	return 0;
 }
 
