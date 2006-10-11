@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.4 2006/08/03 19:14:08 dillon Exp $
+# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.5 2006/10/11 18:36:40 justin Exp $
 
 $TITLE(DragonFly - July 2006 Release 1.6.x Download)
 <h1>Obtaining DragonFly 1.6.x for your system</h1>
@@ -60,7 +60,7 @@ See the 'Download Site' list below for a list of download locations.
 </TR>
 <TR>
 <TD>1.6.0</TD>
-<TD>24-Jul-2007</TD>
+<TD>24-Jul-2006</TD>
 <TD>RELEASE CD</TD>
 <TD><A HREF="errata1_6.cgi">Errata</A></TD>
 </TR>
@@ -105,7 +105,6 @@ See the 'Download Site' list below for a list of download locations.
 <TD>
     <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.6.0_REL.iso.gz">HTTP</A>
     <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.6.0_REL.iso.gz">FTP</A>
-    <A HREF="http://www.theshell.com/dfly-1.6.0_REL.iso.gz.torrent">TORRENT</A>
 </TD></TR>
 
 
