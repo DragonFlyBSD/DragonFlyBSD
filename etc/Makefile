@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.131 2006/10/06 13:08:45 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.132 2006/10/11 13:28:13 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -382,7 +382,8 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/modules/if_snc.ko
 .for tzfile in Africa/Timbuktu America/Argentina/ComodRivadavia \
 	America/Indianapolis America/Louisville CST6CDT EST EST5EDT \
-	Europe/Belfast HST MST MST7MDT PST8PDT Pacific/Yap
+	Europe/Belfast HST MST MST7MDT PST8PDT Pacific/Yap \
+	America/Coral_Harbour
 	rm -f ${DESTDIR}/usr/share/zoneinfo/${tzfile}
 .endfor
 .if exists(${DESTDIR}/usr/freebsd_pkg/sbin/pkg_add)
