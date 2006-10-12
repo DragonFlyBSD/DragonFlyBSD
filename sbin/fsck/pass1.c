@@ -32,7 +32,7 @@
  *
  * @(#)pass1.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1.c,v 1.16.2.5 2002/06/23 22:34:58 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass1.c,v 1.9 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,15 +48,15 @@
 
 static ufs_daddr_t badblk;
 static ufs_daddr_t dupblk;
-static ino_t lastino;		/* last inode in use */
+static ufs1_ino_t lastino;		/* last inode in use */
 
-static void checkinode(ino_t inumber, struct inodesc *);
+static void checkinode(ufs1_ino_t inumber, struct inodesc *);
 
 void
 pass1(void)
 {
 	u_int8_t *cp;
-	ino_t inumber;
+	ufs1_ino_t inumber;
 	int c, i, cgd, inosused;
 	struct inostat *info;
 	struct inodesc idesc;
@@ -172,7 +172,7 @@ pass1(void)
 }
 
 static void
-checkinode(ino_t inumber, struct inodesc *idesc)
+checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 {
 	struct ufs1_dinode *dp;
 	struct zlncnt *zlnp;

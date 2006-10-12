@@ -32,7 +32,7 @@
  *
  * @(#)pass3.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass3.c,v 1.5 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/pass3.c,v 1.6 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@ pass3(void)
 {
 	struct inoinfo *inp;
 	int loopcnt, inpindex, state;
-	ino_t orphan;
+	ufs1_ino_t orphan;
 	struct inodesc idesc;
 	char namebuf[MAXNAMLEN+1];
 

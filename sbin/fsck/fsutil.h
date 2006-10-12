@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.h,v 1.3.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.h,v 1.3 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.h,v 1.4 2006/10/12 04:04:03 dillon Exp $
  */
 
 void perror(const char *);
@@ -51,9 +51,6 @@ const char *cdevname(void);
 void setcdevname(const char *, int);
 struct statfs *getmntpt(const char *);
 int  hotroot(void);
-void *emalloc(size_t);
-void *erealloc(void *, size_t);
-char *estrdup(const char *);
 
 #define	CHECK_PREEN	0x0001
 #define	CHECK_VERBOSE	0x0002

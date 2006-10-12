@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.c,v 1.6 2006/10/12 04:04:03 dillon Exp $
  *
  * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
@@ -306,38 +306,3 @@ retry:
 }
 #endif
 
-
-void *
-emalloc(size_t s)
-{
-	void *p;
-
-	p = malloc(s);
-	if (p == NULL)
-		err(1, "malloc failed");
-	return (p);
-}
-
-
-void *
-erealloc(void *p, size_t s)
-{
-	void *q;
-
-	q = realloc(p, s);
-	if (q == NULL)
-		err(1, "realloc failed");
-	return (q);
-}
-
-
-char *
-estrdup(const char *s)
-{
-	char *p;
-
-	p = strdup(s);
-	if (p == NULL)
-		err(1, "strdup failed");
-	return (p);
-}

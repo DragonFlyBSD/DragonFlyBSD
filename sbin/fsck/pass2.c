@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.10 2006/09/10 01:26:27 dillon Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.11 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -196,7 +196,7 @@ pass2(void)
 		    inoinfo(inp->i_number)->ino_state == DSTATE)
 			inoinfo(inp->i_number)->ino_state = DFOUND;
 		if (inp->i_dotdot == inp->i_parent ||
-		    inp->i_dotdot == (ino_t)-1)
+		    inp->i_dotdot == (ufs1_ino_t)-1)
 			continue;
 		if (inp->i_dotdot == 0) {
 			inp->i_dotdot = inp->i_parent;
@@ -348,11 +348,11 @@ chk1:
 		fileerror(inp->i_parent, idesc->id_number, "MISSING '..'");
 		pfatal("CANNOT FIX, SECOND ENTRY IN DIRECTORY CONTAINS %s\n",
 			dirp->d_name);
-		inp->i_dotdot = (ino_t)-1;
+		inp->i_dotdot = (ufs1_ino_t)-1;
 	} else if (dirp->d_reclen < entrysize) {
 		fileerror(inp->i_parent, idesc->id_number, "MISSING '..'");
 		pfatal("CANNOT FIX, INSUFFICIENT SPACE TO ADD '..'\n");
-		inp->i_dotdot = (ino_t)-1;
+		inp->i_dotdot = (ufs1_ino_t)-1;
 	} else if (inp->i_parent != 0) {
 		/*
 		 * We know the parent, so fix now.

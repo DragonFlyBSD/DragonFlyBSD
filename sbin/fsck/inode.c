@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.10 2006/09/10 01:26:27 dillon Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.11 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +47,9 @@
 #include <string.h>
 
 #include "fsck.h"
+#include "memzone.h"
 
-static ino_t startinum;
+static ufs1_ino_t startinum;
 
 static int iblock(struct inodesc *, long ilevel, quad_t isize);
 
@@ -269,7 +270,7 @@ chkrange(ufs_daddr_t blk, int cnt)
  * General purpose interface for reading inodes.
  */
 struct ufs1_dinode *
-ginode(ino_t inumber)
+ginode(ufs1_ino_t inumber)
 {
 	ufs_daddr_t iblk;
 
@@ -290,12 +291,12 @@ ginode(ino_t inumber)
  * Special purpose version of ginode used to optimize first pass
  * over all the inodes in numerical order.
  */
-ino_t nextino, lastinum;
+ufs1_ino_t nextino, lastinum;
 long readcnt, readpercg, fullcnt, inobufsize, partialcnt, partialsize;
 struct ufs1_dinode *inodebuf;
 
 struct ufs1_dinode *
-getnextinode(ino_t inumber)
+getnextinode(ufs1_ino_t inumber)
 {
 	long size;
 	ufs_daddr_t dblk;
@@ -324,7 +325,7 @@ getnextinode(ino_t inumber)
 }
 
 void
-setinodebuf(ino_t inum)
+setinodebuf(ufs1_ino_t inum)
 {
 
 	if (inum % sblock.fs_ipg != 0)
@@ -366,8 +367,10 @@ freeinodebuf(void)
  *
  * Enter inodes into the cache.
  */
+static struct memzone inoinfo_zone;
+
 void
-cacheino(struct ufs1_dinode *dp, ino_t inumber)
+cacheino(struct ufs1_dinode *dp, ufs1_ino_t inumber)
 {
 	struct inoinfo *inp;
 	struct inoinfo **inpp;
@@ -376,15 +379,15 @@ cacheino(struct ufs1_dinode *dp, ino_t inumber)
 	blks = howmany(dp->di_size, sblock.fs_bsize);
 	if (blks > NDADDR)
 		blks = NDADDR + NIADDR;
-	inp = (struct inoinfo *)
-		malloc(sizeof(*inp) + (blks - 1) * sizeof(ufs_daddr_t));
+	inp = mzalloc(&inoinfo_zone, 
+		      sizeof(*inp) + (blks - 1) * sizeof(ufs_daddr_t));
 	if (inp == NULL)
 		errx(EEXIT, "cannot increase directory list");
 	inpp = &inphead[DIRHASH(inumber)];
 	inp->i_nexthash = *inpp;
 	*inpp = inp;
-	inp->i_parent = inumber == ROOTINO ? ROOTINO : (ino_t)0;
-	inp->i_dotdot = (ino_t)0;
+	inp->i_parent = inumber == ROOTINO ? ROOTINO : (ufs1_ino_t)0;
+	inp->i_dotdot = (ufs1_ino_t)0;
 	inp->i_number = inumber;
 	inp->i_isize = dp->di_size;
 	inp->i_numblks = blks * sizeof(ufs_daddr_t);
@@ -403,7 +406,7 @@ cacheino(struct ufs1_dinode *dp, ino_t inumber)
  * Look up an inode cache structure.
  */
 struct inoinfo *
-getinoinfo(ino_t inumber)
+getinoinfo(ufs1_ino_t inumber)
 {
 	struct inoinfo *inp;
 
@@ -426,8 +429,7 @@ inocleanup(void)
 
 	if (inphead == NULL)
 		return;
-	for (inpp = &inpsort[inplast - 1]; inpp >= inpsort; inpp--)
-		free((char *)(*inpp));
+	mzpurge(&inoinfo_zone);
 	free((char *)inphead);
 	free((char *)inpsort);
 	inphead = inpsort = NULL;
@@ -504,7 +506,7 @@ clearentry(struct inodesc *idesc)
 }
 
 void
-pinode(ino_t ino)
+pinode(ufs1_ino_t ino)
 {
 	struct ufs1_dinode *dp;
 	char *p;
@@ -530,7 +532,7 @@ pinode(ino_t ino)
 }
 
 void
-blkerror(ino_t ino, char *type, ufs_daddr_t blk)
+blkerror(ufs1_ino_t ino, char *type, ufs_daddr_t blk)
 {
 
 	pfatal("%ld %s I=%lu", blk, type, ino);
@@ -558,10 +560,10 @@ blkerror(ino_t ino, char *type, ufs_daddr_t blk)
 /*
  * allocate an unused inode
  */
-ino_t
-allocino(ino_t request, int type)
+ufs1_ino_t
+allocino(ufs1_ino_t request, int type)
 {
-	ino_t ino;
+	ufs1_ino_t ino;
 	struct ufs1_dinode *dp;
 	struct cg *cgp = &cgrp;
 	int cg;
@@ -618,7 +620,7 @@ allocino(ino_t request, int type)
  * deallocate an inode
  */
 void
-freeino(ino_t ino)
+freeino(ufs1_ino_t ino)
 {
 	struct inodesc idesc;
 	struct ufs1_dinode *dp;

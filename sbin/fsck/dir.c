@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.10 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,10 +62,10 @@ struct	odirtemplate odirhead = {
 static int chgino(struct inodesc *);
 static int dircheck(struct inodesc *, struct direct *);
 static int expanddir(struct ufs1_dinode *dp, char *name);
-static void freedir(ino_t ino, ino_t parent);
+static void freedir(ufs1_ino_t ino, ufs1_ino_t parent);
 static struct direct *fsck_readdir(struct inodesc *);
 static struct bufarea *getdirblk(ufs_daddr_t blkno, long size);
-static int lftempname(char *bufp, ino_t ino);
+static int lftempname(char *bufp, ufs1_ino_t ino);
 static int mkentry(struct inodesc *);
 
 /*
@@ -263,14 +263,14 @@ dircheck(struct inodesc *idesc, struct direct *dp)
 }
 
 void
-direrror(ino_t ino, char *errmesg)
+direrror(ufs1_ino_t ino, char *errmesg)
 {
 
 	fileerror(ino, ino, errmesg);
 }
 
 void
-fileerror(ino_t cwd, ino_t ino, char *errmesg)
+fileerror(ufs1_ino_t cwd, ufs1_ino_t ino, char *errmesg)
 {
 	struct ufs1_dinode *dp;
 	char pathbuf[MAXPATHLEN + 1];
@@ -315,7 +315,7 @@ adjust(struct inodesc *idesc, int lcnt)
 			 * linkup is answered no, but clri is answered yes.
 			 */
 			saveresolved = resolved;
-			if (linkup(idesc->id_number, (ino_t)0, NULL) == 0) {
+			if (linkup(idesc->id_number, (ufs1_ino_t)0, NULL) == 0) {
 				resolved = saveresolved;
 				clri(idesc, "UNREF", 0);
 				return;
@@ -408,11 +408,11 @@ chgino(struct inodesc *idesc)
 }
 
 int
-linkup(ino_t orphan, ino_t parentdir, char *name)
+linkup(ufs1_ino_t orphan, ufs1_ino_t parentdir, char *name)
 {
 	struct ufs1_dinode *dp;
 	int lostdir;
-	ino_t oldlfdir;
+	ufs1_ino_t oldlfdir;
 	struct inodesc idesc;
 	char tempname[BUFSIZ];
 
@@ -439,7 +439,7 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
 		} else {
 			pwarn("NO lost+found DIRECTORY");
 			if (preen || reply("CREATE")) {
-				lfdir = allocdir(ROOTINO, (ino_t)0, lfmode);
+				lfdir = allocdir(ROOTINO, (ufs1_ino_t)0, lfmode);
 				if (lfdir != 0) {
 					if (makeentry(ROOTINO, lfdir, lfname) != 0) {
 						numdirs++;
@@ -466,7 +466,7 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
 		if (reply("REALLOCATE") == 0)
 			return (0);
 		oldlfdir = lfdir;
-		if ((lfdir = allocdir(ROOTINO, (ino_t)0, lfmode)) == 0) {
+		if ((lfdir = allocdir(ROOTINO, (ufs1_ino_t)0, lfmode)) == 0) {
 			pfatal("SORRY. CANNOT CREATE lost+found DIRECTORY\n\n");
 			return (0);
 		}
@@ -495,14 +495,14 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
 	inoinfo(orphan)->ino_linkcnt--;
 	if (lostdir) {
 		if ((changeino(orphan, "..", lfdir) & ALTERED) == 0 &&
-		    parentdir != (ino_t)-1)
+		    parentdir != (ufs1_ino_t)-1)
 			makeentry(orphan, lfdir, "..");
 		dp = ginode(lfdir);
 		dp->di_nlink++;
 		inodirty();
 		inoinfo(lfdir)->ino_linkcnt++;
 		pwarn("DIR I=%lu CONNECTED. ", orphan);
-		if (parentdir != (ino_t)-1) {
+		if (parentdir != (ufs1_ino_t)-1) {
 			printf("PARENT WAS I=%lu\n", (u_long)parentdir);
 			/*
 			 * The parent directory, because of the ordering
@@ -523,7 +523,7 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
  * fix an entry in a directory.
  */
 int
-changeino(ino_t dir, char *name, ino_t newnum)
+changeino(ufs1_ino_t dir, char *name, ufs1_ino_t newnum)
 {
 	struct inodesc idesc;
 
@@ -541,7 +541,7 @@ changeino(ino_t dir, char *name, ino_t newnum)
  * make an entry in a directory
  */
 int
-makeentry(ino_t parent, ino_t ino, char *name)
+makeentry(ufs1_ino_t parent, ufs1_ino_t ino, char *name)
 {
 	struct ufs1_dinode *dp;
 	struct inodesc idesc;
@@ -629,10 +629,10 @@ bad:
 /*
  * allocate a new directory
  */
-ino_t
-allocdir(ino_t parent, ino_t request, int mode)
+ufs1_ino_t
+allocdir(ufs1_ino_t parent, ufs1_ino_t request, int mode)
 {
-	ino_t ino;
+	ufs1_ino_t ino;
 	char *cp;
 	struct ufs1_dinode *dp;
 	struct bufarea *bp;
@@ -685,7 +685,7 @@ allocdir(ino_t parent, ino_t request, int mode)
  * free a directory inode
  */
 static void
-freedir(ino_t ino, ino_t parent)
+freedir(ufs1_ino_t ino, ufs1_ino_t parent)
 {
 	struct ufs1_dinode *dp;
 
@@ -701,9 +701,9 @@ freedir(ino_t ino, ino_t parent)
  * generate a temporary name for the lost+found directory.
  */
 static int
-lftempname(char *bufp, ino_t ino)
+lftempname(char *bufp, ufs1_ino_t ino)
 {
-	ino_t in;
+	ufs1_ino_t in;
 	char *cp;
 	int namlen;
 

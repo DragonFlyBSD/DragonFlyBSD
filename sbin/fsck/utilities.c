@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsck/utilities.c,v 1.10 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ reply(char *question)
  * Look up state information for an inode.
  */
 struct inostat *
-inoinfo(ino_t inum)
+inoinfo(ufs1_ino_t inum)
 {
 	static struct inostat unallocated = { USTATE, 0, 0 };
 	struct inostatlist *ilp;
@@ -425,7 +425,7 @@ freeblk(ufs_daddr_t blkno, long frags)
  * Find a pathname
  */
 void
-getpathname(char *namebuf, ino_t curdir, ino_t ino)
+getpathname(char *namebuf, ufs1_ino_t curdir, ufs1_ino_t ino)
 {
 	int len;
 	char *cp;
