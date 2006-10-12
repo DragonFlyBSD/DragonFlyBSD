@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.8 2004/08/24 08:15:22 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.9 2006/10/12 04:02:37 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -91,6 +91,7 @@ static device_method_t ata_isa_methods[] = {
     DEVMETHOD(device_probe,	ata_isa_probe),
     DEVMETHOD(device_attach,	ata_attach),
     DEVMETHOD(device_resume,	ata_resume),
+    DEVMETHOD(device_suspend,	ata_suspend),
     { 0, 0 }
 };
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.30 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.31 2006/10/12 04:02:37 y0netan1 Exp $
  */
 
 #include "opt_ata.h"
@@ -298,6 +298,28 @@ ata_detach(device_t dev)
     mpipe_done(&ch->dma_mpipe);
 
     ATA_UNLOCK_CH(ch);
+    return 0;
+}
+
+int
+ata_suspend(device_t dev)
+{
+    struct ata_channel *ch;
+
+    if (dev == NULL || (ch = device_get_softc(dev)) == NULL)
+	return ENXIO;
+
+    /* wait for the channel to be IDLE or detached before suspending */
+    while (ch->r_irq) {
+	crit_enter();
+	if (ch->active == ATA_IDLE) {
+	    ch->active = ATA_CONTROL;
+	    crit_exit();
+	    break;
+	}
+	crit_exit();
+	tsleep(ch, 0, "atasusp", hz / 10);
+    }
     return 0;
 }
 

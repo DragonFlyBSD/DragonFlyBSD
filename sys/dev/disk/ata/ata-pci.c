@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.23 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.24 2006/10/12 04:02:37 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -958,6 +958,7 @@ static device_method_t ata_pcisub_methods[] = {
     DEVMETHOD(device_attach,	ata_attach),
     DEVMETHOD(device_detach,	ata_detach),
     DEVMETHOD(device_resume,	ata_resume),
+    DEVMETHOD(device_suspend,	ata_suspend),
     { 0, 0 }
 };
 

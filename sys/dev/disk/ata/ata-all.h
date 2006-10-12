@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.26.2.12 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.7 2004/02/18 02:47:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.8 2006/10/12 04:02:37 y0netan1 Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
@@ -262,6 +262,7 @@ int ata_probe(device_t);
 int ata_attach(device_t);
 int ata_detach(device_t);
 int ata_resume(device_t);
+int ata_suspend(device_t);
 
 void ata_start(struct ata_channel *);
 void ata_reset(struct ata_channel *);
