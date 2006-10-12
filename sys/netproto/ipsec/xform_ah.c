@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.9 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.10 2006/10/12 01:32:51 hsu Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -430,7 +430,7 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 		/* Let's deal with the remaining headers (if any). */
 		if (skip - sizeof(struct ip6_hdr) > 0) {
 			if (m->m_len <= skip) {
-				ptr = malloc(skip - sizeof(struct ip6_hdr),
+				ptr = kmalloc(skip - sizeof(struct ip6_hdr),
 					    M_XDATA, M_INTWAIT | M_NULLOK);
 				if (ptr == NULL) {
 					DPRINTF(("ah_massage_headers: failed "
@@ -641,12 +641,12 @@ ah_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 
 	/* Allocate IPsec-specific opaque crypto info. */
 	if (mtag == NULL) {
-		tc = malloc(sizeof (struct tdb_crypto) +
+		tc = kmalloc(sizeof (struct tdb_crypto) +
 			skip + rplen + authsize, M_XDATA, 
 			M_INTWAIT | M_ZERO | M_NULLOK);
 	} else {
 		/* Hash verification has already been done successfully. */
-		tc = malloc(sizeof (struct tdb_crypto),
+		tc = kmalloc(sizeof (struct tdb_crypto),
 			M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	}
 	if (tc == NULL) {

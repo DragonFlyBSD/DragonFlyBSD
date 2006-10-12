@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.16 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.17 2006/10/12 01:32:51 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -836,7 +836,7 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 	if (so == NULL || pcb_sp == NULL)
 		panic("ipsec_init_policy: NULL pointer was passed.\n");
 
-	new = malloc(sizeof(struct inpcbpolicy),
+	new = kmalloc(sizeof(struct inpcbpolicy),
 			M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (new == NULL) {
 		ipseclog((LOG_DEBUG, "ipsec_init_policy: No more memory.\n"));
@@ -915,7 +915,7 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 	 */
 	q = &newchain;
 	for (p = src->req; p; p = p->next) {
-		*q = malloc(sizeof(struct ipsecrequest),
+		*q = kmalloc(sizeof(struct ipsecrequest),
 			M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 		if (*q == NULL)
 			goto fail;

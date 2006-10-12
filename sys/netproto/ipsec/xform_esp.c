@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.11 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.12 2006/10/12 01:32:51 hsu Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -350,10 +350,10 @@ esp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 
 	/* Get IPsec-specific opaque pointer */
 	if (esph == NULL || mtag != NULL)
-		tc = malloc(sizeof(struct tdb_crypto),
+		tc = kmalloc(sizeof(struct tdb_crypto),
 			    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	else
-		tc = malloc(sizeof(struct tdb_crypto) + alen,
+		tc = kmalloc(sizeof(struct tdb_crypto) + alen,
 			    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);
@@ -825,7 +825,7 @@ esp_output(
 		crda = crp->crp_desc;
 
 	/* IPsec-specific opaque crypto info. */
-	tc = malloc(sizeof(struct tdb_crypto),
+	tc = kmalloc(sizeof(struct tdb_crypto),
 			M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		crypto_freereq(crp);

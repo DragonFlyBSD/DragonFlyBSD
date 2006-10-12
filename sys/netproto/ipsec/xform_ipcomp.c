@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.9 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.10 2006/10/12 01:32:51 hsu Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -454,7 +454,7 @@ ipcomp_output(
 	crdc->crd_alg = ipcompx->type;
 
 	/* IPsec-specific opaque crypto info */
-	tc = malloc(sizeof(struct tdb_crypto),
+	tc = kmalloc(sizeof(struct tdb_crypto),
 		    M_XDATA, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (tc == NULL) {
 		ipcompstat.ipcomps_crypto++;

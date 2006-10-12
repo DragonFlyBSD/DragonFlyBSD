@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.16 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.17 2006/10/12 01:32:51 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -2888,7 +2888,7 @@ key_setsaval(struct secasvar *sav, struct mbuf *m,
 		/* replay window */
 		if ((sa0->sadb_sa_flags & SADB_X_EXT_OLD) == 0) {
 			sav->replay = 
-			    malloc(sizeof(struct secreplay)+sa0->sadb_sa_replay,
+			    kmalloc(sizeof(struct secreplay)+sa0->sadb_sa_replay,
 				    M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
 			if (sav->replay == NULL) {
 				ipseclog((LOG_DEBUG, "key_setsaval: No more memory.\n"));
