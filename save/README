@@ -1,4 +1,4 @@
-$DragonFly: site/save/README,v 1.4 2006/03/28 02:06:14 justin Exp $
+$DragonFly: site/save/README,v 1.5 2006/10/13 02:54:25 justin Exp $
 
 dragonfly.jpeg	From Kenneth Stailey <kstailey@yahoo.com>
 	(cool, Kenneth borrowed heavily to superimpose the two though
@@ -9,6 +9,12 @@ FullLogo.gif	From Joe Angrisano <joe@digisquid.com>
 
 image.gif	Joe Angrisano <joe@digisquid.com>
 	This is an original work.  
+
+Dragonfly_BSD.ai
+Dragonfly_BSD.eps
+Dragonfly_BSD.svg
+Dragonfly_BSD.tif	Joe Angrisano <joe@digisquid.com>
+	Vector versions of the original logo.
 
 bug-big.gif
 bug-fat.gif
