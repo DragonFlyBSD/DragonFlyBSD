@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.22 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.23 2006/10/14 06:22:08 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1808,7 +1808,7 @@ do {\
 		int hlen =\
 			(((struct ip6_ext *)src->type)->ip6e_len + 1) << 3;\
 		dst->type = kmalloc(hlen, M_IP6OPT, canwait);\
-		if (dst->type == NULL && canwait == M_NOWAIT)\
+		if (dst->type == NULL)\
 			goto bad;\
 		bcopy(src->type, dst->type, hlen);\
 	}\
@@ -1825,7 +1825,7 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 	}
 
 	dst = kmalloc(sizeof(*dst), M_IP6OPT, canwait);
-	if (dst == NULL && canwait == M_NOWAIT)
+	if (dst == NULL)
 		return (NULL);
 	bzero(dst, sizeof(*dst));
 
@@ -1833,14 +1833,14 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 	if (src->ip6po_pktinfo) {
 		dst->ip6po_pktinfo = kmalloc(sizeof(*dst->ip6po_pktinfo),
 					    M_IP6OPT, canwait);
-		if (dst->ip6po_pktinfo == NULL && canwait == M_NOWAIT)
+		if (dst->ip6po_pktinfo == NULL)
 			goto bad;
 		*dst->ip6po_pktinfo = *src->ip6po_pktinfo;
 	}
 	if (src->ip6po_nexthop) {
 		dst->ip6po_nexthop = kmalloc(src->ip6po_nexthop->sa_len,
 					    M_IP6OPT, canwait);
-		if (dst->ip6po_nexthop == NULL && canwait == M_NOWAIT)
+		if (dst->ip6po_nexthop == NULL)
 			goto bad;
 		bcopy(src->ip6po_nexthop, dst->ip6po_nexthop,
 		      src->ip6po_nexthop->sa_len);
