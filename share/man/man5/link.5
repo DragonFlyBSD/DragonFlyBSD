@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/link.5,v 1.14.2.10 2004/05/17 11:38:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/link.5,v 1.5 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man5/link.5,v 1.6 2006/10/14 23:59:59 swildner Exp $
 .\"
 .Dd October 23, 1993
 .Dt LINK 5
@@ -136,7 +136,7 @@ implementation.
 The current version numbers understood by
 .Xr ld 1
 and
-.Xr ld.so 1
+.Xr rtld 1
 are
 .Em LD_VERSION_SUN (3) ,
 which is used by the
@@ -182,7 +182,7 @@ struct section_dispatch_table {
 .Bl -tag -width sdt_filler1
 .It Fa sdt_loaded
 A pointer to the first link map loaded (see below). This field is set by
-.Nm ld.so
+.Xr rtld 1
 .It Fa sdt_sods
 The start of a (linked) list of shared object descriptors needed by
 .Em this
@@ -250,7 +250,7 @@ The offset in the text segment of a string describing this link object.
 If set,
 .Fa sod_name
 specifies a library that is to be searched for by
-.Nm ld.so .
+.Xr rtld 1 .
 The path name
 is obtained by searching a set of directories
 (see also
@@ -395,7 +395,7 @@ Virtual address of next rt_symbol.
 .It Fa rt_link
 Next in hash bucket.
 Used internally by
-.Nm ld.so .
+.Xr rtld 1 .
 .It Fa rt_srcaddr
 Location of the source of initialized data within a shared object.
 .It Fa rt_smp
@@ -456,7 +456,7 @@ may be interested in.
 The
 .Em ld_entry
 structure defines a set of service routines within
-.Nm ld.so .
+.Xr rtld 1 .
 .\" See
 .\" .Xr libdl.a
 .\" for more information.
@@ -472,7 +472,7 @@ struct ld_entry {
 The
 .Fa crt_ldso
 structure defines the interface between the start-up code in crt0 and
-.Nm ld.so .
+.Xr rtld 1 .
 .Bd -literal -offset indent
 struct crt_ldso {
 	int		crt_ba;
@@ -493,7 +493,7 @@ struct crt_ldso {
 .Bl -tag -width crt_dzfd
 .It Fa crt_ba
 The virtual address at which
-.Nm ld.so
+.Xr rtld 1
 was loaded by crt0.
 .It Fa crt_dzfd
 On SunOS systems, this field contains an open file descriptor to
@@ -504,7 +504,7 @@ On
 systems it contains -1.
 .It Fa crt_ldfd
 Contains an open file descriptor that was used by crt0 to load
-.Nm ld.so .
+.Xr rtld 1 .
 .It Fa crt_dp
 A pointer to main's
 .Fa _dynamic
@@ -527,9 +527,9 @@ The
 and
 .Fa hints_bucket
 structures define the layout of the library hints, normally found in
-.Dq Pa /var/run/ld.so.hints ,
+.Dq Pa /var/run/ld-elf.so.hints ,
 which is used by
-.Nm ld.so
+.Xr rtld 1
 to quickly locate the shared object images in the
 filesystem.
 The organization of the hints file is not unlike that of an
