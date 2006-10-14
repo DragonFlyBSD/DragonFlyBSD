@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/ihfc.4,v 1.7.2.1 2001/08/10 23:28:43 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/ihfc.4,v 1.4 2006/02/17 19:40:15 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/ihfc.4,v 1.5 2006/10/14 23:06:42 swildner Exp $
 .\"
 .\"	last edit-date: [Fri Jan 12 09:54:31 2001]
 .\"
@@ -34,27 +34,7 @@
 .Nm ihfc
 .Nd isdn4bsd Cologne Chip Designs HFC[-S][-SP] 2B[DS0] driver
 .Sh SYNOPSIS
-All PnP cards (AcerISDN P10, Teles 16.3c PnP),
-.Dx Ns ,
-.Fx
-4.x/5.x:
 .Cd "device ihfc"
-.Pp
-Non-PnP cards (TELEINT ISDN SPEED No.1):
-.Pp
-.Fx
-4.x:
-.Cd "device ihfc0 at isa?"
-.Pp
-.Dx Ns , Fx
-5.x:
-.Cd "device ihfc"
-NOTE:
-.Li hint.ihfc.0.at="isa"
-must be added to
-.Pa /boot/device.hints
-.Pp
-NOTE: The driver will automatically probe for io-base and irq.
 .Sh DESCRIPTION
 The
 .Nm

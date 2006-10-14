@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/iavc.4,v 1.2.2.1 2001/08/10 23:28:43 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/iavc.4,v 1.3 2006/02/17 19:40:15 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/iavc.4,v 1.4 2006/10/14 23:06:42 swildner Exp $
 .\"
 .\"	last edit-date: [Fri May 25 09:45:35 2001]
 .\"
@@ -35,18 +35,7 @@
 .Nd isdn4bsd AVM B1/T1 driver
 .Sh SYNOPSIS
 .Cd "device iavc"
-.Pp
-NOTE:
-For the B1 ISA card
-.Pp
-.Bd -literal -offset indent
-hint.iavc.0.at="isa"
-hint.iavc.0.port="0x150"
-hint.iavc.0.irq="5"
-.Ed
-.Pp
-must be added to
-.Pa /boot/device.hints
+.Cd "device  iavc0 at isa? port 0x150 irq 5"
 .Sh DESCRIPTION
 The
 .Nm
