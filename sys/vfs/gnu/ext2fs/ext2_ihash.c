@@ -32,7 +32,7 @@
  *
  * @(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.4 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.5 2006/10/14 16:26:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -161,15 +161,8 @@ ext2_ihashcheck(cdev_t dev, ino_t inum)
 
 	lwkt_gettoken(&ilock, &ext2_ihash_token);
 	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
-		if (inum == ip->i_number && dev == ip->i_dev) {
-			if (ip->i_vnode) {
-			    printf("conflict with vnode %p", ip->i_vnode);
-			    if (TAILQ_FIRST(&ip->i_vnode->v_namecache))
-				printf(" ncp %s", TAILQ_FIRST(&ip->i_vnode->v_namecache)->nc_name);
-			    printf("\n");
-			}
+		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
-		}
 	}
 	lwkt_reltoken(&ilock);
 	return(ip ? 1 : 0);

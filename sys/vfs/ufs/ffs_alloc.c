@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.24 2006/09/03 18:52:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.25 2006/10/14 16:26:40 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1449,10 +1449,6 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	 */
 gotit:
 	KKASSERT(ipref >= 0 && ipref < fs->fs_ipg);
-	if (icheckmiss) {
-		printf("Warning: inode free race avoided %d times\n",
-			icheckmiss);
-	}
 	cgp->cg_time = time_second;
 	if (DOINGSOFTDEP(ITOV(ip)))
 		softdep_setup_inomapdep(bp, ip, ibase + ipref);
