@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.8 2006/05/11 08:23:19 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.9 2006/10/15 00:04:45 swildner Exp $
 .\"
 .Dd May 11, 2006
 .Dt TUNING 7
@@ -15,8 +15,9 @@
 .Sh SYSTEM SETUP - DISKLABEL, NEWFS, TUNEFS, SWAP
 When using
 .Xr disklabel 8
-or
-.Xr sysinstall 8
+or the
+.Dx
+installer
 to lay out your filesystems on a hard disk it is important to remember
 that hard drives can transfer data much more quickly from outer tracks
 than they can from inner tracks.
@@ -83,7 +84,9 @@ Sizing
 depends on the kind of temporary file usage you think you will need.
 128M is
 the minimum we recommend.
-Also note that sysinstall will create a
+Also note that the
+.Dx
+installer will create a
 .Pa /tmp
 directory.
 Dedicating a partition for temporary file storage is important for
@@ -120,18 +123,17 @@ The
 .Pa /usr
 partition holds the bulk of the files required to support the system and
 a subdirectory within it called
-.Pa /usr/local
+.Pa /usr/pkg
 holds the bulk of the files installed from the
-.Xr ports 7
-hierarchy.
-If you do not use ports all that much and do not intend to keep
+pkgsrc collection.
+If you do not use pkgsrc all that much and do not intend to keep
 system source
 .Pq Pa /usr/src
 on the machine, you can get away with
 a 1 gigabyte
 .Pa /usr
 partition.
-However, if you install a lot of ports
+However, if you install a lot of packages
 (especially window managers and Linux-emulated binaries), we recommend
 at least a 2 gigabyte
 .Pa /usr
@@ -260,14 +262,15 @@ option worthwhile here is turning on
 with
 .Dq Li "tunefs -n enable /filesystem" .
 (Note: in
-.Fx 4.5
-and later, softupdates can be turned on using the
+.Dx ,
+softupdates can be turned on using the
 .Fl U
 option to
 .Xr newfs 8 ,
 and
-.Xr sysinstall 8
-will typically enable softupdates automatically for non-root filesystems).
+.Dx
+installer will typically enable softupdates automatically for
+non-root filesystems).
 Softupdates drastically improves meta-data performance, mainly file
 creation and deletion.
 We recommend enabling softupdates on most filesystems; however, there
@@ -394,31 +397,6 @@ of internal memory management page-tracking overhead at the cost of wiring
 the shared memory into core, making it unswappable.
 .Pp
 The
-.Va vfs.vmiodirenable
-sysctl defaults to 1 (on).
-This parameter controls how directories are cached
-by the system.
-Most directories are small and use but a single fragment
-(typically 1K) in the filesystem and even less (typically 512 bytes) in
-the buffer cache.
-However, when operating in the default mode the buffer
-cache will only cache a fixed number of directories even if you have a huge
-amount of memory.
-Turning on this sysctl allows the buffer cache to use
-the VM Page Cache to cache the directories.
-The advantage is that all of
-memory is now available for caching directories.
-The disadvantage is that
-the minimum in-core memory used to cache a directory is the physical page
-size (typically 4K) rather than 512 bytes.
-We recommend turning this option off in memory-constrained environments;
-however, when on, it will substantially improve the performance of services
-that manipulate a large number of files.
-Such services can include web caches, large mail systems, and news systems.
-Turning on this option will generally not reduce performance even with the
-wasted memory but you should experiment to find out.
-.Pp
-The
 .Va vfs.write_behind
 sysctl defaults to 1 (on).  This tells the filesystem to issue media
 writes as full clusters are collected, which typically occurs when writing
@@ -505,9 +483,8 @@ sysctl determines whether or not the TCP implementation should attempt
 to detect dead TCP connections by intermittently delivering
 .Dq keepalives
 on the connection.
-By default, this is enabled for all applications; by setting this
-sysctl to 0, only applications that specifically request keepalives
-will use them.
+By default, this is disabled for all applications, only applications
+that specifically request keepalives will use them.
 In most environments, TCP keepalives will improve the management of
 system state by expiring dead TCP connections, particularly for
 systems serving dialup users who may not always terminate individual
@@ -536,12 +513,7 @@ timeout has not yet passed.  Normally the worst a delayed ack can do is
 slightly delay the teardown of a connection, or slightly delay the ramp-up
 of a slow-start TCP connection.  While we aren't sure we believe that
 the several FAQs related to packages such as SAMBA and SQUID which advise
-turning off delayed acks may be refering to the slow-start issue.  In
-.Dx
-it would be more beneficial to increase the slow-start flightsize via
-the
-.Va net.inet.tcp.slowstart_flightsize
-sysctl rather then disable delayed acks.
+turning off delayed acks may be refering to the slow-start issue.
 .Pp
 The
 .Va net.inet.tcp.inflight_enable
@@ -665,8 +637,8 @@ and reboot the system.
 .Va kern.maxusers
 controls the scaling of a number of static system tables, including defaults
 for the maximum number of open files, sizing of network memory resources, etc.
-As of
-.Fx 4.5 ,
+On
+.Dx ,
 .Va kern.maxusers
 is automatically sized at boot based on the amount of memory available in
 the system, and may be determined at run-time by inspecting the value of the
@@ -682,13 +654,6 @@ of file descriptors; many of the tunable values set to their defaults by
 .Va kern.maxusers
 may be individually overridden at boot-time or run-time as described
 elsewhere in this document.
-Systems older than
-.Fx 4.4
-must set this value via the kernel
-.Xr config 8
-option
-.Cd maxusers
-instead.
 .Pp
 .Va kern.ipc.nmbclusters
 may be adjusted to increase the number of network mbufs the system is
@@ -717,14 +682,6 @@ The
 option to
 .Xr netstat 1
 may be used to observe network cluster use.
-Older versions of
-.Fx
-do not have this tunable and require that the
-kernel
-.Xr config 8
-option
-.Dv NMBCLUSTERS
-be set instead.
 .Pp
 More and more programs are using the
 .Xr sendfile 2
@@ -885,7 +842,6 @@ over services you export from your box (web services, email).
 .Xr sysctl.conf 5 ,
 .Xr firewall 7 ,
 .Xr hier 7 ,
-.Xr ports 7 ,
 .Xr boot 8 ,
 .Xr ccdconfig 8 ,
 .Xr config 8 ,
@@ -898,7 +854,6 @@ over services you export from your box (web services, email).
 .Xr newfs 8 ,
 .Xr route 8 ,
 .Xr sysctl 8 ,
-.Xr sysinstall 8 ,
 .Xr tunefs 8 ,
 .Xr vinum 8
 .Sh HISTORY
