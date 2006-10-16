@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm.c,v 1.4 2004/12/18 21:43:38 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm.c,v 1.5 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -99,37 +99,32 @@ Miscellaneous subcommands:\n\
  * Local definitions
  */
 
-struct cmd	add_subcmd[];
-struct cmd	dlt_subcmd[];
-struct cmd	set_subcmd[];
-struct cmd	show_subcmd[];
-struct cmd	stats_subcmd[];
+static int	do_cmd(const struct cmd *, int, char **);
+static void	usage(const struct cmd *, const char *);
+static void	attach(int, char **, const struct cmd *);
+static void	detach(int, char **, const struct cmd *);
+static void	pvc_add(int, char **, const struct cmd *);
+static void	arp_add(int, char **, const struct cmd *);
+static void	pvc_dlt(int, char **, const struct cmd *);
+static void	svc_dlt(int, char **, const struct cmd *);
+static void	vcc_dlt(int, char **, const struct cmd *, struct atmdelreq *);
+static void	arp_dlt(int, char **, const struct cmd *);
+static void	help(int, char **, const struct cmd *);
 
-struct cmd	cmds[] = {
-	{ "add",	0,	0,	NULL,	(char *) add_subcmd },
-	{ "attach",	2,	2,	attach,	"<intf> <protocol>" },
-	{ "delete",	0,	0,	NULL,	(char *) dlt_subcmd },
-	{ "detach",	1,	1,	detach,	"<intf>" },
-	{ "set",	0,	0,	NULL,	(char *) set_subcmd },
-	{ "show",	0,	0,	NULL,	(char *) show_subcmd },
-	{ "help",	0,	99,	help,	"" },
-	{ 0,		0,	0,	NULL,	"" }
-};
-
-struct cmd add_subcmd[] = {
+static const struct cmd add_subcmd[] = {
 	{ "arp",	2,	3,	arp_add, "[<netif>] <IP addr> <ATM addr>" },
 	{ "pvc",	6,	12,	pvc_add, "<intf> <vpi> <vci> <aal> <encaps> <owner> ..." },
 	{ 0,		0,	0,	NULL,	"" }
 };
 
-struct cmd dlt_subcmd[] = {
+static const struct cmd dlt_subcmd[] = {
 	{ "arp",	1,	2,	arp_dlt, "[<netif>] <IP addr>" },
 	{ "pvc",	3,	3,	pvc_dlt, "<intf> <vpi> <vci>" },
 	{ "svc",	3,	3,	svc_dlt, "<intf> <vpi> <vci>" },
 	{ 0,		0,	0,	NULL,	"" }
 };
 
-struct cmd set_subcmd[] = {
+static const struct cmd set_subcmd[] = {
 	{ "arpserver",	2,	18,	set_arpserver, "<netif> <server>" },
 	{ "mac",	2,	2,	set_macaddr, "<intf> <MAC/ESI address>" },
 	{ "netif",	3,	3,	set_netif, "<intf> <prefix> <n>" },
@@ -137,22 +132,33 @@ struct cmd set_subcmd[] = {
 	{ 0,		0,	0,	NULL,	""}
 };
 
-struct cmd show_subcmd[] = {
+static const struct cmd stats_subcmd[] = {
+	{ "interface",	0,	2,	show_intf_stats, "[<intf> [cfg | phy | dev | atm | aal0 | aal4 | aal5 | driver]]" },
+	{ "vcc",	0,	3,	show_vcc_stats, "[<intf> [vpi [vci]]]" },
+	{ 0,		0,	0,	NULL,	"" }
+};
+
+static const struct cmd show_subcmd[] = {
 	{ "arp",	0,	1,	show_arp, "[<host>]" },
 	{ "arpserver",	0,	1,	show_arpserv, "[<netif>]" },
 	{ "config",	0,	1,	show_config, "[<intf>]" },
 	{ "interface",	0,	1,	show_intf, "[<intf>]" },
 	{ "ipvcc",	0,	3,	show_ip_vcc, "[<IP addr> | <netif>]" },
 	{ "netif",	0,	1,	show_netif, "[<netif>]" },
-	{ "stats",	0,	3,	NULL, (char *) stats_subcmd },
+	{ "stats",	0,	3,	NULL, (const char *) stats_subcmd },
 	{ "vcc",	0,	3,	show_vcc, "[<intf>] [<vpi> [<vci>] | SVC | PVC]" },
 	{ "version",	0,	0,	show_version, "" },
 	{ 0,		0,	0,	NULL,	"" }
 };
 
-struct cmd stats_subcmd[] = {
-	{ "interface",	0,	2,	show_intf_stats, "[<intf> [cfg | phy | dev | atm | aal0 | aal4 | aal5 | driver]]" },
-	{ "vcc",	0,	3,	show_vcc_stats, "[<intf> [vpi [vci]]]" },
+static const struct cmd	cmds[] = {
+	{ "add",	0,	0,	NULL,	(const char *) add_subcmd },
+	{ "attach",	2,	2,	attach,	"<intf> <protocol>" },
+	{ "delete",	0,	0,	NULL,	(const char *) dlt_subcmd },
+	{ "detach",	1,	1,	detach,	"<intf>" },
+	{ "set",	0,	0,	NULL,	(const char *) set_subcmd },
+	{ "show",	0,	0,	NULL,	(const char *) show_subcmd },
+	{ "help",	0,	99,	help,	"" },
 	{ 0,		0,	0,	NULL,	"" }
 };
 
@@ -160,7 +166,7 @@ struct cmd stats_subcmd[] = {
 /*
  * Supported signalling protocols
  */
-struct proto	protos[] = {
+static const struct proto	protos[] = {
 	{ "SIGPVC",	ATM_SIG_PVC },
 	{ "SPANS",	ATM_SIG_SPANS },
 	{ "UNI30",	ATM_SIG_UNI30 },
@@ -172,7 +178,7 @@ struct proto	protos[] = {
 /*
  * Supported VCC owners
  */
-struct owner	owners[] = {
+static const struct owner	owners[] = {
 	{ "IP",		ENDPT_IP,	ip_pvcadd },
 	{ "SPANS",	ENDPT_SPANS_SIG,0 },
 	{ "SPANS CLS",	ENDPT_SPANS_CLS,0 },
@@ -183,7 +189,7 @@ struct owner	owners[] = {
 /*
  * Supported AAL parameters
  */
-struct aal	aals[] = {
+const struct aal	aals[] = {
 	{ "Null",	ATM_AAL0 },
 	{ "AAL0",	ATM_AAL0 },
 	{ "AAL1",	ATM_AAL1 },
@@ -198,7 +204,7 @@ struct aal	aals[] = {
 /*
  * Supported VCC encapsulations
  */
-struct encaps	encaps[] = {
+const struct encaps	encaps[] = {
 	{ "Null",	ATM_ENC_NULL },
 	{ "None",	ATM_ENC_NULL },
 	{ "LLC/SNAP",	ATM_ENC_LLC },
@@ -253,10 +259,10 @@ main(int argc, char **argv)
  *	none
  *
  */
-int
-do_cmd(struct cmd *descp, int argc, char **argv)
+static int
+do_cmd(const struct cmd *descp, int argc, char **argv)
 {
-	struct cmd	*cmdp = 0;
+	const struct cmd	*cmdp = NULL;
 
 	/*
 	 * Make sure we have paramaters to process
@@ -299,7 +305,7 @@ do_cmd(struct cmd *descp, int argc, char **argv)
 	if (cmdp->func == NULL) {
 		strcat(prefix, cmdp->name);
 		strcat(prefix, " ");
-		return(do_cmd((struct cmd *)cmdp->help, argc, argv));
+		return(do_cmd((const struct cmd *)cmdp->help, argc, argv));
 	}
 
 	/*
@@ -332,8 +338,8 @@ do_cmd(struct cmd *descp, int argc, char **argv)
  *	none
  *
  */
-void
-usage(struct cmd *cmdp, char *pref)
+static void
+usage(__unused const struct cmd *cmdp, __unused const char *pref)
 {
 	fprintf(stderr, "usage: %s command [arg] [arg]...\n", prog);
 	fprintf(stderr, USAGE_STR);
@@ -355,11 +361,11 @@ usage(struct cmd *cmdp, char *pref)
  *	none
  *
  */
-void
-attach(int argc, char **argv, struct cmd *cmdp)
+static void
+attach(__unused int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	struct atmcfgreq	aar;
-	struct proto	*prp;
+	const struct proto	*prp;
 	int		s;
 
 	/*
@@ -451,8 +457,8 @@ attach(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-detach(int argc, char **argv, struct cmd *cmdp)
+static void
+detach(__unused int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	struct atmcfgreq	adr;
 	int		s;
@@ -517,15 +523,15 @@ detach(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-pvc_add(int argc, char **argv, struct cmd *cmdp)
+static void
+pvc_add(int argc, char **argv, const struct cmd *cmdp)
 {
 	struct atmaddreq	apr;
 	struct atminfreq	air;
 	struct air_int_rsp	*int_info;
-	struct owner	*owp;
-	struct aal	*alp;
-	struct encaps	*enp;
+	const struct owner	*owp;
+	const struct aal	*alp;
+	const struct encaps	*enp;
 	char	*cp;
 	long	v;
 	int	buf_len, s;
@@ -698,8 +704,8 @@ pvc_add(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-arp_add(int argc, char **argv, struct cmd *cmdp)
+static void
+arp_add(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			len, s;
 	struct atmaddreq	apr;
@@ -804,8 +810,8 @@ arp_add(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-pvc_dlt(int argc, char **argv, struct cmd *cmdp)
+static void
+pvc_dlt(int argc, char **argv, const struct cmd *cmdp)
 {
 	struct atmdelreq	apr;
 
@@ -836,8 +842,8 @@ pvc_dlt(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-svc_dlt(int argc, char **argv, struct cmd *cmdp)
+static void
+svc_dlt(int argc, char **argv, const struct cmd *cmdp)
 {
 	struct atmdelreq	apr;
 
@@ -866,8 +872,8 @@ svc_dlt(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-vcc_dlt(int argc, char **argv, struct cmd *cmdp, struct atmdelreq *apr)
+static void
+vcc_dlt(int argc, char **argv, __unused const struct cmd *cmdp, struct atmdelreq *apr)
 {
 	char	*cp;
 	long	v;
@@ -953,8 +959,8 @@ vcc_dlt(int argc, char **argv, struct cmd *cmdp, struct atmdelreq *apr)
  *	none
  *
  */
-void
-arp_dlt(int argc, char **argv, struct cmd *cmdp)
+static void
+arp_dlt(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	s;
 	struct atmdelreq	apr;
@@ -1026,8 +1032,8 @@ arp_dlt(int argc, char **argv, struct cmd *cmdp)
  *	none
  *
  */
-void
-help(int argc, char **argv, struct cmd *cmdp)
+static void
+help(__unused int argc, __unused char **argv, __unused const struct cmd *cmdp)
 {
 	usage(cmds, "");
 }

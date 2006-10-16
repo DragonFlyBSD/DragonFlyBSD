@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_show.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.4 2003/11/01 17:15:57 drhodus Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_show.c,v 1.5 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ static int	arp_compare(const void *, const void *);
  *
  */
 void
-show_arp(int argc, char **argv, struct cmd *cmdp)
+show_arp(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			buf_len, arp_info_len;
 	struct atminfreq	air;
@@ -174,7 +174,7 @@ show_arp(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_arpserv(int argc, char **argv, struct cmd *cmdp)
+show_arpserv(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	asrv_info_len, buf_len = sizeof(struct air_asrv_rsp) * 3;
 	struct atminfreq	air;
@@ -222,7 +222,7 @@ show_arpserv(int argc, char **argv, struct cmd *cmdp)
 	 */
 	asrv_info_base = asrv_info =
 			(struct air_asrv_rsp *) air.air_buf_addr;
-	for (; buf_len >= sizeof(struct air_asrv_rsp);
+	for (; (size_t)buf_len >= sizeof(struct air_asrv_rsp);
 			asrv_info = (struct air_asrv_rsp *)
 				((u_long)asrv_info + asrv_info_len),
 			buf_len -= asrv_info_len) {
@@ -251,7 +251,7 @@ show_arpserv(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_config(int argc, char **argv, struct cmd *cmdp)
+show_config(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_asrv_rsp) * 3;
 	struct atminfreq	air;
@@ -299,7 +299,7 @@ show_config(int argc, char **argv, struct cmd *cmdp)
 	 */
 	cfg_info_base = cfg_info =
 			(struct air_cfg_rsp *) air.air_buf_addr;
-	for (; buf_len >= sizeof(struct air_cfg_rsp); cfg_info++,
+	for (; (size_t)buf_len >= sizeof(struct air_cfg_rsp); cfg_info++,
 			buf_len -= sizeof(struct air_cfg_rsp)) {
 		print_cfg_info(cfg_info);
 	}
@@ -323,7 +323,7 @@ show_config(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_intf(int argc, char **argv, struct cmd *cmdp)
+show_intf(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_int_rsp) * 3;
 	struct atminfreq	air;
@@ -371,7 +371,7 @@ show_intf(int argc, char **argv, struct cmd *cmdp)
 	 */
 	int_info_base = int_info =
 			(struct air_int_rsp *) air.air_buf_addr;
-	for (; buf_len >= sizeof(struct air_int_rsp); int_info++,
+	for (; (size_t)buf_len >= sizeof(struct air_int_rsp); int_info++,
 			buf_len -= sizeof(struct air_int_rsp)) {
 		print_intf_info(int_info);
 	}
@@ -395,7 +395,7 @@ show_intf(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_ip_vcc(int argc, char **argv, struct cmd *cmdp)
+show_ip_vcc(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			buf_len, ip_info_len, rc;
 	char			*if_name = (char *)0;
@@ -520,7 +520,7 @@ show_ip_vcc(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_netif(int argc, char **argv, struct cmd *cmdp)
+show_netif(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_netif_rsp) * 3;
 	struct atminfreq	air;
@@ -567,7 +567,7 @@ show_netif(int argc, char **argv, struct cmd *cmdp)
 	 */
 	int_info_base = int_info =
 			(struct air_netif_rsp *) air.air_buf_addr;
-	for (; buf_len >= sizeof(struct air_netif_rsp); int_info++,
+	for (; (size_t)buf_len >= sizeof(struct air_netif_rsp); int_info++,
 			buf_len -= sizeof(struct air_netif_rsp)) {
 		print_netif_info(int_info);
 	}
@@ -591,7 +591,7 @@ show_netif(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_intf_stats(int argc, char **argv, struct cmd *cmdp)
+show_intf_stats(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			buf_len;
 	char			intf[IFNAMSIZ];
@@ -692,7 +692,7 @@ show_intf_stats(int argc, char **argv, struct cmd *cmdp)
 		 */
 		pstat_info_base = pstat_info =
 				(struct air_phy_stat_rsp *)air.air_buf_addr;
-		for (; buf_len >= sizeof(struct air_phy_stat_rsp);
+		for (; (size_t)buf_len >= sizeof(struct air_phy_stat_rsp);
 				pstat_info++,
 				buf_len-=sizeof(struct air_phy_stat_rsp)) {
 			print_intf_stats(pstat_info);
@@ -718,7 +718,7 @@ show_intf_stats(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_vcc_stats(int argc, char **argv, struct cmd *cmdp)
+show_vcc_stats(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	vcc_info_len;
 	int	vpi = -1, vci = -1;
@@ -798,7 +798,7 @@ show_vcc_stats(int argc, char **argv, struct cmd *cmdp)
 	 * Display the VCC statistics
 	 */
 	vcc_info_base = vcc_info;
-	for (; vcc_info_len >= sizeof(struct air_vcc_rsp);
+	for (; (size_t)vcc_info_len >= sizeof(struct air_vcc_rsp);
 			vcc_info_len-=sizeof(struct air_vcc_rsp),
 			vcc_info++) {
 		if (vpi != -1 && vcc_info->avp_vpi != vpi)
@@ -827,7 +827,7 @@ show_vcc_stats(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_vcc(int argc, char **argv, struct cmd *cmdp)
+show_vcc(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int	vcc_info_len;
 	int	vpi = -1, vci = -1, show_pvc = 0, show_svc = 0;
@@ -914,7 +914,7 @@ show_vcc(int argc, char **argv, struct cmd *cmdp)
 	 * Display the VCC information
 	 */
 	vcc_info_base = vcc_info;
-	for (; vcc_info_len >= sizeof(struct air_vcc_rsp);
+	for (; (size_t)vcc_info_len >= sizeof(struct air_vcc_rsp);
 			vcc_info_len-=sizeof(struct air_vcc_rsp),
 			vcc_info++) {
 		if (vpi != -1 && vcc_info->avp_vpi != vpi)
@@ -947,7 +947,8 @@ show_vcc(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-show_version(int argc, char **argv, struct cmd *cmdp)
+show_version(__unused int argc, __unused char **argv,
+	     __unused const struct cmd *cmdp)
 {
 	int	buf_len = sizeof(struct air_version_rsp);
 	struct atminfreq	air;
@@ -980,7 +981,7 @@ show_version(int argc, char **argv, struct cmd *cmdp)
 	 */
 	ver_info_base = ver_info =
 			(struct air_version_rsp *) air.air_buf_addr;
-	for (; buf_len >= sizeof(struct air_version_rsp); ver_info++,
+	for (; (size_t)buf_len >= sizeof(struct air_version_rsp); ver_info++,
 			buf_len -= sizeof(struct air_version_rsp)) {
 		print_version_info(ver_info);
 	}
@@ -1005,10 +1006,10 @@ static int
 vcc_compare(const void *p1, const void *p2)
 {
 	int rc;
-	struct air_vcc_rsp	*c1, *c2;
+	const struct air_vcc_rsp	*c1, *c2;
 
-	c1 = (struct air_vcc_rsp *) p1;
-	c2 = (struct air_vcc_rsp *) p2;
+	c1 = (const struct air_vcc_rsp *) p1;
+	c2 = (const struct air_vcc_rsp *) p2;
 
 	/*
 	 * Compare the interface names
@@ -1056,10 +1057,10 @@ static int
 ip_vcc_compare(const void *p1, const void *p2)
 {
 	int rc;
-	struct air_ip_vcc_rsp	*c1, *c2;
+	const struct air_ip_vcc_rsp	*c1, *c2;
 
-	c1 = (struct air_ip_vcc_rsp *) p1;
-	c2 = (struct air_ip_vcc_rsp *) p2;
+	c1 = (const struct air_ip_vcc_rsp *) p1;
+	c2 = (const struct air_ip_vcc_rsp *) p2;
 
 	/*
 	 * Compare the interface names
@@ -1100,13 +1101,13 @@ static int
 arp_compare(const void *p1, const void *p2)
 {
 	int rc;
-	struct air_arp_rsp	*c1, *c2;
-	struct sockaddr_in	*sin1, *sin2;
+	const struct air_arp_rsp	*c1, *c2;
+	const struct sockaddr_in	*sin1, *sin2;
 
-	c1 = (struct air_arp_rsp *) p1;
-	c2 = (struct air_arp_rsp *) p2;
-	sin1 = (struct sockaddr_in *) &c1->aap_arp_addr;
-	sin2 = (struct sockaddr_in *) &c2->aap_arp_addr;
+	c1 = (const struct air_arp_rsp *) p1;
+	c2 = (const struct air_arp_rsp *) p2;
+	sin1 = (const struct sockaddr_in *) &c1->aap_arp_addr;
+	sin2 = (const struct sockaddr_in *) &c2->aap_arp_addr;
 
 	/*
 	 * Compare the IP addresses
@@ -1128,18 +1129,18 @@ arp_compare(const void *p1, const void *p2)
 		rc = 0;
 		break;
 	case T_ATM_ENDSYS_ADDR:
-		rc = bcmp((caddr_t)c1->aap_addr.address,
-				(caddr_t)c2->aap_addr.address,
+		rc = bcmp(c1->aap_addr.address,
+				c2->aap_addr.address,
 				sizeof(Atm_addr_nsap));
 		break;
 	case T_ATM_E164_ADDR:
-		rc = bcmp((caddr_t)c1->aap_addr.address,
-				(caddr_t)c2->aap_addr.address,
+		rc = bcmp(c1->aap_addr.address,
+				c2->aap_addr.address,
 				sizeof(Atm_addr_e164));
 		break;
 	case T_ATM_SPANS_ADDR:
-		rc = bcmp((caddr_t)c1->aap_addr.address,
-				(caddr_t)c2->aap_addr.address,
+		rc = bcmp(c1->aap_addr.address,
+				c2->aap_addr.address,
 				sizeof(Atm_addr_spans));
 		break;
 	}

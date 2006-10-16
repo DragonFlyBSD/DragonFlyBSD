@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.7 2005/11/06 12:06:03 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.8 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -93,19 +93,18 @@ int	verbose = 0;
 int	reset = 0;
 
 char	line[132];
-int	lineptr = 0;
+unsigned int	lineptr = 0;
 
 Mon960 *Uart;
 
-int	sendbinfile(char *, u_char *);
 
-void
+static void
 delay(int cnt)
 {
 	usleep(cnt);
 }
 
-unsigned long
+static unsigned long
 CP_READ ( unsigned long val )
 {
 	if ( endian )
@@ -114,7 +113,7 @@ CP_READ ( unsigned long val )
 		return ( val );
 }
 
-unsigned long
+static unsigned long
 CP_WRITE ( unsigned long val )
 {
 	if ( endian )
@@ -132,8 +131,8 @@ CP_WRITE ( unsigned long val )
  * Returns:
  *	none
  */
-void
-error ( char *msg )
+static void
+error ( const char *msg )
 {
 	printf ( "%s\n", msg );
 	exit (1);
@@ -142,14 +141,11 @@ error ( char *msg )
 /*
  * Get a byte for the uart and if printing, display it.
  *
- * Arguments:
- *	prn				Are we displaying characters
- *
  * Returns:
  *	c				Character from uart
  */
-char
-getbyte ( int prn )
+static char
+getbyte ( void )
 {
 	int	c;
 
@@ -189,15 +185,15 @@ getbyte ( int prn )
  * Returns:
  *	none				Line in global string 'line[]'
  */
-void
+static void
 getline ( int prn )
 {
 	char	c = '\0';
-	int	i = 0;
+	unsigned int	i = 0;
 
 	while ( c != '>' && c != '\n' && c != '\r' )
 	{
-		c = getbyte(0);
+		c = getbyte();
 		if ( ++i >= sizeof(line) )
 		{
 			if ( prn )
@@ -223,7 +219,7 @@ getline ( int prn )
  * Returns:
  *	none
  */
-void
+static void
 xmit_byte ( unsigned char c, int dn )
 {
 	int	val;
@@ -231,14 +227,14 @@ xmit_byte ( unsigned char c, int dn )
 	while ( CP_READ(Uart->mon_xmitmon) != UART_READY )
 	{
 		if ( CP_READ(Uart->mon_xmithost) & UART_VALID )
-			getbyte ( 0 );
+			getbyte ();
 		if ( !dn ) delay ( 10000 );
 	}
 	val = ( c | UART_VALID );
 	Uart->mon_xmitmon = CP_WRITE( val );
 	if ( !dn ) delay ( 10000 );
 	if ( CP_READ(Uart->mon_xmithost) & UART_VALID )
-		getbyte ( 0 );
+		getbyte();
 
 }
 
@@ -246,20 +242,20 @@ xmit_byte ( unsigned char c, int dn )
  * Transmit a line to the i960. Eol must be included as part of text to transmit.
  *
  * Arguments:
- *	line			Character string to transmit
+ *	str			Character string to transmit
  *	len			len of string. This allows us to include NULL's
  *					in the string/block to be transmitted.
  *
  * Returns:
  *	none
  */
-void
-xmit_to_i960 ( char *line, int len, int dn )
+static void
+xmit_to_i960 ( const char *str, int len, int dn )
 {
 	int	i;
 
         for ( i = 0; i < len; i++ )
-		xmit_byte ( line[i], dn );
+		xmit_byte ( str[i], dn );
 }
 
 /*
@@ -271,7 +267,7 @@ xmit_to_i960 ( char *line, int len, int dn )
  * Returns:
  *	none
  */
-void
+static void
 autobaud(void)
 {
 	if ( strncmp ( line, "Mon960", 6 ) == 0 )
@@ -288,7 +284,7 @@ autobaud(void)
  *	none
  *
  */
-void
+static void
 finish ( int ret )
 {
 	sgtty.c_lflag |= ( ICANON | ECHO );
@@ -308,7 +304,7 @@ finish ( int ret )
  *	fname		striped filename
  *
  */
-char *
+static char *
 basename ( char *path )
 {
 	char *fname;
@@ -400,7 +396,7 @@ unsigned short crctab[1<<B] = {
  *	0				file transmitted
  *	-1				unable to send file
  */
-int
+static int
 xmitfile ( char *filename )
 {
 	int	fd;
@@ -454,7 +450,7 @@ xmitfile ( char *filename )
 	 * Get startup character from i960
 	 */
 	do {
-		while ( ( c = getbyte(0) ) != NAK && c != CRCCHR )
+		while ( ( c = getbyte() ) != NAK && c != CRCCHR )
 			if ( ++attempts > NAKMAX )
 				error ( "Remote system not responding" );
 
@@ -561,7 +557,7 @@ xmitfile ( char *filename )
 			/*
 			 * Get response from i960
 			 */
-			sendresp = getbyte(0);
+			sendresp = getbyte();
 
 			/*
 			 * If i960 didn't like the sector
@@ -574,7 +570,7 @@ xmitfile ( char *filename )
 				 * Are we supposed to cancel the transfer?
 				 */
 				if ( ( sendresp & 0x7f ) == CAN )
-					if ( getbyte(0) == CAN )
+					if ( getbyte() == CAN )
 						error ( "Send canceled at user's request" );
 			}
 
@@ -615,7 +611,7 @@ xmitfile ( char *filename )
 	/*
 	 * Wait until i960 acknowledges us
 	 */
-	while ( ( c = getbyte(0) ) != ACK && ( ++attempts < RETRYMAX ) )
+	while ( ( c = getbyte() ) != ACK && ( ++attempts < RETRYMAX ) )
 		xmit_byte ( EOT, 1 );
 
 	if ( attempts >= RETRYMAX )
@@ -652,7 +648,7 @@ xmitfile ( char *filename )
 }
 
 
-int
+static int
 loadmicrocode ( u_char *ucode, int size, u_char *ram )
 {
 	struct {
@@ -708,7 +704,7 @@ loadmicrocode ( u_char *ucode, int size, u_char *ram )
 	 * Load file
 	 */
 	if ( endian ) {
-		int	i;
+		unsigned int	i;
 
 		lp = (u_long *) ucode;
 		/* Swap buffer */
@@ -748,7 +744,7 @@ loadmicrocode ( u_char *ucode, int size, u_char *ram )
 	return ( 0 );
 }
 
-int
+static int
 sendbinfile ( char *fname, u_char *ram )
 {
 	struct {
@@ -831,7 +827,7 @@ sendbinfile ( char *fname, u_char *ram )
 		 */
 		while ( ( n = read ( fd, (char *)buffer, sizeof(buffer))) > 0 )
 		{
-			int	i;
+			unsigned int	i;
 
 			/* Swap buffer */
 			for ( i = 0; i < sizeof(buffer) / sizeof(long); i++ )
@@ -908,7 +904,7 @@ main( int argc, char **argv )
 	struct atminfreq req;
 	struct air_cfg_rsp *air;	/* Config info response structure */
 	int	buf_len;		/* Size of ioctl buffer */
-	char	*devname = "\0";	/* Device to download */
+	const char	*dev = "\0";	/* Device to download */
 	char	*dirname = NULL;	/* Directory path to objd files */
 	char	*objfile = NULL;	/* Command line object filename */
 	u_char	*ucode = NULL;		/* Pointer to microcode */
@@ -918,7 +914,6 @@ main( int argc, char **argv )
 	char	base[64];		/* sba200/sba200e/pca200e basename */
 	int	ext = 0;		/* 0 == bin 1 == objd */
 	struct stat sbuf;		/* Used to find if .bin or .objd */
-	extern char *optarg;
 
 	progname = (char *)basename(argv[0]);
 	comm_mode = strcmp ( progname, "fore_comm" ) == 0;
@@ -935,7 +930,7 @@ main( int argc, char **argv )
 			endian++;
 			break;
 		case 'i':
-			devname = (char *)strdup ( optarg );
+			dev = (char *)strdup ( optarg );
 			break;
 		case 'f':
 			objfile = (char *)strdup ( optarg );
@@ -981,7 +976,7 @@ main( int argc, char **argv )
 	/*
 	 * Copy interface name into ioctl request
 	 */
-	strcpy ( req.air_cfg_intf, devname );
+	strcpy ( req.air_cfg_intf, dev );
 
 	/*
 	 * Issue ioctl
@@ -1003,7 +998,7 @@ main( int argc, char **argv )
 	/*
 	 * Loop through all attached adapters
 	 */
-	for (; req.air_buf_len >= sizeof(struct air_cfg_rsp); 
+	for (; (size_t)req.air_buf_len >= sizeof(struct air_cfg_rsp); 
 			buf += sizeof(struct air_cfg_rsp),
 			req.air_buf_len -= sizeof(struct air_cfg_rsp)) {
 
@@ -1140,24 +1135,24 @@ main( int argc, char **argv )
 				}
 
 				if ( ns ) {
-					int	c;
+					int	c1;
 					int	nr;
 
-					nr = read ( fileno(stdin), &c, 1 );
-					c &= 0xff;
+					nr = read ( fileno(stdin), &c1, 1 );
+					c1 &= 0xff;
 					if ( !esc_seen ) {
-					    if ( c == 27 )
+					    if ( c1 == 27 )
 						esc_seen++;
 					    else
-						xmit_byte ( c, 0 );
+						xmit_byte ( c1, 0 );
 					} else {
-					    if ( c == 27 ) 
+					    if ( c1 == 27 ) 
 						finish( -1 );
 					    else {
 						xmit_byte ( 27, 0 );
 						esc_seen = 0;
 					    }
-					    xmit_byte ( c, 0 );
+					    xmit_byte ( c1, 0 );
 					}
 				}
 
@@ -1165,7 +1160,7 @@ main( int argc, char **argv )
 				 * Check for data from the i960
 				 */
 				if ( CP_READ(Uart->mon_xmithost) & UART_VALID ) {
-					c = getbyte(0);
+					c = getbyte();
 					putchar ( c );
 				}
 				if ( strcmp ( line, "Mon960" )  == 0 )

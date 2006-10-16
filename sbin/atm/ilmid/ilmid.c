@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.7 2005/11/06 12:06:03 swildner Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.8 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -87,7 +87,7 @@
 #define	ASN_IPADDR	0x40
 #define	ASN_TIMESTAMP	0x43
 
-static char *Var_Types[] = { "", "", "ASN_INTEGER", "", "ASN_OCTET", "ASN_NULL", "ASN_OBJID" };
+static const char *Var_Types[] = { "", "", "ASN_INTEGER", "", "ASN_OCTET", "ASN_NULL", "ASN_OBJID" };
 
 /*
  * Define SNMP PDU types
@@ -98,7 +98,7 @@ static char *Var_Types[] = { "", "", "ASN_INTEGER", "", "ASN_OCTET", "ASN_NULL",
 #define	PDU_TYPE_SET		0xA3
 #define	PDU_TYPE_TRAP		0xA4
 
-static char *PDU_Types[] = { "GET REQUEST", "GETNEXT REQUEST", "GET RESPONSE", "SET REQUEST",
+static const char *PDU_Types[] = { "GET REQUEST", "GETNEXT REQUEST", "GET RESPONSE", "SET REQUEST",
 	"TRAP" };
 
 /*
@@ -286,7 +286,7 @@ u_char	Resp_Buf[1024];
 /*
  * TRAP generic trap types
  */
-char	*Traps[] = { "coldStart", "warmStart", "linkDown", "linkUp",
+const char	*Traps[] = { "coldStart", "warmStart", "linkDown", "linkUp",
 		"authenticationFailure", "egpNeighborLoss",
 			"enterpriseSpecific" };
 
@@ -330,11 +330,7 @@ char	hostname[80];
 #define	LOG_FILE	"/var/log/ilmid"
 FILE	*Log;			/* File descriptor for log messages */
 
-void	set_reqid ( u_char *, int );
-void	Increment_DL ( int );
-void	Decrement_DL ( int );
-
-static char	*Months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+static const char	*Months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 			     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 /*
@@ -350,14 +346,14 @@ static char	*Months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
  *	none
  *
  */
-void
+static void
 write_timestamp(void)
 {
-	time_t		clock;
+	time_t		clk;
 	struct tm 	*tm;
 
-	clock = time ( (time_t)NULL );
-	tm = localtime ( &clock );
+	clk = time ( (time_t)NULL );
+	tm = localtime ( &clk );
 
 	if ( Log && Debug_Level > 1 )
 	    if ( Log != stderr )
@@ -380,7 +376,7 @@ write_timestamp(void)
  *	none
  *
  */
-void
+static void
 hexdump ( u_char *bp, int len )
 {
 	int	i, j;
@@ -442,7 +438,7 @@ hexdump ( u_char *bp, int len )
  *	<len>	- decoded length
  *
  */
-int
+static int
 asn_get_pdu_len ( u_char **bufp, int *plen )
 {
 	u_char	*bp = *bufp;
@@ -481,10 +477,8 @@ asn_get_pdu_len ( u_char **bufp, int *plen )
  *	<val>	- value encoding represented
  *
  */
-int
-asn_get_encoded ( bufp, len )
-	u_char	**bufp;
-	int	*len;
+static int
+asn_get_encoded ( u_char **bufp, int *len )
 {
 	u_char	*bp = *bufp;
 	int	val = 0;
@@ -522,10 +516,8 @@ asn_get_encoded ( bufp, len )
  *	<val>	- value of encoded integer
  *
  */
-int
-asn_get_int ( bufp, plen )
-	u_char	**bufp;
-	int	*plen;
+static int
+asn_get_int ( u_char **bufp, int *plen )
 {
 	int	i;
 	int	len;
@@ -556,17 +548,15 @@ asn_get_int ( bufp, plen )
  *	<bufp>	- updated buffer pointer
  *
  */
-void
-asn_set_int ( bufp, val )
-	u_char	**bufp;
-	int	val;
+static void
+asn_set_int ( u_char **bufp, int val )
 {
 	union {
 		int	i;
 		u_char	c[4];
 	} u;
 	int	len = sizeof(int);
-	int	i = 0;
+	unsigned int	i = 0;
 	u_char	*bp = *bufp;
 
 	/* Check for special case where val == 0 */
@@ -605,9 +595,8 @@ asn_set_int ( bufp, val )
  *	none
  *
  */
-void
-print_objid ( objid )
-	Objid	*objid;
+static void
+print_objid ( Objid *objid )
 {
 	int	i;
 
@@ -642,11 +631,8 @@ print_objid ( objid )
  *	plen	- (possibly) adjusted PDU length
  *
  */
-void
-asn_get_objid ( bufp, objid, plen )
-	u_char	**bufp;
-	Objid	*objid;
-	int	*plen;
+static void
+asn_get_objid ( u_char **bufp, Objid *objid, int *plen )
 {
 	int	len;
 	u_char	*bp = *bufp;
@@ -672,10 +658,8 @@ asn_get_objid ( bufp, objid, plen )
  * Put OBJID - assumes elements <= 16383 for two byte coding
  *
  */
-int
-asn_put_objid ( bufp, objid )
-	u_char	**bufp;
-	Objid	*objid;
+static int
+asn_put_objid ( u_char **bufp, Objid *objid )
 {
 	int	len = 0;
 	u_char	*bp = *bufp;
@@ -720,11 +704,8 @@ asn_put_objid ( bufp, objid )
  *	plen	- (possibly) adjusted PDU length
  *
  */ 
-void
-asn_get_octet ( bufp, octet, plen )
-	u_char	**bufp;
-	char	*octet;
-	int	*plen;
+static void
+asn_get_octet ( u_char **bufp, char *octet, int *plen )
 {
 	u_char	*bp = *bufp;
 	int	i = 0;
@@ -734,7 +715,7 @@ asn_get_octet ( bufp, octet, plen )
 	 * &i is really a dummy value here as we don't keep track
 	 * of the ongoing buffer length
 	 */
-	len = asn_get_encoded ( &bp, &i, plen );
+	len = asn_get_encoded ( &bp, &i );
 
 	for ( i = 0; i < len; i++ ) {
 		*octet++ = *bp++;
@@ -758,9 +739,8 @@ asn_get_octet ( bufp, octet, plen )
  *	none
  *
  */
-void
-print_header ( Hdr )
-	Snmp_Header *Hdr;
+static void
+print_header ( Snmp_Header *Hdr )
 {
 	Variable	*var;
 
@@ -817,15 +797,13 @@ print_header ( Hdr )
  *	none
  *
  */
-void
-parse_oids ( h, bp )
-	Snmp_Header	*h;
-	caddr_t		*bp;
+static void
+parse_oids ( Snmp_Header *h, u_char **bp )
 {
 	int		len = h->varlen;
 	int		sublen;
 	Variable	*var;
-	caddr_t		bufp = *bp;
+	u_char		*bufp = *bp;
 
 	while ( len > 0 ) {
 	    if ( *bufp++ == ASN_SEQUENCE ) {
@@ -903,9 +881,8 @@ parse_oids ( h, bp )
  *		- generated SNMP header
  *
  */
-Snmp_Header *
-asn_get_header ( bufp )
-	u_char **bufp;
+static Snmp_Header *
+asn_get_header ( u_char **bufp )
 {
 	Snmp_Header	*h;
 	u_char		*bp = *bufp;
@@ -1015,9 +992,8 @@ asn_get_header ( bufp )
  *	1	- Objid's don't match
  *
  */
-int
-oid_cmp ( oid1, oid2 )
-	Objid *oid1, *oid2;
+static int
+oid_cmp ( Objid *oid1, Objid *oid2 )
 {
 	int	i;
 	int	len;
@@ -1057,10 +1033,8 @@ oid_cmp ( oid1, oid2 )
  *	1	- Objid's don't match
  *
  */
-int
-oid_ncmp ( oid1, oid2, len )
-	Objid *oid1, *oid2;
-	int	len;
+static int
+oid_ncmp ( Objid *oid1, Objid *oid2, int len )
 {
 	int	i;
 
@@ -1088,11 +1062,10 @@ oid_ncmp ( oid1, oid2, len )
  *	-1	- no matching Variable found
  *
  */
-int
-find_var ( var )
-	Variable	*var;
+static int
+find_var ( Variable *var )
 {
-	int	i;
+	unsigned int	i;
 
 	for ( i = 0; i < NUM_OIDS; i++ )
 		if ( oid_cmp ( &var->oid, &Objids[i] ) == 0 ) {
@@ -1113,7 +1086,7 @@ find_var ( var )
  *	number of ticks
  *
  */
-int
+static int
 get_ticks(void)
 {
 	struct timeval	timenow;
@@ -1157,10 +1130,8 @@ get_ticks(void)
  *	none
  *
  */
-void
-build_pdu ( hdr, type )
-	Snmp_Header 	*hdr;
-	int		type;
+static void
+build_pdu ( Snmp_Header *hdr, int type )
 {
 	u_char		*bp = Resp_Buf;
 	u_char		*vpp;
@@ -1374,9 +1345,8 @@ build_pdu ( hdr, type )
 	return;
 }
 
-void
-free_pdu ( hdr )
-Snmp_Header *hdr;
+static void
+free_pdu ( Snmp_Header *hdr )
 {
 	Variable	*var;
 
@@ -1389,6 +1359,7 @@ Snmp_Header *hdr;
 	UM_FREE ( hdr );				/* Free fixed portion */
 }
 
+#if 0
 /*
  * Set Request ID in PDU
  *
@@ -1400,10 +1371,8 @@ Snmp_Header *hdr;
  *	none	- request id may/may not be set
  *
  */
-void
-set_reqid ( resp, reqid )
-	u_char	*resp;
-	int	reqid;
+static void
+set_reqid ( u_char *resp, int reqid )
 {
 	u_char		*bp = (u_char *)&resp[18];
 	union {
@@ -1420,6 +1389,7 @@ set_reqid ( resp, reqid )
 
 	return;
 }
+#endif
 
 /*
  * Send a generic response packet
@@ -1433,11 +1403,8 @@ set_reqid ( resp, reqid )
  *	none	- response sent
  *
  */
-void
-send_resp ( intf, Hdr, resp )
-	int		intf;
-	Snmp_Header	*Hdr;
-	u_char		*resp;
+static void
+send_resp ( int intf, Snmp_Header *Hdr, u_char *resp )
 {
 	int	n;
 
@@ -1460,7 +1427,7 @@ send_resp ( intf, Hdr, resp )
  * Build a COLD_START TRAP PDU
  *
  */
-Snmp_Header *
+static Snmp_Header *
 build_cold_start(void)
 {
 	Snmp_Header	*hdr;
@@ -1491,7 +1458,7 @@ build_cold_start(void)
  * Build a Generic PDU Header
  *
  */
-Snmp_Header *
+static Snmp_Header *
 build_generic_header(void)
 {
 	Snmp_Header	*hdr;
@@ -1519,8 +1486,8 @@ build_generic_header(void)
  *      none            Information from HARP available 
  *      
  */
-void    
-init_ilmi()  
+static void
+init_ilmi(void)  
 {
         struct  air_cfg_rsp     *cfg_info = NULL;
         struct  air_int_rsp    *intf_info = NULL;
@@ -1590,8 +1557,8 @@ init_ilmi()
  *      none
  *
  */
-void
-ilmi_open ()
+static void
+ilmi_open (void)
 {
         struct sockaddr_atm     satm;
         struct t_atm_aal5       aal5;
@@ -1799,10 +1766,8 @@ ilmi_open ()
  *	none
  *
  */
-void
-get_local_ip ( s, aval )
-	int	s;
-	long	*aval;
+static void
+get_local_ip ( int s, long *aval )
 {
 	char			intf_name[IFNAMSIZ];
 	int			namelen = IFNAMSIZ;
@@ -1853,11 +1818,8 @@ get_local_ip ( s, aval )
  *	none
  *
  */
-void
-set_prefix ( oid, hdr, intf )
-	Objid		*oid;
-	Snmp_Header	*hdr;
-	int		intf;
+static void
+set_prefix ( Objid *oid, __unused Snmp_Header *hdr, int intf )
 {
 	struct atmsetreq	asr;
 	Atm_addr		*aa;
@@ -1920,10 +1882,8 @@ set_prefix ( oid, hdr, intf )
 
 }
 
-void
-set_address ( hdr, intf )
-	Snmp_Header	*hdr;
-	int		intf;
+static void
+set_address ( __unused Snmp_Header *hdr, int intf )
 {
 	Variable	*var;
 	int		i, j;
@@ -1967,9 +1927,8 @@ set_address ( hdr, intf )
  *      fname           striped filename
  * 
  */     
-char *
-basename ( path )
-        char *path;
+static char *
+basename ( char *path )
 {  
         char *fname;
 
@@ -1993,9 +1952,8 @@ basename ( path )
  *	none	- Debug_Level incremented
  *
  */
-void
-Increment_DL ( sig )
-	int	sig;
+static void
+Increment_DL ( __unused int sig )
 {
 	Debug_Level++;
 	if ( Debug_Level && Log == (FILE *)NULL ) {
@@ -2027,9 +1985,8 @@ Increment_DL ( sig )
  *	none	- Debug_Level decremented
  *
  */
-void
-Decrement_DL ( sig )
-	int	sig;
+static void
+Decrement_DL ( __unused int sig )
 {
 	Debug_Level--;
 	if ( Debug_Level <= 0 ) {
@@ -2050,10 +2007,8 @@ Decrement_DL ( sig )
  * Loop through GET variable list looking for matches
  *
  */
-void
-process_get ( hdr, intf )
-	Snmp_Header	*hdr;
-	int		intf;
+static void
+process_get ( Snmp_Header *hdr, int intf )
 {
 	Variable	*var;
 	int		idx;
@@ -2108,7 +2063,7 @@ process_get ( hdr, intf )
 		case IPNM_OBJID:
 			var->type = ASN_IPADDR;
 			get_local_ip ( ilmi_fd[intf],
-			    &var->var.ival );
+			    &var->var.aval );
 			break;
 		case ADDRESS_OBJID:
 			break;
@@ -2138,8 +2093,8 @@ process_get ( hdr, intf )
  *
  *
  */
-void
-ilmi_do_state ()
+static void
+ilmi_do_state (void)
 {
 	struct timeval	tvp;
 	fd_set		rfd;
@@ -2154,7 +2109,7 @@ ilmi_do_state ()
 	for ( ; ; ) {
 	    int		count;
 	    int		n;
-	    caddr_t	bpp;
+	    u_char	*bpp;
 	    Snmp_Header	*Hdr;
 
 	    /*
@@ -2284,8 +2239,8 @@ ilmi_do_state ()
 				 * Should be because the remote side is attempting
 				 * to verify that our table is empty
 				 */
-				if ( oid_ncmp ( (caddr_t)&Hdr->head->oid,
-				    (caddr_t)&Objids[ADDRESS_OBJID],
+				if ( oid_ncmp ( &Hdr->head->oid,
+				    &Objids[ADDRESS_OBJID],
 					Objids[ADDRESS_OBJID].oid[0] ) == 0 ) {
 					if ( addressEntry[intf].oid[0] ) {
 					    /* XXX - FIXME */
@@ -2340,8 +2295,8 @@ ilmi_do_state ()
 				break;
 			    case PDU_TYPE_SET:
 				/* Look for SET_PREFIX Objid */
-				if ( oid_ncmp ( (caddr_t)&Hdr->head->oid,
-				    (caddr_t)&Objids[SETPFX_OBJID],
+				if ( oid_ncmp ( &Hdr->head->oid,
+				    &Objids[SETPFX_OBJID],
 					Objids[SETPFX_OBJID].oid[0] ) == 0 ) {
 					    set_prefix ( &Hdr->head->oid, Hdr, intf );
 					    /* Reply to SET before sending our ADDRESS */
@@ -2381,8 +2336,8 @@ ilmi_do_state ()
 				break;
 			    case PDU_TYPE_SET:
 				/* Look for SET_PREFIX Objid */
-				if ( oid_ncmp ( (caddr_t)&Hdr->head->oid,
-				    (caddr_t)&Objids[SETPFX_OBJID],
+				if ( oid_ncmp ( &Hdr->head->oid,
+				    &Objids[SETPFX_OBJID],
 					Objids[SETPFX_OBJID].oid[0] ) == 0 ) {
 					    set_prefix ( &Hdr->head->oid, Hdr, intf );
 					    /* Reply to SET before sending our ADDRESS */
@@ -2412,9 +2367,7 @@ ilmi_do_state ()
 }
 
 int
-main ( argc, argv )
-	int	argc;
-	char	*argv[];
+main ( int argc, char *argv[] )
 {
 	int	c;
 	int	i;
@@ -2465,8 +2418,7 @@ main ( argc, argv )
 	if ( foregnd == 0 ) {
 		if ( daemon ( 0, 0 ) )
 			err ( 1, "Can't fork" );
-	} else
-		; /* setbuf ( stdout, NULL ); */
+	}
 
 	signal ( SIGUSR1, Increment_DL );
 	signal ( SIGUSR2, Decrement_DL );
@@ -2530,4 +2482,3 @@ main ( argc, argv )
 
 	exit(0);
 }
-

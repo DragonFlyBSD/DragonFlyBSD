@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_print.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.4 2005/11/06 12:06:03 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.5 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -117,7 +117,7 @@ static int	version_hdr = 0;
 /*
  * SIGPVC state definitions
  */
-struct state	sigpvc_states[] = {
+static const struct state	sigpvc_states[] = {
 	{ "ACTIVE",	SIGPVC_ACTIVE },
 	{ "DETACH",	SIGPVC_DETACH },
 	{ 0,		0 }
@@ -126,7 +126,7 @@ struct state	sigpvc_states[] = {
 /*
  * SPANS state definitions
  */
-struct state	spans_states[] = {
+static const struct state	spans_states[] = {
 	{ "ACTIVE",	SPANS_ACTIVE },
 	{ "DETACH",	SPANS_DETACH },
 	{ "INIT",	SPANS_INIT },
@@ -137,7 +137,7 @@ struct state	spans_states[] = {
 /*
  * UNISIG state definitions
  */
-struct state    unisig_states[] = {
+static const struct state    unisig_states[] = {
 	{ "NULL",	UNISIG_NULL },
 	{ "ADR_WAIT",	UNISIG_ADDR_WAIT },
 	{ "INIT",	UNISIG_INIT },
@@ -149,7 +149,7 @@ struct state    unisig_states[] = {
 /*
  * SIGPVC VCC state definitions
  */
-struct state	sigpvc_vcc_states[] = {
+static const struct state	sigpvc_vcc_states[] = {
 	{ "NULL",	VCCS_NULL },
 	{ "ACTIVE",	VCCS_ACTIVE },
 	{ "FREE",	VCCS_FREE },
@@ -159,7 +159,7 @@ struct state	sigpvc_vcc_states[] = {
 /*
  * SPANS VCC state definitions
  */
-struct state	spans_vcc_states[] = {
+static const struct state	spans_vcc_states[] = {
 	{ "NULL",	SPANS_VC_NULL },
 	{ "ACTIVE",	SPANS_VC_ACTIVE },
 	{ "ACT_DOWN",	SPANS_VC_ACT_DOWN },
@@ -175,7 +175,7 @@ struct state	spans_vcc_states[] = {
 /*
  * UNISIG VCC state definitions
  */
-struct state	unisig_vcc_states[] = {
+static const struct state	unisig_vcc_states[] = {
 	{ "NULL",	UNI_NULL },
 	{ "C_INIT",	UNI_CALL_INITIATED },
 	{ "C_OUT_PR",	UNI_CALL_OUT_PROC },
@@ -197,7 +197,7 @@ struct state	unisig_vcc_states[] = {
 /*
  * IP VCC state definitions
  */
-struct state	ip_vcc_states[] = {
+static const struct state	ip_vcc_states[] = {
 	{ "FREE",	IPVCC_FREE },
 	{ "PMAP",	IPVCC_PMAP },
 	{ "POPEN",	IPVCC_POPEN },
@@ -211,7 +211,7 @@ struct state	ip_vcc_states[] = {
 /*
  * ARP server state definitions
  */
-struct state	arpserver_states[] = {
+static const struct state	arpserver_states[] = {
 	{ "NOT_CONF",	UIAS_NOTCONF },
 	{ "SERVER",	UIAS_SERVER_ACTIVE },
 	{ "PEND_ADR",	UIAS_CLIENT_PADDR },
@@ -224,7 +224,7 @@ struct state	arpserver_states[] = {
 /*
  * Supported signalling managers
  */
-struct proto_state	proto_states[] = {
+static const struct proto_state	proto_states[] = {
 	{ "SIGPVC",  sigpvc_states, sigpvc_vcc_states, ATM_SIG_PVC },
 	{ "SPANS",   spans_states,  spans_vcc_states,  ATM_SIG_SPANS },
 	{ "UNI 3.0", unisig_states, unisig_vcc_states, ATM_SIG_UNI30 },
@@ -236,7 +236,7 @@ struct proto_state	proto_states[] = {
 /*
  * ATMARP origin values
  */
-struct state	arp_origins[] = {
+static const struct state	arp_origins[] = {
 	{ "LOCAL",	UAO_LOCAL },
 	{ "PERM",	UAO_PERM },
 	{ "REG",	UAO_REGISTER },
@@ -262,7 +262,7 @@ void
 print_arp_info(struct air_arp_rsp *ai)
 {
 	int	i;
-	char	*atm_addr, *ip_addr, *origin;
+	const char	*atm_addr, *ip_addr, *origin;
 	char	age[8], flags[32];
 	struct sockaddr_in	*sin;
 
@@ -341,7 +341,7 @@ void
 print_asrv_info(struct air_asrv_rsp *si)
 {
 	int		i;
-	char		*atm_addr, *state;
+	const char	*atm_addr, *state;
 	struct in_addr	*addr;
 
 	/*
@@ -387,7 +387,7 @@ print_asrv_info(struct air_asrv_rsp *si)
 		for (i = 0; i < si->asp_nprefix; i++) {
 			printf("%s", inet_ntoa(*addr));
 			addr++;
-			printf("/0x%0lx", ntohl(addr->s_addr));
+			printf("/0x%0lx", (unsigned long)ntohl(addr->s_addr));
 			addr++;
 			if (i < si->asp_nprefix -1)
 				printf(", ");
@@ -410,7 +410,7 @@ print_asrv_info(struct air_asrv_rsp *si)
 void
 print_cfg_info(struct air_cfg_rsp *si)
 {
-	char	*adapter, *bus, *media, *vendor;
+	const char	*adapter, *bus, *media, *vendor;
 
 	/*
 	 * Print a header if it hasn't been done yet.
@@ -465,8 +465,8 @@ print_intf_info(struct air_int_rsp *ni)
 	int	i;
 	char	nif_names[(IFNAMSIZ *2)+4];
 	char	*atm_addr;
-	char	*sigmgr = "-", *state_name = "-";
-	struct state		*s_t;
+	const char	*sigmgr = "-", *state_name = "-";
+	const struct state	*s_t;
 
 	/*
 	 * Print a header
@@ -543,7 +543,7 @@ void
 print_ip_vcc_info(struct air_ip_vcc_rsp *ai)
 {
 	int	i;
-	char	*ip_addr, *state;
+	const char	*ip_addr, *state;
 	char	flags[32], vpi_vci[16];
 	struct sockaddr_in	*sin;
 
@@ -627,7 +627,7 @@ print_ip_vcc_info(struct air_ip_vcc_rsp *ai)
 void
 print_netif_info(struct air_netif_rsp *ni)
 {
-	char			*ip_addr;
+	const char		*ip_addr;
 	struct sockaddr_in	*sin;
 
 	/*
@@ -751,10 +751,10 @@ void
 print_vcc_info(struct air_vcc_rsp *vi)
 {
 	int	i;
-	char	*aal_name = "-" , *encaps_name = "-", *owner_name = "-";
-	char	*state_name = "-", *type_name = "-";
+	const char	*aal_name = "-" , *encaps_name = "-", *owner_name = "-";
+	const char	*state_name = "-", *type_name = "-";
 	char	dir_name[10];
-	struct state	*s_t;
+	const struct state	*s_t;
 
 	/*
 	 * Print a header if it hasn't already been done

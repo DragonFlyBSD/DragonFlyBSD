@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_set.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.6 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -72,7 +72,7 @@
  *
  */
 void
-set_arpserver(int argc, char **argv, struct cmd *cmdp)
+set_arpserver(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			i, len, prefix_len = 0, rc, s;
 	char			*intf;
@@ -268,7 +268,7 @@ set_arpserver(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-set_macaddr(int argc, char **argv, struct cmd *cmdp)
+set_macaddr(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			s;
 	char			*intf;
@@ -361,7 +361,7 @@ set_macaddr(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-set_netif(int argc, char **argv, struct cmd *cmdp)
+set_netif(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	struct atmsetreq	anr;
 	char			str[16];
@@ -446,11 +446,11 @@ set_netif(int argc, char **argv, struct cmd *cmdp)
  *
  */
 void
-set_prefix(int argc, char **argv, struct cmd *cmdp)
+set_prefix(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			s;
 	char			*intf;
-	u_char			prefix[13];
+	u_char			pfix[13];
 	struct atmsetreq	asr;
 
 	/*
@@ -466,8 +466,8 @@ set_prefix(int argc, char **argv, struct cmd *cmdp)
 	/*
 	 * Get the prefix provided by the user
 	 */
-	if (get_hex_atm_addr(argv[0], prefix, sizeof(prefix)) !=
-			sizeof(prefix)) {
+	if (get_hex_atm_addr(argv[0], pfix, sizeof(pfix)) !=
+			sizeof(pfix)) {
 		fprintf(stderr, "%s: Invalid NSAP prefix\n", prog);
 		exit(1);
 	}
@@ -477,7 +477,7 @@ set_prefix(int argc, char **argv, struct cmd *cmdp)
 	 */
 	asr.asr_opcode = AIOCS_SET_PRF;
 	strncpy(asr.asr_prf_intf, intf, sizeof(asr.asr_prf_intf));
-	UM_COPY(prefix, asr.asr_prf_pref, sizeof(asr.asr_prf_pref));
+	UM_COPY(pfix, asr.asr_prf_pref, sizeof(asr.asr_prf_pref));
 
 	/*
 	 * Pass the new prefix to the kernel
