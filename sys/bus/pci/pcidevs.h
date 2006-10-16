@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.18 2006/09/03 06:08:19 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.19 2006/10/16 13:13:44 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.17 2006/09/02 10:25:42 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.18 2006/09/03 06:07:32 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1261,6 +1261,7 @@
 /* Corega products */
 #define	PCI_PRODUCT_COREGA_CB_TXD	0xa117		/* FEther CB-TXD 10/100 Ethernet */
 #define	PCI_PRODUCT_COREGA_2CB_TXD	0xa11e		/* FEther II CB-TXD 10/100 Ethernet */
+#define	PCI_PRODUCT_COREGA_CG_LAPCIGT	0xc017		/* CG-LAPCIGT 10/100/1000 Ethernet */
 
 /* Corollary Products */
 #define	PCI_PRODUCT_COROLLARY_CBUSII_PCIB	0x0014		/* \"C-Bus II\"-PCI Bridge */
