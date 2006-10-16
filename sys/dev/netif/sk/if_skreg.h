@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.10 2005/11/29 19:56:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.11 2006/10/16 14:12:34 sephe Exp $
  */
 
 /*
@@ -90,6 +90,11 @@
  * Linksys gigabit ethernet device ID
  */
 #define DEVICEID_LINKSYS_EG1032	0x1032
+
+/*
+ * Linksys gigabit ethernet rev 2 sub-device ID
+ */
+#define SUBDEVICEID_LINKSYS_EG1032_REV2	0x0015
 
 /*
  * D-Link PCI vendor ID

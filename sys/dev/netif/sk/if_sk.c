@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.45 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.46 2006/10/16 14:12:34 sephe Exp $
  */
 
 /*
@@ -1080,6 +1080,11 @@ skc_probe(device_t dev)
 	lwkt_serialize_init(&sk_serializer);
 	vendor = pci_get_vendor(dev);
 	product = pci_get_device(dev);
+
+	if (vendor == VENDORID_LINKSYS &&
+	    product == DEVICEID_LINKSYS_EG1032 &&
+	    pci_get_subdevice(dev) != SUBDEVICEID_LINKSYS_EG1032_REV2)
+		return (ENXIO);
 
 	for (t = sk_devs; t->sk_name != NULL; t++) {
 		if (vendor == t->sk_vid && product == t->sk_did) {
