@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.46 2006/10/16 14:12:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.47 2006/10/16 14:22:38 sephe Exp $
  */
 
 /*
@@ -1081,6 +1081,10 @@ skc_probe(device_t dev)
 	vendor = pci_get_vendor(dev);
 	product = pci_get_device(dev);
 
+	/*
+	 * Only attach to rev.2 of the Linksys EG1032 adapter.
+	 * Rev.3 is supported by re(4).
+	 */
 	if (vendor == VENDORID_LINKSYS &&
 	    product == DEVICEID_LINKSYS_EG1032 &&
 	    pci_get_subdevice(dev) != SUBDEVICEID_LINKSYS_EG1032_REV2)
