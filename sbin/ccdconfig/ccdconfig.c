@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.6 2005/01/14 07:14:15 joerg Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.7 2006/10/16 22:02:22 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -59,13 +59,13 @@
 
 static	int lineno = 0;
 static	int verbose = 0;
-static	char *ccdconf = _PATH_CCDCONF;
+static	const char *ccdconf = _PATH_CCDCONF;
 
 static	char *core = NULL;
 static	char *kernel = NULL;
 
 struct	flagval {
-	char	*fv_flag;
+	const char	*fv_flag;
 	int	fv_val;
 } flagvaltab[] = {
 	{ "CCDF_SWAP",		CCDF_SWAP },
@@ -76,11 +76,11 @@ struct	flagval {
 };
 
 static	struct nlist nl[] = {
-	{ "_ccd_softc" },
+	{ "_ccd_softc", 0, 0, 0, 0 },
 #define SYM_CCDSOFTC		0
-	{ "_numccd" },
+	{ "_numccd", 0, 0, 0, 0 },
 #define SYM_NUMCCD		1
-	{ NULL },
+	{ NULL , 0, 0, 0, 0 },
 };
 
 #define CCD_CONFIG		0	/* configure a device */
@@ -197,7 +197,8 @@ do_single(int argc, char **argv, int action)
 {
 	struct ccd_ioctl ccio;
 	char *ccd, *cp, *cp2, **disks;
-	int noflags = 0, i, ileave, flags = 0, j;
+	int noflags = 0, ileave, flags = 0, j;
+	unsigned int i;
 
 	bzero(&ccio, sizeof(ccio));
 
@@ -441,7 +442,7 @@ static int
 do_io(char *path, u_long cmd, struct ccd_ioctl *cciop)
 {
 	int fd;
-	char *cp;
+	const char *cp;
 
 	if ((fd = open(path, O_RDWR, 0640)) < 0) {
 		warn("open: %s", path);
@@ -480,7 +481,7 @@ dump_ccd(int argc, char **argv)
 {
 	char errbuf[_POSIX2_LINE_MAX], *ccd, *cp;
 	struct ccd_softc *cs, *kcs;
-	size_t readsize;
+	ssize_t readsize;
 	int i, error, numccd, numconfiged = 0;
 	kvm_t *kd;
 
@@ -574,9 +575,9 @@ print_ccd_info(struct ccd_softc *cs, kvm_t *kd)
 {
 	static int header_printed = 0;
 	struct ccdcinfo *cip;
-	size_t readsize;
+	ssize_t readsize;
 	char path[MAXPATHLEN];
-	int i;
+	unsigned int i;
 
 	if (header_printed == 0 && verbose) {
 		printf("# ccd\t\tileave\tflags\tcompnent devices\n");
@@ -607,7 +608,7 @@ print_ccd_info(struct ccd_softc *cs, kvm_t *kd)
 
 	/* Read component pathname and display component info. */
 	for (i = 0; i < cs->sc_nccdisks; ++i) {
-		if (kvm_read(kd, (u_long)cip[i].ci_path, (char *)path,
+		if ((unsigned)kvm_read(kd, (u_long)cip[i].ci_path, (char *)path,
 		    cip[i].ci_pathlen) != cip[i].ci_pathlen) {
 			printf("\n");
 			warnx("can't read component pathname");
