@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.5 2006/08/01 18:07:12 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.6 2006/10/16 14:15:51 sephe Exp $
  */
 
 /*
@@ -690,3 +690,5 @@ struct re_softc {
 
 #define RE_PCI_LOMEM		0x14
 #define RE_PCI_LOIO		0x10
+
+#define PCI_SUBDEVICE_LINKSYS_EG1032_REV3	0x0024

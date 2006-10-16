@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.25 2006/10/16 13:32:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.26 2006/10/16 14:15:51 sephe Exp $
  */
 
 /*
@@ -178,6 +178,8 @@ static struct re_type re_devs[] = {
 		"RealTek 8110S Single-chip Gigabit Ethernet" },
 	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CG_LAPCIGT, RE_HWREV_8169S,
 		"Corega CG-LAPCIGT Gigabit Ethernet" },
+	{ PCI_VENDOR_LINKSYS, PCI_PRODUCT_LINKSYS_EG1032, RE_HWREV_8169S,
+		"Linksys EG1032 Gigabit Ethernet" },
 	{ 0, 0, 0, NULL }
 };
 
@@ -746,6 +748,15 @@ re_probe(device_t dev)
 
 	vendor = pci_get_vendor(dev);
 	product = pci_get_device(dev);
+
+	/*
+	 * Only attach to rev.3 of the Linksys EG1032 adapter.
+	 * Rev.2 is supported by sk(4).
+	 */
+	if (vendor == PCI_VENDOR_LINKSYS &&
+	    product == PCI_PRODUCT_LINKSYS_EG1032 &&
+	    pci_get_subdevice(dev) != PCI_SUBDEVICE_LINKSYS_EG1032_REV3)
+			return ENXIO;
 
 	for (t = re_devs; t->re_name != NULL; t++) {
 		if (product == t->re_did && vendor == t->re_vid)
