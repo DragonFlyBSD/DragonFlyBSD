@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.23 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.24 2006/10/16 13:19:08 sephe Exp $
  */
 
 /*
@@ -176,6 +176,8 @@ static struct re_type re_devs[] = {
 		"RealTek 8169S Single-chip Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8110S,
 		"RealTek 8110S Single-chip Gigabit Ethernet" },
+	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CG_LAPCIGT, RE_HWREV_8169S,
+		"Corega CG-LAPCIGT Gigabit Ethernet" },
 	{ 0, 0, 0, NULL }
 };
 
