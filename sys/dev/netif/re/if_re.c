@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.24 2006/10/16 13:19:08 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.25 2006/10/16 13:32:02 sephe Exp $
  */
 
 /*
@@ -947,7 +947,7 @@ re_allocmem(device_t dev, struct re_softc *sc)
 	 */
 	error = bus_dma_tag_create(sc->re_parent_tag, RE_RING_ALIGN,
 	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL,
-            NULL, RE_TX_LIST_SZ, 1, RE_TX_LIST_SZ, BUS_DMA_ALLOCNOW,
+            NULL, RE_RX_LIST_SZ, 1, RE_RX_LIST_SZ, BUS_DMA_ALLOCNOW,
 	    &sc->re_ldata.re_rx_list_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag\n");
@@ -968,7 +968,7 @@ re_allocmem(device_t dev, struct re_softc *sc)
 
 	error = bus_dmamap_load(sc->re_ldata.re_rx_list_tag,
 	     sc->re_ldata.re_rx_list_map, sc->re_ldata.re_rx_list,
-	     RE_TX_LIST_SZ, re_dma_map_addr,
+	     RE_RX_LIST_SZ, re_dma_map_addr,
 	     &sc->re_ldata.re_rx_list_addr, BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(dev, "could not get address of RX ring\n");
@@ -1360,8 +1360,7 @@ re_rx_list_init(struct re_softc *sc)
 	/* Flush the RX descriptors */
 
 	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-	    sc->re_ldata.re_rx_list_map,
-	    BUS_DMASYNC_PREWRITE|BUS_DMASYNC_PREREAD);
+			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_rx_prodidx = 0;
 	sc->re_head = sc->re_tail = NULL;
@@ -1522,8 +1521,7 @@ re_rxeof(struct re_softc *sc)
 	/* Flush the RX DMA ring */
 
 	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map,
-			BUS_DMASYNC_PREWRITE|BUS_DMASYNC_PREREAD);
+			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_rx_prodidx = i;
 }
@@ -1538,8 +1536,7 @@ re_txeof(struct re_softc *sc)
 	/* Invalidate the TX descriptor list */
 
 	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-	    sc->re_ldata.re_tx_list_map,
-	    BUS_DMASYNC_POSTREAD);
+			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
 	for (idx = sc->re_ldata.re_tx_considx;
 	     idx != sc->re_ldata.re_tx_prodidx; RE_DESC_INC(idx)) {
@@ -1873,8 +1870,7 @@ re_start(struct ifnet *ifp)
 
 	/* Flush the TX descriptors */
 	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map,
-			BUS_DMASYNC_PREWRITE|BUS_DMASYNC_PREREAD);
+			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_tx_prodidx = idx;
 
