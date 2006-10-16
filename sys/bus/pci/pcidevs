@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.18 2006/09/03 06:07:32 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.19 2006/10/16 13:12:52 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -1254,6 +1254,7 @@ product CONTAQ 82C693		0xc693	82C693 PCI-ISA Bridge
 /* Corega products */
 product COREGA CB_TXD		0xa117	FEther CB-TXD 10/100 Ethernet
 product COREGA 2CB_TXD		0xa11e	FEther II CB-TXD 10/100 Ethernet
+product COREGA CG_LAPCIGT	0xc017	CG-LAPCIGT 10/100/1000 Ethernet
 
 /* Corollary Products */
 product COROLLARY CBUSII_PCIB	0x0014	\"C-Bus II\"-PCI Bridge
