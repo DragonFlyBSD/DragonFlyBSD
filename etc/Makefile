@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.132 2006/10/11 13:28:13 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.133 2006/10/16 11:55:01 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -444,6 +444,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/dev/zs0
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_read_open_file.3.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_write_open_file.3.gz"
+	csh -c "rm -f ${DESTDIR}/usr/include/{e,p,}mmintrin.h"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
