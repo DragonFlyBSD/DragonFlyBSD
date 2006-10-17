@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.11 2006/04/03 01:58:48 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.12 2006/10/17 02:18:51 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ int	checklabel(struct disklabel *);
 void	setbootflag(struct disklabel *);
 void	Warning(const char *, ...) __printflike(1, 2);
 void	usage(void);
-int	checkoldboot(int f, const char *bootbuf);
+int	checkoldboot(int, const char *);
 struct disklabel *getvirginlabel(void);
 
 #define	DEFEDITOR	_PATH_VI
@@ -427,7 +427,7 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			flag = 1;
 			if (ioctl(f, DIOCWLABEL, &flag) < 0)
 				warn("ioctl DIOCWLABEL");
-			if (write(f, boot, lp->d_bbsize) != lp->d_bbsize) {
+			if (write(f, boot, lp->d_bbsize) != (ssize_t)lp->d_bbsize) {
 				warn("write");
 				return (1);
 			}
@@ -527,7 +527,7 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 #endif
 #ifdef __i386__
 	char *tmpbuf;
-	int i, found;
+	unsigned int i, found;
 #endif
 
 	/* XXX */
@@ -812,8 +812,8 @@ int
 editit(void)
 {
 	int pid, xpid;
-	int stat, omask;
-	char *ed;
+	int status, omask;
+	const char *ed;
 
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGHUP));
 	while ((pid = fork()) < 0) {
@@ -836,11 +836,11 @@ editit(void)
 		execlp(ed, ed, tmpfil, (char *)0);
 		err(1, "%s", ed);
 	}
-	while ((xpid = wait(&stat)) >= 0)
+	while ((xpid = wait(&status)) >= 0)
 		if (xpid == pid)
 			break;
 	sigsetmask(omask);
-	return(!stat);
+	return(!status);
 }
 
 char *
@@ -884,6 +884,8 @@ getasciilabel(FILE *f, struct disklabel *lp)
 	u_long v;
 	int lineno = 0, errors = 0;
 	int i;
+	char empty[] = "";
+	char unknown[] = "unknown";
 
 	bzero(&part_set, sizeof(part_set));
 	bzero(&part_size_type, sizeof(part_size_type));
@@ -906,7 +908,7 @@ getasciilabel(FILE *f, struct disklabel *lp)
 		*tp++ = '\0', tp = skip(tp);
 		if (streq(cp, "type")) {
 			if (tp == NULL)
-				tp = "unknown";
+				tp = unknown;
 			cpp = dktypenames;
 			for (; cpp < &dktypenames[DKMAXTYPES]; cpp++)
 				if (*cpp && streq(*cpp, tp)) {
@@ -959,7 +961,7 @@ getasciilabel(FILE *f, struct disklabel *lp)
 			continue;
 		}
 		if (tp == NULL)
-			tp = "";
+			tp = empty;
 		if (streq(cp, "disk")) {
 			strncpy(lp->d_typename, tp, sizeof (lp->d_typename));
 			continue;
@@ -1513,17 +1515,17 @@ checklabel(struct disklabel *lp)
 struct disklabel *
 getvirginlabel(void)
 {
-	static struct disklabel lab;
-	char namebuf[BBSIZE];
+	static struct disklabel dlab;
+	char nambuf[BBSIZE];
 	int f;
 
 	if (dkname[0] == '/') {
 		warnx("\"auto\" requires the usage of a canonical disk name");
 		return (NULL);
 	}
-	snprintf(namebuf, BBSIZE, "%s%s", _PATH_DEV, dkname);
-	if ((f = open(namebuf, O_RDONLY)) == -1) {
-		warn("cannot open %s", namebuf);
+	snprintf(nambuf, BBSIZE, "%s%s", _PATH_DEV, dkname);
+	if ((f = open(nambuf, O_RDONLY)) == -1) {
+		warn("cannot open %s", nambuf);
 		return (NULL);
 	}
 
@@ -1531,17 +1533,17 @@ getvirginlabel(void)
 	 * Try to use the new get-virgin-label ioctl.  If it fails,
 	 * fallback to the old get-disdk-info ioctl.
 	 */
-	if (ioctl(f, DIOCGDVIRGIN, &lab) < 0) {
-		if (ioctl(f, DIOCGDINFO, &lab) < 0) {
+	if (ioctl(f, DIOCGDVIRGIN, &dlab) < 0) {
+		if (ioctl(f, DIOCGDINFO, &dlab) < 0) {
 			warn("ioctl DIOCGDINFO");
 			close(f);
 			return (NULL);
 		}
 	}
 	close(f);
-	lab.d_boot0 = NULL;
-	lab.d_boot1 = NULL;
-	return (&lab);
+	dlab.d_boot0 = NULL;
+	dlab.d_boot1 = NULL;
+	return (&dlab);
 }
 
 /*
@@ -1607,11 +1609,11 @@ Warning(const char *fmt, ...)
  */
 
 int
-checkoldboot(int f, const char *bootbuf)
+checkoldboot(int f, const char *bootbuffer)
 {
 	char buf[BBSIZE];
 
-	if (bootbuf && strncmp(bootbuf + 0x402, "BTX", 3) == 0)
+	if (bootbuffer && strncmp(bootbuffer + 0x402, "BTX", 3) == 0)
 		return(0);
 	lseek(f, (off_t)0, SEEK_SET);
 	if (read(f, buf, sizeof(buf)) != sizeof(buf))
