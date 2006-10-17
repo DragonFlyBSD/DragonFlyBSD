@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.20 2006/10/17 12:26:52 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.21 2006/10/17 12:38:25 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.19 2006/10/16 13:12:52 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.20 2006/10/17 12:26:02 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -10305,6 +10305,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "US Robotics",
 	    "Wireless PCI-PCMCIA adapter",
+	},
+	{
+	    PCI_VENDOR_USR2, PCI_PRODUCT_USR2_997902,
+	    0,
+	    "US Robotics",
+	    "Robotics 997902 Gigabit Ethernet",
 	},
 	{
 	    PCI_VENDOR_V3, PCI_PRODUCT_V3_V292PBC,
