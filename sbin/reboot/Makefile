@@ -1,9 +1,8 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/reboot/Makefile,v 1.6.8.3 2002/02/20 15:26:14 ru Exp $
-# $DragonFly: src/sbin/reboot/Makefile,v 1.3 2005/01/02 01:35:13 cpressey Exp $
+# $DragonFly: src/sbin/reboot/Makefile,v 1.4 2006/10/17 00:55:43 pavalos Exp $
 
 PROG=	reboot
-WARNS?=	6
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 MAN=	reboot.8 boot_i386.8

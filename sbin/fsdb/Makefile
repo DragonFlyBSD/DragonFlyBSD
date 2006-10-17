@@ -1,7 +1,7 @@
 #	$NetBSD: Makefile,v 1.1.1.1 1995/10/08 23:08:36 thorpej Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/fsdb/Makefile,v 1.9.2.1 2001/04/25 10:58:17 ru Exp $
-# $DragonFly: src/sbin/fsdb/Makefile,v 1.4 2006/10/12 18:43:06 swildner Exp $
+# $DragonFly: src/sbin/fsdb/Makefile,v 1.5 2006/10/17 00:55:41 pavalos Exp $
 
 PROG=	fsdb
 MAN=	fsdb.8
@@ -12,5 +12,6 @@ CFLAGS+= -I${.CURDIR}/../fsck
 LDADD+= -ledit -ltermcap
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
 .PATH:	${.CURDIR}/../fsck ${.CURDIR}/../../sys/vfs/ufs
+WARNS?=	0
 
 .include <bsd.prog.mk>

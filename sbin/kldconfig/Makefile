@@ -24,12 +24,10 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sbin/kldconfig/Makefile,v 1.1.2.1 2001/08/01 05:52:36 obrien Exp $
-# $DragonFly: src/sbin/kldconfig/Makefile,v 1.3 2005/01/02 01:18:57 cpressey Exp $
+# $DragonFly: src/sbin/kldconfig/Makefile,v 1.4 2006/10/17 00:55:41 pavalos Exp $
 #
 
 PROG=		kldconfig
 MAN=		kldconfig.8
-
-WARNS?=		6
 
 .include <bsd.prog.mk>

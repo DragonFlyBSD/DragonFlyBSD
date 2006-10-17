@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/ifconfig/Makefile,v 1.29 2005/06/05 03:32:51 thompsa Exp $
-# $DragonFly: src/sbin/ifconfig/Makefile,v 1.4 2006/04/02 03:33:59 sephe Exp $
+# $DragonFly: src/sbin/ifconfig/Makefile,v 1.5 2006/10/17 00:55:41 pavalos Exp $
 
 PROG=	ifconfig
 
@@ -39,7 +39,6 @@ CFLAGS+= -DNO_IPX
 
 MAN=	ifconfig.8
 
-CFLAGS+= -Wall -Wmissing-prototypes -Wcast-qual -Wwrite-strings -Wnested-externs
 WARNS=	0
 
 .include <bsd.prog.mk>

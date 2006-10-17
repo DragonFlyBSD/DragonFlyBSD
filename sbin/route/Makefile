@@ -1,9 +1,8 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/route/Makefile,v 1.11.2.3 2002/12/04 14:05:42 ru Exp $
-# $DragonFly: src/sbin/route/Makefile,v 1.5 2005/03/16 04:18:35 cpressey Exp $
+# $DragonFly: src/sbin/route/Makefile,v 1.6 2006/10/17 00:55:43 pavalos Exp $
 
 PROG=	route
-WARNS?=	6
 MAN=	route.8
 SRCS=	route.c show.c keywords.h keywords.c
 CFLAGS+=-I. -DNS

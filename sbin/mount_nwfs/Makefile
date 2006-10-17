@@ -1,9 +1,10 @@
 # $FreeBSD: src/sbin/mount_nwfs/Makefile,v 1.1.2.2 2001/04/25 10:58:39 ru Exp $
-# $DragonFly: src/sbin/mount_nwfs/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
+# $DragonFly: src/sbin/mount_nwfs/Makefile,v 1.3 2006/10/17 00:55:42 pavalos Exp $
 
 PROG=	mount_nwfs
 SRCS=	mount_nwfs.c getmntopts.c
 MAN=	mount_nwfs.8
+WARNS?=	2
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -DNWFS -I${MOUNT}

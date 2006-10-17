@@ -24,12 +24,11 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sbin/kldstat/Makefile,v 1.4.2.1 2001/04/25 10:58:30 ru Exp $
-# $DragonFly: src/sbin/kldstat/Makefile,v 1.3 2005/01/02 01:13:20 cpressey Exp $
+# $DragonFly: src/sbin/kldstat/Makefile,v 1.4 2006/10/17 00:55:42 pavalos Exp $
 #
 
 PROG=	kldstat
 MAN=	kldstat.8
-WARNS?=	6
 
 CFLAGS+=-I${.CURDIR}/../../sys
 
