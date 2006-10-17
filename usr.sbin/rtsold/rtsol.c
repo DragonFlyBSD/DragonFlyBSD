@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsol.c,v 1.1.2.4 2002/04/24 10:22:30 suz Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.5 2005/12/05 00:56:37 swildner Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.6 2006/10/17 19:20:49 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -325,7 +325,7 @@ rtsol_input(int s)
 
 	if ((ifi = find_ifinfo(pi->ipi6_ifindex)) == NULL) {
 		warnmsg(LOG_NOTICE, __func__,
-			"received RA from %s on an unexpeced IF(%s)",
+			"received RA from %s on an unexpected IF(%s)",
 		       inet_ntop(AF_INET6, &from.sin6_addr, ntopbuf,
 				 INET6_ADDRSTRLEN),
 		       if_indextoname(pi->ipi6_ifindex, ifnamebuf));
