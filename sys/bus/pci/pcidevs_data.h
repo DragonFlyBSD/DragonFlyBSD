@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.19 2006/10/16 13:13:44 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.20 2006/10/17 12:26:52 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.18 2006/09/03 06:07:32 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.19 2006/10/16 13:12:52 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -8225,6 +8225,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "8129 10/100 Ethernet",
 	},
 	{
+	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E,
+	    0,
+	    "Realtek Semiconductor",
+	    "8101E PCIe 10/10 Ethernet",
+	},
+	{
 	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139B,
 	    0,
 	    "Realtek Semiconductor",
@@ -8235,6 +8241,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Realtek Semiconductor",
 	    "8139 10/100 Ethernet",
+	},
+	{
+	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169SC,
+	    0,
+	    "Realtek Semiconductor",
+	    "8169SC/8110SC Single-chip Gigabit Ethernet",
+	},
+	{
+	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168,
+	    0,
+	    "Realtek Semiconductor",
+	    "8168/8111B PCIe Gigabit Ethernet",
 	},
 	{
 	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169,
