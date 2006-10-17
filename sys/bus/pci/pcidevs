@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.20 2006/10/17 12:26:02 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.21 2006/10/17 12:37:46 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -2748,6 +2748,7 @@ product ULSI US201	0x0201	US201
 product USR 3C2884A	0x1007	56K Voice Internal PCI Modem (WinModem)
 product USR 3CP5609	0x1008	3CP5609 PCI 16550 Modem
 product USR2 2415	0x3685	Wireless PCI-PCMCIA adapter
+product USR2 997902	0x0116	Robotics 997902 Gigabit Ethernet
 
 /* V3 Semiconductor products */
 product V3 V292PBC	0x0292	V292PBC AMD290x0 Host-PCI Bridge
