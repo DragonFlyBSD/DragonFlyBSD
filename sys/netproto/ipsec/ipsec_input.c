@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.10 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.11 2006/10/18 06:27:43 hsu Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -302,9 +302,15 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	if (prot == IPPROTO_IPIP) {
 		struct ip ipn;
 
+		if (m->m_pkthdr.len - skip < sizeof(struct ip)) {
+			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
+			    ahstat.ahs_hdrops, ipcompstat.ipcomps_hdrops);
+			error = EINVAL;
+			goto bad;
+		}
+
 		/* ipn will now contain the inner IPv4 header */
-		m_copydata(m, ip->ip_hl << 2, sizeof(struct ip),
-		    (caddr_t) &ipn);
+		m_copydata(m, skip, sizeof(struct ip), (caddr_t) &ipn);
 
 #ifdef notyet
 		/* XXX PROXY address isn't recorded in SAH */
@@ -341,9 +347,15 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	if (prot == IPPROTO_IPV6) {
 		struct ip6_hdr ip6n;
 
+		if (m->m_pkthdr.len - skip < sizeof(struct ip6_hdr)) {
+			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
+			    ahstat.ahs_hdrops, ipcompstat.ipcomps_hdrops);
+			error = EINVAL;
+			goto bad;
+		}
+
 		/* ip6n will now contain the inner IPv6 header. */
-		m_copydata(m, ip->ip_hl << 2, sizeof(struct ip6_hdr),
-		    (caddr_t) &ip6n);
+		m_copydata(m, skip, sizeof(struct ip6_hdr), (caddr_t) &ip6n);
 
 #ifdef notyet
 		/*
@@ -615,6 +627,13 @@ ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav, int skip, int proto
 	if (prot == IPPROTO_IPIP) {
 		struct ip ipn;
 
+		if (m->m_pkthdr.len - skip < sizeof(struct ip)) {
+			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
+			    ahstat.ahs_hdrops, ipcompstat.ipcomps_hdrops);
+			error = EINVAL;
+			goto bad;
+		}
+
 		/* ipn will now contain the inner IPv4 header */
 		m_copydata(m, skip, sizeof(struct ip), (caddr_t) &ipn);
 
@@ -650,9 +669,15 @@ ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav, int skip, int proto
 	if (prot == IPPROTO_IPV6) {
 		struct ip6_hdr ip6n;
 
+		if (m->m_pkthdr.len - skip < sizeof(struct ip6_hdr)) {
+			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
+			    ahstat.ahs_hdrops, ipcompstat.ipcomps_hdrops);
+			error = EINVAL;
+			goto bad;
+		}
+
 		/* ip6n will now contain the inner IPv6 header. */
-		m_copydata(m, skip, sizeof(struct ip6_hdr),
-		    (caddr_t) &ip6n);
+		m_copydata(m, skip, sizeof(struct ip6_hdr), (caddr_t) &ip6n);
 
 #ifdef notyet
 		/*
