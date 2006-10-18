@@ -66,7 +66,7 @@
  *
  *
  * $FreeBSD: src/share/examples/kld/cdev/module/cdev.c,v 1.3.2.1 2000/10/25 09:02:34 sobomax Exp $
- * $DragonFly: src/share/examples/kld/cdev/module/cdev.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
+ * $DragonFly: src/share/examples/kld/cdev/module/cdev.c,v 1.3 2006/10/18 21:38:23 victor Exp $
  */
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -75,6 +75,7 @@
 #include <sys/ioccom.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 
 #include "cdev.h"
 
@@ -100,32 +101,32 @@ static char buf[512+1];
 static int len;
 
 int
-mydev_open(dev_t dev, int flag, int otyp, struct proc *procp)
+mydev_open(struct dev_open_args *args)
 {
-    printf("mydev_open: dev_t=%d, flag=%x, otyp=%x, procp=%p\n",
-	   dev2udev(dev), flag, otyp, procp);
+    printf("mydev_open: dev_t=%d, flags=%x, type=%x\n",
+	   dev2udev(args->a_head.a_dev), args->a_oflags, args->a_devtype);
     memset(&buf, '\0', 513);
     len = 0;
     return (0);
 }
 
 int
-mydev_close(dev_t dev, int flag, int otyp, struct proc *procp)
+mydev_close(struct dev_close_args *args)
 {
-    printf("mydev_close: dev_t=%d, flag=%x, otyp=%x, procp=%p\n",
-	      dev2udev(dev), flag, otyp, procp);
-    return (0);
+  printf("mydev_close: dev_t=%d, flags=%x, type=%x\n",
+	 dev2udev(args->a_head.a_dev), args->a_fflag, args->a_devtype);
+  return (0);
 }
 
 int
-mydev_ioctl(dev_t dev, u_long cmd, caddr_t arg, int mode, struct proc *procp)
+mydev_ioctl(struct dev_ioctl_args *args)
 {
     int error = 0;
 
-    printf("mydev_ioctl: dev_t=%d, cmd=%lx, arg=%p, mode=%x procp=%p\n",
-	   dev2udev(dev), cmd, arg, mode, procp);
+    printf("mydev_ioctl: dev_t=%d, cmd=%lx, arg=%p, mode=%x\n",
+	   dev2udev(args->a_head.a_dev), args->a_cmd, args->a_data, args->a_fflag);
 
-    switch(cmd) {
+    switch(args->a_cmd) {
     case CDEV_IOCTL1:
 	printf("you called mydev_ioctl CDEV_IOCTL1\n");
 	break;
@@ -142,14 +143,14 @@ mydev_ioctl(dev_t dev, u_long cmd, caddr_t arg, int mode, struct proc *procp)
  * to buf for later accessing.
  */
 int
-mydev_write(dev_t dev, struct uio *uio, int ioflag)
+mydev_write(struct dev_write_args *args)
 {
     int err = 0;
 
     printf("mydev_write: dev_t=%d, uio=%p, ioflag=%d\n",
-	dev2udev(dev), uio, ioflag);
+	dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
 
-    err = copyinstr(uio->uio_iov->iov_base, &buf, 512, &len);
+    err = copyinstr(args->a_uio->uio_iov->iov_base, &buf, 512, &len);
     if (err != 0) {
 	printf("Write to \"cdev\" failed.\n");
     }
@@ -162,17 +163,17 @@ mydev_write(dev_t dev, struct uio *uio, int ioflag)
  * accessing.
  */
 int
-mydev_read(dev_t dev, struct uio *uio, int ioflag)
+mydev_read(struct dev_read_args *args)
 {
     int err = 0;
 
     printf("mydev_read: dev_t=%d, uio=%p, ioflag=%d\n",
-	dev2udev(dev), uio, ioflag);
+	dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
 
     if (len <= 0) {
 	err = -1; 
     } else {	/* copy buf to userland */
-	copystr(&buf, uio->uio_iov->iov_base, 513, &len);
+	copystr(&buf, args->a_uio->uio_iov->iov_base, 513, &len);
     }
     return(err);
 }

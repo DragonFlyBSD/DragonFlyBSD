@@ -66,33 +66,30 @@
  *
  *
  * $FreeBSD: src/share/examples/kld/cdev/module/cdevmod.c,v 1.3.2.1 2000/10/25 09:02:34 sobomax Exp $
- * $DragonFly: src/share/examples/kld/cdev/module/cdevmod.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
+ * $DragonFly: src/share/examples/kld/cdev/module/cdevmod.c,v 1.3 2006/10/18 21:38:23 victor Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 
 #include "cdev.h"
 
 #define CDEV_MAJOR 32
 
-static struct cdevsw my_devsw = {
-	/* open */	mydev_open,
-	/* close */	mydev_close,
-	/* read */	mydev_read,
-	/* write */	mydev_write,
-	/* ioctl */	mydev_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* name */	"cdev",
-	/* maj */	CDEV_MAJOR,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
-	/* bmaj */	-1
+static struct dev_ops my_devops = {
+	.head = {
+		.name = "cdev",	/* Device name */
+		.maj = CDEV_MAJOR,	/* major device number */
+		.flags = D_TTY	/* flags */
+	},
+	.d_open = mydev_open,
+	.d_close = mydev_close,
+	.d_read = mydev_read,
+	.d_write = mydev_write,
+	.d_ioctl = mydev_ioctl,
 };
 
 /* 
@@ -128,11 +125,14 @@ cdev_load(module_t mod, int cmd, void *arg)
 	printf("Copyright (c) 1998\n");
 	printf("Rajesh Vaidheeswarran\n");
 	printf("All rights reserved\n");
-	sdev = make_dev(&my_devsw, 0, UID_ROOT, GID_WHEEL, 0600, "cdev");
+	dev_ops_add(&my_devops,-1,0);
+	sdev = make_dev(&my_devops, 0, UID_ROOT, GID_WHEEL, 0600, "cdev");
+	sdev = reference_dev(sdev);
 	break;		/* Success*/
 
     case MOD_UNLOAD:
 	printf("Unloaded kld character device driver\n");
+	dev_ops_remove(&my_devops, -1, 0);
 	destroy_dev(sdev);
 	break;		/* Success*/
 
