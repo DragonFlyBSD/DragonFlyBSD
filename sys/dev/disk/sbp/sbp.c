@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.18 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.19 2006/10/19 19:00:47 swildner Exp $
  *
  */
 
@@ -468,7 +468,7 @@ END_DEBUG
 	/* Reallocate */
 	if (maxlun != target->num_lun) {
 		/*
-		 * note: realloc() does not support M_ZERO.  We must zero
+		 * note: krealloc() does not support M_ZERO.  We must zero
 		 * the extended region manually.
 		 */
 		newluns = krealloc(target->luns, 

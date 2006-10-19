@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_CREATE.9,v 1.9.2.1 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VOP_CREATE.9,v 1.5 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man9/VOP_CREATE.9,v 1.6 2006/10/19 19:00:47 swildner Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -111,7 +111,7 @@ vop_create(struct vnode *dvp,
 
     error = SOMEFS_VALLOC(dvp, mode, cnp->cn_cred, &vp);
     if (error) {
-	free(cnp->cn_pnbuf, M_NAMEI);
+	kfree(cnp->cn_pnbuf, M_NAMEI);
 	vput(dvp);
 	return error;
     }
@@ -139,7 +139,7 @@ vop_create(struct vnode *dvp,
 	goto bad;
 
     if ((cnp->cn_flags & SAVESTART) == 0)
-	free(cnp->cn_pnbuf, M_NAMEI);
+	kfree(cnp->cn_pnbuf, M_NAMEI);
     vput(dvp);
     *vpp = vp;
 
@@ -150,7 +150,7 @@ bad:
      * Write error occurred trying to update the inode
      * or the directory so must deallocate the inode.
      */
-    free(cnp->cn_pnbuf, M_NAMEI);
+    kfree(cnp->cn_pnbuf, M_NAMEI);
     vput(vp);
 
     /*

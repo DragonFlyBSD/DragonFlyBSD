@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_LINK.9,v 1.9.2.3 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VOP_LINK.9,v 1.4 2004/06/01 11:36:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/VOP_LINK.9,v 1.5 2006/10/19 19:00:47 swildner Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -111,7 +111,7 @@ vop_link(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	...;
     }
 
-    free(cnp->cn_pnbuf, M_NAMEI);
+    kfree(cnp->cn_pnbuf, M_NAMEI);
 out1:
     if (vp != dvp)
 	VOP_UNLOCK(vp);
