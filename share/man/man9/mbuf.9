@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.4 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.5 2006/10/19 18:44:00 swildner Exp $
 .\"
 .Dd October 17, 2000
 .Dt MBUF 9
@@ -263,7 +263,7 @@ at some point need to allocate new mbufs.
 Programmers should be careful not to confuse the mbuf allocation flag
 .Dv MB_DONTWAIT
 with the
-.Xr malloc 9
+.Xr kmalloc 9
 allocation flag,
 .Dv M_NOWAIT .
 They are not the same.

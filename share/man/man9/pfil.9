@@ -1,5 +1,5 @@
 .\"	$NetBSD: pfil.9,v 1.24 2004/01/01 15:24:35 wiz Exp $
-.\" $DragonFly: src/share/man/man9/pfil.9,v 1.2 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/pfil.9,v 1.3 2006/10/19 18:44:00 swildner Exp $
 .\"
 .\" Copyright (c) 1996 Matthew R. Green
 .\" All rights reserved.
@@ -131,7 +131,7 @@ call me on outgoing packets
 .It PFIL_ALL
 call me on all of the above
 .It PFIL_WAITOK
-OK to call malloc with M_WAITOK.
+OK to call kmalloc with M_WAITOK.
 .El
 .Pp
 The

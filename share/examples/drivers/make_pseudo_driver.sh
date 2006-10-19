@@ -22,7 +22,7 @@ cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
 # \$FreeBSD: src/share/examples/drivers/make_pseudo_driver.sh,v 1.5.2.1 2001/07/25 15:56:09 dd Exp $"
-# \$DragonFly: src/share/examples/drivers/make_pseudo_driver.sh,v 1.3 2005/02/17 13:59:35 joerg Exp $"
+# \$DragonFly: src/share/examples/drivers/make_pseudo_driver.sh,v 1.4 2006/10/19 18:44:00 swildner Exp $"
 DONE
 
 grep -v GENERIC < GENERIC >>${UPPER}
@@ -257,7 +257,7 @@ ${1}_drvinit(void *unused)
 		/* 
 		 * Allocate storage for this instance .
 		 */
-		scp = malloc(sizeof(*scp), M_DEVBUF, M_NOWAIT);
+		scp = kmalloc(sizeof(*scp), M_DEVBUF, M_NOWAIT);
 		if( scp == NULL) {
 			printf("${1}%d failed to allocate strorage\n", unit);
 			return ;

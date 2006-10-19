@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
-.\" $DragonFly: src/share/man/man9/zone.9,v 1.3 2003/10/15 15:36:44 hmp Exp $
+.\" $DragonFly: src/share/man/man9/zone.9,v 1.4 2006/10/19 18:44:00 swildner Exp $
 .\"
 .Dd January 27, 2001
 .Dt ZONE 9
@@ -179,7 +179,7 @@ function returns a pointer to a fully initialized
 or
 .Dv NULL
 if it was unable to
-.Fn malloc
+.Fn kmalloc
 a
 .Vt "struct vm_zone"
 or the
@@ -195,7 +195,7 @@ function returns a pointer to an item, or
 if the zone ran out of unused items and the allocator was unable to
 enlarge it.
 .Sh SEE ALSO
-.Xr malloc 9
+.Xr kmalloc 9
 .Sh HISTORY
 The zone allocator first appeared in
 .Fx 3.0 .

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.9 2006/10/19 18:44:00 swildner Exp $
  */
 
 /*
@@ -95,7 +95,7 @@ clist_init(void *dummy)
 	 * deallocate them with each ttyclose().
 	 * We should adjust the slush allocation.  This can't be done in
 	 * the i/o routines because they are sometimes called from
-	 * interrupt handlers when it may be unsafe to call malloc().
+	 * interrupt handlers when it may be unsafe to call kmalloc().
 	 */
 	cblock_alloc_cblocks(cslushcount = INITIAL_CBLOCKS);
 	KKASSERT(sizeof(struct cblock) == CBLOCK);
@@ -155,7 +155,7 @@ cblock_alloc_cblocks(int number)
 		cbp = kmalloc(sizeof *cbp, M_TTYS, M_NOWAIT);
 		if (cbp == NULL) {
 			printf(
-"clist_alloc_cblocks: M_NOWAIT malloc failed, trying M_WAITOK\n");
+"clist_alloc_cblocks: M_NOWAIT kmalloc failed, trying M_WAITOK\n");
 			cbp = kmalloc(sizeof *cbp, M_TTYS, M_WAITOK);
 		}
 		KKASSERT(((intptr_t)cbp & CROUND) == 0);

@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.4 2006/09/05 00:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.5 2006/10/19 18:44:00 swildner Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -135,7 +135,7 @@ pfil_head_get(int type, u_long val)
  *	PFIL_IN		call me on incoming packets
  *	PFIL_OUT	call me on outgoing packets
  *	PFIL_ALL	call me on all of the above
- *	PFIL_WAITOK	OK to call malloc with M_WAITOK.
+ *	PFIL_WAITOK	OK to call kmalloc with M_WAITOK.
  */
 int
 pfil_add_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
