@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.10 2006/10/12 04:04:03 dillon Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.11 2006/10/19 21:11:13 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -251,7 +251,6 @@ dircheck(struct inodesc *idesc, struct direct *dp)
 #	endif
 	if (dp->d_reclen < size ||
 	    idesc->id_filesize < size ||
-	    namlen > MAXNAMLEN ||
 	    type > 15)
 		return (0);
 	for (cp = dp->d_name, size = 0; size < namlen; size++)
