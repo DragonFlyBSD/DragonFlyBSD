@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.10 2006/10/19 21:22:13 pavalos Exp $
  */
 
 /*
@@ -60,9 +60,9 @@
 #include <string.h>
 #include <unistd.h>
 
-char *qfname = QUOTAFILENAME;
-char *qfextension[] = INITQFNAMES;
-char *quotagroup = QUOTAGROUP;
+const char *qfname = QUOTAFILENAME;
+const char *qfextension[] = INITQFNAMES;
+const char *quotagroup = QUOTAGROUP;
 
 union {
 	struct	fs	sblk;
@@ -70,7 +70,7 @@ union {
 } un;
 #define	sblock	un.sblk
 long dev_bsize = 1;
-long maxino;
+ino_t maxino;
 
 struct quotaname {
 	long	flags;
@@ -102,8 +102,8 @@ struct fileusage *
 	 addid(u_long, int, char *);
 char	*blockcheck(char *);
 void	 bread(daddr_t, char *, long);
-extern int checkfstab(int, int, int (*)(struct fstab *),
-				int (*)(char *, char *, long, int));
+extern int checkfstab(int, int, void * (*)(struct fstab *),
+				int (*)(char *, char *, struct quotaname *));
 int	 chkquota(char *, char *, struct quotaname *);
 void	 freeinodebuf(void);
 struct ufs1_dinode *
@@ -522,7 +522,7 @@ getnextinode(ino_t inumber)
 	static struct ufs1_dinode *dp;
 
 	if (inumber != nextino++ || inumber > maxino)
-		errx(1, "bad inode number %d to nextinode", inumber);
+		errx(1, "bad inode number %llu to nextinode", inumber);
 	if (inumber >= lastinum) {
 		readcnt++;
 		dblk = fsbtodb(&sblock, ino_to_fsba(&sblock, lastinum));

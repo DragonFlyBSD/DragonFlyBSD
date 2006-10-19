@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.9 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.10 2006/10/19 21:22:13 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ static int startdisk(struct disk *dk,
 		int (*checkit)(char *, char *, long, int));
 
 int
-checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
+checkfstab(int do_preen, int maxrun, int (*docheck)(struct fstab *),
            int (*chkit)(char *, char *, long, int))
 {
 	struct fstab *fsp;
@@ -90,13 +90,13 @@ checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
 		while ((fsp = getfsent()) != 0) {
 			if ((auxdata = (*docheck)(fsp)) == 0)
 				continue;
-			if (preen == 0 ||
+			if (do_preen == 0 ||
 			    (passno == 1 && fsp->fs_passno == 1)) {
 				if ((name = blockcheck(fsp->fs_spec)) != 0) {
 					if ((sumstatus = (*chkit)(name,
 					    fsp->fs_file, auxdata, 0)) != 0)
 						return (sumstatus);
-				} else if (preen)
+				} else if (do_preen)
 					return (8);
 			} else if (passno == 2 && fsp->fs_passno > 1) {
 				if ((name = blockcheck(fsp->fs_spec)) == NULL) {
@@ -108,10 +108,10 @@ checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
 				addpart(name, fsp->fs_file, auxdata);
 			}
 		}
-		if (preen == 0)
+		if (do_preen == 0)
 			return (0);
 	}
-	if (preen) {
+	if (do_preen) {
 		if (maxrun == 0)
 			maxrun = ndisks;
 		if (maxrun > ndisks)
