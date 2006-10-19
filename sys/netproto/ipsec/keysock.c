@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.13 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.14 2006/10/19 07:12:14 hsu Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -212,31 +212,17 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 	tlen = len;
 	m = mprev = NULL;
 	while (tlen > 0) {
-		if (tlen == len) {
-			MGETHDR(n, MB_DONTWAIT, MT_DATA);
-			n->m_len = MHLEN;
-		} else {
-			MGET(n, MB_DONTWAIT, MT_DATA);
-			n->m_len = MLEN;
-		}
-		if (!n) {
+		int nsize;
+
+		n = m_getl(tlen, MB_DONTWAIT, MT_DATA,
+			   (tlen == len) ? M_PKTHDR : 0, &nsize);
+		if (n == NULL) {
+			m_freem(m);
 			pfkeystat.in_nomem++;
 			return ENOBUFS;
 		}
-		if (tlen >= MCLBYTES) {	/*XXX better threshold? */
-			MCLGET(n, MB_DONTWAIT);
-			if ((n->m_flags & M_EXT) == 0) {
-				m_free(n);
-				m_freem(m);
-				pfkeystat.in_nomem++;
-				return ENOBUFS;
-			}
-			n->m_len = MCLBYTES;
-		}
+		n->m_len = (tlen < n->m_len) ? tlen : nsize;
 
-		if (tlen < n->m_len)
-			n->m_len = tlen;
-		n->m_next = NULL;
 		if (m == NULL)
 			m = mprev = n;
 		else {
@@ -244,10 +230,8 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 			mprev = n;
 		}
 		tlen -= n->m_len;
-		n = NULL;
 	}
 	m->m_pkthdr.len = len;
-	m->m_pkthdr.rcvif = NULL;
 	m_copyback(m, 0, len, (caddr_t)msg);
 
 	/* avoid duplicated statistics */
