@@ -32,7 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.7 2006/10/12 04:04:03 dillon Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.8 2006/10/19 20:51:40 pavalos Exp $
  */
 
 #include <unistd.h>
@@ -118,7 +118,7 @@ enum fixstate {DONTKNOW, NOFIX, FIX, IGNORE};
 
 struct inodesc {
 	enum fixstate id_fix;	/* policy on fixing errors */
-	int (*id_func)();	/* function to be applied to blocks of inode */
+	int (*id_func)(struct inodesc *);	/* function to be applied to blocks of inode */
 	ufs1_ino_t id_number;	/* inode number described */
 	ufs1_ino_t id_parent;	/* for DATA nodes, their parent */
 	ufs_daddr_t id_blkno;	/* current block number being examined */
@@ -247,55 +247,55 @@ struct	ufs1_dinode zino;
 struct fstab;
 
 
-void		adjust(struct inodesc *, int lcnt);
-ufs_daddr_t	allocblk(long frags);
-ufs1_ino_t		allocdir(ufs1_ino_t parent, ufs1_ino_t request, int mode);
-ufs1_ino_t		allocino(ufs1_ino_t request, int type);
-void		blkerror(ufs1_ino_t ino, char *type, ufs_daddr_t blk);
-char	       *blockcheck(char *name);
-int		bread(int fd, char *buf, ufs_daddr_t blk, long size);
+void		adjust(struct inodesc *, int);
+ufs_daddr_t	allocblk(long);
+ufs1_ino_t		allocdir(ufs1_ino_t, ufs1_ino_t, int);
+ufs1_ino_t		allocino(ufs1_ino_t, int);
+void		blkerror(ufs1_ino_t, char *, ufs_daddr_t);
+char	       *blockcheck(char *);
+int		bread(int, char *, ufs_daddr_t, long);
 void		bufinit(void);
-void		bwrite(int fd, char *buf, ufs_daddr_t blk, long size);
-void		cacheino(struct ufs1_dinode *dp, ufs1_ino_t inumber);
+void		bwrite(int, char *, ufs_daddr_t, long);
+void		cacheino(struct ufs1_dinode *, ufs1_ino_t);
 void		catch(int);
 void		catchquit(int);
-int		changeino(ufs1_ino_t dir, char *name, ufs1_ino_t newnum);
-int		checkfstab(int preen, int maxrun,
-			int (*docheck)(struct fstab *),
-			int (*chkit)(char *, char *, long, int));
-int		chkrange(ufs_daddr_t blk, int cnt);
-void		ckfini(int markclean);
-int		ckinode(struct ufs1_dinode *dp, struct inodesc *);
-void		clri(struct inodesc *, char *type, int flag);
+int		changeino(ufs1_ino_t, char *, ufs1_ino_t);
+int		checkfstab(int, int,
+			int (*)(struct fstab *),
+			int (*)(char *, char *, long, int));
+int		chkrange(ufs_daddr_t, int);
+void		ckfini(int);
+int		ckinode(struct ufs1_dinode *, struct inodesc *);
+void		clri(struct inodesc *, char *, int);
 int		clearentry(struct inodesc *);
-void		direrror(ufs1_ino_t ino, char *errmesg);
+void		direrror(ufs1_ino_t, char *);
 int		dirscan(struct inodesc *);
-int		dofix(struct inodesc *, char *msg);
+int		dofix(struct inodesc *, char *);
 void		ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
 void		ffs_fragacct(struct fs *, int, int32_t [], int);
 int		ffs_isblock(struct fs *, u_char *, ufs_daddr_t);
 void		ffs_setblock(struct fs *, u_char *, ufs_daddr_t);
-void		fileerror(ufs1_ino_t cwd, ufs1_ino_t ino, char *errmesg);
+void		fileerror(ufs1_ino_t, ufs1_ino_t, char *);
 int		findino(struct inodesc *);
 int		findname(struct inodesc *);
-void		flush(int fd, struct bufarea *bp);
-void		freeblk(ufs_daddr_t blkno, long frags);
-void		freeino(ufs1_ino_t ino);
+void		flush(int, struct bufarea *);
+void		freeblk(ufs_daddr_t, long);
+void		freeino(ufs1_ino_t);
 void		freeinodebuf(void);
-int		ftypeok(struct ufs1_dinode *dp);
-void		getblk(struct bufarea *bp, ufs_daddr_t blk, long size);
-struct bufarea *getdatablk(ufs_daddr_t blkno, long size);
-struct inoinfo *getinoinfo(ufs1_ino_t inumber);
-struct ufs1_dinode  *getnextinode(ufs1_ino_t inumber);
-void		getpathname(char *namebuf, ufs1_ino_t curdir, ufs1_ino_t ino);
-struct ufs1_dinode  *ginode(ufs1_ino_t inumber);
-void		infohandler(int sig);
+int		ftypeok(struct ufs1_dinode *);
+void		getblk(struct bufarea *, ufs_daddr_t, long);
+struct bufarea *getdatablk(ufs_daddr_t, long);
+struct inoinfo *getinoinfo(ufs1_ino_t);
+struct ufs1_dinode  *getnextinode(ufs1_ino_t);
+void		getpathname(char *, ufs1_ino_t, ufs1_ino_t);
+struct ufs1_dinode  *ginode(ufs1_ino_t);
+void		infohandler(int);
 void		inocleanup(void);
 void		inodirty(void);
-struct inostat *inoinfo(ufs1_ino_t inum);
-int		linkup(ufs1_ino_t orphan, ufs1_ino_t parentdir, char *name);
-int		makeentry(ufs1_ino_t parent, ufs1_ino_t ino, char *name);
-void		panic(const char *fmt, ...);
+struct inostat *inoinfo(ufs1_ino_t);
+int		linkup(ufs1_ino_t, ufs1_ino_t, char *);
+int		makeentry(ufs1_ino_t, ufs1_ino_t, char *);
+void		panic(const char *, ...);
 void		pass1(void);
 void		pass1b(void);
 int		pass1check(struct inodesc *);
@@ -304,11 +304,11 @@ void		pass3(void);
 void		pass4(void);
 int		pass4check(struct inodesc *);
 void		pass5(void);
-void		pfatal(const char *fmt, ...);
-void		pinode(ufs1_ino_t ino);
+void		pfatal(const char *, ...);
+void		pinode(ufs1_ino_t);
 void		propagate(void);
-void		pwarn(const char *fmt, ...);
-int		reply(char *question);
+void		pwarn(const char *, ...);
+int		reply(char *);
 void		setinodebuf(ufs1_ino_t);
-int		setup(char *dev);
+int		setup(char *);
 void		voidquit(int);
