@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/rconfig/server.c,v 1.3 2005/04/02 22:15:20 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/server.c,v 1.4 2006/10/20 14:50:42 pavalos Exp $
  */
 
 #include "defs.h"
@@ -156,7 +156,7 @@ server_connection(int fd)
     if (gethostname(buf, sizeof(buf)) == 0) {
 	fprintf(fo, "108 HELLO SERVER=%s\r\n", buf);
     } else {
-	fprintf(fo, "108 HELLO\r\n", buf);
+	fprintf(fo, "108 HELLO\r\n");
     }
     fflush(fo);
 
