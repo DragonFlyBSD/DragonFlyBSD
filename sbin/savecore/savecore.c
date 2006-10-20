@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.14 2005/01/05 09:14:34 maxim Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.13 2006/07/27 00:41:03 corecode Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.14 2006/10/20 18:30:12 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -150,10 +150,13 @@ main(int argc, char **argv)
 
 	openlog("savecore", LOG_PERROR, LOG_DAEMON);
 
-	while ((ch = getopt(argc, argv, "cdfkN:vzP:B:")) != -1)
+	while ((ch = getopt(argc, argv, "cD:dfkN:vzP:B:")) != -1)
 		switch(ch) {
 		case 'c':
 			clear = 1;
+			break;
+		case 'D':
+			strncpy(ddname, optarg, sizeof(ddname));
 			break;
 		case 'd':		/* Not documented. */
 		case 'v':
@@ -267,14 +270,17 @@ kmem_setup(void)
 	else
 		kernbase = KERNBASE;
 
-	len = sizeof dumpdev;
-	if (sysctlbyname("kern.dumpdev", &dumpdev, &len, NULL, 0) == -1) {
-		syslog(LOG_ERR, "sysctl: kern.dumpdev: %m");
-		exit(1);
-	}
-	if (dumpdev == NODEV) {
-		syslog(LOG_WARNING, "no core dump (no dumpdev)");
-		exit(1);
+	if (*ddname == 0) {
+		len = sizeof dumpdev;
+		if (sysctlbyname("kern.dumpdev", &dumpdev, &len, NULL, 0) == -1) {
+			syslog(LOG_ERR, "sysctl: kern.dumpdev: %m");
+			exit(1);
+		}
+		if (dumpdev == NODEV) {
+			syslog(LOG_WARNING, "no core dump (no dumpdev)");
+			exit(1);
+		}
+		find_dev(dumpdev);
 	}
 
 	kmem = Open(_PATH_KMEM, O_RDONLY);
@@ -292,7 +298,6 @@ kmem_setup(void)
 		    (long long)dumplo, kdumplo, DEV_BSIZE);
 	Lseek(kmem, (off_t)current_nl[X_DUMPMAG].n_value, L_SET);
 	Read(kmem, &dumpmag, sizeof(dumpmag));
-	find_dev(dumpdev);
 	dumpfd = Open(ddname, O_RDWR);
 	if (kernel)
 		return;
