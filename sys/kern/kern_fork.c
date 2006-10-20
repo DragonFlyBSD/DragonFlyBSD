@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.58 2006/10/10 15:40:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.59 2006/10/20 17:02:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -423,8 +423,9 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Inherit the virtual kernel structure (allows a virtual kernel
 	 * to fork to simulate multiple cpus).
 	 */
-	if ((p2->p_vkernel = p1->p_vkernel) != NULL)
-		vkernel_hold(p2->p_vkernel);
+	p2->p_vkernel = NULL;
+	if (p1->p_vkernel)
+		vkernel_inherit(p1, p2);
 
 	/*
 	 * Once we are on a pglist we may receive signals.  XXX we might

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.98 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.99 2006/10/20 17:02:19 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -521,6 +521,27 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_es = _udatasel;
 	regs->tf_fs = _udatasel;
 	regs->tf_ss = _udatasel;
+}
+
+/*
+ * Sanitize the trapframe for a virtual kernel passing control to a custom
+ * VM context.
+ *
+ * Allow userland to set or maintain PSL_RF, the resume flag.  This flag
+ * basically controls whether the return PC should skip the first instruction
+ * (as in an explicit system call) or re-execute it (as in an exception).
+ */
+int
+cpu_sanitize_frame(struct trapframe *frame)
+{
+	frame->tf_cs = _ucodesel;
+	frame->tf_ds = _udatasel;
+	frame->tf_es = _udatasel;
+	frame->tf_fs = _udatasel;
+	frame->tf_ss = _udatasel;
+	frame->tf_eflags &= (PSL_USER | PSL_RF);
+	frame->tf_eflags |= PSL_RESERVED_DEFAULT | PSL_I;
+	return(0);
 }
 
 /*

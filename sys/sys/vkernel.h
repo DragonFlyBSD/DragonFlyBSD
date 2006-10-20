@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.3 2006/09/13 21:05:22 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.4 2006/10/20 17:02:13 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -54,28 +54,47 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
+#ifndef _MACHINE_FRAME_H_
+#include <machine/frame.h>
+#endif
 
 struct vmspace_rb_tree;
 struct vmspace_entry;
 RB_PROTOTYPE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
 
+/*
+ * Process operating as virtual kernels manage multiple VM spaces.  The
+ * original VM space and trap context is saved in the process's vkernel
+ * structure.
+ */
 struct vkernel {
-	RB_HEAD(vmspace_rb_tree, vmspace_entry) vk_root;
-	struct vmspace *vk_orig_vmspace;	/* vkernel's vmspace */
-	struct vmspace_entry *vk_vvmspace;	/* selected vmspace */
-	struct spinlock vk_spin;
-	int vk_refs;
+	struct vmspace *vk_save_vmspace;	/* saved VM space */
+	struct trapframe vk_save_frame;		/* saved trap frame */
+	struct trapframe *vk_user_frame;	/* copyback to user process */
+	struct vkernel_common *vk_common;	/* shared data */
+	struct vmspace_entry *vk_current;
+};
+
+struct vkernel_common {
+	RB_HEAD(vmspace_rb_tree, vmspace_entry) vc_root;
+	struct spinlock vc_spin;
+	int vc_refs;
 };
 
 struct vmspace_entry {
 	void *id;
 	struct vmspace *vmspace;
+	int flags;
+	int refs;				/* when vk_current */
 	RB_ENTRY(vmspace_entry) rb_entry;
 };
 
 #ifdef _KERNEL
-void vkernel_hold(struct vkernel *vk);
-void vkernel_drop(struct vkernel *vk);
+
+void vkernel_inherit(struct proc *p1, struct proc *p2);
+void vkernel_exit(struct proc *p);
+int vkernel_trap(struct proc *p, struct trapframe *frame);
+
 #endif
 
 #else

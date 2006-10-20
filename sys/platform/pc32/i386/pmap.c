@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.58 2006/09/30 20:23:05 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.59 2006/10/20 17:02:19 dillon Exp $
  */
 
 /*
@@ -2812,7 +2812,6 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 	return (FALSE);
 }
 
-#define PMAP_REMOVE_PAGES_CURPROC_ONLY
 /*
  * Remove all pages from specified address space
  * this aids process exit speeds.  Also, this code
@@ -2828,36 +2827,34 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	pv_entry_t pv, npv;
 	vm_page_t m;
 	pmap_inval_info info;
+	int iscurrentpmap;
 
-#ifdef PMAP_REMOVE_PAGES_CURPROC_ONLY
-	if (!curproc || (pmap != vmspace_pmap(curproc->p_vmspace))) {
-		printf("warning: pmap_remove_pages called with non-current pmap\n");
-		return;
-	}
-#endif
+	if (curproc && pmap == vmspace_pmap(curproc->p_vmspace))
+		iscurrentpmap = 1;
+	else
+		iscurrentpmap = 0;
 
 	pmap_inval_init(&info);
 	crit_enter();
-	for(pv = TAILQ_FIRST(&pmap->pm_pvlist);
-		pv;
-		pv = npv) {
+	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {
 
 		if (pv->pv_va >= eva || pv->pv_va < sva) {
 			npv = TAILQ_NEXT(pv, pv_plist);
 			continue;
 		}
 
-#ifdef PMAP_REMOVE_PAGES_CURPROC_ONLY
-		pte = (unsigned *)vtopte(pv->pv_va);
-#else
-		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-#endif
-		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
+		if (iscurrentpmap)
+			pte = (unsigned *)vtopte(pv->pv_va);
+		else
+			pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
+		if (pmap->pm_active)
+			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 		tpte = *pte;
 
-/*
- * We cannot remove wired pages from a process' mapping at this time
- */
+		/*
+		 * We cannot remove wired pages from a process' mapping
+		 * at this time
+		 */
 		if (tpte & PG_W) {
 			npv = TAILQ_NEXT(pv, pv_plist);
 			continue;
@@ -3280,6 +3277,23 @@ pmap_activate(struct proc *p)
 #endif
 	p->p_thread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
 	load_cr3(p->p_thread->td_pcb->pcb_cr3);
+}
+
+void
+pmap_deactivate(struct proc *p)
+{
+	pmap_t	pmap;
+
+	pmap = vmspace_pmap(p->p_vmspace);
+#if defined(SMP)
+	atomic_clear_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
+#else
+	pmap->pm_active &= ~1;
+#endif
+	/*
+	 * XXX - note we do not adjust %cr3.  The caller is expected to
+	 * activate a new pmap or do a thread-exit.
+	 */
 }
 
 vm_offset_t

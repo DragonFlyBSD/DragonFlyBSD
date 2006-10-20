@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.10 2006/06/07 03:02:11 dillon Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.11 2006/10/20 17:02:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -30,6 +30,8 @@ struct sysmsg {
 	    __int64_t result64;          /* 64 bit result */
 	    __off_t offset;              /* off_t result */
 	} sm_result;
+	struct trapframe *sm_frame;	 /* trapframe - saved user context */
+	void *sm_unused;
 };
 
 struct lwp;
@@ -45,6 +47,7 @@ union sysunion;
 #define sysmsg_offset	sysmsg.sm_result.offset
 #define sysmsg_result32	sysmsg.sm_result.result32
 #define sysmsg_result64	sysmsg.sm_result.result64
+#define sysmsg_frame	sysmsg.sm_frame
 #endif
 
 #endif

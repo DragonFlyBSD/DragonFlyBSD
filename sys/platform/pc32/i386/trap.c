@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.81 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.82 2006/10/20 17:02:19 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/ktrace.h>
 #endif
 #include <sys/upcall.h>
+#include <sys/vkernel.h>
 #include <sys/sysproto.h>
 #include <sys/sysunion.h>
 
@@ -565,6 +566,15 @@ restart:
 				goto out;
 
 			ucode = T_PAGEFLT;
+
+			/*
+			 * The code is lost because tf_err is overwritten
+			 * with the fault address.  Store it in the upper
+			 * 16 bits of tf_trapno for vkernel consumption.
+			 */
+			if (p->p_vkernel && p->p_vkernel->vk_current) {
+				frame.tf_trapno |= (code << 16);
+			}
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -833,7 +843,19 @@ kernel_trap:
 		goto out2;
 	}
 
-	/* Translate fault for emulators (e.g. Linux) */
+	/*
+	 * Virtual kernel intercept - if the fault is directly related to a
+	 * VM context managed by a virtual kernel then let the virtual kernel
+	 * handle it.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		vkernel_trap(p, &frame);
+		goto out;
+	}
+
+	/*
+	 * Translate fault for emulators (e.g. Linux) 
+	 */
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
@@ -1301,12 +1323,33 @@ syscall2(struct trapframe frame)
 #endif
 	userenter(td);		/* lazy raise our priority */
 
+	/*
+	 * Misc
+	 */
 	sticks = (int)td->td_sticks;
+	orig_tf_eflags = frame.tf_eflags;
 
+	/*
+	 * Virtual kernel intercept - if a VM context managed by a virtual
+	 * kernel issues a system call the virtual kernel handles it, not us.
+	 * Restore the virtual kernel context and return from its system
+	 * call.  The current frame is copied out to the virtual kernel.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		error = vkernel_trap(p, &frame);
+		frame.tf_eax = error;
+		if (error)
+			frame.tf_eflags |= PSL_C;
+		error = EJUSTRETURN;
+		goto out;
+	}
+
+	/*
+	 * Get the system call parameters and account for time
+	 */
 	lp->lwp_md.md_regs = &frame;
 	params = (caddr_t)frame.tf_esp + sizeof(int);
 	code = frame.tf_eax;
-	orig_tf_eflags = frame.tf_eflags;
 
 	if (p->p_sysent->sv_prepsyscall) {
 		(*p->p_sysent->sv_prepsyscall)(
@@ -1375,6 +1418,12 @@ syscall2(struct trapframe frame)
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
 
+	/*
+	 * The syscall might manipulate the trap frame. If it does it
+	 * will probably return EJUSTRETURN.
+	 */
+	args.sysmsg_frame = &frame;
+
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
 #ifdef SMP
@@ -1389,6 +1438,7 @@ syscall2(struct trapframe frame)
 
 	error = (*callp->sy_call)(&args);
 
+out:
 	/*
 	 * MP SAFE (we may or may not have the MP lock at this point)
 	 */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.46 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.47 2006/10/20 17:02:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,10 +331,8 @@ interpret:
 	 * inherited by an exec.  This also allows a virtual kernel
 	 * to fork/exec unrelated applications.
 	 */
-	if (p->p_vkernel) {
-		vkernel_drop(p->p_vkernel);
-		p->p_vkernel = NULL;
-	}
+	if (p->p_vkernel)
+		vkernel_exit(p);
 
 	/* Stop profiling */
 	stopprofclock(p);

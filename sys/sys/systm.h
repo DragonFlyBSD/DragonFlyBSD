@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.42 2006/09/30 20:03:44 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.43 2006/10/20 17:02:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -116,6 +116,7 @@ struct tty;
 struct uio;
 struct globaldata;
 struct thread;
+struct trapframe;
 
 void	Debugger (const char *msg);
 void	backtrace(void);
@@ -126,6 +127,8 @@ int	seltrue (cdev_t dev, int which);
 int	ureadc (int, struct uio *);
 void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
+
+int	cpu_sanitize_frame (struct trapframe *);
 
 void	cpu_boot (int);
 void	cpu_rootconf (void);

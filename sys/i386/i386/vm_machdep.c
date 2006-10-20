@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.46 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.47 2006/10/20 17:02:19 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -65,6 +65,7 @@
 #include <machine/pcb.h>
 #include <machine/pcb_ext.h>
 #include <machine/vm86.h>
+#include <machine/segments.h>
 #include <machine/globaldata.h>	/* npxthread */
 #include <machine/ipl.h>	/* SWI_ */
 

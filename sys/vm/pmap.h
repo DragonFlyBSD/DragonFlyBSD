@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.18 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.19 2006/10/20 17:02:09 dillon Exp $
  */
 
 /*
@@ -142,6 +142,7 @@ void		 pmap_init_proc (struct proc *p, struct thread *td);
 void		 pmap_init_thread (struct thread *td);
 struct thread	*pmap_dispose_proc (struct proc *p);
 void		 pmap_activate (struct proc *p);
+void		 pmap_deactivate (struct proc *p);
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
 void		*pmap_kenter_temporary (vm_paddr_t pa, int i);
 void		 pmap_init2 (void);
