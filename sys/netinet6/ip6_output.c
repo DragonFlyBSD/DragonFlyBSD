@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.23 2006/10/14 06:22:08 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.24 2006/10/20 11:12:17 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -131,7 +131,7 @@ static int ip6_copyexthdr (struct mbuf **, caddr_t, int);
 static int ip6_insertfraghdr (struct mbuf *, struct mbuf *, int,
 				  struct ip6_frag **);
 static int ip6_insert_jumboopt (struct ip6_exthdrs *, u_int32_t);
-static int ip6_splithdr (struct mbuf *, struct ip6_exthdrs *);
+static struct mbuf *ip6_splithdr (struct mbuf *);
 
 /*
  * IP6 output. The packet in mbuf chain m contains a skeletal IP6
@@ -163,7 +163,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	struct ip6_exthdrs exthdrs;
 	struct in6_addr finaldst;
 	struct route_in6 *ro_pmtu = NULL;
-	int hdrsplit = 0;
+	boolean_t hdrsplit = FALSE;
 	int needipsec = 0;
 #ifdef IPSEC
 	int needipsectun = 0;
@@ -307,12 +307,13 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	 * separate IP6 header from the payload.
 	 */
 	if ((needipsec || optlen) && !hdrsplit) {
-		if ((error = ip6_splithdr(m, &exthdrs)) != 0) {
-			m = NULL;
+		exthdrs.ip6e_ip6 = ip6_splithdr(m);
+		if (exthdrs.ip6e_ip6 == NULL) {
+			error = ENOBUFS;
 			goto freehdrs;
 		}
 		m = exthdrs.ip6e_ip6;
-		hdrsplit++;
+		hdrsplit = TRUE;
 	}
 
 	/* adjust pointer */
@@ -325,12 +326,13 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	/* If this is a jumbo payload, insert a jumbo payload option. */
 	if (plen > IPV6_MAXPACKET) {
 		if (!hdrsplit) {
-			if ((error = ip6_splithdr(m, &exthdrs)) != 0) {
-				m = NULL;
+			exthdrs.ip6e_ip6 = ip6_splithdr(m);
+			if (exthdrs.ip6e_ip6 == NULL) {
+				error = ENOBUFS;
 				goto freehdrs;
 			}
 			m = exthdrs.ip6e_ip6;
-			hdrsplit++;
+			hdrsplit = TRUE;
 		}
 		/* adjust pointer */
 		ip6 = mtod(m, struct ip6_hdr *);
@@ -2484,32 +2486,30 @@ ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)
 }
 
 /*
- * Chop IPv6 header off from the payload.
+ * Separate the IPv6 header from the payload into its own mbuf.
+ *
+ * Returns the new mbuf chain or the original mbuf if no payload.
+ * Returns NULL if can't allocate new mbuf for header.
  */
-static int
-ip6_splithdr(struct mbuf *m, struct ip6_exthdrs *exthdrs)
+static struct mbuf *
+ip6_splithdr(struct mbuf *m)
 {
 	struct mbuf *mh;
-	struct ip6_hdr *ip6;
 
-	ip6 = mtod(m, struct ip6_hdr *);
-	if (m->m_len > sizeof(*ip6)) {
-		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
-		if (mh == 0) {
-			m_freem(m);
-			return ENOBUFS;
-		}
-		M_MOVE_PKTHDR(mh, m);
-		MH_ALIGN(mh, sizeof(*ip6));
-		m->m_len -= sizeof(*ip6);
-		m->m_data += sizeof(*ip6);
-		mh->m_next = m;
-		m = mh;
-		m->m_len = sizeof(*ip6);
-		bcopy((caddr_t)ip6, mtod(m, caddr_t), sizeof(*ip6));
-	}
-	exthdrs->ip6e_ip6 = m;
-	return 0;
+	if (m->m_len <= sizeof(struct ip6_hdr))		/* no payload */
+		return (m);
+
+	MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+	if (mh == NULL)
+		return (NULL);
+	mh->m_len = sizeof(struct ip6_hdr);
+	M_MOVE_PKTHDR(mh, m);
+	MH_ALIGN(mh, sizeof(struct ip6_hdr));
+	bcopy(mtod(m, caddr_t), mtod(mh, caddr_t), sizeof(struct ip6_hdr));
+	m->m_data += sizeof(struct ip6_hdr);
+	m->m_len -= sizeof(struct ip6_hdr);
+	mh->m_next = m;
+	return (mh);
 }
 
 /*
