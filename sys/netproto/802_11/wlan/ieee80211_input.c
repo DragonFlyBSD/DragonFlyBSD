@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.12 2006/03/14 23:24:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.4 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.5 2006/10/21 05:21:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -150,14 +150,6 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 
 	KASSERT(ni != NULL, ("null node"));
 	ni->ni_inact = ni->ni_inact_reload;
-
-#ifdef M_HASFCS
-	/* trim CRC here so WEP can find its own CRC at the end of packet. */
-	if (m->m_flags & M_HASFCS) {
-		m_adj(m, -IEEE80211_CRC_LEN);
-		m->m_flags &= ~M_HASFCS;
-	}
-#endif
 
 	type = -1;			/* undefined */
 	/*
