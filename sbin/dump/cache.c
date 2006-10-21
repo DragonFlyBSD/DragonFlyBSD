@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sbin/dump/cache.c,v 1.1.2.1 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/cache.c,v 1.4 2005/02/24 19:45:17 dillon Exp $
+ * $DragonFly: src/sbin/dump/cache.c,v 1.5 2006/10/21 04:10:02 pavalos Exp $
  */
 /*
  * Block cache for dump
@@ -136,7 +136,7 @@ cread(int fd, void *buf, size_t nbytes, off_t offset)
 	 * one-time calls and caching would be detrimental.
 	 */
 	mask = ~(off_t)(BlockSize - 1);
-	if (nbytes >= BlockSize ||
+	if (nbytes >= (unsigned)BlockSize ||
 	    ((offset ^ (offset + nbytes - 1)) & mask) != 0) {
 		return(pread(fd, buf, nbytes, offset));
 	}

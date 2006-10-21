@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.14 2006/04/03 01:58:48 dillon Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.15 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ blockest(struct ufs1_dinode *dp)
 	sizeest = howmany(dp->di_size, TP_BSIZE);
 	if (blkest > sizeest)
 		blkest = sizeest;
-	if (dp->di_size > sblock->fs_bsize * NDADDR) {
+	if (dp->di_size > (unsigned)sblock->fs_bsize * NDADDR) {
 		/* calculate the number of indirect blocks on the dump tape */
 		blkest +=
 			howmany(sizeest - NDADDR * sblock->fs_bsize / TP_BSIZE,
@@ -192,7 +192,8 @@ int
 mapdirs(ufs1_ino_t maxino, long *tape_size)
 {
 	struct	ufs1_dinode *dp;
-	int i, isdir, nodump;
+	int isdir, nodump;
+	unsigned int i;
 	char *map;
 	ufs1_ino_t ino;
 	struct ufs1_dinode di;
@@ -390,7 +391,7 @@ dumpino(struct ufs1_dinode *dp, ufs1_ino_t ino)
 		 */
 #ifdef FS_44INODEFMT
 		if (dp->di_size > 0 &&
-		    dp->di_size < sblock->fs_maxsymlinklen) {
+		    dp->di_size < (unsigned)sblock->fs_maxsymlinklen) {
 			spcl.c_addr[0] = 1;
 			spcl.c_count = 1;
 			writeheader(ino);
@@ -419,7 +420,7 @@ dumpino(struct ufs1_dinode *dp, ufs1_ino_t ino)
 		msg("Warning: undefined file type 0%o\n", dp->di_mode & IFMT);
 		return;
 	}
-	if (dp->di_size > NDADDR * sblock->fs_bsize)
+	if (dp->di_size > NDADDR * (unsigned)sblock->fs_bsize)
 		cnt = NDADDR * sblock->fs_frag;
 	else
 		cnt = howmany(dp->di_size, sblock->fs_fsize);
@@ -545,7 +546,7 @@ getino(ufs1_ino_t inum)
 	static struct ufs1_dinode inoblock[MAXINOPB];
 
 	curino = inum;
-	if (inum >= minino && inum < maxino)
+	if (inum >= (unsigned)minino && inum < (unsigned)maxino)
 		return (&inoblock[inum - minino]);
 	bread(fsbtodb(sblock, ino_to_fsba(sblock, inum)), (char *)inoblock,
 	    (int)sblock->fs_bsize);

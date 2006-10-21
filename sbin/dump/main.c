@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.14 2006/04/03 01:58:48 dillon Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.15 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -316,9 +316,9 @@ main(int argc, char **argv)
 	        getdumptime();		/* /etc/dumpdates snarfed */
 
 	msg("Date of this level %c dump: %s", level,
-		spcl.c_date == 0 ? "the epoch\n" : ctime(&spcl.c_date));
+		spcl.c_date == 0 ? "the epoch\n" : ctime((const time_t *)&spcl.c_date));
  	msg("Date of last level %c dump: %s", lastlevel,
-		spcl.c_ddate == 0 ? "the epoch\n" : ctime(&spcl.c_ddate));
+		spcl.c_ddate == 0 ? "the epoch\n" : ctime((const time_t *)&spcl.c_ddate));
 	msg("Dumping %s ", disk);
 	if (dt != NULL)
 		msgtail("(%s) ", dt->fs_file);

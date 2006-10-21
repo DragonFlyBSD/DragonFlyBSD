@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.10 2006/04/03 01:58:48 dillon Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.11 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -208,7 +208,7 @@ putdumptime(void)
 		quit("ftruncate (%s): %s\n", dumpdates, strerror(errno));
 	fclose(df);
 	msg("level %c dump on %s", level,
-		spcl.c_date == 0 ? "the epoch\n" : ctime(&spcl.c_date));
+		spcl.c_date == 0 ? "the epoch\n" : ctime((const time_t *)&spcl.c_date));
 }
 
 static void
