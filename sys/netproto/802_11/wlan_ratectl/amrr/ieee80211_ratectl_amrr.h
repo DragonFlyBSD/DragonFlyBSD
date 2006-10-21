@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.h,v 1.2 2004/12/31 22:41:45 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/Attic/ieee80211_ratectl_amrr.h,v 1.1 2006/09/01 15:12:12 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/Attic/ieee80211_ratectl_amrr.h,v 1.2 2006/10/21 08:37:04 sephe Exp $
  */
 
 #ifndef _IEEE80211_RATECTL_AMRR_H
@@ -54,8 +54,8 @@ struct amrr_softc {
 
 struct amrr_data {
   	/* AMRR statistics for this node */
-  	u_int	ad_tx_try_cnt[IEEE80211_AMRR_RATEIDX_MAX];
-  	u_int	ad_tx_failure_cnt; 
+	u_int	ad_tx_cnt;
+	u_int	ad_tx_failure_cnt;
 
         /* AMRR algorithm state for this node */
   	u_int	ad_success_threshold;

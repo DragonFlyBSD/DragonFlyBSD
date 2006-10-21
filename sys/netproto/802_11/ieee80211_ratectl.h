@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.1 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.2 2006/10/21 08:37:03 sephe Exp $
  */
 
 #ifndef _NET80211_IEEE80211_RATECTL_H
@@ -75,7 +75,6 @@ struct ieee80211_ratectl {
 #define IEEE80211_RATECTL_AMRR		2
 #define IEEE80211_RATECTL_MAX		3
 
-#define IEEE80211_AMRR_RATEIDX_MAX	4
 #define IEEE80211_RATEIDX_MAX		5
 
 #define IEEE80211_RATECTL_CAP(v)	(1 << (v))

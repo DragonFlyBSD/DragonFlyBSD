@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.3 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.4 2006/10/21 08:37:04 sephe Exp $
  */
 
 /*
@@ -114,7 +114,7 @@ amrr_findrate(void *arg __unused, struct ieee80211_node *ni,
 {
 	int i, rate_idx = ni->ni_txrate;
 
-	for (i = 0; i < rateidx_len && i < IEEE80211_AMRR_RATEIDX_MAX; ++i) {
+	for (i = 0; i < rateidx_len; ++i) {
 		if (rate_idx < 0)
 			break;
 		rateidx[i] = rate_idx--;
@@ -132,15 +132,23 @@ amrr_tx_complete(void *arg __unused, struct ieee80211_node *ni,
 		 int long_retries __unused, int is_fail)
 {
 	struct amrr_data *ad = ni->ni_rate_data;
+	u_int total_tries;
 	int i;
 
 	if (ad == NULL)
 		return;
 
-	for (i = 0; i < res_len && i < IEEE80211_AMRR_RATEIDX_MAX; ++i)
-		ad->ad_tx_try_cnt[i]++;
-	if (is_fail)
-		ad->ad_tx_failure_cnt++;
+	total_tries = 0;
+	for (i = 0; i < res_len; ++i)
+		total_tries += res[i].rc_res_tries;
+	ad->ad_tx_cnt += total_tries;
+
+	ad->ad_tx_failure_cnt += total_tries;
+	if (res_len == 1 && !is_fail) {
+		KKASSERT(ad->ad_tx_failure_cnt != 0);
+		/* One packet is successfully transmitted at desired rate */
+		ad->ad_tx_failure_cnt--;
+	}
 }
 
 static void
@@ -175,10 +183,7 @@ amrr_update(struct amrr_softc *asc, struct ieee80211_node *ni, int rate)
 			return;
 	}
 
-	ad->ad_tx_try_cnt[0] = 0;
-	ad->ad_tx_try_cnt[1] = 0;
-	ad->ad_tx_try_cnt[2] = 0;
-	ad->ad_tx_try_cnt[3] = 0;
+	ad->ad_tx_cnt = 0;
 	ad->ad_tx_failure_cnt = 0;
   	ad->ad_success = 0;
   	ad->ad_recovery = 0;
@@ -319,25 +324,17 @@ amrr_ratectl(void *arg, struct ieee80211_node *ni)
 		return;
 	}
 
-#define is_success(ad) \
-(ad->ad_tx_try_cnt[1]  < (ad->ad_tx_try_cnt[0] / 10))
-#define is_enough(ad) \
-(ad->ad_tx_try_cnt[0] > 10)
-#define is_failure(ad) \
-(ad->ad_tx_try_cnt[1] > (ad->ad_tx_try_cnt[0] / 3))
-#define is_max_rate(ni) \
-((ni->ni_txrate + 1) >= ni->ni_rates.rs_nrates)
-#define is_min_rate(ni) \
-(ni->ni_txrate == 0)
+#define is_success(ad)	(ad->ad_tx_failure_cnt < (ad->ad_tx_cnt / 10))
+#define is_enough(ad)	(ad->ad_tx_cnt > 10)
+#define is_failure(ad)	(ad->ad_tx_failure_cnt > (ad->ad_tx_cnt / 3))
+#define is_max_rate(ni)	((ni->ni_txrate + 1) >= ni->ni_rates.rs_nrates)
+#define is_min_rate(ni)	(ni->ni_txrate == 0)
 
 	old_rate = ni->ni_txrate;
   
-  	DPRINTF(asc, 10, "cnt0: %d cnt1: %d cnt2: %d cnt3: %d -- "
+  	DPRINTF(asc, 10, "tx_cnt: %u tx_failure_cnt: %u -- "
 		"threshold: %d\n",
-		ad->ad_tx_try_cnt[0],
-		ad->ad_tx_try_cnt[1],
-		ad->ad_tx_try_cnt[2],
-		ad->ad_tx_try_cnt[3],
+		ad->ad_tx_cnt, ad->ad_tx_failure_cnt,
 		ad->ad_success_threshold);
 
   	if (is_success(ad) && is_enough(ad)) {
@@ -377,10 +374,7 @@ amrr_ratectl(void *arg, struct ieee80211_node *ni)
    	}
 	if (is_enough(ad) || old_rate != ni->ni_txrate) {
 		/* reset counters. */
-		ad->ad_tx_try_cnt[0] = 0;
-		ad->ad_tx_try_cnt[1] = 0;
-		ad->ad_tx_try_cnt[2] = 0;
-		ad->ad_tx_try_cnt[3] = 0;
+		ad->ad_tx_cnt = 0;
 		ad->ad_tx_failure_cnt = 0;
 	}
 	if (old_rate != ni->ni_txrate)

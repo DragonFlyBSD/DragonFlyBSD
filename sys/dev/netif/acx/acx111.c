@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.4 2006/09/01 15:13:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.5 2006/10/21 08:37:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +103,7 @@
 #endif
 
 #define ACX111_ONOE_RATEIDX_MAX		4
-#define ACX111_AMRR_RATEIDX_MAX		IEEE80211_AMRR_RATEIDX_MAX
+#define ACX111_AMRR_RATEIDX_MAX		4
 
 /*
  * NOTE:
@@ -291,7 +291,7 @@ static const int
 acx111_onoe_tries[IEEE80211_RATEIDX_MAX] = { 4, 1, 1, 3, 0 };
 
 static const int
-acx111_amrr_tries[IEEE80211_RATEIDX_MAX] = { 2, 1, 1, 3, 0 };
+acx111_amrr_tries[IEEE80211_RATEIDX_MAX] = { 4, 1, 1, 3, 0 };
 
 static int	acx111_init(struct acx_softc *);
 static int	acx111_init_memory(struct acx_softc *);
