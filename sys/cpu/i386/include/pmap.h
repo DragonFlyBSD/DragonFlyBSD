@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.10 2006/05/21 03:43:44 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.11 2006/10/21 04:28:21 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -222,6 +222,7 @@ typedef struct pmap_statistics *pmap_statistics_t;
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
+	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */

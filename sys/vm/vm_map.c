@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.50 2006/09/13 22:25:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.51 2006/10/21 04:28:22 dillon Exp $
  */
 
 /*
@@ -195,6 +195,8 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	struct vmspace *vm;
 
 	vm = zalloc(vmspace_zone);
+	bzero(&vm->vm_startcopy,
+		(char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
 	vm_map_init(&vm->vm_map, min, max);
 	pmap_pinit(vmspace_pmap(vm));
 	vm->vm_map.pmap = vmspace_pmap(vm);		/* XXX */

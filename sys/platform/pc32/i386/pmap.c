@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.59 2006/10/20 17:02:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.60 2006/10/21 04:28:20 dillon Exp $
  */
 
 /*
@@ -145,6 +145,8 @@
 static int protection_codes[8];
 
 static struct pmap kernel_pmap_store;
+static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
+
 pmap_t kernel_pmap;
 
 vm_paddr_t avail_start;	/* PA of first available physical page */
@@ -1020,6 +1022,11 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 	return pmap_unwire_pte_hold(pmap, mpte, info);
 }
 
+/*
+ * Initialize pmap0/vmspace0 - the kernel pmap.  This pmap is not added
+ * to pmap_list because it, and IdlePTD, represents the template used
+ * to update all other pmaps.
+ */
 void
 pmap_pinit0(struct pmap *pmap)
 {
@@ -1090,14 +1097,17 @@ pmap_pinit(struct pmap *pmap)
 /*
  * Wire in kernel global address entries.  To avoid a race condition
  * between pmap initialization and pmap_growkernel, this procedure
- * should be called after the vmspace is attached to the process
- * but before this pmap is activated.
+ * adds the pmap to the master list (which growkernel scans to update),
+ * then copies the template.
  */
 void
 pmap_pinit2(struct pmap *pmap)
 {
+	crit_enter();
+	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
 	/* XXX copies current process, does not fill in MPPTDI */
 	bcopy(PTD + KPTDI, pmap->pm_pdir + KPTDI, nkpt * PTESIZE);
+	crit_exit();
 }
 
 /*
@@ -1292,6 +1302,7 @@ pmap_release(struct pmap *pmap)
 	ptdpg = NULL;
 retry:
 	crit_enter();
+	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
 	curgeneration = object->generation;
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = n) {
 		n = TAILQ_NEXT(p, listq);
@@ -1338,16 +1349,11 @@ SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_LONG|CTLFLAG_RD,
 /*
  * Grow the number of kernel page table entries, if needed.
  */
-struct pmap_growkernel_info {
-	pd_entry_t newpdir;
-};
-
-static int pmap_growkernel_callback(struct proc *p, void *data);
 
 void
 pmap_growkernel(vm_offset_t addr)
 {
-	struct pmap_growkernel_info info;
+	struct pmap *pmap;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t newpdir;
@@ -1385,30 +1391,15 @@ pmap_growkernel(vm_offset_t addr)
 		nkpt++;
 
 		/*
-		 * vm_fork and friends copy nkpt page table pages to the high
-		 * side of a new process's pmap.  This occurs after the 
-		 * process has been added to allproc, so scanning the proc
-		 * list afterwords should be sufficient to fixup existing
-		 * processes.
+		 * This update must be interlocked with pmap_pinit2.
 		 */
-		info.newpdir = newpdir;
-		allproc_scan(pmap_growkernel_callback, &info);
-		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+		TAILQ_FOREACH(pmap, &pmap_list, pm_pmnode) {
+			*pmap_pde(pmap, kernel_vm_end) = newpdir;
+		}
+		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
+				~(PAGE_SIZE * NPTEPG - 1);
 	}
 	crit_exit();
-}
-
-static int
-pmap_growkernel_callback(struct proc *p, void *data)
-{
-	struct pmap_growkernel_info *info = data;
-	struct pmap *pmap;
-
-	if (p->p_vmspace) {
-		pmap = vmspace_pmap(p->p_vmspace);
-		*pmap_pde(pmap, kernel_vm_end) = info->newpdir;
-	}
-	return(0);
 }
 
 /*
@@ -2187,7 +2178,17 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	vm_page_t p, mpte;
 	int objpgs;
 
+	/*
+	 * We can't preinit if read access isn't set or there is no pmap
+	 * or object.
+	 */
 	if ((prot & VM_PROT_READ) == 0 || pmap == NULL || object == NULL)
+		return;
+
+	/*
+	 * We can't preinit if the pmap is not the current pmap
+	 */
+	if (curproc == NULL || pmap != vmspace_pmap(curproc->p_vmspace))
 		return;
 
 #if 0
@@ -2379,7 +2380,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	 */
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
 		return;
-	if (!curproc || (pmap != vmspace_pmap(curproc->p_vmspace)))
+	if (curproc == NULL || (pmap != vmspace_pmap(curproc->p_vmspace)))
 		return;
 
 	object = entry->object.vm_object;
