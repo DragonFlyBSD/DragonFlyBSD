@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/libi386/Makefile,v 1.32 2003/07/02 12:45:45 ru Exp $
-# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.6 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.7 2006/10/22 18:43:52 dillon Exp $
 #
 LIB=			i386
 INTERNALLIB=		true
@@ -36,16 +36,16 @@ CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}/../btx/lib \
 CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
 
 # Make "machine" required for all objects
-# (based on the more complete case in sys/i386/boot/Makefile.inc)
+# (based on the more complete case in sys/arch/i386/boot/Makefile.inc)
 ${SRCS:M*.c:R:S/$/.o/g}: machine
 
 # If it's not there, don't consider it a target
-.if exists(${.CURDIR}/../../../i386/include)
+.if exists(${.CURDIR}/../../../arch/i386/include)
 beforedepend ${OBJS}: machine
 
 CLEANFILES+=	machine
 machine:
-	${LN} -sf ${.CURDIR}/../../../i386/include machine
+	${LN} -sf ${.CURDIR}/../../../arch/i386/include machine
 
 .endif
 
