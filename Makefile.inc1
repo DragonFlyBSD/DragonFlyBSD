@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.88 2006/09/27 12:10:33 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.89 2006/10/22 16:12:48 dillon Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -472,7 +472,7 @@ KERNCONF?=	GENERIC
 INSTKERNNAME?=	kernel
 
 KRNLSRCDIR=	${.CURDIR}/sys
-KRNLCONFDIR=	${KRNLSRCDIR}/${TARGET}/conf
+KRNLCONFDIR=	${KRNLSRCDIR}/config
 KRNLOBJDIR=	${OBJTREE}${KRNLSRCDIR}
 KERNCONFDIR?=	${KRNLCONFDIR}
 

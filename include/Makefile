@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.29 2006/06/25 11:02:37 corecode Exp $
+# $DragonFly: src/include/Makefile,v 1.30 2006/10/22 16:12:50 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -159,12 +159,12 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 opencrypto/*.h \
 		${DESTDIR}/usr/include/crypto
-.if exists(${.CURDIR}/../sys/${MACHINE_ARCH}/include)
-	cd ${.CURDIR}/../sys/${MACHINE_ARCH}/include; \
+.if exists(${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include)
+	cd ${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine
-.if exists(${.CURDIR}/../sys/${MACHINE_ARCH}/include/pc)
-	cd ${.CURDIR}/../sys/${MACHINE_ARCH}/include/pc; \
+.if exists(${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include/pc)
+	cd ${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include/pc; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine/pc
 .endif
@@ -198,7 +198,7 @@ symlinks:	mtree_setup
 	${LN} -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
 	rm -rf ${DESTDIR}/usr/include/machine
-	${LN} -s ../../sys/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
+	${LN} -s ../../sys/arch/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
 	rm -rf ${DESTDIR}/usr/include/i4b_machine
 	${LN} -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
 
