@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.10 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.11 2006/10/22 18:42:12 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -100,6 +100,11 @@ int	 strncmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
 int	_fnmatch(const char *, const char *, int, int);
 
+/*
+ * memset can't be an inline, it is used by gcc-4.x directly.
+ */
+void	*memset(void *b, int c, size_t len);
+
 static __inline int
 fnmatch(const char *pattern, const char *string, int flags)
 {
@@ -110,19 +115,6 @@ static __inline int
 memcmp(const void *b1, const void *b2, size_t len)
 {
 	return (bcmp(b1, b2, len));
-}
-
-static __inline void *
-memset(void *b, int c, size_t len)
-{
-	char *bb;
-
-	if (c == 0)
-		bzero(b, len);
-	else
-		for (bb = (char *)b; len--; )
-			*bb++ = c;
-	return (b);
 }
 
 /* fnmatch() return values. */

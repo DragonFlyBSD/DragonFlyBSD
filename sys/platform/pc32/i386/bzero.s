@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bzero.s,v 1.3 2006/09/30 19:25:13 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bzero.s,v 1.4 2006/10/22 18:42:11 dillon Exp $
  */
 /*
  * void bzero(void *buf, u_int len)	(arguments passed on stack)
@@ -48,7 +48,10 @@
 
 	.text
 
-ENTRY(generic_memset)
+/*
+ * GCC-4.x may call memset directly, we can't use an indirect pointer.
+ */
+ENTRY(memset)
 	pushl	%edi
 	movl	4+4(%esp),%edi
 	movl	12+4(%esp),%ecx
