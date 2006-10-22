@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ofw/libofw/Makefile,v 1.8 2002/11/10 19:17:36 jake Exp $
-# $DragonFly: src/sys/boot/ofw/libofw/Makefile,v 1.2 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/sys/boot/ofw/libofw/Makefile,v 1.3 2006/10/22 16:09:19 dillon Exp $
 
 LIB=		ofw
 INTERNALLIB=	true
@@ -24,7 +24,7 @@ CFLAGS+= -DDISK_DEBUG
 .endif
 
 machine:
-	${LN} -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
+	${LN} -sf ${.CURDIR}/../../../arch/${MACHINE_ARCH}/include machine
 
 CLEANFILES+=	machine
 

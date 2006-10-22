@@ -1,0 +1,46 @@
+# This file tells config what files go into building a kernel,
+# files marked standard are always included.
+#
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.1 2006/10/22 16:09:14 dillon Exp $
+#
+bf_enc.o			optional	ipsec ipsec_esp		\
+	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
+	compile-with	"${CC} -c -I$S/crypto/blowfish/arch/i386 ${ASM_CFLAGS} ${WERROR} ${.IMPSRC}"	\
+	no-implicit-rule
+crypto/des/arch/i386/des_enc.S		optional	ipsec ipsec_esp
+crypto/des/des_ecb.c			optional	netsmbcrypto
+crypto/des/arch/i386/des_enc.S		optional	netsmbcrypto
+crypto/des/des_setkey.c			optional	netsmbcrypto
+bf_enc.o			optional	crypto		\
+	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
+	compile-with	"${CC} -c -I$S/crypto/blowfish/arch/i386 ${ASM_CFLAGS} ${WERROR} ${.IMPSRC}"	\
+	no-implicit-rule
+crypto/des/arch/i386/des_enc.S		optional	crypto
+crypto/des/des_ecb.c			optional	crypto
+crypto/des/des_setkey.c			optional	crypto
+emulation/linux/i386/linprocfs/linprocfs_misc.c		optional	linprocfs
+emulation/linux/i386/linprocfs/linprocfs_subr.c		optional	linprocfs
+emulation/linux/i386/linprocfs/linprocfs_vfsops.c	optional	linprocfs
+emulation/linux/i386/linprocfs/linprocfs_vnops.c	optional	linprocfs
+vfs/smbfs/smbfs_io.c		optional	smbfs
+vfs/smbfs/smbfs_node.c		optional	smbfs
+vfs/smbfs/smbfs_smb.c		optional	smbfs
+vfs/smbfs/smbfs_subr.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c	optional	smbfs
+vfs/smbfs/smbfs_vnops.c		optional	smbfs
+i386/i386/atomic.c		standard				\
+	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+vkernel/vkernel/autoconf.c	standard
+#
+# DDB XXX
+i386/i386/elf_machdep.c		standard
+i386/i386/in_cksum2.s		optional	inet
+i386/i386/ktr.c			optional	ktr
+#vkernel/vkernel/pmap.c		standard
+#vkernel/vkernel/pmap_inval.c	standard
+#vkernel/vkernel/spinlock.s	standard
+#vkernel/vkernel/copyin.c	standard
+#vkernel/vkernel/swtch.s		standard
+#vkernel/vkernel/trap.c		standard
+#vkernel/vkernel/clock.c		standard
+#vkernel/vkernel/float.c		standard

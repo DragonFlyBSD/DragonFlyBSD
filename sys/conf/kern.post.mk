@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.1 2006/07/02 00:55:08 corecode Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.2 2006/10/22 16:09:19 dillon Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -42,11 +42,11 @@ kernel-clean:
 
 #lint: /tmp
 #	@lint -hbxn -DGENERIC -Dvolatile= ${COPTS} \
-#	  $S/$M/$M/Locore.c ${CFILES} ioconf.c | \
+#	  $S/arch/$M/$M/Locore.c ${CFILES} ioconf.c | \
 #	    grep -v 'struct/union .* never defined' | \
 #	    grep -v 'possible pointer alignment problem'
 
-locore.o: $S/$M/$M/locore.s assym.s
+locore.o: $S/arch/$M/$M/locore.s assym.s
 	${NORMAL_S}
 
 # This is a hack.  BFD "optimizes" away dynamic mode if there are no
@@ -63,8 +63,8 @@ hack.So: Makefile
 assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
-genassym.o: $S/$M/$M/genassym.c
-	${CC} -c ${CFLAGS:N-fno-common} $S/$M/$M/genassym.c
+genassym.o: $S/arch/$M/$M/genassym.c
+	${CC} -c ${CFLAGS:N-fno-common} $S/arch/$M/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 

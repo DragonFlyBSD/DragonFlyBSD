@@ -1,0 +1,9 @@
+#
+# $DragonFly: src/sys/platform/vkernel/conf/options,v 1.1 2006/10/22 16:09:14 dillon Exp $
+#
+
+# The cpu type
+#
+I586_CPU                opt_global.h
+I686_CPU                opt_global.h
+

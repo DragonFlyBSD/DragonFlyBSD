@@ -1,9 +1,9 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.13 2006/08/25 22:37:08 swildner Exp $
+# $DragonFly: src/sys/Makefile,v 1.14 2006/10/22 16:09:09 dillon Exp $
 
 # This is the old aout only boot loader.
-.if	exists(${.CURDIR}/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
-SUBDIR=	${MACHINE_ARCH}/boot
+.if	exists(${.CURDIR}/arch/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
+SUBDIR=	arch/${MACHINE_ARCH}/boot
 .elif	exists(${.CURDIR}/boot) && ${MACHINE_ARCH} == "i386" && ${OBJFORMAT} == "elf"
 SUBDIR=	boot
 .endif

@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.10 2006/05/14 18:07:29 swildner Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.11 2006/10/22 16:09:22 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -14,7 +14,7 @@ SUBDIR= libmchain
 # are placed in each source directory.  We need to have links to tags files
 # from the generic directories that are relative to the machine type, even
 # via remote mounts; therefore we use symlinks to $SYSTAGS, which points at
-# ${SYSDIR}/${MACHINE_ARCH}/tags.
+# ${SYSDIR}/arch/${MACHINE_ARCH}/tags.
 
 SYSTAGS=/var/db/sys_tags
 SYSDIR=${.CURDIR:H}

@@ -1,5 +1,5 @@
 # $FreeBSD$
-# $DragonFly: src/sys/boot/efi/loader/Makefile,v 1.2 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/sys/boot/efi/loader/Makefile,v 1.3 2006/10/22 16:09:16 dillon Exp $
 
 .PATH: ${.CURDIR}/../common
 
@@ -113,7 +113,7 @@ start.o: ${.CURDIR}/../libefi/arch/${MACHINE_ARCH}/start.S
 	${CC} -c ${CFLAGS} ${.IMPSRC}
 
 machine:
-	${LN} -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
+	${LN} -sf ${.CURDIR}/../../../arch/${MACHINE_ARCH}/include machine
 
 .include <bsd.prog.mk>
 

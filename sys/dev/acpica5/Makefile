@@ -1,11 +1,11 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.12 2006/07/02 00:49:38 corecode Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.13 2006/10/22 16:09:19 dillon Exp $
 
 SYSDIR?= ${.CURDIR}/../..
 .include "Makefile.inc"
 
 .PATH:	${SYSDIR}/${OSACPI_MD_DIR}			\
-	${SYSDIR}/${MACHINE_ARCH}/isa			\
+	${SYSDIR}/arch/${MACHINE_ARCH}/isa		\
 	${SYSDIR}/bus/pci 				\
 	${.CURDIR}/Osd					\
 	${.CURDIR}					\

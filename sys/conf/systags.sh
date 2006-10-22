@@ -33,7 +33,7 @@
 #
 #	@(#)systags.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/conf/systags.sh,v 1.7 1999/08/28 00:41:02 peter Exp $
-# $DragonFly: src/sys/conf/systags.sh,v 1.2 2003/06/17 04:28:20 dillon Exp $
+# $DragonFly: src/sys/conf/systags.sh,v 1.3 2006/10/22 16:09:19 dillon Exp $
 #
 # systags.sh - construct a system tags file using dependence relations
 #	in a .depend file
@@ -42,7 +42,7 @@
 
 rm -f tags tags.tmp tags.cfiles tags.sfiles tags.hfiles
 MACHINE=`uname -m`
-sed -e "s, machine/, ../../$MACHINE/include/,g" \
+sed -e "s, machine/, ../../arch/$MACHINE/include/,g" \
 	-e 's,[a-z][^/    ]*/\.\./,,g' .depend | awk '{
 		for (i = 1; i <= NF; ++i) {
 			t = substr($i, length($i) - 1)

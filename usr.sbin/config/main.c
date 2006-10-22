@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.16 2006/05/22 06:26:30 swildner Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.17 2006/10/22 16:09:08 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@
 #define FALSE	(0)
 #endif
 
-#define	CDIR	"../../compile/"
+#define	CDIR	"../compile/"
 
 char *	PREFIX;
 char 	destdir[MAXPATHLEN];
@@ -163,13 +163,13 @@ main(int argc, char *argv[])
 	newbus_ioconf();
 	
 	/*
-	 * "machine" points into <ARCH>/include - obsoleted by "arch"
+	 * "machine" points into arch/<MACHINE_ARCH>/include
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../%s/include",
+		snprintf(linkdest, sizeof(linkdest), "../../arch/%s/include",
 		    machinename);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/%s/include",
+		snprintf(linkdest, sizeof(linkdest), "%s/arch/%s/include",
 		    srcdir, machinename);
 	symlink(linkdest, path("machine"));
 
@@ -177,10 +177,10 @@ main(int argc, char *argv[])
 	 * "arch" points into <ARCH>
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../%s",
+		snprintf(linkdest, sizeof(linkdest), "../../arch/%s",
 		    machinename);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/%s",
+		snprintf(linkdest, sizeof(linkdest), "%s/arch/%s",
 		    srcdir, machinename);
 	symlink(linkdest, path("arch"));
 
@@ -231,7 +231,7 @@ static void
 get_srcdir(void)
 {
 	
-	if (realpath("../..", srcdir) == NULL)
+	if (realpath("..", srcdir) == NULL)
 		errx(2, "Unable to find root of source tree");
 }
 

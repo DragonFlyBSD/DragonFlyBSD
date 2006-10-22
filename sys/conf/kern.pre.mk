@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.1 2006/07/02 00:55:08 corecode Exp $
+# $DragonFly: src/sys/conf/kern.pre.mk,v 1.2 2006/10/22 16:09:19 dillon Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -20,7 +20,7 @@ COPTFLAGS+= ${_CPUCFLAGS}
 .endif
 # don't use -I- so we can use proper source-relative locality for local 
 # includes
-INCLUDES= -nostdinc -I. -I$S
+INCLUDES= -nostdinc -I. -I$S -I$S/arch
 # This hack is to allow kernel compiles to succeed on machines w/out srcdist
 .if exists($S/../include)
 INCLUDES+= -I$S/../include
@@ -64,17 +64,17 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
-GEN_CFILES= $S/$M/$M/genassym.c
+GEN_CFILES= $S/arch/$M/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
-SYSTEM_SFILES= $S/$M/$M/locore.s
+SYSTEM_SFILES= $S/arch/$M/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_LD= @${LD} -Bdynamic -T $S/conf/ldscript.$M \
+SYSTEM_LD= @${LD} -Bdynamic -T $S/arch/$M/conf/ldscript.$M \
 	-export-dynamic -dynamic-linker /red/herring \
 	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
 SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \
 	${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
-SYSTEM_DEP+= $S/conf/ldscript.$M
+SYSTEM_DEP+= $S/arch/$M/conf/ldscript.$M
 
 
 # Normalize output files to make it absolutely crystal clear to

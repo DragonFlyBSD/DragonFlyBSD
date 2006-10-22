@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.25 2006/07/02 00:55:08 corecode Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.26 2006/10/22 16:09:19 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -81,7 +81,11 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # Add -I paths for system headers.  Individual KLD makefiles don't
 # need any -I paths for this.  Similar defaults for .PATH can't be
 # set because there are no standard paths for non-headers.
-CFLAGS+=	-I. -I@
+#
+# We want traditional architecture paths like <i386/i386/blah.h>
+# to work so we add -I@/arch
+#
+CFLAGS+=	-I. -I@ -I@/arch
 
 # Add a -I path to standard headers like <stddef.h>.  Use a relative
 # path to src/include if possible.  If the @ symlink hasn't been built
@@ -167,9 +171,9 @@ S=	${SYSDIR}
 ${_ILINKS}:
 	@case ${.TARGET} in \
 	arch) \
-		path=${SYSDIR}/${MACHINE_ARCH} ;; \
+		path=${SYSDIR}/arch/${MACHINE_ARCH} ;; \
 	machine) \
-		path=${SYSDIR}/${MACHINE_ARCH}/include ;; \
+		path=${SYSDIR}/arch/${MACHINE_ARCH}/include ;; \
 	@) \
 		path=${SYSDIR} ;; \
 	arch_*) \
