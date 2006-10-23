@@ -1,8 +1,9 @@
 # VKERNEL - test rid for virtual kernel
 #
-# $DragonFly: src/sys/config/VKERNEL,v 1.1 2006/10/22 16:09:19 dillon Exp $
+# $DragonFly: src/sys/config/VKERNEL,v 1.2 2006/10/23 18:01:15 dillon Exp $
 
-machine		vkernel
+machine		vkernel		# machine architecture
+cpu_arch	i386		# creates <cpu/blah.h> infrastructure
 ident		VKERNEL
 maxusers	0
 

@@ -7,6 +7,6 @@
  * and <osreldate.h> system.
  *
  * $FreeBSD: src/usr.sbin/config/configvers.h,v 1.19.2.1 2001/12/19 18:09:32 silby Exp $
- * $DragonFly: src/usr.sbin/config/configvers.h,v 1.6 2006/10/22 16:09:08 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/configvers.h,v 1.7 2006/10/23 18:01:13 dillon Exp $
  */
-#define	CONFIGVERS	400023
+#define	CONFIGVERS	400024

@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.10 2005/01/12 00:26:03 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.11 2006/10/23 18:01:13 dillon Exp $
  */
 
 #include <ctype.h>
@@ -57,6 +57,7 @@ struct kt {
 	{ "config",	CONFIG },
 	{ "controller",	CONTROLLER },
 	{ "cpu",	CPU },
+	{ "cpu_arch",	CPU_ARCH },
 	{ "device",	DEVICE },
 	{ "disable",	DISABLE },
 	{ "disk",	DISK },

@@ -13,6 +13,7 @@
 %token	CONFLICTS
 %token	CONTROLLER
 %token	CPU
+%token	CPU_ARCH
 %token	DEVICE
 %token	DISABLE
 %token	DISK
@@ -83,7 +84,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.11 2005/01/12 00:26:03 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.12 2006/10/23 18:01:13 dillon Exp $
  */
 
 #include <ctype.h>
@@ -137,6 +138,14 @@ Config_spec:
 			yyline);
 		}
 		machinename = $2;
+	      } |
+	CPU_ARCH Save_id
+	      = {
+		if (cpuarchname != NULL) {
+		    errx(1, "%d: only one cpu_arch directive is allowed",
+			yyline);
+		}
+		cpuarchname = $2;
 	      } |
 	CPU Save_id
 	      = {

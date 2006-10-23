@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.17 2006/10/22 16:09:08 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.18 2006/10/23 18:01:13 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -160,6 +160,11 @@ main(int argc, char *argv[])
 		printf("Specify machine type, e.g. ``machine i386''\n");
 		exit(1);
 	}
+	if (strcmp(machinename, "vkernel") == 0 && cpuarchname == NULL) {
+		printf("Specify cpu_arch for virtual kernel, e.g. "
+		       "``cpu_arch i386''\n");
+		exit(1);
+	}
 	newbus_ioconf();
 	
 	/*
@@ -174,7 +179,7 @@ main(int argc, char *argv[])
 	symlink(linkdest, path("machine"));
 
 	/*
-	 * "arch" points into <ARCH>
+	 * "arch" points into <ARCH>/<MACHINE_ARCH>
 	 */
 	if (*srcdir == '\0')
 		snprintf(linkdest, sizeof(linkdest), "../../arch/%s",
@@ -183,6 +188,28 @@ main(int argc, char *argv[])
 		snprintf(linkdest, sizeof(linkdest), "%s/arch/%s",
 		    srcdir, machinename);
 	symlink(linkdest, path("arch"));
+
+	/*
+	 * "cpu" points to <ARCH>/<CPU_ARCH>/include, only if cpu_arch
+	 * directive was specified.  Used by virtual kernels.
+	 */
+	if (cpuarchname != NULL) {
+		if (*srcdir == '\0')
+			snprintf(linkdest, sizeof(linkdest),
+				 "../../arch/%s/include", cpuarchname);
+		else
+			snprintf(linkdest, sizeof(linkdest),
+				 "%s/arch/%s/include", srcdir, cpuarchname);
+		symlink(linkdest, path("cpu"));
+
+		if (*srcdir == '\0')
+			snprintf(linkdest, sizeof(linkdest), "../../arch/%s",
+			    cpuarchname);
+		else
+			snprintf(linkdest, sizeof(linkdest), "%s/arch/%s",
+			    srcdir, cpuarchname);
+		symlink(linkdest, path("cpu_arch"));
+	}
 
 	/*
 	 * XXX check directory structure for architecture subdirectories and
