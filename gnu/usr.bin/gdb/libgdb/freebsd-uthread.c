@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: ports/devel/gdb6/files/freebsd-uthread.c,v 1.2 2004/06/20 18:45:36 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.2 2006/07/27 00:39:40 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.3 2006/10/23 09:14:55 corecode Exp $ */
 
 /* This module implements a sort of half target that sits between the
    machine-independent parts of GDB and the ptrace interface (infptrace.c) to
@@ -61,6 +61,7 @@ static int freebsd_uthread_attaching;
 static int freebsd_uthread_active = 0;
 static CORE_ADDR P_thread_list;
 static CORE_ADDR P_thread_run;
+static CORE_ADDR P_thread_kern_thread;
 
 /* Pointer to the next function on the objfile event chain.  */
 static void (*target_new_objfile_chain) (struct objfile *objfile);
@@ -294,6 +295,13 @@ find_pthread (ptid_t ptid)
   read_memory ((CORE_ADDR)P_thread_list,
 	       (char *)&ptr,
 	       sizeof ptr);
+
+  /*
+   * uthreads might not be initialized yet, so we have to use the
+   * kernel thread instead.
+   */
+  if (ptr == 0)
+	  ptr = P_thread_kern_thread;
 
   while (ptr != 0)
     {
@@ -773,6 +781,13 @@ freebsd_uthread_new_objfile (struct objfile *objfile)
     return;
 
   P_thread_list = SYMBOL_VALUE_ADDRESS (ms);
+
+  ms = lookup_minimal_symbol ("_thread_kern_thread", NULL, objfile);
+
+  if (!ms)
+    return;
+
+  P_thread_kern_thread = SYMBOL_VALUE_ADDRESS (ms);
 
 #define OFFSET_SYM(field)	"_thread_" #field "_offset"
 #define LOOKUP_OFFSET(field)						\
