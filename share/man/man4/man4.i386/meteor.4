@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/meteor.4,v 1.10.2.4 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/meteor.4,v 1.7 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/meteor.4,v 1.8 2006/10/23 07:45:47 swildner Exp $
 .\"
 .Dd August 15, 1995
 .Dt METEOR 4 i386
@@ -18,47 +18,18 @@ driver provides support for a PCI
 capture.
 It allows the capture of 24 bit RGB, 16 bit RGB and 16 bit YUV
 output formats.
-.Ss Meteor Driver Installation
+.Ss Meteor Driver Configuration
 To use the
 .Tn "Matrox Meteor"
 card in your system, you need a computer
 that supports the PCI (preferably the Type 2 or better) interface bus.
 It is recommended that the system has more than 16 MB of RAM since this
 capture card directly deposits the image to system RAM.
-.Pp
-The files required for
-.Tn "Matrox Meteor"
-card are:
-.Pp
-.Bl -item -offset indent -compact
-.It
-.Pa /sys/dev/video/meteor/meteor.c
-.It
-.Pa /sys/dev/video/meteor/ioctl_meteor.h
-.El
-.Pp
-For
-.Fx
-release versions 2.1 and earlier, the following patch files are also required:
-.Pp
-.Bl -item -offset indent -compact
-.It
-.Pa meteor/usr/sys/i386/i386/conf.patch
-.It
-.Pa meteor/usr/sys/conf/files.patch
-.It
-.Pa meteor/sys/i386/conf/LINT.patch
-.El
-.Pp
-These files are available for anonymous FTP at:
-.Pa ftp://joy.cs.ndsu.nodak.edu/pub/meteor.tgz
-.Pp
 .Bl -enum
 .It
-In the configuration file, add the line (as shown in
-.Pa meteor/usr/sys/i386/conf/LINT.patch ) :
+In the configuration file, add the line:
 .Pp
-.Cd "device meteor0"
+.Cd "device meteor"
 .It
 There is also a couple of optional parameters you may use:
 .Bl -tag -width indent
@@ -83,7 +54,7 @@ Make and install the kernel.
 .It
 Make the special file name:
 .Pp
-.Dl "# mknod /dev/meteor0 c <major> 0"
+.Dl "# cd /dev; ./MAKEDEV meteor0"
 .Pp
 The major number is determined by the placement of the device in
 .Pa conf.c .
