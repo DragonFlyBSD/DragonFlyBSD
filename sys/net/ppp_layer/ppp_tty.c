@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.20 2006/09/10 01:26:39 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.21 2006/10/23 21:59:18 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -90,9 +90,7 @@
 #include <sys/uio.h>
 #include <sys/vnode.h>
 
-#ifdef __i386__
-#include <i386/isa/intr_machdep.h>
-#endif
+#include <arch/isa/intr_machdep.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
