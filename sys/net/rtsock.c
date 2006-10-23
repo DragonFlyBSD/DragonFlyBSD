@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.34 2006/09/30 22:06:04 swildner Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.35 2006/10/23 09:27:37 swildner Exp $
  */
 
 #include "opt_sctp.h"
@@ -1320,7 +1320,7 @@ SYSCTL_NODE(_net, PF_ROUTE, routetable, CTLFLAG_RD, sysctl_rtsock, "");
  * Definitions of protocols supported in the ROUTE domain.
  */
 
-extern struct domain routedomain;		/* or at least forward */
+static struct domain routedomain;		/* or at least forward */
 
 static struct protosw routesw[] = {
 { SOCK_RAW,	&routedomain,	0,		PR_ATOMIC|PR_ADDR,
@@ -1331,7 +1331,7 @@ static struct protosw routesw[] = {
 }
 };
 
-struct domain routedomain = {
+static struct domain routedomain = {
 	PF_ROUTE, "route", NULL, NULL, NULL,
 	routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])],
 };
