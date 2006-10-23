@@ -35,11 +35,11 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.4 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.5 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_FRAME_H_
-#define _MACHINE_FRAME_H_ 1
+#define _MACHINE_FRAME_H_
 
 /*
  * System stack frames.

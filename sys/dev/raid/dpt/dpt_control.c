@@ -37,11 +37,11 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.10 2006/09/10 01:26:35 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.11 2006/10/23 21:50:32 dillon Exp $"
 
 #include "opt_dpt.h"
 
-#include <i386/include/cputypes.h>
+#include <machine/cputypes.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>

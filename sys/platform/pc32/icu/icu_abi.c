@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.9 2005/11/05 01:55:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.10 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 
 #include <machine/segments.h>
 #include <machine/md_var.h>
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 #include "icu.h"
 #include "icu_ipl.h"

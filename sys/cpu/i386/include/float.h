@@ -32,11 +32,11 @@
  *
  *	from: @(#)float.h	7.1 (Berkeley) 5/8/90
  * $FreeBSD: src/sys/i386/include/float.h,v 1.8 1999/08/28 00:44:11 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/float.h,v 1.3 2005/07/24 20:23:00 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/float.h,v 1.4 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_FLOAT_H_
-#define _MACHINE_FLOAT_H_ 1
+#define _MACHINE_FLOAT_H_
 
 #define FLT_RADIX	2		/* b */
 #define FLT_ROUNDS	1		/* FP addition rounds to nearest */

@@ -19,9 +19,11 @@
  *	Ann Arbor, Michigan
  *	+1-313-763-0525
  *	netatalk@itd.umich.edu
+ *
+ * $DragonFly: src/sys/netproto/atalk/ddp.h,v 1.2 2006/10/23 21:50:33 dillon Exp $
  */
 #ifndef _NETATALK_DDP_H_
-#define _NETATALK_DDP_H_ 1
+#define _NETATALK_DDP_H_
 
 /*
  * <-1byte(8bits) ->

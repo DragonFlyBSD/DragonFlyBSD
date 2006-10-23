@@ -29,11 +29,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.h,v 1.20 1999/08/28 00:43:39 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.h,v 1.3 2003/08/27 11:42:33 rob Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.h,v 1.4 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_EISA_EISACONF_H_
-#define _I386_EISA_EISACONF_H_ 1
+#ifndef _BUS_EISA_EISACONF_H_
+#define _BUS_EISA_EISACONF_H_
 
 #define EISA_SLOT_SIZE 0x1000
 
@@ -89,4 +89,4 @@ int eisa_add_intr (device_t, int, int);
 int eisa_add_iospace (device_t, u_long, u_long, int);
 int eisa_add_mspace (device_t, u_long, u_long, int);
 
-#endif /* _I386_EISA_EISACONF_H_ */
+#endif /* _BUS_EISA_EISACONF_H_ */

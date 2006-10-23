@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.6 2005/07/13 18:33:50 asmodai Exp $
+ * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.7 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_ELF_H_
-#define _MACHINE_ELF_H_ 1
+#define _MACHINE_ELF_H_
 
 /*
  * ELF definitions for the i386 architecture.

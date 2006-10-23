@@ -34,11 +34,11 @@
  * OF SUCH DAMAGE.
 
  * $FreeBSD: src/sys/dev/sr/if_sr.h,v 1.3.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.h,v 1.3 2006/10/23 21:50:32 dillon Exp $
  */
 
-#ifndef _I386_ISA_IF_SR_H_
-#define _I386_ISA_IF_SR_H_
+#ifndef _DEV_NETIF_SR_IF_SR_H_
+#define _DEV_NETIF_SR_IF_SR_H_
 
 /* Node type name and type cookie */
 #define NG_SR_NODE_TYPE		"sync_sr"
@@ -48,5 +48,5 @@
 #define NG_SR_HOOK_DEBUG	"debug"
 #define NG_SR_HOOK_RAW		"rawdata"
 
-#endif /* _I386_ISA_IF_SR_H_ */
+#endif /* _DEV_NETIF_SR_IF_SR_H_ */
 

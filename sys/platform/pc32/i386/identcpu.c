@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.11 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.12 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -57,7 +57,7 @@
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
 
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 #define	IDENTBLUE_CYRIX486	0
 #define	IDENTBLUE_IBMCPU	1

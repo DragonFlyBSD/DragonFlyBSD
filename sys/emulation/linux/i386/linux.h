@@ -26,11 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.8 2004/08/15 14:15:00 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.9 2006/10/23 21:50:32 dillon Exp $
  */
 
-#ifndef _I386_LINUX_LINUX_H_
-#define	_I386_LINUX_LINUX_H_
+#ifndef _EMULATION_LINUX_ARCH_LINUX_H_
+#define	_EMULATION_LINUX_ARCH_LINUX_H_
 
 #include <sys/signal.h> /* for sigval union */
 
@@ -669,4 +669,4 @@ struct l_pollfd {
 	l_short		revents;
 };
 
-#endif /* !_I386_LINUX_LINUX_H_ */
+#endif /* !_EMULATION_LINUX_ARCH_LINUX_H_ */

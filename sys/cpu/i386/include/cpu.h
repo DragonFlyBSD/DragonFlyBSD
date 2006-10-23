@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.18 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.19 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -45,13 +45,13 @@
  * Definitions unique to i386 cpu support.
  */
 #ifndef _MACHINE_PSL_H_
-#include "psl.h"
+#include <machine/psl.h>
 #endif
 #ifndef _MACHINE_FRAME_H_
-#include "frame.h"
+#include <machine/frame.h>
 #endif
 #ifndef _MACHINE_SEGMENTS_H_
-#include "segments.h"
+#include <machine/segments.h>
 #endif
 
 /*

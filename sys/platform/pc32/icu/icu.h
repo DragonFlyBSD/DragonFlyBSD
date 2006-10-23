@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu.h,v 1.9 2005/11/02 22:59:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu.h,v 1.10 2006/10/23 21:50:30 dillon Exp $
  */
 
 /*
@@ -43,8 +43,8 @@
  * W. Jolitz 8/89
  */
 
-#ifndef _I386_ISA_ICU_H_
-#define	_I386_ISA_ICU_H_
+#ifndef _ARCH_ICU_ICU_H_
+#define	_ARCH_ICU_ICU_H_
 
 /*
  * Note: The APIC uses different values for IRQxxx.
@@ -76,4 +76,4 @@
 #define	ICU_IRQ6		6
 #define	ICU_IRQ7		7	/* lowest - parallel printer */
 
-#endif /* !_I386_ISA_ICU_H_ */
+#endif /* !_ARCH_ICU_ICU_H_ */

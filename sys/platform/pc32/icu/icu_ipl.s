@@ -67,7 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.15 2005/11/04 08:57:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.16 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -79,7 +79,7 @@
 #include <machine/psl.h>
 #include <machine/trap.h>
 
-#include "bus/isa/isareg.h"
+#include <bus/isa/isareg.h>
 #include "assym.s"
 
 /*

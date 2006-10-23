@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.27 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.28 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -910,5 +910,5 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
 /*
  * Include vm86 call routines, which want to call doreti.
  */
-#include "i386/i386/vm86bios.s"
+#include "vm86bios.s"
 

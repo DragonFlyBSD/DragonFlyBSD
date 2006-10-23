@@ -32,11 +32,11 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_device.h,v 1.68 2000/01/29 18:01:10 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.8 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.9 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_ISA_ISA_DEVICE_H_
-#define	_I386_ISA_ISA_DEVICE_H_
+#ifndef _BUS_ISA_ARCH_ISA_DEVICE_H_
+#define	_BUS_ISA_ARCH_ISA_DEVICE_H_
 
 #ifndef _SYS_INTERRUPT_H_
 #include <sys/interrupt.h>
@@ -86,4 +86,4 @@ struct isa_driver {
 int	isa_compat_nextid (void);
 #endif
 
-#endif /* !_I386_ISA_ISA_DEVICE_H_ */
+#endif /* !_BUS_ISA_ARCH_ISA_DEVICE_H_ */

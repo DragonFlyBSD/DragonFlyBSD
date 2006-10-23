@@ -32,7 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.5 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_SPECIALREG_H_
@@ -358,7 +358,7 @@
 #include <sys/types.h>
 #endif
 #ifndef _MACHINE_CPUFUNC_H_
-#include "cpufunc.h"
+#include <machine/cpufunc.h>
 #endif
 
 static __inline u_char

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.11 2006/10/23 21:50:33 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -60,11 +60,11 @@
 #include <sys/namei.h>
 #include <sys/vnode.h>
 #include <machine/limits.h>
-#include <i386/include/frame.h>
+#include <machine/frame.h>
 #include <sys/signalvar.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
-#include <i386/include/sigframe.h>
+#include <machine/sigframe.h>
 #include <sys/exec.h>
 #include <sys/unistd.h>
 #include <sys/time.h>

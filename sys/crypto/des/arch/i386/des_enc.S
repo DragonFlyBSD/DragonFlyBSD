@@ -1,6 +1,6 @@
 /* $NetBSD: des_enc.S,v 1.1 2001/09/09 11:01:02 tls Exp $ */
 /* $FreeBSD: src/sys/crypto/des/arch/i386/des_enc.S,v 1.1.2.1 2002/03/26 10:12:25 ume Exp $ */
-/* $DragonFly: src/sys/crypto/des/arch/i386/des_enc.S,v 1.3 2003/11/12 22:08:03 dillon Exp $ */
+/* $DragonFly: src/sys/crypto/des/arch/i386/des_enc.S,v 1.4 2006/10/23 21:50:31 dillon Exp $ */
 
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
@@ -64,7 +64,7 @@
  * Thor Lancelot Simon <tls@netbsd.org>
  */
 
-#include <i386/include/asm.h>
+#include <machine/asm.h>
 #define	_C_LABEL	CNAME
 
 ENTRY(des_encrypt1)

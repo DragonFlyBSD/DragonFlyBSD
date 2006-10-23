@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.34 2006/10/23 15:42:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.35 2006/10/23 21:50:31 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -74,8 +74,8 @@
 #include <machine/globaldata.h>
 
 #ifndef SMP
-#include <i386/icu/icu.h>
-#include <i386/isa/intr_machdep.h>
+#include <arch/icu/icu.h>
+#include <arch/isa/intr_machdep.h>
 #include <bus/isa/i386/isa.h>
 #endif
 

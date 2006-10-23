@@ -68,10 +68,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_dma.h,v 1.15.2.2 2002/11/21 23:36:01 sam Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.5 2006/05/20 02:42:06 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.6 2006/10/23 21:50:31 dillon Exp $ */
 
-#ifndef _I386_BUS_DMA_H_
-#define _I386_BUS_DMA_H_
+#ifndef _MACHINE_BUS_DMA_H_
+#define _MACHINE_BUS_DMA_H_
 
 #ifndef _MACHINE_BUS_AT386_H_
 #include <machine/bus_at386.h>
@@ -247,4 +247,4 @@ void _bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map);
 	if ((dmamap) != NULL)				\
 		_bus_dmamap_unload(dmat, dmamap)
 
-#endif /* _I386_BUS_DMA_H_ */
+#endif /* _MACHINE_BUS_DMA_H_ */

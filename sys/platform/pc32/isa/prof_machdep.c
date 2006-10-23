@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.6 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.7 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifdef GUPROF
@@ -46,7 +46,7 @@
 #include <machine/asmacros.h>
 
 #include <bus/isa/i386/isa.h>
-#include <i386/isa/timerreg.h>
+#include <arch/isa/timerreg.h>
 
 #ifdef GUPROF
 #define	CPUTIME_CLOCK_UNINITIALIZED	0

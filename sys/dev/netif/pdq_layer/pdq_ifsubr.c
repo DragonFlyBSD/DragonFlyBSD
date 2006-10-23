@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.14 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.15 2006/10/23 21:50:32 dillon Exp $
  *
  */
 
@@ -61,7 +61,7 @@
 #endif
 
 #if defined(__bsdi__)
-#include <i386/isa/isavar.h>
+#include <arch/isa/isavar.h>
 #endif
 
 #ifdef NS

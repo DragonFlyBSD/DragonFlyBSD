@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.25 2006/09/10 01:26:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.26 2006/10/23 21:50:32 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -238,7 +238,7 @@ static dpt_sig_S ASR_sig = {
 #include <vm/pmap.h>
 #include <machine/cputypes.h>
 #include <machine/clock.h>
-#include <i386/include/vmparam.h>
+#include <machine/vmparam.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

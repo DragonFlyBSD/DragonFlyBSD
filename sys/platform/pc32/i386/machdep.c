@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.99 2006/10/20 17:02:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.100 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -111,7 +111,7 @@
 #ifdef OLD_BUS_ARCH
 #include <bus/isa/i386/isa_device.h>
 #endif
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 #include <bus/isa/rtc.h>
 #include <machine/vm86.h>
 #include <sys/random.h>

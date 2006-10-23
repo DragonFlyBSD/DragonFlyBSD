@@ -7,7 +7,7 @@
  *
  *	from: 386BSD 0.1
  * $FreeBSD: src/sys/i386/i386/math_emulate.c,v 1.35 1999/08/28 00:43:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.5 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.6 2006/10/23 21:50:30 dillon Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #include <sys/user.h>
 
 #define __ALIGNED_TEMP_REAL 1
-#include <i386/i386/math_emu.h>
+#include "math_emu.h"
 
 #define bswapw(x) __asm__("xchgb %%al,%%ah":"=a" (x):"0" ((short)x))
 #define ST(x) (*__st((x)))

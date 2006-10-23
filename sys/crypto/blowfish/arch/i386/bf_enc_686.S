@@ -1,6 +1,6 @@
 /*	$NetBSD: bf_enc_686.S,v 1.1 2001/09/09 11:01:02 tls Exp $	*/
 /*	$FreeBSD: src/sys/crypto/blowfish/arch/i386/bf_enc_686.S,v 1.1.2.1 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/arch/i386/bf_enc_686.S,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/blowfish/arch/i386/bf_enc_686.S,v 1.3 2006/10/23 21:50:31 dillon Exp $	*/
 
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
@@ -65,7 +65,7 @@
  * <tls@netbsd.org>
  */
 
-#include <i386/include/asm.h>
+#include <machine/asm.h>
 #define	_C_LABEL	CNAME
 
 ENTRY(BF_encrypt)

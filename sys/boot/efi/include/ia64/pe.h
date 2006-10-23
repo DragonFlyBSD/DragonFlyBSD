@@ -1,12 +1,12 @@
 /*
  * $FreeBSD: src/sys/boot/efi/include/ia64/pe.h,v 1.1 2001/06/09 16:49:50 dfr Exp $
- * $DragonFly: src/sys/boot/efi/include/ia64/pe.h,v 1.1 2003/11/10 06:08:32 dillon Exp $
+ * $DragonFly: src/sys/boot/efi/include/ia64/pe.h,v 1.2 2006/10/23 21:50:31 dillon Exp $
  */
 /* 
     PE32+ header file
  */
-#ifndef _PE_H
-#define _PE_H
+#ifndef _BOOT_EFI_ARCH_PE_H_
+#define _BOOT_EFI_ARCH_PE_H_
 
 #define IMAGE_DOS_SIGNATURE                 0x5A4D      // MZ
 #define IMAGE_OS2_SIGNATURE                 0x454E      // NE

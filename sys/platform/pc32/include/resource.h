@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/resource.h,v 1.3 1999/10/14 21:38:30 dfr Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/Attic/resource.h,v 1.2 2003/06/17 04:28:36 dillon Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/Attic/resource.h,v 1.3 2006/10/23 21:50:31 dillon Exp $ */
 /*
  * Copyright 1998 Massachusetts Institute of Technology
  *
@@ -30,7 +30,7 @@
  */
 
 #ifndef _MACHINE_RESOURCE_H_
-#define	_MACHINE_RESOURCE_H_	1
+#define	_MACHINE_RESOURCE_H_
 
 /*
  * Definitions of resource types for Intel Architecture machines

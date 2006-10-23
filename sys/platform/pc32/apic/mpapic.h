@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.9 2005/11/04 08:57:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.10 2006/10/23 21:50:29 dillon Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
@@ -31,7 +31,7 @@
 
 #include "apicreg.h"
 
-#include <i386/icu/icu.h>
+#include <arch/icu/icu.h>
 
 /*
  * Size of APIC ID list.

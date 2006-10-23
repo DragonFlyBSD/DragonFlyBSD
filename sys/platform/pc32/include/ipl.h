@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.9 2005/11/04 08:57:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.10 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_IPL_H_
 #define	_MACHINE_IPL_H_
 
-#include <i386/apic/apic_ipl.h>
-#include <i386/icu/icu_ipl.h>
+#include <arch/apic/apic_ipl.h>
+#include <arch/icu/icu_ipl.h>
 
 /*
  * Software interrupt bit numbers in priority order.  The priority only

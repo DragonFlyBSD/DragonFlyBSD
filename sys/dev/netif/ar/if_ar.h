@@ -34,11 +34,11 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.h,v 1.4 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.h,v 1.3 2005/02/08 14:31:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.h,v 1.4 2006/10/23 21:50:32 dillon Exp $
  */
 
-#ifndef _I386_ISA_IF_AR_H_
-#define _I386_ISA_IF_AR_H_
+#ifndef _DEV_NETIF_AR_IF_AR_H_
+#define _DEV_NETIF_AR_IF_AR_H_
 
 /* Node type name and type cookie */
 #define NG_AR_NODE_TYPE		"sync_ar"
@@ -48,5 +48,5 @@
 #define NG_AR_HOOK_DEBUG	"debug"
 #define NG_AR_HOOK_RAW		"rawdata"
 
-#endif /* _I386_ISA_IF_AR_H_ */
+#endif /* _DEV_NETIF_AR_IF_AR_H_ */
 

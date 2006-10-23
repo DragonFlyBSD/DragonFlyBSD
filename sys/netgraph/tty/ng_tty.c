@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.13 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.14 2006/10/23 21:50:33 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -80,7 +80,7 @@
 
 #ifdef __i386__			/* fiddle with the spl locking */
 #include <machine/ipl.h>
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 #endif
 
 /* Misc defs */

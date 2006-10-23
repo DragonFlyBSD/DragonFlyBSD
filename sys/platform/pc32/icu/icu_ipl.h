@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.h,v 1.3 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.5 2005/11/04 08:57:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.6 2006/10/23 21:50:30 dillon Exp $
  */
 
-#ifndef _I386_ISA_ICU_IPL_H_
-#define	_I386_ISA_ICU_IPL_H_
+#ifndef _ARCH_ICU_ICU_IPL_H_
+#define	_ARCH_ICU_ICU_IPL_H_
 
 #define ICU_HWI_VECTORS	16
 #define ICU_HWI_MASK	((1 << ICU_HWI_VECTORS) - 1)
@@ -50,5 +50,5 @@
 #endif	/* LOCORE */
 
 
-#endif /* !_I386_ISA_ICU_IPL_H_ */
+#endif /* !_ARCH_ICU_ICU_IPL_H_ */
 

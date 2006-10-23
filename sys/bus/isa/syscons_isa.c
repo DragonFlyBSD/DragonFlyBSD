@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.7 2005/10/30 23:00:56 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.8 2006/10/23 21:50:31 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -48,7 +48,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <i386/isa/timerreg.h>
+#include <arch/isa/timerreg.h>
 
 #define BIOS_CLKED	(1 << 6)
 #define BIOS_NLKED	(1 << 5)

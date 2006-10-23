@@ -8,15 +8,15 @@
  *	for damages incurred with its use
  *
  * $FreeBSD: src/sys/i386/isa/ctxreg.h,v 1.5 1999/08/28 00:44:39 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctxreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctxreg.h,v 1.3 2006/10/23 21:50:32 dillon Exp $
  */
 
 /*
  *	Register and bit definitions for CORTEX-I frame grabber
  */
 
-#ifndef _I386_ISA_CTXREG_H_
-#define _I386_ISA_CTXREG_H_
+#ifndef _DEV_VIDEO_CTX_CTXREG_H_
+#define _DEV_VIDEO_CTX_CTXREG_H_
 
 	/*  Control Ports (all are write-only) */
 
@@ -57,4 +57,4 @@
 #define ACQUIRING_ACK 32        /* 1 if currently grabbing a frame          */
 
 
-#endif /* ifndef  _I386_ISA_CTXREG_H_ */
+#endif /* ifndef  _DEV_VIDEO_CTX_CTXREG_H_ */

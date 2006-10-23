@@ -23,11 +23,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.h,v 1.3 1999/08/28 00:44:36 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.7 2005/11/04 08:57:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.8 2006/10/23 21:50:29 dillon Exp $
  */
 
-#ifndef _I386_ISA_APIC_IPL_H_
-#define	_I386_ISA_APIC_IPL_H_
+#ifndef _ARCH_APIC_IPL_H_
+#define	_ARCH_APIC_IPL_H_
 
 #ifdef APIC_IO
 
@@ -53,4 +53,4 @@
 
 #endif
 
-#endif /* !_I386_ISA_APIC_IPL_H_ */
+#endif /* !_ARCH_APIC_IPL_H_ */

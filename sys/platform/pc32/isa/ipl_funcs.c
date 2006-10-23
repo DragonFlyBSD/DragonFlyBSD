@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.12 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.13 2006/10/23 21:50:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,7 +35,7 @@
 #include <machine/ipl.h>
 #include <machine/globaldata.h>
 #include <machine/pcb.h>
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 /*
  * Bits in the ipending bitmap variable must be set atomically because

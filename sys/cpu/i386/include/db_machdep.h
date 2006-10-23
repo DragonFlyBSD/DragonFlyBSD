@@ -24,16 +24,16 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.7 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.8 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_
 #define	_MACHINE_DB_MACHDEP_H_
 
-#include "frame.h"
-#include "psl.h"
-#include "trap.h"
-#include "globaldata.h"
+#include <machine/frame.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/globaldata.h>
 
 #define i386_saved_state trapframe
 

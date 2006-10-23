@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_isa.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.5 2006/10/23 21:50:32 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -46,7 +46,7 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <i386/isa/ic/mb86960.h>
+#include <arch/isa/ic/mb86960.h>
 #include "if_fereg.h"
 #include "if_fevar.h"
 

@@ -27,13 +27,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmireg.h,v 1.1.2.4 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmireg.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmireg.h,v 1.3 2006/10/23 21:50:32 dillon Exp $
  */
 
 /* C-Media CMI8x38 Audio Chip Support */
 
 #ifndef _DEV_PCI_CMPCIREG_H_
-#define _DEV_PCI_CMPCIREG_H_ (1)
+#define _DEV_PCI_CMPCIREG_H_
 
 /*
  * PCI Configuration Registers

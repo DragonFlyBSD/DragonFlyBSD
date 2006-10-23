@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdpreg.h,v 1.2 1999/08/28 00:44:49 peter Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdpreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdpreg.h,v 1.3 2006/10/23 21:50:32 dillon Exp $
  */
 
 /*
@@ -43,7 +43,7 @@
 /*
  * We're hanging upon an LPT port, thus suck in the lpt defs as well.
  */
-#include <i386/isa/lptreg.h>
+#include <arch/isa/lptreg.h>
 
 struct rdphdr {
 	/* RTL8002 header that is prepended to the actual packet */

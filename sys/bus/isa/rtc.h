@@ -35,11 +35,11 @@
  *
  *	from: @(#)rtc.h	7.1 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/isa/rtc.h,v 1.12 1999/08/28 00:46:01 peter Exp $
- * $DragonFly: src/sys/bus/isa/rtc.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/rtc.h,v 1.3 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_ISA_RTC_H_
-#define _I386_ISA_RTC_H_ 1
+#ifndef _BUS_ISA_RTC_H_
+#define _BUS_ISA_RTC_H_
 
 /*
  * MC146818 RTC Register locations
@@ -115,4 +115,4 @@
 #define RTC_EXTHI	0x18	/* low byte of extended mem size */
 
 #define	RTC_CENTURY	0x32	/* current century */
-#endif /* _I386_ISA_RTC_H_ */
+#endif /* _BUS_ISA_RTC_H_ */

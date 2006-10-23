@@ -35,16 +35,16 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.9 2004/04/30 00:59:54 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.10 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_PCB_H_
-#define _I386_PCB_H_
+#ifndef _MACHINE_PCB_H_
+#define _MACHINE_PCB_H_
 
 /*
  * Intel 386 process control block
  */
-#include "npx.h"
+#include <machine/npx.h>
 
 struct pcb {
 	int	pcb_cr3;
@@ -78,4 +78,4 @@ struct pcb {
 void	savectx (struct pcb *);
 #endif
 
-#endif /* _I386_PCB_H_ */
+#endif /* _MACHINE_PCB_H_ */

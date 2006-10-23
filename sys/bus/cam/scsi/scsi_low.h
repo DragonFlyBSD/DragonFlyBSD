@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.9 2005/12/05 03:42:31 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.10 2006/10/23 21:50:31 dillon Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -55,7 +55,7 @@
 #include <bus/cam/cam_debug.h>
 
 #include "scsi_dvcfg.h"
-#include <i386/isa/ccbque.h>
+#include <arch/isa/ccbque.h>
 
 #undef	MSG_IDENTIFY
 #define	SCSI_LOW_DEBUGGER(dev)	Debugger((dev))

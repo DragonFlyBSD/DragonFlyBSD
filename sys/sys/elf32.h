@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf32.h,v 1.7 1999/08/28 00:51:41 peter Exp $
- * $DragonFly: src/sys/sys/elf32.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/elf32.h,v 1.5 2006/10/23 21:50:33 dillon Exp $
  */
 
 #ifndef _SYS_ELF32_H_
-#define _SYS_ELF32_H_ 1
+#define _SYS_ELF32_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>

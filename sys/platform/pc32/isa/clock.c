@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.46 2006/01/25 19:56:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.47 2006/10/23 21:50:31 dillon Exp $
  */
 
 /*
@@ -82,12 +82,12 @@
 #include <machine/smp.h>
 #include <machine/specialreg.h>
 
-#include <i386/icu/icu.h>
+#include <arch/icu/icu.h>
 #include <bus/isa/i386/isa.h>
 #include <bus/isa/rtc.h>
-#include <i386/isa/timerreg.h>
+#include <arch/isa/timerreg.h>
 
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 #ifdef APIC_IO
 /* The interrupt triggered by the 8254 (timer) chip */

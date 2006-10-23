@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.51 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.52 2006/10/23 21:50:30 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -61,8 +61,8 @@
 #include <machine/globaldata.h>
 
 #include <machine/md_var.h>		/* setidt() */
-#include <i386/icu/icu.h>		/* IPIs */
-#include <i386/isa/intr_machdep.h>	/* IPIs */
+#include <arch/icu/icu.h>		/* IPIs */
+#include <arch/isa/intr_machdep.h>	/* IPIs */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.28 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.29 2006/10/23 21:50:33 dillon Exp $
  */
 
 /*
@@ -106,7 +106,7 @@
 #include <net/bpf.h>
 
 #ifdef __i386__
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 #endif
 
 static void slattach (void *);

@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_generic.h,v 1.4 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf_generic.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/elf_generic.h,v 1.6 2006/10/23 21:50:33 dillon Exp $
  */
 
 #ifndef _SYS_ELF_GENERIC_H_
-#define _SYS_ELF_GENERIC_H_ 1
+#define _SYS_ELF_GENERIC_H_
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>

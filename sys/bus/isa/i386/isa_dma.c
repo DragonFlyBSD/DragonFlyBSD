@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.9 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.10 2006/10/23 21:50:31 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
 #include "isa.h"
-#include <i386/isa/ic/i8237.h>
+#include <arch/isa/ic/i8237.h>
 #include <bus/isa/isavar.h>
 
 /*

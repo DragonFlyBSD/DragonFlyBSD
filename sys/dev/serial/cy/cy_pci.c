@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.6 2005/06/16 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.7 2006/10/23 21:50:32 dillon Exp $
  */
 
 /*
@@ -46,7 +46,7 @@
 #include "cy_pcireg.h"
 
 #ifdef CY_PCI_FASTINTR
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 #endif
 
 static const char *cy_probe		(pcici_t, pcidi_t);

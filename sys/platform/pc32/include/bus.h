@@ -29,14 +29,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.5 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.6 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_BUS_H_
-#define _I386_BUS_H_
+#ifndef _MACHINE_BUS_H_
+#define _MACHINE_BUS_H_
 
-#include "bus_at386.h"
-#include "bus_dma.h"
+#include <machine/bus_at386.h>
+#include <machine/bus_dma.h>
 
 /*
  * Stream accesses are the same as normal accesses on i386; there are no
@@ -102,4 +102,4 @@
 #define	bus_space_copy_region_stream_4(t, h1, o1, h2, o2, c) \
 	bus_space_copy_region_4((t), (h1), (o1), (h2), (o2), (c))
 
-#endif /* _I386_BUS_H_ */
+#endif /* _MACHINE_BUS_H_ */

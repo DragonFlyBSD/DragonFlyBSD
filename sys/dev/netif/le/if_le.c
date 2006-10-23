@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.34 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.35 2006/10/23 21:50:32 dillon Exp $
  */
 
 /*
@@ -63,7 +63,7 @@
 #include <netinet/if_ether.h>
 
 #include <bus/isa/i386/isa_device.h>
-#include <i386/icu/icu.h>
+#include <arch/icu/icu.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -86,7 +86,7 @@ struct le_board {
  * Start of DEC EtherWORKS III (LEMAC) dependent structures
  *
  */
-#include <i386/isa/ic/lemac.h>		/* Include LEMAC definitions */
+#include <arch/isa/ic/lemac.h>		/* Include LEMAC definitions */
 
 DECLARE_DUMMY_MODULE(if_le);
 
@@ -119,7 +119,7 @@ struct le_lemac_info {
  *
  */
 
-#include <i386/isa/ic/am7990.h>
+#include <arch/isa/ic/am7990.h>
 
 #ifndef LN_DOSTATS
 #define	LN_DOSTATS	1

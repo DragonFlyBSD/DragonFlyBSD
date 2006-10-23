@@ -28,7 +28,7 @@
  *	---------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic.h,v 1.3.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.h,v 1.5 2006/10/23 21:50:33 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 13:55:12 2001]
  *
@@ -39,9 +39,9 @@
 
 #include <sys/resource.h>
 #include <sys/bus.h>
-#include <i386/include/bus.h>
+#include <machine/bus.h>
 #include <sys/rman.h>
-#include <i386/include/resource.h>
+#include <machine/resource.h>
 
 #include "../../include/i4b_l3l4.h"
 

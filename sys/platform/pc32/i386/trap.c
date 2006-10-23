@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.82 2006/10/20 17:02:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.83 2006/10/23 21:50:30 dillon Exp $
  */
 
 /*
@@ -90,7 +90,7 @@
 #include <machine/tss.h>
 #include <machine/globaldata.h>
 
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 #ifdef POWERFAIL_NMI
 #include <sys/syslog.h>

@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.28 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.29 2006/10/23 21:50:30 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@
 #include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>
-#include <i386/icu/icu.h>
+#include <arch/icu/icu.h>
 
 #include <machine/pcb.h>
 #include <machine/pcb_ext.h>

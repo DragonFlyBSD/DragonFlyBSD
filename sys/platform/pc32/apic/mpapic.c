@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.17 2005/11/21 18:02:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.18 2006/10/23 21:50:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,7 +34,7 @@
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
-#include <i386/isa/intr_machdep.h>	/* Xspuriousint() */
+#include <arch/isa/intr_machdep.h>	/* Xspuriousint() */
 
 /* EISA Edge/Level trigger control registers */
 #define ELCR0	0x4d0			/* eisa irq 0-7 */

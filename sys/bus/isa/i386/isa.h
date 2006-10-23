@@ -35,11 +35,11 @@
  *
  *	from: @(#)isa.h	5.7 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa.h,v 1.23 1999/08/28 00:44:54 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa.h,v 1.5 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_ISA_ISA_H_
-#define	_I386_ISA_ISA_H_
+#ifndef _BUS_ISA_ARCH_ISA_H_
+#define	_BUS_ISA_ARCH_ISA_H_
 
 /* BEWARE:  Included in both assembler and C code */
 
@@ -196,4 +196,4 @@
 #define	CYRIX_EMC	0xC0000000	/* Cyrix EMC */
 #endif /* !COMPAQ_RAMRELOC */
 
-#endif /* !_I386_ISA_ISA_H_ */
+#endif /* !_BUS_ISA_ARCH_ISA_H_ */

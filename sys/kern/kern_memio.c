@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.21 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.22 2006/10/23 21:50:30 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@
 #include <machine/frame.h>
 #include <machine/psl.h>
 #include <machine/specialreg.h>
-#include <i386/isa/intr_machdep.h>
+#include <arch/isa/intr_machdep.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

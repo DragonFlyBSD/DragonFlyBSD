@@ -30,11 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.7 2002/03/20 07:59:37 alfred Exp $
- * $DragonFly: src/sys/boot/common/isapnp.h,v 1.5 2005/02/19 23:19:51 swildner Exp $
+ * $DragonFly: src/sys/boot/common/isapnp.h,v 1.6 2006/10/23 21:50:31 dillon Exp $
  */
 
-#ifndef _I386_ISA_PNP_H_
-#define _I386_ISA_PNP_H_
+#ifndef _BOOT_COMMON_ISAPNP_H_
+#define _BOOT_COMMON_ISAPNP_H_
 
 /* Maximum Number of PnP Devices.  8 should be plenty */
 #define MAX_PNP_CARDS 8
@@ -305,4 +305,4 @@ void pnp_configure(void);
 
 #endif /* _KERNEL */
 
-#endif /* !_I386_ISA_PNP_H_ */
+#endif /* !_BOOT_COMMON_ISAPNP_H_ */

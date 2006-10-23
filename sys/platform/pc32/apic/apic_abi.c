@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.9 2005/11/04 19:46:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.10 2006/10/23 21:50:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,8 +50,8 @@
 #include <machine/segments.h>
 #include <machine/md_var.h>
 #include <machine/clock.h>	/* apic_8254_intr */
-#include <i386/isa/intr_machdep.h>
-#include <i386/icu/icu.h>
+#include <arch/isa/intr_machdep.h>
+#include <arch/icu/icu.h>
 #include "apic_ipl.h"
 
 #ifdef APIC_IO
