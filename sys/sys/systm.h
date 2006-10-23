@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.43 2006/10/20 17:02:13 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.44 2006/10/23 15:42:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -164,13 +164,7 @@ u_quad_t strtouq (const char *, char **, int);
  */
 void	bcopy (volatile const void *from, volatile void *to, size_t len);
 void	ovbcopy (const void *from, void *to, size_t len);
-
-#ifdef __i386__
-extern void	(*bzero) (volatile void *buf, size_t len);
-#else
-void	bzero (void *buf, size_t len);
-#endif
-
+void	bzero (volatile void *buf, size_t len);
 void	*memcpy (void *to, const void *from, size_t len);
 
 int	copystr (const void *kfaddr, void *kdaddr, size_t len,

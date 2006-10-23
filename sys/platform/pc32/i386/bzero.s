@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bzero.s,v 1.4 2006/10/22 18:42:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bzero.s,v 1.5 2006/10/23 15:42:45 dillon Exp $
  */
 /*
  * void bzero(void *buf, u_int len)	(arguments passed on stack)
@@ -49,7 +49,7 @@
 	.text
 
 /*
- * GCC-4.x may call memset directly, we can't use an indirect pointer.
+ * NOTE: GCC-4.x may call memset directly, we can't use an indirect pointer.
  */
 ENTRY(memset)
 	pushl	%edi
@@ -64,7 +64,11 @@ ENTRY(memset)
 	orl	%edx,%eax
 	jmp	2f
 
-ENTRY(generic_bzero)
+/*
+ * Ignore inefficiencies due to alignment.  Most callers will supply
+ * reasonably aligned pointers.
+ */
+ENTRY(bzero)
 	pushl	%edi
 	subl	%eax,%eax
 	movl	4+4(%esp),%edi

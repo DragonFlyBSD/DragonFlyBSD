@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.33 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.34 2006/10/23 15:42:48 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -499,7 +499,7 @@ npx_attach(device_t dev)
 			ovbcopy_vector = i586_bcopy;
 		}
 		if (!(flags & NPX_DISABLE_I586_OPTIMIZED_BZERO))
-			bzero = i586_bzero;
+			bzero_vector = i586_bzero;
 		if (!(flags & NPX_DISABLE_I586_OPTIMIZED_COPYIO)) {
 			copyin_vector = i586_copyin;
 			copyout_vector = i586_copyout;

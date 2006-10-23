@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.8 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.9 2006/10/23 15:42:49 dillon Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -39,11 +39,10 @@
 #define bcopy_io(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_toio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_fromio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
-#define bzero_io(d, c)		generic_bzero((void *)(d), (c))
+#define bzero_io(d, c)		bzero((void *)(d), (c))
 #define fill_io(p, d, c)	fill((p), (void *)(d), (c))
 #define fillw_io(p, d, c)	fillw((p), (void *)(d), (c))
 void generic_bcopy(const void *s, void *d, size_t c);
-void generic_bzero(void *d, size_t c);
 #else /* !__i386__ */
 #define bcopy_io(s, d, c)	memcpy_io((d), (s), (c))
 #define bcopy_toio(s, d, c)	memcpy_toio((d), (void *)(s), (c))

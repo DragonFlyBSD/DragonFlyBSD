@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.18 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.19 2006/10/23 15:42:46 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -45,6 +45,7 @@ extern	vm_paddr_t	Maxmem;
 extern	u_int	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	void	**bcopy_vector;
 extern	void	**memcpy_vector;
+extern void	**ovbcopy_vector;
 extern	int	busdma_swi_pending;
 extern	int	(*copyin_vector) (const void *udaddr, void *kaddr,
 				      size_t len);
@@ -61,7 +62,6 @@ extern	char	cpu_vendor[];
 extern	u_int	cyrix_did;
 extern	char	kstack[];
 extern	int	nfs_diskless_valid;
-extern void	**ovbcopy_vector;
 extern	char	sigcode[];
 extern	int	szsigcode;
 
