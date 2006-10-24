@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.26 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.27 2006/10/24 06:49:52 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -107,7 +107,7 @@
 #include <netproto/ipsec/ipsec.h>
 #include <netproto/ipsec/ipsec6.h>
 #include <netproto/ipsec/key.h>
-#endif /* FAST_IPSEC */
+#endif
 
 #include <net/ip6fw/ip6_fw.h>
 
@@ -159,7 +159,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	int error = 0;
 	struct in6_ifaddr *ia = NULL;
 	u_long mtu;
-	u_int32_t optlen = 0, plen = 0, unfragpartlen = 0;
+	u_int32_t optlen = 0, plen = 0, unfragpartlen;
 	struct ip6_exthdrs exthdrs;
 	struct in6_addr finaldst;
 	struct route_in6 *ro_pmtu = NULL;
@@ -171,15 +171,15 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	struct socket *so = inp ? inp->inp_socket : NULL;
 
 	ip6 = mtod(m, struct ip6_hdr *);
-#endif /* IPSEC */
+#endif
 #ifdef FAST_IPSEC
 	int needipsectun = 0;
 	struct secpolicy *sp = NULL;
 
 	ip6 = mtod(m, struct ip6_hdr *);
-#endif /* FAST_IPSEC */
+#endif
 
-	bzero(&exthdrs, sizeof(exthdrs));
+	bzero(&exthdrs, sizeof exthdrs);
 
 	if (opt) {
 		if ((error = copyexthdr(opt->ip6po_hbh, &exthdrs.ip6e_hbh)))
@@ -265,8 +265,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 
 	case IPSEC_POLICY_IPSEC:
 		if (sp->req == NULL) {
-			/* acquire a policy */
-			error = key_spdacquire(sp);
+			error = key_spdacquire(sp);	/* acquire a policy */
 			goto freehdrs;
 		}
 		needipsec = 1;
@@ -361,15 +360,14 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			ip6->ip6_nxt = IPPROTO_DSTOPTS;
 		}
 
-		if (!hdrsplit) \
-			panic("assumption failed: hdr not split"); \
-
 /*
  * Place m1 after mprev.
  */
 #define MAKE_CHAIN(m1, mprev, nexthdrp, i)\
     do {\
 	if (m1) {\
+		if (!hdrsplit)\
+			panic("assumption failed: hdr not split");\
 		*mtod(m1, u_char *) = *nexthdrp;\
 		*nexthdrp = (i);\
 		nexthdrp = mtod(m1, u_char *);\
@@ -851,6 +849,7 @@ skip_ipsec2:;
 	 */
 	if (ip6_fw_enable && ip6_fw_chk_ptr) {
 		u_short port = 0;
+
 		m->m_pkthdr.rcvif = NULL;	/* XXX */
 		/* If ipfw says divert, we have to just drop packet */
 		if ((*ip6_fw_chk_ptr)(&ip6, ifp, &port, &m)) {
@@ -1051,11 +1050,11 @@ skip_ipsec2:;
 	 */
 sendorfree:
 	m = m0->m_nextpkt;
-	m0->m_nextpkt = 0;
+	m0->m_nextpkt = NULL;
 	m_freem(m0);
 	for (m0 = m; m; m = m0) {
 		m0 = m->m_nextpkt;
-		m->m_nextpkt = 0;
+		m->m_nextpkt = NULL;
 		if (error == 0) {
  			/* Record statistics for this interface address. */
  			if (ia) {
@@ -1084,11 +1083,11 @@ done:
 #ifdef IPSEC
 	if (sp != NULL)
 		key_freesp(sp);
-#endif /* IPSEC */
+#endif
 #ifdef FAST_IPSEC
 	if (sp != NULL)
 		KEY_FREESP(&sp);
-#endif /* FAST_IPSEC */
+#endif
 
 	return (error);
 
@@ -1819,10 +1818,9 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 		return (NULL);
 	}
 
-	dst = kmalloc(sizeof(*dst), M_IP6OPT, canwait);
+	dst = kmalloc(sizeof(*dst), M_IP6OPT, canwait | M_ZERO);
 	if (dst == NULL)
 		return (NULL);
-	bzero(dst, sizeof(*dst));
 
 	dst->ip6po_hlim = src->ip6po_hlim;
 	if (src->ip6po_pktinfo) {
