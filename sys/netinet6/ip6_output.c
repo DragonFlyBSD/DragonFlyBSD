@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.28 2006/10/24 07:27:26 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.29 2006/10/24 16:33:11 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -166,23 +166,23 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	struct in6_addr finaldst;
 	struct route_in6 *ro_pmtu = NULL;
 	boolean_t hdrsplit = FALSE;
-	int needipsec = 0;
+	struct ip6_rthdr *rh = NULL;
+	int segleft_org = 0;
+	struct ipsec_output_state state;
+	boolean_t needipsec = FALSE;
 #ifdef IPSEC
-	int needipsectun = 0;
+	boolean_t needipsectun = FALSE;
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
 
 	ip6 = mtod(m, struct ip6_hdr *);
 #endif
 #ifdef FAST_IPSEC
-	int needipsectun = 0;
+	boolean_t needipsectun = FALSE;
 	struct secpolicy *sp = NULL;
 
 	ip6 = mtod(m, struct ip6_hdr *);
 #endif
-	struct ip6_rthdr *rh = NULL;
-	int segleft_org = 0;
-	struct ipsec_output_state state;
 
 	bzero(&exthdrs, sizeof exthdrs);
 
@@ -223,7 +223,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	case IPSEC_POLICY_BYPASS:
 	case IPSEC_POLICY_NONE:
 		/* no need to do IPsec. */
-		needipsec = 0;
+		needipsec = FALSE;
 		break;
 
 	case IPSEC_POLICY_IPSEC:
@@ -231,7 +231,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			error = key_spdacquire(sp);	/* acquire a policy */
 			goto freehdrs;
 		}
-		needipsec = 1;
+		needipsec = TRUE;
 		break;
 
 	case IPSEC_POLICY_ENTRUST:
@@ -265,7 +265,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	case IPSEC_POLICY_BYPASS:
 	case IPSEC_POLICY_NONE:
 		/* no need to do IPsec. */
-		needipsec = 0;
+		needipsec = FALSE;
 		break;
 
 	case IPSEC_POLICY_IPSEC:
@@ -273,7 +273,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			error = key_spdacquire(sp);	/* acquire a policy */
 			goto freehdrs;
 		}
-		needipsec = 1;
+		needipsec = TRUE;
 		break;
 
 	case IPSEC_POLICY_ENTRUST:
