@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/em/README,v 1.5 2006/08/12 13:03:44 sephe Exp $
+$DragonFly: src/sys/dev/netif/em/README,v 1.6 2006/10/24 17:09:46 swildner Exp $
 FreeBSD* Driver for the Intel(R) PRO/1000 Family of Adapters
 ============================================================
 
@@ -107,7 +107,7 @@ name of the driver tar file.
         dev/em/if_em_phy.c optional em
 
    Edit the kernel configuration file (i.e., GENERIC or MYKERNEL) in
-   /usr/src/sys/i386/conf, and ensure the following line is present:
+   /usr/src/sys/config, and ensure the following line is present:
 
         device em
 

@@ -282,7 +282,7 @@
     make installworld
 
     # buildkernel and installkernel examples.  Create your own custom kernel
-    # config in /usr/src/sys/i386/conf/<YOURKERNEL> and you can build and
+    # config in /usr/src/sys/config/<YOURKERNEL> and you can build and
     # install custom kernels.
     #
     # WARNING!  Always keep a fully working backup kernel in / in case
@@ -335,5 +335,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.21 2006/06/28 21:14:52 swildner Exp $
+$DragonFly: src/nrelease/root/README,v 1.22 2006/10/24 17:09:45 swildner Exp $
 

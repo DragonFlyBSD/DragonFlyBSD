@@ -5,7 +5,7 @@
 # Trust me, RUN THIS SCRIPT :)
 #
 #-------cut here------------------
-cd /sys/i386/conf
+cd /sys/config
 
 if [ "${1}X" = "X" ] 
 then
@@ -22,7 +22,7 @@ cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
 # \$FreeBSD: src/share/examples/drivers/make_pseudo_driver.sh,v 1.5.2.1 2001/07/25 15:56:09 dd Exp $"
-# \$DragonFly: src/share/examples/drivers/make_pseudo_driver.sh,v 1.4 2006/10/19 18:44:00 swildner Exp $"
+# \$DragonFly: src/share/examples/drivers/make_pseudo_driver.sh,v 1.5 2006/10/24 17:09:45 swildner Exp $"
 DONE
 
 grep -v GENERIC < GENERIC >>${UPPER}

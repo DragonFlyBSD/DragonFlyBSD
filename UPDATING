@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.21 2006/08/12 22:34:23 swildner Exp $
+$DragonFly: src/UPDATING,v 1.22 2006/10/24 17:09:45 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -148,7 +148,7 @@ older DragonFly installations and should delete them automatically.
 NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
 Doing so might leave your system in an unusable state.
 
-If you are using 'config' manually from /usr/src/sys/i386/conf/BLAH, note 
+If you are using 'config' manually from /usr/src/sys/config, note 
 that the build will use the current DragonFly environment rather than
 the post-build environment from the last buildworld.   For this reason manual
 configs are discouraged.  The proper way to build a kernel is to use the

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.55 2006/10/22 16:09:19 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.56 2006/10/24 17:09:46 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -148,7 +148,7 @@ UDF		opt_dontuse.h
 NTFS		opt_dontuse.h
 
 # These static filesystems has one slightly bogus static dependency in
-# sys/i386/i386/autoconf.c.  If any of these filesystems are
+# sys/arch/i386/i386/autoconf.c.  If any of these filesystems are
 # statically compiled into the kernel, code for mounting them as root
 # filesystems will be enabled - but look below.  Boot-code is purposely
 # unavailable for the LKM-based versions.

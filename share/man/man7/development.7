@@ -3,7 +3,7 @@
 .\" the FreeBSD source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/development.7,v 1.4.2.2 2003/05/23 07:48:35 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/development.7,v 1.6 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man7/development.7,v 1.7 2006/10/24 17:09:45 swildner Exp $
 .\"
 .Dd December 21, 2002
 .Dt DEVELOPMENT 7
@@ -265,7 +265,7 @@ mkdir /usr/ports.workdir
 Here is how you build a -STABLE kernel (on your main development box).
 If you want to create a custom kernel, cp GENERIC to YOURKERNEL and then
 edit it before configuring and building.
-The kernel configuration file lives in /usr/src/sys/i386/conf/KERNELNAME.
+The kernel configuration file lives in /usr/src/sys/config/KERNELNAME.
 .Bd -literal -offset 4n
 cd /usr/src
 make buildkernel KERNCONF=KERNELNAME

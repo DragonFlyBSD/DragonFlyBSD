@@ -1,7 +1,7 @@
 This is the top level of the DragonFly source directory.  This file
 was last revised on:
 $FreeBSD: src/README,v 1.15.2.4 2002/04/26 16:01:35 bmah Exp $
-$DragonFly: src/README,v 1.7 2005/09/25 04:49:39 swildner Exp $
+$DragonFly: src/README,v 1.8 2006/10/24 17:09:45 swildner Exp $
 
 For copyright information, please see the file COPYRIGHT in this
 directory (additional copyright information also exists for some
@@ -27,7 +27,7 @@ Note: If you want to build and install the kernel with the
 ``buildkernel'' and ``installkernel'' targets, you might need to build
 world before.  More information is available in the DragonFly handbook.
 
-The sample kernel configuration files reside in the sys/<arch>/conf
+The sample kernel configuration files reside in the sys/config
 sub-directory (assuming that you've installed the kernel sources), the
 file named GENERIC being the one used to build your initial installation
 kernel.  The file LINT contains entries for all possible devices, not
