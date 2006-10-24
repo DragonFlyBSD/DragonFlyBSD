@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.4 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.5 2006/10/24 17:16:13 dillon Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -231,6 +231,7 @@ cbq_add_altq(struct pf_altq *a)
 	callout_init(&cbqp->cbq_callout);
 	cbqp->cbq_qlen = 0;
 	cbqp->ifnp.ifq_ = &ifp->if_snd;	    /* keep the ifq */
+	ifq_purge(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = cbqp;

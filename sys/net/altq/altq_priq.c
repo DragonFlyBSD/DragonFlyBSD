@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.6 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.7 2006/10/24 17:16:13 dillon Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -107,6 +107,7 @@ priq_add_altq(struct pf_altq *a)
 	pif->pif_bandwidth = a->ifbandwidth;
 	pif->pif_maxpri = -1;
 	pif->pif_ifq = &ifp->if_snd;
+	ifq_purge(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = pif;

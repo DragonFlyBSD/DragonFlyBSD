@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.6 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.7 2006/10/24 17:16:13 dillon Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -168,6 +168,7 @@ hfsc_add_altq(struct pf_altq *a)
 
 	hif->hif_eligible = ellist_alloc();
 	hif->hif_ifq = &ifp->if_snd;
+	ifq_purge(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = hif;
