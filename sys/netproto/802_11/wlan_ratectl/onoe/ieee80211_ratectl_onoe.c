@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.3 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.4 2006/10/24 14:39:45 sephe Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <net/if_arp.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 #include <netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.h>
 
 #define ONOE_DEBUG
@@ -65,6 +66,12 @@
 #else
 #define	DPRINTF(osc, lv, fmt, ...)
 #endif
+
+#define ONOE_REQUIRE_STATS	(IEEE80211_RATECTL_STATS_PKT_OK |	\
+				 IEEE80211_RATECTL_STATS_PKT_ERR |	\
+				 IEEE80211_RATECTL_STATS_RETRIES)
+#define ONOE_MEET_REQUIRE_STATS(stats_mask)	\
+	(((stats_mask) & ONOE_REQUIRE_STATS) == ONOE_REQUIRE_STATS)
 
 /*
  * Default parameters for the rate control algorithm.  These are
@@ -105,6 +112,7 @@ static void	onoe_update(struct onoe_softc *, struct ieee80211_node *, int);
 static void	onoe_start(struct onoe_softc *, struct ieee80211_node *);
 static void	onoe_tick(void *);
 static void	onoe_ratectl(void *, struct ieee80211_node *);
+static void	onoe_gather_stats(struct onoe_softc *, struct ieee80211_node *);
 
 static const struct ieee80211_ratectl onoe = {
 	.rc_name	= "onoe",
@@ -306,10 +314,26 @@ onoe_newstate(void *arg, enum ieee80211_state state)
 }
 
 static void
+onoe_gather_stats(struct onoe_softc *osc, struct ieee80211_node *ni)
+{
+	struct onoe_data *od = ni->ni_rate_data;
+	struct ieee80211com *ic = osc->ic;
+	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
+	struct ieee80211_ratectl_stats stats;
+
+	st->rc_st_stats(ic, ni, &stats);
+
+	od->od_tx_ok += stats.stats_pkt_ok;
+	od->od_tx_err += stats.stats_pkt_err;
+	od->od_tx_retr += stats.stats_long_retries + stats.stats_short_retries;
+}
+
+static void
 onoe_ratectl(void *arg, struct ieee80211_node *ni)
 {
 	struct onoe_softc *osc = arg;
 	struct onoe_data *od = ni->ni_rate_data;
+	const struct ieee80211_ratectl_state *st = &osc->ic->ic_ratectl;
 	struct ieee80211_rateset *rs = &ni->ni_rates;
 	int dir = 0, nrate, enough;
 
@@ -317,6 +341,12 @@ onoe_ratectl(void *arg, struct ieee80211_node *ni)
 		/* We are no ready to go, set TX rate to lowest one */
 		ni->ni_txrate = 0;
 		return;
+	}
+
+	if (st->rc_st_stats != NULL) {
+		if (!ONOE_MEET_REQUIRE_STATS(st->rc_st_valid_stats))
+			return;
+		onoe_gather_stats(osc, ni);
 	}
 
 	/*
@@ -404,9 +434,19 @@ onoe_tick(void *arg)
 static void
 onoe_sysctl_attach(struct onoe_softc *osc)
 {
-	osc->interval = 1000;
-	osc->raise = 10;
-	osc->raise_threshold = 10;
+	struct ieee80211com *ic = osc->ic;
+	struct ieee80211_onoe_param *param;
+
+	param = ic->ic_ratectl.rc_st_param;
+	if (param != NULL) {
+		osc->interval = param->onoe_interval;
+		osc->raise = param->onoe_raise;
+		osc->raise_threshold = param->onoe_raise_threshold;
+	} else {
+		osc->interval = IEEE80211_ONOE_INTERVAL;
+		osc->raise = IEEE80211_ONOE_RAISE;
+		osc->raise_threshold = IEEE80211_ONOE_RAISE_THR;
+	}
 	osc->debug = 0;
 
 	sysctl_ctx_init(&osc->sysctl_ctx);
@@ -441,7 +481,14 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 static void *
 onoe_attach(struct ieee80211com *ic)
 {
+	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
 	struct onoe_softc *osc;
+
+	if (st->rc_st_stats != NULL &&
+	    !ONOE_MEET_REQUIRE_STATS(st->rc_st_valid_stats)) {
+		if_printf(&ic->ic_if, "WARNING: %s needs more average "
+			  "statistics to work properly\n", onoe.rc_name);
+	}
 
 	onoe_nrefs++;
 
