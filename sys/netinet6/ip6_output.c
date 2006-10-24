@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.24 2006/10/20 11:12:17 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.25 2006/10/24 02:52:10 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -127,7 +127,7 @@ static int ip6_pcbopts (struct ip6_pktopts **, struct mbuf *,
 			    struct socket *, struct sockopt *sopt);
 static int ip6_setmoptions (int, struct ip6_moptions **, struct mbuf *);
 static int ip6_getmoptions (int, struct ip6_moptions *, struct mbuf **);
-static int ip6_copyexthdr (struct mbuf **, caddr_t, int);
+static int copyexthdr (void *, struct mbuf **);
 static int ip6_insertfraghdr (struct mbuf *, struct mbuf *, int,
 				  struct ip6_frag **);
 static int ip6_insert_jumboopt (struct ip6_exthdrs *, u_int32_t);
@@ -179,28 +179,17 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	ip6 = mtod(m, struct ip6_hdr *);
 #endif /* FAST_IPSEC */
 
-#define MAKE_EXTHDR(hp, mp)						\
-    do {								\
-	if (hp) {							\
-		struct ip6_ext *eh = (struct ip6_ext *)(hp);		\
-		error = ip6_copyexthdr((mp), (caddr_t)(hp), 		\
-				       ((eh)->ip6e_len + 1) << 3);	\
-		if (error)						\
-			goto freehdrs;					\
-	}								\
-    } while (0)
-	
 	bzero(&exthdrs, sizeof(exthdrs));
 	
 	if (opt) {
-		/* Hop-by-Hop options header */
-		MAKE_EXTHDR(opt->ip6po_hbh, &exthdrs.ip6e_hbh);
-		/* Destination options header(1st part) */
-		MAKE_EXTHDR(opt->ip6po_dest1, &exthdrs.ip6e_dest1);
-		/* Routing header */
-		MAKE_EXTHDR(opt->ip6po_rthdr, &exthdrs.ip6e_rthdr);
-		/* Destination options header(2nd part) */
-		MAKE_EXTHDR(opt->ip6po_dest2, &exthdrs.ip6e_dest2);
+		if ((error = copyexthdr(opt->ip6po_hbh, &exthdrs.ip6e_hbh)))
+			goto freehdrs;
+		if ((error = copyexthdr(opt->ip6po_dest1, &exthdrs.ip6e_dest1)))
+			goto freehdrs;
+		if ((error = copyexthdr(opt->ip6po_rthdr, &exthdrs.ip6e_rthdr)))
+			goto freehdrs;
+		if ((error = copyexthdr(opt->ip6po_dest2, &exthdrs.ip6e_dest2)))
+			goto freehdrs;
 	}
 
 #ifdef IPSEC
@@ -1117,21 +1106,28 @@ bad:
 }
 
 static int
-ip6_copyexthdr(struct mbuf **mp, caddr_t hdr, int hlen)
+copyexthdr(void *h, struct mbuf **mp)
 {
+	struct ip6_ext *hdr = h;
+	int hlen;
 	struct mbuf *m;
 
+	if (hdr == NULL)
+		return 0;
+
+	hlen = (hdr->ip6e_len + 1) * 8;
 	if (hlen > MCLBYTES)
-		return(ENOBUFS);	/* XXX */
+		return ENOBUFS;	/* XXX */
+
 	m = m_getb(hlen, MB_DONTWAIT, MT_DATA, 0);
 	if (!m)
-		return(ENOBUFS);
+		return ENOBUFS;
 	m->m_len = hlen;
-	if (hdr)
-		bcopy(hdr, mtod(m, caddr_t), hlen);
+
+	bcopy(hdr, mtod(m, caddr_t), hlen);
 
 	*mp = m;
-	return(0);
+	return 0;
 }
 
 /*
