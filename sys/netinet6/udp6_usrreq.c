@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.21 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.22 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -230,9 +230,9 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 */
 		last = NULL;
 		LIST_FOREACH(in6p, &udbinfo.pcblisthead, inp_list) {
-			if ((in6p->inp_flags & INP_PLACEMARKER) == 0)
+			if (!(in6p->inp_flags & INP_PLACEMARKER))
 				continue;
-			if ((in6p->inp_vflag & INP_IPV6) == 0)
+			if (!(in6p->inp_vflag & INP_IPV6))
 				continue;
 			if (in6p->in6p_lport != uh->uh_dport)
 				continue;
@@ -306,7 +306,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			 * clear these options after setting them.
 			 */
 			if ((last->in6p_socket->so_options &
-			     (SO_REUSEPORT|SO_REUSEADDR)) == 0)
+			     (SO_REUSEPORT | SO_REUSEADDR)) == 0)
 				break;
 		}
 
@@ -357,7 +357,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	in6p = in6_pcblookup_hash(&udbinfo, &ip6->ip6_src, uh->uh_sport,
 				  &ip6->ip6_dst, uh->uh_dport, 1,
 				  m->m_pkthdr.rcvif);
-	if (in6p == 0) {
+	if (in6p == NULL) {
 		if (log_in_vain) {
 			char buf[INET6_ADDRSTRLEN];
 
@@ -528,7 +528,7 @@ udp6_abort(struct socket *so)
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
 	crit_enter();
@@ -544,7 +544,7 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int error;
 
 	inp = so->so_pcb;
-	if (inp != 0)
+	if (inp != NULL)
 		return EINVAL;
 
 	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
@@ -582,12 +582,12 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int error;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 
 	inp->inp_vflag &= ~INP_IPV4;
 	inp->inp_vflag |= INP_IPV6;
-	if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0) {
+	if (!(inp->inp_flags & IN6P_IPV6_V6ONLY)) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
 			inp->inp_vflag |= INP_IPV4;
 		else if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr)) {
@@ -621,10 +621,10 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int error;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 
-	if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0) {
+	if (!(inp->inp_flags & IN6P_IPV6_V6ONLY)) {
 		struct sockaddr_in6 *sin6_p;
 
 		sin6_p = (struct sockaddr_in6 *)nam;
@@ -677,7 +677,7 @@ udp6_detach(struct socket *so)
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	crit_enter();
 	in6_pcbdetach(inp);
@@ -691,7 +691,7 @@ udp6_disconnect(struct socket *so)
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 
 	if (inp->inp_vflag & INP_IPV4) {
@@ -719,13 +719,13 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	int error = 0;
 
 	inp = so->so_pcb;
-	if (inp == 0) {
+	if (inp == NULL) {
 		error = EINVAL;
 		goto bad;
 	}
 
 	if (addr) {
-		if (addr->sa_len != sizeof(struct sockaddr_in6)) { 
+		if (addr->sa_len != sizeof(struct sockaddr_in6)) {
 			error = EINVAL;
 			goto bad;
 		}
@@ -739,7 +739,7 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		int hasv4addr;
 		struct sockaddr_in6 *sin6 = 0;
 
-		if (addr == 0)
+		if (addr == NULL)
 			hasv4addr = (inp->inp_vflag & INP_IPV4);
 		else {
 			sin6 = (struct sockaddr_in6 *)addr;
@@ -761,9 +761,9 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 	return udp6_output(inp, m, addr, control, td);
 
-  bad:
+bad:
 	m_freem(m);
-	return(error);
+	return (error);
 }
 
 struct pr_usrreqs udp6_usrreqs = {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.10 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.11 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -547,7 +547,7 @@ esp_3des_blockdecrypt(const struct esp_algorithm *algo, struct secasvar *sav,
 	/* assumption: d has a good alignment */
 	p = (des_key_schedule *)sav->sched;
 	bcopy(s, d, sizeof(DES_LONG) * 2);
-	des_ecb3_encrypt((des_cblock *)d, (des_cblock *)d, 
+	des_ecb3_encrypt((des_cblock *)d, (des_cblock *)d,
 			 p[0], p[1], p[2], DES_DECRYPT);
 	return 0;
 }
@@ -561,7 +561,7 @@ esp_3des_blockencrypt(const struct esp_algorithm *algo, struct secasvar *sav,
 	/* assumption: d has a good alignment */
 	p = (des_key_schedule *)sav->sched;
 	bcopy(s, d, sizeof(DES_LONG) * 2);
-	des_ecb3_encrypt((des_cblock *)d, (des_cblock *)d, 
+	des_ecb3_encrypt((des_cblock *)d, (des_cblock *)d,
 			 p[0], p[1], p[2], DES_ENCRYPT);
 	return 0;
 }

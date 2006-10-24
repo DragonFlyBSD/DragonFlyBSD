@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.16 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -166,7 +166,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		lladdr = (char *)(ndopts.nd_opts_src_lladdr + 1);
 		lladdrlen = ndopts.nd_opts_src_lladdr->nd_opt_len << 3;
 	}
-	
+
 	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_src) && lladdr) {
 		nd6log((LOG_INFO, "nd6_ns_input: bad DAD packet "
 		    "(link-layer address option)\n"));
@@ -208,7 +208,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		struct rtentry *rt;
 		struct sockaddr_in6 tsin6;
 
-		bzero(&tsin6, sizeof tsin6);		
+		bzero(&tsin6, sizeof tsin6);
 		tsin6.sin6_len = sizeof(struct sockaddr_in6);
 		tsin6.sin6_family = AF_INET6;
 		tsin6.sin6_addr = taddr6;
@@ -310,11 +310,11 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 			| (ip6_forwarding ? ND_NA_FLAG_ROUTER : 0)
 			| ND_NA_FLAG_SOLICITED,
 		      tlladdr, (struct sockaddr *)proxydl);
- freeit:
+freeit:
 	m_freem(m);
 	return;
 
- bad:
+bad:
 	nd6log((LOG_ERR, "nd6_ns_input: src=%s\n", ip6_sprintf(&saddr6)));
 	nd6log((LOG_ERR, "nd6_ns_input: dst=%s\n", ip6_sprintf(&daddr6)));
 	nd6log((LOG_ERR, "nd6_ns_input: tgt=%s\n", ip6_sprintf(&taddr6)));
@@ -346,7 +346,7 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	int maxlen;
 	caddr_t mac;
 	struct ifnet *outif = NULL;
-	
+
 	if (IN6_IS_ADDR_MULTICAST(taddr6))
 		return;
 
@@ -480,7 +480,7 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		struct nd_opt_hdr *nd_opt = (struct nd_opt_hdr *)(nd_ns + 1);
 		/* 8 byte alignments... */
 		optlen = (optlen + 7) & ~7;
-		
+
 		m->m_pkthdr.len += optlen;
 		m->m_len += optlen;
 		icmp6len += optlen;
@@ -756,7 +756,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			 * Lock to protect the default router list.
 			 * XXX: this might be unnecessary, since this function
 			 * is only called under the network software interrupt
-			 * context.  However, we keep it just for safety.  
+			 * context.  However, we keep it just for safety.
 			 */
 			crit_enter();
 			dr = defrouter_lookup(in6, rt->rt_ifp);
@@ -788,11 +788,11 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 		ln->ln_hold = 0;
 	}
 
- freeit:
+freeit:
 	m_freem(m);
 	return;
 
- bad:
+bad:
 	icmp6stat.icp6s_badna++;
 	m_freem(m);
 }
@@ -907,7 +907,7 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	if (mac != NULL) {
 		int optlen = sizeof(struct nd_opt_hdr) + ifp->if_addrlen;
 		struct nd_opt_hdr *nd_opt = (struct nd_opt_hdr *)(nd_na + 1);
-		
+
 		/* roundup to 8 bytes alignment! */
 		optlen = (optlen + 7) & ~7;
 
@@ -1135,7 +1135,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
 		goto done;
 	}
-	if ((ia->ia6_flags & IN6_IFF_TENTATIVE) == 0) {
+	if (!(ia->ia6_flags & IN6_IFF_TENTATIVE)) {
 		log(LOG_ERR, "nd6_dad_timer: called with non-tentative address "
 			"%s(%s)\n",
 			ip6_sprintf(&ia->ia_addr.sin6_addr),
@@ -1278,13 +1278,13 @@ nd6_dad_ns_output(struct dadq *dp, struct ifaddr *ifa)
 	struct ifnet *ifp = ifa->ifa_ifp;
 
 	dp->dad_ns_tcount++;
-	if ((ifp->if_flags & IFF_UP) == 0) {
+	if (!(ifp->if_flags & IFF_UP)) {
 #if 0
 		printf("%s: interface down?\n", if_name(ifp));
 #endif
 		return;
 	}
-	if ((ifp->if_flags & IFF_RUNNING) == 0) {
+	if (!(ifp->if_flags & IFF_RUNNING)) {
 #if 0
 		printf("%s: interface not running?\n", if_name(ifp));
 #endif

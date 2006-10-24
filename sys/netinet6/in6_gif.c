@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.15 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.16 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -216,9 +216,9 @@ in6_gif_output(struct ifnet *ifp,
 	 * it is too painful to ask for resend of inner packet, to achieve
 	 * path MTU discovery for encapsulated packets.
 	 */
-	return(ip6_output(m, 0, &sc->gif_ro6, IPV6_MINMTU, 0, NULL, NULL));
+	return (ip6_output(m, 0, &sc->gif_ro6, IPV6_MINMTU, 0, NULL, NULL));
 #else
-	return(ip6_output(m, 0, &sc->gif_ro6, 0, 0, NULL, NULL));
+	return (ip6_output(m, 0, &sc->gif_ro6, 0, 0, NULL, NULL));
 #endif
 }
 
@@ -235,7 +235,7 @@ in6_gif_input(struct mbuf **mp, int *offp, int proto)
 
 	gifp = (struct ifnet *)encap_getarg(m);
 
-	if (gifp == NULL || (gifp->if_flags & IFF_UP) == 0) {
+	if (gifp == NULL || !(gifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		ip6stat.ip6s_nogif++;
 		return IPPROTO_DONE;
@@ -317,7 +317,7 @@ gif_validate6(const struct ip6_hdr *ip6, struct gif_softc *sc,
 	/* martian filters on outer source - done in ip6_input */
 
 	/* ingress filters on outer source */
-	if ((sc->gif_if.if_flags & IFF_LINK2) == 0 && ifp) {
+	if (!(sc->gif_if.if_flags & IFF_LINK2) && ifp) {
 		struct sockaddr_in6 sin6;
 		struct rtentry *rt;
 
@@ -359,7 +359,7 @@ gif_encapcheck6(const struct mbuf *m, int off, int proto, void *arg)
 	sc = (struct gif_softc *)arg;
 
 	m_copydata(m, 0, sizeof(ip6), (caddr_t)&ip6);
-	ifp = ((m->m_flags & M_PKTHDR) != 0) ? m->m_pkthdr.rcvif : NULL;
+	ifp = (m->m_flags & M_PKTHDR) ? m->m_pkthdr.rcvif : NULL;
 
 	return gif_validate6(&ip6, sc, ifp);
 }

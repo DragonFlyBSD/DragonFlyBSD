@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.12 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.13 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -748,7 +748,7 @@ noreplaycheck:
 		}
 
 		key_sa_recordxfer(sav, m);
-		if (ipsec_addhist(m, IPPROTO_ESP, spi) != 0 || 
+		if (ipsec_addhist(m, IPPROTO_ESP, spi) != 0 ||
 		    ipsec_addhist(m, IPPROTO_IPV6, 0) != 0) {
 			ipsec6stat.in_nomem++;
 			goto bad;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.21 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.22 2006/10/24 06:18:42 hsu Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 	LIST_FOREACH(in6p, &ripcbinfo.pcblisthead, inp_list) {
 		if (in6p->in6p_flags & INP_PLACEMARKER)
 			continue;
-		if ((in6p->in6p_vflag & INP_IPV6) == 0)
+		if (!(in6p->in6p_vflag & INP_IPV6))
 			continue;
 		if (in6p->in6p_ip6_nxt &&
 		    in6p->in6p_ip6_nxt != proto)
@@ -410,7 +410,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 					  in6p->in6p_moptions,
 					  &in6p->in6p_route,
 					  &in6p->in6p_laddr,
-					  &error)) == 0) {
+					  &error)) == NULL) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
 			goto bad;
@@ -467,11 +467,11 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 
 	goto freectl;
 
- bad:
+bad:
 	if (m)
 		m_freem(m);
 
- freectl:
+freectl:
 	if (optp == &opt && optp->ip6po_rthdr && optp->ip6po_route.ro_rt)
 		RTFREE(optp->ip6po_route.ro_rt);
 	if (control) {
@@ -479,7 +479,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 			ip6_clearpktopts(optp, 0, -1);
 		m_freem(control);
 	}
-	return(error);
+	return (error);
 }
 
 /*
@@ -495,7 +495,7 @@ rip6_ctloutput(struct socket *so, struct sockopt *sopt)
 		 * XXX: is it better to call icmp6_ctloutput() directly
 		 * from protosw?
 		 */
-		return(icmp6_ctloutput(so, sopt));
+		return (icmp6_ctloutput(so, sopt));
 	else if (sopt->sopt_level != IPPROTO_IPV6)
 		return (EINVAL);
 
@@ -578,7 +578,7 @@ rip6_detach(struct socket *so)
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		panic("rip6_detach");
 	/* xxx: RSVP */
 	if (so == ip6_mrouter)
@@ -603,7 +603,7 @@ rip6_disconnect(struct socket *so)
 {
 	struct inpcb *inp = so->so_pcb;
 
-	if ((so->so_state & SS_ISCONNECTED) == 0)
+	if (!(so->so_state & SS_ISCONNECTED))
 		return ENOTCONN;
 	inp->in6p_faddr = kin6addr_any;
 	return rip6_abort(so);
@@ -627,13 +627,13 @@ rip6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	}
 #endif
 	if (!IN6_IS_ADDR_UNSPECIFIED(&addr->sin6_addr) &&
-	    (ia = ifa_ifwithaddr((struct sockaddr *)addr)) == 0)
+	    (ia = ifa_ifwithaddr((struct sockaddr *)addr)) == NULL)
 		return EADDRNOTAVAIL;
 	if (ia &&
 	    ((struct in6_ifaddr *)ia)->ia6_flags &
 	    (IN6_IFF_ANYCAST|IN6_IFF_NOTREADY|
 	     IN6_IFF_DETACHED|IN6_IFF_DEPRECATED)) {
-		return(EADDRNOTAVAIL);
+		return (EADDRNOTAVAIL);
 	}
 	inp->in6p_laddr = addr->sin6_addr;
 	return 0;

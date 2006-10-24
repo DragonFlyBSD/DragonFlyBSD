@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.10 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.11 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -277,7 +277,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 				    offset - sizeof(struct ip6_frag) +
 					offsetof(struct ip6_frag, ip6f_offlg));
 			frag6_doing_reass = 0;
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	}
 	else if (fragoff + frgpartlen > IPV6_MAXPACKET) {
@@ -285,7 +285,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 			    offset - sizeof(struct ip6_frag) +
 				offsetof(struct ip6_frag, ip6f_offlg));
 		frag6_doing_reass = 0;
-		return(IPPROTO_DONE);
+		return (IPPROTO_DONE);
 	}
 	/*
 	 * If it's the first fragment, do the above check for each
@@ -531,7 +531,7 @@ insert:
 	frag6_doing_reass = 0;
 	return nxt;
 
- dropfrag:
+dropfrag:
 	in6_ifstat_inc(dstifp, ifs6_reass_fail);
 	ip6stat.ip6s_fragdropped++;
 	m_freem(m);

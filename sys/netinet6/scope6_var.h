@@ -1,11 +1,11 @@
 /*	$FreeBSD: src/sys/netinet6/scope6_var.h,v 1.1.2.1 2000/07/15 07:14:38 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.5 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.6 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: scope6_var.h,v 1.4 2000/05/18 15:03:27 jinmei Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -17,7 +17,7 @@
  * 3. Neither the name of the project nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE

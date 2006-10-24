@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.11 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.12 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -94,7 +94,7 @@
 #include <netinet6/ip6_var.h>
 #include <netinet6/nd6.h>
 #ifdef ENABLE_DEFAULT_SCOPE
-#include <netinet6/scope6_var.h> 
+#include <netinet6/scope6_var.h>
 #endif
 
 #include <net/net_osdep.h>
@@ -125,14 +125,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 */
 	if (opts && (pi = opts->ip6po_pktinfo) &&
 	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr))
-		return(&pi->ipi6_addr);
+		return (&pi->ipi6_addr);
 
 	/*
 	 * If the source address is not specified but the socket(if any)
 	 * is already bound, use the bound address.
 	 */
 	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr))
-		return(laddr);
+		return (laddr);
 
 	/*
 	 * If the caller doesn't specify the source address but
@@ -145,9 +145,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 				       dst);
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	/*
@@ -168,15 +168,15 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		if (dstsock->sin6_scope_id < 0 ||
 		    if_index < dstsock->sin6_scope_id) {
 			*errorp = ENXIO; /* XXX: better error? */
-			return(0);
+			return (0);
 		}
 		ia6 = in6_ifawithscope(ifindex2ifnet[dstsock->sin6_scope_id],
 				       dst);
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	/*
@@ -199,9 +199,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			ia6 = in6_ifawithscope(ifp, dst);
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
-				return(0);
+				return (0);
 			}
-			return(&satosin6(&ia6->ia_addr)->sin6_addr);
+			return (&satosin6(&ia6->ia_addr)->sin6_addr);
 		}
 	}
 
@@ -224,9 +224,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			}
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
-				return(0);
+				return (0);
 			}
-			return(&satosin6(&ia6->ia_addr)->sin6_addr);
+			return (&satosin6(&ia6->ia_addr)->sin6_addr);
 		}
 	}
 
@@ -237,7 +237,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	if (ro) {
 		if (ro->ro_rt &&
 		    (!(ro->ro_rt->rt_flags & RTF_UP) ||
-		     satosin6(&ro->ro_dst)->sin6_family != AF_INET6 || 
+		     satosin6(&ro->ro_dst)->sin6_family != AF_INET6 ||
 		     !IN6_ARE_ADDR_EQUAL(&satosin6(&ro->ro_dst)->sin6_addr,
 					 dst))) {
 			RTFREE(ro->ro_rt);
@@ -288,19 +288,19 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			if (ia6 == 0)
 				ia6 = ifatoia6(ifa_ifwithnet(sin6tosa(&sin6)));
 			if (ia6 == 0)
-				return(0);
-			return(&satosin6(&ia6->ia_addr)->sin6_addr);
+				return (0);
+			return (&satosin6(&ia6->ia_addr)->sin6_addr);
 		}
 #endif /* 0 */
 		if (ia6 == 0) {
 			*errorp = EHOSTUNREACH;	/* no route */
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	*errorp = EADDRNOTAVAIL;
-	return(0);
+	return (0);
 }
 
 /*
@@ -314,11 +314,11 @@ int
 in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 {
 	if (in6p && in6p->in6p_hops >= 0)
-		return(in6p->in6p_hops);
+		return (in6p->in6p_hops);
 	else if (ifp)
-		return(ND_IFINFO(ifp)->chlim);
+		return (ND_IFINFO(ifp)->chlim);
 	else
-		return(ip6_defhlim);
+		return (ip6_defhlim);
 }
 
 /*
@@ -412,7 +412,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		return (EAGAIN);
 	}
 
-	return(0);
+	return (0);
 }
 
 /*

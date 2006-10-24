@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.6 2006/06/23 17:20:14 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.7 2006/10/24 06:18:42 hsu Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -731,7 +731,7 @@ sctp6_abort(struct socket *so)
 	struct sctp_inpcb *inp;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
 	crit_enter();
@@ -827,7 +827,7 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 
 	inp6 = (struct in6pcb *)inp;
@@ -847,11 +847,11 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 #if defined(__OpenBSD__)
 	     (0) /* we always do dual bind */
 #elif defined (__NetBSD__)
-	     (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
+	     !(inp6->in6p_flags & IN6P_IPV6_V6ONLY)
 #else
-	     (inp6->inp_flags & IN6P_IPV6_V6ONLY)
+	     !(inp6->inp_flags & IN6P_IPV6_V6ONLY)
 #endif
-	     == 0) {
+	     ) {
 		if (addr->sa_family == AF_INET) {
 			/* binding v4 addr to v6 socket, so reset flags */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
@@ -931,7 +931,7 @@ sctp6_detach(struct socket *so)
 	struct sctp_inpcb *inp;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	crit_enter();
 	if (((so->so_options & SO_LINGER) && (so->so_linger == 0)) ||
@@ -1131,7 +1131,7 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 		}
 	}
 #endif /* INET */
- connected_type:
+connected_type:
 	/* now what about control */
 	if (control) {
 		if (inp->control) {
@@ -1164,10 +1164,10 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 	if (
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	    /* FreeBSD and MacOSX uses a flag passed */
-	    ((flags & PRUS_MORETOCOME) == 0)
+	    (!(flags & PRUS_MORETOCOME))
 #elif defined(__NetBSD__)
 	    /* NetBSD uses the so_state field */
-	    ((so->so_state & SS_MORETOCOME) == 0)
+	    (!(so->so_state & SS_MORETOCOME))
 #else
 	    1   /* Open BSD does not have any "more to come" indication */
 #endif
@@ -1215,7 +1215,7 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 	crit_enter();
 	inp6 = (struct in6pcb *)so->so_pcb;
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0) {
+	if (inp == NULL) {
 		crit_exit();
 		return (ECONNRESET);	/* I made the same as TCP since
 					 * we are not setup? */
@@ -1454,7 +1454,7 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	 * Do the malloc first in case it blocks.
 	 */
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if ((inp->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0) {
+	if (!(inp->sctp_flags & SCTP_PCB_FLAGS_CONNECTED)) {
 		/* UDP type and listeners will drop out here */
 		return (ENOTCONN);
 	}

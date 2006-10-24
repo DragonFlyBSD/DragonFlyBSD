@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.9 2005/03/04 02:21:49 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.10 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -365,9 +365,9 @@ sysctl_ip6_temppltime(SYSCTL_HANDLER_ARGS)
 	if (ip6_temp_preferred_lifetime <
 	    ip6_desync_factor + ip6_temp_regen_advance) {
 		ip6_temp_preferred_lifetime = old;
-		return(EINVAL);
+		return (EINVAL);
 	}
-	return(error);
+	return (error);
 }
 
 static int
@@ -383,9 +383,9 @@ sysctl_ip6_tempvltime(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, arg1, sizeof(int));
 	if (ip6_temp_valid_lifetime < ip6_temp_preferred_lifetime) {
 		ip6_temp_preferred_lifetime = old;
-		return(EINVAL);
+		return (EINVAL);
 	}
-	return(error);
+	return (error);
 }
 
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_FORWARDING,

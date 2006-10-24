@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_output.c,v 1.1.2.5 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.8 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ah_output.c,v 1.31 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -125,7 +125,7 @@ ah_hdrsiz(struct ipsecrequest *isr)
 
 	return hdrsiz;
 
-    estimate:
+estimate:
 	/* ASSUMING:
 	 *	sizeof(struct newah) > sizeof(struct ah).
 	 *	16 = (16 + 3) & ~(4 - 1).
@@ -344,7 +344,7 @@ ah_hdrlen(struct secasvar *sav)
 		ahlen = plen + sizeof(struct newah);
 	}
 
-	return(ahlen);
+	return (ahlen);
 }
 
 #ifdef INET6
@@ -481,7 +481,7 @@ ah6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	}
 	ipsec6stat.out_ahhist[sav->alg_auth]++;
 
-	return(error);
+	return (error);
 }
 #endif
 

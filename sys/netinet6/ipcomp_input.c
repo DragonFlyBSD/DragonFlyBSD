@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.7 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.8 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -220,7 +220,7 @@ ipcomp4_input(struct mbuf *m, ...)
 	}
 
 	if (nxt != IPPROTO_DONE) {
-		if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) != 0 &&
+		if ((inetsw[ip_protox[nxt]].pr_flags & PR_LASTHDR) &&
 		    ipsec4_in_reject(m, NULL)) {
 			ipsecstat.in_polvio++;
 			goto fail;

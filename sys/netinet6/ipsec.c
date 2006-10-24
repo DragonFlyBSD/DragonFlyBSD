@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.16 2006/09/05 03:48:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -681,7 +681,7 @@ ipsec_setspidx_mbuf(struct secpolicyindex *spidx, u_int dir, u_int family,
 
 	return 0;
 
-    bad:
+bad:
 	/* XXX initialize */
 	bzero(spidx, sizeof(*spidx));
 	return EINVAL;
@@ -3113,9 +3113,9 @@ ipsec4_tunnel_validate(struct mbuf *m, /* no pullup permitted, m->m_len >= ip */
 	bzero(&odst, sizeof(odst));
 	bzero(&isrc, sizeof(isrc));
 	bzero(&idst, sizeof(idst));
-	osrc.sin_family = odst.sin_family = isrc.sin_family = idst.sin_family = 
+	osrc.sin_family = odst.sin_family = isrc.sin_family = idst.sin_family =
 	    AF_INET;
-	osrc.sin_len = odst.sin_len = isrc.sin_len = idst.sin_len = 
+	osrc.sin_len = odst.sin_len = isrc.sin_len = idst.sin_len =
 	    sizeof(struct sockaddr_in);
 	osrc.sin_addr = oip->ip_src;
 	odst.sin_addr = oip->ip_dst;
@@ -3193,7 +3193,7 @@ ipsec6_tunnel_validate(struct mbuf *m, /* no pullup permitted, m->m_len >= ip */
 	bzero(&idst, sizeof(idst));
 	osrc.sin6_family = odst.sin6_family = isrc.sin6_family =
 	    idst.sin6_family = AF_INET6;
-	osrc.sin6_len = odst.sin6_len = isrc.sin6_len = idst.sin6_len = 
+	osrc.sin6_len = odst.sin6_len = isrc.sin6_len = idst.sin6_len =
 	    sizeof(struct sockaddr_in6);
 	osrc.sin6_addr = oip6->ip6_src;
 	odst.sin6_addr = oip6->ip6_dst;
@@ -3240,7 +3240,7 @@ ipsec_copypkt(struct mbuf *m)
 	for (n = m, mpp = &m; n; n = n->m_next) {
 		if (n->m_flags & M_EXT) {
 			/*
-			 * Make a copy only if there are more than one 
+			 * Make a copy only if there are more than one
 			 * references to the cluster.
 			 * XXX: is this approach effective?
 			 */
@@ -3323,10 +3323,10 @@ ipsec_copypkt(struct mbuf *m)
 		mpp = &n->m_next;
 	}
 
-	return(m);
-  fail:
+	return (m);
+fail:
 	m_freem(m);
-	return(NULL);
+	return (NULL);
 }
 
 void

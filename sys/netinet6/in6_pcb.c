@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.30 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.31 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
-  
+
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -135,18 +135,18 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if (!in6_ifaddr) /* XXX broken! */
 		return (EADDRNOTAVAIL);
 	if (inp->inp_lport || !IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
-		return(EINVAL);
+		return (EINVAL);
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
 		wild = 1;
 	if (nam) {
 		sin6 = (struct sockaddr_in6 *)nam;
 		if (nam->sa_len != sizeof(*sin6))
-			return(EINVAL);
+			return (EINVAL);
 		/*
 		 * family check.
 		 */
 		if (nam->sa_family != AF_INET6)
-			return(EAFNOSUPPORT);
+			return (EAFNOSUPPORT);
 
 		/* KAME hack: embed scopeid */
 		if (in6_embedscope(&sin6->sin6_addr, sin6, inp, NULL) != 0)
@@ -170,7 +170,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			sin6->sin6_port = 0;		/* yech... */
 			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == 0)
-				return(EADDRNOTAVAIL);
+				return (EADDRNOTAVAIL);
 
 			/*
 			 * XXX: bind to an anycast address might accidentally
@@ -181,7 +181,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			if (ia &&
 			    ((struct in6_ifaddr *)ia)->ia6_flags &
 			    (IN6_IFF_ANYCAST|IN6_IFF_NOTREADY|IN6_IFF_DETACHED)) {
-				return(EADDRNOTAVAIL);
+				return (EADDRNOTAVAIL);
 			}
 		}
 		if (lport) {
@@ -191,7 +191,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && p &&
 			    suser_cred(p->p_ucred, PRISON_ROOT))
-				return(EACCES);
+				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
 				t = in6_pcblookup_local(pcbinfo,
@@ -226,7 +226,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			t = in6_pcblookup_local(pcbinfo, &sin6->sin6_addr,
 						lport, wild);
 			if (t && (reuseport & t->inp_socket->so_options) == 0)
-				return(EADDRINUSE);
+				return (EADDRINUSE);
 			if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
 			    IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
 				struct sockaddr_in sin;
@@ -249,7 +249,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if (lport == 0) {
 		int e;
 		if ((e = in6_pcbsetport(&inp->in6p_laddr, inp, td)) != 0)
-			return(e);
+			return (e);
 	}
 	else {
 		inp->inp_lport = lport;
@@ -259,7 +259,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			return (EAGAIN);
 		}
 	}
-	return(0);
+	return (0);
 }
 
 /*
@@ -314,7 +314,7 @@ in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		if (*plocal_addr6 == 0) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
-			return(error);
+			return (error);
 		}
 		/*
 		 * Don't do pcblookup call here; return interface in
@@ -326,7 +326,7 @@ in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 	if (inp->in6p_route.ro_rt)
 		ifp = inp->in6p_route.ro_rt->rt_ifp;
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -348,7 +348,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	 * in6_pcbladdr() may automatically fill in sin6_scope_id.
 	 */
 	if ((error = in6_pcbladdr(inp, nam, &addr6)) != 0)
-		return(error);
+		return (error);
 
 	if (in6_pcblookup_hash(inp->inp_cpcbinfo, &sin6->sin6_addr,
 			       sin6->sin6_port,
@@ -402,14 +402,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 */
 	if (opts && (pi = opts->ip6po_pktinfo) &&
 	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr))
-		return(&pi->ipi6_addr);
+		return (&pi->ipi6_addr);
 
 	/*
 	 * If the source address is not specified but the socket(if any)
 	 * is already bound, use the bound address.
 	 */
 	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr))
-		return(laddr);
+		return (laddr);
 
 	/*
 	 * If the caller doesn't specify the source address but
@@ -422,9 +422,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 				       dst);
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	/*
@@ -445,15 +445,15 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		if (dstsock->sin6_scope_id < 0 ||
 		    if_index < dstsock->sin6_scope_id) {
 			*errorp = ENXIO; /* XXX: better error? */
-			return(0);
+			return (0);
 		}
 		ia6 = in6_ifawithscope(ifindex2ifnet[dstsock->sin6_scope_id],
 				       dst);
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	/*
@@ -476,9 +476,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			ia6 = in6_ifawithscope(ifp, dst);
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
-				return(0);
+				return (0);
 			}
-			return(&ia6->ia_addr.sin6_addr);
+			return (&ia6->ia_addr.sin6_addr);
 		}
 	}
 
@@ -501,9 +501,9 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			}
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
-				return(0);
+				return (0);
 			}
-			return(&satosin6(&ia6->ia_addr)->sin6_addr);
+			return (&satosin6(&ia6->ia_addr)->sin6_addr);
 		}
 	}
 
@@ -548,13 +548,13 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		}
 		if (ia6 == 0) {
 			*errorp = EHOSTUNREACH;	/* no route */
-			return(0);
+			return (0);
 		}
-		return(&satosin6(&ia6->ia_addr)->sin6_addr);
+		return (&satosin6(&ia6->ia_addr)->sin6_addr);
 	}
 
 	*errorp = EADDRNOTAVAIL;
-	return(0);
+	return (0);
 }
 
 /*
@@ -568,11 +568,11 @@ int
 in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 {
 	if (in6p && in6p->in6p_hops >= 0)
-		return(in6p->in6p_hops);
+		return (in6p->in6p_hops);
 	else if (ifp)
-		return(ND_IFINFO(ifp)->chlim);
+		return (ND_IFINFO(ifp)->chlim);
 	else
-		return(ip6_defhlim);
+		return (ip6_defhlim);
 }
 #endif
 

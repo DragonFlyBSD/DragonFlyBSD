@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.9 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.10 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -353,7 +353,7 @@ rr_are_ifid_equal(struct in6_addr *ii1, struct in6_addr *ii2, int ii_len)
 	    ii_len > 124) { /* as RFC2373, prefix is at least 4 bit */
 		log(LOG_ERR, "rr_are_ifid_equal: invalid ifid length(%d)\n",
 		    ii_len);
-		return(0);
+		return (0);
 	}
 
 	ii_bytelen = ii_len / 8;
@@ -364,12 +364,12 @@ rr_are_ifid_equal(struct in6_addr *ii1, struct in6_addr *ii2, int ii_len)
 
 	if (bcmp(ii1->s6_addr + p_bytelen + 1, ii2->s6_addr + p_bytelen + 1,
 		 ii_bytelen))
-		return(0);
+		return (0);
 	if (((ii1->s6_addr[p_bytelen] << p_bitlen) & 0xff) !=
 	    ((ii2->s6_addr[p_bytelen] << p_bitlen) & 0xff))
-		return(0);
+		return (0);
 
-	return(1);
+	return (1);
 }
 
 static struct rp_addr *
@@ -426,7 +426,7 @@ in6_prefix_add_llifid(int iilen, struct in6_ifaddr *ia)
 	int error;
 
 	if ((error = create_ra_entry(&rap)) != 0)
-		return(error);
+		return (error);
 	/* copy interface id part */
 	bit_copy((caddr_t)&rap->ra_ifid, sizeof(rap->ra_ifid) << 3,
 		 (caddr_t)IA6_IN6(ia), sizeof(*IA6_IN6(ia)) << 3,
@@ -463,7 +463,7 @@ in6_prefix_add_ifid(int iilen, struct in6_ifaddr *ia)
 	int error = 0;
 
 	if (IN6_IS_ADDR_LINKLOCAL(IA6_IN6(ia)))
-		return(in6_prefix_add_llifid(iilen, ia));
+		return (in6_prefix_add_llifid(iilen, ia));
 	ifpr = in6_prefixwithifp(ia->ia_ifp, plen, IA6_IN6(ia));
 	if (ifpr == NULL) {
 		struct rr_prefix rp;
@@ -693,7 +693,7 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 		 * preferable than the new one, ignore installation request.
 		 */
 		if (rpp->rp_origin > new->rp_origin)
-			return(EPERM);
+			return (EPERM);
 
 		/* update prefix information */
 		rpp->rp_flags.prf_ra = new->rp_flags.prf_ra;
@@ -734,7 +734,7 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 		if (rpp == NULL) {
 			log(LOG_ERR, "in6_prefix.c: rrpr_update:%d"
 			    ": ENOBUFS for rr_prefix\n", __LINE__);
-			return(ENOBUFS);
+			return (ENOBUFS);
 		}
 		/* initilization */
 		*rpp = *new;
@@ -795,7 +795,7 @@ static int
 add_each_prefix(struct socket *so, struct rr_prefix *rpp)
 {
 	init_prefix_ltimes(rpp);
-	return(rrpr_update(so, rpp));
+	return (rrpr_update(so, rpp));
 }
 
 static void
@@ -958,7 +958,7 @@ delete_each_prefix(struct rr_prefix *rpp, u_char origin)
 	int error = 0;
 
 	if (rpp->rp_origin > origin)
-		return(EPERM);
+		return (EPERM);
 
 	while (rpp->rp_addrhead.lh_first != NULL) {
 		struct rp_addr *rap;
@@ -1161,7 +1161,7 @@ in6_prefix_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		error = delete_each_prefix(rpp, ipr->ipr_origin);
 		break;
 	}
- bad:
+bad:
 	return error;
 }
 

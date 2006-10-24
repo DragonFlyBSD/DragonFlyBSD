@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_cksum.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_cksum.c,v 1.3 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_cksum.c,v 1.4 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_cksum.c,v 1.10 2000/12/03 00:53:59 itojun Exp $	*/
 
 /*
@@ -228,7 +228,7 @@ in6_cksum(struct mbuf *m, u_int8_t nxt, u_int32_t off, u_int32_t len)
 			mlen = -1;
 	} else if (mlen == -1)
 		s_util.c[0] = *(char *)w;
- next:
+next:
 	m = m->m_next;
 
 	/*

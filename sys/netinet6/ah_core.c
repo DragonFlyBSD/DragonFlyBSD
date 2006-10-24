@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.9 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.10 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -1363,7 +1363,7 @@ ah6_calccksum(struct mbuf *m, caddr_t ahdat, size_t len,
 	nxt = -1;
 	ahseen = 0;
 
- again:
+again:
 	newoff = ip6_nexthdr(m, off, proto, &nxt);
 	if (newoff < 0)
 		newoff = m->m_pkthdr.len;

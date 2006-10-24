@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.7 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -304,5 +304,5 @@ releaseopt:
 		in6p->in6p_outputopts = stickyopt;
 		m_freem(control);
 	}
-	return(error);
+	return (error);
 }

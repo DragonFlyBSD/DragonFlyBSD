@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.30 2006/09/29 03:37:04 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.31 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -355,7 +355,7 @@ ip6_input(struct netmsg *msg)
 #ifdef ALTQ
 	if (altq_input != NULL && (*altq_input)(m, AF_INET6) == 0) {
 		/* packet is dropped by traffic conditioner */
-		return(ENOBUFS);
+		return (ENOBUFS);
 	}
 #endif
 
@@ -459,7 +459,7 @@ ip6_input(struct netmsg *msg)
 	 * by actually looking at interface addresses
 	 * (using in6ifa_ifpwithaddr).
 	 */
-	if ((m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK) != 0 &&
+	if ((m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK) &&
 	    IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst)) {
 		if (!in6ifa_ifpwithaddr(m->m_pkthdr.rcvif, &ip6->ip6_dst)) {
 			icmp6_error(m, ICMP6_DST_UNREACH,
@@ -509,7 +509,7 @@ ip6_input(struct netmsg *msg)
 		 *      therefore should soon be removed.
 		 */
 	if (ip6_forward_rt.ro_rt != NULL &&
-	    (ip6_forward_rt.ro_rt->rt_flags & RTF_UP) != 0 && 
+	    (ip6_forward_rt.ro_rt->rt_flags & RTF_UP) &&
 	    IN6_ARE_ADDR_EQUAL(&ip6->ip6_dst,
 			       &((struct sockaddr_in6 *)(&ip6_forward_rt.ro_dst))->sin6_addr))
 		ip6stat.ip6s_forward_cachehit++;
@@ -628,7 +628,7 @@ ip6_input(struct netmsg *msg)
 		goto bad;
 	}
 
-  hbhcheck:
+hbhcheck:
 	/*
 	 * record address information into m_aux, if we don't have one yet.
 	 * note that we are unable to record it, if the address is not listed
@@ -678,7 +678,7 @@ ip6_input(struct netmsg *msg)
 			/*
 			 * Note that if a valid jumbo payload option is
 			 * contained, ip6_hoptops_input() must set a valid
-			 * (non-zero) payload length to the variable plen. 
+			 * (non-zero) payload length to the variable plen.
 			 */
 			ip6stat.ip6s_badoptions++;
 			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_discard);
@@ -815,7 +815,7 @@ ip6_input(struct netmsg *msg)
 		 * note that we do not visit this with protocols with pcb layer
 		 * code - like udp/tcp/raw ip.
 		 */
-		if ((inet6sw[ip6_protox[nxt]].pr_flags & PR_LASTHDR) != 0 &&
+		if ((inet6sw[ip6_protox[nxt]].pr_flags & PR_LASTHDR) &&
 		    ipsec6_in_reject(m, NULL)) {
 			ipsec6stat.in_polvio++;
 			goto bad;
@@ -829,7 +829,7 @@ bad:
 	m_freem(m);
 bad2:
 	/* msg was embedded in the mbuf, do not reply! */
-	return(EASYNC);
+	return (EASYNC);
 }
 
 /*
@@ -903,11 +903,11 @@ ip6_hopopts_input(u_int32_t *plenp,
 
 	if (ip6_process_hopopts(m, (u_int8_t *)hbh + sizeof(struct ip6_hbh),
 				hbhlen, rtalertp, plenp) < 0)
-		return(-1);
+		return (-1);
 
 	*offp = off;
 	*mp = m;
-	return(0);
+	return (0);
 }
 
 /*
@@ -954,7 +954,7 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 				icmp6_error(m, ICMP6_PARAM_PROB,
 					    ICMP6_PARAMPROB_HEADER,
 					    erroff + opt + 1 - opthead);
-				return(-1);
+				return (-1);
 			}
 			optlen = IP6OPT_RTALERT_LEN;
 			bcopy((caddr_t)(opt + 2), (caddr_t)&rtalert_val, 2);
@@ -971,7 +971,7 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 				icmp6_error(m, ICMP6_PARAM_PROB,
 					    ICMP6_PARAMPROB_HEADER,
 					    erroff + opt + 1 - opthead);
-				return(-1);
+				return (-1);
 			}
 			optlen = IP6OPT_JUMBO_LEN;
 
@@ -985,7 +985,7 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 				icmp6_error(m, ICMP6_PARAM_PROB,
 					    ICMP6_PARAMPROB_HEADER,
 					    erroff + opt - opthead);
-				return(-1);
+				return (-1);
 			}
 
 			/*
@@ -1009,7 +1009,7 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 				icmp6_error(m, ICMP6_PARAM_PROB,
 					    ICMP6_PARAMPROB_HEADER,
 					    erroff + opt + 2 - opthead);
-				return(-1);
+				return (-1);
 			}
 #endif
 
@@ -1021,7 +1021,7 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 				icmp6_error(m, ICMP6_PARAM_PROB,
 					    ICMP6_PARAMPROB_HEADER,
 					    erroff + opt + 2 - opthead);
-				return(-1);
+				return (-1);
 			}
 			*plenp = jumboplen;
 
@@ -1034,17 +1034,17 @@ ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
 			optlen = ip6_unknown_opt(opt, m,
 			    erroff + opt - opthead);
 			if (optlen == -1)
-				return(-1);
+				return (-1);
 			optlen += 2;
 			break;
 		}
 	}
 
-	return(0);
+	return (0);
 
-  bad:
+bad:
 	m_freem(m);
-	return(-1);
+	return (-1);
 }
 
 /*
@@ -1060,14 +1060,14 @@ ip6_unknown_opt(u_int8_t *optp, struct mbuf *m, int off)
 
 	switch (IP6OPT_TYPE(*optp)) {
 	case IP6OPT_TYPE_SKIP: /* ignore the option */
-		return((int)*(optp + 1));
+		return ((int)*(optp + 1));
 	case IP6OPT_TYPE_DISCARD:	/* silently discard */
 		m_freem(m);
-		return(-1);
+		return (-1);
 	case IP6OPT_TYPE_FORCEICMP: /* send ICMP even if multicasted */
 		ip6stat.ip6s_badoptions++;
 		icmp6_error(m, ICMP6_PARAM_PROB, ICMP6_PARAMPROB_OPTION, off);
-		return(-1);
+		return (-1);
 	case IP6OPT_TYPE_ICMP: /* send ICMP if not multicasted */
 		ip6stat.ip6s_badoptions++;
 		ip6 = mtod(m, struct ip6_hdr *);
@@ -1077,11 +1077,11 @@ ip6_unknown_opt(u_int8_t *optp, struct mbuf *m, int off)
 		else
 			icmp6_error(m, ICMP6_PARAM_PROB,
 				    ICMP6_PARAMPROB_OPTION, off);
-		return(-1);
+		return (-1);
 	}
 
 	m_freem(m);		/* XXX: NOTREACHED */
-	return(-1);
+	return (-1);
 }
 
 /*
@@ -1107,7 +1107,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
  		privileged++;
 
 #ifdef SO_TIMESTAMP
-	if ((in6p->in6p_socket->so_options & SO_TIMESTAMP) != 0) {
+	if (in6p->in6p_socket->so_options & SO_TIMESTAMP) {
 		struct timeval tv;
 
 		microtime(&tv);
@@ -1120,7 +1120,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 #endif
 
 	/* RFC 2292 sec. 5 */
-	if ((in6p->in6p_flags & IN6P_PKTINFO) != 0) {
+	if (in6p->in6p_flags & IN6P_PKTINFO) {
 		struct in6_pktinfo pi6;
 		bcopy(&ip6->ip6_dst, &pi6.ipi6_addr, sizeof(struct in6_addr));
 		if (IN6_IS_SCOPE_LINKLOCAL(&pi6.ipi6_addr))
@@ -1135,7 +1135,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 			mp = &(*mp)->m_next;
 	}
 
-	if ((in6p->in6p_flags & IN6P_HOPLIMIT) != 0) {
+	if (in6p->in6p_flags & IN6P_HOPLIMIT) {
 		int hlim = ip6->ip6_hlim & 0xff;
 		*mp = sbcreatecontrol((caddr_t) &hlim,
 			sizeof(int), IPV6_HOPLIMIT, IPPROTO_IPV6);
@@ -1149,7 +1149,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	 * be some hop-by-hop options which can be returned to normal user.
 	 * See RFC 2292 section 6.
 	 */
-	if ((in6p->in6p_flags & IN6P_HOPOPTS) != 0 && privileged) {
+	if ((in6p->in6p_flags & IN6P_HOPOPTS) && privileged) {
 		/*
 		 * Check if a hop-by-hop options header is contatined in the
 		 * received packet, and if so, store the options as ancillary
@@ -1210,7 +1210,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		 * destination options headers (if any) properly.
 		 * XXX: performance issue. We should record this info when
 		 * processing extension headers in incoming routine.
-		 * (todo) use m_aux? 
+		 * (todo) use m_aux?
 		 */
 		proto = IPPROTO_IPV6;
 		off = 0;
@@ -1418,7 +1418,7 @@ ip6_get_prevhdr(struct mbuf *m, int off)
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 
 	if (off == sizeof(struct ip6_hdr))
-		return(&ip6->ip6_nxt);
+		return (&ip6->ip6_nxt);
 	else {
 		int len, nxt;
 		struct ip6_ext *ip6e = NULL;
@@ -1442,7 +1442,7 @@ ip6_get_prevhdr(struct mbuf *m, int off)
 			nxt = ip6e->ip6e_nxt;
 		}
 		if (ip6e)
-			return(&ip6e->ip6e_nxt);
+			return (&ip6e->ip6e_nxt);
 		else
 			return NULL;
 	}

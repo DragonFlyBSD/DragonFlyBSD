@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.16 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -200,7 +200,7 @@ generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 	 * RFC 3041 3.2.1. (4)
 	 * Take the rightmost 64-bits of the MD5 digest and save them in
 	 * stable storage as the history value to be used in the next
-	 * iteration of the algorithm. 
+	 * iteration of the algorithm.
 	 */
 	bcopy(&digest[8], seed0, 8);
 
@@ -436,7 +436,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 	ifra.ifra_addr.sin6_addr.s6_addr16[0] = htons(0xfe80);
 	ifra.ifra_addr.sin6_addr.s6_addr16[1] = htons(ifp->if_index); /* XXX */
 	ifra.ifra_addr.sin6_addr.s6_addr32[1] = 0;
-	if ((ifp->if_flags & IFF_LOOPBACK) != 0) {
+	if (ifp->if_flags & IFF_LOOPBACK) {
 		ifra.ifra_addr.sin6_addr.s6_addr32[2] = 0;
 		ifra.ifra_addr.sin6_addr.s6_addr32[3] = htonl(1);
 	} else {
@@ -480,7 +480,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 			    "configure a link-local address on %s "
 			    "(errno=%d)\n",
 			    if_name(ifp), error);
-		return(-1);
+		return (-1);
 	}
 
 	/*
@@ -495,7 +495,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 		/* NOTREACHED */
 	}
 #endif
-	if (in6if_do_dad(ifp) && (ifp->if_flags & IFF_POINTOPOINT) == 0) {
+	if (in6if_do_dad(ifp) && !(ifp->if_flags & IFF_POINTOPOINT)) {
 		ia->ia6_flags &= ~IN6_IFF_NODAD;
 		ia->ia6_flags |= IN6_IFF_TENTATIVE;
 	}
@@ -535,7 +535,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 	 */
 	if (nd6_prefix_lookup(&pr0) == NULL) {
 		if ((error = nd6_prelist_add(&pr0, NULL, NULL)) != 0)
-			return(error);
+			return (error);
 	}
 
 	return 0;
@@ -589,7 +589,7 @@ in6_ifattach_loopback(struct ifnet *ifp)	/* must be IFT_LOOP */
 		log(LOG_ERR, "in6_ifattach_loopback: failed to configure "
 		    "the loopback address on %s (errno=%d)\n",
 		    if_name(ifp), error);
-		return(-1);
+		return (-1);
 	}
 
 	return 0;
@@ -666,7 +666,7 @@ in6_nigroup_attach(const char *name, int namelen)
 			if (!in6_addmulti(&mltaddr.sin6_addr, ifp, &error)) {
 				nd6log((LOG_ERR, "%s: failed to join %s "
 				    "(errno=%d)\n", if_name(ifp),
-				    ip6_sprintf(&mltaddr.sin6_addr), 
+				    ip6_sprintf(&mltaddr.sin6_addr),
 				    error));
 			}
 		}
@@ -738,7 +738,7 @@ in6_ifattach(struct ifnet *ifp,
 	/*
 	 * usually, we require multicast capability to the interface
 	 */
-	if ((ifp->if_flags & IFF_MULTICAST) == 0) {
+	if (!(ifp->if_flags & IFF_MULTICAST)) {
 		log(LOG_INFO, "in6_ifattach: "
 		    "%s is not multicast capable, IPv6 not enabled\n",
 		    if_name(ifp));
@@ -749,7 +749,7 @@ in6_ifattach(struct ifnet *ifp,
 	 * assign loopback address for loopback interface.
 	 * XXX multiple loopback interface case.
 	 */
-	if ((ifp->if_flags & IFF_LOOPBACK) != 0) {
+	if (ifp->if_flags & IFF_LOOPBACK) {
 		in6 = kin6addr_loopback;
 		if (in6ifa_ifpwithaddr(ifp, &in6) == NULL) {
 			if (in6_ifattach_loopback(ifp) != 0)
@@ -758,7 +758,7 @@ in6_ifattach(struct ifnet *ifp,
 	}
 
 	/*
-	 * assign a link-local address, if there's none. 
+	 * assign a link-local address, if there's none.
 	 */
 	if (ip6_auto_linklocal) {
 		ia = in6ifa_ifpforlinklocal(ifp, 0);
@@ -772,7 +772,7 @@ in6_ifattach(struct ifnet *ifp,
 	}
 
 #ifdef IFT_STF			/* XXX */
-statinit:	
+statinit:
 #endif
 
 	/* update dynamically. */
@@ -845,7 +845,7 @@ in6_ifdetach(struct ifnet *ifp)
 			if (ia->ia_next)
 				ia->ia_next = oia->ia_next;
 			else {
-				nd6log((LOG_ERR, 
+				nd6log((LOG_ERR,
 				    "%s: didn't unlink in6ifaddr from "
 				    "list\n", if_name(ifp)));
 			}

@@ -1,11 +1,11 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.8 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -17,7 +17,7 @@
  * 3. Neither the name of the project nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -97,7 +97,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 	struct scope6_id *sid = SID(ifp);
 
 	if (!sid)	/* paranoid? */
-		return(EINVAL);
+		return (EINVAL);
 
 	/*
 	 * XXX: We need more consistency checks of the relationship among
@@ -106,7 +106,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 
 	/*
 	 * TODO(XXX): after setting, we should reflect the changes to
-	 * interface addresses, routing table entries, PCB entries... 
+	 * interface addresses, routing table entries, PCB entries...
 	 */
 
 	crit_enter();
@@ -123,7 +123,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 				 * safety in later use.
 				 */
 				crit_exit();
-				return(EINVAL);
+				return (EINVAL);
 			}
 
 			/*
@@ -136,7 +136,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 	}
 	crit_exit();
 
-	return(error);
+	return (error);
 }
 
 int
@@ -145,11 +145,11 @@ scope6_get(struct ifnet *ifp, struct scope6_id *idlist)
 	struct scope6_id *sid = SID(ifp);
 
 	if (sid == NULL)	/* paranoid? */
-		return(EINVAL);
+		return (EINVAL);
 
 	*idlist = *sid;
 
-	return(0);
+	return (0);
 }
 
 
@@ -240,7 +240,7 @@ in6_addr2scopeid(struct ifnet *ifp,	/* must not be NULL */
 
 	switch(scope) {
 	case IPV6_ADDR_SCOPE_NODELOCAL:
-		return(-1);	/* XXX: is this an appropriate value? */
+		return (-1);	/* XXX: is this an appropriate value? */
 
 	case IPV6_ADDR_SCOPE_LINKLOCAL:
 		return (sid->s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL]);
@@ -252,7 +252,7 @@ in6_addr2scopeid(struct ifnet *ifp,	/* must not be NULL */
 		return (sid->s6id_list[IPV6_ADDR_SCOPE_ORGLOCAL]);
 
 	default:
-		return(0);	/* XXX: treat as global. */
+		return (0);	/* XXX: treat as global. */
 	}
 }
 
@@ -281,7 +281,7 @@ scope6_get_default(struct scope6_id *idlist)
 {
 	*idlist = sid_default;
 
-	return(0);
+	return (0);
 }
 
 u_int32_t

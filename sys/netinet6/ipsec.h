@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.h,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.5 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ipsec.h,v 1.53 2001/11/20 08:32:38 itojun Exp $	*/
 
 /*
@@ -337,7 +337,7 @@ extern int ipsec4_tunnel_validate (struct mbuf *, int, u_int,
 	struct secasvar *);
 extern struct mbuf *ipsec_copypkt (struct mbuf *);
 extern void ipsec_delaux (struct mbuf *);
-extern int ipsec_addhist (struct mbuf *, int, u_int32_t); 
+extern int ipsec_addhist (struct mbuf *, int, u_int32_t);
 extern struct ipsec_history *ipsec_gethist (struct mbuf *, int *);
 #endif /* _KERNEL */
 

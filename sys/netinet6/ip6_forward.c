@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.11 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.12 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -135,7 +135,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * Do not forward packets with unspecified source.  It was discussed
 	 * in July 2000, on ipngwg mailing list.
 	 */
-	if ((m->m_flags & (M_BCAST|M_MCAST)) != 0 ||
+	if ((m->m_flags & (M_BCAST | M_MCAST)) != 0 ||
 	    IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst) ||
 	    IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_src)) {
 		ip6stat.ip6s_cantforward++;
@@ -294,7 +294,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 		return;
 	}
     }
-    skip_ipsec:
+skip_ipsec:
 #endif /* IPSEC */
 
 	dst = (struct sockaddr_in6 *)&ip6_forward_rt.ro_dst;
@@ -302,8 +302,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 		/*
 		 * ip6_forward_rt.ro_dst.sin6_addr is equal to ip6->ip6_dst
 		 */
-		if (ip6_forward_rt.ro_rt == 0 ||
-		    (ip6_forward_rt.ro_rt->rt_flags & RTF_UP) == 0) {
+		if (ip6_forward_rt.ro_rt == NULL ||
+		    !(ip6_forward_rt.ro_rt->rt_flags & RTF_UP)) {
 			if (ip6_forward_rt.ro_rt) {
 				RTFREE(ip6_forward_rt.ro_rt);
 				ip6_forward_rt.ro_rt = 0;
@@ -313,7 +313,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 				    RTF_PRCLONING);
 		}
 
-		if (ip6_forward_rt.ro_rt == 0) {
+		if (ip6_forward_rt.ro_rt == NULL) {
 			ip6stat.ip6s_noroute++;
 			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_noroute);
 			if (mcopy) {
@@ -323,7 +323,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 			m_freem(m);
 			return;
 		}
-	} else if ((rt = ip6_forward_rt.ro_rt) == 0 ||
+	} else if ((rt = ip6_forward_rt.ro_rt) == NULL ||
 		 !IN6_ARE_ADDR_EQUAL(&ip6->ip6_dst, &dst->sin6_addr)) {
 		if (ip6_forward_rt.ro_rt) {
 			RTFREE(ip6_forward_rt.ro_rt);
@@ -335,7 +335,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 		dst->sin6_addr = ip6->ip6_dst;
 
   		rtalloc_ign((struct route *)&ip6_forward_rt, RTF_PRCLONING);
-		if (ip6_forward_rt.ro_rt == 0) {
+		if (ip6_forward_rt.ro_rt == NULL) {
 			ip6stat.ip6s_noroute++;
 			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_noroute);
 			if (mcopy) {
@@ -432,8 +432,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * modified by a redirect.
 	 */
 	if (rt->rt_ifp == m->m_pkthdr.rcvif && !srcrt &&
-	    (rt->rt_flags & (RTF_DYNAMIC|RTF_MODIFIED)) == 0) {
-		if ((rt->rt_ifp->if_flags & IFF_POINTOPOINT) != 0) {
+	    (rt->rt_flags & (RTF_DYNAMIC | RTF_MODIFIED)) == 0) {
+		if (rt->rt_ifp->if_flags & IFF_POINTOPOINT) {
 			/*
 			 * If the incoming interface is equal to the outgoing
 			 * one, and the link attached to the interface is
@@ -474,7 +474,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * link identifiers, we can do this stuff after making a copy for
 	 * returning an error.
 	 */
-	if ((rt->rt_ifp->if_flags & IFF_LOOPBACK) != 0) {
+	if (rt->rt_ifp->if_flags & IFF_LOOPBACK) {
 		/*
 		 * See corresponding comments in ip6_output.
 		 * XXX: but is it possible that ip6_forward() sends a packet
@@ -487,7 +487,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 #if 1
 		if (0)
 #else
-		if ((rt->rt_flags & (RTF_BLACKHOLE|RTF_REJECT)) == 0)
+		if ((rt->rt_flags & (RTF_BLACKHOLE | RTF_REJECT)) == 0)
 #endif
 		{
 			printf("ip6_forward: outgoing interface is loopback. "
@@ -514,8 +514,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * Run through list of hooks for output packets.
 	 */
 	if (pfil_has_hooks(&inet6_pfil_hook)) {
-		error = pfil_run_hooks(&inet6_pfil_hook, &m, 
-					rt->rt_ifp, PFIL_OUT);
+		error = pfil_run_hooks(&inet6_pfil_hook, &m, rt->rt_ifp,
+				       PFIL_OUT);
 		if (error != 0)
 			goto senderr;
 		if (m == NULL)
@@ -570,7 +570,7 @@ senderr:
 	icmp6_error(mcopy, type, code, 0);
 	return;
 
- freecopy:
+freecopy:
 	m_freem(mcopy);
 	return;
 }

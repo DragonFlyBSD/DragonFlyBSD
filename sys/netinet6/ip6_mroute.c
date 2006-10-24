@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.13 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.14 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -268,7 +268,7 @@ ip6_mrouter_set(struct socket *so, struct sockopt *sopt)
 	}
 
 	m_freem(m);
-	return(error);
+	return (error);
 }
 
 /*
@@ -299,10 +299,10 @@ mrt6_ioctl(int cmd, caddr_t data)
 
 	switch (cmd) {
 	case SIOCGETSGCNT_IN6:
-		return(get_sg_cnt((struct sioc_sg_req6 *)data));
+		return (get_sg_cnt((struct sioc_sg_req6 *)data));
 		break;		/* for safety */
 	case SIOCGETMIFCNT_IN6:
-		return(get_mif6_cnt((struct sioc_mif_req6 *)data));
+		return (get_mif6_cnt((struct sioc_mif_req6 *)data));
 		break;		/* for safety */
 	default:
 		return (EINVAL);
@@ -327,7 +327,7 @@ get_sg_cnt(struct sioc_sg_req6 *req)
 		req->bytecnt = rt->mf6c_byte_cnt;
 		req->wrong_if = rt->mf6c_wrong_if;
 	} else
-		return(ESRCH);
+		return (ESRCH);
 #if 0
 		req->pktcnt = req->bytecnt = req->wrong_if = 0xffffffff;
 #endif
@@ -1570,7 +1570,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			log(LOG_DEBUG,"pim6_input: PIM packet too short\n");
 #endif
 		m_freem(m);
-		return(IPPROTO_DONE);
+		return (IPPROTO_DONE);
 	}
 
 	/*
@@ -1624,7 +1624,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 				    "pim6_input: invalid checksum\n");
 #endif
 			m_freem(m);
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	}
 #endif /* PIM_CHECKSUM */
@@ -1638,7 +1638,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 		    pim->pim_ver, PIM_VERSION);
 #endif
 		m_freem(m);
-		return(IPPROTO_DONE);
+		return (IPPROTO_DONE);
 	}
 
 	if (pim->pim_type == PIM_REGISTER) {
@@ -1664,7 +1664,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 				    reg_mif_num);
 #endif
 			m_freem(m);
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	
 		reghdr = (u_int32_t *)(pim + 1);
@@ -1685,7 +1685,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			    pimlen, ip6_sprintf(&ip6->ip6_src));
 #endif
 			m_freem(m);
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	
 		eip6 = (struct ip6_hdr *) (reghdr + 1);
@@ -1708,7 +1708,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			    (eip6->ip6_vfc & IPV6_VERSION));
 #endif
 			m_freem(m);
-			return(IPPROTO_NONE);
+			return (IPPROTO_NONE);
 		}
 	
 		/* verify the inner packet is destined to a mcast group */
@@ -1722,7 +1722,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 				    ip6_sprintf(&eip6->ip6_dst));
 #endif
 			m_freem(m);
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	
 		/*
@@ -1736,7 +1736,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			    "could not copy register head\n");
 #endif
 			m_freem(m);
-			return(IPPROTO_DONE);
+			return (IPPROTO_DONE);
 		}
 	
 		/*
@@ -1767,7 +1767,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 	 * encapsulator ip6 header, pim header, register header and the
 	 * encapsulated ip6 header.
 	 */
-  pim6_input_to_daemon:
+pim6_input_to_daemon:
 	rip6_input(&m, offp, proto);
-	return(IPPROTO_DONE);
+	return (IPPROTO_DONE);
 }

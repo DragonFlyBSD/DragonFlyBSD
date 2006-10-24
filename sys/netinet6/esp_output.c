@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.8 2006/09/03 18:52:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -107,8 +107,8 @@ esp_hdrsiz(struct ipsecrequest *isr)
 
 	if (sav == NULL)
 		goto estimate;
-	if (sav->state != SADB_SASTATE_MATURE
-	 && sav->state != SADB_SASTATE_DYING)
+	if (sav->state != SADB_SASTATE_MATURE &&
+	    sav->state != SADB_SASTATE_DYING)
 		goto estimate;
 
 	/* we need transport mode ESP. */
@@ -141,7 +141,7 @@ esp_hdrsiz(struct ipsecrequest *isr)
 
 	return hdrsiz;
 
-   estimate:
+estimate:
 	/*
 	 * ASSUMING:
 	 *	sizeof(struct newesp) > sizeof(struct esp).
@@ -335,7 +335,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * before: IP ... payload
 	 * after:  IP ... ESP IV payload
 	 */
-	if (M_LEADINGSPACE(md) < esphlen || (md->m_flags & M_EXT) != 0) {
+	if (M_LEADINGSPACE(md) < esphlen || (md->m_flags & M_EXT)) {
 		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
