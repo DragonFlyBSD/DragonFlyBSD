@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/kerberos,v 1.3 2003/03/08 09:50:10 markm Exp $
-# $DragonFly: src/etc/rc.d/kerberos,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/kerberos,v 1.4 2006/10/24 09:24:15 victor Exp $
 #
 
 # PROVIDE: kerberos
@@ -12,7 +12,7 @@
 name="kerberos5"
 load_rc_config $name
 rcvar="kerberos5_server_enable"
-command="${kerberos5_server}"
+command="${kerberos5_server_program}"
 command_args="&"
 
 run_rc_command "$1"

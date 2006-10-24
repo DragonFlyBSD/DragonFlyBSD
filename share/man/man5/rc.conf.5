@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.24 2006/08/25 22:37:08 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.25 2006/10/24 09:24:15 victor Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -1017,7 +1017,7 @@ Set to
 .Dq Li YES
 to start a Kerberos 5 authentication server
 at boot time.
-.It Va kerberos5_server
+.It Va kerberos5_server_program
 .Pq Vt str
 If
 .Va kerberos5_server_enable
@@ -1033,7 +1033,7 @@ to start
 the Kerberos 5 Administration Daemon; set to
 .Dq Li NO
 on a slave server.
-.It Va kadmind5_server
+.It Va kadmind5_server_program
 .Pq Vt str
 If
 .Va kadmind5_server_enable
@@ -1049,7 +1049,7 @@ to start
 the Kerberos 5 Password-Changing Daemon; set to
 .Dq Li NO
 on a slave server.
-.It Va kpasswdd_server
+.It Va kpasswdd_server_program
 .Pq Vt str
 If
 .Va kpasswdd_server_enable
@@ -1495,7 +1495,7 @@ If set to
 .Dq Li YES ,
 run a routing daemon of some sort, based on the
 settings of
-.Va router
+.Va router_program
 and
 .Va router_flags .
 .It Va ipv6_router_enable
@@ -1506,20 +1506,20 @@ If set to
 .Dq Li YES ,
 run a routing daemon of some sort, based on the
 settings of
-.Va ipv6_router
+.Va ipv6_router_program
 and
 .Va ipv6_router_flags .
-.It Va router
+.It Va router_program
 .Pq Vt str
 If
 .Va router_enable
 is set to
 .Dq Li YES ,
 this is the name of the routing daemon to use.
-.It Va ipv6_router
+.It Va ipv6_router_program
 .Pq Vt str
 The IPv6 equivalent of
-.Va router .
+.Va router_program .
 .It Va router_flags
 .Pq Vt str
 If
@@ -2245,11 +2245,6 @@ which are writable by anyone except root.
 Set this variable to
 .Dq Li YES
 to disable that security check during system startup.
-.It Va kern_securelevel_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to set the kernel security level at system startup.
 .It Va kern_securelevel
 .Pq Vt int
 The kernel security level to set at startup.

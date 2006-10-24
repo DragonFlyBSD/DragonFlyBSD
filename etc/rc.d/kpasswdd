@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/kpasswdd,v 1.2 2003/05/06 02:28:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/kpasswdd,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/kpasswdd,v 1.4 2006/10/24 09:24:15 victor Exp $
 #
 
 # PROVIDE: kpasswdd
@@ -14,7 +14,7 @@ name="kpasswdd"
 load_rc_config $name
 rcvar="kpasswdd_server_enable"
 unset start_cmd
-command="${kpasswdd_server}"
+command="${kpasswdd_server_program}"
 command_args="&"
 required_vars="kadmind5_server_enable"
 
