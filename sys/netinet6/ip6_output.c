@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.27 2006/10/24 06:49:52 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.28 2006/10/24 07:27:26 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -153,13 +153,15 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	struct ip6_hdr *ip6, *mhip6;
 	struct ifnet *ifp, *origifp;
 	struct mbuf *m = m0;
+	struct mbuf *mprev;
+	u_char *nexthdrp;
 	int hlen, tlen, len, off;
 	struct route_in6 ip6route;
 	struct sockaddr_in6 *dst;
 	int error = 0;
 	struct in6_ifaddr *ia = NULL;
 	u_long mtu;
-	u_int32_t optlen = 0, plen = 0, unfragpartlen;
+	u_int32_t optlen, plen = 0, unfragpartlen;
 	struct ip6_exthdrs exthdrs;
 	struct in6_addr finaldst;
 	struct route_in6 *ro_pmtu = NULL;
@@ -178,6 +180,9 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 
 	ip6 = mtod(m, struct ip6_hdr *);
 #endif
+	struct ip6_rthdr *rh = NULL;
+	int segleft_org = 0;
+	struct ipsec_output_state state;
 
 	bzero(&exthdrs, sizeof exthdrs);
 
@@ -281,13 +286,14 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	 * Calculate the total length of the extension header chain.
 	 * Keep the length of the unfragmentable part for fragmentation.
 	 */
-	optlen = 0;
-	if (exthdrs.ip6e_hbh) optlen += exthdrs.ip6e_hbh->m_len;
-	if (exthdrs.ip6e_dest1) optlen += exthdrs.ip6e_dest1->m_len;
-	if (exthdrs.ip6e_rthdr) optlen += exthdrs.ip6e_rthdr->m_len;
+	optlen = m_lengthm(exthdrs.ip6e_hbh, NULL) +
+	    m_lengthm(exthdrs.ip6e_dest1, NULL) +
+	    m_lengthm(exthdrs.ip6e_rthdr, NULL);
+
 	unfragpartlen = optlen + sizeof(struct ip6_hdr);
+
 	/* NOTE: we don't add AH/ESP length here. do that later. */
-	if (exthdrs.ip6e_dest2) optlen += exthdrs.ip6e_dest2->m_len;
+	optlen += m_lengthm(exthdrs.ip6e_dest2, NULL);
 
 	/*
 	 * If we need IPsec, or there is at least one extension header,
@@ -339,26 +345,26 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	 * during the header composing process, "m" points to IPv6 header.
 	 * "mprev" points to an extension header prior to esp.
 	 */
-	{
-		u_char *nexthdrp = &ip6->ip6_nxt;
-		struct mbuf *mprev = m;
 
-		/*
-		 * we treat dest2 specially.  this makes IPsec processing
-		 * much easier.  the goal here is to make mprev point the
-		 * mbuf prior to dest2.
-		 *
-		 * result: IPv6 dest2 payload
-		 * m and mprev will point to IPv6 header.
-		 */
-		if (exthdrs.ip6e_dest2) {
-			if (!hdrsplit)
-				panic("assumption failed: hdr not split");
-			exthdrs.ip6e_dest2->m_next = m->m_next;
-			m->m_next = exthdrs.ip6e_dest2;
-			*mtod(exthdrs.ip6e_dest2, u_char *) = ip6->ip6_nxt;
-			ip6->ip6_nxt = IPPROTO_DSTOPTS;
-		}
+	nexthdrp = &ip6->ip6_nxt;
+	mprev = m;
+
+	/*
+	 * we treat dest2 specially.  this makes IPsec processing
+	 * much easier.  the goal here is to make mprev point the
+	 * mbuf prior to dest2.
+	 *
+	 * result: IPv6 dest2 payload
+	 * m and mprev will point to IPv6 header.
+	 */
+	if (exthdrs.ip6e_dest2) {
+		if (!hdrsplit)
+			panic("assumption failed: hdr not split");
+		exthdrs.ip6e_dest2->m_next = m->m_next;
+		m->m_next = exthdrs.ip6e_dest2;
+		*mtod(exthdrs.ip6e_dest2, u_char *) = ip6->ip6_nxt;
+		ip6->ip6_nxt = IPPROTO_DSTOPTS;
+	}
 
 /*
  * Place m1 after mprev.
@@ -376,19 +382,18 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		mprev = m1;\
 	}\
     } while (0)
-		/*
-		 * result: IPv6 hbh dest1 rthdr dest2 payload
-		 * m will point to IPv6 header.  mprev will point to the
-		 * extension header prior to dest2 (rthdr in the above case).
-		 */
-		MAKE_CHAIN(exthdrs.ip6e_hbh, mprev, nexthdrp, IPPROTO_HOPOPTS);
-		MAKE_CHAIN(exthdrs.ip6e_dest1, mprev, nexthdrp, IPPROTO_DSTOPTS);
-		MAKE_CHAIN(exthdrs.ip6e_rthdr, mprev, nexthdrp, IPPROTO_ROUTING);
+
+	/*
+	 * result: IPv6 hbh dest1 rthdr dest2 payload
+	 * m will point to IPv6 header.  mprev will point to the
+	 * extension header prior to dest2 (rthdr in the above case).
+	 */
+	MAKE_CHAIN(exthdrs.ip6e_hbh, mprev, nexthdrp, IPPROTO_HOPOPTS);
+	MAKE_CHAIN(exthdrs.ip6e_dest1, mprev, nexthdrp, IPPROTO_DSTOPTS);
+	MAKE_CHAIN(exthdrs.ip6e_rthdr, mprev, nexthdrp, IPPROTO_ROUTING);
 
 #if defined(IPSEC) || defined(FAST_IPSEC)
-		if (!needipsec)
-			goto skip_ipsec2;
-
+	if (needipsec) {
 		/*
 		 * pointers after IPsec headers are not valid any more.
 		 * other pointers need a great care too.
@@ -396,21 +401,16 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		 */
 		exthdrs.ip6e_dest2 = NULL;
 
-	    {
-		struct ip6_rthdr *rh = NULL;
-		int segleft_org = 0;
-		struct ipsec_output_state state;
-
 		if (exthdrs.ip6e_rthdr) {
 			rh = mtod(exthdrs.ip6e_rthdr, struct ip6_rthdr *);
 			segleft_org = rh->ip6r_segleft;
 			rh->ip6r_segleft = 0;
 		}
 
-		bzero(&state, sizeof(state));
+		bzero(&state, sizeof state);
 		state.m = m;
 		error = ipsec6_output_trans(&state, nexthdrp, mprev, sp, flags,
-			&needipsectun);
+					    &needipsectun);
 		m = state.m;
 		if (error) {
 			/* mbuf is already reclaimed in ipsec6_output_trans. */
@@ -423,7 +423,8 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			case ENOMEM:
 				break;
 			default:
-				printf("ip6_output (ipsec): error code %d\n", error);
+				printf("ip6_output (ipsec): error code %d\n",
+				       error);
 				/* fall through */
 			case ENOENT:
 				/* don't show these error codes to the user */
@@ -436,10 +437,8 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			/* ah6_output doesn't modify mbuf chain */
 			rh->ip6r_segleft = segleft_org;
 		}
-	    }
-skip_ipsec2:;
-#endif
 	}
+#endif
 
 	/*
 	 * If there is a routing header, replace destination address field
@@ -558,7 +557,7 @@ skip_ipsec2:;
 
 		exthdrs.ip6e_ip6 = m;
 	}
-#endif /* IPSEC */
+#endif
 
 	if (!IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst)) {
 		/* Unicast */
