@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.29 2006/10/24 16:33:11 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.30 2006/10/25 07:02:27 corecode Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -166,11 +166,11 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	struct in6_addr finaldst;
 	struct route_in6 *ro_pmtu = NULL;
 	boolean_t hdrsplit = FALSE;
+	boolean_t needipsec = FALSE;
+#ifdef IPSEC
 	struct ip6_rthdr *rh = NULL;
 	int segleft_org = 0;
 	struct ipsec_output_state state;
-	boolean_t needipsec = FALSE;
-#ifdef IPSEC
 	boolean_t needipsectun = FALSE;
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
