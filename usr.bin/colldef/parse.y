@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colldef/parse.y,v 1.15.2.5 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/parse.y,v 1.4 2005/03/02 07:16:23 joerg Exp $
+ * $DragonFly: src/usr.bin/colldef/parse.y,v 1.5 2006/10/25 08:27:27 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -133,28 +133,28 @@ order : ORDER order_list {
 	strcpy(__collate_version, COLLATE_VERSION1_1);
 	if (fwrite(__collate_version, sizeof(__collate_version), 1, fp) != 1)
 		err(EX_IOERR,
-		"IO error writting collate version to destination file %s",
+		"IO error writing collate version to destination file %s",
 		    out_file);
 	u32 = htonl(chain_index);
 	if (fwrite(&u32, sizeof(u32), 1, fp) != 1)
 		err(EX_IOERR,
-		"IO error writting chains number to destination file %s",
+		"IO error writing chains number to destination file %s",
 		    out_file);
 	if (fwrite(__collate_substitute_table,
 		   sizeof(__collate_substitute_table), 1, fp) != 1)
 		err(EX_IOERR,
-		"IO error writting substitute table to destination file %s",
+		"IO error writing substitute table to destination file %s",
 		    out_file);
 	if (fwrite(__collate_char_pri_table,
 		   sizeof(__collate_char_pri_table), 1, fp) != 1)
 		err(EX_IOERR,
-		"IO error writting char table to destination file %s",
+		"IO error writing char table to destination file %s",
 		    out_file);
 	if (fwrite(__collate_chain_pri_table,
 		   sizeof(*__collate_chain_pri_table), chain_index, fp) !=
 		   (size_t)chain_index)
 		err(EX_IOERR,
-		"IO error writting chain table to destination file %s",
+		"IO error writing chain table to destination file %s",
 		    out_file);
 	if (fclose(fp) != 0)
 		err(EX_IOERR, "IO error closing destination file %s",

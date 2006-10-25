@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.29 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.30 2006/10/25 08:27:27 swildner Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -670,7 +670,7 @@ tapwrite(struct dev_write_args *ap)
 	struct mbuf		*top = NULL, **mp = NULL, *m = NULL;
 	int		 	 error = 0, tlen, mlen;
 
-	TAPDEBUG(ifp, "writting, minor = %#x\n", minor(tp->tap_dev));
+	TAPDEBUG(ifp, "writing, minor = %#x\n", minor(tp->tap_dev));
 
 	if (uio->uio_resid == 0)
 		return (0);

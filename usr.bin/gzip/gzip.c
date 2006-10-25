@@ -1,5 +1,5 @@
 /*	$NetBSD: gzip.c,v 1.67 2004/09/11 11:07:44 dsl Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.5 2005/01/31 19:28:57 y0netan1 Exp $ */
+/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.6 2006/10/25 08:27:27 swildner Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004 Matthew R. Green
@@ -1058,7 +1058,7 @@ check_outfile(const char *outfile, struct stat *sb)
 					"overwrite (y or n)? " , outfile);
 			(void)fgets(ans, sizeof(ans) - 1, stdin);
 			if (ans[0] != 'y' && ans[0] != 'Y') {
-				fprintf(stderr, "\tnot overwritting\n");
+				fprintf(stderr, "\tnot overwriting\n");
 				ok = 0;
 			} else
 				unlink(outfile);
