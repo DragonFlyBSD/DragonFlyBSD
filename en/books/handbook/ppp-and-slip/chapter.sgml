@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ppp-and-slip/chapter.sgml,v 1.137 2004/06/04 15:25:52 roam Exp $
-     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.4 2006/10/24 09:33:20 victor Exp $
+     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.5 2006/10/25 08:05:01 victor Exp $
 -->
 
 <chapter id="ppp-and-slip">
@@ -2855,7 +2855,7 @@ sl1*  296   &lt;Link&gt;                             0     0        0     0     
 	  effect.</para>
 
 	<para>You will notice that near the end of the default kernel
-	  configuration file (<filename>/sys/i386/conf/GENERIC</filename>)
+	  configuration file (<filename>/sys/config/GENERIC</filename>)
 	  is a line that reads:</para>
 
 	<programlisting>pseudo-device sl 2</programlisting>

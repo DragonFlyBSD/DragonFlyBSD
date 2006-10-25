@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.8 2006/08/11 02:36:05 justin Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.9 2006/10/25 08:05:01 victor Exp $
 -->
 
 <chapter id="multimedia">
@@ -1546,7 +1546,7 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
       <screen>&prompt.root; <userinput>sysctl hw.bt848.tuner=6</userinput></screen>
 
       <para>See the &man.bktr.4; manual page and the
-	<filename>/usr/src/sys/i386/conf/LINT</filename> file for more
+	<filename>/usr/src/sys/config/LINT</filename> file for more
 	details on the available options. </para>
     </sect2>
 

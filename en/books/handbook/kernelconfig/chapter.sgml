@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.6 2006/07/12 04:01:00 justin Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.7 2006/10/25 08:05:00 victor Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -167,7 +167,7 @@
       and copy the <filename>GENERIC</filename> configuration file to the
       name you want to give your kernel.  For example:</para>
 
-    <screen>&prompt.root; <userinput>cd /usr/src/sys/i386/conf</userinput>
+    <screen>&prompt.root; <userinput>cd /usr/src/sys/config</userinput>
 &prompt.root; <userinput>cp GENERIC MYKERNEL</userinput></screen>
 
     <para>Traditionally, this name is in all capital letters and, if you
@@ -193,7 +193,7 @@
 
       <para>For example:</para>
 
-      <screen>&prompt.root; <userinput>cd /usr/src/sys/i386/conf</userinput>
+      <screen>&prompt.root; <userinput>cd /usr/src/sys/config</userinput>
 &prompt.root; <userinput>mkdir /root/kernels</userinput>
 &prompt.root; <userinput>cp GENERIC /root/kernels/<replaceable>MYKERNEL</replaceable></userinput>	
 &prompt.root; <userinput>ln -s /root/kernels/<replaceable>MYKERNEL</replaceable></userinput></screen>
@@ -336,9 +336,9 @@
     <para>The following is an example <filename>GENERIC</filename> kernel
       configuration file with various additional comments where needed for
       clarity.  This example should match your copy in
-      <filename>/usr/src/sys/i386/conf/GENERIC</filename> fairly
+      <filename>/usr/src/sys/config/GENERIC</filename> fairly
       closely.  For details of all the possible kernel options, see
-      <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
+      <filename>/usr/src/sys/config/LINT</filename>.</para>
 
     <programlisting>#
 #
@@ -347,7 +347,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# &dollar;DragonFly: src/sys/i386/conf/GENERIC,v 1.17 2004/06/25 05:09:38 hmp Exp $
+# &dollar;DragonFly: src/sys/config/GENERIC,v 1.17 2004/06/25 05:09:38 hmp Exp $
 </programlisting>
 
     <para>The following are the mandatory keywords required in
@@ -688,7 +688,7 @@ options 	_KPOSIX_PRIORITY_SCHEDULING</programlisting>
       IBM PS/2 (Micro Channel Architecture), &os; provides some
       limited support at this time.  For more information about the
       MCA support, see
-      <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
+      <filename>/usr/src/sys/config/LINT</filename>.</para>
 
     <programlisting>device          eisa</programlisting>
 
@@ -994,7 +994,7 @@ device          sn0    at isa? port 0x300 irq 10
 #device         xe0    at isa?</programlisting>
 
     <para>ISA Ethernet drivers.  See
-      <filename>/usr/src/sys/i386/conf/LINT</filename> for which cards are
+      <filename>/usr/src/sys/config/LINT</filename> for which cards are
       supported by which driver.</para>
 
     <programlisting>pseudo-device   ether         # Ethernet support</programlisting>
@@ -1091,7 +1091,7 @@ pseudo-device   bpf           # Berkeley packet filter</programlisting>
 
     <para>For more information and additional devices supported by
       &os;, see
-      <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
+      <filename>/usr/src/sys/config/LINT</filename>.</para>
    </sect1>
 
   <sect1 id="kernelconfig-nodes">

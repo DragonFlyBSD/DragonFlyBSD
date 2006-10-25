@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.169 2004/08/27 12:04:24 blackend Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.13 2006/09/17 19:00:04 victor Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.14 2006/10/25 08:05:00 victor Exp $
 -->
 
 <chapter id="config-tuning">
@@ -777,7 +777,7 @@ sshd is running as pid 433.</screen>
 
       <para>Once you are sure your card is supported, you need
 	to determine the proper driver for the card.  The file
-	<filename>/usr/src/sys/i386/conf/LINT</filename> will give you
+	<filename>/usr/src/sys/config/LINT</filename> will give you
 	the list of network interfaces drivers with some information
 	about the supported chipsets/cards.  If you have doubts about
 	which driver is the correct one, read the manual page of the
@@ -813,7 +813,7 @@ ukphy1:  10baseT, 10baseT-FDX, 100baseTX, 100baseTX-FDX, auto</screen>
 	network card drivers (ISA cards and cards using the &man.ed.4;
 	driver, for example).  Alternatively, you may statically compile
 	the support for your card into your kernel.  Check
-	<filename>/usr/src/sys/i386/conf/LINT</filename> and the
+	<filename>/usr/src/sys/config/LINT</filename> and the
 	manual page of the driver to know what to add in your kernel
 	configuration file.  For more information about recompiling your
 	kernel, please see <xref linkend="kernelconfig">.  If your card
