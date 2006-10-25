@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.47 2006/10/16 14:22:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.48 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -95,6 +95,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -108,10 +110,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>

@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.17 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.18 2006/10/25 20:55:54 dillon Exp $
  */
 
 /*
@@ -75,11 +75,9 @@
 #include <sys/syslog.h>
 #include <sys/thread2.h>
 #include <sys/malloc.h>
+#include <sys/rman.h>
 
 #include <machine/clock.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 #include "lptio.h"
 #include <bus/ppbus/ppbconf.h>

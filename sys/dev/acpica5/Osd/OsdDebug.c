@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.9 2004/09/02 04:28:05 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.3 2006/07/05 15:43:50 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -36,7 +36,6 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <ddb/ddb.h>
 #include <ddb/db_output.h>
 

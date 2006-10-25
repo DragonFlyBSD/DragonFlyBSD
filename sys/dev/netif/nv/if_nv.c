@@ -26,7 +26,7 @@
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
  * $FreeBSD: src/sys/dev/nve/if_nve.c,v 1.20 2005/12/12 06:23:43 bz Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.27 2006/01/29 22:10:11 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.28 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -88,6 +88,9 @@
 #include <sys/sysctl.h>
 #include <sys/queue.h>
 #include <sys/module.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -98,19 +101,11 @@
 #include <net/if_media.h>
 
 #include <net/bpf.h>
-
 #include <net/vlan/if_vlan_var.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
 #include <machine/clock.h>	/* for DELAY */
-#include <sys/bus.h>
-#include <sys/rman.h>
-#include <sys/serialize.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

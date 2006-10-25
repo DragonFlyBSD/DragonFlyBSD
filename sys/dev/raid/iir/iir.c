@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.12 2006/09/05 00:55:42 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.13 2006/10/25 20:56:01 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -56,9 +56,6 @@
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
 #include <machine/stdarg.h>
 

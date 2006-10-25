@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.15 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.16 2006/10/25 20:55:52 dillon Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -66,8 +66,6 @@
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
@@ -78,7 +76,6 @@
 
 #include <sys/thread2.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
 
 #include "usb.h"

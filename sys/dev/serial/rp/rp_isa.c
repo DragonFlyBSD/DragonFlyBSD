@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_isa.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.6 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.7 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,8 +43,6 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

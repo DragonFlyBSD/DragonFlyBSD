@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.11 2004/05/30 20:08:26 phk Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.5 2006/08/01 18:00:54 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.6 2006/10/25 20:55:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,10 +36,6 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcidevs.h>

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.17 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.18 2006/10/25 20:56:02 dillon Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -48,7 +49,7 @@
 #include <sys/protosw.h>
 #include <sys/conf.h>
 #include <sys/thread2.h>
-#include <machine/bus.h>	/* XXX: Shouldn't really be required! */
+
 #include <machine/cpu.h>
 
 #include <net/if.h>

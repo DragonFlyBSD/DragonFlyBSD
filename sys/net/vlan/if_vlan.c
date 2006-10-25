@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.21 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.22 2006/10/25 20:56:03 dillon Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include "opt_inet.h"
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
@@ -69,9 +70,8 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
-#include <sys/systm.h>
+#include <sys/bus.h>
 #include <sys/thread2.h>
-#include <machine/bus.h>	/* XXX: Shouldn't really be required! */
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

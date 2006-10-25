@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.7 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -51,10 +51,7 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.5 2004/02/19 19:44:06 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.6 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,10 +35,9 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/malloc.h>
-#include <machine/stdarg.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
+
+#include <machine/stdarg.h>
 #include "ata-all.h"
 
 #include <bus/pccard/pccardreg.h>

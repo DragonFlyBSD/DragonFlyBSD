@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.13 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.14 2006/10/25 20:56:03 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -52,18 +52,15 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
-
-#include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/socket.h>
 #include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include <sys/socket.h>
 #include <net/if.h>
-
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>

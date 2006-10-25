@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.19 2003/11/01 18:44:51 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.9 2006/04/17 15:59:55 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.10 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -45,10 +45,6 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.27 2002/11/27 06:56:29 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.2 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.3 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -37,10 +37,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <sys/pciio.h>

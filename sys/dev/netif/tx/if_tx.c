@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.37 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.38 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -48,6 +48,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -63,12 +65,6 @@
 
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

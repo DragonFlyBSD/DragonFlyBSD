@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.13 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.6 2004/05/15 17:54:12 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.7 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -54,11 +54,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
+#include <sys/bus.h>
 
 #include <bus/pci/pcivar.h>
-#include <machine/bus_memio.h>		/* for bus space */
-#include <machine/bus.h>
-#include <sys/bus.h>
+
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
 #include <dev/video/bktr/bktr_reg.h>

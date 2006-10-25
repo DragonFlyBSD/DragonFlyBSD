@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/exca/exca.c,v 1.6 2002/10/07 06:18:50 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/exca/exca.c,v 1.1 2004/02/10 07:55:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/pccard/exca/exca.c,v 1.2 2006/10/25 20:56:00 dillon Exp $ */
 
 /*
  * Copyright (c) 2002 M Warner Losh.  All rights reserved.
@@ -63,11 +63,8 @@
 #include <sys/queue.h>
 #include <sys/module.h>
 #include <sys/conf.h>
-
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_pci.c,v 1.3.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.5 2005/10/12 17:35:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.6 2006/10/25 20:56:01 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -48,13 +48,9 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h> 
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h> 
-#include <machine/resource.h>
-#include <machine/clock.h>
 #include <sys/rman.h>
+
+#include <machine/clock.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

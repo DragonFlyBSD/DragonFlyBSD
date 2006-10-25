@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.26 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.27 2006/10/25 20:55:59 dillon Exp $
  *
  */
 
@@ -69,12 +69,8 @@
 
 #include <net/if.h>
 #include <net/ifq_var.h>
-
 #include <net/ethernet.h>
 #include <net/if_arp.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 
 #include <net/bpf.h>
 

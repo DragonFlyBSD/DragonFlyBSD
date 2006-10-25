@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#20 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.4.2.3 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.6 2005/06/03 16:57:13 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.7 2006/10/25 20:55:53 dillon Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -54,12 +54,8 @@
 #include <sys/thread2.h>
 
 #define AHD_PCI_CONFIG 1
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/endian.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
 
 #include <sys/rman.h>
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.19 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.20 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -69,9 +69,7 @@
 
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

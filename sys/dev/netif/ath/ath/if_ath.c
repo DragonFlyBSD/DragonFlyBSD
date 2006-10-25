@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.17 2006/04/19 16:14:47 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.3 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.4 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -60,9 +60,6 @@
 #include <sys/endian.h>
 #include <sys/kthread.h>
 #include <sys/serialize.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
  

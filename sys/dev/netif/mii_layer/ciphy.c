@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ciphy.c,v 1.3 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.2 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.3 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -45,8 +45,6 @@
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

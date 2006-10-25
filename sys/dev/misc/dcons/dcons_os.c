@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.6 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.7 2006/10/25 20:55:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,16 +52,10 @@
 #include <sys/proc.h>
 #include <sys/thread2.h>
 #include <sys/ucred.h>
+#include <sys/bus.h>
 
-#include <machine/bus.h>
-
-#ifdef __DragonFly__
 #include "dcons.h"
 #include "dcons_os.h"
-#else
-#include <dev/dcons/dcons.h>
-#include <dev/dcons/dcons_os.h>
-#endif
 
 #include <ddb/ddb.h>
 #include <sys/reboot.h>

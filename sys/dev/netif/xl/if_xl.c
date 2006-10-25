@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.45 2006/08/01 18:13:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.46 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -109,6 +109,8 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -120,13 +122,6 @@
 #include <net/vlan/if_vlan_var.h>
 
 #include <net/bpf.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include "../mii_layer/mii.h"
 #include "../mii_layer/miivar.h"

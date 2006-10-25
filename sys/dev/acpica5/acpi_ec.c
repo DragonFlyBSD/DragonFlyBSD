@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
   *
   */
 
@@ -150,9 +150,6 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include "acpi.h"

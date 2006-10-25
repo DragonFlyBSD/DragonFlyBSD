@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.26 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.27 2006/10/25 20:55:51 dillon Exp $
  */
 
 /*
@@ -47,7 +47,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 
 #include <machine/vmparam.h>
@@ -56,7 +55,6 @@
 #include <machine/pmap.h>
 
 #include <machine/nexusvar.h>
-#include <machine/resource.h>
 #include <machine/smp.h>
 #include <arch/apic/mpapic.h>
 #include <arch/isa/intr_machdep.h>

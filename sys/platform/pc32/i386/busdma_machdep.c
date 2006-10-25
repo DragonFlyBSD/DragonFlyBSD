@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.16 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.17 2006/10/25 20:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/mbuf.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
+#include <sys/bus_dma.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -42,7 +43,6 @@
 #include <sys/lock.h>
 #include <vm/vm_map.h>
 
-#include <machine/bus.h>
 #include <machine/md_var.h>
 
 #define MAX_BPAGES 128

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.11 2006/09/05 00:55:36 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.12 2006/10/25 20:55:52 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -55,19 +55,16 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
 #include <machine/clock.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-#include <sys/thread2.h>
-
 #include <opencrypto/cryptodev.h>
-#include <sys/random.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

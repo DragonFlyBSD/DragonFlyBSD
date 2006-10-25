@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.9 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.10 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -49,16 +49,12 @@
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/kthread.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <machine/atomic.h>
 #include <machine/clock.h>
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/stdarg.h>
-
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include "regcall.h"
 #include "pe_var.h"

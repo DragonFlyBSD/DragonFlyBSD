@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.9 2006/09/05 00:55:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.10 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -52,10 +53,6 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pageout.h>
 #include <vm/pmap.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 MALLOC_DECLARE(M_AGP);
 

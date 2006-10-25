@@ -26,19 +26,15 @@
  * xe pccard interface driver
  *
  * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.11 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.2 2005/11/20 10:16:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.3 2006/10/25 20:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
  
 #include <net/ethernet.h>

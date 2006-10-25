@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.29 2006/06/24 06:31:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.30 2006/10/25 20:55:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,8 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -57,12 +59,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

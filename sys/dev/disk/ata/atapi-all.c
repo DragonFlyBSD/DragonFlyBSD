@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.17 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.18 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -43,10 +43,11 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/sysctl.h>
-#include <machine/bus.h>
-#include <machine/clock.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+
+#include <machine/clock.h>
+
 #include "ata-all.h"
 #include "atapi-all.h"
 

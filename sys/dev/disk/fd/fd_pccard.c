@@ -49,7 +49,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/disk/fd/fd_pccard.c,v 1.2 2004/02/19 15:48:26 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd_pccard.c,v 1.3 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,6 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
-#include <machine/bus.h>
 
 #include "fdc.h"
 #include "fdreg.h"

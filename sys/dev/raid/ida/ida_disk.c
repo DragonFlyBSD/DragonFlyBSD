@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.13 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.14 2006/10/25 20:56:01 dillon Exp $
  */
 
 /*
@@ -42,19 +42,14 @@
 #include <sys/cons.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#if NPCI > 0
-#include <machine/bus_memio.h>
-#endif
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/clock.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
 
+#include <machine/clock.h>
+#include <machine/md_var.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <machine/md_var.h>
 
 #include "idareg.h"
 #include "idavar.h"

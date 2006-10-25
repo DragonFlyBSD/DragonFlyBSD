@@ -58,16 +58,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_pci.c,v 1.11.2.3 2001/06/02 04:38:10 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.5 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

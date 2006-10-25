@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.10 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.11 2006/10/25 20:55:58 dillon Exp $
  *
  */
 
@@ -67,6 +67,8 @@ enum _pdq_type_t {
 #include <sys/mbuf.h>
 #endif /* M_CAST */
 #include <sys/malloc.h>
+#include <sys/bus.h>
+
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 
@@ -96,61 +98,17 @@ enum _pdq_type_t {
 #define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)
 #endif /* __FreeBSD__ */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
-#include <machine/bus.h>
 #include <machine/cpufunc.h>
 #include <machine/clock.h>
+
 typedef void ifnet_ret_t;
 typedef u_long ioctl_cmd_t;
 typedef enum { PDQ_BUS_EISA, PDQ_BUS_PCI } pdq_bus_t;
 typedef	u_int16_t pdq_bus_ioport_t;
 typedef volatile pdq_uint32_t *pdq_bus_memaddr_t;
 typedef pdq_bus_memaddr_t pdq_bus_memoffset_t;
-
-#elif defined(__bsdi__)
-#include <machine/inline.h>
-typedef int ifnet_ret_t;
-typedef int ioctl_cmd_t;
-typedef enum { PDQ_BUS_EISA, PDQ_BUS_PCI } pdq_bus_t;
-typedef	u_int16_t pdq_bus_ioport_t;
-typedef volatile pdq_uint32_t *pdq_bus_memaddr_t;
-typedef pdq_bus_memaddr_t pdq_bus_memoffset_t;
-
-
-#elif defined(__NetBSD__)
-#include <machine/bus.h>
-#include <machine/intr.h>
-#define	PDQ_OS_PTR_FMT		"%p"
-typedef void ifnet_ret_t;
-typedef u_long ioctl_cmd_t;
-typedef	bus_chipset_tag_t pdq_bus_t;
-typedef	bus_io_handle_t pdq_bus_ioport_t;
-#if defined(PDQ_IOMAPPED)
-typedef	bus_io_handle_t pdq_bus_memaddr_t;
-#else
-typedef bus_mem_handle_t pdq_bus_memaddr_t;
-#endif
-typedef pdq_uint32_t pdq_bus_memoffset_t;
-#define	PDQ_OS_IOMEM
-#define PDQ_OS_IORD_32(t, base, offset)		bus_io_read_4  (t, base, offset)
-#define PDQ_OS_IOWR_32(t, base, offset, data)	bus_io_write_4 (t, base, offset, data)
-#define PDQ_OS_IORD_8(t, base, offset)		bus_io_read_1  (t, base, offset)
-#define PDQ_OS_IOWR_8(t, base, offset, data)	bus_io_write_1 (t, base, offset, data)
-#define PDQ_OS_MEMRD_32(t, base, offset)	bus_mem_read_4(t, base, offset)
-#define PDQ_OS_MEMWR_32(t, base, offset, data)	bus_mem_write_4(t, base, offset, data)
-#define	PDQ_CSR_OFFSET(base, offset)		(0 + (offset)*sizeof(pdq_uint32_t))
-
-#if defined(PDQ_IOMAPPED)
-#define	PDQ_CSR_WRITE(csr, name, data)		PDQ_OS_IOWR_32((csr)->csr_bus, (csr)->csr_base, (csr)->name, data)
-#define	PDQ_CSR_READ(csr, name)			PDQ_OS_IORD_32((csr)->csr_bus, (csr)->csr_base, (csr)->name)
-#else
-#define	PDQ_CSR_WRITE(csr, name, data)		PDQ_OS_MEMWR_32((csr)->csr_bus, (csr)->csr_base, (csr)->name, data)
-#define	PDQ_CSR_READ(csr, name)			PDQ_OS_MEMRD_32((csr)->csr_bus, (csr)->csr_base, (csr)->name)
-#endif
-
-#endif
 
 #if !defined(PDQ_OS_PTR_FMT)
 #define	PDQ_OS_PTR_FMT	"0x%x"

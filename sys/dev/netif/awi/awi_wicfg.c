@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.10 2006/08/06 12:49:04 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.11 2006/10/25 20:55:56 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -62,7 +62,6 @@
 #include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/cpu.h>
-#include <machine/bus.h>
 
 #include <dev/netif/awi/am79c930reg.h>
 #include <dev/netif/awi/am79c930var.h>

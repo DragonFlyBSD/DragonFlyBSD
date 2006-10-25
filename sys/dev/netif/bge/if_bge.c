@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.55 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.56 2006/10/25 20:55:56 dillon Exp $
  *
  */
 
@@ -101,7 +101,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

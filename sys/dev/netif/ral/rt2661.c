@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.3 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.4 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -33,12 +33,10 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/endian.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include <net/bpf.h>
 #include <net/if.h>

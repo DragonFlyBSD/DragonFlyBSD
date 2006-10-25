@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhub.c,v 1.64 2003/02/08 03:32:51 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/uhub.c,v 1.54 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/uhub.c,v 1.8 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhub.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -58,8 +58,6 @@
 #include "bus_if.h"
 #endif
 #include <sys/sysctl.h>
-
-#include <machine/bus.h>
 
 #include "usb.h"
 #include "usbdi.h"

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.25 2005/12/31 14:08:00 sephe Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.26 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -92,14 +92,10 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/serialize.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h> 
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

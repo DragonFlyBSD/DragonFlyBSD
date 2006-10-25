@@ -20,7 +20,7 @@
  *
  * $FreeBSD: src/sys/dev/aic7xxx/93cx6.c,v 1.5 2000/01/07 23:08:17 gibbs Exp $
  * $NetBSD: smc93cx6.c,v 1.12 2005/12/11 12:21:28 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -61,10 +61,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
+#include <sys/bus.h>
 
 #include "smc93cx6var.h"
 

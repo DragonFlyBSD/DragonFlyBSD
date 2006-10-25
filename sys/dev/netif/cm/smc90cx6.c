@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.21 2006/08/06 12:49:04 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.22 2006/10/25 20:55:56 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -54,12 +54,9 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>

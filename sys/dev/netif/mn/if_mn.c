@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.13 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.14 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -35,22 +35,19 @@
 #define NG_MN_NODE_TYPE	"mn"
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/mbuf.h>
-#include <sys/systm.h>
 #include <sys/malloc.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 #include "pci_if.h"
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
-
-#include <sys/rman.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

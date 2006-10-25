@@ -25,22 +25,17 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_pci.c,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.7 2006/09/05 00:55:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.8 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.15 2006/09/10 01:26:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.16 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,10 +38,6 @@
 #include <sys/ctype.h>
 #include <sys/ioccom.h>
 #include <sys/stat.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
 

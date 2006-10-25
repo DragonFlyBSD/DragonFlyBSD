@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.10 2006/05/31 19:06:13 swildner Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.11 2006/10/25 20:56:02 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -136,7 +136,7 @@ METHOD device_t add_child {
 
 #
 # Allocate a system resource attached to `dev' on behalf of `child'.
-# The types are defined in <machine/resource.h>; the meaning of the
+# The types are defined in <sys/bus_resource.h>; the meaning of the
 # resource-ID field varies from bus to bus (but *rid == 0 is always
 # valid if the resource type is).  start and end reflect the allowable
 # range, and should be passed as `0UL' and `~0UL', respectively, if

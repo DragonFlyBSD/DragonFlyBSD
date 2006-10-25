@@ -25,21 +25,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_eisa.c,v 1.1.2.4 2001/07/30 20:29:58 jlemon Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_eisa.c,v 1.5 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_eisa.c,v 1.6 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-
 #include <sys/buf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include "idavar.h"

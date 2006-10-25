@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.18 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.19 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -62,10 +62,6 @@
 #include <sys/socket.h>
 #include <sys/thread2.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #include <sys/rman.h>
 
 #include <net/if.h>

@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.8 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.9 2006/10/25 20:56:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,20 +34,18 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-#include <net/if.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <machine/clock.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
+#include <net/if.h>
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>

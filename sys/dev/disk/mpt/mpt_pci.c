@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.8 2006/09/05 00:55:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.9 2006/10/25 20:55:53 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -37,17 +37,12 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/malloc.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
-#include <sys/malloc.h>
 
 #include "mpt_freebsd.h"
 

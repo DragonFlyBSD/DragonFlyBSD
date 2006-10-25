@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.5 2005/10/30 04:41:09 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.6 2006/10/25 20:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,8 +32,8 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
+
 #include "isavar.h"
-#include <machine/resource.h>
 
 static void
 isahint_add_device(device_t parent, const char *name, int unit)

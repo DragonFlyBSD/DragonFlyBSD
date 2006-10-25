@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.1 2006/10/22 16:09:14 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.2 2006/10/25 20:55:51 dillon Exp $
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -28,14 +28,14 @@ vfs/smbfs/smbfs_smb.c		optional	smbfs
 vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
-i386/i386/atomic.c		standard				\
+arch/i386/i386/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
-vkernel/vkernel/autoconf.c	standard
+arch/vkernel/vkernel/autoconf.c	standard
 #
 # DDB XXX
-i386/i386/elf_machdep.c		standard
-i386/i386/in_cksum2.s		optional	inet
-i386/i386/ktr.c			optional	ktr
+arch/i386/i386/elf_machdep.c		standard
+arch/i386/i386/in_cksum2.s		optional	inet
+arch/i386/i386/ktr.c			optional	ktr
 #vkernel/vkernel/pmap.c		standard
 #vkernel/vkernel/pmap_inval.c	standard
 #vkernel/vkernel/spinlock.s	standard

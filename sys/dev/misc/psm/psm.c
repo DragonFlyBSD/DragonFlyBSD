@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.20 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.21 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -74,7 +74,6 @@
 #include <sys/poll.h>
 #include <sys/syslog.h>
 #include <sys/malloc.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/selinfo.h>
 #include <sys/thread2.h>
@@ -84,7 +83,6 @@
 #include <machine/clock.h>
 #include <machine/limits.h>
 #include <machine/mouse.h>
-#include <machine/resource.h>
 
 #include <bus/isa/isavar.h>
 #include <dev/misc/kbd/atkbdcreg.h>

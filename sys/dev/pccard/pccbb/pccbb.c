@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.17 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.18 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -86,9 +86,7 @@
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.2.2.5 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.4 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -43,9 +43,6 @@
 #include <sys/bus.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/resource.h>
-#include <machine/bus.h>
 
 #include "aacreg.h"
 #include "aac_ioctl.h"

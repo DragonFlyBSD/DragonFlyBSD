@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.12 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.13 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -70,13 +70,12 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
+#include <sys/rman.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <machine/bus.h>
 #include <machine/md_var.h>
-#include <sys/rman.h>
 
 #include "amrio.h"
 #include "amrreg.h"

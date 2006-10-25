@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.16 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.17 2006/10/25 20:55:51 dillon Exp $
  *
  */
 
@@ -53,7 +53,6 @@
 
 #include <sys/bus.h>
 #include <sys/ctype.h>
-#include <machine/bus.h>
 
 #include <sys/ioccom.h>
 #include <sys/thread2.h>

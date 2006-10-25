@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.18 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.19 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,10 +40,10 @@
 #include <sys/disk.h>
 #include <sys/devicestat.h>
 #include <sys/cdio.h>
-#include <machine/bus.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+
 #include "ata-all.h"
 #include "atapi-all.h"
 #include "atapi-fd.h"

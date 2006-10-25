@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.19 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.20 2006/10/25 20:56:02 dillon Exp $
  */
 
 /* 
@@ -46,8 +46,6 @@
 #include <sys/dkstat.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>

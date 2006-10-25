@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.25 2006/10/23 21:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.26 2006/10/25 20:55:57 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -81,12 +81,9 @@
 #include <sys/interrupt.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
-#include <sys/thread2.h>
-
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

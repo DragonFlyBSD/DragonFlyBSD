@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.10 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.11 2006/10/25 20:56:03 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -49,17 +49,14 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
-
-#include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <bus/isa/isavar.h>
 
-#include <sys/socket.h>
-#include <sys/thread2.h>
 #include <net/if.h>
-
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>

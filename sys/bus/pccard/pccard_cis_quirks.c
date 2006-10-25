@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.7 2002/02/09 21:34:06 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.4 2006/09/05 00:55:36 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.5 2006/10/25 20:55:51 dillon Exp $ */
 
 #define	PCCARDDEBUG
 
@@ -42,9 +42,7 @@
 #include <sys/types.h>
 
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pccard/pccarddevs.h>
 #include <bus/pccard/pccardreg.h>

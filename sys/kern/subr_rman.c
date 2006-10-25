@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.9 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.10 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -64,7 +64,6 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>		/* XXX debugging */
-#include <machine/bus.h>
 #include <sys/rman.h>
 
 static MALLOC_DEFINE(M_RMAN, "rman", "Resource manager");

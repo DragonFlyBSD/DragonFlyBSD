@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.21 2005/11/17 21:29:45 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.22 2006/10/25 20:55:51 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -44,14 +44,12 @@
 #include <sys/conf.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
 #if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
-#include <machine/resource.h>
 #include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
- * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.6 2006/10/25 20:56:00 dillon Exp $
  *
  */
 
@@ -42,13 +42,9 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/clock.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
+
+#include <machine/clock.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

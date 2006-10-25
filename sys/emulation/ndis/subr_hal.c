@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.12 2004/04/19 22:39:04 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.2 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.3 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,14 +43,11 @@
 #include <sys/proc.h>
 
 #include <sys/systm.h>
-#include <machine/clock.h>
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+
+#include <machine/clock.h>
 
 #include "regcall.h"
 #include "pe_var.h"

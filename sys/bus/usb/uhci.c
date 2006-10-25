@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.16 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.17 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -71,7 +71,6 @@
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus_pio.h>
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
@@ -81,7 +80,6 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
 
 #include "usb.h"

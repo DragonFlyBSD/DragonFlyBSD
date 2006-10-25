@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.34 2002/11/14 05:15:50 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.5 2004/02/13 22:12:33 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.6 2006/10/25 20:55:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -33,8 +33,7 @@
 
 #include <sys/types.h>
 #include <sys/queue.h>
-
-#include <machine/bus.h>
+#include <sys/bus_dma.h>
 
 extern int	pccard_verbose;
 

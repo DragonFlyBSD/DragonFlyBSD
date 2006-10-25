@@ -25,17 +25,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.14 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.15 2006/10/25 20:55:56 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/kernel.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

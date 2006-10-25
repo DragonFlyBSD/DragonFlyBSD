@@ -24,22 +24,16 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx_pci.c,v 1.4.2.5 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx_pci.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx_pci.c,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

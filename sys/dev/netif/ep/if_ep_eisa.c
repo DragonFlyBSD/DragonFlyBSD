@@ -20,19 +20,15 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.11 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.12 2006/10/25 20:55:56 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h> 
 
 #include <net/if.h>

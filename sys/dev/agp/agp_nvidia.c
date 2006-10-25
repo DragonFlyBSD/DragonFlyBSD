@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * Based on FreeBSD v1.2.
- * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.3 2004/07/04 00:24:52 dillon Exp $
+ * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -50,10 +51,6 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 #define	NVIDIA_VENDORID		0x10de
 #define	NVIDIA_DEVICEID_NFORCE	0x01a4

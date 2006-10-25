@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.24 2006/09/10 01:26:33 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.25 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -41,6 +41,7 @@
 #include <sys/agpio.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -55,9 +56,6 @@
 #include <vm/pmap.h>
 
 #include <machine/md_var.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 MODULE_VERSION(agp, 1);
 

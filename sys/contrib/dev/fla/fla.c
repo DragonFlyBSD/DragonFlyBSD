@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.15 2006/09/10 01:26:33 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.16 2006/10/25 20:55:52 dillon Exp $ 
  *
  */
 
@@ -25,7 +25,6 @@
 #include <sys/devicestat.h>
 #include <sys/module.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

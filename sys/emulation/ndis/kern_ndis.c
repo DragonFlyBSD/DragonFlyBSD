@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.12 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.13 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,8 +50,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/kthread.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

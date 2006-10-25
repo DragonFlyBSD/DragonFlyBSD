@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.22 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.23 2006/10/25 20:56:03 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -43,6 +43,12 @@
 #endif
 #ifdef _KERNEL
 #include <sys/serialize.h>
+#endif
+#ifndef _SYS_BUS_DMA_H_
+#include <sys/bus_dma.h>
+#endif
+#ifndef _SYS_BUS_RESOURCE_H_
+#include <sys/bus_resource.h>
 #endif
 
 /*

@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.8 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.9 2006/10/25 20:56:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,17 +35,16 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/malloc.h>
-#include <net/if.h>
-
-#include <machine/clock.h>
-
-#include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+
+#include <machine/clock.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
+#include <net/if.h>
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/orm.c,v 1.1.2.1 2001/06/19 05:48:29 imp Exp $
- *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.5 2005/10/30 04:41:15 dillon Exp $
+ *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.6 2006/10/25 20:55:54 dillon Exp $
  */
 
 /*
@@ -36,12 +36,8 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/isa/isavar.h>

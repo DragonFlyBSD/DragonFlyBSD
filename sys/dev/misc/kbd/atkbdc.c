@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.7 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.8 2006/10/25 20:55:54 dillon Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -40,9 +40,6 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/syslog.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <machine/clock.h>

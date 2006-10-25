@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: if_rtw_pci.c,v 1.4 2005/12/04 17:44:02 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -81,9 +81,6 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

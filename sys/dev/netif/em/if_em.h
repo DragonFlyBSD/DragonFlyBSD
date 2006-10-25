@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.16 2006/08/12 13:03:44 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.17 2006/10/25 20:55:56 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -48,6 +48,12 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
 #include <sys/endian.h>
+#include <sys/proc.h>
+#include <sys/sysctl.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -65,19 +71,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-#include <sys/bus.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
-#include <machine/resource.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
+
 #include <machine/clock.h>
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <sys/proc.h>
-#include <sys/sysctl.h>
-#include <sys/thread2.h>
-#include <sys/serialize.h>
 
 #include <dev/netif/em/if_em_hw.h>
 

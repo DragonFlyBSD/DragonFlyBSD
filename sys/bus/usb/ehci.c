@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.24 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.25 2006/10/25 20:55:51 dillon Exp $
  */
 
 /*
@@ -68,26 +68,16 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/select.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #include <sys/lock.h>
-#if defined(DIAGNOSTIC) && defined(__i386__)
-#include <machine/cpu.h>
-#endif
-#endif
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
-#include <machine/bus.h>
+#include <machine/cpu.h>
 #include <machine/endian.h>
 
 #include <bus/usb/usb.h>

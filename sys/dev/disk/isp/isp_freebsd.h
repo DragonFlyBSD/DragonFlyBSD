@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.6 2005/06/06 22:51:54 corecode Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.7 2006/10/25 20:55:53 dillon Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -40,9 +40,6 @@
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
 #include <machine/cpu.h>
 

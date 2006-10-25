@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.11 2006/09/10 01:26:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.12 2006/10/25 20:56:01 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -45,12 +45,13 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
+#include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/stat.h>
 #include <sys/device.h>
 #include <sys/disklabel.h>
 #include <sys/thread2.h>
-#include <machine/bus.h>
+
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.10 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.11 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -82,7 +82,6 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 
-#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <net/if.h>

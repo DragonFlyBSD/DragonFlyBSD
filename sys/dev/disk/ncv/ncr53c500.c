@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.9 2005/12/11 01:54:07 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.10 2006/10/25 20:55:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -46,35 +46,11 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/bus.h>
 #include <sys/thread2.h>
 
-#ifdef __NetBSD__
-#include <sys/device.h>
-#include <machine/bus.h>
-#include <machine/intr.h>
-
-#include <dev/scsipi/scsi_all.h>
-#include <dev/scsipi/scsipi_all.h>
-#include <dev/scsipi/scsiconf.h>
-#include <dev/scsipi/scsi_disk.h>
-
-#include <machine/dvcfg.h>
-#include <machine/physio_proc.h>
-
-#include <i386/Cbus/dev/scsi_low.h>
-
-#include <i386/Cbus/dev/ncr53c500reg.h>
-#include <i386/Cbus/dev/ncr53c500hw.h>
-#include <i386/Cbus/dev/ncr53c500var.h>
-
-#include <i386/Cbus/dev/ncr53c500hwtab.h>
-#endif /* __NetBSD__ */
-
-#ifdef __DragonFly__
 #include <machine/clock.h>
 #include <machine/cpu.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 
 #include <machine/dvcfg.h>
 #include <machine/physio_proc.h>
@@ -86,7 +62,6 @@
 #include "ncr53c500var.h"
 
 #include "ncr53c500hwtab.h"
-#endif /* __DragonFly__ */
 
 #define	NCV_MAX_DATA_SIZE	(64 * 1024)
 #define	NCV_DELAY_MAX		(2 * 1000 * 1000)

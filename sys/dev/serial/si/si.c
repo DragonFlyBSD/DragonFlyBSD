@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.20 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.21 2006/10/25 20:56:02 dillon Exp $
  */
 
 #ifndef lint
@@ -57,10 +57,8 @@ static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
-#include <sys/thread2.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 

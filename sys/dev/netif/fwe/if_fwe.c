@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.26 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.27 2006/10/25 20:55:57 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -50,7 +50,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
-#include <machine/bus.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

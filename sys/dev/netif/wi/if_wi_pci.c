@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.8 2005/12/16 21:05:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.9 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -49,12 +49,10 @@
 #include <sys/bus.h>
 #include <sys/thread.h>
 #include <sys/serialize.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

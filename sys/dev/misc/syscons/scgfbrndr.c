@@ -26,7 +26,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/syscons/scgfbrndr.c,v 1.14.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.5 2006/02/19 09:16:26 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.6 2006/10/25 20:55:55 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -37,8 +37,7 @@
 #include <sys/kernel.h>
 #include <sys/fbio.h>
 #include <sys/consio.h>
-
-#include <machine/bus.h>
+#include <sys/bus.h>
 
 #include <dev/fb/fbreg.h>
 #include "syscons.h"

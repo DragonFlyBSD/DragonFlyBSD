@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.10 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.11 2006/10/25 20:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,7 +33,6 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 
 #include <machine/vmparam.h>
@@ -42,7 +41,6 @@
 #include <machine/pmap.h>
 #include <machine/md_var.h>
 
-#include <machine/resource.h>
 #include "../isavar.h"
 #include "isa_compat.h"
 #include "isa_device.h"

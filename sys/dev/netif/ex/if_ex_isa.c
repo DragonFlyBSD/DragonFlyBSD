@@ -24,27 +24,23 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.11 2005/11/28 17:13:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.12 2006/10/25 20:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/serialize.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h> 
-
 
 #include <bus/isa/isavar.h>
 #include <bus/isa/pnpvar.h>

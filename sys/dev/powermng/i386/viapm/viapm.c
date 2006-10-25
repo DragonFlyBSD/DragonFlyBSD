@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.8 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.9 2006/10/25 20:56:00 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -34,13 +34,9 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/clock.h>		/* for DELAY */
-#include <machine/resource.h>
 #include <sys/rman.h>
+
+#include <machine/clock.h>		/* for DELAY */
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

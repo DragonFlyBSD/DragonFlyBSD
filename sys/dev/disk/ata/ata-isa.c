@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.9 2006/10/12 04:02:37 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.10 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,10 +39,10 @@
 #include <sys/malloc.h>
 #include <sys/devicestat.h>
 #include <sys/sysctl.h>
-#include <machine/stdarg.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
+
+#include <machine/stdarg.h>
+
 #include <bus/isa/isavar.h>
 #include "ata-all.h"
 

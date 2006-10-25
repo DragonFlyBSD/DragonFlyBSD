@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath_pci.c,v 1.12 2005/03/05 19:06:12 imp Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.2 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -47,9 +47,6 @@
 #include <sys/kernel.h>
 #include <sys/errno.h>
 #include <sys/sysctl.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

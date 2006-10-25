@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.13 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.14 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 
-#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <net/if.h>

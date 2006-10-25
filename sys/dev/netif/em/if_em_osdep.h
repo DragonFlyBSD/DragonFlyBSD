@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_osdep.h,v 1.1.2.11 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.6 2006/08/12 13:03:44 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.7 2006/10/25 20:55:56 dillon Exp $*/
 
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_
@@ -46,15 +46,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
-#include <machine/resource.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
+
 #include <machine/clock.h>
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-
 
 #define ASSERT(x) if(!(x)) panic("EM: x")
 

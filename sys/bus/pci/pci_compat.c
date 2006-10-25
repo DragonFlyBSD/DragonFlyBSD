@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.11 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.12 2006/10/25 20:55:51 dillon Exp $
  *
  */
 
@@ -41,9 +41,7 @@
 #include <vm/pmap.h>
 
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 #include <machine/smp.h>
 #include <sys/interrupt.h>
 

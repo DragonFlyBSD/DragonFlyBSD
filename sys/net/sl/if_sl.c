@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.29 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.30 2006/10/25 20:56:03 dillon Exp $
  */
 
 /*
@@ -104,10 +104,6 @@
 #include <net/slip.h>
 
 #include <net/bpf.h>
-
-#ifdef __i386__
-#include <arch/isa/intr_machdep.h>
-#endif
 
 static void slattach (void *);
 PSEUDO_SET(slattach, if_sl);

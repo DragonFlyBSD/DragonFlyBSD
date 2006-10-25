@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.32 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.33 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -106,14 +106,10 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/serialize.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
  
 #include <net/ethernet.h>
 #include <net/if.h>

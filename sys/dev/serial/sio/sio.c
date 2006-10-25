@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.35 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.36 2006/10/25 20:56:02 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -70,8 +70,6 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/timepps.h>
 #include <sys/thread2.h>
@@ -94,7 +92,6 @@
 #ifndef SMP
 #include <machine/lock.h>
 #endif
-#include <machine/resource.h>
 
 #include "sioreg.h"
 #include "sio_private.h"

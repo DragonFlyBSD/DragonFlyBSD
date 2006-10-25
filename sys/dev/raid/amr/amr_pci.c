@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.7 2006/01/25 19:56:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,11 +65,6 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

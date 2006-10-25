@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.23 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.24 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -70,11 +70,9 @@
 #include <sys/callout.h>
 #include <sys/syslog.h>
 #include <sys/random.h>
-#include <sys/thread2.h>
-
-#include <machine/bus.h>
+#include <sys/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>

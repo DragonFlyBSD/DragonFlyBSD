@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.45 2006/09/05 03:48:10 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.46 2006/10/25 20:55:56 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -48,11 +48,9 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/eventhandler.h>
-#include <sys/thread2.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include "opt_inet.h"
 #include "opt_ipx.h"

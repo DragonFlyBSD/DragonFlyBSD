@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.26 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.27 2006/10/25 20:55:56 dillon Exp $
  */
 
 /*
@@ -46,13 +46,11 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
+
 #include <machine/clock.h>
 
 #include <net/if.h>

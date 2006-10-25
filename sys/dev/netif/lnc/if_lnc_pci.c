@@ -1,6 +1,6 @@
 /*	$NetBSD: if_le_pci.c,v 1.43 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_pci.c,v 1.4 2006/06/05 15:14:14 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.10 2006/07/07 14:16:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.11 2006/10/25 20:55:57 dillon Exp $	*/
 
 
 /*-
@@ -89,9 +89,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_arp.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

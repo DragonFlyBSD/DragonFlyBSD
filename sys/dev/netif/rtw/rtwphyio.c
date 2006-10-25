@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwphyio.c,v 1.11 2006/03/08 00:24:06 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwphyio.c,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwphyio.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -40,8 +40,6 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/socket.h>
-
-#include <machine/bus.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

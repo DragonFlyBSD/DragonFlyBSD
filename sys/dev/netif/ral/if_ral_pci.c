@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.2 2006/08/01 18:06:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.3 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -32,11 +32,8 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/endian.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/endian.h>
 
 #include <net/bpf.h>
 #include <net/if.h>

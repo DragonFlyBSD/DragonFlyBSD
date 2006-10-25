@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adw_pci.c,v 1.12.2.1 2000/08/02 22:22:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adw_pci.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adw_pci.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,11 +41,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

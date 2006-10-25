@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.51 2003/11/28 05:28:29 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.7 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.8 2006/10/25 20:55:52 dillon Exp $
  */
 
 /* Universal Host Controller Interface
@@ -58,9 +58,6 @@
 #include <sys/queue.h>
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #endif
 

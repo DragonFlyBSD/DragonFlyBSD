@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.10 2005/10/12 17:35:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.11 2006/10/25 20:55:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -45,12 +45,11 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/bus.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
 
-#include <machine/bus.h>
-#include <machine/bus_pio.h>
 #include <machine/dvcfg.h>
 
 #include <sys/device_port.h>

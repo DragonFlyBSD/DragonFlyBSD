@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.15 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.16 2006/10/25 20:56:02 dillon Exp $
  */
 /*
  * derived from
@@ -54,6 +54,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
+#include <sys/bus.h>
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
@@ -61,7 +62,6 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
-#include <machine/bus.h>	/* XXX: Shouldn't really be required! */
 
 #include <net/if.h>
 #include <net/if_types.h>

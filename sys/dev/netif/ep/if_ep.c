@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.24 2006/01/28 14:05:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.25 2006/10/25 20:55:56 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -69,14 +69,10 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h> 
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>

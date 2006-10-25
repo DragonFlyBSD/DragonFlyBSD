@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.23 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.24 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/param.h>
+#include <sys/bus.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -57,10 +58,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
 #include <sys/bus.h>
 #include <sys/rman.h>

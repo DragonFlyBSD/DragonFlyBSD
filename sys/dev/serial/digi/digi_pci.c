@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_pci.c,v 1.9 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.3 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,11 +36,11 @@
 #include <sys/kernel.h>
 #include <sys/tty.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
+
 #include <bus/pci/pcivar.h>
 
 #include <dev/serial/digi/digiio.h>

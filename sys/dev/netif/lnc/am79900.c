@@ -1,6 +1,6 @@
 /*	$NetBSD: am79900.c,v 1.17 2005/12/24 20:27:29 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am79900.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am79900.c,v 1.1 2006/07/07 14:16:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/am79900.c,v 1.2 2006/10/25 20:55:57 dillon Exp $	*/
 
 
 /*-
@@ -118,6 +118,7 @@
 #include <sys/lock.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/bus.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -127,8 +128,6 @@
 #include <net/if_media.h>
 #include <net/if_var.h>
 #include <net/ifq_var.h>
-
-#include <machine/bus.h>
 
 #include <dev/netif/lnc/lancereg.h>
 #include <dev/netif/lnc/lancevar.h>

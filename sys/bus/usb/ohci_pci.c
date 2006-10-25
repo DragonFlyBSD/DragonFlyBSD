@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.38 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.4 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.5 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -57,9 +57,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

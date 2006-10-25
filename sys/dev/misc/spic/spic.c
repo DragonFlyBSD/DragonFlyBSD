@@ -48,20 +48,15 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.15 2006/10/25 20:55:55 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
-#include <bus/isa/isavar.h>
 #include <sys/poll.h>
-#include <machine/pci_cfgreg.h>
-#include <machine/clock.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -71,6 +66,11 @@
 #include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+
+#include <bus/isa/isavar.h>
+
+#include <machine/pci_cfgreg.h>
+#include <machine/clock.h>
 
 #include "spicreg.h"
 

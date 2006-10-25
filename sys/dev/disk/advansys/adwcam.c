@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.12 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.13 2006/10/25 20:55:52 dillon Exp $
  */
 /*
  * Ported from:
@@ -53,11 +53,7 @@
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
 
 #include <sys/rman.h>
 

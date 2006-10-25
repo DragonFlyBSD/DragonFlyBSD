@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.20 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.21 2006/10/25 20:55:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -27,8 +27,6 @@
 #include <vm/vm_param.h>
 #include <machine/param.h>
 #include <machine/pmap.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/mman.h>
 #include <sys/rman.h>
 #include <sys/memrange.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.28 2006/08/06 12:49:06 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.29 2006/10/25 20:56:00 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -194,21 +194,17 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
 #include <sys/serialize.h>
-#include <sys/thread2.h>
-
-#include <sys/kernel.h>
 #include <sys/sysctl.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

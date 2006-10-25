@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.16 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.17 2006/10/25 20:55:51 dillon Exp $
  *
  */
 
@@ -43,15 +43,13 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/bus.h>		/* used by smbus and newbus */
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>	/* for DELAY() */
 #endif
-
-#include <sys/bus.h>		/* used by smbus and newbus */
-#include <machine/bus.h>
 
 #ifdef __DragonFly__
 #include "firewire.h"

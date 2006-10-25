@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.14 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.15 2006/10/25 20:56:01 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -88,8 +88,6 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <machine/clock.h>
 

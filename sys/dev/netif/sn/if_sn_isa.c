@@ -28,18 +28,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_isa.c,v 1.3.2.1 2001/01/25 19:38:18 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_isa.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_isa.c,v 1.4 2006/10/25 20:55:59 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <net/ethernet.h> 
 #include <net/if.h>

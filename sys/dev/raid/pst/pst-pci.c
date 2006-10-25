@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-pci.c,v 1.1.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-pci.c,v 1.3 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-pci.c,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,12 +36,13 @@
 #include <sys/bus.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
+#include <sys/rman.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
+
 #include <machine/stdarg.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 

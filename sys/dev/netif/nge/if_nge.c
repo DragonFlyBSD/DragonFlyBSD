@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.38 2006/08/01 18:05:43 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.39 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -98,7 +98,8 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
-
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -114,10 +115,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>

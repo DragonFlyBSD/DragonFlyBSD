@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.5 2006/10/21 08:37:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.6 2006/10/25 20:55:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,6 @@
 #include <sys/rman.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

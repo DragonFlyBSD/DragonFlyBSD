@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb.c,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.6 2005/06/10 23:29:32 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.7 2006/10/25 20:56:00 dillon Exp $
  */
 
 /*
@@ -51,11 +51,8 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
-#include <sys/thread2.h>
-
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/thread2.h>
 
 #include <bus/smbus/smbconf.h>
 

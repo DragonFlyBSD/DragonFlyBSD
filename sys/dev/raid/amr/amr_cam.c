@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.7 2006/09/05 00:55:41 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,9 +76,6 @@
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-
-#include <machine/resource.h>
-#include <machine/bus.h>
 
 #include "amrreg.h"
 #include "amrvar.h"

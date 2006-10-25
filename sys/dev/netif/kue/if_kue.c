@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.21 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.22 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/bus.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -79,14 +80,9 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
-
 #include <net/bpf.h>
 
-#include <sys/bus.h>
-#include <machine/bus.h>
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>
-#endif
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>

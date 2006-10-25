@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.11 2006/10/25 20:55:53 dillon Exp $
  */
 
 /*
@@ -52,23 +52,19 @@
 /* #define AMD_DEBUG_SCSI_PHASE */
 
 #include <sys/param.h>
-
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/buf.h>
-#include <sys/kernel.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

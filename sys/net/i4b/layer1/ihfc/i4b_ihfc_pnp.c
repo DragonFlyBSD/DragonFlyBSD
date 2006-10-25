@@ -36,7 +36,7 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.7 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.8 2006/10/25 20:56:03 dillon Exp $
  *     
  *---------------------------------------------------------------------------*/
 
@@ -48,24 +48,21 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
-#include <net/if.h>
-
 
 #include "../../include/i4b_global.h"
+
+#include <net/if.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>
+
+#include <bus/isa/isavar.h>
 
 #include "../i4b_l1.h"
 #include "i4b_ihfc.h"
 #include "i4b_ihfc_ext.h"
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-
-#include <bus/isa/isavar.h>
 
 /*---------------------------------------------------------------------------*
  *	Softc

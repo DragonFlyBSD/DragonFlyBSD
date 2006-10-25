@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.16 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.17 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*-
@@ -49,12 +49,10 @@
 #include <sys/proc.h>
 #include <sys/ucred.h>
 #include <sys/serialize.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.25 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.26 2006/10/25 20:55:58 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -43,6 +43,8 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <sys/thread2.h>
 
@@ -57,12 +59,6 @@
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
 #include <machine/clock.h>	/* for DELAY */
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

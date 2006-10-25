@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.6 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.7 2006/10/25 20:55:52 dillon Exp $
  */
 /*
  * Ported from:
@@ -48,13 +48,10 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/thread2.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/clock.h>
-#include <machine/resource.h>
 #include <sys/bus.h> 
 #include <sys/rman.h> 
+
+#include <machine/clock.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

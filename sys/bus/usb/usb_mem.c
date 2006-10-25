@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.7 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.8 2006/10/25 20:55:52 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -50,19 +50,13 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>		/* for usbdivar.h */
-#include <machine/bus.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#endif
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
 
 #ifdef DIAGNOSTIC

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.21 2006/09/10 01:26:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.22 2006/10/25 20:56:01 dillon Exp $
  */
 
 /*
@@ -35,20 +35,15 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/stat.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include <machine/resource.h>
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include "mlx_compat.h"
 #include "mlxio.h"

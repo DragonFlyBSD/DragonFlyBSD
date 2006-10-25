@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.18 2006/09/13 06:59:24 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.19 2006/10/25 20:55:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,10 @@
 #include <sys/queue.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -55,13 +58,6 @@
 
 #include <net/bpf.h>
 
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 
@@ -69,8 +65,6 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-#include <sys/thread2.h>
 
 #include <emulation/ndis/regcall.h>
 #include <emulation/ndis/pe_var.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.10 2006/09/05 00:55:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.11 2006/10/25 20:55:53 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -33,16 +33,11 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/malloc.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
-#include <sys/malloc.h>
 
 #include "isp_freebsd.h"
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.12 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.13 2006/10/25 20:55:53 dillon Exp $
  */
 
  /*
@@ -48,29 +48,16 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
  
-/*
- * XXX It appears that BusLogic PCI adapters go out to lunch if you 
- *     attempt to perform memory mapped I/O.
- */
-#if 0
-#include "use_pci.h"
-#if NPCI > 0
-#include <machine/bus_memio.h>
-#endif
-#endif
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
-#include <sys/rman.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/cam_debug.h>
-
 #include <bus/cam/scsi/scsi_message.h>
 
 #include <vm/vm.h>

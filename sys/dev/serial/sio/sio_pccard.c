@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.4 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.5 2006/10/25 20:56:02 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -39,11 +39,8 @@
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/timepps.h>
-
-#include <machine/resource.h>
 
 #include "sioreg.h"
 #include "sio_private.h"

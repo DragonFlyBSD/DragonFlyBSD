@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.8 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
  */
 /*
  * Ported from:
@@ -53,10 +53,6 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/thread2.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h> 
 #include <sys/rman.h> 
 

@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.18 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.19 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -98,23 +98,19 @@
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
+#include <sys/bus.h>		/* used by smbus and newbus */
+#include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#include <sys/bus.h>		/* used by smbus and newbus */
-
 #define	PROC_LOCK(p)
 #define	PROC_UNLOCK(p)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
-
-#include <machine/bus_memio.h>	/* for bus space */
-#include <machine/bus.h>
-#include <sys/bus.h>
-#include <sys/thread2.h>
 
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */

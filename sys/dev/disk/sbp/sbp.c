@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.19 2006/10/19 19:00:47 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.20 2006/10/25 20:55:54 dillon Exp $
  *
  */
 
@@ -43,19 +43,11 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <machine/bus.h>
 #include <sys/malloc.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
-#include <sys/lock.h>
-#include <sys/mutex.h>
-#endif
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500106
 #include <sys/devicestat.h>	/* for struct devstat */
-#endif
 #include <sys/thread2.h>
 
-#ifdef __DragonFly__
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
@@ -69,15 +61,6 @@
 #include <bus/firewire/fwdma.h>
 #include <bus/firewire/iec13213.h>
 #include "sbp.h"
-#else
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_sim.h>
-#include <cam/cam_xpt_sim.h>
-#include <cam/cam_debug.h>
-#include <cam/cam_periph.h>
-#include <cam/scsi/scsi_all.h>
-#endif
 
 #define ccb_sdev_ptr	spriv_ptr0
 #define ccb_sbp_ptr	spriv_ptr1

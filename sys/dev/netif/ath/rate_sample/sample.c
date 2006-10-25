@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.3 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.4 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -48,9 +48,6 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/errno.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 
 #include <sys/socket.h>

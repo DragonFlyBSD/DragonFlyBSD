@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.12 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.13 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -42,10 +42,10 @@
 
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h> 
+
 #include <bus/eisa/eisaconf.h>
+
 #include <dev/netif/pdq_layer/pdqvar.h>
 #include <dev/netif/pdq_layer/pdqreg.h>
 

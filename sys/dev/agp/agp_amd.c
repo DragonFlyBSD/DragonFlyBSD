@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.7 2006/09/05 03:48:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.8 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -46,9 +47,6 @@
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
 #include <machine/clock.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 MALLOC_DECLARE(M_AGP);
 

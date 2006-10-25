@@ -1,10 +1,10 @@
 # $FreeBSD: src/sys/modules/if_faith/Makefile,v 1.1.2.1 2001/12/15 01:07:54 brooks Exp $
-# $DragonFly: src/sys/net/faith/Makefile,v 1.3 2005/02/18 11:41:42 corecode Exp $
+# $DragonFly: src/sys/net/faith/Makefile,v 1.4 2006/10/25 20:56:02 dillon Exp $
 
 .PATH: ${.CURDIR}/../../net
 
 KMOD=	if_faith
-SRCS=	if_faith.c opt_inet.h opt_inet6.h
+SRCS=	if_faith.c opt_inet.h opt_inet6.h bus_if.h device_if.h
 CFLAGS+= -DNFAITH=0
 NOMAN=
 

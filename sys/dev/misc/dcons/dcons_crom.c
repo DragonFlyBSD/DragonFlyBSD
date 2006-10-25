@@ -33,7 +33,7 @@
  * 
  * $Id: dcons_crom.c,v 1.8 2003/10/23 15:47:21 simokawa Exp $
  * $FreeBSD: src/sys/dev/dcons/dcons_crom.c,v 1.5 2004/10/13 05:38:42 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.3 2005/10/28 03:25:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.4 2006/10/25 20:55:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,9 +43,7 @@
 #include <sys/types.h>
 #include <sys/conf.h>
 #include <sys/malloc.h>
-
 #include <sys/bus.h>
-#include <machine/bus.h>
 
 #ifdef __DragonFly__
 #include <bus/firewire/firewire.h>

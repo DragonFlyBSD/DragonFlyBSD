@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.8 2005/12/11 01:54:07 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -34,11 +34,9 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/systimer.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/lock.h>
 #include <sys/rman.h>
+
+#include <machine/lock.h>
 #include <bus/pci/pcivar.h>
 
 #include "acpi.h"

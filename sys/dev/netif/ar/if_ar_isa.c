@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.54 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.4 2005/02/08 14:31:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.5 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -50,10 +50,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #include <sys/rman.h>
 
 #include <bus/isa/isavar.h>

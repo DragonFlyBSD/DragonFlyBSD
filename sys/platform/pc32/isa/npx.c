@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.35 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.36 2006/10/25 20:55:51 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -48,7 +48,6 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #ifdef NPX_DEBUG
 #include <sys/syslog.h>
@@ -68,7 +67,6 @@
 #ifndef SMP
 #include <machine/clock.h>
 #endif
-#include <machine/resource.h>
 #include <machine/specialreg.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.15 2006/08/06 12:49:04 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.16 2006/10/25 20:55:56 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -42,12 +42,9 @@
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/kernel.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_arc.h>

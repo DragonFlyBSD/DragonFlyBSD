@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.12 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.13 2006/10/25 20:55:54 dillon Exp $
  */
 
 /*
@@ -76,9 +76,6 @@
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <machine/resource.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.16 2006/01/28 15:07:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.17 2006/10/25 20:55:56 dillon Exp $
  */
 
 #include "opt_ed.h"
@@ -36,12 +36,9 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

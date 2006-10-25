@@ -1,6 +1,6 @@
 /*	$NetBSD: if_le_isa.c,v 1.41 2005/12/24 20:27:41 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_isa.c,v 1.1 2006/05/17 21:25:22 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.9 2006/07/07 14:16:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.10 2006/10/25 20:55:57 dillon Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -88,9 +88,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_arp.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <bus/isa/isavar.h>
 

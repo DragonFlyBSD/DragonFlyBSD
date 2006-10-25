@@ -27,22 +27,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.13 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.14 2006/10/25 20:55:59 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcivar.h>

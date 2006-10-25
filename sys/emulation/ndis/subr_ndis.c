@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.16 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.17 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -67,6 +67,8 @@
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
 #include <sys/kthread.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -75,14 +77,6 @@
 #include <net/if_media.h>
 
 #include <machine/atomic.h>
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-
-#include <sys/bus.h>
-#include <sys/rman.h>
-
 #include <machine/stdarg.h>
 
 #include <netproto/802_11/ieee80211_var.h>

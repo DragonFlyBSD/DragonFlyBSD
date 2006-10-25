@@ -1,5 +1,3 @@
-/* $FreeBSD: src/sys/i386/include/resource.h,v 1.3 1999/10/14 21:38:30 dfr Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/Attic/resource.h,v 1.3 2006/10/23 21:50:31 dillon Exp $ */
 /*
  * Copyright 1998 Massachusetts Institute of Technology
  *
@@ -27,10 +25,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/i386/include/resource.h,v 1.3 1999/10/14 21:38:30 dfr Exp $
+ * $DragonFly: src/sys/sys/bus_resource.h,v 1.1 2006/10/25 20:56:03 dillon Exp $
  */
 
-#ifndef _MACHINE_RESOURCE_H_
-#define	_MACHINE_RESOURCE_H_
+#ifndef _SYS_BUS_RESOURCE_H_
+#define	_SYS_BUS_RESOURCE_H_
 
 /*
  * Definitions of resource types for Intel Architecture machines
@@ -42,4 +43,4 @@
 #define	SYS_RES_MEMORY	3	/* i/o memory */
 #define	SYS_RES_IOPORT	4	/* i/o ports */
 
-#endif /* !_MACHINE_RESOURCE_H_ */
+#endif /* !_SYS_BUS_RESOURCE_H_ */

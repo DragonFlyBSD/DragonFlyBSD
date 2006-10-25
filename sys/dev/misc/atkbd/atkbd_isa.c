@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbd_isa.c,v 1.7.2.3 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.5 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.6 2006/10/25 20:55:54 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -33,9 +33,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <sys/kbio.h>

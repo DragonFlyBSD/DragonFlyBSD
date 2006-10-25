@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.6 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.7 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -73,6 +73,7 @@
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -82,9 +83,6 @@
 #include <net/ifq_var.h>
 
 #include <net/bpf.h>
-
-#include <sys/bus.h>
-#include <machine/bus.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>

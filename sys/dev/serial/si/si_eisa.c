@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_eisa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_eisa.c,v 1.5 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_eisa.c,v 1.6 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -26,9 +26,7 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include "sireg.h"
 #include "sivar.h"

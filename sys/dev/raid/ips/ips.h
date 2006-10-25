@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.11 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.12 2006/10/25 20:56:01 dillon Exp $
  */
 
 
@@ -38,18 +38,14 @@
 #include <sys/conf.h>
 #include <sys/types.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/queue.h>
 #include <sys/buf.h>
-#include <sys/buf2.h>
 #include <sys/malloc.h>
 #include <sys/time.h>
 #include <sys/lock.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+#include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

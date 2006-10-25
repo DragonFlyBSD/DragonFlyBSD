@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.33 2006/10/07 02:57:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.34 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -96,6 +96,8 @@
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -106,13 +108,6 @@
 #include <net/if_media.h>
 
 #include <net/bpf.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>

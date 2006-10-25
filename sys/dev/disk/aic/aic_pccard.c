@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.7 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.8 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,10 +32,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
  
 #include "aic6360reg.h"

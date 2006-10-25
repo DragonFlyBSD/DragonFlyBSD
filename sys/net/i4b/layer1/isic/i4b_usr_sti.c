@@ -28,7 +28,7 @@
  *	-------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_usr_sti.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.7 2006/10/25 20:56:03 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:28:12 2001]
  *
@@ -42,12 +42,10 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-
 #include <sys/socket.h>
-#include <net/if.h>
 
+#include <net/if.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>
 

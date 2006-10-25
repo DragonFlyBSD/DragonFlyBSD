@@ -27,23 +27,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.11 2000/01/17 12:38:00 nyan Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.4 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.5 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
-#include <sys/thread2.h>
 
 #include "btreg.h"
 

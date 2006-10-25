@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.15 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.16 2006/10/25 20:56:01 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -45,20 +45,15 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/stat.h>
-
-#include <sys/devicestat.h>
-
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/md_var.h>
-
 #include <sys/rman.h>
+#include <sys/devicestat.h>
+#include <sys/thread2.h>
+
+#include <machine/md_var.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

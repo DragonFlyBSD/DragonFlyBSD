@@ -1,6 +1,6 @@
 /* $NetBSD: pcmcia_cis.c,v 1.17 2000/02/10 09:01:52 chopps Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis.c,v 1.23 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.5 2006/09/05 03:48:09 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.6 2006/10/25 20:55:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -40,9 +40,7 @@
 #include <sys/types.h>
 
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>

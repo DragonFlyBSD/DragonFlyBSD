@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.15 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.16 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -63,6 +63,8 @@
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
@@ -70,14 +72,6 @@
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 
-#include <sys/bus.h>		/* used by smbus and newbus */
-
-#include <machine/bus_memio.h>	/* used by bus space */
-#include <machine/bus.h>	/* used by bus space and newbus */
-#include <sys/bus.h>
-
-#include <sys/rman.h>		/* used by newbus */
-#include <machine/resource.h>	/* used by newbus */
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcidevs.h>

@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.18 2005/01/23 07:13:09 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.7 2005/03/12 11:35:27 corecode Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
  */
 
 
@@ -48,12 +48,9 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
+#include <sys/bus.h>
 
 #include <bus/pci/pcivar.h>
-
-#include <machine/bus_memio.h>          /* for bus space */
-#include <machine/bus.h>
-#include <sys/bus.h>
 
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */

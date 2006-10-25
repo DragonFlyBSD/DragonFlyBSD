@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.10 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.11 2006/10/25 20:55:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,8 +37,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
 #include <sys/time.h>

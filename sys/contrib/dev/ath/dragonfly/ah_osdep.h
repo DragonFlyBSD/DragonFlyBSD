@@ -43,8 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-
-#include <machine/bus.h>
+#include <sys/bus.h>
 
 typedef void* HAL_SOFTC;
 typedef bus_space_tag_t HAL_BUS_TAG;

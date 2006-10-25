@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.24 2006/08/01 18:03:53 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.25 2006/10/25 20:55:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>
-
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -62,11 +63,6 @@
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
 #include <machine/clock.h>      /* for DELAY */
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>

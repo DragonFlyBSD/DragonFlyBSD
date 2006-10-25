@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.18 2005/11/28 17:13:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.19 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -57,12 +57,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/serialize.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
 #include <sys/rman.h>
-
 #include <sys/thread2.h>
 
 #include <net/if.h>

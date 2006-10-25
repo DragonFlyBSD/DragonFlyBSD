@@ -1,9 +1,14 @@
 #
-# $DragonFly: src/sys/platform/vkernel/conf/options,v 1.1 2006/10/22 16:09:14 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/options,v 1.2 2006/10/25 20:55:51 dillon Exp $
 #
 
 # The cpu type
 #
 I586_CPU                opt_global.h
 I686_CPU                opt_global.h
+
+#
+#
+SHOW_BUSYBUFS
+PANIC_REBOOT_WAIT_TIME  opt_panic.h
 

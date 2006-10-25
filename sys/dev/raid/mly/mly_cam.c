@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.5 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.6 2006/10/25 20:56:01 dillon Exp $
  */
 /*
  * CAM interface for FreeBSD
@@ -44,9 +44,6 @@
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-
-#include <machine/resource.h>
-#include <machine/bus.h>
 
 #include "mlyreg.h"
 #include "mlyio.h"

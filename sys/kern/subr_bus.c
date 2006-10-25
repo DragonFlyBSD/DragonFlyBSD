@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.31 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.32 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -40,8 +40,9 @@
 #include <sys/kobj.h>
 #include <sys/bus_private.h>
 #include <sys/systm.h>
-#include <machine/bus.h>
+#include <sys/bus.h>
 #include <sys/rman.h>
+
 #include <machine/stdarg.h>	/* for device_printf() */
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");

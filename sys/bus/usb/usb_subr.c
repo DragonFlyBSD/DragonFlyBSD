@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.13 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.14 2006/10/25 20:55:52 dillon Exp $
  */
 
 /* Also already have from NetBSD:
@@ -50,16 +50,9 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/select.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
-#endif
 #include <sys/proc.h>
-
-#include <machine/bus.h>
 
 #include "usb.h"
 

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.10 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.11 2006/10/25 20:55:52 dillon Exp $
  */
 
 /*
@@ -43,21 +43,15 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "usb_if.h"
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
-#endif
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
-
-#include <machine/bus.h>
 
 #include "usb.h"
 #include "usbdi.h"

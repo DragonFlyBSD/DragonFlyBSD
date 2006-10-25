@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.29 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.30 2006/10/25 20:55:58 dillon Exp $
  *
  */
 
@@ -247,16 +247,13 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/thread2.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/clock.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+
+#include <machine/clock.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

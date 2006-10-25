@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.12 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.13 2006/10/25 20:55:58 dillon Exp $
  */
 
  
@@ -35,8 +35,6 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
 

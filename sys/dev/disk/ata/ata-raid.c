@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.23 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.24 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -41,14 +41,14 @@
 #include <sys/disk.h>
 #include <sys/devicestat.h>
 #include <sys/cons.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include "ata-all.h"
-#include "ata-disk.h"
-#include "ata-raid.h"
 #include <sys/proc.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+
+#include "ata-all.h"
+#include "ata-disk.h"
+#include "ata-raid.h"
 
 /* device structures */
 static d_open_t		aropen;

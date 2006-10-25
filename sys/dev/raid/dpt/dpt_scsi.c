@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.10 2006/09/05 00:55:41 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.11 2006/10/25 20:56:01 dillon Exp $"
 
 #define _DPT_C_
 
@@ -54,13 +54,8 @@
 #include <sys/eventhandler.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-
 #include <sys/bus.h>
 #include <sys/thread2.h>
-
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 
 #include <machine/clock.h>
 

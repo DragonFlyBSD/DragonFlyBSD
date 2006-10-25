@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.8 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.9 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -53,22 +53,20 @@
 #include <sys/errno.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
-#include <sys/bio.h>
-#endif
 #include <sys/buf.h>
-#include <machine/clock.h>	/* for DELAY */
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
 #include <sys/sbuf.h>
 #include <sys/soundcard.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
-#include <bus/isa/isavar.h>
 #include <sys/kobj.h>
+#include <sys/thread2.h>
+
+#include <machine/clock.h>	/* for DELAY */
+
+#include <bus/isa/isavar.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 

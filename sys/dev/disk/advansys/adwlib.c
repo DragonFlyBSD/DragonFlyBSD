@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.c,v 1.6.2.1 2000/04/14 13:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.4 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.5 2006/10/25 20:55:52 dillon Exp $
  */
 /*
  * Ported from:
@@ -50,9 +50,6 @@
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <bus/cam/cam.h>

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.11 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.12 2006/10/25 20:55:54 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -37,9 +37,6 @@
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/thread2.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #ifdef __i386__
 #include <machine/md_var.h>

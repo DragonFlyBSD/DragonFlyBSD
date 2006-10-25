@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.19 2006/09/10 01:26:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.20 2006/10/25 20:56:01 dillon Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/stat.h>
+#include <sys/rman.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -88,11 +89,7 @@
 #include <bus/cam/scsi/scsi_message.h>
 
 #include <machine/clock.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
 #include <machine/endian.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

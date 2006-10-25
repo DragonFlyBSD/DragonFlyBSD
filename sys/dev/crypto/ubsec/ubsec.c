@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.11 2006/09/05 03:48:09 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.12 2006/10/25 20:55:52 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -56,22 +56,20 @@
 #include <sys/mbuf.h>
 #include <sys/sysctl.h>
 #include <sys/endian.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
+#include <sys/md5.h>
+#include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
 #include <machine/clock.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-#include <sys/thread2.h>
 
 #include <crypto/sha1.h>
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/cryptosoft.h>
-#include <sys/md5.h>
-#include <sys/random.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

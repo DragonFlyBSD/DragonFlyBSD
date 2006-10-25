@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.14 2006/10/25 20:55:51 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -46,15 +46,13 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simo
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/bus.h>
 #include <sys/sysctl.h>
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/buf.h>
 #else
 #include <sys/bio.h>
 #endif
-
-#include <sys/bus.h>
-#include <machine/bus.h>
 
 #include <sys/signal.h>
 #include <sys/mman.h>

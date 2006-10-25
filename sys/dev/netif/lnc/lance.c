@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.4 2006/10/10 00:04:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.5 2006/10/25 20:55:57 dillon Exp $	*/
 
 
 /*-
@@ -90,8 +90,6 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
-
-#include <machine/bus.h>
 
 #include <dev/netif/lnc/lancereg.h>
 #include <dev/netif/lnc/lancevar.h>

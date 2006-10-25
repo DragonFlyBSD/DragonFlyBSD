@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.28 2006/03/28 22:18:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.29 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,11 +38,12 @@
 #include <sys/bus.h>
 #include <sys/disk.h>
 #include <sys/devicestat.h>
+#include <sys/rman.h>
+
 #include <vm/vm.h>	     
 #include <vm/pmap.h>
+
 #include <bus/pci/pcivar.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
 #include "ata-all.h"
 
 /* prototypes */

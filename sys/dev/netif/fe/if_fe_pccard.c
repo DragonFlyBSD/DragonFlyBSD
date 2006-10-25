@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.10 2006/10/23 21:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.11 2006/10/25 20:55:57 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -31,11 +31,8 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/module.h>
-#include <machine/clock.h>
-
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <machine/clock.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa.c,v 1.132.2.5 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.7 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.8 2006/10/25 20:55:51 dillon Exp $
  */
 
 /*
@@ -60,10 +60,7 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/malloc.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-
-#include <machine/resource.h>
 
 #include "../isavar.h"
 #include "../isa_common.h"

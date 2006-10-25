@@ -24,17 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.9 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.10 2006/10/25 20:56:00 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#include <machine/bus.h>
-
-#include <machine/clock.h>
 #include <sys/uio.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -43,7 +38,9 @@
 #include <sys/buf.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
-#include <machine/resource.h>
+
+#include <machine/clock.h>
+
 #include <bus/smbus/smbconf.h>
 
 #include "smbus_if.h"

@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#15 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.14.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.7 2005/08/25 23:37:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.8 2006/10/25 20:55:53 dillon Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -50,6 +50,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
@@ -60,15 +61,9 @@
 
 #if NPCI > 0
 #define AHC_PCI_CONFIG 1
-#include <machine/bus_memio.h>
 #endif
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/endian.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
-
-#include <sys/rman.h>
 
 #if NPCI > 0
 #include <bus/pci/pcireg.h>

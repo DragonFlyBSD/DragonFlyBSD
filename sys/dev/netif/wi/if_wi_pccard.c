@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.9 2006/03/25 04:14:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.10 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -50,9 +50,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <net/if.h>

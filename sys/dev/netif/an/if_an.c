@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.38 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.39 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*
@@ -105,9 +105,7 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
 #include <sys/malloc.h>
 
 #include <net/if.h>

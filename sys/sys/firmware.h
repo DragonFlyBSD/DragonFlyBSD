@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/firmware.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/firmware.h,v 1.3 2006/10/25 20:56:03 dillon Exp $
  */
 
 #ifndef _SYS_FIRMWARE_H_
@@ -40,10 +40,18 @@
 #error "No user-servicable parts inside"
 #endif
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
-#include <machine/bus.h>
-#include <machine/bus_dma.h>
+#endif
+#ifndef _SYS_BUS_H_
+#include <sys/bus.h>
+#endif
+#ifndef _SYS_BUS_DMA_H_
+#include <sys/bus_dma.h>
+#endif
 
 struct fw_image {
 	TAILQ_ENTRY(fw_image) fw_link;

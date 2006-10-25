@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rlphy.c,v 1.2.2.4 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rlphy.c,v 1.10 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rlphy.c,v 1.11 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -53,7 +53,6 @@
 #include "miivar.h"
 #include "miidevs.h"
 
-#include <machine/bus.h>
 #include "../rl/if_rlreg.h"
 
 #include "miibus_if.h"

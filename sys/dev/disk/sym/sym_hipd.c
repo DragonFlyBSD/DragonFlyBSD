@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.17 2006/09/05 00:55:38 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.18 2006/10/25 20:55:54 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -93,6 +93,7 @@
 #ifdef FreeBSD_Bus_Io_Abstraction
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #endif
 #include <sys/thread2.h>
 
@@ -101,23 +102,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#ifdef	FreeBSD_Bus_Space_Abstraction
-#include <machine/bus_memio.h>
-/*
- *  Only include bus_pio if needed.
- *  This avoids bus space primitives to be uselessly bloated 
- *  by out-of-age PIO operations.
- */
-#ifdef	SYM_CONF_IOMAPPED
-#include <machine/bus_pio.h>
-#endif
-#endif
-#include <machine/bus.h>
-
-#ifdef FreeBSD_Bus_Io_Abstraction
-#include <machine/resource.h>
-#include <sys/rman.h>
-#endif
 #include <machine/clock.h>
 
 #include <bus/cam/cam.h>

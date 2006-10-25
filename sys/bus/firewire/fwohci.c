@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.14 2006/10/25 20:55:51 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -53,9 +53,8 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/endian.h>
-#include <sys/thread2.h>
 
-#include <machine/bus.h>
+#include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>		/* for DELAY() */

@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.5 2005/10/12 17:35:56 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6 2006/10/25 20:56:03 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 10:53:03 2001]
  *
@@ -44,17 +44,13 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/socket.h>
-#include <net/if.h>
-
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
+#include <net/if.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>
 

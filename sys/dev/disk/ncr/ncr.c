@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.14 2006/09/05 00:55:38 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.15 2006/10/25 20:55:53 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -184,8 +184,6 @@
 #include <sys/thread2.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>

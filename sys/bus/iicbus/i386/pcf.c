@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.8 2006/10/25 20:55:51 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -35,8 +35,6 @@
 #include <sys/malloc.h>
 
 #include <machine/clock.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/isa/isareg.h>

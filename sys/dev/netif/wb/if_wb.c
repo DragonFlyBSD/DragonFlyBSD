@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.37 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.38 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -93,6 +93,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -106,10 +108,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>

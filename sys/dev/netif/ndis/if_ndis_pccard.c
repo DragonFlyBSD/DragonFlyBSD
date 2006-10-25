@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.5 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.6 2006/10/25 20:55:58 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -42,15 +42,12 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 

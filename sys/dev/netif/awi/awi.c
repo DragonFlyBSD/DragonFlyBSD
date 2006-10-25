@@ -35,7 +35,7 @@
  *
  * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
  * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.27 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.28 2006/10/25 20:55:56 dillon Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -122,7 +122,6 @@
 #include <net/bpfdesc.h>
 
 #include <machine/cpu.h>
-#include <machine/bus.h>
 
 #include <dev/netif/awi/am79c930reg.h>
 #include <dev/netif/awi/am79c930var.h>

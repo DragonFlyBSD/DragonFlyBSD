@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.25 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.26 2006/10/25 20:55:56 dillon Exp $
  */
 
 /*
@@ -58,17 +58,14 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/bus.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
-
 #include <net/bpf.h>
-
-#include <sys/bus.h>
-#include <machine/bus.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>

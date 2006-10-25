@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.16 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.17 2006/10/25 20:55:55 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -26,13 +26,12 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/timepps.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/ppbus/ppbconf.h>
-#include "ppbus_if.h"
 #include <bus/ppbus/ppbio.h>
+
+#include "ppbus_if.h"
 
 #define PPS_NAME	"pps"		/* our official name */
 

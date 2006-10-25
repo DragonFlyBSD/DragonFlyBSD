@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.5 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -81,16 +81,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
-
+#include <sys/bus.h>
 #include <sys/unistd.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
-
-#ifdef BKTR_USE_FREEBSD_SMBUS
-#include <sys/bus.h>                   /* required by bktr_reg.h */
-#endif
-
-#include <machine/bus.h>		/* required by bktr_reg.h */
 
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */

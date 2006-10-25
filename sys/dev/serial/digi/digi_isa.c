@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_isa.c,v 1.12 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_isa.c,v 1.1 2004/12/22 08:42:47 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi_isa.c,v 1.2 2006/10/25 20:56:01 dillon Exp $
  */
 
 /*-
@@ -42,9 +42,8 @@
 #include <sys/kernel.h>
 #include <sys/tty.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
-#include <machine/resource.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 

@@ -24,15 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.26 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.5 2005/03/12 14:33:40 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
  */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>

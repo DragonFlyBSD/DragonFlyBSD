@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.8 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.9 2006/10/25 20:56:01 dillon Exp $
  */
 
 /*-
@@ -52,7 +52,6 @@
 #include <sys/bus.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
-#include <machine/resource.h>
 
 #include <dev/serial/digi/digiio.h>
 #include <dev/serial/digi/digireg.h>

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.22 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.23 2006/10/25 20:55:57 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -45,15 +45,11 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-#include <sys/thread2.h>
-
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/serialize.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -65,6 +61,7 @@
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
+
 #include <machine/clock.h>
 
 

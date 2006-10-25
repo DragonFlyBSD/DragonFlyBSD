@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.34 2006/08/01 18:10:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.35 2006/10/25 20:55:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,8 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -55,12 +57,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/bus_memio.h>
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include "../mii_layer/mii.h"
 #include "../mii_layer/miivar.h"

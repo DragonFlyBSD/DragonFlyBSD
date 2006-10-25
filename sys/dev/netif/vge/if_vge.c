@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.2 2006/08/06 12:49:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.3 2006/10/25 20:55:59 dillon Exp $
  */
 
 /*
@@ -93,6 +93,8 @@
 #include <sys/socket.h>
 #include <sys/serialize.h>
 #include <sys/proc.h>
+#include <sys/bus.h>
+#include <sys/rman.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -104,11 +106,6 @@
 #include <net/vlan/if_vlan_var.h>
 
 #include <net/bpf.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>

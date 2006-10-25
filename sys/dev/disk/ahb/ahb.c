@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.12 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.13 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,13 +35,10 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
-#include <machine/resource.h>
-#include <sys/rman.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.2 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.3 2006/10/25 20:55:58 dillon Exp $
  */
 
 /*
@@ -79,9 +79,6 @@
 #include <sys/sockio.h>
 #include <sys/serialize.h>
 #include <sys/sysctl.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>

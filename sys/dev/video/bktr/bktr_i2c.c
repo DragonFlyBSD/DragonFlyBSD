@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.25 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.7 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
  */
 
 /*
@@ -42,15 +42,10 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
-
 #include <sys/selinfo.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-
-#include <machine/bus_memio.h>          /* for bus space */
-#include <machine/bus.h>
-#include <sys/bus.h>
 
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */

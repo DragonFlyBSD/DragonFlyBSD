@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.9 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.10 2006/10/25 20:55:55 dillon Exp $
  */
 
 /*-
@@ -88,9 +88,6 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/malloc.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.7 2005/06/16 15:38:36 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.8 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,11 +33,9 @@
 #include <sys/buf.h>   
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
-#include <machine/bus_pio.h>
-#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <bus/cam/cam.h>

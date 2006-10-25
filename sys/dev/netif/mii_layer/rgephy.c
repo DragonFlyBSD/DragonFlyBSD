@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.3 2006/08/19 09:33:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.4 2006/10/25 20:55:57 dillon Exp $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 
-#include <machine/bus.h>
 #include <machine/clock.h>
 
 #include <net/if.h>
@@ -61,8 +60,6 @@
 #include <dev/netif/mii_layer/rgephyreg.h>
 
 #include "miibus_if.h"
-
-#include <machine/bus.h>
 
 static int rgephy_probe(device_t);
 static int rgephy_attach(device_t);
