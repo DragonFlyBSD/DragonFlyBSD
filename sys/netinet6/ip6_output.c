@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.30 2006/10/25 07:02:27 corecode Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.31 2006/10/25 07:41:45 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -168,9 +168,6 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	boolean_t hdrsplit = FALSE;
 	boolean_t needipsec = FALSE;
 #ifdef IPSEC
-	struct ip6_rthdr *rh = NULL;
-	int segleft_org = 0;
-	struct ipsec_output_state state;
 	boolean_t needipsectun = FALSE;
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
@@ -394,6 +391,10 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 
 #if defined(IPSEC) || defined(FAST_IPSEC)
 	if (needipsec) {
+		struct ipsec_output_state state;
+		int segleft_org = 0;
+		struct ip6_rthdr *rh = NULL;
+
 		/*
 		 * pointers after IPsec headers are not valid any more.
 		 * other pointers need a great care too.
@@ -445,12 +446,11 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 	 * with the first hop of the routing header.
 	 */
 	if (exthdrs.ip6e_rthdr) {
-		struct ip6_rthdr *rh =
-			(struct ip6_rthdr *)(mtod(exthdrs.ip6e_rthdr,
-						  struct ip6_rthdr *));
+		struct ip6_rthdr *rh;
 		struct ip6_rthdr0 *rh0;
 
 		finaldst = ip6->ip6_dst;
+		rh = mtod(exthdrs.ip6e_rthdr, struct ip6_rthdr *);
 		switch (rh->ip6r_type) {
 		case IPV6_RTHDR_TYPE_0:
 			 rh0 = (struct ip6_rthdr0 *)rh;
