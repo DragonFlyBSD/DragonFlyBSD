@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.77 2006/09/19 16:06:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.78 2006/10/26 02:27:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,6 +87,8 @@
 #include <sys/kern_syscall.h>
 #include <sys/dirent.h>
 #include <ddb/ddb.h>
+
+#define MAX_RECURSION_DEPTH	64
 
 /*
  * Random lookups in the cache are accomplished with a hash table using
@@ -674,9 +676,53 @@ cache_clrmountpt(struct namecache *ncp)
  * recursion, zero otherwise.  Note that since only the original ncp is
  * locked the revalidation ultimately can only indicate that the original ncp
  * *MIGHT* no have been reresolved.
+ *
+ * DEEP RECURSION HANDLING - If a recursive invalidation recurses deeply we
+ * have to avoid blowing out the kernel stack.  We do this by saving the
+ * deep namecache node and aborting the recursion, then re-recursing at that
+ * node using a depth-first algorithm in order to allow multiple deep
+ * recursions to chain through each other, then we restart the invalidation
+ * from scratch.
  */
+
+struct cinvtrack {
+	struct namecache *resume_ncp;
+	int depth;
+};
+
+static int cache_inval_internal(struct namecache *, int, struct cinvtrack *);
+
 int
 cache_inval(struct namecache *ncp, int flags)
+{
+	struct cinvtrack track;
+	struct namecache *ncp2;
+	int r;
+
+	track.depth = 0;
+	track.resume_ncp = NULL;
+
+	for (;;) {
+		r = cache_inval_internal(ncp, flags, &track);
+		if (track.resume_ncp == NULL)
+			break;
+		printf("Warning: deep namecache recursion at %s\n",
+			ncp->nc_name);
+		cache_unlock(ncp);
+		while ((ncp2 = track.resume_ncp) != NULL) {
+			track.resume_ncp = NULL;
+			cache_lock(ncp2);
+			cache_inval_internal(ncp2, flags & ~CINV_DESTROY,
+					     &track);
+			cache_put(ncp2);
+		}
+		cache_lock(ncp);
+	}
+	return(r);
+}
+
+static int
+cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 {
 	struct namecache *kid;
 	struct namecache *nextkid;
@@ -691,21 +737,31 @@ cache_inval(struct namecache *ncp, int flags)
 	if ((flags & CINV_CHILDREN) && 
 	    (kid = TAILQ_FIRST(&ncp->nc_list)) != NULL
 	) {
+		if (++track->depth > MAX_RECURSION_DEPTH) {
+			track->resume_ncp = ncp;
+			cache_hold(ncp);
+			++rcnt;
+		}
 		cache_hold(kid);
 		cache_unlock(ncp);
 		while (kid) {
+			if (track->resume_ncp) {
+				cache_drop(kid);
+				break;
+			}
 			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
 				cache_hold(nextkid);
 			if ((kid->nc_flag & NCF_UNRESOLVED) == 0 ||
 			    TAILQ_FIRST(&kid->nc_list)
 			) {
 				cache_lock(kid);
-				rcnt += cache_inval(kid, flags & ~CINV_DESTROY);
+				rcnt += cache_inval_internal(kid, flags & ~CINV_DESTROY, track);
 				cache_unlock(kid);
 			}
 			cache_drop(kid);
 			kid = nextkid;
 		}
+		--track->depth;
 		cache_lock(ncp);
 	}
 

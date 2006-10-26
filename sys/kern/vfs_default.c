@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.43 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.44 2006/10/26 02:27:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -855,6 +855,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 		if (error == 0) {
 			cache_setunresolved(ncp);
 			cache_setvp(ncp, NULL);
+			cache_inval_vp(vp, CINV_DESTROY);
 		}
 	}
 	if (vp) {
@@ -937,8 +938,10 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 		 * disconnected from the topology and not be able to ".."
 		 * back out.
 		 */
-		if (error == 0)
+		if (error == 0) {
 			cache_inval(ncp, CINV_DESTROY);
+			cache_inval_vp(vp, CINV_DESTROY);
+		}
 	}
 	if (vp) {
 		if (dvp == vp)
