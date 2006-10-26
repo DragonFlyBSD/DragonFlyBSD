@@ -33,15 +33,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/suser.9,v 1.9.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/suser.9,v 1.3 2004/05/10 13:00:37 hmp Exp $
+.\" $DragonFly: src/share/man/man9/suser.9,v 1.4 2006/10/26 12:58:30 swildner Exp $
 .\"
-.Dd May 10, 2004
+.Dd October 26, 2006
 .Dt SUSER 9
 .Os
 .Sh NAME
 .Nm suser ,
-.Nm suser_cred ,
-.Nm suser_proc
+.Nm suser_cred
 .Nd check for credentials for superuser privilege
 .Sh SYNOPSIS
 .In sys/param.h
@@ -51,8 +50,6 @@
 .Fn suser "struct thread *td"
 .Ft int
 .Fn suser_cred "struct ucred *cred" "int flags"
-.Ft int
-.Fn suser_proc "struct proc *p"
 .Sh DESCRIPTION
 The
 .Nm
@@ -71,11 +68,6 @@ The
 function should be used when the credentials to be checked are
 not the process' own, when there is no process or when superuser
 privilege should be extended to imprisoned roots.
-.Pp
-The
-.Fn suser_proc
-function is used when the credentials to be checked are of a
-different process.
 .Pp
 By default a process does not command superuser privilege if it has
 been imprisoned by the
@@ -96,10 +88,9 @@ implicit in
 call should such privilege be granted.
 .Pp
 The
-.Fn suser ,
-.Fn suser_cred
+.Fn suser
 and
-.Fn suser_proc
+.Fn suser_cred
 functions note the fact that superuser powers have been used in the
 process structure of the process specified.
 Because part of their function is to notice
@@ -108,10 +99,9 @@ the functions should only be called after other permission
 possibilities have been exhausted.
 .Sh RETURN VALUES
 The
-.Fn suser ,
-.Fn suser_cred
+.Fn suser
 and
-.Fn suser_proc
+.Fn suser_cred
 functions return
 .Li 0
 if the user has superuser privilege and

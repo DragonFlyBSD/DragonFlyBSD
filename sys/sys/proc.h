@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.87 2006/10/10 15:40:47 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.88 2006/10/26 12:58:30 swildner Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -468,7 +468,6 @@ void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *);
 void	sleep_gdinit (struct globaldata *);
 int	suser (struct thread *td);
-int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);

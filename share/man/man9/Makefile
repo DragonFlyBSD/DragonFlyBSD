@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.33 2006/10/18 21:30:06 victor Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.34 2006/10/26 12:58:30 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -216,7 +216,6 @@ MLINKS+=spinlock.9 spin_unlock_wr.9
 MLINKS+=spinlock.9 spin_unlock_wr_quick.9
 MLINKS+=store.9 subyte.9 store.9 suswintr.9 store.9 susword.9 store.9 suword.9
 MLINKS+=suser.9 suser_cred.9
-MLINKS+=suser.9 suser_proc.9
 MLINKS+=time.9 boottime.9 time.9 mono_time.9 time.9 runtime.9
 MLINKS+=timeout.9 untimeout.9
 MLINKS+=timeout.9 callout_handle_init.9 timeout.9 callout_init.9
