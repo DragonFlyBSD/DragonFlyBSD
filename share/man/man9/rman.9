@@ -56,7 +56,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/rman.9,v 1.2 2003/05/30 21:13:32 ru Exp $
-.\" $DragonFly: src/share/man/man9/rman.9,v 1.3 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man9/rman.9,v 1.4 2006/10/27 22:39:05 swildner Exp $
 .\"
 .Dd May 12, 2003
 .Dt RMAN 9
@@ -234,18 +234,18 @@ add multiple copies of the same region.
 The
 .Fn rman_reserve_resource
 function is used to reserve resources within a previously established region.
-It is a simplified interface to
-.Fn rman_reserve_resource_bound
-which passes 0 for the
-.Fa flags
-argument.
+.\"It is a simplified interface to
+.\".Fn rman_reserve_resource_bound
+.\"which passes 0 for the
+.\".Fa flags
+.\"argument.
 .Pp
 The
 .Fn rman_make_alignment_flags
 function returns the flag mask corresponding to the desired alignment
 .Fa size .
-This should be used when calling
-.Fn rman_reserve_resource_bound .
+.\"This should be used when calling
+.\".Fn rman_reserve_resource_bound .
 .Pp
 The
 .Fn rman_release_resource
