@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.20 2006/10/27 04:56:27 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.21 2006/10/27 05:04:35 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -654,9 +654,31 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)
 	 * If we have an ncp, traceback the path.  This is a kvm pointer.
 	 */
 	if (ncp) {
+		if (!kread(m, &mount_l, sizeof(struct mount))) {
+			warnx("can't read mount table at %p", (void *)m);
+			return (NULL);
+		}
 		i = sizeof(path) - 1;
 		path[i] = 0;
 		while (ncp) {
+			/*
+			 * If this is the root of the mount then traverse
+			 * to the parent mount.
+			 */
+			if (ncp == mount_l.mnt_ncmountpt.ncp) {
+				ncp = mount_l.mnt_ncmounton.ncp;
+				if (ncp == NULL)
+					break;
+				m = mount_l.mnt_ncmounton.mount;
+				if (!kread(m, &mount_l, sizeof(struct mount))) {
+					warnx("can't read mount table at %p", (void *)m);
+					return (NULL);
+				}
+			}
+
+			/*
+			 * Ok, pull out the ncp and extract the name
+			 */
 			if (!kread(ncp, &ncp_copy, sizeof(ncp_copy))) {
 				warnx("can't read ncp at %p", ncp);
 				return (NULL);
