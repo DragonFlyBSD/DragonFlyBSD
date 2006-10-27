@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.34 2006/10/26 12:58:30 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.35 2006/10/27 23:02:59 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -158,7 +158,6 @@ MLINKS+=ifnet.9 if_data.9 ifnet.9 ifaddr.9 ifnet.9 ifqueue.9
 MLINKS+=kernacc.9 useracc.9
 MLINKS+=kobj.9 DEFINE_CLASS.9
 MLINKS+=kobj.9 kobj_class_compile.9
-MLINKS+=kobj.9 kobj_class_compile_static.9
 MLINKS+=kobj.9 kobj_class_free.9
 MLINKS+=kobj.9 kobj_create.9
 MLINKS+=kobj.9 kobj_delete.9

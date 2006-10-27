@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/kobj.9,v 1.16 2005/06/28 20:15:18 hmp Exp $
-.\" $DragonFly: src/share/man/man9/kobj.9,v 1.3 2006/10/19 18:44:00 swildner Exp $
+.\" $DragonFly: src/share/man/man9/kobj.9,v 1.4 2006/10/27 23:02:59 swildner Exp $
 .\"
 .Dd April 4, 2000
 .Dt KOBJ 9
@@ -41,8 +41,6 @@
 .In sys/kobj.h
 .Ft void
 .Fn kobj_class_compile "kobj_class_t cls"
-.Ft void
-.Fn kobj_class_compile_static "kobj_class_t cls" "kobj_ops_t ops"
 .Ft void
 .Fn kobj_class_free "kobj_class_t cls"
 .Ft kobj_t
@@ -85,7 +83,7 @@ This will allocate memory for the object based on the object size
 specified by the class and initialise it by zeroing the memory and
 installing a pointer to the class' method dispatch table.
 Objects created in this way should be freed by calling
-.Fn kobj_free .
+.Fn kobj_delete .
 .Pp
 Clients which would like to manage the allocation of memory
 themselves should call
@@ -101,23 +99,13 @@ The device framework uses this feature to associate drivers with
 devices.
 .Pp
 The functions
-.Fn kobj_class_compile ,
-.Fn kobj_class_compile_static
+.Fn kobj_class_compile
 and
 .Fn kobj_class_free
 are used to process a class description to make method dispatching
 efficient.
 A client should not normally need to call these since a class
 will automatically be compiled the first time it is used.
-If a class is to be used before
-.Xr kmalloc 9
-is initialised,
-then
-.Fn kobj_class_compile_static
-should be called with the class and a pointer to a statically
-allocated
-.Vt kobj_ops
-structure before the class is used to initialise any objects.
 .Pp
 To define a class, first define a simple array of
 .Vt kobj_method_t .
