@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libtacplus/Makefile,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
-#	$DragonFly: src/lib/libtacplus/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
+#	$DragonFly: src/lib/libtacplus/Makefile,v 1.4 2006/10/27 18:15:28 swildner Exp $
 
 LIB=		tacplus
 SRCS=		taclib.c
@@ -33,5 +33,16 @@ DPADD+=		${LIBMD}
 LDADD+=		-lmd
 SHLIB_MAJOR=	2
 MAN=		libtacplus.3 tacplus.conf.5
+MLINKS=		libtacplus.3 tac_add_server.3 libtacplus.3 tac_clear_avs.3
+MLINKS+=	libtacplus.3 tac_close.3 libtacplus.3 tac_config.3
+MLINKS+=	libtacplus.3 tac_create_authen.3
+MLINKS+=	libtacplus.3 tac_create_author.3 libtacplus.3 tac_get_av.3
+MLINKS+=	libtacplus.3 tac_get_av_value.3 libtacplus.3 tac_get_data.3
+MLINKS+=	libtacplus.3 tac_get_msg.3 libtacplus.3 tac_open.3
+MLINKS+=	libtacplus.3 tac_send_authen.3 libtacplus.3 tac_send_author.3
+MLINKS+=	libtacplus.3 tac_set_av.3 libtacplus.3 tac_set_data.3
+MLINKS+=	libtacplus.3 tac_set_msg.3 libtacplus.3 tac_set_port.3
+MLINKS+=	libtacplus.3 tac_set_priv.3 libtacplus.3 tac_set_rem_addr.3
+MLINKS+=	libtacplus.3 tac_set_user.3 libtacplus.3 tac_strerror.3
 
 .include <bsd.lib.mk>
