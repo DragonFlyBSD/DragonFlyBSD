@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.23 2006/09/10 01:26:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.24 2006/10/27 04:56:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -249,8 +249,8 @@ sys_linux_statfs(struct linux_statfs_args *args)
 	if (error == 0)
 		error = kern_statfs(&nd, &statfs);
 	if (error == 0) {
-		if (nd.nl_ncp->nc_vp != NULL)
-			error = vn_get_namelen(nd.nl_ncp->nc_vp, &namelen);
+		if (nd.nl_nch.ncp->nc_vp != NULL)
+			error = vn_get_namelen(nd.nl_nch.ncp->nc_vp, &namelen);
 		else
 			error = EINVAL;
 	}

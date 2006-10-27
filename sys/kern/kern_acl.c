@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.15 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.16 2006/10/27 04:56:31 dillon Exp $
  */
 
 /*
@@ -163,7 +163,7 @@ sys___acl_get_file(struct __acl_get_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
 		error = vacl_get_acl(vp, uap->type, uap->aclp);
@@ -187,7 +187,7 @@ sys___acl_set_file(struct __acl_set_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
 		error = vacl_set_acl(vp, uap->type, uap->aclp);
@@ -247,7 +247,7 @@ sys___acl_delete_file(struct __acl_delete_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 
 	if (error == 0) {
@@ -290,7 +290,7 @@ sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 
 	if (error == 0) {

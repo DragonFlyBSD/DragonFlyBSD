@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.74 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.75 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1413,10 +1413,8 @@ ffree(struct file *fp)
 	nfiles--;
 	spin_unlock_wr(&filehead_spin);
 	crfree(fp->f_cred);
-	if (fp->f_ncp) {
-	    cache_drop(fp->f_ncp);
-	    fp->f_ncp = NULL;
-	}
+	if (fp->f_nchandle.ncp)
+	    cache_drop(&fp->f_nchandle);
 	kfree(fp, M_FILE);
 }
 
@@ -1452,7 +1450,7 @@ fdinit(struct proc *p)
 	if (fdp->fd_cdir) {
 		newfdp->fd_cdir = fdp->fd_cdir;
 		vref(newfdp->fd_cdir);
-		newfdp->fd_ncdir = cache_hold(fdp->fd_ncdir);
+		cache_copy(&fdp->fd_ncdir, &newfdp->fd_ncdir);
 	}
 
 	/*
@@ -1462,12 +1460,12 @@ fdinit(struct proc *p)
 	if (fdp->fd_rdir) {
 		newfdp->fd_rdir = fdp->fd_rdir;
 		vref(newfdp->fd_rdir);
-		newfdp->fd_nrdir = cache_hold(fdp->fd_nrdir);
+		cache_copy(&fdp->fd_nrdir, &newfdp->fd_nrdir);
 	}
 	if (fdp->fd_jdir) {
 		newfdp->fd_jdir = fdp->fd_jdir;
 		vref(newfdp->fd_jdir);
-		newfdp->fd_njdir = cache_hold(fdp->fd_njdir);
+		cache_copy(&fdp->fd_njdir, &newfdp->fd_njdir);
 	}
 	spin_unlock_rd(&fdp->fd_spin);
 
@@ -1569,7 +1567,7 @@ again:
 	 */
 	if ((newfdp->fd_cdir = fdp->fd_cdir) != NULL) {
 		vref(newfdp->fd_cdir);
-		newfdp->fd_ncdir = cache_hold(fdp->fd_ncdir);
+		cache_copy(&fdp->fd_ncdir, &newfdp->fd_ncdir);
 	}
 	/*
 	 * We must check for fd_rdir here, at least for now because
@@ -1578,11 +1576,11 @@ again:
 	 */
 	if ((newfdp->fd_rdir = fdp->fd_rdir) != NULL) {
 		vref(newfdp->fd_rdir);
-		newfdp->fd_nrdir = cache_hold(fdp->fd_nrdir);
+		cache_copy(&fdp->fd_nrdir, &newfdp->fd_nrdir);
 	}
 	if ((newfdp->fd_jdir = fdp->fd_jdir) != NULL) {
 		vref(newfdp->fd_jdir);
-		newfdp->fd_njdir = cache_hold(fdp->fd_njdir);
+		cache_copy(&fdp->fd_njdir, &newfdp->fd_njdir);
 	}
 	newfdp->fd_refcnt = 1;
 	newfdp->fd_nfiles = i;
@@ -1738,15 +1736,15 @@ fdfree(struct proc *p)
 	if (fdp->fd_files != fdp->fd_builtin_files)
 		kfree(fdp->fd_files, M_FILEDESC);
 	if (fdp->fd_cdir) {
-		cache_drop(fdp->fd_ncdir);
+		cache_drop(&fdp->fd_ncdir);
 		vrele(fdp->fd_cdir);
 	}
 	if (fdp->fd_rdir) {
-		cache_drop(fdp->fd_nrdir);
+		cache_drop(&fdp->fd_nrdir);
 		vrele(fdp->fd_rdir);
 	}
 	if (fdp->fd_jdir) {
-		cache_drop(fdp->fd_njdir);
+		cache_drop(&fdp->fd_njdir);
 		vrele(fdp->fd_jdir);
 	}
 	if (fdp->fd_knlist)

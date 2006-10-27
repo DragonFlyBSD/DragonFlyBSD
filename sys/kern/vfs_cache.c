@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.78 2006/10/26 02:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.79 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -149,8 +149,10 @@ SYSCTL_ULONG(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
-static int cache_resolve_mp(struct namecache *ncp);
-static void cache_rehash(struct namecache *ncp);
+static int cache_resolve_mp(struct mount *mp);
+static void _cache_rehash(struct namecache *ncp);
+static void _cache_lock(struct namecache *ncp);
+static void _cache_setunresolved(struct namecache *ncp);
 
 /*
  * The new name cache statistics
@@ -234,7 +236,7 @@ _cache_drop(struct namecache *ncp)
 	    TAILQ_EMPTY(&ncp->nc_list)
 	) {
 		KKASSERT(ncp->nc_exlocks == 0);
-		cache_lock(ncp);
+		_cache_lock(ncp);
 		cache_zap(ncp);
 	} else {
 		atomic_subtract_int(&ncp->nc_refs, 1);
@@ -275,11 +277,11 @@ cache_unlink_parent(struct namecache *ncp)
 
 	if ((par = ncp->nc_parent) != NULL) {
 		ncp->nc_parent = NULL;
-		par = cache_hold(par);
+		par = _cache_hold(par);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
 			vdrop(par->nc_vp);
-		cache_drop(par);
+		_cache_drop(par);
 	}
 }
 
@@ -307,17 +309,24 @@ cache_alloc(int nlen)
 	 */
 	ncp->nc_fsmid = cache_getnewfsmid();
 	TAILQ_INIT(&ncp->nc_list);
-	cache_lock(ncp);
+	_cache_lock(ncp);
 	return(ncp);
 }
 
 static void
-cache_free(struct namecache *ncp)
+_cache_free(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs == 1 && ncp->nc_exlocks == 1);
 	if (ncp->nc_name)
 		kfree(ncp->nc_name, M_VFSCACHE);
 	kfree(ncp, M_VFSCACHE);
+}
+
+void
+cache_zero(struct nchandle *nch)
+{
+	nch->ncp = NULL;
+	nch->mount = NULL;
 }
 
 /*
@@ -326,16 +335,37 @@ cache_free(struct namecache *ncp)
  * Warning: caller may hold an unrelated read spinlock, which means we can't
  * use read spinlocks here.
  */
-struct namecache *
-cache_hold(struct namecache *ncp)
+struct nchandle *
+cache_hold(struct nchandle *nch)
 {
-	return(_cache_hold(ncp));
+	_cache_hold(nch->ncp);
+	++nch->mount->mnt_refs;
+	return(nch);
 }
 
 void
-cache_drop(struct namecache *ncp)
+cache_copy(struct nchandle *nch, struct nchandle *target)
 {
-	_cache_drop(ncp);
+	*target = *nch;
+	_cache_hold(target->ncp);
+	++nch->mount->mnt_refs;
+}
+
+void
+cache_changemount(struct nchandle *nch, struct mount *mp)
+{
+	--nch->mount->mnt_refs;
+	nch->mount = mp;
+	++nch->mount->mnt_refs;
+}
+
+void
+cache_drop(struct nchandle *nch)
+{
+	--nch->mount->mnt_refs;
+	_cache_drop(nch->ncp);
+	nch->ncp = NULL;
+	nch->mount = NULL;
 }
 
 /*
@@ -359,8 +389,9 @@ cache_drop(struct namecache *ncp)
  * is handled).  Or, alternatively, make an unconditional call to 
  * cache_validate() or cache_resolve() after cache_lock() returns.
  */
+static
 void
-cache_lock(struct namecache *ncp)
+_cache_lock(struct namecache *ncp)
 {
 	thread_t td;
 	int didwarn;
@@ -400,12 +431,8 @@ cache_lock(struct namecache *ncp)
 				continue;
 			didwarn = 1;
 			printf("[diagnostic] cache_lock: blocked on %p", ncp);
-			if ((ncp->nc_flag & NCF_MOUNTPT) && ncp->nc_mount)
-			    printf(" [MOUNTFROM %s]\n", ncp->nc_mount->mnt_stat.f_mntfromname);
-			else
-			    printf(" \"%*.*s\"\n",
-				ncp->nc_nlen, ncp->nc_nlen,
-				ncp->nc_name);
+			printf(" \"%*.*s\"\n",
+				ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		}
 	}
 
@@ -415,8 +442,15 @@ cache_lock(struct namecache *ncp)
 	}
 }
 
+void
+cache_lock(struct nchandle *nch)
+{
+	_cache_lock(nch->ncp);
+}
+
+static
 int
-cache_lock_nonblock(struct namecache *ncp)
+_cache_lock_nonblock(struct namecache *ncp)
 {
 	thread_t td;
 
@@ -446,8 +480,15 @@ cache_lock_nonblock(struct namecache *ncp)
 	}
 }
 
+int
+cache_lock_nonblock(struct nchandle *nch)
+{
+	return(_cache_lock_nonblock(nch->ncp));
+}
+
+static
 void
-cache_unlock(struct namecache *ncp)
+_cache_unlock(struct namecache *ncp)
 {
 	thread_t td = curthread;
 
@@ -465,6 +506,12 @@ cache_unlock(struct namecache *ncp)
 	}
 }
 
+void
+cache_unlock(struct nchandle *nch)
+{
+	_cache_unlock(nch->ncp);
+}
+
 /*
  * ref-and-lock, unlock-and-deref functions.
  *
@@ -473,35 +520,63 @@ cache_unlock(struct namecache *ncp)
  * initiated a recyclement.  We want cache_get() to return a definitively
  * usable vnode or a definitively unresolved ncp.
  */
+static
 struct namecache *
-cache_get(struct namecache *ncp)
+_cache_get(struct namecache *ncp)
 {
 	_cache_hold(ncp);
-	cache_lock(ncp);
+	_cache_lock(ncp);
 	if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-		cache_setunresolved(ncp);
+		_cache_setunresolved(ncp);
 	return(ncp);
 }
 
-int
-cache_get_nonblock(struct namecache *ncp)
+/*
+ * note: the same nchandle can be passed for both arguments.
+ */
+void
+cache_get(struct nchandle *nch, struct nchandle *target)
+{
+	target->mount = nch->mount;
+	target->ncp = _cache_get(nch->ncp);
+	++target->mount->mnt_refs;
+}
+
+static int
+_cache_get_nonblock(struct namecache *ncp)
 {
 	/* XXX MP */
 	if (ncp->nc_exlocks == 0 || ncp->nc_locktd == curthread) {
 		_cache_hold(ncp);
-		cache_lock(ncp);
+		_cache_lock(ncp);
 		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			cache_setunresolved(ncp);
+			_cache_setunresolved(ncp);
 		return(0);
 	}
 	return(EWOULDBLOCK);
 }
 
-void
-cache_put(struct namecache *ncp)
+int
+cache_get_nonblock(struct nchandle *nch)
 {
-	cache_unlock(ncp);
+	return(_cache_get_nonblock(nch->ncp));
+}
+
+static __inline
+void
+_cache_put(struct namecache *ncp)
+{
+	_cache_unlock(ncp);
 	_cache_drop(ncp);
+}
+
+void
+cache_put(struct nchandle *nch)
+{
+	--nch->mount->mnt_refs;
+	_cache_put(nch->ncp);
+	nch->ncp = NULL;
+	nch->mount = NULL;
 }
 
 /*
@@ -510,8 +585,9 @@ cache_put(struct namecache *ncp)
  *
  * The ncp should be locked on entry and will remain locked on return.
  */
+static
 void
-cache_setvp(struct namecache *ncp, struct vnode *vp)
+_cache_setvp(struct namecache *ncp, struct vnode *vp)
 {
 	KKASSERT(ncp->nc_flag & NCF_UNRESOLVED);
 	ncp->nc_vp = vp;
@@ -551,8 +627,16 @@ cache_setvp(struct namecache *ncp, struct vnode *vp)
 }
 
 void
-cache_settimeout(struct namecache *ncp, int nticks)
+cache_setvp(struct nchandle *nch, struct vnode *vp)
 {
+	_cache_setvp(nch->ncp, vp);
+}
+
+void
+cache_settimeout(struct nchandle *nch, int nticks)
+{
+	struct namecache *ncp = nch->ncp;
+
 	if ((ncp->nc_timeout = ticks + nticks) == 0)
 		ncp->nc_timeout = 1;
 }
@@ -574,8 +658,9 @@ cache_settimeout(struct namecache *ncp, int nticks)
  * NOTE: NCF_FSMID must be cleared so a refurbishment of the ncp, such as
  * in a create, properly propogates flag up the chain.
  */
+static
 void
-cache_setunresolved(struct namecache *ncp)
+_cache_setunresolved(struct namecache *ncp)
 {
 	struct vnode *vp;
 
@@ -610,31 +695,40 @@ cache_setunresolved(struct namecache *ncp)
 	}
 }
 
-/*
- * Mark the namecache node as containing a mount point.
- *
- * XXX called with a ref'd but unlocked ncp.
- */
 void
-cache_setmountpt(struct namecache *ncp, struct mount *mp)
+cache_setunresolved(struct nchandle *nch)
 {
-	ncp->nc_mount = mp;
-	ncp->nc_flag |= NCF_MOUNTPT;
-	ncp->nc_parent->nc_flag |= NCF_MOUNTEDHERE;
+	_cache_setunresolved(nch->ncp);
 }
 
 /*
- * Clean up a mount point in the namecache topology after an unmount.
- *
- * XXX we probably need to traverse the entire topology and clear
- * the nc_mount pointer.
+ * Determine if we can clear NCF_ISMOUNTPT by scanning the mountlist
+ * looking for matches.  This flag tells the lookup code when it must
+ * check for a mount linkage and also prevents the directories in question
+ * from being deleted or renamed.
  */
-void
-cache_clrmountpt(struct namecache *ncp)
+static
+int
+cache_clrmountpt_callback(struct mount *mp, void *data)
 {
-	if (ncp->nc_parent)
-		ncp->nc_parent->nc_flag &= ~NCF_MOUNTEDHERE;
-	ncp->nc_mount = NULL;
+	struct nchandle *nch = data;
+
+	if (mp->mnt_ncmounton.ncp == nch->ncp)
+		return(1);
+	if (mp->mnt_ncmountpt.ncp == nch->ncp)
+		return(1);
+	return(0);
+}
+
+void
+cache_clrmountpt(struct nchandle *nch)
+{
+	int count;
+
+	count = mountlist_scan(cache_clrmountpt_callback, nch,
+			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+	if (count == 0)
+		nch->ncp->nc_flag &= ~NCF_ISMOUNTPT;
 }
 
 /*
@@ -690,10 +784,11 @@ struct cinvtrack {
 	int depth;
 };
 
-static int cache_inval_internal(struct namecache *, int, struct cinvtrack *);
+static int _cache_inval_internal(struct namecache *, int, struct cinvtrack *);
 
+static
 int
-cache_inval(struct namecache *ncp, int flags)
+_cache_inval(struct namecache *ncp, int flags)
 {
 	struct cinvtrack track;
 	struct namecache *ncp2;
@@ -703,26 +798,32 @@ cache_inval(struct namecache *ncp, int flags)
 	track.resume_ncp = NULL;
 
 	for (;;) {
-		r = cache_inval_internal(ncp, flags, &track);
+		r = _cache_inval_internal(ncp, flags, &track);
 		if (track.resume_ncp == NULL)
 			break;
 		printf("Warning: deep namecache recursion at %s\n",
 			ncp->nc_name);
-		cache_unlock(ncp);
+		_cache_unlock(ncp);
 		while ((ncp2 = track.resume_ncp) != NULL) {
 			track.resume_ncp = NULL;
-			cache_lock(ncp2);
-			cache_inval_internal(ncp2, flags & ~CINV_DESTROY,
+			_cache_lock(ncp2);
+			_cache_inval_internal(ncp2, flags & ~CINV_DESTROY,
 					     &track);
-			cache_put(ncp2);
+			_cache_put(ncp2);
 		}
-		cache_lock(ncp);
+		_cache_lock(ncp);
 	}
 	return(r);
 }
 
+int
+cache_inval(struct nchandle *nch, int flags)
+{
+	return(_cache_inval(nch->ncp, flags));
+}
+
 static int
-cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
+_cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 {
 	struct namecache *kid;
 	struct namecache *nextkid;
@@ -730,7 +831,7 @@ cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 
 	KKASSERT(ncp->nc_exlocks);
 
-	cache_setunresolved(ncp);
+	_cache_setunresolved(ncp);
 	if (flags & CINV_DESTROY)
 		ncp->nc_flag |= NCF_DESTROYED;
 
@@ -739,30 +840,30 @@ cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 	) {
 		if (++track->depth > MAX_RECURSION_DEPTH) {
 			track->resume_ncp = ncp;
-			cache_hold(ncp);
+			_cache_hold(ncp);
 			++rcnt;
 		}
-		cache_hold(kid);
-		cache_unlock(ncp);
+		_cache_hold(kid);
+		_cache_unlock(ncp);
 		while (kid) {
 			if (track->resume_ncp) {
-				cache_drop(kid);
+				_cache_drop(kid);
 				break;
 			}
 			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
-				cache_hold(nextkid);
+				_cache_hold(nextkid);
 			if ((kid->nc_flag & NCF_UNRESOLVED) == 0 ||
 			    TAILQ_FIRST(&kid->nc_list)
 			) {
-				cache_lock(kid);
-				rcnt += cache_inval_internal(kid, flags & ~CINV_DESTROY, track);
-				cache_unlock(kid);
+				_cache_lock(kid);
+				rcnt += _cache_inval_internal(kid, flags & ~CINV_DESTROY, track);
+				_cache_unlock(kid);
 			}
-			cache_drop(kid);
+			_cache_drop(kid);
 			kid = nextkid;
 		}
 		--track->depth;
-		cache_lock(ncp);
+		_cache_lock(ncp);
 	}
 
 	/*
@@ -796,27 +897,27 @@ cache_inval_vp(struct vnode *vp, int flags)
 restart:
 	ncp = TAILQ_FIRST(&vp->v_namecache);
 	if (ncp)
-		cache_hold(ncp);
+		_cache_hold(ncp);
 	while (ncp) {
 		/* loop entered with ncp held */
 		if ((next = TAILQ_NEXT(ncp, nc_vnode)) != NULL)
-			cache_hold(next);
-		cache_lock(ncp);
+			_cache_hold(next);
+		_cache_lock(ncp);
 		if (ncp->nc_vp != vp) {
 			printf("Warning: cache_inval_vp: race-A detected on "
 				"%s\n", ncp->nc_name);
-			cache_put(ncp);
+			_cache_put(ncp);
 			if (next)
-				cache_drop(next);
+				_cache_drop(next);
 			goto restart;
 		}
-		cache_inval(ncp, flags);
-		cache_put(ncp);		/* also releases reference */
+		_cache_inval(ncp, flags);
+		_cache_put(ncp);		/* also releases reference */
 		ncp = next;
 		if (ncp && ncp->nc_vp != vp) {
 			printf("Warning: cache_inval_vp: race-B detected on "
 				"%s\n", ncp->nc_name);
-			cache_drop(ncp);
+			_cache_drop(ncp);
 			goto restart;
 		}
 	}
@@ -841,29 +942,31 @@ restart:
  * back out.  An rm -rf can cause this situation to occur.
  */
 void
-cache_rename(struct namecache *fncp, struct namecache *tncp)
+cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 {
+	struct namecache *fncp = fnch->ncp;
+	struct namecache *tncp = tnch->ncp;
 	struct namecache *scan;
 	int didwarn = 0;
 
-	cache_setunresolved(fncp);
-	cache_setunresolved(tncp);
-	while (cache_inval(tncp, CINV_CHILDREN) != 0) {
+	_cache_setunresolved(fncp);
+	_cache_setunresolved(tncp);
+	while (_cache_inval(tncp, CINV_CHILDREN) != 0) {
 		if (didwarn++ % 10 == 0) {
 			printf("Warning: cache_rename: race during "
 				"rename %s->%s\n",
 				fncp->nc_name, tncp->nc_name);
 		}
 		tsleep(tncp, 0, "mvrace", hz / 10);
-		cache_setunresolved(tncp);
+		_cache_setunresolved(tncp);
 	}
 	while ((scan = TAILQ_FIRST(&fncp->nc_list)) != NULL) {
-		cache_hold(scan);
+		_cache_hold(scan);
 		cache_unlink_parent(scan);
 		cache_link_parent(scan, tncp);
 		if (scan->nc_flag & NCF_HASHED)
-			cache_rehash(scan);
-		cache_drop(scan);
+			_cache_rehash(scan);
+		_cache_drop(scan);
 	}
 }
 
@@ -886,18 +989,20 @@ cache_rename(struct namecache *fncp, struct namecache *tncp)
  * contents of ncp->nc_vp.
  */
 int
-cache_vget(struct namecache *ncp, struct ucred *cred,
+cache_vget(struct nchandle *nch, struct ucred *cred,
 	   int lk_type, struct vnode **vpp)
 {
+	struct namecache *ncp;
 	struct vnode *vp;
 	int error;
 
+	ncp = nch->ncp;
 again:
 	vp = NULL;
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
-		cache_lock(ncp);
-		error = cache_resolve(ncp, cred);
-		cache_unlock(ncp);
+		_cache_lock(ncp);
+		error = cache_resolve(nch, cred);
+		_cache_unlock(ncp);
 	} else {
 		error = 0;
 	}
@@ -909,9 +1014,9 @@ again:
 		 */
 		if (vp->v_flag & VRECLAIMED) {
 			printf("Warning: vnode reclaim race detected in cache_vget on %p (%s)\n", vp, ncp->nc_name);
-			cache_lock(ncp);
-			cache_setunresolved(ncp);
-			cache_unlock(ncp);
+			_cache_lock(ncp);
+			_cache_setunresolved(ncp);
+			_cache_unlock(ncp);
 			goto again;
 		}
 		error = vget(vp, lk_type);
@@ -933,17 +1038,20 @@ again:
 }
 
 int
-cache_vref(struct namecache *ncp, struct ucred *cred, struct vnode **vpp)
+cache_vref(struct nchandle *nch, struct ucred *cred, struct vnode **vpp)
 {
+	struct namecache *ncp;
 	struct vnode *vp;
 	int error;
+
+	ncp = nch->ncp;
 
 again:
 	vp = NULL;
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
-		cache_lock(ncp);
-		error = cache_resolve(ncp, cred);
-		cache_unlock(ncp);
+		_cache_lock(ncp);
+		error = cache_resolve(nch, cred);
+		_cache_unlock(ncp);
 	} else {
 		error = 0;
 	}
@@ -958,9 +1066,9 @@ again:
 		 */
 		if (vp->v_flag & VRECLAIMED) {
 			printf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
-			cache_lock(ncp);
-			cache_setunresolved(ncp);
-			cache_unlock(ncp);
+			_cache_lock(ncp);
+			_cache_setunresolved(ncp);
+			_cache_unlock(ncp);
 			goto again;
 		}
 		vref_initial(vp, 1);
@@ -991,10 +1099,13 @@ again:
  * hierarchy.
  */
 void
-cache_update_fsmid(struct namecache *ncp)
+cache_update_fsmid(struct nchandle *nch)
 {
-	struct vnode *vp;
+	struct namecache *ncp;
 	struct namecache *scan;
+	struct vnode *vp;
+
+	ncp = nch->ncp;
 
 	/*
 	 * Warning: even if we get a non-NULL vp it could still be in the
@@ -1095,20 +1206,21 @@ cache_sync_fsmid_vp(struct vnode *vp)
  * the makeit variable.
  */
 
-static int cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
+static int cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 				  struct vnode *dvp);
 static int cache_fromdvp_try(struct vnode *dvp, struct ucred *cred, 
 				  struct vnode **saved_dvp);
 
-struct namecache *
-cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit)
+int
+cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
+	      struct nchandle *nch)
 {
-	struct namecache *ncp;
 	struct vnode *saved_dvp;
 	struct vnode *pvp;
 	int error;
 
-	ncp = NULL;
+	nch->ncp = NULL;
+	nch->mount = dvp->v_mount;
 	saved_dvp = NULL;
 
 	/*
@@ -1116,15 +1228,15 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit)
 	 * to be exercised.
 	 */
 	if (ncvp_debug >= 3 && makeit && TAILQ_FIRST(&dvp->v_namecache)) {
-		ncp = TAILQ_FIRST(&dvp->v_namecache);
-		printf("cache_fromdvp: forcing %s\n", ncp->nc_name);
+		nch->ncp = TAILQ_FIRST(&dvp->v_namecache);
+		printf("cache_fromdvp: forcing %s\n", nch->ncp->nc_name);
 		goto force;
 	}
 
 	/*
 	 * Loop until resolution, inside code will break out on error.
 	 */
-	while ((ncp = TAILQ_FIRST(&dvp->v_namecache)) == NULL && makeit) {
+	while ((nch->ncp = TAILQ_FIRST(&dvp->v_namecache)) == NULL && makeit) {
 force:
 		/*
 		 * If dvp is the root of its filesystem it should already
@@ -1132,9 +1244,9 @@ force:
 		 * effect of the mount, but it may have been disassociated.
 		 */
 		if (dvp->v_flag & VROOT) {
-			ncp = cache_get(dvp->v_mount->mnt_ncp);
-			error = cache_resolve_mp(ncp);
-			cache_put(ncp);
+			nch->ncp = _cache_get(nch->mount->mnt_ncmountpt.ncp);
+			error = cache_resolve_mp(nch->mount);
+			_cache_put(nch->ncp);
 			if (ncvp_debug) {
 				printf("cache_fromdvp: resolve root of mount %p error %d", 
 					dvp->v_mount, error);
@@ -1142,7 +1254,7 @@ force:
 			if (error) {
 				if (ncvp_debug)
 					printf(" failed\n");
-				ncp = NULL;
+				nch->ncp = NULL;
 				break;
 			}
 			if (ncvp_debug)
@@ -1179,9 +1291,9 @@ force:
 		/*
 		 * Reuse makeit as a recursion depth counter.
 		 */
-		ncp = cache_fromdvp(pvp, cred, makeit + 1);
+		cache_fromdvp(pvp, cred, makeit + 1, nch);
 		vrele(pvp);
-		if (ncp == NULL)
+		if (nch->ncp == NULL)
 			break;
 
 		/*
@@ -1191,24 +1303,30 @@ force:
 		 *
 		 * ncp and dvp are both held but not locked.
 		 */
-		error = cache_inefficient_scan(ncp, cred, dvp);
-		cache_drop(ncp);
+		error = cache_inefficient_scan(nch, cred, dvp);
+		_cache_drop(nch->ncp);
 		if (error) {
 			printf("cache_fromdvp: scan %p (%s) failed on dvp=%p\n",
-				pvp, ncp->nc_name, dvp);
-			ncp = NULL;
+				pvp, nch->ncp->nc_name, dvp);
+			nch->ncp = NULL;
 			break;
 		}
 		if (ncvp_debug) {
 			printf("cache_fromdvp: scan %p (%s) succeeded\n",
-				pvp, ncp->nc_name);
+				pvp, nch->ncp->nc_name);
 		}
 	}
-	if (ncp)
-		cache_hold(ncp);
+
+	/*
+	 * hold it for real so the mount gets a ref
+	 */
+	if (nch->ncp)
+		cache_hold(nch);
 	if (saved_dvp)
 		vrele(saved_dvp);
-	return (ncp);
+	if (nch->ncp)
+		return (0);
+	return (EINVAL);
 }
 
 /*
@@ -1220,7 +1338,7 @@ int
 cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 		  struct vnode **saved_dvp)
 {
-	struct namecache *ncp;
+	struct nchandle nch;
 	struct vnode *pvp;
 	int error;
 	static time_t last_fromdvp_report;
@@ -1230,6 +1348,8 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	 * can resolve in the namecache.
 	 */
 	vref(dvp);
+	nch.mount = dvp->v_mount;
+
 	for (;;) {
 		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
 		if (error) {
@@ -1237,18 +1357,18 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			return (error);
 		}
 		vn_unlock(pvp);
-		if ((ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
-			cache_hold(ncp);
+		if ((nch.ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
+			_cache_hold(nch.ncp);
 			vrele(pvp);
 			break;
 		}
 		if (pvp->v_flag & VROOT) {
-			ncp = cache_get(pvp->v_mount->mnt_ncp);
-			error = cache_resolve_mp(ncp);
-			cache_unlock(ncp);
+			nch.ncp = _cache_get(pvp->v_mount->mnt_ncmountpt.ncp);
+			error = cache_resolve_mp(nch.mount);
+			_cache_unlock(nch.ncp);
 			vrele(pvp);
 			if (error) {
-				cache_drop(ncp);
+				_cache_drop(nch.ncp);
 				vrele(dvp);
 				return (error);
 			}
@@ -1260,9 +1380,9 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	if (last_fromdvp_report != time_second) {
 		last_fromdvp_report = time_second;
 		printf("Warning: extremely inefficient path resolution on %s\n",
-			ncp->nc_name);
+			nch.ncp->nc_name);
 	}
-	error = cache_inefficient_scan(ncp, cred, dvp);
+	error = cache_inefficient_scan(&nch, cred, dvp);
 
 	/*
 	 * Hopefully dvp now has a namecache record associated with it.
@@ -1302,11 +1422,11 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
  * algorithms.
  */
 static int
-cache_inefficient_scan(struct namecache *ncp, struct ucred *cred, 
+cache_inefficient_scan(struct nchandle *nch, struct ucred *cred, 
 		       struct vnode *dvp)
 {
 	struct nlcomponent nlc;
-	struct namecache *rncp;
+	struct nchandle rncp;
 	struct dirent *den;
 	struct vnode *pvp;
 	struct vattr vat;
@@ -1321,14 +1441,14 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 	vat.va_blocksize = 0;
 	if ((error = VOP_GETATTR(dvp, &vat)) != 0)
 		return (error);
-	if ((error = cache_vref(ncp, cred, &pvp)) != 0)
+	if ((error = cache_vref(nch, cred, &pvp)) != 0)
 		return (error);
 	if (ncvp_debug)
 		printf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
 	if ((blksize = vat.va_blocksize) == 0)
 		blksize = DEV_BSIZE;
 	rbuf = kmalloc(blksize, M_TEMP, M_WAITOK);
-	rncp = NULL;
+	rncp.ncp = NULL;
 
 	eofflag = 0;
 	uio.uio_offset = 0;
@@ -1360,43 +1480,43 @@ again:
 				if (ncvp_debug) {
 					printf("cache_inefficient_scan: "
 					       "MATCHED inode %ld path %s/%*.*s\n",
-					       vat.va_fileid, ncp->nc_name,
+					       vat.va_fileid, nch->ncp->nc_name,
 					       den->d_namlen, den->d_namlen,
 					       den->d_name);
 				}
 				nlc.nlc_nameptr = den->d_name;
 				nlc.nlc_namelen = den->d_namlen;
-				rncp = cache_nlookup(ncp, &nlc);
-				KKASSERT(rncp != NULL);
+				rncp = cache_nlookup(nch, &nlc);
+				KKASSERT(rncp.ncp != NULL);
 				break;
 			}
 			bytes -= _DIRENT_DIRSIZ(den);
 			den = _DIRENT_NEXT(den);
 		}
-		if (rncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
+		if (rncp.ncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
 			goto again;
 	}
 	vrele(pvp);
-	if (rncp) {
-		if (rncp->nc_flag & NCF_UNRESOLVED) {
-			cache_setvp(rncp, dvp);
+	if (rncp.ncp) {
+		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
+			_cache_setvp(rncp.ncp, dvp);
 			if (ncvp_debug >= 2) {
 				printf("cache_inefficient_scan: setvp %s/%s = %p\n",
-					ncp->nc_name, rncp->nc_name, dvp);
+					nch->ncp->nc_name, rncp.ncp->nc_name, dvp);
 			}
 		} else {
 			if (ncvp_debug >= 2) {
 				printf("cache_inefficient_scan: setvp %s/%s already set %p/%p\n", 
-					ncp->nc_name, rncp->nc_name, dvp,
-					rncp->nc_vp);
+					nch->ncp->nc_name, rncp.ncp->nc_name, dvp,
+					rncp.ncp->nc_vp);
 			}
 		}
-		if (rncp->nc_vp == NULL)
-			error = rncp->nc_error;
-		cache_put(rncp);
+		if (rncp.ncp->nc_vp == NULL)
+			error = rncp.ncp->nc_error;
+		_cache_put(rncp.ncp);
 	} else {
 		printf("cache_inefficient_scan: dvp %p NOT FOUND in %s\n",
-			dvp, ncp->nc_name);
+			dvp, nch->ncp->nc_name);
 		error = ENOENT;
 	}
 	kfree(rbuf, M_TEMP);
@@ -1427,7 +1547,7 @@ cache_zap(struct namecache *ncp)
 	/*
 	 * Disassociate the vnode or negative cache ref and set NCF_UNRESOLVED.
 	 */
-	cache_setunresolved(ncp);
+	_cache_setunresolved(ncp);
 
 	/*
 	 * Try to scrap the entry and possibly tail-recurse on its parent.
@@ -1455,7 +1575,7 @@ cache_zap(struct namecache *ncp)
 			LIST_REMOVE(ncp, nc_hash);
 		}
 		if ((par = ncp->nc_parent) != NULL) {
-			par = cache_hold(par);
+			par = _cache_hold(par);
 			TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 			ncp->nc_parent = NULL;
 			if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
@@ -1468,7 +1588,7 @@ cache_zap(struct namecache *ncp)
 		 */
 		KKASSERT(ncp->nc_refs == 1);
 		--numunres;
-		/* cache_unlock(ncp) not required */
+		/* _cache_unlock(ncp) not required */
 		ncp->nc_refs = -1;	/* safety */
 		if (ncp->nc_name)
 			kfree(ncp->nc_name, M_VFSCACHE);
@@ -1483,14 +1603,14 @@ cache_zap(struct namecache *ncp)
 		if (ncp == NULL)
 			return;
 		if (ncp->nc_refs != 1) {
-			cache_drop(ncp);
+			_cache_drop(ncp);
 			return;
 		}
 		KKASSERT(par->nc_exlocks == 0);
-		cache_lock(ncp);
+		_cache_lock(ncp);
 	}
 done:
-	cache_unlock(ncp);
+	_cache_unlock(ncp);
 	atomic_subtract_int(&ncp->nc_refs, 1);
 }
 
@@ -1529,7 +1649,7 @@ cache_hysteresis(void)
  * Lookup an entry in the cache.  A locked, referenced, non-NULL 
  * entry is *always* returned, even if the supplied component is illegal.
  * The resulting namecache entry should be returned to the system with
- * cache_put() or cache_unlock() + cache_drop().
+ * cache_put() or _cache_unlock() + cache_drop().
  *
  * namecache locks are recursive but care must be taken to avoid lock order
  * reversals.
@@ -1554,9 +1674,10 @@ cache_hysteresis(void)
  * responsible for resolving the namecache chain top-down.  This API 
  * specifically allows whole chains to be created in an unresolved state.
  */
-struct namecache *
-cache_nlookup(struct namecache *par, struct nlcomponent *nlc)
+struct nchandle
+cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 {
+	struct nchandle nch;
 	struct namecache *ncp;
 	struct namecache *new_ncp;
 	struct nchashhead *nchpp;
@@ -1570,7 +1691,7 @@ cache_nlookup(struct namecache *par, struct nlcomponent *nlc)
 	 * Try to locate an existing entry
 	 */
 	hash = fnv_32_buf(nlc->nlc_nameptr, nlc->nlc_namelen, FNV1_32_INIT);
-	hash = fnv_32_buf(&par, sizeof(par), hash);
+	hash = fnv_32_buf(&par_nch->ncp, sizeof(par_nch->ncp), hash);
 	new_ncp = NULL;
 restart:
 	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
@@ -1584,7 +1705,7 @@ restart:
 		    (ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
 		    ncp->nc_exlocks == 0
 		) {
-			cache_zap(cache_get(ncp));
+			cache_zap(_cache_get(ncp));
 			goto restart;
 		}
 
@@ -1593,18 +1714,18 @@ restart:
 		 * UNRESOLVED entries may match, but DESTROYED entries
 		 * do not.
 		 */
-		if (ncp->nc_parent == par &&
+		if (ncp->nc_parent == par_nch->ncp &&
 		    ncp->nc_nlen == nlc->nlc_namelen &&
 		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
 		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
-			if (cache_get_nonblock(ncp) == 0) {
+			if (_cache_get_nonblock(ncp) == 0) {
 				if (new_ncp)
-					cache_free(new_ncp);
+					_cache_free(new_ncp);
 				goto found;
 			}
-			cache_get(ncp);
-			cache_put(ncp);
+			_cache_get(ncp);
+			_cache_put(ncp);
 			goto restart;
 		}
 	}
@@ -1625,19 +1746,17 @@ restart:
 	 * Initialize as a new UNRESOLVED entry, lock (non-blocking),
 	 * and link to the parent.  The mount point is usually inherited
 	 * from the parent unless this is a special case such as a mount
-	 * point where nlc_namelen is 0.  The caller is responsible for
-	 * setting nc_mount in that case.  If nlc_namelen is 0 nc_name will
+	 * point where nlc_namelen is 0.   If nlc_namelen is 0 nc_name will
 	 * be NULL.
 	 */
 	if (nlc->nlc_namelen) {
 		bcopy(nlc->nlc_nameptr, ncp->nc_name, nlc->nlc_namelen);
 		ncp->nc_name[nlc->nlc_namelen] = 0;
-		ncp->nc_mount = par->nc_mount;
 	}
 	nchpp = NCHHASH(hash);
 	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 	ncp->nc_flag |= NCF_HASHED;
-	cache_link_parent(ncp, par);
+	cache_link_parent(ncp, par_nch->ncp);
 found:
 	/*
 	 * stats and namecache size management
@@ -1649,39 +1768,51 @@ found:
 	else
 		++gd->gd_nchstats->ncs_neghits;
 	cache_hysteresis();
-	return(ncp);
+	nch.mount = par_nch->mount;
+	nch.ncp = ncp;
+	++nch.mount->mnt_refs;
+	return(nch);
 }
 
 /*
- * Locate the mount point under a namecache entry.  We locate a special
- * child ncp with a 0-length name and retrieve the mount point from it.
+ * The namecache entry is marked as being used as a mount point. 
+ * Locate the mount if it is visible to the caller.
  */
+struct findmount_info {
+	struct mount *result;
+	struct mount *nch_mount;
+	struct namecache *nch_ncp;
+};
+
+static
+int
+cache_findmount_callback(struct mount *mp, void *data)
+{
+	struct findmount_info *info = data;
+
+	/*
+	 * Check the mount's mounted-on point against the passed nch.
+	 */
+	if (mp->mnt_ncmounton.mount == info->nch_mount &&
+	    mp->mnt_ncmounton.ncp == info->nch_ncp
+	) {
+	    info->result = mp;
+	    return(-1);
+	}
+	return(0);
+}
+
 struct mount *
-cache_findmount(struct namecache *par)
+cache_findmount(struct nchandle *nch)
 {
-	struct namecache *ncp;
-	u_int32_t hash;
+	struct findmount_info info;
 
-	hash = FNV1_32_INIT;	/* special 0-length name */
-	hash = fnv_32_buf(&par, sizeof(par), hash);
-	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
-		if (ncp->nc_nlen == 0 && (ncp->nc_flag & NCF_MOUNTPT))
-			return(ncp->nc_mount);
-	}
-	return(NULL);
-}
-
-/*
- * Given a locked ncp, validate that the vnode, if present, is actually
- * usable.  If it is not usable set the ncp to an unresolved state.
- */
-void
-cache_validate(struct namecache *ncp)
-{
-	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
-		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			cache_setunresolved(ncp);
-	}
+	info.result = NULL;
+	info.nch_mount = nch->mount;
+	info.nch_ncp = nch->ncp;
+	mountlist_scan(cache_findmount_callback, &info,
+			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+	return(info.result);
 }
 
 /*
@@ -1704,11 +1835,16 @@ cache_validate(struct namecache *ncp)
  * will be returned.
  */
 int
-cache_resolve(struct namecache *ncp, struct ucred *cred)
+cache_resolve(struct nchandle *nch, struct ucred *cred)
 {
 	struct namecache *par;
+	struct namecache *ncp;
+	struct nchandle nctmp;
+	struct mount *mp;
 	int error;
 
+	ncp = nch->ncp;
+	mp = nch->mount;
 restart:
 	/*
 	 * If the ncp is already resolved we have nothing to do.  However,
@@ -1717,7 +1853,7 @@ restart:
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			cache_setunresolved(ncp);
+			_cache_setunresolved(ncp);
 		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
 			return (ncp->nc_error);
 	}
@@ -1726,8 +1862,8 @@ restart:
 	 * Mount points need special handling because the parent does not
 	 * belong to the same filesystem as the ncp.
 	 */
-	if (ncp->nc_flag & NCF_MOUNTPT)
-		return (cache_resolve_mp(ncp));
+	if (ncp == mp->mnt_ncmountpt.ncp)
+		return (cache_resolve_mp(mp));
 
 	/*
 	 * We expect an unbroken chain of ncps to at least the mount point,
@@ -1785,28 +1921,30 @@ restart:
 		 * be one of its parents.  We resolve it anyway, the loop 
 		 * will handle any moves.
 		 */
-		cache_get(par);
-		if (par->nc_flag & NCF_MOUNTPT) {
-			cache_resolve_mp(par);
+		_cache_get(par);
+		if (par == nch->mount->mnt_ncmountpt.ncp) {
+			cache_resolve_mp(nch->mount);
 		} else if (par->nc_parent->nc_vp == NULL) {
 			printf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
-			cache_put(par);
+			_cache_put(par);
 			continue;
 		} else if (par->nc_flag & NCF_UNRESOLVED) {
-			par->nc_error = VOP_NRESOLVE(par, cred);
+			nctmp.mount = mp;
+			nctmp.ncp = par;
+			par->nc_error = VOP_NRESOLVE(&nctmp, cred);
 		}
 		if ((error = par->nc_error) != 0) {
 			if (par->nc_error != EAGAIN) {
 				printf("EXDEV case 3 %*.*s error %d\n",
 				    par->nc_nlen, par->nc_nlen, par->nc_name,
 				    par->nc_error);
-				cache_put(par);
+				_cache_put(par);
 				return(error);
 			}
 			printf("[diagnostic] cache_resolve: EAGAIN par %p %*.*s\n",
 				par, par->nc_nlen, par->nc_nlen, par->nc_name);
 		}
-		cache_put(par);
+		_cache_put(par);
 		/* loop */
 	}
 
@@ -1818,8 +1956,9 @@ restart:
 	 * NOTE: in order to call VOP_NRESOLVE(), the parent of the passed
 	 * ncp must already be resolved.
 	 */
-	KKASSERT((ncp->nc_flag & NCF_MOUNTPT) == 0);
-	ncp->nc_error = VOP_NRESOLVE(ncp, cred);
+	nctmp.mount = mp;
+	nctmp.ncp = ncp;
+	ncp->nc_error = VOP_NRESOLVE(&nctmp, cred);
 	/*vop_nresolve(*ncp->nc_parent->nc_vp->v_ops, ncp, cred);*/
 	if (ncp->nc_error == EAGAIN) {
 		printf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
@@ -1842,10 +1981,10 @@ restart:
  * the unlock we have to recheck the flags after we relock.
  */
 static int
-cache_resolve_mp(struct namecache *ncp)
+cache_resolve_mp(struct mount *mp)
 {
+	struct namecache *ncp = mp->mnt_ncmountpt.ncp;
 	struct vnode *vp;
-	struct mount *mp = ncp->nc_mount;
 	int error;
 
 	KKASSERT(mp != NULL);
@@ -1857,15 +1996,15 @@ cache_resolve_mp(struct namecache *ncp)
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			cache_setunresolved(ncp);
+			_cache_setunresolved(ncp);
 	}
 
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
-		cache_unlock(ncp);
+		_cache_unlock(ncp);
 		while (vfs_busy(mp, 0))
 			;
 		error = VFS_ROOT(mp, &vp);
-		cache_lock(ncp);
+		_cache_lock(ncp);
 
 		/*
 		 * recheck the ncp state after relocking.
@@ -1873,11 +2012,11 @@ cache_resolve_mp(struct namecache *ncp)
 		if (ncp->nc_flag & NCF_UNRESOLVED) {
 			ncp->nc_error = error;
 			if (error == 0) {
-				cache_setvp(ncp, vp);
+				_cache_setvp(ncp, vp);
 				vput(vp);
 			} else {
 				printf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
-				cache_setvp(ncp, NULL);
+				_cache_setvp(ncp, NULL);
 			}
 		} else if (error == 0) {
 			vput(vp);
@@ -1911,7 +2050,7 @@ cache_cleanneg(int count)
 		}
 		TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
-		if (cache_get_nonblock(ncp) == 0)
+		if (_cache_get_nonblock(ncp) == 0)
 			cache_zap(ncp);
 		--count;
 	}
@@ -1923,7 +2062,7 @@ cache_cleanneg(int count)
  * unhash the ncp if the ncp is no longer hashable.
  */
 static void
-cache_rehash(struct namecache *ncp)
+_cache_rehash(struct namecache *ncp)
 {
 	struct nchashhead *nchpp;
 	u_int32_t hash;
@@ -1965,15 +2104,14 @@ nchinit(void)
  * Called from start_init() to bootstrap the root filesystem.  Returns
  * a referenced, unlocked namecache record.
  */
-struct namecache *
-cache_allocroot(struct mount *mp, struct vnode *vp)
+void
+cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 {
-	struct namecache *ncp = cache_alloc(0);
-
-	ncp->nc_flag |= NCF_MOUNTPT | NCF_ROOT;
-	ncp->nc_mount = mp;
-	cache_setvp(ncp, vp);
-	return(ncp);
+	nch->ncp = cache_alloc(0);
+	nch->mount = mp;
+	++mp->mnt_refs;
+	if (vp)
+		_cache_setvp(nch->ncp, vp);
 }
 
 /*
@@ -1987,20 +2125,22 @@ cache_allocroot(struct mount *mp, struct vnode *vp)
  *	it must cache_hold() it.
  */
 void
-vfs_cache_setroot(struct vnode *nvp, struct namecache *ncp)
+vfs_cache_setroot(struct vnode *nvp, struct nchandle *nch)
 {
 	struct vnode *ovp;
-	struct namecache *oncp;
+	struct nchandle onch;
 
 	ovp = rootvnode;
-	oncp = rootncp;
+	onch = rootnch;
 	rootvnode = nvp;
-	rootncp = ncp;
-
+	if (nch)
+		rootnch = *nch;
+	else
+		cache_zero(&rootnch);
 	if (ovp)
 		vrele(ovp);
-	if (oncp)
-		cache_drop(oncp);
+	if (onch.ncp)
+		cache_drop(&onch);
 }
 
 /*
@@ -2032,6 +2172,8 @@ cache_purge(struct vnode *vp)
  * Since we need to check it anyway, we will flush all the invalid
  * entries at the same time.
  */
+#if 0
+
 void
 cache_purgevfs(struct mount *mp)
 {
@@ -2044,21 +2186,23 @@ cache_purgevfs(struct mount *mp)
 	for (nchpp = &nchashtbl[nchash]; nchpp >= nchashtbl; nchpp--) {
 		ncp = LIST_FIRST(nchpp);
 		if (ncp)
-			cache_hold(ncp);
+			_cache_hold(ncp);
 		while (ncp) {
 			nnp = LIST_NEXT(ncp, nc_hash);
 			if (nnp)
-				cache_hold(nnp);
+				_cache_hold(nnp);
 			if (ncp->nc_mount == mp) {
-				cache_lock(ncp);
+				_cache_lock(ncp);
 				cache_zap(ncp);
 			} else {
-				cache_drop(ncp);
+				_cache_drop(ncp);
 			}
 			ncp = nnp;
 		}
 	}
 }
+
+#endif
 
 /*
  * Create a new (theoretically) unique fsmid
@@ -2118,7 +2262,7 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	char *bp;
 	int i, slash_prefixed;
 	struct filedesc *fdp;
-	struct namecache *ncp;
+	struct nchandle nch;
 
 	numcwdcalls++;
 	bp = buf;
@@ -2127,23 +2271,30 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	fdp = p->p_fd;
 	slash_prefixed = 0;
 
-	ncp = fdp->fd_ncdir;
-	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
-		if (ncp->nc_flag & NCF_MOUNTPT) {
-			if (ncp->nc_mount == NULL) {
-				*error = EBADF;		/* forced unmount? */
-				return(NULL);
-			}
-			ncp = ncp->nc_parent;
+	nch = fdp->fd_ncdir;
+	while (nch.ncp && (nch.ncp != fdp->fd_nrdir.ncp || 
+	       nch.mount != fdp->fd_nrdir.mount)
+	) {
+		/*
+		 * While traversing upwards if we encounter the root
+		 * of the current mount we have to skip to the mount point
+		 * in the underlying filesystem.
+		 */
+		if (nch.ncp == nch.mount->mnt_ncmountpt.ncp) {
+			nch = nch.mount->mnt_ncmounton;
 			continue;
 		}
-		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
+
+		/*
+		 * Prepend the path segment
+		 */
+		for (i = nch.ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numcwdfail4++;
 				*error = ENOMEM;
 				return(NULL);
 			}
-			*--bp = ncp->nc_name[i];
+			*--bp = nch.ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numcwdfail4++;
@@ -2152,9 +2303,14 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		ncp = ncp->nc_parent;
+
+		/*
+		 * Go up a directory.  This isn't a mount point so we don't
+		 * have to check again.
+		 */
+		nch.ncp = nch.ncp->nc_parent;
 	}
-	if (ncp == NULL) {
+	if (nch.ncp == NULL) {
 		numcwdfail2++;
 		*error = ENOENT;
 		return(NULL);
@@ -2193,13 +2349,17 @@ STATNODE(numfullpathfail4);
 STATNODE(numfullpathfound);
 
 int
-cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **freebuf)
+cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **freebuf)
 {
 	char *bp, *buf;
 	int i, slash_prefixed;
-	struct namecache *fd_nrdir;
+	struct nchandle fd_nrdir;
+	struct nchandle nch;
 
 	numfullpathcalls--;
+
+	*retbuf = NULL; 
+	*freebuf = NULL;
 
 	buf = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
@@ -2207,24 +2367,32 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 	if (p != NULL)
 		fd_nrdir = p->p_fd->fd_nrdir;
 	else
-		fd_nrdir = NULL;
+		fd_nrdir = rootnch;
 	slash_prefixed = 0;
-	while (ncp && ncp != fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
-		if (ncp->nc_flag & NCF_MOUNTPT) {
-			if (ncp->nc_mount == NULL) {
-				kfree(buf, M_TEMP);
-				return(EBADF);
-			}
-			ncp = ncp->nc_parent;
+	nch = *nchp;
+
+	while (nch.ncp && 
+	       (nch.ncp != fd_nrdir.ncp || nch.mount != fd_nrdir.mount)
+	) {
+		/*
+		 * While traversing upwards if we encounter the root
+		 * of the current mount we have to skip to the mount point.
+		 */
+		if (nch.ncp == nch.mount->mnt_ncmountpt.ncp) {
+			nch = nch.mount->mnt_ncmounton;
 			continue;
 		}
-		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
+
+		/*
+		 * Prepend the path segment
+		 */
+		for (i = nch.ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numfullpathfail4++;
 				kfree(buf, M_TEMP);
 				return(ENOMEM);
 			}
-			*--bp = ncp->nc_name[i];
+			*--bp = nch.ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numfullpathfail4++;
@@ -2233,18 +2401,19 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		ncp = ncp->nc_parent;
+
+		/*
+		 * Go up a directory.  This isn't a mount point so we don't
+		 * have to check again.
+		 */
+		nch.ncp = nch.ncp->nc_parent;
 	}
-	if (ncp == NULL) {
+	if (nch.ncp == NULL) {
 		numfullpathfail2++;
 		kfree(buf, M_TEMP);
 		return(ENOENT);
 	}
-	if (p != NULL && (ncp->nc_flag & NCF_ROOT) && ncp != fd_nrdir) {
-		bp = buf + MAXPATHLEN - 1;
-		*bp = '\0';
-		slash_prefixed = 0;
-	}
+
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numfullpathfail4++;
@@ -2264,6 +2433,7 @@ int
 vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf) 
 {
 	struct namecache *ncp;
+	struct nchandle nch;
 
 	numfullpathcalls++;
 	if (disablefullpath)
@@ -2285,5 +2455,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 		return (EINVAL);
 
 	numfullpathcalls--;
-	return(cache_fullpath(p, ncp, retbuf, freebuf));
+	nch.ncp = ncp;;
+	nch.mount = vn->v_mount;
+	return(cache_fullpath(p, &nch, retbuf, freebuf));
 }

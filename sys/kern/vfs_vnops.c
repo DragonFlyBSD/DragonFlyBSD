@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.48 2006/09/18 18:19:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.49 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,12 +130,11 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
-	struct namecache *ncp;
 	int mode, error;
 
 	/*
 	 * Lookup the path and create or obtain the vnode.  After a
-	 * successful lookup a locked nd->nl_ncp will be returned.
+	 * successful lookup a locked nd->nl_nch will be returned.
 	 *
 	 * The result of this section should be a locked vnode.
 	 *
@@ -167,7 +166,6 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 
 	if (error)
 		return (error);
-	ncp = nd->nl_ncp;
 
 	/*
 	 * split case to allow us to re-resolve and retry the ncp in case
@@ -175,15 +173,15 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	 */
 again:
 	if (fmode & O_CREAT) {
-		if (ncp->nc_vp == NULL) {
-			if ((error = ncp_writechk(ncp)) != 0)
+		if (nd->nl_nch.ncp->nc_vp == NULL) {
+			if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 				return (error);
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
-			error = VOP_NCREATE(ncp, &vp, nd->nl_cred, vap);
+			error = VOP_NCREATE(&nd->nl_nch, &vp, nd->nl_cred, vap);
 			if (error)
 				return (error);
 			fmode &= ~O_TRUNC;
@@ -192,7 +190,7 @@ again:
 			if (fmode & O_EXCL) {
 				error = EEXIST;
 			} else {
-				error = cache_vget(ncp, cred, 
+				error = cache_vget(&nd->nl_nch, cred, 
 						    LK_EXCLUSIVE, &vp);
 			}
 			if (error)
@@ -200,14 +198,14 @@ again:
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		error = cache_vget(ncp, cred, LK_EXCLUSIVE, &vp);
+		error = cache_vget(&nd->nl_nch, cred, LK_EXCLUSIVE, &vp);
 		if (error)
 			return (error);
 	}
 
 	/*
 	 * We have a locked vnode and ncp now.  Note that the ncp will
-	 * be cleaned up by the caller if nd->nl_ncp is left intact.
+	 * be cleaned up by the caller if nd->nl_nch is left intact.
 	 */
 	if (vp->v_type == VLNK) {
 		error = EMLINK;
@@ -224,7 +222,7 @@ again:
 				error = EISDIR;
 				goto bad;
 			}
-			error = vn_writechk(vp, ncp);
+			error = vn_writechk(vp, &nd->nl_nch);
 			if (error) {
 				/*
 				 * Special stale handling, re-resolve the
@@ -233,8 +231,8 @@ again:
 				if (error == ESTALE) {
 					vput(vp);
 					vp = NULL;
-					cache_setunresolved(ncp);
-					error = cache_resolve(ncp, cred);
+					cache_setunresolved(&nd->nl_nch);
+					error = cache_resolve(&nd->nl_nch, cred);
 					if (error == 0)
 						goto again;
 				}
@@ -254,8 +252,8 @@ again:
 				if (error == ESTALE) {
 					vput(vp);
 					vp = NULL;
-					cache_setunresolved(ncp);
-					error = cache_resolve(ncp, cred);
+					cache_setunresolved(&nd->nl_nch);
+					error = cache_resolve(&nd->nl_nch, cred);
 					if (error == 0)
 						goto again;
 				}
@@ -277,27 +275,25 @@ again:
 	 * Setup the fp so VOP_OPEN can override it.  No descriptor has been
 	 * associated with the fp yet so we own it clean.  
 	 *
-	 * f_ncp inherits nl_ncp.  This used to be necessary only for
+	 * f_nchandle inherits nl_nch.  This used to be necessary only for
 	 * directories but now we do it unconditionally so f*() ops
 	 * such as fchmod() can access the actual namespace that was
 	 * used to open the file.
 	 */
 	if (fp) {
-		fp->f_ncp = nd->nl_ncp;
-		nd->nl_ncp = NULL;
-		cache_unlock(fp->f_ncp);
+		fp->f_nchandle = nd->nl_nch;
+		cache_zero(&nd->nl_nch);
+		cache_unlock(&fp->f_nchandle);
 	}
 
 	/*
-	 * Get rid of nl_ncp.  vn_open does not return it (it returns the
-	 * vnode or the file pointer).  Note: we can't leave nl_ncp locked
+	 * Get rid of nl_nch.  vn_open does not return it (it returns the
+	 * vnode or the file pointer).  Note: we can't leave nl_nch locked
 	 * through the VOP_OPEN anyway since the VOP_OPEN may block, e.g.
 	 * on /dev/ttyd0
 	 */
-	if (nd->nl_ncp) {
-		cache_put(nd->nl_ncp);
-		nd->nl_ncp = NULL;
-	}
+	if (nd->nl_nch.ncp)
+		cache_put(&nd->nl_nch);
 
 	error = VOP_OPEN(vp, fmode, cred, fp);
 	if (error) {
@@ -341,10 +337,10 @@ bad:
 }
 
 /*
- * Check for write permissions on the specified vnode.
+ * Check for write permissions on the specified vnode.  nch may be NULL.
  */
 int
-vn_writechk(struct vnode *vp, struct namecache *ncp)
+vn_writechk(struct vnode *vp, struct nchandle *nch)
 {
 	/*
 	 * If there's shared text associated with
@@ -356,14 +352,14 @@ vn_writechk(struct vnode *vp, struct namecache *ncp)
 
 	/*
 	 * If the vnode represents a regular file, check the mount
-	 * point via the ncp.  This may be a different mount point
+	 * point via the nch.  This may be a different mount point
 	 * then the one embedded in the vnode (e.g. nullfs).
 	 *
 	 * We can still write to non-regular files (e.g. devices)
 	 * via read-only mounts.
 	 */
-	if (ncp && vp->v_type == VREG)
-		return (ncp_writechk(ncp));
+	if (nch && nch->ncp && vp->v_type == VREG)
+		return (ncp_writechk(nch));
 	return (0);
 }
 
@@ -374,9 +370,9 @@ vn_writechk(struct vnode *vp, struct namecache *ncp)
  * check is needed.
  */
 int
-ncp_writechk(struct namecache *ncp)
+ncp_writechk(struct nchandle *nch)
 {
-	if (ncp->nc_mount && (ncp->nc_mount->mnt_flag & MNT_RDONLY))
+	if (nch->mount && (nch->mount->mnt_flag & MNT_RDONLY))
 		return (EROFS);
 	return(0);
 }

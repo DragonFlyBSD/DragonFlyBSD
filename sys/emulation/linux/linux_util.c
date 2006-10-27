@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.13 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.14 2006/10/27 04:56:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,7 @@ linux_copyin_path(char *uname, char **kname, int flags)
 			error = nlookup(&nd);
 		vp = NULL;
 		if (error == 0)
-			error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+			error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 		nlookup_done(&nd);
 		if (error)
 			goto dont_translate;
@@ -131,7 +131,7 @@ linux_copyin_path(char *uname, char **kname, int flags)
 			error = nlookup(&ndroot);
 		vproot = NULL;
 		if (error == 0) {
-			error = cache_vref(ndroot.nl_ncp, ndroot.nl_cred,
+			error = cache_vref(&ndroot.nl_nch, ndroot.nl_cred,
 					   &vproot);
 		}
 		nlookup_done(&ndroot);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.30 2006/09/11 20:24:59 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.31 2006/10/27 04:56:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -265,7 +265,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error)
 		goto cleanup;
 	/*

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.50 2006/09/10 01:26:40 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.51 2006/10/27 04:56:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -340,7 +340,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 	nlookup_done(&nd);
 	if (error)
 		return (error);

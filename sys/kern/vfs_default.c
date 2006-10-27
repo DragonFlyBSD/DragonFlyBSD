@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.44 2006/10/26 02:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.45 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ vop_panic(struct vop_generic_args *ap)
 }
 
 /*
- * vop_compat_resolve { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
+ * vop_compat_resolve { struct nchandle *a_nch }	XXX STOPGAP FUNCTION
  *
  * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
  * WILL BE REMOVED.  This procedure exists for all VFSs which have not
@@ -183,12 +183,12 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	int error;
 	struct vnode *dvp;
 	struct vnode *vp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct componentname cnp;
 
-	ncp = ap->a_ncp;	/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;	/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -228,13 +228,13 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 			vrele(vp);
 	} else if (error == 0) {
 		KKASSERT(vp != NULL);
-		cache_setvp(ncp, vp);
+		cache_setvp(nch, vp);
 		vrele(vp);
 	} else if (error == ENOENT) {
 		KKASSERT(vp == NULL);
 		if (cnp.cn_flags & CNP_ISWHITEOUT)
 			ncp->nc_flag |= NCF_WHITEOUT;
-		cache_setvp(ncp, NULL);
+		cache_setvp(nch, NULL);
 	}
 	vrele(dvp);
 	return (error);
@@ -300,7 +300,7 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 }
 
 /*
- * vop_compat_ncreate { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_ncreate { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			struct vnode *a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
@@ -314,6 +314,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	int error;
@@ -321,9 +322,8 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -364,8 +364,8 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_CREATE(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, *ap->a_vpp);
+			cache_setunresolved(nch);
+			cache_setvp(nch, *ap->a_vpp);
 		}
 	} else {
 		if (error == 0) {
@@ -382,7 +382,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 }
 
 /*
- * vop_compat_nmkdir { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nmkdir { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			struct vnode *a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
@@ -396,6 +396,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	int error;
@@ -403,9 +404,8 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -446,8 +446,8 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_MKDIR(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, *ap->a_vpp);
+			cache_setunresolved(nch);
+			cache_setvp(nch, *ap->a_vpp);
 		}
 	} else {
 		if (error == 0) {
@@ -464,7 +464,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 }
 
 /*
- * vop_compat_nmknod { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nmknod { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			struct vnode *a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
@@ -478,6 +478,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	int error;
@@ -485,9 +486,8 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -528,8 +528,8 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_MKNOD(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, *ap->a_vpp);
+			cache_setunresolved(nch);
+			cache_setvp(nch, *ap->a_vpp);
 		}
 	} else {
 		if (error == 0) {
@@ -546,7 +546,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 }
 
 /*
- * vop_compat_nlink { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nlink { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			struct vnode *a_vp,
  *			struct ucred *a_cred }
  *
@@ -558,6 +558,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	struct vnode *tvp;
@@ -566,9 +567,8 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -609,8 +609,8 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_LINK(dvp, ap->a_vp, &cnp);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, ap->a_vp);
+			cache_setunresolved(nch);
+			cache_setvp(nch, ap->a_vp);
 		}
 	} else {
 		if (error == 0) {
@@ -629,6 +629,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	struct vnode *vp;
@@ -638,9 +639,8 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	 * Sanity checks, get a locked directory vnode.
 	 */
 	*ap->a_vpp = NULL;
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -681,8 +681,8 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_SYMLINK(dvp, &vp, &cnp, ap->a_vap, ap->a_target);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, vp);
+			cache_setunresolved(nch);
+			cache_setvp(nch, vp);
 			*ap->a_vpp = vp;
 		}
 	} else {
@@ -700,7 +700,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 }
 
 /*
- * vop_compat_nwhiteout { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nwhiteout { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			  struct ucred *a_cred,
  *			  int a_flags }
  *
@@ -715,6 +715,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	struct vnode *vp;
@@ -723,9 +724,8 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -771,7 +771,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 			KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 			error = VOP_OLD_WHITEOUT(dvp, &cnp, ap->a_flags);
 			if (error == 0)
-				cache_setunresolved(ncp);
+				cache_setunresolved(nch);
 		} else {
 			if (error == 0) {
 				vput(vp);
@@ -796,7 +796,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 
 
 /*
- * vop_compat_nremove { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nremove { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			  struct ucred *a_cred }
  */
 int
@@ -804,6 +804,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	struct vnode *vp;
@@ -812,9 +813,8 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -853,8 +853,8 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_REMOVE(dvp, vp, &cnp);
 		if (error == 0) {
-			cache_setunresolved(ncp);
-			cache_setvp(ncp, NULL);
+			cache_setunresolved(nch);
+			cache_setvp(nch, NULL);
 			cache_inval_vp(vp, CINV_DESTROY);
 		}
 	}
@@ -871,7 +871,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 }
 
 /*
- * vop_compat_nrmdir { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ * vop_compat_nrmdir { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
  *			  struct ucred *a_cred }
  */
 int
@@ -879,6 +879,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 {
 	struct thread *td = curthread;
 	struct componentname cnp;
+	struct nchandle *nch;
 	struct namecache *ncp;
 	struct vnode *dvp;
 	struct vnode *vp;
@@ -887,9 +888,8 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 	/*
 	 * Sanity checks, get a locked directory vnode.
 	 */
-	ncp = ap->a_ncp;		/* locked namecache node */
-	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
-		return(EPERM);
+	nch = ap->a_nch;		/* locked namecache node */
+	ncp = nch->ncp;
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -939,7 +939,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 		 * back out.
 		 */
 		if (error == 0) {
-			cache_inval(ncp, CINV_DESTROY);
+			cache_inval(nch, CINV_DESTROY);
 			cache_inval_vp(vp, CINV_DESTROY);
 		}
 	}
@@ -956,8 +956,8 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 }
 
 /*
- * vop_compat_nrename { struct namecache *a_fncp, 	XXX STOPGAP FUNCTION
- *			struct namecache *a_tncp,
+ * vop_compat_nrename { struct nchandle *a_fnch, 	XXX STOPGAP FUNCTION
+ *			struct nchandle *a_tnch,
  *			struct ucred *a_cred }
  *
  * This is a fairly difficult procedure.  The old VOP_OLD_RENAME requires that
@@ -971,6 +971,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	struct thread *td = curthread;
 	struct componentname fcnp;
 	struct componentname tcnp;
+	struct nchandle *fnch;
+	struct nchandle *tnch;
 	struct namecache *fncp;
 	struct namecache *tncp;
 	struct vnode *fdvp, *fvp;
@@ -980,9 +982,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Sanity checks, get referenced vnodes representing the source.
 	 */
-	fncp = ap->a_fncp;		/* locked namecache node */
-	if (fncp->nc_flag & NCF_MOUNTPT) /* can't cross a mount point! */
-		return(EPERM);
+	fnch = ap->a_fnch;		/* locked namecache node */
+	fncp = fnch->ncp;
 	if (fncp->nc_parent == NULL)
 		return(EPERM);
 	if ((fdvp = fncp->nc_parent->nc_vp) == NULL)
@@ -1039,9 +1040,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	 * in CREATE mode so it places the required information in the
 	 * directory inode.
 	 */
-	tncp = ap->a_tncp;		/* locked namecache node */
-	if (tncp->nc_flag & NCF_MOUNTPT) /* can't cross a mount point! */
-		error = EPERM;
+	tnch = ap->a_tnch;		/* locked namecache node */
+	tncp = tnch->ncp;
 	if (tncp->nc_parent == NULL)
 		error = EPERM;
 	if ((tdvp = tncp->nc_parent->nc_vp) == NULL)
@@ -1083,8 +1083,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
 		if (error == 0) {
-			cache_rename(fncp, tncp);
-			cache_setvp(tncp, fvp);
+			cache_rename(fnch, tnch);
+			cache_setvp(tnch, fvp);
 		}
 	} else if (error == 0) {
 		/*
@@ -1094,8 +1094,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
 		if (error == 0) {
-			cache_rename(fncp, tncp);
-			cache_setvp(tncp, fvp);
+			cache_rename(fnch, tnch);
+			cache_setvp(tnch, fvp);
 		}
 	} else {
 		vrele(fdvp);

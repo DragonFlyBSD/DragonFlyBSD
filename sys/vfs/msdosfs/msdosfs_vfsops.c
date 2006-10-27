@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.41 2006/10/03 01:32:41 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.42 2006/10/27 04:56:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -236,7 +236,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 	nlookup_done(&nd);
 	if (error)
 		return (error);

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.23 2006/08/06 18:56:46 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.24 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -55,6 +55,9 @@
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
+#endif
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
 #endif
 
 struct stat;
@@ -111,7 +114,7 @@ struct file {
 	void   *f_data;		/* vnode, pipe, socket, or kqueue */
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* (U) reference count from message queue */
-	struct namecache *f_ncp; /* ncp (required for directories) */
+	struct nchandle f_nchandle; /* namecache reference */
 	struct spinlock f_spin;
 };
 

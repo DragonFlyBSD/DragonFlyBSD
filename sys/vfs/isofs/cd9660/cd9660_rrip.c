@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.11 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.12 2006/10/27 04:56:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,7 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 			/* same as above */
 			outbuf -= len;
 			len = 0;
-			error = cache_fullpath(NULL, ana->imp->im_mountp->mnt_ncp,
+			error = cache_fullpath(NULL, &ana->imp->im_mountp->mnt_ncmountpt,
 					       &inbuf, &freebuf);
 			if (error)
 				goto bad;

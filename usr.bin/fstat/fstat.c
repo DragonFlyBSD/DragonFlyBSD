@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.19 2006/09/11 20:24:57 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.20 2006/10/27 04:56:27 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -138,10 +138,10 @@ kvm_t *kd;
 
 void dofiles(struct kinfo_proc *kp);
 void dommap(struct kinfo_proc *kp);
-void vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag);
+void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag);
 int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
 int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
-char *getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp);
+char *getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr);
 void pipetrans(struct pipe *pi, int i, int flag);
 void socktrans(struct socket *sock, int i);
 void getinetproto(int number);
@@ -323,11 +323,11 @@ dofiles(struct kinfo_proc *kp)
 	 * root directory vnode, if one
 	 */
 	if (filed.fd_rdir)
-		vtrans(filed.fd_rdir, filed.fd_nrdir, RDIR, FREAD);
+		vtrans(filed.fd_rdir, &filed.fd_nrdir, RDIR, FREAD);
 	/*
 	 * current working directory vnode
 	 */
-	vtrans(filed.fd_cdir, filed.fd_ncdir, CDIR, FREAD);
+	vtrans(filed.fd_cdir, &filed.fd_ncdir, CDIR, FREAD);
 	/*
 	 * ktrace vnode, if one
 	 */
@@ -360,7 +360,7 @@ dofiles(struct kinfo_proc *kp)
 			continue;
 		}
 		if (file.f_type == DTYPE_VNODE) {
-			vtrans((struct vnode *)file.f_data, file.f_ncp, i, 
+			vtrans((struct vnode *)file.f_data, &file.f_nchandle, i, 
 				file.f_flag);
 		} else if (file.f_type == DTYPE_SOCKET) {
 			if (checkfile == 0)
@@ -376,7 +376,7 @@ dofiles(struct kinfo_proc *kp)
 #ifdef DTYPE_FIFO
 		else if (file.f_type == DTYPE_FIFO) {
 			if (checkfile == 0)
-				vtrans((struct vnode *)file.f_data, file.f_ncp,
+				vtrans((struct vnode *)file.f_data, &file.f_nchandle,
 					i, file.f_flag);
 		}
 #endif
@@ -448,7 +448,7 @@ dommap(struct kinfo_proc *kp)
 }
 
 void
-vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
+vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 {
 	struct vnode vn;
 	struct filestat fst;
@@ -522,7 +522,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 	if (nflg)
 		(void)printf(" %3d,%-9d   ", major(fst.fsid), minor(fst.fsid));
 	else
-		(void)printf(" %-*s", wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncp));
+		(void)printf(" %-*s", wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncr));
 	if (nflg)
 		(void)sprintf(mode, "%o", fst.mode);
 	else
@@ -627,7 +627,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 
 
 char *
-getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
+getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)
 {
 	static struct mount mount_l;
 	static struct mtab {
@@ -636,6 +636,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 		char mntonname[MNAMELEN];
 	} *mhead = NULL;
 	struct mtab *mt;
+	struct namecache *ncp;
 	struct namecache ncp_copy;
 	static char path[1024];
 	int i;
@@ -643,8 +644,10 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 	/*
 	 * If no ncp is passed try to find one via ncplist.
 	 */
-	if (ncp == NULL) {
+	if (ncr == NULL || ncr->ncp == NULL) {
 		ncp = ncplist->tqh_first;
+	} else {
+		ncp = ncr->ncp;
 	}
 
 	/*
@@ -657,10 +660,6 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 			if (!kread(ncp, &ncp_copy, sizeof(ncp_copy))) {
 				warnx("can't read ncp at %p", ncp);
 				return (NULL);
-			}
-			if (ncp_copy.nc_flag & NCF_MOUNTPT) {
-				ncp = ncp_copy.nc_parent;
-				continue;
 			}
 			if (i <= ncp_copy.nc_nlen)
 				break;

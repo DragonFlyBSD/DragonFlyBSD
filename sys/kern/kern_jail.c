@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.12 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.13 2006/10/27 04:56:31 dillon Exp $
  *
  */
 
@@ -73,7 +73,7 @@ kern_jail_attach(int jid)
 	if (pr == NULL)
 		return(EINVAL);
 
-	error = kern_chroot(pr->pr_root);
+	error = kern_chroot(&pr->pr_root);
 	if (error)
 		return(error);
 
@@ -118,7 +118,7 @@ sys_jail(struct jail_args *uap)
 	error = nlookup(&nd);
 	if (error)
 		goto nlookup_init_clean;
-	pr->pr_root = cache_hold(nd.nl_ncp);
+	cache_copy(&nd.nl_nch, &pr->pr_root);
 
 	pr->pr_ip = j.ip_number;
 	varsymset_init(&pr->pr_varsymset, NULL);
@@ -295,7 +295,7 @@ retry:
 		char *fullpath, *freepath;
 		xp->pr_version = KINFO_PRISON_VERSION;
 		xp->pr_id = pr->pr_id;
-		error = cache_fullpath(p, pr->pr_root, &fullpath, &freepath);
+		error = cache_fullpath(p, &pr->pr_root, &fullpath, &freepath);
 		if (error == 0) {
 			strlcpy(xp->pr_path, fullpath, sizeof(xp->pr_path));
 			kfree(freepath, M_TEMP);
@@ -335,6 +335,6 @@ prison_free(struct prison *pr)
 	if (pr->pr_linux != NULL)
 		kfree(pr->pr_linux, M_PRISON);
 	varsymset_clean(&pr->pr_varsymset);
-	cache_drop(pr->pr_root);
+	cache_drop(&pr->pr_root);
 	kfree(pr, M_PRISON);
 }

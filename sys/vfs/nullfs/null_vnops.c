@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.27 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.28 2006/10/27 04:56:34 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -125,7 +125,7 @@ static int	null_nrename(struct vop_nrename_args *ap);
 static int
 null_nresolve(struct vop_nresolve_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nresolve_ap(ap);
 }
@@ -133,7 +133,7 @@ null_nresolve(struct vop_nresolve_args *ap)
 static int
 null_ncreate(struct vop_ncreate_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_ncreate_ap(ap);
 }
@@ -141,7 +141,7 @@ null_ncreate(struct vop_ncreate_args *ap)
 static int
 null_nmkdir(struct vop_nmkdir_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nmkdir_ap(ap);
 }
@@ -149,7 +149,7 @@ null_nmkdir(struct vop_nmkdir_args *ap)
 static int
 null_nmknod(struct vop_nmknod_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nmknod_ap(ap);
 }
@@ -157,7 +157,7 @@ null_nmknod(struct vop_nmknod_args *ap)
 static int
 null_nlink(struct vop_nlink_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nlink_ap(ap);
 }
@@ -165,7 +165,7 @@ null_nlink(struct vop_nlink_args *ap)
 static int
 null_nsymlink(struct vop_nsymlink_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nsymlink_ap(ap);
 }
@@ -173,7 +173,7 @@ null_nsymlink(struct vop_nsymlink_args *ap)
 static int
 null_nwhiteout(struct vop_nwhiteout_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nwhiteout_ap(ap);
 }
@@ -181,7 +181,7 @@ null_nwhiteout(struct vop_nwhiteout_args *ap)
 static int
 null_nremove(struct vop_nremove_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nremove_ap(ap);
 }
@@ -189,7 +189,7 @@ null_nremove(struct vop_nremove_args *ap)
 static int
 null_nrmdir(struct vop_nrmdir_args *ap)
 {
-	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_ncp->nc_mount)->nullm_vfs->mnt_vn_norm_ops;
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
 
 	return vop_nrmdir_ap(ap);
 }
@@ -199,8 +199,8 @@ null_nrename(struct vop_nrename_args *ap)
 {
 	struct mount *lmp;
 
-	lmp = MOUNTTONULLMOUNT(ap->a_fncp->nc_mount)->nullm_vfs;
-	if (lmp != MOUNTTONULLMOUNT(ap->a_tncp->nc_mount)->nullm_vfs)
+	lmp = MOUNTTONULLMOUNT(ap->a_fnch->mount)->nullm_vfs;
+	if (lmp != MOUNTTONULLMOUNT(ap->a_tnch->mount)->nullm_vfs)
 		return (EINVAL);
 
 	ap->a_head.a_ops = lmp->mnt_vn_norm_ops;

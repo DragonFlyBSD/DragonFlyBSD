@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.30 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.31 2006/10/27 04:56:34 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -191,7 +191,7 @@ sys_swapon(struct swapon_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error)
 		return (error);

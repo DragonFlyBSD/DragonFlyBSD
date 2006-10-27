@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.27 2006/09/19 16:06:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.28 2006/10/27 04:56:34 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &upperrootvp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &upperrootvp);
 	nlookup_done(&nd);
 	if (error)
 		goto bad;

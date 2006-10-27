@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.39 2006/10/20 17:02:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.40 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -480,22 +480,19 @@ shutdown_cleanup_proc(struct proc *p)
 	if ((fdp = p->p_fd) != NULL) {
 		kern_closefrom(0);
 		if (fdp->fd_cdir) {
-			cache_drop(fdp->fd_ncdir);
+			cache_drop(&fdp->fd_ncdir);
 			vrele(fdp->fd_cdir);
 			fdp->fd_cdir = NULL;
-			fdp->fd_ncdir = NULL;
 		}
 		if (fdp->fd_rdir) {
-			cache_drop(fdp->fd_nrdir);
+			cache_drop(&fdp->fd_nrdir);
 			vrele(fdp->fd_rdir);
 			fdp->fd_rdir = NULL;
-			fdp->fd_nrdir = NULL;
 		}
 		if (fdp->fd_jdir) {
-			cache_drop(fdp->fd_njdir);
+			cache_drop(&fdp->fd_njdir);
 			vrele(fdp->fd_jdir);
 			fdp->fd_jdir = NULL;
-			fdp->fd_njdir = NULL;
 		}
 	}
 	if (p->p_vkernel)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.28 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.29 2006/10/27 04:56:31 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -1151,13 +1151,14 @@ jrecord_write_path(struct jrecord *jrec, int16_t rectype, struct namecache *ncp)
     /*
      * Pass 1 - figure out the number of bytes required.  Include terminating
      * 	       \0 on last element and '/' separator on other elements.
+     *
+     * The namecache topology terminates at the root of the filesystem
+     * (the normal lookup code would then continue by using the mount
+     * structure to figure out what it was mounted on).
      */
 again:
     pathlen = 0;
-    for (scan = ncp; 
-	 scan && (scan->nc_flag & NCF_MOUNTPT) == 0; 
-	 scan = scan->nc_parent
-    ) {
+    for (scan = ncp; scan; scan = scan->nc_parent) {
 	pathlen += scan->nc_nlen + 1;
     }
 
@@ -1170,10 +1171,7 @@ again:
      * Pass 2 - generate the path buffer
      */
     index = pathlen;
-    for (scan = ncp; 
-	 scan && (scan->nc_flag & NCF_MOUNTPT) == 0; 
-	 scan = scan->nc_parent
-    ) {
+    for (scan = ncp; scan; scan = scan->nc_parent) {
 	if (scan->nc_nlen >= index) {
 	    if (base != buf)
 		kfree(base, M_TEMP);

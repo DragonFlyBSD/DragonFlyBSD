@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.47 2006/10/20 17:02:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.48 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -195,10 +195,10 @@ interpret:
 	 */
 	if ((error = nlookup(nd)) != 0)
 		goto exec_fail;
-	error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
 	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
-	cache_unlock(nd->nl_ncp);
+	cache_unlock(&nd->nl_nch);
 	if (error)
 		goto exec_fail;
 
@@ -344,8 +344,8 @@ interpret:
 	execsigs(p);
 
 	/* name this process - nameiexec(p, ndp) */
-	len = min(nd->nl_ncp->nc_nlen, MAXCOMLEN);
-	bcopy(nd->nl_ncp->nc_name, p->p_comm, len);
+	len = min(nd->nl_nch.ncp->nc_nlen, MAXCOMLEN);
+	bcopy(nd->nl_nch.ncp->nc_name, p->p_comm, len);
 	p->p_comm[len] = 0;
 	bcopy(p->p_comm, p->p_lwp.lwp_thread->td_comm, MAXCOMLEN+1);
 

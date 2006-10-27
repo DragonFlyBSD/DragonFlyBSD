@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.64 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.65 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -452,18 +452,18 @@ start_init(void *dummy)
 	mp = mountlist_boot_getfirst();
 	if (VFS_ROOT(mp, &vp))
 		panic("cannot find root vnode");
-	if (mp->mnt_ncp == NULL) {
-		mp->mnt_ncp = cache_allocroot(mp, vp);
-		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
+	if (mp->mnt_ncmountpt.ncp == NULL) {
+		cache_allocroot(&mp->mnt_ncmountpt, mp, vp);
+		cache_unlock(&mp->mnt_ncmountpt);	/* leave ref intact */
 	}
 	p->p_fd->fd_cdir = vp;
 	vref(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = vp;
 	vref(p->p_fd->fd_rdir);
-	vfs_cache_setroot(vp, cache_hold(mp->mnt_ncp));
+	vfs_cache_setroot(vp, cache_hold(&mp->mnt_ncmountpt));
 	vn_unlock(vp);			/* leave ref intact */
-	p->p_fd->fd_ncdir = cache_hold(mp->mnt_ncp);
-	p->p_fd->fd_nrdir = cache_hold(mp->mnt_ncp);
+	cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_ncdir);
+	cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_nrdir);
 
 	/*
 	 * Need just enough stack to hold the faked-up "execve()" arguments.

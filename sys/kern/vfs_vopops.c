@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.32 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.33 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -931,14 +931,14 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
  * is left locked on return.
  */
 int
-vop_nresolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+vop_nresolve(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 {
 	struct vop_nresolve_args ap;
 	int error;
 
 	ap.a_head.a_desc = &vop_nresolve_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nresolve);
@@ -975,7 +975,7 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
  * is left locked on return.
  */
 int
-vop_ncreate(struct vop_ops *ops, struct namecache *ncp, 
+vop_ncreate(struct vop_ops *ops, struct nchandle *nch, 
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_ncreate_args ap;
@@ -983,7 +983,7 @@ vop_ncreate(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_ncreate_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1003,7 +1003,7 @@ vop_ncreate(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nmkdir(struct vop_ops *ops, struct namecache *ncp, 
+vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, 
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmkdir_args ap;
@@ -1011,7 +1011,7 @@ vop_nmkdir(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_nmkdir_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1031,7 +1031,7 @@ vop_nmkdir(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nmknod(struct vop_ops *ops, struct namecache *ncp, 
+vop_nmknod(struct vop_ops *ops, struct nchandle *nch, 
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmknod_args ap;
@@ -1039,7 +1039,7 @@ vop_nmknod(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_nmknod_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1060,7 +1060,7 @@ vop_nmknod(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nlink(struct vop_ops *ops, struct namecache *ncp,
+vop_nlink(struct vop_ops *ops, struct nchandle *nch,
 	struct vnode *vp, struct ucred *cred)
 {
 	struct vop_nlink_args ap;
@@ -1068,13 +1068,13 @@ vop_nlink(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_nlink_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nlink);
 	if (error == 0)
-		cache_update_fsmid(ncp);
+		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1088,7 +1088,7 @@ vop_nlink(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
+vop_nsymlink(struct vop_ops *ops, struct nchandle *nch,
 	struct vnode **vpp, struct ucred *cred,
 	struct vattr *vap, char *target)
 {
@@ -1097,7 +1097,7 @@ vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_nsymlink_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1105,7 +1105,7 @@ vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
 
 	DO_OPS(ops, error, &ap, vop_nsymlink);
 	if (error == 0)
-		cache_update_fsmid(ncp);
+		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1117,7 +1117,7 @@ vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp, 
+vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, 
 	struct ucred *cred, int flags)
 {
 	struct vop_nwhiteout_args ap;
@@ -1125,13 +1125,13 @@ vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp,
 
 	ap.a_head.a_desc = &vop_nwhiteout_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_cred = cred;
 	ap.a_flags = flags;
 
 	DO_OPS(ops, error, &ap, vop_nwhiteout);
 	if (error == 0)
-		cache_update_fsmid(ncp);
+		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1143,19 +1143,19 @@ vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp,
  * is left locked on return.
  */
 int
-vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 {
 	struct vop_nremove_args ap;
 	int error;
 
 	ap.a_head.a_desc = &vop_nremove_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nremove);
 	if (error == 0)
-		cache_update_fsmid(ncp);
+		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1167,19 +1167,19 @@ vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
  * is left locked on return.
  */
 int
-vop_nrmdir(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 {
 	struct vop_nrmdir_args ap;
 	int error;
 
 	ap.a_head.a_desc = &vop_nrmdir_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
+	ap.a_nch = nch;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrmdir);
 	if (error == 0)
-		cache_update_fsmid(ncp);
+		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1194,22 +1194,22 @@ vop_nrmdir(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
  * source ncp's underlying file.
  */
 int
-vop_nrename(struct vop_ops *ops, struct namecache *fncp, 
-	    struct namecache *tncp, struct ucred *cred)
+vop_nrename(struct vop_ops *ops, struct nchandle *fnch, 
+	    struct nchandle *tnch, struct ucred *cred)
 {
 	struct vop_nrename_args ap;
 	int error;
 
 	ap.a_head.a_desc = &vop_nrename_desc;
 	ap.a_head.a_ops = ops;
-	ap.a_fncp = fncp;
-	ap.a_tncp = tncp;
+	ap.a_fnch = fnch;
+	ap.a_tnch = tnch;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrename);
 	if (error == 0) {
-		cache_update_fsmid(fncp);
-		cache_update_fsmid(tncp);
+		cache_update_fsmid(fnch);
+		cache_update_fsmid(tnch);
 	}
 	return(error);
 }

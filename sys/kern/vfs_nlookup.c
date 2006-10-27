@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.19 2006/09/19 16:06:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.20 2006/10/27 04:56:31 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -109,15 +109,15 @@ nlookup_init(struct nlookupdata *nd,
 
     if (error == 0) {
 	if (p && p->p_fd) {
-	    nd->nl_ncp = cache_hold(p->p_fd->fd_ncdir);
-	    nd->nl_rootncp = cache_hold(p->p_fd->fd_nrdir);
-	    if (p->p_fd->fd_njdir)
-		nd->nl_jailncp = cache_hold(p->p_fd->fd_njdir);
+	    cache_copy(&p->p_fd->fd_ncdir, &nd->nl_nch);
+	    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
+	    if (p->p_fd->fd_njdir.ncp)
+		cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
 	    nd->nl_cred = crhold(p->p_ucred);
 	} else {
-	    nd->nl_ncp = cache_hold(rootncp);
-	    nd->nl_rootncp = cache_hold(nd->nl_ncp);
-	    nd->nl_jailncp = cache_hold(nd->nl_ncp);
+	    cache_copy(&rootnch, &nd->nl_nch);
+	    cache_copy(&nd->nl_nch, &nd->nl_rootnch);
+	    cache_copy(&nd->nl_nch, &nd->nl_jailnch);
 	    nd->nl_cred = crhold(proc0.p_ucred);
 	}
 	nd->nl_td = td;
@@ -130,13 +130,13 @@ nlookup_init(struct nlookupdata *nd,
 
 /*
  * This works similarly to nlookup_init() but does not assume a process
- * context.  rootncp is always chosen for the root directory and the cred
+ * context.  rootnch is always chosen for the root directory and the cred
  * and starting directory are supplied in arguments.
  */
 int
 nlookup_init_raw(struct nlookupdata *nd, 
 	     const char *path, enum uio_seg seg, int flags,
-	     struct ucred *cred, struct namecache *ncstart)
+	     struct ucred *cred, struct nchandle *ncstart)
 {
     size_t pathlen;
     thread_t td;
@@ -160,9 +160,9 @@ nlookup_init_raw(struct nlookupdata *nd,
 	error = ENOENT;
 
     if (error == 0) {
-	nd->nl_ncp = cache_hold(ncstart);
-	nd->nl_rootncp = cache_hold(rootncp);
-	nd->nl_jailncp = cache_hold(rootncp);
+	cache_copy(ncstart, &nd->nl_nch);
+	cache_copy(&rootnch, &nd->nl_rootnch);
+	cache_copy(&rootnch, &nd->nl_jailnch);
 	nd->nl_cred = crhold(cred);
 	nd->nl_td = td;
 	nd->nl_flags |= flags;
@@ -198,22 +198,17 @@ nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred)
 void
 nlookup_done(struct nlookupdata *nd)
 {
-    if (nd->nl_ncp) {
+    if (nd->nl_nch.ncp) {
 	if (nd->nl_flags & NLC_NCPISLOCKED) {
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
-	    cache_unlock(nd->nl_ncp);
+	    cache_unlock(&nd->nl_nch);
 	}
-	cache_drop(nd->nl_ncp);
-	nd->nl_ncp = NULL;
+	cache_drop(&nd->nl_nch);
     }
-    if (nd->nl_rootncp) {
-	cache_drop(nd->nl_rootncp);
-	nd->nl_rootncp = NULL;
-    }
-    if (nd->nl_jailncp) {
-	cache_drop(nd->nl_jailncp);
-	nd->nl_jailncp = NULL;
-    }
+    if (nd->nl_rootnch.ncp)
+	cache_drop(&nd->nl_rootnch);
+    if (nd->nl_jailnch.ncp)
+	cache_drop(&nd->nl_jailnch);
     if ((nd->nl_flags & NLC_HASBUF) && nd->nl_path) {
 	objcache_put(namei_oc, nd->nl_path);
 	nd->nl_path = NULL;
@@ -247,32 +242,32 @@ nlookup_zero(struct nlookupdata *nd)
  * is checked on the directory path leading up to the result.  The caller
  * must call naccess() to check the permissions of the returned leaf.
  */
-struct namecache *
+struct nchandle
 nlookup_simple(const char *str, enum uio_seg seg,
 	       int niflags, int *error)
 {
     struct nlookupdata nd;
-    struct namecache *ncp;
+    struct nchandle nch;
 
     *error = nlookup_init(&nd, str, seg, niflags);
     if (*error == 0) {
 	    if ((*error = nlookup(&nd)) == 0) {
-		    ncp = nd.nl_ncp;	/* keep hold ref from structure */
-		    nd.nl_ncp = NULL;	/* and NULL out */
+		    nch = nd.nl_nch;	/* keep hold ref from structure */
+		    cache_zero(&nd.nl_nch); /* and NULL out */
 	    } else {
-		    ncp = NULL;
+		    cache_zero(&nch);
 	    }
 	    nlookup_done(&nd);
     } else {
-	    ncp = NULL;
+	    cache_zero(&nch);
     }
-    return(ncp);
+    return(nch);
 }
 
 /*
  * Do a generic nlookup.  Note that the passed nd is not nlookup_done()'d
  * on return, even if an error occurs.  If no error occurs the returned
- * nl_ncp is always referenced and locked, otherwise it may or may not be.
+ * nl_nch is always referenced and locked, otherwise it may or may not be.
  *
  * Intermediate directory elements, including the current directory, require
  * execute (search) permission.  nlookup does not examine the access 
@@ -287,7 +282,8 @@ int
 nlookup(struct nlookupdata *nd)
 {
     struct nlcomponent nlc;
-    struct namecache *ncp;
+    struct nchandle nch;
+    struct mount *mp;
     int wasdotordotdot;
     char *ptr;
     char *xptr;
@@ -304,17 +300,17 @@ nlookup(struct nlookupdata *nd)
      * Setup for the loop.  The current working namecache element must
      * be in a refd + unlocked state.  This typically the case on entry except
      * when stringing nlookup()'s along in a chain, since nlookup() always
-     * returns nl_ncp in a locked state.
+     * returns nl_nch in a locked state.
      */
     nd->nl_loopcnt = 0;
     if (nd->nl_flags & NLC_NCPISLOCKED) {
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
-	cache_unlock(nd->nl_ncp);
+	cache_unlock(&nd->nl_nch);
     }
     ptr = nd->nl_path;
 
     /*
-     * Loop on the path components.  At the top of the loop nd->nl_ncp
+     * Loop on the path components.  At the top of the loop nd->nl_nch
      * is ref'd and unlocked and represents our current position.
      */
     for (;;) {
@@ -328,11 +324,11 @@ nlookup(struct nlookupdata *nd)
 	    do {
 		++ptr;
 	    } while (*ptr == '/');
-	    ncp = cache_hold(nd->nl_rootncp);
-	    cache_drop(nd->nl_ncp);
-	    nd->nl_ncp = ncp;
+	    cache_copy(&nd->nl_rootnch, &nch);
+	    cache_drop(&nd->nl_nch);
+	    nd->nl_nch = nch;
 	    if (*ptr == 0) {
-		cache_lock(nd->nl_ncp);
+		cache_lock(&nd->nl_nch);
 		nd->nl_flags |= NLC_NCPISLOCKED;
 		error = 0;
 		break;
@@ -341,9 +337,9 @@ nlookup(struct nlookupdata *nd)
 	}
 
 	/*
-	 * Check directory search permissions
+	 * Check directory search permissions.
 	 */
-	if ((error = naccess(nd->nl_ncp, VEXEC, nd->nl_cred)) != 0)
+	if ((error = naccess(&nd->nl_nch, VEXEC, nd->nl_cred)) != 0)
 	    break;
 
 	/*
@@ -360,10 +356,9 @@ nlookup(struct nlookupdata *nd)
 	 * cases.
 	 *
 	 * When handling ".." we have to detect a traversal back through a
-	 * mount point and skip the mount-under node.  If we are at the root
-	 * ".." just returns the root.
+	 * mount point.   If we are at the root, ".." just returns the root.
 	 *
-	 * This subsection returns a locked, refd 'ncp' unless it errors out.
+	 * This subsection returns a locked, refd 'nch' unless it errors out.
 	 * The namecache topology is not allowed to be disconnected, so 
 	 * encountering a NULL parent will generate EINVAL.  This typically
 	 * occurs when a directory is removed out from under a process.
@@ -372,46 +367,43 @@ nlookup(struct nlookupdata *nd)
 	 * of a path.
 	 */
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
-	    ncp = cache_get(nd->nl_ncp);
+	    cache_get(&nd->nl_nch, &nch);
 	    wasdotordotdot = 1;
 	} else if (nlc.nlc_namelen == 2 && 
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
-	    ncp = nd->nl_ncp;
-	    if (ncp == nd->nl_rootncp) {
-		ncp = cache_get(ncp);
+	    if (nd->nl_nch.mount == nd->nl_rootnch.mount &&
+		nd->nl_nch.ncp == nd->nl_rootnch.ncp
+	    ) {
+		/*
+		 * ".." at the root returns the root
+		 */
+		cache_get(&nd->nl_nch, &nch);
 	    } else {
-		while ((ncp->nc_flag & NCF_MOUNTPT) && ncp != nd->nl_rootncp) {
-		    if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
-			break;
-		    ncp = ncp->nc_parent;	/* get to underlying node */
-		    KKASSERT(ncp != NULL && 1);
-		}
-		if (ncp != nd->nl_rootncp) {
-			if (ncp->nc_parent->nc_flag & NCF_DESTROYED) {
-				error = EINVAL;
-				break;
-			}
-			ncp = ncp->nc_parent;
-			if (ncp == NULL) {
-				error = EINVAL;
-				break;
-			}
-		}
-		ncp = cache_get(ncp);
+		/*
+		 * Locate the parent ncp.  If we are at the root of a
+		 * filesystem mount we have to skip to the mounted-on
+		 * point in the underlying filesystem.
+		 */
+		nch = nd->nl_nch;
+		while (nch.ncp == nch.mount->mnt_ncmountpt.ncp)
+			nch = nd->nl_nch.mount->mnt_ncmounton;
+		nch.ncp = nch.ncp->nc_parent;
+		KKASSERT(nch.ncp != NULL);
+		cache_get(&nch, &nch);
 	    }
 	    wasdotordotdot = 1;
 	} else {
-	    ncp = cache_nlookup(nd->nl_ncp, &nlc);
-	    while ((error = cache_resolve(ncp, nd->nl_cred)) == EAGAIN) {
+	    nch = cache_nlookup(&nd->nl_nch, &nlc);
+	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
 		printf("[diagnostic] nlookup: relookup %*.*s\n", 
-			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
-		cache_put(ncp);
-		ncp = cache_nlookup(nd->nl_ncp, &nlc);
+			nch.ncp->nc_nlen, nch.ncp->nc_nlen, nch.ncp->nc_name);
+		cache_put(&nch);
+		nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    }
 	    wasdotordotdot = 0;
 	}
 	/*
-	 * [end of subsection] ncp is locked and ref'd.  nd->nl_ncp is ref'd
+	 * [end of subsection] ncp is locked and ref'd.  nd->nl_nch is ref'd
 	 */
 
 	/*
@@ -421,11 +413,11 @@ nlookup(struct nlookupdata *nd)
 	 * XXX neither '.' nor '..' should return EAGAIN since they were
 	 * previously resolved and thus cannot be newly created ncp's.
 	 */
-	if (ncp->nc_flag & NCF_UNRESOLVED) {
-	    error = cache_resolve(ncp, nd->nl_cred);
+	if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
+	    error = cache_resolve(&nch, nd->nl_cred);
 	    KKASSERT(error != EAGAIN);
 	} else {
-	    error = ncp->nc_error;
+	    error = nch.ncp->nc_error;
 	}
 
 	/*
@@ -441,7 +433,7 @@ nlookup(struct nlookupdata *nd)
 		;
 	if (*xptr == 0) {
 	    if (error == ENOENT && (nd->nl_flags & NLC_CREATE))
-		error = naccess(ncp, VCREATE, nd->nl_cred);
+		error = naccess(&nch, VCREATE, nd->nl_cred);
 	    if (error == 0 && wasdotordotdot && (nd->nl_flags & NLC_DELETE))
 		error = EINVAL;
 	}
@@ -450,7 +442,7 @@ nlookup(struct nlookupdata *nd)
 	 * Early completion on error.
 	 */
 	if (error) {
-	    cache_put(ncp);
+	    cache_put(&nch);
 	    break;
 	}
 
@@ -459,16 +451,16 @@ nlookup(struct nlookupdata *nd)
 	 * element or it is the last element and we are allowed to
 	 * follow symlinks, resolve the symlink.
 	 */
-	if ((ncp->nc_flag & NCF_ISSYMLINK) &&
+	if ((nch.ncp->nc_flag & NCF_ISSYMLINK) &&
 	    (*ptr || (nd->nl_flags & NLC_FOLLOW))
 	) {
 	    if (nd->nl_loopcnt++ >= MAXSYMLINKS) {
 		error = ELOOP;
-		cache_put(ncp);
+		cache_put(&nch);
 		break;
 	    }
-	    error = nreadsymlink(nd, ncp, &nlc);
-	    cache_put(ncp);
+	    error = nreadsymlink(nd, &nch, &nlc);
+	    cache_put(&nch);
 	    if (error)
 		break;
 
@@ -501,41 +493,30 @@ nlookup(struct nlookupdata *nd)
 
 	/*
 	 * If the element is a directory and we are crossing a mount point,
-	 * retrieve the root of the mounted filesystem from mnt_ncp and
-	 * resolve it if necessary.
-	 *
-	 * XXX mnt_ncp should really be resolved in the mount code.
-	 * NOTE!  the normal nresolve() code cannot resolve mount point ncp's!
-	 *
-	 * XXX NOCROSSMOUNT
+	 * Locate the mount.
 	 */
-	while ((ncp->nc_flag & NCF_ISDIR) && (ncp->nc_flag & NCF_MOUNTEDHERE)
-	       && (nd->nl_flags & NLC_NOCROSSMOUNT) == 0
+	while ((nch.ncp->nc_flag & NCF_ISMOUNTPT) && 
+	    (nd->nl_flags & NLC_NOCROSSMOUNT) == 0 &&
+	    (mp = cache_findmount(&nch)) != NULL
 	) {
-	    struct mount *mp;
 	    struct vnode *tdp;
 
-	    if ((mp = cache_findmount(ncp)) == NULL) {
-		printf("warning: nlookup(): ncp marked as a mount point which isn't one at %p %s\n", ncp, ncp->nc_name);
-		ncp->nc_flag &= ~NCF_MOUNTEDHERE;
-		break;
-	    }
-	    cache_put(ncp);
-	    ncp = cache_get(mp->mnt_ncp);
+	    cache_put(&nch);
+	    cache_get(&mp->mnt_ncmountpt, &nch);
 
-	    if (ncp->nc_flag & NCF_UNRESOLVED) {
+	    if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
 		while (vfs_busy(mp, 0))
 		    ;
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp);
 		if (error)
 		    break;
-		cache_setvp(ncp, tdp);
+		cache_setvp(&nch, tdp);
 		vput(tdp);
 	    }
 	}
 	if (error) {
-	    cache_put(ncp);
+	    cache_put(&nch);
 	    break;
 	}
 	    
@@ -547,7 +528,7 @@ nlookup(struct nlookupdata *nd)
 	 * to the failure case below.
 	 */
 	while (*ptr == '/') {
-	    if ((ncp->nc_flag & NCF_ISDIR) == 0 && 
+	    if ((nch.ncp->nc_flag & NCF_ISDIR) == 0 && 
 		!(nd->nl_flags & NLC_WILLBEDIR)
 	    ) {
 		break;
@@ -559,10 +540,10 @@ nlookup(struct nlookupdata *nd)
 	 * Continuation case: additional elements and the current
 	 * element is a directory.
 	 */
-	if (*ptr && (ncp->nc_flag & NCF_ISDIR)) {
-	    cache_drop(nd->nl_ncp);
-	    cache_unlock(ncp);
-	    nd->nl_ncp = ncp;
+	if (*ptr && (nch.ncp->nc_flag & NCF_ISDIR)) {
+	    cache_drop(&nd->nl_nch);
+	    cache_unlock(&nch);
+	    nd->nl_nch = nch;
 	    continue;
 	}
 
@@ -571,7 +552,7 @@ nlookup(struct nlookupdata *nd)
 	 * is not a directory
 	 */
 	if (*ptr) {
-	    cache_put(ncp);
+	    cache_put(&nch);
 	    error = ENOTDIR;
 	    break;
 	}
@@ -582,8 +563,8 @@ nlookup(struct nlookupdata *nd)
 	 * Check directory permissions if a deletion is specified.
 	 */
 	if (*ptr == 0 && (nd->nl_flags & NLC_DELETE)) {
-	    if ((error = naccess(ncp, VDELETE, nd->nl_cred)) != 0) {
-		cache_put(ncp);
+	    if ((error = naccess(&nch, VDELETE, nd->nl_cred)) != 0) {
+		cache_put(&nch);
 		break;
 	    }
 	}
@@ -593,8 +574,8 @@ nlookup(struct nlookupdata *nd)
 	 * ncp may represent a negative hit (ncp->nc_error will be ENOENT),
 	 * but we still return an error code of 0.
 	 */
-	cache_drop(nd->nl_ncp);
-	nd->nl_ncp = ncp;
+	cache_drop(&nd->nl_nch);
+	nd->nl_nch = nch;
 	nd->nl_flags |= NLC_NCPISLOCKED;
 	error = 0;
 	break;
@@ -610,29 +591,25 @@ nlookup(struct nlookupdata *nd)
  * If no error occured a locked, ref'd ncp is stored in *ncpp.
  */
 int
-nlookup_mp(struct mount *mp, struct namecache **ncpp)
+nlookup_mp(struct mount *mp, struct nchandle *nch)
 {
-    struct namecache *ncp;
     struct vnode *vp;
     int error;
 
     error = 0;
-    ncp = mp->mnt_ncp;
-    cache_get(ncp);
-    if (ncp->nc_flag & NCF_UNRESOLVED) {
+    cache_get(&mp->mnt_ncmountpt, nch);
+    if (nch->ncp->nc_flag & NCF_UNRESOLVED) {
 	while (vfs_busy(mp, 0))
 	    ;
 	error = VFS_ROOT(mp, &vp);
 	vfs_unbusy(mp);
 	if (error) {
-	    cache_put(ncp);
-	    ncp = NULL;
+	    cache_put(nch);
 	} else {
-	    cache_setvp(ncp, vp);
+	    cache_setvp(nch, vp);
 	    vput(vp);
 	}
     }
-    *ncpp = ncp;
     return(error);
 }
 
@@ -643,7 +620,7 @@ nlookup_mp(struct mount *mp, struct namecache **ncpp)
  * If an error occurs no buffer will be allocated or returned in the nlc.
  */
 int
-nreadsymlink(struct nlookupdata *nd, struct namecache *ncp, 
+nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 		struct nlcomponent *nlc)
 {
     struct vnode *vp;
@@ -655,9 +632,9 @@ nreadsymlink(struct nlookupdata *nd, struct namecache *ncp,
 
     nlc->nlc_nameptr = NULL;
     nlc->nlc_namelen = 0;
-    if (ncp->nc_vp == NULL)
+    if (nch->ncp->nc_vp == NULL)
 	return(ENOENT);
-    if ((error = cache_vget(ncp, nd->nl_cred, LK_SHARED, &vp)) != 0)
+    if ((error = cache_vget(nch, nd->nl_cred, LK_SHARED, &vp)) != 0)
 	return(error);
     cp = objcache_get(namei_oc, M_WAITOK);
     aiov.iov_base = cp;
@@ -711,37 +688,38 @@ fail:
  * checks.
  */
 int
-naccess(struct namecache *ncp, int vmode, struct ucred *cred)
+naccess(struct nchandle *nch, int vmode, struct ucred *cred)
 {
-    struct namecache *par;
+    struct nchandle par;
     struct vnode *vp;
     struct vattr va;
     int error;
 
-    if (ncp->nc_flag & NCF_UNRESOLVED) {
-	cache_lock(ncp);
-	cache_resolve(ncp, cred);
-	cache_unlock(ncp);
+    if (nch->ncp->nc_flag & NCF_UNRESOLVED) {
+	cache_lock(nch);
+	cache_resolve(nch, cred);
+	cache_unlock(nch);
     }
-    error = ncp->nc_error;
+    error = nch->ncp->nc_error;
     if (vmode & (VDELETE|VCREATE|VEXCL)) {
-	if (((vmode & VCREATE) && ncp->nc_vp == NULL) ||
-	    ((vmode & VDELETE) && ncp->nc_vp != NULL)
+	if (((vmode & VCREATE) && nch->ncp->nc_vp == NULL) ||
+	    ((vmode & VDELETE) && nch->ncp->nc_vp != NULL)
 	) {
-	    if ((par = ncp->nc_parent) == NULL) {
+	    if ((par.ncp = nch->ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 			error = EINVAL;
 	    } else {
-		cache_hold(par);
-		error = naccess(par, VWRITE, cred);
-		cache_drop(par);
+		par.mount = nch->mount;
+		cache_hold(&par);
+		error = naccess(&par, VWRITE, cred);
+		cache_drop(&par);
 	    }
 	}
-	if ((vmode & VEXCL) && ncp->nc_vp != NULL)
+	if ((vmode & VEXCL) && nch->ncp->nc_vp != NULL)
 	    error = EEXIST;
     }
     if (error == 0) {
-	error = cache_vget(ncp, cred, LK_SHARED, &vp);
+	error = cache_vget(nch, cred, LK_SHARED, &vp);
 	if (error == ENOENT) {
 	    if (vmode & VCREATE)
 		error = 0;

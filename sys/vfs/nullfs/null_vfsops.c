@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.28 2006/10/10 17:16:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.29 2006/10/27 04:56:34 dillon Exp $
  */
 
 /*
@@ -97,29 +97,42 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 	rootvp = NULL;
 	error = nlookup_init(&nd, args.target, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0) {
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, 
-					&rootvp);
-	}
+	if (error)
+		goto fail1;
+	error = nlookup(&nd);
+	if (error)
+		goto fail2;
+	error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &rootvp);
+	if (error)
+		goto fail2;
 
 	xmp = (struct null_mount *) kmalloc(sizeof(struct null_mount),
 				M_NULLFSMNT, M_WAITOK);	/* XXX */
 
 	/*
 	 * Save reference to underlying FS
-	 */
-        /*
+	 *
          * As lite stacking enters the scene, the old way of doing this
-	 * -- via the vnode -- is not good enough anymore...
+	 * -- via the vnode -- is not good enough anymore.  Use the
+	 * underlying filesystem's namecache handle as our mount point
+	 * root, adjusting the mount to point to us. 
+	 *
+	 * NCF_ISMOUNTPT is normally set on the mount point, but we also
+	 * want to set it on the base directory being mounted to prevent
+	 * that directory from being destroyed out from under the nullfs
+	 * mount. 
 	 */
-	xmp->nullm_vfs = nd.nl_ncp->nc_mount;
+	xmp->nullm_vfs = nd.nl_nch.mount;
+	mp->mnt_ncmountpt = nd.nl_nch;
+	cache_changemount(&mp->mnt_ncmountpt, mp);
+	mp->mnt_ncmountpt.ncp->nc_flag |= NCF_ISMOUNTPT;
+	cache_unlock(&mp->mnt_ncmountpt);
+	cache_zero(&nd.nl_nch);
 	nlookup_done(&nd);
 
 	vfs_add_vnodeops(mp, &null_vnode_vops, &mp->mnt_vn_norm_ops);
 
-	vn_unlock(rootvp);
+	vn_unlock(rootvp);		/* leave reference intact */
 
 	/*
 	 * Keep a held reference to the root vnode.
@@ -142,7 +155,16 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	(void)nullfs_statfs(mp, &mp->mnt_stat, cred);
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
+
+	/*
+	 * So unmount won't complain about namecache refs still existing
+	 */
+	mp->mnt_kern_flag |= MNTK_NCALIASED;
 	return (0);
+fail2:
+	nlookup_done(&nd);
+fail1:
+	return (error);
 }
 
 /*

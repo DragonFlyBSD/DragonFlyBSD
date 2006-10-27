@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.66 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.67 2006/10/27 04:56:34 dillon Exp $
  */
 
 
@@ -834,7 +834,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	int32_t t1, t2;
 
 	cred = ap->a_cred;
-	ncp = ap->a_ncp;
+	ncp = ap->a_nch->ncp;
 
 	KKASSERT(ncp->nc_parent && ncp->nc_parent->nc_vp);
 	dvp = ncp->nc_parent->nc_vp;
@@ -867,8 +867,8 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 				nticks = nfsneg_cache_timeout * hz;
 			else
 				nticks = 1;
-			cache_setvp(ncp, NULL);
-			cache_settimeout(ncp, nticks);
+			cache_setvp(ap->a_nch, NULL);
+			cache_settimeout(ap->a_nch, nticks);
 		}
 		nfsm_postop_attr(dvp, attrflag, NFS_LATTR_NOSHRINK);
 		m_freem(mrep);
@@ -910,7 +910,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	} else {
 		nfsm_loadattr(nvp, NULL);
 	}
-	cache_setvp(ncp, nvp);
+	cache_setvp(ap->a_nch, nvp);
 	m_freem(mrep);
 nfsmout:
 	vput(dvp);
@@ -2371,8 +2371,8 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	u_quad_t fileno;
 	int error = 0, tlen, more_dirs = 1, blksiz = 0, doit, bigenough = 1, i;
 	int attrflag, fhsize;
-	struct namecache *ncp;
-	struct namecache *dncp;
+	struct nchandle nch;
+	struct nchandle dnch;
 	struct nlcomponent nlc;
 
 #ifndef nolint
@@ -2391,7 +2391,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	 * ncp may be unnamed.  Note that other unrelated operations may 
 	 * cause the ncp to be named at any time.
 	 */
-	dncp = cache_fromdvp(vp, NULL, 0);
+	cache_fromdvp(vp, NULL, 0, &dnch);
 	bzero(&nlc, sizeof(nlc));
 	newvp = NULLVP;
 
@@ -2524,14 +2524,14 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				md = mdsav2;
 				dp->nfs_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
-				if (dncp) {
+				if (dnch.ncp) {
 				    printf("NFS/READDIRPLUS, ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
-				    ncp = cache_nlookup(dncp, &nlc);
-				    cache_setunresolved(ncp);
-				    cache_setvp(ncp, newvp);
-				    cache_put(ncp);
+				    nch = cache_nlookup(&dnch, &nlc);
+				    cache_setunresolved(&nch);
+				    cache_setvp(&nch, newvp);
+				    cache_put(&nch);
 				} else {
 				    printf("NFS/READDIRPLUS, UNABLE TO ENTER"
 					" %*.*s\n",
@@ -2597,8 +2597,8 @@ nfsmout:
 			vput(newvp);
 		newvp = NULLVP;
 	}
-	if (dncp)
-		cache_drop(dncp);
+	if (dnch.ncp)
+		cache_drop(&dnch);
 	return (error);
 }
 

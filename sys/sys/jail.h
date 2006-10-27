@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.8 2006/10/27 04:56:33 dillon Exp $
  *
  */
 
@@ -38,7 +38,12 @@ int jail_attach(int);
 
 #else /* _KERNEL */
 
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
+#endif
+#ifndef _SYS_VARSYM_H_
 #include <sys/varsym.h>
+#endif
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_PRISON);
@@ -56,7 +61,7 @@ struct prison {
 	LIST_ENTRY(prison) pr_list;			/* all prisons */
 	int		pr_id;				/* prison id */
 	int		pr_ref;				/* reference count */
-	struct namecache *pr_root;			/* namecache entry of root */
+	struct nchandle pr_root;			/* namecache entry of root */
 	char 		pr_host[MAXHOSTNAMELEN];	/* host name */
 	uint32_t	pr_ip;				/* IP address */
 	void		*pr_linux;			/* Linux ABI emulation */

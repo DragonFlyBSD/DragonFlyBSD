@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.42 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.43 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -433,7 +433,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	if (error == 0)
 		error = nlookup(nd);
 	if (error == 0)
-		error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+		error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
 	nlookup_done(nd);
 	if (error)
 		goto fail;

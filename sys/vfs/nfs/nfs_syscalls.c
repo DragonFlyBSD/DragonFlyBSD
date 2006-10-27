@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.26 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.27 2006/10/27 04:56:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,7 +176,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 		if (error == 0)
 			error = nlookup(&nd);
 		if (error == 0)
-			error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);   
+			error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);   
 		nlookup_done(&nd);
 		if (error)
 			return (error);

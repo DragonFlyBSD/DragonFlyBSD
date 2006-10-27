@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.27 2006/09/19 16:06:12 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.28 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -121,11 +121,17 @@ struct namecache {
     int		nc_timeout;		/* compared against ticks, or 0 */
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
-    struct mount *nc_mount;		/* associated mount for vopops */
     int64_t	nc_fsmid;		/* filesystem modified id */
 };
 
-typedef struct namecache *namecache_t;
+/*
+ * Namecache handles include a mount reference allowing topologies
+ * to be replicated with mount overlays (nullfs mounts).
+ */
+struct nchandle {
+    struct namecache *ncp;		/* ncp in underlying filesystem */
+    struct mount *mount;		/* mount pt (possible overlay) */
+};
 
 /*
  * Flags in namecache.nc_flag (u_char)
@@ -133,11 +139,11 @@ typedef struct namecache *namecache_t;
 #define NCF_LOCKED	0x0001	/* locked namespace */
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
 #define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
-#define NCF_MOUNTPT	0x0008	/* mount point */
-#define NCF_ROOT	0x0010	/* namecache root (static) */
+#define NCF_ISMOUNTPT	0x0008	/* someone may have mounted on us here */
+#define NCF_UNUSED10	0x0010
 #define NCF_HASHED	0x0020	/* namecache entry in hash table */
 #define NCF_LOCKREQ	0x0040
-#define NCF_MOUNTEDHERE	0x0080	/* has child marked NCF_MOUNTPT */
+#define NCF_UNUSED20	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
@@ -156,38 +162,38 @@ struct componentname;
 struct nlcomponent;
 struct mount;
 
-void	cache_lock(struct namecache *ncp);
-int	cache_lock_nonblock(struct namecache *ncp);
-void	cache_unlock(struct namecache *ncp);
-void	cache_setvp(struct namecache *ncp, struct vnode *vp);
-void	cache_settimeout(struct namecache *ncp, int nticks);
-void	cache_setunresolved(struct namecache *ncp);
-void	cache_setmountpt(struct namecache *ncp, struct mount *mp);
-void	cache_clrmountpt(struct namecache *ncp);
-struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
-struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
-struct mount *cache_findmount(struct namecache *par);
-int	cache_inval(struct namecache *ncp, int flags);
+void	cache_lock(struct nchandle *nch);
+int	cache_lock_nonblock(struct nchandle *nch);
+void	cache_unlock(struct nchandle *nch);
+void	cache_setvp(struct nchandle *nch, struct vnode *vp);
+void	cache_settimeout(struct nchandle *nch, int nticks);
+void	cache_setunresolved(struct nchandle *nch);
+void	cache_clrmountpt(struct nchandle *nch);
+struct nchandle cache_nlookup(struct nchandle *nch, struct nlcomponent *nlc);
+void	cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp);
+struct mount *cache_findmount(struct nchandle *nch);
+int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
-void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
+void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 
-
-int	cache_resolve(struct namecache *ncp, struct ucred *cred);
+int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
-void	cache_validate(struct namecache *ncp);
-int	cache_get_nonblock(struct namecache *ncp);
+int	cache_get_nonblock(struct nchandle *nch);
 void	cache_cleanneg(int count);
-struct namecache *cache_get(struct namecache *ncp);
-struct namecache *cache_hold(struct namecache *ncp);
-void	cache_put(struct namecache *ncp);
-void	cache_drop(struct namecache *ncp);
-void	cache_rename(struct namecache *fncp, struct namecache *tncp);
-int	cache_vget(struct namecache *, struct ucred *, int, struct vnode **);
-int	cache_vref(struct namecache *, struct ucred *, struct vnode **);
-struct namecache *cache_fromdvp(struct vnode *, struct ucred *, int);
-int	cache_fullpath(struct proc *, struct namecache *, char **, char **);
-void	cache_update_fsmid(struct namecache *);
+void	cache_get(struct nchandle *nch, struct nchandle *target);
+struct nchandle *cache_hold(struct nchandle *nch);
+void	cache_copy(struct nchandle *nch, struct nchandle *target);
+void	cache_changemount(struct nchandle *nch, struct mount *mp);
+void	cache_put(struct nchandle *nch);
+void	cache_drop(struct nchandle *nch);
+void	cache_zero(struct nchandle *nch);
+void	cache_rename(struct nchandle *fnch, struct nchandle *tnch);
+int	cache_vget(struct nchandle *, struct ucred *, int, struct vnode **);
+int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
+int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);
+int	cache_fullpath(struct proc *, struct nchandle *, char **, char **);
+void	cache_update_fsmid(struct nchandle *);
 void	cache_update_fsmid_vp(struct vnode *);
 int64_t cache_sync_fsmid_vp(struct vnode *);
 int	cache_check_fsmid_vp(struct vnode *, int64_t *);

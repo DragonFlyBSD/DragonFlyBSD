@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.41 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.42 2006/10/27 04:56:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -212,7 +212,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 	nlookup_done(&nd);
 	if (error)
 		return (error);

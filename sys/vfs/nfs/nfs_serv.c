@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.40 2006/09/19 16:06:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.41 2006/10/27 04:56:34 dillon Exp $
  */
 
 /*
@@ -424,7 +424,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nlookupdata nd;
 	struct vnode *vp;
 	struct vnode *dirp;
-	struct namecache *ncp;
+	struct nchandle nch;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	caddr_t cp;
@@ -492,11 +492,11 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * via the original nd.  Confused?  You aren't alone!
 			 */
 			vn_unlock(vp);
-			ncp = cache_hold(nd.nl_ncp);
+			cache_copy(&nd.nl_nch, &nch);
 			nlookup_done(&nd);
 			error = nlookup_init_raw(&nd, nfs_pub.np_index,
-						UIO_SYSSPACE, 0, cred, ncp);
-			cache_drop(ncp);
+						UIO_SYSSPACE, 0, cred, &nch);
+			cache_drop(&nch);
 			if (error == 0)
 				error = nlookup(&nd);
 
@@ -512,7 +512,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 					vrele(dirp);
 				dirp = vp;
 				vp = NULL;
-				error = cache_vget(nd.nl_ncp, nd.nl_cred,
+				error = cache_vget(&nd.nl_nch, nd.nl_cred,
 							LK_EXCLUSIVE, &vp);
 				KKASSERT(error == 0);
 			}
@@ -1663,7 +1663,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		if (vap->va_type == VREG || vap->va_type == VSOCK) {
 			vput(dvp);
 			dvp = NULL;
-			error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
+			error = VOP_NCREATE(&nd.nl_nch, &vp, nd.nl_cred, vap);
 			if (error == 0) {
 				if (exclusive_flag) {
 					exclusive_flag = 0;
@@ -1692,7 +1692,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 			vput(dvp);
 			dvp = NULL;
-			error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
+			error = VOP_NMKNOD(&nd.nl_nch, &vp, nd.nl_cred, vap);
 			if (error)
 				goto nfsmreply0;
 #if 0
@@ -1880,12 +1880,12 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
 	if (vtyp == VSOCK) {
-		error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
+		error = VOP_NCREATE(&nd.nl_nch, &vp, nd.nl_cred, vap);
 	} else {
 		if (vtyp != VFIFO && (error = suser_cred(cred, 0)))
 			goto out;
 
-		error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
+		error = VOP_NMKNOD(&nd.nl_nch, &vp, nd.nl_cred, vap);
 		if (error)
 			goto out;
 
@@ -2036,7 +2036,7 @@ out:
 				vput(vp);
 				vp = NULL;
 			}
-			error = VOP_NREMOVE(nd.nl_ncp, nd.nl_cred);
+			error = VOP_NREMOVE(&nd.nl_nch, nd.nl_cred);
 		}
 	}
 	if (dirp && v3)
@@ -2132,7 +2132,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * the target ncp.
 	 */
 	KKASSERT(fromnd.nl_flags & NLC_NCPISLOCKED);
-	cache_unlock(fromnd.nl_ncp);
+	cache_unlock(&fromnd.nl_nch);
 	fromnd.nl_flags &= ~NLC_NCPISLOCKED;
 	nfsm_srvmtofh(tfhp);
 	nfsm_strsiz(len2, NFS_MAXNAMLEN);
@@ -2151,22 +2151,22 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * relock the source
 	 */
-	if (cache_lock_nonblock(fromnd.nl_ncp) == 0) {
-		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
-	} else if (fromnd.nl_ncp > tond.nl_ncp) {
-		cache_lock(fromnd.nl_ncp);
-		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
+	if (cache_lock_nonblock(&fromnd.nl_nch) == 0) {
+		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
+	} else if (fromnd.nl_nch.ncp > tond.nl_nch.ncp) {
+		cache_lock(&fromnd.nl_nch);
+		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
 	} else {
-		cache_unlock(tond.nl_ncp);
-		cache_lock(fromnd.nl_ncp);
-		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
-		cache_lock(tond.nl_ncp);
-		cache_resolve(tond.nl_ncp, tond.nl_cred);
+		cache_unlock(&tond.nl_nch);
+		cache_lock(&fromnd.nl_nch);
+		cache_resolve(&fromnd.nl_nch, fromnd.nl_cred);
+		cache_lock(&tond.nl_nch);
+		cache_resolve(&tond.nl_nch, tond.nl_cred);
 	}
 	fromnd.nl_flags |= NLC_NCPISLOCKED;
 
-	tvp = tond.nl_ncp->nc_vp;
-	fvp = fromnd.nl_ncp->nc_vp;
+	tvp = tond.nl_nch.ncp->nc_vp;
+	fvp = fromnd.nl_nch.ncp->nc_vp;
 
 	if (tvp != NULL) {
 		if (fvp->v_type == VDIR && tvp->v_type != VDIR) {
@@ -2182,7 +2182,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				error = ENOTDIR;
 			goto out;
 		}
-		if (tvp->v_type == VDIR && (tond.nl_ncp->nc_flag & NCF_MOUNTPT)) {
+		if (tvp->v_type == VDIR && (tond.nl_nch.ncp->nc_flag & NCF_ISMOUNTPT)) {
 			if (v3)
 				error = EXDEV;
 			else
@@ -2190,21 +2190,21 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			goto out;
 		}
 	}
-	if (fvp->v_type == VDIR && (fromnd.nl_ncp->nc_flag & NCF_MOUNTPT)) {
+	if (fvp->v_type == VDIR && (fromnd.nl_nch.ncp->nc_flag & NCF_ISMOUNTPT)) {
 		if (v3)
 			error = EXDEV;
 		else
 			error = ENOTEMPTY;
 		goto out;
 	}
-	if (fromnd.nl_ncp->nc_mount != tond.nl_ncp->nc_mount) {
+	if (fromnd.nl_nch.mount != tond.nl_nch.mount) {
 		if (v3)
 			error = EXDEV;
 		else
 			error = ENOTEMPTY;
 		goto out;
 	}
-	if (fromnd.nl_ncp == tond.nl_ncp->nc_parent) {
+	if (fromnd.nl_nch.ncp == tond.nl_nch.ncp->nc_parent) {
 		if (v3)
 			error = EINVAL;
 		else
@@ -2217,8 +2217,8 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * for a match against the source.
 	 */
 	if (error == 0) {
-		for (ncp = tond.nl_ncp; ncp; ncp = ncp->nc_parent) {
-			if (fromnd.nl_ncp == ncp) {
+		for (ncp = tond.nl_nch.ncp; ncp; ncp = ncp->nc_parent) {
+			if (fromnd.nl_nch.ncp == ncp) {
 				error = EINVAL;
 				break;
 			}
@@ -2230,7 +2230,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * same vnode with the same name in the same directory),
 	 * then there is nothing to do.
 	 */
-	if (fromnd.nl_ncp == tond.nl_ncp)
+	if (fromnd.nl_nch.ncp == tond.nl_nch.ncp)
 		error = -1;
 out:
 	if (!error) {
@@ -2239,7 +2239,7 @@ out:
 		 * locks prior to returning so we need to clear the pointers
 		 * to bypass cleanup code later on.
 		 */
-		error = VOP_NRENAME(fromnd.nl_ncp, tond.nl_ncp, tond.nl_cred);
+		error = VOP_NRENAME(&fromnd.nl_nch, &tond.nl_nch, tond.nl_cred);
 	} else {
 		if (error == -1)
 			error = 0;
@@ -2339,7 +2339,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = EXDEV;
 out:
 	if (!error) {
-		error = VOP_NLINK(nd.nl_ncp, xp, nd.nl_cred);
+		error = VOP_NLINK(&nd.nl_nch, xp, nd.nl_cred);
 	}
 	/* fall through */
 
@@ -2446,7 +2446,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
-	error = VOP_NSYMLINK(nd.nl_ncp, &vp, nd.nl_cred, vap, pathcp);
+	error = VOP_NSYMLINK(&nd.nl_nch, &vp, nd.nl_cred, vap, pathcp);
 	if (error == 0) {
 		bzero((caddr_t)fhp, sizeof(nfh));
 		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
@@ -2601,7 +2601,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
-	error = VOP_NMKDIR(nd.nl_ncp, &vp, nd.nl_cred, vap);
+	error = VOP_NMKDIR(&nd.nl_nch, &vp, nd.nl_cred, vap);
 
 	if (error == 0) {
 		bzero((caddr_t)fhp, sizeof(nfh));
@@ -2702,7 +2702,7 @@ out:
 	if (!error) {
 		vput(vp);
 		vp = NULL;
-		error = VOP_NRMDIR(nd.nl_ncp, nd.nl_cred);
+		error = VOP_NRMDIR(&nd.nl_nch, nd.nl_cred);
 	}
 	nlookup_done(&nd);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.4 2005/03/09 06:11:22 hmp Exp $
+ * $DragonFly: src/sys/sys/nlookup.h,v 1.5 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
@@ -40,11 +40,13 @@
 #ifndef _SYS_UIO_H_
 #include <sys/uio.h>
 #endif
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
+#endif
 
 struct vnode;
 struct vattr;
 struct mount;
-struct namecache;
 struct thread;
 struct ucred;
 
@@ -66,14 +68,14 @@ struct nlcomponent {
  */
 struct nlookupdata {
 	/*
-	 * These fields are setup by nlookup_init() with nl_ncp set to
+	 * These fields are setup by nlookup_init() with nl_nch set to
 	 * the current directory if a process or the root directory if
 	 * a pure thread.  The result from nlookup() will be returned in
-	 * nl_ncp.
+	 * nl_nch.
 	 */
-	struct namecache *nl_ncp;	/* start-point and result */
-	struct namecache *nl_rootncp;	/* root directory */
-	struct namecache *nl_jailncp;	/* jail directory */
+	struct nchandle nl_nch;		/* start-point and result */
+	struct nchandle nl_rootnch;	/* root directory */
+	struct nchandle nl_jailnch;	/* jail directory */
 
 	char 		*nl_path;	/* path buffer */
 	struct thread	*nl_td;		/* thread requesting the nlookup */
@@ -106,17 +108,17 @@ struct nlookupdata {
 #ifdef _KERNEL
 
 int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
-int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct namecache *);
+int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *);
 void nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred);
 void nlookup_zero(struct nlookupdata *);
 void nlookup_done(struct nlookupdata *);
-struct namecache *nlookup_simple(const char *str, enum uio_seg seg, 
+struct nchandle nlookup_simple(const char *str, enum uio_seg seg, 
 				int niflags, int *error);
-int nlookup_mp(struct mount *mp, struct namecache **ncpp);
+int nlookup_mp(struct mount *mp, struct nchandle *nch);
 int nlookup(struct nlookupdata *);
-int nreadsymlink(struct nlookupdata *nd, struct namecache *ncp, 
+int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 				struct nlcomponent *nlc);
-int naccess(struct namecache *ncp, int vmode, struct ucred *cred);
+int naccess(struct nchandle *nch, int vmode, struct ucred *cred);
 int naccess_va(struct vattr *va, int vmode, struct ucred *cred);
 
 #endif

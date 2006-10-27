@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.71 2006/09/19 16:06:12 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.72 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -372,7 +372,7 @@ extern	int		vttoif_tab[];
 struct objcache;
 
 extern	struct vnode *rootvnode;	/* root (i.e. "/") vnode */
-extern  struct namecache *rootncp;	/* root (i.e. "/") namecache */
+extern  struct nchandle rootnch;	/* root (i.e. "/") namecache */
 extern	int desiredvnodes;		/* number of vnodes desired */
 extern	time_t syncdelay;		/* max time to delay syncing data */
 extern	time_t filedelay;		/* time to delay syncing files */
@@ -507,8 +507,8 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
-int	vn_writechk (struct vnode *vp, struct namecache *ncp);
-int	ncp_writechk(struct namecache *ncp);
+int	vn_writechk (struct vnode *vp, struct nchandle *nch);
+int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);

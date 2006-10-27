@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.50 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.51 2006/10/27 04:56:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -285,7 +285,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 	nlookup_done(&nd);
 	if (error)
 		goto error_1;

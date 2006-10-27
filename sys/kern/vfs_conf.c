@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.20 2006/09/10 01:26:39 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.21 2006/10/27 04:56:31 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ MALLOC_DEFINE(M_MOUNT, "mount", "vfs mount structure");
 #define ROOTNAME	"root_device"
 
 struct vnode	*rootvnode;
-struct namecache *rootncp;
+struct nchandle rootnch;
 
 /* 
  * The root specifiers we will try if RB_CDROM is specified.  Note that

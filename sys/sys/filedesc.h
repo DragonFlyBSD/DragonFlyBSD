@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.19 2006/05/26 02:26:26 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.20 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -46,6 +46,9 @@
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
+#endif
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
 #endif
 
 /*
@@ -65,7 +68,6 @@
 
 struct file;
 struct klist;
-struct namecache;
 
 struct fdnode {
 	struct file *fp;
@@ -81,9 +83,9 @@ struct filedesc {
 	struct	vnode *fd_cdir;		/* current directory (phaseout) */
 	struct	vnode *fd_rdir;		/* root directory (phaseout) */
 	struct	vnode *fd_jdir;		/* jail root directory (phaseout) */
-	struct  namecache *fd_ncdir;	/* current directory */
-	struct  namecache *fd_nrdir;	/* root directory */
-	struct  namecache *fd_njdir;	/* jail directory */
+	struct  nchandle fd_ncdir;	/* current directory */
+	struct  nchandle fd_nrdir;	/* root directory */
+	struct  nchandle fd_njdir;	/* jail directory */
 	int	fd_nfiles;		/* number of open files allocated */
 	int	fd_lastfile;		/* high-water mark of fd_files */
 	int	fd_freefile;		/* approx. next free file */

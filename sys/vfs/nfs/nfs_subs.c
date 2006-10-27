@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.42 2006/09/03 18:52:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.43 2006/10/27 04:56:34 dillon Exp $
  */
 
 /*
@@ -1433,7 +1433,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
  * dirp may be set whether an error is returned or not, and must be 
  * released by the caller.
  *
- * On return nd->nl_ncp usually points to the target ncp, which may represent
+ * On return nd->nl_nch usually points to the target ncp, which may represent
  * a negative hit.
  *
  * NOTE: the caller must call nlookup_done(nd) unconditionally on return
@@ -1452,7 +1452,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	struct mbuf *md;
 	char *fromcp, *tocp, *cp;
 	char *namebuf;
-	struct namecache *ncp;
+	struct nchandle nch;
 	struct vnode *dp;
 	int error, rdonly;
 
@@ -1587,12 +1587,10 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 * one.  If this fails the directory has probably been removed while
 	 * the target was chdir'd into it and any further lookup will fail.
 	 */
-	if ((ncp = cache_fromdvp(dp, cred, 1)) == NULL) {
-		error = EINVAL;
+	if ((error = cache_fromdvp(dp, cred, 1, &nch)) != 0)
 		goto out;
-	}
-	nlookup_init_raw(nd, namebuf, UIO_SYSSPACE, flags, cred, ncp);
-	cache_drop(ncp);
+	nlookup_init_raw(nd, namebuf, UIO_SYSSPACE, flags, cred, &nch);
+	cache_drop(&nch);
 
 	/*
 	 * Ok, do the lookup.
@@ -1601,22 +1599,22 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 
 	/*
 	 * If no error occured return the requested dvpp and vpp.  If
-	 * NLC_CREATE was specified nd->nl_ncp may represent a negative
+	 * NLC_CREATE was specified nd->nl_nch may represent a negative
 	 * cache hit in which case we do not attempt to obtain the vp.
 	 */
 	if (error == 0) {
-		ncp = nd->nl_ncp;
 		if (dvpp) {
-			if (ncp->nc_parent &&
-			    ncp->nc_parent->nc_mount == ncp->nc_mount) {
-				error = cache_vget(ncp->nc_parent, nd->nl_cred,
-						LK_EXCLUSIVE, dvpp);
+			if (nch.ncp->nc_parent) {
+				nch = nd->nl_nch;
+				nch.ncp = nch.ncp->nc_parent;
+				error = cache_vget(&nch, nd->nl_cred,
+						   LK_EXCLUSIVE, dvpp);
 			} else {
 				error = ENXIO;
 			}
 		}
-		if (vpp && ncp->nc_vp) {
-			error = cache_vget(ncp, nd->nl_cred, LK_EXCLUSIVE, vpp);
+		if (vpp && nd->nl_nch.ncp->nc_vp) {
+			error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, vpp);
 		}
 		if (error) {
 			if (dvpp && *dvpp) {

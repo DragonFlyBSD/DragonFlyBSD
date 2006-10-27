@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.30 2006/10/27 04:56:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -606,7 +606,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_LOCKVP|NLC_CREATE);
 	if (error == 0)
 		error = nlookup(&nd);
-	if (error == 0 && nd.nl_ncp->nc_vp != NULL)
+	if (error == 0 && nd.nl_nch.ncp->nc_vp != NULL)
 		error = EADDRINUSE;
 	if (error)
 		goto done;
@@ -614,7 +614,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	VATTR_NULL(&vattr);
 	vattr.va_type = VSOCK;
 	vattr.va_mode = (ACCESSPERMS & ~p->p_fd->fd_cmask);
-	error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, &vattr);
+	error = VOP_NCREATE(&nd.nl_nch, &vp, nd.nl_cred, &vattr);
 	if (error == 0) {
 		vp->v_socket = unp->unp_socket;
 		unp->unp_vnode = vp;
@@ -651,7 +651,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	nlookup_done(&nd);
 	if (error)
 		return (error);

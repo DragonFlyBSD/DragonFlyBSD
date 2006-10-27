@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.29 2006/09/19 16:06:12 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.30 2006/10/27 04:56:33 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -52,6 +52,9 @@
 #endif
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
+#endif
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
 #endif
 #endif
 
@@ -157,7 +160,9 @@ struct mount {
 	struct vop_ops  *mnt_vn_norm_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_spec_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
-	struct namecache *mnt_ncp;		/* NCF_MNTPT ncp */
+	struct nchandle mnt_ncmountpt;		/* mount point */
+	struct nchandle mnt_ncmounton;		/* mounted on */
+	int		mnt_refs;		/* nchandle references */
 
 	struct journallst mnt_jlist;		/* list of active journals */
 	u_int8_t	*mnt_jbitmap;		/* streamid bitmap */
@@ -240,6 +245,7 @@ struct mount {
  * with the unmount attempt (used by NFS).
  */
 #define MNTK_UNMOUNTF	0x00000001	/* forced unmount in progress */
+#define MNTK_NCALIASED	0x00800000	/* namecached aliased */
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
 #define MNTK_WANTRDWR	0x04000000	/* upgrade to read/write requested */
