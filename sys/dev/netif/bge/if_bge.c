@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.53 2006/03/23 13:45:12 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.53.2.1 2006/10/28 12:33:47 sephe Exp $
  *
  */
 
@@ -1774,7 +1774,7 @@ bge_detach(device_t dev)
 	}
 	if (sc->bge_tbi)
 		ifmedia_removeall(&sc->bge_ifmedia);
-	if (sc->bge_miibus);
+	if (sc->bge_miibus)
 		device_delete_child(dev, sc->bge_miibus);
 	bus_generic_detach(dev);
 
