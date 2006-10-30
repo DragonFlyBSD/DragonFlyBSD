@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.137 2006/10/27 23:02:59 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.138 2006/10/30 10:02:10 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -449,6 +449,8 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_proc.9.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/NgSendMsgReply.3.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/kobj_class_compile_static.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/include/machine/bus{,_memio,_pio}.h"
+	csh -c "rm -f ${DESTDIR}/usr/include/machine/resource.h"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
