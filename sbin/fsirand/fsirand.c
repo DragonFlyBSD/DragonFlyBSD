@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.9 2006/10/31 20:22:22 pavalos Exp $
  */
 
 #include <sys/disklabel.h>
@@ -249,7 +249,7 @@ fsirand(char *device)
 		for (n = 0; n < sblock->fs_ipg; n++, inumber++) {
 			if (inumber >= ROOTINO) {
 				if (printonly)
-					printf("ino %d gen %x\n", inumber,
+					printf("ino %lld gen %x\n", inumber,
 					    inodebuf[n].di_gen);
 				else
 					inodebuf[n].di_gen = random();
