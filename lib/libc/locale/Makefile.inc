@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.11 2005/08/10 13:42:28 joerg Exp $
+# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.12 2006/11/02 19:53:56 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/locale
 
@@ -17,6 +17,7 @@ MAN+=	nl_langinfo.3 setlocale.3
 MAN+=	btowc.3 iswalnum.3 iswctype.3 towlower.3 towctrans.3 mblen.3 mbrlen.3
 MAN+=	mbrtowc.3 mbsinit.3 mbsrtowcs.3 mbstowcs.3 mbtowc.3 wcrtomb.3
 MAN+=	wcsftime.3 wcsrtombs.3 wcstombs.3 wctob.3 wctomb.3 wctrans.3 wctype.3
+MAN+=	wcstod.3 wcstol.3
 
 MLINKS+=iswalnum.3 iswalpha.3 iswalnum.3 iswblank.3
 MLINKS+=iswalnum.3 iswcntrl.3 iswalnum.3 iswdigit.3
@@ -25,4 +26,6 @@ MLINKS+=iswalnum.3 iswprint.3 iswalnum.3 iswpunct.3
 MLINKS+=iswalnum.3 iswspace.3 iswalnum.3 iswupper.3
 MLINKS+=iswalnum.3 iswxdigit.3 towlower.3 towupper.3
 MLINKS+=setlocale.3 localeconv.3
+MLINKS+=wcstol.3 wcstoul.3 wcstol.3 wcstoll.3 wcstol.3 wcstoull.3
+MLINKS+=wcstol.3 wcstoimax.3 wcstol.3 wcstoumax.3
 .endif
