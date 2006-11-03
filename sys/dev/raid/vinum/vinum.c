@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.18 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.19 2006/11/03 16:33:38 corecode Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -65,6 +65,7 @@ struct dev_ops vinum_ops =
 	.d_poll =	vinumpoll,
 	.d_strategy =	vinumstrategy,
 	.d_dump =	vinumdump,
+	.d_psize =	vinumsize,
 };
 
 /* Called by main() during pseudo-device attachment. */
