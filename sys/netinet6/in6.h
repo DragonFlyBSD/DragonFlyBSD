@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.7 2006/11/02 05:16:35 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.8 2006/11/03 00:54:55 hsu Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -180,6 +180,16 @@ extern const struct in6_addr in6mask128;
 /*
  * Macros started with IPV6_ADDR is KAME local
  */
+#if BYTE_ORDER == BIG_ENDIAN
+#define _IPV6_ADDR_INT16_UL_MASK	0xffc0
+#define _IPV6_ADDR_INT16_ULL		0xfe80
+#define _IPV6_ADDR_INT16_USL		0xfec0
+#else
+#define _IPV6_ADDR_INT16_UL_MASK	0xc0ff
+#define _IPV6_ADDR_INT16_ULL		0x80fe
+#define _IPV6_ADDR_INT16_USL		0xc0fe
+#endif
+
 #ifdef _KERNEL	/* XXX nonstandard */
 #if BYTE_ORDER == BIG_ENDIAN
 #define IPV6_ADDR_INT32_ONE	1
@@ -187,9 +197,6 @@ extern const struct in6_addr in6mask128;
 #define IPV6_ADDR_INT32_MNL	0xff010000
 #define IPV6_ADDR_INT32_MLL	0xff020000
 #define IPV6_ADDR_INT32_SMP	0x0000ffff
-#define IPV6_ADDR_INT16_ULL	0xfe80
-#define IPV6_ADDR_INT16_USL	0xfec0
-#define IPV6_ADDR_INT16_UL_MASK	0xffc0
 #define IPV6_ADDR_INT16_MLL	0xff02
 #elif BYTE_ORDER == LITTLE_ENDIAN
 #define IPV6_ADDR_INT32_ONE	0x01000000
@@ -197,11 +204,10 @@ extern const struct in6_addr in6mask128;
 #define IPV6_ADDR_INT32_MNL	0x000001ff
 #define IPV6_ADDR_INT32_MLL	0x000002ff
 #define IPV6_ADDR_INT32_SMP	0xffff0000
-#define IPV6_ADDR_INT16_ULL	0x80fe
-#define IPV6_ADDR_INT16_USL	0xc0fe
-#define IPV6_ADDR_INT16_UL_MASK	0xc0ff
 #define IPV6_ADDR_INT16_MLL	0x02ff
 #endif
+#define IPV6_ADDR_INT16_ULL	_IPV6_ADDR_INT16_ULL
+#define IPV6_ADDR_INT16_USL	_IPV6_ADDR_INT16_USL
 #endif
 
 /*
@@ -300,9 +306,9 @@ extern const struct in6_addr in6addr_linklocal_allnodes;
  * Note that we must check topmost 10 bits only, not 16 bits (see RFC2373).
  */
 #define IN6_IS_ADDR_LINKLOCAL(a)					\
-	(((a)->_s6_addr16[0] & IPV6_ADDR_INT16_UL_MASK) == IPV6_ADDR_INT16_ULL)
+    (((a)->_s6_addr16[0] & _IPV6_ADDR_INT16_UL_MASK) == _IPV6_ADDR_INT16_ULL)
 #define IN6_IS_ADDR_SITELOCAL(a)					\
-	(((a)->_s6_addr16[0] & IPV6_ADDR_INT16_UL_MASK) == IPV6_ADDR_INT16_USL)
+    (((a)->_s6_addr16[0] & _IPV6_ADDR_INT16_UL_MASK) == _IPV6_ADDR_INT16_USL)
 
 /*
  * Multicast
