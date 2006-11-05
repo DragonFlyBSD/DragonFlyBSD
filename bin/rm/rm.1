@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)rm.1	8.5 (Berkeley) 12/5/94
 .\" $FreeBSD: src/bin/rm/rm.1,v 1.19.2.6 2003/02/04 22:10:42 trhodes Exp $
-.\" $DragonFly: src/bin/rm/rm.1,v 1.7 2006/02/17 19:33:31 swildner Exp $
+.\" $DragonFly: src/bin/rm/rm.1,v 1.8 2006/11/05 02:26:39 dillon Exp $
 .\"
 .Dd January 28, 1999
 .Dt RM 1
@@ -92,7 +92,10 @@ yet provides almost the same level of protection against mistakes.
 .It Fl P
 Overwrite regular files before deleting them.
 Files are overwritten three times, first with the byte pattern 0xff,
-then 0x00, and then 0xff again, before they are deleted.
+then 0x00, and then 0xff again, before they are deleted. 
+.Pp
+A file with a link count greater then one will neither be overwritten or
+removed, and a warning will be issued.
 .It Fl R
 Attempt to remove the file hierarchy rooted in each file argument.
 The
@@ -211,4 +214,6 @@ option assumes that the underlying file system is a fixed-block file
 system.
 UFS is a fixed-block file system, LFS is not.
 In addition, only regular files are overwritten, other types of files
-are not.
+are not.  Hardlinked regular files will not be overwritten or removed,
+possibly leading to unintended behavior.  It is arguable which is the MORE
+unintended behavior.

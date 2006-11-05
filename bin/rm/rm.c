@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.16 2006/06/19 12:08:25 corecode Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.17 2006/11/05 02:26:39 dillon Exp $
  */
 
 #include <sys/stat.h>
@@ -402,6 +402,11 @@ rm_overwrite(const char *file, struct stat *sbp)
 	if (!S_ISREG(sbp->st_mode)) {
 		warnx("%s: cannot overwrite a non-regular file", file);
 		return (1);
+	}
+	if (sbp->st_nlink > 1) {
+		warnx("%s (inode %u): not overwritten due to multiple links",
+		      file, sbp->st_ino);
+		return (0);
 	}
 	if ((fd = open(file, O_WRONLY, 0)) == -1)
 		goto err;
