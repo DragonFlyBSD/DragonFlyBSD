@@ -27,11 +27,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.8 2006/11/07 06:43:23 dillon Exp $
  */
 
-#ifndef _MACHINE_VM86_H_
-#define _MACHINE_VM86_H_
+#ifndef _CPU_VM86_H_
+#define _CPU_VM86_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -167,4 +167,4 @@ extern int vm86_getptr (struct vm86context *, vm_offset_t,
 
 extern vm_offset_t vm86_getaddr (struct vm86context *, u_short, u_short);
 
-#endif /* _MACHINE_VM86_H_ */
+#endif /* _CPU_VM86_H_ */

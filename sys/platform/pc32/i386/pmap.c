@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.60 2006/10/21 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.61 2006/11/07 06:43:24 dillon Exp $
  */
 
 /*
@@ -101,7 +101,7 @@
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
 #include <machine/smp.h>
-#include <arch/apic/apicreg.h>
+#include <machine_base/apic/apicreg.h>
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>

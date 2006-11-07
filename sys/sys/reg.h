@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,45 +33,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
+ * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
+ * $DragonFly: src/sys/sys/reg.h,v 1.1 2006/11/07 06:43:24 dillon Exp $
  */
 
-#ifndef _MACHINE_IPL_H_
-#define	_MACHINE_IPL_H_
+#ifndef _MACHINE_REG_H_
+#define	_MACHINE_REG_H_
 
-#include <machine_base/apic/apic_ipl.h>
-#include <machine_base/icu/icu_ipl.h>
+#include <cpu/reg.h>
+
+#ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct proc;
+struct lwp;
 
 /*
- * Software interrupt bit numbers in priority order.  The priority only
- * determines which swi will be dispatched next; a higher priority swi
- * may be dispatched when a nested h/w interrupt handler returns.
+ * XXX these interfaces are MI, so they should be declared in a MI place.
  */
-#define	SWI_TTY		(FIRST_SOFTINT + 0)
-#define	SWI_NET		(FIRST_SOFTINT + 1)
-#define	SWI_CAMNET	(FIRST_SOFTINT + 2)
-#define	SWI_CRYPTO	SWI_CAMNET
-#define	SWI_CAMBIO	(FIRST_SOFTINT + 3)
-#define	SWI_VM		(FIRST_SOFTINT + 4)
-#define	SWI_TQ		(FIRST_SOFTINT + 5)
-#define	SWI_CLOCK	(FIRST_SOFTINT + 6)
+int	set_fpregs (struct lwp *, struct fpreg *);
+int	set_regs (struct lwp *lp, struct reg *regs);
+void	setregs (struct lwp *, u_long, u_long, u_long);
+int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
 
-/*
- * Corresponding interrupt-pending bits for spending.  NOTE: i386 only
- * supports 32 software interupts (due to its gd_spending mask).
- */
-#define	SWI_TTY_PENDING		(1 << (SWI_TTY - FIRST_SOFTINT))
-#define	SWI_NET_PENDING		(1 << (SWI_NET - FIRST_SOFTINT))
-#define	SWI_CAMNET_PENDING	(1 << (SWI_CAMNET - FIRST_SOFTINT))
-#define	SWI_CRYPTO_PENDING	SWI_CAMNET_PENDING
-#define	SWI_CAMBIO_PENDING	(1 << (SWI_CAMBIO - FIRST_SOFTINT))
-#define	SWI_VM_PENDING		(1 << (SWI_VM - FIRST_SOFTINT))
-#define	SWI_TQ_PENDING		(1 << (SWI_TQ - FIRST_SOFTINT))
-#define	SWI_CLOCK_PENDING	(1 << (SWI_CLOCK - FIRST_SOFTINT))
+#endif
 
-#ifndef	LOCORE
-
-#endif /* !LOCORE */
-
-#endif /* !_MACHINE_IPL_H_ */
+#endif /* !_MACHINE_REG_H_ */

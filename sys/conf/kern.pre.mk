@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.2 2006/10/22 16:09:19 dillon Exp $
+# $DragonFly: src/sys/conf/kern.pre.mk,v 1.3 2006/11/07 06:43:22 dillon Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -9,6 +9,9 @@ KERNEL?=	kernel
 # build this target if none is specified on the command line
 .MAIN:	all
 
+# Set the platform and machine architectures
+#
+P=	${MACHINE}
 M=	${MACHINE_ARCH}
 
 SIZE?=		size
@@ -19,8 +22,18 @@ COPTFLAGS?=-O -pipe
 COPTFLAGS+= ${_CPUCFLAGS}
 .endif
 # don't use -I- so we can use proper source-relative locality for local 
-# includes
-INCLUDES= -nostdinc -I. -I$S -I$S/arch
+# includes.
+#
+# -I.  - this is to access the opt_*.h and use_*.h header files generated
+#	 in the kernel build directory.
+#
+# -Iinclude
+#	- this is used to access forwarding header files for
+#	  <machine/*.h> that exist in the cpu architecture but do not
+#	  exist in the platform (machine/) architecture.  This allows
+#	  the platform to trivially override the cpu header files.
+#
+INCLUDES= -nostdinc -I. -Iinclude -I$S
 # This hack is to allow kernel compiles to succeed on machines w/out srcdist
 .if exists($S/../include)
 INCLUDES+= -I$S/../include
@@ -64,18 +77,17 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
-GEN_CFILES= $S/arch/$M/$M/genassym.c
+GEN_CFILES= $S/machine/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
-SYSTEM_SFILES= $S/arch/$M/$M/locore.s
+SYSTEM_SFILES= $S/machine/$P/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_LD= @${LD} -Bdynamic -T $S/arch/$M/conf/ldscript.$M \
+SYSTEM_LD= @${LD} -Bdynamic -T $S/machine/$P/conf/ldscript.$M \
 	-export-dynamic -dynamic-linker /red/herring \
 	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
 SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \
 	${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
-SYSTEM_DEP+= $S/arch/$M/conf/ldscript.$M
-
+SYSTEM_DEP+= $S/machine/$P/conf/ldscript.$M
 
 # Normalize output files to make it absolutely crystal clear to
 # anyone examining the build directory.

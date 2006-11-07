@@ -35,11 +35,11 @@
  *
  *	from: @(#)tss.h	5.4 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/tss.h,v 1.11 1999/12/29 04:33:09 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/tss.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tss.h,v 1.5 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_TSS_H_
-#define _MACHINE_TSS_H_
+#ifndef _CPU_TSS_H_
+#define _CPU_TSS_H_
 
 /*
  * Intel 386 Context Data Type
@@ -81,5 +81,5 @@ struct i386tss {
 				/* XXX unimplemented .. i/o permission bitmap */
 };
 
-#endif /* _MACHINE_TSS_H_ */
+#endif /* _CPU_TSS_H_ */
 

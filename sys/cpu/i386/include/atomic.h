@@ -24,10 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.22 2006/10/01 12:09:29 victor Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.23 2006/11/07 06:43:22 dillon Exp $
  */
-#ifndef _MACHINE_ATOMIC_H_
-#define _MACHINE_ATOMIC_H_
+#ifndef _CPU_ATOMIC_H_
+#define _CPU_ATOMIC_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -367,4 +367,4 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 }
 #endif	/* KLD_MODULE */
 
-#endif /* ! _MACHINE_ATOMIC_H_ */
+#endif /* ! _CPU_ATOMIC_H_ */

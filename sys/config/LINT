@@ -3,19 +3,18 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.93 2006/09/05 15:38:58 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.94 2006/11/07 06:43:22 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
 # this file as required.
 #
 
+# These directives are mandatory.  The machine directive specifies the
+# platform and the machine_arch directive specifies the cpu architecture.
 #
-# This directive is mandatory; it defines the architecture to be
-# configured for; in this case, the 386 family based IBM-PC and
-# compatibles.
-#
-machine		i386
+machine		pc32
+machine_arch	i386
 
 #
 # This is the ``identification'' of the kernel.  Usually this should

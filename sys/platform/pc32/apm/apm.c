@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.18 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.19 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include <machine/pc/bios.h>
 #include <machine/vm86.h>
 
-#include <arch/apm/apm.h>
+#include <machine_base/apm/apm.h>
 
 /* Used by the apm_saver screen saver module */
 int apm_display (int newstate);

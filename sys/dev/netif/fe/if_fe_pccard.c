@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.11 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.12 2006/11/07 06:43:23 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -42,7 +42,7 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <arch/isa/ic/mb86960.h>
+#include <machine_base/isa/ic/mb86960.h>
 #include "if_fereg.h"
 #include "if_fevar.h"
 

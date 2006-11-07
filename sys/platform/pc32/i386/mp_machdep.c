@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.52 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.53 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -50,10 +50,10 @@
 #endif
 
 #include <machine/smp.h>
-#include <arch/apic/apicreg.h>
+#include <machine_base/apic/apicreg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
-#include <arch/apic/mpapic.h>
+#include <machine_base/apic/mpapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/tss.h>
@@ -61,8 +61,8 @@
 #include <machine/globaldata.h>
 
 #include <machine/md_var.h>		/* setidt() */
-#include <arch/icu/icu.h>		/* IPIs */
-#include <arch/isa/intr_machdep.h>	/* IPIs */
+#include <machine_base/icu/icu.h>		/* IPIs */
+#include <machine_base/isa/intr_machdep.h>	/* IPIs */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 

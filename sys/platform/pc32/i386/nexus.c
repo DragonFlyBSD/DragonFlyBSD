@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.27 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.28 2006/11/07 06:43:24 dillon Exp $
  */
 
 /*
@@ -56,8 +56,8 @@
 
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
-#include <arch/apic/mpapic.h>
-#include <arch/isa/intr_machdep.h>
+#include <machine_base/apic/mpapic.h>
+#include <machine_base/isa/intr_machdep.h>
 
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
 struct nexus_device {

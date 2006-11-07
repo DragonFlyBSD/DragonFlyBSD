@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.21 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.22 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include <machine/clock.h>
 #include <bus/isa/i386/isa.h>
 #include <bus/isa/rtc.h>
-#include <arch/isa/timerreg.h>
+#include <machine_base/isa/timerreg.h>
 
 extern int i386_extend_pcb	(struct lwp *);
 extern int vm86pa;

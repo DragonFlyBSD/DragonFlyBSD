@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.12 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.13 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -57,7 +57,7 @@
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
 
-#include <arch/isa/intr_machdep.h>
+#include <machine_base/isa/intr_machdep.h>
 
 #define	IDENTBLUE_CYRIX486	0
 #define	IDENTBLUE_IBMCPU	1
@@ -85,7 +85,7 @@ static void setup_tmx86_longrun(void);
 int	cpu_class = CPUCLASS_386;
 u_int	cpu_exthigh;		/* Highest arg to extended CPUID */
 u_int	cyrix_did;		/* Device ID of Cyrix CPU */
-char machine[] = "i386";
+char machine[] = MACHINE;
 SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD, 
     machine, 0, "Machine class");
 

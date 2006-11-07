@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.32 2006/10/23 21:50:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.33 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -13,7 +13,7 @@
 #include <machine/psl.h>
 #include <machine/trap.h>
 
-#include <arch/icu/icu.h>
+#include <machine_base/icu/icu.h>
 #include <bus/isa/i386/isa.h>
 
 #include "assym.s"
@@ -21,7 +21,7 @@
 #include "apicreg.h"
 #include "apic_ipl.h"
 #include <machine/smp.h>
-#include <arch/isa/intr_machdep.h>
+#include <machine_base/isa/intr_machdep.h>
 
 /* convert an absolute IRQ# into a bitmask */
 #define IRQ_LBIT(irq_num)	(1 << (irq_num))

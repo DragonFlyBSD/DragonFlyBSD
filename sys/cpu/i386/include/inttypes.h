@@ -35,11 +35,11 @@
  *
  *	From: $NetBSD: int_fmtio.h,v 1.2 2001/04/26 16:25:21 kleink Exp $
  * $FreeBSD: src/sys/i386/include/_inttypes.h,v 1.2 2002/06/30 05:48:02 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/inttypes.h,v 1.1 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/inttypes.h,v 1.2 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_INTTYPES_H_
-#define _MACHINE_INTTYPES_H_
+#ifndef _CPU_INTTYPES_H_
+#define _CPU_INTTYPES_H_
 
 /*
  * Macros for format specifiers.
@@ -218,4 +218,4 @@
 #define	SCNxMAX		"jx"	/* uintmax_t */
 #define	SCNxPTR		"x"	/* uintptr_t */
 
-#endif /* !_MACHINE_INTTYPES_H_ */
+#endif /* !_CPU_INTTYPES_H_ */

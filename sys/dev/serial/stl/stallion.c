@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.22 2006/10/23 21:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.23 2006/11/07 06:43:24 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -54,8 +54,8 @@
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
 #include <bus/isa/i386/isa_device.h>
-#include <arch/isa/ic/scd1400.h>
-#include <arch/isa/ic/sc26198.h>
+#include <machine_base/isa/ic/scd1400.h>
+#include <machine_base/isa/ic/sc26198.h>
 #include <machine/comstats.h>
 
 #if NPCI > 0

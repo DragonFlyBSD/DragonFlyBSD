@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.23 2006/10/23 21:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.24 2006/11/07 06:43:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -89,7 +89,7 @@
 
 #include <bus/isa/i386/isa_device.h>
 #include "cyreg.h"
-#include <arch/isa/ic/cd1400.h>
+#include <machine_base/isa/ic/cd1400.h>
 
 #ifdef SMP
 #define disable_intr()	com_lock()

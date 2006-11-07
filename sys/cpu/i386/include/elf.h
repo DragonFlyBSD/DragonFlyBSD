@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.7 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.8 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_ELF_H_
-#define _MACHINE_ELF_H_
+#ifndef _CPU_ELF_H_
+#define _CPU_ELF_H_
 
 /*
  * ELF definitions for the i386 architecture.
@@ -162,4 +162,4 @@ __ElfType(Auxinfo);
     (round_page((vm_offset_t)(vmspace)->vm_daddr + maxdsiz))
 
 #endif /* _KERNEL */
-#endif /* !_MACHINE_ELF_H_ */
+#endif /* !_CPU_ELF_H_ */

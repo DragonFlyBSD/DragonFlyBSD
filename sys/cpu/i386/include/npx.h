@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.9 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.10 2006/11/07 06:43:22 dillon Exp $
  */
 
 /*
@@ -43,8 +43,8 @@
  * W. Jolitz 1/90
  */
 
-#ifndef _MACHINE_NPX_H_
-#define	_MACHINE_NPX_H_
+#ifndef _CPU_NPX_H_
+#define	_CPU_NPX_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -155,4 +155,4 @@ void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
 #endif
 
-#endif /* !_MACHINE_NPX_H_ */
+#endif /* !_CPU_NPX_H_ */

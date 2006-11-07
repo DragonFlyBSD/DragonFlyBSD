@@ -36,11 +36,11 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.11 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.12 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_SEGMENTS_H_
-#define	_MACHINE_SEGMENTS_H_
+#ifndef _CPU_SEGMENTS_H_
+#define	_CPU_SEGMENTS_H_
 
 /*
  * 386 Segmentation Data Structures and definitions
@@ -271,4 +271,4 @@ void	ssdtosd		(struct soft_segment_descriptor *ssdp,
 			     struct segment_descriptor *sdp);
 #endif /* _KERNEL */
 
-#endif /* !_MACHINE_SEGMENTS_H_ */
+#endif /* !_CPU_SEGMENTS_H_ */

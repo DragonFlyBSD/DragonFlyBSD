@@ -1,7 +1,7 @@
-# $DragonFly: src/sys/dev/est/Makefile,v 1.2 2006/10/22 16:09:20 dillon Exp $
+# $DragonFly: src/sys/dev/est/Makefile,v 1.3 2006/11/07 06:43:23 dillon Exp $
 #
 
-.PATH: ${.CURDIR}/../../arch/${MACHINE_ARCH}/${MACHINE_ARCH}
+.PATH: ${.CURDIR}/../../machine/${MACHINE}/${MACHINE_ARCH}
 SRCS=	est.c
 KMOD=	est
 

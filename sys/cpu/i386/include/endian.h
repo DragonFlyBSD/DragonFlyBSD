@@ -34,11 +34,11 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.6 2004/11/15 08:16:02 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_ENDIAN_H_
-#define	_MACHINE_ENDIAN_H_
+#ifndef _CPU_ENDIAN_H_
+#define	_CPU_ENDIAN_H_
 
 #include <sys/cdefs.h>
 #include <machine/stdint.h>
@@ -180,4 +180,4 @@ __bswap64(__uint64_t _x)
 
 __END_DECLS
 
-#endif /* !_MACHINE_ENDIAN_H_ */
+#endif /* !_CPU_ENDIAN_H_ */

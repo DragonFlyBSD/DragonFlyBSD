@@ -66,12 +66,13 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $
+ * $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.10 2006/11/07 06:43:22 dillon Exp $
  */
-/* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.9 2006/10/25 20:55:51 dillon Exp $ */
 
-#ifndef _MACHINE_BUS_AT386_H_
-#define _MACHINE_BUS_AT386_H_
+#ifndef _CPU_BUS_AT386_H_
+#define _CPU_BUS_AT386_H_
 
 #include <machine/cpufunc.h>
 
@@ -884,4 +885,4 @@ bus_space_barrier(bus_space_tag_t tag __unused, bus_space_handle_t bsh __unused,
 		__asm __volatile("" : : : "memory");
 }
 
-#endif /* _MACHINE_BUS_AT386_H_ */
+#endif /* _CPU_BUS_AT386_H_ */

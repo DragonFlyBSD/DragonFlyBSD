@@ -32,11 +32,11 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.6 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_SIGNAL_H_
-#define	_MACHINE_SIGNAL_H_
+#ifndef _CPU_SIGNAL_H_
+#define	_CPU_SIGNAL_H_
 
 /*
  * Machine-dependent signal definitions
@@ -109,4 +109,4 @@ struct	sigcontext {
 
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
 
-#endif /* !_MACHINE_SIGNAL_H_ */
+#endif /* !_CPU_SIGNAL_H_ */

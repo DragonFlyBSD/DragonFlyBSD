@@ -32,11 +32,11 @@
  *
  *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdarg.h,v 1.6 2005/04/24 10:58:19 asmodai Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdarg.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_STDARG_H_
-#define	_MACHINE_STDARG_H_
+#ifndef _CPU_STDARG_H_
+#define	_CPU_STDARG_H_
 
 /*
  * GNUC mess
@@ -97,4 +97,4 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 
 #endif /* __GNUC__ */
 
-#endif /* !_MACHINE_STDARG_H_ */
+#endif /* !_CPU_STDARG_H_ */

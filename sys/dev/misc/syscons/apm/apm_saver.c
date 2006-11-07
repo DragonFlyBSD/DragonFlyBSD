@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/apm/apm_saver.c,v 1.1.4.2 2001/03/07 21:47:24 nsayer Exp $
- * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.7 2006/10/23 21:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.8 2006/11/07 06:43:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 #include <sys/selinfo.h>
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
-#include <arch/apm/apm.h>
+#include <machine_base/apm/apm.h>
 
 extern int apm_display (int newstate);                                     
 

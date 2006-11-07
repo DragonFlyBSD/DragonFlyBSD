@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.20 2006/05/29 07:29:13 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.21 2006/11/07 06:43:24 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -63,7 +63,7 @@
  */
 
 #include <machine/asmacros.h>
-#include <arch/apic/apicreg.h>
+#include <machine_base/apic/apicreg.h>
 
 #include "assym.s"
 

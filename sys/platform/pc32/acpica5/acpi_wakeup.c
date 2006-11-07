@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.11 2006/10/25 20:55:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.12 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 
 #include <machine/cpufunc.h>
 #include <machine/segments.h>
-#include <arch/isa/intr_machdep.h>
+#include <machine_base/isa/intr_machdep.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>

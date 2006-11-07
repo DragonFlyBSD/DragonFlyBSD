@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.10 2006/10/23 21:50:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.11 2006/11/07 06:43:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@ static device_t	acpi_dev;
 
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
-#include <arch/apm/apm.h>
+#include <machine_base/apm/apm.h>
 
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);

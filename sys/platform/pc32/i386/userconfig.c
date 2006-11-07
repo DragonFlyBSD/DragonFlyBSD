@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.9 2006/10/23 21:50:30 dillon Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.10 2006/11/07 06:43:24 dillon Exp $
  **/
 
 /**
@@ -119,7 +119,7 @@
 #define NPNP 0
 
 #if NPNP > 0
-#include <arch/isa/pnp.h>
+#include <machine_base/isa/pnp.h>
 #endif
 
 static MALLOC_DEFINE(M_DEVL, "uc_devlist", "uc_device lists in userconfig()");

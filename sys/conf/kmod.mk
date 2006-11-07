@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.27 2006/10/23 21:50:31 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.28 2006/11/07 06:43:22 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -83,11 +83,18 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # set because there are no standard paths for non-headers.
 #
 # NOTE!  Traditional architecture paths such as <i386/i386/blah.h>
-# must run through the "arch" softlink using <arch/i386/blah.h>.  An
-# explicit cross-architecture path must operate relative to /usr/src/sys
-# using e.g. <arch/i386/i386/blah.h>
+# must run through the "machine_base" softlink using 
+# <machine_base/i386/blah.h>.  An explicit cross-architecture path must
+# operate relative to /usr/src/sys using e.g. <arch/i386/i386/blah.h>
 #
 CFLAGS+=	-I. -I@
+
+# Add -I paths for headers in the kernel build directory
+#
+.if defined(BUILDING_WITH_KERNEL)
+CFLAGS+=	-I${BUILDING_WITH_KERNEL}
+CFLAGS+=	-I${BUILDING_WITH_KERNEL}/include
+.endif
 
 # Add a -I path to standard headers like <stddef.h>.  Use a relative
 # path to src/include if possible.  If the @ symlink hasn't been built
@@ -138,7 +145,15 @@ ${KMOD}.kld: ${OBJS}
 .include <bsd.man.mk>
 .endif
 
-_ILINKS=@ arch machine
+# links to platform and cpu architecture include files.  If we are
+# building with a kernel these already exist in the kernel build dir.
+# '@' is a link to the system source.
+.if defined(BUILDING_WITH_KERNEL)
+_ILINKS=@
+.else
+_ILINKS=@ machine_base machine cpu_base cpu
+.endif
+
 .if defined(ARCH)
 _ILINKS+=${ARCH}
 .endif
@@ -172,10 +187,14 @@ S=	${SYSDIR}
 
 ${_ILINKS}:
 	@case ${.TARGET} in \
-	arch) \
-		path=${SYSDIR}/arch/${MACHINE_ARCH} ;; \
 	machine) \
-		path=${SYSDIR}/arch/${MACHINE_ARCH}/include ;; \
+		path=${SYSDIR}/machine/${MACHINE}/include ;; \
+	machine_base) \
+		path=${SYSDIR}/machine/${MACHINE} ;; \
+	cpu) \
+		path=${SYSDIR}/cpu/${MACHINE_ARCH}/include ;; \
+	cpu_base) \
+		path=${SYSDIR}/cpu/${MACHINE_ARCH} ;; \
 	@) \
 		path=${SYSDIR} ;; \
 	arch_*) \
@@ -231,7 +250,9 @@ CLEANFILES+=	${_src}
 .if !target(${_src})
 .if defined(BUILDING_WITH_KERNEL) && exists(${BUILDING_WITH_KERNEL}/${_src})
 ${_src}: ${BUILDING_WITH_KERNEL}/${_src}
-	cp ${BUILDING_WITH_KERNEL}/${_src} ${.TARGET}
+# we do not have to copy these files any more, the kernel build
+# directory is included in the path now.
+#	cp ${BUILDING_WITH_KERNEL}/${_src} ${.TARGET}
 .else
 ${_src}:
 	touch ${.TARGET}
@@ -257,7 +278,12 @@ ${_src}: @
 .if exists(@)
 ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 .endif
+
+.if defined(BUILDING_WITH_KERNEL) && \
+    exists(${BUILDING_WITH_KERNEL}/${_src})
+.else
 	awk -f @/tools/makeobjops.awk -- -${_ext} @/${_srcsrc}
+.endif
 .endif
 .endfor # _src
 .endfor # _ext

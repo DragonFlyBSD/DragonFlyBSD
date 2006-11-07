@@ -31,11 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.10 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.11 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_ASMACROS_H_
-#define _MACHINE_ASMACROS_H_
+#ifndef _CPU_ASMACROS_H_
+#define _CPU_ASMACROS_H_
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
@@ -153,4 +153,4 @@
 #define MEXITCOUNT
 #endif /* GPROF */
 
-#endif /* !_MACHINE_ASMACROS_H_ */
+#endif /* !_CPU_ASMACROS_H_ */

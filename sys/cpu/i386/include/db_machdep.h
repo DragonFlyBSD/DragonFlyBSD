@@ -24,16 +24,15 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.8 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/db_machdep.h,v 1.9 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_DB_MACHDEP_H_
-#define	_MACHINE_DB_MACHDEP_H_
+#ifndef _CPU_DB_MACHDEP_H_
+#define	_CPU_DB_MACHDEP_H_
 
-#include <machine/frame.h>
-#include <machine/psl.h>
-#include <machine/trap.h>
-#include <machine/globaldata.h>
+#include <cpu/frame.h>
+#include <cpu/psl.h>
+#include <cpu/trap.h>
 
 #define i386_saved_state trapframe
 
@@ -95,4 +94,4 @@ extern	db_addr_t	BP_REGS(db_regs_t *regs);
 #define	DB_SMALL_VALUE_MAX	0x7fffffff
 #define	DB_SMALL_VALUE_MIN	(-0x400001)
 
-#endif /* !_MACHINE_DB_MACHDEP_H_ */
+#endif /* !_CPU_DB_MACHDEP_H_ */

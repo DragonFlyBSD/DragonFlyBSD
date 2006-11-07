@@ -36,11 +36,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.6 2006/08/26 17:43:54 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_STDINT_H_
-#define	_MACHINE_STDINT_H_
+#ifndef _CPU_STDINT_H_
+#define	_CPU_STDINT_H_
 
 /*
  * Basic types upon which most other types are built.
@@ -130,15 +130,15 @@ typedef volatile int	__atomic_intr_t;
 
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
 
-#endif /* _MACHINE_STDINT_H_ */
+#endif /* _CPU_STDINT_H_ */
 
 /*
  * OpenGroup stdint.h extensions.  Since these are protected by a define we
  * do not have to generate __ versions of them.
  */
 #if !defined(__cplusplus) || defined(__STDC_CONSTANT_MACROS)
-#ifndef _MACHINE_STDINT_H_STDC_CONSTANT_MACROS_
-#define _MACHINE_STDINT_H_STDC_CONSTANT_MACROS_
+#ifndef _CPU_STDINT_H_STDC_CONSTANT_MACROS_
+#define _CPU_STDINT_H_STDC_CONSTANT_MACROS_
 
 #define	INT8_C(c)	(c)
 #define	INT16_C(c)	(c)
@@ -157,8 +157,8 @@ typedef volatile int	__atomic_intr_t;
 #endif /* !defined(__cplusplus) || defined(__STDC_CONSTANT_MACROS) */
 
 #if !defined(__cplusplus) || defined(__STDC_LIMIT_MACROS)
-#ifndef _MACHINE_STDINT_H_STDC_LIMIT_MAVROS_
-#define _MACHINE_STDINT_H_STDC_LIMIT_MAVROS_
+#ifndef _CPU_STDINT_H_STDC_LIMIT_MAVROS_
+#define _CPU_STDINT_H_STDC_LIMIT_MAVROS_
 
 /*
  * ISO/IEC 9899:1999

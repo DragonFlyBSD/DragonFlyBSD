@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
-# $DragonFly: src/sys/emulation/linux/Makefile,v 1.9 2006/05/11 08:23:20 swildner Exp $
+# $DragonFly: src/sys/emulation/linux/Makefile,v 1.10 2006/11/07 06:43:24 dillon Exp $
 
 .PATH: ${.CURDIR}/../../emulation/linux ${.CURDIR}/../../emulation/linux/${MACHINE_ARCH}
 
@@ -28,7 +28,7 @@ linux_locore.o: linux_locore.s linux_assym.h
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS} \
 	    ${.IMPSRC} -o ${.TARGET}
 
-linux_genassym.o: linux_genassym.c linux.h @ machine
+linux_genassym.o: linux_genassym.c linux.h @
 	${CC} -c ${CFLAGS:N-fno-common} ${.IMPSRC}
 
 opt_compat.h:

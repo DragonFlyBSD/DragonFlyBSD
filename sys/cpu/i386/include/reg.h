@@ -35,11 +35,11 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.6 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_REG_H_
-#define	_MACHINE_REG_H_
+#ifndef _CPU_REG_H_
+#define	_CPU_REG_H_
 
 /*
  * Indices for registers in `struct trapframe' and `struct regs'.
@@ -139,24 +139,4 @@ struct dbreg {
 #define DBREG_DRX(d,x) ((&(d)->dr0)[x]) /* reference dr0 - dr7 by
                                          register number */
 
-
-#ifdef _KERNEL
-
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-
-struct proc;
-struct lwp;
-
-/*
- * XXX these interfaces are MI, so they should be declared in a MI place.
- */
-int	set_fpregs (struct lwp *, struct fpreg *);
-int	set_regs (struct lwp *lp, struct reg *regs);
-void	setregs (struct lwp *, u_long, u_long, u_long);
-int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
-
-#endif
-
-#endif /* !_MACHINE_REG_H_ */
+#endif /* !_CPU_REG_H_ */

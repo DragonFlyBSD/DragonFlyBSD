@@ -29,14 +29,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.7 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.8 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_BUS_DMA_H_
-#define _MACHINE_BUS_DMA_H_
+#ifndef _CPU_BUS_DMA_H_
+#define _CPU_BUS_DMA_H_
 
-#ifndef _MACHINE_BUS_AT386_H_
-#include <machine/bus_at386.h>
+#ifndef _CPU_BUS_AT386_H_
+#include <cpu/bus_at386.h>
 #endif
 
 /*
@@ -103,4 +103,4 @@
 #define	bus_space_copy_region_stream_4(t, h1, o1, h2, o2, c) \
 	bus_space_copy_region_4((t), (h1), (o1), (h2), (o2), (c))
 
-#endif /* _MACHINE_BUS_DMA_H_ */
+#endif /* _CPU_BUS_DMA_H_ */

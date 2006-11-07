@@ -35,11 +35,11 @@
  *
  *	from: @(#)trap.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/trap.h,v 1.10.2.2 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/trap.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/trap.h,v 1.3 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_TRAP_H_
-#define	_MACHINE_TRAP_H_
+#ifndef _CPU_TRAP_H_
+#define	_CPU_TRAP_H_
 
 /*
  * Trap type values
@@ -106,4 +106,4 @@
 /* Trap's coming from user mode */
 #define	T_USER	0x100
 
-#endif /* !_MACHINE_TRAP_H_ */
+#endif /* !_CPU_TRAP_H_ */

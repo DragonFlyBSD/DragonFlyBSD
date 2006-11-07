@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 1993 The Regents of the University of California.
- * All rights reserved.
+ * Copyright (c) 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,45 +30,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ *	@(#)types.h	8.3 (Berkeley) 1/5/94
+ * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
+ * $DragonFly: src/sys/platform/pc32/include/types.h,v 1.1 2006/11/07 06:43:24 dillon Exp $
  */
 
-#ifndef _MACHINE_IPL_H_
-#define	_MACHINE_IPL_H_
+#ifndef _MACHINE_TYPES_H_
+#define	_MACHINE_TYPES_H_
 
-#include <machine_base/apic/apic_ipl.h>
-#include <machine_base/icu/icu_ipl.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 
-/*
- * Software interrupt bit numbers in priority order.  The priority only
- * determines which swi will be dispatched next; a higher priority swi
- * may be dispatched when a nested h/w interrupt handler returns.
- */
-#define	SWI_TTY		(FIRST_SOFTINT + 0)
-#define	SWI_NET		(FIRST_SOFTINT + 1)
-#define	SWI_CAMNET	(FIRST_SOFTINT + 2)
-#define	SWI_CRYPTO	SWI_CAMNET
-#define	SWI_CAMBIO	(FIRST_SOFTINT + 3)
-#define	SWI_VM		(FIRST_SOFTINT + 4)
-#define	SWI_TQ		(FIRST_SOFTINT + 5)
-#define	SWI_CLOCK	(FIRST_SOFTINT + 6)
+#include <cpu/types.h>
 
-/*
- * Corresponding interrupt-pending bits for spending.  NOTE: i386 only
- * supports 32 software interupts (due to its gd_spending mask).
- */
-#define	SWI_TTY_PENDING		(1 << (SWI_TTY - FIRST_SOFTINT))
-#define	SWI_NET_PENDING		(1 << (SWI_NET - FIRST_SOFTINT))
-#define	SWI_CAMNET_PENDING	(1 << (SWI_CAMNET - FIRST_SOFTINT))
-#define	SWI_CRYPTO_PENDING	SWI_CAMNET_PENDING
-#define	SWI_CAMBIO_PENDING	(1 << (SWI_CAMBIO - FIRST_SOFTINT))
-#define	SWI_VM_PENDING		(1 << (SWI_VM - FIRST_SOFTINT))
-#define	SWI_TQ_PENDING		(1 << (SWI_TQ - FIRST_SOFTINT))
-#define	SWI_CLOCK_PENDING	(1 << (SWI_CLOCK - FIRST_SOFTINT))
+/* Interrupt mask (spl, xxx_imask, etc) */
+typedef __uint32_t	intrmask_t;
 
-#ifndef	LOCORE
+#endif /* !_MACHINE_TYPES_H_ */
 
-#endif /* !LOCORE */
-
-#endif /* !_MACHINE_IPL_H_ */

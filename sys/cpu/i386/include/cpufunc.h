@@ -31,15 +31,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.16 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.17 2006/11/07 06:43:22 dillon Exp $
  */
 
 /*
  * Functions to provide access to special i386 instructions.
  */
 
-#ifndef _MACHINE_CPUFUNC_H_
-#define	_MACHINE_CPUFUNC_H_
+#ifndef _CPU_CPUFUNC_H_
+#define	_CPU_CPUFUNC_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -706,4 +706,4 @@ u_int	rcr4		(void);
 void    reset_dbregs    (void);
 __END_DECLS
 
-#endif /* !_MACHINE_CPUFUNC_H_ */
+#endif /* !_CPU_CPUFUNC_H_ */

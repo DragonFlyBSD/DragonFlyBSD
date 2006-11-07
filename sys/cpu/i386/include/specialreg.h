@@ -32,11 +32,11 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.5 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.6 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_SPECIALREG_H_
-#define	_MACHINE_SPECIALREG_H_
+#ifndef _CPU_SPECIALREG_H_
+#define	_CPU_SPECIALREG_H_
 
 /*
  * Bits in 386 special registers:
@@ -357,8 +357,8 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_CPUFUNC_H_
-#include <machine/cpufunc.h>
+#ifndef _CPU_CPUFUNC_H_
+#include <cpu/cpufunc.h>
 #endif
 
 static __inline u_char
@@ -376,4 +376,4 @@ write_cyrix_reg(u_char reg, u_char data)
 }
 #endif
 
-#endif /* !_MACHINE_SPECIALREG_H_ */
+#endif /* !_CPU_SPECIALREG_H_ */

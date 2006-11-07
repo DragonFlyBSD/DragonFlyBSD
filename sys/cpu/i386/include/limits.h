@@ -32,11 +32,11 @@
  *
  *	@(#)limits.h	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/limits.h,v 1.14.2.2 2000/11/05 09:21:42 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/limits.h,v 1.3 2004/09/10 01:45:37 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/limits.h,v 1.4 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_LIMITS_H_
-#define	_MACHINE_LIMITS_H_
+#ifndef _CPU_LIMITS_H_
+#define	_CPU_LIMITS_H_
 
 #define	CHAR_BIT	8		/* number of bits in a char */
 #define	MB_LEN_MAX	6		/* Allow 31 bit UTF2 */
@@ -105,4 +105,4 @@
 #endif /* !_POSIX_SOURCE */
 #endif /* !_ANSI_SOURCE */
 
-#endif /* !_MACHINE_LIMITS_H_ */
+#endif /* !_CPU_LIMITS_H_ */

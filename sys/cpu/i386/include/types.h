@@ -30,13 +30,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
+ * @(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.10 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.11 2006/11/07 06:43:23 dillon Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
+#ifndef _CPU_TYPES_H_
+#define	_CPU_TYPES_H_
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
@@ -77,8 +77,5 @@ typedef __uint32_t	cpumask_t;	/* mask representing a set of cpus */
 #define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
 #define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
 
-/* Interrupt mask (spl, xxx_imask, etc) */
-typedef __uint32_t	intrmask_t;
-
-#endif /* !_MACHINE_TYPES_H_ */
+#endif /* !_CPU_TYPES_H_ */
 

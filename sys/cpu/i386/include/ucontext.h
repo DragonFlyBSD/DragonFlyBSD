@@ -26,11 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ucontext.h,v 1.4 1999/10/11 20:33:09 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.3 2006/11/07 06:43:23 dillon Exp $
  */
 
-#ifndef _MACHINE_UCONTEXT_H_
-#define	_MACHINE_UCONTEXT_H_
+#ifndef _CPU_UCONTEXT_H_
+#define	_CPU_UCONTEXT_H_
 
 typedef struct __mcontext {
 	/*
@@ -63,4 +63,4 @@ typedef struct __mcontext {
 	int	__spare__[17];
 } mcontext_t;
 
-#endif /* !_MACHINE_UCONTEXT_H_ */
+#endif /* !_CPU_UCONTEXT_H_ */

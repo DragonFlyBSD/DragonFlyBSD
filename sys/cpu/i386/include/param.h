@@ -35,24 +35,24 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.9 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.10 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_PARAM_H_
+#ifndef _CPU_PARAM_H_
 
 /*
  * Do not prevent re-includes of <machine/param.h> if the file was included
  * with NO_NAMESPACE_POLLUTION, or expected macros will not exist.
  */
 #ifndef _NO_NAMESPACE_POLLUTION
-#define _MACHINE_PARAM_H_
+#define _CPU_PARAM_H_
 #endif
 
 /*
  * Machine dependent constants for Intel 386.
  */
-#ifndef _MACHINE_PARAM_H1_
-#define _MACHINE_PARAM_H1_
+#ifndef _CPU_PARAM_H1_
+#define _CPU_PARAM_H1_
 
 /*
  * Round p (pointer or byte index) up to a correctly-aligned value
@@ -66,23 +66,25 @@
 #define _ALIGN(p)	(((unsigned)(p) + _ALIGNBYTES) & ~_ALIGNBYTES)
 #endif
 
-#ifndef _MACHINE
-#define	_MACHINE	i386
-#endif
 #ifndef _MACHINE_ARCH
-#define	_MACHINE_ARCH	i386
+#define	_MACHINE_ARCH	i386	/* cpu architecture */
+#endif
+#ifndef _MACHINE_CPU
+#define _MACHINE_CPU	i386	/* minimum supported cpu rev */
 #endif
 
-#endif	/* _MACHINE_PARAM_H1_ */
+#endif	/* _CPU_PARAM_H1_ */
 
 #ifndef _NO_NAMESPACE_POLLUTION
 
-#ifndef MACHINE
-#define MACHINE		"i386"
-#endif
 #ifndef MACHINE_ARCH
-#define	MACHINE_ARCH	"i386"
+#define	MACHINE_ARCH	"i386"	/* cpu architecture */
 #endif
+
+#ifndef MACHINE_CPU
+#define MACHINE_CPU	"i386"	/* minimum supported cpu rev */
+#endif
+
 #define MID_MACHINE	MID_I386
 
 /*
@@ -236,4 +238,4 @@ extern void _TSTMP(u_int32_t argument);
 #endif /* _KERNEL */
 
 #endif /* !_NO_NAMESPACE_POLLUTION */
-#endif /* !_MACHINE_PARAM_H_ */
+#endif /* !_CPU_PARAM_H_ */

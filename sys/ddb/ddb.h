@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.10 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.11 2006/11/07 06:43:23 dillon Exp $
  */
 
 /*
@@ -44,6 +44,10 @@
 
 #ifndef _MACHINE_DB_MACHDEP_H_
 #include <machine/db_machdep.h>		/* type definitions */
+#endif
+
+#ifndef _MACHINE_GLOBALDATA_H_
+#include <machine/globaldata.h>
 #endif
 
 typedef void db_cmdfcn_t (db_expr_t addr, boolean_t have_addr,

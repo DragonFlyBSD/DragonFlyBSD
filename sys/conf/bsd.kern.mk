@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.10 2006/10/22 16:09:19 dillon Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.11 2006/11/07 06:43:22 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -32,4 +32,4 @@ CFLAGS+=	-fno-common
 #
 CFLAGS+=	-ffreestanding
 
-.include "../arch/${MACHINE_ARCH}/conf/kern-${MACHINE_ARCH}.mk"
+.include "../machine/${MACHINE}/conf/kern.mk"

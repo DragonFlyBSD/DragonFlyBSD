@@ -25,11 +25,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cputypes.h,v 1.13.2.1 2000/09/30 03:32:20 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/cputypes.h,v 1.3 2005/11/06 07:28:50 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cputypes.h,v 1.4 2006/11/07 06:43:22 dillon Exp $
  */
 
-#ifndef _MACHINE_CPUTYPES_H_
-#define	_MACHINE_CPUTYPES_H_
+#ifndef _CPU_CPUTYPES_H_
+#define	_CPU_CPUTYPES_H_
 
 /*
  * Classes of processor.
@@ -73,4 +73,4 @@ extern int	cpu_class;
 extern void	additional_cpu_info(const char *);
 #endif
 
-#endif /* !_MACHINE_CPUTYPES_H_ */
+#endif /* !_CPU_CPUTYPES_H_ */
