@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.30 2006/10/22 16:12:50 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.31 2006/11/07 06:57:02 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -137,12 +137,19 @@ INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
 INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
-# warning, we cannot softlink through ${INCLUDEDIR}/machine/... because
-# machine itself is a softlink into the source tree in buildworld's 
-# temporary include hierarchy.
+
+# NOTE!
+#
+# machine/ header files come from the platform architecture and
+# cpu/ header files come from the cpu architecture.  All code outside
+# of the machine header files ALWAYS #include's <machine/blah.h>.  So
+# if the platform architecture is missing a header file we have to 
+# copy it in from the cpu architecture.  This way we do not have to
+# create dozens of pure forwarding headers for files that platform
+# architecture does not need to enhance.
 
 mtree_setup:
-.for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine crypto
+.for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine cpu crypto
 	if [ -h ${DESTDIR}/usr/include/$i ]; then \
 		rm -f ${DESTDIR}/usr/include/$i; \
 	fi
@@ -159,12 +166,20 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 opencrypto/*.h \
 		${DESTDIR}/usr/include/crypto
-.if exists(${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include)
-	cd ${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include; \
+.if exists(${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include)
+	cd ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
+		${DESTDIR}/usr/include/cpu
+	# XXX this will cause quickworld to rebuild more junk
+	# then it needs to.
+	cpdup -o ${DESTDIR}/usr/include/cpu ${DESTDIR}/usr/include/machine
+.endif
+.if exists(${.CURDIR}/../sys/machine/${MACHINE}/include)
+	cd ${.CURDIR}/../sys/machine/${MACHINE}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine
-.if exists(${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include/pc)
-	cd ${.CURDIR}/../sys/arch/${MACHINE_ARCH}/include/pc; \
+.if exists(${.CURDIR}/../sys/machine/${MACHINE}/include/pc)
+	cd ${.CURDIR}/../sys/machine/${MACHINE}/include/pc; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine/pc
 .endif
@@ -197,8 +212,13 @@ symlinks:	mtree_setup
 	rm -rf ${DESTDIR}/usr/include/$i
 	${LN} -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
+	rm -rf ${DESTDIR}/usr/include/cpu
+	${LN} -s ../../sys/cpu/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/cpu
 	rm -rf ${DESTDIR}/usr/include/machine
-	${LN} -s ../../sys/arch/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
+	cpdup ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include \
+		${DESTDIR}/usr/include/machine
+	cpdup -o ${.CURDIR}/../sys/machine/${MACHINE}/include \
+		${DESTDIR}/usr/include/machine
 	rm -rf ${DESTDIR}/usr/include/i4b_machine
 	${LN} -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
 

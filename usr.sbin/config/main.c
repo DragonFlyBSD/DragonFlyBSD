@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.18 2006/10/23 18:01:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.19 2006/11/07 06:57:02 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <stdio.h>
+#include <dirent.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include "y.tab.h"
@@ -69,6 +70,7 @@ int	profiling;
 
 static void configfile(void);
 static void get_srcdir(void);
+static void generate_forwarding_headers(void);
 static void usage(void);
 
 /*
@@ -157,59 +159,67 @@ main(int argc, char *argv[])
 	if (yyparse())
 		exit(3);
 	if (machinename == NULL) {
-		printf("Specify machine type, e.g. ``machine i386''\n");
+		printf("Specify platform architecture, e.g. 'machine pc32'\n");
 		exit(1);
 	}
-	if (strcmp(machinename, "vkernel") == 0 && cpuarchname == NULL) {
-		printf("Specify cpu_arch for virtual kernel, e.g. "
-		       "``cpu_arch i386''\n");
+	if (machinearchname == NULL) {
+		printf("Specify cpu architecture, e.g. 'machine_arch i386'\n");
 		exit(1);
 	}
 	newbus_ioconf();
 	
 	/*
-	 * "machine" points into arch/<MACHINE_ARCH>/include
+	 * "machine" points into machine/<MACHINE>/include
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../arch/%s/include",
+		snprintf(linkdest, sizeof(linkdest), "../../machine/%s/include",
 		    machinename);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/arch/%s/include",
+		snprintf(linkdest, sizeof(linkdest), "%s/machine/%s/include",
 		    srcdir, machinename);
 	symlink(linkdest, path("machine"));
 
 	/*
-	 * "arch" points into <ARCH>/<MACHINE_ARCH>
+	 * "machine_base" points into machine/<MACHINE>
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../arch/%s",
+		snprintf(linkdest, sizeof(linkdest), "../../machine/%s",
 		    machinename);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/arch/%s",
+		snprintf(linkdest, sizeof(linkdest), "%s/machine/%s",
 		    srcdir, machinename);
-	symlink(linkdest, path("arch"));
+	symlink(linkdest, path("machine_base"));
 
 	/*
-	 * "cpu" points to <ARCH>/<CPU_ARCH>/include, only if cpu_arch
-	 * directive was specified.  Used by virtual kernels.
+	 * "cpu" points to cpu/<MACHINE_ARCH>/include
 	 */
-	if (cpuarchname != NULL) {
-		if (*srcdir == '\0')
-			snprintf(linkdest, sizeof(linkdest),
-				 "../../arch/%s/include", cpuarchname);
-		else
-			snprintf(linkdest, sizeof(linkdest),
-				 "%s/arch/%s/include", srcdir, cpuarchname);
-		symlink(linkdest, path("cpu"));
+	if (*srcdir == '\0')
+		snprintf(linkdest, sizeof(linkdest),
+			 "../../cpu/%s/include", machinearchname);
+	else
+		snprintf(linkdest, sizeof(linkdest),
+			 "%s/cpu/%s/include", srcdir, machinearchname);
+	symlink(linkdest, path("cpu"));
 
-		if (*srcdir == '\0')
-			snprintf(linkdest, sizeof(linkdest), "../../arch/%s",
-			    cpuarchname);
-		else
-			snprintf(linkdest, sizeof(linkdest), "%s/arch/%s",
-			    srcdir, cpuarchname);
-		symlink(linkdest, path("cpu_arch"));
-	}
+	/*
+	 * "cpu_base" points to cpu/<MACHINE_ARCH>
+	 */
+	if (*srcdir == '\0')
+		snprintf(linkdest, sizeof(linkdest), "../../cpu/%s",
+		    machinearchname);
+	else
+		snprintf(linkdest, sizeof(linkdest), "%s/cpu/%s",
+		    srcdir, machinearchname);
+	symlink(linkdest, path("cpu_base"));
+
+	/*
+	 * Create include/machine, in which we place forwarding header files
+	 * for headers that exist in the cpu architecture but have not been
+	 * overridden in the platform architecture.
+	 */
+	mkdir(path("include"), 0755);
+	mkdir(path("include/machine"), 0755);
+	generate_forwarding_headers();
 
 	/*
 	 * XXX check directory structure for architecture subdirectories and
@@ -218,10 +228,10 @@ main(int argc, char *argv[])
 	if (*srcdir == '\0')
 		snprintf(linkdest, sizeof(linkdest),
 		    "../../../../../net/i4b/include/%s",
-		    machinename);
+		    machinearchname);
 	else
 		snprintf(linkdest, sizeof(linkdest), "%s/net/i4b/include/%s",
-		    srcdir, machinename);
+		    srcdir, machinearchname);
 	mkdir(path("net"), 0755);
 	mkdir(path("net/i4b"), 0755);
 	mkdir(path("net/i4b/include"), 0755);
@@ -231,11 +241,11 @@ main(int argc, char *argv[])
 		if (*srcdir == 0)  {
 			snprintf(linkdest, sizeof(linkdest),
 			    "../../emulation/%s/%s",
-			    emus[i], machinename);
+			    emus[i], machinearchname);
 		} else {
 			snprintf(linkdest, sizeof(linkdest),
 			    "%s/emulation/%s/%s",
-			    srcdir, emus[i], machinename);
+			    srcdir, emus[i], machinearchname);
 		}
 		snprintf(linksrc, sizeof(linksrc), "arch_%s", emus[i]);
 		symlink(linkdest, path(linksrc));
@@ -486,3 +496,71 @@ moveifchanged(const char *from_name, const char *to_name)
 			err(EX_OSERR, "unlink(%s)", from_name);
 	}
 }
+
+static
+void
+generate_forwarding_headers(void)
+{
+	char buf[MAXPATHLEN];
+	char upper[256];
+	char *ptr;
+	struct dirent *den;
+	DIR *dir;
+	FILE *fp;
+
+	if (*srcdir == '\0')
+		snprintf(buf, sizeof(buf), "../../cpu/%s/include",
+		    machinearchname);
+	else
+		snprintf(buf, sizeof(buf), "%s/cpu/%s/include",
+		    srcdir, machinearchname);
+
+	if ((dir = opendir(buf)) != NULL) {
+		while ((den = readdir(dir)) != NULL) {
+			if (den->d_name[0] == '.')
+				continue;
+
+			/*
+			 * Is this a header file?
+			 */
+			snprintf(upper, sizeof(upper), "%s", den->d_name);
+			ptr = strrchr(upper, '.');
+			if (ptr == NULL || strcmp(ptr, ".h") != 0)
+				continue;
+
+			/*
+			 * Generate an upper case symbol 
+			 */
+			*ptr = 0;
+			for (ptr = upper; *ptr; ++ptr) {
+			    if (*ptr == '.')
+				*ptr = '_';
+			    else if (islower(*ptr))
+				*ptr = toupper(*ptr);
+			}
+
+			/*
+			 * Generate a forwarding header file
+			 */
+			snprintf(buf, sizeof(buf), "%s/%s",
+				path("include/machine"), den->d_name);
+			fp = fopen(buf, "w");
+			fprintf(fp, "/*\n"
+				    " * CONFIG-GENERATED FILE, DO NOT EDIT\n"
+				    " */\n"
+				    "\n"
+				    "#ifndef _MACHINE_%s_H_\n"
+				    "#define _MACHINE_%s_H_\n"
+				    "#include <cpu/%s>\n"
+				    "#endif\n"
+				    "\n",
+				    upper,
+				    upper,
+				    den->d_name
+			);
+			fclose(fp);
+		}
+		closedir(dir);
+	}
+}
+

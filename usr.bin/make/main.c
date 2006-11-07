@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.144 2006/08/25 22:37:09 swildner Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.145 2006/11/07 06:57:02 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #endif
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/queue.h>
 #include <sys/resource.h>
@@ -768,6 +769,8 @@ InitVariables(const char progname[])
 	const char	*machine;
 	const char	*machine_arch;
 	const char	*machine_cpu;
+	char buf[256];
+	size_t bufsiz;
 
 	Var_SetGlobal("MAKE", progname);
 	Var_SetGlobal(".MAKEFLAGS", "");
@@ -780,41 +783,52 @@ InitVariables(const char progname[])
 #endif
 
 	/*
-	 * Get the name of this type of MACHINE from utsname
-	 * so we can share an executable for similar machines.
-	 * (i.e. m68k: amiga hp300, mac68k, sun3, ...)
+	 * The make program defines MACHINE and MACHINE_ARCH.  These
+	 * parameters are taken from the running system but can be
+	 * overridden by environment variables.
 	 *
-	 * Note that while MACHINE is decided at run-time,
-	 * MACHINE_ARCH is always known at compile time.
+	 * MACHINE	- This is the platform, e.g. "vkernel", "i386", "sun",
+	 *		  and so forth.
+	 *
+	 * MACHINE_ARCH - This is the cpu architecture, for example "i386".
+	 *		  Several different platforms may use the same
+	 *		  cpu architecture.
+	 *
+	 * MACHINE_CPU  - This is the minimum supported cpu revision based on
+	 *		  the target cpu architecture.  e.g. "i486", "i586",
+	 *		  etc.  NOTE: This field will often be "i386" even 
+	 *		  for kernels built without I386_CPU.
+	 *
+	 * In some, but not all cases, MACHINE == MACHINE_ARCH.  A virtual
+	 * kernel build, for example, would set MACHINE to "vkernel" and
+	 * MACHINE_ARCH to the cpu architecture.
 	 */
 	if ((machine = getenv("MACHINE")) == NULL) {
-#ifdef MACHINE
-		machine = MACHINE;
-#else
-		static struct utsname	utsname;
-		if (uname(&utsname) == -1)
-			err(2, "uname");
-		machine = utsname.machine;
-#endif
+		bufsiz = sizeof(buf);
+		if (sysctlbyname("hw.machine", buf, &bufsiz, NULL, 0) < 0)
+			machine = "unknown";
+		else
+			machine = strdup(buf);
 	}
 
 	if ((machine_arch = getenv("MACHINE_ARCH")) == NULL) {
-#ifdef MACHINE_ARCH
-		machine_arch = MACHINE_ARCH;
-#else
-		machine_arch = "unknown";
-#endif
+		bufsiz = sizeof(buf);
+		if (sysctlbyname("hw.machine_arch", buf, &bufsiz, NULL, 0) < 0)
+			machine_arch = "unknown";
+		else
+			machine_arch = strdup(buf);
 	}
 
 	/*
-	 * Set machine_cpu to the minumum supported CPU revision based
-	 * on the target architecture, if not already set.
+	 * Only newer kernels have machine_cpu.  If not otherwise known set
+	 * the minimum supported cpu architecture to the machine architecture.
 	 */
 	if ((machine_cpu = getenv("MACHINE_CPU")) == NULL) {
-		if (!strcmp(machine_arch, "i386"))
-			machine_cpu = "i386";
+		bufsiz = sizeof(buf);
+		if (sysctlbyname("hw.machine_cpu", buf, &bufsiz, NULL, 0) < 0)
+			machine_cpu = machine_arch;
 		else
-			machine_cpu = "unknown";
+			machine_cpu = strdup(buf);
 	}
 
 	Var_SetGlobal("MACHINE", machine);

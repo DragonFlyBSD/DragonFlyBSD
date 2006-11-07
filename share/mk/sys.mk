@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.15 2006/01/26 17:48:35 corecode Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.16 2006/11/07 06:57:02 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -112,12 +112,21 @@ YFLAGS		?=
 YFLAGS		?=	-d
 .endif
 
-# FreeBSD/i386 has traditionally been built with a version of make
-# which knows MACHINE, but not MACHINE_ARCH. When building on other
-# architectures, assume that the version of make being used has an
-# explicit MACHINE_ARCH setting and treat a missing MACHINE_ARCH
-# as an i386 architecture.
-MACHINE_ARCH	?=	i386
+# The 'make' program is expected to define the following.
+#
+# MACHINE	machine class
+# MACHINE_ARCH	machine architecture (i386, amd64, vkernel, etc)
+# MACHINE_CPU	cpu architecture (i386)
+#
+.if !defined(MACHINE)
+.error "MACHINE was not defined by make"
+.endif
+.if !defined(MACHINE_ARCH)
+.error "MACHINE_ARCH was not defined by make"
+.endif
+.if !defined(MACHINE_CPU)
+.error "MACHINE_CPU was not defined by make"
+.endif
 
 .if defined(%POSIX)
 # Posix 1003.2 mandated rules

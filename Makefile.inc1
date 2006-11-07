@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.90 2006/10/22 16:26:44 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.91 2006/11/07 06:56:59 dillon Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -155,8 +155,11 @@ BUILD_ARCH!=	sysctl -n hw.machine_arch
 # WORLD		(Cross built) Our ultimate buildworld, using only BTOOLS and
 #		CTOOLS.
 #
-# MACHINE_ARCH	Architecture we are building on
-# TARGET_ARCH	Architecture we are building for
+# MACHINE	Platform Architecture we are buliding on
+# MACHINE_ARCH	Cpu Architecture we are building on
+#
+# TARGET	Platform Architecture we are building for
+# TARGET_ARCH	Cpu Architecture we are building for
 #
 BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
 CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
@@ -761,7 +764,7 @@ bootstrap-tools:
 	${LN} -fs /bin/date ${BTOOLSDEST}/bin/date
 .for _tool in ${_strfile} \
     usr.bin/patch \
-    bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
+    bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo bin/test \
     bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
     bin/hostname bin/kill \
     usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \

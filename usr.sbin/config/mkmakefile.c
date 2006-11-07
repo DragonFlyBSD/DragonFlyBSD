@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.16 2006/10/22 16:09:08 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.17 2006/11/07 06:57:02 dillon Exp $
  */
 
 /*
@@ -144,8 +144,8 @@ makefile(void)
 	int versreq;
 
 	read_files();
-	snprintf(line, sizeof(line), "../arch/%s/conf/Makefile.%s",
-		 machinename, machinename);
+	snprintf(line, sizeof(line), "../machine/%s/conf/Makefile",
+		 machinename);
 	ifp = fopen(line, "r");
 	if (ifp == NULL) {
 		snprintf(line, sizeof(line), "Makefile.%s", machinename);
@@ -157,6 +157,10 @@ makefile(void)
 	if (ofp == NULL)
 		err(1, "%s", path("Makefile.new"));
 	fprintf(ofp, "KERN_IDENT=%s\n", raisestr(ident));
+	fprintf(ofp, "MACHINE=%s\n", machinename);
+	fprintf(ofp, "MACHINE_ARCH=%s\n", machinearchname);
+	fprintf(ofp, ".makeenv MACHINE\n");
+	fprintf(ofp, ".makeenv MACHINE_ARCH\n");
 	fprintf(ofp, "IDENT=");
 	if (profiling)
 		fprintf(ofp, " -DGPROF");
@@ -263,8 +267,8 @@ next:
 		if (first == 1) {
 			first++;
 			snprintf(fname, sizeof(fname),
-			    "../arch/%s/conf/files.%s",
-			    machinename, machinename);
+			    "../machine/%s/conf/files",
+			    machinename);
 			fp = fopen(fname, "r");
 			if (fp != NULL)
 				goto next;

@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.17 2006/10/22 16:09:08 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.18 2006/11/07 06:57:02 dillon Exp $
  */
 
 /*
@@ -302,12 +302,14 @@ next:
 		fclose(fp);
 		if (first == 1) {
 			first++;
-			snprintf(fname, sizeof(fname), "../arch/%s/conf/options.%s", 
-				 machinename, machinename);
+			snprintf(fname, sizeof(fname),
+				 "../machine/%s/conf/options", 
+				 machinename);
 			fp = fopen(fname, "r");
 			if (fp != NULL)
 				goto next;
-			snprintf(fname, sizeof(fname), "options.%s", machinename);
+			snprintf(fname, sizeof(fname), "options.%s",
+				 machinename);
 			goto openit;
 		}
 		if (first == 2) {

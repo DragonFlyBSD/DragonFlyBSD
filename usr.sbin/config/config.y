@@ -5,15 +5,15 @@
 }
 
 %token	ANY
-%token	ARCH
 %token	AT
 %token	BUS
 %token	COMMA
 %token	CONFIG
+%token	CONFIG_MACHINE
+%token	CONFIG_MACHINE_ARCH
 %token	CONFLICTS
 %token	CONTROLLER
 %token	CPU
-%token	CPU_ARCH
 %token	DEVICE
 %token	DISABLE
 %token	DISK
@@ -84,7 +84,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.12 2006/10/23 18:01:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.13 2006/11/07 06:57:02 dillon Exp $
  */
 
 #include <ctype.h>
@@ -131,7 +131,7 @@ Spec:
 		;
 
 Config_spec:
-	ARCH Save_id
+	CONFIG_MACHINE Save_id
 	    = {
 		if (machinename != NULL) {
 		    errx(1, "%d: only one machine directive is allowed",
@@ -139,13 +139,13 @@ Config_spec:
 		}
 		machinename = $2;
 	      } |
-	CPU_ARCH Save_id
+	CONFIG_MACHINE_ARCH Save_id
 	      = {
-		if (cpuarchname != NULL) {
-		    errx(1, "%d: only one cpu_arch directive is allowed",
+		if (machinearchname != NULL) {
+		    errx(1, "%d: only one machine_arch directive is allowed",
 			yyline);
 		}
-		cpuarchname = $2;
+		machinearchname = $2;
 	      } |
 	CPU Save_id
 	      = {

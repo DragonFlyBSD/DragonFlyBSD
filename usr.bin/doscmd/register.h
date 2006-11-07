@@ -24,7 +24,7 @@
 ** SUCH DAMAGE.
 **
 ** $FreeBSD: src/usr.bin/doscmd/register.h,v 1.4 1999/10/08 09:02:38 marcel Exp $
-** $DragonFly: src/usr.bin/doscmd/register.h,v 1.4 2004/01/22 03:22:52 rob Exp $
+** $DragonFly: src/usr.bin/doscmd/register.h,v 1.5 2006/11/07 06:57:02 dillon Exp $
 */
 
 /******************************************************************************
@@ -32,7 +32,7 @@
 **
 */
 
-#ifndef _MACHINE_VM86_H_
+#ifndef _CPU_VM86_H_
 
 /* standard register representation */
 typedef union 

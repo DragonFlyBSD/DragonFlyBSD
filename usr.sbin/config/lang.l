@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.11 2006/10/23 18:01:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.12 2006/11/07 06:57:02 dillon Exp $
  */
 
 #include <ctype.h>
@@ -57,7 +57,6 @@ struct kt {
 	{ "config",	CONFIG },
 	{ "controller",	CONTROLLER },
 	{ "cpu",	CPU },
-	{ "cpu_arch",	CPU_ARCH },
 	{ "device",	DEVICE },
 	{ "disable",	DISABLE },
 	{ "disk",	DISK },
@@ -68,7 +67,8 @@ struct kt {
 	{ "iomem",	IOMEM },
 	{ "iosiz",	IOSIZ },
 	{ "irq",	IRQ },
-	{ "machine",	ARCH }, /* MACHINE is defined in /sys/param.h */
+	{ "machine",	CONFIG_MACHINE },
+	{ "machine_arch", CONFIG_MACHINE_ARCH },
 	{ "makeoptions", MAKEOPTIONS },
 	{ "maxusers",	MAXUSERS },
 	{ "nexus",	NEXUS },
