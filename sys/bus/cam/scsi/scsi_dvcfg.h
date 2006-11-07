@@ -1,8 +1,3 @@
-/*	$FreeBSD: src/sys/cam/scsi/scsi_dvcfg.h,v 1.1.2.1 2000/10/29 11:05:44 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_dvcfg.h,v 1.2 2003/06/17 04:28:19 dillon Exp $	*/
-/*	$NecBSD: scsi_dvcfg.h,v 1.4 1998/03/14 07:05:06 kmatsuda Exp $	*/
-/*	$NetBSD$	*/
-
 /*
  * [NetBSD for NEC PC-98 series]
  *  Copyright (c) 1994, 1995, 1996, 1997, 1998
@@ -32,6 +27,11 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/cam/scsi/scsi_dvcfg.h,v 1.1.2.1 2000/10/29 11:05:44 non Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_dvcfg.h,v 1.3 2006/11/07 19:56:20 dillon Exp $
+ * $NecBSD: scsi_dvcfg.h,v 1.4 1998/03/14 07:05:06 kmatsuda Exp $
+ * $NetBSD$
  */
 
 #ifndef	_SCSI_DVCFG_H_

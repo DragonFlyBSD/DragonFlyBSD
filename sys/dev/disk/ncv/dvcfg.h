@@ -1,6 +1,3 @@
-/* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.6 2006/05/20 02:42:06 dillon Exp $ */
-/*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1996 NetBSD/pc98 porting staff.
@@ -28,6 +25,10 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD$
+ * $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $
+ * $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.7 2006/11/07 19:56:22 dillon Exp $
  */
 /*
  * Copyright (c) 1996 Naofumi HONDA.  All rights reserved.

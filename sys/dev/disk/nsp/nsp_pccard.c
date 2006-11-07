@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.9 2006/10/25 20:55:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.10 2006/11/07 19:56:23 dillon Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -47,8 +47,6 @@
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
-
-#include <machine/dvcfg.h>
 
 #include <sys/device_port.h>
 

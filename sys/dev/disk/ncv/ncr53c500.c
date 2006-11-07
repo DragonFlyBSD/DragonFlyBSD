@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.10 2006/10/25 20:55:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.11 2006/11/07 19:56:22 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -52,7 +52,7 @@
 #include <machine/clock.h>
 #include <machine/cpu.h>
 
-#include <machine/dvcfg.h>
+#include "dvcfg.h"
 #include <machine/physio_proc.h>
 
 #include <bus/cam/scsi/scsi_low.h>

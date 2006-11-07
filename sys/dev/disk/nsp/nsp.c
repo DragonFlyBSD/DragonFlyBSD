@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.9 2006/10/25 20:55:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.10 2006/11/07 19:56:23 dillon Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -54,7 +54,6 @@
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
-#include <machine/dvcfg.h>
 #include <machine/physio_proc.h>
 
 #include <bus/cam/scsi/scsi_low.h>

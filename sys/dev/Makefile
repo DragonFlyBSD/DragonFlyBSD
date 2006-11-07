@@ -1,7 +1,16 @@
-# $DragonFly: src/sys/dev/Makefile,v 1.7 2006/10/10 18:31:01 dillon Exp $
+# $DragonFly: src/sys/dev/Makefile,v 1.8 2006/11/07 19:56:21 dillon Exp $
 #
 
-SUBDIR=acpica5 agp bridge crypto disk drm est misc netif pccard powermng raid \
+.include "../machine/${MACHINE}/Makefile.inc"
+
+SUBDIR=agp bridge crypto disk drm misc netif pccard powermng raid \
 	serial sound usbmisc video
+
+.ifdef ACPICA5_SUPPORT
+SUBDIR+= acpica5
+.endif
+.ifdef EST_SUPPORT
+SUBDIR+= est
+.endif
 
 .include <bsd.subdir.mk>

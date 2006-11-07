@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.9 2006/10/25 20:55:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.10 2006/11/07 19:56:24 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -57,8 +57,6 @@
 #include <vm/vm.h>
 
 #include <bus/isa/isavar.h>
-
-#include <machine/dvcfg.h>
 
 #include <bus/cam/scsi/scsi_low.h>
 #include <bus/isa/isa_common.h>
