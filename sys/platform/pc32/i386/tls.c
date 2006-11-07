@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/tls.c,v 1.5 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/tls.c,v 1.6 2006/11/07 20:48:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,10 +42,10 @@
 #include <sys/sysent.h>
 #include <sys/sysctl.h>
 #include <sys/tls.h>
+#include <sys/reg.h>
 #include <sys/thread2.h>
 
 #include <machine/cpu.h>
-#include <machine/reg.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>
 #include <machine/bootinfo.h>

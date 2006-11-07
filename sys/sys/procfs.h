@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/procfs.h,v 1.2 1999/08/28 00:51:56 peter Exp $
- * $DragonFly: src/sys/sys/procfs.h,v 1.3 2005/03/16 14:30:31 davidxu Exp $
+ * $DragonFly: src/sys/sys/procfs.h,v 1.4 2006/11/07 20:48:15 dillon Exp $
  */
 
 #ifndef _SYS_PROCFS_H_
 #define _SYS_PROCFS_H_
 
 #include <sys/param.h>
-#include <machine/reg.h>
+#include <sys/reg.h>
 
 typedef struct reg gregset_t;
 typedef struct fpreg fpregset_t;

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.15 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.16 2006/11/07 20:48:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,10 +32,10 @@
 #include <sys/linker_set.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
+#include <sys/reg.h>
 
 #include <machine/cpu.h>
 #include <machine/md_var.h>
-#include <machine/reg.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

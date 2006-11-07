@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.44 2006/10/23 15:42:50 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.45 2006/11/07 20:48:15 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -90,6 +90,8 @@ extern int ncpus2_shift;	/* log base 2 of ncpus2 */
 extern int ncpus2_mask;		/* ncpus2 - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */
 
+extern u_int cpu_feature;	/* CPUID_* features */
+
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
 #define KKASSERT(exp)		if (!(exp)) panic("assertion: %s in %s", #exp, __func__)
@@ -129,8 +131,10 @@ void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 
 int	cpu_sanitize_frame (struct trapframe *);
-
+void	cpu_halt (void);
+void	cpu_reset (void);
 void	cpu_boot (int);
+
 void	cpu_rootconf (void);
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
@@ -161,7 +165,14 @@ u_quad_t strtouq (const char *, char **, int);
 /*
  * note: some functions commonly used by device drivers may be passed
  * pointers to volatile storage, volatile set to avoid warnings.
+ *
+ * NOTE: bcopyb() - is a dumb byte-granular bcopy.  This routine is
+ *		    explicitly not meant to be sophisticated.
+ * NOTE: bcopyi() - is a dumb int-granular bcopy (len is still in bytes).
+ *		    This routine is explicitly not meant to be sophisticated.
  */
+void	bcopyb (const void *from, void *to, size_t len);
+void	bcopyi (const void *from, void *to, size_t len);
 void	bcopy (volatile const void *from, volatile void *to, size_t len);
 void	ovbcopy (const void *from, void *to, size_t len);
 void	bzero (volatile void *buf, size_t len);

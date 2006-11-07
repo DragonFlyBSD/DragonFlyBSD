@@ -38,13 +38,13 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_regs.c,v 1.10.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.8 2005/11/14 18:50:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.9 2006/11/07 20:48:15 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <machine/reg.h>
+#include <sys/reg.h>
 #include <vfs/procfs/procfs.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>

@@ -35,13 +35,17 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/sys/reg.h,v 1.1 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/sys/reg.h,v 1.2 2006/11/07 20:48:15 dillon Exp $
+ */
+/*
+ * Machine independant interface to abstract cpu registers that a process
+ * might have to manipulate (reg, fpreg, and dbreg structures).
  */
 
-#ifndef _MACHINE_REG_H_
-#define	_MACHINE_REG_H_
+#ifndef _SYS_REG_H_
+#define	_SYS_REG_H_
 
-#include <cpu/reg.h>
+#include <machine/reg.h>
 
 #ifdef _KERNEL
 
@@ -52,9 +56,9 @@
 struct proc;
 struct lwp;
 
-/*
- * XXX these interfaces are MI, so they should be declared in a MI place.
- */
+int	fill_fpregs (struct lwp *, struct fpreg *);
+int	fill_regs (struct lwp *lp, struct reg *regs);
+int	fill_dbregs (struct lwp *lp, struct dbreg *dbregs);
 int	set_fpregs (struct lwp *, struct fpreg *);
 int	set_regs (struct lwp *lp, struct reg *regs);
 void	setregs (struct lwp *, u_long, u_long, u_long);
@@ -62,4 +66,4 @@ int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
 
 #endif
 
-#endif /* !_MACHINE_REG_H_ */
+#endif /* !_SYS_REG_H_ */

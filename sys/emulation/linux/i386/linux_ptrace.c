@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.11 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.12 2006/11/07 20:48:12 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -41,10 +41,10 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <sys/user.h>
+#include <sys/reg.h>
 
 #include <machine/md_var.h>
 #include <machine/pcb.h>
-#include <machine/reg.h>
 
 #include "linux.h"
 #include "linux_proto.h"

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.103 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.104 2006/11/07 20:48:15 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -74,6 +74,7 @@
 #include <sys/bus.h>
 #include <sys/upcall.h>
 #include <sys/usched.h>
+#include <sys/reg.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -94,7 +95,6 @@
 #include <ddb/ddb.h>
 
 #include <machine/cpu.h>
-#include <machine/reg.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>
 #include <machine/bootinfo.h>

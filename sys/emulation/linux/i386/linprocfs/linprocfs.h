@@ -39,7 +39,7 @@
  *	@(#)procfs.h	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs.h,v 1.2.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.8 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.9 2006/11/07 20:48:13 dillon Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ struct vfs_namemap {
 int vfs_getuserstr (struct uio *, char *, int *);
 vfs_namemap_t *vfs_findname (vfs_namemap_t *, char *, int);
 
-/* <machine/reg.h> */
+/* <sys/reg.h> */
 struct reg;
 struct fpreg;
 struct dbreg;

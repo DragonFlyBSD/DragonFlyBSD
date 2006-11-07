@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.19 2006/10/23 15:42:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.20 2006/11/07 20:48:15 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -53,7 +53,6 @@ extern	int	(*copyout_vector) (const void *kaddr, void *udaddr,
 				       size_t len);
 extern	void	(*cpu_idle_hook)(void);
 extern	u_int	cpu_exthigh;
-extern	u_int	cpu_feature;
 extern	u_int	cpu_fxsr;
 extern	u_int	cpu_high;
 extern	u_int	cpu_id;
@@ -73,13 +72,9 @@ struct  dbreg;
 struct  mdglobaldata;
 struct  thread;
 
-void	bcopyb (const void *from, void *to, size_t len);
-void	bcopyi (const void *from, void *to, size_t len);
 void	busdma_swi (void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
-void	cpu_halt (void);
 void	cpu_idle (void);
-void	cpu_reset (void);
 void	cpu_setregs (void);
 void	cpu_switch_load_gs (void) __asm(__STRING(cpu_switch_load_gs));
 void	cpu_heavy_restore (void);	/* cannot be called from C */
@@ -97,9 +92,6 @@ void	doreti_popl_es_fault (void) __asm(__STRING(doreti_popl_es_fault));
 void	doreti_popl_fs (void) __asm(__STRING(doreti_popl_fs));
 void	doreti_popl_fs_fault (void) __asm(__STRING(doreti_popl_fs_fault));
 void	enable_sse (void);
-int	fill_fpregs (struct lwp *, struct fpreg *);
-int	fill_regs (struct lwp *lp, struct reg *regs);
-int	fill_dbregs (struct lwp *lp, struct dbreg *dbregs);
 void	fillw (int /*u_short*/ pat, void *base, size_t cnt);
 #if 0
 void	i486_bzero (volatile void *buf, size_t len);

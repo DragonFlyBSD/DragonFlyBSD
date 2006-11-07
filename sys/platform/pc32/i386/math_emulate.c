@@ -7,7 +7,7 @@
  *
  *	from: 386BSD 0.1
  * $FreeBSD: src/sys/i386/i386/math_emulate.c,v 1.35 1999/08/28 00:43:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.6 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.7 2006/11/07 20:48:15 dillon Exp $
  */
 
 /*
@@ -38,9 +38,9 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/reg.h>
 
 #include <machine/frame.h>
-#include <machine/reg.h>
 
 #include <sys/proc.h>
 #include <sys/kernel.h>

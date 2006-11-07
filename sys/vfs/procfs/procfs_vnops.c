@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.38 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.39 2006/11/07 20:48:15 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/malloc.h>
-#include <machine/reg.h>
+#include <sys/reg.h>
 #include <vm/vm_zone.h>
 #include <vfs/procfs/procfs.h>
 #include <sys/pioctl.h>

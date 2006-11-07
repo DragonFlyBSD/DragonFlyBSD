@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.17 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.18 2006/11/07 20:48:14 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -215,7 +215,7 @@ ktr_resyncinit(void *dummy)
 }
 SYSINIT(ktr_resync, SI_SUB_FINISH_SMP+1, SI_ORDER_ANY, ktr_resyncinit, NULL);
 
-#ifdef SMP
+#if defined(SMP) && defined(_RDTSC_SUPPORTED_)
 
 static void ktr_resync_remote(void *dummy);
 extern cpumask_t smp_active_mask;
@@ -455,13 +455,16 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 	crit_enter();
 	entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
 	++ktr_idx[cpu];
+#ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC) {
 #ifdef SMP
 		entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
 #else
 		entry->ktr_timestamp = rdtsc();
 #endif
-	} else {
+	} else
+#endif
+	{
 		entry->ktr_timestamp = get_approximate_time_t();
 	}
 	entry->ktr_info = info;

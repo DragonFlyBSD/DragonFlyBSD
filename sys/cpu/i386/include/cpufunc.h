@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.17 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.18 2006/11/07 20:48:10 dillon Exp $
  */
 
 /*
@@ -491,6 +491,8 @@ rdpmc(u_int pmc)
 	__asm __volatile(".byte 0x0f, 0x33" : "=A" (rv) : "c" (pmc));
 	return (rv);
 }
+
+#define _RDTSC_SUPPORTED_
 
 static __inline u_int64_t
 rdtsc(void)

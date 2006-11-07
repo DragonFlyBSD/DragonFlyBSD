@@ -1,5 +1,8 @@
 # $FreeBSD: src/sys/modules/syscons/Makefile,v 1.11.2.2 2003/05/15 02:02:39 murray Exp $
-# $DragonFly: src/sys/dev/misc/syscons/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
+# $DragonFly: src/sys/dev/misc/syscons/Makefile,v 1.3 2006/11/07 20:48:11 dillon Exp $
+#
+
+.include "../../../machine/${MACHINE}/Makefile.inc"
 
 SUBDIR =
 SUBDIR += blank
@@ -14,7 +17,7 @@ SUBDIR += snake
 SUBDIR += star
 SUBDIR += warp
 
-.if ${MACHINE_ARCH} == "i386"
+.ifdef SYSCONS_APM_SUPPORT
 SUBDIR += apm
 .endif
 

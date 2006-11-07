@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.49 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.50 2006/11/07 20:48:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@
 #include <vm/vm_pager.h>
 
 #include <sys/user.h>
-#include <machine/reg.h>
+#include <sys/reg.h>
 
 #include <sys/thread2.h>
 

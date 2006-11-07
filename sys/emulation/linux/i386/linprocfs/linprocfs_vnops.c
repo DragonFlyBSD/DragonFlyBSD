@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.36 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.37 2006/11/07 20:48:13 dillon Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
 #include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/malloc.h>
-#include <machine/reg.h>
+#include <sys/reg.h>
 #include <vm/vm_zone.h>
 #include "linprocfs.h"
 #include <sys/pioctl.h>
