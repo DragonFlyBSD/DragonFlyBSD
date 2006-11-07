@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.41 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.42 2006/11/07 18:50:07 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -75,7 +75,6 @@
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>
-#include <machine/ipl.h>
 
 #include <machine/pmap.h>
 #include <machine_base/apic/apicreg.h>

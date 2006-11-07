@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.16 2006/07/11 01:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.17 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,6 @@
 #include <sys/sysctl.h>
 #include <sys/resourcevar.h>
 #include <sys/spinlock.h>
-#include <machine/ipl.h>
 #include <machine/cpu.h>
 #include <machine/smp.h>
 

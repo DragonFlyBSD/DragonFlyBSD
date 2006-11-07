@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.25 2006/09/03 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.26 2006/11/07 18:50:07 dillon Exp $
  *
  */
 
@@ -53,7 +53,6 @@
 #include <sys/user.h>
 
 #include <machine/cpu.h>
-#include <machine/ipl.h>
 #include <machine/pcb_ext.h>	/* pcb.h included by sys/user.h */
 #include <machine/sysarch.h>
 #include <machine/smp.h>

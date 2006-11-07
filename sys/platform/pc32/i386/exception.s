@@ -31,14 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.28 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.29 2006/11/07 18:50:07 dillon Exp $
  */
 
 #include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>
-#include <machine/ipl.h>
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>

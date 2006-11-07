@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.27 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.28 2006/11/07 18:50:07 dillon Exp $
  */
 
 /*
@@ -68,7 +68,6 @@
 #include <net/if_var.h>
 #include <net/netisr.h>
 #include <machine/cpufunc.h>
-#include <machine/ipl.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>

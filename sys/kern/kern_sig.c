@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.55 2006/10/10 15:40:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.56 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -64,12 +64,11 @@
 #include <sys/sysent.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
+#include <sys/interrupt.h>
 #include <sys/unistd.h>
 #include <sys/kern_syscall.h>
 #include <sys/thread2.h>
 
-
-#include <machine/ipl.h>
 #include <machine/cpu.h>
 #include <machine/smp.h>
 

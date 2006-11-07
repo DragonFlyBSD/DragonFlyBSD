@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.6 2005/11/14 18:50:00 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.7 2006/11/07 18:50:06 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -42,7 +42,6 @@
 #include <sys/kernel.h>
 #include <sys/resource.h>
 #include <machine/cpu.h>	/* For need_user_resched */
-#include <machine/ipl.h>	/* For need_user_resched */
 
 #include "posix4.h"
 

@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.12 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/types.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
  */
+#ifndef _MACHINE_TYPES_H_
+#define	_MACHINE_TYPES_H_
 
-#ifndef _MACHINE_IPL_H_
-#define	_MACHINE_IPL_H_
+#include <cpu/types.h>
 
-#include <machine_base/apic/apic_ipl.h>
-#include <machine_base/icu/icu_ipl.h>
+typedef __uint32_t	intrmask_t;
 
-#endif
+#endif /* !_MACHINE_TYPES_H_ */
+

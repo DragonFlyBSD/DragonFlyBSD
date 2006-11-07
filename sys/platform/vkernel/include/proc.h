@@ -31,13 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.12 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/proc.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
  */
 
-#ifndef _MACHINE_IPL_H_
-#define	_MACHINE_IPL_H_
+#ifndef _MACHINE_PROC_H_
+#define	_MACHINE_PROC_H_
 
-#include <machine_base/apic/apic_ipl.h>
-#include <machine_base/icu/icu_ipl.h>
+/*
+ * When a trap or exception occurs the trap code stores the frame pointer
+ * in md_regs so emulation and other code can modify it for the return.
+ */
+struct trapframe;
 
-#endif
+struct mdproc {
+	struct trapframe *md_regs;	/* registers on current frame */
+};
+
+#endif /* !_MACHINE_PROC_H_ */

@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.22 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.23 2006/11/07 18:50:06 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -108,7 +108,6 @@
 #include <sys/interrupt.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
-#include <machine/ipl.h>
 #include <ddb/ddb.h>
 
 #ifndef MAX_SOFTCLOCK_STEPS

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.3 2006/06/10 20:19:38 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.4 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,6 @@
 #include <sys/sysctl.h>
 #include <sys/resourcevar.h>
 #include <sys/spinlock.h>
-#include <machine/ipl.h>
 #include <machine/cpu.h>
 #include <machine/smp.h>
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.20 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.21 2006/11/07 18:50:06 dillon Exp $
  *
  */
 
@@ -49,7 +49,6 @@
 #include <sys/kernel.h>
 #include <sys/thread2.h>
 #include <machine/clock.h>
-#include <machine/ipl.h>
 
 #include <bus/isa/i386/isa_device.h>
 

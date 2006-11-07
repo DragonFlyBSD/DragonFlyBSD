@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 1992, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,25 +33,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)reloc.h	8.1 (Berkeley) 6/10/93
- * $FreeBSD: src/sys/i386/include/reloc.h,v 1.7 1999/08/28 00:44:23 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/reloc.h,v 1.4 2006/11/07 18:49:59 dillon Exp $
+ *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
+ * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pcb.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
  */
 
-#ifndef _CPU_RELOC_H_
-#define _CPU_RELOC_H_
+#ifndef _MACHINE_PCB_H_
+#define _MACHINE_PCB_H_
 
-/* Relocation format. */
-struct relocation_info {
-	int r_address;			  /* offset in text or data segment */
-	unsigned int   r_symbolnum : 24,  /* ordinal number of add symbol */
-			   r_pcrel :  1,  /* 1 if value should be pc-relative */
-			  r_length :  2,  /* log base 2 of value's width */
-			  r_extern :  1,  /* 1 if need to add symbol to value */
-			 r_baserel :  1,  /* linkage table relative */
-			r_jmptable :  1,  /* relocate to jump table */
-			r_relative :  1,  /* load address relative */
-			    r_copy :  1;  /* run time copy */
+/*
+ * Intel 386 process control block
+ */
+#include <machine/npx.h>
+
+struct pcb {
+	int	pcb_cr3;
+	int	pcb_edi;
+	int	pcb_esi;
+	int	pcb_ebp;
+	int	pcb_esp;
+	int	pcb_ebx;
+	int	pcb_eip;
+
+	int     pcb_dr0;
+	int     pcb_dr1;
+	int     pcb_dr2;
+	int     pcb_dr3;
+	int     pcb_dr6;
+	int     pcb_dr7;
+
+	struct	pcb_ldt *pcb_ldt;	/* per process (user) LDT */
+	union	savefpu	pcb_save;
+	u_char	pcb_flags;
+#define	FP_SOFTFP	0x01	/* process using software fltng pnt emulator */
+#define	PCB_DBREGS	0x02	/* process using debug registers */
+	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
+	int	pcb_gs;
+	struct	pcb_ext	*pcb_ext;	/* optional pcb extension */
+	u_long	__pcb_spare[3];	/* adjust to avoid core dump size changes */
 };
 
+#ifdef _KERNEL
+
+void	savectx (struct pcb *);
 #endif
+
+#endif /* _MACHINE_PCB_H_ */

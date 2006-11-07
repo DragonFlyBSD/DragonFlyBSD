@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.85 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.86 2006/11/07 18:50:07 dillon Exp $
  */
 
 /*
@@ -83,7 +83,6 @@
 #include <vm/vm_extern.h>
 
 #include <machine/cpu.h>
-#include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 #include <machine/smp.h>

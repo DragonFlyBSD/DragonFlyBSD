@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.24 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.25 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -81,7 +81,6 @@
 #include <sys/syslog.h>
 #include <sys/thread2.h>
 #include <machine/clock.h>
-#include <machine/ipl.h>
 #ifndef SMP
 #include <machine/lock.h>
 #endif

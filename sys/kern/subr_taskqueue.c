@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.11 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,8 +37,6 @@
 #include <sys/malloc.h>
 #include <sys/kthread.h>
 #include <sys/thread2.h>
-
-#include <machine/ipl.h>
 
 MALLOC_DEFINE(M_TASKQUEUE, "taskqueue", "Task Queues");
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.17 2005/10/26 10:46:45 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.18 2006/11/07 18:50:06 dillon Exp $
  */
 
 /*
@@ -68,7 +68,6 @@
 #include <vm/vm_zone.h>
 
 #include <machine/stdarg.h>
-#include <machine/ipl.h>
 #include <machine/smp.h>
 #include <machine/atomic.h>
 

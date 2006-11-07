@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.27 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.28 2006/11/07 18:50:07 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -11,7 +11,6 @@
 #include "opt_auto_eoi.h"
 
 #include <machine/asmacros.h>
-#include <machine/ipl.h>
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
@@ -20,6 +19,7 @@
 #include <bus/isa/i386/isa.h>
 
 #include "assym.s"
+#include "icu_ipl.h"
 
 #ifndef APIC_IO
 

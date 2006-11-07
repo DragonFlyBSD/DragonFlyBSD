@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.12 2006/09/05 03:48:13 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.13 2006/11/07 18:50:07 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -34,7 +34,6 @@
 #include <sys/sysctl.h>
 #include <sys/interrupt.h>
 #include <sys/thread2.h>
-#include <machine/ipl.h>
 
 #include <vm/vm_zone.h>
 #include <opencrypto/cryptodev.h>

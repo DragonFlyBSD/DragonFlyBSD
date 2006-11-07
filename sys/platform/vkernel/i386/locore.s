@@ -31,13 +31,48 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.12 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.1 2006/11/07 18:50:07 dillon Exp $
  */
 
-#ifndef _MACHINE_IPL_H_
-#define	_MACHINE_IPL_H_
+#include <machine/asmacros.h>
+#include "assym.s"
 
-#include <machine_base/apic/apic_ipl.h>
-#include <machine_base/icu/icu_ipl.h>
+	.data
+	ALIGN_DATA		/* just to be sure */
+
+	.text
+NON_GPROF_ENTRY(btext)
+
+	call	initvkernel
+	call	mi_startup
+1:
+	hlt
+	jmp	1b
+
+#if 0
+/*
+ * Signal trampoline, copied to top of user stack
+ */
+NON_GPROF_ENTRY(sigcode)
+	call	*SIGF_HANDLER(%esp)		/* call signal handler */
+	lea	SIGF_UC(%esp),%eax		/* get ucontext_t */
+	pushl	%eax
+	testl	$PSL_VM,UC_EFLAGS(%eax)
+	jne	9f
+	movl	UC_GS(%eax),%gs			/* restore %gs */
+9:
+	movl	$SYS_sigreturn,%eax
+	pushl	%eax				/* junk to fake return addr. */
+	int	$0x80				/* enter kernel with args */
+0:	jmp	0b
+
+	ALIGN_TEXT
+esigcode:
+
+	.data
+	.globl	szsigcode
+szsigcode:
+	.long	esigcode - sigcode
 
 #endif
+

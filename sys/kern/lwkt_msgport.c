@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.34 2005/10/25 17:26:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.35 2006/11/07 18:50:06 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -65,7 +65,6 @@
 #include <sys/msgport2.h>
 
 #include <machine/stdarg.h>
-#include <machine/ipl.h>
 #include <machine/cpufunc.h>
 #ifdef SMP
 #include <machine/smp.h>

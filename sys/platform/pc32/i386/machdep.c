@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.102 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.103 2006/11/07 18:50:07 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -98,7 +98,6 @@
 #include <machine/clock.h>
 #include <machine/specialreg.h>
 #include <machine/bootinfo.h>
-#include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */

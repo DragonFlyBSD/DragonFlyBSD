@@ -67,20 +67,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.16 2006/10/23 21:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.17 2006/11/07 18:50:07 dillon Exp $
  */
 
 #include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>
-#include <machine/ipl.h>
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
 
 #include <bus/isa/isareg.h>
 #include "assym.s"
+#include "icu_ipl.h"
 
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.

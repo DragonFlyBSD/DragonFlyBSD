@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.15 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.16 2006/11/07 18:50:07 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -48,8 +48,6 @@
 #include <sys/protosw.h>
 #include <sys/errno.h>
 #include <sys/thread2.h>
-
-#include <machine/ipl.h>
 
 #include <net/raw_cb.h>
 #include <net/route.h>

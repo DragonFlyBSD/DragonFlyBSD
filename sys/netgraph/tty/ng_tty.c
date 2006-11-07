@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.15 2006/11/07 06:43:25 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.16 2006/11/07 18:50:07 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -77,11 +77,6 @@
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include "ng_tty.h"
-
-#ifdef __i386__			/* fiddle with the spl locking */
-#include <machine/ipl.h>
-#include <machine_base/isa/intr_machdep.h>
-#endif
 
 /* Misc defs */
 #define MAX_MBUFQ		3	/* Max number of queued mbufs */

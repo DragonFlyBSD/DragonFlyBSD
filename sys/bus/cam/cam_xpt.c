@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.31 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.32 2006/11/07 18:49:57 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,7 +46,6 @@
 #include <sys/thread2.h>
 
 #include <machine/clock.h>
-#include <machine/ipl.h>
 
 #include "cam.h"
 #include "cam_ccb.h"

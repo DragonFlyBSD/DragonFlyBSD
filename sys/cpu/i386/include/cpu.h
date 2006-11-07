@@ -35,11 +35,11 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.20 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.21 2006/11/07 18:49:59 dillon Exp $
  */
 
-#ifndef _MACHINE_CPU_H_
-#define	_MACHINE_CPU_H_
+#ifndef _CPU_CPU_H_
+#define	_CPU_CPU_H_
 
 /*
  * Definitions unique to i386 cpu support.
@@ -132,4 +132,4 @@ void	fork_return (struct lwp *, struct trapframe);
 
 #endif
 
-#endif /* !_MACHINE_CPU_H_ */
+#endif /* !_CPU_CPU_H_ */

@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.13 2006/11/07 18:50:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,6 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
-#include <machine/ipl.h>
 #include <machine/cpu.h>
 
 #ifdef GPROF

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.42 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.43 2006/11/07 18:50:06 dillon Exp $
  *
  */
 
@@ -38,10 +38,10 @@
 #include <sys/thread2.h>
 #include <sys/random.h>
 #include <sys/serialize.h>
+#include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
 
-#include <machine/ipl.h>
 #include <machine/frame.h>
 
 #include <sys/interrupt.h>

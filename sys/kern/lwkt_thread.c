@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.101 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.102 2006/11/07 18:50:06 dillon Exp $
  */
 
 /*
@@ -71,7 +71,6 @@
 #include <vm/vm_zone.h>
 
 #include <machine/stdarg.h>
-#include <machine/ipl.h>
 #include <machine/smp.h>
 
 #else
