@@ -26,11 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sigframe.h,v 1.5 1999/12/04 10:40:24 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/sigframe.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/sigframe.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _MACHINE_SIGFRAME_H_
-#define	_MACHINE_SIGFRAME_H_
+#ifndef _CPU_SIGFRAME_H_
+#define	_CPU_SIGFRAME_H_
 
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
@@ -67,4 +67,4 @@ struct sigframe {
 	siginfo_t	sf_si;		/* = *sf_siginfo (SA_SIGINFO case) */
 };
 
-#endif /* !_MACHINE_SIGFRAME_H_ */
+#endif /* !_CPU_SIGFRAME_H_ */

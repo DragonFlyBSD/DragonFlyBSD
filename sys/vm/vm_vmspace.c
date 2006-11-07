@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.4 2006/10/20 17:02:09 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.5 2006/11/07 17:51:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	if (vkernel_find_vmspace(vc, uap->id))
 		return (EEXIST);
 	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
-	ve->vmspace = vmspace_alloc(VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
+	ve->vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	ve->id = uap->id;
 	pmap_pinit2(vmspace_pmap(ve->vmspace));
 	RB_INSERT(vmspace_rb_tree, &vc->vc_root, ve);
@@ -250,12 +250,10 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	if (size == 0)
 		return (0);
 
-	if (VM_MAXUSER_ADDRESS > 0 && addr + size > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
-#ifndef i386
-	if (VM_MIN_ADDRESS > 0 && addr < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-#endif
 	map = &ve->vmspace->vm_map;
 	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE))
 		return (EINVAL);
@@ -334,13 +332,11 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END)
 		return (EINVAL);
 
-	if (VM_MAXUSER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 &&
+		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
-#ifndef i386
-        if (VM_MIN_ADDRESS > 0 && uap->addr < VM_MIN_ADDRESS)
+        if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-#endif
 	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
 		return (EINVAL);
 
@@ -390,9 +386,9 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_common *vc)
 	RB_REMOVE(vmspace_rb_tree, &vc->vc_root, ve);
 
 	pmap_remove_pages(vmspace_pmap(ve->vmspace),
-			  VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
+			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vm_map_remove(&ve->vmspace->vm_map,
-		      VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
+		      VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vmspace_free(ve->vmspace);
 	kfree(ve, M_VKERNEL);
 }

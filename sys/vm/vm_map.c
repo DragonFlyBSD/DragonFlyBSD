@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.51 2006/10/21 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.52 2006/11/07 17:51:24 dillon Exp $
  */
 
 /*
@@ -2916,7 +2916,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	int            rv;
 	int		count;
 
-	if (VM_MIN_ADDRESS > 0 && addrbos < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && addrbos < VM_MIN_USER_ADDRESS)
 		return (KERN_NO_SPACE);
 
 	if (max_ssize < sgrowsiz)

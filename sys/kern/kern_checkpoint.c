@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.11 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.12 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -547,8 +547,8 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	    vminfo.cvm_dsize > p->p_rlimit[RLIMIT_DATA].rlim_cur ||
 	    vminfo.cvm_tsize < 0 ||
 	    (u_quad_t)vminfo.cvm_tsize > maxtsiz ||
-	    vminfo.cvm_daddr >= (caddr_t)VM_MAXUSER_ADDRESS ||
-	    vminfo.cvm_taddr >= (caddr_t)VM_MAXUSER_ADDRESS
+	    vminfo.cvm_daddr >= (caddr_t)VM_MAX_USER_ADDRESS ||
+	    vminfo.cvm_taddr >= (caddr_t)VM_MAX_USER_ADDRESS
 	) {
 	    error = ERANGE;
 	    goto done;

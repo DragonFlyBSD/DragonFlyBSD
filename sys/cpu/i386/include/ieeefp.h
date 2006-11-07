@@ -32,15 +32,15 @@
  *
  * 	from: @(#) ieeefp.h 	1.0 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/i386/include/ieeefp.h,v 1.7 1999/08/28 00:44:15 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/ieeefp.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/ieeefp.h,v 1.3 2006/11/07 17:51:21 dillon Exp $
  */
 
 /*
  *	IEEE floating point type and constant definitions.
  */
 
-#ifndef _MACHINE_IEEEFP_H_
-#define _MACHINE_IEEEFP_H_
+#ifndef _CPU_IEEEFP_H_
+#define _CPU_IEEEFP_H_
 
 /*
  * FP rounding modes
@@ -99,4 +99,4 @@ typedef enum {
 #define FP_RND_OFF	10	/* round control offset */
 #define FP_STKY_OFF	0	/* sticky flags offset */
 
-#endif /* !_MACHINE_IEEEFP_H_ */
+#endif /* !_CPU_IEEEFP_H_ */

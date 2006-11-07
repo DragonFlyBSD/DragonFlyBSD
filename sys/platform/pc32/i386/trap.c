@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.84 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.85 2006/11/07 17:51:23 dillon Exp $
  */
 
 /*
@@ -920,7 +920,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		vm_page_t mpte;
 
 		if (p == NULL ||
-		    (!usermode && va < VM_MAXUSER_ADDRESS &&
+		    (!usermode && va < VM_MAX_USER_ADDRESS &&
 		     (td->td_gd->gd_intr_nesting_level != 0 || 
 		      td->td_pcb->pcb_onfault == NULL))) {
 			trap_fatal(frame, eva);
@@ -1246,7 +1246,7 @@ trapwrite(unsigned addr)
 	/*
 	 * XXX - MAX is END.  Changed > to >= for temp. fix.
 	 */
-	if (va >= VM_MAXUSER_ADDRESS)
+	if (va >= VM_MAX_USER_ADDRESS)
 		return (1);
 
 	p = curproc;

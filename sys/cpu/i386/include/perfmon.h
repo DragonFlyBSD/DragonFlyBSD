@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/perfmon.h,v 1.7 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/perfmon.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/perfmon.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
 /*
@@ -35,8 +35,8 @@
  * Pentium Pro CPUs.
  */
 
-#ifndef	_MACHINE_PERFMON_H_
-#define	_MACHINE_PERFMON_H_
+#ifndef	_CPU_PERFMON_H_
+#define	_CPU_PERFMON_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -255,4 +255,4 @@ int	perfmon_reset (int);
 #define	PMC5_DATA_RW		40
 #define	PMC5_DATA_RW_MISS	41
 
-#endif /* !_MACHINE_PERFMON_H_ */
+#endif /* !_CPU_PERFMON_H_ */

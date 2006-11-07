@@ -1,5 +1,5 @@
 /*	$NetBSD: ieee.h,v 1.7 2003/10/26 21:46:46 kleink Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/ieee.h,v 1.1 2004/12/30 16:00:22 asmodai Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/ieee.h,v 1.2 2006/11/07 17:51:21 dillon Exp $ */
 
 /*
  * Copyright (c) 1992, 1993
@@ -40,6 +40,9 @@
  *
  *	@(#)ieee.h	8.1 (Berkeley) 6/11/93
  */
+
+#ifndef _CPU_IEEE_H_
+#define _CPU_IEEE_H_
 
 /*
  * ieee.h defines the machine-dependent layout of the machine's IEEE
@@ -95,3 +98,5 @@ union ieee_ext_u {
 	long double		extu_ld;
 	struct ieee_ext		extu_ext;
 };
+
+#endif

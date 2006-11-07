@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.65 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.66 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -343,8 +343,8 @@ proc0_init(void *dummy __unused)
 	pmap_pinit0(vmspace_pmap(&vmspace0));
 	p->p_vmspace = &vmspace0;
 	vmspace0.vm_refcnt = 1;
-	vm_map_init(&vmspace0.vm_map, round_page(VM_MIN_ADDRESS),
-	    trunc_page(VM_MAXUSER_ADDRESS));
+	vm_map_init(&vmspace0.vm_map, round_page(VM_MIN_USER_ADDRESS),
+	    trunc_page(VM_MAX_USER_ADDRESS));
 	vmspace0.vm_map.pmap = vmspace_pmap(&vmspace0);
 
 	/*

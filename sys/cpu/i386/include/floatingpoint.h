@@ -32,11 +32,11 @@
  *
  *	from: @(#) floatingpoint.h	1.0 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/i386/include/floatingpoint.h,v 1.10.2.1 2002/06/30 00:55:09 bde Exp $
- * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.4 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _FLOATINGPOINT_H_
-#define _FLOATINGPOINT_H_
+#ifndef _CPU_FLOATINGPOINT_H_
+#define _CPU_FLOATINGPOINT_H_
 
 /*
  * IEEE floating point structure and function definitions
@@ -128,4 +128,4 @@ __fpsetreg(int _m, int _reg, int _fld, int _off)
 	__fpsetreg(0, FP_STKY_REG, (m), FP_STKY_OFF))
 #define	fpsetsticky(m)	fpresetsticky(m)
 
-#endif /* !_FLOATINGPOINT_H_ */
+#endif /* !_CPU_FLOATINGPOINT_H_ */

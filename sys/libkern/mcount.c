@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.7 2004/04/28 22:05:09 hmp Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.8 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +103,7 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 	 */
 	if (frompci >= p->textsize) {
 		if (frompci + p->lowpc
-		    >= (uintfptr_t)(VM_MAXUSER_ADDRESS + UPAGES * PAGE_SIZE))
+		    >= (uintfptr_t)(VM_MAX_USER_ADDRESS + UPAGES * PAGE_SIZE))
 			goto done;
 		frompci = (uintfptr_t)user - p->lowpc;
 		if (frompci >= p->textsize)

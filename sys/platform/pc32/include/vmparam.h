@@ -37,7 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/vmparam.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/vmparam.h,v 1.8 2006/11/07 17:51:24 dillon Exp $
  */
 
 
@@ -102,12 +102,10 @@
 #define UPT_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
 #define UPT_MIN_ADDRESS		VADDR(PTDPTDI, 0)
 
-#define VM_MAXUSER_ADDRESS	VADDR(PTDPTDI, 0)
+#define VM_MIN_USER_ADDRESS	((vm_offset_t)0)
+#define VM_MAX_USER_ADDRESS	VADDR(PTDPTDI, 0)
 
-#define USRSTACK		VM_MAXUSER_ADDRESS
-
-#define VM_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
-#define VM_MIN_ADDRESS		((vm_offset_t)0)
+#define USRSTACK		VM_MAX_USER_ADDRESS
 
 /* initial pagein size of beginning of executable file */
 #ifndef VM_INITIAL_PAGEIN

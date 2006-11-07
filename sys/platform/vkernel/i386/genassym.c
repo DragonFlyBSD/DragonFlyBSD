@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.52 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.53 2006/11/07 17:51:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <sys/lock.h>
 #include <sys/resourcevar.h>
 #include <machine/frame.h>
-#include <machine/bootinfo.h>
+/*#include <machine/bootinfo.h>*/
 #include <machine/tss.h>
 #include <sys/vmmeter.h>
 #include <sys/machintr.h>
@@ -65,9 +65,7 @@
 #include <vfs/nfs/rpcv2.h>
 #include <vfs/nfs/nfs.h>
 #include <vfs/nfs/nfsdiskless.h>
-#ifdef SMP
-#include <machine_base/apic/apicreg.h>
-#endif
+
 #include <machine/segments.h>
 #include <machine/sigframe.h>
 #include <machine/vm86.h>
@@ -94,15 +92,12 @@ ASSYM(TDF_RUNNING, TDF_RUNNING);
 #ifdef SMP
 ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
 #endif
-ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_savefpu));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 
-ASSYM(SSLEEP, SSLEEP);
-ASSYM(SRUN, SRUN);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));
@@ -111,20 +106,16 @@ ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
 ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
 ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));
 ASSYM(V_FORWARDED_MISSES, offsetof(struct vmmeter, v_forwarded_misses));
-ASSYM(UPAGES, UPAGES);
+
 ASSYM(PAGE_SIZE, PAGE_SIZE);
-ASSYM(NPTEPG, NPTEPG);
-ASSYM(NPDEPG, NPDEPG);
-ASSYM(PDESIZE, PDESIZE);
-ASSYM(PTESIZE, PTESIZE);
 ASSYM(PAGE_SHIFT, PAGE_SHIFT);
 ASSYM(PAGE_MASK, PAGE_MASK);
-ASSYM(PDRSHIFT, PDRSHIFT);
 ASSYM(USRSTACK, USRSTACK);
-ASSYM(VM_MAXUSER_ADDRESS, VM_MAXUSER_ADDRESS);
+ASSYM(VM_MAX_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 ASSYM(KERNBASE, KERNBASE);
 ASSYM(MCLBYTES, MCLBYTES);
-ASSYM(PCB_CR3, offsetof(struct pcb, pcb_cr3));
+
+/* PCB_CR3 */
 ASSYM(PCB_EDI, offsetof(struct pcb, pcb_edi));
 ASSYM(PCB_ESI, offsetof(struct pcb, pcb_esi));
 ASSYM(PCB_EBP, offsetof(struct pcb, pcb_ebp));
@@ -133,9 +124,10 @@ ASSYM(PCB_EBX, offsetof(struct pcb, pcb_ebx));
 ASSYM(PCB_EIP, offsetof(struct pcb, pcb_eip));
 ASSYM(TSS_ESP0, offsetof(struct i386tss, tss_esp0));
 
-ASSYM(PCB_USERLDT, offsetof(struct pcb, pcb_ldt));
+/*ASSYM(PCB_USERLDT, offsetof(struct pcb, pcb_ldt));*/
 
 ASSYM(PCB_GS, offsetof(struct pcb, pcb_gs));
+#if 0
 ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
 ASSYM(PCB_DR1, offsetof(struct pcb, pcb_dr1));
 ASSYM(PCB_DR2, offsetof(struct pcb, pcb_dr2));
@@ -144,6 +136,7 @@ ASSYM(PCB_DR6, offsetof(struct pcb, pcb_dr6));
 ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
 ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
+#endif
 
 ASSYM(PCB_SPARE, offsetof(struct pcb, __pcb_spare));
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
@@ -166,6 +159,8 @@ ASSYM(ENOENT, ENOENT);
 ASSYM(EFAULT, EFAULT);
 ASSYM(ENAMETOOLONG, ENAMETOOLONG);
 ASSYM(MAXPATHLEN, MAXPATHLEN);
+
+#if 0
 ASSYM(BOOTINFO_SIZE, sizeof(struct bootinfo));
 ASSYM(BI_VERSION, offsetof(struct bootinfo, bi_version));
 ASSYM(BI_KERNELNAME, offsetof(struct bootinfo, bi_kernelname));
@@ -176,11 +171,11 @@ ASSYM(BI_SIZE, offsetof(struct bootinfo, bi_size));
 ASSYM(BI_SYMTAB, offsetof(struct bootinfo, bi_symtab));
 ASSYM(BI_ESYMTAB, offsetof(struct bootinfo, bi_esymtab));
 ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
+#endif
 
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
 ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
-ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
 ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));
 
@@ -209,6 +204,7 @@ ASSYM(GD_FPU_LOCK, offsetof(struct mdglobaldata, gd_fpu_lock));
 ASSYM(GD_SAVEFPU, offsetof(struct mdglobaldata, gd_savefpu));
 ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct mdglobaldata, gd_ss_eflags));
+
 ASSYM(GD_CMAP1, offsetof(struct mdglobaldata, gd_CMAP1));
 ASSYM(GD_CMAP2, offsetof(struct mdglobaldata, gd_CMAP2));
 ASSYM(GD_CMAP3, offsetof(struct mdglobaldata, gd_CMAP3));
@@ -223,9 +219,3 @@ ASSYM(PS_IDLESTACK_PAGE, offsetof(struct privatespace, idlestack) / PAGE_SIZE);
 ASSYM(PS_IDLESTACK_TOP, sizeof(struct privatespace));
 ASSYM(PS_SIZEOF, sizeof(struct privatespace));
 
-ASSYM(KCSEL, GSEL(GCODE_SEL, SEL_KPL));
-ASSYM(KDSEL, GSEL(GDATA_SEL, SEL_KPL));
-ASSYM(KPSEL, GSEL(GPRIV_SEL, SEL_KPL));
-
-ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
-ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));

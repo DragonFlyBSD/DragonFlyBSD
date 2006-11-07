@@ -37,11 +37,11 @@
  *
  *	@(#)varargs.h	8.2 (Berkeley) 3/22/94
  * $FreeBSD: src/sys/i386/include/varargs.h,v 1.8 1999/08/28 00:44:27 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/varargs.h,v 1.3 2005/02/03 11:20:31 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/varargs.h,v 1.4 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _VARARGS_H_
-#define	_VARARGS_H_
+#ifndef _CPU_VARARGS_H_
+#define	_CPU_VARARGS_H_
 
 typedef char *va_list;
 
@@ -63,4 +63,4 @@ typedef char *va_list;
 
 #define	va_end(ap)
 
-#endif /* !_VARARGS_H_ */
+#endif /* !_CPU_VARARGS_H_ */

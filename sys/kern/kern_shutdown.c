@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.40 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.41 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -504,11 +504,11 @@ shutdown_cleanup_proc(struct proc *p)
 	vm = p->p_vmspace;
 	if (vm != NULL) {
 		pmap_remove_pages(vmspace_pmap(vm),
-				  VM_MIN_ADDRESS,
-				  VM_MAXUSER_ADDRESS);
+				  VM_MIN_USER_ADDRESS,
+				  VM_MAX_USER_ADDRESS);
 		vm_map_remove(&vm->vm_map,
-			      VM_MIN_ADDRESS,
-			      VM_MAXUSER_ADDRESS);
+			      VM_MIN_USER_ADDRESS,
+			      VM_MAX_USER_ADDRESS);
 	}
 }
 

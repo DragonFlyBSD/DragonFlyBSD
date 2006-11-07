@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.44 2006/09/19 11:47:36 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.45 2006/11/07 17:51:24 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -170,12 +170,12 @@ useracc(c_caddr_t addr, int len, int rw)
 	 * XXX - check separately to disallow access to user area and user
 	 * page tables - they are in the map.
 	 *
-	 * XXX - VM_MAXUSER_ADDRESS is an end address, not a max.  It was once
+	 * XXX - VM_MAX_USER_ADDRESS is an end address, not a max.  It was once
 	 * only used (as an end address) in trap.c.  Use it as an end address
 	 * here too.  This bogusness has spread.  I just fixed where it was
 	 * used as a max in vm_mmap.c.
 	 */
-	if ((vm_offset_t) addr + len > /* XXX */ VM_MAXUSER_ADDRESS
+	if ((vm_offset_t) addr + len > /* XXX */ VM_MAX_USER_ADDRESS
 	    || (vm_offset_t) addr + len < (vm_offset_t) addr) {
 		return (FALSE);
 	}

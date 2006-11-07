@@ -28,11 +28,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.8 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.9 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef	_MACHINE_TLS_H_
-#define	_MACHINE_TLS_H_
+#ifndef	_CPU_TLS_H_
+#define	_CPU_TLS_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -119,4 +119,4 @@ struct tls_tcb	*_init_tls(void);
 
 #endif
 
-#endif	/* !_MACHINE_TLS_H_ */
+#endif	/* !_CPU_TLS_H_ */

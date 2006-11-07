@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/platform/pc32/conf/files,v 1.2 2006/11/07 06:43:24 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/conf/files,v 1.3 2006/11/07 17:51:23 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -146,12 +146,15 @@ vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs
 vfs/smbfs/smbfs_smb.c		optional	smbfs
 vfs/smbfs/smbfs_subr.c		optional	smbfs
-vfs/smbfs/smbfs_vfsops.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
-machine/pc32/gnu/isa/dgb.c		optional	dgb
-machine/pc32/apm/apm.c			optional	apm
-machine/pc32/i386/atomic.c		standard				\
+machine/pc32/gnu/isa/dgb.c	optional	dgb
+machine/pc32/apm/apm.c		optional	apm
+cpu/i386/misc/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+cpu/i386/misc/elf_machdep.c		standard
+cpu/i386/misc/in_cksum2.s		optional	inet
+cpu/i386/misc/ktr.c			optional	ktr
 machine/pc32/i386/autoconf.c		standard
 machine/pc32/i386/bios.c		standard
 machine/pc32/i386/bioscall.s		standard
@@ -160,17 +163,14 @@ machine/pc32/i386/db_disasm.c		optional	ddb
 machine/pc32/i386/db_interface.c	optional	ddb
 machine/pc32/i386/db_trace.c		optional	ddb
 machine/pc32/i386/elan-mmcr.c		optional	cpu_elan
-machine/pc32/i386/elf_machdep.c		standard
 machine/pc32/i386/exception.s		standard
 machine/pc32/isa/ipl.s			standard
 machine/pc32/i386/globals.s		standard
 machine/pc32/i386/i386-gdbstub.c	optional	ddb
 machine/pc32/i386/i686_mem.c		standard
 machine/pc32/i386/identcpu.c		standard
-machine/pc32/i386/in_cksum2.s		optional	inet
 machine/pc32/i386/initcpu.c		standard
 machine/pc32/i386/k6_mem.c		standard
-machine/pc32/i386/ktr.c			optional	ktr
 machine/pc32/i386/tls.c			standard
 # locore.s needs to be handled in Makefile to put it first.  Otherwise it's
 # now normal.

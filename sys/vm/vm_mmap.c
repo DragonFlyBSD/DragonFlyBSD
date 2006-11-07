@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.35 2006/10/04 18:28:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.36 2006/11/07 17:51:24 dillon Exp $
  */
 
 /*
@@ -224,12 +224,10 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		if (addr & PAGE_MASK)
 			return (EINVAL);
 		/* Address range must be all in user VM space. */
-		if (VM_MAXUSER_ADDRESS > 0 && addr + size > VM_MAXUSER_ADDRESS)
+		if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
 			return (EINVAL);
-#ifndef i386
-		if (VM_MIN_ADDRESS > 0 && addr < VM_MIN_ADDRESS)
+		if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 			return (EINVAL);
-#endif
 		if (addr + size < addr)
 			return (EINVAL);
 	}
@@ -520,12 +518,10 @@ sys_munmap(struct munmap_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAXUSER_ADDRESS > 0 && addr + size > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
-#ifndef i386
-	if (VM_MIN_ADDRESS > 0 && addr < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-#endif
 	map = &p->p_vmspace->vm_map;
 	/*
 	 * Make sure entire range is allocated.
@@ -624,13 +620,11 @@ sys_madvise(struct madvise_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAXUSER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 &&
+		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
-#ifndef i386
-	if (VM_MIN_ADDRESS > 0 && uap->addr < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-#endif
 	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
 		return (EINVAL);
 
@@ -664,13 +658,11 @@ sys_mcontrol(struct mcontrol_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAXUSER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 &&
+		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
-#ifndef i386
-	if (VM_MIN_ADDRESS > 0 && uap->addr < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-#endif
 	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
 		return (EINVAL);
 
@@ -712,7 +704,7 @@ sys_mincore(struct mincore_args *uap)
 	 */
 	first_addr = addr = trunc_page((vm_offset_t) uap->addr);
 	end = addr + (vm_size_t)round_page(uap->len);
-	if (VM_MAXUSER_ADDRESS > 0 && end > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && end > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 	if (end < addr)
 		return (EINVAL);

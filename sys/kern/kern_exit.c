@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.64 2006/10/20 17:02:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.65 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -238,10 +238,10 @@ exit1(int rv)
 	++vm->vm_exitingcnt;
 	if (--vm->vm_refcnt == 0) {
 		shmexit(vm);
-		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_ADDRESS,
-		    VM_MAXUSER_ADDRESS);
-		(void) vm_map_remove(&vm->vm_map, VM_MIN_ADDRESS,
-		    VM_MAXUSER_ADDRESS);
+		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
+				  VM_MAX_USER_ADDRESS);
+		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
+			      VM_MAX_USER_ADDRESS);
 	}
 
 	if (SESS_LEADER(p)) {

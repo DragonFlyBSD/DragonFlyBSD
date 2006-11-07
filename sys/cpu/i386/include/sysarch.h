@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sysarch.h,v 1.13.2.2 2002/10/07 17:17:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/sysarch.h,v 1.4 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/cpu/i386/include/sysarch.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
 /*
  * Architecture specific syscalls (i386)
  */
-#ifndef _MACHINE_SYSARCH_H_
-#define _MACHINE_SYSARCH_H_
+#ifndef _CPU_SYSARCH_H_
+#define _CPU_SYSARCH_H_
 
 #define I386_GET_LDT	0
 #define I386_SET_LDT	1
@@ -83,4 +83,4 @@ int sysarch(int, void *);
 __END_DECLS
 #endif
 
-#endif /* !_MACHINE_SYSARCH_H_ */
+#endif /* !_CPU_SYSARCH_H_ */

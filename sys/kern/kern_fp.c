@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.18 2006/09/18 17:42:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.19 2006/11/07 17:51:23 dillon Exp $
  */
 
 /*
@@ -223,7 +223,7 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_READ;
-    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
 	auio.uio_segflg = UIO_USERSPACE;
     else
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -264,7 +264,7 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
     auio.uio_offset = 0;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_READ;
-    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
 	auio.uio_segflg = UIO_USERSPACE;
     else
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -324,7 +324,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_WRITE;
-    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
 	auio.uio_segflg = UIO_USERSPACE;
     else
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -366,7 +366,7 @@ fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res)
     auio.uio_offset = 0;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_WRITE;
-    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
 	auio.uio_segflg = UIO_USERSPACE;
     else
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -444,12 +444,10 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	if (addr & PAGE_MASK)
 	    return (EINVAL);
 	/* Address range must be all in user VM space. */
-	if (VM_MAXUSER_ADDRESS > 0 && addr + size > VM_MAXUSER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
 	    return (EINVAL);
-#ifndef i386
-	if (VM_MIN_ADDRESS > 0 && addr < VM_MIN_ADDRESS)
+	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 	    return (EINVAL);
-#endif
 	if (addr + size < addr)
 	    return (EINVAL);
     } else if (addr == 0 ||

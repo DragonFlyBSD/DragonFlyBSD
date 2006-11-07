@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.15 2006/10/23 15:42:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.16 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -192,12 +192,12 @@ ENTRY(copyout)
 	addl	%ebx,%eax
 	jc	copyout_fault1
 /*
- * XXX STOP USING VM_MAXUSER_ADDRESS.
+ * XXX STOP USING VM_MAX_USER_ADDRESS.
  * It is an end address, not a max, so every time it is used correctly it
  * looks like there is an off by one error, and of course it caused an off
  * by one error in several places.
  */
-	cmpl	$VM_MAXUSER_ADDRESS,%eax
+	cmpl	$VM_MAX_USER_ADDRESS,%eax
 	ja	copyout_fault1
 
 #if defined(I386_CPU)
@@ -311,7 +311,7 @@ ENTRY(copyin)
 	movl	%esi,%edx
 	addl	%ecx,%edx
 	jc	copyin_fault1
-	cmpl	$VM_MAXUSER_ADDRESS,%edx
+	cmpl	$VM_MAX_USER_ADDRESS,%edx
 	ja	copyin_fault1
 
 	/*
@@ -357,7 +357,7 @@ ENTRY(fuword)
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx			/* from */
 
-	cmpl	$VM_MAXUSER_ADDRESS-4,%edx	/* verify address is valid */
+	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address is valid */
 	ja	fusufault
 
 	movl	(%edx),%eax
@@ -384,7 +384,7 @@ ENTRY(fusword)
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
-	cmpl	$VM_MAXUSER_ADDRESS-2,%edx
+	cmpl	$VM_MAX_USER_ADDRESS-2,%edx
 	ja	fusufault
 
 	movzwl	(%edx),%eax
@@ -400,7 +400,7 @@ ENTRY(fubyte)
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
 
-	cmpl	$VM_MAXUSER_ADDRESS-1,%edx
+	cmpl	$VM_MAX_USER_ADDRESS-1,%edx
 	ja	fusufault
 
 	movzbl	(%edx),%eax
@@ -461,7 +461,7 @@ ENTRY(suword)
 #endif
 
 2:
-	cmpl	$VM_MAXUSER_ADDRESS-4,%edx	/* verify address validity */
+	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address validity */
 	ja	fusufault
 
 	movl	8(%esp),%eax
@@ -515,7 +515,7 @@ ENTRY(susword)
 #endif
 
 2:
-	cmpl	$VM_MAXUSER_ADDRESS-2,%edx	/* verify address validity */
+	cmpl	$VM_MAX_USER_ADDRESS-2,%edx	/* verify address validity */
 	ja	fusufault
 
 	movw	8(%esp),%ax
@@ -569,7 +569,7 @@ ENTRY(subyte)
 #endif
 
 2:
-	cmpl	$VM_MAXUSER_ADDRESS-1,%edx	/* verify address validity */
+	cmpl	$VM_MAX_USER_ADDRESS-1,%edx	/* verify address validity */
 	ja	fusufault
 
 	movb	8(%esp),%al
@@ -599,13 +599,13 @@ ENTRY(copyinstr)
 	movl	16(%esp),%edi			/* %edi = to */
 	movl	20(%esp),%edx			/* %edx = maxlen */
 
-	movl	$VM_MAXUSER_ADDRESS,%eax
+	movl	$VM_MAX_USER_ADDRESS,%eax
 
 	/* make sure 'from' is within bounds */
 	subl	%esi,%eax
 	jbe	cpystrflt
 
-	/* restrict maxlen to <= VM_MAXUSER_ADDRESS-from */
+	/* restrict maxlen to <= VM_MAX_USER_ADDRESS-from */
 	cmpl	%edx,%eax
 	jae	1f
 	movl	%eax,%edx
@@ -629,7 +629,7 @@ ENTRY(copyinstr)
 	jmp	cpystrflt_x
 3:
 	/* edx is zero - return ENAMETOOLONG or EFAULT */
-	cmpl	$VM_MAXUSER_ADDRESS,%esi
+	cmpl	$VM_MAX_USER_ADDRESS,%esi
 	jae	cpystrflt
 4:
 	movl	$ENAMETOOLONG,%eax

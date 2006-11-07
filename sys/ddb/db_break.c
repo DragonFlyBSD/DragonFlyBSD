@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.c,v 1.18 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_break.c,v 1.6 2006/11/07 17:51:22 dillon Exp $
  */
 
 /*
@@ -317,20 +317,5 @@ db_map_current(vm_map_t map)
 vm_map_t
 db_map_addr(vm_offset_t addr)
 {
-#if 0
-	thread_t	thread;
-
-	/*
-	 *	We want to return kernel_map for all
-	 *	non-user addresses, even when debugging
-	 *	kernel tasks with their own maps.
-	 */
-
-	if ((VM_MIN_ADDRESS <= addr) &&
-	    (addr < VM_MAX_ADDRESS) &&
-	    ((thread = current_thread()) != NULL))
-	    return thread->task->map;
-	else
-#endif
-	    return kernel_map;
+	return kernel_map;
 }

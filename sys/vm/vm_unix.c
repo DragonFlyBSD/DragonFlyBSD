@@ -39,7 +39,7 @@
  *
  *	@(#)vm_unix.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vm_unix.c,v 1.24.2.2 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_unix.c,v 1.6 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_unix.c,v 1.7 2006/11/07 17:51:24 dillon Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ sys_obreak(struct obreak_args *uap)
 		if (new > old &&
 		    (new - base) > (unsigned) p->p_rlimit[RLIMIT_DATA].rlim_cur)
 			return ENOMEM;
-		if (new >= VM_MAXUSER_ADDRESS)
+		if (new >= VM_MAX_USER_ADDRESS)
 			return (ENOMEM);
 	} else if (new < base) {
 		/*

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/setjmp.h,v 1.4.2.1 2000/10/27 09:16:05 bde Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/setjmp.h,v 1.3 2003/06/28 04:16:03 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/setjmp.h,v 1.4 2006/11/07 17:51:21 dillon Exp $ */
 /*
  * Copyright (c) 1998 John Birrell <jb@cimlogic.com.au>.
  * All rights reserved.
@@ -33,8 +33,8 @@
  *
  */
 
-#ifndef _MACHINE_SETJMP_H_
-#define _MACHINE_SETJMP_H_
+#ifndef _CPU_SETJMP_H_
+#define _CPU_SETJMP_H_
 
 #define	_JBLEN	11		/* Size of the jmp_buf on x86. */
 

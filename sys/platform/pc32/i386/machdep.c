@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.101 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.102 2006/11/07 17:51:23 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1888,11 +1888,11 @@ init386(int first)
 
 	/* make ldt memory segments */
 	/*
-	 * XXX - VM_MAXUSER_ADDRESS is an end address, not a max.  And it
+	 * XXX - VM_MAX_USER_ADDRESS is an end address, not a max.  And it
 	 * should be spelled ...MAX_USER...
 	 */
-	ldt_segs[LUCODE_SEL].ssd_limit = atop(VM_MAXUSER_ADDRESS - 1);
-	ldt_segs[LUDATA_SEL].ssd_limit = atop(VM_MAXUSER_ADDRESS - 1);
+	ldt_segs[LUCODE_SEL].ssd_limit = atop(VM_MAX_USER_ADDRESS - 1);
+	ldt_segs[LUDATA_SEL].ssd_limit = atop(VM_MAX_USER_ADDRESS - 1);
 	for (x = 0; x < sizeof ldt_segs / sizeof ldt_segs[0]; x++)
 		ssdtosd(&ldt_segs[x], &ldt[x].sd);
 
@@ -2337,25 +2337,25 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		if (suser_cred(ucred, 0) != 0) {
 			if (dbregs->dr7 & 0x3) {
 				/* dr0 is enabled */
-				if (dbregs->dr0 >= VM_MAXUSER_ADDRESS)
+				if (dbregs->dr0 >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
 			if (dbregs->dr7 & (0x3<<2)) {
 				/* dr1 is enabled */
-				if (dbregs->dr1 >= VM_MAXUSER_ADDRESS)
+				if (dbregs->dr1 >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
 			if (dbregs->dr7 & (0x3<<4)) {
 				/* dr2 is enabled */
-				if (dbregs->dr2 >= VM_MAXUSER_ADDRESS)
+				if (dbregs->dr2 >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
 			if (dbregs->dr7 & (0x3<<6)) {
 				/* dr3 is enabled */
-				if (dbregs->dr3 >= VM_MAXUSER_ADDRESS)
+				if (dbregs->dr3 >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 		}
@@ -2428,7 +2428,7 @@ user_dbreg_trap(void)
 
         for (i=0; i<nbp; i++) {
                 if (addr[i] <
-                    (caddr_t)VM_MAXUSER_ADDRESS) {
+                    (caddr_t)VM_MAX_USER_ADDRESS) {
                         /*
                          * addr[i] is in user space
                          */

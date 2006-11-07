@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.25 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.26 2006/11/07 17:51:24 dillon Exp $
  */
 
 /*
@@ -630,7 +630,7 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 	 */
 	if (desired == 0 && nothingwired)
 		pmap_remove(vm_map_pmap(map),
-			VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
+			    VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vm_map_unlock(map);
 }
 #endif

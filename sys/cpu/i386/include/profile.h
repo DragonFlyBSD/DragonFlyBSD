@@ -32,11 +32,11 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/profile.h,v 1.8 2006/05/21 03:43:44 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/profile.h,v 1.9 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _MACHINE_PROFILE_H_
-#define	_MACHINE_PROFILE_H_
+#ifndef _CPU_PROFILE_H_
+#define	_CPU_PROFILE_H_
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
@@ -161,4 +161,4 @@ void	nullfunc_loop (void);
 __END_DECLS
 #endif
 
-#endif /* !_MACHINE_PROFILE_H_ */
+#endif /* !_CPU_PROFILE_H_ */
