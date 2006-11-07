@@ -1,4 +1,3 @@
-/*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -27,16 +26,17 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
+ * $NetBSD$
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/sys/ccbque.h,v 1.9 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.10 2006/11/07 19:23:54 dillon Exp $
  */
 /*
  * Common command control queue funcs.
  * Written by N. Honda.
  */
 
-#ifndef	_CCBQUE_H_
-#define	_CCBQUE_H_
+#ifndef	_SYS_CCBQUE_H_
+#define	_SYS_CCBQUE_H_
 
 #define	CCB_MWANTED 0x01
 						
@@ -119,4 +119,4 @@ DEV##_free_ccb(struct CCBTYPE *cb)							\
 	}								\
 	crit_exit();							\
 }
-#endif	/* !_CCBQUE_H_ */
+#endif	/* !_SYS_CCBQUE_H_ */
