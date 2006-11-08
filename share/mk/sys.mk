@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.16 2006/11/07 06:57:02 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.17 2006/11/08 20:43:31 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -124,9 +124,11 @@ YFLAGS		?=	-d
 .if !defined(MACHINE_ARCH)
 .error "MACHINE_ARCH was not defined by make"
 .endif
-.if !defined(MACHINE_CPU)
-.error "MACHINE_CPU was not defined by make"
-.endif
+# I want to do this too, but bmake apparently uses these .mk files too.
+#
+#.if !defined(MACHINE_CPU)
+#.error "MACHINE_CPU was not defined by make"
+#.endif
 
 .if defined(%POSIX)
 # Posix 1003.2 mandated rules
