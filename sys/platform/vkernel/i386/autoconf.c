@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.1 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.2 2006/11/08 16:39:59 dillon Exp $
  */
 
 /*
@@ -72,9 +72,11 @@
 #include <sys/device.h>
 #include <sys/machintr.h>
 
+#if 0
 #include <machine/pcb.h>
 #include <machine/pcb_ext.h>
 #include <machine/vm86.h>
+#endif
 #include <machine/globaldata.h>
 
 #if NISA > 0
@@ -153,47 +155,10 @@ configure(void *dummy)
 static void
 configure_final(void *dummy)
 {
-	int i;
-
 	cninit_finish();
 
-	if (bootverbose) {
-#ifdef APIC_IO
-		imen_dump();
-#endif /* APIC_IO */
-
-		/*
-		 * Print out the BIOS's idea of the disk geometries.
-		 */
-		printf("BIOS Geometries:\n");
-		for (i = 0; i < N_BIOS_GEOM; i++) {
-			unsigned long bios_geom;
-			int max_cylinder, max_head, max_sector;
-
-			bios_geom = bootinfo.bi_bios_geom[i];
-
-			/*
-			 * XXX the bootstrap punts a 1200K floppy geometry
-			 * when the get-disk-geometry interrupt fails.  Skip
-			 * drives that have this geometry.
-			 */
-			if (bios_geom == 0x4f010f)
-				continue;
-
-			printf(" %x:%08lx ", i, bios_geom);
-			max_cylinder = bios_geom >> 16;
-			max_head = (bios_geom >> 8) & 0xff;
-			max_sector = bios_geom & 0xff;
-			printf(
-		"0..%d=%d cylinders, 0..%d=%d heads, 1..%d=%d sectors\n",
-			       max_cylinder, max_cylinder + 1,
-			       max_head, max_head + 1,
-			       max_sector, max_sector);
-		}
-		printf(" %d accounted for\n", bootinfo.bi_n_bios_used);
-
+	if (bootverbose)
 		printf("Device configuration finished.\n");
-	}
 	cold = 0;
 }
 
@@ -226,8 +191,6 @@ SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL)
 u_long	bootdev = 0;		/* not a cdev_t - encoding is different */
 
 #if defined(FFS) && defined(FFS_ROOT)
-#define FDMAJOR 	2
-#define FDUNITSHIFT     6
 
 /*
  * The boot code uses old block device major numbers to pass bootdev to
@@ -288,18 +251,8 @@ setroot(void)
 		return;
 	}
 
-	/*
-	 * XXX kludge for inconsistent unit numbering and lack of slice
-	 * support for floppies.
-	 */
-	if (majdev == FD_CDEV_MAJOR) {
-		slice = COMPATIBILITY_SLICE;
-		part = RAW_PART;
-		mindev = unit << FDUNITSHIFT;
-	} else {
-		part = B_PARTITION(bootdev);
-		mindev = dkmakeminor(unit, slice, part);
-	}
+	part = B_PARTITION(bootdev);
+	mindev = dkmakeminor(unit, slice, part);
 	newrootdev = udev2dev(makeudev(majdev, mindev), 0);
 	if (!dev_is_good(newrootdev))
 		return;
