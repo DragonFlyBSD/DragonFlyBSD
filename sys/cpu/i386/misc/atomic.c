@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/atomic.c,v 1.3 1999/08/28 00:43:40 peter Exp $
- * $DragonFly: src/sys/cpu/i386/misc/atomic.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/atomic.c,v 1.3 2006/11/08 20:59:52 dillon Exp $
  */
 
 /* This file creates publically callable functions to perform various
@@ -37,6 +37,7 @@
 #define KLD_MODULE
 #include <machine/atomic.h>
 #undef _MACHINE_ATOMIC_H_	/* forget we included it */
+#undef _CPU_ATOMIC_H_		/* forget we included it */
 #undef KLD_MODULE
 #undef ATOMIC_ASM
 
