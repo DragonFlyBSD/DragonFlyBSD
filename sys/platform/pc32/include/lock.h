@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.15 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.16 2006/11/08 16:38:47 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -154,8 +154,6 @@ void	imen_lock(void);	/* disables int / spinlock combo */
 void	imen_unlock(void);
 void	clock_lock(void);	/* disables int / spinlock combo */
 void	clock_unlock(void);
-void	cons_lock(void);	/* disables int / spinlock combo */
-void	cons_unlock(void);
 
 extern struct spinlock_deprecated smp_rv_spinlock;
 

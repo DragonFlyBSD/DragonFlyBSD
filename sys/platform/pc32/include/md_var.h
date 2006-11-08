@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.20 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.21 2006/11/08 16:38:47 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -41,7 +41,6 @@
  * Miscellaneous machine-dependent declarations.
  */
 
-extern	vm_paddr_t	Maxmem;
 extern	u_int	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	void	**bcopy_vector;
 extern	void	**memcpy_vector;

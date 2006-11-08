@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.19 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.20 2006/11/08 16:38:46 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -212,7 +212,6 @@ struct bootpc_globalcontext {
 #define DHCP_REQUEST  3
 #define DHCP_ACK      5
 
-extern int nfs_diskless_valid;
 extern struct nfsv3_diskless nfsv3_diskless;
 static char bootp_cookie[128];
 SYSCTL_STRING(_kern, OID_AUTO, bootp_cookie, CTLFLAG_RD,

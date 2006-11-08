@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.45 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.46 2006/11/08 16:38:43 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -91,6 +91,8 @@ extern int ncpus2_mask;		/* ncpus2 - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */
 
 extern u_int cpu_feature;	/* CPUID_* features */
+extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
+extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
@@ -199,6 +201,13 @@ void	DELAY(int usec);
 void	startprofclock (struct proc *);
 void	stopprofclock (struct proc *);
 void	setstatclockrate (int hzrate);
+
+/*
+ * Console I/O spinlocks - these typically also hard-disable interrupts
+ * for the duration.
+ */
+void	cons_lock(void); 
+void	cons_unlock(void);
 
 char	*kgetenv (const char *name);
 #define	testenv	kgetenv
