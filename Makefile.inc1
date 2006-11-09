@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.91 2006/11/07 06:56:59 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.92 2006/11/09 17:16:56 dillon Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -365,7 +365,7 @@ everything:
 # note: we include _obj in realquickworld to prevent accidental creation
 # of files in /usr/src.
 
-WMAKE_TGTS=
+WMAKE_TGTS=	buildcheck
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_worldtmp _bootstrap-tools
 .endif
@@ -386,9 +386,20 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 .ORDER: ${WMAKE_TGTS}
 
 #
+# buildcheck
+#
+# Checks to be sure that the system is ready for a buildworld
+buildcheck:
+.if ${MACHINE} == "i386"
+	@echo "You are running a kernel which is reporting an old platform architecture name,"
+	@echo "which will confuse buildworld.  Please 'setenv MACHINE pc32' and try again."
+	exit 1
+.endif
+
+#
 # installcheck
 #
-# Checks to be sure system is ready for installworld
+# Checks to be sure that the system is ready for an installworld
 #
 installcheck:
 .if !defined(NO_SENDMAIL)
