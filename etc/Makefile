@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.139 2006/11/09 18:44:52 pavalos Exp $
+# $DragonFly: src/etc/Makefile,v 1.140 2006/11/09 19:02:11 pavalos Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -406,7 +406,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/sbin/mount_umap
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/mount_umap.8.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/isinff.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/isnanf.3.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/isnanf.3.gz"
 	rm -f ${DESTDIR}/modules/ibcs2.ko
 	rm -rf ${DESTDIR}/usr/share/examples/ibcs2
 	rm -f ${DESTDIR}/modules/streams.ko
@@ -437,7 +437,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/worm.4.gz"
 	rm -f ${DESTDIR}/usr/include/sys/wormio.h
 	rm -rf ${DESTDIR}/usr/share/doc/ncurses
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/brconfig.8.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/brconfig.8.gz"
 	rm -f ${DESTDIR}/sbin/brconfig
 	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc[23].mk
 	rm -f ${DESTDIR}/modules/coda.ko
