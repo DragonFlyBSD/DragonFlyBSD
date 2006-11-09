@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/libexec/Makefile,v 1.42.2.5 2002/11/12 17:32:48 obrien Exp $
-# $DragonFly: src/libexec/Makefile,v 1.10 2005/09/06 18:55:23 dillon Exp $
+# $DragonFly: src/libexec/Makefile,v 1.11 2006/11/09 18:44:52 pavalos Exp $
 
 # Present but disabled: kpasswdd
 SUBDIR=	atrun \
@@ -40,10 +40,6 @@ SUBDIR+=mail.local smrsh
     !exists(${.CURDIR}/../secure) || defined(NO_CRYPT)
 # make release needs both
 SUBDIR+=telnetd
-.endif
-
-.if defined(WANT_LUKEMFTPD)
-SUBDIR+=lukemftpd
 .endif
 
 .include <bsd.subdir.mk>
