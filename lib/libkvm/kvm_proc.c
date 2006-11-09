@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.8 2006/09/10 01:26:26 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.9 2006/11/09 16:52:41 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -399,8 +399,10 @@ kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
 	 * Check that there aren't an unreasonable number of agruments,
 	 * and that the address is in user space.
 	 */
-	if (narg > 512 || addr < VM_MIN_ADDRESS || addr >= VM_MAXUSER_ADDRESS)
+	if (narg > 512 || 
+	    addr < VM_MIN_USER_ADDRESS || addr >= VM_MAX_USER_ADDRESS) {
 		return (0);
+	}
 
 	/*
 	 * kd->argv : work space for fetching the strings from the target 
