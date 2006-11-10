@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.10 2005/07/06 14:01:57 joerg Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.11 2006/11/10 22:16:06 pavalos Exp $
 
 MAGICDIR= ${.CURDIR}/../../contrib/file-4/magic
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
@@ -15,7 +15,7 @@ SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 INCS=	magic.h
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
-CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}
+CFLAGS+= -I${.CURDIR}/../../usr.bin/file -I${CONTRIBDIR}
 
 
 
