@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)rm.1	8.5 (Berkeley) 12/5/94
 .\" $FreeBSD: src/bin/rm/rm.1,v 1.19.2.6 2003/02/04 22:10:42 trhodes Exp $
-.\" $DragonFly: src/bin/rm/rm.1,v 1.8 2006/11/05 02:26:39 dillon Exp $
+.\" $DragonFly: src/bin/rm/rm.1,v 1.9 2006/11/11 12:11:25 victor Exp $
 .\"
 .Dd January 28, 1999
 .Dt RM 1
@@ -151,6 +151,17 @@ removed.
 If an error occurs,
 .Nm
 exits with a value >0.
+.Pp
+If
+.Nm
+receives a
+.Dv SIGINFO
+(see the
+.Cm status
+argument for
+.Xr stty 1 )
+signal, the current file or directory being removed
+will be written to standard error.
 .Sh NOTE
 The
 .Nm

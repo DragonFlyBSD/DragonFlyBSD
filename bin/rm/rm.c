@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.17 2006/11/05 02:26:39 dillon Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.18 2006/11/11 12:11:25 victor Exp $
  */
 
 #include <sys/stat.h>
@@ -45,15 +45,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fts.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
-int rflag, Iflag;
-uid_t uid;
+static int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
+static int rflag, Iflag;
+static uid_t uid;
+volatile sig_atomic_t info;
 
 static int	check(const char *, const char *, struct stat *);
 static int	check2(char **);
@@ -61,6 +63,7 @@ static void	checkdot(char **);
 static void	rm_file(char **);
 static int	rm_overwrite(const char *, struct stat *);
 static void	rm_tree(char **);
+static void 	siginfo(int);
 static void	usage(void);
 
 /*
@@ -150,6 +153,8 @@ main(int argc, char *argv[])
 
 	checkdot(argv);
 	uid = geteuid();
+	
+	signal(SIGINFO, siginfo);
 
 	if (*argv) {
 		stdin_ok = isatty(STDIN_FILENO);
@@ -247,12 +252,18 @@ rm_tree(char **argv)
 				continue;
 		}
 
+		if (info) {
+			info = 0;
+			fprintf(stderr, "Currently removing: %s\n", p->fts_path);
+		}
+
 		rval = 0;
 		if (!uid &&
 		    (p->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(p->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)))
 			rval = chflags(p->fts_accpath,
 				       p->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE));
+
 		if (rval == 0) {
 			/*
 			 * If we can't read or search the directory, may still be
@@ -323,6 +334,11 @@ rm_file(char **argv)
 	 * to remove a directory is an error, so must always stat the file.
 	 */
 	while ((f = *argv++) != NULL) {
+		if (info) {
+			info = 0;
+			fprintf(stderr, "Currently removing: %s\n", f);
+		}
+
 		/* Assume if can't stat the file, can't unlink it. */
 		if (lstat(f, &sb)) {
 			if (Wflag) {
@@ -610,4 +626,10 @@ usage(void)
 	    "usage: rm [-f | -i] [-dIPRrvW] file ...",
 	    "       unlink file");
 	exit(EX_USAGE);
+}
+
+static void
+siginfo(int notused __unused)
+{
+	info = 1;
 }
