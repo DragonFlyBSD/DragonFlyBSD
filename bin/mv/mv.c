@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.11 2005/06/04 20:35:06 liamfoy Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.12 2006/11/11 12:05:36 victor Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,12 +54,16 @@
 
 #include "pathnames.h"
 
+#define	mv_pct(x,y)	(int)(100.0 * (double)(x) / (double)(y))
+
 static int	fflg, iflg, nflg, vflg;
+volatile sig_atomic_t info;
 
 static int	copy(const char *, const char *);
-static int	do_move (const char *, const char *);
-static int	fastcopy (const char *, const char *, struct stat *);
-static void	usage (void);
+static int	do_move(const char *, const char *);
+static int	fastcopy(const char *, const char *, struct stat *);
+static void 	siginfo(int);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -92,6 +97,8 @@ main(int argc, char **argv)
 		}
 	argc -= optind;
 	argv += optind;
+
+	signal(SIGINFO, siginfo);
 
 	if (argc < 2)
 		usage();
@@ -242,6 +249,7 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 	static char *bp;
 	mode_t oldmode;
 	int nread, from_fd, to_fd;
+	ssize_t wtotal = 0, wcount;
 
 	if ((from_fd = open(from, O_RDONLY, 0)) < 0) {
 		warn("%s", from);
@@ -265,11 +273,22 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 		close(from_fd);
 		return (1);
 	}
-	while ((nread = read(from_fd, bp, (size_t)blen)) > 0)
-		if (write(to_fd, bp, (size_t)nread) != nread) {
+	while ((nread = read(from_fd, bp, (size_t)blen)) > 0) {
+		wcount = write(to_fd, bp, (size_t)nread);
+		wtotal += wcount;
+
+		if (wcount != nread) {
 			warn("%s", to);
 			goto err;
 		}
+
+		if (info) {
+			info = 0;
+			fprintf(stderr, "%s -> %s %3d%%\n", 
+					from, to, 
+					mv_pct(wtotal, sbp->st_size));
+		}
+	}
 	if (nread < 0) {
 		warn("%s", from);
 err:		if (unlink(to))
@@ -379,4 +398,10 @@ usage(void)
 		      "usage: mv [-f | -i | -n] [-v] source target",
 		      "       mv [-f | -i | -n] [-v] source ... directory");
 	exit(EX_USAGE);
+}
+
+static void
+siginfo(int notused __unused)
+{
+	info = 1;
 }
