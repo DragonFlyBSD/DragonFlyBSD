@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/usr.bin/at/at.man,v 1.13.2.10 2003/05/03 21:55:26 keramida Exp $
-.\" $DragonFly: src/usr.bin/at/at.man,v 1.4 2006/02/17 19:38:55 swildner Exp $
+.\" $DragonFly: src/usr.bin/at/at.man,v 1.5 2006/11/11 18:50:04 swildner Exp $
 .Dd April 12, 1995
 .Dt "AT" 1
 .Os
@@ -263,6 +263,7 @@ and
 utilities do not conform to
 .St -p1003.1-2004 .
 .Sh AUTHORS
+.An -nosplit
 At was mostly written by
 .An Thomas Koenig Aq ig25@rz.uni-karlsruhe.de .
 The time parsing routines are by
