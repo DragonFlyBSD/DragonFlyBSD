@@ -1,6 +1,8 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.31 2006/10/02 19:15:25 corecode Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.32 2006/11/11 20:01:29 dillon Exp $
+
+.include "../sys/machine/${MACHINE}/Makefile.inc"
 
 # XXX MISSING:		mkproto
 SUBDIR= 802_11 \
@@ -191,7 +193,7 @@ SUBDIR+=i4b
 .endif
 .endif
 
-.if ${MACHINE} == "i386"
+.ifdef BOOT0CFG_SUPPORT
 SUBDIR+=boot0cfg
 .endif
 
