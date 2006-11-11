@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)rm.1	8.5 (Berkeley) 12/5/94
 .\" $FreeBSD: src/bin/rm/rm.1,v 1.19.2.6 2003/02/04 22:10:42 trhodes Exp $
-.\" $DragonFly: src/bin/rm/rm.1,v 1.10 2006/11/11 17:39:44 swildner Exp $
+.\" $DragonFly: src/bin/rm/rm.1,v 1.11 2006/11/11 21:19:02 swildner Exp $
 .\"
 .Dd January 28, 1999
 .Dt RM 1
@@ -94,7 +94,7 @@ Overwrite regular files before deleting them.
 Files are overwritten three times, first with the byte pattern 0xff,
 then 0x00, and then 0xff again, before they are deleted. 
 .Pp
-A file with a link count greater than one will neither be overwritten or
+A file with a link count greater than one will neither be overwritten nor
 removed, and a warning will be issued.
 .It Fl R
 Attempt to remove the file hierarchy rooted in each file argument.
