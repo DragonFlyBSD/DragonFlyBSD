@@ -35,10 +35,10 @@
 #include <sys/types.h>
 #include <sys/param.h>	/* for MAXPATHLEN */
 #include <sys/stat.h>
-#include <fcntl.h>	/* for open() */
 #ifdef QUICK
 #include <sys/mman.h>
 #endif
+#include <limits.h>	/* for PIPE_BUF */
 
 #if defined(HAVE_UTIMES)
 # include <sys/time.h>
@@ -63,7 +63,7 @@
 #include "patchlevel.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$Id: magic.c,v 1.28 2005/06/25 15:52:14 christos Exp $")
+FILE_RCSID("@(#)$Id: magic.c,v 1.35 2006/10/31 19:37:17 christos Exp $")
 #endif	/* lint */
 
 #ifdef __EMX__
@@ -75,6 +75,11 @@ protected int file_os2_apptype(struct magic_set *ms, const char *fn,
 private void free_mlist(struct mlist *);
 private void close_and_restore(const struct magic_set *, const char *, int,
     const struct stat *);
+private int info_from_stat(struct magic_set *, mode_t);
+
+#ifndef	STDIN_FILENO
+#define	STDIN_FILENO	0
+#endif
 
 public struct magic_set *
 magic_open(int flags)
@@ -133,9 +138,26 @@ free_mlist(struct mlist *mlist)
 	free(ml);
 }
 
+private int
+info_from_stat(struct magic_set *ms, mode_t md)
+{
+	/* We cannot open it, but we were able to stat it. */
+	if (md & 0222)
+		if (file_printf(ms, "writable, ") == -1)
+			return -1;
+	if (md & 0111)
+		if (file_printf(ms, "executable, ") == -1)
+			return -1;
+	if (S_ISREG(md))
+		if (file_printf(ms, "regular file, ") == -1)
+			return -1;
+	if (file_printf(ms, "no read permission") == -1)
+		return -1;
+	return 0;
+}
+
 public void
-magic_close(ms)
-    struct magic_set *ms;
+magic_close(struct magic_set *ms)
 {
 	free_mlist(ms->mlist);
 	free(ms->o.pbuf);
@@ -179,8 +201,11 @@ private void
 close_and_restore(const struct magic_set *ms, const char *name, int fd,
     const struct stat *sb)
 {
+	if (fd == STDIN_FILENO)
+		return;
 	(void) close(fd);
-	if (fd != STDIN_FILENO && (ms->flags & MAGIC_PRESERVE_ATIME) != 0) {
+
+	if ((ms->flags & MAGIC_PRESERVE_ATIME) != 0) {
 		/*
 		 * Try to restore access, modification times if read it.
 		 * This is really *bad* because it will modify the status
@@ -215,6 +240,7 @@ magic_file(struct magic_set *ms, const char *inname)
 	unsigned char *buf;
 	struct stat	sb;
 	ssize_t nbytes = 0;	/* number of bytes read from a datafile */
+	int	ispipe = 0;
 
 	/*
 	 * one extra for terminating '\0', and
@@ -228,43 +254,75 @@ magic_file(struct magic_set *ms, const char *inname)
 		goto done;
 
 	switch (file_fsmagic(ms, inname, &sb)) {
-	case -1:
+	case -1:		/* error */
 		goto done;
-	case 0:
+	case 0:			/* nothing found */
 		break;
-	default:
+	default:		/* matched it and printed type */
 		rv = 0;
 		goto done;
 	}
 
-#ifndef	STDIN_FILENO
-#define	STDIN_FILENO	0
-#endif
-	if (inname == NULL)
+	if (inname == NULL) {
 		fd = STDIN_FILENO;
-	else if ((fd = open(inname, O_RDONLY)) < 0) {
-		/* We cannot open it, but we were able to stat it. */
-		if (sb.st_mode & 0222)
-			if (file_printf(ms, "writable, ") == -1)
-				goto done;
-		if (sb.st_mode & 0111)
-			if (file_printf(ms, "executable, ") == -1)
-				goto done;
-		if (S_ISREG(sb.st_mode))
-			if (file_printf(ms, "regular file, ") == -1)
-				goto done;
-		if (file_printf(ms, "no read permission") == -1)
+		if (fstat(fd, &sb) == 0 && S_ISFIFO(sb.st_mode))
+			ispipe = 1;
+	} else {
+		int flags = O_RDONLY|O_BINARY;
+
+		if (stat(inname, &sb) == 0 && S_ISFIFO(sb.st_mode)) {
+			flags |= O_NONBLOCK;
+			ispipe = 1;
+		}
+
+		errno = 0;
+		if ((fd = open(inname, flags)) < 0) {
+#ifdef __CYGWIN__
+		    char *tmp = alloca(strlen(inname) + 5);
+		    (void)strcat(strcpy(tmp, inname), ".exe");
+		    if ((fd = open(tmp, flags)) < 0) {
+#endif
+			if (info_from_stat(ms, sb.st_mode) == -1)
+			    goto done;
+			rv = 0;
 			goto done;
-		rv = 0;
-		goto done;
+#ifdef __CYGWIN__
+		    }
+#endif
+		}
+#ifdef O_NONBLOCK
+		if ((flags = fcntl(fd, F_GETFL)) != -1) {
+			flags &= ~O_NONBLOCK;
+			(void)fcntl(fd, F_SETFL, flags);
+		}
+#endif
 	}
 
 	/*
 	 * try looking at the first HOWMANY bytes
 	 */
-	if ((nbytes = read(fd, (char *)buf, HOWMANY)) == -1) {
-		file_error(ms, errno, "cannot read `%s'", inname);
-		goto done;
+	if (ispipe) {
+		ssize_t r = 0;
+
+		while ((r = sread(fd, (void *)&buf[nbytes],
+		    (size_t)(HOWMANY - nbytes))) > 0) {
+			nbytes += r;
+			if (r < PIPE_BUF) break;
+		}
+
+		if (nbytes == 0) {
+			/* We can not read it, but we were able to stat it. */
+			if (info_from_stat(ms, sb.st_mode) == -1)
+				goto done;
+			rv = 0;
+			goto done;
+		}
+
+	} else {
+		if ((nbytes = read(fd, (char *)buf, HOWMANY)) == -1) {
+			file_error(ms, errno, "cannot read `%s'", inname);
+			goto done;
+		}
 	}
 
 	if (nbytes == 0) {
