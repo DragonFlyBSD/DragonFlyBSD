@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.141 2006/11/11 19:38:41 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.142 2006/11/11 20:18:37 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -450,11 +450,12 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/NgSendMsgReply.3.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/kobj_class_compile_static.9.gz"
 	csh -c "rm -f ${DESTDIR}/usr/include/machine/bus{,_memio,_pio}.h"
-	csh -c "rm -f ${DESTDIR}/usr/include/machine/resource.h"
+	rm -f ${DESTDIR}/usr/include/machine/resource.h
 	rm -f ${DESTDIR}/usr/libexec/lukemftpd
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/lukemftpd.8.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpd.conf.5.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpusers.5.gz"
+	rm -f ${DESTDIR}/usr/include/machine/dvcfg.h
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
