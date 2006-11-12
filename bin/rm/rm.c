@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.18 2006/11/11 12:11:25 victor Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.19 2006/11/12 00:51:47 swildner Exp $
  */
 
 #include <sys/stat.h>
@@ -420,8 +420,8 @@ rm_overwrite(const char *file, struct stat *sbp)
 		return (1);
 	}
 	if (sbp->st_nlink > 1) {
-		warnx("%s (inode %u): not overwritten due to multiple links",
-		      file, sbp->st_ino);
+		warnx("%s (inode %ju): not overwritten due to multiple links",
+		      file, (uintmax_t)sbp->st_ino);
 		return (0);
 	}
 	if ((fd = open(file, O_WRONLY, 0)) == -1)
