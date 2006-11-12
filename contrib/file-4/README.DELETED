@@ -1,4 +1,3 @@
-.cvsignore
 Makefile.am
 Makefile.in
 PORTING
@@ -16,7 +15,10 @@ ltconfig
 ltmain.sh
 missing
 mkinstalldirs
-doc
+doc/Makefile.am
+doc/Makefile.in
+doc/file.man
+doc/magic.man
 magic/Makefile.am
 magic/Makefile.in
 python

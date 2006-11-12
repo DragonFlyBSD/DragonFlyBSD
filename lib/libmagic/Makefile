@@ -1,10 +1,10 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.12 2006/11/11 21:41:18 pavalos Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.13 2006/11/12 04:51:56 pavalos Exp $
 
-MAGICDIR= ${.CURDIR}/../../contrib/file-4/magic
-CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
-.PATH: ${CONTRIBDIR}
+CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
+MAGICDIR= ${CONTRIBDIR}/magic
+.PATH: ${CONTRIBDIR}/src
 
-
+VERSION!=	grep -w VERSION config.h | awk -F\" '{print $$2}'
 MAGIC=	/usr/share/misc/magic
 
 LIB=	magic
@@ -15,17 +15,34 @@ SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 INCS=	magic.h
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
-CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}
+CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}/src
 
+MAN=	libmagic.3
 
+MLINKS+=	libmagic.3 magic_open.3
+MLINKS+=	libmagic.3 magic_close.3
+MLINKS+=	libmagic.3 magic_error.3
+MLINKS+=	libmagic.3 magic_errno.3
+MLINKS+=	libmagic.3 magic_file.3
+MLINKS+=	libmagic.3 magic_buffer.3
+MLINKS+=	libmagic.3 magic_setflags.3
+MLINKS+=	libmagic.3 magic_check.3
+MLINKS+=	libmagic.3 magic_compile.3
+MLINKS+=	libmagic.3 magic_load.3
 
-CLEANFILES+=	magic magic.mgc magic.mime.mgc magic.mime.lnk
+CLEANFILES+=	magic magic.mgc magic.mime.mgc magic.mime.lnk libmagic.3
 
 FILES=		magic magic.mgc ${MAGICDIR}/magic.mime magic.mime.mgc
 FILESDIR=	/usr/share/misc
 
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff\
 		${MAGICDIR}/Magdir/[a-z]*
+
+libmagic.3: ${CONTRIBDIR}/doc/libmagic.man
+	    sed	-e s@__CSECTION__@1@g \
+		-e s@__FSECTION__@5@g \
+		-e s@__VERSION__@${VERSION}@g \
+		-e s@__MAGIC__@${MAGIC}@g ${.ALLSRC} > ${.TARGET}
 
 all: ${LIB} magic.mgc magic.mime.mgc
 
@@ -41,7 +58,7 @@ magic.mime.mgc: mkmagic.nx ${MAGICDIR}/magic.mime
 CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
-NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.CURDIR} -I${CONTRIBDIR}
+NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.CURDIR} -I${CONTRIBDIR}/src
 mkmagic.nx: apprentice.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
