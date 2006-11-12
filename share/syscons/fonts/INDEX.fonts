@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/share/syscons/fonts/INDEX.fonts,v 1.16.2.8 2002/08/24 09:35:49 schweikh Exp $
-# $DragonFly: src/share/syscons/fonts/INDEX.fonts,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/syscons/fonts/INDEX.fonts,v 1.3 2006/11/12 21:15:46 swildner Exp $
 #
 # database for vidfont(8) 
 #
@@ -191,6 +191,9 @@ cp866c-8x16.fnt:ru:Шрифт cp866 (c) русский, 8x16
 cp866c-8x16.fnt:fr:Code page 866 (c) Russe, 8x16
 cp866c-8x16.fnt:es:PАgina de cСdigos 866 (c) ruso, 8x16
 cp866c-8x16.fnt:uk:Шрифт cp866 (c) рос╕йський, 8x16
+
+swiss-1251-8x16.fnt:en:Swiss in Codepage 1251 Cyrillic, 8x16
+swiss-1131-8x16.fnt:en:Swiss in Codepage 1131 Cyrillic (Belarusian version of Codepage 866), 8x16
 
 cp1251-8x8.fnt:en:Codepage 1251 Cyrillic, 8x8
 cp1251-8x8.fnt:ru:Шрифт cp1251 кириллица, 8x8

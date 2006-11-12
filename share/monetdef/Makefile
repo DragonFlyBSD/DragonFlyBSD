@@ -1,10 +1,13 @@
 # $FreeBSD: src/share/monetdef/Makefile,v 1.37.2.3 2002/08/17 19:38:08 ache Exp $
-# $DragonFly: src/share/monetdef/Makefile,v 1.8 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/monetdef/Makefile,v 1.9 2006/11/12 21:15:46 swildner Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
 
 LOCALES=        af_ZA.ISO8859-1 \
+		be_BY.CP1131 \
+		be_BY.CP1251 \
+		be_BY.ISO8859-5 \
 		be_BY.UTF-8 \
 		bg_BG.CP1251 \
 		bg_BG.UTF-8 \

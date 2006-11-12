@@ -1,10 +1,11 @@
 # $FreeBSD: src/share/numericdef/Makefile,v 1.36.2.3 2002/08/17 19:34:11 ache Exp $
-# $DragonFly: src/share/numericdef/Makefile,v 1.7 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/numericdef/Makefile,v 1.8 2006/11/12 21:15:46 swildner Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
 
 LOCALES=	af_ZA.ISO8859-1 \
+		be_BY.CP1251 \
 		bg_BG.CP1251 \
 		cs_CZ.ISO8859-2 \
 		da_DK.ISO8859-1 \
@@ -66,6 +67,7 @@ DE_LINKS=	de_AT de_CH
 IT_LINKS=	it_CH
 
 BE_LINKS=	nl_BE
+BY_LINKS=	be_BY.CP1131 be_BY.ISO8859-5
 
 .SUFFIXES: .src .out
 
@@ -184,6 +186,10 @@ afterinstall:
 .for link in ${BE_LINKS}
 	${LN} -sf ../fr_BE.UTF-8/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
+.endfor
+.for link in ${BY_LINKS}
+	ln -sf ../be_BY.CP1251/LC_NUMERIC \
+		${LOCALEDIR}/${link}/LC_NUMERIC
 .endfor
 	${LN} -sf ../be_BY.CP1251/LC_NUMERIC \
 		${LOCALEDIR}/be_BY.UTF-8/LC_NUMERIC

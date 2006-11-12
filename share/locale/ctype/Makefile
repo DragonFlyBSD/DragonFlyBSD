@@ -1,5 +1,5 @@
 # $NetBSD: src/share/locale/ctype/Makefile,v 1.20 2005/02/10 18:03:02 tnozaki Exp $
-# $DragonFly: src/share/locale/ctype/Makefile,v 1.1 2005/03/11 15:58:31 joerg Exp $
+# $DragonFly: src/share/locale/ctype/Makefile,v 1.2 2006/11/12 21:15:46 swildner Exp $
 
 NOMAN=	# defined
 
@@ -9,6 +9,15 @@ NOMAN=	# defined
 FILESOWN=	${LOCALEOWN}
 FILESGRP=	${LOCALEGRP}
 FILESMODE=	${LOCALEMODE}
+
+LOCALES += be_BY.CP1131
+ LOCALESRC_be_BY.CP1131 = be_BY.CP1131
+
+LOCALES += be_BY.CP1251
+ LOCALESRC_be_BY.CP1251 = bg_BG.CP1251
+
+LOCALES += be_BY.ISO8859-5
+ LOCALESRC_be_BY.ISO8859-5 = ru_RU.ISO_8859-5
 
 LOCALES += bg_BG.CP1251
  LOCALESRC_bg_BG.CP1251 = bg_BG.CP1251

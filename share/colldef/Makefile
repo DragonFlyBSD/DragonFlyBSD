@@ -1,11 +1,14 @@
 # $FreeBSD: src/share/colldef/Makefile,v 1.32.2.11 2002/08/17 19:14:44 ache Exp $
-# $DragonFly: src/share/colldef/Makefile,v 1.5 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/colldef/Makefile,v 1.6 2006/11/12 21:15:46 swildner Exp $
 #
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
 
-LOCALES=	bg_BG.CP1251 \
+LOCALES=	be_BY.CP1131 \
+		be_BY.CP1251 \
+		be_BY.ISO8859-5 \
+		bg_BG.CP1251 \
 		cs_CZ.ISO8859-2 \
 		de_DE.ISO8859-1 \
 		de_DE.ISO8859-15 \
@@ -63,6 +66,9 @@ UTF8LINKS=      af_ZA be_BY bg_BG ca_ES cs_CZ da_DK de_AT de_CH de_DE el_GR \
 
 all: ${LOCALES:S/$/.out/g}
 
+be_BY.CP1131.out:	map.CP1131
+be_BY.CP1251.out:	map.CP1251
+be_BY.ISO8859-5.out:    map.ISO8859-5
 bg_BG.CP1251.out:	map.CP1251
 cs_CZ.ISO8859-2.out:    map.ISO8859-2
 de_DE.ISO8859-15.out:   map.ISO8859-15

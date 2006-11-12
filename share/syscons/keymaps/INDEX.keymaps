@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/INDEX.keymaps,v 1.37.2.8 2003/05/18 08:57:28 murray Exp $
-# $DragonFly: src/share/syscons/keymaps/INDEX.keymaps,v 1.4 2005/03/28 23:06:47 swildner Exp $
+# $DragonFly: src/share/syscons/keymaps/INDEX.keymaps,v 1.5 2006/11/12 21:15:46 swildner Exp $
 #
 # database for kbdmap(8) 
 #
@@ -66,6 +66,10 @@ br275.cp850.kbd:en:Brazilian 275 Codepage 850
 br275.cp850.kbd:de:Brasilianisch 275 Codeseite 850
 br275.cp850.kbd:pt:Brasileiro 275 Codepage 850
 br275.cp850.kbd:es:Brasileño 275 Codepage 850
+
+by.cp1131.kbd:en:Belarusian Codepage 1131
+by.cp1251.kbd:en:Belarusian Codepage 1251
+by.iso5.kbd:en:Belarusian ISO-8859-5
 
 ce.iso2.kbd:en:Central European ISO-8859-2
 ce.iso2.kbd:de:Zentral Europäisch ISO-8859-2

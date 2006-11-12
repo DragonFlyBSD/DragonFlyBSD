@@ -1,10 +1,13 @@
 # $FreeBSD: src/share/timedef/Makefile,v 1.11.2.11 2002/08/17 19:25:45 ache Exp $
-# $DragonFly: src/share/timedef/Makefile,v 1.6 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/timedef/Makefile,v 1.7 2006/11/12 21:15:46 swildner Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
 
-LOCALES=	be_BY.UTF-8 \
+LOCALES=	be_BY.CP1131 \
+		be_BY.CP1251 \
+		be_BY.ISO8859-5 \
+		be_BY.UTF-8 \
 		bg_BG.CP1251 \
 		bg_BG.UTF-8 \
 		ca_ES.UTF-8 \
@@ -86,6 +89,9 @@ UTF8_LATIN1LINKS=	en_GB en_US eu_ES nl_NL
 
 LATIN15LINKS=	ca_ES da_DK de_AT de_DE en_GB en_US es_ES eu_ES fi_FI fr_FR \
 		is_IS it_IT la_LN nl_NL no_NO pt_PT sv_SE
+LATIN5LINKS=	be_BY
+CP1251LINKS=	be_BY
+CP1131LINKS=	be_BY
 DE_LINKS=	de_CH
 FR_LINKS=	fr_BE fr_CA fr_CH
 IT_LINKS=	it_CH
@@ -110,6 +116,18 @@ afterinstall:
 		${LN} -fs ../$$l.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
+#	for l in ${LATIN5LINKS}; do \
+#		${LN} -fs ../$$l.ISO8859-5/LC_TIME \
+#		       ${LOCALEDIR}/$$l.ISO8859-5/LC_TIME; \
+#	done
+#	for l in ${CP1251LINKS}; do \
+#		${LN} -fs ../$$l.CP1251/LC_TIME \
+#		       ${LOCALEDIR}/$$l.CP1251/LC_TIME; \
+#	done
+#	for l in ${CP1131LINKS}; do \
+#		${LN} -fs ../$$l.CP1131/LC_TIME \
+#		       ${LOCALEDIR}/$$l.CP1131/LC_TIME; \
+#	done
 	for l in ${DE_LINKS}; do \
 		${LN} -fs ../de_DE.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \

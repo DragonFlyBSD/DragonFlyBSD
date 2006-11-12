@@ -1,10 +1,11 @@
 # $FreeBSD: src/share/syscons/keymaps/Makefile,v 1.44.2.11 2003/05/18 08:57:28 murray Exp $
-# $DragonFly: src/share/syscons/keymaps/Makefile,v 1.5 2006/06/16 09:58:32 swildner Exp $
+# $DragonFly: src/share/syscons/keymaps/Makefile,v 1.6 2006/11/12 21:15:46 swildner Exp $
 
 KEYMAPS=  INDEX.keymaps
 KEYMAPS+= be.iso.kbd be.iso.acc.kbd
 KEYMAPS+= bg.bds.ctrlcaps.kbd bg.phonetic.ctrlcaps.kbd
 KEYMAPS+= br275.iso.kbd br275.iso.acc.kbd br275.cp850.kbd
+KEYMAPS+= by.cp1131.kbd by.cp1251.kbd by.iso5.kbd
 KEYMAPS+= ce.iso2.kbd
 KEYMAPS+= cs.latin2.qwertz.kbd
 KEYMAPS+= cz.iso2.kbd

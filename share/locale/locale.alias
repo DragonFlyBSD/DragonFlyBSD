@@ -1,11 +1,12 @@
 # $NetBSD: src/share/locale/locale.alias,v 1.2 2004/09/10 15:12:51 ian Exp $
-# $DragonFly: src/share/locale/locale.alias,v 1.1 2005/03/11 15:57:42 joerg Exp $
+# $DragonFly: src/share/locale/locale.alias,v 1.2 2006/11/12 21:15:46 swildner Exp $
 
 #
 # Locale aliases
 #
 
 # UTF-8 ctypes - These are the same as en_US.UTF-8 for now.
+be_BY.UTF-8/LC_CTYPE		en_US.UTF-8
 bg_BG.UTF-8/LC_CTYPE		en_US.UTF-8
 ca_ES.UTF-8/LC_CTYPE		en_US.UTF-8
 cs_CZ.UTF-8/LC_CTYPE		en_US.UTF-8
@@ -47,6 +48,7 @@ zh_TW.UTF-8/LC_CTYPE		en_US.UTF-8
 
 
 # LC_MESSAGES - These are conveniently enabled for NLS.
+be_BY.UTF-8/LC_MESSAGES		/FORCE
 bg_BG.UTF-8/LC_MESSAGES		/FORCE
 ca_ES.UTF-8/LC_MESSAGES		/FORCE
 cs_CZ.UTF-8/LC_MESSAGES		/FORCE
