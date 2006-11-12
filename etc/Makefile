@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.142 2006/11/11 20:18:37 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.143 2006/11/12 18:15:11 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -456,6 +456,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpd.conf.5.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpusers.5.gz"
 	rm -f ${DESTDIR}/usr/include/machine/dvcfg.h
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/boot_i386.8.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
