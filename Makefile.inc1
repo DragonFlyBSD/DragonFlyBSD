@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.92 2006/11/09 17:16:56 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.93 2006/11/12 13:20:41 swildner Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -402,6 +402,11 @@ buildcheck:
 # Checks to be sure that the system is ready for an installworld
 #
 installcheck:
+.if ${MACHINE} == "i386"
+	@echo "You are running a kernel which is reporting an old platform architecture name,"
+	@echo "which will confuse installworld.  Please 'setenv MACHINE pc32' and try again."
+	exit 1
+.endif
 .if !defined(NO_SENDMAIL)
 	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
 	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
