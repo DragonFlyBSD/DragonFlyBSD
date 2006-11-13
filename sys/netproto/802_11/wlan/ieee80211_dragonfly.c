@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.4 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.5 2006/11/13 12:27:23 sephe Exp $
  */
 
 /*
@@ -258,8 +258,7 @@ ieee80211_notify_scan_done(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
 
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_SCAN,
-		"%s: notify scan done\n", ic->ic_ifp->if_xname);
+	IEEE80211_DPRINTF(ic, IEEE80211_MSG_SCAN, "%s\n", "notify scan done");
 
 	/* dispatch wireless event indicating scan completed */
 	rt_ieee80211msg(ifp, RTM_IEEE80211_SCAN, NULL, 0);
