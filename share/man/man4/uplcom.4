@@ -34,24 +34,34 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/uplcom.4,v 1.3.2.1 2002/08/08 17:59:26 joe Exp $
-.\" $DragonFly: src/share/man/man4/uplcom.4,v 1.3 2003/11/06 14:36:39 asmodai Exp $
+.\" $FreeBSD: src/share/man/man4/uplcom.4,v 1.15 2006/08/20 05:56:00 imp Exp $
+.\" $DragonFly: src/share/man/man4/uplcom.4,v 1.4 2006/11/13 21:39:19 swildner Exp $
 .\"
-.Dd May 21, 2001
+.Dd November 13, 2006
 .Dt UPLCOM 4
 .Os
 .Sh NAME
 .Nm uplcom
-.Nd USB support for Prolific PL-2303 serial adapters driver
+.Nd USB support for Prolific PL-2303/2303X/2303HX serial adapters driver
 .Sh SYNOPSIS
-.Cd "uplcom* at uhub?"
-.Cd "ucom*   at uplcom?"
+.Cd "device uplcom"
+.Cd "device ucom"
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for various serial adapters based on the Prolific
+PL-2303, PL-2303X and PL-2303HX USB-to-RS232 Bridge chips.
+.Pp
+The device is accessed through the
+.Xr ucom 4
+driver which makes it behave like a
+.Xr tty 4 .
 .Sh HARDWARE
 The
 .Nm
 driver supports the following adapters:
 .Pp
-.Bl -item -offset indent -compact
+.Bl -bullet -compact
 .It
 ATEN UC-232A
 .It
@@ -59,9 +69,13 @@ BAFO BF-800
 .It
 BAFO BF-810
 .It
-Bandridge CPL-4201
-.It
 ELECOM UC-SGT
+.It
+HAL Corporation Crossam2+USB IR commander
+.It
+Hama USB RS-232 Serial Adapter
+.It
+Hamlet exagerate XURS232
 .It
 IOGEAR UC-232A
 .It
@@ -69,17 +83,22 @@ I/O DATA USB-RSAQ
 .It
 I/O DATA USB-RSAQ2
 .It
+I/O DATA USB-RSAQ3
+.It
 PLANEX USB-RS232 URS-03
+.It
+RATOC REX-USB60
+.It
+Radio Shack USB Serial Cable
+.It
+Sandberg USB to Serial Link (model number 133-08)
+.It
+SOURCENEXT KeikaiDenwa 8 (with and without charger)
+.It
+Sony Ericsson USB Cable (Susteen USB Data Cable)
+.It
+Willcom W-SIM DD PHS terminal.(WS002IN)
 .El
-.Sh DESCRIPTION
-The
-.Nm
-driver provides support for Prolific PL-2303 USB-to-RS232 Bridge chip.
-.Pp
-The device is accessed through the
-.Xr ucom 4
-driver which makes it behave like a
-.Xr tty 4 .
 .Sh SEE ALSO
 .Xr tty 4 ,
 .Xr ucom 4 ,
