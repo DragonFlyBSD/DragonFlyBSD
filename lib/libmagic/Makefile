@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.13 2006/11/12 04:51:56 pavalos Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.14 2006/11/13 05:42:42 pavalos Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
 MAGICDIR= ${CONTRIBDIR}/magic
@@ -38,11 +38,12 @@ FILESDIR=	/usr/share/misc
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff\
 		${MAGICDIR}/Magdir/[a-z]*
 
-libmagic.3: ${CONTRIBDIR}/doc/libmagic.man
+libmagic.3: ${CONTRIBDIR}/doc/libmagic.man libmagic.man.patch
+	  patch -o - ${.ALLSRC} | \
 	    sed	-e s@__CSECTION__@1@g \
 		-e s@__FSECTION__@5@g \
 		-e s@__VERSION__@${VERSION}@g \
-		-e s@__MAGIC__@${MAGIC}@g ${.ALLSRC} > ${.TARGET}
+		-e s@__MAGIC__@${MAGIC}@g > ${.TARGET}
 
 all: ${LIB} magic.mgc magic.mime.mgc
 
