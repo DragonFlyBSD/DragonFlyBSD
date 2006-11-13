@@ -1,10 +1,9 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.14 2006/11/13 05:42:42 pavalos Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.15 2006/11/13 17:45:05 pavalos Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
 MAGICDIR= ${CONTRIBDIR}/magic
 .PATH: ${CONTRIBDIR}/src
 
-VERSION!=	grep -w VERSION config.h | awk -F\" '{print $$2}'
 MAGIC=	/usr/share/misc/magic
 
 LIB=	magic
@@ -42,7 +41,6 @@ libmagic.3: ${CONTRIBDIR}/doc/libmagic.man libmagic.man.patch
 	  patch -o - ${.ALLSRC} | \
 	    sed	-e s@__CSECTION__@1@g \
 		-e s@__FSECTION__@5@g \
-		-e s@__VERSION__@${VERSION}@g \
 		-e s@__MAGIC__@${MAGIC}@g > ${.TARGET}
 
 all: ${LIB} magic.mgc magic.mime.mgc
