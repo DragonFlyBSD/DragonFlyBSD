@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.6 2006/10/16 14:15:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.7 2006/11/14 13:35:49 sephe Exp $
  */
 
 /*
@@ -140,8 +140,14 @@
 #define RE_LOOPTEST_ON_CPLUS	0x00060000
 
 #define RE_HWREV_8169		0x00000000
-#define RE_HWREV_8169S		0x04000000
 #define RE_HWREV_8110S		0x00800000
+#define RE_HWREV_8169S		0x04000000
+#define RE_HWREV_8169_8110SB	0x10000000
+#define RE_HWREV_8169_8110SC	0x18000000
+#define RE_HWREV_8168_SPIN1	0x30000000
+#define RE_HWREV_8100E		0x30800000
+#define RE_HWREV_8101E		0x34000000
+#define RE_HWREV_8168_SPIN2	0x38000000
 #define RE_HWREV_8139CPLUS	0x74800000
 
 #define RE_TXDMA_16BYTES	0x00000000
@@ -185,10 +191,17 @@
 #define RE_ISR_TIMEOUT_EXPIRED	0x4000
 #define RE_ISR_SYSTEM_ERR	0x8000
 
-#define RE_INTRS_CPLUS	\
+#define RE_INTRS	\
 	(RE_ISR_RX_OK|RE_ISR_RX_ERR|RE_ISR_TX_ERR|			\
 	RE_ISR_RX_OVERRUN|RE_ISR_PKT_UNDERRUN|RE_ISR_FIFO_OFLOW|	\
 	RE_ISR_PCS_TIMEOUT|RE_ISR_SYSTEM_ERR|RE_ISR_TIMEOUT_EXPIRED)
+
+#ifdef RE_DIAG
+#define RE_INTRS_DIAG	\
+	(RE_ISR_TX_OK|RE_ISR_RX_OK|RE_ISR_RX_ERR|RE_ISR_TX_ERR|		\
+	RE_ISR_RX_OVERRUN|RE_ISR_PKT_UNDERRUN|RE_ISR_FIFO_OFLOW|	\
+	RE_ISR_PCS_TIMEOUT|RE_ISR_SYSTEM_ERR)
+#endif
 
 /*
  * Media status register. (8139 only)
@@ -277,6 +290,7 @@
 #define RE_EEMODE_WRITECFG	(0x80|0x40)
 
 /* 9346 EEPROM commands */
+#define RE_9346_READ		0x6
 #define RE_EECMD_WRITE		0x140
 #define RE_EECMD_READ_6BIT	0x180
 #define RE_EECMD_READ_8BIT	0x600
@@ -401,43 +415,7 @@
 #define RE_RXCFG_CONFIG (RE_RX_FIFOTHRESH|RE_RX_MAXDMA|RE_RX_BUF_SZ)
 #define RE_TXCFG_CONFIG	(RE_TXCFG_IFG|RE_TX_MAXDMA)
 
-#define RE_ETHER_ALIGN	2
-
-struct re_chain_data {
-	uint16_t		cur_rx;
-	caddr_t			re_rx_buf;
-	caddr_t			re_rx_buf_ptr;
-	bus_dmamap_t		re_rx_dmamap;
-
-	struct mbuf		*re_tx_chain[RE_TX_LIST_CNT];
-	bus_dmamap_t		re_tx_dmamap[RE_TX_LIST_CNT];
-	uint8_t			last_tx;
-	uint8_t			cur_tx;
-};
-
-#define RE_INC(x)		(x = (x + 1) % RE_TX_LIST_CNT)
-#define RE_CUR_TXADDR(x)	((x->re_cdata.cur_tx * 4) + RE_TXADDR0)
-#define RE_CUR_TXSTAT(x)	((x->re_cdata.cur_tx * 4) + RE_TXSTAT0)
-#define RE_CUR_TXMBUF(x)	(x->re_cdata.re_tx_chain[x->re_cdata.cur_tx])
-#define RE_CUR_DMAMAP(x)	(x->re_cdata.re_tx_dmamap[x->re_cdata.cur_tx])
-#define RE_LAST_TXADDR(x)	((x->re_cdata.last_tx * 4) + RE_TXADDR0)
-#define RE_LAST_TXSTAT(x)	((x->re_cdata.last_tx * 4) + RE_TXSTAT0)
-#define RE_LAST_TXMBUF(x)	(x->re_cdata.re_tx_chain[x->re_cdata.last_tx])
-#define RE_LAST_DMAMAP(x)	(x->re_cdata.re_tx_dmamap[x->re_cdata.last_tx])
-
-struct re_type {
-	uint16_t		re_vid;
-	uint16_t		re_did;
-	int			re_basetype;
-	const char		*re_name;
-};
-
-struct re_hwrev {
-	uint32_t		re_rev;
-	int			re_type;
-	const char		*re_desc;
-};
-
+#if 0
 struct re_mii_frame {
 	uint8_t			mii_stdelim;
 	uint8_t			mii_opcode;
@@ -446,6 +424,7 @@ struct re_mii_frame {
 	uint8_t			mii_turnaround;
 	uint16_t		mii_data;
 };
+#endif
 
 /*
  * MII constants
@@ -454,12 +433,6 @@ struct re_mii_frame {
 #define RE_MII_READOP		0x02
 #define RE_MII_WRITEOP		0x01
 #define RE_MII_TURNAROUND	0x02
-
-#define RE_8139CPLUS		3
-#define RE_8169			4
-
-#define RE_ISCPLUS(x)		((x)->re_type == RE_8139CPLUS ||	\
-				 (x)->re_type == RE_8169)
 
 /*
  * The 8139C+ and 8160 gigE chips support descriptor-based TX
@@ -584,100 +557,11 @@ struct re_stats {
 #define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
 #define RE_PKTSZ(x)		((x)/* >> 3*/)
 
-#define RE_ADDR_LO(y)	((u_int64_t) (y) & 0xFFFFFFFF)
-#define RE_ADDR_HI(y)	((u_int64_t) (y) >> 32)
+#define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
+#define RE_ADDR_HI(y)		((uint64_t) (y) >> 32)
 
 #define RE_JUMBO_FRAMELEN	9018
 #define RE_JUMBO_MTU		(RE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-
-struct re_softc;
-
-struct re_dmaload_arg {
-	struct re_softc		*sc;
-	int			re_idx;
-	int			re_maxsegs;
-	uint32_t		re_flags;
-	struct re_desc		*re_ring;
-};
-
-struct re_list_data {
-	struct mbuf		*re_tx_mbuf[RE_TX_DESC_CNT];
-	struct mbuf		*re_rx_mbuf[RE_TX_DESC_CNT];
-	int			re_tx_prodidx;
-	int			re_rx_prodidx;
-	int			re_tx_considx;
-	int			re_tx_free;
-	bus_dmamap_t		re_tx_dmamap[RE_TX_DESC_CNT];
-	bus_dmamap_t		re_rx_dmamap[RE_RX_DESC_CNT];
-	bus_dma_tag_t		re_mtag;	/* mbuf mapping tag */
-	bus_dma_tag_t		re_stag;	/* stats mapping tag */
-	bus_dmamap_t		re_smap;	/* stats map */
-	struct re_stats		*re_stats;
-	bus_addr_t		re_stats_addr;
-	bus_dma_tag_t		re_rx_list_tag;
-	bus_dmamap_t		re_rx_list_map;
-	struct re_desc		*re_rx_list;
-	bus_addr_t		re_rx_list_addr;
-	bus_dma_tag_t		re_tx_list_tag;
-	bus_dmamap_t		re_tx_list_map;
-	struct re_desc		*re_tx_list;
-	bus_addr_t		re_tx_list_addr;
-};
-
-struct re_softc {
-	struct arpcom		arpcom;		/* interface info */
-	bus_space_handle_t	re_bhandle;	/* bus space handle */
-	bus_space_tag_t		re_btag;	/* bus space tag */
-	struct resource		*re_res;
-	struct resource		*re_irq;
-	void			*re_intrhand;
-	device_t		re_miibus;
-	bus_dma_tag_t		re_parent_tag;
-	bus_dma_tag_t		re_tag;
-	u_int8_t		re_type;
-	int			re_eecmd_read;
-	u_int8_t		re_stats_no_timeout;
-	int			re_txthresh;
-	struct re_chain_data	re_cdata;
-	struct re_list_data	re_ldata;
-	struct callout		re_timer;
-	struct mbuf		*re_head;
-	struct mbuf		*re_tail;
-	uint32_t		re_hwrev;
-	uint32_t		re_rxlenmask;
-	int			re_testmode;
-	int			suspended;	/* 0 = normal  1 = suspended */
-#ifdef DEVICE_POLLING
-	int			rxcycles;
-#endif
-
-#ifndef BURN_BRIDGES
-	uint32_t		saved_maps[5];	/* pci data */
-	uint32_t		saved_biosaddr;
-	uint8_t			saved_intline;
-	uint8_t			saved_cachelnsz;
-	uint8_t			saved_lattimer;
-#endif
-};
-
-/*
- * register space access macros
- */
-#define CSR_WRITE_STREAM_4(sc, reg, val)	\
-	bus_space_write_stream_4(sc->re_btag, sc->re_bhandle, reg, val)
-#define CSR_WRITE_4(sc, reg, val)	\
-	bus_space_write_4(sc->re_btag, sc->re_bhandle, reg, val)
-#define CSR_WRITE_2(sc, reg, val)	\
-	bus_space_write_2(sc->re_btag, sc->re_bhandle, reg, val)
-#define CSR_WRITE_1(sc, reg, val)	\
-	bus_space_write_1(sc->re_btag, sc->re_bhandle, reg, val)
-
-#define CSR_READ_4(sc, reg)		\
-	bus_space_read_4(sc->re_btag, sc->re_bhandle, reg)
-#define CSR_READ_2(sc, reg)		\
-	bus_space_read_2(sc->re_btag, sc->re_bhandle, reg)
-#define CSR_READ_1(sc, reg)		\
-	bus_space_read_1(sc->re_btag, sc->re_bhandle, reg)
 
 #define	RE_TIMEOUT		1000
 
