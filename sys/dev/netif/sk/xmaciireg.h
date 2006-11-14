@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/xmaciireg.h,v 1.2.4.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/xmaciireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/xmaciireg.h,v 1.3 2006/11/14 12:52:31 sephe Exp $
  */
 
 /*
@@ -318,6 +318,9 @@
 #define XM_RXSTAT_VLAN_LEV1	0x00010000
 #define XM_RXSTAT_VLAN_LEV2	0x00020000
 #define XM_RXSTAT_LEN		0xFFFC0000
+#define XM_RXSTAT_LENSHIFT	18
+
+#define XM_RXSTAT_BYTES(x)	((x) >> XM_RXSTAT_LENSHIFT)
 
 /*
  * XMAC PHY registers, indirectly accessed through

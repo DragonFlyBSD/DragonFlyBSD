@@ -1,5 +1,3 @@
-/*	$OpenBSD: if_skreg.h,v 1.10 2003/08/12 05:23:06 nate Exp $	*/
-
 /*
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Bill Paul <wpaul@ctr.columbia.edu>.  All rights reserved.
@@ -31,8 +29,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.11 2006/10/16 14:12:34 sephe Exp $
+ * $FreeBSD: /c/ncvs/src/sys/pci/if_skreg.h,v 1.9 2000/04/22 02:16:37 wpaul Exp $
+ * $OpenBSD: if_skreg.h,v 1.39 2006/08/20 19:15:46 brad Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.12 2006/11/14 12:52:31 sephe Exp $
  */
 
 /*
@@ -51,61 +50,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* Values to keep the different chip revisions apart */
-#define SK_GENESIS 0
-#define SK_YUKON 1
-
-/*
- * SysKonnect PCI vendor ID
- */
-#define VENDORID_SK		0x1148
-
-/*
- * Marvell PCI vendor ID
- */
-#define VENDORID_MARVELL	0x11AB
-
-/*
- * SK-NET gigabit ethernet device IDs
- */
-#define DEVICEID_SK_V1		0x4300
-#define DEVICEID_SK_V2		0x4320
-
-/*
- * 3Com PCI vendor ID
- */
-#define VENDORID_3COM		0x10b7
-
-/*
- * 3Com gigabit ethernet device ID
- */
-#define DEVICEID_3COM_3C940	0x1700
-
-/*
- * Linksys PCI vendor ID
- */
-#define VENDORID_LINKSYS	0x1737
-
-/*
- * Linksys gigabit ethernet device ID
- */
-#define DEVICEID_LINKSYS_EG1032	0x1032
-
-/*
- * Linksys gigabit ethernet rev 2 sub-device ID
- */
-#define SUBDEVICEID_LINKSYS_EG1032_REV2	0x0015
-
-/*
- * D-Link PCI vendor ID
- */
-#define VENDORID_DLINK		0x1186
-
-/*
- * D-Link gigabit ethernet device ID
- */
-#define DEVICEID_DLINK_DGE530T	0x4c00
-
 /*
  * GEnesis registers. The GEnesis chip has a 256-byte I/O window
  * but internally it has a 16K register space. This 16K space is
@@ -117,7 +61,6 @@
  * blocks are actually used. Most registers are 32 bits wide, but
  * there are a few 16-bit and 8-bit ones as well.
  */
-
 
 /* Start of remappable register window. */
 #define SK_WIN_BASE		0x0080
@@ -188,6 +131,11 @@
 #define SK_IESR		0x0010	/* interrupt hardware error source */
 #define SK_IEMR		0x0014  /* interrupt hardware error mask */
 #define SK_ISSR		0x0018	/* special interrupt source */
+#define SK_Y2_ISSR2	0x001C
+#define SK_Y2_ISSR3	0x0020
+#define SK_Y2_EISR	0x0024
+#define SK_Y2_LISR	0x0028
+#define SK_Y2_ICR	0x002C
 #define SK_XM_IMR0	0x0020
 #define SK_XM_ISR0	0x0028
 #define SK_XM_PHYADDR0	0x0030
@@ -213,7 +161,9 @@
 #define SK_CSR_SW_IRQ_CLEAR		0x0040
 #define SK_CSR_SW_IRQ_SET		0x0080
 #define SK_CSR_SLOTSIZE			0x0100 /* 1 == 64 bits, 0 == 32 */
-#define SK_CSR_BUSCLOCK			0x0200 /* 1 == 33/66 Mhz, = 33 */
+#define SK_CSR_BUSCLOCK			0x0200 /* 1 == 33/66 MHz, = 33 */
+#define SK_CSR_ASF_OFF			0x1000
+#define SK_CSR_ASF_ON			0x2000
 
 /* SK_LED register */
 #define SK_LED_GREEN_OFF		0x01
@@ -333,8 +283,8 @@
 #define SK_CONFIG	0x011A
 #define SK_CHIPVER	0x011B
 #define SK_EPROM0	0x011C
-#define SK_EPROM1	0x011D
-#define SK_EPROM2	0x011E
+#define SK_EPROM1	0x011D		/* yukon/genesis */
+#define SK_EPROM2	0x011E		/* yukon/genesis */
 #define SK_EPROM3	0x011F
 #define SK_EP_ADDR	0x0120
 #define SK_EP_DATA	0x0124
@@ -363,11 +313,31 @@
 #define SK_BLNKSTS	0x0179
 #define SK_BLNKTST	0x017A
 
-#define SK_IMCTL_STOP	0x02
-#define SK_IMCTL_START	0x04
+/* Values for SK_CHIPVER */
+#define SK_GENESIS		0x0A
+#define SK_YUKON		0xB0
+#define SK_YUKON_LITE		0xB1
+#define SK_YUKON_LP		0xB2
 
-#define SK_IMTIMER_TICKS	54
-#define SK_IM_USECS(x)		((x) * SK_IMTIMER_TICKS)
+#define SK_IS_GENESIS(sc) \
+    ((sc)->sk_type == SK_GENESIS)
+#define SK_IS_YUKON(sc) \
+    ((sc)->sk_type >= SK_YUKON && (sc)->sk_type <= SK_YUKON_LP)
+
+/* Known revisions in SK_CONFIG */
+#define SK_YUKON_LITE_REV_A0	0x0 /* invented, see test in skc_attach */
+#define SK_YUKON_LITE_REV_A1	0x3
+#define SK_YUKON_LITE_REV_A3	0x7
+
+#define SK_IMCTL_IRQ_CLEAR	0x01
+#define SK_IMCTL_STOP		0x02
+#define SK_IMCTL_START		0x04
+
+/* Number of ticks per usec for interrupt moderation */
+#define SK_IMTIMER_TICKS_GENESIS	53
+#define SK_IMTIMER_TICKS_YUKON		78
+#define SK_IMTIMER_TICKS_YUKON_EC	125
+#define SK_IM_USECS(x)		((x) * imtimer_ticks)
 
 /*
  * The SK_EPROM0 register contains a byte that describes the
@@ -388,10 +358,10 @@
  * fiber-based cards or BCOM for 1000baseT cards with a Broadcom
  * PHY.
  */
-#define SK_PHYTYPE_XMAC		0	/* integeated XMAC II PHY */
-#define SK_PHYTYPE_BCOM		1	/* Broadcom BCM5400 */
-#define SK_PHYTYPE_LONE		2	/* Level One LXT1000 */
-#define SK_PHYTYPE_NAT		3	/* National DP83891 */
+#define SK_PHYTYPE_XMAC		0       /* integeated XMAC II PHY */
+#define SK_PHYTYPE_BCOM		1       /* Broadcom BCM5400 */
+#define SK_PHYTYPE_LONE		2       /* Level One LXT1000 */
+#define SK_PHYTYPE_NAT		3       /* National DP83891 */
 #define SK_PHYTYPE_MARV_COPPER	4       /* Marvell 88E1011S */
 #define SK_PHYTYPE_MARV_FIBER	5       /* Marvell 88E1011S (fiber) */
 
@@ -407,9 +377,10 @@
 #define SK_CONFIG_SINGLEMAC	0x01
 #define SK_CONFIG_DIS_DSL_CLK	0x02
 
+#define SK_PMD_1000BASETX_ALT	0x31
+#define SK_PMD_1000BASECX	0x43
 #define SK_PMD_1000BASELX	0x4C
 #define SK_PMD_1000BASESX	0x53
-#define SK_PMD_1000BASECX	0x43
 #define SK_PMD_1000BASETX	0x54
 
 /* GPIO bits */
@@ -432,7 +403,7 @@
 #define SK_GPIO_DIR6		0x00400000
 #define SK_GPIO_DIR7		0x00800000
 #define SK_GPIO_DIR8		0x01000000
-#define SK_GPIO_DIR9		0x02000000
+#define SK_GPIO_DIR9           0x02000000
 
 /* Block 3 Ram interface and MAC arbiter registers */
 #define SK_RAMADDR	0x0180
@@ -775,13 +746,13 @@
 	(SK_TXBMU_TRANSFER_SM_UNRESET|SK_TXBMU_DESCWR_SM_UNRESET|	\
 	SK_TXBMU_DESCRD_SM_UNRESET|SK_TXBMU_SUPERVISOR_SM_UNRESET|	\
 	SK_TXBMU_PFI_SM_UNRESET|SK_TXBMU_FIFO_UNRESET|			\
-	SK_TXBMU_DESC_UNRESET)
+	SK_TXBMU_DESC_UNRESET|SK_TXBMU_POLL_ON)
 
 #define SK_TXBMU_OFFLINE		\
 	(SK_TXBMU_TRANSFER_SM_RESET|SK_TXBMU_DESCWR_SM_RESET|	\
 	SK_TXBMU_DESCRD_SM_RESET|SK_TXBMU_SUPERVISOR_SM_RESET|	\
 	SK_TXBMU_PFI_SM_RESET|SK_TXBMU_FIFO_RESET|		\
-	SK_TXBMU_DESC_RESET)
+	SK_TXBMU_DESC_RESET|SK_TXBMU_POLL_OFF)
 
 /* Block 16 -- Receive RAMbuffer 1 */
 #define SK_RXRB1_START		0x0800
@@ -876,23 +847,30 @@
 #define SK_RXMF1_END		0x0C40
 #define SK_RXMF1_THRESHOLD	0x0C44
 #define SK_RXMF1_CTRL_TEST	0x0C48
+#define SK_RXMF1_FLUSH_MASK	0x0C4C
+#define SK_RXMF1_FLUSH_THRESHOLD	0x0C50
 #define SK_RXMF1_WRITE_PTR	0x0C60
 #define SK_RXMF1_WRITE_LEVEL	0x0C68
 #define SK_RXMF1_READ_PTR	0x0C70
 #define SK_RXMF1_READ_LEVEL	0x0C78
 
+/* Receive MAC FIFO 1 Control/Test */
 #define SK_RFCTL_WR_PTR_TST_ON	0x00004000	/* Write pointer test on*/
 #define SK_RFCTL_WR_PTR_TST_OFF	0x00002000	/* Write pointer test off */
 #define SK_RFCTL_WR_PTR_STEP	0x00001000	/* Write pointer increment */
 #define SK_RFCTL_RD_PTR_TST_ON	0x00000400	/* Read pointer test on */
 #define SK_RFCTL_RD_PTR_TST_OFF	0x00000200	/* Read pointer test off */
 #define SK_RFCTL_RD_PTR_STEP	0x00000100	/* Read pointer increment */
-#define SK_RFCTL_RX_FIFO_OVER	0x00000040	/* Clear IRQ RX FIFO Overrun */
+#define SK_RFCTL_FIFO_FLUSH_OFF	0x00000080	/* RX FIFO Flsuh mode off */
+#define SK_RFCTL_FIFO_FLUSH_ON	0x00000040	/* RX FIFO Flush mode on */
+#define SK_RFCTL_RX_FIFO_OVER	0x00000020	/* Clear IRQ RX FIFO Overrun */
 #define SK_RFCTL_FRAME_RX_DONE	0x00000010	/* Clear IRQ Frame RX Done */
 #define SK_RFCTL_OPERATION_ON	0x00000008	/* Operational mode on */
 #define SK_RFCTL_OPERATION_OFF	0x00000004	/* Operational mode off */
 #define SK_RFCTL_RESET_CLEAR	0x00000002	/* MAC FIFO Reset Clear */
 #define SK_RFCTL_RESET_SET	0x00000001	/* MAC FIFO Reset Set */
+
+#define SK_RFCTL_FIFO_THRESHOLD	0x0a	/* flush threshold (default) */
 
 /* Block 25 -- RX MAC FIFO 2 regisrers and LINK_SYNC counter */
 #define SK_RXF2_END		0x0C80
@@ -953,7 +931,7 @@
 #define SK_TXLED1_CTL		0x0D28
 #define SK_TXLED1_TST		0x0D29
 
-/* Receive MAC FIFO 1 (Yukon Only) */
+/* Transmit MAC FIFO 1 (Yukon Only) */
 #define SK_TXMF1_END		0x0D40
 #define SK_TXMF1_THRESHOLD	0x0D44
 #define SK_TXMF1_CTRL_TEST	0x0D48
@@ -964,6 +942,7 @@
 #define SK_TXMF1_RESTART_PTR	0x0D74
 #define SK_TXMF1_READ_LEVEL	0x0D78
 
+/* Transmit MAC FIFO Control/Test */
 #define SK_TFCTL_WR_PTR_TST_ON	0x00004000	/* Write pointer test on*/
 #define SK_TFCTL_WR_PTR_TST_OFF	0x00002000	/* Write pointer test off */
 #define SK_TFCTL_WR_PTR_STEP	0x00001000	/* Write pointer increment */
@@ -1021,6 +1000,8 @@
 #define SK_DPT_INIT		0x0e00	/* Initial value 24 bits */
 #define SK_DPT_TIMER		0x0e04	/* Mul of 78.12MHz clk (24b) */
 
+#define SK_DPT_TIMER_MAX	0x00ffffffff	/* 214.75ms at 78.125MHz */
+
 #define SK_DPT_TIMER_CTRL	0x0e08	/* Timer Control 16 bits */
 #define SK_DPT_TCTL_STOP	0x0001	/* Stop Timer */
 #define SK_DPT_TCTL_START	0x0002	/* Start Timer */
@@ -1030,13 +1011,43 @@
 #define SK_DPT_TTEST_OFF	0x0002	/* Test Mode Off */
 #define SK_DPT_TTEST_ON		0x0004	/* Test Mode On */
 
-/* Block 29 -- reserved */
+#define SK_TSTAMP_COUNT		0x0e14
+#define SK_TSTAMP_CTL 		0x0e18
+
+#define SK_TSTAMP_IRQ_CLEAR	0x01
+#define SK_TSTAMP_STOP		0x02
+#define SK_TSTAMP_START		0x04
+
+/* Block 29 -- Status BMU (Yukon-2 only) */
+#define SK_STAT_BMU_CSR		0x0e80
+#define SK_STAT_BMU_LIDX	0x0e84
+#define SK_STAT_BMU_ADDRLO	0x0e88
+#define SK_STAT_BMU_ADDRHI	0x0e8c
+#define SK_STAT_BMU_TXA1_RIDX	0x0e90
+#define SK_STAT_BMU_TXS1_RIDX	0x0e92
+#define SK_STAT_BMU_TXA2_RIDX	0x0e94
+#define SK_STAT_BMU_TXS2_RIDX	0x0e96
+#define SK_STAT_BMU_TX_THRESH	0x0e98
+#define SK_STAT_BMU_PUTIDX	0x0e9c
+#define SK_STAT_BMU_FIFOWP	0x0ea0
+#define SK_STAT_BMU_FIFORP	0x0ea4
+#define SK_STAT_BMU_FIFORSP	0x0ea6
+#define SK_STAT_BMU_FIFOLV	0x0ea8
+#define SK_STAT_BMU_FIFOSLV	0x0eaa
+#define SK_STAT_BMU_FIFOWM	0x0eac
+#define SK_STAT_BMU_FIFOIWM	0x0ead
+
+#define SK_STAT_BMU_RESET	0x00000001
+#define SK_STAT_BMU_UNRESET	0x00000002
+#define SK_STAT_BMU_OFF		0x00000004
+#define SK_STAT_BMU_ON		0x00000008
+#define SK_STAT_BMU_IRQ_CLEAR	0x00000010
 
 /* Block 30 -- GMAC/GPHY Control Registers (Yukon Only)*/
 #define SK_GMAC_CTRL		0x0f00	/* GMAC Control Register */
 #define SK_GPHY_CTRL		0x0f04	/* GPHY Control Register */
 #define SK_GMAC_ISR		0x0f08	/* GMAC Interrupt Source Register */
-#define SK_GMAC_IMR		0x0f08	/* GMAC Interrupt Mask Register */
+#define SK_GMAC_IMR		0x0f0c	/* GMAC Interrupt Mask Register */
 #define SK_LINK_CTRL		0x0f10	/* Link Control Register (LCR) */
 #define SK_WOL_CTRL		0x0f20	/* Wake on LAN Control Register */
 #define SK_MAC_ADDR_LOW		0x0f24	/* Mack Address Registers LOW */
@@ -1131,21 +1142,21 @@
 #define SK_MARV2_BASE	0x3800
 
 /* Compute relative offset of an XMAC register in the XMAC window(s). */
-#define SK_XMAC_REG(sc, reg)	(((reg) * 2) + SK_XMAC1_BASE +		\
+#define SK_XMAC_REG(sc, reg)	(((reg) * 2) + SK_XMAC1_BASE + \
 	(((sc)->sk_port) * (SK_XMAC2_BASE - SK_XMAC1_BASE)))
 
 #if 0
 #define SK_XM_READ_4(sc, reg)						\
 	((sk_win_read_2(sc->sk_softc,					\
-	SK_XMAC_REG(sc, reg)) & 0xFFFF) |				\
-	((sk_win_read_2(sc->sk_softc,					\
-	SK_XMAC_REG(sc, reg + 2)) & 0xFFFF) << 16))
+	      SK_XMAC_REG(sc, reg)) & 0xFFFF) |		\
+	 ((sk_win_read_2(sc->sk_softc,					\
+	      SK_XMAC_REG(sc, reg + 2)) & 0xFFFF) << 16))
 
 #define SK_XM_WRITE_4(sc, reg, val)					\
 	sk_win_write_2(sc->sk_softc, SK_XMAC_REG(sc, reg),		\
-	((val) & 0xFFFF));						\
+		       ((val) & 0xFFFF));				\
 	sk_win_write_2(sc->sk_softc, SK_XMAC_REG(sc, reg + 2),		\
-	((val) >> 16) & 0xFFFF)
+		       ((val) >> 16) & 0xFFFF)
 #else
 #define SK_XM_READ_4(sc, reg)		\
 	sk_win_read_4(sc->sk_softc, SK_XMAC_REG(sc, reg))
@@ -1235,10 +1246,6 @@
 #define SK_PCI_PWRMGMTCAP	0x004A /* 16 bits */
 #define SK_PCI_PWRMGMTCTRL	0x004C /* 16 bits */
 #define SK_PCI_PME_EVENT	0x004F
-#define SK_PCI_VPD_CAPID	0x0050
-#define SK_PCI_VPD_NEXTPTR	0x0051
-#define SK_PCI_VPD_ADDR		0x0052
-#define SK_PCI_VPD_DATA		0x0054
 
 #define SK_PSTATE_MASK		0x0003
 #define SK_PSTATE_D0		0x0000
@@ -1248,49 +1255,24 @@
 #define SK_PME_EN		0x0010
 #define SK_PME_STATUS		0x8000
 
-/*
- * VPD flag bit. Set to 0 to initiate a read, will become 1 when
- * read is complete. Set to 1 to initiate a write, will become 0
- * when write is finished.
- */
-#define SK_VPD_FLAG		0x8000
-
-/* VPD structures */
-struct vpd_res {
-	uint8_t			vr_id;
-	uint8_t			vr_len;
-	uint8_t			vr_pad;
-};
-
-struct vpd_key {
-	char			vk_key[2];
-	uint8_t			vk_len;
-};
-
-#define VPD_RES_ID	0x82	/* ID string */
-#define VPD_RES_READ	0x90	/* start of read only area */
-#define VPD_RES_WRITE	0x81	/* start of read/write area */
-#define VPD_RES_END	0x78	/* end tag */
-
-#define CSR_WRITE_4(sc, reg, val)	\
+#define CSR_WRITE_4(sc, reg, val) \
 	bus_space_write_4((sc)->sk_btag, (sc)->sk_bhandle, (reg), (val))
-#define CSR_WRITE_2(sc, reg, val)	\
+#define CSR_WRITE_2(sc, reg, val) \
 	bus_space_write_2((sc)->sk_btag, (sc)->sk_bhandle, (reg), (val))
-#define CSR_WRITE_1(sc, reg, val)	\
+#define CSR_WRITE_1(sc, reg, val) \
 	bus_space_write_1((sc)->sk_btag, (sc)->sk_bhandle, (reg), (val))
 
-#define CSR_READ_4(sc, reg)		\
+#define CSR_READ_4(sc, reg) \
 	bus_space_read_4((sc)->sk_btag, (sc)->sk_bhandle, (reg))
-#define CSR_READ_2(sc, reg)		\
+#define CSR_READ_2(sc, reg) \
 	bus_space_read_2((sc)->sk_btag, (sc)->sk_bhandle, (reg))
-#define CSR_READ_1(sc, reg)		\
+#define CSR_READ_1(sc, reg) \
 	bus_space_read_1((sc)->sk_btag, (sc)->sk_bhandle, (reg))
 
-struct sk_type {
-	uint16_t		sk_vid;
-	uint16_t		sk_did;
-	char			*sk_name;
-};
+#define SK_ADDR_LO(x)	((uint64_t) (x) & 0xffffffff)
+#define SK_ADDR_HI(x)	((uint64_t) (x) >> 32)
+
+#define SK_RING_ALIGN	64
 
 /* RX queue descriptor data structure */
 struct sk_rx_desc {
@@ -1351,7 +1333,7 @@ struct sk_tx_desc {
 #define SK_TXSTAT	\
 	(SK_OPCODE_DEFAULT|SK_TXCTL_EOF_INTR|SK_TXCTL_LASTFRAG|SK_TXCTL_OWN)
 
-#define SK_RXBYTES(x)		(x) & 0x0000FFFF;
+#define SK_RXBYTES(x)		((x) & 0x0000FFFF);
 #define SK_TXBYTES		SK_RXBYTES
 
 #define SK_TX_RING_CNT		512
@@ -1366,107 +1348,18 @@ struct sk_tx_desc {
  * receive descriptors.
  */
 #define SK_JUMBO_FRAMELEN	9018
-#define SK_JUMBO_MTU		(SK_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-#define SK_JSLOTS		384
+#define SK_JUMBO_MTU		(SK_JUMBO_FRAMELEN - ETHER_HDR_LEN - ETHER_CRC_LEN)
+#define SK_MIN_FRAMELEN		(ETHER_MIN_LEN - ETHER_CRC_LEN)
+#define SK_JSLOTS		((SK_RX_RING_CNT / 2) * 3)
 
-#define SK_JRAWLEN (SK_JUMBO_FRAMELEN + ETHER_ALIGN)
-#define SK_JLEN (SK_JRAWLEN + (sizeof(uint64_t) - \
-	(SK_JRAWLEN % sizeof(uint64_t))))
-#define SK_JPAGESZ PAGE_SIZE
-#define SK_RESID (SK_JPAGESZ - (SK_JLEN * SK_JSLOTS) % SK_JPAGESZ)
-#define SK_JMEM ((SK_JLEN * SK_JSLOTS) + SK_RESID)
-
-struct sk_if_softc;
-
-struct sk_jslot {
-	struct sk_if_softc	*sk_sc;
-	void			*sk_buf;
-	int			sk_inuse;
-	int			sk_slot;
-	SLIST_ENTRY(sk_jslot)	jslot_link;
-};
-
-struct sk_chain {
-	void			*sk_desc;
-	struct mbuf		*sk_mbuf;
-	struct sk_chain		*sk_next;
-};
-
-struct sk_chain_data {
-	struct sk_chain		sk_tx_chain[SK_TX_RING_CNT];
-	struct sk_chain		sk_rx_chain[SK_RX_RING_CNT];
-	int			sk_tx_prod;
-	int			sk_tx_cons;
-	int			sk_tx_cnt;
-	int			sk_rx_prod;
-	int			sk_rx_cons;
-	int			sk_rx_cnt;
-	/* Stick the jumbo mem management stuff here too. */
-	struct sk_jslot		sk_jslots[SK_JSLOTS];
-	void			*sk_jumbo_buf;
-
-};
-
-struct sk_ring_data {
-	struct sk_tx_desc	sk_tx_ring[SK_TX_RING_CNT];
-	struct sk_rx_desc	sk_rx_ring[SK_RX_RING_CNT];
-};
-
-struct sk_bcom_hack {
-	int			reg;
-	int			val;
-};
-
-#define SK_INC(x, y)	(x) = (x + 1) % y
-
-/* Forward decl. */
-struct sk_if_softc;
-
-/* Softc for the GEnesis controller. */
-struct sk_softc {
-	bus_space_handle_t	sk_bhandle;	/* bus space handle */
-	bus_space_tag_t		sk_btag;	/* bus space tag */
-	void			*sk_intrhand;	/* irq handler handle */
-	struct resource		*sk_irq;	/* IRQ resource handle */
-	struct resource		*sk_res;	/* I/O or shared mem handle */
-	uint8_t			sk_unit;	/* controller number */
-	uint8_t			sk_type;
-	char			*sk_vpd_prodname;
-	char			*sk_vpd_readonly;
-	uint32_t		sk_rboff;	/* RAMbuffer offset */
-	uint32_t		sk_ramsize;	/* amount of RAM on NIC */
-	uint32_t		sk_pmd;		/* physical media type */
-	uint32_t		sk_intrmask;
-	struct sk_if_softc	*sk_if[2];
-	device_t		sk_devs[2];
-};
-
-/* Softc for each logical interface */
-struct sk_if_softc {
-	struct arpcom		arpcom;		/* interface info */
-	device_t		sk_miibus;
-	uint8_t			sk_unit;	/* interface number */
-	uint8_t			sk_port;	/* port # on controller */
-	uint8_t			sk_xmac_rev;	/* XMAC chip rev (B2 or C1) */
-	uint32_t		sk_rx_ramstart;
-	uint32_t		sk_rx_ramend;
-	uint32_t		sk_tx_ramstart;
-	uint32_t		sk_tx_ramend;
-	int			sk_phytype;
-	int			sk_phyaddr;
-	device_t		sk_dev;
-	int			sk_cnt;
-	int			sk_link;
-	struct callout		sk_tick_timer;
-	struct sk_chain_data	sk_cdata;
-	struct sk_ring_data	*sk_rdata;
-	struct sk_softc		*sk_softc;	/* parent controller */
-	int			sk_tx_bmu;	/* TX BMU register */
-	int			sk_if_flags;
-	SLIST_HEAD(__sk_jfreehead, sk_jslot)	sk_jfree_listhead;
-	struct lwkt_serialize	sk_jslot_serializer;
-};
+#define SK_JRAWLEN	(SK_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define SK_JLEN		SK_JRAWLEN
+#define SK_MCLBYTES	SK_JLEN
+#define SK_JPAGESZ	PAGE_SIZE
+#define SK_RESID	(SK_JPAGESZ - (SK_JLEN * SK_JSLOTS) % SK_JPAGESZ)
+#define SK_JMEM		((SK_JLEN * SK_JSLOTS) + SK_RESID)
 
 #define SK_MAXUNIT	256
 #define SK_TIMEOUT	1000
-#define ETHER_ALIGN	2
+
+#define SUBDEVICEID_LINKSYS_EG1032_REV2	0x0015
