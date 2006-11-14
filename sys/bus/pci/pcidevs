@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.21 2006/10/17 12:37:46 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.22 2006/11/14 12:30:51 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -450,7 +450,7 @@ vendor PUREDATA		0x11a6 	Pure Data
 vendor POWERCC		0x11a7	Power Computing
 vendor INNOSYS		0x11a9	InnoSys
 vendor ACTEL		0x11aa	Actel
-vendor GALILEO		0x11ab	Galileo Technology
+vendor MARVELL		0x11ab	Marvell (was Galileo Technology)
 vendor CANNON		0x11ac	Cannon IS
 vendor LITEON		0x11ad	Lite-On Communications
 vendor SCITEX		0x11ae	Scitex Corporation
@@ -529,6 +529,7 @@ vendor ADMTEK		0x1317	ADMtek
 vendor FORTEMEDIA	0x1319	Forte Media
 vendor SIIG		0x131f	Siig, Inc.
 vendor DOMEX		0x134a	Domex
+vendor CNET		0x1371	CNet
 vendor LMC		0x1376	LAN Media Corporation
 vendor NETGEAR		0x1385	Netgear
 vendor LEVELONE		0x1394	Level One
@@ -631,6 +632,7 @@ product 3COM 3C556	0x6055	3c556 10/100 MiniPCI Ethernet
 product 3COM 3C556B	0x6056	3c556B 10/100 MiniPCI Ethernet
 product 3COM 3CSOHO100TX 0x7646 3cSOHO100-TX 10/100 Ethernet
 product 3COM 3CRWE777A	0x7770	3crwe777a AirConnect
+product 3COM 3C940B	0x80eb	3c940B Gigabit Ethernet
 product 3COM 3C900TPO	0x9000	3c900-TPO Ethernet
 product 3COM 3C900COMBO	0x9001	3c900-COMBO Ethernet
 product 3COM 3C905TX	0x9050	3c905-TX 10/100 Ethernet
@@ -1192,6 +1194,9 @@ product CMEDIA CMI8738		0x0111	CMI8738/C3DX PCI Audio Device
 product CMEDIA CMI8738B		0x0112	CMI8738B PCI Audio Device
 product CMEDIA HSP56		0x0211	HSP56 Audiomodem Riser
 
+/* CNet produts */
+product CNET GIGACARD		0x434e	GigaCard
+
 /* Cogent Data Technologies products */
 product COGENT EM110TX		0x1400	EX110TX PCI Fast Ethernet Adapter
 
@@ -1346,7 +1351,9 @@ product DLINK DFE530TXPLUS	0x1300	DFE-530TXPLUS 10/100 Ethernet
 product DLINK DFE690TXD		0x1340	DFE-690TXD 10/100 Ethernet
 product DLINK DL4000		0x4000	DL-4000 Gigabit Ethernet
 product DLINK DGE528T		0x4300	DGE-528T Gigabit Ethernet
-product DLINK DGE530T		0x4c00	DGE-530T Gigabit Ethernet
+product DLINK DGE560T		0x4b00	DGE-560T
+product DLINK DGE530T_B1	0x4b01	DGE-530T B1
+product DLINK DGE530T_A1	0x4c00	DGE-530T A1
 
 /* Distributed Processing Technology products */
 product DPT SC_RAID	0xa400	SmartCache/SmartRAID (EATA)
@@ -1450,13 +1457,30 @@ product EFFICIENTNETS ENI155PA	0x0002	155P-MF1 ATM (ASIC)
 product EFFICIENTNETS ENI25P	0x0003	SpeedStream ENI-25p
 product EFFICIENTNETS SS3000	0x0005	SpeedStream 3000
 
-/* Galileo Technology products */
-product GALILEO GT64010A	0x0146	GT-64010A System Controller
-product GALILEO	GT64115		0x4111	GT-64115 System Controller
-product GALILEO	GT64011		0x4146	GT-64011 System Controller
-product GALILEO	GT64120		0x4620	GT-64120 System Controller
-product GALILEO	GT64130		0x6320	GT-64130 System Controller
-product GALILEO	GT64260		0x6430	GT-64260 System Controller
+/* Marvell (was Galileo Technology) products */
+product MARVELL GT64010A	0x0146	GT-64010A System Controller
+product MARVELL	GT64115		0x4111	GT-64115 System Controller
+product MARVELL	GT64011		0x4146	GT-64011 System Controller
+product MARVELL YUKON		0x4320	Yukon 88E8001/8003/8010
+product MARVELL YUKONII_8021CU	0x4340	Yukon-II 88E8021CU
+product MARVELL YUKONII_8022CU	0x4341	Yukon-II 88E8022CU
+product MARVELL YUKONII_8061CU	0x4342	Yukon-II 88E8061CU
+product MARVELL YUKONII_8062CU	0x4343	Yukon-II 88E8062CU
+product MARVELL YUKONII_8021X	0x4344	Yukon-II 88E8021X
+product MARVELL YUKONII_8022X	0x4345	Yukon-II 88E8022X
+product MARVELL YUKONII_8061X	0x4346	Yukon-II 88E8061X
+product MARVELL YUKONII_8062X	0x4347	Yukon-II 88E8062X
+product MARVELL YUKON_8035	0x4350	Yukon 88E8035
+product MARVELL YUKON_8036	0x4351	Yukon 88E8036
+product MARVELL YUKON_8038	0x4352	Yukon 88E8038
+product MARVELL YUKON_8052	0x4360	Yukon 88E8052
+product MARVELL YUKON_8050	0x4361	Yukon 88E8050
+product MARVELL YUKON_8053	0x4362	Yukon 88E8053
+product MARVELL YUKON_3		0x4363	Yukon
+product MARVELL	GT64120		0x4620	GT-64120 System Controller
+product MARVELL YUKON_BELKIN	0x5005	Yukon (Belkin F5D5005)
+product MARVELL	GT64130		0x6320	GT-64130 System Controller
+product MARVELL	GT64260		0x6430	GT-64260 System Controller
 
 /* Global Sun Tech products */
 product GLOBALSUN GL24110P	0x1101	GL24110P PCI IEEE 802.11b
@@ -2584,6 +2608,8 @@ product SCHNEIDERKOCH	SKNET_FDDI	0x4000	SK-NET FDDI-xP
 product SCHNEIDERKOCH	SKNET_GE	0x4300	SK-NET GE
 product SCHNEIDERKOCH	SK9821v2	0x4320	SK-9821 v2.0
 product SCHNEIDERKOCH	SK_9DX1		0x4400	SK-NET SK-9DX1 Gigabit Ethernet
+product SCHNEIDERKOCH	SK9Sxx		0x9000	SK-9Sxx
+product SCHNEIDERKOCH	SK9Exx		0x9e00	SK-9Exx
 /* These next two are are really subsystem IDs */
 product SCHNEIDERKOCH	SK_9D21		0x4421	SK-9D21 1000BASE-T
 product SCHNEIDERKOCH	SK_9D41		0x4441	SK-9D41 1000BASE-X
