@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.21 2006/10/17 12:38:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.22 2006/11/14 12:32:18 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.20 2006/10/17 12:26:02 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.21 2006/10/17 12:37:46 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -135,6 +135,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "3Com",
 	    "3crwe777a AirConnect",
+	},
+	{
+	    PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C940B,
+	    0,
+	    "3Com",
+	    "3c940B Gigabit Ethernet",
 	},
 	{
 	    PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C900TPO,
@@ -2861,6 +2867,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "HSP56 Audiomodem Riser",
 	},
 	{
+	    PCI_VENDOR_CNET, PCI_PRODUCT_CNET_GIGACARD,
+	    0,
+	    "CNet",
+	    "GigaCard",
+	},
+	{
 	    PCI_VENDOR_COGENT, PCI_PRODUCT_COGENT_EM110TX,
 	    0,
 	    "Cogent Data Technologies",
@@ -3527,10 +3539,22 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "DGE-528T Gigabit Ethernet",
 	},
 	{
-	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE530T,
+	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE560T,
 	    0,
 	    "D-Link Systems",
-	    "DGE-530T Gigabit Ethernet",
+	    "DGE-560T",
+	},
+	{
+	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE530T_B1,
+	    0,
+	    "D-Link Systems",
+	    "DGE-530T B1",
+	},
+	{
+	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE530T_A1,
+	    0,
+	    "D-Link Systems",
+	    "DGE-530T A1",
 	},
 	{
 	    PCI_VENDOR_DPT, PCI_PRODUCT_DPT_SC_RAID,
@@ -3905,39 +3929,141 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "SpeedStream 3000",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64010A,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64010A,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
 	    "GT-64010A System Controller",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64115,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64115,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
 	    "GT-64115 System Controller",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64011,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64011,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
 	    "GT-64011 System Controller",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64120,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8001/8003/8010",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8021CU,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8021CU",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8022CU,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8022CU",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8061CU,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8061CU",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8062CU,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8062CU",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8021X,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8021X",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8022X,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8022X",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8061X,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8061X",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKONII_8062X,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon-II 88E8062X",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8035,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8035",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8036,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8036",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8038,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8038",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8052,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8052",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8050,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8050",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_8053,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon 88E8053",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_3,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "Yukon",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64120,
+	    0,
+	    "Marvell (was Galileo Technology)",
 	    "GT-64120 System Controller",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64130,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_YUKON_BELKIN,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
+	    "Yukon (Belkin F5D5005)",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64130,
+	    0,
+	    "Marvell (was Galileo Technology)",
 	    "GT-64130 System Controller",
 	},
 	{
-	    PCI_VENDOR_GALILEO, PCI_PRODUCT_GALILEO_GT64260,
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64260,
 	    0,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
 	    "GT-64260 System Controller",
 	},
 	{
@@ -9527,6 +9653,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "SK-NET SK-9DX1 Gigabit Ethernet",
 	},
 	{
+	    PCI_VENDOR_SCHNEIDERKOCH, PCI_PRODUCT_SCHNEIDERKOCH_SK9Sxx,
+	    0,
+	    "Schneider & Koch",
+	    "SK-9Sxx",
+	},
+	{
+	    PCI_VENDOR_SCHNEIDERKOCH, PCI_PRODUCT_SCHNEIDERKOCH_SK9Exx,
+	    0,
+	    "Schneider & Koch",
+	    "SK-9Exx",
+	},
+	{
 	    PCI_VENDOR_SCHNEIDERKOCH, PCI_PRODUCT_SCHNEIDERKOCH_SK_9D21,
 	    0,
 	    "Schneider & Koch",
@@ -13763,9 +13901,9 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
-	    PCI_VENDOR_GALILEO, 0,
+	    PCI_VENDOR_MARVELL, 0,
 	    PCI_KNOWNDEV_NOPROD,
-	    "Galileo Technology",
+	    "Marvell (was Galileo Technology)",
 	    NULL,
 	},
 	{
@@ -14234,6 +14372,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_DOMEX, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Domex",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_CNET, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "CNet",
 	    NULL,
 	},
 	{

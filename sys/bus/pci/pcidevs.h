@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.21 2006/10/17 12:38:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.22 2006/11/14 12:32:18 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.20 2006/10/17 12:26:02 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.21 2006/10/17 12:37:46 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -457,7 +457,7 @@
 #define	PCI_VENDOR_POWERCC	0x11a7		/* Power Computing */
 #define	PCI_VENDOR_INNOSYS	0x11a9		/* InnoSys */
 #define	PCI_VENDOR_ACTEL	0x11aa		/* Actel */
-#define	PCI_VENDOR_GALILEO	0x11ab		/* Galileo Technology */
+#define	PCI_VENDOR_MARVELL	0x11ab		/* Marvell (was Galileo Technology) */
 #define	PCI_VENDOR_CANNON	0x11ac		/* Cannon IS */
 #define	PCI_VENDOR_LITEON	0x11ad		/* Lite-On Communications */
 #define	PCI_VENDOR_SCITEX	0x11ae		/* Scitex Corporation */
@@ -536,6 +536,7 @@
 #define	PCI_VENDOR_FORTEMEDIA	0x1319		/* Forte Media */
 #define	PCI_VENDOR_SIIG	0x131f		/* Siig, Inc. */
 #define	PCI_VENDOR_DOMEX	0x134a		/* Domex */
+#define	PCI_VENDOR_CNET	0x1371		/* CNet */
 #define	PCI_VENDOR_LMC	0x1376		/* LAN Media Corporation */
 #define	PCI_VENDOR_NETGEAR	0x1385		/* Netgear */
 #define	PCI_VENDOR_LEVELONE	0x1394		/* Level One */
@@ -638,6 +639,7 @@
 #define	PCI_PRODUCT_3COM_3C556B	0x6056		/* 3c556B 10/100 MiniPCI Ethernet */
 #define	PCI_PRODUCT_3COM_3CSOHO100TX	0x7646		/* 3cSOHO100-TX 10/100 Ethernet */
 #define	PCI_PRODUCT_3COM_3CRWE777A	0x7770		/* 3crwe777a AirConnect */
+#define	PCI_PRODUCT_3COM_3C940B	0x80eb		/* 3c940B Gigabit Ethernet */
 #define	PCI_PRODUCT_3COM_3C900TPO	0x9000		/* 3c900-TPO Ethernet */
 #define	PCI_PRODUCT_3COM_3C900COMBO	0x9001		/* 3c900-COMBO Ethernet */
 #define	PCI_PRODUCT_3COM_3C905TX	0x9050		/* 3c905-TX 10/100 Ethernet */
@@ -1199,6 +1201,9 @@
 #define	PCI_PRODUCT_CMEDIA_CMI8738B	0x0112		/* CMI8738B PCI Audio Device */
 #define	PCI_PRODUCT_CMEDIA_HSP56	0x0211		/* HSP56 Audiomodem Riser */
 
+/* CNet produts */
+#define	PCI_PRODUCT_CNET_GIGACARD	0x434e		/* GigaCard */
+
 /* Cogent Data Technologies products */
 #define	PCI_PRODUCT_COGENT_EM110TX	0x1400		/* EX110TX PCI Fast Ethernet Adapter */
 
@@ -1353,7 +1358,9 @@
 #define	PCI_PRODUCT_DLINK_DFE690TXD	0x1340		/* DFE-690TXD 10/100 Ethernet */
 #define	PCI_PRODUCT_DLINK_DL4000	0x4000		/* DL-4000 Gigabit Ethernet */
 #define	PCI_PRODUCT_DLINK_DGE528T	0x4300		/* DGE-528T Gigabit Ethernet */
-#define	PCI_PRODUCT_DLINK_DGE530T	0x4c00		/* DGE-530T Gigabit Ethernet */
+#define	PCI_PRODUCT_DLINK_DGE560T	0x4b00		/* DGE-560T */
+#define	PCI_PRODUCT_DLINK_DGE530T_B1	0x4b01		/* DGE-530T B1 */
+#define	PCI_PRODUCT_DLINK_DGE530T_A1	0x4c00		/* DGE-530T A1 */
 
 /* Distributed Processing Technology products */
 #define	PCI_PRODUCT_DPT_SC_RAID	0xa400		/* SmartCache/SmartRAID (EATA) */
@@ -1457,13 +1464,30 @@
 #define	PCI_PRODUCT_EFFICIENTNETS_ENI25P	0x0003		/* SpeedStream ENI-25p */
 #define	PCI_PRODUCT_EFFICIENTNETS_SS3000	0x0005		/* SpeedStream 3000 */
 
-/* Galileo Technology products */
-#define	PCI_PRODUCT_GALILEO_GT64010A	0x0146		/* GT-64010A System Controller */
-#define	PCI_PRODUCT_GALILEO_GT64115	0x4111		/* GT-64115 System Controller */
-#define	PCI_PRODUCT_GALILEO_GT64011	0x4146		/* GT-64011 System Controller */
-#define	PCI_PRODUCT_GALILEO_GT64120	0x4620		/* GT-64120 System Controller */
-#define	PCI_PRODUCT_GALILEO_GT64130	0x6320		/* GT-64130 System Controller */
-#define	PCI_PRODUCT_GALILEO_GT64260	0x6430		/* GT-64260 System Controller */
+/* Marvell (was Galileo Technology) products */
+#define	PCI_PRODUCT_MARVELL_GT64010A	0x0146		/* GT-64010A System Controller */
+#define	PCI_PRODUCT_MARVELL_GT64115	0x4111		/* GT-64115 System Controller */
+#define	PCI_PRODUCT_MARVELL_GT64011	0x4146		/* GT-64011 System Controller */
+#define	PCI_PRODUCT_MARVELL_YUKON	0x4320		/* Yukon 88E8001/8003/8010 */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8021CU	0x4340		/* Yukon-II 88E8021CU */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8022CU	0x4341		/* Yukon-II 88E8022CU */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8061CU	0x4342		/* Yukon-II 88E8061CU */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8062CU	0x4343		/* Yukon-II 88E8062CU */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8021X	0x4344		/* Yukon-II 88E8021X */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8022X	0x4345		/* Yukon-II 88E8022X */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8061X	0x4346		/* Yukon-II 88E8061X */
+#define	PCI_PRODUCT_MARVELL_YUKONII_8062X	0x4347		/* Yukon-II 88E8062X */
+#define	PCI_PRODUCT_MARVELL_YUKON_8035	0x4350		/* Yukon 88E8035 */
+#define	PCI_PRODUCT_MARVELL_YUKON_8036	0x4351		/* Yukon 88E8036 */
+#define	PCI_PRODUCT_MARVELL_YUKON_8038	0x4352		/* Yukon 88E8038 */
+#define	PCI_PRODUCT_MARVELL_YUKON_8052	0x4360		/* Yukon 88E8052 */
+#define	PCI_PRODUCT_MARVELL_YUKON_8050	0x4361		/* Yukon 88E8050 */
+#define	PCI_PRODUCT_MARVELL_YUKON_8053	0x4362		/* Yukon 88E8053 */
+#define	PCI_PRODUCT_MARVELL_YUKON_3	0x4363		/* Yukon */
+#define	PCI_PRODUCT_MARVELL_GT64120	0x4620		/* GT-64120 System Controller */
+#define	PCI_PRODUCT_MARVELL_YUKON_BELKIN	0x5005		/* Yukon (Belkin F5D5005) */
+#define	PCI_PRODUCT_MARVELL_GT64130	0x6320		/* GT-64130 System Controller */
+#define	PCI_PRODUCT_MARVELL_GT64260	0x6430		/* GT-64260 System Controller */
 
 /* Global Sun Tech products */
 #define	PCI_PRODUCT_GLOBALSUN_GL24110P	0x1101		/* GL24110P PCI IEEE 802.11b */
@@ -2591,6 +2615,8 @@
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SKNET_GE	0x4300		/* SK-NET GE */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK9821v2	0x4320		/* SK-9821 v2.0 */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK_9DX1	0x4400		/* SK-NET SK-9DX1 Gigabit Ethernet */
+#define	PCI_PRODUCT_SCHNEIDERKOCH_SK9Sxx	0x9000		/* SK-9Sxx */
+#define	PCI_PRODUCT_SCHNEIDERKOCH_SK9Exx	0x9e00		/* SK-9Exx */
 /* These next two are are really subsystem IDs */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK_9D21	0x4421		/* SK-9D21 1000BASE-T */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41	0x4441		/* SK-9D41 1000BASE-X */
