@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.25 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.26 2006/11/14 10:54:21 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -153,6 +153,10 @@ ata_pci_match(device_t dev)
 
     case 0x24db8086:
 	return "Intel ICH5 ATA100 controller";
+
+    case 0x269e8086:
+    case 0x26808086:
+	return "Intel ICH6 SATA300 controller";
 
     case 0x26518086:
 	return "Intel ICH6/W SATA150 controller";
@@ -696,6 +700,8 @@ ata_pci_intr(struct ata_channel *ch)
     case 0x24db8086:   /* Intel ICH5 ATA100 */
     case 0x26518086:   /* Intel ICH6 SATA150 */
     case 0x26528086:   /* Intel ICH6R SATA150 */
+    case 0x26808086:   /* Intel ICH6R SATA150 */
+    case 0x260e8086:   /* Intel ICH6 SATA300 */
 	dmastat = ATA_INB(ch->r_bmio, ATA_BMSTAT_PORT);
 	if ((dmastat & (ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) !=
 		ATA_BMSTAT_INTERRUPT)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.29 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.30 2006/11/14 10:54:21 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -146,6 +146,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 
     case 0x27df8086:	/* Intel ICH7 ATA */
     case 0x27c48086:	/* Intel ICH7M SATA */
+    case 0x269e8086:	/* Intel ICH6 SATA */
+    case 0x26808086:	/* Intel ICH6 SATA */
     case 0x266f8086:	/* Intel ICH6 ATA */
     case 0x26528086:	/* Intel ICH6R/RW SATA */
     case 0x26518086:	/* Intel ICH6/W SATA */
