@@ -5,3 +5,6 @@ source can be obtained from
 
 A list of the omitted files and directories can be found in
 README.DELETED.
+
+This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
+to update config.h in lib/libmagic.

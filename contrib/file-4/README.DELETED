@@ -17,8 +17,6 @@ missing
 mkinstalldirs
 doc/Makefile.am
 doc/Makefile.in
-doc/file.man
-doc/magic.man
 magic/Makefile.am
 magic/Makefile.in
 python
