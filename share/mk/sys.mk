@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.17 2006/11/08 20:43:31 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.18 2006/11/15 03:27:10 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -129,6 +129,13 @@ YFLAGS		?=	-d
 #.if !defined(MACHINE_CPU)
 #.error "MACHINE_CPU was not defined by make"
 #.endif
+
+# Backwards compat:  old systems have hw.machine set to "i386", but it
+# is expected to be "pc32" in the build system.  Try and don't break
+# build/installworld for upgrading users.
+.if ${MACHINE} == "i386"
+MACHINE=pc32
+.endif
 
 .if defined(%POSIX)
 # Posix 1003.2 mandated rules

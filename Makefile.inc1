@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.93 2006/11/12 13:20:41 swildner Exp $
+# $DragonFly: src/Makefile.inc1,v 1.94 2006/11/15 03:27:10 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -365,7 +365,7 @@ everything:
 # note: we include _obj in realquickworld to prevent accidental creation
 # of files in /usr/src.
 
-WMAKE_TGTS=	buildcheck
+WMAKE_TGTS=
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_worldtmp _bootstrap-tools
 .endif
@@ -386,27 +386,11 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 .ORDER: ${WMAKE_TGTS}
 
 #
-# buildcheck
-#
-# Checks to be sure that the system is ready for a buildworld
-buildcheck:
-.if ${MACHINE} == "i386"
-	@echo "You are running a kernel which is reporting an old platform architecture name,"
-	@echo "which will confuse buildworld.  Please 'setenv MACHINE pc32' and try again."
-	exit 1
-.endif
-
-#
 # installcheck
 #
-# Checks to be sure that the system is ready for an installworld
+# Checks to be sure system is ready for installworld
 #
 installcheck:
-.if ${MACHINE} == "i386"
-	@echo "You are running a kernel which is reporting an old platform architecture name,"
-	@echo "which will confuse installworld.  Please 'setenv MACHINE pc32' and try again."
-	exit 1
-.endif
 .if !defined(NO_SENDMAIL)
 	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
 	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
