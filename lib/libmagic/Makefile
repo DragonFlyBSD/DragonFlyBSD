@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.15 2006/11/13 17:45:05 pavalos Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.16 2006/11/16 23:46:53 corecode Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
 MAGICDIR= ${CONTRIBDIR}/magic
@@ -58,6 +58,7 @@ CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
 NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.CURDIR} -I${CONTRIBDIR}/src
+NXCFLAGS+=	-DBOOTSTRAPPING
 mkmagic.nx: apprentice.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
