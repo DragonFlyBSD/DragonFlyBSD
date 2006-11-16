@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.4 2006/11/16 12:22:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.5 2006/11/16 13:16:46 sephe Exp $
  */
 
 /*
@@ -2557,6 +2557,9 @@ rt2560_bbp_init(struct rt2560_softc *sc)
 		return EIO;
 	}
 
+	rt2560_set_txantenna(sc, sc->tx_ant);
+	rt2560_set_rxantenna(sc, sc->rx_ant);
+
 	/* initialize BBP registers to default values */
 	for (i = 0; i < N(rt2560_def_bbp); i++) {
 		rt2560_bbp_write(sc, rt2560_def_bbp[i].reg,
@@ -2663,8 +2666,6 @@ rt2560_init(void *priv)
 	/* set basic rate set (will be updated later) */
 	RAL_WRITE(sc, RT2560_ARSP_PLCP_1, 0x153);
 
-	rt2560_set_txantenna(sc, sc->tx_ant);
-	rt2560_set_rxantenna(sc, sc->rx_ant);
 	rt2560_update_slot(ifp);
 	rt2560_update_plcp(sc);
 	rt2560_update_led(sc, 0, 0);
