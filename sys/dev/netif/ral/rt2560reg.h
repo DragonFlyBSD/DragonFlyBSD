@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.1 2006/05/20 09:13:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.2 2006/11/16 12:24:35 sephe Exp $
  */
 
 #define RT2560_TX_RING_COUNT		48
@@ -68,7 +68,7 @@
 #define RT2560_PCICSR		0x008c	/* PCI control */
 #define RT2560_RXCSR3		0x0090	/* BBP ID 0 */
 #define RT2560_TXCSR9		0x0094	/* OFDM TX BBP */
-#define RT2560_ARSP_PLCP_0	0x0098	/* Auto Responder PLCP address */
+#define RT2560_TXCSR8		0x0098	/* CCK TX BBP */
 #define RT2560_ARSP_PLCP_1	0x009c	/* Auto Responder Basic Rate mask */
 #define RT2560_CNT0		0x00a0	/* FCS error counter */
 #define RT2560_CNT1		0x00ac	/* PLCP error counter */
@@ -107,9 +107,15 @@
 #define RT2560_PLCP2MCSR	0x0140	/* Signal/Service/Length of ACK @2M */
 #define RT2560_PLCP5p5MCSR	0x0144	/* Signal/Service/Length of ACK @5.5M */
 #define RT2560_PLCP11MCSR	0x0148	/* Signal/Service/Length of ACK @11M */
-#define RT2560_ACKPCTCSR	0x014c	/* ACK/CTS padload consume time */
-#define RT2560_ARTCSR1		0x0150	/* ACK/CTS padload consume time */
-#define RT2560_ARTCSR2		0x0154	/* ACK/CTS padload consume time */
+#define RT2560_ARTCSR0		0x014c	/* ACK/CTS padload consume time
+					 * @ 1/2/5.5/11M
+					 */
+#define RT2560_ARTCSR1		0x0150	/* ACK/CTS padload consume time
+					 * @ 18/12/9/6M
+					 */
+#define RT2560_ARTCSR2		0x0154	/* ACK/CTS padload consume time
+					 * @ 54/48/36/24M
+					 */
 #define RT2560_SECCSR1		0x0158	/* WEP control */
 #define RT2560_BBPCSR1		0x015c	/* BBP TX Configuration */
 
@@ -328,8 +334,8 @@ struct rt2560_rx_desc {
 	{ RT2560_CSR11,       0x07041483 },	\
 	{ RT2560_CNT3,        0x00000000 },	\
 	{ RT2560_TXCSR1,      0x07614562 },	\
-	{ RT2560_ARSP_PLCP_0, 0x8c8d8b8a },	\
-	{ RT2560_ACKPCTCSR,   0x7038140a },	\
+	{ RT2560_TXCSR8,      0x8c8d8b8a },	\
+	{ RT2560_ARTCSR0,     0x7038140a },	\
 	{ RT2560_ARTCSR1,     0x1d21252d },	\
 	{ RT2560_ARTCSR2,     0x1919191d },	\
 	{ RT2560_RXCSR0,      0xffffffff },	\
