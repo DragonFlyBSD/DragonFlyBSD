@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.8 2006/08/06 10:32:23 sephe Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.9 2006/11/16 13:37:21 sephe Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -214,6 +214,7 @@ model MARVELL E1000_3		0x0003 Marvell 88E1000 Gigabit PHY
 model MARVELL E1000_4		0x0004 Marvell 88E1000S Gigabit PHY
 model MARVELL E1000_5		0x0005 Marvell 88E1000 Gigabit PHY
 model MARVELL E1000_6		0x0006 Marvell 88E1000 Gigabit PHY
+model MARVELL E3082		0x0008 Marvell 88E3082 10/100 PHY
 model MARVELL E1111		0x000c Marvell 88E1111 Gigabit PHY
 model MARVELL E1116		0x0021 Marvell 88E1116 Gigabit PHY
 model xxMARVELL E1000_2		0x0002 Marvell 88E1000 Gigabit PHY
@@ -223,3 +224,4 @@ model xxMARVELL E1111		0x000c Marvell 88E1111 Gigabit PHY
 
 /* IC Plus Corp. PHYs */
 model ICPLUS IP101		0x0005 IP101 10/100 PHY
+model ICPLUS IP1000A		0x0008 IC Plus 10/100/1000 media interface
