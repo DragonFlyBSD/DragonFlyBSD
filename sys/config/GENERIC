@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.42 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.43 2006/11/16 13:43:55 sephe Exp $
 
 machine		pc32
 machine_arch	i386
@@ -207,6 +207,7 @@ device		vr		# VIA Rhine, Rhine II
 device		wb		# Winbond W89C840F
 device		xl		# 3Com 3c90x (``Boomerang'', ``Cyclone'')
 device		bge		# Broadcom BCM570x (``Tigon III'')
+device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 
 # ISA Ethernet NICs.
 # 'device ed' requires 'device miibus'
