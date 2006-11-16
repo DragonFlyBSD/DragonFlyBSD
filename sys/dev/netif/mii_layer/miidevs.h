@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.8 2006/08/06 10:32:23 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.9 2006/11/16 13:37:43 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.7 2006/05/20 04:27:16 sephe Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.8 2006/08/06 10:32:23 sephe Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -294,6 +294,8 @@
 #define	MII_STR_MARVELL_E1000_5	"Marvell 88E1000 Gigabit PHY"
 #define	MII_MODEL_MARVELL_E1000_6	0x0006
 #define	MII_STR_MARVELL_E1000_6	"Marvell 88E1000 Gigabit PHY"
+#define	MII_MODEL_MARVELL_E3082	0x0008
+#define	MII_STR_MARVELL_E3082	"Marvell 88E3082 10/100 PHY"
 #define	MII_MODEL_MARVELL_E1111	0x000c
 #define	MII_STR_MARVELL_E1111	"Marvell 88E1111 Gigabit PHY"
 #define	MII_MODEL_MARVELL_E1116	0x0021
@@ -310,3 +312,5 @@
 /* IC Plus Corp. PHYs */
 #define	MII_MODEL_ICPLUS_IP101	0x0005
 #define	MII_STR_ICPLUS_IP101	"IP101 10/100 PHY"
+#define	MII_MODEL_ICPLUS_IP1000A	0x0008
+#define	MII_STR_ICPLUS_IP1000A	"IC Plus 10/100/1000 media interface"
