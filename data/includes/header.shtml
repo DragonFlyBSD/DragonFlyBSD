@@ -1,15 +1,15 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
      "http://www.w3.org/TR/html4/strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 <head>
-<!-- $DragonFly: site/data/includes/header.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/includes/header.shtml,v 1.2 2006/11/17 20:51:38 justin Exp $ -->
 <title><!--#echo var="title" --></title>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-<link href="/favicon.ico" rel="shortcut icon"/>
-<link rel="stylesheet" href="/stylesheet.css" type="text/css"/></head> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link href="/favicon.ico" rel="shortcut icon" type="image/x-icon">
+<link rel="stylesheet" href="/stylesheet.css" type="text/css"></head> 
 <body> 
 <div id="Header">
-<a href="/"><img src="/images/topbar-trans.png" border="0" alt="DragonFly BSD"/></a> 
+<a href="/"><img src="/images/topbar-trans.png" class="headerimage" alt="DragonFly BSD"/></a> 
 
 </div>
 
