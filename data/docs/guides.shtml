@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Guides" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/docs/guides.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/docs/guides.shtml,v 1.2 2006/11/17 20:33:12 justin Exp $ -->
 
 
 <table width="100%" cellpadding="2" cellspacing="0" border="1">
@@ -26,7 +26,7 @@
 
 <tr>
 	<td>Instructions for Upgrading from FreeBSD 4.9</td>
-	<td><a href="upgrade-freebsd.cgi">HTML</a></td>
+	<td><a href="upgrade-freebsd.shtml">HTML</a></td>
 	<td align="right">21 February 2004</td>
 </tr>
 
