@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.6 2005/12/10 00:22:29 swildner Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.7 2006/11/17 23:23:05 swildner Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -185,7 +185,7 @@ for the staff accounts.  This way an intruder may be able to steal the password
 file but will not be able to break into any staff accounts (or, indirectly,
 root, even if root has a crypted password associated with it).  Staff members
 get into their staff accounts through a secure login mechanism such as
-.Xr kerberos 1
+.Xr kerberos 8
 or
 .Xr ssh 1
 using a private/public
@@ -654,7 +654,6 @@ machines.
 .Sh SEE ALSO
 .Xr chflags 1 ,
 .Xr find 1 ,
-.Xr kerberos 1 ,
 .Xr md5 1 ,
 .Xr netstat 1 ,
 .Xr openssl 1 ,
@@ -664,6 +663,7 @@ machines.
 .Xr ttys 5 ,
 .Xr accton 8 ,
 .Xr init 8 ,
+.Xr kerberos 8 ,
 .Xr sshd 8 ,
 .Xr sysctl 8 ,
 .Xr syslogd 8 ,
