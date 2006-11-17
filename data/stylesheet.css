@@ -8,7 +8,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.18 2006/11/17 03:41:05 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.19 2006/11/17 20:28:50 justin Exp $
  *
  */
 
@@ -152,7 +152,7 @@ a.sidelink:hover { text-decoration: none; }
     height: 92px;
     vertical-align: text-bottom;
     overflow: visible;
-    background-image: url(/images/leaf-bg2.png);
+    background-image: url(/images/leaf-bg.png);
     background-repeat: repeat-x;
     background-position: 380px 0;
     z-index: 2;
