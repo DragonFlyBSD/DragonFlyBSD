@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.107 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.108 2006/11/17 22:20:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -427,6 +427,7 @@ checkdirs(struct vnode *olddp, struct nchandle *nch)
 	mp = nch->mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
+	cache_setunresolved(nch);
 	cache_setvp(nch, newdp);
 
 	if (rootvnode == olddp) {
