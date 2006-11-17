@@ -1,0 +1,7 @@
+# $DragonFly: site/data/docs/.htaccess,v 1.1 2006/11/17 03:41:05 justin Exp $ 
+Redirect permanent /docs/FAQ.cgi http://www.dragonflybsd.org/docs/FAQ.shtml
+Redirect permanent /docs/goals.cgi http://www.dragonflybsd.org/docs/goals.shtml
+Redirect permanent /docs/guides.cgi http://www.dragonflybsd.org/docs/guides.shtml
+Redirect permanent /docs/index.cgi http://www.dragonflybsd.org/docs/index.shtml
+Redirect permanent /docs/presentations.cgi http://www.dragonflybsd.org/docs/presentations.shtml
+Redirect permanent /docs/upgrade-freebsd.cgi http://www.dragonflybsd.org/docs/upgrade-freebsd.shtml

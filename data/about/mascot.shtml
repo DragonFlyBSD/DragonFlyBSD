@@ -1,0 +1,13 @@
+<!--#set var="title" value="DragonFly - Our Mascot" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/about/mascot.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+
+
+<p>
+Fred is one mean looking insect, the go-lucky demon and the fat penguin
+are TOAST!</p>
+<p><img src="mascot.jpg" width="780" height="732" alt="DragonFly Mascot - Fred" /></p>
+<p align="center">Fred</p>
+
+
+<!--#include virtual="/includes/footer.shtml" -->

@@ -1,0 +1,17 @@
+<!--#set var="title" value="DragonFly - Documentation" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/docs/index.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+
+
+<h1>DragonFly - Documentation</h1>
+
+<p>
+DragonFly documentation is relatively complete for a young project; though 
+new input and work is welcomed.  For discussion of existing documentation 
+or requests for new topics, visit the docs@ 
+<a href="http://www.dragonflybsd.org/main/forums.cgi">forum</a>.
+</p>
+
+
+
+<!--#include virtual="/includes/footer.shtml" -->

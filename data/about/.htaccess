@@ -1,0 +1,6 @@
+# $DragonFly: site/data/about/.htaccess,v 1.1 2006/11/17 03:41:05 justin Exp $ 
+Redirect permanent /about/history.cgi http://www.dragonflybsd.org/about/history.shtml
+Redirect permanent /about/images.cgi http://www.dragonflybsd.org/about/images.shtml
+Redirect permanent /about/index.cgi http://www.dragonflybsd.org/about/index.shtml
+Redirect permanent /about/mascot.cgi http://www.dragonflybsd.org/about/mascot.shtml
+Redirect permanent /about/team.cgi http://www.dragonflybsd.org/about/team.shtml

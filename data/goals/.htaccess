@@ -1,0 +1,9 @@
+# $DragonFly: site/data/goals/.htaccess,v 1.1 2006/11/17 03:41:05 justin Exp $ 
+Redirect permanent /goals/caching.cgi http://www.dragonflybsd.org/goals/caching.shtml
+Redirect permanent /goals/index.cgi http://www.dragonflybsd.org/goals/index.shtml
+Redirect permanent /goals/iomodel.cgi http://www.dragonflybsd.org/goals/iomodel.shtml
+Redirect permanent /goals/messaging.cgi http://www.dragonflybsd.org/goals/messaging.shtml
+Redirect permanent /goals/packages.cgi http://www.dragonflybsd.org/goals/packages.shtml
+Redirect permanent /goals/threads.cgi http://www.dragonflybsd.org/goals/threads.shtml
+Redirect permanent /goals/userapi.cgi http://www.dragonflybsd.org/goals/userapi.shtml
+Redirect permanent /goals/vfsmodel.cgi http://www.dragonflybsd.org/goals/vfsmodel.shtml

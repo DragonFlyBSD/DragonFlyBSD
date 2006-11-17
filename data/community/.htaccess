@@ -1,0 +1,12 @@
+# $DragonFly: site/data/community/.htaccess,v 1.1 2006/11/17 03:41:05 justin Exp $ 
+Redirect permanent /community/donations.cgi http://www.dragonflybsd.org/community/donations.shtml
+Redirect permanent /community/download.cgi http://www.dragonflybsd.org/community/download.shtml
+Redirect permanent /community/errata1_4.cgi http://www.dragonflybsd.org/community/errata1_4.shtml
+Redirect permanent /community/errata1_4_0.cgi http://www.dragonflybsd.org/community/errata1_4_0.shtml
+Redirect permanent /community/errata1_4_4.cgi http://www.dragonflybsd.org/community/errata1_4_4.shtml
+Redirect permanent /community/errata1_6.cgi http://www.dragonflybsd.org/community/errata1_6.shtml
+Redirect permanent /community/index.cgi http://www.dragonflybsd.org/community/index.shtml
+Redirect permanent /community/mail.cgi http://www.dragonflybsd.org/community/mail.shtml
+Redirect permanent /community/news.cgi http://www.dragonflybsd.org/community/news.shtml
+Redirect permanent /community/release1_4.cgi http://www.dragonflybsd.org/community/release1_4.shtml
+Redirect permanent /community/release1_6.cgi http://www.dragonflybsd.org/community/release1_6.shtml

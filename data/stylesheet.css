@@ -1,11 +1,14 @@
 /*
- * Copyright (c) 2003-2004 Hiten Pandya <hmp@backplane.com>.
+ * This code is derived from software contributed to The DragonFly Project
+ * by Hiten Pandya <hmp@backplane.com>  and Justin Sherrill 
+ * <justin@shiningsilence.com>
  *
- * Cascading Style Sheet, version 2.
+ * Some parts of #Header, #Content, and #Menu come from bluerobot.com's 
+ * two-column left menu layout: http://www.bluerobot.com/web/layouts/
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.17 2006/09/11 21:02:13 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.18 2006/11/17 03:41:05 justin Exp $
  *
  */
 
@@ -16,75 +19,42 @@ PRE,CODE,TT {
 }
 
 body {
-   font-size: 0.8em;
-   font-family: Verdana, Arial, Helvetica, sans-serif;
+   font-size: 1em;
+   font-family: sans-serif;
    background-color: #ffffff;
+   margin-top: 0;
+   margin-left: 0;
 }
 
 H1 {
    font-size : 124%;
-   color: #990000; 
+   color: #803E3C;
    text-align: center;
 }
-   
+
 H2 {
    font-size : 112%;
-   color: #990000;
-}  
-  
+   color: #703E3C;
+}
+
 H3 {
    font-size : 100%;
-   color: #990000;
+   color: #703E3C;
 }
 
 B  {
-   font-weight: bold; 
-}
-
-TH { 
    font-weight: bold;
 }
 
-/* main */
+TH {
+   font-weight: bold;
+}
 
 
-/* 
+/*
  * Left hand side navigation components
  */
 
-.selected {
-   font-weight : 600; 
-   font-size : 1.1em; 
-   background-color : #b4ec0d; 
-}
-
-.unselected {
-   font-weight : 600;
-   font-size : 1.1em;
-}
-
-.subselected {
-   font-weight : 600;
-   font-size : 0.9em;
-   background-color : #b4ec0d;
-   padding-left: 1em;
-}
-
-.subunselected {
-   font-weight : 600;
-   font-size : 0.9em;
-   padding-left: 1em;
-}
-
-.nounderline {
-   text-decoration : none;
-}
-
-.pagetitle {
-   font-size : 136%;
-   color: #990000;
-   font-weight: 600;
-}
 
 .mirrorsection {
    background-color: #eeeeee;
@@ -92,7 +62,7 @@ TH {
    font-weight: 600;
 }
 
-/* 
+/*
  * Markup for mailing list pages
  *
  */
@@ -130,6 +100,88 @@ TH {
    font-style: italic;
    white-space: nowrap;
    vertical-align: top;
+}
+
+/* used everywhere */
+a:link {color:#506545;}
+a:visited {color:#91AA70;}
+a:hover { color: #6B813D; }
+
+/* This ul and li section is used for the side menu. */
+
+ul.major {
+    font-weight: bold;
+    padding-top: 1em;
+    padding-left: 0;
+    margin-left: 0;
+    margin-right: 10px;
+    list-style: none;
+}
+
+li.major {
+    padding-top: 1em;
+    padding-left: 0;
+    margin-left: 0;
+    list-style: none;
+}
+
+ul.minor {
+    padding-left: 0;
+    margin-left: 0;
+    list-style: none;
+}
+
+li.minor {
+    padding-left: 0;
+    margin-left: 0;
+    list-style: none;
+}
+
+/* used in side menu */
+a.sidelink:link { text-decoration: none; }
+a.sidelink:visited { text-decoration: none; }
+a.sidelink:hover { text-decoration: none; }
+
+/* layout elements for main site */
+#Header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    margin: 10px 0 10px 0;
+    padding: 0 0 0 20px;
+    line-height: 11px;
+    height: 92px;
+    vertical-align: text-bottom;
+    overflow: visible;
+    background-image: url(/images/leaf-bg2.png);
+    background-repeat: repeat-x;
+    background-position: 380px 0;
+    z-index: 2;
+}
+
+#Content {
+    position: absolute;
+    top: 75px; left: 9em;
+    margin: 2em;
+    padding: 0px 0px 80px 0px;
+    max-width: 80ex;
+    }
+
+#Menu {
+    position: absolute;
+    top: 75px; left: 0;
+    width: 9em;
+    padding-right: 0;
+    padding-left: 10px;
+    padding-bottom: 3.5em;
+    border-style: solid;
+    border-color: gray;
+    border-width: 0 1px 1px 0; /* top right bottom left */
+    line-height:17px;
+    text-align: right;
+    z-index: 1;
+    background-image: url("/images/menu-bottom.png");
+    background-position: bottom right;
+    background-repeat: repeat-x;
 }
 
 

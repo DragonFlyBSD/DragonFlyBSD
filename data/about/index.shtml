@@ -1,0 +1,13 @@
+<!--#set var="title" value="DragonFly - About" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/about/index.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+
+
+
+<p>
+This section describes DragonFly BSD and the DragonFly BSD Project.
+</p>
+
+
+
+<!--#include virtual="/includes/footer.shtml" -->

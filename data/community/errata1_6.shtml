@@ -1,0 +1,32 @@
+<!--#set var="title" value="DragonFly - January 2006 Release 1.6.x Errata Page" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/community/errata1_6.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+
+
+<h1>Errata Page for DragonFly 1.6.x</h1>
+
+<p>
+General note on errata:  We do not roll a release CD every time we bump
+the sub-version.  The standard upgrade method is to build from sources.
+The 
+<A HREF="http://leaf.dragonflybsd.org/cgi/web-man?command=build&section=ANY">build</A>
+manual page gives you information on how to upgrade your system from
+sources.  See the <A HREF="download.cgi">download</A> page for information on tracking changes with
+cvsup.
+</p>
+
+<h2>1.6.1 Errata</h2>
+<ul>
+    <i>(none as yet)</i>
+</ul>
+
+<h2>1.6.0 Errata</h2>
+<ul>
+    <li><p>
+	A bug in the kernel flock code could result in sendmail or
+	postfix hanging.  Fixed in 1.6.1.
+    </p></li>
+</ul>
+
+
+<!--#include virtual="/includes/footer.shtml" -->

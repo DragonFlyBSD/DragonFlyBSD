@@ -1,0 +1,13 @@
+<!--#set var="title" value="The DragonFly BSD Project" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/missing.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+
+
+
+<CENTER>URL Not Found</CENTER>
+<P>
+The URL you tried to use could not be found.  Please select an item from
+the menu on the left.
+
+
+<!--#include virtual="/includes/footer.shtml" -->

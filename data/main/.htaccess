@@ -1,0 +1,8 @@
+# $DragonFly: site/data/main/.htaccess,v 1.1 2006/11/17 03:41:06 justin Exp $ 
+Redirect permanent /main/download.cgi http://www.dragonflybsd.org/main/download.shtml
+Redirect permanent /main/errata.cgi http://www.dragonflybsd.org/main/errata.shtml
+Redirect permanent /main/forums.cgi http://www.dragonflybsd.org/main/forums.shtml
+Redirect permanent /main/index.cgi http://www.dragonflybsd.org/
+Redirect permanent /main/mascot.cgi http://www.dragonflybsd.org/main/mascot.shtml
+Redirect permanent /main/release1_0.cgi http://www.dragonflybsd.org/main/release1_0.shtml
+Redirect permanent /main/release1_2.cgi http://www.dragonflybsd.org/main/release1_2.shtml

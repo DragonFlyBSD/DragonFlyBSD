@@ -1,0 +1,5 @@
+# $DragonFly: site/data/status/.htaccess,v 1.1 2006/11/17 03:41:06 justin Exp $ 
+Redirect permanent /status/bugs.cgi http://www.dragonflybsd.org/status/bugs.shtml
+Redirect permanent /status/diary.cgi http://www.dragonflybsd.org/status/diary.shtml
+Redirect permanent /status/index.cgi http://www.dragonflybsd.org/status/index.shtml
+Redirect permanent /status/report-2003.cgi http://www.dragonflybsd.org/status/report-2003.shtml

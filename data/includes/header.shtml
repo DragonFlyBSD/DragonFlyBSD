@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+     "http://www.w3.org/TR/html4/strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<!-- $DragonFly: site/data/includes/header.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<title><!--#echo var="title" --></title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<link href="/favicon.ico" rel="shortcut icon"/>
+<link rel="stylesheet" href="/stylesheet.css" type="text/css"/></head> 
+<body> 
+<div id="Header">
+<a href="/"><img src="/images/topbar-trans.png" border="0" alt="DragonFly BSD"/></a> 
+
+</div>
+
+<div id="Menu">
+
+<ul class="major">
+<li class="major">About
+
+<ul class="minor">
+<li><a href="/about/history.shtml">History</a>
+<li><a href="/about/team.shtml">Team</a>
+<li><a href="/about/mascot.shtml">Mascot</a>
+<li><a href="/about/images.shtml">Images</a>
+</ul>
+
+<li class="major">Community
+
+<ul class="minor">
+<li><a href="/community/download.shtml">Download</a>
+<li><a href="/community/release1_6.shtml">Release</a>
+<li><a href="/community/mail.shtml">Mail</a>
+<li><a href="/community/news.shtml">News</a>
+<li><a href="http://leaf.dragonflybsd.org/mailarchive">Archive</a>
+<li><a href="http://wiki.dragonflybsd.org/">Wiki</a>
+<li><a href="/community/donations.shtml">Donations</a>
+</ul>
+
+<li class="major">Status
+
+<ul class="minor">
+<li><a href="/status/diary.shtml">Diary</a>
+<li><a href="http://www.shiningsilence.com/dbsdlog/">Digest</a>
+<li><a href="/status/bugs.shtml">Bugs</a>
+</ul>
+
+<li class="major">Docs
+
+<ul class="minor">
+<li><a href="http://www.dragonflybsd.org/cvsweb">CVSWeb</a>
+<li><a href="/docs/FAQ.shtml">FAQ</a>
+<li><a href="/docs/goals.shtml">Goals</a>
+<li><a href="/docs/guides.shtml">Guides</a>
+<li><a href="http://leaf.dragonflybsd.org/cgi/web-man">Man pages</a>
+<li><a href="/docs/presentations.shtml">Presentations</a>
+</ul>
+
+</ul>
+
+</div>
+
+<div id="Content">
+
+<h1><!--#echo var="title" --></h1>
