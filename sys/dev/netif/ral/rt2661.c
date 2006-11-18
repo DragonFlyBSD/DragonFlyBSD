@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.5 2006/11/18 04:13:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.6 2006/11/18 09:26:43 sephe Exp $
  */
 
 /*
@@ -1478,7 +1478,7 @@ rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
 
 	desc->flags = htole32(flags);
 	desc->flags |= htole32(len << 16);
-	desc->flags |= htole32(RT2661_TX_BUSY | RT2661_TX_VALID);
+	desc->flags |= htole32(RT2661_TX_VALID);
 
 	desc->xflags = htole16(xflags);
 	desc->xflags |= htole16(nsegs << 13);
@@ -1526,6 +1526,8 @@ rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
 		desc->addr[i] = htole32(segs[i].ds_addr);
 		desc->len [i] = htole16(segs[i].ds_len);
 	}
+
+	desc->flags |= htole32(RT2661_TX_BUSY);
 }
 
 static int

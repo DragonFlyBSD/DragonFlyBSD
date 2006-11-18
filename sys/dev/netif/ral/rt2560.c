@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.5 2006/11/16 13:16:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.6 2006/11/18 09:26:43 sephe Exp $
  */
 
 /*
@@ -1012,7 +1012,8 @@ rt2560_encryption_intr(struct rt2560_softc *sc)
 			desc->eiv = bswap32(desc->eiv);
 
 		/* mark the frame ready for transmission */
-		desc->flags |= htole32(RT2560_TX_BUSY | RT2560_TX_VALID);
+		desc->flags |= htole32(RT2560_TX_VALID);
+		desc->flags |= htole32(RT2560_TX_BUSY);
 
 		DPRINTFN(15, ("encryption done idx=%u\n",
 		    sc->txq.next_encrypt));
@@ -1591,8 +1592,8 @@ rt2560_setup_tx_desc(struct rt2560_softc *sc, struct rt2560_tx_desc *desc,
 
 	desc->flags = htole32(flags);
 	desc->flags |= htole32(len << 16);
-	desc->flags |= encrypt ? htole32(RT2560_TX_CIPHER_BUSY) :
-	    htole32(RT2560_TX_BUSY | RT2560_TX_VALID);
+	if (!encrypt)
+		desc->flags |= htole32(RT2560_TX_VALID);
 
 	desc->physaddr = htole32(physaddr);
 	desc->wme = htole16(
@@ -1624,6 +1625,9 @@ rt2560_setup_tx_desc(struct rt2560_softc *sc, struct rt2560_tx_desc *desc,
 		if (rate != 2 && (ic->ic_flags & IEEE80211_F_SHPREAMBLE))
 			desc->plcp_signal |= 0x08;
 	}
+
+	desc->flags |= encrypt ? htole32(RT2560_TX_CIPHER_BUSY)
+			       : htole32(RT2560_TX_BUSY);
 }
 
 static int
