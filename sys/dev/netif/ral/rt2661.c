@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.6 2006/11/18 09:26:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.7 2006/11/18 09:41:29 sephe Exp $
  */
 
 /*
@@ -24,19 +24,17 @@
  */
 
 #include <sys/param.h>
-#include <sys/sysctl.h>
-#include <sys/sockio.h>
-#include <sys/mbuf.h>
-#include <sys/kernel.h>
-#include <sys/socket.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/rman.h>
 #include <sys/endian.h>
-
-#include <machine/clock.h>
+#include <sys/kernel.h>
+#include <sys/malloc.h>
+#include <sys/mbuf.h>
+#include <sys/rman.h>
+#include <sys/socket.h>
+#include <sys/sockio.h>
+#include <sys/sysctl.h>
+#include <sys/module.h>
+#include <sys/serialize.h>
 
 #include <net/bpf.h>
 #include <net/if.h>
@@ -44,17 +42,10 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
-#include <net/if_types.h>
 #include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/in_var.h>
-#include <netinet/ip.h>
-#include <netinet/if_ether.h>
 
 #include <dev/netif/ral/if_ralrate.h>
 #include <dev/netif/ral/rt2661reg.h>
@@ -2998,7 +2989,7 @@ rt2661_led_newstate(struct rt2661_softc *sc, enum ieee80211_state nstate)
 	uint32_t mail = sc->mcu_led;
 
 	if (RAL_READ(sc, RT2661_H2M_MAILBOX_CSR) & RT2661_H2M_BUSY) {
-		DPRINTF(("%s failed", __func__));
+		DPRINTF(("%s failed\n", __func__));
 		return;
 	}
 
