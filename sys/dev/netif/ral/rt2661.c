@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.4 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.5 2006/11/18 04:13:39 sephe Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #ifdef RAL_DEBUG
 #define DPRINTF(x)	do { if (ral_debug > 0) printf x; } while (0)
 #define DPRINTFN(n, x)	do { if (ral_debug >= (n)) printf x; } while (0)
-int ral_debug = 0;
+int ral_debug = 1;
 SYSCTL_INT(_debug, OID_AUTO, ral, CTLFLAG_RW, &ral_debug, 0, "ral debug level");
 #else
 #define DPRINTF(x)
@@ -158,6 +158,8 @@ static int		rt2661_radar_stop(struct rt2661_softc *);
 static int		rt2661_prepare_beacon(struct rt2661_softc *);
 static void		rt2661_enable_tsf_sync(struct rt2661_softc *);
 static int		rt2661_get_rssi(struct rt2661_softc *, uint8_t);
+static void		rt2661_led_newstate(struct rt2661_softc *,
+					    enum ieee80211_state);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -193,6 +195,25 @@ static const struct rfprog {
 }, rt2661_rf5225_2[] = {
 	RT2661_RF5225_2
 };
+
+#define LED_EE2MCU(bit)	{ \
+	.ee_bit		= RT2661_EE_LED_##bit, \
+	.mcu_bit	= RT2661_MCU_LED_##bit \
+}
+static const struct {
+	uint16_t	ee_bit;
+	uint16_t	mcu_bit;
+} led_ee2mcu[] = {
+	LED_EE2MCU(RDYG),
+	LED_EE2MCU(RDYA),
+	LED_EE2MCU(ACT),
+	LED_EE2MCU(GPIO0),
+	LED_EE2MCU(GPIO1),
+	LED_EE2MCU(GPIO2),
+	LED_EE2MCU(GPIO3),
+	LED_EE2MCU(GPIO4)
+};
+#undef LED_EE2MCU
 
 struct rt2661_dmamap {
 	bus_dma_segment_t	segs[RT2661_MAX_SCATTER];
@@ -313,6 +334,7 @@ rt2661_attach(device_t dev, int id)
 	ic->ic_phytype = IEEE80211_T_OFDM; /* not only, but not used */
 	ic->ic_opmode = IEEE80211_M_STA; /* default to BSS mode */
 	ic->ic_state = IEEE80211_S_INIT;
+	rt2661_led_newstate(sc, IEEE80211_S_INIT);
 
 	/* set device capabilities */
 	ic->ic_caps =
@@ -885,6 +907,9 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ostate = ic->ic_state;
 	callout_stop(&sc->scan_ch);
+
+	if (ostate != nstate)
+		rt2661_led_newstate(sc, nstate);
 
 	switch (nstate) {
 	case IEEE80211_S_INIT:
@@ -2469,6 +2494,24 @@ rt2661_read_eeprom(struct rt2661_softc *sc)
 		DPRINTF(("BBP R%d=%02x\n", sc->bbp_prom[i].reg,
 		    sc->bbp_prom[i].val));
 	}
+
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_LED_OFFSET);
+	DPRINTF(("LED %02x\n", val));
+	if (val == 0xffff) {
+		sc->mcu_led = RT2661_MCU_LED_DEFAULT;
+	} else {
+#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
+
+		for (i = 0; i < N(led_ee2mcu); ++i) {
+			if (val & led_ee2mcu[i].ee_bit)
+				sc->mcu_led |= led_ee2mcu[i].mcu_bit;
+		}
+
+#undef N
+
+		sc->mcu_led |= ((val >> RT2661_EE_LED_MODE_SHIFT) &
+				RT2661_EE_LED_MODE_MASK);
+	}
 }
 
 static int
@@ -2943,4 +2986,42 @@ rt2661_dma_map_mbuf(void *arg, bus_dma_segment_t *seg, int nseg,
 
 	bcopy(seg, map->segs, nseg * sizeof(bus_dma_segment_t));
 	map->nseg = nseg;
+}
+
+static void
+rt2661_led_newstate(struct rt2661_softc *sc, enum ieee80211_state nstate)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	uint32_t off, on;
+	uint32_t mail = sc->mcu_led;
+
+	if (RAL_READ(sc, RT2661_H2M_MAILBOX_CSR) & RT2661_H2M_BUSY) {
+		DPRINTF(("%s failed", __func__));
+		return;
+	}
+
+	switch (nstate) {
+	case IEEE80211_S_INIT:
+		mail &= ~(RT2661_MCU_LED_LINKA | RT2661_MCU_LED_LINKG |
+			  RT2661_MCU_LED_RF);
+		break;
+	default:
+		if (ic->ic_curchan == NULL)
+			return;
+
+		on = RT2661_MCU_LED_LINKG;
+		off = RT2661_MCU_LED_LINKA;
+		if (IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan)) {
+			on = RT2661_MCU_LED_LINKA;
+			off = RT2661_MCU_LED_LINKG;
+		}
+
+		mail |= RT2661_MCU_LED_RF | on;
+		mail &= ~off;
+		break;
+	}
+
+	RAL_WRITE(sc, RT2661_H2M_MAILBOX_CSR,
+		  RT2661_H2M_BUSY | RT2661_TOKEN_NO_INTR << 16 | mail);
+	RAL_WRITE(sc, RT2661_HOST_CMD_CSR, RT2661_KICK_CMD | RT2661_MCU_SET_LED);
 }

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.1 2006/05/20 09:13:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.2 2006/11/18 04:13:39 sephe Exp $
  */
 
 struct rt2661_rx_radiotap_header {
@@ -143,6 +143,7 @@ struct rt2661_softc {
 	uint8_t				bbp16;
 	uint8_t				bbp17;
 	uint8_t				bbp64;
+	uint16_t			mcu_led;
 
 	int				dwelltime;
 

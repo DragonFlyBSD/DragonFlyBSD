@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.1 2006/05/20 09:13:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.2 2006/11/18 04:13:39 sephe Exp $
  */
 
 #define RT2661_TX_RING_COUNT	32
@@ -307,10 +307,39 @@ struct rt2661_rx_desc {
 #define RT2661_EEPROM_BBP_BASE		0x13
 #define RT2661_EEPROM_TXPOWER		0x23
 #define RT2661_EEPROM_FREQ_OFFSET	0x2f
+#define RT2661_EEPROM_LED_OFFSET	0x30
 #define RT2661_EEPROM_RSSI_2GHZ_OFFSET	0x4d
 #define RT2661_EEPROM_RSSI_5GHZ_OFFSET	0x4e
 
+#define RT2661_EE_LED_RDYG		0x01
+#define RT2661_EE_LED_RDYA		0x02
+#define RT2661_EE_LED_ACT		0x04
+#define RT2661_EE_LED_GPIO0		0x08
+#define RT2661_EE_LED_GPIO1		0x10
+#define RT2661_EE_LED_GPIO2		0x20
+#define RT2661_EE_LED_GPIO3		0x40
+#define RT2661_EE_LED_GPIO4		0x80
+#define RT2661_EE_LED_MODE_SHIFT	8
+#define RT2661_EE_LED_MODE_MASK		0x1f
+
 #define RT2661_EEPROM_DELAY	1	/* minimum hold time (microsecond) */
+
+#define RT2661_MCU_LED_RF		(1 << 5)
+#define RT2661_MCU_LED_LINKG		(1 << 6)
+#define RT2661_MCU_LED_LINKA		(1 << 7)
+#define RT2661_MCU_LED_GPIO0		(1 << 8)
+#define RT2661_MCU_LED_GPIO1		(1 << 9)
+#define RT2661_MCU_LED_GPIO2		(1 << 10)
+#define RT2661_MCU_LED_GPIO3		(1 << 11)
+#define RT2661_MCU_LED_GPIO4		(1 << 12)
+#define RT2661_MCU_LED_ACT		(1 << 13)
+#define RT2661_MCU_LED_RDYG		(1 << 14)
+#define RT2661_MCU_LED_RDYA		(1 << 15)
+
+#define RT2661_MCU_LED_DEFAULT	\
+	(RT2661_MCU_LED_GPIO0 | RT2661_MCU_LED_GPIO1 | RT2661_MCU_LED_GPIO2 | \
+	 RT2661_MCU_LED_GPIO3 | RT2661_MCU_LED_GPIO4 | RT2661_MCU_LED_ACT | \
+	 RT2661_MCU_LED_RDYG | RT2661_MCU_LED_RDYA)
 
 /*
  * control and status registers access macros
