@@ -11,8 +11,8 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.\" $FreeBSD: src/lib/libutil/auth.conf.5,v 1.3.2.3 2002/04/23 12:05:03 ceri Exp $
-.\" $DragonFly: src/lib/libutil/auth.conf.5,v 1.2 2003/06/17 04:26:51 dillon Exp $
+.\" $FreeBSD: src/lib/libutil/auth.conf.5,v 1.8 2005/01/21 12:07:46 ru Exp $
+.\" $DragonFly: src/lib/libutil/auth.conf.5,v 1.3 2006/11/18 01:06:34 swildner Exp $
 .\"
 .Dd October 7, 1998
 .Dt AUTH.CONF 5
@@ -26,8 +26,9 @@
 .Nm
 contains various attributes important to the authentication
 code, most notably
-.Xr kerberos 5
-for the time being.  This documentation will be updated as the
+.Xr crypt 3
+for the time being.
+This documentation will be updated as the
 .Pa /etc/auth.conf
 file, which is very new, evolves.
 .Sh SEE ALSO
