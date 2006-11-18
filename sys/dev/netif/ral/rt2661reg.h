@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.2 2006/11/18 04:13:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.3 2006/11/18 06:46:19 sephe Exp $
  */
 
 #define RT2661_TX_RING_COUNT	32
@@ -160,9 +160,9 @@
 #define RT2661_DROP_ACKCTS	(1 << 25)
 
 /* possible flags for register TXRX_CSR4 */
-#define RT2661_SHORT_PREAMBLE	(1 << 19)
-#define RT2661_MRR_ENABLED	(1 << 20)
-#define RT2661_MRR_CCK_FALLBACK	(1 << 23)
+#define RT2661_SHORT_PREAMBLE	(1 << 18)
+#define RT2661_MRR_ENABLED	(1 << 19)
+#define RT2661_MRR_CCK_FALLBACK	(1 << 22)
 
 /* possible flags for register TXRX_CSR9 */
 #define RT2661_TSF_TICKING	(1 << 16)
