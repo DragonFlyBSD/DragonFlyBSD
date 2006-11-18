@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Big-Picture Status" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/status/diary.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/status/diary.shtml,v 1.2 2006/11/18 00:54:03 dillon Exp $ -->
 
 
 
@@ -142,13 +142,13 @@
 	    vnode-based buffers be VMIO backed.
 	<li>MPSAFE work - <B>Implement the parallel route table algorith.</B>
 	<li>MPSAFE work - <B>Make the user process scheduler MPSAFE.</B>
-	<li>MPSAFE work - <B>File descriptor access is now MPASFE.  Many
+	<li>MPSAFE work - <B>File descriptor access is now MPSAFE.  Many
 	    fd related functions, like dup(), close(), etc, are either MPSAFE
 	    or mostly MPSAFE.</B>
 	<li>MPSAFE work - <B>Push the BGL deeper into the kernel call stack
 	    for many system calls.</B>
 	<li>MPSAFE work - <B>Make the process list MPSAFE.</B>
-	<li>MPSAFE work - <B>Make all cred functions MPASFE.</B>
+	<li>MPSAFE work - <B>Make all cred functions MPSAFE.</B>
 	<li>NRELEASE - compilable kernel sources are now included on the ISO.
 </ul>
 
