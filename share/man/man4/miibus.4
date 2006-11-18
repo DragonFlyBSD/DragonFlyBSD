@@ -7,7 +7,7 @@
 .\" I doubt you would ever notice due to large differences.
 .\"
 .\" $FreeBSD: src/share/man/man4/miibus.4,v 1.3.2.6 2004/03/01 09:22:11 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/miibus.4,v 1.6 2005/12/15 09:04:59 swildner Exp $
+.\" $DragonFly: src/share/man/man4/miibus.4,v 1.7 2006/11/18 10:01:04 swildner Exp $
 .\"
 .Dd February 15, 2003
 .Dt MIIBUS 4
@@ -84,6 +84,8 @@ Silicon Integrated Systems SiS 900/SiS 7016
 SysKonnect SK-984x and SK-982x Gigabit Ethernet
 .It Xr ste 4
 Sundance ST201 (D-Link DFE-550TX)
+.It Xr stge 4
+Sundance/Tamarack TC9021 Gigabit Ethernet
 .It Xr tl 4
 Texas Instruments ThunderLAN
 .It Xr tx 4
@@ -126,6 +128,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr sis 4 ,
 .Xr sk 4 ,
 .Xr ste 4 ,
+.Xr stge 4 ,
 .Xr tl 4 ,
 .Xr tx 4 ,
 .Xr vr 4 ,
