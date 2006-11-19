@@ -26,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
-.\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.11 2006/09/01 15:12:11 sephe Exp $
+.\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.12 2006/11/19 16:45:05 swildner Exp $
 .\"
-.Dd September 1, 2006
+.Dd November 19, 2006
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -238,14 +238,6 @@ Enable driver dependent debugging code; usually, this turns on
 extra console error logging.
 .It Fl debug
 Disable driver dependent debugging code.
-.It Cm polling
-Enable
-.Xr polling 4
-for the interface.
-.It Fl polling
-Disable
-.Xr polling 4
-for the interface.
 .It Cm promisc
 Put interface into permanently promiscuous mode.
 .It Fl promisc
@@ -268,30 +260,27 @@ This action does not automatically disable routes using the interface.
 Fill interface index
 (lowermost 64bit of an IPv6 address)
 automatically.
-.\" .It Cm ipdst
-.\" This is used to specify an Internet host who is willing to receive
-.\" ip packets encapsulating NS packets bound for a remote network.
-.\" An apparent point to point link is constructed, and
-.\" the address specified will be taken as the NS address and network
-.\" of the destination.
-.\" IP encapsulation of
-.\" .Tn CLNP
-.\" packets is done differently.
+.It Cm ipdst
+This is used to specify an Internet host who is willing to receive
+IP packets encapsulating IPX packets bound for a remote network.
+An apparent point to point link is constructed, and
+the address specified will be taken as the IPX address and network
+of the destination.
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to
 .Ar type .
 Some interfaces support the mutually exclusive use of one of several
 different physical media connectors.
-For example, a 10Mb/s Ethernet
+For example, a 10Mbit/s Ethernet
 interface might support the use of either
 .Tn AUI
 or twisted pair connectors.
 Setting the media type to
-.Dq Li 10base5/AUI
+.Cm 10base5/AUI
 would change the currently active connector to the AUI port.
 Setting it to
-.Dq Li 10baseT/UTP
+.Cm 10baseT/UTP
 would activate twisted pair.
 Refer to the interfaces' driver
 specific documentation or man page for a complete list of the
@@ -314,11 +303,11 @@ operating mode on the interface to
 .Ar mode .
 For IEEE 802.11 wireless interfaces that support multiple operating modes
 this directive is used to select between 802.11a
-.Pq Dq Li 11a ,
+.Pq Cm 11a ,
 802.11b
-.Pq Dq Li 11b ,
+.Pq Cm 11b ,
 and 802.11g
-.Pq Dq Li 11g
+.Pq Cm 11g
 operating modes.
 .It Cm name Ar name
 Set the interface name to
@@ -330,39 +319,41 @@ Some drivers may not be able to enable these flags independently
 of each other, so setting one may also set the other.
 The driver will offload as much checksum work as it can reliably
 support, the exact level of offloading varies between drivers.
-.\".It Fl rxcsum , Fl txcsum
-.\"If the driver supports user-configurable checksum offloading,
-.\"disable receive (or transmit) checksum offloading on the interface.
-.\"These settings may not always be independent of each other.
-.\".It Cm polling
-.\"If the driver has user-configurable
-.\".Xr polling 4
-.\"support, select the polling mode on the interface.
-.\".It Fl polling
-.\"If the driver has user-configurable
-.\".Xr polling 4
-.\"support, select the interrupt mode on the interface.
-.It Cm tunnel Ar src_addr dest_addr
-(IP tunnel devices only.)
-Configure the physical source and destination address for IP tunnel
-interfaces
-.Pq Xr gif 4 .
-The arguments
-.Ar src_addr
-and
-.Ar dest_addr
-are interpreted as the outer source/destination for the encapsulating
-IPv4/IPv6 header.
-.It Cm deletetunnel
-Unconfigure the physical source and destination address for IP tunnel
-interfaces previously configured with
-.Cm tunnel .
+.It Fl rxcsum , txcsum
+If the driver supports user-configurable checksum offloading,
+disable receive (or transmit) checksum offloading on the interface.
+These settings may not always be independent of each other.
+.It Cm vlanmtu , vlanhwtag
+If the driver offers user-configurable VLAN support, enable
+reception of extended frames or tag processing in hardware,
+respectively.
+Note that this must be issued on a physical interface associated with
+.Xr vlan 4 ,
+not on a
+.Xr vlan 4
+interface itself.
+.It Fl vlanmtu , vlanhwtag
+If the driver offers user-configurable VLAN support, disable
+reception of extended frames or tag processing in hardware,
+respectively.
+.It Cm polling
+Turn on
+.Xr polling 4
+feature and disable interrupts on the interface, if the driver supports
+this mode.
+.It Fl polling
+Turn off
+.Xr polling 4
+feature and enable interrupt mode on the interface.
 .It Cm create
 Create the specified network pseudo-device.
 If the interface is given without a unit number, try to create a new
 device with an arbitrary unit number.
 If creation of an arbitrary device is successful, the new device name is
-printed to standard output.
+printed to standard output unless the interface is renamed or destroyed
+in the same
+.Nm
+invocation.
 .It Cm destroy
 Destroy the specified network pseudo-device.
 .It Cm plumb
@@ -379,89 +370,6 @@ parameter.
 Included for
 .Tn Solaris
 compatibility.
-.It Cm vlan Ar vlan_tag
-If the interface is a
-.Xr vlan 4
-pseudo interface, set the VLAN tag value
-to
-.Ar vlan_tag .
-This value is a 16-bit number which is used to create an 802.1Q
-VLAN header for packets sent from the
-.Xr vlan 4
-interface.
-Note that
-.Cm vlan
-and
-.Cm vlandev
-must both be set at the same time.
-.It Cm vlandev Ar iface
-If the interface is a
-.Xr vlan 4
-pseudo device, associate physical interface
-.Ar iface
-with it.
-Packets transmitted through the
-.Xr vlan 4
-interface will be
-diverted to the specified physical interface
-.Ar iface
-with 802.1Q VLAN encapsulation.
-Packets with 802.1Q encapsulation received
-by the parent interface with the correct VLAN tag will be diverted to
-the associated
-.Xr vlan 4
-pseudo-interface.
-The
-.Xr vlan 4
-interface is assigned a
-copy of the parent interface's flags and the parent's ethernet address.
-The
-.Cm vlandev
-and
-.Cm vlan
-must both be set at the same time.
-If the
-.Xr vlan 4
-interface already has
-a physical interface associated with it, this command will fail.
-To
-change the association to another physical interface, the existing
-association must be cleared first.
-.Pp
-Note: if the hardware tagging capability
-is set on the parent interface, the
-.Xr vlan 4
-pseudo
-interface's behavior changes:
-the
-.Xr vlan 4
-interface recognizes that the
-parent interface supports insertion and extraction of VLAN tags on its
-own (usually in firmware) and that it should pass packets to and from
-the parent unaltered.
-.It Fl vlandev Ar iface
-If the driver is a
-.Xr vlan 4
-pseudo device, disassociate the physical interface
-.Ar iface
-from it.
-This breaks the link between the
-.Xr vlan 4
-interface and its parent,
-clears its VLAN tag, flags and its link address and shuts the interface down.
-.It Cm vlanmtu , vlanhwtag
-If the driver offers user-configurable VLAN support, enable
-reception of extended frames or tag processing in hardware,
-respectively.
-Note that this must be issued on a physical interface associated with
-.Xr vlan 4 ,
-not on a
-.Xr vlan 4
-interface itself.
-.It Fl vlanmtu , Fl vlanhwtag
-If the driver offers user-configurable VLAN support, disable
-reception of extended frames or tag processing in hardware,
-respectively.
 .It Cm metric Ar n
 Set the routing metric of the interface to
 .Ar n ,
@@ -469,7 +377,7 @@ default 0.
 The routing metric is used by the routing protocol
 .Pq Xr routed 8 .
 Higher metrics have the effect of making a route
-less favorable; metrics are counted as addition hops
+less favorable; metrics are counted as additional hops
 to the destination network or host.
 .It Cm mtu Ar n
 Set the maximum transmission unit of the interface to
@@ -503,6 +411,17 @@ The netmask can also be specified in CIDR notation after the address.
 See the
 .Ar address
 option above for more information.
+.It Cm autoconf
+(Inet6 only.)
+Enable autoconfiguration.
+.It Fl autoconf
+Disable autoconfiguration.
+.It Cm pltime Ar n
+(Inet6 only.)
+Set preferred lifetime for the address.
+.It Cm vltime Ar n
+(Inet6 only.)
+Set valid lifetime for the address.
 .It Cm prefixlen Ar len
 (Inet6 only.)
 Specify that
@@ -518,6 +437,18 @@ The prefix can also be specified using the slash notation after the address.
 See the
 .Ar address
 option above for more information.
+.It Cm deprecated
+(Inet6 only.)
+Set the IPv6 deprecated address bit.
+.It Fl deprecated
+(Inet6 only.)
+Clear the IPv6 deprecated address bit.
+.It Cm tentative
+(Inet6 only.)
+Set the IPv6 tentative address bit.
+.It Fl tentative
+(Inet6 only.)
+Clear the IPv6 tentative address bit.
 .\" see
 .\" Xr eon 5 .
 .\" .It Cm nsellength Ar n
@@ -580,6 +511,18 @@ for more information.
 .It Fl link Op Cm 0 No - Cm 2
 .Sm on
 Disable special processing at the link level with the specified interface.
+.It Cm compress
+Another name for the
+.Cm link0
+parameter.
+.It Cm normal
+Another name for the
+.Fl link0
+parameter.
+.It Cm noicmp
+Another name for the
+.Cm link1
+parameter.
 .\".It Cm monitor
 .\"Put the interface in monitor mode.
 .\"No packets are transmitted, and received packets are discarded after
@@ -595,7 +538,6 @@ This may be used to enable an interface after an
 It happens automatically when setting the first address on an interface.
 If the interface was reset when previously marked down,
 the hardware will be re-initialized.
-.\" Wireless only
 .El
 .Pp
 The following parameters are specific to IEEE 802.11 wireless interfaces:
@@ -645,7 +587,7 @@ To disable a previously selected access point, supply
 or
 .Cm -
 for the address.
-This option is useful when more than one access points have the same SSID.
+This option is useful when more than one access point uses the same SSID.
 Another name for the
 .Cm bssid
 parameter is
@@ -749,7 +691,8 @@ mode.
 Channels identified as
 .Ql 11a Turbo
 may be used only for Atheros' Static Turbo mode
-.Pq specified with Cm mediaopt turbo .
+specified with
+.Cm mediaopt turbo ) .
 Channels marked with a
 .Ql *
 have a regulatory constraint that they be passively scanned.
@@ -773,6 +716,9 @@ indicates the address is present but the current policy open
 .It Cm list scan
 Display the access points and/or ad-hoc neighbors
 located in the vicinity.
+The
+.Fl v
+flag may be used to display long SSIDs.
 This information may be updated automatically by the adaptor
 and/or with a
 .Cm scan
@@ -794,7 +740,7 @@ See the description of the
 directive for information on the various parameters.
 .It Cm mcastrate Ar rate
 Set the rate for transmitting multicast/broadcast frames.
-Rates are specified as megabits/second in decimal; e.g. 5.5 for 5.5 Mb/s.
+Rates are specified as megabits/second in decimal; e.g.\& 5.5 for 5.5 Mbit/s.
 This rate should be valid for the current operating conditions;
 if an invalid rate is specified drivers are free to chose an
 appropriate rate.
@@ -811,6 +757,19 @@ or as an access point.
 Use
 .Fl powersave
 to disable powersave operation.
+.It Cm powersavemode Ar mode
+Set powersave mode.
+The set of valid modes is
+.Cm off
+(same as
+.Fl powersave),
+.Cm on
+(same as
+.Cm powersave),
+and
+.Cm cam
+(same as
+.Cm powersave).
 .It Cm powersavesleep Ar sleep
 Set the desired max powersave sleep time in milliseconds.
 .It Cm protmode Ar technique
@@ -893,6 +852,21 @@ Only the super-user can initiate a scan.
 Depending on the capabilities of the APs, the following
 flags can be included in the output:
 .Bl -tag -width 3n
+.It Li A
+Channel Agility.
+Indicates that the station support channel hopping as described by the
+IEEE 802.11b specification.
+.It Li B
+Packet Binary Convolution Code (PBCC).
+A modulation alternative to the standard OFDM method.
+.It Dv C
+Pollreq
+.It Dv c
+Pollable
+.It Dv D
+Direct Sequence Spread Spectrum - Orthogonal Frequency Division
+Multiplexing (DSSS-OFDM).
+Indicates the the station supports DSSS-OFDM modulation.
 .It Li E
 Extended Service Set (ESS).
 Indicates that the station is part of an infrastructure network
@@ -908,6 +882,10 @@ exchanged within the BSS.
 This means that this BSS requires the station to
 use cryptographic means such as WEP, TKIP or AES-CCMP to
 encrypt/decrypt data frames being exchanged with others.
+.It Dv R
+Robust Security Network (RSN).
+Indicates that the station supports the IEEE 802.11i authentication
+and key management protocol.
 .It Li S
 Short Preamble.
 Indicates that the network is using short preambles (defined
@@ -923,6 +901,10 @@ The
 .Cm list scan
 request can be used to show recent scan results without
 initiating a new scan.
+.Pp
+The
+.Fl v
+flag may be used to prevent the shortening of long SSIDs.
 .It Cm stationname Ar name
 Set the name of this station.
 It appears that the station name is not really part of the IEEE 802.11
@@ -1163,7 +1145,6 @@ Another way of saying
 Included for
 .Nx
 compatibility.
-.\" Bridge only
 .El
 .Pp
 The following parameters are specific to bridge interfaces:
@@ -1218,7 +1199,7 @@ the bridge will forward the packet to all
 member interfaces marked as
 .Dq discovering .
 This is the default for all interfaces added to a bridge.
-.It Cm -discover Ar interface
+.It Fl discover Ar interface
 Clear the
 .Dq discovering
 attribute on a member interface.
@@ -1235,21 +1216,21 @@ When a packet arrives on such an interface, the source
 address of the packet is entered into the address cache as being a
 destination address on the interface's segment.
 This is the default for all interfaces added to a bridge.
-.It Cm -learn Ar interface
+.It Fl learn Ar interface
 Clear the
 .Dq learning
 attribute on a member interface.
-.\".It Cm span Ar interface
-.\"Add the interface named by
-.\".Ar interface
-.\"as a span port on the bridge.
-.\"Span ports transmit a copy of every frame received by the bridge.
-.\"This is most useful for snooping a bridged network passively on
-.\"another host connected to one of the span ports of the bridge.
-.\".It Cm -span Ar interface
-.\"Delete the interface named by
-.\".Ar interface
-.\"from the list of span ports of the bridge.
+.It Cm span Ar interface
+Add the interface named by
+.Ar interface
+as a span port on the bridge.
+Span ports transmit a copy of every frame received by the bridge.
+This is most useful for snooping a bridged network passively on
+another host connected to one of the span ports of the bridge.
+.It Fl span Ar interface
+Delete the interface named by
+.Ar interface
+from the list of span ports of the bridge.
 .It Cm stp Ar interface
 Enable Spanning Tree protocol on
 .Ar interface .
@@ -1257,7 +1238,7 @@ The
 .Xr bridge 4
 driver has support for the IEEE 802.1D Spanning Tree protocol (STP).
 Spanning Tree is used to detect and remove loops in a network topology.
-.It Cm -stp Ar interface
+.It Fl stp Ar interface
 Disable Spanning Tree protocol on
 .Ar interface .
 This is the default for all interfaces added to a bridge.
@@ -1295,6 +1276,102 @@ The default is 55.
 The minimum is 0 and the maximum is 65535.
 .El
 .Pp
+The following parameters are specific to IP tunnel interfaces,
+.Xr gif 4 :
+.Bl -tag -width indent
+.It Cm tunnel Ar src_addr dest_addr
+Configure the physical source and destination address for IP tunnel
+interfaces.
+The arguments
+.Ar src_addr
+and
+.Ar dest_addr
+are interpreted as the outer source/destination for the encapsulating
+IPv4/IPv6 header.
+.It Fl tunnel
+Unconfigure the physical source and destination address for IP tunnel
+interfaces previously configured with
+.Cm tunnel .
+.It Cm deletetunnel
+Another name for the
+.Fl tunnel
+parameter.
+.El
+.Pp
+The following parameters are specific to
+.Xr vlan 4
+interfaces:
+.Bl -tag -width indent
+.It Cm vlan Ar vlan_tag
+Set the VLAN tag value to
+.Ar vlan_tag .
+This value is a 16-bit number which is used to create an 802.1Q
+VLAN header for packets sent from the
+.Xr vlan 4
+interface.
+Note that
+.Cm vlan
+and
+.Cm vlandev
+must both be set at the same time.
+.It Cm vlandev Ar iface
+Associate the physical interface
+.Ar iface
+with a
+.Xr vlan 4
+interface.
+Packets transmitted through the
+.Xr vlan 4
+interface will be
+diverted to the specified physical interface
+.Ar iface
+with 802.1Q VLAN encapsulation.
+Packets with 802.1Q encapsulation received
+by the parent interface with the correct VLAN tag will be diverted to
+the associated
+.Xr vlan 4
+pseudo-interface.
+The
+.Xr vlan 4
+interface is assigned a
+copy of the parent interface's flags and the parent's ethernet address.
+The
+.Cm vlandev
+and
+.Cm vlan
+must both be set at the same time.
+If the
+.Xr vlan 4
+interface already has
+a physical interface associated with it, this command will fail.
+To
+change the association to another physical interface, the existing
+association must be cleared first.
+.Pp
+Note: if the hardware tagging capability
+is set on the parent interface, the
+.Xr vlan 4
+pseudo
+interface's behavior changes:
+the
+.Xr vlan 4
+interface recognizes that the
+parent interface supports insertion and extraction of VLAN tags on its
+own (usually in firmware) and that it should pass packets to and from
+the parent unaltered.
+.It Fl vlandev Op Ar iface
+If the driver is a
+.Xr vlan 4
+pseudo device, disassociate the parent interface from it.
+This breaks the link between the
+.Xr vlan 4
+interface and its parent,
+clears its VLAN tag, flags and its link address and shuts the interface down.
+The
+.Ar iface
+argument is useless and hence deprecated.
+.El
+.Pp
 The
 .Nm
 utility displays the current configuration for a network interface
@@ -1302,9 +1379,6 @@ when no optional parameters are supplied.
 If a protocol family is specified,
 .Nm
 will report only the details specific to that protocol family.
-.Pp
-If the driver does supports the media selection system, the supported
-media list will be included in the output.
 .Pp
 If the
 .Fl m
@@ -1373,7 +1447,9 @@ requested address is unknown, or the user is not privileged and
 tried to alter an interface's configuration.
 .Sh SEE ALSO
 .Xr netstat 1 ,
+.Xr ifmedia 4 ,
 .Xr netintro 4 ,
+.Xr polling 4 ,
 .Xr vlan 4 ,
 .\" .Xr eon 5 ,
 .Xr rc 8 ,
@@ -1395,5 +1471,5 @@ to 0.
 .Pp
 If you delete such an address using
 .Nm ,
-the kernel may act very oddly.
+the kernel may act very odd.
 Do this at your own risk.
