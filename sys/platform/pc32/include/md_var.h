@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.21 2006/11/08 16:38:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.22 2006/11/19 14:40:00 sephe Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -59,7 +59,6 @@ extern	u_int	cpu_procinfo;
 extern	char	cpu_vendor[];
 extern	u_int	cyrix_did;
 extern	char	kstack[];
-extern	int	nfs_diskless_valid;
 extern	char	sigcode[];
 extern	int	szsigcode;
 
