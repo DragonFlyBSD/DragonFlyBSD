@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.cpu.gcc41.mk,v 1.1 2006/09/27 12:10:35 corecode Exp $
+# $DragonFly: src/share/mk/bsd.cpu.gcc41.mk,v 1.2 2006/11/19 22:04:19 victor Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -44,6 +44,8 @@ _CPUCFLAGS = -march=${CPUTYPE}
 _CPUCFLAGS = -march=pentium
 .  elif ${CPUTYPE} == "p4"
 _CPUCFLAGS = -march=pentium4
+.  elif ${CPUTYPE} == "pentium-m"
+_CPUCFLAGS = -march=pentium-m
 .  elif ${CPUTYPE} == "p3"
 _CPUCFLAGS = -march=pentium3
 .  elif ${CPUTYPE} == "p2"
@@ -76,7 +78,7 @@ MACHINE_CPU = 3dnow mmx k6 k5 i586 i486 i386
 MACHINE_CPU = mmx k6 k5 i586 i486 i386
 .  elif ${CPUTYPE} == "k5"
 MACHINE_CPU = k5 i586 i486 i386
-.  elif ${CPUTYPE} == "p4"
+.  elif ${CPUTYPE} == "p4" || ${CPUTYPE} == "pentium-m"
 MACHINE_CPU = sse2 sse i686 mmx i586 i486 i386
 .  elif ${CPUTYPE} == "p3"
 MACHINE_CPU = sse i686 mmx i586 i486 i386
