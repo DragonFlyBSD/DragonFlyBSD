@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.28 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.29 2006/11/19 07:49:34 sephe Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -93,8 +93,17 @@ CFLAGS+=	-I. -I@
 #
 .if defined(BUILDING_WITH_KERNEL)
 CFLAGS+=	-I${BUILDING_WITH_KERNEL}
-CFLAGS+=	-I${BUILDING_WITH_KERNEL}/include
+_MACHINE_FWD=	${BUILDING_WITH_KERNEL}
+.else
+.if defined(MAKEOBJDIRPREFIX)
+_MACHINE_FWD=	${MAKEOBJDIRPREFIX}/${SYSDIR}/forwarder_${MACHINE_ARCH}
+.else
+_MACHINE_FWD=	${.OBJDIR}/forwarder_${MACHINE_ARCH}
+CLEANDIRS+=	${_MACHINE_FWD}
 .endif
+.endif
+CFLAGS+=	-I${_MACHINE_FWD}/include
+.include "kern.fwd.mk"
 
 # Add a -I path to standard headers like <stddef.h>.  Use a relative
 # path to src/include if possible.  If the @ symlink hasn't been built
@@ -163,7 +172,7 @@ all: objwarn ${PROG}
 all: _manpages
 .endif
 
-beforedepend: ${_ILINKS}
+beforedepend: ${_ILINKS} forwarding-headers
 # Ensure that the links exist without depending on it when it exists which
 # causes all the modules to be rebuilt when the directory pointed to changes.
 .for _link in ${_ILINKS}

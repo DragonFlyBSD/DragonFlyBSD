@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.3 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.4 2006/11/19 07:49:34 sephe Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -6,6 +6,9 @@
 .PHONY:	all modules
 
 all: ${KERNEL}.stripped
+
+_MACHINE_FWD=	${.OBJDIR}
+depend kernel-depend modules-depend: forwarding-headers
 
 depend: kernel-depend
 clean:  kernel-clean
@@ -208,4 +211,5 @@ vers.o:
 #vnode_if.o:
 #	${NORMAL_C}
 
+.include "$S/conf/kern.fwd.mk"
 .include "$S/conf/bsd.kern.mk"
