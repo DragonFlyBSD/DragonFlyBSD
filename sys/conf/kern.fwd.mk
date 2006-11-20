@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.2 2006/11/19 14:36:53 sephe Exp $
+# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.3 2006/11/20 06:00:40 y0netan1 Exp $
 
 # Create forwarding headers for ${SYSDIR}/cpu/${MACHINE_ARCH}/*.h in
 # ${_MACHINE_FWD}/include/machine and share the directory among module build
@@ -27,8 +27,8 @@ ${_FWDHDRS}:
 	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
 	echo " */" ; \
 	echo ; \
-	echo "#ifndef _MACHINE_${.TARGET:T:S/./_/g:U:R}_" ; \
-	echo "#define _MACHINE_${.TARGET:T:S/./_/g:U:R}_" ; \
+	echo "#ifndef _MACHINE_${.TARGET:T:S/./_/g:U}_" ; \
+	echo "#define _MACHINE_${.TARGET:T:S/./_/g:U}_" ; \
 	echo "#include <cpu/${.TARGET:T}>" ; \
 	echo "#endif" ; \
 	echo) > ${.TARGET}
