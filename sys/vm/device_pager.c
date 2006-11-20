@@ -37,14 +37,17 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.11 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.12 2006/11/20 20:53:06 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/mman.h>
 #include <sys/device.h>
+#include <sys/queue.h>
+#include <sys/malloc.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
@@ -64,9 +67,8 @@ static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t, int *,
 
 /* list of device pager objects */
 static struct pagerlst dev_pager_object_list;
-
-static vm_zone_t fakepg_zone;
-static struct vm_zone fakepg_zone_store;
+static TAILQ_HEAD(, vm_page) dev_freepages_list;
+static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages", "Device mapped pages");
 
 static vm_page_t dev_pager_getfake (vm_paddr_t);
 static void dev_pager_putfake (vm_page_t);
@@ -87,8 +89,7 @@ static void
 dev_pager_init(void)
 {
 	TAILQ_INIT(&dev_pager_object_list);
-	fakepg_zone = &fakepg_zone_store;
-	zinitna(fakepg_zone, NULL, "DP fakepg", sizeof(struct vm_page), 0, 0, 2);
+	TAILQ_INIT(&dev_freepages_list);
 }
 
 static vm_object_t
@@ -243,7 +244,12 @@ dev_pager_getfake(vm_paddr_t paddr)
 {
 	vm_page_t m;
 
-	m = zalloc(fakepg_zone);
+	if ((m = TAILQ_FIRST(&dev_freepages_list)) != NULL) {
+		TAILQ_REMOVE(&dev_freepages_list, m, pageq);
+	} else {
+		m = kmalloc(sizeof(*m), M_FICTITIOUS_PAGES, M_WAITOK);
+	}
+	bzero(m, sizeof(*m));
 
 	m->flags = PG_BUSY | PG_FICTITIOUS;
 	m->valid = VM_PAGE_BITS_ALL;
@@ -259,12 +265,16 @@ dev_pager_getfake(vm_paddr_t paddr)
 	return (m);
 }
 
+/*
+ * Synthesized VM pages must be structurally stable for lockless lookups to
+ * work properly.
+ */
 static void
 dev_pager_putfake(vm_page_t m)
 {
 	if (!(m->flags & PG_FICTITIOUS))
 		panic("dev_pager_putfake: bad page");
 	KKASSERT(m->object == NULL);
-	zfree(fakepg_zone, m);
+	TAILQ_INSERT_HEAD(&dev_freepages_list, m, pageq);
 }
 
