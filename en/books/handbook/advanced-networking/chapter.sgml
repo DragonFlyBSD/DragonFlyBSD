@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.9 2006/07/12 04:00:59 justin Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.10 2006/11/20 16:10:05 justin Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -5248,7 +5248,7 @@ host mailhost {
           <para><hostid>org.</hostid> is a zone under the root zone</para>
         </listitem>
         <listitem>
-          <para><hostid>example.org</hostid> is a zone under the
+          <para><hostid>example.org.</hostid> is a zone under the
           <hostid>org.</hostid> zone</para>
         </listitem>
         <listitem>
