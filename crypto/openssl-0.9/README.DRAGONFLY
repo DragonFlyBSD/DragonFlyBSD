@@ -1,7 +1,24 @@
 Original source can be downloaded from OpenSSL at
-<http://www.openssl.org/source/openssl-0.9.8c.tar.gz>.
+<http://www.openssl.org/source/openssl-0.9.8d.tar.gz>.
 
-MD5 (openssl-0.9.8c.tar.gz) = 78454bec556bcb4c45129428a766c886
-SHA1 (openssl-0.9.8c.tar.gz) = d0798e5c7c4509d96224136198fa44f7f90e001d
+MD5 (openssl-0.9.8d.tar.gz) = 8ed1853538e1d05a1f5ada61ebf8bffa
+SHA1 (openssl-0.9.8d.tar.gz) = 4136fba00303a3d319d2052bfa8e1f09a2e12fc2
 
-A list of deleted files is in README.DELETED.
+Here's some hints to upgrading:
+./Configure shared no-asm --prefix=/usr --openssldir=/etc/ssl BSD-x86-elf
+cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-i386.h
+./Configure shared no-asm --prefix=/usr --openssldir=/etc/ssl BSD-x86_64
+cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-amd64.h
+cd ../../secure/lib/libcrypto
+# Update the version in Makefile.inc
+# Add DragonFly keywords to opensslconf-*.h
+make man-makefile-update && make man-update
+cd ../libssl
+make man-makefile-update && make man-update
+cd ../../usr.bin/openssl
+make man-makefile-update && make man-update
+cd ../..
+cvs add lib/libcrypto/man/*.3 lib/libssl/man/*.3 usr.bin/openssl/man/*.1
+cd ../crypto/openssl-0.9
+xargs rm -rf < README.DELETED
+# make sure things work then import and commit
