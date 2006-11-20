@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.4 2006/09/06 12:40:51 corecode Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.5 2006/11/20 05:31:49 pavalos Exp $ */
 /* opensslconf.h */
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
@@ -24,6 +24,9 @@
 #endif /* OPENSSL_DOING_MAKEDEPEND */
 #ifndef OPENSSL_THREADS
 # define OPENSSL_THREADS
+#endif
+#ifndef OPENSSL_NO_ASM
+# define OPENSSL_NO_ASM
 #endif
 #ifndef OPENSSL_NO_STATIC_ENGINE
 # define OPENSSL_NO_STATIC_ENGINE
@@ -58,7 +61,7 @@
 
 #if !(defined(VMS) || defined(__VMS)) /* VMS uses logical names instead */
 #if defined(HEADER_CRYPTLIB_H) && !defined(OPENSSLDIR)
-#define ENGINESDIR "/usr/lib/ssl/engines"
+#define ENGINESDIR "/usr/lib/engines"
 #define OPENSSLDIR "/etc/ssl"
 #endif
 #endif

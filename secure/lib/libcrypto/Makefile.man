@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/lib/libcrypto/Makefile.man,v 1.7 2006/09/06 12:40:51 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.man,v 1.8 2006/11/20 05:31:49 pavalos Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= ASN1_OBJECT_new.3
 MLINKS+= ASN1_OBJECT_new.3 ASN1_OBJECT_free.3

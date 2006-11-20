@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.3 2006/09/06 12:40:51 corecode Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.4 2006/11/20 05:31:49 pavalos Exp $ */
 /* opensslconf.h */
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
@@ -24,6 +24,9 @@
 #endif /* OPENSSL_DOING_MAKEDEPEND */
 #ifndef OPENSSL_THREADS
 # define OPENSSL_THREADS
+#endif
+#ifndef OPENSSL_NO_ASM
+# define OPENSSL_NO_ASM
 #endif
 #ifndef OPENSSL_NO_STATIC_ENGINE
 # define OPENSSL_NO_STATIC_ENGINE
@@ -58,7 +61,7 @@
 
 #if !(defined(VMS) || defined(__VMS)) /* VMS uses logical names instead */
 #if defined(HEADER_CRYPTLIB_H) && !defined(OPENSSLDIR)
-#define ENGINESDIR "/usr/lib/ssl/engines"
+#define ENGINESDIR "/usr/lib/engines"
 #define OPENSSLDIR "/etc/ssl"
 #endif
 #endif
@@ -97,7 +100,7 @@
  * This enables code handling data aligned at natural CPU word
  * boundary. See crypto/rc4/rc4_enc.c for further details.
  */
-#undef RC4_CHUNK
+#define RC4_CHUNK unsigned long
 #endif
 #endif
 
@@ -144,7 +147,7 @@
 /* the following is tweaked from a config script, that is why it is a
  * protected undef/define */
 #ifndef DES_PTR
-#define DES_PTR
+#undef DES_PTR
 #endif
 
 /* This helps C compiler generate the correct code for multiple functional
@@ -155,7 +158,7 @@
 #endif
 
 #ifndef DES_RISC2
-#define DES_RISC2
+#undef DES_RISC2
 #endif
 
 #if defined(DES_RISC1) && defined(DES_RISC2)
@@ -165,7 +168,7 @@ YOU SHOULD NOT HAVE BOTH DES_RISC1 AND DES_RISC2 DEFINED!!!!!
 /* Unroll the inner loop, this sometimes helps, sometimes hinders.
  * Very mucy CPU dependant */
 #ifndef DES_UNROLL
-#undef DES_UNROLL
+#define DES_UNROLL
 #endif
 
 /* These default values were supplied by
