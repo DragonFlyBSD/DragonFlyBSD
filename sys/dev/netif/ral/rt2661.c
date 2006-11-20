@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.7 2006/11/18 09:41:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.8 2006/11/20 15:03:26 sephe Exp $
  */
 
 /*
@@ -29,11 +29,12 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/module.h>
+#include <sys/queue.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
-#include <sys/module.h>
 #include <sys/serialize.h>
 
 #include <net/bpf.h>
@@ -61,6 +62,8 @@ SYSCTL_INT(_debug, OID_AUTO, ral, CTLFLAG_RW, &ral_debug, 0, "ral debug level");
 #define DPRINTF(x)
 #define DPRINTFN(n, x)
 #endif
+
+MALLOC_DEFINE(M_RT2661, "rt2661_ratectl", "rt2661 rate control data");
 
 static void		rt2661_dma_map_addr(void *, bus_dma_segment_t *, int,
 			    int);
@@ -98,7 +101,7 @@ static uint8_t		rt2661_rxrate(struct rt2661_rx_desc *);
 static uint8_t		rt2661_plcp_signal(int);
 static void		rt2661_setup_tx_desc(struct rt2661_softc *,
 			    struct rt2661_tx_desc *, uint32_t, uint16_t, int,
-			    int, const bus_dma_segment_t *, int, int);
+			    int, const bus_dma_segment_t *, int, int, int);
 static struct mbuf *	rt2661_get_rts(struct rt2661_softc *,
 			    struct ieee80211_frame *, uint16_t);
 static int		rt2661_tx_data(struct rt2661_softc *, struct mbuf *,
@@ -299,6 +302,8 @@ rt2661_attach(device_t dev, int id)
 		device_printf(sc->sc_dev, "could not allocate Rx ring\n");
 		goto fail;
 	}
+
+	STAILQ_INIT(&sc->tx_ratectl);
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
@@ -522,7 +527,7 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 
 	ring->count = count;
 	ring->queued = 0;
-	ring->cur = ring->next = ring->stat = 0;
+	ring->cur = ring->next = 0;
 
 	error = bus_dma_tag_create(NULL, 4, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, NULL, NULL, count * RT2661_TX_DESC_SIZE, 1,
@@ -550,7 +555,7 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 		goto fail;
 	}
 
-	ring->data = kmalloc(count * sizeof (struct rt2661_tx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct rt2661_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
@@ -579,7 +584,7 @@ static void
 rt2661_reset_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring)
 {
 	struct rt2661_tx_desc *desc;
-	struct rt2661_tx_data *data;
+	struct rt2661_data *data;
 	int i;
 
 	for (i = 0; i < ring->count; i++) {
@@ -594,24 +599,19 @@ rt2661_reset_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring)
 			data->m = NULL;
 		}
 
-		if (data->ni != NULL) {
-			ieee80211_free_node(data->ni);
-			data->ni = NULL;
-		}
-
 		desc->flags = 0;
 	}
 
 	bus_dmamap_sync(ring->desc_dmat, ring->desc_map, BUS_DMASYNC_PREWRITE);
 
 	ring->queued = 0;
-	ring->cur = ring->next = ring->stat = 0;
+	ring->cur = ring->next = 0;
 }
 
 static void
 rt2661_free_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring)
 {
-	struct rt2661_tx_data *data;
+	struct rt2661_data *data;
 	int i;
 
 	if (ring->desc != NULL) {
@@ -639,11 +639,6 @@ rt2661_free_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring)
 				data->m = NULL;
 			}
 
-			if (data->ni != NULL) {
-				ieee80211_free_node(data->ni);
-				data->ni = NULL;
-			}
-
 			if (data->map != NULL) {
 				bus_dmamap_destroy(ring->data_dmat, data->map);
 				data->map = NULL;
@@ -665,7 +660,7 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
     int count)
 {
 	struct rt2661_rx_desc *desc;
-	struct rt2661_rx_data *data;
+	struct rt2661_data *data;
 	bus_addr_t physaddr;
 	int i, error;
 
@@ -698,7 +693,7 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
 		goto fail;
 	}
 
-	ring->data = kmalloc(count * sizeof (struct rt2661_rx_data), M_DEVBUF,
+	ring->data = kmalloc(count * sizeof (struct rt2661_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
 
 	/*
@@ -770,7 +765,7 @@ rt2661_reset_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring)
 static void
 rt2661_free_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring)
 {
-	struct rt2661_rx_data *data;
+	struct rt2661_data *data;
 	int i;
 
 	if (ring->desc != NULL) {
@@ -1016,75 +1011,86 @@ rt2661_tx_intr(struct rt2661_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2661_tx_ring *txq;
-	struct rt2661_tx_data *data;
+	struct rt2661_tx_ratectl *rctl;
 	struct rt2661_node *rn;
-	uint32_t val;
-	int qid, retrycnt;
+	uint32_t val, result;
+	int retrycnt;
 
 	for (;;) {
 		val = RAL_READ(sc, RT2661_STA_CSR4);
 		if (!(val & RT2661_TX_STAT_VALID))
 			break;
 
-		/* retrieve the queue in which this frame was sent */
-		qid = RT2661_TX_QID(val);
-		txq = (qid <= 3) ? &sc->txq[qid] : &sc->mgtq;
+		/* Gather statistics */
+		result = RT2661_TX_RESULT(val);
+		if (result == RT2661_TX_SUCCESS)
+			ifp->if_opackets++;
+		else
+			ifp->if_oerrors++;
+
+		/* No rate control */
+		if (RT2661_TX_QID(val) == 0)
+			continue;
 
 		/* retrieve rate control algorithm context */
-		data = &txq->data[txq->stat];
-		rn = (struct rt2661_node *)data->ni;
+		rctl = STAILQ_FIRST(&sc->tx_ratectl);
+		if (rctl == NULL) {
+			/*
+			 * XXX
+			 * This really should not happen.  Maybe we should
+			 * use assertion here?  But why should we rely on
+			 * hardware to do the correct things?  Even the
+			 * reference driver (RT61?) provided by Ralink does
+			 * not provide enough clue that this kind of interrupt
+			 * is promised to be generated for each packet.  So
+			 * just print a message and keep going ...
+			 */
+			if_printf(ifp, "WARNING: no rate control information\n");
+			continue;
+		}
+		STAILQ_REMOVE_HEAD(&sc->tx_ratectl, link);
 
-		switch (RT2661_TX_RESULT(val)) {
+		rn = (struct rt2661_node *)rctl->ni;
+
+		switch (result) {
 		case RT2661_TX_SUCCESS:
 			retrycnt = RT2661_TX_RETRYCNT(val);
 
 			DPRINTFN(10, ("data frame sent successfully after "
 			    "%d retries\n", retrycnt));
-			if (retrycnt == 0 && data->id.id_node != NULL) {
+			if (retrycnt == 0 && rctl->id.id_node != NULL) {
 				ral_rssadapt_raise_rate(ic, &rn->rssadapt,
-				    &data->id);
+				    &rctl->id);
 			}
-			ifp->if_opackets++;
 			break;
 
 		case RT2661_TX_RETRY_FAIL:
 			DPRINTFN(9, ("sending data frame failed (too much "
 			    "retries)\n"));
-			if (data->id.id_node != NULL) {
-				ral_rssadapt_lower_rate(ic, data->ni,
-				    &rn->rssadapt, &data->id);
+			if (rctl->id.id_node != NULL) {
+				ral_rssadapt_lower_rate(ic, rctl->ni,
+				    &rn->rssadapt, &rctl->id);
 			}
-			ifp->if_oerrors++;
 			break;
 
 		default:
 			/* other failure */
 			device_printf(sc->sc_dev,
 			    "sending data frame failed 0x%08x\n", val);
-			ifp->if_oerrors++;
+			break;
 		}
 
-		ieee80211_free_node(data->ni);
-		data->ni = NULL;
-
-		DPRINTFN(15, ("tx done q=%d idx=%u\n", qid, txq->stat));
-
-		txq->queued--;
-		if (++txq->stat >= txq->count)	/* faster than % count */
-			txq->stat = 0;
+		ieee80211_free_node(rctl->ni);
+		rctl->ni = NULL;
+		kfree(rctl, M_RT2661);
 	}
-
-	sc->sc_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
-	rt2661_start(ifp);
 }
 
 static void
 rt2661_tx_dma_intr(struct rt2661_softc *sc, struct rt2661_tx_ring *txq)
 {
 	struct rt2661_tx_desc *desc;
-	struct rt2661_tx_data *data;
+	struct rt2661_data *data;
 
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_POSTREAD);
 
@@ -1101,18 +1107,26 @@ rt2661_tx_dma_intr(struct rt2661_softc *sc, struct rt2661_tx_ring *txq)
 		bus_dmamap_unload(txq->data_dmat, data->map);
 		m_freem(data->m);
 		data->m = NULL;
-		/* node reference is released in rt2661_tx_intr() */
 
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2661_TX_VALID);
 
 		DPRINTFN(15, ("tx dma done q=%p idx=%u\n", txq, txq->next));
 
+		txq->queued--;
 		if (++txq->next >= txq->count)	/* faster than % count */
 			txq->next = 0;
 	}
 
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_PREWRITE);
+
+	if (txq->queued < txq->count) {
+		struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+		sc->sc_tx_timer = 0;
+		ifp->if_flags &= ~IFF_OACTIVE;
+		rt2661_start(ifp);
+	}
 }
 
 static void
@@ -1121,7 +1135,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
 	struct rt2661_rx_desc *desc;
-	struct rt2661_rx_data *data;
+	struct rt2661_data *data;
 	bus_addr_t physaddr;
 	struct ieee80211_frame *wh;
 	struct ieee80211_node *ni;
@@ -1461,7 +1475,7 @@ rt2661_plcp_signal(int rate)
 static void
 rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
     uint32_t flags, uint16_t xflags, int len, int rate,
-    const bus_dma_segment_t *segs, int nsegs, int ac)
+    const bus_dma_segment_t *segs, int nsegs, int ac, int ratectl)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint16_t plcp_length;
@@ -1481,11 +1495,11 @@ rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
 	    RT2661_LOGCWMAX(10));
 
 	/*
-	 * Remember in which queue this frame was sent. This field is driver
-	 * private data only. It will be made available by the NIC in STA_CSR4
-	 * on Tx interrupts.
+	 * Remember whether TX rate control information should be gathered.
+	 * This field is driver private data only.  It will be made available
+	 * by the NIC in STA_CSR4 on Tx done interrupts.
 	 */
-	desc->qid = ac;
+	desc->qid = ratectl;
 
 	/* setup PLCP fields */
 	desc->plcp_signal  = rt2661_plcp_signal(rate);
@@ -1527,7 +1541,7 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct rt2661_tx_desc *desc;
-	struct rt2661_tx_data *data;
+	struct rt2661_data *data;
 	struct ieee80211_frame *wh;
 	struct rt2661_dmamap map;
 	uint16_t dur;
@@ -1561,7 +1575,6 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	data->m = m0;
-	data->ni = ni;
 
 	wh = mtod(m0, struct ieee80211_frame *);
 
@@ -1580,7 +1593,7 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	rt2661_setup_tx_desc(sc, desc, flags, 0 /* XXX HWSEQ */,
-	    m0->m_pkthdr.len, rate, map.segs, map.nseg, RT2661_QID_MGT);
+	    m0->m_pkthdr.len, rate, map.segs, map.nseg, RT2661_QID_MGT, 0);
 
 	bus_dmamap_sync(sc->mgtq.data_dmat, data->map, BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(sc->mgtq.desc_dmat, sc->mgtq.desc_map,
@@ -1593,6 +1606,8 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	sc->mgtq.queued++;
 	sc->mgtq.cur = (sc->mgtq.cur + 1) % RT2661_MGT_RING_COUNT;
 	RAL_WRITE(sc, RT2661_TX_CNTL_CSR, RT2661_KICK_MGT);
+
+	ieee80211_free_node(ni);
 
 	return 0;
 }
@@ -1635,7 +1650,8 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct rt2661_tx_ring *txq = &sc->txq[ac];
 	struct rt2661_tx_desc *desc;
-	struct rt2661_tx_data *data;
+	struct rt2661_data *data;
+	struct rt2661_tx_ratectl *rctl;
 	struct rt2661_node *rn;
 	struct ieee80211_rateset *rs;
 	struct ieee80211_frame *wh;
@@ -1712,18 +1728,11 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 			return error;
 		}
 
-		/* avoid multiple free() of the same node for each fragment */
-		ieee80211_ref_node(ni);
-
 		data->m = m;
-		data->ni = ni;
-
-		/* RTS frames are not taken into account for rssadapt */
-		data->id.id_node = NULL;
 
 		rt2661_setup_tx_desc(sc, desc, RT2661_TX_NEED_ACK |
 				     RT2661_TX_MORE_FRAG, 0, m->m_pkthdr.len,
-				     rtsrate, map.segs, map.nseg, ac);
+				     rtsrate, map.segs, map.nseg, ac, 0);
 
 		bus_dmamap_sync(txq->data_dmat, data->map,
 		    BUS_DMASYNC_PREWRITE);
@@ -1785,16 +1794,22 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	data->m = m0;
-	data->ni = ni;
 
-	/* remember link conditions for rate adaptation algorithm */
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE) {
-		data->id.id_len = m0->m_pkthdr.len;
-		data->id.id_rateidx = ni->ni_txrate;
-		data->id.id_node = ni;
-		data->id.id_rssi = ni->ni_rssi;
-	} else
-		data->id.id_node = NULL;
+	rctl = kmalloc(sizeof(*rctl), M_RT2661, M_NOWAIT);
+	if (rctl != NULL) {
+		rctl->ni = ni;
+
+		/* remember link conditions for rate adaptation algorithm */
+		if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE) {
+			rctl->id.id_len = m0->m_pkthdr.len;
+			rctl->id.id_rateidx = ni->ni_txrate;
+			rctl->id.id_node = ni;
+			rctl->id.id_rssi = ni->ni_rssi;
+		} else {
+			rctl->id.id_node = NULL;
+		}
+		STAILQ_INSERT_TAIL(&sc->tx_ratectl, rctl, link);
+	}
 
 	if (!noack && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2661_TX_NEED_ACK;
@@ -1805,7 +1820,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	rt2661_setup_tx_desc(sc, desc, flags, 0, m0->m_pkthdr.len, rate,
-			     map.segs, map.nseg, ac);
+			     map.segs, map.nseg, ac, rctl != NULL);
 
 	bus_dmamap_sync(txq->data_dmat, data->map, BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_PREWRITE);
@@ -1817,6 +1832,9 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	txq->queued++;
 	txq->cur = (txq->cur + 1) % RT2661_TX_RING_COUNT;
 	RAL_WRITE(sc, RT2661_TX_CNTL_CSR, 1 << ac);
+
+	if (rctl == NULL)
+		ieee80211_free_node(ni);
 
 	return 0;
 }
@@ -2676,6 +2694,7 @@ rt2661_stop(void *priv)
 	struct rt2661_softc *sc = priv;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
+	struct rt2661_tx_ratectl *rctl;
 	uint32_t tmp;
 
 	sc->sc_tx_timer = 0;
@@ -2702,6 +2721,13 @@ rt2661_stop(void *priv)
 	/* clear any pending interrupt */
 	RAL_WRITE(sc, RT2661_INT_SOURCE_CSR, 0xffffffff);
 	RAL_WRITE(sc, RT2661_MCU_INT_SOURCE_CSR, 0xffffffff);
+
+	while ((rctl = STAILQ_FIRST(&sc->tx_ratectl)) != NULL) {
+		STAILQ_REMOVE_HEAD(&sc->tx_ratectl, link);
+		ieee80211_free_node(rctl->ni);
+		rctl->ni = NULL;
+		kfree(rctl, M_RT2661);
+	}
 
 	/* reset Tx and Rx rings */
 	rt2661_reset_tx_ring(sc, &sc->txq[0]);
@@ -2884,7 +2910,7 @@ rt2661_prepare_beacon(struct rt2661_softc *sc)
 	rate = IEEE80211_IS_CHAN_5GHZ(ic->ic_bss->ni_chan) ? 12 : 2;
 
 	rt2661_setup_tx_desc(sc, &desc, RT2661_TX_TIMESTAMP, RT2661_TX_HWSEQ,
-	    m0->m_pkthdr.len, rate, NULL, 0, RT2661_QID_MGT);
+	    m0->m_pkthdr.len, rate, NULL, 0, RT2661_QID_MGT, 0);
 
 	/* copy the first 24 bytes of Tx descriptor into NIC memory */
 	RAL_WRITE_REGION_1(sc, RT2661_HW_BEACON_BASE0, (uint8_t *)&desc, 24);

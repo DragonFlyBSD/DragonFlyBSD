@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.2 2006/11/18 04:13:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.3 2006/11/20 15:03:26 sephe Exp $
  */
 
 struct rt2661_rx_radiotap_header {
@@ -48,11 +48,15 @@ struct rt2661_tx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
 
-struct rt2661_tx_data {
-	bus_dmamap_t		map;
-	struct mbuf		*m;
+struct rt2661_tx_ratectl {
 	struct ieee80211_node	*ni;
 	struct ral_rssdesc	id;
+	STAILQ_ENTRY(rt2661_tx_ratectl)	link;
+};
+
+struct rt2661_data {
+	bus_dmamap_t	map;
+	struct mbuf	*m;
 };
 
 struct rt2661_tx_ring {
@@ -61,17 +65,11 @@ struct rt2661_tx_ring {
 	bus_dmamap_t		desc_map;
 	bus_addr_t		physaddr;
 	struct rt2661_tx_desc	*desc;
-	struct rt2661_tx_data	*data;
+	struct rt2661_data	*data;
 	int			count;
 	int			queued;
 	int			cur;
 	int			next;
-	int			stat;
-};
-
-struct rt2661_rx_data {
-	bus_dmamap_t	map;
-	struct mbuf	*m;
 };
 
 struct rt2661_rx_ring {
@@ -80,7 +78,7 @@ struct rt2661_rx_ring {
 	bus_dmamap_t		desc_map;
 	bus_addr_t		physaddr;
 	struct rt2661_rx_desc	*desc;
-	struct rt2661_rx_data	*data;
+	struct rt2661_data	*data;
 	int			count;
 	int			cur;
 	int			next;
@@ -144,6 +142,8 @@ struct rt2661_softc {
 	uint8_t				bbp17;
 	uint8_t				bbp64;
 	uint16_t			mcu_led;
+
+	STAILQ_HEAD(, rt2661_tx_ratectl) tx_ratectl;
 
 	int				dwelltime;
 
