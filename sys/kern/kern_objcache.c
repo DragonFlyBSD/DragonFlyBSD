@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.11 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.12 2006/11/20 22:19:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,8 +40,10 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/objcache.h>
+#include <sys/spinlock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 static MALLOC_DEFINE(M_OBJMAG, "objcache magazine", "Object Cache Magazine");
@@ -51,6 +53,7 @@ static MALLOC_DEFINE(M_OBJMAG, "objcache magazine", "Object Cache Magazine");
 struct magazine {
 	int			 rounds;
 	int			 capacity;
+	int			 cleaning;
 	SLIST_ENTRY(magazine)	 nextmagazine;
 	void			*objects[];
 };
@@ -59,7 +62,8 @@ SLIST_HEAD(magazinelist, magazine);
 
 /*
  * per-cluster cache of magazines
- * All fields in this structure are protected by the token.
+ *
+ * All fields in this structure are protected by the spinlock.
  */
 struct magazinedepot {
 	/*
@@ -72,7 +76,7 @@ struct magazinedepot {
 	int			magcapacity;
 
 	/* protect this structure */
-	struct lwkt_token	token;
+	struct spinlock		spin;
 
 	/* magazines not yet allocated towards limit */
 	int			unallocated_objects;
@@ -134,7 +138,7 @@ struct objcache {
 	struct percpu_objcache	cache_percpu[];		/* per-cpu caches */
 };
 
-static struct lwkt_token objcachelist_token;
+static struct spinlock objcachelist_spin;
 static SLIST_HEAD(objcachelist, objcache) allobjcaches;
 
 static struct magazine *
@@ -146,6 +150,7 @@ mag_alloc(int capacity)
 			M_OBJMAG, M_INTWAIT | M_ZERO);
 	mag->capacity = capacity;
 	mag->rounds = 0;
+	mag->cleaning = 0;
 	return (mag);
 }
 
@@ -160,7 +165,6 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 {
 	struct objcache *oc;
 	struct magazinedepot *depot;
-	lwkt_tokref olock;
 	int cpuid;
 
 	/* allocate object cache structure */
@@ -176,7 +180,7 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	/* initialize depots */
 	depot = &oc->depot[0];
 
-	lwkt_token_init(&depot->token);
+	spin_init(&depot->spin);
 	SLIST_INIT(&depot->fullmagazines);
 	SLIST_INIT(&depot->emptymagazines);
 
@@ -204,9 +208,9 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 		cache_percpu->loaded_magazine = mag_alloc(mag_capacity);
 		cache_percpu->previous_magazine = mag_alloc(mag_capacity);
 	}
-	lwkt_gettoken(&olock, &objcachelist_token);
+	spin_lock_wr(&objcachelist_spin);
 	SLIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
-	lwkt_reltoken(&olock);
+	spin_unlock_wr(&objcachelist_spin);
 
 	return (oc);
 }
@@ -247,7 +251,6 @@ objcache_get(struct objcache *oc, int ocflags)
 	struct magazine *emptymag;
 	void *obj;
 	struct magazinedepot *depot;
-	lwkt_tokref ilock;
 
 	crit_enter();
 	++cpucache->gets_cumulative;
@@ -267,6 +270,8 @@ retry:
 
 	/* Previous magazine has an object. */
 	if (MAGAZINE_NOTEMPTY(cpucache->previous_magazine)) {
+		KKASSERT(cpucache->previous_magazine->cleaning +
+			 cpucache->loaded_magazine->cleaning == 0);
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		obj = loadedmag->objects[--loadedmag->rounds];
@@ -278,20 +283,19 @@ retry:
 	 * Both magazines empty.  Get a full magazine from the depot and
 	 * move one of the empty ones to the depot.
 	 *
-	 * Obtain the depot token.
+	 * Obtain the depot spinlock.
 	 */
 	depot = &oc->depot[myclusterid];
-	lwkt_gettoken(&ilock, &depot->token);
+	spin_lock_wr(&depot->spin);
 
 	/*
-	 * We might have blocked obtaining the token, we must recheck
-	 * the cpucache before potentially falling through to the blocking
-	 * code or we might deadlock the tsleep() on a low-memory machine.
+	 * Recheck the cpucache after obtaining the depot spinlock.  This
+	 * shouldn't be necessary now but don't take any chances.
 	 */
 	if (MAGAZINE_NOTEMPTY(cpucache->loaded_magazine) ||
 	    MAGAZINE_NOTEMPTY(cpucache->previous_magazine)
 	) {
-		lwkt_reltoken(&ilock);
+		spin_unlock_wr(&depot->spin);
 		goto retry;
 	}
 
@@ -308,7 +312,7 @@ retry:
 		KKASSERT(MAGAZINE_EMPTY(emptymag));
 		SLIST_INSERT_HEAD(&depot->emptymagazines,
 				  emptymag, nextmagazine);
-		lwkt_reltoken(&ilock);
+		spin_unlock_wr(&depot->spin);
 		goto retry;
 	}
 
@@ -322,7 +326,7 @@ retry:
 	 */
 	if (depot->unallocated_objects) {
 		--depot->unallocated_objects;
-		lwkt_reltoken(&ilock);
+		spin_unlock_wr(&depot->spin);
 		crit_exit();
 
 		obj = oc->alloc(oc->allocator_args, ocflags);
@@ -330,11 +334,11 @@ retry:
 			if (oc->ctor(obj, oc->private, ocflags))
 				return (obj);
 			oc->free(obj, oc->allocator_args);
-			lwkt_gettoken(&ilock, &depot->token);
+			spin_lock_wr(&depot->spin);
 			++depot->unallocated_objects;
+			spin_unlock_wr(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
-			lwkt_reltoken(&ilock);
 			obj = NULL;
 		}
 		if (obj == NULL) {
@@ -356,10 +360,10 @@ retry:
 	if ((ocflags & (M_WAITOK|M_NULLOK)) == M_WAITOK) {
 		++cpucache->waiting;
 		++depot->waiting;
-		tsleep(depot, 0, "objcache_get", 0);
+		msleep(depot, &depot->spin, 0, "objcache_get", 0);
 		--cpucache->waiting;
 		--depot->waiting;
-		lwkt_reltoken(&ilock);
+		spin_unlock_wr(&depot->spin);
 		goto retry;
 	}
 
@@ -369,7 +373,7 @@ retry:
 	++cpucache->gets_null;
 	--cpucache->gets_cumulative;
 	crit_exit();
-	lwkt_reltoken(&ilock);
+	spin_unlock_wr(&depot->spin);
 	return (NULL);
 }
 
@@ -417,7 +421,6 @@ objcache_put(struct objcache *oc, void *obj)
 	struct percpu_objcache *cpucache = &oc->cache_percpu[mycpuid];
 	struct magazine *loadedmag;
 	struct magazinedepot *depot;
-	lwkt_tokref ilock;
 
 	crit_enter();
 	++cpucache->puts_cumulative;
@@ -450,6 +453,8 @@ retry:
 	 * Current magazine full, but previous magazine has room.  XXX
 	 */
 	if (!MAGAZINE_FULL(cpucache->previous_magazine)) {
+		KKASSERT(cpucache->previous_magazine->cleaning +
+			 cpucache->loaded_magazine->cleaning == 0);
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		loadedmag->objects[loadedmag->rounds++] = obj;
@@ -463,19 +468,21 @@ retry:
 	 * Both magazines full.  Get an empty magazine from the depot and
 	 * move a full loaded magazine to the depot.  Even though the
 	 * magazine may wind up with space available after we block on
-	 * the token, we still cycle it through to avoid the non-optimal
+	 * the spinlock, we still cycle it through to avoid the non-optimal
 	 * corner-case.
 	 *
-	 * Obtain the depot token.
+	 * Obtain the depot spinlock.
 	 */
 	depot = &oc->depot[myclusterid];
-	lwkt_gettoken(&ilock, &depot->token);
+	spin_lock_wr(&depot->spin);
 
 	/*
 	 * If an empty magazine is available in the depot, cycle it
 	 * through and retry.
 	 */
 	if (!SLIST_EMPTY(&depot->emptymagazines)) {
+		KKASSERT(cpucache->previous_magazine->cleaning +
+			 cpucache->loaded_magazine->cleaning == 0);
 		loadedmag = cpucache->previous_magazine;
 		cpucache->previous_magazine = cpucache->loaded_magazine;
 		cpucache->loaded_magazine = SLIST_FIRST(&depot->emptymagazines);
@@ -488,13 +495,14 @@ retry:
 		if (MAGAZINE_EMPTY(loadedmag)) {
 			SLIST_INSERT_HEAD(&depot->emptymagazines,
 					  loadedmag, nextmagazine);
+			spin_unlock_wr(&depot->spin);
 		} else {
 			SLIST_INSERT_HEAD(&depot->fullmagazines,
 					  loadedmag, nextmagazine);
+			spin_unlock_wr(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
 		}
-		lwkt_reltoken(&ilock);
 		goto retry;
 	}
 
@@ -504,9 +512,9 @@ retry:
 	 * to allocate a mag, just free the object.
 	 */
 	++depot->unallocated_objects;
+	spin_unlock_wr(&depot->spin);
 	if (depot->waiting)
 		wakeup(depot);
-	lwkt_reltoken(&ilock);
 	crit_exit();
 	oc->dtor(obj, oc->private);
 	oc->free(obj, oc->allocator_args);
@@ -521,14 +529,13 @@ void
 objcache_dtor(struct objcache *oc, void *obj)
 {
 	struct magazinedepot *depot;
-	lwkt_tokref ilock;
 
 	depot = &oc->depot[myclusterid];
-	lwkt_gettoken(&ilock, &depot->token);
+	spin_lock_wr(&depot->spin);
 	++depot->unallocated_objects;
+	spin_unlock_wr(&depot->spin);
 	if (depot->waiting)
 		wakeup(depot);
-	lwkt_reltoken(&ilock);
 	oc->dtor(obj, oc->private);
 	oc->free(obj, oc->allocator_args);
 }
@@ -549,64 +556,101 @@ null_ctor(void *obj, void *private, int ocflags)
 }
 
 /*
- * De-construct and de-allocate objects in a magazine.
- * Returns the number of objects freed.
- * Does not de-allocate the magazine itself.
+ * Deallocate all objects in a magazine and free the magazine if requested.
+ * The magazine must already be disassociated from the depot.
+ *
+ * Must be called with a critical section held when called with a per-cpu
+ * magazine.  The magazine may be indirectly modified during the loop.
+ *
+ * The number of objects freed is returned.
  */
 static int
-mag_purge(struct objcache *oc, struct magazine *mag)
+mag_purge(struct objcache *oc, struct magazine *mag, int freeit)
 {
-	int ndeleted;
+	int count;
 	void *obj;
 
-	ndeleted = 0;
-	crit_enter();
+	count = 0;
+	++mag->cleaning;
 	while (mag->rounds) {
 		obj = mag->objects[--mag->rounds];
-		crit_exit();
-		oc->dtor(obj, oc->private);
-		oc->free(obj, oc->allocator_args);
-		++ndeleted;
-		crit_enter();
+		oc->dtor(obj, oc->private);		/* MAY BLOCK */
+		oc->free(obj, oc->allocator_args);	/* MAY BLOCK */
+		++count;
+
+		/*
+		 * Cycle for interrupts
+		 */
+		if ((count & 15) == 0) {
+			crit_exit();
+			crit_enter();
+		}
 	}
-	crit_exit();
-	return(ndeleted);
+	--mag->cleaning;
+	if (freeit)
+		kfree(mag, M_OBJMAG);
+	return(count);
 }
 
 /*
- * De-allocate all magazines in a magazine list.
- * Returns number of objects de-allocated.
+ * Disassociate zero or more magazines from a magazine list associated with
+ * the depot, update the depot, and move the magazines to a temporary
+ * list.
+ *
+ * The caller must check the depot for waiters and wake it up, typically
+ * after disposing of the magazines this function loads onto the temporary
+ * list.
  */
-static int
-maglist_purge(struct objcache *oc, struct magazinelist *maglist,
-	      boolean_t purgeall)
+static void
+maglist_disassociate(struct magazinedepot *depot, struct magazinelist *maglist,
+		     struct magazinelist *tmplist, boolean_t purgeall)
 {
 	struct magazine *mag;
-	int ndeleted = 0;
 
-	/* can't use SLIST_FOREACH because blocking releases the depot token */
-	while ((mag = SLIST_FIRST(maglist))) {
+	while ((mag = SLIST_FIRST(maglist)) != NULL) {
 		SLIST_REMOVE_HEAD(maglist, nextmagazine);
-		ndeleted += mag_purge(oc, mag);		/* could block! */
-		kfree(mag, M_OBJMAG);			/* could block! */
-		if (!purgeall && ndeleted > 0)
-			break;
+		SLIST_INSERT_HEAD(tmplist, mag, nextmagazine);
+		depot->unallocated_objects += mag->rounds;
 	}
-	return (ndeleted);
+}
+			
+/*
+ * Deallocate all magazines and their contents from the passed temporary
+ * list.  The magazines have already been accounted for by their depots.
+ *
+ * The total number of rounds freed is returned.  This number is typically
+ * only used to determine whether a wakeup on the depot is needed or not.
+ */
+static int
+maglist_purge(struct objcache *oc, struct magazinelist *maglist)
+{
+	struct magazine *mag;
+	int count = 0;
+
+	/*
+	 * can't use SLIST_FOREACH because blocking releases the depot
+	 * spinlock 
+	 */
+	while ((mag = SLIST_FIRST(maglist)) != NULL) {
+		SLIST_REMOVE_HEAD(maglist, nextmagazine);
+		count += mag_purge(oc, mag, TRUE);
+	}
+	return(count);
 }
 
 /*
  * De-allocates all magazines on the full and empty magazine lists.
+ *
+ * Because this routine is called with a spinlock held, the magazines
+ * can only be disassociated and moved to a temporary list, not freed.
+ *
+ * The caller is responsible for freeing the magazines.
  */
 static void
-depot_purge(struct magazinedepot *depot, struct objcache *oc)
+depot_disassociate(struct magazinedepot *depot, struct magazinelist *tmplist)
 {
-	depot->unallocated_objects += 
-		maglist_purge(oc, &depot->fullmagazines, TRUE);
-	depot->unallocated_objects +=
-		maglist_purge(oc, &depot->emptymagazines, TRUE);
-	if (depot->unallocated_objects && depot->waiting)
-		wakeup(depot);
+	maglist_disassociate(depot, &depot->fullmagazines, tmplist, TRUE);
+	maglist_disassociate(depot, &depot->emptymagazines, tmplist, TRUE);
 }
 
 #ifdef notneeded
@@ -615,17 +659,27 @@ objcache_reclaim(struct objcache *oc)
 {
 	struct percpu_objcache *cache_percpu = &oc->cache_percpu[myclusterid];
 	struct magazinedepot *depot = &oc->depot[myclusterid];
+	struct magazinelist tmplist;
+	int count;
 
-	mag_purge(oc, cache_percpu->loaded_magazine);
-	mag_purge(oc, cache_percpu->previous_magazine);
+	SLIST_INIT(&tmplist);
+	crit_enter();
+	count = mag_purge(oc, cache_percpu->loaded_magazine, FALSE);
+	count += mag_purge(oc, cache_percpu->previous_magazine, FALSE);
+	crit_exit();
 
-	/* XXX need depot token */
-	depot_purge(depot, oc);
+	spin_lock_wr(&depot->spin);
+	depot->unallocated_objects += count;
+	depot_disassociate(depot, &tmplist);
+	spin_unlock_wr(&depot->spin);
+	count += maglist_purge(oc, &tmplist);
+	if (count && depot->waiting)
+		wakeup(depot);
 }
 #endif
 
 /*
- * Try to free up some memory.  Return as soon as some free memory found.
+ * Try to free up some memory.  Return as soon as some free memory is found.
  * For each object cache on the reclaim list, first try the current per-cpu
  * cache, then the full magazine depot.
  */
@@ -635,8 +689,10 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 	struct objcache *oc;
 	struct percpu_objcache *cpucache;
 	struct magazinedepot *depot;
-	lwkt_tokref ilock;
-	int i, ndel;
+	struct magazinelist tmplist;
+	int i, count;
+
+	SLIST_INIT(&tmplist);
 
 	for (i = 0; i < nlist; i++) {
 		oc = oclist[i];
@@ -644,53 +700,61 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 		depot = &oc->depot[myclusterid];
 
 		crit_enter();
-		if ((ndel = mag_purge(oc, cpucache->loaded_magazine)) > 0 ||
-		    (ndel = mag_purge(oc, cpucache->previous_magazine)) > 0) {
-			crit_exit();
-			lwkt_gettoken(&ilock, &depot->token);
-			depot->unallocated_objects += ndel;
-			if (depot->unallocated_objects && depot->waiting)
+		count = mag_purge(oc, cpucache->loaded_magazine, FALSE);
+		if (count == 0)
+			count += mag_purge(oc, cpucache->previous_magazine, FALSE);
+		crit_exit();
+		if (count > 0) {
+			spin_lock_wr(&depot->spin);
+			depot->unallocated_objects += count;
+			spin_unlock_wr(&depot->spin);
+			if (depot->waiting)
 				wakeup(depot);
-			lwkt_reltoken(&ilock);
 			return (TRUE);
 		}
 		crit_exit();
-		lwkt_gettoken(&ilock, &depot->token);
-		if ((ndel =
-		     maglist_purge(oc, &depot->fullmagazines, FALSE)) > 0) {
-			depot->unallocated_objects += ndel;
-			if (depot->unallocated_objects && depot->waiting)
+		spin_lock_wr(&depot->spin);
+		maglist_disassociate(depot, &depot->fullmagazines,
+				     &tmplist, FALSE);
+		spin_unlock_wr(&depot->spin);
+		count = maglist_purge(oc, &tmplist);
+		if (count > 0) {
+			if (depot->waiting)
 				wakeup(depot);
-			lwkt_reltoken(&ilock);
 			return (TRUE);
 		}
-		lwkt_reltoken(&ilock);
 	}
 	return (FALSE);
 }
 
 /*
  * Destroy an object cache.  Must have no existing references.
- * XXX Not clear this is a useful API function.
  */
 void
 objcache_destroy(struct objcache *oc)
 {
 	struct percpu_objcache *cache_percpu;
+	struct magazinedepot *depot;
 	int clusterid, cpuid;
+	struct magazinelist tmplist;
 
-	/* XXX need depot token? */
-	for (clusterid = 0; clusterid < MAXCLUSTERS; clusterid++)
-		depot_purge(&oc->depot[clusterid], oc);
+	SLIST_INIT(&tmplist);
+	for (clusterid = 0; clusterid < MAXCLUSTERS; clusterid++) {
+		depot = &oc->depot[clusterid];
+		spin_lock_wr(&depot->spin);
+		depot_disassociate(depot, &tmplist);
+		spin_unlock_wr(&depot->spin);
+	}
+	maglist_purge(oc, &tmplist);
 
 	for (cpuid = 0; cpuid < ncpus; cpuid++) {
 		cache_percpu = &oc->cache_percpu[cpuid];
 
-		mag_purge(oc, cache_percpu->loaded_magazine);
-		kfree(cache_percpu->loaded_magazine, M_OBJMAG);
-
-		mag_purge(oc, cache_percpu->previous_magazine);
-		kfree(cache_percpu->previous_magazine, M_OBJMAG);
+		mag_purge(oc, cache_percpu->loaded_magazine, TRUE);
+		mag_purge(oc, cache_percpu->previous_magazine, TRUE);
+		cache_percpu->loaded_magazine = NULL;
+		cache_percpu->previous_magazine = NULL;
+		/* don't bother adjusting depot->unallocated_objects */
 	}
 
 	kfree(oc->name, M_TEMP);
@@ -709,24 +773,34 @@ objcache_populate_linear(struct objcache *oc, void *base, int nelts, int size)
 	char *p = base;
 	char *end = (char *)base + (nelts * size);
 	struct magazinedepot *depot = &oc->depot[myclusterid];
-	lwkt_tokref ilock;
-	struct magazine sentinelfullmag = { 0, 0 };
-	struct magazine *emptymag = &sentinelfullmag;
+	struct magazine *emptymag = mag_alloc(depot->magcapcity);
 
-	lwkt_gettoken(&ilock, &depot->token);
 	while (p < end) {
+		emptymag->objects[emptymag->rounds++] = p;
 		if (MAGAZINE_FULL(emptymag)) {
-			emptymag = mag_alloc(depot->magcapacity);
+			spin_lock_wr(&depot->spin);
 			SLIST_INSERT_HEAD(&depot->fullmagazines, emptymag,
 					  nextmagazine);
+			depot->unallocated_objects += emptymag->rounds;
+			spin_unlock_wr(&depot->spin);
+			if (depot->waiting)
+				wakeup(depot);
+			emptymag = mag_alloc(depot->magcapacity);
 		}
-		emptymag->objects[emptymag->rounds++] = p;
 		p += size;
 	}
-	depot->unallocated_objects += nelts;
-	if (depot->unallocated_objects && depot->waiting)
-		wakeup(depot);
-	lwkt_reltoken(&ilock);
+	if (MAGAZINE_EMPTY(emptymag)) {
+		mag_purge(oc, emptymag, TRUE);
+	} else {
+		spin_lock_wr(&depot->spin);
+		SLIST_INSERT_HEAD(&depot->fullmagazines, emptymag,
+				  nextmagazine);
+		depot->unallocated_objects += emptymag->rounds;
+		spin_unlock_wr(&depot->spin);
+		if (depot->waiting)
+			wakeup(depot);
+		emptymag = mag_alloc(depot->magcapacity);
+	}
 }
 #endif
 
@@ -749,17 +823,22 @@ objcache_timer(void *dummy)
 {
 	struct objcache *oc;
 	struct magazinedepot *depot;
-	lwkt_tokref olock, dlock;
+	struct magazinelist tmplist;
 
-	lwkt_gettoken(&olock, &objcachelist_token);
+	XXX we need to detect when an objcache is destroyed out from under
+	    us XXX
+
+	SLIST_INIT(&tmplist);
+
+	spin_lock_wr(&objcachelist_spin);
 	SLIST_FOREACH(oc, &allobjcaches, oc_next) {
 		depot = &oc->depot[myclusterid];
 		if (depot->magcapacity < MAXMAGSIZE) {
 			if (depot->contested > objcache_contention_rate) {
-				lwkt_gettoken(&dlock, &depot->token);
-				depot_purge(depot, oc);
+				spin_lock_wr(&depot->spin);
+				depot_disassociate(depot, &tmplist);
 				depot->magcapacity *= 2;
-				lwkt_reltoken(&dlock);
+				spin_unlock_wr(&depot->spin);
 				printf("objcache_timer: increasing cache %s"
 				       " magsize to %d, contested %d times\n",
 				    oc->name, depot->magcapacity,
@@ -767,8 +846,12 @@ objcache_timer(void *dummy)
 			}
 			depot->contested = 0;
 		}
+		spin_unlock_wr(&objcachelist_spin);
+		if (maglist_purge(oc, &tmplist) > 0 && depot->waiting)
+			wakeup(depot);
+		spin_lock_wr(&objcachelist_spin);
 	}
-	lwkt_reltoken(&olock);
+	spin_unlock_wr(&objcachelist_spin);
 
 	callout_reset(&objcache_callout, objcache_rebalance_period,
 		      objcache_timer, NULL);
@@ -779,7 +862,7 @@ objcache_timer(void *dummy)
 static void
 objcache_init(void)
 {
-	lwkt_token_init(&objcachelist_token);
+	spin_init(&objcachelist_spin);
 #if 0
 	callout_init(&objcache_callout);
 	objcache_rebalance_period = 60 * hz;
