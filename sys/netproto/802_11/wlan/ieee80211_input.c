@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.12 2006/03/14 23:24:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.5 2006/10/21 05:21:30 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.13 2006/08/10 06:21:50 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.6 2006/11/21 12:07:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1821,8 +1821,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		scan.bchan = ieee80211_chan2ieee(ic, ic->ic_curchan);
 		scan.chan = scan.bchan;
 
-		while (frm < efrm) {
-			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1]);
+		while (efrm - frm > 1) {
+			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1] + 2);
 			switch (*frm) {
 			case IEEE80211_ELEMID_SSID:
 				scan.ssid = frm;
@@ -2067,8 +2067,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		 *	[tlv] extended supported rates
 		 */
 		ssid = rates = xrates = NULL;
-		while (frm < efrm) {
-			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1]);
+		while (efrm - frm > 1) {
+			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1] + 2);
 			switch (*frm) {
 			case IEEE80211_ELEMID_SSID:
 				ssid = frm;
@@ -2244,8 +2244,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		if (reassoc)
 			frm += 6;	/* ignore current AP info */
 		ssid = rates = xrates = wpa = wme = NULL;
-		while (frm < efrm) {
-			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1]);
+		while (efrm - frm > 1) {
+			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1] + 2);
 			switch (*frm) {
 			case IEEE80211_ELEMID_SSID:
 				ssid = frm;
@@ -2449,8 +2449,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		frm += 2;
 
 		rates = xrates = wpa = wme = NULL;
-		while (frm < efrm) {
-			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1]);
+		while (efrm - frm > 1) {
+			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1] + 2);
 			switch (*frm) {
 			case IEEE80211_ELEMID_RATES:
 				rates = frm;
