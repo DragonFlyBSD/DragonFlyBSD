@@ -8,7 +8,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.21 2006/11/19 15:42:27 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.22 2006/11/21 18:19:08 justin Exp $
  *
  */
 
@@ -100,6 +100,13 @@ TH {
    font-style: italic;
    white-space: nowrap;
    vertical-align: top;
+}
+
+.mlbody {
+   font-size: 1em;
+   font-family: sans-serif;
+   background-color: #ffffff;
+   margin: 2em 3em 0em 3em;
 }
 
 /* used everywhere */
