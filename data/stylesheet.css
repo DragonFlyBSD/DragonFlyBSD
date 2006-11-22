@@ -8,7 +8,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.22 2006/11/21 18:19:08 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.23 2006/11/22 04:07:16 justin Exp $
  *
  */
 
@@ -159,7 +159,6 @@ a.sidelink:hover { text-decoration: none; }
  * this should mirror #Header as much as possible
  */
 div.remoteheader {
-    width: 100%;
     margin: 10px 0 10px 0;
     padding: 0 0 0 20px;
     line-height: 11px;
