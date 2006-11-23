@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.12 2006/04/03 17:21:05 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.5 2006/11/23 12:57:56 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.6 2006/11/23 13:43:05 sephe Exp $
  */
 
 /*
@@ -2189,6 +2189,13 @@ ieee80211_ioctl_set80211(struct ieee80211com *ic, u_long cmd, struct ieee80211re
 		default:
 			error = EINVAL;
 			break;
+		}
+		if (error == ENETRESET) {
+			/*
+			 * Switching in+out of power save mode
+			 * should not require a state change.
+			 */
+			error = IS_UP(ic) ? ic->ic_reset(ic->ic_ifp) : 0;
 		}
 		break;
 	case IEEE80211_IOC_POWERSAVESLEEP:
