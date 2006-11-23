@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.11 2006/02/28 02:02:43 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.4 2006/09/05 00:55:48 dillon Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.12 2006/04/03 17:21:05 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.5 2006/11/23 12:57:56 sephe Exp $
  */
 
 /*
@@ -1874,6 +1874,31 @@ found:
 }
 
 static int
+ieee80211_ioctl_setstastats(struct ieee80211com *ic, struct ieee80211req *ireq)
+{
+	struct ieee80211_node *ni;
+	uint8_t macaddr[IEEE80211_ADDR_LEN];
+	int error;
+
+	/*
+	 * NB: we could copyin ieee80211req_sta_stats so apps
+	 *     could make selective changes but that's overkill;
+	 *     just clear all stats for now.
+	 */
+	if (ireq->i_len < IEEE80211_ADDR_LEN)
+		return EINVAL;
+	error = copyin(ireq->i_data, macaddr, IEEE80211_ADDR_LEN);
+	if (error != 0)
+		return error;
+	ni = ieee80211_find_node(&ic->ic_sta, macaddr);
+	if (ni == NULL)
+		return EINVAL;	/* XXX */
+	memset(&ni->ni_stats, 0, sizeof(ni->ni_stats));
+	ieee80211_free_node(ni);
+	return 0;
+}
+
+static int
 ieee80211_ioctl_setstatxpow(struct ieee80211com *ic, struct ieee80211req *ireq)
 {
 	struct ieee80211_node *ni;
@@ -2366,6 +2391,9 @@ ieee80211_ioctl_set80211(struct ieee80211com *ic, u_long cmd, struct ieee80211re
 		break;
 	case IEEE80211_IOC_MACCMD:
 		error = ieee80211_ioctl_setmaccmd(ic, ireq);
+		break;
+	case IEEE80211_IOC_STA_STATS:
+		error = ieee80211_ioctl_setstastats(ic, ireq);
 		break;
 	case IEEE80211_IOC_STA_TXPOW:
 		error = ieee80211_ioctl_setstatxpow(ic, ireq);
