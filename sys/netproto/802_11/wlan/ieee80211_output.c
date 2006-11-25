@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.7 2006/03/23 23:28:43 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.3 2006/11/25 07:29:54 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -645,6 +645,10 @@ ieee80211_encap(struct ieee80211com *ic, struct mbuf *m,
 	}
 
 	IEEE80211_NODE_STAT(ni, tx_data);
+	if (IEEE80211_IS_MULTICAST(wh->i_addr1))
+		IEEE80211_NODE_STAT(ni, tx_mcast);
+	else
+		IEEE80211_NODE_STAT(ni, tx_ucast);
 	IEEE80211_NODE_STAT_ADD(ni, tx_bytes, datalen);
 
 	return m;
