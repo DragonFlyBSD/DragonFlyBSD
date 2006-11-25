@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.patch.mk,v 1.3 2006/09/13 19:33:14 corecode Exp $
+# $DragonFly: src/share/mk/bsd.patch.mk,v 1.4 2006/11/25 15:46:03 pavalos Exp $
 #
 # The include file <bsd.patch.mk> handles patching of files and sources.
 #
@@ -49,6 +49,7 @@ beforedepend: ${PC_}
 
 SRCS:=	${SRCS:N${_PSRC}}
 CLEANFILES:=	${CLEANFILES} ${_PC}
+CLEANDIRS+=	${_PC:C|[^/]*$||}
 .endfor
 .endfor
 
@@ -59,6 +60,7 @@ ${_PC}: _PATCHFILE ${CONTRIBDIR}/${_PC} ${_PSRC}
 
 SRCS:=	${SRCS:N${_PC}:S|${_PSRC}|${_PC}|}
 CLEANFILES:=	${CLEANFILES} ${_PC}
+CLEANDIRS+=	${_PC:C|[^/]*$||}
 .endfor
 .endfor
 .endif
