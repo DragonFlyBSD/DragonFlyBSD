@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.5 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.6 2006/11/25 07:17:06 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -65,17 +65,11 @@
 #define	IEEE80211_TXPOWER_MAX	100	/* .5 dbM (XXX units?) */
 #define	IEEE80211_TXPOWER_MIN	0	/* kill radio */
 
-#define	IEEE80211_DTIM_MAX	15	/* max DTIM period */
-#define	IEEE80211_DTIM_MIN	1	/* min DTIM period */
 #define	IEEE80211_DTIM_DEFAULT	1	/* default DTIM period */
 
-/* NB: min+max come from WiFi requirements */
-#define	IEEE80211_BINTVAL_MAX	1000	/* max beacon interval (TU's) */
-#define	IEEE80211_BINTVAL_MIN	25	/* min beacon interval (TU's) */
 #define	IEEE80211_BINTVAL_DEFAULT 100	/* default beacon interval (TU's) */
 
 #define	IEEE80211_BMISS_MAX	2	/* maximum consecutive bmiss allowed */
-#define	IEEE80211_SWBMISS_THRESHOLD 50	/* s/w bmiss threshold (TU's) */
 #define	IEEE80211_HWBMISS_DEFAULT 7	/* h/w bmiss threshold (beacons) */
 
 #define	IEEE80211_PS_SLEEP	0x1	/* STA is in power saving mode */
