@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.6 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.7 2006/11/25 07:37:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1453,10 +1453,22 @@ ieee80211_find_txnode(struct ieee80211com *ic, const uint8_t *macaddr)
 	 * also optimize station mode operation, all frames go
 	 * to the bss node.
 	 */
-	if (ic->ic_opmode == IEEE80211_M_STA || IEEE80211_IS_MULTICAST(macaddr))
+	if (ic->ic_opmode == IEEE80211_M_STA ||
+	    IEEE80211_IS_MULTICAST(macaddr)) {
 		ni = ieee80211_ref_node(ic->ic_bss);
-	else
+	} else {
 		ni = _ieee80211_find_node(nt, macaddr);
+		if (ic->ic_opmode == IEEE80211_M_HOSTAP && 
+		    (ni != NULL && ni->ni_associd == 0)) {
+			/*
+			 * Station is not associated; don't permit the
+			 * data frame to be sent by returning NULL.  This
+			 * is kinda a kludge but the least intrusive way
+			 * to add this check into all drivers.
+			 */
+			ieee80211_unref_node(&ni);      /* NB: null's ni */
+		}
+	}
 
 	if (ni == NULL) {
 		if (ic->ic_opmode == IEEE80211_M_IBSS ||
