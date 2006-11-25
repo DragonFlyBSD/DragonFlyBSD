@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.7 2006/11/25 07:37:38 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.8 2006/11/25 08:56:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,12 @@
 	((w)[IEEE80211_AID(b) / 32] &= ~(1 << (IEEE80211_AID(b) % 32)))
 #define	IEEE80211_AID_ISSET(b, w) \
 	((w)[IEEE80211_AID(b) / 32] & (1 << (IEEE80211_AID(b) % 32)))
+
+#ifdef IEEE80211_DEBUG_REFCNT
+#define REFCNT_LOC "%s (%s:%u) %p<%s> refcnt %d\n", __func__, func, line
+#else
+#define REFCNT_LOC "%s %p<%s> refcnt %d\n", __func__
+#endif
 
 static struct ieee80211_node *node_alloc(struct ieee80211_node_table *);
 static void node_cleanup(struct ieee80211_node *);
@@ -1515,13 +1521,7 @@ ieee80211_find_node_with_channel(struct ieee80211_node_table *nt,
 		    ni->ni_chan == chan) {
 			ieee80211_ref_node(ni);		/* mark referenced */
 			IEEE80211_DPRINTF(nt->nt_ic, IEEE80211_MSG_NODE,
-#ifdef IEEE80211_DEBUG_REFCNT
-			    "%s (%s:%u) %p<%6D> refcnt %d\n", __func__,
-			    func, line,
-#else
-			    "%s %p<%6D> refcnt %d\n", __func__,
-#endif
-			    ni, ni->ni_macaddr, ":",
+			    REFCNT_LOC, ni, ni->ni_macaddr, ":",
 			    ieee80211_node_refcnt(ni));
 			break;
 		}
@@ -1571,13 +1571,7 @@ ieee80211_find_node_with_ssid(struct ieee80211_node_table *nt,
 	if (ni != NULL) {
 		ieee80211_ref_node(ni);	/* mark referenced */
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_NODE,
-#ifdef IEEE80211_DEBUG_REFCNT
-		    "%s (%s:%u) %p<%6D> refcnt %d\n", __func__,
-		    func, line,
-#else
-		    "%s %p<%6D> refcnt %d\n", __func__,
-#endif
-		     ni, ni->ni_macaddr, ":",
+		     REFCNT_LOC, ni, ni->ni_macaddr, ":",
 		     ieee80211_node_refcnt(ni));
 	}
 	return ni;
