@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.9 2006/03/07 17:50:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.14 2006/09/03 02:17:54 sephe Exp $
+ * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.10 2006/08/10 06:09:23 sam Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.15 2006/11/25 05:54:22 sephe Exp $
  */
 
 /*-
@@ -697,6 +697,13 @@ DECL_CMD_FUNC(set80211fragthreshold, val, d)
 {
 	set80211(s, IEEE80211_IOC_FRAGTHRESHOLD,
 		isundefarg(val) ? IEEE80211_FRAG_MAX : atoi(val), 0, NULL);
+}
+
+static
+DECL_CMD_FUNC(set80211bmissthreshold, val, d)
+{
+	set80211(s, IEEE80211_IOC_BMISSTHRESHOLD,
+		isundefarg(val) ? IEEE80211_HWBMISS_MAX : atoi(val), 0, NULL);
 }
 
 static int
@@ -1703,6 +1710,12 @@ ieee80211_status(int s)
 			LINE_CHECK("fragthreshold %d", ireq.i_val);
 	}
 
+	ireq.i_type = IEEE80211_IOC_BMISSTHRESHOLD;
+	if (ioctl(s, SIOCG80211, &ireq) != -1) {
+		if (ireq.i_val != IEEE80211_HWBMISS_MAX || verbose)
+			LINE_CHECK("bmiss %d", ireq.i_val);
+	}
+
 	if (IEEE80211_IS_CHAN_G(c) || IEEE80211_IS_CHAN_PUREG(c) || verbose) {
 		ireq.i_type = IEEE80211_IOC_PUREG;
 		if (ioctl(s, SIOCG80211, &ireq) != -1) {
@@ -2009,7 +2022,9 @@ static struct cmd ieee80211_cmds[] = {
 	DEF_CMD_ARG("fragthreshold",	set80211fragthreshold),
 	DEF_CMD("burst",	1,	set80211burst),
 	DEF_CMD("-burst",	0,	set80211burst),
-	DEF_CMD_ARG("ratectl",		set80211ratectl)
+	DEF_CMD_ARG("ratectl",		set80211ratectl),
+	DEF_CMD_ARG("bmiss",            set80211bmissthreshold),
+	DEF_CMD_ARG("bmissthreshold",   set80211bmissthreshold)
 };
 static struct afswtch af_ieee80211 = {
 	.af_name	= "af_ieee80211",

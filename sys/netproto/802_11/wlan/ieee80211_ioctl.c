@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.12 2006/04/03 17:21:05 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.7 2006/11/25 05:04:23 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.15 2006/09/02 17:09:26 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.8 2006/11/25 05:54:22 sephe Exp $
  */
 
 /*
@@ -1545,6 +1545,9 @@ ieee80211_ioctl_get80211(struct ieee80211com *ic, u_long cmd,
 	case IEEE80211_IOC_RATECTL:
 		ireq->i_val = ic->ic_ratectl.rc_st_ratectl;
 		break;
+	case IEEE80211_IOC_BMISSTHRESHOLD:
+		ireq->i_val = ic->ic_bmissthreshold;
+		break;
 	default:
 		error = EINVAL;
 		break;
@@ -2506,6 +2509,13 @@ ieee80211_ioctl_set80211(struct ieee80211com *ic, u_long cmd, struct ieee80211re
 		}
 
 		error = ieee80211_ratectl_change(ic, ireq->i_val);
+		break;
+	case IEEE80211_IOC_BMISSTHRESHOLD:
+		if (!(IEEE80211_HWBMISS_MIN <= ireq->i_val &&
+		    ireq->i_val <= IEEE80211_HWBMISS_MAX))
+			return EINVAL;
+		ic->ic_bmissthreshold = ireq->i_val;
+		error = IS_UP(ic) ? ic->ic_reset(ic->ic_ifp) : 0;
 		break;
 	default:
 		error = EINVAL;

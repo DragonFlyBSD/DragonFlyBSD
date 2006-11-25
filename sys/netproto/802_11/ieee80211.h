@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.1 2005/07/29 23:31:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.4 2006/11/25 05:54:22 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -638,5 +638,29 @@ enum {
  */
 #define	IEEE80211_FRAG_MIN		256
 #define	IEEE80211_FRAG_MAX		2346
+
+/*
+ * Beacon interval (TU's).  Min+max come from WiFi requirements.
+ * As above, we treat default as implementation-dependent so
+ * define it elsewhere.
+ */
+#define IEEE80211_BINTVAL_MAX	1000	/* max beacon interval (TU's) */
+#define IEEE80211_BINTVAL_MIN	25	/* min beacon interval (TU's) */
+
+/*
+ * DTIM period (beacons).  Min+max are not really defined
+ * by the protocol but we want them publicly visible so
+ * define them here.
+ */
+#define IEEE80211_DTIM_MAX	15	/* max DTIM period */
+#define IEEE80211_DTIM_MIN	1	/* min DTIM period */
+
+/*
+ * Beacon miss threshold (beacons).  As for DTIM, we define
+ * them here to be publicly visible.  Note the max may be
+ * clamped depending on device capabilities.
+ */
+#define IEEE80211_HWBMISS_MIN   1
+#define IEEE80211_HWBMISS_MAX   255
 
 #endif /* _NET80211_IEEE80211_H_ */
