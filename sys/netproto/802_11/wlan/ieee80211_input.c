@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.7 2006/11/25 07:03:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.8 2006/11/25 13:11:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1981,22 +1981,26 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 				ni->ni_erp = scan.erp;
 				/* XXX statistic */
 			}
-			if ((ni->ni_capinfo ^ scan.capinfo) & IEEE80211_CAPINFO_SHORT_SLOTTIME) {
+			if (ni->ni_capinfo != scan.capinfo) {
 				IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 				    "[%6D] capabilities change: before 0x%x,"
 				    " now 0x%x\n",
 				    wh->i_addr2, ":",
 				    ni->ni_capinfo, scan.capinfo);
-				/*
-				 * NB: we assume short preamble doesn't
-				 *     change dynamically
-				 */
-				ieee80211_set_shortslottime(ic,
-					ic->ic_curmode == IEEE80211_MODE_11A ||
-					(scan.capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME));
+
+				if ((ni->ni_capinfo ^ scan.capinfo) &
+				    IEEE80211_CAPINFO_SHORT_SLOTTIME) {
+					ieee80211_set_shortslottime(ic,
+					    ic->ic_curmode == IEEE80211_MODE_11A ||
+					    (scan.capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME));
+				}
 				ni->ni_capinfo = scan.capinfo;
 				/* XXX statistic */
 			}
+
+			/* NOTE: after ni_capinfo and ni_erp updates */
+			ieee80211_set_shortpreamble(ic, ni);
+
 			if (scan.wme != NULL &&
 			    (ni->ni_flags & IEEE80211_NODE_QOS) &&
 			    ieee80211_parse_wmeparams(ic, scan.wme, wh) > 0)
@@ -2508,14 +2512,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		 *
 		 * XXX may need different/additional driver callbacks?
 		 */
-		if (ic->ic_curmode == IEEE80211_MODE_11A ||
-		    (ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_PREAMBLE)) {
-			ic->ic_flags |= IEEE80211_F_SHPREAMBLE;
-			ic->ic_flags &= ~IEEE80211_F_USEBARKER;
-		} else {
-			ic->ic_flags &= ~IEEE80211_F_SHPREAMBLE;
-			ic->ic_flags |= IEEE80211_F_USEBARKER;
-		}
+		ieee80211_set_shortpreamble(ic, ni);
 		ieee80211_set_shortslottime(ic,
 			ic->ic_curmode == IEEE80211_MODE_11A ||
 			(ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME));

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.3 2006/11/25 13:11:30 sephe Exp $
  */
 
 /*
@@ -462,9 +462,57 @@ ieee80211_set_shortslottime(struct ieee80211com *ic, int onoff)
 		ic->ic_flags |= IEEE80211_F_SHSLOT;
 	else
 		ic->ic_flags &= ~IEEE80211_F_SHSLOT;
-	/* notify driver */
+
+	/* Notify driver */
 	if (ic->ic_updateslot != NULL)
 		ic->ic_updateslot(ic->ic_ifp);
+}
+
+/*
+ * Set the short preamble state and notify driver.
+ */
+void
+ieee80211_set_shortpreamble(struct ieee80211com *ic,
+			    const struct ieee80211_node *ni)
+{
+	int shpreamble = 0;
+
+	switch (ic->ic_curmode) {
+	case IEEE80211_MODE_11A:
+		/* Always turn on short preamble, though it is not used */
+		shpreamble = 1;
+		break;
+	case IEEE80211_MODE_11G:
+		if (ni->ni_erp & IEEE80211_ERP_LONG_PREAMBLE) {
+			/*
+			 * According to IEEE Std 802.11g-2003 subclause
+			 * 7.3.2.13, page 10:
+			 * Short preamble should not be used, if barker
+			 * preamble mode bit is 1 in ERP informarion,
+			 * _regardless_ of the short preamble bit in
+			 * capability information.
+			 */
+			break;
+		}
+		/* FALL THROUGH */
+	default:
+		if ((ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_PREAMBLE) &&
+		    (ic->ic_caps & IEEE80211_C_SHPREAMBLE))
+			shpreamble = 1;
+		break;
+	}
+
+	if (shpreamble) {
+		ic->ic_flags |= IEEE80211_F_SHPREAMBLE;
+		ic->ic_flags &= ~IEEE80211_F_USEBARKER;
+	} else {
+		ic->ic_flags &= ~IEEE80211_F_SHPREAMBLE;
+		ic->ic_flags |= IEEE80211_F_USEBARKER;
+	}
+
+	/* Notify driver */
+	if (ic->ic_update_preamble != NULL)
+		ic->ic_update_preamble(ic->ic_ifp);
 }
 
 /*
