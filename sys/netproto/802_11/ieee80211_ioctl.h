@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.4 2005/12/22 19:18:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.5 2006/11/25 05:54:22 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.7 2006/09/02 17:09:26 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.6 2006/11/25 07:03:45 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -182,7 +182,10 @@ struct ieee80211_stats {
 	uint32_t	is_ff_decap;		/* fast frames decap'd */
 	uint32_t	is_ff_encap;		/* fast frames encap'd for tx */
 	uint32_t	is_rx_badbintval;	/* rx frame w/ bogus bintval */
-	uint32_t	is_spare[9];
+	uint32_t	is_rx_demicfail;	/* rx demic failed */
+	uint32_t	is_rx_defrag;		/* rx defragmentation failed */
+	uint32_t	is_rx_mgmt;		/* rx management frames */
+	uint32_t	is_spare[6];
 };
 
 /*

@@ -29,8 +29,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.13 2006/08/10 06:21:50 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.6 2006/11/21 12:07:21 sephe Exp $
+ * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.7 2006/11/25 07:03:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -417,6 +417,7 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 		if (key != NULL && !ieee80211_crypto_demic(ic, key, m, 0)) {
 			IEEE80211_DISCARD_MAC(ic, IEEE80211_MSG_INPUT,
 			    ni->ni_macaddr, "data", "%s", "demic error");
+			ic->ic_stats.is_rx_demicfail++;
 			IEEE80211_NODE_STAT(ni, rx_demicfail);
 			goto out;
 		}
@@ -474,14 +475,11 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 				goto out;
 			}
 		}
-		ifp->if_ipackets++;
-		IEEE80211_NODE_STAT(ni, rx_data);
-		IEEE80211_NODE_STAT_ADD(ni, rx_bytes, m->m_pkthdr.len);
-
 		ieee80211_deliver_data(ic, ni, m);
 		return IEEE80211_FC0_TYPE_DATA;
 
 	case IEEE80211_FC0_TYPE_MGT:
+		ic->ic_stats.is_rx_mgmt++;
 		IEEE80211_NODE_STAT(ni, rx_mgmt);
 		if (dir != IEEE80211_FC1_DIR_NODS) {
 			IEEE80211_DISCARD(ic, IEEE80211_MSG_INPUT,
@@ -637,6 +635,7 @@ ieee80211_defrag(struct ieee80211com *ic, struct ieee80211_node *ni,
 
  	if (mfrag == NULL) {
 		if (fragno != 0) {		/* !first fragment, discard */
+			ic->ic_stats.is_rx_defrag++;
 			IEEE80211_NODE_STAT(ni, rx_defrag);
 			m_freem(m);
 			return NULL;
@@ -666,12 +665,25 @@ ieee80211_deliver_data(struct ieee80211com *ic,
 	struct ether_header *eh = mtod(m, struct ether_header *);
 	struct ifnet *ifp = ic->ic_ifp;
 
+	/*
+	 * Do accounting.
+	 */
+	ifp->if_ipackets++;
+	IEEE80211_NODE_STAT(ni, rx_data);
+	IEEE80211_NODE_STAT_ADD(ni, rx_bytes, m->m_pkthdr.len);
+	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		m->m_flags |= M_MCAST;	/* XXX M_BCAST? */
+		IEEE80211_NODE_STAT(ni, rx_mcast);
+	} else {
+		IEEE80211_NODE_STAT(ni, rx_ucast);
+	}
+
 	/* perform as a bridge within the AP */
 	if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
 	    (ic->ic_flags & IEEE80211_F_NOBRIDGE) == 0) {
 		struct mbuf *m1 = NULL;
 
-		if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		if (m->m_flags & M_MCAST) {
 			m1 = m_dup(m, MB_DONTWAIT);
 			if (m1 == NULL)
 				ifp->if_oerrors++;
@@ -1736,7 +1748,7 @@ ieee80211_deliver_l2uf(struct ieee80211_node *ni)
 	struct mbuf *m;
 	struct l2_update_frame *l2uf;
 	struct ether_header *eh;
-	
+
 	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		IEEE80211_NOTE(ic, IEEE80211_MSG_ASSOC, ni,
@@ -1751,14 +1763,14 @@ ieee80211_deliver_l2uf(struct ieee80211_node *ni)
 	/* src: associated STA */
 	IEEE80211_ADDR_COPY(eh->ether_shost, ni->ni_macaddr);
 	eh->ether_type = htons(sizeof(*l2uf) - sizeof(*eh));
-	
+
 	l2uf->dsap = 0;
 	l2uf->ssap = 0;
 	l2uf->control = 0xf5;
 	l2uf->xid[0] = 0x81;
 	l2uf->xid[1] = 0x80;
 	l2uf->xid[2] = 0x00;
-	
+
 	m->m_pkthdr.len = m->m_len = sizeof(*l2uf);
 	m->m_pkthdr.rcvif = ifp;
 	ieee80211_deliver_data(ic, ni, m);
