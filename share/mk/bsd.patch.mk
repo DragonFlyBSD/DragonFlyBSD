@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.patch.mk,v 1.4 2006/11/25 15:46:03 pavalos Exp $
+# $DragonFly: src/share/mk/bsd.patch.mk,v 1.5 2006/11/25 17:23:21 pavalos Exp $
 #
 # The include file <bsd.patch.mk> handles patching of files and sources.
 #
@@ -42,6 +42,9 @@ CLEANFILES?=
 
 .for _PSRC in ${SRCS:M*.no_obj.patch}
 .for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
+.if !exists(${_PSRC})
+.error non-existent patch file ${_PSRC}
+.endif
 
 ${_PC}: _PATCHFILE ${CONTRIBDIR}/${_PC} ${_PSRC}
 
@@ -55,6 +58,9 @@ CLEANDIRS+=	${_PC:C|[^/]*$||}
 
 .for _PSRC in ${SRCS:N*.no_obj.patch:M*.patch}
 .for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
+.if !exists(${_PSRC})
+.error non-existent patch file ${_PSRC}
+.endif
 
 ${_PC}: _PATCHFILE ${CONTRIBDIR}/${_PC} ${_PSRC}
 
