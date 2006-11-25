@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.4 2005/12/22 19:18:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.4 2006/11/25 05:04:23 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -43,7 +43,7 @@
 #include <netproto/802_11/ieee80211_crypto.h>
 
 /*
- * Per/node (station) statistics available when operating as an AP.
+ * Per/node (station) statistics.
  */
 struct ieee80211_nodestats {
 	uint32_t	ns_rx_data;		/* rx data frames */
@@ -309,7 +309,7 @@ struct ieee80211req_sta_info {
 	uint16_t	isi_flags;		/* channel flags */
 	uint16_t	isi_state;		/* state flags */
 	uint8_t		isi_authmode;		/* authentication algorithm */
-	uint8_t		isi_rssi;
+	uint8_t		isi_rssi;		/* receive signal strength */
 	uint8_t		isi_capinfo;		/* capabilities */
 	uint8_t		isi_erp;		/* ERP element */
 	uint8_t		isi_macaddr[IEEE80211_ADDR_LEN];
@@ -317,6 +317,7 @@ struct ieee80211req_sta_info {
 	       				/* negotiated rates */
 	uint8_t		isi_rates[IEEE80211_RATE_MAXSIZE];
 	uint8_t		isi_txrate;		/* index to isi_rates[] */
+	int8_t		isi_noise;		/* noise floor */
 	uint16_t	isi_ie_len;		/* IE length */
 	uint16_t	isi_associd;		/* assoc response */
 	uint16_t	isi_txpower;		/* current tx power */
@@ -431,7 +432,6 @@ struct ieee80211req {
 #define	IEEE80211_IOC_CHANINFO		42	/* channel info list */
 #define	IEEE80211_IOC_TXPOWMAX		43	/* max tx power for channel */
 #define	IEEE80211_IOC_STA_TXPOW		44	/* per-station tx power limit */
-#define	IEEE80211_IOC_STA_INFO		45	/* station/neighbor info */
 #define	IEEE80211_IOC_WME_CWMIN		46	/* WME: ECWmin */
 #define	IEEE80211_IOC_WME_CWMAX		47	/* WME: ECWmax */
 #define	IEEE80211_IOC_WME_AIFS		48	/* WME: AIFSN */
@@ -446,6 +446,7 @@ struct ieee80211req {
 #define	IEEE80211_IOC_MCAST_RATE	72	/* tx rate for mcast frames */
 #define	IEEE80211_IOC_FRAGTHRESHOLD	73	/* tx fragmentation threshold */
 #define	IEEE80211_IOC_BURST		75	/* packet bursting */
+#define IEEE80211_IOC_STA_INFO		78	/* station/neighbor info */
 #define IEEE80211_IOC_RATECTL		255
 
 /*
