@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_usr.c,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_usr.c,v 1.3 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_usr.c,v 1.4 2006/11/26 19:12:25 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -296,8 +296,7 @@ smb_usr_t2request(struct smb_share *ssp, struct smbioc_t2rq *dp,
 	struct mdchain *mdp;
 	int error, len;
 
-	if (dp->ioc_tparamcnt > 0xffff || dp->ioc_tdatacnt > 0xffff ||
-	    dp->ioc_setupcnt > 3)
+	if (dp->ioc_setupcnt > 3)
 		return EINVAL;
 	error = smb_t2_init(t2p, SSTOCP(ssp), dp->ioc_setup[0], scred);
 	if (error)
