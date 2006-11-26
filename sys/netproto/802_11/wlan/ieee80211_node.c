@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.8 2006/11/25 08:56:29 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.9 2006/11/26 02:12:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2011,8 +2011,7 @@ ieee80211_node_join_11g(struct ieee80211com *ic, struct ieee80211_node *ni)
 			IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 			    "[%6D] station needs long preamble\n",
 			    ni->ni_macaddr, ":");
-			ic->ic_flags |= IEEE80211_F_USEBARKER;
-			ic->ic_flags &= ~IEEE80211_F_SHPREAMBLE;
+			ieee80211_set_shortpreamble(ic, 0);
 		}
 		if (ic->ic_nonerpsta == 1)
 			ic->ic_flags_ext |= IEEE80211_FEXT_ERPUPDATE;
@@ -2131,8 +2130,7 @@ ieee80211_node_leave_11g(struct ieee80211com *ic, struct ieee80211_node *ni)
 				IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 				    "%s: re-enable use of short preamble\n",
 				    __func__);
-				ic->ic_flags |= IEEE80211_F_SHPREAMBLE;
-				ic->ic_flags &= ~IEEE80211_F_USEBARKER;
+				ieee80211_set_shortpreamble(ic, 1);
 			}
 			ic->ic_flags_ext |= IEEE80211_FEXT_ERPUPDATE;
 		}
@@ -2336,4 +2334,39 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 		kfree(nt->nt_keyixmap, M_80211_NODE);
 		nt->nt_keyixmap = NULL;
 	}
+}
+
+/*
+ * Update short preamble state
+ */
+void
+ieee80211_update_shpreamble(struct ieee80211com *ic,
+			    const struct ieee80211_node *ni)
+{
+	int shpreamble = 0;
+
+	switch (ic->ic_curmode) {
+	case IEEE80211_MODE_11A:
+		shpreamble = 1;
+		break;
+	case IEEE80211_MODE_11G:
+		if (ni->ni_erp & IEEE80211_ERP_LONG_PREAMBLE) {
+			/*
+			 * According to IEEE Std 802.11g-2003 subclause
+			 * 7.3.2.13, page 10:
+			 * Short preamble should not be used, if barker
+			 * preamble mode bit is 1 in ERP informarion,
+			 * _regardless_ of the short preamble bit in
+			 * capability information.
+			 */
+			break;
+		}
+		/* FALL THROUGH */
+	default:
+		if ((ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_PREAMBLE) &&
+		    (ic->ic_caps & IEEE80211_C_SHPREAMBLE))
+			shpreamble = 1;
+		break;
+	}
+	ieee80211_set_shortpreamble(ic, shpreamble);
 }

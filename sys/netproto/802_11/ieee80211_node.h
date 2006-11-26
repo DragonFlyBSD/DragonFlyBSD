@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.h,v 1.17.2.5 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.4 2006/11/26 02:12:34 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_NODE_H_
 #define _NET80211_IEEE80211_NODE_H_
@@ -197,6 +197,8 @@ void	ieee80211_end_scan(struct ieee80211com *);
 int	ieee80211_ibss_merge(struct ieee80211_node *);
 int	ieee80211_sta_join(struct ieee80211com *, struct ieee80211_node *);
 void	ieee80211_sta_leave(struct ieee80211com *, struct ieee80211_node *);
+void	ieee80211_update_shpreamble(struct ieee80211com *,
+		const struct ieee80211_node *);
 
 /*
  * Table of ieee80211_node instances.  Each ieee80211com

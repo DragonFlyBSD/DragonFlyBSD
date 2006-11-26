@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.8 2006/11/25 13:11:30 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.9 2006/11/26 02:12:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1963,6 +1963,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		    ni->ni_associd != 0 &&
 		    ((ic->ic_flags & IEEE80211_F_SCAN) == 0 ||
 		     IEEE80211_ADDR_EQ(wh->i_addr2, ni->ni_bssid))) {
+			int update_shpreamble = 0;
+
 			/* record tsf of last beacon */
 			memcpy(ni->ni_tstamp.data, scan.tstamp,
 				sizeof(ni->ni_tstamp));
@@ -1978,6 +1980,10 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 					ic->ic_flags |= IEEE80211_F_USEPROT;
 				else
 					ic->ic_flags &= ~IEEE80211_F_USEPROT;
+
+				if ((ni->ni_erp ^ scan.erp) & IEEE80211_ERP_LONG_PREAMBLE)
+					update_shpreamble = 1;
+
 				ni->ni_erp = scan.erp;
 				/* XXX statistic */
 			}
@@ -1994,12 +2000,17 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 					    ic->ic_curmode == IEEE80211_MODE_11A ||
 					    (scan.capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME));
 				}
+
+				if ((ni->ni_capinfo ^ scan.capinfo) &
+				    IEEE80211_CAPINFO_SHORT_PREAMBLE)
+					update_shpreamble = 1;
+
 				ni->ni_capinfo = scan.capinfo;
 				/* XXX statistic */
 			}
 
-			/* NOTE: after ni_capinfo and ni_erp updates */
-			ieee80211_set_shortpreamble(ic, ni);
+			if (update_shpreamble)
+				ieee80211_update_shpreamble(ic, ni);
 
 			if (scan.wme != NULL &&
 			    (ni->ni_flags & IEEE80211_NODE_QOS) &&
@@ -2512,7 +2523,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		 *
 		 * XXX may need different/additional driver callbacks?
 		 */
-		ieee80211_set_shortpreamble(ic, ni);
+		ieee80211_update_shpreamble(ic, ni);
 		ieee80211_set_shortslottime(ic,
 			ic->ic_curmode == IEEE80211_MODE_11A ||
 			(ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME));

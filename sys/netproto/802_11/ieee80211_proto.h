@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.h,v 1.11.2.5 2006/02/12 19:00:39 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.3 2006/11/25 13:11:30 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.4 2006/11/26 02:12:34 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -82,9 +82,8 @@ void	ieee80211_pwrsave(struct ieee80211com *, struct ieee80211_node *,
 		struct mbuf *);
 
 void	ieee80211_reset_erp(struct ieee80211com *);
-void	ieee80211_set_shortslottime(struct ieee80211com *, int onoff);
-void	ieee80211_set_shortpreamble(struct ieee80211com *,
-		const struct ieee80211_node *);
+void	ieee80211_set_shortslottime(struct ieee80211com *, int);
+void	ieee80211_set_shortpreamble(struct ieee80211com *, int);
 int	ieee80211_iserp_rateset(struct ieee80211com *,
 		struct ieee80211_rateset *);
 void	ieee80211_set11gbasicrates(struct ieee80211_rateset *,
