@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.57 2006/10/28 12:28:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.58 2006/11/26 07:30:06 sephe Exp $
  *
  */
 
@@ -2609,8 +2609,7 @@ bge_ifmedia_upd(struct ifnet *ifp)
 	sc->bge_link = 0;
 	if (mii->mii_instance) {
 		struct mii_softc *miisc;
-		for (miisc = LIST_FIRST(&mii->mii_phys); miisc != NULL;
-		    miisc = LIST_NEXT(miisc, mii_list))
+		LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 			mii_phy_reset(miisc);
 	}
 	mii_mediachg(mii);
