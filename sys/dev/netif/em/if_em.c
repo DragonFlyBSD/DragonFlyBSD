@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.49 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.50 2006/11/27 13:05:15 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2940,7 +2940,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 					m_freem(adapter->fmp);
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
-				break;
+				goto skip;
 			}
 
 			/* Assign correct length to the current fragment */
@@ -2990,11 +2990,9 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 			adapter->lmp = NULL;
 		}
 
+skip:
 		/* Zero out the receive descriptors status  */
 		current_desc->status = 0;
-
-		/* Advance the E1000's Receive Queue #0  "Tail Pointer". */
-		E1000_WRITE_REG(&adapter->hw, RDT, i);
 
 		/* Advance our pointers to the next descriptor */
 		if (++i == adapter->num_rx_desc) {
@@ -3009,6 +3007,12 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 			BUS_DMASYNC_PREWRITE);
 
 	adapter->next_rx_desc_to_check = i;
+
+	/* Advance the E1000's Receive Queue #0  "Tail Pointer". */
+	if (--i < 0)
+		i = adapter->num_rx_desc - 1;
+
+	E1000_WRITE_REG(&adapter->hw, RDT, i);
 }
 
 /*********************************************************************
