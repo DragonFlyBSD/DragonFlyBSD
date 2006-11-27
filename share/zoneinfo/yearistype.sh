@@ -1,9 +1,11 @@
 #! /bin/sh
 
 # $FreeBSD: src/share/zoneinfo/yearistype.sh,v 1.1.2.3.8.1 2000/10/25 19:44:09 wollman Exp $
-# $DragonFly: src/share/zoneinfo/yearistype.sh,v 1.3 2005/07/13 21:08:07 swildner Exp $
+# $DragonFly: src/share/zoneinfo/yearistype.sh,v 1.3.4.1 2006/11/27 14:58:25 swildner Exp $
+: 'This file is in the public domain, so clarified as of'
+: '2006-07-17 by Arthur David Olson.'
 
-: '@(#)yearistype.sh	7.8'
+: '@(#)yearistype.sh	8.2'
 
 case $#-$1 in
 	2-|2-0*|2-*[!0-9]*)
