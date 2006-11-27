@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.8 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.9 2006/11/27 13:56:30 sephe Exp $
  */
 
 /*
@@ -1931,7 +1931,7 @@ do {						\
 	INIT_TMPLT(tim);
 	INIT_TMPLT(probe_resp);
 
-#undef CALL_SET_TMPLT
+#undef INIT_TMPLT
 	return 0;
 }
 
