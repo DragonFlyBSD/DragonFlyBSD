@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_tkip.c,v 1.9.2.2 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.1.2.1 2006/11/28 15:01:06 sephe Exp $
  */
 
 /*
@@ -178,7 +178,7 @@ tkip_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV, KeyID, and ExtIV.
 	 */
-	M_PREPEND(m, tkip.ic_header, M_NOWAIT);
+	M_PREPEND(m, tkip.ic_header, MB_DONTWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);
