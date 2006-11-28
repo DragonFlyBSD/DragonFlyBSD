@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.4 2006/11/25 08:56:29 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.5 2006/11/28 14:44:03 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -219,7 +219,7 @@ ieee80211_send_nulldata(struct ieee80211_node *ni)
 	struct mbuf *m;
 	struct ieee80211_frame *wh;
 
-	MGETHDR(m, M_NOWAIT, MT_HEADER);
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m == NULL) {
 		/* XXX debug msg */
 		ic->ic_stats.is_tx_nobuf++;
@@ -412,7 +412,7 @@ ieee80211_mbuf_adjust(struct ieee80211com *ic, int hdrsize,
 	 */
 	/* XXX check trailing space and copy instead? */
 	if (M_LEADINGSPACE(m) < needed_space - TO_BE_RECLAIMED) {
-		struct mbuf *n = m_gethdr(M_NOWAIT, m->m_type);
+		struct mbuf *n = m_gethdr(MB_DONTWAIT, m->m_type);
 		if (n == NULL) {
 			IEEE80211_DPRINTF(ic, IEEE80211_MSG_OUTPUT,
 			    "%s: cannot expand storage\n", __func__);

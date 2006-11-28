@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_ccmp.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.2 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.3 2006/11/28 14:44:03 sephe Exp $
  */
 
 /*
@@ -154,7 +154,7 @@ ccmp_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV, KeyID, and ExtIV.
 	 */
-	M_PREPEND(m, ccmp.ic_header, M_NOWAIT);
+	M_PREPEND(m, ccmp.ic_header, MB_DONTWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);

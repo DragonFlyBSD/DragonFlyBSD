@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.5 2006/11/13 12:27:23 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.6 2006/11/28 14:44:03 sephe Exp $
  */
 
 /*
@@ -180,7 +180,7 @@ ieee80211_getmgtframe(uint8_t **frm, u_int pktlen)
 	len = roundup(sizeof(struct ieee80211_frame) + pktlen, 4);
 	KASSERT(len <= MCLBYTES, ("802.11 mgt frame too large: %u", len));
 	if (len < MINCLSIZE) {
-		m = m_gethdr(M_NOWAIT, MT_HEADER);
+		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 		/*
 		 * Align the data in case additional headers are added.
 		 * This should only happen when a WEP header is added
@@ -190,7 +190,7 @@ ieee80211_getmgtframe(uint8_t **frm, u_int pktlen)
 		if (m != NULL)
 			MH_ALIGN(m, len);
 	} else
-		m = m_getcl(M_NOWAIT, MT_HEADER, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_HEADER, M_PKTHDR);
 	if (m != NULL) {
 		m->m_data += sizeof(struct ieee80211_frame);
 		*frm = m->m_data;

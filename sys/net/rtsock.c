@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.35 2006/10/23 09:27:37 swildner Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.36 2006/11/28 14:44:03 sephe Exp $
  */
 
 #include "opt_sctp.h"
@@ -1100,7 +1100,7 @@ rt_ieee80211msg(struct ifnet *ifp, int what, void *data, size_t data_len)
 	 * NB: we assume m is a single mbuf.
 	 */
 	if (data_len > M_TRAILINGSPACE(m)) {
-		struct mbuf *n = m_get(M_NOWAIT, MT_DATA);
+		struct mbuf *n = m_get(MB_DONTWAIT, MT_DATA);
 		if (n == NULL) {
 			m_freem(m);
 			return;
