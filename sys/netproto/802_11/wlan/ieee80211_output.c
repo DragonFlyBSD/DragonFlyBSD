@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.6 2006/11/28 15:17:36 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.7 2006/11/29 15:12:10 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1272,7 +1272,9 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		break;
 
 	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ: {
+		const struct ieee80211_rateset *rs;
+
 		/*
 		 * asreq frame format
 		 *	[2] capability information
@@ -1324,8 +1326,11 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		}
 
 		frm = ieee80211_add_ssid(frm, ni->ni_essid, ni->ni_esslen);
-		frm = ieee80211_add_rates(frm, &ni->ni_rates);
-		frm = ieee80211_add_xrates(frm, &ni->ni_rates);
+
+		rs = &ic->ic_sup_rates[ieee80211_chan2mode(ic, ni->ni_chan)];
+		frm = ieee80211_add_rates(frm, rs);
+		frm = ieee80211_add_xrates(frm, rs);
+
 		if ((ic->ic_flags & IEEE80211_F_WME) && ni->ni_wme_ie != NULL)
 			frm = ieee80211_add_wme_info(frm, &ic->ic_wme);
 		if (ic->ic_opt_ie != NULL) {
@@ -1336,6 +1341,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 
 		timer = IEEE80211_TRANS_WAIT;
 		break;
+	}
 
 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
