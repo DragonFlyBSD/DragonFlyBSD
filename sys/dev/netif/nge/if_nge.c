@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.39 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.40 2006/11/30 01:38:54 sephe Exp $
  */
 
 /*
@@ -2025,7 +2025,7 @@ nge_stop(struct nge_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ifmedia_entry *ifm;
 	struct mii_data *mii;
-	int i, itmp, mtmp;
+	int i, itmp, mtmp, dtmp;
 
 	ifp->if_timer = 0;
 	if (sc->nge_tbi)
@@ -2053,13 +2053,16 @@ nge_stop(struct nge_softc *sc)
 		ifm = sc->nge_ifmedia.ifm_cur;
 	else
 		ifm = mii->mii_media.ifm_cur;
-	
+
 	mtmp = ifm->ifm_media;
+	dtmp = ifm->ifm_data;
 	ifm->ifm_media = IFM_ETHER|IFM_NONE;
-	
+	ifm->ifm_data = MII_MEDIA_NONE;
+
 	if (!sc->nge_tbi)
 		mii_mediachg(mii);
 	ifm->ifm_media = mtmp;
+	ifm->ifm_data = dtmp;
 	ifp->if_flags = itmp;
 
 	sc->nge_link = 0;
