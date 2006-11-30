@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Guides" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/docs/guides.shtml,v 1.2 2006/11/17 20:33:12 justin Exp $ -->
+<!-- $DragonFly: site/data/docs/guides.shtml,v 1.3 2006/11/30 03:54:30 justin Exp $ -->
 
 
 <table width="100%" cellpadding="2" cellspacing="0" border="1">
@@ -32,7 +32,7 @@
 
 <tr>
     <td>DragonFly for experienced BSD users</td>
-    <td><a href="http://leaf.dragonflybsd.org/~justin/new-bsdusers/article.html">PDF</a></td>
+    <td><a href="http://leaf.dragonflybsd.org/~justin/new-bsdusers/article.html">HTML</a></td>
     <td align="right">14 August 2005</td>
 </tr>
 
