@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.9 2006/11/27 13:56:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.10 2006/12/01 07:37:18 sephe Exp $
  */
 
 /*
@@ -131,6 +131,7 @@ static int	acx_probe(device_t);
 static int	acx_attach(device_t);
 static int	acx_detach(device_t);
 static int	acx_shutdown(device_t);
+static int	acx_media_change(struct ifnet *);
 
 static void	acx_init(void *);
 static int	acx_stop(struct acx_softc *);
@@ -190,9 +191,9 @@ static int	acx_newstate(struct ieee80211com *, enum ieee80211_state, int);
 static int	acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS);
 
 const struct ieee80211_rateset	acx_rates_11b =
-	{ 4, { 2, 4, 11, 22 } };
+	{ 5, { 2, 4, 11, 22, 44 } };
 const struct ieee80211_rateset	acx_rates_11g =
-	{ 12, { 2, 4, 11, 22, 12, 18, 24, 36, 48, 72, 96, 108 } };
+	{ 13, { 2, 4, 11, 22, 44, 12, 18, 24, 36, 48, 72, 96, 108 } };
 
 static int	acx_chanscan_rate = 5;	/* 5/second */
 int		acx_beacon_intvl = 100;	/* 100 TU */
@@ -411,6 +412,7 @@ acx_attach(device_t dev)
 		       IEEE80211_C_HOSTAP |	/* Host AP modes */
 		       IEEE80211_C_IBSS |	/* IBSS modes */
 		       IEEE80211_C_SHPREAMBLE;	/* Short preamble */
+	ic->ic_caps_ext = IEEE80211_CEXT_PBCC;	/* PBCC modulation */
 
 	/* Get station id */
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i) {
@@ -424,7 +426,7 @@ acx_attach(device_t dev)
 	sc->sc_newstate = ic->ic_newstate;
 	ic->ic_newstate = acx_newstate;
 
-	ieee80211_media_init(ic, ieee80211_media_change, ieee80211_media_status);
+	ieee80211_media_init(ic, acx_media_change, ieee80211_media_status);
 
 	sc->sc_long_retry_limit = 4;
 	sc->sc_msdu_lifetime = 4096;
@@ -769,6 +771,7 @@ acx_stop(struct acx_softc *sc)
 	/* Clear RX host descriptors */
 	bzero(rd->rx_ring, ACX_RX_RING_SIZE);
 
+	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ieee80211_new_state(&sc->sc_ic, IEEE80211_S_INIT, -1);
@@ -1185,16 +1188,31 @@ acx_start(struct ifnet *ifp)
 	if (bd->tx_used_count == ACX_TX_DESC_CNT)
 		ifp->if_flags |= IFF_OACTIVE;
 
-	if (trans && ifp->if_timer == 0)
-		ifp->if_timer = 5;
+	if (trans && sc->sc_tx_timer == 0)
+		sc->sc_tx_timer = 5;
+	ifp->if_timer = 1;
 }
 
 static void
 acx_watchdog(struct ifnet *ifp)
 {
-	if_printf(ifp, "watchdog timeout\n");
-	acx_txeof(ifp->if_softc);
-	/* TODO */
+	struct acx_softc *sc = ifp->if_softc;
+
+	ifp->if_timer = 0;
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		return;
+
+	if (sc->sc_tx_timer) {
+		if (--sc->sc_tx_timer == 0) {
+			if_printf(ifp, "watchdog timeout\n");
+			ifp->if_oerrors++;
+			acx_txeof(ifp->if_softc);
+		} else {
+			ifp->if_timer = 1;
+		}
+	}
+	ieee80211_watchdog(&sc->sc_ic);
 }
 
 static void
@@ -1293,7 +1311,7 @@ acx_txeof(struct acx_softc *sc)
 	}
 	bd->tx_used_start = idx;
 
-	ifp->if_timer = bd->tx_used_count == 0 ? 0 : 5;
+	sc->sc_tx_timer = bd->tx_used_count == 0 ? 0 : 5;
 
 	if (bd->tx_used_count != ACX_TX_DESC_CNT) {
 		ifp->if_flags &= ~IFF_OACTIVE;
@@ -1814,9 +1832,6 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	case IEEE80211_S_AUTH:
 		if (ic->ic_opmode == IEEE80211_M_STA) {
 			struct ieee80211_node *ni;
-#ifdef ACX_DEBUG
-			int i;
-#endif
 
 			ni = ic->ic_bss;
 
@@ -1832,14 +1847,6 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 					 "change from assoc to run\n"));
 				ic->ic_state = IEEE80211_S_RUN;
 			}
-
-#ifdef ACX_DEBUG
-			if_printf(&ic->ic_if, "AP rates: ");
-			for (i = 0; i < ni->ni_rates.rs_nrates; ++i)
-				printf("%d ", ni->ni_rates.rs_rates[i]);
-			ieee80211_print_essid(ni->ni_essid, ni->ni_esslen);
-			printf(" %6D\n", ni->ni_bssid, ":");
-#endif
 		}
 		break;
 	case IEEE80211_S_RUN:
@@ -2483,4 +2490,18 @@ acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS)
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
+}
+
+static int
+acx_media_change(struct ifnet *ifp)
+{
+	int error;
+
+	error = ieee80211_media_change(ifp);
+	if (error != ENETRESET)
+		return error;
+
+	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
+		acx_init(ifp->if_softc);
+	return 0;
 }

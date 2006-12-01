@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.6 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.7 2006/12/01 07:37:18 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -84,8 +84,7 @@
 #define ACX111_RATE_108		0x1000
 #define ACX111_RATE(rate)	[rate] = ACX111_RATE_##rate
 
-/* XXX skip ACX111_RATE_44 */
-#define ACX111_RATE_ALL		0x1eff
+#define ACX111_RATE_ALL		0x1fff
 
 #define ACX111_TXPOWER		15
 #define ACX111_GPIO_POWER_LED	0x0040
@@ -269,7 +268,7 @@ static const uint16_t acx111_reg[ACXREG_MAX] = {
 };
 
 /* XXX */
-static uint16_t	acx111_rate_map[109] = {
+static const uint16_t	acx111_rate_map[109] = {
 	ACX111_RATE(2),
 	ACX111_RATE(4),
 	ACX111_RATE(11),
@@ -278,6 +277,7 @@ static uint16_t	acx111_rate_map[109] = {
 	ACX111_RATE(18),
 	ACX111_RATE(24),
 	ACX111_RATE(36),
+	ACX111_RATE(44),
 	ACX111_RATE(48),
 	ACX111_RATE(72),
 	ACX111_RATE(96),

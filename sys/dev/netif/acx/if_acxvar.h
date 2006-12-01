@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.5 2006/09/01 15:13:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.6 2006/12/01 07:37:18 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -321,6 +321,7 @@ struct acx_softc {
 
 	struct callout		sc_chanscan_timer;
 	uint32_t		sc_flags;	/* see ACX_FLAG_ */
+	int			sc_tx_timer;
 
 	struct acx_firmware	sc_firmware;
 	uint32_t		sc_firmware_ver;
