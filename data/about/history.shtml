@@ -1,6 +1,6 @@
 <!--#set var="title" value="The History of DragonFly" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/about/history.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/about/history.shtml,v 1.2 2006/12/01 03:06:32 justin Exp $ -->
 
 
 
@@ -19,11 +19,11 @@ been made and changes from other BSDs have been brought in.
 </p>
 
 <p>
-Further information on the project <a href="/docs/goals.cgi">goals</a> 
-and <a href="/status/diary.cgi">status</a> are available on 
+Further information on the project <a href="/docs/goals.shtml">goals</a> 
+and <a href="/status/diary.shtml">status</a> are available on 
 this website, and discussion of the project is possible on a variety of 
-<a href="/community/news.cgi">newsgroups</a> and 
-<a href="/community/mail.cgi">mailing lists</a>.
+<a href="/community/news.shtml">newsgroups</a> and 
+<a href="/community/mail.shtml">mailing lists</a>.
 </p>
 
 
