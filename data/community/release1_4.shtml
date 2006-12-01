@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - January 2006 Release 1.4.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/release1_4.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/community/release1_4.shtml,v 1.2 2006/12/01 03:55:35 justin Exp $ -->
 
 
 <h1>Obtaining DragonFly 1.4.x for your system</h1>
@@ -63,7 +63,7 @@ See the 'Download Site' list below for a list of download locations.
 <TD>1.4.4</TD>
 <TD>23-Apr-2006</TD>
 <TD>RELEASE CD</TD>
-<TD><A HREF="errata1_4_4.cgi">Errata</A></TD>
+<TD><A HREF="errata1_4_4.shtml">Errata</A></TD>
 </TR>
 </TABLE>
 

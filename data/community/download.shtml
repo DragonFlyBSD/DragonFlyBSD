@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.2 2006/12/01 03:55:36 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -109,7 +109,7 @@ features often discussed on the mailing lists are typically not
 in release branches.
 </p>
 <p>
-The current release is <a href="release1_6.cgi">DragonFly 1.6.X-RELEASE</a>.
+The current release is <a href="release1_6.shtml">DragonFly 1.6.X-RELEASE</a>.
 </p>
 
 <p>

@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Reporting Bugs" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/status/bugs.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/status/bugs.shtml,v 1.2 2006/12/01 03:55:36 justin Exp $ -->
 
 
 <p>
@@ -28,7 +28,7 @@ issues can be discussed in public.
 Bug reports are archived permanently.  Please be <i>succinct</i> 
 but <i>detailed</i> when writing your report.  The best bug reports are 
 those that include patches, and fit with the 
-<a href="http://www.dragonflybsd.org/docs/goals.cgi">goals</a> of the project.
+<a href="http://www.dragonflybsd.org/docs/goals.shtml">goals</a> of the project.
 
 
 
