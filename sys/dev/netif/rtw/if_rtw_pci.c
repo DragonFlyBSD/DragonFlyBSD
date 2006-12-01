@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: if_rtw_pci.c,v 1.4 2005/12/04 17:44:02 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.3 2006/12/01 07:52:30 sephe Exp $
  */
 
 /*
@@ -253,6 +253,11 @@ rtw_pci_detach(device_t dev)
 static int
 rtw_pci_shutdown(device_t dev)
 {
-	rtw_stop(device_get_softc(dev), 1);
+	struct rtw_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	rtw_stop(sc, 1);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
