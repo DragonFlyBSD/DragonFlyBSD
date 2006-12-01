@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.8 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.9 2006/12/01 04:42:53 sephe Exp $
  */
 
 /*
@@ -988,6 +988,7 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 		{   4 | IFM_IEEE80211_11G, IFM_IEEE80211_DS2 },
 		{  11 | IFM_IEEE80211_11G, IFM_IEEE80211_DS5 },
 		{  22 | IFM_IEEE80211_11G, IFM_IEEE80211_DS11 },
+		{  44 | IFM_IEEE80211_11G, IFM_IEEE80211_DS22 },
 		{  12 | IFM_IEEE80211_11G, IFM_IEEE80211_OFDM6 },
 		{  18 | IFM_IEEE80211_11G, IFM_IEEE80211_OFDM9 },
 		{  24 | IFM_IEEE80211_11G, IFM_IEEE80211_OFDM12 },

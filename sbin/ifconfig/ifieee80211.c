@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.10 2006/08/10 06:09:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.15 2006/11/25 05:54:22 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.16 2006/12/01 04:42:53 sephe Exp $
  */
 
 /*-
@@ -1121,19 +1121,27 @@ list_keys(int s)
 "\15SWRETRY\16TXPMGT\17SHSLOT\20SHPREAMBLE\21MONITOR\22TKIPMIC\30WPA1" \
 "\31WPA2\32BURST\33WME"
 
+#define IEEE80211_CEXT_BITS	"\020\1PBCC"
+
 static void
 list_capabilities(int s)
 {
 	struct ieee80211req ireq;
-	u_int32_t caps;
+	uint32_t caps, caps_ext;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
-	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	memset(&ireq, 0, sizeof(ireq));
+	caps_ext = 0;
+
+	strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	ireq.i_data = &caps_ext;
+	ireq.i_len = sizeof(caps_ext);
 	ireq.i_type = IEEE80211_IOC_DRIVER_CAPS;
 	if (ioctl(s, SIOCG80211, &ireq) < 0)
 		errx(1, "unable to get driver capabilities");
-	caps = (((u_int16_t) ireq.i_val) << 16) | ((u_int16_t) ireq.i_len);
+	caps = (((uint16_t)ireq.i_val) << 16) | ((uint16_t)ireq.i_len);
 	printb(name, caps, IEEE80211_C_BITS);
+	if (caps_ext != 0)
+		printb(", ext", caps_ext, IEEE80211_CEXT_BITS);
 	putchar('\n');
 }
 

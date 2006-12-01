@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.15 2006/09/02 17:09:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.8 2006/11/25 05:54:22 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.9 2006/12/01 04:42:53 sephe Exp $
  */
 
 /*
@@ -1460,8 +1460,14 @@ ieee80211_ioctl_get80211(struct ieee80211com *ic, u_long cmd,
 		ireq->i_val = (ic->ic_flags & IEEE80211_F_COUNTERM) != 0;
 		break;
 	case IEEE80211_IOC_DRIVER_CAPS:
-		ireq->i_val = ic->ic_caps>>16;
-		ireq->i_len = ic->ic_caps&0xffff;
+		if (ireq->i_len >= sizeof(ic->ic_caps_ext)) {
+			error = copyout(&ic->ic_caps_ext, ireq->i_data,
+					sizeof(ic->ic_caps_ext));
+		}
+		if (error == 0) {
+			ireq->i_val = ic->ic_caps >> 16;
+			ireq->i_len = ic->ic_caps & 0xffff;
+		}
 		break;
 	case IEEE80211_IOC_WME:
 		ireq->i_val = (ic->ic_flags & IEEE80211_F_WME) != 0;

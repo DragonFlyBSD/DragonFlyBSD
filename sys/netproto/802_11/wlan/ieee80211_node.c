@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.9 2006/11/26 02:12:34 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.10 2006/12/01 04:42:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2060,6 +2060,21 @@ ieee80211_node_join(struct ieee80211com *ic, struct ieee80211_node *ni, int resp
 	    ic->ic_flags & IEEE80211_F_USEPROT ? ", protection" : "",
 	    ni->ni_flags & IEEE80211_NODE_QOS ? ", QoS" : ""
 	);
+
+#ifdef IEEE80211_DEBUG
+	if (ieee80211_msg(ic, IEEE80211_MSG_ASSOC | IEEE80211_MSG_DEBUG)) {
+		struct ieee80211_rateset *rs = &ni->ni_rates;
+		int i;
+
+		ieee80211_note(ic, "[%6D] rate set: ", ni->ni_macaddr, ":");
+		for (i = 0; i < rs->rs_nrates; ++i) {
+			printf("%d%s ", rs->rs_rates[i] & IEEE80211_RATE_VAL,
+			       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?
+			       "*" : "");
+		}
+		printf("\n");
+	}
+#endif
 
 	ieee80211_ratectl_newassoc(ni, newassoc);
 

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.7 2006/11/29 15:12:10 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.8 2006/12/01 04:42:53 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1080,9 +1080,12 @@ getcapinfo(struct ieee80211com *ic, struct ieee80211_channel *chan)
 		capinfo = 0;
 	if (ic->ic_flags & IEEE80211_F_PRIVACY)
 		capinfo |= IEEE80211_CAPINFO_PRIVACY;
-	if ((ic->ic_flags & IEEE80211_F_SHPREAMBLE) &&
-	    IEEE80211_IS_CHAN_2GHZ(chan))
-		capinfo |= IEEE80211_CAPINFO_SHORT_PREAMBLE;
+	if (IEEE80211_IS_CHAN_2GHZ(chan)) {
+		if (ic->ic_flags & IEEE80211_F_SHPREAMBLE)
+			capinfo |= IEEE80211_CAPINFO_SHORT_PREAMBLE;
+		if (ic->ic_caps_ext & IEEE80211_CEXT_PBCC)
+			capinfo |= IEEE80211_CAPINFO_PBCC;
+	}
 	if (ic->ic_flags & IEEE80211_F_SHSLOT)
 		capinfo |= IEEE80211_CAPINFO_SHORT_SLOTTIME;
 	return capinfo;
@@ -1306,11 +1309,14 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 			capinfo |= IEEE80211_CAPINFO_PRIVACY;
 		/*
 		 * NB: Some 11a AP's reject the request when
-		 *     short premable is set.
+		 *     short premable or PBCC modulation is set.
 		 */
-		if ((ic->ic_caps & IEEE80211_C_SHPREAMBLE) &&
-		    IEEE80211_IS_CHAN_2GHZ(ic->ic_curchan))
-			capinfo |= IEEE80211_CAPINFO_SHORT_PREAMBLE;
+		if (IEEE80211_IS_CHAN_2GHZ(ic->ic_curchan)) {
+			if (ic->ic_caps & IEEE80211_C_SHPREAMBLE)
+				capinfo |= IEEE80211_CAPINFO_SHORT_PREAMBLE;
+			if (ic->ic_caps_ext & IEEE80211_CEXT_PBCC)
+				capinfo |= IEEE80211_CAPINFO_PBCC;
+		}
 		if ((ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME) &&
 		    (ic->ic_caps & IEEE80211_C_SHSLOT))
 			capinfo |= IEEE80211_CAPINFO_SHORT_SLOTTIME;

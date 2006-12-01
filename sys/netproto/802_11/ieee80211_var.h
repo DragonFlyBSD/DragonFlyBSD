@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.7 2006/11/25 13:11:30 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.8 2006/12/01 04:42:53 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -122,6 +122,7 @@ struct ieee80211com {
 	uint32_t		ic_flags;	/* state flags */
 	uint32_t		ic_flags_ext;	/* extended state flags */
 	uint32_t		ic_caps;	/* capabilities */
+	uint32_t		ic_caps_ext;	/* extended capabilities */
 	uint16_t		ic_modecaps;	/* set of mode capabilities */
 	uint16_t		ic_curmode;	/* current mode */
 	enum ieee80211_phytype	ic_phytype;	/* XXX wrong for multi-mode */
@@ -294,6 +295,9 @@ struct ieee80211com {
 /* XXX protection/barker? */
 
 #define	IEEE80211_C_CRYPTO	0x0000002f	/* CAPABILITY: crypto alg's */
+
+/* ic_caps_ext */
+#define IEEE80211_CEXT_PBCC	0x00000001	/* CAPABILITY: PBCC modulation */
 
 void	ieee80211_ifattach(struct ieee80211com *);
 void	ieee80211_ifdetach(struct ieee80211com *);
