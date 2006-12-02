@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.26 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.27 2006/12/02 23:13:46 dillon Exp $
  */
 
 /*
@@ -94,15 +94,9 @@
 
 #define EASY_SCAN_FACTOR	8
 
-#define MSYNC_FLUSH_HARDSEQ	0x01
-#define MSYNC_FLUSH_SOFTSEQ	0x02
-
-static int msync_flush_flags = MSYNC_FLUSH_HARDSEQ | MSYNC_FLUSH_SOFTSEQ;
-SYSCTL_INT(_vm, OID_AUTO, msync_flush_flags,
-        CTLFLAG_RW, &msync_flush_flags, 0, "");
-
-static void	vm_object_qcollapse (vm_object_t object);
-static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration, int pagerflags);
+static void	vm_object_qcollapse(vm_object_t object);
+static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
+					     int pagerflags);
 
 /*
  *	Virtual memory objects maintain the actual data
@@ -151,7 +145,7 @@ void
 _vm_object_allocate(objtype_t type, vm_size_t size, vm_object_t object)
 {
 	int incr;
-	TAILQ_INIT(&object->memq);
+	RB_INIT(&object->rb_memq);
 	LIST_INIT(&object->shadow_head);
 
 	object->type = type;
@@ -387,11 +381,11 @@ doterm:
  *	The object must be locked.
  *	This routine may block.
  */
+static int vm_object_terminate_callback(vm_page_t p, void *data);
+
 void
 vm_object_terminate(vm_object_t object)
 {
-	vm_page_t p;
-
 	/*
 	 * Make sure no one uses us.
 	 */
@@ -436,19 +430,8 @@ vm_object_terminate(vm_object_t object)
 	 * remove them from the object. 
 	 */
 	crit_enter();
-	while ((p = TAILQ_FIRST(&object->memq)) != NULL) {
-		if (p->busy || (p->flags & PG_BUSY))
-			panic("vm_object_terminate: freeing busy page %p", p);
-		if (p->wire_count == 0) {
-			vm_page_busy(p);
-			vm_page_free(p);
-			mycpu->gd_cnt.v_pfree++;
-		} else {
-			vm_page_busy(p);
-			vm_page_remove(p);
-			vm_page_wakeup(p);
-		}
-	}
+	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+				vm_object_terminate_callback, NULL);
 	crit_exit();
 
 	/*
@@ -474,6 +457,23 @@ vm_object_terminate(vm_object_t object)
 	zfree(obj_zone, object);
 }
 
+static int
+vm_object_terminate_callback(vm_page_t p, void *data __unused)
+{
+	if (p->busy || (p->flags & PG_BUSY))
+		panic("vm_object_terminate: freeing busy page %p", p);
+	if (p->wire_count == 0) {
+		vm_page_busy(p);
+		vm_page_free(p);
+		mycpu->gd_cnt.v_pfree++;
+	} else {
+		vm_page_busy(p);
+		vm_page_remove(p);
+		vm_page_wakeup(p);
+	}
+	return(0);
+}
+
 /*
  *	vm_object_page_clean
  *
@@ -487,16 +487,16 @@ vm_object_terminate(vm_object_t object)
  *
  *	Odd semantics: if start == end, we clean everything.
  */
+static int vm_object_page_clean_pass1(struct vm_page *p, void *data);
+static int vm_object_page_clean_pass2(struct vm_page *p, void *data);
 
 void
 vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
-    int flags)
+		     int flags)
 {
-	vm_page_t p, np;
-	vm_offset_t tstart, tend;
-	vm_pindex_t pi;
+	struct rb_vm_page_scan_info info;
 	struct vnode *vp;
-	int clearobjflags;
+	int wholescan;
 	int pagerflags;
 	int curgeneration;
 
@@ -504,199 +504,135 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 		(object->flags & OBJ_MIGHTBEDIRTY) == 0)
 		return;
 
-	pagerflags = (flags & (OBJPC_SYNC | OBJPC_INVAL)) ? VM_PAGER_PUT_SYNC : VM_PAGER_CLUSTER_OK;
+	pagerflags = (flags & (OBJPC_SYNC | OBJPC_INVAL)) ? 
+			VM_PAGER_PUT_SYNC : VM_PAGER_CLUSTER_OK;
 	pagerflags |= (flags & OBJPC_INVAL) ? VM_PAGER_PUT_INVAL : 0;
 
 	vp = object->handle;
 
+	/*
+	 * Interlock other major object operations.  This allows us to 
+	 * temporarily clear OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY.
+	 */
+	crit_enter();
 	vm_object_set_flag(object, OBJ_CLEANING);
 
 	/*
 	 * Handle 'entire object' case
 	 */
-	tstart = start;
+	info.start_pindex = start;
 	if (end == 0) {
-		tend = object->size;
+		info.end_pindex = object->size - 1;
 	} else {
-		tend = end;
+		info.end_pindex = end - 1;
+	}
+	wholescan = (start == 0 && info.end_pindex == object->size - 1);
+	info.limit = flags;
+	info.pagerflags = pagerflags;
+	info.object = object;
+
+	/*
+	 * If cleaning the entire object do a pass to mark the pages read-only.
+	 * If everything worked out ok, clear OBJ_WRITEABLE and
+	 * OBJ_MIGHTBEDIRTY.
+	 */
+	if (wholescan) {
+		info.error = 0;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+					vm_object_page_clean_pass1, &info);
+		if (info.error == 0) {
+			vm_object_clear_flag(object,
+					     OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
+			if (object->type == OBJT_VNODE &&
+			    (vp = (struct vnode *)object->handle) != NULL) {
+				if (vp->v_flag & VOBJDIRTY) 
+					vclrflags(vp, VOBJDIRTY);
+			}
+		}
 	}
 
 	/*
-	 * If the caller is smart and only msync()s a range he knows is
-	 * dirty, we may be able to avoid an object scan.  This results in
-	 * a phenominal improvement in performance.  We cannot do this
-	 * as a matter of course because the object may be huge - e.g.
-	 * the size might be in the gigabytes or terrabytes.
+	 * Do a pass to clean all the dirty pages we find.
 	 */
-	if (msync_flush_flags & MSYNC_FLUSH_HARDSEQ) {
-		vm_offset_t tscan;
-		int scanlimit;
-		int scanreset;
-
-		scanreset = object->resident_page_count / EASY_SCAN_FACTOR;
-		if (scanreset < 16)
-			scanreset = 16;
-		pagerflags |= VM_PAGER_IGNORE_CLEANCHK;
-
-		scanlimit = scanreset;
-		tscan = tstart;
-
-		/*
-		 * spl protection is required despite the obj generation
-		 * tracking because we cannot safely call vm_page_test_dirty()
-		 * or avoid page field tests against an interrupt unbusy/free
-		 * race that might occur prior to the busy check in
-		 * vm_object_page_collect_flush().
-		 */
-		crit_enter();
-		while (tscan < tend) {
-			curgeneration = object->generation;
-			p = vm_page_lookup(object, tscan);
-			if (p == NULL || p->valid == 0 ||
-			    (p->queue - p->pc) == PQ_CACHE) {
-				if (--scanlimit == 0)
-					break;
-				++tscan;
-				continue;
-			}
-			vm_page_test_dirty(p);
-			if ((p->dirty & p->valid) == 0) {
-				if (--scanlimit == 0)
-					break;
-				++tscan;
-				continue;
-			}
-			/*
-			 * If we have been asked to skip nosync pages and 
-			 * this is a nosync page, we can't continue.
-			 */
-			if ((flags & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
-				if (--scanlimit == 0)
-					break;
-				++tscan;
-				continue;
-			}
-			scanlimit = scanreset;
-
-			/*
-			 * This returns 0 if it was unable to busy the first
-			 * page (i.e. had to sleep).
-			 */
-			tscan += vm_object_page_collect_flush(object, p, 
-						curgeneration, pagerflags);
-		}
-		crit_exit();
-
-		/*
-		 * If everything was dirty and we flushed it successfully,
-		 * and the requested range is not the entire object, we
-		 * don't have to mess with CLEANCHK or MIGHTBEDIRTY and can
-		 * return immediately.
-		 */
-		if (tscan >= tend && (tstart || tend < object->size)) {
-			vm_object_clear_flag(object, OBJ_CLEANING);
-			return;
-		}
-		pagerflags &= ~VM_PAGER_IGNORE_CLEANCHK;
-	}
-
-	/*
-	 * Generally set CLEANCHK interlock and make the page read-only so
-	 * we can then clear the object flags.
-	 *
-	 * However, if this is a nosync mmap then the object is likely to 
-	 * stay dirty so do not mess with the page and do not clear the
-	 * object flags.
-	 *
-	 * spl protection is required because an interrupt can remove page
-	 * from the object.
-	 */
-	clearobjflags = 1;
-
-	crit_enter();
-	for (p = TAILQ_FIRST(&object->memq); p; p = TAILQ_NEXT(p, listq)) {
-		vm_page_flag_set(p, PG_CLEANCHK);
-		if ((flags & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC))
-			clearobjflags = 0;
-		else
-			vm_page_protect(p, VM_PROT_READ);
-	}
-	crit_exit();
-
-	if (clearobjflags && (tstart == 0) && (tend == object->size)) {
-		struct vnode *vp;
-
-		vm_object_clear_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
-                if (object->type == OBJT_VNODE &&
-                    (vp = (struct vnode *)object->handle) != NULL) {
-                        if (vp->v_flag & VOBJDIRTY) 
-				vclrflags(vp, VOBJDIRTY);
-                }
-	}
-
-	/*
-	 * spl protection is required both to avoid an interrupt unbusy/free
-	 * race against a vm_page_lookup(), and also to ensure that the
-	 * memq is consistent.  We do not want a busy page to be ripped out
-	 * from under us.
-	 */
-	crit_enter();
-rescan:
-	crit_exit();
-	crit_enter();
-	curgeneration = object->generation;
-
-	for (p = TAILQ_FIRST(&object->memq); p; p = np) {
-		int n;
-
-		np = TAILQ_NEXT(p, listq);
-
-again:
-		pi = p->pindex;
-		if (((p->flags & PG_CLEANCHK) == 0) ||
-			(pi < tstart) || (pi >= tend) ||
-			(p->valid == 0) ||
-			((p->queue - p->pc) == PQ_CACHE)) {
-			vm_page_flag_clear(p, PG_CLEANCHK);
-			continue;
-		}
-
-		vm_page_test_dirty(p);
-		if ((p->dirty & p->valid) == 0) {
-			vm_page_flag_clear(p, PG_CLEANCHK);
-			continue;
-		}
-
-		/*
-		 * If we have been asked to skip nosync pages and this is a
-		 * nosync page, skip it.  Note that the object flags were
-		 * not cleared in this case so we do not have to set them.
-		 */
-		if ((flags & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
-			vm_page_flag_clear(p, PG_CLEANCHK);
-			continue;
-		}
-
-		n = vm_object_page_collect_flush(object, p,
-			curgeneration, pagerflags);
-		if (n == 0)
-			goto rescan;
-		if (object->generation != curgeneration)
-			goto rescan;
-
-		/*
-		 * Try to optimize the next page.  If we can't we pick up
-		 * our (random) scan where we left off.
-		 */
-		if (msync_flush_flags & MSYNC_FLUSH_SOFTSEQ) {
-			if ((p = vm_page_lookup(object, pi + n)) != NULL)
-				goto again;
-		}
-	}
-	crit_exit();
+	do {
+		info.error = 0;
+		curgeneration = object->generation;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+					vm_object_page_clean_pass2, &info);
+	} while (info.error || curgeneration != object->generation);
 
 	vm_object_clear_flag(object, OBJ_CLEANING);
-	return;
+	crit_exit();
+}
+
+static 
+int
+vm_object_page_clean_pass1(struct vm_page *p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+
+	vm_page_flag_set(p, PG_CLEANCHK);
+	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC))
+		info->error = 1;
+	else
+		vm_page_protect(p, VM_PROT_READ);
+	return(0);
+}
+
+static 
+int
+vm_object_page_clean_pass2(struct vm_page *p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+	int n;
+
+	/*
+	 * Do not mess with pages that were inserted after we started
+	 * the cleaning pass.
+	 */
+	if ((p->flags & PG_CLEANCHK) == 0)
+		return(0);
+
+	/*
+	 * Before wasting time traversing the pmaps, check for trivial
+	 * cases where the page cannot be dirty.
+	 */
+	if (p->valid == 0 || (p->queue - p->pc) == PQ_CACHE) {
+		KKASSERT((p->dirty & p->valid) == 0);
+		return(0);
+	}
+
+	/*
+	 * Check whether the page is dirty or not.  The page has been set
+	 * to be read-only so the check will not race a user dirtying the
+	 * page.
+	 */
+	vm_page_test_dirty(p);
+	if ((p->dirty & p->valid) == 0) {
+		vm_page_flag_clear(p, PG_CLEANCHK);
+		return(0);
+	}
+
+	/*
+	 * If we have been asked to skip nosync pages and this is a
+	 * nosync page, skip it.  Note that the object flags were
+	 * not cleared in this case (because pass1 will have returned an
+	 * error), so we do not have to set them.
+	 */
+	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
+		vm_page_flag_clear(p, PG_CLEANCHK);
+		return(0);
+	}
+
+	/*
+	 * Flush as many pages as we can.  PG_CLEANCHK will be cleared on
+	 * the pages that get successfully flushed.  Set info->error if
+	 * we raced an object modification.
+	 */
+	n = vm_object_page_collect_flush(info->object, p, info->pagerflags);
+	if (n == 0)
+		info->error = 1;
+	return(0);
 }
 
 /*
@@ -711,17 +647,20 @@ again:
  * recode this to explicitly busy the pages.
  */
 static int
-vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration, int pagerflags)
+vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 {
 	int runlen;
 	int maxf;
 	int chkb;
 	int maxb;
 	int i;
+	int curgeneration;
 	vm_pindex_t pi;
 	vm_page_t maf[vm_pageout_page_count];
 	vm_page_t mab[vm_pageout_page_count];
 	vm_page_t ma[vm_pageout_page_count];
+
+	curgeneration = object->generation;
 
 	pi = p->pindex;
 	while (vm_page_sleep_busy(p, TRUE, "vpcwai")) {
@@ -729,6 +668,7 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration,
 			return(0);
 		}
 	}
+	KKASSERT(p->object == object && p->pindex == pi);
 
 	maxf = 0;
 	for(i = 1; i < vm_pageout_page_count; i++) {
@@ -827,18 +767,24 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration,
  *
  *	The object must be locked.
  */
+static int vm_object_deactivate_pages_callback(vm_page_t p, void *data);
+
 static void
 vm_object_deactivate_pages(vm_object_t object)
 {
-	vm_page_t p, next;
-
 	crit_enter();
-	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = next) {
-		next = TAILQ_NEXT(p, listq);
-		vm_page_deactivate(p);
-	}
+	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+				vm_object_deactivate_pages_callback, NULL);
 	crit_exit();
 }
+
+static int
+vm_object_deactivate_pages_callback(vm_page_t p, void *data __unused)
+{
+	vm_page_deactivate(p);
+	return(0);
+}
+
 #endif
 
 /*
@@ -883,29 +829,31 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
  *
  *	The object must *not* be locked.
  */
+
+static int vm_object_pmap_remove_callback(vm_page_t p, void *data);
+
 void
 vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 {
-	vm_page_t p;
+	struct rb_vm_page_scan_info info;
 
 	if (object == NULL)
 		return;
-
-	/*
-	 * spl protection is required because an interrupt can unbusy/free
-	 * a page.
-	 */
+	info.start_pindex = start;
+	info.end_pindex = end - 1;
 	crit_enter();
-	for (p = TAILQ_FIRST(&object->memq);
-	    p != NULL;
-	    p = TAILQ_NEXT(p, listq)
-	) {
-		if (p->pindex >= start && p->pindex < end)
-			vm_page_protect(p, VM_PROT_NONE);
-	}
-	crit_exit();
-	if ((start == 0) && (object->size == end))
+	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+				vm_object_pmap_remove_callback, &info);
+	if (start == 0 && end == object->size)
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
+	crit_exit();
+}
+
+static int
+vm_object_pmap_remove_callback(vm_page_t p, void *data __unused)
+{
+	vm_page_protect(p, VM_PROT_NONE);
+	return(0);
 }
 
 /*
@@ -1121,13 +1069,13 @@ vm_object_shadow(vm_object_t *object,	/* IN/OUT */
 #define	OBSC_COLLAPSE_NOWAIT	0x0002
 #define	OBSC_COLLAPSE_WAIT	0x0004
 
+static int vm_object_backing_scan_callback(vm_page_t p, void *data);
+
 static __inline int
 vm_object_backing_scan(vm_object_t object, int op)
 {
-	int r = 1;
-	vm_page_t p;
+	struct rb_vm_page_scan_info info;
 	vm_object_t backing_object;
-	vm_pindex_t backing_offset_index;
 
 	/*
 	 * spl protection is required to avoid races between the memq/lookup,
@@ -1137,7 +1085,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 	crit_enter();
 
 	backing_object = object->backing_object;
-	backing_offset_index = OFF_TO_IDX(object->backing_object_offset);
+	info.backing_offset_index = OFF_TO_IDX(object->backing_object_offset);
 
 	/*
 	 * Initial conditions
@@ -1164,158 +1112,175 @@ vm_object_backing_scan(vm_object_t object, int op)
 	}
 
 	/*
-	 * Our scan
+	 * Our scan.   We have to retry if a negative error code is returned,
+	 * otherwise 0 or 1 will be returned in info.error.  0 Indicates that
+	 * the scan had to be stopped because the parent does not completely
+	 * shadow the child.
 	 */
+	info.object = object;
+	info.backing_object = backing_object;
+	info.limit = op;
+	do {
+		info.error = 1;
+		vm_page_rb_tree_RB_SCAN(&backing_object->rb_memq, NULL,
+					vm_object_backing_scan_callback,
+					&info);
+	} while (info.error < 0);
+	crit_exit();
+	return(info.error);
+}
 
-	p = TAILQ_FIRST(&backing_object->memq);
-	while (p) {
-		vm_page_t next = TAILQ_NEXT(p, listq);
-		vm_pindex_t new_pindex = p->pindex - backing_offset_index;
+static int
+vm_object_backing_scan_callback(vm_page_t p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+	vm_object_t backing_object;
+	vm_object_t object;
+	vm_pindex_t new_pindex;
+	vm_pindex_t backing_offset_index;
+	int op;
 
-		if (op & OBSC_TEST_ALL_SHADOWED) {
-			vm_page_t pp;
+	new_pindex = p->pindex - info->backing_offset_index;
+	op = info->limit;
+	object = info->object;
+	backing_object = info->backing_object;
+	backing_offset_index = info->backing_offset_index;
 
-			/*
-			 * Ignore pages outside the parent object's range
-			 * and outside the parent object's mapping of the 
-			 * backing object.
-			 *
-			 * note that we do not busy the backing object's
-			 * page.
-			 */
+	if (op & OBSC_TEST_ALL_SHADOWED) {
+		vm_page_t pp;
 
-			if (
-			    p->pindex < backing_offset_index ||
-			    new_pindex >= object->size
-			) {
-				p = next;
-				continue;
-			}
-
-			/*
-			 * See if the parent has the page or if the parent's
-			 * object pager has the page.  If the parent has the
-			 * page but the page is not valid, the parent's
-			 * object pager must have the page.
-			 *
-			 * If this fails, the parent does not completely shadow
-			 * the object and we might as well give up now.
-			 */
-
-			pp = vm_page_lookup(object, new_pindex);
-			if (
-			    (pp == NULL || pp->valid == 0) &&
-			    !vm_pager_has_page(object, new_pindex, NULL, NULL)
-			) {
-				r = 0;
-				break;
-			}
+		/*
+		 * Ignore pages outside the parent object's range
+		 * and outside the parent object's mapping of the 
+		 * backing object.
+		 *
+		 * note that we do not busy the backing object's
+		 * page.
+		 */
+		if (
+		    p->pindex < backing_offset_index ||
+		    new_pindex >= object->size
+		) {
+			return(0);
 		}
 
 		/*
-		 * Check for busy page
+		 * See if the parent has the page or if the parent's
+		 * object pager has the page.  If the parent has the
+		 * page but the page is not valid, the parent's
+		 * object pager must have the page.
+		 *
+		 * If this fails, the parent does not completely shadow
+		 * the object and we might as well give up now.
 		 */
 
-		if (op & (OBSC_COLLAPSE_WAIT | OBSC_COLLAPSE_NOWAIT)) {
-			vm_page_t pp;
-
-			if (op & OBSC_COLLAPSE_NOWAIT) {
-				if (
-				    (p->flags & PG_BUSY) ||
-				    !p->valid || 
-				    p->hold_count || 
-				    p->wire_count ||
-				    p->busy
-				) {
-					p = next;
-					continue;
-				}
-			} else if (op & OBSC_COLLAPSE_WAIT) {
-				if (vm_page_sleep_busy(p, TRUE, "vmocol")) {
-					/*
-					 * If we slept, anything could have
-					 * happened.  Since the object is
-					 * marked dead, the backing offset
-					 * should not have changed so we
-					 * just restart our scan.
-					 */
-					p = TAILQ_FIRST(&backing_object->memq);
-					continue;
-				}
-			}
-
-			/* 
-			 * Busy the page
-			 */
-			vm_page_busy(p);
-
-			KASSERT(
-			    p->object == backing_object,
-			    ("vm_object_qcollapse(): object mismatch")
-			);
-
-			/*
-			 * Destroy any associated swap
-			 */
-			if (backing_object->type == OBJT_SWAP) {
-				swap_pager_freespace(
-				    backing_object, 
-				    p->pindex,
-				    1
-				);
-			}
-
-			if (
-			    p->pindex < backing_offset_index ||
-			    new_pindex >= object->size
-			) {
-				/*
-				 * Page is out of the parent object's range, we 
-				 * can simply destroy it. 
-				 */
-				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_free(p);
-				p = next;
-				continue;
-			}
-
-			pp = vm_page_lookup(object, new_pindex);
-			if (
-			    pp != NULL ||
-			    vm_pager_has_page(object, new_pindex, NULL, NULL)
-			) {
-				/*
-				 * page already exists in parent OR swap exists
-				 * for this location in the parent.  Destroy 
-				 * the original page from the backing object.
-				 *
-				 * Leave the parent's page alone
-				 */
-				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_free(p);
-				p = next;
-				continue;
-			}
-
-			/*
-			 * Page does not exist in parent, rename the
-			 * page from the backing object to the main object. 
-			 *
-			 * If the page was mapped to a process, it can remain 
-			 * mapped through the rename.
-			 */
-			if ((p->queue - p->pc) == PQ_CACHE)
-				vm_page_deactivate(p);
-
-			vm_page_rename(p, object, new_pindex);
-			/* page automatically made dirty by rename */
+		pp = vm_page_lookup(object, new_pindex);
+		if (
+		    (pp == NULL || pp->valid == 0) &&
+		    !vm_pager_has_page(object, new_pindex, NULL, NULL)
+		) {
+			info->error = 0;	/* problemo */
+			return(-1);		/* stop the scan */
 		}
-		p = next;
 	}
-	crit_exit();
-	return(r);
-}
 
+	/*
+	 * Check for busy page
+	 */
+
+	if (op & (OBSC_COLLAPSE_WAIT | OBSC_COLLAPSE_NOWAIT)) {
+		vm_page_t pp;
+
+		if (op & OBSC_COLLAPSE_NOWAIT) {
+			if (
+			    (p->flags & PG_BUSY) ||
+			    !p->valid || 
+			    p->hold_count || 
+			    p->wire_count ||
+			    p->busy
+			) {
+				return(0);
+			}
+		} else if (op & OBSC_COLLAPSE_WAIT) {
+			if (vm_page_sleep_busy(p, TRUE, "vmocol")) {
+				/*
+				 * If we slept, anything could have
+				 * happened.   Ask that the scan be restarted.
+				 *
+				 * Since the object is marked dead, the
+				 * backing offset should not have changed.  
+				 */
+				info->error = -1;
+				return(-1);
+			}
+		}
+
+		/* 
+		 * Busy the page
+		 */
+		vm_page_busy(p);
+
+		KASSERT(
+		    p->object == backing_object,
+		    ("vm_object_qcollapse(): object mismatch")
+		);
+
+		/*
+		 * Destroy any associated swap
+		 */
+		if (backing_object->type == OBJT_SWAP) {
+			swap_pager_freespace(
+			    backing_object, 
+			    p->pindex,
+			    1
+			);
+		}
+
+		if (
+		    p->pindex < backing_offset_index ||
+		    new_pindex >= object->size
+		) {
+			/*
+			 * Page is out of the parent object's range, we 
+			 * can simply destroy it. 
+			 */
+			vm_page_protect(p, VM_PROT_NONE);
+			vm_page_free(p);
+			return(0);
+		}
+
+		pp = vm_page_lookup(object, new_pindex);
+		if (
+		    pp != NULL ||
+		    vm_pager_has_page(object, new_pindex, NULL, NULL)
+		) {
+			/*
+			 * page already exists in parent OR swap exists
+			 * for this location in the parent.  Destroy 
+			 * the original page from the backing object.
+			 *
+			 * Leave the parent's page alone
+			 */
+			vm_page_protect(p, VM_PROT_NONE);
+			vm_page_free(p);
+			return(0);
+		}
+
+		/*
+		 * Page does not exist in parent, rename the
+		 * page from the backing object to the main object. 
+		 *
+		 * If the page was mapped to a process, it can remain 
+		 * mapped through the rename.
+		 */
+		if ((p->queue - p->pc) == PQ_CACHE)
+			vm_page_deactivate(p);
+
+		vm_page_rename(p, object, new_pindex);
+		/* page automatically made dirty by rename */
+	}
+	return(0);
+}
 
 /*
  * this version of collapse allows the operation to occur earlier and
@@ -1465,7 +1430,7 @@ vm_object_collapse(vm_object_t object)
 			 */
 
 			KASSERT(backing_object->ref_count == 1, ("backing_object %p was somehow re-referenced during collapse!", backing_object));
-			KASSERT(TAILQ_FIRST(&backing_object->memq) == NULL, ("backing_object %p somehow has left over pages during collapse!", backing_object));
+			KASSERT(RB_EMPTY(&backing_object->rb_memq), ("backing_object %p somehow has left over pages during collapse!", backing_object));
 			crit_enter();
 			TAILQ_REMOVE(
 			    &vm_object_list, 
@@ -1536,105 +1501,102 @@ vm_object_collapse(vm_object_t object)
  *	Removes all physical pages in the specified
  *	object range from the object's list of pages.
  */
+static int vm_object_page_remove_callback(vm_page_t p, void *data);
+
 void
 vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
-    boolean_t clean_only)
+		      boolean_t clean_only)
 {
-	vm_page_t p, next;
-	unsigned int size;
+	struct rb_vm_page_scan_info info;
 	int all;
 
+	/*
+	 * Degenerate cases and assertions
+	 */
 	if (object == NULL || object->resident_page_count == 0)
 		return;
-
-	all = ((end == 0) && (start == 0));
-
-	/*
-	 * Since physically-backed objects do not use managed pages, we can't
-	 * remove pages from the object (we must instead remove the page
-	 * references, and then destroy the object).
-	 */
 	KASSERT(object->type != OBJT_PHYS, 
 		("attempt to remove pages from a physical object"));
 
 	/*
-	 * Indicating that the object is undergoing paging.
-	 *
-	 * spl protection is required to avoid a race between the memq scan,
-	 * an interrupt unbusy/free, and the busy check.
+	 * Indicate that paging is occuring on the object
 	 */
-	vm_object_pip_add(object, 1);
 	crit_enter();
-again:
-	size = end - start;
-	if (all || size > object->resident_page_count / 4) {
-		for (p = TAILQ_FIRST(&object->memq); p != NULL; p = next) {
-			next = TAILQ_NEXT(p, listq);
-			if (all || ((start <= p->pindex) && (p->pindex < end))) {
-				if (p->wire_count != 0) {
-					vm_page_protect(p, VM_PROT_NONE);
-					if (!clean_only)
-						p->valid = 0;
-					continue;
-				}
+	vm_object_pip_add(object, 1);
 
-				/*
-				 * The busy flags are only cleared at
-				 * interrupt -- minimize the spl transitions
-				 */
+	/*
+	 * Figure out the actual removal range and whether we are removing
+	 * the entire contents of the object or not.  If removing the entire
+	 * contents, be sure to get all pages, even those that might be 
+	 * beyond the end of the object.
+	 */
+	info.start_pindex = start;
+	if (end == 0)
+		info.end_pindex = (vm_pindex_t)-1;
+	else
+		info.end_pindex = end - 1;
+	info.limit = clean_only;
+	all = (start == 0 && info.end_pindex >= object->size - 1);
 
- 				if (vm_page_sleep_busy(p, TRUE, "vmopar"))
- 					goto again;
+	/*
+	 * Loop until we are sure we have gotten them all.
+	 */
+	do {
+		info.error = 0;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+					vm_object_page_remove_callback, &info);
+	} while (info.error);
 
-				if (clean_only && p->valid) {
-					vm_page_test_dirty(p);
-					if (p->valid & p->dirty)
-						continue;
-				}
-
-				vm_page_busy(p);
-				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_free(p);
-			}
-		}
-	} else {
-		while (size > 0) {
-			if ((p = vm_page_lookup(object, start)) != 0) {
-				if (p->wire_count != 0) {
-					vm_page_protect(p, VM_PROT_NONE);
-					if (!clean_only)
-						p->valid = 0;
-					start += 1;
-					size -= 1;
-					continue;
-				}
-
-				/*
-				 * The busy flags are only cleared at
-				 * interrupt -- minimize the spl transitions
-				 */
- 				if (vm_page_sleep_busy(p, TRUE, "vmopar"))
-					goto again;
-
-				if (clean_only && p->valid) {
-					vm_page_test_dirty(p);
-					if (p->valid & p->dirty) {
-						start += 1;
-						size -= 1;
-						continue;
-					}
-				}
-
-				vm_page_busy(p);
-				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_free(p);
-			}
-			start += 1;
-			size -= 1;
-		}
-	}
-	crit_exit();
+	/*
+	 * Cleanup
+	 */
 	vm_object_pip_wakeup(object);
+	crit_exit();
+}
+
+static int
+vm_object_page_remove_callback(vm_page_t p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+
+	/*
+	 * Wired pages cannot be destroyed, but they can be invalidated
+	 * and we do so if clean_only (limit) is not set.
+	 */
+	if (p->wire_count != 0) {
+		vm_page_protect(p, VM_PROT_NONE);
+		if (info->limit == 0)
+			p->valid = 0;
+		return(0);
+	}
+
+	/*
+	 * The busy flags are only cleared at
+	 * interrupt -- minimize the spl transitions
+	 */
+
+	if (vm_page_sleep_busy(p, TRUE, "vmopar")) {
+		info->error = 1;
+		return(0);
+	}
+
+	/*
+	 * limit is our clean_only flag.  If set and the page is dirty, do
+	 * not free it.
+	 */
+	if (info->limit && p->valid) {
+		vm_page_test_dirty(p);
+		if (p->valid & p->dirty)
+			return(0);
+	}
+
+	/*
+	 * Destroy the page
+	 */
+	vm_page_busy(p);
+	vm_page_protect(p, VM_PROT_NONE);
+	vm_page_free(p);
+	return(0);
 }
 
 /*
@@ -1902,7 +1864,7 @@ DB_SHOW_COMMAND(object, vm_object_print_static)
 
 	db_indent += 2;
 	count = 0;
-	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = TAILQ_NEXT(p, listq)) {
+	RB_FOREACH(p, vm_page_rb_tree, &object->rb_memq) {
 		if (count == 0)
 			db_iprintf("memory:=");
 		else if (count == 6) {

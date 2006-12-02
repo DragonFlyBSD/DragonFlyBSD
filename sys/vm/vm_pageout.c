@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.26 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.27 2006/12/02 23:13:46 dillon Exp $
  */
 
 /*
@@ -471,12 +471,13 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
  *
  *	The object and map must be locked.
  */
+static int vm_pageout_object_deactivate_pages_callback(vm_page_t, void *);
+
 static void
 vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 	vm_pindex_t desired, int map_remove_only)
 {
-	vm_page_t p, next;
-	int rcount;
+	struct rb_vm_page_scan_info info;
 	int remove_mode;
 
 	if (object->type == OBJT_DEVICE || object->type == OBJT_PHYS)
@@ -498,64 +499,68 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 		 * our busy check.
 		 */
 		crit_enter();
-		rcount = object->resident_page_count;
-		p = TAILQ_FIRST(&object->memq);
-
-		while (p && (rcount-- > 0)) {
-			int actcount;
-			if (pmap_resident_count(vm_map_pmap(map)) <= desired) {
-				crit_exit();
-				return;
-			}
-			next = TAILQ_NEXT(p, listq);
-			mycpu->gd_cnt.v_pdpages++;
-			if (p->wire_count != 0 ||
-			    p->hold_count != 0 ||
-			    p->busy != 0 ||
-			    (p->flags & (PG_BUSY|PG_UNMANAGED)) ||
-			    !pmap_page_exists_quick(vm_map_pmap(map), p)) {
-				p = next;
-				continue;
-			}
-
-			actcount = pmap_ts_referenced(p);
-			if (actcount) {
-				vm_page_flag_set(p, PG_REFERENCED);
-			} else if (p->flags & PG_REFERENCED) {
-				actcount = 1;
-			}
-
-			if ((p->queue != PQ_ACTIVE) &&
-				(p->flags & PG_REFERENCED)) {
-				vm_page_activate(p);
-				p->act_count += actcount;
-				vm_page_flag_clear(p, PG_REFERENCED);
-			} else if (p->queue == PQ_ACTIVE) {
-				if ((p->flags & PG_REFERENCED) == 0) {
-					p->act_count -= min(p->act_count, ACT_DECLINE);
-					if (!remove_mode && (vm_pageout_algorithm || (p->act_count == 0))) {
-						vm_page_protect(p, VM_PROT_NONE);
-						vm_page_deactivate(p);
-					} else {
-						TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-						TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-					}
-				} else {
-					vm_page_activate(p);
-					vm_page_flag_clear(p, PG_REFERENCED);
-					if (p->act_count < (ACT_MAX - ACT_ADVANCE))
-						p->act_count += ACT_ADVANCE;
-					TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-				}
-			} else if (p->queue == PQ_INACTIVE) {
-				vm_page_protect(p, VM_PROT_NONE);
-			}
-			p = next;
-		}
+		info.limit = remove_mode;
+		info.map = map;
+		info.desired = desired;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+				vm_pageout_object_deactivate_pages_callback,
+				&info
+		);
 		crit_exit();
 		object = object->backing_object;
 	}
+}
+					
+static int
+vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+	int actcount;
+
+	if (pmap_resident_count(vm_map_pmap(info->map)) <= info->desired) {
+		return(-1);
+	}
+	mycpu->gd_cnt.v_pdpages++;
+	if (p->wire_count != 0 || p->hold_count != 0 || p->busy != 0 ||
+	    (p->flags & (PG_BUSY|PG_UNMANAGED)) ||
+	    !pmap_page_exists_quick(vm_map_pmap(info->map), p)) {
+		return(0);
+	}
+
+	actcount = pmap_ts_referenced(p);
+	if (actcount) {
+		vm_page_flag_set(p, PG_REFERENCED);
+	} else if (p->flags & PG_REFERENCED) {
+		actcount = 1;
+	}
+
+	if ((p->queue != PQ_ACTIVE) &&
+		(p->flags & PG_REFERENCED)) {
+		vm_page_activate(p);
+		p->act_count += actcount;
+		vm_page_flag_clear(p, PG_REFERENCED);
+	} else if (p->queue == PQ_ACTIVE) {
+		if ((p->flags & PG_REFERENCED) == 0) {
+			p->act_count -= min(p->act_count, ACT_DECLINE);
+			if (!info->limit && (vm_pageout_algorithm || (p->act_count == 0))) {
+				vm_page_protect(p, VM_PROT_NONE);
+				vm_page_deactivate(p);
+			} else {
+				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+			}
+		} else {
+			vm_page_activate(p);
+			vm_page_flag_clear(p, PG_REFERENCED);
+			if (p->act_count < (ACT_MAX - ACT_ADVANCE))
+				p->act_count += ACT_ADVANCE;
+			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+		}
+	} else if (p->queue == PQ_INACTIVE) {
+		vm_page_protect(p, VM_PROT_NONE);
+	}
+	return(0);
 }
 
 /*

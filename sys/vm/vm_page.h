@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.24 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.25 2006/12/02 23:13:46 dillon Exp $
  */
 
 /*
@@ -78,6 +78,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
 #endif
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
@@ -134,10 +137,14 @@ TAILQ_HEAD(pglist, vm_page);
 struct msf_buf;
 struct vm_object;
 
+int rb_vm_page_compare(struct vm_page *, struct vm_page *);
+
+struct vm_page_rb_tree;
+RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare, vm_pindex_t);
+
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
-	struct vm_page	*hnext;		/* hash table link (O,P)	*/
-	TAILQ_ENTRY(vm_page) listq;	/* pages in same object (O) 	*/
+	RB_ENTRY(vm_page) rb_entry;	/* Red-Black tree based at object */
 
 	struct vm_object *object;	/* which object am I in (O,P)*/
 	vm_pindex_t pindex;		/* offset into object (O,P) */
@@ -243,6 +250,29 @@ typedef struct vm_page *vm_page_t;
 #define PQ_CACHE	(3 + 1*PQ_MAXL2_SIZE)
 #define PQ_HOLD		(3 + 2*PQ_MAXL2_SIZE)
 #define PQ_COUNT	(4 + 2*PQ_MAXL2_SIZE)
+
+/*
+ * Scan support
+ */
+struct vm_map;
+
+struct rb_vm_page_scan_info {
+	vm_pindex_t	start_pindex;
+	vm_pindex_t	end_pindex;
+	int		limit;
+	int		desired;
+	int		error;
+	int		pagerflags;
+	vm_offset_t	addr;
+	vm_pindex_t	backing_offset_index;
+	struct vm_object *object;
+	struct vm_object *backing_object;
+	struct vm_page	*mpte;
+	struct pmap	*pmap;
+	struct vm_map	*map;
+};
+
+int rb_vm_page_scancmp(struct vm_page *, void *);
 
 struct vpgqueues {
 	struct pglist pl;

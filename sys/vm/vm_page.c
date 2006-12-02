@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.32 2005/07/27 07:55:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.33 2006/12/02 23:13:46 dillon Exp $
  */
 
 /*
@@ -94,13 +94,12 @@ static void vm_page_free_wakeup(void);
 static vm_page_t vm_page_select_cache(vm_object_t, vm_pindex_t);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 
-static int vm_page_bucket_count;	/* How big is array? */
-static int vm_page_hash_mask;		/* Mask for hash function */
-static struct vm_page **vm_page_buckets; /* Array of buckets */
-static volatile int vm_page_bucket_generation;
 struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
 
 #define ASSERT_IN_CRIT_SECTION()	KKASSERT(crit_test(curthread));
+
+RB_GENERATE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare,
+	     vm_pindex_t, pindex);
 
 static void
 vm_page_queue_init(void) 
@@ -198,7 +197,6 @@ vm_offset_t
 vm_page_startup(vm_offset_t vaddr)
 {
 	vm_offset_t mapped;
-	struct vm_page **bucket;
 	vm_size_t npages;
 	vm_paddr_t page_range;
 	vm_paddr_t new_end;
@@ -208,7 +206,6 @@ vm_page_startup(vm_offset_t vaddr)
 	vm_paddr_t last_pa;
 	vm_paddr_t end;
 	vm_paddr_t biggestone, biggestsize;
-
 	vm_paddr_t total;
 
 	total = 0;
@@ -234,6 +231,7 @@ vm_page_startup(vm_offset_t vaddr)
 	}
 
 	end = phys_avail[biggestone+1];
+	end = trunc_page(end);
 
 	/*
 	 * Initialize the queue headers for the free queue, the active queue
@@ -243,58 +241,13 @@ vm_page_startup(vm_offset_t vaddr)
 	vm_page_queue_init();
 
 	/*
-	 * Allocate (and initialize) the hash table buckets.
-	 *
-	 * The number of buckets MUST BE a power of 2, and the actual value is
-	 * the next power of 2 greater than the number of physical pages in
-	 * the system.  
-	 *
-	 * We make the hash table approximately 2x the number of pages to
-	 * reduce the chain length.  This is about the same size using the 
-	 * singly-linked list as the 1x hash table we were using before 
-	 * using TAILQ but the chain length will be smaller.
-	 *
-	 * Note: This computation can be tweaked if desired.
-	 */
-	vm_page_buckets = (struct vm_page **)vaddr;
-	bucket = vm_page_buckets;
-	if (vm_page_bucket_count == 0) {
-		vm_page_bucket_count = 1;
-		while (vm_page_bucket_count < atop(total))
-			vm_page_bucket_count <<= 1;
-	}
-	vm_page_bucket_count <<= 1;
-	vm_page_hash_mask = vm_page_bucket_count - 1;
-
-	/*
-	 * Cut a chunk out of the largest block of physical memory,
-	 * moving its end point down to accomodate the hash table and
-	 * vm_page_array.
-	 */
-	new_end = end - vm_page_bucket_count * sizeof(struct vm_page *);
-	new_end = trunc_page(new_end);
-	mapped = round_page(vaddr);
-	vaddr = pmap_map(mapped, new_end, end,
-	    VM_PROT_READ | VM_PROT_WRITE);
-	vaddr = round_page(vaddr);
-	bzero((caddr_t) mapped, vaddr - mapped);
-
-	for (i = 0; i < vm_page_bucket_count; i++) {
-		*bucket = NULL;
-		bucket++;
-	}
-
-	/*
 	 * Compute the number of pages of memory that will be available for
 	 * use (taking into account the overhead of a page structure per
 	 * page).
 	 */
 	first_page = phys_avail[0] / PAGE_SIZE;
 	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE - first_page;
-	npages = (total - (page_range * sizeof(struct vm_page)) -
-	    (end - new_end)) / PAGE_SIZE;
-
-	end = new_end;
+	npages = (total - (page_range * sizeof(struct vm_page))) / PAGE_SIZE;
 
 	/*
 	 * Initialize the mem entry structures now, and put them in the free
@@ -339,20 +292,29 @@ vm_page_startup(vm_offset_t vaddr)
 }
 
 /*
- * Distributes the object/offset key pair among hash buckets.
- *
- * NOTE:  This macro depends on vm_page_bucket_count being a power of 2.
- * This routine may not block.
- *
- * We try to randomize the hash based on the object to spread the pages
- * out in the hash table without it costing us too much.
+ * Scan comparison function for Red-Black tree scans.  An inclusive
+ * (start,end) is expected.  Other fields are not used.
  */
-static __inline int
-vm_page_hash(vm_object_t object, vm_pindex_t pindex)
+int
+rb_vm_page_scancmp(struct vm_page *p, void *data)
 {
-	int i = ((uintptr_t)object + pindex) ^ object->hash_rand;
+	struct rb_vm_page_scan_info *info = data;
 
-	return(i & vm_page_hash_mask);
+	if (p->pindex < info->start_pindex)
+		return(-1);
+	if (p->pindex > info->end_pindex)
+		return(1);
+	return(0);
+}
+
+int
+rb_vm_page_compare(struct vm_page *p1, struct vm_page *p2)
+{
+	if (p1->pindex < p2->pindex)
+		return(-1);
+	if (p1->pindex > p2->pindex)
+		return(1);
+	return(0);
 }
 
 /*
@@ -387,8 +349,6 @@ vm_page_unhold(vm_page_t mem)
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
-	struct vm_page **bucket;
-
 	ASSERT_IN_CRIT_SECTION();
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
@@ -400,17 +360,9 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	m->pindex = pindex;
 
 	/*
-	 * Insert it into the object_object/offset hash table
+	 * Insert it into the object.
 	 */
-	bucket = &vm_page_buckets[vm_page_hash(object, pindex)];
-	m->hnext = *bucket;
-	*bucket = m;
-	vm_page_bucket_generation++;
-
-	/*
-	 * Now link into the object's list of backed pages.
-	 */
-	TAILQ_INSERT_TAIL(&object->memq, m, listq);
+	vm_page_rb_tree_RB_INSERT(&object->rb_memq, m);
 	object->generation++;
 
 	/*
@@ -443,7 +395,6 @@ void
 vm_page_remove(vm_page_t m)
 {
 	vm_object_t object;
-	struct vm_page **bucket;
 
 	crit_enter();
 	if (m->object == NULL) {
@@ -457,34 +408,13 @@ vm_page_remove(vm_page_t m)
 	object = m->object;
 
 	/*
-	 * Remove from the object_object/offset hash table.  The object
-	 * must be on the hash queue, we will panic if it isn't
-	 *
-	 * Note: we must NULL-out m->hnext to prevent loops in detached
-	 * buffers with vm_page_lookup().
+	 * Remove the page from the object and update the object.
 	 */
-	bucket = &vm_page_buckets[vm_page_hash(m->object, m->pindex)];
-	while (*bucket != m) {
-		if (*bucket == NULL)
-		    panic("vm_page_remove(): page not found in hash");
-		bucket = &(*bucket)->hnext;
-	}
-	*bucket = m->hnext;
-	m->hnext = NULL;
-	vm_page_bucket_generation++;
-
-	/*
-	 * Now remove from the object's list of backed pages.
-	 */
-	TAILQ_REMOVE(&object->memq, m, listq);
-
-	/*
-	 * And show that the object has one fewer resident page.
-	 */
+	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
 	object->generation++;
-
 	m->object = NULL;
+
 	crit_exit();
 }
 
@@ -507,25 +437,15 @@ vm_page_t
 vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
-	struct vm_page **bucket;
-	int generation;
 
 	/*
 	 * Search the hash table for this object/offset pair
 	 */
-retry:
-	generation = vm_page_bucket_generation;
-	bucket = &vm_page_buckets[vm_page_hash(object, pindex)];
-	for (m = *bucket; m != NULL; m = m->hnext) {
-		if ((m->object == object) && (m->pindex == pindex)) {
-			if (vm_page_bucket_generation != generation)
-				goto retry;
-			return (m);
-		}
-	}
-	if (vm_page_bucket_generation != generation)
-		goto retry;
-	return (NULL);
+	crit_enter();
+	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
+	crit_exit();
+	KKASSERT(m == NULL || (m->object == object && m->pindex == pindex));
+	return(m);
 }
 
 /*

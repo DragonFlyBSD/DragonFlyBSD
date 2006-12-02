@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.61 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.62 2006/12/02 23:13:45 dillon Exp $
  */
 
 /*
@@ -1279,7 +1279,7 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 
 
 /***************************************************
-* Pmap allocation/deallocation routines.
+ * Pmap allocation/deallocation routines.
  ***************************************************/
 
 /*
@@ -1287,43 +1287,59 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
  * Called when a pmap initialized by pmap_pinit is being released.
  * Should only be called if the map contains no valid mappings.
  */
+static int pmap_release_callback(struct vm_page *p, void *data);
+
 void
 pmap_release(struct pmap *pmap)
 {
-	vm_page_t p,n,ptdpg;
 	vm_object_t object = pmap->pm_pteobj;
-	int curgeneration;
+	struct rb_vm_page_scan_info info;
 
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
 #endif
 	
-	ptdpg = NULL;
-retry:
+	info.pmap = pmap;
+	info.object = object;
 	crit_enter();
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
-	curgeneration = object->generation;
-	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = n) {
-		n = TAILQ_NEXT(p, listq);
-		if (p->pindex == PTDPTDI) {
-			ptdpg = p;
-			continue;
-		}
-		if (!pmap_release_free_page(pmap, p)) {
-			crit_exit();
-			goto retry;
-		}
-		if (object->generation != curgeneration) {
-			crit_exit();
-			goto retry;
-		}
-	}
-	if (ptdpg && !pmap_release_free_page(pmap, ptdpg)) {
-		crit_exit();
-		goto retry;
-	}
 	crit_exit();
+
+	do {
+		crit_enter();
+		info.error = 0;
+		info.mpte = NULL;
+		info.limit = object->generation;
+
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL, 
+				        pmap_release_callback, &info);
+		if (info.error == 0 && info.mpte) {
+			if (!pmap_release_free_page(pmap, info.mpte))
+				info.error = 1;
+		}
+		crit_exit();
+	} while (info.error);
+}
+
+static int
+pmap_release_callback(struct vm_page *p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+
+	if (p->pindex == PTDPTDI) {
+		info->mpte = p;
+		return(0);
+	}
+	if (!pmap_release_free_page(info->pmap, p)) {
+		info->error = 1;
+		return(-1);
+	}
+	if (info->object->generation != info->limit) {
+		info->error = 1;
+		return(-1);
+	}
+	return(0);
 }
 
 static int
@@ -2168,15 +2184,15 @@ pmap_kenter_temporary(vm_paddr_t pa, int i)
  * This eliminates the blast of soft faults on process startup and
  * immediately after an mmap.
  */
+static int pmap_object_init_pt_callback(vm_page_t p, void *data);
+
 void
 pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 		    vm_object_t object, vm_pindex_t pindex, 
 		    vm_size_t size, int limit)
 {
-	vm_offset_t tmpidx;
+	struct rb_vm_page_scan_info info;
 	int psize;
-	vm_page_t p, mpte;
-	int objpgs;
 
 	/*
 	 * We can't preinit if read access isn't set or there is no pmap
@@ -2190,73 +2206,6 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	 */
 	if (curproc == NULL || pmap != vmspace_pmap(curproc->p_vmspace))
 		return;
-
-#if 0
-	/* 
-	 * XXX you must be joking, entering PTE's into a user page table
-	 * without any accounting?  This could result in the page table
-	 * being freed while it still contains mappings (free with PG_ZERO
-	 * assumption leading to a non-zero page being marked PG_ZERO).
-	 */
-	/*
-	 * This code maps large physical mmap regions into the
-	 * processor address space.  Note that some shortcuts
-	 * are taken, but the code works.
-	 */
-	if (pseflag &&
-	    (object->type == OBJT_DEVICE) &&
-	    ((addr & (NBPDR - 1)) == 0) &&
-	    ((size & (NBPDR - 1)) == 0) ) {
-		int i;
-		vm_page_t m[1];
-		unsigned int ptepindex;
-		int npdes;
-		vm_offset_t ptepa;
-
-		if (pmap->pm_pdir[ptepindex = (addr >> PDRSHIFT)])
-			return;
-
-retry:
-		p = vm_page_lookup(object, pindex);
-		if (p && vm_page_sleep_busy(p, FALSE, "init4p"))
-			goto retry;
-
-		if (p == NULL) {
-			p = vm_page_alloc(object, pindex, VM_ALLOC_NORMAL);
-			if (p == NULL)
-				return;
-			m[0] = p;
-
-			if (vm_pager_get_pages(object, m, 1, 0) != VM_PAGER_OK) {
-				vm_page_free(p);
-				return;
-			}
-
-			p = vm_page_lookup(object, pindex);
-			vm_page_wakeup(p);
-		}
-
-		ptepa = (vm_offset_t) VM_PAGE_TO_PHYS(p);
-		if (ptepa & (NBPDR - 1)) {
-			return;
-		}
-
-		p->valid = VM_PAGE_BITS_ALL;
-
-		pmap->pm_stats.resident_count += size >> PAGE_SHIFT;
-		npdes = size >> PDRSHIFT;
-		for (i = 0; i < npdes; i++) {
-			pmap->pm_pdir[ptepindex] =
-			    (pd_entry_t) (ptepa | PG_U | PG_RW | PG_V | PG_PS);
-			ptepa += NBPDR;
-			ptepindex += 1;
-		}
-		vm_page_flag_set(p, PG_MAPPED);
-		cpu_invltlb();
-		smp_invltlb();
-		return;
-	}
-#endif
 
 	psize = i386_btop(size);
 
@@ -2272,80 +2221,56 @@ retry:
 		psize = object->size - pindex;
 	}
 
+	if (psize == 0)
+		return;
 
 	/*
-	 * If we are processing a major portion of the object, then scan the
-	 * entire thing.
+	 * Use a red-black scan to traverse the requested range and load
+	 * any valid pages found into the pmap.
 	 *
 	 * We cannot safely scan the object's memq unless we are in a
 	 * critical section since interrupts can remove pages from objects.
 	 */
+	info.start_pindex = pindex;
+	info.end_pindex = pindex + psize - 1;
+	info.limit = limit;
+	info.mpte = NULL;
+	info.addr = addr;
+	info.pmap = pmap;
+
 	crit_enter();
-	mpte = NULL;
-	if (psize > (object->resident_page_count >> 2)) {
-		objpgs = psize;
-
-		for (p = TAILQ_FIRST(&object->memq);
-		    objpgs > 0 && p != NULL;
-		    p = TAILQ_NEXT(p, listq)
-		) {
-			tmpidx = p->pindex;
-			if (tmpidx < pindex)
-				continue;
-			tmpidx -= pindex;
-			if (tmpidx >= psize)
-				continue;
-
-			/*
-			 * don't allow an madvise to blow away our really
-			 * free pages allocating pv entries.
-			 */
-			if ((limit & MAP_PREFAULT_MADVISE) &&
-			    vmstats.v_free_count < vmstats.v_free_reserved) {
-				break;
-			}
-			if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
-				(p->busy == 0) &&
-			    (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
-				if ((p->queue - p->pc) == PQ_CACHE)
-					vm_page_deactivate(p);
-				vm_page_busy(p);
-				mpte = pmap_enter_quick(pmap, 
-					addr + i386_ptob(tmpidx), p, mpte);
-				vm_page_flag_set(p, PG_MAPPED);
-				vm_page_wakeup(p);
-			}
-			objpgs -= 1;
-		}
-	} else {
-		/*
-		 * else lookup the pages one-by-one.
-		 */
-		for (tmpidx = 0; tmpidx < psize; tmpidx += 1) {
-			/*
-			 * don't allow an madvise to blow away our really
-			 * free pages allocating pv entries.
-			 */
-			if ((limit & MAP_PREFAULT_MADVISE) &&
-			    vmstats.v_free_count < vmstats.v_free_reserved) {
-				break;
-			}
-			p = vm_page_lookup(object, tmpidx + pindex);
-			if (p &&
-			    ((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
-				(p->busy == 0) &&
-			    (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
-				if ((p->queue - p->pc) == PQ_CACHE)
-					vm_page_deactivate(p);
-				vm_page_busy(p);
-				mpte = pmap_enter_quick(pmap, 
-					addr + i386_ptob(tmpidx), p, mpte);
-				vm_page_flag_set(p, PG_MAPPED);
-				vm_page_wakeup(p);
-			}
-		}
-	}
+	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+				pmap_object_init_pt_callback, &info);
 	crit_exit();
+}
+
+static
+int
+pmap_object_init_pt_callback(vm_page_t p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+	vm_pindex_t rel_index;
+	/*
+	 * don't allow an madvise to blow away our really
+	 * free pages allocating pv entries.
+	 */
+	if ((info->limit & MAP_PREFAULT_MADVISE) &&
+		vmstats.v_free_count < vmstats.v_free_reserved) {
+		    return(-1);
+	}
+	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
+	    (p->busy == 0) && (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
+		if ((p->queue - p->pc) == PQ_CACHE)
+			vm_page_deactivate(p);
+		vm_page_busy(p);
+		rel_index = p->pindex - info->start_pindex;
+		info->mpte = pmap_enter_quick(info->pmap,
+					      info->addr + i386_ptob(rel_index),
+					      p, info->mpte);
+		vm_page_flag_set(p, PG_MAPPED);
+		vm_page_wakeup(p);
+	}
+	return(0);
 }
 
 /*

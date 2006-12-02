@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.10 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.11 2006/12/02 23:13:46 dillon Exp $
  */
 
 /*
@@ -86,6 +86,9 @@
 #endif
 #ifndef _VM_VM_H_
 #include <vm/vm.h>
+#endif
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
 #endif
 
 #ifdef _KERNEL
@@ -129,7 +132,7 @@ struct vm_object {
 	TAILQ_ENTRY(vm_object) object_list; /* list of all objects */
 	LIST_HEAD(, vm_object) shadow_head; /* objects that this is a shadow for */
 	LIST_ENTRY(vm_object) shadow_list; /* chain of shadow objects */
-	TAILQ_HEAD(, vm_page) memq;	/* list of resident pages */
+	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
 	int generation;			/* generation ID */
 	vm_size_t size;			/* Object size */
 	int ref_count;			/* How many refs?? */
