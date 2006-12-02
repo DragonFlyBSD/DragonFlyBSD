@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.12 2006/11/20 22:19:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.13 2006/12/02 22:17:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,6 +129,7 @@ struct objcache {
 	objcache_alloc_fn	*alloc;
 	objcache_free_fn	*free;
 	void			*allocator_args;
+	size_t			simple_objsize;
 
 	SLIST_ENTRY(objcache)	oc_next;
 
@@ -228,6 +229,12 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 			     null_ctor, null_dtor, NULL,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
+
+	/*
+	 * This indicates that we are a simple objcache and allows
+	 * objcache_get() calls with M_ZERO.
+	 */
+	oc->simple_objsize = objsize;
 	return (oc);
 }
 
@@ -264,7 +271,14 @@ retry:
 	loadedmag = cpucache->loaded_magazine;
 	if (MAGAZINE_NOTEMPTY(loadedmag)) {
 		obj = loadedmag->objects[--loadedmag->rounds];
+done:
 		crit_exit();
+		if (ocflags & M_ZERO) {
+			if (oc->simple_objsize)
+				bzero(obj, oc->simple_objsize);
+			else
+				panic("objcache_get(): M_ZERO illegal here");
+		}
 		return (obj);
 	}
 
@@ -275,8 +289,7 @@ retry:
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		obj = loadedmag->objects[--loadedmag->rounds];
-		crit_exit();
-		return (obj);
+		goto done;
 	}
 
 	/*
@@ -284,6 +297,8 @@ retry:
 	 * move one of the empty ones to the depot.
 	 *
 	 * Obtain the depot spinlock.
+	 *
+	 * NOTE: Beyond this point, M_ZERO is handled via oc->alloc()
 	 */
 	depot = &oc->depot[myclusterid];
 	spin_lock_wr(&depot->spin);
