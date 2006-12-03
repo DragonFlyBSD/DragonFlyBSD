@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.19 2006/12/03 02:29:02 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.20 2006/12/03 02:45:42 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -922,8 +922,8 @@ key_do_allocsa_policy(struct secashead *sah, u_int state)
 
 			/* set sadb_address for saidx's. */
 			m = key_setsadbaddr(SADB_EXT_ADDRESS_DST,
-				&d->sah->saidx.src.sa,
-				d->sah->saidx.src.sa.sa_len << 3,
+				&d->sah->saidx.dst.sa,
+				d->sah->saidx.dst.sa.sa_len << 3,
 				IPSEC_ULPROTO_ANY);
 			if (!m)
 				goto msgfail;
