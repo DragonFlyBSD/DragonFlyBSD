@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.21 2006/12/03 02:47:53 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.22 2006/12/03 02:52:44 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -2649,13 +2649,24 @@ key_delsav(struct secasvar *sav)
 	if (__LIST_CHAINED(sav))
 		LIST_REMOVE(sav, chain);
 
+	/*
+	 * Cleanup xform state.  Note that zeroize'ing causes the
+	 * keys to be cleared; otherwise we must do it ourself.
+	 */
+	if (sav->tdb_xform != NULL) {
+		sav->tdb_xform->xf_zeroize(sav);
+		sav->tdb_xform = NULL;
+	} else {
+		if (sav->key_auth != NULL)
+			bzero(_KEYBUF(sav->key_auth), _KEYLEN(sav->key_auth));
+		if (sav->key_enc != NULL)
+			bzero(_KEYBUF(sav->key_enc), _KEYLEN(sav->key_enc));
+	}
 	if (sav->key_auth != NULL) {
-		bzero(_KEYBUF(sav->key_auth), _KEYLEN(sav->key_auth));
 		KFREE(sav->key_auth);
 		sav->key_auth = NULL;
 	}
 	if (sav->key_enc != NULL) {
-		bzero(_KEYBUF(sav->key_enc), _KEYLEN(sav->key_enc));
 		KFREE(sav->key_enc);
 		sav->key_enc = NULL;
 	}
