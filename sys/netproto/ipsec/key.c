@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.18 2006/10/19 07:12:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.19 2006/12/03 02:29:02 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -894,13 +894,19 @@ key_do_allocsa_policy(struct secashead *sah, u_int state)
 		 */
 		if (d->lft_c->sadb_lifetime_addtime != 0) {
 			struct mbuf *m, *result;
+			u_int8_t satype;
 
 			key_sa_chgstate(d, SADB_SASTATE_DEAD);
 
 			KASSERT(d->refcnt > 0,
 				("key_do_allocsa_policy: bogus ref count"));
-			m = key_setsadbmsg(SADB_DELETE, 0,
-			    d->sah->saidx.proto, 0, 0, d->refcnt - 1);
+
+			satype = key_proto2satype(d->sah->saidx.proto);
+			if (satype == 0)
+				goto msgfail;
+
+			m = key_setsadbmsg(SADB_DELETE, 0, satype, 0, 0,
+					   d->refcnt - 1);
 			if (!m)
 				goto msgfail;
 			result = m;
