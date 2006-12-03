@@ -1,0 +1,75 @@
+$DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
+
+		    PORTING FREEBSD DRIVERS TO DRAGONFLY
+
+* Copy the driver code to the appropriate DragonFly directory.  For example,
+  a disk driver /usr/src/sys/dev/blah in FreeBSD would likely be 
+  /usr/src/sys/dev/disk/blah in DragonFly.
+
+* Edit all source files and move the FBSDID declaration into a comment
+  (removing the declaration but leave the CVS id in the comment).  Remove
+  the #include <sys/cdefs.h> as well.
+
+* Driver local #include's probably use a <dev/blah/blah.h> path.  These
+  need to be changed to "blah.h".   '.' is not included in the #include
+  path in FreeBSD builds, but it is in DragonFly builds.
+
+* Other #include's may reference things in <dev/...> which in DragonFly
+  reside in <bus/...>.  In particular, dev/pccard becomes bus/pccard.
+  Note that defines in FreeBSD's pccard_cis.h reside in DragonFly's
+  pccardreg.h .
+
+* MUTEX conversion - mutexes are generally replaced by spinlocks.  However,
+  DragonFly spinlocks are more restriction then FreeBSD mutexes so a
+  direct replacement is not necessarily appropriate in all cases.  A lockmgr
+  lock should be used when a direct replacement is not appropriate.
+  In particular, DragonFly does not allow recursive exclusive spinlocks
+  and does not allow multiple exclusive spinlocks to be held by any given
+  thread.
+
+  Instances of <sys/mutex.h> should be replaced with <sys/spinlock.h>.
+
+  When replacing mutexes with spinlocks it is a good idea to rename 
+  the structural field (typically 'mtx') to something else (typically 'spin').
+
+  The &Giant mutex is typically converted to get_mplock() and rel_mplock().
+  However, there are places where FreeBSD unlocks giant around some code and
+  then relocks giant... those should simply be removed.
+
+  FreeBSD has weird callout + mutex functions.  DragonFly does not integrate
+  the two.  Instead, the driver in DragonFly must obtain the spinlocks
+  in question in the callback routine.
+
+* UMA conversion - generally speaking UMA should be converted to a stanard
+  malloc.
+
+  Note however that in FreeBSD M_NOWAIT is often used in cases where, in fact,
+  the malloc cannot fail without blowing something up or causing a fatal
+  (and very unexpected) I/O error.  M_INTWAIT should be used for these cases.
+
+* CDEVSW conversion - see other devices.  Generally speaking a major number
+  is needed and a function map needs to be specified more explicitly.
+
+  Most calls passing struct cdev pointers are dev_t's in DragonFly.
+
+  All device vectors in DragonFly pass a dev_<name>_args structure pointer
+  instead of explicit arguments.
+
+  Strategy calls - we pass BIO's and a lot of BUF fields are in the BIO
+  in FreeBSD, but left in the BUF in DragonFly.  FreeBSD for some reason
+  names its struct bio pointers 'bp', its a good idea to rename them to 'bio'
+  to avoid confusion and have a struct buf *bp = bio->bio_buf; pointer to
+  access the buf.
+
+* TSLEEP conversion.  The DragonFly tsleep does not have 'PRI' priorities.
+  0 should be used.
+
+
+* BUS_* FUNCTIONS
+
+  bus_setup_intr() - replace INTR_TYPE_* flags with 0.  There is an extra
+  argument for an interrupt interlock using the sys/serializer.h interface.
+  This can either be left NULL or you can convert the genera spinlock(s) for
+  the driver into serializer locks and integrate the interrupt service
+  routine with a serializer.
+   
