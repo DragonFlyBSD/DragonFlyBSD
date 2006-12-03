@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.20 2006/12/03 02:45:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.21 2006/12/03 02:47:53 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -3742,8 +3742,8 @@ key_cmpspidx_withmask(
 		 * scope_id check. if sin6_scope_id is 0, we regard it
 		 * as a wildcard scope, which matches any scope zone ID. 
 		 */
-		if (spidx0->src.sin6.sin6_scope_id &&
-		    spidx1->src.sin6.sin6_scope_id &&
+		if (spidx0->dst.sin6.sin6_scope_id &&
+		    spidx1->dst.sin6.sin6_scope_id &&
 		    spidx0->dst.sin6.sin6_scope_id != spidx1->dst.sin6.sin6_scope_id)
 			return 0;
 		if (!key_bbcmp(&spidx0->dst.sin6.sin6_addr,
