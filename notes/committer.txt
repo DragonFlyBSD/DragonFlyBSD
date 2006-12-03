@@ -1,0 +1,63 @@
+$DragonFly: doc/notes/committer.txt,v 1.1 2006/12/03 20:49:22 dillon Exp $
+
+			Adding a new Committer
+
+* Obtain the prefered user name and SSH DSA public key from the new committer
+
+* Add the password entry to crater using vipw.  Committer user id's are in
+  the 2000+ range. Use the same GID as UID.
+
+* Add an entry for the user to /etc/group.
+
+* Add the user to the 'ncvs' group in /etc/group.
+
+* Copy the template, chown the files, and add the DSA key.
+
+  cd /home
+  cpdup template <newuser>
+  chown -R <newuser>:<newuser> <newuser>
+  cd <newuser>
+  vi .ssh/authorized_keys
+
+  Be careful to retain the command prefix in .ssh/authorized_keys.  Shell
+  logins are not allowed on crater.
+
+* Create an alias in /var/bestserv/lists/commits/list for the new user, so
+  cvs commits to the repository (which are emailed from crater) do not bounce.
+  The entry looks like this:
+
+  +a...... NEWUSER@crater.dragonflybsd.org
+
+* Create the LEAF account.  Run vipw on leaf and paste the same password entry
+  that you created on crater.  Do *NOT* create an /etc/group entry for the
+  user.  Just leave it as a number.
+
+  IF THE USER ALREADY HAS A LEAF ACCOUNT, CHANGE THE UID AND GID TO REFLECT
+  HIS COMMITTER STATUS (make it the same as the crater account), then 
+  re-chown the user's files in /home/USERNAME and /build/home/USERNAME.
+
+  cd /home
+  cpdup template <newuser>
+  chown -R <newuser>:<newuser_gid> <newuser>
+  cd <newuser>
+  vi .ssh/authorized_keys
+
+* Create the softlink infrastructure on the leaf account.  NOTE: leave
+  the group set to 'wheel' so developers can give administrators group
+  access if they do not want to give world access to other developers.
+
+  mkdir /build/home/NEWUSER
+  mkdir /build/home/NEWUSER/crash
+  chown NEWUSER:wheel /build/home/NEWUSER
+  chown /build/home/NEWUSER/crash
+  cd /home/NEWUSER
+  ln -s /build/home/NEWUSER build
+  ln -s /build/home/NEWUSER/crash crash
+
+* Give the new committer the list of committer rules (from man committer) and
+  have the new committer do a test commit.
+
+* Make sure that the test commit feeds through to the commits@ mailing list.
+  Commit emails are sent by crater and if you do not have the alias properly
+  installed they will bounce.
+
