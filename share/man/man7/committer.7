@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/share/man/man7/committer.7,v 1.1 2006/12/03 21:04:22 swildner Exp $
+.\" $DragonFly: src/share/man/man7/committer.7,v 1.2 2006/12/03 21:15:27 swildner Exp $
 .\" 
 .Dd December 3, 2006
 .Dt COMMITTER 7
@@ -122,7 +122,6 @@ To commit to the repository, use:
 cvs -d you@crater.dragonflybsd.org:/cvs commit files_or_directories
 .Ed
 .Pp
-.It
 Do not set CVSROOT to you@crater.dragonflybsd.org:/cvs.  The
 reason is that you want the default CVSROOT in your checked out
 sources to point at your local cvs repository, not at crater.
@@ -139,12 +138,12 @@ The idea here is to try to avoid having CVS set its CVS/Root
 file in any given checked out cvs directory to point at crater.
 You really want it to just point at your local copy of the cvs
 repository.
-.It
+.Pp
 Never do cvs tag or rtag operations.  Such operations can be
 very dangerous and only highly experienced CVS admins should
 do them.  That's basically just two or three people (Me and Joerg
 primarily).
-.It
+.Pp
 The best way to resynchronize your local cvs repository after
 making a commit is to cvsup again.
 .Sh DISCUSSING COMMITTABLE WORK BEFORE HAND
@@ -179,8 +178,8 @@ Areas within the CVS repository are never explicitly locked.
 Often situations will arise where one developer commits work and
 another developer finds an issue with it that needs to be corrected.
 .Pp
-All committed work becomes community property.  No developer has a
-'lock' on any part of the source tree.  However, if a developer is
+All committed work becomes community property.  No developer has a 'lock'
+on any part of the source tree.  However, if a developer is
 actively working on a portion of the source tree and you find a bug
 or other issue, courtesy dictates that you post to kernel@ and/or
 email the developer.
