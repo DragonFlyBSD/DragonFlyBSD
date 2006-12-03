@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.22 2006/12/03 02:52:44 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.23 2006/12/03 03:16:24 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -6386,11 +6386,6 @@ key_parse(struct mbuf *m, struct socket *so)
 	error = key_align(m, &mh);
 	if (error)
 		return error;
-
-	if (m->m_next) {	/*XXX*/
-		m_freem(m);
-		return ENOBUFS;
-	}
 
 	msg = mh.msg;
 
