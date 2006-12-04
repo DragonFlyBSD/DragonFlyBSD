@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.143 2006/11/16 13:43:55 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.144 2006/12/04 14:40:36 tgen Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -137,6 +137,22 @@ dev/disk/ata/atapi-cd.c			optional atapicd
 dev/disk/ata/atapi-fd.c			optional atapifd
 dev/disk/ata/atapi-tape.c		optional atapist
 dev/disk/ata/atapi-cam.c		optional atapicam
+dev/disk/nata/ata_if.m			optional nata
+dev/disk/nata/ata-all.c			optional nata
+dev/disk/nata/ata-card.c		optional nata pccard
+dev/disk/nata/ata-chipset.c		optional nata pci
+dev/disk/nata/ata-disk.c		optional natadisk
+dev/disk/nata/ata-dma.c			optional nata pci
+dev/disk/nata/ata-isa.c			optional nata isa
+dev/disk/nata/ata-lowlevel.c	optional nata
+dev/disk/nata/ata-pci.c			optional nata pci
+dev/disk/nata/ata-queue.c		optional nata
+dev/disk/nata/ata-raid.c		optional nataraid
+dev/disk/nata/ata-usb.c			optional natausb
+dev/disk/nata/atapi-cam.c		optional natapicam
+dev/disk/nata/atapi-cd.c		optional natapicd
+dev/disk/nata/atapi-fd.c		optional natapifd
+dev/disk/nata/atapi-tape.c		optional natapist
 dev/raid/amr/amr_cam.c			optional amr
 dev/raid/amr/amr_disk.c			optional amr
 dev/raid/amr/amr_pci.c			optional amr
