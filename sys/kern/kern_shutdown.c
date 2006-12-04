@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.41 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.42 2006/12/04 18:03:26 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -139,6 +139,9 @@ int dumping;				/* system is dumping */
 u_int panic_cpu_interlock;		/* panic interlock */
 globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 #endif
+
+int bootverbose = 0;			/* note: assignment to force non-bss */
+int cold = 1;				/* note: assignment to force non-bss */
 
 static void boot (int) __dead2;
 static void dumpsys (void);

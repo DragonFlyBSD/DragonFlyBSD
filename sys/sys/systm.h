@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.46 2006/11/08 16:38:43 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.47 2006/12/04 18:03:27 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -224,6 +224,7 @@ void	adjust_timeout_calltodo (struct timeval *time_change);
 #include <sys/libkern.h>
 
 /* Initialize the world */
+void	mi_startup (void);
 void	consinit (void);
 void	cpu_initclocks (void);
 void	nchinit (void);

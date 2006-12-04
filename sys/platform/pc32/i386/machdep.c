@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.104 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.105 2006/12/04 18:03:28 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -156,7 +156,6 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 #endif
 
 int physmem = 0;
-int cold = 1;
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
@@ -232,7 +231,6 @@ SYSCTL_PROC(_machdep, OID_AUTO, msgbuf_clear, CTLTYPE_INT|CTLFLAG_RW,
 	&msgbuf_clear, 0, sysctl_machdep_msgbuf_clear, "I",
 	"Clear kernel message buffer");
 
-int bootverbose = 0;
 vm_paddr_t Maxmem = 0;
 long dumplo;
 

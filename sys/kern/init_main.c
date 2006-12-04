@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.66 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.67 2006/12/04 18:03:26 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -74,8 +74,6 @@
 #include <vm/vm_map.h>
 #include <sys/user.h>
 #include <sys/copyright.h>
-
-void mi_startup(void);				/* Should be elsewhere */
 
 /* Components of the first process -- never freed. */
 static struct session session0;
