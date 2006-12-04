@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.10 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.11 2006/12/04 18:04:00 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -101,10 +101,14 @@
 #define ALIGNBYTES	_ALIGNBYTES
 #define ALIGN(p)	_ALIGN(p)
 
-#define PAGE_SHIFT	12		/* LOG2(PAGE_SIZE) */
-#define PAGE_SIZE	(1<<PAGE_SHIFT)	/* bytes/page */
+#define PAGE_SHIFT	12
+#define PAGE_SIZE	(1<<PAGE_SHIFT)	/* bytes per mmu page (level 2) */
 #define PAGE_MASK	(PAGE_SIZE-1)
 #define NPTEPG		(PAGE_SIZE/(sizeof (pt_entry_t)))
+
+#define SEG_SHIFT	22
+#define SEG_SIZE	(1<<SEG_SHIFT)	/* bytes per mmu segment (level 1) */
+#define SEG_MASK	(SEG_SIZE-1)
 
 #define NPDEPG		(PAGE_SIZE/(sizeof (pd_entry_t)))
 #define PDRSHIFT	22		/* LOG2(NBPDR) */

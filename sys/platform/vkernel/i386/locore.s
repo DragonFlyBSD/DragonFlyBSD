@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.2 2006/11/08 16:39:59 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.3 2006/12/04 18:04:01 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -43,16 +43,13 @@
 	.data
 	ALIGN_DATA		/* just to be sure */
 
+	/*
+	 * Normally the startup code would begin here, but this is a 
+	 * virtual kernel so we just have a main() in platform/init.c
+	 */
+	
 	.text
-NON_GPROF_ENTRY(btext)
 
-	call	initvkernel
-	call	mi_startup
-1:
-	hlt
-	jmp	1b
-
-#if 0
 /*
  * Signal trampoline, copied to top of user stack
  */
@@ -76,6 +73,4 @@ esigcode:
 	.globl	szsigcode
 szsigcode:
 	.long	esigcode - sigcode
-
-#endif
 

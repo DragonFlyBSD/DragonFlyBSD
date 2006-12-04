@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/vmparam.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/vmparam.h,v 1.2 2006/12/04 18:04:03 dillon Exp $
  */
 
 #ifndef _MACHINE_VMPARAM_H_
@@ -74,8 +74,9 @@
  * address spaces exist in different VM spaces and can overlap.
  */
 #define KERNBASE		0x1000
+#define KERNEL_KVA_SIZE		0x40000000
 
-#define VM_MIN_KERNEL_ADDRESS	0
+#define VM_MIN_KERNEL_ADDRESS	0x00000000
 #define VM_MAX_KERNEL_ADDRESS	0xC0000000
 
 #define VM_MIN_USER_ADDRESS	0x00000000

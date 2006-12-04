@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.4 2006/10/20 17:02:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.5 2006/12/04 18:04:05 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -118,8 +118,11 @@ typedef u_int32_t	vpte_t;
 #define VPTE_PAGE_BITS		10
 #define VPTE_PAGE_MASK		((1 << VPTE_PAGE_BITS) - 1)
 
-#define VPTE_V		0x00000001	/* inverted valid bit (TEMPORARY) */
+#define VPTE_V		0x00000001
 #define VPTE_PS		0x00000002
+#define VPTE_R		0x00000004
+#define VPTE_W		0x00000008
+#define VPTE_X		0x00000010
 
 #endif
 
