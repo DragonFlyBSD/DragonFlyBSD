@@ -31,10 +31,22 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.1 2006/12/04 18:04:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.2 2006/12/05 23:14:54 dillon Exp $
  */
 
+#include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <vm/vm_page.h>
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <err.h>
+#include <errno.h>
 
 vm_paddr_t Maxmem;
 int MemImageFd = -1;
@@ -42,9 +54,10 @@ int RootImageFd = -1;
 vm_offset_t KvaBase;
 vm_offset_t KvaSize;
 
-static void init_sys_memory(const char *imageFile);
-static void init_kern_memory(const char *imageFile);
-static void init_rootdevice(const char *imageFile);
+static void init_sys_memory(char *imageFile);
+static void init_kern_memory(void);
+static void init_rootdevice(char *imageFile);
+static void usage(const char *ctl);
 
 /*
  * Kernel startup for virtual kernels - standard main() 
@@ -52,8 +65,10 @@ static void init_rootdevice(const char *imageFile);
 int
 main(int ac, char **av)
 {
-	const char *memImageFile;
-	const char *rootImageFile;
+	char *memImageFile = NULL;
+	char *rootImageFile = NULL;
+	char *suffix;
+	int c;
 
 	/*
 	 * Process options
@@ -101,6 +116,7 @@ main(int ac, char **av)
 	init_rootdevice(rootImageFile);
 	mi_startup();
 	/* NOT REACHED */
+	exit(1);
 }
 
 /*
@@ -108,8 +124,9 @@ main(int ac, char **av)
  */
 static
 void
-init_sys_memory(const char *imageFile)
+init_sys_memory(char *imageFile)
 {
+	struct stat st;
 	int fd;
 
 	/*
@@ -120,7 +137,7 @@ init_sys_memory(const char *imageFile)
 	if (imageFile && stat(imageFile, &st) == 0 && Maxmem == 0)
 		Maxmem = (vm_paddr_t)st.st_size;
 	if ((imageFile == NULL || stat(imageFile, &st) < 0) && Maxmem == 0) {
-		err(1, "Cannot create new memory file unless "
+		err(1, "Cannot create new memory file %s unless "
 		       "system memory size is specified with -m",
 		       imageFile);
 		/* NOT REACHED */
@@ -145,7 +162,7 @@ init_sys_memory(const char *imageFile)
 		asprintf(&imageFile, "/var/vkernel/image.%05d", (int)getpid());
 	fd = open(imageFile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
 	if (fd < 0 || fstat(fd, &st) < 0) {
-		err(1, "Unable to open/create %s",
+		err(1, "Unable to open/create %s: %s",
 		      imageFile, strerror(errno));
 		/* NOT REACHED */
 	}
@@ -212,7 +229,14 @@ init_kern_memory(void)
  */
 static
 void
-init_rootdevice(const char *imageFile)
+init_rootdevice(char *imageFile)
 {
+}
+
+static
+void
+usage(const char *ctl)
+{
+	
 }
 

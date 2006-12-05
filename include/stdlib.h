@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.18 2006/09/28 17:20:45 corecode Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.19 2006/12/05 23:14:51 dillon Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -102,14 +102,17 @@ int	 rand(void);
 void	*realloc(void *, size_t);
 void	 srand(unsigned);
 double	 strtod(const char *, char **);
-long	 strtol(const char *, char **, int);
-unsigned long	strtoul(const char *, char **, int);
 #ifdef __LONG_LONG_SUPPORTED
 long long int	atoll(const char *);
 long long	strtoll(const char *, char **, int);
 unsigned long long strtoull(const char *, char **, int);
 #endif
 int	 system(const char *);
+
+#if !defined(_KERNEL_VIRTUAL)
+long	 strtol(const char *, char **, int);
+unsigned long	strtoul(const char *, char **, int);
+#endif
 
 int	 mblen(const char *, size_t);
 size_t	 mbstowcs(wchar_t *, const char *, size_t);
@@ -171,10 +174,13 @@ char	*setstate(char *);
 void	 srandom(unsigned long);
 void	 srandomdev(void);
 char	*user_from_uid(uid_t, int);
-#ifndef __STRICT_ANSI__
+
+#if !defined(__STRICT_ANSI__) && !defined(_KERNEL_VIRTUAL)
 __int64_t	strtoq(const char *, char **, int);
 __uint64_t	strtouq(const char *, char **, int);
+#endif
 
+#ifndef __STRICT_ANSI__
 #ifdef __LONG_LONG_SUPPORTED
 long long
 	 strtonum(const char *, long long, long long, const char **);

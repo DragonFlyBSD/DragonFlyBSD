@@ -37,13 +37,13 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.9 2005/07/03 14:43:27 corecode Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.10 2006/12/05 23:14:55 dillon Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
 #define _SYS_ERRNO_H_
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 extern __thread int	errno;
 
 #include <sys/cdefs.h>

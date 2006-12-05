@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.16 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.17 2006/12/05 23:14:55 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -132,9 +132,15 @@ typedef struct cdev	*cdev_t;
 
 #endif
 
+/*
+ * The kernel now uses only udev_t or cdev_t.  Userland uses dev_t.
+ * Virtual kernel builds needs dev_t in order to include userland header
+ * files.
+ */
 #ifdef _KERNEL
 
 #define offsetof(type, field) __offsetof(type, field)
+typedef udev_t		dev_t;		/* device number */
 
 #else
 

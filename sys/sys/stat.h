@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.10 2006/08/13 19:12:04 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.11 2006/12/05 23:14:55 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -197,7 +197,7 @@ struct stat {
 
 #endif /* !_POSIX_SOURCE */
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
@@ -217,6 +217,6 @@ int	lstat (const char *, struct stat *);
 #endif
 __END_DECLS
 
-#endif /* !_KERNEL */
+#endif
 
 #endif /* !_SYS_STAT_H_ */

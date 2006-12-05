@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.10 2006/07/28 02:11:31 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.11 2006/12/05 23:14:55 dillon Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -216,8 +216,7 @@ union fcntl_dat {
 #define	LOCK_UN		0x08		/* unlock file */
 #endif
 
-
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
