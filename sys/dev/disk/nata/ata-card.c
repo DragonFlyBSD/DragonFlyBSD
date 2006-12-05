@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.39 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-card.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-card.c,v 1.2 2006/12/05 19:28:14 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -45,7 +45,7 @@
 static const struct pccard_product ata_pccard_products[] = {
 	PCMCIA_CARD(FREECOM, PCCARDIDE, 0),
 	PCMCIA_CARD(EXP, EXPMULTIMEDIA, 0),
-	PCMCIA_CARD(IODATA3, CBIDE2, 0),
+	PCMCIA_CARD(IODATA, CBIDE2, 0),
 	PCMCIA_CARD(OEM2, CDROM1, 0),
 	PCMCIA_CARD(OEM2, IDE, 0),
 	PCMCIA_CARD(PANASONIC, KXLC005, 0),
@@ -58,10 +58,8 @@ ata_pccard_probe(device_t dev)
 {
     const struct pccard_product *pp;
     u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
-    int error = 0;
 
-    if ((error = pccard_get_function(dev, &fcn)))
-	return error;
+    fcn = pccard_get_function_number(dev);
 
     /* if it says its a disk we should register it */
     if (fcn == PCCARD_FUNCTION_DISK)
