@@ -26,10 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.2 2006/12/05 19:40:43 tgen Exp $
  */
 
 #include "opt_ata.h"
+#include "opt_scsi.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -867,7 +868,7 @@ free_softc(struct atapi_xpt_softc *scp)
 	}
 	if (scp->sim != NULL) {
 	    if ((scp->flags & BUS_REGISTERED) == 0)
-		cam_sim_free(scp->sim, /*free_devq*/TRUE);
+		cam_sim_free(scp->sim);
 	    else
 		printf("Can't free %s SIM (still registered)\n",
 		       cam_sim_name(scp->sim));
