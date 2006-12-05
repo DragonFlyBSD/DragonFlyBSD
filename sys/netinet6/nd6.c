@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.20 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.21 2006/12/05 08:09:10 hsu Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1803,14 +1803,12 @@ nd6_slowtimo(void *ignored_arg)
 	crit_exit();
 }
 
-#define senderr(e) { error = (e); goto bad;}
+#define gotoerr(e) { error = (e); goto bad;}
+
 int
-nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
-	   struct sockaddr_in6 *dst, struct rtentry *rt0)
+nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
+	   struct sockaddr_in6 *dst, struct rtentry *rt)
 {
-	struct mbuf *m = m0;
-	struct rtentry *rt = rt0;
-	struct sockaddr_in6 *gw6 = NULL;
 	struct llinfo_nd6 *ln = NULL;
 	int error = 0;
 
@@ -1823,21 +1821,19 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 	/*
 	 * next hop determination.  This routine is derived from ether_outpout.
 	 */
-	if (rt) {
+	if (rt != NULL) {
 		if (!(rt->rt_flags & RTF_UP)) {
-			if ((rt0 = rt = rtlookup((struct sockaddr *)dst))) {
-				rt->rt_refcnt--;
-				if (rt->rt_ifp != ifp) {
-					/* XXX: loop care? */
-					return nd6_output(ifp, origifp, m0,
-							  dst, rt);
-				}
-			} else
-				senderr(EHOSTUNREACH);
+			rt = rtlookup((struct sockaddr *)dst);
+			if (rt == NULL)
+				gotoerr(EHOSTUNREACH);
+			rt->rt_refcnt--;
+			if (rt->rt_ifp != ifp) {
+				/* XXX: loop care? */
+				return nd6_output(ifp, origifp, m, dst, rt);
+			}
 		}
-
 		if (rt->rt_flags & RTF_GATEWAY) {
-			gw6 = (struct sockaddr_in6 *)rt->rt_gateway;
+			struct sockaddr_in6 *gw6;
 
 			/*
 			 * We skip link-layer address resolution and NUD
@@ -1847,6 +1843,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 			 * if the gateway is our own address, which is
 			 * sometimes used to install a route to a p2p link.
 			 */
+			gw6 = (struct sockaddr_in6 *)rt->rt_gateway;
 			if (!nd6_is_addr_neighbor(gw6, ifp) ||
 			    in6ifa_ifpwithaddr(ifp, &gw6->sin6_addr)) {
 				/*
@@ -1855,18 +1852,20 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 				 * XXX: we may need a more generic rule here.
 				 */
 				if (!(ifp->if_flags & IFF_POINTOPOINT))
-					senderr(EHOSTUNREACH);
+					gotoerr(EHOSTUNREACH);
 
 				goto sendpkt;
 			}
 
-			if (rt->rt_gwroute == NULL)
-				goto lookup;
-			if (!(rt->rt_gwroute->rt_flags & RTF_UP)) {
-				rtfree(rt->rt_gwroute);
-lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway);
+			if (rt->rt_gwroute == NULL) {
+				rt->rt_gwroute = rtlookup(rt->rt_gateway);
 				if (rt->rt_gwroute == NULL)
-					senderr(EHOSTUNREACH);
+					gotoerr(EHOSTUNREACH);
+			} else if (!(rt->rt_gwroute->rt_flags & RTF_UP)) {
+				rtfree(rt->rt_gwroute);
+				rt->rt_gwroute = rtlookup(rt->rt_gateway);
+				if (rt->rt_gwroute == NULL)
+					gotoerr(EHOSTUNREACH);
 			}
 		}
 	}
@@ -1898,7 +1897,7 @@ lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway);
 			    "nd6_output: can't allocate llinfo for %s "
 			    "(ln=%p, rt=%p)\n",
 			    ip6_sprintf(&dst->sin6_addr), ln, rt);
-			senderr(EIO);	/* XXX: good error? */
+			gotoerr(EIO);	/* XXX: good error? */
 		}
 
 		goto sendpkt;	/* send anyway */
@@ -1958,7 +1957,6 @@ lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway);
 	return (0);
 
 sendpkt:
-
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (ifp->if_flags & IFF_LOOPBACK) {
 		error = (*ifp->if_output)(origifp, m, (struct sockaddr *)dst,
@@ -1970,11 +1968,10 @@ sendpkt:
 	return (error);
 
 bad:
-	if (m)
-		m_freem(m);
+	m_freem(m);
 	return (error);
 }
-#undef senderr
+#undef gotoerr
 
 int
 nd6_need_cache(struct ifnet *ifp)
