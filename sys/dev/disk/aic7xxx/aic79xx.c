@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#198 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.9 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.10 2006/12/05 23:31:54 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -64,7 +64,7 @@ static const u_int num_chip_names = NUM_ELEMENTS(ahd_chip_names);
  * Hardware error codes.
  */
 struct ahd_hard_error_entry {
-        uint8_t errno;
+        uint8_t error;
 	char *errmesg;
 };
 
@@ -503,7 +503,7 @@ ahd_handle_hwerrint(struct ahd_softc *ahd)
 
 	error = ahd_inb(ahd, ERROR);
 	for (i = 0; i < num_errors; i++) {
-		if ((error & ahd_hard_errors[i].errno) != 0)
+		if ((error & ahd_hard_errors[i].error) != 0)
 			printf("%s: hwerrint, %s\n",
 			       ahd_name(ahd), ahd_hard_errors[i].errmesg);
 	}

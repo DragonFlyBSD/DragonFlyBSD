@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.18 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.19 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1719,7 +1719,7 @@ spp_disconnect(struct sppcb *cb)
  * the specified error.
  */
 struct sppcb *
-spp_drop(struct sppcb *cb, int errno)
+spp_drop(struct sppcb *cb, int error)
 {
 	struct socket *so = cb->s_nspcb->nsp_socket;
 
@@ -1734,7 +1734,7 @@ spp_drop(struct sppcb *cb, int errno)
 		/*tcp_output(cb);*/
 	} else
 		sppstat.spps_conndrops++;
-	so->so_error = errno;
+	so->so_error = error;
 	return (spp_close(cb));
 }
 

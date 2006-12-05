@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.8 2006/06/23 17:20:14 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.9 2006/12/05 23:31:57 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -375,7 +375,7 @@ sctp_notify_mbuf(struct sctp_inpcb *inp,
 
 void
 sctp_notify(struct sctp_inpcb *inp,
-	    int errno,
+	    int error,
 	    struct sctphdr *sh,
 	    struct sockaddr *to,
 	    struct sctp_tcb *stcb,
@@ -398,10 +398,10 @@ sctp_notify(struct sctp_inpcb *inp,
 
 /* FIX ME FIX ME PROTOPT i.e. no SCTP should ALWAYS be an ABORT */
 
-	if ((errno == EHOSTUNREACH) ||  /* Host is not reachable */
-	    (errno == EHOSTDOWN) ||	/* Host is down */
-	    (errno == ECONNREFUSED) ||	/* Host refused the connection, (not an abort?) */
-	    (errno == ENOPROTOOPT)	/* SCTP is not present on host */
+	if ((error == EHOSTUNREACH) ||  /* Host is not reachable */
+	    (error == EHOSTDOWN) ||	/* Host is down */
+	    (error == ECONNREFUSED) ||	/* Host refused the connection, (not an abort?) */
+	    (error == ENOPROTOOPT)	/* SCTP is not present on host */
 		) {
 		/*
 		 * Hmm reachablity problems we must examine closely.
@@ -409,7 +409,7 @@ sctp_notify(struct sctp_inpcb *inp,
 		 * Or if there is NO protocol at the other end named SCTP.
 		 * well we consider it a OOTB abort.
 		 */
-		if ((errno == EHOSTUNREACH) || (errno == EHOSTDOWN)) {
+		if ((error == EHOSTUNREACH) || (error == EHOSTDOWN)) {
 			if (net->dest_state & SCTP_ADDR_REACHABLE) {
 				/* Ok that destination is NOT reachable */
 				net->dest_state &= ~SCTP_ADDR_REACHABLE;
@@ -437,7 +437,7 @@ sctp_notify(struct sctp_inpcb *inp,
 		/* Send all others to the app */
 		if (inp->sctp_socket) {
 			SOCK_LOCK(inp->sctp_socket);
-			inp->sctp_socket->so_error = errno;
+			inp->sctp_socket->so_error = error;
 			sctp_sowwakeup(inp, inp->sctp_socket);
 			SOCK_UNLOCK(inp->sctp_socket);
 		}

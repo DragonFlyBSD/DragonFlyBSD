@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.53 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.54 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -718,7 +718,7 @@ tcp_newtcpcb(struct inpcb *inp)
  * If connection is synchronized, then send a RST to peer.
  */
 struct tcpcb *
-tcp_drop(struct tcpcb *tp, int errno)
+tcp_drop(struct tcpcb *tp, int error)
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
 
@@ -728,9 +728,9 @@ tcp_drop(struct tcpcb *tp, int errno)
 		tcpstat.tcps_drops++;
 	} else
 		tcpstat.tcps_conndrops++;
-	if (errno == ETIMEDOUT && tp->t_softerror)
-		errno = tp->t_softerror;
-	so->so_error = errno;
+	if (error == ETIMEDOUT && tp->t_softerror)
+		error = tp->t_softerror;
+	so->so_error = error;
 	return (tcp_close(tp));
 }
 
@@ -1528,7 +1528,7 @@ tcp_new_isn(struct tcpcb *tp)
  * to one segment.  We will gradually open it again as we proceed.
  */
 void
-tcp_quench(struct inpcb *inp, int errno)
+tcp_quench(struct inpcb *inp, int error)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 
@@ -1544,12 +1544,12 @@ tcp_quench(struct inpcb *inp, int errno)
  * is controlled by the icmp_may_rst sysctl.
  */
 void
-tcp_drop_syn_sent(struct inpcb *inp, int errno)
+tcp_drop_syn_sent(struct inpcb *inp, int error)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 
 	if ((tp != NULL) && (tp->t_state == TCPS_SYN_SENT))
-		tcp_drop(tp, errno);
+		tcp_drop(tp, error);
 }
 
 /*

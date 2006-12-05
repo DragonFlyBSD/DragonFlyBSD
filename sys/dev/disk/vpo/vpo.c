@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.7 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.8 2006/12/05 23:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -207,7 +207,7 @@ vpo_cam_rescan(struct vpo_data *vpo)
 static void
 vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 {
-	int errno;	/* error in errno.h */
+	int error;
 #ifdef VP0_DEBUG
 	int i;
 #endif
@@ -215,13 +215,13 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 	crit_enter();
 
 	if (vpo->vpo_isplus) {
-		errno = imm_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
+		error = imm_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
 			csio->ccb_h.target_id,
 			(char *)&csio->cdb_io.cdb_bytes, csio->cdb_len,
 			(char *)csio->data_ptr, csio->dxfer_len,
 			&vpo->vpo_stat, &vpo->vpo_count, &vpo->vpo_error);
 	} else {
-		errno = vpoio_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
+		error = vpoio_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
 			csio->ccb_h.target_id,
 			(char *)&csio->cdb_io.cdb_bytes, csio->cdb_len,
 			(char *)csio->data_ptr, csio->dxfer_len,
@@ -230,7 +230,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 
 #ifdef VP0_DEBUG
 	printf("vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
-		 errno, vpo->vpo_stat, vpo->vpo_count, vpo->vpo_error);
+		 error, vpo->vpo_stat, vpo->vpo_count, vpo->vpo_error);
 
 	/* dump of command */
 	for (i=0; i<csio->cdb_len; i++)
@@ -239,7 +239,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 	printf("\n");
 #endif
 
-	if (errno) {
+	if (error) {
 		/* connection to ppbus interrupted */
 		csio->ccb_h.status = CAM_CMD_TIMEOUT;
 		goto error;
@@ -267,7 +267,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 		vpo->vpo_sense.cmd.control = 0;
 
 		if (vpo->vpo_isplus) {
-			errno = imm_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
+			error = imm_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
 				csio->ccb_h.target_id,
 				(char *)&vpo->vpo_sense.cmd,
 				sizeof(vpo->vpo_sense.cmd),
@@ -275,7 +275,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 				&vpo->vpo_sense.stat, &vpo->vpo_sense.count,
 				&vpo->vpo_error);
 		} else {
-			errno = vpoio_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
+			error = vpoio_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
 				csio->ccb_h.target_id,
 				(char *)&vpo->vpo_sense.cmd,
 				sizeof(vpo->vpo_sense.cmd),
@@ -287,11 +287,11 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 
 #ifdef VP0_DEBUG
 		printf("(sense) vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
-			errno, vpo->vpo_sense.stat, vpo->vpo_sense.count, vpo->vpo_error);
+			error, vpo->vpo_sense.stat, vpo->vpo_sense.count, vpo->vpo_error);
 #endif
 
 		/* check sense return status */
-		if (errno == 0 && vpo->vpo_sense.stat == SCSI_STATUS_OK) {
+		if (error == 0 && vpo->vpo_sense.stat == SCSI_STATUS_OK) {
 		   /* sense ok */
 		   csio->ccb_h.status = CAM_AUTOSNS_VALID | CAM_SCSI_STATUS_ERROR;
 		   csio->sense_resid = csio->sense_len - vpo->vpo_sense.count;

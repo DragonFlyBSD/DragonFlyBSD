@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.30 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.31 2006/12/05 23:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -879,11 +879,11 @@ unp_shutdown(struct unpcb *unp)
 }
 
 static void
-unp_drop(struct unpcb *unp, int errno)
+unp_drop(struct unpcb *unp, int err)
 {
 	struct socket *so = unp->unp_socket;
 
-	so->so_error = errno;
+	so->so_error = err;
 	unp_disconnect(unp);
 }
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.11 2006/12/05 23:31:57 dillon Exp $
  */
 
 /*
@@ -202,8 +202,8 @@ static Atm_attributes	atm_aal5_defattr = {
 	return (err);						\
 	;
 
-#define	ATM_RETERR(errno) {					\
-	err = errno;						\
+#define	ATM_RETERR(error) {					\
+	err = error;						\
 	goto out;						\
 }
 
@@ -218,7 +218,7 @@ static Atm_attributes	atm_aal5_defattr = {
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -261,7 +261,7 @@ out:
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -285,7 +285,7 @@ atm_aal5_detach(struct socket *so)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -308,7 +308,7 @@ atm_aal5_bind(struct socket *so, struct sockaddr *addr, struct thread *td)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -332,7 +332,7 @@ atm_aal5_listen(struct socket *so, struct thread *td)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -378,7 +378,7 @@ atm_aal5_connect(struct socket *so, struct sockaddr *addr, thread_t td)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -404,7 +404,7 @@ atm_aal5_accept(struct socket *so, struct sockaddr **addr)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -426,7 +426,7 @@ atm_aal5_disconnect(struct socket *so)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -453,7 +453,7 @@ atm_aal5_shutdown(struct socket *so)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -517,7 +517,7 @@ out:
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -544,7 +544,7 @@ atm_aal5_abort(struct socket *so)
  *
  * Returns:
  *	0 	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -575,7 +575,7 @@ atm_aal5_control(
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -601,7 +601,7 @@ atm_aal5_sense(struct socket *so, struct stat *st)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -624,7 +624,7 @@ atm_aal5_sockaddr(struct socket	*so, struct sockaddr **addr)
  *
  * Returns:
  *	0	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 static int
@@ -659,7 +659,7 @@ atm_aal5_peeraddr(struct socket *so, struct sockaddr **addr)
  *
  * Returns:
  *	0	call is accepted
- *	errno	call rejected - reason indicated
+ *	error	call rejected - reason indicated
  *
  */
 static int
@@ -750,7 +750,7 @@ atm_aal5_cpcs_data(void *tok, KBuffer *m)
  *
  * Returns:
  *	0 	request processed
- *	errno	error processing request - reason indicated
+ *	error	error processing request - reason indicated
  *
  */
 int

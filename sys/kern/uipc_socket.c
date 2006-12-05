@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.38 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.39 2006/12/05 23:31:56 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -539,7 +539,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		td->td_proc->p_stats->p_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
-#define	gotoerr(errno)	{ error = errno; crit_exit(); goto release; }
+#define	gotoerr(errcode)	{ error = errcode; crit_exit(); goto release; }
 
 restart:
 	error = sblock(&so->so_snd, SBLOCKWAIT(flags));

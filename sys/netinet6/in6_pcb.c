@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.31 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.32 2006/12/05 23:31:57 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -962,7 +962,7 @@ in6_losing(struct inpcb *in6p)
  * and allocate a (hopefully) better one.
  */
 void
-in6_rtchange(struct inpcb *inp, int errno)
+in6_rtchange(struct inpcb *inp, int error)
 {
 	if (inp->in6p_route.ro_rt) {
 		rtfree(inp->in6p_route.ro_rt);

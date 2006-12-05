@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.39 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.40 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -701,7 +701,7 @@ in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 }
 
 void
-in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int errno,
+in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int err,
 		void (*notify)(struct inpcb *, int))
 {
 	struct inpcb *inp, *ninp;
@@ -721,7 +721,7 @@ in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int errno,
 		if (inp->inp_faddr.s_addr != faddr.s_addr ||
 		    inp->inp_socket == NULL)
 			continue;
-		(*notify)(inp, errno);		/* can remove inp from list! */
+		(*notify)(inp, err);		/* can remove inp from list! */
 	}
 	crit_exit();
 }
@@ -798,7 +798,7 @@ in_losing(struct inpcb *inp)
  * and allocate a (hopefully) better one.
  */
 void
-in_rtchange(struct inpcb *inp, int errno)
+in_rtchange(struct inpcb *inp, int err)
 {
 	if (inp->inp_route.ro_rt) {
 		rtfree(inp->inp_route.ro_rt);

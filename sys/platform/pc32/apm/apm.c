@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.19 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.20 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ static int
 apm_bioscall(void)
 {
 	struct apm_softc *sc = &apm_softc;
-	int errno = 0;
+	int error = 0;
 	u_int apm_func = sc->bios.r.eax & 0xff;
 
 	if (!apm_check_function_supported(sc->intversion, apm_func)) {
@@ -130,13 +130,13 @@ apm_bioscall(void)
 	if (sc->connectmode == APM_PROT32CONNECT) {
 		set_bios_selectors(&sc->bios.seg,
 				   BIOSCODE_FLAG | BIOSDATA_FLAG);
-		errno = bios32(&sc->bios.r,
+		error = bios32(&sc->bios.r,
 			       sc->bios.entry, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 	} else {
-		errno = bios16(&sc->bios, NULL);
+		error = bios16(&sc->bios, NULL);
 	}
 	sc->bios_busy = 0;
-	return (errno);
+	return (error);
 }
 
 /* check whether APM function is supported (1)  or not (0). */

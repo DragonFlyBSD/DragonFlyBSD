@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.13 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -302,7 +302,7 @@ ipx_setpeeraddr(struct ipxpcb *ipxp, struct sockaddr **nam)
  * be a parameter list!)
  */
 void
-ipx_pcbnotify(struct ipx_addr *dst, int errno,
+ipx_pcbnotify(struct ipx_addr *dst, int error,
 	      void (*notify)(struct ipxpcb *), long param)
 {
 	struct ipxpcb *ipxp, *oinp;
@@ -317,8 +317,8 @@ ipx_pcbnotify(struct ipx_addr *dst, int errno,
 		}
 		if (ipxp->ipxp_socket == 0)
 			goto next;
-		if (errno) 
-			ipxp->ipxp_socket->so_error = errno;
+		if (error) 
+			ipxp->ipxp_socket->so_error = error;
 		oinp = ipxp;
 		ipxp = ipxp->ipxp_next;
 		oinp->ipxp_notify_param = param;
