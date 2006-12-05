@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.43 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.44 2006/12/05 19:07:18 dillon Exp $
  */
 
 /*
@@ -1604,7 +1604,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 */
 	if (error == 0) {
 		if (dvpp) {
-			if (nch.ncp->nc_parent) {
+			if (nd->nl_nch.ncp->nc_parent) {
 				nch = nd->nl_nch;
 				nch.ncp = nch.ncp->nc_parent;
 				error = cache_vget(&nch, nd->nl_cred,
