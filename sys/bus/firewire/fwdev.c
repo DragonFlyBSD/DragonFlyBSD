@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.11 2006/02/17 19:17:44 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.11.2.1 2006/12/06 11:50:06 corecode Exp $
  *
  */
 
@@ -702,7 +702,7 @@ out:
 			else
 				len = fwdev->rommax - CSRROMOFF + 4;
 		}
-		if (crom_buf->len < len)
+		if (crom_buf->len < len && crom_buf->len >= 0)
 			len = crom_buf->len;
 		else
 			crom_buf->len = len;
