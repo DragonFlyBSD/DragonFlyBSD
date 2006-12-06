@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.11 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.12 2006/12/06 20:14:47 tgen Exp $
  */
 
 /*
@@ -487,6 +487,12 @@ usbd_get_xfer_status(usbd_xfer_handle xfer, usbd_private_handle *priv,
 		*count = xfer->actlen;
 	if (status != NULL)
 		*status = xfer->status;
+}
+
+int
+usbd_get_speed(usbd_device_handle dev)
+{
+	return(dev->speed);
 }
 
 usb_config_descriptor_t *

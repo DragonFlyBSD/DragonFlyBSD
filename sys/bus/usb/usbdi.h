@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.h,v 1.62 2002/07/11 21:14:35 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.h,v 1.48 2003/07/14 20:31:03 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.5 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.6 2006/12/06 20:14:47 tgen Exp $
  */
 
 /*
@@ -147,6 +147,7 @@ usbd_status usbd_do_request_flags_pipe(
 	usbd_device_handle dev, usbd_pipe_handle pipe,
 	usb_device_request_t *req, void *data, u_int16_t flags, int *actlen,
 	u_int32_t);
+int usbd_get_speed(usbd_device_handle dev);
 usb_interface_descriptor_t *usbd_get_interface_descriptor
 				(usbd_interface_handle iface);
 usb_config_descriptor_t *usbd_get_config_descriptor(usbd_device_handle dev);
