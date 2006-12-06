@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.4 2006/10/25 20:55:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.5 2006/12/06 13:47:29 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -550,7 +550,7 @@ nfe_resume(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (ifp->if_flags & IFF_UP) {
-		nfe_init(ifp);
+		nfe_init(sc);
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_start(ifp);
 	}
