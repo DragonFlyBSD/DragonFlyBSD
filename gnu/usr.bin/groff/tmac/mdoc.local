@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.13 2006/07/17 00:12:01 dillon Exp $
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.14 2006/12/06 16:27:28 tgen Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -67,6 +67,8 @@
 .as doc-str-St--isoC-tcor2      " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^90\*[doc-str-St], Technical Corrigendum 2\*[Rq])
 .ds doc-str-St--ieee1275-94     \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1275-1994
 .as doc-str-St--ieee1275-94     " (\*[Lq]\*[doc-Tn-font-size]Open Firmware\*[doc-str-St]\*[Rq])
+.ds doc-str-St--susv3           Version\~3 of the Single \*[doc-Tn-font-size]UNIX\*[doc-str-St] Specification
+.as doc-str-St--susv3           " (\*[Lq]\*[doc-Tn-font-size]SUSv3\*[doc-str-St]\*[Rq])
 .
 .
 .\" Default .Os value
