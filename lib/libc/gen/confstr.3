@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)confstr.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/confstr.3,v 1.5.2.5 2001/12/14 18:33:50 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/confstr.3,v 1.4 2006/12/06 11:58:57 tgen Exp $
+.\" $DragonFly: src/lib/libc/gen/confstr.3,v 1.5 2006/12/06 16:33:29 tgen Exp $
 .\"
-.Dd December 5, 2006
+.Dd December 6, 2006
 .Dt CONFSTR 3
 .Os
 .Sh NAME
@@ -123,8 +123,11 @@ argument is invalid.
 .El
 .Sh SEE ALSO
 .Xr sysctl 3
-.Rs
-.St -p1003.2
+.Sh STANDARDS
+The
+.Fn confstr
+function conforms to
+.St -susv3 .
 .Sh HISTORY
 The
 .Fn confstr

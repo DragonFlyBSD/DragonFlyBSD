@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)confstr.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/confstr.c,v 1.4 2006/12/06 11:58:57 tgen Exp $
+ * $DragonFly: src/lib/libc/gen/confstr.c,v 1.5 2006/12/06 16:33:29 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -56,17 +56,17 @@ confstr(int name, char *buf, size_t len)
 		mib[1] = USER_CS_PATH;
 		if (sysctl(mib, 2, NULL, &tlen, NULL, 0) == -1)
 			/*
-			 * POSIX 1003.2 requires errors to return 0.
+			 * SUSv3 requires errors to return 0.
 			 */
 			return (0);
 		if (len != 0 && buf != NULL) {
 			if ((p = malloc(tlen)) == NULL)
-				return (0);	/* POSIX 1003.2 */
+				return (0);	/* SUSv3 */
 			if (sysctl(mib, 2, p, &tlen, NULL, 0) == -1) {
 				sverrno = errno;
 				free(p);
 				errno = sverrno;
-				return (0);	/* POSIX 1003.2 */
+				return (0);	/* SUSv3 */
 			}
 			/*
 			 * POSIX 1003.2 requires partial return of
