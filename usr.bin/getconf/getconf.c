@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/getconf/getconf.c,v 1.6.2.1 2002/10/27 04:18:40 wollman Exp $
- * $DragonFly: src/usr.bin/getconf/getconf.c,v 1.3 2003/11/04 20:25:45 dillon Exp $
+ * $DragonFly: src/usr.bin/getconf/getconf.c,v 1.4 2006/12/06 11:58:57 tgen Exp $
  */
 
 #include <sys/types.h>
@@ -141,8 +141,9 @@ do_confstr(const char *name, int key)
 	char *buf;
 	size_t len;
 
+	errno = 0;
 	len = confstr(key, 0, 0);
-	if (len == (size_t)-1)
+	if (len == 0 && errno != 0)
 		err(EX_OSERR, "confstr: %s", name);
 	
 	if (len == 0) {
