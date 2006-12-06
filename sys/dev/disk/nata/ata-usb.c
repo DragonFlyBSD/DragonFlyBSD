@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.2 2006/12/06 20:20:51 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -313,7 +313,7 @@ atausb_attach(device_t dev)
     /* get number of devices so we can add matching channels */
     usbd_interface2device_handle(sc->iface, &udev);
     request.bmRequestType = UT_READ_CLASS_INTERFACE;
-    request.bRequest = 0xfe; //GET_MAX_LUN;
+    request.bRequest = 0xfe; /* GET_MAX_LUN; */
     USETW(request.wValue, 0);
     USETW(request.wIndex, sc->ifaceno);
     USETW(request.wLength, sizeof(maxlun));
@@ -359,7 +359,7 @@ atausb_detach(device_ptr_t dev)
 
     /* abort all the pipes in case there are active transfers */
     usbd_interface2device_handle(sc->iface, &udev);
-    usbd_abort_default_pipe(udev);
+    usbd_abort_pipe(udev->default_pipe);
     if (sc->bulkout_pipe)
         usbd_abort_pipe(sc->bulkout_pipe);
     if (sc->bulkin_pipe)
@@ -516,7 +516,8 @@ atausb_bbb_finish(usbd_xfer_handle xfer, usbd_private_handle priv,
     struct ata_request *request = sc->ata_request;
     usbd_xfer_handle next_xfer;
 
-    //device_printf(sc->dev, "BBB state %d: %s\n", sc->state, usbd_errstr(err));
+    /* device_printf(sc->dev, "BBB state %d: %s\n", sc->state,
+       usbd_errstr(err)); */
 
     if (sc->state == ATAUSB_S_DETACH) {
         device_printf(sc->dev, "WARNING - device has been removed\n");
@@ -749,7 +750,7 @@ struct atapi_inquiry {
     u_int8_t    vendor[8];
     u_int8_t    product[16];
     u_int8_t    revision[4];
-    //u_int8_t    crap[60];
+    /* u_int8_t    crap[60]; */
 };
 
 int
@@ -782,9 +783,9 @@ ata_usbchannel_begin_transaction(struct ata_request *request)
 	request->flags |= ATA_R_ATAPI;
 	bzero(request->u.atapi.ccb, 16);
 	request->u.atapi.ccb[0] = ATAPI_INQUIRY;
-	request->u.atapi.ccb[4] =  255; //sizeof(struct atapi_inquiry);
+	request->u.atapi.ccb[4] =  255; /* sizeof(struct atapi_inquiry); */
 	request->data += 256;	/* arbitrary offset into ata_param */
-	request->bytecount = 255; //sizeof(struct atapi_inquiry);
+	request->bytecount = 255; /* sizeof(struct atapi_inquiry); */
     }
     return atausb_bbb_start(request);
 }
@@ -866,7 +867,7 @@ ata_usbchannel_attach(device_t dev)
     TAILQ_INIT(&ch->ata_queue);
 
     /* XXX SOS reset the controller HW, the channel and device(s) */
-    //ATA_RESET(dev);
+    /* ATA_RESET(dev); */
 
     /* probe and attach device on this channel */
     ch->devices = ATA_ATAPI_MASTER;
@@ -956,7 +957,7 @@ static device_method_t ata_usbchannel_methods[] = {
     /* ATA methods */
     DEVMETHOD(ata_setmode,        ata_usbchannel_setmode),
     DEVMETHOD(ata_locking,        ata_usbchannel_locking),
-    //DEVMETHOD(ata_reset,        ata_usbchannel_reset),
+    /* DEVMETHOD(ata_reset,        ata_usbchannel_reset), */
 
     { 0, 0 }
 };
