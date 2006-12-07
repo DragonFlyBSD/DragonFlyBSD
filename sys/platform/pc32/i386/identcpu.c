@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.13 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.14 2006/12/07 13:33:04 tgen Exp $
  */
 
 #include "opt_cpu.h"
@@ -100,18 +100,37 @@ static char cpu_brand[48];
 static const char *additional_cpu_info_ary[MAX_ADDITIONAL_INFO];
 static u_int additional_cpu_info_count;
 
-#define	MAX_BRAND_INDEX	8
+#define	MAX_BRAND_INDEX	23
 
+/*
+ * Brand ID's according to Intel document AP-485, number 241618-31, published
+ * September 2006, page 42.
+ */
 static const char *cpu_brandtable[MAX_BRAND_INDEX + 1] = {
 	NULL,			/* No brand */
 	"Intel Celeron",
 	"Intel Pentium III",
 	"Intel Pentium III Xeon",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	"Intel Pentium 4"
+	"Intel Pentium III",
+	NULL,			/* Unspecified */
+	"Mobile Intel Pentium III-M",
+	"Mobile Intel Celeron",
+	"Intel Pentium 4",
+	"Intel Pentium 4",
+	"Intel Celeron",
+	"Intel Xeon",
+	"Intel Xeon MP",
+	NULL,			/* Unspecified */
+	"Mobile Intel Pentium 4-M",
+	"Mobile Intel Celeron",
+	NULL,			/* Unspecified */
+	"Mobile Genuine Intel",
+	"Intel Celeron M",
+	"Mobile Intel Celeron",
+	"Intel Celeron",
+	"Mobile Genuine Intel",
+	"Intel Pentium M",
+	"Mobile Intel Celeron"
 };
 
 static struct cpu_nameclass i386_cpus[] = {
