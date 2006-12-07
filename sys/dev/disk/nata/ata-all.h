@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.118 2006/06/28 09:59:09 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.2 2006/12/04 15:15:54 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.3 2006/12/07 12:47:24 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -551,17 +551,22 @@ int ata_generic_command(struct ata_request *request);
 
 /* macros for alloc/free of struct ata_request */
 extern struct objcache *ata_request_cache;
-#define ata_alloc_request() objcache_get(ata_request_cache, M_WAITOK | M_ZERO)
+#define ata_alloc_request() objcache_get(ata_request_cache, M_WAITOK)
+/* zero the object so objects in the cache are guaranteed to be zero'ed */
 #define ata_free_request(request) { \
-	if (!(request->flags & ATA_R_DANGER2)) \
+	if (!(request->flags & ATA_R_DANGER2)) { \
+	    bzero(request, sizeof(struct ata_request)); \
 	    objcache_put(ata_request_cache, request); \
-	}
+	} \
+}
 /* macros for alloc/free of struct ata_composite */
 extern struct objcache *ata_composite_cache;
-#define ata_alloc_composite() objcache_get(ata_composite_cache, \
-					   M_WAITOK | M_ZERO);
-#define ata_free_composite(composite) objcache_put(ata_composite_cache, \
-						   composite)
+#define ata_alloc_composite() objcache_get(ata_composite_cache, M_WAITOK)
+/* zero the object so objects in the cache are guaranteed to be zero'ed */
+#define ata_free_composite(composite) { \
+	bzero(composite, sizeof(struct ata_composite)); \
+	objcache_put(ata_composite_cache, composite); \
+}
 
 MALLOC_DECLARE(M_ATA);
 
