@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Mailing Lists - Forums" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/news.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/community/news.shtml,v 1.2 2006/12/08 03:31:22 justin Exp $ -->
 
 
 <p>
@@ -39,6 +39,10 @@ When testing newsgroup access, be aware that posts may be delayed up to
 5 minutes.  Please use the 'test' newsgroup for any test postings / 
 experimentation.</p>
 
+<p>
+Posts to the bugs or submit groups/mailing lists are also mirrored
+on <a href="http://bugs.dragonflybsd.org/">bugs.dragonflybsd.org</a>.
+</p>
 
 <p>
 There are several different news group archives available:</p>
