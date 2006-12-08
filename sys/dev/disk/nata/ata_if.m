@@ -23,13 +23,13 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/ata/ata_if.m,v 1.6 2006/01/05 21:27:19 sos Exp $
-# $DragonFly: src/sys/dev/disk/nata/ata_if.m,v 1.1 2006/12/04 14:40:37 tgen Exp $
+# $DragonFly: src/sys/dev/disk/nata/ata_if.m,v 1.2 2006/12/08 15:09:18 tgen Exp $
 
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/nata.h>
 
-#include <dev/nata/ata-all.h>
+#include <dev/disk/nata/ata-all.h>
 
 INTERFACE ata;
 

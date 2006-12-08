@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/disk/nata/natausb/Makefile,v 1.1 2006/12/04 14:40:37 tgen Exp $
+# $DragonFly: src/sys/dev/disk/nata/natausb/Makefile,v 1.2 2006/12/08 15:09:19 tgen Exp $
 
-.PATH:	${.CURDIR}/../../../dev/nata
+.PATH:	${.CURDIR}/../../../dev/disk/nata
 
 KMOD=	natausb
 SRCS=	ata-usb.c
