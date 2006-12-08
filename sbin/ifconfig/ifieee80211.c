@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.10 2006/08/10 06:09:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.16 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.17 2006/12/08 14:25:07 sephe Exp $
  */
 
 /*-
@@ -1933,11 +1933,11 @@ get_string(const char *val, const char *sep, u_int8_t *buf, int *lenp)
 			*p++ = *val++;
 	}
 	len = p - buf;
+	if (len < *lenp)
+		memset(p, 0, *lenp - len);
 	/* The string "-" is treated as the empty string. */
 	if (!hexstr && len == 1 && buf[0] == '-')
 		len = 0;
-	if (len < *lenp)
-		memset(p, 0, *lenp - len);
 	*lenp = len;
 	return val;
 }
