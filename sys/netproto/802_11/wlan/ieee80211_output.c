@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.8 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.9 2006/12/09 07:22:49 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1091,6 +1091,97 @@ getcapinfo(struct ieee80211com *ic, struct ieee80211_channel *chan)
 	return capinfo;
 }
 
+static struct mbuf *
+_ieee80211_probe_resp_alloc(struct ieee80211com *ic, struct ieee80211_node *ni)
+{
+	struct ieee80211_rateset *rs;
+	uint16_t capinfo;
+	struct mbuf *m;
+	uint8_t *frm;
+	int pktlen;
+
+	/*
+	 * probe response frame format
+	 *	[8] time stamp
+	 *	[2] beacon interval
+	 *	[2] cabability information
+	 *	[tlv] ssid
+	 *	[tlv] supported rates
+	 *	[tlv] parameter set (FH/DS)
+	 *	[4] parameter set (IBSS)
+	 *	[tlv] extended rate phy (ERP)
+	 *	[tlv] extended supported rates
+	 *	[tlv] WPA
+	 *	[tlv] WME (optional)
+	 */
+	rs = &ni->ni_rates;
+	pktlen =  8					/* time stamp */
+		+ sizeof(uint16_t)			/* beacon interval */
+		+ sizeof(uint16_t)			/* capabilities */
+		+ 2 + ni->ni_esslen			/* ssid */
+		+ 2 + IEEE80211_RATE_SIZE		/* supported rates */
+		+ 2 + 5 /* max(5,1) */			/* DS/FH parameters */
+		+ 2 + 2					/* IBSS parameters */
+		+ 2 + 1					/* ERP */
+		+ 2 + (IEEE80211_RATE_MAXSIZE - IEEE80211_RATE_SIZE)
+		/* XXX !WPA1+WPA2 fits w/o a cluster */
+		+ (ic->ic_flags & IEEE80211_F_WPA ?	/* WPA 1+2 */
+		 	2*sizeof(struct ieee80211_ie_wpa) : 0)
+		+ sizeof(struct ieee80211_wme_param);	/* WME */
+
+	m = ieee80211_getmgtframe(&frm, pktlen);
+	if (m == NULL) {
+		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ANY,
+			"%s: cannot get buf; size %u\n", __func__, pktlen);
+		ic->ic_stats.is_tx_nobuf++;
+		return NULL;
+	}
+
+	memset(frm, 0, 8);	/* timestamp should be filled later */
+	frm += 8;
+	*(uint16_t *)frm = htole16(ni->ni_intval);
+	frm += 2;
+	capinfo = getcapinfo(ic, ni->ni_chan);
+	*(uint16_t *)frm = htole16(capinfo);
+	frm += 2;
+
+	frm = ieee80211_add_ssid(frm, ni->ni_essid, ni->ni_esslen);
+	frm = ieee80211_add_rates(frm, rs);
+
+	if (ic->ic_phytype == IEEE80211_T_FH) {
+		*frm++ = IEEE80211_ELEMID_FHPARMS;
+		*frm++ = 5;
+		*frm++ = ni->ni_fhdwell & 0x00ff;
+		*frm++ = (ni->ni_fhdwell >> 8) & 0x00ff;
+		*frm++ = IEEE80211_FH_CHANSET(
+		    ieee80211_chan2ieee(ic, ni->ni_chan));
+		*frm++ = IEEE80211_FH_CHANPAT(
+		    ieee80211_chan2ieee(ic, ni->ni_chan));
+		*frm++ = ni->ni_fhindex;
+	} else {
+		*frm++ = IEEE80211_ELEMID_DSPARMS;
+		*frm++ = 1;
+		*frm++ = ieee80211_chan2ieee(ic, ni->ni_chan);
+	}
+
+	if (ic->ic_opmode == IEEE80211_M_IBSS) {
+		*frm++ = IEEE80211_ELEMID_IBSSPARMS;
+		*frm++ = 2;
+		*frm++ = 0; *frm++ = 0;		/* TODO: ATIM window */
+	}
+	if (ic->ic_flags & IEEE80211_F_WPA)
+		frm = ieee80211_add_wpa(frm, ic);
+	if (ic->ic_curmode == IEEE80211_MODE_11G)
+		frm = ieee80211_add_erp(frm, ic);
+	frm = ieee80211_add_xrates(frm, rs);
+	if (ic->ic_flags & IEEE80211_F_WME)
+		frm = ieee80211_add_wme_param(frm, &ic->ic_wme);
+	m->m_pkthdr.len = m->m_len = frm - mtod(m, uint8_t *);
+	KKASSERT(m->m_len <= pktlen);
+
+	return m;
+}
+
 /*
  * Send a management frame.  The node is for the destination (or ic_bss
  * when in station mode).  Nodes other than ic_bss have their reference
@@ -1423,6 +1514,35 @@ bad:
 }
 
 /*
+ * Allocate a probe response frame and fillin the appropriate bits.
+ */
+struct mbuf *
+ieee80211_probe_resp_alloc(struct ieee80211com *ic, struct ieee80211_node *ni)
+{
+	struct ieee80211_frame *wh;
+	struct mbuf *m;
+
+	m = _ieee80211_probe_resp_alloc(ic, ni);
+	if (m == NULL)
+		return NULL;
+
+	M_PREPEND(m, sizeof(struct ieee80211_frame), MB_DONTWAIT);
+	KASSERT(m != NULL, ("no space for 802.11 header?"));
+
+	wh = mtod(m, struct ieee80211_frame *);
+	wh->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_MGT |
+		      IEEE80211_FC0_SUBTYPE_PROBE_RESP;
+	wh->i_fc[1] = IEEE80211_FC1_DIR_NODS;
+	*(uint16_t *)wh->i_dur = 0;
+	bzero(wh->i_addr1, sizeof(wh->i_addr1));
+	IEEE80211_ADDR_COPY(wh->i_addr2, ic->ic_myaddr);
+	IEEE80211_ADDR_COPY(wh->i_addr3, ni->ni_bssid);
+	*(uint16_t *)wh->i_seq = 0;
+
+	return m;
+}
+
+/*
  * Allocate a beacon frame and fillin the appropriate bits.
  */
 struct mbuf *
@@ -1530,6 +1650,7 @@ ieee80211_beacon_alloc(struct ieee80211com *ic, struct ieee80211_node *ni,
 	efrm = ieee80211_add_xrates(frm, rs);
 	bo->bo_trailer_len = efrm - bo->bo_trailer;
 	m->m_pkthdr.len = m->m_len = efrm - mtod(m, uint8_t *);
+	KKASSERT(m->m_len <= pktlen);
 
 	M_PREPEND(m, sizeof(struct ieee80211_frame), MB_DONTWAIT);
 	KASSERT(m != NULL, ("no space for 802.11 header?"));
