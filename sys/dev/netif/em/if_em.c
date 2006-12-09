@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.50 2006/11/27 13:05:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.51 2006/12/09 01:44:23 swildner Exp $
  * $FreeBSD$
  */
 /*
@@ -331,8 +331,10 @@ TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 KTR_INFO_MASTER(if_em);
 KTR_INFO(KTR_IF_EM, if_em, intr_beg, 0, "intr begin", 0);
 KTR_INFO(KTR_IF_EM, if_em, intr_end, 1, "intr end", 0);
+#ifdef DEVICE_POLLING
 KTR_INFO(KTR_IF_EM, if_em, poll_beg, 2, "poll begin", 0);
 KTR_INFO(KTR_IF_EM, if_em, poll_end, 3, "poll end", 0);
+#endif
 KTR_INFO(KTR_IF_EM, if_em, pkt_receive, 4, "rx packet", 0);
 KTR_INFO(KTR_IF_EM, if_em, pkt_txqueue, 5, "tx packet", 0);
 KTR_INFO(KTR_IF_EM, if_em, pkt_txclean, 6, "tx clean", 0);
