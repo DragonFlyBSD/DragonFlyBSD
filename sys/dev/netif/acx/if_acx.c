@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.10 2006/12/01 07:37:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.11 2006/12/09 08:10:04 sephe Exp $
  */
 
 /*
@@ -1093,6 +1093,21 @@ acx_start(struct ifnet *ifp)
 			m->m_pkthdr.rcvif = NULL;
 
 			mgmt_pkt = 1;
+
+			/*
+			 * Don't transmit probe response firmware will
+			 * do it for us.
+			 */
+			f = mtod(m, struct ieee80211_frame *);
+			if ((f->i_fc[0] & IEEE80211_FC0_TYPE_MASK) ==
+			    IEEE80211_FC0_TYPE_MGT &&
+			    (f->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) ==
+			    IEEE80211_FC0_SUBTYPE_PROBE_RESP) {
+				if (ni != NULL)
+					ieee80211_free_node(ni);
+				m_freem(m);
+				continue;
+			}
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
 			struct ether_header *eh;
 
@@ -1916,6 +1931,8 @@ back:
 int
 acx_init_tmplt_ordered(struct acx_softc *sc)
 {
+	struct acx_tmplt_tim tim;
+
 #define INIT_TMPLT(name)			\
 do {						\
 	if (acx_init_##name##_tmplt(sc) != 0)	\
@@ -1937,6 +1954,17 @@ do {						\
 	INIT_TMPLT(beacon);
 	INIT_TMPLT(tim);
 	INIT_TMPLT(probe_resp);
+
+	/* Setup TIM template */
+	bzero(&tim, sizeof(tim));
+	tim.tim_eid = IEEE80211_ELEMID_TIM;
+	tim.tim_len = ACX_TIM_LEN(ACX_TIM_BITMAP_LEN);
+	if (_acx_set_tim_tmplt(sc, &tim,
+			       ACX_TMPLT_TIM_SIZ(ACX_TIM_BITMAP_LEN)) != 0) {
+		if_printf(&sc->sc_ic.ic_if, "%s can't set tim tmplt\n",
+			  __func__);
+		return 1;
+	}
 
 #undef INIT_TMPLT
 	return 0;
@@ -2377,7 +2405,8 @@ acx_set_null_tmplt(struct acx_softc *sc)
 	bzero(&n, sizeof(n));
 
 	f = &n.data;
-	f->i_fc[0] = IEEE80211_FC0_SUBTYPE_NODATA | IEEE80211_FC0_TYPE_DATA;
+	f->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_DATA |
+		     IEEE80211_FC0_SUBTYPE_NODATA;
 	IEEE80211_ADDR_COPY(f->i_addr1, etherbroadcastaddr);
 	IEEE80211_ADDR_COPY(f->i_addr2, IF_LLADDR(&sc->sc_ic.ic_if));
 	IEEE80211_ADDR_COPY(f->i_addr3, etherbroadcastaddr);
@@ -2396,7 +2425,8 @@ acx_set_probe_req_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len)
 	bzero(&req, sizeof(req));
 
 	f = &req.data.u_data.f;
-	f->i_fc[0] = IEEE80211_FC0_SUBTYPE_PROBE_REQ | IEEE80211_FC0_TYPE_MGT;
+	f->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_MGT |
+		     IEEE80211_FC0_SUBTYPE_PROBE_REQ;
 	IEEE80211_ADDR_COPY(f->i_addr1, etherbroadcastaddr);
 	IEEE80211_ADDR_COPY(f->i_addr2, IF_LLADDR(&sc->sc_ic.ic_if));
 	IEEE80211_ADDR_COPY(f->i_addr3, etherbroadcastaddr);
@@ -2416,17 +2446,20 @@ acx_set_probe_resp_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_tmplt_probe_resp resp;
-	struct ieee80211_beacon_offsets bo;
+	struct ieee80211_frame *f;
 	struct mbuf *m;
 	int len;
 
-	bzero(&resp, sizeof(resp));
-
-	bzero(&bo, sizeof(bo));
-	m = ieee80211_beacon_alloc(ic, ni, &bo);
-	DPRINTF((&ic->ic_if, "%s alloc beacon size %d\n", __func__,
+	m = ieee80211_probe_resp_alloc(ic, ni);
+	if (m == NULL)
+		return 1;
+	DPRINTF((&ic->ic_if, "%s alloc probe resp size %d\n", __func__,
 		 m->m_pkthdr.len));
 
+	f = mtod(m, struct ieee80211_frame *);
+	IEEE80211_ADDR_COPY(f->i_addr1, etherbroadcastaddr);
+
+	bzero(&resp, sizeof(resp));
 	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&resp.data);
 	len = m->m_pkthdr.len + sizeof(resp.size);
 	m_freem(m);
@@ -2443,13 +2476,14 @@ acx_set_beacon_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 	struct mbuf *m;
 	int len;
 
-	bzero(&beacon, sizeof(beacon));
-
 	bzero(&bo, sizeof(bo));
 	m = ieee80211_beacon_alloc(ic, ni, &bo);
+	if (m == NULL)
+		return 1;
 	DPRINTF((&ic->ic_if, "%s alloc beacon size %d\n", __func__,
 		 m->m_pkthdr.len));
 
+	bzero(&beacon, sizeof(beacon));
 	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&beacon.data);
 	len = m->m_pkthdr.len + sizeof(beacon.size);
 	m_freem(m);

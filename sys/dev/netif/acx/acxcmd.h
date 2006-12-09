@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.2 2006/09/01 15:13:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.3 2006/12/09 08:10:04 sephe Exp $
  */
 
 #ifndef _ACXCMD_H
@@ -249,7 +249,7 @@ struct tim_head {
 /* For tim_head.len (tim_head - eid - len + bitmap) */
 #define ACX_TIM_LEN(bitmap_len)	\
 	(sizeof(struct tim_head) - (2 * sizeof(uint8_t)) + (bitmap_len))
-#define ACX_TIM_BITMAP_LEN	5
+#define ACX_TIM_BITMAP_LEN	1
 
 struct acx_tmplt_tim {
 	uint16_t	size;

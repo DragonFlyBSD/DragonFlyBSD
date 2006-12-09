@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.5 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.6 2006/12/09 08:10:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -376,7 +376,6 @@ static int
 acx100_init_tmplt(struct acx_softc *sc)
 {
 	struct acx_conf_mmap mem_map;
-	struct acx_tmplt_tim tim;
 
 	/* Set templates start address */
 	if (acx_get_mmap_conf(sc, &mem_map) != 0) {
@@ -393,16 +392,6 @@ acx100_init_tmplt(struct acx_softc *sc)
 	/* Initialize various packet templates */
 	if (acx_init_tmplt_ordered(sc) != 0) {
 		if_printf(&sc->sc_ic.ic_if, "can't init tmplt\n");
-		return 1;
-	}
-
-	/* Setup TIM template */
-	bzero(&tim, sizeof(tim));
-	tim.tim_eid = IEEE80211_ELEMID_TIM;
-	tim.tim_len = ACX_TIM_LEN(ACX_TIM_BITMAP_LEN);
-	if (_acx_set_tim_tmplt(sc, &tim,
-			       ACX_TMPLT_TIM_SIZ(ACX_TIM_BITMAP_LEN)) != 0) {
-		if_printf(&sc->sc_ic.ic_if, "can't set tim tmplt\n");
 		return 1;
 	}
 	return 0;

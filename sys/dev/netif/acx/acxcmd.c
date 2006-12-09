@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.3 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.4 2006/12/09 08:10:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -141,8 +141,7 @@ acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node)
 
 	bj->beacon_intvl = htole16(acx_beacon_intvl);
 
-	/* TODO tunable */
-	dtim_intvl = sc->sc_ic.ic_opmode == IEEE80211_M_IBSS ? 1 : 10;
+	dtim_intvl = sc->sc_ic.ic_dtim_period;
 	sc->chip_set_bss_join_param(sc, bj->chip_spec, dtim_intvl);
 
 	bj->ndata_txrate = ACX_NDATA_TXRATE_2;
