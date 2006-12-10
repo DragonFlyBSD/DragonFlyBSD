@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.16 2006/05/20 06:32:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.17 2006/12/10 02:03:56 sephe Exp $
  */
 
 /*
@@ -107,4 +107,3 @@ usb_ether_input(struct mbuf *m)
 	netisr_queue(NETISR_USB, m);
 	crit_exit();
 }
-

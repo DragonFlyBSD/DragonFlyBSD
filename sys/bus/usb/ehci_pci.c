@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -33,8 +33,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.11 2006/10/25 20:55:52 dillon Exp $
+ *
+ * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.12 2006/12/10 02:03:56 sephe Exp $
  */
 
 /*
@@ -112,7 +113,7 @@ static const char *ehci_device_ich5 = "Intel 82801EB/R USB 2.0 controller";
 static const char *ehci_device_ich6 = "Intel 82801FB USB 2.0 controller";
 #define PCI_EHCI_DEVICEID_ICH7		0x27cc8086
 static const char *ehci_device_ich7 = "Intel 82801GB/R USB 2.0 controller";
-
+ 
 /* NEC */
 #define PCI_EHCI_DEVICEID_NEC		0x00e01033
 static const char *ehci_device_nec = "NEC uPD 720100 USB 2.0 controller";
@@ -142,9 +143,62 @@ static const char *ehci_device_generic = "EHCI (generic) USB 2.0 controller";
 
 #define PCI_EHCI_BASE_REG	0x10
 
+#ifdef USB_DEBUG
+#define EHCI_DEBUG USB_DEBUG
+#define DPRINTF(x)	do { if (ehcidebug) logprintf x; } while (0)
+extern int ehcidebug;
+#else
+#define DPRINTF(x)
+#endif
 
 static int ehci_pci_attach(device_t self);
 static int ehci_pci_detach(device_t self);
+static int ehci_pci_shutdown(device_t self);
+static int ehci_pci_suspend(device_t self);
+static int ehci_pci_resume(device_t self);
+static void ehci_pci_givecontroller(device_t self);
+static void ehci_pci_takecontroller(device_t self);
+
+static int
+ehci_pci_suspend(device_t self)
+{
+	ehci_softc_t *sc = device_get_softc(self);
+	int err;
+
+	err = bus_generic_suspend(self);
+	if (err)
+		return (err);
+	ehci_power(PWR_SUSPEND, sc);
+
+	return 0;
+}
+
+static int
+ehci_pci_resume(device_t self)
+{
+	ehci_softc_t *sc = device_get_softc(self);
+
+	ehci_pci_takecontroller(self);
+	ehci_power(PWR_RESUME, sc);
+	bus_generic_resume(self);
+
+	return 0;
+}
+
+static int
+ehci_pci_shutdown(device_t self)
+{
+	ehci_softc_t *sc = device_get_softc(self);
+	int err;
+
+	err = bus_generic_shutdown(self);
+	if (err)
+		return (err);
+	ehci_shutdown(sc);
+	ehci_pci_givecontroller(self);
+
+	return 0;
+}
 
 static const char *
 ehci_pci_match(device_t self)
@@ -184,8 +238,8 @@ ehci_pci_match(device_t self)
 		return (ehci_device_nf4);
 	case PCI_EHCI_DEVICEID_ISP156X:
 		return (ehci_device_isp156x);
- 	case PCI_EHCI_DEVICEID_VIA:
- 		return (ehci_device_via);
+	case PCI_EHCI_DEVICEID_VIA:
+		return (ehci_device_via);
 	default:
 		if (pci_get_class(self) == PCIC_SERIALBUS
 		    && pci_get_subclass(self) == PCIS_SERIALBUS_USB
@@ -244,8 +298,8 @@ ehci_pci_attach(device_t self)
 	pci_enable_busmaster(self);
 
 	rid = PCI_CBMEM;
-	sc->io_res = bus_alloc_resource(self, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 	if (!sc->io_res) {
 		device_printf(self, "Could not map memory\n");
 		return ENXIO;
@@ -254,7 +308,7 @@ ehci_pci_attach(device_t self)
 	sc->ioh = rman_get_bushandle(sc->io_res);
 
 	rid = 0;
-	sc->irq_res = bus_alloc_resource(self, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->irq_res = bus_alloc_resource_any(self, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 	if (sc->irq_res == NULL) {
 		device_printf(self, "Could not allocate irq\n");
@@ -267,7 +321,7 @@ ehci_pci_attach(device_t self)
 		ehci_pci_detach(self);
 		return ENOMEM;
 	}
-	device_set_ivars(sc->sc_bus.bdev, sc);
+	device_set_ivars(sc->sc_bus.bdev, &sc->sc_bus);
 
 	/* ehci_pci_match will never return NULL if ehci_pci_probe succeeded */
 	device_set_desc(sc->sc_bus.bdev, ehci_pci_match(self));
@@ -280,6 +334,9 @@ ehci_pci_attach(device_t self)
 		break;
 	case PCI_EHCI_VENDORID_APPLE:
 		sprintf(sc->sc_vendor, "Apple");
+		break;
+	case PCI_EHCI_VENDORID_ATI:
+		sprintf(sc->sc_vendor, "ATI");
 		break;
 	case PCI_EHCI_VENDORID_CMDTECH:
 		sprintf(sc->sc_vendor, "CMDTECH");
@@ -354,8 +411,8 @@ ehci_pci_attach(device_t self)
 			if (res != 0 || buscount != 1)
 				continue;
 			bsc = device_get_softc(nbus[0]);
-			printf("ehci_pci_attach: companion %s\n",
-			USBDEVNAME(bsc->bdev));
+			DPRINTF(("ehci_pci_attach: companion %s\n",
+			    USBDEVNAME(bsc->bdev)));
 			sc->sc_comps[ncomp++] = bsc;
 			if (ncomp >= EHCI_COMPANION_MAX)
 				break;
@@ -363,18 +420,18 @@ ehci_pci_attach(device_t self)
 	}
 	sc->sc_ncomp = ncomp;
 
+	ehci_pci_takecontroller(self);
 	err = ehci_init(sc);
-	if (!err)
+	if (!err) {
+		sc->sc_flags |= EHCI_SCFLG_DONEINIT;
 		err = device_probe_and_attach(sc->sc_bus.bdev);
+	}
 
 	if (err) {
 		device_printf(self, "USB init failed err=%d\n", err);
-#if 0 /* TODO */
 		ehci_pci_detach(self);
-#endif
 		return EIO;
 	}
-	ehci_init_intrs(sc);
 	return 0;
 }
 
@@ -383,10 +440,10 @@ ehci_pci_detach(device_t self)
 {
 	ehci_softc_t *sc = device_get_softc(self);
 
-	/*
-	 * XXX this code is not yet fit to be used as detach for the EHCI
-	 * controller
-	 */
+	if (sc->sc_flags & EHCI_SCFLG_DONEINIT) {
+		ehci_detach(sc, 0);
+		sc->sc_flags &= ~EHCI_SCFLG_DONEINIT;
+	}
 
 	/*
 	 * disable interrupts that might have been switched on in ehci_init
@@ -420,11 +477,65 @@ ehci_pci_detach(device_t self)
 	return 0;
 }
 
+static void
+ehci_pci_takecontroller(device_t self)
+{
+	ehci_softc_t *sc = device_get_softc(self);
+	u_int32_t cparams, eec, legsup;
+	int eecp, i;
+
+	cparams = EREAD4(sc, EHCI_HCCPARAMS);
+
+	/* Synchronise with the BIOS if it owns the controller. */
+	for (eecp = EHCI_HCC_EECP(cparams); eecp != 0;
+	     eecp = EHCI_EECP_NEXT(eec)) {
+		eec = pci_read_config(self, eecp, 4);
+		if (EHCI_EECP_ID(eec) != EHCI_EC_LEGSUP)
+			continue;
+		legsup = eec;
+		pci_write_config(self, eecp, legsup | EHCI_LEGSUP_OSOWNED, 4);
+		if (legsup & EHCI_LEGSUP_BIOSOWNED) {
+			printf("%s: waiting for BIOS to give up control\n",
+			    USBDEVNAME(sc->sc_bus.bdev));
+			for (i = 0; i < 5000; i++) {
+				legsup = pci_read_config(self, eecp, 4);
+				if ((legsup & EHCI_LEGSUP_BIOSOWNED) == 0)
+					break;
+				DELAY(1000);
+			}
+			if (legsup & EHCI_LEGSUP_BIOSOWNED)
+				printf("%s: timed out waiting for BIOS\n",
+				    USBDEVNAME(sc->sc_bus.bdev));
+		}
+	}
+}
+
+static void
+ehci_pci_givecontroller(device_t self)
+{
+	ehci_softc_t *sc = device_get_softc(self);
+	u_int32_t cparams, eec, legsup;
+	int eecp;
+
+	cparams = EREAD4(sc, EHCI_HCCPARAMS);
+	for (eecp = EHCI_HCC_EECP(cparams); eecp != 0;
+	     eecp = EHCI_EECP_NEXT(eec)) {
+		eec = pci_read_config(self, eecp, 4);
+		if (EHCI_EECP_ID(eec) != EHCI_EC_LEGSUP)
+			continue;
+		legsup = eec;
+		pci_write_config(self, eecp, legsup & ~EHCI_LEGSUP_OSOWNED, 4);
+	}
+}
+
 static device_method_t ehci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, ehci_pci_probe),
 	DEVMETHOD(device_attach, ehci_pci_attach),
-	DEVMETHOD(device_shutdown, bus_generic_shutdown),
+	DEVMETHOD(device_detach, ehci_pci_detach),
+	DEVMETHOD(device_suspend, ehci_pci_suspend),
+	DEVMETHOD(device_resume, ehci_pci_resume),
+	DEVMETHOD(device_shutdown, ehci_pci_shutdown),
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child, bus_generic_print_child),

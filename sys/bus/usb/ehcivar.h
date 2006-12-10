@@ -1,8 +1,6 @@
-/*
- * $NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.2 2004/08/01 18:47:42 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.7 2006/05/02 16:12:01 dillon Exp $
- */
+/*	$NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.9.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.8 2006/12/10 02:03:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -54,9 +52,10 @@ typedef struct ehci_soft_qtd {
 typedef struct ehci_soft_qh {
 	ehci_qh_t qh;
 	struct ehci_soft_qh *next;
+	struct ehci_soft_qh *prev;
 	struct ehci_soft_qtd *sqtd;
 	ehci_physaddr_t physaddr;
-	int islot;
+	int islot;		/* Interrupt list slot. */
 } ehci_soft_qh_t;
 #define EHCI_SQH_SIZE ((sizeof (struct ehci_soft_qh) + EHCI_QH_ALIGN - 1) / EHCI_QH_ALIGN * EHCI_QH_ALIGN)
 #define EHCI_SQH_CHUNK (EHCI_PAGE_SIZE / EHCI_SQH_SIZE)
@@ -67,10 +66,14 @@ struct ehci_xfer {
 	LIST_ENTRY(ehci_xfer) inext; /* list of active xfers */
 	ehci_soft_qtd_t *sqtdstart;
 	ehci_soft_qtd_t *sqtdend;
+	u_int32_t ehci_xfer_flags;
 #ifdef DIAGNOSTIC
 	int isdone;
 #endif
 };
+#define EHCI_XFER_ABORTING	0x0001	/* xfer is aborting. */
+#define EHCI_XFER_ABORTWAIT	0x0002	/* abort completion is being awaited. */
+
 #define EXFER(xfer) ((struct ehci_xfer *)(xfer))
 
 /* Information about an entry in the interrupt list. */
@@ -89,7 +92,9 @@ struct ehci_soft_islot {
 
 #define EHCI_HASH_SIZE 128
 #define EHCI_COMPANION_MAX 8
-#define EHCI_SCFLG_LOSTINTRBUG	0x0002	/* workaround for VIA chipsets */
+
+#define EHCI_SCFLG_DONEINIT	0x0001	/* ehci_init() has been called. */
+#define EHCI_SCFLG_LOSTINTRBUG	0x0002	/* workaround for VIA / ATI chipsets */
 
 typedef struct ehci_softc {
 	struct usbd_bus sc_bus;		/* base device */
@@ -108,8 +113,8 @@ typedef struct ehci_softc {
 	char sc_vendor[32];		/* vendor string for root hub */
 	int sc_id_vendor;		/* vendor ID for root hub */
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
 	u_int32_t sc_cmd;		/* shadow of cmd reg during suspend */
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	void *sc_powerhook;		/* cookie from power hook */
 	void *sc_shutdownhook;		/* cookie from shutdown hook */
 #endif
@@ -121,7 +126,9 @@ typedef struct ehci_softc {
 	usb_dma_t sc_fldma;
 	ehci_link_t *sc_flist;
 	u_int sc_flsize;
+#if !defined(__FreeBSD__) && !defined(__DragonFly__)
 	u_int sc_rand;			/* XXX need proper intr scheduling */
+#endif
 
 	struct ehci_soft_islot sc_islots[EHCI_INTRQHS];
 
@@ -172,12 +179,13 @@ typedef struct ehci_softc {
 #define EOWRITE4(sc, a, x) bus_space_write_4((sc)->iot, (sc)->ioh, (sc)->sc_offs+(a), (x))
 
 usbd_status	ehci_init(ehci_softc_t *);
-void		ehci_init_intrs(ehci_softc_t *);
 int		ehci_intr(void *);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
 int		ehci_detach(ehci_softc_t *, int);
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 int		ehci_activate(device_ptr_t, enum devact);
 #endif
+void		ehci_power(int state, void *priv);
+void		ehci_shutdown(void *v);
 
 #define MS_TO_TICKS(ms) ((ms) * hz / 1000)
 

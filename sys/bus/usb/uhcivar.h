@@ -1,8 +1,6 @@
-/*
- * $NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.36 2003/07/15 23:19:49 jmg Exp $
- * $DragonFly: src/sys/bus/usb/uhcivar.h,v 1.5 2006/07/18 02:03:11 dillon Exp $
- */
+/*	$NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.40 2005/03/19 19:08:46 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -88,7 +86,11 @@ struct uhci_xfer {
 	uhci_intr_info_t iinfo;
 	struct usb_task	abort_task;
 	int curframe;
+	u_int32_t uhci_xfer_flags;
 };
+
+#define UHCI_XFER_ABORTING	0x0001	/* xfer is aborting. */
+#define UHCI_XFER_ABORTWAIT	0x0002	/* abort completion is being awaited. */
 
 #define UXFER(xfer) ((struct uhci_xfer *)(xfer))
 
@@ -134,8 +136,11 @@ struct uhci_vframe {
 	u_int bandwidth;		/* max bandwidth used by this frame */
 };
 
+#define UHCI_SCFLG_DONEINIT	0x0001	/* uhci_init() done */
+
 typedef struct uhci_softc {
 	struct usbd_bus sc_bus;		/* base device */
+	int sc_flags;
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
@@ -179,7 +184,6 @@ typedef struct uhci_softc {
 	char sc_dying;
 
 	LIST_HEAD(, uhci_intr_info) sc_intrhead;
-	int  sc_intrhead_deletion_counter;
 
 	/* Info for the root hub interrupt channel. */
 	int sc_ival;			/* time between root hub intrs */
@@ -194,13 +198,15 @@ typedef struct uhci_softc {
 	void *sc_shutdownhook;		/* cookie from shutdown hook */
 #endif
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	device_ptr_t sc_child;		/* /dev/usb# device */
+#endif
 } uhci_softc_t;
 
 usbd_status	uhci_init(uhci_softc_t *);
 int		uhci_intr(void *);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
 int		uhci_detach(uhci_softc_t *, int);
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 int		uhci_activate(device_ptr_t, enum devact);
 #endif
 

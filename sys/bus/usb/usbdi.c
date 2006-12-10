@@ -1,8 +1,6 @@
-/*
- * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
- * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.12 2006/12/06 20:14:47 tgen Exp $
- */
+/*	$NetBSD: usbdi.c,v 1.106 2004/10/24 12:52:40 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.91.2.1 2005/12/15 00:36:00 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.13 2006/12/10 02:03:57 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -43,25 +41,31 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#if defined(__NetBSD__) || defined(__OpenBSD__)
+#include <sys/kernel.h>
+#include <sys/device.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "usb_if.h"
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
+#endif
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#ifdef __DragonFly__
 #include <sys/thread2.h>
+#endif
 
-#include "usb.h"
-#include "usbdi.h"
-#include "usbdi_util.h"
-#include "usbdivar.h"
-#include "usb_mem.h"
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usb_mem.h>
+#include <bus/usb/usb_quirks.h>
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-#include "usb_if.h"
-#include <machine/clock.h>
 #define delay(d)	DELAY(d)
 #endif
 
@@ -237,7 +241,7 @@ usbd_open_pipe_intr(usbd_interface_handle iface, u_int8_t address,
 	ipipe->repeat = 1;
 	err = usbd_transfer(xfer);
 	*pipe = ipipe;
-	if (err != USBD_IN_PROGRESS)
+	if (err != USBD_IN_PROGRESS && err)
 		goto bad2;
 	return (USBD_NORMAL_COMPLETION);
 
@@ -333,7 +337,7 @@ usbd_transfer(usbd_xfer_handle xfer)
 	crit_enter();
 	if (!xfer->done) {
 		if (pipe->device->bus->use_polling)
-			panic("usbd_transfer: not done\n");
+			panic("usbd_transfer: not done");
 		tsleep(xfer, 0, "usbsyn", 0);
 	}
 	crit_exit();
@@ -551,6 +555,12 @@ usbd_abort_pipe(usbd_pipe_handle pipe)
 }
 
 usbd_status
+usbd_abort_default_pipe(usbd_device_handle dev)
+{
+	return (usbd_abort_pipe(dev->default_pipe));
+}
+
+usbd_status
 usbd_clear_endpoint_stall(usbd_pipe_handle pipe)
 {
 	usbd_device_handle dev = pipe->device;
@@ -726,7 +736,7 @@ usbd_get_interface(usbd_interface_handle iface, u_int8_t *aiface)
 
 /*** Internal routines ***/
 
-/* Dequeue all pipe operations, called from a critical section. */
+/* Dequeue all pipe operations, called from critical section. */
 Static usbd_status
 usbd_ar_pipe(usbd_pipe_handle pipe)
 {
@@ -750,12 +760,15 @@ usbd_ar_pipe(usbd_pipe_handle pipe)
 	return (USBD_NORMAL_COMPLETION);
 }
 
-/* Called from a critical section. */
+/* Called from critical section */
 void
 usb_transfer_complete(usbd_xfer_handle xfer)
 {
 	usbd_pipe_handle pipe = xfer->pipe;
 	usb_dma_t *dmap = &xfer->dmabuf;
+	int sync = xfer->flags & USBD_SYNCHRONOUS;
+	int erred = xfer->status == USBD_CANCELLED ||
+	    xfer->status == USBD_TIMEOUT;
 	int repeat = pipe->repeat;
 	int polling;
 
@@ -826,26 +839,28 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 		xfer->status = USBD_SHORT_XFER;
 	}
 
-	if (xfer->callback)
-		xfer->callback(xfer, xfer->priv, xfer->status);
-
-#ifdef DIAGNOSTIC
-	if (pipe->methods->done != NULL)
+	/*
+	 * For repeat operations, call the callback first, as the xfer
+	 * will not go away and the "done" method may modify it. Otherwise
+	 * reverse the order in case the callback wants to free or reuse
+	 * the xfer.
+	 */
+	if (repeat) {
+		if (xfer->callback)
+			xfer->callback(xfer, xfer->priv, xfer->status);
 		pipe->methods->done(xfer);
-	else
-		printf("usb_transfer_complete: pipe->methods->done == NULL\n");
-#else
-	pipe->methods->done(xfer);
-#endif
+	} else {
+		pipe->methods->done(xfer);
+		if (xfer->callback)
+			xfer->callback(xfer, xfer->priv, xfer->status);
+	}
 
-	if ((xfer->flags & USBD_SYNCHRONOUS) && !polling)
+	if (sync && !polling)
 		wakeup(xfer);
 
 	if (!repeat) {
 		/* XXX should we stop the queue on all errors? */
-		if ((xfer->status == USBD_CANCELLED ||
-		     xfer->status == USBD_TIMEOUT) &&
-		    pipe->iface != NULL)		/* not control pipe */
+		if (erred && pipe->iface != NULL)	/* not control pipe */
 			pipe->running = 0;
 		else
 			usbd_start_next(pipe);
@@ -880,7 +895,7 @@ usb_insert_transfer(usbd_xfer_handle xfer)
 	return (err);
 }
 
-/* Called from a critical section. */
+/* Called from critical section */
 void
 usbd_start_next(usbd_pipe_handle pipe)
 {
@@ -913,7 +928,6 @@ usbd_start_next(usbd_pipe_handle pipe)
 	}
 }
 
-
 usbd_status
 usbd_do_request(usbd_device_handle dev, usb_device_request_t *req, void *data)
 {
@@ -939,8 +953,13 @@ usbd_do_request_flags_pipe(usbd_device_handle dev, usbd_pipe_handle pipe,
 
 #ifdef DIAGNOSTIC
 #if defined(__i386__) && (defined(__FreeBSD__) || defined(__DragonFly__))
-	KASSERT(mycpu->gd_intr_nesting_level == 0,
+#if defined(__FreeBSD__)
+	KASSERT(curthread->td_intr_nesting_level == 0,
 	       	("usbd_do_request: in interrupt context"));
+#elif defined(__DragonFly__)
+	KASSERT(mycpu->gd_intr_nesting_level == 0,
+		("usbd_do_request: in interrupt context"));
+#endif
 #endif
 	if (dev->bus->intr_context) {
 		printf("usbd_do_request: not in process context\n");
@@ -1045,7 +1064,7 @@ usbd_do_request_async(usbd_device_handle dev, usb_device_request_t *req,
 	usbd_setup_default_xfer(xfer, dev, 0, USBD_DEFAULT_TIMEOUT, req,
 	    data, UGETW(req->wLength), 0, usbd_do_request_async_cb);
 	err = usbd_transfer(xfer);
-	if (err != USBD_IN_PROGRESS) {
+	if (err != USBD_IN_PROGRESS && err) {
 		usbd_free_xfer(xfer);
 		return (err);
 	}
@@ -1111,11 +1130,9 @@ usbd_get_endpoint_descriptor(usbd_interface_handle iface, u_int8_t address)
 int
 usbd_ratecheck(struct timeval *last)
 {
-#if 0
-	static struct timeval errinterval = { 0, 250000 }; /* 0.25 s*/
-
-	return (ratecheck(last, &errinterval));
-#endif
+	if (last->tv_sec == time_second)
+		return (0);
+	last->tv_sec = time_second;
 	return (1);
 }
 
@@ -1135,6 +1152,86 @@ usb_match_device(const struct usb_devno *tbl, u_int nentries, u_int sz,
 		tbl = (const struct usb_devno *)((const char *)tbl + sz);
 	}
 	return (NULL);
+}
+
+
+void
+usb_desc_iter_init(usbd_device_handle dev, usbd_desc_iter_t *iter)
+{
+	const usb_config_descriptor_t *cd = usbd_get_config_descriptor(dev);
+
+        iter->cur = (const uByte *)cd;
+        iter->end = (const uByte *)cd + UGETW(cd->wTotalLength);
+}
+
+const usb_descriptor_t *
+usb_desc_iter_next(usbd_desc_iter_t *iter)
+{
+	const usb_descriptor_t *desc;
+
+	if (iter->cur + sizeof(usb_descriptor_t) >= iter->end) {
+		if (iter->cur != iter->end)
+			printf("usb_desc_iter_next: bad descriptor\n");
+		return NULL;
+	}
+	desc = (const usb_descriptor_t *)iter->cur;
+	if (desc->bLength == 0) {
+		printf("usb_desc_iter_next: descriptor length = 0\n");
+		return NULL;
+	}
+	iter->cur += desc->bLength;
+	if (iter->cur > iter->end) {
+		printf("usb_desc_iter_next: descriptor length too large\n");
+		return NULL;
+	}
+	return desc;
+}
+
+usbd_status
+usbd_get_string(usbd_device_handle dev, int si, char *buf)
+{
+	int swap = dev->quirks->uq_flags & UQ_SWAP_UNICODE;
+	usb_string_descriptor_t us;
+	char *s;
+	int i, n;
+	u_int16_t c;
+	usbd_status err;
+	int size;
+
+	buf[0] = '\0';
+	if (si == 0)
+		return (USBD_INVAL);
+	if (dev->quirks->uq_flags & UQ_NO_STRINGS)
+		return (USBD_STALLED);
+	if (dev->langid == USBD_NOLANG) {
+		/* Set up default language */
+		err = usbd_get_string_desc(dev, USB_LANGUAGE_TABLE, 0, &us,
+		    &size);
+		if (err || size < 4) {
+			DPRINTFN(-1,("usbd_get_string: getting lang failed, using 0\n"));
+			dev->langid = 0; /* Well, just pick something then */
+		} else {
+			/* Pick the first language as the default. */
+			dev->langid = UGETW(us.bString[0]);
+		}
+	}
+	err = usbd_get_string_desc(dev, si, dev->langid, &us, &size);
+	if (err)
+		return (err);
+	s = buf;
+	n = size / 2 - 1;
+	for (i = 0; i < n; i++) {
+		c = UGETW(us.bString[i]);
+		/* Convert from Unicode, handle buggy strings. */
+		if ((c & 0xff00) == 0)
+			*s++ = c;
+		else if ((c & 0x00ff) == 0 && swap)
+			*s++ = c >> 8;
+		else
+			*s++ = '?';
+	}
+	*s++ = 0;
+	return (USBD_NORMAL_COMPLETION);
 }
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)

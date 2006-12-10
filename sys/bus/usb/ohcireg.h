@@ -1,8 +1,6 @@
-/*
- * $NetBSD: ohcireg.h,v 1.17 2000/04/01 09:27:35 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/ohcireg.h,v 1.20 2003/07/15 23:12:54 jmg Exp $
- * $DragonFly: src/sys/bus/usb/ohcireg.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
- */
+/*	$NetBSD: ohcireg.h,v 1.17 2000/04/01 09:27:35 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/ohcireg.h,v 1.22 2005/01/06 01:43:28 imp Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcireg.h,v 1.4 2006/12/10 02:03:56 sephe Exp $	*/
 
 
 /*
@@ -130,7 +128,7 @@
 #define OHCI_LES (OHCI_PLE | OHCI_IE | OHCI_CLE | OHCI_BLE)
 #define OHCI_ALL_INTRS (OHCI_SO | OHCI_WDH | OHCI_SF | OHCI_RD | OHCI_UE | \
                         OHCI_FNO | OHCI_RHSC | OHCI_OC)
-#define OHCI_NORMAL_INTRS (OHCI_SO | OHCI_WDH | OHCI_RD | OHCI_UE | OHCI_RHSC)
+#define OHCI_NORMAL_INTRS (OHCI_WDH | OHCI_RD | OHCI_UE | OHCI_RHSC)
 
 #define OHCI_FSMPS(i) (((i-210)*6/7) << 16)
 #define OHCI_PERIODIC(i) ((i)*9/10)

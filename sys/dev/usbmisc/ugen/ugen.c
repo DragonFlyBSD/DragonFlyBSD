@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.21 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.22 2006/12/10 02:03:57 sephe Exp $
  */
 
 /* 
@@ -1350,12 +1350,16 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		return (error);
 	}
 	case USB_GET_STRING_DESC:
+	{
+		int size;
+
 		si = (struct usb_string_desc *)addr;
 		err = usbd_get_string_desc(sc->sc_udev, si->usd_string_index,
-			  si->usd_language_id, &si->usd_desc);
+			  si->usd_language_id, &si->usd_desc, &size);
 		if (err)
 			return (EINVAL);
 		break;
+	}
 	case USB_DO_REQUEST:
 	{
 		struct usb_ctl_request *ur = (void *)addr;

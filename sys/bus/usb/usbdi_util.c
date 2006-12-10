@@ -1,9 +1,6 @@
-/*
- * $NetBSD: usbdi_util.c,v 1.24 1999/11/17 23:00:50 augustss Exp $
- * $NetBSD: usbdi_util.c,v 1.36 2001/11/13 06:24:57 lukem Exp $
- * $FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.31 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.9 2006/09/05 00:55:36 dillon Exp $
- */
+/*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.10 2006/12/10 02:03:57 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -45,6 +42,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/malloc.h>
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/proc.h>
@@ -52,13 +50,15 @@
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
 #endif
+#ifdef __DragonFly__
 #include <sys/thread2.h>
+#endif
 
-#include "usb.h"
-#include "usbhid.h"
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
-#include "usbdi.h"
-#include "usbdi_util.h"
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) logprintf x
@@ -224,6 +224,25 @@ usbd_set_port_feature(usbd_device_handle dev, int port, int sel)
 	return (usbd_do_request(dev, &req, 0));
 }
 
+usbd_status
+usbd_get_protocol(usbd_interface_handle iface, u_int8_t *report)
+{
+	usb_interface_descriptor_t *id = usbd_get_interface_descriptor(iface);
+	usbd_device_handle dev;
+	usb_device_request_t req;
+
+	DPRINTFN(4, ("usbd_get_protocol: iface=%p, endpt=%d\n",
+		     iface, id->bInterfaceNumber));
+	if (id == NULL)
+		return (USBD_IOERROR);
+	usbd_interface2device_handle(iface, &dev);
+	req.bmRequestType = UT_READ_CLASS_INTERFACE;
+	req.bRequest = UR_GET_PROTOCOL;
+	USETW(req.wValue, 0);
+	USETW(req.wIndex, id->bInterfaceNumber);
+	USETW(req.wLength, 1);
+	return (usbd_do_request(dev, &req, report));
+}
 
 usbd_status
 usbd_set_protocol(usbd_interface_handle iface, int report)
@@ -293,8 +312,8 @@ usbd_get_report(usbd_interface_handle iface, int type, int id, void *data,
 	usbd_device_handle dev;
 	usb_device_request_t req;
 
-	DPRINTFN(4, ("usbd_set_report: len=%d\n", len));
-	if (id == 0)
+	DPRINTFN(4, ("usbd_get_report: len=%d\n", len));
+	if (ifd == NULL)
 		return (USBD_IOERROR);
 	usbd_interface2device_handle(iface, &dev);
 	req.bmRequestType = UT_READ_CLASS_INTERFACE;
@@ -348,7 +367,7 @@ usbd_get_hid_descriptor(usbd_interface_handle ifc)
 	char *p, *end;
 
 	if (idesc == NULL)
-		return (0);
+		return (NULL);
 	usbd_interface2device_handle(ifc, &dev);
 	cdesc = usbd_get_config_descriptor(dev);
 
@@ -362,7 +381,7 @@ usbd_get_hid_descriptor(usbd_interface_handle ifc)
 		if (hd->bDescriptorType == UDESC_INTERFACE)
 			break;
 	}
-	return (0);
+	return (NULL);
 }
 
 usbd_status
@@ -468,7 +487,7 @@ usbd_intr_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 	usbd_setup_xfer(xfer, pipe, 0, buf, *size,
 			flags, timeout, usbd_intr_transfer_cb);
 	DPRINTFN(1, ("usbd_intr_transfer: start transfer %d bytes\n", *size));
-	crit_enter(); 		/* don't want callback until tsleep() */
+	crit_enter();		/* don't want callback until tsleep() */
 	err = usbd_transfer(xfer);
 	if (err != USBD_IN_PROGRESS) {
 		crit_exit();
@@ -505,4 +524,21 @@ usb_detach_wakeup(device_ptr_t dv)
 {
 	DPRINTF(("usb_detach_wakeup: for %s\n", USBDEVPTRNAME(dv)));
 	wakeup(dv);
+}
+
+const usb_descriptor_t *
+usb_find_desc(usbd_device_handle dev, int type, int subtype)
+{
+	usbd_desc_iter_t iter;
+	const usb_descriptor_t *desc;
+
+	usb_desc_iter_init(dev, &iter);
+	for (;;) {
+		desc = usb_desc_iter_next(&iter);
+		if (!desc || (desc->bDescriptorType == type &&
+			      (subtype == USBD_SUBTYPE_ANY ||
+			       subtype == desc->bDescriptorSubtype)))
+			break;
+	}
+	return desc;
 }

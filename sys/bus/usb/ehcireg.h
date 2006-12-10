@@ -1,8 +1,7 @@
-/*
- * $NetBSD: ehcireg.h,v 1.18 2004/10/22 10:38:17 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/ehcireg.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcireg.h,v 1.5 2005/08/27 19:00:49 asmodai Exp $
- */
+/*	$NetBSD: ehcireg.h,v 1.18 2004/10/22 10:38:17 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/ehcireg.h,v 1.7.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcireg.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
+
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -66,9 +65,17 @@
 
 #define PCI_EHCI_PORTWAKECAP	0x62	/* RW Port wake caps (opt)  */
 
-/* Regs ar EECP + offset */
-#define PCI_EHCI_USBLEGSUP	0x00
-#define PCI_EHCI_USBLEGCTLSTS	0x04
+/* EHCI Extended Capabilities */
+#define EHCI_EC_LEGSUP		0x01
+
+#define EHCI_EECP_NEXT(x)	(((x) >> 8) & 0xff)
+#define EHCI_EECP_ID(x)		((x) & 0xff)
+
+/* Legacy support extended capability */
+#define EHCI_LEGSUP_LEGSUP	0x01
+#define  EHCI_LEGSUP_OSOWNED	0x01000000 /* OS owned semaphore */
+#define  EHCI_LEGSUP_BIOSOWNED	0x00010000 /* BIOS owned semaphore */
+#define EHCI_LEGSUP_USBLEGCTLSTS 0x04
 
 /*** EHCI capability registers ***/
 
@@ -212,6 +219,7 @@ typedef struct {
 	ehci_link_t	qtd_altnext;
 	u_int32_t	qtd_status;
 #define EHCI_QTD_GET_STATUS(x)	(((x) >>  0) & 0xff)
+#define EHCI_QTD_SET_STATUS(x) ((x) <<  0)
 #define  EHCI_QTD_ACTIVE	0x80
 #define  EHCI_QTD_HALTED	0x40
 #define  EHCI_QTD_BUFERR	0x20

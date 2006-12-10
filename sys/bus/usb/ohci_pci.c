@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -34,8 +34,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.38 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.5 2006/10/25 20:55:52 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.44.2.1 2006/01/29 01:26:46 iedowse Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.6 2006/12/10 02:03:56 sephe Exp $
  */
 
 /*
@@ -73,12 +73,14 @@
 #define PCI_OHCI_VENDORID_ACERLABS	0x10b9
 #define PCI_OHCI_VENDORID_AMD		0x1022
 #define PCI_OHCI_VENDORID_APPLE		0x106b
+#define PCI_OHCI_VENDORID_ATI		0x1002
 #define PCI_OHCI_VENDORID_CMDTECH	0x1095
 #define PCI_OHCI_VENDORID_NEC		0x1033
 #define PCI_OHCI_VENDORID_NVIDIA	0x12D2
 #define PCI_OHCI_VENDORID_NVIDIA2	0x10DE
 #define PCI_OHCI_VENDORID_OPTI		0x1045
 #define PCI_OHCI_VENDORID_SIS		0x1039
+#define PCI_OHCI_VENDORID_SUN		0x108e
 
 #define PCI_OHCI_DEVICEID_ALADDIN_V	0x523710b9
 static const char *ohci_device_aladdin_v = "AcerLabs M5237 (Aladdin-V) USB controller";
@@ -88,6 +90,10 @@ static const char *ohci_device_amd756 = "AMD-756 USB Controller";
 
 #define PCI_OHCI_DEVICEID_AMD766	0x74141022
 static const char *ohci_device_amd766 = "AMD-766 USB Controller";
+
+#define PCI_OHCI_DEVICEID_SB400_1	0x43741002
+#define PCI_OHCI_DEVICEID_SB400_2	0x43751002
+static const char *ohci_device_sb400 = "ATI SB400 USB Controller";
 
 #define PCI_OHCI_DEVICEID_FIRELINK	0xc8611045
 static const char *ohci_device_firelink = "OPTi 82C861 (FireLink) USB controller";
@@ -109,6 +115,9 @@ static const char *ohci_device_sis5571 = "SiS 5571 USB controller";
 
 #define PCI_OHCI_DEVICEID_KEYLARGO	0x0019106b
 static const char *ohci_device_keylargo = "Apple KeyLargo USB controller";
+
+#define PCI_OHCI_DEVICEID_PCIO2USB	0x1103108e
+static const char *ohci_device_pcio2usb = "Sun PCIO-2 USB controller";
 
 static const char *ohci_device_generic = "OHCI (generic) USB controller";
 
@@ -138,17 +147,20 @@ static int
 ohci_pci_resume(device_t self)
 {
 	ohci_softc_t *sc = device_get_softc(self);
-	u_int32_t reg, int_line;
+
+#ifndef BURN_BRIDGES
+	uint32_t reg, int_line;
 
 	if (pci_get_powerstate(self) != PCI_POWERSTATE_D0) {
-                device_printf(self, "chip is in D%d mode "
-                        "-- setting to D0\n", pci_get_powerstate(self));
-                reg = pci_read_config(self, PCI_CBMEM, 4);
-                int_line = pci_read_config(self, PCIR_INTLINE, 4);
-                pci_set_powerstate(self, PCI_POWERSTATE_D0);
-                pci_write_config(self, PCI_CBMEM, reg, 4);
-                pci_write_config(self, PCIR_INTLINE, int_line, 4);
+		device_printf(self, "chip is in D%d mode "
+		        "-- setting to D0\n", pci_get_powerstate(self));
+		reg = pci_read_config(self, PCI_CBMEM, 4);
+		int_line = pci_read_config(self, PCIR_INTLINE, 4);
+		pci_set_powerstate(self, PCI_POWERSTATE_D0);
+		pci_write_config(self, PCI_CBMEM, reg, 4);
+		pci_write_config(self, PCIR_INTLINE, int_line, 4);
 	}
+#endif	/* !BURN_BRIDGES */
 
 	ohci_power(PWR_RESUME, sc);
 	bus_generic_resume(self);
@@ -168,6 +180,9 @@ ohci_pci_match(device_t self)
 		return (ohci_device_amd756);
 	case PCI_OHCI_DEVICEID_AMD766:
 		return (ohci_device_amd766);
+	case PCI_OHCI_DEVICEID_SB400_1:
+	case PCI_OHCI_DEVICEID_SB400_2:
+		return (ohci_device_sb400);
 	case PCI_OHCI_DEVICEID_USB0670:
 		return (ohci_device_usb0670);
 	case PCI_OHCI_DEVICEID_USB0673:
@@ -182,6 +197,8 @@ ohci_pci_match(device_t self)
 		return (ohci_device_sis5571);
 	case PCI_OHCI_DEVICEID_KEYLARGO:
 		return (ohci_device_keylargo);
+	case PCI_OHCI_DEVICEID_PCIO2USB:
+		return (ohci_device_pcio2usb);
 	default:
 		if (pci_get_class(self) == PCIC_SERIALBUS
 		    && pci_get_subclass(self) == PCIS_SERIALBUS_USB
@@ -218,9 +235,17 @@ ohci_pci_attach(device_t self)
 
 	pci_enable_busmaster(self);
 
+	/*
+	 * Some Sun PCIO-2 USB controllers have their intpin register
+	 * bogusly set to 0, although it should be 4. Correct that.
+	 */
+	if (pci_get_devid(self) == PCI_OHCI_DEVICEID_PCIO2USB &&
+	    pci_get_intpin(self) == 0)
+		pci_set_intpin(self, 4);
+
 	rid = PCI_CBMEM;
-	sc->io_res = bus_alloc_resource(self, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 	if (!sc->io_res) {
 		device_printf(self, "Could not map memory\n");
 		return ENXIO;
@@ -229,7 +254,7 @@ ohci_pci_attach(device_t self)
 	sc->ioh = rman_get_bushandle(sc->io_res);
 
 	rid = 0;
-	sc->irq_res = bus_alloc_resource(self, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->irq_res = bus_alloc_resource_any(self, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 	if (sc->irq_res == NULL) {
 		device_printf(self, "Could not allocate irq\n");
@@ -242,7 +267,7 @@ ohci_pci_attach(device_t self)
 		ohci_pci_detach(self);
 		return ENOMEM;
 	}
-	device_set_ivars(sc->sc_bus.bdev, sc);
+	device_set_ivars(sc->sc_bus.bdev, &sc->sc_bus);
 
 	/* ohci_pci_match will never return NULL if ohci_pci_probe succeeded */
 	device_set_desc(sc->sc_bus.bdev, ohci_pci_match(self));
@@ -255,6 +280,9 @@ ohci_pci_attach(device_t self)
 		break;
 	case PCI_OHCI_VENDORID_APPLE:
 		sprintf(sc->sc_vendor, "Apple");
+		break;
+	case PCI_OHCI_VENDORID_ATI:
+		sprintf(sc->sc_vendor, "ATI");
 		break;
 	case PCI_OHCI_VENDORID_CMDTECH:
 		sprintf(sc->sc_vendor, "CMDTECH");
@@ -288,14 +316,16 @@ ohci_pci_attach(device_t self)
 		return ENXIO;
 	}
 	err = ohci_init(sc);
-	if (!err)
+	if (!err) {
+		sc->sc_flags |= OHCI_SCFLG_DONEINIT;
 		err = device_probe_and_attach(sc->sc_bus.bdev);
+	}
+
 	if (err) {
 		device_printf(self, "USB init failed\n");
 		ohci_pci_detach(self);
 		return EIO;
 	}
-	ohci_init_intrs(sc);
 	return 0;
 }
 
@@ -304,17 +334,10 @@ ohci_pci_detach(device_t self)
 {
 	ohci_softc_t *sc = device_get_softc(self);
 
-	/*
-	 * XXX this code is not yet fit to be used as detach for the OHCI
-	 * controller
-	 */
-
-	/*
-	 * disable interrupts that might have been switched on in ohci_init
-	 */
-	if (sc->iot && sc->ioh)
-		bus_space_write_4(sc->iot, sc->ioh,
-		    OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
+	if (sc->sc_flags & OHCI_SCFLG_DONEINIT) {
+		ohci_detach(sc, 0);
+		sc->sc_flags &= ~OHCI_SCFLG_DONEINIT;
+	}
 
 	if (sc->irq_res && sc->ih) {
 		int err = bus_teardown_intr(self, sc->irq_res, sc->ih);
@@ -346,6 +369,7 @@ static device_method_t ohci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, ohci_pci_probe),
 	DEVMETHOD(device_attach, ohci_pci_attach),
+	DEVMETHOD(device_detach, ohci_pci_detach),
 	DEVMETHOD(device_suspend, ohci_pci_suspend),
 	DEVMETHOD(device_resume, ohci_pci_resume),
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),

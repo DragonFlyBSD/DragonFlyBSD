@@ -1,8 +1,6 @@
-/*
- * $NetBSD: usbdi_util.h,v 1.23 2001/10/26 17:58:22 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/usbdi_util.h,v 1.16 2003/07/04 01:50:39 jmg Exp $
- * $DragonFly: src/sys/bus/usb/usbdi_util.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
- */
+/*	$NetBSD: usbdi_util.h,v 1.31 2004/12/03 08:53:40 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/usbdi_util.h,v 1.19 2005/03/01 08:01:22 sobomax Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.h,v 1.4 2006/12/10 02:03:57 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -57,6 +55,7 @@ usbd_status	usbd_set_port_feature(usbd_device_handle dev, int, int);
 usbd_status	usbd_clear_port_feature(usbd_device_handle, int, int);
 usbd_status	usbd_get_device_status(usbd_device_handle, usb_status_t *);
 usbd_status	usbd_get_hub_status(usbd_device_handle, usb_hub_status_t *);
+usbd_status	usbd_get_protocol(usbd_interface_handle dev, u_int8_t *report);
 usbd_status	usbd_set_protocol(usbd_interface_handle dev, int report);
 usbd_status	usbd_get_report_descriptor(usbd_device_handle dev, int ifcno,
 					   int size, void *d);
@@ -72,7 +71,8 @@ usbd_status	usbd_read_report_desc(usbd_interface_handle ifc, void **descp,
 				      int *sizep, usb_malloc_type mem);
 usbd_status	usbd_get_config(usbd_device_handle dev, u_int8_t *conf);
 usbd_status	usbd_get_string_desc(usbd_device_handle dev, int sindex,
-				     int langid, usb_string_descriptor_t *sdesc);
+				     int langid, usb_string_descriptor_t *sdesc,
+				     int *sizep);
 void		usbd_delay_ms(usbd_device_handle, u_int);
 
 
@@ -89,4 +89,8 @@ usbd_status usbd_intr_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 
 void usb_detach_wait(device_ptr_t);
 void usb_detach_wakeup(device_ptr_t);
+
+const usb_descriptor_t *usb_find_desc(usbd_device_handle dev, int type,
+				      int subtype);
+#define USBD_SUBTYPE_ANY (~0)
 

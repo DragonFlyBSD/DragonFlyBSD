@@ -1,8 +1,6 @@
-/*
- * $NetBSD: usb.h,v 1.69 2002/09/22 23:20:50 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/usb.h,v 1.38 2002/11/06 21:37:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.h,v 1.4 2003/12/30 01:01:44 dillon Exp $
- */
+/*	$NetBSD: usb.h,v 1.69 2002/09/22 23:20:50 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/usb.h,v 1.39.2.1 2006/01/20 22:47:49 mux Exp $    */
+/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.5 2006/12/10 02:03:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -53,10 +51,10 @@
 #endif
 
 #if defined(_KERNEL)
-#include "usb_port.h"
+#include <bus/usb/usb_port.h>
 #endif /* _KERNEL */
 
-/* these three defines are used by usbd to autoload the usb kld */
+/* These two defines are used by usbd to autoload the usb kld */
 #define USB_KLD		"usb"		/* name of usb module */
 #define USB_UHUB	"usb/uhub"	/* root hub */
 
@@ -492,6 +490,8 @@ typedef struct {
 #define  UIPROTO_IRDA			0
 
 #define UICLASS_VENDOR		0xff
+#define  UISUBCLASS_XBOX360_CONTROLLER	0x5d
+#define  UIPROTO_XBOX360_GAMEPAD	0x01
 
 
 #define USB_HUB_MAX_DEPTH 5

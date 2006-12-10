@@ -1,8 +1,6 @@
-/*
- * $NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.36 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohcivar.h,v 1.5 2005/06/10 18:33:04 dillon Exp $
- */
+/*	$NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.40.2.1 2005/12/04 05:52:23 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -60,7 +58,6 @@ typedef struct ohci_soft_td {
 	u_int16_t flags;
 #define OHCI_CALL_DONE	0x0001
 #define OHCI_ADD_LEN	0x0002
-#define OHCI_TD_HANDLED	0x0004		/* signal process_done has seen it */
 } ohci_soft_td_t;
 #define OHCI_STD_SIZE ((sizeof (struct ohci_soft_td) + OHCI_TD_ALIGN - 1) / OHCI_TD_ALIGN * OHCI_TD_ALIGN)
 #define OHCI_STD_CHUNK (PAGE_SIZE / OHCI_STD_SIZE)
@@ -86,8 +83,11 @@ typedef struct ohci_soft_itd {
 
 #define OHCI_HASH_SIZE 128
 
+#define OHCI_SCFLG_DONEINIT	0x0001	/* ohci_init() done. */
+
 typedef struct ohci_softc {
 	struct usbd_bus sc_bus;		/* base device */
+	int sc_flags;
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
@@ -147,7 +147,9 @@ typedef struct ohci_softc {
 
 	usb_callout_t sc_tmo_rhsc;
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	device_ptr_t sc_child;
+#endif
 	char sc_dying;
 } ohci_softc_t;
 
@@ -157,14 +159,15 @@ struct ohci_xfer {
 	u_int32_t ohci_xfer_flags;
 };
 #define OHCI_ISOC_DIRTY  0x01
+#define OHCI_XFER_ABORTING	0x02	/* xfer is aborting. */
+#define OHCI_XFER_ABORTWAIT	0x04	/* abort completion is being awaited. */
 
 #define OXFER(xfer) ((struct ohci_xfer *)(xfer))
 
 usbd_status	ohci_init(ohci_softc_t *);
-void		ohci_init_intrs(ohci_softc_t *);
 int		ohci_intr(void *);
+int	 	ohci_detach(ohci_softc_t *, int);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-int		ohci_detach(ohci_softc_t *, int);
 int		ohci_activate(device_ptr_t, enum devact);
 #endif
 

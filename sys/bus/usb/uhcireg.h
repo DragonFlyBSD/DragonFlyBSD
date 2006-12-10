@@ -1,8 +1,6 @@
-/*
- * $NetBSD: uhcireg.h,v 1.15 2002/02/11 11:41:30 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/uhcireg.h,v 1.21 2003/07/04 01:50:38 jmg Exp $
- * $DragonFly: src/sys/bus/usb/uhcireg.h,v 1.4 2003/12/30 01:01:44 dillon Exp $
- */
+/*	$NetBSD: uhcireg.h,v 1.15 2002/02/11 11:41:30 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/uhcireg.h,v 1.22 2005/01/06 01:43:28 imp Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcireg.h,v 1.5 2006/12/10 02:03:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

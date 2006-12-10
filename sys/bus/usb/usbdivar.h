@@ -1,8 +1,6 @@
-/*
- * $NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.40 2003/07/15 22:42:37 jmg Exp $
- * $DragonFly: src/sys/bus/usb/usbdivar.h,v 1.5 2005/06/02 20:40:40 dillon Exp $
- */
+/*	$NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.43.2.1 2006/03/01 01:59:05 iedowse Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.6 2006/12/10 02:03:57 sephe Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -54,6 +52,7 @@ struct usbd_pipe;
 struct usbd_endpoint {
 	usb_endpoint_descriptor_t *edesc;
 	int			refcnt;
+	int			savedtoggle;
 };
 
 struct usbd_bus_methods {
@@ -76,6 +75,10 @@ struct usbd_pipe_methods {
 	void		      (*done)(usbd_xfer_handle xfer);
 };
 
+struct usbd_tt {
+	struct usbd_hub		*hub;
+};
+
 struct usbd_port {
 	usb_port_status_t	status;
 	u_int16_t		power;	/* mA of current on port */
@@ -84,6 +87,7 @@ struct usbd_port {
 #define USBD_RESTART_MAX 5
 	struct usbd_device     *device;	/* Connected device */
 	struct usbd_device     *parent;	/* The ports hub */
+	struct usbd_tt	       *tt; /* Transaction translator (if any) */
 };
 
 struct usbd_hub {
@@ -144,7 +148,7 @@ struct usbd_device {
 	usb_event_cookie_t	cookie;	       /* unique connection id */
 	struct usbd_port       *powersrc;      /* upstream hub port, or 0 */
 	struct usbd_device     *myhub;	       /* upstream hub */
-	struct usbd_device     *myhighhub;     /* closest high speed hub */
+	struct usbd_port       *myhsport;      /* closest high speed port */
 	struct usbd_endpoint	def_ep;	       /* for pipe 0 */
 	usb_endpoint_descriptor_t def_ep_desc; /* for pipe 0 */
 	struct usbd_interface  *ifaces;        /* array of all interfaces */
@@ -153,6 +157,7 @@ struct usbd_device {
 	const struct usbd_quirks     *quirks;  /* device quirks, always set */
 	struct usbd_hub	       *hub;           /* only if this is a hub */
 	device_ptr_t	       *subdevs;       /* sub-devices, 0 terminated */
+	uint8_t		       *ifacenums;     /* sub-device interfacenumbers */
 };
 
 struct usbd_interface {
