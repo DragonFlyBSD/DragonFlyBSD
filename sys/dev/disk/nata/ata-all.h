@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.118 2006/06/28 09:59:09 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.3 2006/12/07 12:47:24 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.4 2006/12/10 23:36:13 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -344,6 +344,7 @@ struct ata_request {
 #define         ATA_R_DMA               0x00000010
 #define         ATA_R_QUIET             0x00000020
 #define         ATA_R_TIMEOUT           0x00000040
+#define		ATA_R_COMPLETED		0x00000080
 
 #define         ATA_R_ORDERED           0x00000100
 #define         ATA_R_AT_HEAD           0x00000200

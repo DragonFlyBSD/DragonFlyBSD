@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.2 2006/12/10 23:36:13 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -99,19 +99,25 @@ ata_queue_request(struct ata_request *request)
 
     /* if this is not a callback wait until request is completed */
     if (!request->callback) {
-	ATA_DEBUG_RQ(request, "wait for completition");
-	spin_lock_wr(&request->done);
-	if (!dumping &&
-	    msleep(request, &request->done, 0, "ATA request completion wait",
-		   request->timeout * hz * 4)) {
-	    device_printf(request->dev,
-			  "WARNING - %s taskqueue timeout "
-			  "- completing request directly\n",
-			  ata_cmd2str(request));
-	    request->flags |= ATA_R_DANGER1;
-	    ata_completed(request, 0);
+	ATA_DEBUG_RQ(request, "wait for completion");
+	if (!dumping) {
+	    /* interlock against wakeup */
+	    spin_lock_wr(&request->done);
+	    /* check if the request was completed already */
+	    if (!(request->flags & ATA_R_COMPLETED))
+		msleep(request, &request->done, 0, "ATA request completion "
+		       "wait", request->timeout * hz * 4);
+	    spin_unlock_wr(&request->done);
+	    /* check if the request was completed while sleeping */
+	    if (!(request->flags & ATA_R_COMPLETED)) {
+		/* apparently not */
+		device_printf(request->dev, "WARNING - %s taskqueue timeout - "
+			      "completing request directly\n",
+			      ata_cmd2str(request));
+		request->flags |= ATA_R_DANGER1;
+		ata_completed(request, 0);
+	    }
 	}
-	spin_unlock_wr(&request->done);
 	spin_uninit(&request->done);
     }
 }
@@ -474,6 +480,7 @@ ata_completed(void *context, int dummy)
 	(request->callback)(request);
     else {
 	spin_lock_wr(&request->done);
+	request->flags |= ATA_R_COMPLETED;
 	wakeup_one(request);
 	spin_unlock_wr(&request->done);
     }
