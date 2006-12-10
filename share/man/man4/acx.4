@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/acx.4,v 1.1 2006/04/01 02:55:36 sephe Exp $
+.\" $DragonFly: src/share/man/man4/acx.4,v 1.2 2006/12/10 05:15:59 sephe Exp $
 .\"
 .Dd March 24, 2006
 .Dt ACX 4
@@ -42,6 +42,8 @@ your kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device acx"
 .Cd "device wlan"
+.Cd "device wlan_ratectl_onoe"
+.Cd "device wlan_ratectl_amrr"
 .Ed
 .Pp
 Alternatively, to load the driver as a module at boot time, place the
