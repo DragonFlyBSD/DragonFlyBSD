@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.43 2006/11/16 13:43:55 sephe Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.44 2006/12/10 04:59:38 sephe Exp $
 
 machine		pc32
 machine_arch	i386
@@ -223,7 +223,9 @@ device		wlan		# 802.11 support
 device		wlan_ccmp	# 802.11 CCMP support
 device		wlan_tkip	# 802.11 TKIP support
 device		wlan_wep	# 802.11 WEP support
-#device		wlan_ratectl_onoe	# 802.11 Onoe TX rate control algorithm
+# 802.11 TX rate control algorithms
+#device		wlan_ratectl_amrr	# AMRR
+device		wlan_ratectl_onoe	# Onoe
 
 # Aironet 4500/4800 802.11 wireless NICs.  Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
@@ -233,7 +235,7 @@ device		wlan_wep	# 802.11 WEP support
 device		an
 #device		awi		# PRISM I IEEE 802.11b wireless NIC
 device		ral		# Ralink Technology 802.11 wireless NIC
-#device		rtw		# RealTek 802.11 wireless NIC
+device		rtw		# RealTek 802.11 wireless NIC
 				# Requires wlan_ratectl_onoe
 # WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really
 # exists only as a PCMCIA device, so there is no ISA attachment needed
@@ -282,6 +284,9 @@ device		axe		# ASIX Electronics USB Ethernet
 device		cue		# CATC USB ethernet
 device		kue		# Kawasaki LSI USB ethernet
 device		rue		# RealTek 8150 based USB ethernet
+# USB wireless NICs, requires wlan, wlan_ratectl_onoe
+device		rum		# Ralink Technology RT2501USB/RT2601USB
+device		ural		# Ralink Technology RT2500USB
 
 # FireWire support
 device		firewire	# FireWire bus code
