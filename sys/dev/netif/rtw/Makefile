@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/netif/rtw/Makefile,v 1.1 2006/09/03 07:37:58 sephe Exp $
+# $DragonFly: src/sys/dev/netif/rtw/Makefile,v 1.2 2006/12/10 05:10:41 sephe Exp $
 KMOD	= if_rtw
 
 SRCS	= if_rtw_pci.c smc93cx6.c rtwphyio.c rtwphy.c rtw.c
@@ -9,6 +9,6 @@ opt_aic7xxx.h:
 	echo "" > ${.TARGET}
 .endif
 
-KMODDEPS= wlan wlan_ratectl_onoe
+KMODDEPS= wlan wlan_wep wlan_ratectl_onoe
 
 .include <bsd.kmod.mk>
