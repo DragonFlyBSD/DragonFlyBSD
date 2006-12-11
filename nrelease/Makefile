@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.56 2006/07/08 18:12:05 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.57 2006/12/11 20:54:22 dillon Exp $
 #
 
 # compat target
@@ -45,7 +45,7 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6a.tgz dfuife_curses-1.5.tgz
 PKGSRC_PACKAGES+=	gettext-lib-0.14.5.tgz libaura-3.1.tgz \
 			libdfui-4.2.tgz libinstaller-5.1.tgz
-ROOTSKELS+=		installer
+ROOTSKELS+=		${.CURDIR}/installer
 .endif
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
