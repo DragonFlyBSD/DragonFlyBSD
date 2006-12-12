@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.23 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.24 2006/12/12 11:14:27 sephe Exp $	*/
 
 /* Also already merged from NetBSD:
  *	$NetBSD: usb.c,v 1.70 2002/05/09 21:54:32 augustss Exp $
@@ -129,7 +129,6 @@ struct usb_softc {
 	USBBASEDEVICE	sc_dev;		/* base device */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	cdev_t		sc_usbdev;
-	TAILQ_ENTRY(usb_softc) sc_coldexplist; /* cold needs-explore list */
 #endif
 	usbd_bus_handle sc_bus;		/* USB controller */
 	struct usbd_port sc_port;	/* dummy port for root hub */
@@ -177,9 +176,6 @@ Static void	usb_task_thread(void *);
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 Static cdev_t usb_dev;		/* The /dev/usb device. */
 Static int usb_ndevs;			/* Number of /dev/usbN devices. */
-/* Busses to explore at the end of boot-time device configuration. */
-Static TAILQ_HEAD(, usb_softc) usb_coldexplist =
-    TAILQ_HEAD_INITIALIZER(usb_coldexplist);
 #endif
 
 #define USB_MAX_EVENTS 100
@@ -301,14 +297,12 @@ USB_ATTACH(usb)
 		 */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 		if (cold) {
-			/* Explore high-speed busses before others. */
-			if (speed == USB_SPEED_HIGH) {
-				/* XXX This hangs system. */
-				/* dev->hub->explore(sc->sc_bus->root_hub); */
-			} else {
-				TAILQ_INSERT_TAIL(&usb_coldexplist, sc,
-				    sc_coldexplist);
-			}
+			/*
+			 * XXX Exploring high speed device here will
+			 * hang the system.
+			 */
+			if (speed != USB_SPEED_HIGH)
+				dev->hub->explore(sc->sc_bus->root_hub);
 		}
 #else
 		if (cold && (sc->sc_dev.dv_cfdata->cf_flags & 1))
@@ -1002,27 +996,7 @@ usb_child_detached(device_t self, device_t child)
 	sc->sc_port.device = NULL;
 }
 
-/* Explore USB busses at the end of device configuration. */
-Static void
-usb_cold_explore(void *arg)
-{
-	struct usb_softc *sc;
-
-	KASSERT(cold || TAILQ_EMPTY(&usb_coldexplist),
-	    ("usb_cold_explore: busses to explore when !cold"));
-	while (!TAILQ_EMPTY(&usb_coldexplist)) {
-		sc = TAILQ_FIRST(&usb_coldexplist);
-		TAILQ_REMOVE(&usb_coldexplist, sc, sc_coldexplist);
-
-		sc->sc_bus->use_polling++;
-		sc->sc_port.device->hub->explore(sc->sc_bus->root_hub);
-		sc->sc_bus->use_polling--;
-	}
-}
-
 DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, ehci, usb_driver, usb_devclass, 0, 0);
-SYSINIT(usb_cold_explore, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE,
-    usb_cold_explore, NULL);
 #endif
