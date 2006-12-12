@@ -1,4 +1,4 @@
-$DragonFly: src/lib/libmagic/Attic/libmagic.man.patch,v 1.1 2006/11/13 05:42:42 pavalos Exp $
+$DragonFly: src/lib/libmagic/Attic/libmagic.man.patch,v 1.2 2006/12/12 18:44:17 pavalos Exp $
 Index: libmagic.man
 ===================================================================
 RCS file: /cvs/src/contrib/file-4/doc/libmagic.man,v
@@ -10,7 +10,7 @@ diff -u -r1.1 libmagic.man
  The
  .Fn magic_errno
  function returns the last operating system error number
--.Pq .Xr errno 3
+-.Pq .Xr errno 2
 +.Pq Xr errno 2
  that was encountered by a system call.
  .Pp
