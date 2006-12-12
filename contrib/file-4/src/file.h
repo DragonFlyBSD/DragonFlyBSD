@@ -27,7 +27,7 @@
  */
 /*
  * file.h - definitions for file(1) program
- * @(#)$Id: file.h,v 1.80 2006/10/31 20:57:45 christos Exp $
+ * @(#)$Id: file.h,v 1.83 2006/12/11 21:48:49 christos Exp $
  */
 
 #ifndef __file_h__
@@ -225,7 +225,7 @@ struct magic {
 	/* Word 5 */
 	int32_t in_offset;	/* offset from indirection */
 	/* Word 6 */
-	uint32_t dummy4;
+	uint32_t lineno;	/* line number in magic file */
 	/* Word 7,8 */
 	uint64_t mask;	/* mask before comparison with value */
 	/* Words 9-16 */
@@ -282,6 +282,7 @@ struct magic_set {
 	char *pbuf;
 	size_t psize;
     } o;
+    uint32_t offset;
     int error;
     int flags;
     int haderr;
@@ -306,7 +307,7 @@ protected uint64_t file_signextend(struct magic_set *, struct magic *, uint64_t)
 protected void file_delmagic(struct magic *, int type, size_t entries);
 protected void file_badread(struct magic_set *);
 protected void file_badseek(struct magic_set *);
-protected void file_oomem(struct magic_set *);
+protected void file_oomem(struct magic_set *, size_t);
 protected void file_error(struct magic_set *, int, const char *, ...);
 protected void file_magwarn(struct magic_set *, const char *, ...);
 protected void file_mdump(struct magic *);
