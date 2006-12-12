@@ -19,6 +19,7 @@ doc/Makefile.am
 doc/Makefile.in
 magic/Makefile.am
 magic/Makefile.in
+magic/magic2mime
 python
 src/Makefile.am
 src/Makefile.in
