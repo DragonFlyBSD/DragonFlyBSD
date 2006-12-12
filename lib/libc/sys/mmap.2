@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)mmap.2	8.4 (Berkeley) 5/11/95
 .\" $FreeBSD: src/lib/libc/sys/mmap.2,v 1.22.2.12 2002/02/27 03:40:13 dd Exp $
-.\" $DragonFly: src/lib/libc/sys/mmap.2,v 1.5 2006/12/11 20:55:25 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/mmap.2,v 1.6 2006/12/12 00:08:17 swildner Exp $
 .\"
-.Dd November 17, 2001
+.Dd December 11, 2006
 .Dt MMAP 2
 .Os
 .Sh NAME
@@ -236,7 +236,9 @@ Memory accessed via this map is not linearly mapped and will be governed
 by a virtual page table.  The base address of the virtual page table may
 be set using
 .Xr mcontrol 2
-with MADV_SETMAP.  Virtual page tables work with anonymous memory but there
+with
+.Dv MADV_SETMAP .
+Virtual page tables work with anonymous memory but there
 is no way to populate the page table so for all intents and purposes
 .Dv MAP_VPAGETABLE
 can only be used when mapping file descriptors.
