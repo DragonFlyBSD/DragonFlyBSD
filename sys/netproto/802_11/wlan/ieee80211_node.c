@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.10 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.11 2006/12/12 15:48:09 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -954,7 +954,7 @@ ieee80211_setup_node(struct ieee80211_node_table *nt,
 	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
 
 	IEEE80211_DPRINTF(ic, IEEE80211_MSG_NODE,
-		"%6D %p<%s> in %s table\n", __func__, ni,
+		"%s %p<%6D> in %s table\n", __func__, ni,
 		macaddr, ":", nt->nt_name);
 
 	IEEE80211_ADDR_COPY(ni->ni_macaddr, macaddr);
@@ -1273,9 +1273,8 @@ ieee80211_init_neighbor(struct ieee80211_node *ni,
 	const struct ieee80211_frame *wh,
 	const struct ieee80211_scanparams *sp)
 {
-
 	IEEE80211_DPRINTF(ni->ni_ic, IEEE80211_MSG_NODE,
-	    "%s: %p<%s>\n", __func__, ni, ni->ni_macaddr, ":");
+	    "%s: %p<%6D>\n", __func__, ni, ni->ni_macaddr, ":");
 	ni->ni_esslen = sp->ssid[1];
 	memcpy(ni->ni_essid, sp->ssid + 2, sp->ssid[1]);
 	IEEE80211_ADDR_COPY(ni->ni_bssid, wh->i_addr3);
@@ -1294,6 +1293,22 @@ ieee80211_init_neighbor(struct ieee80211_node *ni,
 
 	/* NB: must be after ni_chan is setup */
 	ieee80211_setup_rates(ni, sp->rates, sp->xrates, IEEE80211_F_DOSORT);
+
+#ifdef IEEE80211_DEBUG
+	if (ieee80211_msg(ni->ni_ic, IEEE80211_MSG_NODE)) {
+		struct ieee80211_rateset *rs = &ni->ni_rates;
+		int i;
+
+		ieee80211_note(ni->ni_ic, "%s: [%6D] rate set: ", __func__,
+			       ni->ni_macaddr, ":");
+		for (i = 0; i < rs->rs_nrates; ++i) {
+			printf("%d%s ", rs->rs_rates[i] & IEEE80211_RATE_VAL,
+			       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?
+			       "*" : "");
+		}
+		printf("\n");
+	}
+#endif
 }
 
 /*
@@ -2066,7 +2081,8 @@ ieee80211_node_join(struct ieee80211com *ic, struct ieee80211_node *ni, int resp
 		struct ieee80211_rateset *rs = &ni->ni_rates;
 		int i;
 
-		ieee80211_note(ic, "[%6D] rate set: ", ni->ni_macaddr, ":");
+		ieee80211_note(ic, "%s: [%6D] rate set: ", __func__,
+			       ni->ni_macaddr, ":");
 		for (i = 0; i < rs->rs_nrates; ++i) {
 			printf("%d%s ", rs->rs_rates[i] & IEEE80211_RATE_VAL,
 			       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?
