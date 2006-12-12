@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.26 2006/11/14 10:54:21 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.27 2006/12/12 19:01:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,10 @@ ata_pci_match(device_t dev)
 
     case 0x26528086:
 	return "Intel ICH6R/RW SATA150 controller";
-
+	
+    case 0x26538086:
+	return "Intel ICH6M SATA150 controller";
+	
     case 0x266f8086:
 	return "Intel ICH6R/RW ATA100 controller";
 
