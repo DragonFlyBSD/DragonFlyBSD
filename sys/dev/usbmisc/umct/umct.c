@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.5 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.5 2006/12/13 20:19:06 dillon Exp $
  */
 
 /*
@@ -44,13 +44,13 @@
 #include <sys/malloc.h>
 #include <sys/bus.h>
 #include <sys/tty.h>
-#include <sys/interrupt.h>
+#include <sys/taskqueue.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbdevs.h>
-#include <dev/usb/ucomvar.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdevs.h>
+#include "../ucom/ucomvar.h"
 
 /* The UMCT advertises the standard 8250 UART registers */
 #define UMCT_GET_MSR		2	/* Get Modem Status Register */
@@ -80,7 +80,7 @@ struct umct_softc {
 	uint8_t			sc_msr;
 	uint8_t			sc_lcr;
 	uint8_t			sc_mcr;
-	void			*sc_swicookie;
+	struct task		sc_task;
 };
 
 Static void umct_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
@@ -89,7 +89,7 @@ Static void umct_set(void *, int, int, int);
 Static int  umct_param(void *, int, struct termios *);
 Static int  umct_open(void *, int);
 Static void umct_close(void *, int);
-Static void umct_notify(void *);
+Static void umct_notify(void *, int);
 
 Static struct ucom_callback umct_callback = {
 	umct_get_status,	/* ucom_get_status */
@@ -110,6 +110,7 @@ Static const struct umct_product {
 	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232 },
 	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_DU_H3SP_USB232 },
 	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U109 },
+	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U409 },
 	{ 0, 0 }
 };
 
@@ -134,8 +135,6 @@ DRIVER_MODULE(umct, uhub, umct_driver, ucom_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(umct, usb, 1, 1, 1);
 MODULE_DEPEND(umct, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(umct, 1);
-
-Static struct ithd *umct_ithd;
 
 USB_MATCH(umct)
 {
@@ -269,9 +268,8 @@ USB_ATTACH(umct)
 	ucom->sc_portno = UCOM_UNK_PORTNO;
 	ucom->sc_opkthdrlen = 0;
 	ucom->sc_callback = &umct_callback;
+	TASK_INIT(&sc->sc_task, 0, umct_notify, sc);
 	ucom_attach(ucom);
-	swi_add(&umct_ithd, "ucom", umct_notify, sc, SWI_TTY, 0,
-	    &sc->sc_swicookie);
 
 	kfree(devinfo, M_USBDEV);
 	USB_ATTACH_SUCCESS_RETURN;
@@ -294,7 +292,6 @@ USB_DETACH(umct)
 	}
 
 	sc->sc_ucom.sc_dying = 1;
-	ithread_remove_handler(sc->sc_swicookie);
 	rv = ucom_detach(&sc->sc_ucom);
 	return (rv);
 }
@@ -346,11 +343,11 @@ umct_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	 * Defer notifying the ucom layer as it doesn't like to be bothered
          * from an interrupt context.
 	 */
-	swi_sched(sc->sc_swicookie, 0);
+	taskqueue_enqueue(taskqueue_swi, &sc->sc_task);
 }
 
 Static void
-umct_notify(void *arg)
+umct_notify(void *arg, int count)
 {
 	struct umct_softc *sc;
 
