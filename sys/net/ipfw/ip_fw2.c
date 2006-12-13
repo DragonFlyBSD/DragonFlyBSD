@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.23 2006/09/30 20:23:05 swildner Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.24 2006/12/13 21:58:52 dillon Exp $
  */
 
 #define        DEB(x)
@@ -371,7 +371,7 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 	if (cmd->name[0] != '\0') { /* match by name */
 		/* Check name */
 		if (cmd->p.glob) {
-			if (fnmatch(cmd->name, ifp->if_xname, 0) == 0)
+			if (kfnmatch(cmd->name, ifp->if_xname, 0) == 0)
 				return(1);
 		} else {
 			if (strncmp(ifp->if_xname, cmd->name, IFNAMSIZ) == 0)

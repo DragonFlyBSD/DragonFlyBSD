@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.11 2006/10/22 18:42:12 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.12 2006/12/13 21:58:52 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -82,7 +82,7 @@ int	 ffs (int);
 int	 fls (int);
 #endif
 int	 locc (int, char *, u_int);
-void	 qsort (void *base, size_t nmemb, size_t size,
+void	 kqsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
 u_long	 krandom (void);
 char	*index (const char *, int);
@@ -98,7 +98,7 @@ size_t   strlcpy (char *, const char *, size_t);
 size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
-int	_fnmatch(const char *, const char *, int, int);
+int	_kfnmatch(const char *, const char *, int, int);
 
 /*
  * memset can't be an inline, it is used by gcc-4.x directly.
@@ -106,9 +106,9 @@ int	_fnmatch(const char *, const char *, int, int);
 void	*memset(void *b, int c, size_t len);
 
 static __inline int
-fnmatch(const char *pattern, const char *string, int flags)
+kfnmatch(const char *pattern, const char *string, int flags)
 {
-	return(_fnmatch(pattern, string, flags, 0));
+	return(_kfnmatch(pattern, string, flags, 0));
 }
 
 static __inline int
@@ -117,10 +117,10 @@ memcmp(const void *b1, const void *b2, size_t len)
 	return (bcmp(b1, b2, len));
 }
 
-/* fnmatch() return values. */
+/* kfnmatch() return values. */
 #define	FNM_NOMATCH	1	/* Match failed. */
 
-/* fnmatch() flags. */
+/* kfnmatch() flags. */
 #define	FNM_NOESCAPE	0x01	/* Disable backslash escaping. */
 #define	FNM_PATHNAME	0x02	/* Slash must be matched by slash. */
 #define	FNM_PERIOD	0x04	/* Period must be matched by period. */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/fnmatch.c,v 1.17 2003/06/11 05:23:04 obrien Exp $
- * $DragonFly: src/sys/libkern/fnmatch.c,v 1.2 2004/01/06 01:05:52 dillon Exp $
+ * $DragonFly: src/sys/libkern/fnmatch.c,v 1.3 2006/12/13 21:58:51 dillon Exp $
  */
 
 /*
@@ -57,7 +57,7 @@
 static int rangematch(const char *, char, int, char **);
 
 int
-_fnmatch(const char *pattern, const char *string, int flags, int nesting)
+_kfnmatch(const char *pattern, const char *string, int flags, int nesting)
 {
 	const char *stringstart;
 	char *newp;
@@ -113,7 +113,7 @@ _fnmatch(const char *pattern, const char *string, int flags, int nesting)
 
 			/* General case, use recursion. */
 			while ((test = *string) != EOS) {
-				if (!_fnmatch(pattern, string, flags & ~FNM_PERIOD, nesting + 1))
+				if (!_kfnmatch(pattern, string, flags & ~FNM_PERIOD, nesting + 1))
 					return (0);
 				if (test == '/' && flags & FNM_PATHNAME)
 					break;

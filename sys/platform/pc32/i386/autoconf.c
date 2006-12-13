@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.31 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.32 2006/12/13 21:58:52 dillon Exp $
  */
 
 /*
@@ -362,7 +362,7 @@ inaddr_to_sockaddr(char *ev, struct sockaddr_in *sa)
 
 	if ((cp = kgetenv(ev)) == NULL)
 		return(1);
-	if (sscanf(cp, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) != 4)
+	if (ksscanf(cp, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) != 4)
 		return(1);
 	if (a[0] == 0 && a[1] == 0 && a[2] == 0 && a[3] == 0)
 		return(1);
@@ -386,7 +386,7 @@ hwaddr_to_sockaddr(char *ev, struct sockaddr_dl *sa)
 	sa->sdl_alen = ETHER_ADDR_LEN;
 	if ((cp = kgetenv(ev)) == NULL)
 		return(1);
-	if (sscanf(cp, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]) != 6)
+	if (ksscanf(cp, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]) != 6)
 		return(1);
 	sa->sdl_data[0] = a[0];
 	sa->sdl_data[1] = a[1];
@@ -410,7 +410,7 @@ decode_nfshandle(char *ev, u_char *fh)
 	for (;;) {
 		if (*cp == 'X')
 			return(len);
-		if ((sscanf(cp, "%2x", &val) != 1) || (val > 0xff))
+		if ((ksscanf(cp, "%2x", &val) != 1) || (val > 0xff))
 			return(0);
 		*(fh++) = val;
 		len++;

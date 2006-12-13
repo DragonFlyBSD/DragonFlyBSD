@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_scanf.c,v 1.13 1999/11/24 01:03:01 archie Exp $
- * $DragonFly: src/sys/kern/subr_scanf.c,v 1.3 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_scanf.c,v 1.4 2006/12/13 21:58:50 dillon Exp $
  * From: Id: vfscanf.c,v 1.13 1998/09/25 12:20:27 obrien Exp 
  * From: static char sccsid[] = "@(#)strtol.c	8.1 (Berkeley) 6/4/93";
  * From: static char sccsid[] = "@(#)strtoul.c	8.1 (Berkeley) 6/4/93";
@@ -89,19 +89,19 @@ typedef u_quad_t (*ccfntype)(const char *, char **, int);
 static const u_char *__sccl(char *, const u_char *);
 
 int
-sscanf(const char *ibuf, const char *fmt, ...)
+ksscanf(const char *ibuf, const char *fmt, ...)
 {
 	__va_list ap;
 	int ret;
 	
 	__va_start(ap, fmt);
-	ret = vsscanf(ibuf, fmt, ap);
+	ret = kvsscanf(ibuf, fmt, ap);
 	__va_end(ap);
 	return(ret);
 }
 
 int
-vsscanf(const char *inp, char const *fmt0, __va_list ap)
+kvsscanf(const char *inp, char const *fmt0, __va_list ap)
 {
 	int inr;
 	const u_char *fmt = (const u_char *)fmt0;

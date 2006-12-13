@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.15 2006/09/05 00:55:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.16 2006/12/13 21:58:52 dillon Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -326,7 +326,7 @@ iface_match(struct ifnet *ifp, union ip6_fw_if *ifu, int byname)
 	if (byname) {
 		/* Check name */
 		if (ifu->fu_via_if.glob) {
-			if (fnmatch(ifu->fu_via_if.name, ifp->if_xname, 0)
+			if (kfnmatch(ifu->fu_via_if.name, ifp->if_xname, 0)
 			    == FNM_NOMATCH)
 				return(0);
 		} else {

@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.19 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.20 2006/12/13 21:58:52 dillon Exp $
  */
 
 #define        DEB(x)
@@ -452,7 +452,7 @@ iface_match(struct ifnet *ifp, union ip_fw_if *ifu, int byname)
 	if (byname) {
 		/* Check name */
 		if (ifu->fu_via_if.glob) {
-			if (fnmatch(ifu->fu_via_if.name, ifp->if_xname, 0)
+			if (kfnmatch(ifu->fu_via_if.name, ifp->if_xname, 0)
 			    == FNM_NOMATCH)
 				return(0);
 		} else {

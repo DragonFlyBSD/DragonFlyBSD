@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.27 2002/11/27 06:56:29 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.3 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.4 2006/12/13 21:58:48 dillon Exp $
  */
 
 /*
@@ -722,7 +722,7 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 	 * We want to allocate the largest resource first, so that our
 	 * allocated memory is packed.
 	 */
-	qsort(barlist, count, sizeof(struct resource_list_entry*), barsort);
+	kqsort(barlist, count, sizeof(struct resource_list_entry*), barsort);
 
 	/* Allocate prefetchable memory */
 	flags = 0;

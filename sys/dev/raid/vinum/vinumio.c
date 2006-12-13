@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.17 2006/11/05 11:40:45 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.18 2006/12/13 21:58:49 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -953,7 +953,7 @@ vinum_scandisk(char *devicename[], int drives)
      * and merge the config info with what we
      * have already.
      */
-    qsort(drivelist, gooddrives, sizeof(int), drivecmp);
+    kqsort(drivelist, gooddrives, sizeof(int), drivecmp);
     config_text = (char *) Malloc(MAXCONFIG * 2);	    /* allocate buffers */
     CHECKALLOC(config_text, "Can't allocate memory");
     config_line = (char *) Malloc(MAXCONFIGLINE * 2);	    /* allocate buffers */

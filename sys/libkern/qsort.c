@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/qsort.c,v 1.10 1999/08/28 00:46:35 peter Exp $
- * $DragonFly: src/sys/libkern/qsort.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
+ * $DragonFly: src/sys/libkern/qsort.c,v 1.6 2006/12/13 21:58:51 dillon Exp $
  */
 
 #include <sys/libkern.h>
@@ -87,7 +87,7 @@ med3(char *a, char *b, char *c, cmp_t *cmp)
 }
 
 void
-qsort(void *a, size_t n, size_t es, cmp_t *cmp)
+kqsort(void *a, size_t n, size_t es, cmp_t *cmp)
 {
 	char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
 	int d, r, swaptype, swap_cnt;
@@ -155,12 +155,12 @@ loop:	SWAPINIT(a, es);
 	r = min(pd - pc, pn - pd - es);
 	vecswap(pb, pn - r, r);
 	if ((r = pb - pa) > es)
-		qsort(a, r / es, es, cmp);
+		kqsort(a, r / es, es, cmp);
 	if ((r = pd - pc) > es) {
 		/* Iterate rather than recurse to save stack space */
 		a = pn - r;
 		n = r / es;
 		goto loop;
 	}
-/*		qsort(pn - r, r / es, es, cmp);*/
+/*		kqsort(pn - r, r / es, es, cmp);*/
 }

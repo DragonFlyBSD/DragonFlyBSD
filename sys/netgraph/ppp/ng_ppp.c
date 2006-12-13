@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.9 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.10 2006/12/13 21:58:52 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -1746,7 +1746,7 @@ ng_ppp_mp_strategy(node_p node, int len, int *distrib)
 
 	/* Sort active links by latency */
 	compareLatencies = latency;
-	qsort(sortByLatency,
+	kqsort(sortByLatency,
 	    priv->numActiveLinks, sizeof(*sortByLatency), ng_ppp_intcmp);
 	compareLatencies = NULL;
 

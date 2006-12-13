@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.48 2006/12/05 23:14:55 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.49 2006/12/13 21:58:52 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -157,8 +157,8 @@ int	vprintf (const char *, __va_list) __printflike(1, 0);
 int	vsnprintf (char *, size_t, const char *, __va_list) __printflike(3, 0);
 int     vsprintf (char *buf, const char *, __va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
-int	sscanf (const char *, char const *, ...);
-int	vsscanf (const char *, char const *, __va_list);
+int	ksscanf (const char *, char const *, ...);
+int	kvsscanf (const char *, char const *, __va_list);
 
 long	strtol (const char *, char **, int);
 u_long	strtoul (const char *, char **, int);
