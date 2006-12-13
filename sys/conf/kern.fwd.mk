@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.5 2006/12/05 17:53:09 dillon Exp $
+# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.6 2006/12/13 15:29:50 y0netan1 Exp $
 
 # Create forwarding headers for ${SYSDIR}/cpu/${MACHINE_ARCH}/*.h in
 # ${_MACHINE_FWD}/include/machine and share the directory among module build
@@ -34,7 +34,7 @@ _LHDRS:=	${_LHDRS} ${_fwd}
 ${_fwd}: ${SYSDIR}/sys/${_h}
 .endfor
 
-.ORDER: ${_MACHINE_FWD}/include/machine ${_FWDHDRS}
+.ORDER: ${_MACHINE_FWD}/include/machine ${_FWDHDRS} ${_LHDRS}
 
 ${_MACHINE_FWD} ${_MACHINE_FWD}/include/machine:
 	@mkdir -p ${.TARGET}
