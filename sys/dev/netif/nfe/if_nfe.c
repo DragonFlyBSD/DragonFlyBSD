@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.5 2006/12/06 13:47:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.6 2006/12/13 14:48:26 tgen Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -187,14 +187,17 @@ static const struct nfe_dev {
 	const char	*desc;
 } nfe_devices[] = {
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE_LAN,
-	  "NVIDIA nForce Gigabit Ethernet" },
+	  "NVIDIA nForce Fast Ethernet" },
 
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_LAN,
-	  "NVIDIA nForce2 Gigabit Ethernet" },
+	  "NVIDIA nForce2 Fast Ethernet" },
 
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN1,
 	  "NVIDIA nForce3 Gigabit Ethernet" },
 
+	/* XXX TGEN the next chip can also be found in the nForce2 Ultra 400Gb
+	   chipset, and possibly also the 400R; it might be both nForce2- and
+	   nForce3-based boards can use the same MCPs (= southbridges) */
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN2,
 	  "NVIDIA nForce3 Gigabit Ethernet" },
 
