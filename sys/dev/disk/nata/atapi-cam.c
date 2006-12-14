@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.2 2006/12/05 19:40:43 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.3 2006/12/14 16:06:40 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -54,7 +54,6 @@
 #include <bus/cam/scsi/scsi_all.h>
 
 #include "ata-all.h"
-#include "atapi-all.h"
 #include "ata_if.h"
 
 /* private data associated with an ATA bus */
