@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/umct.c,v 1.5 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.5 2006/12/13 20:19:06 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.6 2006/12/14 16:18:04 swildner Exp $
  */
 
 /*
@@ -251,7 +251,7 @@ USB_ATTACH(umct)
 	}
 
 	if (sc->sc_intr_number == -1) {
-		printf("%s: Could not fint interrupt in\n", devname);
+		printf("%s: Could not find interrupt in\n", devname);
 		ucom->sc_dying = 1;
 		goto error;
 	}
