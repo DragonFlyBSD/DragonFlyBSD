@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.8 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.9 2006/12/15 12:44:22 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -401,7 +401,15 @@ ieee80211_anyhdrspace(struct ieee80211com *ic, const void *data)
 #define	ieee80211_msg(_ic, _m)	((_ic)->ic_debug & (_m))
 #define	IEEE80211_DPRINTF(_ic, _m, _fmt, ...) do {			\
 	if (ieee80211_msg(_ic, _m))					\
-		ieee80211_note(_ic, _fmt, __VA_ARGS__);		\
+		ieee80211_note(_ic, _fmt, __VA_ARGS__);			\
+} while (0)
+#define IEEE80211_PRINT_NODERATES(_ic, _ni, _m) do {			\
+	if (ieee80211_msg(_ic, _m | IEEE80211_MSG_XRATE)) {		\
+		ieee80211_note(_ic, "%s: [%6D] rate set: ", __func__,	\
+			       _ni->ni_macaddr, ":");			\
+		ieee80211_print_rateset(&_ni->ni_rates);		\
+		printf("\n");						\
+	}								\
 } while (0)
 #define	IEEE80211_NOTE(_ic, _m, _ni, _fmt, ...) do {			\
 	if (ieee80211_msg(_ic, _m))					\
@@ -438,6 +446,7 @@ void	ieee80211_note_frame(struct ieee80211com *ic,
 	((_ic)->ic_debug & IEEE80211_MSG_ASSOC)
 #else
 #define	IEEE80211_DPRINTF(_ic, _m, _fmt, ...)
+#define IEEE80211_PRINT_NODERATES(_ic, _ni, _m)
 #define	IEEE80211_NOTE_FRAME(_ic, _m, _wh, _fmt, ...)
 #define	IEEE80211_NOTE_MAC(_ic, _m, _mac, _fmt, ...)
 #define	ieee80211_msg_dumppkts(_ic)	0

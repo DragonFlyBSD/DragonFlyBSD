@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.11 2006/12/12 15:48:09 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.12 2006/12/15 12:44:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1293,22 +1293,7 @@ ieee80211_init_neighbor(struct ieee80211_node *ni,
 
 	/* NB: must be after ni_chan is setup */
 	ieee80211_setup_rates(ni, sp->rates, sp->xrates, IEEE80211_F_DOSORT);
-
-#ifdef IEEE80211_DEBUG
-	if (ieee80211_msg(ni->ni_ic, IEEE80211_MSG_NODE)) {
-		struct ieee80211_rateset *rs = &ni->ni_rates;
-		int i;
-
-		ieee80211_note(ni->ni_ic, "%s: [%6D] rate set: ", __func__,
-			       ni->ni_macaddr, ":");
-		for (i = 0; i < rs->rs_nrates; ++i) {
-			printf("%d%s ", rs->rs_rates[i] & IEEE80211_RATE_VAL,
-			       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?
-			       "*" : "");
-		}
-		printf("\n");
-	}
-#endif
+	IEEE80211_PRINT_NODERATES(ni->ni_ic, ni, IEEE80211_MSG_NODE);
 }
 
 /*
@@ -2076,21 +2061,8 @@ ieee80211_node_join(struct ieee80211com *ic, struct ieee80211_node *ni, int resp
 	    ni->ni_flags & IEEE80211_NODE_QOS ? ", QoS" : ""
 	);
 
-#ifdef IEEE80211_DEBUG
-	if (ieee80211_msg(ic, IEEE80211_MSG_ASSOC | IEEE80211_MSG_DEBUG)) {
-		struct ieee80211_rateset *rs = &ni->ni_rates;
-		int i;
-
-		ieee80211_note(ic, "%s: [%6D] rate set: ", __func__,
-			       ni->ni_macaddr, ":");
-		for (i = 0; i < rs->rs_nrates; ++i) {
-			printf("%d%s ", rs->rs_rates[i] & IEEE80211_RATE_VAL,
-			       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?
-			       "*" : "");
-		}
-		printf("\n");
-	}
-#endif
+	IEEE80211_PRINT_NODERATES(ic, ni,
+		IEEE80211_MSG_ASSOC | IEEE80211_MSG_DEBUG);
 
 	ieee80211_ratectl_newassoc(ni, newassoc);
 

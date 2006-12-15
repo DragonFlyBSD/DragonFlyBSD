@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.4 2006/11/26 02:12:34 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.5 2006/12/15 12:44:23 sephe Exp $
  */
 
 /*
@@ -252,6 +252,17 @@ ieee80211_print_essid(const uint8_t *essid, int len)
 		printf("0x");
 		for (i = 0, p = essid; i < len; i++, p++)
 			printf("%02x", *p);
+	}
+}
+
+void
+ieee80211_print_rateset(const struct ieee80211_rateset *rs)
+{
+	int i;
+
+	for (i = 0; i < rs->rs_nrates; ++i) {
+		printf("%d%s ", IEEE80211_RS_RATE(rs, i),
+		       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?  "*" : "");
 	}
 }
 
