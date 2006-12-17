@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.23 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.24 2006/12/17 20:07:29 dillon Exp $
  */
 
 /*
@@ -61,11 +61,6 @@
 #include <sys/signalvar.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
-
-#include <machine/frame.h>
-#include <machine/psl.h>
-#include <machine/specialreg.h>
-#include <machine_base/isa/intr_machdep.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -113,34 +108,40 @@ mmopen(struct dev_open_args *ap)
 	case 1:
 		if ((ap->a_oflags & FWRITE) && securelevel > 0)
 			return (EPERM);
+		error = 0;
 		break;
 	case 14:
 		error = suser_cred(ap->a_cred, 0);
 		if (error != 0)
-			return (error);
-		if (securelevel > 0)
-			return (EPERM);
-		curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+			break;
+		if (securelevel > 0) {
+			error = EPERM;
+			break;
+		}
+		error = cpu_set_iopl();
 		break;
 	default:
+		error = 0;
 		break;
 	}
-	return (0);
+	return (error);
 }
 
 static int
 mmclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	int error;
 
 	switch (minor(dev)) {
 	case 14:
-		curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+		error = cpu_clr_iopl();
 		break;
 	default:
+		error = 0;
 		break;
 	}
-	return (0);
+	return (error);
 }
 
 

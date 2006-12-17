@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/k6_mem.c,v 1.4.2.2 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/k6_mem.c,v 1.6 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/k6_mem.c,v 1.7 2006/12/17 20:07:32 dillon Exp $
  *
  */
 
@@ -34,8 +34,11 @@
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/memrange.h>
+#include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <machine/md_var.h>
+#include <machine/psl.h>
 #include <machine/specialreg.h>
 #include <machine/lock.h>
 

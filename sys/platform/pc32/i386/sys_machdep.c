@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.26 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.27 2006/12/17 20:07:32 dillon Exp $
  *
  */
 
@@ -43,6 +43,7 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/thread.h>
+#include <sys/memrange.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
@@ -550,3 +551,24 @@ check_descs(union descriptor *descs, int num)
 	}
 	return (0);
 }
+
+/*
+ * Called when /dev/io is opened
+ */
+int
+cpu_set_iopl(void)
+{
+	curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+	return(0);
+}
+
+/*
+ * Called when /dev/io is closed
+ */
+int
+cpu_clr_iopl(void)
+{
+	curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+	return(0);
+}
+

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.5 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.6 2006/12/17 20:07:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,8 +33,11 @@
 #include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/thread.h>
+#include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <machine/md_var.h>
+#include <machine/psl.h>
 #include <machine/specialreg.h>
 
 #ifdef SMP
