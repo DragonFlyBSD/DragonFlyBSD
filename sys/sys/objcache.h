@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.6 2006/06/01 06:10:52 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.7 2006/12/17 19:28:32 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -48,11 +48,6 @@
 
 typedef boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
 typedef void (objcache_dtor_fn)(void *obj, void *private);
-
-#ifdef	_KERNEL
-extern objcache_dtor_fn null_dtor;
-extern objcache_ctor_fn null_ctor;
-#endif
 
 /*
  * Underlying allocator.

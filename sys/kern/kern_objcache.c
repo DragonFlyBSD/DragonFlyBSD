@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.13 2006/12/02 22:17:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.14 2006/12/17 19:28:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,6 @@ struct objcache {
 	objcache_alloc_fn	*alloc;
 	objcache_free_fn	*free;
 	void			*allocator_args;
-	size_t			simple_objsize;
 
 	SLIST_ENTRY(objcache)	oc_next;
 
@@ -156,6 +155,22 @@ mag_alloc(int capacity)
 }
 
 /*
+ * Utility routine for objects that don't require any de-construction.
+ */
+
+static void
+null_dtor(void *obj, void *private)
+{
+	/* do nothing */
+}
+
+static boolean_t
+null_ctor(void *obj, void *private, int ocflags)
+{
+	return TRUE;
+}
+
+/*
  * Create an object cache.
  */
 struct objcache *
@@ -172,8 +187,8 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
 		    M_OBJCACHE, M_WAITOK | M_ZERO);
 	oc->name = kstrdup(name, M_TEMP);
-	oc->ctor = ctor;
-	oc->dtor = dtor;
+	oc->ctor = ctor ? ctor : null_ctor;
+	oc->dtor = dtor ? dtor : null_dtor;
 	oc->private = private;
 	oc->free = free;
 	oc->allocator_args = allocator_args;
@@ -226,15 +241,9 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 	margs->objsize = objsize;
 	margs->mtype = mtype;
 	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
-			     null_ctor, null_dtor, NULL,
+			     NULL, NULL, NULL,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
-
-	/*
-	 * This indicates that we are a simple objcache and allows
-	 * objcache_get() calls with M_ZERO.
-	 */
-	oc->simple_objsize = objsize;
 	return (oc);
 }
 
@@ -259,6 +268,7 @@ objcache_get(struct objcache *oc, int ocflags)
 	void *obj;
 	struct magazinedepot *depot;
 
+	KKASSERT((ocflags & M_ZERO) == 0);
 	crit_enter();
 	++cpucache->gets_cumulative;
 
@@ -271,14 +281,7 @@ retry:
 	loadedmag = cpucache->loaded_magazine;
 	if (MAGAZINE_NOTEMPTY(loadedmag)) {
 		obj = loadedmag->objects[--loadedmag->rounds];
-done:
 		crit_exit();
-		if (ocflags & M_ZERO) {
-			if (oc->simple_objsize)
-				bzero(obj, oc->simple_objsize);
-			else
-				panic("objcache_get(): M_ZERO illegal here");
-		}
 		return (obj);
 	}
 
@@ -289,7 +292,8 @@ done:
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		obj = loadedmag->objects[--loadedmag->rounds];
-		goto done;
+		crit_exit();
+		return (obj);
 	}
 
 	/*
@@ -298,7 +302,7 @@ done:
 	 *
 	 * Obtain the depot spinlock.
 	 *
-	 * NOTE: Beyond this point, M_ZERO is handled via oc->alloc()
+	 * NOTE: Beyond this point, M_* flags are handled via oc->alloc()
 	 */
 	depot = &oc->depot[myclusterid];
 	spin_lock_wr(&depot->spin);
@@ -553,21 +557,6 @@ objcache_dtor(struct objcache *oc, void *obj)
 		wakeup(depot);
 	oc->dtor(obj, oc->private);
 	oc->free(obj, oc->allocator_args);
-}
-
-/*
- * Utility routine for objects that don't require any de-construction.
- */
-void
-null_dtor(void *obj, void *private)
-{
-	/* do nothing */
-}
-
-boolean_t
-null_ctor(void *obj, void *private, int ocflags)
-{
-	return TRUE;
 }
 
 /*

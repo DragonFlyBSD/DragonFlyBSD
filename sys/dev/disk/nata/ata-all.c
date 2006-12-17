@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.3 2006/12/13 12:41:36 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.4 2006/12/17 19:28:28 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1065,12 +1065,12 @@ static void
 ata_init(void)
 {
     ata_request_cache = objcache_create("ata_request", 0, 0,
-					ata_request_cache_ctor, null_dtor, NULL,
+					ata_request_cache_ctor, NULL, NULL,
 					objcache_malloc_alloc,
 					objcache_malloc_free,
 					&ata_request_malloc_args);
     ata_composite_cache = objcache_create("ata_composite", 0, 0,
-					  ata_composite_cache_ctor, null_dtor, NULL,
+					  ata_composite_cache_ctor, NULL, NULL,
 					  objcache_malloc_alloc,
 					  objcache_malloc_free,
 					  &ata_composite_malloc_args);

@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.57 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.58 2006/12/17 19:28:30 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -372,10 +372,10 @@ mbinit(void *dummy)
 	mbstat.m_mhlen = MHLEN;
 
 	mbuf_cache = objcache_create("mbuf", nmbufs, 0,
-	    mbuf_ctor, null_dtor, NULL,
+	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mbufphdr_cache = objcache_create("mbuf pkt hdr", nmbufs, 64,
-	    mbufphdr_ctor, null_dtor, NULL,
+	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mclmeta_cache = objcache_create("cluster mbuf", nmbclusters , 0,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
