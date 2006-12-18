@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.12 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.13 2006/12/18 21:02:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -300,6 +300,35 @@ log_console(struct uio *uio)
  * NOT YET ENTIRELY MPSAFE
  */
 int
+kprintf(const char *fmt, ...)
+{
+	__va_list ap;
+	int savintr;
+	struct putchar_arg pca;
+	int retval;
+
+	savintr = consintr;		/* disable interrupts */
+	consintr = 0;
+	__va_start(ap, fmt);
+	pca.tty = NULL;
+	pca.flags = TOCONS | TOLOG;
+	pca.pri = -1;
+	cons_lock();
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	cons_unlock();
+	__va_end(ap);
+	if (!panicstr)
+		msgbuftrigger = 1;
+	consintr = savintr;		/* reenable interrupts */
+	return retval;
+}
+
+/*
+ * Output to the console.  (TO BE REMOVED)
+ *
+ * NOT YET ENTIRELY MPSAFE
+ */
+int
 printf(const char *fmt, ...)
 {
 	__va_list ap;
@@ -376,6 +405,22 @@ kputchar(int c, void *arg)
  * Scaled down version of sprintf(3).
  */
 int
+ksprintf(char *buf, const char *cfmt, ...)
+{
+	int retval;
+	__va_list ap;
+
+	__va_start(ap, cfmt);
+	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
+	buf[retval] = '\0';
+	__va_end(ap);
+	return retval;
+}
+
+/*
+ * Scaled down version of sprintf(3). (TO BE REMOVED)
+ */
+int
 sprintf(char *buf, const char *cfmt, ...)
 {
 	int retval;
@@ -403,6 +448,21 @@ kvsprintf(char *buf, const char *cfmt, __va_list ap)
 
 /*
  * Scaled down version of snprintf(3).
+ */
+int
+ksnprintf(char *str, size_t size, const char *format, ...)
+{
+	int retval;
+	__va_list ap;
+
+	__va_start(ap, format);
+	retval = kvsnprintf(str, size, format, ap);
+	__va_end(ap);
+	return(retval);
+}
+
+/*
+ * Scaled down version of snprintf(3). (TO BE REMOVED)
  */
 int
 snprintf(char *str, size_t size, const char *format, ...)
