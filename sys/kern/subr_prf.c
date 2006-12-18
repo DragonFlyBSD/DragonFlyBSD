@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.11 2006/09/03 17:31:54 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.12 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,7 +134,7 @@ uprintf(const char *fmt, ...)
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
 
-		retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+		retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 		__va_end(ap);
 	}
 	return retval;
@@ -180,7 +180,7 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 	pca.tty = tp;
 	pca.flags = flags;
 	pca.pri = LOG_INFO;
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 	msgbuftrigger = 1;
 	return retval;
@@ -201,7 +201,7 @@ ttyprintf(struct tty *tp, const char *fmt, ...)
 	__va_start(ap, fmt);
 	pca.tty = tp;
 	pca.flags = TOTTY;
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 	return retval;
 }
@@ -223,7 +223,7 @@ log(int level, const char *fmt, ...)
 	pca.flags = log_open ? TOLOG : TOCONS;
 
 	__va_start(ap, fmt);
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 
 	msgbuftrigger = 1;
@@ -242,7 +242,7 @@ addlog(const char *fmt, ...)
 	pca.flags = log_open ? TOLOG : TOCONS;
 
 	__va_start(ap, fmt);
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 
 	msgbuftrigger = 1;
@@ -314,7 +314,7 @@ printf(const char *fmt, ...)
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
 	cons_lock();
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	cons_unlock();
 	__va_end(ap);
 	if (!panicstr)
@@ -324,7 +324,7 @@ printf(const char *fmt, ...)
 }
 
 int
-vprintf(const char *fmt, __va_list ap)
+kvprintf(const char *fmt, __va_list ap)
 {
 	int savintr;
 	struct putchar_arg pca;
@@ -336,7 +336,7 @@ vprintf(const char *fmt, __va_list ap)
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
 	cons_lock();
-	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	cons_unlock();
 	if (!panicstr)
 		msgbuftrigger = 1;
@@ -382,7 +382,7 @@ sprintf(char *buf, const char *cfmt, ...)
 	__va_list ap;
 
 	__va_start(ap, cfmt);
-	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
 	__va_end(ap);
 	return retval;
@@ -392,11 +392,11 @@ sprintf(char *buf, const char *cfmt, ...)
  * Scaled down version of vsprintf(3).
  */
 int
-vsprintf(char *buf, const char *cfmt, __va_list ap)
+kvsprintf(char *buf, const char *cfmt, __va_list ap)
 {
 	int retval;
 
-	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
 	return retval;
 }
@@ -411,7 +411,7 @@ snprintf(char *str, size_t size, const char *format, ...)
 	__va_list ap;
 
 	__va_start(ap, format);
-	retval = vsnprintf(str, size, format, ap);
+	retval = kvsnprintf(str, size, format, ap);
 	__va_end(ap);
 	return(retval);
 }
@@ -420,14 +420,14 @@ snprintf(char *str, size_t size, const char *format, ...)
  * Scaled down version of vsnprintf(3).
  */
 int
-vsnprintf(char *str, size_t size, const char *format, __va_list ap)
+kvsnprintf(char *str, size_t size, const char *format, __va_list ap)
 {
 	struct snprintf_arg info;
 	int retval;
 
 	info.str = str;
 	info.remain = size;
-	retval = kvprintf(format, snprintf_func, &info, 10, ap);
+	retval = kvcprintf(format, snprintf_func, &info, 10, ap);
 	if (info.remain >= 1)
 		*info.str++ = '\0';
 	return retval;
@@ -502,7 +502,7 @@ ksprintqn(nbuf, uq, base, lenp)
  * the next characters (up to a control character, i.e. a character <= 32),
  * give the name of the register.  Thus:
  *
- *	kvprintf("reg=%b\n", 3, "\10\2BITTWO\1BITONE\n");
+ *	kvcprintf("reg=%b\n", 3, "\10\2BITTWO\1BITONE\n");
  *
  * would produce output:
  *
@@ -513,7 +513,7 @@ ksprintqn(nbuf, uq, base, lenp)
  *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
 int
-kvprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_list ap)
+kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_list ap)
 {
 #define PCHAR(c) {int cc=(c); if (func) (*func)(cc,arg); else *d++ = cc; retval++; }
 	char nbuf[MAXNBUF];

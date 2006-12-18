@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.10 2006/11/28 14:44:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.11 2006/12/18 20:41:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2794,7 +2794,7 @@ ieee80211_note(struct ieee80211com *ic, const char *fmt, ...)
 	__va_list ap;
 
 	__va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	__va_end(ap);
 
 	if_printf(ic->ic_ifp, "%s", buf);	/* NB: no \n */
@@ -2809,7 +2809,7 @@ ieee80211_note_frame(struct ieee80211com *ic,
 	__va_list ap;
 
 	__va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	__va_end(ap);
 	if_printf(ic->ic_ifp, "[%6D] %s\n",
 		ieee80211_getbssid(ic, wh), ":", buf);
@@ -2824,7 +2824,7 @@ ieee80211_note_mac(struct ieee80211com *ic,
 	__va_list ap;
 
 	__va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	__va_end(ap);
 	if_printf(ic->ic_ifp, "[%6D] %s\n", mac, ":", buf);
 }
@@ -2843,7 +2843,7 @@ ieee80211_discard_frame(struct ieee80211com *ic,
 	else
 		printf("frame, ");
 	__va_start(ap, fmt);
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 	printf("\n");
 }
@@ -2862,7 +2862,7 @@ ieee80211_discard_ie(struct ieee80211com *ic,
 	else
 		printf("information element, ");
 	__va_start(ap, fmt);
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 	printf("\n");
 }
@@ -2880,7 +2880,7 @@ ieee80211_discard_mac(struct ieee80211com *ic,
 	else
 		printf("frame, ");
 	__va_start(ap, fmt);
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 	printf("\n");
 }

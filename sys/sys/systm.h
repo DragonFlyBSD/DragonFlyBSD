@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.49 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.50 2006/12/18 20:41:02 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -144,7 +144,7 @@ void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
 int	addlog (const char *, ...) __printflike(1, 2);
-int	kvprintf (char const *, void (*)(int, void*), void *, int,
+int	kvcprintf (char const *, void (*)(int, void*), void *, int,
 		      __va_list) __printflike(1, 0);
 int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
@@ -153,9 +153,9 @@ int	printf (const char *, ...) __printflike(1, 2);
 int	snprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	sprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);
-int	vprintf (const char *, __va_list) __printflike(1, 0);
-int	vsnprintf (char *, size_t, const char *, __va_list) __printflike(3, 0);
-int     vsprintf (char *buf, const char *, __va_list) __printflike(2, 0);
+int	kvprintf (const char *, __va_list) __printflike(1, 0);
+int	kvsnprintf (char *, size_t, const char *, __va_list) __printflike(3, 0);
+int     kvsprintf (char *buf, const char *, __va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
 int	ksscanf (const char *, char const *, ...);
 int	kvsscanf (const char *, char const *, __va_list);

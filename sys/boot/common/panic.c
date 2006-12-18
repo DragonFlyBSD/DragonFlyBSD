@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/panic.c,v 1.7 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/panic.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/panic.c,v 1.5 2006/12/18 20:40:59 dillon Exp $
  */
 
 #include <stand.h>
@@ -45,7 +45,7 @@ panic(const char *fmt,...)
 
 	printf("panic: ");
 	__va_start(ap, fmt);
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 	printf("\n");
 

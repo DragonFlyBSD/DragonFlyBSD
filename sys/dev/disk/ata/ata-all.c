@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.32 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.33 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1420,7 +1420,7 @@ ata_printf(struct ata_channel *ch, int device, const char * fmt, ...)
 			 (device == ATA_MASTER) ? "master" : "slave");
     }
     __va_start(ap, fmt);
-    ret += vprintf(fmt, ap);
+    ret += kvprintf(fmt, ap);
     __va_end(ap);
     return ret;
 }
@@ -1437,7 +1437,7 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
 	ret = printf("ata%d-%s: ", device_get_unit(atadev->channel->dev),
 		     (atadev->unit == ATA_MASTER) ? "master" : "slave");
     __va_start(ap, fmt);
-    ret += vprintf(fmt, ap);
+    ret += kvprintf(fmt, ap);
     __va_end(ap);
     return ret;
 }

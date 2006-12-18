@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.13 2006/10/25 20:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.14 2006/12/18 20:41:01 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -129,7 +129,7 @@ ser_printf(const char *fmt, ...)
     int i;
 
     __va_start(args,fmt);
-    i = vsprintf(strbuf,fmt,args);
+    i = kvsprintf(strbuf,fmt,args);
     ser_puts(strbuf);
     __va_end(args);
     return i;

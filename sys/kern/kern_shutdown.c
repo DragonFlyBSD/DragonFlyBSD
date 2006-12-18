@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.42 2006/12/04 18:03:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.43 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -734,7 +734,7 @@ panic(const char *fmt, ...)
 	}
 
 	__va_start(ap, fmt);
-	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	if (panicstr == fmt)
 		panicstr = buf;
 	__va_end(ap);

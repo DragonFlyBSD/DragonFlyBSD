@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.21 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.22 2006/12/18 20:41:01 dillon Exp $
  */
 
 #ifndef lint
@@ -2153,7 +2153,7 @@ si_dprintf(struct si_port *pp, int flags, const char *fmt, ...)
 				(int)SI_CARD(minor(pp->sp_tty->t_dev)),
 				(int)SI_PORT(minor(pp->sp_tty->t_dev)));
 		__va_start(ap, fmt);
-		vprintf(fmt, ap);
+		kvprintf(fmt, ap);
 		__va_end(ap);
 	}
 }

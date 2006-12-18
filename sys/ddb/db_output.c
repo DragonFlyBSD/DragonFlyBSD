@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.7 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.8 2006/12/18 20:41:01 dillon Exp $
  */
 
 /*
@@ -158,7 +158,7 @@ db_printf(const char *fmt, ...)
 	__va_list listp;
 
 	__va_start(listp, fmt);
-	kvprintf (fmt, db_putchar, NULL, db_radix, listp);
+	kvcprintf (fmt, db_putchar, NULL, db_radix, listp);
 	__va_end(listp);
 }
 
@@ -175,7 +175,7 @@ db_iprintf(const char *fmt,...)
 	while (--i >= 0)
 		db_printf(" ");
 	__va_start(listp, fmt);
-	kvprintf (fmt, db_putchar, NULL, db_radix, listp);
+	kvcprintf (fmt, db_putchar, NULL, db_radix, listp);
 	__va_end(listp);
 }
 

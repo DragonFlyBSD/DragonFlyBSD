@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.32 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.33 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -822,7 +822,7 @@ device_printf(device_t dev, const char * fmt, ...)
 
 	retval = device_print_prettyname(dev);
 	__va_start(ap, fmt);
-	retval += vprintf(fmt, ap);
+	retval += kvprintf(fmt, ap);
 	__va_end(ap);
 	return retval;
 }

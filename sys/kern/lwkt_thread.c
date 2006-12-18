@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.102 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.103 2006/12/18 20:41:01 dillon Exp $
  */
 
 /*
@@ -365,7 +365,7 @@ lwkt_set_comm(thread_t td, const char *ctl, ...)
     __va_list va;
 
     __va_start(va, ctl);
-    vsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
     __va_end(va);
 }
 
@@ -1275,7 +1275,7 @@ lwkt_create(void (*func)(void *), void *arg,
      * Set up arg0 for 'ps' etc
      */
     __va_start(ap, fmt);
-    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
     __va_end(ap);
 
     /*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/pnpparse.c,v 1.14 2003/06/11 00:32:45 obrien Exp $
- * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.8 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.9 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@ pnp_printf(u_int32_t id, char *fmt, ...)
 
 	__va_start(ap, fmt);
 	printf("%s: ", pnp_eisaformat(id));
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 }
 

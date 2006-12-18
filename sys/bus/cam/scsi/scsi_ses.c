@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.18 2006/09/10 01:26:32 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.19 2006/12/18 20:41:01 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -709,7 +709,7 @@ ses_log(struct ses_softc *ssc, const char *fmt, ...)
 
 	printf("%s%d: ", ssc->periph->periph_name, ssc->periph->unit_number);
 	__va_start(ap, fmt);
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 	__va_end(ap);
 }
 

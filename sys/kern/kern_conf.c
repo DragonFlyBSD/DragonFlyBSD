@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.17 2006/09/26 18:57:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.18 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -263,7 +263,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	i = kvprintf(fmt, NULL, dev->si_name, 32, ap);
+	i = kvcprintf(fmt, NULL, dev->si_name, 32, ap);
 	dev->si_name[i] = '\0';
 	__va_end(ap);
 

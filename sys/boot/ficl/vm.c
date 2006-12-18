@@ -49,7 +49,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/ficl/vm.c,v 1.9 2002/04/09 17:45:11 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/vm.c,v 1.4 2003/11/10 06:08:33 dillon Exp $
+ * $DragonFly: src/sys/boot/ficl/vm.c,v 1.5 2006/12/18 20:41:00 dillon Exp $
  */
 
 #ifdef TESTMAIN
@@ -562,7 +562,7 @@ void vmThrowErr(FICL_VM *pVM, char *fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    vsprintf(pVM->pad, fmt, va);
+    kvsprintf(pVM->pad, fmt, va);
     vmTextOut(pVM, pVM->pad, 1);
     va_end(va);
     longjmp(*(pVM->pState), VM_ERREXIT);

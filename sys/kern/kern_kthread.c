@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.12 2005/11/22 08:41:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.13 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ kthread_create(void (*func)(void *), void *arg,
      * Set up arg0 for 'ps' etc
      */
     __va_start(ap, fmt);
-    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
     __va_end(ap);
 
     /*
@@ -94,7 +94,7 @@ kthread_create_stk(void (*func)(void *), void *arg,
     KKASSERT(td->td_mpcount == 1);
 #endif
     __va_start(ap, fmt);
-    vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
     __va_end(ap);
 
     lwkt_schedule(td);

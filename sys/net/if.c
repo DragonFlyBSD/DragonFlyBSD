@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.46 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.47 2006/12/18 20:41:02 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1868,7 +1868,7 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 
 	retval = printf("%s: ", ifp->if_xname);
 	__va_start(ap, fmt);
-	retval += vprintf(fmt, ap);
+	retval += kvprintf(fmt, ap);
 	__va_end(ap);
 	return (retval);
 }

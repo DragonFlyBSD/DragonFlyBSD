@@ -14,7 +14,7 @@
  * warranties of merchantability and fitness for a particular
  * purpose.
  *
- * $DragonFly: src/sys/boot/sparc64/boot1/boot1.c,v 1.1 2003/11/10 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/boot/sparc64/boot1/boot1.c,v 1.2 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,8 +66,8 @@ static int mount(const char *device);
 static void panic(const char *fmt, ...) __dead2;
 static int printf(const char *fmt, ...);
 static int putchar(int c, void *arg);
-static int vprintf(const char *fmt, va_list ap);
-static int vsnprintf(char *str, size_t sz, const char *fmt, va_list ap);
+static int kvprintf(const char *fmt, va_list ap);
+static int kvsnprintf(char *str, size_t sz, const char *fmt, va_list ap);
 
 static int __printf(const char *fmt, putc_func_t *putc, void *arg, va_list ap);
 static int __putc(int c, void *arg);
@@ -447,7 +447,7 @@ panic(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	vsnprintf(buf, sizeof buf, fmt, ap);
+	kvsnprintf(buf, sizeof buf, fmt, ap);
 	printf("panic: %s\n", buf);
 	va_end(ap);
 
@@ -461,7 +461,7 @@ printf(const char *fmt, ...)
 	int ret;
 
 	va_start(ap, fmt);
-	ret = vprintf(fmt, ap);
+	ret = kvprintf(fmt, ap);
 	va_end(ap);
 	return (ret);
 }
@@ -481,7 +481,7 @@ putchar(int c, void *arg)
 }
 
 static int
-vprintf(const char *fmt, va_list ap)
+kvprintf(const char *fmt, va_list ap)
 {
 	int ret;
 
@@ -490,7 +490,7 @@ vprintf(const char *fmt, va_list ap)
 }
 
 static int
-vsnprintf(char *str, size_t sz, const char *fmt, va_list ap)
+kvsnprintf(char *str, size_t sz, const char *fmt, va_list ap)
 {
 	struct sp_data sp;
 	int ret;

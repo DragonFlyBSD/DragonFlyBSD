@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.7 2006/09/05 00:55:45 dillon Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.8 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -411,18 +411,18 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 		return (-1);
 
 	do {
-		len = vsnprintf(&s->s_buf[s->s_len], SBUF_FREESPACE(s) + 1,
-		    fmt, ap);
+		len = kvsnprintf(&s->s_buf[s->s_len], SBUF_FREESPACE(s) + 1,
+				 fmt, ap);
 	} while (len > SBUF_FREESPACE(s) &&
 	    sbuf_extend(s, len - SBUF_FREESPACE(s)) == 0);
 
 	/*
 	 * s->s_len is the length of the string, without the terminating nul.
 	 * When updating s->s_len, we must subtract 1 from the length that
-	 * we passed into vsnprintf() because that length includes the
+	 * we passed into kvsnprintf() because that length includes the
 	 * terminating nul.
 	 *
-	 * vsnprintf() returns the amount that would have been copied,
+	 * kvsnprintf() returns the amount that would have been copied,
 	 * given sufficient space, hence the min() calculation below.
 	 */
 	s->s_len += MIN(len, SBUF_FREESPACE(s));

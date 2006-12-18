@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.34 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.35 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -849,7 +849,7 @@ _lf_printf(const char *ctl, ...)
 		printf("pid %d (%s): ", p->p_pid, p->p_comm);
 	}
 	__va_start(va, ctl);
-	vprintf(ctl, va);
+	kvprintf(ctl, va);
 	__va_end(va);
 }
 

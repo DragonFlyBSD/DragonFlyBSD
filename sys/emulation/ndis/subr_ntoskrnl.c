@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.10 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.11 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1452,7 +1452,7 @@ ntoskrnl_dbgprint(char *fmt, ...)
 
 	if (bootverbose) {
 		__va_start(ap, fmt);
-		vprintf(fmt, ap);
+		kvprintf(fmt, ap);
 	}
 
 	return(STATUS_SUCCESS);
@@ -1690,9 +1690,9 @@ image_patch_table ntoskrnl_functbl[] = {
 	{ "RtlFreeUnicodeString",	(FUNC)ntoskrnl_free_unicode_string },
 	{ "RtlUnicodeStringToInteger",	(FUNC)ntoskrnl_unicode_to_int },
 	{ "sprintf",			(FUNC)sprintf },
-	{ "vsprintf",			(FUNC)vsprintf },
+	{ "vsprintf",			(FUNC)kvsprintf },
 	{ "_snprintf",			(FUNC)snprintf },
-	{ "_vsnprintf",			(FUNC)vsnprintf },
+	{ "_vsnprintf",			(FUNC)kvsnprintf },
 	{ "DbgPrint",			(FUNC)ntoskrnl_dbgprint },
 	{ "DbgBreakPoint",		(FUNC)ntoskrnl_debugger },
 	{ "strncmp",			(FUNC)strncmp },

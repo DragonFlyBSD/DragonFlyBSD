@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.22 2006/09/30 00:18:25 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.23 2006/12/18 20:41:02 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -393,7 +393,7 @@ kthread_create2(void (*func)(void *), void *arg,
 
 	/* set up arg0 for 'ps', et al */
 	__va_start(ap, fmt);
-	vsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
+	kvsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
 	__va_end(ap);
 
 	/* call the processes' main()... */

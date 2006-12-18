@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.7 2005/09/16 04:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.8 2006/12/18 20:41:01 dillon Exp $
  */
 
 #define STATIC static
@@ -113,10 +113,10 @@ throw_rude_remark(int error, char *msg,...)
 	if (text == NULL) {
 	    log(LOG_ERR, "vinum: can't allocate error message buffer\n");
 	    printf("vinum: ");
-	    vprintf(msg, ap);				    /* print to the console */
+	    kvprintf(msg, ap);				    /* print to the console */
 	    printf("\n");
 	} else {
-	    retval = kvprintf(msg, NULL, (void *) text, 10, ap);
+	    retval = kvcprintf(msg, NULL, (void *) text, 10, ap);
 	    text[retval] = '\0';			    /* delimit */
 	    strcpy(ioctl_reply->msg, text);
 	    ioctl_reply->error = error;			    /* first byte is the error number */
@@ -124,7 +124,7 @@ throw_rude_remark(int error, char *msg,...)
 	}
     } else {
 	printf("vinum: ");
-	vprintf(msg, ap);				    /* print to the console */
+	kvprintf(msg, ap);				    /* print to the console */
 	printf("\n");
     }
     __va_end(ap);
