@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.6 2006/09/13 17:10:40 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.7 2006/12/18 19:44:51 dillon Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -169,6 +169,7 @@ int	munlock (const void *, size_t);
 int	munmap (void *, size_t);
 #ifndef _POSIX_SOURCE
 int	madvise (void *, size_t, int);
+int	mcontrol (void *, size_t, int, off_t);
 int	mincore (const void *, size_t, char *);
 int	minherit (void *, size_t, int);
 #endif
