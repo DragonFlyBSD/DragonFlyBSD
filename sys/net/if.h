@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.16 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.17 2006/12/19 00:11:12 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -148,6 +148,7 @@ struct if_data {
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
 #define	IFF_POLLING	0x10000		/* Interface is in polling mode. */
 #define	IFF_PPROMISC	0x20000		/* user-requested promisc mode */
+#define	IFF_MONITOR	0x40000		/* user-requested monitor mode */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \

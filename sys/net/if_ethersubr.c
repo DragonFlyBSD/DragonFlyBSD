@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.37 2006/07/02 00:49:22 corecode Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.38 2006/12/19 00:11:12 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -162,6 +162,8 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (ifp->if_flags & IFF_MONITOR)
+		gotoerr(ENETDOWN);
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
 		gotoerr(ENETDOWN);
 
@@ -570,6 +572,14 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	BPF_MTAP(ifp, m);
 
 	ifp->if_ibytes += m->m_pkthdr.len;
+	
+	if (ifp->if_flags & IFF_MONITOR) {
+		/*
+		 * Interface marked for monitoring; discard packet.
+		 */
+		 m_freem(m);
+		 return;
+	}
 
 	/*
 	 * Tap the packet off here for a bridge.  bridge_input()

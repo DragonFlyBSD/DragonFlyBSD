@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.113.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.27 2006/05/05 14:53:41 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.28 2006/12/19 00:11:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1040,9 +1040,9 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("-link1",	-IFF_LINK1,	setifflags),
 	DEF_CMD("link2",	IFF_LINK2,	setifflags),
 	DEF_CMD("-link2",	-IFF_LINK2,	setifflags),
-#ifdef notyet
 	DEF_CMD("monitor",	IFF_MONITOR,	setifflags),
 	DEF_CMD("-monitor",	-IFF_MONITOR,	setifflags),
+#ifdef notyet
 	DEF_CMD("staticarp",	IFF_STATICARP,	setifflags),
 	DEF_CMD("-staticarp",	-IFF_STATICARP,	setifflags),
 #endif

@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.13 2006/11/25 05:54:22 sephe Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.14 2006/12/19 00:11:09 dillon Exp $
 .\"
 .Dd November 19, 2006
 .Dt IFCONFIG 8
@@ -523,13 +523,13 @@ parameter.
 Another name for the
 .Cm link1
 parameter.
-.\".It Cm monitor
-.\"Put the interface in monitor mode.
-.\"No packets are transmitted, and received packets are discarded after
-.\".Xr bpf 4
-.\"processing.
-.\".It Fl monitor
-.\"Take the interface out of monitor mode.
+.It Cm monitor
+Put the interface in monitor mode.
+No packets are transmitted, and received packets are discarded after
+.Xr bpf 4
+processing.
+.It Fl monitor
+Take the interface out of monitor mode.
 .It Cm up
 Mark an interface
 .Dq up .
