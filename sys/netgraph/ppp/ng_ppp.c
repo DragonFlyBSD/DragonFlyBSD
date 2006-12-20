@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.10 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -565,7 +565,7 @@ ng_ppp_rcvmsg(node_p node, struct ng_mesg *msg,
 
 		if ((error = ng_path2node(node, raddr, &origNode, NULL)) != 0)
 			ERROUT(error);
-		snprintf(path, sizeof(path), "[%lx]:%s",
+		ksnprintf(path, sizeof(path), "[%lx]:%s",
 		    (long)node, NG_PPP_HOOK_VJC_IP);
 		return ng_send_msg(origNode, msg, path, rptr);
 	    }

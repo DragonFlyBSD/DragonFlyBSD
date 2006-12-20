@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.16 2006/09/05 00:55:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.17 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -1714,15 +1714,15 @@ twe_format_aen(struct twe_softc *sc, u_int16_t aen)
 
     case 'c':
 	if ((child = sc->twe_drive[TWE_AEN_UNIT(aen)].td_disk) != NULL) {
-	    sprintf(buf, "twed%d: %s", device_get_unit(child), msg);
+	    ksprintf(buf, "twed%d: %s", device_get_unit(child), msg);
 	} else {
-	    sprintf(buf, "twe%d: %s for unknown unit %d", device_get_unit(sc->twe_dev),
+	    ksprintf(buf, "twe%d: %s for unknown unit %d", device_get_unit(sc->twe_dev),
 		    msg, TWE_AEN_UNIT(aen));
 	}
 	return(buf);
 
     case 'p':
-	sprintf(buf, "twe%d: port %d: %s", device_get_unit(sc->twe_dev), TWE_AEN_UNIT(aen),
+	ksprintf(buf, "twe%d: port %d: %s", device_get_unit(sc->twe_dev), TWE_AEN_UNIT(aen),
 		msg);
 	return(buf);
 
@@ -1731,7 +1731,7 @@ twe_format_aen(struct twe_softc *sc, u_int16_t aen)
     default:
 	break;
     }
-    sprintf(buf, "unknown AEN 0x%x", aen);
+    ksprintf(buf, "unknown AEN 0x%x", aen);
     return(buf);
 }
 

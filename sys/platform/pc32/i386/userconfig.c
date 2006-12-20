@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.10 2006/11/07 06:43:24 dillon Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.11 2006/12/20 18:14:42 dillon Exp $
  **/
 
 /**
@@ -1296,27 +1296,27 @@ drawline(int row, int detail, DEV_LIST *list, int inverse, char *dhelp)
     }
     if (list->comment == DEV_DEVICE)
     {
-	sprintf(db,"%s%d",list->dev,list->unit);
+	ksprintf(db,"%s%d",list->dev,list->unit);
 	pad(db,8);
     }else{
 	strcpy(db,"        ");
     }
     if ((list->irq > 0) && detail && (list->comment == DEV_DEVICE))
     {
-	sprintf(ib," %d",list->irq);
+	ksprintf(ib," %d",list->irq);
 	pad(ib,4);
     }else{
 	strcpy(ib,"    ");
     }
     if ((list->iobase > 0) && detail && (list->comment == DEV_DEVICE))
     {
-	sprintf(pb,"0x%x",list->iobase);
+	ksprintf(pb,"0x%x",list->iobase);
 	pad(pb,7);
     }else{
 	strcpy(pb,"       ");
     }
 
-    sprintf(lbuf,"  %s%s%s%s%s",inverse?"!i":"",nb,db,ib,pb);
+    ksprintf(lbuf,"  %s%s%s%s%s",inverse?"!i":"",nb,db,ib,pb);
 
     putxyl(0,row,lbuf,80);
     if (dhelp)
@@ -1385,7 +1385,7 @@ redrawactive(void)
 
     if (conflicts)
     {
-	sprintf(cbuf,"!i%d conflict%s-",conflicts,(conflicts>1)?"s":"");
+	ksprintf(cbuf,"!i%d conflict%s-",conflicts,(conflicts>1)?"s":"");
 	putxy(45,0,cbuf);
     }else{
 	putxyl(45,0,lines,16);
@@ -1487,31 +1487,31 @@ showparams(DEV_LIST *dev)
 
     if (dev->iobase > 0)
     {
-	sprintf(buf,"Port address : 0x%x",dev->iobase);
+	ksprintf(buf,"Port address : 0x%x",dev->iobase);
 	putxy(1,18,buf);
     }
 	    
     if (dev->irq > 0)
     {
-	sprintf(buf,"IRQ number   : %d",dev->irq);
+	ksprintf(buf,"IRQ number   : %d",dev->irq);
 	putxy(1,19,buf);
     }
-    sprintf(buf,"Flags        : 0x%x",dev->flags);
+    ksprintf(buf,"Flags        : 0x%x",dev->flags);
     putxy(1,20,buf);
     if (dev->maddr > 0)
     {
-	sprintf(buf,"Memory address : 0x%x",dev->maddr);
+	ksprintf(buf,"Memory address : 0x%x",dev->maddr);
 	putxy(26,18,buf);
     }
     if (dev->msize > 0)
     {
-	sprintf(buf,"Memory size    : 0x%x",dev->msize);
+	ksprintf(buf,"Memory size    : 0x%x",dev->msize);
 	putxy(26,19,buf);
     }
 
     if (dev->drq > 0)
     {
-	sprintf(buf,"DRQ number     : %d",dev->drq);
+	ksprintf(buf,"DRQ number     : %d",dev->drq);
 	putxy(26,20,buf);
     }
 }
@@ -1531,7 +1531,7 @@ showparams(DEV_LIST *dev)
     if ((i >= min) && (i <= max))	/* legit? */			\
     {									\
 	*val = i;							\
-	sprintf(buf,hex?"0x%x":"%d",i);					\
+	ksprintf(buf,hex?"0x%x":"%d",i);				\
 	putxy(hex?x-2:x,y,buf);						\
 	return(code);			/* all done and exit */		\
     }									\
@@ -1566,8 +1566,8 @@ editval(int x, int y, int width, int hex, int min, int max, int *val, int ro)
     {
 	if (delta)				/* only update if necessary */
 	{
-	    sprintf(tc,hex?"%x":"%d",i);	/* make a text copy of the value */
-	    sprintf(buf,"!i%s",tc);		/* format for printing */
+	    ksprintf(tc,hex?"%x":"%d",i);	/* make a text copy of the value */
+	    ksprintf(buf,"!i%s",tc);		/* format for printing */
 	    erase(x,y,width,1);			/* clear the area */
 	    putxy(x,y,buf);			/* write */
 	    xp = strlen(tc);			/* cursor always at end */
@@ -1734,7 +1734,7 @@ editparams(DEV_LIST *dev)
     char	buf[16];		/* needs to fit the device name */
 
     putxy(2,17,"!bParameters!n-!bfor!n-!bdevice!n-");
-    sprintf(buf,"!b%s",dev->dev);
+    ksprintf(buf,"!b%s",dev->dev);
     putxy(24,17,buf);
 
     erase(1,22,80,1);
@@ -1993,7 +1993,7 @@ helpscreen(void)
 	}
 	
 	/* prompt */
-	sprintf(prompt,"!i --%s-- [U]p [D]own [Q]uit !n",helptext[line] ? "MORE" : "END");
+	ksprintf(prompt,"!i --%s-- [U]p [D]own [Q]uit !n",helptext[line] ? "MORE" : "END");
 	putxy(0,24,prompt);
 	
 	c = kgetchar();				/* so what do they say? */
@@ -3201,7 +3201,7 @@ lsdevtab(struct uc_device *dt)
 		    );
 		++lineno;
 	}
-	sprintf(dname, "%s%d", dt->id_name, dt->id_unit);
+	ksprintf(dname, "%s%d", dt->id_name, dt->id_unit);
 	printf("%-9.9s%-#11x%-6d%-6d%-8p%-9d%-6d%-#11x%-5s\n",
 	    dname, /* dt->id_id, dt->id_driver(by name), */ dt->id_iobase,
 	    ffs(dt->id_irq) - 1, dt->id_drq, dt->id_maddr, dt->id_msize,

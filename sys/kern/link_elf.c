@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.22 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.23 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1016,7 +1016,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
 	       return ENOMEM;
 
 	/* get address of first entry */
-	snprintf(setsym, len, "%s%s", "__start_set_", name);
+	ksnprintf(setsym, len, "%s%s", "__start_set_", name);
 	error = link_elf_lookup_symbol(lf, setsym, &sym);
 	if (error)
 	       goto out;
@@ -1028,7 +1028,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
 	start = (void **)symval.value;
 
 	/* get address of last entry */
-	snprintf(setsym, len, "%s%s", "__stop_set_", name);
+	ksnprintf(setsym, len, "%s%s", "__stop_set_", name);
 	error = link_elf_lookup_symbol(lf, setsym, &sym);
 	if (error)
 	       goto out;

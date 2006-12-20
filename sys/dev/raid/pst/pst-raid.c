@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.20 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.21 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -154,7 +154,7 @@ pst_attach(device_t dev)
 #endif
     bpack(ident->vendor, ident->vendor, 16);
     bpack(ident->product, ident->product, 16);
-    sprintf(name, "%s %s", ident->vendor, ident->product);
+    ksprintf(name, "%s %s", ident->vendor, ident->product);
     contigfree(reply, PAGE_SIZE, M_PSTRAID);
 
     bioq_init(&psc->bio_queue);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.9 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -917,7 +917,7 @@ cardbus_child_location_str(device_t cbdev, device_t child, char *buf,
 
 	dinfo = device_get_ivars(child);
 	cfg = &dinfo->pci.cfg;
-	snprintf(buf, buflen, "slot=%d function=%d", pci_get_slot(child),
+	ksnprintf(buf, buflen, "slot=%d function=%d", pci_get_slot(child),
 	    pci_get_function(child));
 	return (0);
 }
@@ -931,7 +931,7 @@ cardbus_child_pnpinfo_str(device_t cbdev, device_t child, char *buf,
 
 	dinfo = device_get_ivars(child);
 	cfg = &dinfo->pci.cfg;
-	snprintf(buf, buflen, "vendor=0x%04x device=0x%04x subvendor=0x%04x "
+	ksnprintf(buf, buflen, "vendor=0x%04x device=0x%04x subvendor=0x%04x "
 	    "subdevice=0x%04x", cfg->vendor, cfg->device, cfg->subvendor,
 	    cfg->subdevice);
 	return (0);

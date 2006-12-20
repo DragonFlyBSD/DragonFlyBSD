@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.8.2.9 2003/04/28 03:59:03 simokawa Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -995,7 +995,7 @@ ds_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at memory 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx irq %ld",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq));
 
 	if (pcm_register(dev, sc, DS1_CHANS, 2))

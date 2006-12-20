@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.19 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.20 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -333,7 +333,7 @@ ar_attach(device_t device)
 		if (ngar_done_init == 0) ngar_init(NULL);
 		if (ng_make_node_common(&typestruct, &sc->node) != 0)
 			return (1);
-		sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
+		ksprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
 		if (ng_name_node(sc->node, sc->nodename)) {
 			NG_NODE_UNREF(sc->node); /* drop it again */
 			return (1);
@@ -2180,14 +2180,14 @@ ngar_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 				break;
 			}
 			arg = (resp)->data;
-			pos = sprintf(arg, "%ld bytes in, %ld bytes out\n"
+			pos = ksprintf(arg, "%ld bytes in, %ld bytes out\n"
 			    "highest rate seen: %ld B/S in, %ld B/S out\n",
 			sc->inbytes, sc->outbytes,
 			sc->inrate, sc->outrate);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 				"%ld output errors\n",
 			    	sc->oerrors);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 				"ierrors = %ld, %ld, %ld, %ld\n",
 			    	sc->ierrors[0],
 			    	sc->ierrors[1],
@@ -2276,7 +2276,7 @@ ngar_shutdown(node_p node)
 	/* stolen from the attach routine */
 	if (ng_make_node_common(&typestruct, &sc->node) != 0)
 		return (0);
-	sprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
+	ksprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
 	if (ng_name_node(sc->node, sc->nodename)) {
 		sc->node = NULL;
 		printf("node naming failed\n");

@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.11 2005/11/14 18:50:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.12 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,41 +92,41 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	ps[MAXCOMLEN] = '\0';
 	ps += strlen(ps);
 	DOCHECK();
-	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 	    " %d %d %d %d ", pid, ppid, pgid, sid);
 	DOCHECK();
 	if ((p->p_flag&P_CONTROLT) && (tp = sess->s_ttyp))
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    "%d,%d ", major(tp->t_dev), minor(tp->t_dev));
 	else
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    "%d,%d ", -1, -1);
 	DOCHECK();
 
 	sep = "";
 	if (sess->s_ttyvp) {
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, "%sctty", sep);
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, "%sctty", sep);
 		sep = ",";
 		DOCHECK();
 	}
 	if (SESS_LEADER(p)) {
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, "%ssldr", sep);
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, "%ssldr", sep);
 		sep = ",";
 		DOCHECK();
 	}
 	if (*sep != ',') {
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, "noflags");
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, "noflags");
 		DOCHECK();
 	}
 
 	if (p->p_flag & P_SWAPPEDOUT) {
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " -1,-1 -1,-1 -1,-1");
 	} else {
 		struct timeval ut, st;
 
 		calcru(p, &ut, &st, (struct timeval *) NULL);
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " %ld,%ld %ld,%ld %ld,%ld",
 		    p->p_start.tv_sec,
 		    p->p_start.tv_usec,
@@ -135,13 +135,13 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 	DOCHECK();
 
-	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " %s",
+	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, " %s",
 		(p->p_wchan && p->p_wmesg) ? p->p_wmesg : "nochan");
 	DOCHECK();
 
 	cr = p->p_ucred;
 
-	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " %lu %lu %lu", 
+	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, " %lu %lu %lu", 
 		(u_long)cr->cr_uid,
 		(u_long)p->p_ucred->cr_ruid,
 		(u_long)p->p_ucred->cr_rgid);
@@ -151,18 +151,18 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	   see also getegid(2) in /sys/kern/kern_prot.c */
 
 	for (i = 0; i < cr->cr_ngroups; i++) {
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    ",%lu", (u_long)cr->cr_groups[i]);
 		DOCHECK();
 	}
 
 	if (p->p_ucred->cr_prison)
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " %s", p->p_ucred->cr_prison->pr_host);
 	else
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " -");
+		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, " -");
 	DOCHECK();
-	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, "\n");
+	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, "\n");
 	DOCHECK();
 
 	xlen = ps - psbuf;

@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.20 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.21 2006/12/20 18:14:42 dillon Exp $
  */
 
 #define        DEB(x)
@@ -498,7 +498,7 @@ ipfw_report(struct ip_fw *f, struct ip *ip, int ip_off, int ip_len,
 	    return;
 
     /* Print command name */
-    snprintf(SNPARGS(name, 0), "ipfw: %d", f ? f->fw_number : -1);
+    ksnprintf(SNPARGS(name, 0), "ipfw: %d", f ? f->fw_number : -1);
 
     action = action2;
     if (!f)
@@ -522,35 +522,35 @@ ipfw_report(struct ip_fw *f, struct ip *ip, int ip_off, int ip_len,
 		    break;
 #ifdef IPDIVERT
 	    case IP_FW_F_DIVERT:
-		    snprintf(SNPARGS(action2, 0), "Divert %d",
+		    ksnprintf(SNPARGS(action2, 0), "Divert %d",
 			f->fw_divert_port);
 		    break;
 	    case IP_FW_F_TEE:
-		    snprintf(SNPARGS(action2, 0), "Tee %d",
+		    ksnprintf(SNPARGS(action2, 0), "Tee %d",
 			f->fw_divert_port);
 		    break;
 #endif
 	    case IP_FW_F_SKIPTO:
-		    snprintf(SNPARGS(action2, 0), "SkipTo %d",
+		    ksnprintf(SNPARGS(action2, 0), "SkipTo %d",
 			f->fw_skipto_rule);
 		    break;
 	    case IP_FW_F_PIPE:
-		    snprintf(SNPARGS(action2, 0), "Pipe %d",
+		    ksnprintf(SNPARGS(action2, 0), "Pipe %d",
 			f->fw_skipto_rule);
 		    break;
 	    case IP_FW_F_QUEUE:
-		    snprintf(SNPARGS(action2, 0), "Queue %d",
+		    ksnprintf(SNPARGS(action2, 0), "Queue %d",
 			f->fw_skipto_rule);
 		    break;
 
 	    case IP_FW_F_FWD:
 		    if (f->fw_fwd_ip.sin_port)
-			    snprintf(SNPARGS(action2, 0),
+			    ksnprintf(SNPARGS(action2, 0),
 				"Forward to %s:%d",
 				inet_ntoa(f->fw_fwd_ip.sin_addr),
 				f->fw_fwd_ip.sin_port);
 		    else
-			    snprintf(SNPARGS(action2, 0), "Forward to %s",
+			    ksnprintf(SNPARGS(action2, 0), "Forward to %s",
 				inet_ntoa(f->fw_fwd_ip.sin_addr));
 		    break;
 
@@ -562,52 +562,52 @@ ipfw_report(struct ip_fw *f, struct ip *ip, int ip_off, int ip_len,
 
     switch (ip->ip_p) {
     case IPPROTO_TCP:
-	    len = snprintf(SNPARGS(proto, 0), "TCP %s",
+	    len = ksnprintf(SNPARGS(proto, 0), "TCP %s",
 		inet_ntoa(ip->ip_src));
 	    if (offset == 0)
-		    len += snprintf(SNPARGS(proto, len), ":%d ",
+		    len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			ntohs(tcp->th_sport));
 	    else
-		    len += snprintf(SNPARGS(proto, len), " ");
-	    len += snprintf(SNPARGS(proto, len), "%s",
+		    len += ksnprintf(SNPARGS(proto, len), " ");
+	    len += ksnprintf(SNPARGS(proto, len), "%s",
 		inet_ntoa(ip->ip_dst));
 	    if (offset == 0)
-		    snprintf(SNPARGS(proto, len), ":%d",
+		    ksnprintf(SNPARGS(proto, len), ":%d",
 			ntohs(tcp->th_dport));
 	    break;
     case IPPROTO_UDP:
-	    len = snprintf(SNPARGS(proto, 0), "UDP %s",
+	    len = ksnprintf(SNPARGS(proto, 0), "UDP %s",
 		inet_ntoa(ip->ip_src));
 	    if (offset == 0)
-		    len += snprintf(SNPARGS(proto, len), ":%d ",
+		    len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			ntohs(udp->uh_sport));
 	    else
-		    len += snprintf(SNPARGS(proto, len), " ");
-	    len += snprintf(SNPARGS(proto, len), "%s",
+		    len += ksnprintf(SNPARGS(proto, len), " ");
+	    len += ksnprintf(SNPARGS(proto, len), "%s",
 		inet_ntoa(ip->ip_dst));
 	    if (offset == 0)
-		    snprintf(SNPARGS(proto, len), ":%d",
+		    ksnprintf(SNPARGS(proto, len), ":%d",
 			ntohs(udp->uh_dport));
 	    break;
     case IPPROTO_ICMP:
 	    if (offset == 0)
-		    len = snprintf(SNPARGS(proto, 0), "ICMP:%u.%u ",
+		    len = ksnprintf(SNPARGS(proto, 0), "ICMP:%u.%u ",
 			icmp->icmp_type, icmp->icmp_code);
 	    else
-		    len = snprintf(SNPARGS(proto, 0), "ICMP ");
-	    len += snprintf(SNPARGS(proto, len), "%s",
+		    len = ksnprintf(SNPARGS(proto, 0), "ICMP ");
+	    len += ksnprintf(SNPARGS(proto, len), "%s",
 		inet_ntoa(ip->ip_src));
-	    snprintf(SNPARGS(proto, len), " %s", inet_ntoa(ip->ip_dst));
+	    ksnprintf(SNPARGS(proto, len), " %s", inet_ntoa(ip->ip_dst));
 	    break;
     default:
-	    len = snprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
+	    len = ksnprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
 		inet_ntoa(ip->ip_src));
-	    snprintf(SNPARGS(proto, len), " %s", inet_ntoa(ip->ip_dst));
+	    ksnprintf(SNPARGS(proto, len), " %s", inet_ntoa(ip->ip_dst));
 	    break;
     }
 
     if (ip_off & (IP_MF | IP_OFFMASK))
-	    snprintf(SNPARGS(fragment, 0), " (frag %d:%d@%d%s)",
+	    ksnprintf(SNPARGS(fragment, 0), " (frag %d:%d@%d%s)",
 		     ntohs(ip->ip_id), ip_len - (ip->ip_hl << 2),
 		     offset << 3,
 		     (ip_off & IP_MF) ? "+" : "");

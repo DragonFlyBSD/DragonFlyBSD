@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.14 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.15 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ ngmn_config(node_p node, char *set, char *ret)
 			if (wframing == sc->framing)
 				return;
 			if (sc->nhooks > 0) {
-				sprintf(ret, "Cannot change line when %d hooks open\n", sc->nhooks);
+				ksprintf(ret, "Cannot change line when %d hooks open\n", sc->nhooks);
 				return;
 			}
 			sc->framing = wframing;
@@ -372,7 +372,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	}
 
 	pos = 0;
-	pos += sprintf(pos + r,"Framer status %b;\n", sc->framer_state, "\20"
+	pos += ksprintf(pos + r,"Framer status %b;\n", sc->framer_state, "\20"
 	    "\40LOS\37AIS\36LFA\35RRA"
 	    "\34AUXP\33NMF\32LMFA\31frs0.0"
 	    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS"
@@ -381,10 +381,10 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    "\14RY1\13RY2\12RY3\11RY4"
 	    "\10SI1\7SI2\6rsp.5\5rsp.4"
 	    "\4rsp.3\3RSIF\2RS13\1RS15");
-	pos += sprintf(pos + r,"    Framing errors: %lu", sc->cnt_fec);
-	pos += sprintf(pos + r,"  Code Violations: %lu\n", sc->cnt_cvc);
+	pos += ksprintf(pos + r,"    Framing errors: %lu", sc->cnt_fec);
+	pos += ksprintf(pos + r,"  Code Violations: %lu\n", sc->cnt_cvc);
 	
-	pos += sprintf(pos + r,"    Falc State %b;\n", sc->falc_state, "\20"
+	pos += ksprintf(pos + r,"    Falc State %b;\n", sc->falc_state, "\20"
 	    "\40LOS\37AIS\36LFA\35RRA"
 	    "\34AUXP\33NMF\32LMFA\31frs0.0"
 	    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS"
@@ -393,7 +393,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    "\14RY1\13RY2\12RY3\11RY4"
 	    "\10SI1\7SI2\6rsp.5\5rsp.4"
 	    "\4rsp.3\3RSIF\2RS13\1RS15");
-	pos += sprintf(pos + r, "    Falc IRQ %b\n", sc->falc_irq, "\20"
+	pos += ksprintf(pos + r, "    Falc IRQ %b\n", sc->falc_irq, "\20"
 	    "\40RME\37RFS\36T8MS\35RMB\34CASC\33CRC4\32SA6SC\31RPF"
 	    "\30b27\27RDO\26ALLS\25XDU\24XMB\23b22\22XLSC\21XPR"
 	    "\20FAR\17LFA\16MFAR\15T400MS\14AIS\13LOS\12RAR\11RA"
@@ -403,39 +403,39 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 			continue;
 		sch = sc->ch[i];
 
-		pos += sprintf(r + pos, "  Chan %d <%s> ",
+		pos += ksprintf(r + pos, "  Chan %d <%s> ",
 		    i, sch->hook->name);
 
-		pos += sprintf(r + pos, "  Last Rx: ");
+		pos += ksprintf(r + pos, "  Last Rx: ");
 		if (sch->last_recv)
-			pos += sprintf(r + pos, "%lu s", time_second - sch->last_recv);
+			pos += ksprintf(r + pos, "%lu s", time_second - sch->last_recv);
 		else
-			pos += sprintf(r + pos, "never");
+			pos += ksprintf(r + pos, "never");
 
-		pos += sprintf(r + pos, ", last RxErr: ");
+		pos += ksprintf(r + pos, ", last RxErr: ");
 		if (sch->last_rxerr)
-			pos += sprintf(r + pos, "%lu s", time_second - sch->last_rxerr);
+			pos += ksprintf(r + pos, "%lu s", time_second - sch->last_rxerr);
 		else
-			pos += sprintf(r + pos, "never");
+			pos += ksprintf(r + pos, "never");
 
-		pos += sprintf(r + pos, ", last Tx: ");
+		pos += ksprintf(r + pos, ", last Tx: ");
 		if (sch->last_xmit)
-			pos += sprintf(r + pos, "%lu s\n", time_second - sch->last_xmit);
+			pos += ksprintf(r + pos, "%lu s\n", time_second - sch->last_xmit);
 		else
-			pos += sprintf(r + pos, "never\n");
+			pos += ksprintf(r + pos, "never\n");
 
-		pos += sprintf(r + pos, "    RX error(s) %lu", sch->rx_error);
-		pos += sprintf(r + pos, " Short: %lu", sch->short_error);
-		pos += sprintf(r + pos, " CRC: %lu", sch->crc_error);
-		pos += sprintf(r + pos, " Mod8: %lu", sch->dribble_error);
-		pos += sprintf(r + pos, " Long: %lu", sch->long_error);
-		pos += sprintf(r + pos, " Abort: %lu", sch->abort_error);
-		pos += sprintf(r + pos, " Overflow: %lu\n", sch->overflow_error);
+		pos += ksprintf(r + pos, "    RX error(s) %lu", sch->rx_error);
+		pos += ksprintf(r + pos, " Short: %lu", sch->short_error);
+		pos += ksprintf(r + pos, " CRC: %lu", sch->crc_error);
+		pos += ksprintf(r + pos, " Mod8: %lu", sch->dribble_error);
+		pos += ksprintf(r + pos, " Long: %lu", sch->long_error);
+		pos += ksprintf(r + pos, " Abort: %lu", sch->abort_error);
+		pos += ksprintf(r + pos, " Overflow: %lu\n", sch->overflow_error);
 
-		pos += sprintf(r + pos, "    Last error: %b  Prev error: %b\n",
+		pos += ksprintf(r + pos, "    Last error: %b  Prev error: %b\n",
 		    sch->last_error, "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN",
 		    sch->prev_error, "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN");
-		pos += sprintf(r + pos, "    Xmit bytes pending %ld\n",
+		pos += ksprintf(r + pos, "    Xmit bytes pending %ld\n",
 		    sch->tx_pending);
 	}
 	(*resp)->header.arglen = pos + 1;
@@ -551,7 +551,7 @@ mn_fmt_ts(char *p, u_int32_t ts)
 	for (j = 0; j < 32; j++) {
 		if (!(ts & (1 << j)))
 			continue;
-		sprintf(p, "%s%d", s, j);
+		ksprintf(p, "%s%d", s, j);
 		p += strlen(p);
 		s = ",";
 		if (!(ts & (1 << (j+1)))) 
@@ -559,7 +559,7 @@ mn_fmt_ts(char *p, u_int32_t ts)
 		for (; j < 32; j++)
 			if (!(ts & (1 << (j+1))))
 				break;
-		sprintf(p, "-%d", j);
+		ksprintf(p, "-%d", j);
 		p += strlen(p);
 		s = ",";
 	}
@@ -830,7 +830,7 @@ mn_create_channel(struct softc *sc, int chan)
 	sch->sc = sc;
 	sch->state = DOWN;
 	sch->chan = chan;
-	sprintf(sch->name, "%s%d", sc->name, chan);
+	ksprintf(sch->name, "%s%d", sc->name, chan);
 	return;
 }
 
@@ -1315,7 +1315,7 @@ mn_attach (device_t self)
 	sc->dev = self;
 	sc->unit = device_get_unit(self);
 	sc->framing = E1;
-	sprintf(sc->name, "mn%d", sc->unit);
+	ksprintf(sc->name, "mn%d", sc->unit);
 
         rid = PCIR_MAPS;
         res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid, RF_ACTIVE);
@@ -1407,7 +1407,7 @@ mn_attach (device_t self)
 		return (0);
 	}
 	sc->node->private = sc;
-	sprintf(sc->nodename, "%s%d", NG_MN_NODE_TYPE, sc->unit);
+	ksprintf(sc->nodename, "%s%d", NG_MN_NODE_TYPE, sc->unit);
 	if (ng_name_node(sc->node, sc->nodename)) {
 		ng_rmnode(sc->node);
 		ng_unref(sc->node);

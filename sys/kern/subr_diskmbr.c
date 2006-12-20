@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.16 2006/12/03 04:52:25 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.17 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -456,7 +456,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 
 			sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE,
 				       RAW_PART, partname);
-			snprintf(buf, sizeof(buf), "%s", sname);
+			ksnprintf(buf, sizeof(buf), "%s", sname);
 			if (strlen(buf) < sizeof buf - 11)
 				strcat(buf, "<extended>");
 			check_part(buf, dp, base_ext_offset, nsectors,

@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.21 2006/06/06 18:04:16 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.22 2006/12/20 18:14:43 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -331,7 +331,7 @@ ng_load_module(const char *name)
 		return (ENXIO);
 
 	/* Not found, try to load it as a loadable module */
-	snprintf(filename, sizeof(filename), "ng_%s.ko", name);
+	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
 	if ((path = linker_search_path(filename)) == NULL)
 		return (ENXIO);
 	error = linker_load_file(path, &lf);
@@ -352,7 +352,7 @@ ng_unload_module(const char *name)
 		return (ENXIO);
 
 	/* Not found, try to load it as a loadable module */
-	snprintf(filename, sizeof(filename), "ng_%s.ko", name);
+	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
 	if ((lf = linker_find_file_by_name(filename)) == NULL)
 		return (ENXIO);
 	error = linker_file_unload(lf);
@@ -1179,9 +1179,9 @@ ng_path2node(node_p here, const char *address, node_p *destp, char **rtnp)
 			return (ENOMEM);
 		}
 		if (start->name != NULL)
-			sprintf(*rtnp, "%s:", start->name);
+			ksprintf(*rtnp, "%s:", start->name);
 		else
-			sprintf(*rtnp, "[%x]:", ng_node2ID(start));
+			ksprintf(*rtnp, "[%x]:", ng_node2ID(start));
 	}
 
 	/* Done */
@@ -1566,7 +1566,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 		}
 
 		/* Convert command name to ASCII */
-		snprintf(ascii->header.cmdstr, sizeof(ascii->header.cmdstr),
+		ksnprintf(ascii->header.cmdstr, sizeof(ascii->header.cmdstr),
 		    "%s", c->name);
 
 		/* Convert command arguments to ASCII */

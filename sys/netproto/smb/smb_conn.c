@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.19 2006/09/30 20:23:05 swildner Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.20 2006/12/20 18:14:44 dillon Exp $
  */
 
 /*
@@ -678,8 +678,8 @@ smb_vc_getinfo(struct smb_vc *vcp, struct smb_vc_info *vip)
 	vip->sopt = vcp->vc_sopt;
 	vip->iodstate = vcp->vc_iod->iod_state;
 	bzero(&vip->sopt.sv_skey, sizeof(vip->sopt.sv_skey));
-	snprintf(vip->srvname, sizeof(vip->srvname), "%s", vcp->vc_srvname);
-	snprintf(vip->vcname, sizeof(vip->vcname), "%s", vcp->vc_username);
+	ksnprintf(vip->srvname, sizeof(vip->srvname), "%s", vcp->vc_srvname);
+	ksnprintf(vip->vcname, sizeof(vip->vcname), "%s", vcp->vc_username);
 	return 0;
 }
 
@@ -855,7 +855,7 @@ smb_share_getinfo(struct smb_share *ssp, struct smb_share_info *sip)
 	sip->gid = ssp->ss_grp;
 	sip->mode= ssp->ss_mode;
 	sip->flags = ssp->obj.co_flags;
-	snprintf(sip->sname, sizeof(sip->sname), "%s", ssp->ss_name);
+	ksnprintf(sip->sname, sizeof(sip->sname), "%s", ssp->ss_name);
 	return 0;
 }
 

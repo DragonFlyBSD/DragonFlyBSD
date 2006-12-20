@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.17 2006/01/14 11:10:47 swildner Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.18 2006/12/20 18:14:43 dillon Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -1196,7 +1196,7 @@ ng_fec_rmnode(node_p node)
 
 	while (!TAILQ_EMPTY(&b->ng_fec_ports)) {
 		p = TAILQ_FIRST(&b->ng_fec_ports);
-		sprintf(ifname, "%s",
+		ksprintf(ifname, "%s",
 		    p->fec_if->if_xname); /* XXX: strings */
 		ng_fec_delport(priv, ifname);
 	}

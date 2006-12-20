@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -142,7 +142,7 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
 	rdp->type == AR_T_RAID5) {
 	rdp->total_sectors = (rdp->total_sectors/(rdp->interleave*rdp->width))*
 			     (rdp->interleave * rdp->width);
-	sprintf(buffer, " (stripe %d KB)",
+	ksprintf(buffer, " (stripe %d KB)",
 		(rdp->interleave * DEV_BSIZE) / 1024);
     }
     else
@@ -4350,7 +4350,7 @@ ata_raid_adaptec_type(int type)
     switch (type) {
     case ADP_T_RAID0:   return "RAID0";
     case ADP_T_RAID1:   return "RAID1";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4433,7 +4433,7 @@ ata_raid_hptv2_type(int type)
     case HPTV2_T_RAID_5:        return "RAID5";
     case HPTV2_T_JBOD:          return "JBOD";
     case HPTV2_T_RAID01_RAID1:  return "RAID01_RAID1";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4490,7 +4490,7 @@ ata_raid_hptv3_type(int type)
     case HPTV3_T_RAID1: return "RAID1";
     case HPTV3_T_RAID3: return "RAID3";
     case HPTV3_T_RAID5: return "RAID5";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4545,7 +4545,7 @@ ata_raid_intel_type(int type)
     case INTEL_T_RAID0: return "RAID0";
     case INTEL_T_RAID1: return "RAID1";
     case INTEL_T_RAID5: return "RAID5";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4605,7 +4605,7 @@ ata_raid_ite_type(int type)
     case ITE_T_RAID1:   return "RAID1";
     case ITE_T_RAID01:  return "RAID0+1";
     case ITE_T_SPAN:    return "SPAN";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4644,7 +4644,7 @@ ata_raid_jmicron_type(int type)
     case JM_T_RAID01:	return "RAID0+1";
     case JM_T_JBOD:	return "JBOD";
     case JM_T_RAID5:	return "RAID5";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4684,7 +4684,7 @@ ata_raid_lsiv2_type(int type)
     case LSIV2_T_RAID0: return "RAID0";
     case LSIV2_T_RAID1: return "RAID1";
     case LSIV2_T_SPARE: return "SPARE";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4734,7 +4734,7 @@ ata_raid_lsiv3_type(int type)
     switch (type) {
     case LSIV3_T_RAID0: return "RAID0";
     case LSIV3_T_RAID1: return "RAID1";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4792,7 +4792,7 @@ ata_raid_nvidia_type(int type)
     case NV_T_RAID3:    return "RAID3";
     case NV_T_RAID5:    return "RAID5";
     case NV_T_RAID01:   return "RAID0+1";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4845,7 +4845,7 @@ ata_raid_promise_type(int type)
     case PR_T_RAID3:    return "RAID3";
     case PR_T_RAID5:    return "RAID5";
     case PR_T_SPAN:     return "SPAN";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4911,7 +4911,7 @@ ata_raid_sii_type(int type)
     case SII_T_RAID1:   return "RAID1";
     case SII_T_RAID01:  return "RAID0+1";
     case SII_T_SPARE:   return "SPARE";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4961,7 +4961,7 @@ ata_raid_sis_type(int type)
     case SIS_T_JBOD:    return "JBOD";
     case SIS_T_RAID0:   return "RAID0";
     case SIS_T_RAID1:   return "RAID1";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }
@@ -4998,7 +4998,7 @@ ata_raid_via_type(int type)
     case VIA_T_RAID5:   return "RAID5";
     case VIA_T_RAID01:  return "RAID0+1";
     case VIA_T_SPAN:    return "SPAN";
-    default:            sprintf(buffer, "UNKNOWN 0x%02x", type);
+    default:            ksprintf(buffer, "UNKNOWN 0x%02x", type);
 			return buffer;
     }
 }

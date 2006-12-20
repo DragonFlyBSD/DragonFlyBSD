@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.24 2006/10/25 20:55:52 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.25 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -330,7 +330,7 @@ acpi_identify(driver_t *driver, device_t parent)
     if (ACPI_FAILURE(acpi_Startup()))
 	return (ENXIO);
 
-    snprintf(acpi_ca_version, sizeof(acpi_ca_version), "%#x", ACPI_CA_VERSION);
+    ksnprintf(acpi_ca_version, sizeof(acpi_ca_version), "%#x", ACPI_CA_VERSION);
 
     /* Attach the actual ACPI device. */
     if ((child = BUS_ADD_CHILD(parent, parent, 0, "acpi", 0)) == NULL) {
@@ -672,7 +672,7 @@ acpi_quirks_set(void)
 		len += strlen(quirk->value) + 2;
 		if ((tmp = kmalloc(len, M_TEMP, M_NOWAIT)) == NULL)
 		    goto out;
-		sprintf(tmp, "%s %s", env ? env : "", quirk->value);
+		ksprintf(tmp, "%s %s", env ? env : "", quirk->value);
 #ifdef notyet
 		setenv("debug.acpi.disabled", tmp);
 #endif /* notyet */
@@ -731,9 +731,9 @@ acpi_child_location_str_method(device_t cbdev, device_t child, char *buf,
     struct acpi_device *dinfo = device_get_ivars(child);
 
     if (dinfo->ad_handle)
-	snprintf(buf, buflen, "path=%s", acpi_name(dinfo->ad_handle));
+	ksnprintf(buf, buflen, "path=%s", acpi_name(dinfo->ad_handle));
     else
-	snprintf(buf, buflen, "magic=unknown");
+	ksnprintf(buf, buflen, "magic=unknown");
     return (0);
 }
 
@@ -752,9 +752,9 @@ acpi_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
     adinfo = (ACPI_DEVICE_INFO *) adbuf.Pointer;
 
     if (error)
-	snprintf(buf, buflen, "Unknown");
+	ksnprintf(buf, buflen, "Unknown");
     else
-	snprintf(buf, buflen, "_HID=%s _UID=%lu",
+	ksnprintf(buf, buflen, "_HID=%s _UID=%lu",
 		(adinfo->Valid & ACPI_VALID_HID) ?
 		adinfo->HardwareId.Value : "UNKNOWN",
 		(adinfo->Valid & ACPI_VALID_UID) ?
@@ -2530,7 +2530,7 @@ acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS)
     buf[0] = '\0';
     for (state = ACPI_STATE_S1; state < ACPI_S_STATES_MAX + 1; state++) {
 	if (ACPI_SUCCESS(AcpiGetSleepTypeData(state, &TypeA, &TypeB))) {
-	    sprintf(sleep_state, "S%d ", state);
+	    ksprintf(sleep_state, "S%d ", state);
 	    strcat(buf, sleep_state);
 	}
     }
@@ -2588,7 +2588,7 @@ acpi_UserNotify(const char *subsystem, ACPI_HANDLE h, uint8_t notify)
     status = AcpiNsHandleToPathname(h, &handle_buf);
     if (ACPI_FAILURE(status))
 	return;
-    snprintf(notify_buf, sizeof(notify_buf), "notify=0x%02x", notify);
+    ksnprintf(notify_buf, sizeof(notify_buf), "notify=0x%02x", notify);
 #if 0
     devctl_notify("ACPI", subsystem, handle_buf.Pointer, notify_buf);
 #endif

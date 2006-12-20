@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.13 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.14 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -236,7 +236,7 @@ en_pci_attach(pcici_t config_id, int unit)
   en_cd.cd_devs[unit] = sc;		/* fake a cfdriver structure */
   en_cd.cd_ndevs = NEN;
   if_initname(&(sc->enif), "en", unit);
-  snprintf(sc->sc_dev.dv_xname, sizeof(sc->sc_dev.dv_xname), sc->enif.if_xname);
+  ksnprintf(sc->sc_dev.dv_xname, sizeof(sc->sc_dev.dv_xname), sc->enif.if_xname);
   scp->en_confid = config_id;
 
   /*

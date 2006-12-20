@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.8 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.9 2006/12/20 18:14:40 dillon Exp $
  */
 
 #define STATIC static
@@ -1219,7 +1219,7 @@ config_subdisk(int update)
 	    strcpy(sd->name, PLEX[sd->plexno].name);	    /* take it from there */
 	else						    /* no way */
 	    throw_rude_remark(EINVAL, "Unnamed sd is not associated with a plex");
-	sprintf(sdsuffix, ".s%d", sdindex);		    /* form the suffix */
+	ksprintf(sdsuffix, ".s%d", sdindex);		    /* form the suffix */
 	strcat(sd->name, sdsuffix);			    /* and add it to the name */
     }
     /* do we have complete info for this subdisk? */
@@ -1399,7 +1399,7 @@ config_plex(int update)
 		VOL[plex->volno].name);
 	else						    /* no way */
 	    throw_rude_remark(EINVAL, "Unnamed plex is not associated with a volume");
-	sprintf(plexsuffix, ".p%d", pindex);		    /* form the suffix */
+	ksprintf(plexsuffix, ".p%d", pindex);		    /* form the suffix */
 	strcat(plex->name, plexsuffix);			    /* and add it to the name */
     }
     if (isstriped(plex)) {

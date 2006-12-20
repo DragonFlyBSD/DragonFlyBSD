@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.17 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.18 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -271,7 +271,7 @@ ips_diskdev_statename(u_int8_t state)
 		return("CRS");
 		break;
 	}
-	sprintf(statebuf, "UNKNOWN(0x%02x)", state);
+	ksprintf(statebuf, "UNKNOWN(0x%02x)", state);
 	return (statebuf);
 }
 

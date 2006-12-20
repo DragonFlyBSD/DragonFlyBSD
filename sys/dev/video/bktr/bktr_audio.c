@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.13 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.7 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.8 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -439,7 +439,7 @@ void msp_read_id( bktr_ptr_t bktr ){
     rev1 = msp_dpl_read(bktr, bktr->msp_addr, 0x12, 0x001e);
     rev2 = msp_dpl_read(bktr, bktr->msp_addr, 0x12, 0x001f);
 
-    sprintf(bktr->msp_version_string, "34%02d%c-%c%d",
+    ksprintf(bktr->msp_version_string, "34%02d%c-%c%d",
       (rev2>>8)&0xff, (rev1&0xff)+'@', ((rev1>>8)&0xff)+'@', rev2&0x1f);
 
 }
@@ -595,7 +595,7 @@ void dpl_read_id( bktr_ptr_t bktr ){
     rev1 = msp_dpl_read(bktr, bktr->dpl_addr, 0x12, 0x001e);
     rev2 = msp_dpl_read(bktr, bktr->dpl_addr, 0x12, 0x001f);
 
-    sprintf(bktr->dpl_version_string, "34%02d%c-%c%d",
+    ksprintf(bktr->dpl_version_string, "34%02d%c-%c%d",
       ((rev2>>8)&0xff)-1, (rev1&0xff)+'@', ((rev1>>8)&0xff)+'@', rev2&0x1f);
 }
 

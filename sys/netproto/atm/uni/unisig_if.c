@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_if.c,v 1.8 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.9 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -871,7 +871,7 @@ unisig_ioctl(int code, caddr_t data, caddr_t arg1)
 			/*
 			 * Fill out the response struct for the VCC
 			 */
-			snprintf(rsp.avp_intf,
+			ksnprintf(rsp.avp_intf,
 				    sizeof(rsp.avp_intf), "%s%d",
 					usp->us_pif->pif_name,
 					usp->us_pif->pif_unit);

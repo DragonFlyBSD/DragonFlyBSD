@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.109 2006/03/30 05:29:57 marcel Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -436,10 +436,10 @@ afd_describe(device_t dev)
     char sizestring[16];
 
     if (fdp->mediasize > 1048576 * 5)
-	sprintf(sizestring, "%lluMB", (unsigned long long)
+	ksprintf(sizestring, "%lluMB", (unsigned long long)
 		(fdp->mediasize / 1048576));
     else if (fdp->mediasize)
-	sprintf(sizestring, "%lluKB", (unsigned long long)
+	ksprintf(sizestring, "%lluKB", (unsigned long long)
 		(fdp->mediasize / 1024));
     else
 	strcpy(sizestring, "(no media)");

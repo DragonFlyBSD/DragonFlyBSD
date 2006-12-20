@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.18 2006/10/25 20:55:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.19 2006/12/20 18:14:39 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -9094,7 +9094,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 	/*
 	 * Edit its name.
 	 */
-	snprintf(np->inst_name, sizeof(np->inst_name), "sym%d", np->unit);
+	ksnprintf(np->inst_name, sizeof(np->inst_name), "sym%d", np->unit);
 
 	/*
 	 *  Initialyze the CCB free and busy queues.

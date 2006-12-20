@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.17 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.18 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -612,10 +612,10 @@ ndis_decode_parm(ndis_miniport_block *block, ndis_config_parm *parm,
 		kfree(astr, M_DEVBUF);
 		break;
 	case ndis_parm_int:
-		sprintf(val, "%d", parm->ncp_parmdata.ncp_intdata);
+		ksprintf(val, "%d", parm->ncp_parmdata.ncp_intdata);
 		break;
 	case ndis_parm_hexint:
-		sprintf(val, "%xu", parm->ncp_parmdata.ncp_intdata);
+		ksprintf(val, "%xu", parm->ncp_parmdata.ncp_intdata);
 		break;
 	default:
 		return(NDIS_STATUS_FAILURE);
@@ -2288,7 +2288,7 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 	ndis_unicode_to_ascii(filename->nus_buf,
 	    filename->nus_len, &afilename);
 
-	sprintf(path, "%s/%s", ndis_filepath, afilename);
+	ksprintf(path, "%s/%s", ndis_filepath, afilename);
 	kfree(afilename, M_DEVBUF);
 
 	fh = kmalloc(sizeof(ndis_fh), M_TEMP, M_WAITOK);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include "gnu/maestro3_reg.h"
 #include "gnu/maestro3_dsp.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1191,7 +1191,7 @@ m3_pci_attach(device_t dev)
 			goto bad;
 		}
 	}
- 	snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+ 	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
 		 (sc->regtype == SYS_RES_IOPORT)? "io" : "memory",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq));
 	if (pcm_setstatus(dev, status)) {

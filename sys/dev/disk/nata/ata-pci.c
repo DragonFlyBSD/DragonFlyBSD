@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.117 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -573,7 +573,7 @@ ata_pcichannel_probe(device_t dev)
     }
     kfree(children, M_TEMP);
 
-    sprintf(buffer, "ATA channel %d", ch->unit);
+    ksprintf(buffer, "ATA channel %d", ch->unit);
     device_set_desc_copy(dev, buffer);
 
     return ata_probe(dev);

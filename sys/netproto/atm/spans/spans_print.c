@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_print.c,v 1.6 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_print.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_print.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -140,9 +140,9 @@ spans_aal_str(spans_aal *objp, char *dest, int len)
 	};
 
 	if (*objp < SPANS_AAL0 || *objp > SPANS_AAL5) {
-		snprintf(dest, len, "Invalid (%d)", (int)*objp);
+		ksnprintf(dest, len, "Invalid (%d)", (int)*objp);
 	} else {
-		snprintf(dest, len, "%s (%d)", aal_names[(int)*objp],
+		ksnprintf(dest, len, "%s (%d)", aal_names[(int)*objp],
 				(int)*objp);
 	}
 }
@@ -161,9 +161,9 @@ spans_result_str(spans_result *objp, char *dest, int len)
 	};
 
 	if (*objp < SPANS_OK || *objp > SPANS_BADDEST) {
-		snprintf(dest, len, "Invalid (%d)", (int)*objp);
+		ksnprintf(dest, len, "Invalid (%d)", (int)*objp);
 	} else {
-		snprintf(dest, len, "%s (%d)",
+		ksnprintf(dest, len, "%s (%d)",
 				result_names[(int)*objp], (int)*objp);
 	}
 }
@@ -215,7 +215,7 @@ spans_msgtype_str(spans_msgtype *objp, char *dest, int len)
 	 */
 	for (i=0; msgtype_names[i].name; i++) {
 		if (*objp == msgtype_names[i].type) {
-			snprintf(dest, len, "%s (%d)",
+			ksnprintf(dest, len, "%s (%d)",
 					msgtype_names[i].name,
 					(int)*objp);
 			return;
@@ -225,7 +225,7 @@ spans_msgtype_str(spans_msgtype *objp, char *dest, int len)
 	/*
 	 * Type was not found--return an error indicator
 	 */
-	snprintf(dest, len, "Invalid (%d)", (int)*objp);
+	ksnprintf(dest, len, "Invalid (%d)", (int)*objp);
 }
 
 #ifdef LONGPRINT 
@@ -241,9 +241,9 @@ spans_query_type_str(spans_query_type *objp, char *dest, int len)
 
 	if (*objp < SPANS_QUERY_NORMAL ||
 			*objp > SPANS_QUERY_END_TO_END) {
-		snprintf(dest, len, "Invalid (%d)", (int)*objp);
+		ksnprintf(dest, len, "Invalid (%d)", (int)*objp);
 	} else {
-		snprintf(dest, len, "%s (%d)", query_names[(int)*objp],
+		ksnprintf(dest, len, "%s (%d)", query_names[(int)*objp],
 				(int)*objp);
 	}
 }
@@ -259,9 +259,9 @@ spans_state_str(spans_query_type *objp, char *dest, int len)
 	};
 
 	if (*objp < SPANS_CONN_OPEN || *objp > SPANS_CONN_CLOSED) {
-		snprintf(dest, len, "Invalid (%d)", (int)*objp);
+		ksnprintf(dest, len, "Invalid (%d)", (int)*objp);
 	} else {
-		snprintf(dest, len, "%s (%d)", state_names[(int)*objp],
+		ksnprintf(dest, len, "%s (%d)", state_names[(int)*objp],
 				(int)*objp);
 	}
 }

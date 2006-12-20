@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.9 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.10 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -1020,7 +1020,7 @@ again:
     if ((rcaps = caps_find(name, len, uid, gid)) == NULL) {
 	if (flags & CAPF_WAITSVC) {
 	    char cbuf[32];
-	    snprintf(cbuf, sizeof(cbuf), "C%s", name);
+	    ksnprintf(cbuf, sizeof(cbuf), "C%s", name);
 	    *error = tsleep(&caps_waitsvc, PCATCH, cbuf, 0);
 	    if (*error == 0)
 		goto again;

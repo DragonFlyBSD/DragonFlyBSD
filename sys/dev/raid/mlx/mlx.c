@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.22 2006/10/25 20:56:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.23 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -2752,7 +2752,7 @@ mlx_diagnose_command(struct mlx_command *mc)
 	    (mc->mc_status == mlx_messages[i].status))
 	    return(mlx_status_messages[mlx_messages[i].msg]);
 	
-    sprintf(unkmsg, "unknown response 0x%x for command 0x%x", (int)mc->mc_status, (int)mc->mc_mailbox[0]);
+    ksprintf(unkmsg, "unknown response 0x%x for command 0x%x", (int)mc->mc_status, (int)mc->mc_mailbox[0]);
     return(unkmsg);
 }
 
@@ -2791,7 +2791,7 @@ mlx_describe_controller(struct mlx_softc *sc)
 	}
     }
     if (model == NULL) {
-	sprintf(buf, " model 0x%x", sc->mlx_enq2->me_hardware_id & 0xff);
+	ksprintf(buf, " model 0x%x", sc->mlx_enq2->me_hardware_id & 0xff);
 	model = buf;
     }
     device_printf(sc->mlx_dev, "DAC%s, %d channel%s, firmware %d.%02d-%c-%02d, %dMB RAM\n",

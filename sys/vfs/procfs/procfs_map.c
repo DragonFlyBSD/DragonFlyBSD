@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.3 (Berkeley) 2/17/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_map.c,v 1.24.2.1 2001/08/04 13:12:24 rwatson Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.5 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_map.c,v 1.6 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,7 +150,7 @@ case OBJT_DEVICE:
 		 * format:
 		 *  start, end, resident, private resident, cow, access, type.
 		 */
-		snprintf(mebuffer, sizeof(mebuffer),
+		ksnprintf(mebuffer, sizeof(mebuffer),
 		    "0x%lx 0x%lx %d %d %p %s%s%s %d %d 0x%x %s %s %s\n",
 			(u_long)entry->start, (u_long)entry->end,
 			resident, privateresident, obj,

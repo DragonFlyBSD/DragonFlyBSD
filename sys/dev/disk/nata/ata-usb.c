@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.2 2006/12/06 20:20:51 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.3 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -844,7 +844,7 @@ ata_usbchannel_probe(device_t dev)
     }
     kfree(children, M_TEMP);
 
-    sprintf(buffer, "USB lun %d", ch->unit);
+    ksprintf(buffer, "USB lun %d", ch->unit);
     device_set_desc_copy(dev, buffer);
 
     return 0;

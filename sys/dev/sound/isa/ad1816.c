@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
 
 struct ad1816_info;
 
@@ -615,11 +615,11 @@ ad1816_attach(device_t dev)
 		goto no;
     	}
     	if (ad1816->drq2)
-		snprintf(status2, SND_STATUSLEN, ":%ld", rman_get_start(ad1816->drq2));
+		ksnprintf(status2, SND_STATUSLEN, ":%ld", rman_get_start(ad1816->drq2));
 	else
 		status2[0] = '\0';
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u",
     	     	rman_get_start(ad1816->io_base),
 		rman_get_start(ad1816->irq),
 		rman_get_start(ad1816->drq1),

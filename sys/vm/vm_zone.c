@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.21 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.22 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -432,7 +432,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 	char tmpbuf[128];
 	char tmpname[14];
 
-	snprintf(tmpbuf, sizeof(tmpbuf),
+	ksnprintf(tmpbuf, sizeof(tmpbuf),
 	    "\nITEM            SIZE     LIMIT    USED    FREE  REQUESTS\n");
 	error = SYSCTL_OUT(req, tmpbuf, strlen(tmpbuf));
 	if (error)
@@ -458,7 +458,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 			tmpbuf[0] = '\n';
 		}
 
-		snprintf(tmpbuf + offset, sizeof(tmpbuf) - offset,
+		ksnprintf(tmpbuf + offset, sizeof(tmpbuf) - offset,
 			"%s %6.6u, %8.8u, %6.6u, %6.6u, %8.8u\n",
 			tmpname, curzone->zsize, curzone->zmax,
 			(curzone->ztotal - curzone->zfreecnt),

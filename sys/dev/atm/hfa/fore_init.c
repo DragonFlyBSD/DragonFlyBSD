@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_init.c,v 1.6 1999/08/29 10:28:09 bde Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.7 2006/12/20 18:14:38 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ fore_initialize(void *xfup)
 		errmsg = "unsupported microcode version";
 		goto failed;
 	}
-	snprintf(fup->fu_config.ac_firm_vers,
+	ksnprintf(fup->fu_config.ac_firm_vers,
 	    sizeof(fup->fu_config.ac_firm_vers), "%ld.%ld.%ld",
 		(vers >> 16) & 0xff, (vers >> 8) & 0xff, vers & 0xff);
 

@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -908,7 +908,7 @@ es_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
 		 (es->regtype == SYS_RES_IOPORT)? "io" : "memory",
 		 rman_get_start(es->reg), rman_get_start(es->irq));
 

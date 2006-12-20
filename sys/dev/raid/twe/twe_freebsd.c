@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.23 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.24 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -511,7 +511,7 @@ twe_attach_drive(struct twe_softc *sc, struct twe_drive *dr)
      * XXX It would make sense to test the online/initialising bits, but they seem to be
      * always set...
      */
-    sprintf(buf, "Unit %d, %s, %s",
+    ksprintf(buf, "Unit %d, %s, %s",
 	    dr->td_twe_unit,
 	    twe_describe_code(twe_table_unittype, dr->td_type),
 	    twe_describe_code(twe_table_unitstate, dr->td_state & TWE_PARAM_UNITSTATUS_MASK));

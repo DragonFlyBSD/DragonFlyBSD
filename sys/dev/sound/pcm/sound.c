@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.17.2.14 2002/11/07 23:17:18 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.7 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.7 2006/12/20 18:14:41 dillon Exp $");
 
 struct snddev_channel {
 	SLIST_ENTRY(snddev_channel) link;
@@ -389,7 +389,7 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 	ch->parentsnddev = d;
 	ch->parentchannel = parent;
 	ch->dev = d->dev;
-	snprintf(ch->name, 32, "%s:%s:%d", device_get_nameunit(d->dev), dirs, ch->num);
+	ksnprintf(ch->name, 32, "%s:%s:%d", device_get_nameunit(d->dev), dirs, ch->num);
 
 	err = chn_init(ch, devinfo, dir);
 	if (err) {

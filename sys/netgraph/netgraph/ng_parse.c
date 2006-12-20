@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.7 2006/09/30 20:23:05 swildner Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.8 2006/12/20 18:14:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -126,7 +126,7 @@ static ng_getAlign_t	*ng_get_getAlign_method(const struct ng_parse_type *t);
 		do {						\
 			int len;				\
 								\
-			len = snprintf((cbuf), (cbuflen),	\
+			len = ksnprintf((cbuf), (cbuflen),	\
 				fmt , ## args);			\
 			if (len >= (cbuflen))			\
 				return (ERANGE);		\
@@ -1669,7 +1669,7 @@ ng_encode_string(const char *raw)
 			break;
 		default:
 			if (*raw < 0x20 || *raw > 0x7e) {
-				off += sprintf(cbuf + off,
+				off += ksprintf(cbuf + off,
 				    "\\x%02x", (u_char)*raw);
 				break;
 			}

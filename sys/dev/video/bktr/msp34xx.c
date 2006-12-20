@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.5 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -1147,7 +1147,7 @@ int msp_attach(bktr_ptr_t bktr)
 		kfree(msp, M_DEVBUF);
                 return ENOMEM;
 	}
-	snprintf(msp->threaddesc, 14, "%s_msp34xx_thread", bktr->bktr_xname);
+	ksnprintf(msp->threaddesc, 14, "%s_msp34xx_thread", bktr->bktr_xname);
 
 	for (i = 0; i < DFP_COUNT; i++)
 		msp->dfp_regs[i] = -1;
@@ -1170,7 +1170,7 @@ int msp_attach(bktr_ptr_t bktr)
 	msp3400c_write(bktr,I2C_MSP3400C_DFP, 0x0014, 0x1040);
 #endif
 
-	sprintf(buf,"MSP34%02d%c-%c%d",
+	ksprintf(buf,"MSP34%02d%c-%c%d",
 		(rev2>>8)&0xff, (rev1&0xff)+'@', ((rev1>>8)&0xff)+'@', rev2&0x1f);
 	msp->nicam = (((rev2>>8)&0xff) != 00) ? 1 : 0;
 	

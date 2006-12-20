@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.48 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.49 2006/12/20 18:14:42 dillon Exp $
  */
 
 /*
@@ -1180,7 +1180,7 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     else
 	tscval = 0;
     crit_exit();
-    snprintf(buf, sizeof(buf), "%08x %016llx", count, (long long)tscval);
+    ksnprintf(buf, sizeof(buf), "%08x %016llx", count, (long long)tscval);
     return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
 }
 

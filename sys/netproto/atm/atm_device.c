@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.9 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -760,7 +760,7 @@ atm_dev_pdu_print(Cmn_unit *cup, Cmn_vcc *cvp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 
-	snprintf(buf, sizeof(buf), "%s vcc=(%d,%d)", msg, 
+	ksnprintf(buf, sizeof(buf), "%s vcc=(%d,%d)", msg, 
 		cvp->cv_connvc->cvc_vcc->vc_vpi, 
 		cvp->cv_connvc->cvc_vcc->vc_vci);
 

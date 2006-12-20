@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.15 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.16 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -668,7 +668,7 @@ static void
 pbm_init(struct asc_unit *scu)
 {
     int width = geomtab[scu->geometry].dpl;
-    int l= sprintf(scu->sbuf.base,"P4 %d %d\n", width, scu->height);
+    int l= ksprintf(scu->sbuf.base,"P4 %d %d\n", width, scu->height);
     char *p;
 
     scu->bcount = scu->height * width / 8 + l;

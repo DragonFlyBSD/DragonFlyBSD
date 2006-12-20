@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.11 2006/10/23 21:50:32 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.12 2006/12/20 18:14:40 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -567,7 +567,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 
 		command = dpt_rw_command[dpt->unit];
 		if (strcmp(command, DPT_RW_CMD_DUMP_SOFTC) == 0) {
-			x = sprintf(wbp, "dpt%d:%s:%s:%s:%s:%x\n",
+			x = ksprintf(wbp, "dpt%d:%s:%s:%s:%s:%x\n",
 				    dpt->unit,
 				    dpt->board_data.vendor,
 				    dpt->board_data.modelNum,
@@ -578,7 +578,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 			wbp += x;
 
 		} else if (strcmp(command, DPT_RW_CMD_DUMP_SYSINFO) == 0) {
-			x = sprintf(wbp, "dpt%d:%d:%d:%d:%d:%d:%d:%d:%d:%s:"
+			x = ksprintf(wbp, "dpt%d:%d:%d:%d:%d:%d:%d:%d:%d:%s:"
 				    "%d:%d:%d:%d:%d:%d:%d:%d\n",
 				    dpt->unit,
 				    dpt_sysinfo.drive0CMOS,
@@ -601,7 +601,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 
 			for (ndx = 0; ndx < 16; ndx++) {
 				if (dpt_sysinfo.drives[ndx].cylinders != 0) {
-					x = sprintf(wbp, "dpt%d:d%dc%dh%ds%d\n",
+					x = ksprintf(wbp, "dpt%d:d%dc%dh%ds%d\n",
 						    dpt->unit,
 						    ndx,
 					  dpt_sysinfo.drives[ndx].cylinders,
@@ -612,7 +612,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 				}
 			}
 		} else if (strcmp(command, DPT_RW_CMD_DUMP_METRICS) == 0) {
-			x = sprintf(wbp,
+			x = ksprintf(wbp,
 				    "dpt%d: No metrics available.\n"
 				    "Run the dpt_dm command, or use the\n"
 			   "DPT_IOCTL_INTERNAL_METRICS ioctl system call\n",
@@ -624,13 +624,13 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 			dpt_reset_performance(dpt);
 #endif				/* DPT_MEASURE_PERFORMANCE */
 
-			x = sprintf(wbp, "dpt%d: Metrics have been cleared\n",
+			x = ksprintf(wbp, "dpt%d: Metrics have been cleared\n",
 				    dpt->unit);
 			work_size += x;
 			wbp += x;
 		} else if (strcmp(command, DPT_RW_CMD_SHOW_LED) == 0) {
 
-			x = sprintf(wbp, "dpt%d:%s\n",
+			x = ksprintf(wbp, "dpt%d:%s\n",
 				dpt->unit, i2bin(dpt_blinking_led(dpt), 8));
 			work_size += x;
 			wbp += x;

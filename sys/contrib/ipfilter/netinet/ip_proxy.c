@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.7 2004/02/12 22:35:47 joerg Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.8 2006/12/20 18:14:37 dillon Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -80,6 +80,10 @@
 
 #if defined(_KERNEL) && (SOLARIS || defined(__sgi))
 extern  KRWLOCK_T       ipf_nat, ipf_state;
+#endif
+
+#ifndef _KERNEL
+#define ksprintf	sprintf
 #endif
 
 static int appr_fixseqack (fr_info_t *, ip_t *, ap_session_t *, int );

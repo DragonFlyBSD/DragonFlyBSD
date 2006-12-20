@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.11 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.12 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -358,7 +358,7 @@ ipx_printhost(struct ipx_addr *addr)
 		net = "*";
 	else {
 		q = work.x_net.c_net;
-		snprintf(cnet, sizeof(cnet), "%x%x%x%x",
+		ksnprintf(cnet, sizeof(cnet), "%x%x%x%x",
 			q[0], q[1], q[2], q[3]);
 		for (p = cnet; *p == '0' && p < cnet + 8; p++)
 			continue;
@@ -371,7 +371,7 @@ ipx_printhost(struct ipx_addr *addr)
 		host = "*";
 	else {
 		q = work.x_host.c_host;
-		snprintf(chost, sizeof(chost), "%x%x%x%x%x%x",
+		ksnprintf(chost, sizeof(chost), "%x%x%x%x%x%x",
 			q[0], q[1], q[2], q[3], q[4], q[5]);
 		for (p = chost; *p == '0' && p < chost + 12; p++)
 			continue;
@@ -381,9 +381,9 @@ ipx_printhost(struct ipx_addr *addr)
 	if (port) {
 		if (strcmp(host, "*") == 0) {
 			host = "";
-			snprintf(cport, sizeof(cport), "%x", port);
+			ksnprintf(cport, sizeof(cport), "%x", port);
 		} else
-			snprintf(cport, sizeof(cport), ".%x", port);
+			ksnprintf(cport, sizeof(cport), ".%x", port);
 	} else
 		*cport = 0;
 

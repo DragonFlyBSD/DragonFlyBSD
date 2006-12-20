@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.16 2004/06/14 18:54:14 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.5 2006/09/03 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.6 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -966,7 +966,7 @@ acpi_pci_link_config(device_t dev, ACPI_BUFFER *prtbuf, int busno)
 		if (entry->busno != busno)
 			continue;
 
-		snprintf(prthint, sizeof(prthint),
+		ksnprintf(prthint, sizeof(prthint),
 		    "hw.acpi.pci.link.%d.%d.%d.irq", entry->busno,
 		    (int)((entry->prt.Address & 0xffff0000) >> 16),
 		    (int)entry->prt.Pin);

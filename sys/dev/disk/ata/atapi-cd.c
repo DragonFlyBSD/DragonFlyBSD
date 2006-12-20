@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.26 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.27 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1328,7 +1328,7 @@ acd_read_toc(struct acd_softc *cdp)
     for (track = 1; track <= ntracks; track ++) {
 	char name[16];
 
-	sprintf(name, "acd%dt%d", cdp->lun, track);
+	ksprintf(name, "acd%dt%d", cdp->lun, track);
 	entry = kmalloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
 	entry->dev = make_dev(&acd_ops, (cdp->lun << 3) | (track << 16),
 			      0, 0, 0644, name, NULL);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/des/des_ecb.c,v 1.1.2.3 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.4 2006/12/20 18:14:37 dillon Exp $	*/
 /*	$KAME: des_ecb.c,v 1.6 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/ecb_enc.c */
@@ -90,7 +90,7 @@ char *des_options(void)
                         size="int";
                 else
                         size="long";
-                sprintf(buf,"des(%s,%s,%s,%s)",ptr,risc,unroll,size);
+                ksprintf(buf,"des(%s,%s,%s,%s)",ptr,risc,unroll,size);
                 init=0;
                 }
         return(buf);

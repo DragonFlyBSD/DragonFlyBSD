@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.20 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.21 2006/12/20 18:14:39 dillon Exp $
  *
  */
 
@@ -615,7 +615,7 @@ sbp_probe_lun(struct sbp_dev *sdev)
 	/* get firmware revision */
 	reg = crom_search_key(cc, CSRKEY_FIRM_VER);
 	if (reg != NULL)
-		snprintf(sdev->revision, sizeof(sdev->revision),
+		ksnprintf(sdev->revision, sizeof(sdev->revision),
 						"%06x", reg->val);
 	/* get product string */
 	crom_search_key(cc, CSRKEY_MODEL);

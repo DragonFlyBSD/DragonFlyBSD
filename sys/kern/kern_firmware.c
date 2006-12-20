@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.5 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ firmware_image_load_file(const char *image_name)
 	int error;
 
 	fw_path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-	snprintf(fw_path, MAXPATHLEN, "%s/%s", firmware_root, image_name);
+	ksnprintf(fw_path, MAXPATHLEN, "%s/%s", firmware_root, image_name);
 
 	/* XXX: access? */
 

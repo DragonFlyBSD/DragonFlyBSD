@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.2 2006/12/10 23:36:13 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.3 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -732,11 +732,11 @@ ata_cmd2str(struct ata_request *request)
 	    case 0xaa: return ("SETFEATURES ENABLE RCACHE");
 	    case 0x55: return ("SETFEATURES DISABLE RCACHE");
 	    }
-	    sprintf(buffer, "SETFEATURES 0x%02x", request->u.ata.feature);
+	    ksprintf(buffer, "SETFEATURES 0x%02x", request->u.ata.feature);
 	    return buffer;
 	}
     }
-    sprintf(buffer, "unknown CMD (0x%02x)", request->u.ata.command);
+    ksprintf(buffer, "unknown CMD (0x%02x)", request->u.ata.command);
     return buffer;
 }
 

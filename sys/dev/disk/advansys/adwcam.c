@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.13 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.14 2006/12/20 18:14:38 dillon Exp $
  */
 /*
  * Ported from:
@@ -822,7 +822,7 @@ adw_alloc(device_t dev, struct resource *regs, int regs_type, int regs_id)
 	KKASSERT(adw->unit >= 0 && adw->unit < 100);
 	i = adw->unit / 10;
 	adw->name = kmalloc(sizeof("adw") + i + 1, M_DEVBUF, M_INTWAIT);
-	sprintf(adw->name, "adw%d", adw->unit);
+	ksprintf(adw->name, "adw%d", adw->unit);
 	return(adw);
 }
 

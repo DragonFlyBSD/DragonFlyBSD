@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.7 2006/10/25 20:55:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.8 2006/12/20 18:14:38 dillon Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -167,7 +167,7 @@ struct isposinfo {
 
 #define	MEMZERO			bzero
 #define	MEMCPY(dst, src, amt)	bcopy((src), (dst), (amt))
-#define	SNPRINTF		snprintf
+#define	SNPRINTF		ksnprintf
 #define	USEC_DELAY		DELAY
 #define	USEC_SLEEP(isp, x)		\
 	if (isp->isp_osinfo.intsok)	\

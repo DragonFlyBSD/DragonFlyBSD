@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.4.2.5 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.4 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.4 2006/12/20 18:14:41 dillon Exp $");
 
 static u_int32_t fk_fmt[] = {
 	AFMT_U8,
@@ -123,7 +123,7 @@ fkchan_setup(device_t dev)
 	c = kmalloc(sizeof(*c), M_DEVBUF, M_WAITOK);
 	c->methods = kobj_create(&fkchan_class, M_DEVBUF, M_WAITOK);
 	c->parentsnddev = d;
-	snprintf(c->name, CHN_NAMELEN, "%s:fake", device_get_nameunit(dev));
+	ksnprintf(c->name, CHN_NAMELEN, "%s:fake", device_get_nameunit(dev));
 
 	return c;
 }

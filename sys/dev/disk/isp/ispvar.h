@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/ispvar.h,v 1.25.2.17 2002/10/11 18:51:49 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/ispvar.h,v 1.4 2004/02/13 01:04:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/ispvar.h,v 1.5 2006/12/20 18:14:38 dillon Exp $ */
 /*
  * Soft Definitions for for Qlogic ISP SCSI adapters.
  *
@@ -792,7 +792,7 @@ void isp_prt(struct ispsoftc *, int level, const char *, ...);
  *
  *	MEMZERO(dst, src)			platform zeroing function
  *	MEMCPY(dst, src, count)			platform copying function
- *	SNPRINTF(buf, bufsize, fmt, ...)	snprintf
+ *	SNPRINTF(buf, bufsize, fmt, ...)	ksnprintf
  *	USEC_DELAY(usecs)			microsecond spindelay function
  *	USEC_SLEEP(isp, usecs)			microsecond sleep function
  *

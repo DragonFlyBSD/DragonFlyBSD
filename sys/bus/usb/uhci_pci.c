@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.57 2005/03/01 07:50:11 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.9 2006/12/10 02:03:56 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.10 2006/12/20 18:14:37 dillon Exp $
  */
 
 /* Universal Host Controller Interface
@@ -300,16 +300,16 @@ uhci_pci_attach(device_t self)
 	device_set_desc(sc->sc_bus.bdev, uhci_pci_match(self));
 	switch (pci_get_vendor(self)) {
 	case PCI_UHCI_VENDORID_INTEL:
-		sprintf(sc->sc_vendor, "Intel");
+		ksprintf(sc->sc_vendor, "Intel");
 		break;
 	case PCI_UHCI_VENDORID_VIA:
-		sprintf(sc->sc_vendor, "VIA");
+		ksprintf(sc->sc_vendor, "VIA");
 		break;
 	default:
 		if (bootverbose)
 			device_printf(self, "(New UHCI DeviceId=0x%08x)\n",
 			    pci_get_devid(self));
-		sprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
+		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
 	switch (pci_read_config(self, PCI_USBREV, 1) & PCI_USBREV_MASK) {

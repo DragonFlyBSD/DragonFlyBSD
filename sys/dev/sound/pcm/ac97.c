@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.20 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.21 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.20 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.21 2006/12/20 18:14:41 dillon Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -519,16 +519,16 @@ static const char*
 ac97_hw_desc(u_int32_t id, const char* vname, const char* cname, char* buf)
 {
 	if (cname == NULL) {
-		sprintf(buf, "Unknown AC97 Codec (id = 0x%08x)", id);
+		ksprintf(buf, "Unknown AC97 Codec (id = 0x%08x)", id);
 		return buf;
 	}
 
 	if (vname == NULL) vname = "Unknown";
 
 	if (bootverbose) {
-		sprintf(buf, "%s %s AC97 Codec (id = 0x%08x)", vname, cname, id);
+		ksprintf(buf, "%s %s AC97 Codec (id = 0x%08x)", vname, cname, id);
 	} else {
-		sprintf(buf, "%s %s AC97 Codec", vname, cname);
+		ksprintf(buf, "%s %s AC97 Codec", vname, cname);
 	}
 	return buf;
 }
@@ -695,7 +695,7 @@ ac97_create(device_t dev, void *devinfo, kobj_class_t cls)
 	if (codec == NULL)
 		return NULL;
 
-	snprintf(codec->name, AC97_NAMELEN, "%s:ac97", device_get_nameunit(dev));
+	ksnprintf(codec->name, AC97_NAMELEN, "%s:ac97", device_get_nameunit(dev));
 	codec->lock = snd_mtxcreate(codec->name, "ac97 codec");
 	codec->methods = kobj_create(cls, M_AC97, 0);
 	if (codec->methods == NULL) {

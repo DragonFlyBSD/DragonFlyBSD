@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
@@ -649,7 +649,7 @@ au_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
 		 (type[0] == SYS_RES_IOPORT)? "io" : "memory",
 		 rman_get_start(reg[0]), rman_get_start(irq));
 

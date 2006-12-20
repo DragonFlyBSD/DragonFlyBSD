@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_util.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.6 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -283,7 +283,7 @@ unisig_addr_print(Atm_addr *p)
 				 * two-digit hex representation of the
 				 * NSAP byte in the output buffer
 				 */
-				snprintf(t_buff, sizeof(t_buff),
+				ksnprintf(t_buff, sizeof(t_buff),
 					"%x", *cp + 512);
 				strcpy(op, &t_buff[strlen(t_buff)-2]);
 				op++; op++;
@@ -306,7 +306,7 @@ unisig_addr_print(Atm_addr *p)
 		 * Print the IA5 characters of the E.164 address
 		 */
 		for(i=0; i<p->address_length; i++) {
-			snprintf(strbuff + strlen(strbuff),
+			ksnprintf(strbuff + strlen(strbuff),
 			    sizeof(strbuff) - strlen(strbuff), "%c",
 				((Atm_addr_e164 *)p->address)->aae_addr[i]);
 		}
@@ -328,7 +328,7 @@ unisig_addr_print(Atm_addr *p)
 		/*
 		 * Print the address as two words xxxxx.yyyyyyyy
 		 */
-		snprintf(strbuff, sizeof(strbuff), "%x.%x", u1.w, u2.w);
+		ksnprintf(strbuff, sizeof(strbuff), "%x.%x", u1.w, u2.w);
 		break;
 
 	case T_ATM_ABSENT:

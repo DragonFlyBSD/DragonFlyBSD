@@ -39,7 +39,7 @@
  *
  * $Id: vinumstate.c,v 2.18 2000/05/10 07:30:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumstate.c,v 1.28.2.2 2000/06/08 02:00:23 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.6 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -988,7 +988,7 @@ setstate(struct vinum_ioctl_msg *msg)
 	    sd = &SD[msg->index];
 	    if ((msg->index >= vinum_conf.subdisks_allocated)
 		|| (sd->state <= sd_referenced)) {
-		sprintf(ioctl_reply->msg, "Invalid subdisk %d", msg->index);
+		ksprintf(ioctl_reply->msg, "Invalid subdisk %d", msg->index);
 		ioctl_reply->error = EFAULT;
 		return;
 	    }
@@ -1004,7 +1004,7 @@ setstate(struct vinum_ioctl_msg *msg)
 	    plex = &PLEX[msg->index];
 	    if ((msg->index >= vinum_conf.plexes_allocated)
 		|| (plex->state <= plex_unallocated)) {
-		sprintf(ioctl_reply->msg, "Invalid plex %d", msg->index);
+		ksprintf(ioctl_reply->msg, "Invalid plex %d", msg->index);
 		ioctl_reply->error = EFAULT;
 		return;
 	    }
@@ -1037,7 +1037,7 @@ setstate(struct vinum_ioctl_msg *msg)
 	    sd = &SD[msg->index];
 	    if ((msg->index >= vinum_conf.subdisks_allocated)
 		|| (sd->state <= sd_referenced)) {
-		sprintf(ioctl_reply->msg, "Invalid subdisk %d", msg->index);
+		ksprintf(ioctl_reply->msg, "Invalid subdisk %d", msg->index);
 		ioctl_reply->error = EFAULT;
 		return;
 	    }

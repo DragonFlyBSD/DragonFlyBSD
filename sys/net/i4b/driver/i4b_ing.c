@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.8 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.9 2006/12/20 18:14:42 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -283,7 +283,7 @@ i4bingattach(void *dummy)
 				
 		/* name the netgraph node */
 
-		sprintf(sc->nodename, "%s%d", NG_ING_NODE_TYPE, sc->sc_unit);
+		ksprintf(sc->nodename, "%s%d", NG_ING_NODE_TYPE, sc->sc_unit);
 
 		if(ng_name_node(sc->node, sc->nodename))
 		{
@@ -676,11 +676,11 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 						break;
 			    	}
 
-				pos = sprintf(arg, "state = %s (%d)\n", p, sc->sc_state);
+				pos = ksprintf(arg, "state = %s (%d)\n", p, sc->sc_state);
 #if I4BINGACCT
-				pos += sprintf(arg + pos, "%d bytes in, %d bytes out\n", sc->sc_inb, sc->sc_outb);
+				pos += ksprintf(arg + pos, "%d bytes in, %d bytes out\n", sc->sc_inb, sc->sc_outb);
 #endif			    
-				pos += sprintf(arg + pos, "%d pkts in, %d pkts out\n", sc->sc_inpkt, sc->sc_outpkt);
+				pos += ksprintf(arg + pos, "%d pkts in, %d pkts out\n", sc->sc_inpkt, sc->sc_outpkt);
 
 				resp->header.arglen = pos + 1;
 				break;

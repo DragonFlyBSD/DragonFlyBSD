@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.8 2006/09/05 00:55:43 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.9 2006/12/20 18:14:41 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -719,7 +719,7 @@ char *
 uaudio_id_name(struct uaudio_softc *sc, usb_descriptor_t **dps, int id)
 {
 	static char buf[32];
-	sprintf(buf, "i%d", id);
+	ksprintf(buf, "i%d", id);
 	return (buf);
 }
 #endif
@@ -877,7 +877,7 @@ uaudio_add_mixer(struct uaudio_softc *sc, usb_descriptor_t *v,
 							MAKE(p+c+1, o+1);
 				}
 #if !defined(__DragonFly__)
-			sprintf(mix.ctlname, "mix%d-%s", d->bUnitId,
+			ksprintf(mix.ctlname, "mix%d-%s", d->bUnitId,
 				uaudio_id_name(sc, dps, d->baSourceId[i]));
 #endif
 			mix.nchan = chs;
@@ -970,7 +970,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNmute);
 			mix.ctlunit = "";
@@ -982,7 +982,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			/* mix.ctl = SOUND_MIXER_VOLUME; */
 			mix.ctl = SOUND_MIXER_PCM;
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNmaster);
 			mix.ctlunit = AudioNvolume;
@@ -993,7 +993,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_BASS;
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNbass);
 			mix.ctlunit = AudioNbass;
@@ -1004,7 +1004,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNmid);
 			mix.ctlunit = AudioNmid;
@@ -1015,7 +1015,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_TREBLE;
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNtreble);
 			mix.ctlunit = AudioNtreble;
@@ -1029,7 +1029,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNagc);
 			mix.ctlunit = "";
@@ -1040,7 +1040,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNdelay);
 			mix.ctlunit = "4 ms";
@@ -1051,7 +1051,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNbassboost);
 			mix.ctlunit = "";
@@ -1062,7 +1062,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 #if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_LOUD;	/* Is this correct ? */
 #else
-			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
+			ksprintf(mix.ctlname, "fea%d-%s-%s", unit,
 				uaudio_id_name(sc, dps, srcId), 
 				AudioNloudness);
 			mix.ctlunit = "";
@@ -1104,7 +1104,7 @@ uaudio_add_processing_updown(struct uaudio_softc *sc, usb_descriptor_t *v,
 	mix.type = MIX_ON_OFF;	/* XXX */
 #if !defined(__DragonFly__)
 	mix.ctlunit = "";
-	sprintf(mix.ctlname, "pro%d-mode", d->bUnitId);
+	ksprintf(mix.ctlname, "pro%d-mode", d->bUnitId);
 #endif
 
 	for (i = 0; i < ud->bNrModes; i++) {
@@ -1139,7 +1139,7 @@ uaudio_add_processing(struct uaudio_softc *sc, usb_descriptor_t *v,
 		mix.type = MIX_ON_OFF;
 #if !defined(__DragonFly__)
 		mix.ctlunit = "";
-		sprintf(mix.ctlname, "pro%d.%d-enable", d->bUnitId, ptype);
+		ksprintf(mix.ctlname, "pro%d.%d-enable", d->bUnitId, ptype);
 #endif
 		uaudio_mixer_add_ctl(sc, &mix);
 	}
@@ -1188,7 +1188,7 @@ uaudio_add_extension(struct uaudio_softc *sc, usb_descriptor_t *v,
 		mix.type = MIX_ON_OFF;
 #if !defined(__DragonFly__)
 		mix.ctlunit = "";
-		sprintf(mix.ctlname, "ext%d-enable", d->bUnitId);
+		ksprintf(mix.ctlname, "ext%d-enable", d->bUnitId);
 #endif
 		uaudio_mixer_add_ctl(sc, &mix);
 	}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.16 2006/12/13 21:58:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.17 2006/12/20 18:14:42 dillon Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -372,7 +372,7 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 		return;
 
 	/* Print command name */
-	snprintf(SNPARGS(name, 0), "ip6fw: %d", f ? f->fw_number : -1);
+	ksnprintf(SNPARGS(name, 0), "ip6fw: %d", f ? f->fw_number : -1);
 
 	action = action2;
 	if (!f)
@@ -395,15 +395,15 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 			action = "Count";
 			break;
 		case IPV6_FW_F_DIVERT:
-			snprintf(SNPARGS(action2, 0), "Divert %d",
+			ksnprintf(SNPARGS(action2, 0), "Divert %d",
 			    f->fw_divert_port);
 			break;
 		case IPV6_FW_F_TEE:
-			snprintf(SNPARGS(action2, 0), "Tee %d",
+			ksnprintf(SNPARGS(action2, 0), "Tee %d",
 			    f->fw_divert_port);
 			break;
 		case IPV6_FW_F_SKIPTO:
-			snprintf(SNPARGS(action2, 0), "SkipTo %d",
+			ksnprintf(SNPARGS(action2, 0), "SkipTo %d",
 			    f->fw_skipto_rule);
 			break;
 		default:	
@@ -414,48 +414,48 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 
 	switch (nxt) {
 	case IPPROTO_TCP:
-		len = snprintf(SNPARGS(proto, 0), "TCP [%s]",
+		len = ksnprintf(SNPARGS(proto, 0), "TCP [%s]",
 		    ip6_sprintf(&ip6->ip6_src));
 		if (off > 0)
-			len += snprintf(SNPARGS(proto, len), ":%d ",
+			len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			    ntohs(tcp6->th_sport));
 		else
-			len += snprintf(SNPARGS(proto, len), " ");
-		len += snprintf(SNPARGS(proto, len), "[%s]",
+			len += ksnprintf(SNPARGS(proto, len), " ");
+		len += ksnprintf(SNPARGS(proto, len), "[%s]",
 		    ip6_sprintf(&ip6->ip6_dst));
 		if (off > 0)
-			snprintf(SNPARGS(proto, len), ":%d",
+			ksnprintf(SNPARGS(proto, len), ":%d",
 			    ntohs(tcp6->th_dport));
 		break;
 	case IPPROTO_UDP:
-		len = snprintf(SNPARGS(proto, 0), "UDP [%s]",
+		len = ksnprintf(SNPARGS(proto, 0), "UDP [%s]",
 		    ip6_sprintf(&ip6->ip6_src));
 		if (off > 0)
-			len += snprintf(SNPARGS(proto, len), ":%d ",
+			len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			    ntohs(udp->uh_sport));
 		else
-		    len += snprintf(SNPARGS(proto, len), " ");
-		len += snprintf(SNPARGS(proto, len), "[%s]",
+		    len += ksnprintf(SNPARGS(proto, len), " ");
+		len += ksnprintf(SNPARGS(proto, len), "[%s]",
 		    ip6_sprintf(&ip6->ip6_dst));
 		if (off > 0)
-			snprintf(SNPARGS(proto, len), ":%d",
+			ksnprintf(SNPARGS(proto, len), ":%d",
 			    ntohs(udp->uh_dport));
 		break;
 	case IPPROTO_ICMPV6:
 		if (off > 0)
-			len = snprintf(SNPARGS(proto, 0), "IPV6-ICMP:%u.%u ",
+			len = ksnprintf(SNPARGS(proto, 0), "IPV6-ICMP:%u.%u ",
 			    icmp6->icmp6_type, icmp6->icmp6_code);
 		else
-			len = snprintf(SNPARGS(proto, 0), "IPV6-ICMP ");
-		len += snprintf(SNPARGS(proto, len), "[%s]",
+			len = ksnprintf(SNPARGS(proto, 0), "IPV6-ICMP ");
+		len += ksnprintf(SNPARGS(proto, len), "[%s]",
 		    ip6_sprintf(&ip6->ip6_src));
-		snprintf(SNPARGS(proto, len), " [%s]",
+		ksnprintf(SNPARGS(proto, len), " [%s]",
 		    ip6_sprintf(&ip6->ip6_dst));
 		break;
 	default:
-		len = snprintf(SNPARGS(proto, 0), "P:%d [%s]", nxt,
+		len = ksnprintf(SNPARGS(proto, 0), "P:%d [%s]", nxt,
 		    ip6_sprintf(&ip6->ip6_src));
-		snprintf(SNPARGS(proto, len), " [%s]",
+		ksnprintf(SNPARGS(proto, len), " [%s]",
 		    ip6_sprintf(&ip6->ip6_dst));
 		break;
 	}

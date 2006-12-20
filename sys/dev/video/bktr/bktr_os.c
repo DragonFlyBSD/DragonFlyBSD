@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.16 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.17 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -236,7 +236,7 @@ bktr_attach( device_t dev )
 	unit = device_get_unit(dev);
 
 	/* build the device name for bktr_name() */
-	snprintf(bktr->bktr_xname, sizeof(bktr->bktr_xname), "bktr%d",unit);
+	ksnprintf(bktr->bktr_xname, sizeof(bktr->bktr_xname), "bktr%d",unit);
 
 	/*
 	 * Enable bus mastering and Memory Mapped device

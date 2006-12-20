@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.24 2006/03/15 22:56:38 dogcow Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.2 2006/06/30 07:34:59 y0netan1 Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.3 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -623,7 +623,7 @@ est_init(void)
 	freqs_available[0] = '\0';
 	len = 0;
 	for (i = 0; i < est_fqlist->tablec; i++) {
-		len += snprintf(freqs_available + len, freq_len - len, "%d%s",
+		len += ksnprintf(freqs_available + len, freq_len - len, "%d%s",
 		    est_fqlist->table[i].mhz,
 		    i < est_fqlist->tablec - 1 ? " " : "");
 	}

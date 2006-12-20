@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.30 2006/10/25 08:27:27 swildner Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.31 2006/12/20 18:14:42 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -406,12 +406,12 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			dummy = strlen(ifs->ascii);
 			if (tp->tap_td != NULL && dummy < sizeof(ifs->ascii)) {
 				if (tp->tap_td->td_proc) {
-				    snprintf(ifs->ascii + dummy,
+				    ksnprintf(ifs->ascii + dummy,
 					sizeof(ifs->ascii) - dummy,
 					"\tOpened by pid %d\n",
 					(int)tp->tap_td->td_proc->p_pid);
 				} else {
-				    snprintf(ifs->ascii + dummy,
+				    ksnprintf(ifs->ascii + dummy,
 					sizeof(ifs->ascii) - dummy,
 					"\tOpened by td %p\n", tp->tap_td);
 				}

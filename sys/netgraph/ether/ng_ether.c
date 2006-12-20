@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.10 2006/09/30 20:23:05 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -722,7 +722,7 @@ ng_enaddr_unparse(const struct ng_parse_type *type,
 {
 	int len;
 
-	len = snprintf(cbuf, cbuflen, "%02x:%02x:%02x:%02x:%02x:%02x",
+	len = ksnprintf(cbuf, cbuflen, "%02x:%02x:%02x:%02x:%02x:%02x",
 	    data[*off], data[*off + 1], data[*off + 2],
 	    data[*off + 3], data[*off + 4], data[*off + 5]);
 	if (len >= cbuflen)

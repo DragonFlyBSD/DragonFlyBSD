@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.17 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.18 2006/12/20 18:14:37 dillon Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -109,7 +109,7 @@ SYSCTL_NODE(_hw_usb, OID_AUTO, ohci, CTLFLAG_RW, 0, "USB ohci");
 SYSCTL_INT(_hw_usb_ohci, OID_AUTO, debug, CTLFLAG_RW,
 	   &ohcidebug, 0, "ohci debug level");
 #ifndef __NetBSD__
-#define bitmask_snprintf(q,f,b,l) snprintf((b), (l), "%b", (q), (f))
+#define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
 #endif
 #else
 #define DPRINTF(x)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/snake/snake_saver.c,v 1.26.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/snake/snake_saver.c,v 1.7 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/snake/snake_saver.c,v 1.8 2006/12/20 18:14:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ snake_init(video_adapter_t *adp)
 {
 	messagelen = strlen(ostype) + 1 + strlen(osrelease);
 	message = kmalloc(messagelen + 1, M_SYSCONS, M_WAITOK);
-	sprintf(message, "%s %s", ostype, osrelease);
+	ksprintf(message, "%s %s", ostype, osrelease);
 	messagep = kmalloc(messagelen * sizeof *messagep, M_SYSCONS, M_WAITOK);
 	return 0;
 }

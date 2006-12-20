@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)
@@ -769,7 +769,7 @@ sb16_probe(device_t dev)
 	f = (ver & 0xffff0000) >> 16;
 	ver &= 0x0000ffff;
 	if (f & BD_F_SB16) {
-		snprintf(buf, sizeof buf, "SB16 DSP %d.%02d%s", (int) ver >> 8, (int) ver & 0xff,
+		ksnprintf(buf, sizeof buf, "SB16 DSP %d.%02d%s", (int) ver >> 8, (int) ver & 0xff,
 			 (f & BD_F_SB16X)? " (ViBRA16X)" : "");
     		device_set_desc_copy(dev, buf);
 		return 0;
@@ -820,11 +820,11 @@ sb16_attach(device_t dev)
     	}
 
     	if (!(pcm_getflags(dev) & SD_F_SIMPLEX))
-		snprintf(status2, SND_STATUSLEN, ":%ld", rman_get_start(sb->drq2));
+		ksnprintf(status2, SND_STATUSLEN, ":%ld", rman_get_start(sb->drq2));
 	else
 		status2[0] = '\0';
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %ud",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %ud",
     	     	rman_get_start(sb->io_base), rman_get_start(sb->irq),
 		rman_get_start(sb->drq1), status2, sb->bufsize);
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -587,7 +587,7 @@ sigpvc_ioctl(int code, caddr_t data, caddr_t arg1)
 			/*
 			 * Fill in info to be returned
 			 */
-			snprintf(avr.avp_intf, sizeof(avr.avp_intf),
+			ksnprintf(avr.avp_intf, sizeof(avr.avp_intf),
 				"%s%d",
 				pvp->pv_pif->pif_name, pvp->pv_pif->pif_unit);
 			avr.avp_vpi = vcp->vc_vpi;

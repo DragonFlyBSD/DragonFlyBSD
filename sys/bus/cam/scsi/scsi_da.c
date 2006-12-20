@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.32 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.33 2006/12/20 18:14:34 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -1155,8 +1155,8 @@ dasysctlinit(void *context, int pending)
 	periph = (struct cam_periph *)context;
 	softc = (struct da_softc *)periph->softc;
 
-	snprintf(tmpstr, sizeof(tmpstr), "CAM DA unit %d", periph->unit_number);
-	snprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
+	ksnprintf(tmpstr, sizeof(tmpstr), "CAM DA unit %d", periph->unit_number);
+	ksnprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
 
 	sysctl_ctx_init(&softc->sysctl_ctx);
 	softc->flags |= DA_FLAG_SCTX_INIT;
@@ -1277,7 +1277,7 @@ daregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Load the user's default, if any.
 	 */
-	snprintf(tmpstr, sizeof(tmpstr), "kern.cam.da.%d.minimum_cmd_size",
+	ksnprintf(tmpstr, sizeof(tmpstr), "kern.cam.da.%d.minimum_cmd_size",
 		 periph->unit_number);
 	TUNABLE_INT_FETCH(tmpstr, &softc->minimum_cmd_size);
 
@@ -1620,7 +1620,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 
 			dasetgeom(periph, rdcap);
 			dp = &softc->params;
-			snprintf(announce_buf, sizeof(announce_buf),
+			ksnprintf(announce_buf, sizeof(announce_buf),
 			        "%luMB (%u %u byte sectors: %dH %dS/T %dC)",
 				(unsigned long) (((u_int64_t)dp->secsize *
 				dp->sectors) / (1024*1024)), dp->sectors,
@@ -1687,7 +1687,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				 */
 				if ((have_sense) && (asc != 0x25)
 				 && (error_code == SSD_CURRENT_ERROR))
-					snprintf(announce_buf,
+					ksnprintf(announce_buf,
 					    sizeof(announce_buf),
 						"Attempt to query device "
 						"size failed: %s, %s",

@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.8 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.9 2006/12/20 18:14:42 dillon Exp $
  *
  */
 
@@ -187,7 +187,7 @@ ng_device_init(void)
                 printf("%s(): ng_make_node_common failed\n", __func__);
                 return(ENXIO);
         }
-        sprintf(sc->nodename, "%s", NG_DEVICE_NODE_TYPE);
+        ksprintf(sc->nodename, "%s", NG_DEVICE_NODE_TYPE);
         if (ng_name_node(sc->node, sc->nodename)) {
                 NG_NODE_UNREF(sc->node); /* make it go away again */
                 printf("%s(): ng_name_node failed\n", __func__);

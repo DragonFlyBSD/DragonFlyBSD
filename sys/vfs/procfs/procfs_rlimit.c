@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_rlimit.c,v 1.5 1999/12/08 08:59:37 phk Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.5 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.6 2006/12/20 18:14:44 dillon Exp $
  */
 
 /*
@@ -78,7 +78,7 @@ procfs_dorlimit(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 * Add the rlimit ident
 		 */
 
-		ps += sprintf(ps, "%s ", rlimit_ident[i]);
+		ps += ksprintf(ps, "%s ", rlimit_ident[i]);
 
 		/* 
 		 * Replace RLIM_INFINITY with -1 in the string
@@ -89,9 +89,9 @@ procfs_dorlimit(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 */
 
 		if (p->p_rlimit[i].rlim_cur == RLIM_INFINITY) {
-			ps += sprintf(ps, "-1 ");
+			ps += ksprintf(ps, "-1 ");
 		} else {
-			ps += sprintf(ps, "%llu ",
+			ps += ksprintf(ps, "%llu ",
 				(unsigned long long)p->p_rlimit[i].rlim_cur);
 		}
 
@@ -100,9 +100,9 @@ procfs_dorlimit(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 */
 
 		if (p->p_rlimit[i].rlim_max == RLIM_INFINITY) {
-			ps += sprintf(ps, "-1\n");
+			ps += ksprintf(ps, "-1\n");
 		} else {
-			ps += sprintf(ps, "%llu\n",
+			ps += ksprintf(ps, "%llu\n",
 				(unsigned long long)p->p_rlimit[i].rlim_max);
 		}
 	}

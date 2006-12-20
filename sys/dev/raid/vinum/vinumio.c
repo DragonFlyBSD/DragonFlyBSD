@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.18 2006/12/13 21:58:49 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.19 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -480,7 +480,7 @@ format_config(char *config, int len)
 	vol = &vinum_conf.volume[i];
 	if ((vol->state > volume_uninit)
 	    && (vol->name[0] != '\0')) {		    /* paranoia */
-	    snprintf(s,
+	    ksnprintf(s,
 		configend - s,
 		"volume %s state %s",
 		vol->name,
@@ -488,7 +488,7 @@ format_config(char *config, int len)
 	    while (*s)
 		s++;					    /* find the end */
 	    if (vol->preferred_plex >= 0)		    /* preferences, */
-		snprintf(s,
+		ksnprintf(s,
 		    configend - s,
 		    " readpol prefer %s",
 		    vinum_conf.plex[vol->preferred_plex].name);
@@ -505,7 +505,7 @@ format_config(char *config, int len)
 	plex = &vinum_conf.plex[i];
 	if ((plex->state > plex_referenced)
 	    && (plex->name[0] != '\0')) {		    /* paranoia */
-	    snprintf(s,
+	    ksnprintf(s,
 		configend - s,
 		"plex name %s state %s org %s ",
 		plex->name,
@@ -514,7 +514,7 @@ format_config(char *config, int len)
 	    while (*s)
 		s++;					    /* find the end */
 	    if (isstriped(plex)) {
-		snprintf(s,
+		ksnprintf(s,
 		    configend - s,
 		    "%ds ",
 		    (int) plex->stripesize);
@@ -522,14 +522,14 @@ format_config(char *config, int len)
 		    s++;				    /* find the end */
 	    }
 	    if (plex->volno >= 0)			    /* we have a volume */
-		snprintf(s,
+		ksnprintf(s,
 		    configend - s,
 		    "vol %s ",
 		    vinum_conf.volume[plex->volno].name);
 	    while (*s)
 		s++;					    /* find the end */
 	    for (j = 0; j < plex->subdisks; j++) {
-		snprintf(s,
+		ksnprintf(s,
 		    configend - s,
 		    " sd %s",
 		    vinum_conf.sd[plex->sdnos[j]].name);
@@ -558,7 +558,7 @@ format_config(char *config, int len)
 	     */
 	    if (drivename[0] == '\0')
 		drivename = "*invalid*";
-	    snprintf(s,
+	    ksnprintf(s,
 		configend - s,
 		"sd name %s drive %s plex %s len %llus driveoffset %llus state %s",
 		sd->name,
@@ -570,20 +570,20 @@ format_config(char *config, int len)
 	    while (*s)
 		s++;					    /* find the end */
 	    if (sd->plexno >= 0)
-		snprintf(s,
+		ksnprintf(s,
 		    configend - s,
 		    " plexoffset %llds",
 		    (long long) sd->plexoffset);
 	    else
-		snprintf(s, configend - s, " detached");
+		ksnprintf(s, configend - s, " detached");
 	    while (*s)
 		s++;					    /* find the end */
 	    if (sd->flags & VF_RETRYERRORS) {
-		snprintf(s, configend - s, " retryerrors");
+		ksnprintf(s, configend - s, " retryerrors");
 		while (*s)
 		    s++;				    /* find the end */
 	    }
-	    snprintf(s, configend - s, " \n");
+	    ksnprintf(s, configend - s, " \n");
 	    while (*s)
 		s++;					    /* find the end */
 	}
@@ -892,7 +892,7 @@ vinum_scandisk(char *devicename[], int drives)
 		    continue;
 		if (part == 'c')
 		    continue;
-		snprintf(partname, DRIVENAMELEN,
+		ksnprintf(partname, DRIVENAMELEN,
 			"%ss%d%c", devicename[driveno], slice, part);
 		drive = check_drive(partname);	    /* try to open it */
 		if ((drive->lasterror != 0)		    /* didn't work, */
@@ -917,10 +917,10 @@ vinum_scandisk(char *devicename[], int drives)
 		if (part == 'c')
 		    continue;
 		if (has_part) {
-		    snprintf(partname, DRIVENAMELEN,
+		    ksnprintf(partname, DRIVENAMELEN,
 			    "%s", devicename[driveno]);
 		} else {
-		    snprintf(partname, DRIVENAMELEN,
+		    ksnprintf(partname, DRIVENAMELEN,
 			    "%s%c", devicename[driveno], part);
 		}
 		drive = check_drive(partname);	    /* try to open it */

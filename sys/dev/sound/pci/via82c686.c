@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.4.2.10 2003/05/11 01:45:53 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */
@@ -561,7 +561,7 @@ via_attach(device_t dev)
 	if (bus_dmamap_load(via->sgd_dmat, via->sgd_dmamap, via->sgd_table, NSEGS * sizeof(struct via_dma_op), dma_cb, 0, 0))
 		goto bad;
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", rman_get_start(via->reg), rman_get_start(via->irq));
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", rman_get_start(via->reg), rman_get_start(via->irq));
 
 	/* Register */
 	if (pcm_register(dev, via, 1, 1)) goto bad;

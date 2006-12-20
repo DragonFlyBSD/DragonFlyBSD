@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.9 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.10 2006/12/20 18:14:35 dillon Exp $
  */
 
 #include "opt_eisa.h"
@@ -105,12 +105,12 @@ mainboard_probe(device_t dev)
 
 	idstring = kmalloc(8 + sizeof(" (System Board)") + 1,
 			    M_DEVBUF, M_INTWAIT);
-	sprintf(idstring, "%c%c%c%03x%01x (System Board)",
-		EISA_MFCTR_CHAR0(id),
-		EISA_MFCTR_CHAR1(id),
-		EISA_MFCTR_CHAR2(id),
-		EISA_PRODUCT_ID(id),
-		EISA_REVISION_ID(id));
+	ksprintf(idstring, "%c%c%c%03x%01x (System Board)",
+		 EISA_MFCTR_CHAR0(id),
+		 EISA_MFCTR_CHAR1(id),
+		 EISA_MFCTR_CHAR2(id),
+		 EISA_PRODUCT_ID(id),
+		 EISA_REVISION_ID(id));
 	device_set_desc(dev, idstring);
 
 	return (0);
@@ -252,7 +252,7 @@ eisa_print_child(device_t dev, device_t child)
 	int			retval = 0;
 
 	if (device_get_desc(child)) {
-		snprintf(buf, sizeof(buf), "<%s>", device_get_desc(child));
+		ksnprintf(buf, sizeof(buf), "<%s>", device_get_desc(child));
 		eisa_reg_print(child, buf, NULL, &column);
 	}
 
@@ -260,11 +260,11 @@ eisa_print_child(device_t dev, device_t child)
 	while ((resv = eisa_find_ioaddr(e_dev, rid++))) {
 		if ((resv->size == 1) ||
 		    (resv->flags & RESVADDR_BITMASK)) {
-			snprintf(buf, sizeof(buf), "%s%lx",
+			ksnprintf(buf, sizeof(buf), "%s%lx",
 				((rid == 1) ? "at 0x" : "0x"),
 				resv->addr);
 		} else {
-			snprintf(buf, sizeof(buf), "%s%lx-0x%lx",
+			ksnprintf(buf, sizeof(buf), "%s%lx-0x%lx",
 				((rid == 1) ? "at 0x" : "0x"),
 				resv->addr,
 				(resv->addr + (resv->size - 1)));
@@ -277,11 +277,11 @@ eisa_print_child(device_t dev, device_t child)
 	while ((resv = eisa_find_maddr(e_dev, rid++))) {
 		if ((resv->size == 1) ||
 		    (resv->flags & RESVADDR_BITMASK)) {
-			snprintf(buf, sizeof(buf), "%s%lx",
+			ksnprintf(buf, sizeof(buf), "%s%lx",
 				((rid == 1) ? "at 0x" : "0x"),
 				resv->addr);
 		} else {
-			snprintf(buf, sizeof(buf), "%s%lx-0x%lx",
+			ksnprintf(buf, sizeof(buf), "%s%lx-0x%lx",
 				((rid == 1) ? "at 0x" : "0x"),
 				resv->addr,
 				(resv->addr + (resv->size - 1)));
@@ -292,13 +292,13 @@ eisa_print_child(device_t dev, device_t child)
 
 	rid = 0;
 	while ((irq = eisa_find_irq(e_dev, rid++)) != NULL) {
-		snprintf(buf, sizeof(buf), "irq %d (%s)", irq->irq_no,
+		ksnprintf(buf, sizeof(buf), "irq %d (%s)", irq->irq_no,
 			 (irq->irq_trigger ? "level" : "edge"));
 		eisa_reg_print(child, buf, 
 			((rid == 1) ? &separator : NULL), &column);
 	}
 
-	snprintf(buf, sizeof(buf), "on %s slot %d\n",
+	ksnprintf(buf, sizeof(buf), "on %s slot %d\n",
 		device_get_nameunit(dev), eisa_get_slot(child));
 	eisa_reg_print(child, buf, NULL, &column);
 

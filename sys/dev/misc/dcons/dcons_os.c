@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.7 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.8 2006/12/20 18:14:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -398,7 +398,7 @@ dcons_cnprobe(struct consdev *cp)
 	cp->cn_dev = make_dev(&dcons_ops, DCONS_CON,
 	    UID_ROOT, GID_WHEEL, 0600, "dcons");
 #elif __FreeBSD_version >= 501109
-	sprintf(cp->cn_name, "dcons");
+	ksprintf(cp->cn_name, "dcons");
 #else
 	cp->cn_dev = makedev(CDEV_MAJOR, DCONS_CON);
 #endif
@@ -528,7 +528,7 @@ ok:
 #if CONS_NODEV
 	gdbconsdev.cn_arg = (void *)&sc[DCONS_GDB];
 #if __FreeBSD_version >= 501109
-	sprintf(gdbconsdev.cn_name, "dgdb");
+	ksprintf(gdbconsdev.cn_name, "dgdb");
 #endif
 	gdb_arg = &gdbconsdev;
 #elif defined(__DragonFly__)

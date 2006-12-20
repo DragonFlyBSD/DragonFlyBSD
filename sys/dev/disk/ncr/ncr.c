@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.15 2006/10/25 20:55:53 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.16 2006/12/20 18:14:39 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -1342,7 +1342,7 @@ static int ncr_cache; /* to be aligned _NOT_ static */
 static char *ncr_name (ncb_p np)
 {
 	static char name[10];
-	snprintf(name, sizeof(name), "ncr%d", np->unit);
+	ksnprintf(name, sizeof(name), "ncr%d", np->unit);
 	return (name);
 }
 

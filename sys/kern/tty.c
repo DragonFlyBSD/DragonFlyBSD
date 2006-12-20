@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.31 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.32 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*-
@@ -2411,7 +2411,7 @@ ttyinfo(tp)
 		else
 			str = "iowait";
 
-		snprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
+		ksnprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
 			pick->p_comm, pick->p_pid, str);
 
 		/*

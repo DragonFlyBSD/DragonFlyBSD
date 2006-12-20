@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.13 2006/12/18 21:02:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.14 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -418,22 +418,6 @@ ksprintf(char *buf, const char *cfmt, ...)
 }
 
 /*
- * Scaled down version of sprintf(3). (TO BE REMOVED)
- */
-int
-sprintf(char *buf, const char *cfmt, ...)
-{
-	int retval;
-	__va_list ap;
-
-	__va_start(ap, cfmt);
-	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
-	buf[retval] = '\0';
-	__va_end(ap);
-	return retval;
-}
-
-/*
  * Scaled down version of vsprintf(3).
  */
 int
@@ -451,21 +435,6 @@ kvsprintf(char *buf, const char *cfmt, __va_list ap)
  */
 int
 ksnprintf(char *str, size_t size, const char *format, ...)
-{
-	int retval;
-	__va_list ap;
-
-	__va_start(ap, format);
-	retval = kvsnprintf(str, size, format, ap);
-	__va_end(ap);
-	return(retval);
-}
-
-/*
- * Scaled down version of snprintf(3). (TO BE REMOVED)
- */
-int
-snprintf(char *str, size_t size, const char *format, ...)
 {
 	int retval;
 	__va_list ap;

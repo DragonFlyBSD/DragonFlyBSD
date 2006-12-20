@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.8 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.9 2006/12/20 18:14:39 dillon Exp $
  *
  *
  *
@@ -445,24 +445,24 @@ status_chans(struct softc *sc, char *s)
 		scp = sc->chan[i];
 		if (scp == NULL)
 			continue;
-		sprintf(s + strlen(s), "c%2d:", i);
-		sprintf(s + strlen(s), " ts %08x", scp->ts);
-		sprintf(s + strlen(s), " RX %lus/%lus",
+		ksprintf(s + strlen(s), "c%2d:", i);
+		ksprintf(s + strlen(s), " ts %08x", scp->ts);
+		ksprintf(s + strlen(s), " RX %lus/%lus",
 		    time_second - scp->last_recv, time_second - scp->last_rxerr);
-		sprintf(s + strlen(s), " TX %lus/%lus/%lus",
+		ksprintf(s + strlen(s), " TX %lus/%lus/%lus",
 		    time_second - scp->last_xmit, 
 		    time_second - scp->last_txerr,
 		    time_second - scp->last_txdrop);
-		sprintf(s + strlen(s), " TXdrop %lu Pend %lu", 
+		ksprintf(s + strlen(s), " TXdrop %lu Pend %lu", 
 		    scp->tx_drop,
 		    scp->tx_pending);
-		sprintf(s + strlen(s), " CRC %lu Dribble %lu Long %lu Short %lu Abort %lu",
+		ksprintf(s + strlen(s), " CRC %lu Dribble %lu Long %lu Short %lu Abort %lu",
 		    scp->crc_error,
 		    scp->dribble_error,
 		    scp->long_error,
 		    scp->short_error,
 		    scp->abort_error);
-		sprintf(s + strlen(s), "\n TX: %lu RX: %lu\n",
+		ksprintf(s + strlen(s), "\n TX: %lu RX: %lu\n",
 		    scp->txn, scp->rxn);
 	}
 }
@@ -478,42 +478,42 @@ status_8370(struct softc *sc, char *s)
 	u_int32_t *p = sc->ds8370;
 
 	s += strlen(s);
-	sprintf(s, "Framer: "); s += strlen(s);
+	ksprintf(s, "Framer: "); s += strlen(s);
 	switch (sc->framing) {
-		case WHOKNOWS: sprintf(s, "(unconfigured)\n"); break;
-		case E1: sprintf(s, "(e1)\n"); break;
-		case E1U: sprintf(s, "(e1u)\n"); break;
-		case T1: sprintf(s, "(t1)\n"); break;
-		case T1U: sprintf(s, "(t1u)\n"); break;
-		default: sprintf(s, "(mode %d XXX?)\n", sc->framing); break;
+		case WHOKNOWS: ksprintf(s, "(unconfigured)\n"); break;
+		case E1: ksprintf(s, "(e1)\n"); break;
+		case E1U: ksprintf(s, "(e1u)\n"); break;
+		case T1: ksprintf(s, "(t1)\n"); break;
+		case T1U: ksprintf(s, "(t1u)\n"); break;
+		default: ksprintf(s, "(mode %d XXX?)\n", sc->framing); break;
 	}
 	s += strlen(s);
-	sprintf(s, "    Red alarms:"); s += strlen(s);
-	if (p[0x47] & 0x08) { sprintf(s, " ALOS"); s += strlen(s); }
-	if (p[0x47] & 0x04) { sprintf(s, " LOS"); s += strlen(s); }
+	ksprintf(s, "    Red alarms:"); s += strlen(s);
+	if (p[0x47] & 0x08) { ksprintf(s, " ALOS"); s += strlen(s); }
+	if (p[0x47] & 0x04) { ksprintf(s, " LOS"); s += strlen(s); }
 	if (sc->framing == E1 || sc->framing == T1) {
-		if (p[0x47] & 0x02) { sprintf(s, " LOF"); s += strlen(s); }
+		if (p[0x47] & 0x02) { ksprintf(s, " LOF"); s += strlen(s); }
 	}
-	sprintf(s, "\n    Yellow alarms:"); s += strlen(s);
-	if (p[0x47] & 0x80) { sprintf(s, " RMYEL"); s += strlen(s); }
-	if (p[0x47] & 0x40) { sprintf(s, " RYEL"); s += strlen(s); }
-	sprintf(s, "\n    Blue alarms:"); s += strlen(s);
-	if (p[0x47] & 0x10) { sprintf(s, " AIS"); s += strlen(s); }
-	sprintf(s, "\n"); s += strlen(s);
-	sprintf(s, "\n    Various alarms:"); s += strlen(s);
-	if (p[0x48] & 0x10) { sprintf(s, " TSHORT"); s += strlen(s); }
-	sprintf(s, "\n    Counters:"); s += strlen(s);
+	ksprintf(s, "\n    Yellow alarms:"); s += strlen(s);
+	if (p[0x47] & 0x80) { ksprintf(s, " RMYEL"); s += strlen(s); }
+	if (p[0x47] & 0x40) { ksprintf(s, " RYEL"); s += strlen(s); }
+	ksprintf(s, "\n    Blue alarms:"); s += strlen(s);
+	if (p[0x47] & 0x10) { ksprintf(s, " AIS"); s += strlen(s); }
+	ksprintf(s, "\n"); s += strlen(s);
+	ksprintf(s, "\n    Various alarms:"); s += strlen(s);
+	if (p[0x48] & 0x10) { ksprintf(s, " TSHORT"); s += strlen(s); }
+	ksprintf(s, "\n    Counters:"); s += strlen(s);
 	if (sc->framing == E1) {
-		sprintf(s, " FERR=%lu", sc->cnt_ferr); s += strlen(s);
+		ksprintf(s, " FERR=%lu", sc->cnt_ferr); s += strlen(s);
 	}
-	sprintf(s, " CERR=%lu", sc->cnt_cerr); s += strlen(s);
-	sprintf(s, " LCV=%lu",  sc->cnt_lcv); s += strlen(s);
-	sprintf(s, " FEBE=%lu", sc->cnt_febe); s += strlen(s);
-	sprintf(s, " BERR=%lu", sc->cnt_berr); s += strlen(s);
-	sprintf(s, " FRED=%lu", sc->cnt_fred); s += strlen(s);
-	sprintf(s, " COFA=%lu", sc->cnt_cofa); s += strlen(s);
-	sprintf(s, " SEF=%lu", sc->cnt_sef); s += strlen(s);
-	sprintf(s, "\n"); s += strlen(s);
+	ksprintf(s, " CERR=%lu", sc->cnt_cerr); s += strlen(s);
+	ksprintf(s, " LCV=%lu",  sc->cnt_lcv); s += strlen(s);
+	ksprintf(s, " FEBE=%lu", sc->cnt_febe); s += strlen(s);
+	ksprintf(s, " BERR=%lu", sc->cnt_berr); s += strlen(s);
+	ksprintf(s, " FRED=%lu", sc->cnt_fred); s += strlen(s);
+	ksprintf(s, " COFA=%lu", sc->cnt_cofa); s += strlen(s);
+	ksprintf(s, " SEF=%lu", sc->cnt_sef); s += strlen(s);
+	ksprintf(s, "\n"); s += strlen(s);
 }
 
 static void
@@ -524,13 +524,13 @@ dump_8370(struct softc *sc, char *s, int offset)
 
 	s += strlen(s);
 	for (i = 0; i < 0x100; i += 16) {
-		sprintf(s, "%03x: ", i + offset);
+		ksprintf(s, "%03x: ", i + offset);
 		s += strlen(s);
 		for (j = 0; j < 0x10; j ++) {
-			sprintf(s, " %02x", p[i + j + offset] & 0xff);
+			ksprintf(s, " %02x", p[i + j + offset] & 0xff);
 			s += strlen(s);
 		}
-		sprintf(s, "\n");
+		ksprintf(s, "\n");
 		s += strlen(s);
 	}
 }
@@ -924,7 +924,7 @@ musycc_config(node_p node, char *set, char *ret)
 			if (wframing == sc->framing)
 				return;
 			if (sc->nhooks > 0) {
-				sprintf(ret, "Cannot change line when %d hooks open\n", sc->nhooks);
+				ksprintf(ret, "Cannot change line when %d hooks open\n", sc->nhooks);
 				return;
 			}
 			sc->framing = wframing;
@@ -1068,7 +1068,7 @@ musycc_newhook(node_p node, hook_p hook, const char *name)
 		sch->sc = sc;
 		sch->state = DOWN;
 		sch->chan = chan;
-		sprintf(sch->hookname, name);	/* XXX overflow ? */
+		ksprintf(sch->hookname, name);	/* XXX overflow ? */
 		sc->chan[chan] = sch;
 	} else if (sc->chan[chan]->state == UP) {
 		return (EBUSY);
@@ -1532,7 +1532,7 @@ musycc_attach(device_t self)
 			continue;
 		}	
 		sc->node->private = sc;
-		sprintf(sc->nodename, "sync-%d-%d-%d",
+		ksprintf(sc->nodename, "sync-%d-%d-%d",
 			csc->bus,
 			csc->slot,
 			i);

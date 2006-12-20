@@ -27,19 +27,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.5 2005/03/15 20:42:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.6 2006/12/20 18:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
 
 #ifdef _KERNEL
-#include <opt_scsi.h>
 
+#include <opt_scsi.h>
 #include <sys/systm.h>
+
 #else
+
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+
+#define ksnprintf	snprintf	/* ick, userland uses us too */
+
 #endif
 
 #include "../cam.h"
@@ -1605,7 +1610,7 @@ scsi_cdb_string(u_int8_t *cdb_ptr, char *cdb_string, size_t len)
 	}
 	*cdb_string = '\0';
 	for (i = 0; i < cdb_len; i++)
-		snprintf(cdb_string + strlen(cdb_string),
+		ksnprintf(cdb_string + strlen(cdb_string),
 		    len - strlen(cdb_string), "%x ", cdb_ptr[i]);
 
 	return(cdb_string);
@@ -1831,7 +1836,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 	if (command_print != 0) {
 		char cdb_str[(SCSI_MAX_CDBLEN * 3) + 1];
 
-		retlen = snprintf(tmpstr, tmpstrlen, "%s", path_str);
+		retlen = ksnprintf(tmpstr, tmpstrlen, "%s", path_str);
 
 		if ((tmplen = str_len - cur_len - 1) < 0)
 			goto sst_bailout;
@@ -1841,14 +1846,14 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		str[str_len - 1] = '\0';
 
 		if ((csio->ccb_h.flags & CAM_CDB_POINTER) != 0) {
-			retlen = snprintf(tmpstr, tmpstrlen, "%s. CDB: %s\n", 
+			retlen = ksnprintf(tmpstr, tmpstrlen, "%s. CDB: %s\n", 
 					  scsi_op_desc(csio->cdb_io.cdb_ptr[0], 
 						       &device->inq_data),
 					  scsi_cdb_string(csio->cdb_io.cdb_ptr, 
 							  cdb_str,
 							  sizeof(cdb_str)));
 		} else {
-			retlen = snprintf(tmpstr, tmpstrlen, "%s. CDB: %s\n",
+			retlen = ksnprintf(tmpstr, tmpstrlen, "%s. CDB: %s\n",
 					 scsi_op_desc(csio->cdb_io.cdb_bytes[0],
 					  &device->inq_data), scsi_cdb_string(
 					  csio->cdb_io.cdb_bytes, cdb_str,
@@ -1893,7 +1898,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 	}
 
 
-	retlen = snprintf(tmpstr, tmpstrlen, "%s", path_str);
+	retlen = ksnprintf(tmpstr, tmpstrlen, "%s", path_str);
 
 	if ((tmplen = str_len - cur_len - 1) < 0)
 		goto sst_bailout;
@@ -1907,7 +1912,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 
 	switch (error_code) {
 	case SSD_DEFERRED_ERROR:
-		retlen = snprintf(tmpstr, tmpstrlen, "Deferred Error: ");
+		retlen = ksnprintf(tmpstr, tmpstrlen, "Deferred Error: ");
 
 		if ((tmplen = str_len - cur_len - 1) < 0)
 			goto sst_bailout;
@@ -1918,7 +1923,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		/* FALLTHROUGH */
 	case SSD_CURRENT_ERROR:
 
-		retlen = snprintf(tmpstr, tmpstrlen, "%s", 
+		retlen = ksnprintf(tmpstr, tmpstrlen, "%s", 
 				  scsi_sense_key_text[sense_key]);
 
 		if ((tmplen = str_len - cur_len - 1) < 0)
@@ -1939,7 +1944,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 			case SSD_KEY_DATA_PROTECT:
 				break;
 			case SSD_KEY_BLANK_CHECK:
-				retlen = snprintf(tmpstr, tmpstrlen, 
+				retlen = ksnprintf(tmpstr, tmpstrlen, 
 						  " req sz: %d (decimal)", 
 						  info);
 
@@ -1953,13 +1958,13 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 			default:
 				if (info) {
 					if (sense->flags & SSD_ILI) {
-						retlen = snprintf (tmpstr,
+						retlen = ksnprintf (tmpstr,
 								   tmpstrlen, 
 								" ILI (length "
 							"mismatch): %d", info);
 			
 					} else {
-						retlen = snprintf(tmpstr,
+						retlen = ksnprintf(tmpstr,
 								  tmpstrlen, 
 								  " info:%x", 
 								  info);
@@ -1974,7 +1979,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 				}
 			}
 		} else if (info) {
-			retlen = snprintf(tmpstr, tmpstrlen," info?:%x", info);
+			retlen = ksnprintf(tmpstr, tmpstrlen," info?:%x", info);
 
 			if ((tmplen = str_len - cur_len -1) < 0)
 				goto sst_bailout;
@@ -1986,7 +1991,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 
 		if (sense->extra_len >= 4) {
 			if (bcmp(sense->cmd_spec_info, "\0\0\0\0", 4)) {
-				retlen = snprintf(tmpstr, tmpstrlen, 
+				retlen = ksnprintf(tmpstr, tmpstrlen, 
 						  " csi:%x,%x,%x,%x",
 						  sense->cmd_spec_info[0],
 						  sense->cmd_spec_info[1],
@@ -2008,7 +2013,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		if (asc || ascq) {
 			const char *desc = scsi_sense_desc(asc, ascq,
 							   &device->inq_data);
-			retlen = snprintf(tmpstr, tmpstrlen, 
+			retlen = ksnprintf(tmpstr, tmpstrlen, 
 					  " asc:%x,%x\n%s%s", asc, ascq, 
 					  path_str, desc);
 
@@ -2021,7 +2026,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		}
 
 		if (sense->extra_len >= 7 && sense->fru) {
-			retlen = snprintf(tmpstr, tmpstrlen, 
+			retlen = ksnprintf(tmpstr, tmpstrlen, 
 					  " field replaceable unit: %x", 
 					  sense->fru);
 
@@ -2035,7 +2040,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 
 		if ((sense->extra_len >= 10)
 		 && (sense->sense_key_spec[0] & SSD_SCS_VALID) != 0) {
-			retlen = snprintf(tmpstr, tmpstrlen, " sks:%x,%x", 
+			retlen = ksnprintf(tmpstr, tmpstrlen, " sks:%x,%x", 
 					sense->sense_key_spec[0],
 			       		scsi_2btoul(&sense->sense_key_spec[1]));
 
@@ -2049,7 +2054,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		break;
 
 	default:
-		retlen = snprintf(tmpstr, tmpstrlen, "error code %d",
+		retlen = ksnprintf(tmpstr, tmpstrlen, "error code %d",
 				  sense->error_code & SSD_ERRCODE);
 
 		if ((tmplen = str_len - cur_len -1) < 0)
@@ -2060,7 +2065,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
  		str[str_len - 1] = '\0';
 
 		if (sense->error_code & SSD_ERRCODE_VALID) {
-			retlen = snprintf(tmpstr, tmpstrlen, 
+			retlen = ksnprintf(tmpstr, tmpstrlen, 
 					  " at block no. %d (decimal)",
 					  info = scsi_4btoul(sense->info));
 
@@ -2073,7 +2078,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 		}
 	}
 
-	retlen = snprintf(tmpstr, tmpstrlen, "\n");
+	retlen = ksnprintf(tmpstr, tmpstrlen, "\n");
 
 	if ((tmplen = str_len - cur_len -1) < 0)
 		goto sst_bailout;
@@ -2397,7 +2402,7 @@ scsi_print_inquiry(struct scsi_inquiry_data *inq_data)
 	if (SID_ANSI_REV(inq_data) == SCSI_REV_CCS)
 		bcopy("CCS", rstr, 4);
 	else
-		snprintf(rstr, sizeof (rstr), "%d", SID_ANSI_REV(inq_data));
+		ksnprintf(rstr, sizeof (rstr), "%d", SID_ANSI_REV(inq_data));
 	printf("<%s %s %s> %s %s SCSI-%s device %s\n",
 	       vendor, product, revision,
 	       SID_IS_REMOVABLE(inq_data) ? "Removable" : "Fixed",

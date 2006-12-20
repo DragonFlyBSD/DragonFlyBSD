@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_util.c,v 1.5 1999/08/29 10:28:10 bde Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.6 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -416,7 +416,7 @@ spans_addr_print(struct spans_addr *p)
 	/*
 	 * Print and return the string
 	 */
-	sprintf(strbuff, "%lx.%lx", (u_long)ntohl(u1.w), (u_long)ntohl(u2.w));
+	ksprintf(strbuff, "%lx.%lx", (u_long)ntohl(u1.w), (u_long)ntohl(u2.w));
 	return(strbuff);
 }
 

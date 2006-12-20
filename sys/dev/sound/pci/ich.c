@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.10 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.11 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.10 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.11 2006/12/20 18:14:40 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -784,7 +784,7 @@ ich_pci_attach(device_t dev)
 	if (sc->hasmic)
 		pcm_addchan(dev, PCMDIR_REC, &ichchan_class, sc);	/* record mic */
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx, 0x%lx irq %ld bufsz %u",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx, 0x%lx irq %ld bufsz %u",
 		 rman_get_start(sc->nambar), rman_get_start(sc->nabmbar), rman_get_start(sc->irq), sc->bufsz);
 
 	pcm_setstatus(dev, status);

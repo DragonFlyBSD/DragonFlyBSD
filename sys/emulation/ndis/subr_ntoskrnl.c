@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.11 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.12 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1409,7 +1409,7 @@ ntoskrnl_create_thread(ndis_handle *handle, uint32_t reqaccess,
 	tc->tc_thrctx = thrctx;
 	tc->tc_thrfunc = thrfunc;
 
-	sprintf(tname, "windows kthread %d", ntoskrnl_kth);
+	ksprintf(tname, "windows kthread %d", ntoskrnl_kth);
 	error = kthread_create_stk(ntoskrnl_thrfunc, tc, &td,
 	    NDIS_KSTACK_PAGES * PAGE_SIZE, tname);
 	*handle = td;
@@ -1689,9 +1689,9 @@ image_patch_table ntoskrnl_functbl[] = {
 	{ "RtlFreeAnsiString",		(FUNC)ntoskrnl_free_ansi_string },
 	{ "RtlFreeUnicodeString",	(FUNC)ntoskrnl_free_unicode_string },
 	{ "RtlUnicodeStringToInteger",	(FUNC)ntoskrnl_unicode_to_int },
-	{ "sprintf",			(FUNC)sprintf },
+	{ "sprintf",			(FUNC)ksprintf },
 	{ "vsprintf",			(FUNC)kvsprintf },
-	{ "_snprintf",			(FUNC)snprintf },
+	{ "_snprintf",			(FUNC)ksnprintf },
 	{ "_vsnprintf",			(FUNC)kvsnprintf },
 	{ "DbgPrint",			(FUNC)ntoskrnl_dbgprint },
 	{ "DbgBreakPoint",		(FUNC)ntoskrnl_debugger },

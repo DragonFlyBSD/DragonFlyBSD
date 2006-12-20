@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.18 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.19 2006/12/20 18:14:37 dillon Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -119,7 +119,7 @@ SYSCTL_INT(_hw_usb_uhci, OID_AUTO, debug, CTLFLAG_RW,
 SYSCTL_INT(_hw_usb_uhci, OID_AUTO, loop, CTLFLAG_RW,
 	   &uhcinoloop, 0, "uhci noloop");
 #ifndef __NetBSD__
-#define bitmask_snprintf(q,f,b,l) snprintf((b), (l), "%b", (q), (f))
+#define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
 #endif
 #else
 #define DPRINTF(x)

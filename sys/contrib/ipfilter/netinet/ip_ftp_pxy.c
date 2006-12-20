@@ -2,7 +2,7 @@
  * Simple FTP transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.17.2.6 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.5 2004/07/28 00:22:37 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.6 2006/12/20 18:14:37 dillon Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -211,7 +211,7 @@ int dlen;
 	(void) snprintf(newbuf, sizeof(newbuf), "%s %u,%u,%u,%u,%u,%u\r\n",
 		        "PORT", a1, a2, a3, a4, a5, a6);
 #else
-	(void) sprintf(newbuf, "%s %u,%u,%u,%u,%u,%u\r\n",
+	(void) ksprintf(newbuf, "%s %u,%u,%u,%u,%u,%u\r\n",
 		       "PORT", a1, a2, a3, a4, a5, a6);
 #endif
 

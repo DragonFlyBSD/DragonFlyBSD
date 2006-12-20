@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.62.2.5 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
 
 #define SB_DEFAULT_BUFSZ	4096
 
@@ -684,7 +684,7 @@ sb_probe(device_t dev)
 	if ((f & BD_F_ESS) || (ver >= 0x400))
 		return (ENXIO);
 
-	snprintf(buf, sizeof buf, "SB DSP %d.%02d", (int) ver >> 8, (int) ver & 0xff);
+	ksnprintf(buf, sizeof buf, "SB DSP %d.%02d", (int) ver >> 8, (int) ver & 0xff);
 
     	device_set_desc_copy(dev, buf);
 
@@ -730,7 +730,7 @@ sb_attach(device_t dev)
 		goto no;
     	}
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld bufsz %u",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld bufsz %u",
     	     	rman_get_start(sb->io_base), rman_get_start(sb->irq), rman_get_start(sb->drq), sb->bufsize);
 
     	if (pcm_register(dev, sb, 1, 1))

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.20 2006/10/25 20:56:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.21 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -2572,7 +2572,7 @@ ciss_name_device(struct ciss_softc *sc, int target)
     struct cam_periph	*periph;
 
     if ((periph = ciss_find_periph(sc, target)) != NULL) {
-	sprintf(sc->ciss_logical[target].cl_name, "%s%d", periph->periph_name, periph->unit_number);
+	ksprintf(sc->ciss_logical[target].cl_name, "%s%d", periph->periph_name, periph->unit_number);
 	return(0);
     }
     sc->ciss_logical[target].cl_name[0] = 0;

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.43 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.44 2006/12/20 18:14:41 dillon Exp $
  *
  */
 
@@ -951,12 +951,12 @@ sysctl_intrnames(SYSCTL_HANDLER_ARGS)
 	len = 0;
 	buf[0] = 0;
 	for (rec = info->i_reclist; rec; rec = rec->next) {
-	    snprintf(buf + len, sizeof(buf) - len, "%s%s", 
+	    ksnprintf(buf + len, sizeof(buf) - len, "%s%s", 
 		(len ? "/" : ""), rec->name);
 	    len += strlen(buf + len);
 	}
 	if (len == 0) {
-	    snprintf(buf, sizeof(buf), "irq%d", intr);
+	    ksnprintf(buf, sizeof(buf), "irq%d", intr);
 	    len = strlen(buf);
 	}
 	error = SYSCTL_OUT(req, buf, len + 1);

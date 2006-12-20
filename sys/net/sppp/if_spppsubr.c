@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.26 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.27 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -5322,7 +5322,7 @@ sppp_cp_type_name(u_char type)
 	case ECHO_REPLY: return "echo-reply";
 	case DISC_REQ:   return "discard-req";
 	}
-	snprintf (buf, sizeof(buf), "cp/0x%x", type);
+	ksnprintf (buf, sizeof(buf), "cp/0x%x", type);
 	return buf;
 }
 
@@ -5345,7 +5345,7 @@ sppp_auth_type_name(u_short proto, u_char type)
 		case PAP_NAK:		return "nak";
 		}
 	}
-	snprintf (buf, sizeof(buf), "auth/0x%x", type);
+	ksnprintf (buf, sizeof(buf), "auth/0x%x", type);
 	return buf;
 }
 
@@ -5362,7 +5362,7 @@ sppp_lcp_opt_name(u_char opt)
 	case LCP_OPT_PROTO_COMP:	return "proto-comp";
 	case LCP_OPT_ADDR_COMP:		return "addr-comp";
 	}
-	snprintf (buf, sizeof(buf), "lcp/0x%x", opt);
+	ksnprintf (buf, sizeof(buf), "lcp/0x%x", opt);
 	return buf;
 }
 
@@ -5375,7 +5375,7 @@ sppp_ipcp_opt_name(u_char opt)
 	case IPCP_OPT_COMPRESSION:	return "compression";
 	case IPCP_OPT_ADDRESS:		return "address";
 	}
-	snprintf (buf, sizeof(buf), "ipcp/0x%x", opt);
+	ksnprintf (buf, sizeof(buf), "ipcp/0x%x", opt);
 	return buf;
 }
 
@@ -5388,7 +5388,7 @@ sppp_ipv6cp_opt_name(u_char opt)
 	case IPV6CP_OPT_IFID:		return "ifid";
 	case IPV6CP_OPT_COMPRESSION:	return "compression";
 	}
-	sprintf (buf, "0x%x", opt);
+	ksprintf (buf, "0x%x", opt);
 	return buf;
 }
 #endif
@@ -5435,7 +5435,7 @@ sppp_proto_name(u_short proto)
 	case PPP_CHAP:	return "chap";
 	case PPP_IPV6CP: return "ipv6cp";
 	}
-	snprintf(buf, sizeof(buf), "proto/0x%x", (unsigned)proto);
+	ksnprintf(buf, sizeof(buf), "proto/0x%x", (unsigned)proto);
 	return buf;
 }
 
@@ -5467,7 +5467,7 @@ static const char *
 sppp_dotted_quad(u_long addr)
 {
 	static char s[16];
-	sprintf(s, "%d.%d.%d.%d",
+	ksprintf(s, "%d.%d.%d.%d",
 		(int)((addr >> 24) & 0xff),
 		(int)((addr >> 16) & 0xff),
 		(int)((addr >> 8) & 0xff),

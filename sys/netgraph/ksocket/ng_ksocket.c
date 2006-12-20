@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.11 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.12 2006/12/20 18:14:43 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -336,7 +336,7 @@ ng_ksocket_sockaddr_unparse(const struct ng_parse_type *type,
 		pathbuf[pathlen] = '\0';
 		if ((pathtoken = ng_encode_string(pathbuf)) == NULL)
 			return (ENOMEM);
-		slen += snprintf(cbuf, cbuflen, "local/%s", pathtoken);
+		slen += ksnprintf(cbuf, cbuflen, "local/%s", pathtoken);
 		FREE(pathtoken, M_NETGRAPH);
 		if (slen >= cbuflen)
 			return (ERANGE);
@@ -348,13 +348,13 @@ ng_ksocket_sockaddr_unparse(const struct ng_parse_type *type,
 	    {
 		const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
 
-		slen += snprintf(cbuf, cbuflen, "inet/%d.%d.%d.%d",
+		slen += ksnprintf(cbuf, cbuflen, "inet/%d.%d.%d.%d",
 		  ((const u_char *)&sin->sin_addr)[0],
 		  ((const u_char *)&sin->sin_addr)[1],
 		  ((const u_char *)&sin->sin_addr)[2],
 		  ((const u_char *)&sin->sin_addr)[3]);
 		if (sin->sin_port != 0) {
-			slen += snprintf(cbuf + strlen(cbuf),
+			slen += ksnprintf(cbuf + strlen(cbuf),
 			    cbuflen - strlen(cbuf), ":%d",
 			    (u_int)ntohs(sin->sin_port));
 		}
@@ -583,7 +583,7 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 		}
 	} else {
 		/* Extract family, type, and protocol from hook name */
-		snprintf(name, sizeof(name), "%s", name0);
+		ksnprintf(name, sizeof(name), "%s", name0);
 		s1 = name;
 		if ((s2 = index(s1, '/')) == NULL)
 			return (EINVAL);

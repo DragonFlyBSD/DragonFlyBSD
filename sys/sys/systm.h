@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.51 2006/12/18 21:02:59 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.52 2006/12/20 18:14:44 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -151,9 +151,7 @@ void	logwakeup (void);
 void	log_console (struct uio *);
 int	kprintf (const char *, ...) __printflike(1, 2);
 int	printf (const char *, ...) __printflike(1, 2);
-int	snprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
-int	sprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	ksprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);
 int	kvprintf (const char *, __va_list) __printflike(1, 0);

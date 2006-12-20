@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.16 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.17 2006/12/20 18:14:34 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -830,8 +830,8 @@ scsi_low_attach_cam(struct scsi_low_softc *slp)
 	struct cam_devq *devq;
 	int tagged_openings;
 
-	sprintf(slp->sl_xname, "%s%d",
-		DEVPORT_DEVNAME(slp->sl_dev), DEVPORT_DEVUNIT(slp->sl_dev));
+	ksprintf(slp->sl_xname, "%s%d",
+		 DEVPORT_DEVNAME(slp->sl_dev), DEVPORT_DEVUNIT(slp->sl_dev));
 
 	devq = cam_simq_alloc(SCSI_LOW_NCCB);
 	if (devq == NULL)

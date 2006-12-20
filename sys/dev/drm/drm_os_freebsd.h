@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.21 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.22 2006/12/20 18:14:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -341,12 +341,12 @@ find_first_zero_bit(volatile void *p, int max)
 #endif
 
 #define DRM_SYSCTL_PRINT(fmt, arg...)		\
-  snprintf(buf, sizeof(buf), fmt, ##arg);	\
+  ksnprintf(buf, sizeof(buf), fmt, ##arg);	\
   error = SYSCTL_OUT(req, buf, strlen(buf));	\
   if (error) return error;
 
 #define DRM_SYSCTL_PRINT_RET(ret, fmt, arg...)	\
-  snprintf(buf, sizeof(buf), fmt, ##arg);	\
+  ksnprintf(buf, sizeof(buf), fmt, ##arg);	\
   error = SYSCTL_OUT(req, buf, strlen(buf));	\
   if (error) { ret; return error; }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.33 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.34 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1446,7 +1446,7 @@ void
 ata_set_name(struct ata_device *atadev, char *name, int lun)
 {
     atadev->name = kmalloc(strlen(name) + 4, M_ATA, M_INTWAIT);
-    sprintf(atadev->name, "%s%d", name, lun);
+    ksprintf(atadev->name, "%s%d", name, lun);
 }
 
 void

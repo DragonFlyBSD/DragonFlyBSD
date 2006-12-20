@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.4 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.5 2006/12/20 18:14:38 dillon Exp $
  */
 
 /*
@@ -334,7 +334,7 @@ fore_cmd_drain(fup)
 					sizeof(struct mac_addr));
 				fup->fu_config.ac_macaddr = 
 					fup->fu_pif.pif_macaddr;
-				snprintf(fup->fu_config.ac_hard_vers,
+				ksnprintf(fup->fu_config.ac_hard_vers,
 				    sizeof(fup->fu_config.ac_hard_vers),
 					"%ld.%ld.%ld",
 					(fp->pr_hwver >> 16) & 0xff,

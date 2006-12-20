@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -871,7 +871,7 @@ tr_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, 64, "at io 0x%lx irq %ld",
+	ksnprintf(status, 64, "at io 0x%lx irq %ld",
 		 rman_get_start(tr->reg), rman_get_start(tr->irq));
 
 	if (pcm_register(dev, tr, TR_MAXPLAYCH, 1)) goto bad;

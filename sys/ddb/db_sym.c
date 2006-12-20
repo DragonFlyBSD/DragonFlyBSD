@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_sym.c,v 1.32 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_sym.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_sym.c,v 1.6 2006/12/20 18:14:37 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ db_qualify(c_db_sym_t sym, char *symtabname)
 	static char     tmp[256];
 
 	db_symbol_values(sym, &symname, 0);
-	snprintf(tmp, sizeof(tmp), "%s:%s", symtabname, symname);
+	ksnprintf(tmp, sizeof(tmp), "%s:%s", symtabname, symname);
 	return tmp;
 }
 

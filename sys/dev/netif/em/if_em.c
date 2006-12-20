@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.51 2006/12/09 01:44:23 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.52 2006/12/20 18:14:39 dillon Exp $
  * $FreeBSD$
  */
 /*
@@ -380,7 +380,7 @@ em_probe(device_t dev)
 
 		    ((pci_subdevice_id == ent->subdevice_id) ||
 		     (ent->subdevice_id == PCI_ANY_ID))) {
-			snprintf(adapter_name, sizeof(adapter_name),
+			ksnprintf(adapter_name, sizeof(adapter_name),
 				 "%s, Version - %s",  em_strings[ent->index], 
 				 em_driver_version);
 			device_set_desc_copy(dev, adapter_name);

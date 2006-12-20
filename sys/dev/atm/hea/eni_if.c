@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_if.c,v 1.5 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.6 2006/12/20 18:14:38 dillon Exp $
  */
 
 /*
@@ -190,7 +190,7 @@ eni_atm_ioctl ( code, data, arg )
 		 */
 		if ( eup == NULL )
 			return ( ENXIO );
-		snprintf ( ifname, sizeof(ifname),
+		ksnprintf ( ifname, sizeof(ifname),
 		    "%s%d", pip->pif_name, pip->pif_unit );
 
 		/*

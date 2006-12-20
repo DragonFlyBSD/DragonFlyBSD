@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.12 2006/12/10 02:03:56 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.13 2006/12/20 18:14:37 dillon Exp $
  */
 
 /*
@@ -327,44 +327,44 @@ ehci_pci_attach(device_t self)
 	device_set_desc(sc->sc_bus.bdev, ehci_pci_match(self));
 	switch (pci_get_vendor(self)) {
 	case PCI_EHCI_VENDORID_ACERLABS:
-		sprintf(sc->sc_vendor, "AcerLabs");
+		ksprintf(sc->sc_vendor, "AcerLabs");
 		break;
 	case PCI_EHCI_VENDORID_AMD:
-		sprintf(sc->sc_vendor, "AMD");
+		ksprintf(sc->sc_vendor, "AMD");
 		break;
 	case PCI_EHCI_VENDORID_APPLE:
-		sprintf(sc->sc_vendor, "Apple");
+		ksprintf(sc->sc_vendor, "Apple");
 		break;
 	case PCI_EHCI_VENDORID_ATI:
-		sprintf(sc->sc_vendor, "ATI");
+		ksprintf(sc->sc_vendor, "ATI");
 		break;
 	case PCI_EHCI_VENDORID_CMDTECH:
-		sprintf(sc->sc_vendor, "CMDTECH");
+		ksprintf(sc->sc_vendor, "CMDTECH");
 		break;
 	case PCI_EHCI_VENDORID_INTEL:
-		sprintf(sc->sc_vendor, "Intel");
+		ksprintf(sc->sc_vendor, "Intel");
 		break;
 	case PCI_EHCI_VENDORID_NEC:
-		sprintf(sc->sc_vendor, "NEC");
+		ksprintf(sc->sc_vendor, "NEC");
 		break;
 	case PCI_EHCI_VENDORID_OPTI:
-		sprintf(sc->sc_vendor, "OPTi");
+		ksprintf(sc->sc_vendor, "OPTi");
 		break;
 	case PCI_EHCI_VENDORID_SIS:
-		sprintf(sc->sc_vendor, "SiS");
+		ksprintf(sc->sc_vendor, "SiS");
 		break;
 	case PCI_EHCI_VENDORID_NVIDIA:
 	case PCI_EHCI_VENDORID_NVIDIA2:
-		sprintf(sc->sc_vendor, "nVidia");
+		ksprintf(sc->sc_vendor, "nVidia");
 		break;
 	case PCI_EHCI_VENDORID_VIA:
-		sprintf(sc->sc_vendor, "VIA");
+		ksprintf(sc->sc_vendor, "VIA");
 		break;
 	default:
 		if (bootverbose)
 			device_printf(self, "(New EHCI DeviceId=0x%08x)\n",
 			    pci_get_devid(self));
-		sprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
+		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
 	err = bus_setup_intr(self, sc->irq_res, 0,

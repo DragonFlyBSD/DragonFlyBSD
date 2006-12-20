@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.26 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.27 2006/12/20 18:14:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -100,7 +100,7 @@ SYSCTL_NODE(_hw_usb, OID_AUTO, ehci, CTLFLAG_RW, 0, "USB ehci");
 SYSCTL_INT(_hw_usb_ehci, OID_AUTO, debug, CTLFLAG_RW,
 	   &ehcidebug, 0, "ehci debug level");
 #ifndef __NetBSD__
-#define bitmask_snprintf(q,f,b,l) snprintf((b), (l), "%b", (q), (f))
+#define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
 #endif
 #else
 #define DPRINTF(x)

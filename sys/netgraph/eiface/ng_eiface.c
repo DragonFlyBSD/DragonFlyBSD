@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.10 2006/01/14 11:10:47 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -350,7 +350,7 @@ ng_eiface_constructor(node_p *nodep)
 
 	/* Give this node name *
 	bzero(ifname, sizeof(ifname));
-	sprintf(ifname, "if%s", ifp->if_xname);
+	ksprintf(ifname, "if%s", ifp->if_xname);
 	ng_name_node(node, ifname);
 	*/
 
@@ -426,7 +426,7 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 				break;
 			}
 			arg = (struct ng_eiface_ifname *) resp->data;
-			sprintf(arg->ngif_name,
+			ksprintf(arg->ngif_name,
 			    "%s", ifp->if_xname); /* XXX: strings */
 			break;
 		    }

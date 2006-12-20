@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.16 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.17 2006/12/20 18:14:43 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -225,7 +225,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 		FREE(sc, M_NETGRAPH);
 		goto done;
 	}
-	snprintf(name, sizeof(name), "%s%d", typestruct.name, ngt_unit++);
+	ksnprintf(name, sizeof(name), "%s%d", typestruct.name, ngt_unit++);
 
 	/* Set back pointers */
 	sc->node->private = sc;

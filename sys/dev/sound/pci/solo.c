@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.9.2.8 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
 
 #define SOLO_DEFAULT_BUFSZ 16384
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -958,7 +958,7 @@ ess_attach(device_t dev)
 		goto no;
     	}
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx,0x%lx,0x%lx irq %ld",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx,0x%lx,0x%lx irq %ld",
     	     	rman_get_start(sc->io), rman_get_start(sc->sb), rman_get_start(sc->vc),
 		rman_get_start(sc->irq));
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -640,7 +640,7 @@ fm801_pci_attach(device_t dev)
 		goto oops;
 	}
 
-	snprintf(status, 64, "at %s 0x%lx irq %ld",
+	ksnprintf(status, 64, "at %s 0x%lx irq %ld",
 		(fm801->regtype == SYS_RES_IOPORT)? "io" : "memory",
 		rman_get_start(fm801->reg), rman_get_start(fm801->irq));
 

@@ -29,7 +29,7 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -860,7 +860,7 @@ cs4281_pci_attach(device_t dev)
     pcm_addchan(dev, PCMDIR_PLAY, &cs4281chan_class, sc);
     pcm_addchan(dev, PCMDIR_REC, &cs4281chan_class, sc);
 
-    snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+    ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
 	     (sc->regtype == SYS_RES_IOPORT)? "io" : "memory",
 	     rman_get_start(sc->reg), rman_get_start(sc->irq));
     pcm_setstatus(dev, status);

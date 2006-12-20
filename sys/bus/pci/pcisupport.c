@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.18 2006/10/25 20:55:51 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.19 2006/12/20 18:14:37 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -121,11 +121,11 @@ pci_bridge_type(device_t dev)
     case PCIS_BRIDGE_CARDBUS:	strcpy(tmpbuf, "PCI to CardBus"); break;
     case PCIS_BRIDGE_OTHER:	strcpy(tmpbuf, "PCI to Other"); break;
     default: 
-	    snprintf(tmpbuf, sizeof(tmpbuf),
+	    ksnprintf(tmpbuf, sizeof(tmpbuf),
 		     "PCI to 0x%x", pci_get_subclass(dev)); 
 	    break;
     }
-    snprintf(tmpbuf+strlen(tmpbuf), sizeof(tmpbuf)-strlen(tmpbuf),
+    ksnprintf(tmpbuf+strlen(tmpbuf), sizeof(tmpbuf)-strlen(tmpbuf),
 	     " bridge (vendor=%04x device=%04x)",
 	     pci_get_vendor(dev), pci_get_device(dev));
     descr = kmalloc (strlen(tmpbuf) +1, M_DEVBUF, M_WAITOK);
@@ -889,7 +889,7 @@ pci_vga_match(device_t dev)
 
 		len = strlen(vendor) + strlen(chip) + strlen(type) + 4;
 		MALLOC(buf, char *, len, M_TEMP, M_WAITOK);
-		sprintf(buf, "%s %s %s", vendor, chip, type);
+		ksprintf(buf, "%s %s %s", vendor, chip, type);
 		return buf;
 	}
 
@@ -934,7 +934,7 @@ pci_vga_match(device_t dev)
 
 		len = strlen(vendor) + 7 + 4 + 1 + strlen(type) + 1;
 		MALLOC(buf, char *, len, M_TEMP, M_WAITOK);
-		sprintf(buf, "%s model %04x %s", vendor, id >> 16, type);
+		ksprintf(buf, "%s model %04x %s", vendor, id >> 16, type);
 		return buf;
 	}
 	return type;

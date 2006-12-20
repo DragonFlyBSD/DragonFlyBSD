@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
   *
   */
 
@@ -520,7 +520,7 @@ acpi_ec_probe(device_t dev)
 
 out:
     if (ret == 0) {
-	snprintf(desc, sizeof(desc), "Embedded Controller: GPE %#x%s%s",
+	ksnprintf(desc, sizeof(desc), "Embedded Controller: GPE %#x%s%s",
 		 params->gpe_bit, (params->glk) ? ", GLK" : "",
 		 DEV_ECDT(dev) ? ", ECDT" : "");
 	device_set_desc_copy(dev, desc);
@@ -685,7 +685,7 @@ EcGpeQueryHandler(void *Context)
 	goto re_enable;
 
     /* Evaluate _Qxx to respond to the controller. */
-    sprintf(qxx, "_Q%02x", Data);
+    ksprintf(qxx, "_Q%02x", Data);
     strupr(qxx);
     Status = AcpiEvaluateObject(sc->ec_handle, qxx, NULL, NULL);
     if (ACPI_FAILURE(Status) && Status != AE_NOT_FOUND) {

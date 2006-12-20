@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.8 2005/06/16 21:12:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.9 2006/12/20 18:14:38 dillon Exp $
  */
 
 /*
@@ -486,7 +486,7 @@ eni_pci_attach ( pcici_t config_id, int unit )
 	 * Make a hw version number from the ID register values.
 	 * Format: {Midway ID}.{Mother board ID}.{Daughter board ID}
 	 */
-	snprintf ( eup->eu_config.ac_hard_vers,
+	ksnprintf ( eup->eu_config.ac_hard_vers,
 	    sizeof ( eup->eu_config.ac_hard_vers ),
 		"%ld/%ld/%ld",
 		(val >> ID_SHIFT) & ID_MASK,

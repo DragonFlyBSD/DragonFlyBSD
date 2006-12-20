@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.67 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.68 2006/12/20 18:14:44 dillon Exp $
  */
 
 
@@ -2635,7 +2635,7 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	vref(dvp);
 
 	/* Fudge together a funny name */
-	sp->s_namlen = sprintf(sp->s_name, ".nfsA%08x4.4", (int)cnp->cn_td);
+	sp->s_namlen = ksprintf(sp->s_name, ".nfsA%08x4.4", (int)cnp->cn_td);
 
 	/* Try lookitups until we get one that isn't there */
 	while (nfs_lookitup(dvp, sp->s_name, sp->s_namlen, sp->s_cred,

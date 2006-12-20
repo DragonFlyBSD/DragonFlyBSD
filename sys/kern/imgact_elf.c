@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.43 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.44 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -795,7 +795,7 @@ exec_elf_imgact(struct image_params *imgp)
 	imgp->proc->p_sysent = brand_info->sysvec;
 	if (interp != NULL) {
 		path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-	        snprintf(path, MAXPATHLEN, "%s%s",
+	        ksnprintf(path, MAXPATHLEN, "%s%s",
 			 brand_info->emul_path, interp);
 		if ((error = elf_load_file(imgp->proc, path, &addr,
 					   &imgp->entry_addr)) != 0) {

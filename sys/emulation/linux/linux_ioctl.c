@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.20 2006/06/05 07:26:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.21 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -923,7 +923,7 @@ linux_ifname(struct ifnet *ifp, char *buffer, size_t buflen)
 	ethno = 0;
 	TAILQ_FOREACH(ifscan, &ifnet, if_link) {
 		if (ifscan == ifp)
-			return (snprintf(buffer, buflen, "eth%d", ethno));
+			return (ksnprintf(buffer, buflen, "eth%d", ethno));
 		if (IFP_IS_ETH(ifscan))
 			ethno++;
 	}
@@ -1004,7 +1004,7 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 
 		bzero(&ifr, sizeof ifr);
 		if (IFP_IS_ETH(ifp))
-			snprintf(ifr.ifr_name, LINUX_IFNAMSIZ, "eth%d",
+			ksnprintf(ifr.ifr_name, LINUX_IFNAMSIZ, "eth%d",
 			    ethno++);
 		else
 			strlcpy(ifr.ifr_name, ifp->if_xname, LINUX_IFNAMSIZ);

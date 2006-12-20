@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.6 2006/10/25 20:56:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 /*
  * CAM interface for FreeBSD
@@ -582,7 +582,7 @@ mly_name_device(struct mly_softc *sc, int bus, int target)
     struct cam_periph	*periph;
 
     if ((periph = mly_find_periph(sc, bus, target)) != NULL) {
-	sprintf(sc->mly_btl[bus][target].mb_name, "%s%d", periph->periph_name, periph->unit_number);
+	ksprintf(sc->mly_btl[bus][target].mb_name, "%s%d", periph->periph_name, periph->unit_number);
 	return(0);
     }
     sc->mly_btl[bus][target].mb_name[0] = 0;

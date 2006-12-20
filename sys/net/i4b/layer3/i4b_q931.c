@@ -30,7 +30,7 @@
  *	$Id: i4b_q931.c,v 1.32 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_q931.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.8 2006/12/20 18:14:42 dillon Exp $
  *
  *      last edit-date: [Mon May 29 16:56:52 2000]
  *
@@ -390,7 +390,7 @@ i4b_decode_q931_cs0_ie(int unit, call_desc_t *cd, int msg_len, u_char *msg_ptr)
 			*p = '\0';
 			
 			for(j = msg_ptr[1]; j > 0; j--, i++)
-				sprintf(p+strlen(p), "%02d", msg_ptr[i]);
+				ksprintf(p+strlen(p), "%02d", msg_ptr[i]);
 			
 			NDBGL3(L3_P_MSG, "IEI_DATETIME = %s", cd->datetime);
 			break;

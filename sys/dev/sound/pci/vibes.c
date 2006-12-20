@@ -28,7 +28,7 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -880,7 +880,7 @@ sv_attach(device_t dev) {
         pcm_addchan(dev, PCMDIR_PLAY, &svpchan_class, sc);
         pcm_addchan(dev, PCMDIR_REC,  &svrchan_class, sc);
 
-        snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
+        ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
                  rman_get_start(sc->enh_reg),  rman_get_start(sc->irq));
         pcm_setstatus(dev, status);
 

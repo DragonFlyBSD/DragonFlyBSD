@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.8 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -820,7 +820,7 @@ spanscls_pdu_print(struct spanscls *clp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 
-	snprintf(buf, sizeof(buf), "spanscls %s:\n", msg);
+	ksnprintf(buf, sizeof(buf), "spanscls %s:\n", msg);
 	atm_pdu_print(m, buf);
 }
 

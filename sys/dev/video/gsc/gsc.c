@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.13 2006/09/10 01:26:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.14 2006/12/20 18:14:41 dillon Exp $
  *
  */
 
@@ -676,7 +676,7 @@ gscread  (struct dev_read_args *ap)
 	  char *p;
 	  int width = geomtab[scu->geometry].dpl;
 
-	  sprintf(scu->sbuf.base,"P4 %d %d\n", width, scu->height);
+	  ksprintf(scu->sbuf.base,"P4 %d %d\n", width, scu->height);
 	  scu->bcount = scu->height * width / 8;
 
 	  lprintf(("gsc%d.read: initializing pbm mode: `%s', bcount: 0x%x\n",

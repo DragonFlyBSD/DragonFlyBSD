@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.14 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.15 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -403,31 +403,31 @@ aha_fetch_adapter_info(struct aha_softc *aha)
 	
 	switch (aha->boardid) {
 	case BOARD_1540_16HEAD_BIOS:
-		snprintf(aha->model, sizeof(aha->model), "1540 16 head BIOS");
+		ksnprintf(aha->model, sizeof(aha->model), "1540 16 head BIOS");
 		break;
 	case BOARD_1540_64HEAD_BIOS:
-		snprintf(aha->model, sizeof(aha->model), "1540 64 head BIOS");
+		ksnprintf(aha->model, sizeof(aha->model), "1540 64 head BIOS");
 		break;
 	case BOARD_1542:
-		snprintf(aha->model, sizeof(aha->model), "1540/1542 64 head BIOS");
+		ksnprintf(aha->model, sizeof(aha->model), "1540/1542 64 head BIOS");
 		break;
 	case BOARD_1640:
-		snprintf(aha->model, sizeof(aha->model), "1640");
+		ksnprintf(aha->model, sizeof(aha->model), "1640");
 		break;
 	case BOARD_1740:
-		snprintf(aha->model, sizeof(aha->model), "1740A/1742A/1744");
+		ksnprintf(aha->model, sizeof(aha->model), "1740A/1742A/1744");
 		break;
 	case BOARD_1542C:
-		snprintf(aha->model, sizeof(aha->model), "1542C");
+		ksnprintf(aha->model, sizeof(aha->model), "1542C");
 		break;
 	case BOARD_1542CF:
-		snprintf(aha->model, sizeof(aha->model), "1542CF");
+		ksnprintf(aha->model, sizeof(aha->model), "1542CF");
 		break;
 	case BOARD_1542CP:
-		snprintf(aha->model, sizeof(aha->model), "1542CP");
+		ksnprintf(aha->model, sizeof(aha->model), "1542CP");
 		break;
 	default:
-		snprintf(aha->model, sizeof(aha->model), "Unknown");
+		ksnprintf(aha->model, sizeof(aha->model), "Unknown");
 		break;
 	}
 	/*

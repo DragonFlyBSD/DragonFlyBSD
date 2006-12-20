@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1044,7 +1044,7 @@ acd_make_tracknode(device_t dev, int track)
     struct acd_tracknode *tracknode;
     char name[16];
 
-    sprintf(name, "acd%dt%d", device_get_unit(dev), track);
+    ksprintf(name, "acd%dt%d", device_get_unit(dev), track);
     tracknode = kmalloc(sizeof(struct acd_tracknode), M_ACD, M_WAITOK | M_ZERO);
     tracknode->cdev = make_dev(&acd_ops, (device_get_unit(dev) << 3) |
 			      (track << 16), UID_ROOT, GID_OPERATOR, 0644,

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.47 2006/09/19 16:06:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.48 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -528,7 +528,7 @@ nfs_mountroot(struct mount *mp)
 	nd->root_args.fh = nd->root_fh;
 	nd->root_args.fhsize = nd->root_fhsize;
 	l = ntohl(nd->root_saddr.sin_addr.s_addr);
-	snprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
+	ksnprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
 		(l >> 24) & 0xff, (l >> 16) & 0xff,
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
 	printf("NFS ROOT: %s\n",buf);
@@ -555,7 +555,7 @@ nfs_mountroot(struct mount *mp)
 		nd->swap_args.fh = nd->swap_fh;
 		nd->swap_args.fhsize = nd->swap_fhsize;
 		l = ntohl(nd->swap_saddr.sin_addr.s_addr);
-		snprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
+		ksnprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
 			(l >> 24) & 0xff, (l >> 16) & 0xff,
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		printf("NFS SWAP: %s\n",buf);

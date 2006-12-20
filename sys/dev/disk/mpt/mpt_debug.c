@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.2.2.1 2002/08/23 06:59:05 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.4 2006/12/20 18:14:38 dillon Exp $ */
 /*
  * Debug routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -174,7 +174,7 @@ mpt_ioc_status(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 
@@ -186,10 +186,10 @@ mpt_ioc_diag(u_int32_t code)
 	char *ptr = buf;
 	char *end = &buf[128];
 	buf[0] = '\0';
-	ptr += snprintf(buf, sizeof buf, "(0x%08x)", code);
+	ptr += ksnprintf(buf, sizeof buf, "(0x%08x)", code);
 	while (status->Error_Code >= 0) {
 		if ((status->Error_Code & code) != 0)
-			ptr += snprintf(ptr, (size_t)(end-ptr), "%s ",
+			ptr += ksnprintf(ptr, (size_t)(end-ptr), "%s ",
 				status->Error_String);
 		status++;
 	}
@@ -206,7 +206,7 @@ mpt_ioc_function(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 static char *
@@ -219,7 +219,7 @@ mpt_ioc_event(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 static char *
@@ -230,10 +230,10 @@ mpt_scsi_state(int code)
 	char *ptr = buf;
 	char *end = &buf[128];
 	buf[0] = '\0';
-	ptr += snprintf(buf, sizeof buf, "(0x%08x)", code);
+	ptr += ksnprintf(buf, sizeof buf, "(0x%08x)", code);
 	while (status->Error_Code >= 0) {
 		if ((status->Error_Code & code) != 0)
-			ptr += snprintf(ptr, (size_t)(end-ptr), "%s ",
+			ptr += ksnprintf(ptr, (size_t)(end-ptr), "%s ",
 				status->Error_String);
 		status++;
 	}
@@ -249,7 +249,7 @@ mpt_scsi_status(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 static char *

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.14 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.15 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -303,7 +303,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 		KM_ZERO((caddr_t)&apr, sizeof(apr));
 		smp = pip->pif_sigmgr;
 		sip = pip->pif_siginst;
-		snprintf(apr.anp_intf, sizeof(apr.anp_intf),
+		ksnprintf(apr.anp_intf, sizeof(apr.anp_intf),
 			"%s%d", pip->pif_name, pip->pif_unit );
 		if ( pip->pif_nif )
 		{
@@ -358,13 +358,13 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 		 * Fill in info to be returned
 		 */
 		KM_ZERO((caddr_t)&anr, sizeof(anr));
-		snprintf(anr.anp_intf, sizeof(anr.anp_intf),
+		ksnprintf(anr.anp_intf, sizeof(anr.anp_intf),
 		    "%s", ifp->if_xname);
 		IFP_TO_IA(ifp, ia);
 		if (ia) {
 			anr.anp_proto_addr = *ia->ia_ifa.ifa_addr;
 		}
-		snprintf(anr.anp_phy_intf, sizeof(anr.anp_phy_intf),
+		ksnprintf(anr.anp_phy_intf, sizeof(anr.anp_phy_intf),
 		    "%s%d", pip->pif_name, pip->pif_unit);
 
 		/*
@@ -388,7 +388,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 		pip = (struct atm_pif *)arg;
 		if ( pip == NULL )
 			return ( ENXIO );
-		snprintf ( ifname, sizeof(ifname),
+		ksnprintf ( ifname, sizeof(ifname),
 		    "%s%d", pip->pif_name, pip->pif_unit );
 
 		/*
@@ -543,7 +543,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 		 * Fill in info to be returned
 		 */
 		KM_ZERO((caddr_t)&acr, sizeof(acr));
-		snprintf(acr.acp_intf, sizeof(acr.acp_intf),
+		ksnprintf(acr.acp_intf, sizeof(acr.acp_intf),
 		    "%s%d", pip->pif_name, pip->pif_unit);
 		KM_COPY((caddr_t)acp, (caddr_t)&acr.acp_cfg,
 				sizeof(Atm_config));

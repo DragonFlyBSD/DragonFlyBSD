@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
 
 #define ESS_BUFFSIZE (4096)
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -823,7 +823,7 @@ ess_attach(device_t dev)
 	sc->duplex = 0;
 	sc->newspeed = 0;
 	ver = (ess_getmixer(sc, 0x40) << 8) | ess_rd(sc, SB_MIX_DATA);
-	snprintf(buf, sizeof buf, "ESS %x DSP", ver);
+	ksnprintf(buf, sizeof buf, "ESS %x DSP", ver);
 	device_set_desc_copy(dev, buf);
 	if (bootverbose)
 		device_printf(dev, "ESS%x detected", ver);
@@ -862,11 +862,11 @@ ess_attach(device_t dev)
     	}
 
     	if (sc->drq2)
-		snprintf(buf, SND_STATUSLEN, ":%ld", rman_get_start(sc->drq2));
+		ksnprintf(buf, SND_STATUSLEN, ":%ld", rman_get_start(sc->drq2));
 	else
 		buf[0] = '\0';
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u",
     	     	rman_get_start(sc->io_base), rman_get_start(sc->irq),
 		rman_get_start(sc->drq1), buf, sc->bufsize);
 

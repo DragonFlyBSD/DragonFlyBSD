@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
  */
 /*
  * Ported from:
@@ -184,7 +184,7 @@ adv_name(struct adv_softc *adv)
 {
 	static char name[10];
 
-	snprintf(name, sizeof(name), "adv%d", adv->unit);
+	ksnprintf(name, sizeof(name), "adv%d", adv->unit);
 	return (name);
 }
 

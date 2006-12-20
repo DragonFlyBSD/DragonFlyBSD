@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.20 2006/11/08 16:38:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.21 2006/12/20 18:14:44 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1201,7 +1201,7 @@ bootpc_compose_query(struct bootpc_ifcontext *ifctx,
 	*vendp++ = (sizeof(struct bootp_packet) >> 8) & 255;
 	*vendp++ = sizeof(struct bootp_packet) & 255;
 
-	snprintf(vendor_client, sizeof(vendor_client), "%s:%s:%s",
+	ksnprintf(vendor_client, sizeof(vendor_client), "%s:%s:%s",
 		ostype, MACHINE, osrelease);
 	vendor_client_len = strlen(vendor_client);
 	*vendp++ = TAG_VENDOR_INDENTIFIER;
@@ -1356,7 +1356,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 	ifctx->myaddr.sin_addr = ifctx->reply.yiaddr;
 	
 	ip = ntohl(ifctx->myaddr.sin_addr.s_addr);
-	snprintf(gctx->lookup_path, sizeof(gctx->lookup_path),
+	ksnprintf(gctx->lookup_path, sizeof(gctx->lookup_path),
 		 "swap.%d.%d.%d.%d",
 		 ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255);
 	

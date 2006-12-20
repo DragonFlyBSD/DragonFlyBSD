@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.49 2006/11/14 12:52:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.50 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -1074,7 +1074,7 @@ sk_probe(device_t dev)
 		return ENXIO;
 	}
 
-	snprintf(devname, sizeof(devname), "%s%s (0x%x)",
+	ksnprintf(devname, sizeof(devname), "%s%s (0x%x)",
 		 name, revstr, sc->sk_rev);
 	device_set_desc_copy(dev, devname);
 	return 0;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.17 2006/10/12 01:32:51 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.18 2006/12/20 18:14:44 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1784,15 +1784,15 @@ ipsec_logsastr(struct secasvar *sav)
 		("ipsec_logsastr: address family mismatch"));
 
 	p = buf;
-	snprintf(buf, sizeof(buf), "SA(SPI=%u ", (u_int32_t)ntohl(sav->spi));
+	ksnprintf(buf, sizeof(buf), "SA(SPI=%u ", (u_int32_t)ntohl(sav->spi));
 	while (p && *p)
 		p++;
 	/* NB: only use ipsec_address on one address at a time */
-	snprintf(p, sizeof (buf) - (p - buf), "src=%s ",
+	ksnprintf(p, sizeof (buf) - (p - buf), "src=%s ",
 		ipsec_address(&saidx->src));
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof (buf) - (p - buf), "dst=%s)",
+	ksnprintf(p, sizeof (buf) - (p - buf), "dst=%s)",
 		ipsec_address(&saidx->dst));
 
 	return buf;

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/inet_ntoa.c,v 1.2.16.1 2000/08/03 01:03:45 peter Exp $
- * $DragonFly: src/sys/libkern/inet_ntoa.c,v 1.4 2004/12/29 03:26:42 hsu Exp $
+ * $DragonFly: src/sys/libkern/inet_ntoa.c,v 1.5 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,11 +42,11 @@ inet_ntoa(struct in_addr ina)
 	static char buf[sizeof "aaa.bbb.ccc.ddd"];
 	unsigned char *ucp = (unsigned char *)&ina;
 
-	sprintf(buf, "%d.%d.%d.%d",
-		ucp[0] & 0xff,
-		ucp[1] & 0xff,
-		ucp[2] & 0xff,
-		ucp[3] & 0xff);
+	ksprintf(buf, "%d.%d.%d.%d",
+		 ucp[0] & 0xff,
+		 ucp[1] & 0xff,
+		 ucp[2] & 0xff,
+		 ucp[3] & 0xff);
 	return buf;
 }
 

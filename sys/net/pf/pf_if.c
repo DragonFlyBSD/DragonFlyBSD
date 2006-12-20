@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.6 2006/09/05 03:48:12 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.7 2006/12/20 18:14:42 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -446,7 +446,7 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 	if (aw->iflags & PFI_AFLAG_NOALIAS)
 		strlcat(tblname, ":0", sizeof(tblname));
 	if (dyn->pfid_net != 128)
-		snprintf(tblname + strlen(tblname),
+		ksnprintf(tblname + strlen(tblname),
 		    sizeof(tblname) - strlen(tblname), "/%d", dyn->pfid_net);
 	ruleset = pf_find_or_create_ruleset(pfi_reserved_anchor,
 	    pfi_interface_ruleset);

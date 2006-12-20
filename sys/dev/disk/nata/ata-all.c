@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.4 2006/12/17 19:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.5 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -637,7 +637,7 @@ ata_getparam(struct ata_device *atadev, int init)
 		   (atacap->hwres & ATA_CABLE_ID) ? "80":"40");
 
 	if (init) {
-	    sprintf(buffer, "%.40s/%.8s", atacap->model, atacap->revision);
+	    ksprintf(buffer, "%.40s/%.8s", atacap->model, atacap->revision);
 	    device_set_desc_copy(atadev->dev, buffer);
 	    if (atadev->param.config & ATA_PROTO_ATAPI) {
 		if (atapi_dma && ch->dma &&

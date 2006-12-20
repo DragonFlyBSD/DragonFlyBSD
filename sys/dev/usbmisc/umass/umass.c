@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.18 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.19 2006/12/20 18:14:41 dillon Exp $
  */
 
 /*
@@ -3062,7 +3062,7 @@ umass_dump_buffer(struct umass_softc *sc, u_int8_t *buffer, int buflen,
 	s1[0] = '\0';
 	s3[0] = '\0';
 
-	sprintf(s2, " buffer=%p, buflen=%d", buffer, buflen);
+	ksprintf(s2, " buffer=%p, buflen=%d", buffer, buflen);
 	for (i = 0; i < buflen && i < printlen; i++) {
 		j = i % 16;
 		if (j == 0 && i != 0) {
@@ -3070,10 +3070,10 @@ umass_dump_buffer(struct umass_softc *sc, u_int8_t *buffer, int buflen,
 				USBDEVNAME(sc->sc_dev), s1, s2));
 			s2[0] = '\0';
 		}
-		sprintf(&s1[j*2], "%02x", buffer[i] & 0xff);
+		ksprintf(&s1[j*2], "%02x", buffer[i] & 0xff);
 	}
 	if (buflen > printlen)
-		sprintf(s3, " ...");
+		ksprintf(s3, " ...");
 	DPRINTF(UDMASS_GEN, ("%s: 0x %s%s%s\n",
 		USBDEVNAME(sc->sc_dev), s1, s2, s3));
 }

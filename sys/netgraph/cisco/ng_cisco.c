@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.8 2005/06/02 22:11:45 swildner Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.9 2006/12/20 18:14:43 dillon Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -279,9 +279,9 @@ cisco_rcvmsg(node_p node, struct ng_mesg *msg,
 				break;
 			}
 			arg = (char *) resp->data;
-			pos = sprintf(arg,
+			pos = ksprintf(arg,
 			  "keepalive period: %d sec; ", KEEPALIVE_SECS);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 			  "unacknowledged keepalives: %ld", sc->seqRetries);
 			resp->header.arglen = pos + 1;
 			break;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.20 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.21 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -485,7 +485,7 @@ ef_clone(struct ef_link *efl, int ft)
 	efp->ef_ifp = ifp;
 	efp->ef_frametype = ft;
 	eifp = &efp->ef_ac.ac_if;
-	snprintf(eifp->if_xname, IFNAMSIZ,
+	ksnprintf(eifp->if_xname, IFNAMSIZ,
 	    "%sf%d", ifp->if_xname, efp->ef_frametype);
 	eifp->if_dname = "ef";
 	eifp->if_dunit = IF_DUNIT_NONE;

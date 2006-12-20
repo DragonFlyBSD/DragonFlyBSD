@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.33 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.34 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -436,7 +436,7 @@ devclass_add_device(devclass_t dc, device_t dev)
 	}
 	dc->devices[dev->unit] = dev;
 	dev->devclass = dc;
-	snprintf(dev->nameunit, buflen, "%s%d", dc->name, dev->unit);
+	ksnprintf(dev->nameunit, buflen, "%s%d", dc->name, dev->unit);
 
 #ifdef DEVICE_SYSCTLS
 	device_register_oids(dev);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.47 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.5 2005/06/04 14:25:45 corecode Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.6 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -231,7 +231,7 @@ acpi_tz_attach(device_t dev)
 		       &acpi_tz_polling_rate, 0, "monitor polling rate");
     }
     sysctl_ctx_init(&sc->tz_sysctl_ctx);
-    sprintf(oidname, "tz%d", device_get_unit(dev));
+    ksprintf(oidname, "tz%d", device_get_unit(dev));
     sc->tz_sysctl_tree = SYSCTL_ADD_NODE(&sc->tz_sysctl_ctx,
 					 SYSCTL_CHILDREN(acpi_tz_sysctl_tree),
 					 OID_AUTO, oidname, CTLFLAG_RD, 0, "");
@@ -318,9 +318,9 @@ acpi_tz_establish(struct acpi_tz_softc *sc)
 
     /* Evaluate thermal zone parameters. */
     for (i = 0; i < TZ_NUMLEVELS; i++) {
-	sprintf(nbuf, "_AC%d", i);
+	ksprintf(nbuf, "_AC%d", i);
 	acpi_tz_getparam(sc, nbuf, &sc->tz_zone.ac[i]);
-	sprintf(nbuf, "_AL%d", i);
+	ksprintf(nbuf, "_AL%d", i);
 	sc->tz_zone.al[i].Length = ACPI_ALLOCATE_BUFFER;
 	sc->tz_zone.al[i].Pointer = NULL;
 	AcpiEvaluateObject(sc->tz_handle, nbuf, NULL, &sc->tz_zone.al[i]);

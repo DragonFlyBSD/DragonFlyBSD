@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.24 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.25 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -626,13 +626,13 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 	dname = dev_dname(dev);
 	if (strlen(dname) > 16)
 		dname = "nametoolong";
-	snprintf(name, sizeof(name), "%s%d", dname, unit);
+	ksnprintf(name, sizeof(name), "%s%d", dname, unit);
 	partname[0] = '\0';
 	if (slice != WHOLE_DISK_SLICE || part != RAW_PART) {
 		partname[0] = 'a' + part;
 		partname[1] = '\0';
 		if (slice != COMPATIBILITY_SLICE) {
-			snprintf(name + strlen(name),
+			ksnprintf(name + strlen(name),
 			    sizeof(name) - strlen(name), "s%d", slice - 1);
 		}
 	}

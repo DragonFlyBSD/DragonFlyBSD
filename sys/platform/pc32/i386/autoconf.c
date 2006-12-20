@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.32 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.33 2006/12/20 18:14:42 dillon Exp $
  */
 
 /*
@@ -310,7 +310,7 @@ setroot(void)
 		return;
 	sname = dsname(newrootdev, unit, slice, part, partname);
 	rootdevnames[0] = kmalloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
-	sprintf(rootdevnames[0], "ufs:%s%s", sname, partname);
+	ksprintf(rootdevnames[0], "ufs:%s%s", sname, partname);
 
 	/*
 	 * For properly dangerously dedicated disks (ones with a historical
@@ -326,7 +326,7 @@ setroot(void)
 	slice = COMPATIBILITY_SLICE;
 	sname = dsname(newrootdev, unit, slice, part, partname);
 	rootdevnames[1] = kmalloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
-	sprintf(rootdevnames[1], "ufs:%s%s", sname, partname);
+	ksprintf(rootdevnames[1], "ufs:%s%s", sname, partname);
 }
 #endif
 

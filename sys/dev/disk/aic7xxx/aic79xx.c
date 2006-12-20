@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#198 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.10 2006/12/05 23:31:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.11 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -5749,7 +5749,8 @@ ahd_controller_info(struct ahd_softc *ahd, char *buf)
 	const char *type;
 	int len;
 
-	len = sprintf(buf, "%s: ", ahd_chip_names[ahd->chip & AHD_CHIPID_MASK]);
+	len = ksprintf(buf, "%s: ",
+		       ahd_chip_names[ahd->chip & AHD_CHIPID_MASK]);
 	buf += len;
 
 	speed = "Ultra320 ";
@@ -5758,12 +5759,12 @@ ahd_controller_info(struct ahd_softc *ahd, char *buf)
 	} else {
 		type = "Single ";
 	}
-	len = sprintf(buf, "%s%sChannel %c, SCSI Id=%d, ",
-		      speed, type, ahd->channel, ahd->our_id);
+	len = ksprintf(buf, "%s%sChannel %c, SCSI Id=%d, ",
+		       speed, type, ahd->channel, ahd->our_id);
 	buf += len;
 
-	sprintf(buf, "%s, %d SCBs", ahd->bus_description,
-		ahd->scb_data.maxhscbs);
+	ksprintf(buf, "%s, %d SCBs", ahd->bus_description,
+		 ahd->scb_data.maxhscbs);
 }
 
 static const char *channel_strings[] = {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.9 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.10 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.9 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.10 2006/12/20 18:14:40 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1891,7 +1891,7 @@ emu_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", rman_get_start(sc->reg), rman_get_start(sc->irq));
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", rman_get_start(sc->reg), rman_get_start(sc->irq));
 
 	if (pcm_register(dev, sc, sc->nchans, gotmic? 3 : 2)) goto bad;
 	for (i = 0; i < sc->nchans; i++)

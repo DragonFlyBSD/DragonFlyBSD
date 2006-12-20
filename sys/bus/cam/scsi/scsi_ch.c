@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.17 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.18 2006/12/20 18:14:34 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -582,7 +582,7 @@ chdone(struct cam_periph *periph, union ccb *done_ccb)
 			softc->sc_picker = softc->sc_firsts[CHET_MT];
 
 #define PLURAL(c)	(c) == 1 ? "" : "s"
-			snprintf(announce_buf, sizeof(announce_buf),
+			ksnprintf(announce_buf, sizeof(announce_buf),
 				"%d slot%s, %d drive%s, "
 				"%d picker%s, %d portal%s",
 		    		softc->sc_counts[CHET_ST],

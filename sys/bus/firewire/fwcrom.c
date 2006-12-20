@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.8 2006/12/20 18:14:36 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -53,6 +53,7 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.9 2003/10/02 04:06:55 simo
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
+#define ksnprintf	snprintf	/* sigh. used by fwcontrol */
 #endif
 
 #ifdef __DragonFly__
@@ -299,7 +300,7 @@ crom_desc_specver(u_int32_t spec, u_int32_t ver, char *buf, int len)
 		}
 	}
 	if (s != NULL)
-		snprintf(buf, len, "%s", s);
+		ksnprintf(buf, len, "%s", s);
 }
 
 char *
@@ -314,14 +315,14 @@ crom_desc(struct crom_context *cc, char *buf, int len)
 	switch (reg->key & CSRTYPE_MASK) {
 	case CSRTYPE_I:
 #if 0
-		len -= snprintf(buf, len, "%d", reg->val);
+		len -= ksnprintf(buf, len, "%d", reg->val);
 		buf += strlen(buf);
 #else
 		*buf = '\0';
 #endif
 		break;
 	case CSRTYPE_C:
-		len -= snprintf(buf, len, "offset=0x%04x(%d)",
+		len -= ksnprintf(buf, len, "offset=0x%04x(%d)",
 						reg->val, reg->val);
 		buf += strlen(buf);
 		break;
@@ -330,7 +331,7 @@ crom_desc(struct crom_context *cc, char *buf, int len)
 	case CSRTYPE_D:
 		dir = (struct csrdirectory *) (reg + reg->val);
 		crc = crom_crc((u_int32_t *)&dir->entry[0], dir->crc_len);
-		len -= snprintf(buf, len, "len=%d crc=0x%04x(%s) ",
+		len -= ksnprintf(buf, len, "len=%d crc=0x%04x(%s) ",
 			dir->crc_len, dir->crc,
 			(crc == dir->crc) ? "OK" : "NG");
 		buf += strlen(buf);

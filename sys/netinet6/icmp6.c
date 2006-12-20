@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.23 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.24 2006/12/20 18:14:43 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -2140,7 +2140,7 @@ icmp6_redirect_diag(struct in6_addr *src6, struct in6_addr *dst6,
 		    struct in6_addr *tgt6)
 {
 	static char buf[1024];
-	snprintf(buf, sizeof(buf), "(src=%s dst=%s tgt=%s)",
+	ksnprintf(buf, sizeof(buf), "(src=%s dst=%s tgt=%s)",
 		ip6_sprintf(src6), ip6_sprintf(dst6), ip6_sprintf(tgt6));
 	return buf;
 }

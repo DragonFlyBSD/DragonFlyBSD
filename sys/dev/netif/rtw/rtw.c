@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.3 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.4 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -858,7 +858,7 @@ rtw_srom_parse(struct rtw_softc *sc)
 		rfname = paname = "reserved";
 		break;
 	default:
-		snprintf(scratch, sizeof(scratch), "unknown 0x%02x",
+		ksnprintf(scratch, sizeof(scratch), "unknown 0x%02x",
 			 sc->sc_rfchipid);
 		rfname = paname = scratch;
 	}

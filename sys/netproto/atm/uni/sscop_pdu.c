@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_pdu.c,v 1.5 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -1195,7 +1195,7 @@ sscop_pdu_print(struct sscop *sop, KBuffer *m, char *msg)
 	struct vccb	*vcp;
 
 	vcp = sop->so_connvc->cvc_vcc;
-	snprintf(buf, sizeof(buf),
+	ksnprintf(buf, sizeof(buf),
 	    "sscop %s: vcc=(%d,%d)\n", msg, vcp->vc_vpi, vcp->vc_vci);
 	atm_pdu_print(m, buf);
 }

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.13 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.14 2006/12/20 18:14:38 dillon Exp $
  */
 
  /*
@@ -480,15 +480,15 @@ bt_fetch_adapter_info(device_t dev)
 
 	if (esetup_info.bus_type == 'A'
 	 && bt->firmware_ver[0] == '2') {
-		snprintf(bt->model, sizeof(bt->model), "542B");
+		ksnprintf(bt->model, sizeof(bt->model), "542B");
 	} else if (esetup_info.bus_type == 'E'
 		&& (strncmp(bt->firmware_ver, "2.1", 3) == 0
 		 || strncmp(bt->firmware_ver, "2.20", 4) == 0)) {
-		snprintf(bt->model, sizeof(bt->model), "742A");
+		ksnprintf(bt->model, sizeof(bt->model), "742A");
 	} else if (esetup_info.bus_type == 'E'
 		&& bt->firmware_ver[0] == '0') {
 		/* AMI FastDisk EISA Series 441 0.x */
-		snprintf(bt->model, sizeof(bt->model), "747A");
+		ksnprintf(bt->model, sizeof(bt->model), "747A");
 	} else {
 		ha_model_data_t model_data;
 		int i;

@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.9 2006/12/20 18:14:41 dillon Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -366,7 +366,7 @@ USB_ATTACH(udbp)
 
 	if ((err = ng_make_node_common(&ng_udbp_typestruct, &sc->node)) == 0) {
 		char	nodename[128];
-		sprintf(nodename, "%s", USBDEVNAME(sc->sc_dev));
+		ksprintf(nodename, "%s", USBDEVNAME(sc->sc_dev));
 		if ((err = ng_name_node(sc->node, nodename))) {
 			NG_NODE_UNREF(sc->node);
 			sc->node = NULL;
@@ -794,7 +794,7 @@ ng_udbp_rmnode(node_p node)
 
 	if ((err = ng_make_node_common(&ng_udbp_typestruct, &sc->node)) == 0) {
 		char	nodename[128];
-		sprintf(nodename, "%s", USBDEVNAME(sc->sc_dev));
+		ksprintf(nodename, "%s", USBDEVNAME(sc->sc_dev));
 		if ((err = ng_name_node(sc->node, nodename))) {
 			NG_NODE_UNREF(sc->node); /* out damned spot! */
 			sc->flags &= ~NETGRAPH_INITIALISED;

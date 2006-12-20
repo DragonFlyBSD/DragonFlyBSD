@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.15 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.16 2006/12/20 18:14:37 dillon Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -146,7 +146,7 @@ usbd_errstr(usbd_status err)
 	if (err < USBD_ERROR_MAX) {
 		return usbd_error_strs[err];
 	} else {
-		snprintf(buffer, sizeof buffer, "%d", err);
+		ksnprintf(buffer, sizeof buffer, "%d", err);
 		return buffer;
 	}
 }
@@ -258,17 +258,17 @@ usbd_devinfo_vp(usbd_device_handle dev, char *v, char *p, int usedev)
 	if (vendor != NULL && *vendor)
 		strcpy(v, vendor);
 	else
-		sprintf(v, "vendor 0x%04x", UGETW(udd->idVendor));
+		ksprintf(v, "vendor 0x%04x", UGETW(udd->idVendor));
 	if (product != NULL && *product)
 		strcpy(p, product);
 	else
-		sprintf(p, "product 0x%04x", UGETW(udd->idProduct));
+		ksprintf(p, "product 0x%04x", UGETW(udd->idProduct));
 }
 
 int
 usbd_printBCD(char *cp, int bcd)
 {
-	return (sprintf(cp, "%x.%02x", bcd >> 8, bcd & 0xff));
+	return (ksprintf(cp, "%x.%02x", bcd >> 8, bcd & 0xff));
 }
 
 void
@@ -282,24 +282,24 @@ usbd_devinfo(usbd_device_handle dev, int showclass, char *cp)
 	usb_interface_descriptor_t *id;
 
 	usbd_devinfo_vp(dev, vendor, product, 1);
-	cp += sprintf(cp, "%s %s", vendor, product);
+	cp += ksprintf(cp, "%s %s", vendor, product);
 	if (showclass & USBD_SHOW_DEVICE_CLASS)
-		cp += sprintf(cp, ", class %d/%d",
-		    udd->bDeviceClass, udd->bDeviceSubClass);
+		cp += ksprintf(cp, ", class %d/%d",
+			       udd->bDeviceClass, udd->bDeviceSubClass);
 	bcdUSB = UGETW(udd->bcdUSB);
 	bcdDevice = UGETW(udd->bcdDevice);
-	cp += sprintf(cp, ", rev ");
+	cp += ksprintf(cp, ", rev ");
 	cp += usbd_printBCD(cp, bcdUSB);
 	*cp++ = '/';
 	cp += usbd_printBCD(cp, bcdDevice);
-	cp += sprintf(cp, ", addr %d", dev->address);
+	cp += ksprintf(cp, ", addr %d", dev->address);
 	if (showclass & USBD_SHOW_INTERFACE_CLASS)
 	{
 		/* fetch the interface handle for the first interface */
 		(void)usbd_device2interface_handle(dev, 0, &iface);
 		id = usbd_get_interface_descriptor(iface);
-		cp += sprintf(cp, ", iclass %d/%d",
-		    id->bInterfaceClass, id->bInterfaceSubClass);
+		cp += ksprintf(cp, ", iclass %d/%d",
+			       id->bInterfaceClass, id->bInterfaceSubClass);
 	}
 	*cp = 0;
 }

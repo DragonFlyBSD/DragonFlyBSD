@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.13 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.14 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -626,17 +626,17 @@ ndis_create_sysctls(void *arg)
 	    "NDIS API Version", "0x00050001", CTLFLAG_RD);
 
 	/* Bus type (PCI, PCMCIA, etc...) */
-	sprintf(buf, "%d", (int)sc->ndis_iftype);
+	ksprintf(buf, "%d", (int)sc->ndis_iftype);
 	ndis_add_sysctl(sc, "BusType", "Bus Type", buf, CTLFLAG_RD);
 
 	if (sc->ndis_res_io != NULL) {
-		sprintf(buf, "0x%lx", rman_get_start(sc->ndis_res_io));
+		ksprintf(buf, "0x%lx", rman_get_start(sc->ndis_res_io));
 		ndis_add_sysctl(sc, "IOBaseAddress",
 		    "Base I/O Address", buf, CTLFLAG_RD);
 	}
 
 	if (sc->ndis_irq != NULL) {
-		sprintf(buf, "%lu", rman_get_start(sc->ndis_irq));
+		ksprintf(buf, "%lu", rman_get_start(sc->ndis_irq));
 		ndis_add_sysctl(sc, "InterruptNumber",
 		    "Interrupt Number", buf, CTLFLAG_RD);
 	}
@@ -656,7 +656,7 @@ ndis_add_sysctl(void *arg, char *key, char *desc, char *val, int flag)
 	cfg = kmalloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_WAITOK|M_ZERO);
 	cfg->ndis_cfg.nc_cfgkey = kstrdup(key, M_DEVBUF);
 	if (desc == NULL) {
-		snprintf(descstr, sizeof(descstr), "%s (dynamic)", key);
+		ksnprintf(descstr, sizeof(descstr), "%s (dynamic)", key);
 		cfg->ndis_cfg.nc_cfgdesc = kstrdup(descstr, M_DEVBUF);
 	} else
 		cfg->ndis_cfg.nc_cfgdesc = kstrdup(desc, M_DEVBUF);

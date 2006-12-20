@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.44.2.1 2006/01/29 01:26:46 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.6 2006/12/10 02:03:56 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.7 2006/12/20 18:14:37 dillon Exp $
  */
 
 /*
@@ -273,38 +273,38 @@ ohci_pci_attach(device_t self)
 	device_set_desc(sc->sc_bus.bdev, ohci_pci_match(self));
 	switch (pci_get_vendor(self)) {
 	case PCI_OHCI_VENDORID_ACERLABS:
-		sprintf(sc->sc_vendor, "AcerLabs");
+		ksprintf(sc->sc_vendor, "AcerLabs");
 		break;
 	case PCI_OHCI_VENDORID_AMD:
-		sprintf(sc->sc_vendor, "AMD");
+		ksprintf(sc->sc_vendor, "AMD");
 		break;
 	case PCI_OHCI_VENDORID_APPLE:
-		sprintf(sc->sc_vendor, "Apple");
+		ksprintf(sc->sc_vendor, "Apple");
 		break;
 	case PCI_OHCI_VENDORID_ATI:
-		sprintf(sc->sc_vendor, "ATI");
+		ksprintf(sc->sc_vendor, "ATI");
 		break;
 	case PCI_OHCI_VENDORID_CMDTECH:
-		sprintf(sc->sc_vendor, "CMDTECH");
+		ksprintf(sc->sc_vendor, "CMDTECH");
 		break;
 	case PCI_OHCI_VENDORID_NEC:
-		sprintf(sc->sc_vendor, "NEC");
+		ksprintf(sc->sc_vendor, "NEC");
 		break;
 	case PCI_OHCI_VENDORID_NVIDIA:
 	case PCI_OHCI_VENDORID_NVIDIA2:
-		sprintf(sc->sc_vendor, "nVidia");
+		ksprintf(sc->sc_vendor, "nVidia");
 		break;
 	case PCI_OHCI_VENDORID_OPTI:
-		sprintf(sc->sc_vendor, "OPTi");
+		ksprintf(sc->sc_vendor, "OPTi");
 		break;
 	case PCI_OHCI_VENDORID_SIS:
-		sprintf(sc->sc_vendor, "SiS");
+		ksprintf(sc->sc_vendor, "SiS");
 		break;
 	default:
 		if (bootverbose)
 			device_printf(self, "(New OHCI DeviceId=0x%08x)\n",
 			    pci_get_devid(self));
-		sprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
+		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
 	err = bus_setup_intr(self, sc->irq_res, 0,

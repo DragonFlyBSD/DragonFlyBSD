@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_if.c,v 1.5 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_if.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_if.c,v 1.4 2006/12/20 18:14:38 dillon Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ fore_atm_ioctl(code, data, arg)
 		fup = (Fore_unit *)pip;
 		if ( pip == NULL )
 			return ( ENXIO );
-		snprintf ( ifname, sizeof(ifname),
+		ksnprintf ( ifname, sizeof(ifname),
 		    "%s%d", pip->pif_name, pip->pif_unit );
 
 		/*

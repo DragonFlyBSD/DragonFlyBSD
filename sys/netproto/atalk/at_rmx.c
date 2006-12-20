@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * at_rmx.c,v 1.13 1995/05/30 08:09:31 rgrimes Exp
- * $DragonFly: src/sys/netproto/atalk/at_rmx.c,v 1.2 2004/12/14 18:46:58 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_rmx.c,v 1.3 2006/12/20 18:14:43 dillon Exp $
  */
 
 /* This code generates debugging traces to the radix code */
@@ -54,13 +54,13 @@ prsockaddr(void *v)
 
 		/* return: "(len) hexdump" */
 
-		bp += sprintf(bp, "(%d)", len);
+		bp += ksprintf(bp, "(%d)", len);
 		for (cp++; cp < cplim && bp < hexbuf+252; cp++) {
 			*bp++ = "0123456789abcdef"[*cp / 16];
 			*bp++ = "0123456789abcdef"[*cp % 16];
 		}
 	} else {
-		bp+= sprintf(bp, "null");
+		bp+= ksprintf(bp, "null");
 	}
 	*bp = '\0';
 	

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.18 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.19 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -710,7 +710,7 @@ atapi_cmd2str(u_int8_t cmd)
     case 0xff: return ("POLL_DSC");
     default: {
 	static char buffer[20];
-	sprintf(buffer, "unknown CMD (0x%02x)", cmd);
+	ksprintf(buffer, "unknown CMD (0x%02x)", cmd);
 	return buffer;
 	}
     }

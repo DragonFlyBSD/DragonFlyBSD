@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.25 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.26 2006/12/20 18:14:34 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -613,8 +613,8 @@ cdsysctlinit(void *context, int pending)
 	periph = (struct cam_periph *)context;
 	softc = (struct cd_softc *)periph->softc;
 
-	snprintf(tmpstr, sizeof(tmpstr), "CAM CD unit %d", periph->unit_number);
-	snprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
+	ksnprintf(tmpstr, sizeof(tmpstr), "CAM CD unit %d", periph->unit_number);
+	ksnprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
 
 	sysctl_ctx_init(&softc->sysctl_ctx);
 	softc->flags |= CD_FLAG_SCTX_INIT;
@@ -740,7 +740,7 @@ cdregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Load the user's default, if any.
 	 */
-	snprintf(tmpstr, sizeof(tmpstr), "kern.cam.cd.%d.minimum_cmd_size",
+	ksnprintf(tmpstr, sizeof(tmpstr), "kern.cam.cd.%d.minimum_cmd_size",
 		periph->unit_number);
 	TUNABLE_INT_FETCH(tmpstr, &softc->minimum_command_size);
 
@@ -1729,7 +1729,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 
 		if ((csio->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
 
-			snprintf(announce_buf, sizeof(announce_buf),
+			ksnprintf(announce_buf, sizeof(announce_buf),
 				"cd present [%lu x %lu byte records]",
 				cdp->disksize, (u_long)cdp->blksize);
 
@@ -1792,7 +1792,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				 */
 				if ((have_sense) && (asc != 0x25)
 				 && (error_code == SSD_CURRENT_ERROR))
-					snprintf(announce_buf,
+					ksnprintf(announce_buf,
 					    sizeof(announce_buf),
 						"Attempt to query device "
 						"size failed: %s, %s",
@@ -1804,7 +1804,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 					   CAM_SCSI_STATUS_ERROR)
 				      && (csio->scsi_status ==
 					  SCSI_STATUS_BUSY)) {
-					snprintf(announce_buf,
+					ksnprintf(announce_buf,
 					    sizeof(announce_buf),
 					    "Attempt to query device "
 					    "size failed: SCSI status: BUSY");

@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.24 2006/09/30 20:03:44 swildner Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25 2006/12/20 18:14:37 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -39,6 +39,7 @@
 # include <stdlib.h>
 # include <ctype.h>
 # include <fcntl.h>
+#define ksprintf	sprintf
 #endif
 #include <sys/errno.h>
 #include <sys/types.h>
@@ -2054,7 +2055,7 @@ struct ifnet *ifp;
 {
 	static char workbuf[64];
 
-	sprintf(workbuf, "%s%d", ifp->if_name, ifp->if_unit);
+	ksprintf(workbuf, "%s%d", ifp->if_name, ifp->if_unit);
 	return workbuf;
 }
 # endif
@@ -2191,9 +2192,9 @@ ip_t *ip;
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
 	(defined(OpenBSD) && (OpenBSD >= 199603)) || \
 	(defined(__DragonFly__))
-	sprintf(fname, "%s", ifp->if_xname);
+	ksprintf(fname, "%s", ifp->if_xname);
 # else
-	sprintf(fname, "%s%d", ifp->if_name, ifp->if_unit);
+	ksprintf(fname, "%s%d", ifp->if_name, ifp->if_unit);
 # endif
 	fd = open(fname, O_WRONLY|O_APPEND);
 	if (fd == -1) {
@@ -2216,7 +2217,7 @@ struct ifnet *ifp;
 # else
 	static char fullifname[LIFNAMSIZ];
 
-	sprintf(fullifname, "%s%d", ifp->if_name, ifp->if_unit);
+	ksprintf(fullifname, "%s%d", ifp->if_name, ifp->if_unit);
 	return fullifname;
 # endif
 }
@@ -2236,7 +2237,7 @@ int v;
 # else
 		char fullname[LIFNAMSIZ];
 
-		sprintf(fullname, "%s%d", ifp->if_name, ifp->if_unit);
+		ksprintf(fullname, "%s%d", ifp->if_name, ifp->if_unit);
 		if (!strcmp(ifname, fullname))
 # endif
 			return ifp;
@@ -2305,7 +2306,7 @@ void init_ifp()
 	(defined(__DragonFly__))
 	for (ifa = ifneta; ifa && (ifp = *ifa); ifa++) {
 		ifp->if_output = write_output;
-		sprintf(fname, "/tmp/%s", ifp->if_xname);
+		ksprintf(fname, "/tmp/%s", ifp->if_xname);
 		fd = open(fname, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, 0600);
 		if (fd == -1)
 			perror("open");
@@ -2316,7 +2317,7 @@ void init_ifp()
 
 	for (ifa = ifneta; ifa && (ifp = *ifa); ifa++) {
 		ifp->if_output = write_output;
-		sprintf(fname, "/tmp/%s%d", ifp->if_name, ifp->if_unit);
+		ksprintf(fname, "/tmp/%s%d", ifp->if_name, ifp->if_unit);
 		fd = open(fname, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, 0600);
 		if (fd == -1)
 			perror("open");

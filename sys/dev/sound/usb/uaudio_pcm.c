@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.1.2.1 2002/08/24 08:03:07 nsayer Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.4 2006/09/30 21:10:19 swildner Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.5 2006/12/20 18:14:41 dillon Exp $ */
 
 /*
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -313,7 +313,7 @@ ua_attach(device_t dev)
 		return(ENXIO);
 	}
 
-	snprintf(status, SND_STATUSLEN, "at addr ?");
+	ksnprintf(status, SND_STATUSLEN, "at addr ?");
 
 	if (pcm_register(dev, ua, 1, 0)) {
 		return(ENXIO);

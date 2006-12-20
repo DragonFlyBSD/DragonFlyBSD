@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.39 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.40 2006/12/20 18:14:44 dillon Exp $
  */
 
 /*
@@ -544,7 +544,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 		vap->va_uid = 0;
 		vap->va_gid = 0;
 		vap->va_size = vap->va_bytes =
-		    snprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
+		    ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
 		break;
 	}
 
@@ -995,7 +995,7 @@ procfs_readdir_root_callback(struct proc *p, void *data)
 		}
 
 		d_ino = PROCFS_FILENO(p->p_pid, Pproc);
-		d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
+		d_namlen = ksnprintf(d_name_pid, sizeof(d_name_pid),
 		    "%ld", (long)p->p_pid);
 		d_name = d_name_pid;
 		d_type = DT_DIR;
@@ -1037,7 +1037,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 		if (pfs->pfs_fileno != PROCFS_FILENO(0, Pcurproc))
 			return (EINVAL);
 
-		len = snprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
+		len = ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
 
 		return (uiomove(buf, len, ap->a_uio));
 	/*

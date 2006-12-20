@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.16 2006/09/05 00:55:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.17 2006/12/20 18:14:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -319,7 +319,7 @@ camperiphunit(struct periph_driver *p_drv, path_id_t pathid,
 	unit = 0;
 
 	periph_name = p_drv->driver_name;
-	snprintf(pathbuf, sizeof(pathbuf), "scbus%d", pathid);
+	ksnprintf(pathbuf, sizeof(pathbuf), "scbus%d", pathid);
 	i = -1;
 	for (hit = 0; (i = resource_locate(i, periph_name)) != -1; hit = 0) {
 		dname = resource_query_name(i);

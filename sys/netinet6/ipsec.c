@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.18 2006/12/20 18:14:43 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -2261,18 +2261,18 @@ ipsec4_logpacketstr(struct ip *ip, u_int32_t spi)
 	d = (u_int8_t *)(&ip->ip_dst);
 
 	p = buf;
-	snprintf(buf, sizeof(buf), "packet(SPI=%u ", (u_int32_t)ntohl(spi));
+	ksnprintf(buf, sizeof(buf), "packet(SPI=%u ", (u_int32_t)ntohl(spi));
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), "src=%u.%u.%u.%u",
+	ksnprintf(p, sizeof(buf) - (p - buf), "src=%u.%u.%u.%u",
 		s[0], s[1], s[2], s[3]);
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), " dst=%u.%u.%u.%u",
+	ksnprintf(p, sizeof(buf) - (p - buf), " dst=%u.%u.%u.%u",
 		d[0], d[1], d[2], d[3]);
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), ")");
+	ksnprintf(p, sizeof(buf) - (p - buf), ")");
 
 	return buf;
 }
@@ -2285,18 +2285,18 @@ ipsec6_logpacketstr(struct ip6_hdr *ip6, u_int32_t spi)
 	char *p;
 
 	p = buf;
-	snprintf(buf, sizeof(buf), "packet(SPI=%u ", (u_int32_t)ntohl(spi));
+	ksnprintf(buf, sizeof(buf), "packet(SPI=%u ", (u_int32_t)ntohl(spi));
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), "src=%s",
+	ksnprintf(p, sizeof(buf) - (p - buf), "src=%s",
 		ip6_sprintf(&ip6->ip6_src));
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), " dst=%s",
+	ksnprintf(p, sizeof(buf) - (p - buf), " dst=%s",
 		ip6_sprintf(&ip6->ip6_dst));
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), ")");
+	ksnprintf(p, sizeof(buf) - (p - buf), ")");
 
 	return buf;
 }
@@ -2315,32 +2315,32 @@ ipsec_logsastr(struct secasvar *sav)
 		panic("ipsec_logsastr: family mismatched.");
 
 	p = buf;
-	snprintf(buf, sizeof(buf), "SA(SPI=%u ", (u_int32_t)ntohl(sav->spi));
+	ksnprintf(buf, sizeof(buf), "SA(SPI=%u ", (u_int32_t)ntohl(sav->spi));
 	while (p && *p)
 		p++;
 	if (((struct sockaddr *)&saidx->src)->sa_family == AF_INET) {
 		u_int8_t *s, *d;
 		s = (u_int8_t *)&((struct sockaddr_in *)&saidx->src)->sin_addr;
 		d = (u_int8_t *)&((struct sockaddr_in *)&saidx->dst)->sin_addr;
-		snprintf(p, sizeof(buf) - (p - buf),
+		ksnprintf(p, sizeof(buf) - (p - buf),
 			"src=%d.%d.%d.%d dst=%d.%d.%d.%d",
 			s[0], s[1], s[2], s[3], d[0], d[1], d[2], d[3]);
 	}
 #ifdef INET6
 	else if (((struct sockaddr *)&saidx->src)->sa_family == AF_INET6) {
-		snprintf(p, sizeof(buf) - (p - buf),
+		ksnprintf(p, sizeof(buf) - (p - buf),
 			"src=%s",
 			ip6_sprintf(&((struct sockaddr_in6 *)&saidx->src)->sin6_addr));
 		while (p && *p)
 			p++;
-		snprintf(p, sizeof(buf) - (p - buf),
+		ksnprintf(p, sizeof(buf) - (p - buf),
 			" dst=%s",
 			ip6_sprintf(&((struct sockaddr_in6 *)&saidx->dst)->sin6_addr));
 	}
 #endif
 	while (p && *p)
 		p++;
-	snprintf(p, sizeof(buf) - (p - buf), ")");
+	ksnprintf(p, sizeof(buf) - (p - buf), ")");
 
 	return buf;
 }

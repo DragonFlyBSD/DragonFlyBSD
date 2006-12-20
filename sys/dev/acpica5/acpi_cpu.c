@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.15 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.16 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -252,7 +252,7 @@ acpi_cpu_probe(device_t dev)
 	    cx_count++;
     }
     if (cx_count > 0)
-	snprintf(msg, sizeof(msg), "ACPI CPU (%d Cx states)", cx_count);
+	ksnprintf(msg, sizeof(msg), "ACPI CPU (%d Cx states)", cx_count);
     else
 	strlcpy(msg, "ACPI CPU", sizeof(msg));
     device_set_desc_copy(dev, msg);
@@ -1172,7 +1172,7 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     int		 val, error, i;
 
     sc = device_get_softc(cpu_devices[0]);
-    snprintf(state, sizeof(state), "C%d", cpu_cx_lowest + 1);
+    ksnprintf(state, sizeof(state), "C%d", cpu_cx_lowest + 1);
     error = sysctl_handle_string(oidp, state, sizeof(state), req);
     if (error != 0 || req->newptr == NULL)
 	return (error);

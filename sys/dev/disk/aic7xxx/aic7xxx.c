@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.9 2006/09/05 03:48:09 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -4500,14 +4500,15 @@ ahc_controller_info(struct ahc_softc *ahc, char *buf)
 {
 	int len;
 
-	len = sprintf(buf, "%s: ", ahc_chip_names[ahc->chip & AHC_CHIPID_MASK]);
+	len = ksprintf(buf, "%s: ",
+		       ahc_chip_names[ahc->chip & AHC_CHIPID_MASK]);
 	buf += len;
-	if ((ahc->features & AHC_TWIN) != 0)
- 		len = sprintf(buf, "Twin Channel, A SCSI Id=%d, "
-			      "B SCSI Id=%d, primary %c, ",
-			      ahc->our_id, ahc->our_id_b,
-			      (ahc->flags & AHC_PRIMARY_CHANNEL) + 'A');
-	else {
+	if ((ahc->features & AHC_TWIN) != 0) {
+ 		len = ksprintf(buf, "Twin Channel, A SCSI Id=%d, "
+			       "B SCSI Id=%d, primary %c, ",
+			       ahc->our_id, ahc->our_id_b,
+			       (ahc->flags & AHC_PRIMARY_CHANNEL) + 'A');
+	} else {
 		const char *speed;
 		const char *type;
 
@@ -4524,16 +4525,16 @@ ahc_controller_info(struct ahc_softc *ahc, char *buf)
 		} else {
 			type = "Single";
 		}
-		len = sprintf(buf, "%s%s Channel %c, SCSI Id=%d, ",
-			      speed, type, ahc->channel, ahc->our_id);
+		len = ksprintf(buf, "%s%s Channel %c, SCSI Id=%d, ",
+			       speed, type, ahc->channel, ahc->our_id);
 	}
 	buf += len;
 
 	if ((ahc->flags & AHC_PAGESCBS) != 0)
-		sprintf(buf, "%d/%d SCBs",
-			ahc->scb_data->maxhscbs, AHC_MAX_QUEUE);
+		ksprintf(buf, "%d/%d SCBs",
+			 ahc->scb_data->maxhscbs, AHC_MAX_QUEUE);
 	else
-		sprintf(buf, "%d SCBs", ahc->scb_data->maxhscbs);
+		ksprintf(buf, "%d SCBs", ahc->scb_data->maxhscbs);
 }
 
 int

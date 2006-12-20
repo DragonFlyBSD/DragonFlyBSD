@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.6 2006/11/28 14:44:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 		     M_WAITOK | M_ZERO);
 	sysctl_ctx_init(ctx);
 
-	snprintf(num, sizeof(num), "%u", ic->ic_vap);
+	ksnprintf(num, sizeof(num), "%u", ic->ic_vap);
 	oid = SYSCTL_ADD_NODE(ctx, &SYSCTL_NODE_CHILDREN(_net, wlan),
 		OID_AUTO, num, CTLFLAG_RD, NULL, "");
 	if (oid == NULL) {

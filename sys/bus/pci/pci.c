@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.33 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.34 2006/12/20 18:14:37 dillon Exp $
  *
  */
 
@@ -1815,7 +1815,7 @@ pci_child_location_str_method(device_t cbdev, device_t child, char *buf,
 	struct pci_devinfo *dinfo;
 
 	dinfo = device_get_ivars(child);
-	snprintf(buf, buflen, "slot=%d function=%d", pci_get_slot(child),
+	ksnprintf(buf, buflen, "slot=%d function=%d", pci_get_slot(child),
 	    pci_get_function(child));
 	return (0);
 }
@@ -1829,7 +1829,7 @@ pci_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
 
 	dinfo = device_get_ivars(child);
 	cfg = &dinfo->cfg;
-	snprintf(buf, buflen, "vendor=0x%04x device=0x%04x subvendor=0x%04x "
+	ksnprintf(buf, buflen, "vendor=0x%04x device=0x%04x subvendor=0x%04x "
 	    "subdevice=0x%04x class=0x%02x%02x%02x", cfg->vendor, cfg->device,
 	    cfg->subvendor, cfg->subdevice, cfg->baseclass, cfg->subclass,
 	    cfg->progif);

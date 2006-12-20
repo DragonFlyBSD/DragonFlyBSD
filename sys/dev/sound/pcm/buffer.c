@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.6 2006/12/20 18:14:41 dillon Exp $");
 
 #define SNDBUF_NAMELEN	48
 struct snd_dbuf {
@@ -61,7 +61,7 @@ sndbuf_create(device_t dev, char *drv, char *desc)
 	struct snd_dbuf *b;
 
 	b = kmalloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
-	snprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
+	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 
 	return b;

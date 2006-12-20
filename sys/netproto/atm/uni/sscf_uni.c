@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni.c,v 1.7.2.1 2001/09/30 22:54:35 kris Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -296,7 +296,7 @@ sscf_uni_pdu_print(struct univcc *uvp, KBuffer *m, char *msg)
 	struct vccb	*vcp;
 
 	vcp = uvp->uv_connvc->cvc_vcc;
-	snprintf(buf, sizeof(buf), "sscf_uni %s: vcc=(%d,%d)\n",
+	ksnprintf(buf, sizeof(buf), "sscf_uni %s: vcc=(%d,%d)\n",
 			msg, vcp->vc_vpi, vcp->vc_vci);
 	atm_pdu_print(m, buf);
 }

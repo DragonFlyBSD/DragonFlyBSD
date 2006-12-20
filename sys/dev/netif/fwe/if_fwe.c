@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.27 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.28 2006/12/20 18:14:39 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -377,7 +377,7 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ifs = (struct ifstat *)data;
 		len = strlen(ifs->ascii);
 		if (len < sizeof(ifs->ascii))
-			snprintf(ifs->ascii + len,
+			ksnprintf(ifs->ascii + len,
 				sizeof(ifs->ascii) - len,
 				"\tch %d dma %d\n",
 					fwe->stream_ch, fwe->dma_ch);

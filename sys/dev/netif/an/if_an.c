@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.39 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.40 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -226,7 +226,7 @@ sysctl_an_dump(SYSCTL_HANDLER_ARGS)
 		strcpy(an_conf, "dump");
 		break;
 	default:
-		snprintf(an_conf, 5, "%x", an_dump);
+		ksnprintf(an_conf, 5, "%x", an_dump);
 		break;
 	}
 

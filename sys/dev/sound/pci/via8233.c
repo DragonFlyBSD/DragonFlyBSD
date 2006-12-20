@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.5 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
  */
 
 /* Some Credits:
@@ -46,7 +46,7 @@
 
 #include <dev/sound/pci/via8233.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.5 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
 
 #define VIA8233_PCI_ID 0x30591106
 
@@ -607,7 +607,7 @@ via_attach(device_t dev)
 		ac97_setextmode(via->codec, ext);
 	}
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", 
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", 
 		 rman_get_start(via->reg), rman_get_start(via->irq));
 
 	/* Register */

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.24 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.25 2006/12/20 18:14:42 dillon Exp $
  */
 
 #define        DEB(x)
@@ -445,7 +445,7 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 			else if (cmd->arg1==ICMP_UNREACH_HOST)
 				action = "Reject";
 			else
-				snprintf(SNPARGS(action2, 0), "Unreach %d",
+				ksnprintf(SNPARGS(action2, 0), "Unreach %d",
 					cmd->arg1);
 			break;
 
@@ -456,33 +456,33 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 			action = "Count";
 			break;
 		case O_DIVERT:
-			snprintf(SNPARGS(action2, 0), "Divert %d",
+			ksnprintf(SNPARGS(action2, 0), "Divert %d",
 				cmd->arg1);
 			break;
 		case O_TEE:
-			snprintf(SNPARGS(action2, 0), "Tee %d",
+			ksnprintf(SNPARGS(action2, 0), "Tee %d",
 				cmd->arg1);
 			break;
 		case O_SKIPTO:
-			snprintf(SNPARGS(action2, 0), "SkipTo %d",
+			ksnprintf(SNPARGS(action2, 0), "SkipTo %d",
 				cmd->arg1);
 			break;
 		case O_PIPE:
-			snprintf(SNPARGS(action2, 0), "Pipe %d",
+			ksnprintf(SNPARGS(action2, 0), "Pipe %d",
 				cmd->arg1);
 			break;
 		case O_QUEUE:
-			snprintf(SNPARGS(action2, 0), "Queue %d",
+			ksnprintf(SNPARGS(action2, 0), "Queue %d",
 				cmd->arg1);
 			break;
 		case O_FORWARD_IP: {
 			ipfw_insn_sa *sa = (ipfw_insn_sa *)cmd;
 			int len;
 
-			len = snprintf(SNPARGS(action2, 0), "Forward to %s",
+			len = ksnprintf(SNPARGS(action2, 0), "Forward to %s",
 				inet_ntoa(sa->sa.sin_addr));
 			if (sa->sa.sin_port)
-				snprintf(SNPARGS(action2, len), ":%d",
+				ksnprintf(SNPARGS(action2, len), ":%d",
 				    sa->sa.sin_port);
 			}
 			break;
@@ -493,7 +493,7 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 	}
 
 	if (hlen == 0) {	/* non-ip */
-		snprintf(SNPARGS(proto, 0), "MAC");
+		ksnprintf(SNPARGS(proto, 0), "MAC");
 	} else {
 		struct ip *ip = mtod(m, struct ip *);
 		/* these three are all aliases to the same thing */
@@ -515,54 +515,54 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 		offset = ip_off & IP_OFFMASK;
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
-			len = snprintf(SNPARGS(proto, 0), "TCP %s",
+			len = ksnprintf(SNPARGS(proto, 0), "TCP %s",
 			    inet_ntoa(ip->ip_src));
 			if (offset == 0)
-				snprintf(SNPARGS(proto, len), ":%d %s:%d",
+				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
 				    ntohs(tcp->th_sport),
 				    inet_ntoa(ip->ip_dst),
 				    ntohs(tcp->th_dport));
 			else
-				snprintf(SNPARGS(proto, len), " %s",
+				ksnprintf(SNPARGS(proto, len), " %s",
 				    inet_ntoa(ip->ip_dst));
 			break;
 
 		case IPPROTO_UDP:
-			len = snprintf(SNPARGS(proto, 0), "UDP %s",
+			len = ksnprintf(SNPARGS(proto, 0), "UDP %s",
 				inet_ntoa(ip->ip_src));
 			if (offset == 0)
-				snprintf(SNPARGS(proto, len), ":%d %s:%d",
+				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
 				    ntohs(udp->uh_sport),
 				    inet_ntoa(ip->ip_dst),
 				    ntohs(udp->uh_dport));
 			else
-				snprintf(SNPARGS(proto, len), " %s",
+				ksnprintf(SNPARGS(proto, len), " %s",
 				    inet_ntoa(ip->ip_dst));
 			break;
 
 		case IPPROTO_ICMP:
 			if (offset == 0)
-				len = snprintf(SNPARGS(proto, 0),
+				len = ksnprintf(SNPARGS(proto, 0),
 				    "ICMP:%u.%u ",
 				    icmp->icmp_type, icmp->icmp_code);
 			else
-				len = snprintf(SNPARGS(proto, 0), "ICMP ");
-			len += snprintf(SNPARGS(proto, len), "%s",
+				len = ksnprintf(SNPARGS(proto, 0), "ICMP ");
+			len += ksnprintf(SNPARGS(proto, len), "%s",
 			    inet_ntoa(ip->ip_src));
-			snprintf(SNPARGS(proto, len), " %s",
+			ksnprintf(SNPARGS(proto, len), " %s",
 			    inet_ntoa(ip->ip_dst));
 			break;
 
 		default:
-			len = snprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
+			len = ksnprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
 			    inet_ntoa(ip->ip_src));
-			snprintf(SNPARGS(proto, len), " %s",
+			ksnprintf(SNPARGS(proto, len), " %s",
 			    inet_ntoa(ip->ip_dst));
 			break;
 		}
 
 		if (ip_off & (IP_MF | IP_OFFMASK))
-			snprintf(SNPARGS(fragment, 0), " (frag %d:%d@%d%s)",
+			ksnprintf(SNPARGS(fragment, 0), " (frag %d:%d@%d%s)",
 			     ntohs(ip->ip_id), ip_len - (ip->ip_hl << 2),
 			     offset << 3,
 			     (ip_off & IP_MF) ? "+" : "");

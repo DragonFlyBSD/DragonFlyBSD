@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -1712,11 +1712,11 @@ mss_doattach(device_t dev, struct mss_info *mss)
     	}
 
     	if (pdma != rdma)
-		snprintf(status2, SND_STATUSLEN, ":%d", rdma);
+		ksnprintf(status2, SND_STATUSLEN, ":%d", rdma);
 	else
 		status2[0] = '\0';
 
-    	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %d%s bufsz %u",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %d%s bufsz %u",
     	     	rman_get_start(mss->io_base), rman_get_start(mss->irq), pdma, status2, mss->bufsize);
 
     	if (pcm_register(dev, mss, 1, 1)) goto no;

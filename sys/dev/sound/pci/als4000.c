@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -819,7 +819,7 @@ als_pci_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &alspchan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC,  &alsrchan_class, sc);
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq));
 	pcm_setstatus(dev, status);
 	return 0;

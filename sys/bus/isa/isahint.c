@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.6 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.7 2006/12/20 18:14:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ isahint_identify(driver_t *driver, device_t parent)
 	/*
 	 * Add all devices configured to be attached to parent.
 	 */
-	sprintf(buf, "isa%d", device_get_unit(parent));
+	ksprintf(buf, "isa%d", device_get_unit(parent));
 	for (i = resource_query_string(-1, "at", buf);
 	     i != -1;
 	     i = resource_query_string(i, "at", buf)) {

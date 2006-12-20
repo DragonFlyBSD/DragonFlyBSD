@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.12 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.13 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.12 2006/09/10 01:26:37 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.13 2006/12/20 18:14:41 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -195,7 +195,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 	int i, unit;
 
 	m = (struct snd_mixer *)kobj_create(cls, M_MIXER, M_WAITOK | M_ZERO);
-	snprintf(m->name, MIXER_NAMELEN, "%s:mixer", device_get_nameunit(dev));
+	ksnprintf(m->name, MIXER_NAMELEN, "%s:mixer", device_get_nameunit(dev));
 	m->lock = snd_mtxcreate(m->name, "pcm mixer");
 	m->type = cls->name;
 	m->devinfo = devinfo;

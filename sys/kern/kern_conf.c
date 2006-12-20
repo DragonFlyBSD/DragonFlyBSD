@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.18 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.19 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -493,16 +493,16 @@ devtoname(cdev_t dev)
 		p = dev->si_name;
 		len = sizeof(dev->si_name);
 		if ((dname = dev_dname(dev)) != NULL)
-			snprintf(p, len, "#%s/", dname);
+			ksnprintf(p, len, "#%s/", dname);
 		else
-			snprintf(p, len, "#%d/", major(dev));
+			ksnprintf(p, len, "#%d/", major(dev));
 		len -= strlen(p);
 		p += strlen(p);
 		mynor = minor(dev);
 		if (mynor < 0 || mynor > 255)
-			snprintf(p, len, "%#x", (u_int)mynor);
+			ksnprintf(p, len, "%#x", (u_int)mynor);
 		else
-			snprintf(p, len, "%d", mynor);
+			ksnprintf(p, len, "%d", mynor);
 	}
 	return (dev->si_name);
 }

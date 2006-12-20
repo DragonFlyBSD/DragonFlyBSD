@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.21 2006/05/20 06:32:41 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.22 2006/12/20 18:14:44 dillon Exp $ */
 
 /*
  *
@@ -632,7 +632,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
       bcopy(npcb->npcb_ifp->if_xname, snatm->snatm_if, sizeof(snatm->snatm_if));
 #elif defined(__DragonFly__)
-      snprintf(snatm->snatm_if, sizeof(snatm->snatm_if),
+      ksnprintf(snatm->snatm_if, sizeof(snatm->snatm_if),
 	"%s%d", npcb->npcb_ifp->if_name, npcb->npcb_ifp->if_unit);
 #endif
       snatm->snatm_vci = npcb->npcb_vci;

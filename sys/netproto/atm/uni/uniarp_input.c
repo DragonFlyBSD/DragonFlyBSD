@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_input.c,v 1.6 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.8 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -826,7 +826,7 @@ uniarp_pdu_print(struct ipvcc *ivp, KBuffer *m, char *msg)
 	struct vccb	*vcp;
 
 	vcp = ivp->iv_conn->co_connvc->cvc_vcc;
-	snprintf(buf, sizeof(buf),
+	ksnprintf(buf, sizeof(buf),
 	    "uniarp %s: vcc=(%d,%d)\n", msg, vcp->vc_vpi, vcp->vc_vci);
 	atm_pdu_print(m, buf);
 }

@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.17 2006/10/25 20:55:51 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.18 2006/12/20 18:14:37 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -963,7 +963,7 @@ pccard_child_location_str(device_t bus, device_t child, char *buf,
 	struct pccard_ivar *devi = PCCARD_IVAR(child);
 	struct pccard_function *func = devi->fcn;
 
-	snprintf(buf, buflen, "function=%d", func->number);
+	ksnprintf(buf, buflen, "function=%d", func->number);
 	return (0);
 }
 
@@ -975,7 +975,7 @@ pccard_child_pnpinfo_str(device_t bus, device_t child, char *buf,
 	struct pccard_function *func = devi->fcn;
 	struct pccard_softc *sc = PCCARD_SOFTC(bus);
 
-	snprintf(buf, buflen, "manufacturer=0x%04x product=0x%04x "
+	ksnprintf(buf, buflen, "manufacturer=0x%04x product=0x%04x "
 	    "cisvendor=\"%s\" cisproduct=\"%s\" function_type=%d",
 	    sc->card.manufacturer, sc->card.product, sc->card.cis1_info[0],
 	    sc->card.cis1_info[1], func->function);

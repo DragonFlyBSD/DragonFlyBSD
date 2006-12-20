@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.19 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.20 2006/12/20 18:14:39 dillon Exp $
  */
 
 /*
@@ -443,7 +443,7 @@ sr_attach(device_t device)
 		callout_init(&sc->sr_timer);
 		sc->xmitq.ifq_maxlen = IFQ_MAXLEN;
 		sc->xmitq_hipri.ifq_maxlen = IFQ_MAXLEN;
-		sprintf(sc->nodename, "%s%d", NG_SR_NODE_TYPE, sc->unit);
+		ksprintf(sc->nodename, "%s%d", NG_SR_NODE_TYPE, sc->unit);
 		if (ng_name_node(sc->node, sc->nodename)) {
 			ng_rmnode(sc->node);
 			ng_unref(sc->node);
@@ -2831,14 +2831,14 @@ ngsr_rcvmsg(node_p node,
 			    /*
 			     * Put in the throughput information.
 			     */
-			    pos = sprintf(arg, "%ld bytes in, %ld bytes out\n"
+			    pos = ksprintf(arg, "%ld bytes in, %ld bytes out\n"
 			    "highest rate seen: %ld B/S in, %ld B/S out\n",
 			    sc->inbytes, sc->outbytes,
 			    sc->inrate, sc->outrate);
-			    pos += sprintf(arg + pos,
+			    pos += ksprintf(arg + pos,
 				"%ld output errors\n",
 			    	sc->oerrors);
-			    pos += sprintf(arg + pos,
+			    pos += ksprintf(arg + pos,
 				"ierrors = %ld, %ld, %ld, %ld, %ld, %ld\n",
 			    	sc->ierrors[0],
 			    	sc->ierrors[1],

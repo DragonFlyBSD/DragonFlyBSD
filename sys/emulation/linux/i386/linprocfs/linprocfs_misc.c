@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.14 2006/01/06 15:01:38 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.15 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	cached = vmstats.v_cache_count * PAGE_SIZE;
 
 	ps = psbuf;
-	ps += sprintf(ps,
+	ps += ksprintf(ps,
 		"        total:    used:    free:  shared: buffers:  cached:\n"
 		"Mem:  %lu %lu %lu %lu %lu %lu\n"
 		"Swap: %llu %llu %llu\n"
@@ -208,7 +208,7 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 
 	ps = psbuf;
-	ps += sprintf(ps,
+	ps += ksprintf(ps,
 			"processor\t: %d\n"
 			"vendor_id\t: %.20s\n"
 			"cpu family\t: %d\n"
@@ -216,7 +216,7 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 			"stepping\t: %d\n",
 			0, cpu_vendor, class, cpu, cpu_id & 0xf);
 
-        ps += sprintf(ps,
+        ps += ksprintf(ps,
                         "flags\t\t:");
 
         if (!strcmp(cpu_vendor, "AuthenticAMD") && (class < 6)) {
@@ -227,10 +227,10 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
         
         for (i = 0; i < 32; i++)
 		if (cpu_feature & (1 << i))
-			ps += sprintf(ps, " %s", flags[i]);
-	ps += sprintf(ps, "\n");
+			ps += ksprintf(ps, " %s", flags[i]);
+	ps += ksprintf(ps, "\n");
         if (class >= 5) {
-		ps += sprintf(ps,
+		ps += ksprintf(ps,
 			"cpu MHz\t\t: %d.%02d\n"
 			"bogomips\t: %d.%02d\n",
                         (tsc_freq + 4999) / 1000000,
@@ -263,7 +263,7 @@ linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char psbuf[512];
 
 	ps = psbuf;
-	ps += sprintf(ps,
+	ps += ksprintf(ps,
 		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n"
 		      "disk 0 0 0 0\n"
 		      "page %u %u\n"
@@ -295,7 +295,7 @@ linprocfs_douptime(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	getmicrouptime(&tv);
 	ps = psbuf;
-	ps += sprintf(ps, "%ld.%02ld %"PRIu64".%02"PRIu64"\n",
+	ps += ksprintf(ps, "%ld.%02ld %"PRIu64".%02"PRIu64"\n",
 		      tv.tv_sec, tv.tv_usec / 10000,
 		      T2S(cpu_time.cp_idle), T2J(cpu_time.cp_idle) % 100);
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
@@ -322,8 +322,8 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char *ps, psbuf[1024];
 
 	ps = psbuf;
-	ps += sprintf(ps, "%d", p->p_pid);
-#define PS_ADD(name, fmt, arg) ps += sprintf(ps, " " fmt, arg)
+	ps += ksprintf(ps, "%d", p->p_pid);
+#define PS_ADD(name, fmt, arg) ps += ksprintf(ps, " " fmt, arg)
 	PS_ADD("comm",		"(%s)",	p->p_comm);
 	PS_ADD("statr",		"%c",	'0'); /* XXX */
 	PS_ADD("ppid",		"%d",	p->p_pptr ? p->p_pptr->p_pid : 0);
@@ -359,7 +359,7 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD("sigcatch",	"%d",	0); /* XXX */
 	PS_ADD("wchan",		"%u",	0); /* XXX */
 #undef PS_ADD
-	ps += sprintf(ps, "\n");
+	ps += ksprintf(ps, "\n");
 	
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
@@ -394,7 +394,7 @@ linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	else
 		state = state_str[(int)p->p_stat];
 
-#define PS_ADD ps += sprintf
+#define PS_ADD ps += ksprintf
 	PS_ADD(ps, "Name:\t%s\n",	  p->p_comm); /* XXX escape */
 	PS_ADD(ps, "State:\t%s\n",	  state);
 
@@ -466,7 +466,7 @@ linprocfs_doloadavg(struct proc *curp, struct proc *p,
 	char *ps, psbuf[512];
 
 	ps = psbuf;
-	ps += sprintf(ps, "%d.%02d %d.%02d %d.%02d %d/%d %d\n",
+	ps += ksprintf(ps, "%d.%02d %d.%02d %d.%02d %d/%d %d\n",
 	    (int)(averunnable.ldavg[0] / averunnable.fscale),
 	    (int)(averunnable.ldavg[0] * 100 / averunnable.fscale % 100),
 	    (int)(averunnable.ldavg[1] / averunnable.fscale),

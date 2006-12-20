@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.58 2006/11/26 07:30:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.59 2006/12/20 18:14:39 dillon Exp $
  *
  */
 
@@ -1500,7 +1500,7 @@ bge_probe(device_t dev)
 	device_set_desc(dev, sc->bge_vpd_prodname);
 #endif
 	descbuf = kmalloc(BGE_DEVDESC_MAX, M_TEMP, M_WAITOK);
-	snprintf(descbuf, BGE_DEVDESC_MAX, "%s, ASIC rev. %#04x", t->bge_name,
+	ksnprintf(descbuf, BGE_DEVDESC_MAX, "%s, ASIC rev. %#04x", t->bge_name,
 	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);
 	device_set_desc_copy(dev, descbuf);
 	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL)

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.166 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -815,7 +815,7 @@ ata_acard_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "Acard %s %s controller",
+    ksprintf(buffer, "Acard %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -982,7 +982,7 @@ ata_ali_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "AcerLabs %s %s controller",
+    ksprintf(buffer, "AcerLabs %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -1234,7 +1234,7 @@ ata_amd_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "AMD %s %s controller",
+    ksprintf(buffer, "AMD %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -1282,7 +1282,7 @@ ata_ati_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "ATI %s %s controller",
+    ksprintf(buffer, "ATI %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -1537,7 +1537,7 @@ ata_highpoint_ident(device_t dev)
 	if (pci_get_function(dev) == 1)
 	    strcat(buffer, " (channel 2+3)");
     }
-    sprintf(buffer, "%s %s controller", buffer, ata_mode2str(idx->max_dma));
+    ksprintf(buffer, "%s %s controller", buffer, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
     ctlr->chipinit = ata_highpoint_chipinit;
@@ -1714,7 +1714,7 @@ ata_intel_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "Intel %s %s controller",
+    ksprintf(buffer, "Intel %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -2064,7 +2064,7 @@ ata_ite_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "ITE %s %s controller",
+    ksprintf(buffer, "ITE %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -2173,7 +2173,7 @@ ata_jmicron_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
         return ENXIO;
 
-    sprintf(buffer, "JMicron %s %s controller",
+    ksprintf(buffer, "JMicron %s %s controller",
             idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -2337,7 +2337,7 @@ ata_marvell_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "Marvell %s %s controller",
+    ksprintf(buffer, "Marvell %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -2851,7 +2851,7 @@ ata_nvidia_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "nVidia %s %s controller",
+    ksprintf(buffer, "nVidia %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -3106,7 +3106,7 @@ ata_promise_ident(device_t dev)
 	    start = end = 0;
 	}
     }
-    sprintf(buffer, "%s %s controller", buffer, ata_mode2str(idx->max_dma));
+    ksprintf(buffer, "%s %s controller", buffer, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
     ctlr->chipinit = ata_promise_chipinit;
@@ -3987,7 +3987,7 @@ ata_serverworks_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "ServerWorks %s %s controller",
+    ksprintf(buffer, "ServerWorks %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
@@ -4170,7 +4170,7 @@ ata_sii_ident(device_t dev)
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
 
-    sprintf(buffer, "%s %s controller", idx->text, ata_mode2str(idx->max_dma));
+    ksprintf(buffer, "%s %s controller", idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
     ctlr->chipinit = ata_sii_chipinit;
@@ -4558,7 +4558,7 @@ ata_sis_ident(device_t dev)
 	    found = 1;
 	    idx->cfg1 = SIS133NEW;
 	    idx->max_dma = ATA_UDMA6;
-	    sprintf(buffer, "SiS 962/963 %s controller",
+	    ksprintf(buffer, "SiS 962/963 %s controller",
 		    ata_mode2str(idx->max_dma));
 	}
 	pci_write_config(dev, 0x57, reg57, 1);
@@ -4580,12 +4580,12 @@ ata_sis_ident(device_t dev)
 		idx->cfg1 = SIS100NEW;
 		idx->max_dma = ATA_UDMA5;
 	    }
-	    sprintf(buffer, "SiS 961 %s controller",ata_mode2str(idx->max_dma));
+	    ksprintf(buffer, "SiS 961 %s controller",ata_mode2str(idx->max_dma));
 	}
 	pci_write_config(dev, 0x4a, reg4a, 1);
     }
     if (!found)
-	sprintf(buffer,"SiS %s %s controller",
+	ksprintf(buffer,"SiS %s %s controller",
 		idx->text, ata_mode2str(idx->max_dma));
 
     device_set_desc_copy(dev, buffer);
@@ -4792,7 +4792,7 @@ ata_via_ident(device_t dev)
 	    return ENXIO;
     }
 
-    sprintf(buffer, "VIA %s %s controller",
+    ksprintf(buffer, "VIA %s %s controller",
 	    idx->text, ata_mode2str(idx->max_dma));
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;

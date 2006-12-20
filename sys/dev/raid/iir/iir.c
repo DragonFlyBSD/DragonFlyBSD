@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.14 2006/12/18 20:41:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.15 2006/12/20 18:14:40 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -1174,7 +1174,7 @@ gdt_internal_cache_cmd(struct gdt_softc *gdt,union ccb *ccb)
             inq->additional_length = 32; 
             inq->flags = SID_CmdQue | SID_Sync; 
             strcpy(inq->vendor, "IIR     ");
-            sprintf(inq->product, "Host Drive   #%02d", t);
+            ksprintf(inq->product, "Host Drive   #%02d", t);
             strcpy(inq->revision, "   ");
             break;
         }

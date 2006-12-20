@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.13 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.14 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -300,7 +300,7 @@ parityops(struct vinum_ioctl_msg *data)
 	    && (errorloc != -1)) {
 	    if (op == checkparity)
 		reply->error = EIO;
-	    sprintf(reply->msg,
+	    ksprintf(reply->msg,
 		"Parity incorrect at offset 0x%llx\n",
 		errorloc);
 	}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -953,7 +953,7 @@ spans_ioctl(int code, caddr_t data, caddr_t arg1)
 			/*
 			 * Fill out the response struct for the VCC
 			 */
-			snprintf(rsp.avp_intf,
+			ksnprintf(rsp.avp_intf,
 				    sizeof(rsp.avp_intf), "%s%d",
 					spp->sp_pif->pif_name,
 					spp->sp_pif->pif_unit);

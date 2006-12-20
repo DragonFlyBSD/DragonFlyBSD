@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.10 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.11 2006/12/20 18:14:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -643,10 +643,10 @@ uhub_child_location_str(device_t cbdev, device_t child, char *buf,
 			for (i = 0; dev->subdevs[i]; i++) {
 				if (dev->subdevs[i] == child) {
 					if (dev->ifacenums == NULL) {
-						snprintf(buf, buflen,
+						ksnprintf(buf, buflen,
 						    "port=%i", port);
 					} else {
-						snprintf(buf, buflen,
+						ksnprintf(buf, buflen,
 						    "port=%i interface=%i",
 						    port, dev->ifacenums[i]);
 					}
@@ -696,7 +696,7 @@ found_dev:
 	/* XXX can sleep */
 	(void)usbd_get_string(dev, dev->ddesc.iSerialNumber, &serial[0]);
 	if (dev->ifacenums == NULL) {
-		snprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
+		ksnprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
 		    "devclass=0x%02x devsubclass=0x%02x "
 		    "release=0x%04x sernum=\"%s\"",
 		    UGETW(dev->ddesc.idVendor), UGETW(dev->ddesc.idProduct),
@@ -704,7 +704,7 @@ found_dev:
 		    UGETW(dev->ddesc.bcdDevice), serial);
 	} else {
 		iface = &dev->ifaces[dev->ifacenums[i]];
-		snprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
+		ksnprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
 		    "devclass=0x%02x devsubclass=0x%02x "
 		    "release=0x%04x sernum=\"%s\" "
 		    "intclass=0x%02x intsubclass=0x%02x",

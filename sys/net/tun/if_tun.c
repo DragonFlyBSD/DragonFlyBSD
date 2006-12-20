@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.30 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.31 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -259,7 +259,7 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCGIFSTATUS:
 		ifs = (struct ifstat *)data;
 		if (tp->tun_pid)
-			sprintf(ifs->ascii + strlen(ifs->ascii),
+			ksprintf(ifs->ascii + strlen(ifs->ascii),
 			    "\tOpened by PID %d\n", tp->tun_pid);
 		break;
 	case SIOCSIFADDR:

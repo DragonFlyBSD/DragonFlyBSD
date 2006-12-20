@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.6 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.6 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -899,7 +899,7 @@ cmi_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &cmichan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC, &cmichan_class, sc);
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq));
 	pcm_setstatus(dev, status);
 

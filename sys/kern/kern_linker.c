@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.30 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.31 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -261,7 +261,7 @@ linker_load_file(const char* filename, linker_file_t* result)
 	error = ENOMEM;
 	goto out;
     }
-    sprintf(koname, "%s.ko", filename);
+    ksprintf(koname, "%s.ko", filename);
     lf = NULL;
     foundfile = 0;
     for (lc = TAILQ_FIRST(&classes); lc; lc = TAILQ_NEXT(lc, link)) {
@@ -324,7 +324,7 @@ linker_find_file_by_name(const char* filename)
     koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
     if (koname == NULL)
 	goto out;
-    sprintf(koname, "%s.ko", filename);
+    ksprintf(koname, "%s.ko", filename);
 
     lockmgr(&lock, LK_SHARED);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {

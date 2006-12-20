@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.12 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.13 2006/12/20 18:14:41 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -851,7 +851,7 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 				n += namelen;
 				break;
 			case 'P':	/* process id */
-				l = sprintf(buf, "%u", pid);
+				l = ksprintf(buf, "%u", pid);
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
@@ -862,7 +862,7 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 				n += l;
 				break;
 			case 'U':	/* user id */
-				l = sprintf(buf, "%u", uid);
+				l = ksprintf(buf, "%u", uid);
 				if ((n + l) > MAXPATHLEN) {
 					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);

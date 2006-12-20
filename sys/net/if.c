@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.47 2006/12/18 20:41:02 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.48 2006/12/20 18:14:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -518,7 +518,7 @@ if_clone_create(char *name, int len)
 	/* In the wildcard case, we need to update the name. */
 	if (wildcard) {
 		for (dp = name; *dp != '\0'; dp++);
-		if (snprintf(dp, len - (dp-name), "%d", unit) >
+		if (ksnprintf(dp, len - (dp-name), "%d", unit) >
 		    len - (dp-name) - 1) {
 			/*
 			 * This can only be a programmer error and
@@ -1855,7 +1855,7 @@ if_initname(struct ifnet *ifp, const char *name, int unit)
 	ifp->if_dname = name;
 	ifp->if_dunit = unit;
 	if (unit != IF_DUNIT_NONE)
-		snprintf(ifp->if_xname, IFNAMSIZ, "%s%d", name, unit);
+		ksnprintf(ifp->if_xname, IFNAMSIZ, "%s%d", name, unit);
 	else
 		strlcpy(ifp->if_xname, name, IFNAMSIZ);
 }
