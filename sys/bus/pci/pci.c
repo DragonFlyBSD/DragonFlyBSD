@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.34 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.35 2006/12/20 23:29:17 tgen Exp $
  *
  */
 
@@ -1349,6 +1349,68 @@ pci_add_map(device_t pcib, int b, int s, int f, int reg,
 	return (ln2range == 64) ? 2 : 1;
 }
 
+#ifdef PCI_MAP_FIXUP
+/*
+ * For ATA devices we need to decide early on what addressing mode to use.
+ * Legacy demands that the primary and secondary ATA ports sits on the
+ * same addresses that old ISA hardware did. This dictates that we use
+ * those addresses and ignore the BARs if we cannot set PCI native
+ * addressing mode.
+ */
+static void
+pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b, int s, int f,
+	     struct resource_list *rl)
+{
+	int rid, type, progif;
+#if 0
+	/* if this device supports PCI native addressing use it */
+	progif = pci_read_config(dev, PCIR_PROGIF, 1);
+	if ((progif &0x8a) == 0x8a) {
+		if (pci_mapbase(pci_read_config(dev, PCIR_BAR(0), 4)) &&
+		    pci_mapbase(pci_read_config(dev, PCIR_BAR(2), 4))) {
+			printf("Trying ATA native PCI addressing mode\n");
+			pci_write_config(dev, PCIR_PROGIF, progif | 0x05, 1);
+		}
+	}
+#endif
+	/*
+	 * Because we return any preallocated resources for lazy
+	 * allocation for PCI devices in pci_alloc_resource(), we can
+	 * allocate our legacy resources here.
+	 */
+	progif = pci_read_config(dev, PCIR_PROGIF, 1);
+	type = SYS_RES_IOPORT;
+	if (progif & PCIP_STORAGE_IDE_MODEPRIM) {
+		pci_add_map(pcib, b, s, f, PCIR_BAR(0), rl);
+		pci_add_map(pcib, b, s, f, PCIR_BAR(1), rl);
+	} else {
+		rid = PCIR_BAR(0);
+		resource_list_add(rl, type, rid, 0x1f0, 0x1f7, 8);
+		resource_list_alloc(rl, bus, dev, type, &rid, 0x1f0, 0x1f7, 8,
+				    0);
+		rid = PCIR_BAR(1);
+		resource_list_add(rl, type, rid, 0x3f6, 0x3f6, 1);
+		resource_list_alloc(rl, bus, dev, type, &rid, 0x3f6, 0x3f6, 1,
+				    0);
+	}
+	if (progif & PCIP_STORAGE_IDE_MODESEC) {
+		pci_add_map(pcib, b, s, f, PCIR_BAR(2), rl);
+		pci_add_map(pcib, b, s, f, PCIR_BAR(3), rl);
+	} else {
+		rid = PCIR_BAR(2);
+		resource_list_add(rl, type, rid, 0x170, 0x177, 8);
+		resource_list_alloc(rl, bus, dev, type, &rid, 0x170, 0x177, 8,
+				    0);
+		rid = PCIR_BAR(3);
+		resource_list_add(rl, type, rid, 0x376, 0x376, 1);
+		resource_list_alloc(rl, bus, dev, type, &rid, 0x376, 0x376, 1,
+				    0);
+	}
+	pci_add_map(pcib, b, s, f, PCIR_BAR(4), rl);
+	pci_add_map(pcib, b, s, f, PCIR_BAR(5), rl);
+}
+#endif /* PCI_MAP_FIXUP */
+
 static void
 pci_add_resources(device_t pcib, device_t bus, device_t dev)
 {
@@ -1364,9 +1426,17 @@ pci_add_resources(device_t pcib, device_t bus, device_t dev)
 	b = cfg->bus;
 	s = cfg->slot;
 	f = cfg->func;
-	for (i = 0; i < cfg->nummaps;) {
-		i += pci_add_map(pcib, b, s, f, PCIR_BAR(i),rl);
-	}
+#ifdef PCI_MAP_FIXUP
+	/* atapci devices in legacy mode need special map treatment */
+	if ((pci_get_class(dev) == PCIC_STORAGE) &&
+	    (pci_get_subclass(dev) == PCIS_STORAGE_IDE) &&
+	    (pci_get_progif(dev) & PCIP_STORAGE_IDE_MASTERDEV))
+		pci_ata_maps(pcib, bus, dev, b, s, f, rl);
+	else
+#endif /* PCI_MAP_FIXUP */
+		for (i = 0; i < cfg->nummaps;) {
+			i += pci_add_map(pcib, b, s, f, PCIR_BAR(i),rl);
+		}
 
 	for (q = &pci_quirks[0]; q->devid; q++) {
 		if (q->devid == ((cfg->device << 16) | cfg->vendor)
@@ -1670,18 +1740,108 @@ pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	return 0;
 }
 
+#ifdef PCI_MAP_FIXUP
+static struct resource *
+pci_alloc_map(device_t dev, device_t child, int type, int *rid, u_long start,
+	      u_long end, u_long count, u_int flags)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(child);
+	struct resource_list *rl = &dinfo->resources;
+	struct resource_list_entry *rle;
+	struct resource *res;
+	uint32_t map, testval;
+	int mapsize;
+
+	/*
+	 * Weed out the bogons, and figure out how large the BAR/map
+	 * is. BARs that read back 0 here are bogus and unimplemented.
+	 *
+	 * Note: atapci in legacy mode are special and handled elsewhere
+	 * in the code. If you have an atapci device in legacy mode and
+	 * it fails here, that other code is broken.
+	 */
+	res = NULL;
+	map = pci_read_config(child, *rid, 4);
+	pci_write_config(child, *rid, 0xffffffff, 4);
+	testval = pci_read_config(child, *rid, 4);
+	if (pci_mapbase(testval) == 0)
+		goto out;
+	if (pci_maptype(testval) & PCI_MAPMEM) {
+		if (type != SYS_RES_MEMORY) {
+			if (bootverbose)
+				device_printf(dev, "child %s requested type %d"
+					      " for rid %#x, but the BAR says "
+					      "it is a memio\n",
+					      device_get_nameunit(child), type,
+					      *rid);
+			goto out;
+		}
+	} else {
+		if (type != SYS_RES_IOPORT) {
+			if (bootverbose)
+				device_printf(dev, "child %s requested type %d"
+					      " for rid %#x, but the BAR says "
+					      "it is an ioport\n",
+					      device_get_nameunit(child), type,
+					      *rid);
+			goto out;
+		}
+	}
+	/*
+	 * For real BARs, we need to override the size that
+	 * the driver requests, because that's what the BAR
+	 * actually uses and we would otherwise have a
+	 * situation where we might allocate the excess to
+	 * another driver, which won't work.
+	 */
+	mapsize = pci_mapsize(testval);
+	count = 1 << mapsize;
+	if (RF_ALIGNMENT(flags) < mapsize)
+		flags = (flags & ~RF_ALIGNMENT_MASK) |
+		   RF_ALIGNMENT_LOG2(mapsize);
+	/*
+	 * Allocate enough resource, and then write back the
+	 * appropriate BAR for that resource.
+	 */
+	res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child, type, rid,
+				 start, end, count, flags);
+	if (res == NULL) {
+		device_printf(child, "%#lx bytes at rid %#x res %d failed "
+			      "(%#lx, %#lx)\n", count, *rid, type, start, end);
+		goto out;
+	}
+	resource_list_add(rl, type, *rid, start, end, count);
+	rle = resource_list_find(rl, type, *rid);
+	if (rle == NULL)
+		panic("pci_alloc_map: unexpectedly can't find resource.");
+	rle->res = res;
+	rle->start = rman_get_start(res);
+	rle->end = rman_get_end(res);
+	rle->count = count;
+	if (bootverbose)
+		device_printf(child, "lazy allocation of %#lx bytes rid %#x "
+			      "type %d at %#lx\n", count, *rid, type,
+			      rman_get_start(res));
+	map = rman_get_start(res);
+out:;
+	pci_write_config(child, *rid, map, 4);
+	return res;
+}
+#endif /* PCI_MAP_FIXUP */
+
 struct resource *
 pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		   u_long start, u_long end, u_long count, u_int flags)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct resource_list *rl = &dinfo->resources;
+#ifdef PCI_MAP_FIXUP
+	struct resource_list_entry *rle;
+#endif /* PCI_MAP_FIXUP */
 	pcicfgregs *cfg = &dinfo->cfg;
 
 	/*
 	 * Perform lazy resource allocation
-	 *
-	 * XXX add support here for SYS_RES_IOPORT and SYS_RES_MEMORY
 	 */
 	if (device_get_parent(child) == dev) {
 		switch (type) {
@@ -1707,6 +1867,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 			break;
 #endif
 		case SYS_RES_IOPORT:
+			/* FALLTHROUGH */
 		case SYS_RES_MEMORY:
 			if (*rid < PCIR_BAR(cfg->nummaps)) {
 				/*
@@ -1719,8 +1880,42 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 				if (PCI_ENABLE_IO(dev, child, type))
 					return (NULL);
 			}
+#ifdef PCI_MAP_FIXUP
+			rle = resource_list_find(rl, type, *rid);
+			if (rle == NULL)
+				return pci_alloc_map(dev, child, type, rid,
+						     start, end, count, flags);
+#endif /* PCI_MAP_FIXUP */
 			break;
 		}
+#ifdef PCI_MAP_FIXUP
+		/*
+		 * If we've already allocated the resource, then
+		 * return it now. But first we may need to activate
+		 * it, since we don't allocate the resource as active
+		 * above. Normally this would be done down in the
+		 * nexus, but since we short-circuit that path we have
+		 * to do its job here. Not sure if we should free the
+		 * resource if it fails to activate.
+		 *
+		 * Note: this also finds and returns resources for
+		 * atapci devices in legacy mode as allocated in
+		 * pci_ata_maps().
+		 */
+		rle = resource_list_find(rl, type, *rid);
+		if (rle != NULL && rle->res != NULL) {
+			if (bootverbose)
+				device_printf(child, "reserved %#lx bytes for "
+					      "rid %#x type %d at %#lx\n",
+					      rman_get_size(rle->res), *rid,
+					      type, rman_get_start(rle->res));
+			if ((flags & RF_ACTIVE) &&
+			    bus_generic_activate_resource(dev, child, type,
+							  *rid, rle->res) != 0)
+				return NULL;
+			return rle->res;
+		}
+#endif /* PCI_MAP_FIXUP */
 	}
 	return resource_list_alloc(rl, dev, child, type, rid,
 				   start, end, count, flags);
