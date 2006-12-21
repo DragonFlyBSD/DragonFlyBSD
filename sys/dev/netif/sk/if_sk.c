@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.50 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.51 2006/12/21 14:13:04 sephe Exp $
  */
 
 /*
@@ -197,8 +197,8 @@ static void	sk_watchdog(struct ifnet *);
 static int	sk_ifmedia_upd(struct ifnet *);
 static void	sk_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	sk_reset(struct sk_softc *);
-static int	sk_newbuf(struct sk_if_softc *, struct sk_chain *,
-			  struct mbuf *, int);
+static int	sk_newbuf_jumbo(struct sk_if_softc *, int, int);
+static int	sk_newbuf_std(struct sk_if_softc *, int, int);
 static int	sk_jpool_alloc(device_t);
 static void	sk_jpool_free(struct sk_if_softc *);
 static struct sk_jpool_entry
@@ -334,6 +334,18 @@ static __inline void
 sk_win_write_1(struct sk_softc *sc, uint32_t reg, uint8_t x)
 {
 	CSR_WRITE_1(sc, reg, x);
+}
+
+static __inline int
+sk_newbuf(struct sk_if_softc *sc_if, int idx, int wait)
+{
+	int ret;
+
+	if (sc_if->sk_use_jumbo)
+		ret = sk_newbuf_jumbo(sc_if, idx, wait);
+	else
+		ret = sk_newbuf_std(sc_if, idx, wait);
+	return ret;
 }
 
 static int
@@ -681,27 +693,26 @@ sk_init_rx_ring(struct sk_if_softc *sc_if)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = sc_if->sk_rdata;
-	int i, nexti;
+	int i, nexti, error;
 
 	bzero(rd->sk_rx_ring, sizeof(struct sk_rx_desc) * SK_RX_RING_CNT);
 
 	for (i = 0; i < SK_RX_RING_CNT; i++) {
-		cd->sk_rx_chain[i].sk_desc = &rd->sk_rx_ring[i];
 		if (i == (SK_RX_RING_CNT - 1))
 			nexti = 0;
 		else
 			nexti = i + 1;
-		cd->sk_rx_chain[i].sk_next = &cd->sk_rx_chain[nexti];
 		rd->sk_rx_ring[i].sk_next =
 			htole32(SK_RX_RING_ADDR(sc_if, nexti));
 		rd->sk_rx_ring[i].sk_csum1_start = htole16(ETHER_HDR_LEN);
 		rd->sk_rx_ring[i].sk_csum2_start =
 			htole16(ETHER_HDR_LEN + sizeof(struct ip));
 
-		if (sk_newbuf(sc_if, &cd->sk_rx_chain[i], NULL, 1) == ENOBUFS) {
+		error = sk_newbuf(sc_if, i, 1);
+		if (error) {
 			if_printf(&sc_if->arpcom.ac_if,
 				  "failed alloc of %dth mbuf\n", i);
-			return (ENOBUFS);
+			return error;
 		}
 	}
 
@@ -717,19 +728,16 @@ sk_init_rx_ring(struct sk_if_softc *sc_if)
 static int
 sk_init_tx_ring(struct sk_if_softc *sc_if)
 {
-	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = sc_if->sk_rdata;
 	int i, nexti;
 
 	bzero(rd->sk_tx_ring, sizeof(struct sk_tx_desc) * SK_TX_RING_CNT);
 
 	for (i = 0; i < SK_TX_RING_CNT; i++) {
-		cd->sk_tx_chain[i].sk_desc = &rd->sk_tx_ring[i];
 		if (i == (SK_TX_RING_CNT - 1))
 			nexti = 0;
 		else
 			nexti = i + 1;
-		cd->sk_tx_chain[i].sk_next = &cd->sk_tx_chain[nexti];
 		rd->sk_tx_ring[i].sk_next = htole32(SK_TX_RING_ADDR(sc_if, nexti));
 	}
 
@@ -744,44 +752,35 @@ sk_init_tx_ring(struct sk_if_softc *sc_if)
 }
 
 static int
-sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m,
-	  int wait)
+sk_newbuf_jumbo(struct sk_if_softc *sc_if, int idx, int wait)
 {
 	struct sk_jpool_entry *entry;
 	struct mbuf *m_new = NULL;
 	struct sk_rx_desc *r;
 
-	if (m == NULL) {
-		MGETHDR(m_new, wait ? MB_WAIT : MB_DONTWAIT, MT_DATA);
-		if (m_new == NULL)
-			return (ENOBUFS);
-		
-		/* Allocate the jumbo buffer */
-		entry = sk_jalloc(sc_if);
-		if (entry == NULL) {
-			m_freem(m_new);
-			DPRINTFN(1, ("%s jumbo allocation failed -- packet "
-			    "dropped!\n", sc_if->arpcom.ac_if.if_xname));
-			return (ENOBUFS);
-		}
+	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
-		m_new->m_ext.ext_arg = entry;
-		m_new->m_ext.ext_buf = entry->buf;
-		m_new->m_ext.ext_free = sk_jfree;
-		m_new->m_ext.ext_ref = sk_jref;
-		m_new->m_ext.ext_size = SK_JLEN;
+	MGETHDR(m_new, wait ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	if (m_new == NULL)
+		return ENOBUFS;
 
-		m_new->m_flags |= M_EXT;
-	} else {
-		/*
-	 	 * We're re-using a previously allocated mbuf;
-		 * be sure to re-init pointers and lengths to
-		 * default values.
-		 */
-		KKASSERT(m->m_flags & M_EXT);
-		entry = m->m_ext.ext_arg;
-		m_new = m;
+	/* Allocate the jumbo buffer */
+	entry = sk_jalloc(sc_if);
+	if (entry == NULL) {
+		m_freem(m_new);
+		DPRINTFN(1, ("%s jumbo allocation failed -- packet "
+		    "dropped!\n", sc_if->arpcom.ac_if.if_xname));
+		return ENOBUFS;
 	}
+
+	m_new->m_ext.ext_arg = entry;
+	m_new->m_ext.ext_buf = entry->buf;
+	m_new->m_ext.ext_free = sk_jfree;
+	m_new->m_ext.ext_ref = sk_jref;
+	m_new->m_ext.ext_size = SK_JLEN;
+
+	m_new->m_flags |= M_EXT;
+
 	m_new->m_data = m_new->m_ext.ext_buf;
 	m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 
@@ -792,13 +791,69 @@ sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m,
 	 */
 	m_adj(m_new, ETHER_ALIGN);
 
-	c->sk_mbuf = m_new;
+	sc_if->sk_cdata.sk_rx_mbuf[idx] = m_new;
 
-	r = c->sk_desc;
+	r = &sc_if->sk_rdata->sk_rx_ring[idx];
 	r->sk_data_lo = htole32(entry->paddr + ETHER_ALIGN);
-	r->sk_ctl = htole32(SK_JLEN | SK_RXSTAT);
+	r->sk_ctl = htole32(m_new->m_pkthdr.len | SK_RXSTAT);
 
-	return (0);
+	return 0;
+}
+
+static int
+sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
+{
+	struct mbuf *m_new = NULL;
+	struct sk_chain_data *cd = &sc_if->sk_cdata;
+	struct sk_rx_desc *r;
+	struct sk_dma_ctx ctx;
+	bus_dma_segment_t seg;
+	bus_dmamap_t map;
+	int error;
+
+	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
+
+	m_new = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	if (m_new == NULL)
+		return ENOBUFS;
+
+	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
+
+	/*
+	 * Adjust alignment so packet payload begins on a
+	 * longword boundary. Mandatory for Alpha, useful on
+	 * x86 too.
+	 */
+	m_adj(m_new, ETHER_ALIGN);
+
+	bzero(&ctx, sizeof(ctx));
+	ctx.nsegs = 1;
+	ctx.segs = &seg;
+	error = bus_dmamap_load_mbuf(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp,
+				     m_new, sk_buf_dma_addr, &ctx,
+				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
+	if (error) {
+		if_printf(&sc_if->arpcom.ac_if, "could not map RX mbuf\n");
+		m_freem(m_new);
+		return error;
+	}
+
+	/* Unload originally mapped mbuf */
+	if (cd->sk_rx_mbuf[idx] != NULL)
+		bus_dmamap_unload(cd->sk_rx_dtag, cd->sk_rx_dmap[idx]);
+
+	/* Switch DMA map with tmp DMA map */
+	map = cd->sk_rx_dmap_tmp;
+	cd->sk_rx_dmap_tmp = cd->sk_rx_dmap[idx];
+	cd->sk_rx_dmap[idx] = map;
+
+	cd->sk_rx_mbuf[idx] = m_new;
+
+	r = &sc_if->sk_rdata->sk_rx_ring[idx];
+	r->sk_data_lo = htole32(seg.ds_addr);
+	r->sk_ctl = htole32(m_new->m_pkthdr.len | SK_RXSTAT);
+
+	return 0;
 }
 
 /*
@@ -817,8 +872,7 @@ sk_jalloc(struct sk_if_softc *sc_if)
 		SLIST_REMOVE_HEAD(&cd->sk_jpool_free_ent, entry_next);
 		entry->inuse = 1;
 	} else {
-		if_printf(&sc_if->arpcom.ac_if,
-			  "no free jumbo buffer\n");
+		DPRINTF(("no free jumbo buffer\n"));
 	}
 
 	lwkt_serialize_exit(&cd->sk_jpool_serializer);
@@ -1214,6 +1268,9 @@ sk_attach(device_t dev)
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 
+	/* Don't use jumbo buffers by default */
+	sc_if->sk_use_jumbo = 0;
+
 	/*
 	 * Do miibus setup.
 	 */
@@ -1559,7 +1616,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 		SK_INC(frag, SK_TX_RING_CNT);
 	}
 
-	cd->sk_tx_chain[cur].sk_mbuf = m_head;
+	cd->sk_tx_mbuf[cur] = m_head;
 	/* Switch DMA map */
 	cd->sk_tx_dmap[*txidx] = cd->sk_tx_dmap[cur];
 	cd->sk_tx_dmap[cur] = map;
@@ -1604,7 +1661,7 @@ sk_start(struct ifnet *ifp)
 
 	DPRINTFN(2, ("sk_start\n"));
 
-	while (sc_if->sk_cdata.sk_tx_chain[idx].sk_mbuf == NULL) {
+	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
@@ -1704,7 +1761,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = sc_if->sk_rdata;
-	int i, reap;
+	int i, reap, max_frmlen;
 
 	DPRINTFN(2, ("sk_rxeof\n"));
 
@@ -1712,64 +1769,81 @@ sk_rxeof(struct sk_if_softc *sc_if)
 
 	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
 			BUS_DMASYNC_POSTREAD);
-	bus_dmamap_sync(cd->sk_jpool_dtag, cd->sk_jpool_dmap,
-			BUS_DMASYNC_POSTREAD);
+	if (sc_if->sk_use_jumbo) {
+		bus_dmamap_sync(cd->sk_jpool_dtag, cd->sk_jpool_dmap,
+				BUS_DMASYNC_POSTREAD);
+		max_frmlen = SK_JUMBO_FRAMELEN;
+	} else {
+		max_frmlen = ETHER_MAX_LEN;
+	}
 
 	reap = 0;
 	for (;;) {
-		struct sk_chain *cur_rx;
 		struct sk_rx_desc *cur_desc;
 		uint32_t rxstat, sk_ctl;
+#ifdef SK_RXCSUM
 		uint16_t csum1, csum2;
+#endif
 		int cur, total_len;
 		struct mbuf *m;
 
 		cur = i;
+		cur_desc = &rd->sk_rx_ring[cur];
 
-		sk_ctl = le32toh(rd->sk_rx_ring[i].sk_ctl);
-		if ((sk_ctl & SK_RXCTL_OWN) != 0) {
+		sk_ctl = le32toh(cur_desc->sk_ctl);
+		if (sk_ctl & SK_RXCTL_OWN) {
 			/* Invalidate the descriptor -- it's not ready yet */
-			cd->sk_rx_prod = i;
+			cd->sk_rx_prod = cur;
 			break;
 		}
 
-		cur_rx = &cd->sk_rx_chain[cur];
-		cur_desc = &rd->sk_rx_ring[cur];
-
 		rxstat = le32toh(cur_desc->sk_xmac_rxstat);
-		m = cur_rx->sk_mbuf;
-		cur_rx->sk_mbuf = NULL;
 		total_len = SK_RXBYTES(le32toh(cur_desc->sk_ctl));
 
-		csum1 = le16toh(rd->sk_rx_ring[i].sk_csum1);
-		csum2 = le16toh(rd->sk_rx_ring[i].sk_csum2);
+#ifdef SK_RXCSUM
+		csum1 = le16toh(cur_desc->sk_csum1);
+		csum2 = le16toh(cur_desc->sk_csum2);
+#endif
 
+		m = cd->sk_rx_mbuf[cur];
+
+		/*
+		 * Bump 'i' here, so we can keep going, even if the current
+		 * RX descriptor reaping fails later.  'i' shoult NOT be used
+		 * in the following processing any more.
+		 */
 		SK_INC(i, SK_RX_RING_CNT);
+		reap = 1;
 
 		if ((sk_ctl & (SK_RXCTL_STATUS_VALID | SK_RXCTL_FIRSTFRAG |
 		    SK_RXCTL_LASTFRAG)) != (SK_RXCTL_STATUS_VALID |
 		    SK_RXCTL_FIRSTFRAG | SK_RXCTL_LASTFRAG) ||
-		    total_len < SK_MIN_FRAMELEN ||
-		    total_len > SK_JUMBO_FRAMELEN ||
+		    total_len < SK_MIN_FRAMELEN || total_len > max_frmlen ||
 		    sk_rxvalid(sc, rxstat, total_len) == 0) {
 			ifp->if_ierrors++;
-			sk_newbuf(sc_if, cur_rx, m, 0);
+			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
 			continue;
 		}
 
+		if (!sc_if->sk_use_jumbo) {
+			bus_dmamap_sync(cd->sk_rx_dtag, cd->sk_rx_dmap[cur],
+					BUS_DMASYNC_POSTREAD);
+		}
+
 		/*
-		 * Try to allocate a new jumbo buffer. If that
-		 * fails, copy the packet to mbufs and put the
-		 * jumbo buffer back in the ring so it can be
-		 * re-used. If allocating mbufs fails, then we
-		 * have to drop the packet.
+		 * Try to allocate a new RX buffer. If that fails,
+		 * copy the packet to mbufs and put the RX buffer
+		 * back in the ring so it can be re-used. If
+		 * allocating mbufs fails, then we have to drop
+		 * the packet.
 		 */
-		if (sk_newbuf(sc_if, cur_rx, NULL, 0) == ENOBUFS) {
+		if (sk_newbuf(sc_if, cur, 0)) {
 			struct mbuf *m0;
+
+			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
 
 			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
 			    total_len + ETHER_ALIGN, 0, ifp, NULL);
-			sk_newbuf(sc_if, cur_rx, m, 0);
 			if (m0 == NULL) {
 				ifp->if_ierrors++;
 				continue;
@@ -1785,7 +1859,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		sk_rxcsum(ifp, m, csum1, csum2);
 #endif
 
-		reap = 1;
 		ifp->if_ipackets++;
 		ifp->if_input(ifp, m);
 	}
@@ -1922,10 +1995,10 @@ sk_txeof(struct sk_if_softc *sc_if)
 			break;
 		if (sk_ctl & SK_TXCTL_LASTFRAG)
 			ifp->if_opackets++;
-		if (cd->sk_tx_chain[idx].sk_mbuf != NULL) {
+		if (cd->sk_tx_mbuf[idx] != NULL) {
 			bus_dmamap_unload(cd->sk_tx_dtag, cd->sk_tx_dmap[idx]);
-			m_freem(cd->sk_tx_chain[idx].sk_mbuf);
-			cd->sk_tx_chain[idx].sk_mbuf = NULL;
+			m_freem(cd->sk_tx_mbuf[idx]);
+			cd->sk_tx_mbuf[idx] = NULL;
 		}
 		sc_if->sk_cdata.sk_tx_cnt--;
 		reap = 1;
@@ -2284,9 +2357,11 @@ sk_init_xmac(struct sk_if_softc	*sc_if)
 	 * case the XMAC will start transfering frames out of the
 	 * RX FIFO as soon as the FIFO threshold is reached.
 	 */
-	SK_XM_SETBIT_4(sc_if, XM_MODE, XM_MODE_RX_BADFRAMES|
-	    XM_MODE_RX_GIANTS|XM_MODE_RX_RUNTS|XM_MODE_RX_CRCERRS|
-	    XM_MODE_RX_INRANGELEN);
+	if (sc_if->sk_use_jumbo) {
+		SK_XM_SETBIT_4(sc_if, XM_MODE, XM_MODE_RX_BADFRAMES|
+		    XM_MODE_RX_GIANTS|XM_MODE_RX_RUNTS|XM_MODE_RX_CRCERRS|
+		    XM_MODE_RX_INRANGELEN);
+	}
 
 	SK_XM_SETBIT_2(sc_if, XM_RXCMD, XM_RXCMD_BIGPKTOK);
 
@@ -2438,9 +2513,10 @@ sk_init_yukon(struct sk_if_softc *sc_if)
 
 	/* serial mode register */
 	DPRINTFN(6, ("sk_init_yukon: 9\n"));
-	SK_YU_WRITE_2(sc_if, YUKON_SMR, YU_SMR_DATA_BLIND(0x1c) |
-		      YU_SMR_MFL_VLAN | YU_SMR_MFL_JUMBO |
-		      YU_SMR_IPG_DATA(0x1e));
+	reg = YU_SMR_DATA_BLIND(0x1c) | YU_SMR_MFL_VLAN | YU_SMR_IPG_DATA(0x1e);
+	if (sc_if->sk_use_jumbo)
+		reg |= YU_SMR_MFL_JUMBO;
+	SK_YU_WRITE_2(sc_if, YUKON_SMR, reg);
 
 	DPRINTFN(6, ("sk_init_yukon: 10\n"));
 	/* Setup Yukon's address */
@@ -2517,6 +2593,16 @@ sk_init(void *xsc_if)
 
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	sk_stop(sc_if);
+
+	/*
+	 * NOTE: Change sk_use_jumbo after sk_stop(),
+	 *       but before real initialization.
+	 */
+	if (ifp->if_mtu > ETHER_MAX_LEN)
+		sc_if->sk_use_jumbo = 1;
+	else
+		sc_if->sk_use_jumbo = 0;
+	DPRINTF(("use jumbo buffer: %s\n", sc_if->sk_use_jumbo ? "YES" : "NO"));
 
 	if (SK_IS_GENESIS(sc)) {
 		/* Configure LINK_SYNC LED */
@@ -2759,16 +2845,20 @@ sk_stop(struct sk_if_softc *sc_if)
 
 	/* Free RX and TX mbufs still in the queues. */
 	for (i = 0; i < SK_RX_RING_CNT; i++) {
-		if (cd->sk_rx_chain[i].sk_mbuf != NULL) {
-			m_freem(cd->sk_rx_chain[i].sk_mbuf);
-			cd->sk_rx_chain[i].sk_mbuf = NULL;
+		if (cd->sk_rx_mbuf[i] != NULL) {
+			if (!sc_if->sk_use_jumbo) {
+				bus_dmamap_unload(cd->sk_rx_dtag,
+						  cd->sk_rx_dmap[i]);
+			}
+			m_freem(cd->sk_rx_mbuf[i]);
+			cd->sk_rx_mbuf[i] = NULL;
 		}
 	}
 	for (i = 0; i < SK_TX_RING_CNT; i++) {
-		if (cd->sk_tx_chain[i].sk_mbuf != NULL) {
+		if (cd->sk_tx_mbuf[i] != NULL) {
 			bus_dmamap_unload(cd->sk_tx_dtag, cd->sk_tx_dmap[i]);
-			m_freem(cd->sk_tx_chain[i].sk_mbuf);
-			cd->sk_tx_chain[i].sk_mbuf = NULL;
+			m_freem(cd->sk_tx_mbuf[i]);
+			cd->sk_tx_mbuf[i] = NULL;
 		}
 	}
 }
@@ -3002,16 +3092,54 @@ sk_dma_alloc(device_t dev)
 					  &cd->sk_tx_dmap[i]);
 		if (error) {
 			device_printf(dev, "can't create %dth TX DMA map\n", i);
-			goto fail;
+
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(cd->sk_tx_dtag,
+						   cd->sk_tx_dmap[i]);
+			}
+			bus_dma_tag_destroy(cd->sk_tx_dtag);
+			cd->sk_tx_dtag = NULL;
+			return error;
+		}
+	}
+
+	/* Create DMA tag for RX. */
+	error = bus_dma_tag_create(NULL, 1, 0,
+				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+				   NULL, NULL, MCLBYTES, 1, MCLBYTES,
+				   0, &cd->sk_rx_dtag);
+	if (error) {
+		device_printf(dev, "can't create RX DMA tag\n");
+		return error;
+	}
+
+	/* Create a spare RX DMA map. */
+	error = bus_dmamap_create(cd->sk_rx_dtag, 0, &cd->sk_rx_dmap_tmp);
+	if (error) {
+		device_printf(dev, "can't create spare RX DMA map\n");
+		bus_dma_tag_destroy(cd->sk_rx_dtag);
+		cd->sk_rx_dtag = NULL;
+		return error;
+	}
+
+	/* Create DMA maps for RX. */
+	for (i = 0; i < SK_RX_RING_CNT; ++i) {
+		error = bus_dmamap_create(cd->sk_rx_dtag, 0,
+					  &cd->sk_rx_dmap[i]);
+		if (error) {
+			device_printf(dev, "can't create %dth RX DMA map\n", i);
+
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(cd->sk_rx_dtag,
+						   cd->sk_rx_dmap[i]);
+			}
+			bus_dmamap_destroy(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp);
+			bus_dma_tag_destroy(cd->sk_rx_dtag);
+			cd->sk_rx_dtag = NULL;
+			return error;
 		}
 	}
 	return 0;
-fail:
-	for (j = 0; j < i; ++j)
-		bus_dmamap_destroy(cd->sk_tx_dtag, cd->sk_tx_dmap[i]);
-	bus_dma_tag_destroy(cd->sk_tx_dtag);
-	cd->sk_tx_dtag = NULL;
-	return error;
 }
 
 static void
@@ -3019,21 +3147,29 @@ sk_dma_free(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
+	int i;
 
 	if (cd->sk_tx_dtag != NULL) {
-		int i;
-
 		for (i = 0; i < SK_TX_RING_CNT; ++i) {
-			if (cd->sk_tx_chain[i].sk_mbuf != NULL) {
-				bus_dmamap_unload(cd->sk_tx_dtag,
-						  cd->sk_tx_dmap[i]);
-				m_freem(cd->sk_tx_chain[i].sk_mbuf);
-				cd->sk_tx_chain[i].sk_mbuf = NULL;
-			}
+			KASSERT(cd->sk_tx_mbuf[i] == NULL,
+				("sk_stop() is not called before %s()",
+				 __func__));
 			bus_dmamap_destroy(cd->sk_tx_dtag, cd->sk_tx_dmap[i]);
 		}
 		bus_dma_tag_destroy(cd->sk_tx_dtag);
 		cd->sk_tx_dtag = NULL;
+	}
+
+	if (cd->sk_rx_dtag != NULL) {
+		for (i = 0; i < SK_RX_RING_CNT; ++i) {
+			KASSERT(cd->sk_rx_mbuf[i] == NULL,
+				("sk_stop() is not called before %s()",
+				 __func__));
+			bus_dmamap_destroy(cd->sk_rx_dtag, cd->sk_rx_dmap[i]);
+		}
+		bus_dmamap_destroy(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp);
+		bus_dma_tag_destroy(cd->sk_rx_dtag);
+		cd->sk_rx_dtag = NULL;
 	}
 
 	sk_jpool_free(sc_if);

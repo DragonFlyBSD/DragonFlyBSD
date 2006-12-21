@@ -66,7 +66,7 @@
  * $FreeBSD: /c/ncvs/src/sys/pci/if_skreg.h,v 1.9 2000/04/22 02:16:37 wpaul Exp $
  * $NetBSD: if_skvar.h,v 1.6 2005/05/30 04:35:22 christos Exp $
  * $OpenBSD: if_skvar.h,v 1.2 2005/12/22 20:54:47 brad Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skvar.h,v 1.1 2006/11/14 12:52:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skvar.h,v 1.2 2006/12/21 14:13:04 sephe Exp $
  */
 
 /*
@@ -97,30 +97,26 @@ struct sk_jpool_entry {
 	SLIST_ENTRY(sk_jpool_entry) entry_next;
 };
 
-struct sk_chain {
-	void			*sk_desc;
-	struct mbuf		*sk_mbuf;
-	struct sk_chain		*sk_next;
-};
-
 /*
  * Number of DMA segments in a TxCB. Note that this is carefully
  * chosen to make the total struct size an even power of two. It's
  * critical that no TxCB be split across a page boundary since
  * no attempt is made to allocate physically contiguous memory.
- *
  */
 #define SK_NTXSEG      30
 
 struct sk_chain_data {
-	struct sk_chain		sk_tx_chain[SK_TX_RING_CNT];
+	struct mbuf		*sk_tx_mbuf[SK_TX_RING_CNT];
 	bus_dma_tag_t		sk_tx_dtag;
 	bus_dmamap_t		sk_tx_dmap[SK_TX_RING_CNT];
 	int			sk_tx_prod;
 	int			sk_tx_cons;
 	int			sk_tx_cnt;
 
-	struct sk_chain		sk_rx_chain[SK_RX_RING_CNT];
+	struct mbuf		*sk_rx_mbuf[SK_RX_RING_CNT];
+	bus_dma_tag_t		sk_rx_dtag;
+	bus_dmamap_t		sk_rx_dmap[SK_RX_RING_CNT];
+	bus_dmamap_t		sk_rx_dmap_tmp;
 	int			sk_rx_prod;
 	int			sk_rx_cons;
 	int			sk_rx_cnt;
@@ -201,6 +197,7 @@ struct sk_if_softc {
 	struct sk_softc		*sk_softc;	/* parent controller */
 	int			sk_tx_bmu;	/* TX BMU register */
 	int			sk_if_flags;
+	int			sk_use_jumbo;
 };
 
 struct sk_dma_ctx {
