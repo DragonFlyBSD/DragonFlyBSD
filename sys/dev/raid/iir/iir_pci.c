@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_pci.c,v 1.3.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.6 2006/10/25 20:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.7 2006/12/22 23:26:23 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -223,7 +223,7 @@ iir_pci_attach(device_t dev)
                       htole32(GDT_MPR_MAGIC));
     if (bus_space_read_4(gdt->sc_dpmemt, gdt->sc_dpmemh, GDT_MPR_IC) !=
         htole32(GDT_MPR_MAGIC)) {
-        printf("cannot access DPMEM at 0x%x (shadowed?)\n",
+        kprintf("cannot access DPMEM at 0x%x (shadowed?)\n",
                gdt->sc_dpmembase);
         error = ENXIO;
         goto err;
@@ -252,7 +252,7 @@ iir_pci_attach(device_t dev)
     while (bus_space_read_1(gdt->sc_dpmemt, gdt->sc_dpmemh,
                             GDT_MPR_IC + GDT_S_STATUS) != 0xff) {
         if (--retries == 0) {
-            printf("DEINIT failed\n");
+            kprintf("DEINIT failed\n");
             error = ENXIO;
             goto err;
         }
@@ -264,7 +264,7 @@ iir_pci_attach(device_t dev)
     bus_space_write_1(gdt->sc_dpmemt, gdt->sc_dpmemh, GDT_MPR_IC + GDT_S_STATUS,
                       0);
     if (protocol != GDT_PROTOCOL_VERSION) {
-        printf("unsupported protocol %d\n", protocol);
+        kprintf("unsupported protocol %d\n", protocol);
         error = ENXIO;
         goto err;
     }
@@ -289,7 +289,7 @@ iir_pci_attach(device_t dev)
     while (bus_space_read_1(gdt->sc_dpmemt, gdt->sc_dpmemh,
                             GDT_MPR_IC + GDT_S_STATUS) != 0xfe) {
         if (--retries == 0) {
-            printf("initialization error\n");
+            kprintf("initialization error\n");
             error = ENXIO;
             goto err;
         }

@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -363,7 +363,7 @@ change_bits(mixer_tab *t, u_char *regval, int dev, int chn, int newval)
     	u_char mask;
     	int shift;
 
-    	DEB(printf("ch_bits dev %d ch %d val %d old 0x%02x "
+    	DEB(kprintf("ch_bits dev %d ch %d val %d old 0x%02x "
 		"r %d p %d bit %d off %d\n",
 		dev, chn, newval, *regval,
 		(*t)[dev][chn].regno, (*t)[dev][chn].polarity,
@@ -432,7 +432,7 @@ mss_mixer_set(struct mss_info *mss, int dev, int left, int right)
 	}
 
     	if ((*mix_d)[dev][LEFT_CHN].nbits == 0) {
-		DEB(printf("nbits = 0 for dev %d\n", dev));
+		DEB(kprintf("nbits = 0 for dev %d\n", dev));
 		return -1;
     	}
 
@@ -447,7 +447,7 @@ mss_mixer_set(struct mss_info *mss, int dev, int left, int right)
     	change_bits(mix_d, &val, dev, LEFT_CHN, left);
     	ad_write(mss, regoffs, val);
 
-    	DEB(printf("LEFT: dev %d reg %d old 0x%02x new 0x%02x\n",
+    	DEB(kprintf("LEFT: dev %d reg %d old 0x%02x new 0x%02x\n",
 		dev, regoffs, old, val));
 
     	if ((*mix_d)[dev][RIGHT_CHN].nbits != 0) { /* have stereo */
@@ -458,7 +458,7 @@ mss_mixer_set(struct mss_info *mss, int dev, int left, int right)
 		change_bits(mix_d, &val, dev, RIGHT_CHN, right);
 		ad_write(mss, regoffs, val);
 
-		DEB(printf("RIGHT: dev %d reg %d old 0x%02x new 0x%02x\n",
+		DEB(kprintf("RIGHT: dev %d reg %d old 0x%02x new 0x%02x\n",
 	    	dev, regoffs, old, val));
     	}
     	return 0; /* success */
@@ -688,7 +688,7 @@ mss_init(struct mss_info *mss, device_t dev)
 		mss->opti_offset =
 			(rman_get_start(mss->conf_base) & ~3) + 2
 			- rman_get_start(mss->conf_base);
-		BVDDB(printf("mss_init: opti_offset=%d\n", mss->opti_offset));
+		BVDDB(kprintf("mss_init: opti_offset=%d\n", mss->opti_offset));
     		opti_wr(mss, 4, 0xd6); /* fifo empty, OPL3, audio enable, SB3.2 */
     		ad_write(mss, 10, 2); /* enable interrupts */
     		opti_wr(mss, 6, 2);  /* MCIR6: mss enable, sb disable */
@@ -708,7 +708,7 @@ mss_init(struct mss_info *mss, device_t dev)
     		alt = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
     				     0, ~0, 1, RF_ACTIVE);
 		if (alt == NULL) {
-			printf("XXX couldn't init GUS PnP/MAX\n");
+			kprintf("XXX couldn't init GUS PnP/MAX\n");
 			break;
 		}
     		port_wr(alt, 0, 0xC); /* enable int and dma */
@@ -732,14 +732,14 @@ mss_init(struct mss_info *mss, device_t dev)
     		/* enable access to hidden regs */
     		tmp = gus_rd(mss, 0x5b /* IVERI */);
     		gus_wr(mss, 0x5b, tmp | 1);
-    		BVDDB(printf("GUS: silicon rev %c\n", 'A' + ((tmp & 0xf) >> 4)));
+    		BVDDB(kprintf("GUS: silicon rev %c\n", 'A' + ((tmp & 0xf) >> 4)));
 		break;
 
     	case MD_YM0020:
          	conf_wr(mss, OPL3SAx_DMACONF, 0xa9); /* dma-b rec, dma-a play */
         	r6 = conf_rd(mss, OPL3SAx_DMACONF);
         	r9 = conf_rd(mss, OPL3SAx_MISC); /* version */
-        	BVDDB(printf("Yamaha: ver 0x%x DMA config 0x%x\n", r6, r9);)
+        	BVDDB(kprintf("Yamaha: ver 0x%x DMA config 0x%x\n", r6, r9);)
 		/* yamaha - set volume to max */
 		conf_wr(mss, OPL3SAx_VOLUMEL, 0);
 		conf_wr(mss, OPL3SAx_VOLUMER, 0);
@@ -781,7 +781,7 @@ mss_intr(void *arg)
     	u_char c = 0, served = 0;
     	int i;
 
-    	DEB(printf("mss_intr\n"));
+    	DEB(kprintf("mss_intr\n"));
 	mss_lock(mss);
     	ad_read(mss, 11); /* fake read of status bits */
 
@@ -803,9 +803,9 @@ mss_intr(void *arg)
 		else io_wr(mss, MSS_STATUS, 0);	/* Clear interrupt status */
     	}
     	if (i == 10) {
-		BVDDB(printf("mss_intr: irq, but not from mss\n"));
+		BVDDB(kprintf("mss_intr: irq, but not from mss\n"));
 	} else if (served == 0) {
-		BVDDB(printf("mss_intr: unexpected irq with reason %x\n", c));
+		BVDDB(kprintf("mss_intr: unexpected irq with reason %x\n", c));
 		/*
 	 	* this should not happen... I have no idea what to do now.
 	 	* maybe should do a sanity check and restart dmas ?
@@ -826,7 +826,7 @@ ad_wait_init(struct mss_info *mss, int x)
     	for (; x > 0; x--)
 		if ((n = io_rd(mss, MSS_INDEX)) & MSS_IDXBUSY) DELAY(10);
 		else return n;
-    	printf("AD_WAIT_INIT FAILED %d 0x%02x\n", arg, n);
+    	kprintf("AD_WAIT_INIT FAILED %d 0x%02x\n", arg, n);
     	return n;
 }
 
@@ -839,7 +839,7 @@ ad_read(struct mss_info *mss, int reg)
     	x = io_rd(mss, MSS_INDEX) & ~MSS_IDXMASK;
     	io_wr(mss, MSS_INDEX, (u_char)(reg & MSS_IDXMASK) | x);
     	x = io_rd(mss, MSS_IDATA);
-	/* printf("ad_read %d, %x\n", reg, x); */
+	/* kprintf("ad_read %d, %x\n", reg, x); */
     	return x;
 }
 
@@ -848,7 +848,7 @@ ad_write(struct mss_info *mss, int reg, u_char data)
 {
     	int x;
 
-	/* printf("ad_write %d, %x\n", reg, data); */
+	/* kprintf("ad_write %d, %x\n", reg, data); */
     	ad_wait_init(mss, 1002000);
     	x = io_rd(mss, MSS_INDEX) & ~MSS_IDXMASK;
     	io_wr(mss, MSS_INDEX, (u_char)(reg & MSS_IDXMASK) | x);
@@ -876,7 +876,7 @@ wait_for_calibration(struct mss_info *mss)
      	 */
 
     	t = ad_wait_init(mss, 1000000);
-    	if (t & MSS_IDXBUSY) printf("mss: Auto calibration timed out(1).\n");
+    	if (t & MSS_IDXBUSY) kprintf("mss: Auto calibration timed out(1).\n");
 
 	/*
 	 * The calibration mode for chips that support it is set so that
@@ -919,7 +919,7 @@ ad_leave_MCE(struct mss_info *mss)
     	u_char   prev;
 
     	if ((mss->bd_flags & BD_F_MCE_BIT) == 0) {
-		DEB(printf("--- hey, leave_MCE: MCE bit was not set!\n"));
+		DEB(kprintf("--- hey, leave_MCE: MCE bit was not set!\n"));
 		return;
     	}
 
@@ -1028,7 +1028,7 @@ mss_trigger(struct mss_chinfo *ch, int go)
     	case PCMTRIG_START:
 		cnt = (ch->blksz / ss) - 1;
 
-		DEB(if (m & 4) printf("OUCH! reg 9 0x%02x\n", m););
+		DEB(if (m & 4) kprintf("OUCH! reg 9 0x%02x\n", m););
 		m |= wr? I9_PEN : I9_CEN; /* enable DMA */
 		ad_write_cnt(mss, (wr || !FULL_DUPLEX(mss))? 14 : 30, cnt);
 		break;
@@ -1050,7 +1050,7 @@ mss_trigger(struct mss_chinfo *ch, int go)
         	ad_write(mss, 9, m);
         	if (ad_read(mss, 9) == m) break;
     	}
-    	if (retry == 0) BVDDB(printf("stop dma, failed to set bit 0x%02x 0x%02x\n", \
+    	if (retry == 0) BVDDB(kprintf("stop dma, failed to set bit 0x%02x 0x%02x\n", \
 			       m, ad_read(mss, 9)));
     	return 0;
 }
@@ -1071,7 +1071,7 @@ opti931_intr(void *arg)
 #if 0
     	reason = io_rd(mss, MSS_STATUS);
     	if (!(reason & 1)) {/* no int, maybe a shared line ? */
-		DEB(printf("intr: flag 0, mcir11 0x%02x\n", ad_read(mss, 11)));
+		DEB(kprintf("intr: flag 0, mcir11 0x%02x\n", ad_read(mss, 11)));
 		return;
     	}
 #endif
@@ -1082,14 +1082,14 @@ opti931_intr(void *arg)
     	c = mc11 = FULL_DUPLEX(mss)? opti_rd(mss, 11) : 0xc;
     	mc11 &= 0x0c;
     	if (c & 0x10) {
-		DEB(printf("Warning: CD interrupt\n");)
+		DEB(kprintf("Warning: CD interrupt\n");)
 		mc11 |= 0x10;
     	}
     	if (c & 0x20) {
-		DEB(printf("Warning: MPU interrupt\n");)
+		DEB(kprintf("Warning: MPU interrupt\n");)
 		mc11 |= 0x20;
     	}
-    	if (mc11 & masked) BVDDB(printf("irq reset failed, mc11 0x%02x, 0x%02x\n",\
+    	if (mc11 & masked) BVDDB(kprintf("irq reset failed, mc11 0x%02x, 0x%02x\n",\
                               	  mc11, masked));
     	masked |= mc11;
     	/*
@@ -1099,11 +1099,11 @@ opti931_intr(void *arg)
     	if (mc11 == 0) { /* perhaps can return ... */
 		reason = io_rd(mss, MSS_STATUS);
 		if (reason & 1) {
-	    		DEB(printf("one more try...\n");)
+	    		DEB(kprintf("one more try...\n");)
 	    		if (--loops) goto again;
-	    		else DDB(printf("intr, but mc11 not set\n");)
+	    		else DDB(kprintf("intr, but mc11 not set\n");)
 		}
-		if (loops == 0) BVDDB(printf("intr, nothing in mcir11 0x%02x\n", mc11));
+		if (loops == 0) BVDDB(kprintf("intr, nothing in mcir11 0x%02x\n", mc11));
 		mss_unlock(mss);
 		return;
     	}
@@ -1113,7 +1113,7 @@ opti931_intr(void *arg)
     	opti_wr(mss, 11, ~mc11); /* ack */
     	if (--loops) goto again;
 	mss_unlock(mss);
-    	DEB(printf("xxx too many loops\n");)
+    	DEB(kprintf("xxx too many loops\n");)
 }
 
 /* -------------------------------------------------------------------- */
@@ -1263,7 +1263,7 @@ mss_probe(device_t dev)
     	mss->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &mss->io_rid,
 				      	0, ~0, 8, RF_ACTIVE);
     	if (!mss->io_base) {
-        	BVDDB(printf("mss_probe: no address given, try 0x%x\n", 0x530));
+        	BVDDB(kprintf("mss_probe: no address given, try 0x%x\n", 0x530));
 		mss->io_rid = 0;
 		/* XXX verify this */
 		setres = 1;
@@ -1290,32 +1290,32 @@ mss_probe(device_t dev)
     	device_set_desc(dev, "MSS");
     	tmpx = tmp = io_rd(mss, 3);
     	if (tmp == 0xff) {	/* Bus float */
-		BVDDB(printf("I/O addr inactive (%x), try pseudo_mss\n", tmp));
+		BVDDB(kprintf("I/O addr inactive (%x), try pseudo_mss\n", tmp));
 		device_set_flags(dev, flags & ~DV_F_TRUE_MSS);
 		goto mss_probe_end;
     	}
     	tmp &= 0x3f;
     	if (!(tmp == 0x04 || tmp == 0x0f || tmp == 0x00)) {
-		BVDDB(printf("No MSS signature detected on port 0x%lx (0x%x)\n",
+		BVDDB(kprintf("No MSS signature detected on port 0x%lx (0x%x)\n",
 		     	rman_get_start(mss->io_base), tmpx));
 		goto no;
     	}
     	if (irq > 11) {
-		printf("MSS: Bad IRQ %d\n", irq);
+		kprintf("MSS: Bad IRQ %d\n", irq);
 		goto no;
     	}
     	if (!(drq == 0 || drq == 1 || drq == 3)) {
-		printf("MSS: Bad DMA %d\n", drq);
+		kprintf("MSS: Bad DMA %d\n", drq);
 		goto no;
     	}
     	if (tmpx & 0x80) {
 		/* 8-bit board: only drq1/3 and irq7/9 */
 		if (drq == 0) {
-		    	printf("MSS: Can't use DMA0 with a 8 bit card/slot\n");
+		    	kprintf("MSS: Can't use DMA0 with a 8 bit card/slot\n");
 		    	goto no;
 		}
 		if (!(irq == 7 || irq == 9)) {
-		    	printf("MSS: Can't use IRQ%d with a 8 bit card/slot\n",
+		    	kprintf("MSS: Can't use IRQ%d with a 8 bit card/slot\n",
 			       irq);
 		    	goto no;
 		}
@@ -1356,7 +1356,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 				name = "OPTi930";
 				break;
 		}
-		printf("Found OPTi device %s\n", name);
+		kprintf("Found OPTi device %s\n", name);
 		if (opti_init(dev, mss) == 0) goto gotit;
 	}
 
@@ -1375,7 +1375,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 		else break;
 
     	if (i >= 10) {	/* Not a AD1848 */
-		BVDDB(printf("mss_detect, busy still set (0x%02x)\n", tmp));
+		BVDDB(kprintf("mss_detect, busy still set (0x%02x)\n", tmp));
 		goto no;
     	}
     	/*
@@ -1389,7 +1389,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	tmp1 = ad_read(mss, 0);
     	tmp2 = ad_read(mss, 1);
     	if (tmp1 != 0xaa || tmp2 != 0x45) {
-		BVDDB(printf("mss_detect error - IREG (%x/%x)\n", tmp1, tmp2));
+		BVDDB(kprintf("mss_detect error - IREG (%x/%x)\n", tmp1, tmp2));
 		goto no;
     	}
 
@@ -1398,7 +1398,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	tmp1 = ad_read(mss, 0);
     	tmp2 = ad_read(mss, 1);
     	if (tmp1 != 0x45 || tmp2 != 0xaa) {
-		BVDDB(printf("mss_detect error - IREG2 (%x/%x)\n", tmp1, tmp2));
+		BVDDB(kprintf("mss_detect error - IREG2 (%x/%x)\n", tmp1, tmp2));
 		goto no;
     	}
 
@@ -1412,7 +1412,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	tmp1 = ad_read(mss, 12);
 
     	if ((tmp & 0x0f) != (tmp1 & 0x0f)) {
-		BVDDB(printf("mss_detect - I12 (0x%02x was 0x%02x)\n", tmp1, tmp));
+		BVDDB(kprintf("mss_detect - I12 (0x%02x was 0x%02x)\n", tmp1, tmp));
 		goto no;
     	}
 
@@ -1422,7 +1422,7 @@ mss_detect(device_t dev, struct mss_info *mss)
      	*  0x0A=RevC. also CS4231/CS4231A and OPTi931
      	*/
 
-    	BVDDB(printf("mss_detect - chip revision 0x%02x\n", tmp & 0x0f);)
+    	BVDDB(kprintf("mss_detect - chip revision 0x%02x\n", tmp & 0x0f);)
 
     	/*
      	* The original AD1848/CS4248 has just 16 indirect registers. This
@@ -1435,7 +1435,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 #if 0
     	for (i = 0; i < 16; i++) {
 		if ((tmp1 = ad_read(mss, i)) != (tmp2 = ad_read(mss, i + 16))) {
-	    	BVDDB(printf("mss_detect warning - I%d: 0x%02x/0x%02x\n",
+	    	BVDDB(kprintf("mss_detect warning - I%d: 0x%02x/0x%02x\n",
 			i, tmp1, tmp2));
 	    	/*
 	     	* note - this seems to fail on the 4232 on I11. So we just break
@@ -1458,7 +1458,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	tmp1 = ad_read(mss, 12);
     	if (tmp1 & 0x80) name = "CS4248"; /* Our best knowledge just now */
     	if ((tmp1 & 0xf0) == 0x00) {
-		BVDDB(printf("this should be an OPTi931\n");)
+		BVDDB(kprintf("this should be an OPTi931\n");)
     	} else if ((tmp1 & 0xc0) != 0xC0) goto gotit;
 	/*
 	* The 4231 has bit7=1 always, and bit6 we just set to 1.
@@ -1471,7 +1471,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 
 	ad_write(mss, 0, 0xaa);
        	if ((tmp1 = ad_read(mss, 16)) == 0xaa) {	/* Rotten bits? */
-       		BVDDB(printf("mss_detect error - step H(%x)\n", tmp1));
+       		BVDDB(kprintf("mss_detect error - step H(%x)\n", tmp1));
 		goto no;
 	}
 	/* Verify that some bits of I25 are read only. */
@@ -1549,13 +1549,13 @@ mss_detect(device_t dev, struct mss_info *mss)
 			break;
 
 		default:	/* Assume CS4231 */
-	 		BVDDB(printf("unknown id 0x%02x, assuming CS4231\n", id);)
+	 		BVDDB(kprintf("unknown id 0x%02x, assuming CS4231\n", id);)
 			mss->bd_id = MD_CS42XX;
 		}
 	}
 	ad_write(mss, 25, tmp1);	/* Restore bits */
 gotit:
-    	BVDDB(printf("mss_detect() - Detected %s\n", name));
+    	BVDDB(kprintf("mss_detect() - Detected %s\n", name));
     	device_set_desc(dev, name);
     	device_set_flags(dev,
 			 ((device_get_flags(dev) & ~DV_F_DEV_MASK) |
@@ -1683,12 +1683,12 @@ mss_doattach(device_t dev, struct mss_info *mss)
 		if (pdma != rdma) {
 	    		if (rdma == valid_rdma[pdma]) bits |= 4;
 	    		else {
-				printf("invalid dual dma config %d:%d\n", pdma, rdma);
+				kprintf("invalid dual dma config %d:%d\n", pdma, rdma);
 				goto no;
 	    		}
 		}
 		io_wr(mss, 0, bits);
-		printf("drq/irq conf %x\n", io_rd(mss, 0));
+		kprintf("drq/irq conf %x\n", io_rd(mss, 0));
     	}
     	mixer_init(dev, (mss->bd_id == MD_YM0020)? &ymmix_mixer_class : &mssmix_mixer_class, mss);
     	switch (mss->bd_id) {
@@ -2056,7 +2056,7 @@ opti_init(device_t dev, struct mss_info *mss)
 			basebits = 0x30;
 			break;
 		default:
-			printf("opti_init: invalid MSS base address!\n");
+			kprintf("opti_init: invalid MSS base address!\n");
 			return ENXIO;
 	}
 

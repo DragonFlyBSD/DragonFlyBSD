@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_93cx6.c#17 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_93cx6.c,v 1.8.2.6 2002/08/31 07:25:53 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_93cx6.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_93cx6.c,v 1.4 2006/12/22 23:26:15 swildner Exp $
  */
 
 /*
@@ -203,14 +203,14 @@ ahc_read_seeprom(struct seeprom_descriptor *sd, uint16_t *buf,
 		reset_seeprom(sd);
 	}
 #ifdef AHC_DUMP_EEPROM
-	printf("\nSerial EEPROM:\n\t");
+	kprintf("\nSerial EEPROM:\n\t");
 	for (k = 0; k < count; k = k + 1) {
 		if (((k % 8) == 0) && (k != 0)) {
-			printf ("\n\t");
+			kprintf ("\n\t");
 		}
-		printf (" 0x%x", buf[k]);
+		kprintf (" 0x%x", buf[k]);
 	}
-	printf ("\n");
+	kprintf ("\n");
 #endif
 	return (1);
 }

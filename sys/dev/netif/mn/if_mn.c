@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.15 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.16 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -317,7 +317,7 @@ ngmn_config(node_p node, char *set, char *ret)
 			mn_reset(sc);
 #endif
 		} else {
-			printf("%s CONFIG SET [%s]\n", sc->nodename, set);
+			kprintf("%s CONFIG SET [%s]\n", sc->nodename, set);
 			strcat(ret, "ENOGROK\n");
 			return;
 		}
@@ -456,7 +456,7 @@ ngmn_newhook(node_p node, hook_p hook, const char *name)
 		return (EINVAL);
 
 	ts = mn_parse_ts(name + 2, &nbit);
-	printf("%d bits %x\n", nbit, ts);
+	kprintf("%d bits %x\n", nbit, ts);
 	if (sc->framing == E1 && (ts & 1))
 		return (EINVAL);
 	if (sc->framing == E1U && nbit != 32)
@@ -630,11 +630,11 @@ ngmn_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		}
 	} 
 	if (pitch)
-		printf("%s%d: Short on mem, pitched %d packets\n", 
+		kprintf("%s%d: Short on mem, pitched %d packets\n", 
 		    sc->name, chan, pitch);
 	else {
 #if 0
-		printf("%d = %d + %d (%p)\n",
+		kprintf("%d = %d + %d (%p)\n",
 		    sch->tx_pending + m->m_pkthdr.len,
 		    sch->tx_pending , m->m_pkthdr.len, m);
 #endif
@@ -752,7 +752,7 @@ ngmn_connect(hook_p hook)
 	DELAY(1000);
 	u = sc->m32x->stat; 
 	if (!(u & 1))
-		printf("%s: init chan %d stat %08x\n", sc->name, chan, u);
+		kprintf("%s: init chan %d stat %08x\n", sc->name, chan, u);
 	sc->m32x->stat = 1; 
 
 	return (0);
@@ -793,7 +793,7 @@ ngmn_disconnect(hook_p hook)
 	DELAY(30);
 	u = sc->m32x->stat; 
 	if (!(u & 1))
-		printf("%s: zap chan %d stat %08x\n", sc->name, chan, u);
+		kprintf("%s: zap chan %d stat %08x\n", sc->name, chan, u);
 	sc->m32x->stat = 1; 
 	
 	/* Free all receive descriptors and mbufs */
@@ -844,20 +844,20 @@ m32_dump(struct softc *sc)
 	u_int32_t *tp4;
 	int i, j;
 
-	printf("mn%d: MUNICH32X dump\n", sc->unit);
+	kprintf("mn%d: MUNICH32X dump\n", sc->unit);
 	tp4 = (u_int32_t *)sc->m0v;
 	for(j = 0; j < 64; j += 8) {
-		printf("%02x", j * sizeof *tp4);
+		kprintf("%02x", j * sizeof *tp4);
 		for(i = 0; i < 8; i++)
-			printf(" %08x", tp4[i+j]);
-		printf("\n");
+			kprintf(" %08x", tp4[i+j]);
+		kprintf("\n");
 	}
 	for(j = 0; j < M32_CHAN; j++) {
 		if (!sc->ch[j])
 			continue;
-		printf("CH%d: state %d ts %08x", 
+		kprintf("CH%d: state %d ts %08x", 
 			j, sc->ch[j]->state, sc->ch[j]->ts);
-		printf("  %08x %08x %08x %08x %08x %08x\n",
+		kprintf("  %08x %08x %08x %08x %08x %08x\n",
 			sc->m32_mem.cs[j].flags,
 			sc->m32_mem.cs[j].rdesc,
 			sc->m32_mem.cs[j].tdesc,
@@ -876,13 +876,13 @@ f54_dump(struct softc *sc)
 	u_int8_t *tp1;
 	int i, j;
 
-	printf("%s: FALC54 dump\n", sc->name);
+	kprintf("%s: FALC54 dump\n", sc->name);
 	tp1 = (u_int8_t *)sc->m1v;
 	for(j = 0; j < 128; j += 16) {
-		printf("%s: %02x |", sc->name, j * sizeof *tp1);
+		kprintf("%s: %02x |", sc->name, j * sizeof *tp1);
 		for(i = 0; i < 16; i++)
-			printf(" %02x", tp1[i+j]);
-		printf("\n");
+			kprintf(" %02x", tp1[i+j]);
+		kprintf("\n");
 	}
 }
 #endif /* notyet */
@@ -994,7 +994,7 @@ mn_reset(struct softc *sc)
 		sc->m32_mem.ts[i] = 0x20002000;
 
 	if (!(u & 1)) {
-		printf(
+		kprintf(
 "mn%d: WARNING: Controller failed the PCI bus-master test.\n"
 "mn%d: WARNING: Use a PCI slot which can support bus-master cards.\n",
 		    sc->unit, sc->unit);
@@ -1020,7 +1020,7 @@ f54_intr(struct softc *sc)
 	/* don't chat about the 1 sec heart beat */
 	if (u & ~0x40) {
 #if 0
-		printf("%s*: FALC54 IRQ GIS:%02x %b\n", sc->name, g, u, "\20"
+		kprintf("%s*: FALC54 IRQ GIS:%02x %b\n", sc->name, g, u, "\20"
 		    "\40RME\37RFS\36T8MS\35RMB\34CASC\33CRC4\32SA6SC\31RPF"
 		    "\30b27\27RDO\26ALLS\25XDU\24XMB\23b22\22XLSC\21XPR"
 		    "\20FAR\17LFA\16MFAR\15T400MS\14AIS\13LOS\12RAR\11RA"
@@ -1037,7 +1037,7 @@ f54_intr(struct softc *sc)
 		s &= ~0x00780000;	/* XXX: TS16 related */
 		s &= ~0x06000000;	/* XXX: Multiframe related */
 #if 0
-		printf("%s*: FALC54 Status %b\n", sc->name, s, "\20"
+		kprintf("%s*: FALC54 Status %b\n", sc->name, s, "\20"
 		    "\40LOS\37AIS\36LFA\35RRA\34AUXP\33NMF\32LMFA\31frs0.0"
 		    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS\24TS16LFA\23frs1.2\22XLS\21XLO"
 		    "\20RS1\17rsw.6\16RRA\15RY0\14RY1\13RY2\12RY3\11RY4"
@@ -1087,7 +1087,7 @@ mn_tx_intr(struct softc *sc, u_int32_t vector)
 	if (!sc->ch[chan]) 
 		return;
 	if (sc->ch[chan]->state != UP) {
-		printf("%s: tx_intr when not UP\n", sc->name);
+		kprintf("%s: tx_intr when not UP\n", sc->name);
 		return;
 	}
 	for (;;) {
@@ -1097,7 +1097,7 @@ mn_tx_intr(struct softc *sc, u_int32_t vector)
 		m = dp->m;
 		if (m) {
 #if 0
-			printf("%d = %d - %d (%p)\n",
+			kprintf("%d = %d - %d (%p)\n",
 			    sc->ch[chan]->tx_pending - m->m_pkthdr.len,
 			    sc->ch[chan]->tx_pending , m->m_pkthdr.len, m);
 #endif
@@ -1126,7 +1126,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 		return;
 	sch = sc->ch[chan];
 	if (sch->state != UP) {
-		printf("%s: rx_intr when not UP\n", sc->name);
+		kprintf("%s: rx_intr when not UP\n", sc->name);
 		return;
 	}
 	vector &= ~0x1f;
@@ -1216,7 +1216,7 @@ mn_intr(void *xsc)
 #endif
 
 	if (stat & ~0xc200) {
-		printf("%s: I stat=%08x lstat=%08x\n", sc->name, stat, lstat);
+		kprintf("%s: I stat=%08x lstat=%08x\n", sc->name, stat, lstat);
 	}
 
 	if ((stat & 0x200) || (lstat & 2)) 
@@ -1235,13 +1235,13 @@ mn_intr(void *xsc)
 			if (!(u & ~0x1f))
 				continue;
 			if (!j)
-				printf("%s*: RIQB:", sc->name);
-			printf(" [%d]=%08x", i, u);
+				kprintf("%s*: RIQB:", sc->name);
+			kprintf(" [%d]=%08x", i, u);
 			j++;
 		}
 	}
 	if (j)
-	    printf("\n");
+	    kprintf("\n");
 
 	for (j = i = 0; i < 64; i ++) {
 		u = sc->tiqb[i];
@@ -1254,13 +1254,13 @@ mn_intr(void *xsc)
 			if (!u)
 				continue;
 			if (!j)
-				printf("%s*: TIQB:", sc->name);
-			printf(" [%d]=%08x", i, u);
+				kprintf("%s*: TIQB:", sc->name);
+			kprintf(" [%d]=%08x", i, u);
 			j++;
 		}
 	}
 	if (j)
-		printf("\n");
+		kprintf("\n");
 	sc->m32x->stat = stat;
 }
 
@@ -1274,15 +1274,15 @@ mn_probe (device_t self)
 	u_int id = pci_get_devid(self);
 
 	if (sizeof (struct m32xreg) != 256) {
-		printf("MN: sizeof(struct m32xreg) = %d, should have been 256\n", sizeof (struct m32xreg));
+		kprintf("MN: sizeof(struct m32xreg) = %d, should have been 256\n", sizeof (struct m32xreg));
 		return (ENXIO);
 	}
 	if (sizeof (struct f54rreg) != 128) {
-		printf("MN: sizeof(struct f54rreg) = %d, should have been 128\n", sizeof (struct f54rreg));
+		kprintf("MN: sizeof(struct f54rreg) = %d, should have been 128\n", sizeof (struct f54rreg));
 		return (ENXIO);
 	}
 	if (sizeof (struct f54wreg) != 128) {
-		printf("MN: sizeof(struct f54wreg) = %d, should have been 128\n", sizeof (struct f54wreg));
+		kprintf("MN: sizeof(struct f54wreg) = %d, should have been 128\n", sizeof (struct f54wreg));
 		return (ENXIO);
 	}
 
@@ -1305,7 +1305,7 @@ mn_attach (device_t self)
 
 	if (!once) {
 		if (ng_newtype(&mntypestruct))
-			printf("ng_newtype failed\n");
+			kprintf("ng_newtype failed\n");
 		once++;
 	}
 
@@ -1341,7 +1341,7 @@ mn_attach (device_t self)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq == NULL) {
-		printf("couldn't map interrupt\n");
+		kprintf("couldn't map interrupt\n");
 		return(ENXIO);
 	}
 
@@ -1349,18 +1349,18 @@ mn_attach (device_t self)
 			       &sc->intrhand, NULL);
 
 	if (error) {
-		printf("couldn't set up irq\n");
+		kprintf("couldn't set up irq\n");
 		return(ENXIO);
 	}
 
 	u = pci_read_config(self, PCIR_COMMAND, 1);
-	printf("%x\n", u);
+	kprintf("%x\n", u);
 	pci_write_config(self, PCIR_COMMAND, u | PCIM_CMD_PERRESPEN | PCIM_CMD_BUSMASTEREN | PCIM_CMD_MEMEN, 1);
 #if 0
 	pci_write_config(self, PCIR_COMMAND, 0x02800046, 4);
 #endif
 	u = pci_read_config(self, PCIR_COMMAND, 1);
-	printf("%x\n", u);
+	kprintf("%x\n", u);
 
 	ver = pci_get_revid(self);
 
@@ -1373,37 +1373,37 @@ mn_attach (device_t self)
 	if (!u)
 		return (0);
 
-	printf("mn%d: Munich32X", sc->unit);
+	kprintf("mn%d: Munich32X", sc->unit);
 	switch (ver) {
 	case 0x13:
-		printf(" Rev 2.2");
+		kprintf(" Rev 2.2");
 		break;
 	default:
-		printf(" Rev 0x%x\n", ver);
+		kprintf(" Rev 0x%x\n", ver);
 	}
-	printf(", Falc54");
+	kprintf(", Falc54");
 	switch (sc->f54r->vstr) {
 	case 0:
-		printf(" Rev < 1.3\n");
+		kprintf(" Rev < 1.3\n");
 		break;
 	case 1:
-		printf(" Rev 1.3\n");
+		kprintf(" Rev 1.3\n");
 		break;
 	case 2:
-		printf(" Rev 1.4\n");
+		kprintf(" Rev 1.4\n");
 		break;
 	case 0x10:
-		printf("-LH Rev 1.1\n");
+		kprintf("-LH Rev 1.1\n");
 		break;
 	case 0x13:
-		printf("-LH Rev 1.3\n");
+		kprintf("-LH Rev 1.3\n");
 		break;
 	default:
-		printf(" Rev 0x%x\n", sc->f54r->vstr);
+		kprintf(" Rev 0x%x\n", sc->f54r->vstr);
 	}
 
 	if (ng_make_node_common(&mntypestruct, &sc->node) != 0) {
-		printf("ng_make_node_common failed\n");
+		kprintf("ng_make_node_common failed\n");
 		return (0);
 	}
 	sc->node->private = sc;

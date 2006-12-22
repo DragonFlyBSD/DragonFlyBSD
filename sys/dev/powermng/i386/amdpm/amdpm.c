@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
- * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.6 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.7 2006/12/22 23:26:23 swildner Exp $
  *
  */
 
@@ -276,7 +276,7 @@ amdsmb_idle(struct amdsmb_softc *sc)
 
 	sts = AMDPM_SMBINW(sc, AMDSMB_GLOBAL_STATUS);
 
-	AMDPM_DEBUG(printf("amdpm: busy? STS=0x%x\n", sts));
+	AMDPM_DEBUG(kprintf("amdpm: busy? STS=0x%x\n", sts));
 
 	return (~(sts & AMDSMB_GS_HST_STS));
 }
@@ -299,7 +299,7 @@ amdsmb_wait(struct amdsmb_softc *sc)
 			break;
 	}
 
-	AMDPM_DEBUG(printf("amdpm: STS=0x%x (count=%d)\n", sts, count));
+	AMDPM_DEBUG(kprintf("amdpm: STS=0x%x (count=%d)\n", sts, count));
 
 	error = SMB_ENOERR;
 
@@ -334,11 +334,11 @@ amdsmb_smb_quick(device_t dev, u_char slave, int how)
 
 	switch (how) {
 	case SMB_QWRITE:
-		AMDPM_DEBUG(printf("amdpm: QWRITE to 0x%x", slave));
+		AMDPM_DEBUG(kprintf("amdpm: QWRITE to 0x%x", slave));
 		AMDPM_SMBOUTW(sc, AMDSMB_HSTADDR, slave & ~LSB);
 		break;
 	case SMB_QREAD:
-		AMDPM_DEBUG(printf("amdpm: QREAD to 0x%x", slave));
+		AMDPM_DEBUG(kprintf("amdpm: QREAD to 0x%x", slave));
 		AMDPM_SMBOUTW(sc, AMDSMB_HSTADDR, slave | LSB);
 		break;
 	default:
@@ -349,7 +349,7 @@ amdsmb_smb_quick(device_t dev, u_char slave, int how)
 
 	error = amdsmb_wait(sc);
 
-	AMDPM_DEBUG(printf(", error=0x%x\n", error));
+	AMDPM_DEBUG(kprintf(", error=0x%x\n", error));
 
 	return (error);
 }
@@ -372,7 +372,7 @@ amdsmb_smb_sendb(device_t dev, u_char slave, char byte)
 
 	error = amdsmb_wait(sc);
 
-	AMDPM_DEBUG(printf("amdpm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
+	AMDPM_DEBUG(kprintf("amdpm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
 
 	return (error);
 }
@@ -395,7 +395,7 @@ amdsmb_smb_recvb(device_t dev, u_char slave, char *byte)
 	if ((error = amdsmb_wait(sc)) == SMB_ENOERR)
 		*byte = AMDPM_SMBINW(sc, AMDSMB_HSTDATA);
 
-	AMDPM_DEBUG(printf("amdpm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
+	AMDPM_DEBUG(kprintf("amdpm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
 
 	return (error);
 }
@@ -419,7 +419,7 @@ amdsmb_smb_writeb(device_t dev, u_char slave, char cmd, char byte)
 
 	error = amdsmb_wait(sc);
 
-	AMDPM_DEBUG(printf("amdpm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
+	AMDPM_DEBUG(kprintf("amdpm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
 
 	return (error);
 }
@@ -443,7 +443,7 @@ amdsmb_smb_readb(device_t dev, u_char slave, char cmd, char *byte)
 	if ((error = amdsmb_wait(sc)) == SMB_ENOERR)
 		*byte = AMDPM_SMBINW(sc, AMDSMB_HSTDATA);
 
-	AMDPM_DEBUG(printf("amdpm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
+	AMDPM_DEBUG(kprintf("amdpm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
 
 	return (error);
 }
@@ -467,7 +467,7 @@ amdsmb_smb_writew(device_t dev, u_char slave, char cmd, short word)
 
 	error = amdsmb_wait(sc);
 
-	AMDPM_DEBUG(printf("amdpm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
+	AMDPM_DEBUG(kprintf("amdpm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
 
 	return (error);
 }
@@ -491,7 +491,7 @@ amdsmb_smb_readw(device_t dev, u_char slave, char cmd, short *word)
 	if ((error = amdsmb_wait(sc)) == SMB_ENOERR)
 		*word = AMDPM_SMBINW(sc, AMDSMB_HSTDATA);
 
-	AMDPM_DEBUG(printf("amdpm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
+	AMDPM_DEBUG(kprintf("amdpm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
 
 	return (error);
 }
@@ -537,7 +537,7 @@ amdsmb_smb_bwrite(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 	}
 
 error:
-	AMDPM_DEBUG(printf("amdpm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	AMDPM_DEBUG(kprintf("amdpm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 }
@@ -577,7 +577,7 @@ amdsmb_smb_bread(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 		remain -= len;
 	}
 error:
-	AMDPM_DEBUG(printf("amdpm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	AMDPM_DEBUG(kprintf("amdpm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 }

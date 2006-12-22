@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.13 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.3 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.4 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -174,7 +174,7 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
     if (root == curr) {
 	status = acpi_GetInteger(root, "_BBN", &bus);
 	if (ACPI_FAILURE(status) && bootverbose)
-	    printf("acpi_bus_number: root bus has no _BBN, assuming 0\n");
+	    kprintf("acpi_bus_number: root bus has no _BBN, assuming 0\n");
 	return (bus);
     }
     status = AcpiGetParent(curr, &parent);
@@ -186,14 +186,14 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
 
     /* Validate parent bus device type. */
     if (ACPI_FAILURE(AcpiGetType(parent, &type)) || type != ACPI_TYPE_DEVICE) {
-	printf("acpi_bus_number: not a device, type %d\n", type);
+	kprintf("acpi_bus_number: not a device, type %d\n", type);
 	return (bus);
     }
 
     /* Get the parent's slot and function. */
     status = acpi_GetInteger(parent, "_ADR", &adr);
     if (ACPI_FAILURE(status)) {
-	printf("acpi_bus_number: can't get _ADR\n");
+	kprintf("acpi_bus_number: can't get _ADR\n");
 	return (bus);
     }
     slot = ACPI_HIWORD(adr);
@@ -236,7 +236,7 @@ AcpiOsDerivePciId(ACPI_HANDLE rhandle, ACPI_HANDLE chandle, ACPI_PCI_ID **PciId)
     if (rhandle == chandle) {
 	status = acpi_GetInteger(rhandle, "_BBN", &bus);
 	if (ACPI_FAILURE(status) && bootverbose)
-	    printf("AcpiOsDerivePciId: root bus has no _BBN, assuming 0\n");
+	    kprintf("AcpiOsDerivePciId: root bus has no _BBN, assuming 0\n");
     }
 
     /*
@@ -249,7 +249,7 @@ AcpiOsDerivePciId(ACPI_HANDLE rhandle, ACPI_HANDLE chandle, ACPI_PCI_ID **PciId)
 	bus = acpi_bus_number(rhandle, parent, *PciId);
     (*PciId)->Bus = bus;
     if (bootverbose) {
-	printf("AcpiOsDerivePciId: bus %d dev %d func %d\n",
+	kprintf("AcpiOsDerivePciId: bus %d dev %d func %d\n",
 	    (*PciId)->Bus, (*PciId)->Device, (*PciId)->Function);
     }
 }

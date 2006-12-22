@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.5.2.4 2003/02/11 15:54:16 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.4 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.4 2006/12/22 23:26:25 swildner Exp $");
 
 struct vchinfo {
 	u_int32_t spd, fmt, blksz, bps, run;
@@ -58,11 +58,11 @@ vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count)
 		x = to[i];
 		x += tmp[i];
 		if (x < -32768) {
-			/* printf("%d + %d = %d (u)\n", to[i], tmp[i], x); */
+			/* kprintf("%d + %d = %d (u)\n", to[i], tmp[i], x); */
 			x = -32768;
 		}
 		if (x > 32767) {
-			/* printf("%d + %d = %d (o)\n", to[i], tmp[i], x); */
+			/* kprintf("%d + %d = %d (o)\n", to[i], tmp[i], x); */
 			x = 32767;
 		}
 		to[i] = x & 0x0000ffff;
@@ -275,10 +275,10 @@ vchan_create(struct pcm_channel *parent)
 	if (first && !err) {
 		err = chn_reset(parent, AFMT_STEREO | AFMT_S16_LE);
 		if (err)
-			printf("chn_reset: %d\n", err);
+			kprintf("chn_reset: %d\n", err);
 		err = chn_setspeed(parent, 44100);
 		if (err)
-			printf("chn_setspeed: %d\n", err);
+			kprintf("chn_setspeed: %d\n", err);
 	}
 
 	return err;

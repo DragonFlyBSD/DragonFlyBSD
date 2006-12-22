@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.10 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.11 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.10 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.11 2006/12/22 23:26:25 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -650,12 +650,12 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 			     NULL, NULL };
 	int i, x;
 
-	printf("voice number %d\n", v->vnum);
+	kprintf("voice number %d\n", v->vnum);
 	for (i = 0, x = 0; i <= 0x1e; i++) {
 		if (regname[i] == NULL)
 			continue;
-		printf("%s\t[%08x]", regname[i], emu_rdptr(sc, v->vnum, i));
-		printf("%s", (x == 2)? "\n" : "\t");
+		kprintf("%s\t[%08x]", regname[i], emu_rdptr(sc, v->vnum, i));
+		kprintf("%s", (x == 2)? "\n" : "\t");
 		x++;
 		if (x > 2)
 			x = 0;
@@ -666,15 +666,15 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 		for (i = 0; i <= 0xe; i++) {
 			if (regname2[i] == NULL)
 				continue;
-			printf("%s\t[%08x]", regname2[i], emu_rdptr(sc, v->vnum, i + 0x70));
-			printf("%s", (x == 2)? "\n" : "\t");
+			kprintf("%s\t[%08x]", regname2[i], emu_rdptr(sc, v->vnum, i + 0x70));
+			kprintf("%s", (x == 2)? "\n" : "\t");
 			x++;
 			if (x > 2)
 				x = 0;
 		}
 	}
 
-	printf("\n\n");
+	kprintf("\n\n");
 }
 #endif
 
@@ -767,7 +767,7 @@ emupchan_trigger(kobj_t obj, void *data, int go)
 		emu_settimer(sc);
 		emu_enatimer(sc, 1);
 #ifdef EMUDEBUG
-		printf("start [%d bit, %s, %d hz]\n",
+		kprintf("start [%d bit, %s, %d hz]\n",
 			ch->master->b16? 16 : 8,
 			ch->master->stereo? "stereo" : "mono",
 			ch->master->speed);
@@ -1096,7 +1096,7 @@ emu_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	*phys = error? 0 : (void *)segs->ds_addr;
 
 	if (bootverbose) {
-		printf("emu: setmap (%lx, %lx), nseg=%d, error=%d\n",
+		kprintf("emu: setmap (%lx, %lx), nseg=%d, error=%d\n",
 		       (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		       nseg, error);
 	}
@@ -1157,12 +1157,12 @@ emu_memalloc(struct sc_info *sc, u_int32_t sz)
 	blk->buf = buf;
 	blk->pte_start = start;
 	blk->pte_size = blksz;
-	/* printf("buf %p, pte_start %d, pte_size %d\n", blk->buf, blk->pte_start, blk->pte_size); */
+	/* kprintf("buf %p, pte_start %d, pte_size %d\n", blk->buf, blk->pte_start, blk->pte_size); */
 	ofs = 0;
 	for (idx = start; idx < start + blksz; idx++) {
 		mem->bmap[idx >> 3] |= 1 << (idx & 7);
 		tmp = (u_int32_t)vtophys((u_int8_t *)buf + ofs);
-		/* printf("pte[%d] -> %x phys, %x virt\n", idx, tmp, ((u_int32_t)buf) + ofs); */
+		/* kprintf("pte[%d] -> %x phys, %x virt\n", idx, tmp, ((u_int32_t)buf) + ofs); */
 		mem->ptb_pages[idx] = (tmp << 1) | idx;
 		ofs += EMUPAGESIZE;
 	}

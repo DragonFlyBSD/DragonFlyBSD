@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pcib.c,v 1.43 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib.c,v 1.3 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -339,8 +339,8 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
      */
     device_printf(pcib, "possible interrupts:");
     for (i = 0; i < NumberOfInterrupts; i++)
-	printf("  %d", Interrupts[i]);
-    printf("\n");
+	kprintf("  %d", Interrupts[i]);
+    kprintf("\n");
 
     /* This should never happen. */
     if (crsbuf.Pointer != NULL)

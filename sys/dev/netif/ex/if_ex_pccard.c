@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.12 2006/10/25 20:55:57 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.13 2006/12/22 23:26:19 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -104,17 +104,17 @@ ex_pccard_probe(device_t dev)
 
 	iobase = bus_get_resource_start(dev, SYS_RES_IOPORT, 0);
 	if (!iobase) {
-		printf("ex: no iobase?\n");
+		kprintf("ex: no iobase?\n");
 		return(ENXIO);
 	}
 
 	if (bootverbose)
-		printf("ex: ex_pccard_probe() found card at 0x%03x\n", iobase);
+		kprintf("ex: ex_pccard_probe() found card at 0x%03x\n", iobase);
 
 	irq = bus_get_resource_start(dev, SYS_RES_IRQ, 0);
 
 	if (irq == 0) {
-		printf("ex: invalid IRQ.\n");
+		kprintf("ex: invalid IRQ.\n");
 		return(ENXIO);
 	}
 

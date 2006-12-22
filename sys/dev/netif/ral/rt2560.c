@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.6 2006/11/18 09:26:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.7 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -52,8 +52,8 @@
 #include <dev/netif/ral/rt2560var.h>
 
 #ifdef RAL_DEBUG
-#define DPRINTF(x)	do { if (ral_debug > 0) printf x; } while (0)
-#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) printf x; } while (0)
+#define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
+#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) kprintf x; } while (0)
 extern int ral_debug;
 #else
 #define DPRINTF(x)

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.11 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.12 2006/12/22 23:26:15 swildner Exp $
  */
 
 /*
@@ -289,7 +289,7 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			printf("amd%d: Unexepected error 0x%x returned from "
+			kprintf("amd%d: Unexepected error 0x%x returned from "
 			       "bus_dmamap_load\n", amd->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
@@ -836,7 +836,7 @@ amd_reset(struct amd_softc * amd)
 
 
 #ifdef AMD_DEBUG0
-	printf("DC390: RESET");
+	kprintf("DC390: RESET");
 #endif
 
 	crit_enter();
@@ -965,7 +965,7 @@ amd_intr(void   *arg)
 
 	if (amd == NULL) {
 #ifdef AMD_DEBUG0
-		printf("amd_intr: amd NULL return......");
+		kprintf("amd_intr: amd NULL return......");
 #endif
 		return;
 	}
@@ -973,19 +973,19 @@ amd_intr(void   *arg)
 	scsistat = amd_read8(amd, SCSISTATREG);
 	if (!(scsistat & INTERRUPT)) {
 #ifdef AMD_DEBUG0
-		printf("amd_intr: scsistat = NULL ,return......");
+		kprintf("amd_intr: scsistat = NULL ,return......");
 #endif
 		return;
 	}
 #ifdef AMD_DEBUG_SCSI_PHASE
-	printf("scsistat=%2x,", scsistat);
+	kprintf("scsistat=%2x,", scsistat);
 #endif
 
 	internstat = amd_read8(amd, INTERNSTATREG);
 	intstat = amd_read8(amd, INTSTATREG);
 
 #ifdef AMD_DEBUG_SCSI_PHASE
-	printf("intstat=%2x,", intstat);
+	kprintf("intstat=%2x,", intstat);
 #endif
 
 	if (intstat & DISCONNECTED) {
@@ -1209,7 +1209,7 @@ amdparsemsg(struct amd_softc *amd)
 		 || disc_srb->SRBState != SRB_DISCONNECT
 		 || disc_srb->pccb->ccb_h.target_id != amd->cur_target
 		 || disc_srb->pccb->ccb_h.target_lun != amd->cur_lun) {
-			printf("amd%d: Unexpected tagged reselection "
+			kprintf("amd%d: Unexpected tagged reselection "
 			       "for target %d, Issuing Abort\n", amd->unit,
 			       amd->cur_target);
 			amd->msgout_buf[0] = MSG_ABORT;
@@ -1293,7 +1293,7 @@ amdparsemsg(struct amd_softc *amd)
 			 * Send our own SDTR in reply
 			 */
 			if (bootverbose)
-				printf("Sending SDTR!\n");
+				kprintf("Sending SDTR!\n");
 			amd->msgout_index = 0;
 			amd->msgout_len = 0;
 			amdconstructsdtr(amd, period, offset);
@@ -1448,14 +1448,14 @@ amdhandlemsgreject(struct amd_softc *amd)
 		amdsetsync(amd, amd->cur_target, /*clockrate*/0,
 			   /*period*/0, /*offset*/0,
 			   AMD_TRANS_ACTIVE|AMD_TRANS_GOAL);
-		printf("amd%d:%d: refuses synchronous negotiation. "
+		kprintf("amd%d:%d: refuses synchronous negotiation. "
 		       "Using asynchronous transfers\n",
 		       amd->unit, amd->cur_target);
 	} else if ((srb != NULL)
 		&& (srb->pccb->ccb_h.flags & CAM_TAG_ACTION_VALID) != 0) {
 		struct  ccb_trans_settings neg;
 
-		printf("amd%d:%d: refuses tagged commands.  Performing "
+		kprintf("amd%d:%d: refuses tagged commands.  Performing "
 		       "non-tagged I/O\n", amd->unit, amd->cur_target);
 
 		amdsettags(amd, amd->cur_target, FALSE);
@@ -1492,7 +1492,7 @@ amdhandlemsgreject(struct amd_softc *amd)
 		/*
 		 * Otherwise, we ignore it.
 		 */
-		printf("amd%d:%d: Message reject received -- ignored\n",
+		kprintf("amd%d:%d: Message reject received -- ignored\n",
 		       amd->unit, amd->cur_target);
 	}
 	return (response);
@@ -1808,7 +1808,7 @@ amd_Reselect(struct amd_softc *amd)
 	amd->active_srb = amd->untagged_srbs[amd->cur_target][amd->cur_lun];
 	disc_count = amd->disc_count[amd->cur_target][amd->cur_lun];
 	if (disc_count == 0) {
-		printf("amd%d: Unexpected reselection for target %d, "
+		kprintf("amd%d: Unexpected reselection for target %d, "
 		       "Issuing Abort\n", amd->unit, amd->cur_target);
 		amd->msgout_buf[0] = MSG_ABORT;
 		amd->msgout_len = 1;
@@ -1904,13 +1904,13 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 				pcsio->resid = (u_int32_t) swlval;
 
 #ifdef	AMD_DEBUG0
-				printf("XferredLen=%8x,NotYetXferLen=%8x,",
+				kprintf("XferredLen=%8x,NotYetXferLen=%8x,",
 					pSRB->TotalXferredLen, swlval);
 #endif
 			}
 			if ((pcsio->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0) {
 #ifdef	AMD_DEBUG0
-				printf("RequestSense..................\n");
+				kprintf("RequestSense..................\n");
 #endif
 				RequestSense(amd, pSRB);
 				return;
@@ -1932,14 +1932,14 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 			pccb->ccb_h.status = CAM_SEL_TIMEOUT;
 		} else if (status == SCSI_STATUS_BUSY) {
 #ifdef AMD_DEBUG0
-			printf("DC390: target busy at %s %d\n",
+			kprintf("DC390: target busy at %s %d\n",
 			       __FILE__, __LINE__);
 #endif
 			pcsio->scsi_status = SCSI_STATUS_BUSY;
 			pccb->ccb_h.status = CAM_SCSI_BUSY;
 		} else if (status == SCSI_STATUS_RESERV_CONFLICT) {
 #ifdef AMD_DEBUG0
-			printf("DC390: target reserved at %s %d\n",
+			kprintf("DC390: target reserved at %s %d\n",
 			       __FILE__, __LINE__);
 #endif
 			pcsio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
@@ -1947,7 +1947,7 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 		} else {
 			pSRB->AdaptStatus = 0;
 #ifdef AMD_DEBUG0
-			printf("DC390: driver stuffup at %s %d\n",
+			kprintf("DC390: driver stuffup at %s %d\n",
 			       __FILE__, __LINE__);
 #endif
 			pccb->ccb_h.status = CAM_SCSI_STATUS_ERROR;
@@ -1960,7 +1960,7 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 			pccb->ccb_h.status = CAM_DATA_RUN_ERR;	
 		} else if (pSRB->SRBStatus & PARITY_ERROR) {
 #ifdef AMD_DEBUG0
-			printf("DC390: driver stuffup %s %d\n",
+			kprintf("DC390: driver stuffup %s %d\n",
 			       __FILE__, __LINE__);
 #endif
 			/* Driver failed to perform operation	  */
@@ -2004,7 +2004,7 @@ amd_ScsiRstDetect(struct amd_softc * amd)
 	u_int32_t   wlval;
 
 #ifdef AMD_DEBUG0
-	printf("amd_ScsiRstDetect \n");
+	kprintf("amd_ScsiRstDetect \n");
 #endif
 
 	wlval = 1000;
@@ -2234,7 +2234,7 @@ amd_load_eeprom_or_defaults(struct amd_softc *amd)
 
 	if (wval != EE_CHECKSUM) {
 		if (bootverbose)
-			printf("amd%d: SEEPROM data unavailable.  "
+			kprintf("amd%d: SEEPROM data unavailable.  "
 			       "Using default device parameters.\n",
 			       amd->unit);
 		amd_load_defaults(amd);
@@ -2261,7 +2261,7 @@ amd_init(device_t dev)
 				   RF_ACTIVE);
 	if (iores == NULL) {
 		if (bootverbose)
-			printf("amd_init: bus_alloc_resource failure!\n");
+			kprintf("amd_init: bus_alloc_resource failure!\n");
 		return ENXIO;
 	}
 	amd->tag = rman_get_bustag(iores);
@@ -2278,7 +2278,7 @@ amd_init(device_t dev)
 			       /*flags*/BUS_DMA_ALLOCNOW,
 			       &amd->buffer_dmat) != 0) {
 		if (bootverbose)
-			printf("amd_init: bus_dma_tag_create failure!\n");
+			kprintf("amd_init: bus_dma_tag_create failure!\n");
 		return ENXIO;
         }
 	TAILQ_INIT(&amd->free_srbs);
@@ -2365,7 +2365,7 @@ amd_attach(device_t dev)
 
 	if (amd_init(dev)) {
 		if (bootverbose)
-			printf("amd_attach: amd_init failure!\n");
+			kprintf("amd_attach: amd_init failure!\n");
 		return ENXIO;
 	}
 
@@ -2380,7 +2380,7 @@ amd_attach(device_t dev)
 	    bus_setup_intr(dev, irqres, 0, amd_intr, amd, &ih, NULL)
 	) {
 		if (bootverbose)
-			printf("amd%d: unable to register interrupt handler!\n",
+			kprintf("amd%d: unable to register interrupt handler!\n",
 			       unit);
 		return ENXIO;
 	}
@@ -2394,7 +2394,7 @@ amd_attach(device_t dev)
 	devq = cam_simq_alloc(MAX_START_JOB);
 	if (devq == NULL) {
 		if (bootverbose)
-			printf("amd_attach: cam_simq_alloc failure!\n");
+			kprintf("amd_attach: cam_simq_alloc failure!\n");
 		return ENXIO;
 	}
 
@@ -2404,14 +2404,14 @@ amd_attach(device_t dev)
 	cam_simq_release(devq);
 	if (amd->psim == NULL) {
 		if (bootverbose)
-			printf("amd_attach: cam_sim_alloc failure!\n");
+			kprintf("amd_attach: cam_sim_alloc failure!\n");
 		return ENXIO;
 	}
 
 	if (xpt_bus_register(amd->psim, 0) != CAM_SUCCESS) {
 		cam_sim_free(amd->psim);
 		if (bootverbose)
-			printf("amd_attach: xpt_bus_register failure!\n");
+			kprintf("amd_attach: xpt_bus_register failure!\n");
 		return ENXIO;
 	}
 
@@ -2421,7 +2421,7 @@ amd_attach(device_t dev)
 		xpt_bus_deregister(cam_sim_path(amd->psim));
 		cam_sim_free(amd->psim);
 		if (bootverbose)
-			printf("amd_attach: xpt_create_path failure!\n");
+			kprintf("amd_attach: xpt_create_path failure!\n");
 		return ENXIO;
 	}
 

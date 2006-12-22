@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.18 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.19 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -1524,7 +1524,7 @@ vga_set_mode(video_adapter_t *adp, int mode)
 	return EINVAL;
 
 #if VGA_DEBUG > 1
-    printf("vga_set_mode(): setting mode %d\n", mode);
+    kprintf("vga_set_mode(): setting mode %d\n", mode);
 #endif
 
     params.sig = V_STATE_SIG;
@@ -2127,7 +2127,7 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
 	buf[2] = info.vi_cheight;		/* POINTS */
     } else {
 	/* XXX: shouldn't be happening... */
-	printf("vga%d: %s: failed to obtain mode info. (vga_save_state())\n",
+	kprintf("vga%d: %s: failed to obtain mode info. (vga_save_state())\n",
 	       adp->va_unit, adp->va_name);
     }
 #else
@@ -2438,7 +2438,7 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
 	return -1;
 
 #if VGA_DEBUG > 0
-    printf("vga_mmap_buf(): window:0x%x, offset:0x%x\n", 
+    kprintf("vga_mmap_buf(): window:0x%x, offset:0x%x\n", 
 	   adp->va_info.vi_window, offset);
 #endif
 
@@ -2946,9 +2946,9 @@ dump_buffer(u_char *buf, size_t len)
     int i;
 
     for(i = 0; i < len;) {
-	printf("%02x ", buf[i]);
+	kprintf("%02x ", buf[i]);
 	if ((++i % 16) == 0)
-	    printf("\n");
+	    kprintf("\n");
     }
 }
 
@@ -2973,20 +2973,20 @@ vga_diag(video_adapter_t *adp, int level)
 
 #if FB_DEBUG > 1
 #ifndef VGA_NO_BIOS
-    printf("vga: RTC equip. code:0x%02x, DCC code:0x%02x\n",
+    kprintf("vga: RTC equip. code:0x%02x, DCC code:0x%02x\n",
 	   rtcin(RTC_EQUIPMENT), readb(BIOS_PADDRTOVADDR(0x488)));
-    printf("vga: CRTC:0x%x, video option:0x%02x, ",
+    kprintf("vga: CRTC:0x%x, video option:0x%02x, ",
 	   readw(BIOS_PADDRTOVADDR(0x463)),
 	   readb(BIOS_PADDRTOVADDR(0x487)));
-    printf("rows:%d, cols:%d, font height:%d\n",
+    kprintf("rows:%d, cols:%d, font height:%d\n",
 	   readb(BIOS_PADDRTOVADDR(0x44a)),
 	   readb(BIOS_PADDRTOVADDR(0x484)) + 1,
 	   readb(BIOS_PADDRTOVADDR(0x485)));
 #endif /* VGA_NO_BIOS */
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-    printf("vga: param table EGA/VGA:%p", video_mode_ptr);
-    printf(", CGA/MDA:%p\n", video_mode_ptr2);
-    printf("vga: rows_offset:%d\n", rows_offset);
+    kprintf("vga: param table EGA/VGA:%p", video_mode_ptr);
+    kprintf(", CGA/MDA:%p\n", video_mode_ptr2);
+    kprintf("vga: rows_offset:%d\n", rows_offset);
 #endif
 #endif /* FB_DEBUG > 1 */
 
@@ -3011,7 +3011,7 @@ vga_diag(video_adapter_t *adp, int level)
 	return 0;
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
     if (video_mode_ptr == NULL)
-	printf("vga%d: %s: WARNING: video mode switching is not "
+	kprintf("vga%d: %s: WARNING: video mode switching is not "
 	       "fully supported on this adapter\n",
 	       adp->va_unit, adp->va_name);
 #endif
@@ -3019,16 +3019,16 @@ vga_diag(video_adapter_t *adp, int level)
 	return 0;
 
     if (adp->va_type == KD_VGA) {
-	printf("VGA parameters upon power-up\n");
+	kprintf("VGA parameters upon power-up\n");
 	dump_buffer(adpstate.regs, sizeof(adpstate.regs));
-	printf("VGA parameters in BIOS for mode %d\n", adp->va_initial_mode);
+	kprintf("VGA parameters in BIOS for mode %d\n", adp->va_initial_mode);
 	dump_buffer(adpstate2.regs, sizeof(adpstate2.regs));
     }
 
     mp = get_mode_param(adp->va_initial_mode);
     if (mp == NULL)	/* this shouldn't be happening */
 	return 0;
-    printf("EGA/VGA parameters to be used for mode %d\n", adp->va_initial_mode);
+    kprintf("EGA/VGA parameters to be used for mode %d\n", adp->va_initial_mode);
     dump_buffer(mp, V_MODE_PARAM_SIZE);
 
     return 0;

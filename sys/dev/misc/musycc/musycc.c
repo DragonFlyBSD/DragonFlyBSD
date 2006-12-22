@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.9 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.10 2006/12/22 23:26:17 swildner Exp $
  *
  *
  *
@@ -369,7 +369,7 @@ static void
 init_card(struct csoftc *csc)
 {
 
-	printf("init_card(%p)\n", csc);
+	kprintf("init_card(%p)\n", csc);
 
 	csc->state = C_INIT;
 	csc->reg->srd = 0x100;
@@ -392,10 +392,10 @@ init_ctrl(struct softc *sc)
 {
 	int i;
 
-	printf("init_ctrl(%p) [%s] [%08x]\n", sc, sc->nodename, sc->csc->reg->glcd);
+	kprintf("init_ctrl(%p) [%s] [%08x]\n", sc, sc->nodename, sc->csc->reg->glcd);
 	init_8370(sc);
 	tsleep(sc, PCATCH, "ds8370", hz);
-	printf("%s: glcd: [%08x]\n", sc->nodename, sc->csc->reg->glcd);
+	kprintf("%s: glcd: [%08x]\n", sc->nodename, sc->csc->reg->glcd);
 	sc->reg->gbp = vtophys(sc->ram);
 	sc->ram->grcd =  0x00000001;	/* RXENBL */
 	sc->ram->grcd |= 0x00000002;	/* TXENBL */
@@ -643,7 +643,7 @@ musycc_intr0_tx_eom(struct softc *sc, int ch)
 	sch = sc->chan[ch];
 	if (sch == NULL || sch->state != UP) {
 		/* XXX: this should not happen once the driver is done */
-		printf("Xmit packet on uninitialized channel %d\n", ch);
+		kprintf("Xmit packet on uninitialized channel %d\n", ch);
 	}
 	if (sc->mdt[ch] == NULL)
 		return; 	/* XXX: can this happen ? */
@@ -682,7 +682,7 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 	sch = sc->chan[ch];
 	if (sch == NULL || sch->state != UP) {
 		/* XXX: this should not happen once the driver is done */
-		printf("Received packet on uninitialized channel %d\n", ch);
+		kprintf("Received packet on uninitialized channel %d\n", ch);
 		return;
 	}
 	if (sc->mdr[ch] == NULL)
@@ -740,13 +740,13 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 		} else {
 			sch->last_rxerr = time_second;
 			/* Receive error, print some useful info */
-			printf("%s %s: RX 0x%08x ", sch->sc->nodename, 
+			kprintf("%s %s: RX 0x%08x ", sch->sc->nodename, 
 			    sch->hookname, status);
 			/* Don't print a lot, just the begining will do */
 			if (m->m_len > 16)
 				m->m_len = m->m_pkthdr.len = 16;
 			m_print(m);
-			printf("\n");
+			kprintf("\n");
 		}
 		md->status = 1600;	/* XXX: MTU */
 		/* Check next mdesc in the ring */
@@ -772,7 +772,7 @@ musycc_intr0(void *arg)
 		if (c == 0)
 			return;
 		if (debug & 1)
-			printf("%s: IRQ: %08x n = %d c = %d\n", csc->serial[0].nodename, u, n, c);
+			kprintf("%s: IRQ: %08x n = %d c = %d\n", csc->serial[0].nodename, u, n, c);
 		for (i = 0; i < c; i++) {
 			j = (n + i) % NIQD;
 			u1 = csc->iqd[j];
@@ -783,19 +783,19 @@ musycc_intr0(void *arg)
 			er = (u1 >> 16) & 0xf;
 			sc = &csc->serial[g];
 			if ((debug & 2) || er) {
-				printf("%08x %d", u1, g);
-				printf("/%s", u1 & 0x80000000 ? "T" : "R");
-				printf("/%02d", ch);
-				printf(" %02d", ev);
-				printf(":%02d", er);
-				printf("\n");
+				kprintf("%08x %d", u1, g);
+				kprintf("/%s", u1 & 0x80000000 ? "T" : "R");
+				kprintf("/%02d", ch);
+				kprintf(" %02d", ev);
+				kprintf(":%02d", er);
+				kprintf("\n");
 			}
 			switch (ev) {
 			case 1: /* SACK		Service Request Acknowledge	    */
 #if 0
-				printf("%s: SACK: %08x group=%d", sc->nodename, csc->iqd[j], g);
-				printf("/%s", csc->iqd[j] & 0x80000000 ? "T" : "R");
-				printf(" cmd %08x (%08x) \n", sc->last, sc->reg->srd);
+				kprintf("%s: SACK: %08x group=%d", sc->nodename, csc->iqd[j], g);
+				kprintf("/%s", csc->iqd[j] & 0x80000000 ? "T" : "R");
+				kprintf(" cmd %08x (%08x) \n", sc->last, sc->reg->srd);
 #endif
 				sc->last = 0xffffffff;
 				wakeup(&sc->last);
@@ -819,12 +819,12 @@ musycc_intr0(void *arg)
 				musycc_intr0_tx_eom(sc, ch);
 				musycc_intr0_rx_eom(sc, ch);
 #if 1
-				printf("huh ? %08x %d", u1, g);
-				printf("/%s", u1 & 0x80000000 ? "T" : "R");
-				printf("/%02d", ch);
-				printf(" %02d", ev);
-				printf(":%02d", er);
-				printf("\n");
+				kprintf("huh ? %08x %d", u1, g);
+				kprintf("/%s", u1 & 0x80000000 ? "T" : "R");
+				kprintf("/%02d", ch);
+				kprintf(" %02d", ev);
+				kprintf(":%02d", er);
+				kprintf("\n");
 #endif
 			}
 			csc->iqd[j] = 0xffffffff;
@@ -870,10 +870,10 @@ musycc_intr1(void *arg)
 		if (debug & 4) {
 			int j;
 
-			printf("musycc_intr1:%d %02x", i, irr);
+			kprintf("musycc_intr1:%d %02x", i, irr);
 			for (j = 4; j < 0x14; j++)
-				printf(" %02x", u[j] & 0xff);
-			printf("\n");
+				kprintf(" %02x", u[j] & 0xff);
+			kprintf("\n");
 		}
 	}
 }
@@ -943,7 +943,7 @@ musycc_config(node_p node, char *set, char *ret)
 			dump_8370(sc, ret, 0x100);
 		} else if (!strncmp(set, "creg", 4)) {
 			i = strtol(set + 5, 0, 0);
-			printf("set creg %d\n", i);
+			kprintf("set creg %d\n", i);
 			csc->creg = 0xfe | (i << 24);
 			*csc->cregp = csc->creg;
 /*
@@ -953,7 +953,7 @@ musycc_config(node_p node, char *set, char *ret)
 			reset_card(sc, ret);
 */
 		} else {
-			printf("%s CONFIG SET [%s]\n", sc->nodename, set);
+			kprintf("%s CONFIG SET [%s]\n", sc->nodename, set);
 			goto barf;
 		}		
 
@@ -1099,7 +1099,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	ch = sch->chan;
 
 	if (csc->state != C_RUNNING) {
-		printf("csc->state = %d\n", csc->state);
+		kprintf("csc->state = %d\n", csc->state);
 		NG_FREE_DATA(m, meta);
 		return (0);
 	}
@@ -1108,7 +1108,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	meta = NULL;
 
 	if (sch->state != UP) {
-		printf("sch->state = %d\n", sch->state);
+		kprintf("sch->state = %d\n", sch->state);
 		NG_FREE_DATA(m, meta);
 		return (0);
 	} 
@@ -1142,7 +1142,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		if (m->m_len == 0)
 			continue;
 		if (md->status != 0) {
-			printf("Out of tx md(2)\n");
+			kprintf("Out of tx md(2)\n");
 			sch->last_txerr = time_second;
 			sch->tx_drop++;
 			sch->last_txdrop = time_second;
@@ -1226,7 +1226,7 @@ musycc_connect(hook_p hook)
 			break;
 	}
 		
-	printf("Connect ch= %d ts= %08x nts= %d nbuf = %d\n", 
+	kprintf("Connect ch= %d ts= %08x nts= %d nbuf = %d\n", 
 	    ch, sch->ts, nts, nbuf);
 
 	/* Reread the Time Slot Map */
@@ -1389,19 +1389,19 @@ musycc_probe(device_t self)
 	char desc[40];
 
 	if (sizeof(struct groupr) != 1572) {
-		printf("sizeof(struct groupr) = %d, should be 1572\n",
+		kprintf("sizeof(struct groupr) = %d, should be 1572\n",
 		    sizeof(struct groupr));
 		return(ENXIO);
 	}
 
 	if (sizeof(struct globalr) != 1572) {
-		printf("sizeof(struct globalr) = %d, should be 1572\n",
+		kprintf("sizeof(struct globalr) = %d, should be 1572\n",
 		    sizeof(struct globalr));
 		return(ENXIO);
 	}
 
 	if (sizeof(struct mycg) > 2048) {
-		printf("sizeof(struct mycg) = %d, should be <= 2048\n",
+		kprintf("sizeof(struct mycg) = %d, should be <= 2048\n",
 		    sizeof(struct mycg));
 		return(ENXIO);
 	}
@@ -1441,9 +1441,9 @@ musycc_attach(device_t self)
 		once++;
 		error = ng_newtype(&ngtypestruct);
 		if (error != 0) 
-			printf("ng_newtype() failed %d\n", error);
+			kprintf("ng_newtype() failed %d\n", error);
 	}
-	printf("We have %d pad bytes in mycg\n", 2048 - sizeof(struct mycg));
+	kprintf("We have %d pad bytes in mycg\n", 2048 - sizeof(struct mycg));
 
 	f = pci_get_function(self);
 	/* For function zero allocate a csoftc */
@@ -1479,7 +1479,7 @@ musycc_attach(device_t self)
 	    1, RF_SHAREABLE | RF_ACTIVE);
 
 	if (csc->irq[f] == NULL) {
-		printf("couldn't map interrupt\n");
+		kprintf("couldn't map interrupt\n");
 		return(ENXIO);
 	}
 
@@ -1488,7 +1488,7 @@ musycc_attach(device_t self)
 			       &csc->intrhand[f], NULL);
 
 	if (error) {
-		printf("couldn't set up irq\n");
+		kprintf("couldn't set up irq\n");
 		return(ENXIO);
 	}
 
@@ -1496,7 +1496,7 @@ musycc_attach(device_t self)
 		return (0);
 
 	for (i = 0; i < 2; i++)
-		printf("f%d: device %p virtual %p physical %08x\n",
+		kprintf("f%d: device %p virtual %p physical %08x\n",
 		    i, csc->f[i], csc->virbase[i], csc->physbase[i]);
 
 	csc->reg = (struct globalr *)csc->virbase[0];
@@ -1504,11 +1504,11 @@ musycc_attach(device_t self)
 	u32p = (u_int32_t *)csc->virbase[1];
 	u = u32p[0x1200];
 	if ((u & 0xffff0000) != 0x13760000) {
-		printf("Not a LMC1504 (ID is 0x%08x).  Bailing out.\n", u);
+		kprintf("Not a LMC1504 (ID is 0x%08x).  Bailing out.\n", u);
 		return(ENXIO);
 	}
 	csc->nchan = (u >> 8) & 0xf;
-	printf("Found <LanMedia LMC1504 Rev %d Chan %d>\n", (u >> 12) & 0xf, csc->nchan);
+	kprintf("Found <LanMedia LMC1504 Rev %d Chan %d>\n", (u >> 12) & 0xf, csc->nchan);
 
 	csc->creg = 0xfe;
 	csc->cregp = &u32p[0x1000];
@@ -1528,7 +1528,7 @@ musycc_attach(device_t self)
 
 		error = ng_make_node_common(&ngtypestruct, &sc->node);
 		if (error) {
-			printf("ng_make_node_common() failed %d\n", error);
+			kprintf("ng_make_node_common() failed %d\n", error);
 			continue;
 		}	
 		sc->node->private = sc;

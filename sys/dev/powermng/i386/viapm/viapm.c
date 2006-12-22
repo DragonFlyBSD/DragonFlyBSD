@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.9 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.10 2006/12/22 23:26:23 swildner Exp $
  *
  */
 #include <sys/param.h>
@@ -561,7 +561,7 @@ viapm_busy(struct viapm_softc *viapm)
 
 	sts = VIAPM_INB(SMBHST);
 
-	VIAPM_DEBUG(printf("viapm: idle? STS=0x%x\n", sts));
+	VIAPM_DEBUG(kprintf("viapm: idle? STS=0x%x\n", sts));
 
 	return (sts & SMBHST_BUSY);
 }
@@ -586,7 +586,7 @@ viapm_wait(struct viapm_softc *viapm)
 			break;
 	}
 
-	VIAPM_DEBUG(printf("viapm: SMBHST=0x%x\n", sts));
+	VIAPM_DEBUG(kprintf("viapm: SMBHST=0x%x\n", sts));
 
 	error = SMB_ENOERR;
 
@@ -639,11 +639,11 @@ viasmb_quick(device_t dev, u_char slave, int how)
 
 	switch (how) {
 	case SMB_QWRITE:
-		VIAPM_DEBUG(printf("viapm: QWRITE to 0x%x", slave));
+		VIAPM_DEBUG(kprintf("viapm: QWRITE to 0x%x", slave));
 		VIAPM_OUTB(SMBHADDR, slave & ~LSB);
 		break;
 	case SMB_QREAD:
-		VIAPM_DEBUG(printf("viapm: QREAD to 0x%x", slave));
+		VIAPM_DEBUG(kprintf("viapm: QREAD to 0x%x", slave));
 		VIAPM_OUTB(SMBHADDR, slave | LSB);
 		break;
 	default:
@@ -674,7 +674,7 @@ viasmb_sendb(device_t dev, u_char slave, char byte)
 
 	error = viapm_wait(viapm);
 
-	VIAPM_DEBUG(printf("viapm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
+	VIAPM_DEBUG(kprintf("viapm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
 
 	return (error);
 }
@@ -696,7 +696,7 @@ viasmb_recvb(device_t dev, u_char slave, char *byte)
 	if ((error = viapm_wait(viapm)) == SMB_ENOERR)
 		*byte = VIAPM_INB(SMBHDATA0);
 
-	VIAPM_DEBUG(printf("viapm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
+	VIAPM_DEBUG(kprintf("viapm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
 
 	return (error);
 }
@@ -719,7 +719,7 @@ viasmb_writeb(device_t dev, u_char slave, char cmd, char byte)
 
 	error = viapm_wait(viapm);
 
-	VIAPM_DEBUG(printf("viapm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
+	VIAPM_DEBUG(kprintf("viapm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
 
 	return (error);
 }
@@ -742,7 +742,7 @@ viasmb_readb(device_t dev, u_char slave, char cmd, char *byte)
 	if ((error = viapm_wait(viapm)) == SMB_ENOERR)
 		*byte = VIAPM_INB(SMBHDATA0);
 
-	VIAPM_DEBUG(printf("viapm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
+	VIAPM_DEBUG(kprintf("viapm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
 
 	return (error);
 }
@@ -766,7 +766,7 @@ viasmb_writew(device_t dev, u_char slave, char cmd, short word)
 
 	error = viapm_wait(viapm);
 
-	VIAPM_DEBUG(printf("viapm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
+	VIAPM_DEBUG(kprintf("viapm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
 
 	return (error);
 }
@@ -794,7 +794,7 @@ viasmb_readw(device_t dev, u_char slave, char cmd, short *word)
 		*word = ((high & 0xff) << 8) | (low & 0xff);
 	}
 
-	VIAPM_DEBUG(printf("viapm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
+	VIAPM_DEBUG(kprintf("viapm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
 
 	return (error);
 }
@@ -834,7 +834,7 @@ viasmb_bwrite(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 	}
 
 error:
-	VIAPM_DEBUG(printf("viapm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	VIAPM_DEBUG(kprintf("viapm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 
@@ -874,7 +874,7 @@ viasmb_bread(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 		remain -= len;
 	}
 error:
-	VIAPM_DEBUG(printf("viapm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	VIAPM_DEBUG(kprintf("viapm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 }

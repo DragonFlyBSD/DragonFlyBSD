@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.26 2006/10/25 20:55:59 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.27 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -186,11 +186,11 @@ sn_attach(device_t dev)
 	SMC_SELECT_BANK(3);
 	rev = inw(BASE + REVISION_REG_W);
 	if (chip_ids[(rev >> 4) & 0xF])
-		printf("%s ", chip_ids[(rev >> 4) & 0xF]);
+		kprintf("%s ", chip_ids[(rev >> 4) & 0xF]);
 
 	SMC_SELECT_BANK(1);
 	i = inw(BASE + CONFIG_REG_W);
-	printf("%s\n", i & CR_AUI_SELECT ? "AUI" : "UTP");
+	kprintf("%s\n", i & CR_AUI_SELECT ? "AUI" : "UTP");
 
 	if (sc->pccard_enaddr)
 		for (j = 0; j < 3; j++) {
@@ -354,7 +354,7 @@ snstart(struct ifnet *ifp)
 		return;
 	}
 	if (sc->pages_wanted != -1) {
-		printf("%s: snstart() while memory allocation pending\n",
+		kprintf("%s: snstart() while memory allocation pending\n",
 		       ifp->if_xname);
 		return;
 	}
@@ -381,7 +381,7 @@ startagain:
 	 * them instead?
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
-		printf("%s: large packet discarded (A)\n", ifp->if_xname);
+		kprintf("%s: large packet discarded (A)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
 		ifq_dequeue(&ifp->if_snd, m);
 		m_freem(m);
@@ -451,7 +451,7 @@ startagain:
 	 */
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
-		printf("%s: Memory allocation failed\n", ifp->if_xname);
+		kprintf("%s: Memory allocation failed\n", ifp->if_xname);
 		goto startagain;
 	}
 	/*
@@ -576,7 +576,7 @@ snresume(struct ifnet *ifp)
 	 */
 	m = ifq_poll(&ifp->if_snd);
 	if (m == NULL) {
-		printf("%s: snresume() with nothing to send\n", ifp->if_xname);
+		kprintf("%s: snresume() with nothing to send\n", ifp->if_xname);
 		return;
 	}
 	/*
@@ -593,7 +593,7 @@ snresume(struct ifnet *ifp)
 	 * them instead?
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
-		printf("%s: large packet discarded (B)\n", ifp->if_xname);
+		kprintf("%s: large packet discarded (B)\n", ifp->if_xname);
 		++ifp->if_oerrors;
 		ifq_dequeue(&ifp->if_snd, m);
 		m_freem(m);
@@ -629,7 +629,7 @@ snresume(struct ifnet *ifp)
 	 */
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
-		printf("%s: Memory allocation failed.  Weird.\n", ifp->if_xname);
+		kprintf("%s: Memory allocation failed.  Weird.\n", ifp->if_xname);
 		ifp->if_timer = 1;
 		goto try_start;
 	}
@@ -643,7 +643,7 @@ snresume(struct ifnet *ifp)
 	 * memory allocation was initiated.
 	 */
 	if (pages_wanted != numPages) {
-		printf("%s: memory allocation wrong size.  Weird.\n", ifp->if_xname);
+		kprintf("%s: memory allocation wrong size.  Weird.\n", ifp->if_xname);
 		/*
 		 * If the allocation was the wrong size we simply release the
 		 * memory once it is granted. Wait for the MMU to be un-busy.
@@ -806,7 +806,7 @@ sn_intr(void *arg)
 			/*
 			 * we got called , but nothing was on the FIFO
 			 */
-			printf("sn: Receive interrupt with nothing on FIFO\n");
+			kprintf("sn: Receive interrupt with nothing on FIFO\n");
 
 			goto out;
 		}
@@ -977,7 +977,7 @@ snread(struct ifnet *ifp)
 		/*
 		 * we got called , but nothing was on the FIFO
 		 */
-		printf("sn: Receive interrupt with nothing on FIFO\n");
+		kprintf("sn: Receive interrupt with nothing on FIFO\n");
 		return;
 	}
 #endif
@@ -1039,7 +1039,7 @@ read_another:
 	if ((m->m_flags & M_EXT) == 0) {
 		m_freem(m);
 		++ifp->if_ierrors;
-		printf("sn: snread() kernel memory allocation problem\n");
+		kprintf("sn: snread() kernel memory allocation problem\n");
 		goto out;
 	}
 
@@ -1294,7 +1294,7 @@ sn_probe(device_t dev, int pccard)
 		 * have been a SMC chip after all.
 		 */
 		/*
-		 * printf("sn: ioaddr %x doesn't match card configuration
+		 * kprintf("sn: ioaddr %x doesn't match card configuration
 		 * (%x)\n", ioaddr, base_address_register >> 3 & 0x3E0 );
 		 */
 

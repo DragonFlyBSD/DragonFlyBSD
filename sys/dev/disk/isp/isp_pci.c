@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.11 2006/10/25 20:55:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.12 2006/12/22 23:26:16 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -323,7 +323,7 @@ isp_pci_probe(device_t dev)
 		return (ENXIO);
 	}
 	if (device_get_unit(dev) == 0 && bootverbose) {
-		printf("Qlogic ISP Driver, FreeBSD Version %d.%d, "
+		kprintf("Qlogic ISP Driver, FreeBSD Version %d.%d, "
 		    "Core Version %d.%d\n",
 		    ISP_PLATFORM_VERSION_MAJOR, ISP_PLATFORM_VERSION_MINOR,
 		    ISP_CORE_VERSION_MAJOR, ISP_CORE_VERSION_MINOR);
@@ -1817,36 +1817,36 @@ isp_pci_dumpregs(struct ispsoftc *isp, const char *msg)
 {
 	struct isp_pcisoftc *pcs = (struct isp_pcisoftc *)isp;
 	if (msg)
-		printf("%s: %s\n", device_get_nameunit(isp->isp_dev), msg);
+		kprintf("%s: %s\n", device_get_nameunit(isp->isp_dev), msg);
 	else
-		printf("%s:\n", device_get_nameunit(isp->isp_dev));
+		kprintf("%s:\n", device_get_nameunit(isp->isp_dev));
 	if (IS_SCSI(isp))
-		printf("    biu_conf1=%x", ISP_READ(isp, BIU_CONF1));
+		kprintf("    biu_conf1=%x", ISP_READ(isp, BIU_CONF1));
 	else
-		printf("    biu_csr=%x", ISP_READ(isp, BIU2100_CSR));
-	printf(" biu_icr=%x biu_isr=%x biu_sema=%x ", ISP_READ(isp, BIU_ICR),
+		kprintf("    biu_csr=%x", ISP_READ(isp, BIU2100_CSR));
+	kprintf(" biu_icr=%x biu_isr=%x biu_sema=%x ", ISP_READ(isp, BIU_ICR),
 	    ISP_READ(isp, BIU_ISR), ISP_READ(isp, BIU_SEMA));
-	printf("risc_hccr=%x\n", ISP_READ(isp, HCCR));
+	kprintf("risc_hccr=%x\n", ISP_READ(isp, HCCR));
 
 
 	if (IS_SCSI(isp)) {
 		ISP_WRITE(isp, HCCR, HCCR_CMD_PAUSE);
-		printf("    cdma_conf=%x cdma_sts=%x cdma_fifostat=%x\n",
+		kprintf("    cdma_conf=%x cdma_sts=%x cdma_fifostat=%x\n",
 			ISP_READ(isp, CDMA_CONF), ISP_READ(isp, CDMA_STATUS),
 			ISP_READ(isp, CDMA_FIFO_STS));
-		printf("    ddma_conf=%x ddma_sts=%x ddma_fifostat=%x\n",
+		kprintf("    ddma_conf=%x ddma_sts=%x ddma_fifostat=%x\n",
 			ISP_READ(isp, DDMA_CONF), ISP_READ(isp, DDMA_STATUS),
 			ISP_READ(isp, DDMA_FIFO_STS));
-		printf("    sxp_int=%x sxp_gross=%x sxp(scsi_ctrl)=%x\n",
+		kprintf("    sxp_int=%x sxp_gross=%x sxp(scsi_ctrl)=%x\n",
 			ISP_READ(isp, SXP_INTERRUPT),
 			ISP_READ(isp, SXP_GROSS_ERR),
 			ISP_READ(isp, SXP_PINS_CTRL));
 		ISP_WRITE(isp, HCCR, HCCR_CMD_RELEASE);
 	}
-	printf("    mbox regs: %x %x %x %x %x\n",
+	kprintf("    mbox regs: %x %x %x %x %x\n",
 	    ISP_READ(isp, OUTMAILBOX0), ISP_READ(isp, OUTMAILBOX1),
 	    ISP_READ(isp, OUTMAILBOX2), ISP_READ(isp, OUTMAILBOX3),
 	    ISP_READ(isp, OUTMAILBOX4));
-	printf("    PCI Status Command/Status=%x\n",
+	kprintf("    PCI Status Command/Status=%x\n",
 	    pci_read_config(pcs->pci_dev, PCIR_COMMAND, 1));
 }

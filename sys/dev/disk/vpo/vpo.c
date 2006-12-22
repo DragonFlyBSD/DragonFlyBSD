@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.8 2006/12/05 23:31:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.9 2006/12/22 23:26:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -229,14 +229,14 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 	}
 
 #ifdef VP0_DEBUG
-	printf("vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
+	kprintf("vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
 		 error, vpo->vpo_stat, vpo->vpo_count, vpo->vpo_error);
 
 	/* dump of command */
 	for (i=0; i<csio->cdb_len; i++)
-		printf("%x ", ((char *)&csio->cdb_io.cdb_bytes)[i]);
+		kprintf("%x ", ((char *)&csio->cdb_io.cdb_bytes)[i]);
 
-	printf("\n");
+	kprintf("\n");
 #endif
 
 	if (error) {
@@ -248,7 +248,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 	/* if a timeout occured, no sense */
 	if (vpo->vpo_error) {
 		if (vpo->vpo_error != VP0_ESELECT_TIMEOUT)
-			printf("vpo%d: VP0 error/timeout (%d)\n",
+			kprintf("vpo%d: VP0 error/timeout (%d)\n",
 				vpo->vpo_unit, vpo->vpo_error);
 
 		csio->ccb_h.status = CAM_CMD_TIMEOUT;
@@ -286,7 +286,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 			
 
 #ifdef VP0_DEBUG
-		printf("(sense) vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
+		kprintf("(sense) vpo_do_scsi = %d, status = 0x%x, count = %d, vpo_error = %d\n", 
 			error, vpo->vpo_sense.stat, vpo->vpo_sense.count, vpo->vpo_error);
 #endif
 
@@ -298,10 +298,10 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 
 #ifdef VP0_DEBUG
 		   /* dump of sense info */
-		   printf("(sense) ");
+		   kprintf("(sense) ");
 		   for (i=0; i<vpo->vpo_sense.count; i++)
-			printf("%x ", ((char *)&csio->sense_data)[i]);
-		   printf("\n");
+			kprintf("%x ", ((char *)&csio->sense_data)[i]);
+		   kprintf("\n");
 #endif
 
 		} else {
@@ -339,7 +339,7 @@ vpo_action(struct cam_sim *sim, union ccb *ccb)
 		csio = &ccb->csio;
 
 #ifdef VP0_DEBUG
-		printf("vpo%d: XPT_SCSI_IO (0x%x) request\n",
+		kprintf("vpo%d: XPT_SCSI_IO (0x%x) request\n",
 			vpo->vpo_unit, csio->cdb_io.cdb_bytes[0]);
 #endif
 		
@@ -356,7 +356,7 @@ vpo_action(struct cam_sim *sim, union ccb *ccb)
 		ccg = &ccb->ccg;
 
 #ifdef VP0_DEBUG
-		printf("vpo%d: XPT_CALC_GEOMETRY (bs=%d,vs=%d,c=%d,h=%d,spt=%d) request\n",
+		kprintf("vpo%d: XPT_CALC_GEOMETRY (bs=%d,vs=%d,c=%d,h=%d,spt=%d) request\n",
 			vpo->vpo_unit,
 			ccg->block_size,
 			ccg->volume_size,
@@ -378,7 +378,7 @@ vpo_action(struct cam_sim *sim, union ccb *ccb)
 	{
 
 #ifdef VP0_DEBUG
-		printf("vpo%d: XPT_RESET_BUS request\n", vpo->vpo_unit);
+		kprintf("vpo%d: XPT_RESET_BUS request\n", vpo->vpo_unit);
 #endif
 
 		if (vpo->vpo_isplus) {
@@ -404,7 +404,7 @@ vpo_action(struct cam_sim *sim, union ccb *ccb)
 		struct ccb_pathinq *cpi = &ccb->cpi;
 		
 #ifdef VP0_DEBUG
-		printf("vpo%d: XPT_PATH_INQ request\n", vpo->vpo_unit);
+		kprintf("vpo%d: XPT_PATH_INQ request\n", vpo->vpo_unit);
 #endif
 		cpi->version_num = 1; /* XXX??? */
 		cpi->hba_inquiry = 0;

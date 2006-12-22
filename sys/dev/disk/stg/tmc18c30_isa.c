@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.10 2006/11/07 19:56:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.11 2006/12/22 23:26:17 swildner Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -231,7 +231,7 @@ stg_isa_unload(device_t devi)
 {
 	struct stg_softc *sc = device_get_softc(devi);
 
-	printf("%s: unload\n",sc->sc_sclow.sl_xname);
+	kprintf("%s: unload\n",sc->sc_sclow.sl_xname);
 	crit_enter();
 	scsi_low_deactivate((struct scsi_low_softc *)sc);
 	scsi_low_dettach(&sc->sc_sclow);
@@ -265,7 +265,7 @@ stgattach(device_t devi)
 
 	if (iobase == 0)
 	{
-		printf("%s: no ioaddr is given\n", dvname);
+		kprintf("%s: no ioaddr is given\n", dvname);
 		return (0);
 	}
 

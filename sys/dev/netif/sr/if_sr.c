@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.20 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.21 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -388,7 +388,7 @@ sr_attach(device_t device)
 	 * Report Card configuration information before we start configuring
 	 * each channel on the card...
 	 */
-	printf("src%d: %uK RAM (%d mempages) @ %08x-%08x, %u ports.\n",
+	kprintf("src%d: %uK RAM (%d mempages) @ %08x-%08x, %u ports.\n",
 	       hc->cunit, hc->memsize / 1024, hc->mempages,
 	       (u_int)hc->mem_start, (u_int)hc->mem_end, hc->numports);
 
@@ -414,7 +414,7 @@ sr_attach(device_t device)
 		sr_init_tx_dmac(sc);
 		sr_init_msci(sc);
 
-		printf("sr%d: Adapter %d, port %d.\n",
+		kprintf("sr%d: Adapter %d, port %d.\n",
 		       sc->unit, hc->cunit, sc->subunit);
 
 #ifndef NETGRAPH
@@ -472,7 +472,7 @@ sr_detach(device_t device)
 	if (hc->intr_cookie != NULL) {
 		if (BUS_TEARDOWN_INTR(parent, device,
 			hc->res_irq, hc->intr_cookie) != 0) {
-				printf("intr teardown failed.. continuing\n");
+				kprintf("intr teardown failed.. continuing\n");
 		}
 		hc->intr_cookie = NULL;
 	}
@@ -613,7 +613,7 @@ srintr(void *arg)
 	u_char  isr0, isr1, isr2;	/* interrupt statii captured */
 
 #if BUGGY > 1
-	printf("sr: srintr_hc(hc=%08x)\n", hc);
+	kprintf("sr: srintr_hc(hc=%08x)\n", hc);
 #endif
 
 	/*
@@ -638,7 +638,7 @@ srintr(void *arg)
 			break;
 
 #if BUGGY > 2
-		printf("src%d: srintr_hc isr0 %x, isr1 %x, isr2 %x\n",
+		kprintf("src%d: srintr_hc isr0 %x, isr1 %x, isr2 %x\n",
 #ifndef NETGRAPH
 			unit, isr0, isr1, isr2);
 #else
@@ -679,7 +679,7 @@ sr_xmit(struct sr_softc *sc)
 	dmac_channel *dmac;	/* DMA channel registers */
 
 #if BUGGY > 0
-	printf("sr: sr_xmit( sc=%08x)\n", sc);
+	kprintf("sr: sr_xmit( sc=%08x)\n", sc);
 #endif
 
 	hc = sc->hc;
@@ -708,7 +708,7 @@ sr_xmit(struct sr_softc *sc)
 	sc->xmit_busy = 1;	/* mark transmitter busy */
 
 #if BUGGY > 2
-	printf("sr%d: XMIT  cda=%04x, eda=%4x, rcda=%08lx\n",
+	kprintf("sr%d: XMIT  cda=%04x, eda=%4x, rcda=%08lx\n",
 	       sc->unit, cda_value, eda_value,
 	       sc->block[sc->txb_next_tx].txdesc + hc->mem_pstart);
 #endif
@@ -766,7 +766,7 @@ srstart(struct sr_softc *sc)
 
 #ifndef NETGRAPH
 #if BUGGY > 0
-	printf("sr: srstart( ifp=%08x)\n", ifp);
+	kprintf("sr: srstart( ifp=%08x)\n", ifp);
 #endif
 	sc = ifp->if_softc;
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
@@ -804,7 +804,7 @@ top_srstart:
 			SRC_SET_OFF(hc->iobase);
 
 #if BUGGY > 9
-		printf("sr%d.srstart: sc->txb_inuse=%d; DPRAM full...\n",
+		kprintf("sr%d.srstart: sc->txb_inuse=%d; DPRAM full...\n",
 		       sc->unit, sc->txb_inuse);
 #endif
 		return;
@@ -860,7 +860,7 @@ top_srstart:
 		len = mtx->m_pkthdr.len;	/* length of message */
 
 #if BUGGY > 1
-		printf("sr%d.srstart: mbuf @ %08lx, %d bytes\n",
+		kprintf("sr%d.srstart: mbuf @ %08lx, %d bytes\n",
 			   sc->unit, mtx, len);
 #endif
 
@@ -925,7 +925,7 @@ top_srstart:
 		 */
 		if ((i + 3) >= blkp->txmax) {	/* enough remains? */
 #if BUGGY > 9
-			printf("sr%d.srstart: i=%d (%d pkts); card full.\n",
+			kprintf("sr%d.srstart: i=%d (%d pkts); card full.\n",
 			       sc->unit, i, pkts);
 #endif
 			break;
@@ -943,7 +943,7 @@ top_srstart:
 #endif /* NETGRAPH */
 		if (!mtx) {	/* no message?  We're done! */
 #if BUGGY > 9
-			printf("sr%d.srstart: pending=0, pkts=%d\n",
+			kprintf("sr%d.srstart: pending=0, pkts=%d\n",
 			       sc->unit, pkts);
 #endif
 			break;
@@ -979,7 +979,7 @@ top_srstart:
 	if (sc->xmit_busy == 0) {
 		sr_xmit(sc);
 #if BUGGY > 9
-		printf("sr%d.srstart: called sr_xmit()\n", sc->unit);
+		kprintf("sr%d.srstart: called sr_xmit()\n", sc->unit);
 #endif
 	}
 	goto top_srstart;
@@ -1001,7 +1001,7 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct sr_softc *sc = ifp->if_softc;
 
 #if BUGGY > 0
-	printf("%s: srioctl(ifp=%08x, cmd=%08x, data=%08x)\n",
+	kprintf("%s: srioctl(ifp=%08x, cmd=%08x, data=%08x)\n",
 	       ifp->if_xname, ifp, cmd, data);
 #endif
 
@@ -1010,7 +1010,7 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	error = sppp_ioctl(ifp, cmd, data);
 
 #if BUGGY > 1
-	printf("%s: ioctl: ifsppp.pp_flags = %08x, if_flags %08x.\n",
+	kprintf("%s: ioctl: ifsppp.pp_flags = %08x, if_flags %08x.\n",
 	      ifp->if_xname, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);
 #endif
 
@@ -1020,23 +1020,23 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	if ((cmd != SIOCSIFFLAGS) && (cmd != SIOCSIFADDR)) {
 #if BUGGY > 2
 		if (bug_splats[sc->unit]++ < 2) {
-			printf("sr(%d).if_addrlist = %08x\n",
+			kprintf("sr(%d).if_addrlist = %08x\n",
 			       sc->unit, ifp->if_addrlist);
-			printf("sr(%d).if_bpf = %08x\n",
+			kprintf("sr(%d).if_bpf = %08x\n",
 			       sc->unit, ifp->if_bpf);
-			printf("sr(%d).if_init = %08x\n",
+			kprintf("sr(%d).if_init = %08x\n",
 			       sc->unit, ifp->if_init);
-			printf("sr(%d).if_output = %08x\n",
+			kprintf("sr(%d).if_output = %08x\n",
 			       sc->unit, ifp->if_output);
-			printf("sr(%d).if_start = %08x\n",
+			kprintf("sr(%d).if_start = %08x\n",
 			       sc->unit, ifp->if_start);
-			printf("sr(%d).if_done = %08x\n",
+			kprintf("sr(%d).if_done = %08x\n",
 			       sc->unit, ifp->if_done);
-			printf("sr(%d).if_ioctl = %08x\n",
+			kprintf("sr(%d).if_ioctl = %08x\n",
 			       sc->unit, ifp->if_ioctl);
-			printf("sr(%d).if_reset = %08x\n",
+			kprintf("sr(%d).if_reset = %08x\n",
 			       sc->unit, ifp->if_reset);
-			printf("sr(%d).if_watchdog = %08x\n",
+			kprintf("sr(%d).if_watchdog = %08x\n",
 			       sc->unit, ifp->if_watchdog);
 		}
 #endif
@@ -1093,9 +1093,9 @@ srwatchdog(struct sr_softc *sc)
 
 #if BUGGY > 0
 #ifndef NETGRAPH
-	printf("srwatchdog(unit=%d)\n", unit);
+	kprintf("srwatchdog(unit=%d)\n", unit);
 #else
-	printf("srwatchdog(unit=%d)\n", sc->unit);
+	kprintf("srwatchdog(unit=%d)\n", sc->unit);
 #endif /* NETGRAPH */
 #endif
 
@@ -1117,9 +1117,9 @@ srwatchdog(struct sr_softc *sc)
 #if	0
 	if (ifp->if_flags & IFF_DEBUG)
 #endif
-		printf("sr%d: transmit failed, "
+		kprintf("sr%d: transmit failed, "
 #else	/* NETGRAPH */
-	printf("sr%d: transmit failed, "
+	kprintf("sr%d: transmit failed, "
 #endif /* NETGRAPH */
 		       "ST0 %02x, ST1 %02x, ST3 %02x, DSR %02x.\n",
 		       sc->unit,
@@ -1156,7 +1156,7 @@ sr_up(struct sr_softc *sc)
 	msci_channel *msci = &sca->msci[sc->scachan];
 
 #if BUGGY > 0
-	printf("sr_up(sc=%08x)\n", sc);
+	kprintf("sr_up(sc=%08x)\n", sc);
 #endif
 
 	/*
@@ -1227,7 +1227,7 @@ sr_down(struct sr_softc *sc)
 	msci_channel *msci = &sca->msci[sc->scachan];
 
 #if BUGGY > 0
-	printf("sr_down(sc=%08x)\n", sc);
+	kprintf("sr_down(sc=%08x)\n", sc);
 #endif
 #ifdef NETGRAPH
 	callout_stop(&sc->sr_timer);
@@ -1296,7 +1296,7 @@ src_init(struct sr_hardc *hc)
 	u_int descneeded;
 
 #if BUGGY > 0
-	printf("src_init(hc=%08x)\n", hc);
+	kprintf("src_init(hc=%08x)\n", hc);
 #endif
 
 	chanmem = hc->memsize / hc->numports;
@@ -1322,7 +1322,7 @@ src_init(struct sr_hardc *hc)
 			next += bufmem;
 
 #if BUGGY > 2
-			printf("sr%d: blk %d: txdesc %08x, txstart %08x\n",
+			kprintf("sr%d: blk %d: txdesc %08x, txstart %08x\n",
 			       sc->unit, blk,
 			       sc->block[blk].txdesc, sc->block[blk].txstart);
 #endif
@@ -1353,7 +1353,7 @@ sr_init_sca(struct sr_hardc *hc)
 	sca_regs *sca = hc->sca;
 
 #if BUGGY > 0
-	printf("sr_init_sca(hc=%08x)\n", hc);
+	kprintf("sr_init_sca(hc=%08x)\n", hc);
 #endif
 
 	/*
@@ -1415,7 +1415,7 @@ sr_init_msci(struct sr_softc *sc)
 	portndx = sc->scachan;
 
 #if BUGGY > 0
-	printf("sr: sr_init_msci( sc=%08x)\n", sc);
+	kprintf("sr: sr_init_msci( sc=%08x)\n", sc);
 #endif
 
 	SRC_PUT8(hc->sca_base, msci->cmd, SCA_CMD_RESET);
@@ -1441,7 +1441,7 @@ sr_init_msci(struct sr_softc *sc)
 	switch (sc->clk_cfg) {
 	default:
 #if BUGGY > 0
-		printf("sr%: clk_cfg=%08x, selected default clock.\n",
+		kprintf("sr%: clk_cfg=%08x, selected default clock.\n",
 		       portndx, sc->clk_cfg);
 #endif
 		/* FALLTHROUGH */
@@ -1452,7 +1452,7 @@ sr_init_msci(struct sr_softc *sc)
 		 */
 
 #if BUGGY > 0
-		printf("sr%d: External Clock Selected.\n", portndx);
+		kprintf("sr%d: External Clock Selected.\n", portndx);
 #endif
 
 		SRC_PUT8(hc->sca_base, msci->rxs,
@@ -1463,7 +1463,7 @@ sr_init_msci(struct sr_softc *sc)
 
 	case SR_FLAGS_EXT_SEP_CLK:
 #if BUGGY > 0
-		printf("sr%d: Split Clocking Selected.\n", portndx);
+		kprintf("sr%d: Split Clocking Selected.\n", portndx);
 #endif
 
 		SRC_PUT8(hc->sca_base, msci->rxs,
@@ -1474,7 +1474,7 @@ sr_init_msci(struct sr_softc *sc)
 
 	case SR_FLAGS_INT_CLK:
 #if BUGGY > 0
-		printf("sr%d: Internal Clocking selected.\n", portndx);
+		kprintf("sr%d: Internal Clocking selected.\n", portndx);
 #endif
 
 		/*
@@ -1546,10 +1546,10 @@ sr_init_msci(struct sr_softc *sc)
 
 #if BUGGY > 0
 		if (wanted != gotspeed)
-			printf("sr%d: Speed wanted=%d, found=%d\n",
+			kprintf("sr%d: Speed wanted=%d, found=%d\n",
 			       wanted, gotspeed);
 
-		printf("sr%d: Internal Clock %dx100 BPS, tmc=%d, div=%d\n",
+		kprintf("sr%d: Internal Clock %dx100 BPS, tmc=%d, div=%d\n",
 		       portndx, gotspeed, tmc_v, br_v);
 #endif
 #else
@@ -1618,7 +1618,7 @@ sr_init_rx_dmac(struct sr_softc *sc)
 	u_int cda_v, sarb_v, rxbuf, rxda, rxda_d;
 
 #if BUGGY > 0
-	printf("sr_init_rx_dmac(sc=%08x)\n", sc);
+	kprintf("sr_init_rx_dmac(sc=%08x)\n", sc);
 #endif
 
 	hc = sc->hc;
@@ -1708,7 +1708,7 @@ sr_init_tx_dmac(struct sr_softc *sc)
 	u_int sarb_v;
 
 #if BUGGY > 0
-	printf("sr_init_tx_dmac(sc=%08x)\n", sc);
+	kprintf("sr_init_tx_dmac(sc=%08x)\n", sc);
 #endif
 
 	hc = sc->hc;
@@ -1794,7 +1794,7 @@ sr_packet_avail(struct sr_softc *sc, int *len, u_char *rxstat)
 	cda = (sca_descriptor *)(hc->mem_start + (wko & hc->winmsk));
 
 #if BUGGY > 1
-	printf("sr_packet_avail(): wki=%d, wko=%04x, cda=%08x\n",
+	kprintf("sr_packet_avail(): wki=%d, wko=%04x, cda=%08x\n",
 	       wki, wko, cda);
 #endif
 
@@ -1831,7 +1831,7 @@ sr_packet_avail(struct sr_softc *sc, int *len, u_char *rxstat)
 		if (rxdesc->stat & SCA_DESC_EOM) {	/* End Of Message */
 			*rxstat = rxdesc->stat;	/* return closing */
 #if BUGGY > 0
-			printf("sr%d: PKT AVAIL len %d, %x, bufs %u.\n",
+			kprintf("sr%d: PKT AVAIL len %d, %x, bufs %u.\n",
 			       sc->unit, *len, *rxstat, granules);
 #endif
 			return 1;	/* indicate success */
@@ -1872,7 +1872,7 @@ sr_copy_rxbuf(struct mbuf *m, struct sr_softc *sc, int len)
 	u_int tlen;
 
 #if BUGGY > 0
-	printf("sr_copy_rxbuf(m=%08x,sc=%08x,len=%d)\n",
+	kprintf("sr_copy_rxbuf(m=%08x,sc=%08x,len=%d)\n",
 	       m, sc, len);
 #endif
 
@@ -1978,7 +1978,7 @@ sr_eat_packet(struct sr_softc *sc, int single)
 		loopcnt++;
 
 		if (loopcnt > sc->rxmax) {
-			printf("sr%d: eat pkt %d loop, cda %x, "
+			kprintf("sr%d: eat pkt %d loop, cda %x, "
 			       "rxdesc %x, stat %x.\n",
 			       sc->unit, loopcnt, (u_int) cda, (u_int) rxdesc,
 			       rxdesc->stat);
@@ -2033,7 +2033,7 @@ sr_get_packets(struct sr_softc *sc)
 	struct mbuf *m = NULL;	/* message buffer */
 
 #if BUGGY > 0
-	printf("sr_get_packets(sc=%08x)\n", sc);
+	kprintf("sr_get_packets(sc=%08x)\n", sc);
 #endif
 
 	hc = sc->hc;
@@ -2065,7 +2065,7 @@ sr_get_packets(struct sr_softc *sc)
 			sr_packet_avail(sc, &len, &rxstat);
 
 #if BUGGY > 1
-		printf("sr_packet_avail() returned len=%d, rxstat=%02ux\n",
+		kprintf("sr_packet_avail() returned len=%d, rxstat=%02ux\n",
 		       len, rxstat);
 #endif
 
@@ -2081,7 +2081,7 @@ sr_get_packets(struct sr_softc *sc)
 		 */
 		if (((rxstat & SCA_DESC_ERRORS) == 0) && (len < MCLBYTES)) {
 #if BUGGY > 1
-			printf("sr%d: sr_get_packet() rxstat=%02x, len=%d\n",
+			kprintf("sr%d: sr_get_packet() rxstat=%02x, len=%d\n",
 			       sc->unit, rxstat, len);
 #endif
 
@@ -2129,7 +2129,7 @@ sr_get_packets(struct sr_softc *sc)
 				u_char *bp;
 
 				bp = (u_char *)m;
-				printf("sr%d: rcvd=%02x%02x%02x%02x%02x%02x\n",
+				kprintf("sr%d: rcvd=%02x%02x%02x%02x%02x%02x\n",
 				       sc->unit,
 				       bp[0], bp[1], bp[2],
 				       bp[4], bp[5], bp[6]);
@@ -2144,11 +2144,11 @@ sr_get_packets(struct sr_softc *sc)
 				u_char *bp;
 
 				bp = mtod(m,u_char *);
-				printf("sr%d: rd=%02x:%02x:%02x:%02x:%02x:%02x",
+				kprintf("sr%d: rd=%02x:%02x:%02x:%02x:%02x:%02x",
 				       sc->unit,
 				       bp[0], bp[1], bp[2],
 				       bp[4], bp[5], bp[6]);
-				printf(":%02x:%02x:%02x:%02x:%02x:%02x\n",
+				kprintf(":%02x:%02x:%02x:%02x:%02x:%02x\n",
 				       bp[6], bp[7], bp[8],
 				       bp[9], bp[10], bp[11]);
 			}
@@ -2206,7 +2206,7 @@ sr_get_packets(struct sr_softc *sc)
 				  hc->sca->dmac[DMAC_RXCH(sc->scachan)].eda);
 
 #if BUGGY > 0
-			printf("sr%d: Receive error chan %d, "
+			kprintf("sr%d: Receive error chan %d, "
 			       "stat %02x, msci st3 %02x,"
 			       "rxhind %d, cda %04x, eda %04x.\n",
 			       sc->unit, sc->scachan, rxstat,
@@ -2216,7 +2216,7 @@ sr_get_packets(struct sr_softc *sc)
 	}
 
 #if BUGGY > 0
-	printf("sr%d: sr_get_packets() found %d packet(s)\n",
+	kprintf("sr%d: sr_get_packets() found %d packet(s)\n",
 	       sc->unit, pkts);
 #endif
 
@@ -2242,7 +2242,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 	dmac_channel *dmac;	/* dma structure of chip */
 
 #if BUGGY > 0
-	printf("sr_dmac_intr(hc=%08x,isr1=%04x)\n", hc, isr1);
+	kprintf("sr_dmac_intr(hc=%08x,isr1=%04x)\n", hc, isr1);
 #endif
 
 	mch = 0;		/* assume chan0 on card */
@@ -2276,7 +2276,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for (& process) a Counter overflow
 			 */
 			if (dsr & SCA_DSR_COF) {
-				printf("sr%d: TX DMA Counter overflow, "
+				kprintf("sr%d: TX DMA Counter overflow, "
 				       "txpacket no %lu.\n",
 #ifndef NETGRAPH
 				       sc->unit, sc->ifsppp.pp_if.if_opackets);
@@ -2290,7 +2290,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for (& process) a Buffer overflow
 			 */
 			if (dsr & SCA_DSR_BOF) {
-				printf("sr%d: TX DMA Buffer overflow, "
+				kprintf("sr%d: TX DMA Buffer overflow, "
 				       "txpacket no %lu, dsr %02x, "
 				       "cda %04x, eda %04x.\n",
 #ifndef NETGRAPH
@@ -2320,7 +2320,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				 * there is data to transmit.
 				 */
 #if BUGGY > 0
-				printf("sr%d: TX Completed OK\n", sc->unit);
+				kprintf("sr%d: TX Completed OK\n", sc->unit);
 #endif
 				sc->xmit_busy = 0;
 #ifndef NETGRAPH
@@ -2371,16 +2371,16 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 					sca_descriptor *rxdesc;
 					int i;
 
-					printf("SR: RXINTR isr1 %x, dsr %x, "
+					kprintf("SR: RXINTR isr1 %x, dsr %x, "
 					       "no data %d pkts, orxind %d.\n",
 					       dotxstart, dsr, tt, ind);
-					printf("SR: rxdesc %x, rxstart %x, "
+					kprintf("SR: rxdesc %x, rxstart %x, "
 					       "rxend %x, rxhind %d, "
 					       "rxmax %d.\n",
 					       sc->rxdesc, sc->rxstart,
 					       sc->rxend, sc->rxhind,
 					       sc->rxmax);
-					printf("SR: cda %x, eda %x.\n",
+					kprintf("SR: cda %x, eda %x.\n",
 					    SRC_GET16(hc->sca_base, dmac->cda),
 					    SRC_GET16(hc->sca_base, dmac->eda));
 
@@ -2394,7 +2394,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 					rxdesc = &rxdesc[sc->rxhind];
 
 					for (i = 0; i < 3; i++, rxdesc++)
-						printf("SR: rxdesc->stat %x, "
+						kprintf("SR: rxdesc->stat %x, "
 						       "len %d.\n",
 						       rxdesc->stat,
 						       rxdesc->len);
@@ -2408,7 +2408,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for Counter overflow
 			 */
 			if (dsr & SCA_DSR_COF) {
-				printf("sr%d: RX DMA Counter overflow, "
+				kprintf("sr%d: RX DMA Counter overflow, "
 				       "rxpkts %lu.\n",
 #ifndef NETGRAPH
 				       sc->unit, sc->ifsppp.pp_if.if_ipackets);
@@ -2422,7 +2422,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for Buffer overflow
 			 */
 			if (dsr & SCA_DSR_BOF) {
-				printf("sr%d: RX DMA Buffer overflow, "
+				kprintf("sr%d: RX DMA Buffer overflow, "
 				       "rxpkts %lu, rxind %d, "
 				       "cda %x, eda %x, dsr %x.\n",
 #ifndef NETGRAPH
@@ -2456,7 +2456,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				SRC_PUT8(hc->sca_base, dmac->dsr, SCA_DSR_DE);
 
 #if BUGGY > 0
-				printf("sr%d: RX DMA Buffer overflow, "
+				kprintf("sr%d: RX DMA Buffer overflow, "
 				       "rxpkts %lu, rxind %d, "
 				       "cda %x, eda %x, dsr %x. After\n",
 				       sc->unit,
@@ -2485,7 +2485,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				 * 
 				 * XXX We should enable the dma again.
 				 */
-				printf("sr%d: RX End of xfer, rxpkts %lu.\n",
+				kprintf("sr%d: RX End of xfer, rxpkts %lu.\n",
 				       sc->unit,
 #ifndef NETGRAPH
 				       sc->ifsppp.pp_if.if_ipackets);
@@ -2623,7 +2623,7 @@ sr_modemck(void *arg)
 			dcd_v = (got_st3 & SCA_ST3_DCD) == 0;
 
 			if (dcd_v == 0)
-				printf("sr%d: DCD lost\n", sc->unit);
+				kprintf("sr%d: DCD lost\n", sc->unit);
 		}
 	}
 
@@ -2672,13 +2672,13 @@ sr_modemck(struct sr_softc *sc )
 static void
 sr_msci_intr(struct sr_hardc *hc, u_char isr0)
 {
-	printf("src%d: SRINTR: MSCI\n", hc->cunit);
+	kprintf("src%d: SRINTR: MSCI\n", hc->cunit);
 }
 
 static void
 sr_timer_intr(struct sr_hardc *hc, u_char isr2)
 {
-	printf("src%d: SRINTR: TIMER\n", hc->cunit);
+	kprintf("src%d: SRINTR: TIMER\n", hc->cunit);
 }
 
 #ifdef	NETGRAPH
@@ -2986,7 +2986,7 @@ static void
 ngsr_init(void *ignored)
 {
 	if (ng_newtype(&typestruct))
-		printf("ngsr install failed\n");
+		kprintf("ngsr install failed\n");
 	ngsr_done_init = 1;
 }
 #endif /* NETGRAPH */

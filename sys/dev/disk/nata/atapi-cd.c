@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.3 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -1024,9 +1024,9 @@ acd_read_toc(device_t dev)
 		      cdp->disk_size, cdp->block_size,
 		      cdp->toc.hdr.ending_track-cdp->toc.hdr.starting_track+1);
 	if (cdp->toc.tab[0].control & 4)
-	    printf("%dMB\n", cdp->disk_size * cdp->block_size / 1048576);
+	    kprintf("%dMB\n", cdp->disk_size * cdp->block_size / 1048576);
 	else
-	    printf("%d:%d audio\n",
+	    kprintf("%d:%d audio\n",
 		   cdp->disk_size / 75 / 60, cdp->disk_size / 75 % 60);
     }
 #endif
@@ -1769,82 +1769,82 @@ acd_describe(device_t dev)
 
 	device_printf(dev, "%s", "");
 	if (cdp->cap.cur_read_speed) {
-	    printf("read %dKB/s", cdp->cap.cur_read_speed * 1000 / 1024);
+	    kprintf("read %dKB/s", cdp->cap.cur_read_speed * 1000 / 1024);
 	    if (cdp->cap.max_read_speed) 
-		printf(" (%dKB/s)", cdp->cap.max_read_speed * 1000 / 1024);
+		kprintf(" (%dKB/s)", cdp->cap.max_read_speed * 1000 / 1024);
 	    if ((cdp->cap.cur_write_speed) &&
 		(cdp->cap.media & (MST_WRITE_CDR | MST_WRITE_CDRW |
 				   MST_WRITE_DVDR | MST_WRITE_DVDRAM))) {
-		printf(" write %dKB/s", cdp->cap.cur_write_speed * 1000 / 1024);
+		kprintf(" write %dKB/s", cdp->cap.cur_write_speed * 1000 / 1024);
 		if (cdp->cap.max_write_speed)
-		    printf(" (%dKB/s)", cdp->cap.max_write_speed * 1000 / 1024);
+		    kprintf(" (%dKB/s)", cdp->cap.max_write_speed * 1000 / 1024);
 	    }
 	    comma = 1;
 	}
 	if (cdp->cap.buf_size) {
-	    printf("%s %dKB buffer", comma ? "," : "", cdp->cap.buf_size);
+	    kprintf("%s %dKB buffer", comma ? "," : "", cdp->cap.buf_size);
 	    comma = 1;
 	}
-	printf("%s %s\n", comma ? "," : "", ata_mode2str(atadev->mode));
+	kprintf("%s %s\n", comma ? "," : "", ata_mode2str(atadev->mode));
 
 	device_printf(dev, "Reads:");
 	comma = 0;
 	if (cdp->cap.media & MST_READ_CDR) {
-	    printf(" CDR"); comma = 1;
+	    kprintf(" CDR"); comma = 1;
 	}
 	if (cdp->cap.media & MST_READ_CDRW) {
-	    printf("%s CDRW", comma ? "," : ""); comma = 1;
+	    kprintf("%s CDRW", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.capabilities & MST_READ_CDDA) {
 	    if (cdp->cap.capabilities & MST_CDDA_STREAM)
-		printf("%s CDDA stream", comma ? "," : "");
+		kprintf("%s CDDA stream", comma ? "," : "");
 	    else
-		printf("%s CDDA", comma ? "," : "");
+		kprintf("%s CDDA", comma ? "," : "");
 	    comma = 1;
 	}
 	if (cdp->cap.media & MST_READ_DVDROM) {
-	    printf("%s DVDROM", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVDROM", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.media & MST_READ_DVDR) {
-	    printf("%s DVDR", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVDR", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.media & MST_READ_DVDRAM) {
-	    printf("%s DVDRAM", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVDRAM", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.media & MST_READ_PACKET)
-	    printf("%s packet", comma ? "," : "");
+	    kprintf("%s packet", comma ? "," : "");
 
-	printf("\n");
+	kprintf("\n");
 	device_printf(dev, "Writes:");
 	if (cdp->cap.media & (MST_WRITE_CDR | MST_WRITE_CDRW |
 			      MST_WRITE_DVDR | MST_WRITE_DVDRAM)) {
 	    comma = 0;
 	    if (cdp->cap.media & MST_WRITE_CDR) {
-		printf(" CDR" ); comma = 1;
+		kprintf(" CDR" ); comma = 1;
 	    }
 	    if (cdp->cap.media & MST_WRITE_CDRW) {
-		printf("%s CDRW", comma ? "," : ""); comma = 1;
+		kprintf("%s CDRW", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.media & MST_WRITE_DVDR) {
-		printf("%s DVDR", comma ? "," : ""); comma = 1;
+		kprintf("%s DVDR", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.media & MST_WRITE_DVDRAM) {
-		printf("%s DVDRAM", comma ? "," : ""); comma = 1; 
+		kprintf("%s DVDRAM", comma ? "," : ""); comma = 1; 
 	    }
 	    if (cdp->cap.media & MST_WRITE_TEST) {
-		printf("%s test write", comma ? "," : ""); comma = 1;
+		kprintf("%s test write", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.capabilities & MST_BURNPROOF)
-		printf("%s burnproof", comma ? "," : "");
+		kprintf("%s burnproof", comma ? "," : "");
 	}
-	printf("\n");
+	kprintf("\n");
 	if (cdp->cap.capabilities & MST_AUDIO_PLAY) {
 	    device_printf(dev, "Audio: ");
 	    if (cdp->cap.capabilities & MST_AUDIO_PLAY)
-		printf("play");
+		kprintf("play");
 	    if (cdp->cap.max_vol_levels)
-		printf(", %d volume levels", cdp->cap.max_vol_levels);
-	    printf("\n");
+		kprintf(", %d volume levels", cdp->cap.max_vol_levels);
+	    kprintf("\n");
 	}
 	device_printf(dev, "Mechanism: ");
 	switch (cdp->cap.mechanism & MST_MECH_MASK) {
@@ -1862,65 +1862,65 @@ acd_describe(device_t dev)
 	    mechanism = 0; break;
 	}
 	if (mechanism)
-	    printf("%s%s", (cdp->cap.mechanism & MST_EJECT) ?
+	    kprintf("%s%s", (cdp->cap.mechanism & MST_EJECT) ?
 		   "ejectable " : "", mechanism);
 	else if (cdp->cap.mechanism & MST_EJECT)
-	    printf("ejectable");
+	    kprintf("ejectable");
 
 	if (cdp->cap.mechanism & MST_LOCKABLE)
-	    printf((cdp->cap.mechanism & MST_LOCKED) ? ", locked":", unlocked");
+	    kprintf((cdp->cap.mechanism & MST_LOCKED) ? ", locked":", unlocked");
 	if (cdp->cap.mechanism & MST_PREVENT)
-	    printf(", lock protected");
-	printf("\n");
+	    kprintf(", lock protected");
+	kprintf("\n");
 
 	if ((cdp->cap.mechanism & MST_MECH_MASK) != MST_MECH_CHANGER) {
 	    device_printf(dev, "Medium: ");
 	    switch (cdp->cap.medium_type & MST_TYPE_MASK_HIGH) {
 	    case MST_CDROM:
-		printf("CD-ROM "); break;
+		kprintf("CD-ROM "); break;
 	    case MST_CDR:
-		printf("CD-R "); break;
+		kprintf("CD-R "); break;
 	    case MST_CDRW:
-		printf("CD-RW "); break;
+		kprintf("CD-RW "); break;
 	    case MST_DOOR_OPEN:
-		printf("door open"); break;
+		kprintf("door open"); break;
 	    case MST_NO_DISC:
-		printf("no/blank disc"); break;
+		kprintf("no/blank disc"); break;
 	    case MST_FMT_ERROR:
-		printf("medium format error"); break;
+		kprintf("medium format error"); break;
 	    }
 	    if ((cdp->cap.medium_type & MST_TYPE_MASK_HIGH)<MST_TYPE_MASK_HIGH){
 		switch (cdp->cap.medium_type & MST_TYPE_MASK_LOW) {
 		case MST_DATA_120:
-		    printf("120mm data disc"); break;
+		    kprintf("120mm data disc"); break;
 		case MST_AUDIO_120:
-		    printf("120mm audio disc"); break;
+		    kprintf("120mm audio disc"); break;
 		case MST_COMB_120:
-		    printf("120mm data/audio disc"); break;
+		    kprintf("120mm data/audio disc"); break;
 		case MST_PHOTO_120:
-		    printf("120mm photo disc"); break;
+		    kprintf("120mm photo disc"); break;
 		case MST_DATA_80:
-		    printf("80mm data disc"); break;
+		    kprintf("80mm data disc"); break;
 		case MST_AUDIO_80:
-		    printf("80mm audio disc"); break;
+		    kprintf("80mm audio disc"); break;
 		case MST_COMB_80:
-		    printf("80mm data/audio disc"); break;
+		    kprintf("80mm data/audio disc"); break;
 		case MST_PHOTO_80:
-		    printf("80mm photo disc"); break;
+		    kprintf("80mm photo disc"); break;
 		case MST_FMT_NONE:
 		    switch (cdp->cap.medium_type & MST_TYPE_MASK_HIGH) {
 		    case MST_CDROM:
-			printf("unknown"); break;
+			kprintf("unknown"); break;
 		    case MST_CDR:
 		    case MST_CDRW:
-			printf("blank"); break;
+			kprintf("blank"); break;
 		    }
 		    break;
 		default:
-		    printf("unknown (0x%x)", cdp->cap.medium_type); break;
+		    kprintf("unknown (0x%x)", cdp->cap.medium_type); break;
 		}
 	    }
-	    printf("\n");
+	    kprintf("\n");
 	}
     }
     else {
@@ -1931,7 +1931,7 @@ acd_describe(device_t dev)
 			 (cdp->cap.media & MST_WRITE_CDR) ? "CDR" : 
 			  (cdp->cap.media & MST_READ_DVDROM) ? "DVDROM" :
 			  "CDROM");
-	printf("<%.40s/%.8s> at ata%d-%s %s\n",
+	kprintf("<%.40s/%.8s> at ata%d-%s %s\n",
 	       atadev->param.model, atadev->param.revision,
 	       device_get_unit(ch->dev),
 	       (atadev->unit == ATA_MASTER) ? "master" : "slave",

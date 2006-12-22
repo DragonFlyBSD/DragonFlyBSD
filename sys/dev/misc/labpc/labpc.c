@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.20 2006/09/10 05:02:14 sephe Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.21 2006/12/22 23:26:17 swildner Exp $
  *
  */
 
@@ -419,14 +419,14 @@ labpcprobe(struct isa_device *dev)
 	{
 		if (labpcinit() == 0)
 		{
-			printf("labpcprobe: init failed\n");
+			kprintf("labpcprobe: init failed\n");
 			return 0;
 		}
 	}
 
 	if (unit > NLABPC)
 	{
-		printf("Too many LAB-PCs.  Reconfigure O/S.\n");
+		kprintf("Too many LAB-PCs.  Reconfigure O/S.\n");
 		return 0;
 	}
 	ctlr = &scratch;	/* Need somebody with the right base for the macros */
@@ -589,24 +589,24 @@ tmo_stop(void *p)
 
 	if (ctlr == 0)
 	{
-		printf("labpc?: Null ctlr struct?\n");
+		kprintf("labpc?: Null ctlr struct?\n");
 		crit_exit();
 		return;
 	}
 
-	printf("labpc%d: timeout", ctlr->unit);
+	kprintf("labpc%d: timeout", ctlr->unit);
 
 	(*ctlr->stop)(ctlr);
 
 	bio = ctlr->start_queue.bio_actf;
 
 	if (bio == NULL) {
-		printf(", Null bp.\n");
+		kprintf(", Null bp.\n");
 		crit_exit();
 		return;
 	}
 
-	printf("\n");
+	kprintf("\n");
 
 	done_and_start_next(ctlr, bio, ETIMEDOUT);
 
@@ -625,8 +625,8 @@ static void ad_intr(struct ctlr *ctlr)
 			return;
 		}
 
-		printf("ad_intr (should not happen) interrupt with interrupts off\n");
-		printf("status %x, cr3 %x\n", inb(STATUS(ctlr)), ctlr->cr_image[2]);
+		kprintf("ad_intr (should not happen) interrupt with interrupts off\n");
+		kprintf("status %x, cr3 %x\n", inb(STATUS(ctlr)), ctlr->cr_image[2]);
 		return;
 	}
 
@@ -636,22 +636,22 @@ static void ad_intr(struct ctlr *ctlr)
 		{
 			struct bio *bio = ctlr->start_queue.bio_actf;
 
-			printf("ad_intr: error: bp %p, data %p, status %x",
+			kprintf("ad_intr: error: bp %p, data %p, status %x",
 			    bio->bio_buf, ctlr->data, status);
 
 			if (status & OVERRUN)
-				printf(" Conversion overrun (multiple A-D trigger)");
+				kprintf(" Conversion overrun (multiple A-D trigger)");
 
 			if (status & OVERFLOW)
-				printf(" FIFO overflow");
+				kprintf(" FIFO overflow");
 
-			printf("\n");
+			kprintf("\n");
 
 			if (bio) {
 				done_and_start_next(ctlr, bio, EIO);
 				return;
 			} else {
-				printf("ad_intr: (should not happen) error between records\n");
+				kprintf("ad_intr: (should not happen) error between records\n");
 				ctlr->err = status;	/* Set overrun condition */
 				return;
 			}
@@ -669,10 +669,10 @@ static void ad_intr(struct ctlr *ctlr)
 				}
 			} else {
 				/* Interrupt with no where to put the data.  */
-				printf("ad_intr: (should not happen) dropped input.\n");
+				kprintf("ad_intr: (should not happen) dropped input.\n");
 				(void)inb(ADFIFO(ctlr));
 
-				printf("bp %p, status %x, cr3 %x\n",
+				kprintf("bp %p, status %x, cr3 %x\n",
 				    bio->bio_buf, status, ctlr->cr_image[2]);
 				ctlr->err = DROPPED_INPUT;
 				return;
@@ -777,14 +777,14 @@ start(struct ctlr *ctlr)
 
 	if (ctlr->err)
 	{
-		printf("labpc start: (should not happen) error between records.\n");
+		kprintf("labpc start: (should not happen) error between records.\n");
 		done_and_start_next(ctlr, bio, EIO);
 		return;
 	}
 
 	if (ctlr->data == 0)
 	{
-		printf("labpc start: (should not happen) NULL data pointer.\n");
+		kprintf("labpc start: (should not happen) NULL data pointer.\n");
 		done_and_start_next(ctlr, bio, EIO);
 		return;
 	}

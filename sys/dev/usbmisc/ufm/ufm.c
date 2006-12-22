@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.11 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.12 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -160,7 +160,7 @@ USB_ATTACH(ufm)
 	DPRINTFN(10,("ufm_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
 
@@ -219,7 +219,7 @@ USB_ATTACH(ufm)
 	USB_ATTACH_SUCCESS_RETURN;
 
  nobulk:
-	printf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
+	kprintf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -279,7 +279,7 @@ ufm_do_req(struct ufm_softc *sc, u_int8_t reqtype, u_int8_t request,
 	    USBD_DEFAULT_TIMEOUT);
 	crit_exit();
 	if (err) {
-		printf("usbd_do_request_flags returned %#x\n", err);
+		kprintf("usbd_do_request_flags returned %#x\n", err);
 		return (EIO);
 	}
 	return (0);

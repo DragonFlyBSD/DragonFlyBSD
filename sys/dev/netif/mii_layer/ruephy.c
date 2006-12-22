@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ruephy.c,v 1.1.4.1 2003/07/30 13:57:35 akiyama Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.5 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.6 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -139,10 +139,10 @@ ruephy_attach(device_t dev)
 
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
-		printf("no media present");
+		kprintf("no media present");
 	else
 		mii_phy_add_media(sc);
-	printf("\n");
+	kprintf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return (0);

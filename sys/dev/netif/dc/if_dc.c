@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.53 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.54 2006/12/22 23:26:19 swildner Exp $
  */
 
 /*
@@ -2814,10 +2814,10 @@ dc_tx_underrun(struct dc_softc *sc)
 	if_printf(&sc->arpcom.ac_if, "TX underrun -- ");
 	sc->dc_txthresh += DC_TXTHRESH_INC;
 	if (sc->dc_txthresh > DC_TXTHRESH_MAX) {
-		printf("using store and forward mode\n");
+		kprintf("using store and forward mode\n");
 		DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_STORENFWD);
 	} else {
-		printf("increasing TX threshold\n");
+		kprintf("increasing TX threshold\n");
 		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_TX_THRESH);
 		DC_SETBIT(sc, DC_NETCFG, sc->dc_txthresh);
 	}

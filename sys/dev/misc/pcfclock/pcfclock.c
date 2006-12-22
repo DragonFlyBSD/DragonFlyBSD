@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.11 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.12 2006/12/22 23:26:18 swildner Exp $
  *
  */
 
@@ -208,7 +208,7 @@ pcfclock_display_data(cdev_t dev, char buf[18])
 	year = NR(buf, 14);
 	if (year < 70)
 		year += 100;
-	printf(PCFCLOCK_NAME "%d: %02d.%02d.%4d %02d:%02d:%02d, "
+	kprintf(PCFCLOCK_NAME "%d: %02d.%02d.%4d %02d:%02d:%02d, "
 			"battery status: %s\n",
 			unit,
 			NR(buf, 10), NR(buf, 12), 1900 + year,
@@ -216,7 +216,7 @@ pcfclock_display_data(cdev_t dev, char buf[18])
 			PCFCLOCK_BATTERY_STATUS_LOW(buf) ? "LOW" : "ok");
 #else
 	if (PCFCLOCK_BATTERY_STATUS_LOW(buf))
-		printf(PCFCLOCK_NAME "%d: BATTERY STATUS LOW ON\n",
+		kprintf(PCFCLOCK_NAME "%d: BATTERY STATUS LOW ON\n",
 				unit);
 #endif
 }
@@ -304,7 +304,7 @@ pcfclock_read(struct dev_read_args *ap)
 	error = pcfclock_read_dev(dev, buf, PCFCLOCK_MAX_RETRIES);
 	
 	if (error) {
-		printf(PCFCLOCK_NAME "%d: no PCF found\n", unit);
+		kprintf(PCFCLOCK_NAME "%d: no PCF found\n", unit);
 	} else {
 		pcfclock_display_data(dev, buf);
 		

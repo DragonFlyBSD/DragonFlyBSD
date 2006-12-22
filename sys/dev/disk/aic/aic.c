@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.8 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.9 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -450,7 +450,7 @@ aic_reselected(struct aic_softc *aic)
 	selid = aic_inb(aic, SELID) & ~(1 << aic->initiator);
 	if (selid & (selid - 1)) {
 		/* this should never have happened */
-		printf("aic_reselected: invalid selid %x\n", selid);
+		kprintf("aic_reselected: invalid selid %x\n", selid);
 		aic_reset(aic, /*initiate_reset*/TRUE);
 		return;
 	}
@@ -651,7 +651,7 @@ aic_handle_msgin(struct aic_softc *aic)
 				/*scsi_sense_print(csio);*/
 			} else {
 				ccb_h->status |= CAM_AUTOSENSE_FAIL;
-				printf("ccb %p sense failed %x\n",
+				kprintf("ccb %p sense failed %x\n",
 				    ccb_h, scb->status);
 			}
 		} else {
@@ -1124,17 +1124,17 @@ aic_timeout(void *arg)
 	struct aic_softc *aic = (struct aic_softc *)ccb->ccb_h.ccb_aic_ptr;
 
 	xpt_print_path(ccb->ccb_h.path);
-	printf("ccb %p - timed out", ccb);
+	kprintf("ccb %p - timed out", ccb);
 	if (aic->nexus && aic->nexus != scb)
-		printf(", nexus %p", aic->nexus->ccb);
-	printf(", phase 0x%x, state %d\n", aic_inb(aic, SCSISIGI), aic->state);
+		kprintf(", nexus %p", aic->nexus->ccb);
+	kprintf(", phase 0x%x, state %d\n", aic_inb(aic, SCSISIGI), aic->state);
 
 	crit_enter();
 
 	if ((scb->flags & SCB_ACTIVE) == 0) {
 		crit_exit();
 		xpt_print_path(ccb->ccb_h.path);
-		printf("ccb %p - timed out already completed\n", ccb);
+		kprintf("ccb %p - timed out already completed\n", ccb);
 		return;
 	}
 
@@ -1296,7 +1296,7 @@ aic_intr(void *arg)
 		return;
 	}
 
-	printf("aic_intr: unexpected intr sstat0 %x sstat1 %x\n",
+	kprintf("aic_intr: unexpected intr sstat0 %x sstat1 %x\n",
 		sstat0, sstat1);
 	aic_outb(aic, DMACNTRL0, INTEN);
 }
@@ -1497,15 +1497,15 @@ aic_attach(struct aic_softc *aic)
 
 	aic_init(aic);
 
-	printf("aic%d: %s", aic->unit,
+	kprintf("aic%d: %s", aic->unit,
 	    aic_inb(aic, REV) > 0 ? "aic6360" : "aic6260");
 	if (aic->flags & AIC_DMA_ENABLE)
-		printf(", dma");
+		kprintf(", dma");
 	if (aic->flags & AIC_DISC_ENABLE)
-		printf(", disconnection");
+		kprintf(", disconnection");
 	if (aic->flags & AIC_PARITY_ENABLE)
-		printf(", parity check");
-	printf("\n");
+		kprintf(", parity check");
+	kprintf("\n");
 	return (0);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.24 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.25 2006/12/22 23:26:22 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -229,7 +229,7 @@ sbsh_attach(device_t dev)
 					0, ~0, 4096, RF_ACTIVE);
 
 	if (sc->mem_res == NULL) {
-		printf ("sbsh%d: couldn't map memory\n", unit);
+		kprintf ("sbsh%d: couldn't map memory\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -239,7 +239,7 @@ sbsh_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq_res == NULL) {
-		printf("sbsh%d: couldn't map interrupt\n", unit);
+		kprintf("sbsh%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -270,7 +270,7 @@ sbsh_attach(device_t dev)
 				ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
-		printf("sbsh%d: couldn't set up irq\n", unit);
+		kprintf("sbsh%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 

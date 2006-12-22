@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.27 2006/10/25 20:56:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.28 2006/12/22 23:26:23 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -123,7 +123,7 @@
                 u_int32_t   counter = 0;                                       \
                                                                                \
                 while (length--) {                                             \
-                        printf ("%08lx%c", (u_long)*(pointer++),               \
+                        kprintf ("%08lx%c", (u_long)*(pointer++),               \
                           (((++counter & 7) == 0) || (length == 0))            \
                             ? '\n'                                             \
                             : ' ');                                            \
@@ -133,14 +133,14 @@
 
 #if (defined(DEBUG_ASR))
   /* Breaks on none STDC based compilers :-( */
-# define debug_asr_printf(fmt,args...)   printf(fmt, ##args)
+# define debug_asr_printf(fmt,args...)   kprintf(fmt, ##args)
 # define debug_asr_dump_message(message) debug_asr_message(message)
 # define debug_asr_print_path(ccb)       xpt_print_path(ccb->ccb_h.path);
   /* None fatal version of the ASSERT macro */
 # if (defined(__STDC__))
-#  define ASSERT(phrase) if(!(phrase))printf(#phrase " at line %d file %s\n",__LINE__,__FILE__)
+#  define ASSERT(phrase) if(!(phrase))kprintf(#phrase " at line %d file %s\n",__LINE__,__FILE__)
 # else
-#  define ASSERT(phrase) if(!(phrase))printf("phrase" " at line %d file %s\n",__LINE__,__FILE__)
+#  define ASSERT(phrase) if(!(phrase))kprintf("phrase" " at line %d file %s\n",__LINE__,__FILE__)
 # endif
 #else /* DEBUG_ASR */
 # define debug_asr_printf(fmt,args...)
@@ -156,7 +156,7 @@
  *              2 - add in outgoing message frames.
  */
 #if (defined(DEBUG_ASR_CMD))
-# define debug_asr_cmd_printf(fmt,args...)     printf(fmt,##args)
+# define debug_asr_cmd_printf(fmt,args...)     kprintf(fmt,##args)
 # define debug_asr_dump_ccb(ccb)                                      \
         {                                                             \
                 u_int8_t * cp = (unsigned char *)&(ccb->csio.cdb_io); \
@@ -188,7 +188,7 @@
 #endif /* DEBUG_ASR_CMD */
 
 #if (defined(DEBUG_ASR_USR_CMD))
-# define debug_usr_cmd_printf(fmt,args...)   printf(fmt,##args)
+# define debug_usr_cmd_printf(fmt,args...)   kprintf(fmt,##args)
 # define debug_usr_cmd_dump_message(message) debug_usr_message(message)
 #else /* DEBUG_ASR_USR_CMD */
 # define debug_usr_cmd_printf(fmt,args...)
@@ -813,7 +813,7 @@ ASR_prstring (
         int        len)
 {
         while ((--len >= 0) && (*s) && (*s != ' ') && (*s != '-')) {
-                printf ("%c", *(s++));
+                kprintf ("%c", *(s++));
         }
 } /* ASR_prstring */
 
@@ -1426,7 +1426,7 @@ ASR_reset(
                         /*
                          * Take adapter off-line.
                          */
-                        printf ("asr%d: Taking adapter off-line\n",
+                        kprintf ("asr%d: Taking adapter off-line\n",
                           sc->ha_path[0]
                             ? cam_sim_unit(xpt_path_sim(sc->ha_path[0]))
                             : 0);
@@ -1450,7 +1450,7 @@ ASR_reset(
         }
         ASR_failActiveCommands (sc);
         if (sc->ha_in_reset == HA_OFF_LINE_RECOVERY) {
-                printf ("asr%d: Brining adapter back on-line\n",
+                kprintf ("asr%d: Brining adapter back on-line\n",
                   sc->ha_path[0]
                     ? cam_sim_unit(xpt_path_sim(sc->ha_path[0]))
                     : 0);
@@ -1478,7 +1478,7 @@ asr_timeout(
          */
         if ((s = ASR_getBlinkLedCode(sc)) != 0) {
                 /* Reset Adapter */
-                printf ("asr%d: Blink LED 0x%x resetting adapter\n",
+                kprintf ("asr%d: Blink LED 0x%x resetting adapter\n",
                   cam_sim_unit(xpt_path_sim(ccb->ccb_h.path)), s);
                 if (ASR_reset (sc) == ENXIO) {
                         /* Try again later */
@@ -2523,7 +2523,7 @@ asr_attach (ATTACH_ARGS)
                  *      engine (dptioctl.h) to pick up.
                  */
                 bcopy (osrelease, &ASR_sig.dsDescription[16], 5);
-                printf ("asr%d: major=%d\n", unit, asr_ops.head.maj);
+                kprintf ("asr%d: major=%d\n", unit, asr_ops.head.maj);
         }
         /*
          *      Initialize the software structure
@@ -2545,7 +2545,7 @@ asr_attach (ATTACH_ARGS)
                  *      This is the real McCoy!
                  */
                 if (!asr_pci_map_mem(tag, sc)) {
-                        printf ("asr%d: could not map memory\n", unit);
+                        kprintf ("asr%d: could not map memory\n", unit);
                         ATTACH_RETURN(ENXIO);
                 }
                 /* Enable if not formerly enabled */
@@ -2569,7 +2569,7 @@ asr_attach (ATTACH_ARGS)
                   sizeof(I2O_EXEC_STATUS_GET_REPLY), M_TEMP, M_WAITOK))
                   == (PI2O_EXEC_STATUS_GET_REPLY)NULL)
                  || (ASR_getStatus(sc->ha_Virt, sc->ha_Fvirt, status) == NULL)) {
-                        printf ("asr%d: could not initialize hardware\n", unit);
+                        kprintf ("asr%d: could not initialize hardware\n", unit);
                         ATTACH_RETURN(ENODEV);  /* Get next, maybe better luck */
                 }
                 sc->ha_SystemTable.OrganizationID = status->OrganizationID;
@@ -2583,7 +2583,7 @@ asr_attach (ATTACH_ARGS)
                   = (U32)(sc->ha_Base) + (U32)(&(((i2oRegs_t *)NULL)->ToFIFO));
 
                 if (!asr_pci_map_int(tag, (void *)sc)) {
-                        printf ("asr%d: could not map interrupt\n", unit);
+                        kprintf ("asr%d: could not map interrupt\n", unit);
                         ATTACH_RETURN(ENXIO);
                 }
 
@@ -2643,7 +2643,7 @@ asr_attach (ATTACH_ARGS)
                         (void)ASR_acquireHrt(sc);
                 }
         } else {
-                printf ("asr%d: failed to initialize\n", unit);
+                kprintf ("asr%d: failed to initialize\n", unit);
                 ATTACH_RETURN(ENXIO);
         }
         /*
@@ -2682,7 +2682,7 @@ asr_attach (ATTACH_ARGS)
          *      Print the HBA model number as inquired from the card.
          */
 
-        printf ("asr%d:", unit);
+        kprintf ("asr%d:", unit);
 
         if ((iq = (struct scsi_inquiry_data *)kmalloc (
             sizeof(struct scsi_inquiry_data), M_TEMP, M_WAITOK))
@@ -2745,26 +2745,26 @@ asr_attach (ATTACH_ARGS)
                 (void)ASR_queue_c(sc, (PI2O_MESSAGE_FRAME)Message_Ptr);
 
                 if (iq->vendor[0] && (iq->vendor[0] != ' ')) {
-                        printf (" ");
+                        kprintf (" ");
                         ASR_prstring (iq->vendor, 8);
                         ++posted;
                 }
                 if (iq->product[0] && (iq->product[0] != ' ')) {
-                        printf (" ");
+                        kprintf (" ");
                         ASR_prstring (iq->product, 16);
                         ++posted;
                 }
                 if (iq->revision[0] && (iq->revision[0] != ' ')) {
-                        printf (" FW Rev. ");
+                        kprintf (" FW Rev. ");
                         ASR_prstring (iq->revision, 4);
                         ++posted;
                 }
                 kfree ((caddr_t)iq, M_TEMP);
                 if (posted) {
-                        printf (",");
+                        kprintf (",");
                 }
         }
-        printf (" %d channel, %d CCBs, Protocol I2O\n", sc->ha_MaxBus + 1,
+        kprintf (" %d channel, %d CCBs, Protocol I2O\n", sc->ha_MaxBus + 1,
           (sc->ha_QueueSize > MAX_INBOUND) ? MAX_INBOUND : sc->ha_QueueSize);
 
         /*
@@ -2775,7 +2775,7 @@ asr_attach (ATTACH_ARGS)
                 union asr_ccb * ccb;
 
                 if ((ccb = asr_alloc_ccb (sc)) == (union asr_ccb *)NULL) {
-                        printf ("asr%d: CAM could not be notified of asynchronous callback parameters\n", unit);
+                        kprintf ("asr%d: CAM could not be notified of asynchronous callback parameters\n", unit);
                         ATTACH_RETURN(ENOMEM);
                 }
                 for (bus = 0; bus <= sc->ha_MaxBus; ++bus) {
@@ -2868,7 +2868,7 @@ asr_action(
                         break;
                 }
                 if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_INPROG) {
-                        printf(
+                        kprintf(
                           "asr%d WARNING: scsi_cmd(%x) already done on b%dt%du%d\n",
                           cam_sim_unit(xpt_path_sim(ccb->ccb_h.path)),
                           ccb->csio.cdb_io.cdb_bytes[0],
@@ -3684,7 +3684,7 @@ ASR_queue_i(
         while ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG) {
                 if (ASR_getBlinkLedCode(sc)) {
                         /* Reset Adapter */
-                        printf ("asr%d: Blink LED 0x%x resetting adapter\n",
+                        kprintf ("asr%d: Blink LED 0x%x resetting adapter\n",
                           cam_sim_unit(xpt_path_sim(ccb->ccb_h.path)),
                           ASR_getBlinkLedCode(sc));
                         if (ASR_reset (sc) == ENXIO) {

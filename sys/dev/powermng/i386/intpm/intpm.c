@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.10 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.11 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -295,10 +295,10 @@ static void intsmb_alrintr(device_t dev)
 			uint32_t addr;
 			addr = bus_space_read_1(sc->st,sc->sh,
 						PIIX4_SMBHSTDAT0);
-			printf("ALART_RESPONSE: %#x\n", addr);
+			kprintf("ALART_RESPONSE: %#x\n", addr);
 		}
 	}else{
-	        printf("ERROR\n");
+	        kprintf("ERROR\n");
 	}
 
 	/*Re-enable INTR from ALART*/
@@ -355,7 +355,7 @@ intsmb_stop_poll(device_t dev){
 				(status&PIIX4_SMBHSTSTAT_BUSC)?EBUSY:
 				(status&PIIX4_SMBHSTSTAT_FAIL)?EIO:0;
 			if(error==0&&!(status&PIIX4_SMBHSTSTAT_INTR)){
-				printf("unknown cause why?");
+				kprintf("unknown cause why?");
 			}
 			return error;
 		}
@@ -389,7 +389,7 @@ intsmb_stop(device_t dev){
 					(status&PIIX4_SMBHSTSTAT_BUSC)?EBUSY:
 					(status&PIIX4_SMBHSTSTAT_FAIL)?EIO:0;
 				if(error==0&&!(status&PIIX4_SMBHSTSTAT_INTR)){
-					printf("intsmb%d:unknown cause why?\n",
+					kprintf("intsmb%d:unknown cause why?\n",
 					       device_get_unit(dev));
 				}
 #ifdef ENABLE_ALART
@@ -693,7 +693,7 @@ intpm_attach(device_t dev)
                 }
                 device_printf(dev,"intr %s %s ",str,((value&1)? "enabled":"disabled"));
                 value=pci_read_config(dev,PCI_REVID_SMB,1);
-                printf("revision %d\n",value);                
+                kprintf("revision %d\n",value);                
                 /*
                  * Install intr HANDLER here
                  */
@@ -712,13 +712,13 @@ intpm_attach(device_t dev)
                 }
                 smbinterface=device_add_child(dev,"intsmb",unit);
 		if(!smbinterface){
-		     printf("intsmb%d:could not add SMBus device\n",unit);
+		     kprintf("intsmb%d:could not add SMBus device\n",unit);
 		}
                 device_probe_and_attach(smbinterface);
         }
 	      
         value=pci_read_config(dev,PCI_BASE_ADDR_PM,4);
-        printf("intpm%d: PM %s %x \n",unit,(value&1)?"I/O mapped":"Memory",value&0xfffe);
+        kprintf("intpm%d: PM %s %x \n",unit,(value&1)?"I/O mapped":"Memory",value&0xfffe);
         return 0;
 }
 static int 

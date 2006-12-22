@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.32 2005/02/10 22:38:51 julian Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.9 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.10 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -594,7 +594,7 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
 	/* Select all GPIO bits as inputs */
 	OUTL(bktr, BKTR_GPIO_OUT_EN, 0);
 	if (bootverbose)
-	    printf("%s: GPIO is 0x%08x\n", bktr_name(bktr),
+	    kprintf("%s: GPIO is 0x%08x\n", bktr_name(bktr),
 		   INL(bktr, BKTR_GPIO_DATA)); 
 
 #ifdef HAUPPAUGE_MSP_RESET
@@ -659,7 +659,7 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
                 subsystem_vendor_id = (byte_254 << 8) | byte_255;
 
 	        if ( bootverbose ) 
-	            printf("%s: subsystem 0x%04x 0x%04x\n", bktr_name(bktr),
+	            kprintf("%s: subsystem 0x%04x 0x%04x\n", bktr_name(bktr),
 			   subsystem_vendor_id, subsystem_id);
 
                 if (subsystem_vendor_id == PCI_VENDOR_AVERMEDIA) {
@@ -733,12 +733,12 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
 
                 /* Vendor is unknown. We will use the standard probe code */
 		/* which may not give best results */
-                printf("%s: Warning - card vendor 0x%04x (model 0x%04x) unknown.\n",
+                kprintf("%s: Warning - card vendor 0x%04x (model 0x%04x) unknown.\n",
 		       bktr_name(bktr), subsystem_vendor_id, subsystem_id);
             }
 	    else
 	    {
-                printf("%s: Card has no configuration EEPROM. Cannot determine card make.\n",
+                kprintf("%s: Card has no configuration EEPROM. Cannot determine card make.\n",
 		       bktr_name(bktr));
 	    }
 	} /* end of bt878/bt879 card detection code */
@@ -788,9 +788,9 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
 			    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
                             goto checkTuner;
 		    }
-		    printf("%s: Warning: Unknown card type. EEPROM data not recognised\n",
+		    kprintf("%s: Warning: Unknown card type. EEPROM data not recognised\n",
 			   bktr_name(bktr));
-		    printf("%s: %x %x %x %x\n", bktr_name(bktr),
+		    kprintf("%s: %x %x %x %x\n", bktr_name(bktr),
 			   eeprom[0],eeprom[1],eeprom[2],eeprom[3]);
             }
 
@@ -807,11 +807,11 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
 	signCard( bktr, 1, 128, (u_char *)  &probe_signature );
 
 	if (bootverbose) {
-	  printf("%s: card signature: ", bktr_name(bktr));
+	  kprintf("%s: card signature: ", bktr_name(bktr));
 	  for (j = 0; j < Bt848_MAX_SIGN; j++) {
-	    printf(" %02x ", probe_signature[j]);
+	    kprintf(" %02x ", probe_signature[j]);
 	  }
-	  printf("\n\n");
+	  kprintf("\n\n");
 	}
 	for (i = 0;
 	     i < (sizeof bt848_card_signature)/ sizeof (struct bt848_card_sig);
@@ -1003,7 +1003,7 @@ checkTuner:
 		if (no_audio_mux) bktr->audio_mux_present = 0;
                
 		if (verbose)
-		    printf("%s: Hauppauge Model %d %c%c%c%c\n",
+		    kprintf("%s: Hauppauge Model %d %c%c%c%c\n",
 			   bktr_name(bktr),
 			   model,
 			   ((revision >> 18) & 0x3f) + 32,
@@ -1067,7 +1067,7 @@ checkTuner:
 		    goto checkDBX;
 
 	          default :
-		    printf("%s: Warning - Unknown Hauppauge Tuner 0x%x\n",
+		    kprintf("%s: Warning - Unknown Hauppauge Tuner 0x%x\n",
 			   bktr_name(bktr), tuner_code);
 		}
 	    }
@@ -1135,7 +1135,7 @@ checkTuner:
 			goto checkDBX;
 		}
 
-	    	printf("%s: Warning - Unknown AVerMedia Tuner Make %d Format %d\n",
+	    	kprintf("%s: Warning - Unknown AVerMedia Tuner Make %d Format %d\n",
 			bktr_name(bktr), tuner_make, tuner_format);
 	    }
 	    break;
@@ -1243,7 +1243,7 @@ checkMSPEnd:
 	if (bktr->card.msp3400c) {
 		bktr->msp_addr = MSP3400C_WADDR;
 		msp_read_id( bktr );
-		printf("%s: Detected a MSP%s at 0x%x\n", bktr_name(bktr),
+		kprintf("%s: Detected a MSP%s at 0x%x\n", bktr_name(bktr),
 		       bktr->msp_version_string,
 		       bktr->msp_addr);
 
@@ -1257,7 +1257,7 @@ checkMSPEnd:
 	if (bktr->card.dpl3518a) {
 		bktr->dpl_addr = DPL3518A_WADDR;
 		dpl_read_id( bktr );
-		printf("%s: Detected a DPL%s at 0x%x\n", bktr_name(bktr),
+		kprintf("%s: Detected a DPL%s at 0x%x\n", bktr_name(bktr),
 		       bktr->dpl_version_string,
 		       bktr->dpl_addr);
 	}
@@ -1321,18 +1321,18 @@ checkPLLEnd:
 	bktr->card.tuner_pllAddr = tuner_i2c_address;
 
 	if ( verbose ) {
-		printf( "%s: %s", bktr_name(bktr), bktr->card.name );
+		kprintf( "%s: %s", bktr_name(bktr), bktr->card.name );
 		if ( bktr->card.tuner )
-			printf( ", %s tuner", bktr->card.tuner->name );
+			kprintf( ", %s tuner", bktr->card.tuner->name );
 		if ( bktr->card.dbx )
-			printf( ", dbx stereo" );
+			kprintf( ", dbx stereo" );
 		if ( bktr->card.msp3400c )
-			printf( ", msp3400c stereo" );
+			kprintf( ", msp3400c stereo" );
 		if ( bktr->card.dpl3518a )
-			printf( ", dpl3518a dolby" );
+			kprintf( ", dpl3518a dolby" );
                 if ( bktr->remote_control )
-                        printf( ", remote control" );
-		printf( ".\n" );
+                        kprintf( ", remote control" );
+		kprintf( ".\n" );
 	}
 }
 

@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.19 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.20 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -729,7 +729,7 @@ umass_match_proto(struct umass_softc *sc, usbd_interface_handle iface,
 		if (umass_devdescrs[i].vid == VID_WILDCARD &&
 		    umass_devdescrs[i].pid == PID_WILDCARD &&
 		    umass_devdescrs[i].rid == RID_WILDCARD) {
-			printf("umass: ignoring invalid wildcard quirk\n");
+			kprintf("umass: ignoring invalid wildcard quirk\n");
 			continue;
 		}
 		if ((umass_devdescrs[i].vid == UGETW(dd->idVendor) ||
@@ -832,44 +832,44 @@ USB_ATTACH(umass)
 	(void) umass_match_proto(sc, sc->iface, uaa->device);
 
 	id = usbd_get_interface_descriptor(sc->iface);
-	printf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
 #ifdef USB_DEBUG
-	printf("%s: ", USBDEVNAME(sc->sc_dev));
+	kprintf("%s: ", USBDEVNAME(sc->sc_dev));
 	switch (sc->proto&UMASS_PROTO_COMMAND) {
 	case UMASS_PROTO_SCSI:
-		printf("SCSI");
+		kprintf("SCSI");
 		break;
 	case UMASS_PROTO_ATAPI:
-		printf("8070i (ATAPI)");
+		kprintf("8070i (ATAPI)");
 		break;
 	case UMASS_PROTO_UFI:
-		printf("UFI");
+		kprintf("UFI");
 		break;
 	case UMASS_PROTO_RBC:
-		printf("RBC");
+		kprintf("RBC");
 		break;
 	default:
-		printf("(unknown 0x%02x)", sc->proto&UMASS_PROTO_COMMAND);
+		kprintf("(unknown 0x%02x)", sc->proto&UMASS_PROTO_COMMAND);
 		break;
 	}
-	printf(" over ");
+	kprintf(" over ");
 	switch (sc->proto&UMASS_PROTO_WIRE) {
 	case UMASS_PROTO_BBB:
-		printf("Bulk-Only");
+		kprintf("Bulk-Only");
 		break;
 	case UMASS_PROTO_CBI:			/* uses Comand/Bulk pipes */
-		printf("CBI");
+		kprintf("CBI");
 		break;
 	case UMASS_PROTO_CBI_I:		/* uses Comand/Bulk/Interrupt pipes */
-		printf("CBI with CCI");
+		kprintf("CBI with CCI");
 #ifndef CBI_I
-		printf(" (using CBI)");
+		kprintf(" (using CBI)");
 #endif
 		break;
 	default:
-		printf("(unknown 0x%02x)", sc->proto&UMASS_PROTO_WIRE);
+		kprintf("(unknown 0x%02x)", sc->proto&UMASS_PROTO_WIRE);
 	}
-	printf("; quirks = 0x%04x\n", sc->quirks);
+	kprintf("; quirks = 0x%04x\n", sc->quirks);
 #endif
 
 #ifndef CBI_I
@@ -904,7 +904,7 @@ USB_ATTACH(umass)
 	for (i = 0 ; i < id->bNumEndpoints ; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->iface, i);
 		if (!ed) {
-			printf("%s: could not read endpoint descriptor\n",
+			kprintf("%s: could not read endpoint descriptor\n",
 			       USBDEVNAME(sc->sc_dev));
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -1095,11 +1095,11 @@ USB_DETACH(umass)
 	 */
 	to = hz;
 	while (sc->transfer_state != TSTATE_IDLE) {
-		printf("%s: state %d waiting for idle\n",
+		kprintf("%s: state %d waiting for idle\n",
 		    USBDEVNAME(sc->sc_dev), sc->transfer_state);
 		tsleep(sc, 0, "umassidl", to);
 		if (to >= hz * 10) {
-			printf("%s: state %d giving up!\n",
+			kprintf("%s: state %d giving up!\n",
 			    USBDEVNAME(sc->sc_dev), sc->transfer_state);
 			break;
 		}
@@ -1580,7 +1580,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 			/* Invalid CSW: Wrong signature or wrong tag might
 			 * indicate that the device is confused -> reset it.
 			 */
-			printf("%s: Invalid CSW: sig 0x%08x should be 0x%08x\n",
+			kprintf("%s: Invalid CSW: sig 0x%08x should be 0x%08x\n",
 				USBDEVNAME(sc->sc_dev),
 				UGETDW(sc->csw.dCSWSignature),
 				CSWSIGNATURE);
@@ -1589,7 +1589,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 			return;
 		} else if (UGETDW(sc->csw.dCSWTag)
 				!= UGETDW(sc->cbw.dCBWTag)) {
-			printf("%s: Invalid CSW: tag %d should be %d\n",
+			kprintf("%s: Invalid CSW: tag %d should be %d\n",
 				USBDEVNAME(sc->sc_dev),
 				UGETDW(sc->csw.dCSWTag),
 				UGETDW(sc->cbw.dCBWTag));
@@ -1599,7 +1599,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 		/* CSW is valid here */
 		} else if (sc->csw.bCSWStatus > CSWSTATUS_PHASE) {
-			printf("%s: Invalid CSW: status %d > %d\n",
+			kprintf("%s: Invalid CSW: status %d > %d\n",
 				USBDEVNAME(sc->sc_dev),
 				sc->csw.bCSWStatus,
 				CSWSTATUS_PHASE);
@@ -1607,7 +1607,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 			umass_bbb_reset(sc, STATUS_WIRE_FAILED);
 			return;
 		} else if (sc->csw.bCSWStatus == CSWSTATUS_PHASE) {
-			printf("%s: Phase Error, residue = %d\n",
+			kprintf("%s: Phase Error, residue = %d\n",
 				USBDEVNAME(sc->sc_dev), Residue);
 
 			umass_bbb_reset(sc, STATUS_WIRE_FAILED);
@@ -1641,7 +1641,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 	/***** Bulk Reset *****/
 	case TSTATE_BBB_RESET1:
 		if (err)
-			printf("%s: BBB reset failed, %s\n",
+			kprintf("%s: BBB reset failed, %s\n",
 				USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 
 		umass_clear_endpoint_stall(sc,
@@ -1651,7 +1651,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 		return;
 	case TSTATE_BBB_RESET2:
 		if (err)	/* should not occur */
-			printf("%s: BBB bulk-in clear stall failed, %s\n",
+			kprintf("%s: BBB bulk-in clear stall failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 			/* no error recovery, otherwise we end up in a loop */
 
@@ -1662,7 +1662,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 		return;
 	case TSTATE_BBB_RESET3:
 		if (err)	/* should not occur */
-			printf("%s: BBB bulk-out clear stall failed, %s\n",
+			kprintf("%s: BBB bulk-out clear stall failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 			/* no error recovery, otherwise we end up in a loop */
 
@@ -1713,7 +1713,7 @@ umass_bbb_get_max_lun(struct umass_softc *sc)
 	case USBD_SHORT_XFER:
 	default:
 		/* Device doesn't support Get Max Lun request. */
-		printf("%s: Get Max Lun not supported (%s)\n",
+		kprintf("%s: Get Max Lun not supported (%s)\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 		/* XXX Should we port_reset the device? */
 		break;
@@ -2052,7 +2052,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	case TSTATE_CBI_DCLEAR:
 		if (err) {	/* should not occur */
-			printf("%s: CBI bulk-in/out stall clear failed, %s\n",
+			kprintf("%s: CBI bulk-in/out stall clear failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 			umass_cbi_reset(sc, STATUS_WIRE_FAILED);
 		}
@@ -2065,7 +2065,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	case TSTATE_CBI_SCLEAR:
 		if (err)	/* should not occur */
-			printf("%s: CBI intr-in stall clear failed, %s\n",
+			kprintf("%s: CBI intr-in stall clear failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 
 		/* Something really bad is going on. Reset the device */
@@ -2075,7 +2075,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 	/***** CBI Reset *****/
 	case TSTATE_CBI_RESET1:
 		if (err)
-			printf("%s: CBI reset failed, %s\n",
+			kprintf("%s: CBI reset failed, %s\n",
 				USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 
 		umass_clear_endpoint_stall(sc,
@@ -2085,7 +2085,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 		return;
 	case TSTATE_CBI_RESET2:
 		if (err)	/* should not occur */
-			printf("%s: CBI bulk-in stall clear failed, %s\n",
+			kprintf("%s: CBI bulk-in stall clear failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 			/* no error recovery, otherwise we end up in a loop */
 
@@ -2096,7 +2096,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 		return;
 	case TSTATE_CBI_RESET3:
 		if (err)	/* should not occur */
-			printf("%s: CBI bulk-out stall clear failed, %s\n",
+			kprintf("%s: CBI bulk-out stall clear failed, %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 			/* no error recovery, otherwise we end up in a loop */
 
@@ -2220,7 +2220,7 @@ umass_cam_attach(struct umass_softc *sc)
 #ifndef USB_DEBUG
 	if (bootverbose)
 #endif
-		printf("%s:%d:%d:%d: Attached to scbus%d\n",
+		kprintf("%s:%d:%d:%d: Attached to scbus%d\n",
 			USBDEVNAME(sc->sc_dev), cam_sim_path(sc->umass_sim),
 			USBDEVUNIT(sc->sc_dev), CAM_LUN_WILDCARD,
 			cam_sim_path(sc->umass_sim));
@@ -2287,7 +2287,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	 * valid sc, because an existing target was referenced, or otherwise
 	 * the SIM is addressed.
 	 *
-	 * This avoids bombing out at a printf and does give the CAM layer some
+	 * This avoids bombing out at a kprintf and does give the CAM layer some
 	 * sensible feedback on errors.
 	 */
 	switch (ccb->ccb_h.func_code) {
@@ -2298,7 +2298,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_CALC_GEOMETRY:
 		/* the opcodes requiring a target. These should never occur. */
 		if (sc == NULL) {
-			printf("%s:%d:%d:%d:func_code 0x%04x: "
+			kprintf("%s:%d:%d:%d:func_code 0x%04x: "
 				"Invalid target (target needed)\n",
 				DEVNAME_SIM, cam_sim_path(sc->umass_sim),
 				ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
@@ -2836,9 +2836,9 @@ umass_rbc_transform(struct umass_softc *sc, unsigned char *cmd, int cmdlen,
 		return 1;
 	/* All other commands are not legal in RBC */
 	default:
-		printf("%s: Unsupported RBC command 0x%02x",
+		kprintf("%s: Unsupported RBC command 0x%02x",
 			USBDEVNAME(sc->sc_dev), cmd[0]);
-		printf("\n");
+		kprintf("\n");
 		return 0;	/* failure */
 	}
 }
@@ -2899,7 +2899,7 @@ umass_ufi_transform(struct umass_softc *sc, unsigned char *cmd, int cmdlen,
 	 */
 
 	default:
-		printf("%s: Unsupported UFI command 0x%02x\n",
+		kprintf("%s: Unsupported UFI command 0x%02x\n",
 			USBDEVNAME(sc->sc_dev), cmd[0]);
 		return 0;	/* failure */
 	}
@@ -2984,7 +2984,7 @@ umass_atapi_transform(struct umass_softc *sc, unsigned char *cmd, int cmdlen,
 	case READ_12:
 	case WRITE_12:
 	default:
-		printf("%s: Unsupported ATAPI command 0x%02x\n",
+		kprintf("%s: Unsupported ATAPI command 0x%02x\n",
 			USBDEVNAME(sc->sc_dev), cmd[0]);
 		return 0;	/* failure */
 	}

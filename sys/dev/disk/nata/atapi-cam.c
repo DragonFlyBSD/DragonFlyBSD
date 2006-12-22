@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.3 2006/12/14 16:06:40 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -153,7 +153,7 @@ atapi_cam_identify(device_t *dev, device_t parent)
 
 	if (scp == NULL) {
 		/* XXX TGEN Use device_printf()? */
-		printf("atapi_cam_identify: out of memory");
+		kprintf("atapi_cam_identify: out of memory");
 		return;
 	}
 
@@ -161,7 +161,7 @@ atapi_cam_identify(device_t *dev, device_t parent)
 	child = device_add_child(parent, "atapicam", -1);
 	if (child == NULL) {
 		/* XXX TGEN Use device_printf()? */
-		printf("atapi_cam_identify: out of memory, can't add child");
+		kprintf("atapi_cam_identify: out of memory, can't add child");
 		kfree(scp, M_ATACAM);
 		return;
 	}
@@ -485,7 +485,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	/* check that this request was not aborted already */
 	if ((ccb_h->status & CAM_STATUS_MASK) != CAM_REQ_INPROG) {
-	    printf("XPT_SCSI_IO received but already in progress?\n");
+	    kprintf("XPT_SCSI_IO received but already in progress?\n");
 	    xpt_done(ccb);
 	    spin_unlock_wr(&softc->state_lock);
 	    return;
@@ -503,7 +503,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if ((ccb_h->flags & CAM_SCATTER_VALID)) {
 	    /* scatter-gather not supported */
 	    xpt_print_path(ccb_h->path);
-	    printf("ATAPI/CAM does not support scatter-gather yet!\n");
+	    kprintf("ATAPI/CAM does not support scatter-gather yet!\n");
 	    goto action_invalid;
 	}
 
@@ -525,11 +525,11 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    request_flags &= ~ATA_R_DMA;
 
 	if ((hcb = allocate_hcb(softc, unit, bus, ccb)) == NULL) {
-	    printf("cannot allocate ATAPI/CAM hcb\n");
+	    kprintf("cannot allocate ATAPI/CAM hcb\n");
 	    goto action_oom;
 	}
 	if ((request = ata_alloc_request()) == NULL) {
-	    printf("cannot allocate ATAPI/CAM request\n");
+	    kprintf("cannot allocate ATAPI/CAM request\n");
 	    goto action_oom;
 	}
 
@@ -540,7 +540,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if (CAM_DEBUGGED(ccb_h->path, CAM_DEBUG_CDB)) {
 		char cdb_str[(SCSI_MAX_CDBLEN * 3) + 1];
 
-		printf("atapi_action: hcb@%p: %s\n", hcb,
+		kprintf("atapi_action: hcb@%p: %s\n", hcb,
 		       scsi_cdb_string(request->u.atapi.ccb, cdb_str, sizeof(cdb_str)));
 	}
 #endif
@@ -591,7 +591,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    /* ATA always transfers an even number of bytes */
 	    if ((buf = hcb->dxfer_alloc
 		 = kmalloc(++len, M_ATACAM, M_NOWAIT | M_ZERO)) == NULL) {
-		printf("cannot allocate ATAPI/CAM buffer\n");
+		kprintf("cannot allocate ATAPI/CAM buffer\n");
 		goto action_oom;
 	    }
 	}
@@ -630,7 +630,7 @@ action_oom:
     spin_unlock_wr(&softc->state_lock);
     get_mplock();
     xpt_print_path(ccb_h->path);
-    printf("out of memory, freezing queue.\n");
+    kprintf("out of memory, freezing queue.\n");
     softc->flags |= RESOURCE_SHORTAGE;
     xpt_freeze_simq(sim, /*count*/ 1);
     rel_mplock();
@@ -649,7 +649,7 @@ static void
 atapi_poll(struct cam_sim *sim)
 {
     /* do nothing - we do not actually service any interrupts */
-    printf("atapi_poll called!\n");
+    kprintf("atapi_poll called!\n");
 }
 
 static void
@@ -667,12 +667,12 @@ atapi_cb(struct ata_request *request)
 #ifdef CAMDEBUG
 # define err (request->u.atapi.sense.key)
     if (CAM_DEBUGGED(csio->ccb_h.path, CAM_DEBUG_CDB)) {
-	printf("atapi_cb: hcb@%p error = %02x: (sk = %02x%s%s%s)\n",
+	kprintf("atapi_cb: hcb@%p error = %02x: (sk = %02x%s%s%s)\n",
 	       hcb, err, err >> 4,
 	       (err & 4) ? " ABRT" : "",
 	       (err & 2) ? " EOM" : "",
 	       (err & 1) ? " ILI" : "");
-	printf("dev %s: cmd %02x status %02x result %02x\n",
+	kprintf("dev %s: cmd %02x status %02x result %02x\n",
 	    device_get_nameunit(request->dev), request->u.atapi.ccb[0],
 	    request->status, request->result);
     }
@@ -770,9 +770,9 @@ atapi_async(void *callback_arg, u_int32_t code,
 	targ = xpt_path_target_id(path);
 	xpt_print_path(path);
 	if (targ == -1)
-		printf("Lost host adapter\n");
+		kprintf("Lost host adapter\n");
 	else
-		printf("Lost target %d???\n", targ);
+		kprintf("Lost target %d???\n", targ);
 	break;
 
     default:
@@ -869,7 +869,7 @@ free_softc(struct atapi_xpt_softc *scp)
 	    if ((scp->flags & BUS_REGISTERED) == 0)
 		cam_sim_free(scp->sim);
 	    else
-		printf("Can't free %s SIM (still registered)\n",
+		kprintf("Can't free %s SIM (still registered)\n",
 		       cam_sim_name(scp->sim));
 	}
 	rel_mplock();

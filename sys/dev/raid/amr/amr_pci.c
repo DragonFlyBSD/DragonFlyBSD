@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.9 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -345,7 +345,7 @@ amr_pci_shutdown(device_t dev)
 
     /* flush controller */
     device_printf(sc->amr_dev, "flushing cache...");
-    printf("%s\n", amr_flush(sc) ? "failed" : "done");
+    kprintf("%s\n", amr_flush(sc) ? "failed" : "done");
 
     crit_enter();
     error = 0;
@@ -380,7 +380,7 @@ amr_pci_suspend(device_t dev)
 
     /* flush controller */
     device_printf(sc->amr_dev, "flushing cache...");
-    printf("%s\n", amr_flush(sc) ? "failed" : "done");
+    kprintf("%s\n", amr_flush(sc) ? "failed" : "done");
     
     /* XXX disable interrupts? */
 

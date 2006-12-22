@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.21 2006/12/20 18:14:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.22 2006/12/22 23:26:23 swildner Exp $
  */
 
 /*
@@ -3122,9 +3122,9 @@ ciss_print_request(struct ciss_request *cr)
 	for (i = 0; i < cc->header.sg_in_list; i++) {
 	    if ((i % 4) == 0)
 		ciss_printf(sc, "   ");
-	    printf("0x%08x/%d ", (u_int32_t)cc->sg[i].address, cc->sg[i].length);
+	    kprintf("0x%08x/%d ", (u_int32_t)cc->sg[i].address, cc->sg[i].length);
 	    if ((((i + 1) % 4) == 0) || (i == (cc->header.sg_in_list - 1)))
-		printf("\n");
+		kprintf("\n");
 	}
     }
 }
@@ -3138,45 +3138,45 @@ ciss_print_ldrive(struct ciss_softc *sc, struct ciss_ldrive *ld)
     int		bus, target, i;
 
     if (ld->cl_lstatus == NULL) {
-	printf("does not exist\n");
+	kprintf("does not exist\n");
 	return;
     }
 
     /* print drive status */
     switch(ld->cl_lstatus->status) {
     case CISS_LSTATUS_OK:
-	printf("online\n");
+	kprintf("online\n");
 	break;
     case CISS_LSTATUS_INTERIM_RECOVERY:
-	printf("in interim recovery mode\n");
+	kprintf("in interim recovery mode\n");
 	break;
     case CISS_LSTATUS_READY_RECOVERY:
-	printf("ready to begin recovery\n");
+	kprintf("ready to begin recovery\n");
 	break;
     case CISS_LSTATUS_RECOVERING:
 	bus = CISS_BIG_MAP_BUS(sc, ld->cl_lstatus->drive_rebuilding);
 	target = CISS_BIG_MAP_BUS(sc, ld->cl_lstatus->drive_rebuilding);
-	printf("being recovered, working on physical drive %d.%d, %u blocks remaining\n",
+	kprintf("being recovered, working on physical drive %d.%d, %u blocks remaining\n",
 	       bus, target, ld->cl_lstatus->blocks_to_recover);
 	break;
     case CISS_LSTATUS_EXPANDING:
-	printf("being expanded, %u blocks remaining\n",
+	kprintf("being expanded, %u blocks remaining\n",
 	       ld->cl_lstatus->blocks_to_recover);
 	break;
     case CISS_LSTATUS_QUEUED_FOR_EXPANSION:
-	printf("queued for expansion\n");
+	kprintf("queued for expansion\n");
 	break;
     case CISS_LSTATUS_FAILED:
-	printf("queued for expansion\n");
+	kprintf("queued for expansion\n");
 	break;
     case CISS_LSTATUS_WRONG_PDRIVE:
-	printf("wrong physical drive inserted\n");
+	kprintf("wrong physical drive inserted\n");
 	break;
     case CISS_LSTATUS_MISSING_PDRIVE:
-	printf("missing a needed physical drive\n");
+	kprintf("missing a needed physical drive\n");
 	break;
     case CISS_LSTATUS_BECOMING_READY:
-	printf("becoming ready\n");
+	kprintf("becoming ready\n");
 	break;
     }
 
@@ -3234,7 +3234,7 @@ ciss_print0(void)
     
     sc = devclass_get_softc(devclass_find("ciss"), 0);
     if (sc == NULL) {
-	printf("no ciss controllers\n");
+	kprintf("no ciss controllers\n");
     } else {
 	ciss_print_adapter(sc);
     }

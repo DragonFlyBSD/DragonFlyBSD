@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.11 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.12 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*-
@@ -266,7 +266,7 @@ USB_ATTACH(umodem)
 	devname = USBDEVNAME(sc->sc_dev);
 	/* XXX ? use something else ? XXX */
 	id = usbd_get_interface_descriptor(sc->sc_ctl_iface);
-	printf("%s: %s, iclass %d/%d\n", devname, devinfo,
+	kprintf("%s: %s, iclass %d/%d\n", devname, devinfo,
 	  id->bInterfaceClass, id->bInterfaceSubClass);
 	sc->sc_ctl_iface_no = id->bInterfaceNumber;
 
@@ -275,12 +275,12 @@ USB_ATTACH(umodem)
 	/* Get the data interface no. */
 	cmd = umodem_get_desc(dev, UDESC_CS_INTERFACE, UDESCSUB_CDC_CM);
 	if (cmd == NULL) {
-		printf("%s: no CM descriptor\n", devname);
+		kprintf("%s: no CM descriptor\n", devname);
 		goto bad;
 	}
 	sc->sc_data_iface_no = data_ifcno = cmd->bDataInterface;
 
-	printf("%s: data interface %d, has %sCM over data, has %sbreak\n",
+	kprintf("%s: data interface %d, has %sCM over data, has %sbreak\n",
 	       devname, data_ifcno,
 	       sc->sc_cm_cap & USB_CDC_CM_OVER_DATA ? "" : "no ",
 	       sc->sc_acm_cap & USB_CDC_ACM_HAS_BREAK ? "" : "no ");
@@ -296,7 +296,7 @@ USB_ATTACH(umodem)
 		}
 	}
 	if (sc->sc_data_iface == NULL) {
-		printf("%s: no data interface\n", devname);
+		kprintf("%s: no data interface\n", devname);
 		goto bad;
 	}
 	ucom->sc_iface = sc->sc_data_iface;
@@ -311,7 +311,7 @@ USB_ATTACH(umodem)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->sc_data_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for %d\n", devname,
+			kprintf("%s: no endpoint descriptor for %d\n", devname,
 			    i);
 			goto bad;
 		}
@@ -325,11 +325,11 @@ USB_ATTACH(umodem)
         }
 
 	if (ucom->sc_bulkin_no == -1) {
-		printf("%s: Could not find data bulk in\n", devname);
+		kprintf("%s: Could not find data bulk in\n", devname);
 		goto bad;
 	}
 	if (ucom->sc_bulkout_no == -1) {
-		printf("%s: Could not find data bulk out\n", devname);
+		kprintf("%s: Could not find data bulk out\n", devname);
 		goto bad;
 	}
 
@@ -344,7 +344,7 @@ USB_ATTACH(umodem)
 			else
 				err = 0;
 			if (err) {
-				printf("%s: could not set data multiplex mode\n",
+				kprintf("%s: could not set data multiplex mode\n",
 				    devname);
 				goto bad;
 			}
@@ -370,7 +370,7 @@ USB_ATTACH(umodem)
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    (ed->bmAttributes & UE_XFERTYPE) == UE_INTERRUPT) {
-			printf("%s: status change notification available\n",
+			kprintf("%s: status change notification available\n",
 			    devname);
 			sc->sc_ctl_notify = ed->bEndpointAddress;
 		}
@@ -433,11 +433,11 @@ umodem_close(void *addr, int portno)
 	if (sc->sc_notify_pipe != NULL) {
 		err = usbd_abort_pipe(sc->sc_notify_pipe);
 		if (err)
-			printf("%s: abort notify pipe failed: %s\n",
+			kprintf("%s: abort notify pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_notify_pipe);
 		if (err)
-			printf("%s: close notify pipe failed: %s\n",
+			kprintf("%s: close notify pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_dev), usbd_errstr(err));
 		sc->sc_notify_pipe = NULL;
 	}
@@ -455,7 +455,7 @@ umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
-		printf("%s: abnormal status: %s\n", USBDEVNAME(sc->sc_dev),
+		kprintf("%s: abnormal status: %s\n", USBDEVNAME(sc->sc_dev),
 		       usbd_errstr(status));
 		return;
 	}
@@ -474,7 +474,7 @@ umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		 * the bits from the notify message
 		 */
 		if (UGETW(sc->sc_notify_buf.wLength) != 2) {
-			printf("%s: Invalid notification length! (%d)\n",
+			kprintf("%s: Invalid notification length! (%d)\n",
 			       USBDEVNAME(sc->sc_dev),
 			       UGETW(sc->sc_notify_buf.wLength));
 			break;

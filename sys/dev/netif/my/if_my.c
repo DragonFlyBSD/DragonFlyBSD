@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.26 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.27 2006/12/22 23:26:21 swildner Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -411,7 +411,7 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 	phy_sts = my_phy_readreg(sc, PHY_BMSR);
 	if (!(phy_sts & PHY_BMSR_CANAUTONEG)) {
 		if (verbose)
-			printf("my%d: autonegotiation not supported\n",
+			kprintf("my%d: autonegotiation not supported\n",
 			    sc->my_unit);
 		ifm->ifm_media = IFM_ETHER | IFM_10_T | IFM_HDX;
 		return;
@@ -449,17 +449,17 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 		sc->my_autoneg = 0;
 		break;
 	default:
-		printf("my%d: invalid autoneg flag: %d\n", sc->my_unit, flag);
+		kprintf("my%d: invalid autoneg flag: %d\n", sc->my_unit, flag);
 		return;
 	}
 
 	if (my_phy_readreg(sc, PHY_BMSR) & PHY_BMSR_AUTONEGCOMP) {
 		if (verbose)
-			printf("my%d: autoneg complete, ", sc->my_unit);
+			kprintf("my%d: autoneg complete, ", sc->my_unit);
 		phy_sts = my_phy_readreg(sc, PHY_BMSR);
 	} else {
 		if (verbose)
-			printf("my%d: autoneg not complete, ", sc->my_unit);
+			kprintf("my%d: autoneg not complete, ", sc->my_unit);
 	}
 
 	media = my_phy_readreg(sc, PHY_BMCR);
@@ -467,7 +467,7 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 	/* Link is good. Report modes and set duplex mode. */
 	if (my_phy_readreg(sc, PHY_BMSR) & PHY_BMSR_LINKSTAT) {
 		if (verbose)
-			printf("my%d: link status good. ", sc->my_unit);
+			kprintf("my%d: link status good. ", sc->my_unit);
 		advert = my_phy_readreg(sc, PHY_ANAR);
 		ability = my_phy_readreg(sc, PHY_LPAR);
 		if ((sc->my_pinfo->my_vid == MarvellPHYID0) ||
@@ -486,7 +486,7 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 				media &= ~PHY_BMCR_SPEEDSEL;
 				media |= PHY_BMCR_1000;
 				media |= PHY_BMCR_DUPLEX;
-				printf("(full-duplex, 1000Mbps)\n");
+				kprintf("(full-duplex, 1000Mbps)\n");
 			} else if (ability2 & PHY_1000SR_1000BTXHALF) {
 				advert = 0;
 				ability = 0;
@@ -498,37 +498,37 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 				media &= ~PHY_BMCR_SPEEDSEL;
 				media &= ~PHY_BMCR_DUPLEX;
 				media |= PHY_BMCR_1000;
-				printf("(half-duplex, 1000Mbps)\n");
+				kprintf("(half-duplex, 1000Mbps)\n");
 			}
 		}
 		if (advert & PHY_ANAR_100BT4 && ability & PHY_ANAR_100BT4) {
 			ifm->ifm_media = IFM_ETHER | IFM_100_T4;
 			media |= PHY_BMCR_SPEEDSEL;
 			media &= ~PHY_BMCR_DUPLEX;
-			printf("(100baseT4)\n");
+			kprintf("(100baseT4)\n");
 		} else if (advert & PHY_ANAR_100BTXFULL &&
 			   ability & PHY_ANAR_100BTXFULL) {
 			ifm->ifm_media = IFM_ETHER | IFM_100_TX | IFM_FDX;
 			media |= PHY_BMCR_SPEEDSEL;
 			media |= PHY_BMCR_DUPLEX;
-			printf("(full-duplex, 100Mbps)\n");
+			kprintf("(full-duplex, 100Mbps)\n");
 		} else if (advert & PHY_ANAR_100BTXHALF &&
 			   ability & PHY_ANAR_100BTXHALF) {
 			ifm->ifm_media = IFM_ETHER | IFM_100_TX | IFM_HDX;
 			media |= PHY_BMCR_SPEEDSEL;
 			media &= ~PHY_BMCR_DUPLEX;
-			printf("(half-duplex, 100Mbps)\n");
+			kprintf("(half-duplex, 100Mbps)\n");
 		} else if (advert & PHY_ANAR_10BTFULL &&
 			   ability & PHY_ANAR_10BTFULL) {
 			ifm->ifm_media = IFM_ETHER | IFM_10_T | IFM_FDX;
 			media &= ~PHY_BMCR_SPEEDSEL;
 			media |= PHY_BMCR_DUPLEX;
-			printf("(full-duplex, 10Mbps)\n");
+			kprintf("(full-duplex, 10Mbps)\n");
 		} else if (advert) {
 			ifm->ifm_media = IFM_ETHER | IFM_10_T | IFM_HDX;
 			media &= ~PHY_BMCR_SPEEDSEL;
 			media &= ~PHY_BMCR_DUPLEX;
-			printf("(half-duplex, 10Mbps)\n");
+			kprintf("(half-duplex, 10Mbps)\n");
 		}
 		media &= ~PHY_BMCR_AUTONEGENBL;
 
@@ -537,7 +537,7 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 		my_setcfg(sc, media);
 	} else {
 		if (verbose)
-			printf("my%d: no carrier\n", sc->my_unit);
+			kprintf("my%d: no carrier\n", sc->my_unit);
 	}
 
 	my_init(sc);
@@ -559,14 +559,14 @@ my_getmode_mii(struct my_softc * sc)
 
 	bmsr = my_phy_readreg(sc, PHY_BMSR);
 	if (bootverbose)
-		printf("my%d: PHY status word: %x\n", sc->my_unit, bmsr);
+		kprintf("my%d: PHY status word: %x\n", sc->my_unit, bmsr);
 
 	/* fallback */
 	sc->ifmedia.ifm_media = IFM_ETHER | IFM_10_T | IFM_HDX;
 
 	if (bmsr & PHY_BMSR_10BTHALF) {
 		if (bootverbose)
-			printf("my%d: 10Mbps half-duplex mode supported\n",
+			kprintf("my%d: 10Mbps half-duplex mode supported\n",
 			       sc->my_unit);
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_10_T | IFM_HDX,
 		    0, NULL);
@@ -574,7 +574,7 @@ my_getmode_mii(struct my_softc * sc)
 	}
 	if (bmsr & PHY_BMSR_10BTFULL) {
 		if (bootverbose)
-			printf("my%d: 10Mbps full-duplex mode supported\n",
+			kprintf("my%d: 10Mbps full-duplex mode supported\n",
 			    sc->my_unit);
 
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_10_T | IFM_FDX,
@@ -583,7 +583,7 @@ my_getmode_mii(struct my_softc * sc)
 	}
 	if (bmsr & PHY_BMSR_100BTXHALF) {
 		if (bootverbose)
-			printf("my%d: 100Mbps half-duplex mode supported\n",
+			kprintf("my%d: 100Mbps half-duplex mode supported\n",
 			       sc->my_unit);
 		ifp->if_baudrate = 100000000;
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_100_TX, 0, NULL);
@@ -593,7 +593,7 @@ my_getmode_mii(struct my_softc * sc)
 	}
 	if (bmsr & PHY_BMSR_100BTXFULL) {
 		if (bootverbose)
-			printf("my%d: 100Mbps full-duplex mode supported\n",
+			kprintf("my%d: 100Mbps full-duplex mode supported\n",
 			    sc->my_unit);
 		ifp->if_baudrate = 100000000;
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_100_TX | IFM_FDX,
@@ -603,13 +603,13 @@ my_getmode_mii(struct my_softc * sc)
 	/* Some also support 100BaseT4. */
 	if (bmsr & PHY_BMSR_100BT4) {
 		if (bootverbose)
-			printf("my%d: 100baseT4 mode supported\n", sc->my_unit);
+			kprintf("my%d: 100baseT4 mode supported\n", sc->my_unit);
 		ifp->if_baudrate = 100000000;
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_100_T4, 0, NULL);
 		sc->ifmedia.ifm_media = IFM_ETHER | IFM_100_T4;
 #ifdef FORCE_AUTONEG_TFOUR
 		if (bootverbose)
-			printf("my%d: forcing on autoneg support for BT4\n",
+			kprintf("my%d: forcing on autoneg support for BT4\n",
 			    sc->my_unit);
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_AUTO, 0 NULL):
 		sc->ifmedia.ifm_media = IFM_ETHER | IFM_AUTO;
@@ -618,7 +618,7 @@ my_getmode_mii(struct my_softc * sc)
 #if 0				/* this version did not support 1000M, */
 	if (sc->my_pinfo->my_vid == MarvellPHYID0) {
 		if (bootverbose)
-			printf("my%d: 1000Mbps half-duplex mode supported\n",
+			kprintf("my%d: 1000Mbps half-duplex mode supported\n",
 			       sc->my_unit);
 
 		ifp->if_baudrate = 1000000000;
@@ -626,7 +626,7 @@ my_getmode_mii(struct my_softc * sc)
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_1000_T | IFM_HDX,
 		    0, NULL);
 		if (bootverbose)
-			printf("my%d: 1000Mbps full-duplex mode supported\n",
+			kprintf("my%d: 1000Mbps full-duplex mode supported\n",
 			   sc->my_unit);
 		ifp->if_baudrate = 1000000000;
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_1000_T | IFM_FDX,
@@ -636,7 +636,7 @@ my_getmode_mii(struct my_softc * sc)
 #endif
 	if (bmsr & PHY_BMSR_CANAUTONEG) {
 		if (bootverbose)
-			printf("my%d: autoneg supported\n", sc->my_unit);
+			kprintf("my%d: autoneg supported\n", sc->my_unit);
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_AUTO, 0, NULL);
 		sc->ifmedia.ifm_media = IFM_ETHER | IFM_AUTO;
 	}
@@ -655,43 +655,43 @@ my_setmode_mii(struct my_softc * sc, int media)
 	 * If an autoneg session is in progress, stop it.
 	 */
 	if (sc->my_autoneg) {
-		printf("my%d: canceling autoneg session\n", sc->my_unit);
+		kprintf("my%d: canceling autoneg session\n", sc->my_unit);
 		ifp->if_timer = sc->my_autoneg = sc->my_want_auto = 0;
 		bmcr = my_phy_readreg(sc, PHY_BMCR);
 		bmcr &= ~PHY_BMCR_AUTONEGENBL;
 		my_phy_writereg(sc, PHY_BMCR, bmcr);
 	}
-	printf("my%d: selecting MII, ", sc->my_unit);
+	kprintf("my%d: selecting MII, ", sc->my_unit);
 	bmcr = my_phy_readreg(sc, PHY_BMCR);
 	bmcr &= ~(PHY_BMCR_AUTONEGENBL | PHY_BMCR_SPEEDSEL | PHY_BMCR_1000 |
 		  PHY_BMCR_DUPLEX | PHY_BMCR_LOOPBK);
 
 #if 0				/* this version did not support 1000M, */
 	if (IFM_SUBTYPE(media) == IFM_1000_T) {
-		printf("1000Mbps/T4, half-duplex\n");
+		kprintf("1000Mbps/T4, half-duplex\n");
 		bmcr &= ~PHY_BMCR_SPEEDSEL;
 		bmcr &= ~PHY_BMCR_DUPLEX;
 		bmcr |= PHY_BMCR_1000;
 	}
 #endif
 	if (IFM_SUBTYPE(media) == IFM_100_T4) {
-		printf("100Mbps/T4, half-duplex\n");
+		kprintf("100Mbps/T4, half-duplex\n");
 		bmcr |= PHY_BMCR_SPEEDSEL;
 		bmcr &= ~PHY_BMCR_DUPLEX;
 	}
 	if (IFM_SUBTYPE(media) == IFM_100_TX) {
-		printf("100Mbps, ");
+		kprintf("100Mbps, ");
 		bmcr |= PHY_BMCR_SPEEDSEL;
 	}
 	if (IFM_SUBTYPE(media) == IFM_10_T) {
-		printf("10Mbps, ");
+		kprintf("10Mbps, ");
 		bmcr &= ~PHY_BMCR_SPEEDSEL;
 	}
 	if ((media & IFM_GMASK) == IFM_FDX) {
-		printf("full duplex\n");
+		kprintf("full duplex\n");
 		bmcr |= PHY_BMCR_DUPLEX;
 	} else {
-		printf("half duplex\n");
+		kprintf("half duplex\n");
 		bmcr &= ~PHY_BMCR_DUPLEX;
 	}
 	my_phy_writereg(sc, PHY_BMCR, bmcr);
@@ -718,7 +718,7 @@ my_setcfg(struct my_softc * sc, int bmcr)
 				break;
 		}
 		if (i == MY_TIMEOUT)
-			printf("my%d: failed to force tx and rx to idle \n",
+			kprintf("my%d: failed to force tx and rx to idle \n",
 			    sc->my_unit);
 	}
 	MY_CLRBIT(sc, MY_TCRRCR, MY_PS1000);
@@ -747,7 +747,7 @@ my_reset(struct my_softc * sc)
 			break;
 	}
 	if (i == MY_TIMEOUT)
-		printf("m0x%d: reset never completed!\n", sc->my_unit);
+		kprintf("m0x%d: reset never completed!\n", sc->my_unit);
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -826,13 +826,13 @@ my_attach(device_t dev)
 	}
 	if (MY_USEIOSPACE) {
 		if (!(command & PCIM_CMD_PORTEN)) {
-			printf("my%d: failed to enable I/O ports!\n", unit);
+			kprintf("my%d: failed to enable I/O ports!\n", unit);
 			error = ENXIO;
 			return(error);
 		}
 	} else {
 		if (!(command & PCIM_CMD_MEMEN)) {
-			printf("my%d: failed to enable memory mapping!\n",
+			kprintf("my%d: failed to enable memory mapping!\n",
 			    unit);
 			error = ENXIO;
 			return(error);
@@ -843,7 +843,7 @@ my_attach(device_t dev)
 	sc->my_res = bus_alloc_resource_any(dev, MY_RES, &rid, RF_ACTIVE);
 
 	if (sc->my_res == NULL) {
-		printf("my%d: couldn't map ports/memory\n", unit);
+		kprintf("my%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -855,7 +855,7 @@ my_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->my_irq == NULL) {
-		printf("my%d: couldn't map interrupt\n", unit);
+		kprintf("my%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -876,7 +876,7 @@ my_attach(device_t dev)
 	sc->my_ldata_ptr = kmalloc(sizeof(struct my_list_data) + 8,
 				  M_DEVBUF, M_WAITOK);
 	if (sc->my_ldata_ptr == NULL) {
-		printf("my%d: no memory for list buffers!\n", unit);
+		kprintf("my%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -910,10 +910,10 @@ my_attach(device_t dev)
 		sc->my_pinfo = my_phys;
 	else {
 		if (bootverbose)
-			printf("my%d: probing for a PHY\n", sc->my_unit);
+			kprintf("my%d: probing for a PHY\n", sc->my_unit);
 		for (i = MY_PHYADDR_MIN; i < MY_PHYADDR_MAX + 1; i++) {
 			if (bootverbose)
-				printf("my%d: checking address: %d\n",
+				kprintf("my%d: checking address: %d\n",
 				    sc->my_unit, i);
 			sc->my_phy_addr = i;
 			phy_sts = my_phy_readreg(sc, PHY_BMSR);
@@ -926,9 +926,9 @@ my_attach(device_t dev)
 			phy_vid = my_phy_readreg(sc, PHY_VENID);
 			phy_did = my_phy_readreg(sc, PHY_DEVID);
 			if (bootverbose) {
-				printf("my%d: found PHY at address %d, ",
+				kprintf("my%d: found PHY at address %d, ",
 				    sc->my_unit, sc->my_phy_addr);
-				printf("vendor id: %x device id: %x\n",
+				kprintf("vendor id: %x device id: %x\n",
 				    phy_vid, phy_did);
 			}
 			p = my_phys;
@@ -942,10 +942,10 @@ my_attach(device_t dev)
 			if (sc->my_pinfo == NULL)
 				sc->my_pinfo = &my_phys[PHY_UNKNOWN];
 			if (bootverbose)
-				printf("my%d: PHY type: %s\n",
+				kprintf("my%d: PHY type: %s\n",
 				       sc->my_unit, sc->my_pinfo->my_name);
 		} else {
-			printf("my%d: MII without any phy!\n", sc->my_unit);
+			kprintf("my%d: MII without any phy!\n", sc->my_unit);
 			error = ENXIO;
 			goto fail;
 		}
@@ -966,7 +966,7 @@ my_attach(device_t dev)
 			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
-		printf("my%d: couldn't set up irq\n", unit);
+		kprintf("my%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -1069,13 +1069,13 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 
 	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL) {
-		printf("my%d: no memory for rx list -- packet dropped!\n",
+		kprintf("my%d: no memory for rx list -- packet dropped!\n",
 		       sc->my_unit);
 		return (ENOBUFS);
 	}
 	MCLGET(m_new, MB_DONTWAIT);
 	if (!(m_new->m_flags & M_EXT)) {
-		printf("my%d: no memory for rx list -- packet dropped!\n",
+		kprintf("my%d: no memory for rx list -- packet dropped!\n",
 		       sc->my_unit);
 		m_freem(m_new);
 		return (ENOBUFS);
@@ -1297,14 +1297,14 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 	m = m_head;
 	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL) {
-		printf("my%d: no memory for tx list", sc->my_unit);
+		kprintf("my%d: no memory for tx list", sc->my_unit);
 		return (1);
 	}
 	if (m_head->m_pkthdr.len > MHLEN) {
 		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
-			printf("my%d: no memory for tx list", sc->my_unit);
+			kprintf("my%d: no memory for tx list", sc->my_unit);
 			return (1);
 		}
 	}
@@ -1442,7 +1442,7 @@ my_init(void *xsc)
 	my_setcfg(sc, phy_bmcr);
 	/* Init circular RX list. */
 	if (my_list_rx_init(sc) == ENOBUFS) {
-		printf("my%d: init failed: no memory for rx buffers\n",
+		kprintf("my%d: init failed: no memory for rx buffers\n",
 		    sc->my_unit);
 		my_stop(sc);
 		crit_exit();
@@ -1630,9 +1630,9 @@ my_watchdog(struct ifnet * ifp)
 		return;
 	}
 	ifp->if_oerrors++;
-	printf("my%d: watchdog timeout\n", sc->my_unit);
+	kprintf("my%d: watchdog timeout\n", sc->my_unit);
 	if (!(my_phy_readreg(sc, PHY_BMSR) & PHY_BMSR_LINKSTAT))
-		printf("my%d: no carrier - transceiver cable problem?\n",
+		kprintf("my%d: no carrier - transceiver cable problem?\n",
 		    sc->my_unit);
 	my_stop(sc);
 	my_reset(sc);

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.16 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.17 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -175,7 +175,7 @@ USB_ATTACH(ukbd)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	arg[0] = (void *)uaa;
@@ -1417,7 +1417,7 @@ init_keyboard(ukbd_state_t *state, int *type, int flags)
 
 	ed = usbd_interface2endpoint_descriptor(state->ks_iface, 0);
 	if (!ed) {
-		printf("ukbd: could not read endpoint descriptor\n");
+		kprintf("ukbd: could not read endpoint descriptor\n");
 		return EIO;
 	}
 
@@ -1431,7 +1431,7 @@ bLength=%d bDescriptorType=%d bEndpointAddress=%d-%s bmAttributes=%d wMaxPacketS
 
 	if (UE_GET_DIR(ed->bEndpointAddress) != UE_DIR_IN ||
 	    UE_GET_XFERTYPE(ed->bmAttributes) != UE_INTERRUPT) {
-		printf("ukbd: unexpected endpoint\n");
+		kprintf("ukbd: unexpected endpoint\n");
 		return EINVAL;
 	}
 
@@ -1439,7 +1439,7 @@ bLength=%d bDescriptorType=%d bEndpointAddress=%d-%s bmAttributes=%d wMaxPacketS
 		err = usbd_set_protocol(state->ks_iface, 0);
 		DPRINTFN(5, ("ukbd:init_keyboard: protocol set\n"));
 		if (err) {
-			printf("ukbd: set protocol failed\n");
+			kprintf("ukbd: set protocol failed\n");
 			return EIO;
 		}
 	}

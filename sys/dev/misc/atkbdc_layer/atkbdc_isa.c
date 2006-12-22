@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.6 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.7 2006/12/22 23:26:17 swildner Exp $
  */
 
 #include "opt_kbd.h"
@@ -241,9 +241,9 @@ atkbdc_print_child(device_t bus, device_t dev)
 
 	retval += bus_print_child_header(bus, dev);
 	if (kbdcdev->flags != 0)
-		retval += printf(" flags 0x%x", kbdcdev->flags);
+		retval += kprintf(" flags 0x%x", kbdcdev->flags);
 	if (kbdcdev->irq != -1)
-		retval += printf(" irq %d", kbdcdev->irq);
+		retval += kprintf(" irq %d", kbdcdev->irq);
 	retval += bus_print_child_footer(bus, dev);
 
 	return (retval);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.24 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.25 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -494,7 +494,7 @@ rdp_probe(struct isa_device *isa_dev)
 	 * broadcasts).
 	 */
 	if (bootverbose)
-		printf("rdp%d: CMR1 = %#x, CMR2 = %#x\n", unit, b1, b2);
+		kprintf("rdp%d: CMR1 = %#x, CMR2 = %#x\n", unit, b1, b2);
 
 	if ((b1 & (CMR1_BUFE | CMR1_IRQ | CMR1_TRA)) != CMR1_BUFE
 	    || (b2 & ~CMR2_IRQINV) != CMR2_AM_PB)
@@ -545,18 +545,18 @@ rdp_probe(struct isa_device *isa_dev)
 	cpu_enable_intr();
 
 	if (bootverbose)
-		printf("rdp%d: irq maps / lpt status "
+		kprintf("rdp%d: irq maps / lpt status "
 		       "%#x/%#x - %#x/%#x - %#x/%#x (id_irq %#x)\n",
 		       unit, irqmap[0], sval[0], irqmap[1], sval[1],
 		       irqmap[2], sval[2], isa_dev->id_irq);
 
 	if ((irqmap[1] & isa_dev->id_irq) == 0) {
-		printf("rdp%d: configured IRQ (%d) cannot be asserted "
+		kprintf("rdp%d: configured IRQ (%d) cannot be asserted "
 		       "by device",
 		       unit, ffs(isa_dev->id_irq) - 1);
 		if (irqmap[1])
-			printf(" (probable IRQ: %d)", ffs(irqmap[1]) - 1);
-		printf("\n");
+			kprintf(" (probable IRQ: %d)", ffs(irqmap[1]) - 1);
+		kprintf("\n");
 		return 0;
 	}
 
@@ -567,7 +567,7 @@ rdp_probe(struct isa_device *isa_dev)
 	switch (sc->eeprom) {
 	case EEPROM_93C46:
 		if (rdp_gethwaddr_93c46(sc, sc->arpcom.ac_enaddr) == 0) {
-			printf("rdp%d: failed to find a valid hardware "
+			kprintf("rdp%d: failed to find a valid hardware "
 			       "address in EEPROM\n",
 			       unit);
 			return 0;
@@ -620,7 +620,7 @@ rdp_attach(struct isa_device *isa_dev)
 	/*
 	 * Print additional info when attached
 	 */
-	printf("%s: RealTek RTL%s pocket ethernet, EEPROM %s, %s mode\n",
+	kprintf("%s: RealTek RTL%s pocket ethernet, EEPROM %s, %s mode\n",
 	       ifp->if_xname,
 	       "8002",		/* hook for 8012 */
 	       sc->eeprom == EEPROM_93C46? "93C46": "74S288",
@@ -892,7 +892,7 @@ rdpintr(void *arg)
 		if (isr == 0)
 			break;
 #if DEBUG & 4
-		printf("rdp%d: ISR = %#x\n", unit, isr);
+		kprintf("rdp%d: ISR = %#x\n", unit, isr);
 #endif
 
 		/*
@@ -910,7 +910,7 @@ rdpintr(void *arg)
 			RdEnd(sc, TSR);
 #if DEBUG & 4
 			if (isr & ISR_TER)
-				printf("rdp%d: tsr %#x\n", unit, tsr);
+				kprintf("rdp%d: tsr %#x\n", unit, tsr);
 #endif
 			if (tsr & TSR_TABT)
 				ifp->if_oerrors++;
@@ -962,11 +962,11 @@ rdpintr(void *arg)
 			RdEnd(sc, RSR + HNib);
 #if DEBUG & 4
 			if (isr & (ISR_RER | ISR_RBER))
-				printf("rdp%d: rsr %#x\n", unit, rsr);
+				kprintf("rdp%d: rsr %#x\n", unit, rsr);
 #endif
 
 			if (rsr & (RSR_PUN | RSR_POV)) {
-				printf("rdp%d: rsr %#x, resetting\n",
+				kprintf("rdp%d: rsr %#x, resetting\n",
 				       unit, rsr);
 				rdp_reset(ifp);
 				break;
@@ -1047,7 +1047,7 @@ rdp_rint(struct rdp_softc *sc)
 		    len < (ETHER_MIN_LEN - ETHER_CRC_LEN) ||
 		    len > MCLBYTES) {
 #if DEBUG
-			printf("%s: bad packet in buffer, "
+			kprintf("%s: bad packet in buffer, "
 			       "len %d, status %#x\n",
 			       ifp->if_xname, (int)len, (int)status);
 #endif
@@ -1061,7 +1061,7 @@ rdp_rint(struct rdp_softc *sc)
 				 * over and over again
 				 */
 #if DEBUG
-				printf("%s: resetting due to an "
+				kprintf("%s: resetting due to an "
 				       "excessive number of bad packets\n",
 				       ifp->if_xname);
 #endif
@@ -1341,14 +1341,14 @@ rdp_93c46_cmd(struct rdp_softc *sc, u_short data, unsigned nbits)
 	u_char b;
 
 #if DEBUG & 2
-	printf("rdp_93c46_cmd(): ");
+	kprintf("rdp_93c46_cmd(): ");
 #endif
 	for (i = 0; i < nbits; i++, mask >>= 1) {
 		b = HNib + PCMR_SK + PCMR_CS;
 		if (data & mask)
 			b += PCMR_DO;
 #if DEBUG & 2
-		printf("%d", b & 1);
+		kprintf("%d", b & 1);
 #endif
 		WrNib(sc, PCMR + HNib, b);
 		DELAY(1);
@@ -1356,7 +1356,7 @@ rdp_93c46_cmd(struct rdp_softc *sc, u_short data, unsigned nbits)
 		DELAY(1);
 	}
 #if DEBUG & 2
-	printf("\n");
+	kprintf("\n");
 #endif
 }
 
@@ -1373,7 +1373,7 @@ rdp_93c46_read(struct rdp_softc *sc)
 	int i;
 
 #if DEBUG & 2
-	printf("rdp_93c46_read(): ");
+	kprintf("rdp_93c46_read(): ");
 #endif
 	for (i = 0; i < 17; i++) {
 		WrNib(sc, PCMR + HNib, PCMR_SK + PCMR_CS + HNib);
@@ -1385,14 +1385,14 @@ rdp_93c46_read(struct rdp_softc *sc)
 		if (b & 1)
 			data |= 1;
 #if DEBUG & 2
-		printf("%d", b & 1);
+		kprintf("%d", b & 1);
 #endif
 		RdEnd(sc, PDR);
 		DELAY(1);
 	}
 
 #if DEBUG & 2
-	printf("\n");
+	kprintf("\n");
 #endif
 	/* end of cycle */
 	WrNib(sc, PCMR + HNib, PCMR_SK + HNib);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.25 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -235,7 +235,7 @@ bti2c_write(struct bktr_softc *sc, u_long data)
 	/* clear status bits */
 	OUTL(sc, BKTR_INT_STAT, (BT848_INT_RACK | BT848_INT_I2CDONE));
 
-	BTI2C_DEBUG(printf("w%lx", data));
+	BTI2C_DEBUG(kprintf("w%lx", data));
 
 	/* write the address and data */
 	OUTL(sc, BKTR_I2C_DATA_CTL, data);
@@ -248,11 +248,11 @@ bti2c_write(struct bktr_softc *sc, u_long data)
 
 	/* check for ACK */
 	if ( !x || !( INL(sc, BKTR_INT_STAT) & BT848_INT_RACK) ) {
-		BTI2C_DEBUG(printf("%c%c", (!x)?'+':'-',
+		BTI2C_DEBUG(kprintf("%c%c", (!x)?'+':'-',
 			(!( INL(sc, BKTR_INT_STAT) & BT848_INT_RACK))?'+':'-'));
 		return (SMB_ENOACK);
 	}
-	BTI2C_DEBUG(printf("+"));
+	BTI2C_DEBUG(kprintf("+"));
 
 	/* return OK */
 	return( 0 );
@@ -303,7 +303,7 @@ bti2c_smb_readb(device_t dev, u_char slave, char cmd, char *byte)
 
 	OUTL(sc,BKTR_I2C_DATA_CTL, ((slave & 0xff) << 24) | (u_char)cmd);
 
-	BTI2C_DEBUG(printf("r%lx/", (u_long)(((slave & 0xff) << 24) | (u_char)cmd)));
+	BTI2C_DEBUG(kprintf("r%lx/", (u_long)(((slave & 0xff) << 24) | (u_char)cmd)));
 
 	/* wait for completion */
 	for ( x = 0x7fffffff; x; --x ) {	/* safety valve */
@@ -313,13 +313,13 @@ bti2c_smb_readb(device_t dev, u_char slave, char cmd, char *byte)
 
 	/* check for ACK */
 	if ( !x || !(INL(sc,BKTR_INT_STAT) & BT848_INT_RACK) ) {
-		BTI2C_DEBUG(printf("r%c%c", (!x)?'+':'-',
+		BTI2C_DEBUG(kprintf("r%c%c", (!x)?'+':'-',
 			(!( INL(sc,BKTR_INT_STAT) & BT848_INT_RACK))?'+':'-'));
 		return (SMB_ENOACK);
 	}
 
 	*byte = (char)((INL(sc,BKTR_I2C_DATA_CTL) >> 8) & 0xff);
-	BTI2C_DEBUG(printf("r%x+", *byte));
+	BTI2C_DEBUG(kprintf("r%x+", *byte));
 
 	return (0);
 }

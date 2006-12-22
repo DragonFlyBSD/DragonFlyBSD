@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.12 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.13 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.12 2006/09/10 01:26:37 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.13 2006/12/22 23:26:25 swildner Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -592,13 +592,13 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		else if (*arg_i == AIOSYNC_CAPTURE && rdch)
 			*arg_i = chn_abort(rdch);
 		else {
-	   	 	printf("AIOSTOP: bad channel 0x%x\n", *arg_i);
+	   	 	kprintf("AIOSTOP: bad channel 0x%x\n", *arg_i);
 	    		*arg_i = 0;
 		}
 		break;
 
     	case AIOSYNC:
-		printf("AIOSYNC chan 0x%03lx pos %lu unimplemented\n",
+		kprintf("AIOSYNC chan 0x%03lx pos %lu unimplemented\n",
 	    		((snd_sync_parm *)arg)->chan, ((snd_sync_parm *)arg)->pos);
 		break;
 #endif
@@ -612,7 +612,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		break;
 
     	case FIOASYNC: /*set/clear async i/o */
-		DEB( printf("FIOASYNC\n") ; )
+		DEB( kprintf("FIOASYNC\n") ; )
 		break;
 
     	case SNDCTL_DSP_NONBLOCK:
@@ -661,7 +661,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		break;
 
     	case SNDCTL_DSP_RESET:
-		DEB(printf("dsp reset\n"));
+		DEB(kprintf("dsp reset\n"));
 		if (wrch)
 			chn_abort(wrch);
 		if (rdch)
@@ -669,7 +669,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		break;
 
     	case SNDCTL_DSP_SYNC:
-		DEB(printf("dsp sync\n"));
+		DEB(kprintf("dsp sync\n"));
 		/* chn_sync may sleep */
 		if (wrch) {
 			CHN_LOCK(wrch);
@@ -776,7 +776,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 
     	case SNDCTL_DSP_SETFRAGMENT:
 		/* XXX locking */
-		DEB(printf("SNDCTL_DSP_SETFRAGMENT 0x%08x\n", *(int *)arg));
+		DEB(kprintf("SNDCTL_DSP_SETFRAGMENT 0x%08x\n", *(int *)arg));
 		{
 			u_int32_t fragln = (*arg_i) & 0x0000ffff;
 			u_int32_t maxfrags = ((*arg_i) & 0xffff0000) >> 16;
@@ -794,7 +794,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 			if (maxfrags * fragsz > CHN_2NDBUFMAXSIZE)
 				maxfrags = CHN_2NDBUFMAXSIZE / fragsz;
 
-			DEB(printf("SNDCTL_DSP_SETFRAGMENT %d frags, %d sz\n", maxfrags, fragsz));
+			DEB(kprintf("SNDCTL_DSP_SETFRAGMENT %d frags, %d sz\n", maxfrags, fragsz));
 		    	if (rdch) {
 				CHN_LOCK(rdch);
 				ret = chn_setblocksize(rdch, maxfrags, fragsz);
@@ -961,7 +961,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
     	case SOUND_PCM_READ_FILTER:
 		/* dunno what these do, don't sound important */
     	default:
-		DEB(printf("default ioctl fn 0x%08lx fail\n", cmd));
+		DEB(kprintf("default ioctl fn 0x%08lx fail\n", cmd));
 		ret = EINVAL;
 		break;
     	}

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.180.2.7 2005/10/05 13:16:29 avatar Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.38 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.39 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -181,7 +181,7 @@ SYSCTL_INT(_hw_wi, OID_AUTO, txerate, CTLFLAG_RW, &wi_txerate,
 #ifdef WI_DEBUG
 static	int wi_debug = 0;
 SYSCTL_INT(_hw_wi, OID_AUTO, debug, CTLFLAG_RW, &wi_debug,
-	    0, "control debugging printfs");
+	    0, "control debugging kprintfs");
 
 #define	DPRINTF(X)	if (wi_debug) if_printf X
 #define	DPRINTF2(X)	if (wi_debug > 1) if_printf X
@@ -1536,18 +1536,18 @@ wi_tx_ex_intr(struct wi_softc *sc)
 			if (ppsratecheck(&lasttxerror, &curtxeps, wi_txerate)) {
 				if_printf(ifp, "tx failed");
 				if (status & WI_TXSTAT_RET_ERR)
-					printf(", retry limit exceeded");
+					kprintf(", retry limit exceeded");
 				if (status & WI_TXSTAT_AGED_ERR)
-					printf(", max transmit lifetime exceeded");
+					kprintf(", max transmit lifetime exceeded");
 				if (status & WI_TXSTAT_DISCONNECT)
-					printf(", port disconnected");
+					kprintf(", port disconnected");
 				if (status & WI_TXSTAT_FORM_ERR)
-					printf(", invalid format (data len %u src %6D)",
+					kprintf(", invalid format (data len %u src %6D)",
 						le16toh(frmhdr.wi_dat_len),
 						frmhdr.wi_ehdr.ether_shost, ":");
 				if (status & ~0xf)
-					printf(", status=0x%x", status);
-				printf("\n");
+					kprintf(", status=0x%x", status);
+				kprintf("\n");
 			}
 			ifp->if_oerrors++;
 		} else {
@@ -1722,17 +1722,17 @@ wi_read_nicid(struct wi_softc *sc)
 	sc->sc_firmware_type = WI_NOTYPE;
 	for (id = wi_card_ident; id->card_name != NULL; id++) {
 		if (le16toh(ver[0]) == id->card_id) {
-			printf("%s", id->card_name);
+			kprintf("%s", id->card_name);
 			sc->sc_firmware_type = id->firm_type;
 			break;
 		}
 	}
 	if (sc->sc_firmware_type == WI_NOTYPE) {
 		if (le16toh(ver[0]) & 0x8000) {
-			printf("Unknown PRISM2 chip");
+			kprintf("Unknown PRISM2 chip");
 			sc->sc_firmware_type = WI_INTERSIL;
 		} else {
-			printf("Unknown Lucent chip");
+			kprintf("Unknown Lucent chip");
 			sc->sc_firmware_type = WI_LUCENT;
 		}
 	}
@@ -1768,16 +1768,16 @@ wi_read_nicid(struct wi_softc *sc)
 			    (p[6] - '0') * 10 + (p[7] - '0');
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 	if_printf(&sc->sc_ic.ic_if, "%s Firmware: ",
 	     sc->sc_firmware_type == WI_LUCENT ? "Lucent" :
 	    (sc->sc_firmware_type == WI_SYMBOL ? "Symbol" : "Intersil"));
 	if (sc->sc_firmware_type != WI_LUCENT)	/* XXX */
-		printf("Primary (%u.%u.%u), ",
+		kprintf("Primary (%u.%u.%u), ",
 		    sc->sc_pri_firmware_ver / 10000,
 		    (sc->sc_pri_firmware_ver % 10000) / 100,
 		    sc->sc_pri_firmware_ver % 100);
-	printf("Station (%u.%u.%u)\n",
+	kprintf("Station (%u.%u.%u)\n",
 	    sc->sc_sta_firmware_ver / 10000,
 	    (sc->sc_sta_firmware_ver % 10000) / 100,
 	    sc->sc_sta_firmware_ver % 100);
@@ -2819,15 +2819,15 @@ wi_dump_pkt(struct wi_frame *wh, struct ieee80211_node *ni, int rssi)
 {
 	ieee80211_dump_pkt((u_int8_t *) &wh->wi_whdr, sizeof(wh->wi_whdr),
 	    ni ? ni->ni_rates.rs_rates[ni->ni_txrate] & IEEE80211_RATE_VAL : -1, rssi);
-	printf(" status 0x%x rx_tstamp1 %u rx_tstamp0 0x%u rx_silence %u\n",
+	kprintf(" status 0x%x rx_tstamp1 %u rx_tstamp0 0x%u rx_silence %u\n",
 		le16toh(wh->wi_status), le16toh(wh->wi_rx_tstamp1),
 		le16toh(wh->wi_rx_tstamp0), wh->wi_rx_silence);
-	printf(" rx_signal %u rx_rate %u rx_flow %u\n",
+	kprintf(" rx_signal %u rx_rate %u rx_flow %u\n",
 		wh->wi_rx_signal, wh->wi_rx_rate, wh->wi_rx_flow);
-	printf(" tx_rtry %u tx_rate %u tx_ctl 0x%x dat_len %u\n",
+	kprintf(" tx_rtry %u tx_rate %u tx_ctl 0x%x dat_len %u\n",
 		wh->wi_tx_rtry, wh->wi_tx_rate,
 		le16toh(wh->wi_tx_ctl), le16toh(wh->wi_dat_len));
-	printf(" ehdr dst %6D src %6D type 0x%x\n",
+	kprintf(" ehdr dst %6D src %6D type 0x%x\n",
 		wh->wi_ehdr.ether_dhost, ":", wh->wi_ehdr.ether_shost, ":",
 		wh->wi_ehdr.ether_type);
 }

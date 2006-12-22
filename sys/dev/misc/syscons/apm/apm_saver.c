@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/apm/apm_saver.c,v 1.1.4.2 2001/03/07 21:47:24 nsayer Exp $
- * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.8 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.9 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ static int
 apm_init(video_adapter_t *adp)
 {
 	if (!apm_softc.initialized || !apm_softc.active)
-		printf("WARNING: apm_saver module requires apm enabled\n");
+		kprintf("WARNING: apm_saver module requires apm enabled\n");
 	return 0;
 }
 

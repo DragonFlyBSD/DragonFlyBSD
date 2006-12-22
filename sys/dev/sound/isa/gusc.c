@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.9 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.10 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <bus/isa/isavar.h>
 #include <bus/isa/isa_common.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.9 2006/10/25 20:56:02 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.10 2006/12/22 23:26:25 swildner Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e
@@ -277,7 +277,7 @@ gusisa_probe(device_t dev)
 
 		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 		if (func == NULL)
-			printf("xxx: gus pcm not attached, out of memory\n");
+			kprintf("xxx: gus pcm not attached, out of memory\n");
 		else {
 			func->func = SCF_PCM;
 			child = device_add_child(dev, "pcm", -1);

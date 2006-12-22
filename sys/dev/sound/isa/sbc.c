@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.7 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.7 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -158,7 +158,7 @@ sb_dspwr(struct resource *io, u_char val)
 		}
 		if (i > 10) DELAY((i > 100)? 1000 : 10);
     	}
-    	printf("sb_dspwr(0x%02x) timed out.\n", val);
+    	kprintf("sb_dspwr(0x%02x) timed out.\n", val);
     	return 0;
 }
 
@@ -374,8 +374,8 @@ sbc_attach(device_t dev)
 		sb_setmixer(scp->io[0], DMA_NR, (1 << dh) | (1 << dl));
 		if (bootverbose) {
 			device_printf(dev, "setting card to irq %d, drq %d", irq, dl);
-			if (dl != dh) printf(", %d", dh);
-			printf("\n");
+			if (dl != dh) kprintf(", %d", dh);
+			kprintf("\n");
     		}
 		break;
     	}

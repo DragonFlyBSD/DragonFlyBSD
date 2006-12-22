@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.13 2005/01/27 01:40:12 imp Exp */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.6 2005/03/12 11:35:27 corecode Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.7 2006/12/22 23:26:26 swildner Exp $ */
 
 /*
  * This is prt of the Driver for Video Capture Cards (Frame grabbers)
@@ -71,13 +71,13 @@ bktr_mem_modevent(module_t mod, int type, void *unused){
 	switch (type) {
 	case MOD_LOAD:
 		{
-		printf("bktr_mem: memory holder loaded\n");
+		kprintf("bktr_mem: memory holder loaded\n");
 		bzero(memory_list, sizeof(memory_list));
 		return 0;
 		}
 	case MOD_UNLOAD:
 		{
-		printf("bktr_mem: memory holder cannot be unloaded\n");
+		kprintf("bktr_mem: memory holder cannot be unloaded\n");
 		return EBUSY;
 		}
 	default:
@@ -92,7 +92,7 @@ int
 bktr_has_stored_addresses(int unit) {
 
 	if ((unit < 0) || (unit >= BKTR_MEM_MAX_DEVICES)) {
-		printf("bktr_mem: Unit number %d invalid\n",unit);
+		kprintf("bktr_mem: Unit number %d invalid\n",unit);
 		return 0;
 	}
 
@@ -105,7 +105,7 @@ void
 bktr_store_address(int unit, int type, vm_offset_t addr) {
 
 	if ((unit < 0) || (unit >= BKTR_MEM_MAX_DEVICES)) {
-		printf("bktr_mem: Unit number %d invalid for memory type %d, address %p\n"
+		kprintf("bktr_mem: Unit number %d invalid for memory type %d, address %p\n"
 		       ,unit,type,(void *)addr);
 		return;
 	}
@@ -126,7 +126,7 @@ bktr_store_address(int unit, int type, vm_offset_t addr) {
 		case BKTR_MEM_BUF:          memory_list[unit].buf = addr;
 		                            memory_list[unit].addresses_stored = 1;
 		                            break;
-		default:                    printf("bktr_mem: Invalid memory type %d for bktr%d, address %p\n",
+		default:                    kprintf("bktr_mem: Invalid memory type %d for bktr%d, address %p\n",
 				                   type,unit,(void *)addr);
 		                            break;
 	}
@@ -138,7 +138,7 @@ vm_offset_t
 bktr_retrieve_address(int unit, int type) {
 
 	if ((unit < 0) || (unit >= BKTR_MEM_MAX_DEVICES)) {
-		printf("bktr_mem: Unit number %d too large for memory type %d\n",unit,type);
+		kprintf("bktr_mem: Unit number %d too large for memory type %d\n",unit,type);
 		return NULL;
 	}
 	switch (type) {
@@ -147,7 +147,7 @@ bktr_retrieve_address(int unit, int type) {
 		case BKTR_MEM_VBIDATA:      return memory_list[unit].vbidata;
 		case BKTR_MEM_VBIBUFFER:    return memory_list[unit].vbibuffer;
 		case BKTR_MEM_BUF:          return memory_list[unit].buf;
-		default:                    printf("bktr_mem: Invalid memory type %d for bktr%d",type,unit);
+		default:                    kprintf("bktr_mem: Invalid memory type %d for bktr%d",type,unit);
 		                            return NULL;
 	}
 }

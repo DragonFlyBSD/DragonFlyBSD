@@ -25,7 +25,7 @@
  *
  * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
  * $FreeBSD: src/sys/dev/nve/if_nvereg.h,v 1.7 2005/12/07 17:38:03 obrien Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.12 2006/01/29 22:10:11 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.13 2006/12/22 23:26:21 swildner Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -83,7 +83,7 @@
 
 #if NV_DEBUG
 #define DEBUGOUT(level, fmt, args...) if (NV_DEBUG & level) \
-    printf(fmt, ## args)
+    kprintf(fmt, ## args)
 #else
 #define DEBUGOUT(level, fmt, args...)
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.c,v 1.7 1999/08/28 00:51:06 peter Exp $
- * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.7 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.8 2006/12/22 23:26:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ simos_start(struct simos_softc* sc, struct ccb_scsiio *csio)
 		/*
 		 * Don't think this can happen.
 		 */
-		printf("simos_start: can't start command while one is pending\n");
+		kprintf("simos_start: can't start command while one is pending\n");
 		csio->ccb_h.status = CAM_BUSY;
 		xpt_done((union ccb *) csio);
 		return;

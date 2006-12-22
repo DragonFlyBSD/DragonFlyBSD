@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.19 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.20 2006/12/22 23:26:17 swildner Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -647,7 +647,7 @@ msetimeout(void *arg)
 	sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	if (sc->sc_watchdog) {
 		if (bootverbose)
-			printf("mse%d: lost interrupt?\n", MSE_UNIT(dev));
+			kprintf("mse%d: lost interrupt?\n", MSE_UNIT(dev));
 		mseintr(sc);
 	}
 	sc->sc_watchdog = TRUE;
@@ -681,7 +681,7 @@ mseintr(void *arg)
 #ifdef DEBUG
 	static int mse_intrcnt = 0;
 	if((mse_intrcnt++ % 10000) == 0)
-		printf("mseintr\n");
+		kprintf("mseintr\n");
 #endif /* DEBUG */
 	if ((sc->sc_flags & MSESC_OPEN) == 0)
 		return;

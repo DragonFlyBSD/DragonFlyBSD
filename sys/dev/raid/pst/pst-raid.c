@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.21 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.22 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -145,11 +145,11 @@ pst_attach(device_t dev)
 	return ENODEV;
     ident = (struct i2o_device_identity *)reply->result;
 #ifdef PSTDEBUG	   
-    printf("pst: vendor=<%.16s> product=<%.16s>\n",
+    kprintf("pst: vendor=<%.16s> product=<%.16s>\n",
 	   ident->vendor, ident->product);
-    printf("pst: description=<%.16s> revision=<%.8s>\n",
+    kprintf("pst: description=<%.16s> revision=<%.8s>\n",
 	   ident->description, ident->revision);
-    printf("pst: capacity=%lld blocksize=%d\n",
+    kprintf("pst: capacity=%lld blocksize=%d\n",
 	   psc->info->capacity, psc->info->block_size);
 #endif
     bpack(ident->vendor, ident->vendor, 16);
@@ -178,7 +178,7 @@ pst_attach(device_t dev)
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
 
-    printf("pst%d: %lluMB <%.40s> [%d/%d/%d] on %.16s\n", lun,
+    kprintf("pst%d: %lluMB <%.40s> [%d/%d/%d] on %.16s\n", lun,
 	   (unsigned long long)psc->disk.d_label.d_secperunit / (1024 * 2),
 	   name, psc->disk.d_label.d_ncylinders, 255, 63,
 	   device_get_nameunit(psc->iop->dev));
@@ -208,7 +208,7 @@ pst_shutdown(device_t dev)
     msg->function = I2O_BSA_CACHE_FLUSH;
     msg->control_flags = 0x0; /* 0x80 = post progress reports */
     if (iop_queue_wait_msg(psc->iop, mfa, (struct i2o_basic_message *)msg))
-	printf("pst: shutdown failed!\n");
+	kprintf("pst: shutdown failed!\n");
     return 0;
 }
 #endif
@@ -293,11 +293,11 @@ pst_timeout(void *xrequest)
     struct buf *bp = request->bio->bio_buf;
 
     crit_enter();
-    printf("pst: timeout mfa=0x%08x cmd=%s\n",
+    kprintf("pst: timeout mfa=0x%08x cmd=%s\n",
 	   request->mfa, (bp->b_cmd == BUF_CMD_READ) ? "READ" : "WRITE");
     iop_free_mfa(request->psc->iop, request->mfa);
     if ((request->mfa = iop_get_mfa(request->psc->iop)) == 0xffffffff) {
-	printf("pst: timeout no mfa possible\n");
+	kprintf("pst: timeout no mfa possible\n");
 	devstat_end_transaction_buf(&request->psc->stats, bp);
 	bp->b_error = EIO;
 	bp->b_flags |= B_ERROR;

@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.9 2006/12/20 18:14:41 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.10 2006/12/22 23:26:25 swildner Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -426,21 +426,21 @@ USB_ATTACH(uaudio)
 	USB_ATTACH_SETUP;
 
 #if !defined(__DragonFly__)
-	printf(": %s\n", devinfo);
+	kprintf(": %s\n", devinfo);
 #endif
 
 	sc->sc_udev = uaa->device;
 
 	cdesc = usbd_get_config_descriptor(sc->sc_udev);
 	if (cdesc == NULL) {
-		printf("%s: failed to get configuration descriptor\n",
+		kprintf("%s: failed to get configuration descriptor\n",
 		       USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	err = uaudio_identify(sc, cdesc);
 	if (err) {
-		printf("%s: audio descriptors make no sense, error=%d\n",
+		kprintf("%s: audio descriptors make no sense, error=%d\n",
 		       USBDEVNAME(sc->sc_dev), err);
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -467,13 +467,13 @@ USB_ATTACH(uaudio)
 
 	for (j = 0; j < sc->sc_nalts; j++) {
 		if (sc->sc_alts[j].ifaceh == NULL) {
-			printf("%s: alt %d missing AS interface(s)\n",
+			kprintf("%s: alt %d missing AS interface(s)\n",
 			    USBDEVNAME(sc->sc_dev), j);
 			USB_ATTACH_ERROR_RETURN;
 		}
 	}
 
-	printf("%s: audio rev %d.%02x\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: audio rev %d.%02x\n", USBDEVNAME(sc->sc_dev),
 	       sc->sc_audio_rev >> 8, sc->sc_audio_rev & 0xff);
 
 	sc->sc_chan.sc = sc;
@@ -484,7 +484,7 @@ USB_ATTACH(uaudio)
 #ifndef USB_DEBUG
 	if (bootverbose)
 #endif
-		printf("%s: %d mixer controls\n", USBDEVNAME(sc->sc_dev),
+		kprintf("%s: %d mixer controls\n", USBDEVNAME(sc->sc_dev),
 		    sc->sc_nctls);
 
 #if !defined(__DragonFly__)
@@ -500,7 +500,7 @@ USB_ATTACH(uaudio)
 #elif defined(__DragonFly__)
 	sc->sc_dying = 0;
 	if (audio_attach_mi(sc->sc_dev)) {
-		printf("audio_attach_mi failed\n");
+		kprintf("audio_attach_mi failed\n");
 		USB_ATTACH_ERROR_RETURN;
 	}
 #endif
@@ -662,7 +662,7 @@ uaudio_mixer_add_ctl(struct uaudio_softc *sc, struct mixerctl *mc)
 	  krealloc(sc->sc_ctls, len, M_USBDEV, M_NOWAIT);
 
 	if(nmc == NULL){
-		printf("uaudio_mixer_add_ctl: no memory\n");
+		kprintf("uaudio_mixer_add_ctl: no memory\n");
 		return;
 	}
 	sc->sc_ctls = nmc;
@@ -782,7 +782,7 @@ uaudio_get_cluster(int id, usb_descriptor_t **dps)
 		}
 	}
  bad:
-	printf("uaudio_get_cluster: bad data\n");
+	kprintf("uaudio_get_cluster: bad data\n");
 	memset(&r, 0, sizeof r);
 	return (r);
 
@@ -902,7 +902,7 @@ uaudio_add_selector(struct uaudio_softc *sc, usb_descriptor_t *v,
 	DPRINTFN(2,("uaudio_add_selector: bUnitId=%d bNrInPins=%d\n",
 		    d->bUnitId, d->bNrInPins));
 #endif
-	printf("uaudio_add_selector: NOT IMPLEMENTED\n");
+	kprintf("uaudio_add_selector: NOT IMPLEMENTED\n");
 }
 
 void
@@ -1155,7 +1155,7 @@ uaudio_add_processing(struct uaudio_softc *sc, usb_descriptor_t *v,
 	case DYN_RANGE_COMP_PROCESS:
 	default:
 #ifdef USB_DEBUG
-		printf("uaudio_add_processing: unit %d, type=%d not impl.\n",
+		kprintf("uaudio_add_processing: unit %d, type=%d not impl.\n",
 		       d->bUnitId, ptype);
 #endif
 		break;
@@ -1214,7 +1214,7 @@ uaudio_add_alt(struct uaudio_softc *sc, struct as_info *ai)
 	  krealloc(sc->sc_alts, len, M_USBDEV, M_NOWAIT);
 
 	if (nai == NULL) {
-		printf("uaudio_add_alt: no memory\n");
+		kprintf("uaudio_add_alt: no memory\n");
 		return;
 	}
 
@@ -1253,7 +1253,7 @@ uaudio_process_as(struct uaudio_softc *sc, char *buf, int *offsp,
 		return (USBD_INVAL);
 
 	if (asf1d->bFormatType != FORMAT_TYPE_I) {
-		printf("%s: ignored setting with type %d format\n",
+		kprintf("%s: ignored setting with type %d format\n",
 		       USBDEVNAME(sc->sc_dev), UGETW(asid->wFormatTag));
 		return (USBD_NORMAL_COMPLETION);
 	}
@@ -1281,7 +1281,7 @@ uaudio_process_as(struct uaudio_softc *sc, char *buf, int *offsp,
 
 	/* We can't handle endpoints that need a sync pipe yet. */
 	if (dir == UE_DIR_IN ? type == UE_ISO_ADAPT : type == UE_ISO_ASYNC) {
-		printf("%s: ignored %sput endpoint of type %s\n",
+		kprintf("%s: ignored %sput endpoint of type %s\n",
 		       USBDEVNAME(sc->sc_dev),
 		       dir == UE_DIR_IN ? "in" : "out",
 		       dir == UE_DIR_IN ? "adaptive" : "async");
@@ -1301,7 +1301,7 @@ uaudio_process_as(struct uaudio_softc *sc, char *buf, int *offsp,
 	prec = asf1d->bBitResolution;
 	if (prec != 8 && prec != 16) {
 #ifdef USB_DEBUG
-		printf("%s: ignored setting with precision %d\n",
+		kprintf("%s: ignored setting with precision %d\n",
 		       USBDEVNAME(sc->sc_dev), prec);
 #endif
 		return (USBD_NORMAL_COMPLETION);
@@ -1324,7 +1324,7 @@ uaudio_process_as(struct uaudio_softc *sc, char *buf, int *offsp,
 		sc->sc_altflags |= HAS_MULAW;
 		break;
 	default:
-		printf("%s: ignored setting with format %d\n",
+		kprintf("%s: ignored setting with format %d\n",
 		       USBDEVNAME(sc->sc_dev), format);
 		return (USBD_NORMAL_COMPLETION);
 	}
@@ -1377,7 +1377,7 @@ uaudio_identify_as(struct uaudio_softc *sc, usb_config_descriptor_t *cdesc)
 			break;
 		default:
 #ifdef USB_DEBUG
-			printf("%s: ignored audio interface with %d "
+			kprintf("%s: ignored audio interface with %d "
 			       "endpoints\n",
 			       USBDEVNAME(sc->sc_dev), id->bNumEndpoints);
 #endif
@@ -1391,7 +1391,7 @@ uaudio_identify_as(struct uaudio_softc *sc, usb_config_descriptor_t *cdesc)
 		return (USBD_INVAL);
 	DPRINTF(("uaudio_identify_as: %d alts available\n", sc->sc_nalts));
 	if (sc->sc_chan.terminal < 0) {
-		printf("%s: no useable endpoint found\n", 
+		kprintf("%s: no useable endpoint found\n", 
 		       USBDEVNAME(sc->sc_dev));
 		return (USBD_INVAL);
 	}
@@ -1458,7 +1458,7 @@ uaudio_identify_ac(struct uaudio_softc *sc, usb_config_descriptor_t *cdesc)
 		if (ibuf + dp->bLength > ibufend)
 			return (USBD_INVAL);
 		if (dp->bDescriptorType != UDESC_CS_INTERFACE) {
-			printf("uaudio_identify: skip desc type=0x%02x\n",
+			kprintf("uaudio_identify: skip desc type=0x%02x\n",
 			       dp->bDescriptorType);
 			continue;
 		}
@@ -1477,7 +1477,7 @@ uaudio_identify_ac(struct uaudio_softc *sc, usb_config_descriptor_t *cdesc)
 			 dp->bDescriptorSubtype));
 		switch (dp->bDescriptorSubtype) {
 		case UDESCSUB_AC_HEADER:
-			printf("uaudio_identify: unexpected AC header\n");
+			kprintf("uaudio_identify: unexpected AC header\n");
 			break;
 		case UDESCSUB_AC_INPUT:
 			uaudio_add_input(sc, dp, dps);
@@ -1501,7 +1501,7 @@ uaudio_identify_ac(struct uaudio_softc *sc, usb_config_descriptor_t *cdesc)
 			uaudio_add_extension(sc, dp, dps);
 			break;
 		default:
-			printf("uaudio_identify: bad AC desc subtype=0x%02x\n",
+			kprintf("uaudio_identify: bad AC desc subtype=0x%02x\n",
 			       dp->bDescriptorSubtype);
 			break;
 		}
@@ -1691,7 +1691,7 @@ uaudio_round_blocksize(void *addr, int blk)
 
 #ifdef DIAGNOSTIC
 	if (blk <= 0) {
-		printf("uaudio_round_blocksize: blk=%d\n", blk);
+		kprintf("uaudio_round_blocksize: blk=%d\n", blk);
 		blk = 512;
 	}
 #endif
@@ -2195,7 +2195,7 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 		    count, ch->transferred));
 #ifdef DIAGNOSTIC
 	if (count != cb->size) {
-		printf("uaudio_chan_pintr: count(%d) != size(%d)\n",
+		kprintf("uaudio_chan_pintr: count(%d) != size(%d)\n",
 		       count, cb->size);
 	}
 #endif
@@ -2286,7 +2286,7 @@ uaudio_chan_rintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 #ifdef DIAGNOSTIC
 	if (count != cb->size) {
-		printf("uaudio_chan_rintr: count(%d) != size(%d)\n",
+		kprintf("uaudio_chan_rintr: count(%d) != size(%d)\n",
 		       count, cb->size);
 	}
 #endif
@@ -2567,7 +2567,7 @@ uaudio_init_params(struct uaudio_softc *sc, struct chan *ch)
 	default:
 		enc = 0;
 		ch->precision = 16;
-		printf("Unknown format %x\n", ch->format);
+		kprintf("Unknown format %x\n", ch->format);
 	}
 
 	if (ch->format & AFMT_STEREO) {

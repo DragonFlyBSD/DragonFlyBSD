@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.30 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.31 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -393,7 +393,7 @@ sl_probe(struct isa_device *dvp)
 
 	default:
 		if (bootverbose)
-			printf("ie%d: unknown AT&T board type code %d\n", unit,
+			kprintf("ie%d: unknown AT&T board type code %d\n", unit,
 		       	ie_softc[unit].hard_type);
 		return (0);
 	}
@@ -430,7 +430,7 @@ el_probe(struct isa_device *dvp)
 	c = inb(PORT + IE507_MADDR);
 	if (c & 0x20) {
 #ifdef DEBUG
-		printf("ie%d: can't map 3C507 RAM in high memory\n", unit);
+		kprintf("ie%d: can't map 3C507 RAM in high memory\n", unit);
 #endif
 		return (0);
 	}
@@ -448,7 +448,7 @@ el_probe(struct isa_device *dvp)
 	c = inb(PORT + IE507_IRQ) & 0x0f;
 
 	if (dvp->id_irq != (1 << c)) {
-		printf("ie%d: kernel configured irq %d "
+		kprintf("ie%d: kernel configured irq %d "
 		       "doesn't match board configured irq %d\n",
 		       unit, ffs(dvp->id_irq) - 1, c);
 		return (0);
@@ -456,7 +456,7 @@ el_probe(struct isa_device *dvp)
 	c = (inb(PORT + IE507_MADDR) & 0x1c) + 0xc0;
 
 	if (kvtop(dvp->id_maddr) != ((int) c << 12)) {
-		printf("ie%d: kernel configured maddr %llx "
+		kprintf("ie%d: kernel configured maddr %llx "
 		       "doesn't match board configured maddr %x\n",
 		       unit, kvtop(dvp->id_maddr), (int) c << 12);
 		return (0);
@@ -472,14 +472,14 @@ el_probe(struct isa_device *dvp)
 	find_ie_mem_size(unit);
 
 	if (!sc->iosize) {
-		printf("ie%d: can't find shared memory\n", unit);
+		kprintf("ie%d: can't find shared memory\n", unit);
 		outb(PORT + IE507_CTRL, EL_CTRL_NRST);
 		return (0);
 	}
 	if (!dvp->id_msize)
 		dvp->id_msize = sc->iosize;
 	else if (dvp->id_msize != sc->iosize) {
-		printf("ie%d: kernel configured msize %d "
+		kprintf("ie%d: kernel configured msize %d "
 		       "doesn't match board configured msize %d\n",
 		       unit, dvp->id_msize, sc->iosize);
 		outb(PORT + IE507_CTRL, EL_CTRL_NRST);
@@ -535,7 +535,7 @@ ni_probe(struct isa_device *dvp)
 	if (!dvp->id_msize)
 		dvp->id_msize = ie_softc[unit].iosize;
 	else if (dvp->id_msize != ie_softc[unit].iosize) {
-		printf("ie%d: kernel configured msize %d "
+		kprintf("ie%d: kernel configured msize %d "
 		       "doesn't match board configured msize %d\n",
 		       unit, dvp->id_msize, ie_softc[unit].iosize);
 		return (0);
@@ -601,7 +601,7 @@ ee16_probe(struct isa_device *dvp)
 
 	if (board_id != IEE16_ID) {
 		if (bootverbose)
-			printf("ie%d: unknown board_id: %x\n", unit, board_id);
+			kprintf("ie%d: unknown board_id: %x\n", unit, board_id);
 		return (0);
 	}
 	/* need sc->port for ee16_read_eeprom */
@@ -645,7 +645,7 @@ ee16_probe(struct isa_device *dvp)
 	}
 	dvp->id_msize = 0x8000;
 	if (kvtop(dvp->id_maddr) != bd_maddr) {
-		printf("ie%d: kernel configured maddr %llx "
+		kprintf("ie%d: kernel configured maddr %llx "
 		       "doesn't match board configured maddr %lx\n",
 		       unit, kvtop(dvp->id_maddr), bd_maddr);
 	}
@@ -661,7 +661,7 @@ ee16_probe(struct isa_device *dvp)
 		checksum += ee16_read_eeprom(sc, i);
 
 	if (checksum != IEE16_ID) {
-		printf("ie%d: invalid eeprom checksum: %x\n", unit, checksum);
+		kprintf("ie%d: invalid eeprom checksum: %x\n", unit, checksum);
 		return (0);
 	}
 	/*
@@ -680,7 +680,7 @@ ee16_probe(struct isa_device *dvp)
 	case 16384:
 	case 49512:
 	default:
-		printf("ie%d: mapped memory size %d not supported\n", unit,
+		kprintf("ie%d: mapped memory size %d not supported\n", unit,
 		       dvp->id_msize);
 		return (0);
 		break;		/* NOTREACHED */
@@ -688,7 +688,7 @@ ee16_probe(struct isa_device *dvp)
 
 	if ((kvtop(dvp->id_maddr) < 0xC0000) ||
 	    (kvtop(dvp->id_maddr) + sc->iosize > 0xF0000)) {
-		printf("ie%d: mapped memory location %p out of range\n", unit,
+		kprintf("ie%d: mapped memory location %p out of range\n", unit,
 		       (void *)dvp->id_maddr);
 		return (0);
 	}
@@ -725,7 +725,7 @@ ee16_probe(struct isa_device *dvp)
 	irq = irq_translate[irq];
 	if (dvp->id_irq > 0) {
 		if (irq != dvp->id_irq) {
-			printf("ie%d: WARNING: board configured "
+			kprintf("ie%d: WARNING: board configured "
 			       "at irq %u, using %u\n",
 			       dvp->id_unit, dvp->id_irq, irq);
 			irq = dvp->id_unit;
@@ -866,7 +866,7 @@ loop:
 #ifdef DEBUG
 		in_ierint++;
 		if (ie_debug & IED_RINT)
-			printf("ie%d: rint\n", unit);
+			kprintf("ie%d: rint\n", unit);
 #endif
 		ierint(unit, ie);
 #ifdef DEBUG
@@ -877,7 +877,7 @@ loop:
 #ifdef DEBUG
 		in_ietint++;
 		if (ie_debug & IED_TINT)
-			printf("ie%d: tint\n", unit);
+			kprintf("ie%d: tint\n", unit);
 #endif
 		ietint(unit, ie);
 #ifdef DEBUG
@@ -887,14 +887,14 @@ loop:
 	if (status & IE_ST_RNR) {
 #ifdef DEBUG
 		if (ie_debug & IED_RNR)
-			printf("ie%d: rnr\n", unit);
+			kprintf("ie%d: rnr\n", unit);
 #endif
 		iernr(unit, ie);
 	}
 #ifdef DEBUG
 	if ((status & IE_ST_ALLDONE)
 	    && (ie_debug & IED_CNA))
-		printf("ie%d: cna\n", unit);
+		kprintf("ie%d: cna\n", unit);
 #endif
 
 	if ((status = ie->scb->ie_status) & IE_ST_WHENCE)
@@ -975,20 +975,20 @@ ietint(int unit, struct ie_softc *ie)
 		status = ie->xmit_cmds[i]->ie_xmit_status;
 
 		if (status & IE_XS_LATECOLL) {
-			printf("ie%d: late collision\n", unit);
+			kprintf("ie%d: late collision\n", unit);
 			ie->arpcom.ac_if.if_collisions++;
 			ie->arpcom.ac_if.if_oerrors++;
 		} else if (status & IE_XS_NOCARRIER) {
-			printf("ie%d: no carrier\n", unit);
+			kprintf("ie%d: no carrier\n", unit);
 			ie->arpcom.ac_if.if_oerrors++;
 		} else if (status & IE_XS_LOSTCTS) {
-			printf("ie%d: lost CTS\n", unit);
+			kprintf("ie%d: lost CTS\n", unit);
 			ie->arpcom.ac_if.if_oerrors++;
 		} else if (status & IE_XS_UNDERRUN) {
-			printf("ie%d: DMA underrun\n", unit);
+			kprintf("ie%d: DMA underrun\n", unit);
 			ie->arpcom.ac_if.if_oerrors++;
 		} else if (status & IE_XS_EXCMAX) {
-			printf("ie%d: too many collisions\n", unit);
+			kprintf("ie%d: too many collisions\n", unit);
 			ie->arpcom.ac_if.if_collisions += 16;
 			ie->arpcom.ac_if.if_oerrors++;
 		} else {
@@ -1721,7 +1721,7 @@ iereset(int unit)
 	if (unit >= NIE) {
 		return;
 	}
-	printf("ie%d: reset\n", unit);
+	kprintf("ie%d: reset\n", unit);
 	ie_softc[unit].arpcom.ac_if.if_flags &= ~IFF_UP;
 	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
 
@@ -1729,10 +1729,10 @@ iereset(int unit)
 	 * Stop i82586 dead in its tracks.
 	 */
 	if (command_and_wait(unit, IE_RU_ABORT | IE_CU_ABORT, 0, 0))
-		printf("ie%d: abort commands timed out\n", unit);
+		kprintf("ie%d: abort commands timed out\n", unit);
 
 	if (command_and_wait(unit, IE_RU_DISABLE | IE_CU_STOP, 0, 0))
-		printf("ie%d: disable commands timed out\n", unit);
+		kprintf("ie%d: disable commands timed out\n", unit);
 
 #ifdef notdef
 	if (!check_ie_present(unit, ie_softc[unit].iomembot,
@@ -1826,15 +1826,15 @@ run_tdr(int unit, volatile struct ie_tdr_cmd *cmd)
 		return;
 
 	if (result & IE_TDR_XCVR) {
-		printf("ie%d: transceiver problem\n", unit);
+		kprintf("ie%d: transceiver problem\n", unit);
 	} else if (result & IE_TDR_OPEN) {
-		printf("ie%d: TDR detected an open %d clocks away\n", unit,
+		kprintf("ie%d: TDR detected an open %d clocks away\n", unit,
 		       result & IE_TDR_TIME);
 	} else if (result & IE_TDR_SHORT) {
-		printf("ie%d: TDR detected a short %d clocks away\n", unit,
+		kprintf("ie%d: TDR detected a short %d clocks away\n", unit,
 		       result & IE_TDR_TIME);
 	} else {
-		printf("ie%d: TDR returned unknown status %x\n", unit, result);
+		kprintf("ie%d: TDR returned unknown status %x\n", unit, result);
 	}
 }
 
@@ -1943,7 +1943,7 @@ mc_setup(int unit, v_caddr_t ptr,
 	scb->ie_command_list = MK_16(MEM, cmd);
 	if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 	    || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
-		printf("ie%d: multicast address setup command failed\n", unit);
+		kprintf("ie%d: multicast address setup command failed\n", unit);
 		return (0);
 	}
 	return (1);
@@ -1982,7 +1982,7 @@ ieinit(void *xsc)
 
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		 || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
-			printf("ie%d: configure command failed\n", unit);
+			kprintf("ie%d: configure command failed\n", unit);
 			return;
 		}
 	}
@@ -2001,7 +2001,7 @@ ieinit(void *xsc)
 		scb->ie_command_list = MK_16(MEM, cmd);
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		    || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
-			printf("ie%d: individual address "
+			kprintf("ie%d: individual address "
 			       "setup command failed\n", unit);
 			return;
 		}
@@ -2159,7 +2159,7 @@ setflag:
 static void
 print_rbd(volatile struct ie_recv_buf_desc * rbd)
 {
-	printf("RBD at %p:\n"
+	kprintf("RBD at %p:\n"
 	       "actual %04x, next %04x, buffer %p\n"
 	       "length %04x, mbz %04x\n",
 	       (volatile void *) rbd,

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.14 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.15 2006/12/22 23:26:16 swildner Exp $
  */
 
  /*
@@ -281,7 +281,7 @@ bt_port_probe(device_t dev, struct bt_probe_info *info)
 		       (u_int8_t*)&config_data, sizeof(config_data),
 		       DEFAULT_CMD_TIMEOUT);
 	if (error != 0) {
-		printf("bt_port_probe: Could not determine IRQ or DMA "
+		kprintf("bt_port_probe: Could not determine IRQ or DMA "
 		       "settings for adapter.\n");
 		return (1);
 	}
@@ -299,7 +299,7 @@ bt_port_probe(device_t dev, struct bt_probe_info *info)
 			info->drq = 7;
 			break;
 		default:
-			printf("bt_port_probe: Invalid DMA setting "
+			kprintf("bt_port_probe: Invalid DMA setting "
 			       "detected for adapter.\n");
 			return (1);
 		}
@@ -317,7 +317,7 @@ bt_port_probe(device_t dev, struct bt_probe_info *info)
 		info->irq = ffs(config_data.irq) + 8;
 		break;
 	default:
-		printf("bt_port_probe: Invalid IRQ setting %x"
+		kprintf("bt_port_probe: Invalid IRQ setting %x"
 		       "detected for adapter.\n", config_data.irq);
 		return (1);
 	}
@@ -668,17 +668,17 @@ bt_init(device_t dev)
 	device_printf(dev, "BT-%s FW Rev. %s ", bt->model, bt->firmware_ver);
 
 	if (bt->ultra_scsi != 0)
-		printf("Ultra ");
+		kprintf("Ultra ");
 
 	if (bt->wide_bus != 0)
-		printf("Wide ");
+		kprintf("Wide ");
 	else
-		printf("Narrow ");
+		kprintf("Narrow ");
 
 	if (bt->diff_bus != 0)
-		printf("Diff ");
+		kprintf("Diff ");
 
-	printf("SCSI Host Adapter, SCSI ID %d, %d CCBs\n", bt->scsi_id,
+	kprintf("SCSI Host Adapter, SCSI ID %d, %d CCBs\n", bt->scsi_id,
 	       bt->max_ccbs);
 
 	/*
@@ -910,7 +910,7 @@ bt_find_probe_range(int ioport, int *port_index, int *max_port_index)
 				break;
 		if ((i >= BT_NUM_ISAPORTS)
 		 || (ioport != bt_isa_ports[i].addr)) {
-			printf("\nbt_isa_probe: Invalid baseport of 0x%x specified.\n"
+			kprintf("\nbt_isa_probe: Invalid baseport of 0x%x specified.\n"
 			       "bt_isa_probe: Nearest valid baseport is 0x%x.\n"
 			       "bt_isa_probe: Failing probe.\n",
 			       ioport,
@@ -1576,7 +1576,7 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 	case BMBI_ABORT:
 	case BMBI_ERROR:
 		if (bootverbose) {
-			printf("bt: ccb %p - error %x occured.  "
+			kprintf("bt: ccb %p - error %x occured.  "
 			       "btstat = %x, sdstat = %x\n",
 			       (void *)bccb, comp_code, bccb->hccb.btstat,
 			       bccb->hccb.sdstat);
@@ -1650,7 +1650,7 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 			struct ccb_trans_settings neg; 
  
 			xpt_print_path(csio->ccb_h.path);
-			printf("refuses tagged commands.  Performing "
+			kprintf("refuses tagged commands.  Performing "
 			       "non-tagged I/O\n");
 			neg.flags = 0;
 			neg.valid = CCB_TRANS_TQ_VALID;
@@ -1739,7 +1739,7 @@ btreset(struct bt_softc* bt, int hard_reset)
 	}
 	if (timeout == 0) {
 		if (bootverbose)
-			printf("%s: btreset - Diagnostic Active failed to "
+			kprintf("%s: btreset - Diagnostic Active failed to "
 				"assert. status = 0x%x\n", bt_name(bt), status);
 		return (ETIMEDOUT);
 	}
@@ -1767,7 +1767,7 @@ btreset(struct bt_softc* bt, int hard_reset)
 		DELAY(100);
 	}
 	if (timeout == 0) {
-		printf("%s: btreset - Host adapter failed to come ready. "
+		kprintf("%s: btreset - Host adapter failed to come ready. "
 		       "status = 0x%x\n", bt_name(bt), status);
 		return (ETIMEDOUT);
 	}
@@ -1775,11 +1775,11 @@ btreset(struct bt_softc* bt, int hard_reset)
 	/* If the diagnostics failed, tell the user */
 	if ((status & DIAG_FAIL) != 0
 	 || (status & HA_READY) == 0) {
-		printf("%s: btreset - Adapter failed diagnostics\n",
+		kprintf("%s: btreset - Adapter failed diagnostics\n",
 		       bt_name(bt));
 
 		if ((status & DATAIN_REG_READY) != 0)
-			printf("%s: btreset - Host Adapter Error code = 0x%x\n",
+			kprintf("%s: btreset - Host Adapter Error code = 0x%x\n",
 			       bt_name(bt), bt_inb(bt, DATAIN_REG));
 		return (ENXIO);
 	}
@@ -1850,7 +1850,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 		DELAY(100);
 	}
 	if (timeout == 0) {
-		printf("%s: bt_cmd: Timeout waiting for adapter ready, "
+		kprintf("%s: bt_cmd: Timeout waiting for adapter ready, "
 		       "status = 0x%x\n", bt_name(bt), status);
 		return (ETIMEDOUT);
 	}
@@ -1892,7 +1892,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 		}
 	}
 	if (timeout == 0) {
-		printf("%s: bt_cmd: Timeout sending parameters, "
+		kprintf("%s: bt_cmd: Timeout sending parameters, "
 		       "status = 0x%x\n", bt_name(bt), status);
 		cmd_complete = 1;
 		saved_status = status;
@@ -1951,7 +1951,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 			if (reply_len < reply_buf_size) {
 				*reply_data++ = data;
 			} else {
-				printf("%s: bt_cmd - Discarded reply data byte "
+				kprintf("%s: bt_cmd - Discarded reply data byte "
 				       "for opcode 0x%x\n", bt_name(bt),
 				       opcode);
 			}
@@ -1970,7 +1970,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 		DELAY(100);
 	}
 	if (cmd_timeout == 0) {
-		printf("%s: bt_cmd: Timeout waiting for command (%x) "
+		kprintf("%s: bt_cmd: Timeout waiting for command (%x) "
 		       "to complete.\n%s: status = 0x%x, intstat = 0x%x, "
 		       "rlen %d\n", bt_name(bt), opcode,
 		       bt_name(bt), status, intstat, reply_len);
@@ -1999,7 +1999,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 		 * reset above), perform a soft reset.
       		 */
 		if (bootverbose)
-			printf("%s: Invalid Command 0x%x\n", bt_name(bt), 
+			kprintf("%s: Invalid Command 0x%x\n", bt_name(bt), 
 				opcode);
 		DELAY(1000);
 		status = bt_inb(bt, STATUS_REG);
@@ -2049,7 +2049,7 @@ btinitmboxes(struct bt_softc *bt) {
 		       /*reply_len*/0, DEFAULT_CMD_TIMEOUT);
 
 	if (error != 0)
-		printf("btinitmboxes: Initialization command failed\n");
+		kprintf("btinitmboxes: Initialization command failed\n");
 	else if (bt->strict_rr != 0) {
 		/*
 		 * If the controller supports
@@ -2064,10 +2064,10 @@ btinitmboxes(struct bt_softc *bt) {
 			       DEFAULT_CMD_TIMEOUT);
 
 		if (error != 0) {
-			printf("btinitmboxes: Unable to enable strict RR\n");
+			kprintf("btinitmboxes: Unable to enable strict RR\n");
 			error = 0;
 		} else if (bootverbose) {
-			printf("%s: Using Strict Round Robin Mailbox Mode\n",
+			kprintf("%s: Using Strict Round Robin Mailbox Mode\n",
 			       bt_name(bt));
 		}
 	}
@@ -2106,7 +2106,7 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 		       DEFAULT_CMD_TIMEOUT);
 
 	if (error != 0) {
-		printf("%s: btfetchtransinfo - Inquire Setup Info Failed %x\n",
+		kprintf("%s: btfetchtransinfo - Inquire Setup Info Failed %x\n",
 		       bt_name(bt), error);
 		cts->valid = 0;
 		return;
@@ -2161,7 +2161,7 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 			       DEFAULT_CMD_TIMEOUT);
 		
 		if (error != 0) {
-			printf("%s: btfetchtransinfo - Inquire Sync "
+			kprintf("%s: btfetchtransinfo - Inquire Sync "
 			       "Info Failed 0x%x\n", bt_name(bt), error);
 			cts->valid = 0;
 			return;
@@ -2228,13 +2228,13 @@ bttimeout(void *arg)
 	ccb = bccb->ccb;
 	bt = (struct bt_softc *)ccb->ccb_h.ccb_bt_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("CCB %p - timed out\n", (void *)bccb);
+	kprintf("CCB %p - timed out\n", (void *)bccb);
 
 	crit_enter();
 
 	if ((bccb->flags & BCCB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("CCB %p - timed out CCB already completed\n",
+		kprintf("CCB %p - timed out CCB already completed\n",
 		       (void *)bccb);
 		crit_exit();
 		return;
@@ -2286,7 +2286,7 @@ bttimeout(void *arg)
 		 */
 		ccb->ccb_h.status = CAM_CMD_TIMEOUT;
 		btreset(bt, /*hardreset*/TRUE);
-		printf("%s: No longer in timeout\n", bt_name(bt));
+		kprintf("%s: No longer in timeout\n", bt_name(bt));
 	} else {
 		/*    
 		 * Send a Bus Device Reset message:

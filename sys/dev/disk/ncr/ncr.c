@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.16 2006/12/20 18:14:39 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.17 2006/12/22 23:26:16 swildner Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -251,7 +251,7 @@
 #ifdef DIAGNOSTIC
 #define	assert(expression) {					\
 	if (!(expression)) {					\
-		(void)printf("assertion \"%s\" failed: "	\
+		(void)kprintf("assertion \"%s\" failed: "	\
 			     "file \"%s\", line %d\n",		\
 			     #expression, __FILE__, __LINE__);	\
 	     Debugger("");					\
@@ -260,7 +260,7 @@
 #else
 #define	assert(expression) {					\
 	if (!(expression)) {					\
-		(void)printf("assertion \"%s\" failed: "	\
+		(void)kprintf("assertion \"%s\" failed: "	\
 			     "file \"%s\", line %d\n",		\
 			     #expression, __FILE__, __LINE__);	\
 	}							\
@@ -3021,13 +3021,13 @@ static void ncr_script_copy_and_bind (ncb_p np, ncrcmd *src, ncrcmd *dst, int le
 		*/
 
 		if (opcode == 0) {
-			printf ("%s: ERROR0 IN SCRIPT at %d.\n",
+			kprintf ("%s: ERROR0 IN SCRIPT at %d.\n",
 				ncr_name(np), (int) (src-start-1));
 			DELAY (1000000);
 		};
 
 		if (DEBUG_FLAGS & DEBUG_SCRIPT)
-			printf ("%p:  <%x>\n",
+			kprintf ("%p:  <%x>\n",
 				(src-1), (unsigned)opcode);
 
 		/*
@@ -3047,7 +3047,7 @@ static void ncr_script_copy_and_bind (ncb_p np, ncrcmd *src, ncrcmd *dst, int le
 			if ((tmp2 & RELOC_MASK) == RELOC_KVAR)
 				tmp2 = 0;
 			if ((tmp1 ^ tmp2) & 3) {
-				printf ("%s: ERROR1 IN SCRIPT at %d.\n",
+				kprintf ("%s: ERROR1 IN SCRIPT at %d.\n",
 					ncr_name(np), (int) (src-start-1));
 				DELAY (1000000);
 			}
@@ -3421,9 +3421,9 @@ ncr_attach (device_t dev)
 	np->rv_stest2	= INB(nc_stest2) & 0x20;
 
 	if (bootverbose >= 2) {
-		printf ("\tBIOS values:  SCNTL3:%02x DMODE:%02x  DCNTL:%02x\n",
+		kprintf ("\tBIOS values:  SCNTL3:%02x DMODE:%02x  DCNTL:%02x\n",
 			np->rv_scntl3, np->rv_dmode, np->rv_dcntl);
-		printf ("\t              CTEST3:%02x CTEST4:%02x CTEST5:%02x\n",
+		kprintf ("\t              CTEST3:%02x CTEST4:%02x CTEST5:%02x\n",
 			np->rv_ctest3, np->rv_ctest4, np->rv_ctest5);
 	}
 
@@ -3467,7 +3467,7 @@ ncr_attach (device_t dev)
 
 #ifdef NCR_TEKRAM_EEPROM
 	if (bootverbose) {
-		printf ("%s: Tekram EEPROM read %s\n",
+		kprintf ("%s: Tekram EEPROM read %s\n",
 			ncr_name(np),
 			read_tekram_eeprom (np, NULL) ?
 			"succeeded" : "failed");
@@ -3622,14 +3622,14 @@ ncr_attach (device_t dev)
 
 		if (!cachelnsz) {
 			cachelnsz = 8;
-			printf("%s: setting PCI cache line size register to %d.\n",
+			kprintf("%s: setting PCI cache line size register to %d.\n",
 				ncr_name(np), (int)cachelnsz);
 			pci_write_config(dev, PCIR_CACHELNSZ, cachelnsz, 1);
 		}
 
 		if (!(command & (1<<4))) {
 			command |= (1<<4);
-			printf("%s: setting PCI command write and invalidate.\n",
+			kprintf("%s: setting PCI command write and invalidate.\n",
 				ncr_name(np));
 			pci_write_config(dev, PCIR_COMMAND, command, 2);
 		}
@@ -3667,7 +3667,7 @@ ncr_attach (device_t dev)
 	**	Bells and whistles   ;-)
 	*/
 	if (bootverbose)
-		printf("%s: minsync=%d, maxsync=%d, maxoffs=%d, %d dwords burst, %s dma fifo\n",
+		kprintf("%s: minsync=%d, maxsync=%d, maxoffs=%d, %d dwords burst, %s dma fifo\n",
 		ncr_name(np), np->minsync, np->maxsync, np->maxoffs,
 		burst_length(np->maxburst),
 		(np->rv_ctest5 & DFS) ? "large" : "normal");
@@ -3676,7 +3676,7 @@ ncr_attach (device_t dev)
 	**	Print some complementary information that can be helpfull.
 	*/
 	if (bootverbose)
-		printf("%s: %s, %s IRQ driver%s\n",
+		kprintf("%s: %s, %s IRQ driver%s\n",
 			ncr_name(np),
 			np->rv_stest2 & 0x20 ? "differential" : "single-ended",
 			np->rv_dcntl & IRQM ? "totem pole" : "open drain",
@@ -3728,9 +3728,9 @@ ncr_attach (device_t dev)
 	{
 		int reg;
 		for (reg=0; reg<256; reg+=4) {
-			if (reg%16==0) printf ("reg[%2x]", reg);
-			printf (" %08x", (int)pci_conf_read (config_id, reg));
-			if (reg%16==12) printf ("\n");
+			if (reg%16==0) kprintf ("reg[%2x]", reg);
+			kprintf (" %08x", (int)pci_conf_read (config_id, reg));
+			if (reg%16==12) kprintf ("\n");
 		}
 	}
 #endif /* NCR_DUMP_REG */
@@ -3749,7 +3749,7 @@ ncr_attach (device_t dev)
 	*/
 
 	if (ncr_snooptest (np)) {
-		printf ("CACHE INCORRECTLY CONFIGURED.\n");
+		kprintf ("CACHE INCORRECTLY CONFIGURED.\n");
 		return EINVAL;
 	};
 
@@ -3827,7 +3827,7 @@ ncr_intr(vnp)
 	ncb_p np = vnp;
 	crit_enter();
 
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("[");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("[");
 
 	if (INB(nc_istat) & (INTF|SIP|DIP)) {
 		/*
@@ -3840,7 +3840,7 @@ ncr_intr(vnp)
 		np->ticks = 100;
 	};
 
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("]\n");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("]\n");
 
 	crit_exit();
 }
@@ -3964,7 +3964,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 				cp->tag=lp->lasttag;
 				if (DEBUG_FLAGS & DEBUG_TAGS) {
 					PRINT_ADDR(ccb);
-					printf ("using tag #%d.\n", cp->tag);
+					kprintf ("using tag #%d.\n", cp->tag);
 				};
 			};
 		} else {
@@ -3999,9 +3999,9 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			msgptr[msglen++] = tp->tinfo.goal.offset;
 			if (DEBUG_FLAGS & DEBUG_NEGO) {
 				PRINT_ADDR(ccb);
-				printf ("sync msgout: ");
+				kprintf ("sync msgout: ");
 				ncr_show_msg (&cp->scsi_smsg [msglen-5]);
-				printf (".\n");
+				kprintf (".\n");
 			};
 			break;
 		case NS_WIDE:
@@ -4011,9 +4011,9 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			msgptr[msglen++] = tp->tinfo.goal.width;
 			if (DEBUG_FLAGS & DEBUG_NEGO) {
 				PRINT_ADDR(ccb);
-				printf ("wide msgout: ");
+				kprintf ("wide msgout: ");
 				ncr_show_msg (&cp->scsi_smsg [msglen-4]);
-				printf (".\n");
+				kprintf (".\n");
 			};
 			break;
 		};
@@ -4157,7 +4157,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		np->squeueput = qidx;
 
 		if(DEBUG_FLAGS & DEBUG_QUEUE)
-			printf("%s: queuepos=%d tryoffset=%d.\n",
+			kprintf("%s: queuepos=%d tryoffset=%d.\n",
 			       ncr_name (np), np->squeueput,
 			       (unsigned)(READSCRIPT(startpos[0]) - 
 			       (NCB_SCRIPTH_PHYS (np, tryloop))));
@@ -4441,7 +4441,7 @@ ncr_complete (ncb_p np, nccb_p cp)
 	ncb_profile (np, cp);
 
 	if (DEBUG_FLAGS & DEBUG_TINY)
-		printf ("CCB=%x STAT=%x/%x\n", (int)(intptr_t)cp & 0xfff,
+		kprintf ("CCB=%x STAT=%x/%x\n", (int)(intptr_t)cp & 0xfff,
 			cp->host_status,cp->s_status);
 
 	ccb = cp->ccb;
@@ -4465,7 +4465,7 @@ ncr_complete (ncb_p np, nccb_p cp)
 
 	if (cp->parity_status) {
 		PRINT_ADDR(ccb);
-		printf ("%d parity error(s), fallback.\n", cp->parity_status);
+		kprintf ("%d parity error(s), fallback.\n", cp->parity_status);
 		/*
 		**	fallback to asynch transfer.
 		*/
@@ -4481,13 +4481,13 @@ ncr_complete (ncb_p np, nccb_p cp)
 		PRINT_ADDR(ccb);
 		switch (cp->xerr_status) {
 		case XE_EXTRA_DATA:
-			printf ("extraneous data discarded.\n");
+			kprintf ("extraneous data discarded.\n");
 			break;
 		case XE_BAD_PHASE:
-			printf ("illegal scsi phase (4/5).\n");
+			kprintf ("illegal scsi phase (4/5).\n");
 			break;
 		default:
-			printf ("extended error %d.\n", cp->xerr_status);
+			kprintf ("extended error %d.\n", cp->xerr_status);
 			break;
 		};
 		if (cp->host_status==HS_COMPLETE)
@@ -4551,7 +4551,7 @@ ncr_complete (ncb_p np, nccb_p cp)
 		**  Other protocol messes
 		*/
 		PRINT_ADDR(ccb);
-		printf ("COMMAND FAILED (%x %x) @%p.\n",
+		kprintf ("COMMAND FAILED (%x %x) @%p.\n",
 			cp->host_status, cp->s_status, cp);
 
 		ccb->ccb_h.status = CAM_CMD_TIMEOUT;
@@ -4602,7 +4602,7 @@ ncr_wakeup (ncb_p np, u_long code)
 			break;
 
 		case HS_DISCONNECT:
-			if(DEBUG_FLAGS & DEBUG_TINY) printf ("D");
+			if(DEBUG_FLAGS & DEBUG_TINY) kprintf ("D");
 			/* fall through */
 
 		case HS_BUSY:
@@ -4729,7 +4729,7 @@ ncr_init(ncb_p np, char * msg, u_long code)
 	**	Message.
 	*/
 
-	if (msg) printf ("%s: restart (%s).\n", ncr_name (np), msg);
+	if (msg) kprintf ("%s: restart (%s).\n", ncr_name (np), msg);
 
 	/*
 	**	Clear Start Queue
@@ -4773,9 +4773,9 @@ ncr_init(ncb_p np, char * msg, u_long code)
 	OUTB (nc_stime0, 0x0b	);	/*  HTH = disabled, STO = 0.1 sec.   */
 
 	if (bootverbose >= 2) {
-		printf ("\tACTUAL values:SCNTL3:%02x DMODE:%02x  DCNTL:%02x\n",
+		kprintf ("\tACTUAL values:SCNTL3:%02x DMODE:%02x  DCNTL:%02x\n",
 			np->rv_scntl3, np->rv_dmode, np->rv_dcntl);
-		printf ("\t              CTEST3:%02x CTEST4:%02x CTEST5:%02x\n",
+		kprintf ("\t              CTEST3:%02x CTEST4:%02x CTEST5:%02x\n",
 			np->rv_ctest3, np->rv_ctest4, np->rv_ctest5);
 	}
 
@@ -5145,7 +5145,7 @@ ncr_timeout (void *arg)
 			cp->jump_nccb.l_cmd = (SCR_JUMP);
 			if (cp->phys.header.launch.l_paddr ==
 				NCB_SCRIPT_PHYS (np, select)) {
-				printf ("%s: timeout nccb=%p (skip)\n",
+				kprintf ("%s: timeout nccb=%p (skip)\n",
 					ncr_name (np), cp);
 				cp->phys.header.launch.l_paddr
 				= NCB_SCRIPT_PHYS (np, skip);
@@ -5178,9 +5178,9 @@ ncr_timeout (void *arg)
 		*/
 
 		crit_enter();
-		if (DEBUG_FLAGS & DEBUG_TINY) printf ("{");
+		if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("{");
 		ncr_exception (np);
-		if (DEBUG_FLAGS & DEBUG_TINY) printf ("}");
+		if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("}");
 		crit_exit();
 	};
 }
@@ -5246,7 +5246,7 @@ static void ncr_log_hard_error(ncb_p np, u_short sist, u_char dstat)
 		script_name	= "mem";
 	}
 
-	printf ("%s:%d: ERROR (%x:%x) (%x-%x-%x) (%x/%x) @ (%s %x:%08x).\n",
+	kprintf ("%s:%d: ERROR (%x:%x) (%x-%x-%x) (%x/%x) @ (%s %x:%08x).\n",
 		ncr_name (np), (unsigned)INB (nc_sdid)&0x0f, dstat, sist,
 		(unsigned)INB (nc_socl), (unsigned)INB (nc_sbcl), (unsigned)INB (nc_sbdl),
 		(unsigned)INB (nc_sxfer),(unsigned)INB (nc_scntl3), script_name, script_ofs,
@@ -5254,14 +5254,14 @@ static void ncr_log_hard_error(ncb_p np, u_short sist, u_char dstat)
 
 	if (((script_ofs & 3) == 0) &&
 	    (unsigned)script_ofs < script_size) {
-		printf ("%s: script cmd = %08x\n", ncr_name(np),
+		kprintf ("%s: script cmd = %08x\n", ncr_name(np),
 			(int)READSCRIPT_OFF(script_base, script_ofs));
 	}
 
-        printf ("%s: regdump:", ncr_name(np));
+        kprintf ("%s: regdump:", ncr_name(np));
         for (i=0; i<16;i++)
-            printf (" %02x", (unsigned)INB_OFF(i));
-        printf (".\n");
+            kprintf (" %02x", (unsigned)INB_OFF(i));
+        kprintf (".\n");
 }
 
 /*==========================================================
@@ -5282,7 +5282,7 @@ void ncr_exception (ncb_p np)
 	**	interrupt on the fly ?
 	*/
 	while ((istat = INB (nc_istat)) & INTF) {
-		if (DEBUG_FLAGS & DEBUG_TINY) printf ("F ");
+		if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("F ");
 		OUTB (nc_istat, INTF);
 		np->profile.num_fly++;
 		ncr_wakeup (np, 0);
@@ -5301,7 +5301,7 @@ void ncr_exception (ncb_p np)
 	np->profile.num_int++;
 
 	if (DEBUG_FLAGS & DEBUG_TINY)
-		printf ("<%d|%x:%x|%x:%x>",
+		kprintf ("<%d|%x:%x|%x:%x>",
 			INB(nc_scr0),
 			dstat,sist,
 			(unsigned)INL(nc_dsp),
@@ -5412,7 +5412,7 @@ void ncr_exception (ncb_p np)
 	     (INB(nc_sstat1) & (FF3210)	) ||
 	     (INB(nc_sstat2) & (ILF1|ORF1|OLF1)) ||	/* wide .. */
 	     !(dstat & DFE)) {
-		printf ("%s: have to clear fifos.\n", ncr_name (np));
+		kprintf ("%s: have to clear fifos.\n", ncr_name (np));
 		OUTB (nc_stest3, TE|CSF);	/* clear scsi fifo */
 		OUTB (nc_ctest3, np->rv_ctest3 | CLF);
 						/* clear dma fifo  */
@@ -5424,7 +5424,7 @@ void ncr_exception (ncb_p np)
 	*/
 
 	if (sist & HTH) {
-		printf ("%s: handshake timeout\n", ncr_name(np));
+		kprintf ("%s: handshake timeout\n", ncr_name(np));
 		OUTB (nc_scntl1, CRST);
 		DELAY (1000);
 		OUTB (nc_scntl1, 0x00);
@@ -5467,11 +5467,11 @@ void ncr_exception (ncb_p np)
 			/*
 			**	info message
 			*/
-			printf ("%s: INFO: LDSC while IID.\n",
+			kprintf ("%s: INFO: LDSC while IID.\n",
 				ncr_name (np));
 			return;
 		};
-		printf ("%s: target %d doesn't release the bus.\n",
+		kprintf ("%s: target %d doesn't release the bus.\n",
 			ncr_name (np), INB (nc_sdid)&0x0f);
 		/*
 		**	return without restarting the NCR.
@@ -5516,23 +5516,23 @@ void ncr_exception (ncb_p np)
 			switch (i%16) {
 
 			case 0:
-				printf ("%s: reg[%d0]: ",
+				kprintf ("%s: reg[%d0]: ",
 					ncr_name(np),i/16);
 				break;
 			case 4:
 			case 8:
 			case 12:
-				printf (" ");
+				kprintf (" ");
 				break;
 			};
 			val = bus_space_read_1(np->bst, np->bsh, i);
-			printf (" %x%x", val/16, val%16);
-			if (i%16==15) printf (".\n");
+			kprintf (" %x%x", val/16, val%16);
+			if (i%16==15) kprintf (".\n");
 		};
 
 		callout_stop(&np->timeout_ch);
 
-		printf ("%s: halted!\n", ncr_name(np));
+		kprintf ("%s: halted!\n", ncr_name(np));
 		/*
 		**	don't restart controller ...
 		*/
@@ -5544,7 +5544,7 @@ void ncr_exception (ncb_p np)
 	/*
 	**	Freeze system to be able to read the messages.
 	*/
-	printf ("ncr: fatal error: system halted - press reset to reboot ...");
+	kprintf ("ncr: fatal error: system halted - press reset to reboot ...");
 	crit_enter();
 	for (;;);
 #endif
@@ -5576,7 +5576,7 @@ void ncr_int_sto (ncb_p np)
 {
 	u_long dsa, scratcha, diff;
 	nccb_p cp;
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("T");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("T");
 
 	/*
 	**	look for nccb and set the status.
@@ -5680,12 +5680,12 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 		cp = cp->link_nccb;
 
 	if (!cp) {
-	    printf ("%s: SCSI phase error fixup: CCB already dequeued (%p)\n", 
+	    kprintf ("%s: SCSI phase error fixup: CCB already dequeued (%p)\n", 
 		    ncr_name (np), (void *) np->header.cp);
 	    return;
 	}
 	if (cp != np->header.cp) {
-	    printf ("%s: SCSI phase error fixup: CCB address mismatch "
+	    kprintf ("%s: SCSI phase error fixup: CCB address mismatch "
 		    "(%p != %p) np->nccb = %p\n", 
 		    ncr_name (np), (void *)cp, (void *)np->header.cp,
 		    (void *)np->link_nccb);
@@ -5720,12 +5720,12 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 	**	log the information
 	*/
 	if (DEBUG_FLAGS & (DEBUG_TINY|DEBUG_PHASE)) {
-		printf ("P%x%x ",cmd&7, sbcl&7);
-		printf ("RL=%d D=%d SS0=%x ",
+		kprintf ("P%x%x ",cmd&7, sbcl&7);
+		kprintf ("RL=%d D=%d SS0=%x ",
 			(unsigned) rest, (unsigned) delta, ss0);
 	};
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
-		printf ("\nCP=%p CP2=%p DSP=%x NXT=%x VDSP=%p CMD=%x ",
+		kprintf ("\nCP=%p CP2=%p DSP=%x NXT=%x VDSP=%p CMD=%x ",
 			cp, np->header.cp,
 			dsp,
 			nxtdsp, (volatile char*)vdsp_base+vdsp_off, cmd);
@@ -5747,7 +5747,7 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 	};
 
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
-		printf ("OCMD=%x\nTBLP=%p OLEN=%lx OADR=%lx\n",
+		kprintf ("OCMD=%x\nTBLP=%p OLEN=%lx OADR=%lx\n",
 			(unsigned) (READSCRIPT_OFF(vdsp_base, vdsp_off) >> 24),
 			(void *) tblp,
 			(u_long) olen,
@@ -5760,7 +5760,7 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 
 	if (cmd != (READSCRIPT_OFF(vdsp_base, vdsp_off) >> 24)) {
 		PRINT_ADDR(cp->ccb);
-		printf ("internal error: cmd=%02x != %02x=(vdsp[0] >> 24)\n",
+		kprintf ("internal error: cmd=%02x != %02x=(vdsp[0] >> 24)\n",
 			(unsigned)cmd,
 			(unsigned)READSCRIPT_OFF(vdsp_base, vdsp_off) >> 24);
 		
@@ -5768,7 +5768,7 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 	}
 	if (cmd & 0x06) {
 		PRINT_ADDR(cp->ccb);
-		printf ("phase change %x-%x %d@%08x resid=%d.\n",
+		kprintf ("phase change %x-%x %d@%08x resid=%d.\n",
 			cmd&7, sbcl&7, (unsigned)olen,
 			(unsigned)oadr, (unsigned)rest);
 
@@ -5795,7 +5795,7 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
 		PRINT_ADDR(cp->ccb);
-		printf ("newcmd[%d] %x %x %x %x.\n",
+		kprintf ("newcmd[%d] %x %x %x %x.\n",
 			(int)(newcmd - cp->patch),
 			(unsigned)newcmd[0],
 			(unsigned)newcmd[1],
@@ -5826,15 +5826,15 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 static int ncr_show_msg (u_char * msg)
 {
 	u_char i;
-	printf ("%x",*msg);
+	kprintf ("%x",*msg);
 	if (*msg==MSG_EXTENDED) {
 		for (i=1;i<8;i++) {
 			if (i-1>msg[1]) break;
-			printf ("-%x",msg[i]);
+			kprintf ("-%x",msg[i]);
 		};
 		return (i+1);
 	} else if ((*msg & 0xf0) == 0x20) {
-		printf ("-%x",msg[1]);
+		kprintf ("-%x",msg[1]);
 		return (2);
 	};
 	return (1);
@@ -5850,7 +5850,7 @@ void ncr_int_sir (ncb_p np)
 	u_int	target = INB (nc_sdid) & 0x0f;
 	tcb_p	tp     = &np->target[target];
 	int     i;
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("I#%d", num);
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("I#%d", num);
 
 	switch (num) {
 	case SIR_SENSE_RESTART:
@@ -5891,25 +5891,25 @@ void ncr_int_sir (ncb_p np)
 		*/
 
 		if (DEBUG_FLAGS & DEBUG_RESTART)
-			printf ("%s: int#%d",ncr_name (np),num);
+			kprintf ("%s: int#%d",ncr_name (np),num);
 		cp = (nccb_p) 0;
 		for (i=0; i<MAX_TARGET; i++) {
-			if (DEBUG_FLAGS & DEBUG_RESTART) printf (" t%d", i);
+			if (DEBUG_FLAGS & DEBUG_RESTART) kprintf (" t%d", i);
 			tp = &np->target[i];
-			if (DEBUG_FLAGS & DEBUG_RESTART) printf ("+");
+			if (DEBUG_FLAGS & DEBUG_RESTART) kprintf ("+");
 			cp = tp->hold_cp;
 			if (!cp) continue;
-			if (DEBUG_FLAGS & DEBUG_RESTART) printf ("+");
+			if (DEBUG_FLAGS & DEBUG_RESTART) kprintf ("+");
 			if ((cp->host_status==HS_BUSY) &&
 				(cp->s_status==SCSI_STATUS_CHECK_COND))
 				break;
-			if (DEBUG_FLAGS & DEBUG_RESTART) printf ("- (remove)");
+			if (DEBUG_FLAGS & DEBUG_RESTART) kprintf ("- (remove)");
 			tp->hold_cp = cp = (nccb_p) 0;
 		};
 
 		if (cp) {
 			if (DEBUG_FLAGS & DEBUG_RESTART)
-				printf ("+ restart job ..\n");
+				kprintf ("+ restart job ..\n");
 			OUTL (nc_dsa, CCB_PHYS (cp, phys));
 			OUTL (nc_dsp, NCB_SCRIPTH_PHYS (np, getcc));
 			return;
@@ -5918,7 +5918,7 @@ void ncr_int_sir (ncb_p np)
 		/*
 		**	no job, resume normal processing
 		*/
-		if (DEBUG_FLAGS & DEBUG_RESTART) printf (" -- remove trap\n");
+		if (DEBUG_FLAGS & DEBUG_RESTART) kprintf (" -- remove trap\n");
 		WRITESCRIPT(start0[0], SCR_INT ^ IFFALSE (0));
 		break;
 
@@ -5931,7 +5931,7 @@ void ncr_int_sir (ncb_p np)
 		*/
 		if (DEBUG_FLAGS & DEBUG_RESTART) {
 			PRINT_ADDR(cp->ccb);
-			printf ("in getcc reselect by t%d.\n",
+			kprintf ("in getcc reselect by t%d.\n",
 				INB(nc_ssid) & 0x0f);
 		}
 
@@ -6031,7 +6031,7 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("negotiation failed sir=%x status=%x.\n",
+			kprintf ("negotiation failed sir=%x status=%x.\n",
 				num, cp->nego_status);
 		};
 
@@ -6063,9 +6063,9 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("sync msgin: ");
+			kprintf ("sync msgin: ");
 			(void) ncr_show_msg (np->msgin);
-			printf (".\n");
+			kprintf (".\n");
 		};
 
 		/*
@@ -6108,7 +6108,7 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("sync: per=%d scntl3=0x%x ofs=%d fak=%d chg=%d.\n",
+			kprintf ("sync: per=%d scntl3=0x%x ofs=%d fak=%d chg=%d.\n",
 				per, scntl3, ofs, fak, chg);
 		}
 
@@ -6158,9 +6158,9 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("sync msgout: ");
+			kprintf ("sync msgout: ");
 			(void) ncr_show_msg (np->msgout);
-			printf (".\n");
+			kprintf (".\n");
 		}
 
 		if (!ofs) {
@@ -6177,9 +6177,9 @@ void ncr_int_sir (ncb_p np)
 		*/
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("wide msgin: ");
+			kprintf ("wide msgin: ");
 			(void) ncr_show_msg (np->msgin);
-			printf (".\n");
+			kprintf (".\n");
 		};
 
 		/*
@@ -6198,7 +6198,7 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("wide: wide=%d chg=%d.\n", wide, chg);
+			kprintf ("wide: wide=%d chg=%d.\n", wide, chg);
 		}
 
 		if (INB (HS_PRT) == HS_NEGOTIATE) {
@@ -6248,9 +6248,9 @@ void ncr_int_sir (ncb_p np)
 
 		if (DEBUG_FLAGS & DEBUG_NEGO) {
 			PRINT_ADDR(cp->ccb);
-			printf ("wide msgout: ");
+			kprintf ("wide msgout: ");
 			(void) ncr_show_msg (np->msgout);
-			printf (".\n");
+			kprintf (".\n");
 		}
 		break;
 
@@ -6270,7 +6270,7 @@ void ncr_int_sir (ncb_p np)
 		*/
 
 		PRINT_ADDR(cp->ccb);
-		printf ("MSG_MESSAGE_REJECT received (%x:%x).\n",
+		kprintf ("MSG_MESSAGE_REJECT received (%x:%x).\n",
 			(unsigned)np->lastmsg, np->msgout[0]);
 		break;
 
@@ -6283,9 +6283,9 @@ void ncr_int_sir (ncb_p np)
 		*/
 
 		PRINT_ADDR(cp->ccb);
-		printf ("MSG_MESSAGE_REJECT sent for ");
+		kprintf ("MSG_MESSAGE_REJECT sent for ");
 		(void) ncr_show_msg (np->msgin);
-		printf (".\n");
+		kprintf (".\n");
 		break;
 
 /*--------------------------------------------------------------------
@@ -6305,7 +6305,7 @@ void ncr_int_sir (ncb_p np)
 		*/
 
 		PRINT_ADDR(cp->ccb);
-		printf ("MSG_IGN_WIDE_RESIDUE received, but not yet implemented.\n");
+		kprintf ("MSG_IGN_WIDE_RESIDUE received, but not yet implemented.\n");
 		break;
 
 	case SIR_MISSING_SAVE:
@@ -6318,7 +6318,7 @@ void ncr_int_sir (ncb_p np)
 		*/
 
 		PRINT_ADDR(cp->ccb);
-		printf ("MSG_DISCONNECT received, but datapointer not saved:\n"
+		kprintf ("MSG_DISCONNECT received, but datapointer not saved:\n"
 			"\tdata=%x save=%x goal=%x.\n",
 			(unsigned) INL (nc_temp),
 			(unsigned) np->header.savep,
@@ -6376,7 +6376,7 @@ void ncr_int_sir (ncb_p np)
 		**	else remove the interrupt.
 		*/
 
-		printf ("%s: queue empty.\n", ncr_name (np));
+		kprintf ("%s: queue empty.\n", ncr_name (np));
 		WRITESCRIPT(start1[0], SCR_INT ^ IFFALSE (0));
 		break;
 	};
@@ -6429,7 +6429,7 @@ static	nccb_p ncr_get_nccb
 
 	if (cp != NULL) {
 		if (cp->magic) {
-			printf("%s: Bogus free cp found\n", ncr_name(np));
+			kprintf("%s: Bogus free cp found\n", ncr_name(np));
 			crit_exit();
 			return (NULL);
 		}
@@ -6553,7 +6553,7 @@ ncr_alloc_nccb (ncb_p np, u_long target, u_long lun)
 	cp = kmalloc (sizeof (struct nccb), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	if (DEBUG_FLAGS & DEBUG_ALLOC) { 
-		printf ("new nccb @%p.\n", cp);
+		kprintf ("new nccb @%p.\n", cp);
 	}
 
 	/*
@@ -6638,7 +6638,7 @@ static	int	ncr_scatter
 			chunk /= 2;
 
 	if(DEBUG_FLAGS & DEBUG_SCATTER)
-		printf("ncr?:\tscattering virtual=%p size=%d chunk=%d.\n",
+		kprintf("ncr?:\tscattering virtual=%p size=%d chunk=%d.\n",
 		       (void *) vaddr, (unsigned) datalen, (unsigned) chunk);
 
 	/*
@@ -6678,7 +6678,7 @@ static	int	ncr_scatter
 		};
 
 		if(DEBUG_FLAGS & DEBUG_SCATTER)
-			printf ("\tseg #%d  addr=%x  size=%d  (rest=%d).\n",
+			kprintf ("\tseg #%d  addr=%x  size=%d  (rest=%d).\n",
 			segment,
 			(unsigned) segaddr,
 			(unsigned) segsize,
@@ -6690,7 +6690,7 @@ static	int	ncr_scatter
 	}
 
 	if (datalen) {
-		printf("ncr?: scatter/gather failed (residue=%d).\n",
+		kprintf("ncr?: scatter/gather failed (residue=%d).\n",
 			(unsigned) datalen);
 		return (-1);
 	};
@@ -6726,7 +6726,7 @@ static int ncr_regtest (struct ncb* np)
 #else
 	if ((data & 0xe2f0fffd) != 0x02000080) {
 #endif
-		printf ("CACHE TEST FAILED: reg dstat-sstat2 readback %x.\n",
+		kprintf ("CACHE TEST FAILED: reg dstat-sstat2 readback %x.\n",
 			(unsigned) data);
 		return (0x10);
 	};
@@ -6783,15 +6783,15 @@ static int ncr_snooptest (struct ncb* np)
 	**	check for timeout
 	*/
 	if (i>=NCR_SNOOP_TIMEOUT) {
-		printf ("CACHE TEST FAILED: timeout.\n");
+		kprintf ("CACHE TEST FAILED: timeout.\n");
 		return (0x20);
 	};
 	/*
 	**	Check termination position.
 	*/
 	if (pc != NCB_SCRIPTH_PHYS (np, snoopend)+8) {
-		printf ("CACHE TEST FAILED: script execution failed.\n");
-		printf ("start=%08lx, pc=%08lx, end=%08lx\n", 
+		kprintf ("CACHE TEST FAILED: script execution failed.\n");
+		kprintf ("start=%08lx, pc=%08lx, end=%08lx\n", 
 			(u_long) NCB_SCRIPTH_PHYS (np, snooptest), (u_long) pc,
 			(u_long) NCB_SCRIPTH_PHYS (np, snoopend) +8);
 		return (0x40);
@@ -6800,17 +6800,17 @@ static int ncr_snooptest (struct ncb* np)
 	**	Show results.
 	*/
 	if (host_wr != ncr_rd) {
-		printf ("CACHE TEST FAILED: host wrote %d, ncr read %d.\n",
+		kprintf ("CACHE TEST FAILED: host wrote %d, ncr read %d.\n",
 			(int) host_wr, (int) ncr_rd);
 		err |= 1;
 	};
 	if (host_rd != ncr_wr) {
-		printf ("CACHE TEST FAILED: ncr wrote %d, host read %d.\n",
+		kprintf ("CACHE TEST FAILED: ncr wrote %d, host read %d.\n",
 			(int) ncr_wr, (int) host_rd);
 		err |= 2;
 	};
 	if (ncr_bk != ncr_wr) {
-		printf ("CACHE TEST FAILED: ncr wrote %d, read back %d.\n",
+		kprintf ("CACHE TEST FAILED: ncr wrote %d, read back %d.\n",
 			(int) ncr_wr, (int) ncr_bk);
 		err |= 4;
 	};
@@ -6915,7 +6915,7 @@ static void ncr_selectclock(ncb_p np, u_char scntl3)
 	}
 
 	if (bootverbose >= 2)
-		printf ("%s: enabling clock multiplier\n", ncr_name(np));
+		kprintf ("%s: enabling clock multiplier\n", ncr_name(np));
 
 	OUTB(nc_stest1, DBLEN);	   /* Enable clock multiplier		  */
 	if (np->multiplier > 2) {  /* Poll bit 5 of stest4 for quadrupler */
@@ -6923,7 +6923,7 @@ static void ncr_selectclock(ncb_p np, u_char scntl3)
 		while (!(INB(nc_stest4) & LCKFRQ) && --i > 0)
 			DELAY(20);
 		if (!i)
-			printf("%s: the chip cannot lock the frequency\n", ncr_name(np));
+			kprintf("%s: the chip cannot lock the frequency\n", ncr_name(np));
 	} else			/* Wait 20 micro-seconds for doubler	*/
 		DELAY(20);
 	OUTB(nc_stest3, HSC);		/* Halt the scsi clock		*/
@@ -6974,7 +6974,7 @@ ncrgetfreq (ncb_p np, int gen)
 	OUTB (nc_scntl3, 0);
 
 	if (bootverbose >= 2)
-	  	printf ("\tDelay (GEN=%d): %u msec\n", gen, ms);
+	  	kprintf ("\tDelay (GEN=%d): %u msec\n", gen, ms);
 	/*
 	 * adjust for prescaler, and convert into KHz 
 	 */
@@ -7002,7 +7002,7 @@ static void ncr_getclock (ncb_p np, u_char multiplier)
 			f2 = ncrgetfreq (np, 11);
 
 			if (bootverbose >= 2)
-			  printf ("\tNCR clock is %uKHz, %uKHz\n", f1, f2);
+			  kprintf ("\tNCR clock is %uKHz, %uKHz\n", f1, f2);
 			if (f1 > f2) f1 = f2;	/* trust lower result	*/
 			if (f1 > 45000) {
 				scntl3 = 5;	/* >45Mhz: assume 80MHz	*/
@@ -7112,16 +7112,16 @@ read_tekram_eeprom(ncb_p np, struct tekram_eeprom *buffer)
 	for (i = 0; i < 64; i++)
 	{
 		u_short val;
-if((i&0x0f) == 0) printf ("%02x:", i*2);
+if((i&0x0f) == 0) kprintf ("%02x:", i*2);
 		val = read_tekram_eeprom_reg (np, i);
 		if (p)
 			*p++ = val;
 		sum += val;
-if((i&0x01) == 0x00) printf (" ");
-		printf ("%02x%02x", val & 0xff, (val >> 8) & 0xff);
-if((i&0x0f) == 0x0f) printf ("\n");
+if((i&0x01) == 0x00) kprintf (" ");
+		kprintf ("%02x%02x", val & 0xff, (val >> 8) & 0xff);
+if((i&0x0f) == 0x0f) kprintf ("\n");
 	}
-printf ("Sum = %04x\n", sum);
+kprintf ("Sum = %04x\n", sum);
 	return sum == 0x1234;
 }
 #endif /* NCR_TEKRAM_EEPROM */

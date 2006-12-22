@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.15 2006/12/20 18:14:40 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.16 2006/12/22 23:26:23 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -123,7 +123,7 @@ static void ser_putc(int c)
 }
 
 int
-ser_printf(const char *fmt, ...)
+ser_kprintf(const char *fmt, ...)
 {
     __va_list args;
     int i;
@@ -210,7 +210,7 @@ iir_init(struct gdt_softc *gdt)
                            /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
                            /*flags*/BUS_DMA_ALLOCNOW,
                            &gdt->sc_buffer_dmat) != 0) {
-        printf("iir%d: bus_dma_tag_create(...,gdt->sc_buffer_dmat) failed\n",
+        kprintf("iir%d: bus_dma_tag_create(...,gdt->sc_buffer_dmat) failed\n",
                gdt->sc_hanum);
         return (1);
     }
@@ -225,7 +225,7 @@ iir_init(struct gdt_softc *gdt)
                            /*nsegments*/1,
                            /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
                            /*flags*/0, &gdt->sc_gccb_dmat) != 0) {
-        printf("iir%d: bus_dma_tag_create(...,gdt->sc_gccb_dmat) failed\n",
+        kprintf("iir%d: bus_dma_tag_create(...,gdt->sc_gccb_dmat) failed\n",
                gdt->sc_hanum);
         return (1);
     }
@@ -234,7 +234,7 @@ iir_init(struct gdt_softc *gdt)
     /* Allocation for our ccbs */
     if (bus_dmamem_alloc(gdt->sc_gccb_dmat, (void **)&gdt->sc_gccbs,
                          BUS_DMA_NOWAIT, &gdt->sc_gccb_dmamap) != 0) {
-        printf("iir%d: bus_dmamem_alloc(...,&gdt->sc_gccbs,...) failed\n",
+        kprintf("iir%d: bus_dmamem_alloc(...,&gdt->sc_gccbs,...) failed\n",
                gdt->sc_hanum);
         return (1);
     }
@@ -268,14 +268,14 @@ iir_init(struct gdt_softc *gdt)
     /* allocate ccb for gdt_internal_cmd() */
     gccb = gdt_get_ccb(gdt);
     if (gccb == NULL) {
-        printf("iir%d: No free command index found\n",
+        kprintf("iir%d: No free command index found\n",
                gdt->sc_hanum);
         return (1);
     }
 
     if (!gdt_internal_cmd(gdt, gccb, GDT_SCREENSERVICE, GDT_INIT, 
                           0, 0, 0)) {
-        printf("iir%d: Screen service initialization error %d\n",
+        kprintf("iir%d: Screen service initialization error %d\n",
                gdt->sc_hanum, gdt->sc_status);
         gdt_free_ccb(gdt, gccb);
         return (1);
@@ -283,7 +283,7 @@ iir_init(struct gdt_softc *gdt)
 
     if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INIT, 
                           GDT_LINUX_OS, 0, 0)) {
-        printf("iir%d: Cache service initialization error %d\n",
+        kprintf("iir%d: Cache service initialization error %d\n",
                gdt->sc_hanum, gdt->sc_status);
         gdt_free_ccb(gdt, gccb);
         return (1);
@@ -293,7 +293,7 @@ iir_init(struct gdt_softc *gdt)
 
     if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_MOUNT, 
                           0xffff, 1, 0)) {
-        printf("iir%d: Cache service mount error %d\n",
+        kprintf("iir%d: Cache service mount error %d\n",
                gdt->sc_hanum, gdt->sc_status);
         gdt_free_ccb(gdt, gccb);
         return (1);
@@ -301,7 +301,7 @@ iir_init(struct gdt_softc *gdt)
 
     if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INIT, 
                           GDT_LINUX_OS, 0, 0)) {
-        printf("iir%d: Cache service post-mount initialization error %d\n",
+        kprintf("iir%d: Cache service post-mount initialization error %d\n",
                gdt->sc_hanum, gdt->sc_status);
         gdt_free_ccb(gdt, gccb);
         return (1);
@@ -333,7 +333,7 @@ iir_init(struct gdt_softc *gdt)
                                   GDT_IO_CHANNEL | GDT_INVALID_CHANNEL,
                                   GDT_GETCH_SZ)) {
                 if (i == 0) {
-                    printf("iir%d: Cannot get channel count, "
+                    kprintf("iir%d: Cannot get channel count, "
                            "error %d\n", gdt->sc_hanum, gdt->sc_status);
                     gdt_free_ccb(gdt, gccb);
                     return (1);
@@ -352,7 +352,7 @@ iir_init(struct gdt_softc *gdt)
 
     if (!gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_INIT, 
                           0, 0, 0)) {
-            printf("iir%d: Raw service initialization error %d\n",
+            kprintf("iir%d: Raw service initialization error %d\n",
                    gdt->sc_hanum, gdt->sc_status);
             gdt_free_ccb(gdt, gccb);
             return (1);
@@ -1028,7 +1028,7 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
                                       sizeof(u_int32_t));
             cnt = ucmd->u.ioctl.param_size;
             if (cnt > GDT_SCRATCH_SZ) {
-                printf("iir%d: Scratch buffer too small (%d/%d)\n", 
+                kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
                        gdt->sc_hanum, GDT_SCRATCH_SZ, cnt);
                 gdt_free_ccb(gdt, gccb);
                 return (NULL);
@@ -1038,7 +1038,7 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
                                       GDT_SG_SZ, sizeof(u_int32_t));
             cnt = ucmd->u.cache.BlockCnt * GDT_SECTOR_SIZE;
             if (cnt > GDT_SCRATCH_SZ) {
-                printf("iir%d: Scratch buffer too small (%d/%d)\n", 
+                kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
                        gdt->sc_hanum, GDT_SCRATCH_SZ, cnt);
                 gdt_free_ccb(gdt, gccb);
                 return (NULL);
@@ -1049,7 +1049,7 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
                                   GDT_SG_SZ, sizeof(u_int32_t));
         cnt = ucmd->u.raw.sdlen;
         if (cnt + ucmd->u.raw.sense_len > GDT_SCRATCH_SZ) {
-            printf("iir%d: Scratch buffer too small (%d/%d)\n", 
+            kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
                    gdt->sc_hanum, GDT_SCRATCH_SZ, cnt + ucmd->u.raw.sense_len);
             gdt_free_ccb(gdt, gccb);
             return (NULL);
@@ -1509,7 +1509,7 @@ iir_shutdown( void *arg, int howto )
     gdt = (struct gdt_softc *)arg;
     GDT_DPRINTF(GDT_D_CMD, ("iir_shutdown(%p, %d)\n", gdt, howto));
 
-    printf("iir%d: Flushing all Host Drives. Please wait ...  ",
+    kprintf("iir%d: Flushing all Host Drives. Please wait ...  ",
            gdt->sc_hanum);
 
     /* allocate ucmd buffer */
@@ -1539,7 +1539,7 @@ iir_shutdown( void *arg, int howto )
     }
 
     kfree(ucmd, M_DEVBUF);
-    printf("Done.\n");
+    kprintf("Done.\n");
 }
 
 void
@@ -1681,7 +1681,7 @@ gdt_async_event(struct gdt_softc *gdt, int service)
             bzero(gdt->sc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
-                printf("iir%d: No free command index found\n",
+                kprintf("iir%d: No free command index found\n",
                        gdt->sc_hanum);
                 return (1);
             }
@@ -1701,7 +1701,7 @@ gdt_async_event(struct gdt_softc *gdt, int service)
                                       sizeof(u_int32_t));
             gdt->sc_cmd_cnt = 0;
             gdt->sc_copy_cmd(gdt, gccb);
-            printf("iir%d: [PCI %d/%d] ",
+            kprintf("iir%d: [PCI %d/%d] ",
                 gdt->sc_hanum,gdt->sc_bus,gdt->sc_slot);
             gdt->sc_release_event(gdt);
         }
@@ -1721,7 +1721,7 @@ gdt_async_event(struct gdt_softc *gdt, int service)
             *(u_int32_t *)gdt->sc_dvr.eu.async.scsi_coord  = gdt->sc_info2;
         }
         gdt_store_event(GDT_ES_ASYNC, service, &gdt->sc_dvr);
-        printf("iir%d: %s\n", gdt->sc_hanum, gdt->sc_dvr.event_string);
+        kprintf("iir%d: %s\n", gdt->sc_hanum, gdt->sc_dvr.event_string);
     }
     
     return (0);
@@ -1747,7 +1747,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             if (!(gccb->gc_scratch[GDT_SCR_MSG_ANSWER] && 
                   gccb->gc_scratch[GDT_SCR_MSG_EXT])) {
                 gccb->gc_scratch[GDT_SCR_MSG_TEXT + msg_len] = '\0';
-                printf("%s",&gccb->gc_scratch[GDT_SCR_MSG_TEXT]);
+                kprintf("%s",&gccb->gc_scratch[GDT_SCR_MSG_TEXT]);
             }
 
         if (gccb->gc_scratch[GDT_SCR_MSG_EXT] && 
@@ -1757,7 +1757,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             bzero(gdt->sc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
-                printf("iir%d: No free command index found\n",
+                kprintf("iir%d: No free command index found\n",
                        gdt->sc_hanum);
                 return (1);
             }
@@ -1802,7 +1802,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             bzero(gdt->sc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
-                printf("iir%d: No free command index found\n",
+                kprintf("iir%d: No free command index found\n",
                        gdt->sc_hanum);
                 return (1);
             }
@@ -1825,7 +1825,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             gdt->sc_release_event(gdt);
             return (0);
         }
-        printf("\n");
+        kprintf("\n");
         return (0);
     } else {
         callout_stop(&ccb->ccb_h.timeout_ch);

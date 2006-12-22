@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -195,7 +195,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		trw=TNX_CDC_RWSTAT;
 		break;
 	default:
-		printf("!!! tr_rdcd defaulted !!!\n");
+		kprintf("!!! tr_rdcd defaulted !!!\n");
 		return -1;
 	}
 
@@ -223,7 +223,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		       	j=tr_rd(tr, treg, 4);
 	}
 	snd_mtxunlock(tr->lock);
-	if (i == 0) printf("codec timeout during read of register %x\n", regno);
+	if (i == 0) kprintf("codec timeout during read of register %x\n", regno);
 	return (j >> TR_CDC_DATA) & 0xffff;
 }
 
@@ -248,7 +248,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		trw=TNX_CDC_RWSTAT | ((regno & 0x100)? TNX_CDC_SEC : 0);
 		break;
 	default:
-		printf("!!! tr_wrcd defaulted !!!");
+		kprintf("!!! tr_wrcd defaulted !!!");
 		return -1;
 	}
 
@@ -256,7 +256,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 
 	regno &= 0x7f;
 #if 0
-	printf("tr_wrcd: reg %x was %x", regno, tr_rdcd(devinfo, regno));
+	kprintf("tr_wrcd: reg %x was %x", regno, tr_rdcd(devinfo, regno));
 #endif
 	j=trw;
 	snd_mtxlock(tr->lock);
@@ -281,10 +281,10 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		tr_wr(tr, treg, (data << TR_CDC_DATA) | regno | trw, 4);
 	}
 #if 0
-	printf(" - wrote %x, now %x\n", data, tr_rdcd(devinfo, regno));
+	kprintf(" - wrote %x, now %x\n", data, tr_rdcd(devinfo, regno));
 #endif
 	snd_mtxunlock(tr->lock);
-	if (i==0) printf("codec timeout writing %x, data %x\n", regno, data);
+	if (i==0) kprintf("codec timeout writing %x, data %x\n", regno, data);
 	return (i > 0)? 0 : -1;
 }
 
@@ -737,7 +737,7 @@ tr_intr(void *p)
 						tmp = (bufhalf & mask)? 1 : 0;
 						if (chnum < tr->playchns) {
 							ch = &tr->chinfo[chnum];
-							/* printf("%d @ %d, ", chnum, trpchan_getptr(NULL, ch)); */
+							/* kprintf("%d @ %d, ", chnum, trpchan_getptr(NULL, ch)); */
 							if (ch->bufhalf != tmp) {
 								chn_intr(ch->channel);
 								ch->bufhalf = tmp;

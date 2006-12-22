@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.12 2006/11/07 19:56:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.13 2006/12/22 23:26:17 swildner Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -411,7 +411,7 @@ stgprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
-		printf("%s: scsibus ", name);
+		kprintf("%s: scsibus ", name);
 	return UNCONF;
 }
 
@@ -420,7 +420,7 @@ stgattachsubr(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
-	printf("\n");
+	kprintf("\n");
 
 	sc->sc_idbit = (1 << slp->sl_hostid); 
 	slp->sl_funcs = &stgfuncs;
@@ -471,7 +471,7 @@ stg_pdma_end(struct stg_softc *sc, struct targ_info *ti)
 				else
 				{
 					slp->sl_error |= PDMAERR;
-					printf("%s len %x >= datalen %x\n",
+					kprintf("%s len %x >= datalen %x\n",
 						slp->sl_xname,
 						len, slp->sl_scp.scp_datalen);
 				}
@@ -482,7 +482,7 @@ stg_pdma_end(struct stg_softc *sc, struct targ_info *ti)
 			if (len != 0)
 			{
 				slp->sl_error |= PDMAERR;
-				printf("%s: len %x left in fifo\n",
+				kprintf("%s: len %x left in fifo\n",
 					slp->sl_xname, len);
 			}
 		}
@@ -491,7 +491,7 @@ stg_pdma_end(struct stg_softc *sc, struct targ_info *ti)
 	else
 	{
 
-		printf("%s data phase miss\n", slp->sl_xname);
+		kprintf("%s data phase miss\n", slp->sl_xname);
 		slp->sl_error |= PDMAERR;
 	}
 
@@ -557,7 +557,7 @@ stg_pio_read(struct stg_softc *sc, struct targ_info *ti, u_int thold)
 			slp->sl_error |= PDMAERR;
 			if ((slp->sl_flags & HW_READ_PADDING) == 0)
 			{
-				printf("%s: read padding required\n",
+				kprintf("%s: read padding required\n",
 					slp->sl_xname);
 				break;
 			}
@@ -586,7 +586,7 @@ stg_pio_read(struct stg_softc *sc, struct targ_info *ti, u_int thold)
 	}
 
 	if (tout <= 0)
-		printf("%s: pio read timeout\n", slp->sl_xname);
+		kprintf("%s: pio read timeout\n", slp->sl_xname);
 }
 
 static void
@@ -665,7 +665,7 @@ stg_pio_write(struct stg_softc *sc, struct targ_info *ti, u_int thold)
 	}
 
 	if (tout <= 0)
-		printf("%s: pio write timeout\n", slp->sl_xname);
+		kprintf("%s: pio write timeout\n", slp->sl_xname);
 }
 
 static int
@@ -688,7 +688,7 @@ stg_negate_signal(struct stg_softc *sc, u_int8_t mask, u_char *s)
 		SCSI_LOW_DELAY(STG_DELAY_INTERVAL);
 	}
 
-	printf("%s: %s stg_negate_signal timeout\n", slp->sl_xname, s);
+	kprintf("%s: %s stg_negate_signal timeout\n", slp->sl_xname, s);
 	return -1;
 }
 
@@ -715,7 +715,7 @@ stg_expect_signal(struct stg_softc *sc, u_int8_t phase, u_int8_t mask)
 		SCSI_LOW_DELAY(STG_DELAY_INTERVAL);
 	}
 
-	printf("%s: stg_expect_signal timeout\n", slp->sl_xname);
+	kprintf("%s: stg_expect_signal timeout\n", slp->sl_xname);
 	return -1;
 }
 
@@ -785,7 +785,7 @@ stg_reselected(struct stg_softc *sc)
 	}
 	else if (slp->sl_Tnexus != NULL)
 	{
-		printf("%s: unexpected termination\n", slp->sl_xname);
+		kprintf("%s: unexpected termination\n", slp->sl_xname);
 		stg_disconnected(sc, slp->sl_Tnexus);
 	}
 
@@ -809,7 +809,7 @@ stg_reselected(struct stg_softc *sc)
 		}
 		SCSI_LOW_DELAY(1);
 	}
-	printf("%s: reselction timeout I\n", slp->sl_xname);
+	kprintf("%s: reselction timeout I\n", slp->sl_xname);
 	return EJUSTRETURN;
 	
 reselect_start:
@@ -832,7 +832,7 @@ reselect_start:
 			goto reselected;
 		SCSI_LOW_DELAY(1);
 	}
-	printf("%s: reselction timeout II\n", slp->sl_xname);
+	kprintf("%s: reselction timeout II\n", slp->sl_xname);
 	return EJUSTRETURN;
 
 reselected:
@@ -991,7 +991,7 @@ stgintr(void *arg)
 	if (stg_debug)
 	{
 		scsi_low_print(slp, NULL);
-		printf("%s: st %x ist %x\n\n", slp->sl_xname,
+		kprintf("%s: st %x ist %x\n\n", slp->sl_xname,
 		       status, astatus);
 #ifdef	DDB
 		if (stg_debug > 1)
@@ -1108,7 +1108,7 @@ arb_fail:
 		stg_target_nexus_establish(sc);
 		if ((status & PHASE_MASK) != MESSAGE_IN_PHASE)
 		{
-			printf("%s: unexpected phase after reselect\n",
+			kprintf("%s: unexpected phase after reselect\n",
 			       slp->sl_xname);
 			slp->sl_error |= FATALIO;
 			scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_ABORT, 1);
@@ -1146,7 +1146,7 @@ arb_fail:
 		if (stg_xfer(sc, slp->sl_scp.scp_cmd, slp->sl_scp.scp_cmdlen,
 			     COMMAND_PHASE, 0) != 0)
 		{
-			printf("%s: CMDOUT short\n", slp->sl_xname);
+			kprintf("%s: CMDOUT short\n", slp->sl_xname);
 		}
 		break;
 
@@ -1193,7 +1193,7 @@ arb_fail:
 		}
 		if (regv != bus_space_read_1(iot, ioh, tmc_rdata))
 		{
-			printf("%s: STATIN: data mismatch\n", slp->sl_xname);
+			kprintf("%s: STATIN: data mismatch\n", slp->sl_xname);
 		}
 		stg_negate_signal(sc, BSTAT_ACK, "statin<ACK>");
 		break;
@@ -1215,7 +1215,7 @@ arb_fail:
 		if (stg_xfer(sc, ti->ti_msgoutstr, len, MESSAGE_OUT_PHASE,
 			     slp->sl_clear_atten) != 0)
 		{
-			printf("%s: MSGOUT short\n", slp->sl_xname);
+			kprintf("%s: MSGOUT short\n", slp->sl_xname);
 		}
 		else
 		{
@@ -1247,7 +1247,7 @@ arb_fail:
 		/* read data with ACK */
 		if (regv != bus_space_read_1(iot, ioh, tmc_rdata))
 		{
-			printf("%s: MSGIN: data mismatch\n", slp->sl_xname);
+			kprintf("%s: MSGIN: data mismatch\n", slp->sl_xname);
 		}
 
 		/* wait for the ack negated */
@@ -1260,13 +1260,13 @@ arb_fail:
 		break;
 
 	case BUSFREE_PHASE:
-		printf("%s: unexpected disconnect\n", slp->sl_xname);
+		kprintf("%s: unexpected disconnect\n", slp->sl_xname);
 		stg_disconnected(sc, ti);
 		break;
 
 	default:
 		slp->sl_error |= FATALIO;
-		printf("%s: unknown phase bus %x intr %x\n",
+		kprintf("%s: unknown phase bus %x intr %x\n",
 			slp->sl_xname, status, astatus);
 		break;
 	}
@@ -1294,7 +1294,7 @@ stg_timeout(struct stg_softc *sc)
 		if (sc->sc_ubf_timeout ++ == 0)
 			return 0;
 
-		printf("%s: unexpected bus free detected\n", slp->sl_xname);
+		kprintf("%s: unexpected bus free detected\n", slp->sl_xname);
 		slp->sl_error |= FATALIO;
 		scsi_low_print(slp, slp->sl_Tnexus);
 		stg_disconnected(sc, slp->sl_Tnexus);
@@ -1316,7 +1316,7 @@ stg_timeout(struct stg_softc *sc)
 	        slp->sl_error |= PDMAERR;
 		if ((slp->sl_flags & HW_WRITE_PADDING) == 0)
 		{
-			printf("%s: write padding required\n",
+			kprintf("%s: write padding required\n",
 				slp->sl_xname);
 			break;
 		}	

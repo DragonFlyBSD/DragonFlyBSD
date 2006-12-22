@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.7 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.8 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -511,7 +511,7 @@ adv_get_eeprom_config(struct adv_softc *adv, struct
 		*wbuf = adv_read_eeprom_16(adv, s_addr);
 		sum += *wbuf;
 #if ADV_DEBUG_EEPROM
-		printf("Addr 0x%x: 0x%04x\n", s_addr, *wbuf);
+		kprintf("Addr 0x%x: 0x%04x\n", s_addr, *wbuf);
 #endif
 	}
 	*wbuf = adv_read_eeprom_16(adv, s_addr);
@@ -590,7 +590,7 @@ adv_init_lram_and_mcode(struct adv_softc *adv)
 	retval = adv_load_microcode(adv, 0, (u_int16_t *)adv_mcode,
 				    adv_mcode_size);
 	if (retval != adv_mcode_chksum) {
-		printf("adv%d: Microcode download failed checksum!\n",
+		kprintf("adv%d: Microcode download failed checksum!\n",
 		       adv->unit);
 		return (1);
 	}
@@ -1056,7 +1056,7 @@ adv_isr_chip_halted(struct adv_softc *adv)
 		scsi_busy &= ~target_mask;
 		adv_write_lram_8(adv, ADVV_SCSIBUSY_B, scsi_busy);		
 	} else {
-		printf("Unhandled Halt Code %x\n", int_halt_code);
+		kprintf("Unhandled Halt Code %x\n", int_halt_code);
 	}
 	adv_write_lram_16(adv, ADVV_HALTCODE_W, 0);
 }
@@ -1492,7 +1492,7 @@ adv_init_microcode_var(struct adv_softc *adv)
 
 	ADV_OUTW(adv, ADV_REG_PROG_COUNTER, ADV_MCODE_START_ADDR);
 	if (ADV_INW(adv, ADV_REG_PROG_COUNTER) != ADV_MCODE_START_ADDR) {
-		printf("adv%d: Unable to set program counter. Aborting.\n",
+		kprintf("adv%d: Unable to set program counter. Aborting.\n",
 		       adv->unit);
 		return (1);
 	}

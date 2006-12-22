@@ -35,7 +35,7 @@
  *
  * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
  * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.28 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.29 2006/12/22 23:26:19 swildner Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -774,7 +774,7 @@ awi_start(struct ifnet *ifp)
 		ifp->if_timer = 1;
 #ifdef AWI_DEBUG
 		if (awi_verbose)
-			printf("awi_start: sent %d txdone %d txnext %d txbase %d txend %d\n", sent, sc->sc_txdone, sc->sc_txnext, sc->sc_txbase, sc->sc_txend);
+			kprintf("awi_start: sent %d txdone %d txnext %d txbase %d txend %d\n", sent, sc->sc_txdone, sc->sc_txnext, sc->sc_txbase, sc->sc_txend);
 #endif
 	}
 }
@@ -798,7 +798,7 @@ awi_txint(struct awi_softc *sc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 #ifdef AWI_DEBUG
 	if (awi_verbose)
-		printf("awi_txint: txdone %d txnext %d txbase %d txend %d\n",
+		kprintf("awi_txint: txdone %d txnext %d txbase %d txend %d\n",
 		    sc->sc_txdone, sc->sc_txnext, sc->sc_txbase, sc->sc_txend);
 #endif
 	awi_start(ifp);
@@ -1187,8 +1187,8 @@ awi_init_hw(struct awi_softc *sc)
 	if (memcmp(sc->sc_banner, "PCnetMobile:", 12) != 0) {
 		if_printf(ifp, "failed to complete selftest (bad banner)\n");
 		for (i = 0; i < AWI_BANNER_LEN; i++)
-			printf("%s%02x", i ? ":" : "\t", sc->sc_banner[i]);
-		printf("\n");
+			kprintf("%s%02x", i ? ":" : "\t", sc->sc_banner[i]);
+		kprintf("\n");
 		return ENXIO;
 	}
 
@@ -1211,11 +1211,11 @@ awi_init_hw(struct awi_softc *sc)
 	if (error) {
 		if_printf(ifp, "failed to complete selftest");
 		if (error == ENXIO)
-			printf(" (no hardware)\n");
+			kprintf(" (no hardware)\n");
 		else if (error != EWOULDBLOCK)
-			printf(" (error %d)\n", error);
+			kprintf(" (error %d)\n", error);
 		else
-			printf(" (command timeout)\n");
+			kprintf(" (command timeout)\n");
 	}
 	return error;
 }
@@ -1529,25 +1529,25 @@ awi_stop_scan(struct awi_softc *sc)
 		    sizeof(bp->essid)) != 0)
 			fail |= 0x08;
 		if (ifp->if_flags & IFF_DEBUG) {
-			printf(" %c %6D", fail ? '-' : '+', bp->esrc, ":");
+			kprintf(" %c %6D", fail ? '-' : '+', bp->esrc, ":");
 			if (sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH)
-				printf("  %2d/%d%c", bp->pattern, bp->chanset,
+				kprintf("  %2d/%d%c", bp->pattern, bp->chanset,
 				    fail & 0x01 ? '!' : ' ');
 			else
-				printf("  %4d%c", bp->chanset,
+				kprintf("  %4d%c", bp->chanset,
 				    fail & 0x01 ? '!' : ' ');
-			printf(" %+4d", bp->rssi);
-			printf(" %4s%c",
+			kprintf(" %+4d", bp->rssi);
+			kprintf(" %4s%c",
 			    (bp->capinfo & IEEE80211_CAPINFO_ESS) ? "ess" :
 			    (bp->capinfo & IEEE80211_CAPINFO_IBSS) ? "ibss" :
 			    "????",
 			    fail & 0x02 ? '!' : ' ');
-			printf(" %3s%c ",
+			kprintf(" %3s%c ",
 			    (bp->capinfo & IEEE80211_CAPINFO_PRIVACY) ? "wep" :
 			    "no",
 			    fail & 0x04 ? '!' : ' ');
 			awi_print_essid(bp->essid);
-			printf("%s\n", fail & 0x08 ? "!" : "");
+			kprintf("%s\n", fail & 0x08 ? "!" : "");
 		}
 		if (!fail) {
 			if (sbp == NULL || bp->rssi > sbp->rssi)
@@ -1588,7 +1588,7 @@ awi_recv_beacon(struct awi_softc *sc, struct mbuf *m0, u_int32_t rxts,
 	if (frame + 12 > eframe) {
 #ifdef AWI_DEBUG
 		if (awi_verbose)
-			printf("awi_recv_beacon: frame too short \n");
+			kprintf("awi_recv_beacon: frame too short \n");
 #endif
 		return;
 	}
@@ -1618,7 +1618,7 @@ awi_recv_beacon(struct awi_softc *sc, struct mbuf *m0, u_int32_t rxts,
 	if (ssid == NULL || rates == NULL || parms == NULL) {
 #ifdef AWI_DEBUG
 		if (awi_verbose)
-			printf("awi_recv_beacon: ssid=%p, rates=%p, parms=%p\n",
+			kprintf("awi_recv_beacon: ssid=%p, rates=%p, parms=%p\n",
 			    ssid, rates, parms);
 #endif
 		return;
@@ -1626,7 +1626,7 @@ awi_recv_beacon(struct awi_softc *sc, struct mbuf *m0, u_int32_t rxts,
 	if (ssid[1] > IEEE80211_NWID_LEN) {
 #ifdef AWI_DEBUG
 		if (awi_verbose)
-			printf("awi_recv_beacon: bad ssid len: %d from %6D\n",
+			kprintf("awi_recv_beacon: bad ssid len: %d from %6D\n",
 			    ssid[1], wh->i_addr2, ":");
 #endif
 		return;
@@ -1682,7 +1682,7 @@ awi_set_ss(struct awi_softc *sc)
 			  bp->chanset, bp->pattern, bp->index, bp->dwell_time,
 			  bp->interval, bp->bssid, ":");
 		awi_print_essid(bp->essid);
-		printf("\n");
+		kprintf("\n");
 	}
 	memcpy(&sc->sc_mib_mgt.aCurrent_BSS_ID, bp->bssid, ETHER_ADDR_LEN);
 	memcpy(&sc->sc_mib_mgt.aCurrent_ESS_ID, bp->essid,
@@ -1730,16 +1730,16 @@ awi_sync_done(struct awi_softc *sc)
 		if (ifp->if_flags & IFF_DEBUG) {
 			if_printf(ifp, "synced with");
 			if (sc->sc_no_bssid)
-				printf(" no-bssid");
+				kprintf(" no-bssid");
 			else {
-				printf(" %6D ssid ", sc->sc_bss.bssid, ":");
+				kprintf(" %6D ssid ", sc->sc_bss.bssid, ":");
 				awi_print_essid(sc->sc_bss.essid);
 			}
 			if (sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH)
-				printf(" at chanset %d pattern %d\n",
+				kprintf(" at chanset %d pattern %d\n",
 				    sc->sc_bss.chanset, sc->sc_bss.pattern);
 			else
-				printf(" at channel %d\n", sc->sc_bss.chanset);
+				kprintf(" at channel %d\n", sc->sc_bss.chanset);
 		}
 		awi_drvstate(sc, AWI_DRV_ADHSY);
 		sc->sc_status = AWI_ST_RUNNING;
@@ -2001,10 +2001,10 @@ awi_recv_asresp(struct awi_softc *sc, struct mbuf *m0)
 			  sc->sc_bss.bssid, ":");
 		awi_print_essid(sc->sc_bss.essid);
 		if (sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH)
-			printf(" chanset %d pattern %d\n",
+			kprintf(" chanset %d pattern %d\n",
 			    sc->sc_bss.chanset, sc->sc_bss.pattern);
 		else
-			printf(" channel %d\n", sc->sc_bss.chanset);
+			kprintf(" channel %d\n", sc->sc_bss.chanset);
 	}
 	sc->sc_tx_rate = rate;
 	sc->sc_mgt_timer = 0;
@@ -2054,7 +2054,7 @@ awi_mib(struct awi_softc *sc, u_int8_t cmd, u_int8_t mib)
 		error = awi_cmd_wait(sc);
 		if (error) {
 			if (error == EWOULDBLOCK)
-				printf("awi_mib: cmd %d inprog",
+				kprintf("awi_mib: cmd %d inprog",
 				    sc->sc_cmd_inprog);
 			return error;
 		}
@@ -2074,10 +2074,10 @@ awi_mib(struct awi_softc *sc, u_int8_t cmd, u_int8_t mib)
 		if (awi_verbose) {
 			int i;
 
-			printf("awi_mib: #%d:", mib);
+			kprintf("awi_mib: #%d:", mib);
 			for (i = 0; i < size; i++)
-				printf(" %02x", ptr[i]);
-			printf("\n");
+				kprintf(" %02x", ptr[i]);
+			kprintf("\n");
 		}
 #endif
 	}
@@ -2298,14 +2298,14 @@ awi_print_essid(u_int8_t *essid)
 			break;
 	}
 	if (i == len) {
-		printf("\"");
+		kprintf("\"");
 		for (i = 0, p = essid + 2; i < len; i++, p++)
-			printf("%c", *p);
-		printf("\"");
+			kprintf("%c", *p);
+		kprintf("\"");
 	} else {
-		printf("0x");
+		kprintf("0x");
 		for (i = 0, p = essid + 2; i < len; i++, p++)
-			printf("%02x", *p);
+			kprintf("%02x", *p);
 	}
 }
 
@@ -2329,79 +2329,79 @@ awi_dump_pkt(struct awi_softc *sc, struct mbuf *m, int rssi)
 		return;
 
 	if (rssi < 0)
-		printf("tx: ");
+		kprintf("tx: ");
 	else
-		printf("rx: ");
+		kprintf("rx: ");
 	switch (wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) {
 	case IEEE80211_FC1_DIR_NODS:
-		printf("NODS %6D->%6D(%6D)", wh->i_addr2, ":",
+		kprintf("NODS %6D->%6D(%6D)", wh->i_addr2, ":",
 		       wh->i_addr1, ":", wh->i_addr3, ":");
 		break;
 	case IEEE80211_FC1_DIR_TODS:
-		printf("TODS %6D->%6D(%6D)", wh->i_addr2, ":",
+		kprintf("TODS %6D->%6D(%6D)", wh->i_addr2, ":",
 		       wh->i_addr3, ":", wh->i_addr1, ":");
 		break;
 	case IEEE80211_FC1_DIR_FROMDS:
-		printf("FRDS %6D->%6D(%6D)", wh->i_addr3, ":",
+		kprintf("FRDS %6D->%6D(%6D)", wh->i_addr3, ":",
 		       wh->i_addr1, ":", wh->i_addr2, ":");
 		break;
 	case IEEE80211_FC1_DIR_DSTODS:
-		printf("DSDS %6D->%6D(%6D->%6D)", (u_int8_t *)&wh[1], ":",
+		kprintf("DSDS %6D->%6D(%6D->%6D)", (u_int8_t *)&wh[1], ":",
 		       wh->i_addr3, ":", wh->i_addr2, ":", wh->i_addr1, ":");
 		break;
 	}
 	switch (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) {
 	case IEEE80211_FC0_TYPE_DATA:
-		printf(" data");
+		kprintf(" data");
 		break;
 	case IEEE80211_FC0_TYPE_MGT:
 		switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
 		case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
-			printf(" probe_req");
+			kprintf(" probe_req");
 			break;
 		case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
-			printf(" probe_resp");
+			kprintf(" probe_resp");
 			break;
 		case IEEE80211_FC0_SUBTYPE_BEACON:
-			printf(" beacon");
+			kprintf(" beacon");
 			break;
 		case IEEE80211_FC0_SUBTYPE_AUTH:
-			printf(" auth");
+			kprintf(" auth");
 			break;
 		case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-			printf(" assoc_req");
+			kprintf(" assoc_req");
 			break;
 		case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
-			printf(" assoc_resp");
+			kprintf(" assoc_resp");
 			break;
 		case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
-			printf(" reassoc_req");
+			kprintf(" reassoc_req");
 			break;
 		case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
-			printf(" reassoc_resp");
+			kprintf(" reassoc_resp");
 			break;
 		case IEEE80211_FC0_SUBTYPE_DEAUTH:
-			printf(" deauth");
+			kprintf(" deauth");
 			break;
 		case IEEE80211_FC0_SUBTYPE_DISASSOC:
-			printf(" disassoc");
+			kprintf(" disassoc");
 			break;
 		default:
-			printf(" mgt#%d",
+			kprintf(" mgt#%d",
 			    wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK);
 			break;
 		}
 		break;
 	default:
-		printf(" type#%d",
+		kprintf(" type#%d",
 		    wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK);
 		break;
 	}
 	if (wh->i_fc[1] & IEEE80211_FC1_WEP)
-		printf(" WEP");
+		kprintf(" WEP");
 	if (rssi >= 0)
-		printf(" +%d", rssi);
-	printf("\n");
+		kprintf(" +%d", rssi);
+	kprintf("\n");
 	if (awi_dump_len > 0) {
 		l = m->m_len;
 		if (l > awi_dump_len + sizeof(*wh))
@@ -2411,10 +2411,10 @@ awi_dump_pkt(struct awi_softc *sc, struct mbuf *m, int rssi)
 			i = 0;
 		for (; i < l; i++) {
 			if ((i & 1) == 0)
-				printf(" ");
-			printf("%02x", mtod(m, u_int8_t *)[i]);
+				kprintf(" ");
+			kprintf("%02x", mtod(m, u_int8_t *)[i]);
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 #endif

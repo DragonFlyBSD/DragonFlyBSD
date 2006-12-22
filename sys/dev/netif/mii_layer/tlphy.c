@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.11 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.12 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -204,7 +204,7 @@ tlphy_attach(device_t dev)
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_LOOP,
 	    sc->sc_mii.mii_inst), MII_MEDIA_10_T);
 
-#define	PRINT(s)	printf("%s%s", sep, s); sep = ", "
+#define	PRINT(s)	kprintf("%s%s", sep, s); sep = ", "
 
 	device_printf(dev, " ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_2, 0, sc->sc_mii.mii_inst), 0);
@@ -213,14 +213,14 @@ tlphy_attach(device_t dev)
 	PRINT("10base5/AUI");
 
 	if (sc->sc_mii.mii_capabilities & BMSR_MEDIAMASK) {
-		printf("%s", sep);
+		kprintf("%s", sep);
 		mii_phy_add_media(&sc->sc_mii);
 	} else {
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->sc_mii.mii_inst),
 		    MII_MEDIA_NONE);
 	}
 
-	printf("\n");
+	kprintf("\n");
 #undef ADD
 #undef PRINT
 	MIIBUS_MEDIAINIT(sc->sc_mii.mii_dev);

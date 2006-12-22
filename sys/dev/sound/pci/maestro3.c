@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include "gnu/maestro3_reg.h"
 #include "gnu/maestro3_dsp.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -72,7 +72,7 @@ enum {CHANGE=0, CALL=1, INTR=2, BORING=3, NONE=-1};
 #ifndef M3_DEBUG_LEVEL
 #define M3_DEBUG_LEVEL NONE
 #endif
-#define M3_DEBUG(level, _msg) {if ((level) <= M3_DEBUG_LEVEL) {printf _msg;}}
+#define M3_DEBUG(level, _msg) {if ((level) <= M3_DEBUG_LEVEL) {kprintf _msg;}}
 
 /* -------------------------------------------------------------------- */
 enum {

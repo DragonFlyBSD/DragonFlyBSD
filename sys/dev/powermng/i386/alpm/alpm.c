@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/alpm.c,v 1.15 2001/01/17 00:38:06 peter Exp $
- * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.7 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.8 2006/12/22 23:26:23 swildner Exp $
  *
  */
 
@@ -234,29 +234,29 @@ alpm_pci_attach(device_t dev)
 
 	if (bootverbose) {
 		l = pci_read_config(dev, SMBHSI, 1);
-		printf("alsmb%d: %s/%s", unit,
+		kprintf("alsmb%d: %s/%s", unit,
 			(l & SMBHSI_HOST) ? "host":"nohost",
 			(l & SMBHSI_SLAVE) ? "slave":"noslave");
 
 		l = pci_read_config(dev, SMBHCBC, 1);
 		switch (l & SMBHCBC_CLOCK) {
 		case SMBCLOCK_149K:
-			printf(" 149K");
+			kprintf(" 149K");
 			break;
 		case SMBCLOCK_74K:
-			printf(" 74K");
+			kprintf(" 74K");
 			break;
 		case SMBCLOCK_37K:
-			printf(" 37K");
+			kprintf(" 37K");
 			break;
 		case SMBCLOCK_223K:
-			printf(" 223K");
+			kprintf(" 223K");
 			break;
 		case SMBCLOCK_111K:
-			printf(" 111K");
+			kprintf(" 111K");
 			break;
 		case SMBCLOCK_55K:
-			printf(" 55K");
+			kprintf(" 55K");
 			break;
 		}
 	}
@@ -285,7 +285,7 @@ alpm_pci_attach(device_t dev)
 	alpm->smbsh = rman_get_bushandle(res);
 
 	if (bootverbose)
-		printf(" at 0x%x\n", alpm->smbsh);
+		kprintf(" at 0x%x\n", alpm->smbsh);
 
 	smbinterface = device_add_child(dev, "alsmb", unit);
 	if (!smbinterface)
@@ -369,7 +369,7 @@ alsmb_idle(struct alsmb_softc *sc)
 
 	sts = ALPM_SMBINB(sc, SMBSTS);
 
-	ALPM_DEBUG(printf("alpm: idle? STS=0x%x\n", sts));
+	ALPM_DEBUG(kprintf("alpm: idle? STS=0x%x\n", sts));
 
 	return (sts & IDL_STS);
 }
@@ -392,7 +392,7 @@ alsmb_wait(struct alsmb_softc *sc)
 			break;
 	}
 
-	ALPM_DEBUG(printf("alpm: STS=0x%x\n", sts));
+	ALPM_DEBUG(kprintf("alpm: STS=0x%x\n", sts));
 
 	error = SMB_ENOERR;
 
@@ -426,11 +426,11 @@ alsmb_smb_quick(device_t dev, u_char slave, int how)
 
 	switch (how) {
 	case SMB_QWRITE:
-		ALPM_DEBUG(printf("alpm: QWRITE to 0x%x", slave));
+		ALPM_DEBUG(kprintf("alpm: QWRITE to 0x%x", slave));
 		ALPM_SMBOUTB(sc, SMBHADDR, slave & ~LSB);
 		break;
 	case SMB_QREAD:
-		ALPM_DEBUG(printf("alpm: QREAD to 0x%x", slave));
+		ALPM_DEBUG(kprintf("alpm: QREAD to 0x%x", slave));
 		ALPM_SMBOUTB(sc, SMBHADDR, slave | LSB);
 		break;
 	default:
@@ -441,7 +441,7 @@ alsmb_smb_quick(device_t dev, u_char slave, int how)
 
 	error = alsmb_wait(sc);
 
-	ALPM_DEBUG(printf(", error=0x%x\n", error));
+	ALPM_DEBUG(kprintf(", error=0x%x\n", error));
 
 	return (error);
 }
@@ -463,7 +463,7 @@ alsmb_smb_sendb(device_t dev, u_char slave, char byte)
 
 	error = alsmb_wait(sc);
 
-	ALPM_DEBUG(printf("alpm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
+	ALPM_DEBUG(kprintf("alpm: SENDB to 0x%x, byte=0x%x, error=0x%x\n", slave, byte, error));
 
 	return (error);
 }
@@ -485,7 +485,7 @@ alsmb_smb_recvb(device_t dev, u_char slave, char *byte)
 	if ((error = alsmb_wait(sc)) == SMB_ENOERR)
 		*byte = ALPM_SMBINB(sc, SMBHDATA);
 
-	ALPM_DEBUG(printf("alpm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
+	ALPM_DEBUG(kprintf("alpm: RECVB from 0x%x, byte=0x%x, error=0x%x\n", slave, *byte, error));
 
 	return (error);
 }
@@ -508,7 +508,7 @@ alsmb_smb_writeb(device_t dev, u_char slave, char cmd, char byte)
 
 	error = alsmb_wait(sc);
 
-	ALPM_DEBUG(printf("alpm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
+	ALPM_DEBUG(kprintf("alpm: WRITEB to 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, byte, error));
 
 	return (error);
 }
@@ -531,7 +531,7 @@ alsmb_smb_readb(device_t dev, u_char slave, char cmd, char *byte)
 	if ((error = alsmb_wait(sc)) == SMB_ENOERR)
 		*byte = ALPM_SMBINB(sc, SMBHDATA);
 
-	ALPM_DEBUG(printf("alpm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
+	ALPM_DEBUG(kprintf("alpm: READB from 0x%x, cmd=0x%x, byte=0x%x, error=0x%x\n", slave, cmd, *byte, error));
 
 	return (error);
 }
@@ -555,7 +555,7 @@ alsmb_smb_writew(device_t dev, u_char slave, char cmd, short word)
 
 	error = alsmb_wait(sc);
 
-	ALPM_DEBUG(printf("alpm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
+	ALPM_DEBUG(kprintf("alpm: WRITEW to 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, word, error));
 
 	return (error);
 }
@@ -583,7 +583,7 @@ alsmb_smb_readw(device_t dev, u_char slave, char cmd, short *word)
 		*word = ((high & 0xff) << 8) | (low & 0xff);
 	}
 
-	ALPM_DEBUG(printf("alpm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
+	ALPM_DEBUG(kprintf("alpm: READW from 0x%x, cmd=0x%x, word=0x%x, error=0x%x\n", slave, cmd, *word, error));
 
 	return (error);
 }
@@ -626,7 +626,7 @@ alsmb_smb_bwrite(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 	}
 
 error:
-	ALPM_DEBUG(printf("alpm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	ALPM_DEBUG(kprintf("alpm: WRITEBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 }
@@ -667,7 +667,7 @@ alsmb_smb_bread(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 		remain -= len;
 	}
 error:
-	ALPM_DEBUG(printf("alpm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
+	ALPM_DEBUG(kprintf("alpm: READBLK to 0x%x, count=0x%x, cmd=0x%x, error=0x%x", slave, count, cmd, error));
 
 	return (error);
 }

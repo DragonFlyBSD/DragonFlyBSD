@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.4.2.10 2003/05/11 01:45:53 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */
@@ -146,7 +146,7 @@ via_waitready_codec(struct via_info *via)
 	    (via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_BUSY); i++)
 		DELAY(1);
 	if (i >= TIMEOUT) {
-		printf("via: codec busy\n");
+		kprintf("via: codec busy\n");
 		return 1;
 	}
 
@@ -164,7 +164,7 @@ via_waitvalid_codec(struct via_info *via)
 	    !(via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_PRIVALID); i++)
 		    DELAY(1);
 	if (i >= TIMEOUT) {
-		printf("via: codec invalid\n");
+		kprintf("via: codec invalid\n");
 		return 1;
 	}
 
@@ -280,7 +280,7 @@ viachan_setformat(kobj_t obj, void *data, u_int32_t format)
 	if (format & AFMT_S16_LE)
 		mode_set |= VIA_RPMODE_16BIT;
 
-	DEB(printf("set format: dir = %d, format=%x\n", ch->dir, format));
+	DEB(kprintf("set format: dir = %d, format=%x\n", ch->dir, format));
 	mode = via_rd(via, ch->mode, 1);
 	mode &= ~(VIA_RPMODE_16BIT | VIA_RPMODE_STEREO);
 	mode |= mode_set;
@@ -334,7 +334,7 @@ viachan_trigger(kobj_t obj, void *data, int go)
 		return 0;
 
 	ado = ch->sgd_table;
-	DEB(printf("ado located at va=%p pa=%x\n", ado, vtophys(ado)));
+	DEB(kprintf("ado located at va=%p pa=%x\n", ado, vtophys(ado)));
 
 	if (go == PCMTRIG_START) {
 		via_buildsgdt(ch);
@@ -343,7 +343,7 @@ viachan_trigger(kobj_t obj, void *data, int go)
 	} else
 		via_wr(via, ch->ctrl, VIA_RPCTRL_TERMINATE, 1);
 
-	DEB(printf("viachan_trigger: go=%d\n", go));
+	DEB(kprintf("viachan_trigger: go=%d\n", go));
 	return 0;
 }
 
@@ -362,7 +362,7 @@ viachan_getptr(kobj_t obj, void *data)
 	if (base != base1) 	/* Avoid race hazard */
 		len = via_rd(via, ch->count, 4);
 
-	DEB(printf("viachan_getptr: len / base = %x / %x\n", len, base));
+	DEB(kprintf("viachan_getptr: len / base = %x / %x\n", len, base));
 
 	/* Base points to SGD segment to do, one past current */
 
@@ -379,7 +379,7 @@ viachan_getptr(kobj_t obj, void *data)
 		ptr = ptr & ~0x1f;
 	}
 
-	DEB(printf("return ptr=%d\n", ptr));
+	DEB(kprintf("return ptr=%d\n", ptr));
 	return ptr;
 }
 
@@ -412,7 +412,7 @@ via_intr(void *p)
 	struct via_info *via = p;
 	int		st;
 
-	/* DEB(printf("viachan_intr\n")); */
+	/* DEB(kprintf("viachan_intr\n")); */
 	/* Read channel */
 	st = via_rd(via, VIA_PLAY_STAT, 1);
 	if (st & VIA_RPSTAT_INTR) {

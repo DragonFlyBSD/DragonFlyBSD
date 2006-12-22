@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.40 2006/11/30 01:38:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.41 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -674,7 +674,7 @@ nge_reset(struct nge_softc *sc)
 	}
 
 	if (i == NGE_TIMEOUT)
-		printf("nge%d: reset never completed\n", sc->nge_unit);
+		kprintf("nge%d: reset never completed\n", sc->nge_unit);
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -744,7 +744,7 @@ nge_attach(device_t dev)
 			irq = pci_read_config(dev, NGE_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("nge%d: chip is in D%d power mode "
+			kprintf("nge%d: chip is in D%d power mode "
 			"-- setting to D0\n", unit, command & NGE_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, NGE_PCI_PWRMGMTCTRL, command, 4);
@@ -766,13 +766,13 @@ nge_attach(device_t dev)
 
 #ifdef NGE_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("nge%d: failed to enable I/O ports!\n", unit);
+		kprintf("nge%d: failed to enable I/O ports!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("nge%d: failed to enable memory mapping!\n", unit);
+		kprintf("nge%d: failed to enable memory mapping!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -782,7 +782,7 @@ nge_attach(device_t dev)
 	sc->nge_res = bus_alloc_resource_any(dev, NGE_RES, &rid, RF_ACTIVE);
 
 	if (sc->nge_res == NULL) {
-		printf("nge%d: couldn't map ports/memory\n", unit);
+		kprintf("nge%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -796,7 +796,7 @@ nge_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->nge_irq == NULL) {
-		printf("nge%d: couldn't map interrupt\n", unit);
+		kprintf("nge%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -817,7 +817,7 @@ nge_attach(device_t dev)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->nge_ldata == NULL) {
-		printf("nge%d: no memory for list buffers!\n", unit);
+		kprintf("nge%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -825,7 +825,7 @@ nge_attach(device_t dev)
 
 	/* Try to allocate memory for jumbo buffers. */
 	if (nge_alloc_jumbo_mem(sc)) {
-		printf("nge%d: jumbo buffer allocation failed\n",
+		kprintf("nge%d: jumbo buffer allocation failed\n",
                     sc->nge_unit);
 		error = ENXIO;
 		goto fail;
@@ -864,7 +864,7 @@ nge_attach(device_t dev)
 			ifmedia_init(&sc->nge_ifmedia, 0, nge_ifmedia_upd, 
 				nge_ifmedia_sts);
 #define	ADD(m, c)	ifmedia_add(&sc->nge_ifmedia, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
+#define PRINT(s)	kprintf("%s%s", sep, s); sep = ", "
 			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, 0), 0);
 			device_printf(dev, " ");
 			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_SX, 0, 0), 0);
@@ -874,7 +874,7 @@ nge_attach(device_t dev)
 			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, 0), 0);
 			PRINT("auto");
 	    
-			printf("\n");
+			kprintf("\n");
 #undef ADD
 #undef PRINT
 			ifmedia_set(&sc->nge_ifmedia, 
@@ -887,7 +887,7 @@ nge_attach(device_t dev)
 				| NGE_GPIO_GP3_IN | NGE_GPIO_GP4_IN);
 	    
 		} else {
-			printf("nge%d: MII without any PHY!\n", sc->nge_unit);
+			kprintf("nge%d: MII without any PHY!\n", sc->nge_unit);
 			error = ENXIO;
 			goto fail;
 		}
@@ -1031,7 +1031,7 @@ nge_newbuf(struct nge_softc *sc, struct nge_desc *c, struct mbuf *m)
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
-			printf("nge%d: no memory for rx list "
+			kprintf("nge%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->nge_unit);
 			return(ENOBUFS);
 		}
@@ -1040,7 +1040,7 @@ nge_newbuf(struct nge_softc *sc, struct nge_desc *c, struct mbuf *m)
 		buf = nge_jalloc(sc);
 		if (buf == NULL) {
 #ifdef NGE_VERBOSE
-			printf("nge%d: jumbo allocation failed "
+			kprintf("nge%d: jumbo allocation failed "
 			    "-- packet dropped!\n", sc->nge_unit);
 #endif
 			m_freem(m_new);
@@ -1084,7 +1084,7 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->nge_cdata.nge_jumbo_buf == NULL) {
-		printf("nge%d: no memory for jumbo buffers!\n", sc->nge_unit);
+		kprintf("nge%d: no memory for jumbo buffers!\n", sc->nge_unit);
 		return(ENOBUFS);
 	}
 
@@ -1124,7 +1124,7 @@ nge_jalloc(struct nge_softc *sc)
 		entry->nge_inuse = 1;
 	} else {
 #ifdef NGE_VERBOSE
-		printf("nge%d: no free jumbo buffers\n", sc->nge_unit);
+		kprintf("nge%d: no free jumbo buffers\n", sc->nge_unit);
 #endif
 	}
 	lwkt_serialize_exit(&sc->nge_jslot_serializer);
@@ -1247,7 +1247,7 @@ nge_rxeof(struct nge_softc *sc)
 			    total_len + ETHER_ALIGN, 0, ifp, NULL);
 			nge_newbuf(sc, cur_rx, m);
 			if (m0 == NULL) {
-				printf("nge%d: no receive buffers "
+				kprintf("nge%d: no receive buffers "
 				    "available -- packet dropped!\n",
 				    sc->nge_unit);
 				ifp->if_ierrors++;
@@ -1363,7 +1363,7 @@ nge_tick(void *xsc)
 		if (sc->nge_link == 0) {
 			if (CSR_READ_4(sc, NGE_TBI_BMSR) 
 			    & NGE_TBIBMSR_ANEG_DONE) {
-				printf("nge%d: gigabit link up\n",
+				kprintf("nge%d: gigabit link up\n",
 				    sc->nge_unit);
 				nge_miibus_statchg(sc->nge_miibus);
 				sc->nge_link++;
@@ -1381,7 +1381,7 @@ nge_tick(void *xsc)
 				sc->nge_link++;
 				if (IFM_SUBTYPE(mii->mii_media_active) 
 				    == IFM_1000_T)
-					printf("nge%d: gigabit link up\n",
+					kprintf("nge%d: gigabit link up\n",
 					    sc->nge_unit);
 				if (!ifq_is_empty(&ifp->if_snd))
 					nge_start(ifp);
@@ -1677,7 +1677,7 @@ nge_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (nge_list_rx_init(sc) == ENOBUFS) {
-		printf("nge%d: initialization failed: no "
+		kprintf("nge%d: initialization failed: no "
 			"memory for rx buffers\n", sc->nge_unit);
 		nge_stop(sc);
 		return;
@@ -2004,7 +2004,7 @@ nge_watchdog(struct ifnet *ifp)
 	struct nge_softc *sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("nge%d: watchdog timeout\n", sc->nge_unit);
+	kprintf("nge%d: watchdog timeout\n", sc->nge_unit);
 
 	nge_stop(sc);
 	nge_reset(sc);

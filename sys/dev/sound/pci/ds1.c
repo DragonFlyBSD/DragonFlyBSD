@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.8.2.9 2003/04/28 03:59:03 simokawa Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -426,7 +426,7 @@ static void
 ds_enapslot(struct sc_info *sc, int slot, int go)
 {
 	wrl(sc, &sc->pbase[slot + 1], go? (sc->pbankbase + 2 * slot * sc->pbanksize) : 0);
-	/* printf("pbase[%d] = 0x%x\n", slot + 1, go? (sc->pbankbase + 2 * slot * sc->pbanksize) : 0); */
+	/* kprintf("pbase[%d] = 0x%x\n", slot + 1, go? (sc->pbankbase + 2 * slot * sc->pbanksize) : 0); */
 }
 
 static void
@@ -470,7 +470,7 @@ ds_setuprch(struct sc_rchinfo *ch)
 	x = (b16? 0x00 : 0x01) | (stereo? 0x02 : 0x00);
 	y = (48000 * 4096) / ch->spd;
 	y--;
-	/* printf("pri = %d, x = %d, y = %d\n", pri, x, y); */
+	/* kprintf("pri = %d, x = %d, y = %d\n", pri, x, y); */
 	ds_wr(sc, pri? YDSXGR_ADCFORMAT : YDSXGR_RECFORMAT, x, 4);
 	ds_wr(sc, pri? YDSXGR_ADCSLOTSR : YDSXGR_RECSLOTSR, y, 4);
 }
@@ -581,7 +581,7 @@ ds1pchan_getptr(kobj_t obj, void *data)
 	ss += (ch->fmt & AFMT_16BIT)? 1 : 0;
 
 	bank = ch->lslot + sc->currbank;
-	/* printf("getptr: %d\n", bank->PgStart << ss); */
+	/* kprintf("getptr: %d\n", bank->PgStart << ss); */
 	ptr = bank->PgStart;
 	ptr <<= ss;
 	return ptr;
@@ -775,7 +775,7 @@ ds_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	sc->ctrlbase = error? 0 : (u_int32_t)segs->ds_addr;
 
 	if (bootverbose) {
-		printf("ds1: setmap (%lx, %lx), nseg=%d, error=%d\n",
+		kprintf("ds1: setmap (%lx, %lx), nseg=%d, error=%d\n",
 		       (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		       nseg, error);
 	}
@@ -849,7 +849,7 @@ ds_init(struct sc_info *sc)
 	ds_wr(sc, YDSXGR_WORKBASE, sc->ctrlbase + cb, 4);
 	cb += ws;
 	sc->pbase = (u_int32_t *)(t + cb);
-	/* printf("pbase = %p -> 0x%x\n", sc->pbase, sc->ctrlbase + cb); */
+	/* kprintf("pbase = %p -> 0x%x\n", sc->pbase, sc->ctrlbase + cb); */
 	ds_wr(sc, YDSXGR_PLAYCTRLBASE, sc->ctrlbase + cb, 4);
 	cb += (64 + 1) * 4;
 	sc->rbank = (struct rbank *)(t + cb);
@@ -863,10 +863,10 @@ ds_init(struct sc_info *sc)
 	for (i = 0; i < 64; i++) {
 		wrl(sc, &sc->pbase[i + 1], 0);
 		sc->pbank[i * 2] = (struct pbank *)(t + cb);
-		/* printf("pbank[%d] = %p -> 0x%x; ", i * 2, (struct pbank *)(t + cb), sc->ctrlbase + cb - vtophys(t + cb)); */
+		/* kprintf("pbank[%d] = %p -> 0x%x; ", i * 2, (struct pbank *)(t + cb), sc->ctrlbase + cb - vtophys(t + cb)); */
 		cb += pcs;
 		sc->pbank[i * 2 + 1] = (struct pbank *)(t + cb);
-		/* printf("pbank[%d] = %p -> 0x%x\n", i * 2 + 1, (struct pbank *)(t + cb), sc->ctrlbase + cb - vtophys(t + cb)); */
+		/* kprintf("pbank[%d] = %p -> 0x%x\n", i * 2 + 1, (struct pbank *)(t + cb), sc->ctrlbase + cb - vtophys(t + cb)); */
 		cb += pcs;
 	}
 	wrl(sc, &sc->pbase[0], DS1_CHANS * 2);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.10 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.11 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -171,10 +171,10 @@ mlphy_attach(device_t dev)
 
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
-		printf("no media present");
+		kprintf("no media present");
 	else
 		mii_phy_add_media(sc);
-	printf("\n");
+	kprintf("\n");
 #undef ADD
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);

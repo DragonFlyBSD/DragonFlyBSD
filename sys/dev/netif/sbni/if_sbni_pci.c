@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.13 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.14 2006/12/22 23:26:21 swildner Exp $
  */
 
  
@@ -95,7 +95,7 @@ sbni_pci_probe(device_t dev)
  	sc->io_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->io_rid,
 					0ul, ~0ul, ports, RF_ACTIVE);
 	if (!sc->io_res) {
-		printf("sbni: cannot allocate io ports!\n");
+		kprintf("sbni: cannot allocate io ports!\n");
 		if (sc->slave_sc)
 			kfree(sc->slave_sc, M_DEVBUF);
 		return (ENOENT);
@@ -126,7 +126,7 @@ sbni_pci_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	printf("sbni%d: <Granch SBNI12/PCI%sadapter> port 0x%lx",
+	kprintf("sbni%d: <Granch SBNI12/PCI%sadapter> port 0x%lx",
 	       next_sbni_unit, sc->slave_sc ? " Dual " : " ",
 	       rman_get_start(sc->io_res));
 	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
@@ -144,10 +144,10 @@ sbni_pci_attach(device_t dev)
 				       &sc->irq_handle, 
 				       sc->arpcom.ac_if.if_serializer);
 		if (error) {
-			printf("sbni%d: bus_setup_intr\n", next_sbni_unit);
+			kprintf("sbni%d: bus_setup_intr\n", next_sbni_unit);
 		}
 	} else {
-		printf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);
+		kprintf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);
 	}
 
 	return (0);

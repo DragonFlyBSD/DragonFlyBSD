@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.c,v 1.6.2.1 2000/04/14 13:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.5 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.6 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -203,7 +203,7 @@ adw_reset_bus(struct adw_softc *adw)
 	    adw_idle_cmd_send(adw, ADW_IDLE_CMD_SCSI_RESET_START, /*param*/0);
 	if (status != ADW_IDLE_CMD_SUCCESS) {
 		xpt_print_path(adw->path);
-		printf("Bus Reset start attempt failed\n");
+		kprintf("Bus Reset start attempt failed\n");
 		return (1);
 	}
 	DELAY(ADW_BUS_RESET_HOLD_DELAY_US);
@@ -211,7 +211,7 @@ adw_reset_bus(struct adw_softc *adw)
 	    adw_idle_cmd_send(adw, ADW_IDLE_CMD_SCSI_RESET_END, /*param*/0);
 	if (status != ADW_IDLE_CMD_SUCCESS) {
 		xpt_print_path(adw->path);
-		printf("Bus Reset end attempt failed\n");
+		kprintf("Bus Reset end attempt failed\n");
 		return (1);
 	}
 	return (0);
@@ -474,7 +474,7 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 		checksum += adw_inw(adw, ADW_RAM_DATA);
 
 	if (checksum != adw->mcode_data->mcode_chksum) {
-		printf("%s: Firmware load failed!\n", adw_name(adw));
+		kprintf("%s: Firmware load failed!\n", adw_name(adw));
 		return (EIO);
 	}
 
@@ -551,8 +551,8 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 	 * this condition is found.
 	 */
 	if ((adw_inw(adw, ADW_SCSI_CTRL) & 0x3F07) == 0x3F07) {
-		printf("%s: Illegal Cable Config!\n", adw_name(adw));
-		printf("%s: Internal cable is reversed!\n", adw_name(adw));
+		kprintf("%s: Illegal Cable Config!\n", adw_name(adw));
+		kprintf("%s: Internal cable is reversed!\n", adw_name(adw));
 		return (EIO);
 	}
 
@@ -563,16 +563,16 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 	if ((adw->features & ADW_ULTRA) != 0)  {
 		if ((scsicfg1 & ADW_SCSI_CFG1_DIFF_MODE) != 0
 		 && (scsicfg1 & ADW_SCSI_CFG1_DIFF_SENSE) == 0) {
-			printf("%s: A Single Ended Device is attached to our "
+			kprintf("%s: A Single Ended Device is attached to our "
 			       "differential bus!\n", adw_name(adw));
 		        return (EIO);
 		}
 	} else {
 		if ((scsicfg1 & ADW2_SCSI_CFG1_DEV_DETECT_HVD) != 0) {
-			printf("%s: A High Voltage Differential Device "
+			kprintf("%s: A High Voltage Differential Device "
 			       "is attached to this controller.\n",
 			       adw_name(adw));
-			printf("%s: HVD devices are not supported.\n",
+			kprintf("%s: HVD devices are not supported.\n",
 			       adw_name(adw));
 		        return (EIO);
 		}
@@ -648,9 +648,9 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 				cable_count++;
 
 			if (cable_count == 3) {
-				printf("%s: Illegal Cable Config!\n",
+				kprintf("%s: Illegal Cable Config!\n",
 				       adw_name(adw));
-				printf("%s: Only Two Ports may be used at "
+				kprintf("%s: Only Two Ports may be used at "
 				       "a time!\n", adw_name(adw));
 			} else if (cable_count <= 1) {
 				/*
@@ -669,13 +669,13 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 	/* Tell the user about our decission */
 	switch (term_scsicfg1 & ADW_SCSI_CFG1_TERM_CTL_MASK) {
 	case ADW_SCSI_CFG1_TERM_CTL_MASK:
-		printf("High & Low SE Term Enabled, ");
+		kprintf("High & Low SE Term Enabled, ");
 		break;
 	case ADW_SCSI_CFG1_TERM_CTL_H:
-		printf("High SE Termination Enabled, ");
+		kprintf("High SE Termination Enabled, ");
 		break;
 	case ADW_SCSI_CFG1_TERM_CTL_L:
-		printf("Low SE Term Enabled, ");
+		kprintf("Low SE Term Enabled, ");
 		break;
 	default:
 		break;
@@ -683,7 +683,7 @@ adw_init_chip(struct adw_softc *adw, u_int term_scsicfg1)
 
 	if ((adw->features & ADW_ULTRA2) != 0
 	 && (term_scsicfg1 & ADW2_SCSI_CFG1_TERM_CTL_LVD) != 0)
-		printf("LVD Term Enabled, ");
+		kprintf("LVD Term Enabled, ");
 
 	/*
 	 * Invert the TERM_CTL_H and TERM_CTL_L bits and then

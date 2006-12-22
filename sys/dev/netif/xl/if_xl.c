@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.46 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.47 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -927,7 +927,7 @@ xl_setmode(struct xl_softc *sc, int media)
 
 	if (sc->xl_media & XL_MEDIAOPT_BT) {
 		if (IFM_SUBTYPE(media) == IFM_10_T) {
-			printf("10baseT transceiver, ");
+			kprintf("10baseT transceiver, ");
 			sc->xl_xcvr = XL_XCVR_10BT;
 			icfg &= ~XL_ICFG_CONNECTOR_MASK;
 			icfg |= (XL_XCVR_10BT << XL_ICFG_CONNECTOR_BITS);
@@ -939,7 +939,7 @@ xl_setmode(struct xl_softc *sc, int media)
 
 	if (sc->xl_media & XL_MEDIAOPT_BFX) {
 		if (IFM_SUBTYPE(media) == IFM_100_FX) {
-			printf("100baseFX port, ");
+			kprintf("100baseFX port, ");
 			sc->xl_xcvr = XL_XCVR_100BFX;
 			icfg &= ~XL_ICFG_CONNECTOR_MASK;
 			icfg |= (XL_XCVR_100BFX << XL_ICFG_CONNECTOR_BITS);
@@ -950,7 +950,7 @@ xl_setmode(struct xl_softc *sc, int media)
 
 	if (sc->xl_media & (XL_MEDIAOPT_AUI|XL_MEDIAOPT_10FL)) {
 		if (IFM_SUBTYPE(media) == IFM_10_5) {
-			printf("AUI port, ");
+			kprintf("AUI port, ");
 			sc->xl_xcvr = XL_XCVR_AUI;
 			icfg &= ~XL_ICFG_CONNECTOR_MASK;
 			icfg |= (XL_XCVR_AUI << XL_ICFG_CONNECTOR_BITS);
@@ -959,7 +959,7 @@ xl_setmode(struct xl_softc *sc, int media)
 			mediastat |= ~XL_MEDIASTAT_SQEENB;
 		}
 		if (IFM_SUBTYPE(media) == IFM_10_FL) {
-			printf("10baseFL transceiver, ");
+			kprintf("10baseFL transceiver, ");
 			sc->xl_xcvr = XL_XCVR_AUI;
 			icfg &= ~XL_ICFG_CONNECTOR_MASK;
 			icfg |= (XL_XCVR_AUI << XL_ICFG_CONNECTOR_BITS);
@@ -971,7 +971,7 @@ xl_setmode(struct xl_softc *sc, int media)
 
 	if (sc->xl_media & XL_MEDIAOPT_BNC) {
 		if (IFM_SUBTYPE(media) == IFM_10_2) {
-			printf("BNC port, ");
+			kprintf("BNC port, ");
 			sc->xl_xcvr = XL_XCVR_COAX;
 			icfg &= ~XL_ICFG_CONNECTOR_MASK;
 			icfg |= (XL_XCVR_COAX << XL_ICFG_CONNECTOR_BITS);
@@ -983,11 +983,11 @@ xl_setmode(struct xl_softc *sc, int media)
 
 	if ((media & IFM_GMASK) == IFM_FDX ||
 			IFM_SUBTYPE(media) == IFM_100_FX) {
-		printf("full duplex\n");
+		kprintf("full duplex\n");
 		XL_SEL_WIN(3);
 		CSR_WRITE_1(sc, XL_W3_MAC_CTRL, XL_MACCTRL_DUPLEX);
 	} else {
-		printf("half duplex\n");
+		kprintf("half duplex\n");
 		XL_SEL_WIN(3);
 		CSR_WRITE_1(sc, XL_W3_MAC_CTRL,
 			(CSR_READ_1(sc, XL_W3_MAC_CTRL) & ~XL_MACCTRL_DUPLEX));

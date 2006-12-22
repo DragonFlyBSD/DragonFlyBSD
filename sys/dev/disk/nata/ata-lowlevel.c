@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-lowlevel.c,v 1.77 2006/07/04 20:36:03 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-lowlevel.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-lowlevel.c,v 1.2 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -200,7 +200,7 @@ ata_begin_transaction(struct ata_request *request)
 	goto begin_continue;
     }
     /* NOT REACHED */
-    printf("ata_begin_transaction OOPS!!!\n");
+    kprintf("ata_begin_transaction OOPS!!!\n");
 
 begin_finished:
     if (ch->dma && ch->dma->flags & ATA_DMA_LOADED)
@@ -455,7 +455,7 @@ ata_end_transaction(struct ata_request *request)
 	goto end_finished;
     }
     /* NOT REACHED */
-    printf("ata_end_transaction OOPS!!\n");
+    kprintf("ata_end_transaction OOPS!!\n");
 
 end_finished:
     callout_stop(&request->callout);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.9 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.10 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -143,7 +143,7 @@ aha_isa_probe(device_t dev)
 		    DEFAULT_CMD_TIMEOUT);
 
 		if (error != 0) {
-			printf("aha_isa_probe: Could not determine IRQ or DMA "
+			kprintf("aha_isa_probe: Could not determine IRQ or DMA "
 			    "settings for adapter at 0x%x.  Failing probe\n",
 			    ioport);
 			aha_free(aha);
@@ -165,7 +165,7 @@ aha_isa_probe(device_t dev)
 			drq = 7;
 			break;
 		default:
-			printf("aha_isa_probe: Invalid DMA setting "
+			kprintf("aha_isa_probe: Invalid DMA setting "
 			    "detected for adapter at 0x%x.  "
 			    "Failing probe\n", ioport);
 			return (ENXIO);

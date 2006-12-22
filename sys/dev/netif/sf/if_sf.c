@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.29 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.30 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -573,7 +573,7 @@ sf_reset(struct sf_softc *sc)
 	}
 
 	if (i == SF_TIMEOUT)
-		printf("sf%d: reset never completed!\n", sc->sf_unit);
+		kprintf("sf%d: reset never completed!\n", sc->sf_unit);
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -669,7 +669,7 @@ sf_attach(device_t dev)
 			irq = pci_read_config(dev, SF_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("sf%d: chip is in D%d power mode "
+			kprintf("sf%d: chip is in D%d power mode "
 			"-- setting to D0\n", unit, command & SF_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, SF_PCI_PWRMGMTCTRL, command, 4);
@@ -691,13 +691,13 @@ sf_attach(device_t dev)
 
 #ifdef SF_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("sf%d: failed to enable I/O ports!\n", unit);
+		kprintf("sf%d: failed to enable I/O ports!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("sf%d: failed to enable memory mapping!\n", unit);
+		kprintf("sf%d: failed to enable memory mapping!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -707,7 +707,7 @@ sf_attach(device_t dev)
 	sc->sf_res = bus_alloc_resource_any(dev, SF_RES, &rid, RF_ACTIVE);
 
 	if (sc->sf_res == NULL) {
-		printf ("sf%d: couldn't map ports\n", unit);
+		kprintf ("sf%d: couldn't map ports\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -721,7 +721,7 @@ sf_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->sf_irq == NULL) {
-		printf("sf%d: couldn't map interrupt\n", unit);
+		kprintf("sf%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -745,7 +745,7 @@ sf_attach(device_t dev)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->sf_ldata == NULL) {
-		printf("sf%d: no memory for list buffers!\n", unit);
+		kprintf("sf%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -755,7 +755,7 @@ sf_attach(device_t dev)
 	/* Do MII setup. */
 	if (mii_phy_probe(dev, &sc->sf_miibus,
 	    sf_ifmedia_upd, sf_ifmedia_sts)) {
-		printf("sf%d: MII without any phy!\n", sc->sf_unit);
+		kprintf("sf%d: MII without any phy!\n", sc->sf_unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1045,7 +1045,7 @@ sf_txthresh_adjust(struct sf_softc *sc)
 		txfctl &= ~SF_TXFRMCTL_TXTHRESH;
 		txfctl |= txthresh;
 #ifdef DIAGNOSTIC
-		printf("sf%d: tx underrun, increasing "
+		kprintf("sf%d: tx underrun, increasing "
 		    "tx threshold to %d bytes\n",
 		    sc->sf_unit, txthresh * 4);
 #endif
@@ -1134,7 +1134,7 @@ sf_init(void *xsc)
 	sf_setperf(sc, 0, (caddr_t)&sc->arpcom.ac_enaddr);
 
 	if (sf_init_rx_ring(sc) == ENOBUFS) {
-		printf("sf%d: initialization failed: no "
+		kprintf("sf%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->sf_unit);
 		return;
 	}
@@ -1239,7 +1239,7 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
-			printf("sf%d: no memory for tx list", sc->sf_unit);
+			kprintf("sf%d: no memory for tx list", sc->sf_unit);
 			return(1);
 		}
 
@@ -1247,7 +1247,7 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 			MCLGET(m_new, MB_DONTWAIT);
 			if (!(m_new->m_flags & M_EXT)) {
 				m_freem(m_new);
-				printf("sf%d: no memory for tx list",
+				kprintf("sf%d: no memory for tx list",
 				    sc->sf_unit);
 				return(1);
 			}
@@ -1293,7 +1293,7 @@ sf_start(struct ifnet *ifp)
 	i = SF_IDX_HI(txprod) >> 4;
 
 	if (sc->sf_ldata->sf_tx_dlist[i].sf_mbuf != NULL) {
-		printf("sf%d: TX ring full, resetting\n", sc->sf_unit);
+		kprintf("sf%d: TX ring full, resetting\n", sc->sf_unit);
 		sf_init(sc);
 		txprod = csr_read_4(sc, SF_TXDQ_PRODIDX);
 		i = SF_IDX_HI(txprod) >> 4;
@@ -1436,7 +1436,7 @@ sf_watchdog(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("sf%d: watchdog timeout\n", sc->sf_unit);
+	kprintf("sf%d: watchdog timeout\n", sc->sf_unit);
 
 	sf_stop(sc);
 	sf_reset(sc);

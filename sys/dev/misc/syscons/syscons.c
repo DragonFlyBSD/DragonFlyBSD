@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.28 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.29 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -213,7 +213,7 @@ sc_probe_unit(int unit, int flags)
 {
     if (!scvidprobe(unit, flags, FALSE)) {
 	if (bootverbose)
-	    printf("sc%d: no video adapter found.\n", unit);
+	    kprintf("sc%d: no video adapter found.\n", unit);
 	return ENXIO;
     }
 
@@ -346,18 +346,18 @@ sc_attach_unit(int unit, int flags)
     kbd_ioctl(sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
     update_kbd_state(scp, scp->status, LOCK_MASK);
 
-    printf("sc%d: %s <%d virtual consoles, flags=0x%x>\n",
+    kprintf("sc%d: %s <%d virtual consoles, flags=0x%x>\n",
 	   unit, adapter_name(sc->adp), sc->vtys, sc->config);
     if (bootverbose) {
-	printf("sc%d:", unit);
+	kprintf("sc%d:", unit);
     	if (sc->adapter >= 0)
-	    printf(" fb%d", sc->adapter);
+	    kprintf(" fb%d", sc->adapter);
 	if (sc->keyboard >= 0)
-	    printf(", kbd%d", sc->keyboard);
+	    kprintf(", kbd%d", sc->keyboard);
 	if (scp->tsw)
-	    printf(", terminal emulator: %s (%s)",
+	    kprintf(", terminal emulator: %s (%s)",
 		   scp->tsw->te_name, scp->tsw->te_desc);
-	printf("\n");
+	kprintf("\n");
     }
 
     /* register a shutdown callback for the kernel console */
@@ -1685,11 +1685,11 @@ scrn_update(scr_stat *scp, int show_cursor)
 #if 1
     /* debug: XXX */
     if (scp->end >= scp->xsize*scp->ysize) {
-	printf("scrn_update(): scp->end %d > size_of_screen!!\n", scp->end);
+	kprintf("scrn_update(): scp->end %d > size_of_screen!!\n", scp->end);
 	scp->end = scp->xsize*scp->ysize - 1;
     }
     if (scp->start < 0) {
-	printf("scrn_update(): scp->start %d < 0\n", scp->start);
+	kprintf("scrn_update(): scp->start %d < 0\n", scp->start);
 	scp->start = 0;
     }
 #endif
@@ -1835,7 +1835,7 @@ scsplash_saver(sc_softc_t *sc, int show)
 		sc->flags |= SC_SAVER_FAILED;
 		scsplash_stick(FALSE);
 		restore_scrn_saver_mode(scp, TRUE);
-		printf("scsplash_saver(): failed to put up the image\n");
+		kprintf("scsplash_saver(): failed to put up the image\n");
 		break;
 	    }
 	}
@@ -3133,7 +3133,7 @@ next_code:
 #ifdef DDB
 		Debugger("manual escape to debugger");
 #else
-		printf("No debugger in kernel\n");
+		kprintf("No debugger in kernel\n");
 #endif
 #else /* SC_DISABLE_DDBKEY */
 		/* do nothing */

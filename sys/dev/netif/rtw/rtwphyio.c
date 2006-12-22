@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwphyio.c,v 1.11 2006/03/08 00:24:06 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwphyio.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwphyio.c,v 1.3 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -110,7 +110,7 @@ rtw_bbp_write(struct rtw_regs *regs, u_int addr, u_int val)
 		}
 		DELAY(BBP_WRITE_DELAY);	/* again */
 	}
-	printf("%s: timeout\n", __func__);
+	kprintf("%s: timeout\n", __func__);
 	return -1;
 }
 
@@ -193,7 +193,7 @@ rtw_rf_macbangbits(struct rtw_regs *regs, uint32_t reg)
 		RTW_RBR(regs, RTW_PHYCFG, RTW_PHYCFG);	/* XXX paranoia? */
 	}
 
-	printf("%s: RTW_PHYCFG_MAC_POLL still set.\n", __func__);
+	kprintf("%s: RTW_PHYCFG_MAC_POLL still set.\n", __func__);
 	return -1;
 }
 
@@ -288,7 +288,7 @@ rtw_rf_hostwrite(struct rtw_regs *regs, enum rtw_rfchipid rfchipid,
 		break;
 	case RTW_RFCHIPID_INTERSIL:
 	default:
-		printf("%s: unknown rfchipid %d\n", __func__, rfchipid);
+		kprintf("%s: unknown rfchipid %d\n", __func__, rfchipid);
 		return -1;
 	}
 
@@ -351,7 +351,7 @@ rtw_rf_macwrite(struct rtw_regs *regs, enum rtw_rfchipid rfchipid,
 		reg |= RTW_PHYCFG_MAC_RFTYPE_PHILIPS;
 		break;
 	default:
-		printf("%s: unknown rfchipid %d\n", __func__, rfchipid);
+		kprintf("%s: unknown rfchipid %d\n", __func__, rfchipid);
 		return -1;
 	}
 

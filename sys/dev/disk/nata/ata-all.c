@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.5 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.6 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -249,8 +249,8 @@ ata_reinit(device_t dev)
 		      "WARNING - %s requeued due to channel reset",
 		      ata_cmd2str(request));
 	if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-	    printf(" LBA=%ju", request->u.ata.lba);
-	printf("\n");
+	    kprintf(" LBA=%ju", request->u.ata.lba);
+	kprintf("\n");
 	request->flags |= ATA_R_REQUEUE;
 	ata_queue_request(request);
     }
@@ -628,7 +628,7 @@ ata_getparam(struct ata_device *atadev, int init)
 	bpack(atacap->serial, atacap->serial, sizeof(atacap->serial));
 
 	if (bootverbose)
-	    printf("ata%d-%s: pio=%s wdma=%s udma=%s cable=%s wire\n",
+	    kprintf("ata%d-%s: pio=%s wdma=%s udma=%s cable=%s wire\n",
 		   device_get_unit(ch->dev),
 		   atadev->unit == ATA_MASTER ? "master" : "slave",
 		   ata_mode2str(ata_pmode(atacap)),
@@ -1007,12 +1007,12 @@ ata_module_event_handler(module_t mod, int what, void *arg)
 	    if (!(ata_delayed_attach = (struct intr_config_hook *)
 				       kmalloc(sizeof(struct intr_config_hook),
 					      M_TEMP, M_NOWAIT | M_ZERO))) {
-		printf("ata: kmalloc of delayed attach hook failed\n");
+		kprintf("ata: kmalloc of delayed attach hook failed\n");
 		return EIO;
 	    }
 	    ata_delayed_attach->ich_func = (void*)ata_boot_attach;
 	    if (config_intrhook_establish(ata_delayed_attach) != 0) {
-		printf("ata: config_intrhook_establish failed\n");
+		kprintf("ata: config_intrhook_establish failed\n");
 		kfree(ata_delayed_attach, M_TEMP);
 	    }
 	}

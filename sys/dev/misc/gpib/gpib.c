@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.13 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.14 2006/12/22 23:26:17 swildner Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -119,11 +119,11 @@ gpattach(struct isa_device *isdp)
 
 	sc->sc_unit = isdp->id_unit;
         if (sc->sc_type==3)
-           printf ("gp%d: type AT-GPIB/TNT\n",sc->sc_unit);
+           kprintf ("gp%d: type AT-GPIB/TNT\n",sc->sc_unit);
         if (sc->sc_type==2)
-           printf ("gp%d: type AT-GPIB chip NAT4882B\n",sc->sc_unit);
+           kprintf ("gp%d: type AT-GPIB chip NAT4882B\n",sc->sc_unit);
         if (sc->sc_type==1)
-           printf ("gp%d: type AT-GPIB chip NAT4882A\n",sc->sc_unit);
+           kprintf ("gp%d: type AT-GPIB chip NAT4882A\n",sc->sc_unit);
         sc->sc_flags |=ATTACHED;
 
 	dev_ops_add(&gp_ops, -1, sc->sc_unit);
@@ -270,7 +270,7 @@ if (oldcount==2){
    outb(CDOR,oldbytes[1]);
    else {
    outb (CDOR,13); /*Send a CR.. we've got trouble*/
-   printf("gpib: Warning: gpclose called with nothing left in buffer\n");
+   kprintf("gpib: Warning: gpclose called with nothing left in buffer\n");
    }
 }
 
@@ -429,29 +429,29 @@ gpioctl(struct dev_ioctl_args *ap)
 /*Just in case you want a dump of the registers...*/
 
 static void showregs() {
- printf ("NAT4882:\n");
- printf ("ISR1=%X\t",inb(ISR1));
- printf ("ISR2=%X\t",inb(ISR2));
- printf ("SPSR=%X\t",inb(SPSR));
- printf ("KSR =%X\t",inb(KSR));
- printf ("ADSR=%X\t",inb(ADSR));
- printf ("CPTR=%X\t",inb(CPTR));
- printf ("SASR=%X\t",inb(SASR));
- printf ("ADR0=%X\t",inb(ADR0));
- printf ("ISR0=%X\t",inb(ISR0));
- printf ("ADR1=%X\t",inb(ADR1));
- printf ("BSR =%X\n",inb(BSR));
+ kprintf ("NAT4882:\n");
+ kprintf ("ISR1=%X\t",inb(ISR1));
+ kprintf ("ISR2=%X\t",inb(ISR2));
+ kprintf ("SPSR=%X\t",inb(SPSR));
+ kprintf ("KSR =%X\t",inb(KSR));
+ kprintf ("ADSR=%X\t",inb(ADSR));
+ kprintf ("CPTR=%X\t",inb(CPTR));
+ kprintf ("SASR=%X\t",inb(SASR));
+ kprintf ("ADR0=%X\t",inb(ADR0));
+ kprintf ("ISR0=%X\t",inb(ISR0));
+ kprintf ("ADR1=%X\t",inb(ADR1));
+ kprintf ("BSR =%X\n",inb(BSR));
 
- printf ("Turbo488\n");
- printf ("STS1=%X ",inb(STS1));
- printf ("STS2=%X ",inb(STS2));
- printf ("ISR3=%X ",inb(ISR3));
- printf ("CNT0=%X ",inb(CNT0));
- printf ("CNT1=%X ",inb(CNT1));
- printf ("CNT2=%X ",inb(CNT2));
- printf ("CNT3=%X ",inb(CNT3));
- printf ("IMR3=%X ",inb(IMR3));
- printf ("TIMER=%X\n",inb(TIMER));
+ kprintf ("Turbo488\n");
+ kprintf ("STS1=%X ",inb(STS1));
+ kprintf ("STS2=%X ",inb(STS2));
+ kprintf ("ISR3=%X ",inb(ISR3));
+ kprintf ("CNT0=%X ",inb(CNT0));
+ kprintf ("CNT1=%X ",inb(CNT1));
+ kprintf ("CNT2=%X ",inb(CNT2));
+ kprintf ("CNT3=%X ",inb(CNT3));
+ kprintf ("IMR3=%X ",inb(IMR3));
+ kprintf ("TIMER=%X\n",inb(TIMER));
 
 
  }
@@ -783,7 +783,7 @@ status=EWOULDBLOCK;
 
    if((count>1)&&(inb(ISR3)&0x08)){
    outw(FIFOB,*(unsigned*)(data+counter));
- /*  printf ("gpib: sent:%c,%c\n",data[counter],data[counter+1]);*/
+ /*  kprintf ("gpib: sent:%c,%c\n",data[counter],data[counter+1]);*/
 
   counter+=2;
   count-=2;
@@ -1005,7 +1005,7 @@ do
    status2=inb(STS2);
    inword=inw(FIFOB);
    *(unsigned*)(data+counter)=inword;
-  /* printf ("Read:%c,%c\n",data[counter],data[counter+1]);*/
+  /* kprintf ("Read:%c,%c\n",data[counter],data[counter+1]);*/
   counter+=2;
   }
  else {

@@ -43,7 +43,7 @@
  * testing revisions.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder_rate.c,v 1.2.2.3 2003/02/08 02:38:21 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.3 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.4 2006/12/22 23:26:25 swildner Exp $
  */
 
 #ifdef _KERNEL
@@ -51,7 +51,7 @@
 #include <dev/sound/pcm/sound.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.3 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.4 2006/12/22 23:26:25 swildner Exp $");
 
 #endif /* _KERNEL */
 
@@ -62,7 +62,7 @@ MALLOC_DEFINE(M_RATEFEEDER, "ratefeed", "pcm rate feeder");
 #endif /* RATE_ASSERT */
 
 #ifndef RATE_TRACE
-#define RATE_TRACE(x...)  /* printf(x) */
+#define RATE_TRACE(x...)  /* kprintf(x) */
 #endif
 
 /*****************************************************************************/

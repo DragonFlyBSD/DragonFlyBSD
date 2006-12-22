@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.11 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.12 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.11 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.12 2006/12/22 23:26:25 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -549,8 +549,8 @@ void ich_calibrate(void *arg)
 	if (bootverbose || sc->ac97rate != 48000) {
 		device_printf(sc->dev, "measured ac97 link rate at %d Hz", actual_48k_rate);
 		if (sc->ac97rate != actual_48k_rate)
-			printf(", will use %d Hz", sc->ac97rate);
-	 	printf("\n");
+			kprintf(", will use %d Hz", sc->ac97rate);
+	 	kprintf("\n");
 	}
 
 	return;

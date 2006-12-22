@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.27 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.28 2006/12/22 23:26:22 swildner Exp $
  *
  */
 
@@ -255,7 +255,7 @@ vxgetlink(struct vx_softc *sc)
 	if (n == 0)
 	  if_printf(&sc->arpcom.ac_if, "%s", conn_tab[k].name);
 	else
-	  printf("/%s", conn_tab[k].name);
+	  kprintf("/%s", conn_tab[k].name);
 	n++;
       }
     }
@@ -269,10 +269,10 @@ vxgetlink(struct vx_softc *sc)
 			>> INTERNAL_CONNECTOR_BITS;
     if (sc->vx_connector & 0x10) {
 	sc->vx_connector &= 0x0f;
-	printf("[*%s*]", conn_tab[(int)sc->vx_connector].name);
-	printf(": disable 'auto select' with DOS util!\n");
+	kprintf("[*%s*]", conn_tab[(int)sc->vx_connector].name);
+	kprintf(": disable 'auto select' with DOS util!\n");
     } else {
-	printf("[*%s*]\n", conn_tab[(int)sc->vx_connector].name);
+	kprintf("[*%s*]\n", conn_tab[(int)sc->vx_connector].name);
     }
 }
 

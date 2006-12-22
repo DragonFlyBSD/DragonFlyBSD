@@ -1,6 +1,6 @@
 /* $NetBSD: am79c930.c,v 1.5 2000/03/23 13:57:58 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/am79c930.c,v 1.2.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.8 2006/10/25 20:55:56 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.9 2006/12/22 23:26:19 swildner Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -383,11 +383,11 @@ am79c930_regdump(struct am79c930_softc *sc)
 		buf[i] = bus_space_read_1 (sc->sc_iot, sc->sc_ioh, i);
 		AM930_DELAY(5);
 	}
-	printf("am79c930: regdump:");
+	kprintf("am79c930: regdump:");
 	for (i=0; i<8; i++) {
-		printf(" %02x", buf[i]);
+		kprintf(" %02x", buf[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 

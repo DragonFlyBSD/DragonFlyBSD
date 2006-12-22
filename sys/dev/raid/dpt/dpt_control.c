@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.12 2006/12/20 18:14:40 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.13 2006/12/22 23:26:23 swildner Exp $"
 
 #include "opt_dpt.h"
 
@@ -259,7 +259,7 @@ dpt_get_sysinfo(void)
 
 	/* Get The Number Of Drives From The Bios Data Area */
 	if ((addr = (char *) dpt_physmap(0x0475, 1024)) == NULL) {
-		printf("DPT:  Cannot map BIOS address 0x0475.  No sysinfo... :-(\n");
+		kprintf("DPT:  Cannot map BIOS address 0x0475.  No sysinfo... :-(\n");
 		return;
 	}
 	dpt_sysinfo.numDrives = *addr;
@@ -432,7 +432,7 @@ dpt_open(cdev_t dev, int flags, int fmt, struct proc * p)
 		if ((dpt_inbuf[minor_no & ~SCSI_CONTROL_MASK] = geteblk(PAGE_SIZE))
 		    == NULL) {
 #ifdef DPT_DEBUG_CONTROL
-			printf("dpt%d: Failed to obtain an I/O buffer\n",
+			kprintf("dpt%d: Failed to obtain an I/O buffer\n",
 			       minor_no & ~SCSI_CONTROL_MASK);
 #endif
 			crit_exit();
@@ -474,7 +474,7 @@ dpt_write(cdev_t dev, struct uio * uio, int ioflag)
 
 	if (minor_no & SCSI_CONTROL_MASK) {
 #ifdef DPT_DEBUG_CONTROL
-		printf("dpt%d:  I/O attempted to control channel (%x)\n",
+		kprintf("dpt%d:  I/O attempted to control channel (%x)\n",
 		       dpt_minor2unit(minor_no), minor_no);
 #endif
 		return (ENXIO);
@@ -494,7 +494,7 @@ dpt_write(cdev_t dev, struct uio * uio, int ioflag)
 
 		if ((error = uiomove(cp, length, uio) != 0)) {
 #ifdef DPT_DEBUG_CONTROL
-			printf("dpt%d: uiomove(%x, %d, %x) failed (%d)\n",
+			kprintf("dpt%d: uiomove(%x, %d, %x) failed (%d)\n",
 			       minor_no, cp, length, uio, error);
 #endif
 			return (error);
@@ -511,7 +511,7 @@ dpt_write(cdev_t dev, struct uio * uio, int ioflag)
 			 * For lack of anything better to do;
 			 * For now, dump the data so we can look at it and rejoice
 			 */
-			printf("dpt%d: Command \"%s\" arrived\n",
+			kprintf("dpt%d: Command \"%s\" arrived\n",
 			       unit, dpt_rw_command[unit]);
 #endif
 		}
@@ -531,13 +531,13 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 	error = 0;
 
 #ifdef DPT_DEBUG_CONTROL
-	printf("dpt%d: read, count = %d, dev = %08x\n",
+	kprintf("dpt%d: read, count = %d, dev = %08x\n",
 	       minor_no, uio->uio_resid, dev);
 #endif
 
 	if (minor_no & SCSI_CONTROL_MASK) {
 #ifdef DPT_DEBUG_CONTROL
-		printf("dpt%d:  I/O attempted to control channel (%x)\n",
+		kprintf("dpt%d:  I/O attempted to control channel (%x)\n",
 		       dpt_minor2unit(minor_no), minor_no);
 #endif
 		return (ENXIO);
@@ -636,7 +636,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 			wbp += x;
 		} else {
 #ifdef DPT_DEBUG_CONTROL
-			printf("dpt%d: Bad READ state (%s)\n", minor_no, command);
+			kprintf("dpt%d: Bad READ state (%s)\n", minor_no, command);
 #endif
 			crit_exit();
 			error = EINVAL;
@@ -648,7 +648,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 			uio->uio_resid = 0;
 #ifdef DPT_DEBUG_CONTROL
 			if (error) {
-				printf("dpt%d: READ uimove failed (%d)\n", dpt->unit, error);
+				kprintf("dpt%d: READ uimove failed (%d)\n", dpt->unit, error);
 			}
 #endif
 		}
@@ -678,7 +678,7 @@ dpt_ioctl(cdev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p)
 
 	if (!(minor_no & SCSI_CONTROL_MASK)) {
 #ifdef DPT_DEBUG_CONTROL
-		printf("dpt%d:  Control attempted to I/O channel (%x)\n",
+		kprintf("dpt%d:  Control attempted to I/O channel (%x)\n",
 		       dpt_minor2unit(minor_no), minor_no);
 #endif				/* DEBUG */
 		return (ENXIO);
@@ -686,7 +686,7 @@ dpt_ioctl(cdev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p)
 		minor_no &= ~SCSI_CONTROL_MASK;
 
 #ifdef DPT_DEBUG_CONTROL
-	printf("dpt%d: IOCTL(%x, %x, %p, %x, %p)\n",
+	kprintf("dpt%d: IOCTL(%x, %x, %p, %x, %p)\n",
 	       minor_no, dev, cmd, cmdarg, flags, p);
 #endif				/* DEBUG */
 
@@ -828,13 +828,13 @@ dpt_ioctl(cdev_t dev, u_long cmd, caddr_t cmdarg, int flags, struct proc * p)
 				 (caddr_t *) eata_pass_thru->command_buffer,
 					sizeof(result)));
 		default:
-			printf("dpt%d: Invalid (%x) pass-throu command\n",
+			kprintf("dpt%d: Invalid (%x) pass-throu command\n",
 			       dpt->unit, eata_pass_thru->command);
 			result = EINVAL;
 		}
 
 	default:
-		printf("dpt%d: Invalid (%lx) IOCTL\n", dpt->unit, cmd);
+		kprintf("dpt%d: Invalid (%lx) IOCTL\n", dpt->unit, cmd);
 		return (EINVAL);
 
 	}
@@ -849,7 +849,7 @@ dpt_drvinit(void *unused)
 {
 	if (!dpt_devsw_installed) {
 		if (bootverbose)
-			printf("DPT:  RAID Manager driver, Version %d.%d.%d\n",
+			kprintf("DPT:  RAID Manager driver, Version %d.%d.%d\n",
 			       DPT_CTL_RELEASE, DPT_CTL_VERSION, DPT_CTL_PATCH);
 
 		/* Add the I/O (data) channel */

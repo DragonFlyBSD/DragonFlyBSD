@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.h,v 1.3.2.1 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.h,v 1.2 2006/08/06 12:49:04 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.h,v 1.3 2006/12/22 23:26:19 swildner Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ calc_usecs_unicast_packet(struct ath_softc *sc, int length,  int rix,
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
 
 	if (!rt->info[rix].rateKbps) {
-		printf("rix %d (%d) bad ratekbps %d mode %u",
+		kprintf("rix %d (%d) bad ratekbps %d mode %u",
 		       rix, rt->info[rix].dot11Rate,
 		       rt->info[rix].rateKbps,
 		       sc->sc_curmode);
@@ -256,7 +256,7 @@ calc_usecs_unicast_packet(struct ath_softc *sc, int length,  int rix,
 		int ctsduration = 0;
 
 		if (!rt->info[cix].rateKbps) {
-			printf("cix %d (%d) bad ratekbps %d mode %u",
+			kprintf("cix %d (%d) bad ratekbps %d mode %u",
 			       cix, rt->info[cix].dot11Rate,
 			       rt->info[cix].rateKbps,
 			       sc->sc_curmode);

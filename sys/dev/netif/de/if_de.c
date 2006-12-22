@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.46 2006/10/25 20:55:56 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.47 2006/12/22 23:26:19 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3329,20 +3329,20 @@ tulip_print_abnormal_interrupt(tulip_softc_t *sc, uint32_t csr)
     if_printf(&sc->tulip_if, "abnormal interrupt:");
     for (sep = " ", mask = 1; mask <= csr; mask <<= 1, msgp++) {
 	if ((csr & mask) && *msgp != NULL) {
-	    printf("%s%s", sep, *msgp);
+	    kprintf("%s%s", sep, *msgp);
 	    if (mask == TULIP_STS_TXUNDERFLOW && (sc->tulip_flags & TULIP_NEWTXTHRESH)) {
 		sc->tulip_flags &= ~TULIP_NEWTXTHRESH;
 		if (sc->tulip_cmdmode & TULIP_CMD_STOREFWD) {
-		    printf(" (switching to store-and-forward mode)");
+		    kprintf(" (switching to store-and-forward mode)");
 		} else {
-		    printf(" (raising TX threshold to %s)",
+		    kprintf(" (raising TX threshold to %s)",
 			   &thrsh[9 * ((sc->tulip_cmdmode & TULIP_CMD_THRESHOLDCTL) >> 14)]);
 		}
 	    }
 	    sep = ", ";
 	}
     }
-    printf("\n");
+    kprintf("\n");
 }
 
 static void
@@ -4163,8 +4163,8 @@ tulip_pci_attach(device_t dev)
     if ((retval = tulip_read_macaddr(sc)) < 0) {
 	device_printf(dev, "can't read ENET ROM (why=%d) (", retval);
 	for (idx = 0; idx < 32; idx++)
-	    printf("%02x", sc->tulip_rombuf[idx]);
-	printf("\n");
+	    kprintf("%02x", sc->tulip_rombuf[idx]);
+	kprintf("\n");
 	device_printf(dev, "%s%s pass %d.%d\n",
 	       sc->tulip_boardid, tulip_chipdescs[sc->tulip_chipid],
 	       (sc->tulip_revinfo & 0xF0) >> 4, sc->tulip_revinfo & 0x0F);

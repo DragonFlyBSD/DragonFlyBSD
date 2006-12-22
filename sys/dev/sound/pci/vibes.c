@@ -28,7 +28,7 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -171,7 +171,7 @@ sv_dma_set_config(bus_space_tag_t st, bus_space_handle_t sh,
 	bus_space_write_4(st, sh, SV_DMA_COUNT, count & 0xffffff);
 	bus_space_write_1(st, sh, SV_DMA_MODE, mode);
 
-	DEB(printf("base 0x%08x count %5d mode 0x%02x\n",
+	DEB(kprintf("base 0x%08x count %5d mode 0x%02x\n",
 		   base, count, mode));
 }
 
@@ -196,7 +196,7 @@ svchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c
 	ch->dir = dir;
 
 	if (sndbuf_alloc(b, sc->parent_dmat, sc->bufsz) != 0) {
-		DEB(printf("svchan_init failed\n"));
+		DEB(kprintf("svchan_init failed\n"));
 		return NULL;
 	}
 	ch->buffer = b;
@@ -222,7 +222,7 @@ svchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
         /* user has requested interrupts every blocksize bytes */
 	RANGE(blocksize, SV_MIN_BLKSZ, sc->bufsz / SV_INTR_PER_BUFFER);
 	sndbuf_resize(ch->buffer, SV_INTR_PER_BUFFER, blocksize);
-	DEB(printf("svchan_setblocksize: %d\n", blocksize));
+	DEB(kprintf("svchan_setblocksize: %d\n", blocksize));
 	return blocksize;
 }
 
@@ -299,7 +299,7 @@ sv_set_recspeed(struct sc_info *sc, u_int32_t speed)
 	sv_indirect_set(sc, SV_REG_ADC_PLLM, best_m);
 	sv_indirect_set(sc, SV_REG_ADC_PLLN,
 			SV_ADC_PLLN(best_n) | SV_ADC_PLLR(best_r));
-	DEB(printf("svrchan_setspeed: %d -> PLLM 0x%02x PLLNR 0x%08x\n",
+	DEB(kprintf("svrchan_setspeed: %d -> PLLM 0x%02x PLLNR 0x%08x\n",
 		   speed,
 		   sv_indirect_get(sc, SV_REG_ADC_PLLM),
 		   sv_indirect_get(sc, SV_REG_ADC_PLLN)));
@@ -549,7 +549,7 @@ sv_mix_setrecsrc(struct snd_mixer *m, u_int32_t mask)
 			v |= mt[i].iselect;
 		}
 	}
-	DEB(printf("sv_mix_setrecsrc: mask 0x%08x adc_input 0x%02x\n", mask, v));
+	DEB(kprintf("sv_mix_setrecsrc: mask 0x%08x adc_input 0x%02x\n", mask, v));
 	return mask;
 }
 
@@ -587,7 +587,7 @@ sv_power(struct sc_info *sc, int state)
 		sv_indirect_set(sc, SV_REG_DIGITAL_PWR, SV_DIGITAL_OFF);
                 break;
         }
-        DEB(printf("Power state %d\n", state));
+        DEB(kprintf("Power state %d\n", state));
 }
 
 static int
@@ -695,7 +695,7 @@ sv_intr(void *data)
 		chn_intr(sc->rch.channel);
 
 	status &= ~(SV_CM_STATUS_AINT|SV_CM_STATUS_CINT);
-	DEB(if (status) printf("intr 0x%02x ?\n", status));
+	DEB(if (status) kprintf("intr 0x%02x ?\n", status));
 
 	return;
 }
@@ -754,9 +754,9 @@ sv_attach(device_t dev) {
 	sc->enh_sh = rman_get_bushandle(sc->enh_reg);
 
 	data = pci_read_config(dev, SV_PCI_DMAA, 4);
-	DEB(printf("sv_attach: initial dmaa 0x%08x\n", data));
+	DEB(kprintf("sv_attach: initial dmaa 0x%08x\n", data));
 	data = pci_read_config(dev, SV_PCI_DMAC, 4);
-	DEB(printf("sv_attach: initial dmac 0x%08x\n", data));
+	DEB(kprintf("sv_attach: initial dmac 0x%08x\n", data));
 
 	/* Initialize DMA_A and DMA_C */
 	pci_write_config(dev, SV_PCI_DMAA, SV_PCI_DMA_EXTENDED, 4);
@@ -848,7 +848,7 @@ sv_attach(device_t dev) {
 	data = pci_read_config(dev, SV_PCI_DMAA, 4) | SV_PCI_DMA_ENABLE | SV_PCI_DMA_EXTENDED;
 	data = ((u_int32_t)sdmaa & 0xfffffff0) | (data & 0x0f);
 	pci_write_config(dev, SV_PCI_DMAA, data, 4);
-	DEB(printf("dmaa: 0x%x 0x%x\n", data, pci_read_config(dev, SV_PCI_DMAA, 4)));
+	DEB(kprintf("dmaa: 0x%x 0x%x\n", data, pci_read_config(dev, SV_PCI_DMAA, 4)));
 
 	/* Cache resource short-cuts for dma_c */
 	sc->dmac_rid = SV_PCI_DMAC;
@@ -867,10 +867,10 @@ sv_attach(device_t dev) {
 	data = pci_read_config(dev, SV_PCI_DMAC, 4) | SV_PCI_DMA_ENABLE | SV_PCI_DMA_EXTENDED;
 	data = ((u_int32_t)sdmac & 0xfffffff0) | (data & 0x0f);
 	pci_write_config(dev, SV_PCI_DMAC, data, 4);
-	DEB(printf("dmac: 0x%x 0x%x\n", data, pci_read_config(dev, SV_PCI_DMAC, 4)));
+	DEB(kprintf("dmac: 0x%x 0x%x\n", data, pci_read_config(dev, SV_PCI_DMAC, 4)));
 
 	if (bootverbose)
-		printf("Sonicvibes: revision %d.\n", sc->rev);
+		kprintf("Sonicvibes: revision %d.\n", sc->rev);
 
         if (pcm_register(dev, sc, 1, 1)) {
 		device_printf(dev, "sv_attach: pcm_register fail\n");
@@ -884,7 +884,7 @@ sv_attach(device_t dev) {
                  rman_get_start(sc->enh_reg),  rman_get_start(sc->irq));
         pcm_setstatus(dev, status);
 
-        DEB(printf("sv_attach: succeeded\n"));
+        DEB(kprintf("sv_attach: succeeded\n"));
 
 	return 0;
 

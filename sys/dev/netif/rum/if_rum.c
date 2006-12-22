@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.1 2006/12/10 03:24:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.2 2006/12/22 23:26:21 swildner Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -235,7 +235,7 @@ USB_ATTACH(rum)
 	USB_ATTACH_SETUP;
 
 	if (usbd_set_config_no(sc->sc_udev, RT2573_CONFIG_NO, 0) != 0) {
-		printf("%s: could not set configuration no\n",
+		kprintf("%s: could not set configuration no\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -244,7 +244,7 @@ USB_ATTACH(rum)
 	error = usbd_device2interface_handle(sc->sc_udev, RT2573_IFACE_INDEX,
 	    &sc->sc_iface);
 	if (error != 0) {
-		printf("%s: could not get interface handle\n",
+		kprintf("%s: could not get interface handle\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -258,7 +258,7 @@ USB_ATTACH(rum)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->sc_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for iface %d\n",
+			kprintf("%s: no endpoint descriptor for iface %d\n",
 			    USBDEVNAME(sc->sc_dev), i);
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -271,7 +271,7 @@ USB_ATTACH(rum)
 			sc->sc_tx_no = ed->bEndpointAddress;
 	}
 	if (sc->sc_rx_no == -1 || sc->sc_tx_no == -1) {
-		printf("%s: missing endpoint\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: missing endpoint\n", USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -287,7 +287,7 @@ USB_ATTACH(rum)
 		DELAY(1000);
 	}
 	if (ntries == 1000) {
-		printf("%s: timeout waiting for chip to settle\n",
+		kprintf("%s: timeout waiting for chip to settle\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -295,7 +295,7 @@ USB_ATTACH(rum)
 	/* retrieve MAC address and various other things from EEPROM */
 	rum_read_eeprom(sc);
 
-	printf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %6D\n",
+	kprintf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %6D\n",
 	    USBDEVNAME(sc->sc_dev), sc->macbbp_rev, tmp,
 	    rum_get_rf(sc->rf_rev), ic->ic_myaddr, ":");
 
@@ -467,7 +467,7 @@ rum_alloc_tx_list(struct rum_softc *sc)
 
 		data->xfer = usbd_alloc_xfer(sc->sc_udev);
 		if (data->xfer == NULL) {
-			printf("%s: could not allocate tx xfer\n",
+			kprintf("%s: could not allocate tx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -476,7 +476,7 @@ rum_alloc_tx_list(struct rum_softc *sc)
 		data->buf = usbd_alloc_buffer(data->xfer,
 		    RT2573_TX_DESC_SIZE + IEEE80211_MAX_LEN);
 		if (data->buf == NULL) {
-			printf("%s: could not allocate tx buffer\n",
+			kprintf("%s: could not allocate tx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -527,14 +527,14 @@ rum_alloc_rx_list(struct rum_softc *sc)
 
 		data->xfer = usbd_alloc_xfer(sc->sc_udev);
 		if (data->xfer == NULL) {
-			printf("%s: could not allocate rx xfer\n",
+			kprintf("%s: could not allocate rx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
 		}
 
 		if (usbd_alloc_buffer(data->xfer, MCLBYTES) == NULL) {
-			printf("%s: could not allocate rx buffer\n",
+			kprintf("%s: could not allocate rx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -542,7 +542,7 @@ rum_alloc_rx_list(struct rum_softc *sc)
 
 		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
-			printf("%s: could not allocate rx mbuf\n",
+			kprintf("%s: could not allocate rx mbuf\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -735,7 +735,7 @@ rum_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
 
-		printf("%s: could not transmit buffer: %s\n",
+		kprintf("%s: could not transmit buffer: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(status));
 
 		if (status == USBD_STALLED)
@@ -818,7 +818,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
-		printf("%s: could not allocate rx mbuf\n",
+		kprintf("%s: could not allocate rx mbuf\n",
 		    USBDEVNAME(sc->sc_dev));
 		ifp->if_ierrors++;
 		goto skip;
@@ -1241,7 +1241,7 @@ rum_watchdog(struct ifnet *ifp)
 
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
-			printf("%s: device timeout\n", USBDEVNAME(sc->sc_dev));
+			kprintf("%s: device timeout\n", USBDEVNAME(sc->sc_dev));
 			/*rum_init(sc); XXX needs a process context! */
 			ifp->if_oerrors++;
 			return;
@@ -1322,7 +1322,7 @@ rum_eeprom_read(struct rum_softc *sc, uint16_t addr, void *buf, int len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not read EEPROM: %s\n",
+		kprintf("%s: could not read EEPROM: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1351,7 +1351,7 @@ rum_read_multi(struct rum_softc *sc, uint16_t reg, void *buf, int len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not multi read MAC register: %s\n",
+		kprintf("%s: could not multi read MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1378,7 +1378,7 @@ rum_write_multi(struct rum_softc *sc, uint16_t reg, void *buf, size_t len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not multi write MAC register: %s\n",
+		kprintf("%s: could not multi write MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1394,7 +1394,7 @@ rum_bbp_write(struct rum_softc *sc, uint8_t reg, uint8_t val)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not write to BBP\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not write to BBP\n", USBDEVNAME(sc->sc_dev));
 		return;
 	}
 
@@ -1413,7 +1413,7 @@ rum_bbp_read(struct rum_softc *sc, uint8_t reg)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
 		return 0;
 	}
 
@@ -1427,7 +1427,7 @@ rum_bbp_read(struct rum_softc *sc, uint8_t reg)
 		DELAY(1);
 	}
 
-	printf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
+	kprintf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
 	return 0;
 }
 
@@ -1442,7 +1442,7 @@ rum_rf_write(struct rum_softc *sc, uint8_t reg, uint32_t val)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not write to RF\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not write to RF\n", USBDEVNAME(sc->sc_dev));
 		return;
 	}
 
@@ -1848,7 +1848,7 @@ rum_bbp_init(struct rum_softc *sc)
 		DELAY(1000);
 	}
 	if (ntries == 100) {
-		printf("%s: timeout waiting for BBP\n",
+		kprintf("%s: timeout waiting for BBP\n",
 		    USBDEVNAME(sc->sc_dev));
 		return EIO;
 	}
@@ -1900,7 +1900,7 @@ rum_init(void *xsc)
 		DELAY(1000);
 	}
 	if (ntries == 1000) {
-		printf("%s: timeout waiting for BBP/RF to wakeup\n",
+		kprintf("%s: timeout waiting for BBP/RF to wakeup\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
@@ -1928,7 +1928,7 @@ rum_init(void *xsc)
 	 */
 	sc->stats_xfer = usbd_alloc_xfer(sc->sc_udev);
 	if (sc->stats_xfer == NULL) {
-		printf("%s: could not allocate AMRR xfer\n",
+		kprintf("%s: could not allocate AMRR xfer\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
@@ -1939,7 +1939,7 @@ rum_init(void *xsc)
 	error = usbd_open_pipe(sc->sc_iface, sc->sc_tx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_tx_pipeh);
 	if (error != 0) {
-		printf("%s: could not open Tx pipe: %s\n",
+		kprintf("%s: could not open Tx pipe: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 		goto fail;
 	}
@@ -1947,7 +1947,7 @@ rum_init(void *xsc)
 	error = usbd_open_pipe(sc->sc_iface, sc->sc_rx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_rx_pipeh);
 	if (error != 0) {
-		printf("%s: could not open Rx pipe: %s\n",
+		kprintf("%s: could not open Rx pipe: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 		goto fail;
 	}
@@ -1957,14 +1957,14 @@ rum_init(void *xsc)
 	 */
 	error = rum_alloc_tx_list(sc);
 	if (error != 0) {
-		printf("%s: could not allocate Tx list\n",
+		kprintf("%s: could not allocate Tx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
 
 	error = rum_alloc_rx_list(sc);
 	if (error != 0) {
-		printf("%s: could not allocate Rx list\n",
+		kprintf("%s: could not allocate Rx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
@@ -2067,7 +2067,7 @@ rum_load_microcode(struct rum_softc *sc, const uint8_t *ucode, size_t size)
 
 	error = usbd_do_request(sc->sc_udev, &req, NULL);
 	if (error != 0) {
-		printf("%s: could not run firmware: %s\n",
+		kprintf("%s: could not run firmware: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 	return error;
@@ -2142,7 +2142,7 @@ rum_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 	struct ieee80211_ratectl_stats *stats = &sc->sc_stats;
 
 	if (status != USBD_NORMAL_COMPLETION) {
-		printf("%s: could not retrieve Tx statistics - cancelling "
+		kprintf("%s: could not retrieve Tx statistics - cancelling "
 		    "automatic rate control\n", USBDEVNAME(sc->sc_dev));
 		return;
 	}

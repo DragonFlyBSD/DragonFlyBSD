@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.8 2005/06/16 15:48:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.9 2006/12/22 23:26:16 swildner Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -133,9 +133,9 @@ mpttimeout(void *arg)
 		mpt_read(mpt, MPT_OFFSET_INTR_STATUS),
 		mpt_read(mpt, MPT_OFFSET_INTR_MASK),
 		mpt_read(mpt, MPT_OFFSET_DOORBELL) );
-	printf("request state %s\n", mpt_req_state(req->debug)); 
+	kprintf("request state %s\n", mpt_req_state(req->debug)); 
 	if (ccb != req->ccb) {
-		printf("time out: ccb %p != req->ccb %p\n",
+		kprintf("time out: ccb %p != req->ccb %p\n",
 			ccb,req->ccb);
 	}
 	mpt_print_scsi_io_request((MSG_SCSI_IO_REQUEST *)req->req_vbuf);
@@ -690,22 +690,22 @@ mpt_event_notify_reply(mpt_softc_t *mpt, MSG_EVENT_NOTIFY_REPLY *msg)
 			switch ((msg->Data[0] >> 8) & 0xff) {
 			case 0xF7:
 				if ((msg->Data[0] & 0xff) == 0xF7) {
-					printf("Device needs AL_PA\n");
+					kprintf("Device needs AL_PA\n");
 				} else {
-					printf("Device %02X doesn't like FC performance\n", 
+					kprintf("Device %02X doesn't like FC performance\n", 
 									msg->Data[0] & 0xFF);
 				}
 				break;
 			case 0xF8:
 				if ((msg->Data[0] & 0xff) == 0xF7) {
-					printf("Device had loop failure at its receiver prior to acquiring AL_PA\n");
+					kprintf("Device had loop failure at its receiver prior to acquiring AL_PA\n");
 				} else {
-					printf("Device %02X detected loop failure at its receiver\n", 
+					kprintf("Device %02X detected loop failure at its receiver\n", 
 									msg->Data[0] & 0xFF);
 				}
 				break;
 			default:
-				printf("Device %02X requests that device %02X reset itself\n", 
+				kprintf("Device %02X requests that device %02X reset itself\n", 
 					msg->Data[0] & 0xFF,
 					(msg->Data[0] >> 8) & 0xFF);
 				break;
@@ -817,7 +817,7 @@ mpt_done(mpt_softc_t *mpt, u_int32_t reply)
 
 	/* Did we end up with a valid index into the table? */
 	if (index < 0 || index >= MPT_MAX_REQUESTS(mpt)) {
-		printf("mpt_done: invalid index (%x) in reply\n", index);
+		kprintf("mpt_done: invalid index (%x) in reply\n", index);
 		return;
 	}
 
@@ -825,7 +825,7 @@ mpt_done(mpt_softc_t *mpt, u_int32_t reply)
 
 	/* Make sure memory hasn't been trashed */
 	if (req->index != index) {
-		printf("mpt_done: corrupted request struct");
+		kprintf("mpt_done: corrupted request struct");
 		return;
 	}
 
@@ -858,15 +858,15 @@ mpt_done(mpt_softc_t *mpt, u_int32_t reply)
 		device_printf(mpt->dev,
 		    "mpt_done: corrupted ccb, index = 0x%02x seq = 0x%08x",
 		    req->index, req->sequence);
-		printf(" request state %s\nmpt_request:\n",
+		kprintf(" request state %s\nmpt_request:\n",
 		    mpt_req_state(req->debug)); 
 		mpt_print_scsi_io_request((MSG_SCSI_IO_REQUEST *)req->req_vbuf);
 
 		if (mpt_reply != NULL) {
-			printf("\nmpt_done: reply:\n"); 
+			kprintf("\nmpt_done: reply:\n"); 
 			mpt_print_reply(MPT_REPLY_PTOV(mpt, reply));
 		} else {
-			printf("\nmpt_done: context reply: 0x%08x\n", reply); 
+			kprintf("\nmpt_done: context reply: 0x%08x\n", reply); 
 		}
 		goto done;
 	}

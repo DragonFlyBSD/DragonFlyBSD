@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.15 2006/02/17 19:18:05 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.16 2006/12/22 23:26:19 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -700,7 +700,7 @@ static const struct {
 #define	SIOCGCHIPID		_IOWR('i', 241, struct ifreq)	/* get chipid */
 #endif
 
-#define	loudprintf			if (bootverbose) printf
+#define	loudprintf			if (bootverbose) kprintf
 
 #ifndef	tulip_if
 #define	tulip_if	tulip_ac.ac_if

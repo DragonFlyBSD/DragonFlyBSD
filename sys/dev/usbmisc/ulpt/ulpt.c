@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -206,7 +206,7 @@ USB_ATTACH(ulpt)
 	DPRINTFN(10,("ulpt_attach: sc=%p\n", sc));
 	usbd_devinfo(dev, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
 	       devinfo, ifcd->bInterfaceClass, ifcd->bInterfaceSubClass);
 
 	/* XXX
@@ -214,7 +214,7 @@ USB_ATTACH(ulpt)
 	 */
 	cdesc = usbd_get_config_descriptor(dev);
 	if (cdesc == NULL) {
-		printf("%s: failed to get configuration descriptor\n",
+		kprintf("%s: failed to get configuration descriptor\n",
 		       USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -246,7 +246,7 @@ USB_ATTACH(ulpt)
 		DPRINTF(("ulpt_attach: set altno = %d\n", altno));
 		err = usbd_set_interface(iface, altno);
 		if (err) {
-			printf("%s: setting alternate interface failed\n",
+			kprintf("%s: setting alternate interface failed\n",
 			       USBDEVNAME(sc->sc_dev));
 			sc->sc_dying = 1;
 			USB_ATTACH_ERROR_RETURN;
@@ -261,7 +261,7 @@ USB_ATTACH(ulpt)
 	for (i = 0; i < epcount; i++) {
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
-			printf("%s: couldn't get ep %d\n",
+			kprintf("%s: couldn't get ep %d\n",
 			    USBDEVNAME(sc->sc_dev), i);
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -274,7 +274,7 @@ USB_ATTACH(ulpt)
 		}
 	}
 	if (sc->sc_out == -1) {
-		printf("%s: could not find bulk out endpoint\n",
+		kprintf("%s: could not find bulk out endpoint\n",
 		    USBDEVNAME(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
@@ -285,7 +285,7 @@ USB_ATTACH(ulpt)
 		sc->sc_in = -1;
 	}
 
-	printf("%s: using %s-directional mode\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: using %s-directional mode\n", USBDEVNAME(sc->sc_dev),
 	       sc->sc_in >= 0 ? "bi" : "uni");
 
 	DPRINTFN(10, ("ulpt_attach: bulk=%d\n", sc->sc_out));
@@ -313,9 +313,9 @@ USB_ATTACH(ulpt)
 	err = usbd_do_request_flags(dev, &req, devinfo, USBD_SHORT_XFER_OK,
 		  &alen, USBD_DEFAULT_TIMEOUT);
 	if (err) {
-		printf("%s: cannot get device id\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: cannot get device id\n", USBDEVNAME(sc->sc_dev));
 	} else if (alen <= 2) {
-		printf("%s: empty device id, no printer connected?\n",
+		kprintf("%s: empty device id, no printer connected?\n",
 		       USBDEVNAME(sc->sc_dev));
 	} else {
 		/* devinfo now contains an IEEE-1284 device ID */
@@ -323,9 +323,9 @@ USB_ATTACH(ulpt)
 		if (len > sizeof devinfo - 3)
 			len = sizeof devinfo - 3;
 		devinfo[len] = 0;
-		printf("%s: device id <", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: device id <", USBDEVNAME(sc->sc_dev));
 		ieee1284_print_id(devinfo+2);
-		printf(">\n");
+		kprintf(">\n");
 	}
 	}
 #endif
@@ -390,10 +390,10 @@ USB_DETACH(ulpt)
 	crit_enter();
 	--sc->sc_refcnt;
 	if (sc->sc_refcnt >= 0) {
-		printf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
 		while (sc->sc_refcnt >= 0)
 			usb_detach_wait(USBDEV(sc->sc_dev));
-		printf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
 	}
 	crit_exit();
 
@@ -512,7 +512,7 @@ ulptopen(struct dev_open_args *ap)
 #if defined(USB_DEBUG) && (defined(__FreeBSD__) || defined(__DragonFly__))
 	/* Ignoring these flags might not be a good idea */
 	if ((flags & ~ULPT_NOPRIME) != 0)
-		printf("ulptopen: flags ignored: %b\n", flags,
+		kprintf("ulptopen: flags ignored: %b\n", flags,
 			"\20\3POS_INIT\4POS_ACK\6PRIME_OPEN\7AUTOLF\10BYPASS");
 #endif
 
@@ -747,7 +747,7 @@ ieee1284_print_id(char *str)
 		    strncmp(p, "MODEL:", 6) == 0) {
 			q = strchr(p, ';');
 			if (q)
-				printf("%.*s", (int)(q - p + 1), p);
+				kprintf("%.*s", (int)(q - p + 1), p);
 		}
 	}
 }

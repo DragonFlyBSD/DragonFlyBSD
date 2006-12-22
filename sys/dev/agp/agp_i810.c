@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.10 2006/10/25 20:55:52 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.11 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -187,7 +187,7 @@ agp_i810_probe(device_t dev)
 		bdev = agp_i810_find_bridge(dev);
 		if (!bdev) {
 			if (bootverbose)
-				printf("I810: can't find bridge device\n");
+				kprintf("I810: can't find bridge device\n");
 			return ENXIO;
 		}
 
@@ -204,7 +204,7 @@ agp_i810_probe(device_t dev)
 			if ((smram & AGP_I810_SMRAM_GMS)
 			    == AGP_I810_SMRAM_GMS_DISABLED) {
 				if (bootverbose)
-					printf("I810: disabled, not probing\n");
+					kprintf("I810: disabled, not probing\n");
 				return ENXIO;
 			}
 			break;
@@ -216,7 +216,7 @@ agp_i810_probe(device_t dev)
 			gcc1 = pci_read_config(bdev, AGP_I830_GCC1, 1);
 			if ((gcc1 & AGP_I830_GCC1_DEV2) == AGP_I830_GCC1_DEV2_DISABLED) {
 				if (bootverbose)
-					printf("I830: disabled, not probing\n");
+					kprintf("I830: disabled, not probing\n");
 					return ENXIO;
 			}
 			break;

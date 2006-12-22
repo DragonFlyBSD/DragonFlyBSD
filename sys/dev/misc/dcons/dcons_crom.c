@@ -33,7 +33,7 @@
  * 
  * $Id: dcons_crom.c,v 1.8 2003/10/23 15:47:21 simokawa Exp $
  * $FreeBSD: src/sys/dev/dcons/dcons_crom.c,v 1.5 2004/10/13 05:38:42 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.4 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.5 2006/12/22 23:26:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,7 @@ dmamap_cb(void *arg, bus_dma_segment_t *segments, int seg, int error)
 	struct dcons_crom_softc *sc;
 
 	if (error)
-		printf("dcons_dmamap_cb: error=%d\n", error);
+		kprintf("dcons_dmamap_cb: error=%d\n", error);
 
 	sc = (struct dcons_crom_softc *)arg;
 	sc->bus_addr = segments[0].ds_addr;
@@ -161,7 +161,7 @@ static int
 dcons_crom_attach(device_t dev)
 {
 #ifdef NEED_NEW_DRIVER
-	printf("dcons_crom: you need newer firewire driver\n");
+	kprintf("dcons_crom: you need newer firewire driver\n");
 	return (-1);
 #else
 	struct dcons_crom_softc *sc;

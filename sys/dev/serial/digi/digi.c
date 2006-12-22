@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.9 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.10 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*-
@@ -1031,7 +1031,7 @@ digi_loaddata(struct digi_softc *sc)
 			break;
 	}
 	if (bios->model == NULL) {
-		printf("digi.ko: driver %s not found", sc->module);
+		kprintf("digi.ko: driver %s not found", sc->module);
 		return(EINVAL);
 	}
 

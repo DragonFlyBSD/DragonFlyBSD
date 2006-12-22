@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_isa.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.7 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.8 2006/12/22 23:26:20 swildner Exp $
  */
 
 #include "opt_fe.h"
@@ -545,7 +545,7 @@ fe_probe_jli_icl(struct fe_softc * sc, u_char const * eeprom)
 		sc->typestr = "EtherTeam16i";
 		sc->stability |= UNSTABLE_TYPE;
 		if (bootverbose) {
-		    printf("fe%d: unknown model code %02x for EtherTeam16i\n",
+		    kprintf("fe%d: unknown model code %02x for EtherTeam16i\n",
 			   sc->sc_unit, eeprom[0x5E]);
 		}
 		break;
@@ -564,7 +564,7 @@ fe_probe_jli_icl(struct fe_softc * sc, u_char const * eeprom)
 	    case 3: defmedia = MB_H2; break;
 	    default: 
 		if (bootverbose) {
-			printf("fe%d: unknown default media: %02x\n",
+			kprintf("fe%d: unknown default media: %02x\n",
 			       sc->sc_unit, eeprom[0x28]);
 		}
 		defmedia = MB_HA;
@@ -575,7 +575,7 @@ fe_probe_jli_icl(struct fe_softc * sc, u_char const * eeprom)
 	   supported media.  */
 	if ((defmedia & sc->mbitmap) == 0) {
 		if (bootverbose) {
-			printf("fe%d: default media adjusted\n", sc->sc_unit);
+			kprintf("fe%d: default media adjusted\n", sc->sc_unit);
 		}
 		defmedia = sc->mbitmap;
 	}
@@ -592,7 +592,7 @@ fe_probe_jli_icl(struct fe_softc * sc, u_char const * eeprom)
 	    default:
 		/* We can't support it, since we don't know which bits
 		   to set in DLCR6.  */
-		printf("fe%d: unknown SRAM config for ICL\n", sc->sc_unit);
+		kprintf("fe%d: unknown SRAM config for ICL\n", sc->sc_unit);
 		return NULL;
 	}
 	sc->proto_dlcr6 = d6;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.8 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.9 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ cy_attach(config_id, unit)
 	paddr = pci_conf_read(config_id, CY_PCI_BASE_ADDR2) & ~0xf;
 #if 0
 	if (!pci_map_mem(config_id, CY_PCI_BASE_ADDR2, &vaddr, &paddr)) {
-		printf("cy%d: couldn't map shared memory\n", unit);
+		kprintf("cy%d: couldn't map shared memory\n", unit);
 		return;
 	};
 #endif
@@ -103,7 +103,7 @@ cy_attach(config_id, unit)
 		/*
 		 * No ports found. Release resources and punt.
 		 */
-		printf("cy%d: no ports found!\n", unit);
+		kprintf("cy%d: no ports found!\n", unit);
 		goto fail;
 	}
 
@@ -124,7 +124,7 @@ cy_attach(config_id, unit)
 #endif
 	    !pci_map_int_right(config_id, (pci_inthand_t *)cyintr,
 			       (void *)adapter, 0)) {
-		printf("cy%d: couldn't map interrupt\n", unit);
+		kprintf("cy%d: couldn't map interrupt\n", unit);
 		goto fail;
 	}
 

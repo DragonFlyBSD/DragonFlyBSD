@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_eisa.c,v 1.12.2.1 2000/08/07 18:48:14 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.7 2006/10/25 20:56:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.8 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ dpt_eisa_probe (device_t dev)
 
 	conf = dpt_pio_get_conf(io_base + DPT_EISA_EATA_REG_OFFSET);
 	if (!conf) {
-		printf("dpt: dpt_pio_get_conf() failed.\n");
+		kprintf("dpt: dpt_pio_get_conf() failed.\n");
 		return (ENXIO);
 	}
 

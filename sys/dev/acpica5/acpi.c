@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.25 2006/12/20 18:14:38 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.26 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -222,7 +222,7 @@ acpi_modevent(struct module *mod, int event, void *junk)
     switch(event) {
     case MOD_LOAD:
 	if (!cold) {
-	    printf("The ACPI driver cannot be loaded after boot.\n");
+	    kprintf("The ACPI driver cannot be loaded after boot.\n");
 	    return (EPERM);
 	}
 	break;
@@ -274,7 +274,7 @@ acpi_Startup(void)
     }
 #endif
     if (ACPI_FAILURE(error = AcpiInitializeSubsystem())) {
-	printf("ACPI: initialisation failed: %s\n", AcpiFormatException(error));
+	kprintf("ACPI: initialisation failed: %s\n", AcpiFormatException(error));
 	return_VALUE (error);
     }
 #ifdef ACPI_DEBUGGER
@@ -287,7 +287,7 @@ acpi_Startup(void)
 #endif
 
     if (ACPI_FAILURE(error = AcpiLoadTables())) {
-	printf("ACPI: table load failed: %s\n", AcpiFormatException(error));
+	kprintf("ACPI: table load failed: %s\n", AcpiFormatException(error));
 	return_VALUE(error);
     }
 
@@ -775,7 +775,7 @@ acpi_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
     struct acpi_device	*ad;
 
     if ((ad = device_get_ivars(child)) == NULL) {
-	printf("device has no ivars\n");
+	kprintf("device has no ivars\n");
 	return (ENOENT);
     }
 
@@ -811,7 +811,7 @@ acpi_write_ivar(device_t dev, device_t child, int index, uintptr_t value)
     struct acpi_device	*ad;
 
     if ((ad = device_get_ivars(child)) == NULL) {
-	printf("device has no ivars\n");
+	kprintf("device has no ivars\n");
 	return (ENOENT);
     }
 
@@ -1207,14 +1207,14 @@ acpi_shutdown_final(void *arg, int howto)
     if ((howto & RB_POWEROFF) != 0) {
 	status = AcpiEnterSleepStatePrep(ACPI_STATE_S5);
 	if (ACPI_FAILURE(status)) {
-	    printf("AcpiEnterSleepStatePrep failed - %s\n",
+	    kprintf("AcpiEnterSleepStatePrep failed - %s\n",
 		   AcpiFormatException(status));
 	    return;
 	}
-	printf("Powering system off using ACPI\n");
+	kprintf("Powering system off using ACPI\n");
 	acpi_shutdown_poweroff(NULL);
     } else {
-	printf("Shutting down ACPI\n");
+	kprintf("Shutting down ACPI\n");
 	AcpiTerminate();
     }
 }
@@ -1237,10 +1237,10 @@ acpi_shutdown_poweroff(void *arg)
     ACPI_DISABLE_IRQS();
     status = AcpiEnterSleepState(ACPI_STATE_S5);
     if (ACPI_FAILURE(status)) {
-	printf("ACPI power-off failed - %s\n", AcpiFormatException(status));
+	kprintf("ACPI power-off failed - %s\n", AcpiFormatException(status));
     } else {
 	DELAY(1000000);
-	printf("ACPI power-off failed - timeout\n");
+	kprintf("ACPI power-off failed - timeout\n");
     }
 }
 
@@ -2738,20 +2738,20 @@ acpi_set_debugging(void *junk)
     if (layer == NULL && level == NULL)
 	return;
 
-    printf("ACPI set debug");
+    kprintf("ACPI set debug");
     if (layer != NULL) {
 	if (strcmp("NONE", layer) != 0)
-	    printf(" layer '%s'", layer);
+	    kprintf(" layer '%s'", layer);
 	acpi_parse_debug(layer, &dbg_layer[0], &AcpiDbgLayer);
 	freeenv(layer);
     }
     if (level != NULL) {
 	if (strcmp("NONE", level) != 0)
-	    printf(" level '%s'", level);
+	    kprintf(" level '%s'", level);
 	acpi_parse_debug(level, &dbg_level[0], &AcpiDbgLevel);
 	freeenv(level);
     }
-    printf("\n");
+    kprintf("\n");
 }
 SYSINIT(acpi_debugging, SI_SUB_TUNABLES, SI_ORDER_ANY, acpi_set_debugging,
 	NULL);

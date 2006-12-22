@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ip1000phy.c,v 1.1 2006/07/25 00:16:09 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.1 2006/11/16 13:43:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.2 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -132,25 +132,25 @@ ip1000phy_attach(device_t dev)
 
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, 0, sc->mii_inst),
 	    IP1000PHY_BMCR_10);
-	printf("10baseT, ");
+	kprintf("10baseT, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_FDX, sc->mii_inst),
 	    IP1000PHY_BMCR_10 | IP1000PHY_BMCR_FDX);
-	printf("10baseT-FDX, ");
+	kprintf("10baseT-FDX, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, 0, sc->mii_inst),
 	    IP1000PHY_BMCR_100);
-	printf("100baseTX, ");
+	kprintf("100baseTX, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_FDX, sc->mii_inst),
 	    IP1000PHY_BMCR_100 | IP1000PHY_BMCR_FDX);
-	printf("100baseTX-FDX, ");
+	kprintf("100baseTX-FDX, ");
 	/* 1000baseT half-duplex, really supported? */
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 	    IP1000PHY_BMCR_1000);
-	printf("1000baseTX, ");
+	kprintf("1000baseTX, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
 	    IP1000PHY_BMCR_1000 | IP1000PHY_BMCR_FDX);
-	printf("1000baseTX-FDX, ");
+	kprintf("1000baseTX-FDX, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
-	printf("auto\n");
+	kprintf("auto\n");
 #undef ADD
 
 	ip1000phy_reset(sc);

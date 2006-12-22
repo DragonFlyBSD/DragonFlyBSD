@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.27 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.28 2006/12/22 23:26:19 swildner Exp $
  */
 
 /*
@@ -124,13 +124,13 @@ get_eeprom_data(device_t dev, int off, int len, int *buffer)
 		buffer[i] = cs_readreg (sc->nic_addr, PP_EEData);
 
 #ifdef CS_DEBUG
-		printf("%02x %02x ",(unsigned char)buffer[i],
+		kprintf("%02x %02x ",(unsigned char)buffer[i],
 					(unsigned char)buffer[i+1]);
 #endif
 	}
 
 #ifdef CS_DEBUG
-	printf("\n");
+	kprintf("\n");
 #endif
 
 	return 0;
@@ -852,8 +852,8 @@ cs_get_packet(struct cs_softc *sc)
 
 #ifdef CS_DEBUG
 	for (i=0;i<length;i++)
-	     printf(" %02x",(unsigned char)*((char *)(m->m_data+i)));
-	printf( "\n" );
+	     kprintf(" %02x",(unsigned char)*((char *)(m->m_data+i)));
+	kprintf( "\n" );
 #endif
 
 	if (status & (RX_IA | RX_BROADCAST) || 

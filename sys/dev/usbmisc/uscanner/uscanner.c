@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -305,7 +305,7 @@ USB_ATTACH(uscanner)
 
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
 
 	sc->sc_dev_flags = uscanner_lookup(uaa->vendor, uaa->product)->flags;
 
@@ -313,7 +313,7 @@ USB_ATTACH(uscanner)
 
 	err = usbd_set_config_no(uaa->device, 1, 1); /* XXX */
 	if (err) {
-		printf("%s: setting config no failed\n",
+		kprintf("%s: setting config no failed\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -323,7 +323,7 @@ USB_ATTACH(uscanner)
 	if (!err && sc->sc_iface)
 	    id = usbd_get_interface_descriptor(sc->sc_iface);
 	if (err || id == 0) {
-		printf("%s: could not get interface descriptor, err=%d,id=%p\n",
+		kprintf("%s: could not get interface descriptor, err=%d,id=%p\n",
 		       USBDEVNAME(sc->sc_dev), err, id);
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -332,7 +332,7 @@ USB_ATTACH(uscanner)
 	for (i = 0 ; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->sc_iface, i);
 		if (ed == 0) {
-			printf("%s: could not read endpoint descriptor\n",
+			kprintf("%s: could not read endpoint descriptor\n",
 			       USBDEVNAME(sc->sc_dev));
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -351,7 +351,7 @@ USB_ATTACH(uscanner)
 
 	/* Verify that we goething sensible */
 	if (ed_bulkin == NULL || ed_bulkout == NULL) {
-		printf("%s: bulk-in and/or bulk-out endpoint not found\n",
+		kprintf("%s: bulk-in and/or bulk-out endpoint not found\n",
 			USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -405,7 +405,7 @@ uscanneropen(struct dev_open_args *ap)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkin,
 				     USBD_EXCLUSIVE_USE, &sc->sc_bulkin_pipe);
 		if (err) {
-			printf("%s: cannot open bulk-in pipe (addr %d)\n",
+			kprintf("%s: cannot open bulk-in pipe (addr %d)\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkin);
 			uscanner_do_close(sc);
 			return (EIO);
@@ -415,7 +415,7 @@ uscanneropen(struct dev_open_args *ap)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkout,
 				     USBD_EXCLUSIVE_USE, &sc->sc_bulkout_pipe);
 		if (err) {
-			printf("%s: cannot open bulk-out pipe (addr %d)\n",
+			kprintf("%s: cannot open bulk-out pipe (addr %d)\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkout);
 			uscanner_do_close(sc);
 			return (EIO);
@@ -449,7 +449,7 @@ uscannerclose(struct dev_close_args *ap)
 
 #ifdef DIAGNOSTIC
 	if (!(sc->sc_state & USCANNER_OPEN)) {
-		printf("uscannerclose: not open\n");
+		kprintf("uscannerclose: not open\n");
 		return (EINVAL);
 	}
 #endif

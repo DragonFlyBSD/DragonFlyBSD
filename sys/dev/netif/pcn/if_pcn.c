@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.31 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.32 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -507,7 +507,7 @@ pcn_attach(device_t dev)
 			irq = pci_read_config(dev, PCN_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("pcn%d: chip is in D%d power mode "
+			kprintf("pcn%d: chip is in D%d power mode "
 			"-- setting to D0\n", unit, command & PCN_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, PCN_PCI_PWRMGMTCTRL, command, 4);
@@ -529,13 +529,13 @@ pcn_attach(device_t dev)
 
 #ifdef PCN_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("pcn%d: failed to enable I/O ports!\n", unit);
+		kprintf("pcn%d: failed to enable I/O ports!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("pcn%d: failed to enable memory mapping!\n", unit);
+		kprintf("pcn%d: failed to enable memory mapping!\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -545,7 +545,7 @@ pcn_attach(device_t dev)
 	sc->pcn_res = bus_alloc_resource_any(dev, PCN_RES, &rid, RF_ACTIVE);
 
 	if (sc->pcn_res == NULL) {
-		printf("pcn%d: couldn't map ports/memory\n", unit);
+		kprintf("pcn%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
 		return(error);
 	}
@@ -559,7 +559,7 @@ pcn_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->pcn_irq == NULL) {
-		printf("pcn%d: couldn't map interrupt\n", unit);
+		kprintf("pcn%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -580,7 +580,7 @@ pcn_attach(device_t dev)
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->pcn_ldata == NULL) {
-		printf("pcn%d: no memory for list buffers!\n", unit);
+		kprintf("pcn%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -604,7 +604,7 @@ pcn_attach(device_t dev)
 	 */
 	if (mii_phy_probe(dev, &sc->pcn_miibus,
 	    pcn_ifmedia_upd, pcn_ifmedia_sts)) {
-		printf("pcn%d: MII without any PHY!\n", sc->pcn_unit);
+		kprintf("pcn%d: MII without any PHY!\n", sc->pcn_unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1089,7 +1089,7 @@ pcn_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (pcn_list_rx_init(sc) == ENOBUFS) {
-		printf("pcn%d: initialization failed: no "
+		kprintf("pcn%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->pcn_unit);
 		pcn_stop(sc);
 
@@ -1274,7 +1274,7 @@ pcn_watchdog(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("pcn%d: watchdog timeout\n", sc->pcn_unit);
+	kprintf("pcn%d: watchdog timeout\n", sc->pcn_unit);
 
 	pcn_stop(sc);
 	pcn_reset(sc);

@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.17 2006/04/19 16:14:47 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.4 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.5 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -213,7 +213,7 @@ TUNABLE_INT("hw.ath.txbuf", &ath_txbuf);
 #ifdef ATH_DEBUG
 static	int ath_debug = 0;
 SYSCTL_INT(_hw_ath, OID_AUTO, debug, CTLFLAG_RW, &ath_debug,
-	    0, "control debugging printfs");
+	    0, "control debugging kprintfs");
 TUNABLE_INT("hw.ath.debug", &ath_debug);
 enum {
 	ATH_DEBUG_XMIT		= 0x00000001,	/* basic xmit operation */
@@ -244,7 +244,7 @@ enum {
 	 (sc->sc_ic.ic_if.if_flags & (IFF_DEBUG|IFF_LINK2)) == (IFF_DEBUG|IFF_LINK2))
 #define	DPRINTF(sc, m, fmt, ...) do {				\
 	if (sc->sc_debug & (m))					\
-		printf(fmt, __VA_ARGS__);			\
+		kprintf(fmt, __VA_ARGS__);			\
 } while (0)
 #define	KEYPRINTF(sc, ix, hk, mac) do {				\
 	if (sc->sc_debug & ATH_DEBUG_KEYCACHE)			\
@@ -1363,16 +1363,16 @@ ath_keyprint(const char *tag, u_int ix,
 	};
 	int i, n;
 
-	printf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
+	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
-		printf("%02x", hk->kv_val[i]);
-	printf(" mac %6D", mac, ":");
+		kprintf("%02x", hk->kv_val[i]);
+	kprintf(" mac %6D", mac, ":");
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
-		printf(" mic ");
+		kprintf(" mic ");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
-			printf("%02x", hk->kv_mic[i]);
+			kprintf("%02x", hk->kv_mic[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 
@@ -4074,7 +4074,7 @@ ath_stoprecv(struct ath_softc *sc)
 		struct ath_buf *bf;
 		u_int ix;
 
-		printf("%s: rx queue %p, link %p\n", __func__,
+		kprintf("%s: rx queue %p, link %p\n", __func__,
 			(caddr_t)(uintptr_t) ath_hal_getrxbuf(ah),
 			sc->sc_rxlink);
 		ix = 0;
@@ -4891,7 +4891,7 @@ ath_printrxbuf(struct ath_buf *bf, u_int ix, int done)
 	int i;
 
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		printf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
+		kprintf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
 		       "      %08x %08x %08x %08x\n",
 		    ix, ds, (struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data,
@@ -4907,9 +4907,9 @@ ath_printtxbuf(struct ath_buf *bf, u_int qnum, u_int ix, int done)
 	struct ath_desc *ds;
 	int i;
 
-	printf("Q%u[%3u]", qnum, ix);
+	kprintf("Q%u[%3u]", qnum, ix);
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		printf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:04%x%s\n"
+		kprintf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:04%x%s\n"
 		       "        %08x %08x %08x %08x %08x %08x\n",
 		    ds, (struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data, bf->bf_flags,
@@ -5415,7 +5415,7 @@ ath_sysctlattach(struct ath_softc *sc)
 	sc->sc_debug = ath_debug;
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"debug", CTLFLAG_RW, &sc->sc_debug, 0,
-		"control debugging printfs");
+		"control debugging kprintfs");
 #endif
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"slottime", CTLTYPE_INT | CTLFLAG_RW, sc, 0,
@@ -5532,18 +5532,18 @@ ath_announce(struct ath_softc *sc)
 	modes = ath_hal_getwirelessmodes(ah, cc);
 	if ((modes & HAL_MODE_DUALBAND) == HAL_MODE_DUALBAND) {
 		if (ah->ah_analog5GhzRev && ah->ah_analog2GhzRev)
-			printf(" 5ghz radio %d.%d 2ghz radio %d.%d",
+			kprintf(" 5ghz radio %d.%d 2ghz radio %d.%d",
 				ah->ah_analog5GhzRev >> 4,
 				ah->ah_analog5GhzRev & 0xf,
 				ah->ah_analog2GhzRev >> 4,
 				ah->ah_analog2GhzRev & 0xf);
 		else
-			printf(" radio %d.%d", ah->ah_analog5GhzRev >> 4,
+			kprintf(" radio %d.%d", ah->ah_analog5GhzRev >> 4,
 				ah->ah_analog5GhzRev & 0xf);
 	} else
-		printf(" radio %d.%d", ah->ah_analog5GhzRev >> 4,
+		kprintf(" radio %d.%d", ah->ah_analog5GhzRev >> 4,
 			ah->ah_analog5GhzRev & 0xf);
-	printf("\n");
+	kprintf("\n");
 	if (bootverbose) {
 		int i;
 		for (i = 0; i <= WME_AC_VO; i++) {

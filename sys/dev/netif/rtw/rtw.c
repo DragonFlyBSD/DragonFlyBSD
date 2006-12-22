@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.4 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.5 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -788,7 +788,7 @@ rtw_srom_parse(struct rtw_softc *sc)
 		  srom_version >> 8, srom_version & 0xff);
 
 	if (srom_version <= 0x0101) {
-		printf(" is not understood, limping along with defaults\n");
+		kprintf(" is not understood, limping along with defaults\n");
 
 		/* Default values */
 		sc->sc_flags |= (RTW_F_DIGPHY | RTW_F_ANTDIV);
@@ -797,7 +797,7 @@ rtw_srom_parse(struct rtw_softc *sc)
 		sc->sc_rfchipid = RTW_RFCHIPID_PHILIPS;
 		return 0;
 	}
-	printf("\n");
+	kprintf("\n");
 
 	for (i = 0; i < IEEE80211_ADDR_LEN; i++)
 		mac[i] = RTW_SR_GET(sr, RTW_SR_MAC + i);
@@ -1383,7 +1383,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 #ifdef RTW_DEBUG
 #define PRINTSTAT(flag) do { \
 	if ((hstat & flag) != 0) { \
-		printf("%s" #flag, delim); \
+		kprintf("%s" #flag, delim); \
 		delim = ","; \
 	} \
 } while (0)
@@ -1392,7 +1392,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 
 			if_printf(ifp, "%s", "");
 			if ((hstat & RTW_RXSTAT_DEBUG) != 0) {
-				printf("status %08x", hstat);
+				kprintf("status %08x", hstat);
 				PRINTSTAT(RTW_RXSTAT_SPLCP);
 				PRINTSTAT(RTW_RXSTAT_MAR);
 				PRINTSTAT(RTW_RXSTAT_PAR);
@@ -1400,7 +1400,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 				PRINTSTAT(RTW_RXSTAT_PWRMGT);
 				PRINTSTAT(RTW_RXSTAT_CRC32);
 				PRINTSTAT(RTW_RXSTAT_ICV);
-				printf(">, ");
+				kprintf(">, ");
 			}
 		}
 #endif /* RTW_DEBUG */
@@ -2038,7 +2038,7 @@ rtw_intr(void *arg)
 #ifdef RTW_DEBUG
 #define PRINTINTR(flag) do { \
 	if ((isr & flag) != 0) { \
-		printf("%s" #flag, delim); \
+		kprintf("%s" #flag, delim); \
 		delim = ","; \
 	} \
 } while (0)
@@ -2065,7 +2065,7 @@ rtw_intr(void *arg)
 			PRINTINTR(RTW_INTR_RER);
 			PRINTINTR(RTW_INTR_ROK);
 
-			printf(">\n");
+			kprintf(">\n");
 		}
 #undef PRINTINTR
 #endif /* RTW_DEBUG */
@@ -2380,7 +2380,7 @@ rtw_tune(struct rtw_softc *sc)
 			  dflantb, RTW_ON);
 	if (rc != 0) {
 		/* XXX condition on powersaving */
-		printf("%s: phy init failed\n", ic->ic_if.if_xname);
+		kprintf("%s: phy init failed\n", ic->ic_if.if_xname);
 	}
 
 	sc->sc_cur_chan = chan;
@@ -4023,7 +4023,7 @@ rtw_txdesc_blk_alloc(struct rtw_softc *sc, int q_len, int q_no,
 			      (void **)&tdb->tdb_desc, &tdb->tdb_base,
 			      &tdb->tdb_dmamap);
 	if (error) {
-		printf("%dth tx\n", q_no);
+		kprintf("%dth tx\n", q_no);
 		return error;
 	}
 	tdb->tdb_basereg = q_basereg;
@@ -4058,7 +4058,7 @@ rtw_rxdesc_blk_alloc(struct rtw_softc *sc, int q_len)
 			      (void **)&rdb->rdb_desc, &rdb->rdb_base,
 			      &rdb->rdb_dmamap);
 	if (error) {
-		printf("rx\n");
+		kprintf("rx\n");
 	} else {
 		rdb->rdb_ndesc = q_len;
 	}
@@ -4425,7 +4425,7 @@ rtw_compute_duration(const struct ieee80211_frame_min *wh,
 		firstlen = paylen + overlen;
 
 	if (debug) {
-		printf("%s: npkt %d firstlen %d lastlen0 %d lastlen %d "
+		kprintf("%s: npkt %d firstlen %d lastlen0 %d lastlen %d "
 		    "fraglen %d overlen %d len %d rate %d icflags %08x\n",
 		    __func__, npkt, firstlen, lastlen0, lastlen, fraglen,
 		    overlen, len, rate, icflags);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.10 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.11 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/devicestat.h>
@@ -217,7 +217,7 @@ ipsd_detach(device_t dev)
 static int
 ipsd_dump_helper(struct dev_dump_args *ap)
 {
-	printf("dump support for IPS not yet working, will not dump\n");
+	kprintf("dump support for IPS not yet working, will not dump\n");
 	return (ENODEV);
 
 #if 0
@@ -273,7 +273,7 @@ ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset,
 	sc = dsc->sc;
 
 	if (ips_get_free_cmd(sc, &command, 0) != 0) {
-		printf("ipsd: failed to get cmd for dump\n");
+		kprintf("ipsd: failed to get cmd for dump\n");
 		return (ENOMEM);
 	}
 
@@ -322,7 +322,7 @@ ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 	length = 0;
 
 	if (error) {
-		printf("ipsd_dump_map_sg: error %d\n", error);
+		kprintf("ipsd_dump_map_sg: error %d\n", error);
 		command->status.value = IPS_ERROR_STATUS;
 		return;
 	}
@@ -364,7 +364,7 @@ static void
 ipsd_dump_block_complete(ips_command_t *command)
 {
 	if (COMMAND_ERROR(&command->status)) {
-		printf("ipsd_dump completion error= 0x%x\n",
+		kprintf("ipsd_dump completion error= 0x%x\n",
 		       command->status.value);
 	}
 	bus_dmamap_sync(command->data_dmatag, command->data_dmamap,

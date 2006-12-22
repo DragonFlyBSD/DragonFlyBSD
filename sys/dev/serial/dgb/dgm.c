@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.15 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.16 2006/12/22 23:26:24 swildner Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -490,9 +490,9 @@ dgmprobe(device_t dev)
 
 		outb(sc->port, 1);
 		second = inb(sc->port);
-		printf("dgm%d: PC/Xem (type %d, %d)\n", sc->unit, v, second);
+		kprintf("dgm%d: PC/Xem (type %d, %d)\n", sc->unit, v, second);
 	} else
-		printf("dgm%d: PC/Xem (type %d)\n", sc->unit, v);
+		kprintf("dgm%d: PC/Xem (type %d)\n", sc->unit, v);
 
 	sc->type = PCXEM;
 	sc->mem_seg = 0x8000;
@@ -640,7 +640,7 @@ dgmattach(device_t dev)
 	ptr = mem + BIOSOFFSET;
 	for (i = 0; ptr < mem + msize; i++) {
 		if (*ptr++ != pcem_bios[i]) {
-			printf("Low BIOS load failed\n");
+			kprintf("Low BIOS load failed\n");
 			sc->enabled = 0;
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -658,7 +658,7 @@ dgmattach(device_t dev)
 	ptr = mem;
 	for (i = msize - BIOSOFFSET; i < pcem_nbios; i++) {
 		if (*ptr++ != pcem_bios[i]) {
-			printf("High BIOS load failed\n");
+			kprintf("High BIOS load failed\n");
 			sc->enabled = 0;
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -679,7 +679,7 @@ dgmattach(device_t dev)
 	for (i = 0; *(u_char *)(mem + addr + 0xc00) != 0x47; i++) {
 		DELAY(10000);
 		if (i > 3000) {
-			printf("\nBIOS initialize failed(1)\n");
+			kprintf("\nBIOS initialize failed(1)\n");
 			sc->enabled = 0;
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -689,14 +689,14 @@ dgmattach(device_t dev)
 	}
 
 	if (*(u_char *)(mem + addr + 0xc01) != 0x44) {
-		printf("\nBIOS initialize failed(2)\n");
+		kprintf("\nBIOS initialize failed(2)\n");
 		sc->enabled = 0;
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
 		return (ENXIO);
 	}
-	printf(", DigiBIOS running\n");
+	kprintf(", DigiBIOS running\n");
 
 	DELAY(10000);
 
@@ -708,7 +708,7 @@ dgmattach(device_t dev)
 	ptr = mem + BIOSOFFSET;
 	for (i = 0; i < pcem_ncook; i++) {
 		if (*ptr++ != pcem_cook[i]) {
-			printf("FEP/OS load failed\n");
+			kprintf("FEP/OS load failed\n");
 			sc->enabled = 0;
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -727,7 +727,7 @@ dgmattach(device_t dev)
 	for (i = 0; *(u_char *)(mem + addr + 0xd20) != 'O'; i++) {
 		DELAY(10000);
 		if (i > 3000) {
-			printf("\nFEP/OS initialize failed(1)\n");
+			kprintf("\nFEP/OS initialize failed(1)\n");
 			sc->enabled = 0;
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -737,20 +737,20 @@ dgmattach(device_t dev)
 	}
 
 	if (*(u_char *)(mem + addr + 0xd21) != 'S') {
-		printf("\nFEP/OS initialize failed(2)\n");
+		kprintf("\nFEP/OS initialize failed(2)\n");
 		sc->enabled = 0;
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
 		return (ENXIO);
 	}
-	printf(", FEP/OS running\n");
+	kprintf(", FEP/OS running\n");
 
 	sc->numports = *(ushort *)(mem + setwin(sc, NPORT));
 	device_printf(dev, "%d ports attached\n", sc->numports);
 
 	if (sc->numports > MAX_DGM_PORTS) {
-		printf("dgm%d: too many ports\n", sc->unit);
+		kprintf("dgm%d: too many ports\n", sc->unit);
 		sc->enabled = 0;
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
@@ -1038,7 +1038,7 @@ open_top:
 		bc->rout = bc->rin; /* clear input queue */
 		bc->idata = 1;
 #ifdef PRINT_BUFSIZE
-		printf("dgm buffers tx = %x:%x rx = %x:%x\n",
+		kprintf("dgm buffers tx = %x:%x rx = %x:%x\n",
 		    bc->tseg, bc->tmax, bc->rseg, bc->rmax);
 #endif
 
@@ -1223,7 +1223,7 @@ dgmpoll(void *unit_c)
 	DPRINT2(DB_INFO, "dgm%d: poll\n", sc->unit);
 
 	if (!sc->enabled) {
-		printf("dgm%d: polling of disabled board stopped\n", unit);
+		kprintf("dgm%d: polling of disabled board stopped\n", unit);
 		return;
 	}
 
@@ -1236,7 +1236,7 @@ dgmpoll(void *unit_c)
 		if (head >= FEP_IMAX - FEP_ISTART
 		|| tail >= FEP_IMAX - FEP_ISTART
 		|| (head|tail) & 03 ) {
-			printf("dgm%d: event queue's head or tail is wrong!"
+			kprintf("dgm%d: event queue's head or tail is wrong!"
 			    " hd = %d, tl = %d\n", unit, head, tail);
 			break;
 		}
@@ -1252,14 +1252,14 @@ dgmpoll(void *unit_c)
 		tp = &sc->ttys[pnum];
 
 		if (pnum >= sc->numports || !port->enabled) {
-			printf("dgm%d: port%d: got event on nonexisting port\n",
+			kprintf("dgm%d: port%d: got event on nonexisting port\n",
 			    unit, pnum);
 		} else if (port->used || port->wopeners > 0 ) {
 
 			int wrapmask = port->rxbufsize - 1;
 
 			if (!(event & ALL_IND))
-				printf("dgm%d: port%d: ? event 0x%x mstat 0x%x lstat 0x%x\n",
+				kprintf("dgm%d: port%d: ? event 0x%x mstat 0x%x lstat 0x%x\n",
 					unit, pnum, event, mstat, lstat);
 
 			if (event & DATA_IND) {
@@ -1275,7 +1275,7 @@ dgmpoll(void *unit_c)
 				}
 
 				if (bc->orun) {
-					printf("dgm%d: port%d: overrun\n", unit, pnum);
+					kprintf("dgm%d: port%d: overrun\n", unit, pnum);
 					bc->orun = 0;
 				}
 
@@ -2155,7 +2155,7 @@ fepcmd(struct dgm_p *port,
 	mem = port->sc->vmem;
 
 	if (!port->enabled) {
-		printf("dgm%d: port%d: FEP command on disabled port\n",
+		kprintf("dgm%d: port%d: FEP command on disabled port\n",
 			port->sc->unit, port->pnum);
 		return;
 	}
@@ -2164,7 +2164,7 @@ fepcmd(struct dgm_p *port,
 	head = port->sc->mailbox->cin;
 
 	if (head >= FEP_CMAX - FEP_CSTART || (head & 3)) {
-		printf("dgm%d: port%d: wrong pointer head of command queue : 0x%x\n",
+		kprintf("dgm%d: port%d: wrong pointer head of command queue : 0x%x\n",
 			port->sc->unit, port->pnum, head);
 		return;
 	}
@@ -2195,7 +2195,7 @@ fepcmd(struct dgm_p *port,
 		if (n <= ncmds * (sizeof(ushort)*4))
 			return;
 	}
-	printf("dgm%d(%d): timeout on FEP cmd = 0x%x\n", port->sc->unit, port->pnum, cmd);
+	kprintf("dgm%d(%d): timeout on FEP cmd = 0x%x\n", port->sc->unit, port->pnum, cmd);
 }
 
 static void

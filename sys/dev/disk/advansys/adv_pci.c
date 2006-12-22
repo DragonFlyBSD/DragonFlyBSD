@@ -58,7 +58,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_pci.c,v 1.11.2.3 2001/06/02 04:38:10 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -194,7 +194,7 @@ adv_pci_attach(device_t dev)
 				   &adv->parent_dmat);
  
 	if (error != 0) {
-		printf("%s: Could not allocate DMA tag - error %d\n",
+		kprintf("%s: Could not allocate DMA tag - error %d\n",
 		       adv_name(adv), error);
 		adv_free(adv);
 		bus_release_resource(dev, SYS_RES_IOPORT, rid, iores);

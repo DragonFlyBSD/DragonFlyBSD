@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.35 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.36 2006/12/22 23:26:16 swildner Exp $
  *
  */
 
@@ -273,8 +273,8 @@ static char const * const fdstates[] =
 
 /* CAUTION: fd_debug causes huge amounts of logging output */
 static int volatile fd_debug = 0;
-#define TRACE0(arg) if(fd_debug) printf(arg)
-#define TRACE1(arg1, arg2) if(fd_debug) printf(arg1, arg2)
+#define TRACE0(arg) if(fd_debug) kprintf(arg)
+#define TRACE1(arg1, arg2) if(fd_debug) kprintf(arg1, arg2)
 #else /* FDC_DEBUG */
 #define TRACE0(arg)
 #define TRACE1(arg1, arg2)
@@ -822,7 +822,7 @@ fdc_print_child(device_t me, device_t child)
 	int retval = 0;
 
 	retval += bus_print_child_header(me, child);
-	retval += printf(" on %s drive %d\n", device_get_nameunit(me),
+	retval += kprintf(" on %s drive %d\n", device_get_nameunit(me),
 	       fdc_get_fdunit(child));
 	
 	return (retval);
@@ -991,7 +991,7 @@ fd_probe(device_t dev)
 		fd->type = FD_360;
 		break;
 	case RTCFDT_720K:
-		printf("720-KB 3.5\" drive");
+		kprintf("720-KB 3.5\" drive");
 		fd->type = FD_720;
 		break;
 	default:
@@ -1393,7 +1393,7 @@ fdstrategy(struct dev_strategy_args *ap)
 	fdblk = 128 << (fd->ft->secsize);
 	if (bp->b_cmd != BUF_CMD_FORMAT) {
 		if (bio->bio_offset < 0) {
-			printf(
+			kprintf(
 		"fd%d: fdstrat: bad request offset = %lld, bcount = %d\n",
 			       fdu, bio->bio_offset, bp->b_bcount);
 			bp->b_error = EINVAL;
@@ -1724,7 +1724,7 @@ fdstate(fdc_p fdc)
 				if (fd_sense_drive_status(fdc, &st3))
 					failed = 1;
 				if ((st3 & NE7_ST3_T0) == 0) {
-					printf(
+					kprintf(
 		"fd%d: Seek to cyl 0, but not really there (ST3 = %b)\n",
 					       fdu, st3, NE7_ST3BITS);
 					failed = 1;
@@ -1738,7 +1738,7 @@ fdstate(fdc_p fdc)
 			}
 
 			if (cyl != descyl) {
-				printf(
+				kprintf(
 		"fd%d: Seek to cyl %d failed; am at cyl %d (ST0 = 0x%x)\n",
 				       fdu, descyl, cyl, st0);
 				if (fdc->retry < 3)
@@ -2017,7 +2017,7 @@ fdstate(fdc_p fdc)
 				 * this one if it seems to be the first
 				 * time in a line
 				 */
-				printf("fd%d: recal failed ST0 %b cyl %d\n",
+				kprintf("fd%d: recal failed ST0 %b cyl %d\n",
 				       fdu, st0, NE7_ST0BITS, cyl);
 			if(fdc->retry < 3) fdc->retry = 3;
 			return (retrier(fdc));
@@ -2047,7 +2047,7 @@ fdstate(fdc_p fdc)
 	default:
 		device_printf(fdc->fdc_dev, "unexpected FD int->");
 		if (fd_read_status(fdc, fd->fdsu) == 0)
-			printf("FDC status :%x %x %x %x %x %x %x   ",
+			kprintf("FDC status :%x %x %x %x %x %x %x   ",
 			       fdc->status[0],
 			       fdc->status[1],
 			       fdc->status[2],
@@ -2056,13 +2056,13 @@ fdstate(fdc_p fdc)
 			       fdc->status[5],
 			       fdc->status[6] );
 		else
-			printf("No status available   ");
+			kprintf("No status available   ");
 		if (fd_sense_int(fdc, &st0, &cyl) != 0)
 		{
-			printf("[controller is dead now]\n");
+			kprintf("[controller is dead now]\n");
 			return (0);
 		}
-		printf("ST0 = %x, PCN = %x\n", st0, cyl);
+		kprintf("ST0 = %x, PCN = %x\n", st0, cyl);
 		return (0);
 	}
 	/*XXX confusing: some branches return immediately, others end up here*/
@@ -2120,7 +2120,7 @@ retrier(struct fdc_data *fdc)
 			}
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)
-					printf(
+					kprintf(
 			" (ST0 %b ST1 %b ST2 %b cyl %u hd %u sec %u)\n",
 					       fdc->status[0], NE7_ST0BITS,
 					       fdc->status[1], NE7_ST1BITS,
@@ -2128,7 +2128,7 @@ retrier(struct fdc_data *fdc)
 					       fdc->status[3], fdc->status[4],
 					       fdc->status[5]);
 				else
-					printf(" (No status)\n");
+					kprintf(" (No status)\n");
 			}
 		}
 		bp->b_flags |= B_ERROR;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.16 2006/10/25 20:56:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.17 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -222,7 +222,7 @@ mly_detach(struct mly_softc *sc)
 
     /* flush controller */
     mly_printf(sc, "flushing cache...");
-    printf("%s\n", mly_flush(sc) ? "failed" : "done");
+    kprintf("%s\n", mly_flush(sc) ? "failed" : "done");
 
     MLY_MASK_INTERRUPTS(sc);
 }
@@ -1666,7 +1666,7 @@ mly_print_controller(int controller)
     struct mly_softc	*sc;
     
     if ((sc = devclass_get_softc(devclass_find("mly"), controller)) == NULL) {
-	printf("mly: controller %d invalid\n", controller);
+	kprintf("mly: controller %d invalid\n", controller);
     } else {
 	device_printf(sc->mly_dev, "queue    curr max\n");
 	device_printf(sc->mly_dev, "free     %04d/%04d\n", 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.2.2.4 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.5 2006/10/25 20:56:00 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.6 2006/12/22 23:26:23 swildner Exp $
  */
 
 /*
@@ -493,7 +493,7 @@ aac_cam_reset_bus(struct cam_sim *sim, union ccb *ccb)
 	sc = camsc->inf->aac_sc;
 
 	if (sc == NULL) {
-		printf("Null sc?\n");
+		kprintf("Null sc?\n");
 		return (CAM_REQ_ABORTED);
 	}
 

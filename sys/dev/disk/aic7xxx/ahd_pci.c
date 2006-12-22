@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.2.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.6 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -125,7 +125,7 @@ ahd_pci_attach(device_t dev)
 				   &ahd->parent_dmat);
 
 	if (error != 0) {
-		printf("ahd_pci_attach: Could not allocate DMA tag "
+		kprintf("ahd_pci_attach: Could not allocate DMA tag "
 		       "- error %d\n", error);
 		ahd_free(ahd);
 		return (ENOMEM);

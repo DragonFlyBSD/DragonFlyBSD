@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.27 2006/10/25 20:56:00 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.28 2006/12/22 23:26:23 swildner Exp $
  */
 
 /*
@@ -544,7 +544,7 @@ aac_shutdown(device_t dev)
 	cc->ContainerId = 0xffffffff;
 	if (aac_sync_fib(sc, ContainerCommand, 0, fib,
 	    sizeof(struct aac_close_command)))
-		printf("FAILED.\n");
+		kprintf("FAILED.\n");
 	else {
 		fib->data[0] = 0;
 		/*
@@ -555,9 +555,9 @@ aac_shutdown(device_t dev)
 		 */
 		if (aac_sync_fib(sc, FsaHostShutdown, AAC_FIBSTATE_SHUTDOWN,
 		    fib, 1)) {
-			printf("FAILED.\n");
+			kprintf("FAILED.\n");
 		} else {
-			printf("done.\n");
+			kprintf("done.\n");
 		}
 	}
 
@@ -1050,7 +1050,7 @@ aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba, void *data, int dumppages)
 
 /*
  * Wait for the card's queue to drain when dumping.  Also check for monitor
- * printf's
+ * kprintf's
  */
 void
 aac_dump_complete(struct aac_softc *sc)
@@ -2527,7 +2527,7 @@ aac_ioctl_sendfib(struct aac_softc *sc, caddr_t ufib)
 	 * Pass the FIB to the controller, wait for it to complete.
 	 */
 	if ((error = aac_wait_command(cm, 30)) != 0) {	/* XXX user timeout? */
-		printf("aac_wait_command return %d\n", error);
+		kprintf("aac_wait_command return %d\n", error);
 		goto out;
 	}
 
@@ -2802,7 +2802,7 @@ aac_return_aif(struct aac_softc *sc, caddr_t uptr)
 		error = copyout(&sc->aac_aifq[sc->aac_aifq_tail], uptr,
 				sizeof(struct aac_aif_command));
 		if (error)
-			printf("aac_return_aif: copyout returned %d\n", error);
+			kprintf("aac_return_aif: copyout returned %d\n", error);
 		if (!error)
 			sc->aac_aifq_tail = (sc->aac_aifq_tail + 1) %
 					    AAC_AIFQ_LENGTH;

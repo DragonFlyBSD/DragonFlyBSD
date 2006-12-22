@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.17 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.18 2006/12/22 23:26:18 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -85,7 +85,7 @@ MALLOC_DECLARE(M_SYSCONS);
 #define SC_DEBUG_LEVEL	0
 #endif
 
-#define DPRINTF(l, p)	if (SC_DEBUG_LEVEL >= (l)) printf p
+#define DPRINTF(l, p)	if (SC_DEBUG_LEVEL >= (l)) kprintf p
 
 #define SC_DRIVER_NAME	"sc"
 #define SC_VTY(dev)	minor(dev)

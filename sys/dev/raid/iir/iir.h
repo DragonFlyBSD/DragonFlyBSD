@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.6 2006/09/10 01:26:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.7 2006/12/22 23:26:23 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -357,9 +357,9 @@
 extern int gdt_debug;
 #ifdef __SERIAL__
 extern int ser_printf(const char *fmt, ...);
-#define GDT_DPRINTF(mask, args) if (gdt_debug & (mask)) ser_printf args
+#define GDT_DPRINTF(mask, args) if (gdt_debug & (mask)) ser_kprintf args
 #else
-#define GDT_DPRINTF(mask, args) if (gdt_debug & (mask)) printf args
+#define GDT_DPRINTF(mask, args) if (gdt_debug & (mask)) kprintf args
 #endif
 #else
 #define GDT_DPRINTF(mask, args)

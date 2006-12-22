@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.24 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.25 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -249,9 +249,9 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 
 	if_printf(ifp, "speed %ld, rxl ", ifp->if_baudrate);
 	if (sc->delta_rxl)
-		printf("auto\n");
+		kprintf("auto\n");
 	else
-		printf("%d (fixed)\n", sc->cur_rxl_index);
+		kprintf("%d (fixed)\n", sc->cur_rxl_index);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -368,7 +368,7 @@ handle_channel(struct sbni_softc *sc)
 		 */
 		csr0 = sbni_inb(sc, CSR0);
 		if ((csr0 & TR_RDY) == 0 || (csr0 & RC_RDY) != 0)
-			printf("sbni: internal error!\n");
+			kprintf("sbni: internal error!\n");
 
 		/* if state & FL_NEED_RESEND != 0 then tx_frameno != 0 */
 		if (req_ans || sc->tx_frameno != 0)
@@ -647,7 +647,7 @@ prepare_to_send(struct sbni_softc *sc)
 
 	/* sc->tx_buf_p == NULL here! */
 	if (sc->tx_buf_p)
-		printf("sbni: memory leak!\n");
+		kprintf("sbni: memory leak!\n");
 
 	sc->outpos = 0;
 	sc->state &= ~(FL_WAIT_ACK | FL_NEED_RESEND);
@@ -795,7 +795,7 @@ get_rx_buf(struct sbni_softc *sc)
 
 	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
-		printf("%s: cannot allocate header mbuf\n",
+		kprintf("%s: cannot allocate header mbuf\n",
 		       sc->arpcom.ac_if.if_xname);
 		return (0);
 	}

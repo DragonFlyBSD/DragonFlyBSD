@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.12 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.13 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/devicestat.h>
@@ -107,7 +107,7 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 
 	sc = command->sc;
 	if (error) {
-		printf("ips: error = %d in ips_sg_request_callback\n", error);
+		kprintf("ips: error = %d in ips_sg_request_callback\n", error);
 		bus_dmamap_unload(command->data_dmatag, command->data_dmamap);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = ENOMEM;
@@ -215,7 +215,7 @@ ips_adapter_info_callback(void *cmdptr, bus_dma_segment_t *segments,int segnum,
 	if (error) {
 		command->status.value = IPS_ERROR_STATUS; /* a lovely error value */
 		ips_insert_free_cmd(sc, command);
-		printf("ips: error = %d in ips_get_adapter_info\n", error);
+		kprintf("ips: error = %d in ips_get_adapter_info\n", error);
 		return;
 	}
 	command_struct = (ips_adapter_info_cmd *)command->command_buffer;
@@ -248,7 +248,7 @@ ips_send_adapter_info_cmd(ips_command_t *command)
 				/* maxsegsize*/	IPS_ADAPTER_INFO_LEN,
 				/* flags     */	0,
 				&command->data_dmatag) != 0) {
-		printf("ips: can't alloc dma tag for adapter status\n");
+		kprintf("ips: can't alloc dma tag for adapter status\n");
 		error = ENOMEM;
 		goto exit;
 	}
@@ -315,7 +315,7 @@ ips_drive_info_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 
 		command->status.value = IPS_ERROR_STATUS;
 		ips_insert_free_cmd(sc, command);
-		printf("ips: error = %d in ips_get_drive_info\n", error);
+		kprintf("ips: error = %d in ips_get_drive_info\n", error);
 		return;
 	}
 	command_struct = (ips_drive_cmd *)command->command_buffer;
@@ -348,7 +348,7 @@ ips_send_drive_info_cmd(ips_command_t *command)
 				/* maxsegsize*/	IPS_DRIVE_INFO_LEN,
 				/* flags     */	0,
 				&command->data_dmatag) != 0) {
-		printf("ips: can't alloc dma tag for drive status\n");
+		kprintf("ips: can't alloc dma tag for drive status\n");
 		error = ENOMEM;
 		goto exit;
 	}
@@ -573,7 +573,7 @@ ips_read_nvram_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	if (error) {
 		command->status.value = IPS_ERROR_STATUS;
 		ips_insert_free_cmd(sc, command);
-		printf("ips: error = %d in ips_read_nvram_callback\n", error);
+		kprintf("ips: error = %d in ips_read_nvram_callback\n", error);
 		return;
 	}
 	command_struct = (ips_rw_nvram_cmd *)command->command_buffer;
@@ -608,7 +608,7 @@ ips_read_nvram(ips_command_t *command)
 				/* maxsegsize*/	IPS_NVRAM_PAGE_SIZE,
 				/* flags     */	0,
 				&command->data_dmatag) != 0) {
-		printf("ips: can't alloc dma tag for nvram\n");
+		kprintf("ips: can't alloc dma tag for nvram\n");
 		error = ENOMEM;
 		goto exit;
 	}

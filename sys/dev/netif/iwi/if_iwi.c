@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.16 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*-
@@ -80,8 +80,8 @@
 #include <dev/netif/iwi/if_iwivar.h>
 
 #ifdef IWI_DEBUG
-#define DPRINTF(x)	do { if (iwi_debug > 0) printf x; } while (0)
-#define DPRINTFN(n, x)	do { if (iwi_debug >= (n)) printf x; } while (0)
+#define DPRINTF(x)	do { if (iwi_debug > 0) kprintf x; } while (0)
+#define DPRINTFN(n, x)	do { if (iwi_debug >= (n)) kprintf x; } while (0)
 int iwi_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, iwi, CTLFLAG_RW, &iwi_debug, 0, "iwi debug level");
 #else
@@ -2406,10 +2406,10 @@ iwi_config(struct iwi_softc *sc)
 	if (ic->ic_des_esslen != 0) {
 #ifdef IWI_DEBUG
 		if (iwi_debug > 0) {
-			printf("Setting desired ESSID to ");
+			kprintf("Setting desired ESSID to ");
 			ieee80211_print_essid(ic->ic_des_essid,
 			    ic->ic_des_esslen);
-			printf("\n");
+			kprintf("\n");
 		}
 #endif
 		error = iwi_cmd(sc, IWI_CMD_SET_ESSID, ic->ic_des_essid,
@@ -2539,9 +2539,9 @@ iwi_auth_and_assoc(struct iwi_softc *sc)
 
 #ifdef IWI_DEBUG
 	if (iwi_debug > 0) {
-		printf("Setting ESSID to ");
+		kprintf("Setting ESSID to ");
 		ieee80211_print_essid(ni->ni_essid, ni->ni_esslen);
-		printf("\n");
+		kprintf("\n");
 	}
 #endif
 	error = iwi_cmd(sc, IWI_CMD_SET_ESSID, ni->ni_essid, ni->ni_esslen, 1);

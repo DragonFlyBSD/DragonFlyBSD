@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.6 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.6 2006/12/22 23:26:25 swildner Exp $");
 
 struct ad1816_info;
 
@@ -134,7 +134,7 @@ ad1816_intr(void *arg)
 
     	/* check for stray interupts */
     	if (c & ~(AD1816_INTRCI | AD1816_INTRPI)) {
-		printf("pcm: stray int (%x)\n", c);
+		kprintf("pcm: stray int (%x)\n", c);
 		c &= AD1816_INTRCI | AD1816_INTRPI;
     	}
     	/* check for capture interupt */
@@ -150,12 +150,12 @@ ad1816_intr(void *arg)
     	if (served == 0) {
 		/* this probably means this is not a (working) ad1816 chip, */
 		/* or an error in dma handling                              */
-		printf("pcm: int without reason (%x)\n", c);
+		kprintf("pcm: int without reason (%x)\n", c);
 		c = 0;
     	} else c &= ~served;
     	io_wr(ad1816, AD1816_INT, c);
     	c = io_rd(ad1816, AD1816_INT);
-    	if (c != 0) printf("pcm: int clear failed (%x)\n", c);
+    	if (c != 0) kprintf("pcm: int clear failed (%x)\n", c);
 	ad1816_unlock(ad1816);
 }
 
@@ -167,7 +167,7 @@ ad1816_wait_init(struct ad1816_info *ad1816, int x)
     	for (; x--;)
 		if ((n = (io_rd(ad1816, AD1816_ALE) & AD1816_BUSY)) == 0) DELAY(10);
 		else return n;
-    	printf("ad1816_wait_init failed 0x%02x.\n", n);
+    	kprintf("ad1816_wait_init failed 0x%02x.\n", n);
     	return -1;
 }
 
@@ -255,7 +255,7 @@ ad1816mix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 		break;
 
     	default:
-		printf("ad1816_mixer_set(): unknown device.\n");
+		kprintf("ad1816_mixer_set(): unknown device.\n");
 		break;
     	}
 	ad1816_unlock(ad1816);
@@ -423,7 +423,7 @@ ad1816chan_trigger(kobj_t obj, void *data, int go)
 	    		/* enable playback */
 	    		io_wr(ad1816, reg, io_rd(ad1816, reg) | AD1816_ENABLE);
 	    		if (!(io_rd(ad1816, reg) & AD1816_ENABLE))
-				printf("ad1816: failed to start %s DMA!\n",
+				kprintf("ad1816: failed to start %s DMA!\n",
 				       wr? "play" : "rec");
 		}
 		break;
@@ -438,7 +438,7 @@ ad1816chan_trigger(kobj_t obj, void *data, int go)
 	    		io_wr(ad1816, reg, io_rd(ad1816, reg) & ~AD1816_ENABLE);
 	    		/* disable playback */
 	    		if (io_rd(ad1816, reg) & AD1816_ENABLE)
-				printf("ad1816: failed to stop %s DMA!\n",
+				kprintf("ad1816: failed to stop %s DMA!\n",
 				       wr? "play" : "rec");
 	    		ad1816_write(ad1816, wr? 8 : 10, 0); /* reset base cnt */
 	    		ad1816_write(ad1816, wr? 9 : 11, 0); /* reset cur cnt */

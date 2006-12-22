@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.51 2006/12/21 14:13:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.52 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -236,8 +236,8 @@ static void	sk_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
 static void	sk_dmamem_addr(void *, bus_dma_segment_t *, int, int);
 
 #ifdef SK_DEBUG
-#define DPRINTF(x)	if (skdebug) printf x
-#define DPRINTFN(n,x)	if (skdebug >= (n)) printf x
+#define DPRINTF(x)	if (skdebug) kprintf x
+#define DPRINTFN(n,x)	if (skdebug >= (n)) kprintf x
 static int	skdebug = 2;
 
 static void	sk_dump_txdesc(struct sk_tx_desc *, int);
@@ -2869,7 +2869,7 @@ sk_dump_txdesc(struct sk_tx_desc *desc, int idx)
 {
 #define DESC_PRINT(X)					\
 	if (X)					\
-		printf("txdesc[%d]." #X "=%#x\n",	\
+		kprintf("txdesc[%d]." #X "=%#x\n",	\
 		       idx, X);
 
 	DESC_PRINT(le32toh(desc->sk_ctl));
@@ -2891,26 +2891,26 @@ sk_dump_bytes(const char *data, int len)
 	int c, i, j;
 
 	for (i = 0; i < len; i += 16) {
-		printf("%08x  ", i);
+		kprintf("%08x  ", i);
 		c = len - i;
 		if (c > 16) c = 16;
 
 		for (j = 0; j < c; j++) {
-			printf("%02x ", data[i + j] & 0xff);
+			kprintf("%02x ", data[i + j] & 0xff);
 			if ((j & 0xf) == 7 && j > 0)
-				printf(" ");
+				kprintf(" ");
 		}
 		
 		for (; j < 16; j++)
-			printf("   ");
-		printf("  ");
+			kprintf("   ");
+		kprintf("  ");
 
 		for (j = 0; j < c; j++) {
 			int ch = data[i + j] & 0xff;
-			printf("%c", ' ' <= ch && ch <= '~' ? ch : ' ');
+			kprintf("%c", ' ' <= ch && ch <= '~' ? ch : ' ');
 		}
 		
-		printf("\n");
+		kprintf("\n");
 		
 		if (c < 16)
 			break;
@@ -2922,10 +2922,10 @@ sk_dump_mbuf(struct mbuf *m)
 {
 	int count = m->m_pkthdr.len;
 
-	printf("m=%p, m->m_pkthdr.len=%d\n", m, m->m_pkthdr.len);
+	kprintf("m=%p, m->m_pkthdr.len=%d\n", m, m->m_pkthdr.len);
 
 	while (count > 0 && m) {
-		printf("m=%p, m->m_data=%p, m->m_len=%d\n",
+		kprintf("m=%p, m->m_data=%p, m->m_len=%d\n",
 		       m, m->m_data, m->m_len);
 		sk_dump_bytes(mtod(m, char *), m->m_len);
 

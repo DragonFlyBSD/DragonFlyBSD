@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.6 2006/09/10 01:26:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.7 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/thread2.h>
@@ -259,17 +259,17 @@ struct ciss_softc
 #ifdef CISS_DEBUG
 # define debug(level, fmt, args...)							\
 	do {										\
-	    if (level <= CISS_DEBUG) printf("%s: " fmt "\n", __func__ , ##args);	\
+	    if (level <= CISS_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args);	\
 	} while(0)
 # define debug_called(level)						\
 	do {								\
-	    if (level <= CISS_DEBUG) printf("%s: called\n", __func__);	\
+	    if (level <= CISS_DEBUG) kprintf("%s: called\n", __func__);	\
 	} while(0)
-# define debug_struct(s)		printf("  SIZE %s: %d\n", #s, sizeof(struct s))
-# define debug_union(s)			printf("  SIZE %s: %d\n", #s, sizeof(union s))
-# define debug_type(s)			printf("  SIZE %s: %d\n", #s, sizeof(s))
-# define debug_field(s, f)		printf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
-# define debug_const(c)			printf("  CONST %s %d/0x%x\n", #c, c, c);
+# define debug_struct(s)		kprintf("  SIZE %s: %d\n", #s, sizeof(struct s))
+# define debug_union(s)			kprintf("  SIZE %s: %d\n", #s, sizeof(union s))
+# define debug_type(s)			kprintf("  SIZE %s: %d\n", #s, sizeof(s))
+# define debug_field(s, f)		kprintf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
+# define debug_const(c)			kprintf("  CONST %s %d/0x%x\n", #c, c, c);
 #else
 # define debug(level, fmt, args...)
 # define debug_called(level)
@@ -349,7 +349,7 @@ ciss_remove_ ## name (struct ciss_request *cr)				\
 									\
     crit_enter();							\
     if (cr->cr_onq != index) {						\
-	printf("request on queue %d (expected %d)\n", cr->cr_onq, index);\
+	kprintf("request on queue %d (expected %d)\n", cr->cr_onq, index);\
 	error = 1;							\
     } else {								\
 	TAILQ_REMOVE(&cr->cr_sc->ciss_ ## name, cr, cr_link);		\

@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwvar.h,v 1.28 2006/02/16 20:17:16 perry Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.2 2006/09/30 20:03:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.3 2006/12/22 23:26:21 swildner Exp $
  */
 
 #ifndef _DEV_IC_RTWVAR_H_
@@ -77,7 +77,7 @@ struct rtw_duration {
 
 extern int	rtw_debug;
 #define RTW_DPRINTF(__flags, __x)	\
-	if ((rtw_debug & (__flags)) != 0) printf __x
+	if ((rtw_debug & (__flags)) != 0) kprintf __x
 #define	DPRINTF(__sc, __flags, __x)				\
 	if (((__sc)->sc_if.if_flags & IFF_DEBUG) != 0)	\
 		RTW_DPRINTF(__flags, __x)

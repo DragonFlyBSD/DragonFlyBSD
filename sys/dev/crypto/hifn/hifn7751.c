@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.12 2006/10/25 20:55:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.13 2006/12/22 23:26:15 swildner Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -837,7 +837,7 @@ hifn_reset_board(struct hifn_softc *sc, int full)
 			DELAY(1000);
 		}
 		if (reg == 1000)
-			printf(": cram init timeout\n");
+			kprintf(": cram init timeout\n");
 	}
 }
 
@@ -1864,7 +1864,7 @@ hifn_crypto(
 	 */
 #ifdef HIFN_DEBUG
 	if (hifn_debug)
-		printf("load res\n");
+		kprintf("load res\n");
 #endif
 	if (dma->resi == HIFN_D_RES_RSIZE) {
 		dma->resi = 0;

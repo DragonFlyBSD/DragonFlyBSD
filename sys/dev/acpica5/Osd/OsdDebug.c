@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.9 2004/09/02 04:28:05 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.5 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -55,7 +55,7 @@ AcpiOsGetLine(char *Buffer)
 	    *cp = 0;
     return (AE_OK);
 #else
-    printf("AcpiOsGetLine called but no input support");
+    kprintf("AcpiOsGetLine called but no input support");
     return (AE_NOT_EXIST);
 #endif /* DDB */
 }
@@ -64,8 +64,8 @@ void
 AcpiOsDbgAssert(void *FailedAssertion, void *FileName, UINT32 LineNumber,
     char *Message)
 {
-    printf("ACPI: %s:%d - %s\n", (char *)FileName, LineNumber, Message);
-    printf("ACPI: assertion  %s\n", (char *)FailedAssertion);
+    kprintf("ACPI: %s:%d - %s\n", (char *)FileName, LineNumber, Message);
+    kprintf("ACPI: assertion  %s\n", (char *)FailedAssertion);
 }
 
 ACPI_STATUS
@@ -76,7 +76,7 @@ AcpiOsSignal(UINT32 Function, void *Info)
     switch (Function) {
     case ACPI_SIGNAL_FATAL:
 	fatal = (ACPI_SIGNAL_FATAL_INFO *)Info;
-	printf("ACPI fatal signal, type 0x%x  code 0x%x  argument 0x%x",
+	kprintf("ACPI fatal signal, type 0x%x  code 0x%x  argument 0x%x",
 	      fatal->Type, fatal->Code, fatal->Argument);
 	Debugger("AcpiOsSignal");
 	break;
@@ -101,12 +101,12 @@ acpi_EnterDebugger(void)
     static int		initted = 0;
 
     if (!initted) {
-	printf("Initialising ACPICA debugger...\n");
+	kprintf("Initialising ACPICA debugger...\n");
 	AcpiDbInitialize();
 	initted = 1;
     }
 
-    printf("Entering ACPICA debugger...\n");
+    kprintf("Entering ACPICA debugger...\n");
     AcpiDbUserCommands('A', &obj);
 }
 #endif /* ACPI_DEBUGGER */

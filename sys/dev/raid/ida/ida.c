@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.14 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.15 2006/12/22 23:26:23 swildner Exp $
  */
 
 /*
@@ -334,7 +334,7 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 	crit_exit();
 
 	if (qcb == NULL) {
-		printf("ida_command: out of QCBs");
+		kprintf("ida_command: out of QCBs");
 		return (EAGAIN);
 	}
 

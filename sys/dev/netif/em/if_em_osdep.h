@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_osdep.h,v 1.1.2.11 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.7 2006/10/25 20:55:56 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.8 2006/12/22 23:26:19 swildner Exp $*/
 
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_
@@ -63,14 +63,14 @@ POSSIBILITY OF SUCH DAMAGE.
 /* TODO: Should we be paranoid about delaying in interrupt context? */
 #define msec_delay_irq(x) DELAY(1000*(x))
 
-#define MSGOUT(S, A, B)     printf(S "\n", A, B)
+#define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 #if DBG
-	#define DEBUGOUT(S)         printf(S "\n")
-	#define DEBUGOUT1(S,A)      printf(S "\n",A)
-	#define DEBUGOUT2(S,A,B)    printf(S "\n",A,B)
-	#define DEBUGOUT3(S,A,B,C)  printf(S "\n",A,B,C)
-	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  printf(S "\n",A,B,C,D,E,F,G)
+	#define DEBUGOUT(S)         kprintf(S "\n")
+	#define DEBUGOUT1(S,A)      kprintf(S "\n",A)
+	#define DEBUGOUT2(S,A,B)    kprintf(S "\n",A,B)
+	#define DEBUGOUT3(S,A,B,C)  kprintf(S "\n",A,B,C)
+	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  kprintf(S "\n",A,B,C,D,E,F,G)
 #else
 	#define DEBUGOUT(S)
 	#define DEBUGOUT1(S,A)

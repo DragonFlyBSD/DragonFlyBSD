@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.h,v 1.4 2000/03/02 00:08:35 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.h,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.h,v 1.4 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -863,7 +863,7 @@ adw_send_acb(struct adw_softc *adw, struct acb *acb, u_int32_t acb_baddr)
 	adw->commandq->areq_ba = acbvtob(adw, acb);
 	adw->commandq->next_ba = new_cq->carr_ba;
 #if 0
-	printf("EnQ 0x%x 0x%x 0x%x 0x%x\n",
+	kprintf("EnQ 0x%x 0x%x 0x%x 0x%x\n",
 	       adw->commandq->carr_offset,
 	       adw->commandq->carr_ba,
 	       adw->commandq->areq_ba,

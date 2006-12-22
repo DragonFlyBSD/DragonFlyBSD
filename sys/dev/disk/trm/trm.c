@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.13 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.14 2006/12/22 23:26:17 swildner Exp $
  */
 
 /*
@@ -104,7 +104,7 @@
 #define PCI_DEVICEID_TRMS1040	0x03911DE1
 
 #ifdef trm_DEBUG1
-#define TRM_DPRINTF(fmt, arg...) printf("trm: " fmt, ##arg)
+#define TRM_DPRINTF(fmt, arg...) kprintf("trm: " fmt, ##arg)
 #else
 #define TRM_DPRINTF(fmt, arg...) {}
 #endif /* TRM_DEBUG */
@@ -3174,14 +3174,14 @@ trm_init(u_int16_t unit, device_t pci_config_id)
     
  	pACB = (PACB) device_get_softc(pci_config_id);
    	if (!pACB) {
-		printf("trm%d: cannot allocate ACB !\n", unit);
+		kprintf("trm%d: cannot allocate ACB !\n", unit);
 		return (NULL);
 	}
 	bzero (pACB, sizeof (struct _ACB));
 	pACB->iores = bus_alloc_resource(pci_config_id, SYS_RES_IOPORT, 
 	    &rid, 0, ~0, 1, RF_ACTIVE);
     	if (pACB->iores == NULL) {
-		printf("trm_init: bus_alloc_resource failed!\n");
+		kprintf("trm_init: bus_alloc_resource failed!\n");
 		return (NULL);
 	}
 	pACB->tag = rman_get_bustag(pACB->iores);
@@ -3202,7 +3202,7 @@ trm_init(u_int16_t unit, device_t pci_config_id)
 	trm_check_eeprom(&trm_eepromBuf[unit],pACB);
 	trm_initACB(pACB, unit);
    	if (trm_initAdapter(pACB, unit, pci_config_id)) {
-		printf("trm_initAdapter: initial ERROR\n");
+		kprintf("trm_initAdapter: initial ERROR\n");
 		goto bad;
 	}
 	return (pACB);
@@ -3231,7 +3231,7 @@ trm_attach(device_t pci_config_id)
 	if (device_id == PCI_DEVICEID_TRMS1040) {
 		if ((pACB=trm_init((u_int16_t) unit,
 			pci_config_id)) == NULL) {
-			printf("trm%d: trm_init error!\n",unit);
+			kprintf("trm%d: trm_init error!\n",unit);
 			return (ENXIO);
 		}
 	} else
@@ -3249,12 +3249,12 @@ trm_attach(device_t pci_config_id)
 	    bus_setup_intr(pci_config_id, pACB->irq, 
 			   0, trm_Interrupt, pACB,
 			   &pACB->ih, NULL)) {
-		printf("trm%d: register Interrupt handler error!\n", unit);
+		kprintf("trm%d: register Interrupt handler error!\n", unit);
 		goto bad;
 	}
 	device_Q = cam_simq_alloc(MAX_START_JOB);
 	if (device_Q == NULL){ 
-		printf("trm%d: device_Q == NULL !\n",unit);
+		kprintf("trm%d: device_Q == NULL !\n",unit);
 		goto bad;
 	}
 	/*
@@ -3293,11 +3293,11 @@ trm_attach(device_t pci_config_id)
 	    device_Q);
 	cam_simq_release(device_Q);  /* SIM allocate fault*/
 	if (pACB->psim == NULL) {
-		printf("trm%d: SIM allocate fault !\n",unit);
+		kprintf("trm%d: SIM allocate fault !\n",unit);
 		goto bad;
 	}
 	if (xpt_bus_register(pACB->psim, 0) != CAM_SUCCESS)  {
-		printf("trm%d: xpt_bus_register fault !\n",unit);
+		kprintf("trm%d: xpt_bus_register fault !\n",unit);
 		goto bad;
 	}
 	if (xpt_create_path(&pACB->ppath,
@@ -3305,7 +3305,7 @@ trm_attach(device_t pci_config_id)
 	      cam_sim_path(pACB->psim),
 	      CAM_TARGET_WILDCARD,
 	      CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-		printf("trm%d: xpt_create_path fault !\n",unit);
+		kprintf("trm%d: xpt_create_path fault !\n",unit);
 		xpt_bus_deregister(cam_sim_path(pACB->psim));
 		goto bad;
 		/* 

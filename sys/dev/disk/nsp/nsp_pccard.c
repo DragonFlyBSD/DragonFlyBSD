@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.10 2006/11/07 19:56:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.11 2006/12/22 23:26:16 swildner Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -154,7 +154,7 @@ nsp_alloc_resource(DEVPORT_PDEVICE dev)
 	/* No need to allocate memory if not configured and it's in PIO mode */
 	if (maddr == 0 || msize == 0) {
 		if ((DEVPORT_PDEVFLAGS(dev) & PIO_MODE) == 0) {
-			printf("Memory window was not configured. Configure or use in PIO mode.");
+			kprintf("Memory window was not configured. Configure or use in PIO mode.");
 			nsp_release_resource(dev);
 			return(ENOMEM);
 		}
@@ -272,7 +272,7 @@ nsp_card_unload(DEVPORT_PDEVICE devi)
 {
 	struct nsp_softc *sc = DEVPORT_PDEVGET_SOFTC(devi);
 
-	printf("%s: unload\n",sc->sc_sclow.sl_xname);
+	kprintf("%s: unload\n",sc->sc_sclow.sl_xname);
 	crit_enter();
 	scsi_low_deactivate((struct scsi_low_softc *)sc);
         scsi_low_dettach(&sc->sc_sclow);
@@ -305,7 +305,7 @@ nspattach(DEVPORT_PDEVICE devi)
 
 	if (iobase == 0)
 	{
-		printf("%s: no ioaddr is given\n", dvname);
+		kprintf("%s: no ioaddr is given\n", dvname);
 		return (0);
 	}
 

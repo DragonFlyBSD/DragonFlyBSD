@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_pci.c,v 1.15.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.5 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.6 2006/12/22 23:26:22 swildner Exp $
  */
 
 
@@ -191,7 +191,7 @@ sr_pci_attach(device_t device)
 				     0x1000000);
 
 	if (hc->mem_start == NULL) {
-		printf("src%d: pci: failed to allocate buffer space.\n",
+		kprintf("src%d: pci: failed to allocate buffer space.\n",
 		    hc->cunit);
 		goto errexit;
 	}

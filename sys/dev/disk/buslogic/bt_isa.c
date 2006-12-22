@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_isa.c,v 1.18 1999/10/12 21:35:43 dfr Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.4 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.5 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -161,7 +161,7 @@ bt_isa_probe(device_t dev)
 
 		if (bt_port_probe(dev, &info) != 0) {
 			if (bootverbose)
-				printf("bt_isa_probe: Probe failed at 0x%x\n",
+				kprintf("bt_isa_probe: Probe failed at 0x%x\n",
 				       ioport);
 			bt_isa_release_resources(dev);
 			continue;

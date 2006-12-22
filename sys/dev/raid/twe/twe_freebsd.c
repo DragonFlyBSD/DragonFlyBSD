@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.24 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.25 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -693,7 +693,7 @@ twed_strategy(struct dev_strategy_args *ap)
     if ((sc == NULL) || (!sc->twed_drive->td_disk)) {
 	bp->b_error = EINVAL;
 	bp->b_flags |= B_ERROR;
-	printf("twe: bio for invalid disk!\n");
+	kprintf("twe: bio for invalid disk!\n");
 	biodone(bio);
 	TWED_BIO_OUT;
 	return(0);
@@ -849,7 +849,7 @@ twed_detach(device_t dev)
     devstat_remove_entry(&sc->twed_stats);
     disk_destroy(&sc->twed_disk);
 #ifdef FREEBSD_4
-	printf("Disks registered: %d\n", disks_registered);
+	kprintf("Disks registered: %d\n", disks_registered);
 #if 0
     if (--disks_registered == 0)
 	dev_ops_remove(&tweddisk_ops);
@@ -1137,7 +1137,7 @@ twe_report(void)
     crit_enter();
     for (i = 0; (sc = devclass_get_softc(twe_devclass, i)) != NULL; i++)
 	twe_print_controller(sc);
-    printf("twed: total bio count in %u  out %u\n", twed_bio_in, twed_bio_out);
+    kprintf("twed: total bio count in %u  out %u\n", twed_bio_in, twed_bio_out);
     crit_exit();
 }
 #endif

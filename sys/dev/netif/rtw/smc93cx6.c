@@ -20,7 +20,7 @@
  *
  * $FreeBSD: src/sys/dev/aic7xxx/93cx6.c,v 1.5 2000/01/07 23:08:17 gibbs Exp $
  * $NetBSD: smc93cx6.c,v 1.12 2005/12/11 12:21:28 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.2 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.3 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -171,14 +171,14 @@ read_seeprom(sd, buf, start_addr, count)
 		CLOCK_PULSE(sd, sd->sd_RDY);
 	}
 #ifdef AHC_DUMP_EEPROM
-	printf("\nSerial EEPROM:\n\t");
+	kprintf("\nSerial EEPROM:\n\t");
 	for (k = 0; k < count; k = k + 1) {
 		if (((k % 8) == 0) && (k != 0)) {
-			printf ("\n\t");
+			kprintf ("\n\t");
 		}
-		printf (" 0x%x", buf[k]);
+		kprintf (" 0x%x", buf[k]);
 	}
-	printf ("\n");
+	kprintf ("\n");
 #endif
 	return (1);
 }

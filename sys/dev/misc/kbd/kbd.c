@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.21 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.22 2006/12/22 23:26:17 swildner Exp $
  */
 /*
  * Generic keyboard driver.
@@ -108,7 +108,7 @@ kbd_realloc_array(void)
 	crit_exit();
 
 	if (bootverbose)
-		printf("kbd: new array size %d\n", keyboards);
+		kprintf("kbd: new array size %d\n", keyboards);
 
 	return 0;
 }
@@ -474,7 +474,7 @@ kbd_attach(keyboard_t *kbd)
 				      M_WAITOK);
 	bzero(dev->si_drv1, sizeof(genkbd_softc_t));
 
-	printf("kbd%d at %s%d\n", kbd->kb_index, kbd->kb_name, kbd->kb_unit);
+	kprintf("kbd%d at %s%d\n", kbd->kb_index, kbd->kb_name, kbd->kb_unit);
 	return 0;
 }
 
@@ -947,14 +947,14 @@ void
 genkbd_diag(keyboard_t *kbd, int level)
 {
 	if (level > 0) {
-		printf("kbd%d: %s%d, %s (%d), config:0x%x, flags:0x%x", 
+		kprintf("kbd%d: %s%d, %s (%d), config:0x%x, flags:0x%x", 
 		       kbd->kb_index, kbd->kb_name, kbd->kb_unit,
 		       get_kbd_type_name(kbd->kb_type), kbd->kb_type,
 		       kbd->kb_config, kbd->kb_flags);
 		if (kbd->kb_io_base > 0)
-			printf(", port:0x%x-0x%x", kbd->kb_io_base, 
+			kprintf(", port:0x%x-0x%x", kbd->kb_io_base, 
 			       kbd->kb_io_base + kbd->kb_io_size - 1);
-		printf("\n");
+		kprintf("\n");
 	}
 }
 

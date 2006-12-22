@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/pcx/splash_pcx.c,v 1.4 1999/08/28 00:47:39 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/pcx/splash_pcx.c,v 1.4 2005/07/29 21:17:08 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/pcx/splash_pcx.c,v 1.5 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,7 @@ pcx_start(video_adapter_t *adp)
 	return ENODEV;
 
     if (bootverbose)
-	printf("splash_pcx: image good:\n"
+	kprintf("splash_pcx: image good:\n"
 	       "  width = %d\n"
 	       "  height = %d\n"
 	       "  depth = %d\n"
@@ -95,7 +95,7 @@ pcx_start(video_adapter_t *adp)
 	if (get_mode_info(adp, modes[i], &info) != 0)
 	    continue;
 	if (bootverbose)
-	    printf("splash_pcx: considering mode %d:\n"
+	    kprintf("splash_pcx: considering mode %d:\n"
 		   "  vi_width = %d\n"
 		   "  vi_height = %d\n"
 		   "  vi_depth = %d\n"
@@ -114,7 +114,7 @@ pcx_start(video_adapter_t *adp)
     if (splash_mode == -1)
 	return ENODEV;    
     if (bootverbose)
-	printf("pcx_splash: selecting mode %d\n", splash_mode);
+	kprintf("pcx_splash: selecting mode %d\n", splash_mode);
     return 0;
 }
 
@@ -173,7 +173,7 @@ pcx_init(const char *data, int size)
 	|| hdr->bpp != 8
 	|| hdr->bpsl > MAXSCANLINE
 	|| data[size-769] != 12) {
-	printf("splash_pcx: invalid PCX image\n");
+	kprintf("splash_pcx: invalid PCX image\n");
 	return 1;
     }
     pcx_info.width =  hdr->xmax - hdr->xmin + 1;

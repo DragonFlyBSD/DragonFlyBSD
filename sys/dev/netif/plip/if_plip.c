@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.18 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.19 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -137,7 +137,7 @@
 
 #define	LPIPTBLSIZE	256	/* Size of octet translation table */
 
-#define lprintf		if (lptflag) printf
+#define lprintf		if (lptflag) kprintf
 
 #ifdef PLIP_DEBUG
 static int volatile lptflag = 1;
@@ -560,7 +560,7 @@ lp_intr (void *arg)
 	 * so stop wasting our time
 	 */
 	if (sc->sc_iferrs > LPMAXERRS) {
-	    printf("lp%d: Too many errors, Going off-line.\n", device_get_unit(dev));
+	    kprintf("lp%d: Too many errors, Going off-line.\n", device_get_unit(dev));
 	    ppb_wctr(ppbus, 0x00);
 	    sc->sc_if.if_flags &= ~IFF_RUNNING;
 	    sc->sc_iferrs=0;

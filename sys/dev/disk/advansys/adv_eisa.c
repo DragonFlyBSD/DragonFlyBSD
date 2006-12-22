@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_eisa.c,v 1.9.2.1 2000/04/14 13:32:44 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ adv_eisa_probe(device_t dev)
 	case 5:
 	    break;
 	default:
-	    printf("adv at slot %d: illegal "
+	    kprintf("adv at slot %d: illegal "
 		   "irq setting %d\n", eisa_get_slot(dev),
 		   irq);
 	    return ENXIO;
@@ -180,7 +180,7 @@ adv_eisa_attach(device_t dev)
 					   &adv_b->parent_dmat);
  
 		if (error != 0) {
-			printf("%s: Could not allocate DMA tag - error %d\n",
+			kprintf("%s: Could not allocate DMA tag - error %d\n",
 			       adv_name(adv_b), error);
 			adv_free(adv_b);
 			goto bad;
@@ -215,7 +215,7 @@ adv_eisa_attach(device_t dev)
 					   &adv->parent_dmat);
  
 		if (error != 0) {
-			printf("%s: Could not allocate DMA tag - error %d\n",
+			kprintf("%s: Could not allocate DMA tag - error %d\n",
 			       adv_name(adv), error);
 			adv_free(adv);
 			goto bad;
@@ -224,7 +224,7 @@ adv_eisa_attach(device_t dev)
 		adv->init_level++;
 		break;
 	default: 
-		printf("adveisaattach: Unknown device type!\n");
+		kprintf("adveisaattach: Unknown device type!\n");
 		goto bad;
 		break;
 	}

@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.6 2006/12/20 18:14:41 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 #define SNDBUF_NAMELEN	48
 struct snd_dbuf {
@@ -81,7 +81,7 @@ sndbuf_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	if (bootverbose) {
 		device_printf(b->dev, "sndbuf_setmap %lx, %lx; ", (unsigned long)segs->ds_addr,
 		       (unsigned long)segs->ds_len);
-		printf("%p -> %lx\n", b->buf, (unsigned long)vtophys(b->buf));
+		kprintf("%p -> %lx\n", b->buf, (unsigned long)vtophys(b->buf));
 	}
 }
 
@@ -550,18 +550,18 @@ sndbuf_feed(struct snd_dbuf *from, struct snd_dbuf *to, struct pcm_channel *chan
 void
 sndbuf_dump(struct snd_dbuf *b, char *s, u_int32_t what)
 {
-	printf("%s: [", s);
+	kprintf("%s: [", s);
 	if (what & 0x01)
-		printf(" bufsize: %d, maxsize: %d", b->bufsize, b->maxsize);
+		kprintf(" bufsize: %d, maxsize: %d", b->bufsize, b->maxsize);
 	if (what & 0x02)
-		printf(" dl: %d, rp: %d, rl: %d, hp: %d", b->dl, b->rp, b->rl, b->hp);
+		kprintf(" dl: %d, rp: %d, rl: %d, hp: %d", b->dl, b->rp, b->rl, b->hp);
 	if (what & 0x04)
-		printf(" total: %d, prev_total: %d, xrun: %d", b->total, b->prev_total, b->xrun);
+		kprintf(" total: %d, prev_total: %d, xrun: %d", b->total, b->prev_total, b->xrun);
    	if (what & 0x08)
-		printf(" fmt: 0x%x, spd: %d", b->fmt, b->spd);
+		kprintf(" fmt: 0x%x, spd: %d", b->fmt, b->spd);
 	if (what & 0x10)
-		printf(" blksz: %d, blkcnt: %d, flags: 0x%x", b->blksz, b->blkcnt, b->flags);
-	printf(" ]\n");
+		kprintf(" blksz: %d, blkcnt: %d, flags: 0x%x", b->blksz, b->blkcnt, b->flags);
+	kprintf(" ]\n");
 }
 
 /************************************************************/
@@ -623,7 +623,7 @@ sndbuf_isadma(struct snd_dbuf *b, int go)
 		break;
 	}
 
-	DEB(printf("buf 0x%p ISA DMA %s, channel %d\n",
+	DEB(kprintf("buf 0x%p ISA DMA %s, channel %d\n",
 		b,
 		(go == PCMTRIG_START)? "started" : "stopped",
 		b->isadmachan));

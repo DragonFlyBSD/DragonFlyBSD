@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -183,10 +183,10 @@ exphy_attach(device_t dev)
 	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
-		printf("no media present");
+		kprintf("no media present");
 	else
 		mii_phy_add_media(sc);
-	printf("\n");
+	kprintf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);

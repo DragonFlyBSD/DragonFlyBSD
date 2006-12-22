@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.17 2006/10/25 20:55:56 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.18 2006/12/22 23:26:19 swildner Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -247,15 +247,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #define DEBUG_IOCTL 0
 #define DEBUG_HW    0
 
-#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  printf(S "\n")
-#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  printf(S "\n", A)
-#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  printf(S "\n", A, B)
-#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) printf(S "\n")
-#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) printf(S "\n", A)
-#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) printf(S "\n", A, B)
-#define HW_DEBUGOUT(S)              if (DEBUG_HW) printf(S "\n")
-#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) printf(S "\n", A)
-#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) printf(S "\n", A, B)
+#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  kprintf(S "\n")
+#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  kprintf(S "\n", A)
+#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  kprintf(S "\n", A, B)
+#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) kprintf(S "\n")
+#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) kprintf(S "\n", A)
+#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) kprintf(S "\n", A, B)
+#define HW_DEBUGOUT(S)              if (DEBUG_HW) kprintf(S "\n")
+#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) kprintf(S "\n", A)
+#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) kprintf(S "\n", A, B)
 
 
 /* Supported RX Buffer Sizes */

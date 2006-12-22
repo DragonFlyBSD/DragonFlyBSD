@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.32 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.33 2006/12/22 23:26:19 swildner Exp $
  */
 
 /*
@@ -368,10 +368,10 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 		return (error);
 
 #if ED_DEBUG
-	printf("type = %x type_str=%s isa16bit=%d memsize=%d id_msize=%d\n",
+	kprintf("type = %x type_str=%s isa16bit=%d memsize=%d id_msize=%d\n",
 	       sc->type, sc->type_str, isa16bit, memsize, conf_msize);
 	for (i = 0; i < 8; i++)
-		printf("%x -> %x\n", i, ed_asic_inb(sc, i));
+		kprintf("%x -> %x\n", i, ed_asic_inb(sc, i));
 #endif
 
 	/*
@@ -467,7 +467,7 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 
 	error = ed_alloc_memory(dev, 0, memsize);
 	if (error) {
-		printf("*** ed_alloc_memory() failed! (%d)\n", error);
+		kprintf("*** ed_alloc_memory() failed! (%d)\n", error);
 		return (error);
 	}
 	sc->mem_start = (caddr_t) rman_get_virtual(sc->mem_res);
@@ -549,11 +549,11 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 	}
 
 #if 0
-	printf("starting memory performance test at 0x%x, size %d...\n",
+	kprintf("starting memory performance test at 0x%x, size %d...\n",
 		sc->mem_start, memsize*16384);
 	for (i = 0; i < 16384; i++)
 		bzero(sc->mem_start, memsize);
-	printf("***DONE***\n");
+	kprintf("***DONE***\n");
 #endif
 
 	/*
@@ -1724,18 +1724,18 @@ ed_attach(device_t dev)
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
 	if (sc->type_str && (*sc->type_str != 0))
-		printf("type %s ", sc->type_str);
+		kprintf("type %s ", sc->type_str);
 	else
-		printf("type unknown (0x%x) ", sc->type);
+		kprintf("type unknown (0x%x) ", sc->type);
 
 	if (sc->vendor == ED_VENDOR_HP)
-		printf("(%s %s IO)", (sc->hpp_id & ED_HPP_ID_16_BIT_ACCESS) ?
+		kprintf("(%s %s IO)", (sc->hpp_id & ED_HPP_ID_16_BIT_ACCESS) ?
 			"16-bit" : "32-bit",
 			sc->hpp_mem_start ? "memory mapped" : "regular");
 	else
-		printf("%s ", sc->isa16bit ? "(16 bit)" : "(8 bit)");
+		kprintf("%s ", sc->isa16bit ? "(16 bit)" : "(8 bit)");
 
-	printf("%s\n", (((sc->vendor == ED_VENDOR_3COM) ||
+	kprintf("%s\n", (((sc->vendor == ED_VENDOR_3COM) ||
 			 (sc->vendor == ED_VENDOR_HP)) &&
 		(ifp->if_flags & IFF_ALTPHYS)) ? " tranceiver disabled" : "");
 
@@ -2067,7 +2067,7 @@ ed_start(struct ifnet *ifp)
 	int     len;
 
 	if (sc->gone) {
-		printf("ed_start(%p) GONE\n",ifp);
+		kprintf("ed_start(%p) GONE\n",ifp);
 		return;
 	}
 outloop:
@@ -2077,7 +2077,7 @@ outloop:
 	 * should never happen at this point.
 	 */
 	if (sc->txb_inuse && (sc->xmit_busy == 0)) {
-		printf("ed: packets buffered, but transmitter idle\n");
+		kprintf("ed: packets buffered, but transmitter idle\n");
 		ed_xmit(sc);
 	}
 

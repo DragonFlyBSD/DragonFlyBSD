@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.20 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.21 2006/12/22 23:26:16 swildner Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -66,9 +66,9 @@ static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 #define	MCD_TRACE(format, args...)						\
 {									\
 	if (mcd_data[unit].debug) {					\
-		printf("mcd%d: status=0x%02x: ",			\
+		kprintf("mcd%d: status=0x%02x: ",			\
 			unit, mcd_data[unit].status);			\
-		printf(format, ## args);				\
+		kprintf(format, ## args);				\
 	}								\
 }
 
@@ -310,15 +310,15 @@ mcdopen(struct dev_open_args *ap)
 		return 0;
 	}
 	if (cd->status & MCDDOOROPEN) {
-		printf("mcd%d: door is open\n", unit);
+		kprintf("mcd%d: door is open\n", unit);
 		return ENXIO;
 	}
 	if (!(cd->status & MCDDSKIN)) {
-		printf("mcd%d: no CD inside\n", unit);
+		kprintf("mcd%d: no CD inside\n", unit);
 		return ENXIO;
 	}
 	if (cd->status & MCDDSKCHNG) {
-		printf("mcd%d: CD not sensed\n", unit);
+		kprintf("mcd%d: CD not sensed\n", unit);
 		return ENXIO;
 	}
 
@@ -329,7 +329,7 @@ mcdopen(struct dev_open_args *ap)
 				cd->partflags[part] |= MCDREADRAW;
 			return 0;
 		}
-		printf("mcd%d: failed to get disk size\n",unit);
+		kprintf("mcd%d: failed to get disk size\n",unit);
 		return ENXIO;
 	} else
 		cd->flags |= MCDVALID;
@@ -399,9 +399,9 @@ mcdstrategy(struct dev_strategy_args *ap)
 /*MCD_TRACE("strategy: buf=0x%lx, unit=%ld, offset=%lld bcount=%ld\n",
 	bp,unit,bio->bio_offset,bp->b_bcount);*/
 	if (unit >= NMCD || bio->bio_offset < 0) {
-		printf("mcdstrategy: unit = %d, offset = %lld, bcount = %d\n",
+		kprintf("mcdstrategy: unit = %d, offset = %lld, bcount = %d\n",
 			unit, bio->bio_offset, bp->b_bcount);
-		printf("mcd: mcdstratregy failure");
+		kprintf("mcd: mcdstratregy failure");
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		goto bad;
@@ -726,7 +726,7 @@ twiddle_thumbs(int port, int unit, int count, char *whine)
 			return 1;
 		}
 	if (bootverbose)
-		printf("mcd%d: timeout %s\n", unit, whine);
+		kprintf("mcd%d: timeout %s\n", unit, whine);
 	return 0;
 }
 
@@ -804,7 +804,7 @@ mcd_probe(struct isa_device *dev)
 		mcd_data[unit].name = "Mitsumi ???";
 		break;
 	}
-	printf("mcd%d: type %s, version info: %c %x\n", unit, mcd_data[unit].name,
+	kprintf("mcd%d: type %s, version info: %c %x\n", unit, mcd_data[unit].name,
 		stbytes[1], stbytes[2]);
 
 	return 4;
@@ -833,7 +833,7 @@ mcd_getreply(int unit,int dly)
 
 	/* wait data to become ready */
 	if (mcd_waitrdy(port,dly)<0) {
-		printf("mcd%d: timeout getreply\n",unit);
+		kprintf("mcd%d: timeout getreply\n",unit);
 		return -1;
 	}
 
@@ -890,7 +890,7 @@ mcd_get(int unit, char *buf, int nmax)
 	for (i=0; i<nmax; i++) {
 		/* wait for data */
 		if ((k = mcd_getreply(unit,DELAY_GETREPLY)) < 0) {
-			printf("mcd%d: timeout mcd_get\n",unit);
+			kprintf("mcd%d: timeout mcd_get\n",unit);
 			return -1;
 		}
 		buf[i] = k;
@@ -911,11 +911,11 @@ mcd_send(int unit, int cmd,int nretrys)
 			break;
 	}
 	if (k == -2) {
-		printf("mcd%d: media changed\n",unit);
+		kprintf("mcd%d: media changed\n",unit);
 		return -1;
 	}
 	if (i == nretrys) {
-		printf("mcd%d: mcd_send retry cnt exceeded\n",unit);
+		kprintf("mcd%d: mcd_send retry cnt exceeded\n",unit);
 		return -1;
 	}
 /*MCD_TRACE("mcd_send: done\n",0,0,0,0);*/
@@ -956,7 +956,7 @@ mcd_volinfo(int unit)
 
 	/* get data */
 	if (mcd_get(unit,(char*) &cd->volinfo,sizeof(struct mcd_volinfo)) < 0) {
-		printf("mcd%d: mcd_volinfo: error read data\n",unit);
+		kprintf("mcd%d: mcd_volinfo: error read data\n",unit);
 		return EIO;
 	}
 
@@ -1039,7 +1039,7 @@ retry_status:
 				RDELAY_WAITSTAT-mbx->count);
 			/* reject, if audio active */
 			if (cd->status & MCDAUDIOBSY) {
-				printf("mcd%d: audio is active\n",unit);
+				kprintf("mcd%d: audio is active\n",unit);
 				goto readerr;
 			}
 
@@ -1067,14 +1067,14 @@ retry_mode:
 					mcd_timeout, (void *)MCD_S_WAITMODE);
 			return;
 		} else {
-			printf("mcd%d: timeout getstatus\n",unit);
+			kprintf("mcd%d: timeout getstatus\n",unit);
 			goto readerr;
 		}
 
 	case MCD_S_WAITMODE:
 		callout_stop(&cd->callout);
 		if (mbx->count-- < 0) {
-			printf("mcd%d: timeout set mode\n",unit);
+			kprintf("mcd%d: timeout set mode\n",unit);
 			goto readerr;
 		}
 		if (inb(port+MCD_FLAGS) & MFL_STATUS_NOT_AVAIL) {
@@ -1179,14 +1179,14 @@ retry_read:
 					mcd_timeout, (void *)MCD_S_WAITREAD);
 			return;
 		} else {
-			printf("mcd%d: timeout read data\n",unit);
+			kprintf("mcd%d: timeout read data\n",unit);
 			goto readerr;
 		}
 	}
 
 readerr:
 	if (mbx->retry-- > 0) {
-		printf("mcd%d: retrying\n",unit);
+		kprintf("mcd%d: retrying\n",unit);
 		state = MCD_S_BEGIN1;
 		goto loop;
 	}
@@ -1201,11 +1201,11 @@ harderr:
 	return;
 
 changed:
-	printf("mcd%d: media changed\n", unit);
+	kprintf("mcd%d: media changed\n", unit);
 	goto harderr;
 
 #ifdef NOTDEF
-	printf("mcd%d: unit timeout, resetting\n",mbx->unit);
+	kprintf("mcd%d: unit timeout, resetting\n",mbx->unit);
 	outb(mbx->port+mcd_reset,MCD_CMDRESET);
 	DELAY(300000);
 	(void)mcd_getstat(mbx->unit,1);
@@ -1319,7 +1319,7 @@ mcd_setmode(int unit, int mode)
 	if (cd->curr_mode == mode)
 		return 0;
 	if (cd->debug)
-		printf("mcd%d: setting mode to %d\n", unit, mode);
+		kprintf("mcd%d: setting mode to %d\n", unit, mode);
 	for(retry=0; retry<MCD_RETRYS; retry++)
 	{
 		cd->curr_mode = MCD_MD_UNKNOWN;
@@ -1330,7 +1330,7 @@ mcd_setmode(int unit, int mode)
 			return 0;
 		}
 		if (st == -2) {
-			printf("mcd%d: media changed\n", unit);
+			kprintf("mcd%d: media changed\n", unit);
 			break;
 		}
 	}
@@ -1369,7 +1369,7 @@ mcd_read_toc(int unit)
 		return 0;
 
 	if (cd->debug)
-		printf("mcd%d: reading toc header\n", unit);
+		kprintf("mcd%d: reading toc header\n", unit);
 
 	if ((rc = mcd_toc_header(unit, &th)) != 0)
 		return rc;
@@ -1381,7 +1381,7 @@ mcd_read_toc(int unit)
 		return EIO;
 
 	if (cd->debug)
-		printf("mcd%d: get_toc reading qchannel info\n",unit);
+		kprintf("mcd%d: get_toc reading qchannel info\n",unit);
 
 	for(trk=th.starting_track; trk<=th.ending_track; trk++)
 		cd->toc[trk].idx_no = 0;
@@ -1417,7 +1417,7 @@ mcd_read_toc(int unit)
 	if (cd->debug)
 	{ int i;
 	for (i = th.starting_track; i <= idx; i++)
-		printf("mcd%d: trk %d idx %d pos %d %d %d\n",
+		kprintf("mcd%d: trk %d idx %d pos %d %d %d\n",
 			unit, i,
 			cd->toc[i].idx_no > 0x99 ? cd->toc[i].idx_no :
 			bcd2bin(cd->toc[i].idx_no),
@@ -1561,7 +1561,7 @@ mcd_stop(int unit)
 	    cd->audio_status != CD_AS_PLAY_PAUSED &&
 	    cd->audio_status != CD_AS_PLAY_COMPLETED) {
 		if (cd->debug)
-			printf("mcd%d: stop attempted when not playing, audio status %d\n",
+			kprintf("mcd%d: stop attempted when not playing, audio status %d\n",
 				unit, cd->audio_status);
 		return EINVAL;
 	}
@@ -1582,7 +1582,7 @@ mcd_getqchan(int unit, struct mcd_qchninfo *q)
 	if (mcd_get(unit, (char *) q, sizeof(struct mcd_qchninfo)) < 0)
 		return -1;
 	if (cd->debug) {
-		printf("mcd%d: getqchan control=0x%x addr_type=0x%x trk=%d ind=%d ttm=%d:%d.%d dtm=%d:%d.%d\n",
+		kprintf("mcd%d: getqchan control=0x%x addr_type=0x%x trk=%d ind=%d ttm=%d:%d.%d dtm=%d:%d.%d\n",
 		unit,
 		q->control, q->addr_type, bcd2bin(q->trk_no),
 		bcd2bin(q->idx_no),
@@ -1603,7 +1603,7 @@ mcd_subchan(int unit, struct ioc_read_subchannel *sc)
 	int lba;
 
 	if (cd->debug)
-		printf("mcd%d: subchan af=%d, df=%d\n", unit,
+		kprintf("mcd%d: subchan af=%d, df=%d\n", unit,
 			sc->address_format,
 			sc->data_format);
 
@@ -1672,7 +1672,7 @@ mcd_playmsf(int unit, struct ioc_play_msf *p)
 	struct mcd_read2 pb;
 
 	if (cd->debug)
-		printf("mcd%d: playmsf: from %d:%d.%d to %d:%d.%d\n",
+		kprintf("mcd%d: playmsf: from %d:%d.%d to %d:%d.%d\n",
 		    unit,
 		    p->start_m, p->start_s, p->start_f,
 		    p->end_m, p->end_s, p->end_f);
@@ -1711,7 +1711,7 @@ mcd_playtracks(int unit, struct ioc_play_track *pt)
 		return rc;
 
 	if (cd->debug)
-		printf("mcd%d: playtracks from %d:%d to %d:%d\n", unit,
+		kprintf("mcd%d: playtracks from %d:%d to %d:%d\n", unit,
 			a, pt->start_index, z, pt->end_index);
 
 	if (   a < bcd2bin(cd->volinfo.trk_low)
@@ -1739,7 +1739,7 @@ mcd_playblocks(int unit, struct ioc_play_blocks *p)
 	struct mcd_read2 pb;
 
 	if (cd->debug)
-		printf("mcd%d: playblocks: blkno %d length %d\n",
+		kprintf("mcd%d: playblocks: blkno %d length %d\n",
 		    unit, p->blk, p->len);
 
 	if (p->blk > cd->disksize || p->len > cd->disksize ||
@@ -1785,11 +1785,11 @@ mcd_play(int unit, struct mcd_read2 *pb)
 	}
 
 	if (status == -2) {
-		printf("mcd%d: media changed\n", unit);
+		kprintf("mcd%d: media changed\n", unit);
 		return ENXIO;
 	}
 	if (cd->debug)
-		printf("mcd%d: mcd_play retry=%d, status=0x%02x\n", unit, retry, status);
+		kprintf("mcd%d: mcd_play retry=%d, status=0x%02x\n", unit, retry, status);
 	if (st < 0)
 		return ENXIO;
 	cd->audio_status = CD_AS_PLAY_IN_PROGRESS;
@@ -1807,7 +1807,7 @@ mcd_pause(int unit)
 	if (cd->audio_status != CD_AS_PLAY_IN_PROGRESS &&
 	    cd->audio_status != CD_AS_PLAY_PAUSED) {
 		if (cd->debug)
-			printf("mcd%d: pause attempted when not playing, audio status %d\n",
+			kprintf("mcd%d: pause attempted when not playing, audio status %d\n",
 			       unit, cd->audio_status);
 		return EINVAL;
 	}

@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_isa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.6 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.7 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "opt_debug_si.h"
@@ -67,7 +67,7 @@ si_isa_probe(device_t dev)
 	 */
 	if ((caddr_t)paddr < (caddr_t)0xA0000 ||
 	    (caddr_t)paddr >= (caddr_t)0x100000) {
-		printf("si%d: iomem (%p) out of range\n",
+		kprintf("si%d: iomem (%p) out of range\n",
 			unit, (void *)paddr);
 		goto fail;
 	}
@@ -232,7 +232,7 @@ bad_irq:
 		break;
 	case SIMCA:		/* MCA */
 	default:
-		printf("si%d: card type %d not supported\n", unit, type);
+		kprintf("si%d: card type %d not supported\n", unit, type);
 		goto fail;
 	}
 	sc->sc_type = type;

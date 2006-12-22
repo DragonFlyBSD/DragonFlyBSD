@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.19 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.20 2006/12/22 23:26:19 swildner Exp $
  *
  */
 #undef DEBUG
@@ -70,7 +70,7 @@ timeout_t cxtimeout;
 extern struct callout cxtimeout_ch;
 
 #ifdef DEBUG
-#   define print(s)     printf s
+#   define print(s)     kprintf s
 #else
 #   define print(s)     {/*void*/}
 #endif
@@ -779,7 +779,7 @@ cxrinta (cx_chan_t *c)
 			cnt_port = ARBCNT(port);
 			sts_port = ARBSTS(port);
 		} else
-			printf ("cx%d.%d: timeout: invalid buffer address\n",
+			kprintf ("cx%d.%d: timeout: invalid buffer address\n",
 				c->board->num, c->num);
 
 		if (len) {
@@ -808,7 +808,7 @@ cxrinta (cx_chan_t *c)
 		inb (ARBSTS(port)), BSTS_BITS, inb (BRBSTS(port)), BSTS_BITS));
 
 	if (risr & RIS_BUSERR) {
-		printf ("cx%d.%d: receive bus error\n", c->board->num, c->num);
+		kprintf ("cx%d.%d: receive bus error\n", c->board->num, c->num);
 		++c->stat->ierrs;
 	}
 	if (risr & (RIS_OVERRUN | RISA_PARERR | RISA_FRERR | RISA_BREAK)) {
@@ -879,11 +879,11 @@ void cxtinta (cx_chan_t *c)
 		inb (ATBSTS(port)), BSTS_BITS, inb (BTBSTS(port)), BSTS_BITS));
 
 	if (tisr & TIS_BUSERR) {
-		printf ("cx%d.%d: transmit bus error\n",
+		kprintf ("cx%d.%d: transmit bus error\n",
 			c->board->num, c->num);
 		++c->stat->oerrs;
 	} else if (tisr & TIS_UNDERRUN) {
-		printf ("cx%d.%d: transmit underrun error\n",
+		kprintf ("cx%d.%d: transmit underrun error\n",
 			c->board->num, c->num);
 		++c->stat->oerrs;
 	}
@@ -908,7 +908,7 @@ cxmint (cx_chan_t *c)
 	struct tty *tp = c->ttyp;
 
 	if (c->mode != M_ASYNC) {
-		printf ("cx%d.%d: unexpected modem interrupt, misr=%b, msvr=%b\n",
+		kprintf ("cx%d.%d: unexpected modem interrupt, misr=%b, msvr=%b\n",
 			c->board->num, c->num, misr, MIS_BITS, msvr, MSV_BITS);
 		return;
 	}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.8 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.9 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -167,7 +167,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 
 #if 0
     if (as->as_units < Units && as->as_timeouts > 10) {
-	printf("%s: semaphore %p too many timeouts, resetting\n", __func__, as);
+	kprintf("%s: semaphore %p too many timeouts, resetting\n", __func__, as);
 	AS_LOCK(as);
 	as->as_units = as->as_maxunits;
 	if (as->as_pendings)
@@ -236,7 +236,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	as->as_pendings++;
 
 	if (acpi_semaphore_debug) {
-	    printf("%s: Sleep %d, pending %d, semaphore %p, thread %d\n",
+	    kprintf("%s: Sleep %d, pending %d, semaphore %p, thread %d\n",
 		__func__, Timeout, as->as_pendings, as, AcpiOsGetThreadId());
 	}
 
@@ -279,7 +279,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	    tmo = 1;
 
 	if (acpi_semaphore_debug) {
-	    printf("%s: Wakeup timeleft(%lu, %lu), tmo %u, sem %p, thread %d\n",
+	    kprintf("%s: Wakeup timeleft(%lu, %lu), tmo %u, sem %p, thread %d\n",
 		__func__, timelefttv.tv_sec, timelefttv.tv_usec, tmo, as,
 		AcpiOsGetThreadId());
 	}
@@ -287,11 +287,11 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 
     if (acpi_semaphore_debug) {
 	if (result == AE_TIME && Timeout > 0) {
-	    printf("%s: Timeout %d, pending %d, semaphore %p\n",
+	    kprintf("%s: Timeout %d, pending %d, semaphore %p\n",
 		__func__, Timeout, as->as_pendings, as);
 	}
 	if (result == AE_OK && (as->as_timeouts > 0 || as->as_pendings > 0)) {
-	    printf("%s: Acquire %d, units %d, pending %d, sem %p, thread %d\n",
+	    kprintf("%s: Acquire %d, units %d, pending %d, sem %p, thread %d\n",
 		__func__, Units, as->as_units, as->as_pendings, as,
 		AcpiOsGetThreadId());
 	}
@@ -332,7 +332,7 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
     }
 
     if (acpi_semaphore_debug && (as->as_timeouts > 0 || as->as_pendings > 0)) {
-	printf("%s: Release %d, units %d, pending %d, semaphore %p, thread %d\n",
+	kprintf("%s: Release %d, units %d, pending %d, semaphore %p, thread %d\n",
 	    __func__, Units, as->as_units, as->as_pendings, as, AcpiOsGetThreadId());
     }
 

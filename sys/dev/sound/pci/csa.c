@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.6 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 
 #include "gnu/csaimg.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.6 2006/10/25 20:56:02 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013
@@ -260,7 +260,7 @@ csa_attach(device_t dev)
 	resp = &scp->res;
 	scp->card = csa_findsubcard(dev);
 	scp->binfo.card = scp->card;
-	printf("csa: card is %s\n", scp->card->name);
+	kprintf("csa: card is %s\n", scp->card->name);
 	resp->io_rid = PCIR_MAPS;
 	resp->io = bus_alloc_resource(dev, SYS_RES_MEMORY, &resp->io_rid, 0, ~0, 1, RF_ACTIVE);
 	if (resp->io == NULL)

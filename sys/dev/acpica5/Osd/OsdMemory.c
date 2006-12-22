@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.11 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.4 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.5 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ again:
 	) {
 	    *ptrack = track->next;
 	    pmap_unmapdev((vm_offset_t)track->base, track->size);
-	    printf("AcpiOsUnmapMemory: Warning, deallocation request too"
+	    kprintf("AcpiOsUnmapMemory: Warning, deallocation request too"
 		   " large! %p/%08x (actual was %p/%08x)\n",
 		   LogicalAddress, Length,
 		   track->base, track->size);
@@ -122,13 +122,13 @@ again:
 	if ((char *)LogicalAddress + Length >= (char *)track->base &&
 	    (char *)LogicalAddress < (char *)track->base + track->size
 	) {
-	    printf("AcpiOsUnmapMemory: Warning, deallocation did not "
+	    kprintf("AcpiOsUnmapMemory: Warning, deallocation did not "
 		   "track allocation: %p/%08x (actual was %p/%08x)\n",
 		   LogicalAddress, Length,
 		   track->base, track->size);
 	}
     }
-    printf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08x\n",
+    kprintf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08x\n",
 	LogicalAddress, Length);
 }
 

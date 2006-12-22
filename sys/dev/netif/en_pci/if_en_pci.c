@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.14 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.15 2006/12/22 23:26:19 swildner Exp $
  */
 
 /*
@@ -178,7 +178,7 @@ adp_busreset(void *v)
   dummy = bus_space_read_4(sc->en_memt, sc->en_base, ADP_PCIREG);
   if ((dummy & (ADP_PCIREG_SWAP_WORD|ADP_PCIREG_SWAP_DMA)) !=
 		(ADP_PCIREG_SWAP_WORD|ADP_PCIREG_SWAP_DMA))
-    printf("adp_busreset: Adaptec ATM did NOT reset!\n");
+    kprintf("adp_busreset: Adaptec ATM did NOT reset!\n");
 }
 #endif
 
@@ -218,7 +218,7 @@ en_pci_attach(pcici_t config_id, int unit)
   vm_offset_t pa;
 
   if (unit >= NEN) {
-    printf("en%d: not configured; kernel is built for only %d device%s.\n",
+    kprintf("en%d: not configured; kernel is built for only %d device%s.\n",
 	unit, NEN, NEN == 1 ? "" : "s");
     return;
   }
@@ -257,7 +257,7 @@ en_pci_attach(pcici_t config_id, int unit)
 			SHUTDOWN_PRI_DEFAULT);
 
   if (!pci_map_int(config_id, en_intr, (void *) sc)) {
-    printf("%s: couldn't establish interrupt\n", sc->sc_dev.dv_xname);
+    kprintf("%s: couldn't establish interrupt\n", sc->sc_dev.dv_xname);
     return;
   }
   sc->ipl = 1; /* XXX */

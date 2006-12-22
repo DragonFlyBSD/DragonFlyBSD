@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.20 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.21 2006/12/22 23:26:24 swildner Exp $
  */
 
 /* 
@@ -747,7 +747,7 @@ rp_handle_port(struct rp_port *rp)
 /*	oldcts = rp->rp_cts;
 	rp->rp_cts = ((ChanStatus & CTS_ACT) != 0);
 	if(oldcts != rp->rp_cts) {
-		printf("CTS change (now %s)... on port %d\n", rp->rp_cts ? "on" : "off", rp->rp_port);
+		kprintf("CTS change (now %s)... on port %d\n", rp->rp_cts ? "on" : "off", rp->rp_port);
 	}
 */
 }
@@ -808,7 +808,7 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 
 	unit = device_get_unit(ctlp->dev);
 
-	printf("RocketPort%d (Version %s) %d ports.\n", unit,
+	kprintf("RocketPort%d (Version %s) %d ports.\n", unit,
 		RocketPortVersion, num_ports);
 	rp_num_ports[unit] = num_ports;
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/splash.c,v 1.8 2000/01/29 14:42:57 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.5 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.6 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ splash_find_data(splash_decoder_t *decoder)
 		return ENOENT;
 	decoder->data_size = *(size_t *)p;
 	if (bootverbose)
-		printf("splash: image@%p, size:%lu\n",
+		kprintf("splash: image@%p, size:%lu\n",
 		       (void *)decoder->data, (long)decoder->data_size);
 	return 0;
 }
@@ -86,7 +86,7 @@ splash_test(splash_decoder_t *decoder)
 		return ENODEV;	/* XXX */
 	}
 	if (bootverbose)
-		printf("splash: image decoder found: %s\n", decoder->name);
+		kprintf("splash: image decoder found: %s\n", decoder->name);
 	return 0;
 }
 

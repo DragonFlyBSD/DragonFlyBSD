@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.27 2006/12/12 19:01:31 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.28 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -732,10 +732,10 @@ ata_pci_print_child(device_t dev, device_t child)
     int retval = 0;
 
     retval += bus_print_child_header(dev, child);
-    retval += printf(": at 0x%lx", rman_get_start(ch->r_io));
+    retval += kprintf(": at 0x%lx", rman_get_start(ch->r_io));
 
     if (ATA_MASTERDEV(dev))
-	retval += printf(" irq %d", 14 + ch->unit);
+	retval += kprintf(" irq %d", 14 + ch->unit);
     
     retval += bus_print_child_footer(dev, child);
 

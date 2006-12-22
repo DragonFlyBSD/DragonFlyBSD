@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.10 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.11 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ iop_init(struct iop_softc *sc)
     while ((mfa = sc->reg->iqueue) == 0xffffffff && --timeout)
 	DELAY(1000);
     if (!timeout) {
-	printf("pstiop: no free mfa\n");
+	kprintf("pstiop: no free mfa\n");
 	return 0;
     }
     iop_free_mfa(sc, mfa);
@@ -68,12 +68,12 @@ iop_init(struct iop_softc *sc)
     sc->reg->oqueue_intr_mask = 0xffffffff;
 
     if (!iop_reset(sc)) {
-	printf("pstiop: no reset response\n");
+	kprintf("pstiop: no reset response\n");
 	return 0;
     }
 
     if (!iop_init_outqueue(sc)) {
-	printf("pstiop: init outbound queue failed\n");
+	kprintf("pstiop: init outbound queue failed\n");
 	return 0;
     }
 
@@ -84,7 +84,7 @@ iop_init(struct iop_softc *sc)
     sc->iop_delayed_attach->ich_arg = (void *)sc;
     sc->iop_delayed_attach->ich_desc = "pst";
     if (config_intrhook_establish(sc->iop_delayed_attach)) {
-	printf("pstiop: config_intrhook_establish failed\n");
+	kprintf("pstiop: config_intrhook_establish failed\n");
 	kfree(sc->iop_delayed_attach, M_PSTIOP);
     }
     return 1;
@@ -102,7 +102,7 @@ iop_attach(struct iop_softc *sc)
     }
 
     if (!iop_get_lct(sc)) {
-	printf("pstiop: get LCT failed\n");
+	kprintf("pstiop: get LCT failed\n");
 	return;
     }
 
@@ -111,21 +111,21 @@ iop_attach(struct iop_softc *sc)
 #ifdef PSTDEBUG
 	struct i2o_get_param_reply *reply;
 
-	printf("pstiop: LCT entry %d ", i);
-	printf("class=%04x ", sc->lct[i].class);
-	printf("sub=%04x ", sc->lct[i].sub_class);
-	printf("localtid=%04x ", sc->lct[i].local_tid);
-	printf("usertid=%04x ", sc->lct[i].user_tid);
-	printf("parentid=%04x\n", sc->lct[i].parent_tid);
+	kprintf("pstiop: LCT entry %d ", i);
+	kprintf("class=%04x ", sc->lct[i].class);
+	kprintf("sub=%04x ", sc->lct[i].sub_class);
+	kprintf("localtid=%04x ", sc->lct[i].local_tid);
+	kprintf("usertid=%04x ", sc->lct[i].user_tid);
+	kprintf("parentid=%04x\n", sc->lct[i].parent_tid);
 
 	if ((reply = iop_get_util_params(sc, sc->lct[i].local_tid,
 					 I2O_PARAMS_OPERATION_FIELD_GET,
 					 I2O_UTIL_DEVICE_IDENTITY_GROUP_NO))) {
 	    struct i2o_device_identity *ident =
 		(struct i2o_device_identity *)reply->result;
-	    printf("pstiop: vendor=<%.16s> product=<%.16s>\n",
+	    kprintf("pstiop: vendor=<%.16s> product=<%.16s>\n",
 		   ident->vendor, ident->product);
-	    printf("pstiop: description=<%.16s> revision=<%.8s>\n",
+	    kprintf("pstiop: description=<%.16s> revision=<%.8s>\n",
 		   ident->description, ident->revision);
 	    contigfree(reply, PAGE_SIZE, M_PSTIOP);
 	}
@@ -166,7 +166,7 @@ iop_intr(void *data)
 	    struct i2o_util_event_reply_message *event = 
 		(struct i2o_util_event_reply_message *)reply;
 
-	    printf("pstiop: EVENT!! idx=%08x data=%08x\n",
+	    kprintf("pstiop: EVENT!! idx=%08x data=%08x\n",
 		   event->event_mask, event->event_data[0]);
 	    return;
 	}
@@ -226,7 +226,7 @@ iop_init_outqueue(struct iop_softc *sc)
 				   M_PSTIOP, M_NOWAIT,
 				   0x00010000, 0xFFFFFFFF,
 				   sizeof(u_int32_t), 0))) {
-	printf("pstiop: contigmalloc of outqueue buffers failed!\n");
+	kprintf("pstiop: contigmalloc of outqueue buffers failed!\n");
 	return 0;
     }
     sc->phys_obase = vtophys(sc->obase);
@@ -256,7 +256,7 @@ iop_init_outqueue(struct iop_softc *sc)
 	DELAY(1000);
     
     if (!timeout) {
-	printf("pstiop: timeout waiting for init-complete response\n");
+	kprintf("pstiop: timeout waiting for init-complete response\n");
 	iop_free_mfa(sc, mfa);
 	return 0;
     }
@@ -372,7 +372,7 @@ iop_get_mfa(struct iop_softc *sc)
 	timeout--;
     }
     if (!timeout)
-	printf("pstiop: no free mfa\n");
+	kprintf("pstiop: no free mfa\n");
     return mfa;
 }
 
@@ -402,7 +402,7 @@ iop_queue_wait_msg(struct iop_softc *sc, int mfa, struct i2o_basic_message *msg)
     while (--timeout && ((out_mfa = sc->reg->oqueue) == 0xffffffff))
 	DELAY(1000);
     if (!timeout) {
-	printf("pstiop: timeout waiting for message response\n");
+	kprintf("pstiop: timeout waiting for message response\n");
 	iop_free_mfa(sc, mfa);
 	return -1;
     }
@@ -421,11 +421,11 @@ iop_create_sgl(struct i2o_basic_message *msg, caddr_t data, int count, int dir)
     int i = 0;
 
     if (((uintptr_t)data & 3) || (count & 3)) {
-	printf("pstiop: non aligned DMA transfer attempted\n");
+	kprintf("pstiop: non aligned DMA transfer attempted\n");
 	return 0;
     }
     if (!count) {
-	printf("pstiop: zero length DMA transfer attempted\n");
+	kprintf("pstiop: zero length DMA transfer attempted\n");
 	return 0;
     }
     
@@ -442,7 +442,7 @@ iop_create_sgl(struct i2o_basic_message *msg, caddr_t data, int count, int dir)
 	data += min(count, PAGE_SIZE);
 	count -= min(count, PAGE_SIZE);
 	if (++i >= I2O_SGL_MAX_SEGS) {
-	    printf("pstiop: too many segments in SGL\n");
+	    kprintf("pstiop: too many segments in SGL\n");
 	    return 0;
 	}
     }

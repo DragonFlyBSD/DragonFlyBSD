@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.12 2006/10/25 20:55:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.13 2006/12/22 23:26:15 swildner Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -675,7 +675,7 @@ ubsec_intr(void *arg)
 		if (ubsec_debug) {
 			volatile u_int32_t a = READ_REG(sc, BS_ERR);
 
-			printf("dmaerr %s@%08x\n",
+			kprintf("dmaerr %s@%08x\n",
 			    (a & BS_ERR_READ) ? "read" : "write",
 			    a & BS_ERR_ADDR);
 		}
@@ -750,7 +750,7 @@ ubsec_feed(struct ubsec_softc *sc)
 	ubsecstats.hst_totbatch += npkts-1;
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug)
-		printf("merging %d records\n", npkts);
+		kprintf("merging %d records\n", npkts);
 #endif /* UBSEC_DEBUG */
 
 	q = SIMPLEQ_FIRST(&sc->sc_queue);
@@ -802,7 +802,7 @@ feed1:
 	    offsetof(struct ubsec_dmachunk, d_mcr));
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug)
-		printf("feed1: q->chip %p %08x stat %08x\n",
+		kprintf("feed1: q->chip %p %08x stat %08x\n",
 		      q, (u_int32_t)vtophys(&q->q_dma->d_dma->d_mcr),
 		      stat);
 #endif /* UBSEC_DEBUG */
@@ -984,7 +984,7 @@ ubsec_op_cb(void *arg, bus_dma_segment_t *seg, int nsegs, bus_size_t mapsize, in
 		("Too many DMA segments returned when mapping operand"));
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug)
-		printf("ubsec_op_cb: mapsize %u nsegs %d\n",
+		kprintf("ubsec_op_cb: mapsize %u nsegs %d\n",
 			(u_int) mapsize, nsegs);
 #endif
 	op->mapsize = mapsize;
@@ -1190,13 +1190,13 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 		cpoffset = cpskip + dtheend;
 #ifdef UBSEC_DEBUG
 		if (ubsec_debug) {
-			printf("mac: skip %d, len %d, inject %d\n",
+			kprintf("mac: skip %d, len %d, inject %d\n",
 			    maccrd->crd_skip, maccrd->crd_len, maccrd->crd_inject);
-			printf("enc: skip %d, len %d, inject %d\n",
+			kprintf("enc: skip %d, len %d, inject %d\n",
 			    enccrd->crd_skip, enccrd->crd_len, enccrd->crd_inject);
-			printf("src: skip %d, len %d\n", sskip, stheend);
-			printf("dst: skip %d, len %d\n", dskip, dtheend);
-			printf("ubs: coffset %d, pktlen %d, cpskip %d, cpoffset %d\n",
+			kprintf("src: skip %d, len %d\n", sskip, stheend);
+			kprintf("dst: skip %d, len %d\n", dskip, dtheend);
+			kprintf("ubs: coffset %d, pktlen %d, cpskip %d, cpoffset %d\n",
 			    coffset, stheend, cpskip, cpoffset);
 		}
 #endif
@@ -1238,7 +1238,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug)
-		printf("src skip: %d nicealign: %u\n", sskip, nicealign);
+		kprintf("src skip: %d nicealign: %u\n", sskip, nicealign);
 #endif
 	for (i = j = 0; i < q->q_src_nsegs; i++) {
 		struct ubsec_pktbuf *pb;
@@ -1292,7 +1292,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 		    offsetof(struct ubsec_dmachunk, d_macbuf[0]));
 #ifdef UBSEC_DEBUG
 		if (ubsec_debug)
-			printf("opkt: %x %x %x\n",
+			kprintf("opkt: %x %x %x\n",
 			    dmap->d_dma->d_mcr.mcr_opktbuf.pb_addr,
 			    dmap->d_dma->d_mcr.mcr_opktbuf.pb_len,
 			    dmap->d_dma->d_mcr.mcr_opktbuf.pb_next);
@@ -1413,7 +1413,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 
 #ifdef UBSEC_DEBUG
 		if (ubsec_debug)
-			printf("dst skip: %d\n", dskip);
+			kprintf("dst skip: %d\n", dskip);
 #endif
 		for (i = j = 0; i < q->q_dst_nsegs; i++) {
 			struct ubsec_pktbuf *pb;
@@ -2222,7 +2222,7 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug) {
-		printf("Epb ");
+		kprintf("Epb ");
 		ubsec_dump_pb(epb);
 	}
 #endif
@@ -2420,7 +2420,7 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 
 #ifdef UBSEC_DEBUG
 	if (ubsec_debug) {
-		printf("Epb ");
+		kprintf("Epb ");
 		ubsec_dump_pb(epb);
 	}
 #endif
@@ -2698,14 +2698,14 @@ errout:
 static void
 ubsec_dump_pb(volatile struct ubsec_pktbuf *pb)
 {
-	printf("addr 0x%x (0x%x) next 0x%x\n",
+	kprintf("addr 0x%x (0x%x) next 0x%x\n",
 	    pb->pb_addr, pb->pb_len, pb->pb_next);
 }
 
 static void
 ubsec_dump_ctx2(struct ubsec_ctx_keyop *c)
 {
-	printf("CTX (0x%x):\n", c->ctx_len);
+	kprintf("CTX (0x%x):\n", c->ctx_len);
 	switch (letoh16(c->ctx_op)) {
 	case UBS_CTXOP_RNGBYPASS:
 	case UBS_CTXOP_RNGSHA1:
@@ -2715,18 +2715,18 @@ ubsec_dump_ctx2(struct ubsec_ctx_keyop *c)
 		struct ubsec_ctx_modexp *cx = (void *)c;
 		int i, len;
 
-		printf(" Elen %u, Nlen %u\n",
+		kprintf(" Elen %u, Nlen %u\n",
 		    letoh16(cx->me_E_len), letoh16(cx->me_N_len));
 		len = (cx->me_N_len + 7)/8;
 		for (i = 0; i < len; i++)
-			printf("%s%02x", (i == 0) ? " N: " : ":", cx->me_N[i]);
-		printf("\n");
+			kprintf("%s%02x", (i == 0) ? " N: " : ":", cx->me_N[i]);
+		kprintf("\n");
 		break;
 	}
 	default:
-		printf("unknown context: %x\n", c->ctx_op);
+		kprintf("unknown context: %x\n", c->ctx_op);
 	}
-	printf("END CTX\n");
+	kprintf("END CTX\n");
 }
 
 static void
@@ -2735,21 +2735,21 @@ ubsec_dump_mcr(struct ubsec_mcr *mcr)
 	volatile struct ubsec_mcr_add *ma;
 	int i;
 
-	printf("MCR:\n");
-	printf(" pkts: %u, flags 0x%x\n",
+	kprintf("MCR:\n");
+	kprintf(" pkts: %u, flags 0x%x\n",
 	    letoh16(mcr->mcr_pkts), letoh16(mcr->mcr_flags));
 	ma = (volatile struct ubsec_mcr_add *)&mcr->mcr_cmdctxp;
 	for (i = 0; i < letoh16(mcr->mcr_pkts); i++) {
-		printf(" %d: ctx 0x%x len 0x%x rsvd 0x%x\n", i,
+		kprintf(" %d: ctx 0x%x len 0x%x rsvd 0x%x\n", i,
 		    letoh32(ma->mcr_cmdctxp), letoh16(ma->mcr_pktlen),
 		    letoh16(ma->mcr_reserved));
-		printf(" %d: ipkt ", i);
+		kprintf(" %d: ipkt ", i);
 		ubsec_dump_pb(&ma->mcr_ipktbuf);
-		printf(" %d: opkt ", i);
+		kprintf(" %d: opkt ", i);
 		ubsec_dump_pb(&ma->mcr_opktbuf);
 		ma++;
 	}
-	printf("END MCR\n");
+	kprintf("END MCR\n");
 }
 #endif /* UBSEC_DEBUG */
 

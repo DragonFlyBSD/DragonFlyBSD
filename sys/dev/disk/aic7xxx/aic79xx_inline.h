@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#50 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.3 2006/12/22 23:26:15 swildner Exp $
  */
 
 #ifndef _AIC79XX_INLINE_H_
@@ -110,7 +110,7 @@ ahd_set_modes(struct ahd_softc *ahd, ahd_mode src, ahd_mode dst)
 	 || ahd->dst_mode == AHD_MODE_UNKNOWN)
 		panic("Setting mode prior to saving it.\n");
 	if ((ahd_debug & AHD_SHOW_MODEPTR) != 0)
-		printf("%s: Setting mode 0x%x\n", ahd_name(ahd),
+		kprintf("%s: Setting mode 0x%x\n", ahd_name(ahd),
 		       ahd_build_mode_state(ahd, src, dst));
 #endif
 	ahd_outb(ahd, MODE_PTR, ahd_build_mode_state(ahd, src, dst));
@@ -128,7 +128,7 @@ ahd_update_modes(struct ahd_softc *ahd)
 	mode_ptr = ahd_inb(ahd, MODE_PTR);
 #ifdef AHD_DEBUG
 	if ((ahd_debug & AHD_SHOW_MODEPTR) != 0)
-		printf("Reading mode 0x%x\n", mode_ptr);
+		kprintf("Reading mode 0x%x\n", mode_ptr);
 #endif
 	ahd_extract_mode_state(ahd, mode_ptr, &src, &dst);
 	ahd_known_modes(ahd, src, dst);
@@ -785,7 +785,7 @@ ahd_queue_scb(struct ahd_softc *ahd, struct scb *scb)
 		uint64_t host_dataptr;
 
 		host_dataptr = ahd_le64toh(scb->hscb->dataptr);
-		printf("%s: Queueing SCB 0x%x bus addr 0x%x - 0x%x%x/0x%x\n",
+		kprintf("%s: Queueing SCB 0x%x bus addr 0x%x - 0x%x%x/0x%x\n",
 		       ahd_name(ahd),
 		       SCB_GET_TAG(scb), ahd_le32toh(scb->hscb->hscb_busaddr),
 		       (u_int)((host_dataptr >> 32) & 0xFFFFFFFF),

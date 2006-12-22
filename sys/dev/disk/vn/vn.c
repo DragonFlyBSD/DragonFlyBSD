@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.28 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.29 2006/12/22 23:26:17 swildner Exp $
  */
 
 /*
@@ -227,7 +227,7 @@ vnopen(struct dev_open_args *ap)
 		return (EACCES);
 
 	IFOPT(vn, VN_FOLLOW)
-		printf("vnopen(%s, 0x%x, 0x%x)\n",
+		kprintf("vnopen(%s, 0x%x, 0x%x)\n",
 		    devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	/*
@@ -286,7 +286,7 @@ vnstrategy(struct dev_strategy_args *ap)
 	bp = bio->bio_buf;
 
 	IFOPT(vn, VN_DEBUG)
-		printf("vnstrategy(%p): unit %d\n", bp, unit);
+		kprintf("vnstrategy(%p): unit %d\n", bp, unit);
 
 	if ((vn->sc_flags & VNF_INITED) == 0) {
 		bp->b_error = ENXIO;
@@ -440,7 +440,7 @@ vnioctl(struct dev_ioctl_args *ap)
 
 	vn = dev->si_drv1;
 	IFOPT(vn,VN_FOLLOW) {
-		printf("vnioctl(%s, 0x%lx, %p, 0x%x): unit %d\n",
+		kprintf("vnioctl(%s, 0x%lx, %p, 0x%x): unit %d\n",
 		    devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag,
 		    dkunit(dev));
 	}
@@ -500,7 +500,7 @@ vnioctl(struct dev_ioctl_args *ap)
 		 */
 		vnclear(vn);
 		IFOPT(vn, VN_FOLLOW)
-			printf("vnioctl: CLRed\n");
+			kprintf("vnioctl: CLRed\n");
 		break;
 
 	case VNIOCGSET:
@@ -604,7 +604,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 			vnclear(vn);
 	}
 	IFOPT(vn, VN_FOLLOW)
-		printf("vnioctl: SET vp %p size %x blks\n",
+		kprintf("vnioctl: SET vp %p size %x blks\n",
 		       vn->sc_vp, vn->sc_size);
 done:
 	nlookup_done(&nd);
@@ -671,7 +671,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	}
 	if (error == 0) {
 		IFOPT(vn, VN_FOLLOW) {
-			printf("vnioctl: SET vp %p size %x\n",
+			kprintf("vnioctl: SET vp %p size %x\n",
 			       vn->sc_vp, vn->sc_size);
 		}
 	}
@@ -731,7 +731,7 @@ void
 vnclear(struct vn_softc *vn)
 {
 	IFOPT(vn, VN_FOLLOW)
-		printf("vnclear(%p): vp=%p\n", vn, vn->sc_vp);
+		kprintf("vnclear(%p): vp=%p\n", vn, vn->sc_vp);
 	if (vn->sc_slices != NULL)
 		dsgone(&vn->sc_slices);
 	vn->sc_flags &= ~VNF_INITED;

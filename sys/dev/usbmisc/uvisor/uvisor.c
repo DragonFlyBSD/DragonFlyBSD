@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.8 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -80,8 +80,8 @@
 #include "../ucom/ucomvar.h"
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (uvisordebug) printf x
-#define DPRINTFN(n,x)	if (uvisordebug>(n)) printf x
+#define DPRINTF(x)	if (uvisordebug) kprintf x
+#define DPRINTFN(n,x)	if (uvisordebug>(n)) kprintf x
 int uvisordebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, uvisor, CTLFLAG_RW, 0, "USB uvisor");
 SYSCTL_INT(_hw_usb_uvisor, OID_AUTO, debug, CTLFLAG_RW,
@@ -269,26 +269,26 @@ USB_ATTACH(uvisor)
 	ucom->sc_iface = uaa->iface;
 
 	devname = USBDEVNAME(ucom->sc_dev);
-	printf("%s: %s\n", devname, devinfo);
+	kprintf("%s: %s\n", devname, devinfo);
 
 	DPRINTFN(10,("\nuvisor_attach: sc=%p\n", sc));
 
 	/* Move the device into the configured state. */
 	err = usbd_set_config_index(dev, UVISOR_CONFIG_INDEX, 1);
 	if (err) {
-		printf("\n%s: failed to set configuration, err=%s\n",
+		kprintf("\n%s: failed to set configuration, err=%s\n",
 		       devname, usbd_errstr(err));
 		goto bad;
 	}
 
 	err = usbd_device2interface_handle(dev, UVISOR_IFACE_INDEX, &iface);
 	if (err) {
-		printf("\n%s: failed to get interface, err=%s\n",
+		kprintf("\n%s: failed to get interface, err=%s\n",
 		       devname, usbd_errstr(err));
 		goto bad;
 	}
 
-	printf("%s: %s\n", devname, devinfo);
+	kprintf("%s: %s\n", devname, devinfo);
 
 	sc->sc_flags = uvisor_lookup(uaa->vendor, uaa->product)->uv_flags;
 
@@ -302,7 +302,7 @@ USB_ATTACH(uvisor)
 		int addr, dir, attr;
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
-			printf("%s: could not read endpoint descriptor"
+			kprintf("%s: could not read endpoint descriptor"
 			       ": %s\n", devname, usbd_errstr(err));
 			goto bad;
 		}
@@ -315,17 +315,17 @@ USB_ATTACH(uvisor)
 		else if (dir == UE_DIR_OUT && attr == UE_BULK)
 			ucom->sc_bulkout_no = addr;
 		else {
-			printf("%s: unexpected endpoint\n", devname);
+			kprintf("%s: unexpected endpoint\n", devname);
 			goto bad;
 		}
 	}
 	if (ucom->sc_bulkin_no == -1) {
-		printf("%s: Could not find data bulk in\n",
+		kprintf("%s: Could not find data bulk in\n",
 		       USBDEVNAME(ucom->sc_dev));
 		goto bad;
 	}
 	if (ucom->sc_bulkout_no == -1) {
-		printf("%s: Could not find data bulk out\n",
+		kprintf("%s: Could not find data bulk out\n",
 		       USBDEVNAME(ucom->sc_dev));
 		goto bad;
 	}
@@ -341,7 +341,7 @@ USB_ATTACH(uvisor)
 
 	err = uvisor_init(sc);
 	if (err) {
-		printf("%s: init failed, %s\n", USBDEVNAME(ucom->sc_dev),
+		kprintf("%s: init failed, %s\n", USBDEVNAME(ucom->sc_dev),
 		       usbd_errstr(err));
 		goto bad;
 	}
@@ -427,7 +427,7 @@ uvisor_init(struct uvisor_softc *sc)
 		char *string;
 
 		np = UGETW(coninfo.num_ports);
-		printf("%s: Number of ports: %d\n", USBDEVNAME(sc->sc_ucom.sc_dev), np);
+		kprintf("%s: Number of ports: %d\n", USBDEVNAME(sc->sc_ucom.sc_dev), np);
 		for (i = 0; i < np; ++i) {
 			switch (coninfo.connections[i].port_function_id) {
 			case UVISOR_FUNCTION_GENERIC:
@@ -446,7 +446,7 @@ uvisor_init(struct uvisor_softc *sc)
 				string = "unknown";
 				break;
 			}
-			printf("%s: port %d, is for %s\n",
+			kprintf("%s: port %d, is for %s\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev), coninfo.connections[i].port,
 			    string);
 		}

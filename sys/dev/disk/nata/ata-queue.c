@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.3 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -291,8 +291,8 @@ ata_completed(void *context, int dummy)
 			      ata_cmd2str(request), request->retries,
 			      request->retries == 1 ? "y" : "ies");
 		if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-		    printf(" LBA=%ju", request->u.ata.lba);
-		printf("\n");
+		    kprintf(" LBA=%ju", request->u.ata.lba);
+		kprintf("\n");
 	    }
 	    request->flags &= ~(ATA_R_TIMEOUT | ATA_R_DEBUG);
 	    request->flags |= (ATA_R_AT_HEAD | ATA_R_REQUEUE);
@@ -308,8 +308,8 @@ ata_completed(void *context, int dummy)
 		    device_printf(request->dev, "FAILURE - %s timed out",
 				  ata_cmd2str(request));
 		    if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-			printf(" LBA=%ju", request->u.ata.lba);
-		    printf("\n");
+			kprintf(" LBA=%ju", request->u.ata.lba);
+		    kprintf("\n");
 		}
 	    }
 	    request->result = EIO;
@@ -323,8 +323,8 @@ ata_completed(void *context, int dummy)
 			  "WARNING - %s soft error (ECC corrected)",
 			  ata_cmd2str(request));
 	    if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-		printf(" LBA=%ju", request->u.ata.lba);
-	    printf("\n");
+		kprintf(" LBA=%ju", request->u.ata.lba);
+	    kprintf("\n");
 	}
 
 	/* if this is a UDMA CRC error we reinject if there are retries left */
@@ -334,8 +334,8 @@ ata_completed(void *context, int dummy)
 			      "WARNING - %s UDMA ICRC error (retrying request)",
 			      ata_cmd2str(request));
 		if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-		    printf(" LBA=%ju", request->u.ata.lba);
-		printf("\n");
+		    kprintf(" LBA=%ju", request->u.ata.lba);
+		kprintf("\n");
 		request->flags |= (ATA_R_AT_HEAD | ATA_R_REQUEUE);
 		ata_queue_request(request);
 		return;
@@ -360,10 +360,10 @@ ata_completed(void *context, int dummy)
 			      "\3ABORTED\2NO_MEDIA\1ILLEGAL_LENGTH");
 		if ((request->flags & ATA_R_DMA) &&
 		    (request->dmastat & ATA_BMSTAT_ERROR))
-		    printf(" dma=0x%02x", request->dmastat);
+		    kprintf(" dma=0x%02x", request->dmastat);
 		if (!(request->flags & (ATA_R_ATAPI | ATA_R_CONTROL)))
-		    printf(" LBA=%ju", request->u.ata.lba);
-		printf("\n");
+		    kprintf(" LBA=%ju", request->u.ata.lba);
+		kprintf("\n");
 	    }
 	    request->result = EIO;
 	}
@@ -427,12 +427,12 @@ ata_completed(void *context, int dummy)
 			  request->u.atapi.sense.asc,
 			  request->u.atapi.sense.ascq);
 	    if (request->u.atapi.sense.specific & ATA_SENSE_SPEC_VALID)
-		printf("sks=0x%02x 0x%02x 0x%02x\n",
+		kprintf("sks=0x%02x 0x%02x 0x%02x\n",
 		       request->u.atapi.sense.specific & ATA_SENSE_SPEC_MASK,
 		       request->u.atapi.sense.specific1,
 		       request->u.atapi.sense.specific2);
 	    else
-		printf("\n");
+		kprintf("\n");
 	}
 
 	if ((request->u.atapi.sense.key & ATA_SENSE_KEY_MASK ?

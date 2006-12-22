@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.43 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.44 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -974,20 +974,20 @@ vr_rxeof(struct vr_softc *sc)
 			ifp->if_ierrors++;
 			if_printf(ifp, "rx error (%02x):", rxstat & 0x000000ff);
 			if (rxstat & VR_RXSTAT_CRCERR)
-				printf(" crc error");
+				kprintf(" crc error");
 			if (rxstat & VR_RXSTAT_FRAMEALIGNERR)
-				printf(" frame alignment error\n");
+				kprintf(" frame alignment error\n");
 			if (rxstat & VR_RXSTAT_FIFOOFLOW)
-				printf(" FIFO overflow");
+				kprintf(" FIFO overflow");
 			if (rxstat & VR_RXSTAT_GIANT)
-				printf(" received giant packet");
+				kprintf(" received giant packet");
 			if (rxstat & VR_RXSTAT_RUNT)
-				printf(" received runt packet");
+				kprintf(" received runt packet");
 			if (rxstat & VR_RXSTAT_BUSERR)
-				printf(" system bus error");
+				kprintf(" system bus error");
 			if (rxstat & VR_RXSTAT_BUFFERR)
-				printf("rx buffer error");
-			printf("\n");
+				kprintf("rx buffer error");
+			kprintf("\n");
 			vr_newbuf(sc, cur_rx, m);
 			continue;
 		}
@@ -1210,12 +1210,12 @@ vr_intr(void *arg)
 		    (status & VR_ISR_RX_NOBUF) || (status & VR_ISR_RX_OFLOW)) {
 			if_printf(ifp, "receive error (%04x)", status);
 			if (status & VR_ISR_RX_NOBUF)
-				printf(" no buffers");
+				kprintf(" no buffers");
 			if (status & VR_ISR_RX_OFLOW)
-				printf(" overflow");
+				kprintf(" overflow");
 			if (status & VR_ISR_RX_DROPPED)
-				printf(" packet lost");
-			printf("\n");
+				kprintf(" packet lost");
+			kprintf("\n");
 			vr_rxeoc(sc);
 		}
 

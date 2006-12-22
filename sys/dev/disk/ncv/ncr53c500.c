@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.11 2006/11/07 19:56:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.12 2006/12/22 23:26:16 swildner Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -211,7 +211,7 @@ ncvhw_check(bus_space_tag_t iot, bus_space_handle_t ioh, struct ncv_hw *hw)
 	if (bus_space_read_1(iot, ioh, cr0_cmd) != (CMD_NOP | CMD_DMA))
 	{
 #ifdef	NCV_DEBUG
-		printf("ncv: cr0_cmd CMD_NOP|CMD_DMA failed\n");
+		kprintf("ncv: cr0_cmd CMD_NOP|CMD_DMA failed\n");
 #endif	/* NCV_DEBUG */
 		return ENODEV;
 	}
@@ -220,7 +220,7 @@ ncvhw_check(bus_space_tag_t iot, bus_space_handle_t ioh, struct ncv_hw *hw)
 	if (bus_space_read_1(iot, ioh, cr0_cmd) != CMD_NOP)
 	{
 #ifdef	NCV_DEBUG
-		printf("ncv: cr0_cmd CMD_NOP failed\n");
+		kprintf("ncv: cr0_cmd CMD_NOP failed\n");
 #endif	/* NCV_DEBUG */
 		return ENODEV;
 	}
@@ -245,7 +245,7 @@ ncvhw_check(bus_space_tag_t iot, bus_space_handle_t ioh, struct ncv_hw *hw)
 	    (bus_space_read_1(iot, ioh, cr0_istat) & INTR_SBR))
 	{
 #ifdef	NCV_DEBUG
-		printf("ncv: cr0_istat SCSI BUS RESET failed\n");
+		kprintf("ncv: cr0_istat SCSI BUS RESET failed\n");
 #endif	/* NCV_DEBUG */
 		return ENODEV;
 	}
@@ -306,7 +306,7 @@ ncvhw_power(struct ncv_softc *sc, u_int flags)
 
 	if (flags == SCSI_LOW_POWDOWN)
 	{
-		printf("%s power down\n", slp->sl_xname);
+		kprintf("%s power down\n", slp->sl_xname);
 		ncvhw_select_register_1(iot, ioh, &sc->sc_hw);
 		bus_space_write_1(iot, ioh, cr1_atacmd, ATACMD_POWDOWN);
 	}
@@ -315,13 +315,13 @@ ncvhw_power(struct ncv_softc *sc, u_int flags)
 		switch (sc->sc_rstep)
 		{
 		case 0:
-			printf("%s resume step O\n", slp->sl_xname);
+			kprintf("%s resume step O\n", slp->sl_xname);
 			ncvhw_select_register_1(iot, ioh, &sc->sc_hw);
 			bus_space_write_1(iot, ioh, cr1_atacmd, ATACMD_ENGAGE);
 			break;
 
 		case 1:
-			printf("%s resume step I\n", slp->sl_xname);
+			kprintf("%s resume step I\n", slp->sl_xname);
 			ncvhw_reset(iot, ioh, &sc->sc_hw);
 			ncvhw_init(iot, ioh, &sc->sc_hw);
 			break;
@@ -520,7 +520,7 @@ ncv_setup_img(struct ncv_hw *hw, u_int dvcfg, int hostid)
 
 	if (NCV_CLKFACTOR(dvcfg) > CLK_35M_F)
 	{
-		printf("ncv: invalid dvcfg flags\n");
+		kprintf("ncv: invalid dvcfg flags\n");
 		return EINVAL;
 	}
 
@@ -574,7 +574,7 @@ ncvprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
-		printf("%s: scsibus ", name);
+		kprintf("%s: scsibus ", name);
 	return UNCONF;
 }
 
@@ -583,7 +583,7 @@ ncvattachsubr(struct ncv_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
-	printf("\n");
+	kprintf("\n");
 	sc->sc_hw = ncv_template;
 	ncv_setup_img(&sc->sc_hw, slp->sl_cfgflags, slp->sl_hostid);
 	slp->sl_funcs = &ncv_funcs;
@@ -651,7 +651,7 @@ ncv_pdma_end(struct ncv_softc *sc, struct targ_info *ti)
 bad:
 			if ((slp->sl_error & PDMAERR) == 0)
 			{
-				printf("%s: stragne cnt hw 0x%x soft 0x%x\n",
+				kprintf("%s: stragne cnt hw 0x%x soft 0x%x\n",
 					slp->sl_xname, len,
 					slp->sl_scp.scp_datalen);
 			}
@@ -661,7 +661,7 @@ bad:
 	}
 	else
 	{
-		printf("%s: data phase miss\n", slp->sl_xname);
+		kprintf("%s: data phase miss\n", slp->sl_xname);
 		slp->sl_error |= PDMAERR;
 	}
 
@@ -807,7 +807,7 @@ ncv_reselected(struct ncv_softc *sc)
 
 	if ((bus_space_read_1(iot, ioh, cr0_sffl) & CR0_SFFLR_BMASK) != 2)
 	{
-		printf("%s illegal fifo bytes\n", slp->sl_xname);
+		kprintf("%s illegal fifo bytes\n", slp->sl_xname);
 		scsi_low_restart(slp, SCSI_LOW_RESTART_HARD, "chip confused");
 		return EJUSTRETURN;
 	}
@@ -946,7 +946,7 @@ again:
 	if (ncv_debug)
 	{
 		scsi_low_print(slp, NULL);
-		printf("%s st %x ist %x\n\n", slp->sl_xname,
+		kprintf("%s st %x ist %x\n\n", slp->sl_xname,
 			status, ireason);
 #ifdef	DDB
 		if (ncv_debug > 1)
@@ -1028,7 +1028,7 @@ again:
 		ncv_target_nexus_establish(sc);
 		if ((status & PHASE_MASK) != MESSAGE_IN_PHASE)
 		{
-			printf("%s: unexpected phase after reselect\n",
+			kprintf("%s: unexpected phase after reselect\n",
 				slp->sl_xname);
 			slp->sl_error |= FATALIO;
 			scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_ABORT, 1);
@@ -1063,7 +1063,7 @@ again:
 				break;
 
 			if ((slp->sl_error & PDMAERR) == 0)
-				printf("%s: data underrun\n", slp->sl_xname);
+				kprintf("%s: data underrun\n", slp->sl_xname);
 			slp->sl_error |= PDMAERR;
 
 			if ((slp->sl_flags & HW_WRITE_PADDING) != 0)
@@ -1075,7 +1075,7 @@ again:
 			}
 			else
 			{
-				printf("%s: write padding required\n",
+				kprintf("%s: write padding required\n",
 					slp->sl_xname);
 			}
 		}
@@ -1106,7 +1106,7 @@ again:
 				break;
 
 			if ((slp->sl_error & PDMAERR) == 0)
-				printf("%s: data overrun\n", slp->sl_xname);
+				kprintf("%s: data overrun\n", slp->sl_xname);
 			slp->sl_error |= PDMAERR;
 
 			if ((slp->sl_flags & HW_READ_PADDING) != 0)
@@ -1117,7 +1117,7 @@ again:
 			}
 			else
 			{
-				printf("%s: read padding required\n",
+				kprintf("%s: read padding required\n",
 					slp->sl_xname);
 				break;
 			}

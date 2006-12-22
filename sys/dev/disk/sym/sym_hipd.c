@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.19 2006/12/20 18:14:39 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.20 2006/12/22 23:26:17 swildner Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -524,7 +524,7 @@ static void *___sym_malloc(m_pool_s *mp, int size)
 		}
 	}
 #ifdef DEBUG
-	printf("___sym_malloc(%d) = %p\n", size, (void *) a);
+	kprintf("___sym_malloc(%d) = %p\n", size, (void *) a);
 #endif
 	return (void *) a;
 }
@@ -538,7 +538,7 @@ static void ___sym_mfree(m_pool_s *mp, void *ptr, int size)
 	m_link_s *h = mp->h;
 
 #ifdef DEBUG
-	printf("___sym_mfree(%p, %d)\n", ptr, size);
+	kprintf("___sym_mfree(%p, %d)\n", ptr, size);
 #endif
 
 	if (size > MEMO_CLUSTER_SIZE)
@@ -582,12 +582,12 @@ static void *__sym_calloc2(m_pool_s *mp, int size, char *name, int uflags)
 	p = ___sym_malloc(mp, size);
 
 	if (DEBUG_FLAGS & DEBUG_ALLOC)
-		printf ("new %-10s[%4d] @%p.\n", name, size, p);
+		kprintf ("new %-10s[%4d] @%p.\n", name, size, p);
 
 	if (p)
 		bzero(p, size);
 	else if (uflags & MEMO_WARN)
-		printf ("__sym_calloc2: failed to allocate %s[%d]\n", name, size);
+		kprintf ("__sym_calloc2: failed to allocate %s[%d]\n", name, size);
 
 	return p;
 }
@@ -597,7 +597,7 @@ static void *__sym_calloc2(m_pool_s *mp, int size, char *name, int uflags)
 static void __sym_mfree(m_pool_s *mp, void *ptr, int size, char *name)
 {
 	if (DEBUG_FLAGS & DEBUG_ALLOC)
-		printf ("freeing %-10s[%4d] @%p.\n", name, size, ptr);
+		kprintf ("freeing %-10s[%4d] @%p.\n", name, size, ptr);
 
 	___sym_mfree(mp, ptr, size);
 
@@ -873,7 +873,7 @@ static m_addr_t __vtobus(bus_dma_tag_t dev_dmat, void *m)
 static void sym_printb_hex (u_char *p, int n)
 {
 	while (n-- > 0)
-		printf (" %x", *p++);
+		kprintf (" %x", *p++);
 }
 
 /*
@@ -881,9 +881,9 @@ static void sym_printb_hex (u_char *p, int n)
  */
 static void sym_printl_hex (char *label, u_char *p, int n)
 {
-	printf ("%s", label);
+	kprintf ("%s", label);
 	sym_printb_hex (p, n);
-	printf (".\n");
+	kprintf (".\n");
 }
 
 /*
@@ -2208,7 +2208,7 @@ static void sym_fw_bind_script (hcb_p np, u32 *start, int len)
 		 *  command.
 		 */
 		if (opcode == 0) {
-			printf ("%s: ERROR0 IN SCRIPT at %d.\n",
+			kprintf ("%s: ERROR0 IN SCRIPT at %d.\n",
 				sym_name(np), (int) (cur-start));
 			MDELAY (10000);
 			++cur;
@@ -2225,7 +2225,7 @@ static void sym_fw_bind_script (hcb_p np, u32 *start, int len)
 		}
 
 		if (DEBUG_FLAGS & DEBUG_SCRIPT)
-			printf ("%d:  <%x>\n", (int) (cur-start),
+			kprintf ("%d:  <%x>\n", (int) (cur-start),
 				(unsigned)opcode);
 
 		/*
@@ -2252,7 +2252,7 @@ static void sym_fw_bind_script (hcb_p np, u32 *start, int len)
 			tmp1 = cur[1];
 			tmp2 = cur[2];
 			if ((tmp1 ^ tmp2) & 3) {
-				printf ("%s: ERROR1 IN SCRIPT at %d.\n",
+				kprintf ("%s: ERROR1 IN SCRIPT at %d.\n",
 					sym_name(np), (int) (cur-start));
 				MDELAY (10000);
 			}
@@ -2478,12 +2478,12 @@ static int sym_read_nvram (hcb_p np, struct sym_nvram *nvp);
  */
 static void PRINT_TARGET (hcb_p np, int target)
 {
-	printf ("%s:%d:", sym_name(np), target);
+	kprintf ("%s:%d:", sym_name(np), target);
 }
 
 static void PRINT_LUN(hcb_p np, int target, int lun)
 {
-	printf ("%s:%d:%d:", sym_name(np), target, lun);
+	kprintf ("%s:%d:%d:", sym_name(np), target, lun);
 }
 
 static void PRINT_ADDR (ccb_p cp)
@@ -2628,13 +2628,13 @@ static void sym_print_targets_flag(hcb_p np, int mask, char *msg)
 			continue;
 		if (np->target[i].usrflags & mask) {
 			if (!cnt++)
-				printf("%s: %s disabled for targets",
+				kprintf("%s: %s disabled for targets",
 					sym_name(np), msg);
-			printf(" %d", i);
+			kprintf(" %d", i);
 		}
 	}
 	if (cnt)
-		printf(".\n");
+		kprintf(".\n");
 }
 
 /*
@@ -2954,7 +2954,7 @@ static int sym_prepare_setting(hcb_p np, struct sym_nvram *nvram)
 	 *  Let user know about the settings.
 	 */
 	i = nvram->type;
-	printf("%s: %s NVRAM, ID %d, Fast-%d, %s, %s\n", sym_name(np),
+	kprintf("%s: %s NVRAM, ID %d, Fast-%d, %s, %s\n", sym_name(np),
 		i  == SYM_SYMBIOS_NVRAM ? "Symbios" :
 		(i == SYM_TEKRAM_NVRAM  ? "Tekram" : "No"),
 		np->myaddr,
@@ -2967,25 +2967,25 @@ static int sym_prepare_setting(hcb_p np, struct sym_nvram *nvram)
 	 *  Tell him more on demand.
 	 */
 	if (sym_verbose) {
-		printf("%s: %s IRQ line driver%s\n",
+		kprintf("%s: %s IRQ line driver%s\n",
 			sym_name(np),
 			np->rv_dcntl & IRQM ? "totem pole" : "open drain",
 			np->ram_ba ? ", using on-chip SRAM" : "");
-		printf("%s: using %s firmware.\n", sym_name(np), np->fw_name);
+		kprintf("%s: using %s firmware.\n", sym_name(np), np->fw_name);
 		if (np->features & FE_NOPM)
-			printf("%s: handling phase mismatch from SCRIPTS.\n", 
+			kprintf("%s: handling phase mismatch from SCRIPTS.\n", 
 			       sym_name(np));
 	}
 	/*
 	 *  And still more.
 	 */
 	if (sym_verbose > 1) {
-		printf ("%s: initial SCNTL3/DMODE/DCNTL/CTEST3/4/5 = "
+		kprintf ("%s: initial SCNTL3/DMODE/DCNTL/CTEST3/4/5 = "
 			"(hex) %02x/%02x/%02x/%02x/%02x/%02x\n",
 			sym_name(np), np->sv_scntl3, np->sv_dmode, np->sv_dcntl,
 			np->sv_ctest3, np->sv_ctest4, np->sv_ctest5);
 
-		printf ("%s: final   SCNTL3/DMODE/DCNTL/CTEST3/4/5 = "
+		kprintf ("%s: final   SCNTL3/DMODE/DCNTL/CTEST3/4/5 = "
 			"(hex) %02x/%02x/%02x/%02x/%02x/%02x\n",
 			sym_name(np), np->rv_scntl3, np->rv_dmode, np->rv_dcntl,
 			np->rv_ctest3, np->rv_ctest4, np->rv_ctest5);
@@ -3116,7 +3116,7 @@ static void sym_put_start_queue(hcb_p np, ccb_p cp)
 	np->squeueput = qidx;
 
 	if (DEBUG_FLAGS & DEBUG_QUEUE)
-		printf ("%s: queuepos=%d.\n", sym_name (np), np->squeueput);
+		kprintf ("%s: queuepos=%d.\n", sym_name (np), np->squeueput);
 
 	/*
 	 *  Script processor may be waiting for reselect.
@@ -3171,7 +3171,7 @@ static void sym_soft_reset (hcb_p np)
 		}
 	}
 	if (!i)
-		printf("%s: unable to abort current chip operation.\n",
+		kprintf("%s: unable to abort current chip operation.\n",
 			sym_name(np));
 	sym_chip_reset (np);
 }
@@ -3222,9 +3222,9 @@ static int sym_reset_scsi_bus(hcb_p np, int enab_int)
 		term &= 0x3ffff;
 
 	if (term != (2<<7)) {
-		printf("%s: suspicious SCSI data while resetting the BUS.\n",
+		kprintf("%s: suspicious SCSI data while resetting the BUS.\n",
 			sym_name(np));
-		printf("%s: %sdp0,d7-0,rst,req,ack,bsy,sel,atn,msg,c/d,i/o = "
+		kprintf("%s: %sdp0,d7-0,rst,req,ack,bsy,sel,atn,msg,c/d,i/o = "
 			"0x%lx, expecting 0x%lx\n",
 			sym_name(np),
 			(np->features & FE_WIDE) ? "dp1,d15-8," : "",
@@ -3268,7 +3268,7 @@ static int sym_wakeup_done (hcb_p np)
 			++n;
 		}
 		else
-			printf ("%s: bad DSA (%x) in done queue.\n",
+			kprintf ("%s: bad DSA (%x) in done queue.\n",
 				sym_name(np), (u_int) dsa);
 	}
 	np->dqueueget = i;
@@ -3488,7 +3488,7 @@ static void sym_init (hcb_p np, int reason)
 	 */
 	if (np->ram_ba) {
 		if (sym_verbose > 1)
-			printf ("%s: Downloading SCSI SCRIPTS.\n",
+			kprintf ("%s: Downloading SCSI SCRIPTS.\n",
 				sym_name(np));
 		if (np->ram_ws == 8192) {
 			OUTRAM_OFF(4096, np->scriptb0, np->scriptb_sz);
@@ -3781,7 +3781,7 @@ static void sym_settrans(hcb_p np, ccb_p cp, u_char dt, u_char ofs,
 	uval = tp->head.uval;
 
 #if 0
-	printf("XXXX sval=%x wval=%x uval=%x (%x)\n", 
+	kprintf("XXXX sval=%x wval=%x uval=%x (%x)\n", 
 		sval, wval, uval, np->rv_scntl3);
 #endif
 	/*
@@ -3928,7 +3928,7 @@ static void sym_log_hard_error(hcb_p np, u_short sist, u_char dstat)
 		script_name	= "mem";
 	}
 
-	printf ("%s:%d: ERROR (%x:%x) (%x-%x-%x) (%x/%x) @ (%s %x:%08x).\n",
+	kprintf ("%s:%d: ERROR (%x:%x) (%x-%x-%x) (%x/%x) @ (%s %x:%08x).\n",
 		sym_name (np), (unsigned)INB (nc_sdid)&0x0f, dstat, sist,
 		(unsigned)INB (nc_socl), (unsigned)INB (nc_sbcl),
 		(unsigned)INB (nc_sbdl), (unsigned)INB (nc_sxfer),
@@ -3937,14 +3937,14 @@ static void sym_log_hard_error(hcb_p np, u_short sist, u_char dstat)
 
 	if (((script_ofs & 3) == 0) &&
 	    (unsigned)script_ofs < script_size) {
-		printf ("%s: script cmd = %08x\n", sym_name(np),
+		kprintf ("%s: script cmd = %08x\n", sym_name(np),
 			scr_to_cpu((int) *(u32 *)(script_base + script_ofs)));
 	}
 
-        printf ("%s: regdump:", sym_name(np));
+        kprintf ("%s: regdump:", sym_name(np));
         for (i=0; i<24;i++)
-            printf (" %02x", (unsigned)INB_OFF(i));
-        printf (".\n");
+            kprintf (" %02x", (unsigned)INB_OFF(i));
+        kprintf (".\n");
 
 	/*
 	 *  PCI BUS error, read the PCI ststus register.
@@ -3962,7 +3962,7 @@ static void sym_log_hard_error(hcb_p np, u_short sist, u_char dstat)
 #else
 			pci_cfgwrite(np->pci_tag, PCIR_STATUS, pci_sts, 2);
 #endif
-			printf("%s: PCI STATUS = 0x%04x\n",
+			kprintf("%s: PCI STATUS = 0x%04x\n",
 				sym_name(np), pci_sts & 0xf900);
 		}
 	}
@@ -4048,7 +4048,7 @@ static void sym_intr1 (hcb_p np)
 	if (istat & INTF) {
 		OUTB (nc_istat, (istat & SIGP) | INTF | np->istat_sem);
 		istat = INB (nc_istat);		/* DUMMY READ */
-		if (DEBUG_FLAGS & DEBUG_TINY) printf ("F ");
+		if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("F ");
 		(void)sym_wakeup_done (np);
 	};
 
@@ -4083,7 +4083,7 @@ static void sym_intr1 (hcb_p np)
 	} while (istatc & (SIP|DIP));
 
 	if (DEBUG_FLAGS & DEBUG_TINY)
-		printf ("<%d|%x:%x|%x:%x>",
+		kprintf ("<%d|%x:%x|%x:%x>",
 			(int)INB(nc_scr0),
 			dstat,sist,
 			(unsigned)INL(nc_dsp),
@@ -4130,7 +4130,7 @@ static void sym_intr1 (hcb_p np)
 	 */
 	if (sist & RST) {
 		xpt_print_path(np->path);
-		printf("SCSI BUS reset detected.\n");
+		kprintf("SCSI BUS reset detected.\n");
 		sym_init (np, 1);
 		return;
 	};
@@ -4167,16 +4167,16 @@ unknown_int:
 	 *  We just miss the cause of the interrupt. :(
 	 *  Print a message. The timeout will do the real work.
 	 */
-	printf(	"%s: unknown interrupt(s) ignored, "
+	kprintf(	"%s: unknown interrupt(s) ignored, "
 		"ISTAT=0x%x DSTAT=0x%x SIST=0x%x\n",
 		sym_name(np), istat, dstat, sist);
 }
 
 static void sym_intr(void *arg)
 {
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("[");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("[");
 	sym_intr1((hcb_p) arg);
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("]");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("]");
 	return;
 }
 
@@ -4269,7 +4269,7 @@ void sym_int_sto (hcb_p np)
 {
 	u32 dsp	= INL (nc_dsp);
 
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("T");
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("T");
 
 	if (dsp == SCRIPTA_BA (np, wf_sel_done) + 8)
 		sym_recover_scsi_int(np, HS_SEL_TIMEOUT);
@@ -4282,7 +4282,7 @@ void sym_int_sto (hcb_p np)
  */
 void sym_int_udc (hcb_p np)
 {
-	printf ("%s: unexpected disconnect\n", sym_name(np));
+	kprintf ("%s: unexpected disconnect\n", sym_name(np));
 	sym_recover_scsi_int(np, HS_UNEXPECTED);
 }
 
@@ -4304,7 +4304,7 @@ static void sym_int_sbmc (hcb_p np)
 	 *  Notify user.
 	 */
 	xpt_print_path(np->path);
-	printf("SCSI BUS mode change from %s to %s.\n",
+	kprintf("SCSI BUS mode change from %s to %s.\n",
 		sym_scsi_bus_mode(np->scsi_mode), sym_scsi_bus_mode(scsi_mode));
 
 	/*
@@ -4349,7 +4349,7 @@ static void sym_int_par (hcb_p np, u_short sist)
 	int phase	= cmd & 7;
 	ccb_p	cp	= sym_ccb_from_dsa(np, dsa);
 
-	printf("%s: SCSI parity error detected: SCR1=%d DBC=%x SBCL=%x\n",
+	kprintf("%s: SCSI parity error detected: SCR1=%d DBC=%x SBCL=%x\n",
 		sym_name(np), hsts, dbc, sbcl);
 
 	/*
@@ -4509,7 +4509,7 @@ static void sym_int_ma (hcb_p np)
 	 *  log the information
 	 */
 	if (DEBUG_FLAGS & (DEBUG_TINY|DEBUG_PHASE))
-		printf ("P%x%x RL=%d D=%d ", cmd&7, INB(nc_sbcl)&7,
+		kprintf ("P%x%x RL=%d D=%d ", cmd&7, INB(nc_sbcl)&7,
 			(unsigned) rest, (unsigned) delta);
 
 	/*
@@ -4533,18 +4533,18 @@ static void sym_int_ma (hcb_p np)
 	 *  log the information
 	 */
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
-		printf ("\nCP=%p DSP=%x NXT=%x VDSP=%p CMD=%x ",
+		kprintf ("\nCP=%p DSP=%x NXT=%x VDSP=%p CMD=%x ",
 			cp, (unsigned)dsp, (unsigned)nxtdsp, vdsp, cmd);
 	};
 
 	if (!vdsp) {
-		printf ("%s: interrupted SCRIPT address not found.\n", 
+		kprintf ("%s: interrupted SCRIPT address not found.\n", 
 			sym_name (np));
 		goto reset_all;
 	}
 
 	if (!cp) {
-		printf ("%s: SCSI phase error fixup: CCB already dequeued.\n", 
+		kprintf ("%s: SCSI phase error fixup: CCB already dequeued.\n", 
 			sym_name (np));
 		goto reset_all;
 	}
@@ -4564,7 +4564,7 @@ static void sym_int_ma (hcb_p np)
 	};
 
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
-		printf ("OCMD=%x\nTBLP=%p OLEN=%x OADR=%x\n",
+		kprintf ("OCMD=%x\nTBLP=%p OLEN=%x OADR=%x\n",
 			(unsigned) (scr_to_cpu(vdsp[0]) >> 24),
 			tblp,
 			(unsigned) olen,
@@ -4578,7 +4578,7 @@ static void sym_int_ma (hcb_p np)
 	 */
 	if (((cmd & 2) ? cmd : (cmd & ~4)) != (scr_to_cpu(vdsp[0]) >> 24)) {
 		PRINT_ADDR(cp);
-		printf ("internal error: cmd=%02x != %02x=(vdsp[0] >> 24)\n",
+		kprintf ("internal error: cmd=%02x != %02x=(vdsp[0] >> 24)\n",
 			(unsigned)cmd, (unsigned)scr_to_cpu(vdsp[0]) >> 24);
 
 		goto reset_all;
@@ -4589,7 +4589,7 @@ static void sym_int_ma (hcb_p np)
 	 */
 	if (cmd & 2) {
 		PRINT_ADDR(cp);
-		printf ("phase change %x-%x %d@%08x resid=%d.\n",
+		kprintf ("phase change %x-%x %d@%08x resid=%d.\n",
 			cmd&7, INB(nc_sbcl)&7, (unsigned)olen,
 			(unsigned)oadr, (unsigned)rest);
 		goto unexpected_phase;
@@ -4675,7 +4675,7 @@ static void sym_int_ma (hcb_p np)
 
 	if (DEBUG_FLAGS & DEBUG_PHASE) {
 		PRINT_ADDR(cp);
-		printf ("PM %x %x %x / %x %x %x.\n",
+		kprintf ("PM %x %x %x / %x %x %x.\n",
 			hflags0, hflags, newcmd,
 			(unsigned)scr_to_cpu(pm->sg.addr),
 			(unsigned)scr_to_cpu(pm->sg.size),
@@ -4905,7 +4905,7 @@ static void sym_sir_bad_scsi_status(hcb_p np, int num, ccb_p cp)
 	case S_QUEUE_FULL:
 		if (sym_verbose >= 2) {
 			PRINT_ADDR(cp);
-			printf (s_status == S_BUSY ? "BUSY" : "QUEUE FULL\n");
+			kprintf (s_status == S_BUSY ? "BUSY" : "QUEUE FULL\n");
 		}
 	default:	/* S_INT, S_INT_COND_MET, S_CONFLICT */
 		sym_complete_error (np, cp);
@@ -5082,7 +5082,7 @@ sym_clear_tasks(hcb_p np, int cam_status, int target, int lun, int task)
 			sym_set_cam_status(ccb, cam_status);
 		++i;
 #if 0
-printf("XXXX TASK @%p CLEARED\n", cp);
+kprintf("XXXX TASK @%p CLEARED\n", cp);
 #endif
 	}
 	return i;
@@ -5763,15 +5763,15 @@ static int sym_compute_residual(hcb_p np, ccb_p cp)
 static int sym_show_msg (u_char * msg)
 {
 	u_char i;
-	printf ("%x",*msg);
+	kprintf ("%x",*msg);
 	if (*msg==M_EXTENDED) {
 		for (i=1;i<8;i++) {
 			if (i-1>msg[1]) break;
-			printf ("-%x",msg[i]);
+			kprintf ("-%x",msg[i]);
 		};
 		return (i+1);
 	} else if ((*msg & 0xf0) == 0x20) {
-		printf ("-%x",msg[1]);
+		kprintf ("-%x",msg[1]);
 		return (2);
 	};
 	return (1);
@@ -5781,10 +5781,10 @@ static void sym_print_msg (ccb_p cp, char *label, u_char *msg)
 {
 	PRINT_ADDR(cp);
 	if (label)
-		printf ("%s: ", label);
+		kprintf ("%s: ", label);
 
 	(void) sym_show_msg (msg);
-	printf (".\n");
+	kprintf (".\n");
 }
 
 /*
@@ -5880,7 +5880,7 @@ static void sym_sync_nego(hcb_p np, tcb_p tp, ccb_p cp)
 
 	if (DEBUG_FLAGS & DEBUG_NEGO) {
 		PRINT_ADDR(cp);
-		printf ("sdtr: ofs=%d per=%d div=%d fak=%d chg=%d.\n",
+		kprintf ("sdtr: ofs=%d per=%d div=%d fak=%d chg=%d.\n",
 			ofs, per, div, fak, chg);
 	}
 
@@ -6005,7 +6005,7 @@ static void sym_ppr_nego(hcb_p np, tcb_p tp, ccb_p cp)
 	
 	if (DEBUG_FLAGS & DEBUG_NEGO) {
 		PRINT_ADDR(cp);
-		printf ("ppr: "
+		kprintf ("ppr: "
 			"dt=%x ofs=%d per=%d wide=%d div=%d fak=%d chg=%d.\n",
 			dt, ofs, per, wide, div, fak, chg);
 	}
@@ -6105,7 +6105,7 @@ static void sym_wide_nego(hcb_p np, tcb_p tp, ccb_p cp)
 
 	if (DEBUG_FLAGS & DEBUG_NEGO) {
 		PRINT_ADDR(cp);
-		printf ("wdtr: wide=%d chg=%d.\n", wide, chg);
+		kprintf ("wdtr: wide=%d chg=%d.\n", wide, chg);
 	}
 
 	/*
@@ -6228,7 +6228,7 @@ void sym_int_sir (hcb_p np)
 	tcb_p	tp	= &np->target[target];
 	int	tmp;
 
-	if (DEBUG_FLAGS & DEBUG_TINY) printf ("I#%d", num);
+	if (DEBUG_FLAGS & DEBUG_TINY) kprintf ("I#%d", num);
 
 	switch (num) {
 	/*
@@ -6253,7 +6253,7 @@ void sym_int_sir (hcb_p np)
 	 *  that.
 	 */
 	case SIR_SEL_ATN_NO_MSG_OUT:
-		printf ("%s:%d: No MSG OUT phase after selection with ATN.\n",
+		kprintf ("%s:%d: No MSG OUT phase after selection with ATN.\n",
 			sym_name (np), target);
 		goto out_stuck;
 	/*
@@ -6261,7 +6261,7 @@ void sym_int_sir (hcb_p np)
 	 *  having reseleted the initiator.
 	 */
 	case SIR_RESEL_NO_MSG_IN:
-		printf ("%s:%d: No MSG IN phase after reselection.\n",
+		kprintf ("%s:%d: No MSG IN phase after reselection.\n",
 			sym_name (np), target);
 		goto out_stuck;
 	/*
@@ -6269,7 +6269,7 @@ void sym_int_sir (hcb_p np)
 	 *  an IDENTIFY.
 	 */
 	case SIR_RESEL_NO_IDENTIFY:
-		printf ("%s:%d: No IDENTIFY after reselection.\n",
+		kprintf ("%s:%d: No IDENTIFY after reselection.\n",
 			sym_name (np), target);
 		goto out_stuck;
 	/*
@@ -6299,7 +6299,7 @@ void sym_int_sir (hcb_p np)
 	case SIR_RESEL_ABORTED:
 		np->lastmsg = np->msgout[0];
 		np->msgout[0] = M_NOOP;
-		printf ("%s:%d: message %x sent on bad reselection.\n",
+		kprintf ("%s:%d: message %x sent on bad reselection.\n",
 			sym_name (np), target, np->lastmsg);
 		goto out;
 	/*
@@ -6432,7 +6432,7 @@ void sym_int_sir (hcb_p np)
 				sym_nego_rejected(np, tp, cp);
 			else {
 				PRINT_ADDR(cp);
-				printf ("M_REJECT received (%x:%x).\n",
+				kprintf ("M_REJECT received (%x:%x).\n",
 					scr_to_cpu(np->lastmsg), np->msgout[0]);
 			}
 			goto out_clrack;
@@ -6594,7 +6594,7 @@ static	ccb_p sym_get_ccb (hcb_p np, u_char tn, u_char ln, u_char tag_order)
 
 	if (DEBUG_FLAGS & DEBUG_TAGS) {
 		PRINT_LUN(np, tn, ln);
-		printf ("ccb @%p using tag %d.\n", cp, tag);
+		kprintf ("ccb @%p using tag %d.\n", cp, tag);
 	}
 
 out:
@@ -6614,7 +6614,7 @@ static void sym_free_ccb (hcb_p np, ccb_p cp)
 
 	if (DEBUG_FLAGS & DEBUG_TAGS) {
 		PRINT_LUN(np, cp->target, cp->lun);
-		printf ("ccb @%p freeing tag %d.\n", cp, cp->tag);
+		kprintf ("ccb @%p freeing tag %d.\n", cp, cp->tag);
 	}
 
 	/*
@@ -6963,7 +6963,7 @@ static int sym_regtest (hcb_p np)
 #else
 	if ((data & 0xe2f0fffd) != 0x02000080) {
 #endif
-		printf ("CACHE TEST FAILED: reg dstat-sstat2 readback %x.\n",
+		kprintf ("CACHE TEST FAILED: reg dstat-sstat2 readback %x.\n",
 			(unsigned) data);
 		return (0x10);
 	};
@@ -7008,7 +7008,7 @@ restart_test:
 		if (INB(nc_istat) & (INTF|SIP|DIP))
 			break;
 	if (i>=SYM_SNOOP_TIMEOUT) {
-		printf ("CACHE TEST FAILED: timeout.\n");
+		kprintf ("CACHE TEST FAILED: timeout.\n");
 		return (0x20);
 	};
 	/*
@@ -7017,7 +7017,7 @@ restart_test:
 	dstat = INB (nc_dstat);
 #if 1	/* Band aiding for broken hardwares that fail PCI parity */
 	if ((dstat & MDPE) && (np->rv_ctest4 & MPEE)) {
-		printf ("%s: PCI DATA PARITY ERROR DETECTED - "
+		kprintf ("%s: PCI DATA PARITY ERROR DETECTED - "
 			"DISABLING MASTER DATA PARITY CHECKING.\n",
 			sym_name(np));
 		np->rv_ctest4 &= ~MPEE;
@@ -7025,7 +7025,7 @@ restart_test:
 	}
 #endif
 	if (dstat & (MDPE|BF|IID)) {
-		printf ("CACHE TEST FAILED: DMA error (dstat=0x%02x).", dstat);
+		kprintf ("CACHE TEST FAILED: DMA error (dstat=0x%02x).", dstat);
 		return (0x80);
 	}
 	/*
@@ -7043,8 +7043,8 @@ restart_test:
 	 *  Check termination position.
 	 */
 	if (pc != SCRIPTB0_BA (np, snoopend)+8) {
-		printf ("CACHE TEST FAILED: script execution failed.\n");
-		printf ("start=%08lx, pc=%08lx, end=%08lx\n", 
+		kprintf ("CACHE TEST FAILED: script execution failed.\n");
+		kprintf ("start=%08lx, pc=%08lx, end=%08lx\n", 
 			(u_long) SCRIPTB0_BA (np, snooptest), (u_long) pc,
 			(u_long) SCRIPTB0_BA (np, snoopend) +8);
 		return (0x40);
@@ -7053,17 +7053,17 @@ restart_test:
 	 *  Show results.
 	 */
 	if (host_wr != sym_rd) {
-		printf ("CACHE TEST FAILED: host wrote %d, chip read %d.\n",
+		kprintf ("CACHE TEST FAILED: host wrote %d, chip read %d.\n",
 			(int) host_wr, (int) sym_rd);
 		err |= 1;
 	};
 	if (host_rd != sym_wr) {
-		printf ("CACHE TEST FAILED: chip wrote %d, host read %d.\n",
+		kprintf ("CACHE TEST FAILED: chip wrote %d, host read %d.\n",
 			(int) sym_wr, (int) host_rd);
 		err |= 2;
 	};
 	if (sym_bk != sym_wr) {
-		printf ("CACHE TEST FAILED: chip wrote %d, read back %d.\n",
+		kprintf ("CACHE TEST FAILED: chip wrote %d, read back %d.\n",
 			(int) sym_wr, (int) sym_bk);
 		err |= 4;
 	};
@@ -7103,7 +7103,7 @@ static void sym_selectclock(hcb_p np, u_char scntl3)
 	}
 
 	if (sym_verbose >= 2)
-		printf ("%s: enabling clock multiplier\n", sym_name(np));
+		kprintf ("%s: enabling clock multiplier\n", sym_name(np));
 
 	OUTB(nc_stest1, DBLEN);	   /* Enable clock multiplier		  */
 	/*
@@ -7115,7 +7115,7 @@ static void sym_selectclock(hcb_p np, u_char scntl3)
 		while (!(INB(nc_stest4) & LCKFRQ) && --i > 0)
 			UDELAY (20);
 		if (!i)
-			printf("%s: the chip cannot lock the frequency\n",
+			kprintf("%s: the chip cannot lock the frequency\n",
 				sym_name(np));
 	} else
 		UDELAY (20);
@@ -7171,7 +7171,7 @@ static unsigned getfreq (hcb_p np, int gen)
 	f = ms ? ((1 << gen) * 4340) / ms : 0;
 
 	if (sym_verbose >= 2)
-		printf ("%s: Delay (GEN=%d): %u msec, %u KHz\n",
+		kprintf ("%s: Delay (GEN=%d): %u msec, %u KHz\n",
 			sym_name(np), gen, ms, f);
 
 	return f;
@@ -7214,7 +7214,7 @@ static void sym_getclock (hcb_p np, int mult)
 	 */
 	if (mult > 1 && (stest1 & (DBLEN+DBLSEL)) == DBLEN+DBLSEL) {
 		if (sym_verbose >= 2)
-			printf ("%s: clock multiplier found\n", sym_name(np));
+			kprintf ("%s: clock multiplier found\n", sym_name(np));
 		np->multiplier = mult;
 	}
 
@@ -7228,7 +7228,7 @@ static void sym_getclock (hcb_p np, int mult)
 		f1 = sym_getfreq (np);
 
 		if (sym_verbose)
-			printf ("%s: chip clock is %uKHz\n", sym_name(np), f1);
+			kprintf ("%s: chip clock is %uKHz\n", sym_name(np), f1);
 
 		if	(f1 <	45000)		f1 =  40000;
 		else if (f1 <	55000)		f1 =  50000;
@@ -7236,7 +7236,7 @@ static void sym_getclock (hcb_p np, int mult)
 
 		if (f1 < 80000 && mult > 1) {
 			if (sym_verbose >= 2)
-				printf ("%s: clock multiplier assumed\n",
+				kprintf ("%s: clock multiplier assumed\n",
 					sym_name(np));
 			np->multiplier	= mult;
 		}
@@ -7286,23 +7286,23 @@ static void sym_print_xerr(ccb_p cp, int x_status)
 {
 	if (x_status & XE_PARITY_ERR) {
 		PRINT_ADDR(cp);
-		printf ("unrecovered SCSI parity error.\n");
+		kprintf ("unrecovered SCSI parity error.\n");
 	}
 	if (x_status & XE_EXTRA_DATA) {
 		PRINT_ADDR(cp);
-		printf ("extraneous data discarded.\n");
+		kprintf ("extraneous data discarded.\n");
 	}
 	if (x_status & XE_BAD_PHASE) {
 		PRINT_ADDR(cp);
-		printf ("illegal scsi phase (4/5).\n");
+		kprintf ("illegal scsi phase (4/5).\n");
 	}
 	if (x_status & XE_SODL_UNRUN) {
 		PRINT_ADDR(cp);
-		printf ("ODD transfer in DATA OUT phase.\n");
+		kprintf ("ODD transfer in DATA OUT phase.\n");
 	}
 	if (x_status & XE_SWIDE_OVRUN) {
 		PRINT_ADDR(cp);
-		printf ("ODD transfer in DATA IN phase.\n");
+		kprintf ("ODD transfer in DATA IN phase.\n");
 	}
 }
 
@@ -7348,7 +7348,7 @@ static void sym_complete_error (hcb_p np, ccb_p cp)
 		return;
 
 	if (DEBUG_FLAGS & (DEBUG_TINY|DEBUG_RESULT)) {
-		printf ("CCB=%lx STAT=%x/%x/%x DEV=%d/%d\n", (unsigned long)cp,
+		kprintf ("CCB=%lx STAT=%x/%x/%x DEV=%d/%d\n", (unsigned long)cp,
 			cp->host_status, cp->ssss_status, cp->host_flags,
 			cp->target, cp->lun);
 		MDELAY(100);
@@ -7431,7 +7431,7 @@ static void sym_complete_error (hcb_p np, ccb_p cp)
 	else {						/* Extended error */
 		if (sym_verbose) {
 			PRINT_ADDR(cp);
-			printf ("COMMAND FAILED (%x %x %x).\n",
+			kprintf ("COMMAND FAILED (%x %x %x).\n",
 				cp->host_status, cp->ssss_status,
 				cp->xerr_status);
 		}
@@ -8155,7 +8155,7 @@ sym_fast_scatter_sg_physical(hcb_p np, ccb_p cp,
 		data->addr = cpu_to_scr(psegs2->ds_addr);
 		data->size = cpu_to_scr(psegs2->ds_len);
 		if (DEBUG_FLAGS & DEBUG_SCATTER) {
-			printf ("%s scatter: paddr=%lx len=%ld\n",
+			kprintf ("%s scatter: paddr=%lx len=%ld\n",
 				sym_name(np), (long) psegs2->ds_addr,
 				(long) psegs2->ds_len);
 		}
@@ -8283,7 +8283,7 @@ sym_scatter_virtual(hcb_p np, ccb_p cp, vm_offset_t vaddr, vm_size_t len)
 			pn = pe - n;
 		}
 		if (DEBUG_FLAGS & DEBUG_SCATTER) {
-			printf ("%s scatter: va=%lx pa=%lx siz=%ld\n",
+			kprintf ("%s scatter: va=%lx pa=%lx siz=%ld\n",
 				sym_name(np), pn, (u_long) vtobus(pn), k);
 		}
 		cp->phys.data[s].addr = cpu_to_scr(vtobus(pn));
@@ -8357,7 +8357,7 @@ sym_scatter_sg_physical(hcb_p np, ccb_p cp, bus_dma_segment_t *psegs, int nsegs)
 			pn = ps;
 		k = pe - pn;
 		if (DEBUG_FLAGS & DEBUG_SCATTER) {
-			printf ("%s scatter: paddr=%lx len=%ld\n",
+			kprintf ("%s scatter: paddr=%lx len=%ld\n",
 				sym_name(np), pn, k);
 		}
 		cp->phys.data[s].addr = cpu_to_scr(pn);
@@ -8608,7 +8608,7 @@ static void sym_action2(struct cam_sim *sim, union ccb *ccb)
 		sym_reset_scsi_bus(np, 0);
 		if (sym_verbose) {
 			xpt_print_path(np->path);
-			printf("SCSI BUS reset delivered.\n");
+			kprintf("SCSI BUS reset delivered.\n");
 		}
 		sym_init (np, 1);
 		sym_xpt_done2(np, ccb, CAM_REQ_CMP);
@@ -9012,7 +9012,7 @@ sym_pci_attach(pcici_t pci_tag, int unit)
 {
 	int err = sym_pci_attach2(pci_tag, unit);
 	if (err)
-		printf("sym: failed to attach unit %d - err=%d.\n", unit, err);
+		kprintf("sym: failed to attach unit %d - err=%d.\n", unit, err);
 }
 static int
 sym_pci_attach2(pcici_t pci_tag, int unit)
@@ -9178,7 +9178,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 	if ((command & PCIM_CMD_MEMEN) != 0) {
 		vm_offset_t vaddr, paddr;
 		if (!pci_map_mem(pci_tag, SYM_PCI_MMIO, &vaddr, &paddr)) {
-			printf("%s: failed to map MMIO window\n", sym_name(np));
+			kprintf("%s: failed to map MMIO window\n", sym_name(np));
 			goto attach_failed;
 		}
 		np->mmio_va = vaddr;
@@ -9222,7 +9222,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 	if ((command & PCI_COMMAND_IO_ENABLE) != 0) {
 		pci_port_t io_port;
 		if (!pci_map_port (pci_tag, SYM_PCI_IO, &io_port)) {
-			printf("%s: failed to map IO window\n", sym_name(np));
+			kprintf("%s: failed to map IO window\n", sym_name(np));
 			goto attach_failed;
 		}
 		np->io_port = io_port;
@@ -9259,7 +9259,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 		if (np->features & FE_64BIT)
 			regs_id = SYM_PCI_RAM64;
 		if (!pci_map_mem(pci_tag, regs_id, &vaddr, &paddr)) {
-			printf("%s: failed to map RAM window\n", sym_name(np));
+			kprintf("%s: failed to map RAM window\n", sym_name(np));
 			goto attach_failed;
 		}
 		np->ram_va = vaddr;
@@ -9302,7 +9302,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 #ifdef FreeBSD_Bus_Io_Abstraction
 		device_printf(dev, "PCI BUS clock seems too high: %u KHz.\n",i);
 #else
-		printf("%s: PCI BUS clock seems too high: %u KHz.\n",
+		kprintf("%s: PCI BUS clock seems too high: %u KHz.\n",
 			sym_name(np), i);
 #endif
 
@@ -9451,7 +9451,7 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 #ifdef FreeBSD_Bus_Io_Abstraction
 		device_printf(dev, "CACHE INCORRECTLY CONFIGURED.\n");
 #else
-		printf("%s: CACHE INCORRECTLY CONFIGURED.\n", sym_name(np));
+		kprintf("%s: CACHE INCORRECTLY CONFIGURED.\n", sym_name(np));
 #endif
 		goto attach_failed;
 	};
@@ -9599,7 +9599,7 @@ int sym_cam_attach(hcb_p np)
 #else
 	err = 0;
 	if (!pci_map_int (np->pci_tag, sym_intr, np)) {
-		printf("%s: failed to map interrupt\n", sym_name(np));
+		kprintf("%s: failed to map interrupt\n", sym_name(np));
 		goto fail;
 	}
 #endif
@@ -9803,7 +9803,7 @@ static void sym_display_Symbios_nvram(hcb_p np, Symbios_nvram *nvram)
 	int i;
 
 	/* display Symbios nvram host data */
-	printf("%s: HOST ID=%d%s%s%s%s%s%s\n",
+	kprintf("%s: HOST ID=%d%s%s%s%s%s%s\n",
 		sym_name(np), nvram->host_id & 0x0f,
 		(nvram->flags  & SYMBIOS_SCAM_ENABLE)	? " SCAM"	:"",
 		(nvram->flags  & SYMBIOS_PARITY_ENABLE)	? " PARITY"	:"",
@@ -9815,7 +9815,7 @@ static void sym_display_Symbios_nvram(hcb_p np, Symbios_nvram *nvram)
 	/* display Symbios nvram drive data */
 	for (i = 0 ; i < 15 ; i++) {
 		struct Symbios_target *tn = &nvram->target[i];
-		printf("%s-%d:%s%s%s%s WIDTH=%d SYNC=%d TMO=%d\n",
+		kprintf("%s-%d:%s%s%s%s WIDTH=%d SYNC=%d TMO=%d\n",
 		sym_name(np), i,
 		(tn->flags & SYMBIOS_DISCONNECT_ENABLE)	? " DISC"	: "",
 		(tn->flags & SYMBIOS_SCAN_AT_BOOT_TIME)	? " SCAN_BOOT"	: "",
@@ -9848,7 +9848,7 @@ static void sym_display_Tekram_nvram(hcb_p np, Tekram_nvram *nvram)
 	case 2: rem = " REMOVABLE=all";		break;
 	}
 
-	printf("%s: HOST ID=%d%s%s%s%s%s%s%s%s%s BOOT DELAY=%d tags=%d\n",
+	kprintf("%s: HOST ID=%d%s%s%s%s%s%s%s%s%s BOOT DELAY=%d tags=%d\n",
 		sym_name(np), nvram->host_id & 0x0f,
 		(nvram->flags1 & SYMBIOS_SCAM_ENABLE)	? " SCAM"	:"",
 		(nvram->flags & TEKRAM_MORE_THAN_2_DRIVES) ? " >2DRIVES"	:"",
@@ -9866,7 +9866,7 @@ static void sym_display_Tekram_nvram(hcb_p np, Tekram_nvram *nvram)
 		struct Tekram_target *tn = &nvram->target[i];
 		j = tn->sync_index & 0xf;
 		sync = Tekram_sync[j];
-		printf("%s-%d:%s%s%s%s%s%s PERIOD=%d\n",
+		kprintf("%s-%d:%s%s%s%s%s%s PERIOD=%d\n",
 		sym_name(np), i,
 		(tn->flags & TEKRAM_PARITY_CHECK)	? " PARITY"	: "",
 		(tn->flags & TEKRAM_SYNC_NEGO)		? " SYNC"	: "",

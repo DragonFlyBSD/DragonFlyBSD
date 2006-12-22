@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.20 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.21 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -212,11 +212,11 @@ USB_ATTACH(ums)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (!ed) {
-		printf("%s: could not read endpoint descriptor\n",
+		kprintf("%s: could not read endpoint descriptor\n",
 		       USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -232,7 +232,7 @@ USB_ATTACH(ums)
 
 	if (UE_GET_DIR(ed->bEndpointAddress) != UE_DIR_IN ||
 	    UE_GET_XFERTYPE(ed->bmAttributes) != UE_INTERRUPT) {
-		printf("%s: unexpected endpoint\n",
+		kprintf("%s: unexpected endpoint\n",
 		       USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -243,22 +243,22 @@ USB_ATTACH(ums)
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_X),
 		       hid_input, &sc->sc_loc_x, &flags)) {
-		printf("%s: mouse has no X report\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: mouse has no X report\n", USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
-		printf("%s: X report 0x%04x not supported\n",
+		kprintf("%s: X report 0x%04x not supported\n",
 		       USBDEVNAME(sc->sc_dev), flags);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_Y),
 		       hid_input, &sc->sc_loc_y, &flags)) {
-		printf("%s: mouse has no Y report\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: mouse has no Y report\n", USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
-		printf("%s: Y report 0x%04x not supported\n",
+		kprintf("%s: Y report 0x%04x not supported\n",
 		       USBDEVNAME(sc->sc_dev), flags);
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -284,7 +284,7 @@ USB_ATTACH(ums)
 	sc->sc_loc_btn = kmalloc(sizeof(struct hid_location)*sc->nbuttons,
 				M_USBDEV, M_INTWAIT);
 
-	printf("%s: %d buttons%s\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %d buttons%s\n", USBDEVNAME(sc->sc_dev),
 	       sc->nbuttons, sc->flags & UMS_Z? " and Z dir." : "");
 
 	for (i = 1; i <= sc->nbuttons; i++)

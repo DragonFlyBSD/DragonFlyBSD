@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.21 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.22 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -929,7 +929,7 @@ psmprobe(device_t dev)
     device_set_desc(dev, "PS/2 Mouse");
 
     if (!kbdc_lock(sc->kbdc, TRUE)) {
-        printf("psm%d: unable to lock the controller.\n", unit);
+        kprintf("psm%d: unable to lock the controller.\n", unit);
         if (bootverbose)
             --verbose;
 	return (ENXIO);
@@ -948,10 +948,10 @@ psmprobe(device_t dev)
     mask = kbdc_get_device_mask(sc->kbdc) & ~KBD_AUX_CONTROL_BITS;
     command_byte = get_controller_command_byte(sc->kbdc);
     if (verbose) 
-        printf("psm%d: current command byte:%04x\n", unit, command_byte);
+        kprintf("psm%d: current command byte:%04x\n", unit, command_byte);
     if (command_byte == -1) {
         /* CONTROLLER ERROR */
-        printf("psm%d: unable to get the current command byte value.\n",
+        kprintf("psm%d: unable to get the current command byte value.\n",
             unit);
         endprobe(ENXIO);
     }
@@ -969,7 +969,7 @@ psmprobe(device_t dev)
          * from this error... 
 	 */
         restore_controller(sc->kbdc, command_byte);
-        printf("psm%d: unable to set the command byte.\n", unit);
+        kprintf("psm%d: unable to set the command byte.\n", unit);
         endprobe(ENXIO);
     }
     write_controller_command(sc->kbdc, KBDC_ENABLE_AUX_PORT);
@@ -997,7 +997,7 @@ psmprobe(device_t dev)
     case 3:
     case PSM_ACK:
         if (verbose)
-	    printf("psm%d: strange result for test aux port (%d).\n",
+	    kprintf("psm%d: strange result for test aux port (%d).\n",
 	        unit, i);
 	/* fall though */
     case 0:        /* no error */
@@ -1009,7 +1009,7 @@ psmprobe(device_t dev)
 	    break;
         restore_controller(sc->kbdc, command_byte);
         if (verbose)
-            printf("psm%d: the aux port is not functioning (%d).\n",
+            kprintf("psm%d: the aux port is not functioning (%d).\n",
                 unit, i);
         endprobe(ENXIO);
     }
@@ -1032,12 +1032,12 @@ psmprobe(device_t dev)
             recover_from_error(sc->kbdc);
             restore_controller(sc->kbdc, command_byte);
             if (verbose)
-        	printf("psm%d: failed to reset the aux device.\n", unit);
+        	kprintf("psm%d: failed to reset the aux device.\n", unit);
             endprobe(ENXIO);
 	} else if (!reset_aux_dev(sc->kbdc)) {
 	    recover_from_error(sc->kbdc);
 	    if (verbose >= 2)
-        	printf("psm%d: failed to reset the aux device (2).\n",
+        	kprintf("psm%d: failed to reset the aux device (2).\n",
         	    unit);
 	}
     }
@@ -1053,7 +1053,7 @@ psmprobe(device_t dev)
 	recover_from_error(sc->kbdc);
 	restore_controller(sc->kbdc, command_byte);
 	if (verbose)
-	    printf("psm%d: failed to enable the aux device.\n", unit);
+	    kprintf("psm%d: failed to enable the aux device.\n", unit);
         endprobe(ENXIO);
     }
 
@@ -1074,7 +1074,7 @@ psmprobe(device_t dev)
     if (!is_a_mouse(sc->hw.hwid)) {
         restore_controller(sc->kbdc, command_byte);
         if (verbose)
-            printf("psm%d: unknown device type (%d).\n", unit, sc->hw.hwid);
+            kprintf("psm%d: unknown device type (%d).\n", unit, sc->hw.hwid);
         endprobe(ENXIO);
     }
     switch (sc->hw.hwid) {
@@ -1104,7 +1104,7 @@ psmprobe(device_t dev)
 	for (i = 0; vendortype[i].probefunc != NULL; ++i) {
 	    if ((*vendortype[i].probefunc)(sc)) {
 		if (verbose >= 2)
-		    printf("psm%d: found %s\n",
+		    kprintf("psm%d: found %s\n",
 			   unit, model_name(vendortype[i].model));
 		break;
 	    }
@@ -1135,7 +1135,7 @@ psmprobe(device_t dev)
      */
     i = send_aux_command(sc->kbdc, PSMC_SET_DEFAULTS);
     if (verbose >= 2)
-	printf("psm%d: SET_DEFAULTS return code:%04x\n", unit, i);
+	kprintf("psm%d: SET_DEFAULTS return code:%04x\n", unit, i);
 #endif
     if (sc->config & PSM_CONFIG_RESOLUTION) {
         sc->mode.resolution
@@ -1152,7 +1152,7 @@ psmprobe(device_t dev)
 
     /* request a data packet and extract sync. bits */
     if (get_mouse_status(sc->kbdc, stat, 1, 3) < 3) {
-        printf("psm%d: failed to get data.\n", unit);
+        kprintf("psm%d: failed to get data.\n", unit);
         sc->mode.syncmask[0] = 0;
     } else {
         sc->mode.syncmask[1] = stat[0] & sc->mode.syncmask[0];	/* syncbits */
@@ -1167,7 +1167,7 @@ psmprobe(device_t dev)
      * after ACK from the mouse.
      */
     if (get_mouse_status(sc->kbdc, stat, 0, 3) < 3) {
-        printf("psm%d: failed to get status.\n", unit);
+        kprintf("psm%d: failed to get status.\n", unit);
     } else {
 	/* 
 	 * When in its native mode, some mice operate with different 
@@ -1187,7 +1187,7 @@ psmprobe(device_t dev)
          * recover from this error... 
 	 */
         restore_controller(sc->kbdc, command_byte);
-        printf("psm%d: unable to set the command byte.\n", unit);
+        kprintf("psm%d: unable to set the command byte.\n", unit);
         endprobe(ENXIO);
     }
 
@@ -1196,7 +1196,7 @@ psmprobe(device_t dev)
     sc->intr = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, irq, irq, 1,
 				  RF_ACTIVE);
     if (sc->intr == NULL) {
-        printf("psm%d: unable to allocate the IRQ resource (%d).\n",
+        kprintf("psm%d: unable to allocate the IRQ resource (%d).\n",
 	       unit, irq);
         endprobe(ENXIO);
     } else {
@@ -1245,15 +1245,15 @@ psmattach(device_t dev)
     make_dev(&psm_ops, PSM_MKMINOR(unit, TRUE), 0, 0, 0666, "bpsm%d", unit);
 
     if (!verbose) {
-        printf("psm%d: model %s, device ID %d\n", 
+        kprintf("psm%d: model %s, device ID %d\n", 
 	    unit, model_name(sc->hw.model), sc->hw.hwid & 0x00ff);
     } else {
-        printf("psm%d: model %s, device ID %d-%02x, %d buttons\n",
+        kprintf("psm%d: model %s, device ID %d-%02x, %d buttons\n",
 	    unit, model_name(sc->hw.model),
 	    sc->hw.hwid & 0x00ff, sc->hw.hwid >> 8, sc->hw.buttons);
-	printf("psm%d: config:%08x, flags:%08x, packet size:%d\n",
+	kprintf("psm%d: config:%08x, flags:%08x, packet size:%d\n",
 	    unit, sc->config, sc->flags, sc->mode.packetsize);
-	printf("psm%d: syncmask:%02x, syncbits:%02x\n",
+	kprintf("psm%d: syncmask:%02x, syncbits:%02x\n",
 	    unit, sc->mode.syncmask[0], sc->mode.syncmask[1]);
     }
 

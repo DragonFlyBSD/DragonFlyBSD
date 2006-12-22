@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.12 2006/11/07 19:56:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.13 2006/12/22 23:26:16 swildner Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -168,7 +168,7 @@ ncv_alloc_resource(DEVPORT_PDEVICE dev)
 						ioaddr, ioaddr+offset, offset, 
 						RF_ACTIVE);
 		if (sc->port_res_dmy == NULL) {
-			printf("Warning: cannot allocate IOPORT partially.\n");
+			kprintf("Warning: cannot allocate IOPORT partially.\n");
 		}
 	} else {
 		sc->port_rid_dmy = 0;
@@ -316,7 +316,7 @@ ncv_card_unload(DEVPORT_PDEVICE devi)
 {
 	struct ncv_softc *sc = DEVPORT_PDEVGET_SOFTC(devi);
 
-	printf("%s: unload\n", sc->sc_sclow.sl_xname);
+	kprintf("%s: unload\n", sc->sc_sclow.sl_xname);
 	crit_enter();
 	scsi_low_deactivate((struct scsi_low_softc *)sc);
         scsi_low_dettach(&sc->sc_sclow);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.12 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.13 2006/12/22 23:26:23 swildner Exp $
  */
 
 
@@ -225,7 +225,7 @@ MALLOC_DECLARE(M_IPSBUF);
 #define PRINTF(x...)
 #else
 #define DEVICE_PRINTF(level,x...)	if(IPS_DEBUG >= level)device_printf(x)
-#define PRINTF(level,x...)		if(IPS_DEBUG >= level)printf(x)
+#define PRINTF(level,x...)		if(IPS_DEBUG >= level)kprintf(x)
 #endif
 
 /*

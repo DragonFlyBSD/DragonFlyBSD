@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.34 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.35 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -899,7 +899,7 @@ ata_reinit(struct ata_channel *ch)
 
     if ((misdev = devices & ~ch->devices)) {
 	if (misdev)
-	    printf("\n");
+	    kprintf("\n");
 #if NATADISK > 0
 	if (misdev & ATA_ATA_MASTER && ch->device[MASTER].driver)
 	    ad_detach(&ch->device[MASTER], 0);
@@ -939,7 +939,7 @@ ata_reinit(struct ata_channel *ch)
     }
     newdev = ~devices & ch->devices;
     if (!misdev && newdev)
-	printf("\n");
+	kprintf("\n");
 #if NATADISK > 0
     if (newdev & ATA_ATA_MASTER && !ch->device[MASTER].driver)
 	ad_attach(&ch->device[MASTER], 1);
@@ -972,7 +972,7 @@ ata_reinit(struct ata_channel *ch)
     if (ch->devices & (ATA_ATAPI_MASTER | ATA_ATAPI_SLAVE))
 	atapi_cam_reinit_bus(ch);
 #endif
-    printf("done\n");
+    kprintf("done\n");
     ATA_UNLOCK_CH(ch);
     ata_start(ch);
     return 0;
@@ -1348,9 +1348,9 @@ ata_enclosure_print(struct ata_device *atadev)
     atadev->flags |= ATA_D_ENC_PRESENT;
 
     if (ata_enclosure_status(atadev, &fan, &temp, &v05, &v12))
-	printf(" detected\n");
+	kprintf(" detected\n");
     else
-	printf(" [FAN:%drpm TEMP:%d.%01dC %d.%03dV %d.%03dV]\n",
+	kprintf(" [FAN:%drpm TEMP:%d.%01dC %d.%03dV %d.%03dV]\n",
 	       fan, temp/10, temp%10, v05/1000, v05%1000, v12/1000, v12%1000);
 }
 
@@ -1411,12 +1411,12 @@ ata_printf(struct ata_channel *ch, int device, const char * fmt, ...)
     int ret;
 
     if (device == -1)
-	ret = printf("ata%d: ", device_get_unit(ch->dev));
+	ret = kprintf("ata%d: ", device_get_unit(ch->dev));
     else {
 	if (ch->device[ATA_DEV(device)].name)
-	    ret = printf("%s: ", ch->device[ATA_DEV(device)].name);
+	    ret = kprintf("%s: ", ch->device[ATA_DEV(device)].name);
 	else
-	    ret = printf("ata%d-%s: ", device_get_unit(ch->dev),
+	    ret = kprintf("ata%d-%s: ", device_get_unit(ch->dev),
 			 (device == ATA_MASTER) ? "master" : "slave");
     }
     __va_start(ap, fmt);
@@ -1432,9 +1432,9 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
     int ret;
 
     if (atadev->name)
-	ret = printf("%s: ", atadev->name);
+	ret = kprintf("%s: ", atadev->name);
     else
-	ret = printf("ata%d-%s: ", device_get_unit(atadev->channel->dev),
+	ret = kprintf("ata%d-%s: ", device_get_unit(atadev->channel->dev),
 		     (atadev->unit == ATA_MASTER) ? "master" : "slave");
     __va_start(ap, fmt);
     ret += kvprintf(fmt, ap);
@@ -1608,7 +1608,7 @@ ata_init(void)
     ata_delayed_attach->ich_func = (void*)ata_boot_attach;
     ata_delayed_attach->ich_desc = "ata";
     if (config_intrhook_establish(ata_delayed_attach) != 0) {
-	printf("ata: config_intrhook_establish failed\n");
+	kprintf("ata: config_intrhook_establish failed\n");
 	kfree(ata_delayed_attach, M_TEMP);
     }
 }

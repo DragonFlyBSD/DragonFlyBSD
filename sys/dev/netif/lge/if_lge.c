@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.37 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.38 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -226,7 +226,7 @@ lge_eeprom_getword(struct lge_softc *sc, int addr, uint16_t *dest)
 	}
 
 	if (i == LGE_TIMEOUT) {
-		printf("lge%d: EEPROM read timed out\n", sc->lge_unit);
+		kprintf("lge%d: EEPROM read timed out\n", sc->lge_unit);
 		return;
 	}
 
@@ -276,7 +276,7 @@ lge_miibus_readreg(device_t dev, int phy, int reg)
 	}
 
 	if (i == LGE_TIMEOUT) {
-		printf("lge%d: PHY read timed out\n", sc->lge_unit);
+		kprintf("lge%d: PHY read timed out\n", sc->lge_unit);
 		return(0);
 	}
 
@@ -298,7 +298,7 @@ lge_miibus_writereg(device_t dev, int phy, int reg, int data)
 	}
 
 	if (i == LGE_TIMEOUT) {
-		printf("lge%d: PHY write timed out\n", sc->lge_unit);
+		kprintf("lge%d: PHY write timed out\n", sc->lge_unit);
 		return(0);
 	}
 
@@ -390,7 +390,7 @@ lge_reset(struct lge_softc *sc)
 	}
 
 	if (i == LGE_TIMEOUT)
-		printf("lge%d: reset never completed\n", sc->lge_unit);
+		kprintf("lge%d: reset never completed\n", sc->lge_unit);
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -465,7 +465,7 @@ lge_attach(device_t dev)
 	sc->lge_res = bus_alloc_resource_any(dev, LGE_RES, &rid, RF_ACTIVE);
 
 	if (sc->lge_res == NULL) {
-		printf("lge%d: couldn't map ports/memory\n", unit);
+		kprintf("lge%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -479,7 +479,7 @@ lge_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->lge_irq == NULL) {
-		printf("lge%d: couldn't map interrupt\n", unit);
+		kprintf("lge%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -500,7 +500,7 @@ lge_attach(device_t dev)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->lge_ldata == NULL) {
-		printf("lge%d: no memory for list buffers!\n", unit);
+		kprintf("lge%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -508,7 +508,7 @@ lge_attach(device_t dev)
 
 	/* Try to allocate memory for jumbo buffers. */
 	if (lge_alloc_jumbo_mem(sc)) {
-		printf("lge%d: jumbo buffer allocation failed\n",
+		kprintf("lge%d: jumbo buffer allocation failed\n",
                     sc->lge_unit);
 		error = ENXIO;
 		goto fail;
@@ -539,7 +539,7 @@ lge_attach(device_t dev)
 	 */
 	if (mii_phy_probe(dev, &sc->lge_miibus,
 	    lge_ifmedia_upd, lge_ifmedia_sts)) {
-		printf("lge%d: MII without any PHY!\n", sc->lge_unit);
+		kprintf("lge%d: MII without any PHY!\n", sc->lge_unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -554,7 +554,7 @@ lge_attach(device_t dev)
 			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
-		printf("lge%d: couldn't set up irq\n", unit);
+		kprintf("lge%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -665,7 +665,7 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
-			printf("lge%d: no memory for rx list "
+			kprintf("lge%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->lge_unit);
 			return(ENOBUFS);
 		}
@@ -674,7 +674,7 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 		buf = lge_jalloc(sc);
 		if (buf == NULL) {
 #ifdef LGE_VERBOSE
-			printf("lge%d: jumbo allocation failed "
+			kprintf("lge%d: jumbo allocation failed "
 			    "-- packet dropped!\n", sc->lge_unit);
 #endif
 			m_freem(m_new);
@@ -739,7 +739,7 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->lge_cdata.lge_jumbo_buf == NULL) {
-		printf("lge%d: no memory for jumbo buffers!\n", sc->lge_unit);
+		kprintf("lge%d: no memory for jumbo buffers!\n", sc->lge_unit);
 		return(ENOBUFS);
 	}
 
@@ -785,7 +785,7 @@ lge_jalloc(struct lge_softc *sc)
 		entry->lge_inuse = 1;
 	} else {
 #ifdef LGE_VERBOSE
-		printf("lge%d: no free jumbo buffers\n", sc->lge_unit);
+		kprintf("lge%d: no free jumbo buffers\n", sc->lge_unit);
 #endif
 	}
 	lwkt_serialize_exit(&sc->lge_jslot_serializer);
@@ -887,7 +887,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 			    total_len + ETHER_ALIGN, 0, ifp, NULL);
 			lge_newbuf(sc, &LGE_RXTAIL(sc), m);
 			if (m0 == NULL) {
-				printf("lge%d: no receive buffers "
+				kprintf("lge%d: no receive buffers "
 				    "available -- packet dropped!\n",
 				    sc->lge_unit);
 				ifp->if_ierrors++;
@@ -1005,7 +1005,7 @@ lge_tick_serialized(void *xsc)
 			sc->lge_link++;
 			if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX||
 			    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T)
-				printf("lge%d: gigabit link up\n",
+				kprintf("lge%d: gigabit link up\n",
 				    sc->lge_unit);
 			if (!ifq_is_empty(&ifp->if_snd))
 				(*ifp->if_start)(ifp);
@@ -1184,7 +1184,7 @@ lge_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (lge_list_rx_init(sc) == ENOBUFS) {
-		printf("lge%d: initialization failed: no "
+		kprintf("lge%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->lge_unit);
 		lge_stop(sc);
 		return;
@@ -1384,7 +1384,7 @@ lge_watchdog(struct ifnet *ifp)
 	struct lge_softc *sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("lge%d: watchdog timeout\n", sc->lge_unit);
+	kprintf("lge%d: watchdog timeout\n", sc->lge_unit);
 
 	lge_stop(sc);
 	lge_reset(sc);

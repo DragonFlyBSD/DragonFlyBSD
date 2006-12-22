@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.16 2004/06/14 18:54:14 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.6 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.7 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -88,13 +88,13 @@ acpi_pci_link_dump_polarity(UINT32 ActiveHighLow)
 
 	switch (ActiveHighLow) {
 	case ACPI_ACTIVE_HIGH:
-		printf("high,");
+		kprintf("high,");
 		break;
 	case ACPI_ACTIVE_LOW:
-		printf("low,");
+		kprintf("low,");
 		break;
 	default:
-		printf("unknown,");
+		kprintf("unknown,");
 		break;
 	}
 }
@@ -105,13 +105,13 @@ acpi_pci_link_dump_trigger(UINT32 EdgeLevel)
 
 	switch (EdgeLevel) {
 	case ACPI_EDGE_SENSITIVE:
-		printf("edge,");
+		kprintf("edge,");
 		break;
 	case ACPI_LEVEL_SENSITIVE:
-		printf("level,");
+		kprintf("level,");
 		break;
 	default:
-		printf("unknown,");
+		kprintf("unknown,");
 		break;
 	}
 }
@@ -122,13 +122,13 @@ acpi_pci_link_dump_sharemode(UINT32 SharedExclusive)
 
 	switch (SharedExclusive) {
 	case ACPI_EXCLUSIVE:
-		printf("exclusive");
+		kprintf("exclusive");
 		break;
 	case ACPI_SHARED:
-		printf("sharable");
+		kprintf("sharable");
 		break;
 	default:
-		printf("unknown");
+		kprintf("unknown");
 		break;
 	}
 }
@@ -143,13 +143,13 @@ acpi_pci_link_entry_dump(struct acpi_prt_entry *entry)
 	if (entry == NULL || entry->pci_link == NULL)
 		return;
 
-	printf("%s irq %3d: ", acpi_name(entry->pci_link->handle),
+	kprintf("%s irq %3d: ", acpi_name(entry->pci_link->handle),
 	    entry->pci_link->current_irq);
 
-	printf("[");
+	kprintf("[");
 	for (i = 0; i < entry->pci_link->number_of_interrupts; i++)
-		printf("%3d", entry->pci_link->interrupts[i]);
-	printf("] ");
+		kprintf("%3d", entry->pci_link->interrupts[i]);
+	kprintf("] ");
 
 	switch (entry->pci_link->possible_resources.Id) {
 	case ACPI_RSTYPE_IRQ:
@@ -166,7 +166,7 @@ acpi_pci_link_entry_dump(struct acpi_prt_entry *entry)
 		break;
 	}
 
-	printf(" %d.%d.%d\n", entry->busno,
+	kprintf(" %d.%d.%d\n", entry->busno,
 	    (int)((entry->prt.Address & 0xffff0000) >> 16),
 	    (int)entry->prt.Pin);
 }
@@ -667,21 +667,21 @@ acpi_pci_link_bootdisabled_dump(void)
 		if (link->current_irq != 0)
 			continue;
 
-		printf("%s:\n", acpi_name(link->handle));
-		printf("	interrupts:	");
+		kprintf("%s:\n", acpi_name(link->handle));
+		kprintf("	interrupts:	");
 		for (i = 0; i < link->number_of_interrupts; i++) {
 			irq = link->sorted_irq[i];
-			printf("%6d", irq);
+			kprintf("%6d", irq);
 		}
-		printf("\n");
-		printf("	penalty:	");
+		kprintf("\n");
+		kprintf("	penalty:	");
 		for (i = 0; i < link->number_of_interrupts; i++) {
 			irq = link->sorted_irq[i];
-			printf("%6d", irq_penalty[irq]);
+			kprintf("%6d", irq_penalty[irq]);
 		}
-		printf("\n");
-		printf("	references:	%d\n", link->references);
-		printf("	priority:	%d\n", link->priority);
+		kprintf("\n");
+		kprintf("	references:	%d\n", link->references);
+		kprintf("	priority:	%d\n", link->priority);
 	}
 }
 
@@ -793,7 +793,7 @@ acpi_pci_link_set_bootdisabled_priority(void)
 	TAILQ_HEAD(, acpi_pci_link_entry) sorted_list;
 
 	if (bootverbose) {
-		printf("ACPI PCI link before setting link priority:\n");
+		kprintf("ACPI PCI link before setting link priority:\n");
 		acpi_pci_link_bootdisabled_dump();
 	}
 
@@ -858,7 +858,7 @@ acpi_pci_link_fixup_bootdisabled_link(void)
 	ACPI_STATUS		error;
 
 	if (bootverbose) {
-		printf("ACPI PCI link before fixup for boot-disabled links:\n");
+		kprintf("ACPI PCI link before fixup for boot-disabled links:\n");
 		acpi_pci_link_bootdisabled_dump();
 	}
 
@@ -894,7 +894,7 @@ acpi_pci_link_fixup_bootdisabled_link(void)
 	}
 
 	if (bootverbose) {
-		printf("ACPI PCI link after fixup for boot-disabled links:\n");
+		kprintf("ACPI PCI link after fixup for boot-disabled links:\n");
 		acpi_pci_link_bootdisabled_dump();
 	}
 }
@@ -950,7 +950,7 @@ acpi_pci_link_config(device_t dev, ACPI_BUFFER *prtbuf, int busno)
 	}
 
 	if (bootverbose) {
-		printf("ACPI PCI link initial configuration:\n");
+		kprintf("ACPI PCI link initial configuration:\n");
 		TAILQ_FOREACH(entry, &acpi_prt_entries, links) {
 			if (entry->busno != busno)
 				continue;
@@ -999,7 +999,7 @@ acpi_pci_link_config(device_t dev, ACPI_BUFFER *prtbuf, int busno)
 	acpi_pci_link_fixup_bootdisabled_link();
 
 	if (bootverbose) {
-		printf("ACPI PCI link arbitrated configuration:\n");
+		kprintf("ACPI PCI link arbitrated configuration:\n");
 		TAILQ_FOREACH(entry, &acpi_prt_entries, links) {
 			if (entry->busno != busno)
 				continue;

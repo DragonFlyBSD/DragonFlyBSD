@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.36 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.37 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -261,7 +261,7 @@ le_probe(struct isa_device *dvp)
     lwkt_serialize_init(&le_serialize);
 
     if (dvp->id_unit >= NLE) {
-	printf("%s%d not configured -- too many devices\n",
+	kprintf("%s%d not configured -- too many devices\n",
 	       ledriver.name, dvp->id_unit);
 	return 0;
     }
@@ -1350,13 +1350,13 @@ lance_dumpcsrs(struct le_softc *sc, const char *id)
 {
     if_printf(&sc->le_if, "%s: nicsr=%04x", id, DEPCA_RDNICSR(sc));
     LN_SELCSR(sc, LN_CSR0);
-    printf(" csr0=%04x", LN_RDCSR(sc));
+    kprintf(" csr0=%04x", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR1);
-    printf(" csr1=%04x", LN_RDCSR(sc));
+    kprintf(" csr1=%04x", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR2);
-    printf(" csr2=%04x", LN_RDCSR(sc));
+    kprintf(" csr2=%04x", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR3);
-    printf(" csr3=%04x\n", LN_RDCSR(sc));
+    kprintf(" csr3=%04x\n", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR0);
 }
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.24 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.5 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -78,7 +78,7 @@ acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
     buf.Length = ACPI_ALLOCATE_BUFFER;
     if (ACPI_FAILURE((status = AcpiGetCurrentResources(handle, &buf)))) {
 	if (status != AE_NOT_FOUND)
-	    printf("can't fetch resources for %s - %s\n",
+	    kprintf("can't fetch resources for %s - %s\n",
 		   acpi_name(handle), AcpiFormatException(status));
 	return_ACPI_STATUS (status);
     }

@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.11 2006/10/25 20:56:01 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.12 2006/12/22 23:26:23 swildner Exp $"
 
 #define _DPT_C_
 
@@ -225,7 +225,7 @@ dptgetccb(struct dpt_softc *dpt)
 		dptallocccbs(dpt);
 		dccb = SLIST_FIRST(&dpt->free_dccb_list);
 		if (dccb == NULL)
-			printf("dpt%d: Can't malloc DCCB\n", dpt->unit);
+			kprintf("dpt%d: Can't malloc DCCB\n", dpt->unit);
 		else {
 			SLIST_REMOVE_HEAD(&dpt->free_dccb_list, links);
 			dpt->free_dccbs--;
@@ -408,12 +408,12 @@ dpt_pio_get_conf (u_int32_t base)
 	 * before we wait on ready status.
 	 */
 	if (dpt_pio_wait(base, HA_RSTATUS, HA_SBUSY, 0)) {
-		printf("dpt: timeout waiting for controller to become ready\n");
+		kprintf("dpt: timeout waiting for controller to become ready\n");
 		return (NULL);
 	}
 
 	if (dpt_pio_wait(base, HA_RAUXSTAT, HA_ABUSY, 0)) {
-		printf("dpt: timetout waiting for adapter ready.\n");
+		kprintf("dpt: timetout waiting for adapter ready.\n");
 		return (NULL);
 	}
 
@@ -429,7 +429,7 @@ dpt_pio_get_conf (u_int32_t base)
 	for (i = 0; i < (sizeof(dpt_conf_t) / 2); i++) {
 
 		if (dpt_pio_wait(base, HA_RSTATUS, HA_SDRQ, 0)) {
-			printf("dpt: timeout in data read.\n");
+			kprintf("dpt: timeout in data read.\n");
 			return (NULL);
 		}
 
@@ -438,7 +438,7 @@ dpt_pio_get_conf (u_int32_t base)
 	}
 
 	if (inb(base + HA_RSTATUS) & HA_SERROR) {
-		printf("dpt: error reading configuration data.\n");
+		kprintf("dpt: error reading configuration data.\n");
 		return (NULL);
 	}
 
@@ -513,7 +513,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 		 * the DPT controller is in a NON PC (PCI?) platform).
 		 */
 		if (dpt_raid_busy(dpt)) {
-			printf("dpt%d WARNING: Get_conf() RSUS failed.\n",
+			kprintf("dpt%d WARNING: Get_conf() RSUS failed.\n",
 			       dpt->unit);
 			crit_exit();
 			return (0);
@@ -530,7 +530,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 	if ((result = dpt_send_eata_command(dpt, cp, dccb_busaddr,
 					    EATA_CMD_DMA_SEND_CP,
 					    10000, 0, 0, 0)) != 0) {
-		printf("dpt%d WARNING: Get_conf() failed (%d) to send "
+		kprintf("dpt%d WARNING: Get_conf() failed (%d) to send "
 		       "EATA_CMD_DMA_READ_CONFIG\n",
 		       dpt->unit, result);
 		crit_exit();
@@ -623,7 +623,7 @@ dpt_detect_cache(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 				       EATA_CMD_DMA_SEND_CP,
 				       10000, 0, 0, 0);
 	if (result != 0) {
-		printf("dpt%d WARNING: detect_cache() failed (%d) to send "
+		kprintf("dpt%d WARNING: detect_cache() failed (%d) to send "
 		       "EATA_CMD_DMA_SEND_CP\n", dpt->unit, result);
 		crit_exit();
 		return;
@@ -653,7 +653,7 @@ dpt_detect_cache(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 		/*
 		 * DPT Log Page layout error
 		 */
-		printf("dpt%d: NOTICE: Log Page (1) layout error\n",
+		kprintf("dpt%d: NOTICE: Log Page (1) layout error\n",
 		       dpt->unit);
 		return;
 	}
@@ -709,7 +709,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			printf("dpt%d: Unexepected error 0x%x returned from "
+			kprintf("dpt%d: Unexepected error 0x%x returned from "
 			       "bus_dmamap_load\n", dpt->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
@@ -802,7 +802,7 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 
 	if ((dpt->state & DPT_HA_SHUTDOWN_ACTIVE) != 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("controller is shutdown. Aborting CCB.\n");
+		kprintf("controller is shutdown. Aborting CCB.\n");
 		ccb->ccb_h.status = CAM_NO_HBA;
 		xpt_done(ccb);
 		return;
@@ -1233,7 +1233,7 @@ dpt_init(struct dpt_softc *dpt)
 	SLIST_INIT(&dpt->sg_maps);
 
 #ifdef DPT_RESET_BOARD
-	printf("dpt%d: resetting HBA\n", dpt->unit);
+	kprintf("dpt%d: resetting HBA\n", dpt->unit);
 	dpt_outb(dpt, HA_WCOMMAND, EATA_CMD_RESET);
 	DELAY(750000);
 	/* XXX Shouldn't we poll a status register or something??? */
@@ -1280,7 +1280,7 @@ dpt_init(struct dpt_softc *dpt)
 			      sizeof(conf), 0xc1, 7, 1);
 
 	if (retval != 0) {
-		printf("dpt%d: Failed to get board configuration\n", dpt->unit);
+		kprintf("dpt%d: Failed to get board configuration\n", dpt->unit);
 		return (retval);
 	}
 	bcopy(&dccb[1], &conf, sizeof(conf));
@@ -1289,7 +1289,7 @@ dpt_init(struct dpt_softc *dpt)
 	retval = dpt_get_conf(dpt, dccb, sg_map->sg_physaddr + sizeof(dpt_sp_t),
 			      sizeof(dpt->board_data), 0, conf.scsi_id0, 0);
 	if (retval != 0) {
-		printf("dpt%d: Failed to get inquiry information\n", dpt->unit);
+		kprintf("dpt%d: Failed to get inquiry information\n", dpt->unit);
 		return (retval);
 	}
 	bcopy(&dccb[1], &dpt->board_data, sizeof(dpt->board_data));
@@ -1339,7 +1339,7 @@ dpt_init(struct dpt_softc *dpt)
 	dpt->max_dccbs = ntohs(conf.queuesiz);
 
 	if (dpt->max_dccbs > 256) {
-		printf("dpt%d: Max CCBs reduced from %d to "
+		kprintf("dpt%d: Max CCBs reduced from %d to "
 		       "256 due to tag algorithm\n", dpt->unit, dpt->max_dccbs);
 		dpt->max_dccbs = 256;
 	}
@@ -1369,7 +1369,7 @@ dpt_init(struct dpt_softc *dpt)
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/BUS_DMA_ALLOCNOW,
 			       &dpt->buffer_dmat) != 0) {
-		printf("dpt: bus_dma_tag_create(...,dpt->buffer_dmat) failed\n");
+		kprintf("dpt: bus_dma_tag_create(...,dpt->buffer_dmat) failed\n");
 		goto error_exit;
 	}
 
@@ -1385,7 +1385,7 @@ dpt_init(struct dpt_softc *dpt)
 			       /*nsegments*/1,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/0, &dpt->dccb_dmat) != 0) {
-		printf("dpt: bus_dma_tag_create(...,dpt->dccb_dmat) failed\n");
+		kprintf("dpt: bus_dma_tag_create(...,dpt->dccb_dmat) failed\n");
 		goto error_exit;
         }
 
@@ -1394,7 +1394,7 @@ dpt_init(struct dpt_softc *dpt)
 	/* Allocation for our ccbs and interrupt status packet */
 	if (bus_dmamem_alloc(dpt->dccb_dmat, (void **)&dpt->dpt_dccbs,
 			     BUS_DMA_NOWAIT, &dpt->dccb_dmamap) != 0) {
-		printf("dpt: bus_dmamem_alloc(dpt->dccb_dmat,...) failed\n");
+		kprintf("dpt: bus_dmamem_alloc(dpt->dccb_dmat,...) failed\n");
 		goto error_exit;
 	}
 
@@ -1420,7 +1420,7 @@ dpt_init(struct dpt_softc *dpt)
 
 	/* Allocate our first batch of ccbs */
 	if (dptallocccbs(dpt) == 0) {
-		printf("dpt: dptallocccbs(dpt) == 0\n");
+		kprintf("dpt: dptallocccbs(dpt) == 0\n");
 		return (2);
 	}
 
@@ -1436,20 +1436,20 @@ dpt_init(struct dpt_softc *dpt)
 		strp += string_sizes[i];
 	}
 
-	printf("dpt%d: %.8s %.16s FW Rev. %.4s, ",
+	kprintf("dpt%d: %.8s %.16s FW Rev. %.4s, ",
 	       dpt->unit, dpt->board_data.vendor,
 	       dpt->board_data.modelNum, dpt->board_data.firmware);
 
-	printf("%d channel%s, ", dpt->channels, dpt->channels > 1 ? "s" : "");
+	kprintf("%d channel%s, ", dpt->channels, dpt->channels > 1 ? "s" : "");
 
 	if (dpt->cache_type != DPT_NO_CACHE
 	 && dpt->cache_size != 0) {
-		printf("%s Cache, ",
+		kprintf("%s Cache, ",
 		       dpt->cache_type == DPT_CACHE_WRITETHROUGH
 		     ? "Write-Through" : "Write-Back");
 	}
 
-	printf("%d CCBs\n", dpt->max_dccbs);
+	kprintf("%d CCBs\n", dpt->max_dccbs);
 	return (0);
 		
 error_exit:
@@ -1526,7 +1526,7 @@ dpt_intr(void *arg)
 		 */
 		if (dpt->sp->ccb_busaddr < dpt->dpt_ccb_busbase
 		 || dpt->sp->ccb_busaddr >= dpt->dpt_ccb_busend) {
-			printf("Encountered bogus status packet\n");
+			kprintf("Encountered bogus status packet\n");
 			status = dpt_inb(dpt, HA_RSTATUS);
 			return;
 		}
@@ -1537,7 +1537,7 @@ dpt_intr(void *arg)
 
 		/* Ignore status packets with EOC not set */
 		if (dpt->sp->EOC == 0) {
-			printf("dpt%d ERROR: Request %d received with "
+			kprintf("dpt%d ERROR: Request %d received with "
 			       "clear EOC.\n     Marking as LOST.\n",
 			       dpt->unit, dccb->transaction_id);
 
@@ -1569,12 +1569,12 @@ dpt_intr(void *arg)
 
 			/* Check that this is not a board reset interrupt */
 			if (dpt_just_reset(dpt)) {
-				printf("dpt%d: HBA rebooted.\n"
+				kprintf("dpt%d: HBA rebooted.\n"
 				       "      All transactions should be "
 				       "resubmitted\n",
 				       dpt->unit);
 
-				printf("dpt%d: >>---->>  This is incomplete, "
+				kprintf("dpt%d: >>---->>  This is incomplete, "
 				       "fix me....  <<----<<", dpt->unit);
 				panic("DPT Rebooted");
 
@@ -1676,8 +1676,8 @@ dptprocesserror(dpt_softc_t *dpt, dpt_ccb_t *dccb, union ccb *ccb,
 		ccb->ccb_h.status = CAM_AUTOSENSE_FAIL;
 		break;
 	default:
-		printf("dpt%d: Undocumented Error %x\n", dpt->unit, hba_stat);
-		printf("Please mail this message to shimon@simon-shapiro.org\n");
+		kprintf("dpt%d: Undocumented Error %x\n", dpt->unit, hba_stat);
+		kprintf("Please mail this message to shimon@simon-shapiro.org\n");
 		ccb->ccb_h.status = CAM_REQ_CMP_ERR;
 		break;
 	}
@@ -1696,7 +1696,7 @@ dpttimeout(void *arg)
 	ccb = dccb->ccb;
 	dpt = (struct dpt_softc *)ccb->ccb_h.ccb_dpt_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("CCB %p - timed out\n", (void *)dccb);
+	kprintf("CCB %p - timed out\n", (void *)dccb);
 
 	crit_enter();
 
@@ -1710,7 +1710,7 @@ dpttimeout(void *arg)
 	
 	if ((dccb->state & DCCB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("CCB %p - timed out CCB already completed\n",
+		kprintf("CCB %p - timed out CCB already completed\n",
 		       (void *)dccb);
 		crit_exit();
 		return;
@@ -1734,7 +1734,7 @@ dptshutdown(void *arg, int howto)
 
 	dpt = (dpt_softc_t *)arg;
 
-	printf("dpt%d: Shutting down (mode %x) HBA.	Please wait...\n",
+	kprintf("dpt%d: Shutting down (mode %x) HBA.	Please wait...\n",
 	       dpt->unit, howto);
 
 	/*
@@ -1742,7 +1742,7 @@ dptshutdown(void *arg, int howto)
 	 */
 	dpt_send_immediate(dpt, NULL, 0, EATA_POWER_OFF_WARN, 0, 0, 0);
 	DELAY(1000 * 1000 * 5);
-	printf("dpt%d: Controller was warned of shutdown and is now "
+	kprintf("dpt%d: Controller was warned of shutdown and is now "
 	       "disabled\n", dpt->unit);
 }
 
@@ -1802,7 +1802,7 @@ dpt_reset_hba(dpt_softc_t *dpt)
 	/* Send the RESET message */
 	if ((result = dpt_send_eata_command(dpt, &dccb.eata_ccb,
 					    EATA_CMD_RESET, 0, 0, 0, 0)) != 0) {
-		printf("dpt%d: Failed to send the RESET message.\n"
+		kprintf("dpt%d: Failed to send the RESET message.\n"
 		       "      Trying cold boot (ouch!)\n", dpt->unit);
 	
 	
@@ -1821,7 +1821,7 @@ dpt_reset_hba(dpt_softc_t *dpt)
 	dpt->performance.warm_starts++;
 #endif /* DPT_MEASURE_PERFORMANCE */
 	
-	printf("dpt%d:  Aborting pending requests.  O/S should re-submit\n",
+	kprintf("dpt%d:  Aborting pending requests.  O/S should re-submit\n",
 	       dpt->unit);
 
 	while ((dccbp = TAILQ_FIRST(&dpt->completed_ccbs)) != NULL) {
@@ -1848,7 +1848,7 @@ dpt_reset_hba(dpt_softc_t *dpt)
 		}
 	}
 
-	printf("dpt%d: reset done aborting all pending commands\n", dpt->unit);
+	kprintf("dpt%d: reset done aborting all pending commands\n", dpt->unit);
 	dpt->queue_status &= ~DPT_SUBMITTED_QUEUE_ACTIVE;
 }
 
@@ -1872,7 +1872,7 @@ dpt_target_ccb(dpt_softc_t * dpt, int bus, u_int8_t target, u_int8_t lun,
 	eata_ccb_t     *cp;
 
 	if ((length + offset) > DPT_MAX_TARGET_MODE_BUFFER_SIZE) {
-		printf("dpt%d:  Length of %d, and offset of %d are wrong\n",
+		kprintf("dpt%d:  Length of %d, and offset of %d are wrong\n",
 		       dpt->unit, length, offset);
 		length = DPT_MAX_TARGET_MODE_BUFFER_SIZE;
 		offset = 0;
@@ -1917,7 +1917,7 @@ dpt_target_ccb(dpt_softc_t * dpt, int bus, u_int8_t target, u_int8_t lun,
 	 */
 	if (dpt_scatter_gather(dpt, ccb, DPT_RW_BUFFER_SIZE,
 			       dpt->rw_buffer[bus][target][lun])) {
-		printf("dpt%d: Failed to setup Scatter/Gather for "
+		kprintf("dpt%d: Failed to setup Scatter/Gather for "
 		       "Target-Mode buffer\n", dpt->unit);
 	}
 }
@@ -1947,7 +1947,7 @@ dpt_set_target(int redo, dpt_softc_t * dpt,
 
 		crit_exit();
 	} else {
-		printf("dpt%d:  Target Mode Request, but Target Mode is OFF\n",
+		kprintf("dpt%d:  Target Mode Request, but Target Mode is OFF\n",
 		       dpt->unit);
 	}
 }
@@ -1993,7 +1993,7 @@ valid_unit:
 		crit_enter();
 		/* Process the free list */
 		if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
-			printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
+			kprintf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 			       "             Please try later\n",
 			       dpt->unit);
 			crit_exit();
@@ -2081,7 +2081,7 @@ dpt_target_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 					br_lun, ccb->status_packet.hba_stat);
 		break;
 	default:
-		printf("dpt%d:  %s is an unsupported command for target mode\n",
+		kprintf("dpt%d:  %s is an unsupported command for target mode\n",
 		       dpt->unit, scsi_cmd_name(ccb->eata_ccb.cp_scsi_cmd));
 	}
 	crit_enter();
@@ -2131,7 +2131,7 @@ valid_unit:
 
 			/* Process the free list */
 			if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
-				printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
+				kprintf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 				       "             Please try later\n",
 				       dpt->unit);
 				crit_exit();
@@ -2244,7 +2244,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 
 	/* Process the free list */
 	if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
-		printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
+		kprintf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 		       "             Please try later\n",
 		       dpt->unit);
 		crit_exit();
@@ -2288,7 +2288,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 		}
 
 		if (data == NULL) {
-			printf("dpt%d: Cannot allocate %d bytes "
+			kprintf("dpt%d: Cannot allocate %d bytes "
 			       "for EATA command\n", dpt->unit,
 			       ccb->eata_ccb.cp_datalen);
 			return (EFAULT);
@@ -2469,7 +2469,7 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 	crit_enter();
 
 	if (dpt->state & DPT_HA_TIMEOUTS_ACTIVE) {
-		printf("dpt%d WARNING: Timeout Handling Collision\n",
+		kprintf("dpt%d WARNING: Timeout Handling Collision\n",
 		       dpt->unit);
 		crit_exit();
 		return;
@@ -2511,7 +2511,7 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 				ccb->state |= DPT_CCB_STATE_ABORTED;
 #define cmd_name scsi_cmd_name(ccb->eata_ccb.cp_scsi_cmd)
 				if (ccb->retries++ > DPT_RETRIES) {
-					printf("dpt%d ERROR: Destroying stale "
+					kprintf("dpt%d ERROR: Destroying stale "
 					       "%d (%s)\n"
 					       "		on "
 					       "c%db%dt%du%d (%d/%d)\n",
@@ -2535,7 +2535,7 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 					xs->flags |= SCSI_ITSDONE;
 					scsi_done(xs);
 				} else {
-					printf("dpt%d ERROR: Stale %d (%s) on "
+					kprintf("dpt%d ERROR: Stale %d (%s) on "
 					       "c%db%dt%du%d (%d)\n"
 					     "		gets another "
 					       "chance(%d/%d)\n",
@@ -2561,7 +2561,7 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 			 */
 			if (!(ccb->state & DPT_CCB_STATE_MARKED_LOST) &&
 			    (age != ~0) && (age > max_age)) {
-				printf("dpt%d ERROR: Marking %d (%s) on "
+				kprintf("dpt%d ERROR: Marking %d (%s) on "
 				       "c%db%dt%du%d \n"
 				       "            as late after %dusec\n",
 				       dpt->unit, ccb->transaction_id,

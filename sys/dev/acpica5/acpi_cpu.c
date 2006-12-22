@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.16 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.17 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -792,7 +792,7 @@ acpi_cpu_startup_throttling(void)
     acpi_cpu_throttle_set(cpu_throttle_max);
     ACPI_UNLOCK;
 
-    printf("acpi_cpu: throttling enabled, %d steps (100%% to %d.%d%%), "
+    kprintf("acpi_cpu: throttling enabled, %d steps (100%% to %d.%d%%), "
 	   "currently %d.%d%%\n", CPU_MAX_SPEED, CPU_SPEED_PRINTABLE(1),
 	   CPU_SPEED_PRINTABLE(cpu_throttle_state));
 }
@@ -838,7 +838,7 @@ acpi_cpu_startup_cx(void)
     if (ncpus == 1)
 	cpu_idle_hook = acpi_cpu_idle;
     else
-	printf("Warning: ACPI idle hook not yet supported for SMP\n");
+	kprintf("Warning: ACPI idle hook not yet supported for SMP\n");
 }
 
 /*

@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.4 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.5 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.4 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.5 2006/12/22 23:26:25 swildner Exp $");
 
 MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 
@@ -64,7 +64,7 @@ feeder_register(void *p)
 		SLIST_INIT(&feedertab);
 		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
-			printf("can't allocate memory for root feeder\n");
+			kprintf("can't allocate memory for root feeder\n");
 			return;
 		}
 		fte->feederclass = fc;
@@ -84,10 +84,10 @@ feeder_register(void *p)
 	/* beyond this point failure is non-fatal but may result in some translations being unavailable */
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
-		/* printf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
+		/* kprintf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
 		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
-			printf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
+			kprintf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
 
 			return;
 		}
@@ -100,7 +100,7 @@ feeder_register(void *p)
 	}
 	feedercnt++;
 	if (feedercnt >= MAXFEEDERS)
-		printf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
+		kprintf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
 }
 
 static void
@@ -161,7 +161,7 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 
 	err = FEEDER_INIT(f);
 	if (err) {
-		printf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
+		kprintf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
 		feeder_destroy(f);
 
 		return NULL;
@@ -264,9 +264,9 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 	struct feedertab_entry *fte;
 	struct pcm_feeder *try, *ret;
 
-	/* printf("trying %s (%x -> %x)...\n", source->class->name, source->desc->in, source->desc->out); */
+	/* kprintf("trying %s (%x -> %x)...\n", source->class->name, source->desc->in, source->desc->out); */
 	if (fmtvalid(source->desc->out, to)) {
-		/* printf("got it\n"); */
+		/* kprintf("got it\n"); */
 		return source;
 	}
 
@@ -289,7 +289,7 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 			}
 		}
 	}
-	/* printf("giving up %s...\n", source->class->name); */
+	/* kprintf("giving up %s...\n", source->class->name); */
 
 	return NULL;
 }
@@ -350,13 +350,13 @@ chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
 	c->feeder = try;
 	c->align = 0;
 #ifdef FEEDER_DEBUG
-	printf("\n\nchain: ");
+	kprintf("\n\nchain: ");
 #endif
 	while (try && (try != stop)) {
 #ifdef FEEDER_DEBUG
-		printf("%s [%d]", try->class->name, try->desc->idx);
+		kprintf("%s [%d]", try->class->name, try->desc->idx);
 		if (try->source)
-			printf(" -> ");
+			kprintf(" -> ");
 #endif
 		if (try->source)
 			try->source->parent = try;
@@ -367,7 +367,7 @@ chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
 		try = try->source;
 	}
 #ifdef FEEDER_DEBUG
-	printf("%s [%d]\n", try->class->name, try->desc->idx);
+	kprintf("%s [%d]\n", try->class->name, try->desc->idx);
 #endif
 
 	return (c->direction == PCMDIR_REC)? best : c->feeder->desc->out;
@@ -395,7 +395,7 @@ feed_root(struct pcm_feeder *feeder, struct pcm_channel *ch, u_int8_t *buffer, u
 
 /*
 	if (l < count)
-		printf("appending %d bytes\n", count - l);
+		kprintf("appending %d bytes\n", count - l);
 */
 
 	x = (sndbuf_getfmt(src) & AFMT_SIGNED)? 0 : 0x80;

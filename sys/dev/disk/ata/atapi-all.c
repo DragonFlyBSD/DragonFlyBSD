@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.19 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.20 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -479,11 +479,11 @@ atapi_interrupt(struct atapi_request *request)
 			   atapi_skey2str(request->sense.sense_key), 
 			   request->sense.asc, request->sense.ascq);
 		if (request->sense.sksv)
-		    printf("sks=0x%02x 0x%02x 0x%02x ",
+		    kprintf("sks=0x%02x 0x%02x 0x%02x ",
 			   request->sense.sk_specific,
 			   request->sense.sk_specific1,
 			   request->sense.sk_specific2);
-		printf("error=0x%02x\n", request->result & ATAPI_E_MASK);
+		kprintf("error=0x%02x\n", request->result & ATAPI_E_MASK);
 	    }
 	}
 	else
@@ -542,10 +542,10 @@ atapi_dump(char *label, void *data, int len)
 {
     u_int8_t *p = data;
 
-    printf("%s %02x", label, *p++);
+    kprintf("%s %02x", label, *p++);
     while (--len > 0) 
-	printf ("-%02x", *p++);
-    printf("\n");
+	kprintf ("-%02x", *p++);
+    kprintf("\n");
 }
 
 static void

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.18 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.19 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -798,7 +798,7 @@ ips_issue_copperhead_cmd(ips_command_t *command)
 	for (i = 0; ips_read_4(command->sc, COPPER_REG_CCCR) & COPPER_SEM_BIT;
 	    i++) {
 		if (i == 20) {
-			printf("sem bit still set, can't send a command\n");
+			kprintf("sem bit still set, can't send a command\n");
 			crit_exit();
 			return;
 		}
@@ -812,5 +812,5 @@ ips_issue_copperhead_cmd(ips_command_t *command)
 void
 ips_copperhead_poll(ips_command_t *command)
 {
-	printf("ips: cmd polling not implemented for copperhead devices\n");
+	kprintf("ips: cmd polling not implemented for copperhead devices\n");
 }

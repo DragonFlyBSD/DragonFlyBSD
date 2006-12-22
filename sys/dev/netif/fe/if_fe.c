@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.27 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.28 2006/12/22 23:26:20 swildner Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -248,7 +248,7 @@ int
 valid_Ether_p (u_char const * addr, unsigned vendor)
 {
 #ifdef FE_DEBUG
-	printf("fe?: validating %6D against %06x\n", addr, ":", vendor);
+	kprintf("fe?: validating %6D against %06x\n", addr, ":", vendor);
 #endif
 
 	/* All zero is not allowed as a vendor code.  */
@@ -313,10 +313,10 @@ fe_softc_defaults (struct fe_softc *sc)
 void
 fe_irq_failure (char const *name, int unit, int irq, char const *list)
 {
-	printf("fe%d: %s board is detected, but %s IRQ was given\n",
+	kprintf("fe%d: %s board is detected, but %s IRQ was given\n",
 	       unit, name, (irq == NO_IRQ ? "no" : "invalid"));
 	if (list != NULL) {
-		printf("fe%d: specify an IRQ from %s in kernel config\n",
+		kprintf("fe%d: specify an IRQ from %s in kernel config\n",
 		       unit, list);
 	}
 }
@@ -436,7 +436,7 @@ fe_read_eeprom_jli (struct fe_softc * sc, u_char * data)
 		int i;
 		data -= JLI_EEPROM_SIZE;
 		for (i = 0; i < JLI_EEPROM_SIZE; i += 16) {
-			printf("fe%d: EEPROM(JLI):%3x: %16D\n",
+			kprintf("fe%d: EEPROM(JLI):%3x: %16D\n",
 			       sc->sc_unit, i, data + i, " ");
 		}
 	}
@@ -552,7 +552,7 @@ fe_read_eeprom_ssi (struct fe_softc *sc, u_char *data)
 		int i;
 		data -= SSI_EEPROM_SIZE;
 		for (i = 0; i < SSI_EEPROM_SIZE; i += 16) {
-			printf("fe%d: EEPROM(SSI):%3x: %16D\n",
+			kprintf("fe%d: EEPROM(SSI):%3x: %16D\n",
 			       sc->sc_unit, i, data + i, " ");
 		}
 	}
@@ -654,7 +654,7 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 		   this board was not a TDK/LANX) or not working
 		   properly.  */
 		if (bootverbose) {
-			printf("fe%d: no ACK received from EEPROM(LNX)\n",
+			kprintf("fe%d: no ACK received from EEPROM(LNX)\n",
 			       sc->sc_unit);
 		}
 		/* Clear the given buffer to indicate we could not get
@@ -693,7 +693,7 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 	if (bootverbose) {
 		data -= LNX_EEPROM_SIZE;
 		for (i = 0; i < LNX_EEPROM_SIZE; i += 16) {
-			printf("fe%d: EEPROM(LNX):%3x: %16D\n",
+			kprintf("fe%d: EEPROM(LNX):%3x: %16D\n",
 			       sc->sc_unit, i, data + i, " ");
 		}
 	}
@@ -782,7 +782,7 @@ fe_attach (device_t dev)
 	  default:
 		/* Oops, we can't work with single buffer configuration.  */
 		if (bootverbose) {
-			printf("fe%d: strange TXBSIZ config; fixing\n",
+			kprintf("fe%d: strange TXBSIZ config; fixing\n",
 			       sc->sc_unit);
 		}
 		sc->proto_dlcr6 &= ~FE_D6_TXBSIZ;
@@ -986,11 +986,11 @@ fe_watchdog ( struct ifnet *ifp )
 	struct fe_softc *sc = (struct fe_softc *)ifp;
 
 	/* A "debug" message.  */
-	printf("%s: transmission timeout (%d+%d)%s\n",
+	kprintf("%s: transmission timeout (%d+%d)%s\n",
 	       ifp->if_xname, sc->txb_sched, sc->txb_count,
 	       (ifp->if_flags & IFF_UP) ? "" : " when down");
 	if (sc->sc_if.if_opackets == 0 && sc->sc_if.if_ipackets == 0)
-		printf("%s: wrong IRQ setting in config?\n", ifp->if_xname);
+		kprintf("%s: wrong IRQ setting in config?\n", ifp->if_xname);
 	fe_reset(sc);
 }
 
@@ -1080,7 +1080,7 @@ fe_init (void * xsc)
 	 * The following message helps discovering the fact.  FIXME.
 	 */
 	if (!(fe_inb(sc, FE_DLCR5) & FE_D5_BUFEMP)) {
-		printf("fe%d: receive buffer has some data after reset\n",
+		kprintf("fe%d: receive buffer has some data after reset\n",
 		       sc->sc_unit);
 		fe_emptybuffer(sc);
 	}
@@ -1161,7 +1161,7 @@ fe_start (struct ifnet *ifp)
 		 * txb_count is zero if and only if txb_free is same
 		 * as txb_size (which represents whole buffer.)
 		 */
-		printf("fe%d: inconsistent txb variables (%d, %d)\n",
+		kprintf("fe%d: inconsistent txb variables (%d, %d)\n",
 			sc->sc_unit, sc->txb_count, sc->txb_free);
 		/*
 		 * So, what should I do, then?
@@ -1187,7 +1187,7 @@ fe_start (struct ifnet *ifp)
 	 * transmitter - should never happen at this point.
 	 */
 	if ((sc->txb_count > 0) && (sc->txb_sched == 0)) {
-		printf("fe%d: transmitter idle with %d buffered packets\n",
+		kprintf("fe%d: transmitter idle with %d buffered packets\n",
 		       sc->sc_unit, sc->txb_count);
 		fe_xmit(sc);
 	}
@@ -1350,7 +1350,7 @@ fe_emptybuffer (struct fe_softc * sc)
 	u_char saved_dlcr5;
 
 #ifdef FE_DEBUG
-	printf("fe%d: emptying receive buffer\n", sc->sc_unit);
+	kprintf("fe%d: emptying receive buffer\n", sc->sc_unit);
 #endif
 
 	/*
@@ -1388,7 +1388,7 @@ fe_emptybuffer (struct fe_softc * sc)
 	 * Double check.
 	 */
 	if (fe_inb(sc, FE_DLCR5) & FE_D5_BUFEMP) {
-		printf("fe%d: could not empty receive buffer\n", sc->sc_unit);
+		kprintf("fe%d: could not empty receive buffer\n", sc->sc_unit);
 		/* Hmm.  What should I do if this happens?  FIXME.  */
 	}
 
@@ -1419,7 +1419,7 @@ fe_tint (struct fe_softc * sc, u_char tstat)
 		 * are left unsent in transmission buffer.
 		 */
 		left = fe_inb(sc, FE_BMPR10);
-		printf("fe%d: excessive collision (%d/%d)\n",
+		kprintf("fe%d: excessive collision (%d/%d)\n",
 		       sc->sc_unit, left, sc->txb_sched);
 
 		/*
@@ -1626,7 +1626,7 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 		if ((status & 0xF0) != 0x20 ||
 		    len > ETHER_MAX_LEN - ETHER_CRC_LEN ||
 		    len < ETHER_MIN_LEN - ETHER_CRC_LEN) {
-			printf("fe%d: RX buffer out-of-sync\n", sc->sc_unit);
+			kprintf("fe%d: RX buffer out-of-sync\n", sc->sc_unit);
 			sc->sc_if.if_ierrors++;
 			sc->mibdata.dot3StatsInternalMacReceiveErrors++;
 			fe_reset(sc);
@@ -1656,7 +1656,7 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 
 	/* Maximum number of frames has been received.  Something
            strange is happening here... */
-	printf("fe%d: unusual receive flood\n", sc->sc_unit);
+	kprintf("fe%d: unusual receive flood\n", sc->sc_unit);
 	sc->mibdata.dot3StatsInternalMacReceiveErrors++;
 	fe_reset(sc);
 }
@@ -1730,7 +1730,7 @@ fe_intr (void *arg)
 			fe_start(&sc->sc_if);
 	}
 
-	printf("fe%d: too many loops\n", sc->sc_unit);
+	kprintf("fe%d: too many loops\n", sc->sc_unit);
 }
 
 /*
@@ -1904,7 +1904,7 @@ fe_write_mbufs (struct fe_softc *sc, struct mbuf *m)
 
 	/* Check if this matches the one in the packet header.  */
 	if (length != m->m_pkthdr.len) {
-		printf("fe%d: packet length mismatch? (%d/%d)\n", sc->sc_unit,
+		kprintf("fe%d: packet length mismatch? (%d/%d)\n", sc->sc_unit,
 		       length, m->m_pkthdr.len);
 	}
 #else
@@ -1920,7 +1920,7 @@ fe_write_mbufs (struct fe_softc *sc, struct mbuf *m)
 	 */
 	if (length < ETHER_HDR_LEN ||
 	    length > ETHER_MAX_LEN - ETHER_CRC_LEN) {
-		printf("fe%d: got an out-of-spec packet (%u bytes) to send\n",
+		kprintf("fe%d: got an out-of-spec packet (%u bytes) to send\n",
 			sc->sc_unit, length);
 		sc->sc_if.if_oerrors++;
 		sc->mibdata.dot3StatsInternalMacTransmitErrors++;
@@ -2080,7 +2080,7 @@ fe_mcaf ( struct fe_softc *sc )
 			continue;
 		index = fe_hash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 #ifdef FE_DEBUG
-		printf("fe%d: hash(%6D) == %d\n",
+		kprintf("fe%d: hash(%6D) == %d\n",
 			sc->sc_unit, enm->enm_addrlo , ":", index);
 #endif
 
@@ -2223,7 +2223,7 @@ fe_medchange (struct ifnet *ifp)
 		if (bit2media[b] == sc->media.ifm_media) break;
 	}
 	if (((1 << b) & sc->mbitmap) == 0) {
-		printf("fe%d: got an unsupported media request (0x%x)\n",
+		kprintf("fe%d: got an unsupported media request (0x%x)\n",
 		       sc->sc_unit, sc->media.ifm_media);
 		return EINVAL;
 	}

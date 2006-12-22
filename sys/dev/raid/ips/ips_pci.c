@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.16 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.17 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -148,7 +148,7 @@ ips_pci_attach(device_t dev)
 				/* maxsegsize*/	BUS_SPACE_MAXSIZE_32BIT,
 				/* flags     */	0,
 				&sc->adapter_dmatag) != 0) {
-		printf("IPS can't alloc dma tag\n");
+		kprintf("IPS can't alloc dma tag\n");
 		goto error;
 	}
 	sc->ips_ich.ich_func = ips_intrhook;
@@ -157,7 +157,7 @@ ips_pci_attach(device_t dev)
 	lockinit(&sc->queue_lock, "ipslk", 0, 0);
 	bioq_init(&sc->bio_queue);
 	if (config_intrhook_establish(&sc->ips_ich) != 0) {
-		printf("IPS can't establish configuration hook\n");
+		kprintf("IPS can't establish configuration hook\n");
 		goto error;
 	}
 	return 0;

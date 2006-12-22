@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)
@@ -169,7 +169,7 @@ sb_dspwr(struct sb_info *sb, u_char val)
     	}
 #if defined(__FreeBSD__) && __FreeBSD_version > 500000
 	if (curthread->td_intr_nesting_level == 0)
-		printf("sb_dspwr(0x%02x) timed out.\n", val);
+		kprintf("sb_dspwr(0x%02x) timed out.\n", val);
 #endif
     	return 0;
 }
@@ -178,7 +178,7 @@ static int
 sb_cmd(struct sb_info *sb, u_char val)
 {
 #if 0
-	printf("sb_cmd: %x\n", val);
+	kprintf("sb_cmd: %x\n", val);
 #endif
     	return sb_dspwr(sb, val);
 }
@@ -188,7 +188,7 @@ static int
 sb_cmd1(struct sb_info *sb, u_char cmd, int val)
 {
 #if 0
-    	printf("sb_cmd1: %x, %x\n", cmd, val);
+    	kprintf("sb_cmd1: %x, %x\n", cmd, val);
 #endif
     	if (sb_dspwr(sb, cmd)) {
 		return sb_dspwr(sb, val & 0xff);
@@ -202,7 +202,7 @@ sb_cmd2(struct sb_info *sb, u_char cmd, int val)
 	int r;
 
 #if 0
-    	printf("sb_cmd2: %x, %x\n", cmd, val);
+    	kprintf("sb_cmd2: %x, %x\n", cmd, val);
 #endif
 	sb_lock(sb);
 	r = 0;
@@ -274,7 +274,7 @@ sb_reset_dsp(struct sb_info *sb)
 	b = sb_get_byte(sb);
 	sb_unlock(sb);
     	if (b != 0xAA) {
-        	DEB(printf("sb_reset_dsp 0x%lx failed\n",
+        	DEB(kprintf("sb_reset_dsp 0x%lx failed\n",
 			   rman_get_start(sb->io_base)));
 		return ENXIO;	/* Sorry */
     	}
@@ -525,7 +525,7 @@ sb_intr(void *arg)
     		}
 	}
 #if 0
-    	printf("sb_intr: reason=%d c=0x%x\n", reason, c);
+    	kprintf("sb_intr: reason=%d c=0x%x\n", reason, c);
 #endif
     	if ((reason & 1) && (sb->pch.run))
 		chn_intr(sb->pch.channel);
@@ -582,7 +582,7 @@ sb_setup(struct sb_info *sb)
 	sndbuf_isadmasetdir(sb->rch.buffer, PCMDIR_REC);
 
 	/*
-	printf("setup: [pch = %d, pfmt = %d, pgo = %d] [rch = %d, rfmt = %d, rgo = %d]\n",
+	kprintf("setup: [pch = %d, pfmt = %d, pgo = %d] [rch = %d, rfmt = %d, rgo = %d]\n",
 	       sb->pch.dch, sb->pch.fmt, sb->pch.run, sb->rch.dch, sb->rch.fmt, sb->rch.run);
 	*/
 

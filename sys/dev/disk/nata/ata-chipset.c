@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.166 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.3 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -542,7 +542,7 @@ ata_ahci_status(device_t dev)
 
 	/* do we have cold connect surprise */
 	if (istatus & ATA_AHCI_P_IX_CPD) {
-	    printf("ata_ahci_status status=%08x sstatus=%08x error=%08x\n",
+	    kprintf("ata_ahci_status status=%08x sstatus=%08x error=%08x\n",
 		   istatus, sstatus, error);
 	}
 

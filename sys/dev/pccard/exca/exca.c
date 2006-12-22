@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/exca/exca.c,v 1.6 2002/10/07 06:18:50 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/exca/exca.c,v 1.2 2006/10/25 20:56:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/pccard/exca/exca.c,v 1.3 2006/12/22 23:26:22 swildner Exp $ */
 
 /*
  * Copyright (c) 2002 M Warner Losh.  All rights reserved.
@@ -74,7 +74,7 @@
 
 #ifdef EXCA_DEBUG
 #define DEVPRINTF(dev, fmt, args...)	device_printf((dev), (fmt), ## args)
-#define DPRINTF(fmt, args...)		printf(fmt, ## args)
+#define DPRINTF(fmt, args...)		kprintf(fmt, ## args)
 #else
 #define DEVPRINTF(dev, fmt, args...)
 #define DPRINTF(fmt, args...)
@@ -165,7 +165,7 @@ exca_do_mem_map(struct exca_softc *sc, int win)
 		r5 = exca_read(sc, map->cardmem_msb);
 		r6 = exca_read(sc, map->cardmem_lsb);
 		r7 = exca_read(sc, map->sysmem_win);
-		printf("exca_do_mem_map window %d: %02x%02x %02x%02x "
+		kprintf("exca_do_mem_map window %d: %02x%02x %02x%02x "
 		    "%02x%02x %02x (%08x+%08x.%08x*%08lx)\n",
 		    win, r1, r2, r3, r4, r5, r6, r7,
 		    mem->addr, mem->size, mem->realsize,

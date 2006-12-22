@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.19 2006/09/10 01:26:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.20 2006/12/22 23:26:27 swildner Exp $
  */
 
 /*		Change History:
@@ -491,7 +491,7 @@ int		err = 0;
 	/* 1ffff should be enough delay time for the i2c cycle to complete */
 	if(!wait_counter) {
 		if(i2c_print_err)
-			printf("meteor%d: %d i2c %s transfer timeout 0x%x",
+			kprintf("meteor%d: %d i2c %s transfer timeout 0x%x",
 				METEOR_NUM(mtr), slave, 
 				rw ? "read" : "write", *iic_write_loc);
 			
@@ -502,7 +502,7 @@ int		err = 0;
 	if(mtr->base->i2c_read & SAA7116_IIC_DIRECT_TRANSFER_ABORTED){
 		mtr->base->i2c_read |= SAA7116_IIC_DIRECT_TRANSFER_ABORTED;
 		if(i2c_print_err)
-			printf("meteor%d: 0x%x i2c %s tranfer aborted",
+			kprintf("meteor%d: 0x%x i2c %s tranfer aborted",
 				METEOR_NUM(mtr), slave,
 				rw ? "read" : "write" );
 		err= 1;
@@ -510,7 +510,7 @@ int		err = 0;
 
 	if(err) {
 		if(i2c_print_err)
-			printf(" - reg=0x%x, value=0x%x.\n", reg, data);
+			kprintf(" - reg=0x%x, value=0x%x.\n", reg, data);
 	}
 		
 	return err;
@@ -560,12 +560,12 @@ meteor_intr(void *arg)
 #define METEOR_MASTER_ABORT	0x20000000
 #define METEOR_TARGET_ABORT	0x10000000
 	if(pci_err & METEOR_MASTER_ABORT) {
-		printf("meteor%d: intr: pci bus master dma abort: 0x%x 0x%x.\n",
+		kprintf("meteor%d: intr: pci bus master dma abort: 0x%x 0x%x.\n",
 			METEOR_NUM(mtr), *base, *(base+3));
 		pci_conf_write(mtr->tag, PCI_COMMAND_STATUS_REG, pci_err);
 	}
 	if(pci_err & METEOR_TARGET_ABORT) {
-		printf("meteor%d: intr: pci bus target dma abort: 0x%x 0x%x.\n",
+		kprintf("meteor%d: intr: pci bus target dma abort: 0x%x 0x%x.\n",
 			METEOR_NUM(mtr), *base, *(base+3));
 		pci_conf_write(mtr->tag, PCI_COMMAND_STATUS_REG, pci_err);
 	}
@@ -576,16 +576,16 @@ meteor_intr(void *arg)
 	if (cap_err) {
 	   if (cap_err & 0x300) {
 		if(mtr->fifo_errors % 50 == 0) {
-	   		printf("meteor%d: capture error", METEOR_NUM(mtr));
-			printf(": %s FIFO overflow.\n",
+	   		kprintf("meteor%d: capture error", METEOR_NUM(mtr));
+			kprintf(": %s FIFO overflow.\n",
 				cap_err&0x0100? "even" : "odd");
 		}
 		mtr->fifo_errors++ ;	/* increment fifo capture errors cnt */
 	   }
 	   if (cap_err & 0xc00) {
 		if(mtr->dma_errors % 50 == 0) {
-	   		printf("meteor%d: capture error", METEOR_NUM(mtr));
-			printf(": %s DMA address.\n",
+	   		kprintf("meteor%d: capture error", METEOR_NUM(mtr));
+			kprintf(": %s DMA address.\n",
 				cap_err&0x0400? "even" : "odd");
 		}
 		mtr->dma_errors++ ;	/* increment DMA capture errors cnt */
@@ -859,7 +859,7 @@ vm_offset_t	addr = 0;
 	if(addr == 0)
 		addr = vm_page_alloc_contig(size, 0, 0xffffffff, PAGE_SIZE);
 	if(addr == 0) {
-		printf("meteor%d: Unable to allocate %d bytes of memory.\n",
+		kprintf("meteor%d: Unable to allocate %d bytes of memory.\n",
 			unit, size);
 	}
 
@@ -960,12 +960,12 @@ meteor_init ( meteor_reg_t *mtr )
 		SAA7196_WRITE(mtr, SAA7196_STDC,
 			SAA7196_REG(mtr, SAA7196_STDC) & ~0x02);
 		SAA7196_READ(mtr);
-		printf("meteor%d: <Philips SAA 7196> rev 0x%x\n",
+		kprintf("meteor%d: <Philips SAA 7196> rev 0x%x\n",
 			METEOR_NUM(mtr),
 			(unsigned)((mtr->base->i2c_read & 0xff000000L) >> 28));
 	} else {
 		i2c_print_err = 1;
-		printf("meteor%d: <Philips SAA 7196 NOT FOUND>\n",
+		kprintf("meteor%d: <Philips SAA 7196 NOT FOUND>\n",
 			METEOR_NUM(mtr));
 	}
 	/*
@@ -974,7 +974,7 @@ meteor_init ( meteor_reg_t *mtr )
 	i2c_print_err = 0;
 	if(i2c_write(mtr,PCF8574_DATA_I2C_ADDR,SAA7116_I2C_WRITE,0,0xff) == 0) {
 		i2c_print_err = 1;
-		printf("meteor%d: <Booktree 254 (RGB module)>\n",
+		kprintf("meteor%d: <Booktree 254 (RGB module)>\n",
 			METEOR_NUM(mtr));	/* does this have a rev #? */
 		bt254_init(mtr);	/* Set up RGB module */
 		mtr->flags = METEOR_RGB;
@@ -998,9 +998,9 @@ met_attach(pcici_t tag, int unit)
 	u_long latency;
 
 	if (unit >= NMETEOR) {
-		printf("meteor%d: attach: only %d units configured.\n",
+		kprintf("meteor%d: attach: only %d units configured.\n",
 				unit, NMETEOR);
-		printf("meteor%d: attach: invalid unit number.\n", unit);
+		kprintf("meteor%d: attach: invalid unit number.\n", unit);
         	return ;
 	}
 
@@ -1022,7 +1022,7 @@ met_attach(pcici_t tag, int unit)
 		if (pci_conf_read(bridge_tag, PCI_ID_REG) == 0x00221014) {
 
 			if ( bootverbose)
-				printf("meteor%d: PPB device detected, reprogramming IBM bridge.\n", unit);
+				kprintf("meteor%d: PPB device detected, reprogramming IBM bridge.\n", unit);
 
 			/* disable SERR */
 			pci_cfgwrite(bridge_tag, 0x05, 0x00, 1);
@@ -1044,7 +1044,7 @@ met_attach(pcici_t tag, int unit)
 	old_irq = pci_conf_read(tag, PCI_INTERRUPT_REG);
 	pci_conf_write(tag, PCI_INTERRUPT_REG, METEOR_IRQ);
 	new_irq = pci_conf_read(tag, PCI_INTERRUPT_REG);
-	printf("meteor%d: attach: irq changed from %d to %d\n",
+	kprintf("meteor%d: attach: irq changed from %d to %d\n",
 		unit, (old_irq & 0xff), (new_irq & 0xff));
 #endif /* METEOR_IRQ */
 				/* setup the interrupt handling routine */
@@ -1062,9 +1062,9 @@ met_attach(pcici_t tag, int unit)
 	latency = (latency >> 8) & 0xff;
 	if(bootverbose) {
 		if(latency)
-			printf("meteor%d: PCI bus latency is", unit);
+			kprintf("meteor%d: PCI bus latency is", unit);
 		else
-			printf("meteor%d: PCI bus latency was 0 changing to",
+			kprintf("meteor%d: PCI bus latency was 0 changing to",
 				unit);
 	}
 	if(!latency) {
@@ -1072,7 +1072,7 @@ met_attach(pcici_t tag, int unit)
 		pci_conf_write(tag, PCI_LATENCY_TIMER,  latency<<8);
 	}
 	if(bootverbose) {
-		printf(" %lu.\n", latency);
+		kprintf(" %lu.\n", latency);
 	}
 
 	meteor_init(mtr);	/* set up saa7116, saa7196, and rgb module */
@@ -1082,7 +1082,7 @@ met_attach(pcici_t tag, int unit)
 	else
 		buf = 0;
 	if(bootverbose) {
-		printf("meteor%d: buffer size %d, addr 0x%llx\n",
+		kprintf("meteor%d: buffer size %d, addr 0x%llx\n",
 			unit, METEOR_ALLOC, vtophys(buf));
 	}
 
@@ -1302,7 +1302,7 @@ meteor_read(struct dev_read_args *ap)
 	if (!status) 		/* successful capture */
 		status = uiomove((caddr_t)mtr->bigbuf, count, uio);
 	else
-		printf ("meteor%d: read: tsleep error %d\n", unit, status);
+		kprintf ("meteor%d: read: tsleep error %d\n", unit, status);
 
 	mtr->flags &= ~(METEOR_SINGLE | METEOR_WANT_MASK);
 
@@ -1616,7 +1616,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 			/* wait for capture to complete */
 			error=tsleep((caddr_t)mtr, METPRI, "capturing", 0);
 			if(error)
-				printf("meteor%d: ioctl: tsleep error %d\n",
+				kprintf("meteor%d: ioctl: tsleep error %d\n",
 					unit, error);
 			mtr->flags &= ~(METEOR_SINGLE|METEOR_WANT_MASK);
 			break;
@@ -1707,7 +1707,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 		/* Either even or odd, if even & odd, then these a zero */
 		if((geo->oformat & METEOR_GEO_ODD_ONLY) &&
 			(geo->oformat & METEOR_GEO_EVEN_ONLY)) {
-			printf("meteor%d: ioctl: Geometry odd or even only.\n",
+			kprintf("meteor%d: ioctl: Geometry odd or even only.\n",
 				unit);
 			return EINVAL;
 		}
@@ -1726,7 +1726,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 			return(EBUSY);
 
 		if ((geo->columns & 0x3fe) != geo->columns) {
-			printf(
+			kprintf(
 			"meteor%d: ioctl: %d: columns too large or not even.\n",
 				unit, geo->columns);
 			error = EINVAL;
@@ -1734,13 +1734,13 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 		if (((geo->rows & 0x7fe) != geo->rows) ||
 			((geo->oformat & METEOR_GEO_FIELD_MASK) &&
 				((geo->rows & 0x3fe) != geo->rows)) ) {
-			printf(
+			kprintf(
 			"meteor%d: ioctl: %d: rows too large or not even.\n",
 				unit, geo->rows);
 			error = EINVAL;
 		}
 		if (geo->frames > 32) {
-			printf("meteor%d: ioctl: too many frames.\n", unit);
+			kprintf("meteor%d: ioctl: too many frames.\n", unit);
 			error = EINVAL;
 		}
 		if(error) return error;
@@ -1764,7 +1764,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 					mtr->bigbuf = buf;
 					mtr->alloc_pages = temp;
 					if(bootverbose)
-						printf(
+						kprintf(
 				"meteor%d: ioctl: Allocating %d bytes\n",
 							unit, temp*PAGE_SIZE);
 				} else {
@@ -2025,7 +2025,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 			break;
 		default:
 			error = EINVAL;	/* invalid argument */
-			printf("meteor%d: ioctl: invalid output format\n",unit);
+			kprintf("meteor%d: ioctl: invalid output format\n",unit);
 			break;
 		}
 		/* set cols */
@@ -2086,7 +2086,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 		cnt->odd_fields_captured = mtr->odd_fields_captured;
 		break;
 	default:
-		printf("meteor%d: ioctl: invalid ioctl request\n", unit);
+		kprintf("meteor%d: ioctl: invalid ioctl request\n", unit);
 		error = ENOTTY;
 		break;
 	}

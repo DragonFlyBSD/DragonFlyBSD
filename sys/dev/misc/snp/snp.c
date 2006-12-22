@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.17 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.18 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -195,7 +195,7 @@ snpwrite(struct dev_write_args *ap)
 	    tp->t_line == snooplinedisc)
 		goto tty_input;
 
-	printf("Snoop: attempt to write to bad tty.\n");
+	kprintf("Snoop: attempt to write to bad tty.\n");
 	return (EIO);
 
 tty_input:
@@ -293,12 +293,12 @@ snp_in(struct snoop *snp, char *buf, int n)
 		return (0);
 
 	if (snp->snp_flags & SNOOP_DOWN) {
-		printf("Snoop: more data to down interface.\n");
+		kprintf("Snoop: more data to down interface.\n");
 		return (0);
 	}
 
 	if (snp->snp_flags & SNOOP_OFLOW) {
-		printf("Snoop: buffer overflow.\n");
+		kprintf("Snoop: buffer overflow.\n");
 		/*
 		 * On overflow we just repeat the standart close
 		 * procedure...yes , this is waste of space but.. Then next
@@ -416,7 +416,7 @@ snp_detach(struct snoop *snp)
 		tp->t_state &= ~TS_SNOOP;
 		tp->t_line = snp->snp_olddisc;
 	} else
-		printf("Snoop: bad attached tty data.\n");
+		kprintf("Snoop: bad attached tty data.\n");
 
 	snp->snp_tty = NULL;
 	snp->snp_target = NOCDEV;

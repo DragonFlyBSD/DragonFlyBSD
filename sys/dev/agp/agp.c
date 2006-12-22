@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.25 2006/10/25 20:55:52 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.26 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "opt_bus.h"
@@ -430,7 +430,7 @@ agp_generic_alloc_memory(device_t dev, int type, vm_size_t size)
 		return 0;
 
 	if (type != 0) {
-		printf("agp_generic_alloc_memory: unsupported type %d\n",
+		kprintf("agp_generic_alloc_memory: unsupported type %d\n",
 		       type);
 		return 0;
 	}
@@ -487,7 +487,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 		device_printf(dev, "binding memory at bad offset %#x,%#x,%#x\n",
 			      (int) offset, (int)mem->am_size,
 			      (int)AGP_GET_APERTURE(dev));
-		printf("Check BIOS's aperature size vs X\n");
+		kprintf("Check BIOS's aperature size vs X\n");
 		lockmgr(&sc->as_lock, LK_RELEASE);
 		return EINVAL;
 	}

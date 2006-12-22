@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.19 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.20 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -971,7 +971,7 @@ vinum_scandisk(char *devicename[], int drives)
 	    error = read_drive(drive, config_text, MAXCONFIG * 2, VINUM_CONFIG_OFFSET);
 	else {
 	    error = EIO;
-	    printf("vinum_scandisk: %s is %s\n", drive->devicename, drive_state(drive->state));
+	    kprintf("vinum_scandisk: %s is %s\n", drive->devicename, drive_state(drive->state));
 	}
 
 	if (error != 0) {
@@ -1023,7 +1023,7 @@ vinum_scandisk(char *devicename[], int drives)
     Free(drivelist);
     vinum_conf.flags &= ~VF_READING_CONFIG;		    /* no longer reading from disk */
     if (status != 0)
-	printf("vinum: couldn't read configuration");
+	kprintf("vinum: couldn't read configuration");
     else
 	updateconfig(VF_READING_CONFIG);		    /* update from disk config */
     return status;

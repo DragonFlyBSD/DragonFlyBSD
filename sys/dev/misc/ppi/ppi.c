@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.14 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.15 2006/12/22 23:26:18 swildner Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -203,7 +203,7 @@ ppiintr(void *arg)
 							(SELECT | nBUSY)) {
 			/* IEEE1284 negociation */
 #ifdef DEBUG_1284
-			printf("N");
+			kprintf("N");
 #endif
 
 			/* Event 2 - prepare for reading the ext. value */
@@ -213,7 +213,7 @@ ppiintr(void *arg)
 
 		} else {
 #ifdef DEBUG_1284
-			printf("0x%x", ppb_rstr(ppbus));
+			kprintf("0x%x", ppb_rstr(ppbus));
 #endif
 			ppb_peripheral_terminate(ppbus, PPB_DONTWAIT);
 			break;
@@ -229,7 +229,7 @@ ppiintr(void *arg)
 		break;
 	default:
 #ifdef DEBUG_1284
-		printf("?%d", ppb_1284_get_state(ppbus));
+		kprintf("?%d", ppb_1284_get_state(ppbus));
 #endif
 		ppb_1284_set_state(ppbus, PPB_FORWARD_IDLE);
 		ppb_set_mode(ppbus, PPB_COMPATIBLE);
@@ -364,7 +364,7 @@ ppiread(struct dev_read_args *ap)
 	}
 
 #ifdef DEBUG_1284
-	printf("N");
+	kprintf("N");
 #endif
 	/* read data */
 	len = 0;
@@ -379,7 +379,7 @@ ppiread(struct dev_read_args *ap)
 			goto error;		/* no more data */
 
 #ifdef DEBUG_1284
-		printf("d");
+		kprintf("d");
 #endif
 		if ((error = uiomove(ppi->ppi_buffer, len, uio)))
 			goto error;
@@ -432,7 +432,7 @@ ppiwrite(struct dev_write_args *ap)
 
 	/* negociate ECP mode */
 	if (ppb_1284_negociate(ppbus, PPB_ECP, 0)) {
-		printf("ppiwrite: ECP negociation failed\n");
+		kprintf("ppiwrite: ECP negociation failed\n");
 	}
 
 	while (!error && (len = min(uio->uio_resid, BUFSIZE))) {
@@ -453,7 +453,7 @@ ppiwrite(struct dev_write_args *ap)
  	while (ppb_1284_get_state(ppbus) != PPB_PERIPHERAL_IDLE) {
 		/* XXX should check a variable before sleeping */
 #ifdef DEBUG_1284
-		printf("s");
+		kprintf("s");
 #endif
 
 		ppi_enable_intr(ppidev);
@@ -473,7 +473,7 @@ ppiwrite(struct dev_write_args *ap)
 		}
 	}
 #ifdef DEBUG_1284
-	printf("N");
+	kprintf("N");
 #endif
 
 	/* negociation done, write bytes to master host */
@@ -483,7 +483,7 @@ ppiwrite(struct dev_write_args *ap)
 						ppi->ppi_buffer, len, &sent)))
 			goto error;
 #ifdef DEBUG_1284
-		printf("d");
+		kprintf("d");
 #endif
 	}
 

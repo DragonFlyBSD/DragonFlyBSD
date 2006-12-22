@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.15 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.16 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -157,7 +157,7 @@ busy_wait(struct spic_softc *sc)
 	while(read_port2(sc) & 2) {
 		DELAY(10);
 		if (i++>10000) {
-			printf("spic busy wait abort\n");
+			kprintf("spic busy wait abort\n");
 			return;
 		}
 	}
@@ -171,7 +171,7 @@ busy_wait_cst(struct spic_softc *sc, int mask)
 	while(read_port_cst(sc) & mask) {
 		DELAY(10);
 		if (i++>10000) {
-			printf("spic busy wait abort\n");
+			kprintf("spic busy wait abort\n");
 			return;
 		}
 	}
@@ -415,13 +415,13 @@ spictimeout(void *arg)
 				}
 				break;
 			case 0x60: /* Capture button */
-				printf("Capture button event: %x\n",param);
+				kprintf("Capture button event: %x\n",param);
 				break;
 			case 0x30: /* Lid switch */
-				printf("Lid switch event: %x\n",param);
+				kprintf("Lid switch event: %x\n",param);
 				break;
 			default:
-				printf("Unknown event: event %02x param %02x\n", event, param);
+				kprintf("Unknown event: event %02x param %02x\n", event, param);
 				break;
 		}
 	else {

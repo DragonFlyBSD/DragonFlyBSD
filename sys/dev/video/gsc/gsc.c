@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.14 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.15 2006/12/22 23:26:27 swildner Exp $
  *
  */
 
@@ -72,7 +72,7 @@
 #define lprintf(args)						\
 		do {						\
 			if (scu->flags & FLAG_DEBUG)		\
-				printf args;			\
+				kprintf args;			\
 		} while (0)
 #else
 #define lprintf(args)
@@ -492,7 +492,7 @@ gscattach(struct isa_device *isdp)
 	 isdp->id_maddr,
 	 isdp->id_msize));
 
-  printf("gsc%d: GeniScan GS-4500 at %ddpi\n",
+  kprintf("gsc%d: GeniScan GS-4500 at %ddpi\n",
 	 unit, geomtab[scu->geometry].dpi);
 
   /*
@@ -551,7 +551,7 @@ gscopen  (struct dev_open_args *ap)
     {
 #ifdef GSCDEBUG
       /* XXX lprintf isn't valid here since there is no scu. */
-      printf("gsc%d.open: unconfigured unit number (max %d)\n", unit, NGSC);
+      kprintf("gsc%d.open: unconfigured unit number (max %d)\n", unit, NGSC);
 #endif
       return ENXIO;
     }

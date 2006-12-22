@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.22 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.23 2006/12/22 23:26:17 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -314,19 +314,19 @@ find_first_zero_bit(volatile void *p, int max)
 #define agp_memory		void
 #define jiffies			ticks
 
-				/* Macros to make printf easier */
+				/* Macros to make kprintf easier */
 #define DRM_ERROR(fmt, arg...) \
-	printf("error: " "[" DRM_NAME ":%s] *ERROR* " fmt , __func__ , ## arg)
+	kprintf("error: " "[" DRM_NAME ":%s] *ERROR* " fmt , __func__ , ## arg)
 #define DRM_MEM_ERROR(area, fmt, arg...) \
-	printf("error: " "[" DRM_NAME ":%s:%s] *ERROR* " fmt , \
+	kprintf("error: " "[" DRM_NAME ":%s:%s] *ERROR* " fmt , \
 		__func__, DRM(mem_stats)[area].name , ##arg)
-#define DRM_INFO(fmt, arg...)  printf("info: " "[" DRM_NAME "] " fmt , ## arg)
+#define DRM_INFO(fmt, arg...)  kprintf("info: " "[" DRM_NAME "] " fmt , ## arg)
 
 #if DRM_DEBUG_CODE
 #define DRM_DEBUG(fmt, arg...)						  \
 	do {								  \
 		if (DRM(flags) & DRM_FLAG_DEBUG)			  \
-			printf("[" DRM_NAME ":%s] " fmt , __func__ , ## arg); \
+			kprintf("[" DRM_NAME ":%s] " fmt , __func__ , ## arg); \
 	} while (0)
 #else
 #define DRM_DEBUG(fmt, arg...)		 do { } while (0)

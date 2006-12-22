@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.22 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.23 2006/12/22 23:26:24 swildner Exp $
  */
 
 #ifndef lint
@@ -313,7 +313,7 @@ siattach(device_t dev)
 			*(maddr+SIRESET) = 0;
 		break;
 		default: /* this should never happen */
-			printf("si%d: unsupported configuration\n", unit);
+			kprintf("si%d: unsupported configuration\n", unit);
 			return EINVAL;
 		break;
 	}
@@ -396,7 +396,7 @@ siattach(device_t dev)
 		*(maddr+SIPLIRQCLR) = 0x10;
 		break;
 	default: /* this should _REALLY_ never happen */
-		printf("si%d: Uh, it was supported a second ago...\n", unit);
+		kprintf("si%d: Uh, it was supported a second ago...\n", unit);
 		return EINVAL;
 	}
 
@@ -410,7 +410,7 @@ siattach(device_t dev)
 	}
 	switch (regp->initstat) {
 	case 0:
-		printf("si%d: startup timeout - aborting\n", unit);
+		kprintf("si%d: startup timeout - aborting\n", unit);
 		sc->sc_type = SIEMPTY;
 		return EINVAL;
 	case 1:
@@ -431,11 +431,11 @@ siattach(device_t dev)
 		/*
 		 * No modules found, so give up on this one.
 		 */
-		printf("si%d: %s - no ports found\n", unit,
+		kprintf("si%d: %s - no ports found\n", unit,
 			si_type[sc->sc_type]);
 		return 0;
 	default:
-		printf("si%d: download code version error - initstat %x\n",
+		kprintf("si%d: download code version error - initstat %x\n",
 			unit, regp->initstat);
 		return EINVAL;
 	}
@@ -486,14 +486,14 @@ siattach(device_t dev)
 			x = 8;
 			break;
 		default:
-			printf("si%d: unknown module type %d\n",
+			kprintf("si%d: unknown module type %d\n",
 				unit, modp->sm_type);
 			goto try_next;
 		}
 
 		/* this was limited in firmware and is also a driver issue */
 		if ((nport + x) > SI_MAXPORTPERCARD) {
-			printf("si%d: extra ports ignored\n", unit);
+			kprintf("si%d: extra ports ignored\n", unit);
 			goto try_next;
 		}
 
@@ -556,7 +556,7 @@ try_next:
 		if (uart_type == 1000)
 			uart_type = ccbp->type;
 		else if (uart_type != ccbp->type)
-			printf("si%d: Warning: module %d mismatch! (%d%s != %d%s)\n",
+			kprintf("si%d: Warning: module %d mismatch! (%d%s != %d%s)\n",
 			    unit, nmodule,
 			    ccbp->type, si_modulename(sc->sc_type, ccbp->type),
 			    uart_type, si_modulename(sc->sc_type, uart_type));
@@ -578,7 +578,7 @@ try_next:
 		}
 try_next2:
 		if (modp->sm_next == 0) {
-			printf("si%d: card: %s, ports: %d, modules: %d, type: %d%s\n",
+			kprintf("si%d: card: %s, ports: %d, modules: %d, type: %d%s\n",
 				unit,
 				sc->sc_typename,
 				sc->sc_nport,
@@ -1548,7 +1548,7 @@ si_poll(void *nothing)
 		if (regp->int_pending != 0) {
 			if (regp->int_scounter >= 200 &&
 			    regp->initstat == 1) {
-				printf("si%d: lost intr\n", i);
+				kprintf("si%d: lost intr\n", i);
 				lost++;
 			}
 		} else {
@@ -1561,7 +1561,7 @@ si_poll(void *nothing)
 		pp = sc->sc_ports;
 		for (port = 0; port < sc->sc_nport; pp++, port++) {
 			if (pp->sp_delta_overflows > 0) {
-				printf("si%d: %d tty level buffer overflows\n",
+				kprintf("si%d: %d tty level buffer overflows\n",
 					i, pp->sp_delta_overflows);
 				pp->sp_delta_overflows = 0;
 			}
@@ -2149,7 +2149,7 @@ si_dprintf(struct si_port *pp, int flags, const char *fmt, ...)
 	if ((pp == NULL && (si_debug&flags)) ||
 	    (pp != NULL && ((pp->sp_debug&flags) || (si_debug&flags)))) {
 		if (pp != NULL)
-			printf("%ci%d(%d): ", 's',
+			kprintf("%ci%d(%d): ", 's',
 				(int)SI_CARD(minor(pp->sp_tty->t_dev)),
 				(int)SI_PORT(minor(pp->sp_tty->t_dev)));
 		__va_start(ap, fmt);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.21 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.22 2006/12/22 23:26:24 swildner Exp $
  *
  */
 
@@ -197,11 +197,11 @@ rcprobe(dvp)
 	if (dvp->id_unit > NRC)
 		return 0;
 	if (!RC_VALIDADDR(nec)) {
-		printf("rc%d: illegal base address %x\n", dvp->id_unit, nec);
+		kprintf("rc%d: illegal base address %x\n", dvp->id_unit, nec);
 		return 0;
 	}
 	if (!RC_VALIDIRQ(irq)) {
-		printf("rc%d: illegal IRQ value %d\n", dvp->id_unit, irq);
+		kprintf("rc%d: illegal IRQ value %d\n", dvp->id_unit, irq);
 		return 0;
 	}
 	rcout(CD180_PPRL, 0x22); /* Random values to Prescale reg. */
@@ -236,7 +236,7 @@ rcattach(dvp)
 	rcb->rcb_baserc = rc;
 	rcb->rcb_unit	= dvp->id_unit;
 	/*rcb->rcb_chipid = 0x10 + dvp->id_unit;*/
-	printf("rc%d: %d chans, firmware rev. %c\n", rcb->rcb_unit,
+	kprintf("rc%d: %d chans, firmware rev. %c\n", rcb->rcb_unit,
 		CD180_NCHAN, (rcin(CD180_GFRCR) & 0xF) + 'A');
 
 	for (chan = 0; chan < CD180_NCHAN; chan++, rc++) {
@@ -281,7 +281,7 @@ rcintr(void *arg, void *frame)
 	int                             good_data, t_state;
 
 	if (rcb->rcb_probed != RC_ATTACHED) {
-		printf("rc%d: bogus interrupt\n", unit);
+		kprintf("rc%d: bogus interrupt\n", unit);
 		return;
 	}
 	nec = rcb->rcb_addr;
@@ -289,21 +289,21 @@ rcintr(void *arg, void *frame)
 	bsr = ~(rcin(RC_BSR));
 
 	if (!(bsr & (RC_BSR_TOUT|RC_BSR_RXINT|RC_BSR_TXINT|RC_BSR_MOINT))) {
-		printf("rc%d: extra interrupt\n", unit);
+		kprintf("rc%d: extra interrupt\n", unit);
 		rcout(CD180_EOIR, 0);
 		return;
 	}
 
 	while (bsr & (RC_BSR_TOUT|RC_BSR_RXINT|RC_BSR_TXINT|RC_BSR_MOINT)) {
 #ifdef RCDEBUG_DETAILED
-		printf("rc%d: intr (%02x) %s%s%s%s\n", unit, bsr,
+		kprintf("rc%d: intr (%02x) %s%s%s%s\n", unit, bsr,
 			(bsr & RC_BSR_TOUT)?"TOUT ":"",
 			(bsr & RC_BSR_RXINT)?"RXINT ":"",
 			(bsr & RC_BSR_TXINT)?"TXINT ":"",
 			(bsr & RC_BSR_MOINT)?"MOINT":"");
 #endif
 		if (bsr & RC_BSR_TOUT) {
-			printf("rc%d: hardware failure, reset board\n", unit);
+			kprintf("rc%d: hardware failure, reset board\n", unit);
 			rcout(RC_CTOUT, 0);
 			rc_reinit(rcb);
 			return;
@@ -312,7 +312,7 @@ rcintr(void *arg, void *frame)
 			iack = rcin(RC_PILR_RX);
 			good_data = (iack == (GIVR_IT_RGDI | RC_FAKEID));
 			if (!good_data && iack != (GIVR_IT_REI | RC_FAKEID)) {
-				printf("rc%d: fake rxint: %02x\n", unit, iack);
+				kprintf("rc%d: fake rxint: %02x\n", unit, iack);
 				goto more_intrs;
 			}
 			rc = rcb->rcb_baserc + ((rcin(CD180_GICR) & GICR_CHAN) >> GICR_LSH);
@@ -414,7 +414,7 @@ rcintr(void *arg, void *frame)
 		if (bsr & RC_BSR_MOINT) {
 			iack = rcin(RC_PILR_MODEM);
 			if (iack != (GIVR_IT_MSCI | RC_FAKEID)) {
-				printf("rc%d: fake moint: %02x\n", unit, iack);
+				kprintf("rc%d: fake moint: %02x\n", unit, iack);
 				goto more_intrs;
 			}
 			rc = rcb->rcb_baserc + ((rcin(CD180_GICR) & GICR_CHAN) >> GICR_LSH);
@@ -441,7 +441,7 @@ rcintr(void *arg, void *frame)
 		if (bsr & RC_BSR_TXINT) {
 			iack = rcin(RC_PILR_TX);
 			if (iack != (GIVR_IT_TDI | RC_FAKEID)) {
-				printf("rc%d: fake txint: %02x\n", unit, iack);
+				kprintf("rc%d: fake txint: %02x\n", unit, iack);
 				goto more_intrs;
 			}
 			rc = rcb->rcb_baserc + ((rcin(CD180_GICR) & GICR_CHAN) >> GICR_LSH);
@@ -470,7 +470,7 @@ rcintr(void *arg, void *frame)
 			if (optr >= rc->rc_obufend) {
 				rcout(CD180_IER, rc->rc_ier &= ~IER_TxRdy);
 #ifdef RCDEBUG
-				printf("rc%d/%d: output completed\n", unit, rc->rc_chan);
+				kprintf("rc%d/%d: output completed\n", unit, rc->rc_chan);
 #endif
 				if (!(rc->rc_flags & RC_DOXXFER)) {
 					rc_scheduled_event += LOTS_OF_EVENTS;
@@ -521,7 +521,7 @@ struct tty *tp;
 #endif
 	ttwwakeup(tp);
 #ifdef RCDEBUG
-	printf("rcstart: outq = %d obuf = %d\n",
+	kprintf("rcstart: outq = %d obuf = %d\n",
 		tp->t_outq.c_cc, rc->rc_obufend - rc->rc_optr);
 #endif
 	if (tp->t_state & TS_BUSY)
@@ -538,7 +538,7 @@ struct tty *tp;
 		cpu_enable_intr();
 		if (!(rc->rc_ier & IER_TxRdy)) {
 #ifdef RCDEBUG
-			printf("rc%d/%d: rcstart enable txint\n", rc->rc_rcb->rcb_unit, rc->rc_chan);
+			kprintf("rc%d/%d: rcstart enable txint\n", rc->rc_rcb->rcb_unit, rc->rc_chan);
 #endif
 			rcout(CD180_CAR, rc->rc_chan);
 			rcout(CD180_IER, rc->rc_ier |= IER_TxRdy);
@@ -578,7 +578,7 @@ repeat:
 				rc->rc_flags &= ~RC_WAS_BUFOVFL;
 				rc_scheduled_event--;
 				cpu_enable_intr();
-				printf("rc%d/%d: interrupt-level buffer overflow\n",
+				kprintf("rc%d/%d: interrupt-level buffer overflow\n",
 					unit, chan);
 			}
 			if (rc->rc_flags & RC_WAS_SILOVFL) {
@@ -586,7 +586,7 @@ repeat:
 				rc->rc_flags &= ~RC_WAS_SILOVFL;
 				rc_scheduled_event--;
 				cpu_enable_intr();
-				printf("rc%d/%d: silo overflow\n",
+				kprintf("rc%d/%d: silo overflow\n",
 					unit, chan);
 			}
 			if (rc->rc_flags & RC_MODCHG) {
@@ -642,7 +642,7 @@ repeat:
 					tk_rawcc += icnt;
 					tp->t_rawcc += icnt;
 					if (b_to_q(tptr, icnt, &tp->t_rawq))
-						printf("rc%d/%d: tty-level buffer overflow\n",
+						kprintf("rc%d/%d: tty-level buffer overflow\n",
 							unit, chan);
 					ttwakeup(tp);
 					if ((tp->t_state & TS_TTSTOP) && ((tp->t_iflag & IXANY)
@@ -684,7 +684,7 @@ rc_stop(tp, rw)
 	u_char *tptr, *eptr;
 
 #ifdef RCDEBUG
-	printf("rc%d/%d: rc_stop %s%s\n", rc->rc_rcb->rcb_unit, rc->rc_chan,
+	kprintf("rc%d/%d: rc_stop %s%s\n", rc->rc_rcb->rcb_unit, rc->rc_chan,
 		(rw & FWRITE)?"FWRITE ":"", (rw & FREAD)?"FREAD":"");
 #endif
 	if (rw & FWRITE)
@@ -727,7 +727,7 @@ rcopen(struct dev_open_args *ap)
 	dev->si_tty = tp;
 	nec = rc->rc_rcb->rcb_addr;
 #ifdef RCDEBUG
-	printf("rc%d/%d: rcopen: dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
+	kprintf("rc%d/%d: rcopen: dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
 #endif
 	crit_enter();
 
@@ -814,7 +814,7 @@ rcclose(struct dev_close_args *ap)
 	rc  = &rc_chans[unit];
 	tp  = rc->rc_tp;
 #ifdef RCDEBUG
-	printf("rc%d/%d: rcclose dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
+	kprintf("rc%d/%d: rcclose dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
 #endif
 	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
@@ -1211,7 +1211,7 @@ int rc_test(nec, unit)
 	static  u_char  ctest[] = "\377\125\252\045\244\0\377";
 #define CTLEN   8
 #define ERR(s)  { \
-		printf("rc%d: ", unit); printf s ; printf("\n"); \
+		kprintf("rc%d: ", unit); kprintf s ; kprintf("\n"); \
 		crit_exit(); return 1; }
 
 	struct rtest {
@@ -1347,7 +1347,7 @@ char             *comment;
 	u_short f = rc->rc_flags;
 	int    nec = rc->rc_rcb->rcb_addr;
 
-	printf("rc%d/%d: %s flags: %s%s%s%s%s%s%s%s%s%s%s%s\n",
+	kprintf("rc%d/%d: %s flags: %s%s%s%s%s%s%s%s%s%s%s%s\n",
 		rc->rc_rcb->rcb_unit, rc->rc_chan, comment,
 		(f & RC_DTR_OFF)?"DTR_OFF " :"",
 		(f & RC_ACTOUT) ?"ACTOUT " :"",
@@ -1364,7 +1364,7 @@ char             *comment;
 
 	rcout(CD180_CAR, rc->rc_chan);
 
-	printf("rc%d/%d: msvr %02x ier %02x ccsr %02x\n",
+	kprintf("rc%d/%d: msvr %02x ier %02x ccsr %02x\n",
 		rc->rc_rcb->rcb_unit, rc->rc_chan,
 		rcin(CD180_MSVR),
 		rcin(CD180_IER),
@@ -1438,6 +1438,6 @@ rc_wait0(nec, unit, chan, line)
 	for (rcnt = 50; rcnt && rcin(CD180_CCR); rcnt--)
 		DELAY(30);
 	if (rcnt == 0)
-		printf("rc%d/%d: channel command timeout, rc.c line: %d\n",
+		kprintf("rc%d/%d: channel command timeout, rc.c line: %d\n",
 		      unit, chan, line);
 }

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.20 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.21 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -260,7 +260,7 @@ ar_attach(device_t device)
 	hc = (struct ar_hardc *)device_get_softc(device);
 	lwkt_serialize_init(&ar_serializer);
 
-	printf("arc%d: %uK RAM, %u ports, rev %u.\n",
+	kprintf("arc%d: %uK RAM, %u ports, rev %u.\n",
 		hc->cunit,
 		hc->memsize/1024,
 		hc->numports,
@@ -316,7 +316,7 @@ ar_attach(device_t device)
 		case AR_IFACE_COMBO: iface = "COMBO X.21 / EIA-530"; break;
 		}
 
-		printf("ar%d: Adapter %d, port %d, interface %s.\n",
+		kprintf("ar%d: Adapter %d, port %d, interface %s.\n",
 			sc->unit,
 			hc->cunit,
 			sc->subunit,
@@ -364,7 +364,7 @@ ar_detach(device_t device)
 	if (hc->intr_cookie != NULL) {
 		if (BUS_TEARDOWN_INTR(parent, device,
 			hc->res_irq, hc->intr_cookie) != 0) {
-				printf("intr teardown failed.. continuing\n");
+				kprintf("intr teardown failed.. continuing\n");
 		}
 		hc->intr_cookie = NULL;
 	}
@@ -514,14 +514,14 @@ arintr(void *arg)
 		arisr = ar_inb(hc, AR_ISTAT);
 
 	while(arisr & AR_BD_INT) {
-		TRC(printf("arisr = %x\n", arisr));
+		TRC(kprintf("arisr = %x\n", arisr));
 		if(arisr & AR_INT_0)
 			scano = 0;
 		else if(arisr & AR_INT_1)
 			scano = 1;
 		else {
 			/* XXX Oops this shouldn't happen. */
-			printf("arc%d: Interrupted with no interrupt.\n",
+			kprintf("arc%d: Interrupted with no interrupt.\n",
 				hc->cunit);
 			return;
 		}
@@ -534,7 +534,7 @@ arintr(void *arg)
 		isr1 = sca->isr1;
 		isr2 = sca->isr2;
 
-		TRC(printf("arc%d: ARINTR isr0 %x, isr1 %x, isr2 %x\n",
+		TRC(kprintf("arc%d: ARINTR isr0 %x, isr1 %x, isr2 %x\n",
 			hc->cunit,
 			isr0,
 			isr1,
@@ -687,7 +687,7 @@ top_arstart:
 	for(;;) {
 		len = mtx->m_pkthdr.len;
 
-		TRC(printf("ar%d: ARstart len %u\n", sc->unit, len));
+		TRC(kprintf("ar%d: ARstart len %u\n", sc->unit, len));
 
 		/*
 		 * We can do this because the tx buffers don't wrap.
@@ -752,11 +752,11 @@ top_arstart:
 	blkp->txeda = (u_short)((u_int)&txdesc[i]);
 
 #if 0
-	printf("ARstart: %p desc->cp %x\n", &txdesc->cp, txdesc->cp);
-	printf("ARstart: %p desc->bp %x\n", &txdesc->bp, txdesc->bp);
-	printf("ARstart: %p desc->bpb %x\n", &txdesc->bpb, txdesc->bpb);
-	printf("ARstart: %p desc->len %x\n", &txdesc->len, txdesc->len);
-	printf("ARstart: %p desc->stat %x\n", &txdesc->stat, txdesc->stat);
+	kprintf("ARstart: %p desc->cp %x\n", &txdesc->cp, txdesc->cp);
+	kprintf("ARstart: %p desc->bp %x\n", &txdesc->bp, txdesc->bp);
+	kprintf("ARstart: %p desc->bpb %x\n", &txdesc->bpb, txdesc->bpb);
+	kprintf("ARstart: %p desc->len %x\n", &txdesc->len, txdesc->len);
+	kprintf("ARstart: %p desc->stat %x\n", &txdesc->stat, txdesc->stat);
 #endif
 
 	sc->txb_inuse++;
@@ -838,7 +838,7 @@ arwatchdog(struct ar_softc *sc)
 		ARC_SET_SCA(sc->hc, sc->scano);
 
 	/* XXX if(sc->ifsppp.pp_if.if_flags & IFF_DEBUG) */
-		printf("ar%d: transmit failed, "
+		kprintf("ar%d: transmit failed, "
 			"ST0 %x, ST1 %x, ST3 %x, DSR %x.\n",
 			sc->unit,
 			msci->st0,
@@ -878,7 +878,7 @@ ar_up(struct ar_softc *sc)
 	sca = sc->sca;
 	msci = &sca->msci[sc->scachan];
 
-	TRC(printf("ar%d: sca %p, msci %p, ch %d\n",
+	TRC(kprintf("ar%d: sca %p, msci %p, ch %d\n",
 		sc->unit, sca, msci, sc->scachan));
 
 	/*
@@ -996,9 +996,9 @@ ar_read_pim_iface(volatile struct ar_hardc *hc, int channel)
 	*pimctrl = 0x00;
 	*pimctrl = AR_PIM_READ;
 	x = *pimctrl;
-	TRC(printf("x = %x", x));
+	TRC(kprintf("x = %x", x));
 	if(x & AR_PIM_DATA) {
-		printf("No PIM installed\n");
+		kprintf("No PIM installed\n");
 		return (AR_IFACE_UNKNOWN);
 	}
 
@@ -1010,7 +1010,7 @@ ar_read_pim_iface(volatile struct ar_hardc *hc, int channel)
 		*pimctrl = AR_PIM_READ;
 		*pimctrl = AR_PIM_READ | AR_PIM_STROBE;
 		x = *pimctrl;
-		TRC(printf(" %x ", x));
+		TRC(kprintf(" %x ", x));
 		x = (x >> 1) & 0x01;
 		val |= x << i;
 		if(i == 8 && (val & 0x000f) == 0x0004) {
@@ -1038,7 +1038,7 @@ ar_read_pim_iface(volatile struct ar_hardc *hc, int channel)
 
 			x = *pimctrl;
 			if(x & AR_PIM_DATA)
-				printf("\nOops A2D start bit not zero (%X)\n", x);
+				kprintf("\nOops A2D start bit not zero (%X)\n", x);
 
 			for(ii = 7; ii >= 0; ii--) {
 				*pimctrl = 0x00;
@@ -1049,7 +1049,7 @@ ar_read_pim_iface(volatile struct ar_hardc *hc, int channel)
 			}
 		}
 	}
-	TRC(printf("\nPIM val %x, ctype %x, %d\n", val, ctype, ctype));
+	TRC(kprintf("\nPIM val %x, ctype %x, %d\n", val, ctype, ctype));
 	*pimctrl = AR_PIM_MODEG;
 	*pimctrl = AR_PIM_MODEG | AR_PIM_AUTO_LED;
 	if(ctype > 255)
@@ -1125,7 +1125,7 @@ arc_init(struct ar_hardc *hc)
 		mar = memst >> 16;
 		isr = irqtable[hc->isa_irq] << 1;
 		if(isr == 0)
-			printf("ar%d: Warning illegal interrupt %d\n",
+			kprintf("ar%d: Warning illegal interrupt %d\n",
 				hc->cunit, hc->isa_irq);
 		isr = isr | ((memst & 0xc000) >> 10);
 
@@ -1192,7 +1192,7 @@ arc_init(struct ar_hardc *hc)
 				/ AR_BUF_SIZ;
 			next += bufmem;
 
-			TRC(printf("ar%d: blk %d: txdesc %x, txstart %x, "
+			TRC(kprintf("ar%d: blk %d: txdesc %x, txstart %x, "
 				   "txend %x, txmax %d\n",
 				   x,
 				   blk,
@@ -1211,7 +1211,7 @@ arc_init(struct ar_hardc *hc)
 		sc->rxend = next + bufmem;
 		sc->rxmax = (sc->rxend - sc->rxstart) / AR_BUF_SIZ;
 		next += bufmem;
-		TRC(printf("ar%d: rxdesc %x, rxstart %x, "
+		TRC(kprintf("ar%d: rxdesc %x, rxstart %x, "
 			   "rxend %x, rxmax %d\n",
 			   x, sc->rxdesc, sc->rxstart, sc->rxend, sc->rxmax));
 	}
@@ -1386,7 +1386,7 @@ ar_init_rx_dmac(struct ar_softc *sc)
 
 		x++;
 		if(x < 6)
-		TRC(printf("Descrp %p, data pt %x, data %x, ",
+		TRC(kprintf("Descrp %p, data pt %x, data %x, ",
 			rxd, rxda, rxbuf));
 
 		rxd->bp = (u_short)(rxbuf & 0xfffful);
@@ -1395,7 +1395,7 @@ ar_init_rx_dmac(struct ar_softc *sc)
 		rxd->stat = 0xff; /* The sca write here when it is finished. */
 
 		if(x < 6)
-		TRC(printf("bpb %x, bp %x.\n", rxd->bpb, rxd->bp));
+		TRC(kprintf("bpb %x, bp %x.\n", rxd->bpb, rxd->bp));
 	}
 	rxd--;
 	rxd->cp = (u_short)(sc->rxdesc & 0xfffful);
@@ -1457,7 +1457,7 @@ ar_init_tx_dmac(struct ar_softc *sc)
 
 			txd->bp = (u_short)(txbuf & 0xfffful);
 			txd->bpb = (u_char)((txbuf >> 16) & 0xff);
-			TRC(printf("ar%d: txbuf %x, bpb %x, bp %x\n",
+			TRC(kprintf("ar%d: txbuf %x, bpb %x, bp %x\n",
 				sc->unit, txbuf, txd->bpb, txd->bp));
 			txd->len = 0;
 			txd->stat = 0;
@@ -1466,7 +1466,7 @@ ar_init_tx_dmac(struct ar_softc *sc)
 		txd->cp = (u_short)(blkp->txdesc & 0xfffful);
 
 		blkp->txtail = (u_int)txd - (u_int)sc->hc->mem_start;
-		TRC(printf("TX Descriptors start %x, end %x.\n",
+		TRC(kprintf("TX Descriptors start %x, end %x.\n",
 			blkp->txdesc,
 			blkp->txtail));
 	}
@@ -1525,7 +1525,7 @@ ar_packet_avail(struct ar_softc *sc,
 
 		if(rxdesc->stat & SCA_DESC_EOM) {
 			*rxstat = rxdesc->stat;
-			TRC(printf("ar%d: PKT AVAIL len %d, %x.\n",
+			TRC(kprintf("ar%d: PKT AVAIL len %d, %x.\n",
 				sc->unit, *len, *rxstat));
 			return (1);
 		}
@@ -1627,7 +1627,7 @@ ar_eat_packet(struct ar_softc *sc, int single)
 	while(rxdesc != cda) {
 		loopcnt++;
 		if(loopcnt > sc->rxmax) {
-			printf("ar%d: eat pkt %d loop, cda %p, "
+			kprintf("ar%d: eat pkt %d loop, cda %p, "
 			       "rxdesc %p, stat %x.\n",
 			       sc->unit,
 			       loopcnt,
@@ -1685,7 +1685,7 @@ ar_get_packets(struct ar_softc *sc)
 #endif
 
 	while(ar_packet_avail(sc, &len, &rxstat)) {
-		TRC(printf("apa: len %d, rxstat %x\n", len, rxstat));
+		TRC(kprintf("apa: len %d, rxstat %x\n", len, rxstat));
 		if(((rxstat & SCA_DESC_ERRORS) == 0) && (len < MCLBYTES)) {
 			m =  m_getl(len, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 			if(m == NULL) {
@@ -1750,7 +1750,7 @@ ar_get_packets(struct ar_softc *sc)
 			if(sc->hc->bustype == AR_BUS_ISA)
 				ARC_SET_SCA(sc->hc, sc->scano);
 
-			TRCL(printf("ar%d: Receive error chan %d, "
+			TRCL(kprintf("ar%d: Receive error chan %d, "
 					"stat %x, msci st3 %x,"
 					"rxhind %d, cda %x, eda %x.\n",
 					sc->unit,
@@ -1811,7 +1811,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 			/* Counter overflow */
 			if(dsr & SCA_DSR_COF) {
-				printf("ar%d: TX DMA Counter overflow, "
+				kprintf("ar%d: TX DMA Counter overflow, "
 					"txpacket no %lu.\n",
 					sc->unit,
 #ifndef	NETGRAPH
@@ -1825,7 +1825,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 			/* Buffer overflow */
 			if(dsr & SCA_DSR_BOF) {
-				printf("ar%d: TX DMA Buffer overflow, "
+				kprintf("ar%d: TX DMA Buffer overflow, "
 					"txpacket no %lu, dsr %02x, "
 					"cda %04x, eda %04x.\n",
 					sc->unit,
@@ -1880,7 +1880,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 			dsr = dmac->dsr;
 			dmac->dsr = dsr;
 
-			TRC(printf("AR: RX DSR %x\n", dsr));
+			TRC(kprintf("AR: RX DSR %x\n", dsr));
 
 			/* End of frame */
 			if(dsr & SCA_DSR_EOM) {
@@ -1899,13 +1899,13 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 					if(hc->bustype == AR_BUS_ISA)
 						ARC_SET_SCA(hc, scano);
-					printf("AR: RXINTR isr1 %x, dsr %x, "
+					kprintf("AR: RXINTR isr1 %x, dsr %x, "
 					       "no data %d pkts, orxhind %d.\n",
 					       dotxstart,
 					       dsr,
 					       tt,
 					       ind);
-					printf("AR: rxdesc %x, rxstart %x, "
+					kprintf("AR: rxdesc %x, rxstart %x, "
 					       "rxend %x, rxhind %d, "
 					       "rxmax %d.\n",
 					       sc->rxdesc,
@@ -1913,7 +1913,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 					       sc->rxend,
 					       sc->rxhind,
 					       sc->rxmax);
-					printf("AR: cda %x, eda %x.\n",
+					kprintf("AR: cda %x, eda %x.\n",
 					       dmac->cda,
 					       dmac->eda);
 
@@ -1925,7 +1925,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 						  (sc->rxdesc & sc->hc->winmsk));
 					rxdesc = &rxdesc[sc->rxhind];
 					for(i=0;i<3;i++,rxdesc++)
-						printf("AR: rxdesc->stat %x, "
+						kprintf("AR: rxdesc->stat %x, "
 							"len %d.\n",
 							rxdesc->stat,
 							rxdesc->len);
@@ -1934,7 +1934,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 			/* Counter overflow */
 			if(dsr & SCA_DSR_COF) {
-				printf("ar%d: RX DMA Counter overflow, "
+				kprintf("ar%d: RX DMA Counter overflow, "
 					"rxpkts %lu.\n",
 					sc->unit,
 #ifndef	NETGRAPH
@@ -1950,7 +1950,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 			if(dsr & SCA_DSR_BOF) {
 				if(hc->bustype == AR_BUS_ISA)
 					ARC_SET_SCA(hc, scano);
-				printf("ar%d: RX DMA Buffer overflow, "
+				kprintf("ar%d: RX DMA Buffer overflow, "
 					"rxpkts %lu, rxind %d, "
 					"cda %x, eda %x, dsr %x.\n",
 					sc->unit,
@@ -1978,7 +1978,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				sca->msci[mch].cmd = SCA_CMD_RXMSGREJ;
 				dmac->dsr = SCA_DSR_DE;
 
-				TRC(printf("ar%d: RX DMA Buffer overflow, "
+				TRC(kprintf("ar%d: RX DMA Buffer overflow, "
 					"rxpkts %lu, rxind %d, "
 					"cda %x, eda %x, dsr %x. After\n",
 					sc->unit,
@@ -1998,7 +1998,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				 *
 				 * XXX We should enable the dma again.
 				 */
-				printf("ar%d: RX End of transfer, rxpkts %lu.\n",
+				kprintf("ar%d: RX End of transfer, rxpkts %lu.\n",
 					sc->unit,
 #ifndef	NETGRAPH
 					sc->ifsppp.pp_if.if_ipackets);
@@ -2035,13 +2035,13 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 static void
 ar_msci_intr(struct ar_hardc *hc, int scano, u_char isr0)
 {
-	printf("arc%d: ARINTR: MSCI\n", hc->cunit);
+	kprintf("arc%d: ARINTR: MSCI\n", hc->cunit);
 }
 
 static void
 ar_timer_intr(struct ar_hardc *hc, int scano, u_char isr2)
 {
-	printf("arc%d: ARINTR: TIMER\n", hc->cunit);
+	kprintf("arc%d: ARINTR: TIMER\n", hc->cunit);
 }
 
 
@@ -2279,7 +2279,7 @@ ngar_shutdown(node_p node)
 	ksprintf(sc->nodename, "%s%d", NG_AR_NODE_TYPE, sc->unit);
 	if (ng_name_node(sc->node, sc->nodename)) {
 		sc->node = NULL;
-		printf("node naming failed\n");
+		kprintf("node naming failed\n");
 		NG_NODE_UNREF(sc->node); /* node dissappears */
 		return (0);
 	}
@@ -2333,7 +2333,7 @@ static void
 ngar_init(void *ignored)
 {
 	if (ng_newtype(&typestruct))
-		printf("ngar install failed\n");
+		kprintf("ngar install failed\n");
 	ngar_done_init = 1;
 }
 #endif /* NETGRAPH */

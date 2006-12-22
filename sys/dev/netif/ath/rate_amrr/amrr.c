@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_amrr/amrr.c,v 1.3 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_amrr/amrr.c,v 1.4 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -73,7 +73,7 @@
 #ifdef AMRR_DEBUG
 #define	DPRINTF(sc, _fmt, ...) do {					\
 	if (sc->sc_debug & 0x10)					\
-		printf(_fmt, __VA_ARGS__);				\
+		kprintf(_fmt, __VA_ARGS__);				\
 } while (0)
 #else
 #define	DPRINTF(sc, _fmt, ...)
@@ -530,7 +530,7 @@ amrr_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if (bootverbose)
-			printf("ath_rate: <AMRR rate control algorithm> version 0.1\n");
+			kprintf("ath_rate: <AMRR rate control algorithm> version 0.1\n");
 		return 0;
 	case MOD_UNLOAD:
 		return 0;

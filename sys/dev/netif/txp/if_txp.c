@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.40 2006/10/25 20:55:59 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.41 2006/12/22 23:26:22 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1617,30 +1617,30 @@ txp_show_descriptor(void *d)
 	switch (cmd->cmd_flags & CMD_FLAGS_TYPE_M) {
 	case CMD_FLAGS_TYPE_CMD:
 		/* command descriptor */
-		printf("[cmd flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
+		kprintf("[cmd flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
 		    cmd->cmd_flags, cmd->cmd_numdesc, cmd->cmd_id, cmd->cmd_seq,
 		    cmd->cmd_par1, cmd->cmd_par2, cmd->cmd_par3);
 		break;
 	case CMD_FLAGS_TYPE_RESP:
 		/* response descriptor */
-		printf("[rsp flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
+		kprintf("[rsp flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
 		    rsp->rsp_flags, rsp->rsp_numdesc, rsp->rsp_id, rsp->rsp_seq,
 		    rsp->rsp_par1, rsp->rsp_par2, rsp->rsp_par3);
 		break;
 	case CMD_FLAGS_TYPE_DATA:
 		/* data header (assuming tx for now) */
-		printf("[data flags 0x%x num %d totlen %d addr 0x%x/0x%x pflags 0x%x]",
+		kprintf("[data flags 0x%x num %d totlen %d addr 0x%x/0x%x pflags 0x%x]",
 		    txd->tx_flags, txd->tx_numdesc, txd->tx_totlen,
 		    txd->tx_addrlo, txd->tx_addrhi, txd->tx_pflags);
 		break;
 	case CMD_FLAGS_TYPE_FRAG:
 		/* fragment descriptor */
-		printf("[frag flags 0x%x rsvd1 0x%x len %d addr 0x%x/0x%x rsvd2 0x%x]",
+		kprintf("[frag flags 0x%x rsvd1 0x%x len %d addr 0x%x/0x%x rsvd2 0x%x]",
 		    frgd->frag_flags, frgd->frag_rsvd1, frgd->frag_len,
 		    frgd->frag_addrlo, frgd->frag_addrhi, frgd->frag_rsvd2);
 		break;
 	default:
-		printf("[unknown(%x) flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
+		kprintf("[unknown(%x) flags 0x%x num %d id %d seq %d par1 0x%x par2 0x%x par3 0x%x]\n",
 		    cmd->cmd_flags & CMD_FLAGS_TYPE_M,
 		    cmd->cmd_flags, cmd->cmd_numdesc, cmd->cmd_id, cmd->cmd_seq,
 		    cmd->cmd_par1, cmd->cmd_par2, cmd->cmd_par3);

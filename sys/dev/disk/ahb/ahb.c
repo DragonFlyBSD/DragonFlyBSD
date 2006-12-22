@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.13 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.14 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -229,7 +229,7 @@ ahbprobe(device_t dev)
 	    irq = 15;
 	    break;
 	default:
-	    printf("Adaptec 174X at slot %d: illegal "
+	    kprintf("Adaptec 174X at slot %d: illegal "
 		   "irq setting %d\n", eisa_get_slot(dev),
 		   (intdef & 0x7));
 	    irq = 0;
@@ -435,7 +435,7 @@ ahbreset(struct ahb_softc *ahb)
 	int	test;
 
 	if ((ahb_inb(ahb, PORTADDR) & PORTADDR_ENHANCED) == 0) {
-		printf("ahb_reset: Controller not in enhanced mode\n");
+		kprintf("ahb_reset: Controller not in enhanced mode\n");
 		return (-1);
 	}
 
@@ -449,11 +449,11 @@ ahbreset(struct ahb_softc *ahb)
 	}
 
 	if (wait == 0) {
-		printf("ahbreset: No answer from aha1742 board\n");
+		kprintf("ahbreset: No answer from aha1742 board\n");
 		return (-1);
 	}
 	if ((test = ahb_inb(ahb, MBOXIN0)) != 0) {
-		printf("ahb_reset: self test failed, val = 0x%x\n", test);
+		kprintf("ahb_reset: self test failed, val = 0x%x\n", test);
 		return (-1);
 	}
 	while (ahb_inb(ahb, HOSTSTAT) & HOSTSTAT_INTPEND) {
@@ -510,7 +510,7 @@ ahbxptattach(struct ahb_softc *ahb)
 
 	ahb->num_ecbs = MIN(ahb->num_ecbs,
 			    ahb->ha_inq_data->scsi_data.reserved[1]);
-	printf("ahb%ld: %.8s %s SCSI Adapter, FW Rev. %.4s, ID=%d, %d ECBs\n",
+	kprintf("ahb%ld: %.8s %s SCSI Adapter, FW Rev. %.4s, ID=%d, %d ECBs\n",
 	       ahb->unit, ahb->ha_inq_data->scsi_data.product,
 	       (ahb->ha_inq_data->scsi_data.flags & 0x4) ? "Differential"
 							 : "Single Ended",
@@ -558,7 +558,7 @@ ahbhandleimmed(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 	u_int target_id;
 
 	if (ahb->immed_cmd == 0) {
-		printf("ahb%ld: Immediate Command complete with no "
+		kprintf("ahb%ld: Immediate Command complete with no "
 		       " pending command\n", ahb->unit);
 		return;
 	}
@@ -599,11 +599,11 @@ ahbhandleimmed(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 
 	if (ahb->immed_ecb != NULL) {
 		ahb->immed_ecb = NULL;
-		printf("ahb%ld: No longer in timeout\n", ahb->unit);
+		kprintf("ahb%ld: No longer in timeout\n", ahb->unit);
 	} else if (target_id == ahb->scsi_id)
-		printf("ahb%ld: SCSI Bus Reset Delivered\n", ahb->unit);
+		kprintf("ahb%ld: SCSI Bus Reset Delivered\n", ahb->unit);
 	else
-		printf("ahb%ld:  Bus Device Reset Delibered to target %d\n",
+		kprintf("ahb%ld:  Bus Device Reset Delibered to target %d\n",
 		       ahb->unit, target_id);
 
 	ahb->immed_cmd = 0;
@@ -703,7 +703,7 @@ ahbprocesserror(struct ahb_softc *ahb, struct ecb *ecb, union ccb *ccb)
 		struct ccb_trans_settings neg; 
 
 		xpt_print_path(ccb->ccb_h.path);
-		printf("refuses tagged commands.  Performing "
+		kprintf("refuses tagged commands.  Performing "
 		       "non-tagged I/O\n");
 		neg.flags = 0;
 		neg.valid = CCB_TRANS_TQ_VALID;
@@ -729,7 +729,7 @@ ahbprocesserror(struct ahb_softc *ahb, struct ecb *ecb, union ccb *ccb)
 		ccb->ccb_h.status = CAM_SCSI_BUS_RESET;
 		break;
 	case HS_INVALID_ECB_PARAM:
-		printf("ahb%ld: opcode 0x%02x, flag_word1 0x%02x, flag_word2 0x%02x\n",
+		kprintf("ahb%ld: opcode 0x%02x, flag_word1 0x%02x, flag_word2 0x%02x\n",
 			ahb->unit, hecb->opcode, hecb->flag_word1, hecb->flag_word2);	
 		ccb->ccb_h.status = CAM_SCSI_BUS_RESET;
 		break;
@@ -786,7 +786,7 @@ ahbdone(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 	} else {
 		/* Non CCB Command */
 		if ((intstat & INTSTAT_MASK) != INTSTAT_ECB_OK) {
-			printf("ahb%ld: Command 0%x Failed %x:%x:%x\n",
+			kprintf("ahb%ld: Command 0%x Failed %x:%x:%x\n",
 			       ahb->unit, ecb->hecb.opcode,
 			       *((u_int16_t*)&ecb->status),
 			       ecb->status.ha_status, ecb->status.resid_count);
@@ -834,11 +834,11 @@ ahbintr(void *arg)
 				xpt_print_path(ahb->path);
 				switch (mbox) {
 				case HS_SCSI_RESET_ADAPTER:
-					printf("Host Adapter Initiated "
+					kprintf("Host Adapter Initiated "
 					       "Bus Reset occurred\n");
 					break;
 				case HS_SCSI_RESET_INCOMING:
-					printf("Bus Reset Initiated "
+					kprintf("Bus Reset Initiated "
 					       "by another device occurred\n");
 					break;
 				}
@@ -846,7 +846,7 @@ ahbintr(void *arg)
 				xpt_async(AC_BUS_RESET, ahb->path, NULL);
 				break;
 			}
-			printf("Unsupported initiator selection AEN occured\n");
+			kprintf("Unsupported initiator selection AEN occured\n");
 			break;
 		case INTSTAT_IMMED_OK:
 		case INTSTAT_IMMED_ERR:
@@ -872,7 +872,7 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			printf("ahb%ld: Unexepected error 0x%x returned from "
+			kprintf("ahb%ld: Unexepected error 0x%x returned from "
 			       "bus_dmamap_load\n", ahb->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
@@ -1235,13 +1235,13 @@ ahbtimeout(void *arg)
 	ccb = ecb->ccb;
 	ahb = (struct ahb_softc *)ccb->ccb_h.ccb_ahb_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("ECB %p - timed out\n", (void *)ecb);
+	kprintf("ECB %p - timed out\n", (void *)ecb);
 
 	crit_enter();
 
 	if ((ecb->state & ECB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("ECB %p - timed out ECB already completed\n",
+		kprintf("ECB %p - timed out ECB already completed\n",
 		       (void *)ecb);
 		crit_exit();
 		return;
@@ -1288,7 +1288,7 @@ ahbtimeout(void *arg)
 		 * later which will attempt a bus reset.
 		 */
 		xpt_print_path(ccb->ccb_h.path);
-		printf("Queuing BDR\n");
+		kprintf("Queuing BDR\n");
 		ecb->state |= ECB_DEVICE_RESET;
 		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, ahbtimeout, ecb);
 
@@ -1300,7 +1300,7 @@ ahbtimeout(void *arg)
 		 * have already attempted to clear the condition with a BDR.
 		 */
 		xpt_print_path(ccb->ccb_h.path);
-		printf("Attempting SCSI Bus reset\n");
+		kprintf("Attempting SCSI Bus reset\n");
 		ecb->state |= ECB_SCSIBUS_RESET;
 		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, ahbtimeout, ecb);
 		ahb->immed_cmd = IMMED_RESET;

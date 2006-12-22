@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.18 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.19 2006/12/22 23:26:17 swildner Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ MALLOC_DEFINE(M_LPT, "lpt", "LPT buffers");
 #define lprintf(args)						\
 		do {						\
 			if (lptflag)				\
-				printf args;			\
+				kprintf args;			\
 		} while (0)
 static int volatile lptflag = 1;
 #endif
@@ -315,7 +315,7 @@ lpt_detect(device_t dev)
 	status = 1;				/* assume success */
 
 	if ((error = lpt_request_ppbus(dev, PPB_DONTWAIT))) {
-		printf(LPT_NAME ": cannot alloc ppbus (%d)!\n", error);
+		kprintf(LPT_NAME ": cannot alloc ppbus (%d)!\n", error);
 		status = 0;
 		goto end_probe;
 	}
@@ -371,7 +371,7 @@ lpt_attach(device_t dev)
 	callout_init(&sc->sc_callout);
 
 	if ((error = lpt_request_ppbus(dev, PPB_DONTWAIT))) {
-		printf(LPT_NAME ": cannot alloc ppbus (%d)!\n", error);
+		kprintf(LPT_NAME ": cannot alloc ppbus (%d)!\n", error);
 		return (0);
 	}
 

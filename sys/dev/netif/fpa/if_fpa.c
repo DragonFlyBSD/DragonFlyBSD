@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.16 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ pdq_pci_attach(
     pdq_uint32_t data;
 
     if (unit == NFPA) {
-	printf("fpa%d: not configured; kernel is built for only %d device%s.\n",
+	kprintf("fpa%d: not configured; kernel is built for only %d device%s.\n",
 	       unit, NFPA, NFPA == 1 ? "" : "s");
 	return;
     }
@@ -255,7 +255,7 @@ pdq_pci_probe(
     irq = (1 << (pci_inl(pa, PCI_I_LINE) & 0xFF));
 
     if (ia->ia_irq != IRQUNK && irq != ia->ia_irq) {
-	printf("fpa%d: error: desired IRQ of %d does not match device's actual IRQ of %d\n",
+	kprintf("fpa%d: error: desired IRQ of %d does not match device's actual IRQ of %d\n",
 	       cf->cf_unit,
 	       ffs(ia->ia_irq) - 1, ffs(irq) - 1);
 	return 0;
@@ -310,7 +310,7 @@ pdq_pci_attach(
 				sc->sc_if.if_dname, sc->sc_if.if_dunit,
 				(void *) sc, PDQ_DEFPA);
     if (sc->sc_pdq == NULL) {
-	printf("%s: initialization failed\n", sc->sc_if.if_xname);
+	kprintf("%s: initialization failed\n", sc->sc_if.if_xname);
 	return;
     }
 
@@ -400,7 +400,7 @@ pdq_pci_attach(
 				sc->sc_if.if_xname, 0,
 				(void *) sc, PDQ_DEFPA);
     if (sc->sc_pdq == NULL) {
-	printf("%s: initialization failed\n", sc->sc_dev.dv_xname);
+	kprintf("%s: initialization failed\n", sc->sc_dev.dv_xname);
 	return;
     }
 
@@ -409,24 +409,24 @@ pdq_pci_attach(
 
     if (pci_intr_map(pa->pa_pc, pa->pa_intrtag, pa->pa_intrpin,
 		     pa->pa_intrline, &intrhandle)) {
-	printf("%s: couldn't map interrupt\n", self->dv_xname);
+	kprintf("%s: couldn't map interrupt\n", self->dv_xname);
 	return;
     }
     intrstr = pci_intr_string(pa->pa_pc, intrhandle);
     sc->sc_ih = pci_intr_establish(pa->pa_pc, intrhandle, IPL_NET, pdq_pci_ifintr, sc);
     if (sc->sc_ih == NULL) {
-	printf("%s: couldn't establish interrupt", self->dv_xname);
+	kprintf("%s: couldn't establish interrupt", self->dv_xname);
 	if (intrstr != NULL)
-	    printf(" at %s", intrstr);
-	printf("\n");
+	    kprintf(" at %s", intrstr);
+	kprintf("\n");
 	return;
     }
 
     sc->sc_ats = shutdownhook_establish((void (*)(void *)) pdq_hwreset, sc->sc_pdq);
     if (sc->sc_ats == NULL)
-	printf("%s: warning: couldn't establish shutdown hook\n", self->dv_xname);
+	kprintf("%s: warning: couldn't establish shutdown hook\n", self->dv_xname);
     if (intrstr != NULL)
-	printf("%s: interrupting at %s\n", self->dv_xname, intrstr);
+	kprintf("%s: interrupting at %s\n", self->dv_xname, intrstr);
 }
 
 struct cfattach fpa_ca = {

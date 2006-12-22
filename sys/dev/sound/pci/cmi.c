@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -143,7 +143,7 @@ cmi_rd(struct sc_info *sc, int regno, int size)
 	case 4:
 		return bus_space_read_4(sc->st, sc->sh, regno);
 	default:
-		DEB(printf("cmi_rd: failed 0x%04x %d\n", regno, size));
+		DEB(kprintf("cmi_rd: failed 0x%04x %d\n", regno, size));
 		return 0xFFFFFFFF;
 	}
 }
@@ -217,7 +217,7 @@ cmpci_rate_to_regvalue(int rate)
 		}
 	}
 
-	DEB(printf("cmpci_rate_to_regvalue: %d -> %d\n", rate, cmi_rates[i]));
+	DEB(kprintf("cmpci_rate_to_regvalue: %d -> %d\n", rate, cmi_rates[i]));
 
 	r = ((i >> 1) | (i << 2)) & 0x07;
 	return r;
@@ -229,7 +229,7 @@ cmpci_regvalue_to_rate(u_int32_t r)
 	int i;
 
 	i = ((r << 1) | (r >> 2)) & 0x07;
-	DEB(printf("cmpci_regvalue_to_rate: %d -> %d\n", r, i));
+	DEB(kprintf("cmpci_regvalue_to_rate: %d -> %d\n", r, i));
 	return cmi_rates[i];
 }
 
@@ -288,7 +288,7 @@ cmi_ch1_start(struct sc_info *sc, struct sc_chinfo *ch)
 	/* Enable Interrupts */
 	cmi_set4(sc, CMPCI_REG_INTR_CTRL,
 		 CMPCI_REG_CH1_INTR_ENABLE);
-	DEB(printf("cmi_ch1_start: dma prog\n"));
+	DEB(kprintf("cmi_ch1_start: dma prog\n"));
 	ch->dma_active = 1;
 }
 
@@ -344,7 +344,7 @@ cmichan_init(kobj_t obj, void *devinfo,
 	ch->buffer     = b;
 	ch->dma_active = 0;
 	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0) {
-		DEB(printf("cmichan_init failed\n"));
+		DEB(kprintf("cmichan_init failed\n"));
 		return NULL;
 	}
 
@@ -441,7 +441,7 @@ cmichan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	snd_mtxunlock(sc->lock);
 	ch->spd = cmpci_regvalue_to_rate(r);
 
-	DEB(printf("cmichan_setspeed (%s) %d -> %d (%d)\n",
+	DEB(kprintf("cmichan_setspeed (%s) %d -> %d (%d)\n",
 		   (ch->dir == PCMDIR_PLAY) ? "play" : "rec",
 		   speed, ch->spd, cmpci_regvalue_to_rate(rsp)));
 
@@ -676,13 +676,13 @@ cmimix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 		r = (right * max / 100) << (8 - cmt[dev].bits);
 		cmimix_wr(sc, MIXER_GAIN_REG_RTOL(cmt[dev].rreg), l);
 		cmimix_wr(sc, cmt[dev].rreg, r);
-		DEBMIX(printf("Mixer stereo write dev %d reg 0x%02x "\
+		DEBMIX(kprintf("Mixer stereo write dev %d reg 0x%02x "\
 			      "value 0x%02x:0x%02x\n",
 			      dev, MIXER_GAIN_REG_RTOL(cmt[dev].rreg), l, r));
 	} else {
 		r = l;
 		cmimix_wr(sc, cmt[dev].rreg, l);
-		DEBMIX(printf("Mixer mono write dev %d reg 0x%02x " \
+		DEBMIX(kprintf("Mixer mono write dev %d reg 0x%02x " \
 			      "value 0x%02x:0x%02x\n",
 			      dev, cmt[dev].rreg, l, l));
 	}
@@ -716,11 +716,11 @@ cmimix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 		}
 	}
 	cmimix_wr(sc, CMPCI_SB16_MIXER_ADCMIX_R, sl|ml);
-	DEBMIX(printf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
+	DEBMIX(kprintf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
 		      CMPCI_SB16_MIXER_ADCMIX_R, sl|ml));
 	ml = CMPCI_SB16_MIXER_SRC_R_TO_L(ml);
 	cmimix_wr(sc, CMPCI_SB16_MIXER_ADCMIX_L, sl|ml);
-	DEBMIX(printf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
+	DEBMIX(kprintf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
 		      CMPCI_SB16_MIXER_ADCMIX_L, sl|ml));
 
 	return src;
@@ -903,7 +903,7 @@ cmi_attach(device_t dev)
 		 rman_get_start(sc->reg), rman_get_start(sc->irq));
 	pcm_setstatus(dev, status);
 
-	DEB(printf("cmi_attach: succeeded\n"));
+	DEB(kprintf("cmi_attach: succeeded\n"));
 	return 0;
 
  bad:

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.19 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.20 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -192,28 +192,28 @@ afd_describe(struct afd_softc *fdp)
 		   fdp->cap.cylinders, fdp->cap.heads, fdp->cap.sectors,
 		   fdp->cap.sector_size);
 	ata_prtdev(fdp->device, "%dKB/s,", fdp->cap.transfer_rate / 8);
-	printf(" %s\n", ata_mode2str(fdp->device->mode));
+	kprintf(" %s\n", ata_mode2str(fdp->device->mode));
 	if (fdp->cap.medium_type) {
 	    ata_prtdev(fdp->device, "Medium: ");
 	    switch (fdp->cap.medium_type) {
 	    case MFD_2DD:
-		printf("720KB DD disk"); break;
+		kprintf("720KB DD disk"); break;
 
 	    case MFD_HD_12:
-		printf("1.2MB HD disk"); break;
+		kprintf("1.2MB HD disk"); break;
 
 	    case MFD_HD_144:
-		printf("1.44MB HD disk"); break;
+		kprintf("1.44MB HD disk"); break;
 
 	    case MFD_UHD: 
-		printf("120MB UHD disk"); break;
+		kprintf("120MB UHD disk"); break;
 
 	    default:
-		printf("Unknown (0x%x)", fdp->cap.medium_type);
+		kprintf("Unknown (0x%x)", fdp->cap.medium_type);
 	    }
-	    if (fdp->cap.wp) printf(", writeprotected");
+	    if (fdp->cap.wp) kprintf(", writeprotected");
 	}
-	printf("\n");
+	kprintf("\n");
     }
     else {
 	ata_prtdev(fdp->device, "%luMB <%.40s> [%d/%d/%d] at ata%d-%s %s\n",

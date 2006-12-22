@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.37 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.38 2006/12/22 23:26:24 swildner Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -616,7 +616,7 @@ sioprobe(dev, xrid, rclk)
 #endif
 
 	if (COM_LLCONSOLE(flags)) {
-		printf("sio%d: reserved for low-level i/o\n",
+		kprintf("sio%d: reserved for low-level i/o\n",
 		       device_get_unit(dev));
 		bus_release_resource(dev, SYS_RES_IOPORT, rid, port);
 		return (ENXIO);
@@ -639,7 +639,7 @@ sioprobe(dev, xrid, rclk)
 
 		idev = devclass_get_device(sio_devclass, COM_MPMASTER(flags));
 		if (idev == NULL) {
-			printf("sio%d: master device %d not configured\n",
+			kprintf("sio%d: master device %d not configured\n",
 			       device_get_unit(dev), COM_MPMASTER(flags));
 			idev = dev;
 		}
@@ -726,7 +726,7 @@ sioprobe(dev, xrid, rclk)
 		(void)sio_getreg(com, com_data);
 	}
 	if (fn == 256) {
-		printf("sio%d: can't drain, serial port might "
+		kprintf("sio%d: can't drain, serial port might "
 			"not exist, disabling\n", device_get_unit(dev));
 		com_unlock();
 		return (ENXIO);
@@ -853,11 +853,11 @@ sioprobe(dev, xrid, rclk)
 	irqs = irqmap[1] & ~irqmap[0];
 	if (bus_get_resource(idev, SYS_RES_IRQ, 0, &xirq, NULL) == 0 &&
 	    ((1 << xirq) & irqs) == 0)
-		printf(
+		kprintf(
 		"sio%d: configured irq %ld not in bitmap of probed irqs %#x\n",
 		    device_get_unit(dev), xirq, irqs);
 	if (bootverbose)
-		printf("sio%d: irq maps: %#x %#x %#x %#x\n",
+		kprintf("sio%d: irq maps: %#x %#x %#x %#x\n",
 		    device_get_unit(dev),
 		    irqmap[0], irqmap[1], irqmap[2], irqmap[3]);
 
@@ -867,12 +867,12 @@ sioprobe(dev, xrid, rclk)
 			sio_setreg(com, com_mcr, 0);
 			result = ENXIO;
 			if (bootverbose) {
-				printf("sio%d: probe failed test(s):",
+				kprintf("sio%d: probe failed test(s):",
 				    device_get_unit(dev));
 				for (fn = 0; fn < sizeof failures; ++fn)
 					if (failures[fn])
-						printf(" %d", fn);
-				printf("\n");
+						kprintf(" %d", fn);
+				kprintf("\n");
 			}
 			break;
 		}
@@ -894,7 +894,7 @@ espattach(com, esp_port)
 	 * card.  If not, return failure immediately.
 	 */
 	if ((inb(esp_port) & 0xf3) == 0) {
-		printf(" port 0x%x is not an ESP board?\n", esp_port);
+		kprintf(" port 0x%x is not an ESP board?\n", esp_port);
 		return (0);
 	}
 
@@ -911,9 +911,9 @@ espattach(com, esp_port)
 	 * Bits 0,1 of dips say which COM port we are.
 	 */
 	if (rman_get_start(com->ioportres) == likely_com_ports[dips & 0x03])
-		printf(" : ESP");
+		kprintf(" : ESP");
 	else {
-		printf(" esp_port has com %d\n", dips & 0x03);
+		kprintf(" esp_port has com %d\n", dips & 0x03);
 		return (0);
 	}
 
@@ -924,7 +924,7 @@ espattach(com, esp_port)
 	val = inb(esp_port + ESP_STATUS1);	/* clear reg 1 */
 	val = inb(esp_port + ESP_STATUS2);
 	if ((val & 0x70) < 0x20) {
-		printf("-old (%o)", val & 0x70);
+		kprintf("-old (%o)", val & 0x70);
 		return (0);
 	}
 
@@ -932,7 +932,7 @@ espattach(com, esp_port)
 	 * Check for ability to emulate 16550:  bit 7 == 1
 	 */
 	if ((dips & 0x80) == 0) {
-		printf(" slave");
+		kprintf(" slave");
 		return (0);
 	}
 
@@ -1064,7 +1064,7 @@ sioattach(dev, xrid, rclk)
 	com->it_out = com->it_in;
 
 	/* attempt to determine UART type */
-	printf("sio%d: type", unit);
+	kprintf("sio%d: type", unit);
 
 
 #ifdef COM_MULTIPORT
@@ -1084,7 +1084,7 @@ sioattach(dev, xrid, rclk)
 		scr2 = sio_getreg(com, com_scr);
 		sio_setreg(com, com_scr, scr);
 		if (scr1 != 0xa5 || scr2 != 0x5a) {
-			printf(" 8250");
+			kprintf(" 8250");
 			goto determined_type;
 		}
 	}
@@ -1093,29 +1093,29 @@ sioattach(dev, xrid, rclk)
 	com->st16650a = 0;
 	switch (inb(com->int_id_port) & IIR_FIFO_MASK) {
 	case FIFO_RX_LOW:
-		printf(" 16450");
+		kprintf(" 16450");
 		break;
 	case FIFO_RX_MEDL:
-		printf(" 16450?");
+		kprintf(" 16450?");
 		break;
 	case FIFO_RX_MEDH:
-		printf(" 16550?");
+		kprintf(" 16550?");
 		break;
 	case FIFO_RX_HIGH:
 		if (COM_NOFIFO(flags)) {
-			printf(" 16550A fifo disabled");
+			kprintf(" 16550A fifo disabled");
 		} else {
 			com->hasfifo = TRUE;
 			if (COM_ST16650A(flags)) {
 				com->st16650a = 1;
 				com->tx_fifo_size = 32;
-				printf(" ST16650A");
+				kprintf(" ST16650A");
 			} else if (COM_TI16754(flags)) {
 				com->tx_fifo_size = 64;
-				printf(" TI16754");
+				kprintf(" TI16754");
 			} else {
 				com->tx_fifo_size = COM_FIFOSIZE(flags);
-				printf(" 16550A");
+				kprintf(" 16550A");
 			}
 		}
 #ifdef COM_ESP
@@ -1129,7 +1129,7 @@ sioattach(dev, xrid, rclk)
 			if (!com->tx_fifo_size)
 				com->tx_fifo_size = 16;
 			else
-				printf(" lookalike with %d bytes FIFO",
+				kprintf(" lookalike with %d bytes FIFO",
 				    com->tx_fifo_size);
 		}
 
@@ -1169,10 +1169,10 @@ determined_type: ;
 		device_t masterdev;
 
 		com->multiport = TRUE;
-		printf(" (multiport");
+		kprintf(" (multiport");
 		if (unit == COM_MPMASTER(flags))
-			printf(" master");
-		printf(")");
+			kprintf(" master");
+		kprintf(")");
 		masterdev = devclass_get_device(sio_devclass,
 		    COM_MPMASTER(flags));
 		com->no_irq = (masterdev == NULL || bus_get_resource(masterdev,
@@ -1180,10 +1180,10 @@ determined_type: ;
 	 }
 #endif /* COM_MULTIPORT */
 	if (unit == comconsole)
-		printf(", console");
+		kprintf(", console");
 	if (COM_IIR_TXRDYBUG(flags))
-		printf(" with a bogus IIR_TXRDY register");
-	printf("\n");
+		kprintf(" with a bogus IIR_TXRDY register");
+	kprintf("\n");
 
 	if (!sio_registered) {
 		register_swi(SWI_TTY, siopoll, NULL ,"swi_siopoll", NULL);
@@ -1445,7 +1445,7 @@ sioclose(struct dev_close_args *ap)
 	siosettimeout();
 	crit_exit();
 	if (com->gone) {
-		printf("sio%d: gone\n", com->unit);
+		kprintf("sio%d: gone\n", com->unit);
 		crit_enter();
 		if (com->ibuf != NULL)
 			kfree(com->ibuf, M_DEVBUF);
@@ -2981,7 +2981,7 @@ siocnprobe(cp)
 				siocnunit = unit;
 			}
 			if (COM_DEBUGGER(flags)) {
-				printf("sio%d: gdb debugging port\n", unit);
+				kprintf("sio%d: gdb debugging port\n", unit);
 				siogdbiobase = iobase;
 				siogdbunit = unit;
 #if DDB > 0
@@ -3002,10 +3002,10 @@ siocnprobe(cp)
 	 * as some configuration files don't specify the gdb port.
 	 */
 	if (gdbdev == NOCDEV && (boothowto & RB_GDB)) {
-		printf("Warning: no GDB port specified. Defaulting to sio%d.\n",
+		kprintf("Warning: no GDB port specified. Defaulting to sio%d.\n",
 			siocnunit);
-		printf("Set flag 0x80 on desired GDB port in your\n");
-		printf("configuration file (currently sio only).\n");
+		kprintf("Set flag 0x80 on desired GDB port in your\n");
+		kprintf("configuration file (currently sio only).\n");
 		siogdbiobase = siocniobase;
 		siogdbunit = siocnunit;
 		gdbdev = make_dev(&sio_ops, siocnunit,

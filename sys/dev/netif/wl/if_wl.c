@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.29 2006/10/25 20:56:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.30 2006/12/22 23:26:22 swildner Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -547,8 +547,8 @@ wlattach(device_t dev)
     ether_ifattach(ifp, sc->wl_ac.ac_enaddr, NULL);
 
     if (sc->freq24) 
-	printf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
-    printf("\n");                                       /* 2.4 Gz       */
+	kprintf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
+    kprintf("\n");                                       /* 2.4 Gz       */
 
     error = bus_setup_intr(dev, sc->res_irq, INTR_NETSAFE,
 			   wlintr, sc, &sc->intr_handle, 
@@ -649,20 +649,20 @@ wldump(struct wl_softc *sc)
     if_printf(&sc->wl_if, "scb at %04x:\n ", OFFSET_SCB);
     outw(PIOR1(base), OFFSET_SCB);
     for(i = 0; i < 8; i++)
-	printf("%04x ", inw(PIOP1(base)));
-    printf("\n");
+	kprintf("%04x ", inw(PIOP1(base)));
+    kprintf("\n");
 	
     if_printf(&sc->wl_if, "cu at %04x:\n ", OFFSET_CU);
     outw(PIOR1(base), OFFSET_CU);
     for(i = 0; i < 8; i++)
-	printf("%04x ", inw(PIOP1(base)));
-    printf("\n");
+	kprintf("%04x ", inw(PIOP1(base)));
+    kprintf("\n");
 	
     if_printf(&sc->wl_if, "tbd at %04x:\n ", OFFSET_TBD);
     outw(PIOR1(base), OFFSET_TBD);
     for(i = 0; i < 4; i++)
-	printf("%04x ", inw(PIOP1(base)));
-    printf("\n");
+	kprintf("%04x ", inw(PIOP1(base)));
+    kprintf("\n");
 }
 
 /* Initialize the Modem Management Controller */
@@ -1287,7 +1287,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	    wlinit(sc);
 	}
   
-	/* if WLDEBUG set on interface, then printf rf-modem regs
+	/* if WLDEBUG set on interface, then kprintf rf-modem regs
 	*/
 	if(ifp->if_flags & IFF_DEBUG)
 	    wlmmcstat(sc);
@@ -1817,7 +1817,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
     if (sc->wl_if.if_flags & IFF_DEBUG) {
 	if (xmt_debug) {
 	    if_printf(&sc->wl_if, "XMT    mbuf: L%d @%p ", count, (void *)mb_p);
-	    printf("ether type %x\n", eh_p->ether_type);
+	    kprintf("ether type %x\n", eh_p->ether_type);
 	}
     }
 #endif	/* WLDEBUG */
@@ -1896,7 +1896,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
     if (sc->wl_if.if_flags & IFF_DEBUG) {
 	if (xmt_debug) {
 	    wltbd(sc);
-	    printf("\n");
+	    kprintf("\n");
 	}
     }
 #endif	/* WLDEBUG */
@@ -2171,7 +2171,7 @@ wlconfig(struct wl_softc *sc)
 		 ((lo << 8) & 0xff00));
 /* #define MCASTDEBUG */
 #ifdef MCASTDEBUG
-printf("mcast_addr[%d,%d,%d] %x %x %x %x %x %x\n", lo, hi, cnt,
+kprintf("mcast_addr[%d,%d,%d] %x %x %x %x %x %x\n", lo, hi, cnt,
 		enm->enm_addrlo[0],
 		enm->enm_addrlo[1],
 		enm->enm_addrlo[2],
@@ -2231,13 +2231,13 @@ wlcmd(struct wl_softc *sc, const char *str)
 	          str, inw(PIOP0(base)) & AC_SW_OK, inw(PIOP0(base)),
 		  inw(PIOR0(base)));
 	outw(PIOR0(base), OFFSET_SCB);
-	printf("scb_status %x\n", inw(PIOP0(base)));
+	kprintf("scb_status %x\n", inw(PIOP0(base)));
 	outw(PIOR0(base), OFFSET_SCB+2);
-	printf("scb_command %x\n", inw(PIOP0(base)));
+	kprintf("scb_command %x\n", inw(PIOP0(base)));
 	outw(PIOR0(base), OFFSET_SCB+4);
-	printf("scb_cbl %x\n", inw(PIOP0(base)));
+	kprintf("scb_cbl %x\n", inw(PIOP0(base)));
 	outw(PIOR0(base), OFFSET_CU+2);
-	printf("cu_cmd %x\n", inw(PIOP0(base)));
+	kprintf("cu_cmd %x\n", inw(PIOP0(base)));
 	return(0);
     }
 
@@ -2295,7 +2295,7 @@ wltbd(struct wl_softc *sc)
 	outw(PIOR1(base), tbd_p);
 	insw(PIOP1(base), &tbd, sizeof(tbd_t)/2);
 	sum += (tbd.act_count & ~TBD_SW_EOF);
-	printf("%d: addr %x, count %d (%d), next %x, base %x\n",
+	kprintf("%d: addr %x, count %d (%d), next %x, base %x\n",
 	       i++, tbd.buffer_addr,
 	       (tbd.act_count & ~TBD_SW_EOF), sum,
 	       tbd.next_tbd_offset, tbd.buffer_base);
@@ -2383,15 +2383,15 @@ wlmmcstat(struct wl_softc *sc)
 	      wlmmcread(base,MMC_DCE_STATUS) & 0x0f);
     tmp = wlmmcread(base,MMC_CORRECT_NWID_H) << 8;
     tmp |= wlmmcread(base,MMC_CORRECT_NWID_L);
-    printf("Correct NWID's: %d, ", tmp);
+    kprintf("Correct NWID's: %d, ", tmp);
     tmp = wlmmcread(base,MMC_WRONG_NWID_H) << 8;
     tmp |= wlmmcread(base,MMC_WRONG_NWID_L);
-    printf("Wrong NWID's: %d\n", tmp);
-    printf("THR_PRE_SET: 0x%x, ", wlmmcread(base,MMC_THR_PRE_SET));
-    printf("SIGNAL_LVL: %d, SILENCE_LVL: %d\n", 
+    kprintf("Wrong NWID's: %d\n", tmp);
+    kprintf("THR_PRE_SET: 0x%x, ", wlmmcread(base,MMC_THR_PRE_SET));
+    kprintf("SIGNAL_LVL: %d, SILENCE_LVL: %d\n", 
 	   wlmmcread(base,MMC_SIGNAL_LVL),
 	   wlmmcread(base,MMC_SILENCE_LVL));
-    printf("SIGN_QUAL: 0x%x, NETW_ID: %x:%x, DES: %d\n",
+    kprintf("SIGN_QUAL: 0x%x, NETW_ID: %x:%x, DES: %d\n",
 	   wlmmcread(base,MMC_SIGN_QUAL),
 	   wlmmcread(base,MMC_NETW_ID_H),
 	   wlmmcread(base,MMC_NETW_ID_L),
@@ -2707,10 +2707,10 @@ check_allmulti(struct wl_softc *sc)
     while (enm != NULL) {
 	unsigned int lo, hi;
 #ifdef MDEBUG
-		printf("enm_addrlo %x:%x:%x:%x:%x:%x\n", enm->enm_addrlo[0], enm->enm_addrlo[1],
+		kprintf("enm_addrlo %x:%x:%x:%x:%x:%x\n", enm->enm_addrlo[0], enm->enm_addrlo[1],
 		enm->enm_addrlo[2], enm->enm_addrlo[3], enm->enm_addrlo[4],
 		enm->enm_addrlo[5]);
-		printf("enm_addrhi %x:%x:%x:%x:%x:%x\n", enm->enm_addrhi[0], enm->enm_addrhi[1],
+		kprintf("enm_addrhi %x:%x:%x:%x:%x:%x\n", enm->enm_addrhi[0], enm->enm_addrhi[1],
 		enm->enm_addrhi[2], enm->enm_addrhi[3], enm->enm_addrhi[4],
 		enm->enm_addrhi[5]);
 #endif

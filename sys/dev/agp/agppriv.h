@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agppriv.h,v 1.3.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.4 2004/05/19 22:52:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.5 2006/12/22 23:26:15 swildner Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_
@@ -41,8 +41,8 @@
 
 #ifdef AGP_DEBUG
 #define AGP_DPF(x...) do {			\
-    printf("agp: ");				\
-    printf(##x);				\
+    kprintf("agp: ");				\
+    kprintf(##x);				\
 } while (0)
 #else
 #define AGP_DPF(x...) do {} while (0)

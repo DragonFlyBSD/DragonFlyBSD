@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.19 2006/09/10 01:26:34 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.20 2006/12/22 23:26:17 swildner Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -95,7 +95,7 @@
 
 #ifdef SCD_DEBUG
    static int scd_debuglevel = SCD_DEBUG;
-#  define XDEBUG(level, data) {if (scd_debuglevel >= level) printf data;}
+#  define XDEBUG(level, data) {if (scd_debuglevel >= level) kprintf data;}
 #else
 #  define XDEBUG(level, data)
 #endif
@@ -201,7 +201,7 @@ scd_attach(struct isa_device *dev)
 	cd->iobase = dev->id_iobase;	/* Already set by probe, but ... */
 
 	/* name filled in probe */
-	printf("scd%d: <%s>\n", dev->id_unit, scd_data[dev->id_unit].name);
+	kprintf("scd%d: <%s>\n", dev->id_unit, scd_data[dev->id_unit].name);
 
 	init_drive(dev->id_unit);
 
@@ -263,7 +263,7 @@ scdopen(struct dev_open_args *ap)
 				}
 				continue;
 			}
-			printf("scd%d: TOC read error 0x%x\n", unit, rc);
+			kprintf("scd%d: TOC read error 0x%x\n", unit, rc);
 			return EIO;
 		}
 	}
@@ -322,7 +322,7 @@ scdstrategy(struct dev_strategy_args *ap)
 		unit, bio->bio_offset, bp->b_bcount));
 
 	if (unit >= NSCD || bio->bio_offset < 0 || (bp->b_bcount % SCDBLKSIZE)) {
-		printf("scd%d: strategy failure: offset = %lld, bcount = %d\n",
+		kprintf("scd%d: strategy failure: offset = %lld, bcount = %d\n",
 			unit, bio->bio_offset, bp->b_bcount);
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
@@ -331,7 +331,7 @@ scdstrategy(struct dev_strategy_args *ap)
 
 	/* if device invalidated (e.g. media change, door open), error */
 	if (!(cd->flags & SCDVALID)) {
-		printf("scd%d: media changed\n", unit);
+		kprintf("scd%d: media changed\n", unit);
 		bp->b_error = EIO;
 		goto bad;
 	}
@@ -486,7 +486,7 @@ scdioctl(struct dev_ioctl_args *ap)
 #endif
 		return 0;
 	default:
-		printf("scd%d: unsupported ioctl (cmd=0x%lx)\n",
+		kprintf("scd%d: unsupported ioctl (cmd=0x%lx)\n",
 			unit, ap->a_cmd);
 		return ENOTTY;
 	}
@@ -816,7 +816,7 @@ loop:
 	case SCD_S_WAITSTAT:
 		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
-			printf("scd%d: timeout. drive busy.\n",unit);
+			kprintf("scd%d: timeout. drive busy.\n",unit);
 			goto harderr;
 		}
 
@@ -831,7 +831,7 @@ trystat:
 
 		/* reject, if audio active */
 		if (cd->audio_status & CD_AS_PLAY_IN_PROGRESS) {
-			printf("scd%d: audio is active\n",unit);
+			kprintf("scd%d: audio is active\n",unit);
 			goto harderr;
 		}
 
@@ -868,7 +868,7 @@ nextblock:
 	case SCD_S_WAITSPIN:
 		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
-			printf("scd%d: timeout waiting for drive to spin up.\n", unit);
+			kprintf("scd%d: timeout waiting for drive to spin up.\n", unit);
 			goto harderr;
 		}
 		if (!STATUS_BIT(port, SBIT_RESULT_READY)) {
@@ -895,7 +895,7 @@ nextblock:
 	case SCD_S_WAITFIFO:
 		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
-			printf("scd%d: timeout. write param not ready.\n",unit);
+			kprintf("scd%d: timeout. write param not ready.\n",unit);
 			goto harderr;
 		}
 		if (!FSTATUS_BIT(port, FBIT_WPARAM_READY)) {
@@ -945,7 +945,7 @@ writeparam:
 		if (mbx->count-- <= 0) {
 			if (STATUS_BIT(port, SBIT_RESULT_READY))
 				goto got_param;
-			printf("scd%d: timeout while reading data\n",unit);
+			kprintf("scd%d: timeout while reading data\n",unit);
 			goto readerr;
 		}
 		if (!STATUS_BIT(port, SBIT_DATA_READY)) {
@@ -975,7 +975,7 @@ got_data:
 	case SCD_S_WAITPARAM:
 		callout_stop(&cd->callout);
 		if (mbx->count-- <= 0) {
-			printf("scd%d: timeout waiting for params\n",unit);
+			kprintf("scd%d: timeout waiting for params\n",unit);
 			goto readerr;
 		}
 
@@ -987,7 +987,7 @@ waitfor_param:
 		}
 #if SCD_DEBUG
 		if (mbx->count < 100 && scd_debuglevel > 0)
-			printf("scd%d: mbx->count (paramwait) = %d(%d)\n", unit, mbx->count, 100);
+			kprintf("scd%d: mbx->count (paramwait) = %d(%d)\n", unit, mbx->count, 100);
 #endif
 
 got_param:
@@ -997,7 +997,7 @@ got_param:
 			switch (i) {
 			case ERR_FATAL_READ_ERROR1:
 			case ERR_FATAL_READ_ERROR2:
-				printf("scd%d: unrecoverable read error 0x%x\n", unit, i);
+				kprintf("scd%d: unrecoverable read error 0x%x\n", unit, i);
 				goto harderr;
 			}
 			break;
@@ -1037,7 +1037,7 @@ got_param:
 
 readerr:
 	if (mbx->retry-- > 0) {
-		printf("scd%d: retrying ...\n",unit);
+		kprintf("scd%d: retrying ...\n",unit);
 		state = SCD_S_BEGIN1;
 		goto loop;
 	}
@@ -1053,7 +1053,7 @@ harderr:
 	return;
 
 changed:
-	printf("scd%d: media changed\n", unit);
+	kprintf("scd%d: media changed\n", unit);
 	goto harderr;
 }
 
@@ -1089,9 +1089,9 @@ process_attention(unsigned unit)
 #if SCD_DEBUG
 		if (scd_debuglevel > 0) {
 			if (count == 1)
-				printf("scd%d: DEBUG: ATTENTIONS = 0x%x", unit, code);
+				kprintf("scd%d: DEBUG: ATTENTIONS = 0x%x", unit, code);
 			else
-				printf(",0x%x", code);
+				kprintf(",0x%x", code);
 		}
 #endif
 
@@ -1121,7 +1121,7 @@ process_attention(unsigned unit)
 	}
 #if SCD_DEBUG
 	if (scd_debuglevel > 0 && count > 0)
-		printf("\n");
+		kprintf("\n");
 #endif
 }
 
@@ -1190,7 +1190,7 @@ read_toc(unsigned unit)
 	if (rc < 0)
 		return rc;
 	if (rc > sizeof(toc)) {
-		printf("scd%d: program error: toc too large (%d)\n", unit, rc);
+		kprintf("scd%d: program error: toc too large (%d)\n", unit, rc);
 		return EIO;
 	}
 	if (get_result(unit, rc, (u_char *)&toc) != 0)
@@ -1218,8 +1218,8 @@ read_toc(unsigned unit)
 #ifdef SCD_DEBUG
 		if (scd_debuglevel > 0) {
 			if ((j % 3) == 0)
-				printf("\nscd%d: tracks ", unit);
-			printf("[%03d: %2d %2d %2d]  ", i,
+				kprintf("\nscd%d: tracks ", unit);
+			kprintf("[%03d: %2d %2d %2d]  ", i,
 				bcd2bin(cd->toc[i].start_msf[0]),
 				bcd2bin(cd->toc[i].start_msf[1]),
 				bcd2bin(cd->toc[i].start_msf[2]));
@@ -1230,7 +1230,7 @@ read_toc(unsigned unit)
 #ifdef SCD_DEBUG
 	if (scd_debuglevel > 0) {
 		i = cd->last_track+1;
-		printf("[END: %2d %2d %2d]\n",
+		kprintf("[END: %2d %2d %2d]\n",
 			bcd2bin(cd->toc[i].start_msf[0]),
 			bcd2bin(cd->toc[i].start_msf[1]),
 			bcd2bin(cd->toc[i].start_msf[2]));
@@ -1275,7 +1275,7 @@ init_drive(unsigned unit)
 	rc = send_cmd(unit, CMD_SET_DRIVE_PARAM, 2,
 		0x05, 0x03 | ((scd_data[unit].double_speed) ? 0x04: 0));
 	if (rc != 0)
-		printf("scd%d: Unable to set parameters. Errcode = 0x%x\n", unit, rc);
+		kprintf("scd%d: Unable to set parameters. Errcode = 0x%x\n", unit, rc);
 }
 
 /* Returns 0 or errno */
@@ -1315,7 +1315,7 @@ send_cmd(u_int unit, u_char cmd, u_int nargs, ...)
 	int i;
 
 	if (waitfor_status_bits(unit, 0, SBIT_BUSY)) {
-		printf("scd%d: drive busy\n", unit);
+		kprintf("scd%d: drive busy\n", unit);
 		return -0x100;
 	}
 
@@ -1370,16 +1370,16 @@ print_error(int unit, int errcode)
 {
 	switch (errcode) {
 	case -ERR_CD_NOT_LOADED:
-		printf("scd%d: door is open\n", unit);
+		kprintf("scd%d: door is open\n", unit);
 		break;
 	case -ERR_NO_CD_INSIDE:
-		printf("scd%d: no cd inside\n", unit);
+		kprintf("scd%d: no cd inside\n", unit);
 		break;
 	default:
 		if (errcode == -0x100 || errcode > 0)
-			printf("scd%d: device timeout\n", unit);
+			kprintf("scd%d: device timeout\n", unit);
 		else
-			printf("scd%d: unexpected error 0x%x\n", unit, -errcode);
+			kprintf("scd%d: unexpected error 0x%x\n", unit, -errcode);
 		break;
 	}
 }
@@ -1434,10 +1434,10 @@ waitfor_status_bits(int unit, int bits_set, int bits_clear)
 	}
 #ifdef SCD_DEBUG
 	if (scd_debuglevel > 0)
-		printf("scd%d: DEBUG: waitfor: TIMEOUT (0x%x,(0x%x,0x%x))\n", unit, c, bits_set, bits_clear);
+		kprintf("scd%d: DEBUG: waitfor: TIMEOUT (0x%x,(0x%x,0x%x))\n", unit, c, bits_set, bits_clear);
 	else
 #endif
-		printf("scd%d: timeout.\n", unit);
+		kprintf("scd%d: timeout.\n", unit);
 	return EIO;
 }
 

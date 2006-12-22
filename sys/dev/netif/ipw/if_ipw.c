@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.17 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.18 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*-
@@ -82,8 +82,8 @@
 #include <dev/netif/ipw/if_ipwvar.h>
 
 #ifdef IPW_DEBUG
-#define DPRINTF(x)	if (ipw_debug > 0) printf x
-#define DPRINTFN(n, x)	if (ipw_debug >= (n)) printf x
+#define DPRINTF(x)	if (ipw_debug > 0) kprintf x
+#define DPRINTFN(n, x)	if (ipw_debug >= (n)) kprintf x
 int ipw_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, ipw, CTLFLAG_RW, &ipw_debug, 0, "ipw debug level");
 #else
@@ -1961,9 +1961,9 @@ ipw_config(struct ipw_softc *sc)
 
 #ifdef IPW_DEBUG
 	if (ipw_debug > 0) {
-		printf("Setting ESSID to ");
+		kprintf("Setting ESSID to ");
 		ieee80211_print_essid(ic->ic_des_essid, ic->ic_des_esslen);
-		printf("\n");
+		kprintf("\n");
 	}
 #endif
 	error = ipw_cmd(sc, IPW_CMD_SET_ESSID, ic->ic_des_essid,

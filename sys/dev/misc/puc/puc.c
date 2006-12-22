@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.10 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.11 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*-
@@ -226,7 +226,7 @@ puc_pci_attach(device_t dev)
 #ifdef PUC_DEBUG
 	bootverbose = 1;
 
-	printf("puc: name: %s\n", sc->sc_desc->name);
+	kprintf("puc: name: %s\n", sc->sc_desc->name);
 #endif
 	rid = 0;
 	res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
@@ -262,7 +262,7 @@ puc_pci_attach(device_t dev)
 		res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
 		    0ul, ~0ul, 1, RF_ACTIVE);
 		if (res == NULL) {
-			printf("could not get resource\n");
+			kprintf("could not get resource\n");
 			continue;
 		}
 		sc->sc_bar_mappings[bidx].res = res;
@@ -275,7 +275,7 @@ puc_pci_attach(device_t dev)
 				device_printf(dev, "ILR disabled\n");
 		}
 #ifdef PUC_DEBUG
-		printf("port bst %x, start %x, end %x\n",
+		kprintf("port bst %x, start %x, end %x\n",
 		    (u_int)rman_get_bustag(res), (u_int)rman_get_start(res),
 		    (u_int)rman_get_end(res));
 #endif
@@ -354,7 +354,7 @@ puc_pci_attach(device_t dev)
 		if (!bootverbose)
 			device_quiet(sc->sc_ports[i].dev);
 #ifdef PUC_DEBUG
-		printf("puc: type %d, bar %x, offset %x\n",
+		kprintf("puc: type %d, bar %x, offset %x\n",
 		    sc->sc_desc->ports[i].type,
 		    sc->sc_desc->ports[i].bar,
 		    sc->sc_desc->ports[i].offset);
@@ -490,7 +490,7 @@ puc_print_win877(bus_space_tag_t bst, bus_space_handle_t bsh, u_int efir,
 	cr2c = rdspio(0x2c);
 	cr31 = rdspio(0x31);
 	cr32 = rdspio(0x32);
-	printf("877T: cr00 %x, cr01 %x, cr04 %x, cr09 %x, cr0d %x, cr14 %x, "
+	kprintf("877T: cr00 %x, cr01 %x, cr04 %x, cr09 %x, cr0d %x, cr14 %x, "
 	    "cr15 %x, cr16 %x, cr17 %x, cr18 %x, cr19 %x, cr24 %x, cr25 %x, "
 	    "cr28 %x, cr2c %x, cr31 %x, cr32 %x\n", cr00, cr01, cr04, cr09,
 	    cr0d, cr14, cr15, cr16, cr17,
@@ -515,12 +515,12 @@ puc_config_win877(struct resource *res)
 	efdr = 0x252;
 	val = rdspio(0x09) & 0x0f;
 	if (val != 0x0c) {
-		printf("conf_win877: Oops not a W83877TF\n");
+		kprintf("conf_win877: Oops not a W83877TF\n");
 		return;
 	}
 
 #ifdef PUC_DEBUG
-	printf("before: ");
+	kprintf("before: ");
 	puc_print_win877(bst, bsh, efir, efdr);
 #endif
 
@@ -536,7 +536,7 @@ puc_config_win877(struct resource *res)
 	wrspio(0x28, 0x43);
 
 #ifdef PUC_DEBUG
-	printf("after: ");
+	kprintf("after: ");
 	puc_print_win877(bst, bsh, efir, efdr);
 #endif
 
@@ -549,12 +549,12 @@ puc_config_win877(struct resource *res)
 	efdr = 0x3f1;
 	val = rdspio(0x09) & 0x0f;
 	if (val != 0x0c) {
-		printf("conf_win877: Oops not a W83877TF\n");
+		kprintf("conf_win877: Oops not a W83877TF\n");
 		return;
 	}
 
 #ifdef PUC_DEBUG
-	printf("before: ");
+	kprintf("before: ");
 	puc_print_win877(bst, bsh, efir, efdr);
 #endif
 
@@ -570,7 +570,7 @@ puc_config_win877(struct resource *res)
 	wrspio(0x28, 0x43);
 
 #ifdef PUC_DEBUG
-	printf("after: ");
+	kprintf("after: ");
 	puc_print_win877(bst, bsh, efir, efdr);
 #endif
 
@@ -597,7 +597,7 @@ static int puc_find_free_unit(char *name)
 	while (devclass_get_device(dc, unit))
 		unit++;
 #ifdef PUC_DEBUG
-	printf("puc: Using %s%d\n", name, unit);
+	kprintf("puc: Using %s%d\n", name, unit);
 #endif
 	return (unit);
 }
@@ -608,10 +608,10 @@ puc_print_resource_list(struct resource_list *rl)
 {
 	struct resource_list_entry *rle;
 
-	printf("print_resource_list: rl %p\n", rl);
+	kprintf("print_resource_list: rl %p\n", rl);
 	SLIST_FOREACH(rle, rl, link)
-		printf("type %x, rid %x\n", rle->type, rle->rid);
-	printf("print_resource_list: end.\n");
+		kprintf("type %x, rid %x\n", rle->type, rle->rid);
+	kprintf("print_resource_list: end.\n");
 }
 #endif
 
@@ -628,7 +628,7 @@ puc_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	rl = &pdev->resources;
 
 #ifdef PUC_DEBUG
-	printf("puc_alloc_resource: pdev %p, looking for t %x, r %x\n",
+	kprintf("puc_alloc_resource: pdev %p, looking for t %x, r %x\n",
 	    pdev, type, *rid);
 	puc_print_resource_list(rl);
 #endif
@@ -639,11 +639,11 @@ puc_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		end = rle->end;
 		count = rle->count;
 #ifdef PUC_DEBUG
-		printf("found rle, %lx, %lx, %lx\n", start, end, count);
+		kprintf("found rle, %lx, %lx, %lx\n", start, end, count);
 #endif
 		retval = rle->res;
 	} else
-		printf("oops rle is gone\n");
+		kprintf("oops rle is gone\n");
 
 	return (retval);
 }
@@ -667,25 +667,25 @@ puc_get_resource(device_t dev, device_t child, int type, int rid,
 	rl = &pdev->resources;
 
 #ifdef PUC_DEBUG
-	printf("puc_get_resource: pdev %p, looking for t %x, r %x\n", pdev,
+	kprintf("puc_get_resource: pdev %p, looking for t %x, r %x\n", pdev,
 	    type, rid);
 	puc_print_resource_list(rl);
 #endif
 	rle = resource_list_find(rl, type, rid);
 	if (rle) {
 #ifdef PUC_DEBUG
-		printf("found rle %p,", rle);
+		kprintf("found rle %p,", rle);
 #endif
 		if (startp != NULL)
 			*startp = rle->start;
 		if (countp != NULL)
 			*countp = rle->count;
 #ifdef PUC_DEBUG
-		printf(" %lx, %lx\n", rle->start, rle->count);
+		kprintf(" %lx, %lx\n", rle->start, rle->count);
 #endif
 		return (0);
 	} else
-		printf("oops rle is gone\n");
+		kprintf("oops rle is gone\n");
 	return (ENXIO);
 }
 

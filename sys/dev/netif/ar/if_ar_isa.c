@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.54 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.5 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.6 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -175,20 +175,20 @@ ar_isa_attach(device_t device)
 
 	switch(hc->interface[0]) {
 	case AR_IFACE_EIA_232:
-		printf("ar%d: The EIA 232 interface is not supported.\n",
+		kprintf("ar%d: The EIA 232 interface is not supported.\n",
 			hc->cunit);
 		ar_deallocate_resources(device);
 		return (ENXIO);
 	case AR_IFACE_V_35:
 		break;
 	case AR_IFACE_EIA_530:
-		printf("ar%d: WARNING: The EIA 530 interface is untested.\n",
+		kprintf("ar%d: WARNING: The EIA 530 interface is untested.\n",
 			hc->cunit);
 		break;
 	case AR_IFACE_X_21:
 		break;
 	case AR_IFACE_COMBO:
-		printf("ar%d: WARNING: The COMBO interface is untested.\n",
+		kprintf("ar%d: WARNING: The COMBO interface is untested.\n",
 			hc->cunit);
 		break;
 	}

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
@@ -136,7 +136,7 @@ au_rdcd(kobj_t obj, void *arg, int regno)
 		DELAY(j * 200 + 2000);
 		j++;
 	}
-	if (j==50) printf("pcm%d: codec timeout reading register %x (%x)\n",
+	if (j==50) kprintf("pcm%d: codec timeout reading register %x (%x)\n",
 		au->unit, (regno & AU_CDC_REGMASK)>>16, i);
 	return i & AU_CDC_DATAMASK;
 }
@@ -153,7 +153,7 @@ au_wrcd(kobj_t obj, void *arg, int regno, u_int32_t data)
 			DELAY(2000);
 			j++;
 		}
-		if (j==50) printf("codec timeout during write of register %x, data %x\n",
+		if (j==50) kprintf("codec timeout during write of register %x, data %x\n",
 				  regno, data);
 		au_wr(au, 0, AU_REG_CODECIO, (regno<<16) | AU_CDC_REGSET | data, 4);
 /*		DELAY(20000);
@@ -161,7 +161,7 @@ au_wrcd(kobj_t obj, void *arg, int regno, u_int32_t data)
 */		tries++;
 	} while (0); /* (i != data && tries < 3); */
 	/*
-	if (tries == 3) printf("giving up writing 0x%4x to codec reg %2x\n", data, regno);
+	if (tries == 3) kprintf("giving up writing 0x%4x to codec reg %2x\n", data, regno);
 	*/
 
 	return 0;
@@ -398,9 +398,9 @@ au_intr (void *p)
 
 	au->interrupts++;
 	intsrc=au_rd(au, 0, AU_REG_IRQSRC, 4);
-	printf("pcm%d: interrupt with src %x\n", au->unit, intsrc);
-	if (intsrc & AU_IRQ_FATAL) printf("pcm%d: fatal error irq\n", au->unit);
-	if (intsrc & AU_IRQ_PARITY) printf("pcm%d: parity error irq\n", au->unit);
+	kprintf("pcm%d: interrupt with src %x\n", au->unit, intsrc);
+	if (intsrc & AU_IRQ_FATAL) kprintf("pcm%d: fatal error irq\n", au->unit);
+	if (intsrc & AU_IRQ_PARITY) kprintf("pcm%d: parity error irq\n", au->unit);
 	if (intsrc & AU_IRQ_UNKNOWN) {
 		(void)au_rd(au, 0, AU_REG_UNK1, 4);
 		au_wr(au, 0, AU_REG_UNK1, 0, 4);
@@ -529,7 +529,7 @@ au_testirq(struct au_info *au)
 	au_wr(au, 0, AU_REG_IRQEN, 0x00001030, 4);
 	au_wr(au, 0, AU_REG_IRQSRC, 0x000007ff, 4);
 	DELAY(1000000);
-	if (au->interrupts==0) printf("pcm%d: irq test failed\n", au->unit);
+	if (au->interrupts==0) kprintf("pcm%d: irq test failed\n", au->unit);
 	/* this apparently generates an irq */
 	return 0;
 }
@@ -578,11 +578,11 @@ au_pci_attach(device_t dev)
 #if 0
 		/* Slapped wrist: config_id and map are private structures */
 		if (bootverbose) {
-			printf("pcm%d: map %d - allocating ", unit, i+1);
-			printf("0x%x bytes of ", 1<<config_id->map[i].ln2size);
-			printf("%s space ", (config_id->map[i].type & PCI_MAPPORT)?
+			kprintf("pcm%d: map %d - allocating ", unit, i+1);
+			kprintf("0x%x bytes of ", 1<<config_id->map[i].ln2size);
+			kprintf("%s space ", (config_id->map[i].type & PCI_MAPPORT)?
 					    "io" : "memory");
-			printf("at 0x%x...", config_id->map[i].base);
+			kprintf("at 0x%x...", config_id->map[i].base);
 		}
 #endif
 		regid[j] = PCIR_MAPS + i*4;
@@ -600,7 +600,7 @@ au_pci_attach(device_t dev)
 			mapped++;
 		}
 #if 0
-		if (bootverbose) printf("%s\n", mapped? "ok" : "failed");
+		if (bootverbose) kprintf("%s\n", mapped? "ok" : "failed");
 #endif
 		if (mapped) j++;
 		if (j == 10) {
@@ -612,7 +612,7 @@ au_pci_attach(device_t dev)
 
 #if 0
 	if (j < config_id->nummaps) {
-		printf("pcm%d: unable to map a required resource\n", unit);
+		kprintf("pcm%d: unable to map a required resource\n", unit);
 		kfree(au, M_DEVBUF);
 		return;
 	}

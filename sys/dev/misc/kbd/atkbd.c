@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.12 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.13 2006/12/22 23:26:17 swildner Exp $
  */
 
 #include "opt_kbd.h"
@@ -561,7 +561,7 @@ next_code:
 	++kbd->kb_count;
 
 #if KBDIO_DEBUG >= 10
-	printf("atkbd_read_char(): scancode:0x%x\n", scancode);
+	kprintf("atkbd_read_char(): scancode:0x%x\n", scancode);
 #endif
 
 	/* return the byte as is for the K_RAW mode */
@@ -1128,11 +1128,11 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	if (c == -1) {
 		/* CONTROLLER ERROR */
 		kbdc_lock(kbdc, FALSE);
-		printf("atkbd: unable to get the current command byte value.\n");
+		kprintf("atkbd: unable to get the current command byte value.\n");
 		return EIO;
 	}
 	if (bootverbose)
-		printf("atkbd: the current kbd controller command byte %04x\n",
+		kprintf("atkbd: the current kbd controller command byte %04x\n",
 		       c);
 #if 0
 	/* override the keyboard lock switch */
@@ -1142,7 +1142,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	/* enable the keyboard port, but disable the keyboard intr. */
 	if (setup_kbd_port(kbdc, TRUE, FALSE)) {
 		/* CONTROLLER ERROR: there is very little we can do... */
-		printf("atkbd: unable to set the command byte.\n");
+		kprintf("atkbd: unable to set the command byte.\n");
 		kbdc_lock(kbdc, FALSE);
 		return EIO;
 	}
@@ -1165,7 +1165,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			codeset = read_kbd_data(kbdc);
 	}
 	if (bootverbose)
-		printf("atkbd: scancode set %d\n", codeset);
+		kprintf("atkbd: scancode set %d\n", codeset);
 #endif /* KBD_DETECT_XT_KEYBOARD */
  
 	*type = KB_OTHER;
@@ -1189,7 +1189,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		break;
 	}
 	if (bootverbose)
-		printf("atkbd: keyboard ID 0x%x (%d)\n", id, *type);
+		kprintf("atkbd: keyboard ID 0x%x (%d)\n", id, *type);
 
 	/* reset keyboard hardware */
 	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
@@ -1215,7 +1215,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		set_controller_command_byte(kbdc, 0xff, c);
 		kbdc_lock(kbdc, FALSE);
 		if (bootverbose)
-			printf("atkbd: failed to reset the keyboard.\n");
+			kprintf("atkbd: failed to reset the keyboard.\n");
 		return EIO;
 	}
 
@@ -1237,7 +1237,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			 */
 			set_controller_command_byte(kbdc, 0xff, c);
 			kbdc_lock(kbdc, FALSE);
-			printf("atkbd: unable to set the XT keyboard mode.\n");
+			kprintf("atkbd: unable to set the XT keyboard mode.\n");
 			return EIO;
 		}
 	}
@@ -1254,7 +1254,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		 */
 		set_controller_command_byte(kbdc, 0xff, c);
 		kbdc_lock(kbdc, FALSE);
-		printf("atkbd: unable to enable the keyboard port and intr.\n");
+		kprintf("atkbd: unable to enable the keyboard port and intr.\n");
 		return EIO;
 	}
 

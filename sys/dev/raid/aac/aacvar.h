@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.14 2006/09/10 01:26:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.15 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/thread2.h>
@@ -62,7 +62,7 @@
 #define AAC_AIFQ_LENGTH		64
 
 /*
- * Firmware messages are passed in the printf buffer.
+ * Firmware messages are passed in the kprintf buffer.
  */
 #define AAC_PRINTF_BUFSIZE	256
 
@@ -411,11 +411,11 @@ extern int		aac_sync_fib(struct aac_softc *sc, u_int32_t command,
 #ifdef AAC_DEBUG
 # define debug(level, fmt, args...)					\
 	do {								\
-	if (level <=AAC_DEBUG) printf("%s: " fmt "\n", __func__ , ##args); \
+	if (level <=AAC_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args); \
 	} while (0)
 # define debug_called(level)						\
 	do {								\
-	if (level <= AAC_DEBUG) printf(__func__ ": called\n");	\
+	if (level <= AAC_DEBUG) kprintf(__func__ ": called\n");	\
 	} while (0)
 
 extern void	aac_print_queues(struct aac_softc *sc);
@@ -477,7 +477,7 @@ aac_enqueue_ ## name (struct aac_command *cm)				\
 {									\
 	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
-		printf("command %p is on another queue, flags = %#x\n",	\
+		kprintf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
 		panic("command is on another queue");			\
 	}								\
@@ -491,7 +491,7 @@ aac_requeue_ ## name (struct aac_command *cm)				\
 {									\
 	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
-		printf("command %p is on another queue, flags = %#x\n",	\
+		kprintf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
 		panic("command is on another queue");			\
 	}								\
@@ -508,7 +508,7 @@ aac_dequeue_ ## name (struct aac_softc *sc)				\
 	crit_enter();							\
 	if ((cm = TAILQ_FIRST(&sc->aac_ ## name)) != NULL) {		\
 		if ((cm->cm_flags & AAC_ON_ ## index) == 0) {		\
-			printf("command %p not in queue, flags = %#x, "	\
+			kprintf("command %p not in queue, flags = %#x, "	\
 		       	       "bit = %#x\n", cm, cm->cm_flags,		\
 			       AAC_ON_ ## index);			\
 			panic("command not in queue");			\
@@ -525,7 +525,7 @@ aac_remove_ ## name (struct aac_command *cm)				\
 {									\
 	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_ ## index) == 0) {			\
-		printf("command %p not in queue, flags = %#x, "		\
+		kprintf("command %p not in queue, flags = %#x, "		\
 		       "bit = %#x\n", cm, cm->cm_flags, 		\
 		       AAC_ON_ ## index);				\
 		panic("command not in queue");				\
@@ -579,7 +579,7 @@ static __inline void
 aac_print_printf(struct aac_softc *sc)
 {
 	/*
-	 * XXX We have the ability to read the length of the printf string
+	 * XXX We have the ability to read the length of the kprintf string
 	 * from out of the mailboxes.
 	 */
 	device_printf(sc->aac_dev, "**Monitor** %.*s", AAC_PRINTF_BUFSIZE,

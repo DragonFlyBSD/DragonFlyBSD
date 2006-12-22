@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.10 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -124,7 +124,7 @@ ahd_attach(struct ahd_softc *ahd)
 	sim = NULL;
 
 	ahd_controller_info(ahd, ahd_info);
-	printf("%s\n", ahd_info);
+	kprintf("%s\n", ahd_info);
 	ahd_lock(ahd, &s);
 
 	/*
@@ -234,7 +234,7 @@ ahd_done(struct ahd_softc *ahd, struct scb *scb)
 				ahd->pending_device = NULL;
 			} else {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("Still disconnected\n");
+				kprintf("Still disconnected\n");
 				ahd_freeze_ccb(ccb);
 			}
 		}
@@ -279,7 +279,7 @@ ahd_done(struct ahd_softc *ahd, struct scb *scb)
 		 || ahd_get_transaction_status(scb) == CAM_REQ_ABORTED)
 			ahd_set_transaction_status(scb, CAM_CMD_TIMEOUT);
 		ahd_print_path(ahd, scb);
-		printf("no longer in timeout, status = %x\n",
+		kprintf("no longer in timeout, status = %x\n",
 		       ccb->ccb_h.status);
 	}
 
@@ -319,11 +319,11 @@ ahd_done(struct ahd_softc *ahd, struct scb *scb)
 		memcpy(&ccb->csio.sense_data,
 		       ahd_get_sense_buf(ahd, scb) + SIU_SENSE_OFFSET(siu),
 		       sense_len);
-		printf("Copied %d bytes of sense data offset %d:", sense_len,
+		kprintf("Copied %d bytes of sense data offset %d:", sense_len,
 		       SIU_SENSE_OFFSET(siu));
 		for (i = 0; i < sense_len; i++)
-			printf(" 0x%x", ((uint8_t *)&ccb->csio.sense_data)[i]);
-		printf("\n");
+			kprintf(" 0x%x", ((uint8_t *)&ccb->csio.sense_data)[i]);
+		kprintf("\n");
 		scb->io_ctx->ccb_h.status |= CAM_AUTOSNS_VALID;
 	}
 	ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
@@ -574,7 +574,7 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 		ahd_unlock(ahd, &s);
 		if (bootverbose) {
 			xpt_print_path(SIM_PATH(ahd, sim));
-			printf("SCSI bus reset delivered. "
+			kprintf("SCSI bus reset delivered. "
 			       "%d SCBs aborted.\n", found);
 		}
 		ccb->ccb_h.status = CAM_REQ_CMP;
@@ -1341,14 +1341,14 @@ ahd_timeout(void *arg)
 #if 0
 	ahd_set_modes(ahd, AHD_MODE_SCSI, AHD_MODE_SCSI);
 	ahd_outb(ahd, SCSISIGO, ACKO);
-	printf("set ACK\n");
+	kprintf("set ACK\n");
 	ahd_outb(ahd, SCSISIGO, 0);
-	printf("clearing Ack\n");
+	kprintf("clearing Ack\n");
 	ahd_restore_modes(ahd, saved_modes);
 #endif
 	if ((scb->flags & SCB_ACTIVE) == 0) {
 		/* Previous timeout took care of me already */
-		printf("%s: Timedout SCB already complete. "
+		kprintf("%s: Timedout SCB already complete. "
 		       "Interrupts may not be functioning.\n", ahd_name(ahd));
 		ahd_unpause(ahd);
 		ahd_unlock(ahd, &s);
@@ -1360,7 +1360,7 @@ ahd_timeout(void *arg)
 	lun = SCB_GET_LUN(scb);
 
 	ahd_print_path(ahd, scb);
-	printf("SCB 0x%x - timed out\n", SCB_GET_TAG(scb));
+	kprintf("SCB 0x%x - timed out\n", SCB_GET_TAG(scb));
 	ahd_dump_card_state(ahd);
 	ahd_reset_channel(ahd, SIM_CHANNEL(ahd, sim),
 			  /*initiate reset*/TRUE);
@@ -1370,7 +1370,7 @@ ahd_timeout(void *arg)
 	last_phase = ahd_inb(ahd, LASTPHASE);
 	if (scb->sg_count > 0) {
 		for (i = 0; i < scb->sg_count; i++) {
-			printf("sg[%d] - Addr 0x%x : Length %d\n",
+			kprintf("sg[%d] - Addr 0x%x : Length %d\n",
 			       i,
 			       ((struct ahd_dma_seg *)scb->sg_list)[i].addr,
 			       ((struct ahd_dma_seg *)scb->sg_list)[i].len
@@ -1385,7 +1385,7 @@ ahd_timeout(void *arg)
 bus_reset:
 		ahd_set_transaction_status(scb, CAM_CMD_TIMEOUT);
 		found = ahd_reset_channel(ahd, channel, /*Initiate Reset*/TRUE);
-		printf("%s: Issued Channel %c Bus Reset. "
+		kprintf("%s: Issued Channel %c Bus Reset. "
 		       "%d SCBs aborted\n", ahd_name(ahd), channel, found);
 	} else {
 		/*
@@ -1433,7 +1433,7 @@ bus_reset:
 				uint64_t newtimeout;
 
 				ahd_print_path(ahd, scb);
-				printf("Other SCB Timeout%s",
+				kprintf("Other SCB Timeout%s",
 			 	       (scb->flags & SCB_OTHERTCL_TIMEOUT) != 0
 				       ? " again\n" : "\n");
 				scb->flags |= SCB_OTHERTCL_TIMEOUT;
@@ -1474,7 +1474,7 @@ bus_reset:
 			ahd_outb(ahd, MSG_OUT, HOST_MSG);
 			ahd_outb(ahd, SCSISIGO, last_phase|ATNO);
 			ahd_print_path(ahd, active_scb);
-			printf("BDR message in message buffer\n");
+			kprintf("BDR message in message buffer\n");
 			active_scb->flags |= SCB_DEVICE_RESET;
 			callout_reset(&active_scb->io_ctx->ccb_h.timeout_ch,
 			    2 * hz, ahd_timeout, active_scb);
@@ -1490,7 +1490,7 @@ bus_reset:
 			 && (ahd_inb(ahd, SSTAT0) & TARGET) != 0) {
 				/* XXX What happened to the SCB? */
 				/* Hung target selection.  Goto busfree */
-				printf("%s: Hung target selection\n",
+				kprintf("%s: Hung target selection\n",
 				       ahd_name(ahd));
 				ahd_restart(ahd);
 				ahd_unlock(ahd, &s);
@@ -1550,7 +1550,7 @@ bus_reset:
 						   CAM_REQUEUE_REQ,
 						   SEARCH_COMPLETE);
 				ahd_print_path(ahd, scb);
-				printf("Queuing a BDR SCB\n");
+				kprintf("Queuing a BDR SCB\n");
 				ahd_qinfifo_requeue_tail(ahd, scb);
 				ahd_set_scbptr(ahd, saved_scbptr);
 				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
@@ -1561,7 +1561,7 @@ bus_reset:
 				/* This shouldn't happen */
 				ahd_set_recoveryscb(ahd, scb);
 				ahd_print_path(ahd, scb);
-				printf("SCB %d: Immediate reset.  "
+				kprintf("SCB %d: Immediate reset.  "
 					"Flags = 0x%x\n", SCB_GET_TAG(scb),
 					scb->flags);
 				goto bus_reset;
@@ -1638,7 +1638,7 @@ ahd_abort_ccb(struct ahd_softc *ahd, struct cam_sim *sim, union ccb *ccb)
 				ccb->ccb_h.status = CAM_REQ_CMP;
 			} else {
 				xpt_print_path(abort_ccb->ccb_h.path);
-				printf("Not found\n");
+				kprintf("Not found\n");
 				ccb->ccb_h.status = CAM_PATH_INVALID;
 			}
 			break;
@@ -1820,14 +1820,14 @@ ahd_dump_targcmd(struct target_cmd *cmd)
 	i = 0;
 	while (byte < last_byte) {
 		if (i == 0)
-			printf("\t");
-		printf("%#x", *byte++);
+			kprintf("\t");
+		kprintf("%#x", *byte++);
 		i++;
 		if (i == 8) {
-			printf("\n");
+			kprintf("\n");
 			i = 0;
 		} else {
-			printf(", ");
+			kprintf(", ");
 		}
 	}
 }

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.23 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.24 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -781,7 +781,7 @@ static int stlprobe(struct isa_device *idp)
 	unsigned int	status;
 
 #if STLDEBUG
-	printf("stlprobe(idp=%x): unit=%d iobase=%x\n", (int) idp,
+	kprintf("stlprobe(idp=%x): unit=%d iobase=%x\n", (int) idp,
 		idp->id_unit, idp->id_iobase);
 #endif
 
@@ -840,7 +840,7 @@ static int stlattach(struct isa_device *idp)
 	int		boardnr, portnr, minor_dev;
 
 #if STLDEBUG
-	printf("stlattach(idp=%p): unit=%d iobase=%x\n", (void *) idp,
+	kprintf("stlattach(idp=%p): unit=%d iobase=%x\n", (void *) idp,
 		idp->id_unit, idp->id_iobase);
 #endif
 
@@ -849,7 +849,7 @@ static int stlattach(struct isa_device *idp)
 	brdp = kmalloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((brdp->brdnr = stl_findfreeunit()) < 0) {
-		printf("STALLION: too many boards found, max=%d\n",
+		kprintf("STALLION: too many boards found, max=%d\n",
 			STL_MAXBRDS);
 		return(0);
 	}
@@ -977,7 +977,7 @@ static const char *stlpciprobe(pcici_t tag, pcidi_t type)
 	int		i, brdtype;
 
 #if STLDEBUG
-	printf("stlpciprobe(tag=%x,type=%x)\n", (int) &tag, (int) type);
+	kprintf("stlpciprobe(tag=%x,type=%x)\n", (int) &tag, (int) type);
 #endif
 
 	brdtype = 0;
@@ -1014,13 +1014,13 @@ void stlpciattach(pcici_t tag, int unit)
 	int		boardnr, portnr, minor_dev;
 
 #if STLDEBUG
-	printf("stlpciattach(tag=%x,unit=%x)\n", (int) &tag, unit);
+	kprintf("stlpciattach(tag=%x,unit=%x)\n", (int) &tag, unit);
 #endif
 
 	brdp = kmalloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((unit < 0) || (unit > STL_MAXBRDS)) {
-		printf("STALLION: bad PCI board unit number=%d\n", unit);
+		kprintf("STALLION: bad PCI board unit number=%d\n", unit);
 		return;
 	}
 
@@ -1028,7 +1028,7 @@ void stlpciattach(pcici_t tag, int unit)
  *	Allocate us a new driver unique unit number.
  */
 	if ((brdp->brdnr = stl_findfreeunit()) < 0) {
-		printf("STALLION: too many boards found, max=%d\n",
+		kprintf("STALLION: too many boards found, max=%d\n",
 			STL_MAXBRDS);
 		return;
 	}
@@ -1048,7 +1048,7 @@ void stlpciattach(pcici_t tag, int unit)
         }
 
         if (i >= stl_nrpcibrds) {
-                printf("STALLION: probed PCI board unknown type=%x\n", id);
+                kprintf("STALLION: probed PCI board unknown type=%x\n", id);
                 return;
         }
 
@@ -1070,7 +1070,7 @@ void stlpciattach(pcici_t tag, int unit)
                 brdp->ioaddr2 = bar[0];
                 break;
         default:
-                printf("STALLION: unknown PCI board type=%d\n", brdp->brdtype);
+                kprintf("STALLION: unknown PCI board type=%d\n", brdp->brdtype);
                 return;
                 break;
         }
@@ -1079,7 +1079,7 @@ void stlpciattach(pcici_t tag, int unit)
         brdp->irq = ((int) pci_conf_read(tag, 0x3c)) & 0xff;
         brdp->irqtype = 0;
         if (pci_map_int(tag, stlpciintr, (void *) NULL) == 0) {
-                printf("STALLION: failed to map interrupt irq=%d for unit=%d\n",
+                kprintf("STALLION: failed to map interrupt irq=%d for unit=%d\n",
                         brdp->irq, brdp->brdnr);
                 return;
         }
@@ -1147,7 +1147,7 @@ STATIC int stlopen(struct dev_open_args *ap)
 	int		error, callout;
 
 #if STLDEBUG
-	printf("stlopen(dev=%x,flag=%x,mode=%x,p=%x)\n", (int) dev, flag,
+	kprintf("stlopen(dev=%x,flag=%x,mode=%x,p=%x)\n", (int) dev, flag,
 		mode, (int) p);
 #endif
 
@@ -1265,7 +1265,7 @@ STATIC int stlclose(struct dev_close_args *ap)
 	stlport_t	*portp;
 
 #if STLDEBUG
-	printf("stlclose(dev=%s,flag=%x,mode=%x,p=%p)\n", devtoname(dev),
+	kprintf("stlclose(dev=%s,flag=%x,mode=%x,p=%p)\n", devtoname(dev),
 		flag, mode, (void *) p);
 #endif
 
@@ -1295,7 +1295,7 @@ STATIC int stlclose(struct dev_close_args *ap)
 STATIC void stl_stop(struct tty *tp, int rw)
 {
 #if STLDEBUG
-	printf("stl_stop(tp=%x,rw=%x)\n", (int) tp, rw);
+	kprintf("stl_stop(tp=%x,rw=%x)\n", (int) tp, rw);
 #endif
 
 	stl_flush((stlport_t *) tp, rw);
@@ -1306,7 +1306,7 @@ STATIC void stl_stop(struct tty *tp, int rw)
 STATIC int stlstop(struct tty *tp, int rw)
 {
 #if STLDEBUG
-	printf("stlstop(tp=%x,rw=%x)\n", (int) tp, rw);
+	kprintf("stlstop(tp=%x,rw=%x)\n", (int) tp, rw);
 #endif
 
 	stl_flush((stlport_t *) tp, rw);
@@ -1328,7 +1328,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
 	int		error, i;
 
 #if STLDEBUG
-	printf("stlioctl(dev=%s,cmd=%lx,data=%p,flag=%x)\n",
+	kprintf("stlioctl(dev=%s,cmd=%lx,data=%p,flag=%x)\n",
 		devtoname(dev), cmd, (void *) data, ap->a_fflag);
 #endif
 
@@ -1521,7 +1521,7 @@ STATIC stlport_t *stl_dev2port(cdev_t dev)
 static int stl_rawopen(stlport_t *portp)
 {
 #if STLDEBUG
-	printf("stl_rawopen(portp=%p): brdnr=%d panelnr=%d portnr=%d\n",
+	kprintf("stl_rawopen(portp=%p): brdnr=%d panelnr=%d portnr=%d\n",
 		(void *) portp, portp->brdnr, portp->panelnr, portp->portnr);
 #endif
 
@@ -1545,7 +1545,7 @@ static int stl_rawclose(stlport_t *portp)
 	struct tty	*tp;
 
 #if STLDEBUG
-	printf("stl_rawclose(portp=%p): brdnr=%d panelnr=%d portnr=%d\n",
+	kprintf("stl_rawclose(portp=%p): brdnr=%d panelnr=%d portnr=%d\n",
 		(void *) portp, portp->brdnr, portp->panelnr, portp->portnr);
 #endif
 
@@ -1605,7 +1605,7 @@ static void stl_start(struct tty *tp)
 	portp = (stlport_t *) tp;
 
 #if STLDEBUG
-	printf("stl_start(tp=%x): brdnr=%d portnr=%d\n", (int) tp, 
+	kprintf("stl_start(tp=%x): brdnr=%d portnr=%d\n", (int) tp, 
 		portp->brdnr, portp->portnr);
 #endif
 
@@ -1705,7 +1705,7 @@ static void stl_flush(stlport_t *portp, int flag)
 	int	len;
 
 #if STLDEBUG
-	printf("stl_flush(portp=%x,flag=%x)\n", (int) portp, flag);
+	kprintf("stl_flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
 	if (portp == (stlport_t *) NULL)
@@ -1762,7 +1762,7 @@ void stlintr(void *arg)
         int             i;
 
 #if STLDEBUG
-	printf("stlintr(unit=%d)\n", (int)arg);
+	kprintf("stlintr(unit=%d)\n", (int)arg);
 #endif
 
         for (i = 0; (i < stl_nrbrds); i++) {
@@ -1797,7 +1797,7 @@ static void stl_eiointr(stlbrd_t *brdp)
         int             iobase;
 
 #if STLDEBUG
-        printf("stl_eiointr(brdp=%p)\n", brdp);
+        kprintf("stl_eiointr(brdp=%p)\n", brdp);
 #endif
 
         panelp = (stlpanel_t *) brdp->panels[0];
@@ -1867,7 +1867,7 @@ static void stl_echpciintr(stlbrd_t *brdp)
         int             bnknr, recheck;
 
 #if STLDEBUG
-        printf("stl_echpciintr(brdp=%x)\n", (int) brdp);
+        kprintf("stl_echpciintr(brdp=%x)\n", (int) brdp);
 #endif
 
         for (;;) {
@@ -1899,14 +1899,14 @@ static void stl_echpci64intr(stlbrd_t *brdp)
         int             bnknr;
 
 #if STLDEBUG
-        printf("stl_echpci64intr(brdp=%p)\n", brdp);
+        kprintf("stl_echpci64intr(brdp=%p)\n", brdp);
 #endif
 
         while (inb(brdp->ioctrl) & 0x1) {
                 for (bnknr = 0; (bnknr < brdp->nrbnks); bnknr++) {
                         ioaddr = brdp->bnkstataddr[bnknr];
 #if STLDEBUG
-	printf("    --> ioaddr=%x status=%x(%x)\n", ioaddr, inb(ioaddr) & ECH_PNLINTRPEND, inb(ioaddr));
+	kprintf("    --> ioaddr=%x status=%x(%x)\n", ioaddr, inb(ioaddr) & ECH_PNLINTRPEND, inb(ioaddr));
 #endif
                         if (inb(ioaddr) & ECH_PNLINTRPEND) {
                                 panelp = brdp->bnk2panel[bnknr];
@@ -1926,7 +1926,7 @@ static void stl_echpci64intr(stlbrd_t *brdp)
 static void stl_dotimeout()
 {
 #if STLDEBUG
-	printf("stl_dotimeout()\n");
+	kprintf("stl_dotimeout()\n");
 #endif
 	if (stl_doingtimeout == 0) {
 		if ((stl_poll_ch.c_flags & CALLOUT_DID_INIT) == 0)
@@ -1952,7 +1952,7 @@ static void stl_poll(void *arg)
 	int		brdnr, portnr, rearm;
 
 #if STLDEBUG
-	printf("stl_poll()\n");
+	kprintf("stl_poll()\n");
 #endif
 
 	stl_doingtimeout = 0;
@@ -2014,7 +2014,7 @@ static void stl_rxprocess(stlport_t *portp)
 	int		ch;
 
 #if STLDEBUG
-	printf("stl_rxprocess(portp=%x): brdnr=%d portnr=%d\n", (int) portp, 
+	kprintf("stl_rxprocess(portp=%x): brdnr=%d portnr=%d\n", (int) portp, 
 		portp->brdnr, portp->portnr);
 #endif
 
@@ -2124,7 +2124,7 @@ static void stl_flowcontrol(stlport_t *portp, int hw, int sw)
 	int		len, hwflow;
 
 #if STLDEBUG
-	printf("stl_flowcontrol(portp=%x,hw=%d,sw=%d)\n", (int) portp, hw, sw);
+	kprintf("stl_flowcontrol(portp=%x,hw=%d,sw=%d)\n", (int) portp, hw, sw);
 #endif
 
 	hwflow = -1;
@@ -2191,7 +2191,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
 	int		i, j;
 
 #if STLDEBUG
-	printf("stl_initports(panelp=%x)\n", (int) panelp);
+	kprintf("stl_initports(panelp=%x)\n", (int) panelp);
 #endif
 
         chipmask = stl_panelinit(brdp, panelp);
@@ -2256,7 +2256,7 @@ static int stl_initeio(stlbrd_t *brdp)
 	unsigned int	status;
 
 #if STLDEBUG
-	printf("stl_initeio(brdp=%x)\n", (int) brdp);
+	kprintf("stl_initeio(brdp=%x)\n", (int) brdp);
 #endif
 
 	brdp->ioctrl = brdp->ioaddr1 + 1;
@@ -2306,7 +2306,7 @@ static int stl_initeio(stlbrd_t *brdp)
  */
 		if ((brdp->irq < 0) || (brdp->irq > 15) ||
 			(stl_vecmap[brdp->irq] == (unsigned char) 0xff)) {
-			printf("STALLION: invalid irq=%d for brd=%d\n",
+			kprintf("STALLION: invalid irq=%d for brd=%d\n",
 			       brdp->irq, brdp->brdnr);
 			return(EINVAL);
 		}
@@ -2348,7 +2348,7 @@ static int stl_initech(stlbrd_t *brdp)
 	int		panelnr, ioaddr, banknr, i;
 
 #if STLDEBUG
-	printf("stl_initech(brdp=%x)\n", (int) brdp);
+	kprintf("stl_initech(brdp=%x)\n", (int) brdp);
 #endif
 
 /*
@@ -2369,7 +2369,7 @@ static int stl_initech(stlbrd_t *brdp)
 
                 if ((brdp->irq < 0) || (brdp->irq > 15) ||
                     (stl_vecmap[brdp->irq] == (unsigned char) 0xff)) {
-                        printf("STALLION: invalid irq=%d for brd=%d\n",
+                        kprintf("STALLION: invalid irq=%d for brd=%d\n",
                                 brdp->irq, brdp->brdnr);
                         return(EINVAL);
                 }
@@ -2393,7 +2393,7 @@ static int stl_initech(stlbrd_t *brdp)
 
                 if ((brdp->irq < 0) || (brdp->irq > 15) ||
                     (stl_vecmap[brdp->irq] == (unsigned char) 0xff)) {
-                        printf("STALLION: invalid irq=%d for brd=%d\n",
+                        kprintf("STALLION: invalid irq=%d for brd=%d\n",
                                 brdp->irq, brdp->brdnr);
                         return(EINVAL);
                 }
@@ -2413,7 +2413,7 @@ static int stl_initech(stlbrd_t *brdp)
                 break;
 
         default:
-                printf("STALLION: unknown board type=%d\n", brdp->brdtype);
+                kprintf("STALLION: unknown board type=%d\n", brdp->brdtype);
                 break;
         }
 
@@ -2482,7 +2482,7 @@ static int stl_initech(stlbrd_t *brdp)
                 brdp->panels[panelnr++] = panelp;
                 if ((brdp->brdtype == BRD_ECH) || (brdp->brdtype == BRD_ECHMC)){
                         if (ioaddr >= (brdp->ioaddr2 + 0x20)) {
-                                printf("STALLION: too many ports attached "
+                                kprintf("STALLION: too many ports attached "
                                         "to board %d, remove last module\n",
                                         brdp->brdnr);
                                 break;
@@ -2513,7 +2513,7 @@ static int stl_brdinit(stlbrd_t *brdp)
 	int		i, j, k;
 
 #if STLDEBUG
-	printf("stl_brdinit(brdp=%x): unit=%d type=%d io1=%x io2=%x irq=%d\n",
+	kprintf("stl_brdinit(brdp=%x): unit=%d type=%d io1=%x io2=%x irq=%d\n",
 		(int) brdp, brdp->brdnr, brdp->brdtype, brdp->ioaddr1,
 		brdp->ioaddr2, brdp->irq);
 #endif
@@ -2530,7 +2530,7 @@ static int stl_brdinit(stlbrd_t *brdp)
 		stl_initech(brdp);
 		break;
 	default:
-		printf("STALLION: unit=%d is unknown board type=%d\n",
+		kprintf("STALLION: unit=%d is unknown board type=%d\n",
 			brdp->brdnr, brdp->brdtype);
 		return(ENODEV);
 	}
@@ -2538,7 +2538,7 @@ static int stl_brdinit(stlbrd_t *brdp)
 	stl_brds[brdp->brdnr] = brdp;
 	if ((brdp->state & BRD_FOUND) == 0) {
 #if 0
-		printf("STALLION: %s board not found, unit=%d io=%x irq=%d\n",
+		kprintf("STALLION: %s board not found, unit=%d io=%x irq=%d\n",
 			stl_brdnames[brdp->brdtype], brdp->brdnr,
 			brdp->ioaddr1, brdp->irq);
 #endif
@@ -2554,7 +2554,7 @@ static int stl_brdinit(stlbrd_t *brdp)
 		}
 	}
 
-	printf("stl%d: %s (driver version %s) unit=%d nrpanels=%d nrports=%d\n",
+	kprintf("stl%d: %s (driver version %s) unit=%d nrpanels=%d nrports=%d\n",
 		brdp->unitid, stl_brdnames[brdp->brdtype], stl_drvversion,
 		brdp->brdnr, brdp->nrpanels, brdp->nrports);
 	return(0);
@@ -2706,7 +2706,7 @@ static int stl_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
 	int		rc;
 
 #if STLDEBUG
-	printf("stl_memioctl(dev=%s,cmd=%lx,data=%p,flag=%x)\n",
+	kprintf("stl_memioctl(dev=%s,cmd=%lx,data=%p,flag=%x)\n",
 		devtoname(dev), cmd, (void *) data, flag);
 #endif
 
@@ -2773,7 +2773,7 @@ static void stl_cd1400flush(stlport_t *portp, int flag)
 {
 
 #if STLDEBUG
-        printf("stl_cd1400flush(portp=%x,flag=%x)\n", (int) portp, flag);
+        kprintf("stl_cd1400flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
         if (portp == (stlport_t *) NULL)
@@ -2808,7 +2808,7 @@ static void stl_cd1400ccrwait(stlport_t *portp)
                         return;
         }
 
-        printf("stl%d: cd1400 device not responding, panel=%d port=%d\n",
+        kprintf("stl%d: cd1400 device not responding, panel=%d port=%d\n",
             portp->brdnr, portp->panelnr, portp->portnr);
 }
 
@@ -2830,13 +2830,13 @@ static __inline void stl_cd1400txisr(stlpanel_t *panelp, int ioaddr)
         int             len, stlen;
 
 #if STLDEBUG
-        printf("stl_cd1400txisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
+        kprintf("stl_cd1400txisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
 #endif
 
         ioack = inb(ioaddr + EREG_TXACK);
         if (((ioack & panelp->ackmask) != 0) ||
             ((ioack & ACK_TYPMASK) != ACK_TYPTX)) {
-                printf("STALLION: bad TX interrupt ack value=%x\n",
+                kprintf("STALLION: bad TX interrupt ack value=%x\n",
                         ioack);
                 return;
         }
@@ -2945,12 +2945,12 @@ static __inline void stl_cd1400rxisr(stlpanel_t *panelp, int ioaddr)
         char            *head, *tail;
 
 #if STLDEBUG
-        printf("stl_cd1400rxisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
+        kprintf("stl_cd1400rxisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
 #endif
 
         ioack = inb(ioaddr + EREG_RXACK);
         if ((ioack & panelp->ackmask) != 0) {
-                printf("STALLION: bad RX interrupt ack value=%x\n", ioack);
+                kprintf("STALLION: bad RX interrupt ack value=%x\n", ioack);
                 return;
         }
         portp = panelp->ports[(ioack >> 3)];
@@ -3048,7 +3048,7 @@ static __inline void stl_cd1400rxisr(stlpanel_t *panelp, int ioaddr)
                                 head = portp->rx.buf;
                 }
         } else {
-                printf("STALLION: bad RX interrupt ack value=%x\n", ioack);
+                kprintf("STALLION: bad RX interrupt ack value=%x\n", ioack);
                 return;
         }
 
@@ -3075,13 +3075,13 @@ static __inline void stl_cd1400mdmisr(stlpanel_t *panelp, int ioaddr)
         unsigned char   misr;
 
 #if STLDEBUG
-        printf("stl_cd1400mdmisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
+        kprintf("stl_cd1400mdmisr(panelp=%x,ioaddr=%x)\n", (int) panelp, ioaddr);
 #endif
 
         ioack = inb(ioaddr + EREG_MDACK);
         if (((ioack & panelp->ackmask) != 0) ||
             ((ioack & ACK_TYPMASK) != ACK_TYPMDM)) {
-                printf("STALLION: bad MODEM interrupt ack value=%x\n", ioack);
+                kprintf("STALLION: bad MODEM interrupt ack value=%x\n", ioack);
                 return;
         }
         portp = panelp->ports[(ioack >> 3)];
@@ -3109,7 +3109,7 @@ static void stl_cd1400eiointr(stlpanel_t *panelp, unsigned int iobase)
         unsigned char   svrtype;
 
 #if STLDEBUG
-        printf("stl_cd1400eiointr(panelp=%x,iobase=%x)\n", (int) panelp,
+        kprintf("stl_cd1400eiointr(panelp=%x,iobase=%x)\n", (int) panelp,
                 iobase);
 #endif
 
@@ -3120,7 +3120,7 @@ static void stl_cd1400eiointr(stlpanel_t *panelp, unsigned int iobase)
                 svrtype |= inb(iobase + EREG_DATA);
         }
 #if STLDEBUG
-printf("stl_cd1400eiointr(panelp=%x,iobase=%x): svrr=%x\n", (int) panelp, iobase, svrtype);
+kprintf("stl_cd1400eiointr(panelp=%x,iobase=%x): svrr=%x\n", (int) panelp, iobase, svrtype);
 #endif
 
         if (svrtype & SVRR_RX)
@@ -3142,7 +3142,7 @@ static void stl_cd1400echintr(stlpanel_t *panelp, unsigned int iobase)
         unsigned char   svrtype;
 
 #if STLDEBUG
-        printf("stl_cd1400echintr(panelp=%x,iobase=%x)\n", (int) panelp,
+        kprintf("stl_cd1400echintr(panelp=%x,iobase=%x)\n", (int) panelp,
                 iobase);
 #endif
 
@@ -3175,7 +3175,7 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
         unsigned char   clk, div;
 
 #if STLDEBUG
-        printf("stl_cd1400setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
+        kprintf("stl_cd1400setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
                 (int) portp, (int) tiosp, portp->brdnr, portp->portnr);
 #endif
 
@@ -3306,14 +3306,14 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
  *      all up.
  */
 #if STLDEBUG
-        printf("SETPORT: portnr=%d panelnr=%d brdnr=%d\n", portp->portnr,
+        kprintf("SETPORT: portnr=%d panelnr=%d brdnr=%d\n", portp->portnr,
                 portp->panelnr, portp->brdnr);
-        printf("    cor1=%x cor2=%x cor3=%x cor4=%x cor5=%x\n", cor1, cor2,
+        kprintf("    cor1=%x cor2=%x cor3=%x cor4=%x cor5=%x\n", cor1, cor2,
                 cor3, cor4, cor5);
-        printf("    mcor1=%x mcor2=%x rtpr=%x sreron=%x sreroff=%x\n",
+        kprintf("    mcor1=%x mcor2=%x rtpr=%x sreron=%x sreroff=%x\n",
                 mcor1, mcor2, rtpr, sreron, sreroff);
-        printf("    tcor=%x tbpr=%x rcor=%x rbpr=%x\n", clk, div, clk, div);
-        printf("    schr1=%x schr2=%x schr3=%x schr4=%x\n",
+        kprintf("    tcor=%x tbpr=%x rcor=%x rbpr=%x\n", clk, div, clk, div);
+        kprintf("    schr1=%x schr2=%x schr3=%x schr4=%x\n",
                 tiosp->c_cc[VSTART], tiosp->c_cc[VSTOP], tiosp->c_cc[VSTART],
                 tiosp->c_cc[VSTOP]);
 #endif
@@ -3375,7 +3375,7 @@ static void stl_cd1400sendflow(stlport_t *portp, int hw, int sw)
 {
 
 #if STLDEBUG
-        printf("stl_cd1400sendflow(portp=%x,hw=%d,sw=%d)\n",
+        kprintf("stl_cd1400sendflow(portp=%x,hw=%d,sw=%d)\n",
                 (int) portp, hw, sw);
 #endif
 
@@ -3425,7 +3425,7 @@ static void stl_cd1400sendflow(stlport_t *portp, int hw, int sw)
 static int stl_cd1400datastate(stlport_t *portp)
 {
 #if STLDEBUG
-        printf("stl_cd1400datastate(portp=%x)\n", (int) portp);
+        kprintf("stl_cd1400datastate(portp=%x)\n", (int) portp);
 #endif
 
         if (portp == (stlport_t *) NULL)
@@ -3446,7 +3446,7 @@ static void stl_cd1400setsignals(stlport_t *portp, int dtr, int rts)
         unsigned char   msvr1, msvr2;
 
 #if STLDEBUG
-        printf("stl_cd1400setsignals(portp=%x,dtr=%d,rts=%d)\n", (int) portp,
+        kprintf("stl_cd1400setsignals(portp=%x,dtr=%d,rts=%d)\n", (int) portp,
                 dtr, rts);
 #endif
 
@@ -3493,7 +3493,7 @@ static int stl_cd1400getsignals(stlport_t *portp)
         int             sigs;
 
 #if STLDEBUG
-        printf("stl_cd1400getsignals(portp=%x)\n", (int) portp);
+        kprintf("stl_cd1400getsignals(portp=%x)\n", (int) portp);
 #endif
 
         crit_enter();
@@ -3529,7 +3529,7 @@ static void stl_cd1400enablerxtx(stlport_t *portp, int rx, int tx)
         unsigned char   ccr;
 
 #if STLDEBUG
-        printf("stl_cd1400enablerxtx(portp=%x,rx=%d,tx=%d)\n",
+        kprintf("stl_cd1400enablerxtx(portp=%x,rx=%d,tx=%d)\n",
                 (int) portp, rx, tx);
 #endif
 
@@ -3564,7 +3564,7 @@ static void stl_cd1400startrxtx(stlport_t *portp, int rx, int tx)
         unsigned char   sreron, sreroff;
 
 #if STLDEBUG
-        printf("stl_cd1400startrxtx(portp=%x,rx=%d,tx=%d)\n",
+        kprintf("stl_cd1400startrxtx(portp=%x,rx=%d,tx=%d)\n",
                 (int) portp, rx, tx);
 #endif
 
@@ -3604,7 +3604,7 @@ static void stl_cd1400disableintrs(stlport_t *portp)
 {
 
 #if STLDEBUG
-        printf("stl_cd1400disableintrs(portp=%x)\n", (int) portp);
+        kprintf("stl_cd1400disableintrs(portp=%x)\n", (int) portp);
 #endif
 
         crit_enter();
@@ -3621,7 +3621,7 @@ static void stl_cd1400sendbreak(stlport_t *portp, long len)
 {
 
 #if STLDEBUG
-        printf("stl_cd1400sendbreak(portp=%x,len=%d)\n", (int) portp,
+        kprintf("stl_cd1400sendbreak(portp=%x,len=%d)\n", (int) portp,
                 (int) len);
 #endif
 
@@ -3655,7 +3655,7 @@ static void stl_cd1400sendbreak(stlport_t *portp, long len)
 static void stl_cd1400portinit(stlbrd_t *brdp, stlpanel_t *panelp, stlport_t *portp)
 {
 #if STLDEBUG
-        printf("stl_cd1400portinit(brdp=%x,panelp=%x,portp=%x)\n",
+        kprintf("stl_cd1400portinit(brdp=%x,panelp=%x,portp=%x)\n",
                 (int) brdp, (int) panelp, (int) portp);
 #endif
 
@@ -3690,7 +3690,7 @@ static int stl_cd1400panelinit(stlbrd_t *brdp, stlpanel_t *panelp)
         int             nrchips, uartaddr, ioaddr;
 
 #if STLDEBUG
-        printf("stl_cd1400panelinit(brdp=%x,panelp=%x)\n", (int) brdp,
+        kprintf("stl_cd1400panelinit(brdp=%x,panelp=%x)\n", (int) brdp,
                 (int) panelp);
 #endif
 
@@ -3720,7 +3720,7 @@ static int stl_cd1400panelinit(stlbrd_t *brdp, stlpanel_t *panelp)
                                 break;
                 }
                 if ((j >= CCR_MAXWAIT) || (gfrcr < 0x40) || (gfrcr > 0x60)) {
-                        printf("STALLION: cd1400 not responding, "
+                        kprintf("STALLION: cd1400 not responding, "
                                 "board=%d panel=%d chip=%d\n", panelp->brdnr,
                                 panelp->panelnr, i);
                         continue;
@@ -3801,7 +3801,7 @@ static int stl_sc26198panelinit(stlbrd_t *brdp, stlpanel_t *panelp)
         int     nrchips, ioaddr;
 
 #if STLDEBUG
-        printf("stl_sc26198panelinit(brdp=%x,panelp=%x)\n", (int) brdp,
+        kprintf("stl_sc26198panelinit(brdp=%x,panelp=%x)\n", (int) brdp,
                 (int) panelp);
 #endif
 
@@ -3821,7 +3821,7 @@ static int stl_sc26198panelinit(stlbrd_t *brdp, stlpanel_t *panelp)
                 outb((ioaddr + XP_DATA), CR_RESETALL);
                 outb((ioaddr + XP_ADDR), TSTR);
                 if (inb(ioaddr + XP_DATA) != 0) {
-                        printf("STALLION: sc26198 not responding, "
+                        kprintf("STALLION: sc26198 not responding, "
                                 "board=%d panel=%d chip=%d\n", panelp->brdnr,
                                 panelp->panelnr, i);
                         continue;
@@ -3846,7 +3846,7 @@ static int stl_sc26198panelinit(stlbrd_t *brdp, stlpanel_t *panelp)
 static void stl_sc26198portinit(stlbrd_t *brdp, stlpanel_t *panelp, stlport_t *portp)
 {
 #if STLDEBUG
-        printf("stl_sc26198portinit(brdp=%x,panelp=%x,portp=%x)\n",
+        kprintf("stl_sc26198portinit(brdp=%x,panelp=%x,portp=%x)\n",
                 (int) brdp, (int) panelp, (int) portp);
 #endif
 
@@ -3877,7 +3877,7 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
         unsigned char   imron, imroff, iopr, ipr;
 
 #if STLDEBUG
-        printf("stl_sc26198setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
+        kprintf("stl_sc26198setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
                 (int) portp, (int) tiosp, portp->brdnr, portp->portnr);
 #endif
 
@@ -4001,11 +4001,11 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
  */
 
 #if STLDEBUG
-        printf("SETPORT: portnr=%d panelnr=%d brdnr=%d\n", portp->portnr,
+        kprintf("SETPORT: portnr=%d panelnr=%d brdnr=%d\n", portp->portnr,
                 portp->panelnr, portp->brdnr);
-        printf("    mr0=%x mr1=%x mr2=%x clk=%x\n", mr0, mr1, mr2, clk);
-        printf("    iopr=%x imron=%x imroff=%x\n", iopr, imron, imroff);
-        printf("    schr1=%x schr2=%x schr3=%x schr4=%x\n",
+        kprintf("    mr0=%x mr1=%x mr2=%x clk=%x\n", mr0, mr1, mr2, clk);
+        kprintf("    iopr=%x imron=%x imroff=%x\n", iopr, imron, imroff);
+        kprintf("    schr1=%x schr2=%x schr3=%x schr4=%x\n",
                 tiosp->c_cc[VSTART], tiosp->c_cc[VSTOP],
                 tiosp->c_cc[VSTART], tiosp->c_cc[VSTOP]);
 #endif
@@ -4056,7 +4056,7 @@ static void stl_sc26198setsignals(stlport_t *portp, int dtr, int rts)
         unsigned char   iopioron, iopioroff;
 
 #if STLDEBUG
-        printf("stl_sc26198setsignals(portp=%x,dtr=%d,rts=%d)\n",
+        kprintf("stl_sc26198setsignals(portp=%x,dtr=%d,rts=%d)\n",
                 (int) portp, dtr, rts);
 #endif
 
@@ -4102,7 +4102,7 @@ static int stl_sc26198getsignals(stlport_t *portp)
         int             sigs;
 
 #if STLDEBUG
-        printf("stl_sc26198getsignals(portp=%x)\n", (int) portp);
+        kprintf("stl_sc26198getsignals(portp=%x)\n", (int) portp);
 #endif
 
         crit_enter();
@@ -4130,7 +4130,7 @@ static void stl_sc26198enablerxtx(stlport_t *portp, int rx, int tx)
         unsigned char   ccr;
 
 #if STLDEBUG
-        printf("stl_sc26198enablerxtx(portp=%x,rx=%d,tx=%d)\n",
+        kprintf("stl_sc26198enablerxtx(portp=%x,rx=%d,tx=%d)\n",
                 (int) portp, rx, tx);
 #endif
 
@@ -4163,7 +4163,7 @@ static void stl_sc26198startrxtx(stlport_t *portp, int rx, int tx)
         unsigned char   imr;
 
 #if STLDEBUG
-        printf("stl_sc26198startrxtx(portp=%x,rx=%d,tx=%d)\n",
+        kprintf("stl_sc26198startrxtx(portp=%x,rx=%d,tx=%d)\n",
                 (int) portp, rx, tx);
 #endif
 
@@ -4199,7 +4199,7 @@ static void stl_sc26198disableintrs(stlport_t *portp)
 {
 
 #if STLDEBUG
-        printf("stl_sc26198disableintrs(portp=%x)\n", (int) portp);
+        kprintf("stl_sc26198disableintrs(portp=%x)\n", (int) portp);
 #endif
 
         crit_enter();
@@ -4216,7 +4216,7 @@ static void stl_sc26198sendbreak(stlport_t *portp, long len)
 {
 
 #if STLDEBUG
-        printf("stl_sc26198sendbreak(portp=%x,len=%d)\n",
+        kprintf("stl_sc26198sendbreak(portp=%x,len=%d)\n",
                 (int) portp, (int) len);
 #endif
 
@@ -4243,7 +4243,7 @@ static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
         unsigned char   mr0;
 
 #if STLDEBUG
-        printf("stl_sc26198sendflow(portp=%x,hw=%d,sw=%d)\n",
+        kprintf("stl_sc26198sendflow(portp=%x,hw=%d,sw=%d)\n",
                 (int) portp, hw, sw);
 #endif
 
@@ -4304,7 +4304,7 @@ static int stl_sc26198datastate(stlport_t *portp)
         unsigned char   sr;
 
 #if STLDEBUG
-        printf("stl_sc26198datastate(portp=%x)\n", (int) portp);
+        kprintf("stl_sc26198datastate(portp=%x)\n", (int) portp);
 #endif
 
         if (portp == (stlport_t *) NULL)
@@ -4327,7 +4327,7 @@ static void stl_sc26198flush(stlport_t *portp, int flag)
 {
 
 #if STLDEBUG
-        printf("stl_sc26198flush(portp=%x,flag=%x)\n", (int) portp, flag);
+        kprintf("stl_sc26198flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
         if (portp == (stlport_t *) NULL)
@@ -4379,7 +4379,7 @@ static void stl_sc26198wait(stlport_t *portp)
         int     i;
 
 #if STLDEBUG
-        printf("stl_sc26198wait(portp=%x)\n", (int) portp);
+        kprintf("stl_sc26198wait(portp=%x)\n", (int) portp);
 #endif
 
         if (portp == (stlport_t *) NULL)
@@ -4405,7 +4405,7 @@ static __inline void stl_sc26198txisr(stlport_t *portp)
         int             len, stlen;
 
 #if STLDEBUG
-        printf("stl_sc26198txisr(portp=%x)\n", (int) portp);
+        kprintf("stl_sc26198txisr(portp=%x)\n", (int) portp);
 #endif
 
         ioaddr = portp->ioaddr;
@@ -4463,7 +4463,7 @@ static __inline void stl_sc26198txisr(stlport_t *portp)
 static __inline void stl_sc26198rxisr(stlport_t *portp, unsigned int iack)
 {
 #if STLDEBUG
-        printf("stl_sc26198rxisr(portp=%x,iack=%x)\n", (int) portp, iack);
+        kprintf("stl_sc26198rxisr(portp=%x,iack=%x)\n", (int) portp, iack);
 #endif
 
         if ((iack & IVR_TYPEMASK) == IVR_RXDATA)
@@ -4492,7 +4492,7 @@ static void stl_sc26198rxgoodchars(stlport_t *portp)
         char            *head, *tail;
 
 #if STLDEBUG
-        printf("stl_sc26198rxgoodchars(port=%x)\n", (int) portp);
+        kprintf("stl_sc26198rxgoodchars(port=%x)\n", (int) portp);
 #endif
 
         ioaddr = portp->ioaddr;
@@ -4652,7 +4652,7 @@ static void stl_sc26198otherisr(stlport_t *portp, unsigned int iack)
         unsigned char   cir, ipr, xisr;
 
 #if STLDEBUG
-        printf("stl_sc26198otherisr(portp=%x,iack=%x)\n", (int) portp, iack);
+        kprintf("stl_sc26198otherisr(portp=%x,iack=%x)\n", (int) portp, iack);
 #endif
 
         cir = stl_sc26198getglobreg(portp, CIR);
@@ -4705,7 +4705,7 @@ static void stl_sc26198intr(stlpanel_t *panelp, unsigned int iobase)
 
         iack = inb(iobase + XP_IACK);
 #if STLDEBUG
-	printf("stl_sc26198intr(panelp=%p,iobase=%x): iack=%x\n", panelp, iobase, iack);
+	kprintf("stl_sc26198intr(panelp=%p,iobase=%x): iack=%x\n", panelp, iobase, iack);
 #endif
         portp = panelp->ports[(iack & IVR_CHANMASK) + ((iobase & 0x4) << 1)];
 

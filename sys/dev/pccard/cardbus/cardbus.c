@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.9 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.10 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ SYSCTL_INT(_hw_cardbus, OID_AUTO, cis_debug, CTLFLAG_RW,
     &cardbus_cis_debug, 0,
   "CardBus CIS debug");
 
-#define	DPRINTF(a) if (cardbus_debug) printf a
+#define	DPRINTF(a) if (cardbus_debug) kprintf a
 #define	DEVPRINTF(x) if (cardbus_debug) device_printf x
 
 
@@ -362,7 +362,7 @@ cardbus_read_extcap(device_t cbdev, pcicfgregs *cfg)
 	while (nextptr != 0) {
 		/* Sanity check */
 		if (nextptr > 255) {
-			printf("illegal PCI extended capability offset %d\n",
+			kprintf("illegal PCI extended capability offset %d\n",
 			    nextptr);
 			return;
 		}
@@ -493,22 +493,22 @@ cardbus_print_verbose(struct cardbus_devinfo *dinfo)
 	{
 		pcicfgregs *cfg = &dinfo->pci.cfg;
 
-		printf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n",
+		kprintf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n",
 		    cfg->vendor, cfg->device, cfg->revid);
-		printf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		kprintf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
 		    pci_class_to_string(cfg->baseclass),
 		    cfg->baseclass, cfg->subclass, cfg->progif,
 		    cfg->hdrtype, cfg->mfdev);
-		printf("\tcmdreg=0x%04x, statreg=0x%04x, "
+		kprintf("\tcmdreg=0x%04x, statreg=0x%04x, "
 		    "cachelnsz=%d (dwords)\n",
 		    cfg->cmdreg, cfg->statreg, cfg->cachelnsz);
-		printf("\tlattimer=0x%02x (%d ns), mingnt=0x%02x (%d ns), "
+		kprintf("\tlattimer=0x%02x (%d ns), mingnt=0x%02x (%d ns), "
 		    "maxlat=0x%02x (%d ns)\n",
 		    cfg->lattimer, cfg->lattimer * 30,
 		    cfg->mingnt, cfg->mingnt * 250, cfg->maxlat,
 		    cfg->maxlat * 250);
 		if (cfg->intpin > 0)
-			printf("\tintpin=%c, irq=%d\n",
+			kprintf("\tintpin=%c, irq=%d\n",
 			    cfg->intpin + 'a' - 1, cfg->intline);
 	}
 }
@@ -846,14 +846,14 @@ cardbus_print_resources(struct resource_list *rl, const char *name,
 	SLIST_FOREACH(rle, rl, link) {
 		if (rle->type == type) {
 			if (printed == 0)
-				retval += printf(" %s ", name);
+				retval += kprintf(" %s ", name);
 			else if (printed > 0)
-				retval += printf(",");
+				retval += kprintf(",");
 			printed++;
-			retval += printf(format, rle->start);
+			retval += kprintf(format, rle->start);
 			if (rle->count > 1) {
-				retval += printf("-");
-				retval += printf(format, rle->start +
+				retval += kprintf("-");
+				retval += kprintf(format, rle->start +
 				    rle->count - 1);
 			}
 		}
@@ -879,9 +879,9 @@ cardbus_print_child(device_t cbdev, device_t child)
 	retval += cardbus_print_resources(rl, "mem", SYS_RES_MEMORY, "%#lx");
 	retval += cardbus_print_resources(rl, "irq", SYS_RES_IRQ, "%ld");
 	if (device_get_flags(cbdev))
-		retval += printf(" flags %#x", device_get_flags(cbdev));
+		retval += kprintf(" flags %#x", device_get_flags(cbdev));
 
-	retval += printf(" at device %d.%d", pci_get_slot(child),
+	retval += kprintf(" at device %d.%d", pci_get_slot(child),
 	    pci_get_function(child));
 
 	retval += bus_print_child_footer(cbdev, child);
@@ -898,12 +898,12 @@ cardbus_probe_nomatch(device_t cbdev, device_t child)
 	dinfo = device_get_ivars(child);
 	cfg = &dinfo->pci.cfg;
 	device_printf(cbdev, "<unknown card>");
-	printf(" (vendor=0x%04x, dev=0x%04x)", cfg->vendor, cfg->device);
-	printf(" at %d.%d", pci_get_slot(child), pci_get_function(child));
+	kprintf(" (vendor=0x%04x, dev=0x%04x)", cfg->vendor, cfg->device);
+	kprintf(" at %d.%d", pci_get_slot(child), pci_get_function(child));
 	if (cfg->intpin > 0 && cfg->intline != 255) {
-		printf(" irq %d", cfg->intline);
+		kprintf(" irq %d", cfg->intline);
 	}
-	printf("\n");
+	kprintf("\n");
 
 	return;
 }

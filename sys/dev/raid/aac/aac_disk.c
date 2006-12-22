@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.15 2006/10/25 20:56:00 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.16 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include "opt_aac.h"
@@ -125,13 +125,13 @@ aac_disk_open(struct dev_open_args *ap)
 	sc = (struct aac_disk *)dev->si_drv1;
 	
 	if (sc == NULL) {
-		printf("aac_disk_open: No Softc\n");
+		kprintf("aac_disk_open: No Softc\n");
 		return (ENXIO);
 	}
 
 	/* check that the controller is up and running */
 	if (sc->ad_controller->aac_state & AAC_STATE_SUSPEND) {
-		printf("Controller Suspended controller state = 0x%x\n",
+		kprintf("Controller Suspended controller state = 0x%x\n",
 		       sc->ad_controller->aac_state);
 		return(ENXIO);
 	}

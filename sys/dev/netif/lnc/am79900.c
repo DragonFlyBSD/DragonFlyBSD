@@ -1,6 +1,6 @@
 /*	$NetBSD: am79900.c,v 1.17 2005/12/24 20:27:29 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am79900.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am79900.c,v 1.2 2006/10/25 20:55:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/am79900.c,v 1.3 2006/12/22 23:26:20 swildner Exp $	*/
 
 
 /*-
@@ -626,7 +626,7 @@ am79900_recv_print(struct lance_softc *sc, int no)
 	if (len - ETHER_CRC_LEN >= sizeof(eh)) {
 		(*sc->sc_copyfrombuf)(sc, &eh, LE_RBUFADDR(sc, no), sizeof(eh));
 		if_printf(ifp, "dst %s", ether_sprintf(eh.ether_dhost));
-		printf(" src %s type %04x\n", ether_sprintf(eh.ether_shost),
+		kprintf(" src %s type %04x\n", ether_sprintf(eh.ether_shost),
 		    ntohs(eh.ether_type));
 	}
 }
@@ -648,7 +648,7 @@ am79900_xmit_print(struct lance_softc *sc, int no)
 	if (len >= sizeof(eh)) {
 		(*sc->sc_copyfrombuf)(sc, &eh, LE_TBUFADDR(sc, no), sizeof(eh));
 		if_printf(ifp, "dst %s", ether_sprintf(eh.ether_dhost));
-		printf(" src %s type %04x\n", ether_sprintf(eh.ether_shost),
+		kprintf(" src %s type %04x\n", ether_sprintf(eh.ether_shost),
 		    ntohs(eh.ether_type));
 	}
 }

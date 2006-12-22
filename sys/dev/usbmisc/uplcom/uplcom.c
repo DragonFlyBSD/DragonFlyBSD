@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.9 2006/11/13 21:39:19 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.10 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*-
@@ -363,7 +363,7 @@ USB_ATTACH(uplcom)
 	ucom->sc_iface = uaa->iface;
 
 	devname = USBDEVNAME(ucom->sc_dev);
-	printf("%s: %s\n", devname, devinfo);
+	kprintf("%s: %s\n", devname, devinfo);
 
 	DPRINTF(("uplcom attach: sc = %p\n", sc));
 
@@ -383,7 +383,7 @@ USB_ATTACH(uplcom)
 	 * don't get here without matching device
 	 */
 	if (uplcom_products[i].vendor == 0) {
-		printf("%s: didn't match\n", devname);
+		kprintf("%s: didn't match\n", devname);
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -405,7 +405,7 @@ USB_ATTACH(uplcom)
 	/* Move the device into the configured state. */
 	err = usbd_set_config_index(dev, UPLCOM_CONFIG_INDEX, 1);
 	if (err) {
-		printf("%s: failed to set configuration: %s\n",
+		kprintf("%s: failed to set configuration: %s\n",
 			devname, usbd_errstr(err));
 		ucom->sc_dying = 1;
 		goto error;
@@ -415,7 +415,7 @@ USB_ATTACH(uplcom)
 	cdesc = usbd_get_config_descriptor(ucom->sc_udev);
 
 	if (cdesc == NULL) {
-		printf("%s: failed to get configuration descriptor\n",
+		kprintf("%s: failed to get configuration descriptor\n",
 			USBDEVNAME(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
@@ -425,7 +425,7 @@ USB_ATTACH(uplcom)
 	err = usbd_device2interface_handle(dev, UPLCOM_IFACE_INDEX,
 					   &ucom->sc_iface);
 	if (err) {
-		printf("%s: failed to get interface: %s\n",
+		kprintf("%s: failed to get interface: %s\n",
 			devname, usbd_errstr(err));
 		ucom->sc_dying = 1;
 		goto error;
@@ -439,7 +439,7 @@ USB_ATTACH(uplcom)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for %d\n",
+			kprintf("%s: no endpoint descriptor for %d\n",
 				USBDEVNAME(ucom->sc_dev), i);
 			ucom->sc_dying = 1;
 			goto error;
@@ -453,7 +453,7 @@ USB_ATTACH(uplcom)
 	}
 
 	if (sc->sc_intr_number == -1) {
-		printf("%s: Could not find interrupt in\n",
+		kprintf("%s: Could not find interrupt in\n",
 			USBDEVNAME(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
@@ -479,7 +479,7 @@ USB_ATTACH(uplcom)
 						   UPLCOM_SECOND_IFACE_INDEX,
 						   &ucom->sc_iface);
 		if (err) {
-			printf("%s: failed to get second interface: %s\n",
+			kprintf("%s: failed to get second interface: %s\n",
 				devname, usbd_errstr(err));
 			ucom->sc_dying = 1;
 			goto error;
@@ -494,7 +494,7 @@ USB_ATTACH(uplcom)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for %d\n",
+			kprintf("%s: no endpoint descriptor for %d\n",
 				USBDEVNAME(ucom->sc_dev), i);
 			ucom->sc_dying = 1;
 			goto error;
@@ -510,14 +510,14 @@ USB_ATTACH(uplcom)
 	}
 
 	if (ucom->sc_bulkin_no == -1) {
-		printf("%s: Could not find data bulk in\n",
+		kprintf("%s: Could not find data bulk in\n",
 			USBDEVNAME(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
 	}
 
 	if (ucom->sc_bulkout_no == -1) {
-		printf("%s: Could not find data bulk out\n",
+		kprintf("%s: Could not find data bulk out\n",
 			USBDEVNAME(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
@@ -536,7 +536,7 @@ USB_ATTACH(uplcom)
 	err = uplcom_reset(sc);
 
 	if (err) {
-		printf("%s: reset failed: %s\n",
+		kprintf("%s: reset failed: %s\n",
 		       USBDEVNAME(ucom->sc_dev), usbd_errstr(err));
 		ucom->sc_dying = 1;
 		goto error;
@@ -591,7 +591,7 @@ uplcom_reset(struct uplcom_softc *sc)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 	if (err) {
-		printf("%s: uplcom_reset: %s\n",
+		kprintf("%s: uplcom_reset: %s\n",
 		       USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		return (EIO);
 	}
@@ -638,7 +638,7 @@ uplcom_pl2303x_init(struct uplcom_softc *sc)
 
 		err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 		if (err) {
-			printf("%s: uplcom_pl2303x_init: %d: %s\n",
+			kprintf("%s: uplcom_pl2303x_init: %d: %s\n",
 				device_get_nameunit(sc->sc_ucom.sc_dev), i,
 				usbd_errstr(err));
 			return (EIO);
@@ -665,7 +665,7 @@ uplcom_set_line_state(struct uplcom_softc *sc)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 	if (err)
-		printf("%s: uplcom_set_line_status: %s\n",
+		kprintf("%s: uplcom_set_line_status: %s\n",
 		       USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 }
 
@@ -729,7 +729,7 @@ uplcom_break(struct uplcom_softc *sc, int onoff)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 	if (err)
-		printf("%s: uplcom_break: %s\n",
+		kprintf("%s: uplcom_break: %s\n",
 		       USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 }
 
@@ -752,7 +752,7 @@ uplcom_set_crtscts(struct uplcom_softc *sc)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 	if (err) {
-		printf("%s: uplcom_set_crtscts: %s\n",
+		kprintf("%s: uplcom_set_crtscts: %s\n",
 		       USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		return (err);
 	}
@@ -784,7 +784,7 @@ uplcom_set_line_coding(struct uplcom_softc *sc, usb_cdc_line_state_t *state)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, state);
 	if (err) {
-		printf("%s: uplcom_set_line_coding: %s\n",
+		kprintf("%s: uplcom_set_line_coding: %s\n",
 		       USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		return (err);
 	}
@@ -888,7 +888,7 @@ uplcom_open(void *addr, int portno)
 					  uplcom_intr,
 					  uplcominterval);
 		if (err) {
-			printf("%s: cannot open interrupt pipe (addr %d)\n",
+			kprintf("%s: cannot open interrupt pipe (addr %d)\n",
 			       USBDEVNAME(sc->sc_ucom.sc_dev),
 			       sc->sc_intr_number);
 			return (EIO);
@@ -915,12 +915,12 @@ uplcom_close(void *addr, int portno)
 	if (sc->sc_intr_pipe != NULL) {
 		err = usbd_abort_pipe(sc->sc_intr_pipe);
 		if (err)
-			printf("%s: abort interrupt pipe failed: %s\n",
+			kprintf("%s: abort interrupt pipe failed: %s\n",
 			       USBDEVNAME(sc->sc_ucom.sc_dev),
 			       usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_intr_pipe);
 		if (err)
-			printf("%s: close interrupt pipe failed: %s\n",
+			kprintf("%s: close interrupt pipe failed: %s\n",
 			       USBDEVNAME(sc->sc_ucom.sc_dev),
 			       usbd_errstr(err));
 		kfree(sc->sc_intr_buf, M_USBDEV);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.24 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.25 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -181,51 +181,51 @@ ar_attach_raid(struct ar_softc *rdp, int update)
     dev->si_iosize_max = 256 * DEV_BSIZE;
     rdp->dev = dev;
 
-    printf("ar%d: %lluMB <ATA ", rdp->lun, (unsigned long long)
+    kprintf("ar%d: %lluMB <ATA ", rdp->lun, (unsigned long long)
 	   (rdp->total_sectors / ((1024L * 1024L) / DEV_BSIZE)));
     switch (rdp->flags & (AR_F_RAID0 | AR_F_RAID1 | AR_F_SPAN)) {
     case AR_F_RAID0:
-	printf("RAID0 "); break;
+	kprintf("RAID0 "); break;
     case AR_F_RAID1:
-	printf("RAID1 "); break;
+	kprintf("RAID1 "); break;
     case AR_F_SPAN:
-	printf("SPAN "); break;
+	kprintf("SPAN "); break;
     case (AR_F_RAID0 | AR_F_RAID1):
-	printf("RAID0+1 "); break;
+	kprintf("RAID0+1 "); break;
     default:
-	printf("unknown 0x%x> ", rdp->flags);
+	kprintf("unknown 0x%x> ", rdp->flags);
 	return;
     }
-    printf("array> [%d/%d/%d] status: ",
+    kprintf("array> [%d/%d/%d] status: ",
 	   rdp->cylinders, rdp->heads, rdp->sectors);
     switch (rdp->flags & (AR_F_DEGRADED | AR_F_READY)) {
     case AR_F_READY:
-	printf("READY");
+	kprintf("READY");
 	break;
     case (AR_F_DEGRADED | AR_F_READY):
-	printf("DEGRADED");
+	kprintf("DEGRADED");
 	break;
     default:
-	printf("BROKEN");
+	kprintf("BROKEN");
 	break;
     }
-    printf(" subdisks:\n");
+    kprintf(" subdisks:\n");
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if (rdp->disks[disk].flags & AR_DF_PRESENT) {
 	    if (rdp->disks[disk].flags & AR_DF_ONLINE)
-		printf(" %d READY ", disk);
+		kprintf(" %d READY ", disk);
 	    else if (rdp->disks[disk].flags & AR_DF_SPARE)
-		printf(" %d SPARE ", disk);
+		kprintf(" %d SPARE ", disk);
 	    else
-		printf(" %d FREE  ", disk);
+		kprintf(" %d FREE  ", disk);
 	    ad_print(AD_SOFTC(rdp->disks[disk]));
-	    printf("         ");
+	    kprintf("         ");
 	    ata_enclosure_print(AD_SOFTC(rdp->disks[disk])->device);
 	}
 	else if (rdp->disks[disk].flags & AR_DF_ASSIGNED)
-	    printf(" %d DOWN\n", disk);
+	    kprintf(" %d DOWN\n", disk);
 	else
-	    printf(" %d INVALID no RAID config info on this disk\n", disk);
+	    kprintf(" %d INVALID no RAID config info on this disk\n", disk);
     }
 }
 
@@ -372,7 +372,7 @@ ata_raid_delete(int array)
     int disk;
 
     if (!ar_table) {
-	printf("ar: no memory for ATA raid array\n");
+	kprintf("ar: no memory for ATA raid array\n");
 	return 0;
     }
     if (!(rdp = ar_table[array]))
@@ -534,7 +534,7 @@ arstrategy(struct dev_strategy_args *ap)
 	    break;
 
 	default:
-	    printf("ar%d: unknown array type in arstrategy\n", rdp->lun);
+	    kprintf("ar%d: unknown array type in arstrategy\n", rdp->lun);
 	    bp->b_flags |= B_ERROR;
 	    bp->b_error = EIO;
 	    biodone(bio);
@@ -647,7 +647,7 @@ arstrategy(struct dev_strategy_args *ap)
 	    break;
 
 	default:
-	    printf("ar%d: unknown array type in arstrategy\n", rdp->lun);
+	    kprintf("ar%d: unknown array type in arstrategy\n", rdp->lun);
 	}
     }
     return(0);
@@ -723,7 +723,7 @@ ar_done(struct bio *bio)
 	break;
 	
     default:
-	printf("ar%d: unknown array type in ar_done\n", rdp->lun);
+	kprintf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
     kfree(buf, M_AR);
 }
@@ -754,7 +754,7 @@ ar_config_changed(struct ar_softc *rdp, int writeback)
 	case AR_F_RAID0:
 	    if (!(rdp->disks[disk].flags & AR_DF_ONLINE)) {
 		rdp->flags &= ~AR_F_READY;
-		printf("ar%d: ERROR - array broken\n", rdp->lun);
+		kprintf("ar%d: ERROR - array broken\n", rdp->lun);
 	    }
 	    break;
 
@@ -764,7 +764,7 @@ ar_config_changed(struct ar_softc *rdp, int writeback)
 		if (!(rdp->disks[disk].flags & AR_DF_ONLINE) &&
 		    !(rdp->disks[disk + rdp->width].flags & AR_DF_ONLINE)) {
 		    rdp->flags &= ~AR_F_READY;
-		    printf("ar%d: ERROR - array broken\n", rdp->lun);
+		    kprintf("ar%d: ERROR - array broken\n", rdp->lun);
 		}
 		else if (((rdp->disks[disk].flags & AR_DF_ONLINE) &&
 			  !(rdp->disks
@@ -774,7 +774,7 @@ ar_config_changed(struct ar_softc *rdp, int writeback)
 			   [disk + rdp->width].flags & AR_DF_ONLINE))) {
 		    rdp->flags |= AR_F_DEGRADED;
 		    if (!(flags & AR_F_DEGRADED))
-			printf("ar%d: WARNING - mirror lost\n", rdp->lun);
+			kprintf("ar%d: WARNING - mirror lost\n", rdp->lun);
 		}
 	    }
 	    break;
@@ -902,21 +902,21 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     if (ar_rw(adp, HPT_LBA, sizeof(struct highpoint_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
 	if (bootverbose)
-	    printf("ar: HighPoint read conf failed\n");
+	    kprintf("ar: HighPoint read conf failed\n");
 	goto highpoint_out;
     }
 
     /* check if this is a HighPoint RAID struct */
     if (info->magic != HPT_MAGIC_OK && info->magic != HPT_MAGIC_BAD) {
 	if (bootverbose)
-	    printf("ar: HighPoint check1 failed\n");
+	    kprintf("ar: HighPoint check1 failed\n");
 	goto highpoint_out;
     }
 
     /* is this disk defined, or an old leftover/spare ? */
     if (!info->magic_0) {
 	if (bootverbose)
-	    printf("ar: HighPoint check2 failed\n");
+	    kprintf("ar: HighPoint check2 failed\n");
 	goto highpoint_out;
     }
 
@@ -988,7 +988,7 @@ highpoint_raid01:
 	    break;
 
 	default:
-	    printf("ar%d: HighPoint unknown RAID type 0x%02x\n",
+	    kprintf("ar%d: HighPoint unknown RAID type 0x%02x\n",
 		   array, info->type);
 	    goto highpoint_out;
 	}
@@ -1099,7 +1099,7 @@ ar_highpoint_write_conf(struct ar_softc *rdp)
 	    if (ar_rw(AD_SOFTC(rdp->disks[disk]), HPT_LBA,
 		      sizeof(struct highpoint_raid_conf),
 		      (caddr_t)config, AR_WRITE)) {
-		printf("ar%d: Highpoint write conf failed\n", rdp->lun);
+		kprintf("ar%d: Highpoint write conf failed\n", rdp->lun);
 		return -1;
 	    }
 	}
@@ -1120,7 +1120,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
     if (ar_rw(adp, PR_LBA(adp), sizeof(struct promise_raid_conf),
 	      (caddr_t)info, AR_READ | AR_WAIT)) {
 	if (bootverbose)
-	    printf("ar: %s read conf failed\n", local ? "FreeBSD" : "Promise");
+	    kprintf("ar: %s read conf failed\n", local ? "FreeBSD" : "Promise");
 	goto promise_out;
     }
 
@@ -1128,14 +1128,14 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
     if (local) {
 	if (strncmp(info->promise_id, ATA_MAGIC, sizeof(ATA_MAGIC))) {
 	    if (bootverbose)
-		printf("ar: FreeBSD check1 failed\n");
+		kprintf("ar: FreeBSD check1 failed\n");
 	    goto promise_out;
 	}
     }
     else {
 	if (strncmp(info->promise_id, PR_MAGIC, sizeof(PR_MAGIC))) {
 	    if (bootverbose)
-		printf("ar: Promise check1 failed\n");
+		kprintf("ar: Promise check1 failed\n");
 	    goto promise_out;
 	}
     }
@@ -1145,14 +1145,14 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 	cksum += *ckptr++;
     if (cksum != *ckptr) {  
 	if (bootverbose)
-	    printf("ar: %s check2 failed\n", local ? "FreeBSD" : "Promise");	     
+	    kprintf("ar: %s check2 failed\n", local ? "FreeBSD" : "Promise");	     
 	goto promise_out;
     }
 
     /* now convert Promise config info into our generic form */
     if (info->raid.integrity != PR_I_VALID) {
 	if (bootverbose)
-	    printf("ar: %s check3 failed\n", local ? "FreeBSD" : "Promise");	     
+	    kprintf("ar: %s check3 failed\n", local ? "FreeBSD" : "Promise");	     
 	goto promise_out;
     }
 
@@ -1205,7 +1205,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 		break;
 
 	    default:
-		printf("ar%d: %s unknown RAID type 0x%02x\n",
+		kprintf("ar%d: %s unknown RAID type 0x%02x\n",
 		       array, local ? "FreeBSD" : "Promise", info->raid.type);
 		goto promise_out;
 	    }
@@ -1368,7 +1368,7 @@ ar_promise_write_conf(struct ar_softc *rdp)
 		      PR_LBA(AD_SOFTC(rdp->disks[disk])),
 		      sizeof(struct promise_raid_conf),
 		      (caddr_t)config, AR_WRITE)) {
-		printf("ar%d: %s write conf failed\n",
+		kprintf("ar%d: %s write conf failed\n",
 		       rdp->lun, local ? "FreeBSD" : "Promise");
 		return -1;
 	    }

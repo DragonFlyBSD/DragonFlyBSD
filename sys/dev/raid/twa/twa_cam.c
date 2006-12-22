@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.3 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.4 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -539,7 +539,7 @@ twa_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 {
 	twa_dbg_print(3, "ccb = %p\n", ccb);
 	if (ccb->ccb_h.status != CAM_REQ_CMP)
-		printf("cam_scan_callback: failure status = %x\n",
+		kprintf("cam_scan_callback: failure status = %x\n",
 					ccb->ccb_h.status);
 	else
 		twa_dbg_print(3, "success");

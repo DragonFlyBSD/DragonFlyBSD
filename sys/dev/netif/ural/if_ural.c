@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.2 2006/12/10 04:37:02 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.3 2006/12/22 23:26:22 swildner Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -366,7 +366,7 @@ USB_ATTACH(ural)
 	USB_ATTACH_SETUP;
 
 	if (usbd_set_config_no(sc->sc_udev, RAL_CONFIG_NO, 0) != 0) {
-		printf("%s: could not set configuration no\n",
+		kprintf("%s: could not set configuration no\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -375,7 +375,7 @@ USB_ATTACH(ural)
 	error = usbd_device2interface_handle(sc->sc_udev, RAL_IFACE_INDEX,
 	    &sc->sc_iface);
 	if (error != 0) {
-		printf("%s: could not get interface handle\n",
+		kprintf("%s: could not get interface handle\n",
 		    USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -389,7 +389,7 @@ USB_ATTACH(ural)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->sc_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for %d\n",
+			kprintf("%s: no endpoint descriptor for %d\n",
 			    USBDEVNAME(sc->sc_dev), i);
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -402,7 +402,7 @@ USB_ATTACH(ural)
 			sc->sc_tx_no = ed->bEndpointAddress;
 	}
 	if (sc->sc_rx_no == -1 || sc->sc_tx_no == -1) {
-		printf("%s: missing endpoint\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: missing endpoint\n", USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -421,7 +421,7 @@ USB_ATTACH(ural)
 	/* retrieve MAC address and various other things from EEPROM */
 	ural_read_eeprom(sc);
 
-	printf("%s: MAC/BBP RT2570 (rev 0x%02x), RF %s\n",
+	kprintf("%s: MAC/BBP RT2570 (rev 0x%02x), RF %s\n",
 	    USBDEVNAME(sc->sc_dev), sc->asic_rev, ural_get_rf(sc->rf_rev));
 
 	ifp = &ic->ic_if;
@@ -582,7 +582,7 @@ ural_alloc_tx_list(struct ural_softc *sc)
 
 		data->xfer = usbd_alloc_xfer(sc->sc_udev);
 		if (data->xfer == NULL) {
-			printf("%s: could not allocate tx xfer\n",
+			kprintf("%s: could not allocate tx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -591,7 +591,7 @@ ural_alloc_tx_list(struct ural_softc *sc)
 		data->buf = usbd_alloc_buffer(data->xfer,
 		    RAL_TX_DESC_SIZE + MCLBYTES);
 		if (data->buf == NULL) {
-			printf("%s: could not allocate tx buffer\n",
+			kprintf("%s: could not allocate tx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -638,14 +638,14 @@ ural_alloc_rx_list(struct ural_softc *sc)
 
 		data->xfer = usbd_alloc_xfer(sc->sc_udev);
 		if (data->xfer == NULL) {
-			printf("%s: could not allocate rx xfer\n",
+			kprintf("%s: could not allocate rx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
 		}
 
 		if (usbd_alloc_buffer(data->xfer, MCLBYTES) == NULL) {
-			printf("%s: could not allocate rx buffer\n",
+			kprintf("%s: could not allocate rx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -653,7 +653,7 @@ ural_alloc_rx_list(struct ural_softc *sc)
 
 		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
-			printf("%s: could not allocate rx mbuf\n",
+			kprintf("%s: could not allocate rx mbuf\n",
 			    USBDEVNAME(sc->sc_dev));
 			error = ENOMEM;
 			goto fail;
@@ -782,13 +782,13 @@ ural_task(void *arg)
 		    ic->ic_opmode == IEEE80211_M_IBSS) {
 			m = ieee80211_beacon_alloc(ic, ni, &sc->sc_bo);
 			if (m == NULL) {
-				printf("%s: could not allocate beacon\n",
+				kprintf("%s: could not allocate beacon\n",
 				    USBDEVNAME(sc->sc_dev));
 				return;
 			}
 
 			if (ural_tx_bcn(sc, m, ni) != 0) {
-				printf("%s: could not send beacon\n",
+				kprintf("%s: could not send beacon\n",
 				    USBDEVNAME(sc->sc_dev));
 				return;
 			}
@@ -896,7 +896,7 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
 
-		printf("%s: could not transmit buffer: %s\n",
+		kprintf("%s: could not transmit buffer: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(status));
 
 		if (status == USBD_STALLED)
@@ -1534,7 +1534,7 @@ ural_set_testmode(struct ural_softc *sc)
 
 	error = usbd_do_request(sc->sc_udev, &req, NULL);
 	if (error != 0) {
-		printf("%s: could not set test mode: %s\n",
+		kprintf("%s: could not set test mode: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1553,7 +1553,7 @@ ural_eeprom_read(struct ural_softc *sc, uint16_t addr, void *buf, int len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not read EEPROM: %s\n",
+		kprintf("%s: could not read EEPROM: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1573,7 +1573,7 @@ ural_read(struct ural_softc *sc, uint16_t reg)
 
 	error = usbd_do_request(sc->sc_udev, &req, &val);
 	if (error != 0) {
-		printf("%s: could not read MAC register: %s\n",
+		kprintf("%s: could not read MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 		return 0;
 	}
@@ -1595,7 +1595,7 @@ ural_read_multi(struct ural_softc *sc, uint16_t reg, void *buf, int len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not read MAC register: %s\n",
+		kprintf("%s: could not read MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1614,7 +1614,7 @@ ural_write(struct ural_softc *sc, uint16_t reg, uint16_t val)
 
 	error = usbd_do_request(sc->sc_udev, &req, NULL);
 	if (error != 0) {
-		printf("%s: could not write MAC register: %s\n",
+		kprintf("%s: could not write MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1633,7 +1633,7 @@ ural_write_multi(struct ural_softc *sc, uint16_t reg, void *buf, int len)
 
 	error = usbd_do_request(sc->sc_udev, &req, buf);
 	if (error != 0) {
-		printf("%s: could not write MAC register: %s\n",
+		kprintf("%s: could not write MAC register: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 	}
 }
@@ -1649,7 +1649,7 @@ ural_bbp_write(struct ural_softc *sc, uint8_t reg, uint8_t val)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not write to BBP\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not write to BBP\n", USBDEVNAME(sc->sc_dev));
 		return;
 	}
 
@@ -1671,7 +1671,7 @@ ural_bbp_read(struct ural_softc *sc, uint8_t reg)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not read BBP\n", USBDEVNAME(sc->sc_dev));
 		return 0;
 	}
 
@@ -1689,7 +1689,7 @@ ural_rf_write(struct ural_softc *sc, uint8_t reg, uint32_t val)
 			break;
 	}
 	if (ntries == 5) {
-		printf("%s: could not write to RF\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: could not write to RF\n", USBDEVNAME(sc->sc_dev));
 		return;
 	}
 
@@ -2129,7 +2129,7 @@ ural_init(void *priv)
 		DELAY(1000);
 	}
 	if (ntries == 100) {
-		printf("%s: timeout waiting for BBP/RF to wakeup\n",
+		kprintf("%s: timeout waiting for BBP/RF to wakeup\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
@@ -2169,7 +2169,7 @@ ural_init(void *priv)
 	 */
 	sc->stats_xfer = usbd_alloc_xfer(sc->sc_udev);
 	if (sc->stats_xfer == NULL) {
-		printf("%s: could not allocate AMRR xfer\n",
+		kprintf("%s: could not allocate AMRR xfer\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
@@ -2180,7 +2180,7 @@ ural_init(void *priv)
 	error = usbd_open_pipe(sc->sc_iface, sc->sc_tx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_tx_pipeh);
 	if (error != 0) {
-		printf("%s: could not open Tx pipe: %s\n",
+		kprintf("%s: could not open Tx pipe: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 		goto fail;
 	}
@@ -2188,7 +2188,7 @@ ural_init(void *priv)
 	error = usbd_open_pipe(sc->sc_iface, sc->sc_rx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_rx_pipeh);
 	if (error != 0) {
-		printf("%s: could not open Rx pipe: %s\n",
+		kprintf("%s: could not open Rx pipe: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
 		goto fail;
 	}
@@ -2198,14 +2198,14 @@ ural_init(void *priv)
 	 */
 	error = ural_alloc_tx_list(sc);
 	if (error != 0) {
-		printf("%s: could not allocate Tx list\n",
+		kprintf("%s: could not allocate Tx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
 
 	error = ural_alloc_rx_list(sc);
 	if (error != 0) {
-		printf("%s: could not allocate Rx list\n",
+		kprintf("%s: could not allocate Rx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}

@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -255,7 +255,7 @@ es1370_wrcodec(struct es_info *es, u_char i, u_char data)
 		}
 		DELAY(1000);
 	} while (--wait);
-	printf("pcm: es1370_wrcodec timed out\n");
+	kprintf("pcm: es1370_wrcodec timed out\n");
 	return -1;
 }
 
@@ -498,7 +498,7 @@ es1371_init(struct es_info *es, device_t dev)
 	int devid = pci_get_devid(dev);
 	int revid = pci_get_revid(dev);
 
-	if (debug > 0) printf("es_init\n");
+	if (debug > 0) kprintf("es_init\n");
 
 	es->num = 0;
 	es->ctrl = 0;
@@ -558,7 +558,7 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
     	unsigned t, x;
 	struct es_info *es = (struct es_info*)s;
 
-	if (debug > 0) printf("wrcodec addr 0x%x data 0x%x\n", addr, data);
+	if (debug > 0) kprintf("wrcodec addr 0x%x data 0x%x\n", addr, data);
 
 	for (t = 0; t < 0x1000; t++)
 	  	if (!(bus_space_read_4(es->st, es->sh,(ES1371_REG_CODEC & CODEC_WIP))))
@@ -576,7 +576,7 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 			break;
 
 	if (debug > 2)
-		printf("one b_s_w: 0x%lx 0x%x 0x%x\n",
+		kprintf("one b_s_w: 0x%lx 0x%x 0x%x\n",
 		       rman_get_start(es->reg), ES1371_REG_CODEC,
 		       ((addr << CODEC_POADD_SHIFT) & CODEC_POADD_MASK) |
 		       ((data << CODEC_PODAT_SHIFT) & CODEC_PODAT_MASK));
@@ -587,7 +587,7 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 	/* restore SRC reg */
 	es1371_wait_src_ready(s);
 	if (debug > 2)
-		printf("two b_s_w: 0x%lx 0x%x 0x%x\n",
+		kprintf("two b_s_w: 0x%lx 0x%x 0x%x\n",
 		       rman_get_start(es->reg), ES1371_REG_SMPRATE, x);
 	bus_space_write_4(es->st, es->sh, ES1371_REG_SMPRATE, x);
 	crit_exit();
@@ -601,12 +601,12 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
   	unsigned t, x = 0;
   	struct es_info *es = (struct es_info *)s;
 
-  	if (debug > 0) printf("rdcodec addr 0x%x ... ", addr);
+  	if (debug > 0) kprintf("rdcodec addr 0x%x ... ", addr);
 
   	for (t = 0; t < 0x1000; t++)
 		if (!(x = bus_space_read_4(es->st, es->sh, ES1371_REG_CODEC) & CODEC_WIP))
 	  		break;
-   	if (debug > 0) printf("loop 1 t 0x%x x 0x%x ", t, x);
+   	if (debug > 0) kprintf("loop 1 t 0x%x x 0x%x ", t, x);
 
 	crit_enter();
 
@@ -620,7 +620,7 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
   	for (t = 0; t < 0x5000; t++)
 		if ((x = bus_space_read_4(es->st, es->sh, ES1371_REG_SMPRATE) & 0x00070000) == 0x00010000)
 	  		break;
-  	if (debug > 0) printf("loop 2 t 0x%x x 0x%x ", t, x);
+  	if (debug > 0) kprintf("loop 2 t 0x%x x 0x%x ", t, x);
   	bus_space_write_4(es->st, es->sh, ES1371_REG_CODEC,
 			  ((addr << CODEC_POADD_SHIFT) & CODEC_POADD_MASK) | CODEC_PORD);
 
@@ -634,7 +634,7 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
   	for (t = 0; t < 0x1000; t++)
 		if ((x = bus_space_read_4(es->st, es->sh, ES1371_REG_CODEC)) & CODEC_RDY)
 	  		break;
-  	if (debug > 0) printf("loop 3 t 0x%x 0x%x ret 0x%x\n", t, x, ((x & CODEC_PIDAT_MASK) >> CODEC_PIDAT_SHIFT));
+  	if (debug > 0) kprintf("loop 3 t 0x%x 0x%x ret 0x%x\n", t, x, ((x & CODEC_PIDAT_MASK) >> CODEC_PIDAT_SHIFT));
   	return ((x & CODEC_PIDAT_MASK) >> CODEC_PIDAT_SHIFT);
 }
 
@@ -666,7 +666,7 @@ es1371_src_write(struct es_info *es, u_short reg, u_short data){
 	r = es1371_wait_src_ready(es) &
 		(ES1371_DIS_SRC | ES1371_DIS_P1 | ES1371_DIS_P2 | ES1371_DIS_R1);
 	r |= ES1371_SRC_RAM_ADDRO(reg) |  ES1371_SRC_RAM_DATAO(data);
-	/*	printf("es1371_src_write 0x%x 0x%x\n",ES1371_REG_SMPRATE,r | ES1371_SRC_RAM_WE); */
+	/*	kprintf("es1371_src_write 0x%x 0x%x\n",ES1371_REG_SMPRATE,r | ES1371_SRC_RAM_WE); */
 	bus_space_write_4(es->st, es->sh, ES1371_REG_SMPRATE, r | ES1371_SRC_RAM_WE);
 }
 
@@ -737,7 +737,7 @@ es1371_wait_src_ready(struct es_info *es)
 	  		return r;
 		DELAY(1000);
   	}
-  	printf("es1371: wait src ready timeout 0x%x [0x%x]\n", ES1371_REG_SMPRATE, r);
+  	kprintf("es1371: wait src ready timeout 0x%x [0x%x]\n", ES1371_REG_SMPRATE, r);
   	return 0;
 }
 

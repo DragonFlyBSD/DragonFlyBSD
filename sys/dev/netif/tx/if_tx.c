@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.38 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.39 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -255,16 +255,16 @@ epic_attach(device_t dev)
 	}
 
 	/* board type and ... */
-	printf(" type ");
+	kprintf(" type ");
 	for(i=0x2c;i<0x32;i++) {
 		tmp = epic_read_eeprom(sc, i);
 		if (' ' == (u_int8_t)tmp) break;
-		printf("%c", (u_int8_t)tmp);
+		kprintf("%c", (u_int8_t)tmp);
 		tmp >>= 8;
 		if (' ' == (u_int8_t)tmp) break;
-		printf("%c", (u_int8_t)tmp);
+		kprintf("%c", (u_int8_t)tmp);
 	}
-	printf("\n");
+	kprintf("\n");
 
 	/* Attach to OS's managers */
 	ether_ifattach(ifp, sc->sc_macaddr, NULL);

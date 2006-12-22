@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.16 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.17 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include "opt_fb.h"
@@ -115,7 +115,7 @@ vid_realloc_array(void)
 	crit_exit();
 
 	if (bootverbose)
-		printf("fb: new array size %d\n", adapters);
+		kprintf("fb: new array size %d\n", adapters);
 
 	return 0;
 }
@@ -341,7 +341,7 @@ fbprobe(device_t dev)
 static int
 fbattach(device_t dev)
 {
-	printf("fbattach: about to attach children\n");
+	kprintf("fbattach: about to attach children\n");
 	bus_generic_attach(dev);
 	return 0;
 }
@@ -392,7 +392,7 @@ fb_attach(cdev_t dev, video_adapter_t *adp)
 	vidcdevsw[adp->va_index] = dev;
 	crit_exit();
 
-	printf("fb%d at %s%d\n", adp->va_index, adp->va_name, adp->va_unit);
+	kprintf("fb%d at %s%d\n", adp->va_index, adp->va_name, adp->va_unit);
 	return 0;
 }
 
@@ -557,17 +557,17 @@ fb_dump_adp_info(char *driver, video_adapter_t *adp, int level)
     if (level <= 0)
 	return;
 
-    printf("%s%d: %s%d, %s, type:%s (%d), flags:0x%x\n", 
+    kprintf("%s%d: %s%d, %s, type:%s (%d), flags:0x%x\n", 
 	   FB_DRIVER_NAME, adp->va_index, driver, adp->va_unit, adp->va_name,
 	   adapter_name(adp->va_type), adp->va_type, adp->va_flags);
-    printf("%s%d: port:0x%x-0x%x, crtc:0x%x, mem:0x%x 0x%x\n",
+    kprintf("%s%d: port:0x%x-0x%x, crtc:0x%x, mem:0x%x 0x%x\n",
 	   FB_DRIVER_NAME, adp->va_index,
 	   adp->va_io_base, adp->va_io_base + adp->va_io_size - 1,
 	   adp->va_crtc_addr, adp->va_mem_base, adp->va_mem_size);
-    printf("%s%d: init mode:%d, bios mode:%d, current mode:%d\n",
+    kprintf("%s%d: init mode:%d, bios mode:%d, current mode:%d\n",
 	   FB_DRIVER_NAME, adp->va_index,
 	   adp->va_initial_mode, adp->va_initial_bios_mode, adp->va_mode);
-    printf("%s%d: window:%p size:%dk gran:%dk, buf:%p size:%dk\n",
+    kprintf("%s%d: window:%p size:%dk gran:%dk, buf:%p size:%dk\n",
 	   FB_DRIVER_NAME, adp->va_index, 
 	   (void *)adp->va_window, (int)adp->va_window_size/1024,
 	   (int)adp->va_window_gran/1024, (void *)adp->va_buffer,
@@ -581,18 +581,18 @@ fb_dump_mode_info(char *driver, video_adapter_t *adp, video_info_t *info,
     if (level <= 0)
 	return;
 
-    printf("%s%d: %s, mode:%d, flags:0x%x ", 
+    kprintf("%s%d: %s, mode:%d, flags:0x%x ", 
 	   driver, adp->va_unit, adp->va_name, info->vi_mode, info->vi_flags);
     if (info->vi_flags & V_INFO_GRAPHICS)
-	printf("G %dx%dx%d, %d plane(s), font:%dx%d, ",
+	kprintf("G %dx%dx%d, %d plane(s), font:%dx%d, ",
 	       info->vi_width, info->vi_height, 
 	       info->vi_depth, info->vi_planes, 
 	       info->vi_cwidth, info->vi_cheight); 
     else
-	printf("T %dx%d, font:%dx%d, ",
+	kprintf("T %dx%d, font:%dx%d, ",
 	       info->vi_width, info->vi_height, 
 	       info->vi_cwidth, info->vi_cheight); 
-    printf("win:0x%x\n", info->vi_window);
+    kprintf("win:0x%x\n", info->vi_window);
 }
 
 int

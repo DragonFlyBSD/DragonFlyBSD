@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.9 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.10 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.9 2006/07/28 02:17:38 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.10 2006/12/22 23:26:25 swildner Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4
@@ -194,7 +194,7 @@ chn_wrupdate(struct pcm_channel *c)
 	/* tell the driver we've updated the primary buffer */
 	chn_trigger(c, PCMTRIG_EMLDMAWR);
 	DEB(if (ret)
-		printf("chn_wrupdate: chn_wrfeed returned %d\n", ret);)
+		kprintf("chn_wrupdate: chn_wrfeed returned %d\n", ret);)
 
 }
 
@@ -239,7 +239,7 @@ chn_wrintr(struct pcm_channel *c)
 	/* tell the driver we've updated the primary buffer */
 	chn_trigger(c, PCMTRIG_EMLDMAWR);
 	DEB(if (ret)
-		printf("chn_wrintr: chn_wrfeed returned %d\n", ret);)
+		kprintf("chn_wrintr: chn_wrfeed returned %d\n", ret);)
 }
 
 /*
@@ -296,17 +296,17 @@ chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
 		} else {
 			sz = MIN(sz, buf->uio_resid);
 			KASSERT(sz > 0, ("confusion in chn_write"));
-			/* printf("sz: %d\n", sz); */
+			/* kprintf("sz: %d\n", sz); */
 			ret = sndbuf_uiomove(bs, buf, sz);
 			if (ret == 0 && !(c->flags & CHN_F_TRIGGERED))
 				chn_start(c, 0);
 		}
 	}
-	/* printf("ret: %d left: %d\n", ret, buf->uio_resid); */
+	/* kprintf("ret: %d left: %d\n", ret, buf->uio_resid); */
 
 	if (count <= 0) {
 		c->flags |= CHN_F_DEAD;
-		printf("%s: play interrupt timeout, channel dead\n", c->name);
+		kprintf("%s: play interrupt timeout, channel dead\n", c->name);
 	}
 
 	return ret;
@@ -370,7 +370,7 @@ chn_rdupdate(struct pcm_channel *c)
 	chn_dmaupdate(c);
 	ret = chn_rdfeed(c);
 	if (ret)
-		printf("chn_rdfeed: %d\n", ret);
+		kprintf("chn_rdfeed: %d\n", ret);
 
 }
 
@@ -436,7 +436,7 @@ chn_read(struct pcm_channel *c, struct uio *buf, int ioflags)
 
 	if (count <= 0) {
 		c->flags |= CHN_F_DEAD;
-		printf("%s: record interrupt timeout, channel dead\n", c->name);
+		kprintf("%s: record interrupt timeout, channel dead\n", c->name);
 	}
 
 	return ret;
@@ -521,7 +521,7 @@ chn_sync(struct pcm_channel *c, int threshold)
 		if (rdy <= threshold) {
 	    		ret = chn_sleep(c, "pcmsyn", 1);
 	    		if (ret == ERESTART || ret == EINTR) {
-				DEB(printf("chn_sync: tsleep returns %d\n", ret));
+				DEB(kprintf("chn_sync: tsleep returns %d\n", ret));
 				return -1;
 	    		}
 		} else
@@ -595,7 +595,7 @@ chn_flush(struct pcm_channel *c)
 
 	CHN_LOCKASSERT(c);
 	KASSERT(c->direction == PCMDIR_PLAY, ("chn_wrupdate on bad channel"));
-    	DEB(printf("chn_flush c->flags 0x%08x\n", c->flags));
+    	DEB(kprintf("chn_flush c->flags 0x%08x\n", c->flags));
 	if (!(c->flags & CHN_F_TRIGGERED))
 		return 0;
 
@@ -617,7 +617,7 @@ chn_flush(struct pcm_channel *c)
 		}
    	}
 	if (count == 0)
-		DEB(printf("chn_flush: timeout\n"));
+		DEB(kprintf("chn_flush: timeout\n"));
 
 	c->flags &= ~CHN_F_TRIGGERED;
 	/* kill the channel */
@@ -802,8 +802,8 @@ chn_tryspeed(struct pcm_channel *c, int speed)
 	int r, delta;
 
 	CHN_LOCKASSERT(c);
-	DEB(printf("setspeed, channel %s\n", c->name));
-	DEB(printf("want speed %d, ", speed));
+	DEB(kprintf("setspeed, channel %s\n", c->name));
+	DEB(kprintf("want speed %d, ", speed));
 	if (speed <= 0)
 		return EINVAL;
 	if (CANCHANGE(c)) {
@@ -811,9 +811,9 @@ chn_tryspeed(struct pcm_channel *c, int speed)
 		c->speed = speed;
 		sndbuf_setspd(bs, speed);
 		RANGE(speed, chn_getcaps(c)->minspeed, chn_getcaps(c)->maxspeed);
-		DEB(printf("try speed %d, ", speed));
+		DEB(kprintf("try speed %d, ", speed));
 		sndbuf_setspd(b, CHANNEL_SETSPEED(c->methods, c->devinfo, speed));
-		DEB(printf("got speed %d\n", sndbuf_getspd(b)));
+		DEB(kprintf("got speed %d\n", sndbuf_getspd(b)));
 
 		delta = sndbuf_getspd(b) - sndbuf_getspd(bs);
 		if (delta < 0)
@@ -826,7 +826,7 @@ chn_tryspeed(struct pcm_channel *c, int speed)
 			sndbuf_setspd(bs, sndbuf_getspd(b));
 
 		r = chn_buildfeeder(c);
-		DEB(printf("r = %d\n", r));
+		DEB(kprintf("r = %d\n", r));
 		if (r)
 			goto out;
 
@@ -839,21 +839,21 @@ chn_tryspeed(struct pcm_channel *c, int speed)
 
 		r = EINVAL;
 		f = chn_findfeeder(c, FEEDER_RATE);
-		DEB(printf("feedrate = %p\n", f));
+		DEB(kprintf("feedrate = %p\n", f));
 		if (f == NULL)
 			goto out;
 
 		x = (c->direction == PCMDIR_REC)? b : bs;
 		r = FEEDER_SET(f, FEEDRATE_SRC, sndbuf_getspd(x));
-		DEB(printf("feeder_set(FEEDRATE_SRC, %d) = %d\n", sndbuf_getspd(x), r));
+		DEB(kprintf("feeder_set(FEEDRATE_SRC, %d) = %d\n", sndbuf_getspd(x), r));
 		if (r)
 			goto out;
 
 		x = (c->direction == PCMDIR_REC)? bs : b;
 		r = FEEDER_SET(f, FEEDRATE_DST, sndbuf_getspd(x));
-		DEB(printf("feeder_set(FEEDRATE_DST, %d) = %d\n", sndbuf_getspd(x), r));
+		DEB(kprintf("feeder_set(FEEDRATE_DST, %d) = %d\n", sndbuf_getspd(x), r));
 out:
-		DEB(printf("setspeed done, r = %d\n", r));
+		DEB(kprintf("setspeed done, r = %d\n", r));
 		return r;
 	} else
 		return EINVAL;
@@ -866,7 +866,7 @@ chn_setspeed(struct pcm_channel *c, int speed)
 
 	r = chn_tryspeed(c, speed);
 	if (r) {
-		DEB(printf("Failed to set speed %d falling back to %d\n", speed, oldspeed));
+		DEB(kprintf("Failed to set speed %d falling back to %d\n", speed, oldspeed));
 		r = chn_tryspeed(c, oldspeed);
 	}
 	return r;
@@ -881,7 +881,7 @@ chn_tryformat(struct pcm_channel *c, u_int32_t fmt)
 
 	CHN_LOCKASSERT(c);
 	if (CANCHANGE(c)) {
-		DEB(printf("want format %d\n", fmt));
+		DEB(kprintf("want format %d\n", fmt));
 		c->format = fmt;
 		r = chn_buildfeeder(c);
 		if (r == 0) {
@@ -904,7 +904,7 @@ chn_setformat(struct pcm_channel *c, u_int32_t fmt)
 
 	r = chn_tryformat(c, fmt);
 	if (r) {
-		DEB(printf("Format change %d failed, reverting to %d\n", fmt, oldfmt));
+		DEB(kprintf("Format change %d failed, reverting to %d\n", fmt, oldfmt));
 		chn_tryformat(c, oldfmt);
 	}
 	return r;
@@ -922,7 +922,7 @@ chn_setblocksize(struct pcm_channel *c, int blkcnt, int blksz)
 		return EINVAL;
 
 	ret = 0;
-	DEB(printf("%s(%d, %d)\n", __func__, blkcnt, blksz));
+	DEB(kprintf("%s(%d, %d)\n", __func__, blkcnt, blksz));
 	if (blksz == 0 || blksz == -1) {
 		if (blksz == -1)
 			c->flags &= ~CHN_F_HAS_SIZE;
@@ -937,11 +937,11 @@ chn_setblocksize(struct pcm_channel *c, int blkcnt, int blksz)
 
 			RANGE(blksz, 16, CHN_2NDBUFMAXSIZE / 2);
 			RANGE(blkcnt, 2, CHN_2NDBUFMAXSIZE / blksz);
-			DEB(printf("%s: defaulting to (%d, %d)\n", __func__, blkcnt, blksz));
+			DEB(kprintf("%s: defaulting to (%d, %d)\n", __func__, blkcnt, blksz));
 		} else {
 			blkcnt = sndbuf_getblkcnt(bs);
 			blksz = sndbuf_getblksz(bs);
-			DEB(printf("%s: updating (%d, %d)\n", __func__, blkcnt, blksz));
+			DEB(kprintf("%s: updating (%d, %d)\n", __func__, blkcnt, blksz));
 		}
 	} else {
 		ret = EINVAL;
@@ -960,7 +960,7 @@ chn_setblocksize(struct pcm_channel *c, int blkcnt, int blksz)
 
 	/* adjust for different hw format/speed */
 	irqhz = (sndbuf_getbps(bs) * sndbuf_getspd(bs)) / sndbuf_getblksz(bs);
-	DEB(printf("%s: soft bps %d, spd %d, irqhz == %d\n", __func__, sndbuf_getbps(bs), sndbuf_getspd(bs), irqhz));
+	DEB(kprintf("%s: soft bps %d, spd %d, irqhz == %d\n", __func__, sndbuf_getbps(bs), sndbuf_getspd(bs), irqhz));
 	RANGE(irqhz, 16, 512);
 
 	sndbuf_setblksz(b, (sndbuf_getbps(b) * sndbuf_getspd(b)) / irqhz);
@@ -973,12 +973,12 @@ chn_setblocksize(struct pcm_channel *c, int blkcnt, int blksz)
 
 	/* round down to fit hw buffer size */
 	RANGE(blksz, 16, sndbuf_getmaxsize(b) / 2);
-	DEB(printf("%s: hard blksz requested %d (maxsize %d), ", __func__, blksz, sndbuf_getmaxsize(b)));
+	DEB(kprintf("%s: hard blksz requested %d (maxsize %d), ", __func__, blksz, sndbuf_getmaxsize(b)));
 
 	sndbuf_setblksz(b, CHANNEL_SETBLOCKSIZE(c->methods, c->devinfo, blksz));
 
 	irqhz = (sndbuf_getbps(b) * sndbuf_getspd(b)) / sndbuf_getblksz(b);
-	DEB(printf("got %d, irqhz == %d\n", sndbuf_getblksz(b), irqhz));
+	DEB(kprintf("got %d, irqhz == %d\n", sndbuf_getblksz(b), irqhz));
 
 	chn_resetbuf(c);
 out:
@@ -1061,7 +1061,7 @@ chn_buildfeeder(struct pcm_channel *c)
 
 		err = chn_addfeeder(c, fc, NULL);
 		if (err) {
-			DEB(printf("can't add root feeder, err %d\n", err));
+			DEB(kprintf("can't add root feeder, err %d\n", err));
 
 			return err;
 		}
@@ -1073,21 +1073,21 @@ chn_buildfeeder(struct pcm_channel *c)
 		desc.flags = 0;
 		fc = feeder_getclass(&desc);
 		if (fc == NULL) {
-			DEB(printf("can't find vchan feeder\n"));
+			DEB(kprintf("can't find vchan feeder\n"));
 
 			return EOPNOTSUPP;
 		}
 
 		err = chn_addfeeder(c, fc, &desc);
 		if (err) {
-			DEB(printf("can't add vchan feeder, err %d\n", err));
+			DEB(kprintf("can't add vchan feeder, err %d\n", err));
 
 			return err;
 		}
 	}
 	flags = c->feederflags;
 
-	DEB(printf("not mapped, feederflags %x\n", flags));
+	DEB(kprintf("not mapped, feederflags %x\n", flags));
 
 	for (type = FEEDER_RATE; type <= FEEDER_LAST; type++) {
 		if (flags & (1 << type)) {
@@ -1095,34 +1095,34 @@ chn_buildfeeder(struct pcm_channel *c)
 			desc.in = 0;
 			desc.out = 0;
 			desc.flags = 0;
-			DEB(printf("find feeder type %d, ", type));
+			DEB(kprintf("find feeder type %d, ", type));
 			fc = feeder_getclass(&desc);
-			DEB(printf("got %p\n", fc));
+			DEB(kprintf("got %p\n", fc));
 			if (fc == NULL) {
-				DEB(printf("can't find required feeder type %d\n", type));
+				DEB(kprintf("can't find required feeder type %d\n", type));
 
 				return EOPNOTSUPP;
 			}
 
 			if (c->feeder->desc->out != fc->desc->in) {
- 				DEB(printf("build fmtchain from %x to %x: ", c->feeder->desc->out, fc->desc->in));
+ 				DEB(kprintf("build fmtchain from %x to %x: ", c->feeder->desc->out, fc->desc->in));
 				tmp[0] = fc->desc->in;
 				tmp[1] = 0;
 				if (chn_fmtchain(c, tmp) == 0) {
-					DEB(printf("failed\n"));
+					DEB(kprintf("failed\n"));
 
 					return ENODEV;
 				}
- 				DEB(printf("ok\n"));
+ 				DEB(kprintf("ok\n"));
 			}
 
 			err = chn_addfeeder(c, fc, fc->desc);
 			if (err) {
-				DEB(printf("can't add feeder %p, output %x, err %d\n", fc, fc->desc->out, err));
+				DEB(kprintf("can't add feeder %p, output %x, err %d\n", fc, fc->desc->out, err));
 
 				return err;
 			}
-			DEB(printf("added feeder %p, output %x\n", fc, c->feeder->desc->out));
+			DEB(kprintf("added feeder %p, output %x\n", fc, c->feeder->desc->out));
 		}
 	}
 

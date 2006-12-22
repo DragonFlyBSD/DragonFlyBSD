@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_isa.c,v 1.46.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.5 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.6 2006/12/22 23:26:22 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -160,7 +160,7 @@ sr_isa_probe (device_t device)
 		inb(port + SR_PCR);
 		tmp = inb(port + SR_BAR);
 		if (tmp != i) {
-			printf("sr%d: probe failed BAR %x, %x.\n",
+			kprintf("sr%d: probe failed BAR %x, %x.\n",
 			       hc->cunit, i, tmp);
 			goto errexit;
 		}
@@ -179,7 +179,7 @@ sr_isa_probe (device_t device)
 
 	tmp = SRC_GET8(port, sca->msci[0].tmc);
 	if (tmp != 0) {
-		printf("sr%d: Error reading SCA 0, %x\n", hc->cunit, tmp);
+		kprintf("sr%d: Error reading SCA 0, %x\n", hc->cunit, tmp);
 		goto errexit;
 	}
 	SRC_PUT8(port, sca->msci[0].tmc, 0x5A);
@@ -187,7 +187,7 @@ sr_isa_probe (device_t device)
 
 	tmp = SRC_GET8(port, sca->msci[0].tmc);
 	if (tmp != 0x5A) {
-		printf("sr%d: Error reading SCA 0x5A, %x\n", hc->cunit, tmp);
+		kprintf("sr%d: Error reading SCA 0x5A, %x\n", hc->cunit, tmp);
 		goto errexit;
 	}
 	SRC_PUT16(port, sca->dmac[0].cda, 0);
@@ -195,7 +195,7 @@ sr_isa_probe (device_t device)
 
 	tmp = SRC_GET16(port, sca->dmac[0].cda);
 	if (tmp != 0) {
-		printf("sr%d: Error reading SCA 0, %x\n", hc->cunit, tmp);
+		kprintf("sr%d: Error reading SCA 0, %x\n", hc->cunit, tmp);
 		goto errexit;
 	}
 	SRC_PUT16(port, sca->dmac[0].cda, 0x55AA);
@@ -203,7 +203,7 @@ sr_isa_probe (device_t device)
 
 	tmp = SRC_GET16(port, sca->dmac[0].cda);
 	if (tmp != 0x55AA) {
-		printf("sr%d: Error reading SCA 0x55AA, %x\n",
+		kprintf("sr%d: Error reading SCA 0x55AA, %x\n",
 		       hc->cunit, tmp);
 		goto errexit;
 	}
@@ -229,7 +229,7 @@ sr_isa_probe (device_t device)
 	 * Do a little sanity check.
 	 */
 	if (sr_irqtable[irq] == 0)
-		printf("sr%d: Warning: illegal interrupt %ld chosen.\n",
+		kprintf("sr%d: Warning: illegal interrupt %ld chosen.\n",
 		       hc->cunit, irq);
 
 	/*
@@ -408,7 +408,7 @@ src_dpram_size(device_t device)
 			 * is 4 x 16k pages.
 			 */
 			if (i < 4) {
-				printf("sr%d: Bad mem page %d, mem %x, %x.\n",
+				kprintf("sr%d: Bad mem page %d, mem %x, %x.\n",
 				       hc->cunit, i, 0xAA55, *smem);
 				return 0;
 			}

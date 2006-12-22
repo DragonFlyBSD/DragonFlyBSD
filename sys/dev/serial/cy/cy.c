@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.25 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.26 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -505,7 +505,7 @@ sioattach(isdp)
 	 * kernel config file to be in any order.
 	 */
 	if (isdp->id_unit != adapter) {
-		printf("cy%d: attached as cy%d\n", isdp->id_unit, adapter);
+		kprintf("cy%d: attached as cy%d\n", isdp->id_unit, adapter);
 		isdp->id_unit = adapter;	/* XXX */
 	}
 	isdp->id_intr = (inthand2_t *)siointr;
@@ -528,7 +528,7 @@ cyattach_common(cy_iobase, cy_align)
 
 	adapter = cy_total_devices;
 	if ((u_int)adapter >= NCY) {
-		printf(
+		kprintf(
 	"cy%d: can't attach adapter: insufficient cy devices configured\n",
 		       adapter);
 		return (-1);
@@ -2670,10 +2670,10 @@ comspeed(speed, cy_clock, prescaler_io)
 		return (-1);
 
 #if 0
-	printf("prescaler = %d (%d)\n", prescaler, prescaler_unit);
-	printf("divider = %d (%x)\n", divider, divider);
-	printf("actual = %d\n", actual);
-	printf("error = %d\n", error);
+	kprintf("prescaler = %d (%d)\n", prescaler, prescaler_unit);
+	kprintf("divider = %d (%x)\n", divider, divider);
+	kprintf("actual = %d\n", actual);
+	kprintf("error = %d\n", error);
 #endif
 
 	*prescaler_io = prescaler_unit;
@@ -2822,51 +2822,51 @@ cystatus(unit)
 	struct tty	*tp;
 
 	com = com_addr(unit);
-	printf("info for channel %d\n", unit);
-	printf("------------------\n");
-	printf("total cyclom service probes:\t%d\n", cy_svrr_probes);
-	printf("calls to upper layer:\t\t%d\n", cy_timeouts);
+	kprintf("info for channel %d\n", unit);
+	kprintf("------------------\n");
+	kprintf("total cyclom service probes:\t%d\n", cy_svrr_probes);
+	kprintf("calls to upper layer:\t\t%d\n", cy_timeouts);
 	if (com == NULL)
 		return;
 	iobase = com->iobase;
-	printf("\n");
-	printf("cd1400 base address:\\tt%p\n", iobase);
-	printf("saved channel_control:\t\t0x%02x\n", com->channel_control);
-	printf("saved cor1-3:\t\t\t0x%02x 0x%02x 0x%02x\n",
+	kprintf("\n");
+	kprintf("cd1400 base address:\\tt%p\n", iobase);
+	kprintf("saved channel_control:\t\t0x%02x\n", com->channel_control);
+	kprintf("saved cor1-3:\t\t\t0x%02x 0x%02x 0x%02x\n",
 	       com->cor[0], com->cor[1], com->cor[2]);
-	printf("service request enable reg:\t0x%02x (0x%02x cached)\n",
+	kprintf("service request enable reg:\t0x%02x (0x%02x cached)\n",
 	       cd_getreg(com, CD1400_SRER), com->intr_enable);
-	printf("service request register:\t0x%02x\n",
+	kprintf("service request register:\t0x%02x\n",
 	       cd_inb(iobase, CD1400_SVRR, com->cy_align));
-	printf("modem status:\t\t\t0x%02x (0x%02x cached)\n",
+	kprintf("modem status:\t\t\t0x%02x (0x%02x cached)\n",
 	       cd_getreg(com, CD1400_MSVR2), com->prev_modem_status);
-	printf("rx/tx/mdm interrupt registers:\t0x%02x 0x%02x 0x%02x\n",
+	kprintf("rx/tx/mdm interrupt registers:\t0x%02x 0x%02x 0x%02x\n",
 	       cd_inb(iobase, CD1400_RIR, com->cy_align),
 	       cd_inb(iobase, CD1400_TIR, com->cy_align),
 	       cd_inb(iobase, CD1400_MIR, com->cy_align));
-	printf("\n");
-	printf("com state:\t\t\t0x%02x\n", com->state);
-	printf("calls to comstart():\t\t%d (%d useful)\n",
+	kprintf("\n");
+	kprintf("com state:\t\t\t0x%02x\n", com->state);
+	kprintf("calls to comstart():\t\t%d (%d useful)\n",
 	       com->start_count, com->start_real);
-	printf("rx buffer chars free:\t\t%d\n", com->iptr - com->ibuf);
+	kprintf("rx buffer chars free:\t\t%d\n", com->iptr - com->ibuf);
 	ocount = 0;
 	if (com->obufs[0].l_queued)
 		ocount += com->obufs[0].l_tail - com->obufs[0].l_head;
 	if (com->obufs[1].l_queued)
 		ocount += com->obufs[1].l_tail - com->obufs[1].l_head;
-	printf("tx buffer chars:\t\t%u\n", ocount);
-	printf("received chars:\t\t\t%d\n", com->bytes_in);
-	printf("received exceptions:\t\t%d\n", com->recv_exception);
-	printf("modem signal deltas:\t\t%d\n", com->mdm);
-	printf("transmitted chars:\t\t%d\n", com->bytes_out);
-	printf("\n");
+	kprintf("tx buffer chars:\t\t%u\n", ocount);
+	kprintf("received chars:\t\t\t%d\n", com->bytes_in);
+	kprintf("received exceptions:\t\t%d\n", com->recv_exception);
+	kprintf("modem signal deltas:\t\t%d\n", com->mdm);
+	kprintf("transmitted chars:\t\t%d\n", com->bytes_out);
+	kprintf("\n");
 	tp = com->tp;
 	if (tp != NULL) {
-		printf("tty state:\t\t\t0x%08x\n", tp->t_state);
-		printf(
+		kprintf("tty state:\t\t\t0x%08x\n", tp->t_state);
+		kprintf(
 		"upper layer queue lengths:\t%d raw, %d canon, %d output\n",
 		       tp->t_rawq.c_cc, tp->t_canq.c_cc, tp->t_outq.c_cc);
 	} else
-		printf("tty state:\t\t\tclosed\n");
+		kprintf("tty state:\t\t\tclosed\n");
 }
 #endif /* CyDebug */

@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.18 2005/01/23 07:13:09 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
  */
 
 
@@ -835,7 +835,7 @@ tv_freq( bktr_ptr_t bktr, int frequency, int type )
 			    /* AFC failed, restore requested frequency */
 			    N = frequency + TBL_IF;
 #if defined( TEST_TUNER_AFC )
-			    printf("%s: do_afc: failed to lock\n",
+			    kprintf("%s: do_afc: failed to lock\n",
 				   bktr_name(bktr));
 #endif
 			    i2cWrite( bktr, addr, (N>>8) & 0x7f, N & 0xff );
@@ -843,9 +843,9 @@ tv_freq( bktr_ptr_t bktr, int frequency, int type )
 			else
 			    frequency = N - TBL_IF;
 #if defined( TEST_TUNER_AFC )
- printf("%s: do_afc: returned freq %d (%d %% %d)\n", bktr_name(bktr), frequency, frequency / 16, frequency % 16);
+ kprintf("%s: do_afc: returned freq %d (%d %% %d)\n", bktr_name(bktr), frequency, frequency / 16, frequency % 16);
 			    afcDelta = frequency - oldFrequency;
- printf("%s: changed by: %d clicks (%d mod %d)\n", bktr_name(bktr), afcDelta, afcDelta / 16, afcDelta % 16);
+ kprintf("%s: changed by: %d clicks (%d mod %d)\n", bktr_name(bktr), afcDelta, afcDelta / 16, afcDelta % 16);
 #endif
 			}
 #endif /* TUNER_AFC */
@@ -914,14 +914,14 @@ do_afc( bktr_ptr_t bktr, int addr, int frequency )
 		return( -1 );
 
 #if defined( TEST_TUNER_AFC )
- printf( "%s: Original freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
+ kprintf( "%s: Original freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
 #endif
 	for ( step = 0; step < AFC_MAX_STEP; ++step ) {
 		if ( (status = i2cRead( bktr, addr + 1 )) < 0 )
 			goto fubar;
 		if ( !(status & 0x40) ) {
 #if defined( TEST_TUNER_AFC )
- printf( "%s: no lock!\n", bktr_name(bktr) );
+ kprintf( "%s: no lock!\n", bktr_name(bktr) );
 #endif
 			goto fubar;
 		}
@@ -929,14 +929,14 @@ do_afc( bktr_ptr_t bktr, int addr, int frequency )
 		switch( status & AFC_BITS ) {
 		case AFC_FREQ_CENTERED:
 #if defined( TEST_TUNER_AFC )
- printf( "%s: Centered, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
+ kprintf( "%s: Centered, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
 #endif
 			return( frequency );
 
 		case AFC_FREQ_MINUS_125:
 		case AFC_FREQ_MINUS_62:
 #if defined( TEST_TUNER_AFC )
- printf( "%s: Low, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
+ kprintf( "%s: Low, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
 #endif
 			--frequency;
 			break;
@@ -944,7 +944,7 @@ do_afc( bktr_ptr_t bktr, int addr, int frequency )
 		case AFC_FREQ_PLUS_62:
 		case AFC_FREQ_PLUS_125:
 #if defined( TEST_TUNER_AFC )
- printf( "%s: Hi, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
+ kprintf( "%s: Hi, freq: %d, status: 0x%02x\n", bktr_name(bktr), frequency, status );
 #endif
 			++frequency;
 			break;
@@ -1054,13 +1054,13 @@ _MT2032_GetRegister(bktr_ptr_t bktr, u_char regNum)
 
 	if (i2cWrite(bktr, MT2032_ADDR, regNum, -1) == -1) {
 		if (bootverbose)
-			printf("%s: MT2032 write failed (i2c addr %#x)\n",
+			kprintf("%s: MT2032 write failed (i2c addr %#x)\n",
 				bktr_name(bktr), MT2032_ADDR);
 		return -1;
 	}
 	if ((ch = i2cRead(bktr, MT2032_ADDR + 1)) == -1) {
 		if (bootverbose)
-			printf("%s: MT2032 get register %d failed\n",
+			kprintf("%s: MT2032 get register %d failed\n",
 				bktr_name(bktr), regNum);
 		return -1;
 	}
@@ -1095,11 +1095,11 @@ mt2032_init(bktr_ptr_t bktr)
 	if (i < 21)
 		return -1;
 
-	printf("%s: MT2032: Companycode=%02x%02x Part=%02x Revision=%02x\n",
+	kprintf("%s: MT2032: Companycode=%02x%02x Part=%02x Revision=%02x\n",
 		bktr_name(bktr),
 		rdbuf[0x11], rdbuf[0x12], rdbuf[0x13], rdbuf[0x14]);
 	if (rdbuf[0x13] != 4) {
-		printf("%s: MT2032 not found or unknown type\n", bktr_name(bktr));
+		kprintf("%s: MT2032 not found or unknown type\n", bktr_name(bktr));
 		return -1;
 	}
 
@@ -1246,7 +1246,7 @@ MT2032_ComputeFreq(
 
 	if (lo1a < 0 || lo1a > 7 || lo1n < 17 || lo1n > 48 || lo2a < 0 ||
 	    lo2a > 7 || lo2n < 17 || lo2n > 30) {
-		printf("MT2032: parameter out of range\n");
+		kprintf("MT2032: parameter out of range\n");
 		return -1;
 	}
 	/* set up MT2032 register map for transfer over i2c */
@@ -1357,7 +1357,7 @@ MT2032_SetIFFreq(bktr_ptr_t bktr, int rfin, int if1, int if2, int from, int to)
 		MT2032_SetRegister(7, 8 + MT2032_XOGC);
 	}
 	if (lock != 6)
-		printf("%s: PLL didn't lock\n", bktr_name(bktr));
+		kprintf("%s: PLL didn't lock\n", bktr_name(bktr));
 
 	MT2032_SetRegister(2, 0x20);
 
@@ -1387,7 +1387,7 @@ mt2032_set_tv_freq(bktr_ptr_t bktr, unsigned int freq)
 		stat = MT2032_GetRegister(0x0e);
 		tad = MT2032_GetRegister(0x0f);
 		if (bootverbose)
-			printf("%s: frequency set to %d, st = %#x, tad = %#x\n",
+			kprintf("%s: frequency set to %d, st = %#x, tad = %#x\n",
 				bktr_name(bktr), freq*62500, stat, tad);
 	}
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_eisa.c,v 1.12 2000/01/29 14:27:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_eisa.c,v 1.4 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_eisa.c,v 1.5 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -218,7 +218,7 @@ bt_eisa_probe(device_t dev)
 			break;
 		default:
 			/* Disabled */
-			printf("bt: AMI EISA Adapter at "
+			kprintf("bt: AMI EISA Adapter at "
 			       "slot %d has a disabled I/O "
 			       "port.  Cannot attach.\n",
 			       eisa_get_slot(dev));
@@ -253,7 +253,7 @@ bt_eisa_probe(device_t dev)
 			break;
 		default:
 			/* Disabled */
-			printf("bt: Buslogic EISA Adapter at "
+			kprintf("bt: Buslogic EISA Adapter at "
 			       "slot %d has a disabled I/O "
 			       "port.  Cannot attach.\n",
 			       eisa_get_slot(dev));
@@ -272,7 +272,7 @@ bt_eisa_probe(device_t dev)
 	bt_eisa_alloc_resources(dev);
 
 	if (bt_port_probe(dev, &info) != 0) {
-		printf("bt_eisa_probe: Probe failed for "
+		kprintf("bt_eisa_probe: Probe failed for "
 		       "card at slot 0x%x\n", eisa_get_slot(dev));
 		result = ENXIO;
 	} else {

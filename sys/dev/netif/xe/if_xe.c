@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.33 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.34 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ SYSCTL_NODE(_hw, OID_AUTO, xe, CTLFLAG_RD, 0, "xe parameters");
 int	xe_debug = 1;
 SYSCTL_INT(_hw_xe, OID_AUTO, debug, CTLFLAG_RW, &xe_debug, 0, "xe debug level");
 
-#define DPRINTF(level, arg)	if (xe_debug >= (level)) printf arg
+#define DPRINTF(level, arg)	if (xe_debug >= (level)) kprintf arg
 #define IFPRINTF(level, arg)	if (xe_debug >= (level)) if_printf arg
 #define DEVPRINTF(level, arg)	if (xe_debug >= (level)) device_printf arg
 #define XE_MII_DUMP(scp)	if (xe_debug >= 3) xe_mii_dump(scp)
@@ -1849,12 +1849,12 @@ xe_mii_dump(struct xe_softc *scp) {
 
   if_printf(scp->ifp, "MII registers: ");
   for (i = 0; i < 2; i++) {
-    printf(" %d:%04x", i, xe_phy_readreg(scp, i));
+    kprintf(" %d:%04x", i, xe_phy_readreg(scp, i));
   }
   for (i = 4; i < 7; i++) {
-    printf(" %d:%04x", i, xe_phy_readreg(scp, i));
+    kprintf(" %d:%04x", i, xe_phy_readreg(scp, i));
   }
-  printf("\n");
+  kprintf("\n");
 
   crit_exit();
 }
@@ -1867,17 +1867,17 @@ xe_reg_dump(struct xe_softc *scp) {
 
   if_printf(scp->ifp, "Common registers: ");
   for (i = 0; i < 8; i++) {
-    printf(" %2.2x", XE_INB(i));
+    kprintf(" %2.2x", XE_INB(i));
   }
-  printf("\n");
+  kprintf("\n");
 
   for (page = 0; page <= 8; page++) {
     if_printf(scp->ifp, "Register page %2.2x: ", page);
     XE_SELECT_PAGE(page);
     for (i = 8; i < 16; i++) {
-      printf(" %2.2x", XE_INB(i));
+      kprintf(" %2.2x", XE_INB(i));
     }
-    printf("\n");
+    kprintf("\n");
   }
 
   for (page = 0x10; page < 0x5f; page++) {
@@ -1889,9 +1889,9 @@ xe_reg_dump(struct xe_softc *scp) {
     if_printf(scp->ifp, "Register page %2.2x: ", page);
     XE_SELECT_PAGE(page);
     for (i = 8; i < 16; i++) {
-      printf(" %2.2x", XE_INB(i));
+      kprintf(" %2.2x", XE_INB(i));
     }
-    printf("\n");
+    kprintf("\n");
   }
 
   crit_exit();

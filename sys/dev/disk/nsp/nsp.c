@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.10 2006/11/07 19:56:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.11 2006/12/22 23:26:16 swildner Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -225,7 +225,7 @@ nsp_expect_signal(struct nsp_softc *sc, u_int8_t curphase, u_int8_t mask)
 		SCSI_LOW_DELAY(NSP_DELAY_INTERVAL);
 	}
 
-	printf("%s: nsp_expect_signal timeout\n", slp->sl_xname);
+	kprintf("%s: nsp_expect_signal timeout\n", slp->sl_xname);
 	return -1;
 }
 
@@ -583,7 +583,7 @@ nspprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
-		printf("%s: scsibus ", name);
+		kprintf("%s: scsibus ", name);
 	return UNCONF;
 }
 
@@ -592,7 +592,7 @@ nspattachsubr(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
-	printf("\n");
+	kprintf("\n");
 
 	sc->sc_idbit = (1 << slp->sl_hostid);
 	slp->sl_flags |= HW_READ_PADDING;
@@ -727,7 +727,7 @@ nsp_pdma_end(struct nsp_softc *sc, struct targ_info *ti)
 			else
 			{
 				slp->sl_error |= PDMAERR;
-				printf("%s len %x >= datalen %x\n",
+				kprintf("%s len %x >= datalen %x\n",
 					slp->sl_xname,
 					len, slp->sl_scp.scp_datalen);
 			}
@@ -738,7 +738,7 @@ nsp_pdma_end(struct nsp_softc *sc, struct targ_info *ti)
 			    sc->sc_cnt > cb->ccb_scp.scp_datalen)
 			{
 				slp->sl_error |= PDMAERR;
-				printf("%s: data read count error %x != %x (%x)\n",
+				kprintf("%s: data read count error %x != %x (%x)\n",
 					slp->sl_xname, sc->sc_cnt, cnt,
 					cb->ccb_scp.scp_datalen);
 			}
@@ -749,7 +749,7 @@ nsp_pdma_end(struct nsp_softc *sc, struct targ_info *ti)
 	else
 	{
 
-		printf("%s data phase miss\n", slp->sl_xname);
+		kprintf("%s data phase miss\n", slp->sl_xname);
 		slp->sl_error |= PDMAERR;
 	}
 }
@@ -795,7 +795,7 @@ nsp_read_fifo(struct nsp_softc *sc, int suspendio)
 #ifdef	NSP_DEBUG
 	if (res < sc->sc_cnt || res == (u_int) -1)
 	{
-		printf("%s: strange fifo ack count 0x%x < 0x%x\n", 
+		kprintf("%s: strange fifo ack count 0x%x < 0x%x\n", 
 			slp->sl_xname, res, sc->sc_cnt);
 		return 0;
 	}
@@ -806,7 +806,7 @@ nsp_read_fifo(struct nsp_softc *sc, int suspendio)
 	{
 		if ((slp->sl_error & PDMAERR) == 0)
 		{
-			printf("%s: data overrun 0x%x > 0x%x\n",
+			kprintf("%s: data overrun 0x%x > 0x%x\n",
 				slp->sl_xname, res, slp->sl_scp.scp_datalen);
 		}
 
@@ -815,7 +815,7 @@ nsp_read_fifo(struct nsp_softc *sc, int suspendio)
 
 		if ((slp->sl_flags & HW_READ_PADDING) == 0)
 		{
-			printf("%s: read padding required\n", slp->sl_xname);
+			kprintf("%s: read padding required\n", slp->sl_xname);
 			return 0;
 		}
 
@@ -883,7 +883,7 @@ nsp_write_fifo(struct nsp_softc *sc, int suspendio)
 #ifdef	NSP_DEBUG
 		if ((slp->sl_scp.scp_datalen % WFIFO_CRIT) != 0)
 		{
-			printf("%s: strange write length 0x%x\n",
+			kprintf("%s: strange write length 0x%x\n",
 				slp->sl_xname, slp->sl_scp.scp_datalen);
 		}
 #endif	/* NSP_DEBUG */
@@ -1027,7 +1027,7 @@ ReadLoop:
 
 		if ((-- tout) <= 0)
 		{
-			printf("%s: nsp_pio_read: timeout\n", slp->sl_xname);
+			kprintf("%s: nsp_pio_read: timeout\n", slp->sl_xname);
 			return;
 		}
 	}
@@ -1137,7 +1137,7 @@ WriteLoop:
 
 		if ((-- tout) <= 0)
 		{
-			printf("%s: nsp_pio_write: timeout\n", slp->sl_xname);
+			kprintf("%s: nsp_pio_write: timeout\n", slp->sl_xname);
 			return;
 		}
 	}
@@ -1169,7 +1169,7 @@ nsp_negate_signal(struct nsp_softc *sc, u_int8_t mask, u_char *s)
 		SCSI_LOW_DELAY(NSP_DELAY_INTERVAL);
 	}
 
-	printf("%s: %s nsp_negate_signal timeout\n", slp->sl_xname, s);
+	kprintf("%s: %s nsp_negate_signal timeout\n", slp->sl_xname, s);
 	return -1;
 }
 
@@ -1276,8 +1276,8 @@ nsp_error(struct nsp_softc *sc, u_char *s, u_int8_t isrc, u_int8_t ph,
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
-	printf("%s: %s\n", slp->sl_xname, s);
-	printf("%s: isrc 0x%x scmon 0x%x irqphs 0x%x\n",
+	kprintf("%s: %s\n", slp->sl_xname, s);
+	kprintf("%s: isrc 0x%x scmon 0x%x irqphs 0x%x\n",
 	       slp->sl_xname, (u_int) isrc, (u_int) ph, (u_int) irqphs);
 }
 
@@ -1348,7 +1348,7 @@ nsp_phase_match(struct nsp_softc *sc, u_int8_t phase, u_int8_t stat)
 
 	if ((stat & SCBUSMON_PHMASK) != phase)
 	{
-		printf("%s: phase mismatch 0x%x != 0x%x\n",
+		kprintf("%s: phase mismatch 0x%x != 0x%x\n",
 			slp->sl_xname, (u_int) phase, (u_int) stat);
 		return EINVAL;
 	}
@@ -1515,7 +1515,7 @@ nspintr(void *arg)
 		nsp_target_nexus_establish(sc);
 		if ((ph & SCBUSMON_PHMASK) != PHASE_MSGIN)
 		{
-			printf("%s: unexpected phase after reselect\n",
+			kprintf("%s: unexpected phase after reselect\n",
 			       slp->sl_xname);
 			slp->sl_error |= FATALIO;
 			scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_ABORT, 1);
@@ -1806,7 +1806,7 @@ nsp_timeout(struct nsp_softc *sc)
 	        slp->sl_error |= PDMAERR;
 		if ((slp->sl_flags & HW_WRITE_PADDING) == 0)
 		{
-			printf("%s: write padding required\n", slp->sl_xname);
+			kprintf("%s: write padding required\n", slp->sl_xname);
 			break;
 		}
 

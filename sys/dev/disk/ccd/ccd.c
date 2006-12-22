@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.37 2006/09/10 01:26:33 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.38 2006/12/22 23:26:16 swildner Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -298,9 +298,9 @@ ccdattach(void)
 	int num = NCCD;
 
 	if (num > 1)
-		printf("ccd0-%d: Concatenated disk drivers\n", num-1);
+		kprintf("ccd0-%d: Concatenated disk drivers\n", num-1);
 	else
-		printf("ccd0: Concatenated disk driver\n");
+		kprintf("ccd0: Concatenated disk driver\n");
 
 	ccd_softc = kmalloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
 			    M_WAITOK | M_ZERO);
@@ -325,7 +325,7 @@ ccd_modevent(module_t mod, int type, void *data)
 		break;
 
 	case MOD_UNLOAD:
-		printf("ccd0: Unload not supported!\n");
+		kprintf("ccd0: Unload not supported!\n");
 		error = EOPNOTSUPP;
 		break;
 
@@ -354,7 +354,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 
 #ifdef DEBUG
 	if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-		printf("ccdinit: unit %d\n", ccd->ccd_unit);
+		kprintf("ccdinit: unit %d\n", ccd->ccd_unit);
 #endif
 
 	cs->sc_size = 0;
@@ -384,7 +384,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		    MAXPATHLEN, &ci->ci_pathlen)) != 0) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-				printf("ccd%d: can't copy path, error = %d\n",
+				kprintf("ccd%d: can't copy path, error = %d\n",
 				    ccd->ccd_unit, error);
 #endif
 			goto fail;
@@ -401,7 +401,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 				       FREAD, cred)) != 0) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-				 printf("ccd%d: %s: ioctl failed, error = %d\n",
+				 kprintf("ccd%d: %s: ioctl failed, error = %d\n",
 				     ccd->ccd_unit, ci->ci_path, error);
 #endif
 			goto fail;
@@ -414,7 +414,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		} else {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-				printf("ccd%d: %s: incorrect partition type\n",
+				kprintf("ccd%d: %s: incorrect partition type\n",
 				    ccd->ccd_unit, ci->ci_path);
 #endif
 			error = EFTYPE;
@@ -432,7 +432,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		if (size == 0) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-				printf("ccd%d: %s: size == 0\n",
+				kprintf("ccd%d: %s: size == 0\n",
 				    ccd->ccd_unit, ci->ci_path);
 #endif
 			error = ENODEV;
@@ -453,7 +453,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 	    (cs->sc_ileave < (maxsecsize / DEV_BSIZE))) {
 #ifdef DEBUG
 		if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
-			printf("ccd%d: interleave must be at least %d\n",
+			kprintf("ccd%d: interleave must be at least %d\n",
 			    ccd->ccd_unit, (maxsecsize / DEV_BSIZE));
 #endif
 		error = EINVAL;
@@ -482,12 +482,12 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 			 * guarentee the topology.
 			 */
 			if (cs->sc_nccdisks % 2) {
-				printf("ccd%d: mirroring requires an even number of disks\n", ccd->ccd_unit );
+				kprintf("ccd%d: mirroring requires an even number of disks\n", ccd->ccd_unit );
 				error = EINVAL;
 				goto fail;
 			}
 			if (cs->sc_ileave == 0) {
-				printf("ccd%d: an interleave must be specified when mirroring\n", ccd->ccd_unit);
+				kprintf("ccd%d: an interleave must be specified when mirroring\n", ccd->ccd_unit);
 				error = EINVAL;
 				goto fail;
 			}
@@ -496,7 +496,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 			cs->sc_size = (cs->sc_nccdisks-1) * minsize;
 		} else {
 			if (cs->sc_ileave == 0) {
-				printf("ccd%d: an interleave must be specified when using parity\n", ccd->ccd_unit);
+				kprintf("ccd%d: an interleave must be specified when using parity\n", ccd->ccd_unit);
 				error = EINVAL;
 				goto fail;
 			}
@@ -550,7 +550,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_INIT)
-		printf("ccdinterleave(%x): ileave %d\n", cs, cs->sc_ileave);
+		kprintf("ccdinterleave(%x): ileave %d\n", cs, cs->sc_ileave);
 #endif
 
 	/*
@@ -672,7 +672,7 @@ ccdopen(struct dev_open_args *ap)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdopen(%x, %x)\n", dev, flags);
+		kprintf("ccdopen(%x, %x)\n", dev, flags);
 #endif
 	if (unit >= numccd)
 		return (ENXIO);
@@ -718,7 +718,7 @@ ccdclose(struct dev_close_args *ap)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdclose(%x, %x)\n", dev, flags);
+		kprintf("ccdclose(%x, %x)\n", dev, flags);
 #endif
 
 	if (unit >= numccd)
@@ -750,7 +750,7 @@ ccdstrategy(struct dev_strategy_args *ap)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdstrategy(%x): unit %d\n", bp, unit);
+		kprintf("ccdstrategy(%x): unit %d\n", bp, unit);
 #endif
 	if ((cs->sc_flags & CCDF_INITED) == 0) {
 		bp->b_error = ENXIO;
@@ -844,7 +844,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdstart(%x, %x)\n", cs, bp);
+		kprintf("ccdstart(%x, %x)\n", cs, bp);
 #endif
 
 	/* Record the transaction start  */
@@ -921,7 +921,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_IO)
-		printf("ccdbuffer(%x, %x, %d, %x, %d)\n",
+		kprintf("ccdbuffer(%x, %x, %d, %x, %d)\n",
 		       cs, bp, bn, addr, bcount);
 #endif
 	/*
@@ -1061,7 +1061,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_IO)
-		printf(" dev %x(u%d): cbp %x off %lld addr %x bcnt %d\n",
+		kprintf(" dev %x(u%d): cbp %x off %lld addr %x bcnt %d\n",
 		       ci->ci_dev, ci-cs->sc_cinfo, cbp,
 		       cbp->cb_buf.b_bio1.bio_offset,
 		       cbp->cb_buf.b_data, cbp->cb_buf.b_bcount);
@@ -1113,7 +1113,7 @@ ccdintr(struct ccd_softc *cs, struct bio *bio)
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdintr(%x, %x)\n", cs, bp);
+		kprintf("ccdintr(%x, %x)\n", cs, bp);
 #endif
 	/*
 	 * Request is done for better or worse, wakeup the top half.
@@ -1147,11 +1147,11 @@ ccdiodone(struct bio *bio)
 	crit_enter();
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
-		printf("ccdiodone(%x)\n", cbp);
+		kprintf("ccdiodone(%x)\n", cbp);
 	if (ccddebug & CCDB_IO) {
-		printf("ccdiodone: bp %x bcount %d resid %d\n",
+		kprintf("ccdiodone: bp %x bcount %d resid %d\n",
 		       obp, obp->b_bcount, obp->b_resid);
-		printf(" dev %x(u%d), cbp %x off %lld addr %x bcnt %d\n",
+		kprintf(" dev %x(u%d), cbp %x off %lld addr %x bcnt %d\n",
 		       cbp->cb_buf.b_dev, cbp->cb_comp, cbp,
 		       cbp->cb_buf.b_loffset, cbp->cb_buf.b_data,
 		       cbp->cb_buf.b_bcount);
@@ -1186,7 +1186,7 @@ ccdiodone(struct bio *bio)
 			obp->b_error = cbp->cb_buf.b_error ? 
 			    cbp->cb_buf.b_error : EIO;
 		}
-		printf("ccd%d: error %d on component %d offset %lld (ccd offset %lld)%s\n",
+		kprintf("ccd%d: error %d on component %d offset %lld (ccd offset %lld)%s\n",
 		       unit, obp->b_error, cbp->cb_comp, 
 		       cbp->cb_buf.b_bio2.bio_offset, 
 		       obio->bio_offset, msg);
@@ -1295,17 +1295,17 @@ ccdioctl(struct dev_ioctl_args *ap)
 		if (ccd.ccd_interleave == 0 &&
 		    ((ccio->ccio_flags & CCDF_MIRROR) ||
 		     (ccio->ccio_flags & CCDF_PARITY))) {
-			printf("ccd%d: disabling mirror/parity, interleave is 0\n", unit);
+			kprintf("ccd%d: disabling mirror/parity, interleave is 0\n", unit);
 			ccio->ccio_flags &= ~(CCDF_MIRROR | CCDF_PARITY);
 		}
 		if ((ccio->ccio_flags & CCDF_MIRROR) &&
 		    (ccio->ccio_flags & CCDF_PARITY)) {
-			printf("ccd%d: can't specify both mirror and parity, using mirror\n", unit);
+			kprintf("ccd%d: can't specify both mirror and parity, using mirror\n", unit);
 			ccio->ccio_flags &= ~CCDF_PARITY;
 		}
 		if ((ccio->ccio_flags & (CCDF_MIRROR | CCDF_PARITY)) &&
 		    !(ccio->ccio_flags & CCDF_UNIFORM)) {
-			printf("ccd%d: mirror/parity forces uniform flag\n",
+			kprintf("ccd%d: mirror/parity forces uniform flag\n",
 			       unit);
 			ccio->ccio_flags |= CCDF_UNIFORM;
 		}
@@ -1332,14 +1332,14 @@ ccdioctl(struct dev_ioctl_args *ap)
 #ifdef DEBUG
 		if (ccddebug & CCDB_INIT)
 			for (i = 0; i < ccio->ccio_ndisks; ++i)
-				printf("ccdioctl: component %d: 0x%x\n",
+				kprintf("ccdioctl: component %d: 0x%x\n",
 				    i, cpp[i]);
 #endif
 
 		for (i = 0; i < ccio->ccio_ndisks; ++i) {
 #ifdef DEBUG
 			if (ccddebug & CCDB_INIT)
-				printf("ccdioctl: lookedup = %d\n", lookedup);
+				kprintf("ccdioctl: lookedup = %d\n", lookedup);
 #endif
 			if ((error = ccdlookup(cpp[i], &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
@@ -1569,7 +1569,7 @@ ccdlookup(char *path, struct vnode **vpp)
 	if ((error = vn_open(&nd, NULL, FREAD|FWRITE, 0)) != 0) {
 #ifdef DEBUG
 		if (ccddebug & CCDB_FOLLOW|CCDB_INIT)
-			printf("ccdlookup: vn_open error = %d\n", error);
+			kprintf("ccdlookup: vn_open error = %d\n", error);
 #endif
 		goto done;
 	}
@@ -1652,7 +1652,7 @@ ccdgetdisklabel(cdev_t dev)
 	/* It's actually extremely common to have unlabeled ccds. */
 	if (ccddebug & CCDB_LABEL)
 		if (errstring != NULL)
-			printf("ccd%d: %s\n", unit, errstring);
+			kprintf("ccd%d: %s\n", unit, errstring);
 #endif
 }
 
@@ -1715,11 +1715,11 @@ printiinfo(struct ccdiinfo *ii)
 	int ix, i;
 
 	for (ix = 0; ii->ii_ndisk; ix++, ii++) {
-		printf(" itab[%d]: #dk %d sblk %d soff %d",
+		kprintf(" itab[%d]: #dk %d sblk %d soff %d",
 		       ix, ii->ii_ndisk, ii->ii_startblk, ii->ii_startoff);
 		for (i = 0; i < ii->ii_ndisk; i++)
-			printf(" %d", ii->ii_index[i]);
-		printf("\n");
+			kprintf(" %d", ii->ii_index[i]);
+		kprintf("\n");
 	}
 }
 #endif

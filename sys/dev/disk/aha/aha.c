@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.15 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.16 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -499,8 +499,8 @@ aha_init(struct aha_softc* aha)
 	       aha->model, aha->fw_major, aha->fw_minor, aha->boardid);
 
 	if (aha->diff_bus != 0)
-		printf("Diff ");
-	printf("SCSI Host Adapter, SCSI ID %d, %d CCBs\n", aha->scsi_id,
+		kprintf("Diff ");
+	kprintf("SCSI Host Adapter, SCSI ID %d, %d CCBs\n", aha->scsi_id,
 	       aha->max_ccbs);
 
 	/*
@@ -681,7 +681,7 @@ aha_find_probe_range(int ioport, int *port_index, int *max_port_index)
 				break;
 		if ((i >= AHA_NUM_ISAPORTS)
 		 || (ioport != aha_isa_ports[i].addr)) {
-			printf("\n"
+			kprintf("\n"
 "aha_isa_probe: Invalid baseport of 0x%x specified.\n"
 "aha_isa_probe: Nearest valid baseport is 0x%x.\n"
 "aha_isa_probe: Failing probe.\n",
@@ -1853,13 +1853,13 @@ ahatimeout(void *arg)
 	ccb = accb->ccb;
 	aha = (struct aha_softc *)ccb->ccb_h.ccb_aha_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("CCB %p - timed out\n", (void *)accb);
+	kprintf("CCB %p - timed out\n", (void *)accb);
 
 	crit_enter();
 
 	if ((accb->flags & ACCB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("CCB %p - timed out CCB already completed\n",
+		kprintf("CCB %p - timed out CCB already completed\n",
 		       (void *)accb);
 		crit_exit();
 		return;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.11 2006/12/22 23:26:14 swildner Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -358,7 +358,7 @@ acpi_timer_test(void)
     else
 	n = 1;
     if (bootverbose) {
-	printf("ACPI timer looks %s min = %d, max = %d, width = %d\n",
+	kprintf("ACPI timer looks %s min = %d, max = %d, width = %d\n",
 		n ? "GOOD" : "BAD ",
 		min, max, max - min);
     }

@@ -25,7 +25,7 @@
  *
  * $Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
  * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.7 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
 
 #define inline __inline
 
@@ -892,7 +892,7 @@ setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	*phys = error? 0 : segs->ds_addr;
 
 	if (bootverbose) {
-		printf("setmap (%lx, %lx), nseg=%d, error=%d\n",
+		kprintf("setmap (%lx, %lx), nseg=%d, error=%d\n",
 		    (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		    nseg, error);
 	}

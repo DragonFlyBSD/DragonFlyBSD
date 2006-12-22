@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.32 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.33 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -609,7 +609,7 @@ ad_transfer(struct ad_request *request)
 transfer_failed:
     callout_stop(&request->callout);
     ad_invalidatequeue(adp, request);
-    printf(" - resetting\n");
+    kprintf(" - resetting\n");
 
     /* if retries still permit, reinject this request */
     if (request->retries++ < AD_MAX_RETRIES)
@@ -662,10 +662,10 @@ ad_interrupt(struct ad_request *request)
 	    ad_invalidatequeue(adp, request);
 
 	    if (request->retries++ < AD_MAX_RETRIES)
-		printf(" retrying\n");
+		kprintf(" retrying\n");
 	    else {
 		ata_dmainit(adp->device, ata_pmode(adp->device->param), -1, -1);
-		printf(" falling back to PIO mode\n");
+		kprintf(" falling back to PIO mode\n");
 	    }
 	    ad_requeue(adp->device->channel, request);
 	    return ATA_OP_FINISHED;
@@ -677,13 +677,13 @@ ad_interrupt(struct ad_request *request)
 	    ad_invalidatequeue(adp, request);
 	    ata_dmainit(adp->device, ata_pmode(adp->device->param), -1, -1);
 	    request->flags |= ADR_F_FORCE_PIO;
-	    printf(" trying PIO mode\n");
+	    kprintf(" trying PIO mode\n");
 	    ad_requeue(adp->device->channel, request);
 	    return ATA_OP_FINISHED;
 	}
 
 	request->flags |= ADR_F_ERROR;
-	printf(" status=%02x error=%02x\n", 
+	kprintf(" status=%02x error=%02x\n", 
 	       adp->device->channel->status, adp->device->channel->error);
     }
 

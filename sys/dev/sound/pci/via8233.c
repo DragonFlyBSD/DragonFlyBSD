@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
  */
 
 /* Some Credits:
@@ -46,7 +46,7 @@
 
 #include <dev/sound/pci/via8233.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
 
 #define VIA8233_PCI_ID 0x30591106
 
@@ -156,7 +156,7 @@ via_waitready_codec(struct via_info *via)
 			return 0;
 		DELAY(1);
 	}
-	printf("via: codec busy\n");
+	kprintf("via: codec busy\n");
 	return 1;
 }
 
@@ -171,7 +171,7 @@ via_waitvalid_codec(struct via_info *via)
 			return 0;
 		DELAY(1);
 	}
-	printf("via: codec invalid\n");
+	kprintf("via: codec invalid\n");
 	return 1;
 }
 

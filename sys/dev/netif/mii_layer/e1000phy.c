@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.8 2006/08/06 10:32:23 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.9 2006/12/22 23:26:20 swildner Exp $ */
 /*	$OpenBSD: eephy.c,v 1.26 2006/06/08 00:27:12 brad Exp $	*/
 /*
  * Principal Author: Parag Patel
@@ -148,7 +148,7 @@ e1000phy_attach(device_t dev)
 	e1000phy_reset(sc);
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
+#define PRINT(s)	kprintf("%s%s", sep, s); sep = ", "
 
 #if	0
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
@@ -187,7 +187,7 @@ e1000phy_attach(device_t dev)
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	PRINT("auto");
 
-	printf("\n");
+	kprintf("\n");
 #undef ADD
 #undef PRINT
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpoio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.7 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.8 2006/12/22 23:26:17 swildner Exp $
  *
  */
 
@@ -298,7 +298,7 @@ vpoio_connect(struct vpoio_data *vpo, int how)
 	if ((error = ppb_request_bus(ppbus, vpo->vpo_dev, how))) {
 
 #ifdef VP0_DEBUG
-		printf("%s: can't request bus!\n", __func__);
+		kprintf("%s: can't request bus!\n", __func__);
 #endif
 		return error;
 	}
@@ -402,7 +402,7 @@ vpoio_detect(struct vpoio_data *vpo)
 		if (!vpoio_in_disk_mode(vpo)) {
 			vpo->vpo_mode_found = VP0_MODE_UNDEFINED;
 			if (bootverbose)
-				printf("vpo%d: can't connect to the drive\n",
+				kprintf("vpo%d: can't connect to the drive\n",
 					vpo->vpo_unit);
 
 			/* disconnect and release the bus */
@@ -423,7 +423,7 @@ vpoio_detect(struct vpoio_data *vpo)
 	 * may cause serious problem to the disk */
 	if (vpoio_in_disk_mode(vpo)) {
 		if (bootverbose)
-			printf("vpo%d: can't disconnect from the drive\n",
+			kprintf("vpo%d: can't disconnect from the drive\n",
 				vpo->vpo_unit);
 		goto error;
 	}
@@ -617,17 +617,17 @@ vpoio_attach(struct vpoio_data *vpo)
 	case VP0_MODE_EPP:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, epp17_instr_body);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, epp17_outstr_body);
-		printf("vpo%d: EPP mode\n", vpo->vpo_unit);
+		kprintf("vpo%d: EPP mode\n", vpo->vpo_unit);
 		break;
 	case VP0_MODE_PS2:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, ps2_inbyte_submicroseq);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, spp_outbyte_submicroseq);
-		printf("vpo%d: PS2 mode\n", vpo->vpo_unit);
+		kprintf("vpo%d: PS2 mode\n", vpo->vpo_unit);
 		break;
 	case VP0_MODE_NIBBLE:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, vpo->vpo_nibble_inbyte_msq);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, spp_outbyte_submicroseq);
-		printf("vpo%d: NIBBLE mode\n", vpo->vpo_unit);
+		kprintf("vpo%d: NIBBLE mode\n", vpo->vpo_unit);
 		break;
 	default:
 		panic("vpo: unknown mode %d", vpo->vpo_mode_found);
@@ -650,7 +650,7 @@ vpoio_reset_bus(struct vpoio_data *vpo)
 	if (vpoio_connect(vpo, PPB_WAIT|PPB_INTR) || !vpoio_in_disk_mode(vpo)) {
 
 #ifdef VP0_DEBUG
-		printf("%s: not in disk mode!\n", __func__);
+		kprintf("%s: not in disk mode!\n", __func__);
 #endif
 		/* release ppbus */
 		vpoio_disconnect(vpo);

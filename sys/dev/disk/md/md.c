@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.14 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.15 2006/12/22 23:26:16 swildner Exp $
  *
  */
 
@@ -94,7 +94,7 @@ mdopen(struct dev_open_args *ap)
 	struct disklabel *dl;
 
 	if (md_debug)
-		printf("mdopen(%s %x %x)\n",
+		kprintf("mdopen(%s %x %x)\n",
 			devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	sc = dev->si_drv1;
@@ -118,7 +118,7 @@ mdioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 
 	if (md_debug)
-		printf("mdioctl(%s %lx %p %x)\n",
+		kprintf("mdioctl(%s %lx %p %x)\n",
 			devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag);
 
 	return (ENOIOCTL);
@@ -133,7 +133,7 @@ mdstrategy(struct dev_strategy_args *ap)
 	struct md_s *sc;
 
 	if (md_debug > 1) {
-		printf("mdstrategy(%p) %s %08x, %lld, %d, %p)\n",
+		kprintf("mdstrategy(%p) %s %08x, %lld, %d, %p)\n",
 		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
 		    bp->b_bcount, bp->b_data);
 	}
@@ -161,7 +161,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 	int i;
 
 	if (md_debug > 1)
-		printf("mdstrategy_malloc(%p) %s %08xx, %lld, %d, %p)\n",
+		kprintf("mdstrategy_malloc(%p) %s %08xx, %lld, %d, %p)\n",
 		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
 		    bp->b_bcount, bp->b_data);
 
@@ -221,7 +221,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 				secval = 0;
 			}
 			if (md_debug > 2)
-				printf("%08x %p %p %d\n", bp->b_flags, secpp, secp, secval);
+				kprintf("%08x %p %p %d\n", bp->b_flags, secpp, secp, secval);
 
 			switch(bp->b_cmd) {
 			case BUF_CMD_FREEBLKS:
@@ -301,7 +301,7 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 	struct md_s *sc;
 
 	if (md_debug > 1)
-		printf("mdstrategy_preload(%p) %s %08x, %lld, %d, %p)\n",
+		kprintf("mdstrategy_preload(%p) %s %08x, %lld, %d, %p)\n",
 		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
 		    bp->b_bcount, bp->b_data);
 
@@ -399,7 +399,7 @@ mdcreate_malloc(void)
 	MALLOC(sc->secp, u_char **, sizeof(u_char *), M_MD, M_WAITOK);
 	bzero(sc->secp, sizeof(u_char *));
 	sc->nsecp = 1;
-	printf("md%d: Malloc disk\n", sc->unit);
+	kprintf("md%d: Malloc disk\n", sc->unit);
 }
 
 static void
@@ -428,7 +428,7 @@ md_drvinit(void *unused)
 		ptr = *(u_char **)c;
 		c = preload_search_info(mod, MODINFO_SIZE);
 		len = *(unsigned *)c;
-		printf("md%d: Preloaded image <%s> %d bytes at %p\n",
+		kprintf("md%d: Preloaded image <%s> %d bytes at %p\n",
 		   mdunits, name, len, ptr);
 		mdcreate_preload(ptr, len);
 	} 

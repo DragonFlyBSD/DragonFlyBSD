@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.6 2006/12/14 16:18:04 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.7 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -178,7 +178,7 @@ USB_ATTACH(umct)
 	usbd_devinfo(dev, 0, devinfo);
 	device_set_desc_copy(self, devinfo);
 	devname = USBDEVNAME(ucom->sc_dev);
-	printf("%s: %s\n", devname, devinfo);
+	kprintf("%s: %s\n", devname, devinfo);
 
 	ucom->sc_bulkout_no = -1;
 	ucom->sc_bulkin_no = -1;
@@ -187,7 +187,7 @@ USB_ATTACH(umct)
 
 	err = usbd_set_config_index(dev, UMCT_CONFIG_INDEX, 1);
 	if (err) {
-		printf("%s: failed to set configuration: %s\n",
+		kprintf("%s: failed to set configuration: %s\n",
 		    devname, usbd_errstr(err));
 		ucom->sc_dying = 1;
 		goto error;
@@ -195,7 +195,7 @@ USB_ATTACH(umct)
 
 	cdesc = usbd_get_config_descriptor(ucom->sc_udev);
 	if (cdesc == NULL) {
-		printf("%s: failed to get configuration descriptor\n", devname);
+		kprintf("%s: failed to get configuration descriptor\n", devname);
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -203,7 +203,7 @@ USB_ATTACH(umct)
 	err = usbd_device2interface_handle(dev, UMCT_IFACE_INDEX,
 	    &ucom->sc_iface);
 	if (err) {
-		printf("%s: failed to get interface: %s\n", devname,
+		kprintf("%s: failed to get interface: %s\n", devname,
 		    usbd_errstr(err));
 		ucom->sc_dying = 1;
 		goto error;
@@ -215,7 +215,7 @@ USB_ATTACH(umct)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
-			printf("%s: no endpoint descriptor for %d\n",
+			kprintf("%s: no endpoint descriptor for %d\n",
 			    devname, i);
 			ucom->sc_dying = 1;
 			goto error;
@@ -246,12 +246,12 @@ USB_ATTACH(umct)
 			continue;
 		}
 
-		printf("%s: warning - unsupported endpoint 0x%x\n", devname,
+		kprintf("%s: warning - unsupported endpoint 0x%x\n", devname,
 		    ed->bEndpointAddress);
 	}
 
 	if (sc->sc_intr_number == -1) {
-		printf("%s: Could not find interrupt in\n", devname);
+		kprintf("%s: Could not find interrupt in\n", devname);
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -259,7 +259,7 @@ USB_ATTACH(umct)
 	sc->sc_intr_iface = ucom->sc_iface;
 
 	if (ucom->sc_bulkout_no == -1) {
-		printf("%s: Could not find data bulk out\n", devname);
+		kprintf("%s: Could not find data bulk out\n", devname);
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -312,7 +312,7 @@ umct_request(struct umct_softc *sc, uint8_t request, int len, uint32_t value)
 
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, oval);
 	if (err)
-		printf("%s: ubsa_request: %s\n",
+		kprintf("%s: ubsa_request: %s\n",
 		    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 	return (err);
 }
@@ -473,7 +473,7 @@ umct_open(void *addr, int portno)
 		    USBD_SHORT_XFER_OK, &sc->sc_intr_pipe, sc, sc->sc_intr_buf,
 		    sc->sc_isize, umct_intr, UMCT_INTR_INTERVAL);
 		if (err) {
-			printf("%s: cannot open interrupt pipe (addr %d)\n",
+			kprintf("%s: cannot open interrupt pipe (addr %d)\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev),
 			    sc->sc_intr_number);
 			kfree(sc->sc_intr_buf, M_USBDEV);
@@ -497,11 +497,11 @@ umct_close(void *addr, int portno)
 	if (sc->sc_intr_pipe != NULL) {
 		err = usbd_abort_pipe(sc->sc_intr_pipe);
 		if (err)
-			printf("%s: abort interrupt pipe failed: %s\n",
+			kprintf("%s: abort interrupt pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_intr_pipe);
 		if (err)
-			printf("%s: close interrupt pipe failed: %s\n",
+			kprintf("%s: close interrupt pipe failed: %s\n",
 			    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;

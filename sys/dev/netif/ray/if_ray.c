@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.30 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.31 2006/12/22 23:26:21 swildner Exp $
  *
  */
 
@@ -535,27 +535,27 @@ ray_attach(device_t dev)
 	if (bootverbose || (RAY_DEBUG & RAY_DBG_BOOTPARAM)) {
 		RAY_PRINTF(sc, "start up results");
 		if (sc->sc_version == RAY_ECFS_BUILD_4)
-			printf(".  Firmware version 4\n");
+			kprintf(".  Firmware version 4\n");
 		else
-			printf(".  Firmware version 5\n");
-		printf(".  Status 0x%b\n", ep->e_status, RAY_ECFS_PRINTFB);
+			kprintf(".  Firmware version 5\n");
+		kprintf(".  Status 0x%b\n", ep->e_status, RAY_ECFS_PRINTFB);
 		if (sc->sc_version == RAY_ECFS_BUILD_4) {
-			printf(".  Program checksum %0x\n", ep->e_resv0);
-			printf(".  CIS checksum %0x\n", ep->e_rates[0]);
+			kprintf(".  Program checksum %0x\n", ep->e_resv0);
+			kprintf(".  CIS checksum %0x\n", ep->e_rates[0]);
 		} else {
-			printf(".  (reserved word) %0x\n", ep->e_resv0);
-			printf(".  Supported rates %8D\n", ep->e_rates, ":");
+			kprintf(".  (reserved word) %0x\n", ep->e_resv0);
+			kprintf(".  Supported rates %8D\n", ep->e_rates, ":");
 		}
-		printf(".  Japan call sign %12D\n", ep->e_japan_callsign, ":");
+		kprintf(".  Japan call sign %12D\n", ep->e_japan_callsign, ":");
 		if (sc->sc_version == RAY_ECFS_BUILD_5) {
-			printf(".  Program checksum %0x\n", ep->e_prg_cksum);
-			printf(".  CIS checksum %0x\n", ep->e_cis_cksum);
-			printf(".  Firmware version %0x\n",
+			kprintf(".  Program checksum %0x\n", ep->e_prg_cksum);
+			kprintf(".  CIS checksum %0x\n", ep->e_cis_cksum);
+			kprintf(".  Firmware version %0x\n",
 			    ep->e_fw_build_string);
-			printf(".  Firmware revision %0x\n", ep->e_fw_build);
-			printf(".  (reserved word) %0x\n", ep->e_fw_resv);
-			printf(".  ASIC version %0x\n", ep->e_asic_version);
-			printf(".  TIB size %0x\n", ep->e_tibsize);
+			kprintf(".  Firmware revision %0x\n", ep->e_fw_build);
+			kprintf(".  (reserved word) %0x\n", ep->e_fw_resv);
+			kprintf(".  ASIC version %0x\n", ep->e_asic_version);
+			kprintf(".  TIB size %0x\n", ep->e_tibsize);
 		}
 	}
 
@@ -3783,14 +3783,14 @@ ray_dump_mbuf(struct ray_softc *sc, struct mbuf *m, char *s)
 
 		for (; d < ed; i++, d++) {
 			if ((i % 16) == 0) {
-				printf("  %s\n\t", p);
+				kprintf("  %s\n\t", p);
 			} else if ((i % 8) == 0)
-				printf("  ");
-			printf(" %02x", *d);
+				kprintf("  ");
+			kprintf(" %02x", *d);
 			p[i % 16] = ((*d >= 0x20) && (*d < 0x80)) ? *d : '.';
 		}
 	}
 	if ((i - 1) % 16)
-		printf("  %s\n", p);
+		kprintf("  %s\n", p);
 }
 #endif /* RAY_DEBUG & RAY_DBG_MBUF */

@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.18 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.19 2006/12/22 23:26:17 swildner Exp $
  *
  */
 
@@ -81,7 +81,7 @@
 /*
  * Uncomment this to enable internal device tracing.
  */
-#define TRACE(s)                /* printf s */
+#define TRACE(s)                /* kprintf s */
 
 /*
  * Wangtek controller ports
@@ -209,7 +209,7 @@ wtprobe (struct isa_device *id)
 	t->chan = id->id_drq;
 	t->port = id->id_iobase;
 	if (t->chan<1 || t->chan>3) {
-		printf ("wt%d: Bad drq=%d, should be 1..3\n", t->unit, t->chan);
+		kprintf ("wt%d: Bad drq=%d, should be 1..3\n", t->unit, t->chan);
 		return (0);
 	}
 
@@ -252,10 +252,10 @@ wtattach (struct isa_device *id)
 
 	id->id_intr = (inthand2_t *)wtintr;
 	if (t->type == ARCHIVE) {
-		printf ("wt%d: type <Archive>\n", t->unit);
+		kprintf ("wt%d: type <Archive>\n", t->unit);
 		outb (t->RDMAPORT, 0);          /* reset dma */
 	} else
-		printf ("wt%d: type <Wangtek>\n", t->unit);
+		kprintf ("wt%d: type <Wangtek>\n", t->unit);
 	t->flags = TPSTART;                     /* tape is rewound */
 	t->dens = -1;                           /* unknown density */
 	isa_dmainit(t->chan, 1024);
@@ -323,7 +323,7 @@ wtopen (struct dev_open_args *ap)
 
 				/* Check the status of the controller. */
 				if (t->error.err & TP_ILL) {
-					printf ("wt%d: invalid tape density\n", t->unit);
+					kprintf ("wt%d: invalid tape density\n", t->unit);
 					return (ENODEV);
 				}
 			}
@@ -942,7 +942,7 @@ wtsense (wtinfo_t *t, int verb, int ignor)
 	else if (err & TP_NDT)  msg = "No data detected";
 	else if (err & TP_ILL)  msg = "Illegal command";
 	if (msg)
-		printf ("wt%d: %s\n", t->unit, msg);
+		kprintf ("wt%d: %s\n", t->unit, msg);
 	return (0);
 }
 

@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.21 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.22 2006/12/22 23:26:19 swildner Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -53,7 +53,7 @@ DECLARE_DUMMY_MODULE(if_el);
 
 /* For debugging convenience */
 #ifdef EL_DEBUG
-#define dprintf(x) printf x
+#define dprintf(x) kprintf x
 #else
 #define dprintf(x)
 #endif
@@ -106,7 +106,7 @@ el_probe(struct isa_device *idev)
 
 	/* First check the base */
 	if((base < 0x280) || (base > 0x3f0)) {
-		printf("el%d: ioaddr must be between 0x280 and 0x3f0\n",
+		kprintf("el%d: ioaddr must be between 0x280 and 0x3f0\n",
 			idev->id_unit);
 		return(0);
 	}

@@ -45,7 +45,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_isa.c,v 1.14.2.5 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -123,7 +123,7 @@ adv_isa_probe(device_t dev)
 		if ((port_index > max_port_index)
 		 || (iobase != adv_isa_ioports[port_index])) {
 			if (bootverbose)
-			    printf("adv%d: Invalid baseport of 0x%lx specified. "
+			    kprintf("adv%d: Invalid baseport of 0x%lx specified. "
 				"Nearest valid baseport is 0x%x.  Failing "
 				"probe.\n", device_get_unit(dev), iobase,
 				(port_index <= max_port_index) ?
@@ -229,7 +229,7 @@ adv_isa_probe(device_t dev)
 					   &adv->parent_dmat); 
 
 		if (error != 0) {
-			printf("%s: Could not allocate DMA tag - error %d\n",
+			kprintf("%s: Could not allocate DMA tag - error %d\n",
 			       adv_name(adv), error); 
 			adv_free(adv); 
 			bus_release_resource(dev, SYS_RES_IOPORT, 0, iores);

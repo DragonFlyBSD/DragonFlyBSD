@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.23 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.24 2006/12/22 23:26:19 swildner Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -280,7 +280,7 @@ ex_init(void *xsc)
 	int			iobase = sc->iobase;
 	unsigned short		temp_reg;
 
-	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("ex_init%d: start\n", ifp->if_dunit););
 
 	ifp->if_timer = 0;
 
@@ -343,7 +343,7 @@ ex_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	DODEBUG(Status, printf("OIDLE init\n"););
+	DODEBUG(Status, kprintf("OIDLE init\n"););
 	
 	/*
 	 * Final reset of the board, and enable operation.
@@ -354,7 +354,7 @@ ex_init(void *xsc)
 
 	ex_start(ifp);
 
-	DODEBUG(Start_End, printf("ex_init%d: finish\n", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("ex_init%d: finish\n", ifp->if_dunit););
 }
 
 
@@ -368,7 +368,7 @@ ex_start(struct ifnet *ifp)
 	struct mbuf *		opkt;
 	struct mbuf *		m;
 
-	DODEBUG(Start_End, printf("ex_start%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_start%d: start\n", unit););
 
 	/*
 	 * Main loop: send outgoing packets to network card until there are no
@@ -393,7 +393,7 @@ ex_start(struct ifnet *ifp)
 
 		data_len = len;
 
-		DODEBUG(Sent_Pkts, printf("1. Sending packet with %d data bytes. ", data_len););
+		DODEBUG(Sent_Pkts, kprintf("1. Sending packet with %d data bytes. ", data_len););
 
 		if (len & 1) {
 			len += XMT_HEADER_LEN + 1;
@@ -407,7 +407,7 @@ ex_start(struct ifnet *ifp)
 			avail = -i;
 		}
 
-		DODEBUG(Sent_Pkts, printf("i=%d, avail=%d\n", i, avail););
+		DODEBUG(Sent_Pkts, kprintf("i=%d, avail=%d\n", i, avail););
 
 		if (avail >= len + XMT_HEADER_LEN) {
 			ifq_dequeue(&ifp->if_snd, opkt);
@@ -443,7 +443,7 @@ ex_start(struct ifnet *ifp)
 			/*
 			 * Build the packet frame in the card's ring buffer.
 			 */
-			DODEBUG(Sent_Pkts, printf("2. dest=%d, next=%d. ", dest, next););
+			DODEBUG(Sent_Pkts, kprintf("2. dest=%d, next=%d. ", dest, next););
 
 			outw(iobase + HOST_ADDR_REG, dest);
 			outw(iobase + IO_PORT_REG, Transmit_CMD);
@@ -458,7 +458,7 @@ ex_start(struct ifnet *ifp)
 			 */
 
 			for (m = opkt, i = 0; m != NULL; m = m->m_next) {
-				DODEBUG(Sent_Pkts, printf("[%d]", m->m_len););
+				DODEBUG(Sent_Pkts, kprintf("[%d]", m->m_len););
 				if (i) {
 					tmp16[1] = *(mtod(m, caddr_t));
 					outsw(iobase + IO_PORT_REG, tmp16, 1);
@@ -509,10 +509,10 @@ ex_start(struct ifnet *ifp)
 				outw(iobase + XMT_BAR, dest);
 				outb(iobase + CMD_REG, Transmit_CMD);
 				sc->tx_head = dest;
-				DODEBUG(Sent_Pkts, printf("Transmit\n"););
+				DODEBUG(Sent_Pkts, kprintf("Transmit\n"););
 			} else {
 				outb(iobase + CMD_REG, Resume_XMT_List_CMD);
-				DODEBUG(Sent_Pkts, printf("Resume\n"););
+				DODEBUG(Sent_Pkts, kprintf("Resume\n"););
 			}
 	
 			sc->tx_last = dest;
@@ -525,10 +525,10 @@ ex_start(struct ifnet *ifp)
 			m_freem(opkt);
 		} else {
 			ifp->if_flags |= IFF_OACTIVE;
-			DODEBUG(Status, printf("OACTIVE start\n"););
+			DODEBUG(Status, kprintf("OACTIVE start\n"););
 		}
 	}
-	DODEBUG(Start_End, printf("ex_start%d: finish\n", unit););
+	DODEBUG(Start_End, kprintf("ex_start%d: finish\n", unit););
 }
 
 void
@@ -536,7 +536,7 @@ ex_stop(struct ex_softc *sc)
 {
 	int iobase = sc->iobase;
 
-	DODEBUG(Start_End, printf("ex_stop%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_stop%d: start\n", unit););
 
 	/*
 	 * Disable card operation:
@@ -556,7 +556,7 @@ ex_stop(struct ex_softc *sc)
 	outb(iobase + CMD_REG, Reset_CMD);
 	DELAY(200);
 
-	DODEBUG(Start_End, printf("ex_stop%d: finish\n", unit););
+	DODEBUG(Start_End, kprintf("ex_stop%d: finish\n", unit););
 
 	return;
 }
@@ -569,11 +569,11 @@ ex_intr(void *arg)
 	int			iobase = sc->iobase;
 	int			int_status, send_pkts;
 
-	DODEBUG(Start_End, printf("ex_intr%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_intr%d: start\n", unit););
 
 #ifdef EXDEBUG
 	if (++exintr_count != 1)
-		printf("WARNING: nested interrupt (%d). Mail the author.\n", exintr_count);
+		kprintf("WARNING: nested interrupt (%d). Mail the author.\n", exintr_count);
 #endif
 
 	send_pkts = 0;
@@ -602,7 +602,7 @@ ex_intr(void *arg)
 	exintr_count--;
 #endif
 
-	DODEBUG(Start_End, printf("ex_intr%d: finish\n", unit););
+	DODEBUG(Start_End, kprintf("ex_intr%d: finish\n", unit););
 
 	return;
 }
@@ -614,7 +614,7 @@ ex_tx_intr(struct ex_softc *sc)
 	int		iobase = sc->iobase;
 	int		tx_status;
 
-	DODEBUG(Start_End, printf("ex_tx_intr%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_tx_intr%d: start\n", unit););
 
 	/*
 	 * - Cancel the watchdog.
@@ -649,8 +649,8 @@ ex_tx_intr(struct ex_softc *sc)
 
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	DODEBUG(Status, printf("OIDLE tx_intr\n"););
-	DODEBUG(Start_End, printf("ex_tx_intr%d: finish\n", unit););
+	DODEBUG(Status, kprintf("OIDLE tx_intr\n"););
+	DODEBUG(Start_End, kprintf("ex_tx_intr%d: finish\n", unit););
 
 	return;
 }
@@ -666,7 +666,7 @@ ex_rx_intr(struct ex_softc *sc)
 	struct mbuf *		m;
 	struct mbuf *		ipkt;
 
-	DODEBUG(Start_End, printf("ex_rx_intr%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_rx_intr%d: start\n", unit););
 
 	/*
 	 * For all packets received since last receive interrupt:
@@ -746,7 +746,7 @@ rx_another: ;
 	else
 		outw(iobase + RCV_STOP_REG, sc->rx_head - 2);
 
-	DODEBUG(Start_End, printf("ex_rx_intr%d: finish\n", unit););
+	DODEBUG(Start_End, kprintf("ex_rx_intr%d: finish\n", unit););
 
 	return;
 }
@@ -759,11 +759,11 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *		ifr = (struct ifreq *)data;
 	int			error = 0;
 
-	DODEBUG(Start_End, printf("ex_ioctl%d: start ", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("ex_ioctl%d: start ", ifp->if_dunit););
 
 	switch(cmd) {
 		case SIOCSIFFLAGS:
-			DODEBUG(Start_End, printf("SIOCSIFFLAGS"););
+			DODEBUG(Start_End, kprintf("SIOCSIFFLAGS"););
 			if ((ifp->if_flags & IFF_UP) == 0 &&
 			    (ifp->if_flags & IFF_RUNNING)) {
 
@@ -775,15 +775,15 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 #ifdef NODEF
 		case SIOCGHWADDR:
-			DODEBUG(Start_End, printf("SIOCGHWADDR"););
+			DODEBUG(Start_End, kprintf("SIOCGHWADDR"););
 			bcopy((caddr_t)sc->sc_addr, (caddr_t)&ifr->ifr_data,
 			      sizeof(sc->sc_addr));
 			break;
 #endif
 		case SIOCADDMULTI:
-			DODEBUG(Start_End, printf("SIOCADDMULTI"););
+			DODEBUG(Start_End, kprintf("SIOCADDMULTI"););
 		case SIOCDELMULTI:
-			DODEBUG(Start_End, printf("SIOCDELMULTI"););
+			DODEBUG(Start_End, kprintf("SIOCDELMULTI"););
 			/* XXX Support not done yet. */
 			error = EINVAL;
 			break;
@@ -792,12 +792,12 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = ifmedia_ioctl(ifp, ifr, &sc->ifmedia, cmd);
 			break;
 		default:
-			DODEBUG(Start_End, printf("unknown"););
+			DODEBUG(Start_End, kprintf("unknown"););
 			error = ether_ioctl(ifp, cmd, data);
 			break;
 	}
 
-	DODEBUG(Start_End, printf("\nex_ioctl%d: finish\n", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("\nex_ioctl%d: finish\n", ifp->if_dunit););
 
 	return(error);
 }
@@ -806,12 +806,12 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 static void
 ex_reset(struct ex_softc *sc)
 {
-	DODEBUG(Start_End, printf("ex_reset%d: start\n", unit););
+	DODEBUG(Start_End, kprintf("ex_reset%d: start\n", unit););
 
 	ex_stop(sc);
 	ex_init(sc);
 
-	DODEBUG(Start_End, printf("ex_reset%d: finish\n", unit););
+	DODEBUG(Start_End, kprintf("ex_reset%d: finish\n", unit););
 }
 
 static void
@@ -819,17 +819,17 @@ ex_watchdog(struct ifnet *ifp)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 
-	DODEBUG(Start_End, printf("ex_watchdog%d: start\n", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("ex_watchdog%d: start\n", ifp->if_dunit););
 
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	DODEBUG(Status, printf("OIDLE watchdog\n"););
+	DODEBUG(Status, kprintf("OIDLE watchdog\n"););
 
 	ifp->if_oerrors++;
 	ex_reset(sc);
 	ex_start(ifp);
 
-	DODEBUG(Start_End, printf("ex_watchdog%d: finish\n", ifp->if_dunit););
+	DODEBUG(Start_End, kprintf("ex_watchdog%d: finish\n", ifp->if_dunit););
 
 	return;
 }

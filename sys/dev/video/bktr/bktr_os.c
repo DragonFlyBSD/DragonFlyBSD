@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.17 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.18 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -272,7 +272,7 @@ bktr_attach( device_t dev )
 	old_irq = pci_conf_read(tag, PCI_INTERRUPT_REG);
 	pci_conf_write(tag, PCI_INTERRUPT_REG, BROOKTREE_IRQ);
 	new_irq = pci_conf_read(tag, PCI_INTERRUPT_REG);
-	printf("bktr%d: attach: irq changed from %d to %d\n",
+	kprintf("bktr%d: attach: irq changed from %d to %d\n",
 		unit, (old_irq & 0xff), (new_irq & 0xff));
 #endif 
 
@@ -303,12 +303,12 @@ bktr_attach( device_t dev )
         fun = fun | 1;	/* Enable writes to the sub-system vendor ID */
 
 #if defined( BKTR_430_FX_MODE )
-	if (bootverbose) printf("Using 430 FX chipset compatibilty mode\n");
+	if (bootverbose) kprintf("Using 430 FX chipset compatibilty mode\n");
         fun = fun | 2;	/* Enable Intel 430 FX compatibility mode */
 #endif
 
 #if defined( BKTR_SIS_VIA_MODE )
-	if (bootverbose) printf("Using SiS/VIA chipset compatibilty mode\n");
+	if (bootverbose) kprintf("Using SiS/VIA chipset compatibilty mode\n");
         fun = fun | 4;	/* Enable SiS/VIA compatibility mode (usefull for
                            OPTi chipset motherboards too */
 #endif
@@ -316,7 +316,7 @@ bktr_attach( device_t dev )
 
 #if defined(BKTR_USE_FREEBSD_SMBUS)
 	if (bt848_i2c_attach(dev))
-		printf("bktr%d: i2c_attach: can't attach\n", unit);
+		kprintf("bktr%d: i2c_attach: can't attach\n", unit);
 #endif
 
 /*
@@ -330,9 +330,9 @@ bktr_attach( device_t dev )
 	latency = (latency >> 8) & 0xff;
 	if ( bootverbose ) {
 		if (latency)
-			printf("brooktree%d: PCI bus latency is", unit);
+			kprintf("brooktree%d: PCI bus latency is", unit);
 		else
-			printf("brooktree%d: PCI bus latency was 0 changing to",
+			kprintf("brooktree%d: PCI bus latency was 0 changing to",
 				unit);
 	}
 	if ( !latency ) {
@@ -340,7 +340,7 @@ bktr_attach( device_t dev )
 		pci_write_config(dev, PCI_LATENCY_TIMER, latency<<8, 4);
 	}
 	if ( bootverbose ) {
-		printf(" %d.\n", (int) latency);
+		kprintf(" %d.\n", (int) latency);
 	}
 
 	/* read the pci device id and revision id */
@@ -388,7 +388,7 @@ bktr_detach( device_t dev )
 
 #if defined(BKTR_USE_FREEBSD_SMBUS)
 	if (bt848_i2c_detach(dev))
-		printf("bktr%d: i2c_attach: can't attach\n",
+		kprintf("bktr%d: i2c_attach: can't attach\n",
 		     device_get_unit(dev));
 #endif
 #ifdef USE_VBIMUTEX
@@ -442,7 +442,7 @@ get_bktr_mem( int unit, unsigned size )
 		addr = (vm_offset_t)contigmalloc(size, M_DEVBUF, M_NOWAIT, 0,
 		    0xffffffff, PAGE_SIZE, 0);
 	if (addr == 0) {
-		printf("bktr%d: Unable to allocate %d bytes of memory.\n",
+		kprintf("bktr%d: Unable to allocate %d bytes of memory.\n",
 			unit, size);
 	}
 

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.8 2006/11/20 15:03:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.9 2006/12/22 23:26:21 swildner Exp $
  */
 
 /*
@@ -54,8 +54,8 @@
 #include <dev/netif/ral/rt2661_ucode.h>
 
 #ifdef RAL_DEBUG
-#define DPRINTF(x)	do { if (ral_debug > 0) printf x; } while (0)
-#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) printf x; } while (0)
+#define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
+#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) kprintf x; } while (0)
 int ral_debug = 1;
 SYSCTL_INT(_debug, OID_AUTO, ral, CTLFLAG_RW, &ral_debug, 0, "ral debug level");
 #else
@@ -2630,7 +2630,7 @@ rt2661_init(void *priv)
 		DELAY(1000);
 	}
 	if (ntries == 1000) {
-		printf("timeout waiting for BBP/RF to wakeup\n");
+		kprintf("timeout waiting for BBP/RF to wakeup\n");
 		rt2661_stop(sc);
 		return;
 	}
@@ -2766,7 +2766,7 @@ rt2661_load_microcode(struct rt2661_softc *sc, const uint8_t *ucode, int size)
 		DELAY(100);
 	}
 	if (ntries == 500) {
-		printf("timeout waiting for MCU to initialize\n");
+		kprintf("timeout waiting for MCU to initialize\n");
 		return EIO;
 	}
 	return 0;

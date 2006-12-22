@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/lxtphy.c,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
  
 /*
@@ -180,8 +180,8 @@ lxtphy_attach(device_t dev)
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
 		mii_phy_add_media(sc);
 	else
-		printf("no media present");
-	printf("\n");
+		kprintf("no media present");
+	kprintf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);

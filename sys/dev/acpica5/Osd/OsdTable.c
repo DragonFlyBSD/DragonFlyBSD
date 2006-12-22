@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdTable.c,v 1.7 2004/04/20 17:13:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdTable.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdTable.c,v 1.3 2006/12/22 23:26:14 swildner Exp $
  */
 
 /*
@@ -52,7 +52,7 @@ AcpiOsPredefinedOverride (
 
     *NewVal = NULL;
     if (strncmp(InitVal->Name, "_OS_", 4) == 0 && strlen(acpi_osname) > 0) {
-	printf("ACPI: Overriding _OS definition with \"%s\"\n", acpi_osname);
+	kprintf("ACPI: Overriding _OS definition with \"%s\"\n", acpi_osname);
 	*NewVal = acpi_osname;
     }
 
@@ -78,6 +78,6 @@ AcpiOsTableOverride (
         return(AE_OK);
 
     *NewTable = *(void **)p;
-    printf("ACPI: DSDT was overridden.\n");
+    kprintf("ACPI: DSDT was overridden.\n");
     return (AE_OK);
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.25 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.26 2006/12/22 23:26:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -541,7 +541,7 @@ gx_init(void *xsc)
 	}
 
 #if 0
-printf("66mhz: %s  64bit: %s\n",
+kprintf("66mhz: %s  64bit: %s\n",
 	CSR_READ_4(gx, GX_STATUS) & GX_STAT_PCI66 ? "yes" : "no",
 	CSR_READ_4(gx, GX_STATUS) & GX_STAT_BUS64 ? "yes" : "no");
 #endif
@@ -1474,7 +1474,7 @@ context_done:
 			continue;
 
 		if (cnt == GX_TX_RING_CNT) {
-printf("overflow(2): %d, %d\n", cnt, GX_TX_RING_CNT);
+kprintf("overflow(2): %d, %d\n", cnt, GX_TX_RING_CNT);
 			return (ENOBUFS);
 }
 

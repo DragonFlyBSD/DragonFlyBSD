@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.40 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.41 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -255,7 +255,7 @@ sysctl_an_dump(SYSCTL_HANDLER_ARGS)
 		an_dump = r;
 	}
 	if (an_dump != last)
-		printf("Sysctl changed for Aironet driver\n");
+		kprintf("Sysctl changed for Aironet driver\n");
 
 	return error;
 }
@@ -1199,7 +1199,7 @@ an_cmd_struct(struct an_softc *sc, struct an_command *cmd,
 			break;
 	}
 	if( i == AN_TIMEOUT) {
-		printf("BUSY\n");
+		kprintf("BUSY\n");
 		return(ETIMEDOUT);
 	}
 
@@ -1454,7 +1454,7 @@ an_write_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 				break;
 		}
 		if (i == AN_TIMEOUT) {
-			printf("BUSY\n");
+			kprintf("BUSY\n");
 		}
 
 		an_rid_desc.an_valid = 1;
@@ -1523,7 +1523,7 @@ an_dump_record(struct an_softc *sc, struct an_ltv_gen *ltv, char *string)
 
 		ptr2 = (u_int8_t *)&ltv->an_val;
 		for (i = len; i > 0; i--) {
-			printf("%02x ", *ptr2);
+			kprintf("%02x ", *ptr2);
 
 			temp = *ptr2++;
 			if (temp >= ' ' && temp <= '~')
@@ -1534,15 +1534,15 @@ an_dump_record(struct an_softc *sc, struct an_ltv_gen *ltv, char *string)
 				buf[count] = '.';
 			if (++count == 16) {
 				count = 0;
-				printf("%s\n",buf);
+				kprintf("%s\n",buf);
 				if_printf(&sc->arpcom.ac_if, "\t");
 				bzero(buf,sizeof(buf));
 			}
 		}
 		for (; count != 16; count++) {
-			printf("   ");
+			kprintf("   ");
 		}
-		printf(" %s\n",buf);
+		kprintf(" %s\n",buf);
 	}
 }
 
@@ -1932,7 +1932,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				max = (sc->areq.an_len - 4)
 				    / sizeof(struct an_ltv_ssid_entry);
 				if ( max > MAX_SSIDS ) {
-					printf("To many SSIDs only using "
+					kprintf("To many SSIDs only using "
 					    "%d of %d\n",
 					    MAX_SSIDS, max);
 					max = MAX_SSIDS;
@@ -1969,7 +1969,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			max = (sc->areq.an_len - 4)
 			    / sizeof(struct an_ltv_ssid_entry);
 			if (max > MAX_SSIDS) {
-				printf("To many SSIDs only using "
+				kprintf("To many SSIDs only using "
 				    "%d of %d\n",
 				    MAX_SSIDS, max);
 				max = MAX_SSIDS;
@@ -2184,7 +2184,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			max = (sc->areq.an_len - 4)
 			    / sizeof(struct an_ltv_ssid_entry);
 			if (max > MAX_SSIDS) {
-				printf("To many SSIDs only using "
+				kprintf("To many SSIDs only using "
 				    "%d of %d\n",
 				    MAX_SSIDS, max);
 				max = MAX_SSIDS;
@@ -3290,7 +3290,7 @@ setflashmode(struct ifnet *ifp)
 	FLASH_DELAY(500);
 
 	if (!(status = WaitBusy(ifp, AN_TIMEOUT))) {
-		printf("Waitbusy hang after setflash mode\n");
+		kprintf("Waitbusy hang after setflash mode\n");
 		return -EIO;
 	}
 	return 0;

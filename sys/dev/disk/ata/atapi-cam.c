@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.10 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -366,7 +366,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	/* check that this request was not aborted already */
 	if ((ccb_h->status & CAM_STATUS_MASK) != CAM_REQ_INPROG) {
-	    printf("XPT_SCSI_IO received but already in progress?\n");
+	    kprintf("XPT_SCSI_IO received but already in progress?\n");
 	    xpt_done(ccb);
 	    return;
 	}
@@ -387,7 +387,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if ((ccb_h->flags & CAM_SCATTER_VALID)) {
 	    /* scatter-gather not supported */
 	    xpt_print_path(ccb_h->path);
-	    printf("ATAPI-CAM does not support scatter-gather yet!\n");
+	    kprintf("ATAPI-CAM does not support scatter-gather yet!\n");
 	    break;
 	}
 	if ((hcb = allocate_hcb(softc, unit, bus, ccb)) == NULL)
@@ -402,7 +402,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if (CAM_DEBUGGED(ccb_h->path, CAM_DEBUG_CDB)) {
 		char cdb_str[(SCSI_MAX_CDBLEN * 3) + 1];
 
-		printf("atapi_action: hcb@%p: %s\n", hcb,
+		kprintf("atapi_action: hcb@%p: %s\n", hcb,
 		       scsi_cdb_string(hcb->cmd, cdb_str, sizeof(cdb_str)));
 	}
 #endif
@@ -509,7 +509,7 @@ action_oom:
     if (hcb != NULL)
 	free_hcb(hcb);
     xpt_print_path(ccb_h->path);
-    printf("out of memory, freezing queue.\n");
+    kprintf("out of memory, freezing queue.\n");
     softc->flags |= RESOURCE_SHORTAGE;
     xpt_freeze_simq(sim, /*count*/ 1);
     ccb_h->status = CAM_REQUEUE_REQ;
@@ -520,7 +520,7 @@ static void
 atapi_poll(struct cam_sim *sim)
 {
     /* do nothing - we do not actually service any interrupts */
-    printf("atapi_poll called!\n");
+    kprintf("atapi_poll called!\n");
 }
 
 static int 
@@ -533,12 +533,12 @@ atapi_cb(struct atapi_request *req)
     crit_enter();
 #ifdef CAMDEBUG
 	if (CAM_DEBUGGED(csio->ccb_h.path, CAM_DEBUG_CDB)) {
-		printf("atapi_cb: hcb@%p status = %02x: (sk = %02x%s%s%s)\n",
+		kprintf("atapi_cb: hcb@%p status = %02x: (sk = %02x%s%s%s)\n",
 		       hcb, hcb_status, hcb_status >> 4,
 		       (hcb_status & 4) ? " ABRT" : "",
 		       (hcb_status & 2) ? " EOM" : "",
 		       (hcb_status & 1) ? " ILI" : "");
-		printf("    %s: cmd %02x - sk=%02x asc=%02x ascq=%02x\n",
+		kprintf("    %s: cmd %02x - sk=%02x asc=%02x ascq=%02x\n",
 		       req->device->name, req->ccb[0], req->sense.sense_key,
 		       req->sense.asc, req->sense.ascq);
 	}
@@ -606,9 +606,9 @@ atapi_async1(void *callback_arg, u_int32_t code,
 	targ = xpt_path_target_id(path);
 	xpt_print_path(path);
 	if (targ == -1)
-		printf("Lost host adapter\n");
+		kprintf("Lost host adapter\n");
 	else
-		printf("Lost target %d???\n", targ);
+		kprintf("Lost target %d???\n", targ);
 	break;
 
     default:
@@ -695,7 +695,7 @@ free_softc(struct atapi_xpt_softc *scp)
 	    if ((scp->flags & BUS_REGISTERED) == 0)
 		cam_sim_free(scp->sim);
 	    else
-		printf("Can't free %s SIM (still registered)\n",
+		kprintf("Can't free %s SIM (still registered)\n",
 		       cam_sim_name(scp->sim));
 	}
 	LIST_REMOVE(scp, chain);

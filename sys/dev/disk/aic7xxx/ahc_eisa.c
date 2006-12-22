@@ -29,7 +29,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_eisa.c#11 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_eisa.c,v 1.15.2.11 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.5 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.6 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -91,7 +91,7 @@ aic7770_probe(device_t dev)
 	case 15:
 		break;
 	default:
-		printf("aic7770 at slot %d: illegal irq setting %d\n",
+		kprintf("aic7770 at slot %d: illegal irq setting %d\n",
 		       eisa_get_slot(dev), intdef);
 		error = ENXIO;
 	}
@@ -142,7 +142,7 @@ aic7770_attach(device_t dev)
 				   &ahc->parent_dmat);
 
 	if (error != 0) {
-		printf("ahc_eisa_attach: Could not allocate DMA tag "
+		kprintf("ahc_eisa_attach: Could not allocate DMA tag "
 		       "- error %d\n", error);
 		ahc_free(ahc);
 		return (ENOMEM);

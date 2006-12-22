@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ xmphy_attach(device_t dev)
 	mii->mii_instance++;
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
+#define PRINT(s)	kprintf("%s%s", sep, s); sep = ", "
 
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
 	    BMCR_ISO);
@@ -149,7 +149,7 @@ xmphy_attach(device_t dev)
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	PRINT("auto");
 
-	printf("\n");
+	kprintf("\n");
 #undef ADD
 #undef PRINT
 

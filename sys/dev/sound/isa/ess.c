@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.6 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.6 2006/12/22 23:26:25 swildner Exp $");
 
 #define ESS_BUFFSIZE (4096)
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -193,7 +193,7 @@ ess_dspwr(struct ess_info *sc, u_char val)
 		}
 		if (i > 10) DELAY((i > 100)? 1000 : 10);
     	}
-    	printf("ess_dspwr(0x%02x) timed out.\n", val);
+    	kprintf("ess_dspwr(0x%02x) timed out.\n", val);
     	return 0;
 }
 
@@ -201,7 +201,7 @@ static int
 ess_cmd(struct ess_info *sc, u_char val)
 {
 #if 0
-	printf("ess_cmd: %x\n", val);
+	kprintf("ess_cmd: %x\n", val);
 #endif
     	return ess_dspwr(sc, val);
 }
@@ -210,7 +210,7 @@ static int
 ess_cmd1(struct ess_info *sc, u_char cmd, int val)
 {
 #if 0
-    	printf("ess_cmd1: %x, %x\n", cmd, val);
+    	kprintf("ess_cmd1: %x, %x\n", cmd, val);
 #endif
     	if (ess_dspwr(sc, cmd)) {
 		return ess_dspwr(sc, val & 0xff);
@@ -220,7 +220,7 @@ ess_cmd1(struct ess_info *sc, u_char cmd, int val)
 static void
 ess_setmixer(struct ess_info *sc, u_int port, u_int value)
 {
-	DEB(printf("ess_setmixer: reg=%x, val=%x\n", port, value);)
+	DEB(kprintf("ess_setmixer: reg=%x, val=%x\n", port, value);)
     	ess_wr(sc, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	ess_wr(sc, SB_MIX_DATA, (u_char) (value & 0xff));
@@ -272,7 +272,7 @@ ess_reset_dsp(struct ess_info *sc)
     	DELAY(100);
     	ess_wr(sc, SBDSP_RST, 0);
     	if (ess_get_byte(sc) != 0xAA) {
-        	DEB(printf("ess_reset_dsp 0x%lx failed\n",
+        	DEB(kprintf("ess_reset_dsp 0x%lx failed\n",
 			   rman_get_start(sc->io_base)));
 		return ENXIO;	/* Sorry */
     	}
@@ -840,7 +840,7 @@ ess_attach(device_t dev)
 		break;
 	}
 	if (bootverbose)
-		printf("%s%s\n", sc->duplex? ", duplex" : "",
+		kprintf("%s%s\n", sc->duplex? ", duplex" : "",
 				 sc->newspeed? ", newspeed" : "");
 
 	if (sc->newspeed)
@@ -973,10 +973,10 @@ esscontrol_attach(device_t dev)
 		port_wr(io, 0, i);
 		x = port_rd(io, 1);
 		if ((i & 0x0f) == 0)
-			printf("%3.3x: ", i);
-		printf("%2.2x ", x);
+			kprintf("%3.3x: ", i);
+		kprintf("%2.2x ", x);
 		if ((i & 0x0f) == 0x0f)
-			printf("\n");
+			kprintf("\n");
 	}
 	bus_release_resource(dev, SYS_RES_IOPORT, 0, io);
 	io = NULL;

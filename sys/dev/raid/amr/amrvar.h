@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.8 2006/09/10 01:26:35 dillon Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.9 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/thread2.h>
@@ -63,13 +63,13 @@
 #endif
 
 #ifdef AMR_DEBUG
-# define debug(level, fmt, args...)	do {if (level <= AMR_DEBUG) printf("%s: " fmt "\n", __func__ , ##args);} while(0)
-# define debug_called(level)		do {if (level <= AMR_DEBUG) printf("%s: called\n", __func__);} while(0)
+# define debug(level, fmt, args...)	do {if (level <= AMR_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args);} while(0)
+# define debug_called(level)		do {if (level <= AMR_DEBUG) kprintf("%s: called\n", __func__);} while(0)
 #else
 # define debug(level, fmt, args...)
 # define debug_called(level)
 #endif
-#define xdebug(fmt, args...)	printf("%s: " fmt "\n", __func__ , ##args)
+#define xdebug(fmt, args...)	kprintf("%s: " fmt "\n", __func__ , ##args)
 
 /*
  * Per-logical-drive datastructure

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.27 2002/11/27 06:56:29 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.4 2006/12/13 21:58:48 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.5 2006/12/22 23:26:22 swildner Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 
 extern int cardbus_cis_debug;
 
-#define	DPRINTF(a) if (cardbus_cis_debug) printf a
+#define	DPRINTF(a) if (cardbus_cis_debug) kprintf a
 #define	DEVPRINTF(x) if (cardbus_cis_debug) device_printf x
 
 #define	DECODE_PARAMS							\
@@ -142,16 +142,16 @@ DECODE_PROTOTYPE(generic)
 	int i;
 
 	if (info)
-		printf("TUPLE: %s [%d]:", info->name, len);
+		kprintf("TUPLE: %s [%d]:", info->name, len);
 	else
-		printf("TUPLE: Unknown(0x%02x) [%d]:", id, len);
+		kprintf("TUPLE: Unknown(0x%02x) [%d]:", id, len);
 
 	for (i = 0; i < len; i++) {
 		if (i % 0x10 == 0 && len > 0x10)
-			printf("\n       0x%02x:", i);
-		printf(" %02x", tupledata[i]);
+			kprintf("\n       0x%02x:", i);
+		kprintf(" %02x", tupledata[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 #endif
 	return (0);
 }
@@ -187,18 +187,18 @@ DECODE_PROTOTYPE(linktarget)
 #ifdef CARDBUS_DEBUG
 	int i;
 
-	printf("TUPLE: %s [%d]:", info->name, len);
+	kprintf("TUPLE: %s [%d]:", info->name, len);
 
 	for (i = 0; i < len; i++) {
 		if (i % 0x10 == 0 && len > 0x10)
-			printf("\n       0x%02x:", i);
-		printf(" %02x", tupledata[i]);
+			kprintf("\n       0x%02x:", i);
+		kprintf(" %02x", tupledata[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 #endif
 	if (len != 3 || tupledata[0] != 'C' || tupledata[1] != 'I' ||
 	    tupledata[2] != 'S') {
-		printf("Invalid data for CIS Link Target!\n");
+		kprintf("Invalid data for CIS Link Target!\n");
 		decode_tuple_generic(cbdev, child, id, len, tupledata,
 		    start, off, info);
 		return (EINVAL);
@@ -210,17 +210,17 @@ DECODE_PROTOTYPE(vers_1)
 {
 	int i;
 
-	printf("Product version: %d.%d\n", tupledata[0], tupledata[1]);
-	printf("Product name: ");
+	kprintf("Product version: %d.%d\n", tupledata[0], tupledata[1]);
+	kprintf("Product name: ");
 	for (i = 2; i < len; i++) {
 		if (tupledata[i] == '\0')
-			printf(" | ");
+			kprintf(" | ");
 		else if (tupledata[i] == 0xff)
 			break;
 		else
-			printf("%c", tupledata[i]);
+			kprintf("%c", tupledata[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 
@@ -230,19 +230,19 @@ DECODE_PROTOTYPE(funcid)
 	int numnames = sizeof(funcnames) / sizeof(funcnames[0]);
 	int i;
 
-	printf("Functions: ");
+	kprintf("Functions: ");
 	for (i = 0; i < len; i++) {
 		if (tupledata[i] < numnames)
-			printf("%s", funcnames[tupledata[i]]);
+			kprintf("%s", funcnames[tupledata[i]]);
 		else
-			printf("Unknown(%d)", tupledata[i]);
+			kprintf("Unknown(%d)", tupledata[i]);
 		if (i < len-1)
-			printf(", ");
+			kprintf(", ");
 	}
 
 	if (len > 0)
 		dinfo->funcid = tupledata[0];		/* use first in list */
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 
@@ -251,10 +251,10 @@ DECODE_PROTOTYPE(manfid)
 	struct cardbus_devinfo *dinfo = device_get_ivars(child);
 	int i;
 
-	printf("Manufacturer ID: ");
+	kprintf("Manufacturer ID: ");
 	for (i = 0; i < len; i++)
-		printf("%02x", tupledata[i]);
-	printf("\n");
+		kprintf("%02x", tupledata[i]);
+	kprintf("\n");
 
 	if (len == 5) {
 		dinfo->mfrid = tupledata[1] | (tupledata[2]<<8);
@@ -268,10 +268,10 @@ DECODE_PROTOTYPE(funce)
 	struct cardbus_devinfo *dinfo = device_get_ivars(child);
 	int type, i;
 
-	printf("Function Extension: ");
+	kprintf("Function Extension: ");
 	for (i = 0; i < len; i++)
-		printf("%02x", tupledata[i]);
-	printf("\n");
+		kprintf("%02x", tupledata[i]);
+	kprintf("\n");
 	if (len < 2)			/* too short */
 		return (0);
 	type = tupledata[0];		/* XXX <32 always? */
@@ -332,7 +332,7 @@ DECODE_PROTOTYPE(bar)
 	u_int32_t bar;
 
 	if (len != 6) {
-		printf("*** ERROR *** BAR length not 6 (%d)\n", len);
+		kprintf("*** ERROR *** BAR length not 6 (%d)\n", len);
 		return (EINVAL);
 	}
 	reg = *(u_int16_t*)tupledata;
@@ -378,13 +378,13 @@ DECODE_PROTOTYPE(bar)
 
 DECODE_PROTOTYPE(unhandled)
 {
-	printf("TUPLE: %s [%d] is unhandled! Bailing...", info->name, len);
+	kprintf("TUPLE: %s [%d] is unhandled! Bailing...", info->name, len);
 	return (-1);
 }
 
 DECODE_PROTOTYPE(end)
 {
-	printf("CIS reading done\n");
+	kprintf("CIS reading done\n");
 	return (0);
 }
 

@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.22 2006/12/10 02:03:57 sephe Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.23 2006/12/22 23:26:26 swildner Exp $
  */
 
 /* 
@@ -218,7 +218,7 @@ USB_ATTACH(ugen)
 
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
 
@@ -227,7 +227,7 @@ USB_ATTACH(ugen)
 	/* First set configuration index 0, the default one for ugen. */
 	err = usbd_set_config_index(udev, 0, 0);
 	if (err) {
-		printf("%s: setting configuration index 0 failed\n",
+		kprintf("%s: setting configuration index 0 failed\n",
 		       USBDEVNAME(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
@@ -237,7 +237,7 @@ USB_ATTACH(ugen)
 	/* Set up all the local state for this configuration. */
 	err = ugen_set_config(sc, conf);
 	if (err) {
-		printf("%s: setting configuration %d failed\n",
+		kprintf("%s: setting configuration %d failed\n",
 		       USBDEVNAME(sc->sc_dev), conf);
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
@@ -556,7 +556,7 @@ ugenclose(struct dev_close_args *ap)
 
 #ifdef DIAGNOSTIC
 	if (!sc->sc_is_open[endpt]) {
-		printf("ugenclose: not open\n");
+		kprintf("ugenclose: not open\n");
 		return (EINVAL);
 	}
 #endif
@@ -627,11 +627,11 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		return (EINVAL);
 
 	if (sce->edesc == NULL) {
-		printf("ugenread: no edesc\n");
+		kprintf("ugenread: no edesc\n");
 		return (EIO);
 	}
 	if (sce->pipeh == NULL) {
-		printf("ugenread: no pipe\n");
+		kprintf("ugenread: no pipe\n");
 		return (EIO);
 	}
 
@@ -795,11 +795,11 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		return (EINVAL);
 
 	if (sce->edesc == NULL) {
-		printf("ugenwrite: no edesc\n");
+		kprintf("ugenwrite: no edesc\n");
 		return (EIO);
 	}
 	if (sce->pipeh == NULL) {
-		printf("ugenwrite: no pipe\n");
+		kprintf("ugenwrite: no pipe\n");
 		return (EIO);
 	}
 
@@ -1193,7 +1193,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 			return (EINVAL);
 
 		if (sce->pipeh == NULL) {
-			printf("ugenioctl: USB_SET_SHORT_XFER, no pipe\n");
+			kprintf("ugenioctl: USB_SET_SHORT_XFER, no pipe\n");
 			return (EIO);
 		}
 
@@ -1467,11 +1467,11 @@ ugenpoll(struct dev_poll_args *ap)
 		return (EINVAL);
 
 	if (!sce->edesc) {
-		printf("ugenpoll: no edesc\n");
+		kprintf("ugenpoll: no edesc\n");
 		return (EIO);
 	}
 	if (!sce->pipeh) {
-		printf("ugenpoll: no pipe\n");
+		kprintf("ugenpoll: no pipe\n");
 		return (EIO);
 	}
 

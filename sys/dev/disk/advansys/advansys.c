@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -163,7 +163,7 @@ adv_clear_state_really(struct adv_softc *adv, union ccb* ccb)
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 			}
 			adv->state &= ~ADV_IN_TIMEOUT;
-			printf("%s: No longer in timeout\n", adv_name(adv));
+			kprintf("%s: No longer in timeout\n", adv_name(adv));
 		}
 	}
 	if (adv->state == 0)
@@ -630,7 +630,7 @@ adv_alloc_ccb_info(struct adv_softc *adv)
 	error = bus_dmamap_create(adv->buffer_dmat, /*flags*/0,
 				  &cinfo->dmamap);
 	if (error != 0) {
-		printf("%s: Unable to allocate CCB info "
+		kprintf("%s: Unable to allocate CCB info "
 		       "dmamap - error %d\n", adv_name(adv), error);
 		return (NULL);
 	}
@@ -656,7 +656,7 @@ adv_timeout(void *arg)
 	cinfo = (struct adv_ccb_info *)ccb->ccb_h.ccb_cinfo_ptr;
 
 	xpt_print_path(ccb->ccb_h.path);
-	printf("Timed out\n");
+	kprintf("Timed out\n");
 
 	crit_enter();
 	/* Have we been taken care of already?? */
@@ -694,7 +694,7 @@ adv_timeout(void *arg)
 		/* XXX Should send a BDR */
 		/* Attempt an abort as our first tact */
 		xpt_print_path(ccb->ccb_h.path);
-		printf("Attempting abort\n");
+		kprintf("Attempting abort\n");
 		adv_abort_ccb(adv, ccb->ccb_h.target_id,
 			      ccb->ccb_h.target_lun, ccb,
 			      CAM_CMD_TIMEOUT, /*queued_only*/FALSE);
@@ -702,7 +702,7 @@ adv_timeout(void *arg)
 	} else {
 		/* Our attempt to perform an abort failed, go for a reset */
 		xpt_print_path(ccb->ccb_h.path);
-		printf("Resetting bus\n");		
+		kprintf("Resetting bus\n");		
 		ccb->ccb_h.status &= ~CAM_STATUS_MASK;
 		ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
 		adv_reset_bus(adv, /*initiate_reset*/TRUE);
@@ -778,13 +778,13 @@ adv_init(struct adv_softc *adv)
 	adv_write_lram_16(adv, ADV_HALTCODE_W, 0x00FE);
 	adv_stop_execution(adv);
 	if (adv_stop_chip(adv) == 0 || adv_is_chip_halted(adv) == 0) {
-		printf("adv%d: Unable to halt adapter. Initialization"
+		kprintf("adv%d: Unable to halt adapter. Initialization"
 		       "failed\n", adv->unit);
 		return (1);
 	}
 	ADV_OUTW(adv, ADV_REG_PROG_COUNTER, ADV_MCODE_START_ADDR);
 	if (ADV_INW(adv, ADV_REG_PROG_COUNTER) != ADV_MCODE_START_ADDR) {
-		printf("adv%d: Unable to set program counter. Initialization"
+		kprintf("adv%d: Unable to set program counter. Initialization"
 		       "failed\n", adv->unit);
 		return (1);
 	}
@@ -860,7 +860,7 @@ adv_init(struct adv_softc *adv)
 	} else {
 		u_int8_t sync_data;
 
-		printf("adv%d: Warning EEPROM Checksum mismatch. "
+		kprintf("adv%d: Warning EEPROM Checksum mismatch. "
 		       "Using default device parameters\n", adv->unit);
 
 		/* Set reasonable defaults since we can't read the EEPROM */
@@ -924,7 +924,7 @@ adv_init(struct adv_softc *adv)
 	 * to be 100% correct.
 	 */
 	if (adv_set_eeprom_config(adv, &eeprom_config) != 0)
-		printf("%s: WARNING! Failure writing to EEPROM.\n",
+		kprintf("%s: WARNING! Failure writing to EEPROM.\n",
 		       adv_name(adv));
 #endif
 
@@ -953,7 +953,7 @@ adv_init(struct adv_softc *adv)
 	}
 	adv_write_lram_8(adv, ADVV_USE_TAGGED_QNG_B, TARGET_BIT_VECTOR_SET);
 	adv_write_lram_8(adv, ADVV_CAN_TAGGED_QNG_B, TARGET_BIT_VECTOR_SET);
-	printf("adv%d: AdvanSys %s Host Adapter, SCSI ID %d, queue depth %d\n",
+	kprintf("adv%d: AdvanSys %s Host Adapter, SCSI ID %d, queue depth %d\n",
 	       adv->unit, (adv->type & ADV_ULTRA) && (max_sync == 0)
 			  ? "Ultra SCSI" : "SCSI",
 	       adv->scsi_id, adv->max_openings);
@@ -984,7 +984,7 @@ adv_intr(void *arg)
 				       ADV_CC_TEST));
 
 	if ((chipstat & (ADV_CSW_SCSI_RESET_LATCH|ADV_CSW_SCSI_RESET_ACTIVE))) {
-		printf("Detected Bus Reset\n");
+		kprintf("Detected Bus Reset\n");
 		adv_reset_bus(adv, /*initiate_reset*/FALSE);
 		return;
 	}
@@ -1133,7 +1133,7 @@ adv_done(struct adv_softc *adv, union ccb *ccb, u_int done_stat,
 			break;
 		}
 		xpt_print_path(ccb->ccb_h.path);
-		printf("adv_done - queue done without error, "
+		kprintf("adv_done - queue done without error, "
 		       "but host status non-zero(%x)\n", host_stat);
 		/*FALLTHROUGH*/
 	case QD_WITH_ERROR:
@@ -1236,7 +1236,7 @@ adv_done(struct adv_softc *adv, union ccb *ccb, u_int done_stat,
 
 	default:
 		xpt_print_path(ccb->ccb_h.path);
-		printf("adv_done - queue done with unknown status %x:%x\n",
+		kprintf("adv_done - queue done with unknown status %x:%x\n",
 		       done_stat, host_stat);
 		ccb->ccb_h.status = CAM_REQ_CMP_ERR;
 		break;
@@ -1363,7 +1363,7 @@ adv_attach(adv)
 	 * Fire up the chip
 	 */
 	if (adv_start_chip(adv) != 1) {
-		printf("adv%d: Unable to start on board processor. Aborting.\n",
+		kprintf("adv%d: Unable to start on board processor. Aborting.\n",
 		       adv->unit);
 		return (ENXIO);
 	}

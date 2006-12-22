@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.14 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.15 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -115,7 +115,7 @@ adwgetacb(struct adw_softc *adw)
 		adwallocacbs(adw);
 		acb = SLIST_FIRST(&adw->free_acb_list);
 		if (acb == NULL)
-			printf("%s: Can't malloc ACB\n", adw_name(adw));
+			kprintf("%s: Can't malloc ACB\n", adw_name(adw));
 		else {
 			SLIST_REMOVE_HEAD(&adw->free_acb_list, links);
 		}
@@ -235,7 +235,7 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			printf("%s: Unexepected error 0x%x returned from "
+			kprintf("%s: Unexepected error 0x%x returned from "
 			       "bus_dmamap_load\n", adw_name(adw), error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
@@ -498,7 +498,7 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 			ccb->ccb_h.status = CAM_REQ_CMP;
 			if (bootverbose) {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("BDR Delivered\n");
+				kprintf("BDR Delivered\n");
 			}
 		} else
 			ccb->ccb_h.status = CAM_REQ_CMP_ERR;
@@ -748,7 +748,7 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 		} else {
 			if (bootverbose) {
 				xpt_print_path(adw->path);
-				printf("Bus Reset Delivered\n");
+				kprintf("Bus Reset Delivered\n");
 			}
 			ccb->ccb_h.status = CAM_REQ_CMP;
 		}
@@ -887,7 +887,7 @@ adw_init(struct adw_softc *adw)
 		u_int16_t serial_number[3];
 
 		adw->flags |= ADW_EEPROM_FAILED;
-		printf("%s: EEPROM checksum failed.  Restoring Defaults\n",
+		kprintf("%s: EEPROM checksum failed.  Restoring Defaults\n",
 		       adw_name(adw));
 
 	        /*
@@ -967,9 +967,9 @@ adw_init(struct adw_softc *adw)
 	if ((adw->features & ADW_ULTRA2) != 0) {
 		switch (eep_config.termination_lvd) {
 		default:
-			printf("%s: Invalid EEPROM LVD Termination Settings.\n",
+			kprintf("%s: Invalid EEPROM LVD Termination Settings.\n",
 			       adw_name(adw));
-			printf("%s: Reverting to Automatic LVD Termination\n",
+			kprintf("%s: Reverting to Automatic LVD Termination\n",
 			       adw_name(adw));
 			/* FALLTHROUGH */
 		case ADW_EEPROM_TERM_AUTO:
@@ -988,9 +988,9 @@ adw_init(struct adw_softc *adw)
 
 	switch (eep_config.termination_se) {
 	default:
-		printf("%s: Invalid SE EEPROM Termination Settings.\n",
+		kprintf("%s: Invalid SE EEPROM Termination Settings.\n",
 		       adw_name(adw));
-		printf("%s: Reverting to Automatic SE Termination\n",
+		kprintf("%s: Reverting to Automatic SE Termination\n",
 		       adw_name(adw));
 		/* FALLTHROUGH */
 	case ADW_EEPROM_TERM_AUTO:
@@ -1005,7 +1005,7 @@ adw_init(struct adw_softc *adw)
 		scsicfg1 |= ADW_SCSI_CFG1_TERM_CTL_MANUAL;
 		break;
 	}
-	printf("%s: SCSI ID %d, ", adw_name(adw), adw->initiator_id);
+	kprintf("%s: SCSI ID %d, ", adw_name(adw), adw->initiator_id);
 
 	/* DMA tag for mapping buffers into device visible space. */
 	if (bus_dma_tag_create(adw->parent_dmat, /*alignment*/1, /*boundary*/0,
@@ -1127,7 +1127,7 @@ adw_init(struct adw_softc *adw)
 	if (adw_init_chip(adw, scsicfg1) != 0)
 		return (ENXIO);
 
-	printf("Queue Depth %d\n", adw->max_acbs);
+	kprintf("Queue Depth %d\n", adw->max_acbs);
 
 	return (0);
 }
@@ -1220,7 +1220,7 @@ adw_intr(void *arg)
 			/*
 			 * The firmware detected a SCSI Bus reset.
 			 */
-			printf("Someone Reset the Bus\n");
+			kprintf("Someone Reset the Bus\n");
 			adw_handle_bus_reset(adw, /*initiated*/FALSE);
 			break;
 		case ADW_ASYNC_RDMA_FAILURE:
@@ -1240,7 +1240,7 @@ adw_intr(void *arg)
 			adw_handle_bus_reset(adw, /*initiated*/TRUE);
         		break;
     		default:
-			printf("adw_intr: unknown async code 0x%x\n",
+			kprintf("adw_intr: unknown async code 0x%x\n",
 			       intrb_code);
 			break;
 		}
@@ -1255,7 +1255,7 @@ adw_intr(void *arg)
 		union ccb *ccb;
 
 #if 0
-		printf("0x%x, 0x%x, 0x%x, 0x%x\n",
+		kprintf("0x%x, 0x%x, 0x%x, 0x%x\n",
 		       adw->responseq->carr_offset,
 		       adw->responseq->carr_ba,
 		       adw->responseq->areq_ba,
@@ -1357,7 +1357,7 @@ adwprocesserror(struct adw_softc *adw, struct acb *acb)
 			break;
 		case QHSTA_M_QUEUE_ABORTED:
 			/* BDR or Bus Reset */
-			printf("Saw Queue Aborted\n");
+			kprintf("Saw Queue Aborted\n");
 			ccb->ccb_h.status = adw->last_reset;
 			break;
 		case QHSTA_M_SXFR_SDMA_ERR:
@@ -1370,7 +1370,7 @@ adwprocesserror(struct adw_softc *adw, struct acb *acb)
 		{
 			/* The SCSI bus hung in a phase */
 			xpt_print_path(adw->path);
-			printf("Watch Dog timer expired.  Reseting bus\n");
+			kprintf("Watch Dog timer expired.  Reseting bus\n");
 			adw_reset_bus(adw);
 			break;
 		}
@@ -1429,13 +1429,13 @@ adwtimeout(void *arg)
 	ccb = acb->ccb;
 	adw = (struct adw_softc *)ccb->ccb_h.ccb_adw_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("ACB %p - timed out\n", (void *)acb);
+	kprintf("ACB %p - timed out\n", (void *)acb);
 
 	crit_enter();
 
 	if ((acb->state & ACB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("ACB %p - timed out CCB already completed\n",
+		kprintf("ACB %p - timed out CCB already completed\n",
 		       (void *)acb);
 		crit_exit();
 		return;
@@ -1449,13 +1449,13 @@ adwtimeout(void *arg)
 				   ccb->ccb_h.target_id);
 	crit_exit();
 	if (status == ADW_IDLE_CMD_SUCCESS) {
-		printf("%s: BDR Delivered.  No longer in timeout\n",
+		kprintf("%s: BDR Delivered.  No longer in timeout\n",
 		       adw_name(adw));
 		adw_handle_device_reset(adw, target_id);
 	} else {
 		adw_reset_bus(adw);
 		xpt_print_path(adw->path);
-		printf("Bus Reset Delivered.  No longer in timeout\n");
+		kprintf("Bus Reset Delivered.  No longer in timeout\n");
 	}
 }
 

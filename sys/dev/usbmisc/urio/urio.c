@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.14 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ USB_ATTACH(urio)
 	DPRINTFN(10,("urio_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
 
@@ -272,7 +272,7 @@ USB_ATTACH(urio)
 	USB_ATTACH_SUCCESS_RETURN;
 
  nobulk:
-	printf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
+	kprintf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
 	USB_ATTACH_ERROR_RETURN;
 }
 

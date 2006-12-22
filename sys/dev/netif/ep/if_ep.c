@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.25 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.26 2006/12/22 23:26:19 swildner Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -558,14 +558,14 @@ rescan:
 	if (status & S_CARD_FAILURE) {
 	    ifp->if_timer = 0;
 #ifdef EP_LOCAL_STATS
-	    printf("\n");
+	    kprintf("\n");
 	    if_printf(ifp, "\n\tStatus: %x\n", status);
 	    GO_WINDOW(4);
-	    printf("\tFIFO Diagnostic: %x\n", inw(BASE + EP_W4_FIFO_DIAG));
-	    printf("\tStat: %x\n", sc->stat);
-	    printf("\tIpackets=%d, Opackets=%d\n",
+	    kprintf("\tFIFO Diagnostic: %x\n", inw(BASE + EP_W4_FIFO_DIAG));
+	    kprintf("\tStat: %x\n", sc->stat);
+	    kprintf("\tIpackets=%d, Opackets=%d\n",
 		ifp->if_ipackets, ifp->if_opackets);
-	    printf("\tNOF=%d, NOMB=%d, RXOF=%d, RXOL=%d, TXU=%d\n",
+	    kprintf("\tNOF=%d, NOMB=%d, RXOF=%d, RXOL=%d, TXU=%d\n",
 		   sc->rx_no_first, sc->rx_no_mbuf, sc->rx_overrunf,
 		   sc->rx_overrunl, sc->tx_underrun);
 #else

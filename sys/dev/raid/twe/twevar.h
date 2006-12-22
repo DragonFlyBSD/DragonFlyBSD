@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.7 2006/09/10 01:26:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.8 2006/12/22 23:26:24 swildner Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -38,11 +38,11 @@
 #ifdef TWE_DEBUG
 #define debug(level, fmt, args...)							\
 	do {										\
-	    if (level <= TWE_DEBUG) printf("%s: " fmt "\n", __func__ , ##args);	\
+	    if (level <= TWE_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args);	\
 	} while(0)
 #define debug_called(level)						\
 	do {								\
-	    if (level <= TWE_DEBUG) printf("%s: called\n", __func__);	\
+	    if (level <= TWE_DEBUG) kprintf("%s: called\n", __func__);	\
 	} while(0)
 #else
 #define debug(level, fmt, args...)

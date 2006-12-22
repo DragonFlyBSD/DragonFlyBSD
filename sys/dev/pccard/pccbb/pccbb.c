@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.18 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.19 2006/12/22 23:26:23 swildner Exp $
  */
 
 /*
@@ -105,7 +105,7 @@
 #include "card_if.h"
 #include "pcib_if.h"
 
-#define	DPRINTF(x) do { if (cbb_debug) printf x; } while (0)
+#define	DPRINTF(x) do { if (cbb_debug) kprintf x; } while (0)
 #define	DEVPRINTF(x) do { if (cbb_debug) device_printf x; } while (0)
 
 #define	PCI_MASK_CONFIG(DEV,REG,MASK,SIZE)				\
@@ -648,7 +648,7 @@ cbb_attach(device_t brdev)
 	sc->irq_res = bus_alloc_resource(brdev, SYS_RES_IRQ, &rid, 0, ~0, 1,
 	    RF_SHAREABLE | RF_ACTIVE);
 	if (sc->irq_res == NULL) {
-		printf("cbb: Unable to map IRQ...\n");
+		kprintf("cbb: Unable to map IRQ...\n");
 		goto err;
 	}
 
@@ -1187,7 +1187,7 @@ cbb_power(device_t brdev, int volts)
 	/* XXX should only reset EVENT_POWER */
 	cbb_set(sc, CBB_SOCKET_EVENT, sockevent);
 	if (timeout < 0) {
-		printf ("VCC supply failed.\n");
+		kprintf ("VCC supply failed.\n");
 		return (0);
 	}
 
@@ -1203,7 +1203,7 @@ cbb_power(device_t brdev, int volts)
 		device_printf(sc->dev,
 		    "bad Vcc request. ctrl=0x%x, status=0x%x\n",
 		    sock_ctrl ,status);
-		printf("cbb_power: %s and %s [%x]\n",
+		kprintf("cbb_power: %s and %s [%x]\n",
 		    (volts & CARD_VCCMASK) == CARD_VCC_UC ? "CARD_VCC_UC" :
 		    (volts & CARD_VCCMASK) == CARD_VCC_5V ? "CARD_VCC_5V" :
 		    (volts & CARD_VCCMASK) == CARD_VCC_3V ? "CARD_VCC_3V" :
@@ -1517,7 +1517,7 @@ cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
 	res = BUS_ALLOC_RESOURCE(device_get_parent(brdev), child, type, rid,
 	    start, end, count, flags & ~RF_ACTIVE);
 	if (res == NULL) {
-		printf("cbb alloc res fail\n");
+		kprintf("cbb alloc res fail\n");
 		return (NULL);
 	}
 	if (cbb_insert_res(sc, res, type, *rid)) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -102,7 +102,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.8 2006/12/20 18:
 #define FM801_DEFAULT_BUFSZ	4096	/* Other values do not work!!! */
 
 /* debug purposes */
-#define DPRINT	 if(0) printf
+#define DPRINT	 if(0) kprintf
 
 /*
 static int fm801ch_setup(struct pcm_channel *c);
@@ -217,7 +217,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 rdcd: codec busy\n");
+		kprintf("fm801 rdcd: codec busy\n");
 		return 0;
 	}
 
@@ -229,7 +229,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 rdcd: write codec invalid\n");
+		kprintf("fm801 rdcd: write codec invalid\n");
 		return 0;
 	}
 
@@ -252,7 +252,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 wrcd: read codec busy\n");
+		kprintf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 
@@ -265,7 +265,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 wrcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 wrcd: read codec busy\n");
+		kprintf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 	DPRINT("fm801 wrcd release reg 0x%x val 0x%x\n",regno, data);

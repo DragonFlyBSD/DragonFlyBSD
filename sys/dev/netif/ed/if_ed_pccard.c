@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.17 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.18 2006/12/22 23:26:19 swildner Exp $
  */
 
 #include "opt_ed.h"
@@ -285,7 +285,7 @@ ed_pccard_attach(device_t dev)
 			       edintr, sc, &sc->irq_handle,
 			       sc->arpcom.ac_if.if_serializer);
 	if (error) {
-		printf("setup intr failed %d \n", error);
+		kprintf("setup intr failed %d \n", error);
 		ed_release_resources(dev);
 		return (error);
 	}

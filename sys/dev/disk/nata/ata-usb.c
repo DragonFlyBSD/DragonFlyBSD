@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.3 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -765,7 +765,7 @@ ata_usbchannel_begin_transaction(struct ata_request *request)
 
     /* sanity just in case */
     if (sc->state != ATAUSB_S_IDLE) {
-	printf("begin is busy (%d)\n", sc->state);
+	kprintf("begin is busy (%d)\n", sc->state);
 	request->result = EBUSY;
 	return ATA_OP_FINISHED;
     }

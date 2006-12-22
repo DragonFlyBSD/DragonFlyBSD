@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.10 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -121,7 +121,7 @@ ahc_attach(struct ahc_softc *ahc)
 	sim2 = NULL;
 
 	ahc_controller_info(ahc, ahc_info);
-	printf("%s\n", ahc_info);
+	kprintf("%s\n", ahc_info);
 	ahc_lock(ahc, &s);
 	/*
 	 * Attach secondary channel first if the user has
@@ -174,13 +174,13 @@ ahc_attach(struct ahc_softc *ahc)
 				    AHC_MAX_QUEUE, NULL);
 
 		if (sim2 == NULL) {
-			printf("ahc_attach: Unable to attach second "
+			kprintf("ahc_attach: Unable to attach second "
 			       "bus due to resource shortage");
 			goto fail;
 		}
 		
 		if (xpt_bus_register(sim2, bus_id2) != CAM_SUCCESS) {
-			printf("ahc_attach: Unable to attach second "
+			kprintf("ahc_attach: Unable to attach second "
 			       "bus due to resource shortage");
 			/*
 			 * We do not want to destroy the device queue
@@ -303,7 +303,7 @@ ahc_done(struct ahc_softc *ahc, struct scb *scb)
 			} else {
 				if (bootverbose) {
 					xpt_print_path(ccb->ccb_h.path);
-					printf("Still connected\n");
+					kprintf("Still connected\n");
 				}
 				ahc_freeze_ccb(ccb);
 			}
@@ -348,7 +348,7 @@ ahc_done(struct ahc_softc *ahc, struct scb *scb)
 		 || ahc_get_transaction_status(scb) == CAM_REQ_ABORTED)
 			ahc_set_transaction_status(scb, CAM_CMD_TIMEOUT);
 		ahc_print_path(ahc, scb);
-		printf("no longer in timeout, status = %x\n",
+		kprintf("no longer in timeout, status = %x\n",
 		       ccb->ccb_h.status);
 	}
 
@@ -845,7 +845,7 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 		ahc_unlock(ahc, &s);
 		if (bootverbose) {
 			xpt_print_path(SIM_PATH(ahc, sim));
-			printf("SCSI bus reset delivered. "
+			kprintf("SCSI bus reset delivered. "
 			       "%d SCBs aborted.\n", found);
 		}
 		ccb->ccb_h.status = CAM_REQ_CMP;
@@ -1454,7 +1454,7 @@ ahc_timeout(void *arg)
 
 	if ((scb->flags & SCB_ACTIVE) == 0) {
 		/* Previous timeout took care of me already */
-		printf("%s: Timedout SCB already complete. "
+		kprintf("%s: Timedout SCB already complete. "
 		       "Interrupts may not be functioning.\n", ahc_name(ahc));
 		ahc_unpause(ahc);
 		ahc_unlock(ahc, &s);
@@ -1466,12 +1466,12 @@ ahc_timeout(void *arg)
 	lun = SCB_GET_LUN(scb);
 
 	ahc_print_path(ahc, scb);
-	printf("SCB 0x%x - timed out\n", scb->hscb->tag);
+	kprintf("SCB 0x%x - timed out\n", scb->hscb->tag);
 	ahc_dump_card_state(ahc);
 	last_phase = ahc_inb(ahc, LASTPHASE);
 	if (scb->sg_count > 0) {
 		for (i = 0; i < scb->sg_count; i++) {
-			printf("sg[%d] - Addr 0x%x : Length %d\n",
+			kprintf("sg[%d] - Addr 0x%x : Length %d\n",
 			       i,
 			       scb->sg_list[i].addr,
 			       scb->sg_list[i].len & AHC_SG_LEN_MASK);
@@ -1485,7 +1485,7 @@ ahc_timeout(void *arg)
 bus_reset:
 		ahc_set_transaction_status(scb, CAM_CMD_TIMEOUT);
 		found = ahc_reset_channel(ahc, channel, /*Initiate Reset*/TRUE);
-		printf("%s: Issued Channel %c Bus Reset. "
+		kprintf("%s: Issued Channel %c Bus Reset. "
 		       "%d SCBs aborted\n", ahc_name(ahc), channel, found);
 	} else {
 		/*
@@ -1532,7 +1532,7 @@ bus_reset:
 				uint64_t newtimeout;
 
 				ahc_print_path(ahc, scb);
-				printf("Other SCB Timeout%s",
+				kprintf("Other SCB Timeout%s",
 			 	       (scb->flags & SCB_OTHERTCL_TIMEOUT) != 0
 				       ? " again\n" : "\n");
 				scb->flags |= SCB_OTHERTCL_TIMEOUT;
@@ -1573,7 +1573,7 @@ bus_reset:
 			ahc_outb(ahc, MSG_OUT, HOST_MSG);
 			ahc_outb(ahc, SCSISIGO, last_phase|ATNO);
 			ahc_print_path(ahc, active_scb);
-			printf("BDR message in message buffer\n");
+			kprintf("BDR message in message buffer\n");
 			active_scb->flags |= SCB_DEVICE_RESET;
 			callout_reset(&active_scb->io_ctx->ccb_h.timeout_ch,
 			    2 * hz, ahc_timeout, active_scb);
@@ -1589,7 +1589,7 @@ bus_reset:
 			 && (ahc_inb(ahc, SSTAT0) & TARGET) != 0) {
 				/* XXX What happened to the SCB? */
 				/* Hung target selection.  Goto busfree */
-				printf("%s: Hung target selection\n",
+				kprintf("%s: Hung target selection\n",
 				       ahc_name(ahc));
 				ahc_restart(ahc);
 				ahc_unlock(ahc, &s);
@@ -1666,7 +1666,7 @@ bus_reset:
 						   CAM_REQUEUE_REQ,
 						   SEARCH_COMPLETE);
 				ahc_print_path(ahc, scb);
-				printf("Queuing a BDR SCB\n");
+				kprintf("Queuing a BDR SCB\n");
 				ahc_qinfifo_requeue_tail(ahc, scb);
 				ahc_outb(ahc, SCBPTR, saved_scbptr);
 				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
@@ -1677,7 +1677,7 @@ bus_reset:
 				/* This shouldn't happen */
 				ahc_set_recoveryscb(ahc, scb);
 				ahc_print_path(ahc, scb);
-				printf("SCB %d: Immediate reset.  "
+				kprintf("SCB %d: Immediate reset.  "
 					"Flags = 0x%x\n", scb->hscb->tag,
 					scb->flags);
 				goto bus_reset;
@@ -1752,7 +1752,7 @@ ahc_abort_ccb(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 				ccb->ccb_h.status = CAM_REQ_CMP;
 			} else {
 				xpt_print_path(abort_ccb->ccb_h.path);
-				printf("Not found\n");
+				kprintf("Not found\n");
 				ccb->ccb_h.status = CAM_PATH_INVALID;
 			}
 			break;
@@ -1929,14 +1929,14 @@ ahc_dump_targcmd(struct target_cmd *cmd)
 	i = 0;
 	while (byte < last_byte) {
 		if (i == 0)
-			printf("\t");
-		printf("%#x", *byte++);
+			kprintf("\t");
+		kprintf("%#x", *byte++);
 		i++;
 		if (i == 8) {
-			printf("\n");
+			kprintf("\n");
 			i = 0;
 		} else {
-			printf(", ");
+			kprintf(", ");
 		}
 	}
 }

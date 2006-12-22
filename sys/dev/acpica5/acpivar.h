@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.9 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.10 2006/12/22 23:26:14 swildner Exp $
  */
 
 #include "bus_if.h"
@@ -199,7 +199,7 @@ void		acpi_EnterDebugger(void);
 
 #ifdef ACPI_DEBUG
 #include <sys/cons.h>
-#define STEP(x)		do {printf x, printf("\n"); cngetc();} while (0)
+#define STEP(x)		do {kprintf x, kprintf("\n"); cngetc();} while (0)
 #else
 #define STEP(x)
 #endif

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ciphy.c,v 1.3 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.3 2006/10/25 20:55:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.4 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -141,10 +141,10 @@ ciphy_attach(device_t dev)
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0 &&
 	    (sc->mii_extcapabilities & EXTSR_MEDIAMASK) == 0)
-		printf("no media present");
+		kprintf("no media present");
 	else
 		mii_phy_add_media(sc);
-	printf("\n");
+	kprintf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.12 2006/10/25 20:55:57 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.13 2006/12/22 23:26:19 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ ex_pnp_wakeup (void * dummy)
 	int	tmp;
 
 	if (bootverbose)
-		printf("ex_pnp_wakeup()\n");
+		kprintf("ex_pnp_wakeup()\n");
 
 	outb(EX_PNP_WAKE, 0);
 	outb(EX_PNP_WAKE, 0);
@@ -133,7 +133,7 @@ ex_isa_identify (driver_t *driver, device_t parent)
 		return (0);
 
 	if (bootverbose)
-		printf("ex_isa_identify()\n");
+		kprintf("ex_isa_identify()\n");
 
 	count = 0;
 	for (ioport = 0x200; ioport < 0x3a0; ioport += 0x10) {
@@ -144,7 +144,7 @@ ex_isa_identify (driver_t *driver, device_t parent)
 		}
 
 		if (bootverbose)
-			printf("ex: Found card at 0x%03x!\n", ioport);
+			kprintf("ex: Found card at 0x%03x!\n", ioport);
 
 		/* Board in PnP mode */
 		if (eeprom_read(ioport, EE_W0) & EE_W0_PNP) {
@@ -152,7 +152,7 @@ ex_isa_identify (driver_t *driver, device_t parent)
 			outb(ioport + CMD_REG, Reset_CMD);
 			DELAY(500);
 			if (bootverbose)
-				printf("ex: card at 0x%03x in PnP mode!\n", ioport);
+				kprintf("ex: card at 0x%03x in PnP mode!\n", ioport);
 			continue;
 		}
 
@@ -183,7 +183,7 @@ ex_isa_identify (driver_t *driver, device_t parent)
 		++count;
 
 		if (bootverbose)
-			printf("ex: Adding board at 0x%03x, irq %d\n", ioport, irq);
+			kprintf("ex: Adding board at 0x%03x, irq %d\n", ioport, irq);
 	}
 	return (count ? 0 : ENXIO);
 }
@@ -214,17 +214,17 @@ ex_isa_probe(device_t dev)
 
 	iobase = bus_get_resource_start(dev, SYS_RES_IOPORT, 0);
 	if (!iobase) {
-		printf("ex: no iobase?\n");
+		kprintf("ex: no iobase?\n");
 		return(ENXIO);
 	}
 
 	if (!look_for_card(iobase)) {
-		printf("ex: no card found at 0x%03x\n", iobase);
+		kprintf("ex: no card found at 0x%03x\n", iobase);
 		return(ENXIO);
 	}
 
 	if (bootverbose)
-		printf("ex: ex_isa_probe() found card at 0x%03x\n", iobase);
+		kprintf("ex: ex_isa_probe() found card at 0x%03x\n", iobase);
 
 	/*
 	 * Reset the card.
@@ -249,7 +249,7 @@ ex_isa_probe(device_t dev)
 	if (irq > 0) {
 		/* This will happen if board is in PnP mode. */
 		if (ee2irq[tmp] != irq) {
-			printf("ex: WARNING: board's EEPROM is configured"
+			kprintf("ex: WARNING: board's EEPROM is configured"
 				" for IRQ %d, using %d\n",
 				ee2irq[tmp], irq);
 		}
@@ -259,7 +259,7 @@ ex_isa_probe(device_t dev)
 	}
 
 	if (irq == 0) {
-		printf("ex: invalid IRQ.\n");
+		kprintf("ex: invalid IRQ.\n");
 		return(ENXIO);
 	}
 
@@ -300,7 +300,7 @@ ex_isa_attach(device_t dev)
 		(temp & EE_W0_BUS16) ? "16-bit" : "8-bit");
 
 	temp = eeprom_read(sc->iobase, EE_W6);
-	printf("board id 0x%03x, stepping 0x%01x\n",
+	kprintf("board id 0x%03x, stepping 0x%01x\n",
 		(temp & EE_W6_BOARD_MASK) >> EE_W6_BOARD_SHIFT,
 		temp & EE_W6_STEP_MASK);
 

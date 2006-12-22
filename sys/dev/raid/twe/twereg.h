@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/twe/twereg.h,v 1.1.2.7 2004/05/12 03:33:37 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.6 2005/08/22 21:16:20 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.7 2006/12/22 23:26:24 swildner Exp $
  */
 
 /* 
@@ -84,7 +84,7 @@
 /* XXX this is a little harsh, but necessary to chase down firmware problems */
 #define TWE_STATUS_PANIC_BITS			(TWE_STATUS_MICROCONTROLLER_ERROR)
 
-/* for use with the %b printf format */
+/* for use with the %b kprintf format */
 #define TWE_STATUS_BITS_DESCRIPTION \
 	"\20\15CQEMPTY\16UCREADY\17RQEMPTY\20CQFULL\21RINTR\22CINTR\23AINTR\24HINTR\25PCIABRT\26MCERR\27QERR\30PCIPERR\n"
 

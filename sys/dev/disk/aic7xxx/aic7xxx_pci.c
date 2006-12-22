@@ -42,7 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#69 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.2.2.17 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.5 2006/09/05 16:50:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.6 2006/12/22 23:26:15 swildner Exp $
  */
 
 #ifdef __linux__
@@ -826,7 +826,7 @@ ahc_pci_config(struct ahc_softc *ahc, struct ahc_pci_identity *entry)
 	if ((ahc->flags & AHC_39BIT_ADDRESSING) != 0) {
 
 		if (bootverbose)
-			printf("%s: Enabling 39Bit Addressing\n",
+			kprintf("%s: Enabling 39Bit Addressing\n",
 			       ahc_name(ahc));
 		devconfig |= DACEN;
 	}
@@ -972,7 +972,7 @@ ahc_pci_config(struct ahc_softc *ahc, struct ahc_pci_identity *entry)
 		/* See if someone else set us up already */
 		if ((ahc->flags & AHC_NO_BIOS_INIT) == 0
 		 && scsiseq != 0) {
-			printf("%s: Using left over BIOS settings\n",
+			kprintf("%s: Using left over BIOS settings\n",
 				ahc_name(ahc));
 			ahc->flags &= ~AHC_USEDEFAULTS;
 			ahc->flags |= AHC_BIOS_ENABLED;
@@ -1240,7 +1240,7 @@ done:
 	ahc_outb(ahc, CLRINT, CLRPARERR);
 	ahc_outb(ahc, CLRINT, CLRBRKADRINT);
 	if (bootverbose && enable) {
-		printf("%s: External SRAM, %s access%s, %dbytes/SCB\n",
+		kprintf("%s: External SRAM, %s access%s, %dbytes/SCB\n",
 		       ahc_name(ahc), fast ? "fast" : "slow", 
 		       pcheck ? ", parity checking enabled" : "",
 		       large ? 64 : 32);
@@ -1365,7 +1365,7 @@ check_extport(struct ahc_softc *ahc, u_int *sxfrctl1)
 	if (have_seeprom) {
 
 		if (bootverbose) 
-			printf("%s: Reading SEEPROM...", ahc_name(ahc));
+			kprintf("%s: Reading SEEPROM...", ahc_name(ahc));
 
 		for (;;) {
 			u_int start_addr;
@@ -1382,9 +1382,9 @@ check_extport(struct ahc_softc *ahc, u_int *sxfrctl1)
 			if (have_seeprom != 0 || sd.sd_chip == C56_66) {
 				if (bootverbose) {
 					if (have_seeprom == 0)
-						printf ("checksum error\n");
+						kprintf ("checksum error\n");
 					else
-						printf ("done.\n");
+						kprintf ("done.\n");
 				}
 				break;
 			}
@@ -1431,7 +1431,7 @@ check_extport(struct ahc_softc *ahc, u_int *sxfrctl1)
 
 	if (!have_seeprom) {
 		if (bootverbose)
-			printf("%s: No SEEPROM available.\n", ahc_name(ahc));
+			kprintf("%s: No SEEPROM available.\n", ahc_name(ahc));
 		ahc->flags |= AHC_USEDEFAULTS;
 		kfree(ahc->seep_config, M_DEVBUF);
 		ahc->seep_config = NULL;
@@ -1468,7 +1468,7 @@ check_extport(struct ahc_softc *ahc, u_int *sxfrctl1)
 		if ((sc->adapter_control & CFSTERM) != 0)
 			*sxfrctl1 |= STPWEN;
 		if (bootverbose)
-			printf("%s: Low byte termination %sabled\n",
+			kprintf("%s: Low byte termination %sabled\n",
 			       ahc_name(ahc),
 			       (*sxfrctl1 & STPWEN) ? "en" : "dis");
 	}
@@ -1638,7 +1638,7 @@ configure_termination(struct ahc_softc *ahc,
 					    &eeprom_present);
 			if ((adapter_control & CFSEAUTOTERM) == 0) {
 				if (bootverbose)
-					printf("%s: Manual SE Termination\n",
+					kprintf("%s: Manual SE Termination\n",
 					       ahc_name(ahc));
 				enableSEC_low = (adapter_control & CFSELOWTERM);
 				enableSEC_high =
@@ -1646,7 +1646,7 @@ configure_termination(struct ahc_softc *ahc,
 			}
 			if ((adapter_control & CFAUTOTERM) == 0) {
 				if (bootverbose)
-					printf("%s: Manual LVD Termination\n",
+					kprintf("%s: Manual LVD Termination\n",
 					       ahc_name(ahc));
 				enablePRI_low = (adapter_control & CFSTERM);
 				enablePRI_high = (adapter_control & CFWSTERM);
@@ -1673,19 +1673,19 @@ configure_termination(struct ahc_softc *ahc,
 
 		if (bootverbose
 		 && (ahc->features & AHC_ULTRA2) == 0) {
-			printf("%s: internal 50 cable %s present",
+			kprintf("%s: internal 50 cable %s present",
 			       ahc_name(ahc),
 			       internal50_present ? "is":"not");
 
 			if ((ahc->features & AHC_WIDE) != 0)
-				printf(", internal 68 cable %s present",
+				kprintf(", internal 68 cable %s present",
 				       internal68_present ? "is":"not");
-			printf("\n%s: external cable %s present\n",
+			kprintf("\n%s: external cable %s present\n",
 			       ahc_name(ahc),
 			       externalcable_present ? "is":"not");
 		}
 		if (bootverbose)
-			printf("%s: BIOS eeprom %s present\n",
+			kprintf("%s: BIOS eeprom %s present\n",
 			       ahc_name(ahc), eeprom_present ? "is" : "not");
 
 		if ((ahc->flags & AHC_INT50_SPEEDFLEX) != 0) {
@@ -1711,7 +1711,7 @@ configure_termination(struct ahc_softc *ahc,
 		 && (internal50_present != 0)
 		 && (internal68_present != 0)
 		 && (externalcable_present != 0)) {
-			printf("%s: Illegal cable configuration!!. "
+			kprintf("%s: Illegal cable configuration!!. "
 			       "Only two connectors on the "
 			       "adapter may be used at a "
 			       "time!\n", ahc_name(ahc));
@@ -1733,10 +1733,10 @@ configure_termination(struct ahc_softc *ahc,
 			brddat |= BRDDAT6;
 			if (bootverbose) {
 				if ((ahc->flags & AHC_INT50_SPEEDFLEX) != 0)
-					printf("%s: 68 pin termination "
+					kprintf("%s: 68 pin termination "
 					       "Enabled\n", ahc_name(ahc));
 				else
-					printf("%s: %sHigh byte termination "
+					kprintf("%s: %sHigh byte termination "
 					       "Enabled\n", ahc_name(ahc),
 					       enableSEC_high ? "Secondary "
 							      : "");
@@ -1752,10 +1752,10 @@ configure_termination(struct ahc_softc *ahc,
 				*sxfrctl1 |= STPWEN;
 			if (bootverbose) {
 				if ((ahc->flags & AHC_INT50_SPEEDFLEX) != 0)
-					printf("%s: 50 pin termination "
+					kprintf("%s: 50 pin termination "
 					       "Enabled\n", ahc_name(ahc));
 				else
-					printf("%s: %sLow byte termination "
+					kprintf("%s: %sLow byte termination "
 					       "Enabled\n", ahc_name(ahc),
 					       enableSEC_low ? "Secondary "
 							     : "");
@@ -1765,7 +1765,7 @@ configure_termination(struct ahc_softc *ahc,
 		if (enablePRI_low != 0) {
 			*sxfrctl1 |= STPWEN;
 			if (bootverbose)
-				printf("%s: Primary Low Byte termination "
+				kprintf("%s: Primary Low Byte termination "
 				       "Enabled\n", ahc_name(ahc));
 		}
 
@@ -1778,7 +1778,7 @@ configure_termination(struct ahc_softc *ahc,
 		if (enablePRI_high != 0) {
 			brddat |= BRDDAT4;
 			if (bootverbose)
-				printf("%s: Primary High Byte "
+				kprintf("%s: Primary High Byte "
 				       "termination Enabled\n",
 				       ahc_name(ahc));
 		}
@@ -1790,7 +1790,7 @@ configure_termination(struct ahc_softc *ahc,
 			*sxfrctl1 |= STPWEN;
 
 			if (bootverbose)
-				printf("%s: %sLow byte termination Enabled\n",
+				kprintf("%s: %sLow byte termination Enabled\n",
 				       ahc_name(ahc),
 				       (ahc->features & AHC_ULTRA2) ? "Primary "
 								    : "");
@@ -1800,7 +1800,7 @@ configure_termination(struct ahc_softc *ahc,
 		 && (ahc->features & AHC_WIDE) != 0) {
 			brddat |= BRDDAT6;
 			if (bootverbose)
-				printf("%s: %sHigh byte termination Enabled\n",
+				kprintf("%s: %sHigh byte termination Enabled\n",
 				       ahc_name(ahc),
 				       (ahc->features & AHC_ULTRA2)
 				     ? "Secondary " : "");
@@ -2006,29 +2006,29 @@ ahc_pci_intr(struct ahc_softc *ahc)
 	status1 = ahc_pci_read_config(ahc->dev_softc,
 				      PCIR_STATUS + 1, /*bytes*/1);
 
-	printf("%s: PCI error Interrupt at seqaddr = 0x%x\n",
+	kprintf("%s: PCI error Interrupt at seqaddr = 0x%x\n",
 	      ahc_name(ahc),
 	      ahc_inb(ahc, SEQADDR0) | (ahc_inb(ahc, SEQADDR1) << 8));
 
 	if (status1 & DPE) {
 		ahc->pci_target_perr_count++;
-		printf("%s: Data Parity Error Detected during address "
+		kprintf("%s: Data Parity Error Detected during address "
 		       "or write data phase\n", ahc_name(ahc));
 	}
 	if (status1 & SSE) {
-		printf("%s: Signal System Error Detected\n", ahc_name(ahc));
+		kprintf("%s: Signal System Error Detected\n", ahc_name(ahc));
 	}
 	if (status1 & RMA) {
-		printf("%s: Received a Master Abort\n", ahc_name(ahc));
+		kprintf("%s: Received a Master Abort\n", ahc_name(ahc));
 	}
 	if (status1 & RTA) {
-		printf("%s: Received a Target Abort\n", ahc_name(ahc));
+		kprintf("%s: Received a Target Abort\n", ahc_name(ahc));
 	}
 	if (status1 & STA) {
-		printf("%s: Signaled a Target Abort\n", ahc_name(ahc));
+		kprintf("%s: Signaled a Target Abort\n", ahc_name(ahc));
 	}
 	if (status1 & DPR) {
-		printf("%s: Data Parity Error has been reported via PERR#\n",
+		kprintf("%s: Data Parity Error has been reported via PERR#\n",
 		       ahc_name(ahc));
 	}
 
@@ -2037,14 +2037,14 @@ ahc_pci_intr(struct ahc_softc *ahc)
 			     status1, /*bytes*/1);
 
 	if ((status1 & (DPE|SSE|RMA|RTA|STA|DPR)) == 0) {
-		printf("%s: Latched PCIERR interrupt with "
+		kprintf("%s: Latched PCIERR interrupt with "
 		       "no status bits set\n", ahc_name(ahc)); 
 	} else {
 		ahc_outb(ahc, CLRINT, CLRPARERR);
 	}
 
 	if (ahc->pci_target_perr_count > AHC_PCI_TARGET_PERR_THRESH) {
-		printf(
+		kprintf(
 "%s: WARNING WARNING WARNING WARNING\n"
 "%s: Too many PCI parity errors observed as a target.\n"
 "%s: Some device on this bus is generating bad parity.\n"
@@ -2402,7 +2402,7 @@ ahc_aha29160C_setup(struct ahc_softc *ahc)
 static int
 ahc_raid_setup(struct ahc_softc *ahc)
 {
-	printf("RAID functionality unsupported\n");
+	kprintf("RAID functionality unsupported\n");
 	return (ENXIO);
 }
 
@@ -2420,7 +2420,7 @@ ahc_aha394XX_setup(struct ahc_softc *ahc)
 		ahc->channel = 'B';
 		break;
 	default:
-		printf("adapter at unexpected slot %d\n"
+		kprintf("adapter at unexpected slot %d\n"
 		       "unable to map to a channel\n",
 		       ahc_get_pci_slot(pci));
 		ahc->channel = 'A';
@@ -2445,7 +2445,7 @@ ahc_aha398XX_setup(struct ahc_softc *ahc)
 		ahc->channel = 'C';
 		break;
 	default:
-		printf("adapter at unexpected slot %d\n"
+		kprintf("adapter at unexpected slot %d\n"
 		       "unable to map to a channel\n",
 		       ahc_get_pci_slot(pci));
 		ahc->channel = 'A';
@@ -2475,7 +2475,7 @@ ahc_aha494XX_setup(struct ahc_softc *ahc)
 		ahc->channel = 'D';
 		break;
 	default:
-		printf("adapter at unexpected slot %d\n"
+		kprintf("adapter at unexpected slot %d\n"
 		       "unable to map to a channel\n",
 		       ahc_get_pci_slot(pci));
 		ahc->channel = 'A';

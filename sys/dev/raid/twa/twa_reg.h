@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_reg.h,v 1.1 2004/04/16 20:13:17 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_reg.h,v 1.2 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -115,7 +115,7 @@
 #define TWA_STATUS_EXPECTED_BITS		0x00002000
 #define TWA_STATUS_UNEXPECTED_BITS		0x00F00000
 
-/* For use with the %b printf format. */
+/* For use with the %b kprintf format. */
 #define TWA_STATUS_BITS_DESCRIPTION \
 	"\20\15CMD_Q_EMPTY\16MC_RDY\17RESP_Q_EMPTY\20CMD_Q_FULL\21RESP_INTR\22CMD_INTR\23ATTN_INTR\24HOST_INTR\25PCI_ABRT\26MC_ERR\27Q_ERR\30PCI_PERR\n"
 

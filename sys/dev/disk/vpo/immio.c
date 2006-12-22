@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/immio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.6 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.7 2006/12/22 23:26:17 swildner Exp $
  *
  */
 
@@ -297,7 +297,7 @@ imm_disconnect(struct vpoio_data *vpo, int *connected, int release_bus)
 
 	if ((s1 != (char)0xb8 || s2 != (char)0x18 || s3 != (char)0x38)) {
 		if (bootverbose)
-			printf("imm%d: (disconnect) s1=0x%x s2=0x%x, s3=0x%x\n",
+			kprintf("imm%d: (disconnect) s1=0x%x s2=0x%x, s3=0x%x\n",
 				vpo->vpo_unit, s1 & 0xff, s2 & 0xff, s3 & 0xff);
 		if (connected)
 			*connected = VP0_ECONNECT;
@@ -350,7 +350,7 @@ imm_connect(struct vpoio_data *vpo, int how, int *disconnected, int request_bus)
 
 	if ((s1 != (char)0xb8 || s2 != (char)0x18 || s3 != (char)0x30)) {
 		if (bootverbose)
-			printf("imm%d: (connect) s1=0x%x s2=0x%x, s3=0x%x\n",
+			kprintf("imm%d: (connect) s1=0x%x s2=0x%x, s3=0x%x\n",
 				vpo->vpo_unit, s1 & 0xff, s2 & 0xff, s3 & 0xff);
 		if (disconnected)
 			*disconnected = VP0_ECONNECT;
@@ -396,7 +396,7 @@ imm_detect(struct vpoio_data *vpo)
 					goto error;
 				vpo->vpo_mode_found = VP0_MODE_NIBBLE;
 			} else {
-				printf("imm%d: NIBBLE mode unavailable!\n", vpo->vpo_unit);
+				kprintf("imm%d: NIBBLE mode unavailable!\n", vpo->vpo_unit);
 				goto error;
 			}
 		} else {
@@ -417,7 +417,7 @@ imm_detect(struct vpoio_data *vpo)
 
 	if (error) {
 		if (bootverbose)
-			printf("imm%d: can't disconnect from the drive\n",
+			kprintf("imm%d: can't disconnect from the drive\n",
 				vpo->vpo_unit);
 		goto error;
 	}
@@ -607,17 +607,17 @@ imm_attach(struct vpoio_data *vpo)
 	case VP0_MODE_EPP:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, epp17_instr);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, epp17_outstr);
-		printf("imm%d: EPP mode\n", vpo->vpo_unit);
+		kprintf("imm%d: EPP mode\n", vpo->vpo_unit);
 		break;
 	case VP0_MODE_PS2:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, ps2_inbyte_submicroseq);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, spp_outbyte_submicroseq);
-		printf("imm%d: PS2 mode\n", vpo->vpo_unit);
+		kprintf("imm%d: PS2 mode\n", vpo->vpo_unit);
 		break;
 	case VP0_MODE_NIBBLE:
 		ppb_MS_GET_init(ppbus, vpo->vpo_dev, vpo->vpo_nibble_inbyte_msq);
 		ppb_MS_PUT_init(ppbus, vpo->vpo_dev, spp_outbyte_submicroseq);
-		printf("imm%d: NIBBLE mode\n", vpo->vpo_unit);
+		kprintf("imm%d: NIBBLE mode\n", vpo->vpo_unit);
 		break;
 	default:
 		panic("imm: unknown mode %d", vpo->vpo_mode_found);

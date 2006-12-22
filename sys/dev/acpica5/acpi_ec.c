@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.11 2006/12/22 23:26:14 swildner Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.10 2006/12/20 18:14:38 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.11 2006/12/22 23:26:14 swildner Exp $
   *
   */
 
@@ -385,7 +385,7 @@ acpi_ec_ecdt_probe(device_t parent)
     /* Create the child device with the given unit number. */
     child = BUS_ADD_CHILD(parent, parent, 0, "acpi_ec", ecdt->uid);
     if (child == NULL) {
-	printf("%s: can't add child\n", __func__);
+	kprintf("%s: can't add child\n", __func__);
 	return;
     }
 
@@ -393,7 +393,7 @@ acpi_ec_ecdt_probe(device_t parent)
     status = AcpiGetHandle(NULL, ecdt->ec_id, &h);
     if (ACPI_FAILURE(status)) {
 	device_delete_child(parent, child);
-	printf("%s: can't get handle\n", __func__);
+	kprintf("%s: can't get handle\n", __func__);
 	return;
     }
     acpi_set_handle(child, h);
@@ -698,7 +698,7 @@ re_enable:
     /* Re-enable the GPE event so we'll get future requests. */
     Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
     if (ACPI_FAILURE(Status))
-	printf("EcGpeQueryHandler: AcpiEnableEvent failed\n");
+	kprintf("EcGpeQueryHandler: AcpiEnableEvent failed\n");
 }
 
 /*
@@ -721,10 +721,10 @@ EcGpeHandler(void *Context)
     Status = AcpiOsQueueForExecution(OSD_PRIORITY_GPE, EcGpeQueryHandler,
 		Context);
     if (ACPI_FAILURE(Status)) {
-	printf("Queuing GPE query handler failed.\n");
+	kprintf("Queuing GPE query handler failed.\n");
 	Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
 	if (ACPI_FAILURE(Status))
-	    printf("EcGpeHandler: AcpiEnableEvent failed\n");
+	    kprintf("EcGpeHandler: AcpiEnableEvent failed\n");
     }
 
     return (0);

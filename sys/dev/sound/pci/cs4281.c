@@ -29,7 +29,7 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -354,7 +354,7 @@ cs4281chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
     adcdac_prog(ch);
     adcdac_go(ch, go);
 
-    DEB(printf("cs4281chan_setblocksize: blksz %d Setting %d\n", blocksize, ch->blksz));
+    DEB(kprintf("cs4281chan_setblocksize: blksz %d Setting %d\n", blocksize, ch->blksz));
 
     return ch->blksz;
 }
@@ -546,7 +546,7 @@ cs4281_power(struct sc_info *sc, int state)
         break;
     }
 
-    DEB(printf("cs4281_power %d -> %d\n", sc->power, state));
+    DEB(kprintf("cs4281_power %d -> %d\n", sc->power, state));
     sc->power = state;
 
     return 0;

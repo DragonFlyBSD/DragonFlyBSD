@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.14 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.15 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -555,7 +555,7 @@ initsd(int sdno, int verify)
 		error = bp->b_error;
 	    else if ((*bp->b_data != 0)		    /* first word spammed */
 	    ||(bcmp(bp->b_data, &bp->b_data[1], bp->b_bcount - 1))) { /* or one of the others */
-		printf("vinum: init error on %s, offset 0x%llx sectors\n",
+		kprintf("vinum: init error on %s, offset 0x%llx sectors\n",
 		    sd->name,
 		    (long long) sd->initialized);
 		verified = 0;

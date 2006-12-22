@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.11 2006/12/09 08:10:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.12 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -373,10 +373,10 @@ acx_attach(device_t dev)
 
 		error = acx_read_eeprom(sc, i, &val);
 		if (i % 10 == 0)
-			printf("\n");
-		printf("%02x ", val);
+			kprintf("\n");
+		kprintf("%02x ", val);
 	}
-	printf("\n");
+	kprintf("\n");
 #endif	/* DUMP_EEPROM */
 
 	/* Get EEPROM version */
@@ -1358,24 +1358,24 @@ acx_txerr(struct acx_softc *sc, uint8_t err)
 #if 0
 	case DESC_ERR_OTHER_FRAG:
 		/* XXX what's this */
-		printf("error in other fragment\n");
+		kprintf("error in other fragment\n");
 		stats->err_oth_frag++;
 		break;
 #endif
 	case DESC_ERR_ABORT:
-		printf("aborted\n");
+		kprintf("aborted\n");
 		stats->err_abort++;
 		break;
 	case DESC_ERR_PARAM:
-		printf("wrong paramters in descriptor\n");
+		kprintf("wrong paramters in descriptor\n");
 		stats->err_param++;
 		break;
 	case DESC_ERR_NO_WEPKEY:
-		printf("WEP key missing\n");
+		kprintf("WEP key missing\n");
 		stats->err_no_wepkey++;
 		break;
 	case DESC_ERR_MSDU_TIMEOUT:
-		printf("MSDU life timeout\n");
+		kprintf("MSDU life timeout\n");
 		stats->err_msdu_timeout++;
 		break;
 	case DESC_ERR_EXCESSIVE_RETRY:
@@ -1388,15 +1388,15 @@ acx_txerr(struct acx_softc *sc, uint8_t err)
 		stats->err_ex_retry++;
 		break;
 	case DESC_ERR_BUF_OVERFLOW:
-		printf("buffer overflow\n");
+		kprintf("buffer overflow\n");
 		stats->err_buf_oflow++;
 		break;
 	case DESC_ERR_DMA:
-		printf("DMA error\n");
+		kprintf("DMA error\n");
 		stats->err_dma++;
 		break;
 	default:
-		printf("unknown error %d\n", err);
+		kprintf("unknown error %d\n", err);
 		stats->err_unkn++;
 		break;
 	}

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.3 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -158,40 +158,40 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     rdp->disk.d_label.d_secpercyl = rdp->sectors * rdp->heads;
     rdp->disk.d_label.d_secperunit = rdp->total_secs;
 
-    printf("ar%d: %juMB <%s %s%s> status: %s\n", rdp->lun,
+    kprintf("ar%d: %juMB <%s %s%s> status: %s\n", rdp->lun,
 	   rdp->total_sectors / ((1024L * 1024L) / DEV_BSIZE),
 	   ata_raid_format(rdp), ata_raid_type(rdp),
 	   buffer, ata_raid_flags(rdp));
 
     if (testing || bootverbose)
-	printf("ar%d: %ju sectors [%dC/%dH/%dS] <%s> subdisks defined as:\n",
+	kprintf("ar%d: %ju sectors [%dC/%dH/%dS] <%s> subdisks defined as:\n",
 	       rdp->lun, rdp->total_sectors,
 	       rdp->cylinders, rdp->heads, rdp->sectors, rdp->name);
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
-	printf("ar%d: disk%d ", rdp->lun, disk);
+	kprintf("ar%d: disk%d ", rdp->lun, disk);
 	if (rdp->disks[disk].dev) {
 	    if (rdp->disks[disk].flags & AR_DF_PRESENT) {
 		/* status of this disk in the array */
 		if (rdp->disks[disk].flags & AR_DF_ONLINE)
-		    printf("READY ");
+		    kprintf("READY ");
 		else if (rdp->disks[disk].flags & AR_DF_SPARE)
-		    printf("SPARE ");
+		    kprintf("SPARE ");
 		else
-		    printf("FREE  ");
+		    kprintf("FREE  ");
 
 		/* what type of disk is this in the array */
 		switch (rdp->type) {
 		case AR_T_RAID1:
 		case AR_T_RAID01:
 		    if (disk < rdp->width)
-			printf("(master) ");
+			kprintf("(master) ");
 		    else
-			printf("(mirror) ");
+			kprintf("(mirror) ");
 		}
 		
 		/* which physical disk is used */
-		printf("using %s at ata%d-%s\n",
+		kprintf("using %s at ata%d-%s\n",
 		       device_get_nameunit(rdp->disks[disk].dev),
 		       device_get_unit(device_get_parent(rdp->disks[disk].dev)),
 		       (((struct ata_device *)
@@ -199,12 +199,12 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
 			 ATA_MASTER) ? "master" : "slave");
 	    }
 	    else if (rdp->disks[disk].flags & AR_DF_ASSIGNED)
-		printf("DOWN\n");
+		kprintf("DOWN\n");
 	    else
-		printf("INVALID no RAID config on this subdisk\n");
+		kprintf("INVALID no RAID config on this subdisk\n");
 	}
 	else
-	    printf("DOWN no device found for this subdisk\n");
+	    kprintf("DOWN no device found for this subdisk\n");
     }
 }
 
@@ -310,7 +310,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    break;
 
 	default:
-	    printf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
+	    kprintf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
 	    bbp->b_flags |= B_ERROR;
 	    bbp->b_error = EIO;
 	    biodone(bp);
@@ -452,11 +452,11 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 			    }
 			    else {
 				ata_free_composite(composite);
-				printf("DOH! ata_alloc_request failed!\n");
+				kprintf("DOH! ata_alloc_request failed!\n");
 			    }
 			}
 			else {
-			    printf("DOH! ata_alloc_composite failed!\n");
+			    kprintf("DOH! ata_alloc_composite failed!\n");
 			}
 		    }
 		    else if (rdp->disks[this].flags & AR_DF_ONLINE) {
@@ -469,7 +469,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 			rdp->rebuild_lba = blk + chunk;
 		    }
 		    else
-			printf("DOH! we didn't find the rebuild part\n");
+			kprintf("DOH! we didn't find the rebuild part\n");
 		}
 	    }
 	    if (bbp->b_cmd == BUF_CMD_WRITE) {
@@ -513,11 +513,11 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 			    }
 			    else {
 				ata_free_composite(composite);
-				printf("DOH! ata_alloc_request failed!\n");
+				kprintf("DOH! ata_alloc_request failed!\n");
 			    }
 			}
 			else {
-			    printf("DOH! ata_alloc_composite failed!\n");
+			    kprintf("DOH! ata_alloc_composite failed!\n");
 			}
 		    }
 		    else
@@ -573,7 +573,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    break;
 
 	default:
-	    printf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
+	    kprintf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
 	}
     }
 }
@@ -656,7 +656,7 @@ ata_raid_done(struct ata_request *request)
 		    else if (request->flags & ATA_R_WRITE) {
 			if (composite->rd_done & (1 << mirror)) {
 			    if (request->result) {
-				printf("DOH! rebuild failed\n"); /* XXX SOS */
+				kprintf("DOH! rebuild failed\n"); /* XXX SOS */
 				rdp->rebuild_lba = blk;
 			    }
 			    if (!composite->residual)
@@ -688,12 +688,12 @@ ata_raid_done(struct ata_request *request)
 		    if (composite->wr_done & (1 << mirror)) {
 			if (request->result) {
 			    if (composite->request[mirror]->result) {
-				printf("DOH! all disks failed and got here\n");
+				kprintf("DOH! all disks failed and got here\n");
 				bbp->b_error = EIO;
 			    }
 			    if (rdp->status & AR_S_REBUILDING) {
 				rdp->rebuild_lba = blk;
-				printf("DOH! rebuild failed\n"); /* XXX SOS */
+				kprintf("DOH! rebuild failed\n"); /* XXX SOS */
 			    }
 			    bbp->b_resid -=
 				composite->request[mirror]->donecount;
@@ -753,7 +753,7 @@ ata_raid_done(struct ata_request *request)
 	break;
 
     default:
-	printf("ar%d: unknown array type in ata_raid_done\n", rdp->lun);
+	kprintf("ar%d: unknown array type in ata_raid_done\n", rdp->lun);
     }
 
     if (finished) {
@@ -929,15 +929,15 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 
     if (rdp->status != status) {
 	if (!(rdp->status & AR_S_READY)) {
-	    printf("ar%d: FAILURE - %s array broken\n",
+	    kprintf("ar%d: FAILURE - %s array broken\n",
 		   rdp->lun, ata_raid_type(rdp));
 	}
 	else if (rdp->status & AR_S_DEGRADED) {
 	    if (rdp->type & (AR_T_RAID1 | AR_T_RAID01))
-		printf("ar%d: WARNING - mirror", rdp->lun);
+		kprintf("ar%d: WARNING - mirror", rdp->lun);
 	    else
-		printf("ar%d: WARNING - parity", rdp->lun);
-	    printf(" protection lost. %s array in DEGRADED mode\n",
+		kprintf("ar%d: WARNING - parity", rdp->lun);
+	    kprintf(" protection lost. %s array in DEGRADED mode\n",
 		   ata_raid_type(rdp));
 	}
     }
@@ -987,7 +987,7 @@ ata_raid_create(struct ata_ioc_raid_config *config)
 
     if (!(rdp = (struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
 					 M_NOWAIT | M_ZERO))) {
-	printf("ar%d: no memory for metadata storage\n", array);
+	kprintf("ar%d: no memory for metadata storage\n", array);
 	return ENOMEM;
     }
 
@@ -1058,7 +1058,7 @@ ata_raid_create(struct ata_ioc_raid_config *config)
 		 * setup the RAID from there, in that case we pickup the
 		 * metadata format from the disks (if we support it).
 		 */
-		printf("WARNING!! - not able to determine metadata format\n"
+		kprintf("WARNING!! - not able to determine metadata format\n"
 		       "WARNING!! - Using FreeBSD PseudoRAID metadata\n"
 		       "If that is not what you want, use the BIOS to "
 		       "create the array\n");
@@ -1473,7 +1473,7 @@ ata_raid_write_metadata(struct ar_softc *rdp)
 
 #endif
     default:
-	printf("ar%d: writing of %s metadata is NOT supported yet\n",
+	kprintf("ar%d: writing of %s metadata is NOT supported yet\n",
 	       rdp->lun, ata_raid_format(rdp));
     }
     return -1;
@@ -1557,7 +1557,7 @@ ata_raid_wipe_metadata(struct ar_softc *rdp)
 		break;
 
 	    default:
-		printf("ar%d: wiping of %s metadata is NOT supported yet\n",
+		kprintf("ar%d: wiping of %s metadata is NOT supported yet\n",
 		       rdp->lun, ata_raid_format(rdp));
 		return ENXIO;
 	    }
@@ -1854,7 +1854,7 @@ ata_raid_hptv2_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct hptv2_raid_conf *)
 	  malloc(sizeof(struct hptv2_raid_conf), M_AR, M_NOWAIT | M_ZERO))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -2278,7 +2278,7 @@ ata_raid_intel_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct intel_raid_conf *)
 	  malloc(1536, M_AR, M_NOWAIT | M_ZERO))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -2652,7 +2652,7 @@ ata_raid_jmicron_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct jmicron_raid_conf *)
 	  malloc(sizeof(struct jmicron_raid_conf), M_AR, M_NOWAIT | M_ZERO))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -3307,7 +3307,7 @@ ata_raid_promise_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct promise_raid_conf *)
 	  malloc(sizeof(struct promise_raid_conf), M_AR, M_NOWAIT))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -3726,7 +3726,7 @@ ata_raid_sis_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct sis_raid_conf *)
 	  malloc(sizeof(struct sis_raid_conf), M_AR, M_NOWAIT | M_ZERO))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -3944,7 +3944,7 @@ ata_raid_via_write_meta(struct ar_softc *rdp)
 
     if (!(meta = (struct via_raid_conf *)
 	  malloc(sizeof(struct via_raid_conf), M_AR, M_NOWAIT | M_ZERO))) {
-	printf("ar%d: failed to allocate metadata storage\n", rdp->lun);
+	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
 	return ENOMEM;
     }
 
@@ -4027,7 +4027,7 @@ ata_raid_init_request(struct ar_softc *rdp, struct bio *bio)
     struct ata_request *request;
 
     if (!(request = ata_alloc_request())) {
-	printf("FAILURE - out of memory in ata_raid_init_request\n");
+	kprintf("FAILURE - out of memory in ata_raid_init_request\n");
 	return NULL;
     }
     request->timeout = 5;
@@ -4204,13 +4204,13 @@ ata_raid_module_event_handler(module_t mod, int what, void *arg)
     switch (what) {
     case MOD_LOAD:
 	if (testing || bootverbose)
-	    printf("ATA PseudoRAID loaded\n");
+	    kprintf("ATA PseudoRAID loaded\n");
 #if 0
 	/* setup table to hold metadata for all ATA PseudoRAID arrays */
 	ata_raid_arrays = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 				M_AR, M_NOWAIT | M_ZERO);
 	if (!ata_raid_arrays) {
-	    printf("ataraid: no memory for metadata storage\n");
+	    kprintf("ataraid: no memory for metadata storage\n");
 	    return ENOMEM;
 	}
 #endif
@@ -4238,7 +4238,7 @@ ata_raid_module_event_handler(module_t mod, int what, void *arg)
 		disk_destroy(rdp->disk);
 	}
 	if (testing || bootverbose)
-	    printf("ATA PseudoRAID unloaded\n");
+	    kprintf("ATA PseudoRAID unloaded\n");
 #if 0
 	free(ata_raid_arrays, M_AR);
 #endif
@@ -4313,33 +4313,33 @@ ata_raid_print_meta(struct ar_softc *raid)
 {
     int i;
 
-    printf("********** ATA PseudoRAID ar%d Metadata **********\n", raid->lun);
-    printf("=================================================\n");
-    printf("format              %s\n", ata_raid_format(raid));
-    printf("type                %s\n", ata_raid_type(raid));
-    printf("flags               0x%02x %b\n", raid->status, raid->status,
+    kprintf("********** ATA PseudoRAID ar%d Metadata **********\n", raid->lun);
+    kprintf("=================================================\n");
+    kprintf("format              %s\n", ata_raid_format(raid));
+    kprintf("type                %s\n", ata_raid_type(raid));
+    kprintf("flags               0x%02x %b\n", raid->status, raid->status,
 	   "\20\3REBUILDING\2DEGRADED\1READY\n");
-    printf("magic_0             0x%016jx\n", raid->magic_0);
-    printf("magic_1             0x%016jx\n",raid->magic_1);
-    printf("generation          %u\n", raid->generation);
-    printf("total_sectors       %ju\n", raid->total_sectors);
-    printf("offset_sectors      %ju\n", raid->offset_sectors);
-    printf("heads               %u\n", raid->heads);
-    printf("sectors             %u\n", raid->sectors);
-    printf("cylinders           %u\n", raid->cylinders);
-    printf("width               %u\n", raid->width);
-    printf("interleave          %u\n", raid->interleave);
-    printf("total_disks         %u\n", raid->total_disks);
+    kprintf("magic_0             0x%016jx\n", raid->magic_0);
+    kprintf("magic_1             0x%016jx\n",raid->magic_1);
+    kprintf("generation          %u\n", raid->generation);
+    kprintf("total_sectors       %ju\n", raid->total_sectors);
+    kprintf("offset_sectors      %ju\n", raid->offset_sectors);
+    kprintf("heads               %u\n", raid->heads);
+    kprintf("sectors             %u\n", raid->sectors);
+    kprintf("cylinders           %u\n", raid->cylinders);
+    kprintf("width               %u\n", raid->width);
+    kprintf("interleave          %u\n", raid->interleave);
+    kprintf("total_disks         %u\n", raid->total_disks);
     for (i = 0; i < raid->total_disks; i++) {
-	printf("    disk %d:      flags = 0x%02x %b\n", i, raid->disks[i].flags,
+	kprintf("    disk %d:      flags = 0x%02x %b\n", i, raid->disks[i].flags,
 	       raid->disks[i].flags, "\20\4ONLINE\3SPARE\2ASSIGNED\1PRESENT\n");
 	if (raid->disks[i].dev) {
-	    printf("        ");
+	    kprintf("        ");
 	    device_printf(raid->disks[i].dev, " sectors %jd\n",
 			  raid->disks[i].sectors);
 	}
     }
-    printf("=================================================\n");
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4360,63 +4360,63 @@ ata_raid_adaptec_print_meta(struct adaptec_raid_conf *meta)
 {
     int i;
 
-    printf("********* ATA Adaptec HostRAID Metadata *********\n");
-    printf("magic_0             <0x%08x>\n", be32toh(meta->magic_0));
-    printf("generation          0x%08x\n", be32toh(meta->generation));
-    printf("dummy_0             0x%04x\n", be16toh(meta->dummy_0));
-    printf("total_configs       %u\n", be16toh(meta->total_configs));
-    printf("dummy_1             0x%04x\n", be16toh(meta->dummy_1));
-    printf("checksum            0x%04x\n", be16toh(meta->checksum));
-    printf("dummy_2             0x%08x\n", be32toh(meta->dummy_2));
-    printf("dummy_3             0x%08x\n", be32toh(meta->dummy_3));
-    printf("flags               0x%08x\n", be32toh(meta->flags));
-    printf("timestamp           0x%08x\n", be32toh(meta->timestamp));
-    printf("dummy_4             0x%08x 0x%08x 0x%08x 0x%08x\n",
+    kprintf("********* ATA Adaptec HostRAID Metadata *********\n");
+    kprintf("magic_0             <0x%08x>\n", be32toh(meta->magic_0));
+    kprintf("generation          0x%08x\n", be32toh(meta->generation));
+    kprintf("dummy_0             0x%04x\n", be16toh(meta->dummy_0));
+    kprintf("total_configs       %u\n", be16toh(meta->total_configs));
+    kprintf("dummy_1             0x%04x\n", be16toh(meta->dummy_1));
+    kprintf("checksum            0x%04x\n", be16toh(meta->checksum));
+    kprintf("dummy_2             0x%08x\n", be32toh(meta->dummy_2));
+    kprintf("dummy_3             0x%08x\n", be32toh(meta->dummy_3));
+    kprintf("flags               0x%08x\n", be32toh(meta->flags));
+    kprintf("timestamp           0x%08x\n", be32toh(meta->timestamp));
+    kprintf("dummy_4             0x%08x 0x%08x 0x%08x 0x%08x\n",
 	   be32toh(meta->dummy_4[0]), be32toh(meta->dummy_4[1]),
 	   be32toh(meta->dummy_4[2]), be32toh(meta->dummy_4[3]));
-    printf("dummy_5             0x%08x 0x%08x 0x%08x 0x%08x\n",
+    kprintf("dummy_5             0x%08x 0x%08x 0x%08x 0x%08x\n",
 	   be32toh(meta->dummy_5[0]), be32toh(meta->dummy_5[1]),
 	   be32toh(meta->dummy_5[2]), be32toh(meta->dummy_5[3]));
 
     for (i = 0; i < be16toh(meta->total_configs); i++) {
-	printf("    %d   total_disks  %u\n", i,
+	kprintf("    %d   total_disks  %u\n", i,
 	       be16toh(meta->configs[i].disk_number));
-	printf("    %d   generation   %u\n", i,
+	kprintf("    %d   generation   %u\n", i,
 	       be16toh(meta->configs[i].generation));
-	printf("    %d   magic_0      0x%08x\n", i,
+	kprintf("    %d   magic_0      0x%08x\n", i,
 	       be32toh(meta->configs[i].magic_0));
-	printf("    %d   dummy_0      0x%02x\n", i, meta->configs[i].dummy_0);
-	printf("    %d   type         %s\n", i,
+	kprintf("    %d   dummy_0      0x%02x\n", i, meta->configs[i].dummy_0);
+	kprintf("    %d   type         %s\n", i,
 	       ata_raid_adaptec_type(meta->configs[i].type));
-	printf("    %d   dummy_1      0x%02x\n", i, meta->configs[i].dummy_1);
-	printf("    %d   flags        %d\n", i,
+	kprintf("    %d   dummy_1      0x%02x\n", i, meta->configs[i].dummy_1);
+	kprintf("    %d   flags        %d\n", i,
 	       be32toh(meta->configs[i].flags));
-	printf("    %d   dummy_2      0x%02x\n", i, meta->configs[i].dummy_2);
-	printf("    %d   dummy_3      0x%02x\n", i, meta->configs[i].dummy_3);
-	printf("    %d   dummy_4      0x%02x\n", i, meta->configs[i].dummy_4);
-	printf("    %d   dummy_5      0x%02x\n", i, meta->configs[i].dummy_5);
-	printf("    %d   disk_number  %u\n", i,
+	kprintf("    %d   dummy_2      0x%02x\n", i, meta->configs[i].dummy_2);
+	kprintf("    %d   dummy_3      0x%02x\n", i, meta->configs[i].dummy_3);
+	kprintf("    %d   dummy_4      0x%02x\n", i, meta->configs[i].dummy_4);
+	kprintf("    %d   dummy_5      0x%02x\n", i, meta->configs[i].dummy_5);
+	kprintf("    %d   disk_number  %u\n", i,
 	       be32toh(meta->configs[i].disk_number));
-	printf("    %d   dummy_6      0x%08x\n", i,
+	kprintf("    %d   dummy_6      0x%08x\n", i,
 	       be32toh(meta->configs[i].dummy_6));
-	printf("    %d   sectors      %u\n", i,
+	kprintf("    %d   sectors      %u\n", i,
 	       be32toh(meta->configs[i].sectors));
-	printf("    %d   stripe_shift %u\n", i,
+	kprintf("    %d   stripe_shift %u\n", i,
 	       be16toh(meta->configs[i].stripe_shift));
-	printf("    %d   dummy_7      0x%08x\n", i,
+	kprintf("    %d   dummy_7      0x%08x\n", i,
 	       be32toh(meta->configs[i].dummy_7));
-	printf("    %d   dummy_8      0x%08x 0x%08x 0x%08x 0x%08x\n", i,
+	kprintf("    %d   dummy_8      0x%08x 0x%08x 0x%08x 0x%08x\n", i,
 	       be32toh(meta->configs[i].dummy_8[0]),
 	       be32toh(meta->configs[i].dummy_8[1]),
 	       be32toh(meta->configs[i].dummy_8[2]),
 	       be32toh(meta->configs[i].dummy_8[3]));
-	printf("    %d   name         <%s>\n", i, meta->configs[i].name);
+	kprintf("    %d   name         <%s>\n", i, meta->configs[i].name);
     }
-    printf("magic_1             <0x%08x>\n", be32toh(meta->magic_1));
-    printf("magic_2             <0x%08x>\n", be32toh(meta->magic_2));
-    printf("magic_3             <0x%08x>\n", be32toh(meta->magic_3));
-    printf("magic_4             <0x%08x>\n", be32toh(meta->magic_4));
-    printf("=================================================\n");
+    kprintf("magic_1             <0x%08x>\n", be32toh(meta->magic_1));
+    kprintf("magic_2             <0x%08x>\n", be32toh(meta->magic_2));
+    kprintf("magic_3             <0x%08x>\n", be32toh(meta->magic_3));
+    kprintf("magic_4             <0x%08x>\n", be32toh(meta->magic_4));
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4443,38 +4443,38 @@ ata_raid_hptv2_print_meta(struct hptv2_raid_conf *meta)
 {
     int i;
 
-    printf("****** ATA Highpoint V2 RocketRAID Metadata *****\n");
-    printf("magic               0x%08x\n", meta->magic);
-    printf("magic_0             0x%08x\n", meta->magic_0);
-    printf("magic_1             0x%08x\n", meta->magic_1);
-    printf("order               0x%08x\n", meta->order);
-    printf("array_width         %u\n", meta->array_width);
-    printf("stripe_shift        %u\n", meta->stripe_shift);
-    printf("type                %s\n", ata_raid_hptv2_type(meta->type));
-    printf("disk_number         %u\n", meta->disk_number);
-    printf("total_sectors       %u\n", meta->total_sectors);
-    printf("disk_mode           0x%08x\n", meta->disk_mode);
-    printf("boot_mode           0x%08x\n", meta->boot_mode);
-    printf("boot_disk           0x%02x\n", meta->boot_disk);
-    printf("boot_protect        0x%02x\n", meta->boot_protect);
-    printf("log_entries         0x%02x\n", meta->error_log_entries);
-    printf("log_index           0x%02x\n", meta->error_log_index);
+    kprintf("****** ATA Highpoint V2 RocketRAID Metadata *****\n");
+    kprintf("magic               0x%08x\n", meta->magic);
+    kprintf("magic_0             0x%08x\n", meta->magic_0);
+    kprintf("magic_1             0x%08x\n", meta->magic_1);
+    kprintf("order               0x%08x\n", meta->order);
+    kprintf("array_width         %u\n", meta->array_width);
+    kprintf("stripe_shift        %u\n", meta->stripe_shift);
+    kprintf("type                %s\n", ata_raid_hptv2_type(meta->type));
+    kprintf("disk_number         %u\n", meta->disk_number);
+    kprintf("total_sectors       %u\n", meta->total_sectors);
+    kprintf("disk_mode           0x%08x\n", meta->disk_mode);
+    kprintf("boot_mode           0x%08x\n", meta->boot_mode);
+    kprintf("boot_disk           0x%02x\n", meta->boot_disk);
+    kprintf("boot_protect        0x%02x\n", meta->boot_protect);
+    kprintf("log_entries         0x%02x\n", meta->error_log_entries);
+    kprintf("log_index           0x%02x\n", meta->error_log_index);
     if (meta->error_log_entries) {
-	printf("    timestamp  reason disk  status  sectors lba\n");
+	kprintf("    timestamp  reason disk  status  sectors lba\n");
 	for (i = meta->error_log_index;
 	     i < meta->error_log_index + meta->error_log_entries; i++)
-	    printf("    0x%08x  0x%02x  0x%02x  0x%02x    0x%02x    0x%08x\n",
+	    kprintf("    0x%08x  0x%02x  0x%02x  0x%02x    0x%02x    0x%08x\n",
 		   meta->errorlog[i%32].timestamp,
 		   meta->errorlog[i%32].reason,
 		   meta->errorlog[i%32].disk, meta->errorlog[i%32].status,
 		   meta->errorlog[i%32].sectors, meta->errorlog[i%32].lba);
     }
-    printf("rebuild_lba         0x%08x\n", meta->rebuild_lba);
-    printf("dummy_1             0x%02x\n", meta->dummy_1);
-    printf("name_1              <%.15s>\n", meta->name_1);
-    printf("dummy_2             0x%02x\n", meta->dummy_2);
-    printf("name_2              <%.15s>\n", meta->name_2);
-    printf("=================================================\n");
+    kprintf("rebuild_lba         0x%08x\n", meta->rebuild_lba);
+    kprintf("dummy_1             0x%02x\n", meta->dummy_1);
+    kprintf("name_1              <%.15s>\n", meta->name_1);
+    kprintf("dummy_2             0x%02x\n", meta->dummy_2);
+    kprintf("name_2              <%.15s>\n", meta->name_2);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4500,40 +4500,40 @@ ata_raid_hptv3_print_meta(struct hptv3_raid_conf *meta)
 {
     int i;
 
-    printf("****** ATA Highpoint V3 RocketRAID Metadata *****\n");
-    printf("magic               0x%08x\n", meta->magic);
-    printf("magic_0             0x%08x\n", meta->magic_0);
-    printf("checksum_0          0x%02x\n", meta->checksum_0);
-    printf("mode                0x%02x\n", meta->mode);
-    printf("user_mode           0x%02x\n", meta->user_mode);
-    printf("config_entries      0x%02x\n", meta->config_entries);
+    kprintf("****** ATA Highpoint V3 RocketRAID Metadata *****\n");
+    kprintf("magic               0x%08x\n", meta->magic);
+    kprintf("magic_0             0x%08x\n", meta->magic_0);
+    kprintf("checksum_0          0x%02x\n", meta->checksum_0);
+    kprintf("mode                0x%02x\n", meta->mode);
+    kprintf("user_mode           0x%02x\n", meta->user_mode);
+    kprintf("config_entries      0x%02x\n", meta->config_entries);
     for (i = 0; i < meta->config_entries; i++) {
-	printf("config %d:\n", i);
-	printf("    total_sectors       %ju\n",
+	kprintf("config %d:\n", i);
+	kprintf("    total_sectors       %ju\n",
 	       meta->configs[0].total_sectors +
 	       ((u_int64_t)meta->configs_high[0].total_sectors << 32));
-	printf("    type                %s\n",
+	kprintf("    type                %s\n",
 	       ata_raid_hptv3_type(meta->configs[i].type)); 
-	printf("    total_disks         %u\n", meta->configs[i].total_disks);
-	printf("    disk_number         %u\n", meta->configs[i].disk_number);
-	printf("    stripe_shift        %u\n", meta->configs[i].stripe_shift);
-	printf("    status              %b\n", meta->configs[i].status,
+	kprintf("    total_disks         %u\n", meta->configs[i].total_disks);
+	kprintf("    disk_number         %u\n", meta->configs[i].disk_number);
+	kprintf("    stripe_shift        %u\n", meta->configs[i].stripe_shift);
+	kprintf("    status              %b\n", meta->configs[i].status,
 	       "\20\2RAID5\1NEED_REBUILD\n");
-	printf("    critical_disks      %u\n", meta->configs[i].critical_disks);
-	printf("    rebuild_lba         %ju\n",
+	kprintf("    critical_disks      %u\n", meta->configs[i].critical_disks);
+	kprintf("    rebuild_lba         %ju\n",
 	       meta->configs_high[0].rebuild_lba +
 	       ((u_int64_t)meta->configs_high[0].rebuild_lba << 32));
     }
-    printf("name                <%.16s>\n", meta->name);
-    printf("timestamp           0x%08x\n", meta->timestamp);
-    printf("description         <%.16s>\n", meta->description);
-    printf("creator             <%.16s>\n", meta->creator);
-    printf("checksum_1          0x%02x\n", meta->checksum_1);
-    printf("dummy_0             0x%02x\n", meta->dummy_0);
-    printf("dummy_1             0x%02x\n", meta->dummy_1);
-    printf("flags               %b\n", meta->flags,
+    kprintf("name                <%.16s>\n", meta->name);
+    kprintf("timestamp           0x%08x\n", meta->timestamp);
+    kprintf("description         <%.16s>\n", meta->description);
+    kprintf("creator             <%.16s>\n", meta->creator);
+    kprintf("checksum_1          0x%02x\n", meta->checksum_1);
+    kprintf("dummy_0             0x%02x\n", meta->dummy_0);
+    kprintf("dummy_1             0x%02x\n", meta->dummy_1);
+    kprintf("flags               %b\n", meta->flags,
 	   "\20\4RCACHE\3WCACHE\2NCQ\1TCQ\n");
-    printf("=================================================\n");
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4556,43 +4556,43 @@ ata_raid_intel_print_meta(struct intel_raid_conf *meta)
     struct intel_raid_mapping *map;
     int i, j;
 
-    printf("********* ATA Intel MatrixRAID Metadata *********\n");
-    printf("intel_id            <%.24s>\n", meta->intel_id);
-    printf("version             <%.6s>\n", meta->version);
-    printf("checksum            0x%08x\n", meta->checksum);
-    printf("config_size         0x%08x\n", meta->config_size);
-    printf("config_id           0x%08x\n", meta->config_id);
-    printf("generation          0x%08x\n", meta->generation);
-    printf("total_disks         %u\n", meta->total_disks);
-    printf("total_volumes       %u\n", meta->total_volumes);
-    printf("DISK#   serial disk_sectors disk_id flags\n");
+    kprintf("********* ATA Intel MatrixRAID Metadata *********\n");
+    kprintf("intel_id            <%.24s>\n", meta->intel_id);
+    kprintf("version             <%.6s>\n", meta->version);
+    kprintf("checksum            0x%08x\n", meta->checksum);
+    kprintf("config_size         0x%08x\n", meta->config_size);
+    kprintf("config_id           0x%08x\n", meta->config_id);
+    kprintf("generation          0x%08x\n", meta->generation);
+    kprintf("total_disks         %u\n", meta->total_disks);
+    kprintf("total_volumes       %u\n", meta->total_volumes);
+    kprintf("DISK#   serial disk_sectors disk_id flags\n");
     for (i = 0; i < meta->total_disks; i++ ) {
-	printf("    %d   <%.16s> %u 0x%08x 0x%08x\n", i,
+	kprintf("    %d   <%.16s> %u 0x%08x 0x%08x\n", i,
 	       meta->disk[i].serial, meta->disk[i].sectors,
 	       meta->disk[i].id, meta->disk[i].flags);
     }
     map = (struct intel_raid_mapping *)&meta->disk[meta->total_disks];
     for (j = 0; j < meta->total_volumes; j++) {
-	printf("name                %.16s\n", map->name);
-	printf("total_sectors       %ju\n", map->total_sectors);
-	printf("state               %u\n", map->state);
-	printf("reserved            %u\n", map->reserved);
-	printf("offset              %u\n", map->offset);
-	printf("disk_sectors        %u\n", map->disk_sectors);
-	printf("stripe_count        %u\n", map->stripe_count);
-	printf("stripe_sectors      %u\n", map->stripe_sectors);
-	printf("status              %u\n", map->status);
-	printf("type                %s\n", ata_raid_intel_type(map->type));
-	printf("total_disks         %u\n", map->total_disks);
-	printf("magic[0]            0x%02x\n", map->magic[0]);
-	printf("magic[1]            0x%02x\n", map->magic[1]);
-	printf("magic[2]            0x%02x\n", map->magic[2]);
+	kprintf("name                %.16s\n", map->name);
+	kprintf("total_sectors       %ju\n", map->total_sectors);
+	kprintf("state               %u\n", map->state);
+	kprintf("reserved            %u\n", map->reserved);
+	kprintf("offset              %u\n", map->offset);
+	kprintf("disk_sectors        %u\n", map->disk_sectors);
+	kprintf("stripe_count        %u\n", map->stripe_count);
+	kprintf("stripe_sectors      %u\n", map->stripe_sectors);
+	kprintf("status              %u\n", map->status);
+	kprintf("type                %s\n", ata_raid_intel_type(map->type));
+	kprintf("total_disks         %u\n", map->total_disks);
+	kprintf("magic[0]            0x%02x\n", map->magic[0]);
+	kprintf("magic[1]            0x%02x\n", map->magic[1]);
+	kprintf("magic[2]            0x%02x\n", map->magic[2]);
 	for (i = 0; i < map->total_disks; i++ ) {
-	    printf("    disk %d at disk_idx 0x%08x\n", i, map->disk_idx[i]);
+	    kprintf("    disk %d at disk_idx 0x%08x\n", i, map->disk_idx[i]);
 	}
 	map = (struct intel_raid_mapping *)&map->disk_idx[map->total_disks];
     }
-    printf("=================================================\n");
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4613,24 +4613,24 @@ ata_raid_ite_type(int type)
 static void
 ata_raid_ite_print_meta(struct ite_raid_conf *meta)
 {
-    printf("*** ATA Integrated Technology Express Metadata **\n");
-    printf("ite_id              <%.40s>\n", meta->ite_id);
-    printf("timestamp_0         %04x/%02x/%02x %02x:%02x:%02x.%02x\n",
+    kprintf("*** ATA Integrated Technology Express Metadata **\n");
+    kprintf("ite_id              <%.40s>\n", meta->ite_id);
+    kprintf("timestamp_0         %04x/%02x/%02x %02x:%02x:%02x.%02x\n",
 	   *((u_int16_t *)meta->timestamp_0), meta->timestamp_0[2],
 	   meta->timestamp_0[3], meta->timestamp_0[5], meta->timestamp_0[4],
 	   meta->timestamp_0[7], meta->timestamp_0[6]);
-    printf("total_sectors       %jd\n", meta->total_sectors);
-    printf("type                %s\n", ata_raid_ite_type(meta->type));
-    printf("stripe_1kblocks     %u\n", meta->stripe_1kblocks);
-    printf("timestamp_1         %04x/%02x/%02x %02x:%02x:%02x.%02x\n",
+    kprintf("total_sectors       %jd\n", meta->total_sectors);
+    kprintf("type                %s\n", ata_raid_ite_type(meta->type));
+    kprintf("stripe_1kblocks     %u\n", meta->stripe_1kblocks);
+    kprintf("timestamp_1         %04x/%02x/%02x %02x:%02x:%02x.%02x\n",
 	   *((u_int16_t *)meta->timestamp_1), meta->timestamp_1[2],
 	   meta->timestamp_1[3], meta->timestamp_1[5], meta->timestamp_1[4],
 	   meta->timestamp_1[7], meta->timestamp_1[6]);
-    printf("stripe_sectors      %u\n", meta->stripe_sectors);
-    printf("array_width         %u\n", meta->array_width);
-    printf("disk_number         %u\n", meta->disk_number);
-    printf("disk_sectors        %u\n", meta->disk_sectors);
-    printf("=================================================\n");
+    kprintf("stripe_sectors      %u\n", meta->stripe_sectors);
+    kprintf("array_width         %u\n", meta->array_width);
+    kprintf("disk_number         %u\n", meta->disk_number);
+    kprintf("disk_sectors        %u\n", meta->disk_sectors);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4654,25 +4654,25 @@ ata_raid_jmicron_print_meta(struct jmicron_raid_conf *meta)
 {
     int i;
 
-    printf("***** ATA JMicron Technology Corp Metadata ******\n");
-    printf("signature           %.2s\n", meta->signature);
-    printf("version             0x%04x\n", meta->version);
-    printf("checksum            0x%04x\n", meta->checksum);
-    printf("disk_id             0x%08x\n", meta->disk_id);
-    printf("offset              0x%08x\n", meta->offset);
-    printf("disk_sectors_low    0x%08x\n", meta->disk_sectors_low);
-    printf("disk_sectors_high   0x%08x\n", meta->disk_sectors_high);
-    printf("name                %.16s\n", meta->name);
-    printf("type                %s\n", ata_raid_jmicron_type(meta->type));
-    printf("stripe_shift        %d\n", meta->stripe_shift);
-    printf("flags               0x%04x\n", meta->flags);
-    printf("spare:\n");
+    kprintf("***** ATA JMicron Technology Corp Metadata ******\n");
+    kprintf("signature           %.2s\n", meta->signature);
+    kprintf("version             0x%04x\n", meta->version);
+    kprintf("checksum            0x%04x\n", meta->checksum);
+    kprintf("disk_id             0x%08x\n", meta->disk_id);
+    kprintf("offset              0x%08x\n", meta->offset);
+    kprintf("disk_sectors_low    0x%08x\n", meta->disk_sectors_low);
+    kprintf("disk_sectors_high   0x%08x\n", meta->disk_sectors_high);
+    kprintf("name                %.16s\n", meta->name);
+    kprintf("type                %s\n", ata_raid_jmicron_type(meta->type));
+    kprintf("stripe_shift        %d\n", meta->stripe_shift);
+    kprintf("flags               0x%04x\n", meta->flags);
+    kprintf("spare:\n");
     for (i=0; i < 2 && meta->spare[i]; i++)
-	printf("    %d                  0x%08x\n", i, meta->spare[i]);
-    printf("disks:\n");
+	kprintf("    %d                  0x%08x\n", i, meta->spare[i]);
+    kprintf("disks:\n");
     for (i=0; i < 8 && meta->disks[i]; i++)
-	printf("    %d                  0x%08x\n", i, meta->disks[i]);
-    printf("=================================================\n");
+	kprintf("    %d                  0x%08x\n", i, meta->disks[i]);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4694,36 +4694,36 @@ ata_raid_lsiv2_print_meta(struct lsiv2_raid_conf *meta)
 {
     int i;
 
-    printf("******* ATA LSILogic V2 MegaRAID Metadata *******\n");
-    printf("lsi_id              <%s>\n", meta->lsi_id);
-    printf("dummy_0             0x%02x\n", meta->dummy_0);
-    printf("flags               0x%02x\n", meta->flags);
-    printf("version             0x%04x\n", meta->version);
-    printf("config_entries      0x%02x\n", meta->config_entries);
-    printf("raid_count          0x%02x\n", meta->raid_count);
-    printf("total_disks         0x%02x\n", meta->total_disks);
-    printf("dummy_1             0x%02x\n", meta->dummy_1);
-    printf("dummy_2             0x%04x\n", meta->dummy_2);
+    kprintf("******* ATA LSILogic V2 MegaRAID Metadata *******\n");
+    kprintf("lsi_id              <%s>\n", meta->lsi_id);
+    kprintf("dummy_0             0x%02x\n", meta->dummy_0);
+    kprintf("flags               0x%02x\n", meta->flags);
+    kprintf("version             0x%04x\n", meta->version);
+    kprintf("config_entries      0x%02x\n", meta->config_entries);
+    kprintf("raid_count          0x%02x\n", meta->raid_count);
+    kprintf("total_disks         0x%02x\n", meta->total_disks);
+    kprintf("dummy_1             0x%02x\n", meta->dummy_1);
+    kprintf("dummy_2             0x%04x\n", meta->dummy_2);
     for (i = 0; i < meta->config_entries; i++) {
-	printf("    type             %s\n",
+	kprintf("    type             %s\n",
 	       ata_raid_lsiv2_type(meta->configs[i].raid.type));
-	printf("    dummy_0          %02x\n", meta->configs[i].raid.dummy_0);
-	printf("    stripe_sectors   %u\n",
+	kprintf("    dummy_0          %02x\n", meta->configs[i].raid.dummy_0);
+	kprintf("    stripe_sectors   %u\n",
 	       meta->configs[i].raid.stripe_sectors);
-	printf("    array_width      %u\n",
+	kprintf("    array_width      %u\n",
 	       meta->configs[i].raid.array_width);
-	printf("    disk_count       %u\n", meta->configs[i].raid.disk_count);
-	printf("    config_offset    %u\n",
+	kprintf("    disk_count       %u\n", meta->configs[i].raid.disk_count);
+	kprintf("    config_offset    %u\n",
 	       meta->configs[i].raid.config_offset);
-	printf("    dummy_1          %u\n", meta->configs[i].raid.dummy_1);
-	printf("    flags            %02x\n", meta->configs[i].raid.flags);
-	printf("    total_sectors    %u\n",
+	kprintf("    dummy_1          %u\n", meta->configs[i].raid.dummy_1);
+	kprintf("    flags            %02x\n", meta->configs[i].raid.flags);
+	kprintf("    total_sectors    %u\n",
 	       meta->configs[i].raid.total_sectors);
     }
-    printf("disk_number         0x%02x\n", meta->disk_number);
-    printf("raid_number         0x%02x\n", meta->raid_number);
-    printf("timestamp           0x%08x\n", meta->timestamp);
-    printf("=================================================\n");
+    kprintf("disk_number         0x%02x\n", meta->disk_number);
+    kprintf("raid_number         0x%02x\n", meta->raid_number);
+    kprintf("timestamp           0x%08x\n", meta->timestamp);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4744,40 +4744,40 @@ ata_raid_lsiv3_print_meta(struct lsiv3_raid_conf *meta)
 {
     int i;
 
-    printf("******* ATA LSILogic V3 MegaRAID Metadata *******\n");
-    printf("lsi_id              <%.6s>\n", meta->lsi_id);
-    printf("dummy_0             0x%04x\n", meta->dummy_0);
-    printf("version             0x%04x\n", meta->version);
-    printf("dummy_0             0x%04x\n", meta->dummy_1);
-    printf("RAID configs:\n");
+    kprintf("******* ATA LSILogic V3 MegaRAID Metadata *******\n");
+    kprintf("lsi_id              <%.6s>\n", meta->lsi_id);
+    kprintf("dummy_0             0x%04x\n", meta->dummy_0);
+    kprintf("version             0x%04x\n", meta->version);
+    kprintf("dummy_0             0x%04x\n", meta->dummy_1);
+    kprintf("RAID configs:\n");
     for (i = 0; i < 8; i++) {
 	if (meta->raid[i].total_disks) {
-	    printf("%02d  stripe_pages       %u\n", i,
+	    kprintf("%02d  stripe_pages       %u\n", i,
 		   meta->raid[i].stripe_pages);
-	    printf("%02d  type               %s\n", i,
+	    kprintf("%02d  type               %s\n", i,
 		   ata_raid_lsiv3_type(meta->raid[i].type));
-	    printf("%02d  total_disks        %u\n", i,
+	    kprintf("%02d  total_disks        %u\n", i,
 		   meta->raid[i].total_disks);
-	    printf("%02d  array_width        %u\n", i,
+	    kprintf("%02d  array_width        %u\n", i,
 		   meta->raid[i].array_width);
-	    printf("%02d  sectors            %u\n", i, meta->raid[i].sectors);
-	    printf("%02d  offset             %u\n", i, meta->raid[i].offset);
-	    printf("%02d  device             0x%02x\n", i,
+	    kprintf("%02d  sectors            %u\n", i, meta->raid[i].sectors);
+	    kprintf("%02d  offset             %u\n", i, meta->raid[i].offset);
+	    kprintf("%02d  device             0x%02x\n", i,
 		   meta->raid[i].device);
 	}
     }
-    printf("DISK configs:\n");
+    kprintf("DISK configs:\n");
     for (i = 0; i < 6; i++) {
 	    if (meta->disk[i].disk_sectors) {
-	    printf("%02d  disk_sectors       %u\n", i,
+	    kprintf("%02d  disk_sectors       %u\n", i,
 		   meta->disk[i].disk_sectors);
-	    printf("%02d  flags              0x%02x\n", i, meta->disk[i].flags);
+	    kprintf("%02d  flags              0x%02x\n", i, meta->disk[i].flags);
 	}
     }
-    printf("device              0x%02x\n", meta->device);
-    printf("timestamp           0x%08x\n", meta->timestamp);
-    printf("checksum_1          0x%02x\n", meta->checksum_1);
-    printf("=================================================\n");
+    kprintf("device              0x%02x\n", meta->device);
+    kprintf("timestamp           0x%08x\n", meta->timestamp);
+    kprintf("checksum_1          0x%02x\n", meta->checksum_1);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4800,38 +4800,38 @@ ata_raid_nvidia_type(int type)
 static void
 ata_raid_nvidia_print_meta(struct nvidia_raid_conf *meta)
 {
-    printf("******** ATA nVidia MediaShield Metadata ********\n");
-    printf("nvidia_id           <%.8s>\n", meta->nvidia_id);
-    printf("config_size         %d\n", meta->config_size);
-    printf("checksum            0x%08x\n", meta->checksum);
-    printf("version             0x%04x\n", meta->version);
-    printf("disk_number         %d\n", meta->disk_number);
-    printf("dummy_0             0x%02x\n", meta->dummy_0);
-    printf("total_sectors       %d\n", meta->total_sectors);
-    printf("sectors_size        %d\n", meta->sector_size);
-    printf("serial              %.16s\n", meta->serial);
-    printf("revision            %.4s\n", meta->revision);
-    printf("dummy_1             0x%08x\n", meta->dummy_1);
-    printf("magic_0             0x%08x\n", meta->magic_0);
-    printf("magic_1             0x%016jx\n", meta->magic_1);
-    printf("magic_2             0x%016jx\n", meta->magic_2);
-    printf("flags               0x%02x\n", meta->flags);
-    printf("array_width         %d\n", meta->array_width);
-    printf("total_disks         %d\n", meta->total_disks);
-    printf("dummy_2             0x%02x\n", meta->dummy_2);
-    printf("type                %s\n", ata_raid_nvidia_type(meta->type));
-    printf("dummy_3             0x%04x\n", meta->dummy_3);
-    printf("stripe_sectors      %d\n", meta->stripe_sectors);
-    printf("stripe_bytes        %d\n", meta->stripe_bytes);
-    printf("stripe_shift        %d\n", meta->stripe_shift);
-    printf("stripe_mask         0x%08x\n", meta->stripe_mask);
-    printf("stripe_sizesectors  %d\n", meta->stripe_sizesectors);
-    printf("stripe_sizebytes    %d\n", meta->stripe_sizebytes);
-    printf("rebuild_lba         %d\n", meta->rebuild_lba);
-    printf("dummy_4             0x%08x\n", meta->dummy_4);
-    printf("dummy_5             0x%08x\n", meta->dummy_5);
-    printf("status              0x%08x\n", meta->status);
-    printf("=================================================\n");
+    kprintf("******** ATA nVidia MediaShield Metadata ********\n");
+    kprintf("nvidia_id           <%.8s>\n", meta->nvidia_id);
+    kprintf("config_size         %d\n", meta->config_size);
+    kprintf("checksum            0x%08x\n", meta->checksum);
+    kprintf("version             0x%04x\n", meta->version);
+    kprintf("disk_number         %d\n", meta->disk_number);
+    kprintf("dummy_0             0x%02x\n", meta->dummy_0);
+    kprintf("total_sectors       %d\n", meta->total_sectors);
+    kprintf("sectors_size        %d\n", meta->sector_size);
+    kprintf("serial              %.16s\n", meta->serial);
+    kprintf("revision            %.4s\n", meta->revision);
+    kprintf("dummy_1             0x%08x\n", meta->dummy_1);
+    kprintf("magic_0             0x%08x\n", meta->magic_0);
+    kprintf("magic_1             0x%016jx\n", meta->magic_1);
+    kprintf("magic_2             0x%016jx\n", meta->magic_2);
+    kprintf("flags               0x%02x\n", meta->flags);
+    kprintf("array_width         %d\n", meta->array_width);
+    kprintf("total_disks         %d\n", meta->total_disks);
+    kprintf("dummy_2             0x%02x\n", meta->dummy_2);
+    kprintf("type                %s\n", ata_raid_nvidia_type(meta->type));
+    kprintf("dummy_3             0x%04x\n", meta->dummy_3);
+    kprintf("stripe_sectors      %d\n", meta->stripe_sectors);
+    kprintf("stripe_bytes        %d\n", meta->stripe_bytes);
+    kprintf("stripe_shift        %d\n", meta->stripe_shift);
+    kprintf("stripe_mask         0x%08x\n", meta->stripe_mask);
+    kprintf("stripe_sizesectors  %d\n", meta->stripe_sizesectors);
+    kprintf("stripe_sizebytes    %d\n", meta->stripe_sizebytes);
+    kprintf("rebuild_lba         %d\n", meta->rebuild_lba);
+    kprintf("dummy_4             0x%08x\n", meta->dummy_4);
+    kprintf("dummy_5             0x%08x\n", meta->dummy_5);
+    kprintf("status              0x%08x\n", meta->status);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4855,50 +4855,50 @@ ata_raid_promise_print_meta(struct promise_raid_conf *meta)
 {
     int i;
 
-    printf("********* ATA Promise FastTrak Metadata *********\n");
-    printf("promise_id          <%s>\n", meta->promise_id);
-    printf("dummy_0             0x%08x\n", meta->dummy_0);
-    printf("magic_0             0x%016jx\n", meta->magic_0);
-    printf("magic_1             0x%04x\n", meta->magic_1);
-    printf("magic_2             0x%08x\n", meta->magic_2);
-    printf("integrity           0x%08x %b\n", meta->raid.integrity,
+    kprintf("********* ATA Promise FastTrak Metadata *********\n");
+    kprintf("promise_id          <%s>\n", meta->promise_id);
+    kprintf("dummy_0             0x%08x\n", meta->dummy_0);
+    kprintf("magic_0             0x%016jx\n", meta->magic_0);
+    kprintf("magic_1             0x%04x\n", meta->magic_1);
+    kprintf("magic_2             0x%08x\n", meta->magic_2);
+    kprintf("integrity           0x%08x %b\n", meta->raid.integrity,
 		meta->raid.integrity, "\20\10VALID\n" );
-    printf("flags               0x%02x %b\n",
+    kprintf("flags               0x%02x %b\n",
 	   meta->raid.flags, meta->raid.flags,
 	   "\20\10READY\7DOWN\6REDIR\5DUPLICATE\4SPARE"
 	   "\3ASSIGNED\2ONLINE\1VALID\n");
-    printf("disk_number         %d\n", meta->raid.disk_number);
-    printf("channel             0x%02x\n", meta->raid.channel);
-    printf("device              0x%02x\n", meta->raid.device);
-    printf("magic_0             0x%016jx\n", meta->raid.magic_0);
-    printf("disk_offset         %u\n", meta->raid.disk_offset);
-    printf("disk_sectors        %u\n", meta->raid.disk_sectors);
-    printf("rebuild_lba         0x%08x\n", meta->raid.rebuild_lba);
-    printf("generation          0x%04x\n", meta->raid.generation);
-    printf("status              0x%02x %b\n",
+    kprintf("disk_number         %d\n", meta->raid.disk_number);
+    kprintf("channel             0x%02x\n", meta->raid.channel);
+    kprintf("device              0x%02x\n", meta->raid.device);
+    kprintf("magic_0             0x%016jx\n", meta->raid.magic_0);
+    kprintf("disk_offset         %u\n", meta->raid.disk_offset);
+    kprintf("disk_sectors        %u\n", meta->raid.disk_sectors);
+    kprintf("rebuild_lba         0x%08x\n", meta->raid.rebuild_lba);
+    kprintf("generation          0x%04x\n", meta->raid.generation);
+    kprintf("status              0x%02x %b\n",
 	    meta->raid.status, meta->raid.status,
 	   "\20\6MARKED\5DEGRADED\4READY\3INITED\2ONLINE\1VALID\n");
-    printf("type                %s\n", ata_raid_promise_type(meta->raid.type));
-    printf("total_disks         %u\n", meta->raid.total_disks);
-    printf("stripe_shift        %u\n", meta->raid.stripe_shift);
-    printf("array_width         %u\n", meta->raid.array_width);
-    printf("array_number        %u\n", meta->raid.array_number);
-    printf("total_sectors       %u\n", meta->raid.total_sectors);
-    printf("cylinders           %u\n", meta->raid.cylinders);
-    printf("heads               %u\n", meta->raid.heads);
-    printf("sectors             %u\n", meta->raid.sectors);
-    printf("magic_1             0x%016jx\n", meta->raid.magic_1);
-    printf("DISK#   flags dummy_0 channel device  magic_0\n");
+    kprintf("type                %s\n", ata_raid_promise_type(meta->raid.type));
+    kprintf("total_disks         %u\n", meta->raid.total_disks);
+    kprintf("stripe_shift        %u\n", meta->raid.stripe_shift);
+    kprintf("array_width         %u\n", meta->raid.array_width);
+    kprintf("array_number        %u\n", meta->raid.array_number);
+    kprintf("total_sectors       %u\n", meta->raid.total_sectors);
+    kprintf("cylinders           %u\n", meta->raid.cylinders);
+    kprintf("heads               %u\n", meta->raid.heads);
+    kprintf("sectors             %u\n", meta->raid.sectors);
+    kprintf("magic_1             0x%016jx\n", meta->raid.magic_1);
+    kprintf("DISK#   flags dummy_0 channel device  magic_0\n");
     for (i = 0; i < 8; i++) {
-	printf("  %d    %b    0x%02x  0x%02x  0x%02x  ",
+	kprintf("  %d    %b    0x%02x  0x%02x  0x%02x  ",
 	       i, meta->raid.disk[i].flags,
 	       "\20\10READY\7DOWN\6REDIR\5DUPLICATE\4SPARE"
 	       "\3ASSIGNED\2ONLINE\1VALID\n", meta->raid.disk[i].dummy_0,
 	       meta->raid.disk[i].channel, meta->raid.disk[i].device);
-	printf("0x%016jx\n", meta->raid.disk[i].magic_0);
+	kprintf("0x%016jx\n", meta->raid.disk[i].magic_0);
     }
-    printf("checksum            0x%08x\n", meta->checksum);
-    printf("=================================================\n");
+    kprintf("checksum            0x%08x\n", meta->checksum);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4919,37 +4919,37 @@ ata_raid_sii_type(int type)
 static void
 ata_raid_sii_print_meta(struct sii_raid_conf *meta)
 {
-    printf("******* ATA Silicon Image Medley Metadata *******\n");
-    printf("total_sectors       %ju\n", meta->total_sectors);
-    printf("dummy_0             0x%04x\n", meta->dummy_0);
-    printf("dummy_1             0x%04x\n", meta->dummy_1);
-    printf("controller_pci_id   0x%08x\n", meta->controller_pci_id);
-    printf("version_minor       0x%04x\n", meta->version_minor);
-    printf("version_major       0x%04x\n", meta->version_major);
-    printf("timestamp           20%02x/%02x/%02x %02x:%02x:%02x\n",
+    kprintf("******* ATA Silicon Image Medley Metadata *******\n");
+    kprintf("total_sectors       %ju\n", meta->total_sectors);
+    kprintf("dummy_0             0x%04x\n", meta->dummy_0);
+    kprintf("dummy_1             0x%04x\n", meta->dummy_1);
+    kprintf("controller_pci_id   0x%08x\n", meta->controller_pci_id);
+    kprintf("version_minor       0x%04x\n", meta->version_minor);
+    kprintf("version_major       0x%04x\n", meta->version_major);
+    kprintf("timestamp           20%02x/%02x/%02x %02x:%02x:%02x\n",
 	   meta->timestamp[5], meta->timestamp[4], meta->timestamp[3],
 	   meta->timestamp[2], meta->timestamp[1], meta->timestamp[0]);
-    printf("stripe_sectors      %u\n", meta->stripe_sectors);
-    printf("dummy_2             0x%04x\n", meta->dummy_2);
-    printf("disk_number         %u\n", meta->disk_number);
-    printf("type                %s\n", ata_raid_sii_type(meta->type));
-    printf("raid0_disks         %u\n", meta->raid0_disks);
-    printf("raid0_ident         %u\n", meta->raid0_ident);
-    printf("raid1_disks         %u\n", meta->raid1_disks);
-    printf("raid1_ident         %u\n", meta->raid1_ident);
-    printf("rebuild_lba         %ju\n", meta->rebuild_lba);
-    printf("generation          0x%08x\n", meta->generation);
-    printf("status              0x%02x %b\n",
+    kprintf("stripe_sectors      %u\n", meta->stripe_sectors);
+    kprintf("dummy_2             0x%04x\n", meta->dummy_2);
+    kprintf("disk_number         %u\n", meta->disk_number);
+    kprintf("type                %s\n", ata_raid_sii_type(meta->type));
+    kprintf("raid0_disks         %u\n", meta->raid0_disks);
+    kprintf("raid0_ident         %u\n", meta->raid0_ident);
+    kprintf("raid1_disks         %u\n", meta->raid1_disks);
+    kprintf("raid1_ident         %u\n", meta->raid1_ident);
+    kprintf("rebuild_lba         %ju\n", meta->rebuild_lba);
+    kprintf("generation          0x%08x\n", meta->generation);
+    kprintf("status              0x%02x %b\n",
 	    meta->status, meta->status,
 	   "\20\1READY\n");
-    printf("base_raid1_position %02x\n", meta->base_raid1_position);
-    printf("base_raid0_position %02x\n", meta->base_raid0_position);
-    printf("position            %02x\n", meta->position);
-    printf("dummy_3             %04x\n", meta->dummy_3);
-    printf("name                <%.16s>\n", meta->name);
-    printf("checksum_0          0x%04x\n", meta->checksum_0);
-    printf("checksum_1          0x%04x\n", meta->checksum_1);
-    printf("=================================================\n");
+    kprintf("base_raid1_position %02x\n", meta->base_raid1_position);
+    kprintf("base_raid0_position %02x\n", meta->base_raid0_position);
+    kprintf("position            %02x\n", meta->position);
+    kprintf("dummy_3             %04x\n", meta->dummy_3);
+    kprintf("name                <%.16s>\n", meta->name);
+    kprintf("checksum_0          0x%04x\n", meta->checksum_0);
+    kprintf("checksum_1          0x%04x\n", meta->checksum_1);
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -4969,22 +4969,22 @@ ata_raid_sis_type(int type)
 static void
 ata_raid_sis_print_meta(struct sis_raid_conf *meta)
 {
-    printf("**** ATA Silicon Integrated Systems Metadata ****\n");
-    printf("magic               0x%04x\n", meta->magic);
-    printf("disks               0x%02x\n", meta->disks);
-    printf("type                %s\n",
+    kprintf("**** ATA Silicon Integrated Systems Metadata ****\n");
+    kprintf("magic               0x%04x\n", meta->magic);
+    kprintf("disks               0x%02x\n", meta->disks);
+    kprintf("type                %s\n",
 	   ata_raid_sis_type(meta->type_total_disks & SIS_T_MASK));
-    printf("total_disks         %u\n", meta->type_total_disks & SIS_D_MASK);
-    printf("dummy_0             0x%08x\n", meta->dummy_0);
-    printf("controller_pci_id   0x%08x\n", meta->controller_pci_id);
-    printf("stripe_sectors      %u\n", meta->stripe_sectors);
-    printf("dummy_1             0x%04x\n", meta->dummy_1);
-    printf("timestamp           0x%08x\n", meta->timestamp);
-    printf("model               %.40s\n", meta->model);
-    printf("disk_number         %u\n", meta->disk_number);
-    printf("dummy_2             0x%02x 0x%02x 0x%02x\n",
+    kprintf("total_disks         %u\n", meta->type_total_disks & SIS_D_MASK);
+    kprintf("dummy_0             0x%08x\n", meta->dummy_0);
+    kprintf("controller_pci_id   0x%08x\n", meta->controller_pci_id);
+    kprintf("stripe_sectors      %u\n", meta->stripe_sectors);
+    kprintf("dummy_1             0x%04x\n", meta->dummy_1);
+    kprintf("timestamp           0x%08x\n", meta->timestamp);
+    kprintf("model               %.40s\n", meta->model);
+    kprintf("disk_number         %u\n", meta->disk_number);
+    kprintf("dummy_2             0x%02x 0x%02x 0x%02x\n",
 	   meta->dummy_2[0], meta->dummy_2[1], meta->dummy_2[2]);
-    printf("=================================================\n");
+    kprintf("=================================================\n");
 }
 
 static char *
@@ -5008,25 +5008,25 @@ ata_raid_via_print_meta(struct via_raid_conf *meta)
 {
     int i;
   
-    printf("*************** ATA VIA Metadata ****************\n");
-    printf("magic               0x%02x\n", meta->magic);
-    printf("dummy_0             0x%02x\n", meta->dummy_0);
-    printf("type                %s\n",
+    kprintf("*************** ATA VIA Metadata ****************\n");
+    kprintf("magic               0x%02x\n", meta->magic);
+    kprintf("dummy_0             0x%02x\n", meta->dummy_0);
+    kprintf("type                %s\n",
 	   ata_raid_via_type(meta->type & VIA_T_MASK));
-    printf("bootable            %d\n", meta->type & VIA_T_BOOTABLE);
-    printf("unknown             %d\n", meta->type & VIA_T_UNKNOWN);
-    printf("disk_index          0x%02x\n", meta->disk_index);
-    printf("stripe_layout       0x%02x\n", meta->stripe_layout);
-    printf(" stripe_disks       %d\n", meta->stripe_layout & VIA_L_DISKS);
-    printf(" stripe_sectors     %d\n",
+    kprintf("bootable            %d\n", meta->type & VIA_T_BOOTABLE);
+    kprintf("unknown             %d\n", meta->type & VIA_T_UNKNOWN);
+    kprintf("disk_index          0x%02x\n", meta->disk_index);
+    kprintf("stripe_layout       0x%02x\n", meta->stripe_layout);
+    kprintf(" stripe_disks       %d\n", meta->stripe_layout & VIA_L_DISKS);
+    kprintf(" stripe_sectors     %d\n",
 	   0x08 << ((meta->stripe_layout & VIA_L_MASK) >> VIA_L_SHIFT));
-    printf("disk_sectors        %ju\n", meta->disk_sectors);
-    printf("disk_id             0x%08x\n", meta->disk_id);
-    printf("DISK#   disk_id\n");
+    kprintf("disk_sectors        %ju\n", meta->disk_sectors);
+    kprintf("disk_id             0x%08x\n", meta->disk_id);
+    kprintf("DISK#   disk_id\n");
     for (i = 0; i < 8; i++) {
 	if (meta->disks[i])
-	    printf("  %d    0x%08x\n", i, meta->disks[i]);
+	    kprintf("  %d    0x%08x\n", i, meta->disks[i]);
     }    
-    printf("checksum            0x%02x\n", meta->checksum);
-    printf("=================================================\n");
+    kprintf("checksum            0x%02x\n", meta->checksum);
+    kprintf("=================================================\n");
 }

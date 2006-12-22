@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.8 2005/07/29 21:17:08 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.9 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,7 @@ bmp_start(video_adapter_t *adp)
     int			i;
 
     if ((bmp_decoder.data == NULL) || (bmp_decoder.data_size <= 0)) {
-	printf("splash_bmp: No bitmap file found\n");
+	kprintf("splash_bmp: No bitmap file found\n");
 	return ENODEV;
     }
     for (i = 0; modes[i] >= 0; ++i) {
@@ -89,9 +89,9 @@ bmp_start(video_adapter_t *adp)
     }
     splash_mode = modes[i];
     if (splash_mode < 0)
-	printf("splash_bmp: No appropriate video mode found\n");
+	kprintf("splash_bmp: No appropriate video mode found\n");
     if (bootverbose)
-	printf("bmp_start(): splash_mode:%d\n", splash_mode);
+	kprintf("bmp_start(): splash_mode:%d\n", splash_mode);
     return ((splash_mode < 0) ? ENODEV : 0);
 }
 
@@ -485,13 +485,13 @@ bmp_Init(const char *data, int swidth, int sheight, int sdepth)
 
     /* check file ID */
     if (bmf->bmfh.bfType != 0x4d42) {
-	printf("splash_bmp: not a BMP file\n");
+	kprintf("splash_bmp: not a BMP file\n");
 	return(1);		/* XXX check word ordering for big-endian ports? */
     }
 
     /* do we understand this bitmap format? */
     if (bmf->bmfi.bmiHeader.biSize > sizeof(bmf->bmfi.bmiHeader)) {
-	printf("splash_bmp: unsupported BMP format (size=%d)\n",
+	kprintf("splash_bmp: unsupported BMP format (size=%d)\n",
 		bmf->bmfi.bmiHeader.biSize);
 	return(1);
     }
@@ -516,7 +516,7 @@ bmp_Init(const char *data, int swidth, int sheight, int sdepth)
     case BI_RLE8:
 	break;
     default:
-	printf("splash_bmp: unsupported compression format\n");
+	kprintf("splash_bmp: unsupported compression format\n");
 	return(1);		/* unsupported compression format */
     }
     
@@ -530,7 +530,7 @@ bmp_Init(const char *data, int swidth, int sheight, int sdepth)
 	(bmp_info.width > bmp_info.swidth) ||
 	(bmp_info.ncols > (1 << sdepth))) {
 	if (bootverbose)
-	    printf("splash_bmp: beyond screen capacity (%dx%d, %d colors)\n",
+	    kprintf("splash_bmp: beyond screen capacity (%dx%d, %d colors)\n",
 		   bmp_info.width, bmp_info.height, bmp_info.ncols);
 	return(1);
     }

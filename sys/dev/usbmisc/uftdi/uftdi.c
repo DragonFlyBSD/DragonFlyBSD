@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.8 2006/09/05 00:55:43 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -182,21 +182,21 @@ USB_ATTACH(uftdi)
 	/* Move the device into the configured state. */
 	err = usbd_set_config_index(dev, UFTDI_CONFIG_INDEX, 1);
 	if (err) {
-		printf("\n%s: failed to set configuration, err=%s\n",
+		kprintf("\n%s: failed to set configuration, err=%s\n",
 		       devname, usbd_errstr(err));
 		goto bad;
 	}
 
 	err = usbd_device2interface_handle(dev, UFTDI_IFACE_INDEX, &iface);
 	if (err) {
-		printf("\n%s: failed to get interface, err=%s\n",
+		kprintf("\n%s: failed to get interface, err=%s\n",
 		       devname, usbd_errstr(err));
 		goto bad;
 	}
 
 	usbd_devinfo(dev, 0, devinfo);
 	/*	USB_ATTACH_SETUP;*/
-	printf("%s: %s\n", devname, devinfo);
+	kprintf("%s: %s\n", devname, devinfo);
 
 	id = usbd_get_interface_descriptor(iface);
 	ucom->sc_iface = iface;
@@ -220,7 +220,7 @@ USB_ATTACH(uftdi)
 		int addr, dir, attr;
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
-			printf("%s: could not read endpoint descriptor"
+			kprintf("%s: could not read endpoint descriptor"
 			       ": %s\n", devname, usbd_errstr(err));
 			goto bad;
 		}
@@ -233,17 +233,17 @@ USB_ATTACH(uftdi)
 		else if (dir == UE_DIR_OUT && attr == UE_BULK)
 		  ucom->sc_bulkout_no = addr;
 		else {
-		  printf("%s: unexpected endpoint\n", devname);
+		  kprintf("%s: unexpected endpoint\n", devname);
 		  goto bad;
 		}
 	}
 	if (ucom->sc_bulkin_no == -1) {
-		printf("%s: Could not find data bulk in\n",
+		kprintf("%s: Could not find data bulk in\n",
 		       devname);
 		goto bad;
 	}
 	if (ucom->sc_bulkout_no == -1) {
-		printf("%s: Could not find data bulk out\n",
+		kprintf("%s: Could not find data bulk out\n",
 		       devname);
 		goto bad;
 	}

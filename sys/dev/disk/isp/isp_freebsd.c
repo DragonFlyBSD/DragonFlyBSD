@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.17 2006/12/18 20:41:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.18 2006/12/22 23:26:16 swildner Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -1100,7 +1100,7 @@ isp_target_start_ctio(struct ispsoftc *isp, union ccb *ccb)
 
 	if (isp_getrqentry(isp, &nxti, &optr, &qe)) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("Request Queue Overflow in isp_target_start_ctio\n");
+		kprintf("Request Queue Overflow in isp_target_start_ctio\n");
 		return (CAM_RESRC_UNAVAIL);
 	}
 	bzero(local, QENTRY_LEN);
@@ -1232,7 +1232,7 @@ isp_target_start_ctio(struct ispsoftc *isp, union ccb *ccb)
 
 	if (isp_save_xs(isp, (XS_T *)ccb, hp)) {
 		xpt_print_path(ccb->ccb_h.path);
-		printf("No XFLIST pointers for isp_target_start_ctio\n");
+		kprintf("No XFLIST pointers for isp_target_start_ctio\n");
 		return (CAM_RESRC_UNAVAIL);
 	}
 
@@ -2866,9 +2866,9 @@ isp_prt(struct ispsoftc *isp, int level, const char *fmt, ...)
 	if (level != ISP_LOGALL && (level & isp->isp_dblev) == 0) {
 		return;
 	}
-	printf("%s: ", device_get_nameunit(isp->isp_dev));
+	kprintf("%s: ", device_get_nameunit(isp->isp_dev));
 	__va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	__va_end(ap);
-	printf("\n");
+	kprintf("\n");
 }

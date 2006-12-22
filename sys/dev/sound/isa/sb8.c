@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.62.2.5 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.5 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.6 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.5 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.6 2006/12/22 23:26:25 swildner Exp $");
 
 #define SB_DEFAULT_BUFSZ	4096
 
@@ -163,7 +163,7 @@ sb_dspwr(struct sb_info *sb, u_char val)
 		}
 		if (i > 10) DELAY((i > 100)? 1000 : 10);
     	}
-    	printf("sb_dspwr(0x%02x) timed out.\n", val);
+    	kprintf("sb_dspwr(0x%02x) timed out.\n", val);
     	return 0;
 }
 
@@ -171,7 +171,7 @@ static int
 sb_cmd(struct sb_info *sb, u_char val)
 {
 #if 0
-	printf("sb_cmd: %x\n", val);
+	kprintf("sb_cmd: %x\n", val);
 #endif
     	return sb_dspwr(sb, val);
 }
@@ -180,7 +180,7 @@ static int
 sb_cmd1(struct sb_info *sb, u_char cmd, int val)
 {
 #if 0
-    	printf("sb_cmd1: %x, %x\n", cmd, val);
+    	kprintf("sb_cmd1: %x, %x\n", cmd, val);
 #endif
     	if (sb_dspwr(sb, cmd)) {
 		return sb_dspwr(sb, val & 0xff);
@@ -191,7 +191,7 @@ static int
 sb_cmd2(struct sb_info *sb, u_char cmd, int val)
 {
 #if 0
-    	printf("sb_cmd2: %x, %x\n", cmd, val);
+    	kprintf("sb_cmd2: %x, %x\n", cmd, val);
 #endif
     	if (sb_dspwr(sb, cmd)) {
 		return sb_dspwr(sb, val & 0xff) &&
@@ -248,7 +248,7 @@ sb_reset_dsp(struct sb_info *sb)
     	DELAY(100);
     	sb_wr(sb, SBDSP_RST, 0);
     	if (sb_get_byte(sb) != 0xAA) {
-        	DEB(printf("sb_reset_dsp 0x%lx failed\n",
+        	DEB(kprintf("sb_reset_dsp 0x%lx failed\n",
 			   rman_get_start(sb->io_base)));
 		return ENXIO;	/* Sorry */
     	}

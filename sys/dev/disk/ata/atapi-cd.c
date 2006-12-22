@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.27 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.28 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -286,82 +286,82 @@ acd_describe(struct acd_softc *cdp)
 
 	ata_prtdev(cdp->device, "%s", "");
 	if (cdp->cap.cur_read_speed) {
-	    printf("read %dKB/s", cdp->cap.cur_read_speed * 1000 / 1024);
+	    kprintf("read %dKB/s", cdp->cap.cur_read_speed * 1000 / 1024);
 	    if (cdp->cap.max_read_speed) 
-		printf(" (%dKB/s)", cdp->cap.max_read_speed * 1000 / 1024);
+		kprintf(" (%dKB/s)", cdp->cap.max_read_speed * 1000 / 1024);
 	    if ((cdp->cap.cur_write_speed) &&
 		(cdp->cap.write_cdr || cdp->cap.write_cdrw || 
 		 cdp->cap.write_dvdr || cdp->cap.write_dvdram)) {
-		printf(" write %dKB/s", cdp->cap.cur_write_speed * 1000 / 1024);
+		kprintf(" write %dKB/s", cdp->cap.cur_write_speed * 1000 / 1024);
 		if (cdp->cap.max_write_speed)
-		    printf(" (%dKB/s)", cdp->cap.max_write_speed * 1000 / 1024);
+		    kprintf(" (%dKB/s)", cdp->cap.max_write_speed * 1000 / 1024);
 	    }
 	    comma = 1;
 	}
 	if (cdp->cap.buf_size) {
-	    printf("%s %dKB buffer", comma ? "," : "", cdp->cap.buf_size);
+	    kprintf("%s %dKB buffer", comma ? "," : "", cdp->cap.buf_size);
 	    comma = 1;
 	}
-	printf("%s %s\n", comma ? "," : "", ata_mode2str(cdp->device->mode));
+	kprintf("%s %s\n", comma ? "," : "", ata_mode2str(cdp->device->mode));
 
 	ata_prtdev(cdp->device, "Reads:");
 	comma = 0;
 	if (cdp->cap.read_cdr) {
-	    printf(" CD-R"); comma = 1;
+	    kprintf(" CD-R"); comma = 1;
 	}
 	if (cdp->cap.read_cdrw) {
-	    printf("%s CD-RW", comma ? "," : ""); comma = 1;
+	    kprintf("%s CD-RW", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.cd_da) {
 	    if (cdp->cap.cd_da_stream)
-		printf("%s CD-DA stream", comma ? "," : "");
+		kprintf("%s CD-DA stream", comma ? "," : "");
 	    else
-		printf("%s CD-DA", comma ? "," : "");
+		kprintf("%s CD-DA", comma ? "," : "");
 	    comma = 1;
 	}
 	if (cdp->cap.read_dvdrom) {
-	    printf("%s DVD-ROM", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVD-ROM", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.read_dvdr) {
-	    printf("%s DVD-R", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVD-R", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.read_dvdram) {
-	    printf("%s DVD-RAM", comma ? "," : ""); comma = 1;
+	    kprintf("%s DVD-RAM", comma ? "," : ""); comma = 1;
 	}
 	if (cdp->cap.read_packet)
-	    printf("%s packet", comma ? "," : "");
+	    kprintf("%s packet", comma ? "," : "");
 
-	printf("\n");
+	kprintf("\n");
 	ata_prtdev(cdp->device, "Writes:");
 	if (cdp->cap.write_cdr || cdp->cap.write_cdrw || 
 	    cdp->cap.write_dvdr || cdp->cap.write_dvdram) {
 	    comma = 0;
 	    if (cdp->cap.write_cdr) {
-		printf(" CD-R" ); comma = 1;
+		kprintf(" CD-R" ); comma = 1;
 	    }
 	    if (cdp->cap.write_cdrw) {
-		printf("%s CD-RW", comma ? "," : ""); comma = 1;
+		kprintf("%s CD-RW", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.write_dvdr) {
-		printf("%s DVD-R", comma ? "," : ""); comma = 1;
+		kprintf("%s DVD-R", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.write_dvdram) {
-		printf("%s DVD-RAM", comma ? "," : ""); comma = 1; 
+		kprintf("%s DVD-RAM", comma ? "," : ""); comma = 1; 
 	    }
 	    if (cdp->cap.test_write) {
-		printf("%s test write", comma ? "," : ""); comma = 1;
+		kprintf("%s test write", comma ? "," : ""); comma = 1;
 	    }
 	    if (cdp->cap.burnproof)
-		printf("%s burnproof", comma ? "," : "");
+		kprintf("%s burnproof", comma ? "," : "");
 	}
-	printf("\n");
+	kprintf("\n");
 	if (cdp->cap.audio_play) {
 	    ata_prtdev(cdp->device, "Audio: ");
 	    if (cdp->cap.audio_play)
-		printf("play");
+		kprintf("play");
 	    if (cdp->cap.max_vol_levels)
-		printf(", %d volume levels", cdp->cap.max_vol_levels);
-	    printf("\n");
+		kprintf(", %d volume levels", cdp->cap.max_vol_levels);
+	    kprintf("\n");
 	}
 	ata_prtdev(cdp->device, "Mechanism: ");
 	switch (cdp->cap.mech) {
@@ -379,64 +379,64 @@ acd_describe(struct acd_softc *cdp)
 	    mechanism = 0; break;
 	}
 	if (mechanism)
-	    printf("%s%s", cdp->cap.eject ? "ejectable " : "", mechanism);
+	    kprintf("%s%s", cdp->cap.eject ? "ejectable " : "", mechanism);
 	else if (cdp->cap.eject)
-	    printf("ejectable");
+	    kprintf("ejectable");
 
 	if (cdp->cap.lock)
-	    printf(cdp->cap.locked ? ", locked" : ", unlocked");
+	    kprintf(cdp->cap.locked ? ", locked" : ", unlocked");
 	if (cdp->cap.prevent)
-	    printf(", lock protected");
-	printf("\n");
+	    kprintf(", lock protected");
+	kprintf("\n");
 
 	if (cdp->cap.mech != MST_MECH_CHANGER) {
 	    ata_prtdev(cdp->device, "Medium: ");
 	    switch (cdp->cap.medium_type & MST_TYPE_MASK_HIGH) {
 	    case MST_CDROM:
-		printf("CD-ROM "); break;
+		kprintf("CD-ROM "); break;
 	    case MST_CDR:
-		printf("CD-R "); break;
+		kprintf("CD-R "); break;
 	    case MST_CDRW:
-		printf("CD-RW "); break;
+		kprintf("CD-RW "); break;
 	    case MST_DOOR_OPEN:
-		printf("door open"); break;
+		kprintf("door open"); break;
 	    case MST_NO_DISC:
-		printf("no/blank disc"); break;
+		kprintf("no/blank disc"); break;
 	    case MST_FMT_ERROR:
-		printf("medium format error"); break;
+		kprintf("medium format error"); break;
 	    }
 	    if ((cdp->cap.medium_type & MST_TYPE_MASK_HIGH)<MST_TYPE_MASK_HIGH){
 		switch (cdp->cap.medium_type & MST_TYPE_MASK_LOW) {
 		case MST_DATA_120:
-		    printf("120mm data disc"); break;
+		    kprintf("120mm data disc"); break;
 		case MST_AUDIO_120:
-		    printf("120mm audio disc"); break;
+		    kprintf("120mm audio disc"); break;
 		case MST_COMB_120:
-		    printf("120mm data/audio disc"); break;
+		    kprintf("120mm data/audio disc"); break;
 		case MST_PHOTO_120:
-		    printf("120mm photo disc"); break;
+		    kprintf("120mm photo disc"); break;
 		case MST_DATA_80:
-		    printf("80mm data disc"); break;
+		    kprintf("80mm data disc"); break;
 		case MST_AUDIO_80:
-		    printf("80mm audio disc"); break;
+		    kprintf("80mm audio disc"); break;
 		case MST_COMB_80:
-		    printf("80mm data/audio disc"); break;
+		    kprintf("80mm data/audio disc"); break;
 		case MST_PHOTO_80:
-		    printf("80mm photo disc"); break;
+		    kprintf("80mm photo disc"); break;
 		case MST_FMT_NONE:
 		    switch (cdp->cap.medium_type & MST_TYPE_MASK_HIGH) {
 		    case MST_CDROM:
-			printf("unknown"); break;
+			kprintf("unknown"); break;
 		    case MST_CDR:
 		    case MST_CDRW:
-			printf("blank"); break;
+			kprintf("blank"); break;
 		    }
 		    break;
 		default:
-		    printf("unknown (0x%x)", cdp->cap.medium_type); break;
+		    kprintf("unknown (0x%x)", cdp->cap.medium_type); break;
 		}
 	    }
-	    printf("\n");
+	    kprintf("\n");
 	}
     }
     else {
@@ -448,9 +448,9 @@ acd_describe(struct acd_softc *cdp)
 		       (cdp->cap.read_dvdrom) ? "DVD-ROM" : "CDROM");
 
 	if (cdp->changer_info)
-	    printf("with %d CD changer ", cdp->changer_info->slots);
+	    kprintf("with %d CD changer ", cdp->changer_info->slots);
 
-	printf("<%.40s> at ata%d-%s %s\n", cdp->device->param->model,
+	kprintf("<%.40s> at ata%d-%s %s\n", cdp->device->param->model,
 	       device_get_unit(cdp->device->channel->dev),
 	       (cdp->device->unit == ATA_MASTER) ? "master" : "slave",
 	       ata_mode2str(cdp->device->mode) );
@@ -1343,9 +1343,9 @@ acd_read_toc(struct acd_softc *cdp)
 		   cdp->disk_size, cdp->block_size,
 		   cdp->toc.hdr.ending_track - cdp->toc.hdr.starting_track + 1);
 	if (cdp->toc.tab[0].control & 4)
-	    printf("%dMB\n", cdp->disk_size / 512);
+	    kprintf("%dMB\n", cdp->disk_size / 512);
 	else
-	    printf("%d:%d audio\n",
+	    kprintf("%d:%d audio\n",
 		   cdp->disk_size / 75 / 60, cdp->disk_size / 75 % 60);
     }
 #endif
@@ -1645,13 +1645,13 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
     if ((error = copyin(cuesheet->entries, buffer, cuesheet->len)))
 	return error;
 #ifdef ACD_DEBUG
-    printf("acd: cuesheet lenght = %d\n", cuesheet->len);
+    kprintf("acd: cuesheet lenght = %d\n", cuesheet->len);
     for (i=0; i<cuesheet->len; i++)
 	if (i%8)
-	    printf(" %02x", buffer[i]);
+	    kprintf(" %02x", buffer[i]);
 	else
-	    printf("\n%02x", buffer[i]);
-    printf("\n");
+	    kprintf("\n%02x", buffer[i]);
+    kprintf("\n");
 #endif
     error = atapi_queue_cmd(cdp->device, ccb, buffer, cuesheet->len, 0,
 			    30, NULL, NULL);

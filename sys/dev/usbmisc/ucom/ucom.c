@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.21 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.22 2006/12/22 23:26:25 swildner Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -338,7 +338,7 @@ ucomopen(struct dev_open_args *ap)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkin_no, 0,
 				     &sc->sc_bulkin_pipe);
 		if (err) {
-			printf("%s: open bulk in error (addr %d): %s\n",
+			kprintf("%s: open bulk in error (addr %d): %s\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkin_no,
 			       usbd_errstr(err));
 			error = EIO;
@@ -348,7 +348,7 @@ ucomopen(struct dev_open_args *ap)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkout_no,
 				     USBD_EXCLUSIVE_USE, &sc->sc_bulkout_pipe);
 		if (err) {
-			printf("%s: open bulk out error (addr %d): %s\n",
+			kprintf("%s: open bulk out error (addr %d): %s\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkout_no,
 			       usbd_errstr(err));
 			error = EIO;
@@ -923,7 +923,7 @@ ucomstart(struct tty *tp)
 	/* What can we do on error? */
 	err = usbd_transfer(sc->sc_oxfer);
 	if (err != USBD_IN_PROGRESS)
-		printf("ucomstart: err=%s\n", usbd_errstr(err));
+		kprintf("ucomstart: err=%s\n", usbd_errstr(err));
 
 	ttwwakeup(tp);
 
@@ -977,7 +977,7 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 		goto error;
 
 	if (status != USBD_NORMAL_COMPLETION) {
-		printf("%s: ucomwritecb: %s\n",
+		kprintf("%s: ucomwritecb: %s\n",
 		       USBDEVNAME(sc->sc_dev), usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_bulkin_pipe);
@@ -993,7 +993,7 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	usbd_get_xfer_status(xfer, NULL, NULL, &cc, NULL);
 	DPRINTF(("ucomwritecb: cc = %d\n", cc));
 	if (cc <= sc->sc_opkthdrlen) {
-		printf("%s: sent size too small, cc = %d\n",
+		kprintf("%s: sent size too small, cc = %d\n",
 			USBDEVNAME(sc->sc_dev), cc);
 		goto error;
 	}
@@ -1061,7 +1061,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (!(sc->sc_state & UCS_RXSTOP))
-			printf("%s: ucomreadcb: %s\n",
+			kprintf("%s: ucomreadcb: %s\n",
 			       USBDEVNAME(sc->sc_dev), usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_bulkin_pipe);
@@ -1080,7 +1080,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	}
 
 	if (cc > sc->sc_ibufsize) {
-		printf("%s: invalid receive data size, %d chars\n",
+		kprintf("%s: invalid receive data size, %d chars\n",
 			USBDEVNAME(sc->sc_dev), cc);
 		goto resubmit;
 	}
@@ -1115,7 +1115,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 			ucomstart(tp);
 		}
 		if (lostcc > 0)
-			printf("%s: lost %d chars\n", USBDEVNAME(sc->sc_dev),
+			kprintf("%s: lost %d chars\n", USBDEVNAME(sc->sc_dev),
 			       lostcc);
 	} else {
 		/* Give characters to tty layer. */
@@ -1123,7 +1123,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 			DPRINTFN(7, ("ucomreadcb: char = 0x%02x\n", *cp));
 			if ((*rint)(*cp, tp) == -1) {
 				/* XXX what should we do? */
-				printf("%s: lost %d chars\n",
+				kprintf("%s: lost %d chars\n",
 				       USBDEVNAME(sc->sc_dev), cc);
 				break;
 			}
@@ -1136,7 +1136,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 resubmit:
 	err = ucomstartread(sc);
 	if (err) {
-		printf("%s: read start failed\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: read start failed\n", USBDEVNAME(sc->sc_dev));
 		/* XXX what should we dow now? */
 	}
 

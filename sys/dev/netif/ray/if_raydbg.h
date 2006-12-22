@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_raydbg.h,v 1.10.2.2 2001/08/14 22:54:07 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_raydbg.h,v 1.3 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_raydbg.h,v 1.4 2006/12/22 23:26:21 swildner Exp $
  *
  */
 
@@ -105,20 +105,20 @@
     device_printf((sc)->dev, "%s(%d) %s\n",				\
     	__func__ , __LINE__ , (s));					\
     for (i = (off); i < (off)+(len); i += 8) {				\
-	    printf(".  0x%04x ", i);					\
+	    kprintf(".  0x%04x ", i);					\
 	    for (j = 0; j < 8; j++)					\
-		    printf("%02x ", SRAM_READ_1((sc), i+j));		\
-	    printf("\n");						\
+		    kprintf("%02x ", SRAM_READ_1((sc), i+j));		\
+	    kprintf("\n");						\
     }									\
 } } while (0)
 
 #define RAY_DCOM(sc, mask, com, s) do { if (RAY_DEBUG & (mask)) {	\
     device_printf((sc)->dev, "%s(%d) %s com entry 0x%p\n",		\
         __func__ , __LINE__ , (s) , (com));				\
-    printf(".  c_mesg %s\n", (com)->c_mesg);				\
-    printf(".  c_flags 0x%b\n", (com)->c_flags, RAY_COM_FLAGS_PRINTFB);	\
-    printf(".  c_retval 0x%x\n", (com)->c_retval);			\
-    printf(".  c_ccs 0x%0x index 0x%02x\n",				\
+    kprintf(".  c_mesg %s\n", (com)->c_mesg);				\
+    kprintf(".  c_flags 0x%b\n", (com)->c_flags, RAY_COM_FLAGS_PRINTFB);	\
+    kprintf(".  c_retval 0x%x\n", (com)->c_retval);			\
+    kprintf(".  c_ccs 0x%0x index 0x%02x\n",				\
         (com)->c_ccs, RAY_CCS_INDEX((com)->c_ccs));			\
 } } while (0)
 

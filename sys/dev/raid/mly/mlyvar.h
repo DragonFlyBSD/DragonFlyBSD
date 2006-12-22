@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.7 2006/09/10 01:26:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.8 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include <sys/thread2.h>
@@ -78,11 +78,11 @@
  *  2 - extremely noisy, emit trace items in loops, etc.
  */
 #ifdef MLY_DEBUG
-# define debug(level, fmt, args...)	do { if (level <= MLY_DEBUG) printf("%s: " fmt "\n", __func__ , ##args); } while(0)
-# define debug_called(level)		do { if (level <= MLY_DEBUG) printf(__func__ ": called\n"); } while(0)
-# define debug_struct(s)		printf("  SIZE %s: %d\n", #s, sizeof(struct s))
-# define debug_union(s)			printf("  SIZE %s: %d\n", #s, sizeof(union s))
-# define debug_field(s, f)		printf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
+# define debug(level, fmt, args...)	do { if (level <= MLY_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args); } while(0)
+# define debug_called(level)		do { if (level <= MLY_DEBUG) kprintf(__func__ ": called\n"); } while(0)
+# define debug_struct(s)		kprintf("  SIZE %s: %d\n", #s, sizeof(struct s))
+# define debug_union(s)			kprintf("  SIZE %s: %d\n", #s, sizeof(union s))
+# define debug_field(s, f)		kprintf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
 extern void		mly_printstate0(void);
 extern struct mly_softc	*mly_softc0;
 #else

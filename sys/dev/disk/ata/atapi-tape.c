@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.19 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.20 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -202,38 +202,38 @@ ast_describe(struct ast_softc *stp)
 		   device_get_unit(stp->device->channel->dev),
 		   (stp->device->unit == ATA_MASTER) ? "master" : "slave");
 	ata_prtdev(stp->device, "%dKB/s, ", stp->cap.max_speed);
-	printf("transfer limit %d blk%s, ",
+	kprintf("transfer limit %d blk%s, ",
 	       stp->cap.ctl, (stp->cap.ctl > 1) ? "s" : "");
-	printf("%dKB buffer, ", (stp->cap.buffer_size * DEV_BSIZE) / 1024);
-	printf("%s\n", ata_mode2str(stp->device->mode));
+	kprintf("%dKB buffer, ", (stp->cap.buffer_size * DEV_BSIZE) / 1024);
+	kprintf("%s\n", ata_mode2str(stp->device->mode));
 	ata_prtdev(stp->device, "Medium: ");
 	switch (stp->cap.medium_type) {
 	    case 0x00:
-		printf("none"); break;
+		kprintf("none"); break;
 	    case 0x17:
-		printf("Travan 1 (400 Mbyte)"); break;
+		kprintf("Travan 1 (400 Mbyte)"); break;
 	    case 0xb6:
-		printf("Travan 4 (4 Gbyte)"); break;
+		kprintf("Travan 4 (4 Gbyte)"); break;
 	    case 0xda:
-		printf("OnStream ADR (15Gyte)"); break;
+		kprintf("OnStream ADR (15Gyte)"); break;
 	    default:
-		printf("unknown (0x%x)", stp->cap.medium_type);
+		kprintf("unknown (0x%x)", stp->cap.medium_type);
 	}
-	if (stp->cap.readonly) printf(", readonly");
-	if (stp->cap.reverse) printf(", reverse");
-	if (stp->cap.eformat) printf(", eformat");
-	if (stp->cap.qfa) printf(", qfa");
-	if (stp->cap.lock) printf(", lock");
-	if (stp->cap.locked) printf(", locked");
-	if (stp->cap.prevent) printf(", prevent");
-	if (stp->cap.eject) printf(", eject");
-	if (stp->cap.disconnect) printf(", disconnect");
-	if (stp->cap.ecc) printf(", ecc");
-	if (stp->cap.compress) printf(", compress");
-	if (stp->cap.blk512) printf(", 512b");
-	if (stp->cap.blk1024) printf(", 1024b");
-	if (stp->cap.blk32k) printf(", 32kb");
-	printf("\n");
+	if (stp->cap.readonly) kprintf(", readonly");
+	if (stp->cap.reverse) kprintf(", reverse");
+	if (stp->cap.eformat) kprintf(", eformat");
+	if (stp->cap.qfa) kprintf(", qfa");
+	if (stp->cap.lock) kprintf(", lock");
+	if (stp->cap.locked) kprintf(", locked");
+	if (stp->cap.prevent) kprintf(", prevent");
+	if (stp->cap.eject) kprintf(", eject");
+	if (stp->cap.disconnect) kprintf(", disconnect");
+	if (stp->cap.ecc) kprintf(", ecc");
+	if (stp->cap.compress) kprintf(", compress");
+	if (stp->cap.blk512) kprintf(", 512b");
+	if (stp->cap.blk1024) kprintf(", 1024b");
+	if (stp->cap.blk32k) kprintf(", 32kb");
+	kprintf("\n");
     }
     else {
 	ata_prtdev(stp->device, "TAPE <%.40s> at ata%d-%s %s\n",

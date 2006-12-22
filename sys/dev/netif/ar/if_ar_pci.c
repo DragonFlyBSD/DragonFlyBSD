@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.11 2004/05/30 20:08:26 phk Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.6 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.7 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +103,7 @@ ar_pci_probe(device_t device)
 	for (t = ar_devs; t->ar_name != NULL; t++) {
 		if (vendor == t->ar_vid && product == t->ar_did) {
 			if (t->ar_errmsg != NULL) {
-				printf("%s\n%s\n", t->ar_name, t->ar_errmsg);
+				kprintf("%s\n%s\n", t->ar_name, t->ar_errmsg);
 				return(ENXIO);
 			} else {
 				device_set_desc(device, t->ar_name);
@@ -160,7 +160,7 @@ ar_pci_attach(device_t device)
 	for(i = 1; i < hc->numports; i++)
 		hc->interface[i] = hc->interface[0];
 
-	TRC(printf("arp%d: bus %x, rev %d, memstart %p, winsize %d, "
+	TRC(kprintf("arp%d: bus %x, rev %d, memstart %p, winsize %d, "
 	    "winmsk %x, interface %x\n",
 	    unit, hc->bustype, hc->revision, hc->mem_start, hc->winsize,
 	    hc->winmsk, hc->interface[0]));

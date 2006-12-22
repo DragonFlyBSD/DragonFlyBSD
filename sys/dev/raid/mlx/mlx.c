@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.23 2006/12/20 18:14:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.24 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -608,9 +608,9 @@ mlx_shutdown(device_t dev)
     /* flush controller */
     device_printf(sc->mlx_dev, "flushing cache...");
     if (mlx_flush(sc)) {
-	printf("failed\n");
+	kprintf("failed\n");
     } else {
-	printf("done\n");
+	kprintf("done\n");
     }
     
     /* delete all our child devices */
@@ -642,7 +642,7 @@ mlx_suspend(device_t dev)
     
     /* flush controller */
     device_printf(sc->mlx_dev, "flushing cache...");
-    printf("%s\n", mlx_flush(sc) ? "failed" : "done");
+    kprintf("%s\n", mlx_flush(sc) ? "failed" : "done");
 
     sc->mlx_intaction(sc, MLX_INTACTION_DISABLE);
     crit_exit();
@@ -803,9 +803,9 @@ mlx_ioctl(struct dev_ioctl_args *ap)
 
     detach_out:
 	if (error) {
-	    printf("failed\n");
+	    kprintf("failed\n");
 	} else {
-	    printf("done\n");
+	    kprintf("done\n");
 	}
 	return(error);
 

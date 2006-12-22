@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.21 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.22 2006/12/22 23:26:25 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.21 2006/12/20 18:14:41 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.22 2006/12/22 23:26:25 swildner Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -463,7 +463,7 @@ ac97_setmixer(struct ac97_info *codec, unsigned channel, unsigned left, unsigned
 		snd_mtxunlock(codec->lock);
 		return left | (right << 8);
 	} else {
-		/* printf("ac97_setmixer: reg=%d, bits=%d, enable=%d\n", e->reg, e->bits, e->enable); */
+		/* kprintf("ac97_setmixer: reg=%d, bits=%d, enable=%d\n", e->reg, e->bits, e->enable); */
 		return -1;
 	}
 }
@@ -623,7 +623,7 @@ ac97_initmixer(struct ac97_info *codec)
 			for (k = 1; j & (1 << k); k++);
 			codec->mix[i].bits = j? k - codec->mix[i].ofs : 0;
 		}
-		/* printf("mixch %d, en=%d, b=%d\n", i, codec->mix[i].enable, codec->mix[i].bits); */
+		/* kprintf("mixch %d, en=%d, b=%d\n", i, codec->mix[i].enable, codec->mix[i].bits); */
 	}
 
 	device_printf(codec->dev, "<%s>\n",
@@ -633,19 +633,19 @@ ac97_initmixer(struct ac97_info *codec)
 		device_printf(codec->dev, "Codec features ");
 		for (i = j = 0; i < 10; i++)
 			if (codec->caps & (1 << i))
-				printf("%s%s", j++? ", " : "", ac97feature[i]);
-		printf("%s%d bit master volume", j++? ", " : "", codec->mix[SOUND_MIXER_VOLUME].bits);
-		printf("%s%s\n", j? ", " : "", ac97enhancement[codec->se]);
+				kprintf("%s%s", j++? ", " : "", ac97feature[i]);
+		kprintf("%s%d bit master volume", j++? ", " : "", codec->mix[SOUND_MIXER_VOLUME].bits);
+		kprintf("%s%s\n", j? ", " : "", ac97enhancement[codec->se]);
 
 		if (codec->extcaps != 0 || codec->extid) {
 			device_printf(codec->dev, "%s codec",
 				      codec->extid? "Secondary" : "Primary");
 			if (codec->extcaps)
-				printf(" extended features ");
+				kprintf(" extended features ");
 			for (i = j = 0; i < 14; i++)
 				if (codec->extcaps & (1 << i))
-					printf("%s%s", j++? ", " : "", ac97extfeature[i]);
-			printf("\n");
+					kprintf("%s%s", j++? ", " : "", ac97extfeature[i]);
+			kprintf("\n");
 		}
 	}
 

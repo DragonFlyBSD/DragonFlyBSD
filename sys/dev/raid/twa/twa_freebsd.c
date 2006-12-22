@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.13 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.14 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -194,7 +194,7 @@ twa_probe(device_t dev)
 		device_set_desc(dev, TWA_DEVICE_NAME);
 		/* Print the driver version only once. */
 		if (first_ctlr) {
-			printf("3ware device driver for 9000 series storage controllers, version: %s\n",
+			kprintf("3ware device driver for 9000 series storage controllers, version: %s\n",
 					TWA_DRIVER_VERSION_STRING);
 			first_ctlr = 0;
 		}

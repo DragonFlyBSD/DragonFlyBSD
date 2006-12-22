@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.7 2006/12/22 23:26:26 swildner Exp $
  */
 
 /*
@@ -143,8 +143,8 @@ struct msp3400c {
 
 #define dprintk(args) do {						\
 	if (bootverbose) {						\
-		printf("%s: ", bktr_name(client));			\
-		printf args;						\
+		kprintf("%s: ", bktr_name(client));			\
+		kprintf args;						\
 	}								\
 } while (0)
 
@@ -532,22 +532,22 @@ static void
 msp3400c_print_mode(struct msp3400c *msp)
 {
 	if (msp->main == msp->second) {
-		printf("bktr: msp3400: mono sound carrier: %d.%03d MHz\n",
+		kprintf("bktr: msp3400: mono sound carrier: %d.%03d MHz\n",
 		       msp->main/910000,(msp->main/910)%1000);
 	} else {
-		printf("bktr: msp3400: main sound carrier: %d.%03d MHz\n",
+		kprintf("bktr: msp3400: main sound carrier: %d.%03d MHz\n",
 		       msp->main/910000,(msp->main/910)%1000);
 	}
 	if (msp->mode == MSP_MODE_FM_NICAM1 ||
 	    msp->mode == MSP_MODE_FM_NICAM2)
-		printf("bktr: msp3400: NICAM/FM carrier   : %d.%03d MHz\n",
+		kprintf("bktr: msp3400: NICAM/FM carrier   : %d.%03d MHz\n",
 		       msp->second/910000,(msp->second/910)%1000);
 	if (msp->mode == MSP_MODE_AM_NICAM)
-		printf("bktr: msp3400: NICAM/AM carrier   : %d.%03d MHz\n",
+		kprintf("bktr: msp3400: NICAM/AM carrier   : %d.%03d MHz\n",
 		       msp->second/910000,(msp->second/910)%1000);
 	if (msp->mode == MSP_MODE_FM_TERRA &&
 	    msp->main != msp->second) {
-		printf("bktr: msp3400: FM-stereo carrier : %d.%03d MHz\n",
+		kprintf("bktr: msp3400: FM-stereo carrier : %d.%03d MHz\n",
 		       msp->second/910000,(msp->second/910)%1000);
 	}
 }
@@ -1161,7 +1161,7 @@ int msp_attach(bktr_ptr_t bktr)
 		kfree(msp->threaddesc, M_DEVBUF);
 		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;
-		printf("%s: msp3400: error while reading chip version\n", bktr_name(bktr));
+		kprintf("%s: msp3400: error while reading chip version\n", bktr_name(bktr));
 		return ENXIO;
 	}
 
@@ -1185,17 +1185,17 @@ int msp_attach(bktr_ptr_t bktr)
 
 	/* hello world :-) */
 	if (bootverbose) {
-		printf("%s: msp34xx: init: chip=%s", bktr_name(bktr), buf);
+		kprintf("%s: msp34xx: init: chip=%s", bktr_name(bktr), buf);
 		if (msp->nicam)
-			printf(", has NICAM support");
-		printf("\n");
+			kprintf(", has NICAM support");
+		kprintf("\n");
 	}
 
 	/* startup control thread */
 	err = kthread_create(msp->simple ? msp3410d_thread : msp3400c_thread,
 			     bktr, &msp->kthread, msp->threaddesc);
 	if (err) {
-		printf("%s: Error returned by kthread_create: %d", bktr_name(bktr), err);
+		kprintf("%s: Error returned by kthread_create: %d", bktr_name(bktr), err);
 		kfree(msp->threaddesc, M_DEVBUF);
 		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;

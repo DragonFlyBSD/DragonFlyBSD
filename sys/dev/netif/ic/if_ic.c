@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.16 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -322,7 +322,7 @@ icintr (device_t dev, int event, char *ptr)
 	  break;
 
 	err:
-	  printf("ic%d: errors (%d)!\n", unit, sc->ic_iferrs);
+	  kprintf("ic%d: errors (%d)!\n", unit, sc->ic_iferrs);
 
 	  sc->ic_iferrs = 0;			/* reset error count */
 	  sc->ic_if.if_ierrors ++;

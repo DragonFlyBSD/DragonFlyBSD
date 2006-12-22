@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.29.2.14 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.7 2006/09/05 16:50:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.8 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -124,7 +124,7 @@ ahc_pci_attach(device_t dev)
 				   &ahc->parent_dmat);
 
 	if (error != 0) {
-		printf("ahc_pci_attach: Could not allocate DMA tag "
+		kprintf("ahc_pci_attach: Could not allocate DMA tag "
 		       "- error %d\n", error);
 		ahc_free(ahc);
 		return (ENOMEM);
@@ -162,11 +162,11 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 			device_printf(ahc->dev_softc, "Defaulting to MEMIO ");
 #ifdef AHC_ALLOW_MEMIO
 		if (bootverbose)
-			printf("on\n");
+			kprintf("on\n");
 		allow_memio = 1;
 #else
 		if (bootverbose)
-			printf("off\n");
+			kprintf("off\n");
 		allow_memio = 0;
 #endif
 	}

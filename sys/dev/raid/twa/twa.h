@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.3 2005/06/10 17:10:26 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.4 2006/12/22 23:26:24 swildner Exp $
  */
 
 /*
@@ -302,7 +302,7 @@ extern u_int8_t	twa_call_dbg_level;
 #define twa_dbg_print(dbg_level, fmt, args...)			\
 	do {							\
 		if (dbg_level <= twa_dbg_level)			\
-			printf("%s: " fmt "\n", __func__ , ##args);\
+			kprintf("%s: " fmt "\n", __func__ , ##args);\
 	} while(0)
 
 #else

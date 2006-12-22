@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.14 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.15 2006/12/22 23:26:22 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +168,7 @@ vx_pci_attach(device_t dev)
 	if (vxbusyeeprom(sc))
 	    goto bad;
 	if (!(CSR_READ_2(sc, VX_W0_EEPROM_DATA) & NO_RX_OVN_ANOMALY)) {
-	    printf("Warning! Defective early revision adapter!\n");
+	    kprintf("Warning! Defective early revision adapter!\n");
 	}
     }
 

@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.9 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.10 2006/12/22 23:26:25 swildner Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -271,14 +271,14 @@ USB_ATTACH(udbp)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	printf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	/* Find the two first bulk endpoints */
 	for (i = 0 ; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (!ed) {
-			printf("%s: could not read endpoint descriptor\n",
+			kprintf("%s: could not read endpoint descriptor\n",
 			       USBDEVNAME(sc->sc_dev));
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -297,14 +297,14 @@ USB_ATTACH(udbp)
 
 	/* Verify that we goething sensible */
 	if (ed_bulkin == NULL || ed_bulkout == NULL) {
-		printf("%s: bulk-in and/or bulk-out endpoint not found\n",
+		kprintf("%s: bulk-in and/or bulk-out endpoint not found\n",
 			USBDEVNAME(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	if (ed_bulkin->wMaxPacketSize[0] != ed_bulkout->wMaxPacketSize[0] ||
 	   ed_bulkin->wMaxPacketSize[1] != ed_bulkout->wMaxPacketSize[1]) {
-		printf("%s: bulk-in and bulk-out have different packet sizes %d %d %d %d\n",
+		kprintf("%s: bulk-in and bulk-out have different packet sizes %d %d %d %d\n",
 			USBDEVNAME(sc->sc_dev),
 		       ed_bulkin->wMaxPacketSize[0],
 		       ed_bulkout->wMaxPacketSize[0],
@@ -344,14 +344,14 @@ USB_ATTACH(udbp)
 	err = usbd_open_pipe(iface, sc->sc_bulkin,
 				USBD_EXCLUSIVE_USE, &sc->sc_bulkin_pipe);
 	if (err) {
-		printf("%s: cannot open bulk-in pipe (addr %d)\n",
+		kprintf("%s: cannot open bulk-in pipe (addr %d)\n",
 			USBDEVNAME(sc->sc_dev), sc->sc_bulkin);
 		goto bad;
 	}
 	err = usbd_open_pipe(iface, sc->sc_bulkout,
 				USBD_EXCLUSIVE_USE, &sc->sc_bulkout_pipe);
 	if (err) {
-		printf("%s: cannot open bulk-out pipe (addr %d)\n",
+		kprintf("%s: cannot open bulk-out pipe (addr %d)\n",
 			USBDEVNAME(sc->sc_dev), sc->sc_bulkout);
 		goto bad;
 	}
@@ -359,7 +359,7 @@ USB_ATTACH(udbp)
 	if (!ngudbp_done_init){
 		ngudbp_done_init=1;
 		if (ng_newtype(&ng_udbp_typestruct)) {
-			printf("ngudbp install failed\n");
+			kprintf("ngudbp install failed\n");
 			goto bad;
 		}
 	}
@@ -553,7 +553,7 @@ udbp_setup_out_transfer(udbp_p sc)
 
 	pktlen = m->m_pkthdr.len;
 	if (pktlen > sc->sc_bulkout_bufferlen) {
-		printf("%s: Packet too large, %d > %d\n",
+		kprintf("%s: Packet too large, %d > %d\n",
 			USBDEVNAME(sc->sc_dev), pktlen,
 			sc->sc_bulkout_bufferlen);
 		return (USBD_IOERROR);

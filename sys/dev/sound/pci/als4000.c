@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.8 2006/12/20 18:14:40 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.8 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -291,7 +291,7 @@ als_set_speed(struct sc_chinfo *ch)
 		als_esp_wr(sc, ch->speed >> 8);
 		als_esp_wr(sc, ch->speed & 0xff);
 	} else {
-		DEB(printf("speed locked at %d (tried %d)\n",
+		DEB(kprintf("speed locked at %d (tried %d)\n",
 			   other->speed, ch->speed));
 	}
 }
@@ -325,7 +325,7 @@ als_get_playback_command(u_int32_t format)
 			return &playback_cmds[i];
 		}
 	}
-	DEB(printf("als_get_playback_command: invalid format 0x%08x\n",
+	DEB(kprintf("als_get_playback_command: invalid format 0x%08x\n",
 		   format));
 	return &playback_cmds[0];
 }
@@ -668,7 +668,7 @@ als_init(struct sc_info *sc)
 	/* Emulation mode */
 	v = als_gcr_rd(sc, ALS_GCR_DMA_EMULATION);
 	als_gcr_wr(sc, ALS_GCR_DMA_EMULATION, v);
-	DEB(printf("GCR_DMA_EMULATION 0x%08x\n", v));
+	DEB(kprintf("GCR_DMA_EMULATION 0x%08x\n", v));
 	return 0;
 }
 

@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.22 2006/09/05 00:55:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.23 2006/12/22 23:26:19 swildner Exp $
  *
  */
 #undef DEBUG
@@ -65,7 +65,7 @@ static void cxintr(void *);
 static int cxtinth (cx_chan_t *c);
 
 #ifdef DEBUG
-#   define print(s)     printf s
+#   define print(s)     kprintf s
 #else
 #   define print(s)     {/*void*/}
 #endif
@@ -126,15 +126,15 @@ valid (unsigned short value, unsigned short *list)
 static void
 printmbuf (struct mbuf *m)
 {
-	printf ("mbuf:");
+	kprintf ("mbuf:");
 	for (; m; m=m->m_next) {
 		if (m->m_flags & M_PKTHDR)
-			printf (" HDR %d:", m->m_pkthdr.len);
+			kprintf (" HDR %d:", m->m_pkthdr.len);
 		if (m->m_flags & M_EXT)
-			printf (" EXT:");
-		printf (" %d", m->m_len);
+			kprintf (" EXT:");
+		kprintf (" %d", m->m_len);
 	}
-	printf ("\n");
+	kprintf ("\n");
 }
 
 /*
@@ -202,15 +202,15 @@ cxprobe (struct isa_device *id)
 	print (("cx%d: probe iobase=0x%x irq=%d drq=%d\n",
 		unit, iobase, irqnum, drq));
 	if (! valid (irqnum, irq_valid_values)) {
-		printf ("cx%d: Incorrect IRQ: %d\n", unit, irqnum);
+		kprintf ("cx%d: Incorrect IRQ: %d\n", unit, irqnum);
 		return (0);
 	}
 	if (! valid (iobase, port_valid_values)) {
-		printf ("cx%d: Incorrect port address: 0x%x\n", unit, iobase);
+		kprintf ("cx%d: Incorrect port address: 0x%x\n", unit, iobase);
 		return (0);
 	}
 	if (! valid (drq, drq_valid_values)) {
-		printf ("cx%d: Incorrect DMA channel: %d\n", unit, drq);
+		kprintf ("cx%d: Incorrect DMA channel: %d\n", unit, drq);
 		return (0);
 	}
 	if (! cx_probe_board (iobase))
@@ -257,7 +257,7 @@ cxattach (struct isa_device *id)
 		/* All buffers should be located in lower 16M of memory! */
 		/* XXX all buffers located where?  I don't think so! */
 		if (!c->arbuf || !c->brbuf || !c->atbuf || !c->btbuf) {
-			printf ("cx%d.%d: No memory for channel buffers\n",
+			kprintf ("cx%d.%d: No memory for channel buffers\n",
 				c->board->num, c->num);
 			c->type = T_NONE;
 		}
@@ -296,7 +296,7 @@ cxattach (struct isa_device *id)
 		callout_init(&cxtimeout_ch);
 		callout_reset(&cxtimeout_ch, hz * 5, cxtimeout, NULL);
 	}
-	printf ("cx%d: <Cronyx-%s>\n", unit, b->name);
+	kprintf ("cx%d: <Cronyx-%s>\n", unit, b->name);
 	dev_ops_add(&cx_ops, -1, unit);
 	make_dev(&cx_ops, unit, UID_ROOT, GID_WHEEL, 0600, "cx%d", unit);
 	return (1);
@@ -472,7 +472,7 @@ cxput (cx_chan_t *c, char b)
 	c->stat->obytes += len + 3;
 
 	if (len >= DMABUFSZ) {
-		printf ("cx%d.%d: too long packet: %d bytes: ",
+		kprintf ("cx%d.%d: too long packet: %d bytes: ",
 			c->board->num, c->num, len);
 		printmbuf (m);
 		m_freem (m);
@@ -571,7 +571,7 @@ cxwatchdog (struct ifnet *ifp)
 	if (! (ifp->if_flags & IFF_RUNNING))
 		return;
 	if (ifp->if_flags & IFF_DEBUG)
-		printf ("cx%d.%d: device timeout\n", c->board->num, c->num);
+		kprintf ("cx%d.%d: device timeout\n", c->board->num, c->num);
 
 	cxdown (c);
 	for (q=c->slaveq; q; q=q->slaveq)
@@ -597,7 +597,7 @@ cxrinth (cx_chan_t *c)
 	/* Receive errors. */
 	if (risr & (RIS_BUSERR | RIS_OVERRUN | RISH_CRCERR | RISH_RXABORT)) {
 		if (c->ifp->if_flags & IFF_DEBUG)
-			printf ("cx%d.%d: receive error, risr=%b\n",
+			kprintf ("cx%d.%d: receive error, risr=%b\n",
 				c->board->num, c->num, risr, RISH_BITS);
 		++c->ifp->if_ierrors;
 		++c->stat->ierrs;
@@ -619,7 +619,7 @@ cxrinth (cx_chan_t *c)
 			 * exceeds our buffer size.  It could be caused
 			 * by incorrectly programmed DMA register or
 			 * hardware fault.  Possibly, should panic here. */
-			printf ("cx%d.%d: panic! DMA buffer overflow: %d bytes\n",
+			kprintf ("cx%d.%d: panic! DMA buffer overflow: %d bytes\n",
 			       c->board->num, c->num, len);
 			++c->ifp->if_ierrors;
 		} else if (! (risr & RIS_EOFR)) {
@@ -627,7 +627,7 @@ cxrinth (cx_chan_t *c)
 			 * It could be caused by serial lie noise,
 			 * or if the peer has too big MTU. */
 			if (c->ifp->if_flags & IFF_DEBUG)
-				printf ("cx%d.%d: received frame length exceeds MTU, risr=%b\n",
+				kprintf ("cx%d.%d: received frame length exceeds MTU, risr=%b\n",
 					c->board->num, c->num, risr, RISH_BITS);
 			++c->ifp->if_ierrors;
 		} else {
@@ -712,7 +712,7 @@ cxintr (void *arg)
 		unsigned char eoi = 0;
 
 		if (c->type == T_NONE) {
-			printf ("cx%d.%d: unexpected interrupt, livr=0x%x\n",
+			kprintf ("cx%d.%d: unexpected interrupt, livr=0x%x\n",
 				c->board->num, c->num, livr);
 			continue;       /* incorrect channel number? */
 		}
@@ -788,7 +788,7 @@ cxinput (cx_chan_t *c, void *buf, unsigned len)
 	struct mbuf *m = makembuf (buf, len);
 	if (! m) {
 		if (c->ifp->if_flags & IFF_DEBUG)
-			printf ("cx%d.%d: no memory for packet\n",
+			kprintf ("cx%d.%d: no memory for packet\n",
 				c->board->num, c->num);
 		++c->ifp->if_iqdrops;
 		return;
