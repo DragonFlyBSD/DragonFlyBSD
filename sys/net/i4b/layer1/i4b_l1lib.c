@@ -30,7 +30,7 @@
  *	$Id: i4b_l1lib.c,v 1.3 2000/05/29 15:41:41 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1lib.c,v 1.3.2.1 2001/08/10 14:08:36 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1lib.c,v 1.5 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1lib.c,v 1.6 2006/12/22 23:44:55 swildner Exp $
  *
  *      last edit-date: [Mon May 29 15:24:21 2000]
  *
@@ -66,7 +66,7 @@ i4b_l1_bchan_tel_silence(unsigned char *data, int len)
 	}
 
 #ifdef NOTDEF
-	printf("i4b_l1_bchan_tel_silence: got %d silence bytes in frame\n", j);
+	kprintf("i4b_l1_bchan_tel_silence: got %d silence bytes in frame\n", j);
 #endif
 	
 	if(j < (TEL_IDLE_MIN))

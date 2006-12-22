@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.9 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -236,7 +236,7 @@ i4bingattach(void *dummy)
 	int i;
 	int ret;
 
-	printf("i4bing: %d i4b NetGraph ISDN B-channel device(s) attached\n", NI4BING);
+	kprintf("i4bing: %d i4b NetGraph ISDN B-channel device(s) attached\n", NI4BING);
 	
 	for(i=0; i < NI4BING; sc++, i++)
 	{
@@ -273,7 +273,7 @@ i4bingattach(void *dummy)
 
 		if ((ret = ng_make_node_common(&typestruct, &sc->node)))
 		{
-			printf("ing: ng_make_node_common, ret = %d\n!", ret);
+			kprintf("ing: ng_make_node_common, ret = %d\n!", ret);
 		}
 
 		sc->node->private = sc;

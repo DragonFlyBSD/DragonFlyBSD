@@ -25,7 +25,7 @@
  * capi/capi_llif.c	The i4b CAPI link layer interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_llif.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_llif.c,v 1.5 2004/04/16 15:40:20 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_llif.c,v 1.6 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ capi_ll_control(capi_softc_t *sc, int op, int arg)
 	break;
 
     default:
-	printf("capi%d: unknown control %d\n", sc->sc_unit, op);
+	kprintf("capi%d: unknown control %d\n", sc->sc_unit, op);
     }
 
     return 0;
@@ -136,7 +136,7 @@ capi_ll_receive(capi_softc_t *sc, struct mbuf *m)
     capimsg_getu16(p + 6, &msgid);
 
 #if 0
-    printf("capi%d: ll_receive hdr %04x %04x %04x %04x\n", sc->sc_unit,
+    kprintf("capi%d: ll_receive hdr %04x %04x %04x %04x\n", sc->sc_unit,
 	   len, applid, cmd, msgid);
 #endif
 
@@ -144,11 +144,11 @@ capi_ll_receive(capi_softc_t *sc, struct mbuf *m)
 	struct capi_cmdtab *e;
 	for (e = i4b_capi_handlers; e->cmd && e->cmd != cmd; e++);
 	if (e->cmd) (*e->handler)(sc, m);
-	else printf("capi%d: unknown message %04x\n", sc->sc_unit, cmd);
+	else kprintf("capi%d: unknown message %04x\n", sc->sc_unit, cmd);
 
     } else {
 	/* XXX we could handle arbitrary ApplIds here XXX */
-	printf("capi%d: message %04x for unknown applid %d\n", sc->sc_unit,
+	kprintf("capi%d: message %04x for unknown applid %d\n", sc->sc_unit,
 	       cmd, applid);
     }
 

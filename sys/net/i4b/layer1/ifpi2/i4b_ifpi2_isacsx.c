@@ -31,7 +31,7 @@
  *	$Id$ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.1.2.1 2002/04/25 20:26:50 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.5 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Mon May 29 15:22:52 2000]
  *
@@ -248,7 +248,7 @@ ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
 			sc->sc_ol = sc->sc_obuf->m_len;
 			sc->sc_obuf2 = NULL;
 #ifdef NOTDEF			
-			printf("ob2=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob2=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,
@@ -258,7 +258,7 @@ ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
 		else
 		{
 #ifdef NOTDEF
-			printf("ob=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,

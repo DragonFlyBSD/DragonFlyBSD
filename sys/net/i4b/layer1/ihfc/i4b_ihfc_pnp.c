@@ -36,7 +36,7 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.8 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.9 2006/12/22 23:44:56 swildner Exp $
  *     
  *---------------------------------------------------------------------------*/
 
@@ -154,7 +154,7 @@ ihfc_pnp_probe(device_t dev)
 
 	if (unit >= IHFC_MAXUNIT)
 	{
-		printf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
+		kprintf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
 		return ENXIO;
 	}
 
@@ -223,7 +223,7 @@ ihfc_pnp_probe(device_t dev)
 				}
 				else
 				{
-					printf("ihfc%d: Chip seems corrupted. "
+					kprintf("ihfc%d: Chip seems corrupted. "
 					"Please hard reboot your computer!\n",
 					unit);					
 				}
@@ -323,7 +323,7 @@ ihfc_isa_probe(device_t dev)
 
 	HFC_END;
 
-	printf("ihfc%d: Chip not found. "
+	kprintf("ihfc%d: Chip not found. "
 	"A hard reboot may help!\n", unit);
 
 	return ENXIO;	/* failure */
@@ -371,7 +371,7 @@ ihfc_pnp_shutdown(device_t dev)
 
 	if (unit >= IHFC_MAXUNIT)
 	{
-		printf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
+		kprintf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
 		goto f0;
 	}
 
@@ -399,7 +399,7 @@ ihfc_pnp_detach (device_t dev, u_int flag)
 
 	if (unit >= IHFC_MAXUNIT)
 	{
-		printf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
+		kprintf("ihfc%d: Error, unit %d >= IHFC_MAXUNIT", unit, unit);
 		return 0;
 	}
 

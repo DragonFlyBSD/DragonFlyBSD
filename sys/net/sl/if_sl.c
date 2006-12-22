@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.30 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.31 2006/12/22 23:44:57 swildner Exp $
  */
 
 /*
@@ -454,7 +454,7 @@ sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 * the line protocol to support other address families.
 	 */
 	if (dst->sa_family != AF_INET) {
-		printf("%s: af%d not supported\n", sc->sc_if.if_xname,
+		kprintf("%s: af%d not supported\n", sc->sc_if.if_xname,
 			dst->sa_family);
 		m_freem(m);
 		sc->sc_if.if_noproto++;

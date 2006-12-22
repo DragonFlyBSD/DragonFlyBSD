@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.20 2006/01/14 11:05:17 swildner Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.21 2006/12/22 23:44:54 swildner Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -184,7 +184,7 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		break;
 
 	default:
-		printf("%s: can't handle af%d\n", ifp->if_xname,
+		kprintf("%s: can't handle af%d\n", ifp->if_xname,
 		    dst->sa_family);
 		gotoerr(EAFNOSUPPORT);
 	}

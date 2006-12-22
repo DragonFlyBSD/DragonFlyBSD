@@ -38,7 +38,7 @@
  *	========================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s0163.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s0163.c,v 1.5 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s0163.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:40 2001]
  *
@@ -128,7 +128,7 @@ isic_probe_s0163(device_t dev)
 
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles 16.3!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles 16.3!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -143,7 +143,7 @@ isic_probe_s0163(device_t dev)
 	                                   &sc->sc_resources.io_rid[0],
 	                                   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get iobase for Teles S0/16.3.\n",
+		kprintf("isic%d: Could not get iobase for Teles S0/16.3.\n",
 				unit);
 		return(ENXIO);
 	}
@@ -165,16 +165,16 @@ isic_probe_s0163(device_t dev)
 		case 0x180:
 		case 0x280:
 		case 0x380:
-			printf("isic%d: Error, instead of using iobase 0x%x for your Teles S0/16.3,\n",
+			kprintf("isic%d: Error, instead of using iobase 0x%x for your Teles S0/16.3,\n",
 				unit, sc->sc_port);
-			printf("isic%d:        please use 0x%x in the kernel configuration file!\n",
+			kprintf("isic%d:        please use 0x%x in the kernel configuration file!\n",
 				unit, sc->sc_port+0xc00);			
 			isic_detach_common(dev);
 			return(ENXIO);
 			break;
 	
 		default:
-			printf("isic%d: Error, invalid iobase 0x%x specified for Teles S0/16.3!\n",
+			kprintf("isic%d: Error, invalid iobase 0x%x specified for Teles S0/16.3!\n",
 				unit, sc->sc_port);
 			isic_detach_common(dev);
 			return(ENXIO);
@@ -191,7 +191,7 @@ isic_probe_s0163(device_t dev)
 				   0ul, ~0ul, 1, RF_ACTIVE);
 	if(!sc->sc_resources.io_base[0])
 	{
-		printf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
+		kprintf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
 			unit, sc->sc_port);
 		isic_detach_common(dev);
 		return ENXIO;
@@ -205,7 +205,7 @@ isic_probe_s0163(device_t dev)
 				   0ul, ~0ul, 1, RF_ACTIVE);
 	if(!sc->sc_resources.io_base[1])
 	{
-		printf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
+		kprintf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
 			unit, sc->sc_port-ISAC_OFFS);
 		isic_detach_common(dev);
 		return ENXIO;
@@ -220,7 +220,7 @@ isic_probe_s0163(device_t dev)
 				   0ul, ~0ul, 1, RF_ACTIVE);
 	if(!sc->sc_resources.io_base[2])
 	{
-		printf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
+		kprintf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
 			unit, sc->sc_port-HSCXA_OFFS);
 		isic_detach_common(dev);
 		return ENXIO;
@@ -235,7 +235,7 @@ isic_probe_s0163(device_t dev)
 				   0ul, ~0ul, 1, RF_ACTIVE);
 	if(!sc->sc_resources.io_base[3])
 	{
-		printf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
+		kprintf("isic%d: Error allocating io at 0x%x for Teles S0/16.3!\n",
 			unit, sc->sc_port-HSCXB_OFFS);
 		isic_detach_common(dev);
 		return ENXIO;
@@ -269,20 +269,20 @@ isic_probe_s0163(device_t dev)
 	b2 = bus_space_read_1(t, h, 2);
 	
 	if ( b0 != 0x51 && b0 != 0x10 ) {
-		printf("isic%d: Error, signature 1 0x%x != 0x51 or 0x10 for Teles S0/16.3!\n",
+		kprintf("isic%d: Error, signature 1 0x%x != 0x51 or 0x10 for Teles S0/16.3!\n",
 			unit, b0);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
 	
 	if ( b1 != 0x93 ) {
-		printf("isic%d: Error, signature 2 0x%x != 0x93 for Teles S0/16.3!\n",
+		kprintf("isic%d: Error, signature 2 0x%x != 0x93 for Teles S0/16.3!\n",
 			unit, b1);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
 	if (( b2 != 0x1c ) && ( b2 != 0x1f )) {
-		printf("isic%d: Error, signature 3 0x%x != (0x1c || 0x1f) for Teles S0/16.3!\n",
+		kprintf("isic%d: Error, signature 3 0x%x != (0x1c || 0x1f) for Teles S0/16.3!\n",
 			unit, b2);
 		isic_detach_common(dev);
 		return ENXIO;	
@@ -298,11 +298,11 @@ isic_probe_s0163(device_t dev)
             (((HSCX_READ(1, H_VSTR) & 0xf) != 0x5) &&
 	     ((HSCX_READ(1, H_VSTR) & 0xf) != 0x4)) )  
 	{
-		printf("isic%d: HSCX VSTR test failed for Teles S0/16.3\n",
+		kprintf("isic%d: HSCX VSTR test failed for Teles S0/16.3\n",
 			unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			unit, HSCX_READ(1, H_VSTR));
 		isic_detach_common(dev);
 		return (ENXIO);
@@ -315,7 +315,7 @@ isic_probe_s0163(device_t dev)
 		&sc->sc_resources.irq_rid,
 		0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get IRQ for Teles S0/16.3.\n",unit);
+		kprintf("isic%d: Could not get IRQ for Teles S0/16.3.\n",unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -334,7 +334,7 @@ isic_probe_s0163(device_t dev)
 			break;
 
 		default:
-			printf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/16.3!\n",
+			kprintf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/16.3!\n",
 				unit, sc->sc_irq);
 			isic_detach_common(dev);
 			return(ENXIO);

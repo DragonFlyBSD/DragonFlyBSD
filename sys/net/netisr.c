@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.28 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.29 2006/12/22 23:44:54 swildner Exp $
  */
 
 /*
@@ -312,7 +312,7 @@ netisr_queue(int num, struct mbuf *m)
 
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
-	printf("netisr_queue: unregistered isr %d\n", num);
+	kprintf("netisr_queue: unregistered isr %d\n", num);
 	return (EIO);
     }
 

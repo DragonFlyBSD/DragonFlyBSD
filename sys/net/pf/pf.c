@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.12 2006/09/29 04:16:39 hsu Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.13 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -102,7 +102,7 @@
 
 extern int ip_optcopy(struct ip *, struct ip *);
 
-#define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) printf x
+#define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 
 /*
  * Global variables
@@ -599,9 +599,9 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 		if (RB_INSERT(pf_src_tree,
 		    &tree_src_tracking, *sn) != NULL) {
 			if (pf_status.debug >= PF_DEBUG_MISC) {
-				printf("pf: src_tree insert failed: ");
+				kprintf("pf: src_tree insert failed: ");
 				pf_print_host(&(*sn)->addr, 0, af);
-				printf("\n");
+				kprintf("\n");
 			}
 			pool_put(&pf_src_tree_pl, *sn);
 			return (-1);
@@ -627,38 +627,38 @@ pf_insert_state(struct pfi_kif *kif, struct pf_state *state)
 	state->u.s.kif = kif;
 	if (RB_INSERT(pf_state_tree_lan_ext, &kif->pfik_lan_ext, state)) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
-			printf("pf: state insert failed: tree_lan_ext");
-			printf(" lan: ");
+			kprintf("pf: state insert failed: tree_lan_ext");
+			kprintf(" lan: ");
 			pf_print_host(&state->lan.addr, state->lan.port,
 			    state->af);
-			printf(" gwy: ");
+			kprintf(" gwy: ");
 			pf_print_host(&state->gwy.addr, state->gwy.port,
 			    state->af);
-			printf(" ext: ");
+			kprintf(" ext: ");
 			pf_print_host(&state->ext.addr, state->ext.port,
 			    state->af);
 			if (state->sync_flags & PFSTATE_FROMSYNC)
-				printf(" (from sync)");
-			printf("\n");
+				kprintf(" (from sync)");
+			kprintf("\n");
 		}
 		return (-1);
 	}
 
 	if (RB_INSERT(pf_state_tree_ext_gwy, &kif->pfik_ext_gwy, state)) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
-			printf("pf: state insert failed: tree_ext_gwy");
-			printf(" lan: ");
+			kprintf("pf: state insert failed: tree_ext_gwy");
+			kprintf(" lan: ");
 			pf_print_host(&state->lan.addr, state->lan.port,
 			    state->af);
-			printf(" gwy: ");
+			kprintf(" gwy: ");
 			pf_print_host(&state->gwy.addr, state->gwy.port,
 			    state->af);
-			printf(" ext: ");
+			kprintf(" ext: ");
 			pf_print_host(&state->ext.addr, state->ext.port,
 			    state->af);
 			if (state->sync_flags & PFSTATE_FROMSYNC)
-				printf(" (from sync)");
-			printf("\n");
+				kprintf(" (from sync)");
+			kprintf("\n");
 		}
 		RB_REMOVE(pf_state_tree_lan_ext, &kif->pfik_lan_ext, state);
 		return (-1);
@@ -670,12 +670,12 @@ pf_insert_state(struct pfi_kif *kif, struct pf_state *state)
 	}
 	if (RB_INSERT(pf_state_tree_id, &tree_id, state) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
-			printf("pf: state insert failed: "
+			kprintf("pf: state insert failed: "
 			    "id: %016" PRIx64 " creatorid: %08" PRIx32,
 			    be64toh(state->id), ntohl(state->creatorid));
 			if (state->sync_flags & PFSTATE_FROMSYNC)
-				printf(" (from sync)");
-			printf("\n");
+				kprintf(" (from sync)");
+			kprintf("\n");
 		}
 		RB_REMOVE(pf_state_tree_lan_ext, &kif->pfik_lan_ext, state);
 		RB_REMOVE(pf_state_tree_ext_gwy, &kif->pfik_ext_gwy, state);
@@ -881,11 +881,11 @@ pf_print_host(struct pf_addr *addr, u_int16_t p, sa_family_t af)
 #ifdef INET
 	case AF_INET: {
 		u_int32_t a = ntohl(addr->addr32[0]);
-		printf("%u.%u.%u.%u", (a>>24)&255, (a>>16)&255,
+		kprintf("%u.%u.%u.%u", (a>>24)&255, (a>>16)&255,
 		    (a>>8)&255, a&255);
 		if (p) {
 			p = ntohs(p);
-			printf(":%u", p);
+			kprintf(":%u", p);
 		}
 		break;
 	}
@@ -916,21 +916,21 @@ pf_print_host(struct pf_addr *addr, u_int16_t p, sa_family_t af)
 			if (i >= maxstart && i <= maxend) {
 				if (maxend != 7) {
 					if (i == maxstart)
-						printf(":");
+						kprintf(":");
 				} else {
 					if (i == maxend)
-						printf(":");
+						kprintf(":");
 				}
 			} else {
 				b = ntohs(addr->addr16[i]);
-				printf("%x", b);
+				kprintf("%x", b);
 				if (i < 7)
-					printf(":");
+					kprintf(":");
 			}
 		}
 		if (p) {
 			p = ntohs(p);
-			printf("[%u]", p);
+			kprintf("[%u]", p);
 		}
 		break;
 	}
@@ -943,60 +943,60 @@ pf_print_state(struct pf_state *s)
 {
 	switch (s->proto) {
 	case IPPROTO_TCP:
-		printf("TCP ");
+		kprintf("TCP ");
 		break;
 	case IPPROTO_UDP:
-		printf("UDP ");
+		kprintf("UDP ");
 		break;
 	case IPPROTO_ICMP:
-		printf("ICMP ");
+		kprintf("ICMP ");
 		break;
 	case IPPROTO_ICMPV6:
-		printf("ICMPV6 ");
+		kprintf("ICMPV6 ");
 		break;
 	default:
-		printf("%u ", s->proto);
+		kprintf("%u ", s->proto);
 		break;
 	}
 	pf_print_host(&s->lan.addr, s->lan.port, s->af);
-	printf(" ");
+	kprintf(" ");
 	pf_print_host(&s->gwy.addr, s->gwy.port, s->af);
-	printf(" ");
+	kprintf(" ");
 	pf_print_host(&s->ext.addr, s->ext.port, s->af);
-	printf(" [lo=%u high=%u win=%u modulator=%u", s->src.seqlo,
+	kprintf(" [lo=%u high=%u win=%u modulator=%u", s->src.seqlo,
 	    s->src.seqhi, s->src.max_win, s->src.seqdiff);
 	if (s->src.wscale && s->dst.wscale)
-		printf(" wscale=%u", s->src.wscale & PF_WSCALE_MASK);
-	printf("]");
-	printf(" [lo=%u high=%u win=%u modulator=%u", s->dst.seqlo,
+		kprintf(" wscale=%u", s->src.wscale & PF_WSCALE_MASK);
+	kprintf("]");
+	kprintf(" [lo=%u high=%u win=%u modulator=%u", s->dst.seqlo,
 	    s->dst.seqhi, s->dst.max_win, s->dst.seqdiff);
 	if (s->src.wscale && s->dst.wscale)
-		printf(" wscale=%u", s->dst.wscale & PF_WSCALE_MASK);
-	printf("]");
-	printf(" %u:%u", s->src.state, s->dst.state);
+		kprintf(" wscale=%u", s->dst.wscale & PF_WSCALE_MASK);
+	kprintf("]");
+	kprintf(" %u:%u", s->src.state, s->dst.state);
 }
 
 void
 pf_print_flags(u_int8_t f)
 {
 	if (f)
-		printf(" ");
+		kprintf(" ");
 	if (f & TH_FIN)
-		printf("F");
+		kprintf("F");
 	if (f & TH_SYN)
-		printf("S");
+		kprintf("S");
 	if (f & TH_RST)
-		printf("R");
+		kprintf("R");
 	if (f & TH_PUSH)
-		printf("P");
+		kprintf("P");
 	if (f & TH_ACK)
-		printf("A");
+		kprintf("A");
 	if (f & TH_URG)
-		printf("U");
+		kprintf("U");
 	if (f & TH_ECE)
-		printf("E");
+		kprintf("E");
 	if (f & TH_CWR)
-		printf("W");
+		kprintf("W");
 }
 
 #define	PF_SET_SKIP_STEPS(i)					\
@@ -1068,7 +1068,7 @@ pf_addr_wrap_neq(struct pf_addr_wrap *aw1, struct pf_addr_wrap *aw2)
 	case PF_ADDR_TABLE:
 		return (aw1->p.tbl != aw2->p.tbl);
 	default:
-		printf("invalid address type: %d\n", aw1->type);
+		kprintf("invalid address type: %d\n", aw1->type);
 		return (1);
 	}
 }
@@ -1727,11 +1727,11 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 		if (*sn != NULL && !PF_AZERO(&(*sn)->raddr, af)) {
 			PF_ACPY(naddr, &(*sn)->raddr, af);
 			if (pf_status.debug >= PF_DEBUG_MISC) {
-				printf("pf_map_addr: src tracking maps ");
+				kprintf("pf_map_addr: src tracking maps ");
 				pf_print_host(&k.addr, 0, af);
-				printf(" to ");
+				kprintf(" to ");
 				pf_print_host(naddr, 0, af);
-				printf("\n");
+				kprintf("\n");
 			}
 			return (0);
 		}
@@ -1862,9 +1862,9 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 
 	if (pf_status.debug >= PF_DEBUG_MISC &&
 	    (rpool->opts & PF_POOL_TYPEMASK) != PF_POOL_NONE) {
-		printf("pf_map_addr: selected address ");
+		kprintf("pf_map_addr: selected address ");
 		pf_print_host(naddr, 0, af);
-		printf("\n");
+		kprintf("\n");
 	}
 
 	return (0);
@@ -3969,10 +3969,10 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		 */
 
 		if (pf_status.debug >= PF_DEBUG_MISC) {
-			printf("pf: loose state match: ");
+			kprintf("pf: loose state match: ");
 			pf_print_state(*state);
 			pf_print_flags(th->th_flags);
-			printf(" seq=%u ack=%u len=%u ackskew=%d pkts=%d:%d\n",
+			kprintf(" seq=%u ack=%u len=%u ackskew=%d pkts=%d:%d\n",
 			    seq, ack, pd->p_len, ackskew,
 			    (*state)->packets[0], (*state)->packets[1]);
 		}
@@ -4021,15 +4021,15 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			src->seqhi = 1;
 			src->max_win = 1;
 		} else if (pf_status.debug >= PF_DEBUG_MISC) {
-			printf("pf: BAD state: ");
+			kprintf("pf: BAD state: ");
 			pf_print_state(*state);
 			pf_print_flags(th->th_flags);
-			printf(" seq=%u ack=%u len=%u ackskew=%d pkts=%d:%d "
+			kprintf(" seq=%u ack=%u len=%u ackskew=%d pkts=%d:%d "
 			    "dir=%s,%s\n", seq, ack, pd->p_len, ackskew,
 			    (*state)->packets[0], (*state)->packets[1],
 			    direction == PF_IN ? "in" : "out",
 			    direction == (*state)->direction ? "fwd" : "rev");
-			printf("pf: State failure on: %c %c %c %c | %c %c\n",
+			kprintf("pf: State failure on: %c %c %c %c | %c %c\n",
 			    SEQ_GEQ(src->seqhi, end) ? ' ' : '1',
 			    SEQ_GEQ(seq, src->seqlo - (dst->max_win << dws)) ?
 			    ' ': '2',
@@ -4411,14 +4411,14 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			if (!SEQ_GEQ(src->seqhi, seq) ||
 			    !SEQ_GEQ(seq, src->seqlo - (dst->max_win << dws))) {
 				if (pf_status.debug >= PF_DEBUG_MISC) {
-					printf("pf: BAD ICMP %d:%d ",
+					kprintf("pf: BAD ICMP %d:%d ",
 					    icmptype, pd->hdr.icmp->icmp_code);
 					pf_print_host(pd->src, 0, pd->af);
-					printf(" -> ");
+					kprintf(" -> ");
 					pf_print_host(pd->dst, 0, pd->af);
-					printf(" state: ");
+					kprintf(" state: ");
 					pf_print_state(*state);
-					printf(" seq=%u\n", seq);
+					kprintf(" seq=%u\n", seq);
 				}
 				return (PF_DROP);
 			}

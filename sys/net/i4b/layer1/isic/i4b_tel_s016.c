@@ -38,7 +38,7 @@
  *	=================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s016.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s016.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s016.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:24 2001]
  *
@@ -140,7 +140,7 @@ isic_probe_s016(device_t dev)
 
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles S0/16!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles S0/16!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -155,7 +155,7 @@ isic_probe_s016(device_t dev)
 	                                   &sc->sc_resources.io_rid[0],
 	                                   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate i/o port for Teles S0/16.\n", unit);
+		kprintf("isic%d: Could not allocate i/o port for Teles S0/16.\n", unit);
 		return(ENXIO);
 	}
 
@@ -173,7 +173,7 @@ isic_probe_s016(device_t dev)
 			break;
 
 		default:
-			printf("isic%d: Error, invalid iobase 0x%x specified for Teles S0/16!\n",
+			kprintf("isic%d: Error, invalid iobase 0x%x specified for Teles S0/16!\n",
 				unit, sc->sc_port);
 			isic_detach_common(dev);
 			return(ENXIO);
@@ -188,7 +188,7 @@ isic_probe_s016(device_t dev)
 					0ul, ~0ul, TELES_S016_MEMSIZE,
 					RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate memory for Teles S0/16.\n", unit);
+		kprintf("isic%d: Could not allocate memory for Teles S0/16.\n", unit);
 		isic_detach_common(dev);
 		return(ENXIO);
 	}
@@ -222,7 +222,7 @@ isic_probe_s016(device_t dev)
 			break;
 
 		default:
-			printf("isic%d: Error, invalid memory address 0x%llx for Teles S0/16!\n",
+			kprintf("isic%d: Error, invalid memory address 0x%llx for Teles S0/16!\n",
 				unit, kvtop(sc->sc_vmem_addr));
 			isic_detach_common(dev);
 			return(ENXIO);
@@ -269,7 +269,7 @@ isic_probe_s016(device_t dev)
 	/* check signature bytes */
 	if(b0 != 0x51)
 	{
-		printf("isic%d: Error, signature 1 0x%x != 0x51 for Teles S0/16!\n",
+		kprintf("isic%d: Error, signature 1 0x%x != 0x51 for Teles S0/16!\n",
 			unit, b0);
 		isic_detach_common(dev);
 		return(ENXIO);
@@ -277,7 +277,7 @@ isic_probe_s016(device_t dev)
 	
 	if(b1 != 0x93)
 	{
-		printf("isic%d: Error, signature 2 0x%x != 0x93 for Teles S0/16!\n",
+		kprintf("isic%d: Error, signature 2 0x%x != 0x93 for Teles S0/16!\n",
 			unit, b1);
 		isic_detach_common(dev);
 		return(ENXIO);
@@ -285,7 +285,7 @@ isic_probe_s016(device_t dev)
 	
 	if((b2 != 0x1e) && (b2 != 0x1f))
 	{
-		printf("isic%d: Error, signature 3 0x%x != 0x1e or 0x1f for Teles S0/16!\n",
+		kprintf("isic%d: Error, signature 3 0x%x != 0x1e or 0x1f for Teles S0/16!\n",
 			unit, b2);
 		isic_detach_common(dev);
 		return(ENXIO);
@@ -298,7 +298,7 @@ isic_probe_s016(device_t dev)
 						&sc->sc_resources.irq_rid,
 						0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate irq for Teles S0/16.\n", unit);
+		kprintf("isic%d: Could not allocate irq for Teles S0/16.\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -317,7 +317,7 @@ isic_probe_s016(device_t dev)
 
 	if((intr_no[sc->sc_irq]) == 1)
 	{
-		printf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/16!\n",
+		kprintf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/16!\n",
 			unit, sc->sc_irq);
 		isic_detach_common(dev);
 		return(ENXIO);

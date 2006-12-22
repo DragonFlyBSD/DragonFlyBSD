@@ -37,12 +37,12 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.8 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.9 2006/12/22 23:44:57 swildner Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
-#define AAA printf("pppoe: %s\n", __func__ );
-#define BBB printf("-%d-", __LINE__ );
+#define AAA kprintf("pppoe: %s\n", __func__ );
+#define BBB kprintf("-%d-", __LINE__ );
 #else
 #define AAA
 #define BBB
@@ -315,7 +315,7 @@ init_tags(sessp sp)
 {
 AAA
 	if(sp->neg == NULL) {
-		printf("pppoe: asked to init NULL neg pointer\n");
+		kprintf("pppoe: asked to init NULL neg pointer\n");
 		return;
 	}
 	sp->neg->numtags = 0;
@@ -329,13 +329,13 @@ insert_tag(sessp sp, const struct pppoe_tag *tp)
 
 AAA
 	if((neg = sp->neg) == NULL) {
-		printf("pppoe: asked to use NULL neg pointer\n");
+		kprintf("pppoe: asked to use NULL neg pointer\n");
 		return;
 	}
 	if ((i = neg->numtags++) < NUMTAGS) {
 		neg->tags[i] = tp;
 	} else {
-		printf("pppoe: asked to add too many tags to packet\n");
+		kprintf("pppoe: asked to add too many tags to packet\n");
 		neg->numtags--;
 	}
 }
@@ -359,7 +359,7 @@ make_packet(sessp sp) {
 
 AAA
 	if ((sp->neg == NULL) || (sp->neg->m == NULL)) {
-		printf("pppoe: make_packet called from wrong state\n");
+		kprintf("pppoe: make_packet called from wrong state\n");
 	}
 	dp = (char *)wh->ph.tag;
 	for (count = 0, tag = sp->neg->tags;
@@ -367,7 +367,7 @@ AAA
 	    tag++, count++) {
 		tlen = ntohs((*tag)->tag_len) + sizeof(**tag);
 		if ((length + tlen) > (ETHER_MAX_LEN - 4 - sizeof(*wh))) {
-			printf("pppoe: tags too long\n");
+			kprintf("pppoe: tags too long\n");
 			sp->neg->numtags = count;
 			break;	/* XXX chop off what's too long */
 		}
@@ -602,11 +602,11 @@ AAA
 			if (( sizeof(*ourmsg) > msg->header.arglen)
 			|| ((sizeof(*ourmsg) + ourmsg->data_len)
 			    > msg->header.arglen)) {
-				printf("pppoe_rcvmsg: bad arg size");
+				kprintf("pppoe_rcvmsg: bad arg size");
 				LEAVE(EMSGSIZE);
 			}
 			if (ourmsg->data_len > PPPOE_SERVICE_NAME_SIZE) {
-				printf("pppoe: init data too long (%d)\n",
+				kprintf("pppoe: init data too long (%d)\n",
 							ourmsg->data_len);
 				LEAVE(EMSGSIZE);
 			}
@@ -647,7 +647,7 @@ AAA
 				break;
 			}
 			if (sp->state |= PPPOE_SNONE) {
-				printf("pppoe: Session already active\n");
+				kprintf("pppoe: Session already active\n");
 				LEAVE(EISCONN);
 			}
 
@@ -657,20 +657,20 @@ AAA
 			MALLOC(neg, negp, sizeof(*neg), M_NETGRAPH, M_NOWAIT);
 
 			if (neg == NULL) {
-				printf("pppoe: Session out of memory\n");
+				kprintf("pppoe: Session out of memory\n");
 				LEAVE(ENOMEM);
 			}
 			bzero(neg, sizeof(*neg));
 			MGETHDR(neg->m, MB_DONTWAIT, MT_DATA);
 			if(neg->m == NULL) {
-				printf("pppoe: Session out of mbufs\n");
+				kprintf("pppoe: Session out of mbufs\n");
 				FREE(neg, M_NETGRAPH);
 				LEAVE(ENOBUFS);
 			}
 			neg->m->m_pkthdr.rcvif = NULL;
 			MCLGET(neg->m, MB_DONTWAIT);
 			if ((neg->m->m_flags & M_EXT) == 0) {
-				printf("pppoe: Session out of mcls\n");
+				kprintf("pppoe: Session out of mcls\n");
 				m_freem(neg->m);
 				FREE(neg, M_NETGRAPH);
 				LEAVE(ENOBUFS);
@@ -773,7 +773,7 @@ AAA
 			 * If you do it twice you just overwrite.
 			 */
 			if (sp->state != PPPOE_PRIMED) {
-				printf("pppoe: Session not primed\n");
+				kprintf("pppoe: Session not primed\n");
 				LEAVE(EISCONN);
 			}
 			neg = sp->neg;
@@ -918,7 +918,7 @@ AAA
 		if( m->m_len < sizeof(*wh)) {
 			m = m_pullup(m, sizeof(*wh)); /* Checks length */
 			if (m == NULL) {
-				printf("couldn't m_pullup\n");
+				kprintf("couldn't m_pullup\n");
 				LEAVE(ENOBUFS);
 			}
 		}
@@ -958,7 +958,7 @@ AAA
 				if( m->m_len < m->m_pkthdr.len) {
 					m = m_pullup(m, m->m_pkthdr.len);
 					if (m == NULL) {
-						printf("couldn't m_pullup\n");
+						kprintf("couldn't m_pullup\n");
 						LEAVE(ENOBUFS);
 					}
 				}
@@ -968,7 +968,7 @@ AAA
 				 * It's not all in one piece.
 				 * We need to do extra work.
 				 */
-				printf("packet fragmented\n");
+				kprintf("packet fragmented\n");
 				LEAVE(EMSGSIZE);
 			}
 
@@ -984,7 +984,7 @@ AAA
 				 */
 				tag = get_tag(ph, PTT_SRV_NAME);
 				if (tag == NULL) {
-					printf("no service tag\n");
+					kprintf("no service tag\n");
 					LEAVE(ENETUNREACH);
 				}
 				sendhook = pppoe_match_svc(hook->node,
@@ -1007,13 +1007,13 @@ AAA
 				utag = get_tag(ph, PTT_HOST_UNIQ);
 				if ((utag == NULL)
 				|| (ntohs(utag->tag_len) != sizeof(sp))) {
-					printf("no host unique field\n");
+					kprintf("no host unique field\n");
 					LEAVE(ENETUNREACH);
 				}
 
 				sendhook = pppoe_finduniq(node, utag);
 				if (sendhook == NULL) {
-					printf("no matching session\n");
+					kprintf("no matching session\n");
 					LEAVE(ENETUNREACH);
 				}
 
@@ -1023,7 +1023,7 @@ AAA
 				 */
 				sp = sendhook->private;
 				if (sp->state != PPPOE_SINIT) {
-					printf("session in wrong state\n");
+					kprintf("session in wrong state\n");
 					LEAVE(ENETUNREACH);
 				}
 				neg = sp->neg;
@@ -1466,7 +1466,7 @@ AAA
 			/* generate a packet of that type */
 			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if(m == NULL)
-				printf("pppoe: Session out of mbufs\n");
+				kprintf("pppoe: Session out of mbufs\n");
 			else {
 				m->m_pkthdr.rcvif = NULL;
 				m->m_pkthdr.len = m->m_len = sizeof(*wh);
@@ -1555,7 +1555,7 @@ AAA
 		break;
 	default:
 		/* timeouts have no meaning in other states */
-		printf("pppoe: unexpected timeout\n");
+		kprintf("pppoe: unexpected timeout\n");
 	}
 	crit_exit();
 }
@@ -1577,7 +1577,7 @@ AAA
 	case	PPPOE_DEAD:
 	case	PPPOE_SNONE:
 	case	PPPOE_CONNECTED:
-		printf("pppoe: sendpacket: unexpected state\n");
+		kprintf("pppoe: sendpacket: unexpected state\n");
 		break;
 
 	case	PPPOE_NEWCONNECTED:
@@ -1614,7 +1614,7 @@ AAA
 
 	default:
 		error = EINVAL;
-		printf("pppoe: timeout: bad state\n");
+		kprintf("pppoe: timeout: bad state\n");
 	}
 	/* return (error); */
 }

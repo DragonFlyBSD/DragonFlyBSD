@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.7 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.8 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -202,7 +202,7 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 #ifndef ALTQ_RED
 	if (flags & RMCF_RED) {
 #ifdef ALTQ_DEBUG
-		printf("rmc_newclass: RED not configured for CBQ!\n");
+		kprintf("rmc_newclass: RED not configured for CBQ!\n");
 #endif
 		return (NULL);
 	}
@@ -210,7 +210,7 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 #ifndef ALTQ_RIO
 	if (flags & RMCF_RIO) {
 #ifdef ALTQ_DEBUG
-		printf("rmc_newclass: RIO not configured for CBQ!\n");
+		kprintf("rmc_newclass: RIO not configured for CBQ!\n");
 #endif
 		return (NULL);
 	}
@@ -700,7 +700,7 @@ rmc_init(struct ifaltq *ifq, struct rm_ifdat *ifd, u_int nsecPerByte,
 	ifd->root_ = rmc_newclass(0, ifd, nsecPerByte, rmc_root_overlimit,
 				  maxq, 0, 0, maxidle, minidle, offtime, 0, 0);
 	if (ifd->root_ == NULL) {
-		printf("rmc_init: root class not allocated\n");
+		kprintf("rmc_init: root class not allocated\n");
 		return ;
 	}
 	ifd->root_->depth_ = 0;
@@ -1643,11 +1643,11 @@ cbqtrace_dump(int counter)
 	p = (int *)&cbqtrace_buffer[counter];
 
 	for (i=0; i<20; i++) {
-		printf("[0x%x] ", *p++);
-		printf("%s: ", rmc_funcname((void *)*p++));
+		kprintf("[0x%x] ", *p++);
+		kprintf("%s: ", rmc_funcname((void *)*p++));
 		cp = (char *)p++;
-		printf("%c%c%c%c: ", cp[0], cp[1], cp[2], cp[3]);
-		printf("%d\n",*p++);
+		kprintf("%c%c%c%c: ", cp[0], cp[1], cp[2], cp[3]);
+		kprintf("%d\n",*p++);
 
 		if (p >= (int *)&cbqtrace_buffer[NCBQTRACE])
 			p = (int *)cbqtrace_buffer;

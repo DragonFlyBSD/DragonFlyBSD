@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.22 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.23 2006/12/22 23:44:57 swildner Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -960,7 +960,7 @@ ng_mkpeer(node_p node, const char *name, const char *name2, char *type)
 		/* Not found, try to load it as a loadable module */
 		error = ng_load_module(type);
 		if (error != 0) {
-			printf("required netgraph module ng_%s not loaded\n",
+			kprintf("required netgraph module ng_%s not loaded\n",
 			    type);
 			return (error);
 		}

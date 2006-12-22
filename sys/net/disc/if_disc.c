@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.9 2005/12/11 13:00:16 swildner Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ disc_modevent(module_t mod, int type, void *data)
 		discattach();
 		break; 
 	case MOD_UNLOAD: 
-		printf("if_disc module unload - not possible for this module type\n"); 
+		kprintf("if_disc module unload - not possible for this module type\n"); 
 		return EINVAL; 
 	} 
 	return 0; 

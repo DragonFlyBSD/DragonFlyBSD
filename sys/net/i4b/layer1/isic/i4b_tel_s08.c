@@ -38,7 +38,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s08.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:58 2001]
  *
@@ -136,7 +136,7 @@ isic_probe_s08(device_t dev)
 
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles S0/8!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for Teles S0/8!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -156,7 +156,7 @@ isic_probe_s08(device_t dev)
 	 	bus_release_resource(dev,SYS_RES_IOPORT,
 				     sc->sc_resources.io_rid[0],
 				     sc->sc_resources.io_base[0]);
-		printf("isic%d: Error, iobase specified for Teles S0/8!\n", unit);
+		kprintf("isic%d: Error, iobase specified for Teles S0/8!\n", unit);
 		return(ENXIO);
 	}
 
@@ -167,7 +167,7 @@ isic_probe_s08(device_t dev)
 				&sc->sc_resources.mem_rid,
 				0ul, ~0ul, TELES_S08_MEMSIZE, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate memory for Teles S0/8!\n", unit);
+		kprintf("isic%d: Could not allocate memory for Teles S0/8!\n", unit);
 		return(ENXIO);
 	}
 
@@ -183,7 +183,7 @@ isic_probe_s08(device_t dev)
 	if((kvtop(sc->sc_vmem_addr) < 0xa0000) ||
 	   (kvtop(sc->sc_vmem_addr) > 0xdf000))
 	{
-		printf("isic%d: Error, mem addr 0x%llx outside 0xA0000-0xDF000 for Teles S0/8!\n",
+		kprintf("isic%d: Error, mem addr 0x%llx outside 0xA0000-0xDF000 for Teles S0/8!\n",
 				unit, kvtop(sc->sc_vmem_addr));
 		bus_release_resource(dev,SYS_RES_MEMORY,
 				     sc->sc_resources.mem_rid,
@@ -225,7 +225,7 @@ isic_probe_s08(device_t dev)
 						&sc->sc_resources.irq_rid,
 						0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate irq for Teles S0/8!\n",unit);
+		kprintf("isic%d: Could not allocate irq for Teles S0/8!\n",unit);
 
 	 	bus_release_resource(dev,SYS_RES_MEMORY,
 				     sc->sc_resources.mem_rid,
@@ -253,7 +253,7 @@ isic_probe_s08(device_t dev)
 			break;
 			
 		default:
-			printf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/8!\n",
+			kprintf("isic%d: Error, invalid IRQ [%d] specified for Teles S0/8!\n",
 				unit, sc->sc_irq);
 			bus_release_resource(dev,SYS_RES_IRQ,
 			                     sc->sc_resources.irq_rid,

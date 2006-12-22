@@ -28,7 +28,7 @@
  *	==============================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic.c,v 1.4.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:29:42 2001]
  *
@@ -295,7 +295,7 @@ isic_attach_common(device_t dev)
   				break;
 
   			default:
-  				printf("isic%d: Error, IPAC version %d unknown!\n",
+  				kprintf("isic%d: Error, IPAC version %d unknown!\n",
   					unit, sc->sc_ipac_version);
   				return(0);
   				break;
@@ -314,7 +314,7 @@ isic_attach_common(device_t dev)
 				break;
 	
 			default:
-				printf("isic%d: Error, ISAC version %d unknown!\n",
+				kprintf("isic%d: Error, ISAC version %d unknown!\n",
 					unit, sc->sc_isac_version);
 				return ENXIO;
 				break;
@@ -331,7 +331,7 @@ isic_attach_common(device_t dev)
 				break;
 				
 			default:
-				printf("isic%d: Error, HSCX version %d unknown!\n",
+				kprintf("isic%d: Error, HSCX version %d unknown!\n",
 					unit, sc->sc_hscx_version);
 				return ENXIO;
 				break;
@@ -415,7 +415,7 @@ isic_attach_common(device_t dev)
 	}
 
 	if(drvid)
-		printf("isic%d: %s\n", unit, drvid);
+		kprintf("isic%d: %s\n", unit, drvid);
 	
 	if(bootverbose)
 	{
@@ -424,18 +424,18 @@ isic_attach_common(device_t dev)
 		if(sc->sc_ipac)
 		{
 			if(sc->sc_ipac_version == IPAC_V11)
-				printf("isic%d: IPAC PSB2115 Version 1.1\n", unit);
+				kprintf("isic%d: IPAC PSB2115 Version 1.1\n", unit);
 			else
-				printf("isic%d: IPAC PSB2115 Version 1.2\n", unit);
+				kprintf("isic%d: IPAC PSB2115 Version 1.2\n", unit);
 		}
 		else
 		{
-			printf("isic%d: ISAC %s (IOM-%c)\n",
+			kprintf("isic%d: ISAC %s (IOM-%c)\n",
 				unit,
 				ISACversion[sc->sc_isac_version],
 				sc->sc_bustyp == BUS_TYPE_IOM1 ? '1' : '2');
 
-			printf("isic%d: HSCX %s\n",
+			kprintf("isic%d: HSCX %s\n",
 				unit,
 				HSCXversion[sc->sc_hscx_version]);
 		}

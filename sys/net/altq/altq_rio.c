@@ -1,5 +1,5 @@
 /*	$KAME: altq_rio.c,v 1.17 2003/07/10 12:07:49 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rio.c,v 1.2 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rio.c,v 1.3 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -193,7 +193,7 @@ rio_alloc(int weight, struct redparams *params, int flags, int pkttime)
 	rp->rio_wshift = i;
 	w = 1 << rp->rio_wshift;
 	if (w != rp->rio_weight) {
-		printf("invalid weight value %d for red! use %d\n",
+		kprintf("invalid weight value %d for red! use %d\n",
 		       rp->rio_weight, w);
 		rp->rio_weight = w;
 	}

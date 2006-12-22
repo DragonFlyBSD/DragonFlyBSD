@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.7 2006/12/20 18:14:42 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.8 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -332,7 +332,7 @@ pfi_detach_ifnet(struct ifnet *ifp)
 	pfi_update++;
 	p = RB_FIND(pfi_ifhead, &pfi_ifs, &key);
 	if (p == NULL) {
-		printf("pfi_detach_ifnet: cannot find %s", ifp->if_xname);
+		kprintf("pfi_detach_ifnet: cannot find %s", ifp->if_xname);
 		crit_exit();
 		return;
 	}
@@ -388,7 +388,7 @@ pfi_detach_rule(struct pfi_kif *p)
 	if (p->pfik_rules > 0)
 		p->pfik_rules--;
 	else
-		printf("pfi_detach_rule: reference count at 0\n");
+		kprintf("pfi_detach_rule: reference count at 0\n");
 	pfi_maybe_destroy(p);
 }
 
@@ -405,7 +405,7 @@ pfi_detach_state(struct pfi_kif *p)
 	if (p == NULL)
 		return;
 	if (p->pfik_states <= 0) {
-		printf("pfi_detach_state: reference count <= 0\n");
+		kprintf("pfi_detach_state: reference count <= 0\n");
 		return;
 	}
 	if (!--p->pfik_states)
@@ -525,7 +525,7 @@ pfi_table_update(struct pfr_ktable *kt, struct pfi_kif *kif, int net, int flags)
 	t.pfrt_flags = 0;
 	if ((e = pfr_set_addrs(&t, pfi_buffer, pfi_buffer_cnt, &size2,
 	    NULL, NULL, NULL, 0)))
-		printf("pfi_table_update: cannot set %d new addresses "
+		kprintf("pfi_table_update: cannot set %d new addresses "
 		    "into table %s: %d\n", pfi_buffer_cnt, kt->pfrkt_name, e);
 }
 
@@ -607,14 +607,14 @@ pfi_address_add(struct sockaddr *sa, int af, int net)
 		int		 new_max = pfi_buffer_max * 2;
 
 		if (new_max > PFI_BUFFER_MAX) {
-			printf("pfi_address_add: address buffer full (%d/%d)\n",
+			kprintf("pfi_address_add: address buffer full (%d/%d)\n",
 			    pfi_buffer_cnt, PFI_BUFFER_MAX);
 			return;
 		}
 		p = kmalloc(new_max * sizeof(*pfi_buffer), PFI_MTYPE,
 		    M_NOWAIT);
 		if (p == NULL) {
-			printf("pfi_address_add: no memory to grow buffer "
+			kprintf("pfi_address_add: no memory to grow buffer "
 			    "(%d/%d)\n", pfi_buffer_cnt, PFI_BUFFER_MAX);
 			return;
 		}
@@ -802,7 +802,7 @@ pfi_newgroup(const char *name, int flags)
 	if (p == NULL)
 		p = pfi_if_create(name, pfi_self, PFI_IFLAG_GROUP);
 	if (p == NULL) {
-		printf("pfi_newgroup: cannot allocate '%s' group", name);
+		kprintf("pfi_newgroup: cannot allocate '%s' group", name);
 		return;
 	}
 	p->pfik_flags |= flags;

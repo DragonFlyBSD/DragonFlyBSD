@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.20 2006/12/22 23:44:54 swildner Exp $
  */
 
 /*
@@ -183,7 +183,7 @@ looutput(
 	case AF_APPLETALK:
 		break;
 	default:
-		printf("looutput: af=%d unexpected\n", dst->sa_family);
+		kprintf("looutput: af=%d unexpected\n", dst->sa_family);
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
@@ -297,7 +297,7 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		break;
 #endif
 	default:
-		printf("if_simloop: can't handle af=%d\n", af);
+		kprintf("if_simloop: can't handle af=%d\n", af);
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
@@ -360,7 +360,7 @@ lo_altqstart(struct ifnet *ifp)
 			break;
 #endif
 		default:
-			printf("lo_altqstart: can't handle af%d\n", af);
+			kprintf("lo_altqstart: can't handle af%d\n", af);
 			m_freem(m);
 			return;
 		}

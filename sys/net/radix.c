@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.13 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.14 2006/12/22 23:44:54 swildner Exp $
  */
 
 /*
@@ -900,10 +900,10 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 	/*
 	 * rn_search_m is sort-of-open-coded here.
 	 */
-	/* printf("about to search\n"); */
+	/* kprintf("about to search\n"); */
 	for (rn = h->rnh_treetop; rn->rn_bit >= 0; ) {
 		last = rn;
-		/* printf("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
+		/* kprintf("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
 		       rn->rn_bit, rn->rn_bmask, xm[rn->rn_offset]); */
 		if (!(rn->rn_bmask & xm[rn->rn_offset])) {
 			break;
@@ -914,7 +914,7 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 			rn = rn->rn_left;
 		}
 	}
-	/* printf("done searching\n"); */
+	/* kprintf("done searching\n"); */
 
 	/*
 	 * Two cases: either we stepped off the end of our mask,
@@ -925,7 +925,7 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 	rn = last;
 	lastb = rn->rn_bit;
 
-	/* printf("rn %p, lastb %d\n", rn, lastb);*/
+	/* kprintf("rn %p, lastb %d\n", rn, lastb);*/
 
 	/*
 	 * This gets complicated because we may delete the node
@@ -936,7 +936,7 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 		rn = rn->rn_left;
 
 	while (!stopping) {
-		/* printf("node %p (%d)\n", rn, rn->rn_bit); */
+		/* kprintf("node %p (%d)\n", rn, rn->rn_bit); */
 		base = rn;
 		/* If at right child go back up, otherwise, go right */
 		while (rn->rn_parent->rn_right == rn &&
@@ -946,7 +946,7 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 			/* if went up beyond last, stop */
 			if (rn->rn_bit < lastb) {
 				stopping = TRUE;
-				/* printf("up too far\n"); */
+				/* kprintf("up too far\n"); */
 			}
 		}
 
@@ -957,14 +957,14 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 		/* Process leaves */
 		while ((rn = base) != NULL) {
 			base = rn->rn_dupedkey;
-			/* printf("leaf %p\n", rn); */
+			/* kprintf("leaf %p\n", rn); */
 			if (!(rn->rn_flags & RNF_ROOT) && (error = (*f)(rn, w)))
 				return (error);
 		}
 		rn = next;
 
 		if (rn->rn_flags & RNF_ROOT) {
-			/* printf("root, stopping"); */
+			/* kprintf("root, stopping"); */
 			stopping = TRUE;
 		}
 

@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Tue Jan 16 10:53:03 2001]
  *
@@ -163,8 +163,8 @@ iwic_pci_probe(device_t dev)
 	{
 		if(bootverbose)
 		{
-			printf("iwic_pci_probe: vendor = 0x%x, device = 0x%x\n", pci_get_vendor(dev), pci_get_device(dev));
-			printf("iwic_pci_probe: subvendor = 0x%x, subdevice = 0x%x\n", sv, sd);
+			kprintf("iwic_pci_probe: vendor = 0x%x, device = 0x%x\n", pci_get_vendor(dev), pci_get_device(dev));
+			kprintf("iwic_pci_probe: subvendor = 0x%x, subdevice = 0x%x\n", sv, sd);
 		}
 		device_set_desc(dev, wip->desc);
 		return(0);
@@ -191,7 +191,7 @@ iwic_pci_attach(device_t dev)
 	
 	if(unit >= IWIC_MAXUNIT)
 	{
-		printf("iwic%d: Error, unit %d >= IWIC_MAXUNIT!\n", unit, unit);
+		kprintf("iwic%d: Error, unit %d >= IWIC_MAXUNIT!\n", unit, unit);
 		return(ENXIO);	
 	}	
 
@@ -208,7 +208,7 @@ iwic_pci_attach(device_t dev)
 						&sc->sc_resources.io_rid[0],
 						0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("iwic%d: Couldn't alloc io port!\n", unit);
+		kprintf("iwic%d: Couldn't alloc io port!\n", unit);
 		return(ENXIO);                                       
 	}
 
@@ -219,7 +219,7 @@ iwic_pci_attach(device_t dev)
 					   &sc->sc_resources.irq_rid,
 					   0UL, ~0UL, 1, RF_SHAREABLE|RF_ACTIVE)))
 	{
-		printf("iwic%d: Couldn't alloc irq!\n",unit);
+		kprintf("iwic%d: Couldn't alloc irq!\n",unit);
 		return(ENXIO);                                       
 	}
 	
@@ -235,7 +235,7 @@ iwic_pci_attach(device_t dev)
 				(void(*)(void*))iwic_pci_intr,
 				sc, &ih, NULL))
 	{
-		printf("iwic%d: Couldn't set up irq!\n", unit);
+		kprintf("iwic%d: Couldn't set up irq!\n", unit);
 		return(ENXIO);
 	}
 
@@ -265,7 +265,7 @@ iwic_pci_attach(device_t dev)
 	if(bootverbose)
 	{
 		int ver = IWIC_READ(sc, D_RBCH);
-		printf("iwic%d: W6692 chip version = %d\n", unit, D_RBCH_VN(ver));
+		kprintf("iwic%d: W6692 chip version = %d\n", unit, D_RBCH_VN(ver));
 	}
 
 	i4b_l1_mph_status_ind(L0IWICUNIT(sc->sc_unit), STI_ATTACH, sc->sc_cardtyp, &iwic_l1mux_func);

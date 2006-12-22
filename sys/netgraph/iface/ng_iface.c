@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.12 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.13 2006/12/22 23:44:57 swildner Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -465,7 +465,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 static void
 ng_iface_start(struct ifnet *ifp)
 {
-	printf("%s: %s called?", ifp->if_xname, __func__);
+	kprintf("%s: %s called?", ifp->if_xname, __func__);
 }
 
 /*

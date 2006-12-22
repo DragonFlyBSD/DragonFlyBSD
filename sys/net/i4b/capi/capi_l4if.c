@@ -25,7 +25,7 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.9 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -120,7 +120,7 @@ i4b_capi_bch_start_tx(int unit, int chan)
     crit_enter();
     if (sc->sc_bchan[chan].state != B_CONNECTED) {
 	crit_exit();
-	printf("capi%d: start_tx on unconnected channel\n", sc->sc_unit);
+	kprintf("capi%d: start_tx on unconnected channel\n", sc->sc_unit);
 	return;
     }
 
@@ -193,7 +193,7 @@ capi_ll_attach(capi_softc_t *sc)
     int i;
 
     if (ncapi == (sizeof(capi_sc) / sizeof(capi_sc[0]))) {
-	printf("capi%d: too many units, increase MAX_CONTROLLERS\n", ncapi);
+	kprintf("capi%d: too many units, increase MAX_CONTROLLERS\n", ncapi);
 	return (ENXIO);
     }
 
@@ -263,7 +263,7 @@ capi_ll_attach(capi_softc_t *sc)
     capi_sc[ncapi++] = sc;
     sc->ctrl_unit = nctrl++;
 
-    printf("capi%d: card type %d attached\n", sc->sc_unit, sc->card_type);
+    kprintf("capi%d: card type %d attached\n", sc->sc_unit, sc->card_type);
 
     return(0);
 }
@@ -278,7 +278,7 @@ n_mgmt_command(int unit, int op, void *arg)
 {
     capi_softc_t *sc = capi_sc[unit];
 
-    printf("capi%d: mgmt command %d\n", sc->sc_unit, op);
+    kprintf("capi%d: mgmt command %d\n", sc->sc_unit, op);
 
     switch(op) {
     case CMR_DOPEN:
@@ -311,7 +311,7 @@ n_connect_request(u_int cdid)
     int bch;
 
     if (!cd) {
-	printf("capi?: invalid cdid %d\n", cdid);
+	kprintf("capi?: invalid cdid %d\n", cdid);
 	return;
     }
 
@@ -327,7 +327,7 @@ n_connect_request(u_int cdid)
 
     if (bch == sc->sc_nbch) {
 	crit_exit();
-	printf("capi%d: no free B channel\n", sc->sc_unit);
+	kprintf("capi%d: no free B channel\n", sc->sc_unit);
 	return;
     }
 
@@ -352,7 +352,7 @@ n_connect_response(u_int cdid, int response, int cause)
     int bch;
 
     if (!cd) {
-	printf("capi?: invalid cdid %d\n", cdid);
+	kprintf("capi?: invalid cdid %d\n", cdid);
 	return;
     }
 
@@ -383,7 +383,7 @@ n_disconnect_request(u_int cdid, int cause)
     int bch;
 
     if (!cd) {
-	printf("capi?: invalid cdid %d\n", cdid);
+	kprintf("capi?: invalid cdid %d\n", cdid);
 	return;
     }
 
@@ -409,7 +409,7 @@ n_alert_request(u_int cdid)
     capi_softc_t *sc;
 
     if (!cd) {
-	printf("capi?: invalid cdid %d\n", cdid);
+	kprintf("capi?: invalid cdid %d\n", cdid);
 	return;
     }
 

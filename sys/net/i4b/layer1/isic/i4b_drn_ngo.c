@@ -28,7 +28,7 @@
  *	--------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_drn_ngo.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_drn_ngo.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_drn_ngo.c,v 1.5 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:07:44 2001]
  *
@@ -230,7 +230,7 @@ isic_attach_drnngo(device_t dev)
 					&sc->sc_resources.io_rid[1],
 					0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Failed to get second io base.\n", unit);
+		kprintf("isic%d: Failed to get second io base.\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}

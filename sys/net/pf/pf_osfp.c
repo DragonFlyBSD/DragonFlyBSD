@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_osfp.c,v 1.4 2004/06/16 23:24:00 mlaier Exp $	*/
 /*	$OpenBSD: pf_osfp.c,v 1.9 2004/01/04 20:08:42 pvalchev Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_osfp.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_osfp.c,v 1.2 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -45,7 +45,7 @@
 #ifdef _KERNEL
 # define DPFPRINTF(format, x...)		\
 	if (pf_status.debug >= PF_DEBUG_NOISY)	\
-		printf(format , ##x)
+		kprintf(format , ##x)
 typedef vm_zone_t pool_t;
 
 #else
@@ -364,7 +364,7 @@ pf_osfp_add(struct pf_osfp_ioctl *fpioc)
 
 #ifdef PFDEBUG
 	if ((fp = pf_osfp_validate()))
-		printf("Invalid fingerprint list\n");
+		kprintf("Invalid fingerprint list\n");
 #endif /* PFDEBUG */
 	return (0);
 }
@@ -533,7 +533,7 @@ pf_osfp_validate(void)
 			find.fp_wsize *= 2;
 		if (f != (f2 = pf_osfp_find(&pf_osfp_list, &find, 0))) {
 			if (f2)
-				printf("Found \"%s %s %s\" instead of "
+				kprintf("Found \"%s %s %s\" instead of "
 				    "\"%s %s %s\"\n",
 				    SLIST_FIRST(&f2->fp_oses)->fp_class_nm,
 				    SLIST_FIRST(&f2->fp_oses)->fp_version_nm,
@@ -542,7 +542,7 @@ pf_osfp_validate(void)
 				    SLIST_FIRST(&f->fp_oses)->fp_version_nm,
 				    SLIST_FIRST(&f->fp_oses)->fp_subtype_nm);
 			else
-				printf("Couldn't find \"%s %s %s\"\n",
+				kprintf("Couldn't find \"%s %s %s\"\n",
 				    SLIST_FIRST(&f->fp_oses)->fp_class_nm,
 				    SLIST_FIRST(&f->fp_oses)->fp_version_nm,
 				    SLIST_FIRST(&f->fp_oses)->fp_subtype_nm);

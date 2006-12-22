@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.34 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.35 2006/12/22 23:44:54 swildner Exp $
  */
 
 #include "use_bpf.h"
@@ -1318,7 +1318,7 @@ bpfdetach(struct ifnet *ifp)
 	/* Interface wasn't attached */
 	if (bp->bif_ifp == NULL) {
 		crit_exit();
-		printf("bpfdetach: %s was not attached\n", ifp->if_xname);
+		kprintf("bpfdetach: %s was not attached\n", ifp->if_xname);
 		return;
 	}
 

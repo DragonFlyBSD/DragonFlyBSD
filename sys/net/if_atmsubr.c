@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.16 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.17 2006/12/22 23:44:54 swildner Exp $
  */
 
 /*
@@ -178,10 +178,10 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 			
 		default:
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-			printf("%s: can't handle af%d\n", ifp->if_xname, 
+			kprintf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
-			printf("%s: can't handle af%d\n", ifp->if_xname, 
+			kprintf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
 #endif
 			gotoerr(EAFNOSUPPORT);
@@ -250,7 +250,7 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 		isr = NETISR_NATM;
 		m->m_pkthdr.rcvif = rxhand; /* XXX: overload */
 #else
-		printf("atm_input: NATM detected but not configured in kernel\n");
+		kprintf("atm_input: NATM detected but not configured in kernel\n");
 		m_freem(m);
 		return;
 #endif
@@ -266,10 +266,10 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 			alc = mtod(m, struct atmllc *);
 			if (bcmp(alc, ATMLLC_HDR, 6)) {
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
+				kprintf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
 				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
-				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
+				kprintf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
 				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
 #endif
 				m_freem(m);

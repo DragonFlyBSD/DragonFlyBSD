@@ -28,7 +28,7 @@
  *	============================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.4 2004/05/04 12:03:49 hmp Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_ctx_s0P.c,v 1.5 2006/12/22 23:44:56 swildner Exp $
  *
  *	last edit-date: [Wed Jan 24 09:07:22 2001]
  *
@@ -128,7 +128,7 @@ isic_attach_Cs0P(device_t dev)
 					&sc->sc_resources.io_rid[1],
 					0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get io area 1 for Creatix / Teles PnP!\n", unit);
+		kprintf("isic%d: Could not get io area 1 for Creatix / Teles PnP!\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -147,7 +147,7 @@ isic_attach_Cs0P(device_t dev)
 						&sc->sc_resources.io_rid[2],
 						0UL, ~0UL, 1, RF_ACTIVE)))
 		{
-			printf("isic%d: Could not get cfg io area for Compaq Microcom 610\n", unit);
+			kprintf("isic%d: Could not get cfg io area for Compaq Microcom 610\n", unit);
 			isic_detach_common(dev);
 			return ENXIO;
 		}
@@ -193,7 +193,7 @@ isic_attach_Cs0P(device_t dev)
 				   &sc->sc_resources.io_rid[2],
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get io area 2 for Creatix / Teles PnP!\n", unit);
+		kprintf("isic%d: Could not get io area 2 for Creatix / Teles PnP!\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -221,7 +221,7 @@ isic_attach_Cs0P(device_t dev)
 				   &sc->sc_resources.io_rid[3],
 				   0ul,~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get io area 3 for Creatix / Teles PnP!\n", unit);
+		kprintf("isic%d: Could not get io area 3 for Creatix / Teles PnP!\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -237,7 +237,7 @@ isic_attach_Cs0P(device_t dev)
 				   &sc->sc_resources.io_rid[4],
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get io area 4 for Creatix / Teles PnP!\n", unit);
+		kprintf("isic%d: Could not get io area 4 for Creatix / Teles PnP!\n", unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -258,7 +258,7 @@ isic_attach_Cs0P(device_t dev)
 					   &sc->sc_resources.io_rid[5],
 					   0ul, ~0ul, 1, RF_ACTIVE)))
 		{
-			printf("isic%d: Could not get cfg io area for Compaq Microcom 610!\n", unit);
+			kprintf("isic%d: Could not get cfg io area for Compaq Microcom 610!\n", unit);
 			isic_detach_common(dev);
 			return ENXIO;
 		}

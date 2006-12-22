@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.18 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.19 2006/12/22 23:44:57 swildner Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -345,14 +345,14 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
-		printf("fec%d: tried to add iface %s, which "
+		kprintf("fec%d: tried to add iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
 	}
 
 	/* See if we have room in the bundle */
 	if (b->fec_ifcnt == FEC_BUNDLESIZ) {
-		printf("fec%d: can't add new iface; bundle is full\n",
+		kprintf("fec%d: can't add new iface; bundle is full\n",
 		    priv->unit);
 		return(ENOSPC);
 	}
@@ -360,7 +360,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	/* See if the interface is already in the bundle */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		if (p->fec_if == bifp) {
-			printf("fec%d: iface %s is already in this "
+			kprintf("fec%d: iface %s is already in this "
 			    "bundle\n", priv->unit, iface);
 			return(EINVAL);
 		}
@@ -426,7 +426,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
-		printf("fec%d: tried to remove iface %s, which "
+		kprintf("fec%d: tried to remove iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
 	}
@@ -437,7 +437,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	}
 
 	if (p == NULL) {
-		printf("fec%d: tried to remove iface %s which "
+		kprintf("fec%d: tried to remove iface %s which "
 		    "is not in our bundle\n", priv->unit, iface);
 		return(EINVAL);
 	}
@@ -502,7 +502,7 @@ ng_fec_init(void *arg)
 	b = &priv->fec_bundle;
 
 	if (b->fec_ifcnt == 1 || b->fec_ifcnt == 3) {
-		printf("fec%d: invalid bundle "
+		kprintf("fec%d: invalid bundle "
 		    "size: %d\n", priv->unit,
 		    b->fec_ifcnt);
 		return;
@@ -571,7 +571,7 @@ ng_fec_tick(void *arg)
 		lwkt_serialize_enter(ifp->if_serializer);
 		error = ifp->if_ioctl(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr, NULL);
 		if (error) {
-			printf("fec%d: failed to check status "
+			kprintf("fec%d: failed to check status "
 			    "of link %s\n", priv->unit, ifp->if_xname);
 			lwkt_serialize_exit(ifp->if_serializer);
 			continue;
@@ -583,7 +583,7 @@ ng_fec_tick(void *arg)
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 0) {
 					p->fec_ifstat = 1;
-					printf("fec%d: port %s in bundle "
+					kprintf("fec%d: port %s in bundle "
 					    "is up\n", priv->unit,
 					    ifp->if_xname);
 				}
@@ -591,7 +591,7 @@ ng_fec_tick(void *arg)
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 1) {
 					p->fec_ifstat = 0;
-					printf("fec%d: port %s in bundle "
+					kprintf("fec%d: port %s in bundle "
 					    "is down\n", priv->unit,
 					    ifp->if_xname);
 				}
@@ -667,7 +667,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				/* Sanity. */
 				if (b->fec_ifcnt == 1 || b->fec_ifcnt == 3) {
-					printf("fec%d: invalid bundle "
+					kprintf("fec%d: invalid bundle "
 					    "size: %d\n", priv->unit,
 					    b->fec_ifcnt);
 					error = EINVAL;
@@ -808,7 +808,7 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 #endif
 		else {
 #ifdef DEBUG
-			printf("%s: can't do inet aggregation of non "
+			kprintf("%s: can't do inet aggregation of non "
 			    "inet packet\n", ifp->if_xname);
 #endif
 			m->m_flags |= M_FEC_MAC;
@@ -816,7 +816,7 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 		break;
 #endif
 	default:
-		printf("%s: bogus hash type: %d\n", ifp->if_xname,
+		kprintf("%s: bogus hash type: %d\n", ifp->if_xname,
 		    b->fec_btype);
 		m_freem(m);
 		return(EINVAL);

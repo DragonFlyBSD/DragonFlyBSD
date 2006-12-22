@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_fsm.c,v 1.4.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_fsm.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_fsm.c,v 1.4 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Sun Jan 21 11:09:24 2001]
  *
@@ -193,7 +193,7 @@ iwic_next_state(struct iwic_softc *sc, int event)
 
 	if (event >= N_EVENTS)
 	{
-		printf("iwic_next_state: event >= N_EVENTS\n");
+		kprintf("iwic_next_state: event >= N_EVENTS\n");
 		return;
 	}
 
@@ -202,7 +202,7 @@ iwic_next_state(struct iwic_softc *sc, int event)
 	newstate = iwic_state_tab[event][currstate].newstate;
 	if (newstate >= N_STATES)
 	{
-		printf("iwic_next_state: newstate >= N_STATES\n");
+		kprintf("iwic_next_state: newstate >= N_STATES\n");
 		return;
 	}
 

@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.10 2006/09/10 01:26:39 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.11 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -121,7 +121,7 @@ static u_int16_t	 tagname2tag(struct pf_tags *, char *);
 static void		 tag2tagname(struct pf_tags *, u_int16_t, char *);
 static void		 tag_unref(struct pf_tags *, u_int16_t);
 
-#define DPFPRINTF(n, x) if (pf_status.debug >= (n)) printf x
+#define DPFPRINTF(n, x) if (pf_status.debug >= (n)) kprintf x
 
 static cdev_t	pf_dev;
 
@@ -3094,7 +3094,7 @@ pf_unload(void)
 		 * XXX Due to error code ESRCH, kldunload will show
 		 * a message like 'No such process'.
 		 */
-		printf("pfil unregisteration fail\n");
+		kprintf("pfil unregisteration fail\n");
 		return error;
 	}
 	shutdown_pf();

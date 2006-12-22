@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.9 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.10 2006/12/22 23:44:57 swildner Exp $
  *
  */
 
@@ -146,7 +146,7 @@ ng_device_mod_event(module_t mod, int event, void *data)
 	int error = 0;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	switch (event) {
@@ -178,19 +178,19 @@ ng_device_init(void)
         struct ngd_softc *sc = &ngd_softc;
 	
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */ 
 
 	SLIST_INIT(&sc->head);
 
         if (ng_make_node_common(&typestruct, &sc->node) != 0) {
-                printf("%s(): ng_make_node_common failed\n", __func__);
+                kprintf("%s(): ng_make_node_common failed\n", __func__);
                 return(ENXIO);
         }
         ksprintf(sc->nodename, "%s", NG_DEVICE_NODE_TYPE);
         if (ng_name_node(sc->node, sc->nodename)) {
                 NG_NODE_UNREF(sc->node); /* make it go away again */
-                printf("%s(): ng_name_node failed\n", __func__);
+                kprintf("%s(): ng_name_node failed\n", __func__);
                 return(ENXIO);
         }
         NG_NODE_SET_PRIVATE(sc->node, sc);
@@ -206,7 +206,7 @@ ng_device_cons(node_p node)
 {
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 	
 	return(EINVAL);
@@ -232,7 +232,7 @@ get_free_unit(void)
 	int unit = -1;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	/* When there is no list yet, the first device unit is always 0. */
@@ -269,18 +269,18 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	struct ngd_connection * new_connection = NULL;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	new_connection = kmalloc(sizeof(struct ngd_connection), M_DEVBUF, M_NOWAIT);
 	if(new_connection == NULL) {
-		printf("%s(): ERROR: new_connection == NULL\n", __func__);
+		kprintf("%s(): ERROR: new_connection == NULL\n", __func__);
 		return(-1);
 	}
 
 	new_connection->unit = get_free_unit();
 	if(new_connection->unit<0) {
-		printf("%s: No free unit found by get_free_unit(), "
+		kprintf("%s: No free unit found by get_free_unit(), "
 				"increas MAX_NGD\n", __func__);
 		kfree(new_connection, M_DEVBUF);
 		return(-1);
@@ -288,7 +288,7 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	new_connection->ngddev = make_dev(&ngd_cdevsw,
 	    new_connection->unit, 0, 0, 0600, "ngd%d", new_connection->unit);
 	if(new_connection->ngddev == NULL) {
-		printf("%s(): make_dev failed\n", __func__);
+		kprintf("%s(): make_dev failed\n", __func__);
 		SLIST_REMOVE(&sc->head, new_connection, ngd_connection, links);
 		kfree(new_connection, M_DEVBUF);
 		return(-1);
@@ -297,7 +297,7 @@ ng_device_newhook(node_p node, hook_p hook, const char *name)
 	new_connection->readq =
 	    kmalloc(sizeof(char)*NGD_QUEUE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if(new_connection->readq == NULL) {
-		printf("%s(): readq malloc failed\n", __func__);
+		kprintf("%s(): readq malloc failed\n", __func__);
 		destroy_dev(new_connection->ngddev);
 		SLIST_REMOVE(&sc->head, new_connection, ngd_connection, links);
 		kfree(new_connection, M_DEVBUF);
@@ -322,7 +322,7 @@ ng_device_connect(hook_p hook)
 {
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	return(0);
@@ -341,7 +341,7 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	char *buffer;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	SLIST_FOREACH(tmp, &sc->head, links) {
@@ -350,7 +350,7 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		}
 	}
 	if(connection == NULL) {
-		printf("%s(): connection still NULL, no hook found\n", __func__);
+		kprintf("%s(): connection still NULL, no hook found\n", __func__);
 		return(-1);
 	}
 
@@ -358,13 +358,13 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	m = m_pullup(m, m->m_len);
 	if(m == NULL) {
-		printf("%s(): ERROR: m_pullup failed\n", __func__);
+		kprintf("%s(): ERROR: m_pullup failed\n", __func__);
 		return(-1);
 	}
 
 	buffer = kmalloc(sizeof(char)*m->m_len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if(buffer == NULL) {
-		printf("%s(): ERROR: buffer malloc failed\n", __func__);
+		kprintf("%s(): ERROR: buffer malloc failed\n", __func__);
 		return(-1);
 	}
 
@@ -374,7 +374,7 @@ ng_device_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	        memcpy(connection->readq+connection->loc, buffer, m->m_len);
 		connection->loc += m->m_len;
 	} else
-		printf("%s(): queue full, first read out a bit\n", __func__);
+		kprintf("%s(): queue full, first read out a bit\n", __func__);
 
 	kfree(buffer, M_DEVBUF);
 
@@ -392,7 +392,7 @@ ng_device_disconnect(hook_p hook)
 	struct ngd_connection * tmp;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	SLIST_FOREACH(tmp, &sc->head, links) {
@@ -401,7 +401,7 @@ ng_device_disconnect(hook_p hook)
 		}
 	}
 	if(connection == NULL) {
-		printf("%s(): connection still NULL, no hook found\n",
+		kprintf("%s(): connection still NULL, no hook found\n",
 		    __func__);
 		return(-1);
 	}
@@ -422,7 +422,7 @@ ngdopen(cdev_t dev, int flag, int mode, struct thread *td)
 {
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	return(0);
@@ -436,7 +436,7 @@ ngdclose(cdev_t dev, int flag, int mode, struct thread *td)
 {
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif
 
 	return(0);
@@ -460,7 +460,7 @@ ngdioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
         struct ngd_param_s * datap;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	SLIST_FOREACH(tmp, &sc->head, links) {
@@ -469,7 +469,7 @@ ngdioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		}
 	}
 	if(connection == NULL) {
-		printf("%s(): connection still NULL, no dev found\n",
+		kprintf("%s(): connection still NULL, no dev found\n",
 		    __func__);
 		return(-1);
 	}
@@ -478,7 +478,7 @@ ngdioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	NG_MKMESSAGE(msg, NGM_DEVICE_COOKIE, cmd, sizeof(struct ngd_param_s), 
 			M_NOWAIT);
 	if (msg == NULL) {
-		printf("%s(): msg == NULL\n", __func__);
+		kprintf("%s(): msg == NULL\n", __func__);
 		goto nomsg;
 	}
 
@@ -491,7 +491,7 @@ ngdioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	error = ng_send_msg(sc->node, msg,
 	    NG_HOOK_NAME(connection->active_hook), NULL);
 	if(error)
-		printf("%s(): ng_send_msg() error: %d\n", __func__, error);
+		kprintf("%s(): ng_send_msg() error: %d\n", __func__, error);
 
 nomsg:
 
@@ -514,7 +514,7 @@ ngdread(cdev_t dev, struct uio *uio, int flag)
 	struct ngd_connection * tmp;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	SLIST_FOREACH(tmp, &sc->head, links) {
@@ -523,7 +523,7 @@ ngdread(cdev_t dev, struct uio *uio, int flag)
 		}
 	}
 	if(connection == NULL) {
-		printf("%s(): connection still NULL, no dev found\n", __func__);
+		kprintf("%s(): connection still NULL, no dev found\n", __func__);
 		return(-1);
 	}
 
@@ -543,7 +543,7 @@ ngdread(cdev_t dev, struct uio *uio, int flag)
 	return(0);
 
 error:
-	printf("%s(): uiomove returns error %d\n", __func__, ret);
+	kprintf("%s(): uiomove returns error %d\n", __func__, ret);
 	/* do error cleanup here */
 	return(ret);
 }
@@ -568,7 +568,7 @@ ngdwrite(cdev_t dev, struct uio *uio, int flag)
 	struct ngd_connection * tmp;
 
 #ifdef NGD_DEBUG
-	printf("%s()\n", __func__);
+	kprintf("%s()\n", __func__);
 #endif /* NGD_DEBUG */
 
 	SLIST_FOREACH(tmp, &sc->head, links) {
@@ -578,7 +578,7 @@ ngdwrite(cdev_t dev, struct uio *uio, int flag)
 	}
 
 	if(connection == NULL) {
-		printf("%s(): connection still NULL, no dev found\n", __func__);
+		kprintf("%s(): connection still NULL, no dev found\n", __func__);
 		return(-1);
 	}
 
@@ -586,7 +586,7 @@ ngdwrite(cdev_t dev, struct uio *uio, int flag)
 		if ((ret = uiomove((caddr_t)buffer, len, uio)) != 0)
 			goto error;
 	} else
-		printf("%s(): len <= 0 : supposed to happen?!\n", __func__);
+		kprintf("%s(): len <= 0 : supposed to happen?!\n", __func__);
 
 	m = m_devget(buffer, len, 0, NULL, NULL);
 
@@ -596,7 +596,7 @@ ngdwrite(cdev_t dev, struct uio *uio, int flag)
 
 error:
 	/* do error cleanup here */
-	printf("%s(): uiomove returned err: %d\n", __func__, ret);
+	kprintf("%s(): uiomove returned err: %d\n", __func__, ret);
 
 	return(ret);
 }
@@ -622,7 +622,7 @@ ngdpoll(cdev_t dev, int events, struct thread *td)
 			}
 		}
 		if(connection == NULL) {
-			printf("%s(): ERROR: connection still NULL, "
+			kprintf("%s(): ERROR: connection still NULL, "
 				"no dev found\n", __func__);
 			return(-1);
 		}

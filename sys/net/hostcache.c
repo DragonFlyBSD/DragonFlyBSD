@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.8 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.9 2006/12/22 23:44:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ hc_rele(struct hcentry *hc)
 {
 	crit_enter();
 #ifdef DIAGNOSTIC
-	printf("hc_rele: %p: negative refcnt!\n", (void *)hc);
+	kprintf("hc_rele: %p: negative refcnt!\n", (void *)hc);
 #endif
 	hc->hc_refcnt--;
 	if (hc->hc_refcnt == 0) {

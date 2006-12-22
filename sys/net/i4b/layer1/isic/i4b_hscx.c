@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_hscx.c,v 1.7.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_hscx.c,v 1.5 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_hscx.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:42 2001]
  *
@@ -373,7 +373,7 @@ isic_hscx_irq(struct l1_softc *sc, u_char ista, int h_chan, u_char ex_irq)
 			nextlen = min(chan->out_mbuf_cur_len, sc->sc_bfifolen - len);
 
 #ifdef NOTDEF			
-			printf("i:mh=%x, mc=%x, mcp=%x, mcl=%d l=%d nl=%d # ",
+			kprintf("i:mh=%x, mc=%x, mcp=%x, mcl=%d l=%d nl=%d # ",
 				chan->out_mbuf_head,
 				chan->out_mbuf_cur,			
 				chan->out_mbuf_cur_ptr,

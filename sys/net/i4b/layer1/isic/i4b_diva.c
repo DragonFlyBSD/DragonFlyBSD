@@ -28,7 +28,7 @@
  *	--------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_diva.c,v 1.1.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_diva.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_diva.c,v 1.5 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 26 13:57:10 2001]
  *
@@ -380,11 +380,11 @@ isic_attach_diva(device_t dev)
 	if( ((HSCX_READ(0, H_VSTR) & 0xf) != 0x5) || 
 	    ((HSCX_READ(1, H_VSTR) & 0xf) != 0x5) )
 	{
-		printf("isic%d: HSCX VSTR test failed for Eicon DIVA 2.0\n",
+		kprintf("isic%d: HSCX VSTR test failed for Eicon DIVA 2.0\n",
 			sc->sc_unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			sc->sc_unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			sc->sc_unit, HSCX_READ(1, H_VSTR));
 		return ENXIO;
 	}

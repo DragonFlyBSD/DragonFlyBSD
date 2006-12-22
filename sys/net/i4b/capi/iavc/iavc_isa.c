@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_isa.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.9 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ iavc_isa_probe(device_t dev)
 	
 	if (unit >= IAVC_MAXUNIT)
 	{
-		printf("iavc%d: too many units\n", unit);
+		kprintf("iavc%d: too many units\n", unit);
 		return(ENXIO);	
 	}
 
@@ -114,7 +114,7 @@ iavc_isa_probe(device_t dev)
 			&sc->sc_resources.io_rid[0],
 			0UL, ~0UL, B1_IOLENGTH, RF_ACTIVE)))
 	{
-		printf("iavc%d: can't allocate io region\n", unit);
+		kprintf("iavc%d: can't allocate io region\n", unit);
 		return(ENXIO);                                       
 	}
 
@@ -128,7 +128,7 @@ iavc_isa_probe(device_t dev)
 		case 0x340:
 			break;
 		default:
-			printf("iavc%d: ERROR, invalid i/o base addr 0x%x configured!\n", sc->sc_unit, sc->sc_iobase);
+			kprintf("iavc%d: ERROR, invalid i/o base addr 0x%x configured!\n", sc->sc_unit, sc->sc_iobase);
 			bus_release_resource(dev, SYS_RES_IOPORT,
 					sc->sc_resources.io_rid[0],
 		                        sc->sc_resources.io_base[0]);
@@ -153,7 +153,7 @@ iavc_isa_probe(device_t dev)
 
 	if(ret)
 	{
-		printf("iavc%d: no card ? b1_detect returns %0x02x\n", sc->sc_unit, ret);
+		kprintf("iavc%d: no card ? b1_detect returns %0x02x\n", sc->sc_unit, ret);
 		return(ENXIO);
 	}
 
@@ -165,7 +165,7 @@ iavc_isa_probe(device_t dev)
 
 	if(bootverbose)
 	{
-		printf("iavc%d: class = 0x%02x, rev = 0x%02x\n", sc->sc_unit,
+		kprintf("iavc%d: class = 0x%02x, rev = 0x%02x\n", sc->sc_unit,
 			iavc_read_port(sc, B1_ANALYSE),
 			iavc_read_port(sc, B1_REVISION));
 	}
@@ -195,7 +195,7 @@ iavc_isa_attach(device_t dev)
 			&sc->sc_resources.irq_rid,
 			0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("iavc%d: can't allocate irq\n",unit);
+		kprintf("iavc%d: can't allocate irq\n",unit);
 		bus_release_resource(dev, SYS_RES_IOPORT,
 				sc->sc_resources.io_rid[0],
 	                        sc->sc_resources.io_base[0]);
@@ -206,7 +206,7 @@ iavc_isa_attach(device_t dev)
 
 	if(b1_irq_table[irq] == 0)
 	{
-		printf("iavc%d: ERROR, illegal irq %d configured!\n",unit, irq);
+		kprintf("iavc%d: ERROR, illegal irq %d configured!\n",unit, irq);
 		bus_release_resource(dev, SYS_RES_IOPORT,
 				sc->sc_resources.io_rid[0],
 	                        sc->sc_resources.io_base[0]);
@@ -233,7 +233,7 @@ iavc_isa_attach(device_t dev)
 
 	if (capi_ll_attach(&sc->sc_capi))
 	{
-		printf("iavc%d: capi attach failed\n", unit);
+		kprintf("iavc%d: capi attach failed\n", unit);
 		return(ENXIO);
 	}
 
@@ -243,7 +243,7 @@ iavc_isa_attach(device_t dev)
 			      (void(*)(void*))iavc_isa_intr,
 			      sc, &ih, NULL);
 	if (error) {
-		printf("iavc%d: irq setup failed\n", unit);
+		kprintf("iavc%d: irq setup failed\n", unit);
 		bus_release_resource(dev, SYS_RES_IOPORT,
 				sc->sc_resources.io_rid[0],
 	                        sc->sc_resources.io_base[0]);
@@ -267,7 +267,7 @@ b1isa_setup_irq(struct iavc_softc *sc)
 	int irq = rman_get_start(sc->sc_resources.irq);
 	
 	if(bootverbose)
-		printf("iavc%d: using irq %d\n", sc->sc_unit, irq);
+		kprintf("iavc%d: using irq %d\n", sc->sc_unit, irq);
 
 	/* enable the interrupt */
 

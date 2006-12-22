@@ -38,7 +38,7 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *
@@ -182,7 +182,7 @@ isic_pnp_attach(device_t dev)
 	
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for %s\n", unit, unit, name);
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for %s\n", unit, unit, name);
 		return ENXIO;
 	}
 
@@ -196,7 +196,7 @@ isic_pnp_attach(device_t dev)
 						&sc->sc_resources.io_rid[0],
 						0UL, ~0UL, 1, RF_ACTIVE ) ))
 	{
-		printf("isic_pnp_attach: Couldn't get my io_base.\n");
+		kprintf("isic_pnp_attach: Couldn't get my io_base.\n");
 		return ENXIO;                                       
 	}
 	
@@ -211,7 +211,7 @@ isic_pnp_attach(device_t dev)
 					   &sc->sc_resources.irq_rid,
 					   0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get irq.\n",unit);
+		kprintf("isic%d: Could not get irq.\n",unit);
 		isic_detach_common(dev);
 		return ENXIO;                                       
 	}
@@ -296,7 +296,7 @@ isic_pnp_attach(device_t dev)
 			break;
 #endif
 		default:
-			printf("isic%d: Error, no driver for %s\n", unit, name);
+			kprintf("isic%d: Error, no driver for %s\n", unit, name);
 			ret = ENXIO;
 			break;		
 	}

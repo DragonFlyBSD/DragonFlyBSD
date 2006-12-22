@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.9 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
     u_int8_t val;
 
     if(bootverbose)
-	printf("iavc%d: reset card ....\n", sc->sc_unit);
+	kprintf("iavc%d: reset card ....\n", sc->sc_unit);
 
     if (sc->sc_dma)
 	b1dma_reset(sc);	/* PCI cards */
@@ -101,19 +101,19 @@ iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
     DELAY(1000);
 
     if(bootverbose)
-	    printf("iavc%d: start loading %d bytes firmware ....\n", sc->sc_unit, len);
+	    kprintf("iavc%d: start loading %d bytes firmware ....\n", sc->sc_unit, len);
     
     while (len && b1io_save_put_byte(sc, *cp++) == 0)
 	len--;
 
     if (len) {
-	printf("iavc%d: loading failed, can't write to card, len = %d\n",
+	kprintf("iavc%d: loading failed, can't write to card, len = %d\n",
 	       sc->sc_unit, len);
 	return (EIO);
     }
 
     if(bootverbose)
-    	printf("iavc%d: firmware loaded, wait for ACK ....\n", sc->sc_unit);
+    	kprintf("iavc%d: firmware loaded, wait for ACK ....\n", sc->sc_unit);
     
     if(sc->sc_capi.card_type == CARD_TYPEC_AVM_B1_ISA)
 	    iavc_put_byte(sc, SEND_POLL);
@@ -124,7 +124,7 @@ iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
 	DELAY(100);
     
     if (!iavc_rx_full(sc)) {
-	printf("iavc%d: loading failed, no ack\n", sc->sc_unit);
+	kprintf("iavc%d: loading failed, no ack\n", sc->sc_unit);
 	return (EIO);
     }
     
@@ -132,12 +132,12 @@ iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
 
     if ((sc->sc_dma && val != RECEIVE_POLLDWORD) ||
 	(!sc->sc_dma && val != RECEIVE_POLL)) {
-	printf("iavc%d: loading failed, bad ack = %02x\n", sc->sc_unit, val);
+	kprintf("iavc%d: loading failed, bad ack = %02x\n", sc->sc_unit, val);
 	return (EIO);
     }
 
     if(bootverbose)
-	    printf("iavc%d: got ACK = 0x%02x\n", sc->sc_unit, val);    
+	    kprintf("iavc%d: got ACK = 0x%02x\n", sc->sc_unit, val);    
 
     if (sc->sc_dma) {
 	/* Start the DMA engine */
@@ -178,7 +178,7 @@ iavc_register(capi_softc_t *capi_sc, int applid, int nchan)
     u_int8_t *p;
 
     if (!m) {
-	printf("iavc%d: can't get memory\n", sc->sc_unit);
+	kprintf("iavc%d: can't get memory\n", sc->sc_unit);
 	return (ENOMEM);
     }
 
@@ -219,7 +219,7 @@ iavc_release(capi_softc_t *capi_sc, int applid)
     u_int8_t *p;
 
     if (!m) {
-	printf("iavc%d: can't get memory\n", sc->sc_unit);
+	kprintf("iavc%d: can't get memory\n", sc->sc_unit);
 	return (ENOMEM);
     }
 
@@ -245,7 +245,7 @@ iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
     iavc_softc_t *sc = (iavc_softc_t*) capi_sc->ctx;
 
     if (sc->sc_state != IAVC_UP) {
-	printf("iavc%d: attempt to send before device up\n", sc->sc_unit);
+	kprintf("iavc%d: attempt to send before device up\n", sc->sc_unit);
 
 	if (m->m_next) i4b_Bfreembuf(m->m_next);
 	i4b_Dfreembuf(m);
@@ -256,7 +256,7 @@ iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
     if (IF_QFULL(&sc->sc_txq)) {
 	IF_DROP(&sc->sc_txq);
 
-	printf("iavc%d: tx overflow, message dropped\n", sc->sc_unit);
+	kprintf("iavc%d: tx overflow, message dropped\n", sc->sc_unit);
 
 	if (m->m_next) i4b_Bfreembuf(m->m_next);
 	i4b_Dfreembuf(m);
@@ -286,7 +286,7 @@ iavc_send_init(iavc_softc_t *sc)
     u_int8_t *p;
 
     if (!m) {
-	printf("iavc%d: can't get memory\n", sc->sc_unit);
+	kprintf("iavc%d: can't get memory\n", sc->sc_unit);
 	return (ENOMEM);
     }
 
@@ -360,13 +360,13 @@ iavc_receive_init(iavc_softc_t *sc, u_int8_t *dmabuf)
 #if 0
     {
 	int len = 0;
-	printf("iavc%d: rx_init: ", sc->sc_unit);
+	kprintf("iavc%d: rx_init: ", sc->sc_unit);
 	    while (len < Length) {
-		printf(" %02x", p[len]);
-		if (len && (len % 16) == 0) printf("\n");
+		kprintf(" %02x", p[len]);
+		if (len && (len % 16) == 0) kprintf("\n");
 		len++;
 	    }
-	    if (len % 16) printf("\n");
+	    if (len % 16) kprintf("\n");
     }
 #endif
 
@@ -386,16 +386,16 @@ iavc_receive_init(iavc_softc_t *sc, u_int8_t *dmabuf)
     if (cardtype && serial && profile) {
 	int nbch = ((profile[3]<<8) | profile[2]);
 
-	printf("iavc%d: AVM %s, s/n %s, %d chans, f/w rev %s, prot %s\n",
+	kprintf("iavc%d: AVM %s, s/n %s, %d chans, f/w rev %s, prot %s\n",
 		sc->sc_unit, cardtype, serial, nbch, version, prot);
 
 	if(bootverbose)
-		printf("iavc%d: %s\n", sc->sc_unit, caps);
+		kprintf("iavc%d: %s\n", sc->sc_unit, caps);
 
         capi_ll_control(&sc->sc_capi, CAPI_CTRL_PROFILE, (int) profile);
 
     } else {
-	printf("iavc%d: no profile data in info response?\n", sc->sc_unit);
+	kprintf("iavc%d: no profile data in info response?\n", sc->sc_unit);
     }
 
     sc->sc_blocked = TRUE; /* controller will send START when ready */
@@ -409,10 +409,10 @@ iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
     u_int8_t *p;
 
     if (sc->sc_blocked && sc->sc_state == IAVC_UP)
-	printf("iavc%d: receive_start\n", sc->sc_unit);
+	kprintf("iavc%d: receive_start\n", sc->sc_unit);
 
     if (!m) {
-	printf("iavc%d: can't get memory\n", sc->sc_unit);
+	kprintf("iavc%d: can't get memory\n", sc->sc_unit);
 	return (ENOMEM);
     }
 
@@ -445,7 +445,7 @@ iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
 static int
 iavc_receive_stop(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
-    printf("iavc%d: receive_stop\n", sc->sc_unit);
+    kprintf("iavc%d: receive_stop\n", sc->sc_unit);
     sc->sc_blocked = TRUE;
     return 0;
 }
@@ -491,7 +491,7 @@ iavc_receive_task_ready(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t TaskId, Length;
     u_int8_t *p;
-    printf("iavc%d: receive_task_ready\n", sc->sc_unit);
+    kprintf("iavc%d: receive_task_ready\n", sc->sc_unit);
     
     if (sc->sc_dma) {
 	p = amcc_get_word(dmabuf, &TaskId);
@@ -511,7 +511,7 @@ iavc_receive_debugmsg(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t Length;
     u_int8_t *p;
-    printf("iavc%d: receive_debugmsg\n", sc->sc_unit);
+    kprintf("iavc%d: receive_debugmsg\n", sc->sc_unit);
     
     if (sc->sc_dma) {
 	p = amcc_get_word(dmabuf, &Length);
@@ -557,7 +557,7 @@ iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
 
     m = i4b_Dgetmbuf(Length);
     if (!m) {
-	printf("iavc%d: can't get memory for receive\n", sc->sc_unit);
+	kprintf("iavc%d: can't get memory for receive\n", sc->sc_unit);
 	return (ENOMEM);
     }
 
@@ -567,13 +567,13 @@ iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
 	{
 	    u_int8_t *p = mtod(m, u_int8_t*);
 	    int len = 0;
-	    printf("iavc%d: applid=%d, len=%d\n", sc->sc_unit, ApplId, Length);
+	    kprintf("iavc%d: applid=%d, len=%d\n", sc->sc_unit, ApplId, Length);
 	    while (len < m->m_len) {
-		printf(" %02x", p[len]);
-		if (len && (len % 16) == 0) printf("\n");
+		kprintf(" %02x", p[len]);
+		if (len && (len % 16) == 0) kprintf("\n");
 		len++;
 	    }
-	    if (len % 16) printf("\n");
+	    if (len % 16) kprintf("\n");
 	}
 #endif
 
@@ -587,7 +587,7 @@ iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
 
 	m->m_next = i4b_Bgetmbuf(Length);
 	if (!m->m_next) {
-	    printf("iavc%d: can't get memory for receive\n", sc->sc_unit);
+	    kprintf("iavc%d: can't get memory for receive\n", sc->sc_unit);
 	    i4b_Dfreembuf(m);
 	    return (ENOMEM);
 	}
@@ -709,7 +709,7 @@ iavc_handle_rx(iavc_softc_t *sc)
 	break;
 
     default:
-	printf("iavc%d: unknown msg %02x\n", sc->sc_unit, cmd);
+	kprintf("iavc%d: unknown msg %02x\n", sc->sc_unit, cmd);
     }
 }
 
@@ -779,10 +779,10 @@ iavc_start_tx(iavc_softc_t *sc)
 	u_int8_t *p = mtod(m, u_int8_t*);
 	int len;
 	for (len = 0; len < m->m_len; len++) {
-	    printf(" %02x", *p++);
-	    if (len && (len % 16) == 0) printf("\n");
+	    kprintf(" %02x", *p++);
+	    if (len && (len % 16) == 0) kprintf("\n");
 	}
-	if (len % 16) printf("\n");
+	if (len % 16) kprintf("\n");
     }
 #endif
 
@@ -805,12 +805,12 @@ iavc_start_tx(iavc_softc_t *sc)
     {
 	u_int8_t *p = mtod(m, u_int8_t*) + 2;
 	int len;
-	printf("iavc%d: tx BDC msg, len = %d, msg =", sc->sc_unit, m->m_len-2);
+	kprintf("iavc%d: tx BDC msg, len = %d, msg =", sc->sc_unit, m->m_len-2);
 	for (len = 0; len < m->m_len-2; len++) {
-	    printf(" %02x", *p++);
-	    if (len && (len % 16) == 0) printf("\n");
+	    kprintf(" %02x", *p++);
+	    if (len && (len % 16) == 0) kprintf("\n");
 	}
-	if (len % 16) printf("\n");
+	if (len % 16) kprintf("\n");
     }
 #endif
 
@@ -975,7 +975,7 @@ b1io_get_byte(iavc_softc_t *sc)
     }
     if (b1io_rx_full(sc))
 	return bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, B1_READ);
-    printf("iavc%d: rx not completed\n", sc->sc_unit);
+    kprintf("iavc%d: rx not completed\n", sc->sc_unit);
     return 0xff;
 }
 
@@ -990,7 +990,7 @@ b1io_put_byte(iavc_softc_t *sc, u_int8_t val)
 	bus_space_write_1(sc->sc_io_bt, sc->sc_io_bh, B1_WRITE, val);
 	return 0;
     }
-    printf("iavc%d: tx not emptied\n", sc->sc_unit);
+    kprintf("iavc%d: tx not emptied\n", sc->sc_unit);
     return -1;
 }
 
@@ -1005,6 +1005,6 @@ b1io_save_put_byte(iavc_softc_t *sc, u_int8_t val)
 	b1io_outp(sc, B1_WRITE, val);
 	return 0;
     }
-    printf("iavc%d: tx not emptied\n", sc->sc_unit);
+    kprintf("iavc%d: tx not emptied\n", sc->sc_unit);
     return -1;
 }

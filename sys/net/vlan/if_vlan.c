@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.22 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.23 2006/12/22 23:44:57 swildner Exp $
  */
 
 /*
@@ -324,7 +324,7 @@ vlan_start(struct ifnet *ifp)
 		} else {
 			M_PREPEND(m, EVL_ENCAPLEN, MB_DONTWAIT);
 			if (m == NULL) {
-				printf("%s: M_PREPEND failed", ifp->if_xname);
+				kprintf("%s: M_PREPEND failed", ifp->if_xname);
 				ifp->if_ierrors++;
 				continue;
 			}
@@ -332,7 +332,7 @@ vlan_start(struct ifnet *ifp)
 
 			m = m_pullup(m, ETHER_HDR_LEN + EVL_ENCAPLEN);
 			if (m == NULL) {
-				printf("%s: m_pullup failed", ifp->if_xname);
+				kprintf("%s: m_pullup failed", ifp->if_xname);
 				ifp->if_ierrors++;
 				continue;
 			}
@@ -348,7 +348,7 @@ vlan_start(struct ifnet *ifp)
 			evl->evl_encap_proto = htons(ETHERTYPE_VLAN);
 			evl->evl_tag = htons(ifv->ifv_tag);
 #ifdef DEBUG
-			printf("vlan_start: %*D\n", sizeof *evl,
+			kprintf("vlan_start: %*D\n", sizeof *evl,
 			    (unsigned char *)evl, ":");
 #endif
 		}

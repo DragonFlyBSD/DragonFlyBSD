@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.8 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.9 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -247,7 +247,7 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 	if (machclk_freq == 0)
 		init_machclk();
 	if (machclk_freq == 0) {
-		printf("tbr_set: no cpu clock available!\n");
+		kprintf("tbr_set: no cpu clock available!\n");
 		return (ENXIO);
 	}
 
@@ -601,7 +601,7 @@ read_dsfield(struct mbuf *m, struct altq_pktattr *pktattr)
 		/* ick, pattr_hdr is stale */
 		pktattr->pattr_af = AF_UNSPEC;
 #ifdef ALTQ_DEBUG
-		printf("read_dsfield: can't locate header!\n");
+		kprintf("read_dsfield: can't locate header!\n");
 #endif
 		return ((uint8_t)0);
 	}
@@ -646,7 +646,7 @@ write_dsfield(struct mbuf *m, struct altq_pktattr *pktattr, uint8_t dsfield)
 		/* ick, pattr_hdr is stale */
 		pktattr->pattr_af = AF_UNSPEC;
 #ifdef ALTQ_DEBUG
-		printf("write_dsfield: can't locate header!\n");
+		kprintf("write_dsfield: can't locate header!\n");
 #endif
 		return;
 	}
@@ -724,7 +724,7 @@ init_machclk(void)
 		machclk_freq = 1000000 << MACHCLK_SHIFT;
 		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
-		printf("altq: emulate %uHz cpu clock\n", machclk_freq);
+		kprintf("altq: emulate %uHz cpu clock\n", machclk_freq);
 #endif
 		return;
 	}
@@ -763,7 +763,7 @@ init_machclk(void)
 	machclk_per_tick = machclk_freq / hz;
 
 #ifdef ALTQ_DEBUG
-	printf("altq: CPU clock: %uHz\n", machclk_freq);
+	kprintf("altq: CPU clock: %uHz\n", machclk_freq);
 #endif
 }
 

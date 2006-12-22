@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.26 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.27 2006/12/22 23:44:54 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -999,9 +999,9 @@ bad:
 #ifdef ROUTE_DEBUG
 	if (route_debug) {
 		if (error)
-			printf("rti %p failed error %d\n", rtinfo, error);
+			kprintf("rti %p failed error %d\n", rtinfo, error);
 		else
-			printf("rti %p succeeded\n", rtinfo);
+			kprintf("rti %p succeeded\n", rtinfo);
 	}
 #endif
 	crit_exit();
@@ -1058,20 +1058,20 @@ rt_fixchange(struct radix_node *rn, void *vp)
 
 #ifdef DEBUG
 	if (rtfcdebug)
-		printf("rt_fixchange: rt %p, rt0 %p\n", rt, rt0);
+		kprintf("rt_fixchange: rt %p, rt0 %p\n", rt, rt0);
 #endif
 
 	if (rt->rt_parent == NULL ||
 	    (rt->rt_flags & (RTF_PINNED | RTF_CLONING | RTF_PRCLONING))) {
 #ifdef DEBUG
-		if (rtfcdebug) printf("no parent, pinned or cloning\n");
+		if (rtfcdebug) kprintf("no parent, pinned or cloning\n");
 #endif
 		return 0;
 	}
 
 	if (rt->rt_parent == rt0) {
 #ifdef DEBUG
-		if (rtfcdebug) printf("parent match\n");
+		if (rtfcdebug) kprintf("parent match\n");
 #endif
 		return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
 				 rt->rt_flags, NULL);
@@ -1093,7 +1093,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	if (mlen > rt_key(rt0)->sa_len) {
 #ifdef DEBUG
 		if (rtfcdebug)
-			printf("rt_fixchange: inserting a less "
+			kprintf("rt_fixchange: inserting a less "
 			       "specific route\n");
 #endif
 		return 0;
@@ -1102,7 +1102,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 		if ((xmp[i] & ~(xmp[i] ^ xm1[i])) != xmp[i]) {
 #ifdef DEBUG
 			if (rtfcdebug)
-				printf("rt_fixchange: inserting a less "
+				kprintf("rt_fixchange: inserting a less "
 				       "specific route\n");
 #endif
 			return 0;
@@ -1112,7 +1112,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	for (i = rnh->rnh_treetop->rn_offset; i < len; i++) {
 		if ((xk2[i] & xm1[i]) != xk1[i]) {
 #ifdef DEBUG
-			if (rtfcdebug) printf("no match\n");
+			if (rtfcdebug) kprintf("no match\n");
 #endif
 			return 0;
 		}
@@ -1123,7 +1123,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	 * changed/added under the node's mask.  So, get rid of it.
 	 */
 #ifdef DEBUG
-	if (rtfcdebug) printf("deleting\n");
+	if (rtfcdebug) kprintf("deleting\n");
 #endif
 	return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
 			 rt->rt_flags, NULL);
@@ -1300,15 +1300,15 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 void
 rt_print(struct rt_addrinfo *rtinfo, struct rtentry *rn)
 {
-	printf("rti %p cpu %d route %p flags %08lx: ", 
+	kprintf("rti %p cpu %d route %p flags %08lx: ", 
 		rtinfo, mycpuid, rn, rn->rt_flags);
 	sockaddr_print(rt_key(rn));
-	printf(" mask ");
+	kprintf(" mask ");
 	sockaddr_print(rt_mask(rn));
-	printf(" gw ");
+	kprintf(" gw ");
 	sockaddr_print(rn->rt_gateway);
-	printf(" ifc \"%s\"", rn->rt_ifp ? rn->rt_ifp->if_dname : "?");
-	printf(" ifa %p\n", rn->rt_ifa);
+	kprintf(" ifc \"%s\"", rn->rt_ifp ? rn->rt_ifp->if_dname : "?");
+	kprintf(" ifa %p\n", rn->rt_ifa);
 }
 
 void
@@ -1324,58 +1324,58 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 
 	switch(cmd) {
 	case RTM_ADD:
-		printf("ADD ");
+		kprintf("ADD ");
 		break;
 	case RTM_RESOLVE:
-		printf("RES ");
+		kprintf("RES ");
 		break;
 	case RTM_DELETE:
-		printf("DEL ");
+		kprintf("DEL ");
 		break;
 	default:
-		printf("C%02d ", cmd);
+		kprintf("C%02d ", cmd);
 		break;
 	}
-	printf("rti %p cpu %d ", rti, mycpuid);
+	kprintf("rti %p cpu %d ", rti, mycpuid);
 	for (i = 0; i < rti->rti_addrs; ++i) {
 		if (rti->rti_info[i] == NULL)
 			continue;
 		if (didit)
-			printf(" ,");
+			kprintf(" ,");
 		switch(i) {
 		case RTAX_DST:
-			printf("(DST ");
+			kprintf("(DST ");
 			break;
 		case RTAX_GATEWAY:
-			printf("(GWY ");
+			kprintf("(GWY ");
 			break;
 		case RTAX_NETMASK:
-			printf("(MSK ");
+			kprintf("(MSK ");
 			break;
 		case RTAX_GENMASK:
-			printf("(GEN ");
+			kprintf("(GEN ");
 			break;
 		case RTAX_IFP:
-			printf("(IFP ");
+			kprintf("(IFP ");
 			break;
 		case RTAX_IFA:
-			printf("(IFA ");
+			kprintf("(IFA ");
 			break;
 		case RTAX_AUTHOR:
-			printf("(AUT ");
+			kprintf("(AUT ");
 			break;
 		case RTAX_BRD:
-			printf("(BRD ");
+			kprintf("(BRD ");
 			break;
 		default:
-			printf("(?%02d ", i);
+			kprintf("(?%02d ", i);
 			break;
 		}
 		sockaddr_print(rti->rti_info[i]);
-		printf(")");
+		kprintf(")");
 		didit = 1;
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 void
@@ -1387,7 +1387,7 @@ sockaddr_print(struct sockaddr *sa)
 	int i;
 
 	if (sa == NULL) {
-		printf("NULL");
+		kprintf("NULL");
 		return;
 	}
 
@@ -1400,7 +1400,7 @@ sockaddr_print(struct sockaddr *sa)
 		switch(sa->sa_family) {
 		case AF_INET:
 			sa4 = (struct sockaddr_in *)sa;
-			printf("INET %d %d.%d.%d.%d",
+			kprintf("INET %d %d.%d.%d.%d",
 				ntohs(sa4->sin_port),
 				(ntohl(sa4->sin_addr.s_addr) >> 24) & 255,
 				(ntohl(sa4->sin_addr.s_addr) >> 16) & 255,
@@ -1410,7 +1410,7 @@ sockaddr_print(struct sockaddr *sa)
 			break;
 		case AF_INET6:
 			sa6 = (struct sockaddr_in6 *)sa;
-			printf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
+			kprintf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
 				ntohs(sa6->sin6_port),
 				sa6->sin6_addr.s6_addr16[0],
 				sa6->sin6_addr.s6_addr16[1],
@@ -1423,14 +1423,14 @@ sockaddr_print(struct sockaddr *sa)
 			);
 			break;
 		default:
-			printf("AF%d ", sa->sa_family);
+			kprintf("AF%d ", sa->sa_family);
 			while (len > 0 && sa->sa_data[len-1] == 0)
 				--len;
 
 			for (i = 0; i < len; ++i) {
 				if (i)
-					printf(".");
-				printf("%d", (unsigned char)sa->sa_data[i]);
+					kprintf(".");
+				kprintf("%d", (unsigned char)sa->sa_data[i]);
 			}
 			break;
 		}

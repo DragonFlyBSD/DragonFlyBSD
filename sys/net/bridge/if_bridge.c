@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.14 2006/12/19 00:11:13 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.15 2006/12/22 23:44:55 swildner Exp $
  */
 
 /*
@@ -2381,7 +2381,7 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	if ((*mp)->m_len < i) {
 	    *mp = m_pullup(*mp, i);
 	    if (*mp == NULL) {
-		printf("%s: m_pullup failed\n", __func__);
+		kprintf("%s: m_pullup failed\n", __func__);
 		return (-1);
 	    }
 	}

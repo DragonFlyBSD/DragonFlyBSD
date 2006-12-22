@@ -28,7 +28,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5.2.2 2001/10/24 14:17:20 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Oct 24 16:15:26 2001]
  *
@@ -228,7 +228,7 @@ isic_probe_Epcc16(device_t dev)
 	/* check max unit range */
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ELSA PCC-16!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ELSA PCC-16!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -243,7 +243,7 @@ isic_probe_Epcc16(device_t dev)
 	                                   &sc->sc_resources.io_rid[0],
 	                                   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get iobase for ELSA PCC-16.\n",
+		kprintf("isic%d: Could not get iobase for ELSA PCC-16.\n",
 				unit);
 		return(ENXIO);
 	}
@@ -260,7 +260,7 @@ isic_probe_Epcc16(device_t dev)
 		case 0x360:
 			break;
 		default:
-			printf("isic%d: Error, invalid iobase 0x%x specified for ELSA MicroLink ISDN/PCC-16!\n",
+			kprintf("isic%d: Error, invalid iobase 0x%x specified for ELSA MicroLink ISDN/PCC-16!\n",
 				unit, sc->sc_port);
 			isic_detach_Epcc16(dev);
 			return(ENXIO);
@@ -304,18 +304,18 @@ isic_probe_Epcc16(device_t dev)
 		if( ((HSCX_READ(0, H_VSTR) & 0xf) != 0x85) ||
 		    ((HSCX_READ(1, H_VSTR) & 0xf) != 0x85) )
 		{
-			printf("isic%d: HSCX VSTR test failed for ELSA MicroLink ISDN/PCC-16\n",
+			kprintf("isic%d: HSCX VSTR test failed for ELSA MicroLink ISDN/PCC-16\n",
 				unit);
 			isic_detach_Epcc16(dev);
-			printf("isic%d: HSC0: VSTR: %#x\n",
+			kprintf("isic%d: HSC0: VSTR: %#x\n",
 				unit, HSCX_READ(0, H_VSTR));
-			printf("isic%d: HSC1: VSTR: %#x\n",
+			kprintf("isic%d: HSC1: VSTR: %#x\n",
 				unit, HSCX_READ(1, H_VSTR));
 			return (ENXIO);
 		}
 		else
 		{
-			printf("isic%d: ELSA MicroLink ISDN/PCFpro found, going to tread it as PCC-16\n",
+			kprintf("isic%d: ELSA MicroLink ISDN/PCFpro found, going to tread it as PCC-16\n",
 				unit);
 		}
 	}
@@ -327,7 +327,7 @@ isic_probe_Epcc16(device_t dev)
 					&sc->sc_resources.irq_rid,
 					0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get an irq.\n",unit);
+		kprintf("isic%d: Could not get an irq.\n",unit);
 		isic_detach_Epcc16(dev);
 		return ENXIO;
 	}
@@ -348,7 +348,7 @@ isic_probe_Epcc16(device_t dev)
 			break;
 			
 		default:
-			printf("isic%d: Error, invalid IRQ [%d] specified for ELSA MicroLink ISDN/PCC-16!\n",
+			kprintf("isic%d: Error, invalid IRQ [%d] specified for ELSA MicroLink ISDN/PCC-16!\n",
 				unit, sc->sc_irq);
 			isic_detach_Epcc16(dev);
 			return(ENXIO);

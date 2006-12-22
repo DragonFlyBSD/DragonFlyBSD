@@ -36,7 +36,7 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_avm_a1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:25:23 2001]
  *
@@ -149,7 +149,7 @@ isic_alloc_port(device_t dev, int rid, u_int base, u_int len)
 				   &sc->sc_resources.io_rid[rid],
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Error, failed to reserve io #%d!\n", unit, rid);
+		kprintf("isic%d: Error, failed to reserve io #%d!\n", unit, rid);
 		isic_detach_common(dev);
 		return(ENXIO);
 	}
@@ -174,7 +174,7 @@ isic_probe_avma1(device_t dev)
 
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for AVM A1/Fritz!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for AVM A1/Fritz!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -189,7 +189,7 @@ isic_probe_avma1(device_t dev)
 	                                   &sc->sc_resources.io_rid[0],
 	                                   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get iobase for AVM A1/Fritz!\n",
+		kprintf("isic%d: Could not get iobase for AVM A1/Fritz!\n",
 				unit);
 		return(ENXIO);
 	}
@@ -212,7 +212,7 @@ isic_probe_avma1(device_t dev)
 			break;
 			
 		default:
-			printf("isic%d: Error, invalid iobase 0x%x specified for AVM A1/Fritz!\n",
+			kprintf("isic%d: Error, invalid iobase 0x%x specified for AVM A1/Fritz!\n",
 				unit, sc->sc_port);
 			return(ENXIO);
 			break;
@@ -246,7 +246,7 @@ isic_probe_avma1(device_t dev)
 				   &sc->sc_resources.irq_rid,
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get an irq for AVM A1/Fritz!\n",unit);
+		kprintf("isic%d: Could not get an irq for AVM A1/Fritz!\n",unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -278,7 +278,7 @@ isic_probe_avma1(device_t dev)
 			break;
 			
 		default:
-			printf("isic%d: Error, invalid IRQ [%d] specified for AVM A1/Fritz!\n",
+			kprintf("isic%d: Error, invalid IRQ [%d] specified for AVM A1/Fritz!\n",
 				unit, sc->sc_irq);
 			isic_detach_common(dev);
 			return(ENXIO);
@@ -314,11 +314,11 @@ isic_probe_avma1(device_t dev)
             (((HSCX_READ(1, H_VSTR) & 0xf) != 0x5) &&
 	     ((HSCX_READ(1, H_VSTR) & 0xf) != 0x4)) )  
 	{
-		printf("isic%d: HSCX VSTR test failed for AVM A1/Fritz\n",
+		kprintf("isic%d: HSCX VSTR test failed for AVM A1/Fritz\n",
 			unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			unit, HSCX_READ(1, H_VSTR));
 		return(ENXIO);
 	}                   
@@ -351,7 +351,7 @@ isic_probe_avma1(device_t dev)
 
 	if((byte = bus_space_read_1(t, h, 0) & 0x38) != 0x00)
 	{
-		printf("isic%d: Error, probe-1 failed, 0x%02x should be 0x00 for AVM A1/Fritz!\n",
+		kprintf("isic%d: Error, probe-1 failed, 0x%02x should be 0x00 for AVM A1/Fritz!\n",
 				unit, byte);
 		bus_space_write_1(t, h, 0, savebyte);
 		return(ENXIO);
@@ -365,7 +365,7 @@ isic_probe_avma1(device_t dev)
 
 	if((byte = bus_space_read_1(t, h, 0) & 0x38) != 0x10)
 	{
-		printf("isic%d: Error, probe-2 failed, 0x%02x should be 0x10 for AVM A1/Fritz!\n",
+		kprintf("isic%d: Error, probe-2 failed, 0x%02x should be 0x10 for AVM A1/Fritz!\n",
 				unit, byte);
 		bus_space_write_1(t, h, 0, savebyte);
 		return(ENXIO);

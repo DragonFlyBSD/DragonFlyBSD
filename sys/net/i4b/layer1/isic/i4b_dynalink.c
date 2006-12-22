@@ -34,7 +34,7 @@
  *	==================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_dynalink.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_dynalink.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_dynalink.c,v 1.4 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:08:03 2001]
  *
@@ -213,11 +213,11 @@ isic_attach_Dyn(device_t dev)
 	if( ((HSCX_READ(0, H_VSTR) & 0xf) != 0x5) || 
 	    ((HSCX_READ(1, H_VSTR) & 0xf) != 0x5) )
 	{
-		printf("isic%d: HSCX VSTR test failed for Dynalink\n",
+		kprintf("isic%d: HSCX VSTR test failed for Dynalink\n",
 			sc->sc_unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			sc->sc_unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			sc->sc_unit, HSCX_READ(1, H_VSTR));
 		return ENXIO;
 	}

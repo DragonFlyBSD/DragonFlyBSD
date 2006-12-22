@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.11 2006/09/05 03:48:12 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.12 2006/12/22 23:44:54 swildner Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -59,7 +59,7 @@
 /*
  * Compile-time options:
  * IFMEDIA_DEBUG:
- *	turn on implementation-level debug printfs.
+ *	turn on implementation-level debug kprintfs.
  *	Useful for debugging newly-ported  drivers.
  */
 
@@ -111,10 +111,10 @@ ifmedia_add(struct ifmedia *ifm, int mword, int data, void *aux)
 #ifdef IFMEDIA_DEBUG
 	if (ifmedia_debug) {
 		if (ifm == NULL) {
-			printf("ifmedia_add: null ifm\n");
+			kprintf("ifmedia_add: null ifm\n");
 			return;
 		}
-		printf("Adding entry for ");
+		kprintf("Adding entry for ");
 		ifmedia_printword(mword);
 	}
 #endif
@@ -157,7 +157,7 @@ ifmedia_set(struct ifmedia *ifm, int target)
 	match = ifmedia_match(ifm, target, ifm->ifm_mask);
 
 	if (match == NULL) {
-		printf("ifmedia_set: no match for 0x%x/0x%x\n",
+		kprintf("ifmedia_set: no match for 0x%x/0x%x\n",
 		    target, ~ifm->ifm_mask);
 		panic("ifmedia_set");
 	}
@@ -165,9 +165,9 @@ ifmedia_set(struct ifmedia *ifm, int target)
 
 #ifdef IFMEDIA_DEBUG
 	if (ifmedia_debug) {
-		printf("ifmedia_set: target ");
+		kprintf("ifmedia_set: target ");
 		ifmedia_printword(target);
-		printf("ifmedia_set: setting to ");
+		kprintf("ifmedia_set: setting to ");
 		ifmedia_printword(ifm->ifm_cur->ifm_media);
 	}
 #endif
@@ -204,7 +204,7 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 		if (match == NULL) {
 #ifdef IFMEDIA_DEBUG
 			if (ifmedia_debug) {
-				printf(
+				kprintf(
 				    "ifmedia_ioctl: no media found for 0x%x\n", 
 				    newmedia);
 			}
@@ -230,7 +230,7 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 		 */
 #ifdef IFMEDIA_DEBUG
 		if (ifmedia_debug) {
-			printf("ifmedia_ioctl: switching %s to ",
+			kprintf("ifmedia_ioctl: switching %s to ",
 			    ifp->if_xname);
 			ifmedia_printword(match->ifm_media);
 		}
@@ -349,7 +349,7 @@ ifmedia_match(struct ifmedia *ifm, int target, int mask)
 		if ((next->ifm_media & mask) == (target & mask)) {
 #if defined(IFMEDIA_DEBUG) || defined(DIAGNOSTIC)
 			if (match) {
-				printf("ifmedia_match: multiple match for "
+				kprintf("ifmedia_match: multiple match for "
 				    "0x%x/0x%x\n", target, mask);
 			}
 #endif
@@ -435,10 +435,10 @@ ifmedia_printword(int ifmw)
 		if (IFM_TYPE(ifmw) == desc->ifmt_word)
 			break;
 	if (desc->ifmt_string == NULL) {
-		printf("<unknown type>\n");
+		kprintf("<unknown type>\n");
 		return;
 	}
-	printf(desc->ifmt_string);
+	kprintf(desc->ifmt_string);
 
 	/*
 	 * Check for the shared subtype descriptions first, then the
@@ -453,12 +453,12 @@ ifmedia_printword(int ifmw)
 		if (IFM_SUBTYPE(ifmw) == desc->ifmt_word)
 			break;
 	if (desc->ifmt_string == NULL) {
-		printf(" <unknown subtype>\n");
+		kprintf(" <unknown subtype>\n");
 		return;
 	}
 
  got_subtype:
-	printf(" %s", desc->ifmt_string);
+	kprintf(" %s", desc->ifmt_string);
 
 	/*
 	 * Look for shared options.
@@ -467,8 +467,8 @@ ifmedia_printword(int ifmw)
 	    desc->ifmt_string != NULL; desc++) {
 		if (ifmw & desc->ifmt_word) {
 			if (seen_option == 0)
-				printf(" <");
-			printf("%s%s", seen_option++ ? "," : "",
+				kprintf(" <");
+			kprintf("%s%s", seen_option++ ? "," : "",
 			    desc->ifmt_string);
 		}
 	}
@@ -479,11 +479,11 @@ ifmedia_printword(int ifmw)
 	for (desc = ttos->options; desc->ifmt_string != NULL; desc++) {
 		if (ifmw & desc->ifmt_word) {
 			if (seen_option == 0)
-				printf(" <");
-			printf("%s%s", seen_option++ ? "," : "",
+				kprintf(" <");
+			kprintf("%s%s", seen_option++ ? "," : "",
 			    desc->ifmt_string); 
 		}
 	}
-	printf("%s\n", seen_option ? ">" : "");
+	kprintf("%s\n", seen_option ? ">" : "");
 }
 #endif /* IFMEDIA_DEBUG */

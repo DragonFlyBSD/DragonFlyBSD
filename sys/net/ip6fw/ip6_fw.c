@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.17 2006/12/20 18:14:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.18 2006/12/22 23:44:56 swildner Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -127,7 +127,7 @@ SYSCTL_INT(_net_inet6_ip6_fw, OID_AUTO, verbose_limit, CTLFLAG_RW, &fw6_verbose_
 
 #define dprintf(a)	do {						\
 				if (fw6_debug)				\
-					printf a;			\
+					kprintf a;			\
 			} while (0)
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
 
@@ -1163,7 +1163,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		return (error);
 	}
 	if (m == NULL) {
-		printf("%s NULL mbuf ptr\n", err_prefix);
+		kprintf("%s NULL mbuf ptr\n", err_prefix);
 		return (EINVAL);
 	}
 
@@ -1228,17 +1228,17 @@ ip6_fw_init(void)
 		add_entry6(&ip6_fw_chain, &default_rule))
 		panic(__func__);
 
-	printf("IPv6 packet filtering initialized, ");
+	kprintf("IPv6 packet filtering initialized, ");
 #ifdef IPV6FIREWALL_DEFAULT_TO_ACCEPT
-	printf("default to accept, ");
+	kprintf("default to accept, ");
 #endif
 #ifndef IPV6FIREWALL_VERBOSE
-	printf("logging disabled\n");
+	kprintf("logging disabled\n");
 #else
 	if (fw6_verbose_limit == 0)
-		printf("unlimited logging\n");
+		kprintf("unlimited logging\n");
 	else
-		printf("logging limited to %d packets/entry\n",
+		kprintf("logging limited to %d packets/entry\n",
 		    fw6_verbose_limit);
 #endif
 }
@@ -1271,7 +1271,7 @@ ip6fw_modevent(module_t mod, int type, void *unused)
 		}
 
 		crit_exit();
-		printf("IPv6 firewall unloaded\n");
+		kprintf("IPv6 firewall unloaded\n");
 		return 0;
 	default:
 		break;

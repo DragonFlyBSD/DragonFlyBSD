@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.38 2006/12/19 00:11:12 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.39 2006/12/22 23:44:54 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -290,7 +290,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		break;
 
 	default:
-		printf("%s: can't handle af%d\n", ifp->if_xname,
+		kprintf("%s: can't handle af%d\n", ifp->if_xname,
 			dst->sa_family);
 		gotoerr(EAFNOSUPPORT);
 	}
@@ -556,7 +556,7 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 
 	/* XXX old crufty stuff, needs to be removed */
 	if (eh != NULL) {
-		printf("ether_input got mbuf without embedded ethernet header");
+		kprintf("ether_input got mbuf without embedded ethernet header");
 		m_free(m);
 		return;
 	}

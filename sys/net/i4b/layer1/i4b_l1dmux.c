@@ -28,7 +28,7 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1dmux.c,v 1.3.2.2 2002/04/25 12:29:55 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.5 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.6 2006/12/22 23:44:55 swildner Exp $
  *
  *      last edit-date: [Wed Jan 10 16:43:24 2001]
  *
@@ -313,37 +313,37 @@ i4b_l1_mph_status_ind(int drv_unit, int status, int parm, struct i4b_l1mux_func 
 			{
 #if NISIC > 0
 				case L1DRVR_ISIC:
-					printf("isic%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("isic%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NIWIC > 0
 				case L1DRVR_IWIC:
-					printf("iwic%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("iwic%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NIFPI > 0
 				case L1DRVR_IFPI:
-					printf("ifpi%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("ifpi%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NIFPI2 > 0
 				case L1DRVR_IFPI2:
-					printf("ifpi2-%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("ifpi2-%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NIFPNP > 0
 				case L1DRVR_IFPNP:
-					printf("ifpnp%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("ifpnp%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NIHFC > 0
 				case L1DRVR_IHFC:
-					printf("ihfc%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("ihfc%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 #if NITJC > 0
 				case L1DRVR_ITJC:
-					printf("itjc%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
+					kprintf("itjc%d: passive stack unit %d\n", L0UNIT(drv_unit), numl1units);
 					break;
 #endif
 			}

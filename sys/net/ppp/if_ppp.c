@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.33 2006/09/05 00:55:47 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.34 2006/12/22 23:44:57 swildner Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -471,7 +471,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 		    sc->sc_xc_state = (*cp)->comp_alloc(ccp_option, nb);
 		    if (sc->sc_xc_state == NULL) {
 			if (sc->sc_flags & SC_DEBUG)
-			    printf("%s: comp_alloc failed\n",
+			    kprintf("%s: comp_alloc failed\n",
 			       sc->sc_if.if_xname);
 			error = ENOBUFS;
 		    }
@@ -485,7 +485,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 		    sc->sc_rc_state = (*cp)->decomp_alloc(ccp_option, nb);
 		    if (sc->sc_rc_state == NULL) {
 			if (sc->sc_flags & SC_DEBUG)
-			    printf("%s: decomp_alloc failed\n",
+			    kprintf("%s: decomp_alloc failed\n",
 			       sc->sc_if.if_xname);
 			error = ENOBUFS;
 		    }
@@ -495,7 +495,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 		return (error);
 	    }
 	if (sc->sc_flags & SC_DEBUG)
-	    printf("%s: no compressor for [%x %x %x], %x\n",
+	    kprintf("%s: no compressor for [%x %x %x], %x\n",
 		   sc->sc_if.if_xname, ccp_option[0], ccp_option[1],
 		   ccp_option[2], nb);
 	return (EINVAL);	/* no handler found */
@@ -771,7 +771,7 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	mode = NPMODE_PASS;
 	break;
     default:
-	printf("%s: af%d not supported\n", ifp->if_xname, dst->sa_family);
+	kprintf("%s: af%d not supported\n", ifp->if_xname, dst->sa_family);
 	error = EAFNOSUPPORT;
 	goto bad;
     }
@@ -814,7 +814,7 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	len += m->m_len;
 
     if (sc->sc_flags & SC_LOG_OUTPKT) {
-	printf("%s output: ", ifp->if_xname);
+	kprintf("%s output: ", ifp->if_xname);
 	pppdumpm(m0);
     }
 
@@ -1133,7 +1133,7 @@ ppp_ccp(struct ppp_softc *sc, struct mbuf *m, int rcvd)
     slen = CCP_LENGTH(dp);
     if (dp + slen > ep) {
 	if (sc->sc_flags & SC_DEBUG)
-	    printf("if_ppp/ccp: not enough data in mbuf (%p+%x > %p+%x)\n",
+	    kprintf("if_ppp/ccp: not enough data in mbuf (%p+%x > %p+%x)\n",
 		   dp, slen, mtod(mp, u_char *), mp->m_len);
 	return;
     }
@@ -1260,7 +1260,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	ilen = 0;
 	for (mp = m; mp != NULL; mp = mp->m_next)
 	    ilen += mp->m_len;
-	printf("%s: got %d bytes\n", ifp->if_xname, ilen);
+	kprintf("%s: got %d bytes\n", ifp->if_xname, ilen);
 	pppdumpm(m);
     }
 
@@ -1302,7 +1302,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	     * CCP down or issue a Reset-Req.
 	     */
 	    if (sc->sc_flags & SC_DEBUG)
-		printf("%s: decompress failed %d\n", ifp->if_xname, rv);
+		kprintf("%s: decompress failed %d\n", ifp->if_xname, rv);
 	    crit_enter();
 	    sc->sc_flags |= SC_VJ_RESET;
 	    if (rv == DECOMP_ERROR)
@@ -1352,7 +1352,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 
 	if (xlen <= 0) {
 	    if (sc->sc_flags & SC_DEBUG)
-		printf("%s: VJ uncompress failed on type comp\n",
+		kprintf("%s: VJ uncompress failed on type comp\n",
 			ifp->if_xname);
 	    goto bad;
 	}
@@ -1405,7 +1405,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 
 	if (xlen < 0) {
 	    if (sc->sc_flags & SC_DEBUG)
-		printf("%s: VJ uncompress failed on type uncomp\n",
+		kprintf("%s: VJ uncompress failed on type uncomp\n",
 			ifp->if_xname);
 	    goto bad;
 	}
@@ -1522,7 +1522,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
     }
     if (!rv) {
 	if (sc->sc_flags & SC_DEBUG)
-	    printf("%s: input queue full\n", ifp->if_xname);
+	    kprintf("%s: input queue full\n", ifp->if_xname);
 	ifp->if_iqdrops++;
 	goto bad;
     }
@@ -1570,7 +1570,7 @@ done:
     if (m)
 	*bp++ = '>';
     *bp = 0;
-    printf("%s\n", buf);
+    kprintf("%s\n", buf);
 }
 
 /*

@@ -28,7 +28,7 @@
  *	------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_mbuf.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.7 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.8 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Sat Jan 13 13:15:45 2001]
  *
@@ -73,7 +73,7 @@ i4b_Dgetmbuf(int len)
 	{
 
 #ifdef I4B_MBUF_DEBUG
-		printf("i4b_getmbuf: error - len(%d) > MCLBYTES(%d)\n",
+		kprintf("i4b_getmbuf: error - len(%d) > MCLBYTES(%d)\n",
 					len, MCLBYTES);
 #endif
 		
@@ -88,7 +88,7 @@ i4b_Dgetmbuf(int len)
 	{
 
 #ifdef I4B_MBUF_DEBUG
-		printf("i4b_getbuf: error - MGETHDR failed!\n");
+		kprintf("i4b_getbuf: error - MGETHDR failed!\n");
 #endif
 
 		return(NULL);
@@ -103,7 +103,7 @@ i4b_Dgetmbuf(int len)
 			m_freem(m);
 
 #ifdef I4B_MBUF_DEBUG
-			printf("i4b_getbuf: error - MCLGET failed, len(%d)\n", len);
+			kprintf("i4b_getbuf: error - MCLGET failed, len(%d)\n", len);
 #endif
 			
 			return (NULL);
@@ -150,7 +150,7 @@ i4b_Bgetmbuf(int len)
 	{
 
 #ifdef I4B_MBUF_DEBUG
-		printf("i4b_getmbuf: error - len(%d) > MCLBYTES(%d)\n",
+		kprintf("i4b_getmbuf: error - len(%d) > MCLBYTES(%d)\n",
 					len, MCLBYTES);
 #endif
 		
@@ -165,7 +165,7 @@ i4b_Bgetmbuf(int len)
 	{
 
 #ifdef I4B_MBUF_DEBUG
-		printf("i4b_getbuf: error - MGETHDR failed!\n");
+		kprintf("i4b_getbuf: error - MGETHDR failed!\n");
 #endif
 
 		return(NULL);
@@ -180,7 +180,7 @@ i4b_Bgetmbuf(int len)
 			m_freem(m);
 
 #ifdef I4B_MBUF_DEBUG
-			printf("i4b_getbuf: error - MCLGET failed, len(%d)\n", len);
+			kprintf("i4b_getbuf: error - MCLGET failed, len(%d)\n", len);
 #endif
 			
 			return (NULL);

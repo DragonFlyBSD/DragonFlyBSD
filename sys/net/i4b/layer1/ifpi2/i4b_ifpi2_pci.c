@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.13 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.14 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -459,13 +459,13 @@ avma1pp2_attach_avma1pp(device_t dev)
 
 	/* probably not really required */
 	if(unit > IFPI2_MAXUNIT) {
-		printf("ifpi2-%d: Error, unit > IFPI_MAXUNIT!\n", unit);
+		kprintf("ifpi2-%d: Error, unit > IFPI_MAXUNIT!\n", unit);
 		crit_exit();
 		return(ENXIO);
 	}
 
 	if ((vid != PCI_AVMA1_VID) && (did != PCI_AVMA1_V2_DID)) {
-		printf("ifpi2-%d: unknown device!?\n", unit);
+		kprintf("ifpi2-%d: unknown device!?\n", unit);
 		goto fail;
 	}
 
@@ -477,7 +477,7 @@ avma1pp2_attach_avma1pp(device_t dev)
 		0, ~0, 1, RF_ACTIVE);
 
 	if (sc->sc_resources.io_base[0] == NULL) {
-		printf("ifpi2-%d: couldn't map IO port\n", unit);
+		kprintf("ifpi2-%d: couldn't map IO port\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -492,7 +492,7 @@ avma1pp2_attach_avma1pp(device_t dev)
 
 	if (sc->sc_resources.irq == NULL) {
 		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS+4, sc->sc_resources.io_base[0]);
-		printf("ifpi2-%d: couldn't map interrupt\n", unit);
+		kprintf("ifpi2-%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -503,7 +503,7 @@ avma1pp2_attach_avma1pp(device_t dev)
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_resources.irq);
 		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS+4, sc->sc_resources.io_base[0]);
-		printf("ifpi2-%d: couldn't set up irq\n", unit);
+		kprintf("ifpi2-%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -542,26 +542,26 @@ avma1pp2_attach_avma1pp(device_t dev)
 	v = 0;
 	v = ISAC_READ(I_RMODED);
 #ifdef AVMA1PCI_V2_DEBUG
-	printf("avma1pp2_attach: I_MODED %x...", v);
+	kprintf("avma1pp2_attach: I_MODED %x...", v);
 #endif
 	v = ISAC_READ(I_ISTAD);
 #ifdef AVMA1PCI_V2_DEBUG
-	printf("avma1pp2_attach: I_ISTAD %x...", v);
+	kprintf("avma1pp2_attach: I_ISTAD %x...", v);
 #endif
 	v = ISAC_READ(I_ISTA);
 #ifdef AVMA1PCI_V2_DEBUG
-	printf("avma1pp2_attach: I_ISTA %x...", v);
+	kprintf("avma1pp2_attach: I_ISTA %x...", v);
 #endif
 	ISAC_WRITE(I_MASKD, 0xff);
 	ISAC_WRITE(I_MASK, 0xff);
 	/* the Linux driver does this to clear any pending HSCX interrupts */
 	v = hscx_read_reg_int(0, sc);
 #ifdef AVMA1PCI_V2_DEBUG
-	printf("avma1pp2_attach: 0 HSCX_STAT %x...", v);
+	kprintf("avma1pp2_attach: 0 HSCX_STAT %x...", v);
 #endif
 	v = hscx_read_reg_int(1, sc);
 #ifdef AVMA1PCI_V2_DEBUG
-	printf("avma1pp2_attach: 1 HSCX_STAT %x\n", v);
+	kprintf("avma1pp2_attach: 1 HSCX_STAT %x\n", v);
 #endif
 
 	bus_space_write_1(btag, bhandle, STAT0_OFFSET, ASL_TIMERRESET);
@@ -571,7 +571,7 @@ avma1pp2_attach_avma1pp(device_t dev)
 
    /* from here to the end would normally be done in isic_pciattach */
 
-	 printf("ifpi2-%d: ISACSX %s\n", unit, "PSB3186");
+	 kprintf("ifpi2-%d: ISACSX %s\n", unit, "PSB3186");
 
 	/* init the ISAC */
 	ifpi2_isacsx_init(sc);
@@ -1281,7 +1281,7 @@ avma1pp2_hscx_fifo(l1_bchan_state_t *chan, struct l1_softc *sc)
 		nextlen = min(chan->out_mbuf_cur_len, sc->sc_bfifolen - len);
 
 #ifdef NOTDEF
-		printf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
+		kprintf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
 			chan->out_mbuf_head,
 			chan->out_mbuf_cur,			
 			chan->out_mbuf_cur_ptr,
@@ -1369,7 +1369,7 @@ ifpi2_isacsx_intr(struct l1_softc *sc)
 void
 ifpi2_recover(struct l1_softc *sc)
 {
-	printf("ifpi2_recover %d\n", sc->sc_unit);
+	kprintf("ifpi2_recover %d\n", sc->sc_unit);
 #if 0 /* fix me later */
 	u_char byte;
 	

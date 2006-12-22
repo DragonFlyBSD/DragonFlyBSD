@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.9 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ iavc_pci_attach(device_t dev)
     /* check max unit range */
 	
     if (unit >= IAVC_MAXUNIT) {
-	printf("iavc%d: too many units\n", unit);
+	kprintf("iavc%d: too many units\n", unit);
 	return(ENXIO);	
     }	
 
@@ -144,7 +144,7 @@ iavc_pci_attach(device_t dev)
 	 bus_alloc_resource(dev, SYS_RES_IOPORT,
 			    &sc->sc_resources.io_rid[0],
 			    0UL, ~0UL, 1, RF_ACTIVE))) {
-	printf("iavc%d: can't allocate io region\n", unit);
+	kprintf("iavc%d: can't allocate io region\n", unit);
 	return(ENXIO);                                       
     }
 
@@ -160,7 +160,7 @@ iavc_pci_attach(device_t dev)
 	 bus_alloc_resource(dev, SYS_RES_MEMORY,
 			    &sc->sc_resources.mem_rid,
 			    0UL, ~0UL, 1, RF_ACTIVE))) {
-	printf("iavc%d: can't allocate memory region\n", unit);
+	kprintf("iavc%d: can't allocate memory region\n", unit);
 	return(ENXIO);                                       
     }
 
@@ -180,9 +180,9 @@ iavc_pci_attach(device_t dev)
 	ret = t1_detect(sc);
 	if (ret) {
 	    if (ret < 6) {
-		printf("iavc%d: no card detected?\n", sc->sc_unit);
+		kprintf("iavc%d: no card detected?\n", sc->sc_unit);
 	    } else {
-		printf("iavc%d: black box not on\n", sc->sc_unit);
+		kprintf("iavc%d: black box not on\n", sc->sc_unit);
 	    }
 	    return(ENXIO);
 	} else {
@@ -197,7 +197,7 @@ iavc_pci_attach(device_t dev)
 	if (ret) {
 	    ret = b1_detect(sc);
 	    if (ret) {
-		printf("iavc%d: no card detected?\n", sc->sc_unit);
+		kprintf("iavc%d: no card detected?\n", sc->sc_unit);
 		return(ENXIO);
 	    }
 	} else {
@@ -219,7 +219,7 @@ iavc_pci_attach(device_t dev)
 	 bus_alloc_resource(dev, SYS_RES_IRQ,
 			    &sc->sc_resources.irq_rid,
 			    0UL, ~0UL, 1, RF_SHAREABLE|RF_ACTIVE))) {
-	printf("iavc%d: can't allocate irq\n",unit);
+	kprintf("iavc%d: can't allocate irq\n",unit);
 	return(ENXIO);
     }
 
@@ -241,7 +241,7 @@ iavc_pci_attach(device_t dev)
     sc->sc_capi.ctx = (void*) sc;
 
     if (capi_ll_attach(&sc->sc_capi)) {
-	printf("iavc%d: capi attach failed\n", unit);
+	kprintf("iavc%d: capi attach failed\n", unit);
 	return(ENXIO);
     }
 
@@ -251,7 +251,7 @@ iavc_pci_attach(device_t dev)
 			  (void(*)(void*))iavc_pci_intr,
 			  sc, &ih, NULL);
     if (error) {
-	printf("iavc%d: irq setup failed\n", unit);
+	kprintf("iavc%d: irq setup failed\n", unit);
 	return(ENXIO);
     }
 

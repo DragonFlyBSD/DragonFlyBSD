@@ -33,7 +33,7 @@
  *	last edit-date: [Fri Jan 12 17:06:52 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.8 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9 2006/12/22 23:44:56 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -299,7 +299,7 @@ ihfc_control(ihfc_sc_t *sc, int flag)
 			 * until we configure the chips for normal 	*
 			 * operation.					*/
 #ifdef IHFC_DEBUG
-			printf("ihfc: GET_STAT value is: 0x%x\n", GET_STAT);
+			kprintf("ihfc: GET_STAT value is: 0x%x\n", GET_STAT);
 #endif
 			SET_REG(0x30);
 
@@ -1599,7 +1599,7 @@ ihfc_test_Bwrite (ihfc_sc_t *sc, u_char chan)
 
 	sendlen = /* (u_short)ihfc_Bsel_fifo(sc, chan, 0); */ 0;
 
-	if (sendlen == 0x5ff) printf("(send empty)");
+	if (sendlen == 0x5ff) kprintf("(send empty)");
 
 	SET_REG(0xaa + chan);
 
@@ -1607,7 +1607,7 @@ ihfc_test_Bwrite (ihfc_sc_t *sc, u_char chan)
 
 	tlen    = S_HDLC_CRC;
 
-	if (sendlen > 0x400) printf("(slow: %d)", sendlen);
+	if (sendlen > 0x400) kprintf("(slow: %d)", sendlen);
 
 	fb = 0x80;
 
@@ -1709,7 +1709,7 @@ ihfc_test_Bread (ihfc_sc_t *sc, u_char chan)
 					i4b_Bfreembuf(S_MBUF);
 
 				S_MBUF = NULL;
-				printf("(error%d, %d, %d)", S_UNIT, ecount, toterrors++);
+				kprintf("(error%d, %d, %d)", S_UNIT, ecount, toterrors++);
 			}
 
 			i4b_Bfreembuf(S_MBUF);

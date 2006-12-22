@@ -28,7 +28,7 @@
  *	==================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_isa.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_isa.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_isa.c,v 1.5 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:30:19 2001]
  *
@@ -129,7 +129,7 @@ isic_isa_probe(device_t dev)
 #endif
 
 		default:
-			printf("isic%d: probe, unknown flag: %d\n",
+			kprintf("isic%d: probe, unknown flag: %d\n",
 				device_get_unit(dev), device_get_flags(dev));
 			break;
 	}
@@ -195,7 +195,7 @@ isic_isa_attach(device_t dev)
 #endif
 
 		default:
-			printf("isic%d: attach, unknown flag: %d\n",
+			kprintf("isic%d: attach, unknown flag: %d\n",
 				device_get_unit(dev), device_get_flags(dev));
 			break;
 	}

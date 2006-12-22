@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.27 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.28 2006/12/22 23:44:57 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1308,7 +1308,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 			/* Local and remote sequence numbers are equal.
 			 * Probably, the line is in loopback mode. */
 			if (sp->pp_loopcnt >= MAXALIVECNT) {
-				printf (SPP_FMT "loopback\n",
+				kprintf (SPP_FMT "loopback\n",
 					SPP_ARGS(ifp));
 				sp->pp_loopcnt = 0;
 				if (ifp->if_flags & IFF_UP) {
@@ -1330,7 +1330,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 		if (! (ifp->if_flags & IFF_UP) &&
 		    (ifp->if_flags & IFF_RUNNING)) {
 			if_up(ifp);
-			printf (SPP_FMT "up\n", SPP_ARGS(ifp));
+			kprintf (SPP_FMT "up\n", SPP_ARGS(ifp));
 		}
 		break;
 	case CISCO_ADDR_REQ:
@@ -1561,7 +1561,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 				sppp_cp_change_state(cp, sp, STATE_ACK_RCVD);
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1605,7 +1605,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			(cp->tlu)(sp);
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1655,7 +1655,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 		case STATE_STOPPING:
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1688,7 +1688,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			goto sta;
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1719,7 +1719,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			sppp_cp_change_state(cp, sp, STATE_ACK_RCVD);
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1746,7 +1746,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			sppp_cp_change_state(cp, sp, STATE_REQ_SENT);
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1805,7 +1805,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			sppp_cp_change_state(cp, sp, STATE_REQ_SENT);
 			break;
 		default:
-			printf(SPP_FMT "%s illegal %s in state %s\n",
+			kprintf(SPP_FMT "%s illegal %s in state %s\n",
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
@@ -1838,7 +1838,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 		if ((sp->lcp.opts & (1 << LCP_OPT_MAGIC)) &&
 		    ntohl (*(long*)(h+1)) == sp->lcp.magic) {
 			/* Line loopback mode detected. */
-			printf(SPP_FMT "loopback\n", SPP_ARGS(ifp));
+			kprintf(SPP_FMT "loopback\n", SPP_ARGS(ifp));
 			sp->pp_loopcnt = MAXALIVECNT * 5;
 			if_down (ifp);
 			IF_DRAIN(&sp->pp_cpq);
@@ -1913,7 +1913,7 @@ sppp_up_event(const struct cp *cp, struct sppp *sp)
 		sppp_cp_change_state(cp, sp, STATE_REQ_SENT);
 		break;
 	default:
-		printf(SPP_FMT "%s illegal up in state %s\n",
+		kprintf(SPP_FMT "%s illegal up in state %s\n",
 		       SPP_ARGS(ifp), cp->name,
 		       sppp_state_name(sp->state[cp->protoidx]));
 	}
@@ -1949,7 +1949,7 @@ sppp_down_event(const struct cp *cp, struct sppp *sp)
 		sppp_cp_change_state(cp, sp, STATE_STARTING);
 		break;
 	default:
-		printf(SPP_FMT "%s illegal down in state %s\n",
+		kprintf(SPP_FMT "%s illegal down in state %s\n",
 		       SPP_ARGS(ifp), cp->name,
 		       sppp_state_name(sp->state[cp->protoidx]));
 	}
@@ -2454,7 +2454,7 @@ sppp_lcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 		 */
 		if (sp->pp_loopcnt >= MAXALIVECNT*5) {
 			if (sp->pp_loopcnt == MAXALIVECNT*5)
-				printf (SPP_FMT "loopback\n",
+				kprintf (SPP_FMT "loopback\n",
 					SPP_ARGS(ifp));
 			if (ifp->if_flags & IFF_UP) {
 				if_down(ifp);
@@ -2668,7 +2668,7 @@ sppp_lcp_tlu(struct sppp *sp)
 	    (ifp->if_flags & IFF_RUNNING)) {
 		/* Coming out of loopback mode. */
 		if_up(ifp);
-		printf (SPP_FMT "up\n", SPP_ARGS(ifp));
+		kprintf (SPP_FMT "up\n", SPP_ARGS(ifp));
 	}
 
 	for (i = 0; i < IDX_COUNT; i++)
@@ -4824,7 +4824,7 @@ sppp_keepalive(void *dummy)
 
 		if (sp->pp_alivecnt == MAXALIVECNT) {
 			/* No keepalive packets got.  Stop the interface. */
-			printf (SPP_FMT "down\n", SPP_ARGS(ifp));
+			kprintf (SPP_FMT "down\n", SPP_ARGS(ifp));
 			if_down (ifp);
 			IF_DRAIN(&sp->pp_cpq);
 			if (sp->pp_mode != IFF_CISCO) {

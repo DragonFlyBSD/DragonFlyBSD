@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.h,v 1.10 2003/08/20 23:30:23 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.h,v 1.2 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -79,7 +79,7 @@ struct red;
 		switch (xxs) { \
 		default: \
 			/* if (xxs < 0) \
-				printf("rm_class: bogus time values\n"); */ \
+				kprintf("rm_class: bogus time values\n"); */ \
 			delta = 0; \
 			/* fall through */ \
 		case 2: \

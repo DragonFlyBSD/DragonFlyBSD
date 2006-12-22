@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.19 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.20 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -213,9 +213,9 @@ i4biprattach(void *dummy)
 	int i;
 
 #ifdef IPR_VJ
-	printf("i4bipr: %d IP over raw HDLC ISDN device(s) attached (VJ header compression)\n", NI4BIPR);
+	kprintf("i4bipr: %d IP over raw HDLC ISDN device(s) attached (VJ header compression)\n", NI4BIPR);
 #else
-	printf("i4bipr: %d IP over raw HDLC ISDN device(s) attached\n", NI4BIPR);
+	kprintf("i4bipr: %d IP over raw HDLC ISDN device(s) attached\n", NI4BIPR);
 #endif
 	
 	for(i=0; i < NI4BIPR; sc++, i++)
@@ -311,7 +311,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	
 	if(dst->sa_family != AF_INET)
 	{
-		printf(IPR_FMT "af%d not supported\n", IPR_ARG(sc), dst->sa_family);
+		kprintf(IPR_FMT "af%d not supported\n", IPR_ARG(sc), dst->sa_family);
 		m_freem(m);
 		crit_exit();
 		sc->sc_if.if_noproto++;
@@ -841,7 +841,7 @@ ipr_rx_data_rdy(int unit)
 			if(len <= 0)
 			{
 #ifdef DEBUG_IPR_VJ
-				printf("i4b_ipr, ipr_rx_data_rdy: len <= 0 IPR_COMPRESS!\n");
+				kprintf("i4b_ipr, ipr_rx_data_rdy: len <= 0 IPR_COMPRESS!\n");
 #endif
 				goto error;
 			}
@@ -859,7 +859,7 @@ ipr_rx_data_rdy(int unit)
 			if(len <= 0)
 			{
 #ifdef DEBUG_IPR_VJ
-				printf("i4b_ipr, ipr_rx_data_rdy: len <= 0 IPR_AUTOCOMP!\n");
+				kprintf("i4b_ipr, ipr_rx_data_rdy: len <= 0 IPR_AUTOCOMP!\n");
 #endif
 				goto error;
 			}
@@ -869,7 +869,7 @@ ipr_rx_data_rdy(int unit)
 		else
 		{
 #ifdef DEBUG_IPR_VJ
-			printf("i4b_ipr, ipr_input: invalid ip packet!\n");
+			kprintf("i4b_ipr, ipr_input: invalid ip packet!\n");
 #endif
 
 error:

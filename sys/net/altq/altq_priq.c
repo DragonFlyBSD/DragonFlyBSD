@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.7 2006/10/24 17:16:13 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.8 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -254,7 +254,7 @@ priq_class_create(struct priq_if *pif, int pri, int qlimit, int flags, int qid)
 #ifndef ALTQ_RED
 	if (flags & PRCF_RED) {
 #ifdef ALTQ_DEBUG
-		printf("priq_class_create: RED not configured for PRIQ!\n");
+		kprintf("priq_class_create: RED not configured for PRIQ!\n");
 #endif
 		return (NULL);
 	}

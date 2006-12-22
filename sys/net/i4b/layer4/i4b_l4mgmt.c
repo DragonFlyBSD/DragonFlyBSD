@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.9 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.10 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -350,39 +350,39 @@ i4b_print_cdp(call_desc_t *cdp)
 {
 	if((cdp > &(call_desc[N_CALL_DESC])) || (cdp < &(call_desc[0])))
 	{
-		printf("i4b_print_cd: cdp out of range!\n");
+		kprintf("i4b_print_cd: cdp out of range!\n");
 		return;
 	}
 
-	printf("i4b_print_cd: printing call descriptor %d at 0x%lx:\n", cdp - (&(call_desc[0])), (unsigned long)cdp);
+	kprintf("i4b_print_cd: printing call descriptor %d at 0x%lx:\n", cdp - (&(call_desc[0])), (unsigned long)cdp);
 
-	printf("         cdid = %d\n", cdp->cdid);
-	printf("   controller = %d (u=%d, dl=%d, b1=%d, b2=%d)\n",
+	kprintf("         cdid = %d\n", cdp->cdid);
+	kprintf("   controller = %d (u=%d, dl=%d, b1=%d, b2=%d)\n",
 			cdp->controller,
 			ctrl_desc[cdp->controller].unit,
 			ctrl_desc[cdp->controller].dl_est,
 			ctrl_desc[cdp->controller].bch_state[CHAN_B1],
 			ctrl_desc[cdp->controller].bch_state[CHAN_B2]);	
-	printf("           cr = 0x%02x\n", cdp->cr);
-	printf("       crflag = %d\n", cdp->crflag);
-	printf("    channelid = %d\n", cdp->channelid);
-	printf("        bprot = %d\n", cdp->bprot);
-	printf("       driver = %d\n", cdp->driver);
-	printf("  driver_unit = %d\n", cdp->driver_unit);
-	printf("   call_state = %d\n", cdp->call_state);
-	printf("    Q931state = %s\n", print_l3state(cdp));
-	printf("        event = %d\n", cdp->event);
-	printf("     response = %d\n", cdp->response);
-	printf("         T303 = %d\n", cdp->T303);
-	printf("T303_first_to = %d\n", cdp->T303_first_to);
-	printf("         T305 = %d\n", cdp->T305);
-	printf("         T308 = %d\n", cdp->T308);
-	printf("T308_first_to = %d\n", cdp->T308_first_to);
-	printf("         T309 = %d\n", cdp->T309);
-	printf("         T310 = %d\n", cdp->T310);
-	printf("         T313 = %d\n", cdp->T313);
-	printf("         T400 = %d\n", cdp->T400);
-	printf("          dir = %s\n", cdp->dir == DIR_OUTGOING ? "out" : "in");
+	kprintf("           cr = 0x%02x\n", cdp->cr);
+	kprintf("       crflag = %d\n", cdp->crflag);
+	kprintf("    channelid = %d\n", cdp->channelid);
+	kprintf("        bprot = %d\n", cdp->bprot);
+	kprintf("       driver = %d\n", cdp->driver);
+	kprintf("  driver_unit = %d\n", cdp->driver_unit);
+	kprintf("   call_state = %d\n", cdp->call_state);
+	kprintf("    Q931state = %s\n", print_l3state(cdp));
+	kprintf("        event = %d\n", cdp->event);
+	kprintf("     response = %d\n", cdp->response);
+	kprintf("         T303 = %d\n", cdp->T303);
+	kprintf("T303_first_to = %d\n", cdp->T303_first_to);
+	kprintf("         T305 = %d\n", cdp->T305);
+	kprintf("         T308 = %d\n", cdp->T308);
+	kprintf("T308_first_to = %d\n", cdp->T308_first_to);
+	kprintf("         T309 = %d\n", cdp->T309);
+	kprintf("         T310 = %d\n", cdp->T310);
+	kprintf("         T313 = %d\n", cdp->T313);
+	kprintf("         T400 = %d\n", cdp->T400);
+	kprintf("          dir = %s\n", cdp->dir == DIR_OUTGOING ? "out" : "in");
 }
 
 /*---------------------------------------------------------------------------*
@@ -393,7 +393,7 @@ i4b_print_cdx(int index)
 {
 	if(index >= N_CALL_DESC)
 	{
-		printf("i4b_print_cdx: index %d >= N_CALL_DESC %d\n", index, N_CALL_DESC);
+		kprintf("i4b_print_cdx: index %d >= N_CALL_DESC %d\n", index, N_CALL_DESC);
 		return;
 	}
 	i4b_print_cdp(&(call_desc[index]));

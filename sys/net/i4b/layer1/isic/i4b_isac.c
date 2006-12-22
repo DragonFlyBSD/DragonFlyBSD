@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isac.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isac.c,v 1.5 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isac.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:10:36 2001]
  *
@@ -221,7 +221,7 @@ isic_isac_irq(struct l1_softc *sc, int ista)
 			sc->sc_ol = sc->sc_obuf->m_len;
 			sc->sc_obuf2 = NULL;
 #ifdef NOTDEF			
-			printf("ob2=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob2=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,
@@ -231,7 +231,7 @@ isic_isac_irq(struct l1_softc *sc, int ista)
 		else
 		{
 #ifdef NOTDEF
-			printf("ob=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,

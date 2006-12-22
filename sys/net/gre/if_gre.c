@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.18 2006/10/25 20:56:03 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.19 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -223,7 +223,7 @@ gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 * We'll prevent this by introducing upper limit.
 	 */
 	if (++(sc->called) > max_gre_nesting) {
-		printf("%s: gre_output: recursively called too many "
+		kprintf("%s: gre_output: recursively called too many "
 		       "times(%d)\n", if_name(&sc->sc_if), sc->called);
 		m_freem(m);
 		error = EIO;    /* is there better errno? */
@@ -505,7 +505,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			    sintosa(&dm), (sc->g_proto == IPPROTO_GRE) ?
 				&in_gre_protosw : &in_mobile_protosw, sc);
 			if (sc->encap == NULL)
-				printf("%s: unable to attach encap\n",
+				kprintf("%s: unable to attach encap\n",
 				    if_name(&sc->sc_if));
 #endif
 			if (sc->route.ro_rt != 0) /* free old route */
@@ -657,7 +657,7 @@ gre_compute_route(struct gre_softc *sc)
 	}
 
 #ifdef DIAGNOSTIC
-	printf("%s: searching a route to %s", if_name(&sc->sc_if),
+	kprintf("%s: searching a route to %s", if_name(&sc->sc_if),
 	    inet_ntoa(((struct sockaddr_in *)&ro->ro_dst)->sin_addr));
 #endif
 
@@ -670,9 +670,9 @@ gre_compute_route(struct gre_softc *sc)
 	if (ro->ro_rt == NULL || ro->ro_rt->rt_ifp->if_softc == sc) {
 #ifdef DIAGNOSTIC
 		if (ro->ro_rt == NULL)
-			printf(" - no route found!\n");
+			kprintf(" - no route found!\n");
 		else
-			printf(" - route loops back to ourself!\n");
+			kprintf(" - route loops back to ourself!\n");
 #endif
 		return EADDRNOTAVAIL;
 	}
@@ -685,9 +685,9 @@ gre_compute_route(struct gre_softc *sc)
 		((struct sockaddr_in *)&ro->ro_dst)->sin_addr = sc->g_dst;
 
 #ifdef DIAGNOSTIC
-	printf(", choosing %s with gateway %s", if_name(ro->ro_rt->rt_ifp),
+	kprintf(", choosing %s with gateway %s", if_name(ro->ro_rt->rt_ifp),
 	    inet_ntoa(((struct sockaddr_in *)(ro->ro_rt->rt_gateway))->sin_addr));
-	printf("\n");
+	kprintf("\n");
 #endif
 
 	return 0;

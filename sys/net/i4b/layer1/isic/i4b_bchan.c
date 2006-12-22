@@ -28,7 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_bchan.c,v 1.7.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:07:12 2001]
  *
@@ -210,7 +210,7 @@ isic_bchannel_start(int unit, int h_chan)
 			next_len = chan->out_mbuf_cur_len;
 
 #ifdef NOTDEF		
-		printf("b:mh=%x, mc=%x, mcp=%x, mcl=%d l=%d nl=%d # ",
+		kprintf("b:mh=%x, mc=%x, mcp=%x, mcl=%d l=%d nl=%d # ",
 			chan->out_mbuf_head,
 			chan->out_mbuf_cur,			
 			chan->out_mbuf_cur_ptr,

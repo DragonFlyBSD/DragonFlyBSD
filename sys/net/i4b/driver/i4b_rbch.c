@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.21 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.22 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -163,7 +163,7 @@ i4brbchattach(void *dummy)
 	int i;
 
 #ifndef HACK_NO_PSEUDO_ATTACH_MSG
-	printf("i4brbch: %d raw B channel access device(s) attached\n", NI4BRBCH);
+	kprintf("i4brbch: %d raw B channel access device(s) attached\n", NI4BRBCH);
 #endif
 	
 	for(i=0; i < NI4BRBCH; i++)

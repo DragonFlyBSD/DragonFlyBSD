@@ -30,7 +30,7 @@
  *	$Id: i4b_util.c,v 1.26 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_util.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_util.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_util.c,v 1.8 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Mon May 29 16:55:35 2000]
  *
@@ -220,8 +220,8 @@ i4b_print_frame(int len, u_char *buf)
 		return;
 
 	for(i = 0; i < len; i++)
-		printf(" 0x%x", buf[i]);
-	printf("\n");
+		kprintf(" 0x%x", buf[i]);
+	kprintf("\n");
 #endif
 }
 

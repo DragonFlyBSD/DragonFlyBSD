@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.15 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.16 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -173,9 +173,9 @@ i4bispppattach(void *dummy)
 
 #ifndef HACK_NO_PSEUDO_ATTACH_MSG
 #ifdef SPPP_VJ
-	printf("i4bisppp: %d ISDN SyncPPP device(s) attached (VJ header compression)\n", NI4BISPPP);
+	kprintf("i4bisppp: %d ISDN SyncPPP device(s) attached (VJ header compression)\n", NI4BISPPP);
 #else
-	printf("i4bisppp: %d ISDN SyncPPP device(s) attached\n", NI4BISPPP);
+	kprintf("i4bisppp: %d ISDN SyncPPP device(s) attached\n", NI4BISPPP);
 #endif
 #endif
 
@@ -359,7 +359,7 @@ i4bisppp_watchdog(struct ifnet *ifp)
 	sc->sc_if.if_timer = I4BISPPPACCTINTVL; 	
 
 #if 0 /* old stuff, keep it around */
-	printf(ISPPP_FMT "transmit timeout\n", ISPPP_ARG(sc));
+	kprintf(ISPPP_FMT "transmit timeout\n", ISPPP_ARG(sc));
 	i4bisppp_start(ifp);
 #endif
 }
@@ -597,7 +597,7 @@ i4bisppp_rx_data_rdy(int unit)
 #endif
 	
 #ifdef I4BISPPPDEBUG
-	printf("i4bisppp_rx_data_ready: received packet!\n");
+	kprintf("i4bisppp_rx_data_ready: received packet!\n");
 #endif
 
 	BPF_MTAP(&sc->sc_if, m);

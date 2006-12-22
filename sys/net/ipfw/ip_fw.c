@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.21 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.22 2006/12/22 23:44:56 swildner Exp $
  */
 
 #define        DEB(x)
@@ -204,7 +204,7 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_grace_time, CTLFLAG_RD,
 
 #define dprintf(a)	do {						\
 				if (fw_debug)				\
-					printf a;			\
+					kprintf a;			\
 			} while (0)
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
 
@@ -652,7 +652,7 @@ hash_packet(struct ipfw_flow_id *id)
 	/* remove a refcount to the parent */				\
 	if (q->dyn_type == DYN_LIMIT)					\
 		q->parent->count--;					\
-	DEB(printf("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n", \
+	DEB(kprintf("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n", \
 		(q->id.src_ip), (q->id.src_port),			\
 		(q->id.dst_ip), (q->id.dst_port), dyn_count-1 ); )	\
 	if (prev != NULL)						\
@@ -705,7 +705,7 @@ remove_dyn_rule(struct ip_fw *rule, int force)
 		if (pass == 0 || q->count != 0) {
 		    zap = 0 ;
 		    if (pass == 1 && force) /* should not happen */
-			printf("OUCH! cannot remove rule, count %d\n",
+			kprintf("OUCH! cannot remove rule, count %d\n",
 				q->count);
 		}
 	    }
@@ -805,7 +805,7 @@ found:
 	     * occur if we use keep-state the wrong way.
 	     */
 	    if ( (q->state & ((TH_RST << 8)|TH_RST)) == 0)
-		printf("invalid state: 0x%x\n", q->state);
+		kprintf("invalid state: 0x%x\n", q->state);
 #endif
 	    q->expire = time_second + dyn_rst_lifetime ;
 	    break ;
@@ -860,7 +860,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 
     r = kmalloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
     if (r == NULL) {
-	printf ("sorry cannot allocate state\n");
+	kprintf ("sorry cannot allocate state\n");
 	return NULL ;
     }
 
@@ -885,7 +885,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
     r->next = ipfw_dyn_v[i] ;
     ipfw_dyn_v[i] = r ;
     dyn_count++ ;
-    DEB(printf("-- add entry 0x%08x %d -> 0x%08x %d, total %d\n",
+    DEB(kprintf("-- add entry 0x%08x %d -> 0x%08x %d, total %d\n",
        (r->id.src_ip), (r->id.src_port),
        (r->id.dst_ip), (r->id.dst_port),
        dyn_count ); )
@@ -912,7 +912,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 		    pkt->src_port == q->id.src_port &&
 		    pkt->dst_port == q->id.dst_port) {
 		q->expire = time_second + dyn_short_lifetime ;
-		DEB(printf("lookup_dyn_parent found 0x%p\n", q);)
+		DEB(kprintf("lookup_dyn_parent found 0x%p\n", q);)
 		return q;
 	    }
     }
@@ -936,7 +936,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
 
     u_int8_t type = rule->dyn_type ;
 
-    DEB(printf("-- install state type %d 0x%08x %u -> 0x%08x %u\n",
+    DEB(kprintf("-- install state type %d 0x%08x %u -> 0x%08x %u\n",
        type,
        (args->f_id.src_ip), (args->f_id.src_port),
        (args->f_id.dst_ip), (args->f_id.dst_port) );)
@@ -945,7 +945,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
     if (q != NULL) { /* should never occur */
 	if (last_log != time_second) {
 	    last_log = time_second ;
-	    printf(" entry already present, done\n");
+	    kprintf(" entry already present, done\n");
 	}
 	return 0 ;
     }
@@ -954,7 +954,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
     if (dyn_count >= dyn_max) {
 	if (last_log != time_second) {
 	    last_log = time_second ;
-	    printf(" Too many dynamic rules, sorry\n");
+	    kprintf(" Too many dynamic rules, sorry\n");
 	}
 	return 1; /* cannot install, notify caller */
     }
@@ -970,7 +970,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
 	struct ipfw_flow_id id;
 	struct ipfw_dyn_rule *parent;
 
-	DEB(printf("installing dyn-limit rule %d\n", conn_limit);)
+	DEB(kprintf("installing dyn-limit rule %d\n", conn_limit);)
 
 	id.dst_ip = id.src_ip = 0;
 	id.dst_port = id.src_port = 0 ;
@@ -986,7 +986,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
 	    id.dst_port = args->f_id.dst_port;
 	parent = lookup_dyn_parent(&id, rule);
 	if (parent == NULL) {
-	    printf("add parent failed\n");
+	    kprintf("add parent failed\n");
 	    return 1;
 	}
 	if (parent->count >= conn_limit) {
@@ -997,7 +997,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
 	     */
 	    parent = lookup_dyn_parent(&id, rule);
 	    if (parent == NULL) {
-		printf("add parent failed\n");
+		kprintf("add parent failed\n");
 		return 1;
 	    }
 	    if (parent->count >= conn_limit) {
@@ -1013,7 +1013,7 @@ install_state(struct ip_fw *rule, struct ip_fw_args *args)
 	}
 	break ;
     default:
-	printf("unknown dynamic rule type %u\n", type);
+	kprintf("unknown dynamic rule type %u\n", type);
 	return 1 ;
     }
     lookup_dyn_rule(&args->f_id, NULL) ; /* XXX just set the lifetime */
@@ -1214,7 +1214,7 @@ again:
 		    dyn_checked = 1 ;
 		    q = lookup_dyn_rule(&args->f_id, &direction);
 		    if (q != NULL) {
-			DEB(printf("-- dynamic match 0x%08x %d %s 0x%08x %d\n",
+			DEB(kprintf("-- dynamic match 0x%08x %d %s 0x%08x %d\n",
 			    (q->id.src_ip), (q->id.src_port),
 			    (direction == MATCH_FORWARD ? "-->" : "<--"),
 			    (q->id.dst_ip), (q->id.dst_port) ); )
@@ -1439,7 +1439,7 @@ bogusfrag:
 			if (m != NULL)
 				ipfw_report(NULL, ip, ip_off, ip_len, rif, oif);
 			else
-				printf("pullup failed\n");
+				kprintf("pullup failed\n");
 		}
 		goto dropit;
 
@@ -1669,7 +1669,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 done:
 	static_count++;
 	crit_exit();
-	DEB(printf("++ installed rule %d, static count now %d\n",
+	DEB(kprintf("++ installed rule %d, static count now %d\n",
 		ftmp->fw_number, static_count);)
 	return (0);
 }
@@ -2044,7 +2044,7 @@ ip_fw_ctl(struct sockopt *sopt)
 	    break;
 
 	default:
-		printf("ip_fw_ctl invalid option %d\n", sopt->sopt_name);
+		kprintf("ip_fw_ctl invalid option %d\n", sopt->sopt_name);
 		error = EINVAL ;
 	}
 
@@ -2084,7 +2084,7 @@ ip_fw_init(void)
 		panic("ip_fw_init");
 
 	ip_fw_default_rule = LIST_FIRST(&ip_fw_chain_head) ;
-	printf("IP packet filtering initialized, "
+	kprintf("IP packet filtering initialized, "
 #ifdef IPDIVERT
 		"divert enabled, "
 #else
@@ -2097,12 +2097,12 @@ ip_fw_init(void)
 		"default to deny, " );
 #endif
 #ifndef IPFIREWALL_VERBOSE
-	printf("logging disabled\n");
+	kprintf("logging disabled\n");
 #else
 	if (fw_verbose_limit == 0)
-		printf("unlimited logging\n");
+		kprintf("unlimited logging\n");
 	else
-		printf("logging limited to %d packets/entry by default\n",
+		kprintf("logging limited to %d packets/entry by default\n",
 		    fw_verbose_limit);
 #endif
 }
@@ -2120,7 +2120,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		crit_enter();
 		if (IPFW_LOADED) {
 			crit_exit();
-			printf("IP firewall already loaded\n");
+			kprintf("IP firewall already loaded\n");
 			err = EEXIST ;
 		} else {
 			ip_fw_init();
@@ -2129,7 +2129,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		break ;
 	case MOD_UNLOAD:
 #if !defined(KLD_MODULE)
-		printf("ipfw statically compiled, cannot unload\n");
+		kprintf("ipfw statically compiled, cannot unload\n");
 		err = EBUSY;
 #else
 		crit_enter();
@@ -2138,7 +2138,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		while ( (fcp = LIST_FIRST(&ip_fw_chain_head)) != NULL)
 			free_chain(fcp);
 		crit_exit();
-		printf("IP firewall unloaded\n");
+		kprintf("IP firewall unloaded\n");
 #endif
 		break ;
 

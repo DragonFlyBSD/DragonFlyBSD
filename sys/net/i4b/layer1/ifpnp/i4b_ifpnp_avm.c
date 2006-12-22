@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.11 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.12 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -471,7 +471,7 @@ avm_pnp_attach(device_t dev)
 
 	/* probably not really required */
 	if(unit > IFPNP_MAXUNIT) {
-		printf("avm_pnp%d: Error, unit > IFPNP_MAXUNIT!\n", unit);
+		kprintf("avm_pnp%d: Error, unit > IFPNP_MAXUNIT!\n", unit);
 		crit_exit();
 		return(ENXIO);
 	}
@@ -485,11 +485,11 @@ avm_pnp_attach(device_t dev)
 						&sc->sc_resources.io_rid[0],
 						0UL, ~0UL, 1, RF_ACTIVE ) ))
 	{
-		printf("avm_pnp_attach: Couldn't get my io_base.\n");
+		kprintf("avm_pnp_attach: Couldn't get my io_base.\n");
 		return ENXIO;                                       
 	}
 	if (sc->sc_resources.io_base[0] == NULL) {
-		printf("avm_pnp%d: couldn't map IO port\n", unit);
+		kprintf("avm_pnp%d: couldn't map IO port\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -507,7 +507,7 @@ avm_pnp_attach(device_t dev)
 					   &sc->sc_resources.irq_rid,
 					   0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("avm_pnp%d: Could not get irq.\n",unit);
+		kprintf("avm_pnp%d: Could not get irq.\n",unit);
 		error = ENXIO;                                       
 		goto fail;
 	}
@@ -571,11 +571,11 @@ avm_pnp_attach(device_t dev)
 	bus_space_write_1(btag, bhandle, STAT0_OFFSET, ASL_TIMERRESET|ASL_ENABLE_INT|ASL_TIMERDISABLE);
 	DELAY(SEC_DELAY/100); /* 10 ms */
 
-	 printf("ifpnp%d: AVM Fritz!Card PnP Class %#x Revision %d \n", unit,
+	 kprintf("ifpnp%d: AVM Fritz!Card PnP Class %#x Revision %d \n", unit,
 			bus_space_read_1(btag, bhandle, CLASS_OFFSET),
 			bus_space_read_1(btag, bhandle, REVISION_OFFSET));
 
-	 printf("ifpnp%d: ISAC %s (IOM-%c)\n", unit,
+	 kprintf("ifpnp%d: ISAC %s (IOM-%c)\n", unit,
   		"2085 Version A1/A2 or 2086/2186 Version 1.1",
 		 sc->sc_bustyp == BUS_TYPE_IOM1 ? '1' : '2');
 
@@ -1262,7 +1262,7 @@ avm_pnp_hscx_fifo(l1_bchan_state_t *chan, struct l1_softc *sc)
 		nextlen = min(chan->out_mbuf_cur_len, sc->sc_bfifolen - len);
 
 #ifdef NOTDEF
-		printf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
+		kprintf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
 			chan->out_mbuf_head,
 			chan->out_mbuf_cur,			
 			chan->out_mbuf_cur_ptr,

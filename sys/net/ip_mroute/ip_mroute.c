@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.20 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.21 2006/12/22 23:44:56 swildner Exp $
  */
 
 #include "opt_mrouting.h"
@@ -1187,7 +1187,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	if (rsvpdebug && ip->ip_p == IPPROTO_RSVP) {
 	    struct vif *vifp = viftable + vifi;
 
-	    printf("Sending IPPROTO_RSVP from %lx to %lx on vif %d (%s%s)\n",
+	    kprintf("Sending IPPROTO_RSVP from %lx to %lx on vif %d (%s%s)\n",
 		(long)ntohl(ip->ip_src.s_addr), (long)ntohl(ip->ip_dst.s_addr),
 		vifi,
 		(vifp->v_flags & VIFF_TUNNEL) ? "tunnel on " : "",
@@ -1196,10 +1196,10 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	return ip_mdq(m, ifp, NULL, vifi);
     }
     if (rsvpdebug && ip->ip_p == IPPROTO_RSVP) {
-	printf("Warning: IPPROTO_RSVP from %lx to %lx without vif option\n",
+	kprintf("Warning: IPPROTO_RSVP from %lx to %lx without vif option\n",
 	    (long)ntohl(ip->ip_src.s_addr), (long)ntohl(ip->ip_dst.s_addr));
 	if (!imo)
-	    printf("In fact, no options were specified at all\n");
+	    kprintf("In fact, no options were specified at all\n");
     }
 
     /*
@@ -2126,7 +2126,7 @@ X_rsvp_input(struct mbuf *m, ...)
     __va_end(ap);
 
     if (rsvpdebug)
-	printf("rsvp_input: rsvp_on %d\n",rsvp_on);
+	kprintf("rsvp_input: rsvp_on %d\n",rsvp_on);
 
     /* Can still get packets with rsvp_on = 0 if there is a local member
      * of the group to which the RSVP packet is addressed.  But in this
@@ -2140,7 +2140,7 @@ X_rsvp_input(struct mbuf *m, ...)
     crit_enter();
 
     if (rsvpdebug)
-	printf("rsvp_input: check vifs\n");
+	kprintf("rsvp_input: check vifs\n");
 
 #ifdef DIAGNOSTIC
     if (!(m->m_flags & M_PKTHDR))
@@ -2165,13 +2165,13 @@ X_rsvp_input(struct mbuf *m, ...)
 	 */
 	if (ip_rsvpd != NULL) {
 	    if (rsvpdebug)
-		printf("rsvp_input: Sending packet up old-style socket\n");
+		kprintf("rsvp_input: Sending packet up old-style socket\n");
 	    rip_input(m, off, proto);  /* xxx */
 	} else {
 	    if (rsvpdebug && vifi == numvifs)
-		printf("rsvp_input: Can't find vif for packet.\n");
+		kprintf("rsvp_input: Can't find vif for packet.\n");
 	    else if (rsvpdebug && viftable[vifi].v_rsvpd == NULL)
-		printf("rsvp_input: No socket defined for vif %d\n",vifi);
+		kprintf("rsvp_input: No socket defined for vif %d\n",vifi);
 	    m_freem(m);
 	}
 	crit_exit();
@@ -2180,7 +2180,7 @@ X_rsvp_input(struct mbuf *m, ...)
     rsvp_src.sin_addr = ip->ip_src;
 
     if (rsvpdebug && m)
-	printf("rsvp_input: m->m_len = %d, sbspace() = %ld\n",
+	kprintf("rsvp_input: m->m_len = %d, sbspace() = %ld\n",
 	       m->m_len,sbspace(&(viftable[vifi].v_rsvpd->so_rcv)));
 
 #ifdef ALTQ
@@ -2195,20 +2195,20 @@ X_rsvp_input(struct mbuf *m, ...)
 	if (opts)
 	    m_freem(opts);
 	if (rsvpdebug)
-	    printf("rsvp_input: Failed to append to socket\n");
+	    kprintf("rsvp_input: Failed to append to socket\n");
     }
     else {
 	sorwakeup(so);
 	if (rsvpdebug)
-	    printf("rsvp_input: send packet up\n");
+	    kprintf("rsvp_input: send packet up\n");
     }
 #else /* !ALTQ */
     if (socket_send(viftable[vifi].v_rsvpd, m, &rsvp_src) < 0) {
 	if (rsvpdebug)
-	    printf("rsvp_input: Failed to append to socket\n");
+	    kprintf("rsvp_input: Failed to append to socket\n");
     } else {
 	if (rsvpdebug)
-	    printf("rsvp_input: send packet up\n");
+	    kprintf("rsvp_input: send packet up\n");
     }
 #endif /* !ALTQ */
 

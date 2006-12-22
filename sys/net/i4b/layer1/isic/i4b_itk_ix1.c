@@ -29,7 +29,7 @@
  *      last edit-date: [Wed Jan 24 09:27:06 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_itk_ix1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_itk_ix1.c,v 1.5 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_itk_ix1.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *---------------------------------------------------------------------------
  *
@@ -191,13 +191,13 @@ isic_probe_itkix1(device_t dev)
 	int ret;
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("Checking unit %u\n", unit);
+	kprintf("Checking unit %u\n", unit);
 	#endif
 
 	/* check max unit range */
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ITK IX1!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ITK IX1!\n",
 				unit, unit);
 		return ENXIO;	
 	}
@@ -206,7 +206,7 @@ isic_probe_itkix1(device_t dev)
 	sc->sc_unit = unit;			/* set unit */
 	
 	#if defined(ITK_PROBE_DEBUG)
-	printf("Allocating io base...");
+	kprintf("Allocating io base...");
 	#endif
 	
 	if(!(sc->sc_resources.io_base[0] =
@@ -214,12 +214,12 @@ isic_probe_itkix1(device_t dev)
 	        		&sc->sc_resources.io_rid[0],
 	                        0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate i/o port for ITK IX1.\n", unit);
+		kprintf("isic%d: Could not allocate i/o port for ITK IX1.\n", unit);
 		return ENXIO;
 	}
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 	#endif
 
 	sc->sc_port = rman_get_start(sc->sc_resources.io_base[0]);
@@ -227,7 +227,7 @@ isic_probe_itkix1(device_t dev)
 	h = rman_get_bushandle(sc->sc_resources.io_base[0]);
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("Allocating irq...");
+	kprintf("Allocating irq...");
 	#endif
 
 	/* get our irq */
@@ -236,7 +236,7 @@ isic_probe_itkix1(device_t dev)
 						&sc->sc_resources.irq_rid,
 						0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not allocate irq for ITK IX1.\n", unit);
+		kprintf("isic%d: Could not allocate irq for ITK IX1.\n", unit);
 		bus_release_resource(dev,SYS_RES_IOPORT,
 				sc->sc_resources.io_rid[0],
 				sc->sc_resources.io_base[0]);
@@ -244,14 +244,14 @@ isic_probe_itkix1(device_t dev)
 	}
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 	#endif
 
 	/* get the irq number */
 	sc->sc_irq = rman_get_start(sc->sc_resources.irq);
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("Setting up access routines...");
+	kprintf("Setting up access routines...");
 	#endif
 	
 	/* setup access routines */
@@ -271,13 +271,13 @@ isic_probe_itkix1(device_t dev)
 	sc->sc_bfifolen = HSCX_FIFO_LEN;
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 	#endif
 
 	/* register interupt routine */
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("Setting up access interupt...");
+	kprintf("Setting up access interupt...");
 	#endif
 
 	bus_setup_intr(dev, sc->sc_resources.irq,
@@ -285,9 +285,9 @@ isic_probe_itkix1(device_t dev)
 		       sc, &ih, NULL);
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 
-	printf("Doing probe stuff...");
+	kprintf("Doing probe stuff...");
 	#endif
 	
 	/* save old value of this port, we're stomping over it */
@@ -317,9 +317,9 @@ isic_probe_itkix1(device_t dev)
 		bus_space_write_1(t, h, ITK_ALE, saveale);
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 
-	printf("Doing second probe stuff...");
+	kprintf("Doing second probe stuff...");
 	#endif
 
 	hv1 = HSCX_READ(0, H_VSTR) & 0xf;
@@ -327,22 +327,22 @@ isic_probe_itkix1(device_t dev)
 	/* Read HSCX A/B VSTR.  Expected value is 0x05 (V2.1) or 0x04 (V2.0). */
 	if((hv1 != 0x05 && hv1 != 0x04) || (hv2 != 0x05 && hv2 != 0x04))
 	{
-		printf("isic%d: HSCX VSTR test failed for ITK ix1 micro\n",
+		kprintf("isic%d: HSCX VSTR test failed for ITK ix1 micro\n",
 			unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			unit, HSCX_READ(1, H_VSTR));
 		isic_detach_common(dev);
 		return ENXIO;
 	}  
 
 	#if defined(ITK_PROBE_DEBUG)
-	printf("done.\n");
+	kprintf("done.\n");
 	#endif
 
 #if defined(ITK_PROBE_DEBUG)
-	printf("\nITK ix1 micro probe: hscx = 0x%02x, v1 = 0x%02x, v2 = 0x%02x, would have %s\n",
+	kprintf("\nITK ix1 micro probe: hscx = 0x%02x, v1 = 0x%02x, v2 = 0x%02x, would have %s\n",
 		hd, hv1, hv2, ret ? "succeeded" : "failed");
 	isic_detach_common(dev);
 	return ENXIO;

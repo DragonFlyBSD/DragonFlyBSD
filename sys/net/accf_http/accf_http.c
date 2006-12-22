@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/netinet/accf_http.c,v 1.1.2.4 2002/05/01 08:34:37 alfred Exp $
- *	$DragonFly: src/sys/net/accf_http/accf_http.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ *	$DragonFly: src/sys/net/accf_http/accf_http.c,v 1.3 2006/12/22 23:44:55 swildner Exp $
  */
 
 #define ACCEPT_FILTER_MOD
@@ -89,7 +89,7 @@ SYSCTL_INT(_net_inet_accf_http, OID_AUTO, parsehttpversion, CTLFLAG_RW,
 #ifdef ACCF_HTTP_DEBUG
 #define DPRINT(fmt, args...) \
 	do {	\
-		printf("%s:%d: " fmt "\n", __func__, __LINE__ , ##args);	\
+		kprintf("%s:%d: " fmt "\n", __func__, __LINE__ , ##args);	\
 	} while (0)
 #else
 #define DPRINT(fmt, args...)

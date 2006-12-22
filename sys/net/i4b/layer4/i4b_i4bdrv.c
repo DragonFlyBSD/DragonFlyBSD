@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.18 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.19 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -120,7 +120,7 @@ SYSINIT(i4bdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,i4b_drvinit,NULL)
 PDEVSTATIC void
 i4battach(void *dummy)
 {
-	printf("i4b: ISDN call control device attached\n");
+	kprintf("i4b: ISDN call control device attached\n");
 
 	i4b_rdqueue.ifq_maxlen = IFQ_MAXLEN;
 

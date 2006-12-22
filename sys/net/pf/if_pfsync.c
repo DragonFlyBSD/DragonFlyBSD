@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.6 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -77,7 +77,7 @@
     (sizeof(struct pfsync_header) + sizeof(struct pf_state))
 
 #ifdef PFSYNCDEBUG
-#define DPRINTF(x)    do { if (pfsyncdebug) printf x ; } while (0)
+#define DPRINTF(x)    do { if (pfsyncdebug) kprintf x ; } while (0)
 int pfsyncdebug;
 #else
 #define DPRINTF(x)
@@ -185,7 +185,7 @@ pfsync_insert_net_state(struct pfsync_state *sp)
 	struct pfi_kif	*kif;
 
 	if (sp->creatorid == 0 && pf_status.debug >= PF_DEBUG_MISC) {
-		printf("pfsync_insert_net_state: invalid creator id:"
+		kprintf("pfsync_insert_net_state: invalid creator id:"
 		    " %08" PRIx32 "\n", ntohl(sp->creatorid));
 		return (EINVAL);
 	}
@@ -193,7 +193,7 @@ pfsync_insert_net_state(struct pfsync_state *sp)
 	kif = pfi_lookup_create(sp->ifname);
 	if (kif == NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC)
-			printf("pfsync_insert_net_state: "
+			kprintf("pfsync_insert_net_state: "
 			    "unknown interface: %s\n", sp->ifname);
 		/* skip this state */
 		return (0);
@@ -340,7 +340,7 @@ pfsync_input(struct mbuf *m, ...)
 			kif = pfi_lookup_if(cp->ifname);
 			if (kif == NULL) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync_input: PFSYNC_ACT_CLR "
+					kprintf("pfsync_input: PFSYNC_ACT_CLR "
 					    "bad interface: %s\n", cp->ifname);
 				crit_exit();
 				goto done;
@@ -373,7 +373,7 @@ pfsync_input(struct mbuf *m, ...)
 			    sp->direction > PF_OUT ||
 			    (sp->af != AF_INET && sp->af != AF_INET6)) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync_insert: PFSYNC_ACT_INS: "
+					kprintf("pfsync_insert: PFSYNC_ACT_INS: "
 					    "invalid value\n");
 				pfsyncstats.pfsyncs_badstate++;
 				continue;
@@ -404,7 +404,7 @@ pfsync_input(struct mbuf *m, ...)
 			    sp->src.state > PF_TCPS_PROXY_DST ||
 			    sp->dst.state > PF_TCPS_PROXY_DST) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync_insert: PFSYNC_ACT_UPD: "
+					kprintf("pfsync_insert: PFSYNC_ACT_UPD: "
 					    "invalid value\n");
 				pfsyncstats.pfsyncs_badstate++;
 				continue;
@@ -478,7 +478,7 @@ pfsync_input(struct mbuf *m, ...)
 			    up->src.state > PF_TCPS_PROXY_DST ||
 			    up->dst.state > PF_TCPS_PROXY_DST) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync_insert: "
+					kprintf("pfsync_insert: "
 					    "PFSYNC_ACT_UPD_C: "
 					    "invalid value\n");
 				pfsyncstats.pfsyncs_badstate++;
@@ -559,7 +559,7 @@ pfsync_input(struct mbuf *m, ...)
 			if (key.id == 0 && key.creatorid == 0) {
 				sc->sc_ureq_received = mycpu->gd_time_seconds;
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync: received "
+					kprintf("pfsync: received "
 					    "bulk update request\n");
 				pfsync_send_bus(sc, PFSYNC_BUS_START);
 				callout_reset(&sc->sc_bulk_tmo, 1 * hz,
@@ -596,7 +596,7 @@ pfsync_input(struct mbuf *m, ...)
 			    (PFSYNC_BULKPACKETS * sc->sc_maxcount), 
 			    pfsync_bulkfail, LIST_FIRST(&pfsync_list));
 			if (pf_status.debug >= PF_DEBUG_MISC)
-				printf("pfsync: received bulk "
+				kprintf("pfsync: received bulk "
 				    "update start\n");
 			break;
 		case PFSYNC_BUS_END:
@@ -608,11 +608,11 @@ pfsync_input(struct mbuf *m, ...)
 				callout_stop(&sc->sc_bulkfail_tmo);
 				pfsync_sync_ok = 1;
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync: received valid "
+					kprintf("pfsync: received valid "
 					    "bulk update end\n");
 			} else {
 				if (pf_status.debug >= PF_DEBUG_MISC)
-					printf("pfsync: received invalid "
+					kprintf("pfsync: received invalid "
 					    "bulk update end: bad timestamp\n");
 			}
 			break;
@@ -735,7 +735,7 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			sc->sc_ureq_sent = mycpu->gd_time_seconds;
 			pfsync_sync_ok = 0;
 			if (pf_status.debug >= PF_DEBUG_MISC)
-				printf("pfsync: requesting bulk update\n");
+				kprintf("pfsync: requesting bulk update\n");
 			callout_reset(&sc->sc_bulkfail_tmo, 5 * hz,
 			    pfsync_bulkfail, LIST_FIRST(&pfsync_list));
 			pfsync_request_update(NULL, NULL);
@@ -1155,7 +1155,7 @@ pfsync_bulk_update(void *v)
 			sc->sc_ureq_received = 0;
 			callout_stop(&sc->sc_bulk_tmo);
 			if (pf_status.debug >= PF_DEBUG_MISC)
-				printf("pfsync: bulk update complete\n");
+				kprintf("pfsync: bulk update complete\n");
 			break;
 		} else {
 			/* send an update and move to end of list */
@@ -1193,7 +1193,7 @@ pfsync_bulkfail(void *v)
 		sc->sc_bulk_tries = 0;
 		pfsync_sync_ok = 1;
 		if (pf_status.debug >= PF_DEBUG_MISC)
-			printf("pfsync: failed to receive "
+			kprintf("pfsync: failed to receive "
 			    "bulk update status\n");
 		callout_stop(&sc->sc_bulkfail_tmo);
 	}

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.15 2005/11/30 13:35:24 sephe Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.16 2006/12/22 23:44:54 swildner Exp $
  *
  */
 
@@ -243,7 +243,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		break;
 
 	default:
-		printf("%s: can't handle af%d\n", ifp->if_xname,
+		kprintf("%s: can't handle af%d\n", ifp->if_xname,
 			dst->sa_family);
 		senderr(EAFNOSUPPORT);
 	}
@@ -289,7 +289,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 * not yet active.
 	 */
 	if (IF_QFULL(&ifp->if_snd)) {
-		printf("iso88025_output: packet dropped QFULL.\n");
+		kprintf("iso88025_output: packet dropped QFULL.\n");
 		IF_DROP(&ifp->if_snd);
 		crit_exit();
 		senderr(ENOBUFS);
@@ -353,7 +353,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 		u_char c = l->llc_dsap;
 
 		if (th->iso88025_shost[0] & TR_RII) { /* XXX */
-			printf("iso88025_input: dropping source routed LLC_TEST\n");
+			kprintf("iso88025_input: dropping source routed LLC_TEST\n");
 			m_free(m);
 			return;
 		}
@@ -376,7 +376,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 		return;
 	}
 	default:
-		printf("iso88025_input: unexpected llc control 0x%02x\n", l->llc_control);
+		kprintf("iso88025_input: unexpected llc control 0x%02x\n", l->llc_control);
 		m_freem(m);
 		return;
 	}

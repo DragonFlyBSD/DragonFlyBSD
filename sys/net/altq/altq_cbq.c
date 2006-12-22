@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.5 2006/10/24 17:16:13 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.6 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -306,12 +306,12 @@ cbq_add_queue(struct pf_altq *a)
 	 * borrow at all.  Hence, borrow can be null.
 	 */
 	if (parent == NULL && (opts->flags & CBQCLF_ROOTCLASS) == 0) {
-		printf("cbq_add_queue: no parent class!\n");
+		kprintf("cbq_add_queue: no parent class!\n");
 		return (EINVAL);
 	}
 
 	if ((borrow != parent)  && (borrow != NULL)) {
-		printf("cbq_add_class: borrow class != parent\n");
+		kprintf("cbq_add_class: borrow class != parent\n");
 		return (EINVAL);
 	}
 

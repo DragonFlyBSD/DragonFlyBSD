@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.21 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.22 2006/12/22 23:44:55 swildner Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -176,7 +176,7 @@ rt_unref(struct rtentry *rt)
     if (rt == NULL)
 	return ;
     if (rt->rt_refcnt <= 0)
-	printf("-- warning, refcnt now %ld, decreasing\n", rt->rt_refcnt);
+	kprintf("-- warning, refcnt now %ld, decreasing\n", rt->rt_refcnt);
     RTFREE(rt);
 }
 
@@ -205,7 +205,7 @@ heap_init(struct dn_heap *h, int new_size)
     struct dn_heap_entry *p;
 
     if (h->size >= new_size ) {
-	printf("heap_init, Bogus call, have %d want %d\n",
+	kprintf("heap_init, Bogus call, have %d want %d\n",
 		h->size, new_size);
 	return 0 ;
     }
@@ -279,7 +279,7 @@ heap_extract(struct dn_heap *h, void *obj)
     int child, father, max = h->elements - 1 ;
 
     if (max < 0) {
-	printf("warning, extract from empty heap 0x%p\n", h);
+	kprintf("warning, extract from empty heap 0x%p\n", h);
 	return ;
     }
     father = 0 ; /* default: move up smallest child */
@@ -288,7 +288,7 @@ heap_extract(struct dn_heap *h, void *obj)
 	    panic("*** heap_extract from middle not supported on this heap!!!\n");
 	father = *((int *)((char *)obj + h->offset)) ;
 	if (father < 0 || father >= h->elements) {
-	    printf("dummynet: heap_extract, father %d out of bound 0..%d\n",
+	    kprintf("dummynet: heap_extract, father %d out of bound 0..%d\n",
 		father, h->elements);
 	    panic("heap_extract");
 	}
@@ -438,7 +438,7 @@ transmit_event(struct dn_pipe *pipe)
 
 		if (pkt->dn_m->m_len < ETHER_HDR_LEN &&
 		    (pkt->dn_m = m_pullup(pkt->dn_m, ETHER_HDR_LEN)) == NULL) {
-		    printf("dummynet: pullup fail, dropping pkt\n");
+		    kprintf("dummynet: pullup fail, dropping pkt\n");
 		    break;
 		}
 		/*
@@ -455,7 +455,7 @@ transmit_event(struct dn_pipe *pipe)
 	    break;
 
 	default:
-	    printf("dummynet: bad switch %d!\n", pkt->dn_dir);
+	    kprintf("dummynet: bad switch %d!\n", pkt->dn_dir);
 	    m_freem(pkt->dn_m);
 	    break ;
 	}
@@ -515,7 +515,7 @@ ready_event(struct dn_flow_queue *q)
     int p_was_empty ;
 
     if (p == NULL) {
-	printf("ready_event- pipe is gone\n");
+	kprintf("ready_event- pipe is gone\n");
 	return ;
     }
     p_was_empty = (p->head == NULL) ;
@@ -584,7 +584,7 @@ ready_event_wfq(struct dn_pipe *p)
 	if (p->ifp && p->ifp->if_snd.ifq_head != NULL)
 	    return ;
 	else {
-	    DEB(printf("pipe %d ready from %s --\n",
+	    DEB(kprintf("pipe %d ready from %s --\n",
 		p->pipe_nr, p->if_name);)
 	}
     }
@@ -707,7 +707,7 @@ dummynet(void * __unused unused)
 	h = heaps[i];
 	while (h->elements > 0 && DN_KEY_LEQ(h->p[0].key, curr_time) ) {
 	    DDB(if (h->p[0].key > curr_time)
-		printf("-- dummynet: warning, heap %d is %d ticks late\n",
+		kprintf("-- dummynet: warning, heap %d is %d ticks late\n",
 		    i, (int)(curr_time - h->p[0].key));)
 	    p = h->p[0].object ; /* store a copy before heap_extract */
 	    heap_extract(h, NULL); /* need to extract before processing */
@@ -716,7 +716,7 @@ dummynet(void * __unused unused)
 	    else if (i == 1) {
 		struct dn_pipe *pipe = p;
 		if (pipe->if_name[0] != '\0')
-		    printf("*** bad ready_event_wfq for pipe %s\n",
+		    kprintf("*** bad ready_event_wfq for pipe %s\n",
 			pipe->if_name);
 		else
 		    ready_event_wfq(p) ;
@@ -753,12 +753,12 @@ if_tx_rdy(struct ifnet *ifp)
 	for (p = all_pipes; p ; p = p->next )
 	    if (!strcmp(p->if_name, ifp->if_xname) ) {
 		p->ifp = ifp ;
-		DEB(printf("++ tx rdy from %s (now found)\n", ifp->if_xname);)
+		DEB(kprintf("++ tx rdy from %s (now found)\n", ifp->if_xname);)
 		break ;
 	    }
     }
     if (p != NULL) {
-	DEB(printf("++ tx rdy from %s - qlen %d\n", ifp->if_xname,
+	DEB(kprintf("++ tx rdy from %s - qlen %d\n", ifp->if_xname,
 		ifp->if_snd.ifq_len);)
 	p->numbytes = 0 ; /* mark ready for I/O */
 	ready_event_wfq(p);
@@ -919,7 +919,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
     /* queue in bytes or packets ? */
     u_int q_size = (fs->flags_fs & DN_QSIZE_IS_BYTES) ? q->len_bytes : q->len;
 
-    DEB(printf("\n%d q: %2u ", (int) curr_time, q_size);)
+    DEB(kprintf("\n%d q: %2u ", (int) curr_time, q_size);)
 
     /* average queue size estimation */
     if (q_size != 0) {
@@ -945,7 +945,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 		    SCALE_MUL(q->avg, fs->w_q_lookup[t]) : 0;
 	}
     }
-    DEB(printf("avg: %u ", SCALE_VAL(q->avg));)
+    DEB(kprintf("avg: %u ", SCALE_VAL(q->avg));)
 
     /* should i drop ? */
 
@@ -964,7 +964,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	    p_b = SCALE_MUL((int64_t) fs->c_3, (int64_t) q->avg) - fs->c_4;
 	} else {
 	    q->count = -1;
-	    printf("- drop");
+	    kprintf("- drop");
 	    return 1 ;
 	}
     } else if (q->avg > fs->min_th) {
@@ -986,7 +986,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	 */
 	if (SCALE_MUL(p_b, SCALE((int64_t) q->count)) > q->random) {
 	    q->count = 0;
-	    DEB(printf("- red drop");)
+	    DEB(kprintf("- red drop");)
 	    /* after a drop we calculate a new random value */
 	    q->random = krandom() & 0xffff;
 	    return 1;    /* drop */
@@ -1088,7 +1088,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	if (pipe != NULL)
 	    fs->pipe = pipe ;
 	else {
-	    printf("No pipe %d for queue %d, drop pkt\n",
+	    kprintf("No pipe %d for queue %d, drop pkt\n",
 		fs->parent_nr, fs->fs_nr);
 	    goto dropit ;
 	}
@@ -1208,14 +1208,14 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	 */
 	if (DN_KEY_GT(q->S, pipe->V) ) { /* not eligible */
 	    if (pipe->scheduler_heap.elements == 0)
-		printf("++ ouch! not eligible but empty scheduler!\n");
+		kprintf("++ ouch! not eligible but empty scheduler!\n");
 	    heap_insert(&(pipe->not_eligible_heap), q->S, q);
 	} else {
 	    heap_insert(&(pipe->scheduler_heap), q->F, q);
 	    if (pipe->numbytes >= 0) { /* pipe is idle */
 		if (pipe->scheduler_heap.elements != 1)
-		    printf("*** OUCH! pipe should have been idle!\n");
-		DEB(printf("Waking up pipe %d at %d\n",
+		    kprintf("*** OUCH! pipe should have been idle!\n");
+		DEB(kprintf("Waking up pipe %d at %d\n",
 			pipe->pipe_nr, (int)(q->F >> MY_M)); )
 		pipe->sched_time = curr_time ;
 		ready_event_wfq(pipe);
@@ -1409,7 +1409,7 @@ config_red(struct dn_flow_set *p, struct dn_flow_set * x)
 	x->w_q_lookup = NULL ;
     }
     if (red_lookup_depth == 0) {
-	printf("\nnet.inet.ip.dummynet.red_lookup_depth must be > 0");
+	kprintf("\nnet.inet.ip.dummynet.red_lookup_depth must be > 0");
 	kfree(x, M_DUMMYNET);
 	return EINVAL;
     }
@@ -1683,7 +1683,7 @@ delete_pipe(struct dn_pipe *p)
 	/* remove all references to this pipe from flow_sets */
 	for (fs = all_flow_sets; fs; fs= fs->next )
 	    if (fs->pipe == b) {
-		printf("++ ref to pipe %d from fs %d\n",
+		kprintf("++ ref to pipe %d from fs %d\n",
 			p->pipe_nr, fs->fs_nr);
 		fs->pipe = NULL ;
 		purge_flow_set(fs, 0);
@@ -1739,10 +1739,10 @@ dn_copy_set(struct dn_flow_set *set, char *bp)
     for (i = 0 ; i <= set->rq_size ; i++)
 	for (q = set->rq[i] ; q ; q = q->next, qp++ ) {
 	    if (q->hash_slot != i)
-		printf("++ at %d: wrong slot (have %d, "
+		kprintf("++ at %d: wrong slot (have %d, "
 		    "should be %d)\n", copied, q->hash_slot, i);
 	    if (q->fs != set)
-		printf("++ at %d: wrong fs ptr (have %p, should be %p)\n",
+		kprintf("++ at %d: wrong fs ptr (have %p, should be %p)\n",
 			i, q->fs, set);
 	    copied++ ;
 	    bcopy(q, qp, sizeof( *q ) );
@@ -1752,7 +1752,7 @@ dn_copy_set(struct dn_flow_set *set, char *bp)
 	    qp->fs = NULL ;
 	}
     if (copied != set->rq_elements)
-	printf("++ wrong count, have %d should be %d\n",
+	kprintf("++ wrong count, have %d should be %d\n",
 	    copied, set->rq_elements);
     return (char *)qp ;
 }
@@ -1842,7 +1842,7 @@ ip_dn_ctl(struct sockopt *sopt)
 
     switch (sopt->sopt_name) {
     default :
-	printf("ip_dn_ctl -- unknown option %d", sopt->sopt_name);
+	kprintf("ip_dn_ctl -- unknown option %d", sopt->sopt_name);
 	return EINVAL ;
 
     case IP_DUMMYNET_GET :
@@ -1876,7 +1876,7 @@ ip_dn_ctl(struct sockopt *sopt)
 static void
 ip_dn_init(void)
 {
-    printf("DUMMYNET initialized (011031)\n");
+    kprintf("DUMMYNET initialized (011031)\n");
     all_pipes = NULL ;
     all_flow_sets = NULL ;
     ready_heap.size = ready_heap.elements = 0 ;
@@ -1902,7 +1902,7 @@ dummynet_modevent(module_t mod, int type, void *data)
 		crit_enter();
 		if (DUMMYNET_LOADED) {
 		    crit_exit();
-		    printf("DUMMYNET already loaded\n");
+		    kprintf("DUMMYNET already loaded\n");
 		    return EEXIST ;
 		}
 		ip_dn_init();
@@ -1911,7 +1911,7 @@ dummynet_modevent(module_t mod, int type, void *data)
 
 	case MOD_UNLOAD:
 #if !defined(KLD_MODULE)
-		printf("dummynet statically compiled, cannot unload\n");
+		kprintf("dummynet statically compiled, cannot unload\n");
 		return EINVAL ;
 #else
 		crit_enter();

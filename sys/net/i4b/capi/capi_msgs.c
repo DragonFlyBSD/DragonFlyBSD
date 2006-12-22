@@ -25,7 +25,7 @@
  * capi/capi_msgs.c	The CAPI i4b message handlers.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.c,v 1.1.2.2 2001/12/10 10:28:25 hm Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.7 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.8 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ capi_listen_req(capi_softc_t *sc, u_int32_t CIP)
     u_int16_t msgid;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for listen_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for listen_req\n", sc->sc_unit);
 	return;
     }
 
@@ -100,7 +100,7 @@ capi_listen_conf(capi_softc_t *sc, struct mbuf *m_in)
 
     } else {
 	/* XXX sc->sc_state = C_DOWN ? XXX */
-	printf("capi%d: can't listen, info=%04x\n", sc->sc_unit, Info);
+	kprintf("capi%d: can't listen, info=%04x\n", sc->sc_unit, Info);
     }
 }
 
@@ -113,7 +113,7 @@ capi_info_ind(capi_softc_t *sc, struct mbuf *m_in)
     u_int32_t PLCI;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for info_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for info_resp\n", sc->sc_unit);
 	return;
     }
 
@@ -142,7 +142,7 @@ capi_alert_req(capi_softc_t *sc, call_desc_t *cd)
     u_int32_t PLCI;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for alert_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for alert_req\n", sc->sc_unit);
 	return;
     }
 
@@ -169,7 +169,7 @@ capi_alert_conf(capi_softc_t *sc, struct mbuf *m_in)
     msg = capimsg_getu16(msg + 12, &Info);
 
     if (Info) {
-	printf("capi%d: can't alert, info=%04x\n", sc->sc_unit, Info);
+	kprintf("capi%d: can't alert, info=%04x\n", sc->sc_unit, Info);
     }
 }
 
@@ -200,7 +200,7 @@ capi_connect_req(capi_softc_t *sc, call_desc_t *cd)
 
     m = i4b_Dgetmbuf(8 + 27 + slen + dlen);
     if (!m) {
-	printf("capi%d: can't get mbuf for connect_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for connect_req\n", sc->sc_unit);
 	return;
     }
 
@@ -284,7 +284,7 @@ capi_connect_conf(capi_softc_t *sc, struct mbuf *m_in)
 
     if ((bch == sc->sc_nbch) ||
 	(cd = cd_by_cdid(sc->sc_bchan[bch].cdid)) == NULL) {
-	printf("capi%d: can't find channel for connect_conf PLCI %x\n",
+	kprintf("capi%d: can't find channel for connect_conf PLCI %x\n",
 	       sc->sc_unit, PLCI);
 	return;
     }
@@ -303,7 +303,7 @@ capi_connect_conf(capi_softc_t *sc, struct mbuf *m_in)
 	sc->sc_bchan[bch].state = B_FREE;
 	ctrl_desc[sc->ctrl_unit].bch_state[bch] = BCH_ST_FREE;
 
-	printf("capi%d: can't connect out, info=%04x\n", sc->sc_unit, Info);
+	kprintf("capi%d: can't connect out, info=%04x\n", sc->sc_unit, Info);
     }
 }
 
@@ -318,7 +318,7 @@ capi_connect_active_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for active_ind\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for active_ind\n", sc->sc_unit);
 	return;
     }
 
@@ -333,7 +333,7 @@ capi_connect_active_ind(capi_softc_t *sc, struct mbuf *m_in)
 
     if ((bch == sc->sc_nbch) ||
 	(cd = cd_by_cdid(sc->sc_bchan[bch].cdid)) == NULL) {
-	printf("capi%d: can't find channel for active_resp, PLCI %x\n",
+	kprintf("capi%d: can't find channel for active_resp, PLCI %x\n",
 	       sc->sc_unit, PLCI);
 	return;
     }
@@ -364,7 +364,7 @@ capi_connect_b3_req(capi_softc_t *sc, call_desc_t *cd)
     u_int32_t PLCI;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for connect_b3_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for connect_b3_req\n", sc->sc_unit);
 	return;
     }
 
@@ -404,7 +404,7 @@ capi_connect_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
 
     if ((bch == sc->sc_nbch) ||
 	(cd = cd_by_cdid(sc->sc_bchan[bch].cdid)) == NULL) {
-	printf("capi%d: can't find channel for connect_b3_conf NCCI %x\n",
+	kprintf("capi%d: can't find channel for connect_b3_conf NCCI %x\n",
 	       sc->sc_unit, NCCI);
 	return;
     }
@@ -420,7 +420,7 @@ capi_connect_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
 
 	ctrl_desc[sc->ctrl_unit].bch_state[bch] = BCH_ST_RSVD;
 
-	printf("capi%d: can't connect_b3 out, info=%04x\n", sc->sc_unit, Info);
+	kprintf("capi%d: can't connect_b3 out, info=%04x\n", sc->sc_unit, Info);
 
 	capi_disconnect_req(sc, cd);
     }
@@ -437,7 +437,7 @@ capi_connect_b3_active_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for b3_active_ind\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for b3_active_ind\n", sc->sc_unit);
 	return;
     }
 
@@ -452,7 +452,7 @@ capi_connect_b3_active_ind(capi_softc_t *sc, struct mbuf *m_in)
 
     if ((bch == sc->sc_nbch) ||
 	(cd = cd_by_cdid(sc->sc_bchan[bch].cdid)) == NULL) {
-	printf("capi%d: can't find channel for b3_active_resp NCCI %x\n",
+	kprintf("capi%d: can't find channel for b3_active_resp NCCI %x\n",
 	       sc->sc_unit, NCCI);
 	return;
     }
@@ -498,7 +498,7 @@ capi_connect_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if ((cd = reserve_cd()) == NULL) {
-	printf("capi%d: can't get cd for connect_ind\n", sc->sc_unit);
+	kprintf("capi%d: can't get cd for connect_ind\n", sc->sc_unit);
 	return;
     }
 
@@ -578,7 +578,7 @@ capi_connect_resp(capi_softc_t *sc, call_desc_t *cd)
 
     m = i4b_Dgetmbuf(8 + 21 + dlen);
     if (!m) {
-	printf("capi%d: can't get mbuf for connect_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for connect_resp\n", sc->sc_unit);
 	return;
     }
 
@@ -655,7 +655,7 @@ capi_connect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for connect_b3_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for connect_b3_resp\n", sc->sc_unit);
 	return;
     }
 
@@ -676,7 +676,7 @@ capi_connect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
     msg = capimsg_setu32(msg, NCCI);
 
     if (bch == sc->sc_nbch) {
-	printf("capi%d: can't get cd for connect_b3_resp NCCI %x\n",
+	kprintf("capi%d: can't get cd for connect_b3_resp NCCI %x\n",
 	       sc->sc_unit, NCCI);
 	msg = capimsg_setu16(msg, 8); /* Reject, destination OOO */
 
@@ -704,7 +704,7 @@ capi_data_b3_req(capi_softc_t *sc, int chan, struct mbuf *m_b3)
     u_int16_t msgid;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for data_b3_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for data_b3_req\n", sc->sc_unit);
 	return;
     }
 
@@ -744,7 +744,7 @@ capi_data_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
 	capi_start_tx(sc, handle);
 
     } else {
-	printf("capi%d: data_b3_conf NCCI %x handle %x info=%04x\n",
+	kprintf("capi%d: data_b3_conf NCCI %x handle %x info=%04x\n",
 	       sc->sc_unit, NCCI, handle, Info);
     }
 }
@@ -760,7 +760,7 @@ capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for data_b3_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for data_b3_resp\n", sc->sc_unit);
 	return;
     }
 
@@ -775,7 +775,7 @@ capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 	    break;
 
     if (bch == sc->sc_nbch) {
-	printf("capi%d: can't find channel for data_b3_ind NCCI %x\n",
+	kprintf("capi%d: can't find channel for data_b3_ind NCCI %x\n",
 	       sc->sc_unit, NCCI);
 
     } else {
@@ -828,7 +828,7 @@ capi_disconnect_req(capi_softc_t *sc, call_desc_t *cd)
     u_int32_t PLCI;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for disconnect_req\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for disconnect_req\n", sc->sc_unit);
 	return;
     }
 
@@ -864,14 +864,14 @@ capi_disconnect_conf(capi_softc_t *sc, struct mbuf *m_in)
 	    break;
 
     if (bch == sc->sc_nbch) {
-	printf("capi%d: can't find channel for disconnect_conf PLCI %x\n",
+	kprintf("capi%d: can't find channel for disconnect_conf PLCI %x\n",
 	       sc->sc_unit, PLCI);
 	return;
     }
 
     cd = cd_by_cdid(sc->sc_bchan[bch].cdid);
     if (!cd) {
-	printf("capi%d: can't find cd for disconnect_conf PLCI %x\n",
+	kprintf("capi%d: can't find cd for disconnect_conf PLCI %x\n",
 	       sc->sc_unit, PLCI);
     } else {
 	i4b_l4_disconnect_ind(cd);
@@ -891,7 +891,7 @@ capi_disconnect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
     u_int32_t NCCI;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for disconnect_b3_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for disconnect_b3_resp\n", sc->sc_unit);
 	return;
     }
 
@@ -923,7 +923,7 @@ capi_disconnect_ind(capi_softc_t *sc, struct mbuf *m_in)
     int bch;
 
     if (!m) {
-	printf("capi%d: can't get mbuf for disconnect_resp\n", sc->sc_unit);
+	kprintf("capi%d: can't get mbuf for disconnect_resp\n", sc->sc_unit);
 	return;
     }
 

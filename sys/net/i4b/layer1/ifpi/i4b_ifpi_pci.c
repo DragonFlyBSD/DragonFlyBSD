@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.14 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.15 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -385,7 +385,7 @@ avma1pp_write_reg(struct l1_softc *sc, int what, bus_size_t offs, u_int8_t data)
 		case ISIC_WHAT_ISAC:
 			reg_bank = (offs > MAX_LO_REG_OFFSET) ? ISAC_HI_REG_OFFSET:ISAC_LO_REG_OFFSET;
 #ifdef AVMA1PCI_DEBUG
-			printf("write_reg bank %d  off %ld.. ", (int)reg_bank, (long)offs);
+			kprintf("write_reg bank %d  off %ld.. ", (int)reg_bank, (long)offs);
 #endif
 			/* set the register bank */
 			bus_space_write_1(btag, bhandle, ADDR_REG_OFFSET, reg_bank);
@@ -425,7 +425,7 @@ avma1pp_read_reg(struct l1_softc *sc, int what, bus_size_t offs)
 		case ISIC_WHAT_ISAC:
 			reg_bank = (offs > MAX_LO_REG_OFFSET) ? ISAC_HI_REG_OFFSET:ISAC_LO_REG_OFFSET;
 #ifdef AVMA1PCI_DEBUG
-			printf("read_reg bank %d  off %ld.. ", (int)reg_bank, (long)offs);
+			kprintf("read_reg bank %d  off %ld.. ", (int)reg_bank, (long)offs);
 #endif
 			/* set the register bank */
 			bus_space_write_1(btag, bhandle, ADDR_REG_OFFSET, reg_bank);
@@ -503,13 +503,13 @@ avma1pp_attach_avma1pp(device_t dev)
 
 	/* probably not really required */
 	if(unit > IFPI_MAXUNIT) {
-		printf("avma1pp%d: Error, unit > IFPI_MAXUNIT!\n", unit);
+		kprintf("avma1pp%d: Error, unit > IFPI_MAXUNIT!\n", unit);
 		crit_exit();
 		return(ENXIO);
 	}
 
 	if ((vid != PCI_AVMA1_VID) && (did != PCI_AVMA1_DID)) {
-		printf("avma1pp%d: unknown device!?\n", unit);
+		kprintf("avma1pp%d: unknown device!?\n", unit);
 		goto fail;
 	}
 
@@ -521,7 +521,7 @@ avma1pp_attach_avma1pp(device_t dev)
 		0, ~0, 1, RF_ACTIVE);
 
 	if (sc->sc_resources.io_base[0] == NULL) {
-		printf("avma1pp%d: couldn't map IO port\n", unit);
+		kprintf("avma1pp%d: couldn't map IO port\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -536,7 +536,7 @@ avma1pp_attach_avma1pp(device_t dev)
 
 	if (sc->sc_resources.irq == NULL) {
 		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS+4, sc->sc_resources.io_base[0]);
-		printf("avma1pp%d: couldn't map interrupt\n", unit);
+		kprintf("avma1pp%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -547,7 +547,7 @@ avma1pp_attach_avma1pp(device_t dev)
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_resources.irq);
 		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS+4, sc->sc_resources.io_base[0]);
-		printf("avma1pp%d: couldn't set up irq\n", unit);
+		kprintf("avma1pp%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -586,40 +586,40 @@ avma1pp_attach_avma1pp(device_t dev)
 	v = 0;
 	v = ISAC_READ(I_STAR);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: I_STAR %x...", v);
+	kprintf("avma1pp_attach: I_STAR %x...", v);
 #endif
 	v = ISAC_READ(I_MODE);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: I_MODE %x...", v);
+	kprintf("avma1pp_attach: I_MODE %x...", v);
 #endif
 	v = ISAC_READ(I_ADF2);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: I_ADF2 %x...", v);
+	kprintf("avma1pp_attach: I_ADF2 %x...", v);
 #endif
 	v = ISAC_READ(I_ISTA);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: I_ISTA %x...", v);
+	kprintf("avma1pp_attach: I_ISTA %x...", v);
 #endif
 	if (v & ISAC_ISTA_EXI)
 	{
 		 v = ISAC_READ(I_EXIR);
 #ifdef AVMA1PCI_DEBUG
-		 printf("avma1pp_attach: I_EXIR %x...", v);
+		 kprintf("avma1pp_attach: I_EXIR %x...", v);
 #endif
 	}
 	v = ISAC_READ(I_CIRR);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: I_CIRR %x...", v);
+	kprintf("avma1pp_attach: I_CIRR %x...", v);
 #endif
 	ISAC_WRITE(I_MASK, 0xff);
 	/* the Linux driver does this to clear any pending HSCX interrupts */
 	v = hscx_read_reg_int(0, HSCX_STAT, sc);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: 0 HSCX_STAT %x...", v);
+	kprintf("avma1pp_attach: 0 HSCX_STAT %x...", v);
 #endif
 	v = hscx_read_reg_int(1, HSCX_STAT, sc);
 #ifdef AVMA1PCI_DEBUG
-	printf("avma1pp_attach: 1 HSCX_STAT %x\n", v);
+	kprintf("avma1pp_attach: 1 HSCX_STAT %x\n", v);
 #endif
 
 	bus_space_write_1(btag, bhandle, STAT0_OFFSET, ASL_RESET_ALL|ASL_TIMERDISABLE);
@@ -630,15 +630,15 @@ avma1pp_attach_avma1pp(device_t dev)
 	bus_space_write_1(btag, bhandle, STAT1_OFFSET, ASL1_ENABLE_IOM|sc->sc_irq);
 	DELAY(SEC_DELAY/100); /* 10 ms */
 	v = bus_space_read_1(btag, bhandle, STAT1_OFFSET);
-	printf("after reset: S1 %#x\n", v);
+	kprintf("after reset: S1 %#x\n", v);
 
 	v = bus_space_read_4(btag, bhandle, 0);
-	printf("avma1pp_attach_avma1pp: v %#x\n", v);
+	kprintf("avma1pp_attach_avma1pp: v %#x\n", v);
 #endif
 
    /* from here to the end would normally be done in isic_pciattach */
 
-	 printf("ifpi%d: ISAC %s (IOM-%c)\n", unit,
+	 kprintf("ifpi%d: ISAC %s (IOM-%c)\n", unit,
   		"2085 Version A1/A2 or 2086/2186 Version 1.1",
 		 sc->sc_bustyp == BUS_TYPE_IOM1 ? '1' : '2');
 
@@ -1340,7 +1340,7 @@ avma1pp_hscx_fifo(l1_bchan_state_t *chan, struct l1_softc *sc)
 		nextlen = min(chan->out_mbuf_cur_len, sc->sc_bfifolen - len);
 
 #ifdef NOTDEF
-		printf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
+		kprintf("i:mh=%p, mc=%p, mcp=%p, mcl=%d l=%d nl=%d # ",
 			chan->out_mbuf_head,
 			chan->out_mbuf_cur,			
 			chan->out_mbuf_cur_ptr,

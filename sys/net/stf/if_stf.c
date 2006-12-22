@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.17 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.18 2006/12/22 23:44:57 swildner Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -173,7 +173,7 @@ stfmodevent(module_t mod, int type, void *data)
 		p = encap_attach_func(AF_INET, IPPROTO_IPV6, stf_encapcheck,
 		    (void *)&in_stf_protosw, sc);
 		if (p == NULL) {
-			printf("%s: attach failed\n", if_name(&sc->sc_if));
+			kprintf("%s: attach failed\n", if_name(&sc->sc_if));
 			return (ENOMEM);
 		}
 		sc->encap_cookie = p;

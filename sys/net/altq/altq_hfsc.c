@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.7 2006/10/24 17:16:13 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.8 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -350,7 +350,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 #ifndef ALTQ_RED
 	if (flags & HFCF_RED) {
 #ifdef ALTQ_DEBUG
-		printf("hfsc_class_create: RED not configured for HFSC!\n");
+		kprintf("hfsc_class_create: RED not configured for HFSC!\n");
 #endif
 		return (NULL);
 	}
@@ -708,7 +708,7 @@ hfsc_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 				if (cl == NULL) {
 #ifdef ALTQ_DEBUG
 					if (fits > 0)
-						printf("%d fit but none found\n",fits);
+						kprintf("%d fit but none found\n",fits);
 #endif
 					m = NULL;
 					goto done;

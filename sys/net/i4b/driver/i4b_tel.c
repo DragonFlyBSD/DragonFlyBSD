@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.14 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.15 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -187,7 +187,7 @@ i4btelattach(void *dummy)
 {
 	int i, j;
 
-	printf("i4btel: %d ISDN telephony interface device(s) attached\n", NI4BTEL);
+	kprintf("i4btel: %d ISDN telephony interface device(s) attached\n", NI4BTEL);
 	
 	for(i=0; i < NI4BTEL; i++)
 	{
@@ -656,7 +656,7 @@ tel_tone(tel_sc_t *sc)
 	int i;
 
 	if((m = i4b_Bgetmbuf(NTONESAMP)) == NULL) {
-		printf("no mbuf in tel_tone\n");
+		kprintf("no mbuf in tel_tone\n");
 		return;
 	}
 	p = m->m_data;

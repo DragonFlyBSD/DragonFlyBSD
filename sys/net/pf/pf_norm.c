@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.6 2006/09/03 17:31:55 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.7 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -137,7 +137,7 @@ int			 pf_normalize_tcpopt(struct pf_rule *, struct mbuf *,
 			    struct tcphdr *, int);
 
 #define	DPFPRINTF(x)	if (pf_status.debug >= PF_DEBUG_MISC) \
-			    { printf("%s: ", __func__); printf x ;}
+			    { kprintf("%s: ", __func__); kprintf x ;}
 
 /* Globals */
 vm_zone_t		 pf_frent_pl, pf_frag_pl, pf_cache_pl, pf_cent_pl;

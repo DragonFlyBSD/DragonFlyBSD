@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
 /*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.6 2006/12/22 23:44:57 swildner Exp $ */
 
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -80,7 +80,7 @@
 #define PFLOGMTU	(32768 + MHLEN + MLEN)
 
 #ifdef PFLOGDEBUG
-#define DPRINTF(x)    do { if (pflogdebug) printf x ; } while (0)
+#define DPRINTF(x)    do { if (pflogdebug) kprintf x ; } while (0)
 #else
 #define DPRINTF(x)
 #endif

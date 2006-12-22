@@ -28,7 +28,7 @@
  *	==================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.6.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.7 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.8 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:28 2001]
  *
@@ -246,7 +246,7 @@ eqs1p_pci_attach(device_t dev)
 	
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ELSA MicroLink ISDN/PCI!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for ELSA MicroLink ISDN/PCI!\n",
 				unit, unit);
 		return(ENXIO);	
 	}	
@@ -264,7 +264,7 @@ eqs1p_pci_attach(device_t dev)
 						&sc->sc_resources.io_rid[0],
 						0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Couldn't get first iobase for ELSA MicroLink ISDN/PCI!\n", unit);
+		kprintf("isic%d: Couldn't get first iobase for ELSA MicroLink ISDN/PCI!\n", unit);
 		return(ENXIO);                                       
 	}
 
@@ -275,7 +275,7 @@ eqs1p_pci_attach(device_t dev)
 						&sc->sc_resources.io_rid[1],
 						0UL, ~0UL, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Couldn't get second iobase for ELSA MicroLink ISDN/PCI!\n", unit);
+		kprintf("isic%d: Couldn't get second iobase for ELSA MicroLink ISDN/PCI!\n", unit);
 		isic_detach_common(dev);
 		return(ENXIO);                                       
 	}
@@ -287,7 +287,7 @@ eqs1p_pci_attach(device_t dev)
 					   &sc->sc_resources.irq_rid,
 					   0UL, ~0UL, 1, RF_ACTIVE | RF_SHAREABLE)))
 	{
-		printf("isic%d: Could not get irq for ELSA MicroLink ISDN/PCI!\n",unit);
+		kprintf("isic%d: Could not get irq for ELSA MicroLink ISDN/PCI!\n",unit);
 		isic_detach_common(dev);
 		return(ENXIO);                                       
 	}
@@ -326,7 +326,7 @@ eqs1p_pci_attach(device_t dev)
 				(void(*)(void*))isicintr,
 				sc, &ih, NULL))
 	{
-		printf("isic%d: Couldn't set up irq for ELSA MicroLink ISDN/PCI!\n", unit);
+		kprintf("isic%d: Couldn't set up irq for ELSA MicroLink ISDN/PCI!\n", unit);
 		isic_detach_common(dev);
 		return(ENXIO);
 	}

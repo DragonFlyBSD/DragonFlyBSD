@@ -28,7 +28,7 @@
  *	-------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_usr_sti.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.7 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.8 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:28:12 2001]
  *
@@ -73,7 +73,7 @@ static u_char intr_no[] = { 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 3, 4, 5, 0, 6, 7 };
 #ifdef USRTA_DEBUG_PORTACCESS
 int debugcntr;
 #define USRTA_DEBUG(fmt) \
-		if (++debugcntr < 1000) printf fmt;
+		if (++debugcntr < 1000) kprintf fmt;
 #else
 #define USRTA_DEBUG(fmt)
 #endif
@@ -100,7 +100,7 @@ USRTA_DEBUG(("usrtai_read_fifo: what %d size %d\n", what, size))
 			base = (unsigned int)HSCX_B_BASE;
 			break;
 		default:
-			printf("usrtai_read_fifo: invalid what %d\n", what);
+			kprintf("usrtai_read_fifo: invalid what %d\n", what);
 			return;
 	}
 
@@ -132,7 +132,7 @@ USRTA_DEBUG(("usrtai_write_fifo: what %d size %d\n", what, size))
 			base = (unsigned int)HSCX_B_BASE;
 			break;
 		default:
-			printf("usrtai_write_fifo: invalid what %d\n", what);
+			kprintf("usrtai_write_fifo: invalid what %d\n", what);
 			return;
 	}
 
@@ -164,7 +164,7 @@ USRTA_DEBUG(("usrtai_write_reg: what %d ADDR(%d) %d data %#x\n", what, offs, ADD
 			base = (unsigned int)HSCX_B_BASE;
 			break;
 		default:
-			printf("usrtai_write_reg invalid what %d\n", what);
+			kprintf("usrtai_write_reg invalid what %d\n", what);
 			return;
 	}
 
@@ -193,7 +193,7 @@ USRTA_DEBUG(("usrtai_read_reg: what %d ADDR(%d) %d..", what, offs, ADDR(offs)))
 			base = (unsigned int)HSCX_B_BASE;
 			break;
 		default:
-			printf("usrtai_read_reg: invalid what %d\n", what);
+			kprintf("usrtai_read_reg: invalid what %d\n", what);
 			return(0);
 	}
 
@@ -228,7 +228,7 @@ usrtai_alloc_port(device_t dev)
 				   &sc->sc_resources.io_rid[num],
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Error, failed to reserve io #%dport %#x!\n", unit, num, base);
+		kprintf("isic%d: Error, failed to reserve io #%dport %#x!\n", unit, num, base);
 		isic_detach_common(dev);
 		return(ENXIO);
 	}
@@ -248,7 +248,7 @@ usrtai_alloc_port(device_t dev)
 					   &sc->sc_resources.io_rid[num],
 					   0ul, ~0ul, 1, RF_ACTIVE)))
 		{
-			printf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
+			kprintf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
 			isic_detach_common(dev);
 			return(ENXIO);
 		}
@@ -269,7 +269,7 @@ usrtai_alloc_port(device_t dev)
 					   &sc->sc_resources.io_rid[num],
 					   0ul, ~0ul, 1, RF_ACTIVE)))
 		{
-			printf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
+			kprintf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
 			isic_detach_common(dev);
 			return(ENXIO);
 		}
@@ -290,7 +290,7 @@ usrtai_alloc_port(device_t dev)
 					   &sc->sc_resources.io_rid[num],
 					   0ul, ~0ul, 1, RF_ACTIVE)))
 		{
-			printf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
+			kprintf("isic%d: Error, failed to reserve io #%d port %#x!\n", unit, num, base+i*1024);
 			isic_detach_common(dev);
 			return(ENXIO);
 		}
@@ -314,7 +314,7 @@ isic_probe_usrtai(device_t dev)
 
 	if(unit >= ISIC_MAXUNIT)
 	{
-		printf("isic%d: Error, unit %d >= ISIC_MAXUNIT for USR Sportster TA!\n",
+		kprintf("isic%d: Error, unit %d >= ISIC_MAXUNIT for USR Sportster TA!\n",
 				unit, unit);
 		return(ENXIO);	
 	}
@@ -329,7 +329,7 @@ isic_probe_usrtai(device_t dev)
 	                                   &sc->sc_resources.io_rid[0],
 	                                   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get iobase for USR Sportster TA!\n",
+		kprintf("isic%d: Could not get iobase for USR Sportster TA!\n",
 				unit);
 		return(ENXIO);
 	}
@@ -367,7 +367,7 @@ isic_probe_usrtai(device_t dev)
 			break;
 			
 		default:
-			printf("isic%d: Error, invalid iobase 0x%x specified for USR Sportster TA!\n",
+			kprintf("isic%d: Error, invalid iobase 0x%x specified for USR Sportster TA!\n",
 				unit, sc->sc_port);
 			return(0);
 			break;
@@ -377,7 +377,7 @@ isic_probe_usrtai(device_t dev)
 
 	if(usrtai_alloc_port(dev))
 	{
-		printf("isic%d: Could not get the ports for USR Sportster TA!\n", unit);
+		kprintf("isic%d: Could not get the ports for USR Sportster TA!\n", unit);
 		isic_detach_common(dev);
 		return(ENXIO);
 	}
@@ -389,7 +389,7 @@ isic_probe_usrtai(device_t dev)
 				   &sc->sc_resources.irq_rid,
 				   0ul, ~0ul, 1, RF_ACTIVE)))
 	{
-		printf("isic%d: Could not get an irq for USR Sportster TA!\n",unit);
+		kprintf("isic%d: Could not get an irq for USR Sportster TA!\n",unit);
 		isic_detach_common(dev);
 		return ENXIO;
 	}
@@ -405,7 +405,7 @@ isic_probe_usrtai(device_t dev)
 
 	if(intr_no[sc->sc_irq] == 0)
 	{
-		printf("isic%d: Error, invalid IRQ [%d] specified for USR Sportster TA!\n",
+		kprintf("isic%d: Error, invalid IRQ [%d] specified for USR Sportster TA!\n",
 			unit, sc->sc_irq);
 		return(1);
 	}
@@ -444,11 +444,11 @@ isic_probe_usrtai(device_t dev)
 	if( ((HSCX_READ(0, H_VSTR) & 0xf) != 0x5) ||
             ((HSCX_READ(1, H_VSTR) & 0xf) != 0x5) )
 	{
-		printf("isic%d: HSCX VSTR test failed for USR Sportster TA\n",
+		kprintf("isic%d: HSCX VSTR test failed for USR Sportster TA\n",
 			unit);
-		printf("isic%d: HSC0: VSTR: %#x\n",
+		kprintf("isic%d: HSC0: VSTR: %#x\n",
 			unit, HSCX_READ(0, H_VSTR));
-		printf("isic%d: HSC1: VSTR: %#x\n",
+		kprintf("isic%d: HSC1: VSTR: %#x\n",
 			unit, HSCX_READ(1, H_VSTR));
 		return (1);
 	}                   
@@ -480,7 +480,7 @@ isic_attach_usrtai(device_t dev)
 
 	if((irq = intr_no[sc->sc_irq]) == 0)
 	{
-		printf("isic%d: Attach error, invalid IRQ [%d] specified for USR Sportster TA!\n",
+		kprintf("isic%d: Attach error, invalid IRQ [%d] specified for USR Sportster TA!\n",
 			unit, sc->sc_irq);
 		return(1);
 	}

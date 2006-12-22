@@ -31,7 +31,7 @@
  *	$Ust: src/i4b/layer1-nb/ifpnp/i4b_ifpnp_isac.c,v 1.4 2000/04/18 08:03:05 ust Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.4.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.5 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Mon May 29 15:24:49 2000]
  *
@@ -226,7 +226,7 @@ ifpnp_isac_irq(struct l1_softc *sc, int ista)
 			sc->sc_ol = sc->sc_obuf->m_len;
 			sc->sc_obuf2 = NULL;
 #ifdef NOTDEF			
-			printf("ob2=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob2=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,
@@ -236,7 +236,7 @@ ifpnp_isac_irq(struct l1_softc *sc, int ista)
 		else
 		{
 #ifdef NOTDEF
-			printf("ob=%x, op=%x, ol=%d, f=%d #",
+			kprintf("ob=%x, op=%x, ol=%d, f=%d #",
 				sc->sc_obuf,
 				sc->sc_op,
 				sc->sc_ol,

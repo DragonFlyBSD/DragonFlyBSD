@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.16 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.17 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1537,14 +1537,14 @@ itjc_attach(device_t dev)
 	/* Probably not really required. */
 	if (unit > ITJC_MAXUNIT)
 	{
-		printf("itjc%d: Error, unit > ITJC_MAXUNIT!\n", unit);
+		kprintf("itjc%d: Error, unit > ITJC_MAXUNIT!\n", unit);
 		crit_exit();
 		return ENXIO;
 	}
 
 	if (!(vid == PCI_TJNET_VID && did == PCI_TJ300_DID))
 	{
-		printf("itjc%d: unknown device (%04X,%04X)!\n", unit, vid, did);
+		kprintf("itjc%d: unknown device (%04X,%04X)!\n", unit, vid, did);
 		goto fail;
 	}
 
@@ -1556,7 +1556,7 @@ itjc_attach(device_t dev)
 
 	if (sc->sc_resources.io_base[0] == NULL)
 	{
-		printf("itjc%d: couldn't map IO port\n", unit);
+		kprintf("itjc%d: couldn't map IO port\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1573,7 +1573,7 @@ itjc_attach(device_t dev)
 
 	if (sc->sc_resources.irq == NULL)
 	{
-		printf("itjc%d: couldn't map interrupt\n", unit);
+		kprintf("itjc%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1585,7 +1585,7 @@ itjc_attach(device_t dev)
 
 	if (error)
 	{
-		printf("itjc%d: couldn't set up irq handler\n", unit);
+		kprintf("itjc%d: couldn't set up irq handler\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1624,7 +1624,7 @@ itjc_attach(device_t dev)
 
 	if (error)
 	{
-		printf("itjc%d: couldn't create bus DMA tag.\n", unit);
+		kprintf("itjc%d: couldn't create bus DMA tag.\n", unit);
 		goto fail;
 	}
 
@@ -1698,7 +1698,7 @@ itjc_attach(device_t dev)
 	sc->sc_ipac = 0;
 	sc->sc_bfifolen = 2 * ITJC_RING_SLOT_WORDS;
 
-	printf("itjc%d: ISAC 2186 Version 1.1 (IOM-2)\n", unit);
+	kprintf("itjc%d: ISAC 2186 Version 1.1 (IOM-2)\n", unit);
 
 	/* init the ISAC */
 	itjc_isac_init(sc);

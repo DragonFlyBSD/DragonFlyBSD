@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.16 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.17 2006/12/22 23:44:55 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -113,7 +113,7 @@ i4btrcattach(void *dummy)
 {
 	int i;
 
-	printf("i4btrc: %d ISDN trace device(s) attached\n", NI4BTRC);
+	kprintf("i4btrc: %d ISDN trace device(s) attached\n", NI4BTRC);
 	
 	for(i=0; i < NI4BTRC; i++)
 	{
@@ -170,7 +170,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 	
 	if((unit = hdr->unit) > NI4BTRC)
 	{
-		printf("i4b_trace: get_trace_data_from_l1 - unit > NI4BTRC!\n"); 
+		kprintf("i4b_trace: get_trace_data_from_l1 - unit > NI4BTRC!\n"); 
 		return(0);
 	}
 
@@ -178,7 +178,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 	
 	if(!(m = i4b_Bgetmbuf(totlen)))
 	{
-		printf("i4b_trace: get_trace_data_from_l1 - i4b_getmbuf() failed!\n");
+		kprintf("i4b_trace: get_trace_data_from_l1 - i4b_getmbuf() failed!\n");
 		return(0);
 	}
 

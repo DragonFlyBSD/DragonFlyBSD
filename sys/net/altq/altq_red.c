@@ -1,5 +1,5 @@
 /*	$KAME: altq_red.c,v 1.19 2004/04/17 10:54:49 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.3 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.4 2006/12/22 23:44:55 swildner Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -214,7 +214,7 @@ red_alloc(int weight, int inv_pmax, int th_min, int th_max, int flags, int pktti
 	rp->red_wshift = i;
 	w = 1 << rp->red_wshift;
 	if (w != rp->red_weight) {
-		printf("invalid weight value %d for red! use %d\n",
+		kprintf("invalid weight value %d for red! use %d\n",
 		       rp->red_weight, w);
 		rp->red_weight = w;
 	}

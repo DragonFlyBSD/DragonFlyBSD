@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.12 2006/12/22 23:44:57 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -501,7 +501,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	if (m == NULL)
 	  {
-	    printf("ng_eiface: mbuf is null.\n");
+	    kprintf("ng_eiface: mbuf is null.\n");
 	    return (EINVAL);
 	  }
 

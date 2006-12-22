@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.8 2006/09/05 00:55:47 dillon Exp $	*/
+/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.9 2006/12/22 23:44:57 swildner Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -282,7 +282,7 @@ z_compress(void *arg, struct mbuf **mret, struct mbuf *mp, int orig_len,
     for (;;) {
 	r = deflate(&state->strm, flush);
 	if (r != Z_OK) {
-	    printf("z_compress: deflate returned %d (%s)\n",
+	    kprintf("z_compress: deflate returned %d (%s)\n",
 		   r, (state->strm.msg? state->strm.msg: ""));
 	    break;
 	}
@@ -479,7 +479,7 @@ z_decompress(void *arg, struct mbuf *mi, struct mbuf **mop)
     seq = (hdr[PPP_HDRLEN] << 8) + hdr[PPP_HDRLEN+1];
     if (seq != state->seqno) {
 	if (state->debug)
-	    printf("z_decompress%d: bad seq # %d, expected %d\n",
+	    kprintf("z_decompress%d: bad seq # %d, expected %d\n",
 		   state->unit, seq, state->seqno);
 	return DECOMP_ERROR;
     }
@@ -532,7 +532,7 @@ z_decompress(void *arg, struct mbuf *mi, struct mbuf **mop)
 #if !DEFLATE_DEBUG
 	    if (state->debug)
 #endif
-		printf("z_decompress%d: inflate returned %d (%s)\n",
+		kprintf("z_decompress%d: inflate returned %d (%s)\n",
 		       state->unit, r, (state->strm.msg? state->strm.msg: ""));
 	    m_freem(mo_head);
 	    return DECOMP_FATALERROR;
@@ -580,7 +580,7 @@ z_decompress(void *arg, struct mbuf *mi, struct mbuf **mop)
     olen += (mo->m_len = ospace - state->strm.avail_out);
 #if DEFLATE_DEBUG
     if (state->debug && olen > state->mru + PPP_HDRLEN)
-	printf("ppp_deflate%d: exceeded mru (%d > %d)\n",
+	kprintf("ppp_deflate%d: exceeded mru (%d > %d)\n",
 	       state->unit, olen, state->mru + PPP_HDRLEN);
 #endif
 
@@ -633,7 +633,7 @@ z_incomp(void *arg, struct mbuf *mi)
 #if !DEFLATE_DEBUG
 	    if (state->debug)
 #endif
-		printf("z_incomp%d: inflateIncomp returned %d (%s)\n",
+		kprintf("z_incomp%d: inflateIncomp returned %d (%s)\n",
 		       state->unit, r, (state->strm.msg? state->strm.msg: ""));
 	    return;
 	}
