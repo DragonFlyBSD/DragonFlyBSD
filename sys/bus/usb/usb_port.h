@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.15 2006/04/23 03:07:58 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.16 2006/12/22 23:12:17 swildner Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -109,7 +109,7 @@ typedef struct malloc_type *usb_malloc_type;
 
 #define Ether_ifattach ether_ifattach
 
-#define logprintf printf
+#define logprintf kprintf
 
 #define	USB_DNAME(dname)	dname
 #define USB_DECLARE_DRIVER(dname)  \
@@ -145,7 +145,7 @@ void __CONCAT(dname,_attach)(struct device *parent, struct device *self, void *a
 #define USB_ATTACH_ERROR_RETURN	return
 #define USB_ATTACH_SUCCESS_RETURN	return
 
-#define USB_ATTACH_SETUP printf("\n")
+#define USB_ATTACH_SETUP kprintf("\n")
 
 #define USB_DETACH(dname) \
 int __CONCAT(dname,_detach)(struct device *self, int flags)
@@ -230,7 +230,7 @@ typedef int usb_malloc_type;
 #define powerhook_disestablish(hdl)
 #define PWR_RESUME 0
 
-#define logprintf printf
+#define logprintf kprintf
 
 #define swap_bytes_change_sign16_le swap_bytes_change_sign16
 #define change_sign16_swap_bytes_le change_sign16_swap_bytes
@@ -305,7 +305,7 @@ __CONCAT(dname,_attach)(parent, self, aux) \
 #define USB_ATTACH_ERROR_RETURN	return
 #define USB_ATTACH_SUCCESS_RETURN	return
 
-#define USB_ATTACH_SETUP printf("\n")
+#define USB_ATTACH_SETUP kprintf("\n")
 
 #define USB_DETACH(dname) \
 int \
@@ -495,7 +495,7 @@ __CONCAT(dname,_detach)(device_t self)
 /*
 #define logprintf(args...)	log(LOG_DEBUG, args)
 */
-#define logprintf		printf
+#define logprintf		kprintf
 
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_hw_usb);
@@ -679,7 +679,7 @@ __CONCAT(dname,_detach)(device_t self)
 /*
 #define logprintf(args...)	log(LOG_DEBUG, args)
 */
-#define logprintf		printf
+#define logprintf		kprintf
 
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_hw_usb);

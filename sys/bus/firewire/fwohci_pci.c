@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.22 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.23 2006/12/22 23:12:16 swildner Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -343,7 +343,7 @@ fwohci_pci_attach(device_t self)
 #endif
 				&sc->fc.dmat);
 	if (err != 0) {
-		printf("fwohci_pci_attach: Could not allocate DMA tag "
+		kprintf("fwohci_pci_attach: Could not allocate DMA tag "
 			"- error %d\n", err);
 			return (ENOMEM);
 	}

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.8 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.9 2006/12/22 23:12:16 swildner Exp $
  *
  */
 #include <sys/param.h>
@@ -214,7 +214,7 @@ pcf_print_child(device_t bus, device_t dev)
 	int retval = 0;
 
 	retval += bus_print_child_header(bus, dev);
-	retval += printf(" on %s addr 0x%x\n", device_get_nameunit(bus),
+	retval += kprintf(" on %s addr 0x%x\n", device_get_nameunit(bus),
 			 (int)pcf->pcf_addr);
 
 	return (retval);
@@ -550,7 +550,7 @@ pcf_write(device_t pcfdev, char *buf, int len, int *sent, int timeout /* us */)
 	int bytes, error = 0;
 
 #ifdef PCFDEBUG
-	printf("pcf%d: >> writing %d bytes\n", device_get_unit(pcfdev), len);
+	kprintf("pcf%d: >> writing %d bytes\n", device_get_unit(pcfdev), len);
 #endif
 
 	bytes = 0;
@@ -576,7 +576,7 @@ error:
 	*sent = bytes;
 
 #ifdef PCFDEBUG
-	printf("pcf%d: >> %d bytes written (%d)\n",
+	kprintf("pcf%d: >> %d bytes written (%d)\n",
 		device_get_unit(pcfdev), bytes, error);
 #endif
 
@@ -591,7 +591,7 @@ pcf_read(device_t pcfdev, char *buf, int len, int *read, int last,
 	int bytes, error = 0;
 
 #ifdef PCFDEBUG
-	printf("pcf%d: << reading %d bytes\n", device_get_unit(pcfdev), len);
+	kprintf("pcf%d: << reading %d bytes\n", device_get_unit(pcfdev), len);
 #endif
 
 	/* trig the bus to get the first data byte in S0 */
@@ -634,7 +634,7 @@ error:
 	*read = bytes;
 
 #ifdef PCFDEBUG
-	printf("pcf%d: << %d bytes read (%d)\n",
+	kprintf("pcf%d: << %d bytes read (%d)\n",
 		device_get_unit(pcfdev), bytes, error);
 #endif
 

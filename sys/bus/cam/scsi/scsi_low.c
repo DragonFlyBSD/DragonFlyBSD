@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.17 2006/12/20 18:14:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -152,7 +152,7 @@ static struct scsi_low_softc_tab sl_tab = LIST_HEAD_INITIALIZER(sl_tab);
 #ifdef	SCSI_LOW_INFO_DETAIL
 #define	SCSI_LOW_INFO(slp, ti, s) scsi_low_info((slp), (ti), (s))
 #else	/* !SCSI_LOW_INFO_DETAIL */
-#define	SCSI_LOW_INFO(slp, ti, s) printf("%s: %s\n", (slp)->sl_xname, (s))
+#define	SCSI_LOW_INFO(slp, ti, s) kprintf("%s: %s\n", (slp)->sl_xname, (s))
 #endif	/* !SCSI_LOW_INFO_DETAIL */
 
 #ifdef	SCSI_LOW_STATICS
@@ -440,7 +440,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 #ifdef	SCSI_LOW_DEBUG
 	if (SCSI_LOW_DEBUG_GO(SCSI_LOW_DEBUG_ACTION, target) != 0)
 	{
-		printf("%s: cam_action: func code 0x%x target: %d, lun: %d\n",
+		kprintf("%s: cam_action: func code 0x%x target: %d, lun: %d\n",
 			slp->sl_xname, ccb->ccb_h.func_code, target, lun);
 	}
 #endif	/* SCSI_LOW_DEBUG */
@@ -450,7 +450,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 #ifdef	SCSI_LOW_DIAGNOSTIC
 		if (target == CAM_TARGET_WILDCARD || lun == CAM_LUN_WILDCARD)
 		{
-			printf("%s: invalid target/lun\n", slp->sl_xname);
+			kprintf("%s: invalid target/lun\n", slp->sl_xname);
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			xpt_done(ccb);
 			return;
@@ -503,7 +503,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 #ifdef	SCSI_LOW_DIAGNOSTIC
 		if (target == CAM_TARGET_WILDCARD || lun == CAM_LUN_WILDCARD)
 		{
-			printf("%s: invalid target/lun\n", slp->sl_xname);
+			kprintf("%s: invalid target/lun\n", slp->sl_xname);
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			xpt_done(ccb);
 			return;
@@ -529,7 +529,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 #ifdef	SCSI_LOW_DIAGNOSTIC
 		if (target == CAM_TARGET_WILDCARD)
 		{
-			printf("%s: invalid target\n", slp->sl_xname);
+			kprintf("%s: invalid target\n", slp->sl_xname);
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			xpt_done(ccb);
 			return;
@@ -605,7 +605,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 #ifdef	SCSI_LOW_DIAGNOSTIC
 		if (target == CAM_TARGET_WILDCARD)
 		{
-			printf("%s: invalid target\n", slp->sl_xname);
+			kprintf("%s: invalid target\n", slp->sl_xname);
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			xpt_done(ccb);
 			return;
@@ -627,7 +627,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 			if (li->li_flags_valid != SCSI_LOW_LUN_FLAGS_ALL_VALID)
 			{
 				ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
-				printf("%s: invalid GET_TRANS_CURRENT_SETTINGS call\n",
+				kprintf("%s: invalid GET_TRANS_CURRENT_SETTINGS call\n",
 					slp->sl_xname);
 				goto settings_out;
 			}
@@ -668,7 +668,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 			if ((li->li_flags_valid & SCSI_LOW_LUN_FLAGS_DISK_VALID) == 0)
 			{
 				ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
-				printf("%s: invalid GET_TRANS_USER_SETTINGS call\n",
+				kprintf("%s: invalid GET_TRANS_USER_SETTINGS call\n",
 					slp->sl_xname);
 				goto settings_out;
 			}
@@ -689,7 +689,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 			if (li->li_flags_valid != SCSI_LOW_LUN_FLAGS_ALL_VALID)
 			{
 				ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
-				printf("%s: invalid GET_TRANS_CURRENT_SETTINGS call\n",
+				kprintf("%s: invalid GET_TRANS_CURRENT_SETTINGS call\n",
 					slp->sl_xname);
 				goto settings_out;
 			}
@@ -749,7 +749,7 @@ settings_out:
 #ifdef	SCSI_LOW_DIAGNOSTIC
 		if (target == CAM_TARGET_WILDCARD)
 		{
-			printf("%s: invalid target\n", slp->sl_xname);
+			kprintf("%s: invalid target\n", slp->sl_xname);
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			xpt_done(ccb);
 			return;
@@ -816,7 +816,7 @@ settings_out:
 	}
 
 	default:
-	        printf("scsi_low: non support func_code = %d ",
+	        kprintf("scsi_low: non support func_code = %d ",
 			ccb->ccb_h.func_code);
 		ccb->ccb_h.status = CAM_REQ_INVALID;
 		xpt_done(ccb);
@@ -949,7 +949,7 @@ scsi_low_done_cam(struct scsi_low_softc *slp, struct slccb *cb)
 		    (scsi_low_cmd_flags[cb->ccb_scp.scp_cmd[0]] &
 		     SCSI_LOW_CMD_ABORT_WARNING) != 0)
 		{
-			printf("%s: WARNING: scsi_low IO abort\n",
+			kprintf("%s: WARNING: scsi_low IO abort\n",
 				slp->sl_xname);
 			scsi_low_print(slp, NULL);
 		}
@@ -1084,17 +1084,17 @@ scsi_low_msg_log_show(struct scsi_low_msg_log *slmlp, char *s, int len)
 {
 	int ptr, ind;
 
-	printf("%s: (%d) ", s, slmlp->slml_ptr);
+	kprintf("%s: (%d) ", s, slmlp->slml_ptr);
 	for (ptr = 0; ptr < slmlp->slml_ptr; ptr ++)
 	{
 		for (ind = 0; ind < len && ind < sizeof(slmlp->slml_msg[0]);
 		     ind ++)
 		{
-			printf("[%x]", (u_int) slmlp->slml_msg[ptr].msg[ind]);
+			kprintf("[%x]", (u_int) slmlp->slml_msg[ptr].msg[ind]);
 		}
-		printf(">");
+		kprintf(">");
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif	/* SCSI_LOW_DIAGNOSTIC */
 
@@ -1419,7 +1419,7 @@ step1:
 
 bus_reset:
 	cb->ccb_error |= TIMEOUTIO;
-	printf("%s: slccb (0x%lx) timeout!\n", slp->sl_xname, (u_long) cb);
+	kprintf("%s: slccb (0x%lx) timeout!\n", slp->sl_xname, (u_long) cb);
 	scsi_low_info(slp, NULL, "scsi bus hangup. try to recover.");
 	scsi_low_init(slp, SCSI_LOW_RESTART_HARD);
 	scsi_low_start(slp);
@@ -1492,8 +1492,8 @@ scsi_low_attach(struct scsi_low_softc *slp, int openings, int ntargs, int nluns,
 
 	if (ntargs > SCSI_LOW_NTARGETS)
 	{
-		printf("scsi_low: %d targets are too large\n", ntargs);
-		printf("change kernel options SCSI_LOW_NTARGETS");
+		kprintf("scsi_low: %d targets are too large\n", ntargs);
+		kprintf("change kernel options SCSI_LOW_NTARGETS");
 		return EINVAL;
 	}
 
@@ -1535,7 +1535,7 @@ scsi_low_attach(struct scsi_low_softc *slp, int openings, int ntargs, int nluns,
 	if (rv != 0)
 	{
 		crit_exit();
-		printf("%s: scsi_low_attach: osdep attach failed\n",
+		kprintf("%s: scsi_low_attach: osdep attach failed\n",
 			slp->sl_xname);
 		return EINVAL;
 	}
@@ -1545,7 +1545,7 @@ scsi_low_attach(struct scsi_low_softc *slp, int openings, int ntargs, int nluns,
 	if (scsi_low_init(slp, SCSI_LOW_RESTART_HARD) != 0)
 	{
 		crit_exit();
-		printf("%s: scsi_low_attach: initialization failed\n",
+		kprintf("%s: scsi_low_attach: initialization failed\n",
 			slp->sl_xname);
 		return EINVAL;
 	}
@@ -1932,7 +1932,7 @@ scsi_low_arbit_fail(struct scsi_low_softc *slp, struct slccb *cb)
 	if (slp->sl_disc == 0)
 	{
 #ifdef	SCSI_LOW_DIAGNOSTIC
-		printf("%s: try selection again\n", slp->sl_xname);
+		kprintf("%s: try selection again\n", slp->sl_xname);
 #endif	/* SCSI_LOW_DIAGNOSTIC */
 		slp->sl_retry_sel = 1;
 	}
@@ -2038,7 +2038,7 @@ resume:
 #ifdef	SCSI_LOW_DEBUG
 				if (scsi_low_debug & SCSI_LOW_DEBUG_SENSE)
 				{
-					printf("SENSE: [%x][%x][%x][%x][%x]\n",
+					kprintf("SENSE: [%x][%x][%x][%x][%x]\n",
 					(u_int) cb->ccb_sense.error_code,
 					(u_int) cb->ccb_sense.segment,
 					(u_int) cb->ccb_sense.flags,
@@ -2211,7 +2211,7 @@ scsi_low_done(struct scsi_low_softc *slp, struct slccb *cb)
 #ifdef	SCSI_LOW_DEBUG
 	if (SCSI_LOW_DEBUG_GO(SCSI_LOW_DEBUG_DONE, cb->ti->ti_id) != 0)
 	{
-		printf(">> SCSI_LOW_DONE_COMPLETE ===============\n");
+		kprintf(">> SCSI_LOW_DONE_COMPLETE ===============\n");
 		scsi_low_print(slp, NULL);
 	}
 #endif	/* SCSI_LOW_DEBUG */
@@ -2226,7 +2226,7 @@ retry:
 #ifdef	SCSI_LOW_DEBUG
 	if (SCSI_LOW_DEBUG_GO(SCSI_LOW_DEBUG_DONE, cb->ti->ti_id) != 0)
 	{
-		printf("** SCSI_LOW_DONE_RETRY ===============\n");
+		kprintf("** SCSI_LOW_DONE_RETRY ===============\n");
 		scsi_low_print(slp, NULL);
 	}
 #endif	/* SCSI_LOW_DEBUG */
@@ -2343,11 +2343,11 @@ scsi_low_bus_reset(struct scsi_low_softc *slp)
 
 	(*slp->sl_funcs->scsi_low_bus_reset) (slp);
 
-	printf("%s: try to reset scsi bus  ", slp->sl_xname);
+	kprintf("%s: try to reset scsi bus  ", slp->sl_xname);
 	for (i = 0; i <= SCSI2_RESET_DELAY / TWIDDLEWAIT ; i++)
 		scsi_low_twiddle_wait();
 	cnputc('\b');
-	printf("\n");
+	kprintf("\n");
 }
 
 int
@@ -2356,7 +2356,7 @@ scsi_low_restart(struct scsi_low_softc *slp, int flags, u_char *s)
 	int error;
 
 	if (s != NULL)
-		printf("%s: scsi bus restart. reason: %s\n", slp->sl_xname, s);
+		kprintf("%s: scsi bus restart. reason: %s\n", slp->sl_xname, s);
 
 	if ((error = scsi_low_init(slp, flags)) != 0)
 		return error;
@@ -2392,7 +2392,7 @@ found:
 #ifdef	SCSI_LOW_DEBUG
 	if (SCSI_LOW_DEBUG_TEST_GO(SCSI_LOW_NEXUS_CHECK, ti->ti_id) != 0)
 	{
-		printf("%s: nexus(0x%lx) abort check start\n",
+		kprintf("%s: nexus(0x%lx) abort check start\n",
 			slp->sl_xname, (u_long) cb);
 		cb->ccb_flags |= (CCB_NORETRY | CCB_SILENT);
 		scsi_low_revoke_ccb(slp, cb, 1);
@@ -2493,7 +2493,7 @@ scsi_low_reselected(struct scsi_low_softc *slp, u_int targ)
 	return ti;
 
 world_restart:
-	printf("%s: reselect(%x:unknown) %s\n", slp->sl_xname, targ, s);
+	kprintf("%s: reselect(%x:unknown) %s\n", slp->sl_xname, targ, s);
 	scsi_low_restart(slp, SCSI_LOW_RESTART_HARD, 
 		         "reselect: scsi world confused");
 	return NULL;
@@ -2848,7 +2848,7 @@ scsi_low_errfunc_qtag(struct scsi_low_softc *slp, u_int msgflags)
 			slp->sl_Lnexus->li_cfgflags &= ~SCSI_LOW_QTAG;
 			scsi_low_calcf_lun(slp->sl_Lnexus);
 		}
-		printf("%s: scsi_low: qtag msg rejected\n", slp->sl_xname);
+		kprintf("%s: scsi_low: qtag msg rejected\n", slp->sl_xname);
 	}
 	return 0;
 }
@@ -2871,7 +2871,7 @@ scsi_low_msgout(struct scsi_low_softc *slp, struct targ_info *ti, u_int fl)
 	slp->sl_ph_count ++;
 	if (slp->sl_ph_count > SCSI_LOW_MAX_PHCHANGES)
 	{
-		printf("%s: too many phase changes\n", slp->sl_xname);
+		kprintf("%s: too many phase changes\n", slp->sl_xname);
 		slp->sl_error |= FATALIO;
 		scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_ABORT, 0);
 	}
@@ -2896,7 +2896,7 @@ scsi_low_msgout(struct scsi_low_softc *slp, struct targ_info *ti, u_int fl)
 		ti->ti_msgflags |= ti->ti_omsgflags;
 		ti->ti_omsgflags = 0;
 #ifdef	SCSI_LOW_DIAGNOSTIC
-		printf("%s: scsi_low_msgout: retry msgout\n", slp->sl_xname);
+		kprintf("%s: scsi_low_msgout: retry msgout\n", slp->sl_xname);
 #endif	/* SCSI_LOW_DIAGNOSTIC */
 	}
 
@@ -2968,7 +2968,7 @@ scsi_low_msginfunc_rejop(struct scsi_low_softc *slp)
 	struct targ_info *ti = slp->sl_Tnexus;
 	u_int8_t msg = ti->ti_msgin[0];
 
-	printf("%s: MSGIN: msg 0x%x rejected\n", slp->sl_xname, (u_int) msg);
+	kprintf("%s: MSGIN: msg 0x%x rejected\n", slp->sl_xname, (u_int) msg);
 	scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_REJECT, 0);
 	return 0;
 }
@@ -3160,7 +3160,7 @@ scsi_low_synch(struct scsi_low_softc *slp)
 		 */
 		ti->ti_maxsynch.period = 0;
 		ti->ti_maxsynch.offset = 0;
-		printf("%s: target brain damaged. async transfer\n",
+		kprintf("%s: target brain damaged. async transfer\n",
 			slp->sl_xname);
 		return EINVAL;
 	}
@@ -3176,7 +3176,7 @@ scsi_low_synch(struct scsi_low_softc *slp)
 		 * for our adapter.
 		 * The adapter changes max synch and max offset.
 		 */
-		printf("%s: synch neg failed. retry synch msg neg ...\n",
+		kprintf("%s: synch neg failed. retry synch msg neg ...\n",
 			slp->sl_xname);
 		return error;
 	}
@@ -3197,15 +3197,15 @@ scsi_low_synch(struct scsi_low_softc *slp)
 			return 0;
 #endif	/* SCSI_LOW_NEGOTIATE_BEFORE_SENSE */
 
-		printf("%s(%d:*): <%s> offset %d period %dns ",
+		kprintf("%s(%d:*): <%s> offset %d period %dns ",
 			slp->sl_xname, ti->ti_id, s, offset, period * 4);
 
 		if (period != 0)
 		{
 			speed = 1000 * 10 / (period * 4);
-			printf("%d.%d M/s", speed / 10, speed % 10);
+			kprintf("%d.%d M/s", speed / 10, speed % 10);
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 	return 0;
 }
@@ -3224,7 +3224,7 @@ scsi_low_wide(struct scsi_low_softc *slp)
 		 * Current width is not acceptable for our adapter.
 		 * The adapter changes max width.
 		 */
-		printf("%s: wide neg failed. retry wide msg neg ...\n",
+		kprintf("%s: wide neg failed. retry wide msg neg ...\n",
 			slp->sl_xname);
 		return error;
 	}
@@ -3246,7 +3246,7 @@ scsi_low_wide(struct scsi_low_softc *slp)
 			return 0;
 #endif	/* SCSI_LOW_NEGOTIATE_BEFORE_SENSE */
 
-		printf("%s(%d:*): transfer width %d bits\n",
+		kprintf("%s(%d:*): transfer width %d bits\n",
 			slp->sl_xname, ti->ti_id, 1 << (3 + ti->ti_width));
 	}
 	return 0;
@@ -3386,7 +3386,7 @@ scsi_low_msginfunc_msg_reject(struct scsi_low_softc *slp)
 
 	if (ti->ti_emsgflags != 0)
 	{
-		printf("%s: msg flags [0x%x] rejected\n",
+		kprintf("%s: msg flags [0x%x] rejected\n",
 		       slp->sl_xname, ti->ti_emsgflags);
 		msgflags = SCSI_LOW_MSG_REJECT;
 		mdp = &scsi_low_msgout_data[0];
@@ -3436,7 +3436,7 @@ scsi_low_msgin(struct scsi_low_softc *slp, struct targ_info *ti, u_int c)
 		slp->sl_ph_count ++;
 		if (slp->sl_ph_count > SCSI_LOW_MAX_PHCHANGES)
 		{
-			printf("%s: too many phase changes\n", slp->sl_xname);
+			kprintf("%s: too many phase changes\n", slp->sl_xname);
 			slp->sl_error |= FATALIO;
 			scsi_low_assert_msg(slp, ti, SCSI_LOW_MSG_ABORT, 0);
 		}
@@ -3597,7 +3597,7 @@ scsi_low_disconnected(struct scsi_low_softc *slp, struct targ_info *ti)
 #ifdef	SCSI_LOW_DEBUG
 		if (SCSI_LOW_DEBUG_GO(SCSI_LOW_DEBUG_DISC, ti->ti_id) != 0)
 		{
-			printf("## SCSI_LOW_DISCONNECTED ===============\n");
+			kprintf("## SCSI_LOW_DISCONNECTED ===============\n");
 			scsi_low_print(slp, NULL);
 		}
 #endif	/* SCSI_LOW_DEBUG */
@@ -3911,7 +3911,7 @@ scsi_low_calcf_target(struct targ_info *ti)
 #ifdef	SCSI_LOW_DEBUG
 	if (SCSI_LOW_DEBUG_GO(SCSI_LOW_DEBUG_CALCF, ti->ti_id) != 0)
 	{
-		printf("%s(%d:*): max period(%dns) offset(%d) width(%d)\n",
+		kprintf("%s(%d:*): max period(%dns) offset(%d) width(%d)\n",
 			slp->sl_xname, ti->ti_id,
 			ti->ti_maxsynch.period * 4,
 			ti->ti_maxsynch.offset,
@@ -3926,7 +3926,7 @@ scsi_low_calcf_show(struct lun_info *li)
 	struct targ_info *ti = li->li_ti;
 	struct scsi_low_softc *slp = ti->ti_sc;
 
-	printf("%s(%d:%d): period(%d ns) offset(%d) width(%d) flags 0x%b\n",
+	kprintf("%s(%d:%d): period(%d ns) offset(%d) width(%d) flags 0x%b\n",
 		slp->sl_xname, ti->ti_id, li->li_lun,
 		ti->ti_maxsynch.period * 4,
 		ti->ti_maxsynch.offset,
@@ -3948,7 +3948,7 @@ scsi_low_start_up(struct scsi_low_softc *slp)
 	struct slccb *cb;
 	int target, lun;
 
-	printf("%s: scsi_low: probing all devices ....\n", slp->sl_xname);
+	kprintf("%s: scsi_low: probing all devices ....\n", slp->sl_xname);
 
 	for (target = 0; target < slp->sl_ntargs; target ++)
 	{
@@ -3956,7 +3956,7 @@ scsi_low_start_up(struct scsi_low_softc *slp)
 		{
 			if ((slp->sl_show_result & SHOW_PROBE_RES) != 0)
 			{
-				printf("%s: scsi_low: target %d (host card)\n",
+				kprintf("%s: scsi_low: target %d (host card)\n",
 					slp->sl_xname, target);
 			}
 			continue;
@@ -3964,7 +3964,7 @@ scsi_low_start_up(struct scsi_low_softc *slp)
 
 		if ((slp->sl_show_result & SHOW_PROBE_RES) != 0)
 		{
-			printf("%s: scsi_low: target %d lun ",
+			kprintf("%s: scsi_low: target %d lun ",
 				slp->sl_xname, target);
 		}
 
@@ -3989,13 +3989,13 @@ scsi_low_start_up(struct scsi_low_softc *slp)
 
 			if ((slp->sl_show_result & SHOW_PROBE_RES) != 0)
 			{
-				printf("%d ", lun); 		
+				kprintf("%d ", lun); 		
 			}
 		}
 
 		if ((slp->sl_show_result & SHOW_PROBE_RES) != 0)
 		{
-			printf("\n");
+			kprintf("\n");
 		}
 	}
 	return 0;
@@ -4038,7 +4038,7 @@ scsi_low_test_abort(struct scsi_low_softc *slp, struct targ_info *ti,
 		acb = TAILQ_FIRST(&li->li_discq); 
 		if (scsi_low_abort_ccb(slp, acb) == 0)
 		{
-			printf("%s: aborting ccb(0x%lx) start\n",
+			kprintf("%s: aborting ccb(0x%lx) start\n",
 				slp->sl_xname, (u_long) acb);
 		}
 	}
@@ -4050,7 +4050,7 @@ scsi_low_test_atten(struct scsi_low_softc *slp, struct targ_info *ti, u_int msg)
 	if (slp->sl_ph_count < SCSI_LOW_MAX_ATTEN_CHECK)
 		scsi_low_assert_msg(slp, ti, msg, 0);
 	else
-		printf("%s: atten check OK\n", slp->sl_xname);
+		kprintf("%s: atten check OK\n", slp->sl_xname);
 }
 
 static void
@@ -4076,7 +4076,7 @@ scsi_low_info(struct scsi_low_softc *slp, struct targ_info *ti, u_char *s)
 	if (s == NULL)
 		s = "no message";
 
-	printf(">>>>> SCSI_LOW_INFO(0x%lx): %s\n", (u_long) slp->sl_Tnexus, s);
+	kprintf(">>>>> SCSI_LOW_INFO(0x%lx): %s\n", (u_long) slp->sl_Tnexus, s);
 	if (ti == NULL)
 	{
 		for (ti = TAILQ_FIRST(&slp->sl_titab); ti != NULL;
@@ -4117,7 +4117,7 @@ scsi_low_print(struct scsi_low_softc *slp, struct targ_info *ti)
 	}
  	sp = &slp->sl_scp;
 
-	printf("%s: === NEXUS T(0x%lx) L(0x%lx) Q(0x%lx) NIO(%d) ===\n",
+	kprintf("%s: === NEXUS T(0x%lx) L(0x%lx) Q(0x%lx) NIO(%d) ===\n",
 		slp->sl_xname, (u_long) ti, (u_long) li, (u_long) cb,
 		slp->sl_nio);
 
@@ -4135,7 +4135,7 @@ scsi_low_print(struct scsi_low_softc *slp, struct targ_info *ti)
 			nqio = li->li_nqio;
 		}
 
-		printf("%s(%d:%d) ph<%s> => ph<%s> DISC(%d) QIO(%d:%d)\n",
+		kprintf("%s(%d:%d) ph<%s> => ph<%s> DISC(%d) QIO(%d:%d)\n",
 			slp->sl_xname,
 		       ti->ti_id, lun, phase[(int) ti->ti_ophase], 
 		       phase[(int) ti->ti_phase], ti->ti_disc,
@@ -4143,7 +4143,7 @@ scsi_low_print(struct scsi_low_softc *slp, struct targ_info *ti)
 
 		if (cb != NULL)
 		{
-printf("CCB: cmd[0] 0x%x clen 0x%x dlen 0x%x<0x%x stat 0x%x err %b\n",
+kprintf("CCB: cmd[0] 0x%x clen 0x%x dlen 0x%x<0x%x stat 0x%x err %b\n",
 		       (u_int) cb->ccb_scp.scp_cmd[0],
 		       cb->ccb_scp.scp_cmdlen, 
 		       cb->ccb_datalen,
@@ -4152,7 +4152,7 @@ printf("CCB: cmd[0] 0x%x clen 0x%x dlen 0x%x<0x%x stat 0x%x err %b\n",
 		       cb->ccb_error, SCSI_LOW_ERRORBITS);
 		}
 
-printf("MSGIN: ptr(%x) [%x][%x][%x][%x][%x] attention: %d\n",
+kprintf("MSGIN: ptr(%x) [%x][%x][%x][%x][%x] attention: %d\n",
 	       (u_int) (ti->ti_msginptr), 
 	       (u_int) (ti->ti_msgin[0]),
 	       (u_int) (ti->ti_msgin[1]),
@@ -4161,7 +4161,7 @@ printf("MSGIN: ptr(%x) [%x][%x][%x][%x][%x] attention: %d\n",
 	       (u_int) (ti->ti_msgin[4]),
 	       slp->sl_atten);
 
-printf("MSGOUT: msgflags 0x%x [%x][%x][%x][%x][%x] msgoutlen %d C_FLAGS: %b\n",
+kprintf("MSGOUT: msgflags 0x%x [%x][%x][%x][%x][%x] msgoutlen %d C_FLAGS: %b\n",
 		(u_int) ti->ti_msgflags,
 		(u_int) (ti->ti_msgoutstr[0]), 
 		(u_int) (ti->ti_msgoutstr[1]), 
@@ -4178,7 +4178,7 @@ printf("MSGOUT: msgflags 0x%x [%x][%x][%x][%x][%x] msgoutlen %d C_FLAGS: %b\n",
 
 	}
 
-	printf("SCB: daddr 0x%lx dlen 0x%x stat 0x%x err %b\n",
+	kprintf("SCB: daddr 0x%lx dlen 0x%x stat 0x%x err %b\n",
 	       (u_long) sp->scp_data,
 	       sp->scp_datalen,
 	       (u_int) sp->scp_status,

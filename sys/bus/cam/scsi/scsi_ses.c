@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.19 2006/12/18 20:41:01 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.20 2006/12/22 23:12:16 swildner Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -117,7 +117,7 @@ static int safte_set_objstat(ses_softc_t *, ses_objstat *, int);
  */
 
 #define	STRNCMP			strncmp
-#define	PRINTF			printf
+#define	PRINTF			kprintf
 #define	SES_LOG			ses_log
 #ifdef	DEBUG
 #define	SES_DLOG		ses_log
@@ -198,7 +198,7 @@ sesinit(void)
 	 */
 	sesperiphs = cam_extend_new();
 	if (sesperiphs == NULL) {
-		printf("ses: Failed to alloc extend array!\n");
+		kprintf("ses: Failed to alloc extend array!\n");
 		return;
 	}
 
@@ -223,7 +223,7 @@ sesinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("ses: Failed to attach master async callback "
+		kprintf("ses: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -249,7 +249,7 @@ sesoninvalidate(struct cam_periph *periph)
 	softc->ses_flags |= SES_FLAG_INVALID;
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 }
 
 static void
@@ -261,7 +261,7 @@ sescleanup(struct cam_periph *periph)
 
 	cam_extend_release(sesperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 	dev_ops_remove(&ses_ops, -1, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
@@ -301,7 +301,7 @@ sesasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		    cgd->ccb_h.path, sesasync, AC_FOUND_DEVICE, cgd);
 
 		if (status != CAM_REQ_CMP && status != CAM_REQ_INPROG) {
-			printf("sesasync: Unable to probe new device due to "
+			kprintf("sesasync: Unable to probe new device due to "
 			    "status 0x%x\n", status);
 		}
 		break;
@@ -322,12 +322,12 @@ sesregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("sesregister: periph was NULL!!\n");
+		kprintf("sesregister: periph was NULL!!\n");
 		return (CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("sesregister: no getdev CCB, can't register device\n");
+		kprintf("sesregister: no getdev CCB, can't register device\n");
 		return (CAM_REQ_CMP_ERR);
 	}
 
@@ -707,7 +707,7 @@ ses_log(struct ses_softc *ssc, const char *fmt, ...)
 {
 	__va_list ap;
 
-	printf("%s%d: ", ssc->periph->periph_name, ssc->periph->unit_number);
+	kprintf("%s%d: ", ssc->periph->periph_name, ssc->periph->unit_number);
 	__va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	__va_end(ap);

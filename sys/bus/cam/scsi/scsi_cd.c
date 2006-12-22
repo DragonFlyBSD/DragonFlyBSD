@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.26 2006/12/20 18:14:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.27 2006/12/22 23:12:16 swildner Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -361,7 +361,7 @@ cdinit(void)
 	 */
 	cdperiphs = cam_extend_new();
 	if (cdperiphs == NULL) {
-		printf("cd: Failed to alloc extend array!\n");
+		kprintf("cd: Failed to alloc extend array!\n");
 		return;
 	}
 
@@ -386,7 +386,7 @@ cdinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("cd: Failed to attach master async callback "
+		kprintf("cd: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -446,7 +446,7 @@ cdoninvalidate(struct cam_periph *periph)
 		camq_remove(&softc->changer->devq, softc->pinfo.index);
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 }
 
 static void
@@ -457,12 +457,12 @@ cdcleanup(struct cam_periph *periph)
 	softc = (struct cd_softc *)periph->softc;
 
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 
 	if ((softc->flags & CD_FLAG_SCTX_INIT) != 0
 	    && sysctl_ctx_free(&softc->sysctl_ctx) != 0) {
 		xpt_print_path(periph->path);
-		printf("can't remove sysctl context\n");
+		kprintf("can't remove sysctl context\n");
 	}
 
 	crit_enter();
@@ -528,7 +528,7 @@ cdcleanup(struct cam_periph *periph)
 		STAILQ_REMOVE(&changerq, softc->changer, cdchanger,
 			      changer_links);
 		xpt_print_path(periph->path);
-		printf("removing changer entry\n");
+		kprintf("removing changer entry\n");
 		kfree(softc->changer, M_DEVBUF);
 		num_changers--;
 	}
@@ -573,7 +573,7 @@ cdasync(void *callback_arg, u_int32_t code,
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("cdasync: Unable to attach new device "
+			kprintf("cdasync: Unable to attach new device "
 			       "due to status 0x%x\n", status);
 
 		break;
@@ -623,7 +623,7 @@ cdsysctlinit(void *context, int pending)
 	tmpstr2, CTLFLAG_RD, 0, tmpstr);
 
 	if (softc->sysctl_tree == NULL) {
-		printf("cdsysctlinit: unable to allocate sysctl tree\n");
+		kprintf("cdsysctlinit: unable to allocate sysctl tree\n");
 		return;
 	}
 
@@ -686,11 +686,11 @@ cdregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("cdregister: periph was NULL!!\n");
+		kprintf("cdregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 	if (cgd == NULL) {
-		printf("cdregister: no getdev CCB, can't register device\n");
+		kprintf("cdregister: no getdev CCB, can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -854,7 +854,7 @@ cdregister(struct cam_periph *periph, void *arg)
 					nchanger->num_devices++;
 					if (camq_resize(&nchanger->devq,
 					   nchanger->num_devices)!=CAM_REQ_CMP){
-						printf("cdregister: "
+						kprintf("cdregister: "
 						       "camq_resize "
 						       "failed, changer "
 						       "support may "
@@ -870,7 +870,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			} else if (status == CAM_REQ_CMP)
 				xpt_free_path(path);
 			else {
-				printf("cdregister: unable to allocate path\n"
+				kprintf("cdregister: unable to allocate path\n"
 				       "cdregister: changer support may be "
 				       "broken\n");
 			}
@@ -882,7 +882,7 @@ cdregister(struct cam_periph *periph, void *arg)
 
 			if (camq_resize(&nchanger->devq,
 			    nchanger->num_devices) != CAM_REQ_CMP) {
-				printf("cdregister: camq_resize "
+				kprintf("cdregister: camq_resize "
 				       "failed, changer support may "
 				       "be messed up\n");
 			}
@@ -905,7 +905,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			callout_init(&nchanger->long_handle);
 			if (camq_init(&nchanger->devq, 1) != 0) {
 				softc->flags &= ~CD_FLAG_CHANGER;
-				printf("cdregister: changer support "
+				kprintf("cdregister: changer support "
 				       "disabled\n");
 				goto cdregisterexit;
 			}
@@ -949,7 +949,7 @@ cdregister(struct cam_periph *periph, void *arg)
 				nchanger->num_devices++;
 				if (camq_resize(&nchanger->devq,
 				    nchanger->num_devices) != CAM_REQ_CMP) {
-					printf("cdregister: camq_resize "
+					kprintf("cdregister: camq_resize "
 					       "failed, changer support may "
 					       "be messed up\n");
 				}
@@ -962,7 +962,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			} else if (status == CAM_REQ_CMP)
 				xpt_free_path(path);
 			else {
-				printf("cdregister: unable to allocate path\n"
+				kprintf("cdregister: unable to allocate path\n"
 				       "cdregister: changer support may be "
 				       "broken\n");
 			}
@@ -972,7 +972,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			nchanger->num_devices++;
 			if (camq_resize(&nchanger->devq,
 			    nchanger->num_devices) != CAM_REQ_CMP) {
-				printf("cdregister: camq_resize "
+				kprintf("cdregister: camq_resize "
 				       "failed, changer support may "
 				       "be messed up\n");
 			}
@@ -1337,7 +1337,7 @@ cdchangerschedule(struct cd_softc *softc)
 				    cdrunchangerqueue, changer);
 			changer->flags |= CHANGER_TIMEOUT_SCHED;
 		} else
-			printf("cdchangerschedule: already have a long"
+			kprintf("cdchangerschedule: already have a long"
 			       " timeout!\n");
 
 		if ((changer->flags & CHANGER_SHORT_TMOUT_SCHED) == 0) {
@@ -1346,7 +1346,7 @@ cdchangerschedule(struct cd_softc *softc)
 					cdshorttimeout, changer);
 			changer->flags |= CHANGER_SHORT_TMOUT_SCHED;
 		} else
-			printf("cdchangerschedule: already have a short "
+			kprintf("cdchangerschedule: already have a short "
 			       "timeout!\n");
 
 		/*
@@ -1653,7 +1653,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 			struct buf *q_bp;
 
 			xpt_print_path(periph->path);
-			printf("cddone: got error %#x back\n", error);
+			kprintf("cddone: got error %#x back\n", error);
 			crit_enter();
 			while ((q_bio = bioq_first(&softc->bio_queue)) != NULL) {
 				bioq_remove(&softc->bio_queue, q_bio);
@@ -1831,11 +1831,11 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 							&done_ccb->csio);
 					else {
 						xpt_print_path(periph->path);
-						printf("got CAM status %#x\n",
+						kprintf("got CAM status %#x\n",
 						       done_ccb->ccb_h.status);
 					}
 					xpt_print_path(periph->path);
-					printf("fatal error, failed" 
+					kprintf("fatal error, failed" 
 					       " to attach to device\n");
 
 					/*
@@ -2136,7 +2136,7 @@ cdioctl(struct dev_ioctl_args *ap)
 
 			if ((len > sizeof(struct cd_sub_channel_info)) ||
 			    (len < sizeof(struct cd_sub_channel_header))) {
-				printf(
+				kprintf(
 					"scsi_cd: cdioctl: "
 					"cdioreadsubchannel: error, len=%d\n",
 					len);
@@ -2217,7 +2217,7 @@ cdioctl(struct dev_ioctl_args *ap)
 			 || (te->address_format != CD_MSF_FORMAT
 			  && te->address_format != CD_LBA_FORMAT)) {
 				error = EINVAL;
-				printf("scsi_cd: error in readtocentries, "
+				kprintf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
 				kfree(data, M_TEMP);
 				kfree(lead, M_TEMP);
@@ -2248,7 +2248,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				starting_track = th->ending_track + 1;
 			else if (starting_track < th->starting_track ||
 				 starting_track > th->ending_track + 1) {
-				printf("scsi_cd: error in readtocentries, "
+				kprintf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
 				kfree(data, M_TEMP);
 				kfree(lead, M_TEMP);
@@ -2268,7 +2268,7 @@ cdioctl(struct dev_ioctl_args *ap)
 					readlen = len;
 			}
 			if (len > sizeof(data->entries)) {
-				printf("scsi_cd: error in readtocentries, "
+				kprintf("scsi_cd: error in readtocentries, "
 				       "returning EINVAL\n");
 				error = EINVAL;
 				kfree(data, M_TEMP);
@@ -2334,7 +2334,7 @@ cdioctl(struct dev_ioctl_args *ap)
 
 			if (te->address_format != CD_MSF_FORMAT
 			    && te->address_format != CD_LBA_FORMAT) {
-				printf("error in readtocentry, "
+				kprintf("error in readtocentry, "
 				       " returning EINVAL\n");
 				kfree(data, M_TEMP);
 				error = EINVAL;
@@ -2364,7 +2364,7 @@ cdioctl(struct dev_ioctl_args *ap)
 				/* OK */;
 			else if (track < th->starting_track ||
 				 track > th->ending_track + 1) {
-				printf("error in readtocentry, "
+				kprintf("error in readtocentry, "
 				       " returning EINVAL\n");
 				kfree(data, M_TEMP);
 				error = EINVAL;
@@ -3126,14 +3126,14 @@ cd6byteworkaround(union ccb *ccb)
 	 */
 	if (found == 0) {
 		xpt_print_path(periph->path);
-		printf("mode buffer not found in mode queue!\n");
+		kprintf("mode buffer not found in mode queue!\n");
 		return (0);
 	}
 
 	params->cdb_size = 10;
 	softc->minimum_command_size = 10;
 	xpt_print_path(ccb->ccb_h.path);
-	printf("%s(6) failed, increasing minimum CDB size to 10 bytes\n",
+	kprintf("%s(6) failed, increasing minimum CDB size to 10 bytes\n",
 	       (cdb[0] == MODE_SENSE_6) ? "MODE_SENSE" : "MODE_SELECT");
 
 	if (cdb[0] == MODE_SENSE_6) {
@@ -3467,7 +3467,7 @@ cdgetmode(struct cam_periph *periph, struct cd_mode_params *data,
 		 */
 		if (data_len > data->alloc_len) {
 			xpt_print_path(periph->path);
-			printf("allocated modepage %d length %d < returned "
+			kprintf("allocated modepage %d length %d < returned "
 			       "length %d\n", page, data->alloc_len, data_len);
 
 			error = ENOSPC;
@@ -3930,7 +3930,7 @@ cdreportkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 
 	if (ccb->csio.resid != 0) {
 		xpt_print_path(periph->path);
-		printf("warning, residual for report key command is %d\n",
+		kprintf("warning, residual for report key command is %d\n",
 		       ccb->csio.resid);
 	}
 

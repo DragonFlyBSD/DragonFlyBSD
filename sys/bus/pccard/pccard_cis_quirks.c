@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.7 2002/02/09 21:34:06 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.5 2006/10/25 20:55:51 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.6 2006/12/22 23:12:16 swildner Exp $ */
 
 #define	PCCARDDEBUG
 
@@ -237,10 +237,10 @@ pccard_check_cis_quirks(device_t dev)
 						if (sc->card.cis1_info[j] == NULL)
 							break;
 						if (j)
-							printf(", ");
-						printf("%s", sc->card.cis1_info[j]);
+							kprintf(", ");
+						kprintf("%s", sc->card.cis1_info[j]);
 					}
-					printf("\n");
+					kprintf("\n");
 				}
 
 				for (pf = STAILQ_FIRST(&sc->card.pf_head); pf != NULL;

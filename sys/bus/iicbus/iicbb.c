@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbb.c,v 1.6.2.2 2002/04/19 05:52:12 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbb.c,v 1.4 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicbb.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
  *
  */
 
@@ -159,13 +159,13 @@ iicbb_print_child(device_t bus, device_t dev)
 	/* retrieve the interface I2C address */
 	error = IICBB_RESET(device_get_parent(bus), IIC_FASTEST, 0, &oldaddr);
 	if (error == IIC_ENOADDR) {
-		retval += printf(" on %s master-only\n",
+		retval += kprintf(" on %s master-only\n",
 				 device_get_nameunit(bus));
 	} else {
 		/* restore the address */
 		IICBB_RESET(device_get_parent(bus), IIC_FASTEST, oldaddr, NULL);
 
-		retval += printf(" on %s addr 0x%x\n",
+		retval += kprintf(" on %s addr 0x%x\n",
 				 device_get_nameunit(bus), oldaddr & 0xff);
 	}
 
@@ -229,7 +229,7 @@ iicbb_ack(device_t dev, int timeout)
 	} while (k--);
 
 	I2C_SET(dev,0,1);
-	I2C_DEBUG(printf("%c ",noack?'-':'+'));
+	I2C_DEBUG(kprintf("%c ",noack?'-':'+'));
 
 	return (noack);
 }
@@ -242,7 +242,7 @@ iicbb_sendbyte(device_t dev, u_char data)
 	I2C_SET(dev,0,0);
 	for (i=7; i>=0; i--)
 		(data&(1<<i)) ? iicbb_one(dev) : iicbb_zero(dev);
-	I2C_DEBUG(printf("w%02x",(int)data));
+	I2C_DEBUG(kprintf("w%02x",(int)data));
 	return;
 }
 
@@ -261,7 +261,7 @@ iicbb_readbyte(device_t dev, int last)
 		I2C_SET(dev,0,1);
 	}
 	last ? iicbb_one(dev) : iicbb_zero(dev);
-	I2C_DEBUG(printf("r%02x%c ",(int)data,last?'-':'+'));
+	I2C_DEBUG(kprintf("r%02x%c ",(int)data,last?'-':'+'));
 	return data;
 }
 
@@ -282,7 +282,7 @@ iicbb_start(device_t dev, u_char slave, int timeout)
 {
 	int error;
 
-	I2C_DEBUG(printf("<"));
+	I2C_DEBUG(kprintf("<"));
 
 	I2C_SET(dev,0,1);
 	I2C_SET(dev,1,1);
@@ -311,7 +311,7 @@ iicbb_stop(device_t dev)
 	I2C_SET(dev,0,0);
 	I2C_SET(dev,1,0);
 	I2C_SET(dev,1,1);
-	I2C_DEBUG(printf(">"));
+	I2C_DEBUG(kprintf(">"));
 	return (0);
 }
 

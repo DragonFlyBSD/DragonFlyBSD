@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.17 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -280,7 +280,7 @@ ptinit(void)
 	 */
 	ptperiphs = cam_extend_new();
 	if (ptperiphs == NULL) {
-		printf("pt: Failed to alloc extend array!\n");
+		kprintf("pt: Failed to alloc extend array!\n");
 		return;
 	}
 	
@@ -305,7 +305,7 @@ ptinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("pt: Failed to attach master async callback "
+		kprintf("pt: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -319,12 +319,12 @@ ptctor(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("ptregister: periph was NULL!!\n");
+		kprintf("ptregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("ptregister: no getdev CCB, can't register device\n");
+		kprintf("ptregister: no getdev CCB, can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -416,7 +416,7 @@ ptoninvalidate(struct cam_periph *periph)
 	crit_exit();
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 }
 
 static void
@@ -430,7 +430,7 @@ ptdtor(struct cam_periph *periph)
 
 	cam_extend_release(ptperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 	dev_ops_remove(&pt_ops, -1, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
@@ -464,7 +464,7 @@ ptasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("ptasync: Unable to attach to new device "
+			kprintf("ptasync: Unable to attach to new device "
 				"due to status 0x%x\n", status);
 		break;
 	}
@@ -606,7 +606,7 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 					 * as invalid.
 					 */
 					xpt_print_path(periph->path);
-					printf("Invalidating device\n");
+					kprintf("Invalidating device\n");
 					softc->flags |= PT_FLAG_DEVICE_INVALID;
 				}
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.c,v 1.9.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.8 2005/03/23 19:09:33 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.9 2006/12/22 23:12:17 swildner Exp $
  *
  */
 #include <machine/stdarg.h>
@@ -208,7 +208,7 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 				__func__, param);
 
 #if 0
-		printf("%s: param = %d, ins = %d, arg = %d, type = %d\n", 
+		kprintf("%s: param = %d, ins = %d, arg = %d, type = %d\n", 
 			__func__, param, ins, arg, type);
 #endif
 

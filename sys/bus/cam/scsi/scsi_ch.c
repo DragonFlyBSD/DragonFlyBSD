@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.18 2006/12/20 18:14:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.19 2006/12/22 23:12:16 swildner Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -235,7 +235,7 @@ chinit(void)
 	 */
 	chperiphs = cam_extend_new();
 	if (chperiphs == NULL) {
-		printf("ch: Failed to alloc extend array!\n");
+		kprintf("ch: Failed to alloc extend array!\n");
 		return;
 	}
 
@@ -260,7 +260,7 @@ chinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("ch: Failed to attach master async callback "
+		kprintf("ch: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -287,7 +287,7 @@ choninvalidate(struct cam_periph *periph)
 	softc->flags |= CH_FLAG_INVALID;
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 
 }
 
@@ -301,7 +301,7 @@ chcleanup(struct cam_periph *periph)
 	devstat_remove_entry(&softc->device_stats);
 	cam_extend_release(chperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 	dev_ops_remove(&ch_ops, -1, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
@@ -336,7 +336,7 @@ chasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("chasync: Unable to probe new device "
+			kprintf("chasync: Unable to probe new device "
 			       "due to status 0x%x\n", status);
 
 		break;
@@ -357,12 +357,12 @@ chregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("chregister: periph was NULL!!\n");
+		kprintf("chregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("chregister: no getdev CCB, can't register device\n");
+		kprintf("chregister: no getdev CCB, can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -648,11 +648,11 @@ chdone(struct cam_periph *periph, union ccb *done_ccb)
 					scsi_sense_print(&done_ccb->csio);
 				else {
 					xpt_print_path(periph->path);
-					printf("got CAM status %#x\n",
+					kprintf("got CAM status %#x\n",
 					       done_ccb->ccb_h.status);
 				}
 				xpt_print_path(periph->path);
-				printf("fatal error, failed to attach to"
+				kprintf("fatal error, failed to attach to"
 				       " device\n");
 
 				cam_periph_invalidate(periph);
@@ -1042,7 +1042,7 @@ copy_element_status(struct ch_softc *softc,
 		}
 
 		if (!(ces->ces_flags & CES_SOURCE_VALID))
-			printf("ch: warning: could not map element source "
+			kprintf("ch: warning: could not map element source "
 			       "address %ud to a valid element type\n",
 			       eaddr);
 	}
@@ -1167,7 +1167,7 @@ chgetelemstatus(struct cam_periph *periph,
 
 	if (avail != cesr->cesr_element_count) {
 		xpt_print_path(periph->path);
-		printf("warning, READ ELEMENT STATUS avail != count\n");
+		kprintf("warning, READ ELEMENT STATUS avail != count\n");
 	}
 
 	user_data = (struct changer_element_status *)
@@ -1402,7 +1402,7 @@ chgetparams(struct cam_periph *periph)
 
 		if (error) {
 			xpt_print_path(periph->path);
-			printf("chgetparams: error getting element "
+			kprintf("chgetparams: error getting element "
 			       "address page\n");
 			xpt_release_ccb(ccb);
 			kfree(mode_buffer, M_TEMP);
@@ -1465,7 +1465,7 @@ chgetparams(struct cam_periph *periph)
 
 		if (error) {
 			xpt_print_path(periph->path);
-			printf("chgetparams: error getting device "
+			kprintf("chgetparams: error getting device "
 			       "capabilities page\n");
 			xpt_release_ccb(ccb);
 			kfree(mode_buffer, M_TEMP);

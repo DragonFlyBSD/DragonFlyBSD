@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.18 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.19 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ passinit(void)
 	 */
 	passperiphs = cam_extend_new();
 	if (passperiphs == NULL) {
-		printf("passm: Failed to alloc extend array!\n");
+		kprintf("passm: Failed to alloc extend array!\n");
 		return;
 	}
 
@@ -161,7 +161,7 @@ passinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("pass: Failed to attach master async callback "
+		kprintf("pass: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 	
@@ -213,7 +213,7 @@ passoninvalidate(struct cam_periph *periph)
 
 	if (bootverbose) {
 		xpt_print_path(periph->path);
-		printf("lost device\n");
+		kprintf("lost device\n");
 	}
 
 }
@@ -231,7 +231,7 @@ passcleanup(struct cam_periph *periph)
 
 	if (bootverbose) {
 		xpt_print_path(periph->path);
-		printf("removing device entry\n");
+		kprintf("removing device entry\n");
 	}
 	dev_ops_remove(&pass_ops, -1, periph->unit_number);
 	kfree(softc, M_DEVBUF);
@@ -265,7 +265,7 @@ passasync(void *callback_arg, u_int32_t code,
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("passasync: Unable to attach new device "
+			kprintf("passasync: Unable to attach new device "
 				"due to status 0x%x\n", status);
 
 		break;
@@ -285,12 +285,12 @@ passregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("passregister: periph was NULL!!\n");
+		kprintf("passregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("passregister: no getdev CCB, can't register device\n");
+		kprintf("passregister: no getdev CCB, can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -385,7 +385,7 @@ passopen(struct dev_open_args *ap)
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
 		xpt_print_path(periph->path);
-		printf("can't do nonblocking accesss\n");
+		kprintf("can't do nonblocking accesss\n");
 		crit_exit();
 		return(EINVAL);
 	}
@@ -668,7 +668,7 @@ passioctl(struct dev_ioctl_args *ap)
 		 */
 		if (inccb->ccb_h.func_code & XPT_FC_XPT_ONLY) {
 			xpt_print_path(periph->path);
-			printf("CCB function code %#x is restricted to the "
+			kprintf("CCB function code %#x is restricted to the "
 			       "XPT device\n", inccb->ccb_h.func_code);
 			error = ENODEV;
 			break;
@@ -696,7 +696,7 @@ passioctl(struct dev_ioctl_args *ap)
 
 		if (ccb == NULL) {
 			xpt_print_path(periph->path);
-			printf("unable to allocate CCB\n");
+			kprintf("unable to allocate CCB\n");
 			error = ENOMEM;
 			break;
 		}

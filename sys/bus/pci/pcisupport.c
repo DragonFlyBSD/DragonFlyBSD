@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.19 2006/12/20 18:14:37 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.20 2006/12/22 23:12:17 swildner Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -89,13 +89,13 @@ fixwsc_natoma(device_t dev)
 	pmccfg = pci_read_config(dev, 0x50, 2);
 #if defined(SMP)
 	if (pmccfg & 0x8000) {
-		printf("Correcting Natoma config for SMP\n");
+		kprintf("Correcting Natoma config for SMP\n");
 		pmccfg &= ~0x8000;
 		pci_write_config(dev, 0x50, pmccfg, 2);
 	}
 #else
 	if ((pmccfg & 0x8000) == 0) {
-		printf("Correcting Natoma config for non-SMP\n");
+		kprintf("Correcting Natoma config for non-SMP\n");
 		pmccfg |= 0x8000;
 		pci_write_config(dev, 0x50, pmccfg, 2);
 	}

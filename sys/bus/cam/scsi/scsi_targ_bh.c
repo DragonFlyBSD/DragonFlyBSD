@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.12 2006/09/05 00:55:33 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.13 2006/12/22 23:12:16 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -176,7 +176,7 @@ targbhinit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("targbh: Failed to attach master async callback "
+		kprintf("targbh: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -203,7 +203,7 @@ targbhasync(void *callback_arg, u_int32_t code,
 				 bus_path_id,
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP) {
-		printf("targbhasync: Unable to create path "
+		kprintf("targbhasync: Unable to create path "
 			"due to status 0x%x\n", status);
 		return;
 	}
@@ -262,7 +262,7 @@ targbhenlun(struct cam_periph *periph)
 	status = immed_ccb.ccb_h.status;
 	if (status != CAM_REQ_CMP) {
 		xpt_print_path(periph->path);
-		printf("targbhenlun - Enable Lun Rejected with status 0x%x\n",
+		kprintf("targbhenlun - Enable Lun Rejected with status 0x%x\n",
 		       status);
 		return (status);
 	}
@@ -297,7 +297,7 @@ targbhenlun(struct cam_periph *periph)
 
 	if (i == 0) {
 		xpt_print_path(periph->path);
-		printf("targbhenlun - Could not allocate accept tio CCBs: "
+		kprintf("targbhenlun - Could not allocate accept tio CCBs: "
 		       "status = 0x%x\n", status);
 		targbhdislun(periph);
 		return (CAM_REQ_CMP_ERR);
@@ -327,7 +327,7 @@ targbhenlun(struct cam_periph *periph)
 
 	if (i == 0) {
 		xpt_print_path(periph->path);
-		printf("targbhenlun - Could not allocate immediate notify "
+		kprintf("targbhenlun - Could not allocate immediate notify "
 		       "CCBs: status = 0x%x\n", status);
 		targbhdislun(periph);
 		return (CAM_REQ_CMP_ERR);
@@ -378,7 +378,7 @@ targbhdislun(struct cam_periph *periph)
 	xpt_action(&ccb);
 
 	if (ccb.cel.ccb_h.status != CAM_REQ_CMP)
-		printf("targbhdislun - Disabling lun on controller failed "
+		kprintf("targbhdislun - Disabling lun on controller failed "
 		       "with status 0x%x\n", ccb.cel.ccb_h.status);
 	else 
 		softc->flags &= ~TARGBH_FLAG_LUN_ENABLED;
@@ -674,7 +674,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 	{
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || done_ccb->ccb_h.status == CAM_REQ_ABORTED) {
-			printf("Freed an immediate notify\n");
+			kprintf("Freed an immediate notify\n");
 			kfree(done_ccb, M_DEVBUF);
 		}
 		break;

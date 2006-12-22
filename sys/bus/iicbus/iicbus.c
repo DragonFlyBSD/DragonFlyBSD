@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbus.c,v 1.13 1999/12/03 08:41:02 mdodd Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbus.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicbus.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
  *
  */
 
@@ -167,15 +167,15 @@ iicbus_attach(device_t dev)
 	 * x bytes...
 	 */
 #if 0
-	printf("Probing for devices on iicbus%d:", device_get_unit(dev));
+	kprintf("Probing for devices on iicbus%d:", device_get_unit(dev));
 
 	/* probe any devices */
 	for (addr = FIRST_SLAVE_ADDR; addr <= LAST_SLAVE_ADDR; addr++) {
 		if (iic_probe_device(dev, (u_char)addr)) {
-			printf(" <%x>", addr);
+			kprintf(" <%x>", addr);
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 #endif
 
 	/* attach known devices */
@@ -186,7 +186,7 @@ iicbus_attach(device_t dev)
 			if (devclass_find(iicdev->iicd_name))
 				iicdev->iicd_alive = 1;
 			else if (bootverbose)
-				printf("iicbus: %s devclass not found\n",
+				kprintf("iicbus: %s devclass not found\n",
 					iicdev->iicd_name);
 			break;
 
@@ -195,7 +195,7 @@ iicbus_attach(device_t dev)
     			if (devclass_find(iicdev->iicd_name))
 				iicdev->iicd_alive = 1;
 			else if (bootverbose)
-				printf("iicbus: %s devclass not found\n",
+				kprintf("iicbus: %s devclass not found\n",
 					iicdev->iicd_name);
 			break;
 
@@ -242,7 +242,7 @@ iicbus_print_child(device_t bus, device_t dev)
 
 	switch (iicdev->iicd_class) {	
 	case IICBUS_DEVICE_CLASS:
-		retval += printf(" on %s addr 0x%x\n",
+		retval += kprintf(" on %s addr 0x%x\n",
 				 device_get_nameunit(bus), iicdev->iicd_addr);
 		break;
 

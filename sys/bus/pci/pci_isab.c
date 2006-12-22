@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.7 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.8 2006/12/22 23:12:17 swildner Exp $
  */
 
 #include "opt_pci.h"
@@ -518,7 +518,7 @@ writeconfig (device_t dev, const struct condmsg *tbl)
 		text = (v & tbl->mask) ? "disabled" : "enabled";
 	    }
 	}
-	if (text) printf ("%s", text);
+	if (text) kprintf ("%s", text);
 	tbl++;
     }
 }

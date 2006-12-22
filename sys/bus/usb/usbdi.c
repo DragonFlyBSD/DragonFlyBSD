@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.106 2004/10/24 12:52:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.91.2.1 2005/12/15 00:36:00 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.13 2006/12/10 02:03:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.14 2006/12/22 23:12:17 swildner Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -114,10 +114,10 @@ usbd_xfer_isread(usbd_xfer_handle xfer)
 void
 usbd_dump_iface(struct usbd_interface *iface)
 {
-	printf("usbd_dump_iface: iface=%p\n", iface);
+	kprintf("usbd_dump_iface: iface=%p\n", iface);
 	if (iface == NULL)
 		return;
-	printf(" device=%p idesc=%p index=%d altindex=%d priv=%p\n",
+	kprintf(" device=%p idesc=%p index=%d altindex=%d priv=%p\n",
 	       iface->device, iface->idesc, iface->index, iface->altindex,
 	       iface->priv);
 }
@@ -125,11 +125,11 @@ usbd_dump_iface(struct usbd_interface *iface)
 void
 usbd_dump_device(struct usbd_device *dev)
 {
-	printf("usbd_dump_device: dev=%p\n", dev);
+	kprintf("usbd_dump_device: dev=%p\n", dev);
 	if (dev == NULL)
 		return;
-	printf(" bus=%p default_pipe=%p\n", dev->bus, dev->default_pipe);
-	printf(" address=%d config=%d depth=%d speed=%d self_powered=%d "
+	kprintf(" bus=%p default_pipe=%p\n", dev->bus, dev->default_pipe);
+	kprintf(" address=%d config=%d depth=%d speed=%d self_powered=%d "
 	       "power=%d langid=%d\n",
 	       dev->address, dev->config, dev->depth, dev->speed,
 	       dev->self_powered, dev->power, dev->langid);
@@ -138,12 +138,12 @@ usbd_dump_device(struct usbd_device *dev)
 void
 usbd_dump_endpoint(struct usbd_endpoint *endp)
 {
-	printf("usbd_dump_endpoint: endp=%p\n", endp);
+	kprintf("usbd_dump_endpoint: endp=%p\n", endp);
 	if (endp == NULL)
 		return;
-	printf(" edesc=%p refcnt=%d\n", endp->edesc, endp->refcnt);
+	kprintf(" edesc=%p refcnt=%d\n", endp->edesc, endp->refcnt);
 	if (endp->edesc)
-		printf(" bEndpointAddress=0x%02x\n",
+		kprintf(" bEndpointAddress=0x%02x\n",
 		       endp->edesc->bEndpointAddress);
 }
 
@@ -152,24 +152,24 @@ usbd_dump_queue(usbd_pipe_handle pipe)
 {
 	usbd_xfer_handle xfer;
 
-	printf("usbd_dump_queue: pipe=%p\n", pipe);
+	kprintf("usbd_dump_queue: pipe=%p\n", pipe);
 	SIMPLEQ_FOREACH(xfer, &pipe->queue, next) {
-		printf("  xfer=%p\n", xfer);
+		kprintf("  xfer=%p\n", xfer);
 	}
 }
 
 void
 usbd_dump_pipe(usbd_pipe_handle pipe)
 {
-	printf("usbd_dump_pipe: pipe=%p\n", pipe);
+	kprintf("usbd_dump_pipe: pipe=%p\n", pipe);
 	if (pipe == NULL)
 		return;
 	usbd_dump_iface(pipe->iface);
 	usbd_dump_device(pipe->device);
 	usbd_dump_endpoint(pipe->endpoint);
-	printf(" (usbd_dump_pipe:)\n refcnt=%d running=%d aborting=%d\n",
+	kprintf(" (usbd_dump_pipe:)\n refcnt=%d running=%d aborting=%d\n",
 	       pipe->refcnt, pipe->running, pipe->aborting);
-	printf(" intrxfer=%p, repeat=%d, interval=%d\n",
+	kprintf(" intrxfer=%p, repeat=%d, interval=%d\n",
 	       pipe->intrxfer, pipe->repeat, pipe->interval);
 }
 #endif
@@ -259,7 +259,7 @@ usbd_close_pipe(usbd_pipe_handle pipe)
 {
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {
-		printf("usbd_close_pipe: pipe==NULL\n");
+		kprintf("usbd_close_pipe: pipe==NULL\n");
 		return (USBD_NORMAL_COMPLETION);
 	}
 #endif
@@ -303,7 +303,7 @@ usbd_transfer(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 		if (xfer->rqflags & URQ_AUTO_DMABUF)
-			printf("usbd_transfer: has old buffer!\n");
+			kprintf("usbd_transfer: has old buffer!\n");
 #endif
 		err = bus->methods->allocm(bus, dmap, size);
 		if (err)
@@ -360,7 +360,7 @@ usbd_alloc_buffer(usbd_xfer_handle xfer, u_int32_t size)
 
 #ifdef DIAGNOSTIC
 	if (xfer->rqflags & (URQ_DEV_DMABUF | URQ_AUTO_DMABUF))
-		printf("usbd_alloc_buffer: xfer already has a buffer\n");
+		kprintf("usbd_alloc_buffer: xfer already has a buffer\n");
 #endif
 	err = bus->methods->allocm(bus, &xfer->dmabuf, size);
 	if (err)
@@ -374,7 +374,7 @@ usbd_free_buffer(usbd_xfer_handle xfer)
 {
 #ifdef DIAGNOSTIC
 	if (!(xfer->rqflags & (URQ_DEV_DMABUF | URQ_AUTO_DMABUF))) {
-		printf("usbd_free_buffer: no buffer\n");
+		kprintf("usbd_free_buffer: no buffer\n");
 		return;
 	}
 #endif
@@ -413,7 +413,7 @@ usbd_free_xfer(usbd_xfer_handle xfer)
 #if defined(__NetBSD__) && defined(DIAGNOSTIC)
 	if (callout_pending(&xfer->timeout_handle)) {
 		callout_stop(&xfer->timeout_handle);
-		printf("usbd_free_xfer: timout_handle pending");
+		kprintf("usbd_free_xfer: timout_handle pending");
 	}
 #endif
 	xfer->device->bus->methods->freex(xfer->device->bus, xfer);
@@ -504,7 +504,7 @@ usbd_get_config_descriptor(usbd_device_handle dev)
 {
 #ifdef DIAGNOSTIC
 	if (dev == NULL) {
-		printf("usbd_get_config_descriptor: dev == NULL\n");
+		kprintf("usbd_get_config_descriptor: dev == NULL\n");
 		return (NULL);
 	}
 #endif
@@ -516,7 +516,7 @@ usbd_get_interface_descriptor(usbd_interface_handle iface)
 {
 #ifdef DIAGNOSTIC
 	if (iface == NULL) {
-		printf("usbd_get_interface_descriptor: dev == NULL\n");
+		kprintf("usbd_get_interface_descriptor: dev == NULL\n");
 		return (NULL);
 	}
 #endif
@@ -544,7 +544,7 @@ usbd_abort_pipe(usbd_pipe_handle pipe)
 
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {
-		printf("usbd_close_pipe: pipe==NULL\n");
+		kprintf("usbd_close_pipe: pipe==NULL\n");
 		return (USBD_NORMAL_COMPLETION);
 	}
 #endif
@@ -620,7 +620,7 @@ usbd_endpoint_count(usbd_interface_handle iface, u_int8_t *count)
 {
 #ifdef DIAGNOSTIC
 	if (iface == NULL || iface->idesc == NULL) {
-		printf("usbd_endpoint_count: NULL pointer\n");
+		kprintf("usbd_endpoint_count: NULL pointer\n");
 		return (USBD_INVAL);
 	}
 #endif
@@ -684,7 +684,7 @@ usbd_set_interface(usbd_interface_handle iface, int altidx)
 
 #ifdef DIAGNOSTIC
 	if (iface->idesc == NULL) {
-		printf("usbd_set_interface: NULL pointer\n");
+		kprintf("usbd_set_interface: NULL pointer\n");
 		return (USBD_INVAL);
 	}
 #endif
@@ -776,7 +776,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 		     "actlen=%d\n", pipe, xfer, xfer->status, xfer->actlen));
 #ifdef DIAGNOSTIC
 	if (xfer->busy_free != XFER_ONQU) {
-		printf("usb_transfer_complete: xfer=%p not busy 0x%08x\n",
+		kprintf("usb_transfer_complete: xfer=%p not busy 0x%08x\n",
 		       xfer, xfer->busy_free);
 		return;
 	}
@@ -784,7 +784,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {
-		printf("usbd_transfer_cb: pipe==0, xfer=%p\n", xfer);
+		kprintf("usbd_transfer_cb: pipe==0, xfer=%p\n", xfer);
 		return;
 	}
 #endif
@@ -797,7 +797,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 	    usbd_xfer_isread(xfer)) {
 #ifdef DIAGNOSTIC
 		if (xfer->actlen > xfer->length) {
-			printf("usb_transfer_complete: actlen > len %d > %d\n",
+			kprintf("usb_transfer_complete: actlen > len %d > %d\n",
 			       xfer->actlen, xfer->length);
 			xfer->actlen = xfer->length;
 		}
@@ -818,7 +818,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 		/* Remove request from queue. */
 #ifdef DIAGNOSTIC
 		if (xfer != SIMPLEQ_FIRST(&pipe->queue))
-			printf("usb_transfer_complete: bad dequeue %p != %p\n",
+			kprintf("usb_transfer_complete: bad dequeue %p != %p\n",
 			       xfer, SIMPLEQ_FIRST(&pipe->queue));
 		xfer->busy_free = XFER_BUSY;
 #endif
@@ -877,7 +877,7 @@ usb_insert_transfer(usbd_xfer_handle xfer)
 		    pipe, pipe->running, xfer->timeout));
 #ifdef DIAGNOSTIC
 	if (xfer->busy_free != XFER_BUSY) {
-		printf("usb_insert_transfer: xfer=%p not busy 0x%08x\n",
+		kprintf("usb_insert_transfer: xfer=%p not busy 0x%08x\n",
 		       xfer, xfer->busy_free);
 		return (USBD_INVAL);
 	}
@@ -904,11 +904,11 @@ usbd_start_next(usbd_pipe_handle pipe)
 
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {
-		printf("usbd_start_next: pipe == NULL\n");
+		kprintf("usbd_start_next: pipe == NULL\n");
 		return;
 	}
 	if (pipe->methods == NULL || pipe->methods->start == NULL) {
-		printf("usbd_start_next: pipe=%p no start method\n", pipe);
+		kprintf("usbd_start_next: pipe=%p no start method\n", pipe);
 		return;
 	}
 #endif
@@ -921,7 +921,7 @@ usbd_start_next(usbd_pipe_handle pipe)
 	} else {
 		err = pipe->methods->start(xfer);
 		if (err != USBD_IN_PROGRESS) {
-			printf("usbd_start_next: error=%d\n", err);
+			kprintf("usbd_start_next: error=%d\n", err);
 			pipe->running = 0;
 			/* XXX do what? */
 		}
@@ -962,7 +962,7 @@ usbd_do_request_flags_pipe(usbd_device_handle dev, usbd_pipe_handle pipe,
 #endif
 #endif
 	if (dev->bus->intr_context) {
-		printf("usbd_do_request: not in process context\n");
+		kprintf("usbd_do_request: not in process context\n");
 		return (USBD_INVAL);
 	}
 #endif
@@ -1076,7 +1076,7 @@ usbd_get_quirks(usbd_device_handle dev)
 {
 #ifdef DIAGNOSTIC
 	if (dev == NULL) {
-		printf("usbd_get_quirks: dev == NULL\n");
+		kprintf("usbd_get_quirks: dev == NULL\n");
 		return 0;
 	}
 #endif
@@ -1171,17 +1171,17 @@ usb_desc_iter_next(usbd_desc_iter_t *iter)
 
 	if (iter->cur + sizeof(usb_descriptor_t) >= iter->end) {
 		if (iter->cur != iter->end)
-			printf("usb_desc_iter_next: bad descriptor\n");
+			kprintf("usb_desc_iter_next: bad descriptor\n");
 		return NULL;
 	}
 	desc = (const usb_descriptor_t *)iter->cur;
 	if (desc->bLength == 0) {
-		printf("usb_desc_iter_next: descriptor length = 0\n");
+		kprintf("usb_desc_iter_next: descriptor length = 0\n");
 		return NULL;
 	}
 	iter->cur += desc->bLength;
 	if (iter->cur > iter->end) {
-		printf("usb_desc_iter_next: descriptor length too large\n");
+		kprintf("usb_desc_iter_next: descriptor length too large\n");
 		return NULL;
 	}
 	return desc;

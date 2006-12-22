@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.9 2006/12/10 02:03:56 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.10 2006/12/22 23:12:17 swildner Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -188,7 +188,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 			dval |= *data++ << 24;
 			break;
 		default:
-			printf("BAD LENGTH %d\n", bSize);
+			kprintf("BAD LENGTH %d\n", bSize);
 			continue;
 		}
 
@@ -253,7 +253,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				s->nu = 0;
 				return (1);
 			default:
-				printf("Main bTag=%d\n", bTag);
+				kprintf("Main bTag=%d\n", bTag);
 				break;
 			}
 			break;
@@ -302,7 +302,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				kfree(hi, M_TEMP);
 				break;
 			default:
-				printf("Global bTag=%d\n", bTag);
+				kprintf("Global bTag=%d\n", bTag);
 				break;
 			}
 			break;
@@ -355,12 +355,12 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				c->set_delimiter = dval;
 				break;
 			default:
-				printf("Local bTag=%d\n", bTag);
+				kprintf("Local bTag=%d\n", bTag);
 				break;
 			}
 			break;
 		default:
-			printf("default bType=%d\n", bType);
+			kprintf("default bType=%d\n", bType);
 			break;
 		}
 	}

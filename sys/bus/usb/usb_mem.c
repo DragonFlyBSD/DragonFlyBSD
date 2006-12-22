@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.8 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.9 2006/12/22 23:12:17 swildner Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -126,7 +126,7 @@ usbmem_callback(void *arg, bus_dma_segment_t *segs, int nseg, int error)
         usb_dma_block_t *p = arg;
 
 	if (error == EFBIG) {
-		printf("usb: mapping to large\n");
+		kprintf("usb: mapping to large\n");
 		return;
 	}
 

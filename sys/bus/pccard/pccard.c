@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.18 2006/12/20 18:14:37 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.19 2006/12/22 23:12:16 swildner Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -68,14 +68,14 @@ SYSCTL_INT(_hw_pccard, OID_AUTO, cis_debug, CTLFLAG_RW,
     &pccard_cis_debug, 0, "pccard CIS debug");
 
 #ifdef PCCARDDEBUG
-#define	DPRINTF(arg) if (pccard_debug) printf arg
+#define	DPRINTF(arg) if (pccard_debug) kprintf arg
 #define	DEVPRINTF(arg) if (pccard_debug) device_printf arg
-#define PRVERBOSE(arg) printf arg
+#define PRVERBOSE(arg) kprintf arg
 #define DEVPRVERBOSE(arg) device_printf arg
 #else
 #define	DPRINTF(arg)
 #define	DEVPRINTF(arg)
-#define PRVERBOSE(arg) if (bootverbose) printf arg
+#define PRVERBOSE(arg) if (bootverbose) kprintf arg
 #define DEVPRVERBOSE(arg) if (bootverbose) device_printf arg
 #endif
 
@@ -396,7 +396,7 @@ pccard_function_init(struct pccard_function *pf)
 	int spaces;
 
 	if (pf->pf_flags & PFF_ENABLED) {
-		printf("pccard_function_init: function is enabled");
+		kprintf("pccard_function_init: function is enabled");
 		return;
 	}
 	bus = device_get_parent(pf->dev);
@@ -499,7 +499,7 @@ pccard_function_free(struct pccard_function *pf)
 	struct resource_list_entry *rle;
 
 	if (pf->pf_flags & PFF_ENABLED) {
-		printf("pccard_function_init: function is enabled");
+		kprintf("pccard_function_init: function is enabled");
 		return;
 	}
 
@@ -823,14 +823,14 @@ pccard_print_resources(struct resource_list *rl, const char *name, int type,
 		rle = resource_list_find(rl, type, i);
 		if (rle != NULL) {
 			if (printed == 0)
-				printf(" %s ", name);
+				kprintf(" %s ", name);
 			else if (printed > 0)
-				printf(",");
+				kprintf(",");
 			printed++;
-			printf(format, rle->start);
+			kprintf(format, rle->start);
 			if (rle->count > 1) {
-				printf("-");
-				printf(format, rle->start + rle->count - 1);
+				kprintf("-");
+				kprintf(format, rle->start + rle->count - 1);
 			}
 		} else if (i > 3) {
 			/* check the first few regardless */
@@ -847,7 +847,7 @@ pccard_print_child(device_t dev, device_t child)
 	int retval = 0;
 
 	retval += bus_print_child_header(dev, child);
-	retval += printf(" at");
+	retval += kprintf(" at");
 
 	if (devi != NULL) {
 		pccard_print_resources(rl, "port", SYS_RES_IOPORT,
@@ -858,7 +858,7 @@ pccard_print_child(device_t dev, device_t child)
 		    "%ld");
 		pccard_print_resources(rl, "drq", SYS_RES_DRQ, PCCARD_NDRQ,
 		    "%ld");
-		retval += printf(" function %d config %d", devi->fcn->number,
+		retval += kprintf(" function %d config %d", devi->fcn->number,
 		    devi->fcn->cfe->number);
 	}
 
@@ -949,7 +949,7 @@ pccard_probe_nomatch(device_t bus, device_t child)
 	struct pccard_softc *sc = PCCARD_SOFTC(bus);
 
 	device_printf(bus, "<unknown card>");
-	printf(" (manufacturer=0x%04x, product=0x%04x) at function %d\n",
+	kprintf(" (manufacturer=0x%04x, product=0x%04x) at function %d\n",
 	  sc->card.manufacturer, sc->card.product, func->number);
 	device_printf(bus, "   CIS info: %s, %s, %s\n", sc->card.cis1_info[0],
 	  sc->card.cis1_info[1], sc->card.cis1_info[2]);

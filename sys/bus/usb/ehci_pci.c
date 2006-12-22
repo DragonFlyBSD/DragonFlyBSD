@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.13 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.14 2006/12/22 23:12:17 swildner Exp $
  */
 
 /*
@@ -285,7 +285,7 @@ ehci_pci_attach(device_t self)
 	case PCI_USBREV_1_0:
 	case PCI_USBREV_1_1:
 		sc->sc_bus.usbrev = USBREV_UNKNOWN;
-		printf("pre-2.0 USB rev\n");
+		kprintf("pre-2.0 USB rev\n");
 		return ENXIO;
 	case PCI_USBREV_2_0:
 		sc->sc_bus.usbrev = USBREV_2_0;
@@ -495,7 +495,7 @@ ehci_pci_takecontroller(device_t self)
 		legsup = eec;
 		pci_write_config(self, eecp, legsup | EHCI_LEGSUP_OSOWNED, 4);
 		if (legsup & EHCI_LEGSUP_BIOSOWNED) {
-			printf("%s: waiting for BIOS to give up control\n",
+			kprintf("%s: waiting for BIOS to give up control\n",
 			    USBDEVNAME(sc->sc_bus.bdev));
 			for (i = 0; i < 5000; i++) {
 				legsup = pci_read_config(self, eecp, 4);
@@ -504,7 +504,7 @@ ehci_pci_takecontroller(device_t self)
 				DELAY(1000);
 			}
 			if (legsup & EHCI_LEGSUP_BIOSOWNED)
-				printf("%s: timed out waiting for BIOS\n",
+				kprintf("%s: timed out waiting for BIOS\n",
 				    USBDEVNAME(sc->sc_bus.bdev));
 		}
 	}

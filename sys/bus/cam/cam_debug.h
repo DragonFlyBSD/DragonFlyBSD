@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_debug.h,v 1.6 1999/12/29 04:54:25 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_debug.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_debug.h,v 1.3 2006/12/22 23:12:16 swildner Exp $
  */
 #ifndef	_CAM_CAM_DEBUG_H
 #define _CAM_CAM_DEBUG_H 1
@@ -63,20 +63,20 @@ extern u_int32_t cam_debug_delay;
 	 && (cam_dpath != NULL)				\
 	 && (xpt_path_comp(cam_dpath, path) >= 0)	\
 	 && (xpt_path_comp(cam_dpath, path) < 2))
-#define	CAM_DEBUG(path, flag, printfargs)		\
+#define	CAM_DEBUG(path, flag, kprintfargs)		\
 	if ((cam_dflags & (flag))			\
 	 && (cam_dpath != NULL)				\
 	 && (xpt_path_comp(cam_dpath, path) >= 0)	\
 	 && (xpt_path_comp(cam_dpath, path) < 2)) {	\
 		xpt_print_path(path);			\
- 		printf printfargs;			\
+ 		kprintf kprintfargs;			\
 		if (cam_debug_delay != 0)		\
 			DELAY(cam_debug_delay);		\
 	}
-#define	CAM_DEBUG_PRINT(flag, printfargs)		\
+#define	CAM_DEBUG_PRINT(flag, kprintfargs)		\
 	if (cam_dflags & (flag)) {			\
-		printf("cam_debug: ");			\
- 		printf printfargs;			\
+		kprintf("cam_debug: ");			\
+ 		kprintf kprintfargs;			\
 		if (cam_debug_delay != 0)		\
 			DELAY(cam_debug_delay);		\
 	}

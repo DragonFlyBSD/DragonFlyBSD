@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.12 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.13 2006/12/22 23:12:16 swildner Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -415,7 +415,7 @@ isa_assign_resources(device_t child)
 	 * Disable the device.
 	 */
 	bus_print_child_header(device_get_parent(child), child);
-	printf(" can't assign resources (%s)\n", reason);
+	kprintf(" can't assign resources (%s)\n", reason);
 	if (bootverbose)
 	    isa_print_child(device_get_parent(child), child);
 	bzero(&config, sizeof config);
@@ -451,7 +451,7 @@ isa_probe_children(device_t dev)
 	 * matched by legacy probes.
 	 */
 	if (bootverbose)
-		printf("isa_probe_children: disabling PnP devices\n");
+		kprintf("isa_probe_children: disabling PnP devices\n");
 	for (i = 0; i < nchildren; i++) {
 		device_t child = children[i];
 		struct isa_device *idev = DEVTOISA(child);
@@ -467,7 +467,7 @@ isa_probe_children(device_t dev)
 	 * resources first.
 	 */
 	if (bootverbose)
-		printf("isa_probe_children: probing non-PnP devices\n");
+		kprintf("isa_probe_children: probing non-PnP devices\n");
 	for (i = 0; i < nchildren; i++) {
 		device_t child = children[i];
 		struct isa_device *idev = DEVTOISA(child);
@@ -482,7 +482,7 @@ isa_probe_children(device_t dev)
 	 * Finally assign resource to pnp devices and probe them.
 	 */
 	if (bootverbose)
-		printf("isa_probe_children: probing PnP devices\n");
+		kprintf("isa_probe_children: probing PnP devices\n");
 	for (i = 0; i < nchildren; i++) {
 		device_t child = children[i];
 		struct isa_device* idev = DEVTOISA(child);
@@ -551,14 +551,14 @@ isa_print_resources(struct resource_list *rl, const char *name, int type,
 		rle = resource_list_find(rl, type, i);
 		if (rle) {
 			if (printed == 0)
-				retval += printf(" %s ", name);
+				retval += kprintf(" %s ", name);
 			else if (printed > 0)
-				retval += printf(",");
+				retval += kprintf(",");
 			printed++;
-			retval += printf(format, rle->start);
+			retval += kprintf(format, rle->start);
 			if (rle->count > 1) {
-				retval += printf("-");
-				retval += printf(format,
+				retval += kprintf("-");
+				retval += kprintf(format,
 						 rle->start + rle->count - 1);
 			}
 		} else if (i > 3) {
@@ -577,7 +577,7 @@ isa_print_all_resources(device_t dev)
 	int retval = 0;
 
 	if (SLIST_FIRST(rl) || device_get_flags(dev))
-		retval += printf(" at");
+		retval += kprintf(" at");
 	
 	retval += isa_print_resources(rl, "port", SYS_RES_IOPORT,
 				      ISA_NPORT, "%#lx");
@@ -588,7 +588,7 @@ isa_print_all_resources(device_t dev)
 	retval += isa_print_resources(rl, "drq", SYS_RES_DRQ,
 				      ISA_NDRQ, "%ld");
 	if (device_get_flags(dev))
-		retval += printf(" flags %#x", device_get_flags(dev));
+		retval += kprintf(" flags %#x", device_get_flags(dev));
 
 	return retval;
 }
@@ -610,7 +610,7 @@ isa_probe_nomatch(device_t dev, device_t child)
 {
 	if (bootverbose) {
 		bus_print_child_header(dev, child);
-		printf(" failed to probe");
+		kprintf(" failed to probe");
 		isa_print_all_resources(child);
 		bus_print_child_footer(dev, child);
 	}

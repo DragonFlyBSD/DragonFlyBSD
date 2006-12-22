@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.33 2006/12/20 18:14:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.34 2006/12/22 23:12:16 swildner Exp $
  */
 
 #ifdef _KERNEL
@@ -689,7 +689,7 @@ daclose(struct dev_close_args *ap)
 					scsi_sense_print(&ccb->csio);
 			} else {
 				xpt_print_path(periph->path);
-				printf("Synchronize cache failed, status "
+				kprintf("Synchronize cache failed, status "
 				       "== 0x%x, scsi status == 0x%x\n",
 				       ccb->csio.ccb_h.status,
 				       ccb->csio.scsi_status);
@@ -891,12 +891,12 @@ dadump(struct dev_dump_args *ap)
 		xpt_polled_action((union ccb *)&csio);
 
 		if ((csio.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
-			printf("Aborting dump due to I/O error.\n");
+			kprintf("Aborting dump due to I/O error.\n");
 			if ((csio.ccb_h.status & CAM_STATUS_MASK) ==
 			     CAM_SCSI_STATUS_ERROR)
 				scsi_sense_print(&csio);
 			else
-				printf("status == 0x%x, scsi status == 0x%x\n",
+				kprintf("status == 0x%x, scsi status == 0x%x\n",
 				       csio.ccb_h.status, csio.scsi_status);
 			return(EIO);
 		}
@@ -941,7 +941,7 @@ dadump(struct dev_dump_args *ap)
 					scsi_sense_print(&csio);
 			} else {
 				xpt_print_path(periph->path);
-				printf("Synchronize cache failed, status "
+				kprintf("Synchronize cache failed, status "
 				       "== 0x%x, scsi status == 0x%x\n",
 				       csio.ccb_h.status, csio.scsi_status);
 			}
@@ -962,7 +962,7 @@ dainit(void)
 	daperiphs = cam_extend_new();
 	SLIST_INIT(&softc_list);
 	if (daperiphs == NULL) {
-		printf("da: Failed to alloc extend array!\n");
+		kprintf("da: Failed to alloc extend array!\n");
 		return;
 	}
 
@@ -989,7 +989,7 @@ dainit(void)
         }
 
 	if (status != CAM_REQ_CMP) {
-		printf("da: Failed to attach master async callback "
+		kprintf("da: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	} else {
 
@@ -1004,7 +1004,7 @@ dainit(void)
 		/* Register our shutdown event handler */
 		if ((EVENTHANDLER_REGISTER(shutdown_post_sync, dashutdown, 
 					   NULL, SHUTDOWN_PRI_DEFAULT)) == NULL)
-		    printf("dainit: shutdown event registration failed!\n");
+		    kprintf("dainit: shutdown event registration failed!\n");
 	}
 }
 
@@ -1055,7 +1055,7 @@ daoninvalidate(struct cam_periph *periph)
 	SLIST_REMOVE(&softc_list, softc, da_softc, links);
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 }
 
 static void
@@ -1068,14 +1068,14 @@ dacleanup(struct cam_periph *periph)
 	devstat_remove_entry(&softc->device_stats);
 	cam_extend_release(daperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 	/*
 	 * If we can't free the sysctl tree, oh well...
 	 */
 	if ((softc->flags & DA_FLAG_SCTX_INIT) != 0
 	    && sysctl_ctx_free(&softc->sysctl_ctx) != 0) {
 		xpt_print_path(periph->path);
-		printf("can't remove sysctl context\n");
+		kprintf("can't remove sysctl context\n");
 	}
 	if (softc->disk.d_rawdev) {
 		disk_destroy(&softc->disk);
@@ -1116,7 +1116,7 @@ daasync(void *callback_arg, u_int32_t code,
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("daasync: Unable to attach to new device "
+			kprintf("daasync: Unable to attach to new device "
 				"due to status 0x%x\n", status);
 		break;
 	}
@@ -1164,7 +1164,7 @@ dasysctlinit(void *context, int pending)
 		SYSCTL_STATIC_CHILDREN(_kern_cam_da), OID_AUTO, tmpstr2,
 		CTLFLAG_RD, 0, tmpstr);
 	if (softc->sysctl_tree == NULL) {
-		printf("dasysctlinit: unable to allocate sysctl tree\n");
+		kprintf("dasysctlinit: unable to allocate sysctl tree\n");
 		return;
 	}
 
@@ -1222,12 +1222,12 @@ daregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("daregister: periph was NULL!!\n");
+		kprintf("daregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("daregister: no getdev CCB, can't register device\n");
+		kprintf("daregister: no getdev CCB, can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -1474,7 +1474,7 @@ cmd6workaround(union ccb *ccb)
 		return 0;
 
 	xpt_print_path(ccb->ccb_h.path);
- 	printf("READ(6)/WRITE(6) not supported, "
+ 	kprintf("READ(6)/WRITE(6) not supported, "
 	       "increasing minimum_cmd_size to 10.\n");
  	softc = (struct da_softc *)xpt_path_periph(ccb->ccb_h.path)->softc;
 	softc->minimum_cmd_size = 10;
@@ -1553,7 +1553,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 					 *     change first.
 					 */
 					xpt_print_path(periph->path);
-					printf("Invalidating pack\n");
+					kprintf("Invalidating pack\n");
 					softc->flags |= DA_FLAG_PACK_INVALID;
 				}
 
@@ -1700,12 +1700,12 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 							&done_ccb->csio);
 					else {
 						xpt_print_path(periph->path);
-						printf("got CAM status %#x\n",
+						kprintf("got CAM status %#x\n",
 						       done_ccb->ccb_h.status);
 					}
 
 					xpt_print_path(periph->path);
-					printf("fatal error, failed" 
+					kprintf("fatal error, failed" 
 					       " to attach to device\n");
 
 					/*
@@ -1944,7 +1944,7 @@ dashutdown(void * arg, int howto)
 					scsi_sense_print(&ccb.csio);
 			} else {
 				xpt_print_path(periph->path);
-				printf("Synchronize cache failed, status "
+				kprintf("Synchronize cache failed, status "
 				       "== 0x%x, scsi status == 0x%x\n",
 				       ccb.ccb_h.status, ccb.csio.scsi_status);
 			}

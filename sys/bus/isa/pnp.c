@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -230,7 +230,7 @@ pnp_get_resource_info(u_char *buffer, int len)
 			DELAY(1);
 		}
 		if (j == 100) {
-			printf("PnP device failed to report resource data\n");
+			kprintf("PnP device failed to report resource data\n");
 			return count;
 		}
 		outb(_PNP_ADDRESS, PNP_RESOURCE_DATA);
@@ -256,7 +256,7 @@ write_pnp_parms(struct pnp_cinfo *d, pnp_id *p, int ldn)
     pnp_write (SET_LDN, ldn );
     i = pnp_read(SET_LDN) ;
     if (i != ldn) {
-	printf("Warning: LDN %d does not exist\n", ldn);
+	kprintf("Warning: LDN %d does not exist\n", ldn);
     }
     for (i = 0; i < 8; i++) {
 	pnp_write(IO_CONFIG_BASE + i * 2, d->ic_port[i] >> 8 );
@@ -778,7 +778,7 @@ pnp_identify(driver_t *driver, device_t parent)
 #if 0
 	if (pnp_ldn_overrides[0].csn == 0) {
 		if (bootverbose)
-			printf("Initializing PnP override table\n");
+			kprintf("Initializing PnP override table\n");
 		bzero (pnp_ldn_overrides, sizeof(pnp_ldn_overrides));
 		pnp_ldn_overrides[0].csn = 255 ;
 	}
@@ -787,7 +787,7 @@ pnp_identify(driver_t *driver, device_t parent)
 	/* Try various READ_DATA ports from 0x203-0x3ff */
 	for (pnp_rd_port = 0x80; (pnp_rd_port < 0xff); pnp_rd_port += 0x10) {
 		if (bootverbose)
-			printf("Trying Read_Port at %x\n", (pnp_rd_port << 2) | 0x3);
+			kprintf("Trying Read_Port at %x\n", (pnp_rd_port << 2) | 0x3);
 
 		num_pnp_devs = pnp_isolation_protocol(parent);
 		if (num_pnp_devs)

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.7 2006/09/05 00:55:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.8 2006/12/22 23:12:16 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -228,7 +228,7 @@ cam_devq_release(struct cam_devq *devq)
 {
 	if (--devq->refcount == 0) {
 		if (devq->alloc_active || devq->send_active)
-			printf("cam_devq_release: WARNING active allocations %d active send %d!\n", devq->alloc_active, devq->send_active);
+			kprintf("cam_devq_release: WARNING active allocations %d active send %d!\n", devq->alloc_active, devq->send_active);
 		camq_fini(&devq->alloc_queue);
 		camq_fini(&devq->send_queue);
 		kfree(devq, M_DEVBUF);

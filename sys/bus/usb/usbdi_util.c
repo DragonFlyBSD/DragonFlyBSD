@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.10 2006/12/10 02:03:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.11 2006/12/22 23:12:17 swildner Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -514,7 +514,7 @@ usb_detach_wait(device_ptr_t dv)
 {
 	DPRINTF(("usb_detach_wait: waiting for %s\n", USBDEVPTRNAME(dv)));
 	if (tsleep(dv, 0, "usbdet", hz * 60))
-		printf("usb_detach_wait: %s didn't detach\n",
+		kprintf("usb_detach_wait: %s didn't detach\n",
 		        USBDEVPTRNAME(dv));
 	DPRINTF(("usb_detach_wait: %s done\n", USBDEVPTRNAME(dv)));
 }

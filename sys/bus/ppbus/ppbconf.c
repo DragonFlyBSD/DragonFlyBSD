@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.10 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.11 2006/12/22 23:12:17 swildner Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -61,9 +61,9 @@ ppbus_print_child(device_t bus, device_t dev)
 	ppbdev = (struct ppb_device *)device_get_ivars(dev);
 
 	if (ppbdev->flags != 0)
-		printf(" flags 0x%x", ppbdev->flags);
+		kprintf(" flags 0x%x", ppbdev->flags);
 
-	printf(" on %s%d\n", device_get_name(bus), device_get_unit(bus));
+	kprintf(" on %s%d\n", device_get_name(bus), device_get_unit(bus));
 
 	return;
 }
@@ -220,17 +220,17 @@ ppb_pnp_detect(device_t bus)
 	char str[PPB_PnP_STRING_SIZE+1];
 	int unit = device_get_unit(bus);
 
-	printf("Probing for PnP devices on ppbus%d:\n", unit);
+	kprintf("Probing for PnP devices on ppbus%d:\n", unit);
 	
 	if ((error = ppb_1284_read_id(bus, PPB_NIBBLE, str,
 					PPB_PnP_STRING_SIZE, &len)))
 		goto end_detect;
 
 #ifdef DEBUG_1284
-	printf("ppb: <PnP> %d characters: ", len);
+	kprintf("ppb: <PnP> %d characters: ", len);
 	for (i = 0; i < len; i++)
-		printf("%c(0x%x) ", str[i], str[i]);
-	printf("\n");
+		kprintf("%c(0x%x) ", str[i], str[i]);
+	kprintf("\n");
 #endif
 
 	/* replace ';' characters by '\0' */
@@ -239,39 +239,39 @@ ppb_pnp_detect(device_t bus)
 
 	if ((token = search_token(str, len, "MFG")) != NULL ||
 		(token = search_token(str, len, "MANUFACTURER")) != NULL)
-		printf("ppbus%d: <%s", unit,
+		kprintf("ppbus%d: <%s", unit,
 			search_token(token, UNKNOWN_LENGTH, ":") + 1);
 	else
-		printf("ppbus%d: <unknown", unit);
+		kprintf("ppbus%d: <unknown", unit);
 
 	if ((token = search_token(str, len, "MDL")) != NULL ||
 		(token = search_token(str, len, "MODEL")) != NULL)
-		printf(" %s",
+		kprintf(" %s",
 			search_token(token, UNKNOWN_LENGTH, ":") + 1);
 	else
-		printf(" unknown");
+		kprintf(" unknown");
 
 	if ((token = search_token(str, len, "VER")) != NULL)
-		printf("/%s",
+		kprintf("/%s",
 			search_token(token, UNKNOWN_LENGTH, ":") + 1);
 
 	if ((token = search_token(str, len, "REV")) != NULL)
-		printf(".%s",
+		kprintf(".%s",
 			search_token(token, UNKNOWN_LENGTH, ":") + 1);
 
-	printf(">");
+	kprintf(">");
 
 	if ((token = search_token(str, len, "CLS")) != NULL) {
 		class = search_token(token, UNKNOWN_LENGTH, ":") + 1;
-		printf(" %s", class);
+		kprintf(" %s", class);
 	}
 
 	if ((token = search_token(str, len, "CMD")) != NULL ||
 		(token = search_token(str, len, "COMMAND")) != NULL)
-		printf(" %s",
+		kprintf(" %s",
 			search_token(token, UNKNOWN_LENGTH, ":") + 1);
 
-	printf("\n");
+	kprintf("\n");
 
 	if (class)
 		/* identify class ident */
@@ -313,30 +313,30 @@ ppb_scan_bus(device_t bus)
 
 	ppb_1284_terminate(bus);
 
-	printf("ppbus%d: IEEE1284 device found ", unit);
+	kprintf("ppbus%d: IEEE1284 device found ", unit);
 
 	if (!(error = ppb_1284_negociate(bus, PPB_NIBBLE, 0))) {
-		printf("/NIBBLE");
+		kprintf("/NIBBLE");
 		ppb_1284_terminate(bus);
 	}
 
 	if (!(error = ppb_1284_negociate(bus, PPB_PS2, 0))) {
-		printf("/PS2");
+		kprintf("/PS2");
 		ppb_1284_terminate(bus);
 	}
 
 	if (!(error = ppb_1284_negociate(bus, PPB_ECP, 0))) {
-		printf("/ECP");
+		kprintf("/ECP");
 		ppb_1284_terminate(bus);
 	}
 
 	if (!(error = ppb_1284_negociate(bus, PPB_ECP, PPB_USE_RLE))) {
-		printf("/ECP_RLE");
+		kprintf("/ECP_RLE");
 		ppb_1284_terminate(bus);
 	}
 
 	if (!(error = ppb_1284_negociate(bus, PPB_EPP, 0))) {
-		printf("/EPP");
+		kprintf("/EPP");
 		ppb_1284_terminate(bus);
 	}
 
@@ -344,36 +344,36 @@ ppb_scan_bus(device_t bus)
 	if (bootverbose) {
 		if (!(error = ppb_1284_negociate(bus, PPB_NIBBLE,
 				PPB_REQUEST_ID))) {
-			printf("/NIBBLE_ID");
+			kprintf("/NIBBLE_ID");
 			ppb_1284_terminate(bus);
 		}
 
 		if (!(error = ppb_1284_negociate(bus, PPB_PS2,
 				PPB_REQUEST_ID))) {
-			printf("/PS2_ID");
+			kprintf("/PS2_ID");
 			ppb_1284_terminate(bus);
 		}
 
 		if (!(error = ppb_1284_negociate(bus, PPB_ECP,
 				PPB_REQUEST_ID))) {
-			printf("/ECP_ID");
+			kprintf("/ECP_ID");
 			ppb_1284_terminate(bus);
 		}
 
 		if (!(error = ppb_1284_negociate(bus, PPB_ECP,
 				PPB_REQUEST_ID | PPB_USE_RLE))) {
-			printf("/ECP_RLE_ID");
+			kprintf("/ECP_RLE_ID");
 			ppb_1284_terminate(bus);
 		}
 
 		if (!(error = ppb_1284_negociate(bus, PPB_COMPATIBLE,
 				PPB_EXTENSIBILITY_LINK))) {
-			printf("/Extensibility Link");
+			kprintf("/Extensibility Link");
 			ppb_1284_terminate(bus);
 		}
 	}
 
-	printf("\n");
+	kprintf("\n");
 
 	/* detect PnP devices */
 	ppb->class_id = ppb_pnp_detect(bus);

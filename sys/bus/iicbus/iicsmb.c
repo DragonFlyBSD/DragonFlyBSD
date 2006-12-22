@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicsmb.c,v 1.5.2.2 2000/08/09 00:59:27 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iicsmb.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicsmb.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
  *
  */
 
@@ -184,7 +184,7 @@ iicsmb_intr(device_t dev, int event, char *buf)
 		switch (sc->state) {
 		case SMB_DONE:
 			/* XXX too much data, discard */
-			printf("%s: too much data from 0x%x\n", __func__,
+			kprintf("%s: too much data from 0x%x\n", __func__,
 				sc->devaddr & 0xff);
 			goto end;
 
@@ -217,7 +217,7 @@ end:
 			break;
 
 		default:
-			printf("%s unknown error 0x%x!\n", __func__,
+			kprintf("%s unknown error 0x%x!\n", __func__,
 								(int)*buf);
 			break;
 		}

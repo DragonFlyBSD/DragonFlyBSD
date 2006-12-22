@@ -13,7 +13,7 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.c,v 1.3 1999/08/28 00:40:39 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.7 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.8 2006/12/22 23:12:16 swildner Exp $
  */
 /*
  * XXX XXX XXX XXX  We should get DEVFS working so that we
@@ -69,7 +69,7 @@ cam_extend_set(struct extend_array *ea, int index, void *value)
 		ea->nelem = index + EXTEND_CHUNK;
 	}
 	if (ea->ps[index]) {
-		printf("extend_set: entry %d already has storage.\n", index);
+		kprintf("extend_set: entry %d already has storage.\n", index);
 		return 0;
 	}
 	else

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_1284.c,v 1.11 2000/01/14 08:03:14 nsouch Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_1284.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_1284.c,v 1.5 2006/12/22 23:12:17 swildner Exp $
  *
  */
 
@@ -129,7 +129,7 @@ ppb_1284_set_error(device_t bus, int error, int event)
 	}
 
 #ifdef DEBUG_1284
-	printf("ppb1284: error=%d status=0x%x event=%d\n", error,
+	kprintf("ppb1284: error=%d status=0x%x event=%d\n", error,
 		ppb_rstr(bus) & 0xff, event);
 #endif
 
@@ -226,7 +226,7 @@ ppb_peripheral_negociate(device_t bus, int mode, int options)
 
 		if (r == NIBBLE_1284_NORMAL) {
 #ifdef DEBUG_1284
-			printf("R");
+			kprintf("R");
 #endif
 			ppb_1284_set_error(bus, PPB_MODE_UNSUPPORTED, 4);
 			error = EINVAL;
@@ -241,7 +241,7 @@ ppb_peripheral_negociate(device_t bus, int mode, int options)
 				break;
 			}
 #ifdef DEBUG_1284
-			printf("A");
+			kprintf("A");
 #endif
 			/* negociation succeeds */
 		}
@@ -255,7 +255,7 @@ ppb_peripheral_negociate(device_t bus, int mode, int options)
 		ppb_1284_set_error(bus, PPB_MODE_UNSUPPORTED, 4);
 
 #ifdef DEBUG_1284
-		printf("r");
+		kprintf("r");
 #endif
 		error = EINVAL;
 		goto error;
@@ -281,7 +281,7 @@ ppb_peripheral_terminate(device_t bus, int how)
 	int error = 0;
 
 #ifdef DEBUG_1284
-	printf("t");
+	kprintf("t");
 #endif
 
 	ppb_1284_set_state(bus, PPB_PERIPHERAL_TERMINATION);
@@ -344,7 +344,7 @@ byte_peripheral_outbyte(device_t bus, char *buffer, int last)
 
 	/* Event 15 - put byte on data lines */
 #ifdef DEBUG_1284
-	printf("B");
+	kprintf("B");
 #endif
 	ppb_wdtr(bus, *buffer);
 
@@ -406,7 +406,7 @@ byte_peripheral_write(device_t bus, char *buffer, int len, int *sent)
 		ppb_wctr(bus, r & ~nINIT);
 
 #ifdef DEBUG_1284
-		printf("y");
+		kprintf("y");
 #endif
 		/* Event 7 */
 		error = ppb_poll_bus(bus, PPB_FOREVER, nBUSY, nBUSY,
@@ -416,7 +416,7 @@ byte_peripheral_write(device_t bus, char *buffer, int len, int *sent)
 			goto error;
 
 #ifdef DEBUG_1284
-		printf("b");
+		kprintf("b");
 #endif
 		if ((error = byte_peripheral_outbyte(bus, buffer+i, (i == len-1))))
 			goto error;
@@ -551,7 +551,7 @@ spp_1284_read(device_t bus, int mode, char *buffer, int max, int *read)
 		ppb_1284_set_state(bus, PPB_REVERSE_TRANSFER);
 
 #ifdef DEBUG_1284
-		printf("B");
+		kprintf("B");
 #endif
 
 		switch (mode) {
@@ -655,7 +655,7 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 	int request_mode;
 
 #ifdef DEBUG_1284
-	printf("n");
+	kprintf("n");
 #endif
 
 	if (ppb_1284_get_state(bus) >= PPB_PERIPHERAL_NEGOCIATION)
@@ -665,7 +665,7 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 		ppb_1284_terminate(bus);
 
 #ifdef DEBUG_1284
-	printf("%d", mode);
+	kprintf("%d", mode);
 #endif
 
 	/* ensure the host is in compatible mode */
@@ -815,7 +815,7 @@ ppb_1284_terminate(device_t bus)
 {
 
 #ifdef DEBUG_1284
-	printf("T");
+	kprintf("T");
 #endif
 
 	/* do not reset error here to keep the error that

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.12 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.13 2006/12/22 23:12:17 swildner Exp $
  *
  */
 
@@ -51,7 +51,7 @@
 
 #define PRVERB(a) do {							\
 	if (bootverbose)						\
-		printf a ;						\
+		kprintf a ;						\
 } while(0)
 
 static int pci_disable_bios_route = 0;
@@ -134,7 +134,7 @@ pci_cfgregopen(void)
 
 	v = pcibios_get_version();
 	if (v > 0)
-		printf("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
+		kprintf("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
 		       v & 0xff);
 
 	/*
@@ -161,7 +161,7 @@ pci_cfgregopen(void)
 				pci_route_count = (pt->pt_header.ph_length -
 				    sizeof(struct PIR_header)) /
 				    sizeof(struct PIR_entry);
-				printf("Using $PIR table, %d entries at %p\n",
+				kprintf("Using $PIR table, %d entries at %p\n",
 				       pci_route_count, pci_route_table);
 				if (bootverbose)
 					pci_print_route_table(pci_route_table,
@@ -300,7 +300,7 @@ pci_cfgintr(int bus, int device, int pin, int oldirq)
 			continue;
 
 		if (pci_cfgintr_valid(pe, pin, oldirq)) {
-			printf("pci_cfgintr: %d:%d INT%c BIOS irq %d\n", bus,
+			kprintf("pci_cfgintr: %d:%d INT%c BIOS irq %d\n", bus,
 			       device, 'A' + pin - 1, oldirq);
 			return (oldirq);
 		}
@@ -356,7 +356,7 @@ pci_cfgintr(int bus, int device, int pin, int oldirq)
 			PRVERB(("pci_cfgintr: ROUTE_INTERRUPT failed.\n"));
 			return (PCI_INVALID_IRQ);
 		}
-		printf("pci_cfgintr: %d:%d INT%c routed to irq %d\n", bus,
+		kprintf("pci_cfgintr: %d:%d INT%c routed to irq %d\n", bus,
 		       device, 'A' + pin - 1, irq);
 		return(irq);
 	}
@@ -543,17 +543,17 @@ pci_print_irqmask(u_int16_t irqs)
 	int i, first;
 
 	if (irqs == 0) {
-		printf("none");
+		kprintf("none");
 		return;
 	}
 	first = 1;
 	for (i = 0; i < 16; i++, irqs >>= 1)
 		if (irqs & 1) {
 			if (!first)
-				printf(" ");
+				kprintf(" ");
 			else
 				first = 0;
-			printf("%d", i);
+			kprintf("%d", i);
 		}
 }
 
@@ -567,23 +567,23 @@ pci_print_route_table(struct PIR_table *ptr, int size)
 	struct PIR_intpin *intpin;
 	int i, pin;
 
-	printf("PCI-Only Interrupts: ");
+	kprintf("PCI-Only Interrupts: ");
 	pci_print_irqmask(ptr->pt_header.ph_pci_irqs);
-	printf("\nLocation  Bus Device Pin  Link  IRQs\n");
+	kprintf("\nLocation  Bus Device Pin  Link  IRQs\n");
 	entry = &ptr->pt_entry[0];
 	for (i = 0; i < size; i++, entry++) {
 		intpin = &entry->pe_intpin[0];
 		for (pin = 0; pin < 4; pin++, intpin++)
 			if (intpin->link != 0) {
 				if (entry->pe_slot == 0)
-					printf("embedded ");
+					kprintf("embedded ");
 				else
-					printf("slot %-3d ", entry->pe_slot);
-				printf(" %3d  %3d    %c   0x%02x  ",
+					kprintf("slot %-3d ", entry->pe_slot);
+				kprintf(" %3d  %3d    %c   0x%02x  ",
 				       entry->pe_bus, entry->pe_device,
 				       'A' + pin, intpin->link);
 				pci_print_irqmask(intpin->irqs);
-				printf("\n");
+				kprintf("\n");
 			}
 	}
 }
@@ -712,11 +712,11 @@ pci_cfgcheck(int maxdev)
 	int port;
 
 	if (bootverbose) 
-		printf("pci_cfgcheck:\tdevice ");
+		kprintf("pci_cfgcheck:\tdevice ");
 
 	for (device = 0; device < maxdev; device++) {
 		if (bootverbose) 
-			printf("%d ", device);
+			kprintf("%d ", device);
 
 		port = pci_cfgenable(0, device, 0, 0, 4);
 		id = inl(port);
@@ -726,25 +726,25 @@ pci_cfgcheck(int maxdev)
 		port = pci_cfgenable(0, device, 0, 8, 4);
 		class = inl(port) >> 8;
 		if (bootverbose)
-			printf("[class=%06x] ", class);
+			kprintf("[class=%06x] ", class);
 		if (class == 0 || (class & 0xf870ff) != 0)
 			continue;
 
 		port = pci_cfgenable(0, device, 0, 14, 1);
 		header = inb(port);
 		if (bootverbose)
-			printf("[hdr=%02x] ", header);
+			kprintf("[hdr=%02x] ", header);
 		if ((header & 0x7e) != 0)
 			continue;
 
 		if (bootverbose)
-			printf("is there (id=%08x)\n", id);
+			kprintf("is there (id=%08x)\n", id);
 
 		pci_cfgdisable();
 		return (1);
 	}
 	if (bootverbose) 
-		printf("-- nothing found\n");
+		kprintf("-- nothing found\n");
 
 	pci_cfgdisable();
 	return (0);
@@ -759,7 +759,7 @@ pcireg_cfgopen(void)
 	oldval1 = inl(CONF1_ADDR_PORT);
 
 	if (bootverbose) {
-		printf("pci_open(1):\tmode 1 addr port (0x0cf8) is 0x%08x\n",
+		kprintf("pci_open(1):\tmode 1 addr port (0x0cf8) is 0x%08x\n",
 		       oldval1);
 	}
 
@@ -774,7 +774,7 @@ pcireg_cfgopen(void)
 		outl(CONF1_ADDR_PORT, oldval1);
 
 		if (bootverbose)
-			printf("pci_open(1a):\tmode1res=0x%08x (0x%08lx)\n", 
+			kprintf("pci_open(1a):\tmode1res=0x%08x (0x%08lx)\n", 
 			       mode1res, CONF1_ENABLE_CHK);
 
 		if (mode1res) {
@@ -787,7 +787,7 @@ pcireg_cfgopen(void)
 		outl(CONF1_ADDR_PORT, oldval1);
 
 		if (bootverbose)
-			printf("pci_open(1b):\tmode1res=0x%08x (0x%08lx)\n", 
+			kprintf("pci_open(1b):\tmode1res=0x%08x (0x%08lx)\n", 
 			       mode1res, CONF1_ENABLE_CHK1);
 
 		if ((mode1res & CONF1_ENABLE_MSK1) == CONF1_ENABLE_RES1) {
@@ -799,7 +799,7 @@ pcireg_cfgopen(void)
 	oldval2 = inb(CONF2_ENABLE_PORT);
 
 	if (bootverbose) {
-		printf("pci_open(2):\tmode 2 enable port (0x0cf8) is 0x%02x\n",
+		kprintf("pci_open(2):\tmode 2 enable port (0x0cf8) is 0x%02x\n",
 		       oldval2);
 	}
 
@@ -813,12 +813,12 @@ pcireg_cfgopen(void)
 		outb(CONF2_ENABLE_PORT, oldval2);
 
 		if (bootverbose)
-			printf("pci_open(2a):\tmode2res=0x%02x (0x%02x)\n", 
+			kprintf("pci_open(2a):\tmode2res=0x%02x (0x%02x)\n", 
 			       mode2res, CONF2_ENABLE_CHK);
 
 		if (mode2res == CONF2_ENABLE_RES) {
 			if (bootverbose)
-				printf("pci_open(2a):\tnow trying mechanism 2\n");
+				kprintf("pci_open(2a):\tnow trying mechanism 2\n");
 
 			if (pci_cfgcheck(16)) 
 				return (cfgmech);

@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.8 2006/12/20 18:14:36 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.9 2006/12/22 23:12:16 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -54,6 +54,7 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.9 2003/10/02 04:06:55 simo
 #include <stdlib.h>
 #include <string.h>
 #define ksnprintf	snprintf	/* sigh. used by fwcontrol */
+#define kprintf		printf
 #endif
 
 #ifdef __DragonFly__
@@ -81,7 +82,7 @@ crom_init_context(struct crom_context *cc, u_int32_t *p)
 		 * situation where one host gets the root directory for
 		 * another before the other has actually initialized it.
 		 */
-		printf("crom_init_context: WARNING, info_len is 0\n");
+		kprintf("crom_init_context: WARNING, info_len is 0\n");
 		cc->depth = -1;
 		return;
 	}
@@ -121,7 +122,7 @@ crom_next(struct crom_context *cc)
 	reg = crom_get(cc);
 	if ((reg->key & CSRTYPE_MASK) == CSRTYPE_D) {
 		if (cc->depth >= CROM_MAX_DEPTH) {
-			printf("crom_next: too deep\n");
+			kprintf("crom_next: too deep\n");
 			goto again;
 		}
 		cc->depth ++;
@@ -140,7 +141,7 @@ check:
 		return;
 
 	if (ptr->index < ptr->dir->crc_len)
-		printf("crom_next: bound check failed\n");
+		kprintf("crom_next: bound check failed\n");
 
 	if (cc->depth > 0) {
 		cc->depth--;
@@ -406,7 +407,7 @@ crom_add_quad(struct crom_chunk *chunk, u_int32_t entry)
 
 	index = chunk->data.crc_len;
 	if (index >= CROM_MAX_CHUNK_LEN - 1) {
-		printf("too large chunk %d\n", index);
+		kprintf("too large chunk %d\n", index);
 		return(-1);
 	}
 	chunk->data.buf[index] = entry;
@@ -460,9 +461,9 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 	len = strlen(buf);
 	if (len > MAX_TEXT) {
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-		printf("text(%d) trancated to %d.\n", len, MAX_TEXT);
+		kprintf("text(%d) trancated to %d.\n", len, MAX_TEXT);
 #else
-		printf("text(%d) trancated to %td.\n", len, MAX_TEXT);
+		kprintf("text(%d) trancated to %td.\n", len, MAX_TEXT);
 #endif
 		len = MAX_TEXT;
 	}
@@ -484,7 +485,7 @@ static int
 crom_copy(u_int32_t *src, u_int32_t *dst, int *offset, int len, int maxlen)
 {
 	if (*offset + len > maxlen) {
-		printf("Config. ROM is too large for the buffer\n");
+		kprintf("Config. ROM is too large for the buffer\n");
 		return(-1);
 	}
 	bcopy(src, (char *)(dst + *offset), len * sizeof(u_int32_t));
@@ -640,7 +641,7 @@ main(int argc, char *argv[])
 	p = buf;
 #define DUMP_FORMAT     "%08x %08x %08x %08x %08x %08x %08x %08x\n"
 	for (i = 0; i < 256/8; i ++) {
-		printf(DUMP_FORMAT,
+		kprintf(DUMP_FORMAT,
 			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 		p += 8;
 	}

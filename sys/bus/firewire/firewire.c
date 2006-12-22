@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.17 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
  *
  */
 
@@ -205,7 +205,7 @@ fw_asyreq(struct firewire_comm *fc, int sub, struct fw_xfer *xfer)
 
 	if(xfer == NULL) return EINVAL;
 	if(xfer->act.hand == NULL){
-		printf("act.hand == NULL\n");
+		kprintf("act.hand == NULL\n");
 		return EINVAL;
 	}
 	fp = &xfer->send.hdr;
@@ -213,7 +213,7 @@ fw_asyreq(struct firewire_comm *fc, int sub, struct fw_xfer *xfer)
 	tcode = fp->mode.common.tcode & 0xf;
 	info = &fc->tcode[tcode];
 	if (info->flag == 0) {
-		printf("invalid tcode=%x\n", tcode);
+		kprintf("invalid tcode=%x\n", tcode);
 		return EINVAL;
 	}
 	if (info->flag & FWTI_REQ)
@@ -222,7 +222,7 @@ fw_asyreq(struct firewire_comm *fc, int sub, struct fw_xfer *xfer)
 		xferq = fc->ats;
 	len = info->hdr_len;
 	if (xfer->send.pay_len > MAXREC(fc->maxrec)) {
-		printf("send.pay_len > maxrec\n");
+		kprintf("send.pay_len > maxrec\n");
 		return EINVAL;
 	}
 	if (info->flag & FWTI_BLOCK_STR)
@@ -232,13 +232,13 @@ fw_asyreq(struct firewire_comm *fc, int sub, struct fw_xfer *xfer)
 	else
 		len = 0;
 	if (len != xfer->send.pay_len){
-		printf("len(%d) != send.pay_len(%d) %s(%x)\n",
+		kprintf("len(%d) != send.pay_len(%d) %s(%x)\n",
 		    len, xfer->send.pay_len, tcode_str[tcode], tcode);
 		return EINVAL; 
 	}
 
 	if(xferq->start == NULL){
-		printf("xferq->start == NULL\n");
+		kprintf("xferq->start == NULL\n");
 		return EINVAL;
 	}
 	if(!(xferq->queued < xferq->maxq)){
@@ -277,7 +277,7 @@ fw_asy_callback(struct fw_xfer *xfer){
 void
 fw_asybusy(struct fw_xfer *xfer)
 {
-	printf("fw_asybusy\n");
+	kprintf("fw_asybusy\n");
 /*
 	xfer->ch =  timeout((timeout_t *)fw_asystart, (void *)xfer, 20000);
 */
@@ -845,7 +845,7 @@ fw_bindadd(struct firewire_comm *fc, struct fw_bind *fwb)
 	struct fw_bind *tfw, *prev = NULL;
 
 	if (fwb->start > fwb->end) {
-		printf("%s: invalid range\n", __func__);
+		kprintf("%s: invalid range\n", __func__);
 		return EINVAL;
 	}
 
@@ -863,7 +863,7 @@ fw_bindadd(struct firewire_comm *fc, struct fw_bind *fwb)
 		goto out;
 	}
 
-	printf("%s: bind failed\n", __func__);
+	kprintf("%s: bind failed\n", __func__);
 	return (EBUSY);
 
 out:
@@ -890,7 +890,7 @@ fw_bindremove(struct firewire_comm *fc, struct fw_bind *fwb)
 			goto found;
 		}
 
-	printf("%s: no such bind\n", __func__);
+	kprintf("%s: no such bind\n", __func__);
 	crit_exit();
 	return (1);
 found:
@@ -944,12 +944,12 @@ fw_tl2xfer(struct firewire_comm *fc, int node, int tlabel)
 			xfer = tl->xfer;
 			crit_exit();
 			if (firewire_debug > 2)
-				printf("fw_tl2xfer: found tl=%d\n", tlabel);
+				kprintf("fw_tl2xfer: found tl=%d\n", tlabel);
 			return(xfer);
 		}
 	}
 	if (firewire_debug > 1)
-		printf("fw_tl2xfer: not found tl=%d\n", tlabel);
+		kprintf("fw_tl2xfer: not found tl=%d\n", tlabel);
 	crit_exit();
 	return(NULL);
 }
@@ -1004,7 +1004,7 @@ void
 fw_xfer_done(struct fw_xfer *xfer)
 {
 	if (xfer->act.hand == NULL) {
-		printf("act.hand == NULL\n");
+		kprintf("act.hand == NULL\n");
 		return;
 	}
 
@@ -1019,7 +1019,7 @@ fw_xfer_unload(struct fw_xfer* xfer)
 {
 	if(xfer == NULL ) return;
 	if(xfer->state == FWXF_INQ){
-		printf("fw_xfer_free FWXF_INQ\n");
+		kprintf("fw_xfer_free FWXF_INQ\n");
 		crit_enter();
 		STAILQ_REMOVE(&xfer->q->q, xfer, fw_xfer, link);
 		xfer->q->queued --;
@@ -1033,7 +1033,7 @@ fw_xfer_unload(struct fw_xfer* xfer)
 			 *  1. We call fwohci_arcv() before fwohci_txd().
 			 *  2. firewire_watch() is called.
 			 */
-			printf("fw_xfer_free FWXF_START\n");
+			kprintf("fw_xfer_free FWXF_START\n");
 #endif
 		fw_tl_free(xfer->fc, xfer);
 	}
@@ -1048,7 +1048,7 @@ void
 fw_xfer_free_buf( struct fw_xfer* xfer)
 {
 	if (xfer == NULL) {
-		printf("%s: xfer == NULL\n", __func__);
+		kprintf("%s: xfer == NULL\n", __func__);
 		return;
 	}
 	fw_xfer_unload(xfer);
@@ -1065,7 +1065,7 @@ void
 fw_xfer_free( struct fw_xfer* xfer)
 {
 	if (xfer == NULL) {
-		printf("%s: xfer == NULL\n", __func__);
+		kprintf("%s: xfer == NULL\n", __func__);
 		return;
 	}
 	fw_xfer_unload(xfer);
@@ -1076,7 +1076,7 @@ void
 fw_asy_callback_free(struct fw_xfer *xfer)
 {
 #if 0
-	printf("asyreq done state=%d resp=%d\n",
+	kprintf("asyreq done state=%d resp=%d\n",
 				xfer->state, xfer->resp);
 #endif
 	fw_xfer_free(xfer);
@@ -1111,7 +1111,7 @@ fw_phy_config(struct firewire_comm *fc, int root_node, int gap_count)
 	fp->mode.common.tcode |= FWTCODE_PHY;
 
 	if (firewire_debug)
-		printf("send phy_config root_node=%d gap_count=%d\n",
+		kprintf("send phy_config root_node=%d gap_count=%d\n",
 						root_node, gap_count);
 	fw_asyreq(fc, -1, xfer);
 }
@@ -1125,7 +1125,7 @@ fw_print_sid(u_int32_t sid)
 {
 	union fw_self_id *s;
 	s = (union fw_self_id *) &sid;
-	printf("node:%d link:%d gap:%d spd:%d del:%d con:%d pwr:%d"
+	kprintf("node:%d link:%d gap:%d spd:%d del:%d con:%d pwr:%d"
 		" p0:%d p1:%d p2:%d i:%d m:%d\n",
 		s->p0.phy_id, s->p0.link_active, s->p0.gap_count,
 		s->p0.phy_speed, s->p0.phy_delay, s->p0.contender,
@@ -1158,7 +1158,7 @@ fw_sidrcv(struct firewire_comm* fc, u_int32_t *sid, u_int len)
 	self_id = &fc->topology_map->self_id[0];
 	for(i = 0; i < fc->sid_cnt; i ++){
 		if (sid[1] != ~sid[0]) {
-			printf("fw_sidrcv: invalid self-id packet\n");
+			kprintf("fw_sidrcv: invalid self-id packet\n");
 			sid += 2;
 			continue;
 		}
@@ -1223,16 +1223,16 @@ fw_sidrcv(struct firewire_comm* fc, u_int32_t *sid, u_int len)
 	bcopy(p, &CSRARC(fc, SPED_MAP + 8), (fc->speed_map->crc_len - 1)*4);
 
 	fc->max_hop = fc->max_node - i_branch;
-	printf(", maxhop <= %d", fc->max_hop);
+	kprintf(", maxhop <= %d", fc->max_hop);
 		
 	if(fc->irm == -1 ){
-		printf(", Not found IRM capable node");
+		kprintf(", Not found IRM capable node");
 	}else{
-		printf(", cable IRM = %d", fc->irm);
+		kprintf(", cable IRM = %d", fc->irm);
 		if (fc->irm == fc->nodeid)
-			printf(" (me)");
+			kprintf(" (me)");
 	}
-	printf("\n");
+	kprintf("\n");
 
 	if (try_bmr && (fc->irm != -1) && (CSRARC(fc, BUS_MGR_ID) == 0x3f)) {
 		if (fc->irm == fc->nodeid) {
@@ -1303,7 +1303,7 @@ loop:
 	/* XXX we need to check phy_id first */
 	if (!fc->topology_map->self_id[fc->ongonode].p0.link_active) {
 		if (firewire_debug)
-			printf("node%d: link down\n", fc->ongonode);
+			kprintf("node%d: link down\n", fc->ongonode);
 		fc->ongonode++;
 		goto loop;
 	}
@@ -1386,7 +1386,7 @@ dorequest:
 	xfer->act.hand = fw_bus_explore_callback;
 
 	if (firewire_debug)
-		printf("node%d: explore addr=0x%x\n",
+		kprintf("node%d: explore addr=0x%x\n",
 				fc->ongonode, fc->ongoaddr);
 	err = fw_asyreq(fc, -1, xfer);
 	if(err){
@@ -1399,7 +1399,7 @@ done:
 	/* fw_attach_devs */
 	fc->status = FWBUSEXPDONE;
 	if (firewire_debug)
-		printf("bus_explore done\n");
+		kprintf("bus_explore done\n");
 	fw_attach_dev(fc);
 	return;
 
@@ -1458,17 +1458,17 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 
 	
 	if(xfer == NULL) {
-		printf("xfer == NULL\n");
+		kprintf("xfer == NULL\n");
 		return;
 	}
 	fc = xfer->fc;
 
 	if (firewire_debug)
-		printf("node%d: callback addr=0x%x\n",
+		kprintf("node%d: callback addr=0x%x\n",
 			fc->ongonode, fc->ongoaddr);
 
 	if(xfer->resp != 0){
-		printf("node%d: resp=%d addr=0x%x\n",
+		kprintf("node%d: resp=%d addr=0x%x\n",
 			fc->ongonode, xfer->resp, fc->ongoaddr);
 		goto errnode;
 	}
@@ -1480,12 +1480,12 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 		u_int32_t *qld;
 		int i;
 		qld = (u_int32_t *)xfer->recv.buf;
-		printf("len:%d\n", xfer->recv.len);
+		kprintf("len:%d\n", xfer->recv.len);
 		for( i = 0 ; i <= xfer->recv.len && i < 32; i+= 4){
-			printf("0x%08x ", rfp->mode.ld[i/4]);
-			if((i % 16) == 15) printf("\n");
+			kprintf("0x%08x ", rfp->mode.ld[i/4]);
+			if((i % 16) == 15) kprintf("\n");
 		}
-		if((i % 16) != 15) printf("\n");
+		if((i % 16) != 15) kprintf("\n");
 	}
 #endif
 	if(fc->ongodev == NULL){
@@ -1495,7 +1495,7 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 /* If CSR is minimal confinguration, more investgation is not needed. */
 			if(chdr->info_len == 1){
 				if (firewire_debug)
-					printf("node%d: minimal config\n",
+					kprintf("node%d: minimal config\n",
 								fc->ongonode);
 				goto nextnode;
 			}else{
@@ -1508,7 +1508,7 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 			fc->ongoeui.lo = ntohl(rfp->mode.rresq.data);
 			if (fc->ongoeui.hi == 0 && fc->ongoeui.lo == 0) {
 				if (firewire_debug)
-					printf("node%d: eui64 is zero.\n",
+					kprintf("node%d: eui64 is zero.\n",
 							fc->ongonode);
 				goto nextnode;
 			}
@@ -1648,7 +1648,7 @@ fw_attach_dev(struct firewire_comm *fc)
 	kfree(devlistp, M_TEMP);
 
 	if (fc->retry_count > 0) {
-		printf("probe failed for %d node\n", fc->retry_count);
+		kprintf("probe failed for %d node\n", fc->retry_count);
 #if 0
 		callout_reset(&fc->retry_probe_callout, hz*2,
 					(void *)fc->ibr, (void *)fc);
@@ -1682,14 +1682,14 @@ fw_get_tlabel(struct firewire_comm *fc, struct fw_xfer *xfer)
 			STAILQ_INSERT_TAIL(&fc->tlabels[label], tl, link);
 			crit_exit();
 			if (firewire_debug > 1)
-				printf("fw_get_tlabel: dst=%d tl=%d\n",
+				kprintf("fw_get_tlabel: dst=%d tl=%d\n",
 				    xfer->send.hdr.mode.hdr.dst, label);
 			return(label);
 		}
 	}
 	crit_exit();
 
-	printf("fw_get_tlabel: no free tlabel\n");
+	kprintf("fw_get_tlabel: no free tlabel\n");
 	return(-1);
 }
 
@@ -1732,7 +1732,7 @@ fw_rcv_copy(struct fw_rcv_buf *rb)
 	for (i = 0; i < rb->nvec; i++, rb->vec++) {
 		len = MIN(rb->vec->iov_len, plen);
 		if (res < len) {
-			printf("rcv buffer(%d) is %d bytes short.\n",
+			kprintf("rcv buffer(%d) is %d bytes short.\n",
 			    rb->xfer->recv.pay_len, len - res);
 			len = res;
 		}
@@ -1762,12 +1762,12 @@ fw_rcv(struct fw_rcv_buf *rb)
 		u_int32_t *qld;
 		int i;
 		qld = (u_int32_t *)buf;
-		printf("spd %d len:%d\n", spd, len);
+		kprintf("spd %d len:%d\n", spd, len);
 		for( i = 0 ; i <= len && i < 32; i+= 4){
-			printf("0x%08x ", ntohl(qld[i/4]));
-			if((i % 16) == 15) printf("\n");
+			kprintf("0x%08x ", ntohl(qld[i/4]));
+			if((i % 16) == 15) kprintf("\n");
 		}
-		if((i % 16) != 15) printf("\n");
+		if((i % 16) != 15) kprintf("\n");
 	}
 #endif
 	fp = (struct fw_pkt *)rb->vec[0].iov_base;
@@ -1780,7 +1780,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 		rb->xfer = fw_tl2xfer(rb->fc, fp->mode.hdr.src,
 					fp->mode.hdr.tlrt >> 2);
 		if(rb->xfer == NULL) {
-			printf("fw_rcv: unknown response "
+			kprintf("fw_rcv: unknown response "
 			    "%s(%x) src=0x%x tl=0x%x rt=%d data=0x%x\n",
 			    tcode_str[tcode], tcode,
 			    fp->mode.hdr.src,
@@ -1788,11 +1788,11 @@ fw_rcv(struct fw_rcv_buf *rb)
 			    fp->mode.hdr.tlrt & 3,
 			    fp->mode.rresq.data);
 #if 1
-			printf("try ad-hoc work around!!\n");
+			kprintf("try ad-hoc work around!!\n");
 			rb->xfer = fw_tl2xfer(rb->fc, fp->mode.hdr.src,
 					(fp->mode.hdr.tlrt >> 2)^3);
 			if (rb->xfer == NULL) {
-				printf("no use...\n");
+				kprintf("no use...\n");
 				goto err;
 			}
 #else
@@ -1814,11 +1814,11 @@ fw_rcv(struct fw_rcv_buf *rb)
 		case FWXF_START:
 #if 0
 			if (firewire_debug)
-				printf("not sent yet tl=%x\n", rb->xfer->tl);
+				kprintf("not sent yet tl=%x\n", rb->xfer->tl);
 #endif
 			break;
 		default:
-			printf("unexpected state %d\n", rb->xfer->state);
+			kprintf("unexpected state %d\n", rb->xfer->state);
 		}
 		return;
 	case FWTCODE_WREQQ:
@@ -1829,13 +1829,13 @@ fw_rcv(struct fw_rcv_buf *rb)
 		bind = fw_bindlookup(rb->fc, fp->mode.rreqq.dest_hi,
 			fp->mode.rreqq.dest_lo);
 		if(bind == NULL){
-			printf("Unknown service addr 0x%04x:0x%08x %s(%x)"
+			kprintf("Unknown service addr 0x%04x:0x%08x %s(%x)"
 			    " src=0x%x data=%x\n",
 			    fp->mode.wreqq.dest_hi, fp->mode.wreqq.dest_lo,
 			    tcode_str[tcode], tcode,
 			    fp->mode.hdr.src, ntohl(fp->mode.wreqq.data));
 			if (rb->fc->status == FWBUSRESET) {
-				printf("fw_rcv: cannot respond(bus reset)!\n");
+				kprintf("fw_rcv: cannot respond(bus reset)!\n");
 				goto err;
 			}
 			rb->xfer = fw_xfer_alloc(M_FWXFER);
@@ -1884,7 +1884,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 			crit_enter();
 			rb->xfer = STAILQ_FIRST(&bind->xferlist);
 			if (rb->xfer == NULL) {
-				printf("Discard a packet for this bind.\n");
+				kprintf("Discard a packet for this bind.\n");
 				crit_exit();
 				goto err;
 			}
@@ -1906,7 +1906,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 			crit_enter();
 			rb->xfer = STAILQ_FIRST(&bind->xferlist);
 			if (rb->xfer == NULL) {
-				printf("Discard packet for this bind\n");
+				kprintf("Discard packet for this bind\n");
 				goto err;
 			}
 			STAILQ_REMOVE_HEAD(&bind->xferlist, link);
@@ -1934,11 +1934,11 @@ fw_rcv(struct fw_rcv_buf *rb)
 
 		xferq = rb->fc->ir[sub];
 #if 0
-		printf("stream rcv dma %d len %d off %d spd %d\n",
+		kprintf("stream rcv dma %d len %d off %d spd %d\n",
 			sub, len, off, spd);
 #endif
 		if(xferq->queued >= xferq->maxq) {
-			printf("receive queue is full\n");
+			kprintf("receive queue is full\n");
 			goto err;
 		}
 		/* XXX get xfer from xfer queue, we don't need copy for 
@@ -1970,7 +1970,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 	}
 #endif
 	default:
-		printf("fw_rcv: unknow tcode %d\n", tcode);
+		kprintf("fw_rcv: unknow tcode %d\n", tcode);
 		break;
 	}
 err:
@@ -2061,9 +2061,9 @@ fw_vmaccess(struct fw_xfer *xfer){
 	struct fw_pkt *rfp, *sfp = NULL;
 	u_int32_t *ld = (u_int32_t *)xfer->recv.buf;
 
-	printf("vmaccess spd:%2x len:%03x data:%08x %08x %08x %08x\n",
+	kprintf("vmaccess spd:%2x len:%03x data:%08x %08x %08x %08x\n",
 			xfer->spd, xfer->recv.len, ntohl(ld[0]), ntohl(ld[1]), ntohl(ld[2]), ntohl(ld[3]));
-	printf("vmaccess          data:%08x %08x %08x %08x\n", ntohl(ld[4]), ntohl(ld[5]), ntohl(ld[6]), ntohl(ld[7]));
+	kprintf("vmaccess          data:%08x %08x %08x %08x\n", ntohl(ld[4]), ntohl(ld[5]), ntohl(ld[6]), ntohl(ld[7]));
 	if(xfer->resp != 0){
 		fw_xfer_free( xfer);
 		return;
@@ -2173,10 +2173,10 @@ fw_bmr(struct firewire_comm *fc)
 	device_printf(fc->bdev, "bus manager %d ", CSRARC(fc, BUS_MGR_ID));
 	if(CSRARC(fc, BUS_MGR_ID) != fc->nodeid) {
 		/* We are not the bus manager */
-		printf("\n");
+		kprintf("\n");
 		return(0);
 	}
-	printf("(me)\n");
+	kprintf("(me)\n");
 
 	/* Optimize gapcount */
 	if(fc->max_hop <= MAX_GAPHOP )

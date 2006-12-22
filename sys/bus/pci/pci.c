@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.35 2006/12/20 23:29:17 tgen Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.36 2006/12/22 23:12:17 swildner Exp $
  *
  */
 
@@ -450,7 +450,7 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 	while (nextptr != 0) {
 		/* Sanity check */
 		if (nextptr > 255) {
-			printf("illegal PCI extended capability offset %d\n",
+			kprintf("illegal PCI extended capability offset %d\n",
 			    nextptr);
 			return;
 		}
@@ -914,7 +914,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 			    sizeof(struct pci_match_conf)) != cio->pat_buf_len){
 				/* The user made a mistake, return an error*/
 				cio->status = PCI_GETCONF_ERROR;
-				printf("pci_ioctl: pat_buf_len %d != "
+				kprintf("pci_ioctl: pat_buf_len %d != "
 				       "num_patterns (%d) * sizeof(struct "
 				       "pci_match_conf) (%d)\npci_ioctl: "
 				       "pat_buf_len should be = %d\n",
@@ -922,7 +922,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 				       (int)sizeof(struct pci_match_conf),
 				       (int)sizeof(struct pci_match_conf) * 
 				       cio->num_patterns);
-				printf("pci_ioctl: do your headers match your "
+				kprintf("pci_ioctl: do your headers match your "
 				       "kernel?\n");
 				cio->num_matches = 0;
 				error = EINVAL;
@@ -934,7 +934,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 			 */
 			if (!useracc((caddr_t)cio->patterns,
 				    cio->pat_buf_len, VM_PROT_READ)) {
-				printf("pci_ioctl: pattern buffer %p, "
+				kprintf("pci_ioctl: pattern buffer %p, "
 				       "length %u isn't user accessible for"
 				       " READ\n", cio->patterns,
 				       cio->pat_buf_len);
@@ -959,7 +959,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 			 */
 			cio->status = PCI_GETCONF_ERROR;
 			cio->num_matches = 0;
-			printf("pci_ioctl: invalid GETCONF arguments\n");
+			kprintf("pci_ioctl: invalid GETCONF arguments\n");
 			error = EINVAL;
 			break;
 		} else
@@ -970,7 +970,7 @@ pci_ioctl(struct dev_ioctl_args *ap)
 		 */
 		if (!useracc((caddr_t)cio->matches,
 			     cio->match_buf_len, VM_PROT_WRITE)) {
-			printf("pci_ioctl: match buffer %p, length %u "
+			kprintf("pci_ioctl: match buffer %p, length %u "
 			       "isn't user accessible for WRITE\n",
 			       cio->matches, cio->match_buf_len);
 			error = EACCES;
@@ -1235,25 +1235,25 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 	if (bootverbose) {
 		pcicfgregs *cfg = &dinfo->cfg;
 
-		printf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n", 
+		kprintf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n", 
 		       cfg->vendor, cfg->device, cfg->revid);
-		printf("\tbus=%d, slot=%d, func=%d\n",
+		kprintf("\tbus=%d, slot=%d, func=%d\n",
 		       cfg->bus, cfg->slot, cfg->func);
-		printf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		kprintf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
 		       pci_class_to_string(cfg->baseclass),
 		       cfg->baseclass, cfg->subclass, cfg->progif,
 		       cfg->hdrtype, cfg->mfdev);
-		printf("\tsubordinatebus=%x \tsecondarybus=%x\n",
+		kprintf("\tsubordinatebus=%x \tsecondarybus=%x\n",
 		       cfg->subordinatebus, cfg->secondarybus);
 #ifdef PCI_DEBUG
-		printf("\tcmdreg=0x%04x, statreg=0x%04x, cachelnsz=%d (dwords)\n", 
+		kprintf("\tcmdreg=0x%04x, statreg=0x%04x, cachelnsz=%d (dwords)\n", 
 		       cfg->cmdreg, cfg->statreg, cfg->cachelnsz);
-		printf("\tlattimer=0x%02x (%d ns), mingnt=0x%02x (%d ns), maxlat=0x%02x (%d ns)\n",
+		kprintf("\tlattimer=0x%02x (%d ns), mingnt=0x%02x (%d ns), maxlat=0x%02x (%d ns)\n",
 		       cfg->lattimer, cfg->lattimer * 30, 
 		       cfg->mingnt, cfg->mingnt * 250, cfg->maxlat, cfg->maxlat * 250);
 #endif /* PCI_DEBUG */
 		if (cfg->intpin > 0)
-			printf("\tintpin=%c, irq=%d\n", cfg->intpin +'a' -1, cfg->intline);
+			kprintf("\tintpin=%c, irq=%d\n", cfg->intpin +'a' -1, cfg->intline);
 	}
 }
 
@@ -1341,7 +1341,7 @@ pci_add_map(device_t pcib, int b, int s, int f, int reg,
 			  (1 << ln2size));
 
 	if (bootverbose) {
-		printf("\tmap[%02x]: type %x, range %2d, base %08x, size %2d\n",
+		kprintf("\tmap[%02x]: type %x, range %2d, base %08x, size %2d\n",
 		       reg, pci_maptype(base), ln2range,
 		       (unsigned int) base, ln2size);
 	}
@@ -1368,7 +1368,7 @@ pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b, int s, int f,
 	if ((progif &0x8a) == 0x8a) {
 		if (pci_mapbase(pci_read_config(dev, PCIR_BAR(0), 4)) &&
 		    pci_mapbase(pci_read_config(dev, PCIR_BAR(2), 4))) {
-			printf("Trying ATA native PCI addressing mode\n");
+			kprintf("Trying ATA native PCI addressing mode\n");
 			pci_write_config(dev, PCIR_PROGIF, progif | 0x05, 1);
 		}
 	}
@@ -1551,14 +1551,14 @@ pci_print_resources(struct resource_list *rl, const char *name, int type,
 	SLIST_FOREACH(rle, rl, link) {
 		if (rle->type == type) {
 			if (printed == 0)
-				retval += printf(" %s ", name);
+				retval += kprintf(" %s ", name);
 			else if (printed > 0)
-				retval += printf(",");
+				retval += kprintf(",");
 			printed++;
-			retval += printf(format, rle->start);
+			retval += kprintf(format, rle->start);
 			if (rle->count > 1) {
-				retval += printf("-");
-				retval += printf(format, rle->start +
+				retval += kprintf("-");
+				retval += kprintf(format, rle->start +
 						 rle->count - 1);
 			}
 		}
@@ -1584,9 +1584,9 @@ pci_print_child(device_t dev, device_t child)
 	retval += pci_print_resources(rl, "mem", SYS_RES_MEMORY, "%#lx");
 	retval += pci_print_resources(rl, "irq", SYS_RES_IRQ, "%ld");
 	if (device_get_flags(dev))
-		retval += printf(" flags %#x", device_get_flags(dev));
+		retval += kprintf(" flags %#x", device_get_flags(dev));
 
-	retval += printf(" at device %d.%d", pci_get_slot(child),
+	retval += kprintf(" at device %d.%d", pci_get_slot(child),
 			 pci_get_function(child));
 
 	retval += bus_print_child_footer(dev, child);
@@ -1615,17 +1615,17 @@ pci_probe_nomatch(device_t dev, device_t child)
 	}
 	device_printf(dev, "<%s>", desc);
 	if (bootverbose || unknown) {
-		printf(" (vendor=0x%04x, dev=0x%04x)",
+		kprintf(" (vendor=0x%04x, dev=0x%04x)",
 			cfg->vendor,
 			cfg->device);
 	}
-	printf(" at %d.%d",
+	kprintf(" at %d.%d",
 		pci_get_slot(child),
 		pci_get_function(child));
 	if (cfg->intpin > 0 && cfg->intline != 255) {
-		printf(" irq %d", cfg->intline);
+		kprintf(" irq %d", cfg->intline);
 	}
-	printf("\n");
+	kprintf("\n");
                                       
 	return;
 }
@@ -1965,7 +1965,7 @@ pci_get_resource(device_t dev, device_t child, int type, int rid,
 void
 pci_delete_resource(device_t dev, device_t child, int type, int rid)
 {
-	printf("pci_delete_resource: PCI resources can not be deleted\n");
+	kprintf("pci_delete_resource: PCI resources can not be deleted\n");
 }
 
 struct resource_list *

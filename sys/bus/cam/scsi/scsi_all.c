@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.6 2006/12/20 18:14:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.7 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <string.h>
 
 #define ksnprintf	snprintf	/* ick, userland uses us too */
-
+#define kprintf		printf
 #endif
 
 #include "../cam.h"
@@ -1669,13 +1669,13 @@ scsi_sense_print(struct ccb_scsiio *csio)
 		xpt_print_path(csio->ccb_h.path);
 
 		if ((csio->ccb_h.flags & CAM_CDB_POINTER) != 0) {
-			printf("%s. CDB: %s\n", 
+			kprintf("%s. CDB: %s\n", 
 				scsi_op_desc(csio->cdb_io.cdb_ptr[0],
 				&cgd.inq_data),
 				scsi_cdb_string(csio->cdb_io.cdb_ptr, cdb_str,
 						sizeof(cdb_str)));
 		} else {
-			printf("%s. CDB: %s\n",
+			kprintf("%s. CDB: %s\n",
 				scsi_op_desc(csio->cdb_io.cdb_bytes[0], 
 				&cgd.inq_data), scsi_cdb_string(
 				csio->cdb_io.cdb_bytes, cdb_str,
@@ -1718,11 +1718,11 @@ scsi_sense_print(struct ccb_scsiio *csio)
 
 	switch (error_code) {
 	case SSD_DEFERRED_ERROR:
-		printf("Deferred Error: ");
+		kprintf("Deferred Error: ");
 		/* FALLTHROUGH */
 	case SSD_CURRENT_ERROR:
 
-		printf("%s", scsi_sense_key_text[sense_key]);
+		kprintf("%s", scsi_sense_key_text[sense_key]);
 		info = scsi_4btoul(sense->info);
 		
 		if (sense->error_code & SSD_ERRCODE_VALID) {
@@ -1734,25 +1734,25 @@ scsi_sense_print(struct ccb_scsiio *csio)
 			case SSD_KEY_DATA_PROTECT:
 				break;
 			case SSD_KEY_BLANK_CHECK:
-				printf(" req sz: %d (decimal)",
+				kprintf(" req sz: %d (decimal)",
 				    info);
 				break;
 			default:
 				if (info) {
 					if (sense->flags & SSD_ILI) {
-						printf(" ILI (length mismatch):"
+						kprintf(" ILI (length mismatch):"
 						       " %d", info);
 					} else {
-						printf(" info:%x", info);
+						kprintf(" info:%x", info);
 					}
 				}
 			}
 		} else if (info)
-			printf(" info?:%x", info);
+			kprintf(" info?:%x", info);
 
 		if (sense->extra_len >= 4) {
 			if (bcmp(sense->cmd_spec_info, "\0\0\0\0", 4)) {
-				printf(" csi:%x,%x,%x,%x",
+				kprintf(" csi:%x,%x,%x,%x",
 				       sense->cmd_spec_info[0],
 				       sense->cmd_spec_info[1],
 				       sense->cmd_spec_info[2],
@@ -1766,33 +1766,33 @@ scsi_sense_print(struct ccb_scsiio *csio)
 		if (asc || ascq) {
 			const char *desc = scsi_sense_desc(asc, ascq,
 							   &cgd.inq_data);
-			printf(" asc:%x,%x\n", asc, ascq);
+			kprintf(" asc:%x,%x\n", asc, ascq);
 
 			xpt_print_path(csio->ccb_h.path);
-			printf("%s", desc);
+			kprintf("%s", desc);
 		}
 
 		if (sense->extra_len >= 7 && sense->fru) {
-			printf(" field replaceable unit: %x", sense->fru);
+			kprintf(" field replaceable unit: %x", sense->fru);
 		}
 
 		if ((sense->extra_len >= 10)
 		 && (sense->sense_key_spec[0] & SSD_SCS_VALID) != 0) {
-			printf(" sks:%x,%x", sense->sense_key_spec[0],
+			kprintf(" sks:%x,%x", sense->sense_key_spec[0],
 			       scsi_2btoul(&sense->sense_key_spec[1]));
 		}
 		break;
 
 	default:
-		printf("error code %d",
+		kprintf("error code %d",
 		    sense->error_code & SSD_ERRCODE);
 		if (sense->error_code & SSD_ERRCODE_VALID) {
-			printf(" at block no. %d (decimal)",
+			kprintf(" at block no. %d (decimal)",
 			       info = scsi_4btoul(sense->info));
 		}
 	}
 
-	printf("\n");
+	kprintf("\n");
 }
 
 #else /* !_KERNEL */
@@ -2403,7 +2403,7 @@ scsi_print_inquiry(struct scsi_inquiry_data *inq_data)
 		bcopy("CCS", rstr, 4);
 	else
 		ksnprintf(rstr, sizeof (rstr), "%d", SID_ANSI_REV(inq_data));
-	printf("<%s %s %s> %s %s SCSI-%s device %s\n",
+	kprintf("<%s %s %s> %s %s SCSI-%s device %s\n",
 	       vendor, product, revision,
 	       SID_IS_REMOVABLE(inq_data) ? "Removable" : "Fixed",
 	       dtype, rstr, qtype);

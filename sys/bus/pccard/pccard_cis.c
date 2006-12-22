@@ -1,6 +1,6 @@
 /* $NetBSD: pcmcia_cis.c,v 1.17 2000/02/10 09:01:52 chopps Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis.c,v 1.23 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.6 2006/10/25 20:55:51 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.7 2006/12/22 23:12:16 swildner Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -51,7 +51,7 @@ extern int	pccard_cis_debug;
 
 #define PCCARDCISDEBUG
 #ifdef PCCARDCISDEBUG
-#define	DPRINTF(arg) if (pccard_cis_debug) printf arg
+#define	DPRINTF(arg) if (pccard_cis_debug) kprintf arg
 #define	DEVPRINTF(arg) if (pccard_cis_debug) device_printf arg
 #else
 #define	DPRINTF(arg)
@@ -458,13 +458,13 @@ pccard_print_cis(device_t dev)
 	device_printf(dev, "CIS version ");
 	if (card->cis1_major == 4) {
 		if (card->cis1_minor == 0)
-			printf("PCCARD 1.0\n");
+			kprintf("PCCARD 1.0\n");
 		else if (card->cis1_minor == 1)
-			printf("PCCARD 2.0 or 2.1\n");
+			kprintf("PCCARD 2.0 or 2.1\n");
 	} else if (card->cis1_major >= 5)
-		printf("PC Card Standard %d.%d\n", card->cis1_major, card->cis1_minor);
+		kprintf("PC Card Standard %d.%d\n", card->cis1_major, card->cis1_minor);
 	else
-		printf("unknown (major=%d, minor=%d)\n",
+		kprintf("unknown (major=%d, minor=%d)\n",
 		    card->cis1_major, card->cis1_minor);
 
 	device_printf(dev, "CIS info: ");
@@ -472,10 +472,10 @@ pccard_print_cis(device_t dev)
 		if (card->cis1_info[i] == NULL)
 			break;
 		if (i)
-			printf(", ");
-		printf("%s", card->cis1_info[i]);
+			kprintf(", ");
+		kprintf("%s", card->cis1_info[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 
 	device_printf(dev, "Manufacturer code 0x%x, product 0x%x\n",
 	    card->manufacturer, card->product);
@@ -485,47 +485,47 @@ pccard_print_cis(device_t dev)
 
 		switch (pf->function) {
 		case PCCARD_FUNCTION_UNSPEC:
-			printf("unspecified");
+			kprintf("unspecified");
 			break;
 		case PCCARD_FUNCTION_MULTIFUNCTION:
-			printf("multi-function");
+			kprintf("multi-function");
 			break;
 		case PCCARD_FUNCTION_MEMORY:
-			printf("memory");
+			kprintf("memory");
 			break;
 		case PCCARD_FUNCTION_SERIAL:
-			printf("serial port");
+			kprintf("serial port");
 			break;
 		case PCCARD_FUNCTION_PARALLEL:
-			printf("parallel port");
+			kprintf("parallel port");
 			break;
 		case PCCARD_FUNCTION_DISK:
-			printf("fixed disk");
+			kprintf("fixed disk");
 			break;
 		case PCCARD_FUNCTION_VIDEO:
-			printf("video adapter");
+			kprintf("video adapter");
 			break;
 		case PCCARD_FUNCTION_NETWORK:
-			printf("network adapter");
+			kprintf("network adapter");
 			break;
 		case PCCARD_FUNCTION_AIMS:
-			printf("auto incrementing mass storage");
+			kprintf("auto incrementing mass storage");
 			break;
 		case PCCARD_FUNCTION_SCSI:
-			printf("SCSI bridge");
+			kprintf("SCSI bridge");
 			break;
 		case PCCARD_FUNCTION_SECURITY:
-			printf("Security services");
+			kprintf("Security services");
 			break;
 		case PCCARD_FUNCTION_INSTRUMENT:
-			printf("Instrument");
+			kprintf("Instrument");
 			break;
 		default:
-			printf("unknown (%d)", pf->function);
+			kprintf("unknown (%d)", pf->function);
 			break;
 		}
 
-		printf(", ccr addr %x mask %x\n", pf->ccr_base, pf->ccr_mask);
+		kprintf(", ccr addr %x mask %x\n", pf->ccr_base, pf->ccr_mask);
 
 		STAILQ_FOREACH(cfe, &pf->cfe_head, cfe_list) {
 			device_printf(dev, "function %d, config table entry "
@@ -533,75 +533,75 @@ pccard_print_cis(device_t dev)
 
 			switch (cfe->iftype) {
 			case PCCARD_IFTYPE_MEMORY:
-				printf("memory card");
+				kprintf("memory card");
 				break;
 			case PCCARD_IFTYPE_IO:
-				printf("I/O card");
+				kprintf("I/O card");
 				break;
 			default:
-				printf("card type unknown");
+				kprintf("card type unknown");
 				break;
 			}
 
-			printf("; irq mask %x", cfe->irqmask);
+			kprintf("; irq mask %x", cfe->irqmask);
 
 			if (cfe->num_iospace) {
-				printf("; iomask %lx, iospace", cfe->iomask);
+				kprintf("; iomask %lx, iospace", cfe->iomask);
 
 				for (i = 0; i < cfe->num_iospace; i++) {
-					printf(" %lx", cfe->iospace[i].start);
+					kprintf(" %lx", cfe->iospace[i].start);
 					if (cfe->iospace[i].length)
-						printf("-%lx",
+						kprintf("-%lx",
 						    cfe->iospace[i].start +
 						    cfe->iospace[i].length - 1);
 				}
 			}
 			if (cfe->num_memspace) {
-				printf("; memspace");
+				kprintf("; memspace");
 
 				for (i = 0; i < cfe->num_memspace; i++) {
-					printf(" %lx",
+					kprintf(" %lx",
 					    cfe->memspace[i].cardaddr);
 					if (cfe->memspace[i].length)
-						printf("-%lx",
+						kprintf("-%lx",
 						    cfe->memspace[i].cardaddr +
 						    cfe->memspace[i].length - 1);
 					if (cfe->memspace[i].hostaddr)
-						printf("@%lx",
+						kprintf("@%lx",
 						    cfe->memspace[i].hostaddr);
 				}
 			}
 			if (cfe->maxtwins)
-				printf("; maxtwins %d", cfe->maxtwins);
+				kprintf("; maxtwins %d", cfe->maxtwins);
 
-			printf(";");
+			kprintf(";");
 
 			if (cfe->flags & PCCARD_CFE_MWAIT_REQUIRED)
-				printf(" mwait_required");
+				kprintf(" mwait_required");
 			if (cfe->flags & PCCARD_CFE_RDYBSY_ACTIVE)
-				printf(" rdybsy_active");
+				kprintf(" rdybsy_active");
 			if (cfe->flags & PCCARD_CFE_WP_ACTIVE)
-				printf(" wp_active");
+				kprintf(" wp_active");
 			if (cfe->flags & PCCARD_CFE_BVD_ACTIVE)
-				printf(" bvd_active");
+				kprintf(" bvd_active");
 			if (cfe->flags & PCCARD_CFE_IO8)
-				printf(" io8");
+				kprintf(" io8");
 			if (cfe->flags & PCCARD_CFE_IO16)
-				printf(" io16");
+				kprintf(" io16");
 			if (cfe->flags & PCCARD_CFE_IRQSHARE)
-				printf(" irqshare");
+				kprintf(" irqshare");
 			if (cfe->flags & PCCARD_CFE_IRQPULSE)
-				printf(" irqpulse");
+				kprintf(" irqpulse");
 			if (cfe->flags & PCCARD_CFE_IRQLEVEL)
-				printf(" irqlevel");
+				kprintf(" irqlevel");
 			if (cfe->flags & PCCARD_CFE_POWERDOWN)
-				printf(" powerdown");
+				kprintf(" powerdown");
 			if (cfe->flags & PCCARD_CFE_READONLY)
-				printf(" readonly");
+				kprintf(" readonly");
 			if (cfe->flags & PCCARD_CFE_AUDIO)
-				printf(" audio");
+				kprintf(" audio");
 
-			printf("\n");
+			kprintf("\n");
 		}
 	}
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.20 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.21 2006/12/22 23:12:16 swildner Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -546,7 +546,7 @@ saclose(struct dev_close_args *ap)
 	error = sacheckeod(periph);
 	if (error) {
 		xpt_print_path(periph->path);
-		printf("failed to write terminating filemark(s)\n");
+		kprintf("failed to write terminating filemark(s)\n");
 		softc->flags |= SA_FLAG_TAPE_FROZEN;
 	}
 
@@ -602,10 +602,10 @@ saclose(struct dev_close_args *ap)
 			tmp = saspace(periph, -1, SS_FILEMARKS);
 			if (tmp) {
 				xpt_print_path(periph->path);
-				printf("unable to backspace over one of double"
+				kprintf("unable to backspace over one of double"
 				   " filemarks at end of tape\n");
 				xpt_print_path(periph->path);
-				printf("it is possible that this device"
+				kprintf("it is possible that this device"
 				   " needs a SA_QUIRK_1FM quirk set for it\n");
 				softc->flags |= SA_FLAG_TAPE_FROZEN;
 			}
@@ -634,7 +634,7 @@ saclose(struct dev_close_args *ap)
 	 */
 	if (softc->flags & SA_FLAG_TAPE_FROZEN) {
 		xpt_print_path(periph->path);
-		printf("tape is now frozen- use an OFFLINE, REWIND or MTEOM "
+		kprintf("tape is now frozen- use an OFFLINE, REWIND or MTEOM "
 		    "command to clear this state.\n");
 	}
 	
@@ -708,7 +708,7 @@ sastrategy(struct dev_strategy_args *ap)
 		    ((softc->blk_mask == ~0) &&
 		    ((bp->b_bcount % softc->min_blk) != 0))) {
 			xpt_print_path(periph->path);
-			printf("Invalid request.  Fixed block device "
+			kprintf("Invalid request.  Fixed block device "
 			       "requests must be a multiple "
 			       "of %d bytes\n", softc->media_blksize);
 			bp->b_error = EINVAL;
@@ -719,12 +719,12 @@ sastrategy(struct dev_strategy_args *ap)
 		   (bp->b_bcount & softc->blk_mask) != 0) {
 
 		xpt_print_path(periph->path);
-		printf("Invalid request.  Variable block device "
+		kprintf("Invalid request.  Variable block device "
 		    "requests must be ");
 		if (softc->blk_mask != 0) {
-			printf("a multiple of %d ", (0x1 << softc->blk_gran));
+			kprintf("a multiple of %d ", (0x1 << softc->blk_gran));
 		}
-		printf("between %d and %d bytes\n", softc->min_blk,
+		kprintf("between %d and %d bytes\n", softc->min_blk,
 		    softc->max_blk);
 		bp->b_error = EINVAL;
 		goto bad;
@@ -1008,7 +1008,7 @@ saioctl(struct dev_ioctl_args *ap)
 			error = sacheckeod(periph);
 			if (error) {
 				xpt_print_path(periph->path);
-				printf("EOD check prior to spacing failed\n");
+				kprintf("EOD check prior to spacing failed\n");
 				softc->flags |= SA_FLAG_EIO_PENDING;
 				break;
 			}
@@ -1246,7 +1246,7 @@ saioctl(struct dev_ioctl_args *ap)
 			softc->blkno = (daddr_t) -1;
 			softc->flags &= ~SA_FLAG_TAPE_FROZEN;
 			xpt_print_path(periph->path);
-			printf("tape state now unfrozen.\n");
+			kprintf("tape state now unfrozen.\n");
 			break;
 		default:
 			break;
@@ -1269,7 +1269,7 @@ sainit(void)
 	 */
 	saperiphs = cam_extend_new();
 	if (saperiphs == NULL) {
-		printf("sa: Failed to alloc extend array!\n");
+		kprintf("sa: Failed to alloc extend array!\n");
 		return;
 	}
 	
@@ -1296,7 +1296,7 @@ sainit(void)
 	}
 
 	if (status != CAM_REQ_CMP) {
-		printf("sa: Failed to attach master async callback "
+		kprintf("sa: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
 	}
 }
@@ -1347,7 +1347,7 @@ saoninvalidate(struct cam_periph *periph)
 	crit_exit();
 
 	xpt_print_path(periph->path);
-	printf("lost device\n");
+	kprintf("lost device\n");
 
 }
 
@@ -1362,7 +1362,7 @@ sacleanup(struct cam_periph *periph)
 
 	cam_extend_release(saperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
-	printf("removing device entry\n");
+	kprintf("removing device entry\n");
 	dev_ops_remove(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
 	kfree(softc, M_DEVBUF);
 }
@@ -1399,7 +1399,7 @@ saasync(void *callback_arg, u_int32_t code,
 
 		if (status != CAM_REQ_CMP
 		 && status != CAM_REQ_INPROG)
-			printf("saasync: Unable to probe new device "
+			kprintf("saasync: Unable to probe new device "
 				"due to status 0x%x\n", status);
 		break;
 	}
@@ -1420,12 +1420,12 @@ saregister(struct cam_periph *periph, void *arg)
 	
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		printf("saregister: periph was NULL!!\n");
+		kprintf("saregister: periph was NULL!!\n");
 		return (CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		printf("saregister: no getdev CCB, can't register device\n");
+		kprintf("saregister: no getdev CCB, can't register device\n");
 		return (CAM_REQ_CMP_ERR);
 	}
 
@@ -1453,7 +1453,7 @@ saregister(struct cam_periph *periph, void *arg)
 		    ((struct sa_quirk_entry *)match)->prefblk;
 #ifdef	CAMDEBUG
 		xpt_print_path(periph->path);
-		printf("found quirk entry %d\n", (int)
+		kprintf("found quirk entry %d\n", (int)
 		    (((struct sa_quirk_entry *) match) - sa_quirk_table));
 #endif
 	} else
@@ -1616,7 +1616,7 @@ again:
 				} else {
 					bp->b_error = EIO;
 					xpt_print_path(periph->path);
-					printf("zero blocksize for "
+					kprintf("zero blocksize for "
 					    "FIXED length writes?\n");
 					crit_exit();
 					biodone(bio);
@@ -1846,7 +1846,7 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 			softc->flags &= ~SA_FLAG_TAPE_MOUNTED;
 			if (CAM_DEBUGGED(ccb->ccb_h.path, CAM_DEBUG_INFO)) {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("error %d on TUR in samount\n", error);
+				kprintf("error %d on TUR in samount\n", error);
 			}
 		}
 	} else {
@@ -1924,7 +1924,7 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 			QFRLS(ccb);
 			if (error) {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("unable to rewind after test read\n");
+				kprintf("unable to rewind after test read\n");
 				xpt_release_ccb(ccb);
 				goto exit;
 			}
@@ -2089,7 +2089,7 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 		    (softc->min_blk > softc->media_blksize &&
 		    softc->media_blksize)) {
 			xpt_print_path(ccb->ccb_h.path);
-			printf("BLOCK LIMITS (%d..%d) could not match current "
+			kprintf("BLOCK LIMITS (%d..%d) could not match current "
 			    "block settings (%d)- adjusting\n", softc->min_blk,
 			    softc->max_blk, softc->media_blksize);
 			softc->max_blk = softc->min_blk =
@@ -2124,7 +2124,7 @@ tryagain:
 			    softc->media_blksize, 0, 0, SF_NO_PRINT);
 			if (error) {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("unable to set fixed blocksize to %d\n",
+				kprintf("unable to set fixed blocksize to %d\n",
 				     softc->media_blksize);
 				goto exit;
 			}
@@ -2151,7 +2151,7 @@ tryagain:
 					goto tryagain;
 				}
 				xpt_print_path(ccb->ccb_h.path);
-				printf("unable to set variable blocksize\n");
+				kprintf("unable to set variable blocksize\n");
 				goto exit;
 			}
 		}
@@ -2209,7 +2209,7 @@ tryagain:
 				softc->buffer_mode = SMH_SA_BUF_MODE_SIBUF;
 			} else {
 				xpt_print_path(ccb->ccb_h.path);
-				printf("unable to set buffered mode\n");
+				kprintf("unable to set buffered mode\n");
 			}
 			error = 0;	/* not an error */
 		}
@@ -2455,7 +2455,7 @@ saerror(union ccb *ccb, u_int32_t cflgs, u_int32_t sflgs)
 	if (error == 0 && (sense->flags & SSD_ILI)) {
 		if (info < 0) {
 			xpt_print_path(csio->ccb_h.path);
-			printf(toobig, csio->dxfer_len - info);
+			kprintf(toobig, csio->dxfer_len - info);
 			csio->resid = csio->dxfer_len;
 			error = EIO;
 		} else {
@@ -2653,10 +2653,10 @@ retry:
 		int idx;
 		char *xyz = mode_buffer;
 		xpt_print_path(periph->path);
-		printf("Mode Sense Data=");
+		kprintf("Mode Sense Data=");
 		for (idx = 0; idx < mode_buffer_len; idx++)
-			printf(" 0x%02x", xyz[idx] & 0xff);
-		printf("\n");
+			kprintf(" 0x%02x", xyz[idx] & 0xff);
+		kprintf("\n");
 	}
 
 sagetparamsexit:
@@ -2865,7 +2865,7 @@ retry:
 			 */
 			params_to_set &= ~SA_PARAM_COMPRESSION;
 			xpt_print_path(periph->path);
-			printf("device does not seem to support compression\n");
+			kprintf("device does not seem to support compression\n");
 
 			/*
 			 * If that was the only thing the user wanted us to set,
@@ -2900,10 +2900,10 @@ retry:
 		int idx;
 		char *xyz = mode_buffer;
 		xpt_print_path(periph->path);
-		printf("Err%d, Mode Select Data=", error);
+		kprintf("Err%d, Mode Select Data=", error);
 		for (idx = 0; idx < mode_buffer_len; idx++)
-			printf(" 0x%02x", xyz[idx] & 0xff);
-		printf("\n");
+			kprintf(" 0x%02x", xyz[idx] & 0xff);
+		kprintf("\n");
 	}
 
 

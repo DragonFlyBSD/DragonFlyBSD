@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.8 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.9 2006/12/22 23:12:16 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -67,7 +67,7 @@ fwdma_map_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	bus_addr_t *baddr;
 
 	if (error)
-		printf("fwdma_map_cb: error=%d\n", error);
+		kprintf("fwdma_map_cb: error=%d\n", error);
 	baddr = (bus_addr_t *)arg;
 	*baddr = segs->ds_addr;
 }
@@ -96,14 +96,14 @@ fwdma_malloc(struct firewire_comm *fc, int alignment, bus_size_t size,
 #endif
 		&dma->dma_tag);
 	if (err) {
-		printf("fwdma_malloc: failed(1)\n");
+		kprintf("fwdma_malloc: failed(1)\n");
 		return(NULL);
 	}
 
 	err = bus_dmamem_alloc(dma->dma_tag, &dma->v_addr,
 		flag, &dma->dma_map);
 	if (err) {
-		printf("fwdma_malloc: failed(2)\n");
+		kprintf("fwdma_malloc: failed(2)\n");
 		/* XXX destory tag */
 		return(NULL);
 	}
@@ -130,7 +130,7 @@ fwdma_malloc_size(bus_dma_tag_t dmat, bus_dmamap_t *dmamap,
 	void *v_addr;
 
 	if (bus_dmamem_alloc(dmat, &v_addr, flag, dmamap)) {
-		printf("fwdma_malloc_size: failed(1)\n");
+		kprintf("fwdma_malloc_size: failed(1)\n");
 		return(NULL);
 	}
 	bus_dmamap_load(dmat, *dmamap, v_addr, size,
@@ -171,7 +171,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 	am = (struct fwdma_alloc_multi *)kmalloc(sizeof(struct fwdma_alloc_multi)
 			+ sizeof(struct fwdma_seg)*nseg, M_FW, M_WAITOK);
 	if (am == NULL) {
-		printf("fwdma_malloc_multiseg: malloc failed\n");
+		kprintf("fwdma_malloc_multiseg: malloc failed\n");
 		return(NULL);
 	}
 	am->ssize = ssize;
@@ -193,23 +193,23 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 			/*lockarg*/&Giant,
 #endif
 			&am->dma_tag)) {
-		printf("fwdma_malloc_multiseg: tag_create failed\n");
+		kprintf("fwdma_malloc_multiseg: tag_create failed\n");
 		kfree(am, M_FW);
 		return(NULL);
 	}
 
 #if 0
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-	printf("malloc_multi: ssize=%d nseg=%d\n", ssize, nseg);
+	kprintf("malloc_multi: ssize=%d nseg=%d\n", ssize, nseg);
 #else
-	printf("malloc_multi: ssize=%td nseg=%d\n", ssize, nseg);
+	kprintf("malloc_multi: ssize=%td nseg=%d\n", ssize, nseg);
 #endif
 #endif
 	for (seg = &am->seg[0]; nseg --; seg ++) {
 		seg->v_addr = fwdma_malloc_size(am->dma_tag, &seg->dma_map,
 			ssize, &seg->bus_addr, flag);
 		if (seg->v_addr == NULL) {
-			printf("fwdma_malloc_multi: malloc_size failed %d\n",
+			kprintf("fwdma_malloc_multi: malloc_size failed %d\n",
 				am->nseg);
 			fwdma_free_multiseg(am);
 			return(NULL);

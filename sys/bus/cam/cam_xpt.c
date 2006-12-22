@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.33 2006/12/20 18:14:33 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.34 2006/12/22 23:12:16 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -900,7 +900,7 @@ xptopen(struct dev_open_args *ap)
 	 * We don't allow nonblocking access.
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		printf("xpt%d: can't do nonblocking access\n", unit);
+		kprintf("xpt%d: can't do nonblocking access\n", unit);
 		return(ENODEV);
 	}
 
@@ -910,7 +910,7 @@ xptopen(struct dev_open_args *ap)
 	 * mistake.
 	 */
 	if (unit != 0) {
-		printf("xptopen: got invalid xpt unit %d\n", unit);
+		kprintf("xptopen: got invalid xpt unit %d\n", unit);
 		return(ENXIO);
 	}
 
@@ -934,7 +934,7 @@ xptclose(struct dev_close_args *ap)
 	 * mistake.
 	 */
 	if (unit != 0) {
-		printf("xptclose: got invalid xpt unit %d\n", unit);
+		kprintf("xptclose: got invalid xpt unit %d\n", unit);
 		return(ENXIO);
 	}
 
@@ -959,7 +959,7 @@ xptioctl(struct dev_ioctl_args *ap)
 	 * mistake.
 	 */
 	if (unit != 0) {
-		printf("xptioctl: got invalid xpt unit %d\n", unit);
+		kprintf("xptioctl: got invalid xpt unit %d\n", unit);
 		return(ENXIO);
 	}
 
@@ -1273,9 +1273,9 @@ ptstartover:
 			 * kernel.
 			 */
 			if (base_periph_found == 1) {
-				printf("xptioctl: pass driver is not in the "
+				kprintf("xptioctl: pass driver is not in the "
 				       "kernel\n");
-				printf("xptioctl: put \"device pass0\" in "
+				kprintf("xptioctl: put \"device pass0\" in "
 				       "your kernel config file\n");
 			}
 		}
@@ -1333,7 +1333,7 @@ xpt_init(void *dummy)
 	if ((status = xpt_create_path(&path, NULL, CAM_XPT_PATH_ID,
 				      CAM_TARGET_WILDCARD,
 				      CAM_LUN_WILDCARD)) != CAM_REQ_CMP) {
-		printf("xpt_init: xpt_create_path failed with status %#x,"
+		kprintf("xpt_init: xpt_create_path failed with status %#x,"
 		       " failing attach\n", status);
 		return;
 	}
@@ -1353,7 +1353,7 @@ xpt_init(void *dummy)
 	xpt_config_hook->ich_desc = "xpt";
 	if (config_intrhook_establish(xpt_config_hook) != 0) {
 		kfree (xpt_config_hook, M_TEMP);
-		printf("xpt_init: config_intrhook_establish failed "
+		kprintf("xpt_init: config_intrhook_establish failed "
 		       "- failing attach\n");
 	}
 
@@ -1366,7 +1366,7 @@ static cam_status
 xptregister(struct cam_periph *periph, void *arg)
 {
 	if (periph == NULL) {
-		printf("xptregister: periph was NULL!!\n");
+		kprintf("xptregister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -1450,19 +1450,19 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	 * mask out CAM interrupts.
 	 */
 	crit_enter();
-	printf("%s%d at %s%d bus %d target %d lun %d\n",
+	kprintf("%s%d at %s%d bus %d target %d lun %d\n",
 	       periph->periph_name, periph->unit_number,
 	       path->bus->sim->sim_name,
 	       path->bus->sim->unit_number,
 	       path->bus->sim->bus_id,
 	       path->target->target_id,
 	       path->device->lun_id);
-	printf("%s%d: ", periph->periph_name, periph->unit_number);
+	kprintf("%s%d: ", periph->periph_name, periph->unit_number);
 	scsi_print_inquiry(&path->device->inq_data);
 	if ((bootverbose)
 	 && (path->device->serial_num_len > 0)) {
 		/* Don't wrap the screen  - print only the first 60 chars */
-		printf("%s%d: Serial Number %.60s\n", periph->periph_name,
+		kprintf("%s%d: Serial Number %.60s\n", periph->periph_name,
 		       periph->unit_number, path->device->serial_num);
 	}
 	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
@@ -1492,40 +1492,40 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 			speed *= (0x01 << cts.bus_width);
 		mb = speed / 1000;
 		if (mb > 0)
-			printf("%s%d: %d.%03dMB/s transfers",
+			kprintf("%s%d: %d.%03dMB/s transfers",
 			       periph->periph_name, periph->unit_number,
 			       mb, speed % 1000);
 		else
-			printf("%s%d: %dKB/s transfers", periph->periph_name,
+			kprintf("%s%d: %dKB/s transfers", periph->periph_name,
 			       periph->unit_number, speed);
 		if ((cts.valid & CCB_TRANS_SYNC_OFFSET_VALID) != 0
 		 && cts.sync_offset != 0) {
-			printf(" (%d.%03dMHz, offset %d", freq / 1000,
+			kprintf(" (%d.%03dMHz, offset %d", freq / 1000,
 			       freq % 1000, cts.sync_offset);
 		}
 		if ((cts.valid & CCB_TRANS_BUS_WIDTH_VALID) != 0
 		 && cts.bus_width > 0) {
 			if ((cts.valid & CCB_TRANS_SYNC_OFFSET_VALID) != 0
 			 && cts.sync_offset != 0) {
-				printf(", ");
+				kprintf(", ");
 			} else {
-				printf(" (");
+				kprintf(" (");
 			}
-			printf("%dbit)", 8 * (0x01 << cts.bus_width));
+			kprintf("%dbit)", 8 * (0x01 << cts.bus_width));
 		} else if ((cts.valid & CCB_TRANS_SYNC_OFFSET_VALID) != 0
 			&& cts.sync_offset != 0) {
-			printf(")");
+			kprintf(")");
 		}
 
 		if (path->device->inq_flags & SID_CmdQue
 		 || path->device->flags & CAM_DEV_TAG_AFTER_COUNT) {
-			printf(", Tagged Queueing Enabled");
+			kprintf(", Tagged Queueing Enabled");
 		}
 
-		printf("\n");
+		kprintf("\n");
 	} else if (path->device->inq_flags & SID_CmdQue
    		|| path->device->flags & CAM_DEV_TAG_AFTER_COUNT) {
-		printf("%s%d: Tagged Queueing Enabled\n",
+		kprintf("%s%d: Tagged Queueing Enabled\n",
 		       periph->periph_name, periph->unit_number);
 	}
 
@@ -1534,7 +1534,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	 * passed one in..
 	 */
 	if (announce_string != NULL)
-		printf("%s%d: %s\n", periph->periph_name,
+		kprintf("%s%d: %s\n", periph->periph_name,
 		       periph->unit_number, announce_string);
 	crit_exit();
 }
@@ -3177,7 +3177,7 @@ xpt_action(union ccb *start_ccb)
 
 					if (bootverbose) {
 						xpt_print_path(crs->ccb_h.path);
-						printf("tagged openings "
+						kprintf("tagged openings "
 						       "now %d\n",
 						       crs->openings);
 					}
@@ -3277,7 +3277,7 @@ xpt_action(union ccb *start_ccb)
 			} else {
 				start_ccb->ccb_h.status = CAM_REQ_CMP;
 				xpt_print_path(cam_dpath);
-				printf("debugging flags now %x\n", cam_dflags);
+				kprintf("debugging flags now %x\n", cam_dflags);
 			}
 		} else {
 			cam_dpath = NULL;
@@ -3571,7 +3571,7 @@ xpt_run_dev_sendq(struct cam_eb *bus)
 
 		work_ccb = cam_ccbq_peek_ccb(&device->ccbq, CAMQ_HEAD);
 		if (work_ccb == NULL) {
-			printf("device on run queue with no ccbs???\n");
+			kprintf("device on run queue with no ccbs???\n");
 			continue;
 		}
 
@@ -3847,30 +3847,30 @@ void
 xpt_print_path(struct cam_path *path)
 {
 	if (path == NULL)
-		printf("(nopath): ");
+		kprintf("(nopath): ");
 	else {
 		if (path->periph != NULL)
-			printf("(%s%d:", path->periph->periph_name,
+			kprintf("(%s%d:", path->periph->periph_name,
 			       path->periph->unit_number);
 		else
-			printf("(noperiph:");
+			kprintf("(noperiph:");
 
 		if (path->bus != NULL)
-			printf("%s%d:%d:", path->bus->sim->sim_name,
+			kprintf("%s%d:%d:", path->bus->sim->sim_name,
 			       path->bus->sim->unit_number,
 			       path->bus->sim->bus_id);
 		else
-			printf("nobus:");
+			kprintf("nobus:");
 
 		if (path->target != NULL)
-			printf("%d:", path->target->target_id);
+			kprintf("%d:", path->target->target_id);
 		else
-			printf("X:");
+			kprintf("X:");
 
 		if (path->device != NULL)
-			printf("%d): ", path->device->lun_id);
+			kprintf("%d): ", path->device->lun_id);
 		else
-			printf("X): ");
+			kprintf("X): ");
 	}
 }
 
@@ -4105,7 +4105,7 @@ xptpathid(const char *sim_name, int sim_unit, int sim_bus)
 			pathid = dunit;
 			break;
 		} else {
-			printf("Ambiguous scbus configuration for %s%d "
+			kprintf("Ambiguous scbus configuration for %s%d "
 			       "bus %d, cannot wire down.  The kernel "
 			       "config entry for scbus%d should "
 			       "specify a controller bus.\n"
@@ -4863,7 +4863,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 						 request_ccb->ccb_h.path_id,
 						 i, 0);
 			if (status != CAM_REQ_CMP) {
-				printf("xpt_scan_bus: xpt_create_path failed"
+				kprintf("xpt_scan_bus: xpt_create_path failed"
 				       " with status %#x, bus scan halted\n",
 				       status);
 				break;
@@ -4876,7 +4876,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 			work_ccb->ccb_h.ppriv_ptr0 = scan_info;
 			work_ccb->crcn.flags = request_ccb->crcn.flags;
 #if 0
-			printf("xpt_scan_bus: probing %d:%d:%d\n",
+			kprintf("xpt_scan_bus: probing %d:%d:%d\n",
 				request_ccb->ccb_h.path_id, i, 0);
 #endif
 			xpt_action(work_ccb);
@@ -4902,7 +4902,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 		xpt_action(request_ccb);
 
 #if 0
-		printf("xpt_scan_bus: got back probe from %d:%d:%d\n",
+		kprintf("xpt_scan_bus: got back probe from %d:%d:%d\n",
 			path_id, target_id, lun_id);
 #endif
 
@@ -4976,7 +4976,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 			status = xpt_create_path(&path, xpt_periph,
 						 path_id, target_id, lun_id);
 			if (status != CAM_REQ_CMP) {
-				printf("xpt_scan_bus: xpt_create_path failed "
+				kprintf("xpt_scan_bus: xpt_create_path failed "
 				       "with status %#x, halting LUN scan\n",
 			 	       status);
 				xpt_free_ccb(request_ccb);
@@ -5000,7 +5000,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 				scan_info->request_ccb->crcn.flags;
 #if 0
 			xpt_print_path(path);
-			printf("xpt_scan bus probing\n");
+			kprintf("xpt_scan bus probing\n");
 #endif
 			xpt_action(request_ccb);
 		}
@@ -5081,7 +5081,7 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 
 		if (status != CAM_REQ_CMP) {
 			xpt_print_path(path);
-			printf("xpt_scan_lun: can't compile path, can't "
+			kprintf("xpt_scan_lun: can't compile path, can't "
 			       "continue\n");
 			kfree(request_ccb, M_TEMP);
 			kfree(new_path, M_TEMP);
@@ -5109,7 +5109,7 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 
 		if (status != CAM_REQ_CMP) {
 			xpt_print_path(path);
-			printf("xpt_scan_lun: cam_alloc_periph returned an "
+			kprintf("xpt_scan_lun: cam_alloc_periph returned an "
 			       "error, can't continue probe\n");
 			request_ccb->ccb_h.status = status;
 			xpt_done(request_ccb);
@@ -5134,12 +5134,12 @@ proberegister(struct cam_periph *periph, void *arg)
 
 	request_ccb = (union ccb *)arg;
 	if (periph == NULL) {
-		printf("proberegister: periph was NULL!!\n");
+		kprintf("proberegister: periph was NULL!!\n");
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (request_ccb == NULL) {
-		printf("proberegister: no probe CCB, "
+		kprintf("proberegister: no probe CCB, "
 		       "can't register device\n");
 		return(CAM_REQ_CMP_ERR);
 	}
@@ -5952,9 +5952,9 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 		if ((status = xpt_create_path(&path, xpt_periph, bus->path_id,
 					      CAM_TARGET_WILDCARD,
 					      CAM_LUN_WILDCARD)) !=CAM_REQ_CMP){
-			printf("xptconfigfunc: xpt_create_path failed with "
+			kprintf("xptconfigfunc: xpt_create_path failed with "
 			       "status %#x for bus %d\n", status, bus->path_id);
-			printf("xptconfigfunc: halting bus configuration\n");
+			kprintf("xptconfigfunc: halting bus configuration\n");
 			xpt_free_ccb(work_ccb);
 			busses_to_config--;
 			xpt_finishconfig(xpt_periph, NULL);
@@ -5964,7 +5964,7 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 		work_ccb->ccb_h.func_code = XPT_PATH_INQ;
 		xpt_action(work_ccb);
 		if (work_ccb->ccb_h.status != CAM_REQ_CMP) {
-			printf("xptconfigfunc: CPI failed on bus %d "
+			kprintf("xptconfigfunc: CPI failed on bus %d "
 			       "with status %d\n", bus->path_id,
 			       work_ccb->ccb_h.status);
 			xpt_finishconfig(xpt_periph, work_ccb);
@@ -6009,7 +6009,7 @@ xpt_config(void *arg)
 		if (xpt_create_path(&cam_dpath, xpt_periph,
 				    CAM_DEBUG_BUS, CAM_DEBUG_TARGET,
 				    CAM_DEBUG_LUN) != CAM_REQ_CMP) {
-			printf("xpt_config: xpt_create_path() failed for debug"
+			kprintf("xpt_config: xpt_create_path() failed for debug"
 			       " target %d:%d:%d, debugging disabled\n",
 			       CAM_DEBUG_BUS, CAM_DEBUG_TARGET, CAM_DEBUG_LUN);
 			cam_dflags = CAM_DEBUG_NONE;
@@ -6031,7 +6031,7 @@ xpt_config(void *arg)
 		xpt_finishconfig(xpt_periph, NULL);
 	} else  {
 		if (busses_to_reset > 0 && SCSI_DELAY >= 2000) {
-			printf("Waiting %d seconds for SCSI "
+			kprintf("Waiting %d seconds for SCSI "
 			       "devices to settle\n", SCSI_DELAY/1000);
 		}
 		xpt_for_all_busses(xptconfigfunc, NULL);

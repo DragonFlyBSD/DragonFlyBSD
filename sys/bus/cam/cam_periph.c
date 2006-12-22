@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.17 2006/12/20 18:14:33 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 			periph->deferred_ac = code;
 			return (CAM_REQ_INPROG);
 		} else {
-			printf("cam_periph_alloc: attempt to re-allocate "
+			kprintf("cam_periph_alloc: attempt to re-allocate "
 			       "valid device %s%d rejected\n",
 			       periph->periph_name, periph->unit_number);
 		}
@@ -271,9 +271,9 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 		if (periph != NULL && periph->unit_number == newunit) {
 			if (wired != 0) {
 				xpt_print_path(periph->path);
-				printf("Duplicate Wired Device entry!\n");
+				kprintf("Duplicate Wired Device entry!\n");
 				xpt_print_path(periph->path);
-				printf("Second device (%s device at scbus%d "
+				kprintf("Second device (%s device at scbus%d "
 				       "target %d lun %d) will not be wired\n",
 				       periph_name, pathid, target, lun);
 				wired = 0;
@@ -376,7 +376,7 @@ cam_periph_invalidate(struct cam_periph *periph)
 	if (periph->refcount == 0)
 		camperiphfree(periph);
 	else if (periph->refcount < 0)
-		printf("cam_invalidate_periph: refcount < 0!!\n");
+		kprintf("cam_invalidate_periph: refcount < 0!!\n");
 	crit_exit();
 }
 
@@ -391,7 +391,7 @@ camperiphfree(struct cam_periph *periph)
 	}
 
 	if (*p_drv == NULL) {
-		printf("camperiphfree: attempt to free "
+		kprintf("camperiphfree: attempt to free "
 			"non-existant periph: %s\n", periph->periph_name);
 		return;
 	}
@@ -489,7 +489,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 	switch(ccb->ccb_h.func_code) {
 	case XPT_DEV_MATCH:
 		if (ccb->cdm.match_buf_len == 0) {
-			printf("cam_periph_mapmem: invalid match buffer "
+			kprintf("cam_periph_mapmem: invalid match buffer "
 			       "length 0\n");
 			return(EINVAL);
 		}
@@ -545,7 +545,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		 */
 		if ((lengths[i] +
 		    (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)) > DFLTPHYS){
-			printf("cam_periph_mapmem: attempt to map %lu bytes, "
+			kprintf("cam_periph_mapmem: attempt to map %lu bytes, "
 			       "which is greater than DFLTPHYS(%d)\n",
 			       (long)(lengths[i] +
 			       (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)),
@@ -556,7 +556,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		if (dirs[i] & CAM_DIR_OUT) {
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_READ)) {
-				printf("cam_periph_mapmem: error, "
+				kprintf("cam_periph_mapmem: error, "
 					"address %p, length %lu isn't "
 					"user accessible for READ\n",
 					(void *)*data_ptrs[i],
@@ -569,7 +569,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 			cmd[i] = BUF_CMD_READ;
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_WRITE)) {
-				printf("cam_periph_mapmem: error, "
+				kprintf("cam_periph_mapmem: error, "
 					"address %p, length %lu isn't "
 					"user accessible for WRITE\n",
 					(void *)*data_ptrs[i],
@@ -595,7 +595,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 		/* map the user buffer into kernel memory */
 		if (vmapbuf(mapinfo->bp[i], *data_ptrs[i], lengths[i]) < 0) {
-			printf("cam_periph_mapmem: error, "
+			kprintf("cam_periph_mapmem: error, "
 				"address %p, length %lu isn't "
 				"user accessible any more\n",
 				(void *)*data_ptrs[i],

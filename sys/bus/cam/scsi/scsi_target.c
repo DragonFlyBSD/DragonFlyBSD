@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.13 2006/09/10 01:26:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.14 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -239,7 +239,7 @@ targioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 					 new_lun->target_id,
 					 new_lun->lun_id);
 		if (status != CAM_REQ_CMP) {
-			printf("Couldn't create path, status %#x\n", status);
+			kprintf("Couldn't create path, status %#x\n", status);
 			break;
 		}
 		status = targenable(softc, path, new_lun->grp6_len,
@@ -369,7 +369,7 @@ targendislun(struct cam_path *path, int enable, int grp6_len, int grp7_len)
 	status = en_ccb.ccb_h.status & CAM_STATUS_MASK;
 	if (status != CAM_REQ_CMP) {
 		xpt_print_path(path);
-		printf("%sable lun CCB rejected, status %#x\n",
+		kprintf("%sable lun CCB rejected, status %#x\n",
 		       enable ? "en" : "dis", status);
 	}
 	return (status);
@@ -393,11 +393,11 @@ targenable(struct targ_softc *softc, struct cam_path *path, int grp6_len,
 	xpt_action((union ccb *)&cpi);
 	status = cpi.ccb_h.status & CAM_STATUS_MASK;
 	if (status != CAM_REQ_CMP) {
-		printf("pathinq failed, status %#x\n", status);
+		kprintf("pathinq failed, status %#x\n", status);
 		goto enable_fail;
 	}
 	if ((cpi.target_sprt & PIT_PROCESSOR) == 0) {
-		printf("controller does not support target mode\n");
+		kprintf("controller does not support target mode\n");
 		status = CAM_FUNC_NOTAVAIL;
 		goto enable_fail;
 	}
@@ -412,7 +412,7 @@ targenable(struct targ_softc *softc, struct cam_path *path, int grp6_len,
 			cam_periph_invalidate(del_softc->periph);
 			del_softc->periph = NULL;
 		} else {
-			printf("Requested path still in use by targ%d\n",
+			kprintf("Requested path still in use by targ%d\n",
 			       periph->unit_number);
 			status = CAM_LUN_ALRDY_ENA;
 			goto enable_fail;
@@ -423,7 +423,7 @@ targenable(struct targ_softc *softc, struct cam_path *path, int grp6_len,
 	status = cam_periph_alloc(targctor, NULL, targdtor, targstart,
 			"targ", CAM_PERIPH_BIO, path, targasync, 0, softc);
 	if (status != CAM_REQ_CMP) {
-		printf("cam_periph_alloc failed, status %#x\n", status);
+		kprintf("cam_periph_alloc failed, status %#x\n", status);
 		goto enable_fail;
 	}
 
@@ -436,7 +436,7 @@ targenable(struct targ_softc *softc, struct cam_path *path, int grp6_len,
 	/* Send the enable lun message */
 	status = targendislun(path, /*enable*/1, grp6_len, grp7_len);
 	if (status != CAM_REQ_CMP) {
-		printf("enable lun failed, status %#x\n", status);
+		kprintf("enable lun failed, status %#x\n", status);
 		goto enable_fail;
 	}
 	softc->state |= TARG_STATE_LUN_ENABLED;
@@ -467,7 +467,7 @@ targdisable(struct targ_softc *softc)
 	if (status == CAM_REQ_CMP)
 		softc->state &= ~TARG_STATE_LUN_ENABLED;
 	else
-		printf("Disable lun failed, status %#x\n", status);
+		kprintf("Disable lun failed, status %#x\n", status);
 
 	return (status);
 }
@@ -632,7 +632,7 @@ targstart(struct cam_periph *periph, union ccb *start_ccb)
 			error = targsendccb(softc, start_ccb, descr);
 		if (error != 0) {
 			xpt_print_path(periph->path);
-			printf("targsendccb failed, err %d\n", error);
+			kprintf("targsendccb failed, err %d\n", error);
 			xpt_release_ccb(start_ccb);
 			suword(&descr->user_ccb->ccb_h.status,
 			       CAM_REQ_CMP_ERR);
@@ -936,7 +936,7 @@ targreturnccb(struct targ_softc *softc, union ccb *ccb)
 	error = copyout(&ccb->ccb_h + 1, u_ccbh + 1, ccb_len);
 	if (error != 0) {
 		xpt_print_path(softc->path);
-		printf("targreturnccb - CCB copyout failed (%d)\n",
+		kprintf("targreturnccb - CCB copyout failed (%d)\n",
 		       error);
 	}
 	/* Free CCB or send back to devq. */
@@ -1046,7 +1046,7 @@ abort_all_pending(struct targ_softc *softc)
 		xpt_action((union ccb *)&cab);
 		if (cab.ccb_h.status != CAM_REQ_CMP) {
 			xpt_print_path(cab.ccb_h.path);
-			printf("Unable to abort CCB, status %#x\n",
+			kprintf("Unable to abort CCB, status %#x\n",
 			       cab.ccb_h.status);
 		}
 	}

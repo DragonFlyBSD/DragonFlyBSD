@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.15 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.16 2006/12/22 23:12:17 swildner Exp $
  *
  */
 
@@ -151,8 +151,8 @@ nexus_legacypci_is_host_bridge(int bus, int slot, int func,
 #ifdef CPU_ELAN
 		init_AMD_Elan_sc520();
 #else
-		printf("*** WARNING: kernel option CPU_ELAN missing");
-		printf("-- timekeeping may be wrong\n");
+		kprintf("*** WARNING: kernel option CPU_ELAN missing");
+		kprintf("-- timekeeping may be wrong\n");
 #endif
 		break;
 	case 0x70061022:
@@ -367,7 +367,7 @@ nexus_legacypci_probe(device_t dev)
 					if (strcmp(device_get_name(devs[i]),
 					    "pcib") != 0)
 						continue;
-					printf("compare %d\n", nexus_get_pcibus(devs[i]));
+					kprintf("compare %d\n", nexus_get_pcibus(devs[i]));
 					if (nexus_get_pcibus(devs[i]) == busnum)
 						s = NULL;
 				}
@@ -410,7 +410,7 @@ nexus_legacypci_probe(device_t dev)
 	 */
 	if (!found) {
 		if (bootverbose) {
-			printf("nexus_pcib_identify: no bridge found, "
+			kprintf("nexus_pcib_identify: no bridge found, "
 			       "adding pcib0 anyway\n");
 		}
 		child = BUS_ADD_CHILD(dev, dev, 100, "pcib", 0);

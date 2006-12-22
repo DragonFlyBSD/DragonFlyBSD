@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.10 2006/12/20 18:14:35 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.11 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include "opt_eisa.h"
@@ -219,21 +219,21 @@ eisa_reg_print(device_t dev, char *string, char *separator, int *column)
 	length += (separator ? 2 : 1);
 
 	if (((*column) + length) >= MAX_COL) {
-		printf("\n");
+		kprintf("\n");
 		(*column) = 0;
 	} else if ((*column) != 0) {
 		if (separator) {
-			printf("%c", *separator);
+			kprintf("%c", *separator);
 			(*column)++;
 		}
-		printf(" ");
+		kprintf(" ");
 		(*column)++;
 	}
 
 	if ((*column) == 0) {
 		(*column) += device_printf(dev, "%s", string);
 	} else {
-		(*column) += printf("%s", string);
+		(*column) += kprintf("%s", string);
 	}
 
 	return;

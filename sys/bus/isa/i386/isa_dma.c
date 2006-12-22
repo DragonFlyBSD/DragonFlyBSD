@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.11 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
  */
 
 /*
@@ -121,7 +121,7 @@ isa_dmainit(int chan, u_int bouncebufsize)
 	buf = contigmalloc(bouncebufsize, M_DEVBUF, M_NOWAIT, 0ul, 0xfffffful,
 			   1ul, chan & 4 ? 0x20000ul : 0x10000ul);
 	if (buf == NULL)
-		printf("isa_dmainit(%d, %d) failed\n", chan, bouncebufsize);
+		kprintf("isa_dmainit(%d, %d) failed\n", chan, bouncebufsize);
 	else
 		dma_bouncebuf[chan] = buf;
 }
@@ -139,7 +139,7 @@ isa_dma_acquire(int chan)
 #endif
 
 	if (dma_inuse & (1 << chan)) {
-		printf("isa_dma_acquire: channel %d already in use\n", chan);
+		kprintf("isa_dma_acquire: channel %d already in use\n", chan);
 		return (EBUSY);
 	}
 	dma_inuse |= (1 << chan);
@@ -160,7 +160,7 @@ isa_dma_release(int chan)
 		panic("isa_dma_release: channel out of range");
 
 	if ((dma_inuse & (1 << chan)) == 0)
-		printf("isa_dma_release: channel %d not in use\n", chan);
+		kprintf("isa_dma_release: channel %d not in use\n", chan);
 #endif
 
 	if (dma_busy & (1 << chan)) {
@@ -219,7 +219,7 @@ isa_dmastart(int flags, caddr_t addr, u_int nbytes, int chan)
 		panic("isa_dmastart: impossible request");
 
 	if ((dma_inuse & (1 << chan)) == 0)
-		printf("isa_dmastart: channel %d not acquired\n", chan);
+		kprintf("isa_dmastart: channel %d not acquired\n", chan);
 #endif
 
 #if 0
@@ -229,7 +229,7 @@ isa_dmastart(int flags, caddr_t addr, u_int nbytes, int chan)
 	 * leave this in, drivers that do this will print this continuously.
 	 */
 	if (dma_busy & (1 << chan))
-		printf("isa_dmastart: channel %d busy\n", chan);
+		kprintf("isa_dmastart: channel %d busy\n", chan);
 #endif
 
 	dma_busy |= (1 << chan);
@@ -334,12 +334,12 @@ isa_dmadone(int flags, caddr_t addr, int nbytes, int chan)
 		panic("isa_dmadone: channel out of range");
 
 	if ((dma_inuse & (1 << chan)) == 0)
-		printf("isa_dmadone: channel %d not acquired\n", chan);
+		kprintf("isa_dmadone: channel %d not acquired\n", chan);
 #endif
 
 	if (((dma_busy & (1 << chan)) == 0) && 
 	    (dma_auto_mode & (1 << chan)) == 0 )
-		printf("isa_dmadone: channel %d not busy\n", chan);
+		kprintf("isa_dmadone: channel %d not busy\n", chan);
 
 	if ((dma_auto_mode & (1 << chan)) == 0)
 		outb(chan & 4 ? DMA2_SMSK : DMA1_SMSK, (chan & 3) | 4);
@@ -429,14 +429,14 @@ isa_dmastatus(int chan)
 
 	/* channel active? */
 	if ((dma_inuse & (1 << chan)) == 0) {
-		printf("isa_dmastatus: channel %d not active\n", chan);
+		kprintf("isa_dmastatus: channel %d not active\n", chan);
 		return(-1);
 	}
 	/* channel busy? */
 
 	if (((dma_busy & (1 << chan)) == 0) &&
 	    (dma_auto_mode & (1 << chan)) == 0 ) {
-	    printf("chan %d not busy\n", chan);
+	    kprintf("chan %d not busy\n", chan);
 	    return -2 ;
 	}	
 	if (chan < 4) {			/* low DMA controller */
@@ -479,11 +479,11 @@ int
 isa_dmastop(int chan) 
 {
 	if ((dma_inuse & (1 << chan)) == 0)
-		printf("isa_dmastop: channel %d not acquired\n", chan);  
+		kprintf("isa_dmastop: channel %d not acquired\n", chan);  
 
 	if (((dma_busy & (1 << chan)) == 0) &&
 	    ((dma_auto_mode & (1 << chan)) == 0)) {
-		printf("chan %d not busy\n", chan);
+		kprintf("chan %d not busy\n", chan);
 		return -2 ;
 	}
     

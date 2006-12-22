@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.16 2006/12/20 18:14:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.17 2006/12/22 23:12:17 swildner Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -474,7 +474,7 @@ usbd_fill_iface_data(usbd_device_handle dev, int ifaceidx, int altidx)
 				break;
 		}
 		/* passed end, or bad desc */
-		printf("usbd_fill_iface_data: bad descriptor(s): %s\n",
+		kprintf("usbd_fill_iface_data: bad descriptor(s): %s\n",
 		       ed->bLength == 0 ? "0 length" :
 		       ed->bDescriptorType == UDESC_INTERFACE ? "iface desc":
 		       "out of data");
@@ -494,7 +494,7 @@ usbd_fill_iface_data(usbd_device_handle dev, int ifaceidx, int altidx)
 				if (UGETW(ed->wMaxPacketSize) != mps) {
 					USETW(ed->wMaxPacketSize, mps);
 #ifdef DIAGNOSTIC
-					printf("usbd_fill_iface_data: bad max "
+					kprintf("usbd_fill_iface_data: bad max "
 					       "packet size\n");
 #endif
 				}
@@ -684,7 +684,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 		DPRINTF(("power exceeded %d %d\n", power,dev->powersrc->power));
 		/* XXX print nicer message. */
 		if (msg)
-			printf("%s: device addr %d (config %d) exceeds power "
+			kprintf("%s: device addr %d (config %d) exceeds power "
 				 "budget, %d mA > %d mA\n",
 			       USBDEVNAME(dev->bus->bdev), dev->address,
 			       cdp->bConfigurationValue,
@@ -859,7 +859,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 				 "error=%s\n", USBDEVPTRNAME(parent), port,
 				 addr, usbd_errstr(err)));
 #else
-			printf("%s: port %d, set config at addr %d failed\n",
+			kprintf("%s: port %d, set config at addr %d failed\n",
 			       USBDEVPTRNAME(parent), port, addr);
 #endif
  			return (err);
@@ -975,7 +975,7 @@ usbd_new_device(device_ptr_t parent, usbd_bus_handle bus, int depth,
 		 bus, port, depth, speed));
 	addr = usbd_getnewaddr(bus);
 	if (addr < 0) {
-		printf("%s: No free USB addresses, new device ignored.\n",
+		kprintf("%s: No free USB addresses, new device ignored.\n",
 		       USBDEVNAME(bus->bdev));
 		return (USBD_NO_ADDR);
 	}
@@ -1072,7 +1072,7 @@ usbd_new_device(device_ptr_t parent, usbd_bus_handle bus, int depth,
 		/* Max packet size must be 64 (sec 5.5.3). */
 		if (dd->bMaxPacketSize != USB_2_MAX_CTRL_PACKET) {
 #ifdef DIAGNOSTIC
-			printf("usbd_new_device: addr=%d bad max packet size\n",
+			kprintf("usbd_new_device: addr=%d bad max packet size\n",
 			       addr);
 #endif
 			dd->bMaxPacketSize = USB_2_MAX_CTRL_PACKET;
@@ -1174,14 +1174,14 @@ usbd_print(void *aux, const char *pnp)
 		if (!uaa->usegeneric)
 			return (QUIET);
 		usbd_devinfo(uaa->device, 1, devinfo);
-		printf("%s, %s", devinfo, pnp);
+		kprintf("%s, %s", devinfo, pnp);
 	}
 	if (uaa->port != 0)
-		printf(" port %d", uaa->port);
+		kprintf(" port %d", uaa->port);
 	if (uaa->configno != UHUB_UNK_CONFIGURATION)
-		printf(" configuration %d", uaa->configno);
+		kprintf(" configuration %d", uaa->configno);
 	if (uaa->ifaceno != UHUB_UNK_INTERFACE)
-		printf(" interface %d", uaa->ifaceno);
+		kprintf(" interface %d", uaa->ifaceno);
 #if 0
 	/*
 	 * It gets very crowded with these locators on the attach line.
@@ -1189,11 +1189,11 @@ usbd_print(void *aux, const char *pnp)
 	 * by each driver.
 	 */
 	if (uaa->vendor != UHUB_UNK_VENDOR)
-		printf(" vendor 0x%04x", uaa->vendor);
+		kprintf(" vendor 0x%04x", uaa->vendor);
 	if (uaa->product != UHUB_UNK_PRODUCT)
-		printf(" product 0x%04x", uaa->product);
+		kprintf(" product 0x%04x", uaa->product);
 	if (uaa->release != UHUB_UNK_RELEASE)
-		printf(" release 0x%04x", uaa->release);
+		kprintf(" release 0x%04x", uaa->release);
 #endif
 	return (UNCONF);
 }
@@ -1371,7 +1371,7 @@ usb_disconnect_port(struct usbd_port *up, device_ptr_t parent)
 
 #ifdef DIAGNOSTIC
 	if (dev == NULL) {
-		printf("usb_disconnect_port: no device\n");
+		kprintf("usb_disconnect_port: no device\n");
 		return;
 	}
 #endif
@@ -1379,11 +1379,11 @@ usb_disconnect_port(struct usbd_port *up, device_ptr_t parent)
 	if (dev->subdevs != NULL) {
 		DPRINTFN(3,("usb_disconnect_port: disconnect subdevs\n"));
 		for (i = 0; dev->subdevs[i]; i++) {
-			printf("%s: at %s", USBDEVPTRNAME(dev->subdevs[i]),
+			kprintf("%s: at %s", USBDEVPTRNAME(dev->subdevs[i]),
 			       hubname);
 			if (up->portno != 0)
-				printf(" port %d", up->portno);
-			printf(" (addr %d) disconnected\n", dev->address);
+				kprintf(" port %d", up->portno);
+			kprintf(" (addr %d) disconnected\n", dev->address);
 			config_detach(dev->subdevs[i], DETACH_FORCE);
 			dev->subdevs[i] = NULL;
 		}

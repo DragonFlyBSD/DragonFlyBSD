@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.12 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.13 2006/12/22 23:12:17 swildner Exp $
  *
  */
 
@@ -130,7 +130,7 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 		res = bus_alloc_resource(cfg->dev, SYS_RES_IRQ, &rid,
 					 irq, irq, 1, resflags);
 		if (!res) {
-			printf("pci_map_int: can't allocate interrupt\n");
+			kprintf("pci_map_int: can't allocate interrupt\n");
 			return 0;
 		}
 
@@ -172,11 +172,11 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 			nextpin = next_apic_irq(nextpin);
 		}
 		if (muxcnt >= 5) {
-			printf("bogus MP table, more than 4 IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n");
+			kprintf("bogus MP table, more than 4 IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n");
 			return 0;
 		}
 		
-		printf("bogus MP table, %d IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n", muxcnt);
+		kprintf("bogus MP table, %d IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n", muxcnt);
 
 		nextpin = next_apic_irq(irq);
 		while (nextpin >= 0) {
@@ -185,17 +185,17 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 						 nextpin, nextpin, 1,
 						 resflags);
 			if (!res) {
-				printf("pci_map_int: can't allocate extra interrupt\n");
+				kprintf("pci_map_int: can't allocate extra interrupt\n");
 				return 0;
 			}
 			error = BUS_SETUP_INTR(device_get_parent(cfg->dev),
 					       cfg->dev, res, flags,
 					       handler, arg, &ih, NULL);
 			if (error != 0) {
-				printf("pci_map_int: BUS_SETUP_INTR failed\n");
+				kprintf("pci_map_int: BUS_SETUP_INTR failed\n");
 				return 0;
 			}
-			printf("Registered extra interrupt handler for int %d (in addition to int %d)\n", nextpin, irq);
+			kprintf("Registered extra interrupt handler for int %d (in addition to int %d)\n", nextpin, irq);
 			nextpin = next_apic_irq(nextpin);
 		}
 #endif
@@ -303,7 +303,7 @@ compat_pci_handler(module_t mod, int type, void *data)
 		devclass_add_driver(pci_devclass, (driver_t *)driver);
 		break;
 	case MOD_UNLOAD:
-		printf("%s: module unload not supported!\n", dvp->pd_name);
+		kprintf("%s: module unload not supported!\n", dvp->pd_name);
 		return EOPNOTSUPP;
 	default:
 		break;

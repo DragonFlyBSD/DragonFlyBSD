@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.14 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.15 2006/12/22 23:12:16 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -150,7 +150,7 @@ fwmem_read_quad(
 	xfer->recv.payload = (u_int32_t *)data;
 
 	if (fwmem_debug)
-		printf("fwmem_read_quad: %d %04x:%08x\n", fwdev->dst,
+		kprintf("fwmem_read_quad: %d %04x:%08x\n", fwdev->dst,
 				dst_hi, dst_lo);
 
 	if (fw_asyreq(xfer->fc, -1, xfer) == 0)
@@ -186,7 +186,7 @@ fwmem_write_quad(
 	xfer->send.payload = xfer->recv.payload = NULL;
 
 	if (fwmem_debug)
-		printf("fwmem_write_quad: %d %04x:%08x %08x\n", fwdev->dst,
+		kprintf("fwmem_write_quad: %d %04x:%08x %08x\n", fwdev->dst,
 			dst_hi, dst_lo, *(u_int32_t *)data);
 
 	if (fw_asyreq(xfer->fc, -1, xfer) == 0)
@@ -225,7 +225,7 @@ fwmem_read_block(
 	xfer->recv.payload = data;
 
 	if (fwmem_debug)
-		printf("fwmem_read_block: %d %04x:%08x %d\n", fwdev->dst,
+		kprintf("fwmem_read_block: %d %04x:%08x %d\n", fwdev->dst,
 				dst_hi, dst_lo, len);
 	if (fw_asyreq(xfer->fc, -1, xfer) == 0)
 		return xfer;
@@ -263,7 +263,7 @@ fwmem_write_block(
 	xfer->recv.payload = NULL;
 
 	if (fwmem_debug)
-		printf("fwmem_write_block: %d %04x:%08x %d\n", fwdev->dst,
+		kprintf("fwmem_write_block: %d %04x:%08x %d\n", fwdev->dst,
 				dst_hi, dst_lo, len);
 	if (fw_asyreq(xfer->fc, -1, xfer) == 0)
 		return xfer;
@@ -295,7 +295,7 @@ fwmem_open (struct dev_open_args *ap)
 		fms->refcount = 1;
 	}
 	if (fwmem_debug)
-		printf("%s: refcount=%d\n", __func__, fms->refcount);
+		kprintf("%s: refcount=%d\n", __func__, fms->refcount);
 
 	return (0);
 }
@@ -309,7 +309,7 @@ fwmem_close (struct dev_close_args *ap)
 	fms = (struct fwmem_softc *)dev->si_drv1;
 	fms->refcount --;
 	if (fwmem_debug)
-		printf("%s: refcount=%d\n", __func__, fms->refcount);
+		kprintf("%s: refcount=%d\n", __func__, fms->refcount);
 	if (fms->refcount < 1) {
 		kfree(dev->si_drv1, M_FW);
 		dev->si_drv1 = NULL;
@@ -331,7 +331,7 @@ fwmem_biodone(struct fw_xfer *xfer)
 
 	if (bp->b_error != 0) {
 		if (fwmem_debug)
-			printf("%s: err=%d\n", __func__, bp->b_error);
+			kprintf("%s: err=%d\n", __func__, bp->b_error);
 		bp->b_flags |= B_ERROR;
 		bp->b_resid = bp->b_bcount;
 	}
@@ -361,13 +361,13 @@ fwmem_strategy(struct dev_strategy_args *ap)
 	fwdev = fw_noderesolve_eui64(sc->fc, &fms->eui);
 	if (fwdev == NULL) {
 		if (fwmem_debug)
-			printf("fwmem: no such device ID:%08x%08x\n",
+			kprintf("fwmem: no such device ID:%08x%08x\n",
 					fms->eui.hi, fms->eui.lo);
 		err = EINVAL;
 		goto error;
 	}
 	if (bio->bio_offset == NOOFFSET) {
-		printf("fwmem: offset was not set bp %p\n", bp);
+		kprintf("fwmem: offset was not set bp %p\n", bp);
 		err = EINVAL;
 		goto error;
 	}
@@ -406,7 +406,7 @@ error:
 	crit_exit();
 	if (err != 0) {
 		if (fwmem_debug)
-			printf("%s: err=%d\n", __func__, err);
+			kprintf("%s: err=%d\n", __func__, err);
 		bp->b_error = err;
 		bp->b_flags |= B_ERROR;
 		bp->b_resid = bp->b_bcount;

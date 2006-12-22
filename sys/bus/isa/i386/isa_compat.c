@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.11 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 						&rid, 0ul, ~0ul, 1,
 						RF_ACTIVE);
 		if (res->ports == NULL && bootverbose)
-			printf("isa_compat: didn't get ports for %s\n",
+			kprintf("isa_compat: didn't get ports for %s\n",
 			       device_get_name(dev));
 	} else
 		res->ports = 0;
@@ -91,7 +91,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 						 &rid, 0ul, ~0ul, 1,
 						 RF_ACTIVE);
 		if (res->memory == NULL && bootverbose)
-			printf("isa_compat: didn't get memory for %s\n",
+			kprintf("isa_compat: didn't get memory for %s\n",
 			       device_get_name(dev));
 	} else
 		res->memory = 0;
@@ -103,7 +103,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 					      &rid, 0ul, ~0ul, 1,
 					      RF_ACTIVE);
 		if (res->drq == NULL && bootverbose)
-			printf("isa_compat: didn't get drq for %s\n",
+			kprintf("isa_compat: didn't get drq for %s\n",
 			       device_get_name(dev));
 	} else
 		res->drq = 0;
@@ -115,7 +115,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 					      &rid, 0ul, ~0ul, 1,
 					      RF_SHAREABLE | RF_ACTIVE);
 		if (res->irq == NULL && bootverbose)
-			printf("isa_compat: didn't get irq for %s\n",
+			kprintf("isa_compat: didn't get irq for %s\n",
 			       device_get_name(dev));
 	} else
 		res->irq = 0;
@@ -260,7 +260,7 @@ isa_compat_attach(device_t dev)
 				       (void *)(uintptr_t)dvp->id_unit,
 				       &ih, NULL);
 		if (error)
-			printf("isa_compat_attach: failed to setup intr: %d\n",
+			kprintf("isa_compat_attach: failed to setup intr: %d\n",
 			       error);
 	}
 	device_printf(dev, "driver is using old-style compatibility shims\n");

@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.19 2006/12/20 18:14:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.20 2006/12/22 23:12:17 swildner Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -109,8 +109,8 @@ struct cfdriver uhci_cd = {
 
 #ifdef USB_DEBUG
 uhci_softc_t *thesc;
-#define DPRINTF(x)	if (uhcidebug) printf x
-#define DPRINTFN(n,x)	if (uhcidebug>(n)) printf x
+#define DPRINTF(x)	if (uhcidebug) kprintf x
+#define DPRINTFN(n,x)	if (uhcidebug>(n)) kprintf x
 int uhcidebug = 0;
 int uhcinoloop = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, uhci, CTLFLAG_RW, 0, "USB uhci");
@@ -396,7 +396,7 @@ uhci_find_prev_qh(uhci_soft_qh_t *pqh, uhci_soft_qh_t *sqh)
 	for (; pqh->hlink != sqh; pqh = pqh->hlink) {
 #if defined(DIAGNOSTIC) || defined(USB_DEBUG)
 		if (le32toh(pqh->qh.qh_hlink) & UHCI_PTR_T) {
-			printf("uhci_find_prev_qh: QH not found\n");
+			kprintf("uhci_find_prev_qh: QH not found\n");
 			return (NULL);
 		}
 #endif
@@ -632,7 +632,7 @@ uhci_allocx(struct usbd_bus *bus)
 		SIMPLEQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
 #ifdef DIAGNOSTIC
 		if (xfer->busy_free != XFER_FREE) {
-			printf("uhci_allocx: xfer=%p not free, 0x%08x\n", xfer,
+			kprintf("uhci_allocx: xfer=%p not free, 0x%08x\n", xfer,
 			       xfer->busy_free);
 		}
 #endif
@@ -660,13 +660,13 @@ uhci_freex(struct usbd_bus *bus, usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (xfer->busy_free != XFER_BUSY) {
-		printf("uhci_freex: xfer=%p not busy, 0x%08x\n", xfer,
+		kprintf("uhci_freex: xfer=%p not busy, 0x%08x\n", xfer,
 		       xfer->busy_free);
 		return;
 	}
 	xfer->busy_free = XFER_FREE;
 	if (!UXFER(xfer)->iinfo.isdone) {
-		printf("uhci_freex: !isdone\n");
+		kprintf("uhci_freex: !isdone\n");
 		return;
 	}
 #endif
@@ -729,7 +729,7 @@ uhci_power(int why, void *v)
 	} else {
 #ifdef DIAGNOSTIC
 		if (sc->sc_suspend == PWR_RESUME)
-			printf("uhci_power: weird, resume without suspend.\n");
+			kprintf("uhci_power: weird, resume without suspend.\n");
 #endif
 		sc->sc_bus.use_polling++;
 		sc->sc_suspend = why;
@@ -835,8 +835,8 @@ void
 uhci_dump_all(uhci_softc_t *sc)
 {
 	uhci_dumpregs(sc);
-	printf("intrs=%d\n", sc->sc_bus.no_intrs);
-	/*printf("framelist[i].link = %08x\n", sc->sc_framelist[0].link);*/
+	kprintf("intrs=%d\n", sc->sc_bus.no_intrs);
+	/*kprintf("framelist[i].link = %08x\n", sc->sc_framelist[0].link);*/
 	uhci_dump_qh(sc->sc_lctl_start);
 }
 
@@ -903,33 +903,33 @@ uhci_dump_ii(uhci_intr_info_t *ii)
 #define DONE 0
 #endif
         if (ii == NULL) {
-                printf("ii NULL\n");
+                kprintf("ii NULL\n");
                 return;
         }
         if (ii->xfer == NULL) {
-		printf("ii %p: done=%d xfer=NULL\n",
+		kprintf("ii %p: done=%d xfer=NULL\n",
 		       ii, DONE);
                 return;
         }
         pipe = ii->xfer->pipe;
         if (pipe == NULL) {
-		printf("ii %p: done=%d xfer=%p pipe=NULL\n",
+		kprintf("ii %p: done=%d xfer=%p pipe=NULL\n",
 		       ii, DONE, ii->xfer);
                 return;
 	}
         if (pipe->endpoint == NULL) {
-		printf("ii %p: done=%d xfer=%p pipe=%p pipe->endpoint=NULL\n",
+		kprintf("ii %p: done=%d xfer=%p pipe=%p pipe->endpoint=NULL\n",
 		       ii, DONE, ii->xfer, pipe);
                 return;
 	}
         if (pipe->device == NULL) {
-		printf("ii %p: done=%d xfer=%p pipe=%p pipe->device=NULL\n",
+		kprintf("ii %p: done=%d xfer=%p pipe=%p pipe->device=NULL\n",
 		       ii, DONE, ii->xfer, pipe);
                 return;
 	}
         ed = pipe->endpoint->edesc;
         dev = pipe->device;
-	printf("ii %p: done=%d xfer=%p dev=%p vid=0x%04x pid=0x%04x addr=%d pipe=%p ep=0x%02x attr=0x%02x\n",
+	kprintf("ii %p: done=%d xfer=%p dev=%p vid=0x%04x pid=0x%04x addr=%d pipe=%p ep=0x%02x attr=0x%02x\n",
 	       ii, DONE, ii->xfer, dev,
 	       UGETW(dev->ddesc.idVendor),
 	       UGETW(dev->ddesc.idProduct),
@@ -944,7 +944,7 @@ uhci_dump_iis(struct uhci_softc *sc)
 {
 	uhci_intr_info_t *ii;
 
-	printf("intr_info list:\n");
+	kprintf("intr_info list:\n");
 	for (ii = LIST_FIRST(&sc->sc_intrhead); ii; ii = LIST_NEXT(ii, list))
 		uhci_dump_ii(ii);
 }
@@ -1208,11 +1208,11 @@ uhci_intr1(uhci_softc_t *sc)
 
 #if defined(DIAGNOSTIC) && defined(__NetBSD__)
 	if (sc->sc_suspend != PWR_RESUME)
-		printf("uhci_intr: suspended sts=0x%x\n", status);
+		kprintf("uhci_intr: suspended sts=0x%x\n", status);
 #endif
 
 	if (sc->sc_suspend != PWR_RESUME) {
-		printf("%s: interrupt while not operating ignored\n",
+		kprintf("%s: interrupt while not operating ignored\n",
 		       USBDEVNAME(sc->sc_bus.bdev));
 		UWRITE2(sc, UHCI_STS, status); /* acknowledge the ints */
 		return (0);
@@ -1226,22 +1226,22 @@ uhci_intr1(uhci_softc_t *sc)
 	if (status & UHCI_STS_RD) {
 		ack |= UHCI_STS_RD;
 #ifdef USB_DEBUG
-		printf("%s: resume detect\n", USBDEVNAME(sc->sc_bus.bdev));
+		kprintf("%s: resume detect\n", USBDEVNAME(sc->sc_bus.bdev));
 #endif
 	}
 	if (status & UHCI_STS_HSE) {
 		ack |= UHCI_STS_HSE;
-		printf("%s: host system error\n", USBDEVNAME(sc->sc_bus.bdev));
+		kprintf("%s: host system error\n", USBDEVNAME(sc->sc_bus.bdev));
 	}
 	if (status & UHCI_STS_HCPE) {
 		ack |= UHCI_STS_HCPE;
-		printf("%s: host controller process error\n",
+		kprintf("%s: host controller process error\n",
 		       USBDEVNAME(sc->sc_bus.bdev));
 	}
 	if (status & UHCI_STS_HCH) {
 		/* no acknowledge needed */
 		if (!sc->sc_dying) {
-			printf("%s: host controller halted\n",
+			kprintf("%s: host controller halted\n",
 			    USBDEVNAME(sc->sc_bus.bdev));
 #ifdef USB_DEBUG
 			uhci_dump_all(sc);
@@ -1307,7 +1307,7 @@ uhci_check_intr(uhci_softc_t *sc, uhci_intr_info_t *ii)
 	DPRINTFN(15, ("uhci_check_intr: ii=%p\n", ii));
 #ifdef DIAGNOSTIC
 	if (ii == NULL) {
-		printf("uhci_check_intr: no ii? %p\n", ii);
+		kprintf("uhci_check_intr: no ii? %p\n", ii);
 		return;
 	}
 #endif
@@ -1322,7 +1322,7 @@ uhci_check_intr(uhci_softc_t *sc, uhci_intr_info_t *ii)
 	lstd = ii->stdend;
 #ifdef DIAGNOSTIC
 	if (lstd == NULL) {
-		printf("uhci_check_intr: std==0\n");
+		kprintf("uhci_check_intr: std==0\n");
 		return;
 	}
 #endif
@@ -1376,10 +1376,10 @@ uhci_idone(uhci_intr_info_t *ii)
 		if (ii->isdone) {
 			crit_exit();
 #ifdef USB_DEBUG
-			printf("uhci_idone: ii is done!\n   ");
+			kprintf("uhci_idone: ii is done!\n   ");
 			uhci_dump_ii(ii);
 #else
-			printf("uhci_idone: ii=%p is done!\n", ii);
+			kprintf("uhci_idone: ii=%p is done!\n", ii);
 #endif
 			return;
 		}
@@ -1577,7 +1577,7 @@ uhci_reset(uhci_softc_t *sc)
 		    (UREAD2(sc, UHCI_CMD) & UHCI_CMD_HCRESET); n++)
 		usb_delay_ms(&sc->sc_bus, 1);
 	if (n >= UHCI_RESET_TIMEOUT)
-		printf("%s: controller did not reset\n",
+		kprintf("%s: controller did not reset\n",
 		       USBDEVNAME(sc->sc_bus.bdev));
 }
 
@@ -1608,7 +1608,7 @@ uhci_run(uhci_softc_t *sc, int run)
 		usb_delay_ms(&sc->sc_bus, 1);
 	}
 	crit_exit();
-	printf("%s: cannot %s\n", USBDEVNAME(sc->sc_bus.bdev),
+	kprintf("%s: cannot %s\n", USBDEVNAME(sc->sc_bus.bdev),
 	       run ? "start" : "stop");
 	return (USBD_IOERROR);
 }
@@ -1657,7 +1657,7 @@ uhci_free_std(uhci_softc_t *sc, uhci_soft_td_t *std)
 #ifdef DIAGNOSTIC
 #define TD_IS_FREE 0x12345678
 	if (le32toh(std->td.td_token) == TD_IS_FREE) {
-		printf("uhci_free_std: freeing free TD %p\n", std);
+		kprintf("uhci_free_std: freeing free TD %p\n", std);
 		return;
 	}
 	std->td.td_token = htole32(TD_IS_FREE);
@@ -1730,7 +1730,7 @@ uhci_alloc_std_chain(struct uhci_pipe *upipe, uhci_softc_t *sc, int len,
 		     upipe->pipe.device->speed, flags));
 	maxp = UGETW(upipe->pipe.endpoint->edesc->wMaxPacketSize);
 	if (maxp == 0) {
-		printf("uhci_alloc_std_chain: maxp=0\n");
+		kprintf("uhci_alloc_std_chain: maxp=0\n");
 		return (USBD_INVAL);
 	}
 	ntd = (len + maxp - 1) / maxp;
@@ -1864,7 +1864,7 @@ uhci_device_bulk_start(usbd_xfer_handle xfer)
 	ii->stdend = dataend;
 #ifdef DIAGNOSTIC
 	if (!ii->isdone) {
-		printf("uhci_device_bulk_transfer: not done, ii=%p\n", ii);
+		kprintf("uhci_device_bulk_transfer: not done, ii=%p\n", ii);
 	}
 	ii->isdone = 0;
 #endif
@@ -2124,7 +2124,7 @@ uhci_device_intr_start(usbd_xfer_handle xfer)
 	ii->stdend = dataend;
 #ifdef DIAGNOSTIC
 	if (!ii->isdone) {
-		printf("uhci_device_intr_transfer: not done, ii=%p\n", ii);
+		kprintf("uhci_device_intr_transfer: not done, ii=%p\n", ii);
 	}
 	ii->isdone = 0;
 #endif
@@ -2282,7 +2282,7 @@ uhci_device_request(usbd_xfer_handle xfer)
 	ii->stdend = stat;
 #ifdef DIAGNOSTIC
 	if (!ii->isdone) {
-		printf("uhci_device_request: not done, ii=%p\n", ii);
+		kprintf("uhci_device_request: not done, ii=%p\n", ii);
 	}
 	ii->isdone = 0;
 #endif
@@ -2379,13 +2379,13 @@ uhci_device_isoc_enter(usbd_xfer_handle xfer)
 
 	if (xfer->status == USBD_IN_PROGRESS) {
 		/* This request has already been entered into the frame list */
-		printf("uhci_device_isoc_enter: xfer=%p in frame list\n", xfer);
+		kprintf("uhci_device_isoc_enter: xfer=%p in frame list\n", xfer);
 		/* XXX */
 	}
 
 #ifdef DIAGNOSTIC
 	if (iso->inuse >= UHCI_VFRAMELIST_COUNT)
-		printf("uhci_device_isoc_enter: overflow!\n");
+		kprintf("uhci_device_isoc_enter: overflow!\n");
 #endif
 
 	next = iso->next;
@@ -2445,7 +2445,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (xfer->status != USBD_IN_PROGRESS)
-		printf("uhci_device_isoc_start: not in progress %p\n", xfer);
+		kprintf("uhci_device_isoc_start: not in progress %p\n", xfer);
 #endif
 
 	/* Find the last TD */
@@ -2456,7 +2456,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (end == NULL) {
-		printf("uhci_device_isoc_start: end == NULL\n");
+		kprintf("uhci_device_isoc_start: end == NULL\n");
 		return (USBD_INVAL);
 	}
 #endif
@@ -2469,7 +2469,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 	ii->stdend = end;
 #ifdef DIAGNOSTIC
 	if (!ii->isdone)
-		printf("uhci_device_isoc_start: not done, ii=%p\n", ii);
+		kprintf("uhci_device_isoc_start: not done, ii=%p\n", ii);
 	ii->isdone = 0;
 #endif
 	uhci_add_intr_info(sc, ii);
@@ -2556,7 +2556,7 @@ uhci_device_isoc_close(usbd_pipe_handle pipe)
 			;
 		if (vstd == NULL) {
 			/*panic*/
-			printf("uhci_device_isoc_close: %p not found\n", std);
+			kprintf("uhci_device_isoc_close: %p not found\n", std);
 			crit_exit();
 			return;
 		}
@@ -2640,13 +2640,13 @@ uhci_device_isoc_done(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (xfer->busy_free != XFER_BUSY) {
-		printf("uhci_device_isoc_done: xfer=%p not busy 0x%08x\n",
+		kprintf("uhci_device_isoc_done: xfer=%p not busy 0x%08x\n",
 		       xfer, xfer->busy_free);
 		return;
 	}
 
         if (ii->stdend == NULL) {
-                printf("uhci_device_isoc_done: xfer=%p stdend==NULL\n", xfer);
+                kprintf("uhci_device_isoc_done: xfer=%p stdend==NULL\n", xfer);
 #ifdef USB_DEBUG
 		uhci_dump_ii(ii);
 #endif
@@ -2661,7 +2661,7 @@ uhci_device_isoc_done(usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
         if (ii->stdend == NULL) {
-                printf("uhci_device_isoc_done: xfer=%p stdend==NULL\n", xfer);
+                kprintf("uhci_device_isoc_done: xfer=%p stdend==NULL\n", xfer);
 #ifdef USB_DEBUG
 		uhci_dump_ii(ii);
 #endif
@@ -2713,7 +2713,7 @@ uhci_device_intr_done(usbd_xfer_handle xfer)
 		ii->stdend = dataend;
 #ifdef DIAGNOSTIC
 		if (!ii->isdone) {
-			printf("uhci_device_intr_done: not done, ii=%p\n", ii);
+			kprintf("uhci_device_intr_done: not done, ii=%p\n", ii);
 		}
 		ii->isdone = 0;
 #endif
@@ -2834,7 +2834,7 @@ uhci_device_setintr(uhci_softc_t *sc, struct uhci_pipe *upipe, int ival)
 
 	DPRINTFN(2, ("uhci_device_setintr: pipe=%p\n", upipe));
 	if (ival == 0) {
-		printf("uhci_setintr: 0 interval\n");
+		kprintf("uhci_setintr: 0 interval\n");
 		return (USBD_INVAL);
 	}
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.27 2006/12/20 18:14:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.28 2006/12/22 23:12:17 swildner Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -331,7 +331,7 @@ ehci_init(ehci_softc_t *sc)
 	sc->sc_offs = EREAD1(sc, EHCI_CAPLENGTH);
 
 	vers = EREAD2(sc, EHCI_HCIVERSION);
-	printf("%s: EHCI version %x.%x\n", USBDEVNAME(sc->sc_bus.bdev),
+	kprintf("%s: EHCI version %x.%x\n", USBDEVNAME(sc->sc_bus.bdev),
 	       vers >> 8, vers & 0xff);
 
 	sparams = EREAD4(sc, EHCI_HCSPARAMS);
@@ -339,20 +339,20 @@ ehci_init(ehci_softc_t *sc)
 	sc->sc_npcomp = EHCI_HCS_N_PCC(sparams);
 	ncomp = EHCI_HCS_N_CC(sparams);
 	if (ncomp != sc->sc_ncomp) {
-		printf("%s: wrong number of companions (%d != %d)\n",
+		kprintf("%s: wrong number of companions (%d != %d)\n",
 		       USBDEVNAME(sc->sc_bus.bdev),
 		       ncomp, sc->sc_ncomp);
 		if (ncomp < sc->sc_ncomp)
 			sc->sc_ncomp = ncomp;
 	}
 	if (sc->sc_ncomp > 0) {
-		printf("%s: companion controller%s, %d port%s each:",
+		kprintf("%s: companion controller%s, %d port%s each:",
 		    USBDEVNAME(sc->sc_bus.bdev), sc->sc_ncomp!=1 ? "s" : "",
 		    EHCI_HCS_N_PCC(sparams),
 		    EHCI_HCS_N_PCC(sparams)!=1 ? "s" : "");
 		for (i = 0; i < sc->sc_ncomp; i++)
-			printf(" %s", USBDEVNAME(sc->sc_comps[i]->bdev));
-		printf("\n");
+			kprintf(" %s", USBDEVNAME(sc->sc_comps[i]->bdev));
+		kprintf("\n");
 	}
 	sc->sc_noport = EHCI_HCS_N_PORTS(sparams);
 	cparams = EREAD4(sc, EHCI_HCCPARAMS);
@@ -377,7 +377,7 @@ ehci_init(ehci_softc_t *sc)
 			break;
 	}
 	if (hcr) {
-		printf("%s: reset timeout\n",
+		kprintf("%s: reset timeout\n",
 		    USBDEVNAME(sc->sc_bus.bdev));
 		return (USBD_IOERROR);
 	}
@@ -506,7 +506,7 @@ ehci_init(ehci_softc_t *sc)
 			break;
 	}
 	if (hcr) {
-		printf("%s: run timeout\n", USBDEVNAME(sc->sc_bus.bdev));
+		kprintf("%s: run timeout\n", USBDEVNAME(sc->sc_bus.bdev));
 		return (USBD_IOERROR);
 	}
 
@@ -578,7 +578,7 @@ ehci_intr1(ehci_softc_t *sc)
 		eintrs &= ~(EHCI_STS_INT | EHCI_STS_ERRINT);
 	}
 	if (eintrs & EHCI_STS_HSE) {
-		printf("%s: unrecoverable error, controller halted\n",
+		kprintf("%s: unrecoverable error, controller halted\n",
 		       USBDEVNAME(sc->sc_bus.bdev));
 		/* XXX what else */
 	}
@@ -600,7 +600,7 @@ ehci_intr1(ehci_softc_t *sc)
 		/* Block unprocessed interrupts. */
 		sc->sc_eintrs &= ~eintrs;
 		EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
-		printf("%s: blocking intrs 0x%x\n",
+		kprintf("%s: blocking intrs 0x%x\n",
 		       USBDEVNAME(sc->sc_bus.bdev), eintrs);
 	}
 
@@ -703,13 +703,13 @@ ehci_check_intr(ehci_softc_t *sc, struct ehci_xfer *ex)
 	DPRINTFN(/*15*/2, ("ehci_check_intr: ex=%p\n", ex));
 
 	if (ex->sqtdstart == NULL) {
-		printf("ehci_check_intr: sqtdstart=NULL\n");
+		kprintf("ehci_check_intr: sqtdstart=NULL\n");
 		return;
 	}
 	lsqtd = ex->sqtdend;
 #ifdef DIAGNOSTIC
 	if (lsqtd == NULL) {
-		printf("ehci_check_intr: lsqtd==0\n");
+		kprintf("ehci_check_intr: lsqtd==0\n");
 		return;
 	}
 #endif
@@ -761,10 +761,10 @@ ehci_idone(struct ehci_xfer *ex)
 		if (ex->isdone) {
 			crit_exit();
 #ifdef EHCI_DEBUG
-			printf("ehci_idone: ex is done!\n   ");
+			kprintf("ehci_idone: ex is done!\n   ");
 			ehci_dump_exfer(ex);
 #else
-			printf("ehci_idone: ex=%p is done!\n", ex);
+			kprintf("ehci_idone: ex=%p is done!\n", ex);
 #endif
 			return;
 		}
@@ -1001,7 +1001,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr != 0) {
-			printf("%s: reset timeout\n",
+			kprintf("%s: reset timeout\n",
 			    USBDEVNAME(sc->sc_bus.bdev));
 		}
 
@@ -1016,7 +1016,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr != EHCI_STS_HCH) {
-			printf("%s: config timeout\n",
+			kprintf("%s: config timeout\n",
 			    USBDEVNAME(sc->sc_bus.bdev));
 		}
 
@@ -1066,7 +1066,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr == EHCI_STS_HCH) {
-			printf("%s: config timeout\n",
+			kprintf("%s: config timeout\n",
 			    USBDEVNAME(sc->sc_bus.bdev));
 		}
 
@@ -1111,7 +1111,7 @@ ehci_allocm(struct usbd_bus *bus, usb_dma_t *dma, u_int32_t size)
 	err = usb_allocmem(bus, size, 0, dma);
 #ifdef EHCI_DEBUG
 	if (err)
-		printf("ehci_allocm: usb_allocmem()=%d\n", err);
+		kprintf("ehci_allocm: usb_allocmem()=%d\n", err);
 #endif
 	return (err);
 }
@@ -1133,7 +1133,7 @@ ehci_allocx(struct usbd_bus *bus)
 		SIMPLEQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
 #ifdef DIAGNOSTIC
 		if (xfer->busy_free != XFER_FREE) {
-			printf("ehci_allocx: xfer=%p not free, 0x%08x\n", xfer,
+			kprintf("ehci_allocx: xfer=%p not free, 0x%08x\n", xfer,
 			       xfer->busy_free);
 		}
 #endif
@@ -1160,13 +1160,13 @@ ehci_freex(struct usbd_bus *bus, usbd_xfer_handle xfer)
 
 #ifdef DIAGNOSTIC
 	if (xfer->busy_free != XFER_BUSY) {
-		printf("ehci_freex: xfer=%p not busy, 0x%08x\n", xfer,
+		kprintf("ehci_freex: xfer=%p not busy, 0x%08x\n", xfer,
 		       xfer->busy_free);
 		return;
 	}
 	xfer->busy_free = XFER_FREE;
 	if (!EXFER(xfer)->isdone) {
-		printf("ehci_freex: !isdone\n");
+		kprintf("ehci_freex: !isdone\n");
 		return;
 	}
 #endif
@@ -1200,17 +1200,17 @@ void
 ehci_dump_regs(ehci_softc_t *sc)
 {
 	int i;
-	printf("cmd=0x%08x, sts=0x%08x, ien=0x%08x\n",
+	kprintf("cmd=0x%08x, sts=0x%08x, ien=0x%08x\n",
 	       EOREAD4(sc, EHCI_USBCMD),
 	       EOREAD4(sc, EHCI_USBSTS),
 	       EOREAD4(sc, EHCI_USBINTR));
-	printf("frindex=0x%08x ctrdsegm=0x%08x periodic=0x%08x async=0x%08x\n",
+	kprintf("frindex=0x%08x ctrdsegm=0x%08x periodic=0x%08x async=0x%08x\n",
 	       EOREAD4(sc, EHCI_FRINDEX),
 	       EOREAD4(sc, EHCI_CTRLDSSEGMENT),
 	       EOREAD4(sc, EHCI_PERIODICLISTBASE),
 	       EOREAD4(sc, EHCI_ASYNCLISTADDR));
 	for (i = 1; i <= sc->sc_noport; i++)
-		printf("port %d status=0x%08x\n", i,
+		kprintf("port %d status=0x%08x\n", i,
 		       EOREAD4(sc, EHCI_PORTSC(i)));
 }
 
@@ -1228,20 +1228,20 @@ void
 ehci_dump_link(ehci_link_t link, int type)
 {
 	link = le32toh(link);
-	printf("0x%08x", link);
+	kprintf("0x%08x", link);
 	if (link & EHCI_LINK_TERMINATE)
-		printf("<T>");
+		kprintf("<T>");
 	else {
-		printf("<");
+		kprintf("<");
 		if (type) {
 			switch (EHCI_LINK_TYPE(link)) {
-			case EHCI_LINK_ITD: printf("ITD"); break;
-			case EHCI_LINK_QH: printf("QH"); break;
-			case EHCI_LINK_SITD: printf("SITD"); break;
-			case EHCI_LINK_FSTN: printf("FSTN"); break;
+			case EHCI_LINK_ITD: kprintf("ITD"); break;
+			case EHCI_LINK_QH: kprintf("QH"); break;
+			case EHCI_LINK_SITD: kprintf("SITD"); break;
+			case EHCI_LINK_FSTN: kprintf("FSTN"); break;
 			}
 		}
-		printf(">");
+		kprintf(">");
 	}
 }
 
@@ -1257,13 +1257,13 @@ ehci_dump_sqtds(ehci_soft_qtd_t *sqtd)
 		stop = sqtd->qtd.qtd_next & htole32(EHCI_LINK_TERMINATE);
 	}
 	if (sqtd)
-		printf("dump aborted, too many TDs\n");
+		kprintf("dump aborted, too many TDs\n");
 }
 
 void
 ehci_dump_sqtd(ehci_soft_qtd_t *sqtd)
 {
-	printf("QTD(%p) at 0x%08x:\n", sqtd, sqtd->physaddr);
+	kprintf("QTD(%p) at 0x%08x:\n", sqtd, sqtd->physaddr);
 	ehci_dump_qtd(&sqtd->qtd);
 }
 
@@ -1273,20 +1273,20 @@ ehci_dump_qtd(ehci_qtd_t *qtd)
 	u_int32_t s;
 	char sbuf[128];
 
-	printf("  next="); ehci_dump_link(qtd->qtd_next, 0);
-	printf(" altnext="); ehci_dump_link(qtd->qtd_altnext, 0);
-	printf("\n");
+	kprintf("  next="); ehci_dump_link(qtd->qtd_next, 0);
+	kprintf(" altnext="); ehci_dump_link(qtd->qtd_altnext, 0);
+	kprintf("\n");
 	s = le32toh(qtd->qtd_status);
 	bitmask_snprintf(EHCI_QTD_GET_STATUS(s),
 			 "\20\10ACTIVE\7HALTED\6BUFERR\5BABBLE\4XACTERR"
 			 "\3MISSED\2SPLIT\1PING", sbuf, sizeof(sbuf));
-	printf("  status=0x%08x: toggle=%d bytes=0x%x ioc=%d c_page=0x%x\n",
+	kprintf("  status=0x%08x: toggle=%d bytes=0x%x ioc=%d c_page=0x%x\n",
 	       s, EHCI_QTD_GET_TOGGLE(s), EHCI_QTD_GET_BYTES(s),
 	       EHCI_QTD_GET_IOC(s), EHCI_QTD_GET_C_PAGE(s));
-	printf("    cerr=%d pid=%d stat=0x%s\n", EHCI_QTD_GET_CERR(s),
+	kprintf("    cerr=%d pid=%d stat=0x%s\n", EHCI_QTD_GET_CERR(s),
 	       EHCI_QTD_GET_PID(s), sbuf);
 	for (s = 0; s < 5; s++)
-		printf("  buffer[%d]=0x%08x\n", s, le32toh(qtd->qtd_buffer[s]));
+		kprintf("  buffer[%d]=0x%08x\n", s, le32toh(qtd->qtd_buffer[s]));
 }
 
 void
@@ -1295,25 +1295,25 @@ ehci_dump_sqh(ehci_soft_qh_t *sqh)
 	ehci_qh_t *qh = &sqh->qh;
 	u_int32_t endp, endphub;
 
-	printf("QH(%p) at 0x%08x:\n", sqh, sqh->physaddr);
-	printf("  link="); ehci_dump_link(qh->qh_link, 1); printf("\n");
+	kprintf("QH(%p) at 0x%08x:\n", sqh, sqh->physaddr);
+	kprintf("  link="); ehci_dump_link(qh->qh_link, 1); kprintf("\n");
 	endp = le32toh(qh->qh_endp);
-	printf("  endp=0x%08x\n", endp);
-	printf("    addr=0x%02x inact=%d endpt=%d eps=%d dtc=%d hrecl=%d\n",
+	kprintf("  endp=0x%08x\n", endp);
+	kprintf("    addr=0x%02x inact=%d endpt=%d eps=%d dtc=%d hrecl=%d\n",
 	       EHCI_QH_GET_ADDR(endp), EHCI_QH_GET_INACT(endp),
 	       EHCI_QH_GET_ENDPT(endp),  EHCI_QH_GET_EPS(endp),
 	       EHCI_QH_GET_DTC(endp), EHCI_QH_GET_HRECL(endp));
-	printf("    mpl=0x%x ctl=%d nrl=%d\n",
+	kprintf("    mpl=0x%x ctl=%d nrl=%d\n",
 	       EHCI_QH_GET_MPL(endp), EHCI_QH_GET_CTL(endp),
 	       EHCI_QH_GET_NRL(endp));
 	endphub = le32toh(qh->qh_endphub);
-	printf("  endphub=0x%08x\n", endphub);
-	printf("    smask=0x%02x cmask=0x%02x huba=0x%02x port=%d mult=%d\n",
+	kprintf("  endphub=0x%08x\n", endphub);
+	kprintf("    smask=0x%02x cmask=0x%02x huba=0x%02x port=%d mult=%d\n",
 	       EHCI_QH_GET_SMASK(endphub), EHCI_QH_GET_CMASK(endphub),
 	       EHCI_QH_GET_HUBA(endphub), EHCI_QH_GET_PORT(endphub),
 	       EHCI_QH_GET_MULT(endphub));
-	printf("  curqtd="); ehci_dump_link(qh->qh_curqtd, 0); printf("\n");
-	printf("Overlay qTD:\n");
+	kprintf("  curqtd="); ehci_dump_link(qh->qh_curqtd, 0); kprintf("\n");
+	kprintf("Overlay qTD:\n");
 	ehci_dump_qtd(&qh->qh_qtd);
 }
 
@@ -1321,7 +1321,7 @@ ehci_dump_sqh(ehci_soft_qh_t *sqh)
 Static void
 ehci_dump_exfer(struct ehci_xfer *ex)
 {
-	printf("ehci_dump_exfer: ex=%p\n", ex);
+	kprintf("ehci_dump_exfer: ex=%p\n", ex);
 }
 #endif
 #endif
@@ -1376,7 +1376,7 @@ ehci_open(usbd_pipe_handle pipe)
 	default: panic("ehci_open: bad device speed %d", dev->speed);
 	}
 	if (speed != EHCI_QH_SPEED_HIGH && xfertype == UE_ISOCHRONOUS) {
-		printf("%s: *** WARNING: opening low/full speed device, this "
+		kprintf("%s: *** WARNING: opening low/full speed device, this "
 		       "does not work yet.\n",
 		       USBDEVNAME(sc->sc_bus.bdev));
 		DPRINTFN(1,("ehci_open: hshubaddr=%d hshubport=%d\n",
@@ -1421,7 +1421,7 @@ ehci_open(usbd_pipe_handle pipe)
 				   0, &epipe->u.ctl.reqdma);
 #ifdef EHCI_DEBUG
 		if (err)
-			printf("ehci_open: usb_allocmem()=%d\n", err);
+			kprintf("ehci_open: usb_allocmem()=%d\n", err);
 #endif
 		if (err)
 			goto bad1;
@@ -1474,7 +1474,7 @@ ehci_add_qh(ehci_soft_qh_t *sqh, ehci_soft_qh_t *head)
 
 #ifdef EHCI_DEBUG
 	if (ehcidebug > 5) {
-		printf("ehci_add_qh:\n");
+		kprintf("ehci_add_qh:\n");
 		ehci_dump_sqh(sqh);
 	}
 #endif
@@ -1549,7 +1549,7 @@ ehci_sync_hc(ehci_softc_t *sc)
 	lockmgr(&sc->sc_doorbell_lock, LK_RELEASE);
 #ifdef DIAGNOSTIC
 	if (error)
-		printf("ehci_sync_hc: tsleep() = %d\n", error);
+		kprintf("ehci_sync_hc: tsleep() = %d\n", error);
 #endif
 	DPRINTFN(2,("ehci_sync_hc: exit\n"));
 }
@@ -1999,7 +1999,7 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 			v = EOREAD4(sc, port);
 			DPRINTF(("ehci after reset, status=0x%08x\n", v));
 			if (v & EHCI_PS_PR) {
-				printf("%s: port reset timeout\n",
+				kprintf("%s: port reset timeout\n",
 				       USBDEVNAME(sc->sc_bus.bdev));
 				return (USBD_TIMEOUT);
 			}
@@ -2061,16 +2061,16 @@ ehci_disown(ehci_softc_t *sc, int index, int lowspeed)
 	if (sc->sc_npcomp != 0) {
 		int i = (index-1) / sc->sc_npcomp;
 		if (i >= sc->sc_ncomp)
-			printf("%s: strange port\n",
+			kprintf("%s: strange port\n",
 			       USBDEVNAME(sc->sc_bus.bdev));
 		else
-			printf("%s: handing over %s speed device on "
+			kprintf("%s: handing over %s speed device on "
 			       "port %d to %s\n",
 			       USBDEVNAME(sc->sc_bus.bdev),
 			       lowspeed ? "low" : "full",
 			       index, USBDEVNAME(sc->sc_comps[i]->bdev));
 	} else {
-		printf("%s: npcomp == 0\n", USBDEVNAME(sc->sc_bus.bdev));
+		kprintf("%s: npcomp == 0\n", USBDEVNAME(sc->sc_bus.bdev));
 	}
 #endif
 	port = EHCI_PORTSC(index);
@@ -2172,7 +2172,7 @@ ehci_alloc_sqh(ehci_softc_t *sc)
 			  EHCI_PAGE_SIZE, &dma);
 #ifdef EHCI_DEBUG
 		if (err)
-			printf("ehci_alloc_sqh: usb_allocmem()=%d\n", err);
+			kprintf("ehci_alloc_sqh: usb_allocmem()=%d\n", err);
 #endif
 		if (err)
 			return (NULL);
@@ -2213,7 +2213,7 @@ ehci_alloc_sqtd(ehci_softc_t *sc)
 			  EHCI_PAGE_SIZE, &dma);
 #ifdef EHCI_DEBUG
 		if (err)
-			printf("ehci_alloc_sqtd: usb_allocmem()=%d\n", err);
+			kprintf("ehci_alloc_sqtd: usb_allocmem()=%d\n", err);
 #endif
 		if (err)
 			return (NULL);
@@ -2313,10 +2313,10 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 				 EHCI_PAGE_OFFSET(dataphys);
 #ifdef DIAGNOSTIC
 			if (curlen > len) {
-				printf("ehci_alloc_sqtd_chain: curlen=0x%x "
+				kprintf("ehci_alloc_sqtd_chain: curlen=0x%x "
 				       "len=0x%x offs=0x%x\n", curlen, len,
 				       EHCI_PAGE_OFFSET(dataphys));
-				printf("lastpage=0x%x page=0x%x phys=0x%x\n",
+				kprintf("lastpage=0x%x page=0x%x phys=0x%x\n",
 				       dataphyslastpage, dataphyspage,
 				       dataphys);
 				curlen = len;
@@ -2357,7 +2357,7 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 			cur->qtd.qtd_buffer_hi[i] = 0;
 #ifdef DIAGNOSTIC
 			if (i >= EHCI_QTD_NBUFFERS) {
-				printf("ehci_alloc_sqtd_chain: i=%d\n", i);
+				kprintf("ehci_alloc_sqtd_chain: i=%d\n", i);
 				goto nomem;
 			}
 #endif
@@ -2623,7 +2623,7 @@ ehci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	}
 	usb_transfer_complete(xfer);
 
-	/* printf("%s: %d TDs aborted\n", __func__, count); */
+	/* kprintf("%s: %d TDs aborted\n", __func__, count); */
 	crit_exit();
 #undef exfer
 }
@@ -2710,7 +2710,7 @@ ehci_device_ctrl_start(usbd_xfer_handle xfer)
 #ifdef DIAGNOSTIC
 	if (!(xfer->rqflags & URQ_REQUEST)) {
 		/* XXX panic */
-		printf("ehci_device_ctrl_transfer: not a request\n");
+		kprintf("ehci_device_ctrl_transfer: not a request\n");
 		return (USBD_INVAL);
 	}
 #endif
@@ -2874,7 +2874,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	exfer->sqtdend = stat;
 #ifdef DIAGNOSTIC
 	if (!exfer->isdone) {
-		printf("ehci_device_request: not done, exfer=%p\n", exfer);
+		kprintf("ehci_device_request: not done, exfer=%p\n", exfer);
 	}
 	exfer->isdone = 0;
 #endif
@@ -2984,7 +2984,7 @@ ehci_device_bulk_start(usbd_xfer_handle xfer)
 	exfer->sqtdend = dataend;
 #ifdef DIAGNOSTIC
 	if (!exfer->isdone) {
-		printf("ehci_device_bulk_start: not done, ex=%p\n", exfer);
+		kprintf("ehci_device_bulk_start: not done, ex=%p\n", exfer);
 	}
 	exfer->isdone = 0;
 #endif
@@ -3006,10 +3006,10 @@ ehci_device_bulk_start(usbd_xfer_handle xfer)
 		DPRINTF(("ehci_device_bulk_start: data(3)\n"));
 		ehci_dump_regs(sc);
 #if 0
-		printf("async_head:\n");
+		kprintf("async_head:\n");
 		ehci_dump_sqh(sc->sc_async_head);
 #endif
-		printf("sqh:\n");
+		kprintf("sqh:\n");
 		ehci_dump_sqh(sqh);
 		ehci_dump_sqtds(data);
 	}
@@ -3152,7 +3152,7 @@ ehci_device_intr_start(usbd_xfer_handle xfer)
 	exfer->sqtdend = dataend;
 #ifdef DIAGNOSTIC
 	if (!exfer->isdone) {
-		printf("ehci_device_intr_start: not done, ex=%p\n", exfer);
+		kprintf("ehci_device_intr_start: not done, ex=%p\n", exfer);
 	}
 	exfer->isdone = 0;
 #endif
@@ -3173,7 +3173,7 @@ ehci_device_intr_start(usbd_xfer_handle xfer)
 		delay(10000);
 		DPRINTF(("ehci_device_intr_start: data(3)\n"));
 		ehci_dump_regs(sc);
-		printf("sqh:\n");
+		kprintf("sqh:\n");
 		ehci_dump_sqh(sqh);
 		ehci_dump_sqtds(data);
 	}
@@ -3245,7 +3245,7 @@ ehci_device_intr_done(usbd_xfer_handle xfer)
 		exfer->sqtdend = dataend;
 #ifdef DIAGNOSTIC
 		if (!exfer->isdone) {
-			printf("ehci_device_intr_done: not done, ex=%p\n",
+			kprintf("ehci_device_intr_done: not done, ex=%p\n",
 			    exfer);
 		}
 		exfer->isdone = 0;
