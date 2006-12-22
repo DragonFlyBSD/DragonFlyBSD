@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.14 2006/05/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.15 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -299,7 +299,7 @@ ipx_ctlinput(int cmd, struct sockaddr *arg_as_sa, void *dummy)
 
 	default:
 		if (ipxprintfs)
-			printf("ipx_ctlinput: cmd %d.\n", cmd);
+			kprintf("ipx_ctlinput: cmd %d.\n", cmd);
 		break;
 	}
 }
@@ -388,11 +388,11 @@ ipx_forward(struct mbuf *m)
 		ipxstat.ipxs_forward++;
 
 		if (ipxprintfs) {
-			printf("forward: ");
+			kprintf("forward: ");
 			ipx_printhost(&ipx->ipx_sna);
-			printf(" to ");
+			kprintf(" to ");
 			ipx_printhost(&ipx->ipx_dna);
-			printf(" hops %d\n", ipx->ipx_tc);
+			kprintf(" hops %d\n", ipx->ipx_tc);
 		}
 	} else if (mcopy != NULL) {
 		ipx = mtod(mcopy, struct ipx *);

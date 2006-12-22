@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.31 2006/04/14 21:18:24 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.32 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_inet6.h"
@@ -645,7 +645,7 @@ send:
 
 			if (last_optlen_report != time_second) {
 				last_optlen_report = time_second;
-				printf("tcpcb %p: MSS (%d) too small to hold options!\n", tp, tp->t_maxopd);
+				kprintf("tcpcb %p: MSS (%d) too small to hold options!\n", tp, tp->t_maxopd);
 			}
 			error = EHOSTUNREACH;
 			goto out;

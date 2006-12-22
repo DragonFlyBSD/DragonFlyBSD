@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.35 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.36 2006/12/22 23:57:52 swildner Exp $
  */
 
 #define _IP_VHL
@@ -86,7 +86,7 @@ static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 #include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 
-#define print_ip(x, a, y)	 printf("%s %d.%d.%d.%d%s",\
+#define print_ip(x, a, y)	 kprintf("%s %d.%d.%d.%d%s",\
 				x, (ntohl(a.s_addr)>>24)&0xFF,\
 				  (ntohl(a.s_addr)>>16)&0xFF,\
 				  (ntohl(a.s_addr)>>8)&0xFF,\
@@ -172,7 +172,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			args.next_hop = (struct sockaddr_in *)m0->m_data;
 			break;
 		default:
-			printf("ip_output: unrecognised MT_TAG tag %d\n",
+			kprintf("ip_output: unrecognised MT_TAG tag %d\n",
 			    m0->_m_tag_id);
 			break;
 		}
@@ -479,7 +479,7 @@ sendit:
 
 	case IPSEC_POLICY_ENTRUST:
 	default:
-		printf("ip_output: Invalid policy found. %d\n", sp->policy);
+		kprintf("ip_output: Invalid policy found. %d\n", sp->policy);
 	}
     {
 	struct ipsec_output_state state;
@@ -532,7 +532,7 @@ sendit:
 		case ENOMEM:
 			break;
 		default:
-			printf("ip4_output (ipsec): error code %d\n", error);
+			kprintf("ip4_output (ipsec): error code %d\n", error);
 			/*fall through*/
 		case ENOENT:
 			/* don't show these error codes to the user */
@@ -552,7 +552,7 @@ sendit:
 #endif
 	if (ro->ro_rt == NULL) {
 		if (!(flags & IP_ROUTETOIF)) {
-			printf("ip_output: "
+			kprintf("ip_output: "
 				"can't update route after IPsec processing\n");
 			error = EHOSTUNREACH;	/*XXX*/
 			goto bad;
@@ -1068,7 +1068,7 @@ done:
 #ifdef IPSEC
 	if (sp != NULL) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP ip_output call free SP:%p\n", sp));
+			kprintf("DP ip_output call free SP:%p\n", sp));
 		key_freesp(sp);
 	}
 #endif
@@ -1260,7 +1260,7 @@ in_delayed_cksum(struct mbuf *m)
 	offset += m->m_pkthdr.csum_data;	/* checksum offset */
 
 	if (offset + sizeof(u_short) > m->m_len) {
-		printf("delayed m_pullup, m->len: %d  off: %d  p: %d\n",
+		kprintf("delayed m_pullup, m->len: %d  off: %d  p: %d\n",
 		    m->m_len, offset, ip->ip_p);
 		/*
 		 * XXX
@@ -2184,7 +2184,7 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 		 */
 #if 1 /* XXX */
 		if (dst->sin_family != AF_INET) {
-			printf("ip_mloopback: bad address family %d\n",
+			kprintf("ip_mloopback: bad address family %d\n",
 						dst->sin_family);
 			dst->sin_family = AF_INET;
 		}

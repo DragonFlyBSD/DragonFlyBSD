@@ -1,5 +1,5 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.5 2006/06/23 17:20:14 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.6 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -123,7 +123,7 @@ sctp_audit_retranmission_queue(struct sctp_association *asoc)
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-		printf("Audit invoked on send queue cnt:%d onqueue:%d\n",
+		kprintf("Audit invoked on send queue cnt:%d onqueue:%d\n",
 		    asoc->sent_queue_retran_cnt,
 		    asoc->sent_queue_cnt);
 	}
@@ -143,7 +143,7 @@ sctp_audit_retranmission_queue(struct sctp_association *asoc)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-		printf("Audit completes retran:%d onqueue:%d\n",
+		kprintf("Audit completes retran:%d onqueue:%d\n",
 		    asoc->sent_queue_retran_cnt,
 		    asoc->sent_queue_cnt);
 	}
@@ -158,7 +158,7 @@ sctp_threshold_management(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		net->error_count++;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-			printf("Error count for %p now %d thresh:%d\n",
+			kprintf("Error count for %p now %d thresh:%d\n",
 			    net, net->error_count,
 			    net->failure_threshold);
 		}
@@ -196,7 +196,7 @@ sctp_threshold_management(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-		printf("Overall error count for %p now %d thresh:%u state:%x\n",
+		kprintf("Overall error count for %p now %d thresh:%u state:%x\n",
 		       &stcb->asoc,
 		       stcb->asoc.overall_error_count,
 		       (u_int)threshold,
@@ -333,7 +333,7 @@ sctp_backoff_on_timeout(struct sctp_tcb *stcb,
 	net->RTO <<= 1;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER2) {
-		printf("Timer doubles from %d ms -to-> %d ms\n",
+		kprintf("Timer doubles from %d ms -to-> %d ms\n",
 		       oldRTO, net->RTO);
 	}
 #endif /* SCTP_DEBUG */
@@ -342,7 +342,7 @@ sctp_backoff_on_timeout(struct sctp_tcb *stcb,
 		net->RTO = stcb->asoc.maxrto;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER2) {
-			printf("Growth capped by maxrto %d\n",
+			kprintf("Growth capped by maxrto %d\n",
 			       net->RTO);
 		}
 #endif /* SCTP_DEBUG */
@@ -369,7 +369,7 @@ sctp_backoff_on_timeout(struct sctp_tcb *stcb,
 		net->partial_bytes_acked = 0;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("collapse cwnd to 1MTU ssthresh to %d\n",
+			kprintf("collapse cwnd to 1MTU ssthresh to %d\n",
 			       net->ssthresh);
 		}
 #endif
@@ -455,7 +455,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 	win_probes = non_win_probes = 0;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER2) {
-		printf("Marking ALL un-acked for retransmission at t3-timeout\n");
+		kprintf("Marking ALL un-acked for retransmission at t3-timeout\n");
 	}
 #endif /* SCTP_DEBUG */
 	/* Now on to each chunk */
@@ -469,7 +469,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 				       MAX_TSN)) ||
 		    (stcb->asoc.last_acked_seq == chk->rec.data.TSN_seq)) {
 			/* Strange case our list got out of order? */
-			printf("Our list is out of order?\n");
+			kprintf("Our list is out of order?\n");
 			TAILQ_REMOVE(&stcb->asoc.sent_queue, chk, sctp_next);
 			if (chk->data) {
 				sctp_release_pr_sctp_chunk(stcb, chk, 0xffff,
@@ -555,7 +555,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 					fir = 1;
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-						printf("First TSN marked was %x\n",
+						kprintf("First TSN marked was %x\n",
 						       chk->rec.data.TSN_seq);
 					}
 #endif
@@ -573,7 +573,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 			chk->rec.data.doing_fast_retransmit = 0;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER3) {
-				printf("mark TSN:%x for retransmission\n", chk->rec.data.TSN_seq);
+				kprintf("mark TSN:%x for retransmission\n", chk->rec.data.TSN_seq);
 			}
 #endif /* SCTP_DEBUG */
 			/* Clear any time so NO RTT is being done */
@@ -612,11 +612,11 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
 		if (num_mk) {
-			printf("LAST TSN marked was %x\n", tsnlast);
-			printf("Num marked for retransmission was %d peer-rwd:%ld\n",
+			kprintf("LAST TSN marked was %x\n", tsnlast);
+			kprintf("Num marked for retransmission was %d peer-rwd:%ld\n",
 			       num_mk, (u_long)stcb->asoc.peers_rwnd);
-			printf("LAST TSN marked was %x\n", tsnlast);
-			printf("Num marked for retransmission was %d peer-rwd:%d\n",
+			kprintf("LAST TSN marked was %x\n", tsnlast);
+			kprintf("Num marked for retransmission was %d peer-rwd:%d\n",
 			       num_mk,
 			       (int)stcb->asoc.peers_rwnd
 				);
@@ -625,7 +625,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 #endif
 	*num_marked = num_mk;
 	if (stcb->asoc.sent_queue_retran_cnt != cnt_mk) {
-		printf("Local Audit says there are %d for retran asoc cnt:%d\n",
+		kprintf("Local Audit says there are %d for retran asoc cnt:%d\n",
 		       cnt_mk, stcb->asoc.sent_queue_retran_cnt);
 #ifndef SCTP_AUDITING_ENABLED
 		stcb->asoc.sent_queue_retran_cnt = cnt_mk;
@@ -633,7 +633,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER3) {
-		printf("**************************\n");
+		kprintf("**************************\n");
 	}
 #endif /* SCTP_DEBUG */
 
@@ -660,7 +660,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 		non_win_probes = 0;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("WIN_PROBE set via o_rwnd=0 tf=0 and all:%d fit in mtu:%d\n",
+			kprintf("WIN_PROBE set via o_rwnd=0 tf=0 and all:%d fit in mtu:%d\n",
 			       orig_flight, net->mtu);
 		}
 #endif
@@ -669,7 +669,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 	if (audit_tf) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-			printf("Audit total flight due to negative value net:%p\n",
+			kprintf("Audit total flight due to negative value net:%p\n",
 			    net);
 		}
 #endif /* SCTP_DEBUG */
@@ -680,7 +680,7 @@ sctp_mark_all_for_resend(struct sctp_tcb *stcb,
 			lnets->flight_size = 0;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER4) {
-				printf("Net:%p c-f cwnd:%d ssthresh:%d\n",
+				kprintf("Net:%p c-f cwnd:%d ssthresh:%d\n",
 				    lnets, lnets->cwnd, lnets->ssthresh);
 			}
 #endif /* SCTP_DEBUG */
@@ -848,7 +848,7 @@ sctp_t3rxt_timer(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("Special cookie case return\n");
+			kprintf("Special cookie case return\n");
 		}
 #endif /* SCTP_DEBUG */
 		sctp_timer_start(SCTP_TIMER_TYPE_SEND, inp, stcb, net);
@@ -867,7 +867,7 @@ sctp_t3rxt_timer(struct sctp_inpcb *inp,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-				printf("Forward TSN time\n");
+				kprintf("Forward TSN time\n");
 			}
 #endif /* SCTP_DEBUG */
 			send_forward_tsn(stcb, &stcb->asoc);
@@ -1011,7 +1011,7 @@ sctp_strreset_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	if (strrst == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("Strange, strreset timer fires, but I can't find an str-reset?\n");
+			kprintf("Strange, strreset timer fires, but I can't find an str-reset?\n");
 		}
 #endif /* SCTP_DEBUG */
 		return (0);
@@ -1087,7 +1087,7 @@ sctp_asconf_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		if (asconf == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-				printf("Strange, asconf timer fires, but I can't find an asconf?\n");
+				kprintf("Strange, asconf timer fires, but I can't find an asconf?\n");
 			}
 #endif /* SCTP_DEBUG */
 			return (0);
@@ -1112,7 +1112,7 @@ sctp_asconf_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-				printf("asconf_timer: Peer has not responded to our repeated ASCONFs\n");
+				kprintf("asconf_timer: Peer has not responded to our repeated ASCONFs\n");
 			}
 #endif /* SCTP_DEBUG */
 			sctp_asconf_cleanup(stcb, net);
@@ -1179,7 +1179,7 @@ sctp_shutdown_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	/* third generate a shutdown into the queue for out net */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("%s:%d sends a shutdown\n",
+		kprintf("%s:%d sends a shutdown\n",
 		       __FILE__,
 		       __LINE__
 			);
@@ -1230,13 +1230,13 @@ sctp_audit_stream_queues_for_size(struct sctp_inpcb *inp,
 	if ((stcb == NULL) || (inp == NULL))
 		return;
 	if (TAILQ_EMPTY(&stcb->asoc.out_wheel)) {
-		printf("Strange, out_wheel empty nothing on sent/send and  tot=%lu?\n",
+		kprintf("Strange, out_wheel empty nothing on sent/send and  tot=%lu?\n",
 		    (u_long)stcb->asoc.total_output_queue_size);
 		stcb->asoc.total_output_queue_size = 0;
 		return;
 	}
 	if (stcb->asoc.sent_queue_retran_cnt) {
-		printf("Hmm, sent_queue_retran_cnt is non-zero %d\n",
+		kprintf("Hmm, sent_queue_retran_cnt is non-zero %d\n",
 		    stcb->asoc.sent_queue_retran_cnt);
 		stcb->asoc.sent_queue_retran_cnt = 0;
 	}
@@ -1249,7 +1249,7 @@ sctp_audit_stream_queues_for_size(struct sctp_inpcb *inp,
 		}
 	}
 	if (chks_in_queue != stcb->asoc.stream_queue_cnt) {
-		printf("Hmm, stream queue cnt at %d I counted %d in stream out wheel\n",
+		kprintf("Hmm, stream queue cnt at %d I counted %d in stream out wheel\n",
 		       stcb->asoc.stream_queue_cnt, chks_in_queue);
 	}
 	if (chks_in_queue) {
@@ -1258,10 +1258,10 @@ sctp_audit_stream_queues_for_size(struct sctp_inpcb *inp,
 		if ((TAILQ_EMPTY(&stcb->asoc.send_queue)) &&
 		    (TAILQ_EMPTY(&stcb->asoc.sent_queue))) {
 			/* Probably should go in and make it go back through and add fragments allowed */
-			printf("Still nothing moved %d chunks are stuck\n", chks_in_queue);
+			kprintf("Still nothing moved %d chunks are stuck\n", chks_in_queue);
 		}
 	} else {
-		printf("Found no chunks on any queue tot:%lu\n",
+		kprintf("Found no chunks on any queue tot:%lu\n",
 		    (u_long)stcb->asoc.total_output_queue_size);
 		stcb->asoc.total_output_queue_size = 0;
 	}
@@ -1427,7 +1427,7 @@ sctp_autoclose_timer(struct sctp_inpcb *inp,
 					/* only send SHUTDOWN 1st time thru */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-						printf("%s:%d sends a shutdown\n",
+						kprintf("%s:%d sends a shutdown\n",
 						       __FILE__,
 						       __LINE__
 							);
@@ -1505,7 +1505,7 @@ sctp_iterator_timer(struct sctp_iterator *it)
 	}
 	if ((it->inp->inp_starting_point_for_iterator != NULL) &&
 	    (it->inp->inp_starting_point_for_iterator != it)) {
-		printf("Iterator collision, we must wait for other iterator at %x\n",
+		kprintf("Iterator collision, we must wait for other iterator at %x\n",
 		       (u_int)it->inp);
 		SCTP_INP_WUNLOCK(it->inp);
 		goto start_timer_return;

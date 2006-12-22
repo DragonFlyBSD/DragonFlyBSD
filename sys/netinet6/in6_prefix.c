@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.10 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.11 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -818,7 +818,7 @@ rp_remove(struct rr_prefix *rpp)
 				TAILQ_NEXT(ifpr, ifpr_list) =
 					TAILQ_NEXT(rp2ifpr(rpp), ifpr_list);
  			else
- 				printf("Couldn't unlink rr_prefix from ifp\n");
+ 				kprintf("Couldn't unlink rr_prefix from ifp\n");
 		}
 	}
 	/* unlink rp_entry from rr_prefix list */

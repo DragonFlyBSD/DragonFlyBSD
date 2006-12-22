@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.9 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
  *
  * Core of NCP protocol
  */
@@ -71,17 +71,17 @@ m_dumpm(struct mbuf *m)
 {
 	char *p;
 	int len;
-	printf("d=");
+	kprintf("d=");
 	while(m) {
 		p=mtod(m,char *);
 		len=m->m_len;
-		printf("(%d)",len);
+		kprintf("(%d)",len);
 		while(len--){
-			printf("%02x ",((int)*(p++)) & 0xff);
+			kprintf("%02x ",((int)*(p++)) & 0xff);
 		}
 		m=m->m_next;
 	};
-	printf("\n");
+	kprintf("\n");
 }
 #endif /* NCP_DATA_DEBUG */
 
@@ -126,7 +126,7 @@ ncp_ncp_connect(struct ncp_conn *conn) {
 
 	error = ncp_renegotiate_connparam(conn, NCP_DEFAULT_BUFSIZE, 0);
 	if (error == NWE_SIGNATURE_LEVEL_CONFLICT) {
-		printf("Unable to negotiate requested security level\n");
+		kprintf("Unable to negotiate requested security level\n");
 		error = EOPNOTSUPP;
 	}
 	if (error) {
@@ -195,12 +195,12 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	if (td == NULL)
 		td = curthread;	/* XXX maybe procpage ? */
 	if (!ncp_conn_valid(conn)) {
-		printf("%s: conn not valid\n",__func__);
+		kprintf("%s: conn not valid\n",__func__);
 		return (error);
 	}
 	so = conn->ncp_so;
 	if (!so) {
-		printf("%s: ncp_so is NULL !\n",__func__);
+		kprintf("%s: ncp_so is NULL !\n",__func__);
 		ncp_conn_invalidate(conn);	/* wow ! how we do that ? */
 		return EBADF;
 	}
@@ -279,7 +279,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 			if (m->m_len < sizeof(*rp)) {
 				m = m_pullup(m, sizeof(*rp));
 				if (m == NULL) {
-					printf("%s: reply too short\n",__func__);
+					kprintf("%s: reply too short\n",__func__);
 					continue;
 				}
 			}
@@ -363,11 +363,11 @@ ncp_restore_login(struct ncp_conn *conn) {
 	int error, oldflags;
 
 	if (conn->flags & NCPFL_RESTORING) {
-		printf("Hey, ncp_restore_login called twise !!!\n");
+		kprintf("Hey, ncp_restore_login called twise !!!\n");
 		return 0;
 	}
 	oldflags = conn->flags;
-	printf("Restoring connection, flags = %d\n",oldflags);
+	kprintf("Restoring connection, flags = %d\n",oldflags);
 	if ((oldflags & NCPFL_LOGGED) == 0) {
 		return ECONNRESET;	/* no need to restore empty conn */
 	}
@@ -468,7 +468,7 @@ ncp_renegotiate_connparam(struct ncp_conn *conn, int buffsize, int in_options)
 #ifdef IPX
 		if ((options ^ in_options) & NCP_IPX_CHECKSUM) {
 			if (ipxcksum == 2) {
-				printf("Server refuses to support IPX checksums\n");
+				kprintf("Server refuses to support IPX checksums\n");
 				return NWE_REQUESTER_FAILURE;
 			}
 			in_options |= NCP_IPX_CHECKSUM;

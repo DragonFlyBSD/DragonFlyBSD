@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.4 2006/10/24 14:39:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.5 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -61,7 +61,7 @@
 #ifdef ONOE_DEBUG
 #define	DPRINTF(osc, lv, fmt, ...) do {		\
 	if ((osc)->debug >= lv)			\
-		printf(fmt, __VA_ARGS__);	\
+		kprintf(fmt, __VA_ARGS__);	\
 } while (0)
 #else
 #define	DPRINTF(osc, lv, fmt, ...)
@@ -454,7 +454,7 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 		SYSCTL_CHILDREN(osc->ic->ic_sysctl_oid),
 		OID_AUTO, "onoe_ratectl", CTLFLAG_RD, 0, "");
 	if (osc->sysctl_oid == NULL) {
-		printf("wlan_ratectl_onoe: create sysctl tree failed\n");
+		kprintf("wlan_ratectl_onoe: create sysctl tree failed\n");
 		return;
 	}
 
@@ -562,7 +562,7 @@ onoe_modevent(module_t mod, int type, void *unused)
 		return 0;
 	case MOD_UNLOAD:
 		if (onoe_nrefs) {
-			printf("wlan_ratectl_onoe: still in use "
+			kprintf("wlan_ratectl_onoe: still in use "
 			       "(%u dynamic refs)\n", onoe_nrefs);
 			return EBUSY;
 		}

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.11 2006/12/18 20:41:02 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1266,9 +1266,9 @@ static void
 ieee80211_ssid_mismatch(struct ieee80211com *ic, const char *tag,
 	uint8_t mac[IEEE80211_ADDR_LEN], uint8_t *ssid)
 {
-	printf("[%6D] discard %s frame, ssid mismatch: ", mac, ":", tag);
+	kprintf("[%6D] discard %s frame, ssid mismatch: ", mac, ":", tag);
 	ieee80211_print_essid(ssid + 2, ssid[1]);
-	printf("\n");
+	kprintf("\n");
 }
 
 #define	IEEE80211_VERIFY_SSID(_ni, _ssid) do {				\
@@ -2836,16 +2836,16 @@ ieee80211_discard_frame(struct ieee80211com *ic,
 {
 	__va_list ap;
 
-	printf("[%s:%6D] discard ", ic->ic_ifp->if_xname,
+	kprintf("[%s:%6D] discard ", ic->ic_ifp->if_xname,
 		ieee80211_getbssid(ic, wh), ":");
 	if (type != NULL)
-		printf("%s frame, ", type);
+		kprintf("%s frame, ", type);
 	else
-		printf("frame, ");
+		kprintf("frame, ");
 	__va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	__va_end(ap);
-	printf("\n");
+	kprintf("\n");
 }
 
 static void
@@ -2855,16 +2855,16 @@ ieee80211_discard_ie(struct ieee80211com *ic,
 {
 	__va_list ap;
 
-	printf("[%s:%6D] discard ", ic->ic_ifp->if_xname,
+	kprintf("[%s:%6D] discard ", ic->ic_ifp->if_xname,
 		ieee80211_getbssid(ic, wh), ":");
 	if (type != NULL)
-		printf("%s information element, ", type);
+		kprintf("%s information element, ", type);
 	else
-		printf("information element, ");
+		kprintf("information element, ");
 	__va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	__va_end(ap);
-	printf("\n");
+	kprintf("\n");
 }
 
 static void
@@ -2874,14 +2874,14 @@ ieee80211_discard_mac(struct ieee80211com *ic,
 {
 	__va_list ap;
 
-	printf("[%s:%6D] discard ", ic->ic_ifp->if_xname, mac, ":");
+	kprintf("[%s:%6D] discard ", ic->ic_ifp->if_xname, mac, ":");
 	if (type != NULL)
-		printf("%s frame, ", type);
+		kprintf("%s frame, ", type);
 	else
-		printf("frame, ");
+		kprintf("frame, ");
 	__va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	__va_end(ap);
-	printf("\n");
+	kprintf("\n");
 }
 #endif /* IEEE80211_DEBUG */

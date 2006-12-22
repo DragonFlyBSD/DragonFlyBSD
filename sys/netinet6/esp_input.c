@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.13 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.14 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -161,7 +161,7 @@ esp4_input(struct mbuf *m, ...)
 		goto bad;
 	}
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP esp4_input called to allocate SA:%p\n", sav));
+		kprintf("DP esp4_input called to allocate SA:%p\n", sav));
 	if (sav->state != SADB_SASTATE_MATURE
 	 && sav->state != SADB_SASTATE_DYING) {
 		ipseclog((LOG_DEBUG,
@@ -446,7 +446,7 @@ noreplaycheck:
 
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP esp4_input call free SA:%p\n", sav));
+			kprintf("DP esp4_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	ipsecstat.in_success++;
@@ -455,7 +455,7 @@ noreplaycheck:
 bad:
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP esp4_input call free SA:%p\n", sav));
+			kprintf("DP esp4_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	if (m)
@@ -521,7 +521,7 @@ esp6_input(struct mbuf **mp, int *offp, int proto)
 		goto bad;
 	}
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP esp6_input called to allocate SA:%p\n", sav));
+		kprintf("DP esp6_input called to allocate SA:%p\n", sav));
 	if (sav->state != SADB_SASTATE_MATURE
 	 && sav->state != SADB_SASTATE_DYING) {
 		ipseclog((LOG_DEBUG,
@@ -816,7 +816,7 @@ noreplaycheck:
 			n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_HEADER,
 				   M_PKTHDR);
 			if (!n) {
-				printf("esp6_input: mbuf allocation failed\n");
+				kprintf("esp6_input: mbuf allocation failed\n");
 				goto bad;
 			}
 			M_MOVE_PKTHDR(n, m);
@@ -852,7 +852,7 @@ noreplaycheck:
 
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP esp6_input call free SA:%p\n", sav));
+			kprintf("DP esp6_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	ipsec6stat.in_success++;
@@ -861,7 +861,7 @@ noreplaycheck:
 bad:
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP esp6_input call free SA:%p\n", sav));
+			kprintf("DP esp6_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	if (m)

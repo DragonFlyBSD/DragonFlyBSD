@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.23 2006/12/18 20:41:02 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.24 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -194,17 +194,17 @@ void
 m_dumpm(struct mbuf *m) {
 	char *p;
 	int len;
-	printf("d=");
+	kprintf("d=");
 	while(m) {
 		p=mtod(m,char *);
 		len=m->m_len;
-		printf("(%d)",len);
+		kprintf("(%d)",len);
 		while(len--){
-			printf("%02x ",((int)*(p++)) & 0xff);
+			kprintf("%02x ",((int)*(p++)) & 0xff);
 		}
 		m=m->m_next;
 	};
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.8 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -440,7 +440,7 @@ xdrmbuf_getlong(XDR *xdrs, long *lp)
 		 * We (currently) don't allow a long to span a buffer
 		 */
 		if (xdrs->x_handy != -sizeof(long)) {
-			printf("xdrmbuf_getlong: data spans buffers\n");
+			kprintf("xdrmbuf_getlong: data spans buffers\n");
 			return (FALSE);
 		}
 
@@ -457,7 +457,7 @@ xdrmbuf_getlong(XDR *xdrs, long *lp)
 			 */
 			KB_DATASTART(m, xdrs->x_private, caddr_t);
 			if ((xdrs->x_handy = KB_LEN(m) - sizeof(long)) < 0) {
-				printf("xdrmbuf_getlong: short buffer\n");
+				kprintf("xdrmbuf_getlong: short buffer\n");
 				return (FALSE);
 			}
 		} else {
@@ -494,7 +494,7 @@ xdrmbuf_putlong(XDR *xdrs, long *lp)
 		 * We (currently) don't allow a long to span a buffer
 		 */
 		if (xdrs->x_handy != -sizeof(long)) {
-			printf("xdrmbuf_putlong: data spans buffers\n");
+			kprintf("xdrmbuf_putlong: data spans buffers\n");
 			return (FALSE);
 		}
 
@@ -511,7 +511,7 @@ xdrmbuf_putlong(XDR *xdrs, long *lp)
 			 */
 			KB_DATASTART(m, xdrs->x_private, caddr_t);
 			if ((xdrs->x_handy = KB_LEN(m) - sizeof(long)) < 0) {
-				printf("xdrmbuf_putlong: short buffer\n");
+				kprintf("xdrmbuf_putlong: short buffer\n");
 				return (FALSE);
 			}
 		} else {

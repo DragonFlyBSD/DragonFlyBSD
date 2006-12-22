@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_sys.h,v 1.3 1999/08/28 00:48:38 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_sys.h,v 1.3 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_sys.h,v 1.4 2006/12/22 23:57:53 swildner Exp $
  *
  */
 
@@ -242,20 +242,20 @@ struct sp_link {
 		delta.tv_sec--;						\
 		delta.tv_usec += 1000000;				\
 	}								\
-	printf("%3ld.%6ld: ", delta.tv_sec, delta.tv_usec);
+	kprintf("%3ld.%6ld: ", delta.tv_sec, delta.tv_usec);
 
-#define	ATM_DEBUG0(f)		if (atm_debug) {ATM_TIME; printf(f);}
-#define	ATM_DEBUGN0(f)		if (atm_debug) {printf(f);}
-#define	ATM_DEBUG1(f,a1)	if (atm_debug) {ATM_TIME; printf(f, a1);}
-#define	ATM_DEBUGN1(f,a1)	if (atm_debug) {printf(f, a1);}
-#define	ATM_DEBUG2(f,a1,a2)	if (atm_debug) {ATM_TIME; printf(f, a1, a2);}
-#define	ATM_DEBUGN2(f,a1,a2)	if (atm_debug) {printf(f, a1, a2);}
-#define	ATM_DEBUG3(f,a1,a2,a3)	if (atm_debug) {ATM_TIME; printf(f, a1, a2, a3);}
-#define	ATM_DEBUGN3(f,a1,a2,a3)	if (atm_debug) {printf(f, a1, a2, a3);}
-#define	ATM_DEBUG4(f,a1,a2,a3,a4)	if (atm_debug) {ATM_TIME; printf(f, a1, a2, a3, a4);}
-#define	ATM_DEBUGN4(f,a1,a2,a3,a4)	if (atm_debug) {printf(f, a1, a2, a3, a4);}
-#define	ATM_DEBUG5(f,a1,a2,a3,a4,a5)	if (atm_debug) {ATM_TIME; printf(f, a1, a2, a3, a4, a5);}
-#define	ATM_DEBUGN5(f,a1,a2,a3,a4,a5)	if (atm_debug) {printf(f, a1, a2, a3, a4, a5);}
+#define	ATM_DEBUG0(f)		if (atm_debug) {ATM_TIME; kprintf(f);}
+#define	ATM_DEBUGN0(f)		if (atm_debug) {kprintf(f);}
+#define	ATM_DEBUG1(f,a1)	if (atm_debug) {ATM_TIME; kprintf(f, a1);}
+#define	ATM_DEBUGN1(f,a1)	if (atm_debug) {kprintf(f, a1);}
+#define	ATM_DEBUG2(f,a1,a2)	if (atm_debug) {ATM_TIME; kprintf(f, a1, a2);}
+#define	ATM_DEBUGN2(f,a1,a2)	if (atm_debug) {kprintf(f, a1, a2);}
+#define	ATM_DEBUG3(f,a1,a2,a3)	if (atm_debug) {ATM_TIME; kprintf(f, a1, a2, a3);}
+#define	ATM_DEBUGN3(f,a1,a2,a3)	if (atm_debug) {kprintf(f, a1, a2, a3);}
+#define	ATM_DEBUG4(f,a1,a2,a3,a4)	if (atm_debug) {ATM_TIME; kprintf(f, a1, a2, a3, a4);}
+#define	ATM_DEBUGN4(f,a1,a2,a3,a4)	if (atm_debug) {kprintf(f, a1, a2, a3, a4);}
+#define	ATM_DEBUG5(f,a1,a2,a3,a4,a5)	if (atm_debug) {ATM_TIME; kprintf(f, a1, a2, a3, a4, a5);}
+#define	ATM_DEBUGN5(f,a1,a2,a3,a4,a5)	if (atm_debug) {kprintf(f, a1, a2, a3, a4, a5);}
 #else
 #define	ATM_DEBUG0(f)
 #define	ATM_DEBUGN0(f)

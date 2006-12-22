@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.9 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.10 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -471,11 +471,11 @@ ieee80211_announce(struct ieee80211com *ic)
 			mword = ieee80211_rate2media(ic, rate, mode);
 			if (mword == 0)
 				continue;
-			printf("%s%d%sMbps", (i != 0 ? " " : ""),
+			kprintf("%s%d%sMbps", (i != 0 ? " " : ""),
 			    (rate & IEEE80211_RATE_VAL) / 2,
 			    ((rate & 0x1) != 0 ? ".5" : ""));
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 

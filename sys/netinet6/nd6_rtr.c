@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.14 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.15 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -1636,7 +1636,7 @@ in6_ifadd(struct nd_prefix *pr, struct in6_addr *ifid)
 #if 0 /* don't care link local addr state, and always do DAD */
 	/* if link-local address is not eligible, do not autoconfigure. */
 	if (((struct in6_ifaddr *)ifa)->ia6_flags & IN6_IFF_NOTREADY) {
-		printf("in6_ifadd: link-local address not ready\n");
+		kprintf("in6_ifadd: link-local address not ready\n");
 		return NULL;
 	}
 #endif

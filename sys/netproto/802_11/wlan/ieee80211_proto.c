@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.5 2006/12/15 12:44:23 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.6 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -210,7 +210,7 @@ static	const struct ieee80211_aclator *acl = NULL;
 void
 ieee80211_aclator_register(const struct ieee80211_aclator *iac)
 {
-	printf("wlan: %s acl policy registered\n", iac->iac_name);
+	kprintf("wlan: %s acl policy registered\n", iac->iac_name);
 	acl = iac;
 }
 
@@ -219,7 +219,7 @@ ieee80211_aclator_unregister(const struct ieee80211_aclator *iac)
 {
 	if (acl == iac)
 		acl = NULL;
-	printf("wlan: %s acl policy unregistered\n", iac->iac_name);
+	kprintf("wlan: %s acl policy unregistered\n", iac->iac_name);
 }
 
 const struct ieee80211_aclator *
@@ -244,14 +244,14 @@ ieee80211_print_essid(const uint8_t *essid, int len)
 			break;
 	}
 	if (i == len) {
-		printf("\"");
+		kprintf("\"");
 		for (i = 0, p = essid; i < len; i++, p++)
-			printf("%c", *p);
-		printf("\"");
+			kprintf("%c", *p);
+		kprintf("\"");
 	} else {
-		printf("0x");
+		kprintf("0x");
 		for (i = 0, p = essid; i < len; i++, p++)
-			printf("%02x", *p);
+			kprintf("%02x", *p);
 	}
 }
 
@@ -261,7 +261,7 @@ ieee80211_print_rateset(const struct ieee80211_rateset *rs)
 	int i;
 
 	for (i = 0; i < rs->rs_nrates; ++i) {
-		printf("%d%s ", IEEE80211_RS_RATE(rs, i),
+		kprintf("%d%s ", IEEE80211_RS_RATE(rs, i),
 		       (rs->rs_rates[i] & IEEE80211_RATE_BASIC) ?  "*" : "");
 	}
 }
@@ -275,59 +275,59 @@ ieee80211_dump_pkt(const uint8_t *buf, int len, int rate, int rssi)
 	wh = (const struct ieee80211_frame *)buf;
 	switch (wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) {
 	case IEEE80211_FC1_DIR_NODS:
-		printf("NODS %6D", wh->i_addr2, ":");
-		printf("->%6D", wh->i_addr1, ":");
-		printf("(%6D)", wh->i_addr3, ":");
+		kprintf("NODS %6D", wh->i_addr2, ":");
+		kprintf("->%6D", wh->i_addr1, ":");
+		kprintf("(%6D)", wh->i_addr3, ":");
 		break;
 	case IEEE80211_FC1_DIR_TODS:
-		printf("TODS %6D", wh->i_addr2, ":");
-		printf("->%6D", wh->i_addr3, ":");
-		printf("(%6D)", wh->i_addr1, ":");
+		kprintf("TODS %6D", wh->i_addr2, ":");
+		kprintf("->%6D", wh->i_addr3, ":");
+		kprintf("(%6D)", wh->i_addr1, ":");
 		break;
 	case IEEE80211_FC1_DIR_FROMDS:
-		printf("FRDS %6D", wh->i_addr3, ":");
-		printf("->%6D", wh->i_addr1, ":");
-		printf("(%6D)", wh->i_addr2, ":");
+		kprintf("FRDS %6D", wh->i_addr3, ":");
+		kprintf("->%6D", wh->i_addr1, ":");
+		kprintf("(%6D)", wh->i_addr2, ":");
 		break;
 	case IEEE80211_FC1_DIR_DSTODS:
-		printf("DSDS %6D", (const uint8_t *)&wh[1], ":");
-		printf("->%6D", wh->i_addr3, ":");
-		printf("(%6D", wh->i_addr2, ":");
-		printf("->%6D)", wh->i_addr1, ":");
+		kprintf("DSDS %6D", (const uint8_t *)&wh[1], ":");
+		kprintf("->%6D", wh->i_addr3, ":");
+		kprintf("(%6D", wh->i_addr2, ":");
+		kprintf("->%6D)", wh->i_addr1, ":");
 		break;
 	}
 	switch (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) {
 	case IEEE80211_FC0_TYPE_DATA:
-		printf(" data");
+		kprintf(" data");
 		break;
 	case IEEE80211_FC0_TYPE_MGT:
-		printf(" %s", ieee80211_mgt_subtype_name[
+		kprintf(" %s", ieee80211_mgt_subtype_name[
 		    (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK)
 		    >> IEEE80211_FC0_SUBTYPE_SHIFT]);
 		break;
 	default:
-		printf(" type#%d", wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK);
+		kprintf(" type#%d", wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK);
 		break;
 	}
 	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
 		int i;
-		printf(" WEP [IV");
+		kprintf(" WEP [IV");
 		for (i = 0; i < IEEE80211_WEP_IVLEN; i++)
-			printf(" %.02x", buf[sizeof(*wh)+i]);
-		printf(" KID %u]", buf[sizeof(*wh)+i] >> 6);
+			kprintf(" %.02x", buf[sizeof(*wh)+i]);
+		kprintf(" KID %u]", buf[sizeof(*wh)+i] >> 6);
 	}
 	if (rate >= 0)
-		printf(" %dM", rate / 2);
+		kprintf(" %dM", rate / 2);
 	if (rssi >= 0)
-		printf(" +%d", rssi);
-	printf("\n");
+		kprintf(" +%d", rssi);
+	kprintf("\n");
 	if (len > 0) {
 		for (i = 0; i < len; i++) {
 			if ((i & 1) == 0)
-				printf(" ");
-			printf("%02x", buf[i]);
+				kprintf(" ");
+			kprintf("%02x", buf[i]);
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 
@@ -1117,10 +1117,10 @@ ieee80211_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg
 					if_printf(ifp, "associated ");
 				else
 					if_printf(ifp, "synchronized ");
-				printf("with %6D ssid ", ni->ni_bssid, ":");
+				kprintf("with %6D ssid ", ni->ni_bssid, ":");
 				ieee80211_print_essid(ic->ic_bss->ni_essid,
 				    ni->ni_esslen);
-				printf(" channel %d start %uMb\n",
+				kprintf(" channel %d start %uMb\n",
 					ieee80211_chan2ieee(ic, ic->ic_curchan),
 					IEEE80211_RATE2MBS(ni->ni_rates.rs_rates[ni->ni_txrate]));
 			}

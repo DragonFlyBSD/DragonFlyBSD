@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.12 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.13 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -163,7 +163,7 @@ ah4_input(struct mbuf *m, ...)
 		goto fail;
 	}
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP ah4_input called to allocate SA:%p\n", sav));
+		kprintf("DP ah4_input called to allocate SA:%p\n", sav));
 	if (sav->state != SADB_SASTATE_MATURE
 	 && sav->state != SADB_SASTATE_DYING) {
 		ipseclog((LOG_DEBUG,
@@ -548,7 +548,7 @@ ah4_input(struct mbuf *m, ...)
 
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP ah4_input call free SA:%p\n", sav));
+			kprintf("DP ah4_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	ipsecstat.in_success++;
@@ -557,7 +557,7 @@ ah4_input(struct mbuf *m, ...)
 fail:
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP ah4_input call free SA:%p\n", sav));
+			kprintf("DP ah4_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	if (m)
@@ -617,7 +617,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 		goto fail;
 	}
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP ah6_input called to allocate SA:%p\n", sav));
+		kprintf("DP ah6_input called to allocate SA:%p\n", sav));
 	if (sav->state != SADB_SASTATE_MATURE
 	 && sav->state != SADB_SASTATE_DYING) {
 		ipseclog((LOG_DEBUG,
@@ -931,7 +931,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP ah6_input call free SA:%p\n", sav));
+			kprintf("DP ah6_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	ipsec6stat.in_success++;
@@ -940,7 +940,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 fail:
 	if (sav) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP ah6_input call free SA:%p\n", sav));
+			kprintf("DP ah6_input call free SA:%p\n", sav));
 		key_freesav(sav);
 	}
 	if (m)

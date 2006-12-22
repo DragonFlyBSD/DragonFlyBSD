@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.12 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.13 2006/12/22 23:57:52 swildner Exp $
  */
 
 /*
@@ -126,12 +126,12 @@ find_rti(struct ifnet *ifp)
 	struct router_info *rti = Head;
 
 #ifdef IGMP_DEBUG
-	printf("[igmp.c, _find_rti] --> entering \n");
+	kprintf("[igmp.c, _find_rti] --> entering \n");
 #endif
 	while (rti) {
 		if (rti->rti_ifp == ifp) {
 #ifdef IGMP_DEBUG
-			printf("[igmp.c, _find_rti] --> found old entry \n");
+			kprintf("[igmp.c, _find_rti] --> found old entry \n");
 #endif
 			return rti;
 		}
@@ -144,7 +144,7 @@ find_rti(struct ifnet *ifp)
 	rti->rti_next = Head;
 	Head = rti;
 #ifdef IGMP_DEBUG
-	printf("[igmp.c, _find_rti] --> created an entry \n");
+	kprintf("[igmp.c, _find_rti] --> created an entry \n");
 #endif
 	return rti;
 }
@@ -416,7 +416,7 @@ igmp_slowtimo(void)
 
 	crit_enter();
 #ifdef IGMP_DEBUG
-	printf("[igmp.c,_slowtimo] -- > entering \n");
+	kprintf("[igmp.c,_slowtimo] -- > entering \n");
 #endif
 	while (rti) {
 	    if (rti->rti_type == IGMP_V1_ROUTER) {
@@ -428,7 +428,7 @@ igmp_slowtimo(void)
 	    rti = rti->rti_next;
 	}
 #ifdef IGMP_DEBUG	
-	printf("[igmp.c,_slowtimo] -- > exiting \n");
+	kprintf("[igmp.c,_slowtimo] -- > exiting \n");
 #endif
 	crit_exit();
 }

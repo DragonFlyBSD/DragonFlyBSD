@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.13 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.14 2006/12/22 23:57:54 swildner Exp $
  *
  * Connection tables
  */
@@ -187,7 +187,7 @@ ncp_conn_assert_locked(struct ncp_conn *conn, const char *checker,
 {
 	if (conn->nc_lock.lk_flags & LK_HAVE_EXCL)
 		return 0;
-	printf("%s: connection isn't locked!\n", checker);
+	kprintf("%s: connection isn't locked!\n", checker);
 	return EIO;
 }
 
@@ -231,7 +231,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 		return(EIO);
 	}
 	if (ncp->nc_id == 0) {
-		printf("already!!!!\n");
+		kprintf("already!!!!\n");
 		return EACCES;
 	}
 	error = ncp_conn_assert_locked(ncp, __func__, ncp->td);
@@ -249,7 +249,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 	ncp->nc_id = 0;
 	while (ncp->nc_lwant) {
 		ncp_conn_unlock(ncp, ncp->td);
-		printf("lwant = %d\n", ncp->nc_lwant);
+		kprintf("lwant = %d\n", ncp->nc_lwant);
 		tsleep(&ncp->nc_lwant, 0, "ncpdr", 2*hz);
 		lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
 	}

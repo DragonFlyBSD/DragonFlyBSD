@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.31 2006/10/25 07:41:45 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.32 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -233,7 +233,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 
 	case IPSEC_POLICY_ENTRUST:
 	default:
-		printf("ip6_output: Invalid policy found. %d\n", sp->policy);
+		kprintf("ip6_output: Invalid policy found. %d\n", sp->policy);
 	}
 #endif /* IPSEC */
 #ifdef FAST_IPSEC
@@ -275,7 +275,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 
 	case IPSEC_POLICY_ENTRUST:
 	default:
-		printf("ip6_output: Invalid policy found. %d\n", sp->policy);
+		kprintf("ip6_output: Invalid policy found. %d\n", sp->policy);
 	}
 #endif /* FAST_IPSEC */
 
@@ -424,7 +424,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			case ENOMEM:
 				break;
 			default:
-				printf("ip6_output (ipsec): error code %d\n",
+				kprintf("ip6_output (ipsec): error code %d\n",
 				       error);
 				/* fall through */
 			case ENOENT:
@@ -545,7 +545,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			case ENOMEM:
 				break;
 			default:
-				printf("ip6_output (ipsec): error code %d\n", error);
+				kprintf("ip6_output (ipsec): error code %d\n", error);
 				/* fall through */
 			case ENOENT:
 				/* don't show these error codes to the user */
@@ -1711,7 +1711,7 @@ ip6_pcbopts(struct ip6_pktopts **pktopt, struct mbuf *m, struct socket *so,
 		if (opt->ip6po_pktinfo || opt->ip6po_nexthop ||
 		    opt->ip6po_hbh || opt->ip6po_dest1 || opt->ip6po_dest2 ||
 		    opt->ip6po_rhinfo.ip6po_rhi_rthdr)
-			printf("ip6_pcbopts: all specified options are cleared.\n");
+			kprintf("ip6_pcbopts: all specified options are cleared.\n");
 #endif
 		ip6_clearpktopts(opt, 1, -1);
 	} else
@@ -1813,7 +1813,7 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 	struct ip6_pktopts *dst;
 
 	if (src == NULL) {
-		printf("ip6_clearpktopts: invalid argument\n");
+		kprintf("ip6_clearpktopts: invalid argument\n");
 		return (NULL);
 	}
 

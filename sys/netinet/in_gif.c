@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.15 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.16 2006/12/22 23:57:52 swildner Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -139,7 +139,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 #endif
 	default:
 #ifdef DEBUG
-		printf("in_gif_output: warning: unknown family %d passed\n",
+		kprintf("in_gif_output: warning: unknown family %d passed\n",
 			family);
 #endif
 		m_freem(m);
@@ -169,7 +169,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 	if (m && m->m_len < sizeof(struct ip))
 		m = m_pullup(m, sizeof(struct ip));
 	if (m == NULL) {
-		printf("ENOBUFS in in_gif_output %d\n", __LINE__);
+		kprintf("ENOBUFS in in_gif_output %d\n", __LINE__);
 		return ENOBUFS;
 	}
 	bcopy(&iphdr, mtod(m, struct ip *), sizeof(struct ip));

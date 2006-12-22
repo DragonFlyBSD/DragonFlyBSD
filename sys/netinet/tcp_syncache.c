@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.26 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.27 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_inet6.h"
@@ -316,7 +316,7 @@ syncache_init(void)
 	TUNABLE_INT_FETCH("net.inet.tcp.syncache.bucketlimit",
 	    &tcp_syncache.bucket_limit);
 	if (!powerof2(tcp_syncache.hashsize)) {
-		printf("WARNING: syncache hash size is not a power of 2.\n");
+		kprintf("WARNING: syncache hash size is not a power of 2.\n");
 		tcp_syncache.hashsize = 512;	/* safe default */
 	}
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
@@ -705,7 +705,7 @@ syncache_socket(struct syncache *sc, struct socket *lso)
 #ifdef IPSEC
 	/* copy old policy into new socket's */
 	if (ipsec_copy_policy(linp->inp_sp, inp->inp_sp))
-		printf("syncache_expand: could not copy policy\n");
+		kprintf("syncache_expand: could not copy policy\n");
 #endif
 	if (isipv6) {
 		struct in6_addr laddr6;

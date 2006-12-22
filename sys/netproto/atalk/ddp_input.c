@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.11 2006/05/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -406,9 +406,9 @@ bprint(char *data, int len)
     for ( ;; ) {
 	if ( len < 1 ) {
 	    if ( i != 0 ) {
-		printf( "%s\t%s\n", xout, aout );
+		kprintf( "%s\t%s\n", xout, aout );
 	    }
-	    printf( "%s\n", "(end)" );
+	    kprintf( "%s\n", "(end)" );
 	    break;
 	}
 
@@ -428,7 +428,7 @@ bprint(char *data, int len)
 	data++;
 
 	if ( i > BPALEN - 2 ) {
-	    printf( "%s\t%s\n", xout, aout );
+	    kprintf( "%s\t%s\n", xout, aout );
 	    bzero( xout, BPXLEN );
 	    bzero( aout, BPALEN );
 	    i = 0;

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.25 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.26 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -150,7 +150,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 
 #ifdef ICMPPRINTFS
 	if (icmpprintfs)
-		printf("icmp_error(%p, %d, %d)\n", oip, type, code);
+		kprintf("icmp_error(%p, %d, %d)\n", oip, type, code);
 #endif
 	if (type != ICMP_REDIRECT)
 		icmpstat.icps_error++;
@@ -273,7 +273,7 @@ icmp_input(struct mbuf *m, ...)
 		char buf[sizeof "aaa.bbb.ccc.ddd"];
 
 		strcpy(buf, inet_ntoa(ip->ip_src));
-		printf("icmp_input from %s to %s, len %d\n",
+		kprintf("icmp_input from %s to %s, len %d\n",
 		       buf, inet_ntoa(ip->ip_dst), icmplen);
 	}
 #endif
@@ -312,7 +312,7 @@ icmp_input(struct mbuf *m, ...)
 
 #ifdef ICMPPRINTFS
 	if (icmpprintfs)
-		printf("icmp_input, type %d code %d\n", icp->icmp_type,
+		kprintf("icmp_input, type %d code %d\n", icp->icmp_type,
 		    icp->icmp_code);
 #endif
 
@@ -395,7 +395,7 @@ deliver:
 			goto badcode;
 #ifdef ICMPPRINTFS
 		if (icmpprintfs)
-			printf("deliver to protocol %d\n", icp->icmp_ip.ip_p);
+			kprintf("deliver to protocol %d\n", icp->icmp_ip.ip_p);
 #endif
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
 #if 1
@@ -425,7 +425,7 @@ deliver:
 					mtu = ip_next_mtu(rt->rt_rmx.rmx_mtu,
 							  1);
 #ifdef DEBUG_MTUDISC
-				printf("MTU for %s reduced to %d\n",
+				kprintf("MTU for %s reduced to %d\n",
 					inet_ntoa(icmpsrc.sin_addr), mtu);
 #endif
 				if (mtu < 296) {
@@ -535,7 +535,7 @@ reflect:
 			src = ntohl(ip->ip_src.s_addr);
 			dst = ntohl(icp->icmp_ip.ip_dst.s_addr);
 			gw = ntohl(icp->icmp_gwaddr.s_addr);
-			printf("icmp redirect from %d.%d.%d.%d: "
+			kprintf("icmp redirect from %d.%d.%d.%d: "
 			       "%d.%d.%d.%d => %d.%d.%d.%d\n",
 			       (int)(src >> 24), (int)((src >> 16) & 0xff),
 			       (int)((src >> 8) & 0xff), (int)(src & 0xff),
@@ -567,7 +567,7 @@ reflect:
 			char buf[sizeof "aaa.bbb.ccc.ddd"];
 
 			strcpy(buf, inet_ntoa(icp->icmp_ip.ip_dst));
-			printf("redirect dst %s to %s\n",
+			kprintf("redirect dst %s to %s\n",
 			       buf, inet_ntoa(icp->icmp_gwaddr));
 		}
 #endif
@@ -679,7 +679,7 @@ match:
 		if (opts) {
 #ifdef ICMPPRINTFS
 			if (icmpprintfs)
-				printf("icmp_reflect optlen %d rt %d => ",
+				kprintf("icmp_reflect optlen %d rt %d => ",
 				       optlen, opts->m_len);
 #endif
 			for (cnt = optlen; cnt > 0; cnt -= len, cp += len) {
@@ -719,7 +719,7 @@ match:
 			}
 #ifdef ICMPPRINTFS
 			if (icmpprintfs)
-				printf("%d\n", opts->m_len);
+				kprintf("%d\n", opts->m_len);
 #endif
 		}
 		/*
@@ -770,7 +770,7 @@ icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 		char buf[sizeof "aaa.bbb.ccc.ddd"];
 
 		strcpy(buf, inet_ntoa(ip->ip_dst));
-		printf("icmp_send dst %s src %s\n", buf, inet_ntoa(ip->ip_src));
+		kprintf("icmp_send dst %s src %s\n", buf, inet_ntoa(ip->ip_src));
 	}
 #endif
 	ip_output(m, opts, rt, 0, NULL, NULL);
@@ -873,7 +873,7 @@ badport_bandlim(int which)
 
 	if ((unsigned int)dticks > hz) {
 		if (lpackets[which] > icmplim && icmplim_output) {
-			printf("%s from %d to %d packets per second\n",
+			kprintf("%s from %d to %d packets per second\n",
 				bandlimittype[which],
 				lpackets[which],
 				icmplim

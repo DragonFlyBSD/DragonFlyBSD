@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.7 2006/06/23 17:20:13 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.8 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -491,7 +491,7 @@ sctp_is_addr_restricted(struct sctp_tcb *stcb, struct sockaddr *addr)
 		cnt++;
 	}
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("There are %d addresses on the restricted list\n", cnt);
+		kprintf("There are %d addresses on the restricted list\n", cnt);
 	}
 	cnt = 0;
 #endif
@@ -499,7 +499,7 @@ sctp_is_addr_restricted(struct sctp_tcb *stcb, struct sockaddr *addr)
 		if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Help I have fallen and I can't get up!\n");
+				kprintf("Help I have fallen and I can't get up!\n");
 			}
 #endif
 			continue;
@@ -507,7 +507,7 @@ sctp_is_addr_restricted(struct sctp_tcb *stcb, struct sockaddr *addr)
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
 			cnt++;
-			printf("Restricted address[%d]:", cnt);
+			kprintf("Restricted address[%d]:", cnt);
 			sctp_print_address(laddr->ifa->ifa_addr);
 		}
 #endif
@@ -530,7 +530,7 @@ sctp_is_addr_in_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Help I have fallen and I can't get up!\n");
+				kprintf("Help I have fallen and I can't get up!\n");
 			}
 #endif
 			continue;
@@ -623,7 +623,7 @@ sctp_choose_v4_boundspecific_inp(struct sctp_inpcb *inp,
 	/* no address bound can be a source for the destination we are in trouble */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Src address selection for EP, no acceptable src address found for address\n");
+		kprintf("Src address selection for EP, no acceptable src address found for address\n");
 	}
 #endif
 	memset(&ans, 0, sizeof(ans));
@@ -667,7 +667,7 @@ sctp_choose_v4_boundspecific_stcb(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Have a STCB - asconf allowed, not bound all have a netgative list\n");
+			kprintf("Have a STCB - asconf allowed, not bound all have a netgative list\n");
 		}
 #endif
 		/* first question, is the ifn we will emit on
@@ -772,7 +772,7 @@ sctp_choose_v4_boundspecific_stcb(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
+			kprintf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
 		}
 #endif
 		/* First look at all addresses for one that is on
@@ -947,7 +947,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 	num_prefered = sctp_count_v4_num_prefered_boundall (ifn, stcb, non_asoc_addr_ok, loopscope, ipv4_scope, &sin_loop, &sin_local);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Found %d prefered source addresses\n", num_prefered);
+		kprintf("Found %d prefered source addresses\n", num_prefered);
 	}
 #endif
 	if (num_prefered == 0) {
@@ -967,7 +967,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("cur_addr_num:%d\n", cur_addr_num);
+		kprintf("cur_addr_num:%d\n", cur_addr_num);
 	}
 #endif
 	sin = sctp_select_v4_nth_prefered_addr_from_ifn_boundall (ifn, stcb, non_asoc_addr_ok, loopscope,
@@ -1016,7 +1016,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 								    loopscope, ipv4_scope, &sin_loop, &sin_local);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Found ifn:%x %d prefered source addresses\n", (u_int)ifn, num_prefered);
+			kprintf("Found ifn:%x %d prefered source addresses\n", (u_int)ifn, num_prefered);
 		}
 #endif
 		if (num_prefered == 0) {
@@ -1189,7 +1189,7 @@ sctp_ipv4_source_address_selection(struct sctp_inpcb *inp,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Scope setup loop:%d ipv4_scope:%d\n",
+		kprintf("Scope setup loop:%d ipv4_scope:%d\n",
 		       loopscope, ipv4_scope);
 	}
 #endif
@@ -1320,7 +1320,7 @@ sctp_choose_v6_boundspecific_stcb(struct sctp_inpcb *inp,
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_DO_ASCONF) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Have a STCB - asconf allowed, not bound all have a netgative list\n");
+			kprintf("Have a STCB - asconf allowed, not bound all have a netgative list\n");
 		}
 #endif
 		/* first question, is the ifn we will emit on
@@ -1413,7 +1413,7 @@ sctp_choose_v6_boundspecific_stcb(struct sctp_inpcb *inp,
 	} else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
+			kprintf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
 		}
 #endif
 		/* First try for interface output match */
@@ -1561,7 +1561,7 @@ sctp_choose_v6_boundspecific_inp(struct sctp_inpcb *inp,
 	/* no address bound can be a source for the destination */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Src address selection for EP, no acceptable src address found for address\n");
+		kprintf("Src address selection for EP, no acceptable src address found for address\n");
 	}
 #endif
 	return (NULL);
@@ -1679,7 +1679,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 	num_eligible_addr = sctp_count_v6_num_eligible_boundall (ifn, stcb, non_asoc_addr_ok, loopscope, loc_scope);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Found %d eligible source addresses\n", num_eligible_addr);
+		kprintf("Found %d eligible source addresses\n", num_eligible_addr);
 	}
 #endif
 	if (num_eligible_addr == 0) {
@@ -1699,7 +1699,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("cur_addr_num:%d match_scope_prefered:%d select it\n",
+		kprintf("cur_addr_num:%d match_scope_prefered:%d select it\n",
 		       cur_addr_num, match_scope_prefered);
 	}
 #endif
@@ -1709,7 +1709,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		/* retry without the preference for matching scope */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("retry with no match_scope_prefered\n");
+		kprintf("retry with no match_scope_prefered\n");
 	}
 #endif
 		sin6 = sctp_select_v6_nth_addr_from_ifn_boundall (ifn, stcb, non_asoc_addr_ok, loopscope,
@@ -1718,7 +1718,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 	if (sin6) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Selected address %d ifn:%x for the route\n", cur_addr_num, (u_int)ifn);
+			kprintf("Selected address %d ifn:%x for the route\n", cur_addr_num, (u_int)ifn);
 		}
 #endif
 		if (net) {
@@ -1740,7 +1740,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("bound-all Plan B\n");
+		kprintf("bound-all Plan B\n");
 	}
 #endif
 	if (inp->next_ifn_touse == NULL) {
@@ -1748,20 +1748,20 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		inp->next_ifn_touse = TAILQ_FIRST(&ifnet);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Start at first IFN:%x\n", (u_int)inp->next_ifn_touse);
+			kprintf("Start at first IFN:%x\n", (u_int)inp->next_ifn_touse);
 		}
 #endif
 	} else {
 		inp->next_ifn_touse = TAILQ_NEXT(inp->next_ifn_touse, if_list);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Resume at IFN:%x\n", (u_int)inp->next_ifn_touse);
+			kprintf("Resume at IFN:%x\n", (u_int)inp->next_ifn_touse);
 		}
 #endif
 		if (inp->next_ifn_touse == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("IFN Resets\n");
+				kprintf("IFN Resets\n");
 			}
 #endif
 			started_at_beginning=1;
@@ -1798,7 +1798,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		num_eligible_addr = sctp_count_v6_num_eligible_boundall (ifn, stcb, non_asoc_addr_ok, loopscope, loc_scope);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("IFN:%x has %d eligible\n", (u_int)ifn, num_eligible_addr);
+			kprintf("IFN:%x has %d eligible\n", (u_int)ifn, num_eligible_addr);
 		}
 #endif
 		if (num_eligible_addr == 0) {
@@ -1824,7 +1824,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Selected the %d'th address of ifn:%x\n",
+			kprintf("Selected the %d'th address of ifn:%x\n",
 			       cur_addr_num,
 			       (u_int)ifn);
 		}
@@ -1837,7 +1837,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Force a recycle\n");
+			kprintf("Force a recycle\n");
 		}
 #endif
 		inp->next_ifn_touse = NULL;
@@ -1922,7 +1922,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("No route to host, this packet cannot be sent!\n");
+			kprintf("No route to host, this packet cannot be sent!\n");
 		}
 #endif
 		memset(&ans, 0, sizeof(ans));
@@ -1944,7 +1944,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Loopback scope is set\n");
+			kprintf("Loopback scope is set\n");
 		}
 #endif
 		loc_scope = 0;
@@ -1957,7 +1957,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 	} else if (IN6_IS_ADDR_LINKLOCAL(&to->sin6_addr)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Link local scope is set, id:%d\n", to->sin6_scope_id);
+			kprintf("Link local scope is set, id:%d\n", to->sin6_scope_id);
 		}
 #endif
 		if (to->sin6_scope_id)
@@ -1969,7 +1969,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 	} else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Global scope is set\n");
+			kprintf("Global scope is set\n");
 		}
 #endif
 	}
@@ -1979,7 +1979,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Destination address:");
+		kprintf("Destination address:");
 		sctp_print_address((struct sockaddr *)to);
 	}
 #endif
@@ -1987,14 +1987,14 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Calling bound-all src addr selection for v6\n");
+			kprintf("Calling bound-all src addr selection for v6\n");
 		}
 #endif
 		rt_addr = sctp_choose_v6_boundall(inp, stcb, net, ro->ro_rt, loc_scope, loopscope, non_asoc_addr_ok);
 	} else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Calling bound-specific src addr selection for v6\n");
+			kprintf("Calling bound-specific src addr selection for v6\n");
 		}
 #endif
 		if (stcb)
@@ -2008,7 +2008,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 		struct in6_addr in6;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("V6 packet will reach dead-end no suitable src address\n");
+			kprintf("V6 packet will reach dead-end no suitable src address\n");
 		}
 #endif
 		memset(&in6, 0, sizeof(in6));
@@ -2016,7 +2016,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Source address selected is:");
+		kprintf("Source address selected is:");
 		sctp_print_address((struct sockaddr *)rt_addr);
 	}
 #endif
@@ -2113,7 +2113,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	if ((m->m_flags & M_PKTHDR) == 0) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Software error: sctp_lowlevel_chunk_output() called with non pkthdr!\n");
+			kprintf("Software error: sctp_lowlevel_chunk_output() called with non pkthdr!\n");
 		}
 #endif
 		sctp_m_freem(m);
@@ -2246,8 +2246,8 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("low_level_output: dropped v4 packet- no valid source addr\n");
-				printf("Destination was %x\n", (u_int)(ntohl(ip->ip_dst.s_addr)));
+				kprintf("low_level_output: dropped v4 packet- no valid source addr\n");
+				kprintf("Destination was %x\n", (u_int)(ntohl(ip->ip_dst.s_addr)));
 			}
 #endif /* SCTP_DEBUG */
 			if (net) {
@@ -2283,10 +2283,10 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		o_flgs = (IP_RAWOUTPUT | (inp->sctp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)));
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("Calling ipv4 output routine from low level src addr:%x\n",
+			kprintf("Calling ipv4 output routine from low level src addr:%x\n",
 			       (u_int)(ntohl(ip->ip_src.s_addr)));
-			printf("Destination is %x\n", (u_int)(ntohl(ip->ip_dst.s_addr)));
-			printf("RTP route is %p through\n", ro->ro_rt);
+			kprintf("Destination is %x\n", (u_int)(ntohl(ip->ip_dst.s_addr)));
+			kprintf("RTP route is %p through\n", ro->ro_rt);
 		}
 #endif
 		if ((have_mtu) && (net) && (have_mtu > net->mtu)) {
@@ -2309,7 +2309,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		sctp_pegs[SCTP_DATAGRAMS_SENT]++;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("Ip output returns %d\n", ret);
+			kprintf("Ip output returns %d\n", ret);
 		}
 #endif
 		if (net == NULL) {
@@ -2433,7 +2433,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("low_level_output: dropped v6 pkt- no valid source addr\n");
+				kprintf("low_level_output: dropped v6 pkt- no valid source addr\n");
 			}
 #endif
 			sctp_m_freem(m);
@@ -2500,10 +2500,10 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			sin6->sin6_addr = ip6h->ip6_dst;
 			lsa6->sin6_addr = ip6h->ip6_src;
 
-			printf("Calling ipv6 output routine from low level\n");
-			printf("src: ");
+			kprintf("Calling ipv6 output routine from low level\n");
+			kprintf("src: ");
 			sctp_print_address((struct sockaddr *)lsa6);
-			printf("dst: ");
+			kprintf("dst: ");
 			sctp_print_address((struct sockaddr *)sin6);
 		}
 #endif /* SCTP_DEBUG */
@@ -2536,7 +2536,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("return from send is %d\n", ret);
+			kprintf("return from send is %d\n", ret);
 		}
 #endif /* SCTP_DEBUG_OUTPUT */
 		sctp_pegs[SCTP_DATAGRAMS_SENT]++;
@@ -2576,7 +2576,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Unknown protocol (TSNH) type %d\n", ((struct sockaddr *)to)->sa_family);
+			kprintf("Unknown protocol (TSNH) type %d\n", ((struct sockaddr *)to)->sa_family);
 		}
 #endif
 		sctp_m_freem(m);
@@ -2682,7 +2682,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Sending INIT to ");
+		kprintf("Sending INIT to ");
 		sctp_print_address ((struct sockaddr *)&net->ro._l_addr);
 	}
 #endif
@@ -2956,7 +2956,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Calling lowlevel output stcb:%x net:%x\n",
+		kprintf("Calling lowlevel output stcb:%x net:%x\n",
 		       (u_int)stcb, (u_int)net);
 	}
 #endif
@@ -2964,7 +2964,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 		  (struct sockaddr *)&net->ro._l_addr, m, 0, 0, NULL, 0);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Low level output returns %d\n", ret);
+		kprintf("Low level output returns %d\n", ret);
 	}
 #endif
 	sctp_timer_start(SCTP_TIMER_TYPE_INIT, inp, stcb, net);
@@ -3004,7 +3004,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 	limit = ntohs(cp->chunk_length) - sizeof(struct sctp_init_chunk);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Limit is %d bytes\n", limit);
+		kprintf("Limit is %d bytes\n", limit);
 	}
 #endif
 	at = param_offset;
@@ -3018,7 +3018,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 		if (plen < sizeof(struct sctp_paramhdr)) {
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-			printf("sctp_output.c:Impossible length in parameter < %d\n", plen);
+			kprintf("sctp_output.c:Impossible length in parameter < %d\n", plen);
 	}
 #endif
 			*abort_processing = 1;
@@ -3057,7 +3057,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 			/* We can NOT handle HOST NAME addresses!! */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Can't handle hostname addresses.. abort processing\n");
+		kprintf("Can't handle hostname addresses.. abort processing\n");
 	}
 #endif
 			*abort_processing = 1;
@@ -3105,7 +3105,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("Got parameter type %x - unknown\n",
+				kprintf("Got parameter type %x - unknown\n",
 				       (u_int)ptype);
 			}
 #endif
@@ -3113,7 +3113,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 				/* Report bit is set?? */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-					printf("Report bit is set\n");
+					kprintf("Report bit is set\n");
 				}
 #endif
 				if (op_err == NULL) {
@@ -3160,7 +3160,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 			if ((ptype & 0x8000) == 0x0000) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-					printf("Abort bit is now setting1\n");
+					kprintf("Abort bit is now setting1\n");
 				}
 #endif
 				return (op_err);
@@ -3848,7 +3848,7 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 				if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-						printf("Help I have fallen and I can't get up!\n");
+						kprintf("Help I have fallen and I can't get up!\n");
 					}
 #endif
 					continue;
@@ -4224,8 +4224,8 @@ sctp_msg_append(struct sctp_tcb *stcb,
 		/* Software fault, you blew it on the call */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("software error in sctp_msg_append:1\n");
-			printf("stcb:%p net:%p m:%p srcv:%p\n",
+			kprintf("software error in sctp_msg_append:1\n");
+			kprintf("stcb:%p net:%p m:%p srcv:%p\n",
 			       stcb, net, m, srcv);
 		}
 #endif
@@ -4283,7 +4283,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 		/* huh? software error */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("software error in sctp_msg_append:2\n");
+			kprintf("software error in sctp_msg_append:2\n");
 		}
 #endif
 		error = EFAULT;
@@ -4302,7 +4302,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Attempt to send out %d bytes\n",
+		kprintf("Attempt to send out %d bytes\n",
 		       dataout);
 	}
 #endif
@@ -4621,7 +4621,7 @@ zap_by_it_all:
 				/* only send SHUTDOWN the first time through */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-					printf("%s:%d sends a shutdown\n",
+					kprintf("%s:%d sends a shutdown\n",
 					       __FILE__,
 					       __LINE__
 						);
@@ -4664,7 +4664,7 @@ zap_by_it_all:
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-		printf("++total out:%d total_mbuf_out:%d\n",
+		kprintf("++total out:%d total_mbuf_out:%d\n",
 		       (int)asoc->total_output_queue_size,
 		       (int)asoc->total_output_mbuf_queue_size);
 	}
@@ -4904,7 +4904,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 				     (void *)ca, 0, sctp_sendall_completes, inp);
 	if (ret) {
 #ifdef SCTP_DEBUG
-		printf("Failed to initate iterator to takeover associations\n");
+		kprintf("Failed to initate iterator to takeover associations\n");
 #endif
 		FREE(ca, M_PCB);
 		return (EFAULT);
@@ -5008,7 +5008,7 @@ sctp_clean_up_datalist(struct sctp_tcb *stcb,
 			/* Mark the chunk as being a window probe */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("WINDOW PROBE SET\n");
+				kprintf("WINDOW PROBE SET\n");
 			}
 #endif
 			sctp_pegs[SCTP_WINDOW_PROBES]++;
@@ -5302,7 +5302,7 @@ sctp_fill_outqueue(struct sctp_tcb *stcb,
 	sctp_pegs[SCTP_MOVED_MAX]++;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-		printf("Ok we moved %d chunks to send queue\n",
+		kprintf("Ok we moved %d chunks to send queue\n",
 		       moved);
 	}
 #endif
@@ -5394,7 +5394,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 #endif
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-		printf("***********************\n");
+		kprintf("***********************\n");
 	}
 #endif
 	hbflag = 0;
@@ -5409,7 +5409,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 	    TAILQ_EMPTY(&asoc->out_wheel)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("All wheels empty\n");
+			kprintf("All wheels empty\n");
 		}
 #endif
 		return (0);
@@ -5426,7 +5426,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-		printf("Ok we have done the fillup no_data_chunk=%d tf=%d prw:%d\n",
+		kprintf("Ok we have done the fillup no_data_chunk=%d tf=%d prw:%d\n",
 		       (int)no_data_chunks,
 		       (int)asoc->total_flight, (int)asoc->peers_rwnd);
 	}
@@ -5434,7 +5434,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 	TAILQ_FOREACH(net, &asoc->nets, sctp_next) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("net:%p fs:%d  cwnd:%d\n",
+			kprintf("net:%p fs:%d  cwnd:%d\n",
 			       net, net->flight_size, net->cwnd);
 		}
 #endif
@@ -5443,7 +5443,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 			cwnd_full_ind++;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-				printf("Ok skip fillup->fs:%d > cwnd:%d\n",
+				kprintf("Ok skip fillup->fs:%d > cwnd:%d\n",
 				       net->flight_size,
 				       net->cwnd);
 			}
@@ -5465,16 +5465,16 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 		TAILQ_FOREACH(chk, &asoc->send_queue, sctp_next) {
 			chk_cnt++;
 		}
-		printf("We have %d chunks on the send_queue\n", chk_cnt);
+		kprintf("We have %d chunks on the send_queue\n", chk_cnt);
 		chk_cnt = 0;
 		TAILQ_FOREACH(chk, &asoc->sent_queue, sctp_next) {
 			chk_cnt++;
 		}
-		printf("We have %d chunks on the sent_queue\n", chk_cnt);
+		kprintf("We have %d chunks on the sent_queue\n", chk_cnt);
 		TAILQ_FOREACH(chk, &asoc->control_send_queue, sctp_next) {
 			chk_cnt++;
 		}
-		printf("We have %d chunks on the control_queue\n", chk_cnt);
+		kprintf("We have %d chunks on the control_queue\n", chk_cnt);
 	}
 #endif
 	/* If we have data to send, and DSACK is running, stop it
@@ -5546,7 +5546,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("Ok r_mtu is %d mtu is %d for this net:%p one_chunk:%d\n",
+			kprintf("Ok r_mtu is %d mtu is %d for this net:%p one_chunk:%d\n",
 			       r_mtu, mtu, net, one_chunk);
 		}
 #endif
@@ -5706,14 +5706,14 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					error_out_again:
 #ifdef SCTP_DEBUG
 						if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-							printf("Gak got ctrl error %d\n", error);
+							kprintf("Gak got ctrl error %d\n", error);
 						}
 #endif
 						/* error, could not output */
 						if (hbflag) {
 #ifdef SCTP_DEBUG
 							if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-								printf("Update HB anyway\n");
+								kprintf("Update HB anyway\n");
 							}
 #endif
 							if (*now_filled == 0) {
@@ -5733,7 +5733,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 							 */
 #ifdef SCTP_DEBUG
 							if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-								printf("Moving data to an alterante\n");
+								kprintf("Moving data to an alterante\n");
 							}
 #endif
 							sctp_move_to_an_alt(stcb, asoc, net);
@@ -5782,7 +5782,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("Now to data transmission\n");
+			kprintf("Now to data transmission\n");
 		}
 #endif
 
@@ -5793,7 +5793,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					/* let only control go out */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("Either nothing to send or we are full\n");
+						kprintf("Either nothing to send or we are full\n");
 					}
 #endif
 					break;
@@ -5802,7 +5802,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					/* skip this net, no room for data */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("fs:%d > cwnd:%d\n",
+						kprintf("fs:%d > cwnd:%d\n",
 						       net->flight_size, net->cwnd);
 					}
 #endif
@@ -5815,7 +5815,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					/* No, not sent to this net */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("chk->whoTo:%p not %p\n",
+						kprintf("chk->whoTo:%p not %p\n",
 						       chk->whoTo, net);
 
 					}
@@ -5824,7 +5824,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 				}
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-					printf("Can we pick up a chunk?\n");
+					kprintf("Can we pick up a chunk?\n");
 				}
 #endif
 				if ((chk->send_size > omtu) && ((chk->flags & CHUNK_FLAGS_FRAGMENT_OK) == 0)) {
@@ -5836,7 +5836,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					 * printing a warning. This really should not happen ...
 					 */
 /*#ifdef SCTP_DEBUG*/
-					printf("Warning chunk of %d bytes > mtu:%d and yet PMTU disc missed\n",
+					kprintf("Warning chunk of %d bytes > mtu:%d and yet PMTU disc missed\n",
 					       chk->send_size, mtu);
 /*#endif*/
 					chk->flags |= CHUNK_FLAGS_FRAGMENT_OK;
@@ -5847,14 +5847,14 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					/* ok we will add this one */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("Picking up the chunk\n");
+						kprintf("Picking up the chunk\n");
 					}
 #endif
 					outchain = sctp_copy_mbufchain(chk->data, outchain);
 					if (outchain == NULL) {
 #ifdef SCTP_DEBUG
 						if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-							printf("Gakk no memory\n");
+							kprintf("Gakk no memory\n");
 						}
 #endif
 						if (!callout_pending(&net->rxt_timer.timer)) {
@@ -5889,7 +5889,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("ok no more chk:%d > mtu:%d || < r_mtu:%d\n",
+						kprintf("ok no more chk:%d > mtu:%d || < r_mtu:%d\n",
 						       chk->send_size, mtu, r_mtu);
 					}
 #endif
@@ -5901,7 +5901,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 		/* Is there something to send for this destination? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("ok now is chain assembled? %p\n",
+			kprintf("ok now is chain assembled? %p\n",
 			       outchain);
 		}
 #endif
@@ -5923,7 +5923,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 				 */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-					printf("ok lets start a send timer .. we will transmit %p\n",
+					kprintf("ok lets start a send timer .. we will transmit %p\n",
 					       outchain);
 				}
 #endif
@@ -5985,13 +5985,13 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 			errored_send:
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-					printf("Gak send error %d\n", error);
+					kprintf("Gak send error %d\n", error);
 				}
 #endif
 				if (hbflag) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("Update HB time anyway\n");
+						kprintf("Update HB time anyway\n");
 					}
 #endif
 					if (*now_filled == 0) {
@@ -6010,7 +6010,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-						printf("Calling the movement routine\n");
+						kprintf("Calling the movement routine\n");
 					}
 #endif
 					sctp_move_to_an_alt(stcb, asoc, net);
@@ -6585,7 +6585,7 @@ sctp_chunk_retransmission(struct sctp_inpcb *inp,
 	if (TAILQ_EMPTY(&asoc->sent_queue)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("SCTP hits empty queue with cnt set to %d?\n",
+			kprintf("SCTP hits empty queue with cnt set to %d?\n",
 			       asoc->sent_queue_retran_cnt);
 		}
 #endif
@@ -6686,7 +6686,7 @@ sctp_chunk_retransmission(struct sctp_inpcb *inp,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Normal chunk retransmission cnt:%d\n",
+		kprintf("Normal chunk retransmission cnt:%d\n",
 		       asoc->sent_queue_retran_cnt);
 	}
 #endif
@@ -6728,7 +6728,7 @@ sctp_chunk_retransmission(struct sctp_inpcb *inp,
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("blocked-peers_rwnd:%d tf:%d\n",
+				kprintf("blocked-peers_rwnd:%d tf:%d\n",
 				       (int)asoc->peers_rwnd,
 				       (int)asoc->total_flight);
 			}
@@ -6959,7 +6959,7 @@ sctp_timer_validation(struct sctp_inpcb *inp,
 	/* Gak, we did not have a timer somewhere */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-		printf("Deadlock avoided starting timer on a dest at retran\n");
+		kprintf("Deadlock avoided starting timer on a dest at retran\n");
 	}
 #endif
 	sctp_timer_start(SCTP_TIMER_TYPE_SEND, inp, stcb, asoc->primary_destination);
@@ -6997,7 +6997,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 	sctp_pegs[SCTP_CALLS_TO_CO]++;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-		printf("in co - retran count:%d\n", asoc->sent_queue_retran_cnt);
+		kprintf("in co - retran count:%d\n", asoc->sent_queue_retran_cnt);
 	}
 #endif
 	while (asoc->sent_queue_retran_cnt) {
@@ -7009,7 +7009,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			/* Can't send anymore */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("retransmission ret:%d -- full\n", ret);
+				kprintf("retransmission ret:%d -- full\n", ret);
 			}
 #endif
 			/*
@@ -7022,7 +7022,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 					      &now, &now_filled);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Control send outputs:%d@full\n", num_out);
+				kprintf("Control send outputs:%d@full\n", num_out);
 			}
 #endif
 #ifdef SCTP_AUDITING_ENABLED
@@ -7037,7 +7037,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			 */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Done with retrans, none left fill up window\n");
+				kprintf("Done with retrans, none left fill up window\n");
 			}
 #endif
 #ifdef SCTP_AUDITING_ENABLED
@@ -7049,7 +7049,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			/* Only one transmission allowed out of a timeout */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Only one packet allowed out\n");
+				kprintf("Only one packet allowed out\n");
 			}
 #endif
 #ifdef SCTP_AUDITING_ENABLED
@@ -7089,7 +7089,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			*/
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-				printf("examined net:%p burst limit:%d\n", net, asoc->max_burst);
+				kprintf("examined net:%p burst limit:%d\n", net, asoc->max_burst);
 			}
 #endif
 
@@ -7114,7 +7114,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 	do {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("Burst count:%d - call m-c-o\n", burst_cnt);
+			kprintf("Burst count:%d - call m-c-o\n", burst_cnt);
 		}
 #endif
 		error = sctp_med_chunk_output(inp, stcb, asoc, &num_out,
@@ -7123,7 +7123,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 		if (error) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-				printf("Error %d was returned from med-c-op\n", error);
+				kprintf("Error %d was returned from med-c-op\n", error);
 			}
 #endif
 #ifdef SCTP_LOG_MAXBURST
@@ -7133,7 +7133,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-			printf("m-c-o put out %d\n", num_out);
+			kprintf("m-c-o put out %d\n", num_out);
 		}
 #endif
 		tot_out += num_out;
@@ -7157,7 +7157,7 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("Ok, we have put out %d chunks\n", tot_out);
+		kprintf("Ok, we have put out %d chunks\n", tot_out);
 	}
 #endif
 	if (tot_out == 0) {
@@ -7209,7 +7209,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("USR Send BEGINS\n");
+		kprintf("USR Send BEGINS\n");
 	}
 #endif
 
@@ -7418,7 +7418,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 			SCTP_ASOC_CREATE_UNLOCK(inp);
 			create_lock_applied = 0;
 		} else {
-			printf("Huh-1, create lock should have been applied!\n");
+			kprintf("Huh-1, create lock should have been applied!\n");
 		}
 		queue_only = 1;
 		asoc = &stcb->asoc;
@@ -7444,7 +7444,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 				/* Default is NOT correct */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-					printf("Ok, defout:%d pre_open:%d\n",
+					kprintf("Ok, defout:%d pre_open:%d\n",
 					       asoc->streamoutcnt, asoc->pre_open_streams);
 				}
 #endif
@@ -7531,10 +7531,10 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 #ifdef SCTP_DEBUG
 	else {
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT5) {
-			printf("stream:%d\n", srcv.sinfo_stream);
-			printf("flags:%x\n", (u_int)srcv.sinfo_flags);
-			printf("ppid:%d\n", srcv.sinfo_ppid);
-			printf("context:%d\n", srcv.sinfo_context);
+			kprintf("stream:%d\n", srcv.sinfo_stream);
+			kprintf("flags:%x\n", (u_int)srcv.sinfo_flags);
+			kprintf("ppid:%d\n", srcv.sinfo_ppid);
+			kprintf("context:%d\n", srcv.sinfo_context);
 		}
 	}
 #endif
@@ -7584,7 +7584,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 		/* we can attempt to send too.*/
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("USR Send calls sctp_chunk_output\n");
+			kprintf("USR Send calls sctp_chunk_output\n");
 		}
 #endif
 #ifdef SCTP_AUDITING_ENABLED
@@ -7601,7 +7601,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("USR Send complete qo:%d prw:%d\n", queue_only, stcb->asoc.peers_rwnd);
+		kprintf("USR Send complete qo:%d prw:%d\n", queue_only, stcb->asoc.peers_rwnd);
 	}
 #endif
 	SCTP_TCB_UNLOCK(stcb);
@@ -7852,7 +7852,7 @@ sctp_send_sack(struct sctp_tcb *stcb)
 		 */
 #ifdef SCTP_DEBUG
 		if (asoc->last_data_chunk_from == NULL) {
-			printf("Huh, last_data_chunk_from is null when we want to sack??\n");
+			kprintf("Huh, last_data_chunk_from is null when we want to sack??\n");
 		}
 #endif
 		asoc->used_alt_onsack = 0;
@@ -7903,7 +7903,7 @@ sctp_send_sack(struct sctp_tcb *stcb)
 		if (maxi > m_size) {
 			/* impossible but who knows, someone is playing with us  :> */
 #ifdef SCTP_DEBUG
-			printf("GAK maxi:%d  > m_size:%d came out higher than allowed htsn:%u base:%u cumack:%u\n",
+			kprintf("GAK maxi:%d  > m_size:%d came out higher than allowed htsn:%u base:%u cumack:%u\n",
 			       maxi,
 			       m_size,
 			       asoc->highest_tsn_inside_map,
@@ -8244,7 +8244,7 @@ sctp_send_shutdown_complete2(struct mbuf *m, int iphlen, struct sctphdr *sh)
 		bzero(&ro, sizeof ro);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-			printf("sctp_shutdown_complete2 calling ip_output:\n");
+			kprintf("sctp_shutdown_complete2 calling ip_output:\n");
 			sctp_print_address_pkt(iph_out, &comp_cp->sh);
 		}
 #endif
@@ -8274,7 +8274,7 @@ sctp_send_shutdown_complete2(struct mbuf *m, int iphlen, struct sctphdr *sh)
 		bzero(&ro, sizeof(ro));
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-			printf("sctp_shutdown_complete2 calling ip6_output:\n");
+			kprintf("sctp_shutdown_complete2 calling ip6_output:\n");
 			sctp_print_address_pkt((struct ip *)ip6_out,
 			    &comp_cp->sh);
 		}
@@ -8312,7 +8312,7 @@ sctp_select_hb_destination(struct sctp_tcb *stcb, struct timeval *now)
 			/* Skip this guy from consideration if HB is off AND its confirmed*/
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("Skipping net:%p state:%d nohb/out-of-scope\n",
+				kprintf("Skipping net:%p state:%d nohb/out-of-scope\n",
 				       net, net->dest_state);
 			}
 #endif
@@ -8322,7 +8322,7 @@ sctp_select_hb_destination(struct sctp_tcb *stcb, struct timeval *now)
 			/* skip this dest net from consideration */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("Skipping net:%p reachable NOT\n",
+				kprintf("Skipping net:%p reachable NOT\n",
 				       net);
 			}
 #endif
@@ -8336,7 +8336,7 @@ sctp_select_hb_destination(struct sctp_tcb *stcb, struct timeval *now)
 			ms_goneby = 0x7fffffff;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-			printf("net:%p ms_goneby:%d\n",
+			kprintf("net:%p ms_goneby:%d\n",
 			       net, ms_goneby);
 		}
 #endif
@@ -8356,7 +8356,7 @@ sctp_select_hb_destination(struct sctp_tcb *stcb, struct timeval *now)
 			hnet = net;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("net:%p is the new high\n",
+				kprintf("net:%p is the new high\n",
 				       net);
 			}
 #endif
@@ -8376,12 +8376,12 @@ sctp_select_hb_destination(struct sctp_tcb *stcb, struct timeval *now)
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-			printf("net:%p is the hb winner -",
+			kprintf("net:%p is the hb winner -",
 				hnet);
 			if (hnet)
 				sctp_print_address((struct sockaddr *)&hnet->ro._l_addr);
 			else
-				printf(" none\n");
+				kprintf(" none\n");
 		}
 #endif
 		/* update the timer now */
@@ -8457,7 +8457,7 @@ sctp_send_hb(struct sctp_tcb *stcb, int user_req, struct sctp_nets *u_net)
 	if (chk == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-			printf("Gak, can't get a chunk for hb\n");
+			kprintf("Gak, can't get a chunk for hb\n");
 		}
 #endif
 		return (0);
@@ -8519,7 +8519,7 @@ sctp_send_hb(struct sctp_tcb *stcb, int user_req, struct sctp_nets *u_net)
 		/* huh compiler bug */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("Compiler bug bleeds a mbuf and a chunk\n");
+			kprintf("Compiler bug bleeds a mbuf and a chunk\n");
 		}
 #endif
 		return (0);
@@ -8551,7 +8551,7 @@ sctp_send_hb(struct sctp_tcb *stcb, int user_req, struct sctp_nets *u_net)
 	net->hb_responded = 0;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		printf("Inserting chunk for HB\n");
+		kprintf("Inserting chunk for HB\n");
 	}
 #endif
 	TAILQ_INSERT_TAIL(&stcb->asoc.control_send_queue, chk, sctp_next);
@@ -9213,7 +9213,7 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 		bzero(&ro, sizeof ro);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-                        printf("sctp_send_abort calling ip_output:\n");
+                        kprintf("sctp_send_abort calling ip_output:\n");
 			sctp_print_address_pkt(iph_out, &abm->sh);
                 }
 #endif
@@ -9244,7 +9244,7 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 		bzero(&ro, sizeof(ro));
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-                        printf("sctp_send_abort calling ip6_output:\n");
+                        kprintf("sctp_send_abort calling ip6_output:\n");
 			sctp_print_address_pkt((struct ip *)ip6_out, &abm->sh);
                 }
 #endif
@@ -9282,7 +9282,7 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 	ihdr = (struct sctphdr *)((caddr_t)iph + iphlen);
 	if (!(scm->m_flags & M_PKTHDR)) {
 		/* must be a pkthdr */
-		printf("Huh, not a packet header in send_operr\n");
+		kprintf("Huh, not a packet header in send_operr\n");
 		m_freem(scm);
 		return;
 	}
@@ -9380,10 +9380,10 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 		fsa6.sin6_family = AF_INET6;
 		fsa6.sin6_addr = out6->ip6_dst;
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-			printf("sctp_operr_to calling ipv6 output:\n");
-			printf("src: ");
+			kprintf("sctp_operr_to calling ipv6 output:\n");
+			kprintf("src: ");
 			sctp_print_address((struct sockaddr *)&lsa6);
-			printf("dst ");
+			kprintf("dst ");
 			sctp_print_address((struct sockaddr *)&fsa6);
 		}
 #endif /* SCTP_DEBUG */
@@ -9716,7 +9716,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 		/* huh? software error */
 #ifdef SCTP_DEBUG
  		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
- 			printf("software error in sctp_copy_it_in\n");
+ 			kprintf("software error in sctp_copy_it_in\n");
  		}
 #endif
 		error = EFAULT;
@@ -9976,7 +9976,7 @@ zap_by_it_now:
 				/* only send SHUTDOWN the first time through */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-					printf("%s:%d sends a shutdown\n",
+					kprintf("%s:%d sends a shutdown\n",
 					       __FILE__,
 					       __LINE__
 						);
@@ -10005,7 +10005,7 @@ zap_by_it_now:
 	crit_exit();
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-		printf("++total out:%d total_mbuf_out:%d\n",
+		kprintf("++total out:%d total_mbuf_out:%d\n",
 		       (int)asoc->total_output_queue_size,
 		       (int)asoc->total_output_mbuf_queue_size);
 	}
@@ -10199,7 +10199,7 @@ sctp_sosend(struct socket *so,
 			SCTP_ASOC_CREATE_UNLOCK(inp);
 			create_lock_applied = 0;
 		} else {
-			printf("Huh-3? create lock should have been on??\n");
+			kprintf("Huh-3? create lock should have been on??\n");
 		}
 		/* Turn on queue only flag to prevent data from being sent */
  		queue_only = 1;
@@ -10224,7 +10224,7 @@ sctp_sosend(struct socket *so,
 					/* Default is NOT correct */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-						printf("Ok, defout:%d pre_open:%d\n",
+						kprintf("Ok, defout:%d pre_open:%d\n",
 						       asoc->streamoutcnt, asoc->pre_open_streams);
 					}
 #endif
@@ -10387,7 +10387,7 @@ sctp_sosend(struct socket *so,
 		/* we can attempt to send too.*/
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			printf("USR Send calls sctp_chunk_output\n");
+			kprintf("USR Send calls sctp_chunk_output\n");
 		}
 #endif
 		crit_enter();
@@ -10414,7 +10414,7 @@ sctp_sosend(struct socket *so,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		printf("USR Send complete qo:%d prw:%d unsent:%d tf:%d cooq:%d toqs:%d \n",
+		kprintf("USR Send complete qo:%d prw:%d unsent:%d tf:%d cooq:%d toqs:%d \n",
 		       queue_only, stcb->asoc.peers_rwnd, un_sent,
 		       stcb->asoc.total_flight, stcb->asoc.chunks_on_out_queue,
 		       stcb->asoc.total_output_queue_size);

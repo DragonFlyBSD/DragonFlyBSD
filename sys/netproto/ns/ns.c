@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.13 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.14 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -203,7 +203,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
                         if (ia->ia_next)
                             ia->ia_next = oia->ia_next;
                         else
-                                printf("Didn't unlink nsifadr from list\n");
+                                kprintf("Didn't unlink nsifadr from list\n");
                 }
 		IFAFREE((&oia->ia_ifa));
 		if (0 == --ns_interfaces) {

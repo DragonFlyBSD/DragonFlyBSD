@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.19 2006/05/20 06:32:41 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.20 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -900,19 +900,19 @@ atm_pdu_print(KBuffer *m, char *msg)
 	int		i;
 	char		c = ' ';
 
-	printf("%s:", msg);
+	kprintf("%s:", msg);
 	while (m) { 
 		KB_DATASTART(m, cp, caddr_t);
-		printf("%cbfr=%p data=%p len=%d: ",
+		kprintf("%cbfr=%p data=%p len=%d: ",
 			c, m, cp, KB_LEN(m));
 		c = '\t';
 		if (atm_print_data) {
 			for (i = 0; i < KB_LEN(m); i++) {
-				printf("%2x ", (u_char)*cp++);
+				kprintf("%2x ", (u_char)*cp++);
 			}
-			printf("<end_bfr>\n");
+			kprintf("<end_bfr>\n");
 		} else {
-			printf("\n");
+			kprintf("\n");
 		}
 		m = KB_NEXT(m);
 	}

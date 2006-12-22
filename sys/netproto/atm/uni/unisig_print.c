@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_print.c,v 1.4 2000/01/17 20:49:57 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -171,7 +171,7 @@ usp_print_atm_addr(Atm_addr *p)
 	char		*cp;
 
 	cp = unisig_addr_print(p);
-	printf("%s", cp);
+	kprintf("%s", cp);
 }
 
 
@@ -195,18 +195,18 @@ usp_print_msg(struct unisig_msg *msg, int dir)
 	name = find_type(msg_types, msg->msg_type);
 	switch (dir) {
 	case UNISIG_MSG_IN:
-		printf("Received ");
+		kprintf("Received ");
 		break;
 	case UNISIG_MSG_OUT:
-		printf("Sent ");
+		kprintf("Sent ");
 		break;
 	}
-	printf("message: %s (%x)\n", name, msg->msg_type);
-	printf("    Call reference:      0x%x\n", msg->msg_call_ref);
+	kprintf("message: %s (%x)\n", name, msg->msg_type);
+	kprintf("    Call reference:      0x%x\n", msg->msg_call_ref);
 #ifdef LONG_PRINT
-	printf("    Message type flag:   0x%x\n", msg->msg_type_flag);
-	printf("    Message type action: 0x%x\n", msg->msg_type_action);
-	printf("    Message length:      %d\n", msg->msg_length);
+	kprintf("    Message type flag:   0x%x\n", msg->msg_type_flag);
+	kprintf("    Message type action: 0x%x\n", msg->msg_type_action);
+	kprintf("    Message length:      %d\n", msg->msg_length);
 	for (i=0; i<UNI_MSG_IE_CNT; i++) {
 		ie = msg->msg_ie_vec[i];
 		while (ie) {
@@ -227,7 +227,7 @@ usp_print_msg(struct unisig_msg *msg, int dir)
 					ie->ie_ident == UNI_IE_CLST) {
 				usp_print_ie(ie);
 			} else {
-				printf("    Information element: %s (0x%x)\n",
+				kprintf("    Information element: %s (0x%x)\n",
 						name, ie->ie_ident);
 			}
 			ie = inxt;
@@ -254,15 +254,15 @@ usp_print_ie(struct ie_generic *ie)
 
 	while (ie) {
 		name = find_type(ie_types, ie->ie_ident);
-		printf("    Information element: %s (0x%x)\n",
+		kprintf("    Information element: %s (0x%x)\n",
 				name, ie->ie_ident);
 #ifdef LONG_PRINT
-		printf("        Coding:        0x%x\n",
+		kprintf("        Coding:        0x%x\n",
 				ie->ie_coding);
-		printf("        Flag:          0x%x\n", ie->ie_flag);
-		printf("        Action:	       0x%x\n",
+		kprintf("        Flag:          0x%x\n", ie->ie_flag);
+		kprintf("        Action:	       0x%x\n",
 				ie->ie_action);
-		printf("        Length:	       %d\n", ie->ie_length);
+		kprintf("        Length:	       %d\n", ie->ie_length);
 #endif
 
 		switch (ie->ie_ident) {
@@ -348,48 +348,48 @@ usp_print_ie(struct ie_generic *ie)
 static void
 usp_print_ie_aalp(struct ie_generic *ie)
 {
-	printf("        AAL type:      %d\n", ie->ie_aalp_aal_type);
+	kprintf("        AAL type:      %d\n", ie->ie_aalp_aal_type);
 	switch(ie->ie_aalp_aal_type) {
 	case UNI_IE_AALP_AT_AAL1:
-		printf("        Subtype:       0x%x\n",
+		kprintf("        Subtype:       0x%x\n",
 				ie->ie_aalp_1_subtype);
-		printf("        CBR rate:      0x%x\n",
+		kprintf("        CBR rate:      0x%x\n",
 				ie->ie_aalp_1_cbr_rate);
-		printf("        Multiplier:    0x%x\n",
+		kprintf("        Multiplier:    0x%x\n",
 				ie->ie_aalp_1_multiplier);
-		printf("        Clock rcvry:   0x%x\n",
+		kprintf("        Clock rcvry:   0x%x\n",
 				ie->ie_aalp_1_clock_recovery);
-		printf("        Err corr:      0x%x\n",
+		kprintf("        Err corr:      0x%x\n",
 				ie->ie_aalp_1_error_correction);
-		printf("        Struct data:   0x%x\n",
+		kprintf("        Struct data:   0x%x\n",
 				ie->ie_aalp_1_struct_data_tran);
-		printf("        Partial cells: 0x%x\n",
+		kprintf("        Partial cells: 0x%x\n",
 				ie->ie_aalp_1_partial_cells);
 		break;
 	case UNI_IE_AALP_AT_AAL3:
-		printf("        Fwd max SDU:   %d\n",
+		kprintf("        Fwd max SDU:   %d\n",
 				ie->ie_aalp_4_fwd_max_sdu);
-		printf("        Bkwd max SDU:  %d\n",
+		kprintf("        Bkwd max SDU:  %d\n",
 				ie->ie_aalp_4_bkwd_max_sdu);
-		printf("        MID range:     %d\n",
+		kprintf("        MID range:     %d\n",
 				ie->ie_aalp_4_mid_range);
-		printf("        Mode:          0x%x\n",
+		kprintf("        Mode:          0x%x\n",
 				ie->ie_aalp_4_mode);
-		printf("        SSCS type:     0x%x\n",
+		kprintf("        SSCS type:     0x%x\n",
 				ie->ie_aalp_4_sscs_type);
 		break;
 	case UNI_IE_AALP_AT_AAL5:
-		printf("        Fwd max SDU:   %d\n",
+		kprintf("        Fwd max SDU:   %d\n",
 				ie->ie_aalp_5_fwd_max_sdu);
-		printf("        Bkwd max SDU:  %d\n",
+		kprintf("        Bkwd max SDU:  %d\n",
 				ie->ie_aalp_5_bkwd_max_sdu);
-		printf("        Mode:          0x%x\n",
+		kprintf("        Mode:          0x%x\n",
 				ie->ie_aalp_5_mode);
-		printf("        SSCS type:     0x%x\n",
+		kprintf("        SSCS type:     0x%x\n",
 				ie->ie_aalp_5_sscs_type);
 		break;
 	case UNI_IE_AALP_AT_AALU:
-		printf("        User info:     0x%x %x %x %x\n",
+		kprintf("        User info:     0x%x %x %x %x\n",
 				ie->ie_aalp_user_info[0],
 				ie->ie_aalp_user_info[1],
 				ie->ie_aalp_user_info[2],
@@ -412,21 +412,21 @@ usp_print_ie_aalp(struct ie_generic *ie)
 static void
 usp_print_ie_clrt(struct ie_generic *ie)
 {
-	printf("        Forward peak:  %d\n", ie->ie_clrt_fwd_peak);
-	printf("        Backward peak: %d\n", ie->ie_clrt_bkwd_peak);
-	printf("        Fwd peak 01:   %d\n", ie->ie_clrt_fwd_peak_01);
-	printf("        Bkwd peak 01:  %d\n", ie->ie_clrt_bkwd_peak_01);
-	printf("        Fwd sust:      %d\n", ie->ie_clrt_fwd_sust);
-	printf("        Bkwd sust:     %d\n", ie->ie_clrt_bkwd_sust);
-	printf("        Fwd sust 01:   %d\n", ie->ie_clrt_fwd_sust_01);
-	printf("        Bkwd sust 01:  %d\n", ie->ie_clrt_bkwd_sust_01);
-	printf("        Fwd burst:     %d\n", ie->ie_clrt_fwd_burst);
-	printf("        Bkwd burst:    %d\n", ie->ie_clrt_bkwd_burst);
-	printf("        Fwd burst 01:  %d\n", ie->ie_clrt_fwd_burst_01);
-	printf("        Bkwd burst 01: %d\n",
+	kprintf("        Forward peak:  %d\n", ie->ie_clrt_fwd_peak);
+	kprintf("        Backward peak: %d\n", ie->ie_clrt_bkwd_peak);
+	kprintf("        Fwd peak 01:   %d\n", ie->ie_clrt_fwd_peak_01);
+	kprintf("        Bkwd peak 01:  %d\n", ie->ie_clrt_bkwd_peak_01);
+	kprintf("        Fwd sust:      %d\n", ie->ie_clrt_fwd_sust);
+	kprintf("        Bkwd sust:     %d\n", ie->ie_clrt_bkwd_sust);
+	kprintf("        Fwd sust 01:   %d\n", ie->ie_clrt_fwd_sust_01);
+	kprintf("        Bkwd sust 01:  %d\n", ie->ie_clrt_bkwd_sust_01);
+	kprintf("        Fwd burst:     %d\n", ie->ie_clrt_fwd_burst);
+	kprintf("        Bkwd burst:    %d\n", ie->ie_clrt_bkwd_burst);
+	kprintf("        Fwd burst 01:  %d\n", ie->ie_clrt_fwd_burst_01);
+	kprintf("        Bkwd burst 01: %d\n",
 			ie->ie_clrt_bkwd_burst_01);
-	printf("        Best effort:   %d\n", ie->ie_clrt_best_effort);
-	printf("        TM optons:     0x%x\n",
+	kprintf("        Best effort:   %d\n", ie->ie_clrt_best_effort);
+	kprintf("        TM optons:     0x%x\n",
 			ie->ie_clrt_tm_options);
 }
 
@@ -444,14 +444,14 @@ usp_print_ie_clrt(struct ie_generic *ie)
 static void
 usp_print_ie_bbcp(struct ie_generic *ie)
 {
-	printf("        Bearer class:  0x%x\n",
+	kprintf("        Bearer class:  0x%x\n",
 			ie->ie_bbcp_bearer_class);
-	printf("        Traffic type:  0x%x\n",
+	kprintf("        Traffic type:  0x%x\n",
 			ie->ie_bbcp_traffic_type);
-	printf("        Timing req:    0x%x\n",
+	kprintf("        Timing req:    0x%x\n",
 			ie->ie_bbcp_timing_req);
-	printf("        Clipping:      0x%x\n", ie->ie_bbcp_clipping);
-	printf("        Conn config:   0x%x\n",
+	kprintf("        Clipping:      0x%x\n", ie->ie_bbcp_clipping);
+	kprintf("        Conn config:   0x%x\n",
 			ie->ie_bbcp_conn_config);
 }
 
@@ -471,12 +471,12 @@ usp_print_ie_bhli(struct ie_generic *ie)
 {
 	int	i;
 
-	printf("        Type:          0x%x\n", ie->ie_bhli_type);
-	printf("        HL info:       0x");
+	kprintf("        Type:          0x%x\n", ie->ie_bhli_type);
+	kprintf("        HL info:       0x");
 	for (i=0; i<ie->ie_length-1; i++) {
-		printf("%x ", ie->ie_bhli_info[i]);
+		kprintf("%x ", ie->ie_bhli_info[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -493,31 +493,31 @@ usp_print_ie_bhli(struct ie_generic *ie)
 static void
 usp_print_ie_blli(struct ie_generic *ie)
 {
-	printf("        Layer 1 ID:    0x%x\n", ie->ie_blli_l1_id);
-	printf("        Layer 2 ID:    0x%x\n", ie->ie_blli_l2_id);
-	printf("        Layer 2 mode:  0x%x\n", ie->ie_blli_l2_mode);
-	printf("        Layer 2 Q.933: 0x%x\n",
+	kprintf("        Layer 1 ID:    0x%x\n", ie->ie_blli_l1_id);
+	kprintf("        Layer 2 ID:    0x%x\n", ie->ie_blli_l2_id);
+	kprintf("        Layer 2 mode:  0x%x\n", ie->ie_blli_l2_mode);
+	kprintf("        Layer 2 Q.933: 0x%x\n",
 			ie->ie_blli_l2_q933_use);
-	printf("        Layer 2 win:   0x%x\n",
+	kprintf("        Layer 2 win:   0x%x\n",
 			ie->ie_blli_l2_window);
-	printf("        Layer 2 user:  0x%x\n",
+	kprintf("        Layer 2 user:  0x%x\n",
 			ie->ie_blli_l2_user_proto);
-	printf("        Layer 3 ID:    0x%x\n", ie->ie_blli_l3_id);
-	printf("        Layer 3 mode:  0x%x\n", ie->ie_blli_l3_mode);
-	printf("        Layer 3 pkt:   0x%x\n",
+	kprintf("        Layer 3 ID:    0x%x\n", ie->ie_blli_l3_id);
+	kprintf("        Layer 3 mode:  0x%x\n", ie->ie_blli_l3_mode);
+	kprintf("        Layer 3 pkt:   0x%x\n",
 			ie->ie_blli_l3_packet_size);
-	printf("        Layer 3 win:   0x%x\n",
+	kprintf("        Layer 3 win:   0x%x\n",
 			ie->ie_blli_l3_window);
-	printf("        Layer 3 user:  0x%x\n",
+	kprintf("        Layer 3 user:  0x%x\n",
 			ie->ie_blli_l3_user_proto);
-	printf("        Layer 3 IPI:   0x%x\n", ie->ie_blli_l3_ipi);
-	printf("        Layer 3 SNAP:  0x%x\n",
+	kprintf("        Layer 3 IPI:   0x%x\n", ie->ie_blli_l3_ipi);
+	kprintf("        Layer 3 SNAP:  0x%x\n",
 			ie->ie_blli_l3_snap_id);
-	printf("        Layer 3 OUI:   0x%x %x %x\n",
+	kprintf("        Layer 3 OUI:   0x%x %x %x\n",
 			ie->ie_blli_l3_oui[0],
 			ie->ie_blli_l3_oui[1],
 			ie->ie_blli_l3_oui[2]);
-	printf("        Layer 3 PID:   0x%x %x\n",
+	kprintf("        Layer 3 PID:   0x%x %x\n",
 			ie->ie_blli_l3_pid[0],
 			ie->ie_blli_l3_pid[1]);
 }
@@ -536,7 +536,7 @@ usp_print_ie_blli(struct ie_generic *ie)
 static void
 usp_print_ie_clst(struct ie_generic *ie)
 {
-	printf("        Call state:    %d\n",
+	kprintf("        Call state:    %d\n",
 			ie->ie_clst_state);
 }
 
@@ -554,9 +554,9 @@ usp_print_ie_clst(struct ie_generic *ie)
 static void
 usp_print_ie_cdad(struct ie_generic *ie)
 {
-	printf("        ATM addr:      ");
+	kprintf("        ATM addr:      ");
 	usp_print_atm_addr(&ie->ie_cdad_addr);
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -573,9 +573,9 @@ usp_print_ie_cdad(struct ie_generic *ie)
 static void
 usp_print_ie_cdsa(struct ie_generic *ie)
 {
-	printf("        ATM subaddr:   ");
+	kprintf("        ATM subaddr:   ");
 	usp_print_atm_addr(&ie->ie_cdsa_addr);
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -592,9 +592,9 @@ usp_print_ie_cdsa(struct ie_generic *ie)
 static void
 usp_print_ie_cgad(struct ie_generic *ie)
 {
-	printf("        ATM addr:      ");
+	kprintf("        ATM addr:      ");
 	usp_print_atm_addr(&ie->ie_cgad_addr);
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -611,9 +611,9 @@ usp_print_ie_cgad(struct ie_generic *ie)
 static void
 usp_print_ie_cgsa(struct ie_generic *ie)
 {
-	printf("        ATM subaddr:   ");
+	kprintf("        ATM subaddr:   ");
 	usp_print_atm_addr(&ie->ie_cgsa_addr);
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -632,30 +632,30 @@ usp_print_ie_caus(struct ie_generic *ie)
 {
 	int	i;
 
-	printf("        Location:      %d\n", ie->ie_caus_loc);
-	printf("        Cause:         %d\n", ie->ie_caus_cause);
+	kprintf("        Location:      %d\n", ie->ie_caus_loc);
+	kprintf("        Cause:         %d\n", ie->ie_caus_cause);
 	switch(ie->ie_caus_cause) {
 	case UNI_IE_CAUS_IECONTENT:
-		printf("        Flagged IEs:   ");
+		kprintf("        Flagged IEs:   ");
 		for (i=0; ie->ie_caus_diagnostic[i]; i++) {
-			printf("0x%x ", ie->ie_caus_diagnostic[i]);
+			kprintf("0x%x ", ie->ie_caus_diagnostic[i]);
 		}
-		printf("\n");
+		kprintf("\n");
 		break;
 	case UNI_IE_CAUS_TIMER:
-		printf("        Timer ID:      %c%c%c\n",
+		kprintf("        Timer ID:      %c%c%c\n",
 				ie->ie_caus_diagnostic[0],
 				ie->ie_caus_diagnostic[1],
 				ie->ie_caus_diagnostic[2]);
 		break;
 	default:
-		printf("        Diag length:   %d\n",
+		kprintf("        Diag length:   %d\n",
 				ie->ie_caus_diag_len);
-		printf("        Diagnostic:    ");
+		kprintf("        Diagnostic:    ");
 		for (i=0; i<ie->ie_caus_diag_len; i++) {
-			printf("0x%x ", ie->ie_caus_diagnostic[i]);
+			kprintf("0x%x ", ie->ie_caus_diagnostic[i]);
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 
@@ -673,11 +673,11 @@ usp_print_ie_caus(struct ie_generic *ie)
 static void
 usp_print_ie_cnid(struct ie_generic *ie)
 {
-	printf("        VP assoc sig:  0x%x\n", ie->ie_cnid_vp_sig);
-	printf("        Pref/excl:     0x%x\n",
+	kprintf("        VP assoc sig:  0x%x\n", ie->ie_cnid_vp_sig);
+	kprintf("        Pref/excl:     0x%x\n",
 			ie->ie_cnid_pref_excl);
-	printf("        VPCI:          %d\n", ie->ie_cnid_vpci);
-	printf("        VCI:           %d\n", ie->ie_cnid_vci);
+	kprintf("        VPCI:          %d\n", ie->ie_cnid_vpci);
+	kprintf("        VCI:           %d\n", ie->ie_cnid_vci);
 }
 
 
@@ -694,9 +694,9 @@ usp_print_ie_cnid(struct ie_generic *ie)
 static void
 usp_print_ie_qosp(struct ie_generic *ie)
 {
-	printf("        QoS fwd:       0x%x\n",
+	kprintf("        QoS fwd:       0x%x\n",
 			ie->ie_qosp_fwd_class);
-	printf("        QoS bkwd:      0x%x\n",
+	kprintf("        QoS bkwd:      0x%x\n",
 			ie->ie_qosp_bkwd_class);
 }
 
@@ -714,7 +714,7 @@ usp_print_ie_qosp(struct ie_generic *ie)
 static void
 usp_print_ie_brpi(struct ie_generic *ie)
 {
-	printf("        Indicator:     0x%x\n", ie->ie_brpi_ind);
+	kprintf("        Indicator:     0x%x\n", ie->ie_brpi_ind);
 }
 
 
@@ -731,7 +731,7 @@ usp_print_ie_brpi(struct ie_generic *ie)
 static void
 usp_print_ie_rsti(struct ie_generic *ie)
 {
-	printf("        Class:         0x%x\n", ie->ie_rsti_class);
+	kprintf("        Class:         0x%x\n", ie->ie_rsti_class);
 }
 
 
@@ -780,7 +780,7 @@ usp_print_ie_bnsh(struct ie_generic *ie)
 static void
 usp_print_ie_bsdc(struct ie_generic *ie)
 {
-	printf("        Indication:    0x%x\n", ie->ie_bsdc_ind);
+	kprintf("        Indication:    0x%x\n", ie->ie_bsdc_ind);
 }
 
 
@@ -819,9 +819,9 @@ usp_print_ie_trnt(struct ie_generic *ie)
 static void
 usp_print_ie_eprf(struct ie_generic *ie)
 {
-	printf("        Ref type:      0x%x\n",
+	kprintf("        Ref type:      0x%x\n",
 			ie->ie_eprf_type);
-	printf("        Endpt ref:     0x%x\n",
+	kprintf("        Endpt ref:     0x%x\n",
 			ie->ie_eprf_id);
 }
 
@@ -839,6 +839,6 @@ usp_print_ie_eprf(struct ie_generic *ie)
 static void
 usp_print_ie_epst(struct ie_generic *ie)
 {
-	printf("        Endpt state:   %d\n",
+	kprintf("        Endpt state:   %d\n",
 			ie->ie_epst_state);
 }

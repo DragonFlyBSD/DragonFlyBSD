@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.12 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.13 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -193,7 +193,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 			if (ia->ia_next)
 			    ia->ia_next = oia->ia_next;
 			else
-				printf("Didn't unlink ipxifadr from list\n");
+				kprintf("Didn't unlink ipxifadr from list\n");
 		}
 		IFAFREE((&oia->ia_ifa));
 		return (0);
@@ -345,9 +345,9 @@ ipx_printhost(struct ipx_addr *addr)
 	if (ipx_nullnet(work) && ipx_nullhost(work)) {
 
 		if (port)
-			printf("*.%x", port);
+			kprintf("*.%x", port);
 		else
-			printf("*.*");
+			kprintf("*.*");
 
 		return;
 	}
@@ -387,5 +387,5 @@ ipx_printhost(struct ipx_addr *addr)
 	} else
 		*cport = 0;
 
-	printf("%s.%s%s", net, host, cport);
+	kprintf("%s.%s%s", net, host, cport);
 }

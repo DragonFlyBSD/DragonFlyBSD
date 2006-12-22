@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.1 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.2 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -77,13 +77,13 @@ ieee80211_ratectl_register(const struct ieee80211_ratectl *rc)
 	 * Sanity checks
 	 */
 	if (rc->rc_ratectl >= IEEE80211_RATECTL_MAX) {
-		printf("%s: rate control %s has an invalid index %d\n",
+		kprintf("%s: rate control %s has an invalid index %d\n",
 		       __func__, rc->rc_name, rc->rc_ratectl);
 		return;
 	}
 	if (ratectls[rc->rc_ratectl] != NULL &&
 	    ratectls[rc->rc_ratectl] != rc) {
-		printf("%s: rate control index %d is registered by %s\n",
+		kprintf("%s: rate control index %d is registered by %s\n",
 		       __func__, rc->rc_ratectl,
 		       ratectls[rc->rc_ratectl]->rc_name);
 		return;
@@ -99,13 +99,13 @@ ieee80211_ratectl_unregister(const struct ieee80211_ratectl *rc)
 	 * Sanity checks
 	 */
 	if (rc->rc_ratectl >= IEEE80211_RATECTL_MAX) {
-		printf("%s: rate control %s has an invalid index %d\n",
+		kprintf("%s: rate control %s has an invalid index %d\n",
 		       __func__, rc->rc_name, rc->rc_ratectl);
 		return;
 	}
 	if (ratectls[rc->rc_ratectl] != NULL &&
 	    ratectls[rc->rc_ratectl] != rc) {
-		printf("%s: rate control index %d is registered by %s\n",
+		kprintf("%s: rate control index %d is registered by %s\n",
 		       __func__, rc->rc_ratectl,
 		       ratectls[rc->rc_ratectl]->rc_name);
 		return;
@@ -145,7 +145,7 @@ ieee80211_ratectl_change(struct ieee80211com *ic, u_int rc_idx)
 		 */
 		rc = ratectls[rc_idx];
 		if (rc == NULL) {
-			printf("%s: can't load requested rate control module",
+			kprintf("%s: can't load requested rate control module",
 			       __func__);
 			return EOPNOTSUPP;
 		}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.14 2006/10/19 07:12:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.15 2006/12/22 23:57:54 swildner Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -189,7 +189,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 		panic("key_sendup: NULL pointer was passed.\n");
 
 	KEYDEBUG(KEYDEBUG_KEY_DUMP,
-		printf("key_sendup: \n");
+		kprintf("key_sendup: \n");
 		kdebug_sadb(msg));
 
 	/*

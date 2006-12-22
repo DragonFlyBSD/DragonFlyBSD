@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.5 2006/10/24 14:39:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.6 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #ifdef AMRR_DEBUG
 #define	DPRINTF(asc, lv, fmt, ...) do {		\
 	if ((asc)->debug >= lv)			\
-		printf(fmt, __VA_ARGS__);	\
+		kprintf(fmt, __VA_ARGS__);	\
 } while (0)
 #else
 #define	DPRINTF(asc, lv, fmt, ...)
@@ -476,7 +476,7 @@ amrr_sysctl_attach(struct amrr_softc *asc)
 		SYSCTL_CHILDREN(ic->ic_sysctl_oid),
 		OID_AUTO, "amrr_ratectl", CTLFLAG_RD, 0, "");
 	if (asc->sysctl_oid == NULL) {
-		printf("wlan_ratectl_amrr: create sysctl tree failed\n");
+		kprintf("wlan_ratectl_amrr: create sysctl tree failed\n");
 		return;
 	}
 
@@ -587,7 +587,7 @@ amrr_modevent(module_t mod, int type, void *unused)
 		return 0;
 	case MOD_UNLOAD:
 		if (amrr_nrefs) {
-			printf("wlan_ratectl_amrr: still in use "
+			kprintf("wlan_ratectl_amrr: still in use "
 			       "(%u dynamic refs)\n", amrr_nrefs);
 			return EBUSY;
 		}

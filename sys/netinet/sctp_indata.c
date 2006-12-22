@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.5 2006/06/23 17:20:13 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.6 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -124,13 +124,13 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INDATA4) {
-		printf("cc:%lu hiwat:%lu lowat:%lu mbcnt:%lu mbmax:%lu\n",
+		kprintf("cc:%lu hiwat:%lu lowat:%lu mbcnt:%lu mbmax:%lu\n",
 		       (u_long)stcb->sctp_socket->so_rcv.sb_cc,
 		       (u_long)stcb->sctp_socket->so_rcv.sb_hiwat,
 		       (u_long)stcb->sctp_socket->so_rcv.sb_lowat,
 		       (u_long)stcb->sctp_socket->so_rcv.sb_mbcnt,
 		       (u_long)stcb->sctp_socket->so_rcv.sb_mbmax);
-		printf("Setting rwnd to: sb:%ld - (del:%d + reasm:%d str:%d)\n",
+		kprintf("Setting rwnd to: sb:%ld - (del:%d + reasm:%d str:%d)\n",
 		       sctp_sbspace(&stcb->sctp_socket->so_rcv),
 		       asoc->size_on_delivery_queue,
 		       asoc->size_on_reasm_queue,
@@ -175,11 +175,11 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 			asoc->my_rwnd = 1;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INDATA4) {
-				printf(" - SWS zeros\n");
+				kprintf(" - SWS zeros\n");
 			}
 		} else {
 			if (sctp_debug_on & SCTP_DEBUG_INDATA4) {
-				printf("\n");
+				kprintf("\n");
 			}
 #endif
 		}
@@ -295,7 +295,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-		printf("I am now in Deliver data! (%p)\n", chk);
+		kprintf("I am now in Deliver data! (%p)\n", chk);
 	}
 #endif
 	/* get a write lock on the inp if not already */
@@ -310,7 +310,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* socket above is long gone */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("gone is gone!\n");
+			kprintf("gone is gone!\n");
 		}
 #endif
 		if (chk != NULL) {
@@ -359,7 +359,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Fragmented delivery in progress?\n");
+			kprintf("Fragmented delivery in progress?\n");
 		}
 #endif
 		if (hold_locks == 0)
@@ -372,7 +372,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* Nothing in queue */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Nothing in queue?\n");
+			kprintf("Nothing in queue?\n");
 		}
 #endif
 		asoc->size_on_delivery_queue = 0;
@@ -390,7 +390,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-		printf("Now to the delivery with chk(%p)!\n", chk);
+		kprintf("Now to the delivery with chk(%p)!\n", chk);
 	}
 #endif
 	/* XXX need to append PKTHDR to the socket buffer first */
@@ -444,7 +444,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 		    &lsa6);
 		if (((struct sockaddr_in *)to)->sin_port == 0) {
-			printf("Huh a, port is %d not net:%x %d?\n",
+			kprintf("Huh a, port is %d not net:%x %d?\n",
 			       ((struct sockaddr_in *)to)->sin_port,
 			       (u_int)chk->whoTo,
 			       (int)(ntohs(stcb->rport)));
@@ -495,7 +495,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* Pull it off the queue */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Free_it true, doing tickle wakeup\n");
+			kprintf("Free_it true, doing tickle wakeup\n");
 		}
 #endif
 		sctp_sorwakeup(stcb->sctp_ep, stcb->sctp_socket);
@@ -665,7 +665,7 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 			to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 								   &lsa6);
 			if (((struct sockaddr_in *)to)->sin_port == 0) {
-				printf("Huh b, port is %d not net:%x %d?\n",
+				kprintf("Huh b, port is %d not net:%x %d?\n",
 				       ((struct sockaddr_in *)to)->sin_port,
 				       (u_int)chk->whoTo,
 				       (int)(ntohs(stcb->rport)));
@@ -832,7 +832,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #endif
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-		printf("queue to stream called for ssn:%u lastdel:%u nxt:%u\n",
+		kprintf("queue to stream called for ssn:%u lastdel:%u nxt:%u\n",
 		    (u_int)chk->rec.data.stream_seq,
 		    (u_int)strm->last_sequence_delivered, (u_int)nxt_todel);
 	}
@@ -843,7 +843,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* The incoming sseq is behind where we last delivered? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Duplicate S-SEQ:%d delivered:%d from peer, Abort  association\n",
+			kprintf("Duplicate S-SEQ:%d delivered:%d from peer, Abort  association\n",
 			    chk->rec.data.stream_seq,
 			    strm->last_sequence_delivered);
 		}
@@ -877,7 +877,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* can be delivered right away */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("It's NEXT!\n");
+			kprintf("It's NEXT!\n");
 		}
 #endif
 #ifdef SCTP_STR_LOGGING
@@ -922,7 +922,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Queue Needed!\n");
+			kprintf("Queue Needed!\n");
 		}
 #endif
 		if (TAILQ_EMPTY(&strm->inqueue)) {
@@ -998,7 +998,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Doing WAKEUP!\n");
+			kprintf("Doing WAKEUP!\n");
 		}
 #endif
 		sctp_sorwakeup(stcb->sctp_ep, stcb->sctp_socket);
@@ -1081,7 +1081,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				 */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-					printf("Gak, Evil plot, its not first, no fragmented delivery in progress\n");
+					kprintf("Gak, Evil plot, its not first, no fragmented delivery in progress\n");
 				}
 #endif
 				MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1111,7 +1111,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				 */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-					printf("Gak, Evil plot, it IS a first and fragmented delivery in progress\n");
+					kprintf("Gak, Evil plot, it IS a first and fragmented delivery in progress\n");
 				}
 #endif
 				MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1139,7 +1139,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					/* Got to be the right STR No */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Gak, Evil plot, it IS not same stream number %d vs %d\n",
+						kprintf("Gak, Evil plot, it IS not same stream number %d vs %d\n",
 						    chk->rec.data.stream_number,
 						    asoc->str_of_pdapi);
 					}
@@ -1170,7 +1170,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					/* Got to be the right STR Seq */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Gak, Evil plot, it IS not same stream seq %d vs %d\n",
+						kprintf("Gak, Evil plot, it IS not same stream seq %d vs %d\n",
 						    chk->rec.data.stream_seq,
 						    asoc->ssn_of_pdapi);
 					}
@@ -1271,8 +1271,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				    SCTP_DATA_FIRST_FRAG) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Prev check - It can be a midlle or last but not a first\n");
-						printf("Gak, Evil plot, it's a FIRST!\n");
+						kprintf("Prev check - It can be a midlle or last but not a first\n");
+						kprintf("Gak, Evil plot, it's a FIRST!\n");
 					}
 #endif
 					MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1306,7 +1306,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Prev check - Gak, Evil plot, ssn:%d not the same as at:%d\n",
+						kprintf("Prev check - Gak, Evil plot, ssn:%d not the same as at:%d\n",
 						    chk->rec.data.stream_number,
 						    prev->rec.data.stream_number);
 					}
@@ -1344,7 +1344,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Prev check - Gak, Evil plot, sseq:%d not the same as at:%d\n",
+						kprintf("Prev check - Gak, Evil plot, sseq:%d not the same as at:%d\n",
 						    chk->rec.data.stream_seq,
 						    prev->rec.data.stream_seq);
 					}
@@ -1380,7 +1380,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				    SCTP_DATA_FIRST_FRAG) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Prev check - Gak, evil plot, its not FIRST and it must be!\n");
+						kprintf("Prev check - Gak, evil plot, its not FIRST and it must be!\n");
 					}
 #endif
 					MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1424,8 +1424,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				   != SCTP_DATA_LAST_FRAG) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Next chk - Next is FIRST, we must be LAST\n");
-						printf("Gak, Evil plot, its not a last!\n");
+						kprintf("Next chk - Next is FIRST, we must be LAST\n");
+						kprintf("Gak, Evil plot, its not a last!\n");
 					}
 #endif
 					MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1461,8 +1461,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				    SCTP_DATA_LAST_FRAG) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Next chk - Next is a MIDDLE/LAST\n");
-						printf("Gak, Evil plot, new prev chunk is a LAST\n");
+						kprintf("Next chk - Next is a MIDDLE/LAST\n");
+						kprintf("Gak, Evil plot, new prev chunk is a LAST\n");
 					}
 #endif
 					MGET(oper, MB_DONTWAIT, MT_DATA);
@@ -1496,7 +1496,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Next chk - Gak, Evil plot, ssn:%d not the same as at:%d\n",
+						kprintf("Next chk - Gak, Evil plot, ssn:%d not the same as at:%d\n",
 						    chk->rec.data.stream_number,
 						    next->rec.data.stream_number);
 					}
@@ -1534,7 +1534,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					 */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-						printf("Next chk - Gak, Evil plot, sseq:%d not the same as at:%d\n",
+						kprintf("Next chk - Gak, Evil plot, sseq:%d not the same as at:%d\n",
 						    chk->rec.data.stream_seq,
 						    next->rec.data.stream_seq);
 					}
@@ -1786,7 +1786,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			/* Nope not in the valid range dump it */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-				printf("My rwnd overrun1:tsn:%lx rwnd %lu sbspace:%ld delq:%d!\n",
+				kprintf("My rwnd overrun1:tsn:%lx rwnd %lu sbspace:%ld delq:%d!\n",
 				    (u_long)tsn, (u_long)asoc->my_rwnd,
 				    sctp_sbspace(&stcb->sctp_socket->so_rcv),
 				    stcb->asoc.cnt_on_delivery_queue);
@@ -1854,7 +1854,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* The incoming sseq is behind where we last delivered? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort!\n",
+			kprintf("EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort!\n",
 			    strmseq,
 			    asoc->strmin[strmno].last_sequence_delivered);
 		}
@@ -1973,7 +1973,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 		    &lsa6);
 		if (((struct sockaddr_in *)to)->sin_port == 0) {
-			printf("Huh c, port is %d not net:%x %d?\n",
+			kprintf("Huh c, port is %d not net:%x %d?\n",
 			       ((struct sockaddr_in *)to)->sin_port,
 			       (u_int)net,
 			       (int)(ntohs(stcb->rport)));
@@ -2027,7 +2027,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #endif
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Express Delivery succeeds\n");
+			kprintf("Express Delivery succeeds\n");
 		}
 #endif
 		goto finish_express_del;
@@ -2331,7 +2331,7 @@ sctp_sack_check(struct sctp_tcb *stcb, int ok_to_sack, int was_a_gap, int *abort
 		    distance < 0) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-				printf("Ugh bad addition.. you can't hrumpp!\n");
+				kprintf("Ugh bad addition.. you can't hrumpp!\n");
 			}
 #endif
 			/*
@@ -2406,7 +2406,7 @@ sctp_sack_check(struct sctp_tcb *stcb, int ok_to_sack, int was_a_gap, int *abort
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("%s:%d sends a shutdown\n",
+				kprintf("%s:%d sends a shutdown\n",
 				       __FILE__,
 				       __LINE__
 				       );
@@ -2593,7 +2593,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 	ch = (struct sctp_data_chunk *)sctp_m_getptr(m, *offset,
 	    sizeof(chunk_buf), (u_int8_t *)&chunk_buf);
 	if (ch == NULL) {
-		printf(" ... its short\n");
+		kprintf(" ... its short\n");
 		return (1);
 	}
 	/*
@@ -2602,7 +2602,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-		printf("In process data off:%d length:%d iphlen:%d ch->type:%d\n",
+		kprintf("In process data off:%d length:%d iphlen:%d ch->type:%d\n",
 		    *offset, length, iphlen, (int)ch->ch.chunk_type);
 	}
 #endif
@@ -2639,7 +2639,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-			printf("A chunk of len:%d to process (tot:%d)\n",
+			kprintf("A chunk of len:%d to process (tot:%d)\n",
 			    chk_length, length - *offset);
 		}
 #endif
@@ -2658,7 +2658,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			num_chunks++;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-				printf("Now incr num_chunks to %d\n",
+				kprintf("Now incr num_chunks to %d\n",
 				    num_chunks);
 			}
 #endif
@@ -2870,7 +2870,7 @@ sctp_handle_segments(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #ifdef SCTP_DEBUG
 							if (sctp_debug_on &
 							    SCTP_DEBUG_INDATA3) {
-								printf("Hmm. one that is in RESEND that is now ACKED\n");
+								kprintf("Hmm. one that is in RESEND that is now ACKED\n");
 							}
 #endif
 							asoc->sent_queue_retran_cnt--;
@@ -2880,7 +2880,7 @@ sctp_handle_segments(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #endif
 
 							if (asoc->sent_queue_retran_cnt < 0) {
-								printf("huh3 retran went negative?\n");
+								kprintf("huh3 retran went negative?\n");
 #ifdef SCTP_AUDITING_ENABLED
 								sctp_auditing(30,
 								    inp, tcb,
@@ -3325,7 +3325,7 @@ sctp_try_advance_peer_ack_point(struct sctp_tcb *stcb,
 				sctp_free_bufspace(stcb, asoc, tp1);
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-					printf("--total out:%lu total_mbuf_out:%lu\n",
+					kprintf("--total out:%lu total_mbuf_out:%lu\n",
 					    (u_long)asoc->total_output_queue_size,
 					    (u_long)asoc->total_output_mbuf_queue_size);
 				}
@@ -3556,7 +3556,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	if (asoc->sent_queue_retran_cnt) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Handling SACK for asoc:%p retran:%d\n",
+			kprintf("Handling SACK for asoc:%p retran:%d\n",
 			       asoc, asoc->sent_queue_retran_cnt);
 		}
 #endif
@@ -3592,7 +3592,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	if (sack_length < sizeof(struct sctp_sack_chunk)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Bad size on sack chunk .. to small\n");
+			kprintf("Bad size on sack chunk .. to small\n");
 		}
 #endif
 		return;
@@ -3644,7 +3644,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	if (asoc->sent_queue_retran_cnt) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("cum_ack:%lx num_seg:%u last_acked_seq:%x\n",
+			kprintf("cum_ack:%lx num_seg:%u last_acked_seq:%x\n",
 			       cum_ack, (u_int)num_seg, asoc->last_acked_seq);
 		}
 #endif
@@ -3661,7 +3661,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 		if (asoc->sent_queue_retran_cnt) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-				printf("The cum-ack is behind us\n");
+				kprintf("The cum-ack is behind us\n");
 			}
 #endif
 		}
@@ -3678,7 +3678,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 		if (asoc->sent_queue_retran_cnt) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-				printf("Huh? retran set but none on queue\n");
+				kprintf("Huh? retran set but none on queue\n");
 			}
 #endif
 			asoc->sent_queue_retran_cnt = 0;
@@ -3771,7 +3771,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 				if (tp1->sent == SCTP_DATAGRAM_RESEND) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_INDATA3) {
-						printf("Hmm. one that is in RESEND that is now ACKED\n");
+						kprintf("Hmm. one that is in RESEND that is now ACKED\n");
 					}
 #endif
 					asoc->sent_queue_retran_cnt--;
@@ -3780,7 +3780,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 						       (asoc->sent_queue_retran_cnt & 0x000000ff));
 #endif
 					if (asoc->sent_queue_retran_cnt < 0) {
-						printf("huh4 retran went negative?\n");
+						kprintf("huh4 retran went negative?\n");
 #ifdef SCTP_AUDITING_ENABLED
 						sctp_auditing(31, inp, tcb,
 							      NULL);
@@ -3900,7 +3900,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 			sctp_free_bufspace(stcb, asoc, tp1);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
-				printf("--total out:%lu total_mbuf_out:%lu\n",
+				kprintf("--total out:%lu total_mbuf_out:%lu\n",
 				       (u_long)asoc->total_output_queue_size,
 				       (u_long)asoc->total_output_mbuf_queue_size);
 			}
@@ -4153,7 +4153,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 			asoc->state = SCTP_STATE_SHUTDOWN_SENT;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-				printf("%s:%d sends a shutdown\n",
+				kprintf("%s:%d sends a shutdown\n",
 				       __FILE__,
 				       __LINE__
 				       );
@@ -4304,7 +4304,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 					if (compare_with_wrap(asoc->last_acked_seq, asoc->nonce_wait_tsn, MAX_TSN) ||
 					   (asoc->last_acked_seq == asoc->nonce_wait_tsn)) {
 						/* Misbehaving peer. We need to react to this guy */
-						printf("Mis-behaving peer detected\n");
+						kprintf("Mis-behaving peer detected\n");
 						asoc->ecn_allowed = 0;
 						asoc->ecn_nonce_allowed = 0;
 					}
@@ -4507,7 +4507,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 	if ((fwd_sz = ntohs(fwd->ch.chunk_length)) < sizeof(struct sctp_forward_tsn_chunk)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Bad size too small/big fwd-tsn\n");
+			kprintf("Bad size too small/big fwd-tsn\n");
 		}
 #endif
 		return;
@@ -4712,7 +4712,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 		num_str = fwd_sz/sizeof(struct sctp_strseq);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-			printf("Using NEW method, %d strseq's reported in FWD-TSN\n",
+			kprintf("Using NEW method, %d strseq's reported in FWD-TSN\n",
 			    num_str);
 		}
 #endif
@@ -4729,7 +4729,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 			if (stseq[i].stream > asoc->streamincnt) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_INDATA1) {
-					printf("Bogus stream number %d "
+					kprintf("Bogus stream number %d "
 					    "streamincnt is %d\n",
 					    stseq[i].stream, asoc->streamincnt);
 				}

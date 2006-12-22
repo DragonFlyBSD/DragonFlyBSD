@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.14 2006/01/31 19:05:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.15 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -433,7 +433,7 @@ in6_mtutimo(void *rock)
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop;
 	if (atv.tv_sec < time_second) {
-		printf("invalid mtu expiration time on routing table\n");
+		kprintf("invalid mtu expiration time on routing table\n");
 		arg.nextstop = time_second + 30;	/* last resort */
 	}
 	callout_reset(&in6_mtutimo_ch[mycpuid], tvtohz_high(&atv), in6_mtutimo,

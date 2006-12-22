@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.c,v 1.10.2.2 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.4 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.5 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -185,12 +185,12 @@ void
 ieee80211_crypto_register(const struct ieee80211_cipher *cip)
 {
 	if (cip->ic_cipher >= IEEE80211_CIPHER_MAX) {
-		printf("%s: cipher %s has an invalid cipher index %u\n",
+		kprintf("%s: cipher %s has an invalid cipher index %u\n",
 			__func__, cip->ic_name, cip->ic_cipher);
 		return;
 	}
 	if (ciphers[cip->ic_cipher] != NULL && ciphers[cip->ic_cipher] != cip) {
-		printf("%s: cipher %s registered with a different template\n",
+		kprintf("%s: cipher %s registered with a different template\n",
 			__func__, cip->ic_name);
 		return;
 	}
@@ -204,12 +204,12 @@ void
 ieee80211_crypto_unregister(const struct ieee80211_cipher *cip)
 {
 	if (cip->ic_cipher >= IEEE80211_CIPHER_MAX) {
-		printf("%s: cipher %s has an invalid cipher index %u\n",
+		kprintf("%s: cipher %s has an invalid cipher index %u\n",
 			__func__, cip->ic_name, cip->ic_cipher);
 		return;
 	}
 	if (ciphers[cip->ic_cipher] != NULL && ciphers[cip->ic_cipher] != cip) {
-		printf("%s: cipher %s registered with a different template\n",
+		kprintf("%s: cipher %s registered with a different template\n",
 			__func__, cip->ic_name);
 		return;
 	}

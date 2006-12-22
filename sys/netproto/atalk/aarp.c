@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.19 2006/05/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.20 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -183,7 +183,7 @@ aarpwhohas(struct arpcom *ac, struct sockaddr_at *sat)
     }
 
 #ifdef NETATALKDEBUG
-    printf("aarp: sending request for %u.%u\n",
+    kprintf("aarp: sending request for %u.%u\n",
 	   ntohs(AA_SAT( aa )->sat_addr.s_net),
 	   AA_SAT( aa )->sat_addr.s_node);
 #endif /* NETATALKDEBUG */
@@ -537,7 +537,7 @@ aarpprobe(void *arg)
 	}
     }
     if ( aa == NULL ) {		/* serious error XXX */
-	printf( "aarpprobe why did this happen?!\n" );
+	kprintf( "aarpprobe why did this happen?!\n" );
 	return;
     }
 
@@ -595,7 +595,7 @@ aarpprobe(void *arg)
     }
 
 #ifdef NETATALKDEBUG
-    printf("aarp: sending probe for %u.%u\n",
+    kprintf("aarp: sending probe for %u.%u\n",
 	   ntohs(AA_SAT( aa )->sat_addr.s_net),
 	   AA_SAT( aa )->sat_addr.s_node);
 #endif /* NETATALKDEBUG */

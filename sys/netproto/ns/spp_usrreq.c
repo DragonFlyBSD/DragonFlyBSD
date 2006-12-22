@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.19 2006/12/05 23:31:57 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.20 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1828,7 +1828,7 @@ spp_timers(struct sppcb *cb, int timer)
 	 * control block.
 	 */
 	case SPPT_2MSL:
-		printf("spp: SPPT_2MSL went off for no reason\n");
+		kprintf("spp: SPPT_2MSL went off for no reason\n");
 		cb->s_timer[timer] = 0;
 		break;
 

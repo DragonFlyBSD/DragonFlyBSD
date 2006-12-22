@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_ccmp.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.3 2006/11/28 14:44:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.4 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -645,7 +645,7 @@ ccmp_modevent(module_t mod, int type, void *unused)
 		return 0;
 	case MOD_UNLOAD:
 		if (nrefs) {
-			printf("wlan_ccmp: still in use (%u dynamic refs)\n",
+			kprintf("wlan_ccmp: still in use (%u dynamic refs)\n",
 				nrefs);
 			return EBUSY;
 		}

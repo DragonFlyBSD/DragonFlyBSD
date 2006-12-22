@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_util.c,v 1.5 1999/08/29 10:28:10 bde Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.6 2006/12/20 18:14:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -437,15 +437,15 @@ spans_dump_buffer(KBuffer *m)
 	int		i;
 	caddr_t		cp;
 
-	printf("spans_dump_buffer:\n");
+	kprintf("spans_dump_buffer:\n");
 	while (m) {
 		KB_DATASTART(m, cp, caddr_t);
 		for (i = 0; i < KB_LEN(m); i++) {
 			if (i == 0)
-				printf("   bfr=%p: ", m);
-			printf("%x ", (u_char)*cp++);
+				kprintf("   bfr=%p: ", m);
+			kprintf("%x ", (u_char)*cp++);
 		}
-		printf("<end_bfr>\n");
+		kprintf("<end_bfr>\n");
 		m = KB_NEXT(m);
 	}
 }

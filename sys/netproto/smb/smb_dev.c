@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.16 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.17 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -347,14 +347,14 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 			break;
 		}
 		dev_ops_add(&nsmb_ops, 0, 0);
-		printf("netsmb_dev: loaded\n");
+		kprintf("netsmb_dev: loaded\n");
 		break;
 	    case MOD_UNLOAD:
 		smb_iod_done();
 		error = smb_sm_done();
 		error = 0;
 		dev_ops_remove(&nsmb_ops, 0, 0);
-		printf("netsmb_dev: unloaded\n");
+		kprintf("netsmb_dev: unloaded\n");
 		break;
 	    default:
 		error = EINVAL;

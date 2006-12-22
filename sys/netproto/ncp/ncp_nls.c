@@ -32,7 +32,7 @@
  * Character conversion routines
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.c,v 1.4 2000/01/29 02:10:37 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.4 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.5 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -271,7 +271,7 @@ ncp_pathcopy(char *src, char *dst, int len, struct ncp_nlstables *nt)
 			src++;
 		}
 	}
-/*	printf("fromux: %s:%s\n", s, d);*/
+/*	kprintf("fromux: %s:%s\n", s, d);*/
 }
 
 /*
@@ -284,7 +284,7 @@ ncp_path2unix(char *src, char *dst, int len, struct ncp_nlstables *nt)
 	u_char	c, *tbl;
 /*	char *d = dst, *s = src;*/
 
-/*	printf("toux(%02x): %s:",nt->opt, s);*/
+/*	kprintf("toux(%02x): %s:",nt->opt, s);*/
 	donls = (nt && (nt->opt & NWHP_NLS));
 	if ((nt->opt & (NWHP_UPPER | NWHP_LOWER)) == 0) {
 		while (len--) {
@@ -302,5 +302,5 @@ ncp_path2unix(char *src, char *dst, int len, struct ncp_nlstables *nt)
 		dst++;
 		src++;
 	}
-/*	printf("%s\n", d);*/
+/*	kprintf("%s\n", d);*/
 }

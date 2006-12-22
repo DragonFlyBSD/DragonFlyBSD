@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.16 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.17 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -138,7 +138,7 @@ in6_gif_output(struct ifnet *ifp,
 #endif
 	default:
 #ifdef DEBUG
-		printf("in6_gif_output: warning: unknown family %d passed\n",
+		kprintf("in6_gif_output: warning: unknown family %d passed\n",
 			family);
 #endif
 		m_freem(m);
@@ -150,7 +150,7 @@ in6_gif_output(struct ifnet *ifp,
 	if (m && m->m_len < sizeof(struct ip6_hdr))
 		m = m_pullup(m, sizeof(struct ip6_hdr));
 	if (m == NULL) {
-		printf("ENOBUFS in in6_gif_output %d\n", __LINE__);
+		kprintf("ENOBUFS in in6_gif_output %d\n", __LINE__);
 		return ENOBUFS;
 	}
 

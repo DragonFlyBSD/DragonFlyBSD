@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.10 2006/06/23 17:20:13 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.11 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -327,7 +327,7 @@ sctp_tcb_special_locate(struct sctp_inpcb **inp_p, struct sockaddr *from,
 				if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-						printf("An ounce of prevention is worth a pound of cure\n");
+						kprintf("An ounce of prevention is worth a pound of cure\n");
 					}
 #endif
 					continue;
@@ -335,7 +335,7 @@ sctp_tcb_special_locate(struct sctp_inpcb **inp_p, struct sockaddr *from,
 				if (laddr->ifa->ifa_addr == NULL) {
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-						printf("ifa with a NULL address\n");
+						kprintf("ifa with a NULL address\n");
 					}
 #endif
 					continue;
@@ -481,7 +481,7 @@ sctp_findassociation_ep_asconf(struct mbuf *m, int iphlen, int offset,
 	if (phdr == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INPUT3) {
-			printf("sctp_process_control: failed to get asconf lookup addr\n");
+			kprintf("sctp_process_control: failed to get asconf lookup addr\n");
 		}
 #endif /* SCTP_DEBUG */
 		return NULL;
@@ -501,7 +501,7 @@ sctp_findassociation_ep_asconf(struct mbuf *m, int iphlen, int offset,
 		if (p6 == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT3) {
-				printf("sctp_process_control: failed to get asconf v6 lookup addr\n");
+				kprintf("sctp_process_control: failed to get asconf v6 lookup addr\n");
 			}
 #endif /* SCTP_DEBUG */
 			return (NULL);
@@ -524,7 +524,7 @@ sctp_findassociation_ep_asconf(struct mbuf *m, int iphlen, int offset,
 		if (p4 == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT3) {
-				printf("sctp_process_control: failed to get asconf v4 lookup addr\n");
+				kprintf("sctp_process_control: failed to get asconf v4 lookup addr\n");
 			}
 #endif /* SCTP_DEBUG */
 			return (NULL);
@@ -856,7 +856,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Ok, there is NO bound-all available for port:%x\n", ntohs(lport));
+		kprintf("Ok, there is NO bound-all available for port:%x\n", ntohs(lport));
 	}
 #endif
 	LIST_FOREACH(inp, head, sctp_hash) {
@@ -875,38 +875,38 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			printf("Ok, found maching local port\n");
+			kprintf("Ok, found maching local port\n");
 		}
 #endif
 		LIST_FOREACH(laddr, &inp->sctp_addr_list, sctp_nxt_addr) {
 			if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-					printf("An ounce of prevention is worth a pound of cure\n");
+					kprintf("An ounce of prevention is worth a pound of cure\n");
 				}
 #endif
 				continue;
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				printf("Ok laddr->ifa:%p is possible, ",
+				kprintf("Ok laddr->ifa:%p is possible, ",
 				    laddr->ifa);
 			}
 #endif
 			if (laddr->ifa->ifa_addr == NULL) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-					printf("Huh IFA as an ifa_addr=NULL, ");
+					kprintf("Huh IFA as an ifa_addr=NULL, ");
 				}
 #endif
 				continue;
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				printf("Ok laddr->ifa:%p is possible, ",
+				kprintf("Ok laddr->ifa:%p is possible, ",
 				    laddr->ifa->ifa_addr);
 				sctp_print_address(laddr->ifa->ifa_addr);
-				printf("looking for ");
+				kprintf("looking for ");
 				sctp_print_address(nam);
 			}
 #endif
@@ -920,7 +920,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 					    intf_addr->sin_addr.s_addr) {
 #ifdef SCTP_DEBUG
 						if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-							printf("YES, return ep:%p\n", inp);
+							kprintf("YES, return ep:%p\n", inp);
 						}
 #endif
 						SCTP_INP_RUNLOCK(inp);
@@ -934,7 +934,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 				 	    &intf_addr6->sin6_addr)) {
 #ifdef SCTP_DEBUG
 						if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-							printf("YES, return ep:%p\n", inp);
+							kprintf("YES, return ep:%p\n", inp);
 						}
 #endif
 						SCTP_INP_RUNLOCK(inp);
@@ -947,7 +947,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("NO, Falls out to NULL\n");
+		kprintf("NO, Falls out to NULL\n");
 	}
 #endif
 	return (NULL);
@@ -968,7 +968,7 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 	int lport;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Looking for endpoint %d :",
+		kprintf("Looking for endpoint %d :",
 		       ntohs(((struct sockaddr_in *)nam)->sin_port));
 		sctp_print_address(nam);
 	}
@@ -995,7 +995,7 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 							     sctppcbinfo.hashmark)];
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Main hash to lookup at head:%p\n", head);
+		kprintf("Main hash to lookup at head:%p\n", head);
 	}
 #endif
  	inp = sctp_endpoint_probe(nam, head, lport);
@@ -1011,7 +1011,7 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 		unsigned int i;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			printf("EP was NULL and TCP model is supported\n");
+			kprintf("EP was NULL and TCP model is supported\n");
 		}
 #endif
 		for (i = 0; i < sctppcbinfo.hashtblsize; i++) {
@@ -1033,7 +1033,7 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("EP to return is %p\n", inp);
+		kprintf("EP to return is %p\n", inp);
 	}
 #endif
 	if (have_lock == 0) {
@@ -1137,7 +1137,7 @@ sctp_findassociation_special_addr(struct mbuf *m, int iphlen, int offset,
 		if (plen == 0) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				printf("sctp_findassociation_special_addr: Impossible length in parameter\n");
+				kprintf("sctp_findassociation_special_addr: Impossible length in parameter\n");
 			}
 #endif /* SCTP_DEBUG */
 			break;
@@ -1320,10 +1320,10 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Looking for port %d address :",
+		kprintf("Looking for port %d address :",
 		       ntohs(((struct sockaddr_in *)to)->sin_port));
 		sctp_print_address(to);
-		printf("From for port %d address :",
+		kprintf("From for port %d address :",
 		       ntohs(((struct sockaddr_in *)from)->sin_port));
 		sctp_print_address(from);
 	}
@@ -1355,14 +1355,14 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("retval:%p inp:%p\n", retval, inp);
+		kprintf("retval:%p inp:%p\n", retval, inp);
 	}
 #endif
 	if (retval == NULL && inp) {
 		/* Found a EP but not this address */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			printf("Found endpoint %p but no asoc - ep state:%x\n",
+			kprintf("Found endpoint %p but no asoc - ep state:%x\n",
 			    inp, inp->sctp_flags);
 		}
 #endif
@@ -1379,7 +1379,7 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 			if (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-					printf("Gak, its in the TCP pool... return NULL");
+					kprintf("Gak, its in the TCP pool... return NULL");
 				}
 #endif
 				if (inp_p) {
@@ -1389,7 +1389,7 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				printf("Now doing SPECIAL find\n");
+				kprintf("Now doing SPECIAL find\n");
 			}
 #endif
 			retval = sctp_findassociation_special_addr(m, iphlen,
@@ -1398,7 +1398,7 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-	    printf("retval is %p\n", retval);
+	    kprintf("retval is %p\n", retval);
 	}
 #endif
 	return (retval);
@@ -1467,7 +1467,7 @@ sctp_inpcb_alloc(struct socket *so)
 		if (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) {
 			if (LIST_FIRST(&inp->sctp_asoc_list) == NULL) {
 				/* finish the job now */
-				printf("Found a GONE on list\n");
+				kprintf("Found a GONE on list\n");
 				SCTP_INP_INFO_RUNLOCK();
 				sctp_inpcb_free(inp, 1);
 				SCTP_INP_INFO_RLOCK();
@@ -1481,7 +1481,7 @@ sctp_inpcb_alloc(struct socket *so)
 	SCTP_INP_INFO_WLOCK();
 	inp = (struct sctp_inpcb *)SCTP_ZONE_GET(sctppcbinfo.ipi_zone_ep);
 	if (inp == NULL) {
-		printf("Out of SCTP-INPCB structures - no resources\n");
+		kprintf("Out of SCTP-INPCB structures - no resources\n");
 		SCTP_INP_INFO_WUNLOCK();
 		return (ENOBUFS);
 	}
@@ -1558,7 +1558,7 @@ sctp_inpcb_alloc(struct socket *so)
 #endif
 	    &inp->sctp_hashmark);
 	if (inp->sctp_tcbhash == NULL) {
-		printf("Out of SCTP-INPCB->hashinit - no resources\n");
+		kprintf("Out of SCTP-INPCB->hashinit - no resources\n");
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_ep, inp);
 		SCTP_INP_INFO_WUNLOCK();
 		return (ENOBUFS);
@@ -1729,7 +1729,7 @@ sctp_move_pcb_and_assoc(struct sctp_inpcb *old_inp, struct sctp_inpcb *new_inp,
 				 */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-					printf("Association hosed in TCP model, out of laddr memory\n");
+					kprintf("Association hosed in TCP model, out of laddr memory\n");
 				}
 #endif /* SCTP_DEBUG */
 				continue;
@@ -1837,9 +1837,9 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
 		if (addr) {
-			printf("Bind called port:%d\n",
+			kprintf("Bind called port:%d\n",
 			       ntohs(((struct sockaddr_in *)addr)->sin_port));
-			printf("Addr :");
+			kprintf("Addr :");
 			sctp_print_address(addr);
 		}
 	}
@@ -2146,7 +2146,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 	LIST_INSERT_HEAD(head, inp, sctp_hash);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Main hash to bind at head:%p, bound port:%d\n", head, ntohs(lport));
+		kprintf("Main hash to bind at head:%p, bound port:%d\n", head, ntohs(lport));
 	}
 #endif
 	/* set in the port */
@@ -2243,7 +2243,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_ALLGONE) {
 		/* been here before */
 		crit_exit();
-		printf("Endpoint was all gone (dup free)?\n");
+		kprintf("Endpoint was all gone (dup free)?\n");
 		SCTP_INP_WUNLOCK(inp);
 		SCTP_ASOC_CREATE_UNLOCK(inp);
 		return;
@@ -2598,7 +2598,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Adding an address (from:%d) to the peer: ", from);
+		kprintf("Adding an address (from:%d) to the peer: ", from);
 		sctp_print_address(newaddr);
 	}
 #endif
@@ -2743,7 +2743,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	if (addr_inscope == 0) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			printf("Adding an address which is OUT OF SCOPE\n");
+			kprintf("Adding an address which is OUT OF SCOPE\n");
 		}
 #endif /* SCTP_DEBUG */
 		net->dest_state = (SCTP_ADDR_REACHABLE |
@@ -2925,12 +2925,12 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-		printf("Allocate an association for peer:");
+		kprintf("Allocate an association for peer:");
 		if (firstaddr)
 			sctp_print_address(firstaddr);
 		else
-			printf("None\n");
-		printf("Port:%d\n",
+			kprintf("None\n");
+		kprintf("Port:%d\n",
 		       ntohs(((struct sockaddr_in *)firstaddr)->sin_port));
 	}
 #endif /* SCTP_DEBUG */
@@ -2941,7 +2941,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 			/* Invalid address */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-				printf("peer address invalid\n");
+				kprintf("peer address invalid\n");
 			}
 #endif
 			SCTP_INP_RUNLOCK(inp);
@@ -2957,7 +2957,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 			/* Invalid address */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-				printf("peer address invalid\n");
+				kprintf("peer address invalid\n");
 			}
 #endif
 			SCTP_INP_RUNLOCK(inp);
@@ -2969,7 +2969,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		/* not supported family type */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("BAD family %d\n", firstaddr->sa_family);
+			kprintf("BAD family %d\n", firstaddr->sa_family);
 		}
 #endif
 		SCTP_INP_RUNLOCK(inp);
@@ -2984,7 +2984,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("Doing implicit BIND\n");
+			kprintf("Doing implicit BIND\n");
 		}
 #endif
 
@@ -2999,7 +2999,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 			/* bind error, probably perm */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-				printf("BIND FAILS ret:%d\n", err);
+				kprintf("BIND FAILS ret:%d\n", err);
 			}
 #endif
 
@@ -3012,7 +3012,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		/* out of memory? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("aloc_assoc: no assoc mem left, stcb=NULL\n");
+			kprintf("aloc_assoc: no assoc mem left, stcb=NULL\n");
 		}
 #endif
 		*error = ENOMEM;
@@ -3034,7 +3034,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		sctppcbinfo.ipi_count_asoc--;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("aloc_assoc: couldn't init asoc, out of mem?!\n");
+			kprintf("aloc_assoc: couldn't init asoc, out of mem?!\n");
 		}
 #endif
 		*error = err;
@@ -3053,7 +3053,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		sctppcbinfo.ipi_count_asoc--;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("aloc_assoc: couldn't init asoc, out of mem?!\n");
+			kprintf("aloc_assoc: couldn't init asoc, out of mem?!\n");
 		}
 #endif
 		*error = EINVAL;
@@ -3080,7 +3080,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		sctppcbinfo.ipi_count_asoc--;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB3) {
-			printf("aloc_assoc: couldn't add remote addr!\n");
+			kprintf("aloc_assoc: couldn't add remote addr!\n");
 		}
 #endif
 		SCTP_TCB_LOCK_DESTROY (stcb);
@@ -3113,7 +3113,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 	SCTP_INP_WUNLOCK(inp);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Association %p now allocated\n", stcb);
+		kprintf("Association %p now allocated\n", stcb);
 	}
 #endif
 	return (stcb);
@@ -3316,7 +3316,7 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	/* first, lets purge the entry from the hash table. */
 	crit_enter();
 	if (stcb->asoc.state == 0) {
-		printf("Freeing already free association:%p - huh??\n",
+		kprintf("Freeing already free association:%p - huh??\n",
 		    stcb);
 		crit_exit();
 		return;
@@ -3700,7 +3700,7 @@ sctp_update_ep_vflag(struct sctp_inpcb *inp) {
 		if (laddr->ifa == NULL) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				printf("An ounce of prevention is worth a pound of cure\n");
+				kprintf("An ounce of prevention is worth a pound of cure\n");
 			}
 #endif /* SCTP_DEBUG */
 			continue;
@@ -4352,7 +4352,7 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 	while (phdr) {
 		ptype = ntohs(phdr->param_type);
 		plen = ntohs(phdr->param_length);
-		/*printf("ptype => %d, plen => %d\n", ptype, plen);*/
+		/*kprintf("ptype => %d, plen => %d\n", ptype, plen);*/
 		if (offset + plen > limit) {
 			break;
 		}
@@ -4529,7 +4529,7 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 			if (lptype == SCTP_IPV4_ADDRESS) {
 				if (plen !=
 				    sizeof(struct sctp_asconf_addrv4_param)) {
-					printf("Sizeof setprim in init/init ack not %d but %d - ignored\n",
+					kprintf("Sizeof setprim in init/init ack not %d but %d - ignored\n",
 				           (int)sizeof(struct sctp_asconf_addrv4_param),
 				           plen);
 				} else {
@@ -4540,7 +4540,7 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 			} else if (lptype == SCTP_IPV6_ADDRESS) {
 				if (plen !=
 				    sizeof(struct sctp_asconf_addr_param)) {
-					printf("Sizeof setprim (v6) in init/init ack not %d but %d - ignored\n",
+					kprintf("Sizeof setprim (v6) in init/init ack not %d but %d - ignored\n",
 				           (int)sizeof(struct sctp_asconf_addr_param),
 				           plen);
 				} else {
@@ -4929,7 +4929,7 @@ sctp_drain_mbufs(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
 		if (cnt) {
-			printf("Freed %d chunks from reneg harvest\n", cnt);
+			kprintf("Freed %d chunks from reneg harvest\n", cnt);
 		}
 	}
 #endif /* SCTP_DEBUG */

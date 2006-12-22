@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.17 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.18 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1776,7 +1776,7 @@ spx_timers(struct spxpcb *cb, int timer)
 	 * control block.
 	 */
 	case SPXT_2MSL:
-		printf("spx: SPXT_2MSL went off for no reason\n");
+		kprintf("spx: SPXT_2MSL went off for no reason\n");
 		cb->s_timer[timer] = 0;
 		break;
 

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_peeloff.c,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.4 2006/06/23 17:20:14 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.5 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003 Cisco Systems Inc,
@@ -155,7 +155,7 @@ sctp_get_peeloff(struct socket *head, caddr_t assoc_id, int *error)
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PEEL1) {
-		printf("SCTP peel-off called\n");
+		kprintf("SCTP peel-off called\n");
 	}
 #endif /* SCTP_DEBUG */
 
@@ -173,7 +173,7 @@ sctp_get_peeloff(struct socket *head, caddr_t assoc_id, int *error)
 	if (newso == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PEEL1) {
-			printf("sctp_peeloff:sonewconn failed err\n");
+			kprintf("sctp_peeloff:sonewconn failed err\n");
 		}
 #endif /* SCTP_DEBUG */
 		*error = ENOMEM;

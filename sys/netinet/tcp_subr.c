@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.54 2006/12/05 23:31:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.55 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -338,7 +338,7 @@ tcp_init(void)
 
 	TUNABLE_INT_FETCH("net.inet.tcp.tcbhashsize", &hashsize);
 	if (!powerof2(hashsize)) {
-		printf("WARNING: TCB hash size not a power of 2\n");
+		kprintf("WARNING: TCB hash size not a power of 2\n");
 		hashsize = 512; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
@@ -1933,7 +1933,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 		static int ltime;
 		if ((u_int)(ticks - ltime) >= hz / tcp_inflight_debug) {
 			ltime = ticks;
-			printf("%p bw %ld rttbest %d srtt %d bwnd %ld\n",
+			kprintf("%p bw %ld rttbest %d srtt %d bwnd %ld\n",
 				tp, bw, tp->t_rttbest, tp->t_srtt, bwnd);
 		}
 	}

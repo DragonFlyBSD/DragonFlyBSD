@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_util.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.6 2006/12/20 18:14:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -356,15 +356,15 @@ unisig_print_mbuf(KBuffer *m)
 	int i;
 	caddr_t		cp;
 
-	printf("unisig_print_mbuf:\n");
+	kprintf("unisig_print_mbuf:\n");
 	while (m) { 
 		KB_DATASTART(m, cp, caddr_t);
 		for (i = 0; i < KB_LEN(m); i++) {
 			if (i == 0)
-				printf("   bfr=%p: ", m);
-			printf("%x ", (u_char)*cp++);
+				kprintf("   bfr=%p: ", m);
+			kprintf("%x ", (u_char)*cp++);
 		}
-		printf("<end_bfr>\n");
+		kprintf("<end_bfr>\n");
 		m = KB_NEXT(m);
 	}
 }

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.14 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.15 2006/12/22 23:57:54 swildner Exp $
  *
  * Low level socket routines
  */
@@ -158,7 +158,7 @@ ncp_sock_recv(struct socket *so, struct mbuf **mp, int *rlen)
 	    *rlen=0;*/
 #ifdef NCP_SOCKET_DEBUG
 	if (error)
-		printf("ncp_recv: err=%d\n", error);
+		kprintf("ncp_recv: err=%d\n", error);
 #endif
 	return (error);
 }
@@ -243,7 +243,7 @@ retry:
 done:
 	p->p_flag &= ~P_SELECT;
 	if (error == ERESTART) {
-/*		printf("Signal: %x", CURSIG(p));*/
+/*		kprintf("Signal: %x", CURSIG(p));*/
 		error = 0;
 	}
 	return (error);

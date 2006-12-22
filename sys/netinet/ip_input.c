@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.63 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.64 2006/12/22 23:57:52 swildner Exp $
  */
 
 #define	_IP_VHL
@@ -363,7 +363,7 @@ ip_init(void)
 	inet_pfil_hook.ph_type = PFIL_TYPE_AF;
 	inet_pfil_hook.ph_af = AF_INET;
 	if ((i = pfil_head_register(&inet_pfil_hook)) != 0) {
-		printf("%s: WARNING: unable to register pfil hook, "
+		kprintf("%s: WARNING: unable to register pfil hook, "
 			"error %d\n", __func__, i);
 	}
 
@@ -497,7 +497,7 @@ ip_input(struct mbuf *m)
 			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
 			break;
 		default:
-			printf("ip_input: unrecognised MT_TAG tag %d\n",
+			kprintf("ip_input: unrecognised MT_TAG tag %d\n",
 			    m->_m_tag_id);
 			break;
 		}
@@ -1748,7 +1748,7 @@ save_rte(u_char *option, struct in_addr dst)
 	olen = option[IPOPT_OLEN];
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf("save_rte: olen %d\n", olen);
+		kprintf("save_rte: olen %d\n", olen);
 #endif
 	if (olen > sizeof(ip_srcrt) - (1 + sizeof(dst)))
 		return;
@@ -1781,7 +1781,7 @@ ip_srcroute(void)
 	    OPTSIZ;
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf("ip_srcroute: nhops %d mlen %d", ip_nhops, m->m_len);
+		kprintf("ip_srcroute: nhops %d mlen %d", ip_nhops, m->m_len);
 #endif
 
 	/*
@@ -1791,7 +1791,7 @@ ip_srcroute(void)
 	*(mtod(m, struct in_addr *)) = *p--;
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf(" hops %x", ntohl(mtod(m, struct in_addr *)->s_addr));
+		kprintf(" hops %x", ntohl(mtod(m, struct in_addr *)->s_addr));
 #endif
 
 	/*
@@ -1811,7 +1811,7 @@ ip_srcroute(void)
 	while (p >= ip_srcrt.route) {
 #ifdef DIAGNOSTIC
 		if (ipprintfs)
-			printf(" %x", ntohl(q->s_addr));
+			kprintf(" %x", ntohl(q->s_addr));
 #endif
 		*q++ = *p--;
 	}
@@ -1821,7 +1821,7 @@ ip_srcroute(void)
 	*q = ip_srcrt.dst;
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf(" %x\n", ntohl(q->s_addr));
+		kprintf(" %x\n", ntohl(q->s_addr));
 #endif
 	return (m);
 }
@@ -1892,7 +1892,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf("forward: src %x dst %x ttl %x\n",
+		kprintf("forward: src %x dst %x ttl %x\n",
 		       ip->ip_src.s_addr, pkt_dst.s_addr, ip->ip_ttl);
 #endif
 
@@ -1990,7 +1990,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 			code = ICMP_REDIRECT_HOST;
 #ifdef DIAGNOSTIC
 			if (ipprintfs)
-				printf("redirect (%d) to %x\n", code, dest);
+				kprintf("redirect (%d) to %x\n", code, dest);
 #endif
 		}
 	}

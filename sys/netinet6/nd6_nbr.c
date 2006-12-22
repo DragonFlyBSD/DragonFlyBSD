@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.18 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -355,7 +355,7 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	maxlen += (sizeof(struct nd_opt_hdr) + ifp->if_addrlen + 7) & ~7;
 	if (max_linkhdr + maxlen >= MCLBYTES) {
 #ifdef DIAGNOSTIC
-		printf("nd6_ns_output: max_linkhdr + maxlen >= MCLBYTES "
+		kprintf("nd6_ns_output: max_linkhdr + maxlen >= MCLBYTES "
 		    "(%d + %d > %d)\n", max_linkhdr, maxlen, MCLBYTES);
 #endif
 		return;
@@ -827,7 +827,7 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	maxlen += (sizeof(struct nd_opt_hdr) + ifp->if_addrlen + 7) & ~7;
 	if (max_linkhdr + maxlen >= MCLBYTES) {
 #ifdef DIAGNOSTIC
-		printf("nd6_na_output: max_linkhdr + maxlen >= MCLBYTES "
+		kprintf("nd6_na_output: max_linkhdr + maxlen >= MCLBYTES "
 		    "(%d + %d > %d)\n", max_linkhdr, maxlen, MCLBYTES);
 #endif
 		return;
@@ -1280,13 +1280,13 @@ nd6_dad_ns_output(struct dadq *dp, struct ifaddr *ifa)
 	dp->dad_ns_tcount++;
 	if (!(ifp->if_flags & IFF_UP)) {
 #if 0
-		printf("%s: interface down?\n", if_name(ifp));
+		kprintf("%s: interface down?\n", if_name(ifp));
 #endif
 		return;
 	}
 	if (!(ifp->if_flags & IFF_RUNNING)) {
 #if 0
-		printf("%s: interface not running?\n", if_name(ifp));
+		kprintf("%s: interface not running?\n", if_name(ifp));
 #endif
 		return;
 	}

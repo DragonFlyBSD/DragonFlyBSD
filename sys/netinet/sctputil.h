@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.h,v 1.14 2004/08/17 04:06:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.5 2006/12/22 23:57:52 swildner Exp $	*/
 
 #ifndef _NETINET_SCTPUTIL_H_
 #define _NETINET_SCTPUTIL_H_
@@ -44,7 +44,7 @@
 
 #ifdef SCTP_MBUF_DEBUG
 #define sctp_m_freem(m) do { \
-    printf("m_freem(%p) m->nxtpkt:%p at %s[%d]\n", \
+    kprintf("m_freem(%p) m->nxtpkt:%p at %s[%d]\n", \
 	   (m), (m)->m_next, __FILE__, __LINE__); \
     m_freem(m); \
 } while (0);

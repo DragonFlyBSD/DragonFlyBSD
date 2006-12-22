@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.17 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.18 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -162,10 +162,10 @@ generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 	if (0) {		/* for debugging purposes only */
 		int i;
 
-		printf("generate_tmp_ifid: new randomized ID from: ");
+		kprintf("generate_tmp_ifid: new randomized ID from: ");
 		for (i = 0; i < 16; i++)
-			printf("%02x", seed[i]);
-		printf(" ");
+			kprintf("%02x", seed[i]);
+		kprintf(" ");
 	}
 
 	/* generate 16 bytes of pseudo-random value. */
@@ -207,10 +207,10 @@ generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 	if (0) {		/* for debugging purposes only */
 		int i;
 
-		printf("to: ");
+		kprintf("to: ");
 		for (i = 0; i < 16; i++)
-			printf("%02x", digest[i]);
-		printf("\n");
+			kprintf("%02x", digest[i]);
+		kprintf("\n");
 	}
 
 	return 0;
@@ -397,7 +397,7 @@ get_ifid(struct ifnet *ifp0,
 		goto success;
 	}
 
-	printf("%s: failed to get interface identifier\n", if_name(ifp0));
+	kprintf("%s: failed to get interface identifier\n", if_name(ifp0));
 	return -1;
 
 success:

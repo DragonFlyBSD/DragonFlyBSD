@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.8 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -57,7 +57,7 @@ SYSCTL_NODE(_net, OID_AUTO, wlan, CTLFLAG_RD, 0, "IEEE 80211 parameters");
 #ifdef IEEE80211_DEBUG
 int	ieee80211_debug = 0;
 SYSCTL_INT(_net_wlan, OID_AUTO, debug, CTLFLAG_RW, &ieee80211_debug,
-	    0, "debugging printfs");
+	    0, "debugging kprintfs");
 #endif
 
 static int
@@ -97,7 +97,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 	oid = SYSCTL_ADD_NODE(ctx, &SYSCTL_NODE_CHILDREN(_net, wlan),
 		OID_AUTO, num, CTLFLAG_RD, NULL, "");
 	if (oid == NULL) {
-		printf("add sysctl node net.wlan.%s failed\n", num);
+		kprintf("add sysctl node net.wlan.%s failed\n", num);
 		kfree(ctx, M_DEVBUF);
 		return;
 	}
@@ -109,7 +109,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 	ic->ic_debug = ieee80211_debug;
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(oid), OID_AUTO,
 		"debug", CTLFLAG_RW, &ic->ic_debug, 0,
-		"control debugging printfs");
+		"control debugging kprintfs");
 #endif
 	/* XXX inherit from tunables */
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(oid), OID_AUTO,
@@ -327,7 +327,7 @@ ieee80211_load_module(const char *modname)
 		crit_exit();
 	}
 #else
-	printf("%s: load the %s module by hand for now.\n", __func__, modname);
+	kprintf("%s: load the %s module by hand for now.\n", __func__, modname);
 #endif
 }
 
@@ -532,7 +532,7 @@ wlan_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if (bootverbose)
-			printf("wlan: <802.11 Link Layer>\n");
+			kprintf("wlan: <802.11 Link Layer>\n");
 		return 0;
 	case MOD_UNLOAD:
 		return 0;

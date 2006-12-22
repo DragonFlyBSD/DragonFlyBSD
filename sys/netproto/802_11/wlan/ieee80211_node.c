@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.12 2006/12/15 12:44:23 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.13 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -238,7 +238,7 @@ dump_chanlist(const u_char chans[])
 	sep = " ";
 	for (i = 0; i < IEEE80211_CHAN_MAX; i++)
 		if (isset(chans, i)) {
-			printf("%s%u", sep, i);
+			kprintf("%s%u", sep, i);
 			sep = ", ";
 		}
 }
@@ -262,9 +262,9 @@ ieee80211_reset_scan(struct ieee80211com *ic)
 			sizeof(ic->ic_chan_active));
 #ifdef IEEE80211_DEBUG
 	if (ieee80211_msg_scan(ic)) {
-		printf("%s: scan set:", __func__);
+		kprintf("%s: scan set:", __func__);
 		dump_chanlist(ic->ic_chan_scan);
-		printf(" start chan %u\n",
+		kprintf(" start chan %u\n",
 			ieee80211_chan2ieee(ic, ic->ic_curchan));
 	}
 #endif /* IEEE80211_DEBUG */
@@ -524,27 +524,27 @@ ieee80211_match_bss(struct ieee80211com *ic, struct ieee80211_node *ni)
 		fail |= 0x40;
 #ifdef IEEE80211_DEBUG
 	if (ieee80211_msg_scan(ic)) {
-		printf(" %c %6D",
+		kprintf(" %c %6D",
 		    fail & 0x40 ? '=' : fail & 0x80 ? '^' : fail ? '-' : '+',
 		    ni->ni_macaddr, ":");
-		printf(" %6D%c", ni->ni_bssid, ":",
+		kprintf(" %6D%c", ni->ni_bssid, ":",
 		    fail & 0x20 ? '!' : ' ');
-		printf(" %3d%c", ieee80211_chan2ieee(ic, ni->ni_chan),
+		kprintf(" %3d%c", ieee80211_chan2ieee(ic, ni->ni_chan),
 			fail & 0x01 ? '!' : ' ');
-		printf(" %+4d", ni->ni_rssi);
-		printf(" %2dM%c", (rate & IEEE80211_RATE_VAL) / 2,
+		kprintf(" %+4d", ni->ni_rssi);
+		kprintf(" %2dM%c", (rate & IEEE80211_RATE_VAL) / 2,
 		    fail & 0x08 ? '!' : ' ');
-		printf(" %4s%c",
+		kprintf(" %4s%c",
 		    (ni->ni_capinfo & IEEE80211_CAPINFO_ESS) ? "ess" :
 		    (ni->ni_capinfo & IEEE80211_CAPINFO_IBSS) ? "ibss" :
 		    "????",
 		    fail & 0x02 ? '!' : ' ');
-		printf(" %3s%c ",
+		kprintf(" %3s%c ",
 		    (ni->ni_capinfo & IEEE80211_CAPINFO_PRIVACY) ?
 		    "wep" : "no",
 		    fail & 0x04 ? '!' : ' ');
 		ieee80211_print_essid(ni->ni_essid, ni->ni_esslen);
-		printf("%s\n", fail & 0x10 ? "!" : "");
+		kprintf("%s\n", fail & 0x10 ? "!" : "");
 	}
 #endif
 	return fail;
@@ -1147,28 +1147,28 @@ dump_probe_beacon(uint8_t subtype, int isnew,
 	const struct ieee80211_scanparams *sp)
 {
 
-	printf("[%6D] %s%s on chan %u (bss chan %u) ",
+	kprintf("[%6D] %s%s on chan %u (bss chan %u) ",
 	    mac, ":", isnew ? "new " : "",
 	    ieee80211_mgt_subtype_name[subtype >> IEEE80211_FC0_SUBTYPE_SHIFT],
 	    sp->chan, sp->bchan);
 	ieee80211_print_essid(sp->ssid + 2, sp->ssid[1]);
-	printf("\n");
+	kprintf("\n");
 
 	if (isnew) {
-		printf("[%6D] caps 0x%x bintval %u erp 0x%x", 
+		kprintf("[%6D] caps 0x%x bintval %u erp 0x%x", 
 			mac, ":", sp->capinfo, sp->bintval, sp->erp);
 		if (sp->country != NULL) {
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-			printf(" country info %*D",
+			kprintf(" country info %*D",
 				sp->country[1], sp->country+2, " ");
 #else
 			int i;
-			printf(" country info");
+			kprintf(" country info");
 			for (i = 0; i < sp->country[1]; i++)
-				printf(" %02x", sp->country[i+2]);
+				kprintf(" %02x", sp->country[i+2]);
 #endif
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 #endif /* IEEE80211_DEBUG */
@@ -1935,24 +1935,24 @@ ieee80211_iterate_nodes(struct ieee80211_node_table *nt, ieee80211_iter_func *f,
 void
 ieee80211_dump_node(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 {
-	printf("0x%p: mac %6D refcnt %d\n", ni,
+	kprintf("0x%p: mac %6D refcnt %d\n", ni,
 		ni->ni_macaddr, ":", ieee80211_node_refcnt(ni));
-	printf("\tauthmode %u flags 0x%x\n",
+	kprintf("\tauthmode %u flags 0x%x\n",
 		ni->ni_authmode, ni->ni_flags);
-	printf("\tassocid 0x%x txpower %u vlan %u\n",
+	kprintf("\tassocid 0x%x txpower %u vlan %u\n",
 		ni->ni_associd, ni->ni_txpower, ni->ni_vlan);
-	printf("\ttxseq %u rxseq %u fragno %u rxfragstamp %u\n",
+	kprintf("\ttxseq %u rxseq %u fragno %u rxfragstamp %u\n",
 		ni->ni_txseqs[0],
 		ni->ni_rxseqs[0] >> IEEE80211_SEQ_SEQ_SHIFT,
 		ni->ni_rxseqs[0] & IEEE80211_SEQ_FRAG_MASK,
 		ni->ni_rxfragstamp);
-	printf("\trstamp %u rssi %u intval %u capinfo 0x%x\n",
+	kprintf("\trstamp %u rssi %u intval %u capinfo 0x%x\n",
 		ni->ni_rstamp, ni->ni_rssi, ni->ni_intval, ni->ni_capinfo);
-	printf("\tbssid %6D essid \"%.*s\" channel %u:0x%x\n",
+	kprintf("\tbssid %6D essid \"%.*s\" channel %u:0x%x\n",
 		ni->ni_bssid, ":",
 		ni->ni_esslen, ni->ni_essid,
 		ni->ni_chan->ic_freq, ni->ni_chan->ic_flags);
-	printf("\tfails %u inact %u txrate %u\n",
+	kprintf("\tfails %u inact %u txrate %u\n",
 		ni->ni_fails, ni->ni_inact, ni->ni_txrate);
 }
 
@@ -2331,7 +2331,7 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 		int i;
 		for (i = 0; i < nt->nt_keyixmax; i++)
 			if (nt->nt_keyixmap[i] != NULL) {
-				printf("%s: %s[%u] still active\n", __func__,
+				kprintf("%s: %s[%u] still active\n", __func__,
 				       nt->nt_name, i);
 			}
 		kfree(nt->nt_keyixmap, M_80211_NODE);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_msg.c,v 1.5 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_msg.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_msg.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -133,7 +133,7 @@ spans_send_msg(struct spans *spp, spans_msg *msg)
 	if (msg->sm_type != SPANS_STAT_REQ &&
 			msg->sm_type != SPANS_STAT_IND &&
 			msg->sm_type != SPANS_STAT_RSP) {
-		printf("spans_send_msg: sending ");
+		kprintf("spans_send_msg: sending ");
 		spans_print_msg(msg);
 	}
 #endif
@@ -1453,7 +1453,7 @@ spans_rcv_msg(struct spans *spp, KBuffer *m)
 	if (msg->sm_type != SPANS_STAT_REQ &&
 			msg->sm_type != SPANS_STAT_IND &&
 			msg->sm_type != SPANS_STAT_RSP) {
-		printf("spans_rcv_msg: got ");
+		kprintf("spans_rcv_msg: got ");
 		spans_print_msg(msg);
 	}
 #endif

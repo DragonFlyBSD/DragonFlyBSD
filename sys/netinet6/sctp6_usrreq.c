@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.7 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.8 2006/12/22 23:57:53 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -242,7 +242,7 @@ sctp6_input(struct mbuf **mp, int *offp, int proto)
 	sctp_pegs[SCTP_INPKTS]++;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-		printf("V6 input gets a packet iphlen:%d pktlen:%d\n", iphlen, m->m_pkthdr.len);
+		kprintf("V6 input gets a packet iphlen:%d pktlen:%d\n", iphlen, m->m_pkthdr.len);
 	}
 #endif
  	if (IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst)) {
@@ -272,7 +272,7 @@ sctp6_input(struct mbuf **mp, int *offp, int proto)
 		if (calc_check != check) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-				printf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%x mlen:%d iphlen:%d\n",
+				kprintf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%x mlen:%d iphlen:%d\n",
 				       calc_check, check, (u_int)m,
 				       mlen, iphlen);
 			}
@@ -301,7 +301,7 @@ sctp_skip_csum:
 	 */
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-		printf("V6 Find the association\n");
+		kprintf("V6 Find the association\n");
 	}
 #endif
 	stcb = sctp_findassociation_addr(m, iphlen, offset - sizeof(*ch),
@@ -993,7 +993,7 @@ sctp6_disconnect(struct socket *so)
 					/* only send SHUTDOWN the first time */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-						printf("%s:%d sends a shutdown\n",
+						kprintf("%s:%d sends a shutdown\n",
 						       __FILE__,
 						       __LINE__
 							);
@@ -1135,7 +1135,7 @@ connected_type:
 	/* now what about control */
 	if (control) {
 		if (inp->control) {
-			printf("huh? control set?\n");
+			kprintf("huh? control set?\n");
 			m_freem(inp->control);
 			inp->control = NULL;
 		}

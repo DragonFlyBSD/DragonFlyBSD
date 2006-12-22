@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.c,v 1.16.2.1 2000/07/15 07:14:31 kris Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.5 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.6 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -156,10 +156,10 @@ tcp_trace(short act, short ostate, struct tcpcb *tp, void *ipgen,
 	if (tcpconsdebug == 0)
 		return;
 	if (tp)
-		printf("%p %s:", tp, tcpstates[ostate]);
+		kprintf("%p %s:", tp, tcpstates[ostate]);
 	else
-		printf("???????? ");
-	printf("%s ", tanames[act]);
+		kprintf("???????? ");
+	kprintf("%s ", tanames[act]);
 	switch (act) {
 
 	case TA_INPUT:
@@ -182,41 +182,41 @@ tcp_trace(short act, short ostate, struct tcpcb *tp, void *ipgen,
 		if (act == TA_OUTPUT)
 			len -= sizeof(struct tcphdr);
 		if (len)
-			printf("[%x..%x)", seq, seq+len);
+			kprintf("[%x..%x)", seq, seq+len);
 		else
-			printf("%x", seq);
-		printf("@%x, urp=%x", ack, th->th_urp);
+			kprintf("%x", seq);
+		kprintf("@%x, urp=%x", ack, th->th_urp);
 		flags = th->th_flags;
 		if (flags) {
 			char *cp = "<";
 #define pf(f) {					\
 	if (th->th_flags & TH_##f) {		\
-		printf("%s%s", cp, #f);		\
+		kprintf("%s%s", cp, #f);		\
 		cp = ",";			\
 	}					\
 }
 			pf(SYN); pf(ACK); pf(FIN); pf(RST); pf(PUSH); pf(URG);
-			printf(">");
+			kprintf(">");
 		}
 		break;
 
 	case TA_USER:
-		printf("%s", prurequests[req&0xff]);
+		kprintf("%s", prurequests[req&0xff]);
 		if ((req & 0xff) == PRU_SLOWTIMO)
-			printf("<%s>", tcptimers[req>>8]);
+			kprintf("<%s>", tcptimers[req>>8]);
 		break;
 	}
 	if (tp)
-		printf(" -> %s", tcpstates[tp->t_state]);
+		kprintf(" -> %s", tcpstates[tp->t_state]);
 	/* print out internal state of tp !?! */
-	printf("\n");
+	kprintf("\n");
 	if (tp == 0)
 		return;
-	printf(
+	kprintf(
 	"\trcv_(nxt,wnd,up) (%lx,%lx,%lx) snd_(una,nxt,max) (%lx,%lx,%lx)\n",
 	    (u_long)tp->rcv_nxt, tp->rcv_wnd, (u_long)tp->rcv_up,
 	    (u_long)tp->snd_una, (u_long)tp->snd_nxt, (u_long)tp->snd_max);
-	printf("\tsnd_(wl1,wl2,wnd) (%lx,%lx,%lx)\n",
+	kprintf("\tsnd_(wl1,wl2,wnd) (%lx,%lx,%lx)\n",
 	    (u_long)tp->snd_wl1, (u_long)tp->snd_wl2, tp->snd_wnd);
 #endif /* TCPDEBUG */
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.23 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.24 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -1229,7 +1229,7 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 			ia->ia_next = oia->ia_next;
 		else {
 			/* search failed */
-			printf("Couldn't unlink in6_ifaddr from in6_ifaddr\n");
+			kprintf("Couldn't unlink in6_ifaddr from in6_ifaddr\n");
 		}
 	}
 
@@ -1919,7 +1919,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 
 	if (oifp == NULL) {
 #if 0
-		printf("in6_ifawithscope: output interface is not specified\n");
+		kprintf("in6_ifawithscope: output interface is not specified\n");
 #endif
 		return (NULL);
 	}

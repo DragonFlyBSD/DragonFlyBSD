@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.13 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.14 2006/12/22 23:57:54 swildner Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -626,7 +626,7 @@ static int
 ipe4_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 {
 	/* This is a rather serious mistake, so no conditional printing. */
-	printf("ipe4_input: should never be called\n");
+	kprintf("ipe4_input: should never be called\n");
 	if (m)
 		m_freem(m);
 	return EOPNOTSUPP;

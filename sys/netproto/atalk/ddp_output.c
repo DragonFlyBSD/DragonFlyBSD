@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.8 2005/11/28 17:13:46 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.9 2006/12/22 23:57:53 swildner Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -78,7 +78,7 @@ ddp_output(struct mbuf *m, struct socket *so, ...)
     deh->deh_bytes = htonl( deh->deh_bytes );
 
 #ifdef NETATALK_DEBUG
-    printf ("ddp_output: from %d.%d:%d to %d.%d:%d\n",
+    kprintf ("ddp_output: from %d.%d:%d to %d.%d:%d\n",
 	ntohs(deh->deh_snet), deh->deh_snode, deh->deh_sport,
 	ntohs(deh->deh_dnet), deh->deh_dnode, deh->deh_dport);
 #endif
@@ -155,18 +155,18 @@ ddp_route( struct mbuf *m, struct route *ro)
 	m_freem( m );
 #ifdef NETATALK_DEBUG
 	if (ro->ro_rt == NULL)
-	    printf ("ddp_route: no ro_rt.\n");
+	    kprintf ("ddp_route: no ro_rt.\n");
 	else if (ro->ro_rt->rt_ifa == NULL)
-	    printf ("ddp_route: no ro_rt->rt_ifa\n");
+	    kprintf ("ddp_route: no ro_rt->rt_ifa\n");
 	else
-	    printf ("ddp_route: no ro_rt->rt_ifa->ifa_ifp\n");
+	    kprintf ("ddp_route: no ro_rt->rt_ifa->ifa_ifp\n");
 #endif
 	return( ENETUNREACH );
     }
 
     if ( aa == NULL ) {
 #ifdef NETATALK_DEBUG
-	printf( "ddp_route: no atalk address found for %s\n", 
+	kprintf( "ddp_route: no atalk address found for %s\n", 
 	    ifp->if_xname);
 #endif
 	m_freem( m );
@@ -196,7 +196,7 @@ ddp_route( struct mbuf *m, struct route *ro)
 	MGET( m0, MB_WAIT, MT_HEADER );
 	if ( m0 == 0 ) {
 	    m_freem( m );
-	    printf("ddp_route: no buffers\n");
+	    kprintf("ddp_route: no buffers\n");
 	    return( ENOBUFS );
 	}
 	m0->m_next = m;
@@ -212,7 +212,7 @@ ddp_route( struct mbuf *m, struct route *ro)
     ro->ro_rt->rt_use++;
 
 #ifdef NETATALK_DEBUG
-    printf ("ddp_route: from %d.%d to %d.%d, via %d.%d (%s)\n",
+    kprintf ("ddp_route: from %d.%d to %d.%d, via %d.%d (%s)\n",
 	ntohs(satosat(&aa->aa_addr)->sat_addr.s_net),
 	satosat(&aa->aa_addr)->sat_addr.s_node,
 	ntohs(satosat(&ro->ro_dst)->sat_addr.s_net),

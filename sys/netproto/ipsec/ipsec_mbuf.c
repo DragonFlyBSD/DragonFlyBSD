@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_mbuf.c,v 1.5.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.6 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -456,13 +456,13 @@ m_checkalignment(const char* where, struct mbuf *m0, int off, int len)
 
 	if (m == NULL)
 		return;
-	printf("%s (off %u len %u): ", where, off, len);
+	kprintf("%s (off %u len %u): ", where, off, len);
 	addr = mtod(m, caddr_t) + roff;
 	do {
 		int mlen;
 
 		if (((uintptr_t) addr) & 3) {
-			printf("addr misaligned %p,", addr);
+			kprintf("addr misaligned %p,", addr);
 			break;
 		}
 		mlen = m->m_len;
@@ -470,13 +470,13 @@ m_checkalignment(const char* where, struct mbuf *m0, int off, int len)
 			mlen = len;
 		len -= mlen;
 		if (len && (mlen & 3)) {
-			printf("len mismatch %u,", mlen);
+			kprintf("len mismatch %u,", mlen);
 			break;
 		}
 		m = m->m_next;
 		addr = m ? mtod(m, caddr_t) : NULL;
 	} while (m && len > 0);
 	for (m = m0; m; m = m->m_next)
-		printf(" [%p:%u]", mtod(m, caddr_t), m->m_len);
-	printf("\n");
+		kprintf(" [%p:%u]", mtod(m, caddr_t), m->m_len);
+	kprintf("\n");
 }

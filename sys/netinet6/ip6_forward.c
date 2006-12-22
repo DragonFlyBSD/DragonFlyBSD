@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.12 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.13 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -221,7 +221,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	case IPSEC_POLICY_IPSEC:
 		if (sp->req == NULL) {
 			/* XXX should be panic ? */
-			printf("ip6_forward: No IPsec request specified.\n");
+			kprintf("ip6_forward: No IPsec request specified.\n");
 			ip6stat.ip6s_cantforward++;
 			key_freesp(sp);
 			if (mcopy) {
@@ -240,7 +240,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	case IPSEC_POLICY_ENTRUST:
 	default:
 		/* should be panic ?? */
-		printf("ip6_forward: Invalid policy found. %d\n", sp->policy);
+		kprintf("ip6_forward: Invalid policy found. %d\n", sp->policy);
 		key_freesp(sp);
 		goto skip_ipsec;
 	}
@@ -276,7 +276,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 		case ENOMEM:
 			break;
 		default:
-			printf("ip6_output (ipsec): error code %d\n", error);
+			kprintf("ip6_output (ipsec): error code %d\n", error);
 			/* fall through */
 		case ENOENT:
 			/* don't show these error codes to the user */
@@ -490,7 +490,7 @@ skip_ipsec:
 		if ((rt->rt_flags & (RTF_BLACKHOLE | RTF_REJECT)) == 0)
 #endif
 		{
-			printf("ip6_forward: outgoing interface is loopback. "
+			kprintf("ip6_forward: outgoing interface is loopback. "
 				"src %s, dst %s, nxt %d, rcvif %s, outif %s\n",
 				ip6_sprintf(&ip6->ip6_src),
 				ip6_sprintf(&ip6->ip6_dst),

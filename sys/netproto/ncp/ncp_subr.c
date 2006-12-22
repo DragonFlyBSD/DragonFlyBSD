@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.9 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -170,7 +170,7 @@ ncp_get_bindery_object_id(struct ncp_conn *conn,
 	ncp_rq_pstring(rqp, object_name);
 	checkbad(ncp_request(conn,rqp));
 	if (rqp->rpsize < 54) {
-		printf("ncp_rp_size %d < 54\n", rqp->rpsize);
+		kprintf("ncp_rp_size %d < 54\n", rqp->rpsize);
 		error = EINVAL;
 		goto bad;
 	}
@@ -228,7 +228,7 @@ ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *c
 	DECLARE_RQ;
 
 	if (uiop->uio_iovcnt != 1) {
-		printf("%s: can't handle iovcnt>1 !!!\n", __func__);
+		kprintf("%s: can't handle iovcnt>1 !!!\n", __func__);
 		return EIO;
 	}
 	tsiz = uiop->uio_resid;
@@ -236,7 +236,7 @@ ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *c
 		len = min(4096 - (uiop->uio_offset % 4096), tsiz);
 		len = min(len, conn->buffer_size);
 		if (len == 0) {
-			printf("gotcha!\n");
+			kprintf("gotcha!\n");
 		}
 		/* rq head */
 		NCP_RQ_HEAD(73,uiop->uio_td,cred);

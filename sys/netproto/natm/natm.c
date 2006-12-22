@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.22 2006/12/20 18:14:44 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.23 2006/12/22 23:57:54 swildner Exp $ */
 
 /*
  *
@@ -247,7 +247,7 @@ natm_usr_disconnect(struct socket *so)
     }
 
     if ((npcb->npcb_flags & NPCB_CONNECTED) == 0) {
-        printf("natm: disconnected check\n");
+        kprintf("natm: disconnected check\n");
         error = EIO;
 	goto out;
     }
@@ -566,7 +566,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
     case PRU_DISCONNECT:		/* disconnect from peer */
 
       if ((npcb->npcb_flags & NPCB_CONNECTED) == 0) {
-        printf("natm: disconnected check\n");
+        kprintf("natm: disconnected check\n");
         error = EIO;
 	break;
       }
@@ -683,7 +683,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
     case PRU_PROTOSEND:			/* send to below */
     case PRU_SOCKADDR:			/* fetch socket's address */
 #ifdef DIAGNOSTIC
-      printf("natm: PRU #%d unsupported\n", req);
+      kprintf("natm: PRU #%d unsupported\n", req);
 #endif
       error = EOPNOTSUPP;
       break;

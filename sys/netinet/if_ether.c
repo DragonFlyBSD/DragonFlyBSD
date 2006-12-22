@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.34 2006/07/20 16:22:48 corecode Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.35 2006/12/22 23:57:52 swildner Exp $
  */
 
 /*
@@ -893,7 +893,7 @@ reply:
 			memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
 			memcpy(ar_sha(ah), IF_LLADDR(ifp), ah->ar_hln);
 #ifdef DEBUG_PROXY
-			printf("arp: proxying for %s\n", inet_ntoa(itaddr));
+			kprintf("arp: proxying for %s\n", inet_ntoa(itaddr));
 #endif
 		} else {
 			struct sockaddr_dl *sdl;

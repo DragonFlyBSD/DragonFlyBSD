@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.3 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.4 2006/12/22 23:57:52 swildner Exp $
  */
 
 /*
@@ -377,10 +377,10 @@ tcp_sack_dump_blocks(struct scoreboard *scb)
 {
 	struct sackblock *sb;
 
-	printf("%d blocks:", scb->nblocks);
+	kprintf("%d blocks:", scb->nblocks);
 	TAILQ_FOREACH(sb, &scb->sackblocks, sblk_list)
-		printf(" [%u, %u)", sb->sblk_start, sb->sblk_end);
-	printf("\n");
+		kprintf(" [%u, %u)", sb->sblk_start, sb->sblk_end);
+	kprintf("\n");
 }
 #else
 static __inline void
@@ -584,11 +584,11 @@ tcp_sack_dump_history(char *msg, struct tcpcb *tp)
 	if (++ndumped > 900)
 		return;
 
-	printf("%s:\tnsackhistory %d: ", msg, tp->nsackhistory);
+	kprintf("%s:\tnsackhistory %d: ", msg, tp->nsackhistory);
 	for (i = 0; i < tp->nsackhistory; ++i)
-		printf("[%u, %u) ", tp->sackhistory[i].rblk_start,
+		kprintf("[%u, %u) ", tp->sackhistory[i].rblk_start,
 		    tp->sackhistory[i].rblk_end);
-	printf("\n");
+	kprintf("\n");
 }
 #else
 static __inline void

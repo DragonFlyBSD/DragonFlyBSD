@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.8 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.9 2006/12/22 23:57:52 swildner Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 	switch (req) {
 
 	case RTM_RESOLVE: /* resolve: only happens when cloning */
-		printf("atm_rtrequest: RTM_RESOLVE request detected?\n");
+		kprintf("atm_rtrequest: RTM_RESOLVE request detected?\n");
 		break;
 
 	case RTM_ADD:
@@ -114,7 +114,7 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		}
 
 		if ((rt->rt_flags & RTF_CLONING) != 0) {
-			printf("atm_rtrequest: cloning route detected?\n");
+			kprintf("atm_rtrequest: cloning route detected?\n");
 			break;
 		}
 		if (gate->sa_family != AF_LINK ||
@@ -156,7 +156,7 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 					     (caddr_t)&api, NULL);
 		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
 		if (error) {
-			printf("atm: couldn't add VC\n");
+			kprintf("atm: couldn't add VC\n");
 			goto failed;
 		}
 

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_acl.c,v 1.3.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_acl/ieee80211_acl.c,v 1.2 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_acl/ieee80211_acl.c,v 1.3 2006/12/22 23:57:53 swildner Exp $
  */
 
 /*
@@ -329,7 +329,7 @@ wlan_acl_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if (bootverbose)
-			printf("wlan: <802.11 MAC ACL support>\n");
+			kprintf("wlan: <802.11 MAC ACL support>\n");
 		ieee80211_aclator_register(&mac);
 		return 0;
 	case MOD_UNLOAD:

@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.11 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -402,7 +402,7 @@ at_ifinit(struct ifnet *ifp, struct at_ifaddr *aa, struct sockaddr_at *sat)
 
 /* XXX ALC */
 #if 0
-    printf("at_ifinit: %s: %u.%u range %u-%u phase %d\n",
+    kprintf("at_ifinit: %s: %u.%u range %u-%u phase %d\n",
 	ifp->if_name,
 	ntohs(sat->sat_addr.s_net), sat->sat_addr.s_node,
 	ntohs(aa->aa_firstnet), ntohs(aa->aa_lastnet),
@@ -529,7 +529,7 @@ at_ifinit(struct ifnet *ifp, struct at_ifaddr *aa, struct sockaddr_at *sat)
 		     * theoretically we shouldn't time out here
 		     * so if we returned with an error..
 		     */
-		    printf( "at_ifinit: why did this happen?!\n" );
+		    kprintf( "at_ifinit: why did this happen?!\n" );
 		    aa->aa_addr = oldaddr;
 		    aa->aa_firstnet = onr.nr_firstnet;
 		    aa->aa_lastnet = onr.nr_lastnet;
@@ -771,14 +771,14 @@ aa_addsingleroute(struct ifaddr *ifa,
   int	error;
 
 #if 0
-  printf("aa_addsingleroute: %x.%x mask %x.%x ...\n",
+  kprintf("aa_addsingleroute: %x.%x mask %x.%x ...\n",
     ntohs(addr->s_net), addr->s_node,
     ntohs(mask->s_net), mask->s_node);
 #endif
 
   error = aa_dosingleroute(ifa, addr, mask, RTM_ADD, RTF_UP);
   if (error)
-    printf("aa_addsingleroute: error %d\n", error);
+    kprintf("aa_addsingleroute: error %d\n", error);
   return(error);
 }
 
@@ -790,7 +790,7 @@ aa_delsingleroute(struct ifaddr *ifa,
 
   error = aa_dosingleroute(ifa, addr, mask, RTM_DELETE, 0);
   if (error)
-  	printf("aa_delsingleroute: error %d\n", error);
+  	kprintf("aa_delsingleroute: error %d\n", error);
   return(error);
 }
 
@@ -875,7 +875,7 @@ aa_claim_addr(struct ifaddr *ifa, struct sockaddr *gw0)
 		} 
 		break;
 	default:
-		printf("atalk: bad phase\n");
+		kprintf("atalk: bad phase\n");
 	}
 	return 0;
 }

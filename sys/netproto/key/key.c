@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.18 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.19 2006/12/22 23:57:54 swildner Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -316,13 +316,13 @@ do { \
 #define KMALLOC(p, t, n) \
 do { \
 	((p) = (t)kmalloc((unsigned long)(n), M_SECA, M_INTWAIT | M_NULLOK)); \
-	printf("%s %d: %p <- KMALLOC(%s, %d)\n",                             \
+	kprintf("%s %d: %p <- KMALLOC(%s, %d)\n",                             \
 		__FILE__, __LINE__, (p), #t, n);                             \
 } while (0)
 
 #define KFREE(p)                                                             \
 	do {                                                                 \
-		printf("%s %d: %p -> KFREE()\n", __FILE__, __LINE__, (p));   \
+		kprintf("%s %d: %p -> KFREE()\n", __FILE__, __LINE__, (p));   \
 		kfree((caddr_t)(p), M_SECA);                                  \
 	} while (0)
 #endif
@@ -528,12 +528,12 @@ key_allocsp(struct secpolicyindex *spidx, u_int dir)
 	/* get a SP entry */
 	crit_enter();
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
-		printf("*** objects\n");
+		kprintf("*** objects\n");
 		kdebug_secpolicyindex(spidx));
 
 	LIST_FOREACH(sp, &sptree[dir], chain) {
 		KEYDEBUG(KEYDEBUG_IPSEC_DATA,
-			printf("*** in SPD\n");
+			kprintf("*** in SPD\n");
 			kdebug_secpolicyindex(&sp->spidx));
 
 		if (sp->state == IPSEC_SPSTATE_DEAD)
@@ -555,7 +555,7 @@ found:
 	sp->refcnt++;
 	crit_exit();
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP key_allocsp cause refcnt++:%d SP:%p\n",
+		kprintf("DP key_allocsp cause refcnt++:%d SP:%p\n",
 			sp->refcnt, sp));
 
 	return sp;
@@ -673,7 +673,7 @@ key_checkrequest(struct ipsecrequest *isr, struct secasindex *saidx)
 		if (isr->sav == (struct secasvar *)LIST_FIRST(
 			    &isr->sav->sah->savtree[SADB_SASTATE_DEAD])) {
 			KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-				printf("DP checkrequest calls free SA:%p\n",
+				kprintf("DP checkrequest calls free SA:%p\n",
 					isr->sav));
 			key_freesav(isr->sav);
 			isr->sav = NULL;
@@ -889,7 +889,7 @@ key_do_allocsa_policy(struct secashead *sah, u_int state)
 	if (candidate) {
 		candidate->refcnt++;
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP allocsa_policy cause "
+			kprintf("DP allocsa_policy cause "
 				"refcnt++:%d SA:%p\n",
 				candidate->refcnt, candidate));
 	}
@@ -1051,7 +1051,7 @@ found:
 	sav->refcnt++;
 	crit_exit();
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP allocsa cause refcnt++:%d SA:%p\n",
+		kprintf("DP allocsa cause refcnt++:%d SA:%p\n",
 			sav->refcnt, sav));
 	return sav;
 }
@@ -1069,7 +1069,7 @@ key_freesp(struct secpolicy *sp)
 
 	sp->refcnt--;
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP freesp cause refcnt--:%d SP:%p\n",
+		kprintf("DP freesp cause refcnt--:%d SP:%p\n",
 			sp->refcnt, sp));
 
 	if (sp->refcnt == 0)
@@ -1145,7 +1145,7 @@ key_freesp_so(struct secpolicy **sp)
 	switch ((*sp)->policy) {
 	case IPSEC_POLICY_IPSEC:
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-			printf("DP freeso calls free SP:%p\n", *sp));
+			kprintf("DP freeso calls free SP:%p\n", *sp));
 		key_freesp(*sp);
 		*sp = NULL;
 		break;
@@ -1173,7 +1173,7 @@ key_freesav(struct secasvar *sav)
 
 	sav->refcnt--;
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP freesav cause refcnt--:%d SA:%p SPI %u\n",
+		kprintf("DP freesav cause refcnt--:%d SA:%p SPI %u\n",
 			sav->refcnt, sav, (u_int32_t)ntohl(sav->spi)));
 
 	if (sav->refcnt == 0)
@@ -1209,7 +1209,7 @@ key_delsp(struct secpolicy *sp)
 	while (isr != NULL) {
 		if (isr->sav != NULL) {
 			KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-				printf("DP delsp calls free SA:%p\n",
+				kprintf("DP delsp calls free SA:%p\n",
 					isr->sav));
 			key_freesav(isr->sav);
 			isr->sav = NULL;
@@ -4380,7 +4380,7 @@ key_randomfill(void *p, size_t l)
 		n += sizeof(v);
 
 		if (warn) {
-			printf("WARNING: pseudo-random number generator "
+			kprintf("WARNING: pseudo-random number generator "
 			    "used for IPsec processing\n");
 			warn = 0;
 		}
@@ -4886,7 +4886,7 @@ key_getsavbyseq(struct secashead *sah, u_int32_t seq)
 		if (sav->seq == seq) {
 			sav->refcnt++;
 			KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-				printf("DP key_getsavbyseq cause "
+				kprintf("DP key_getsavbyseq cause "
 					"refcnt++:%d SA:%p\n",
 					sav->refcnt, sav));
 			return sav;
@@ -7111,7 +7111,7 @@ key_init(void)
 	/* initialize key statistics */
 	keystat.getspi_count = 1;
 
-	printf("IPsec: Initialized Security Association Processing.\n");
+	kprintf("IPsec: Initialized Security Association Processing.\n");
 
 	return;
 }

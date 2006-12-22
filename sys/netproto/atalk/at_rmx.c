@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * at_rmx.c,v 1.13 1995/05/30 08:09:31 rgrimes Exp
- * $DragonFly: src/sys/netproto/atalk/at_rmx.c,v 1.3 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_rmx.c,v 1.4 2006/12/22 23:57:53 swildner Exp $
  */
 
 /* This code generates debugging traces to the radix code */
@@ -73,14 +73,14 @@ at_addroute(char *key, char *mask, struct radix_node_head *head,
 {
 	struct radix_node *rn;
 
-	printf("at_addroute: v=%s\n", prsockaddr(key));
-	printf("at_addroute: n=%s\n", prsockaddr(mask));
-	printf("at_addroute: head=%p treenodes=%p\n",
+	kprintf("at_addroute: v=%s\n", prsockaddr(key));
+	kprintf("at_addroute: n=%s\n", prsockaddr(mask));
+	kprintf("at_addroute: head=%p treenodes=%p\n",
 	    (void *)head, (void *)treenodes);
 
 	rn = rn_addroute(key, mask, head, treenodes);
 
-	printf("at_addroute: returns rn=%p\n", (void *)rn);
+	kprintf("at_addroute: returns rn=%p\n", (void *)rn);
 
 	return rn;
 }
@@ -90,12 +90,12 @@ at_matroute(char *key, struct radix_node_head *head)
 {
 	struct radix_node *rn;
 
-	printf("at_matroute: v=%s\n", prsockaddr(key));
-	printf("at_matroute: head=%p\n", (void *)head);
+	kprintf("at_matroute: v=%s\n", prsockaddr(key));
+	kprintf("at_matroute: head=%p\n", (void *)head);
 
 	rn = rn_match(key, head);
 
-	printf("at_matroute: returnr rn=%p\n", (void *)rn);
+	kprintf("at_matroute: returnr rn=%p\n", (void *)rn);
 
 	return rn;
 }
@@ -105,13 +105,13 @@ at_lookup(char *key, char *mask, struct radix_node_head *head)
 {
 	struct radix_node *rn;
 
-	printf("at_lookup: v=%s\n", prsockaddr(key));
-	printf("at_lookup: n=%s\n", prsockaddr(mask));
-	printf("at_lookup: head=%p\n", (void *)head);
+	kprintf("at_lookup: v=%s\n", prsockaddr(key));
+	kprintf("at_lookup: n=%s\n", prsockaddr(mask));
+	kprintf("at_lookup: head=%p\n", (void *)head);
 
 	rn = rn_lookup(key, mask, head);
 
-	printf("at_lookup: returns rn=%p\n", (void *)rn);
+	kprintf("at_lookup: returns rn=%p\n", (void *)rn);
 
 	return rn;
 }
@@ -121,13 +121,13 @@ at_delroute(char *key, char *netmask, struct radix_node_head *head)
 {
 	struct radix_node *rn;
 
-	printf("at_delroute: v=%s\n", prsockaddr(key));
-	printf("at_delroute: n=%s\n", prsockaddr(netmask));
-	printf("at_delroute: head=%p\n", (void *)head);
+	kprintf("at_delroute: v=%s\n", prsockaddr(key));
+	kprintf("at_delroute: n=%s\n", prsockaddr(netmask));
+	kprintf("at_delroute: head=%p\n", (void *)head);
 
 	rn = rn_delete(key, netmask, head);
 
-	printf("at_delroute: returns rn=%p\n", (void *)rn);
+	kprintf("at_delroute: returns rn=%p\n", (void *)rn);
 
 	return rn;
 }

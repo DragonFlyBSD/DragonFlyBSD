@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.9 2006/12/09 07:22:49 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.10 2006/12/22 23:57:53 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -183,7 +183,7 @@ ieee80211_mgmt_output(struct ieee80211com *ic, struct ieee80211_node *ni,
 	/* avoid printing too many frames */
 	if ((ieee80211_msg_debug(ic) && doprint(ic, type)) ||
 	    ieee80211_msg_dumppkts(ic)) {
-		printf("[%6D] send %s on channel %u\n",
+		kprintf("[%6D] send %s on channel %u\n",
 		    wh->i_addr1, ":",
 		    ieee80211_mgt_subtype_name[
 			(type & IEEE80211_FC0_SUBTYPE_MASK) >>

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.9 2006/12/05 23:31:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.10 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -386,7 +386,7 @@ sctp_notify(struct sctp_inpcb *inp,
 	    (sh == NULL) || (to == NULL)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("sctp-notify, bad call\n");
+			kprintf("sctp-notify, bad call\n");
 		}
 #endif /* SCTP_DEBUG */
 		return;
@@ -882,7 +882,7 @@ sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	/* now what about control */
 	if (control) {
 		if (inp->control) {
-			printf("huh? control set?\n");
+			kprintf("huh? control set?\n");
 			sctp_m_freem(inp->control);
 			inp->control = NULL;
 		}
@@ -1014,7 +1014,7 @@ sctp_disconnect(struct socket *so)
 					/* only send SHUTDOWN 1st time thru */
 #ifdef SCTP_DEBUG
 					if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-						printf("%s:%d sends a shutdown\n",
+						kprintf("%s:%d sends a shutdown\n",
 						       __FILE__,
 						       __LINE__
 							);
@@ -1123,7 +1123,7 @@ sctp_shutdown(struct socket *so)
 				/* only send SHUTDOWN the first time through */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-					printf("%s:%d sends a shutdown\n",
+					kprintf("%s:%d sends a shutdown\n",
 					       __FILE__,
 					       __LINE__
 						);
@@ -1431,7 +1431,7 @@ sctp_do_connect_x(struct socket *so,
 	int num_v6=0, num_v4=0, *totaddrp, totaddr, i, incr, at;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Connectx called\n");
+		kprintf("Connectx called\n");
 	}
 #endif /* SCTP_DEBUG */
 
@@ -1632,7 +1632,7 @@ sctp_optsget(struct socket *so,
 	if (mp == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("optsget:MP is NULL EINVAL\n");
+			kprintf("optsget:MP is NULL EINVAL\n");
 		}
 #endif /* SCTP_DEBUG */
 		return (EINVAL);
@@ -1642,14 +1642,14 @@ sctp_optsget(struct socket *so,
 		/* Got to have a mbuf */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("Huh no mbuf\n");
+			kprintf("Huh no mbuf\n");
 		}
 #endif /* SCTP_DEBUG */
 		return (EINVAL);
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-		printf("optsget opt:%lxx sz:%u\n", (unsigned long)opt,
+		kprintf("optsget opt:%lxx sz:%u\n", (unsigned long)opt,
 		       m->m_len);
 	}
 #endif /* SCTP_DEBUG */
@@ -1662,7 +1662,7 @@ sctp_optsget(struct socket *so,
 	case SCTP_I_WANT_MAPPED_V4_ADDR:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-			printf("other stuff\n");
+			kprintf("other stuff\n");
 		}
 #endif /* SCTP_DEBUG */
 		SCTP_INP_RLOCK(inp);
@@ -1891,7 +1891,7 @@ sctp_optsget(struct socket *so,
 		error = 0;
 		*level = sctp_debug_on;
 		m->m_len = sizeof(u_int32_t);
-		printf("Returning DEBUG LEVEL %x is set\n",
+		kprintf("Returning DEBUG LEVEL %x is set\n",
 		       (u_int)sctp_debug_on);
 	}
 #else /* SCTP_DEBUG */
@@ -1922,13 +1922,13 @@ sctp_optsget(struct socket *so,
 		struct sctp_event_subscribe *events;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-			printf("get events\n");
+			kprintf("get events\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_event_subscribe)) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-				printf("M->M_LEN is %d not %d\n",
+				kprintf("M->M_LEN is %d not %d\n",
 				       (int)m->m_len,
 				       (int)sizeof(struct sctp_event_subscribe));
 			}
@@ -1978,7 +1978,7 @@ sctp_optsget(struct socket *so,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("getadaption ind\n");
+			kprintf("getadaption ind\n");
 		}
 #endif /* SCTP_DEBUG */
 		SCTP_INP_RLOCK(inp);
@@ -1993,7 +1993,7 @@ sctp_optsget(struct socket *so,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("get initial dbg seq\n");
+			kprintf("get initial dbg seq\n");
 		}
 #endif /* SCTP_DEBUG */
 		SCTP_INP_RLOCK(inp);
@@ -2008,7 +2008,7 @@ sctp_optsget(struct socket *so,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("get local sizes\n");
+			kprintf("get local sizes\n");
 		}
 #endif /* SCTP_DEBUG */
 		SCTP_INP_RLOCK(inp);
@@ -2023,12 +2023,12 @@ sctp_optsget(struct socket *so,
 		struct sctp_nets *net;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("get remote size\n");
+			kprintf("get remote size\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(sctp_assoc_t)) {
 #ifdef SCTP_DEBUG
-			printf("m->m_len:%d not %d\n",
+			kprintf("m->m_len:%d not %d\n",
 			       m->m_len, sizeof(sctp_assoc_t));
 #endif /* SCTP_DEBUG */
 			error = EINVAL;
@@ -2083,7 +2083,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_getaddresses *saddr;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("get peer addresses\n");
+			kprintf("get peer addresses\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_getaddresses)) {
@@ -2122,7 +2122,7 @@ sctp_optsget(struct socket *so,
 				/* not enough room. */
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-					printf("Out of room\n");
+					kprintf("Out of room\n");
 				}
 #endif /* SCTP_DEBUG */
 				break;
@@ -2142,7 +2142,7 @@ sctp_optsget(struct socket *so,
 			m->m_len += cpsz;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-				printf("left now:%d mlen:%d\n",
+				kprintf("left now:%d mlen:%d\n",
 				       left, m->m_len);
 			}
 #endif /* SCTP_DEBUG */
@@ -2151,7 +2151,7 @@ sctp_optsget(struct socket *so,
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-		printf("All done\n");
+		kprintf("All done\n");
 	}
 #endif /* SCTP_DEBUG */
 	break;
@@ -2162,7 +2162,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_getaddresses *saddr;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("get local addresses\n");
+			kprintf("get local addresses\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_getaddresses)) {
@@ -2210,13 +2210,13 @@ sctp_optsget(struct socket *so,
 
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("Getting peer_addr_params\n");
+			kprintf("Getting peer_addr_params\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_paddrparams)) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ2) {
-				printf("Hmm m->m_len:%d is to small\n",
+				kprintf("Hmm m->m_len:%d is to small\n",
 				       m->m_len);
 			}
 #endif /* SCTP_DEBUG */
@@ -2229,7 +2229,7 @@ sctp_optsget(struct socket *so,
 		if (paddrp->spp_assoc_id) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				printf("In spp_assoc_id find type\n");
+				kprintf("In spp_assoc_id find type\n");
 			}
 #endif /* SCTP_DEBUG */
 			if (inp->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) {
@@ -2254,7 +2254,7 @@ sctp_optsget(struct socket *so,
 			/* Lookup via address */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				printf("Ok we need to lookup a param\n");
+				kprintf("Ok we need to lookup a param\n");
 			}
 #endif /* SCTP_DEBUG */
 			if (inp->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) {
@@ -2287,7 +2287,7 @@ sctp_optsget(struct socket *so,
 			/* Effects the Endpoint */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				printf("User wants EP level info\n");
+				kprintf("User wants EP level info\n");
 			}
 #endif /* SCTP_DEBUG */
 			stcb = NULL;
@@ -2296,7 +2296,7 @@ sctp_optsget(struct socket *so,
 			/* Applys to the specific association */
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				printf("In TCB side\n");
+				kprintf("In TCB side\n");
 			}
 #endif /* SCTP_DEBUG */
 			if (net) {
@@ -2313,7 +2313,7 @@ sctp_optsget(struct socket *so,
 			SCTP_INP_RLOCK(inp);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				printf("In EP levle info\n");
+				kprintf("In EP levle info\n");
 			}
 #endif /* SCTP_DEBUG */
 			paddrp->spp_pathmaxrxt = inp->sctp_ep.def_net_failure;
@@ -2330,7 +2330,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_nets *net;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("GetPEER ADDR_INFO\n");
+			kprintf("GetPEER ADDR_INFO\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_paddrinfo)) {
@@ -2386,7 +2386,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_pcbinfo *spcb;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("PCB status\n");
+			kprintf("PCB status\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_pcbinfo)) {
@@ -2404,7 +2404,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_status *sstat;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("SCTP status\n");
+			kprintf("SCTP status\n");
 		}
 #endif /* SCTP_DEBUG */
 
@@ -2471,7 +2471,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_rtoinfo *srto;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("RTO Info\n");
+			kprintf("RTO Info\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_rtoinfo)) {
@@ -2513,7 +2513,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_assocparams *sasoc;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("Associnfo\n");
+			kprintf("Associnfo\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_assocparams)) {
@@ -2592,7 +2592,7 @@ sctp_optsget(struct socket *so,
 		struct sctp_initmsg *sinit;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("initmsg\n");
+			kprintf("initmsg\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_initmsg)) {
@@ -2616,7 +2616,7 @@ sctp_optsget(struct socket *so,
 
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("setprimary\n");
+			kprintf("setprimary\n");
 		}
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(struct sctp_setprim)) {
@@ -2688,7 +2688,7 @@ sctp_optsset(struct socket *so,
 	if (mp == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("optsset:MP is NULL EINVAL\n");
+			kprintf("optsset:MP is NULL EINVAL\n");
 		}
 #endif /* SCTP_DEBUG */
 		return (EINVAL);
@@ -2980,7 +2980,7 @@ sctp_optsset(struct socket *so,
 		error = 0;
 		sctp_debug_on = (*level & (SCTP_DEBUG_ALL |
 					   SCTP_DEBUG_NOISY));
-		printf("SETTING DEBUG LEVEL to %x\n",
+		kprintf("SETTING DEBUG LEVEL to %x\n",
 		       (u_int)sctp_debug_on);
 
 	}
@@ -3730,9 +3730,9 @@ sctp_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-		printf("Connect called in SCTP to ");
+		kprintf("Connect called in SCTP to ");
 		sctp_print_address(addr);
-		printf("Port %d\n", ntohs(((struct sockaddr_in *)addr)->sin_port));
+		kprintf("Port %d\n", ntohs(((struct sockaddr_in *)addr)->sin_port));
 	}
 #endif /* SCTP_DEBUG */
 	crit_enter();
@@ -3839,7 +3839,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-		printf("Read for so:%x inp:%x Flags:%x\n",
+		kprintf("Read for so:%x inp:%x Flags:%x\n",
 		       (u_int)so, (u_int)inp, (u_int)flags);
 #endif
 
@@ -3847,7 +3847,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 		/* I made the same as TCP since we are not setup? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-			printf("Nope, connection reset\n");
+			kprintf("Nope, connection reset\n");
 #endif
 		return (ECONNRESET);
 	}
@@ -3890,7 +3890,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-				printf("remove from socket queue for inp:%x tcbret:%x\n",
+				kprintf("remove from socket queue for inp:%x tcbret:%x\n",
 				       (u_int)inp, (u_int)stcb);
 #endif
 
@@ -3938,7 +3938,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 		int sq_cnt=0;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-			printf("Something off, inp:%x so->so_rcv->sb_mb is empty and sockq is not.. cleaning\n",
+			kprintf("Something off, inp:%x so->so_rcv->sb_mb is empty and sockq is not.. cleaning\n",
 			       (u_int)inp);
 #endif
 		if (((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0)
@@ -3953,7 +3953,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-			printf("Cleaned up %d sockq's\n", sq_cnt);
+			kprintf("Cleaned up %d sockq's\n", sq_cnt);
 #endif
 	}
 	SOCKBUF_UNLOCK(&so->so_rcv);
@@ -4466,7 +4466,7 @@ sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 		/* Flags are ignored */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-			printf("Send called on V4 side\n");
+			kprintf("Send called on V4 side\n");
 		}
 #endif
 		{

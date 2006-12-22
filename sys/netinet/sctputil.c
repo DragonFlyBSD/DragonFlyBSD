@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.6 2006/06/23 17:20:14 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.7 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -209,7 +209,7 @@ sctp_log_strm_del(struct sctp_tmit_chunk *chk, struct sctp_tmit_chunk *poschk,
 {
 
 	if (chk == NULL) {
-		printf("Gak log of NULL?\n");
+		kprintf("Gak log of NULL?\n");
 		return;
 	}
 	sctp_clog[sctp_cwnd_log_at].from = (u_int8_t)from;
@@ -422,41 +422,41 @@ sctp_print_audit_report(void)
 		if ((sctp_audit_data[i][0] == 0xe0) &&
 		    (sctp_audit_data[i][1] == 0x01)) {
 			cnt = 0;
-			printf("\n");
+			kprintf("\n");
 		} else if (sctp_audit_data[i][0] == 0xf0) {
 			cnt = 0;
-			printf("\n");
+			kprintf("\n");
 		} else if ((sctp_audit_data[i][0] == 0xc0) &&
 		    (sctp_audit_data[i][1] == 0x01)) {
-			printf("\n");
+			kprintf("\n");
 			cnt = 0;
 		}
-		printf("%2.2x%2.2x ", (uint32_t)sctp_audit_data[i][0],
+		kprintf("%2.2x%2.2x ", (uint32_t)sctp_audit_data[i][0],
 		    (uint32_t)sctp_audit_data[i][1]);
 		cnt++;
 		if ((cnt % 14) == 0)
-			printf("\n");
+			kprintf("\n");
 	}
 	for (i=0;i<sctp_audit_indx;i++) {
 		if ((sctp_audit_data[i][0] == 0xe0) &&
 		    (sctp_audit_data[i][1] == 0x01)) {
 			cnt = 0;
-			printf("\n");
+			kprintf("\n");
 		} else if (sctp_audit_data[i][0] == 0xf0) {
 			cnt = 0;
-			printf("\n");
+			kprintf("\n");
 		} else if ((sctp_audit_data[i][0] == 0xc0) &&
 			 (sctp_audit_data[i][1] == 0x01)) {
-			printf("\n");
+			kprintf("\n");
 			cnt = 0;
 		}
-		printf("%2.2x%2.2x ", (uint32_t)sctp_audit_data[i][0],
+		kprintf("%2.2x%2.2x ", (uint32_t)sctp_audit_data[i][0],
 		    (uint32_t)sctp_audit_data[i][1]);
 		cnt++;
 		if ((cnt % 14) == 0)
-			printf("\n");
+			kprintf("\n");
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 void
@@ -516,7 +516,7 @@ sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		if (sctp_audit_indx >= SCTP_AUDIT_SIZE) {
 			sctp_audit_indx = 0;
 		}
-		printf("resend_cnt:%d asoc-tot:%d\n",
+		kprintf("resend_cnt:%d asoc-tot:%d\n",
 		    resend_cnt, stcb->asoc.sent_queue_retran_cnt);
 		rep = 1;
 		stcb->asoc.sent_queue_retran_cnt = resend_cnt;
@@ -536,7 +536,7 @@ sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			sctp_audit_indx = 0;
 		}
 		rep = 1;
-		printf("tot_flt:%d asoc_tot:%d\n", tot_out,
+		kprintf("tot_flt:%d asoc_tot:%d\n", tot_out,
 		    (int)stcb->asoc.total_flight);
 		stcb->asoc.total_flight = tot_out;
 	}
@@ -548,7 +548,7 @@ sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			sctp_audit_indx = 0;
 		}
 		rep = 1;
-		printf("tot_flt_book:%d\n", tot_book);
+		kprintf("tot_flt_book:%d\n", tot_book);
 
 		stcb->asoc.total_flight_count = tot_book_cnt;
 	}
@@ -564,7 +564,7 @@ sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			sctp_audit_indx = 0;
 		}
 		rep = 1;
-		printf("real flight:%d net total was %d\n",
+		kprintf("real flight:%d net total was %d\n",
 		    stcb->asoc.total_flight, tot_out);
 		/* now corrective action */
 		TAILQ_FOREACH(lnet, &stcb->asoc.nets, sctp_next) {
@@ -576,7 +576,7 @@ sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 				}
 			}
 			if (lnet->flight_size != tot_out) {
-				printf("net:%x flight was %d corrected to %d\n",
+				kprintf("net:%x flight was %d corrected to %d\n",
 				    (uint32_t)lnet, lnet->flight_size, tot_out);
 				lnet->flight_size = tot_out;
 			}
@@ -895,7 +895,7 @@ sctp_expand_mapping_array(struct sctp_association *asoc)
 #endif
 	if (new_array == NULL) {
 		/* can't get more, forget it */
-		printf("No memory for expansion of SCTP mapping array %d\n",
+		kprintf("No memory for expansion of SCTP mapping array %d\n",
 		       new_size);
 		return (-1);
 	}
@@ -963,7 +963,7 @@ sctp_timeout_handler(void *t)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-		printf("Timer type %d goes off\n", tmr->type);
+		kprintf("Timer type %d goes off\n", tmr->type);
 	}
 #endif /* SCTP_DEBUG */
 #ifndef __NetBSD__
@@ -1157,7 +1157,7 @@ sctp_timeout_handler(void *t)
 	default:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("sctp_timeout_handler:unknown timer %d\n",
+			kprintf("sctp_timeout_handler:unknown timer %d\n",
 			       tmr->type);
 		}
 #endif /* SCTP_DEBUG */
@@ -1189,7 +1189,7 @@ sctp_timeout_handler(void *t)
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-		printf("Timer now complete (type %d)\n", typ);
+		kprintf("Timer now complete (type %d)\n", typ);
 	}
 #endif /* SCTP_DEBUG */
 
@@ -1299,7 +1299,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-				printf("HB timer to start unconfirmed:%d hb_delay:%d\n",
+				kprintf("HB timer to start unconfirmed:%d hb_delay:%d\n",
 				       cnt_of_unconf, stcb->asoc.heart_beat_delay);
 			}
 #endif
@@ -1357,7 +1357,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 			to_ticks /= 1000;
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-				printf("Timer to expire in %d ticks\n", to_ticks);
+				kprintf("Timer to expire in %d ticks\n", to_ticks);
 			}
 #endif
 			tmr = &stcb->asoc.hb_timer;
@@ -1478,7 +1478,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	default:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("sctp_timer_start:Unknown timer type %d\n",
+			kprintf("sctp_timer_start:Unknown timer type %d\n",
 			       t_type);
 		}
 #endif /* SCTP_DEBUG */
@@ -1488,7 +1488,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	if ((to_ticks <= 0) || (tmr == NULL)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("sctp_timer_start:%d:software error to_ticks:%d tmr:%p not set ??\n",
+			kprintf("sctp_timer_start:%d:software error to_ticks:%d tmr:%p not set ??\n",
 			       t_type, to_ticks, tmr);
 		}
 #endif /* SCTP_DEBUG */
@@ -1625,7 +1625,7 @@ sctp_timer_stop(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	default:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
-			printf("sctp_timer_stop:Unknown timer type %d\n",
+			kprintf("sctp_timer_stop:Unknown timer type %d\n",
 			       t_type);
 		}
 #endif /* SCTP_DEBUG */
@@ -2833,7 +2833,7 @@ sctp_ulp_notify(u_int32_t notification, struct sctp_tcb *stcb,
 	default:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_UTIL1) {
-			printf("NOTIFY: unknown notification %xh (%u)\n",
+			kprintf("NOTIFY: unknown notification %xh (%u)\n",
 			    notification, notification);
 		}
 #endif /* SCTP_DEBUG */
@@ -3176,16 +3176,16 @@ sctp_print_address(struct sockaddr *sa)
 	if (sa->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sin6;
 		sin6 = (struct sockaddr_in6 *)sa;
-		printf("IPv6 address: %s:%d scope:%u\n",
+		kprintf("IPv6 address: %s:%d scope:%u\n",
 		    ip6_sprintf(&sin6->sin6_addr), ntohs(sin6->sin6_port),
 		    sin6->sin6_scope_id);
 	} else if (sa->sa_family == AF_INET) {
 		struct sockaddr_in *sin;
 		sin = (struct sockaddr_in *)sa;
-		printf("IPv4 address: %s:%d\n", inet_ntoa(sin->sin_addr),
+		kprintf("IPv4 address: %s:%d\n", inet_ntoa(sin->sin_addr),
 		    ntohs(sin->sin_port));
 	} else {
-		printf("?\n");
+		kprintf("?\n");
 	}
 }
 
@@ -3205,9 +3205,9 @@ sctp_print_address_pkt(struct ip *iph, struct sctphdr *sh)
 		fsa.sin_family = AF_INET;
 		fsa.sin_addr = iph->ip_dst;
 		fsa.sin_port = sh->dest_port;
-		printf("src: ");
+		kprintf("src: ");
 		sctp_print_address((struct sockaddr *)&lsa);
-		printf("dest: ");
+		kprintf("dest: ");
 		sctp_print_address((struct sockaddr *)&fsa);
 	} else if (iph->ip_v == (IPV6_VERSION >> 4)) {
 		struct ip6_hdr *ip6;
@@ -3224,9 +3224,9 @@ sctp_print_address_pkt(struct ip *iph, struct sctphdr *sh)
 		fsa6.sin6_family = AF_INET6;
 		fsa6.sin6_addr = ip6->ip6_dst;
 		fsa6.sin6_port = sh->dest_port;
-		printf("src: ");
+		kprintf("src: ");
 		sctp_print_address((struct sockaddr *)&lsa6);
-		printf("dest: ");
+		kprintf("dest: ");
 		sctp_print_address((struct sockaddr *)&fsa6);
 	}
 }
@@ -3334,7 +3334,7 @@ sbappendaddr_nocheck(struct sockbuf *sb, struct sockaddr *asa, struct mbuf *m0,
 		m->m_len = 0;
 		/* safety */
 		if (m == m0) {
-			printf("Duplicate mbuf allocated %p in and mget returned %p?\n",
+			kprintf("Duplicate mbuf allocated %p in and mget returned %p?\n",
 			       m0, m);
 			if (cnt) {
 				panic("more than once");
@@ -3726,7 +3726,7 @@ sctp_release_pr_sctp_chunk(struct sctp_tcb *stcb, struct sctp_tmit_chunk *tp1,
 			ret_sz += sctp_release_pr_sctp_chunk(stcb, tp1, reason,
 			    &stcb->asoc.send_queue);
 		} else {
-			printf("hmm, nothing on the send queue and no EOM?\n");
+			kprintf("hmm, nothing on the send queue and no EOM?\n");
 		}
 	}
 	return (ret_sz);

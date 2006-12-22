@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.10 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.11 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ ns_error(struct mbuf *om, int type, int param)
 
 #ifdef NS_ERRPRINTFS
 	if (ns_errprintfs)
-		printf("ns_err_error(%x, %d, %d)\n", oip, type, param);
+		kprintf("ns_err_error(%x, %d, %d)\n", oip, type, param);
 #endif
 	/*
 	 * Don't Generate error packets in response to multicasts.
@@ -175,7 +175,7 @@ void
 ns_printhost(struct ns_addr *p)
 {
 
-	printf("<net:%x%x,host:%x%x%x,port:%x>",
+	kprintf("<net:%x%x,host:%x%x%x,port:%x>",
 			p->x_net.s_net[0],
 			p->x_net.s_net[1],
 			p->x_host.s_host[0],
@@ -204,9 +204,9 @@ ns_err_input(struct mbuf *m)
 	 */
 #ifdef NS_ERRPRINTFS
 	if (ns_errprintfs) {
-		printf("ns_err_input from ");
+		kprintf("ns_err_input from ");
 		ns_printhost(&epidp->ns_ep_idp.idp_sna);
-		printf("len %d\n", ntohs(epidp->ns_ep_idp.idp_len));
+		kprintf("len %d\n", ntohs(epidp->ns_ep_idp.idp_len));
 	}
 #endif
 	i = sizeof (struct ns_epidp);
@@ -225,7 +225,7 @@ ns_err_input(struct mbuf *m)
 	 * Message type specific processing.
 	 */
 	if (ns_errprintfs)
-		printf("ns_err_input, type %d param %d\n", type, param);
+		kprintf("ns_err_input, type %d param %d\n", type, param);
 #endif
 	if (type >= NS_ERR_TOO_BIG) {
 		goto badcode;
@@ -266,7 +266,7 @@ ns_err_input(struct mbuf *m)
 		 */
 #ifdef NS_ERRPRINTFS
 		if (ns_errprintfs)
-			printf("deliver to protocol %d\n",
+			kprintf("deliver to protocol %d\n",
 				       ep->ns_err_idp.idp_pt);
 #endif
 		switch(ep->ns_err_idp.idp_pt) {

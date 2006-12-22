@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.10 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.11 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -474,7 +474,7 @@ ncp_load(void) {
 		bcopy(&sysent[ff], &oldent, sizeof(struct sysent)*SC_SIZE);
 		bcopy(&newent, &sysent[ff], sizeof(struct sysent)*SC_SIZE);
 		ncp_sysent = ff;	/* slot in sysent[]*/
-		printf("ncp_load: [%d-%d]\n",ff,i);
+		kprintf("ncp_load: [%d-%d]\n",ff,i);
 		break;
 	}
 
@@ -485,7 +485,7 @@ static int
 ncp_unload(void) {
 	ncp_done();
 	bcopy(&oldent, &sysent[ncp_sysent], sizeof(struct sysent) * SC_SIZE);
-	printf( "ncp_unload: unloaded\n");
+	kprintf( "ncp_unload: unloaded\n");
 	return 0;
 }
 

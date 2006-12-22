@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.22 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.23 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -369,7 +369,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		}
 		udpstat.udps_noport++;
 		if (m->m_flags & M_MCAST) {
-			printf("UDP6: M_MCAST is set in a unicast packet.\n");
+			kprintf("UDP6: M_MCAST is set in a unicast packet.\n");
 			udpstat.udps_noportmcast++;
 			goto bad;
 		}

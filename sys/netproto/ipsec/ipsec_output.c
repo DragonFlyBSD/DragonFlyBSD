@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.9 2005/06/17 19:12:23 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -533,7 +533,7 @@ ipsec6_output_trans(
 	KASSERT(tun != NULL, ("ipsec6_output: null tun"));
 
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
-		printf("ipsec6_output_trans: applyed SP\n");
+		kprintf("ipsec6_output_trans: applyed SP\n");
 		kdebug_secpolicy(sp));
 
 	isr = sp->req;
@@ -659,7 +659,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp, int
 	KASSERT(sp != NULL, ("ipsec6_output: null sp"));
 
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
-		printf("ipsec6_output_tunnel: applyed SP\n");
+		kprintf("ipsec6_output_tunnel: applyed SP\n");
 		kdebug_secpolicy(sp));
 
 	m = state->m;

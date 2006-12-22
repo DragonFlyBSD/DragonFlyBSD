@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.18 2006/05/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.19 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -314,11 +314,11 @@ idp_forward(struct mbuf *m)
 	int ok_back = 0;
 
 	if (idpprintfs) {
-		printf("forward: src ");
+		kprintf("forward: src ");
 		ns_printhost(&idp->idp_sna);
-		printf(", dst ");
+		kprintf(", dst ");
 		ns_printhost(&idp->idp_dna);
-		printf("hop count %d\n", idp->idp_tc);
+		kprintf("hop count %d\n", idp->idp_tc);
 	}
 	if (idpforwarding == 0) {
 		/* can't tell difference between net and host */

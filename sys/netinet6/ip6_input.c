@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.31 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.32 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -193,7 +193,7 @@ ip6_init(void)
 	inet6_pfil_hook.ph_type = PFIL_TYPE_AF;
 	inet6_pfil_hook.ph_af = AF_INET6;
 	if ((i = pfil_head_register(&inet6_pfil_hook)) != 0) {
-		printf("%s: WARNING: unable to register pfil hook, "
+		kprintf("%s: WARNING: unable to register pfil hook, "
 			"error %d\n", __func__, i);
 	}
 
@@ -1374,7 +1374,7 @@ ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 	case IPPROTO_AH: /* is it possible? */
 		break;
 	default:
-		printf("ip6_pullexthdr: invalid nxt=%d\n", nxt);
+		kprintf("ip6_pullexthdr: invalid nxt=%d\n", nxt);
 	}
 #endif
 

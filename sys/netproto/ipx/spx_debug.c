@@ -34,7 +34,7 @@
  *	@(#)spx_debug.c
  *
  * $FreeBSD: src/sys/netipx/spx_debug.c,v 1.14 1999/08/28 00:49:43 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.4 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.5 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -95,10 +95,10 @@ spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 	if (act >= SA_DROP)
 		act = SA_DROP;
 	if (sp != NULL)
-		printf("%p %s:", (void *)sp, tcpstates[ostate]);
+		kprintf("%p %s:", (void *)sp, tcpstates[ostate]);
 	else
-		printf("???????? ");
-	printf("%s ", spxnames[act]);
+		kprintf("???????? ");
+	kprintf("%s ", spxnames[act]);
 	switch (act) {
 
 	case SA_RESPOND:
@@ -118,48 +118,48 @@ spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 			len = ntohs(len);
 		}
 #ifndef lint
-#define p1(f)  { printf("%s = %x, ", "f", f); }
+#define p1(f)  { kprintf("%s = %x, ", "f", f); }
 		p1(seq); p1(ack); p1(alo); p1(len);
 #endif
 		flags = si->si_cc;
 		if (flags) {
 			char *cp = "<";
 #ifndef lint
-#define pf(f) { if (flags & SPX_ ## f) { printf("%s%s", cp, "f"); cp = ","; } }
+#define pf(f) { if (flags & SPX_ ## f) { kprintf("%s%s", cp, "f"); cp = ","; } }
 			pf(SP); pf(SA); pf(OB); pf(EM);
 #else
 			cp = cp;
 #endif
-			printf(">");
+			kprintf(">");
 		}
 #ifndef lint
-#define p2(f)  { printf("%s = %x, ", "f", si->si_ ## f); }
+#define p2(f)  { kprintf("%s = %x, ", "f", si->si_ ## f); }
 		p2(sid);p2(did);p2(dt);p2(pt);
 #endif
 		ipx_printhost(&si->si_sna);
 		ipx_printhost(&si->si_dna);
 
 		if (act == SA_RESPOND) {
-			printf("ipx_len = %x, ",
+			kprintf("ipx_len = %x, ",
 				((struct ipx *)si)->ipx_len);
 		}
 		break;
 
 	case SA_USER:
-		printf("%s", prurequests[req&0xff]);
+		kprintf("%s", prurequests[req&0xff]);
 		if ((req & 0xff) == PRU_SLOWTIMO)
-			printf("<%s>", spxtimers[req>>8]);
+			kprintf("<%s>", spxtimers[req>>8]);
 		break;
 	}
 	if (sp)
-		printf(" -> %s", tcpstates[sp->s_state]);
+		kprintf(" -> %s", tcpstates[sp->s_state]);
 	/* print out internal state of sp !?! */
-	printf("\n");
+	kprintf("\n");
 	if (sp == 0)
 		return;
 #ifndef lint
-#define p3(f)  { printf("%s = %x, ", "f", sp->s_ ## f); }
-	printf("\t"); p3(rack);p3(ralo);p3(smax);p3(flags); printf("\n");
+#define p3(f)  { kprintf("%s = %x, ", "f", sp->s_ ## f); }
+	kprintf("\t"); p3(rack);p3(ralo);p3(smax);p3(flags); kprintf("\n");
 #endif
 #endif
 #endif

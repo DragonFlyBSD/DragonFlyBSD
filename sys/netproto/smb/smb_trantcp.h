@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.h,v 1.3 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.h,v 1.4 2006/12/22 23:57:54 swildner Exp $
  */
 #ifndef _NETSMB_SMB_TRANTCP_H_
 #define	_NETSMB_SMB_TRANTCP_H_
@@ -38,7 +38,7 @@
 #ifdef _KERNEL
 
 #ifdef NB_DEBUG
-#define NBDEBUG(format, args...)	 printf("%s(%d): "format,	\
+#define NBDEBUG(format, args...)	 kprintf("%s(%d): "format,	\
 					    __func__ , __LINE__ ,## args)
 #else
 #define NBDEBUG(format, args...)

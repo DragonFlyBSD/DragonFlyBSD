@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.h,v 1.2.4.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.h,v 1.4 2003/08/23 10:06:23 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.h,v 1.5 2006/12/22 23:57:54 swildner Exp $	*/
 /*	$KAME: ipsec.h,v 1.53 2001/11/20 08:32:38 itojun Exp $	*/
 
 /*
@@ -321,7 +321,7 @@ extern int crypto_support;
 
 #define ipseclog(x)	do { if (ipsec_debug) log x; } while (0)
 /* for openbsd compatibility */
-#define	DPRINTF(x)	do { if (ipsec_debug) printf x; } while (0)
+#define	DPRINTF(x)	do { if (ipsec_debug) kprintf x; } while (0)
 
 struct tdb_ident;
 extern struct secpolicy *ipsec_getpolicy (struct tdb_ident*, u_int);

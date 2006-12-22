@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.21 2006/12/05 08:09:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.22 2006/12/22 23:57:53 swildner Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1127,7 +1127,7 @@ nd6_rtrequest(int req, struct rtentry *rt,
 			if (ln && ln->ln_expire == 0) {
 				/* kludge for desktops */
 #if 0
-				printf("nd6_rtequest: time.tv_sec is zero; "
+				kprintf("nd6_rtequest: time.tv_sec is zero; "
 				       "treat it as 1\n");
 #endif
 				ln->ln_expire = 1;
@@ -2043,14 +2043,14 @@ nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		return (0);
 	}
 	if (rt->rt_gateway->sa_family != AF_LINK) {
-		printf("nd6_storelladdr: something odd happens\n");
+		kprintf("nd6_storelladdr: something odd happens\n");
 		m_freem(m);
 		return (0);
 	}
 	sdl = SDL(rt->rt_gateway);
 	if (sdl->sdl_alen == 0) {
 		/* this should be impossible, but we bark here for debugging */
-		printf("nd6_storelladdr: sdl_alen == 0\n");
+		kprintf("nd6_storelladdr: sdl_alen == 0\n");
 		m_freem(m);
 		return (0);
 	}
