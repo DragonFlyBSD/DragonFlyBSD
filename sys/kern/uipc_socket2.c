@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.25 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.26 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_param.h"
@@ -101,8 +101,7 @@ static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
  */
 
 void
-soisconnecting(so)
-	struct socket *so;
+soisconnecting(struct socket *so)
 {
 
 	so->so_state &= ~(SS_ISCONNECTED|SS_ISDISCONNECTING);
@@ -110,8 +109,7 @@ soisconnecting(so)
 }
 
 void
-soisconnected(so)
-	struct socket *so;
+soisconnected(struct socket *so)
 {
 	struct socket *head = so->so_head;
 
@@ -142,8 +140,7 @@ soisconnected(so)
 }
 
 void
-soisdisconnecting(so)
-	struct socket *so;
+soisdisconnecting(struct socket *so)
 {
 
 	so->so_state &= ~SS_ISCONNECTING;
@@ -154,8 +151,7 @@ soisdisconnecting(so)
 }
 
 void
-soisdisconnected(so)
-	struct socket *so;
+soisdisconnected(struct socket *so)
 {
 
 	so->so_state &= ~(SS_ISCONNECTING|SS_ISCONNECTED|SS_ISDISCONNECTING);
@@ -238,8 +234,7 @@ sonewconn(struct socket *head, int connstatus)
  */
 
 void
-socantsendmore(so)
-	struct socket *so;
+socantsendmore(struct socket *so)
 {
 
 	so->so_state |= SS_CANTSENDMORE;
@@ -247,8 +242,7 @@ socantsendmore(so)
 }
 
 void
-socantrcvmore(so)
-	struct socket *so;
+socantrcvmore(struct socket *so)
 {
 
 	so->so_state |= SS_CANTRCVMORE;
@@ -259,8 +253,7 @@ socantrcvmore(so)
  * Wait for data to arrive at/drain from a socket buffer.
  */
 int
-sbwait(sb)
-	struct sockbuf *sb;
+sbwait(struct sockbuf *sb)
 {
 
 	sb->sb_flags |= SB_WAIT;
@@ -275,8 +268,7 @@ sbwait(sb)
  * return any error returned from sleep (EINTR).
  */
 int
-sb_lock(sb)
-	struct sockbuf *sb;
+sb_lock(struct sockbuf *sb)
 {
 	int error;
 
@@ -297,9 +289,7 @@ sb_lock(sb)
  * via SIGIO if the socket has the SS_ASYNC flag set.
  */
 void
-sowakeup(so, sb)
-	struct socket *so;
-	struct sockbuf *sb;
+sowakeup(struct socket *so, struct sockbuf *sb)
 {
 	struct selinfo *selinfo = &sb->sb_sel;
 
@@ -432,9 +422,7 @@ sbreserve(struct sockbuf *sb, u_long cc, struct socket *so, struct rlimit *rl)
  * Free mbufs held by a socket, and reserved mbuf space.
  */
 void
-sbrelease(sb, so)
-	struct sockbuf *sb;
-	struct socket *so;
+sbrelease(struct sockbuf *sb, struct socket *so)
 {
 
 	sbflush(sb);
@@ -663,10 +651,8 @@ sbinsertoob(struct sockbuf *sb, struct mbuf *m0)
  * Returns 0 if no space in sockbuf or insufficient mbufs.
  */
 int
-sbappendaddr(sb, asa, m0, control)
-	struct sockbuf *sb;
-	const struct sockaddr *asa;
-	struct mbuf *m0, *control;
+sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
+	     struct mbuf *control)
 {
 	struct mbuf *m, *n;
 	int space = asa->sa_len;
@@ -843,8 +829,7 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
  * Check that all resources are reclaimed.
  */
 void
-sbflush(sb)
-	struct sockbuf *sb;
+sbflush(struct sockbuf *sb)
 {
 
 	if (sb->sb_flags & SB_LOCK)
@@ -867,9 +852,7 @@ sbflush(sb)
  * Drop data from (the front of) a sockbuf.
  */
 void
-sbdrop(sb, len)
-	struct sockbuf *sb;
-	int len;
+sbdrop(struct sockbuf *sb, int len)
 {
 	struct mbuf *m;
 	struct mbuf *free_chain = NULL;
@@ -915,8 +898,7 @@ sbdrop(sb, len)
  * Must be called while holding a critical section.
  */
 void
-sbdroprecord(sb)
-	struct sockbuf *sb;
+sbdroprecord(struct sockbuf *sb)
 {
 	struct mbuf *m;
 	struct mbuf *n;
@@ -984,10 +966,7 @@ sbunlinkmbuf(struct sockbuf *sb, struct mbuf *m, struct mbuf **free_chain)
  * with the specified type for presentation on a socket buffer.
  */
 struct mbuf *
-sbcreatecontrol(p, size, type, level)
-	caddr_t p;
-	int size;
-	int type, level;
+sbcreatecontrol(caddr_t p, int size, int type, int level)
 {
 	struct cmsghdr *cp;
 	struct mbuf *m;
@@ -1149,7 +1128,8 @@ SYSCTL_INT(_kern_ipc, KIPC_SOCKBUF_WASTE, sockbuf_waste_factor, CTLFLAG_RW,
 /*
  * Initialise maxsockets 
  */
-static void init_maxsockets(void *ignored)
+static void
+init_maxsockets(void *ignored)
 {
     TUNABLE_INT_FETCH("kern.ipc.maxsockets", &maxsockets);
     maxsockets = imax(maxsockets, imax(maxfiles, nmbclusters));

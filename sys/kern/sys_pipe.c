@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.42 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.43 2006/12/23 23:47:54 swildner Exp $
  */
 
 /*
@@ -348,8 +348,7 @@ pipespace(struct pipe *cpipe, int size)
  * smaller PIPE_SIZE default.
  */
 static int
-pipe_create(cpipep)
-	struct pipe **cpipep;
+pipe_create(struct pipe **cpipep)
 {
 	globaldata_t gd = mycpu;
 	struct pipe *cpipe;
@@ -376,9 +375,7 @@ pipe_create(cpipep)
  * lock a pipe for I/O, blocking other access
  */
 static __inline int
-pipelock(cpipe, catch)
-	struct pipe *cpipe;
-	int catch;
+pipelock(struct pipe *cpipe, int catch)
 {
 	int error;
 
@@ -396,8 +393,7 @@ pipelock(cpipe, catch)
  * unlock a pipe I/O lock
  */
 static __inline void
-pipeunlock(cpipe)
-	struct pipe *cpipe;
+pipeunlock(struct pipe *cpipe)
 {
 
 	cpipe->pipe_state &= ~PIPE_LOCK;
@@ -408,8 +404,7 @@ pipeunlock(cpipe)
 }
 
 static __inline void
-pipeselwakeup(cpipe)
-	struct pipe *cpipe;
+pipeselwakeup(struct pipe *cpipe)
 {
 
 	if (cpipe->pipe_state & PIPE_SEL) {
@@ -653,9 +648,7 @@ unlocked_error:
  * This is similar to a physical write operation.
  */
 static int
-pipe_build_write_buffer(wpipe, uio)
-	struct pipe *wpipe;
-	struct uio *uio;
+pipe_build_write_buffer(struct pipe *wpipe, struct uio *uio)
 {
 	int error;
 	u_int size;
@@ -720,8 +713,7 @@ pipe_build_write_buffer(wpipe, uio)
  * which changes the meaning of pipe_buffer.out.
  */
 static void
-pipe_clone_write_buffer(wpipe)
-	struct pipe *wpipe;
+pipe_clone_write_buffer(struct pipe *wpipe)
 {
 	int size;
 	int offset;
@@ -753,9 +745,7 @@ pipe_clone_write_buffer(wpipe)
  * the pipe buffer.  Then the direct mapping write is set-up.
  */
 static int
-pipe_direct_write(wpipe, uio)
-	struct pipe *wpipe;
-	struct uio *uio;
+pipe_direct_write(struct pipe *wpipe, struct uio *uio)
 {
 	int error;
 

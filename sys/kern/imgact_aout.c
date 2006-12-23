@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.12 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.13 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -249,10 +249,7 @@ exec_aout_imgact(struct image_params *imgp)
  * expand_name(), unless the process was setuid/setgid.
  */
 int
-aout_coredump(p, vp, limit)
-	struct proc *p;
-	struct vnode *vp;
-	off_t limit;
+aout_coredump(struct proc *p, struct vnode *vp, off_t limit)
 {
 	struct ucred *cred = p->p_ucred;
 	struct vmspace *vm = p->p_vmspace;

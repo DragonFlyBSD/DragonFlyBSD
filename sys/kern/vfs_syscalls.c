@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.110 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.111 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1278,8 +1278,7 @@ sys_chdir(struct chdir_args *uap)
  * any filedescriptors are open directories.
  */
 static int
-chroot_refuse_vdir_fds(fdp)
-	struct filedesc *fdp;
+chroot_refuse_vdir_fds(struct filedesc *fdp)
 {
 	struct vnode *vp;
 	struct file *fp;

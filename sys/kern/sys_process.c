@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.24 2006/11/07 20:48:14 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.25 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -626,8 +626,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 }
 
 int
-trace_req(p)
-	struct proc *p;
+trace_req(struct proc *p)
 {
 	return 1;
 }

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.82 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.83 2006/12/23 23:47:54 swildner Exp $
  */
 
 /*
@@ -1847,7 +1847,7 @@ static struct kproc_desc buf_kp = {
 SYSINIT(bufdaemon, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST, kproc_start, &buf_kp)
 
 static void
-buf_daemon()
+buf_daemon(void)
 {
 	/*
 	 * This process needs to be suspended prior to shutdown sync.

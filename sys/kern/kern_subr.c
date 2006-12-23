@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.24 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.25 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -156,11 +156,7 @@ uiomove_frombuf(void *buf, int buflen, struct uio *uio)
 
 
 int
-uiomoveco(cp, n, uio, obj)
-	caddr_t cp;
-	int n;
-	struct uio *uio;
-	struct vm_object *obj;
+uiomoveco(caddr_t cp, int n, struct uio *uio, struct vm_object *obj)
 {
 	struct iovec *iov;
 	u_int cnt;
@@ -222,9 +218,7 @@ uiomoveco(cp, n, uio, obj)
  * Give next character to user as result of read.
  */
 int
-ureadc(c, uio)
-	int c;
-	struct uio *uio;
+ureadc(int c, struct uio *uio)
 {
 	struct iovec *iov;
 
@@ -264,10 +258,7 @@ again:
  * store the masking value in *hashmask.
  */
 void *
-hashinit(elements, type, hashmask)
-	int elements;
-	struct malloc_type *type;
-	u_long *hashmask;
+hashinit(int elements, struct malloc_type *type, u_long *hashmask)
 {
 	long hashsize;
 	LIST_HEAD(generic, generic) *hashtbl;
@@ -293,10 +284,7 @@ static int primes[] = { 1, 13, 31, 61, 127, 251, 509, 761, 1021, 1531, 2039,
  * General routine to allocate a prime number sized hash table.
  */
 void *
-phashinit(elements, type, nentries)
-	int elements;
-	struct malloc_type *type;
-	u_long *nentries;
+phashinit(int elements, struct malloc_type *type, u_long *nentries)
 {
 	long hashsize;
 	LIST_HEAD(generic, generic) *hashtbl;

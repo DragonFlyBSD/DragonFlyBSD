@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.17 2006/12/23 00:35:04 swildner Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.18 2006/12/23 23:47:54 swildner Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -161,8 +161,7 @@ RO seminfo.semaem	/* SEMAEM unused - user param */
 #endif
 
 static void
-seminit(dummy)
-	void *dummy;
+seminit(void *dummy)
 {
 	int i;
 
@@ -215,8 +214,7 @@ sys_semsys(struct semsys_args *uap)
  */
 
 static struct sem_undo *
-semu_alloc(p)
-	struct proc *p;
+semu_alloc(struct proc *p)
 {
 	int i;
 	struct sem_undo *suptr;
@@ -285,11 +283,8 @@ semu_alloc(p)
  */
 
 static int
-semundo_adjust(p, supptr, semid, semnum, adjval)
-	struct proc *p;
-	struct sem_undo **supptr;
-	int semid, semnum;
-	int adjval;
+semundo_adjust(struct proc *p, struct sem_undo **supptr, int semid, int semnum,
+	       int adjval)
 {
 	struct sem_undo *suptr;
 	struct undo *sunptr;
@@ -352,8 +347,7 @@ semundo_adjust(p, supptr, semid, semnum, adjval)
 }
 
 static void
-semundo_clear(semid, semnum)
-	int semid, semnum;
+semundo_clear(int semid, int semnum)
 {
 	struct sem_undo *suptr;
 
@@ -912,8 +906,7 @@ done:
  * semaphores.
  */
 void
-semexit(p)
-	struct proc *p;
+semexit(struct proc *p)
 {
 	struct sem_undo *suptr;
 	struct sem_undo **supptr;

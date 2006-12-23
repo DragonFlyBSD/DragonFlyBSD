@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.19 2006/09/11 20:25:01 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.20 2006/12/23 23:47:54 swildner Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -143,8 +143,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, shm_use_phys, CTLFLAG_RW, &shm_use_phys, 0, "");
 
 static int
-shm_find_segment_by_key(key)
-	key_t key;
+shm_find_segment_by_key(key_t key)
 {
 	int i;
 
@@ -156,8 +155,7 @@ shm_find_segment_by_key(key)
 }
 
 static struct shmid_ds *
-shm_find_segment_by_shmid(shmid)
-	int shmid;
+shm_find_segment_by_shmid(int shmid)
 {
 	int segnum;
 	struct shmid_ds *shmseg;
@@ -174,8 +172,7 @@ shm_find_segment_by_shmid(shmid)
 }
 
 static void
-shm_deallocate_segment(shmseg)
-	struct shmid_ds *shmseg;
+shm_deallocate_segment(struct shmid_ds *shmseg)
 {
 	struct shm_handle *shm_handle;
 	size_t size;
@@ -340,9 +337,7 @@ struct oshmctl_args {
 };
 
 static int
-sys_oshmctl(p, uap)
-	struct proc *p;
-	struct oshmctl_args *uap;
+sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
 {
 #ifdef COMPAT_43
 	int error;
@@ -442,11 +437,7 @@ sys_shmctl(struct shmctl_args *uap)
 }
 
 static int
-shmget_existing(p, uap, mode, segnum)
-	struct proc *p;
-	struct shmget_args *uap;
-	int mode;
-	int segnum;
+shmget_existing(struct proc *p, struct shmget_args *uap, int mode, int segnum)
 {
 	struct shmid_ds *shmseg;
 	int error;
@@ -476,10 +467,7 @@ shmget_existing(p, uap, mode, segnum)
 }
 
 static int
-shmget_allocate_segment(p, uap, mode)
-	struct proc *p;
-	struct shmget_args *uap;
-	int mode;
+shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 {
 	int i, segnum, shmid, size;
 	struct ucred *cred = p->p_ucred;
@@ -601,8 +589,7 @@ sys_shmsys(struct shmsys_args *uap)
 }
 
 void
-shmfork(p1, p2)
-	struct proc *p1, *p2;
+shmfork(struct proc *p1, struct proc *p2)
 {
 	struct shmmap_state *shmmap_s;
 	size_t size;
@@ -657,8 +644,7 @@ shmrealloc(void)
 }
 
 static void
-shminit(dummy)
-	void *dummy;
+shminit(void *dummy)
 {
 	int i;
 

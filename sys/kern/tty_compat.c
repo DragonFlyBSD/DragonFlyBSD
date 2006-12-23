@@ -32,7 +32,7 @@
  *
  *	@(#)tty_compat.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/tty_compat.c,v 1.29 1999/08/28 00:46:20 peter Exp $
- * $DragonFly: src/sys/kern/tty_compat.c,v 1.5 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/tty_compat.c,v 1.6 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -85,9 +85,7 @@ static int compatspcodes[] = {
 };
 
 static int
-ttcompatspeedtab(speed, table)
-	int speed;
-	struct speedtab *table;
+ttcompatspeedtab(int speed, struct speedtab *table)
 {
 	if (speed == 0)
 		return (0); /* hangup */
@@ -98,11 +96,7 @@ ttcompatspeedtab(speed, table)
 }
 
 int
-ttsetcompat(tp, com, data, term)
-	struct tty *tp;
-	u_long *com;
-	caddr_t data;
-	struct termios *term;
+ttsetcompat(struct tty *tp, u_long *com, caddr_t data, struct termios *term)
 {
 	switch (*com) {
 	case TIOCSETP:
@@ -181,11 +175,7 @@ ttsetcompat(tp, com, data, term)
 
 /*ARGSUSED*/
 int
-ttcompat(tp, com, data, flag)
-	struct tty *tp;
-	u_long com;
-	caddr_t data;
-	int flag;
+ttcompat(struct tty *tp, u_long com, caddr_t data, int flag)
 {
 	switch (com) {
 	case TIOCSETP:
@@ -272,8 +262,7 @@ ttcompat(tp, com, data, flag)
 }
 
 static int
-ttcompatgetflags(tp)
-	struct tty *tp;
+ttcompatgetflags(struct tty *tp)
 {
 	tcflag_t iflag	= tp->t_iflag;
 	tcflag_t lflag	= tp->t_lflag;
@@ -333,9 +322,7 @@ ttcompatgetflags(tp)
 }
 
 static void
-ttcompatsetflags(tp, t)
-	struct tty *tp;
-	struct termios *t;
+ttcompatsetflags(struct tty *tp, struct termios *t)
 {
 	int flags = tp->t_flags;
 	tcflag_t iflag	= t->c_iflag;
@@ -412,9 +399,7 @@ ttcompatsetflags(tp, t)
 }
 
 static void
-ttcompatsetlflags(tp, t)
-	struct tty *tp;
-	struct termios *t;
+ttcompatsetlflags(struct tty *tp, struct termios *t)
 {
 	int flags = tp->t_flags;
 	tcflag_t iflag	= t->c_iflag;

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.46 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.47 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1109,12 +1109,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 }
 
 static int
-vop_nolookup(ap)
-	struct vop_old_lookup_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+vop_nolookup(struct vop_old_lookup_args *ap)
 {
 
 	*ap->a_vpp = NULL;
@@ -1145,12 +1140,7 @@ vop_nostrategy (struct vop_strategy_args *ap)
 }
 
 int
-vop_stdpathconf(ap)
-	struct vop_pathconf_args /* {
-	struct vnode *a_vp;
-	int a_name;
-	int *a_retval;
-	} */ *ap;
+vop_stdpathconf(struct vop_pathconf_args *ap)
 {
 
 	switch (ap->a_name) {
@@ -1241,13 +1231,7 @@ vop_stdclose(struct vop_close_args *ap)
  * Return true for select/poll.
  */
 int
-vop_nopoll(ap)
-	struct vop_poll_args /* {
-		struct vnode *a_vp;
-		int  a_events;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+vop_nopoll(struct vop_poll_args *ap)
 {
 	/*
 	 * Return true for read/write.  If the user asked for something
@@ -1266,12 +1250,7 @@ vop_nopoll(ap)
  * Implement poll for local filesystems that support it.
  */
 int
-vop_stdpoll(ap)
-	struct vop_poll_args /* {
-		struct vnode *a_vp;
-		int  a_events;
-		struct ucred *a_cred;
-	} */ *ap;
+vop_stdpoll(struct vop_poll_args *ap)
 {
 	if (ap->a_events & ~POLLSTANDARD)
 		return (vn_pollrecord(ap->a_vp, ap->a_events));

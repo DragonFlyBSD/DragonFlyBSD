@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.18 2006/09/21 16:16:09 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.19 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -113,7 +113,7 @@ CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
 
 void
-cninit()
+cninit(void)
 {
 	struct consdev *best_cp, *cp, **list;
 
@@ -172,7 +172,7 @@ cninit()
  * Hook the open and close functions on the selected device.
  */
 void
-cninit_finish()
+cninit_finish(void)
 {
 	if ((cn_tab == NULL) || cn_mute)
 		return;

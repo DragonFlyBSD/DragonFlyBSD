@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.14 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.15 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@ struct gmonparam _gmonparam = { GMON_PROF_OFF };
 #include <machine/asmacros.h>
 
 void
-nullfunc_loop_profiled()
+nullfunc_loop_profiled(void)
 {
 	int i;
 
@@ -73,7 +73,7 @@ nullfunc_loop_profiled()
 #define	nullfunc_loop_profiled_end	nullfunc_profiled	/* XXX */
 
 void
-nullfunc_profiled()
+nullfunc_profiled(void)
 {
 }
 #endif /* GUPROF */

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.44 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.45 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -209,7 +209,7 @@ static struct thread *dumpthread;
 static struct pcb dumppcb;
 
 static void
-print_uptime()
+print_uptime(void)
 {
 	int f;
 	struct timespec ts;
@@ -531,8 +531,7 @@ SYSCTL_INT(_machdep, OID_AUTO, do_dump, CTLFLAG_RW, &dodump, 0,
     "Try to perform coredump on kernel panic");
 
 static int
-setdumpdev(dev)
-	cdev_t dev;
+setdumpdev(cdev_t dev)
 {
 	int psize;
 	long newdumplo;
@@ -559,8 +558,7 @@ setdumpdev(dev)
 /* ARGSUSED */
 static void dump_conf (void *dummy);
 static void
-dump_conf(dummy)
-	void *dummy;
+dump_conf(void *dummy)
 {
 	char *path;
 	cdev_t dev;

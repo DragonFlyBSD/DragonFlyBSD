@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.37 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.38 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -75,8 +75,7 @@ static int     sleep_hard_us = 100;
 SYSCTL_INT(_kern, OID_AUTO, sleep_hard_us, CTLFLAG_RW, &sleep_hard_us, 0, "")
 
 static int
-settime(tv)
-	struct timeval *tv;
+settime(struct timeval *tv)
 {
 	struct timeval delta, tv1, tv2;
 	static struct timeval maxtime, laststep;
@@ -695,8 +694,7 @@ sys_setitimer(struct setitimer_args *uap)
  * interrupt even when we're delayed.
  */
 void
-realitexpire(arg)
-	void *arg;
+realitexpire(void *arg)
 {
 	struct proc *p;
 	struct timeval ctv, ntv;
@@ -731,8 +729,7 @@ realitexpire(arg)
  * than the resolution of the clock, round it up.)
  */
 int
-itimerfix(tv)
-	struct timeval *tv;
+itimerfix(struct timeval *tv)
 {
 
 	if (tv->tv_sec < 0 || tv->tv_sec > 100000000 ||
@@ -754,9 +751,7 @@ itimerfix(tv)
  * on which it is operating cannot change in value.
  */
 int
-itimerdecr(itp, usec)
-	struct itimerval *itp;
-	int usec;
+itimerdecr(struct itimerval *itp, int usec)
 {
 
 	if (itp->it_value.tv_usec < usec) {
@@ -794,8 +789,7 @@ expire:
  * Caveat emptor.
  */
 void
-timevaladd(t1, t2)
-	struct timeval *t1, *t2;
+timevaladd(struct timeval *t1, struct timeval *t2)
 {
 
 	t1->tv_sec += t2->tv_sec;
@@ -804,8 +798,7 @@ timevaladd(t1, t2)
 }
 
 void
-timevalsub(t1, t2)
-	struct timeval *t1, *t2;
+timevalsub(struct timeval *t1, struct timeval *t2)
 {
 
 	t1->tv_sec -= t2->tv_sec;
@@ -814,8 +807,7 @@ timevalsub(t1, t2)
 }
 
 static void
-timevalfix(t1)
-	struct timeval *t1;
+timevalfix(struct timeval *t1)
 {
 
 	if (t1->tv_usec < 0) {

@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.17 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.18 2006/12/23 23:47:54 swildner Exp $
  */
 
 /*
@@ -129,8 +129,7 @@ struct	pt_ioctl {
  *      than 256 ptys.
  */
 static void
-ptyinit(n)
-	int n;
+ptyinit(int n)
 {
 	cdev_t devs, devc;
 	char *names = "pqrsPQRS";
@@ -295,8 +294,7 @@ ptswrite(struct dev_write_args *ap)
  * Wake up process selecting or sleeping for input from controlling tty.
  */
 static void
-ptsstart(tp)
-	struct tty *tp;
+ptsstart(struct tty *tp)
 {
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
@@ -310,9 +308,7 @@ ptsstart(tp)
 }
 
 static void
-ptcwakeup(tp, flag)
-	struct tty *tp;
-	int flag;
+ptcwakeup(struct tty *tp, int flag)
 {
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
@@ -440,9 +436,7 @@ ptcread(struct dev_read_args *ap)
 }
 
 static	void
-ptsstop(tp, flush)
-	struct tty *tp;
-	int flush;
+ptsstop(struct tty *tp, int flush)
 {
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 	int flag;
@@ -792,8 +786,7 @@ ptyioctl(struct dev_ioctl_args *ap)
 static void ptc_drvinit (void *unused);
 
 static void
-ptc_drvinit(unused)
-	void *unused;
+ptc_drvinit(void *unused)
 {
 	dev_ops_add(&pts_ops, 0, 0);
 	dev_ops_add(&ptc_ops, 0, 0);

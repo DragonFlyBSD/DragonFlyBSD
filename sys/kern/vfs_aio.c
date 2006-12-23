@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.32 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.33 2006/12/23 23:47:54 swildner Exp $
  */
 
 /*
@@ -868,7 +868,7 @@ aio_daemon(void *uproc)
  * AIO daemon modifies its environment itself.
  */
 static int
-aio_newproc()
+aio_newproc(void)
 {
 	int error;
 	struct lwp *lp, *nlp;

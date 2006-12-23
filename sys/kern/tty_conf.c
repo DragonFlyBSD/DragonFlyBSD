@@ -37,7 +37,7 @@
  *
  *	@(#)tty_conf.c	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty_conf.c,v 1.16.2.1 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/kern/tty_conf.c,v 1.5 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_conf.c,v 1.6 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -101,9 +101,7 @@ static struct linesw nodisc = NODISC(0);
  * Returns: Index used or -1 on failure.
  */
 int
-ldisc_register(discipline, linesw_p)
-	int discipline;
-	struct linesw *linesw_p;
+ldisc_register(int discipline, struct linesw *linesw_p)
 {
 	int slot = -1;
 
@@ -131,8 +129,7 @@ ldisc_register(discipline, linesw_p)
  * discipline: Index for discipline to unload.
  */
 void
-ldisc_deregister(discipline)
-	int discipline;
+ldisc_deregister(int discipline)
 {
 	if (discipline < MAXLDISC) {
 		linesw[discipline] = nodisc;
@@ -140,55 +137,42 @@ ldisc_deregister(discipline)
 }
 
 static int
-l_noopen(dev, tp)
-	cdev_t dev;
-	struct tty *tp;
+l_noopen(cdev_t dev, struct tty *tp)
 {
 
 	return (ENODEV);
 }
 
 static int
-l_noclose(tp, flag)
-	struct tty *tp;
-	int flag;
+l_noclose(struct tty *tp, int flag)
 {
 
 	return (ENODEV);
 }
 
 int
-l_noread(tp, uio, flag)
-	struct tty *tp;
-	struct uio *uio;
-	int flag;
+l_noread(struct tty *tp, struct uio *uio, int flag)
 {
 
 	return (ENODEV);
 }
 
 int
-l_nowrite(tp, uio, flag)
-	struct tty *tp;
-	struct uio *uio;
-	int flag;
+l_nowrite(struct tty *tp, struct uio *uio, int flag)
 {
 
 	return (ENODEV);
 }
 
 static int
-l_norint(c, tp)
-	int c;
-	struct tty *tp;
+l_norint(int c, struct tty *tp)
 {
 
 	return (ENODEV);
 }
 
 static int
-l_nostart(tp)
-	struct tty *tp;
+l_nostart(struct tty *tp)
 {
 
 	return (ENODEV);

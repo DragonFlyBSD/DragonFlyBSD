@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.13 2006/12/23 00:35:04 swildner Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.14 2006/12/23 23:47:54 swildner Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -92,10 +92,7 @@ static struct mbuf *m_dup1 (struct mbuf *, int, int, int);
  * XXX M_TRAILINGSPACE/M_LEADINGSPACE on shared cluster (sharedcluster)
  */
 struct mbuf *
-m_pulldown(m, off, len, offp)
-	struct mbuf *m;
-	int off, len;
-	int *offp;
+m_pulldown(struct mbuf *m, int off, int len, int *offp)
 {
 	struct mbuf *n, *o;
 	int hlen, tlen, olen;
@@ -242,11 +239,7 @@ ok:
 }
 
 static struct mbuf *
-m_dup1(m, off, len, wait)
-	struct mbuf *m;
-	int off;
-	int len;
-	int wait;
+m_dup1(struct mbuf *m, int off, int len, int wait)
 {
 	struct mbuf *n;
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.31 2006/12/05 23:31:56 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.32 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -889,7 +889,7 @@ unp_drop(struct unpcb *unp, int err)
 
 #ifdef notdef
 void
-unp_drain()
+unp_drain(void)
 {
 
 }
@@ -1116,7 +1116,7 @@ struct unp_gc_info {
 };
 
 static void
-unp_gc()
+unp_gc(void)
 {
 	struct unp_gc_info info;
 	static boolean_t unp_gcing;

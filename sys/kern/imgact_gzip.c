@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/imgact_gzip.c,v 1.40.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.7 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.8 2006/12/23 23:47:54 swildner Exp $
  *
  * This module handles execution of a.out files which have been run through
  * "gzip".  This saves diskspace, but wastes cpu-cycles and VM.
@@ -63,8 +63,7 @@ static int do_aout_hdr (struct imgact_gzip *);
 static int Flush (void *vp, u_char *, u_long siz);
 
 static int
-exec_gzip_imgact(imgp)
-	struct image_params *imgp;
+exec_gzip_imgact(struct image_params *imgp)
 {
 	int             error, error2 = 0;
 	const u_char   *p = (const u_char *) imgp->image_header;

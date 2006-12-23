@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.39 2006/12/05 23:31:56 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.40 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -158,8 +158,7 @@ SYSCTL_INT(_kern_ipc, KIPC_SOMAXCONN, somaxconn, CTLFLAG_RW,
  * the protocols can be easily modified to do this.
  */
 struct socket *
-soalloc(waitok)
-	int waitok;
+soalloc(int waitok)
 {
 	struct socket *so;
 
@@ -395,8 +394,7 @@ discard:
  * Must be called from a critical section.
  */
 int
-soabort(so)
-	struct socket *so;
+soabort(struct socket *so)
 {
 	int error;
 
@@ -780,13 +778,8 @@ out:
  * only for the count in uio_resid.
  */
 int
-soreceive(so, psa, uio, mp0, controlp, flagsp)
-	struct socket *so;
-	struct sockaddr **psa;
-	struct uio *uio;
-	struct mbuf **mp0;
-	struct mbuf **controlp;
-	int *flagsp;
+soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
+	  struct mbuf **mp0, struct mbuf **controlp, int *flagsp)
 {
 	struct mbuf *m, *n, **mp;
 	struct mbuf *free_chain = NULL;
@@ -1119,9 +1112,7 @@ done:
 }
 
 int
-soshutdown(so, how)
-	struct socket *so;
-	int how;
+soshutdown(struct socket *so, int how)
 {
 	if (!(how == SHUT_RD || how == SHUT_WR || how == SHUT_RDWR))
 		return (EINVAL);
@@ -1134,8 +1125,7 @@ soshutdown(so, how)
 }
 
 void
-sorflush(so)
-	struct socket *so;
+sorflush(struct socket *so)
 {
 	struct sockbuf *sb = &so->so_rcv;
 	struct protosw *pr = so->so_proto;
@@ -1162,9 +1152,7 @@ sorflush(so)
 
 #ifdef INET
 static int
-do_setopt_accept_filter(so, sopt)
-	struct	socket *so;
-	struct	sockopt *sopt;
+do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 {
 	struct accept_filter_arg	*afap = NULL;
 	struct accept_filter	*afp;
@@ -1247,11 +1235,7 @@ out:
  * protocol-level pr_ctloutput() routines.
  */
 int
-sooptcopyin(sopt, buf, len, minlen)
-	struct	sockopt *sopt;
-	void	*buf;
-	size_t	len;
-	size_t	minlen;
+sooptcopyin(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
 {
 	size_t	valsize;
 
@@ -1274,9 +1258,7 @@ sooptcopyin(sopt, buf, len, minlen)
 }
 
 int
-sosetopt(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+sosetopt(struct socket *so, struct sockopt *sopt)
 {
 	int	error, optval;
 	struct	linger l;
@@ -1451,9 +1433,7 @@ sooptcopyout(struct sockopt *sopt, const void *buf, size_t len)
 }
 
 int
-sogetopt(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+sogetopt(struct socket *so, struct sockopt *sopt)
 {
 	int	error, optval;
 	struct	linger l;
@@ -1647,8 +1627,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 }
 
 void
-sohasoutofband(so)
-	struct socket *so;
+sohasoutofband(struct socket *so)
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);

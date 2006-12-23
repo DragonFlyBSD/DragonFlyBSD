@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.15 2006/12/23 20:05:34 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.16 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -451,10 +451,7 @@ snprintf_func(int ch, void *arg)
  * The buffer pointed to by `nbuf' must have length >= MAXNBUF.
  */
 static char *
-ksprintn(nbuf, ul, base, lenp)
-	char *nbuf;
-	u_long ul;
-	int base, *lenp;
+ksprintn(char *nbuf, u_long ul, int base, int *lenp)
 {
 	char *p;
 
@@ -469,10 +466,7 @@ ksprintn(nbuf, ul, base, lenp)
 }
 /* ksprintn, but for a quad_t. */
 static char *
-ksprintqn(nbuf, uq, base, lenp)
-	char *nbuf;
-	u_quad_t uq;
-	int base, *lenp;
+ksprintqn(char *nbuf, u_quad_t uq, int base, int *lenp)
 {
 	char *p;
 

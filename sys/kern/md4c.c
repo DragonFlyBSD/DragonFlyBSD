@@ -1,6 +1,6 @@
 /* MD4C.C - RSA Data Security, Inc., MD4 message-digest algorithm
  * $FreeBSD: src/sys/kern/md4c.c,v 1.1.2.1 2001/05/22 08:32:32 bp Exp $
- * $DragonFly: src/sys/kern/md4c.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/md4c.c,v 1.3 2006/12/23 23:47:54 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. All rights reserved.
@@ -88,8 +88,8 @@ static unsigned char PADDING[64] = {
 
 /* MD4 initialization. Begins an MD4 operation, writing a new context.
  */
-void MD4Init (context)
-MD4_CTX *context;                                        /* context */
+void
+MD4Init(MD4_CTX *context)
 {
   context->count[0] = context->count[1] = 0;
 
@@ -102,13 +102,15 @@ MD4_CTX *context;                                        /* context */
 }
 
 /* MD4 block update operation. Continues an MD4 message-digest
-     operation, processing another message block, and updating the
-     context.
+ *    operation, processing another message block, and updating the
+ *    context.
+ *
+ * Parameters:
+ *	input:		input block
+ *	inputLen:	length of input block
  */
-void MD4Update (context, input, inputLen)
-MD4_CTX *context;                                        /* context */
-const unsigned char *input;                                /* input block */
-unsigned int inputLen;                     /* length of input block */
+void
+MD4Update(MD4_CTX *context, const unsigned char *input, unsigned int inputLen)
 {
   unsigned int i, index, partLen;
 
@@ -140,8 +142,8 @@ unsigned int inputLen;                     /* length of input block */
 }
 
 /* MD4 padding. */
-void MD4Pad (context)
-MD4_CTX *context;                                        /* context */
+void
+MD4Pad(MD4_CTX *context)
 {
   unsigned char bits[8];
   unsigned int index, padLen;
@@ -160,11 +162,13 @@ MD4_CTX *context;                                        /* context */
 }
 
 /* MD4 finalization. Ends an MD4 message-digest operation, writing the
-     the message digest and zeroizing the context.
+ *    the message digest and zeroizing the context.
+ *
+ * Parameters:
+ *	digest:	message digest
  */
-void MD4Final (digest, context)
-unsigned char digest[16];                         /* message digest */
-MD4_CTX *context;                                        /* context */
+void
+MD4Final(unsigned char digest[16], MD4_CTX *context)
 {
   /* Do padding */
   MD4Pad (context);
@@ -179,9 +183,8 @@ MD4_CTX *context;                                        /* context */
 
 /* MD4 basic transformation. Transforms state based on block.
  */
-static void MD4Transform (state, block)
-UINT4 state[4];
-const unsigned char block[64];
+static void
+MD4Transform(UINT4 state[4], const unsigned char block[64])
 {
   UINT4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
@@ -254,10 +257,8 @@ const unsigned char block[64];
 /* Encodes input (UINT4) into output (unsigned char). Assumes len is
      a multiple of 4.
  */
-static void Encode (output, input, len)
-unsigned char *output;
-UINT4 *input;
-unsigned int len;
+static void
+Encode(unsigned char *output, UINT4 *input, unsigned int len)
 {
   unsigned int i, j;
 
@@ -272,11 +273,8 @@ unsigned int len;
 /* Decodes input (unsigned char) into output (UINT4). Assumes len is
      a multiple of 4.
  */
-static void Decode (output, input, len)
-
-UINT4 *output;
-const unsigned char *input;
-unsigned int len;
+static void
+Decode(UINT4 *output, const unsigned char *input, unsigned int len)
 {
   unsigned int i, j;
 

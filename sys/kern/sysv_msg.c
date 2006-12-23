@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.16 2006/12/23 00:35:04 swildner Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.17 2006/12/23 23:47:54 swildner Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -124,8 +124,7 @@ static struct msg *msghdrs;	/* MSGTQL msg headers */
 static struct msqid_ds *msqids;	/* MSGMNI msqid_ds struct's */
 
 static void
-msginit(dummy)
-	void *dummy;
+msginit(void *dummy)
 {
 	int i;
 
