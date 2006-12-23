@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.18 2006/12/23 09:44:26 sephe Exp $
  */
 
 /*-
@@ -2553,6 +2553,7 @@ iwi_auth_and_assoc(struct iwi_softc *sc)
 	    IWI_MODE_11G;
 	rs.type = IWI_RATESET_TYPE_NEGOTIATED;
 	rs.nrates = ni->ni_rates.rs_nrates;
+	KKASSERT(rs.nrates <= IWI_RATESET_MAXSIZE);
 	memcpy(rs.rates, ni->ni_rates.rs_rates, rs.nrates);
 	DPRINTF(("Setting negociated rates (%u)\n", rs.nrates));
 	error = iwi_cmd(sc, IWI_CMD_SET_RATES, &rs, sizeof rs, 1);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwireg.h,v 1.2.2.2 2006/01/29 13:54:19 damien Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwireg.h,v 1.2 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwireg.h,v 1.3 2006/12/23 09:44:26 sephe Exp $
  */
 
 #define IWI_CMD_RING_COUNT	16
@@ -298,7 +298,9 @@ struct iwi_rateset {
 #define IWI_RATESET_TYPE_SUPPORTED	1
 
 	uint8_t	reserved;
-	uint8_t	rates[12];
+
+#define IWI_RATESET_MAXSIZE	12
+	uint8_t	rates[IWI_RATESET_MAXSIZE];
 } __packed;
 
 /* structure for command IWI_CMD_SET_TX_POWER */
