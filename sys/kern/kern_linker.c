@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.31 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.32 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -114,7 +114,7 @@ linker_file_sysinit(linker_file_t lf)
 	    moddata = (*sipp)->udata;
 	    error = module_register(moddata, lf);
 	    if (error) {
-		printf("linker_file_sysinit \"%s\" failed to register! %d\n",
+		kprintf("linker_file_sysinit \"%s\" failed to register! %d\n",
 		    lf->filename, error);
 		return error;
 	    }
@@ -453,7 +453,7 @@ linker_file_unload(linker_file_t file)
 	     mod; 
 	     mod = module_getfnext(mod)
 	) {
-	    printf("linker_file_unload: module %p still has refs!\n", mod);
+	    kprintf("linker_file_unload: module %p still has refs!\n", mod);
 	}
 	--file->refs;
     }
@@ -758,7 +758,7 @@ sys_kldunload(struct kldunload_args *uap)
     if (lf) {
 	KLD_DPF(FILE, ("kldunload: lf->userrefs=%d\n", lf->userrefs));
 	if (lf->userrefs == 0) {
-	    printf("linkerunload: attempt to unload file that was loaded by the kernel\n");
+	    kprintf("linkerunload: attempt to unload file that was loaded by the kernel\n");
 	    error = EBUSY;
 	    goto out;
 	}
@@ -1004,11 +1004,11 @@ linker_preload(void* arg)
 	modname = (char *)preload_search_info(modptr, MODINFO_NAME);
 	modtype = (char *)preload_search_info(modptr, MODINFO_TYPE);
 	if (modname == NULL) {
-	    printf("Preloaded module at %p does not have a name!\n", modptr);
+	    kprintf("Preloaded module at %p does not have a name!\n", modptr);
 	    continue;
 	}
 	if (modtype == NULL) {
-	    printf("Preloaded module at %p does not have a type!\n", modptr);
+	    kprintf("Preloaded module at %p does not have a type!\n", modptr);
 	    continue;
 	}
 
@@ -1016,12 +1016,12 @@ linker_preload(void* arg)
 	 * This is a hack at the moment, but what's in FreeBSD-5 is even 
 	 * worse so I'd rather the hack.
 	 */
-	printf("Preloaded %s \"%s\" at %p", modtype, modname, modptr);
+	kprintf("Preloaded %s \"%s\" at %p", modtype, modname, modptr);
 	if (find_mod_metadata(modname)) {
-	    printf(" (ignored, already in static kernel)\n");
+	    kprintf(" (ignored, already in static kernel)\n");
 	    continue;
 	}
-	printf(".\n");
+	kprintf(".\n");
 
 	lf = linker_find_file_by_name(modname);
 	if (lf) {
@@ -1051,7 +1051,7 @@ linker_preload(void* arg)
 			moddata = (*sipp)->udata;
 			error = module_register(moddata, lf);
 			if (error)
-			    printf("Preloaded %s \"%s\" failed to register: %d\n",
+			    kprintf("Preloaded %s \"%s\" failed to register: %d\n",
 				modtype, modname, error);
 		    }
 		}

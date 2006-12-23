@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.24 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.25 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ sysctl_register_oid_int(struct sysctl_oid *oidp)
 		if ((p->oid_kind & CTLTYPE) == CTLTYPE_NODE)
 			p->oid_refcnt++;
 		else
-			printf("can't re-use a leaf (%s)!\n", p->oid_name);
+			kprintf("can't re-use a leaf (%s)!\n", p->oid_name);
 		return;
 	}
 
@@ -180,7 +180,7 @@ sysctl_unregister_oid_int(struct sysctl_oid *oidp)
 	 * being unloaded afterwards.  It should not be a panic()
 	 * for normal use.
 	 */
-	printf("%s: failed to unregister sysctl\n", __func__);
+	kprintf("%s: failed to unregister sysctl\n", __func__);
 }
 
 /* Initialize a new context to keep track of dynamically added sysctls. */
@@ -333,7 +333,7 @@ sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse)
 	if (oidp == NULL)
 		return(EINVAL);
 	if ((oidp->oid_kind & CTLFLAG_DYN) == 0) {
-		printf("can't remove non-dynamic nodes!\n");
+		kprintf("can't remove non-dynamic nodes!\n");
 		return (EINVAL);
 	}
 	sysctl_lock(LK_EXCLUSIVE | LK_CANRECURSE);
@@ -365,7 +365,7 @@ sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse)
 		oidp->oid_refcnt--;
 	} else {
 		if (oidp->oid_refcnt == 0) {
-			printf("Warning: bad oid_refcnt=%u (%s)!\n",
+			kprintf("Warning: bad oid_refcnt=%u (%s)!\n",
 			       oidp->oid_refcnt, oidp->oid_name);
 			sysctl_unlock();
 			return(EINVAL);
@@ -411,7 +411,7 @@ sysctl_add_oid(struct sysctl_ctx_list *clist, struct sysctl_oid_list *parent,
 			sysctl_unlock();
 			return (oidp);
 		} else {
-			printf("can't re-use a leaf (%s)!\n", name);
+			kprintf("can't re-use a leaf (%s)!\n", name);
 			sysctl_unlock();
 			return (NULL);
 		}
@@ -483,7 +483,7 @@ SYSINIT(sysctl, SI_SUB_KMEM, SI_ORDER_ANY, sysctl_register_all, 0);
  * (be aware though, that the proper interface isn't as obvious as it
  * may seem, there are various conflicting requirements.
  *
- * {0,0}	printf the entire MIB-tree.
+ * {0,0}	kprintf the entire MIB-tree.
  * {0,1,...}	return the name of the "..." OID.
  * {0,2,...}	return the next OID.
  * {0,3}	return the OID of the name in "new"
@@ -500,30 +500,30 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 	SLIST_FOREACH(oidp, l, oid_link) {
 
 		for (k=0; k<i; k++)
-			printf(" ");
+			kprintf(" ");
 
-		printf("%d %s ", oidp->oid_number, oidp->oid_name);
+		kprintf("%d %s ", oidp->oid_number, oidp->oid_name);
 
-		printf("%c%c",
+		kprintf("%c%c",
 			oidp->oid_kind & CTLFLAG_RD ? 'R':' ',
 			oidp->oid_kind & CTLFLAG_WR ? 'W':' ');
 
 		if (oidp->oid_handler)
-			printf(" *Handler");
+			kprintf(" *Handler");
 
 		switch (oidp->oid_kind & CTLTYPE) {
 			case CTLTYPE_NODE:
-				printf(" Node\n");
+				kprintf(" Node\n");
 				if (!oidp->oid_handler) {
 					sysctl_sysctl_debug_dump_node(
 						oidp->oid_arg1, i+2);
 				}
 				break;
-			case CTLTYPE_INT:    printf(" Int\n"); break;
-			case CTLTYPE_STRING: printf(" String\n"); break;
-			case CTLTYPE_QUAD:   printf(" Quad\n"); break;
-			case CTLTYPE_OPAQUE: printf(" Opaque/struct\n"); break;
-			default:	     printf("\n");
+			case CTLTYPE_INT:    kprintf(" Int\n"); break;
+			case CTLTYPE_STRING: kprintf(" String\n"); break;
+			case CTLTYPE_QUAD:   kprintf(" Quad\n"); break;
+			case CTLTYPE_OPAQUE: kprintf(" Opaque/struct\n"); break;
+			default:	     kprintf("\n");
 		}
 
 	}

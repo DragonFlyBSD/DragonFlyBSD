@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.34 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.35 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_bus.h"
@@ -48,7 +48,7 @@
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
 #ifdef BUS_DEBUG
-#define PDEBUG(a)	(printf("%s:%d: ", __func__, __LINE__), printf a, printf("\n"))
+#define PDEBUG(a)	(kprintf("%s:%d: ", __func__, __LINE__), kprintf a, kprintf("\n"))
 #define DEVICENAME(d)	((d)? device_get_name(d): "no device")
 #define DRIVERNAME(d)	((d)? d->name : "no driver")
 #define DEVCLANAME(d)	((d)? d->name : "no devclass")
@@ -56,7 +56,7 @@ MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 /* Produce the indenting, indent*2 spaces plus a '.' ahead of that to 
  * prevent syslog from deleting initial spaces
  */
-#define indentprintf(p)	do { int iJ; printf("."); for (iJ=0; iJ<indent; iJ++) printf("  "); printf p ; } while(0)
+#define indentprintf(p)	do { int iJ; kprintf("."); for (iJ=0; iJ<indent; iJ++) kprintf("  "); kprintf p ; } while(0)
 
 static void	print_device_short(device_t dev, int indent);
 static void	print_device(device_t dev, int indent);
@@ -378,7 +378,7 @@ devclass_alloc_unit(devclass_t dc, int *unitp)
 		if (unit >= 0 && unit < dc->maxunit &&
 		    dc->devices[unit] != NULL) {
 			if (bootverbose)
-				printf("%s-: %s%d exists, using next available unit number\n",
+				kprintf("%s-: %s%d exists, using next available unit number\n",
 				       dc->name, dc->name, unit);
 			/* find the next available slot */
 			while (++unit < dc->maxunit && dc->devices[unit] != NULL)
@@ -480,7 +480,7 @@ make_device(device_t parent, const char *name, int unit)
 	if (name != NULL) {
 		dc = devclass_find_internal(name, NULL, TRUE);
 		if (!dc) {
-			printf("make_device: can't find device class %s\n", name);
+			kprintf("make_device: can't find device class %s\n", name);
 			return(NULL);
 		}
 	} else
@@ -809,9 +809,9 @@ device_print_prettyname(device_t dev)
 	const char *name = device_get_name(dev);
 
 	if (name == 0)
-		return printf("unknown: ");
+		return kprintf("unknown: ");
 	else
-		return printf("%s%d: ", name, device_get_unit(dev));
+		return kprintf("%s%d: ", name, device_get_unit(dev));
 }
 
 int
@@ -1002,7 +1002,7 @@ device_set_devclass(device_t dev, const char *classname)
 	}
 
 	if (dev->devclass) {
-		printf("device_set_devclass: device class already set\n");
+		kprintf("device_set_devclass: device class already set\n");
 		return(EINVAL);
 	}
 
@@ -1058,7 +1058,7 @@ device_probe_and_attach(device_t dev)
 	if ((dev->flags & DF_ENABLED) == 0) {
 		if (bootverbose) {
 			device_print_prettyname(dev);
-			printf("not probed (disabled)\n");
+			kprintf("not probed (disabled)\n");
 		}
 		return(0);
 	}
@@ -1080,10 +1080,10 @@ device_probe_and_attach(device_t dev)
 	if (bootverbose && !device_is_quiet(dev)) {
 		device_t tmp;
 
-		printf("%s", device_get_nameunit(dev));
+		kprintf("%s", device_get_nameunit(dev));
 		for (tmp = dev->parent; tmp; tmp = tmp->parent)
-			printf(".%s", device_get_nameunit(tmp));
-		printf("\n");
+			kprintf(".%s", device_get_nameunit(tmp));
+		kprintf("\n");
 	}
 	if (!device_is_quiet(dev))
 		device_print_child(bus, dev);
@@ -1093,7 +1093,7 @@ device_probe_and_attach(device_t dev)
 		if (bootverbose && !device_is_quiet(dev))
 			device_print_child(bus, dev);
 	} else {
-		printf("device_probe_and_attach: %s%d attach returned %d\n",
+		kprintf("device_probe_and_attach: %s%d attach returned %d\n",
 		       dev->driver->name, dev->unit, error);
 		/* Unset the class that was set in device_probe_child */
 		if (!hasclass)
@@ -1590,12 +1590,12 @@ resource_cfgload(void *dummy __unused)
 			error = resource_create(name, unit, resname, type,
 						&res);
 			if (error) {
-				printf("create resource %s%d: error %d\n",
+				kprintf("create resource %s%d: error %d\n",
 					name, unit, error);
 				continue;
 			}
 			if (res->type != type) {
-				printf("type mismatch %s%d: %d != %d\n",
+				kprintf("type mismatch %s%d: %d != %d\n",
 					name, unit, res->type, type);
 				continue;
 			}
@@ -1788,14 +1788,14 @@ resource_list_print_type(struct resource_list *rl, const char *name, int type,
 	SLIST_FOREACH(rle, rl, link) {
 		if (rle->type == type) {
 			if (printed == 0)
-				retval += printf(" %s ", name);
+				retval += kprintf(" %s ", name);
 			else
-				retval += printf(",");
+				retval += kprintf(",");
 			printed++;
-			retval += printf(format, rle->start);
+			retval += kprintf(format, rle->start);
 			if (rle->count > 1) {
-				retval += printf("-");
-				retval += printf(format, rle->start +
+				retval += kprintf("-");
+				retval += kprintf(format, rle->start +
 						 rle->count - 1);
 			}
 		}
@@ -1945,12 +1945,12 @@ bus_print_child_header(device_t dev, device_t child)
 	if (device_get_desc(child))
 		retval += device_printf(child, "<%s>", device_get_desc(child));
 	else
-		retval += printf("%s", device_get_nameunit(child));
+		retval += kprintf("%s", device_get_nameunit(child));
 	if (bootverbose) {
 		if (child->state != DS_ATTACHED)
-			printf(" [tentative]");
+			kprintf(" [tentative]");
 		else
-			printf(" [attached!]");
+			kprintf(" [attached!]");
 	}
 	return(retval);
 }
@@ -1958,7 +1958,7 @@ bus_print_child_header(device_t dev, device_t child)
 int
 bus_print_child_footer(device_t dev, device_t child)
 {
-	return(printf(" on %s\n", device_get_nameunit(dev)));
+	return(kprintf(" on %s\n", device_get_nameunit(dev)));
 }
 
 device_t
@@ -2704,7 +2704,7 @@ print_devclass_list_short(void)
 {
 	devclass_t dc;
 
-	printf("Short listing of devclasses, drivers & devices:\n");
+	kprintf("Short listing of devclasses, drivers & devices:\n");
 	TAILQ_FOREACH(dc, &devclasses, link) {
 		print_devclass_short(dc, 0);
 	}
@@ -2715,7 +2715,7 @@ print_devclass_list(void)
 {
 	devclass_t dc;
 
-	printf("Full listing of devclasses, drivers & devices:\n");
+	kprintf("Full listing of devclasses, drivers & devices:\n");
 	TAILQ_FOREACH(dc, &devclasses, link) {
 		print_devclass(dc, 0);
 	}

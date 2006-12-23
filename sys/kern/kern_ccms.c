@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_ccms.c,v 1.1 2006/08/23 06:45:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ccms.c,v 1.2 2006/12/23 00:35:03 swildner Exp $
  */
 /*
  * The Cache Coherency Management System (CCMS)
@@ -80,7 +80,7 @@ static void
 ccmsinit(void *dummy)
 {
     ccms_oc = objcache_create_simple(M_CCMS, sizeof(struct ccms_cst));
-    printf("CCMSINIT\n");
+    kprintf("CCMSINIT\n");
 }
 SYSINIT(ccms, SI_SUB_OBJCACHE, SI_ORDER_ANY, ccmsinit, NULL);
 
@@ -278,7 +278,7 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 	    } else {
 		++cst->sharecount;
 		if (ccms_enable >= 9) {
-			printf("CST SHARE %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST SHARE %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 	    }
@@ -289,7 +289,7 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 	    } else {
 		--cst->sharecount;
 		if (ccms_enable >= 9) {
-			printf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 	    }
@@ -301,7 +301,7 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 		--cst->sharecount;
 		++cst->modifycount;
 		if (ccms_enable >= 9) {
-			printf("CST MODXL %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST MODXL %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 	    }
@@ -362,7 +362,7 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 		info->coll_cst = cst;
 	    } else {
 		if (ccms_enable >= 9) {
-			printf("CST SHARE %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST SHARE %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 		++cst->sharecount;
@@ -374,7 +374,7 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 	    } else {
 		--cst->sharecount;
 		if (ccms_enable >= 9) {
-			printf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 	    }
@@ -386,7 +386,7 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 		--cst->sharecount;
 		++cst->modifycount;
 		if (ccms_enable >= 9) {
-			printf("CST MODXL %d %lld-%lld\n", cst->sharecount,
+			kprintf("CST MODXL %d %lld-%lld\n", cst->sharecount,
 				cst->beg_offset, cst->end_offset);
 		}
 	    }
@@ -439,7 +439,7 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	KKASSERT(cst->sharecount > 0);
 	--cst->sharecount;
 	if (ccms_enable >= 9) {
-		printf("CST UNSHR %d %lld-%lld (%d)\n", cst->sharecount,
+		kprintf("CST UNSHR %d %lld-%lld (%d)\n", cst->sharecount,
 			cst->beg_offset, cst->end_offset, cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
@@ -451,7 +451,7 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	KKASSERT(cst->sharecount < 0);
 	++cst->sharecount;
 	if (ccms_enable >= 9) {
-		printf("CST UNEXC %d %lld-%lld (%d)\n", cst->sharecount,
+		kprintf("CST UNEXC %d %lld-%lld (%d)\n", cst->sharecount,
 			cst->beg_offset, cst->end_offset, cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
@@ -464,7 +464,7 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	++cst->sharecount;
 	--cst->modifycount;
 	if (ccms_enable >= 9) {
-		printf("CST UNMOD %d %lld-%lld (%d)\n", cst->sharecount,
+		kprintf("CST UNMOD %d %lld-%lld (%d)\n", cst->sharecount,
 			cst->beg_offset, cst->end_offset, cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
@@ -513,7 +513,7 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 		cst->beg_offset = ocst->beg_offset;
 		cst->lrefs = ocst->lrefs;
 		if (ccms_enable >= 9) {
-		    printf("MERGELEFT %p %lld-%lld (%d)\n", 
+		    kprintf("MERGELEFT %p %lld-%lld (%d)\n", 
 			   ocst, cst->beg_offset, cst->end_offset,
 			   cst->blocked);
 		}
@@ -539,7 +539,7 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 		cst->end_offset = ocst->end_offset;
 		cst->rrefs = ocst->rrefs;
 		if (ccms_enable >= 9) {
-		    printf("MERGERIGHT %p %lld-%lld\n",
+		    kprintf("MERGERIGHT %p %lld-%lld\n",
 			   ocst, cst->beg_offset, cst->end_offset);
 		}
 		objcache_put(ccms_oc, ocst);

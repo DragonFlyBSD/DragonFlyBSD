@@ -90,7 +90,7 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/kern/subr_blist.c,v 1.6 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_blist.c,v 1.7 2006/12/23 00:35:04 swildner Exp $
  */
 
 #ifdef _KERNEL
@@ -194,14 +194,14 @@ blist_create(daddr_t blocks)
 	bl->bl_root = kmalloc(sizeof(blmeta_t) * bl->bl_rootblks, M_SWAP, M_WAITOK);
 
 #if defined(BLIST_DEBUG)
-	printf(
+	kprintf(
 		"BLIST representing %d blocks (%d MB of swap)"
 		", requiring %dK of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
 		(bl->bl_rootblks * sizeof(blmeta_t) + 1023) / 1024
 	);
-	printf("BLIST raw radix tree contains %d records\n", bl->bl_rootblks);
+	kprintf("BLIST raw radix tree contains %d records\n", bl->bl_rootblks);
 #endif
 	blst_radix_init(bl->bl_root, bl->bl_radix, bl->bl_skip, blocks);
 
@@ -292,9 +292,9 @@ blist_resize(blist_t *pbl, daddr_t count, int freenew)
 void
 blist_print(blist_t bl)
 {
-	printf("BLIST {\n");
+	kprintf("BLIST {\n");
 	blst_radix_print(bl->bl_root, 0, bl->bl_radix, bl->bl_skip, 4);
-	printf("}\n");
+	kprintf("}\n");
 }
 
 #endif
@@ -537,7 +537,7 @@ blst_meta_free(
 	int next_skip = ((u_int)skip / BLIST_META_RADIX);
 
 #if 0
-	printf("FREE (%x,%d) FROM (%x,%d)\n",
+	kprintf("FREE (%x,%d) FROM (%x,%d)\n",
 	    freeBlk, count,
 	    blk, radix
 	);
@@ -795,7 +795,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 	int lastState = 0;
 
 	if (radix == BLIST_BMAP_RADIX) {
-		printf(
+		kprintf(
 		    "%*.*s(%04x,%d): bitmap %08x big=%d\n", 
 		    tab, tab, "",
 		    blk, radix,
@@ -806,7 +806,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 	}
 
 	if (scan->u.bmu_avail == 0) {
-		printf(
+		kprintf(
 		    "%*.*s(%04x,%d) ALL ALLOCATED\n",
 		    tab, tab, "",
 		    blk,
@@ -815,7 +815,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 		return;
 	}
 	if (scan->u.bmu_avail == radix) {
-		printf(
+		kprintf(
 		    "%*.*s(%04x,%d) ALL FREE\n",
 		    tab, tab, "",
 		    blk,
@@ -824,7 +824,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 		return;
 	}
 
-	printf(
+	kprintf(
 	    "%*.*s(%04x,%d): subtree (%d/%d) big=%d {\n",
 	    tab, tab, "",
 	    blk, radix,
@@ -839,7 +839,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 
 	for (i = 1; i <= skip; i += next_skip) {
 		if (scan[i].bm_bighint == (daddr_t)-1) {
-			printf(
+			kprintf(
 			    "%*.*s(%04x,%d): Terminator\n",
 			    tab, tab, "",
 			    blk, radix
@@ -858,7 +858,7 @@ blst_radix_print(blmeta_t *scan, daddr_t blk, daddr_t radix, int skip, int tab)
 	}
 	tab -= 4;
 
-	printf(
+	kprintf(
 	    "%*.*s}\n",
 	    tab, tab, ""
 	);
@@ -894,7 +894,7 @@ main(int ac, char **av)
 		daddr_t count = 0;
 
 
-		printf("%d/%d/%d> ", bl->bl_free, size, bl->bl_radix);
+		kprintf("%d/%d/%d> ", bl->bl_free, size, bl->bl_radix);
 		fflush(stdout);
 		if (fgets(buf, sizeof(buf), stdin) == NULL)
 			break;
@@ -903,7 +903,7 @@ main(int ac, char **av)
 			if (sscanf(buf + 1, "%d", &count) == 1) {
 				blist_resize(&bl, count, 1);
 			} else {
-				printf("?\n");
+				kprintf("?\n");
 			}
 		case 'p':
 			blist_print(bl);
@@ -911,16 +911,16 @@ main(int ac, char **av)
 		case 'a':
 			if (sscanf(buf + 1, "%d", &count) == 1) {
 				daddr_t blk = blist_alloc(bl, count);
-				printf("    R=%04x\n", blk);
+				kprintf("    R=%04x\n", blk);
 			} else {
-				printf("?\n");
+				kprintf("?\n");
 			}
 			break;
 		case 'f':
 			if (sscanf(buf + 1, "%x %d", &da, &count) == 2) {
 				blist_free(bl, da, count);
 			} else {
-				printf("?\n");
+				kprintf("?\n");
 			}
 			break;
 		case '?':
@@ -934,7 +934,7 @@ main(int ac, char **av)
 			);
 			break;
 		default:
-			printf("?\n");
+			kprintf("?\n");
 			break;
 		}
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.65 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.66 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -122,7 +122,7 @@ exit1(int rv)
 	struct exitlist *ep;
 
 	if (p->p_pid == 1) {
-		printf("init died (signal %d, exit %d)\n",
+		kprintf("init died (signal %d, exit %d)\n",
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
@@ -624,7 +624,7 @@ at_exit(exitlist_fn function)
 #ifdef INVARIANTS
 	/* Be noisy if the programmer has lost track of things */
 	if (rm_at_exit(function)) 
-		printf("WARNING: exit callout entry (%p) already present\n",
+		kprintf("WARNING: exit callout entry (%p) already present\n",
 		    function);
 #endif
 	ep = kmalloc(sizeof(*ep), M_ATEXIT, M_NOWAIT);

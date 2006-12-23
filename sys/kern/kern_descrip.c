@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.75 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.76 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -537,7 +537,7 @@ retry:
 		if (fdp->fd_files[new].reserved) {
 			spin_unlock_wr(&fdp->fd_spin);
 			fdrop(fp);
-			printf("Warning: dup(): target descriptor %d is reserved, waiting for it to be resolved\n", new);
+			kprintf("Warning: dup(): target descriptor %d is reserved, waiting for it to be resolved\n", new);
 			tsleep(fdp, 0, "fdres", hz);
 			goto retry;
 		}
@@ -1211,7 +1211,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	if (nfiles >= maxfiles - maxfilesrootres &&
 	    ((p && p->p_ucred->cr_ruid != 0) || nfiles >= maxfiles)) {
 		if (ppsratecheck(&lastfail, &curfail, 1)) {
-			printf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
+			kprintf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
 				(p ? p->p_ucred->cr_ruid : -1));
 		}
 		error = ENFILE;

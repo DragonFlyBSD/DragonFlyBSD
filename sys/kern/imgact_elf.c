@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.44 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.45 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -953,7 +953,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	struct elf_buf target;
 
 	if (!fp)
-		printf("can't dump core - null fp\n");
+		kprintf("can't dump core - null fp\n");
 
 	/*
 	 * Size the program segments
@@ -1113,9 +1113,9 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 			char *freepath, *fullpath;
 
 			if (vn_fullpath(curproc, vp, &fullpath, &freepath)) {
-				printf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
+				kprintf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
 			} else {
-				printf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
+				kprintf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
 				kfree(freepath, M_TEMP);
 			}
 			error = 0;

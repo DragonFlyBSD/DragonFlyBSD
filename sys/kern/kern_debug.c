@@ -61,7 +61,7 @@
  * Adopted from:
  *	src/sys/kern/kern_shutdown.c
  *
- * $DragonFly: src/sys/kern/kern_debug.c,v 1.5 2005/08/06 12:09:30 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_debug.c,v 1.6 2006/12/23 00:35:03 swildner Exp $
  *
  */
 
@@ -85,10 +85,10 @@ backtrace(void)
 {
 
 #ifdef DDB
-		printf("Stack backtrace:\n");
+		kprintf("Stack backtrace:\n");
 		db_print_backtrace();
 #else
-		printf("Cannot print stack trace.\n");
-		printf("DDB kernel option is needed.\n");
+		kprintf("Cannot print stack trace.\n");
+		kprintf("DDB kernel option is needed.\n");
 #endif
 }

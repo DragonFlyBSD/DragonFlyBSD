@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.43 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.44 2006/12/23 00:35:04 swildner Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -243,7 +243,7 @@ kmeminit(void *dummy)
 	weirdary[i] = WEIRD_ADDR;
 
     if (bootverbose)
-	printf("Slab ZoneSize set to %dKB\n", ZoneSize / 1024);
+	kprintf("Slab ZoneSize set to %dKB\n", ZoneSize / 1024);
 }
 
 /*
@@ -301,7 +301,7 @@ malloc_uninit(void *data)
     for (i = ttl = 0; i < ncpus; ++i)
 	ttl += type->ks_memuse[i];
     if (ttl) {
-	printf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
+	kprintf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
 	    ttl, type->ks_shortdesc, i);
     }
 #endif

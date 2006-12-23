@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.45 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.46 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -200,7 +200,7 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	 * other VFS's audited before we can switch to LK_SHARED.
 	 */
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -330,7 +330,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -412,7 +412,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -494,7 +494,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -575,7 +575,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -647,7 +647,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -732,7 +732,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -821,7 +821,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -896,7 +896,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
@@ -1000,7 +1000,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	 * is the permissions check.
 	 */
 	if ((error = vget(fdvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			fncp, fncp->nc_name);
 		return(EAGAIN);
 	}
@@ -1052,7 +1052,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		return (error);
 	}
 	if ((error = vget(tdvp, LK_EXCLUSIVE)) != 0) {
-		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			tncp, tncp->nc_name);
 		vrele(fdvp);
 		vrele(fvp);
@@ -1136,7 +1136,7 @@ vop_nolookup(ap)
 static int
 vop_nostrategy (struct vop_strategy_args *ap)
 {
-	printf("No strategy for buffer at %p\n", ap->a_bio->bio_buf);
+	kprintf("No strategy for buffer at %p\n", ap->a_bio->bio_buf);
 	vprint("", ap->a_vp);
 	ap->a_bio->bio_buf->b_flags |= B_ERROR;
 	ap->a_bio->bio_buf->b_error = EOPNOTSUPP;

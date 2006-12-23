@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.36 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.37 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ settime(tv)
 			timevalsub(&tv2, &maxtime);
 			if (tv2.tv_sec < -1) {
 				tv->tv_sec = maxtime.tv_sec - 1;
-				printf("Time adjustment clamped to -1 second\n");
+				kprintf("Time adjustment clamped to -1 second\n");
 			}
 		} else {
 			if (tv1.tv_sec == laststep.tv_sec) {
@@ -122,7 +122,7 @@ settime(tv)
 			}
 			if (delta.tv_sec > 1) {
 				tv->tv_sec = tv1.tv_sec + 1;
-				printf("Time adjustment clamped to +1 second\n");
+				kprintf("Time adjustment clamped to +1 second\n");
 			}
 			laststep = *tv;
 		}

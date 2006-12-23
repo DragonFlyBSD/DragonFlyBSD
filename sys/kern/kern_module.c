@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.12 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.13 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ module_register_init(const void *arg)
     if (error) {
 	MOD_EVENT(mod, MOD_UNLOAD);
 	module_release(mod);
-	printf("module_register_init: MOD_LOAD (%s, %lx, %p) error %d\n",
+	kprintf("module_register_init: MOD_LOAD (%s, %lx, %p) error %d\n",
 	       data->name, (u_long)(uintfptr_t)data->evhand, data->priv, error);
     }
 }
@@ -124,7 +124,7 @@ module_register(const moduledata_t *data, linker_file_t container)
 
     newmod = module_lookupbyname(data->name);
     if (newmod != NULL) {
-	printf("module_register: module %s already exists!\n", data->name);
+	kprintf("module_register: module %s already exists!\n", data->name);
 	return EEXIST;
     }
     namelen = strlen(data->name) + 1;

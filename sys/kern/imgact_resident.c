@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.14 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.15 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 
 done:
 	if (error)
-		printf("fill_xresident, error = %d\n", error);
+		kprintf("fill_xresident, error = %d\n", error);
 	return (error);
 }
 

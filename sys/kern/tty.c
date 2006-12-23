@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.32 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.33 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*-
@@ -286,7 +286,7 @@ ttyclearsession(struct tty *tp)
 		if (sp->s_ttyp == tp) {
 			sp->s_ttyp = NULL;
 		} else {
-			printf("ttyclearsession: warning: sp->s_ttyp != tp "
+			kprintf("ttyclearsession: warning: sp->s_ttyp != tp "
 				"%p/%p\n", sp->s_ttyp, tp);
 		}
 #endif
@@ -1339,7 +1339,7 @@ again:
 			 * next line discipline (although we should do more
 			 * to send the START char).  Not clearing the state
 			 * may have caused the "putc to a clist with no
-			 * reserved cblocks" panic/printf.
+			 * reserved cblocks" panic/kprintf.
 			 */
 			CLR(tp->t_state, TS_TBLOCK);
 
@@ -2117,7 +2117,7 @@ ttyrub(c, tp)
 				break;
 			default:			/* XXX */
 #define	PANICSTR	"ttyrub: would panic c = %d, val = %d\n"
-				(void)printf(PANICSTR, c, CCLASS(c));
+				(void)kprintf(PANICSTR, c, CCLASS(c));
 #ifdef notdef
 				panic(PANICSTR, c, CCLASS(c));
 #endif

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_rangelock.c,v 1.1 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_rangelock.c,v 1.2 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * This module implements hard range locks for files and directories.  It is
@@ -138,14 +138,14 @@ vrange_lock_overlapped(struct vnode *vp,
     while (conflicted) {
 	if (tsleep(&vp->v_range.vh_list, 0, "vrnglk", hz * 3) == EWOULDBLOCK) {
 	    if (warned == 0)
-		printf("warning: conflicted lock vp %p %lld,%lld blocked\n",
+		kprintf("warning: conflicted lock vp %p %lld,%lld blocked\n",
 		    vp, vr->vr_offset, vr->vr_length);
 	    warned = 1;
 	}
 	conflicted = vrange_lock_conflicted(vp, vr);
     }
     if (warned) {
-	printf("waring: conflicted lock vp %p %lld,%lld unblocked\n",
+	kprintf("waring: conflicted lock vp %p %lld,%lld unblocked\n",
 	    vp, vr->vr_offset, vr->vr_length);
     }
 }

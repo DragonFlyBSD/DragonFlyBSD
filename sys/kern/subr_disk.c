@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.26 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.27 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -750,9 +750,9 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * if the offset of the error in the transfer and a disk label
  * are both available.  blkdone should be -1 if the position of the error
  * is unknown; the disklabel pointer may be null from drivers that have not
- * been converted to use them.  The message is printed with printf
+ * been converted to use them.  The message is printed with kprintf
  * if pri is LOG_PRINTF, otherwise it uses log at the specified priority.
- * The message should be completed (with at least a newline) with printf
+ * The message should be completed (with at least a newline) with kprintf
  * or addlog, respectively.  There is no trailing space.
  */
 void
@@ -767,10 +767,10 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri,
 	char *sname;
 
 	sname = dsname(dev, unit, slice, part, partname);
-	printf("%s%s: %s %sing ", sname, partname, what,
+	kprintf("%s%s: %s %sing ", sname, partname, what,
 	      (bp->b_cmd == BUF_CMD_READ) ? "read" : "writ");
-	printf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
+	kprintf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
 	if (donecnt)
-		printf(" (%d bytes completed)", donecnt);
+		kprintf(" (%d bytes completed)", donecnt);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.20 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.21 2006/12/23 00:35:04 swildner Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -208,7 +208,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     KKASSERT(p != NULL);
 
     if (p->p_ucred == NULL) {
-	printf("link_aout_load_file: cannot load '%s' from filesystem"
+	kprintf("link_aout_load_file: cannot load '%s' from filesystem"
 		" this early\n", filename);
 	return ENOENT;
     }
@@ -377,7 +377,7 @@ read_relocation(struct relocation_info* r, char* addr)
     else if (length == 2)
 	return *(u_int*) addr;
     else
-	printf("link_aout: unsupported relocation size %d\n", r->r_length);
+	kprintf("link_aout: unsupported relocation size %d\n", r->r_length);
     return 0;
 }
 
@@ -392,7 +392,7 @@ write_relocation(struct relocation_info* r, char* addr, long value)
     else if (length == 2)
 	*(u_int*) addr = value;
     else
-	printf("link_aout: unsupported relocation size %d\n", r->r_length);
+	kprintf("link_aout: unsupported relocation size %d\n", r->r_length);
 }
 
 static int
@@ -426,13 +426,13 @@ relocate_file(linker_file_t lf)
 	    sym = &stringbase[np->nz_strx];
 
 	    if (sym[0] != '_') {
-		printf("link_aout: bad symbol name %s\n", sym);
-		printf("link_aout: symbol %s not found\n", sym);
+		kprintf("link_aout: bad symbol name %s\n", sym);
+		kprintf("link_aout: symbol %s not found\n", sym);
 		return ENOENT;
 	    } else {
 		if (linker_file_lookup_symbol(lf, sym + 1,
 		    (np->nz_type != (N_SETV+N_EXT)), (caddr_t *)&relocation)) {
-			printf("link_aout: symbol %s not found\n", sym);
+			kprintf("link_aout: symbol %s not found\n", sym);
 			return ENOENT;
 		}
 	    }
@@ -440,7 +440,7 @@ relocate_file(linker_file_t lf)
 	    relocation += read_relocation(r, addr);
 
 	    if (r->r_jmptable) {
-		printf("link_aout: can't cope with jump table relocations\n");
+		kprintf("link_aout: can't cope with jump table relocations\n");
 		continue;
 	    }
 
@@ -448,7 +448,7 @@ relocate_file(linker_file_t lf)
 		relocation -= (intptr_t) af->address;
 
 	    if (r->r_copy) {
-		printf("link_aout: can't cope with copy relocations\n");
+		kprintf("link_aout: can't cope with copy relocations\n");
 		continue;
 	    }
 	    

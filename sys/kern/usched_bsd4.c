@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.17 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.18 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -670,7 +670,7 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		if ((nleft = nticks - lp->lwp_cpticks) < 0)
 			nleft = 0;
 		if (usched_debug == lp->lwp_proc->p_pid) {
-			printf("pid %d tid %d estcpu %d cpticks %d nticks %d nleft %d",
+			kprintf("pid %d tid %d estcpu %d cpticks %d nticks %d nleft %d",
 				lp->lwp_proc->p_pid, lp->lwp_tid, lp->lwp_estcpu,
 				lp->lwp_cpticks, nticks, nleft);
 		}
@@ -695,7 +695,7 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 			lp->lwp_estcpu >>= 1;
 
 		if (usched_debug == lp->lwp_proc->p_pid)
-			printf(" ndecay %d estcpu %d\n", ndecay, lp->lwp_estcpu);
+			kprintf(" ndecay %d estcpu %d\n", ndecay, lp->lwp_estcpu);
 		bsd4_resetpriority(lp);
 		lp->lwp_cpbase = cpbase;
 		lp->lwp_cpticks = 0;
@@ -1164,7 +1164,7 @@ sched_thread_cpu_init(void)
     int i;
 
     if (bootverbose)
-	printf("start scheduler helpers on cpus:");
+	kprintf("start scheduler helpers on cpus:");
 
     for (i = 0; i < ncpus; ++i) {
 	bsd4_pcpu_t dd = &bsd4_pcpu[i];
@@ -1174,7 +1174,7 @@ sched_thread_cpu_init(void)
 	    continue;
 
 	if (bootverbose)
-	    printf(" %d", i);
+	    kprintf(" %d", i);
 
 	lwkt_create(sched_thread, NULL, NULL, &dd->helper_thread, 
 		    TDF_STOPREQ, i, "usched %d", i);
@@ -1188,7 +1188,7 @@ sched_thread_cpu_init(void)
 	atomic_set_int(&bsd4_rdyprocmask, mask);
     }
     if (bootverbose)
-	printf("\n");
+	kprintf("\n");
 }
 SYSINIT(uschedtd, SI_SUB_FINISH_SMP, SI_ORDER_ANY, sched_thread_cpu_init, NULL)
 

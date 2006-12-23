@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.32 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.33 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -378,7 +378,7 @@ journal_restart(struct mount *mp, struct file *fp,
      * Stop the reader and writer threads and clean up the current 
      * descriptor.
      */
-    printf("RESTART WITH FP %p KILLING %p\n", fp, jo->fp);
+    kprintf("RESTART WITH FP %p KILLING %p\n", fp, jo->fp);
     journal_destroy_threads(jo, flags);
 
     if (jo->fp)
@@ -552,7 +552,7 @@ jreclist_init(struct mount *mp, struct jrecord_list *jreclist,
 	if (++streamid == JREC_STREAMID_JMAX)
 		streamid = JREC_STREAMID_JMIN;
 	if (++count == JREC_STREAMID_JMAX - JREC_STREAMID_JMIN) {
-		printf("jreclist_init: all streamid's in use! sleeping\n");
+		kprintf("jreclist_init: all streamid's in use! sleeping\n");
 		tsleep(jreclist, 0, "jsidfl", hz * 10);
 		count = 0;
 	}

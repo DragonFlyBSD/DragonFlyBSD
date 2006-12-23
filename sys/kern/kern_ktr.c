@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.19 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.20 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -480,13 +480,13 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 #ifdef KTR_VERBOSE
 	if (ktr_verbose && info->kf_format) {
 #ifdef SMP
-		printf("cpu%d ", cpu);
+		kprintf("cpu%d ", cpu);
 #endif
 		if (ktr_verbose > 1) {
-			printf("%s.%d\t", entry->ktr_file, entry->ktr_line);
+			kprintf("%s.%d\t", entry->ktr_file, entry->ktr_line);
 		}
 		kvprintf(info->kf_format, ptr);
-		printf("\n");
+		kprintf("\n");
 	}
 #endif
 }

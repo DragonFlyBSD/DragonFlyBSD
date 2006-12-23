@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.79 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.80 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -430,14 +430,14 @@ _cache_lock(struct namecache *ncp)
 			if (didwarn)
 				continue;
 			didwarn = 1;
-			printf("[diagnostic] cache_lock: blocked on %p", ncp);
-			printf(" \"%*.*s\"\n",
+			kprintf("[diagnostic] cache_lock: blocked on %p", ncp);
+			kprintf(" \"%*.*s\"\n",
 				ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		}
 	}
 
 	if (didwarn == 1) {
-		printf("[diagnostic] cache_lock: unblocked %*.*s\n",
+		kprintf("[diagnostic] cache_lock: unblocked %*.*s\n",
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 	}
 }
@@ -801,7 +801,7 @@ _cache_inval(struct namecache *ncp, int flags)
 		r = _cache_inval_internal(ncp, flags, &track);
 		if (track.resume_ncp == NULL)
 			break;
-		printf("Warning: deep namecache recursion at %s\n",
+		kprintf("Warning: deep namecache recursion at %s\n",
 			ncp->nc_name);
 		_cache_unlock(ncp);
 		while ((ncp2 = track.resume_ncp) != NULL) {
@@ -904,7 +904,7 @@ restart:
 			_cache_hold(next);
 		_cache_lock(ncp);
 		if (ncp->nc_vp != vp) {
-			printf("Warning: cache_inval_vp: race-A detected on "
+			kprintf("Warning: cache_inval_vp: race-A detected on "
 				"%s\n", ncp->nc_name);
 			_cache_put(ncp);
 			if (next)
@@ -915,7 +915,7 @@ restart:
 		_cache_put(ncp);		/* also releases reference */
 		ncp = next;
 		if (ncp && ncp->nc_vp != vp) {
-			printf("Warning: cache_inval_vp: race-B detected on "
+			kprintf("Warning: cache_inval_vp: race-B detected on "
 				"%s\n", ncp->nc_name);
 			_cache_drop(ncp);
 			goto restart;
@@ -953,7 +953,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	_cache_setunresolved(tncp);
 	while (_cache_inval(tncp, CINV_CHILDREN) != 0) {
 		if (didwarn++ % 10 == 0) {
-			printf("Warning: cache_rename: race during "
+			kprintf("Warning: cache_rename: race during "
 				"rename %s->%s\n",
 				fncp->nc_name, tncp->nc_name);
 		}
@@ -1013,7 +1013,7 @@ again:
 		 * could be in the middle of a reclaim.
 		 */
 		if (vp->v_flag & VRECLAIMED) {
-			printf("Warning: vnode reclaim race detected in cache_vget on %p (%s)\n", vp, ncp->nc_name);
+			kprintf("Warning: vnode reclaim race detected in cache_vget on %p (%s)\n", vp, ncp->nc_name);
 			_cache_lock(ncp);
 			_cache_setunresolved(ncp);
 			_cache_unlock(ncp);
@@ -1065,7 +1065,7 @@ again:
 		 * to retry.
 		 */
 		if (vp->v_flag & VRECLAIMED) {
-			printf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
+			kprintf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
 			_cache_lock(ncp);
 			_cache_setunresolved(ncp);
 			_cache_unlock(ncp);
@@ -1229,7 +1229,7 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 	 */
 	if (ncvp_debug >= 3 && makeit && TAILQ_FIRST(&dvp->v_namecache)) {
 		nch->ncp = TAILQ_FIRST(&dvp->v_namecache);
-		printf("cache_fromdvp: forcing %s\n", nch->ncp->nc_name);
+		kprintf("cache_fromdvp: forcing %s\n", nch->ncp->nc_name);
 		goto force;
 	}
 
@@ -1248,17 +1248,17 @@ force:
 			error = cache_resolve_mp(nch->mount);
 			_cache_put(nch->ncp);
 			if (ncvp_debug) {
-				printf("cache_fromdvp: resolve root of mount %p error %d", 
+				kprintf("cache_fromdvp: resolve root of mount %p error %d", 
 					dvp->v_mount, error);
 			}
 			if (error) {
 				if (ncvp_debug)
-					printf(" failed\n");
+					kprintf(" failed\n");
 				nch->ncp = NULL;
 				break;
 			}
 			if (ncvp_debug)
-				printf(" succeeded\n");
+				kprintf(" succeeded\n");
 			continue;
 		}
 
@@ -1271,7 +1271,7 @@ force:
 		if (makeit > 20) {
 			error = cache_fromdvp_try(dvp, cred, &saved_dvp);
 			if (error) {
-				printf("lookupdotdot(longpath) failed %d "
+				kprintf("lookupdotdot(longpath) failed %d "
 				       "dvp %p\n", error, dvp);
 				break;
 			}
@@ -1283,7 +1283,7 @@ force:
 		 */
 		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
 		if (error) {
-			printf("lookupdotdot failed %d dvp %p\n", error, dvp);
+			kprintf("lookupdotdot failed %d dvp %p\n", error, dvp);
 			break;
 		}
 		vn_unlock(pvp);
@@ -1306,13 +1306,13 @@ force:
 		error = cache_inefficient_scan(nch, cred, dvp);
 		_cache_drop(nch->ncp);
 		if (error) {
-			printf("cache_fromdvp: scan %p (%s) failed on dvp=%p\n",
+			kprintf("cache_fromdvp: scan %p (%s) failed on dvp=%p\n",
 				pvp, nch->ncp->nc_name, dvp);
 			nch->ncp = NULL;
 			break;
 		}
 		if (ncvp_debug) {
-			printf("cache_fromdvp: scan %p (%s) succeeded\n",
+			kprintf("cache_fromdvp: scan %p (%s) succeeded\n",
 				pvp, nch->ncp->nc_name);
 		}
 	}
@@ -1379,7 +1379,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	}
 	if (last_fromdvp_report != time_second) {
 		last_fromdvp_report = time_second;
-		printf("Warning: extremely inefficient path resolution on %s\n",
+		kprintf("Warning: extremely inefficient path resolution on %s\n",
 			nch.ncp->nc_name);
 	}
 	error = cache_inefficient_scan(&nch, cred, dvp);
@@ -1444,7 +1444,7 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 	if ((error = cache_vref(nch, cred, &pvp)) != 0)
 		return (error);
 	if (ncvp_debug)
-		printf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
+		kprintf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
 	if ((blksize = vat.va_blocksize) == 0)
 		blksize = DEV_BSIZE;
 	rbuf = kmalloc(blksize, M_TEMP, M_WAITOK);
@@ -1463,7 +1463,7 @@ again:
 	uio.uio_td = curthread;
 
 	if (ncvp_debug >= 2)
-		printf("cache_inefficient_scan: readdir @ %08x\n", (int)uio.uio_offset);
+		kprintf("cache_inefficient_scan: readdir @ %08x\n", (int)uio.uio_offset);
 	error = VOP_READDIR(pvp, &uio, cred, &eofflag, NULL, NULL);
 	if (error == 0) {
 		den = (struct dirent *)rbuf;
@@ -1471,14 +1471,14 @@ again:
 
 		while (bytes > 0) {
 			if (ncvp_debug >= 2) {
-				printf("cache_inefficient_scan: %*.*s\n",
+				kprintf("cache_inefficient_scan: %*.*s\n",
 					den->d_namlen, den->d_namlen, 
 					den->d_name);
 			}
 			if (den->d_type != DT_WHT &&
 			    den->d_ino == vat.va_fileid) {
 				if (ncvp_debug) {
-					printf("cache_inefficient_scan: "
+					kprintf("cache_inefficient_scan: "
 					       "MATCHED inode %ld path %s/%*.*s\n",
 					       vat.va_fileid, nch->ncp->nc_name,
 					       den->d_namlen, den->d_namlen,
@@ -1501,12 +1501,12 @@ again:
 		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
 			_cache_setvp(rncp.ncp, dvp);
 			if (ncvp_debug >= 2) {
-				printf("cache_inefficient_scan: setvp %s/%s = %p\n",
+				kprintf("cache_inefficient_scan: setvp %s/%s = %p\n",
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp);
 			}
 		} else {
 			if (ncvp_debug >= 2) {
-				printf("cache_inefficient_scan: setvp %s/%s already set %p/%p\n", 
+				kprintf("cache_inefficient_scan: setvp %s/%s already set %p/%p\n", 
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp,
 					rncp.ncp->nc_vp);
 			}
@@ -1515,7 +1515,7 @@ again:
 			error = rncp.ncp->nc_error;
 		_cache_put(rncp.ncp);
 	} else {
-		printf("cache_inefficient_scan: dvp %p NOT FOUND in %s\n",
+		kprintf("cache_inefficient_scan: dvp %p NOT FOUND in %s\n",
 			dvp, nch->ncp->nc_name);
 		error = ENOENT;
 	}
@@ -1871,7 +1871,7 @@ restart:
 	 * past the mount point).
 	 */
 	if (ncp->nc_parent == NULL) {
-		printf("EXDEV case 1 %p %*.*s\n", ncp,
+		kprintf("EXDEV case 1 %p %*.*s\n", ncp,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		ncp->nc_error = EXDEV;
 		return(ncp->nc_error);
@@ -1908,11 +1908,11 @@ restart:
 		while (par->nc_parent && par->nc_parent->nc_vp == NULL)
 			par = par->nc_parent;
 		if (par->nc_parent == NULL) {
-			printf("EXDEV case 2 %*.*s\n",
+			kprintf("EXDEV case 2 %*.*s\n",
 				par->nc_nlen, par->nc_nlen, par->nc_name);
 			return (EXDEV);
 		}
-		printf("[diagnostic] cache_resolve: had to recurse on %*.*s\n",
+		kprintf("[diagnostic] cache_resolve: had to recurse on %*.*s\n",
 			par->nc_nlen, par->nc_nlen, par->nc_name);
 		/*
 		 * The parent is not set in stone, ref and lock it to prevent
@@ -1925,7 +1925,7 @@ restart:
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
 			cache_resolve_mp(nch->mount);
 		} else if (par->nc_parent->nc_vp == NULL) {
-			printf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
+			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
 			_cache_put(par);
 			continue;
 		} else if (par->nc_flag & NCF_UNRESOLVED) {
@@ -1935,13 +1935,13 @@ restart:
 		}
 		if ((error = par->nc_error) != 0) {
 			if (par->nc_error != EAGAIN) {
-				printf("EXDEV case 3 %*.*s error %d\n",
+				kprintf("EXDEV case 3 %*.*s error %d\n",
 				    par->nc_nlen, par->nc_nlen, par->nc_name,
 				    par->nc_error);
 				_cache_put(par);
 				return(error);
 			}
-			printf("[diagnostic] cache_resolve: EAGAIN par %p %*.*s\n",
+			kprintf("[diagnostic] cache_resolve: EAGAIN par %p %*.*s\n",
 				par, par->nc_nlen, par->nc_nlen, par->nc_name);
 		}
 		_cache_put(par);
@@ -1961,7 +1961,7 @@ restart:
 	ncp->nc_error = VOP_NRESOLVE(&nctmp, cred);
 	/*vop_nresolve(*ncp->nc_parent->nc_vp->v_ops, ncp, cred);*/
 	if (ncp->nc_error == EAGAIN) {
-		printf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
+		kprintf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		goto restart;
 	}
@@ -2015,7 +2015,7 @@ cache_resolve_mp(struct mount *mp)
 				_cache_setvp(ncp, vp);
 				vput(vp);
 			} else {
-				printf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
+				kprintf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
 				_cache_setvp(ncp, NULL);
 			}
 		} else if (error == 0) {

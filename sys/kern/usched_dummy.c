@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.4 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.5 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -513,7 +513,7 @@ dummy_sched_thread_cpu_init(void)
     int i;
 
     if (bootverbose)
-	printf("start dummy scheduler helpers on cpus:");
+	kprintf("start dummy scheduler helpers on cpus:");
 
     for (i = 0; i < ncpus; ++i) {
 	dummy_pcpu_t dd = &dummy_pcpu[i];
@@ -523,7 +523,7 @@ dummy_sched_thread_cpu_init(void)
 	    continue;
 
 	if (bootverbose)
-	    printf(" %d", i);
+	    kprintf(" %d", i);
 
 	lwkt_create(dummy_sched_thread, NULL, NULL, &dd->helper_thread, 
 		    TDF_STOPREQ, i, "dsched %d", i);
@@ -537,7 +537,7 @@ dummy_sched_thread_cpu_init(void)
 	atomic_set_int(&dummy_rdyprocmask, mask);
     }
     if (bootverbose)
-	printf("\n");
+	kprintf("\n");
 }
 SYSINIT(uschedtd, SI_SUB_FINISH_SMP, SI_ORDER_ANY,
 	dummy_sched_thread_cpu_init, NULL)

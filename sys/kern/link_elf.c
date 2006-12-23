@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.23 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -207,7 +207,7 @@ parse_module_symbols(linker_file_t lf)
     base += roundup(symcnt, sizeof(long));
 
     if (base > esym || base < ssym) {
-	printf("Symbols are corrupt!\n");
+	kprintf("Symbols are corrupt!\n");
 	return EINVAL;
     }
 
@@ -217,7 +217,7 @@ parse_module_symbols(linker_file_t lf)
     base += roundup(strcnt, sizeof(long));
 
     if (base > esym || base < ssym) {
-	printf("Symbols are corrupt!\n");
+	kprintf("Symbols are corrupt!\n");
 	return EINVAL;
     }
 
@@ -317,7 +317,7 @@ parse_dynamic(linker_file_t lf)
 static void
 link_elf_error(const char *s)
 {
-    printf("kldload: %s\n", s);
+    kprintf("kldload: %s\n", s);
 }
 
 static int
@@ -420,7 +420,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 
     KKASSERT(p != NULL);
     if (p->p_ucred == NULL) {
-	printf("link_elf_load_file: cannot load '%s' from filesystem"
+	kprintf("link_elf_load_file: cannot load '%s' from filesystem"
 		" this early\n", filename);
 	return ENOENT;
     }
@@ -802,7 +802,7 @@ relocate_file(linker_file_t lf)
 	while (rel < rellim) {
 	    symname = symbol_name(ef, rel->r_info);
 	    if (elf_reloc(lf, rel, ELF_RELOC_REL, symname)) {
-		printf("link_elf: symbol %s undefined\n", symname);
+		kprintf("link_elf: symbol %s undefined\n", symname);
 		return ENOENT;
 	    }
 	    rel++;
@@ -816,7 +816,7 @@ relocate_file(linker_file_t lf)
 	while (rela < relalim) {
 	    symname = symbol_name(ef, rela->r_info);
 	    if (elf_reloc(lf, rela, ELF_RELOC_RELA, symname)) {
-		printf("link_elf: symbol %s undefined\n", symname);
+		kprintf("link_elf: symbol %s undefined\n", symname);
 		return ENOENT;
 	    }
 	    rela++;
@@ -830,7 +830,7 @@ relocate_file(linker_file_t lf)
 	while (rel < rellim) {
 	    symname = symbol_name(ef, rel->r_info);
 	    if (elf_reloc(lf, rel, ELF_RELOC_REL, symname)) {
-		printf("link_elf: symbol %s undefined\n", symname);
+		kprintf("link_elf: symbol %s undefined\n", symname);
 		return ENOENT;
 	    }
 	    rel++;
@@ -844,7 +844,7 @@ relocate_file(linker_file_t lf)
 	while (rela < relalim) {
 	    symname = symbol_name(ef, rela->r_info);
 	    if (elf_reloc(lf, rela, ELF_RELOC_RELA, symname)) {
-		printf("link_elf: symbol %s undefined\n", symname);
+		kprintf("link_elf: symbol %s undefined\n", symname);
 		return ENOENT;
 	    }
 	    rela++;
@@ -890,13 +890,13 @@ link_elf_lookup_symbol(linker_file_t lf, const char* name, c_linker_sym_t* sym)
 
     while (symnum != STN_UNDEF) {
 	if (symnum >= ef->nchains) {
-	    printf("link_elf_lookup_symbol: corrupt symbol table\n");
+	    kprintf("link_elf_lookup_symbol: corrupt symbol table\n");
 	    return ENOENT;
 	}
 
 	symp = ef->symtab + symnum;
 	if (symp->st_name == 0) {
-	    printf("link_elf_lookup_symbol: corrupt symbol table\n");
+	    kprintf("link_elf_lookup_symbol: corrupt symbol table\n");
 	    return ENOENT;
 	}
 

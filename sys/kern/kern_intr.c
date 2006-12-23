@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.44 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.45 2006/12/23 00:35:04 swildner Exp $
  *
  */
 
@@ -286,7 +286,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if (intr < FIRST_SOFTINT /* && info->i_slow + info->i_fast == 1*/) {
 	if (machintr_vector_setup(intr, intr_flags))
-	    printf("machintr_vector_setup: failed on irq %d\n", intr);
+	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }
 
     return(rec);
@@ -356,7 +356,7 @@ unregister_int(void *id)
 	kfree(rec->name, M_DEVBUF);
 	kfree(rec, M_DEVBUF);
     } else {
-	printf("warning: unregister_int: int %d handler for %s not found\n",
+	kprintf("warning: unregister_int: int %d handler for %s not found\n",
 		intr, ((intrec_t)id)->name);
     }
 }
@@ -487,7 +487,7 @@ sched_ithd(int intr)
     ++info->i_count;
     if (info->i_state != ISTATE_NOTHREAD) {
 	if (info->i_reclist == NULL) {
-	    printf("sched_ithd: stray interrupt %d\n", intr);
+	    kprintf("sched_ithd: stray interrupt %d\n", intr);
 	} else {
 #ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
@@ -509,7 +509,7 @@ sched_ithd(int intr)
 #endif
 	}
     } else {
-	printf("sched_ithd: stray interrupt %d\n", intr);
+	kprintf("sched_ithd: stray interrupt %d\n", intr);
     }
 }
 
@@ -826,7 +826,7 @@ ithread_handler(void *arg)
 	     * Otherwise we are livelocked.  Set up a periodic systimer
 	     * to wake the thread up at the limit frequency.
 	     */
-	    printf("intr %d at %d > %d hz, livelocked limit engaged!\n",
+	    kprintf("intr %d at %d > %d hz, livelocked limit engaged!\n",
 		   intr, ill_count, livelock_limit);
 	    info->i_state = ISTATE_LIVELOCKED;
 	    if ((use_limit = livelock_limit) < 100)
@@ -857,7 +857,7 @@ ithread_handler(void *arg)
 		    if (++lcount >= hz) {
 			info->i_state = ISTATE_NORMAL;
 			systimer_del(&ill_timer);
-			printf("intr %d at %d < %d hz, livelock removed\n",
+			kprintf("intr %d at %d < %d hz, livelock removed\n",
 			       intr, ill_count, livelock_lowater);
 		    }
 		} else {

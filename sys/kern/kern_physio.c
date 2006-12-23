@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.23 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 	/* XXX: sanity check */
 	if(dev->si_iosize_max < PAGE_SIZE) {
-		printf("WARNING: %s si_iosize_max=%d, using DFLTPHYS.\n",
+		kprintf("WARNING: %s si_iosize_max=%d, using DFLTPHYS.\n",
 		    devtoname(dev), dev->si_iosize_max);
 		dev->si_iosize_max = DFLTPHYS;
 	}

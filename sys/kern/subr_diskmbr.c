@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.17 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.18 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 #include <sys/syslog.h>
 #include <sys/device.h>
 
-#define TRACE(str)	do { if (dsi_debug) printf str; } while (0)
+#define TRACE(str)	do { if (dsi_debug) kprintf str; } while (0)
 
 static volatile u_char dsi_debug;
 
@@ -160,15 +160,15 @@ check_part(char *sname, struct dos_partition *dp, u_long offset,
 
 	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
 	if (bootverbose)
-		printf("%s: type 0x%x, start %lu, end = %lu, size %lu %s\n",
+		kprintf("%s: type 0x%x, start %lu, end = %lu, size %lu %s\n",
 		       sname, dp->dp_typ, ssector1, esector1,
 		       (u_long)dp->dp_size, error ? "" : ": OK");
 	if (ssector != ssector1 && bootverbose)
-		printf("%s: C/H/S start %d/%d/%d (%lu) != start %lu: invalid\n",
+		kprintf("%s: C/H/S start %d/%d/%d (%lu) != start %lu: invalid\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect,
 		       ssector, ssector1);
 	if (esector != esector1 && bootverbose)
-		printf("%s: C/H/S end %d/%d/%d (%lu) != end %lu: invalid\n",
+		kprintf("%s: C/H/S end %d/%d/%d (%lu) != end %lu: invalid\n",
 		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
 		       esector, esector1);
 	return (error);
@@ -208,7 +208,7 @@ reread_mbr:
 		diskerr(&bp->b_bio1, wdev, 
 			"reading primary partition table: error",
 			LOG_PRINTF, 0, NULL);
-		printf("\n");
+		kprintf("\n");
 		error = EIO;
 		goto done;
 	}
@@ -218,7 +218,7 @@ reread_mbr:
 	sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, RAW_PART, partname);
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
 		if (bootverbose)
-			printf("%s: invalid primary partition table: no magic\n",
+			kprintf("%s: invalid primary partition table: no magic\n",
 			       sname);
 		error = EINVAL;
 		goto done;
@@ -233,7 +233,7 @@ reread_mbr:
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
 		if (dp->dp_typ == DOSPTYP_ONTRACK) {
 			if (bootverbose)
-				printf(
+				kprintf(
 	    "%s: Found \"Ontrack Disk Manager\" on this disk.\n", sname);
 			bp->b_flags |= B_INVAL | B_AGE;
 			brelse(bp);
@@ -251,7 +251,7 @@ reread_mbr:
 		       sname));
 #endif /* 0 */
 		if (bootverbose)
-			printf(
+			kprintf(
      "%s: invalid primary partition table: Dangerously Dedicated (ignored)\n",
 			       sname);
 		error = EINVAL;
@@ -409,7 +409,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	struct diskslice *sp;
 
 	if (level >= 16) {
-		printf(
+		kprintf(
 	"%s: excessive recursion in search for slices; aborting search\n",
 		       devtoname(dev));
 		return;
@@ -425,7 +425,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 		diskerr(&bp->b_bio1, dev,
 			"reading extended partition table: error",
 			LOG_PRINTF, 0, NULL);
-		printf("\n");
+		kprintf("\n");
 		goto done;
 	}
 
@@ -435,7 +435,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 		sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, RAW_PART,
 			       partname);
 		if (bootverbose)
-			printf("%s: invalid extended partition table: no magic\n",
+			kprintf("%s: invalid extended partition table: no magic\n",
 			       sname);
 		goto done;
 	}
@@ -469,7 +469,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 			check_part(sname, dp, ext_offset, nsectors, ntracks,
 				   mbr_offset);
 			if (slice >= MAX_SLICES) {
-				printf("%s: too many slices\n", sname);
+				kprintf("%s: too many slices\n", sname);
 				slice++;
 				continue;
 			}
@@ -504,7 +504,7 @@ mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
 
 	offset = br_offset + dp->dp_start;
 	if (offset > lp->d_secperunit || offset < br_offset) {
-		printf(
+		kprintf(
 		"%s: slice starts beyond end of the disk: rejecting it\n",
 		       sname);
 		return (1);
@@ -513,7 +513,7 @@ mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
 	if (size >= dp->dp_size)
 		size = dp->dp_size;
 	else
-		printf(
+		kprintf(
 "%s: slice extends beyond end of disk: truncating from %lu to %lu sectors\n",
 		       sname, (u_long)dp->dp_size, size);
 	sp->ds_offset = offset;

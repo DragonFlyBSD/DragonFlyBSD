@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.103 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.104 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -488,7 +488,7 @@ lwkt_switch(void)
 	    gd->gd_trap_nesting_level = 0;
 	    if ((td->td_flags & TDF_PANICWARN) == 0) {
 		td->td_flags |= TDF_PANICWARN;
-		printf("Warning: thread switch from interrupt or IPI, "
+		kprintf("Warning: thread switch from interrupt or IPI, "
 			"thread %p (%s)\n", td, td->td_comm);
 #ifdef DDB
 		db_print_backtrace();
@@ -543,7 +543,7 @@ lwkt_switch(void)
     mpheld = MP_LOCK_HELD();
 #ifdef	INVARIANTS
     if (td->td_cscount) {
-	printf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
+	kprintf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
 		td);
 	if (panic_on_cscount)
 	    panic("switching while mastering cpusync");
@@ -1305,7 +1305,7 @@ lwkt_exit(void)
     globaldata_t gd;
 
     if (td->td_flags & TDF_VERBOSE)
-	printf("kthread %p %s has exited\n", td, td->td_comm);
+	kprintf("kthread %p %s has exited\n", td, td->td_comm);
     caps_exit(td);
     crit_enter_quick(td);
     lwkt_deschedule_self(td);

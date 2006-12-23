@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.9 2006/10/19 18:44:00 swildner Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.10 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ DB_SHOW_COMMAND(cbstat, cbstat)
 {
 	int cbsize = CBSIZE;
 
-	printf(
+	kprintf(
 	"tot = %d (active = %d, free = %d (reserved = %d, slush = %d))\n",
 	       ctotcount * cbsize, ctotcount * cbsize - cfreecount, cfreecount,
 	       cfreecount - cslushcount * cbsize, cslushcount * cbsize);
@@ -154,7 +154,7 @@ cblock_alloc_cblocks(int number)
 	for (i = 0; i < number; ++i) {
 		cbp = kmalloc(sizeof *cbp, M_TTYS, M_NOWAIT);
 		if (cbp == NULL) {
-			printf(
+			kprintf(
 "clist_alloc_cblocks: M_NOWAIT kmalloc failed, trying M_WAITOK\n");
 			cbp = kmalloc(sizeof *cbp, M_TTYS, M_WAITOK);
 		}
@@ -396,7 +396,7 @@ clist_putc(int chr, struct clist *clistp)
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
 			crit_exit();
-			printf("putc to a clist with no reserved cblocks\n");
+			kprintf("putc to a clist with no reserved cblocks\n");
 			return (-1);		/* nothing done */
 		}
 		cblockp = cblock_alloc();
@@ -473,7 +473,7 @@ b_to_q(char *src, int amount, struct clist *clistp)
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
 			crit_exit();
-			printf("b_to_q to a clist with no reserved cblocks.\n");
+			kprintf("b_to_q to a clist with no reserved cblocks.\n");
 			return (amount);	/* nothing done */
 		}
 		cblockp = cblock_alloc();

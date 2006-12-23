@@ -32,7 +32,7 @@
  *
  *	@(#)tty_compat.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/tty_compat.c,v 1.29 1999/08/28 00:46:20 peter Exp $
- * $DragonFly: src/sys/kern/tty_compat.c,v 1.4 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/tty_compat.c,v 1.5 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -247,7 +247,7 @@ ttcompat(tp, com, data, flag)
 		   | (tp->t_flags & 0xffff);
 		*(int *)data = tp->t_flags>>16;
 		if (ttydebug)
-			printf("CLGET: returning %x\n", *(int *)data);
+			kprintf("CLGET: returning %x\n", *(int *)data);
 		break;
 
 	case OTIOCGETD:
@@ -328,7 +328,7 @@ ttcompatgetflags(tp)
 		flags |= DECCTQ;
 	flags |= lflag&(ECHO|TOSTOP|FLUSHO|PENDIN|NOFLSH);
 	if (ttydebug)
-		printf("getflags: %x\n", flags);
+		kprintf("getflags: %x\n", flags);
 	return (flags);
 }
 

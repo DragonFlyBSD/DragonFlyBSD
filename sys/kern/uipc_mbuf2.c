@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.12 2006/09/05 00:55:45 dillon Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.13 2006/12/23 00:35:04 swildner Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -112,10 +112,10 @@ m_pulldown(m, off, len, offp)
 #ifdef PULLDOWN_DEBUG
     {
 	struct mbuf *t;
-	printf("before:");
+	kprintf("before:");
 	for (t = m; t; t = t->m_next)
-		printf(" %d", t->m_len);
-	printf("\n");
+		kprintf(" %d", t->m_len);
+	kprintf("\n");
     }
 #endif
 	n = m;
@@ -230,10 +230,10 @@ ok:
 #ifdef PULLDOWN_DEBUG
     {
 	struct mbuf *t;
-	printf("after:");
+	kprintf("after:");
 	for (t = m; t; t = t->m_next)
-		printf("%c%d", t == n ? '*' : ' ', t->m_len);
-	printf(" (off=%d)\n", off);
+		kprintf("%c%d", t == n ? '*' : ' ', t->m_len);
+	kprintf(" (off=%d)\n", off);
     }
 #endif
 	if (offp)

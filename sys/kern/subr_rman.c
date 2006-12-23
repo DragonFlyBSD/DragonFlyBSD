@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.10 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.11 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -188,7 +188,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	rv = 0;
 
 #ifdef RMAN_DEBUG
-	printf("rman_reserve_resource: <%s> request: [%#lx, %#lx], length "
+	kprintf("rman_reserve_resource: <%s> request: [%#lx, %#lx], length "
 	       "%#lx, flags %u, device %s%d\n", rm->rm_descr, start, end,
 	       count, flags, device_get_name(dev), device_get_unit(dev));
 #endif /* RMAN_DEBUG */
@@ -204,7 +204,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 
 	if (CIRCLEQ_TERMCOND(r, rm->rm_list)) {
 #ifdef RMAN_DEBUG
-		printf("could not find a region\n");
+		kprintf("could not find a region\n");
 #endif
 		goto out;
 	}
@@ -215,17 +215,17 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	for (s = r; !CIRCLEQ_TERMCOND(s, rm->rm_list);
 	     s = CIRCLEQ_NEXT(s, r_link)) {
 #ifdef RMAN_DEBUG
-		printf("considering [%#lx, %#lx]\n", s->r_start, s->r_end);
+		kprintf("considering [%#lx, %#lx]\n", s->r_start, s->r_end);
 #endif /* RMAN_DEBUG */
 		if (s->r_start > end) {
 #ifdef RMAN_DEBUG
-			printf("s->r_start (%#lx) > end (%#lx)\n", s->r_start, end);
+			kprintf("s->r_start (%#lx) > end (%#lx)\n", s->r_start, end);
 #endif /* RMAN_DEBUG */
 			break;
 		}
 		if (s->r_flags & RF_ALLOCATED) {
 #ifdef RMAN_DEBUG
-			printf("region is allocated\n");
+			kprintf("region is allocated\n");
 #endif /* RMAN_DEBUG */
 			continue;
 		}
@@ -234,18 +234,18 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 		    ~((1ul << RF_ALIGNMENT(flags)) - 1);
 		rend = min(s->r_end, max(start + count, end));
 #ifdef RMAN_DEBUG
-		printf("truncated region: [%#lx, %#lx]; size %#lx (requested %#lx)\n",
+		kprintf("truncated region: [%#lx, %#lx]; size %#lx (requested %#lx)\n",
 		       rstart, rend, (rend - rstart + 1), count);
 #endif /* RMAN_DEBUG */
 
 		if ((rend - rstart + 1) >= count) {
 #ifdef RMAN_DEBUG
-			printf("candidate region: [%#lx, %#lx], size %#lx\n",
+			kprintf("candidate region: [%#lx, %#lx], size %#lx\n",
 			       rend, rstart, (rend - rstart + 1));
 #endif /* RMAN_DEBUG */
 			if ((s->r_end - s->r_start + 1) == count) {
 #ifdef RMAN_DEBUG
-				printf("candidate region is entire chunk\n");
+				kprintf("candidate region is entire chunk\n");
 #endif /* RMAN_DEBUG */
 				rv = s;
 				rv->r_flags |= RF_ALLOCATED | flags;
@@ -276,7 +276,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			
 			if (s->r_start < rv->r_start && s->r_end > rv->r_end) {
 #ifdef RMAN_DEBUG
-				printf("splitting region in three parts: "
+				kprintf("splitting region in three parts: "
 				       "[%#lx, %#lx]; [%#lx, %#lx]; [%#lx, %#lx]\n",
 				       s->r_start, rv->r_start - 1,
 				       rv->r_start, rv->r_end,
@@ -305,7 +305,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 						     r_link);
 			} else if (s->r_start == rv->r_start) {
 #ifdef RMAN_DEBUG
-				printf("allocating from the beginning\n");
+				kprintf("allocating from the beginning\n");
 #endif /* RMAN_DEBUG */
 				/*
 				 * We are allocating at the beginning.
@@ -315,7 +315,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 						      r_link);
 			} else {
 #ifdef RMAN_DEBUG
-				printf("allocating at the end\n");
+				kprintf("allocating at the end\n");
 #endif /* RMAN_DEBUG */
 				/*
 				 * We are allocating at the end.
@@ -337,7 +337,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	 * additional work, but this does not seem warranted.)
 	 */
 #ifdef RMAN_DEBUG
-	printf("no unshared regions found\n");
+	kprintf("no unshared regions found\n");
 #endif /* RMAN_DEBUG */
 	if ((flags & (RF_SHAREABLE | RF_TIMESHARE)) == 0)
 		goto out;

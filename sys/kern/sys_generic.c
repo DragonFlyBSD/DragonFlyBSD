@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.37 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.38 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_ktrace.h"
@@ -588,7 +588,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		if (iomc == NULL ||
 		    (iomc->start == 0 && iomc->maptocmd == 0
 		     && iomc->wrapfunc == NULL && iomc->mapfunc == NULL)) {
-			printf("%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) not implemented\n",
+			kprintf("%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) not implemented\n",
 			       map->sys, fd, maskcmd,
 			       (int)((maskcmd >> 8) & 0xff),
 			       (int)(maskcmd & 0xff));
@@ -616,7 +616,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 						    iomc->maptocmd, iomc->maptoend,
 						    com, ocom);
 			} else {
-				printf("%s: Invalid mapping for fd=%d, cmd=%#lx ('%c',%d)\n",
+				kprintf("%s: Invalid mapping for fd=%d, cmd=%#lx ('%c',%d)\n",
 				       map->sys, fd, maskcmd,
 				       (int)((maskcmd >> 8) & 0xff),
 				       (int)(maskcmd & 0xff));

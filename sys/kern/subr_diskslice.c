@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.25 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.26 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
 
-#define TRACE(str)	do { if (ds_debug) printf str; } while (0)
+#define TRACE(str)	do { if (ds_debug) kprintf str; } while (0)
 
 typedef	u_char	bool_t;
 
@@ -157,7 +157,7 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 	int mask;
 
 	if (bio->bio_offset < 0) {
-		printf("dscheck(%s): negative bio_offset %lld\n", 
+		kprintf("dscheck(%s): negative bio_offset %lld\n", 
 		    devtoname(dev), bio->bio_offset);
 		goto bad;
 	}
@@ -282,7 +282,7 @@ doshift:
 			       (bp->b_data + (int)nbio->bio_caller_info2.offset),
 			       TRUE);
 			if (msg != NULL) {
-				printf("dscheck(%s): %s\n", 
+				kprintf("dscheck(%s): %s\n", 
 				    devtoname(dev), msg);
 				bp->b_error = EROFS;
 				pop_bio(nbio);
@@ -293,13 +293,13 @@ doshift:
 	return (nbio);
 
 bad_bcount:
-	printf(
+	kprintf(
 	"dscheck(%s): b_bcount %d is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bp->b_bcount, ssp->dss_secsize);
 	goto bad;
 
 bad_blkno:
-	printf(
+	kprintf(
 	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bio->bio_offset, ssp->dss_secsize);
 bad:
@@ -569,7 +569,7 @@ dsiodone(struct bio *bio)
 			       (bp->b_data + (int)bio->bio_caller_info2.offset),
 			       FALSE);
 		if (msg != NULL)
-			printf("%s\n", msg);
+			kprintf("%s\n", msg);
 	}
 	biodone(bio->bio_prev);
 }
@@ -666,7 +666,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 
 	unit = dkunit(dev);
 	if (lp->d_secsize % DEV_BSIZE) {
-		printf("%s: invalid sector size %lu\n", devtoname(dev),
+		kprintf("%s: invalid sector size %lu\n", devtoname(dev),
 		    (u_long)lp->d_secsize);
 		return (EINVAL);
 	}
@@ -872,7 +872,7 @@ fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 	}
 	if (pp->p_offset != start) {
 		if (sname != NULL) {
-			printf(
+			kprintf(
 "%s: rejecting BSD label: raw partition offset != slice offset\n",
 			       sname);
 			slice_info(sname, sp);
@@ -882,14 +882,14 @@ fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 	}
 	if (pp->p_size != sp->ds_size) {
 		if (sname != NULL) {
-			printf("%s: raw partition size != slice size\n", sname);
+			kprintf("%s: raw partition size != slice size\n", sname);
 			slice_info(sname, sp);
 			partition_info(sname, RAW_PART, pp);
 		}
 		if (pp->p_size > sp->ds_size) {
 			if (sname == NULL)
 				return ("fixlabel: raw partition size > slice size");
-			printf("%s: truncating raw partition\n", sname);
+			kprintf("%s: truncating raw partition\n", sname);
 			pp->p_size = sp->ds_size;
 		}
 	}
@@ -906,7 +906,7 @@ fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 			    || pp->p_offset + pp->p_size > end
 			    || pp->p_offset + pp->p_size < pp->p_offset) {
 				if (sname != NULL) {
-					printf(
+					kprintf(
 "%s: rejecting partition in BSD label: it isn't entirely within the slice\n",
 					       sname);
 					if (!warned) {
@@ -931,7 +931,7 @@ fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 static void
 partition_info(char *sname, int part, struct partition *pp)
 {
-	printf("%s%c: start %lu, end %lu, size %lu\n", sname, 'a' + part,
+	kprintf("%s%c: start %lu, end %lu, size %lu\n", sname, 'a' + part,
 	       (u_long)pp->p_offset, (u_long)(pp->p_offset + pp->p_size - 1),
 	       (u_long)pp->p_size);
 }
@@ -939,7 +939,7 @@ partition_info(char *sname, int part, struct partition *pp)
 static void
 slice_info(char *sname, struct diskslice *sp)
 {
-	printf("%s: start %lu, end %lu, size %lu\n", sname,
+	kprintf("%s: start %lu, end %lu, size %lu\n", sname,
 	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
 }
 

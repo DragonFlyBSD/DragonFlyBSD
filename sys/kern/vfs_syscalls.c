@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.109 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.110 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -731,14 +731,14 @@ mount_warning(struct mount *mp, const char *ctl, ...)
 
 	__va_start(va, ctl);
 	if (cache_fullpath(NULL, &mp->mnt_ncmounton, &ptr, &buf) == 0) {
-		printf("unmount(%s): ", ptr);
+		kprintf("unmount(%s): ", ptr);
 		kvprintf(ctl, va);
-		printf("\n");
+		kprintf("\n");
 		kfree(buf, M_TEMP);
 	} else {
-		printf("unmount(%p): ", mp);
+		kprintf("unmount(%p): ", mp);
 		kvprintf(ctl, va);
-		printf("\n");
+		kprintf("\n");
 	}
 	__va_end(va);
 }
@@ -3396,7 +3396,7 @@ sys_fhopen(struct fhopen_args *uap)
 	 * Assert that all regular files must be created with a VM object.
 	 */
 	if (vp->v_type == VREG && vp->v_object == NULL) {
-		printf("fhopen: regular file did not have VM object: %p\n", vp);
+		kprintf("fhopen: regular file did not have VM object: %p\n", vp);
 		goto bad_drop;
 	}
 

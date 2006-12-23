@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.24 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.25 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_param.h"
@@ -521,7 +521,7 @@ _sbcheck(struct sockbuf *sb)
 	for (m = sb->sb_mb; m; m = n) {
 	    n = m->m_nextpkt;
 	    if (n == NULL && sb->sb_lastrecord != m) {
-		    printf("sockbuf %p mismatched lastrecord %p vs %p\n", sb, sb->sb_lastrecord, m);
+		    kprintf("sockbuf %p mismatched lastrecord %p vs %p\n", sb, sb->sb_lastrecord, m);
 		    panic("sbcheck1");
 		
 	    }
@@ -532,7 +532,7 @@ _sbcheck(struct sockbuf *sb)
 			mbcnt += m->m_ext.ext_size;
 		if (n == NULL && m->m_next == NULL) {
 			if (sb->sb_lastmbuf != m) {
-				printf("sockbuf %p mismatched lastmbuf %p vs %p\n", sb, sb->sb_lastmbuf, m);
+				kprintf("sockbuf %p mismatched lastmbuf %p vs %p\n", sb, sb->sb_lastmbuf, m);
 				panic("sbcheck2");
 			}
 		}
@@ -540,18 +540,18 @@ _sbcheck(struct sockbuf *sb)
 	}
 	if (sb->sb_mb == NULL) {
 	    if (sb->sb_lastrecord != NULL) {
-		printf("sockbuf %p is empty, lastrecord not NULL: %p\n",
+		kprintf("sockbuf %p is empty, lastrecord not NULL: %p\n",
 			sb, sb->sb_lastrecord);
 		panic("sbcheck3");
 	    }
 	    if (sb->sb_lastmbuf != NULL) {
-		printf("sockbuf %p is empty, lastmbuf not NULL: %p\n",
+		kprintf("sockbuf %p is empty, lastmbuf not NULL: %p\n",
 			sb, sb->sb_lastmbuf);
 		panic("sbcheck4");
 	    }
 	}
 	if (len != sb->sb_cc || mbcnt != sb->sb_mbcnt) {
-		printf("sockbuf %p cc %ld != %ld || mbcnt %ld != %ld\n",
+		kprintf("sockbuf %p cc %ld != %ld || mbcnt %ld != %ld\n",
 		    sb, len, sb->sb_cc, mbcnt, sb->sb_mbcnt);
 		panic("sbcheck5");
 	}
@@ -826,7 +826,7 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 		if (tailm)
 			tailm->m_flags |= eor;
 		else
-			printf("semi-panic: sbcompress");
+			kprintf("semi-panic: sbcompress");
 	}
 
 	/*

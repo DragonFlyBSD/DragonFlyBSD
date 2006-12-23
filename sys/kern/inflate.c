@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/inflate.c,v 1.14 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/inflate.c,v 1.5 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/inflate.c,v 1.6 2006/12/23 00:35:03 swildner Exp $
  *
  *
  */
@@ -36,7 +36,7 @@ static MALLOC_DEFINE(M_GZIP, "Gzip trees", "Gzip trees");
 #endif
 #define NOMEMCPY
 #ifdef _KERNEL
-#define FPRINTF printf
+#define FPRINTF kprintf
 #else
 extern void putstr (char *);
 #define FPRINTF putstr

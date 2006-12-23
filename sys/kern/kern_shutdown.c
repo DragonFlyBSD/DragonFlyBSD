@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.43 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.44 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -215,24 +215,24 @@ print_uptime()
 	struct timespec ts;
 
 	getnanouptime(&ts);
-	printf("Uptime: ");
+	kprintf("Uptime: ");
 	f = 0;
 	if (ts.tv_sec >= 86400) {
-		printf("%ldd", ts.tv_sec / 86400);
+		kprintf("%ldd", ts.tv_sec / 86400);
 		ts.tv_sec %= 86400;
 		f = 1;
 	}
 	if (f || ts.tv_sec >= 3600) {
-		printf("%ldh", ts.tv_sec / 3600);
+		kprintf("%ldh", ts.tv_sec / 3600);
 		ts.tv_sec %= 3600;
 		f = 1;
 	}
 	if (f || ts.tv_sec >= 60) {
-		printf("%ldm", ts.tv_sec / 60);
+		kprintf("%ldm", ts.tv_sec / 60);
 		ts.tv_sec %= 60;
 		f = 1;
 	}
-	printf("%lds\n", ts.tv_sec);
+	kprintf("%lds\n", ts.tv_sec);
 }
 
 /*
@@ -260,10 +260,10 @@ boot(int howto)
 	 * can't power-down the box otherwise.
 	 */
 	if (smp_active_mask > 1) {
-		printf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
+		kprintf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
 	}
 	if (panicstr == NULL && mycpu->gd_cpuid != 0) {
-		printf("Switching to cpu #0 for shutdown\n");
+		kprintf("Switching to cpu #0 for shutdown\n");
 		lwkt_setcpu_self(globaldata_find(0));
 	}
 #endif
@@ -292,7 +292,7 @@ boot(int howto)
 		int iter, nbusy, pbusy;
 
 		waittime = 0;
-		printf("\nsyncing disks... ");
+		kprintf("\nsyncing disks... ");
 
 		sys_sync(NULL);	/* YYY was sync(&proc0, NULL). why proc0 ? */
 
@@ -305,7 +305,7 @@ boot(int howto)
 			nbusy = scan_all_buffers(shutdown_busycount1, NULL);
 			if (nbusy == 0)
 				break;
-			printf("%d ", nbusy);
+			kprintf("%d ", nbusy);
 			if (nbusy < pbusy)
 				iter = 0;
 			pbusy = nbusy;
@@ -319,7 +319,7 @@ boot(int howto)
 			sys_sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
 			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}
-		printf("\n");
+		kprintf("\n");
 		/*
 		 * Count only busy local buffers to prevent forcing 
 		 * a fsck if we're just a client of a wedged NFS server
@@ -330,13 +330,13 @@ boot(int howto)
 			 * Failed to sync all blocks. Indicate this and don't
 			 * unmount filesystems (thus forcing an fsck on reboot).
 			 */
-			printf("giving up on %d buffers\n", nbusy);
+			kprintf("giving up on %d buffers\n", nbusy);
 #ifdef DDB
 			Debugger("busy buffer problem");
 #endif /* DDB */
 			tsleep(boot, 0, "shutdn", hz * 5 + 1);
 		} else {
-			printf("done\n");
+			kprintf("done\n");
 			/*
 			 * Unmount filesystems
 			 */
@@ -388,7 +388,7 @@ shutdown_busycount2(struct buf *bp, void *info)
 			return (0);
 		}
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
-		printf(
+		kprintf(
 	    "%p dev:?, flags:%08x, loffset:%lld, doffset:%lld\n",
 		    bp, 
 		    bp->b_flags, bp->b_loffset,
@@ -406,9 +406,9 @@ static void
 shutdown_halt(void *junk, int howto)
 {
 	if (howto & RB_HALT) {
-		printf("\n");
-		printf("The operating system has halted.\n");
-		printf("Please press any key to reboot.\n\n");
+		kprintf("\n");
+		kprintf("The operating system has halted.\n");
+		kprintf("Please press any key to reboot.\n\n");
 		switch (cngetc()) {
 		case -1:		/* No console, just die */
 			cpu_halt();
@@ -432,7 +432,7 @@ shutdown_panic(void *junk, int howto)
 	if (howto & RB_DUMP) {
 		if (PANIC_REBOOT_WAIT_TIME != 0) {
 			if (PANIC_REBOOT_WAIT_TIME != -1) {
-				printf("Automatic reboot in %d seconds - "
+				kprintf("Automatic reboot in %d seconds - "
 				       "press a key on the console to abort\n",
 					PANIC_REBOOT_WAIT_TIME);
 				for (loop = PANIC_REBOOT_WAIT_TIME * 10;
@@ -448,8 +448,8 @@ shutdown_panic(void *junk, int howto)
 		} else { /* zero time specified - reboot NOW */
 			return;
 		}
-		printf("--> Press a key on the console to reboot,\n");
-		printf("--> or switch off the system now.\n");
+		kprintf("--> Press a key on the console to reboot,\n");
+		kprintf("--> or switch off the system now.\n");
 		cngetc();
 	}
 }
@@ -460,8 +460,8 @@ shutdown_panic(void *junk, int howto)
 static void
 shutdown_reset(void *junk, int howto)
 {
-	printf("Rebooting...\n");
-	DELAY(1000000);	/* wait 1 sec for printf's to complete and be read */
+	kprintf("Rebooting...\n");
+	DELAY(1000000);	/* wait 1 sec for kprintf's to complete and be read */
 	/* cpu_boot(howto); */ /* doesn't do anything at the moment */
 	cpu_reset();
 	/* NOTREACHED */ /* assuming reset worked */
@@ -607,7 +607,7 @@ dumpsys(void)
 	savectx(&dumppcb);
 	dumpthread = curthread;
 	if (dumping++) {
-		printf("Dump already in progress, bailing...\n");
+		kprintf("Dump already in progress, bailing...\n");
 		return;
 	}
 	if (!dodump)
@@ -615,42 +615,42 @@ dumpsys(void)
 	if (dumpdev == NOCDEV)
 		return;
 	dumpsize = Maxmem;
-	printf("\ndumping to dev %s, offset %ld\n", devtoname(dumpdev), dumplo);
-	printf("dump ");
+	kprintf("\ndumping to dev %s, offset %ld\n", devtoname(dumpdev), dumplo);
+	kprintf("dump ");
 	error = dev_ddump(dumpdev);
 	if (error == 0) {
-		printf("succeeded\n");
+		kprintf("succeeded\n");
 		return;
 	}
-	printf("failed, reason: ");
+	kprintf("failed, reason: ");
 	switch (error) {
 	case ENOSYS:
 	case ENODEV:
-		printf("device doesn't support a dump routine\n");
+		kprintf("device doesn't support a dump routine\n");
 		break;
 
 	case ENXIO:
-		printf("device bad\n");
+		kprintf("device bad\n");
 		break;
 
 	case EFAULT:
-		printf("device not ready\n");
+		kprintf("device not ready\n");
 		break;
 
 	case EINVAL:
-		printf("area improper\n");
+		kprintf("area improper\n");
 		break;
 
 	case EIO:
-		printf("i/o error\n");
+		kprintf("i/o error\n");
 		break;
 
 	case EINTR:
-		printf("aborted from console\n");
+		kprintf("aborted from console\n");
 		break;
 
 	default:
-		printf("unknown, error = %d\n", error);
+		kprintf("unknown, error = %d\n", error);
 		break;
 	}
 }
@@ -665,13 +665,13 @@ dumpstatus(vm_offset_t addr, off_t count)
 		if (wdog_tickler)
 			(*wdog_tickler)();
 #endif   
-		printf("%ld ", (long)(count / (1024 * 1024)));
+		kprintf("%ld ", (long)(count / (1024 * 1024)));
 	}
 
 	if ((c = cncheckc()) == 0x03)
 		return -1;
 	else if (c != -1)
-		printf("[CTRL-C to abort] ");
+		kprintf("[CTRL-C to abort] ");
 	
 	return 0;
 }
@@ -692,7 +692,7 @@ panic(const char *fmt, ...)
 	/*
 	 * If a panic occurs on multiple cpus before the first is able to
 	 * halt the other cpus, only one cpu is allowed to take the panic.
-	 * Attempt to be verbose about this situation but if the printf() 
+	 * Attempt to be verbose about this situation but if the kprintf() 
 	 * itself panics don't let us overrun the kernel stack.
 	 *
 	 * Be very nasty about descheduling our thread at the lowest
@@ -709,7 +709,7 @@ panic(const char *fmt, ...)
 		crit_enter();
 		++mycpu->gd_trap_nesting_level;
 		if (mycpu->gd_trap_nesting_level < 25) {
-			printf("SECONDARY PANIC ON CPU %d THREAD %p\n",
+			kprintf("SECONDARY PANIC ON CPU %d THREAD %p\n",
 				mycpu->gd_cpuid, curthread);
 		}
 		curthread->td_release = NULL;	/* be a grinch */
@@ -738,12 +738,12 @@ panic(const char *fmt, ...)
 	if (panicstr == fmt)
 		panicstr = buf;
 	__va_end(ap);
-	printf("panic: %s\n", buf);
+	kprintf("panic: %s\n", buf);
 #ifdef SMP
 	/* three separate prints in case of an unmapped page and trap */
-	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", mycpu->gd_cpuid);
-	printf("lapic.id = %08x\n", lapic.id);
+	kprintf("mp_lock = %08x; ", mp_lock);
+	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 
 #if defined(DDB)
@@ -797,16 +797,16 @@ shutdown_kproc(void *arg, int howto)
 
 	td = (struct thread *)arg;
 	if ((p = td->td_proc) != NULL) {
-	    printf("Waiting (max %d seconds) for system process `%s' to stop...",
+	    kprintf("Waiting (max %d seconds) for system process `%s' to stop...",
 		kproc_shutdown_wait, p->p_comm);
 	} else {
-	    printf("Waiting (max %d seconds) for system thread %s to stop...",
+	    kprintf("Waiting (max %d seconds) for system thread %s to stop...",
 		kproc_shutdown_wait, td->td_comm);
 	}
 	error = suspend_kproc(td, kproc_shutdown_wait * hz);
 
 	if (error == EWOULDBLOCK)
-		printf("timed out\n");
+		kprintf("timed out\n");
 	else
-		printf("stopped\n");
+		kprintf("stopped\n");
 }

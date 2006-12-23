@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.18 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.19 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		lwkt_process_ipiq();
 		crit_exit();
 		if (--maxc == 0)
-			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
+			kprintf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
 		if (maxc < -1000000)
 			panic("LWKT_WAIT_IPIQ");
 		/*

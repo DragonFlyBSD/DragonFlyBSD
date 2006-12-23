@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.29 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -497,10 +497,10 @@ uifree(struct uidinfo *uip)
 {
 	if (uip->ui_sbsize != 0)
 		/* XXX no %qd in kernel.  Truncate. */
-		printf("freeing uidinfo: uid = %d, sbsize = %ld\n",
+		kprintf("freeing uidinfo: uid = %d, sbsize = %ld\n",
 		    uip->ui_uid, (long)uip->ui_sbsize);
 	if (uip->ui_proccnt != 0)
-		printf("freeing uidinfo: uid = %d, proccnt = %ld\n",
+		kprintf("freeing uidinfo: uid = %d, proccnt = %ld\n",
 		    uip->ui_uid, uip->ui_proccnt);
 	LIST_REMOVE(uip, ui_hash);
 	varsymset_clean(&uip->ui_varsymset);
@@ -541,7 +541,7 @@ chgproccnt(struct uidinfo *uip, int diff, int max)
 		return (0);
 	uip->ui_proccnt += diff;
 	if (uip->ui_proccnt < 0)
-		printf("negative proccnt for uid = %d\n", uip->ui_uid);
+		kprintf("negative proccnt for uid = %d\n", uip->ui_uid);
 	return (1);
 }
 
@@ -563,7 +563,7 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 	uip->ui_sbsize = new;
 	*hiwat = to;
 	if (uip->ui_sbsize < 0)
-		printf("negative sbsize for uid = %d\n", uip->ui_uid);
+		kprintf("negative sbsize for uid = %d\n", uip->ui_uid);
 	crit_exit();
 	return (1);
 }

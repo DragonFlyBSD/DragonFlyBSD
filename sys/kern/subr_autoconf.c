@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.7 2005/02/07 23:32:26 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.8 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -82,9 +82,9 @@ run_interrupt_driven_config_hooks(void *dummy)
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
 		if (waiting >= 20) {
 			crit_enter();
-			printf("**WARNING** waiting for the following device to finish configuring:\n");
+			kprintf("**WARNING** waiting for the following device to finish configuring:\n");
 			TAILQ_FOREACH(hook_entry, &intr_config_hook_list, ich_links) {
-			    printf("  %s:\tfunc=%p arg=%p\n",
+			    kprintf("  %s:\tfunc=%p arg=%p\n",
 				(hook_entry->ich_desc ?
 				    hook_entry->ich_desc : "?"),
 				hook_entry->ich_func,
@@ -92,7 +92,7 @@ run_interrupt_driven_config_hooks(void *dummy)
 			}
 			crit_exit();
 			if (waiting >= 60) {
-				printf("Giving up, interrupt routing is probably hosed\n");
+				kprintf("Giving up, interrupt routing is probably hosed\n");
 				break;
 			}
 		}
@@ -119,7 +119,7 @@ config_intrhook_establish(struct intr_config_hook *hook)
 		if (hook_entry == hook)
 			break;
 	if (hook_entry != NULL) {
-		printf("config_intrhook_establish: establishing an "
+		kprintf("config_intrhook_establish: establishing an "
 		       "already established hook.\n");
 		return (1);
 	}

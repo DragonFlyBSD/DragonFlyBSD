@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.29 2006/10/10 15:40:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.30 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -577,16 +577,16 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 
 	for (i = 0; i <= pgrphash; i++) {
 		if (!LIST_EMPTY(&pgrphashtbl[i])) {
-			printf("\tindx %d\n", i);
+			kprintf("\tindx %d\n", i);
 			LIST_FOREACH(pgrp, &pgrphashtbl[i], pg_hash) {
-				printf(
+				kprintf(
 			"\tpgrp %p, pgid %ld, sess %p, sesscnt %d, mem %p\n",
 				    (void *)pgrp, (long)pgrp->pg_id,
 				    (void *)pgrp->pg_session,
 				    pgrp->pg_session->s_count,
 				    (void *)LIST_FIRST(&pgrp->pg_members));
 				LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
-					printf("\t\tpid %ld addr %p pgrp %p\n", 
+					kprintf("\t\tpid %ld addr %p pgrp %p\n", 
 					    (long)p->p_pid, (void *)p,
 					    (void *)p->p_pgrp);
 				}

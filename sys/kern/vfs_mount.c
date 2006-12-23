@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.23 2006/09/19 16:06:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -463,7 +463,7 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 	if (vp->v_holdcnt && visleaf(vp)) {
 		vinvalbuf(vp, V_SAVE, 0, 0);
 #if 0	/* DEBUG */
-		printf((vp->v_holdcnt ? "vrecycle: vp %p failed: %s\n" :
+		kprintf((vp->v_holdcnt ? "vrecycle: vp %p failed: %s\n" :
 			"vrecycle: vp %p succeeded: %s\n"), vp,
 			(TAILQ_FIRST(&vp->v_namecache) ? 
 			    TAILQ_FIRST(&vp->v_namecache)->nc_name : "?"));
@@ -630,7 +630,7 @@ vnlru_proc(void)
 			if (vnlru_nowhere % 10 == 0)
 				tsleep(td, 0, "vlrup", hz * 3);
 			if (vnlru_nowhere % 100 == 0)
-				printf("vnlru_proc: vnode recycler stopped working!\n");
+				kprintf("vnlru_proc: vnode recycler stopped working!\n");
 			if (vnlru_nowhere == 1000)
 				vnlru_nowhere = 900;
 		} else {

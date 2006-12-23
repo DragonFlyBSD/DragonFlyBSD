@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.20 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.21 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -395,7 +395,7 @@ nlookup(struct nlookupdata *nd)
 	} else {
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
-		printf("[diagnostic] nlookup: relookup %*.*s\n", 
+		kprintf("[diagnostic] nlookup: relookup %*.*s\n", 
 			nch.ncp->nc_nlen, nch.ncp->nc_nlen, nch.ncp->nc_name);
 		cache_put(&nch);
 		nch = cache_nlookup(&nd->nl_nch, &nlc);

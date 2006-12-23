@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.35 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.36 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -846,7 +846,7 @@ _lf_printf(const char *ctl, ...)
 
 	if (lf_print_ranges) {
 	    if ((p = curproc) != NULL)
-		printf("pid %d (%s): ", p->p_pid, p->p_comm);
+		kprintf("pid %d (%s): ", p->p_pid, p->p_comm);
 	}
 	__va_start(va, ctl);
 	kvprintf(ctl, va);
@@ -867,16 +867,16 @@ _lf_print_lock(const struct lockf *lock)
 		lf_printf("lockf %p:\n", lock);
 	}
 	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
-		printf("\t%lld..%lld type %s owned by %d\n",
+		kprintf("\t%lld..%lld type %s owned by %d\n",
 		       range->lf_start, range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
 		       range->lf_flags & F_POSIX ? range->lf_owner->p_pid : -1);
 	if (TAILQ_EMPTY(&lock->lf_blocked))
-		printf("no process waiting for range\n");
+		kprintf("no process waiting for range\n");
 	else
-		printf("blocked locks:");
+		kprintf("blocked locks:");
 	TAILQ_FOREACH(range, &lock->lf_blocked, lf_link)
-		printf("\t%lld..%lld type %s waiting on %p\n",
+		kprintf("\t%lld..%lld type %s waiting on %p\n",
 		       range->lf_start, range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
 		       range);

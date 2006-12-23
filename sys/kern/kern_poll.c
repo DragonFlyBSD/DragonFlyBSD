@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.23 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_polling.h"
@@ -496,7 +496,7 @@ ether_poll_register(struct ifnet *ifp)
 		 */
 		static int verbose = 10 ;
 		if (verbose >0) {
-			printf("poll handlers list full, "
+			kprintf("poll handlers list full, "
 				"maybe a broken driver ?\n");
 			verbose--;
 		}
@@ -535,7 +535,7 @@ ether_poll_deregister(struct ifnet *ifp)
 	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
 	if (i == poll_handlers) {
 		crit_exit();
-		printf("ether_poll_deregister: ifp not found!!!\n");
+		kprintf("ether_poll_deregister: ifp not found!!!\n");
 		return 0;
 	}
 	poll_handlers--;
@@ -561,6 +561,6 @@ emergency_poll_enable(const char *name)
 {
 	if (polling_enabled == 0) {
 		polling_enabled = 1;
-		printf("%s forced polling on\n", name);
+		kprintf("%s forced polling on\n", name);
 	}
 }

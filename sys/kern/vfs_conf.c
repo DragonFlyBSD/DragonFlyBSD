@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.23 2006/12/20 18:14:41 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ vfs_mountroot_try(const char *mountfrom)
 		return(error);		/* don't complain */
 
 	crit_enter();
-	printf("Mounting root from %s\n", mountfrom);
+	kprintf("Mounting root from %s\n", mountfrom);
 	crit_exit();
 
 	/* parse vfs name and devname */
@@ -217,7 +217,7 @@ vfs_mountroot_try(const char *mountfrom)
 	error = vfs_rootmountalloc(vfsname, 
 			devname[0] != 0 ? devname : ROOTNAME, &mp);
 	if (error != 0) {
-		printf("Can't allocate root mount for filesystem '%s': %d\n",
+		kprintf("Can't allocate root mount for filesystem '%s': %d\n",
 		       vfsname, error);
 		goto done;
 	}
@@ -225,7 +225,7 @@ vfs_mountroot_try(const char *mountfrom)
 
 	/* do our best to set rootdev */
 	if ((devname[0] != 0) && setrootbyname(devname))
-		printf("setrootbyname failed\n");
+		kprintf("setrootbyname failed\n");
 
 	/* If the root device is a type "memory disk", mount RW */
 	if (rootdev != NOCDEV && dev_is_good(rootdev) &&
@@ -245,7 +245,7 @@ done:
 			vfs_unbusy(mp);
 			kfree(mp, M_MOUNT);
 		}
-		printf("Root mount failed: %d\n", error);
+		kprintf("Root mount failed: %d\n", error);
 	} else {
 		/* register with list of mounted filesystems */
 		mountlist_insert(mp, MNTINS_FIRST);
@@ -268,23 +268,23 @@ vfs_mountroot_ask(void)
 	cdev_t dev;
 
 	for(;;) {
-		printf("\nManual root filesystem specification:\n");
-		printf("  <fstype>:<device>  Mount <device> using filesystem <fstype>\n");
-		printf("                       eg. ufs:da0s1a\n");
-		printf("  ?                  List valid disk boot devices\n");
-		printf("  <empty line>       Abort manual input\n");
-		printf("\nmountroot> ");
+		kprintf("\nManual root filesystem specification:\n");
+		kprintf("  <fstype>:<device>  Mount <device> using filesystem <fstype>\n");
+		kprintf("                       eg. ufs:da0s1a\n");
+		kprintf("  ?                  List valid disk boot devices\n");
+		kprintf("  <empty line>       Abort manual input\n");
+		kprintf("\nmountroot> ");
 		gets(name);
 		if (name[0] == 0)
 			return(1);
 		if (name[0] == '?') {
-			printf("Possibly valid devices for 'ufs' root:\n");
+			kprintf("Possibly valid devices for 'ufs' root:\n");
 			for (i = 0; i < NUMCDEVSW; i++) {
 				dev = udev2dev(makeudev(i, 0), 0);
 				if (dev_is_good(dev))
-					printf(" \"%s\"", dev_dname(dev));
+					kprintf(" \"%s\"", dev_dname(dev));
 			}
-			printf("\n");
+			kprintf("\n");
 			continue;
 		}
 		if (!vfs_mountroot_try(name))
@@ -300,7 +300,7 @@ gets(char *cp)
 
 	lp = cp;
 	for (;;) {
-		printf("%c", c = cngetc() & 0177);
+		kprintf("%c", c = cngetc() & 0177);
 		switch (c) {
 		case -1:
 		case '\n':
@@ -310,7 +310,7 @@ gets(char *cp)
 		case '\b':
 		case '\177':
 			if (lp > cp) {
-				printf(" \b");
+				kprintf(" \b");
 				lp--;
 			}
 			continue;
@@ -322,7 +322,7 @@ gets(char *cp)
 		case '@':
 		case 'u' & 037:
 			lp = cp;
-			printf("%c", '\n');
+			kprintf("%c", '\n');
 			continue;
 		default:
 			*lp++ = c;
@@ -354,7 +354,7 @@ kgetdiskbyname(const char *name)
 	while (*cp >= 'a' && *cp <= 'z')
 		++cp;
 	if (cp == name) {
-		printf("missing device name\n");
+		kprintf("missing device name\n");
 		return (NOCDEV);
 	}
 	nlen = cp - name;
@@ -364,7 +364,7 @@ kgetdiskbyname(const char *name)
 	 */
 	unit = strtol(cp, &cp, 10);
 	if (name + nlen == (const char *)cp || unit < 0 || unit > DKMAXUNIT) {
-		printf("bad unit: %d\n", unit);
+		kprintf("bad unit: %d\n", unit);
 		return (NOCDEV);
 	}
 
@@ -377,7 +377,7 @@ kgetdiskbyname(const char *name)
 	if (*cp == 's') {
 		slice = cp[1] - '0';
 		if (slice < 1 || slice > 9) {
-			printf("bad slice number\n");
+			kprintf("bad slice number\n");
 			return(NOCDEV);
 		}
 		++slice;	/* slice #1 starts at 2 */
@@ -397,7 +397,7 @@ kgetdiskbyname(const char *name)
 	}
 
 	if (*cp != '\0') {
-		printf("junk after name\n");
+		kprintf("junk after name\n");
 		return (NOCDEV);
 	}
 
@@ -416,7 +416,7 @@ kgetdiskbyname(const char *name)
 		}
 	}
 	if (cd == NUMCDEVSW) {
-		printf("no such device '%*.*s'\n", nlen, nlen, name);
+		kprintf("no such device '%*.*s'\n", nlen, nlen, name);
 		return (NOCDEV);
 	}
 

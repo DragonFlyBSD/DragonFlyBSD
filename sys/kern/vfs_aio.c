@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.31 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.32 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -496,7 +496,7 @@ restart4:
 			zfree(aiolio_zone, lj);
 		} else {
 #ifdef DIAGNOSTIC
-			printf("LIO job not cleaned up: B:%d, BF:%d, Q:%d, "
+			kprintf("LIO job not cleaned up: B:%d, BF:%d, Q:%d, "
 			    "QF:%d\n", lj->lioj_buffer_count,
 			    lj->lioj_buffer_finished_count,
 			    lj->lioj_queue_count,
@@ -812,7 +812,7 @@ aio_daemon(void *uproc)
 			pmap_activate(mycp);
 #ifdef DIAGNOSTIC
 			if (tmpvm == myvm) {
-				printf("AIOD: vmspace problem -- %d\n",
+				kprintf("AIOD: vmspace problem -- %d\n",
 				    mycp->p_pid);
 			}
 #endif
@@ -850,7 +850,7 @@ aio_daemon(void *uproc)
 					num_aio_procs--;
 #ifdef DIAGNOSTIC
 					if (mycp->p_vmspace->vm_refcnt <= 1) {
-						printf("AIOD: bad vm refcnt for"
+						kprintf("AIOD: bad vm refcnt for"
 						    " exiting daemon: %d\n",
 						    mycp->p_vmspace->vm_refcnt);
 					}

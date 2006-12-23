@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.14 2006/12/17 19:28:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.15 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -843,7 +843,7 @@ objcache_timer(void *dummy)
 				depot_disassociate(depot, &tmplist);
 				depot->magcapacity *= 2;
 				spin_unlock_wr(&depot->spin);
-				printf("objcache_timer: increasing cache %s"
+				kprintf("objcache_timer: increasing cache %s"
 				       " magsize to %d, contested %d times\n",
 				    oc->name, depot->magcapacity,
 				    depot->contested);

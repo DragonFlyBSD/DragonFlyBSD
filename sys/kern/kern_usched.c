@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.6 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.7 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/errno.h>
@@ -65,7 +65,7 @@ usched_init(void)
 		return(&usched_bsd4);
 	if (strcmp(defsched, "bsd4") == 0)
 		return(&usched_bsd4);
-	printf("WARNING: Running dummy userland scheduler\n");
+	kprintf("WARNING: Running dummy userland scheduler\n");
 	return(&usched_dummy);
 }
 

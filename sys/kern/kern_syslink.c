@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.3 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.4 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -647,7 +647,7 @@ static
 int
 process_syslink_msg(struct sldata *sldata, struct syslink_msg *head)
 {
-    printf("process syslink msg %08x %04x\n", head->msgid, head->cid);
+    kprintf("process syslink msg %08x %04x\n", head->msgid, head->cid);
     return(0);
 }
 

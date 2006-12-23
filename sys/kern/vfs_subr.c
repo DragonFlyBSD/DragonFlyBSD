@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.99 2006/09/19 11:47:36 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.100 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -498,7 +498,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 		vp->v_track_write.bk_waitflag = 1;
 		tsleep(&vp->v_track_write, 0, "vbtrunc", 0);
 		if (length == 0) {
-			printf("Warning: vtruncbuf(): Had to wait for "
+			kprintf("Warning: vtruncbuf(): Had to wait for "
 			       "%d buffer I/Os to finish in %s\n",
 			       count, filename);
 		}
@@ -517,7 +517,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 				vtruncbuf_bp_trunc_cmp,
 				vtruncbuf_bp_trunc, &truncloffset);
 		if (count) {
-			printf("Warning: vtruncbuf():  Had to re-clean %d "
+			kprintf("Warning: vtruncbuf():  Had to re-clean %d "
 			       "left over buffers in %s\n", count, filename);
 		}
 	} while(count);
@@ -692,7 +692,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 				vfsync_bp, &info);
 			error = vfsync_wait_output(vp, waitoutput);
 			if (info.skippedbufs)
-				printf("Warning: vfsync skipped %d dirty bufs in pass2!\n", info.skippedbufs);
+				kprintf("Warning: vfsync skipped %d dirty bufs in pass2!\n", info.skippedbufs);
 		}
 		while (error == 0 && passes > 0 &&
 		    !RB_EMPTY(&vp->v_rbdirty_tree)) {
@@ -771,7 +771,7 @@ vfsync_bp(struct buf *bp, void *data)
 	 * Ignore buffers that we cannot immediately lock.  XXX
 	 */
 	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-		printf("Warning: vfsync_bp skipping dirty buffer %p\n", bp);
+		kprintf("Warning: vfsync_bp skipping dirty buffer %p\n", bp);
 		++info->skippedbufs;
 		return(0);
 	}
@@ -1001,7 +1001,7 @@ v_associate_rdev(struct vnode *vp, cdev_t dev)
 		return(ENXIO);
 	KKASSERT(vp->v_rdev == NULL);
 	if (dev_ref_debug)
-		printf("Z1");
+		kprintf("Z1");
 	vp->v_rdev = reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
 	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_cdevnext);
@@ -1069,7 +1069,7 @@ vclean_interlocked(struct vnode *vp, int flags)
 	 * Scrap the vfs cache
 	 */
 	while (cache_inval_vp(vp, 0) != 0) {
-		printf("Warning: vnode %p clean/cache_resolution race detected\n", vp);
+		kprintf("Warning: vnode %p clean/cache_resolution race detected\n", vp);
 		tsleep(vp, 0, "vclninv", 2);
 	}
 
@@ -1101,7 +1101,7 @@ vclean_interlocked(struct vnode *vp, int flags)
 			else
 				VOP_CLOSE(vp, FNONBLOCK);
 			if (vp->v_opencount == n) {
-				printf("Warning: unable to force-close"
+				kprintf("Warning: unable to force-close"
 				       " vnode %p\n", vp);
 				break;
 			}
@@ -1391,10 +1391,10 @@ vprint(char *label, struct vnode *vp)
 	char buf[96];
 
 	if (label != NULL)
-		printf("%s: %p: ", label, (void *)vp);
+		kprintf("%s: %p: ", label, (void *)vp);
 	else
-		printf("%p: ", (void *)vp);
-	printf("type %s, usecount %d, writecount %d, refcount %d,",
+		kprintf("%p: ", (void *)vp);
+	kprintf("type %s, usecount %d, writecount %d, refcount %d,",
 	    typename[vp->v_type], vp->v_usecount, vp->v_writecount,
 	    vp->v_holdcnt);
 	buf[0] = '\0';
@@ -1409,11 +1409,11 @@ vprint(char *label, struct vnode *vp)
 	if (vp->v_flag & VOBJBUF)
 		strcat(buf, "|VOBJBUF");
 	if (buf[0] != '\0')
-		printf(" flags (%s)", &buf[1]);
+		kprintf(" flags (%s)", &buf[1]);
 	if (vp->v_data == NULL) {
-		printf("\n");
+		kprintf("\n");
 	} else {
-		printf("\n\t");
+		kprintf("\n\t");
 		VOP_PRINT(vp);
 	}
 }
@@ -1429,7 +1429,7 @@ static int db_show_locked_vnodes(struct mount *mp, void *data);
  */
 DB_SHOW_COMMAND(lockedvnodes, lockedvnodes)
 {
-	printf("Locked vnodes\n");
+	kprintf("Locked vnodes\n");
 	mountlist_scan(db_show_locked_vnodes, NULL, 
 			MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 }
@@ -1567,12 +1567,12 @@ vfs_umountall_callback(struct mount *mp, void *data)
 	error = dounmount(mp, MNT_FORCE);
 	if (error) {
 		mountlist_remove(mp);
-		printf("unmount of filesystem mounted from %s failed (", 
+		kprintf("unmount of filesystem mounted from %s failed (", 
 			mp->mnt_stat.f_mntfromname);
 		if (error == EBUSY)
-			printf("BUSY)\n");
+			kprintf("BUSY)\n");
 		else
-			printf("%d)\n", error);
+			kprintf("%d)\n", error);
 	}
 	return(1);
 }

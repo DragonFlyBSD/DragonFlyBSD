@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/imgact_gzip.c,v 1.40.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.6 2006/09/11 20:25:01 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.7 2006/12/23 00:35:03 swildner Exp $
  *
  * This module handles execution of a.out files which have been run through
  * "gzip".  This saves diskspace, but wastes cpu-cycles and VM.
@@ -138,8 +138,8 @@ exec_gzip_imgact(imgp)
 			    (vm_offset_t) igz.inbuf + PAGE_SIZE);
 	}
 	if (igz.error || error || error2) {
-		printf("Output=%lu ", igz.output);
-		printf("Inflate_error=%d igz.error=%d error2=%d where=%d\n",
+		kprintf("Output=%lu ", igz.output);
+		kprintf("Inflate_error=%d igz.error=%d error2=%d where=%d\n",
 		       error, igz.error, error2, igz.where);
 	}
 	if (igz.error)

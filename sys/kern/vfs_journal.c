@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.29 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.30 2006/12/23 00:35:04 swildner Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -140,7 +140,7 @@ journal_destroy_threads(struct journal *jo, int flags)
     while (jo->flags & (MC_JOURNAL_WACTIVE | MC_JOURNAL_RACTIVE)) {
 	tsleep(jo, 0, "jwait", hz);
 	if (++wcount % 10 == 0) {
-	    printf("Warning: journal %s waiting for descriptors to close\n",
+	    kprintf("Warning: journal %s waiting for descriptors to close\n",
 		jo->id);
 	}
     }
@@ -257,7 +257,7 @@ journal_wthread(void *info)
 			jo->fifo.membase + ((jo->fifo.rindex - bytes) & jo->fifo.mask),
 			bytes, &res);
 	if (error) {
-	    printf("journal_thread(%s) write, error %d\n", jo->id, error);
+	    kprintf("journal_thread(%s) write, error %d\n", jo->id, error);
 	    /* XXX */
 	} else {
 	    KKASSERT(res == bytes);
@@ -318,18 +318,18 @@ journal_rthread(void *info)
 	if (transid == 0) {
 	    error = fp_read(jo->fp, &ack, sizeof(ack), &count, 1);
 #if 0
-	    printf("fp_read ack error %d count %d\n", error, count);
+	    kprintf("fp_read ack error %d count %d\n", error, count);
 #endif
 	    if (error || count != sizeof(ack))
 		break;
 	    if (error) {
-		printf("read error %d on receive stream\n", error);
+		kprintf("read error %d on receive stream\n", error);
 		break;
 	    }
 	    if (ack.rbeg.begmagic != JREC_BEGMAGIC ||
 		ack.rend.endmagic != JREC_ENDMAGIC
 	    ) {
-		printf("bad begmagic or endmagic on receive stream\n");
+		kprintf("bad begmagic or endmagic on receive stream\n");
 		break;
 	    }
 	    transid = ack.rbeg.transid;
@@ -344,7 +344,7 @@ journal_rthread(void *info)
 	bytes = jo->fifo.rindex - jo->fifo.xindex;
 
 	if (bytes == 0) {
-	    printf("warning: unsent data acknowledged transid %08llx\n", transid);
+	    kprintf("warning: unsent data acknowledged transid %08llx\n", transid);
 	    tsleep(&jo->fifo.xindex, 0, "jrseq", hz);
 	    transid = 0;
 	    continue;
@@ -363,7 +363,7 @@ journal_rthread(void *info)
 	 */
 	if (rawp->transid < transid) {
 #if 1
-	    printf("ackskip %08llx/%08llx\n", rawp->transid, transid);
+	    kprintf("ackskip %08llx/%08llx\n", rawp->transid, transid);
 #endif
 	    jo->fifo.xindex += (rawp->recsize + 15) & ~15;
 	    jo->total_acked += (rawp->recsize + 15) & ~15;
@@ -375,7 +375,7 @@ journal_rthread(void *info)
 	}
 	if (rawp->transid == transid) {
 #if 1
-	    printf("ackskip %08llx/%08llx\n", rawp->transid, transid);
+	    kprintf("ackskip %08llx/%08llx\n", rawp->transid, transid);
 #endif
 	    jo->fifo.xindex += (rawp->recsize + 15) & ~15;
 	    jo->total_acked += (rawp->recsize + 15) & ~15;
@@ -386,7 +386,7 @@ journal_rthread(void *info)
 	    transid = 0;
 	    continue;
 	}
-	printf("warning: unsent data(2) acknowledged transid %08llx\n", transid);
+	kprintf("warning: unsent data(2) acknowledged transid %08llx\n", transid);
 	transid = 0;
     }
     jo->flags &= ~MC_JOURNAL_RACTIVE;
@@ -1335,13 +1335,13 @@ jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
 	if (i - b) {
 	    error = msf_map_pagelist(&msf, pglist + b, i - b, 0);
 	    if (error == 0) {
-		printf("RECORD PUTPAGES %d\n", msf_buf_bytes(msf));
+		kprintf("RECORD PUTPAGES %d\n", msf_buf_bytes(msf));
 		jrecord_leaf(jrec, JLEAF_SEEKPOS, &offset, sizeof(offset));
 		jrecord_leaf(jrec, rectype, 
 			     msf_buf_kva(msf), msf_buf_bytes(msf));
 		msf_buf_free(msf);
 	    } else {
-		printf("jrecord_write_pagelist: mapping failure\n");
+		kprintf("jrecord_write_pagelist: mapping failure\n");
 	    }
 	    offset += (off_t)(i - b) << PAGE_SHIFT;
 	}
@@ -1369,7 +1369,7 @@ jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio)
 		     sizeof(uio->uio_offset));
 	error = msf_uio_iterate(uio, jrecord_write_uio_callback, &info);
 	if (error)
-	    printf("XXX warning uio iterate failed %d\n", error);
+	    kprintf("XXX warning uio iterate failed %d\n", error);
     }
 }
 

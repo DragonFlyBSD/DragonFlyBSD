@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.28 2006/09/05 03:48:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.29 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -208,7 +208,7 @@ single_block_read:
 	if (bp) {
 #if defined(CLUSTERDEBUG)
 		if (rcluster)
-			printf("S(%lld,%d,%d) ",
+			kprintf("S(%lld,%d,%d) ",
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
 		bp->b_cmd = BUF_CMD_READ;
@@ -266,12 +266,12 @@ single_block_read:
 #if defined(CLUSTERDEBUG)
 		if (rcluster) {
 			if (bp)
-				printf("A+(%lld,%d,%lld,%d) ",
+				kprintf("A+(%lld,%d,%lld,%d) ",
 				    rbp->b_loffset, rbp->b_bcount,
 				    rbp->b_loffset - origoffset,
 				    seqcount);
 			else
-				printf("A(%lld,%d,%lld,%d) ",
+				kprintf("A(%lld,%d,%lld,%d) ",
 				    rbp->b_loffset, rbp->b_bcount,
 				    rbp->b_loffset - origoffset,
 				    seqcount);
@@ -460,9 +460,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 		 * 'size'.
 		 */
 		if (tbp->b_bcount != size)
-		    printf("warning: tbp->b_bcount wrong %d vs %d\n", tbp->b_bcount, size);
+		    kprintf("warning: tbp->b_bcount wrong %d vs %d\n", tbp->b_bcount, size);
 		if (tbp->b_bufsize != size)
-		    printf("warning: tbp->b_bufsize wrong %d vs %d\n", tbp->b_bufsize, size);
+		    kprintf("warning: tbp->b_bufsize wrong %d vs %d\n", tbp->b_bufsize, size);
 		bp->b_bcount += size;
 		bp->b_bufsize += size;
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.57 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.58 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_ktrace.h"
@@ -795,7 +795,7 @@ ksignal(struct proc *p, int sig)
 	sig_t action;
 
 	if (sig > _SIG_MAXSIG || sig <= 0) {
-		printf("ksignal: signal %d\n", sig);
+		kprintf("ksignal: signal %d\n", sig);
 		panic("ksignal signal number");
 	}
 
@@ -1361,7 +1361,7 @@ issignal(struct proc *p)
 				 * Are you sure you want to ignore SIGSEGV
 				 * in init? XXX
 				 */
-				printf("Process (pid %lu) got signal %d\n",
+				kprintf("Process (pid %lu) got signal %d\n",
 					(u_long)p->p_pid, sig);
 #endif
 				break;		/* == ignore */
@@ -1418,7 +1418,7 @@ issignal(struct proc *p)
 			 */
 			if ((prop & SA_CONT) == 0 &&
 			    (p->p_flag & P_TRACED) == 0)
-				printf("issignal\n");
+				kprintf("issignal\n");
 			break;		/* == ignore */
 
 		default:
@@ -1568,7 +1568,7 @@ SYSCTL_STRING(_kern, OID_AUTO, corefile, CTLFLAG_RW, corefilename,
 /*
  * expand_name(name, uid, pid)
  * Expand the name described in corefilename, using name, uid, and pid.
- * corefilename is a printf-like string, with three format specifiers:
+ * corefilename is a kprintf-like string, with three format specifiers:
  *	%N	name of process ("name")
  *	%P	process id (pid)
  *	%U	user id (uid)

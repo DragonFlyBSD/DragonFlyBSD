@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.67 2006/12/04 18:03:26 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.68 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include "opt_init_path.h"
@@ -235,7 +235,7 @@ restart:
 static void
 print_caddr_t(void *data __unused)
 {
-	printf("%s", (char *)data);
+	kprintf("%s", (char *)data);
 }
 SYSINIT(announce, SI_SUB_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 
@@ -249,7 +249,7 @@ leavecrit(void *dummy __unused)
 	crit_exit();
 	KKASSERT(!IN_CRITICAL_SECT(curthread));
 	if (bootverbose)
-		printf("Leaving critical section, allowing interrupts\n");
+		kprintf("Leaving critical section, allowing interrupts\n");
 }
 SYSINIT(leavecrit, SI_SUB_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
 
@@ -492,7 +492,7 @@ start_init(void *dummy)
 		for (next = path; *next != '\0' && *next != ':'; next++)
 			/* nothing */ ;
 		if (bootverbose)
-			printf("start_init: trying %.*s\n", (int)(next - path),
+			kprintf("start_init: trying %.*s\n", (int)(next - path),
 			    path);
 			
 		/*
@@ -562,10 +562,10 @@ start_init(void *dummy)
 			return;
 		}
 		if (error != ENOENT)
-			printf("exec %.*s: error %d\n", (int)(next - path), 
+			kprintf("exec %.*s: error %d\n", (int)(next - path), 
 			    path, error);
 	}
-	printf("init: not found in path %s\n", init_path);
+	kprintf("init: not found in path %s\n", init_path);
 	panic("no init");
 }
 

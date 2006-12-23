@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.24 2006/08/11 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.25 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_lint.h"
@@ -185,7 +185,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 				lkp->lk_wmesg, ((int **)&lkp)[-1]);
 			    didpanic = 0;
 		    } else {
-			    printf(
+			    kprintf(
 				"lockmgr %s from %p: called from interrupt\n",
 				lkp->lk_wmesg, ((int **)&lkp)[-1]);
 		    }
@@ -197,7 +197,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 				lkp->lk_wmesg, file, line);
 			    didpanic = 0;
 		    } else {
-			    printf(
+			    kprintf(
 				"lockmgr %s from %s:%d: called from interrupt\n",
 				lkp->lk_wmesg, file, line);
 		    }
@@ -577,13 +577,13 @@ lockmgr_printinfo(struct lock *lkp)
 		p = NULL;
 
 	if (lkp->lk_sharecount)
-		printf(" lock type %s: SHARED (count %d)", lkp->lk_wmesg,
+		kprintf(" lock type %s: SHARED (count %d)", lkp->lk_wmesg,
 		    lkp->lk_sharecount);
 	else if (lkp->lk_flags & LK_HAVE_EXCL)
-		printf(" lock type %s: EXCL (count %d) by td %p pid %d",
+		kprintf(" lock type %s: EXCL (count %d) by td %p pid %d",
 		    lkp->lk_wmesg, lkp->lk_exclusivecount, td,
 		    p ? p->p_pid : -99);
 	if (lkp->lk_waitcount > 0)
-		printf(" with %d pending", lkp->lk_waitcount);
+		kprintf(" with %d pending", lkp->lk_waitcount);
 }
 

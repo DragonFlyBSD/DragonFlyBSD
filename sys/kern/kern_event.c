@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.30 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.31 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -486,7 +486,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 		 * filter attach routine is responsible for insuring that
 		 * the identifier can be attached to it.
 		 */
-		printf("unknown filter: %d\n", kev->filter);
+		kprintf("unknown filter: %d\n", kev->filter);
 		return (EINVAL);
 	}
 

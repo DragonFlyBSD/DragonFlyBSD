@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.58 2006/12/17 19:28:30 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.59 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_param.h"
@@ -720,7 +720,7 @@ m_free(struct mbuf *m)
 		static int afewtimes = 10;
 
 		if (afewtimes-- > 0) {
-			printf("mfree: m->m_nextpkt != NULL\n");
+			kprintf("mfree: m->m_nextpkt != NULL\n");
 			db_print_backtrace();
 		}
 #endif
@@ -1445,7 +1445,7 @@ m_print(const struct mbuf *m)
 	len = m->m_pkthdr.len;
 	m2 = m;
 	while (len) {
-		printf("%p %*D\n", m2, m2->m_len, (u_char *)m2->m_data, "-");
+		kprintf("%p %*D\n", m2, m2->m_len, (u_char *)m2->m_data, "-");
 		len -= m2->m_len;
 		m2 = m2->m_next;
 	}

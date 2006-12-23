@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_devstat.c,v 1.17.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_devstat.c,v 1.3 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_devstat.c,v 1.4 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ devstat_add_entry(struct devstat *ds, const char *dev_name,
 				} else {
 					STAILQ_INSERT_TAIL(devstat_head,
 							   ds, dev_links);
-					printf("devstat_add_entry: HELP! "
+					kprintf("devstat_add_entry: HELP! "
 					       "sorting problem detected "
 					       "for %s%d\n", dev_name,
 					       unit_number);
@@ -224,7 +224,7 @@ devstat_end_transaction(struct devstat *ds, u_int32_t bytes,
 		/* Add our busy time to the total busy time. */
 		timevaladd(&ds->busy_time, &busy_time);
 	} else if (ds->busy_count < 0)
-		printf("devstat_end_transaction: HELP!! busy_count "
+		kprintf("devstat_end_transaction: HELP!! busy_count "
 		       "for %s%d is < 0 (%d)!\n", ds->device_name,
 		       ds->unit_number, ds->busy_count);
 }

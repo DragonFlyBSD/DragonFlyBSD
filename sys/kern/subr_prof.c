@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.13 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.14 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ kmstartup(void *dummy)
 	p->lowpc = ROUNDDOWN((u_long)btext, HISTFRACTION * sizeof(HISTCOUNTER));
 	p->highpc = ROUNDUP((u_long)etext, HISTFRACTION * sizeof(HISTCOUNTER));
 	p->textsize = p->highpc - p->lowpc;
-	printf("Profiling kernel, textsize=%lu [%x..%x]\n",
+	kprintf("Profiling kernel, textsize=%lu [%x..%x]\n",
 	       p->textsize, p->lowpc, p->highpc);
 	p->kcountsize = p->textsize / HISTFRACTION;
 	p->hashfraction = HASHFRACTION;
@@ -115,7 +115,7 @@ kmstartup(void *dummy)
 	cp = (char *)malloc(p->kcountsize + p->fromssize + p->tossize,
 	    M_GPROF, M_NOWAIT);
 	if (cp == 0) {
-		printf("No memory for profiling.\n");
+		kprintf("No memory for profiling.\n");
 		return;
 	}
 	bzero(cp, p->kcountsize + p->tossize + p->fromssize);
@@ -198,7 +198,7 @@ kmstartup(void *dummy)
 		nullfunc_loop_profiled_time += KCOUNT(p, PC_TO_I(p, tmp_addr));
 #define CALIB_DOSCALE(count)	(((count) + CALIB_SCALE / 3) / CALIB_SCALE)
 #define	c2n(count, freq)	((int)((count) * 1000000000LL / freq))
-	printf("cputime %d, empty_loop %d, nullfunc_loop_profiled %d, mcount %d, mexitcount %d\n",
+	kprintf("cputime %d, empty_loop %d, nullfunc_loop_profiled %d, mcount %d, mexitcount %d\n",
 	       CALIB_DOSCALE(c2n(cputime_overhead, p->profrate)),
 	       CALIB_DOSCALE(c2n(empty_loop_time, p->profrate)),
 	       CALIB_DOSCALE(c2n(nullfunc_loop_profiled_time, p->profrate)),
@@ -253,7 +253,7 @@ kmstartup(void *dummy)
 	p->mcount_post_overhead = p->mcount_overhead
 				  + p->cputime_overhead
 				  - p->mcount_pre_overhead;
-	printf(
+	kprintf(
 "Profiling overheads: mcount: %d+%d, %d+%d; mexitcount: %d+%d, %d+%d nsec\n",
 	       c2n(p->cputime_overhead, p->profrate),
 	       c2n(p->mcount_overhead, p->profrate),
@@ -263,7 +263,7 @@ kmstartup(void *dummy)
 	       c2n(p->mexitcount_overhead, p->profrate),
 	       c2n(p->mexitcount_pre_overhead, p->profrate),
 	       c2n(p->mexitcount_post_overhead, p->profrate));
-	printf(
+	kprintf(
 "Profiling overheads: mcount: %d+%d, %d+%d; mexitcount: %d+%d, %d+%d cycles\n",
 	       p->cputime_overhead, p->mcount_overhead,
 	       p->mcount_pre_overhead, p->mcount_post_overhead,

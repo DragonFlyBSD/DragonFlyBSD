@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.6 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.7 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -163,12 +163,12 @@ firmware_image_load_file(const char *image_name)
 
 	if (fp_stat(fp, &ub) != 0) {
 		if (bootverbose)
-			printf("fp_stat on firmware image %s failed: %d\n",
+			kprintf("fp_stat on firmware image %s failed: %d\n",
 			       fw_path, error);
 		goto fail_stat;
 	}
 	if (ub.st_size > SIZE_T_MAX) {
-		printf("firmware image %s is too large\n", fw_path);
+		kprintf("firmware image %s is too large\n", fw_path);
 		goto fail_stat;
 	}
 
@@ -179,7 +179,7 @@ firmware_image_load_file(const char *image_name)
 
 	error = fp_read(fp, img->fw_image, img->fw_imglen, &nread, 1);
 	if (error != 0 || nread != img->fw_imglen) {
-		printf("firmware image could not be read: %d\n", error);
+		kprintf("firmware image could not be read: %d\n", error);
                 goto fail_read;
 	}
 	fp_close(fp);

@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/kern/subr_power.c,v 1.1 2003/09/24 03:32:17 drhodus Exp $
+ * $DragonFly: src/sys/kern/subr_power.c,v 1.2 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -96,7 +96,7 @@ power_profile_set_state(int state)
 	if (state != power_profile_state) {
 		power_profile_state = state;
 		changed = 1;
-		printf("system power profile changed to '%s'\n",
+		kprintf("system power profile changed to '%s'\n",
 		       (state == POWER_PROFILE_PERFORMANCE) ? "performance" : "economy");
 	} else {
 		changed = 0;

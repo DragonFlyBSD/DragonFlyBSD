@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.59 2006/10/20 17:02:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.60 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include "opt_ktrace.h"
@@ -233,7 +233,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	uid = p1->p_ucred->cr_ruid;
 	if ((nprocs >= maxproc - 10 && uid != 0) || nprocs >= maxproc) {
 		if (ppsratecheck(&lastfail, &curfail, 1))
-			printf("maxproc limit exceeded by uid %d, please "
+			kprintf("maxproc limit exceeded by uid %d, please "
 			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
 		error = EAGAIN;
@@ -257,7 +257,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		 */
 		nprocs--;
 		if (ppsratecheck(&lastfail, &curfail, 1))
-			printf("maxproc limit exceeded by uid %d, please "
+			kprintf("maxproc limit exceeded by uid %d, please "
 			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
 		error = EAGAIN;
@@ -553,7 +553,7 @@ at_fork(forklist_fn function)
 #ifdef INVARIANTS
 	/* let the programmer know if he's been stupid */
 	if (rm_at_fork(function)) {
-		printf("WARNING: fork callout entry (%p) already present\n",
+		kprintf("WARNING: fork callout entry (%p) already present\n",
 		    function);
 	}
 #endif

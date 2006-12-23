@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.13 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.14 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -161,14 +161,14 @@ elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 	PRINTF(("reading phdrs section\n"));
 	if ((error = read_check(fp, phdr, nbyte)) != 0)
 		goto done;
-	printf("headers section:\n");
+	kprintf("headers section:\n");
 	for (i = 0; i < nheaders; i++) {
-		printf("entry type:   %d\n", phdr[i].p_type);
-		printf("file offset:  %d\n", phdr[i].p_offset);
-		printf("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr);
-		printf("file size:    %d\n", phdr[i].p_filesz);
-		printf("memory size:  %d\n", phdr[i].p_memsz);
-		printf("\n");
+		kprintf("entry type:   %d\n", phdr[i].p_type);
+		kprintf("file offset:  %d\n", phdr[i].p_offset);
+		kprintf("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr);
+		kprintf("file size:    %d\n", phdr[i].p_filesz);
+		kprintf("memory size:  %d\n", phdr[i].p_memsz);
+		kprintf("\n");
 	}
  done:
 	return error;
@@ -249,7 +249,7 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 
 	/* fetch signal disposition */
 	if ((error = elf_getsigs(p, fp)) != 0) {
-		printf("failure in recovering signals\n");
+		kprintf("failure in recovering signals\n");
 		goto done;
 	}
 
@@ -778,7 +778,7 @@ checkpoint_signal_handler(struct proc *p)
 		error = ckpt_freeze_proc(p, fp);
 		fp_close(fp);
 	} else {
-		printf("checkpoint failed with open - error: %d\n", error);
+		kprintf("checkpoint failed with open - error: %d\n", error);
 	}
 	kfree(buf, M_TEMP);
 	chptinuse--;
@@ -792,7 +792,7 @@ SYSCTL_STRING(_kern, OID_AUTO, ckptfile, CTLFLAG_RW, ckptfilename,
 /*
  * expand_name(name, uid, pid)
  * Expand the name described in corefilename, using name, uid, and pid.
- * corefilename is a printf-like string, with three format specifiers:
+ * corefilename is a kprintf-like string, with three format specifiers:
  *	%N	name of process ("name")
  *	%P	process id (pid)
  *	%U	user id (uid)

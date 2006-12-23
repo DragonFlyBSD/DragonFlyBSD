@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.21 2006/09/26 18:57:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.22 2006/12/23 00:35:04 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -406,7 +406,7 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
     compile_dev_ops(ops);
     maj = ops->head.maj;
     if (maj < 0 || maj >= NUMCDEVSW) {
-	    printf("%s: ERROR: driver has bogus dev_ops->head.maj = %d\n",
+	    kprintf("%s: ERROR: driver has bogus dev_ops->head.maj = %d\n",
 		   ops->head.name, maj);
 	    return (EINVAL);
     }
@@ -417,7 +417,7 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 	     */
 	    if (link->mask == mask && link->match == match) {
 		    if (link->ops != ops) {
-			    printf("WARNING: \"%s\" (%p) is usurping \"%s\"'s"
+			    kprintf("WARNING: \"%s\" (%p) is usurping \"%s\"'s"
 				" (%p) dev_ops_array[]\n",
 				ops->head.name, ops, 
 				link->ops->head.name, link->ops);
@@ -507,7 +507,7 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 	struct dev_ops_link **plink;
      
 	if (maj < 0 || maj >= NUMCDEVSW) {
-		printf("%s: ERROR: driver has bogus ops->d_maj = %d\n",
+		kprintf("%s: ERROR: driver has bogus ops->d_maj = %d\n",
 			ops->head.name, maj);
 		return EINVAL;
 	}
@@ -518,7 +518,7 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 		if (link->mask == mask && link->match == match) {
 			if (link->ops == ops)
 				break;
-			printf("%s: ERROR: cannot remove from dev_ops_array[], "
+			kprintf("%s: ERROR: cannot remove from dev_ops_array[], "
 			       "its major number %d was stolen by %s\n",
 				ops->head.name, maj,
 				link->ops->head.name
@@ -526,7 +526,7 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 		}
 	}
 	if (link == NULL) {
-		printf("%s(%d)[%08x/%08x]: WARNING: ops removed "
+		kprintf("%s(%d)[%08x/%08x]: WARNING: ops removed "
 		       "multiple times!\n",
 		       ops->head.name, maj, mask, match);
 	} else {
@@ -535,11 +535,11 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 		kfree(link, M_DEVBUF);
 	}
 	if (dev_ops_array[maj] == NULL && ops->head.refs != 0) {
-		printf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
+		kprintf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
 			"while %d device refs still exist!\n", 
 			ops->head.name, maj, mask, match, ops->head.refs);
 	} else {
-		printf("%s: ops removed\n", ops->head.name);
+		kprintf("%s: ops removed\n", ops->head.name);
 	}
 	return 0;
 }

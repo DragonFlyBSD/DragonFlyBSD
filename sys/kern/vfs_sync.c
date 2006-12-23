@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.13 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.14 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -458,9 +458,9 @@ sync_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	printf("syncer vnode");
+	kprintf("syncer vnode");
 	lockmgr_printinfo(&vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

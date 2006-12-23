@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.19 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.20 2006/12/23 00:35:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,7 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	if (ops != &dead_dev_ops)
 		++ops->head.refs;
 	if (dev_ref_debug) {
-		printf("create    dev %p %s(minor=%08x) refs=%d\n", 
+		kprintf("create    dev %p %s(minor=%08x) refs=%d\n", 
 			si, devtoname(si), uminor(si->si_udev),
 			si->si_refs);
 	}
@@ -325,12 +325,12 @@ destroy_dev(cdev_t dev)
 		return;
 	}
 	if (dev_ref_debug) {
-		printf("destroy   dev %p %s(minor=%08x) refs=%d\n", 
+		kprintf("destroy   dev %p %s(minor=%08x) refs=%d\n", 
 			dev, devtoname(dev), uminor(dev->si_udev),
 			dev->si_refs);
 	}
 	if (dev->si_refs < 2) {
-		printf("destroy_dev(): too few references on device! "
+		kprintf("destroy_dev(): too few references on device! "
 			"%p %s(minor=%08x) refs=%d\n",
 		    dev, devtoname(dev), uminor(dev->si_udev),
 		    dev->si_refs);
@@ -408,7 +408,7 @@ reference_dev(cdev_t dev)
 	if (dev != NOCDEV) {
 		++dev->si_refs;
 		if (dev_ref_debug) {
-			printf("reference dev %p %s(minor=%08x) refs=%d\n", 
+			kprintf("reference dev %p %s(minor=%08x) refs=%d\n", 
 			    dev, devtoname(dev), uminor(dev->si_udev),
 			    dev->si_refs);
 		}
@@ -432,26 +432,26 @@ release_dev(cdev_t dev)
 		KKASSERT(dev->si_refs > 0);
 	} else {
 		if (dev->si_refs <= 0) {
-			printf("Warning: extra release of dev %p(%s)\n",
+			kprintf("Warning: extra release of dev %p(%s)\n",
 			    dev, devtoname(dev));
 			free_devt = 0;	/* prevent bad things from occuring */
 		}
 	}
 	--dev->si_refs;
 	if (dev_ref_debug) {
-		printf("release   dev %p %s(minor=%08x) refs=%d\n", 
+		kprintf("release   dev %p %s(minor=%08x) refs=%d\n", 
 			dev, devtoname(dev), uminor(dev->si_udev),
 			dev->si_refs);
 	}
 	if (dev->si_refs == 0) {
 		if (dev->si_flags & SI_ADHOC) {
-			printf("Warning: illegal final release on ADHOC"
+			kprintf("Warning: illegal final release on ADHOC"
 				" device %p(%s), the device was never"
 				" destroyed!\n",
 				dev, devtoname(dev));
 		}
 		if (dev->si_flags & SI_HASHED) {
-			printf("Warning: last release on device, no call"
+			kprintf("Warning: last release on device, no call"
 				" to destroy_dev() was made! dev %p(%s)\n",
 				dev, devtoname(dev));
 			dev->si_refs = 3;
@@ -459,7 +459,7 @@ release_dev(cdev_t dev)
 			dev->si_refs = 0;
 		}
 		if (SLIST_FIRST(&dev->si_hlist) != NULL) {
-			printf("Warning: last release on device, vnode"
+			kprintf("Warning: last release on device, vnode"
 				" associations still exist! dev %p(%s)\n",
 				dev, devtoname(dev));
 			free_devt = 0;	/* prevent bad things from occuring */

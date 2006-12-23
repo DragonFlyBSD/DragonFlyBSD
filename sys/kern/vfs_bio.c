@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.81 2006/09/19 16:06:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.82 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -839,11 +839,11 @@ bdirty(struct buf *bp)
 {
 	KASSERT(bp->b_qindex == BQUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
 	if (bp->b_flags & B_NOCACHE) {
-		printf("bdirty: clearing B_NOCACHE on buf %p\n", bp);
+		kprintf("bdirty: clearing B_NOCACHE on buf %p\n", bp);
 		bp->b_flags &= ~B_NOCACHE;
 	}
 	if (bp->b_flags & B_INVAL) {
-		printf("bdirty: warning, dirtying invalid buffer %p\n", bp);
+		kprintf("bdirty: warning, dirtying invalid buffer %p\n", bp);
 	}
 	bp->b_flags &= ~B_RELBUF;
 
@@ -1173,7 +1173,7 @@ brelse(struct buf *bp)
 		if (bp->b_flags & (B_INVAL | B_RELBUF)) {
 #if 0
 			if (bp->b_vp)
-				printf("brelse bp %p %08x/%08x: Warning, caught and fixed brelvp bug\n", bp, saved_flags, bp->b_flags);
+				kprintf("brelse bp %p %08x/%08x: Warning, caught and fixed brelvp bug\n", bp, saved_flags, bp->b_flags);
 #endif
 			if (bp->b_bufsize)
 				allocbuf(bp, 0);
@@ -1651,7 +1651,7 @@ restart:
 		 * should also be non-zero at this point.  XXX
 		 */
 		if (defrag && bp->b_kvasize == 0) {
-			printf("Warning: defrag empty buffer %p\n", bp);
+			kprintf("Warning: defrag empty buffer %p\n", bp);
 			continue;
 		}
 
@@ -1664,12 +1664,12 @@ restart:
 		 */
 
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-			printf("getnewbuf: warning, locked buf %p, race corrected\n", bp);
+			kprintf("getnewbuf: warning, locked buf %p, race corrected\n", bp);
 			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
 			goto restart;
 		}
 		if (bp->b_qindex != qindex) {
-			printf("getnewbuf: warning, BUF_LOCK blocked unexpectedly on buf %p index %d->%d, race corrected\n", bp, qindex, bp->b_qindex);
+			kprintf("getnewbuf: warning, BUF_LOCK blocked unexpectedly on buf %p index %d->%d, race corrected\n", bp, qindex, bp->b_qindex);
 			BUF_UNLOCK(bp);
 			goto restart;
 		}
@@ -2041,9 +2041,9 @@ vfs_setdirty(struct buf *bp)
 	object = bp->b_xio.xio_pages[0]->object;
 
 	if ((object->flags & OBJ_WRITEABLE) && !(object->flags & OBJ_MIGHTBEDIRTY))
-		printf("Warning: object %p writeable but not mightbedirty\n", object);
+		kprintf("Warning: object %p writeable but not mightbedirty\n", object);
 	if (!(object->flags & OBJ_WRITEABLE) && (object->flags & OBJ_MIGHTBEDIRTY))
-		printf("Warning: object %p mightbedirty but not writeable\n", object);
+		kprintf("Warning: object %p mightbedirty but not writeable\n", object);
 
 	if (object->flags & (OBJ_MIGHTBEDIRTY|OBJ_CLEANING)) {
 		vm_offset_t boffset;
@@ -2213,7 +2213,7 @@ loop:
 		 * as well.
 		 */
 		if (bp->b_vp != vp || bp->b_loffset != loffset) {
-			printf("Warning buffer %p (vp %p loffset %lld) was recycled\n", bp, vp, loffset);
+			kprintf("Warning buffer %p (vp %p loffset %lld) was recycled\n", bp, vp, loffset);
 			BUF_UNLOCK(bp);
 			goto loop;
 		}
@@ -2229,7 +2229,7 @@ loop:
 		 * block number translation.
 		 */
 		if ((bp->b_flags & B_INVAL) && (bp->b_bio2.bio_offset != NOOFFSET)) {
-			printf("Warning invalid buffer %p (vp %p loffset %lld) did not have cleared bio_offset cache\n", bp, vp, loffset);
+			kprintf("Warning invalid buffer %p (vp %p loffset %lld) did not have cleared bio_offset cache\n", bp, vp, loffset);
 			clearbiocache(&bp->b_bio2);
 		}
 
@@ -2890,7 +2890,7 @@ biodone(struct bio *bio)
 
 #if defined(VFS_BIO_DEBUG)
 		if (obj->paging_in_progress < bp->b_xio.xio_npages) {
-			printf("biodone: paging in progress(%d) < bp->b_xio.xio_npages(%d)\n",
+			kprintf("biodone: paging in progress(%d) < bp->b_xio.xio_npages(%d)\n",
 			    obj->paging_in_progress, bp->b_xio.xio_npages);
 		}
 #endif
@@ -2931,7 +2931,7 @@ biodone(struct bio *bio)
 			}
 #if defined(VFS_BIO_DEBUG)
 			if (OFF_TO_IDX(foff) != m->pindex) {
-				printf(
+				kprintf(
 "biodone: foff(%lu)/m->pindex(%d) mismatch\n",
 				    (unsigned long)foff, m->pindex);
 			}
@@ -2953,21 +2953,21 @@ biodone(struct bio *bio)
 			 * have not set the page busy flag correctly!!!
 			 */
 			if (m->busy == 0) {
-				printf("biodone: page busy < 0, "
+				kprintf("biodone: page busy < 0, "
 				    "pindex: %d, foff: 0x(%x,%x), "
 				    "resid: %d, index: %d\n",
 				    (int) m->pindex, (int)(foff >> 32),
 						(int) foff & 0xffffffff, resid, i);
 				if (!vn_isdisk(vp, NULL))
-					printf(" iosize: %ld, loffset: %lld, flags: 0x%08x, npages: %d\n",
+					kprintf(" iosize: %ld, loffset: %lld, flags: 0x%08x, npages: %d\n",
 					    bp->b_vp->v_mount->mnt_stat.f_iosize,
 					    bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
 				else
-					printf(" VDEV, loffset: %lld, flags: 0x%08x, npages: %d\n",
+					kprintf(" VDEV, loffset: %lld, flags: 0x%08x, npages: %d\n",
 					    bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
-				printf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
+				kprintf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
 				    m->valid, m->dirty, m->wire_count);
 				panic("biodone: page busy < 0");
 			}
@@ -3382,7 +3382,7 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		p = bp->b_xio.xio_pages[index];
 		if (p && (index < bp->b_xio.xio_npages)) {
 			if (p->busy) {
-				printf("vm_hold_free_pages: doffset: %lld, loffset: %lld\n",
+				kprintf("vm_hold_free_pages: doffset: %lld, loffset: %lld\n",
 					bp->b_bio2.bio_offset, bp->b_loffset);
 			}
 			bp->b_xio.xio_pages[index] = NULL;
@@ -3455,7 +3455,7 @@ retry:
 		 */
 		pa = pmap_extract(&curproc->p_vmspace->vm_pmap, (vm_offset_t)addr);
 		if (pa == 0) {
-			printf("vmapbuf: warning, race against user address during I/O");
+			kprintf("vmapbuf: warning, race against user address during I/O");
 			goto retry;
 		}
 		m = PHYS_TO_VM_PAGE(pa);
@@ -3548,11 +3548,11 @@ vfs_bufstats(void)
                         count++;
                 }
 		crit_exit();
-                printf("%s: total-%d", bname[i], count);
+                kprintf("%s: total-%d", bname[i], count);
                 for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
                         if (counts[j] != 0)
-                                printf(", %d-%d", j * PAGE_SIZE, counts[j]);
-                printf("\n");
+                                kprintf(", %d-%d", j * PAGE_SIZE, counts[j]);
+                kprintf("\n");
         }
 }
 #endif

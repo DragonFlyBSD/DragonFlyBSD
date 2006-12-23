@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.50 2006/11/07 20:48:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.51 2006/12/23 00:35:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -127,11 +127,11 @@ print_execve_args(struct image_args *args)
 
 	cp = args->begin_argv;
 	for (ndx = 0; ndx < args->argc; ndx++) {
-		printf("\targv[%d]: %s\n", ndx, cp);
+		kprintf("\targv[%d]: %s\n", ndx, cp);
 		while (*cp++ != '\0');
 	}
 	for (ndx = 0; ndx < args->envc; ndx++) {
-		printf("\tenvv[%d]: %s\n", ndx, cp);
+		kprintf("\tenvv[%d]: %s\n", ndx, cp);
 		while (*cp++ != '\0');
 	}
 }
@@ -154,7 +154,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	int (*img_first) (struct image_params *);
 
 	if (debug_execve_args) {
-		printf("%s()\n", __func__);
+		kprintf("%s()\n", __func__);
 		print_execve_args(args);
 	}
 
@@ -217,8 +217,8 @@ interpret:
 		goto exec_fail_dealloc;
 
 	if (debug_execve_args && imgp->interpreted) {
-		printf("    target is interpreted -- recursive pass\n");
-		printf("    interpreter: %s\n", imgp->interpreter_name);
+		kprintf("    target is interpreted -- recursive pass\n");
+		kprintf("    interpreter: %s\n", imgp->interpreter_name);
 		print_execve_args(args);
 	}
 
