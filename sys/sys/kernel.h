@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.24 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.25 2006/12/23 02:58:09 swildner Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -56,8 +56,6 @@
 #ifndef _SYS_LINKER_SET_H_
 #include <sys/linker_set.h>
 #endif
-
-#ifdef _KERNEL
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -87,8 +85,6 @@ extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
 extern int lbolt_syncer;		/* approx 1 hz but may be sped up */
-
-#endif /* _KERNEL */
 
 /*
  * Enumerated types for known system startup interfaces.
