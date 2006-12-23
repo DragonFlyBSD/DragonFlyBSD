@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.13 2006/12/23 09:14:02 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -846,7 +846,7 @@ ieee80211_decap(struct ieee80211com *ic, struct mbuf *m, int hdrlen)
  */
 int
 ieee80211_setup_rates(struct ieee80211_node *ni,
-	const uint8_t *rates, const uint8_t *xrates, int flags)
+	const uint8_t *rates, const uint8_t *xrates, int flags, int join)
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ieee80211_rateset *rs = &ni->ni_rates;
@@ -871,7 +871,7 @@ ieee80211_setup_rates(struct ieee80211_node *ni,
 		memcpy(rs->rs_rates + rs->rs_nrates, xrates+2, nxrates);
 		rs->rs_nrates += nxrates;
 	}
-	return ieee80211_fix_rate(ni, flags);
+	return ieee80211_fix_rate(ni, flags, join);
 }
 
 static void
@@ -2145,7 +2145,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		ni->ni_rstamp = rstamp;
 		rate = ieee80211_setup_rates(ni, rates, xrates,
 			  IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE
-			| IEEE80211_F_DONEGO | IEEE80211_F_DODEL);
+			| IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 0);
 		if (rate & IEEE80211_RATE_BASIC) {
 			IEEE80211_DISCARD(ic, IEEE80211_MSG_XRATE,
 			    wh, ieee80211_mgt_subtype_name[subtype >>
@@ -2374,15 +2374,8 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		}
 		rate = ieee80211_setup_rates(ni, rates, xrates,
 				IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE |
-				IEEE80211_F_DONEGO | IEEE80211_F_DODEL);
-		/*
-		 * If constrained to 11g-only stations reject an
-		 * 11b-only station.  We cheat a bit here by looking
-		 * at the max negotiated xmit rate and assuming anyone
-		 * with a best rate <24Mb/s is an 11b station.
-		 */
-		if ((rate & IEEE80211_RATE_BASIC) ||
-		    ((ic->ic_flags & IEEE80211_F_PUREG) && rate < 48)) {
+				IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 0);
+		if (rate & IEEE80211_RATE_BASIC) {
 			IEEE80211_DPRINTF(ic, IEEE80211_MSG_ANY,
 			    "[%6D] deny %s request, rate set mismatch\n",
 			    wh->i_addr2, ":",
@@ -2497,7 +2490,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_MAXSIZE);
 		rate = ieee80211_setup_rates(ni, rates, xrates,
 				IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE |
-				IEEE80211_F_DONEGO | IEEE80211_F_DODEL);
+				IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 1);
 		if (rate & IEEE80211_RATE_BASIC) {
 			IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 			    "[%6D] %sassoc failed (rate set mismatch)\n",
@@ -2547,6 +2540,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		    ic->ic_flags&IEEE80211_F_USEPROT ? ", protection" : "",
 		    ni->ni_flags & IEEE80211_NODE_QOS ? ", QoS" : ""
 		);
+		IEEE80211_PRINT_NODERATES(ic, ni, IEEE80211_MSG_ASSOC);
 		ieee80211_new_state(ic, IEEE80211_S_RUN, subtype);
 		break;
 	}

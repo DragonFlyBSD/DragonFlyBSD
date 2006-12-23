@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.13 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.14 2006/12/23 09:14:02 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -478,6 +478,7 @@ ieee80211_reset_bss(struct ieee80211com *ic)
 		ni->ni_intval = ic->ic_bintval;
 		ieee80211_free_node(obss);
 	}
+	ic->ic_nbasicrates = 0;
 }
 
 /* XXX tunable */
@@ -488,6 +489,8 @@ ieee80211_match_bss(struct ieee80211com *ic, struct ieee80211_node *ni)
 {
         uint8_t rate;
         int fail;
+
+	IEEE80211_PRINT_NODERATES(ic, ni, 0);
 
 	fail = 0;
 	if (isclr(ic->ic_chan_active, ieee80211_chan2ieee(ic, ni->ni_chan)))
@@ -510,7 +513,8 @@ ieee80211_match_bss(struct ieee80211com *ic, struct ieee80211_node *ni)
 		if (ni->ni_capinfo & IEEE80211_CAPINFO_PRIVACY)
 			fail |= 0x04;
 	}
-	rate = ieee80211_fix_rate(ni, IEEE80211_F_DONEGO | IEEE80211_F_DOFRATE);
+	rate = ieee80211_fix_rate(ni,
+		IEEE80211_F_DONEGO | IEEE80211_F_DOFRATE, 1);
 	if (rate & IEEE80211_RATE_BASIC)
 		fail |= 0x08;
 	if (ic->ic_des_esslen != 0 &&
@@ -793,21 +797,27 @@ ieee80211_sta_join(struct ieee80211com *ic, struct ieee80211_node *selbs)
 
 	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
 
-	if (ic->ic_opmode == IEEE80211_M_IBSS) {
-		struct ieee80211_node_table *nt;
+	if (ic->ic_opmode == IEEE80211_M_IBSS ||
+	    ic->ic_opmode == IEEE80211_M_STA) {
 		/*
 		 * Delete unusable rates; we've already checked
 		 * that the negotiated rate set is acceptable.
 		 */
-		ieee80211_fix_rate(selbs, IEEE80211_F_DODEL);
-		/*
-		 * Fillin the neighbor table; it will already
-		 * exist if we are simply switching mastership.
-		 * XXX ic_sta always setup so this is unnecessary?
-		 */
-		nt = &ic->ic_sta;
-		nt->nt_name = "neighbor";
-		nt->nt_inact_init = ic->ic_inact_run;
+		ieee80211_fix_rate(selbs, IEEE80211_F_DODEL, 1);
+		IEEE80211_PRINT_NODERATES(ic, selbs, 0);
+
+		if (ic->ic_opmode == IEEE80211_M_IBSS) {
+			struct ieee80211_node_table *nt;
+
+			/*
+			 * Fillin the neighbor table; it will already
+			 * exist if we are simply switching mastership.
+			 * XXX ic_sta always setup so this is unnecessary?
+			 */
+			nt = &ic->ic_sta;
+			nt->nt_name = "neighbor";
+			nt->nt_inact_init = ic->ic_inact_run;
+		}
 	}
 
 	/*
@@ -828,6 +838,22 @@ ieee80211_sta_join(struct ieee80211com *ic, struct ieee80211_node *selbs)
 	ic->ic_curchan = selbs->ni_chan;
 	ieee80211_reset_erp(ic);
 	ieee80211_wme_initparams(ic);
+
+	/*
+	 * Copy BSS basic rate set.
+	 */
+	ic->ic_nbasicrates =
+		ieee80211_copy_basicrates(&ic->ic_sup_rates[ic->ic_curmode],
+					  &selbs->ni_rates);
+#ifdef IEEE80211_DEBUG
+	if (ieee80211_msg(ic, IEEE80211_MSG_XRATE)) {
+		ieee80211_note(ic, "number basic rates %d, "
+			       "supported rates (mode %d): ",
+			       ic->ic_nbasicrates, ic->ic_curmode);
+		ieee80211_print_rateset(&ic->ic_sup_rates[ic->ic_curmode]);
+		kprintf("\n");
+	}
+#endif
 
 	if (ic->ic_opmode == IEEE80211_M_STA)
 		ieee80211_new_state(ic, IEEE80211_S_AUTH, -1);
@@ -1261,7 +1287,7 @@ ieee80211_add_scan(struct ieee80211com *ic,
 	saveie(&ni->ni_wpa_ie, sp->wpa);
 
 	/* NB: must be after ni_chan is setup */
-	ieee80211_setup_rates(ni, sp->rates, sp->xrates, IEEE80211_F_DOSORT);
+	ieee80211_setup_rates(ni, sp->rates, sp->xrates, IEEE80211_F_DOSORT, 0);
 
 	if (!newnode)
 		ieee80211_free_node(ni);
@@ -1292,7 +1318,9 @@ ieee80211_init_neighbor(struct ieee80211_node *ni,
 		ieee80211_saveie(&ni->ni_wpa_ie, sp->wpa);
 
 	/* NB: must be after ni_chan is setup */
-	ieee80211_setup_rates(ni, sp->rates, sp->xrates, IEEE80211_F_DOSORT);
+	ieee80211_setup_rates(ni, sp->rates, sp->xrates,
+		IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE |
+		IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 0);
 	IEEE80211_PRINT_NODERATES(ni->ni_ic, ni, IEEE80211_MSG_NODE);
 }
 

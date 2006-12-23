@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.h,v 1.11.2.5 2006/02/12 19:00:39 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.6 2006/12/15 12:44:22 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.7 2006/12/23 09:14:02 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -61,7 +61,8 @@ struct ieee80211_node;
 int	ieee80211_input(struct ieee80211com *, struct mbuf *,
 		struct ieee80211_node *, int, uint32_t);
 int	ieee80211_setup_rates(struct ieee80211_node *ni,
-		const uint8_t *rates, const uint8_t *xrates, int flags);
+		const uint8_t *rates, const uint8_t *xrates,
+		int flags, int join);
 void	ieee80211_saveie(uint8_t **, const uint8_t *);
 void	ieee80211_recv_mgmt(struct ieee80211com *, struct mbuf *,
 		struct ieee80211_node *, int, int, uint32_t);
@@ -88,6 +89,8 @@ int	ieee80211_iserp_rateset(struct ieee80211com *,
 		struct ieee80211_rateset *);
 void	ieee80211_set11gbasicrates(struct ieee80211_rateset *,
 		enum ieee80211_phymode);
+int	ieee80211_copy_basicrates(struct ieee80211_rateset *,
+		const struct ieee80211_rateset *);
 
 /*
  * Return the size of the 802.11 header for a management or data frame.
@@ -177,7 +180,7 @@ const struct ieee80211_aclator *ieee80211_aclator_get(const char *name);
 #define	IEEE80211_F_DOFRATE	0x00000002	/* use fixed rate */
 #define	IEEE80211_F_DONEGO	0x00000004	/* calc negotiated rate */
 #define	IEEE80211_F_DODEL	0x00000008	/* delete ignore rate */
-int	ieee80211_fix_rate(struct ieee80211_node *, int);
+int	ieee80211_fix_rate(struct ieee80211_node *ni, int flags, int join);
 
 /*
  * WME/WMM support.

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.10 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.11 2006/12/23 09:14:02 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1094,7 +1094,7 @@ getcapinfo(struct ieee80211com *ic, struct ieee80211_channel *chan)
 static struct mbuf *
 _ieee80211_probe_resp_alloc(struct ieee80211com *ic, struct ieee80211_node *ni)
 {
-	struct ieee80211_rateset *rs;
+	const struct ieee80211_rateset *rs;
 	uint16_t capinfo;
 	struct mbuf *m;
 	uint8_t *frm;
@@ -1114,7 +1114,8 @@ _ieee80211_probe_resp_alloc(struct ieee80211com *ic, struct ieee80211_node *ni)
 	 *	[tlv] WPA
 	 *	[tlv] WME (optional)
 	 */
-	rs = &ni->ni_rates;
+	KKASSERT(ic->ic_curmode != IEEE80211_MODE_AUTO);
+	rs = &ic->ic_sup_rates[ic->ic_curmode];
 	pktlen =  8					/* time stamp */
 		+ sizeof(uint16_t)			/* beacon interval */
 		+ sizeof(uint16_t)			/* capabilities */
@@ -1196,6 +1197,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 	uint8_t *frm;
 	uint16_t capinfo;
 	int has_challenge, is_shared_key, ret, timer, status;
+	const struct ieee80211_rateset *rs;
 
 	KASSERT(ni != NULL, ("null node"));
 
@@ -1214,79 +1216,12 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 	timer = 0;
 	switch (type) {
 	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
-		/*
-		 * probe response frame format
-		 *	[8] time stamp
-		 *	[2] beacon interval
-		 *	[2] cabability information
-		 *	[tlv] ssid
-		 *	[tlv] supported rates
-		 *	[tlv] parameter set (FH/DS)
-		 *	[tlv] parameter set (IBSS)
-		 *	[tlv] extended rate phy (ERP)
-		 *	[tlv] extended supported rates
-		 *	[tlv] WPA
-		 *	[tlv] WME (optional)
-		 */
-		m = ieee80211_getmgtframe(&frm,
-			 8
-		       + sizeof(uint16_t)
-		       + sizeof(uint16_t)
-		       + 2 + IEEE80211_NWID_LEN
-		       + 2 + IEEE80211_RATE_SIZE
-		       + 7	/* max(7,3) */
-		       + 6
-		       + 3
-		       + 2 + (IEEE80211_RATE_MAXSIZE - IEEE80211_RATE_SIZE)
-		       /* XXX !WPA1+WPA2 fits w/o a cluster */
-		       + (ic->ic_flags & IEEE80211_F_WPA ?
-				2*sizeof(struct ieee80211_ie_wpa) : 0)
-		       + sizeof(struct ieee80211_wme_param)
-		);
-		if (m == NULL)
-			senderr(ENOMEM, is_tx_nobuf);
-
-		memset(frm, 0, 8);	/* timestamp should be filled later */
-		frm += 8;
-		*(uint16_t *)frm = htole16(ic->ic_bss->ni_intval);
-		frm += 2;
-		capinfo = getcapinfo(ic, ic->ic_curchan);
-		*(uint16_t *)frm = htole16(capinfo);
-		frm += 2;
-
-		frm = ieee80211_add_ssid(frm, ic->ic_bss->ni_essid,
-				ic->ic_bss->ni_esslen);
-		frm = ieee80211_add_rates(frm, &ni->ni_rates);
-
-		if (ic->ic_phytype == IEEE80211_T_FH) {
-                        *frm++ = IEEE80211_ELEMID_FHPARMS;
-                        *frm++ = 5;
-                        *frm++ = ni->ni_fhdwell & 0x00ff;
-                        *frm++ = (ni->ni_fhdwell >> 8) & 0x00ff;
-                        *frm++ = IEEE80211_FH_CHANSET(
-			    ieee80211_chan2ieee(ic, ic->ic_curchan));
-                        *frm++ = IEEE80211_FH_CHANPAT(
-			    ieee80211_chan2ieee(ic, ic->ic_curchan));
-                        *frm++ = ni->ni_fhindex;
-		} else {
-			*frm++ = IEEE80211_ELEMID_DSPARMS;
-			*frm++ = 1;
-			*frm++ = ieee80211_chan2ieee(ic, ic->ic_curchan);
+		m = _ieee80211_probe_resp_alloc(ic, ic->ic_bss);
+		if (m == NULL) {
+			/* NB: Statistics have been updated. */
+			ret = ENOMEM;
+			goto bad;
 		}
-
-		if (ic->ic_opmode == IEEE80211_M_IBSS) {
-			*frm++ = IEEE80211_ELEMID_IBSSPARMS;
-			*frm++ = 2;
-			*frm++ = 0; *frm++ = 0;		/* TODO: ATIM window */
-		}
-		if (ic->ic_flags & IEEE80211_F_WPA)
-			frm = ieee80211_add_wpa(frm, ic);
-		if (ic->ic_curmode == IEEE80211_MODE_11G)
-			frm = ieee80211_add_erp(frm, ic);
-		frm = ieee80211_add_xrates(frm, &ni->ni_rates);
-		if (ic->ic_flags & IEEE80211_F_WME)
-			frm = ieee80211_add_wme_param(frm, &ic->ic_wme);
-		m->m_pkthdr.len = m->m_len = frm - mtod(m, uint8_t *);
 		break;
 
 	case IEEE80211_FC0_SUBTYPE_AUTH:
@@ -1366,9 +1301,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		break;
 
 	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ: {
-		const struct ieee80211_rateset *rs;
-
+	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
 		/*
 		 * asreq frame format
 		 *	[2] capability information
@@ -1438,7 +1371,6 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 
 		timer = IEEE80211_TRANS_WAIT;
 		break;
-	}
 
 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
@@ -1476,8 +1408,10 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 			IEEE80211_NODE_STAT(ni, tx_assoc_fail);
 		frm += 2;
 
-		frm = ieee80211_add_rates(frm, &ni->ni_rates);
-		frm = ieee80211_add_xrates(frm, &ni->ni_rates);
+		KKASSERT(ic->ic_curmode != IEEE80211_MODE_AUTO);
+		rs = &ic->ic_sup_rates[ic->ic_curmode];
+		frm = ieee80211_add_rates(frm, rs);
+		frm = ieee80211_add_xrates(frm, rs);
 		if ((ic->ic_flags & IEEE80211_F_WME) && ni->ni_wme_ie != NULL)
 			frm = ieee80211_add_wme_param(frm, &ic->ic_wme);
 		m->m_pkthdr.len = m->m_len = frm - mtod(m, uint8_t *);
@@ -1555,7 +1489,7 @@ ieee80211_beacon_alloc(struct ieee80211com *ic, struct ieee80211_node *ni,
 	int pktlen;
 	uint8_t *frm, *efrm;
 	uint16_t capinfo;
-	struct ieee80211_rateset *rs;
+	const struct ieee80211_rateset *rs;
 
 	/*
 	 * beacon frame format
@@ -1573,7 +1507,8 @@ ieee80211_beacon_alloc(struct ieee80211com *ic, struct ieee80211_node *ni,
 	 * XXX Vendor-specific OIDs (e.g. Atheros)
 	 * NB: we allocate the max space required for the TIM bitmap.
 	 */
-	rs = &ni->ni_rates;
+	KKASSERT(ic->ic_curmode != IEEE80211_MODE_AUTO);
+	rs = &ic->ic_sup_rates[ic->ic_curmode];
 	pktlen =   8					/* time stamp */
 		 + sizeof(uint16_t)			/* beacon interval */
 		 + sizeof(uint16_t)			/* capabilities */

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.6 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.7 2006/12/23 09:14:02 sephe Exp $
  */
 
 /*
@@ -332,13 +332,14 @@ ieee80211_dump_pkt(const uint8_t *buf, int len, int rate, int rssi)
 }
 
 int
-ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
+ieee80211_fix_rate(struct ieee80211_node *ni, int flags, int join)
 {
 #define	RV(v)	((v) & IEEE80211_RATE_VAL)
 	struct ieee80211com *ic = ni->ni_ic;
-	int i, j, ignore, error;
+	int i, j, ignore, error, nbasicrates;
 	int okrate, badrate, fixedrate;
-	struct ieee80211_rateset *srs, *nrs;
+	const struct ieee80211_rateset *srs;
+	struct ieee80211_rateset *nrs;
 	uint8_t r;
 
 	/*
@@ -350,6 +351,7 @@ ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
 		flags &= ~IEEE80211_F_DOFRATE;
 	error = 0;
 	okrate = badrate = fixedrate = 0;
+	nbasicrates = 0;
 	srs = &ic->ic_sup_rates[ieee80211_chan2mode(ic, ni->ni_chan)];
 	nrs = &ni->ni_rates;
 	for (i = 0; i < nrs->rs_nrates; ) {
@@ -365,6 +367,16 @@ ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
 					nrs->rs_rates[j] = r;
 				}
 			}
+
+			/*
+			 * Remove duplicated rate
+			 */
+			if (i > 0 &&
+			    IEEE80211_RS_RATE(nrs, i) ==
+			    IEEE80211_RS_RATE(nrs, i - 1)) {
+				ignore = 1;
+				goto delit;
+			}
 		}
 		r = nrs->rs_rates[i] & IEEE80211_RATE_VAL;
 		badrate = r;
@@ -375,7 +387,7 @@ ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
 			if (r == RV(srs->rs_rates[ic->ic_fixed_rate]))
 				fixedrate = r;
 		}
-		if (flags & IEEE80211_F_DONEGO) {
+		if (flags & (IEEE80211_F_DONEGO | IEEE80211_F_DODEL)) {
 			/*
 			 * Check against supported rates.
 			 */
@@ -384,30 +396,34 @@ ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
 					/*
 					 * Overwrite with the supported rate
 					 * value so any basic rate bit is set.
-					 * This insures that response we send
-					 * to stations have the necessary basic
-					 * rate bit set.
 					 */
-					nrs->rs_rates[i] = srs->rs_rates[j];
+					if ((flags & IEEE80211_F_DONEGO) &&
+					    !join) {
+						nrs->rs_rates[i] =
+						    srs->rs_rates[j];
+
+						if (nrs->rs_rates[i] &
+						    IEEE80211_RATE_BASIC)
+							nbasicrates++;
+					}
 					break;
 				}
 			}
 			if (j == srs->rs_nrates) {
 				/*
 				 * A rate in the node's rate set is not
-				 * supported.  If this is a basic rate and we
-				 * are operating as an AP then this is an error.
-				 * Otherwise we just discard/ignore the rate.
-				 * Note that this is important for 11b stations
-				 * when they want to associate with an 11g AP.
+				 * supported.  If this is a basic rate and
+				 * we are operating as an STA then this is
+				 * an error.
 				 */
-				if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
+				if ((flags & IEEE80211_F_DONEGO) && join &&
 				    (nrs->rs_rates[i] & IEEE80211_RATE_BASIC))
 					error++;
 				ignore++;
 			}
 		}
 		if (flags & IEEE80211_F_DODEL) {
+delit:
 			/*
 			 * Delete unacceptable rates.
 			 */
@@ -423,6 +439,16 @@ ieee80211_fix_rate(struct ieee80211_node *ni, int flags)
 			okrate = nrs->rs_rates[i];
 		i++;
 	}
+
+	/*
+	 * Prevent STA from associating, if it does not support
+	 * all of the rates in the basic rate set.
+	 */
+	if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
+	    (flags & IEEE80211_F_DONEGO) && !join &&
+	    ic->ic_nbasicrates > nbasicrates)
+		error++;
+
 	if (okrate == 0 || error != 0 ||
 	    ((flags & IEEE80211_F_DOFRATE) && fixedrate == 0))
 		return badrate | IEEE80211_RATE_BASIC;
@@ -551,6 +577,28 @@ ieee80211_set11gbasicrates(struct ieee80211_rateset *rs, enum ieee80211_phymode 
 				break;
 			}
 	}
+}
+
+int
+ieee80211_copy_basicrates(struct ieee80211_rateset *to,
+			  const struct ieee80211_rateset *from)
+{
+	int i, nbasicrates = 0;
+
+	for (i = 0; i < to->rs_nrates; ++i) {
+		int j;
+
+		to->rs_rates[i] &= IEEE80211_RATE_VAL;
+		for (j = 0; j < from->rs_nrates; ++j) {
+			if ((from->rs_rates[j] & IEEE80211_RATE_BASIC) &&
+			    IEEE80211_RS_RATE(from, j) == to->rs_rates[i]) {
+				to->rs_rates[i] |= IEEE80211_RATE_BASIC;
+				++nbasicrates;
+				break;
+			}
+		}
+	}
+	return nbasicrates;
 }
 
 /*

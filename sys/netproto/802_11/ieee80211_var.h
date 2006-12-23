@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.10 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.11 2006/12/23 09:14:02 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -143,6 +143,7 @@ struct ieee80211com {
 	struct ifmedia		ic_media;	/* interface media config */
 	struct bpf_if		*ic_rawbpf;	/* packet filter structure */
 	struct ieee80211_node	*ic_bss;	/* information for this node */
+	int			ic_nbasicrates;	/* number of BSS basic rates */
 	struct ieee80211_channel *ic_ibss_chan;
 	struct ieee80211_channel *ic_curchan;	/* current channel */
 	int			ic_fixed_rate;	/* index to ic_sup_rates[] */
@@ -211,12 +212,12 @@ struct ieee80211com {
 	 * is setup that the methods are safe to call.
 	 */
 	const struct ieee80211_aclator *ic_acl;
+	void			*ic_as;
 
 	/*
 	 * Rate control state/configuration.
 	 */
 	struct ieee80211_ratectl_state ic_ratectl;
-	void			*ic_as;
 	uint32_t		ic_pad[56];	/* future expansion */
 };
 
