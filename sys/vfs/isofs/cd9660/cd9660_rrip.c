@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.12 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.13 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -109,7 +109,7 @@ static void
 cd9660_rrip_defattr(struct iso_directory_record *isodir, ISO_RRIP_ANALYZE *ana)
 {
 	/* But this is a required field! */
-	printf("RRIP without PX field?\n");
+	kprintf("RRIP without PX field?\n");
 	cd9660_defattr(isodir,ana->inop,NULL,ISO_FTYPE_RRIP);
 }
 
@@ -196,7 +196,7 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 			inbuf = pcomp->name;
 			break;
 		default:
-			printf("RRIP with incorrect flags?");
+			kprintf("RRIP with incorrect flags?");
 			wlen = ana->maxlen + 1;
 			break;
 		}
@@ -274,7 +274,7 @@ cd9660_rrip_altname(ISO_RRIP_ALTNAME *p, ISO_RRIP_ANALYZE *ana)
 		break;
 
 	default:
-		printf("RRIP with incorrect NM flags?\n");
+		kprintf("RRIP with incorrect NM flags?\n");
 		wlen = ana->maxlen + 1;
 		break;
 	}

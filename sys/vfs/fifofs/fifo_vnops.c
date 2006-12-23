@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.34 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.35 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -558,7 +558,7 @@ fifo_printinfo(struct vnode *vp)
 {
 	struct fifoinfo *fip = vp->v_fifoinfo;
 
-	printf(", fifo with %ld readers and %ld writers",
+	kprintf(", fifo with %ld readers and %ld writers",
 		fip->fi_readers, fip->fi_writers);
 	return (0);
 }
@@ -571,9 +571,9 @@ fifo_printinfo(struct vnode *vp)
 static int
 fifo_print(struct vop_print_args *ap)
 {
-	printf("tag VT_NON");
+	kprintf("tag VT_NON");
 	fifo_printinfo(ap->a_vp);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_mountrpc.c,v 1.1 2005/09/04 01:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_mountrpc.c,v 1.2 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  * Procedures used by NFS_ROOT and BOOTP to do an NFS mount rpc to obtain
@@ -304,7 +304,7 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 	  
 	if (nfsv3_diskless.swap_nblks == 0 && size != -1) {
 		nfsv3_diskless.swap_nblks = size / 1024;
-		printf("md_lookup_swap: Swap size is %d KB\n",
+		kprintf("md_lookup_swap: Swap size is %d KB\n",
 		       nfsv3_diskless.swap_nblks);
 	}
 	

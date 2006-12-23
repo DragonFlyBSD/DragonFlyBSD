@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.39 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.40 2006/12/23 00:41:29 swildner Exp $
  */
 
 
@@ -148,7 +148,7 @@ hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			dprintf(("export 0x%x\n",args.export.ex_flags));
 			error = vfs_export(mp, &hpmp->hpm_export, &args.export);
 			if (error) {
-				printf("hpfs_mount: vfs_export failed %d\n",
+				kprintf("hpfs_mount: vfs_export failed %d\n",
 					error);
 			}
 			goto success;
@@ -283,12 +283,12 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp)
 
 	/* Check magic */
 	if (sup->su_magic != SU_MAGIC) {
-		printf("hpfs_mountfs: SuperBlock MAGIC DOESN'T MATCH\n");
+		kprintf("hpfs_mountfs: SuperBlock MAGIC DOESN'T MATCH\n");
 		error = EINVAL;
 		goto failed;
 	}
 	if (spp->sp_magic != SP_MAGIC) {
-		printf("hpfs_mountfs: SpareBlock MAGIC DOESN'T MATCH\n");
+		kprintf("hpfs_mountfs: SpareBlock MAGIC DOESN'T MATCH\n");
 		error = EINVAL;
 		goto failed;
 	}
@@ -356,7 +356,7 @@ hpfs_unmount(struct mount *mp, int mntflags)
 	
 	error = vflush(mp, 0, flags);
 	if (error) {
-		printf("hpfs_unmount: vflush failed: %d\n",error);
+		kprintf("hpfs_unmount: vflush failed: %d\n",error);
 		return (error);
 	}
 
@@ -386,7 +386,7 @@ hpfs_root(struct mount *mp, struct vnode **vpp)
 	dprintf(("hpfs_root():\n"));
 	error = VFS_VGET(mp, (ino_t)hpmp->hpm_su.su_rootfno, vpp);
 	if(error) {
-		printf("hpfs_root: VFS_VGET failed: %d\n",error);
+		kprintf("hpfs_root: VFS_VGET failed: %d\n",error);
 		return (error);
 	}
 
@@ -488,7 +488,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	error = getnewvnode(VT_HPFS, hpmp->hpm_mp, &vp, VLKTIMEOUT, 0);
 	if (error) {
-		printf("hpfs_vget: can't get new vnode\n");
+		kprintf("hpfs_vget: can't get new vnode\n");
 		FREE(hp, M_HPFSNO);
 		return (error);
 	}
@@ -527,7 +527,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	error = bread(hpmp->hpm_devvp, dbtodoff(ino), FNODESIZE, &bp);
 	if (error) {
-		printf("hpfs_vget: can't read ino %"PRId64"\n",ino);
+		kprintf("hpfs_vget: can't read ino %"PRId64"\n",ino);
 		vx_put(vp);
 		return (error);
 	}
@@ -535,7 +535,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	brelse(bp);
 
 	if (hp->h_fn.fn_magic != FN_MAGIC) {
-		printf("hpfs_vget: MAGIC DOESN'T MATCH\n");
+		kprintf("hpfs_vget: MAGIC DOESN'T MATCH\n");
 		vx_put(vp);
 		return (EINVAL);
 	}

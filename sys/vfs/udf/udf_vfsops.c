@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.24 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.25 2006/12/23 00:41:30 swildner Exp $
  */
 
 /* udf_vfsops.c */
@@ -295,7 +295,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	for (sector = mvds_start; sector < mvds_end; sector++) {
 		if ((error = bread(devvp, (off_t)sector * bsize, bsize,
 				   &bp)) != 0) {
-			printf("Can't read sector %d of VDS\n", sector);
+			kprintf("Can't read sector %d of VDS\n", sector);
 			goto bail;
 		}
 		lvd = (struct logvol_desc *)bp->b_data;
@@ -329,7 +329,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	}
 
 	if (fsd_part != part_num) {
-		printf("FSD does not lie within the partition!\n");
+		kprintf("FSD does not lie within the partition!\n");
 		error = EINVAL;
 		goto bail;
 	}
@@ -342,7 +342,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	 */
 	sector = udfmp->part_start + fsd_offset;
 	if ((error = RDSECTOR(devvp, sector, udfmp->bsize, &bp)) != 0) {
-		printf("Cannot read sector %d of FSD\n", sector);
+		kprintf("Cannot read sector %d of FSD\n", sector);
 		goto bail;
 	}
 	fsd = (struct fileset_desc *)bp->b_data;
@@ -356,7 +356,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	bp = NULL;
 
 	if (!fsd_found) {
-		printf("Couldn't find the fsd\n");
+		kprintf("Couldn't find the fsd\n");
 		error = EINVAL;
 		goto bail;
 	} 
@@ -369,13 +369,13 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	sector = udfmp->root_icb.loc.lb_num + udfmp->part_start;
 	size = udfmp->root_icb.len;
 	if ((error = udf_readlblks(udfmp, sector, size, &bp)) != 0) {
-		printf("Cannot read sector %d\n", sector);
+		kprintf("Cannot read sector %d\n", sector);
 		goto bail;
 	}
 
 	root_fentry = (struct file_entry *)bp->b_data;
 	if ((error = udf_checktag(&root_fentry->tag, TAGID_FENTRY))) {
-		printf("Invalid root file entry!\n");
+		kprintf("Invalid root file entry!\n");
 		goto bail;
 	}
 
@@ -506,14 +506,14 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	sector = ino + udfmp->part_start;
 	devvp = udfmp->im_devvp;
 	if ((error = RDSECTOR(devvp, sector, udfmp->bsize, &bp)) != 0) {
-		printf("Cannot read sector %d\n", sector);
+		kprintf("Cannot read sector %d\n", sector);
 		kfree(unode, M_UDFNODE);
 		return(error);
 	}
 
 	fe = (struct file_entry *)bp->b_data;
 	if (udf_checktag(&fe->tag, TAGID_FENTRY)) {
-		printf("Invalid file entry!\n");
+		kprintf("Invalid file entry!\n");
 		kfree(unode, M_UDFNODE);
 		brelse(bp);
 		return(ENOMEM);
@@ -527,7 +527,7 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	bp = NULL;
 
 	if ((error = udf_allocv(mp, &vp))) {
-		printf("Error from udf_allocv\n");
+		kprintf("Error from udf_allocv\n");
 		kfree(unode, M_UDFNODE);
 		return(error);
 	}
@@ -631,7 +631,7 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		psize = pmap->data[1];
 		if (((ptype != 1) && (ptype != 2)) ||
 		    ((psize != UDF_PMAP_SIZE) && (psize != 6))) {
-			printf("Invalid partition map found\n");
+			kprintf("Invalid partition map found\n");
 			return(1);
 		}
 
@@ -647,7 +647,7 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 
 		if (bcmp(&regid_id[0], "*UDF Sparable Partition",
 		    UDF_REGID_ID_SIZE)) {
-			printf("Unsupported partition map: %s\n", &regid_id[0]);
+			kprintf("Unsupported partition map: %s\n", &regid_id[0]);
 			return(1);
 		}
 
@@ -669,7 +669,7 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		    &bp)) != 0) {
 			if (bp)
 				brelse(bp);
-			printf("Failed to read Sparing Table at sector %d\n",
+			kprintf("Failed to read Sparing Table at sector %d\n",
 			    pms->st_loc[0]);
 			return(error);
 		}
@@ -677,7 +677,7 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		brelse(bp);
 
 		if (udf_checktag(&udfmp->s_table->tag, 0)) {
-			printf("Invalid sparing table found\n");
+			kprintf("Invalid sparing table found\n");
 			return(EINVAL);
 		}
 

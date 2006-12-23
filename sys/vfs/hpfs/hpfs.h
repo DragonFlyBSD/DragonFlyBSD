@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.22 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.23 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -367,9 +367,9 @@ struct hpfid {
 };
 
 #if defined(HPFS_DEBUG)
-#define dprintf(a) printf a
+#define dprintf(a) kprintf a
 #if HPFS_DEBUG > 1
-#define ddprintf(a) printf a
+#define ddprintf(a) kprintf a
 #else
 #define ddprintf(a)
 #endif

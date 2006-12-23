@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.23 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.24 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -95,13 +95,13 @@ nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS)
 
 	if (nwfs_debuglevel == 0)
 		return 0;
-	printf("Name:uc:hc:fid:pfid\n");
+	kprintf("Name:uc:hc:fid:pfid\n");
 	for(i = 0; i <= nwnodehash; i++) {
 		nhpp = &nwhashtbl[i];
 		LIST_FOREACH(np, nhpp, n_hash) {
 			vp = NWTOV(np);
 			vprint(NULL, vp);
-			printf("%s:%d:%d:%d:%d\n",np->n_name,vp->v_usecount,vp->v_holdcnt,
+			kprintf("%s:%d:%d:%d:%d\n",np->n_name,vp->v_usecount,vp->v_holdcnt,
 			    np->n_fid.f_id, np->n_fid.f_parent);
 		}
 	}

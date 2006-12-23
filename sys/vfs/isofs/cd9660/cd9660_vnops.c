@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.32 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.33 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -792,7 +792,7 @@ cd9660_strategy(struct vop_strategy_args *ap)
 static int
 cd9660_print(struct vop_print_args *ap)
 {
-	printf("tag VT_ISOFS, isofs vnode\n");
+	kprintf("tag VT_ISOFS, isofs vnode\n");
 	return (0);
 }
 

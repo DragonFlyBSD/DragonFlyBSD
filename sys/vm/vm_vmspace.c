@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.5 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.6 2006/12/23 00:41:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -443,7 +443,7 @@ vkernel_exit(struct proc *p)
 	 * a different one.
 	 */
 	if ((ve = vk->vk_current) != NULL) {
-		printf("killed with active VC\n");
+		kprintf("killed with active VC\n");
 		vk->vk_current = NULL;
 		pmap_deactivate(p);
 		p->p_vmspace = vk->vk_save_vmspace;
@@ -481,7 +481,7 @@ vkernel_trap(struct proc *p, struct trapframe *frame)
 	struct vkernel *vk;
 	int error;
 
-	printf("trap for vkernel type %d wm=%d\n", 
+	kprintf("trap for vkernel type %d wm=%d\n", 
 		frame->tf_trapno & 0x7FFFFFFF,
 		((frame->tf_trapno & 0x80000000) ? 1 : 0));
 

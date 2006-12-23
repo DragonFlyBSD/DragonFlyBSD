@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.21 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.22 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -282,7 +282,7 @@ void
 bootpboot_p_sa(struct sockaddr *sa, struct sockaddr *ma)
 {
 	if (sa == NULL) {
-		printf("(sockaddr *) <null>");
+		kprintf("(sockaddr *) <null>");
 		return;
 	}
 	switch (sa->sa_family) {
@@ -291,11 +291,11 @@ bootpboot_p_sa(struct sockaddr *sa, struct sockaddr *ma)
 		struct sockaddr_in *sin;
 		
 		sin = (struct sockaddr_in *) sa;
-		printf("inet ");
+		kprintf("inet ");
 		print_sin_addr(sin);
 		if (ma != NULL) {
 			sin = (struct sockaddr_in *) ma;
-			printf(" mask ");
+			kprintf(" mask ");
 			print_sin_addr(sin);
 		}
 	}
@@ -306,16 +306,16 @@ bootpboot_p_sa(struct sockaddr *sa, struct sockaddr *ma)
 		int i;
 		
 		sli = (struct sockaddr_dl *) sa;
-		printf("link %.*s ", sli->sdl_nlen, sli->sdl_data);
+		kprintf("link %.*s ", sli->sdl_nlen, sli->sdl_data);
 		for (i = 0; i < sli->sdl_alen; i++) {
 			if (i > 0)
-				printf(":");
-			printf("%x", ((unsigned char *) LLADDR(sli))[i]);
+				kprintf(":");
+			kprintf("%x", ((unsigned char *) LLADDR(sli))[i]);
 		}
 	}
 	break;
 	default:
-		printf("af%d", sa->sa_family);
+		kprintf("af%d", sa->sa_family);
 	}
 }
 
@@ -324,10 +324,10 @@ void
 bootpboot_p_ma(struct sockaddr *ma)
 {
 	if (ma == NULL) {
-		printf("<null>");
+		kprintf("<null>");
 		return;
 	}
-	printf("%x", *(int *)ma);
+	kprintf("%x", *(int *)ma);
 }
 
 
@@ -335,14 +335,14 @@ void
 bootpboot_p_rtentry(struct rtentry *rt)
 {
 	bootpboot_p_sa(rt_key(rt), rt_mask(rt));
-	printf(" ");
+	kprintf(" ");
 	bootpboot_p_ma(rt->rt_genmask);
-	printf(" ");
+	kprintf(" ");
 	bootpboot_p_sa(rt->rt_gateway, NULL);
-	printf(" ");
-	printf("flags %x", (unsigned short) rt->rt_flags);
-	printf(" %d", (int) rt->rt_rmx.rmx_expire);
-	printf(" %s\n", if_name(rt->rt_ifp));
+	kprintf(" ");
+	kprintf("flags %x", (unsigned short) rt->rt_flags);
+	kprintf(" %d", (int) rt->rt_rmx.rmx_expire);
+	kprintf(" %s\n", if_name(rt->rt_ifp));
 }
 
 
@@ -368,7 +368,7 @@ bootpboot_p_tree(struct radix_node *rn)
 void
 bootpboot_p_rtlist(void)
 {
-	printf("Routing table:\n");
+	kprintf("Routing table:\n");
 	bootpboot_p_tree(rt_tables[AF_INET]->rnh_treetop);
 }
 
@@ -376,15 +376,15 @@ bootpboot_p_rtlist(void)
 void
 bootpboot_p_if(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	printf("%s flags %x, addr ",
+	kprintf("%s flags %x, addr ",
 	       if_name(ifp),
 	       (unsigned short) ifp->if_flags);
 	print_sin_addr((struct sockaddr_in *) ifa->ifa_addr);
-	printf(", broadcast ");
+	kprintf(", broadcast ");
 	print_sin_addr((struct sockaddr_in *) ifa->ifa_dstaddr);
-	printf(", netmask ");
+	kprintf(", netmask ");
 	print_sin_addr((struct sockaddr_in *) ifa->ifa_netmask);
-	printf("\n");
+	kprintf("\n");
 }
 
 
@@ -394,7 +394,7 @@ bootpboot_p_iflist(void)
 	struct ifnet *ifp;
 	struct ifaddr *ifa;
 	
-	printf("Interface list:\n");
+	kprintf("Interface list:\n");
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 			if (ifa->ifa_addr->sa_family == AF_INET)
@@ -639,7 +639,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 	sin->sin_port = htons(IPPORT_BOOTPC);
 	error = sobind(so, (struct sockaddr *)sin, td);
 	if (error != 0) {
-		printf("bind failed\n");
+		kprintf("bind failed\n");
 		goto out;
 	}
 	
@@ -713,7 +713,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 					s = "BOOTP Query";
 					break;
 				}
-				printf("Sending %s packet from "
+				kprintf("Sending %s packet from "
 				       "interface %s (%*D)\n",
 				       s,
 				       ifctx->ireq.ifr_name,
@@ -748,7 +748,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 			error = sosend(so, (struct sockaddr *) &dst,
 				       &auio, NULL, NULL, 0, td);
 			if (error != 0) {
-				printf("bootpc_call: sosend: %d state %08x\n",
+				kprintf("bootpc_call: sosend: %d state %08x\n",
 				       error, (int) so->so_state);
 			}
 
@@ -779,9 +779,9 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 		if (timo < MAX_RESEND_DELAY)
 			timo++;
 		else {
-			printf("DHCP/BOOTP timeout for server ");
+			kprintf("DHCP/BOOTP timeout for server ");
 			print_sin_addr(&dst);
-			printf("\n");
+			kprintf("\n");
 		}
 		
 		/*
@@ -869,18 +869,18 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 				} else
 					s = "BOOTP Reply";
 
-				printf("Received %s packet"
+				kprintf("Received %s packet"
 				       " on %s from ",
 				       s,
 				       ifctx->ireq.ifr_name);
 				print_in_addr(gctx->reply.siaddr);
 				if (gctx->reply.giaddr.s_addr !=
 				    htonl(INADDR_ANY)) {
-					printf(" via ");
+					kprintf(" via ");
 					print_in_addr(gctx->reply.giaddr);
 				}
 				if (bootpc_received(gctx, ifctx) != 0) {
-					printf(" (accepted)");
+					kprintf(" (accepted)");
 					if (ifctx->outstanding) {
 						ifctx->outstanding = 0;
 						outstanding--;
@@ -890,15 +890,15 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 						atimo = time_second +
 							BOOTP_SETTLE_DELAY;
 				} else
-					printf(" (ignored)");
+					kprintf(" (ignored)");
 				if (ifctx->gotrootpath) {
 					gotrootpath = 1;
 					rtimo = time_second +
 						BOOTP_SETTLE_DELAY;
-					printf(" (got root path)");
+					kprintf(" (got root path)");
 				} else
-					printf(" (no root path)");
-				printf("\n");
+					kprintf(" (no root path)");
+				kprintf("\n");
 			}
 		} /* while secs */
 #ifdef BOOTP_TIMEOUT
@@ -934,7 +934,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next) {
 		if (bootpc_ifctx_isresolved(ifctx) == 0) {
-			printf("%s timeout for interface %s\n",
+			kprintf("%s timeout for interface %s\n",
 			       ifctx->dhcpquerytype != DHCP_NOMSG ?
 			       "DHCP" : "BOOTP",
 			       ifctx->ireq.ifr_name);
@@ -942,7 +942,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 	}
 	if (gctx->gotrootpath != 0) {
 #if 0
-		printf("Got a root path, ignoring remaining timeout\n");
+		kprintf("Got a root path, ignoring remaining timeout\n");
 #endif
 		error = 0;
 		goto out;
@@ -1082,7 +1082,7 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 
 		/* Shutdown interfaces where BOOTP failed */
 		
-		printf("Shutdown interface %s\n", ifctx->ireq.ifr_name);
+		kprintf("Shutdown interface %s\n", ifctx->ireq.ifr_name);
 		error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, proc0.p_ucred);
 		if (error != 0)
 			panic("bootpc_adjust_interface: "
@@ -1104,7 +1104,7 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 		return 0;
 	}
 
-	printf("Adjusted interface %s\n", ifctx->ireq.ifr_name);
+	kprintf("Adjusted interface %s\n", ifctx->ireq.ifr_name);
 	/*
 	 * Do enough of ifconfig(8) so that the chosen interface
 	 * can talk to the servers.  (just set the address)
@@ -1142,7 +1142,7 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 					 (struct sockaddr *) &defmask,
 					 (RTF_UP | RTF_GATEWAY | RTF_STATIC));
 		if (error != 0) {
-			printf("bootpc_adjust_interface: "
+			kprintf("bootpc_adjust_interface: "
 			       "add net route, error=%d\n", error);
 			return error;
 		}
@@ -1164,7 +1164,7 @@ print_in_addr(struct in_addr addr)
 	unsigned int ip;
 	
 	ip = ntohl(addr.s_addr);
-	printf("%d.%d.%d.%d",
+	kprintf("%d.%d.%d.%d",
 	       ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255);
 }
 
@@ -1360,14 +1360,14 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 		 "swap.%d.%d.%d.%d",
 		 ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255);
 	
-	printf("%s at ", ifctx->ireq.ifr_name);
+	kprintf("%s at ", ifctx->ireq.ifr_name);
 	print_sin_addr(&ifctx->myaddr);
-	printf(" server ");
+	kprintf(" server ");
 	print_in_addr(ifctx->reply.siaddr);
 	
 	ifctx->gw.sin_addr = ifctx->reply.giaddr;
 	if (ifctx->reply.giaddr.s_addr != htonl(INADDR_ANY)) {
-		printf(" via gateway ");
+		kprintf(" via gateway ");
 		print_in_addr(ifctx->reply.giaddr);
 	}
 
@@ -1377,12 +1377,12 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 	
 	if ((gctx->tmptag.overload & OVERLOAD_SNAME) == 0)
 		if (ifctx->reply.sname[0] != '\0')
-			printf(" server name %s", ifctx->reply.sname);
+			kprintf(" server name %s", ifctx->reply.sname);
 	if ((gctx->tmptag.overload & OVERLOAD_FILE) == 0)
 		if (ifctx->reply.file[0] != '\0')
-			printf(" boot file %s", ifctx->reply.file);
+			kprintf(" boot file %s", ifctx->reply.file);
 	
-	printf("\n");
+	kprintf("\n");
 
 	p = bootpc_tag(&gctx->tag, &ifctx->reply, ifctx->replylen,
 		       TAG_SUBNETMASK);
@@ -1392,9 +1392,9 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 			      gctx->tag.taglen);
 		bcopy(p, &ifctx->netmask.sin_addr, 4);
 		ifctx->gotnetmask = 1;
-		printf("subnet mask ");
+		kprintf("subnet mask ");
 		print_sin_addr(&ifctx->netmask);
-		printf(" ");
+		kprintf(" ");
 	}
 	
 	p = bootpc_tag(&gctx->tag, &ifctx->reply, ifctx->replylen,
@@ -1405,9 +1405,9 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 			panic("bootpc: Router Len is %d", gctx->tag.taglen);
 		if (gctx->tag.taglen > 0) {
 			bcopy(p, &ifctx->gw.sin_addr, 4);
-			printf("router ");
+			kprintf("router ");
 			print_sin_addr(&ifctx->gw);
-			printf(" ");
+			kprintf(" ");
 			ifctx->gotgw = 1;
 			gctx->gotgw = 1;
 		}
@@ -1417,10 +1417,10 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 		       TAG_ROOT);
 	if (p != NULL) {
 		if (gctx->setrootfs != NULL) {
-			printf("rootfs %s (ignored) ", p);
+			kprintf("rootfs %s (ignored) ", p);
 		} else 	if (setfs(&nd->root_saddr,
 				  nd->root_hostnam, p)) {
-			printf("rootfs %s ",p);
+			kprintf("rootfs %s ",p);
 			gctx->gotrootpath = 1;
 			ifctx->gotrootpath = 1;
 			gctx->setrootfs = ifctx;
@@ -1430,7 +1430,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 				       TAG_ROOTOPTS);
 			if (p != NULL) {
 				mountopts(&nd->root_args, p);
-				printf("rootopts %s ", p);
+				kprintf("rootopts %s ", p);
 			}
 		} else
 			panic("Failed to set rootfs to %s",p);
@@ -1440,12 +1440,12 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 		       TAG_SWAP);
 	if (p != NULL) {
 		if (gctx->setswapfs != NULL) {
-			printf("swapfs %s (ignored) ", p);
+			kprintf("swapfs %s (ignored) ", p);
 		} else 	if (setfs(&nd->swap_saddr,
 				  nd->swap_hostnam, p)) {
 			gctx->gotswappath = 1;
 			gctx->setswapfs = ifctx;
-			printf("swapfs %s ", p);
+			kprintf("swapfs %s ", p);
 
 			p = bootpc_tag(&gctx->tag, &ifctx->reply,
 				       ifctx->replylen,
@@ -1453,7 +1453,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 			if (p != NULL) {
 				/* swap mount options */
 				mountopts(&nd->swap_args, p);
-				printf("swapopts %s ", p);
+				kprintf("swapopts %s ", p);
 			}
 			
 			p = bootpc_tag(&gctx->tag, &ifctx->reply,
@@ -1468,7 +1468,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 					      gctx->tag.taglen);
 				bcopy(p, &swaplen, 4);
 				nd->swap_nblks = ntohl(swaplen);
-				printf("swapsize %d KB ",
+				kprintf("swapsize %d KB ",
 				       nd->swap_nblks);
 			}
 		} else
@@ -1482,11 +1482,11 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 			panic("bootpc: hostname >= %d bytes",
 			      MAXHOSTNAMELEN);
 		if (gctx->sethostname != NULL) {
-			printf("hostname %s (ignored) ", p);
+			kprintf("hostname %s (ignored) ", p);
 		} else {
 			strcpy(nd->my_hostnam, p);
 			strcpy(hostname, p);
-			printf("hostname %s ",hostname);
+			kprintf("hostname %s ",hostname);
 			gctx->sethostname = ifctx;
 		}
 	}
@@ -1499,7 +1499,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 		p[i] = '\0';
 	}
 
-	printf("\n");
+	kprintf("\n");
 	
 	if (ifctx->gotnetmask == 0) {
 		if (IN_CLASSA(ntohl(ifctx->myaddr.sin_addr.s_addr)))
@@ -1554,7 +1554,7 @@ bootpc_init(void)
 	 * Find a network interface.
 	 */
 #ifdef BOOTP_WIRED_TO
-	printf("bootpc_init: wired to interface '%s'\n",
+	kprintf("bootpc_init: wired to interface '%s'\n",
 	       __XSTRING(BOOTP_WIRED_TO));
 #endif
 	bzero(&ifctx->ireq, sizeof(ifctx->ireq));
@@ -1608,7 +1608,7 @@ bootpc_init(void)
 #ifdef BOOTP_NFSROOT
 		panic("BOOTP call failed");
 #else
-		printf("BOOTP call failed\n");
+		kprintf("BOOTP call failed\n");
 #endif
 	}
 	

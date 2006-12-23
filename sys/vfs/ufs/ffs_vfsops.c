@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.51 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.52 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -156,7 +156,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		 */
 	
 		if ((error = bdevvp(rootdev, &rootvp))) {
-			printf("ffs_mountroot: can't find rootvp\n");
+			kprintf("ffs_mountroot: can't find rootvp\n");
 			return (error);
 		}
 
@@ -235,11 +235,11 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			if (fs->fs_clean == 0) {
 				fs->fs_flags |= FS_UNCLEAN;
 				if (mp->mnt_flag & MNT_FORCE) {
-					printf(
+					kprintf(
 "WARNING: %s was not properly dismounted\n",
 					    fs->fs_fsmnt);
 				} else {
-					printf(
+					kprintf(
 "WARNING: R/W mount of %s denied.  Filesystem is not clean - run fsck\n",
 					    fs->fs_fsmnt);
 					error = EPERM;
@@ -323,7 +323,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				vrele(devvp);
 				devvp = ump->um_devvp;
 			} else {
-				printf("cannot update mount, udev does"
+				kprintf("cannot update mount, udev does"
 					" not match %08x vs %08x\n",
 					devvp->v_udev, ump->um_devvp->v_udev);
 				error = EINVAL;	/* needs translation */
@@ -657,11 +657,11 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	if (fs->fs_clean == 0) {
 		fs->fs_flags |= FS_UNCLEAN;
 		if (ronly || (mp->mnt_flag & MNT_FORCE)) {
-			printf(
+			kprintf(
 "WARNING: %s was not properly dismounted\n",
 			    fs->fs_fsmnt);
 		} else {
-			printf(
+			kprintf(
 "WARNING: R/W mount of %s denied.  Filesystem is not clean - run fsck\n",
 			    fs->fs_fsmnt);
 			error = EPERM;
@@ -953,7 +953,7 @@ ffs_sync(struct mount *mp, int waitfor)
 
 	fs = ump->um_fs;
 	if (fs->fs_fmod != 0 && fs->fs_ronly != 0) {		/* XXX */
-		printf("fs = %s\n", fs->fs_fsmnt);
+		kprintf("fs = %s\n", fs->fs_fsmnt);
 		panic("ffs_sync: rofs mod");
 	}
 
@@ -1108,7 +1108,7 @@ restart:
 	 * If a collision occurs, throw away the vnode and try again.
 	 */
 	if (ufs_ihashins(ip) != 0) {
-		printf("debug: ufs ihashins collision, retrying inode %ld\n",
+		kprintf("debug: ufs ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
 		vx_put(vp);
 		kfree(ip, ump->um_malloctype);

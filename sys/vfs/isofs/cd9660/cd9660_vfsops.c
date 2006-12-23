@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.42 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.43 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -144,7 +144,7 @@ iso_mountroot(struct mount *mp)
 	int error;
 
 	if ((error = bdevvp(rootdev, &rootvp))) {
-		printf("iso_mountroot: can't find rootvp\n");
+		kprintf("iso_mountroot: can't find rootvp\n");
 		return (error);
 	}
 	args.flags = ISOFSMNT_ROOT;
@@ -160,7 +160,7 @@ iso_mountroot(struct mount *mp)
 	VOP_CLOSE(rootvp, FREAD);
 
 	if (bootverbose)
-		printf("iso_mountroot(): using session at block %d\n",
+		kprintf("iso_mountroot(): using session at block %d\n",
 		       args.ssector);
 	if ((error = iso_mountfs(rootvp, mp, &args)) != 0)
 		return (error);
@@ -624,7 +624,7 @@ cd9660_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	int error;
 	
 #ifdef	ISOFS_DBG
-	printf("fhtovp: ino %d, start %ld\n",
+	kprintf("fhtovp: ino %d, start %ld\n",
 	       ifhp->ifid_ino, ifhp->ifid_start);
 #endif
 	
@@ -717,7 +717,7 @@ again:
 	 * If a collision occurs, throw away the vnode and try again.
 	 */
 	if (cd9660_ihashins(ip) != 0) {
-		printf("debug: cd9660 ihashins collision, retrying\n");
+		kprintf("debug: cd9660 ihashins collision, retrying\n");
 		vx_put(vp);
 		kfree(ip, M_ISOFSNODE);
 		goto again;
@@ -730,14 +730,14 @@ again:
 		lbn = lblkno(imp, ino);
 		if (lbn >= imp->volume_space_size) {
 			vx_put(vp);
-			printf("fhtovp: lbn exceed volume space %d\n", lbn);
+			kprintf("fhtovp: lbn exceed volume space %d\n", lbn);
 			return (ESTALE);
 		}
 	
 		off = blkoff(imp, ino);
 		if (off + ISO_DIRECTORY_RECORD_SIZE > imp->logical_block_size) {
 			vx_put(vp);
-			printf("fhtovp: crosses block boundary %d\n",
+			kprintf("fhtovp: crosses block boundary %d\n",
 			       off + ISO_DIRECTORY_RECORD_SIZE);
 			return (ESTALE);
 		}
@@ -748,7 +748,7 @@ again:
 		if (error) {
 			vx_put(vp);
 			brelse(bp);
-			printf("fhtovp: bread error %d\n",error);
+			kprintf("fhtovp: bread error %d\n",error);
 			return (error);
 		}
 		isodir = (struct iso_directory_record *)(bp->b_data + off);
@@ -758,7 +758,7 @@ again:
 			vx_put(vp);
 			if (bp != NULL)
 				brelse(bp);
-			printf("fhtovp: directory crosses block boundary %d[off=%d/len=%d]\n",
+			kprintf("fhtovp: directory crosses block boundary %d[off=%d/len=%d]\n",
 			       off +isonum_711(isodir->length), off,
 			       isonum_711(isodir->length));
 			return (ESTALE);
@@ -769,7 +769,7 @@ again:
 		    isonum_711(isodir->ext_attr_length) != ifhp->ifid_start) {
 			if (bp != NULL)
 				brelse(bp);
-			printf("fhtovp: file start miss %d vs %d\n",
+			kprintf("fhtovp: file start miss %d vs %d\n",
 			       isonum_733(isodir->extent) + isonum_711(isodir->ext_attr_length),
 			       ifhp->ifid_start);
 			return (ESTALE);
@@ -879,7 +879,7 @@ cd9660_vptofh(struct vnode *vp, struct fid *fhp)
 	ifhp->ifid_start = ip->iso_start;
 
 #ifdef	ISOFS_DBG
-	printf("vptofh: ino %d, start %ld\n",
+	kprintf("vptofh: ino %d, start %ld\n",
 	       ifhp->ifid_ino,ifhp->ifid_start);
 #endif
 	return 0;

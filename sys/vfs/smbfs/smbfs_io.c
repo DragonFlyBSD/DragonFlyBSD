@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.26 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.27 2006/12/23 00:41:30 swildner Exp $
  *
  */
 #include <sys/param.h>
@@ -334,7 +334,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		}
 		break;
 	    default:
-		printf("smbfs_doio:  type %x unexpected\n",vp->v_type);
+		kprintf("smbfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
 	    };
 	    if (error) {
@@ -434,7 +434,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
 	count = ap->a_count;
 
 	if (vp->v_object == NULL) {
-		printf("smbfs_getpages: called with non-merged cache vnode??\n");
+		kprintf("smbfs_getpages: called with non-merged cache vnode??\n");
 		return VM_PAGER_ERROR;
 	}
 	smb_makescred(&scred, td, cred);
@@ -476,7 +476,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
 	relpbuf(bp, &smbfs_pbuf_freecnt);
 
 	if (error && (uio.uio_resid == count)) {
-		printf("smbfs_getpages: error %d\n",error);
+		kprintf("smbfs_getpages: error %d\n",error);
 		for (i = 0; i < npages; i++) {
 			if (ap->a_reqpage != i)
 				vnode_pager_freepage(pages[i]);

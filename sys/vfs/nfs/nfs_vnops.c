@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.68 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.69 2006/12/23 00:41:29 swildner Exp $
  */
 
 
@@ -456,7 +456,7 @@ nfs_open(struct vop_open_args *ap)
 
 	if (vp->v_type != VREG && vp->v_type != VDIR && vp->v_type != VLNK) {
 #ifdef DIAGNOSTIC
-		printf("open eacces vtyp=%d\n",vp->v_type);
+		kprintf("open eacces vtyp=%d\n",vp->v_type);
 #endif
 		return (EOPNOTSUPP);
 	}
@@ -742,7 +742,7 @@ again:
 	 */
 	if (error == 0 && vap->va_size != VNOVAL && 
 	    np->n_size != vap->va_size) {
-		printf("NFS ftruncate: server disagrees on the file size: %lld/%lld/%lld\n", tsize, vap->va_size, np->n_size);
+		kprintf("NFS ftruncate: server disagrees on the file size: %lld/%lld/%lld\n", tsize, vap->va_size, np->n_size);
 		goto again;
 	}
 	if (error && vap->va_size != VNOVAL) {
@@ -2341,7 +2341,7 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 		 * next block can be read.
 		 */
 		if (uiop->uio_resid > 0)
-			printf("EEK! readdirrpc resid > 0\n");
+			kprintf("EEK! readdirrpc resid > 0\n");
 		cookiep = nfs_getcookie(dnp, uiop->uio_offset, 1);
 		*cookiep = cookie;
 	}
@@ -2525,7 +2525,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				dp->nfs_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
 				if (dnch.ncp) {
-				    printf("NFS/READDIRPLUS, ENTER %*.*s\n",
+				    kprintf("NFS/READDIRPLUS, ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
 				    nch = cache_nlookup(&dnch, &nlc);
@@ -2533,7 +2533,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				    cache_setvp(&nch, newvp);
 				    cache_put(&nch);
 				} else {
-				    printf("NFS/READDIRPLUS, UNABLE TO ENTER"
+				    kprintf("NFS/READDIRPLUS, UNABLE TO ENTER"
 					" %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
@@ -2585,7 +2585,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 		dnp->n_direofoffset = uiop->uio_offset;
 	else {
 		if (uiop->uio_resid > 0)
-			printf("EEK! readdirplusrpc resid > 0\n");
+			kprintf("EEK! readdirplusrpc resid > 0\n");
 		cookiep = nfs_getcookie(dnp, uiop->uio_offset, 1);
 		*cookiep = cookie;
 	}
@@ -3209,11 +3209,11 @@ nfs_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 
-	printf("tag VT_NFS, fileid %ld fsid 0x%x",
+	kprintf("tag VT_NFS, fileid %ld fsid 0x%x",
 		np->n_vattr.va_fileid, np->n_vattr.va_fsid);
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

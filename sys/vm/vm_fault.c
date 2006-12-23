@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.30 2006/09/13 22:25:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.31 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -780,9 +780,9 @@ readrest:
 			 */
 			if (rv == VM_PAGER_ERROR) {
 				if (curproc)
-					printf("vm_fault: pager read error, pid %d (%s)\n", curproc->p_pid, curproc->p_comm);
+					kprintf("vm_fault: pager read error, pid %d (%s)\n", curproc->p_pid, curproc->p_comm);
 				else
-					printf("vm_fault: pager read error, thread %p (%s)\n", curthread, curproc->p_comm);
+					kprintf("vm_fault: pager read error, thread %p (%s)\n", curthread, curproc->p_comm);
 			}
 			/*
 			 * Data outside the range of the pager or an I/O error
@@ -1041,7 +1041,7 @@ readrest:
 	 */
 	if (fs->m->valid != VM_PAGE_BITS_ALL) {
 		vm_page_zero_invalid(fs->m, TRUE);
-		printf("Warning: page %p partially invalid on fault\n", fs->m);
+		kprintf("Warning: page %p partially invalid on fault\n", fs->m);
 	}
 
 	return (KERN_SUCCESS);
@@ -1176,7 +1176,7 @@ vm_fault_ratelimit(struct vmspace *vmspace)
 	}
 #ifdef INVARIANTS
 	if (vm_load_debug) {
-		printf("load %-4d give %d pgs, wait %d, pid %-5d (%s)\n",
+		kprintf("load %-4d give %d pgs, wait %d, pid %-5d (%s)\n",
 			vm_load, 
 			(1000 - vm_load ) / 10, vm_load * hz / 10000,
 			curproc->p_pid, curproc->p_comm);

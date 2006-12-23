@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.28 2006/09/30 16:32:38 swildner Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.29 2006/12/23 00:41:30 swildner Exp $
  */
 
 /* udf_vnops.c */
@@ -178,7 +178,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 
 	error = getnewvnode(VT_UDF, mp, &vp, 0, 0);
 	if (error) {
-		printf("udf_allocv: failed to allocate new vnode\n");
+		kprintf("udf_allocv: failed to allocate new vnode\n");
 		return(error);
 	}
 
@@ -407,7 +407,7 @@ udf_getattr(struct vop_getattr_args *a)
 static int
 udf_ioctl(struct vop_ioctl_args *a)
 {
-	printf("%s called\n", __func__);
+	kprintf("%s called\n", __func__);
 	return(ENOTTY);
 }
 
@@ -485,7 +485,7 @@ udf_transname(char *cs0string, char *destname, int len, struct udf_mnt *udfmp)
 	transname = kmalloc(NAME_MAX * sizeof(unicode_t), M_TEMP, M_WAITOK | M_ZERO);
 
 	if ((unilen = udf_UncompressUnicode(len, cs0string, transname)) == -1) {
-		printf("udf: Unicode translation failed\n");
+		kprintf("udf: Unicode translation failed\n");
 		kfree(transname, M_TEMP);
 		return(0);
 	}
@@ -600,7 +600,7 @@ udf_getfid(struct udf_dirstream *ds)
 		/* Copy what we have of the fid into a buffer */
 		frag_size = ds->size - ds->off;
 		if (frag_size >= ds->udfmp->bsize) {
-			printf("udf: invalid FID fragment\n");
+			kprintf("udf: invalid FID fragment\n");
 			ds->error = EINVAL;
 			return(NULL);
 		}
@@ -643,7 +643,7 @@ udf_getfid(struct udf_dirstream *ds)
 		 */
 		total_fid_size = UDF_FID_SIZE + fid->l_iu + fid->l_fi;
 		if (total_fid_size > ds->udfmp->bsize) {
-			printf("udf: invalid FID\n");
+			kprintf("udf: invalid FID\n");
 			ds->error = EIO;
 			return(NULL);
 		}
@@ -734,7 +734,7 @@ udf_readdir(struct vop_readdir_args *a)
 
 		/* XXX Should we return an error on a bad fid? */
 		if (udf_checktag(&fid->tag, TAGID_FID)) {
-			printf("Invalid FID tag\n");
+			kprintf("Invalid FID tag\n");
 			error = EIO;
 			break;
 		}
@@ -804,7 +804,7 @@ udf_readdir(struct vop_readdir_args *a)
 			}
 		}
 		if (error) {
-			printf("uiomove returned %d\n", error);
+			kprintf("uiomove returned %d\n", error);
 			break;
 		}
 
@@ -838,7 +838,7 @@ udf_readdir(struct vop_readdir_args *a)
 static int
 udf_readlink(struct vop_readlink_args *ap)
 {
-	printf("%s called\n", __func__);
+	kprintf("%s called\n", __func__);
 	return(EOPNOTSUPP);
 }
 
@@ -971,7 +971,7 @@ lookloop:
 	while ((fid = udf_getfid(ds)) != NULL) {
 		/* XXX Should we return an error on a bad fid? */
 		if (udf_checktag(&fid->tag, TAGID_FID)) {
-			printf("udf_lookup: Invalid tag\n");
+			kprintf("udf_lookup: Invalid tag\n");
 			error = EIO;
 			break;
 		}
@@ -1111,7 +1111,7 @@ udf_readatoffset(struct udf_node *node, int *size, int offset, struct buf **bp,
 	*size = min(*size, MAXBSIZE);
 
 	if ((error = udf_readlblks(udfmp, sector, *size, bp))) {
-		printf("warning: udf_readlblks returned error %d\n", error);
+		kprintf("warning: udf_readlblks returned error %d\n", error);
 		/* note: *bp may be non-NULL */
 		return(error);
 	}
@@ -1146,11 +1146,11 @@ udf_bmap_internal(struct udf_node *node, uint32_t offset, daddr_t *sector, uint3
 		break;
 
 	case 4096:
-		printf("Cannot deal with strategy4096 yet!\n");
+		kprintf("Cannot deal with strategy4096 yet!\n");
 		return(ENODEV);
 
 	default:
-		printf("Unknown strategy type %d\n", tag->strat_type);
+		kprintf("Unknown strategy type %d\n", tag->strat_type);
 		return(ENODEV);
 	}
 
@@ -1165,7 +1165,7 @@ udf_bmap_internal(struct udf_node *node, uint32_t offset, daddr_t *sector, uint3
 			offset -= icblen;
 			ad_offset = sizeof(struct short_ad) * ad_num;
 			if (ad_offset > fentry->l_ad) {
-				printf("File offset out of bounds\n");
+				kprintf("File offset out of bounds\n");
 				return(EINVAL);
 			}
 			icb = GETICB(long_ad, fentry, fentry->l_ea + ad_offset);
@@ -1189,7 +1189,7 @@ udf_bmap_internal(struct udf_node *node, uint32_t offset, daddr_t *sector, uint3
 			offset -= icblen;
 			ad_offset = sizeof(struct long_ad) * ad_num;
 			if (ad_offset > fentry->l_ad) {
-				printf("File offset out of bounds\n");
+				kprintf("File offset out of bounds\n");
 				return(EINVAL);
 			}
 			icb = GETICB(long_ad, fentry, fentry->l_ea + ad_offset);
@@ -1215,7 +1215,7 @@ udf_bmap_internal(struct udf_node *node, uint32_t offset, daddr_t *sector, uint3
 	case 2:
 		/* DirectCD does not use extended_ad's */
 	default:
-		printf("Unsupported allocation descriptor %d\n",
+		kprintf("Unsupported allocation descriptor %d\n",
 		       tag->flags & 0x7);
 		return(ENODEV);
 	}

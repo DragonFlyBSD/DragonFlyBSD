@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.7 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.8 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -338,11 +338,11 @@ hpfs_bmlookup (
 	dprintf(("hpfs_bmlookup: lsn: 0x%x, len 0x%lx | Step1\n", lsn, len));
 
 	if (lsn > hpmp->hpm_su.su_btotal) {
-		printf("hpfs_bmlookup: OUT OF VOLUME\n");
+		kprintf("hpfs_bmlookup: OUT OF VOLUME\n");
 		return ENOSPC;
 	}
 	if (len > hpmp->hpm_bavail) {
-		printf("hpfs_bmlookup: OUT OF SPACE\n");
+		kprintf("hpfs_bmlookup: OUT OF SPACE\n");
 		return ENOSPC;
 	}
  	i = lsn >> 5;
@@ -480,7 +480,7 @@ hpfs_bmmark (
 	dprintf(("hpfs_bmmark(0x%x, 0x%lx, %d): \n",bn,bl, state));
 
 	if ((bn > hpmp->hpm_su.su_btotal) || (bn+bl > hpmp->hpm_su.su_btotal)) {
-		printf("hpfs_bmmark: MARKING OUT OF VOLUME\n");
+		kprintf("hpfs_bmmark: MARKING OUT OF VOLUME\n");
 		return 0;
 	}
 	bitmap = (u_int32_t *)hpmp->hpm_bitmap;
@@ -491,7 +491,7 @@ hpfs_bmmark (
 			if (state) {
 				if ( *bitmap & (1 << i)) {
 					if (!didprint) {
-						printf("hpfs_bmmark: ALREADY FREE\n");
+						kprintf("hpfs_bmmark: ALREADY FREE\n");
 						didprint = 1;
 					}
 				} else 
@@ -501,7 +501,7 @@ hpfs_bmmark (
 			} else {
 				if ((~(*bitmap)) & (1 << i)) {
 					if (!didprint) {
-						printf("hpfs_bmmark: ALREADY BUSY\n");
+						kprintf("hpfs_bmmark: ALREADY BUSY\n");
 						didprint = 1;
 					}
 				} else 
@@ -559,7 +559,7 @@ dive:
 
 	dp = (struct dirblk *) bp->b_data;
 	if (dp->d_magic != D_MAGIC) {
-		printf("hpfs_validatetimes: magic doesn't match\n");
+		kprintf("hpfs_validatetimes: magic doesn't match\n");
 		error = EINVAL;
 		goto failed;
 	}
@@ -587,7 +587,7 @@ dive:
 
 			dep = (hpfsdirent_t *)((caddr_t)dep + dep->de_reclen);
 		} else {
-			printf("hpfs_validatetimes: ERROR! oLSN not found\n");
+			kprintf("hpfs_validatetimes: ERROR! oLSN not found\n");
 			error = EINVAL;
 			goto failed;
 		}
@@ -810,7 +810,7 @@ hpfs_extend (
 
 	error = hpfs_addextent(hpmp, hp, newblen - oldblen);
 	if (error) {
-		printf("hpfs_extend: FAILED TO ADD EXTENT %d\n", error);
+		kprintf("hpfs_extend: FAILED TO ADD EXTENT %d\n", error);
 		return (error);
 	}
 
@@ -851,7 +851,7 @@ hpfs_breadstruct (
 	mp = (u_int32_t *) bp->b_data;
 	if (*mp != magic) {
 		brelse(bp);
-		printf("hpfs_breadstruct: MAGIC DOESN'T MATCH (0x%08x != 0x%08x)\n",
+		kprintf("hpfs_breadstruct: MAGIC DOESN'T MATCH (0x%08x != 0x%08x)\n",
 			*mp, magic);
 		return (EINVAL);
 	}

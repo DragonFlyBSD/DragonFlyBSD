@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.27 2006/12/02 23:13:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.28 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -1127,7 +1127,7 @@ rescan0:
 		    m->hold_count || 
 		    m->wire_count) {
 #ifdef INVARIANTS
-			printf("Warning: busy page %p found in cache\n", m);
+			kprintf("Warning: busy page %p found in cache\n", m);
 #endif
 			vm_page_deactivate(m);
 			continue;

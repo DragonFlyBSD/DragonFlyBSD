@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.37 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.38 2006/12/23 00:41:30 swildner Exp $
  *
  */
 
@@ -359,7 +359,7 @@ ntfs_strategy(struct vop_strategy_args *ap)
 				toread, bp->b_data, NULL);
 
 			if (error) {
-				printf("ntfs_strategy: ntfs_readattr failed\n");
+				kprintf("ntfs_strategy: ntfs_readattr failed\n");
 				bp->b_error = error;
 				bp->b_flags |= B_ERROR;
 			}
@@ -369,7 +369,7 @@ ntfs_strategy(struct vop_strategy_args *ap)
 		break;
 	case BUF_CMD_WRITE:
 		if (bio->bio_offset + bp->b_bcount >= fp->f_size) {
-			printf("ntfs_strategy: CAN'T EXTEND FILE\n");
+			kprintf("ntfs_strategy: CAN'T EXTEND FILE\n");
 			bp->b_error = error = EFBIG;
 			bp->b_flags |= B_ERROR;
 		} else {
@@ -383,7 +383,7 @@ ntfs_strategy(struct vop_strategy_args *ap)
 				bp->b_data, &tmp, NULL);
 
 			if (error) {
-				printf("ntfs_strategy: ntfs_writeattr fail\n");
+				kprintf("ntfs_strategy: ntfs_writeattr fail\n");
 				bp->b_error = error;
 				bp->b_flags |= B_ERROR;
 			}
@@ -416,7 +416,7 @@ ntfs_write(struct vop_write_args *ap)
 	dprintf(("ntfs_write: filesize: %d",(u_int32_t)fp->f_size));
 
 	if (uio->uio_resid + uio->uio_offset > fp->f_size) {
-		printf("ntfs_write: CAN'T WRITE BEYOND END OF FILE\n");
+		kprintf("ntfs_write: CAN'T WRITE BEYOND END OF FILE\n");
 		return (EFBIG);
 	}
 
@@ -428,7 +428,7 @@ ntfs_write(struct vop_write_args *ap)
 		fp->f_attrname, uio->uio_offset, towrite, NULL, &written, uio);
 #ifdef NTFS_DEBUG
 	if (error)
-		printf("ntfs_write: ntfs_writeattr failed: %d\n", error);
+		kprintf("ntfs_write: ntfs_writeattr failed: %d\n", error);
 #endif
 
 	return (error);
@@ -543,7 +543,7 @@ ntfs_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct ntnode *ip = VTONT(vp);
 
-	printf("ntfs_close: %d\n",ip->i_number);
+	kprintf("ntfs_close: %d\n",ip->i_number);
 #endif
 
 	return (vop_stdclose(ap));

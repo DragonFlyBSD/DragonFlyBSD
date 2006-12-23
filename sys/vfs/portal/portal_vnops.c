@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.32 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.33 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ portal_closefd(struct thread *td, int fd)
 	 * we could do if we got one, so just print a message.
 	 */
 	if (error)
-		printf("portal_closefd: error = %d\n", error);
+		kprintf("portal_closefd: error = %d\n", error);
 }
 
 /*
@@ -388,7 +388,7 @@ portal_open(struct vop_open_args *ap)
 		 * Close extra fds.
 		 */
 		int i;
-		printf("portal_open: %d extra fds\n", newfds - 1);
+		kprintf("portal_open: %d extra fds\n", newfds - 1);
 		for (i = 1; i < newfds; i++) {
 			portal_closefd(td, *ip);
 			ip++;
@@ -551,7 +551,7 @@ portal_reclaim(struct vop_reclaim_args *ap)
 static int
 portal_print(struct vop_print_args *ap)
 {
-	printf("tag VT_PORTAL, portal vnode\n");
+	kprintf("tag VT_PORTAL, portal vnode\n");
 	return (0);
 }
 

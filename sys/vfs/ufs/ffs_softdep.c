@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.49 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.50 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*
@@ -937,7 +937,7 @@ top:
 		M_SOFTDEP_FLAGS | M_ZERO);
 
 	if (pagedep_find(pagedephd, ip->i_number, lbn, mp)) {
-		printf("pagedep_lookup: blocking race avoided\n");
+		kprintf("pagedep_lookup: blocking race avoided\n");
 		ACQUIRE_LOCK(&lk);
 		sema_release(&pagedep_in_progress);
 		kfree(pagedep, M_PAGEDEP);
@@ -1030,7 +1030,7 @@ top:
 	MALLOC(inodedep, struct inodedep *, sizeof(struct inodedep),
 		M_INODEDEP, M_SOFTDEP_FLAGS | M_ZERO);
 	if (inodedep_find(inodedephd, fs, inum)) {
-		printf("inodedep_lookup: blocking race avoided\n");
+		kprintf("inodedep_lookup: blocking race avoided\n");
 		ACQUIRE_LOCK(&lk);
 		sema_release(&inodedep_in_progress);
 		kfree(inodedep, M_INODEDEP);
@@ -1111,7 +1111,7 @@ top:
 		M_NEWBLK, M_SOFTDEP_FLAGS | M_ZERO);
 
 	if (newblk_find(newblkhd, fs, newblkno)) {
-		printf("newblk_lookup: blocking race avoided\n");
+		kprintf("newblk_lookup: blocking race avoided\n");
 		sema_release(&pagedep_in_progress);
 		kfree(newblk, M_NEWBLK);
 		goto top;
@@ -1189,7 +1189,7 @@ softdep_mount(devvp, mp, fs)
 	}
 #ifdef DEBUG
 	if (bcmp(&cstotal, &fs->fs_cstotal, sizeof cstotal))
-		printf("ffs_mountfs: superblock updated for soft updates\n");
+		kprintf("ffs_mountfs: superblock updated for soft updates\n");
 #endif
 	bcopy(&cstotal, &fs->fs_cstotal, sizeof cstotal);
 	return (0);
@@ -1931,11 +1931,11 @@ softdep_setup_freeblocks_bp(struct buf *bp, void *data)
 	struct inodedep *inodedep;
 
 	if (getdirtybuf(&bp, MNT_WAIT) == 0) {
-		printf("softdep_setup_freeblocks_bp(1): caught bp %p going away\n", bp);
+		kprintf("softdep_setup_freeblocks_bp(1): caught bp %p going away\n", bp);
 		return(-1);
 	}
 	if (bp->b_vp != ITOV(info->ip) || (bp->b_flags & B_DELWRI) == 0) {
-		printf("softdep_setup_freeblocks_bp(2): caught bp %p going away\n", bp);
+		kprintf("softdep_setup_freeblocks_bp(2): caught bp %p going away\n", bp);
 		BUF_UNLOCK(bp);
 		return(-1);
 	}
@@ -2271,7 +2271,7 @@ handle_workitem_freeblocks(freeblks)
 
 #ifdef DIAGNOSTIC
 	if (freeblks->fb_chkcnt != blocksreleased)
-		printf("handle_workitem_freeblocks: block count\n");
+		kprintf("handle_workitem_freeblocks: block count\n");
 	if (allerror)
 		softdep_error("handle_workitem_freeblks", allerror);
 #endif /* DIAGNOSTIC */
@@ -3177,7 +3177,7 @@ initiate_write_filepage(pagedep, bp)
 		 * understand chaining. Here biodone will reissue the call
 		 * to strategy for the incomplete buffers.
 		 */
-		printf("initiate_write_filepage: already started\n");
+		kprintf("initiate_write_filepage: already started\n");
 		return;
 	}
 	pagedep->pd_state |= IOSTARTED;
@@ -4188,7 +4188,7 @@ softdep_fsync_mountdev_bp(struct buf *bp, void *data)
 		return(0);
 	if (bp->b_vp != vp || (bp->b_flags & B_DELWRI) == 0) {
 		BUF_UNLOCK(bp);
-		printf("softdep_fsync_mountdev_bp: warning, buffer %p ripped out from under vnode %p\n", bp, vp);
+		kprintf("softdep_fsync_mountdev_bp: warning, buffer %p ripped out from under vnode %p\n", bp, vp);
 		return(0);
 	}
 	/*
@@ -4332,11 +4332,11 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 	int i;
 
 	if (getdirtybuf(&bp, MNT_WAIT) == 0) {
-		printf("softdep_sync_metadata_bp(1): caught buf %p going away\n", bp);
+		kprintf("softdep_sync_metadata_bp(1): caught buf %p going away\n", bp);
 		return (1);
 	}
 	if (bp->b_vp != info->vp || (bp->b_flags & B_DELWRI) == 0) {
-		printf("softdep_sync_metadata_bp(2): caught buf %p going away vp %p\n", bp, info->vp);
+		kprintf("softdep_sync_metadata_bp(2): caught buf %p going away vp %p\n", bp, info->vp);
 		BUF_UNLOCK(bp);
 		return(1);
 	}
@@ -5132,5 +5132,5 @@ softdep_error(func, error)
 {
 
 	/* XXX should do something better! */
-	printf("%s: got error %d while accessing filesystem\n", func, error);
+	kprintf("%s: got error %d while accessing filesystem\n", func, error);
 }

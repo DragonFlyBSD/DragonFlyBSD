@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.43 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.44 2006/12/23 00:41:30 swildner Exp $
  */
 
 
@@ -283,7 +283,7 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			goto success;
 		}
 
-		printf("ntfs_mount(): MNT_UPDATE not supported\n");
+		kprintf("ntfs_mount(): MNT_UPDATE not supported\n");
 		error = EINVAL;
 		goto error_1;
 	}
@@ -629,7 +629,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 	dprintf(("ntfs_unmount: vflushing...\n"));
 	error = vflush(mp, 0, flags | SKIPSYSTEM);
 	if (error) {
-		printf("ntfs_unmount: vflush failed: %d\n",error);
+		kprintf("ntfs_unmount: vflush failed: %d\n",error);
 		return (error);
 	}
 
@@ -645,7 +645,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 	/* vflush system vnodes */
 	error = vflush(mp, 0, flags);
 	if (error)
-		printf("ntfs_unmount: vflush failed(sysnodes): %d\n",error);
+		kprintf("ntfs_unmount: vflush failed(sysnodes): %d\n",error);
 
 	/* Check if the type of device node isn't VBAD before
 	 * touching v_cdevinfo.  If the device vnode is revoked, the
@@ -683,7 +683,7 @@ ntfs_root(struct mount *mp, struct vnode **vpp)
 		VFSTONTFS(mp)->ntm_sysvn[NTFS_ROOTINO]));
 	error = VFS_VGET(mp, (ino_t)NTFS_ROOTINO, &nvp);
 	if(error) {
-		printf("ntfs_root: VFS_VGET failed: %d\n",error);
+		kprintf("ntfs_root: VFS_VGET failed: %d\n",error);
 		return (error);
 	}
 
@@ -696,7 +696,7 @@ static int
 ntfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	      struct thread *td)
 {
-	printf("\nntfs_quotactl():\n");
+	kprintf("\nntfs_quotactl():\n");
 	return EOPNOTSUPP;
 }
 #endif
@@ -836,7 +836,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	/* Get ntnode */
 	error = ntfs_ntlookup(ntmp, ino, &ip);
 	if (error) {
-		printf("ntfs_vget: ntfs_ntget failed\n");
+		kprintf("ntfs_vget: ntfs_ntget failed\n");
 		return (error);
 	}
 
@@ -844,7 +844,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	if (!(flags & VG_DONTLOADIN) && !(ip->i_flag & IN_LOADED)) {
 		error = ntfs_loadntnode(ntmp, ip);
 		if(error) {
-			printf("ntfs_vget: CAN'T LOAD ATTRIBUTES FOR INO: %"PRId64"\n",
+			kprintf("ntfs_vget: CAN'T LOAD ATTRIBUTES FOR INO: %"PRId64"\n",
 			       ip->i_number);
 			ntfs_ntput(ip);
 			return (error);
@@ -853,7 +853,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 
 	error = ntfs_fget(ntmp, ip, attrtype, attrname, &fp);
 	if (error) {
-		printf("ntfs_vget: ntfs_fget failed\n");
+		kprintf("ntfs_vget: ntfs_fget failed\n");
 		ntfs_ntput(ip);
 		return (error);
 	}

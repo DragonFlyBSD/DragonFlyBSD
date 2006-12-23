@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.38 2006/09/09 18:29:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.39 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*
@@ -683,7 +683,7 @@ tryagain:
 			} while (error == EWOULDBLOCK ||
 				 (!error && *mp == NULL && control));
 			if ((rcvflg & MSG_EOR) == 0)
-				printf("Egad!!\n");
+				kprintf("Egad!!\n");
 			if (!error && *mp == NULL)
 				error = EPIPE;
 			len -= auio.uio_resid;
@@ -1898,7 +1898,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			nfsm_dissect(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
 			if (*tl++ != rpc_auth_kerb ||
 				fxdr_unsigned(int, *tl) != 4 * NFSX_UNSIGNED) {
-				printf("Bad kerb verifier\n");
+				kprintf("Bad kerb verifier\n");
 				nd->nd_repstat = (NFSERR_AUTHERR|AUTH_BADVERF);
 				nd->nd_procnum = NFSPROC_NOOP;
 				return (0);
@@ -1906,7 +1906,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			nfsm_dissect(cp, caddr_t, 4 * NFSX_UNSIGNED);
 			tl = (u_int32_t *)cp;
 			if (fxdr_unsigned(int, *tl) != RPCAKN_FULLNAME) {
-				printf("Not fullname kerb verifier\n");
+				kprintf("Not fullname kerb verifier\n");
 				nd->nd_repstat = (NFSERR_AUTHERR|AUTH_BADVERF);
 				nd->nd_procnum = NFSPROC_NOOP;
 				return (0);
@@ -1919,7 +1919,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			break;
 		case RPCAKN_NICKNAME:
 			if (len != 2 * NFSX_UNSIGNED) {
-				printf("Kerb nickname short\n");
+				kprintf("Kerb nickname short\n");
 				nd->nd_repstat = (NFSERR_AUTHERR|AUTH_BADCRED);
 				nd->nd_procnum = NFSPROC_NOOP;
 				return (0);
@@ -1928,7 +1928,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			nfsm_dissect(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
 			if (*tl++ != rpc_auth_kerb ||
 				fxdr_unsigned(int, *tl) != 3 * NFSX_UNSIGNED) {
-				printf("Kerb nick verifier bad\n");
+				kprintf("Kerb nick verifier bad\n");
 				nd->nd_repstat = (NFSERR_AUTHERR|AUTH_BADVERF);
 				nd->nd_procnum = NFSPROC_NOOP;
 				return (0);

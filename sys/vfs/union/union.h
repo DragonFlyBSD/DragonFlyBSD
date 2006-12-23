@@ -36,7 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
- * $DragonFly: src/sys/vfs/union/union.h,v 1.8 2004/10/12 19:21:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.9 2006/12/23 00:41:30 swildner Exp $
  */
 
 struct union_args {
@@ -120,7 +120,7 @@ struct union_node {
 #define	UPPERVP(vp) (VTOUNION(vp)->un_uppervp)
 #define OTHERVP(vp) (UPPERVP(vp) ? UPPERVP(vp) : LOWERVP(vp))
 
-#define UDEBUG(x)	if (uniondebug) printf x
+#define UDEBUG(x)	if (uniondebug) kprintf x
 #define UDEBUG_ENABLED	1
 
 #endif

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.24 2006/05/21 20:23:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.25 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ ntfs_findvattr(struct ntfsmount *ntmp, struct ntnode *ip,
 		       ip->i_number));
 		error = ntfs_loadntnode(ntmp,ip);
 		if (error) {
-			printf("ntfs_findvattr: FAILED TO LOAD INO: %"PRId64"\n",
+			kprintf("ntfs_findvattr: FAILED TO LOAD INO: %"PRId64"\n",
 			       ip->i_number);
 			return (error);
 		}
@@ -223,7 +223,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 				NTFS_A_DATA, NULL, LK_EXCLUSIVE,
 				VG_EXT, curthread, &newvp);
 		if (error) {
-			printf("ntfs_ntvattrget: CAN'T VGET INO: %d\n",
+			kprintf("ntfs_ntvattrget: CAN'T VGET INO: %d\n",
 			       aalp->al_inumber);
 			goto out;
 		}
@@ -234,7 +234,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 		vput(newvp);
 		if (error == 0)
 			goto out;
-		printf("ntfs_ntvattrget: ATTRLIST ERROR.\n");
+		kprintf("ntfs_ntvattrget: ATTRLIST ERROR.\n");
 		break;
 	}
 	error = ENOENT;
@@ -277,7 +277,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 		error = bread(ntmp->ntm_devvp,
 			      ntfs_bntodoff(bn), ntfs_bntob(ntmp->ntm_bpmftrec), &bp);
 		if (error) {
-			printf("ntfs_loadntnode: BREAD FAILED\n");
+			kprintf("ntfs_loadntnode: BREAD FAILED\n");
 			brelse(bp);
 			goto out;
 		}
@@ -291,7 +291,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 			       ip->i_number * ntfs_bntob(ntmp->ntm_bpmftrec),
 			       ntfs_bntob(ntmp->ntm_bpmftrec), mfrp, NULL);
 		if (error) {
-			printf("ntfs_loadntnode: ntfs_readattr failed\n");
+			kprintf("ntfs_loadntnode: ntfs_readattr failed\n");
 			goto out;
 		}
 	}
@@ -300,7 +300,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 	error = ntfs_procfixups(ntmp, NTFS_FILEMAGIC, (caddr_t)mfrp,
 				ntfs_bntob(ntmp->ntm_bpmftrec));
 	if (error) {
-		printf("ntfs_loadntnode: BAD MFT RECORD %"PRId64"\n",
+		kprintf("ntfs_loadntnode: BAD MFT RECORD %"PRId64"\n",
 		       ip->i_number);
 		goto out;
 	}
@@ -323,7 +323,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 		ap = (struct attr *) ((caddr_t)mfrp + off);
 	}
 	if (error) {
-		printf("ntfs_loadntnode: failed to load attr ino: %"PRId64"\n",
+		kprintf("ntfs_loadntnode: failed to load attr ino: %"PRId64"\n",
 		       ip->i_number);
 		goto out;
 	}
@@ -1032,7 +1032,7 @@ ntfs_isnamepermitted(struct ntfsmount *ntmp, struct attr_indexentry *iep)
 	case 0: case 1: case 3:
 		return 1;
 	default:
-		printf("ntfs_isnamepermitted: " \
+		kprintf("ntfs_isnamepermitted: " \
 		       "WARNING! Unknown file name type: %d\n",
 		       iep->ie_fnametype);
 		break;
@@ -1316,10 +1316,10 @@ ntfs_writeattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 					 off - ntfs_cntob(vap->va_vcnstart),
 					 towrite, data, &init, uio);
 		if (error) {
-			printf("ntfs_writeattr_plain: " \
+			kprintf("ntfs_writeattr_plain: " \
 			       "ntfs_writentvattr_plain failed: o: %d, s: %d\n",
 			       (u_int32_t) off, (u_int32_t) towrite);
-			printf("ntfs_writeattr_plain: attrib: %d - %d\n",
+			kprintf("ntfs_writeattr_plain: attrib: %d - %d\n",
 			       (u_int32_t) vap->va_vcnstart, 
 			       (u_int32_t) vap->va_vcnend);
 			ntfs_ntvattrrele(vap);
@@ -1356,7 +1356,7 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 	*initp = 0;
 
 	if ((vap->va_flag & NTFS_AF_INRUN) == 0) {
-		printf("ntfs_writevattr_plain: CAN'T WRITE RES. ATTRIBUTE\n");
+		kprintf("ntfs_writevattr_plain: CAN'T WRITE RES. ATTRIBUTE\n");
 		return ENOTTY;
 	}
 
@@ -1433,7 +1433,7 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 	}
 
 	if (left) {
-		printf("ntfs_writentvattr_plain: POSSIBLE RUN ERROR\n");
+		kprintf("ntfs_writentvattr_plain: POSSIBLE RUN ERROR\n");
 		error = EINVAL;
 	}
 
@@ -1552,7 +1552,7 @@ ntfs_readntvattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 			cnt++;
 		}
 		if (left) {
-			printf("ntfs_readntvattr_plain: POSSIBLE RUN ERROR\n");
+			kprintf("ntfs_readntvattr_plain: POSSIBLE RUN ERROR\n");
 			error = E2BIG;
 		}
 	} else {
@@ -1597,10 +1597,10 @@ ntfs_readattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 					 off - ntfs_cntob(vap->va_vcnstart),
 					 toread, data, &init, uio);
 		if (error) {
-			printf("ntfs_readattr_plain: " \
+			kprintf("ntfs_readattr_plain: " \
 			       "ntfs_readntvattr_plain failed: o: %d, s: %d\n",
 			       (u_int32_t) off, (u_int32_t) toread);
-			printf("ntfs_readattr_plain: attrib: %d - %d\n",
+			kprintf("ntfs_readattr_plain: attrib: %d - %d\n",
 			       (u_int32_t) vap->va_vcnstart, 
 			       (u_int32_t) vap->va_vcnend);
 			ntfs_ntvattrrele(vap);
@@ -1715,17 +1715,17 @@ ntfs_parserun(cn_t *cn, cn_t *cl, u_int8_t *run, u_long len, u_long *off)
 	int             i;
 
 	if (NULL == run) {
-		printf("ntfs_parsetun: run == NULL\n");
+		kprintf("ntfs_parsetun: run == NULL\n");
 		return (EINVAL);
 	}
 	sz = run[(*off)++];
 	if (0 == sz) {
-		printf("ntfs_parserun: trying to go out of run\n");
+		kprintf("ntfs_parserun: trying to go out of run\n");
 		return (E2BIG);
 	}
 	*cl = 0;
 	if ((sz & 0xF) > 8 || (*off) + (sz & 0xF) > len) {
-		printf("ntfs_parserun: " \
+		kprintf("ntfs_parserun: " \
 		       "bad run: length too big: sz: 0x%02x (%ld < %ld + sz)\n",
 		       sz, len, *off);
 		return (EINVAL);
@@ -1735,7 +1735,7 @@ ntfs_parserun(cn_t *cn, cn_t *cl, u_int8_t *run, u_long len, u_long *off)
 
 	sz >>= 4;
 	if ((sz & 0xF) > 8 || (*off) + (sz & 0xF) > len) {
-		printf("ntfs_parserun: " \
+		kprintf("ntfs_parserun: " \
 		       "bad run: length too big: sz: 0x%02x (%ld < %ld + sz)\n",
 		       sz, len, *off);
 		return (EINVAL);
@@ -1761,18 +1761,18 @@ ntfs_procfixups(struct ntfsmount *ntmp, u_int32_t magic, caddr_t buf,
 	u_int16_t      *cfxp;
 
 	if (fhp->fh_magic != magic) {
-		printf("ntfs_procfixups: magic doesn't match: %08x != %08x\n",
+		kprintf("ntfs_procfixups: magic doesn't match: %08x != %08x\n",
 		       fhp->fh_magic, magic);
 		return (EINVAL);
 	}
 	if ((fhp->fh_fnum - 1) * ntmp->ntm_bps != len) {
-		printf("ntfs_procfixups: " \
+		kprintf("ntfs_procfixups: " \
 		       "bad fixups number: %d for %ld bytes block\n", 
-		       fhp->fh_fnum, (long)len);	/* XXX printf kludge */
+		       fhp->fh_fnum, (long)len);	/* XXX kprintf kludge */
 		return (EINVAL);
 	}
 	if (fhp->fh_foff >= ntmp->ntm_spc * ntmp->ntm_mftrecsz * ntmp->ntm_bps) {
-		printf("ntfs_procfixups: invalid offset: %x", fhp->fh_foff);
+		kprintf("ntfs_procfixups: invalid offset: %x", fhp->fh_foff);
 		return (EINVAL);
 	}
 	fxp = (u_int16_t *) (buf + fhp->fh_foff);
@@ -1780,7 +1780,7 @@ ntfs_procfixups(struct ntfsmount *ntmp, u_int32_t magic, caddr_t buf,
 	fixup = *fxp++;
 	for (i = 1; i < fhp->fh_fnum; i++, fxp++) {
 		if (*cfxp != fixup) {
-			printf("ntfs_procfixups: fixup %d doesn't match\n", i);
+			kprintf("ntfs_procfixups: fixup %d doesn't match\n", i);
 			return (EINVAL);
 		}
 		*cfxp = *fxp;
@@ -1801,27 +1801,27 @@ ntfs_runtocn(cn_t *cn,	struct ntfsmount *ntmp, u_int8_t *run, u_long len,
 
 #if NTFS_DEBUG
 	int             i;
-	printf("ntfs_runtocn: run: 0x%p, %ld bytes, vcn:%ld\n",
+	kprintf("ntfs_runtocn: run: 0x%p, %ld bytes, vcn:%ld\n",
 		run, len, (u_long) vcn);
-	printf("ntfs_runtocn: run: ");
+	kprintf("ntfs_runtocn: run: ");
 	for (i = 0; i < len; i++)
-		printf("0x%02x ", run[i]);
-	printf("\n");
+		kprintf("0x%02x ", run[i]);
+	kprintf("\n");
 #endif
 
 	if (NULL == run) {
-		printf("ntfs_runtocn: run == NULL\n");
+		kprintf("ntfs_runtocn: run == NULL\n");
 		return (EINVAL);
 	}
 	do {
 		if (run[off] == 0) {
-			printf("ntfs_runtocn: vcn too big\n");
+			kprintf("ntfs_runtocn: vcn too big\n");
 			return (E2BIG);
 		}
 		vcn -= ccl;
 		error = ntfs_parserun(&ccn, &ccl, run, len, &off);
 		if (error) {
-			printf("ntfs_runtocn: ntfs_parserun failed\n");
+			kprintf("ntfs_runtocn: ntfs_parserun failed\n");
 			return (error);
 		}
 	} while (ccl <= vcn);

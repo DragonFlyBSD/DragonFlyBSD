@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.9 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.10 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -123,7 +123,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 				}
 			} else {
 			/* Godmar thinks: this shouldn't happen w/o fragments */
-				printf("nsize %d(%d) > osize %d(%d) nb %d\n", 
+				kprintf("nsize %d(%d) > osize %d(%d) nb %d\n", 
 					(int)nsize, (int)size, (int)osize, 
 					(int)ip->i_size, (int)nb);
 				panic(

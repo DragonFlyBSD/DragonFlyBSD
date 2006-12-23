@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.36 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.37 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -1813,13 +1813,13 @@ ext2_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
 
-	printf("tag VT_EXT2FS, ino %lu, on dev %s (%d, %d)",
+	kprintf("tag VT_EXT2FS, ino %lu, on dev %s (%d, %d)",
 	    (u_long)ip->i_number, devtoname(ip->i_dev), major(ip->i_dev),
 	    minor(ip->i_dev));
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);
 	lockmgr_printinfo(&vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

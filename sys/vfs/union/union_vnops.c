@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.35 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.36 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1701,7 +1701,7 @@ union_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	printf("\ttag VT_UNION, vp=%p, uppervp=%p, lowervp=%p\n",
+	kprintf("\ttag VT_UNION, vp=%p, uppervp=%p, lowervp=%p\n",
 			vp, UPPERVP(vp), LOWERVP(vp));
 	if (UPPERVP(vp) != NULLVP)
 		vprint("union: upper", UPPERVP(vp));

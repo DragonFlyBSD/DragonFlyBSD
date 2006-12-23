@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.31 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.32 2006/12/23 00:41:31 swildner Exp $
  */
 
 #include "opt_swap.h"
@@ -287,7 +287,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	 * tree bitmap code.
 	 */
 	if (nblks > 0x40000000 / BLIST_META_RADIX / nswdev) {
-		printf("exceeded maximum of %d blocks per swap unit\n",
+		kprintf("exceeded maximum of %d blocks per swap unit\n",
 			0x40000000 / BLIST_META_RADIX / nswdev);
 		VOP_CLOSE(vp, FREAD | FWRITE);
 		return (ENXIO);

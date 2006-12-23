@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.33 2006/12/02 23:13:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.34 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -705,7 +705,7 @@ loop:
 		 */
 #ifdef INVARIANTS
 		if (curthread->td_preempted) {
-			printf("vm_page_alloc(): warning, attempt to allocate"
+			kprintf("vm_page_alloc(): warning, attempt to allocate"
 				" cache page from preempting interrupt\n");
 			m = NULL;
 		} else {
@@ -732,7 +732,7 @@ loop:
 		crit_exit();
 #if defined(DIAGNOSTIC)
 		if (vmstats.v_cache_count > 0)
-			printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
+			kprintf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
 #endif
 		vm_pageout_deficit++;
 		pagedaemon_wakeup();
@@ -930,7 +930,7 @@ vm_page_free_toq(vm_page_t m)
 	mycpu->gd_cnt.v_tfree++;
 
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
-		printf(
+		kprintf(
 		"vm_page_free: pindex(%lu), busy(%d), PG_BUSY(%d), hold(%d)\n",
 		    (u_long)m->pindex, m->busy, (m->flags & PG_BUSY) ? 1 : 0,
 		    m->hold_count);
@@ -1228,7 +1228,7 @@ vm_page_cache(vm_page_t m)
 
 	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
 			m->wire_count || m->hold_count) {
-		printf("vm_page_cache: attempting to cache busy/held page\n");
+		kprintf("vm_page_cache: attempting to cache busy/held page\n");
 		return;
 	}
 	if ((m->queue - m->pc) == PQ_CACHE)

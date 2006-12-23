@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.15 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.16 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -311,9 +311,9 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 #define	LOCKMGR(a, b)		lockmgr((a), (b))
 
 #if defined(NTFS_DEBUG)
-#define dprintf(a) printf a
+#define dprintf(a) kprintf a
 #if NTFS_DEBUG > 1
-#define ddprintf(a) printf a
+#define ddprintf(a) kprintf a
 #else
 #define ddprintf(a)
 #endif

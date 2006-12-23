@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.7 2006/01/04 03:09:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.8 2006/12/23 00:41:30 swildner Exp $
  */
 
 struct null_args {
@@ -52,7 +52,7 @@ struct null_mount {
 #define	MOUNTTONULLMOUNT(mp) ((struct null_mount *)((mp)->mnt_data))
 
 #ifdef NULLFS_DEBUG
-#define NULLFSDEBUG(format, args...) printf(format ,## args)
+#define NULLFSDEBUG(format, args...) kprintf(format ,## args)
 #else
 #define NULLFSDEBUG(format, args...)
 #endif /* NULLFS_DEBUG */

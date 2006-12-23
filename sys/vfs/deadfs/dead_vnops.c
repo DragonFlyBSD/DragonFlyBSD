@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.18 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.19 2006/12/23 00:41:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -203,7 +203,7 @@ dead_bmap(struct vop_bmap_args *ap)
 static int
 dead_print(struct vop_print_args *ap)
 {
-	printf("tag VT_NON, dead vnode\n");
+	kprintf("tag VT_NON, dead vnode\n");
 	return (0);
 }
 

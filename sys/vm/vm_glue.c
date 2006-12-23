@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.45 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.46 2006/12/23 00:41:31 swildner Exp $
  */
 
 #include "opt_vm.h"
@@ -281,7 +281,7 @@ vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 	p2->p_stats = &up->u_stats;
 	if (p2->p_sigacts == NULL) {
 		if (p2->p_procsig->ps_refcnt != 1)
-			printf ("PID:%d NULL sigacts with refcnt not 1!\n",p2->p_pid);
+			kprintf ("PID:%d NULL sigacts with refcnt not 1!\n",p2->p_pid);
 		p2->p_sigacts = &up->u_sigacts;
 		up->u_sigacts = *p1->p_sigacts;
 	}
@@ -354,7 +354,7 @@ faultin(struct proc *p)
 		p->p_flag &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
 #ifdef INVARIANTS
 		if (swap_debug)
-			printf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
+			kprintf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 		wakeup(p);
 
@@ -579,7 +579,7 @@ swapout(struct proc *p)
 {
 #ifdef INVARIANTS
 	if (swap_debug)
-		printf("swapping out %d (%s)\n", p->p_pid, p->p_comm);
+		kprintf("swapping out %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 	++p->p_stats->p_ru.ru_nswap;
 	/*

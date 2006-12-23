@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.49 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.50 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -160,17 +160,17 @@ spec_open(struct vop_open_args *ap)
 		dev = udev2dev(vp->v_udev, isblk);
 		if (dev != vp->v_rdev) {
 			int oc = vp->v_opencount;
-			printf(
+			kprintf(
 			    "Warning: spec_open: dev %s was lost",
 			    vp->v_rdev->si_name);
 			v_release_rdev(vp);
 			error = v_associate_rdev(vp, 
 					udev2dev(vp->v_udev, isblk));
 			if (error) {
-				printf(", reacquisition failed\n");
+				kprintf(", reacquisition failed\n");
 			} else {
 				vp->v_opencount = oc;
-				printf(", reacquisition successful\n");
+				kprintf(", reacquisition successful\n");
 			}
 		} else {
 			error = 0;
@@ -251,7 +251,7 @@ spec_open(struct vop_open_args *ap)
 			struct tty *tp;
 			tp = dev->si_tty;
 			if (!tp->t_stop) {
-				printf("Warning:%s: no t_stop, using nottystop\n", devtoname(dev));
+				kprintf("Warning:%s: no t_stop, using nottystop\n", devtoname(dev));
 				tp->t_stop = nottystop;
 			}
 		}
@@ -269,7 +269,7 @@ spec_open(struct vop_open_args *ap)
 	if ((dev_dflags(dev) & D_DISK) == 0) {
 		cp = devtoname(dev);
 		if (*cp == '#') {
-			printf("WARNING: driver %s should register devices with make_dev() (cdev_t = \"%s\")\n",
+			kprintf("WARNING: driver %s should register devices with make_dev() (cdev_t = \"%s\")\n",
 			    dev_dname(dev), cp);
 		}
 	}
@@ -284,7 +284,7 @@ spec_open(struct vop_open_args *ap)
 		vn_setspecops(ap->a_fp);
 
 	if (dev_ref_debug)
-		printf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
+		kprintf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
 done:
 	if (error) {
 		if (vp->v_opencount == 0)
@@ -599,7 +599,7 @@ spec_close(struct vop_close_args *ap)
 	if (dev) {
 		/*KKASSERT(vp->v_opencount > 0);*/
 		if (dev_ref_debug) {
-			printf("spec_close: %s %d\n",
+			kprintf("spec_close: %s %d\n",
 				dev->si_name, vp->v_opencount - 1);
 		}
 		if (vp->v_opencount == 1)
@@ -618,7 +618,7 @@ spec_close(struct vop_close_args *ap)
 static int
 spec_print(struct vop_print_args *ap)
 {
-	printf("tag VT_NON, dev %s\n", devtoname(ap->a_vp->v_rdev));
+	kprintf("tag VT_NON, dev %s\n", devtoname(ap->a_vp->v_rdev));
 	return (0);
 }
 
@@ -785,13 +785,13 @@ spec_getpages(struct vop_getpages_args *ap)
 	}
 	if (!gotreqpage) {
 		m = ap->a_m[ap->a_reqpage];
-		printf(
+		kprintf(
 	    "spec_getpages:(%s) I/O read failure: (error=%d) bp %p vp %p\n",
 			devtoname(vp->v_rdev), error, bp, bp->b_vp);
-		printf(
+		kprintf(
 	    "               size: %d, resid: %d, a_count: %d, valid: 0x%x\n",
 		    size, bp->b_resid, ap->a_count, m->valid);
-		printf(
+		kprintf(
 	    "               nread: %d, reqpage: %d, pindex: %lu, pcount: %d\n",
 		    nread, ap->a_reqpage, (u_long)m->pindex, pcount);
 		/*

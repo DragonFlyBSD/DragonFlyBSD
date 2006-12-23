@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.26 2006/09/10 01:26:41 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.27 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -249,7 +249,7 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	struct timeval tv;
 
 #ifdef MSDOSFS_DEBUG
-	printf("deget(pmp %p, dirclust %lu, diroffset %lx, depp %p)\n",
+	kprintf("deget(pmp %p, dirclust %lu, diroffset %lx, depp %p)\n",
 	    pmp, dirclust, diroffset, depp);
 #endif
 
@@ -313,7 +313,7 @@ again:
 	 * throw away the vnode and try again.
 	 */
 	if (msdosfs_hashins(ldep) != 0) {
-		printf("debug: msdosfs: hashins collision, retrying\n");
+		kprintf("debug: msdosfs: hashins collision, retrying\n");
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
 		goto again;
@@ -396,7 +396,7 @@ again:
 		 * instead of what is written in directory entry.
 		 */
 		if ((diroffset == 0) && (ldep->de_StartCluster != dirclust)) {
-			printf("deget(): . entry at clust %ld != %ld\n",
+			kprintf("deget(): . entry at clust %ld != %ld\n",
 					dirclust, ldep->de_StartCluster);
 			ldep->de_StartCluster = dirclust;
 		}
@@ -408,7 +408,7 @@ again:
 				ldep->de_FileSize = de_cn2off(pmp, size);
 				error = 0;
 			} else
-				printf("deget(): pcbmap returned %d\n", error);
+				kprintf("deget(): pcbmap returned %d\n", error);
 		}
 	} else {
 		nvp->v_type = VREG;
@@ -475,7 +475,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	struct msdosfsmount *pmp = dep->de_pmp;
 
 #ifdef MSDOSFS_DEBUG
-	printf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name, length, flags);
+	kprintf("detrunc(): file %s, length %lu, flags %x\n", dep->de_Name, length, flags);
 #endif
 
 	/*
@@ -487,7 +487,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 	 * directory's life.
 	 */
 	if ((DETOV(dep)->v_flag & VROOT) && !FAT32(pmp)) {
-		printf("detrunc(): can't truncate root directory, clust %ld, offset %ld\n",
+		kprintf("detrunc(): can't truncate root directory, clust %ld, offset %ld\n",
 		    dep->de_dirclust, dep->de_diroffset);
 		return (EINVAL);
 	}
@@ -516,7 +516,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 			       NULL, &eofentry, NULL);
 		if (error) {
 #ifdef MSDOSFS_DEBUG
-			printf("detrunc(): pcbmap fails %d\n", error);
+			kprintf("detrunc(): pcbmap fails %d\n", error);
 #endif
 			return (error);
 		}
@@ -540,7 +540,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 		if (error) {
 			brelse(bp);
 #ifdef MSDOSFS_DEBUG
-			printf("detrunc(): bread fails %d\n", error);
+			kprintf("detrunc(): bread fails %d\n", error);
 #endif
 			return (error);
 		}
@@ -564,13 +564,13 @@ detrunc(struct denode *dep, u_long length, int flags)
 	allerror = vtruncbuf(DETOV(dep), length, pmp->pm_bpcluster);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
-		printf("detrunc(): vtruncbuf error %d\n", allerror);
+		kprintf("detrunc(): vtruncbuf error %d\n", allerror);
 #endif
 	error = deupdat(dep, 1);
 	if (error && (allerror == 0))
 		allerror = error;
 #ifdef MSDOSFS_DEBUG
-	printf("detrunc(): allerror %d, eofentry %lu\n",
+	kprintf("detrunc(): allerror %d, eofentry %lu\n",
 	       allerror, eofentry);
 #endif
 
@@ -583,7 +583,7 @@ detrunc(struct denode *dep, u_long length, int flags)
 				 &chaintofree, CLUST_EOFE);
 		if (error) {
 #ifdef MSDOSFS_DEBUG
-			printf("detrunc(): fatentry errors %d\n", error);
+			kprintf("detrunc(): fatentry errors %d\n", error);
 #endif
 			return (error);
 		}
@@ -655,7 +655,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	struct denode *dep = VTODE(vp);
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_reclaim(): dep %p, file %s, refcnt %ld\n",
+	kprintf("msdosfs_reclaim(): dep %p, file %s, refcnt %ld\n",
 	    dep, dep ? dep->de_Name : "?", dep ? dep->de_refcnt : -1);
 #endif
 
@@ -687,7 +687,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	int error = 0;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_inactive(): dep %p, de_Name[0] %x\n", dep, dep->de_Name[0]);
+	kprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n", dep, dep->de_Name[0]);
 #endif
 
 	if (prtactive && vp->v_usecount != 0)
@@ -705,7 +705,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	 * as empty.  (This may not be necessary for the dos filesystem.)
 	 */
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_inactive(): dep %p, refcnt %ld, mntflag %x, MNT_RDONLY %x\n",
+	kprintf("msdosfs_inactive(): dep %p, refcnt %ld, mntflag %x, MNT_RDONLY %x\n",
 	       dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
 #endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
@@ -721,7 +721,7 @@ out:
 	 * so that it can be reused immediately.
 	 */
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_inactive(): v_usecount %d, de_Name[0] %x\n", vp->v_usecount,
+	kprintf("msdosfs_inactive(): v_usecount %d, de_Name[0] %x\n", vp->v_usecount,
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)

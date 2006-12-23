@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.33 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.34 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -674,7 +674,7 @@ nwfs_readdir(struct vop_readdir_args *ap)
 	if (vp->v_type != VDIR)
 		return (EPERM);
 	if (ap->a_ncookies) {
-		printf("nwfs_readdir: no support for cookies now...");
+		kprintf("nwfs_readdir: no support for cookies now...");
 		return (EOPNOTSUPP);
 	}
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
@@ -706,7 +706,7 @@ nwfs_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 
-	printf("nwfs node: name = '%s', fid = %d, pfid = %d\n",
+	kprintf("nwfs node: name = '%s', fid = %d, pfid = %d\n",
 	    np->n_name, np->n_fid.f_id, np->n_fid.f_parent);
 	return (0);
 }
@@ -808,7 +808,7 @@ nwfs_nget(struct mount *mp, ncpfid fid, const struct nw_entry_info *fap,
 		}
 	} else {
 		if ((newnp->n_flag & NNEW) && vp->v_type == VREG)
-			printf("new vnode '%s' borned without parent ?\n",newnp->n_name);
+			kprintf("new vnode '%s' borned without parent ?\n",newnp->n_name);
 	}
 	newnp->n_flag &= ~NNEW;
 	*vpp = vp;
@@ -846,7 +846,7 @@ nwfs_lookup(struct vop_old_lookup_args *ap)
 	if (dvp->v_type != VDIR)
 		return (ENOTDIR);
 	if ((flags & CNP_ISDOTDOT) && (dvp->v_flag & VROOT)) {
-		printf("nwfs_lookup: invalid '..'\n");
+		kprintf("nwfs_lookup: invalid '..'\n");
 		return EIO;
 	}
 
@@ -862,7 +862,7 @@ nwfs_lookup(struct vop_old_lookup_args *ap)
 	nmp = VFSTONWFS(mp);
 	dnp = VTONW(dvp);
 /*
-printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISDOTDOT);
+kprintf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISDOTDOT);
 */
 	error = ncp_pathcheck(cnp->cn_nameptr, cnp->cn_namelen, &nmp->m.nls, 
 	    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && (nmp->m.nls.opt & NWHP_NOSTRICT) == 0);

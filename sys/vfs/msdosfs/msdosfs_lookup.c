@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.20 2006/08/12 00:26:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.21 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -117,7 +117,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_lookup(): looking for %s\n", cnp->cn_nameptr);
+	kprintf("msdosfs_lookup(): looking for %s\n", cnp->cn_nameptr);
 #endif
 	dp = VTODE(vdp);
 	pmp = dp->de_pmp;
@@ -125,7 +125,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_lookup(): vdp %p, dp %p, Attr %02x\n",
+	kprintf("msdosfs_lookup(): vdp %p, dp %p, Attr %02x\n",
 	    vdp, dp, dp->de_Attributes);
 #endif
 
@@ -140,7 +140,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 		isadir = ATTR_DIRECTORY;
 		scn = MSDOSFSROOT;
 #ifdef MSDOSFS_DEBUG
-		printf("msdosfs_lookup(): looking for . or .. in root directory\n");
+		kprintf("msdosfs_lookup(): looking for . or .. in root directory\n");
 #endif
 		cluster = MSDOSFSROOT;
 		blkoff = MSDOSFSROOT_OFS;
@@ -182,7 +182,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 		slotcount = 0;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_lookup(): dos version of filename %s, length %ld\n",
+	kprintf("msdosfs_lookup(): dos version of filename %s, length %ld\n",
 	    dosfilename, cnp->cn_namelen);
 #endif
 	/*
@@ -282,7 +282,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 					continue;
 				}
 #ifdef MSDOSFS_DEBUG
-				printf("msdosfs_lookup(): match blkoff %d, diroff %d\n",
+				kprintf("msdosfs_lookup(): match blkoff %d, diroff %d\n",
 				    blkoff, diroff);
 #endif
 				/*
@@ -326,9 +326,9 @@ notfound:
 	 * the pathname and the directory hasn't been removed.
 	 */
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_lookup(): op %d, refcnt %ld\n",
+	kprintf("msdosfs_lookup(): op %d, refcnt %ld\n",
 	    nameiop, dp->de_refcnt);
-	printf("               slotcount %d, slotoffset %d\n",
+	kprintf("               slotcount %d, slotoffset %d\n",
 	       slotcount, slotoffset);
 #endif
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
@@ -557,7 +557,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 	int blsize;
 
 #ifdef MSDOSFS_DEBUG
-	printf("createde(dep %p, ddep %p, depp %p, cnp %p)\n",
+	kprintf("createde(dep %p, ddep %p, depp %p, cnp %p)\n",
 	    dep, ddep, depp, cnp);
 #endif
 
@@ -722,7 +722,7 @@ dosdirempty(struct denode *dep)
 				    bcmp(dentp->deName, "..         ", 11)) {
 					brelse(bp);
 #ifdef MSDOSFS_DEBUG
-					printf("dosdirempty(): entry found %02x, %02x\n",
+					kprintf("dosdirempty(): entry found %02x, %02x\n",
 					    dentp->deName[0], dentp->deName[1]);
 #endif
 					return (0);	/* not empty */
@@ -823,7 +823,7 @@ out:;
 	if (bp)
 		brelse(bp);
 	if (error == ENOTDIR)
-		printf("doscheckpath(): .. not a directory?\n");
+		kprintf("doscheckpath(): .. not a directory?\n");
 	if (dep != NULL)
 		vput(DETOV(dep));
 	return (error);
@@ -890,7 +890,7 @@ removede(struct denode *pdep,	/* directory where the entry is removed */
 	u_long offset = pdep->de_fndoffset;
 
 #ifdef MSDOSFS_DEBUG
-	printf("removede(): filename %s, dep %p, offset %08lx\n",
+	kprintf("removede(): filename %s, dep %p, offset %08lx\n",
 	    dep->de_Name, dep, offset);
 #endif
 

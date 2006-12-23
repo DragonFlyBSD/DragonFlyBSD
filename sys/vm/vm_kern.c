@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.23 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.24 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -274,7 +274,7 @@ kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
 			  VM_PROT_ALL, VM_PROT_ALL,
 			  0);
 	if (ret != KERN_SUCCESS) {
-		printf("kmem_suballoc: bad status return of %d.\n", ret);
+		kprintf("kmem_suballoc: bad status return of %d.\n", ret);
 		panic("kmem_suballoc");
 	}
 	*max = *min + size;

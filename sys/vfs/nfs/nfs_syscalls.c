@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.27 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.28 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -352,7 +352,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	if (siz < nfs_soreserve)
 	    siz = nfs_soreserve;
 	if (siz > sb_max_adj) {
-	    printf("Warning: vfs.nfs.soreserve (%d) "
+	    kprintf("Warning: vfs.nfs.soreserve (%d) "
 		"limited to adjusted sb_max (%ld)\n",
 		nfs_soreserve, sb_max_adj);
 	    siz = sb_max_adj;
@@ -565,7 +565,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    nd->nd_procnum = NFSPROC_NOOP;
 			    nd->nd_repstat = (NFSERR_AUTHERR | AUTH_TOOWEAK);
 			    cacherep = RC_DOIT;
-			    printf("NFS request from unprivileged port (%s:%d)\n",
+			    kprintf("NFS request from unprivileged port (%s:%d)\n",
 				   inet_ntoa(sin->sin_addr), port);
 			}
 		    }
@@ -613,7 +613,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				m = m->m_next;
 			}
 			if (siz <= 0 || siz > NFS_MAXPACKET) {
-				printf("mbuf siz=%d\n",siz);
+				kprintf("mbuf siz=%d\n",siz);
 				panic("Bad nfs svc reply");
 			}
 			m = mreq;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.21 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.22 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -136,19 +136,19 @@ smbfs_name_free(u_char *name)
 	cp = name;
 	cp--;
 	if (*cp != 0xfc) {
-		printf("First byte of name entry '%s' corrupted\n", name);
+		kprintf("First byte of name entry '%s' corrupted\n", name);
 		Debugger("ditto");
 	}
 	cp -= sizeof(int);
 	nmlen = *(int*)cp;
 	slen = strlen(name) + 1;
 	if (nmlen != slen) {
-		printf("Name length mismatch: was %d, now %d name '%s'\n",
+		kprintf("Name length mismatch: was %d, now %d name '%s'\n",
 		    nmlen, slen, name);
 		Debugger("ditto");
 	}
 	if (name[nmlen] != 0xfe) {
-		printf("Last byte of name entry '%s' corrupted\n", name);
+		kprintf("Last byte of name entry '%s' corrupted\n", name);
 		Debugger("ditto");
 	}
 	kfree(cp, M_SMBNODENAME);

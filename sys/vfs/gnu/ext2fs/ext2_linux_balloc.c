@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.9 2006/05/12 07:43:56 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.10 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -185,13 +185,13 @@ ext2_free_blocks(struct mount * mp, unsigned long block,
 	struct ext2_super_block * es = sb->s_es;
 
 	if (!sb) {
-		printf ("ext2_free_blocks: nonexistent device");
+		kprintf ("ext2_free_blocks: nonexistent device");
 		return;
 	}
 	lock_super (VFSTOEXT2(mp)->um_devvp);
 	if (block < es->s_first_data_block || 
 	    (block + count) > es->s_blocks_count) {
-		printf ( "ext2_free_blocks: "
+		kprintf ( "ext2_free_blocks: "
 			    "Freeing blocks not in datazone - "
 			    "block = %lu, count = %lu", block, count);
 		unlock_super (VFSTOEXT2(mp)->um_devvp);
@@ -226,7 +226,7 @@ ext2_free_blocks(struct mount * mp, unsigned long block,
 
 	for (i = 0; i < count; i++) {
 		if (!clear_bit (bit + i, bh->b_data))
-			printf ("ext2_free_blocks: "
+			kprintf ("ext2_free_blocks: "
 				      "bit already cleared for block %lu", 
 				      block);
 		else {
@@ -273,7 +273,7 @@ ext2_new_block(struct mount * mp, unsigned long goal,
 	static int goal_hits = 0, goal_attempts = 0;
 #endif
 	if (!sb) {
-		printf ("ext2_new_block: nonexistent device");
+		kprintf ("ext2_new_block: nonexistent device");
 		return 0;
 	}
 	lock_super (VFSTOEXT2(mp)->um_devvp);
@@ -377,7 +377,7 @@ repeat:
 		j = find_first_zero_bit ((unsigned long *) bh->b_data,
 					 EXT2_BLOCKS_PER_GROUP(sb));
 	if (j >= EXT2_BLOCKS_PER_GROUP(sb)) {
-		printf ( "ext2_new_block: "
+		kprintf ( "ext2_new_block: "
 			 "Free blocks count corrupted for block group %d", i);
 		unlock_super (VFSTOEXT2(mp)->um_devvp);
 		return 0;
@@ -406,7 +406,7 @@ got_block:
 			    "%dth block = %u in group %u", j, tmp, i);
 
 	if (set_bit (j, bh->b_data)) {
-		printf ( "ext2_new_block: "
+		kprintf ( "ext2_new_block: "
 			 "bit already set for block %d", j);
 		goto repeat;
 	}
@@ -443,7 +443,7 @@ got_block:
 	}
 ****/
 	if (j >= es->s_blocks_count) {
-		printf ( "ext2_new_block: "
+		kprintf ( "ext2_new_block: "
 			    "block >= blocks count - "
 			    "block_group = %d, block=%d", i, j);
 		unlock_super (VFSTOEXT2(mp)->um_devvp);
@@ -557,43 +557,43 @@ ext2_check_blocks_bitmap(struct mount * mp)
 		     EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER) ||
 		    ext2_group_sparse(i)) {
 			if (!test_bit (0, bh->b_data))
-				printf ("ext2_check_blocks_bitmap: "
+				kprintf ("ext2_check_blocks_bitmap: "
 					    "Superblock in group %d "
 					    "is marked free", i);
 
 			for (j = 0; j < desc_blocks; j++)
 				if (!test_bit (j + 1, bh->b_data))
-					printf ("ext2_check_blocks_bitmap: "
+					kprintf ("ext2_check_blocks_bitmap: "
 					    "Descriptor block #%d in group "
 					    "%d is marked free", j, i);
 		}
 
 		if (!block_in_use (gdp->bg_block_bitmap, sb, bh->b_data))
-			printf ("ext2_check_blocks_bitmap: "
+			kprintf ("ext2_check_blocks_bitmap: "
 				    "Block bitmap for group %d is marked free",
 				    i);
 
 		if (!block_in_use (gdp->bg_inode_bitmap, sb, bh->b_data))
-			printf ("ext2_check_blocks_bitmap: "
+			kprintf ("ext2_check_blocks_bitmap: "
 				    "Inode bitmap for group %d is marked free",
 				    i);
 
 		for (j = 0; j < sb->s_itb_per_group; j++)
 			if (!block_in_use (gdp->bg_inode_table + j, sb, bh->b_data))
-				printf ("ext2_check_blocks_bitmap: "
+				kprintf ("ext2_check_blocks_bitmap: "
 					    "Block #%d of the inode table in "
 					    "group %d is marked free", j, i);
 
 		x = ext2_count_free (bh, sb->s_blocksize);
 		if (gdp->bg_free_blocks_count != x)
-			printf ("ext2_check_blocks_bitmap: "
+			kprintf ("ext2_check_blocks_bitmap: "
 				    "Wrong free blocks count for group %d, "
 				    "stored = %d, counted = %lu", i,
 				    gdp->bg_free_blocks_count, x);
 		bitmap_count += x;
 	}
 	if (es->s_free_blocks_count != bitmap_count)
-		printf ("ext2_check_blocks_bitmap: "
+		kprintf ("ext2_check_blocks_bitmap: "
 			    "Wrong free blocks count in super block, "
 			    "stored = %lu, counted = %lu",
 			    (unsigned long) es->s_free_blocks_count, bitmap_count);

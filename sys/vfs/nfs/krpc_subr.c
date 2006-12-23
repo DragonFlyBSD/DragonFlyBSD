@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.9 2006/09/05 00:55:50 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.10 2006/12/23 00:41:29 swildner Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -263,7 +263,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	} while (error == EADDRINUSE &&
 			 tport > IPPORT_RESERVED / 2);
 	if (error) {
-		printf("bind failed\n");
+		kprintf("bind failed\n");
 		goto out;
 	}
 
@@ -322,7 +322,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 		error = sosend(so, (struct sockaddr *)sa, NULL, m,
 			       NULL, 0, td);
 		if (error) {
-			printf("krpc_call: sosend: %d\n", error);
+			kprintf("krpc_call: sosend: %d\n", error);
 			goto out;
 		}
 		m = NULL;
@@ -332,7 +332,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 			timo++;
 		else {
 			saddr = ntohl(sa->sin_addr.s_addr);
-			printf("RPC timeout for server %d.%d.%d.%d\n",
+			kprintf("RPC timeout for server %d.%d.%d.%d\n",
 			       (saddr >> 24) & 255,
 			       (saddr >> 16) & 255,
 			       (saddr >> 8) & 255,
@@ -382,7 +382,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 			/* Was RPC accepted? (authorization OK) */
 			if (reply->rp_astatus != 0) {
 				error = fxdr_unsigned(u_int32_t, reply->rp_errno);
-				printf("rpc denied, error=%d\n", error);
+				kprintf("rpc denied, error=%d\n", error);
 				continue;
 			}
 
@@ -393,7 +393,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 				  error = EBADRPC;
 				  goto out;
 				}
-				printf("rpc denied, status=%d\n", error);
+				kprintf("rpc denied, status=%d\n", error);
 				continue;
 			}
 

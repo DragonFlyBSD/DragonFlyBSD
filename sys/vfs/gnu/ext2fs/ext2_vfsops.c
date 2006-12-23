@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.51 2006/10/27 04:56:33 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.52 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -306,11 +306,11 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			if ((fs->s_es->s_state & EXT2_VALID_FS) == 0 ||
 			    (fs->s_es->s_state & EXT2_ERROR_FS)) {
 				if (mp->mnt_flag & MNT_FORCE) {
-					printf(
+					kprintf(
 "WARNING: %s was not properly dismounted\n",
 					    fs->fs_fsmnt);
 				} else {
-					printf(
+					kprintf(
 "WARNING: R/W mount of %s denied.  Filesystem is not clean - run fsck\n",
 					    fs->fs_fsmnt);
 					return (EPERM);
@@ -411,7 +411,7 @@ ext2_check_descriptors(struct ext2_sb_info *sb)
                 if (gdp->bg_block_bitmap < block ||
                     gdp->bg_block_bitmap >= block + EXT2_BLOCKS_PER_GROUP(sb))
                 {
-                        printf ("ext2_check_descriptors: "
+                        kprintf ("ext2_check_descriptors: "
                                     "Block bitmap for group %d"
                                     " not in group (block %lu)!\n",
                                     i, (unsigned long) gdp->bg_block_bitmap);
@@ -420,7 +420,7 @@ ext2_check_descriptors(struct ext2_sb_info *sb)
                 if (gdp->bg_inode_bitmap < block ||
                     gdp->bg_inode_bitmap >= block + EXT2_BLOCKS_PER_GROUP(sb))
                 {
-                        printf ("ext2_check_descriptors: "
+                        kprintf ("ext2_check_descriptors: "
                                     "Inode bitmap for group %d"
                                     " not in group (block %lu)!\n",
                                     i, (unsigned long) gdp->bg_inode_bitmap);
@@ -430,7 +430,7 @@ ext2_check_descriptors(struct ext2_sb_info *sb)
                     gdp->bg_inode_table + sb->s_itb_per_group >=
                     block + EXT2_BLOCKS_PER_GROUP(sb))
                 {
-                        printf ("ext2_check_descriptors: "
+                        kprintf ("ext2_check_descriptors: "
                                     "Inode table for group %d"
                                     " not in group (block %lu)!\n",
                                     i, (unsigned long) gdp->bg_inode_table);
@@ -446,20 +446,20 @@ static int
 ext2_check_sb_compat(struct ext2_super_block *es, cdev_t dev, int ronly)
 {
 	if (es->s_magic != EXT2_SUPER_MAGIC) {
-		printf("ext2fs: %s: wrong magic number %#x (expected %#x)\n",
+		kprintf("ext2fs: %s: wrong magic number %#x (expected %#x)\n",
 		    devtoname(dev), es->s_magic, EXT2_SUPER_MAGIC);
 		return (1);
 	}
 	if (es->s_rev_level > EXT2_GOOD_OLD_REV) {
 		if (es->s_feature_incompat & ~EXT2_FEATURE_INCOMPAT_SUPP) {
-			printf(
+			kprintf(
 "WARNING: mount of %s denied due to unsupported optional features\n",
 			    devtoname(dev));
 			return (1);
 		}
 		if (!ronly &&
 		    (es->s_feature_ro_compat & ~EXT2_FEATURE_RO_COMPAT_SUPP)) {
-			printf(
+			kprintf(
 "WARNING: R/W mount of %s denied due to unsupported optional features\n",
 			    devtoname(dev));
 			return (1);
@@ -483,7 +483,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 #if 1
 #define V(v)  
 #else
-#define V(v)  printf(#v"= %d\n", fs->v);
+#define V(v)  kprintf(#v"= %d\n", fs->v);
 #endif
 
     fs->s_blocksize = EXT2_MIN_BLOCK_SIZE << es->s_log_block_size; 
@@ -541,7 +541,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 	    for (j = 0; j < i; j++)
 		brelse(fs->s_group_desc[j]);
 	    bsd_free(fs->s_group_desc, M_EXT2MNT);
-	    printf("EXT2-fs: unable to read group descriptors (%d)\n", error);
+	    kprintf("EXT2-fs: unable to read group descriptors (%d)\n", error);
 	    return EIO;
 	}
 	/* Set the B_LOCKED flag on the buffer, then brelse() it */
@@ -551,7 +551,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 	    for (j = 0; j < db_count; j++)
 		    ULCK_BUF(fs->s_group_desc[j])
 	    bsd_free(fs->s_group_desc, M_EXT2MNT);
-	    printf("EXT2-fs: (ext2_check_descriptors failure) "
+	    kprintf("EXT2-fs: (ext2_check_descriptors failure) "
 		   "unable to read group descriptors\n");
 	    return EIO;
     }
@@ -750,10 +750,10 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	if ((es->s_state & EXT2_VALID_FS) == 0 ||
 	    (es->s_state & EXT2_ERROR_FS)) {
 		if (ronly || (mp->mnt_flag & MNT_FORCE)) {
-			printf(
+			kprintf(
 "WARNING: Filesystem was not properly dismounted\n");
 		} else {
-			printf(
+			kprintf(
 "WARNING: R/W mount denied.  Filesystem is not clean - run fsck\n");
 			error = EPERM;
 			goto out;
@@ -987,7 +987,7 @@ ext2_sync(struct mount *mp, int waitfor)
 
 	fs = ump->um_e2fs;
 	if (fs->s_dirt != 0 && fs->s_rd_only != 0) {		/* XXX */
-		printf("fs = %s\n", fs->fs_fsmnt);
+		kprintf("fs = %s\n", fs->fs_fsmnt);
 		panic("ext2_sync: rofs mod");
 	}
 
@@ -1126,7 +1126,7 @@ restart:
 
 	/* Read in the disk contents for the inode, copy into the inode. */
 #if 0
-printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
+kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 #endif
 	error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
 		      (int)fs->s_blocksize, &bp);
@@ -1293,7 +1293,7 @@ ext2_sbupdate(struct ext2mount *mp, int waitfor)
 	struct buf *bp;
 	int error = 0;
 /*
-printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
+kprintf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
 */
 	bp = getblk(mp->um_devvp, SBOFF, SBSIZE, 0, 0);
 	bcopy((caddr_t)es, bp->b_data, (u_int)sizeof(struct ext2_super_block));

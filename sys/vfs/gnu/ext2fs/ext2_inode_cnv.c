@@ -20,7 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.6 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.7 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*
@@ -45,27 +45,27 @@ void
 ext2_print_dinode(struct ext2_dinode *di)
 {
 	int i;
-	printf( /* "Inode: %5d" */
+	kprintf( /* "Inode: %5d" */
 		" Type: %10s Mode: 0x%o Flags: 0x%x  Version: %d\n",
 		"n/a", di->di_mode, di->di_flags, di->di_gen);
-	printf( "User: %5lu Group: %5lu  Size: %lu\n",
+	kprintf( "User: %5lu Group: %5lu  Size: %lu\n",
 		(unsigned long)di->di_uid, (unsigned long)di->di_gid,
 		(unsigned long)di->di_size);
-	printf( "Links: %3d Blockcount: %d\n",
+	kprintf( "Links: %3d Blockcount: %d\n",
 		di->di_nlink, di->di_blocks);
-	printf( "ctime: 0x%x", di->di_ctime); 
-	printf( "atime: 0x%x", di->di_atime); 
-	printf( "mtime: 0x%x", di->di_mtime); 
-	printf( "BLOCKS: ");
+	kprintf( "ctime: 0x%x", di->di_ctime); 
+	kprintf( "atime: 0x%x", di->di_atime); 
+	kprintf( "mtime: 0x%x", di->di_mtime); 
+	kprintf( "BLOCKS: ");
 	for(i=0; i < (di->di_blocks <= 24 ? ((di->di_blocks+1)/2): 12); i++)
-		printf("%d ", di->di_db[i]);
-	printf("\n");
+		kprintf("%d ", di->di_db[i]);
+	kprintf("\n");
 }
 
 void
 ext2_print_inode(struct inode *in)
 {
-	printf( "Inode: %"PRId64, in->i_number);
+	kprintf( "Inode: %"PRId64, in->i_number);
 	ext2_print_dinode(&in->i_din);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.27 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.28 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include "opt_ufs.h"
@@ -603,7 +603,7 @@ ufs_dirbad(struct inode *ip, doff_t offset, char *how)
 	struct mount *mp;
 
 	mp = ITOV(ip)->v_mount;
-	(void)printf("%s: bad dir ino %lu at offset %ld: %s\n",
+	(void)kprintf("%s: bad dir ino %lu at offset %ld: %s\n",
 	    mp->mnt_stat.f_mntfromname, (u_long)ip->i_number, (long)offset, how);
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		panic("ufs_dirbad: bad dir");
@@ -635,7 +635,7 @@ ufs_dirbadentry(struct vnode *dp, struct direct *ep, int entryoffsetinblock)
 	    ep->d_reclen > DIRBLKSIZ - (entryoffsetinblock & (DIRBLKSIZ - 1)) ||
 	    ep->d_reclen < DIRSIZ(OFSFMT(dp), ep) || namlen > MAXNAMLEN) {
 		/*return (1); */
-		printf("First bad\n");
+		kprintf("First bad\n");
 		goto bad;
 	}
 	if (ep->d_ino == 0)
@@ -643,7 +643,7 @@ ufs_dirbadentry(struct vnode *dp, struct direct *ep, int entryoffsetinblock)
 	for (i = 0; i < namlen; i++)
 		if (ep->d_name[i] == '\0') {
 			/*return (1); */
-			printf("Second bad\n");
+			kprintf("Second bad\n");
 			goto bad;
 	}
 	if (ep->d_name[i])
@@ -1166,7 +1166,7 @@ ufs_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 
 out:
 	if (error == ENOTDIR)
-		printf("checkpath: .. not a directory\n");
+		kprintf("checkpath: .. not a directory\n");
 	if (vp != NULL)
 		vput(vp);
 	return (error);

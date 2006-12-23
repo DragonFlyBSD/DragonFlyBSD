@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.57 2006/09/19 16:06:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.58 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -908,7 +908,7 @@ abortit:
 	 * not call us in that case.  Temporarily just warn if they do.
 	 */
 	if (fvp == tvp) {
-		printf("ufs_rename: fvp == tvp (can't happen)\n");
+		kprintf("ufs_rename: fvp == tvp (can't happen)\n");
 		error = 0;
 		goto abortit;
 	}
@@ -1865,13 +1865,13 @@ ufs_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
 
-	printf("tag VT_UFS, ino %lu, on dev %s (%d, %d)",
+	kprintf("tag VT_UFS, ino %lu, on dev %s (%d, %d)",
 	    (u_long)ip->i_number, devtoname(ip->i_dev), major(ip->i_dev),
 	    minor(ip->i_dev));
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);
 	lockmgr_printinfo(&vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

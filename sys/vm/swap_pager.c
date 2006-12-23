@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.25 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.26 2006/12/23 00:41:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -255,7 +255,7 @@ swp_sizecheck(void)
 {
 	if (vm_swap_size < nswap_lowat) {
 		if (swap_pager_almost_full == 0) {
-			printf("swap_pager: out of swap space\n");
+			kprintf("swap_pager: out of swap space\n");
 			swap_pager_almost_full = 1;
 		}
 	} else {
@@ -365,7 +365,7 @@ swap_pager_swap_init(void)
 	if (swap_zone == NULL)
 		panic("swap_pager_swap_init: swap_zone == NULL");
 	if (n2 != n)
-		printf("Swap zone entries reduced from %d to %d.\n", n2, n);
+		kprintf("Swap zone entries reduced from %d to %d.\n", n2, n);
 	n2 = n;
 
 	/*
@@ -516,7 +516,7 @@ swp_pager_getswapspace(int npages)
 
 	if ((blk = blist_alloc(swapblist, npages)) == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
-			printf("swap_pager_getswapspace: failed\n");
+			kprintf("swap_pager_getswapspace: failed\n");
 			swap_pager_full = 2;
 			swap_pager_almost_full = 1;
 		}
@@ -872,7 +872,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR | B_INVAL;
 		biodone(bio);
-		printf("swap_pager_strategy: bp %p offset %lld size %d, not page bounded\n", bp, bio->bio_offset, (int)bp->b_bcount);
+		kprintf("swap_pager_strategy: bp %p offset %lld size %d, not page bounded\n", bp, bio->bio_offset, (int)bp->b_bcount);
 		return;
 	}
 
@@ -1303,7 +1303,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
 		mycpu->gd_cnt.v_intrans++;
 		if (tsleep(mreq, 0, "swread", hz*20)) {
-			printf(
+			kprintf(
 			    "swap_pager: indefinite wait buffer: "
 				" offset: %lld, size: %d\n",
 			    bio->bio_offset, bp->b_bcount
@@ -1603,7 +1603,7 @@ swp_pager_async_iodone(struct bio *bio)
 	 * report error
 	 */
 	if (bp->b_flags & B_ERROR) {
-		printf(
+		kprintf(
 		    "swap_pager: I/O error - %s failed; offset %lld,"
 			"size %ld, error %d\n",
 		    ((bp->b_cmd == BUF_CMD_READ) ? "pagein" : "pageout"),

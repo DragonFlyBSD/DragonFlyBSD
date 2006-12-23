@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.26 2006/09/13 22:25:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.27 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -299,7 +299,7 @@ struct vmresident {
 #ifdef MAP_LOCK_DIAGNOSTIC
 #define	vm_map_lock(map) \
 	do { \
-		printf ("locking map LK_EXCLUSIVE: 0x%x\n", map); \
+		kprintf ("locking map LK_EXCLUSIVE: 0x%x\n", map); \
 		if (lockmgr(&(map)->lock, LK_EXCLUSIVE) != 0) { \
 			panic("vm_map_lock: failed to get lock"); \
 		} \
@@ -325,17 +325,17 @@ struct vmresident {
 #if defined(MAP_LOCK_DIAGNOSTIC)
 #define	vm_map_unlock(map) \
 	do { \
-		printf ("locking map LK_RELEASE: 0x%x\n", map); \
+		kprintf ("locking map LK_RELEASE: 0x%x\n", map); \
 		lockmgr(&(map)->lock, LK_RELEASE); \
 	} while (0)
 #define	vm_map_lock_read(map) \
 	do { \
-		printf ("locking map LK_SHARED: 0x%x\n", map); \
+		kprintf ("locking map LK_SHARED: 0x%x\n", map); \
 		lockmgr(&(map)->lock, LK_SHARED); \
 	} while (0)
 #define	vm_map_unlock_read(map) \
 	do { \
-		printf ("locking map LK_RELEASE: 0x%x\n", map); \
+		kprintf ("locking map LK_RELEASE: 0x%x\n", map); \
 		lockmgr(&(map)->lock, LK_RELEASE); \
 	} while (0)
 #else
@@ -351,7 +351,7 @@ static __inline__ int
 vm_map_lock_upgrade(vm_map_t map) {
 	int error;
 #if defined(MAP_LOCK_DIAGNOSTIC)
-	printf("locking map LK_EXCLUPGRADE: 0x%x\n", map); 
+	kprintf("locking map LK_EXCLUPGRADE: 0x%x\n", map); 
 #endif
 	error = lockmgr(&map->lock, LK_EXCLUPGRADE);
 	if (error == 0)
@@ -362,7 +362,7 @@ vm_map_lock_upgrade(vm_map_t map) {
 #if defined(MAP_LOCK_DIAGNOSTIC)
 #define vm_map_lock_downgrade(map) \
 	do { \
-		printf ("locking map LK_DOWNGRADE: 0x%x\n", map); \
+		kprintf ("locking map LK_DOWNGRADE: 0x%x\n", map); \
 		lockmgr(&(map)->lock, LK_DOWNGRADE); \
 	} while (0)
 #else

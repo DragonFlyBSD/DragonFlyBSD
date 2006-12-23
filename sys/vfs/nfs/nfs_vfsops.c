@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.48 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.49 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -468,12 +468,12 @@ nfs_mountroot(struct mount *mp)
 		nfs_convert_diskless();
 
 #define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
-	printf("nfs_mountroot: interface %s ip %s",
+	kprintf("nfs_mountroot: interface %s ip %s",
 		nd->myif.ifra_name, 
 		inet_ntoa(SINP(&nd->myif.ifra_addr)->sin_addr));
-	printf(" bcast %s", 
+	kprintf(" bcast %s", 
 		inet_ntoa(SINP(&nd->myif.ifra_broadaddr)->sin_addr));
-	printf(" mask %s\n", 
+	kprintf(" mask %s\n", 
 		inet_ntoa(SINP(&nd->myif.ifra_mask)->sin_addr));
 #undef SINP
 
@@ -512,14 +512,14 @@ nfs_mountroot(struct mount *mp)
 		sin = mask;
 		sin.sin_family = AF_INET;
 		sin.sin_len = sizeof(sin);
-		printf("nfs_mountroot: gateway %s\n",
+		kprintf("nfs_mountroot: gateway %s\n",
 			inet_ntoa(nd->mygateway.sin_addr));
 		error = rtrequest_global(RTM_ADD, (struct sockaddr *)&sin,
 					(struct sockaddr *)&nd->mygateway,
 					(struct sockaddr *)&mask,
 					RTF_UP | RTF_GATEWAY);
 		if (error)
-			printf("nfs_mountroot: unable to set gateway, error %d, continuing anyway\n", error);
+			kprintf("nfs_mountroot: unable to set gateway, error %d, continuing anyway\n", error);
 	}
 
 	/*
@@ -531,7 +531,7 @@ nfs_mountroot(struct mount *mp)
 	ksnprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
 		(l >> 24) & 0xff, (l >> 16) & 0xff,
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
-	printf("NFS ROOT: %s\n",buf);
+	kprintf("NFS ROOT: %s\n",buf);
 	if ((error = nfs_mountdiskless(buf, "/", MNT_RDONLY,
 	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
 		if (swap_mp) {
@@ -558,7 +558,7 @@ nfs_mountroot(struct mount *mp)
 		ksnprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
 			(l >> 24) & 0xff, (l >> 16) & 0xff,
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
-		printf("NFS SWAP: %s\n",buf);
+		kprintf("NFS SWAP: %s\n",buf);
 		if ((error = nfs_mountdiskless(buf, "/swap", 0,
 		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0) {
 			crit_exit();
@@ -614,7 +614,7 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 
 	if (mp == NULL) {
 		if ((error = vfs_rootmountalloc("nfs", path, &mp)) != 0) {
-			printf("nfs_mountroot: NFS not configured");
+			kprintf("nfs_mountroot: NFS not configured");
 			return (error);
 		}
 		didalloc = 1;
@@ -625,14 +625,14 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 
 #if defined(BOOTP) || defined(NFS_ROOT)
 	if (args->fhsize == 0) {
-		printf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
+		kprintf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
 		args->fhsize = 0;
 		error = md_mount(sin, which, args->fh, &args->fhsize, args, td);
 		if (error) {
-			printf("failed.\n");
+			kprintf("failed.\n");
 			goto haderror;
 		}
-		printf("success!\n");
+		kprintf("success!\n");
 	}
 #endif
 
@@ -640,7 +640,7 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 #if defined(BOOTP) || defined(NFS_ROOT)
 haderror:
 #endif
-		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
+		kprintf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
 		if (didalloc)
@@ -780,7 +780,7 @@ nfs_decode_args(nmp, argp)
 		nfs_safedisconnect(nmp);
 		if (nmp->nm_sotype == SOCK_DGRAM)
 			while (nfs_connect(nmp, (struct nfsreq *)0)) {
-				printf("nfs_args: retrying connect\n");
+				kprintf("nfs_args: retrying connect\n");
 				(void) tsleep((caddr_t)&lbolt, 0, "nfscon", 0);
 			}
 	}

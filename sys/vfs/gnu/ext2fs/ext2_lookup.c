@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.25 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.26 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -165,7 +165,7 @@ ext2_readdir(struct vop_readdir_args *ap)
 		count = MAXBSIZE;
 
 #ifdef EXT2FS_DEBUG
-	printf("ext2_readdir: uio_offset = %lld, uio_resid = %d, count = %d\n", 
+	kprintf("ext2_readdir: uio_offset = %lld, uio_resid = %d, count = %d\n", 
 	    uio->uio_offset, uio->uio_resid, count);
 #endif
 
@@ -677,7 +677,7 @@ ext2_dirbad(struct inode *ip, doff_t offset, char *how)
 	struct mount *mp;
 
 	mp = ITOV(ip)->v_mount;
-	printf("%s: bad dir ino %lu at offset %ld: %s\n",
+	kprintf("%s: bad dir ino %lu at offset %ld: %s\n",
 	       mp->mnt_stat.f_mntfromname, (u_long)ip->i_number,
 	       (long)offset, how);
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
@@ -717,8 +717,8 @@ ext2_dirbadentry(struct vnode *dp, struct ext2_dir_entry_2 *de,
 	*/
 
         if (error_msg != NULL) {
-                printf("bad directory entry: %s\n", error_msg);
-                printf("offset=%d, inode=%lu, rec_len=%u, name_len=%u\n",
+                kprintf("bad directory entry: %s\n", error_msg);
+                kprintf("offset=%d, inode=%lu, rec_len=%u, name_len=%u\n",
 			entryoffsetinblock, (unsigned long)de->inode,
 			de->rec_len, de->name_len);
         }
@@ -1040,7 +1040,7 @@ ext2_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 
 out:
 	if (error == ENOTDIR)
-		printf("checkpath: .. not a directory\n");
+		kprintf("checkpath: .. not a directory\n");
 	if (vp != NULL)
 		vput(vp);
 	return (error);

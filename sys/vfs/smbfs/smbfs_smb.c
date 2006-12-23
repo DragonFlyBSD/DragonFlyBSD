@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.8 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.9 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -997,11 +997,11 @@ smbfs_smb_trans2find2(struct smbfs_fctx *ctx)
 	ctx->f_rnameofs = tw;
 	mdp = &t2p->t2_rdata;
 	if (mdp->md_top == NULL) {
-		printf("bug: ecnt = %d, but data is NULL (please report)\n", ctx->f_ecnt);
+		kprintf("bug: ecnt = %d, but data is NULL (please report)\n", ctx->f_ecnt);
 		return ENOENT;
 	}
 	if (mdp->md_top->m_len == 0) {
-		printf("bug: ecnt = %d, but m_len = 0 and m_next = %p (please report)\n", ctx->f_ecnt,mbp->mb_top->m_next);
+		kprintf("bug: ecnt = %d, but m_len = 0 and m_next = %p (please report)\n", ctx->f_ecnt,mbp->mb_top->m_next);
 		return ENOENT;
 	}
 	ctx->f_eofs = 0;
@@ -1256,7 +1256,7 @@ smbfs_smb_lookup(struct smbnode *dnp, const char *name, int nmlen,
 	} else if (nmlen == 2 && name[0] == '.' && name[1] == '.') {
 		error = smbfs_smb_lookup(VTOSMB(dnp->n_parent), NULL, 0, fap,
 		    scred);
-		printf("%s: knows NOTHING about '..'\n", __func__);
+		kprintf("%s: knows NOTHING about '..'\n", __func__);
 		return error;
 	}
 	error = smbfs_findopen(dnp, name, nmlen,

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.35 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.36 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*
@@ -533,7 +533,7 @@ fdesc_reclaim(struct vop_reclaim_args *ap)
 static int
 fdesc_print(struct vop_print_args *ap)
 {
-	printf("tag VT_NON, fdesc vnode\n");
+	kprintf("tag VT_NON, fdesc vnode\n");
 	return (0);
 }
 

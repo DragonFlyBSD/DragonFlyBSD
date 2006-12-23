@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.22 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.23 2006/12/23 00:41:30 swildner Exp $
  *
  */
 #include <sys/param.h>
@@ -170,7 +170,7 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 	int error, biosize;
 
 	if (vp->v_type != VREG && vp->v_type != VDIR) {
-		printf("%s: vn types other than VREG or VDIR are unsupported !\n",__func__);
+		kprintf("%s: vn types other than VREG or VDIR are unsupported !\n",__func__);
 		return EIO;
 	}
 	if (uiop->uio_resid == 0) return 0;
@@ -212,7 +212,7 @@ nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
 	int error = 0;
 
 	if (vp->v_type != VREG) {
-		printf("%s: vn types other than VREG unsupported !\n",__func__);
+		kprintf("%s: vn types other than VREG unsupported !\n",__func__);
 		return EIO;
 	}
 	NCPVNDEBUG("ofs=%d,resid=%d\n",(int)uiop->uio_offset, uiop->uio_resid);
@@ -309,7 +309,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		break;
 */
 	    default:
-		printf("nwfs_doio:  type %x unexpected\n",vp->v_type);
+		kprintf("nwfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
 	    };
 	    if (error) {
@@ -408,7 +408,7 @@ nwfs_getpages(struct vop_getpages_args *ap)
 	count = ap->a_count;
 
 	if (vp->v_object == NULL) {
-		printf("nwfs_getpages: called with non-merged cache vnode??\n");
+		kprintf("nwfs_getpages: called with non-merged cache vnode??\n");
 		return VM_PAGER_ERROR;
 	}
 
@@ -433,7 +433,7 @@ nwfs_getpages(struct vop_getpages_args *ap)
 	relpbuf(bp, &nwfs_pbuf_freecnt);
 
 	if (error && (uio.uio_resid == count)) {
-		printf("nwfs_getpages: error %d\n",error);
+		kprintf("nwfs_getpages: error %d\n",error);
 		for (i = 0; i < npages; i++) {
 			if (ap->a_reqpage != i)
 				vnode_pager_freepage(pages[i]);

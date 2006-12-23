@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.18 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.19 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -471,7 +471,7 @@ contigmalloc_map(
 
 	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
 	if (index < 0) {
-		printf("contigmalloc_map: failed in index < 0 case!\n");
+		kprintf("contigmalloc_map: failed in index < 0 case!\n");
 		return NULL;
 	}
 

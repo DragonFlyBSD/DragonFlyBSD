@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.38 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.39 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 	struct hpfsnode *hp = VTOHP(vp);
 	int error;
 
-	printf("hpfs_ioctl(0x%x, 0x%lx, 0x%p, 0x%x): ",
+	kprintf("hpfs_ioctl(0x%x, 0x%lx, 0x%p, 0x%x): ",
 		hp->h_no, ap->a_command, ap->a_data, ap->a_fflag);
 
 	switch (ap->a_command) {
@@ -168,7 +168,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 
 			while (passed < hp->h_fn.fn_ealen) {
 
-				printf("EAname: %s\n", EA_NAME(eap));
+				kprintf("EAname: %s\n", EA_NAME(eap));
 
 				eanum++;
 				passed += sizeof(struct ea) +
@@ -181,7 +181,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 			error = ENOENT;
 		}
 
-		printf("%lu eas\n", eanum);
+		kprintf("%lu eas\n", eanum);
 
 		*(u_long *)ap->a_data = eanum;
 
@@ -192,7 +192,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 		u_long passed;
 		struct ea *eap;
 
-		printf("EA%ld\n", *(u_long *)ap->a_data);
+		kprintf("EA%ld\n", *(u_long *)ap->a_data);
 
 		eanum = 0;
 		if (hp->h_fn.fn_ealen > 0) {
@@ -201,7 +201,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 
 			error = ENOENT;
 			while (passed < hp->h_fn.fn_ealen) {
-				printf("EAname: %s\n", EA_NAME(eap));
+				kprintf("EAname: %s\n", EA_NAME(eap));
 
 				if (eanum == *(u_long *)ap->a_data) {
 					*(u_long *)ap->a_data =
@@ -231,7 +231,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 		struct ea *eap;
 
 		rdeap = (struct hpfs_rdea *)ap->a_data;
-		printf("EA%ld\n", rdeap->ea_no);
+		kprintf("EA%ld\n", rdeap->ea_no);
 
 		eanum = 0;
 		if (hp->h_fn.fn_ealen > 0) {
@@ -240,7 +240,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 
 			error = ENOENT;
 			while (passed < hp->h_fn.fn_ealen) {
-				printf("EAname: %s\n", EA_NAME(eap));
+				kprintf("EAname: %s\n", EA_NAME(eap));
 
 				if (eanum == rdeap->ea_no) {
 					rdeap->ea_sz = eap->ea_namelen + 1 +
@@ -388,7 +388,7 @@ hpfs_write(struct vop_write_args *ap)
 	if (uio->uio_offset + uio->uio_resid > hp->h_fn.fn_size) {
 		error = hpfs_extend (hp, uio->uio_offset + uio->uio_resid);
 		if (error) {
-			printf("hpfs_write: hpfs_extend FAILED %d\n", error);
+			kprintf("hpfs_write: hpfs_extend FAILED %d\n", error);
 			return (error);
 		}
 	}
@@ -513,19 +513,19 @@ hpfs_setattr(struct vop_setattr_args *ap)
 
 	/* Can't change flags XXX Could be implemented */
 	if (vap->va_flags != VNOVAL) {
-		printf("hpfs_setattr: FLAGS CANNOT BE SET\n");
+		kprintf("hpfs_setattr: FLAGS CANNOT BE SET\n");
 		return (EINVAL);
 	}
 
 	/* Can't change uid/gid XXX Could be implemented */
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
-		printf("hpfs_setattr: UID/GID CANNOT BE SET\n");
+		kprintf("hpfs_setattr: UID/GID CANNOT BE SET\n");
 		return (EINVAL);
 	}
 
 	/* Can't change mode XXX Could be implemented */
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		printf("hpfs_setattr: MODE CANNOT BE SET\n");
+		kprintf("hpfs_setattr: MODE CANNOT BE SET\n");
 		return (EINVAL);
 	}
 
@@ -555,7 +555,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 				return (EROFS);
 			break;
 		default:
-			printf("hpfs_setattr: WRONG v_type\n");
+			kprintf("hpfs_setattr: WRONG v_type\n");
 			return (EINVAL);
 		}
 
@@ -663,9 +663,9 @@ hpfs_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
 
-	printf("tag VT_HPFS, ino 0x%x",hp->h_no);
+	kprintf("tag VT_HPFS, ino 0x%x",hp->h_no);
 	lockmgr_printinfo(&vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 
@@ -698,7 +698,7 @@ hpfs_strategy(struct vop_strategy_args *ap)
 		error = VOP_BMAP(vp, bio->bio_offset, NULL, &nbio->bio_offset,
 				 NULL, NULL);
 		if (error) {
-			printf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);
+			kprintf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
 			/* I/O was never started on nbio, must biodone(bio) */
@@ -889,7 +889,7 @@ dive:
 
 	dp = (struct dirblk *) bp->b_data;
 	if (dp->d_magic != D_MAGIC) {
-		printf("hpfs_readdir: MAGIC DOESN'T MATCH\n");
+		kprintf("hpfs_readdir: MAGIC DOESN'T MATCH\n");
 		brelse(bp);
 		error = EINVAL;
 		goto done;
@@ -929,7 +929,7 @@ dive:
 
 			dep = (hpfsdirent_t *)((caddr_t)dep + dep->de_reclen);
 		} else {
-			printf("hpfs_readdir: ERROR! oLSN not found\n");
+			kprintf("hpfs_readdir: ERROR! oLSN not found\n");
 			brelse(bp);
 			error = EINVAL;
 			goto done;
@@ -1048,7 +1048,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		lockparent, wantparent));
 
 	if (nameiop != NAMEI_CREATE && nameiop != NAMEI_DELETE && nameiop != NAMEI_LOOKUP) {
-		printf("hpfs_lookup: LOOKUP, DELETE and CREATE are only supported\n");
+		kprintf("hpfs_lookup: LOOKUP, DELETE and CREATE are only supported\n");
 		return (EOPNOTSUPP);
 	}
 
@@ -1121,7 +1121,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 
 		error = VFS_VGET(hpmp->hpm_mp, dep->de_fnode, ap->a_vpp);
 		if (error) {
-			printf("hpfs_lookup: VFS_VGET FAILED %d\n", error);
+			kprintf("hpfs_lookup: VFS_VGET FAILED %d\n", error);
 			brelse(bp);
 			return(error);
 		}

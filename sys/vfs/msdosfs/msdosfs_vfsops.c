@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.42 2006/10/27 04:56:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.43 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -263,7 +263,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = mountmsdosfs(devvp, mp, &args);
-#ifdef MSDOSFS_DEBUG		/* only needed for the printf below */
+#ifdef MSDOSFS_DEBUG		/* only needed for the kprintf below */
 		pmp = VFSTOMSDOSFS(mp);
 #endif
 	} else {
@@ -287,7 +287,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	msdosfs_statfs(mp, &mp->mnt_stat, cred);
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n", mp, pmp, pmp->pm_inusemap);
+	kprintf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n", mp, pmp, pmp->pm_inusemap);
 #endif
 	return (0);
 }
@@ -442,7 +442,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		    || pmp->pm_FATsecs
 		    || getushort(b710->bpbFSVers)) {
 			error = EINVAL;
-			printf("mountmsdosfs(): bad FAT32 filesystem\n");
+			kprintf("mountmsdosfs(): bad FAT32 filesystem\n");
 			goto error_exit;
 		}
 		pmp->pm_fatmask = FAT32_MASK;
@@ -533,7 +533,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 
 	clusters = (pmp->pm_fatsize / pmp->pm_fatmult) * pmp->pm_fatdiv;
 	if (pmp->pm_maxcluster >= clusters) {
-		printf("Warning: number of clusters (%ld) exceeds FAT "
+		kprintf("Warning: number of clusters (%ld) exceeds FAT "
 		    "capacity (%ld)\n", pmp->pm_maxcluster + 1, clusters);
 		pmp->pm_maxcluster = clusters - 1;
 	}
@@ -596,7 +596,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * Check and validate (or perhaps invalidate?) the fsinfo structure?
 	 */
 	if (pmp->pm_fsinfo && pmp->pm_nxtfree > pmp->pm_maxcluster) {
-		printf(
+		kprintf(
 		"Next free cluster in FSInfo (%lu) exceeds maxcluster (%lu)\n",
 		    pmp->pm_nxtfree, pmp->pm_maxcluster);
 		error = EINVAL;
@@ -683,18 +683,18 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 	{
 		struct vnode *vp = pmp->pm_devvp;
 
-		printf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
-		printf("flag %08lx, usecount %d, writecount %d, holdcnt %ld\n",
+		kprintf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
+		kprintf("flag %08lx, usecount %d, writecount %d, holdcnt %ld\n",
 		    vp->v_flag, vp->v_usecount, vp->v_writecount, vp->v_holdcnt);
-		printf("mount %p, op %p\n", vp->v_mount, vp->v_op);
-		printf("freef %p, freeb %p, mount %p\n",
+		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_op);
+		kprintf("freef %p, freeb %p, mount %p\n",
 		    TAILQ_NEXT(vp, v_freelist), TAILQ_PREV(vp, v_freelist),
 		    vp->v_mount);
-		printf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
+		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
 		    RB_EMPTY(&vp->v_rbclean_tree),
 		    RB_EMPTY(&vp->v_rbdirty_tree),
 		    vp->v_track_write.bk_active, vp->v_type);
-		printf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
+		kprintf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
 		    ((u_int *)vp->v_data)[0],
 		    ((u_int *)vp->v_data)[1]);
@@ -718,7 +718,7 @@ msdosfs_root(struct mount *mp, struct vnode **vpp)
 	int error;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_root(); mp %p, pmp %p\n", mp, pmp);
+	kprintf("msdosfs_root(); mp %p, pmp %p\n", mp, pmp);
 #endif
 	error = deget(pmp, MSDOSFSROOT, MSDOSFSROOT_OFS, &ndep);
 	if (error)

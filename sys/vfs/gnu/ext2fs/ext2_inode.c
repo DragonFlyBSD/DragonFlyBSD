@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.19 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.20 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -134,7 +134,7 @@ ext2_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	int aflags, error, allerror;
 	off_t osize;
 /*
-printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
+kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 */	/* 
 	 * negative file sizes will totally break the code below and
 	 * are not meaningful anyways.
@@ -538,7 +538,7 @@ ext2_reclaim(struct vop_reclaim_args *ap)
 	}
 #ifdef INVARIANTS
 	if (ip && (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))) {
-		printf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
+		kprintf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
 		ip->i_flag |= IN_MODIFIED;
 		EXT2_UPDATE(vp, 0);
 	}

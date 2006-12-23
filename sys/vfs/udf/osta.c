@@ -4,7 +4,7 @@
  * formatting purposes.  Typos/bugs have been fixed.
  *
  * $FreeBSD: src/sys/fs/udf/osta.c,v 1.3 2003/11/05 06:55:23 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/osta.c,v 1.2 2004/05/09 22:15:00 cpressey Exp $
+ * $DragonFly: src/sys/vfs/udf/osta.c,v 1.3 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include <vfs/udf/osta.h>
@@ -245,7 +245,7 @@ main(void)
 	unsigned short x;
 
 	x = cksum(bytes, sizeof bytes);
-	printf("checksum: calculated=%4.4x, correct=%4.4x\en", x, 0x3299);
+	kprintf("checksum: calculated=%4.4x, correct=%4.4x\en", x, 0x3299);
 	exit(0);
 }
 #endif

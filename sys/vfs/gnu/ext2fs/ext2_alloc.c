@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.12 2006/09/03 18:52:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.13 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -113,7 +113,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 	fs = ip->i_e2fs;
 #if DIAGNOSTIC
 	if ((u_int)size > fs->s_blocksize || blkoff(fs, size) != 0) {
-		printf("dev = %s, bsize = %lu, size = %d, fs = %s\n",
+		kprintf("dev = %s, bsize = %lu, size = %d, fs = %s\n",
 		    devtoname(ip->i_dev), fs->s_blocksize, size, fs->fs_fsmnt);
 		panic("ext2_alloc: bad size");
 	}
@@ -218,7 +218,7 @@ int
 ext2_reallocblks(struct vop_reallocblks_args *ap)
 {
 #ifndef FANCY_REALLOC
-/* printf("ext2_reallocblks not implemented\n"); */
+/* kprintf("ext2_reallocblks not implemented\n"); */
 return ENOSPC;
 #else
 
@@ -421,7 +421,7 @@ ext2_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 	if (ip->i_gen == 0 || ++ip->i_gen == 0)
 		ip->i_gen = krandom() / 2 + 1;
 /*
-printf("ext2_valloc: allocated inode %d\n", ino);
+kprintf("ext2_valloc: allocated inode %d\n", ino);
 */
 	return (0);
 noinodes:

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.43 2006/09/05 00:55:50 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.44 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -142,7 +142,7 @@ msdosfs_create(struct vop_old_create_args *ap)
 	int error;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_create(cnp %p, vap %p\n", cnp, ap->a_vap);
+	kprintf("msdosfs_create(cnp %p, vap %p\n", cnp, ap->a_vap);
 #endif
 
 	/*
@@ -394,7 +394,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	int error = 0;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_setattr(): vp %p, vap %p, cred %p, p %p\n",
+	kprintf("msdosfs_setattr(): vp %p, vap %p, cred %p, p %p\n",
 	    ap->a_vp, vap, cred, ap->a_td);
 #endif
 
@@ -406,12 +406,12 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	    (vap->va_blocksize != VNOVAL) || (vap->va_rdev != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 #ifdef MSDOSFS_DEBUG
-		printf("msdosfs_setattr(): returning EINVAL\n");
-		printf("    va_type %d, va_nlink %x, va_fsid %lx, va_fileid %lx\n",
+		kprintf("msdosfs_setattr(): returning EINVAL\n");
+		kprintf("    va_type %d, va_nlink %x, va_fsid %lx, va_fileid %lx\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
-		printf("    va_blocksize %lx, va_rdev %x, va_bytes %qx, va_gen %lx\n",
+		kprintf("    va_blocksize %lx, va_rdev %x, va_bytes %qx, va_gen %lx\n",
 		    vap->va_blocksize, vap->va_rdev, vap->va_bytes, vap->va_gen);
-		printf("    va_uid %x, va_gid %x\n",
+		kprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
 #endif
 		return (EINVAL);
@@ -668,9 +668,9 @@ msdosfs_write(struct vop_write_args *ap)
 	struct proc *p = (td ? td->td_proc : NULL);
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
+	kprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
 	    vp, uio, ioflag, cred);
-	printf("msdosfs_write(): diroff %lu, dirclust %lu, startcluster %lu\n",
+	kprintf("msdosfs_write(): diroff %lu, dirclust %lu, startcluster %lu\n",
 	    dep->de_diroffset, dep->de_dirclust, dep->de_StartCluster);
 #endif
 
@@ -895,7 +895,7 @@ msdosfs_remove(struct vop_old_remove_args *ap)
 	else
 		error = removede(ddep, dep);
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_remove(), dep %p, v_usecount %d\n", dep, ap->a_vp->v_usecount);
+	kprintf("msdosfs_remove(), dep %p, v_usecount %d\n", dep, ap->a_vp->v_usecount);
 #endif
 	return (error);
 }
@@ -1578,7 +1578,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	pmp = dep->de_pmp;
 
 #ifdef MSDOSFS_DEBUG
-	printf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
+	kprintf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
 	    ap->a_vp, uio, ap->a_cred, ap->a_eofflag);
 #endif
 
@@ -1627,7 +1627,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	if (dep->de_StartCluster == MSDOSFSROOT
 	    || (FAT32(pmp) && dep->de_StartCluster == pmp->pm_rootdirblk)) {
 #if 0
-		printf("msdosfs_readdir(): going after . or .. in root dir, offset %d\n",
+		kprintf("msdosfs_readdir(): going after . or .. in root dir, offset %d\n",
 		    offset);
 #endif
 		bias = 2 * sizeof(struct direntry);
@@ -1693,7 +1693,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		     (char *)dentp < bp->b_data + on + n;
 		     dentp++, offset += sizeof(struct direntry)) {
 #if 0
-			printf("rd: dentp %08x prev %08x crnt %08x deName %02x attr %02x\n",
+			kprintf("rd: dentp %08x prev %08x crnt %08x deName %02x attr %02x\n",
 			    dentp, prev, crnt, dentp->deName[0], dentp->deAttributes);
 #endif
 			d_name = d_name_storage;
@@ -1916,12 +1916,12 @@ msdosfs_print(struct vop_print_args *ap)
 {
 	struct denode *dep = VTODE(ap->a_vp);
 
-	printf(
+	kprintf(
 	    "tag VT_MSDOSFS, startcluster %lu, dircluster %lu, diroffset %lu ",
 	       dep->de_StartCluster, dep->de_dirclust, dep->de_diroffset);
-	printf(" dev %d, %d", major(dep->de_dev), minor(dep->de_dev));
+	kprintf(" dev %d, %d", major(dep->de_dev), minor(dep->de_dev));
 	lockmgr_printinfo(&ap->a_vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

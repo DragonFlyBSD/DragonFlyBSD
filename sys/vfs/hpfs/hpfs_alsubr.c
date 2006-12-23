@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.7 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.8 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ dive:
 					      dbtodoff(anp->an_lsn), 
 					      DEV_BSIZE, &bp);
 				if (error) {
-					printf("hpfs_hpbmap: bread error\n");
+					kprintf("hpfs_hpbmap: bread error\n");
 					brelse(bp);
 					return (error);
 				}
@@ -98,7 +98,7 @@ dive:
 				asp = (alsec_t *) bp->b_data;
 				if (asp->as_magic != AS_MAGIC) {
 					brelse(bp);
-					printf("hpfs_hpbmap: "
+					kprintf("hpfs_hpbmap: "
 					       "MAGIC DOESN'T MATCH");
 					return (EINVAL);
 				}
@@ -167,7 +167,7 @@ hpfs_allocalsec(struct hpfsmount *hpmp, lsn_t parlsn, struct buf **bpp)
 
 	error = hpfs_bmfblookup(hpmp, &lsn);
 	if (error) {
-		printf("hpfs_allocalsec: CAN'T ALLOC SPACE FOR AlSec\n");
+		kprintf("hpfs_allocalsec: CAN'T ALLOC SPACE FOR AlSec\n");
 		return (error);
 	}
 
@@ -394,7 +394,7 @@ retry:
 			 */
 			error = hpfs_addextentr (hpmp, anp->an_lsn, &al, ranp, &pf);
 			if (error) {
-				printf("hpfs_addextent: FAILED %d\n",error);
+				kprintf("hpfs_addextent: FAILED %d\n",error);
 				return (error);
 			}
 
@@ -455,7 +455,7 @@ retry:
 				al.al_off += nlen;
 				al.al_len -= nlen;
 			} else {
-				printf("hpfs_addextent: INTERNAL INCONSISTENCE\n");
+				kprintf("hpfs_addextent: INTERNAL INCONSISTENCE\n");
 				return (EINVAL);
 			}
 		}
@@ -478,7 +478,7 @@ retry:
 		rabp->ab_flag |= AB_FNPARENT;
 		error = hpfs_alblk2alsec (hpmp, rabp, &nrasp, &nbp);
 		if (error) {
-			printf("hpfs_addextent: CAN'T CONVT\n");
+			kprintf("hpfs_addextent: CAN'T CONVT\n");
 			return (error);
 		}
 		nrasp->as_parent = hp->h_no;
@@ -584,7 +584,7 @@ hpfs_addextentr(struct hpfsmount *hpmp, lsn_t rlsn, alleaf_t *ralp,
 			 */
 			error = hpfs_addextentr (hpmp, anp->an_lsn, ralp, ranp, &pf);
 			if (error) {
-				printf("hpfs_addextentr: FAILED %d\n",error);
+				kprintf("hpfs_addextentr: FAILED %d\n",error);
 				goto fail;
 			}
 
@@ -647,7 +647,7 @@ hpfs_addextentr(struct hpfsmount *hpmp, lsn_t rlsn, alleaf_t *ralp,
 				ralp->al_len -= nlen;
 				ralp->al_off += nlen;
 			} else {
-				printf("hpfs_addextentr: INTERNAL INCONSISTENCE\n");
+				kprintf("hpfs_addextentr: INTERNAL INCONSISTENCE\n");
 				error = (EINVAL);
 				goto fail;
 			}
@@ -665,7 +665,7 @@ hpfs_addextentr(struct hpfsmount *hpmp, lsn_t rlsn, alleaf_t *ralp,
 
 		error = hpfs_splitalsec (hpmp, rasp, &nrasp, &nbp);
 		if (error) {
-			printf("hpfs_addextent: CAN'T SPLIT\n");
+			kprintf("hpfs_addextent: CAN'T SPLIT\n");
 			goto fail;
 		}
 

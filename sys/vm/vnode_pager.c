@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.31 2006/08/08 03:52:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.32 2006/12/23 00:41:31 swildner Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	} else {
 		object->ref_count++;
 		if (vp->v_filesize != size)
-			printf("vnode_pager_alloc: Warning, filesize mismatch %lld/%lld\n", vp->v_filesize, size);
+			kprintf("vnode_pager_alloc: Warning, filesize mismatch %lld/%lld\n", vp->v_filesize, size);
 	}
 	vp->v_usecount++;
 
@@ -593,7 +593,7 @@ vnode_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 */
 	rtval = VOP_GETPAGES(vp, m, bytes, reqpage, 0);
 	if (rtval == EOPNOTSUPP) {
-	    printf("vnode_pager: *** WARNING *** stale FS getpages\n");
+	    kprintf("vnode_pager: *** WARNING *** stale FS getpages\n");
 	    rtval = vnode_pager_generic_getpages( vp, m, bytes, reqpage);
 	}
 	return rtval;
@@ -857,7 +857,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 		}
 	}
 	if (error) {
-		printf("vnode_pager_getpages: I/O read error\n");
+		kprintf("vnode_pager_getpages: I/O read error\n");
 	}
 	return (error ? VM_PAGER_ERROR : VM_PAGER_OK);
 }
@@ -900,7 +900,7 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	vp = object->handle;
 	rtval = VOP_PUTPAGES(vp, m, bytes, sync, rtvals, 0);
 	if (rtval == EOPNOTSUPP) {
-	    printf("vnode_pager: *** WARNING *** stale FS putpages\n");
+	    kprintf("vnode_pager: *** WARNING *** stale FS putpages\n");
 	    rtval = vnode_pager_generic_putpages( vp, m, bytes, sync, rtvals);
 	}
 }
@@ -937,7 +937,7 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 		rtvals[i] = VM_PAGER_AGAIN;
 
 	if ((int) m[0]->pindex < 0) {
-		printf("vnode_pager_putpages: attempt to write meta-data!!! -- 0x%lx(%x)\n",
+		kprintf("vnode_pager_putpages: attempt to write meta-data!!! -- 0x%lx(%x)\n",
 			(long)m[0]->pindex, m[0]->dirty);
 		rtvals[0] = VM_PAGER_BAD;
 		return VM_PAGER_BAD;
@@ -1010,10 +1010,10 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	mycpu->gd_cnt.v_vnodepgsout += ncount;
 
 	if (error) {
-		printf("vnode_pager_putpages: I/O error %d\n", error);
+		kprintf("vnode_pager_putpages: I/O error %d\n", error);
 	}
 	if (auio.uio_resid) {
-		printf("vnode_pager_putpages: residual I/O %d at %lu\n",
+		kprintf("vnode_pager_putpages: residual I/O %d at %lu\n",
 		    auio.uio_resid, (u_long)m[0]->pindex);
 	}
 	for (i = 0; i < ncount; i++) {
@@ -1048,7 +1048,7 @@ vnode_pager_lock(vm_object_t object)
 			    (object->type != OBJT_VNODE)) {
 				return NULL;
 			}
-			printf("vnode_pager_lock: vp %p error %d lockstatus %d, retrying\n", vp, error, lockstatus(&vp->v_lock, td));
+			kprintf("vnode_pager_lock: vp %p error %d lockstatus %d, retrying\n", vp, error, lockstatus(&vp->v_lock, td));
 			tsleep(object->handle, 0, "vnpgrl", hz);
 		}
 	}

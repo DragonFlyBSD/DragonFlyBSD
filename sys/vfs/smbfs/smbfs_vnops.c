@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.35 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.36 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -722,7 +722,7 @@ smbfs_readdir(struct vop_readdir_args *ap)
 		return (EPERM);
 #ifdef notnow
 	if (ap->a_ncookies) {
-		printf("smbfs_readdir: no support for cookies now...");
+		kprintf("smbfs_readdir: no support for cookies now...");
 		return (EOPNOTSUPP);
 	}
 #endif
@@ -755,14 +755,14 @@ smbfs_print(struct vop_print_args *ap)
 	struct smbnode *np = VTOSMB(vp);
 
 	if (np == NULL) {
-		printf("no smbnode data\n");
+		kprintf("no smbnode data\n");
 		return (0);
 	}
-	printf("tag VT_SMBFS, name = %s, parent = %p, opencount = %d",
+	kprintf("tag VT_SMBFS, name = %s, parent = %p, opencount = %d",
 	    np->n_name, np->n_parent ? np->n_parent : NULL,
 	    np->n_opencount);
 	lockmgr_printinfo(&vp->v_lock);
-	printf("\n");
+	kprintf("\n");
 	return (0);
 }
 

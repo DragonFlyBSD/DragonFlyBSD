@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.10 2006/05/12 07:43:56 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.11 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -205,7 +205,7 @@ ext2_free_inode(struct inode *inode)
 		return;
 
 	if (inode->i_nlink) {
-		printf ("ext2_free_inode: inode has nlink=%d\n",
+		kprintf ("ext2_free_inode: inode has nlink=%d\n",
 			inode->i_nlink);
 		return;
 	}
@@ -216,7 +216,7 @@ ext2_free_inode(struct inode *inode)
 	lock_super (DEVVP(inode));
 	if (inode->i_number < EXT2_FIRST_INO ||
 	    inode->i_number > sb->s_es->s_inodes_count) {
-		printf ("free_inode reserved inode or nonexistent inode");
+		kprintf ("free_inode reserved inode or nonexistent inode");
 		unlock_super (DEVVP(inode));
 		return;
 	}
@@ -226,7 +226,7 @@ ext2_free_inode(struct inode *inode)
 	bitmap_nr = load_inode_bitmap (ITOV(inode)->v_mount, block_group);
 	bh = sb->s_inode_bitmap[bitmap_nr];
 	if (!clear_bit (bit, bh->b_data))	
-		printf ( "ext2_free_inode:"
+		kprintf ( "ext2_free_inode:"
 		      "bit already cleared for inode %lu",
 		      (unsigned long)inode->i_number);
 	else {
@@ -266,7 +266,7 @@ inc_inode_version(struct inode *inode, struct ext2_group_desc *gdp, int mode)
 			EXT2_INODES_PER_BLOCK(inode->i_sb));
 	bh = bread (inode->i_sb->s_dev, dbtob(inode_block), inode->i_sb->s_blocksize);
 	if (!bh) {
-		printf ("inc_inode_version Cannot load inode table block - "
+		kprintf ("inc_inode_version Cannot load inode table block - "
 			    "inode=%lu, inode_block=%lu\n",
 			    inode->i_number, inode_block);
 		inode->u.ext2_i.i_version = 1;
@@ -401,7 +401,7 @@ repeat:
 				      EXT2_INODES_PER_GROUP(sb))) <
 	    EXT2_INODES_PER_GROUP(sb)) {
 		if (set_bit (j, bh->b_data)) {
-			printf ( "ext2_new_inode:"
+			kprintf ( "ext2_new_inode:"
 				      "bit already set for inode %d", j);
 			goto repeat;
 		}
@@ -415,7 +415,7 @@ repeat:
 		mark_buffer_dirty(bh);
 	} else {
 		if (gdp->bg_free_inodes_count != 0) {
-			printf ( "ext2_new_inode:"
+			kprintf ( "ext2_new_inode:"
 				    "Free inodes count corrupted in group %d",
 				    i);
 			unlock_super (DEVVP(dir));
@@ -425,7 +425,7 @@ repeat:
 	}
 	j += i * EXT2_INODES_PER_GROUP(sb) + 1;
 	if (j < EXT2_FIRST_INO || j > es->s_inodes_count) {
-		printf ( "ext2_new_inode:"
+		kprintf ( "ext2_new_inode:"
 			    "reserved inode or inode > inodes count - "
 			    "block_group = %d,inode=%d", i, j);
 		unlock_super (DEVVP(dir));
@@ -501,14 +501,14 @@ ext2_check_inodes_bitmap(struct mount *mp)
 		x = ext2_count_free (sb->u.ext2_sb.s_inode_bitmap[bitmap_nr],
 				     EXT2_INODES_PER_GROUP(sb) / 8);
 		if (gdp->bg_free_inodes_count != x)
-			printf ( "ext2_check_inodes_bitmap:"
+			kprintf ( "ext2_check_inodes_bitmap:"
 				    "Wrong free inodes count in group %d, "
 				    "stored = %d, counted = %lu", i,
 				    gdp->bg_free_inodes_count, x);
 		bitmap_count += x;
 	}
 	if (es->s_free_inodes_count != bitmap_count)
-		printf ( "ext2_check_inodes_bitmap:"
+		kprintf ( "ext2_check_inodes_bitmap:"
 			    "Wrong free inodes count in super block, "
 			    "stored = %lu, counted = %lu",
 			    (unsigned long) es->s_free_inodes_count, bitmap_count);

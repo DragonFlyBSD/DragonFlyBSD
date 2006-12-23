@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.6 2005/08/19 14:02:39 joerg Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.7 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
@@ -208,7 +208,7 @@ dos2unixtime(u_int dd, u_int dt, u_int dh, struct timespec *tsp)
 		months = year & 0x03 ? regyear : leapyear;
 		month = (dd & DD_MONTH_MASK) >> DD_MONTH_SHIFT;
 		if (month < 1 || month > 12) {
-			printf("dos2unixtime(): month value out of range (%ld)\n",
+			kprintf("dos2unixtime(): month value out of range (%ld)\n",
 			    month);
 			month = 1;
 		}

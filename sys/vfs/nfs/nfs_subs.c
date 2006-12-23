@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.44 2006/12/05 19:07:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.45 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*
@@ -1355,7 +1355,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 
 #ifdef NFS_ACDEBUG
 	if (nfs_acdebug>1)
-		printf("nfs_getattrcache: initial timeo = %d\n", timeo);
+		kprintf("nfs_getattrcache: initial timeo = %d\n", timeo);
 #endif
 
 	if (vap->va_type == VDIR) {
@@ -1372,12 +1372,12 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 
 #ifdef NFS_ACDEBUG
 	if (nfs_acdebug > 2)
-		printf("acregmin %d; acregmax %d; acdirmin %d; acdirmax %d\n",
+		kprintf("acregmin %d; acregmax %d; acdirmin %d; acdirmax %d\n",
 			nmp->nm_acregmin, nmp->nm_acregmax,
 			nmp->nm_acdirmin, nmp->nm_acdirmax);
 
 	if (nfs_acdebug)
-		printf("nfs_getattrcache: age = %d; final timeo = %d\n",
+		kprintf("nfs_getattrcache: age = %d; final timeo = %d\n",
 			(int)(time_second - np->n_attrstamp), timeo);
 #endif
 

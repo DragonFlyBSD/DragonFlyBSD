@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.32 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.33 2006/12/23 00:41:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -358,7 +358,7 @@ mfs_close(struct vop_close_args *ap)
 	 * vnode, so if we find any other uses, it is a panic.
 	 */
 	if (vp->v_usecount > 1)
-		printf("mfs_close: ref count %d > 1\n", vp->v_usecount);
+		kprintf("mfs_close: ref count %d > 1\n", vp->v_usecount);
 	if (vp->v_usecount > 1 || (bioq_first(&mfsp->bio_queue) != NULL))
 		panic("mfs_close");
 	/*
@@ -419,7 +419,7 @@ mfs_print(struct vop_print_args *ap)
 {
 	struct mfsnode *mfsp = VTOMFS(ap->a_vp);
 
-	printf("tag VT_MFS, td %p, base %p, size %ld\n",
+	kprintf("tag VT_MFS, td %p, base %p, size %ld\n",
 	    mfsp->mfs_td, (void *)mfsp->mfs_baseoff, mfsp->mfs_size);
 	return (0);
 }
@@ -432,9 +432,9 @@ mfs_badop(struct vop_generic_args *ap)
 {
 	int i;
 
-	printf("mfs_badop[%s]\n", ap->a_desc->sd_name);
+	kprintf("mfs_badop[%s]\n", ap->a_desc->sd_name);
 	i = vop_defaultop(ap);
-	printf("mfs_badop[%s] = %d\n", ap->a_desc->sd_name, i);
+	kprintf("mfs_badop[%s] = %d\n", ap->a_desc->sd_name, i);
 	return (i);
 }
 

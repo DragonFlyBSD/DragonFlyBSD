@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.40 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.41 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*
@@ -417,7 +417,7 @@ procfs_print(struct vop_print_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
-	printf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
+	kprintf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
 	    pfs->pfs_type, (long)pfs->pfs_pid, pfs->pfs_mode, pfs->pfs_flags);
 	return (0);
 }
@@ -1047,7 +1047,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 	case Pfile:
 		procp = PFIND(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
-			printf("procfs_readlink: pid %d disappeared\n",
+			kprintf("procfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));

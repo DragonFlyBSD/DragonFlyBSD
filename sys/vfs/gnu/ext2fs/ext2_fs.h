@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_fs.h,v 1.8.2.2 2001/09/29 12:52:47 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_fs.h,v 1.6 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  *  linux/include/linux/ext2_fs.h
@@ -78,9 +78,9 @@
  */
 #ifdef EXT2FS_DEBUG
 #	define ext2_debug(f, a...)	{ \
-					printf ("EXT2-fs DEBUG (%s, %d): %s:", \
+					kprintf ("EXT2-fs DEBUG (%s, %d): %s:", \
 						__FILE__, __LINE__, __func__); \
-				  	printf (f, ## a); \
+				  	kprintf (f, ## a); \
 					}
 #else
 #	define ext2_debug(f, a...)	/**/

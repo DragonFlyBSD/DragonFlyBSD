@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.20 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.21 2006/12/23 00:41:30 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -139,7 +139,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	}
 #ifdef INVARIANTS
 	if (ip && (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))) {
-		printf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
+		kprintf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
 		ip->i_flag |= IN_MODIFIED;
 		ffs_update(vp, 0);
 	}

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.38 2006/09/03 18:29:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.39 2006/12/23 00:41:29 swildner Exp $
  */
 
 
@@ -100,7 +100,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	count = ap->a_count;
 
 	if (vp->v_object == NULL) {
-		printf("nfs_getpages: called with non-merged cache vnode??\n");
+		kprintf("nfs_getpages: called with non-merged cache vnode??\n");
 		return VM_PAGER_ERROR;
 	}
 
@@ -168,7 +168,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	msf_buf_free(msf);
 
 	if (error && (uio.uio_resid == count)) {
-		printf("nfs_getpages: error %d\n", error);
+		kprintf("nfs_getpages: error %d\n", error);
 		for (i = 0; i < npages; ++i) {
 			if (i != ap->a_reqpage)
 				vnode_pager_freepage(pages[i]);
@@ -410,7 +410,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		case VDIR:
 			break;
 		default:
-			printf(" NDONTCACHE: type %x unexpected\n", vp->v_type);
+			kprintf(" NDONTCACHE: type %x unexpected\n", vp->v_type);
 			break;
 		};
 	    }
@@ -557,7 +557,7 @@ again:
 			    brelse(bp);
 		    }
 		    while (error == NFSERR_BAD_COOKIE) {
-			printf("got bad cookie vp %p bp %p\n", vp, bp);
+			kprintf("got bad cookie vp %p bp %p\n", vp, bp);
 			nfs_invaldir(vp);
 			error = nfs_vinvalbuf(vp, 0, 1);
 			/*
@@ -653,7 +653,7 @@ again:
 			n = np->n_direofoffset - uio->uio_offset;
 		break;
 	    default:
-		printf(" nfs_bioread: type %x unexpected\n",vp->v_type);
+		kprintf(" nfs_bioread: type %x unexpected\n",vp->v_type);
 		break;
 	    };
 
@@ -707,7 +707,7 @@ again:
 			bp->b_flags |= B_INVAL;
 		break;
 	    default:
-		printf(" nfs_bioread: type %x unexpected\n",vp->v_type);
+		kprintf(" nfs_bioread: type %x unexpected\n",vp->v_type);
 	    }
 	    brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n > 0);
@@ -970,7 +970,7 @@ again:
 		 */
 
 		if (bp->b_dirtyend > bcount) {
-			printf("NFS append race @%08llx:%d\n", 
+			kprintf("NFS append race @%08llx:%d\n", 
 			    bp->b_bio2.bio_offset,
 			    bp->b_dirtyend - bcount);
 			bp->b_dirtyend = bcount;
@@ -1401,7 +1401,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 			bp->b_flags |= B_INVAL;
 		break;
 	    default:
-		printf("nfs_doio:  type %x unexpected\n",vp->v_type);
+		kprintf("nfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
 	    };
 	    if (error) {

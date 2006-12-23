@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.41 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.42 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*
@@ -97,7 +97,7 @@
 #include "nfsm_subs.h"
 
 #ifdef NFSRV_DEBUG
-#define nfsdbprintf(info)	printf info
+#define nfsdbprintf(info)	kprintf info
 #else
 #define nfsdbprintf(info)
 #endif
