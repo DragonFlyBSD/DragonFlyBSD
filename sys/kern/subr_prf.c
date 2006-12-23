@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.14 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.15 2006/12/23 20:05:34 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -323,35 +323,6 @@ kprintf(const char *fmt, ...)
 	return retval;
 }
 
-/*
- * Output to the console.  (TO BE REMOVED)
- *
- * NOT YET ENTIRELY MPSAFE
- */
-int
-printf(const char *fmt, ...)
-{
-	__va_list ap;
-	int savintr;
-	struct putchar_arg pca;
-	int retval;
-
-	savintr = consintr;		/* disable interrupts */
-	consintr = 0;
-	__va_start(ap, fmt);
-	pca.tty = NULL;
-	pca.flags = TOCONS | TOLOG;
-	pca.pri = -1;
-	cons_lock();
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
-	cons_unlock();
-	__va_end(ap);
-	if (!panicstr)
-		msgbuftrigger = 1;
-	consintr = savintr;		/* reenable interrupts */
-	return retval;
-}
-
 int
 kvprintf(const char *fmt, __va_list ap)
 {
@@ -523,7 +494,7 @@ ksprintqn(nbuf, uq, base, lenp)
  * The format %b is supported to decode error registers.
  * Its usage is:
  *
- *	printf("reg=%b\n", regval, "<base><arg>*");
+ *	kprintf("reg=%b\n", regval, "<base><arg>*");
  *
  * where <base> is the output base expressed as a control character, e.g.
  * \10 gives octal; \20 gives hex.  Each arg is a sequence of characters,
