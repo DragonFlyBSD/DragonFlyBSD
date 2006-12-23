@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.7 2006/12/01 07:37:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.8 2006/12/23 09:26:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -83,8 +83,6 @@
 #define ACX111_RATE_96		0x0800
 #define ACX111_RATE_108		0x1000
 #define ACX111_RATE(rate)	[rate] = ACX111_RATE_##rate
-
-#define ACX111_RATE_ALL		0x1fff
 
 #define ACX111_TXPOWER		15
 #define ACX111_GPIO_POWER_LED	0x0040
@@ -267,7 +265,6 @@ static const uint16_t acx111_reg[ACXREG_MAX] = {
 	ACXREG(ECPU_CTRL,		0x0108) 
 };
 
-/* XXX */
 static const uint16_t	acx111_rate_map[109] = {
 	ACX111_RATE(2),
 	ACX111_RATE(4),
@@ -316,6 +313,29 @@ static void	acx111_tx_complete_onoe(struct acx_softc *, struct acx_txbuf *,
 					int, int);
 static void	acx111_tx_complete_amrr(struct acx_softc *, struct acx_txbuf *,
 					int, int);
+
+#define ACX111_CHK_RATE(ifp, rate, rate_idx)	\
+	acx111_check_rate(ifp, rate, rate_idx, __func__)
+
+static __inline int
+acx111_check_rate(struct ifnet *ifp, u_int rate, int rate_idx,
+		  const char *fname)
+{
+#define N(arr)	(sizeof(arr) / sizeof(arr[0]))
+	if (rate >= N(acx111_rate_map)) {
+		if_printf(ifp, "%s rate out of range %u (idx %d)\n",
+			  fname, rate, rate_idx);
+		return -1;
+	}
+#undef N
+
+	if (acx111_rate_map[rate] == 0) {
+		if_printf(ifp, "%s invalid rate %u (idx %d)\n",
+			  fname, rate, rate_idx);
+		return -1;
+	}
+	return 0;
+}
 
 void
 acx111_set_param(device_t dev)
@@ -502,6 +522,7 @@ _acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			   struct ieee80211_node *ni, int data_len,
 			   int rateidx_max)
 {
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	uint16_t rate;
 
 	KKASSERT(rateidx_max <= IEEE80211_RATEIDX_MAX);
@@ -520,12 +541,15 @@ _acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 
 		rate = 0;
 		for (i = 0; i < n; ++i) {
-			rate |= acx111_rate_map[
-				IEEE80211_RS_RATE(rs, rateidx[i])];
+			u_int map_idx = IEEE80211_RS_RATE(rs, rateidx[i]);
+
+			if (ACX111_CHK_RATE(ifp, map_idx, rateidx[i]) < 0)
+				continue;
+
+			rate |= acx111_rate_map[map_idx];
 		}
 		if (rate == 0) {
-			if_printf(&sc->sc_ic.ic_if,
-				  "WARNING no rate, set to 1Mbit/s\n");
+			if_printf(ifp, "WARNING no rate, set to 1Mbit/s\n");
 			rate = ACX111_RATE_2;
 			tx_buf->tb_rateidx_len = 1;
 			tx_buf->tb_rateidx[0] = 0;
@@ -556,8 +580,24 @@ static void
 acx111_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 {
 	struct acx111_bss_join *bj = param;
+	const struct ieee80211_rateset *rs = &sc->sc_ic.ic_bss->ni_rates;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	uint16_t basic_rates = 0;
+	int i;
 
-	bj->basic_rates = htole16(ACX111_RATE_ALL);
+	for (i = 0; i < rs->rs_nrates; ++i) {
+		if (rs->rs_rates[i] & IEEE80211_RATE_BASIC) {
+			u_int map_idx = IEEE80211_RS_RATE(rs, i);
+
+			if (ACX111_CHK_RATE(ifp, map_idx, i) < 0)
+				continue;
+
+			basic_rates |= acx111_rate_map[map_idx];
+		}
+	}
+	DPRINTF((ifp, "basic rates: 0x%04x\n", basic_rates));
+
+	bj->basic_rates = htole16(basic_rates);
 	bj->dtim_intvl = dtim_intvl;
 }
 

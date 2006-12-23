@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.6 2006/12/09 08:10:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.7 2006/12/23 09:26:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@
 struct acx100_bss_join {
 	uint8_t	dtim_intvl;
 	uint8_t	basic_rates;
-	uint8_t	all_rates;
+	uint8_t	op_rates;
 } __packed;
 
 struct acx100_conf_fw_ring {
@@ -239,6 +239,14 @@ static const uint8_t	acx100_txpower_rfmd[21] = {
 	63
 };
 
+static const uint8_t	acx100_rate_map[45] = {
+	[2]	= 0x01,
+	[4]	= 0x02,
+	[11]	= 0x04,
+	[22]	= 0x08,
+	[44]	= 0x10
+};
+
 static int	acx100_init(struct acx_softc *);
 static int	acx100_init_wep(struct acx_softc *);
 static int	acx100_init_tmplt(struct acx_softc *);
@@ -264,6 +272,29 @@ static int	acx100_set_wepkey(struct acx_softc *, struct ieee80211_key *,
 				  int);
 
 static void	acx100_proc_wep_rxbuf(struct acx_softc *, struct mbuf *, int *);
+
+#define ACX100_CHK_RATE(ifp, rate, rate_idx)	\
+	acx100_check_rate(ifp, rate, rate_idx, __func__)
+
+static __inline int
+acx100_check_rate(struct ifnet *ifp, u_int rate, int rate_idx,
+		  const char *fname)
+{
+#define N(arr)	(sizeof(arr) / sizeof(arr[0]))
+	if (rate >= N(acx100_rate_map)) {
+		if_printf(ifp, "%s rate out of range %u (idx %d)\n",
+			  fname, rate, rate_idx);
+		return -1;
+	}
+#undef N
+
+	if (acx100_rate_map[rate] == 0) {
+		if_printf(ifp, "%s invalid rate %u (idx %d)\n",
+			  fname, rate, rate_idx);
+		return -1;
+	}
+	return 0;
+}
 
 void
 acx100_set_param(device_t dev)
@@ -690,6 +721,9 @@ acx100_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 					   tx_buf->tb_rateidx, 1);
 		rate = IEEE80211_RS_RATE(&ni->ni_rates,
 					 tx_buf->tb_rateidx[0]);
+		if (ACX100_CHK_RATE(&sc->sc_ic.ic_if, rate,
+				    tx_buf->tb_rateidx[0]) < 0)
+			rate = 2;
 	}
 	FW_TXDESC_SETFIELD_1(sc, tx_buf, f_tx_rate100, ACX100_RATE(rate));
 }
@@ -698,10 +732,28 @@ static void
 acx100_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 {
 	struct acx100_bss_join *bj = param;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	const struct ieee80211_rateset *rs = &sc->sc_ic.ic_bss->ni_rates;
+	int i;
+
+	bj->basic_rates = 0;
+	bj->op_rates = 0;
+	for (i = 0; i < rs->rs_nrates; ++i) {
+		u_int map_idx = IEEE80211_RS_RATE(rs, i);
+		uint8_t rate;
+
+		if (ACX100_CHK_RATE(ifp, map_idx, i) < 0)
+			continue;
+
+		rate = acx100_rate_map[map_idx];
+		if (rs->rs_rates[i] & IEEE80211_RATE_BASIC)
+			bj->basic_rates |= rate;
+		bj->op_rates |= rate;
+	}
+	DPRINTF((ifp, "basic rates:0x%02x, op rates:0x%02x\n",
+		 bj->basic_rates, bj->op_rates));
 
 	bj->dtim_intvl = dtim_intvl;
-	bj->basic_rates = 15;	/* XXX */
-	bj->all_rates = 31;	/* XXX */
 }
 
 static int
