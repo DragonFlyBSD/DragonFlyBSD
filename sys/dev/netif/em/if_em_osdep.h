@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_osdep.h,v 1.1.2.11 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.8 2006/12/22 23:26:19 swildner Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_osdep.h,v 1.9 2006/12/23 10:39:16 sephe Exp $*/
 
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_
@@ -88,6 +88,8 @@ struct em_osdep
 {
 	bus_space_tag_t    mem_bus_space_tag;
 	bus_space_handle_t mem_bus_space_handle;
+	bus_space_tag_t    io_bus_space_tag;
+	bus_space_handle_t io_bus_space_handle;
 	bus_space_tag_t    flash_bus_space_tag;
 	bus_space_handle_t flash_bus_space_handle;
 	struct device     *dev;
@@ -149,19 +151,19 @@ struct em_osdep
         ((hw)->mac_type >= em_82543 ? E1000_##reg : E1000_82542_##reg \
         + (index << 1)), value)
 
-#define E1000_READ_ICH8_REG(hw, reg) \
+#define E1000_READ_ICH_FLASH_REG(hw, reg) \
     bus_space_read_4(((struct em_osdep *)(hw)->back)->flash_bus_space_tag, \
         ((struct em_osdep *)(hw)->back)->flash_bus_space_handle, reg)
 
-#define E1000_READ_ICH8_REG16(hw, reg) \
+#define E1000_READ_ICH_FLASH_REG16(hw, reg) \
     bus_space_read_2(((struct em_osdep *)(hw)->back)->flash_bus_space_tag, \
         ((struct em_osdep *)(hw)->back)->flash_bus_space_handle, reg)
 
-#define E1000_WRITE_ICH8_REG(hw, reg, value) \
+#define E1000_WRITE_ICH_FLASH_REG(hw, reg, value) \
     bus_space_write_4(((struct em_osdep *)(hw)->back)->flash_bus_space_tag, \
         ((struct em_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
 
-#define E1000_WRITE_ICH8_REG16(hw, reg, value) \
+#define E1000_WRITE_ICH_FLASH_REG16(hw, reg, value) \
     bus_space_write_2(((struct em_osdep *)(hw)->back)->flash_bus_space_tag, \
         ((struct em_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
 

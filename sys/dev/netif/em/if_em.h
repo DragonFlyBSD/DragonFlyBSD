@@ -32,54 +32,10 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.18 2006/12/22 23:26:19 swildner Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.19 2006/12/23 10:39:16 sephe Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/mbuf.h>
-#include <sys/protosw.h>
-#include <sys/socket.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/sockio.h>
-#include <sys/sysctl.h>
-#include <sys/ktr.h>
-#include <sys/endian.h>
-#include <sys/proc.h>
-#include <sys/sysctl.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-#include <sys/serialize.h>
-#include <sys/thread2.h>
-
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <net/ethernet.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
-
-#include <net/bpf.h>
-#include <net/if_types.h>
-#include <net/vlan/if_vlan_var.h>
-
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-
-#include <vm/vm.h>
-#include <vm/pmap.h>
-
-#include <machine/clock.h>
-
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
-
-#include <dev/netif/em/if_em_hw.h>
 
 /* Tunables */
 
@@ -131,7 +87,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_TIDV                         64
 
 /*
- * EM_TADV - Transmit Absolute Interrupt Delay Value (Not valid for 82542/82543/82544)
+ * EM_TADV - Transmit Absolute Interrupt Delay Value
+ * (Not valid for 82542/82543/82544)
  * Valid Range: 0-65535 (0=off)
  * Default Value: 64
  *   This value, in units of 1.024 microseconds, limits the delay in which a
@@ -157,10 +114,10 @@ POSSIBILITY OF SUCH DAMAGE.
  *
  *   CAUTION: When setting EM_RDTR to a value other than 0, adapters
  *            may hang (stop transmitting) under certain network conditions.
- *            If this occurs a WATCHDOG message is logged in the system event log.
- *            In addition, the controller is automatically reset, restoring the
- *            network connection. To eliminate the potential for the hang
- *            ensure that EM_RDTR is set to 0.
+ *            If this occurs a WATCHDOG message is logged in the system
+ *            event log. In addition, the controller is automatically reset,
+ *            restoring the network connection. To eliminate the potential
+ *            for the hang ensure that EM_RDTR is set to 0.
  */
 #define EM_RDTR                         0
 
@@ -228,7 +185,6 @@ POSSIBILITY OF SUCH DAMAGE.
                                          ADVERTISE_1000_FULL)
 
 #define EM_VENDOR_ID                    0x8086
-#define EM_MMBA                         0x0010 /* Mem base address */
 #define EM_FLASH                        0x0014 /* Flash memory on ICH8 */
 
 #define EM_JUMBO_PBA                    0x00000028
@@ -236,11 +192,36 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_SMARTSPEED_DOWNSHIFT         3
 #define EM_SMARTSPEED_MAX               15
 
-
 #define MAX_NUM_MULTICAST_ADDRESSES     128
 #define PCI_ANY_ID                      (~0U)
-#define ETHER_ALIGN                     2
-#define EM_DBA_ALIGN                    128
+
+
+/*
+ * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
+ * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary. This will
+ * also optimize cache line size effect. H/W supports up to cache line size 128.
+ */
+#define EM_DBA_ALIGN			128
+
+#define SPEED_MODE_BIT			(1 << 21)	/* On PCI-E MACs only */
+
+/* PCI Config defines */
+#define EM_BAR_TYPE(v)			((v) & EM_BAR_TYPE_MASK)
+#define EM_BAR_TYPE_MASK		0x00000001
+#define EM_BAR_TYPE_MMEM		0x00000000
+#define EM_BAR_TYPE_IO			0x00000001
+#define EM_BAR_MEM_TYPE(v)		((v) & EM_BAR_MEM_TYPE_MASK)
+#define EM_BAR_MEM_TYPE_MASK		0x00000006
+#define EM_BAR_MEM_TYPE_32BIT		0x00000000
+#define EM_BAR_MEM_TYPE_64BIT		0x00000004
+
+/*
+ * Community introduced backward
+ * compatibility issue.
+ */
+#if !defined(PCIR_CIS)
+#define PCIR_CIS	PCIR_CARDBUSCIS
+#endif
 
 /* Defines for printing debug information */
 #define DEBUG_INIT  0
@@ -283,6 +264,7 @@ typedef struct _em_vendor_info_t {
 
 
 struct em_buffer {
+	int			next_eop;	/* Index of the desc to watch */
 	struct mbuf		*m_head;
 	bus_dmamap_t		map;		/* bus_dma map for packet */
 };
@@ -302,7 +284,6 @@ struct em_dma_alloc {
 	bus_dma_tag_t		dma_tag;
 	bus_dmamap_t		dma_map;
 	bus_dma_segment_t	dma_seg;
-	bus_size_t		dma_size;
 	int			dma_nseg;
 };
 
@@ -314,126 +295,131 @@ typedef enum _XSUM_CONTEXT_T {
 
 struct adapter;
 struct em_int_delay_info {
-        struct adapter *adapter;        /* Back-pointer to the adapter struct */
-        int offset;                     /* Register offset to read/write */
-        int value;                      /* Current value in usecs */
+	struct adapter *adapter;	/* Back-pointer to the adapter struct */
+	int offset;			/* Register offset to read/write */
+	int value;			/* Current value in usecs */
 };
 
 /* For 82544 PCIX  Workaround */
 typedef struct _ADDRESS_LENGTH_PAIR
 {
-    u_int64_t   address;
-    u_int32_t   length;
+	uint64_t   address;
+	uint32_t   length;
 } ADDRESS_LENGTH_PAIR, *PADDRESS_LENGTH_PAIR;
 
 typedef struct _DESCRIPTOR_PAIR
 {
-    ADDRESS_LENGTH_PAIR descriptor[4];
-    u_int32_t   elements;
+	ADDRESS_LENGTH_PAIR descriptor[4];
+	uint32_t   elements;
 } DESC_ARRAY, *PDESC_ARRAY;
 
 /* Our adapter structure */
 struct adapter {
 	struct arpcom   interface_data;
-	struct em_hw    hw;
+	struct em_hw	hw;
 
 	/* Operating-system-specific structures */
 	struct em_osdep osdep;
-	struct device   *dev;
-	struct resource *res_memory;
-	struct resource *flash_mem;
-	struct resource *res_ioport;
-	struct resource *res_interrupt;
-	void            *int_handler_tag;
-	struct ifmedia  media;
-	struct callout		timer;
-	struct callout		tx_fifo_timer;
-	int             io_rid;
+	struct device	*dev;
+	struct resource	*res_memory;
+	struct resource	*flash_mem;
+	struct resource	*res_ioport;
+	struct resource	*res_interrupt;
+	void		*int_handler_tag;
+	struct ifmedia	media;
+	struct callout	timer;
+	struct callout	tx_fifo_timer;
+	int		if_flags;
+	int		io_rid;
 	int		em_insert_vlan_header;
 
 	/* Info about the board itself */
-	u_int32_t       part_num;
-	u_int8_t        link_active;
-	u_int16_t       link_speed;
-	u_int16_t       link_duplex;
-	u_int32_t       smartspeed;
+	uint32_t	part_num;
+	uint8_t		link_active;
+	uint16_t	link_speed;
+	uint16_t	link_duplex;
+	uint32_t	smartspeed;
 	struct em_int_delay_info tx_int_delay;
-        struct em_int_delay_info tx_abs_int_delay;
-        struct em_int_delay_info rx_int_delay;
-        struct em_int_delay_info rx_abs_int_delay;
+	struct em_int_delay_info tx_abs_int_delay;
+	struct em_int_delay_info rx_int_delay;
+	struct em_int_delay_info rx_abs_int_delay;
 
 	XSUM_CONTEXT_T  active_checksum_context;
 
 	/*
-         * Transmit definitions
-         *
-         * We have an array of num_tx_desc descriptors (handled
-         * by the controller) paired with an array of tx_buffers
-         * (at tx_buffer_area).
-         * The index of the next available descriptor is next_avail_tx_desc.
-         * The number of remaining tx_desc is num_tx_desc_avail.
-         */
+	 * Transmit definitions
+	 *
+	 * We have an array of num_tx_desc descriptors (handled
+	 * by the controller) paired with an array of tx_buffers
+	 * (at tx_buffer_area).
+	 * The index of the next available descriptor is next_avail_tx_desc.
+	 * The number of remaining tx_desc is num_tx_desc_avail.
+	 */
 	struct em_dma_alloc	txdma;		/* bus_dma glue for tx desc */
-        struct em_tx_desc *tx_desc_base;
-        u_int32_t          next_avail_tx_desc;
-	u_int32_t          oldest_used_tx_desc;
-        volatile u_int16_t num_tx_desc_avail;
-        u_int16_t          num_tx_desc;
-        u_int32_t          txd_cmd;
-        struct em_buffer   *tx_buffer_area;
+	struct em_tx_desc	*tx_desc_base;
+	uint32_t		next_avail_tx_desc;
+	uint32_t		next_tx_to_clean;
+	volatile uint16_t	num_tx_desc_avail;
+	uint16_t		num_tx_desc;
+	uint32_t		txd_cmd;
+	struct em_buffer	*tx_buffer_area;
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 
 	/* 
 	 * Receive definitions
-         *
-         * we have an array of num_rx_desc rx_desc (handled by the
-         * controller), and paired with an array of rx_buffers
-         * (at rx_buffer_area).
-         * The next pair to check on receive is at offset next_rx_desc_to_check
-         */
+	 *
+	 * we have an array of num_rx_desc rx_desc (handled by the
+	 * controller), and paired with an array of rx_buffers
+	 * (at rx_buffer_area).
+	 * The next pair to check on receive is at offset next_rx_desc_to_check
+	 */
 	struct em_dma_alloc	rxdma;		/* bus_dma glue for rx desc */
-        struct em_rx_desc *rx_desc_base;
-        u_int32_t          next_rx_desc_to_check;
-        u_int16_t          num_rx_desc;
-        u_int32_t          rx_buffer_len;
-        struct em_buffer   *rx_buffer_area;
+	struct em_rx_desc	*rx_desc_base;
+	uint32_t		next_rx_desc_to_check;
+	uint16_t		num_rx_desc;
+	uint32_t		rx_buffer_len;
+	struct em_buffer	*rx_buffer_area;
 	bus_dma_tag_t		rxtag;
 
-	/* Jumbo frame */
-	struct mbuf        *fmp;
-	struct mbuf        *lmp;
+	/*
+	 * First/last mbuf pointers, for
+	 * collecting multisegment RX packets.
+	 */
+	struct mbuf		*fmp;
+	struct mbuf		*lmp;
 
-	struct sysctl_ctx_list sysctl_ctx;
-        struct sysctl_oid *sysctl_tree;
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
 
 	/* Misc stats maintained by the driver */
-	unsigned long   dropped_pkts;
-	unsigned long   mbuf_alloc_failed;
-	unsigned long   mbuf_cluster_failed;
-	unsigned long   no_tx_desc_avail1;
-	unsigned long   no_tx_desc_avail2;
+	unsigned long	dropped_pkts;
+	unsigned long	mbuf_alloc_failed;
+	unsigned long	mbuf_cluster_failed;
+	unsigned long	no_tx_desc_avail1;
+	unsigned long	no_tx_desc_avail2;
 	unsigned long	no_tx_map_avail;
 	unsigned long	no_tx_dma_setup;
 	unsigned long	rx_overruns;
 	unsigned long	watchdog_timeouts;
 
 	/* Used in for 82547 10Mb Half workaround */
-	u_int32_t	tx_fifo_size;
-	u_int32_t	tx_fifo_head;
-	u_int32_t	tx_fifo_head_addr;
-	u_int64_t	tx_fifo_reset_cnt;
-	u_int64_t	tx_fifo_wrk_cnt;
-	u_int32_t	tx_head_addr;
+	uint32_t	tx_fifo_size;
+	uint32_t	tx_fifo_head;
+	uint32_t	tx_fifo_head_addr;
+	uint64_t	tx_fifo_reset_cnt;
+	uint64_t	tx_fifo_wrk_cnt;
+	uint32_t	tx_head_addr;
 
 #define EM_PBA_BYTES_SHIFT	0xA
 #define EM_TX_HEAD_ADDR_SHIFT	7
 #define EM_PBA_TX_MASK		0xFFFF0000
 #define EM_FIFO_HDR		0x10
+
 #define EM_82547_PKT_THRESH	0x3e0
  
  	/* For 82544 PCIX Workaround */
- 	boolean_t pcix_82544;
- 	boolean_t in_detach;
+ 	boolean_t	pcix_82544;
+ 	boolean_t	in_detach;
 
 	struct em_hw_stats stats;
 };
