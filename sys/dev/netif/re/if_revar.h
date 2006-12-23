@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.1 2006/11/14 13:35:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.2 2006/12/23 03:41:55 sephe Exp $
  */
 
 struct re_chain_data {
@@ -67,15 +67,13 @@ struct re_type {
 
 struct re_hwrev {
 	uint32_t		re_rev;
-	int			re_type;
+	int			re_type;	/* RE_{8139CPLUS,8169} */
+	uint32_t		re_flags;	/* see RE_F_ */
 	const char		*re_desc;
 };
 
 #define RE_8139CPLUS		3
 #define RE_8169			4
-
-#define RE_ISCPLUS(x)		((x)->re_type == RE_8139CPLUS ||	\
-				 (x)->re_type == RE_8169)
 
 struct re_softc;
 
@@ -133,7 +131,7 @@ struct re_softc {
 	struct callout		re_timer;
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
-	uint32_t		re_hwrev;
+	uint32_t		re_flags;	/* see RE_F_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
 	int			re_testmode;
@@ -157,6 +155,8 @@ struct re_softc {
 	uint8_t			saved_lattimer;
 #endif
 };
+
+#define RE_F_HASMPC		0x1
 
 #define RE_TX_MODERATION_IS_ENABLED(sc)			\
 	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)

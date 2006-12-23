@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.28 2006/11/14 13:35:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.29 2006/12/23 03:41:55 sephe Exp $
  */
 
 /*
@@ -161,7 +161,7 @@
 /*
  * Various supported device vendors/types and their names.
  */
-static struct re_type re_devs[] = {
+static const struct re_type re_devs[] = {
 	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T, RE_HWREV_8169S,
 		"D-Link DGE-528(T) Gigabit Ethernet Adapter" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139, RE_HWREV_8139CPLUS,
@@ -191,18 +191,18 @@ static struct re_type re_devs[] = {
 	{ 0, 0, 0, NULL }
 };
 
-static struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS, RE_8139CPLUS, "C+"},
-	{ RE_HWREV_8168_SPIN1, RE_8169, "8168"},
-	{ RE_HWREV_8169, RE_8169, "8169"},
-	{ RE_HWREV_8169S, RE_8169, "8169S"},
-	{ RE_HWREV_8110S, RE_8169, "8110S"},
-	{ RE_HWREV_8169_8110SB, RE_8169, "8169SB"},
-	{ RE_HWREV_8169_8110SC, RE_8169, "8169SC"},
-	{ RE_HWREV_8100E, RE_8169, "8100E"},
-	{ RE_HWREV_8101E, RE_8169, "8101E"},
-	{ RE_HWREV_8168_SPIN2, RE_8169, "8168"},
-	{ 0, 0, NULL }
+static const struct re_hwrev re_hwrevs[] = {
+	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	"C+" },
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	0,		"8168" },
+	{ RE_HWREV_8168_SPIN2,	RE_8169,	0,		"8168" },
+	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,	"8169" },
+	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	"8169S" },
+	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	"8110S" },
+	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,	"8169SB" },
+	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		"8169SC" },
+	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	"8100E" },
+	{ RE_HWREV_8101E,	RE_8169,	0,		"8101E" },
+	{ 0, 0, 0, NULL }
 };
 
 static int	re_probe(device_t);
@@ -780,7 +780,7 @@ done:
 static int
 re_probe(device_t dev)
 {
-	struct re_type *t;
+	const struct re_type *t;
 	struct re_softc *sc;
 	int rid;
 	uint32_t hwrev;
@@ -1051,11 +1051,11 @@ re_attach(device_t dev)
 {
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
-	struct re_hwrev *hw_rev;
+	const struct re_hwrev *hw_rev;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	uint16_t as[ETHER_ADDR_LEN / 2];
-	int hwrev;
 	uint16_t re_did = 0;
+	uint32_t hwrev;
 	int error = 0, rid, i;
 
 	callout_init(&sc->re_timer);
@@ -1142,6 +1142,7 @@ re_attach(device_t dev)
 	for (hw_rev = re_hwrevs; hw_rev->re_desc != NULL; hw_rev++) {
 		if (hw_rev->re_rev == hwrev) {
 			sc->re_type = hw_rev->re_type;
+			sc->re_flags = hw_rev->re_flags;
 			break;
 		}
 	}
@@ -1367,13 +1368,13 @@ re_newbuf(struct re_softc *sc, int idx, struct mbuf *m)
 	} else
 		m->m_data = m->m_ext.ext_buf;
 
-	/*
-	 * Initialize mbuf length fields and fixup
-	 * alignment so that the frame payload is
-	 * longword aligned.
-	 */
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
-	m_adj(m, ETHER_ALIGN);
+
+	/*
+	 * NOTE:
+	 * Some re(4) chips(e.g. RTL8101E) need address of the receive buffer
+	 * to be 8-byte aligned, so don't call m_adj(m, ETHER_ALIGN) here.
+	 */
 
 	arg.sc = sc;
 	arg.re_idx = idx;
@@ -2063,8 +2064,8 @@ re_init(void *xsc)
 	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_WRITECFG);
 	CSR_WRITE_4(sc, RE_IDR0,
 	    htole32(*(uint32_t *)(&sc->arpcom.ac_enaddr[0])));
-	CSR_WRITE_4(sc, RE_IDR4,
-	    htole32(*(uint32_t *)(&sc->arpcom.ac_enaddr[4])));
+	CSR_WRITE_2(sc, RE_IDR4,
+	    htole16(*(uint16_t *)(&sc->arpcom.ac_enaddr[4])));
 	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_OFF);
 
 	/*
@@ -2072,6 +2073,19 @@ re_init(void *xsc)
 	 */
 	re_rx_list_init(sc);
 	re_tx_list_init(sc);
+
+	/*
+	 * Load the addresses of the RX and TX lists into the chip.
+	 */
+	CSR_WRITE_4(sc, RE_RXLIST_ADDR_HI,
+	    RE_ADDR_HI(sc->re_ldata.re_rx_list_addr));
+	CSR_WRITE_4(sc, RE_RXLIST_ADDR_LO,
+	    RE_ADDR_LO(sc->re_ldata.re_rx_list_addr));
+
+	CSR_WRITE_4(sc, RE_TXLIST_ADDR_HI,
+	    RE_ADDR_HI(sc->re_ldata.re_tx_list_addr));
+	CSR_WRITE_4(sc, RE_TXLIST_ADDR_LO,
+	    RE_ADDR_LO(sc->re_ldata.re_tx_list_addr));
 
 	/*
 	 * Enable transmit and receive.
@@ -2090,6 +2104,9 @@ re_init(void *xsc)
 				    RE_TXCFG_CONFIG | RE_LOOPTEST_ON_CPLUS);
 	} else
 		CSR_WRITE_4(sc, RE_TXCFG, RE_TXCFG_CONFIG);
+
+	CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, 16);
+
 	CSR_WRITE_4(sc, RE_RXCFG, RE_RXCFG_CONFIG);
 
 	/* Set the individual bit to receive frames for this host only. */
@@ -2142,26 +2159,12 @@ re_init(void *xsc)
 	sc->re_txthresh = RE_TX_THRESH_INIT;
 
 	/* Start RX/TX process. */
-	CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
+	if (sc->re_flags & RE_F_HASMPC)
+		CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
 #ifdef notdef
 	/* Enable receiver and transmitter. */
 	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);
 #endif
-	/*
-	 * Load the addresses of the RX and TX lists into the chip.
-	 */
-
-	CSR_WRITE_4(sc, RE_RXLIST_ADDR_HI,
-	    RE_ADDR_HI(sc->re_ldata.re_rx_list_addr));
-	CSR_WRITE_4(sc, RE_RXLIST_ADDR_LO,
-	    RE_ADDR_LO(sc->re_ldata.re_rx_list_addr));
-
-	CSR_WRITE_4(sc, RE_TXLIST_ADDR_HI,
-	    RE_ADDR_HI(sc->re_ldata.re_tx_list_addr));
-	CSR_WRITE_4(sc, RE_TXLIST_ADDR_LO,
-	    RE_ADDR_LO(sc->re_ldata.re_tx_list_addr));
-
-	CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, 16);
 
 	if (RE_TX_MODERATION_IS_ENABLED(sc)) {
 		/*
@@ -2446,7 +2449,8 @@ re_sysctl_tx_moderation(SYSCTL_HANDLER_ARGS)
 	else
 		RE_DISABLE_TX_MODERATION(sc);
 
-	re_init(sc);
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP)) == (IFF_RUNNING | IFF_UP))
+		re_init(sc);
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
