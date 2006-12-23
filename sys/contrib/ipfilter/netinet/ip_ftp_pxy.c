@@ -2,10 +2,14 @@
  * Simple FTP transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.17.2.6 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.6 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.7 2006/12/23 00:27:02 swildner Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
+#endif
+
+#ifndef _KERNEL
+#define kprintf		printf
 #endif
 
 #define	isdigit(x)	((x) >= '0' && (x) <= '9')
@@ -912,7 +916,7 @@ int rv;
 			ackoff = aps->aps_ackoff[!sel2];
 	} else {
 #if PROXY_DEBUG
-		printf("seqoff %d thseq %x ackmin %x\n", seqoff, thseq,
+		kprintf("seqoff %d thseq %x ackmin %x\n", seqoff, thseq,
 			aps->aps_ackmin[sel]);
 #endif
 		seqoff = aps->aps_ackoff[sel];
@@ -920,7 +924,7 @@ int rv;
 			seqoff = aps->aps_ackoff[!sel];
 
 #if PROXY_DEBUG
-		printf("ackoff %d thack %x seqmin %x\n", ackoff, thack,
+		kprintf("ackoff %d thack %x seqmin %x\n", ackoff, thack,
 			aps->aps_seqmin[sel2]);
 #endif
 		ackoff = aps->aps_seqoff[sel2];
@@ -933,12 +937,12 @@ int rv;
 		}
 	}
 #if PROXY_DEBUG
-	printf("%s: %x seq %x/%d ack %x/%d len %d\n", rv ? "IN" : "OUT",
+	kprintf("%s: %x seq %x/%d ack %x/%d len %d\n", rv ? "IN" : "OUT",
 		tcp->th_flags, thseq, seqoff, thack, ackoff, mlen);
-	printf("sel %d seqmin %x/%x offset %d/%d\n", sel,
+	kprintf("sel %d seqmin %x/%x offset %d/%d\n", sel,
 		aps->aps_seqmin[sel], aps->aps_seqmin[sel2],
 		aps->aps_seqoff[sel], aps->aps_seqoff[sel2]);
-	printf("sel %d ackmin %x/%x offset %d/%d\n", sel2,
+	kprintf("sel %d ackmin %x/%x offset %d/%d\n", sel2,
 		aps->aps_ackmin[sel], aps->aps_ackmin[sel2],
 		aps->aps_ackoff[sel], aps->aps_ackoff[sel2]);
 #endif
@@ -949,7 +953,7 @@ int rv;
 	 * apart from causing packets to go through here ordered).
 	 */
 #if PROXY_DEBUG
-	printf("rv %d t:seq[0] %x seq[1] %x %d/%d\n",
+	kprintf("rv %d t:seq[0] %x seq[1] %x %d/%d\n",
 		rv, t->ftps_seq[0], t->ftps_seq[1], seqoff, ackoff);
 #endif
 
@@ -982,7 +986,7 @@ int rv;
 
 #if PROXY_DEBUG
 	if (!ok)
-		printf("not  ok\n");
+		kprintf("not  ok\n");
 #endif
 
 	if (!mlen) {
@@ -996,7 +1000,7 @@ int rv;
 		}
 
 #if PROXY_DEBUG
-	printf("f:seq[0] %x seq[1] %x\n", f->ftps_seq[0], f->ftps_seq[1]);
+	kprintf("f:seq[0] %x seq[1] %x\n", f->ftps_seq[0], f->ftps_seq[1]);
 #endif
 		if (tcp->th_flags & TH_FIN) {
 			if (thseq == f->ftps_seq[1]) {
@@ -1004,7 +1008,7 @@ int rv;
 				f->ftps_seq[1] = thseq + 1 - seqoff;
 			} else {
 #if PROXY_DEBUG || (!defined(_KERNEL) && !defined(KERNEL))
-				printf("FIN: thseq %x seqoff %d ftps_seq %x\n",
+				kprintf("FIN: thseq %x seqoff %d ftps_seq %x\n",
 					thseq, seqoff, f->ftps_seq[0]);
 #endif
 				return APR_ERR(1);
@@ -1028,12 +1032,12 @@ int rv;
 	if (ok == 0) {
 		inc = thseq - f->ftps_seq[0];
 #if PROXY_DEBUG || (!defined(_KERNEL) && !defined(KERNEL))
-		printf("inc %d sel %d rv %d\n", inc, sel, rv);
-		printf("th_seq %x ftps_seq %x/%x\n", thseq, f->ftps_seq[0],
+		kprintf("inc %d sel %d rv %d\n", inc, sel, rv);
+		kprintf("th_seq %x ftps_seq %x/%x\n", thseq, f->ftps_seq[0],
 			f->ftps_seq[1]);
-		printf("ackmin %x ackoff %d\n", (u_int)aps->aps_ackmin[sel],
+		kprintf("ackmin %x ackoff %d\n", (u_int)aps->aps_ackmin[sel],
 			aps->aps_ackoff[sel]);
-		printf("seqmin %x seqoff %d\n", (u_int)aps->aps_seqmin[sel],
+		kprintf("seqmin %x seqoff %d\n", (u_int)aps->aps_seqmin[sel],
 			aps->aps_seqoff[sel]);
 #endif
 
@@ -1149,7 +1153,7 @@ int rv;
 #  endif
 # endif
 	mlen -= off;
-	printf("ftps_seq[1] = %x inc %d len %d\n", f->ftps_seq[1], inc, mlen);
+	kprintf("ftps_seq[1] = %x inc %d len %d\n", f->ftps_seq[1], inc, mlen);
 #endif
 
 	f->ftps_rptr = rptr;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/iconv.h,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/sys/iconv.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/iconv.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 #ifndef _SYS_ICONV_H_
 #define _SYS_ICONV_H_
@@ -151,7 +151,7 @@ int iconv_converter_donestub(struct iconv_converter_class *dp);
 int iconv_converter_handler(module_t mod, int type, void *data);
 
 #ifdef ICONV_DEBUG
-#define ICDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
+#define ICDEBUG(format, args...) kprintf("%s: "format, __func__ ,## args)
 #else
 #define ICDEBUG(format, args...)
 #endif

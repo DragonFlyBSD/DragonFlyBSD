@@ -37,7 +37,7 @@
  * Workarounds included below.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sys/i386/i386/p4tcc.c,v 1.3.2.1 2004/03/03 15:24:15 sobomax Exp $
- * $DragonFly: src/sys/platform/pc32/i386/p4tcc.c,v 1.1 2004/07/27 10:55:57 asmodai Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/p4tcc.c,v 1.2 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -222,7 +222,7 @@ setup_p4tcc(void *dummy __unused)
 	p4tcc_performance = tcc[0].rlevel;
 
 	p4tcc_percentage = p4tcc_getperf();
-	printf("Pentium 4 TCC support enabled, current performance %u%%\n",
+	kprintf("Pentium 4 TCC support enabled, current performance %u%%\n",
 	    p4tcc_percentage);
 
 	sysctl_ctx_init(&p4tcc_sysctl_ctx);

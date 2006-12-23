@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_toshiba.c,v 1.8 2004/05/30 20:34:56 phk Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.4 2004/07/17 10:49:43 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.5 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -423,7 +423,7 @@ hci_call(ACPI_HANDLE h, int op, int function, UINT32 *arg)
 		goto end;
 	res = (ACPI_OBJECT *)results.Pointer;
 	if (!ACPI_PKG_VALID(res, HCI_WORDS)) {
-		printf("toshiba: invalid package!\n");
+		kprintf("toshiba: invalid package!\n");
 		return (ENXIO);
 	}
 

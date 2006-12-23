@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.4 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -158,7 +158,7 @@ configure_final(void *dummy)
 	cninit_finish();
 
 	if (bootverbose)
-		printf("Device configuration finished.\n");
+		kprintf("Device configuration finished.\n");
 	cold = 0;
 }
 
@@ -229,12 +229,12 @@ setroot(void)
 	char *sname;
 
 	if ((bootdev & B_MAGICMASK) != B_DEVMAGIC) {
-		printf("no B_DEVMAGIC (bootdev=%#lx)\n", bootdev);
+		kprintf("no B_DEVMAGIC (bootdev=%#lx)\n", bootdev);
 		return;
 	}
 	majdev = boot_translate_majdev(B_TYPE(bootdev));
 	if (bootverbose) {
-		printf("bootdev: %08lx type=%ld unit=%ld "
+		kprintf("bootdev: %08lx type=%ld unit=%ld "
 			"slice=%ld part=%ld major=%d\n",
 			bootdev, B_TYPE(bootdev), B_UNIT(bootdev),
 			B_SLICE(bootdev), B_PARTITION(bootdev), majdev);
@@ -247,7 +247,7 @@ setroot(void)
 	if (slice == WHOLE_DISK_SLICE)
 		slice = COMPATIBILITY_SLICE;
 	if (slice < 0 || slice >= MAX_SLICES) {
-		printf("bad slice\n");
+		kprintf("bad slice\n");
 		return;
 	}
 
@@ -395,7 +395,7 @@ pxe_setup_nfsdiskless(void)
 	if (inaddr_to_sockaddr("boot.netif.ip", &myaddr))
 		return;
 	if (inaddr_to_sockaddr("boot.netif.netmask", &netmask)) {
-		printf("PXE: no netmask\n");
+		kprintf("PXE: no netmask\n");
 		return;
 	}
 	bcopy(&myaddr, &nd->myif.ifra_addr, sizeof(myaddr));
@@ -405,7 +405,7 @@ pxe_setup_nfsdiskless(void)
 	bcopy(&netmask, &nd->myif.ifra_mask, sizeof(netmask));
 
 	if (hwaddr_to_sockaddr("boot.netif.hwaddr", &ourdl)) {
-		printf("PXE: no hardware address\n");
+		kprintf("PXE: no hardware address\n");
 		return;
 	}
 	ifa = NULL;
@@ -423,7 +423,7 @@ pxe_setup_nfsdiskless(void)
 			}
 		}
 	}
-	printf("PXE: no interface\n");
+	kprintf("PXE: no interface\n");
 	return;	/* no matching interface */
 match_done:
 	strlcpy(nd->myif.ifra_name, ifp->if_xname, sizeof(nd->myif.ifra_name));
@@ -439,7 +439,7 @@ match_done:
 	nd->root_args.sotype = SOCK_DGRAM;
 	nd->root_args.flags = (NFSMNT_WSIZE | NFSMNT_RSIZE | NFSMNT_RESVPORT);
 	if (inaddr_to_sockaddr("boot.nfsroot.server", &nd->root_saddr)) {
-		printf("PXE: no server\n");
+		kprintf("PXE: no server\n");
 		return;
 	}
 	nd->root_saddr.sin_port = htons(NFS_PORT);
@@ -449,7 +449,7 @@ match_done:
 	 * root handle.  Generate a warning but continue configuring.
 	 */
 	if (decode_nfshandle("boot.nfsroot.nfshandle", &nd->root_fh[0]) == 0) {
-		printf("PXE: Warning, no NFS handle passed from loader\n");
+		kprintf("PXE: Warning, no NFS handle passed from loader\n");
 	}
 	if ((cp = kgetenv("boot.nfsroot.path")) != NULL)
 		strncpy(nd->root_hostnam, cp, MNAMELEN - 1);

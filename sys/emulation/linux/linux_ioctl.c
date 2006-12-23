@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.21 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.22 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -162,14 +162,14 @@ bsd_to_linux_termios(struct termios *bios, struct linux_termios *lios)
 
 #ifdef DEBUG
 	if (ldebug(ioctl)) {
-		printf("LINUX: BSD termios structure (input):\n");
-		printf("i=%08x o=%08x c=%08x l=%08x ispeed=%d ospeed=%d\n",
+		kprintf("LINUX: BSD termios structure (input):\n");
+		kprintf("i=%08x o=%08x c=%08x l=%08x ispeed=%d ospeed=%d\n",
 		    bios->c_iflag, bios->c_oflag, bios->c_cflag, bios->c_lflag,
 		    bios->c_ispeed, bios->c_ospeed);
-		printf("c_cc ");
+		kprintf("c_cc ");
 		for (i=0; i<NCCS; i++)
-			printf("%02x ", bios->c_cc[i]);
-		printf("\n");
+			kprintf("%02x ", bios->c_cc[i]);
+		kprintf("\n");
 	}
 #endif
 
@@ -284,14 +284,14 @@ bsd_to_linux_termios(struct termios *bios, struct linux_termios *lios)
 
 #ifdef DEBUG
 	if (ldebug(ioctl)) {
-		printf("LINUX: LINUX termios structure (output):\n");
-		printf("i=%08x o=%08x c=%08x l=%08x line=%d\n",
+		kprintf("LINUX: LINUX termios structure (output):\n");
+		kprintf("i=%08x o=%08x c=%08x l=%08x line=%d\n",
 		    lios->c_iflag, lios->c_oflag, lios->c_cflag,
 		    lios->c_lflag, (int)lios->c_line);
-		printf("c_cc ");
+		kprintf("c_cc ");
 		for (i=0; i<LINUX_NCCS; i++) 
-			printf("%02x ", lios->c_cc[i]);
-		printf("\n");
+			kprintf("%02x ", lios->c_cc[i]);
+		kprintf("\n");
 	}
 #endif
 }
@@ -303,14 +303,14 @@ linux_to_bsd_termios(struct linux_termios *lios, struct termios *bios)
 
 #ifdef DEBUG
 	if (ldebug(ioctl)) {
-		printf("LINUX: LINUX termios structure (input):\n");
-		printf("i=%08x o=%08x c=%08x l=%08x line=%d\n", 
+		kprintf("LINUX: LINUX termios structure (input):\n");
+		kprintf("i=%08x o=%08x c=%08x l=%08x line=%d\n", 
 		    lios->c_iflag, lios->c_oflag, lios->c_cflag,
 		    lios->c_lflag, (int)lios->c_line);
-		printf("c_cc ");
+		kprintf("c_cc ");
 		for (i=0; i<LINUX_NCCS; i++)
-			printf("%02x ", lios->c_cc[i]);
-		printf("\n");
+			kprintf("%02x ", lios->c_cc[i]);
+		kprintf("\n");
 	}
 #endif
 
@@ -426,14 +426,14 @@ linux_to_bsd_termios(struct linux_termios *lios, struct termios *bios)
 
 #ifdef DEBUG
 	if (ldebug(ioctl)) {
-		printf("LINUX: BSD termios structure (output):\n");
-		printf("i=%08x o=%08x c=%08x l=%08x ispeed=%d ospeed=%d\n",
+		kprintf("LINUX: BSD termios structure (output):\n");
+		kprintf("i=%08x o=%08x c=%08x l=%08x ispeed=%d ospeed=%d\n",
 		    bios->c_iflag, bios->c_oflag, bios->c_cflag, bios->c_lflag,
 		    bios->c_ispeed, bios->c_ospeed);
-		printf("c_cc ");
+		kprintf("c_cc ");
 		for (i=0; i<NCCS; i++) 
-			printf("%02x ", bios->c_cc[i]);
-		printf("\n");
+			kprintf("%02x ", bios->c_cc[i]);
+		kprintf("\n");
 	}
 #endif
 }
@@ -1129,7 +1129,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	/* Save the original ifname */
 	bcopy(oifname, lifname, LINUX_IFNAMSIZ);
 #ifdef DEBUG
-	printf("%s(): ioctl %d on %.*s\n", __func__,
+	kprintf("%s(): ioctl %d on %.*s\n", __func__,
 		(int)(cmd & 0xffff), LINUX_IFNAMSIZ, lifname);
 #endif
 	/* Replace linux ifname with bsd ifname */
@@ -1140,7 +1140,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	}
 
 #ifdef DEBUG
-	printf("%s(): %s translated to %s\n", __func__,
+	kprintf("%s(): %s translated to %s\n", __func__,
 		lifname, oifname);
 #endif
 
@@ -1286,7 +1286,7 @@ sys_linux_ioctl(struct linux_ioctl_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(ioctl))
-		printf(ARGS(ioctl, "%d, %04x, *"), args->fd, args->cmd);
+		kprintf(ARGS(ioctl, "%d, %04x, *"), args->fd, args->cmd);
 #endif
 
 	return (mapped_ioctl(args->fd, args->cmd, (caddr_t)args->arg, &linux_ioctl_map));

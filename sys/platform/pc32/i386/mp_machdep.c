@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.53 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.54 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -177,7 +177,7 @@ typedef struct BASETABLE_ENTRY {
 	CHECK_WRITE(0x39, (D));
 
 #define CHECK_PRINT(S);				\
-	printf("%s: %d, %d, %d, %d, %d, %d\n",	\
+	kprintf("%s: %d, %d, %d, %d, %d, %d\n",	\
 	   (S),					\
 	   CHECK_READ(0x34),			\
 	   CHECK_READ(0x35),			\
@@ -402,24 +402,24 @@ mp_announce(void)
 
 	POSTCODE(MP_ANNOUNCE_POST);
 
-	printf("DragonFly/MP: Multiprocessor motherboard\n");
-	printf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
-	printf(", version: 0x%08x", cpu_apic_versions[0]);
-	printf(", at 0x%08x\n", cpu_apic_address);
+	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
+	kprintf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
+	kprintf(", version: 0x%08x", cpu_apic_versions[0]);
+	kprintf(", at 0x%08x\n", cpu_apic_address);
 	for (x = 1; x <= mp_naps; ++x) {
-		printf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
-		printf(", version: 0x%08x", cpu_apic_versions[x]);
-		printf(", at 0x%08x\n", cpu_apic_address);
+		kprintf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
+		kprintf(", version: 0x%08x", cpu_apic_versions[x]);
+		kprintf(", at 0x%08x\n", cpu_apic_address);
 	}
 
 #if defined(APIC_IO)
 	for (x = 0; x < mp_napics; ++x) {
-		printf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
-		printf(", version: 0x%08x", io_apic_versions[x]);
-		printf(", at 0x%08x\n", io_apic_address[x]);
+		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
+		kprintf(", version: 0x%08x", io_apic_versions[x]);
+		kprintf(", at 0x%08x\n", io_apic_address[x]);
 	}
 #else
-	printf(" Warning: APIC I/O disabled\n");
+	kprintf(" Warning: APIC I/O disabled\n");
 #endif	/* APIC_IO */
 }
 
@@ -790,7 +790,7 @@ mptable_pass1(void)
 
 	/* qualify the numbers */
 	if (mp_naps > MAXCPU) {
-		printf("Warning: only using %d of %d available CPUs!\n",
+		kprintf("Warning: only using %d of %d available CPUs!\n",
 			MAXCPU, mp_naps);
 		mp_naps = MAXCPU;
 	}
@@ -1102,7 +1102,7 @@ swap_apic_id(int apic, int oldid, int newid)
 	if (oldid == newid)
 		return;			/* Nothing to do */
 	
-	printf("Changing APIC ID for IO APIC #%d from %d to %d in MP table\n",
+	kprintf("Changing APIC ID for IO APIC #%d from %d to %d in MP table\n",
 	       apic, oldid, newid);
 	
 	/* Swap physical APIC IDs in interrupt entries */
@@ -1119,7 +1119,7 @@ swap_apic_id(int apic, int oldid, int newid)
 			break;
 	
 	if (oapic < mp_napics) {
-		printf("Changing APIC ID for IO APIC #%d from "
+		kprintf("Changing APIC ID for IO APIC #%d from "
 		       "%d to %d in MP table\n",
 		       oapic, newid, oldid);
 		IO_TO_ID(oapic) = oldid;
@@ -1316,7 +1316,7 @@ fix_mp_table(void)
 #ifdef APIC_IO
 	/* detect and fix broken Compaq MP table */
 	if (apic_int_type(0, 0) == -1) {
-		printf("APIC_IO: MP table broken: 8259->APIC entry missing!\n");
+		kprintf("APIC_IO: MP table broken: 8259->APIC entry missing!\n");
 		io_apic_ints[nintrs].int_type = 3;	/* ExtInt */
 		io_apic_ints[nintrs].int_vector = 0xff;	/* Unassigned */
 		/* XXX fixme, set src bus id etc, but it doesn't seem to hurt */
@@ -1324,7 +1324,7 @@ fix_mp_table(void)
 		io_apic_ints[nintrs].dst_apic_int = 0;	/* Pin 0 */
 		nintrs++;
 	} else if (apic_int_type(0, 0) == 0) {
-		printf("APIC_IO: MP table broken: ExtINT entry corrupt!\n");
+		kprintf("APIC_IO: MP table broken: ExtINT entry corrupt!\n");
 		for (x = 0; x < nintrs; ++x)
 			if ((0 == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
 			    (0 == io_apic_ints[x].dst_apic_int)) {
@@ -1344,7 +1344,7 @@ fix_mp_table(void)
 	 *	ACPI table has an entry for both 14 and 15.
 	 */
 	if (apic_int_type(0, 14) == 0 && apic_int_type(0, 15) == -1) {
-		printf("APIC_IO: MP table broken: IRQ 15 not ISA when IRQ 14 is!\n");
+		kprintf("APIC_IO: MP table broken: IRQ 15 not ISA when IRQ 14 is!\n");
 		io14 = io_apic_find_int_entry(0, 14);
 		io_apic_ints[nintrs] = *io14;
 		io_apic_ints[nintrs].src_bus_irq = 15;
@@ -1536,7 +1536,7 @@ isa_apic_mask(u_int isa_mask)
 
 #if defined(SKIP_IRQ15_REDIRECT)
 	if (isa_mask == (1 << 15)) {
-		printf("skipping ISA IRQ15 redirect\n");
+		kprintf("skipping ISA IRQ15 redirect\n");
 		return isa_mask;
 	}
 #endif  /* SKIP_IRQ15_REDIRECT */
@@ -1687,12 +1687,12 @@ undirect_isa_irq(int rirq)
 {
 #if defined(READY)
 	if (bootverbose)
-	    printf("Freeing redirected ISA irq %d.\n", rirq);
+	    kprintf("Freeing redirected ISA irq %d.\n", rirq);
 	/** FIXME: tickle the MB redirector chip */
 	return ???;
 #else
 	if (bootverbose)
-	    printf("Freeing (NOT implemented) redirected ISA irq %d.\n", rirq);
+	    kprintf("Freeing (NOT implemented) redirected ISA irq %d.\n", rirq);
 	return 0;
 #endif  /* READY */
 }
@@ -1706,13 +1706,13 @@ undirect_pci_irq(int rirq)
 {
 #if defined(READY)
 	if (bootverbose)
-		printf("Freeing redirected PCI irq %d.\n", rirq);
+		kprintf("Freeing redirected PCI irq %d.\n", rirq);
 
 	/** FIXME: tickle the MB redirector chip */
 	return ???;
 #else
 	if (bootverbose)
-		printf("Freeing (NOT implemented) redirected PCI irq %d.\n",
+		kprintf("Freeing (NOT implemented) redirected PCI irq %d.\n",
 		       rirq);
 	return 0;
 #endif  /* READY */
@@ -1876,31 +1876,31 @@ default_mp_table(int type)
 #endif	/* APIC_IO */
 
 #if 0
-	printf("  MP default config type: %d\n", type);
+	kprintf("  MP default config type: %d\n", type);
 	switch (type) {
 	case 1:
-		printf("   bus: ISA, APIC: 82489DX\n");
+		kprintf("   bus: ISA, APIC: 82489DX\n");
 		break;
 	case 2:
-		printf("   bus: EISA, APIC: 82489DX\n");
+		kprintf("   bus: EISA, APIC: 82489DX\n");
 		break;
 	case 3:
-		printf("   bus: EISA, APIC: 82489DX\n");
+		kprintf("   bus: EISA, APIC: 82489DX\n");
 		break;
 	case 4:
-		printf("   bus: MCA, APIC: 82489DX\n");
+		kprintf("   bus: MCA, APIC: 82489DX\n");
 		break;
 	case 5:
-		printf("   bus: ISA+PCI, APIC: Integrated\n");
+		kprintf("   bus: ISA+PCI, APIC: Integrated\n");
 		break;
 	case 6:
-		printf("   bus: EISA+PCI, APIC: Integrated\n");
+		kprintf("   bus: EISA+PCI, APIC: Integrated\n");
 		break;
 	case 7:
-		printf("   bus: MCA+PCI, APIC: Integrated\n");
+		kprintf("   bus: MCA+PCI, APIC: Integrated\n");
 		break;
 	default:
-		printf("   future type\n");
+		kprintf("   future type\n");
 		break;
 		/* NOTREACHED */
 	}
@@ -2129,10 +2129,10 @@ start_all_aps(u_int boot_addr)
 		/* attempt to start the Application Processor */
 		CHECK_INIT(99);	/* setup checkpoints */
 		if (!start_ap(gd, boot_addr)) {
-			printf("AP #%d (PHY# %d) failed!\n", x, CPU_TO_ID(x));
+			kprintf("AP #%d (PHY# %d) failed!\n", x, CPU_TO_ID(x));
 			CHECK_PRINT("trace");	/* show checkpoints */
 			/* better panic as the AP may be running loose */
-			printf("panic y/n? [y] ");
+			kprintf("panic y/n? [y] ");
 			if (cngetc() != 'n')
 				panic("bye-bye");
 		}
@@ -2470,14 +2470,14 @@ ap_init(void)
 	/* Build our map of 'other' CPUs. */
 	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
 
-	printf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
+	kprintf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
 	apic_id = (apic_id_to_logical[(lapic.id & 0x0f000000) >> 24]);
 	if (mycpu->gd_cpuid != apic_id) {
-		printf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
-		printf("SMP: apic_id = %d\n", apic_id);
-		printf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
+		kprintf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
+		kprintf("SMP: apic_id = %d\n", apic_id);
+		kprintf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 		panic("cpuid mismatch! boom!!");
 	}
 
@@ -2518,7 +2518,7 @@ ap_finish(void)
 {
 	mp_finish = 1;
 	if (bootverbose)
-		printf("Finish MP startup\n");
+		kprintf("Finish MP startup\n");
 	if (cpu_feature & CPUID_TSC)
 		tsc0_offset = rdtsc();
 	tsc_offsets[0] = 0;
@@ -2531,7 +2531,7 @@ ap_finish(void)
 	while (try_mplock() == 0)
 		;
 	if (bootverbose)
-		printf("Active CPU Mask: %08x\n", smp_active_mask);
+		kprintf("Active CPU Mask: %08x\n", smp_active_mask);
 }
 
 SYSINIT(finishsmp, SI_SUB_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)

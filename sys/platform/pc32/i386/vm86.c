@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.22 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.23 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -640,7 +640,7 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 		vm86_blew_up_timer = 0;
 		timer_restore();
 		if (timer_warn) {
-			printf("Warning: BIOS played with the 8254, "
+			kprintf("Warning: BIOS played with the 8254, "
 				"resetting it\n");
 		}
 	}

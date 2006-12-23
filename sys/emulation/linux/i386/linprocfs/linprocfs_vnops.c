@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.38 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.39 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -376,7 +376,7 @@ linprocfs_print(struct vop_print_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
-	printf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
+	kprintf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
 	    pfs->pfs_type, (long)pfs->pfs_pid, pfs->pfs_mode, pfs->pfs_flags);
 	return (0);
 }
@@ -1043,7 +1043,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 	case Pexe:
 		procp = PFIND(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
-			printf("linprocfs_readlink: pid %d disappeared\n",
+			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));

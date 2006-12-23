@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.62 2006/12/02 23:13:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.63 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -1496,7 +1496,7 @@ pmap_collect(void)
 		return;
 
 	if (warningdone < 5) {
-		printf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
+		kprintf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
 		warningdone++;
 	}
 
@@ -1600,7 +1600,7 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 		if (oldpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) oldpte)) {
-				printf(
+				kprintf(
 	"pmap_remove: modified page not writable: va: 0x%x, pte: 0x%x\n",
 				    va, oldpte);
 			}
@@ -1785,7 +1785,7 @@ pmap_remove_all(vm_page_t m)
 		if (tpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) tpte)) {
-				printf(
+				kprintf(
 	"pmap_remove_all: modified page not writable: va: 0x%x, pte: 0x%x\n",
 				    pv->pv_va, tpte);
 			}
@@ -1980,7 +1980,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pmap_nw_modified((pt_entry_t) origpte)) {
-			printf(
+			kprintf(
 	"pmap_enter: modified page not writable: va: 0x%x, pte: 0x%x\n",
 			    va, origpte);
 		}
@@ -2850,7 +2850,7 @@ pmap_testbit(vm_page_t m, int bit)
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (!pv->pv_pmap) {
-			printf("Null pmap (tb) at va: 0x%x\n", pv->pv_va);
+			kprintf("Null pmap (tb) at va: 0x%x\n", pv->pv_va);
 			continue;
 		}
 #endif
@@ -2895,7 +2895,7 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (!pv->pv_pmap) {
-			printf("Null pmap (cb) at va: 0x%x\n", pv->pv_va);
+			kprintf("Null pmap (cb) at va: 0x%x\n", pv->pv_va);
 			continue;
 		}
 #endif
@@ -3259,7 +3259,7 @@ pads(pmap_t pm)
 					continue;
 				ptep = pmap_pte_quick(pm, va);
 				if (pmap_pte_v(ptep))
-					printf("%x:%x ", va, *(int *) ptep);
+					kprintf("%x:%x ", va, *(int *) ptep);
 			};
 
 }
@@ -3270,16 +3270,16 @@ pmap_pvdump(vm_paddr_t pa)
 	pv_entry_t pv;
 	vm_page_t m;
 
-	printf("pa %08llx", (long long)pa);
+	kprintf("pa %08llx", (long long)pa);
 	m = PHYS_TO_VM_PAGE(pa);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 #ifdef used_to_be
-		printf(" -> pmap %p, va %x, flags %x",
+		kprintf(" -> pmap %p, va %x, flags %x",
 		    (void *)pv->pv_pmap, pv->pv_va, pv->pv_flags);
 #endif
-		printf(" -> pmap %p, va %x", (void *)pv->pv_pmap, pv->pv_va);
+		kprintf(" -> pmap %p, va %x", (void *)pv->pv_pmap, pv->pv_va);
 		pads(pv->pv_pmap);
 	}
-	printf(" ");
+	kprintf(" ");
 }
 #endif

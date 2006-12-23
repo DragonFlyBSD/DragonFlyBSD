@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.49 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.50 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -265,7 +265,7 @@ rtcintr(void *dummy, void *frame)
 
 DB_SHOW_COMMAND(rtc, rtc)
 {
-	printf("%02x/%02x/%02x %02x:%02x:%02x, A = %02x, B = %02x, C = %02x\n",
+	kprintf("%02x/%02x/%02x %02x:%02x:%02x, A = %02x, B = %02x, C = %02x\n",
 	       rtcin(RTC_YEAR), rtcin(RTC_MONTH), rtcin(RTC_DAY),
 	       rtcin(RTC_HRS), rtcin(RTC_MIN), rtcin(RTC_SEC),
 	       rtcin(RTC_STATUSA), rtcin(RTC_STATUSB), rtcin(RTC_INTR));
@@ -384,7 +384,7 @@ DELAY(int n)
 		state = 2;
 	}
 	if (state == 1)
-		printf("DELAY(%d)...", n);
+		kprintf("DELAY(%d)...", n);
 #endif
 	/*
 	 * Guard against the timer being uninitialized if we are called
@@ -419,7 +419,7 @@ DELAY(int n)
 	}
 #ifdef DELAYDEBUG
 	if (state == 1)
-		printf(" %d calls to getit() at %d usec each\n",
+		kprintf(" %d calls to getit() at %d usec each\n",
 		       getit_calls, (n + 5) / getit_calls);
 #endif
 }
@@ -495,7 +495,7 @@ calibrate_clocks(void)
 	int sec, start_sec, timeout;
 
 	if (bootverbose)
-	        printf("Calibrating clock(s) ... ");
+	        kprintf("Calibrating clock(s) ... ");
 	if (!(rtcin(RTC_STATUSD) & RTCSD_PWR))
 		goto fail;
 	timeout = 100000000;
@@ -564,12 +564,12 @@ calibrate_clocks(void)
 	}
 
 	if (tsc_present)
-		printf("TSC clock: %u Hz, ", tsc_freq);
-	printf("i8254 clock: %u Hz\n", tot_count);
+		kprintf("TSC clock: %u Hz, ", tsc_freq);
+	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 
 fail:
-	printf("failed, using default i8254 clock of %u Hz\n",
+	kprintf("failed, using default i8254 clock of %u Hz\n",
 		i8254_cputimer.freq);
 	return (i8254_cputimer.freq);
 }
@@ -715,7 +715,7 @@ startrtclock(void)
 	freq = calibrate_clocks();
 #ifdef CLK_CALIBRATION_LOOP
 	if (bootverbose) {
-		printf(
+		kprintf(
 		"Press a key on the console to abort clock calibration\n");
 		while (cncheckc() == -1)
 			calibrate_clocks();
@@ -732,14 +732,14 @@ startrtclock(void)
 	if (delta < i8254_cputimer.freq / 100) {
 #ifndef CLK_USE_I8254_CALIBRATION
 		if (bootverbose)
-			printf(
+			kprintf(
 "CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
 		freq = i8254_cputimer.freq;
 #endif
 		cputimer_set_frequency(&i8254_cputimer, freq);
 	} else {
 		if (bootverbose)
-			printf(
+			kprintf(
 		    "%d Hz differs from default of %d Hz by more than 1%%\n",
 			       freq, i8254_cputimer.freq);
 		tsc_freq = 0;
@@ -749,7 +749,7 @@ startrtclock(void)
 #ifndef CLK_USE_TSC_CALIBRATION
 	if (tsc_freq != 0) {
 		if (bootverbose)
-			printf(
+			kprintf(
 "CLK_USE_TSC_CALIBRATION not specified - using old calibration method\n");
 		tsc_freq = 0;
 		tsc_frequency = 0;
@@ -768,7 +768,7 @@ startrtclock(void)
 		tsc_freq = (u_int)tsc_frequency;
 #ifdef CLK_USE_TSC_CALIBRATION
 		if (bootverbose)
-			printf("TSC clock: %u Hz (Method B)\n", tsc_freq);
+			kprintf("TSC clock: %u Hz (Method B)\n", tsc_freq);
 #endif
 	}
 
@@ -884,8 +884,8 @@ inittodr(time_t base)
 	return;
 
 wrong_time:
-	printf("Invalid time in real time clock.\n");
-	printf("Check and reset the date immediately!\n");
+	kprintf("Invalid time in real time clock.\n");
+	kprintf("Check and reset the date immediately!\n");
 }
 
 /*
@@ -1018,7 +1018,7 @@ cpu_initclocks(void)
 	if (statclock_disable == 0) {
 		diag = rtcin(RTC_DIAG);
 		if (diag != 0)
-			printf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
+			kprintf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
 
 #ifdef APIC_IO
 		if (isa_apic_irq(8) != 8)
@@ -1045,7 +1045,7 @@ cpu_initclocks(void)
 		 * 8254 Timer0 interrupt and wait 1/100s for it to happen,
 		 * then see if we got it.
 		 */
-		printf("APIC_IO: Testing 8254 interrupt delivery\n");
+		kprintf("APIC_IO: Testing 8254 interrupt delivery\n");
 		cputimer_intr_reload(2);	/* XXX assumes 8254 */
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
@@ -1059,7 +1059,7 @@ cpu_initclocks(void)
 			 */
 			machintr_intrdis(apic_8254_intr);
 			unregister_int(clkdesc);
-			printf("APIC_IO: Broken MP table detected: "
+			kprintf("APIC_IO: Broken MP table detected: "
 			       "8254 is not connected to "
 			       "IOAPIC #%d intpin %d\n",
 			       int_to_apicintpin[apic_8254_intr].ioapic,
@@ -1089,11 +1089,11 @@ cpu_initclocks(void)
 	if (apic_int_type(0, 0) != 3 ||
 	    int_to_apicintpin[apic_8254_intr].ioapic != 0 ||
 	    int_to_apicintpin[apic_8254_intr].int_pin != 0) {
-		printf("APIC_IO: routing 8254 via IOAPIC #%d intpin %d\n",
+		kprintf("APIC_IO: routing 8254 via IOAPIC #%d intpin %d\n",
 		       int_to_apicintpin[apic_8254_intr].ioapic,
 		       int_to_apicintpin[apic_8254_intr].int_pin);
 	} else {
-		printf("APIC_IO: "
+		kprintf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
 #endif

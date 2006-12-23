@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.31 2006/10/27 04:56:28 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.32 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -170,7 +170,7 @@ sys_linux_alarm(struct linux_alarm_args *args)
 
 #ifdef DEBUG
 	if (ldebug(alarm))
-		printf(ARGS(alarm, "%u"), args->secs);
+		kprintf(ARGS(alarm, "%u"), args->secs);
 #endif
 
 	if (args->secs > 100000000)
@@ -214,7 +214,7 @@ sys_linux_brk(struct linux_brk_args *args)
 	vm = p->p_vmspace;
 #ifdef DEBUG
 	if (ldebug(brk))
-		printf(ARGS(brk, "%p"), (void *)args->dsend);
+		kprintf(ARGS(brk, "%p"), (void *)args->dsend);
 #endif
 	old = (vm_offset_t)vm->vm_daddr + ctob(vm->vm_dsize);
 	new = (vm_offset_t)args->dsend;
@@ -254,7 +254,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(uselib))
-		printf(ARGS(uselib, "%s"), path);
+		kprintf(ARGS(uselib, "%s"), path);
 #endif
 
 	a_out = NULL;
@@ -375,7 +375,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	 */
 	if (file_offset & PAGE_MASK) {
 #ifdef DEBUG
-		printf("uselib: Non page aligned binary %lu\n", file_offset);
+		kprintf("uselib: Non page aligned binary %lu\n", file_offset);
 #endif
 		/* Map text+data read/write/execute */
 
@@ -412,7 +412,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 			goto cleanup;
 	} else {
 #ifdef DEBUG
-		printf("uselib: Page aligned binary %lu\n", file_offset);
+		kprintf("uselib: Page aligned binary %lu\n", file_offset);
 #endif
 		/*
 		 * for QMAGIC, a_entry is 20 bytes beyond the load address
@@ -431,7 +431,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 			goto cleanup;
 	}
 #ifdef DEBUG
-	printf("mem=%08lx = %08lx %08lx\n", (long)vmaddr, ((long*)vmaddr)[0],
+	kprintf("mem=%08lx = %08lx %08lx\n", (long)vmaddr, ((long*)vmaddr)[0],
 	    ((long*)vmaddr)[1]);
 #endif
 	if (bss_size != 0) {
@@ -477,7 +477,7 @@ sys_linux_select(struct linux_select_args *args)
 
 #ifdef DEBUG
 	if (ldebug(select))
-		printf(ARGS(select, "%d, %p, %p, %p, %p"), args->nfds,
+		kprintf(ARGS(select, "%d, %p, %p, %p, %p"), args->nfds,
 		    (void *)args->readfds, (void *)args->writefds,
 		    (void *)args->exceptfds, (void *)args->timeout);
 #endif
@@ -500,7 +500,7 @@ sys_linux_select(struct linux_select_args *args)
 			goto select_out;
 #ifdef DEBUG
 		if (ldebug(select))
-			printf(LMSG("incoming timeout (%ld/%ld)"),
+			kprintf(LMSG("incoming timeout (%ld/%ld)"),
 			    utv.tv_sec, utv.tv_usec);
 #endif
 
@@ -530,7 +530,7 @@ sys_linux_select(struct linux_select_args *args)
 	args->sysmsg_result = bsa.sysmsg_result;
 #ifdef DEBUG
 	if (ldebug(select))
-		printf(LMSG("real select returns %d"), error);
+		kprintf(LMSG("real select returns %d"), error);
 #endif
 	if (error) {
 		/*
@@ -559,7 +559,7 @@ sys_linux_select(struct linux_select_args *args)
 			timevalclear(&utv);
 #ifdef DEBUG
 		if (ldebug(select))
-			printf(LMSG("outgoing timeout (%ld/%ld)"),
+			kprintf(LMSG("outgoing timeout (%ld/%ld)"),
 			    utv.tv_sec, utv.tv_usec);
 #endif
 		if ((error = copyout(&utv, (caddr_t)args->timeout,
@@ -570,7 +570,7 @@ sys_linux_select(struct linux_select_args *args)
 select_out:
 #ifdef DEBUG
 	if (ldebug(select))
-		printf(LMSG("select_out -> %d"), error);
+		kprintf(LMSG("select_out -> %d"), error);
 #endif
 	return error;
 }
@@ -583,7 +583,7 @@ sys_linux_mremap(struct linux_mremap_args *args)
 
 #ifdef DEBUG
 	if (ldebug(mremap))
-		printf(ARGS(mremap, "%p, %08lx, %08lx, %08lx"),
+		kprintf(ARGS(mremap, "%p, %08lx, %08lx, %08lx"),
 		    (void *)args->addr, 
 		    (unsigned long)args->old_len, 
 		    (unsigned long)args->new_len,
@@ -637,7 +637,7 @@ sys_linux_time(struct linux_time_args *args)
 
 #ifdef DEBUG
 	if (ldebug(time))
-		printf(ARGS(time, "*"));
+		kprintf(ARGS(time, "*"));
 #endif
 
 	microtime(&tv);
@@ -672,7 +672,7 @@ sys_linux_times(struct linux_times_args *args)
 	KKASSERT(p);
 #ifdef DEBUG
 	if (ldebug(times))
-		printf(ARGS(times, "*"));
+		kprintf(ARGS(times, "*"));
 #endif
 
 	calcru(p, &ru.ru_utime, &ru.ru_stime, NULL);
@@ -700,7 +700,7 @@ sys_linux_newuname(struct linux_newuname_args *args)
 
 #ifdef DEBUG
 	if (ldebug(newuname))
-		printf(ARGS(newuname, "*"));
+		kprintf(ARGS(newuname, "*"));
 #endif
 
 	osname = linux_get_osname(td);
@@ -737,7 +737,7 @@ sys_linux_utime(struct linux_utime_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(utime))
-		printf(ARGS(utime, "%s, *"), path);
+		kprintf(ARGS(utime, "%s, *"), path);
 #endif
 
 	if (args->times) {
@@ -768,7 +768,7 @@ sys_linux_waitpid(struct linux_waitpid_args *args)
 
 #ifdef DEBUG
 	if (ldebug(waitpid))
-		printf(ARGS(waitpid, "%d, %p, %d"),
+		kprintf(ARGS(waitpid, "%d, %p, %d"),
 		    args->pid, (void *)args->status, args->options);
 #endif
 	options = args->options & (WNOHANG | WUNTRACED);
@@ -805,7 +805,7 @@ sys_linux_wait4(struct linux_wait4_args *args)
 
 #ifdef DEBUG
 	if (ldebug(wait4))
-		printf(ARGS(wait4, "%d, %p, %d, %p"),
+		kprintf(ARGS(wait4, "%d, %p, %d, %p"),
 		    args->pid, (void *)args->status, args->options,
 		    (void *)args->rusage);
 #endif
@@ -848,7 +848,7 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(mknod))
-		printf(ARGS(mknod, "%s, %d, %d"),
+		kprintf(ARGS(mknod, "%s, %d, %d"),
 		    path, args->mode, args->dev);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
@@ -873,7 +873,7 @@ sys_linux_personality(struct linux_personality_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(personality))
-		printf(ARGS(personality, "%d"), args->per);
+		kprintf(ARGS(personality, "%d"), args->per);
 #endif
 	if (args->per != 0)
 		return EINVAL;
@@ -895,7 +895,7 @@ sys_linux_setitimer(struct linux_setitimer_args *args)
 
 #ifdef DEBUG
 	if (ldebug(setitimer))
-		printf(ARGS(setitimer, "%p, %p"),
+		kprintf(ARGS(setitimer, "%p, %p"),
 		    (void *)args->itv, (void *)args->oitv);
 #endif
 	bsa.which = args->which;
@@ -907,9 +907,9 @@ sys_linux_setitimer(struct linux_setitimer_args *args)
 		return error;
 #ifdef DEBUG
 	    if (ldebug(setitimer)) {
-	        printf("setitimer: value: sec: %ld, usec: %ld\n",
+	        kprintf("setitimer: value: sec: %ld, usec: %ld\n",
 		    foo.it_value.tv_sec, foo.it_value.tv_usec);
-	        printf("setitimer: interval: sec: %ld, usec: %ld\n",
+	        kprintf("setitimer: interval: sec: %ld, usec: %ld\n",
 		    foo.it_interval.tv_sec, foo.it_interval.tv_usec);
 	    }
 #endif
@@ -926,7 +926,7 @@ sys_linux_getitimer(struct linux_getitimer_args *args)
 	int error;
 #ifdef DEBUG
 	if (ldebug(getitimer))
-		printf(ARGS(getitimer, "%p"), (void *)args->itv);
+		kprintf(ARGS(getitimer, "%p"), (void *)args->itv);
 #endif
 	bsa.which = args->which;
 	bsa.itv = (struct itimerval *)args->itv;
@@ -1057,7 +1057,7 @@ sys_linux_setrlimit(struct linux_setrlimit_args *args)
 
 #ifdef DEBUG
 	if (ldebug(setrlimit))
-		printf(ARGS(setrlimit, "%d, %p"),
+		kprintf(ARGS(setrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
 	if (args->resource >= LINUX_RLIM_NLIMITS)
@@ -1087,7 +1087,7 @@ sys_linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 
 #ifdef DEBUG
 	if (ldebug(old_getrlimit))
-		printf(ARGS(old_getrlimit, "%d, %p"),
+		kprintf(ARGS(old_getrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
 	if (args->resource >= LINUX_RLIM_NLIMITS)
@@ -1120,7 +1120,7 @@ sys_linux_getrlimit(struct linux_getrlimit_args *args)
 
 #ifdef DEBUG
 	if (ldebug(getrlimit))
-		printf(ARGS(getrlimit, "%d, %p"),
+		kprintf(ARGS(getrlimit, "%d, %p"),
 		    args->resource, (void *)args->rlim);
 #endif
 	if (args->resource >= LINUX_RLIM_NLIMITS)
@@ -1147,7 +1147,7 @@ sys_linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sched_setscheduler))
-		printf(ARGS(sched_setscheduler, "%d, %d, %p"),
+		kprintf(ARGS(sched_setscheduler, "%d, %d, %p"),
 		    args->pid, args->policy, (const void *)args->param);
 #endif
 
@@ -1182,7 +1182,7 @@ sys_linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sched_getscheduler))
-		printf(ARGS(sched_getscheduler, "%d"), args->pid);
+		kprintf(ARGS(sched_getscheduler, "%d"), args->pid);
 #endif
 
 	bsd.sysmsg_result = 0;
@@ -1212,7 +1212,7 @@ sys_linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sched_get_priority_max))
-		printf(ARGS(sched_get_priority_max, "%d"), args->policy);
+		kprintf(ARGS(sched_get_priority_max, "%d"), args->policy);
 #endif
 
 	switch (args->policy) {
@@ -1243,7 +1243,7 @@ sys_linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sched_get_priority_min))
-		printf(ARGS(sched_get_priority_min, "%d"), args->policy);
+		kprintf(ARGS(sched_get_priority_min, "%d"), args->policy);
 #endif
 
 	switch (args->policy) {
@@ -1278,7 +1278,7 @@ sys_linux_reboot(struct linux_reboot_args *args)
 
 #ifdef DEBUG
 	if (ldebug(reboot))
-		printf(ARGS(reboot, "0x%x"), args->cmd);
+		kprintf(ARGS(reboot, "0x%x"), args->cmd);
 #endif
 	if (args->cmd == REBOOT_CAD_ON || args->cmd == REBOOT_CAD_OFF)
 		return (0);

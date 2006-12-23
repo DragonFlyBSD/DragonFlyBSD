@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.8 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.9 2006/12/23 00:27:02 swildner Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -84,6 +84,7 @@ extern  KRWLOCK_T       ipf_nat, ipf_state;
 
 #ifndef _KERNEL
 #define ksprintf	sprintf
+#define kprintf		printf
 #endif
 
 static int appr_fixseqack (fr_info_t *, ip_t *, ap_session_t *, int );
@@ -316,7 +317,7 @@ nat_t *nat;
 #endif
 			if (sum != tcp->th_sum) {
 #if PROXY_DEBUG || (!defined(_KERNEL) && !defined(KERNEL))
-				printf("proxy tcp checksum failure\n");
+				kprintf("proxy tcp checksum failure\n");
 #endif
 				frstats[fin->fin_out].fr_tcpbad++;
 				return -1;
@@ -343,13 +344,13 @@ nat_t *nat;
 		rv = APR_EXIT(err);
 		if (rv == 1) {
 #if PROXY_DEBUG || (!defined(_KERNEL) && !defined(KERNEL))
-			printf("proxy says bad packet received\n");
+			kprintf("proxy says bad packet received\n");
 #endif
 			return -1;
 		}
 		if (rv == 2) {
 #if PROXY_DEBUG || (!defined(_KERNEL) && !defined(KERNEL))
-			printf("proxy says free app proxy data\n");
+			kprintf("proxy says free app proxy data\n");
 #endif
 			appr_free(apr);
 			nat->nat_aps = NULL;
@@ -464,7 +465,7 @@ int inc;
 		if ((aps->aps_seqmin[!sel] > aps->aps_seqmin[sel]) &&
 		    (seq1 > aps->aps_seqmin[!sel])) {
 #if PROXY_DEBUG
-			printf("proxy out switch set seq %d -> %d %x > %x\n",
+			kprintf("proxy out switch set seq %d -> %d %x > %x\n",
 				sel, !sel, seq1, aps->aps_seqmin[!sel]);
 #endif
 			sel = aps->aps_sel[out] = !sel;
@@ -484,7 +485,7 @@ int inc;
 			aps->aps_seqmin[sel] = seq1 + nlen - 1;
 			aps->aps_seqoff[sel] = aps->aps_seqoff[sel] + inc;
 #if PROXY_DEBUG
-			printf("proxy seq set %d at %x to %d + %d\n", sel,
+			kprintf("proxy seq set %d at %x to %d + %d\n", sel,
 				aps->aps_seqmin[sel], aps->aps_seqoff[sel],
 				inc);
 #endif
@@ -499,7 +500,7 @@ int inc;
 		if ((aps->aps_ackmin[!sel] > aps->aps_ackmin[sel]) &&
 		    (seq1 > aps->aps_ackmin[!sel])) {
 #if PROXY_DEBUG
-			printf("proxy out switch set ack %d -> %d %x > %x\n",
+			kprintf("proxy out switch set ack %d -> %d %x > %x\n",
 				sel, !sel, seq1, aps->aps_ackmin[!sel]);
 #endif
 			sel = aps->aps_sel[1 - out] = !sel;
@@ -518,7 +519,7 @@ int inc;
 		if ((aps->aps_ackmin[!sel] > aps->aps_ackmin[sel]) &&
 		    (seq1 > aps->aps_ackmin[!sel])) {
 #if PROXY_DEBUG
-			printf("proxy in switch set ack %d -> %d %x > %x\n",
+			kprintf("proxy in switch set ack %d -> %d %x > %x\n",
 				sel, !sel, seq1, aps->aps_ackmin[!sel]);
 #endif
 			sel = aps->aps_sel[out] = !sel;
@@ -538,7 +539,7 @@ int inc;
 			aps->aps_ackmin[!sel] = seq1 + nlen - 1;
 			aps->aps_ackoff[!sel] = aps->aps_ackoff[sel] + inc;
 #if PROXY_DEBUG
-			printf("proxy ack set %d at %x to %d + %d\n", !sel,
+			kprintf("proxy ack set %d at %x to %d + %d\n", !sel,
 				aps->aps_seqmin[!sel], aps->aps_seqoff[sel],
 				inc);
 #endif
@@ -553,7 +554,7 @@ int inc;
 		if ((aps->aps_seqmin[!sel] > aps->aps_seqmin[sel]) &&
 		    (seq1 > aps->aps_seqmin[!sel])) {
 #if PROXY_DEBUG
-			printf("proxy in switch set seq %d -> %d %x > %x\n",
+			kprintf("proxy in switch set seq %d -> %d %x > %x\n",
 				sel, !sel, seq1, aps->aps_seqmin[!sel]);
 #endif
 			sel = aps->aps_sel[1 - out] = !sel;
@@ -561,7 +562,7 @@ int inc;
 
 		if (aps->aps_seqoff[sel] != 0) {
 #if PROXY_DEBUG
-			printf("sel %d seqoff %d seq1 %x seqmin %x\n", sel,
+			kprintf("sel %d seqoff %d seq1 %x seqmin %x\n", sel,
 				aps->aps_seqoff[sel], seq1,
 				aps->aps_seqmin[sel]);
 #endif
@@ -573,7 +574,7 @@ int inc;
 		}
 	}
 #if PROXY_DEBUG
-	printf("appr_fixseqack: seq %x ack %x\n", ntohl(tcp->th_seq),
+	kprintf("appr_fixseqack: seq %x ack %x\n", ntohl(tcp->th_seq),
 		ntohl(tcp->th_ack));
 #endif
 	return ch ? 2 : 0;

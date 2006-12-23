@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.24 2006/10/27 04:56:28 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.25 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -105,7 +105,7 @@ sys_linux_newstat(struct linux_newstat_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(newstat))
-		printf(ARGS(newstat, "%s, *"), path);
+		kprintf(ARGS(newstat, "%s, *"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -131,7 +131,7 @@ sys_linux_newlstat(struct linux_newlstat_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(newlstat))
-		printf(ARGS(newlstat, "%s, *"), path);
+		kprintf(ARGS(newlstat, "%s, *"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
@@ -152,7 +152,7 @@ sys_linux_newfstat(struct linux_newfstat_args *args)
 
 #ifdef DEBUG
 	if (ldebug(newfstat))
-		printf(ARGS(newfstat, "%d, *"), args->fd);
+		kprintf(ARGS(newfstat, "%d, *"), args->fd);
 #endif
 	error = kern_fstat(args->fd, &buf);
 
@@ -243,7 +243,7 @@ sys_linux_statfs(struct linux_statfs_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(statfs))
-		printf(ARGS(statfs, "%s, *"), path);
+		kprintf(ARGS(statfs, "%s, *"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -271,7 +271,7 @@ sys_linux_fstatfs(struct linux_fstatfs_args *args)
 
 #ifdef DEBUG
 	if (ldebug(fstatfs))
-		printf(ARGS(fstatfs, "%d, *"), args->fd);
+		kprintf(ARGS(fstatfs, "%d, *"), args->fd);
 #endif
 	if ((error = kern_fstatfs(args->fd, &statfs)) != 0)
 		return (error);
@@ -303,7 +303,7 @@ sys_linux_ustat(struct linux_ustat_args *args)
 
 #ifdef DEBUG
 	if (ldebug(ustat))
-		printf(ARGS(ustat, "%d, *"), args->dev);
+		kprintf(ARGS(ustat, "%d, *"), args->dev);
 #endif
 
 	/*
@@ -383,7 +383,7 @@ sys_linux_stat64(struct linux_stat64_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(stat64))
-		printf(ARGS(stat64, "%s, *"), path);
+		kprintf(ARGS(stat64, "%s, *"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -409,7 +409,7 @@ sys_linux_lstat64(struct linux_lstat64_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(lstat64))
-		printf(ARGS(lstat64, "%s, *"), path);
+		kprintf(ARGS(lstat64, "%s, *"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
@@ -430,7 +430,7 @@ sys_linux_fstat64(struct linux_fstat64_args *args)
 
 #ifdef DEBUG
 	if (ldebug(fstat64))
-		printf(ARGS(fstat64, "%d, *"), args->fd);
+		kprintf(ARGS(fstat64, "%d, *"), args->fd);
 #endif
 	error = kern_fstat(args->fd, &buf);
 

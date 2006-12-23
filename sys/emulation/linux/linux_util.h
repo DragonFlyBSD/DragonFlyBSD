@@ -29,7 +29,7 @@
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.h,v 1.12.2.2 2000/11/02 23:31:28 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.10 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.11 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -100,12 +100,12 @@ unsupported_msg(const char *fname)
 {
 	struct thread *td = curthread;
 	if (td->td_proc) {
-	    printf(
+	    kprintf(
 		"linux: syscall %s is obsoleted or not implemented (pid=%d)\n",
 		fname, (int)td->td_proc->p_pid
 	    );
 	} else {
-	    printf(
+	    kprintf(
 		"linux: syscall %s is obsoleted or not implemented (td=%p)\n",
 		fname, td
 	    );

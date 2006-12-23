@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.11 2006/12/20 18:14:42 dillon Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.12 2006/12/23 00:27:03 swildner Exp $
  **/
 
 /**
@@ -1047,32 +1047,32 @@ collapselist(DEV_LIST *list)
 static void 
 bold(void)
 {
-    printf("\033[1m");
+    kprintf("\033[1m");
 }
 
 static void 
 inverse(void)
 {
-    printf("\033[7m");
+    kprintf("\033[7m");
 }
 
 static void 
 normal(void)
 {
-    printf("\033[m");
+    kprintf("\033[m");
 }
 
 static void 
 clear(void)
 {
     normal();
-    printf("\033[H\033[J");
+    kprintf("\033[H\033[J");
 }
 
 static void 
 move(int x, int y)
 {
-    printf("\033[%d;%dH",y+1,x+1);
+    kprintf("\033[%d;%dH",y+1,x+1);
 }
 
 
@@ -1353,7 +1353,7 @@ drawline(int row, int detail, DEV_LIST *list, int inverse, char *dhelp)
  ** Displays (num) lines of the contents of (list) at (row), optionally displaying the
  ** port and IRQ fields as well if (detail) is nonzero
  **
- ** printf in the kernel is essentially useless, so we do most of the hard work ourselves here.
+ ** kprintf in the kernel is essentially useless, so we do most of the hard work ourselves here.
  **/
 static void 
 drawlist(int row, int num, int detail, DEV_LIST *list)
@@ -2579,7 +2579,7 @@ userconfig(void)
 #endif
 	    if (banner) {
 		banner = 0;
-		printf("FreeBSD Kernel Configuration Utility - Version 1.2\n"
+		kprintf("FreeBSD Kernel Configuration Utility - Version 1.2\n"
 		       " Type \"help\" for help" 
 #ifdef VISUAL_USERCONFIG
 		       " or \"visual\" to go to the visual\n"
@@ -2590,13 +2590,13 @@ userconfig(void)
 	    }
 	}
 
-	printf("config> ");
+	kprintf("config> ");
 	cngets(input, 80);
 	if (input[0] == '\0')
 	    continue;
 	cmd = parse_cmd(input);
 	if (!cmd) {
-	    printf("Invalid command or syntax.  Type `?' for help.\n");
+	    kprintf("Invalid command or syntax.  Type `?' for help.\n");
 	    continue;
 	}
 	rval = (*cmd->handler)(cmd->parms);
@@ -2640,7 +2640,7 @@ parse_args(const char *cmd, CmdParm *parms)
 	if (parms == NULL || parms->type == -1) {
 		if (*cmd == '\0')
 			return 0;
-		printf("Extra arg(s): %s\n", cmd);
+		kprintf("Extra arg(s): %s\n", cmd);
 		return 1;
 	}
 	if (parms->type == PARM_DEVSPEC) {
@@ -2655,7 +2655,7 @@ parse_args(const char *cmd, CmdParm *parms)
 	    if (*cmd >= '0' && *cmd <= '9') {
 		unit = strtoul(cmd, &ptr, 10);
 		if (cmd == ptr) {
-		    printf("Invalid device number\n");
+		    kprintf("Invalid device number\n");
 		    /* XXX should print invalid token here and elsewhere. */
 		    return 1;
 		}
@@ -2663,7 +2663,7 @@ parse_args(const char *cmd, CmdParm *parms)
 		cmd = ptr;
 	    }
 	    if ((parms->parm.dparm = find_device(devname, unit)) == NULL) {
-	        printf("No such device: %s%d\n", devname, unit);
+	        kprintf("No such device: %s%d\n", devname, unit);
 		return 1;
 	    }
 	    ++parms;
@@ -2672,7 +2672,7 @@ parse_args(const char *cmd, CmdParm *parms)
 	if (parms->type == PARM_INT) {
 	    parms->parm.iparm = strtoul(cmd, &ptr, 0);
 	    if (cmd == ptr) {
-	        printf("Invalid numeric argument\n");
+	        kprintf("Invalid numeric argument\n");
 		return 1;
 	    }
 	    cmd = ptr;
@@ -2682,7 +2682,7 @@ parse_args(const char *cmd, CmdParm *parms)
 	if (parms->type == PARM_ADDR) {
 	    parms->parm.u.aparm = (void *)(uintptr_t)strtoul(cmd, &ptr, 0);
 	    if (cmd == ptr) {
-	        printf("Invalid address argument\n");
+	        kprintf("Invalid address argument\n");
 	        return 1;
 	    }
 	    cmd = ptr;
@@ -2706,7 +2706,7 @@ list_devices(CmdParm *parms)
     if (lspnp()) return 0;
 #endif
 #if NEISA > 0
-    printf("\nNumber of EISA slots to probe: %d\n", num_eisa_slots);
+    kprintf("\nNumber of EISA slots to probe: %d\n", num_eisa_slots);
 #endif /* NEISA > 0 */
     return 0;
 }
@@ -2726,11 +2726,11 @@ set_device_irq(CmdParm *parms)
 
     irq = parms[1].parm.iparm;
     if (irq == 2) {
-	printf("Warning: Remapping IRQ 2 to IRQ 9\n");
+	kprintf("Warning: Remapping IRQ 2 to IRQ 9\n");
 	irq = 9;
     }
     else if (irq != -1 && irq > 15) {
-	printf("An IRQ > 15 would be invalid.\n");
+	kprintf("An IRQ > 15 would be invalid.\n");
 	return 0;
     }
     parms[0].parm.dparm->id_irq = (irq < 16 ? 1 << irq : 0);
@@ -2835,7 +2835,7 @@ set_pnp_parms(CmdParm *parms)
     ldn=strtoul(q,&q, 0);
     for (p=q; *p && (*p==' ' || *p=='\t'); p++) ;
     if (csn < 1 || csn > MAX_PNP_CARDS || ldn >= MAX_PNP_LDN) {
-	printf("bad csn/ldn %ld:%ld\n", csn, ldn);
+	kprintf("bad csn/ldn %ld:%ld\n", csn, ldn);
 	return 0;
     }
     for (i=0; i < MAX_PNP_LDN; i++) {
@@ -2851,7 +2851,7 @@ set_pnp_parms(CmdParm *parms)
 	}
     }
     if (i==MAX_PNP_LDN) {
-	printf("sorry, no PnP entries available, try delete one\n");
+	kprintf("sorry, no PnP entries available, try delete one\n");
 	return 0 ;
     }
     d = pnp_ldn_overrides[i] ;
@@ -2896,7 +2896,7 @@ set_pnp_parms(CmdParm *parms)
 	    if (i==0) pnp_ldn_overrides[i].csn = 255;/* not reinit */
 	    return 0;
 	} else {
-	    printf("unknown command <%s>\n", p);
+	    kprintf("unknown command <%s>\n", p);
 	    break;
 	}
 	for (p=q; *p && (*p==' ' || *p=='\t'); p++) ;
@@ -2934,7 +2934,7 @@ quitfunc(CmdParm *parms)
 static int
 helpfunc(CmdParm *parms)
 {
-    printf(
+    kprintf(
     "Command\t\t\tDescription\n"
     "-------\t\t\t-----------\n"
     "ls\t\t\tList currently configured devices\n"
@@ -2947,7 +2947,7 @@ helpfunc(CmdParm *parms)
     "enable <devname>\tEnable device\n"
     "disable <devname>\tDisable device (will not be probed)\n");
 #if NPNP > 0
-    printf(
+    kprintf(
     "pnp <csn> <ldn> [enable|disable]\tenable/disable device\n"
     "pnp <csn> <ldn> [os|bios]\tset parameters using FreeBSD or BIOS\n"
     "pnp <csn> <ldn> [portX <addr>]\tset addr for port X (0..7)\n"
@@ -2956,15 +2956,15 @@ helpfunc(CmdParm *parms)
     "pnp <csn> <ldn> [drqX <number>]\tset drq X (0..1) to number, 4=unused\n");
 #endif
 #if NEISA > 0
-    printf("eisa <number>\t\tSet the number of EISA slots to probe\n");
+    kprintf("eisa <number>\t\tSet the number of EISA slots to probe\n");
 #endif /* NEISA > 0 */
-    printf(
+    kprintf(
     "quit\t\t\tExit this configuration utility\n"
     "reset\t\t\tReset CPU\n");
 #ifdef VISUAL_USERCONFIG
-    printf("visual\t\t\tGo to fullscreen mode.\n");
+    kprintf("visual\t\t\tGo to fullscreen mode.\n");
 #endif
-    printf(
+    kprintf(
     "help\t\t\tThis message\n\n"
     "Commands may be abbreviated to a unique prefix\n");
     return 0;
@@ -3134,25 +3134,25 @@ lspnp(void)
 	    char buf[256];
 	    if (lineno >= 23) {
 		    if (!userconfig_boot_parsing) {
-			    printf("<More> ");
+			    kprintf("<More> ");
 			    if (kgetchar() == 'q') {
-				    printf("quit\n");
+				    kprintf("quit\n");
 				    return (1);
 			    }
-			    printf("\n");
+			    kprintf("\n");
 		    }
 		    lineno = 0;
 	    }
 	    if (lineno == 0 || first)
-		printf("CSN LDN conf en irqs  drqs others (PnP devices)\n");
+		kprintf("CSN LDN conf en irqs  drqs others (PnP devices)\n");
 	    first = 0 ;
-	    printf("%3d %3d %4s %2s %2d %-2d %2d %-2d ",
+	    kprintf("%3d %3d %4s %2s %2d %-2d %2d %-2d ",
 		c->csn, c->ldn,
 		c->override ? "OS  ":"BIOS",
 		c->enable ? "Y":"N",
 		c->irq[0], c->irq[1], c->drq[0], c->drq[1]);
 	    if (c->flags)
-		printf("flags 0x%08lx ",c->flags);
+		kprintf("flags 0x%08lx ",c->flags);
 	    for (pmax = 7; pmax >=0 ; pmax--)
 		if (c->port[pmax]!=0) break;
 	    for (mmax = 3; mmax >=0 ; mmax--)
@@ -3160,18 +3160,18 @@ lspnp(void)
 	    if (pmax>=0) {
 		strcpy(buf, pfmt);
 		buf[10 + 5*pmax]='\0';
-		printf(buf,
+		kprintf(buf,
 		    c->port[0], c->port[1], c->port[2], c->port[3],
 		    c->port[4], c->port[5], c->port[6], c->port[7]);
 	    }
 	    if (mmax>=0) {
 		strcpy(buf, mfmt);
 		buf[8 + 5*mmax]='\0';
-		printf(buf,
+		kprintf(buf,
 		    c->mem[0].base, c->mem[1].base,
 		    c->mem[2].base, c->mem[3].base);
 	    }
-	    printf("\n");
+	    kprintf("\n");
 	}
     }
     return 0 ;
@@ -3185,24 +3185,24 @@ lsdevtab(struct uc_device *dt)
 	char dname[80];
 
 	if (lineno >= 23) {
-		printf("<More> ");
+		kprintf("<More> ");
 		if (!userconfig_boot_parsing) {
 			if (kgetchar() == 'q') {
-				printf("quit\n");
+				kprintf("quit\n");
 				return (1);
 			}
-			printf("\n");
+			kprintf("\n");
 		}
 		lineno = 0;
 	}
 	if (lineno == 0) {
-		printf(
+		kprintf(
 "Device   port       irq   drq   iomem   iosize   unit  flags      enab\n"
 		    );
 		++lineno;
 	}
 	ksprintf(dname, "%s%d", dt->id_name, dt->id_unit);
-	printf("%-9.9s%-#11x%-6d%-6d%-8p%-9d%-6d%-#11x%-5s\n",
+	kprintf("%-9.9s%-#11x%-6d%-6d%-8p%-9d%-6d%-#11x%-5s\n",
 	    dname, /* dt->id_id, dt->id_driver(by name), */ dt->id_iobase,
 	    ffs(dt->id_irq) - 1, dt->id_drq, dt->id_maddr, dt->id_msize,
 	    /* dt->id_intr(by name), */ dt->id_unit, dt->id_flags,
@@ -3292,7 +3292,7 @@ cngets(char *input, int maxin)
 	/* Treat ^H or ^? as backspace */
 	if ((c == '\010' || c == '\177')) {
 	    	if (nchars) {
-			printf("\010 \010");
+			kprintf("\010 \010");
 			*--input = '\0', --nchars;
 		}
 		continue;
@@ -3300,12 +3300,12 @@ cngets(char *input, int maxin)
 	/* Treat ^U or ^X as kill line */
 	else if ((c == '\025' || c == '\030')) {
 		while (nchars) {
-			printf("\010 \010");
+			kprintf("\010 \010");
 			*--input = '\0', --nchars;
 		}
 		continue;
 	}
-	printf("%c", c);
+	kprintf("%c", c);
 	if ((++nchars == maxin) || (c == '\n') || (c == '\r') || ( c == -1)) {
 	    *input = '\0';
 	    break;
@@ -3337,12 +3337,12 @@ id_put(char *desc, int id)
     if (id != SCCONF_UNSPEC)
     {
     	if (desc)
-	    printf("%s", desc);
+	    kprintf("%s", desc);
 
     	if (id == SCCONF_ANY)
-	    printf("?");
+	    kprintf("?");
         else
-	    printf("%d", id);
+	    kprintf("%d", id);
     }
 }
 
@@ -3351,7 +3351,7 @@ lsscsi(void)
 {
     int i;
 
-    printf("scsi: (can't be edited):\n");
+    kprintf("scsi: (can't be edited):\n");
 
     for (i = 0; scsi_cinit[i].driver; i++)
     {
@@ -3359,16 +3359,16 @@ lsscsi(void)
 
 	if (scsi_cinit[i].unit != -1)
 	{
-	    printf(" at ");
+	    kprintf(" at ");
 	    id_put(scsi_cinit[i].driver, scsi_cinit[i].unit);
 	}
 
-	printf("\n");
+	kprintf("\n");
     }
 
     for (i = 0; scsi_dinit[i].name; i++)
     {
-		printf("%s ", type_text(scsi_dinit[i].name));
+		kprintf("%s ", type_text(scsi_dinit[i].name));
 
 		id_put(scsi_dinit[i].name, scsi_dinit[i].unit);
 		id_put(" at scbus", scsi_dinit[i].cunit);
@@ -3376,9 +3376,9 @@ lsscsi(void)
 		id_put(" lun ", scsi_dinit[i].lun);
 
 		if (scsi_dinit[i].flags)
-	    	printf(" flags 0x%x\n", scsi_dinit[i].flags);
+	    	kprintf(" flags 0x%x\n", scsi_dinit[i].flags);
 
-		printf("\n");
+		kprintf("\n");
     }
 }
 

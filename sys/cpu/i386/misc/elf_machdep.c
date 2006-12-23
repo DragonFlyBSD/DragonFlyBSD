@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/elf_machdep.c,v 1.8 1999/12/21 11:14:02 eivind Exp $
- * $DragonFly: src/sys/cpu/i386/misc/elf_machdep.c,v 1.3 2003/07/18 05:12:37 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/elf_machdep.c,v 1.4 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			 * There shouldn't be copy relocations in kernel
 			 * objects.
 			 */
-			printf("kldload: unexpected R_COPY relocation\n");
+			kprintf("kldload: unexpected R_COPY relocation\n");
 			return -1;
 			break;
 
@@ -114,7 +114,7 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			break;
 
 		default:
-			printf("kldload: unexpected relocation type %d\n",
+			kprintf("kldload: unexpected relocation type %d\n",
 			       rtype);
 			return -1;
 	}

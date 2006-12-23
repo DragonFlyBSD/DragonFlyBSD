@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.12 2006/11/07 20:48:12 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.13 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -354,7 +354,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		if (sizeof(struct linux_pt_fpxreg) != sizeof(struct savexmm)) {
 			static int once = 0;
 			if (!once) {
-				printf("linux: savexmm != linux_pt_fpxreg\n");
+				kprintf("linux: savexmm != linux_pt_fpxreg\n");
 				once = 1;
 			}
 			error = EIO;
@@ -477,7 +477,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 	case PTRACE_SYSCALL:
 		/* fall through */
 	default:
-		printf("linux: ptrace(%u, ...) not implemented\n",
+		kprintf("linux: ptrace(%u, ...) not implemented\n",
 		    (unsigned int)uap->req);
 		error = EINVAL;
 		break;

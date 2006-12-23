@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.12 2004/04/19 22:39:04 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.3 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.4 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -296,7 +296,7 @@ hal_lower_irql(REGARGS1(uint8_t oldirql))
 __stdcall
 static void dummy(void)
 {
-	printf ("hal dummy called...\n");
+	kprintf ("hal dummy called...\n");
 	return;
 }
 

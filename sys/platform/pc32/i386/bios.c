@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.12 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.13 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -87,8 +87,8 @@ bios32_init(void *junk)
 	) {
 	    bios32_SDCI = BIOS_PADDRTOVADDR(sdh->entry);
 	    if (bootverbose) {
-		printf("bios32: Found BIOS32 Service Directory header at %p\n", sdh);
-		printf("bios32: Entry = 0x%x (%x)  Rev = %d  Len = %d\n", 
+		kprintf("bios32: Found BIOS32 Service Directory header at %p\n", sdh);
+		kprintf("bios32: Entry = 0x%x (%x)  Rev = %d  Len = %d\n", 
 		       sdh->entry, bios32_SDCI, sdh->revision, sdh->len);
 	    }
 
@@ -97,12 +97,12 @@ bios32_init(void *junk)
 		/* See if there's a PCI BIOS entrypoint here */
 		PCIbios.ident.id = 0x49435024;	/* PCI systems should have this */
 		if (!bios32_SDlookup(&PCIbios) && bootverbose)
-		    printf("pcibios: PCI BIOS entry at 0x%x\n", PCIbios.entry);
+		    kprintf("pcibios: PCI BIOS entry at 0x%x\n", PCIbios.entry);
 	    }
 	    if (p != NULL)
 		freeenv(p);
 	} else {
-	    printf("bios32: Bad BIOS32 Service Directory\n");
+	    kprintf("bios32: Bad BIOS32 Service Directory\n");
 	}
     }
 
@@ -123,24 +123,24 @@ bios32_init(void *junk)
 	if (ck == 0) {
 	    PnPBIOStable = pt;
 	    if (bootverbose) {
-		printf("pnpbios: Found PnP BIOS data at %p\n", pt);
-		printf("pnpbios: Entry = %x:%x  Rev = %d.%d\n", 
+		kprintf("pnpbios: Found PnP BIOS data at %p\n", pt);
+		kprintf("pnpbios: Entry = %x:%x  Rev = %d.%d\n", 
 		       pt->pmentrybase, pt->pmentryoffset, pt->version >> 4, pt->version & 0xf);
 		if ((pt->control & 0x3) == 0x01)
-		    printf("pnpbios: Event flag at %x\n", pt->evflagaddr);
+		    kprintf("pnpbios: Event flag at %x\n", pt->evflagaddr);
 		if (pt->oemdevid != 0)
-		    printf("pnpbios: OEM ID %x\n", pt->oemdevid);
+		    kprintf("pnpbios: OEM ID %x\n", pt->oemdevid);
 		
 	    }
 	} else {
-	    printf("pnpbios: Bad PnP BIOS data checksum\n");
+	    kprintf("pnpbios: Bad PnP BIOS data checksum\n");
 	}
     }
     if (p != NULL)
 	freeenv(p);
     if (bootverbose) {
 	    /* look for other know signatures */
-	    printf("Other BIOS signatures found:\n");
+	    kprintf("Other BIOS signatures found:\n");
     }
 }
 

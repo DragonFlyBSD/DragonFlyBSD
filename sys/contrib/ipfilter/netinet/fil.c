@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.7 2004/07/04 09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.9 2004/07/28 00:22:36 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.10 2006/12/23 00:27:02 swildner Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -122,6 +122,9 @@ extern	kmutex_t	ipf_rw;
 # endif /* SOLARIS || __sgi */
 #endif /* _KERNEL */
 
+#ifndef _KERNEL
+# define kprintf	printf
+#endif
 
 struct	filterstats frstats[2] = {{0,0,0,0,0},{0,0,0,0,0}};
 struct	frentry	*ipfilter[2][2] = { { NULL, NULL }, { NULL, NULL } },
@@ -679,7 +682,7 @@ void *m;
 # endif
 #else
 		if (opts & (OPT_VERBOSE|OPT_DEBUG))
-			printf("\n");
+			kprintf("\n");
 #endif
 
 		FR_VERBOSE(("%c", fr->fr_skip ? 's' :
@@ -904,11 +907,11 @@ int out;
 		static int counter = 0;
 
 		if (counter == 0) {
-			printf("WARNING: fr_checkp corrupt: value %lx\n",
+			kprintf("WARNING: fr_checkp corrupt: value %lx\n",
 				(u_long)fr_checkp);
-			printf("WARNING: fr_checkp should be %lx\n",
+			kprintf("WARNING: fr_checkp should be %lx\n",
 				(u_long)fr_check);
-			printf("WARNING: fixing fr_checkp\n");
+			kprintf("WARNING: fixing fr_checkp\n");
 		}
 		fr_checkp = fr_check;
 		counter++;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.18 2006/10/06 13:40:40 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.19 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ sys_linux_execve(struct linux_execve_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(execve))
-		printf(ARGS(execve, "%s"), path);
+		kprintf(ARGS(execve, "%s"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -304,7 +304,7 @@ sys_linux_old_select(struct linux_old_select_args *args)
 
 #ifdef DEBUG
 	if (ldebug(old_select))
-		printf(ARGS(old_select, "%p"), args->ptr);
+		kprintf(ARGS(old_select, "%p"), args->ptr);
 #endif
 
 	error = copyin((caddr_t)args->ptr, &linux_args, sizeof(linux_args));
@@ -329,7 +329,7 @@ sys_linux_fork(struct linux_fork_args *args)
 
 #ifdef DEBUG
 	if (ldebug(fork))
-		printf(ARGS(fork, ""));
+		kprintf(ARGS(fork, ""));
 #endif
 
 	if ((error = sys_fork((struct fork_args *)args)) != 0)
@@ -360,7 +360,7 @@ sys_linux_vfork(struct linux_vfork_args *args)
 
 #ifdef DEBUG
 	if (ldebug(vfork))
-		printf(ARGS(vfork, ""));
+		kprintf(ARGS(vfork, ""));
 #endif
 
 	if ((error = sys_vfork((struct vfork_args *)args)) != 0)
@@ -388,10 +388,10 @@ sys_linux_clone(struct linux_clone_args *args)
 
 #ifdef DEBUG
 	if (ldebug(clone)) {
-		printf(ARGS(clone, "flags %x, stack %x"), 
+		kprintf(ARGS(clone, "flags %x, stack %x"), 
 		    (unsigned int)args->flags, (unsigned int)args->stack);
 		if (args->flags & CLONE_PID)
-			printf(LMSG("CLONE_PID not yet supported"));
+			kprintf(LMSG("CLONE_PID not yet supported"));
 	}
 #endif
 
@@ -433,7 +433,7 @@ sys_linux_clone(struct linux_clone_args *args)
 
 #ifdef DEBUG
 	if (ldebug(clone))
-		printf(LMSG("clone: successful rfork to %ld"),
+		kprintf(LMSG("clone: successful rfork to %ld"),
 		    (long)p2->p_pid);
 #endif
 
@@ -548,7 +548,7 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 	
 #ifdef DEBUG
 	if (ldebug(mmap) || ldebug(mmap2))
-		printf("-> (%p, %d, %d, 0x%08x, %d, %lld)\n",
+		kprintf("-> (%p, %d, %d, 0x%08x, %d, %lld)\n",
 		    addr, len, prot, flags, fd, pos);
 #endif
 	error = kern_mmap(curproc->p_vmspace, addr, len,
@@ -571,7 +571,7 @@ sys_linux_mmap(struct linux_mmap_args *args)
 
 #ifdef DEBUG
 	if (ldebug(mmap))
-		printf(ARGS(mmap, "%p, %d, %d, 0x%08x, %d, %d"),
+		kprintf(ARGS(mmap, "%p, %d, %d, 0x%08x, %d, %d"),
 		    (void *)linux_args.addr, linux_args.len, linux_args.prot,
 		    linux_args.flags, linux_args.fd, linux_args.pos);
 #endif
@@ -580,7 +580,7 @@ sys_linux_mmap(struct linux_mmap_args *args)
 	    linux_args.pos, &args->sysmsg_resultp);
 #ifdef DEBUG
 	if (ldebug(mmap))
-		printf("-> %p\n", args->sysmsg_resultp);
+		kprintf("-> %p\n", args->sysmsg_resultp);
 #endif
 	return(error);
 }
@@ -592,7 +592,7 @@ sys_linux_mmap2(struct linux_mmap2_args *args)
 
 #ifdef DEBUG
 	if (ldebug(mmap2))
-		printf(ARGS(mmap2, "%p, %d, %d, 0x%08x, %d, %d"),
+		kprintf(ARGS(mmap2, "%p, %d, %d, 0x%08x, %d, %d"),
 		    (void *)args->addr, args->len, args->prot, args->flags,
 		    args->fd, args->pgoff);
 #endif
@@ -601,7 +601,7 @@ sys_linux_mmap2(struct linux_mmap2_args *args)
 	    &args->sysmsg_resultp);
 #ifdef DEBUG
 	if (ldebug(mmap2))
-		printf("-> %p\n", args->sysmsg_resultp);
+		kprintf("-> %p\n", args->sysmsg_resultp);
 #endif
 	return (error);
 }
@@ -615,7 +615,7 @@ sys_linux_pipe(struct linux_pipe_args *args)
 
 #ifdef DEBUG
 	if (ldebug(pipe))
-		printf(ARGS(pipe, "*"));
+		kprintf(ARGS(pipe, "*"));
 #endif
 
 	reg_edx = args->sysmsg_fds[1];
@@ -754,7 +754,7 @@ sys_linux_sigaction(struct linux_sigaction_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sigaction))
-		printf(ARGS(sigaction, "%d, %p, %p"),
+		kprintf(ARGS(sigaction, "%d, %p, %p"),
 		    args->sig, (void *)args->nsa, (void *)args->osa);
 #endif
 
@@ -798,7 +798,7 @@ sys_linux_sigsuspend(struct linux_sigsuspend_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sigsuspend))
-		printf(ARGS(sigsuspend, "%08lx"), (unsigned long)args->mask);
+		kprintf(ARGS(sigsuspend, "%08lx"), (unsigned long)args->mask);
 #endif
 
 	LINUX_SIGEMPTYSET(mask);
@@ -819,7 +819,7 @@ sys_linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 
 #ifdef DEBUG
 	if (ldebug(rt_sigsuspend))
-		printf(ARGS(rt_sigsuspend, "%p, %d"),
+		kprintf(ARGS(rt_sigsuspend, "%p, %d"),
 		    (void *)uap->newset, uap->sigsetsize);
 #endif
 
@@ -847,7 +847,7 @@ sys_linux_pause(struct linux_pause_args *args)
 
 #ifdef DEBUG
 	if (ldebug(pause))
-		printf(ARGS(pause, ""));
+		kprintf(ARGS(pause, ""));
 #endif
 
 	mask = p->p_sigmask;
@@ -866,7 +866,7 @@ sys_linux_sigaltstack(struct linux_sigaltstack_args *uap)
 
 #ifdef DEBUG
 	if (ldebug(sigaltstack))
-		printf(ARGS(sigaltstack, "%p, %p"), uap->uss, uap->uoss);
+		kprintf(ARGS(sigaltstack, "%p, %p"), uap->uss, uap->uoss);
 #endif
 
 	if (uap->uss) {

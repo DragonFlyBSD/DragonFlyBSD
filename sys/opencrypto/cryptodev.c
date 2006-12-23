@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.20 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.21 2006/12/23 00:27:03 swildner Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -784,7 +784,7 @@ cryptodev_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if (bootverbose)
-			printf("crypto: <crypto device>\n");
+			kprintf("crypto: <crypto device>\n");
 		dev_ops_add(&crypto_ops, 0, 0);
 		make_dev(&crypto_ops, 0, UID_ROOT, GID_WHEEL,
 			0666, "crypto");

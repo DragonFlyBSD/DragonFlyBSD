@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.8 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.9 2006/12/23 00:27:03 swildner Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -60,7 +60,7 @@ init_AMD_Elan_sc520(void)
 	int i;
 
 	if (bootverbose)
-		printf("Doing h0h0magic for AMD Elan sc520\n");
+		kprintf("Doing h0h0magic for AMD Elan sc520\n");
 	elan_mmcr = pmap_mapdev(0xfffef000, 0x1000);
 
 	/*-
@@ -76,7 +76,7 @@ init_AMD_Elan_sc520(void)
 	    &new, sizeof new, 
 	    NULL);
 	if (bootverbose)
-		printf("sysctl machdep.i8254_freq=%d returns %d\n", new, i);
+		kprintf("sysctl machdep.i8254_freq=%d returns %d\n", new, i);
 
 #if 0
 	/* Start GP timer #2 and use it as timecounter, hz permitting */
@@ -137,7 +137,7 @@ elan_drvinit(void)
 
 	if (elan_mmcr == NULL)
 		return;
-	printf("Elan-mmcr driver: MMCR at %p\n", elan_mmcr);
+	kprintf("Elan-mmcr driver: MMCR at %p\n", elan_mmcr);
 	dev_ops_add(&elan_ops, 0, 0);
 	make_dev(&elan_ops, 0, UID_ROOT, GID_WHEEL, 0600, "elan-mmcr");
 	return;

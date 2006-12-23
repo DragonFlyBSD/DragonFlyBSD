@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.26 2006/12/23 00:27:02 swildner Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -385,7 +385,7 @@ int iplattach()
 
 	SPL_NET(s);
 	if (fr_running || (fr_checkp == fr_check)) {
-		printf("IP Filter: already initialized\n");
+		kprintf("IP Filter: already initialized\n");
 		SPL_X(s);
 		return EBUSY;
 	}
@@ -495,7 +495,7 @@ pfil_error:
 	else
 		defpass = "no-match -> block";
 
-	printf("%s initialized.  Default = %s all, Logging = %s\n",
+	kprintf("%s initialized.  Default = %s all, Logging = %s\n",
 		ipfilter_version, defpass,
 # ifdef	IPFILTER_LOG
 		"enabled");
@@ -572,12 +572,12 @@ int ipldetach()
 	SPL_NET(s);
 	if (!fr_running)
 	{
-		printf("IP Filter: not initialized\n");
+		kprintf("IP Filter: not initialized\n");
 		SPL_X(s);
 		return 0;
 	}
 
-	printf("%s unloaded\n", ipfilter_version);
+	kprintf("%s unloaded\n", ipfilter_version);
 
 	fr_checkp = fr_savep;
 	i = frflush(IPL_LOGIPF, 0, FR_INQUE|FR_OUTQUE|FR_INACTIVE);
@@ -1622,7 +1622,7 @@ iplinit()
 	if (iplattach() != 0)
 #  endif
 	{
-		printf("IP Filter failed to attach\n");
+		kprintf("IP Filter failed to attach\n");
 	}
 	ip_init();
 }

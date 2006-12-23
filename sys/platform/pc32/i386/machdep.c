@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.105 2006/12/04 18:03:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.106 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "use_apm.h"
@@ -256,25 +256,25 @@ cpu_startup(void *dummy)
 	/*
 	 * Good {morning,afternoon,evening,night}.
 	 */
-	printf("%s", version);
+	kprintf("%s", version);
 	startrtclock();
 	printcpuinfo();
 	panicifcpuunsupported();
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	printf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
 	if (bootverbose) {
 		int indx;
 
-		printf("Physical memory chunk(s):\n");
+		kprintf("Physical memory chunk(s):\n");
 		for (indx = 0; phys_avail[indx + 1] != 0; indx += 2) {
 			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
 
-			printf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
+			kprintf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
 			    phys_avail[indx], phys_avail[indx + 1] - 1, size1,
 			    size1 / PAGE_SIZE);
 		}
@@ -335,7 +335,7 @@ again:
 	    (BKVASIZE * 2)) {
 		nbuf = (kernel_map->max_offset - kernel_map->min_offset) / 
 		    (BKVASIZE * 2);
-		printf("Warning: nbufs capped at %d\n", nbuf);
+		kprintf("Warning: nbufs capped at %d\n", nbuf);
 	}
 
 	nswbuf = max(min(nbuf/4, 256), 16);
@@ -383,7 +383,7 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	printf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
+	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
 	    ptoa(vmstats.v_free_count) / 1024);
 
 	/*
@@ -620,7 +620,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 		 * one less debugger trap, so allowing it is fairly harmless.
 		 */
 		if (!EFL_SECURE(eflags & ~PSL_RF, regs->tf_eflags & ~PSL_RF)) {
-			printf("sigreturn: eflags = 0x%x\n", eflags);
+			kprintf("sigreturn: eflags = 0x%x\n", eflags);
 	    		return(EINVAL);
 		}
 
@@ -631,7 +631,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 		 */
 		cs = ucp->uc_mcontext.mc_cs;
 		if (!CS_SECURE(cs)) {
-			printf("sigreturn: cs = 0x%x\n", cs);
+			kprintf("sigreturn: cs = 0x%x\n", cs);
 			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
@@ -677,7 +677,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	    copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int))
 	) {
 		vu->vu_pending = 0;
-		printf("bad upcall address\n");
+		kprintf("bad upcall address\n");
 		return;
 	}
 
@@ -722,7 +722,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	upc_frame.oldip = regs->tf_eip;
 	if (copyout(&upc_frame, (void *)(regs->tf_esp - sizeof(upc_frame)),
 	    sizeof(upc_frame)) != 0) {
-		printf("bad stack on upcall\n");
+		kprintf("bad stack on upcall\n");
 	} else {
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
@@ -1362,7 +1362,7 @@ getmemsize(int first)
 	vm86_intcall(0x12, &vmf);
 	basemem = vmf.vmf_ax;
 	if (basemem > 640) {
-		printf("Preposterous BIOS basemem of %uK, "
+		kprintf("Preposterous BIOS basemem of %uK, "
 			"truncating to < 640K\n", basemem);
 		basemem = 636;
 	}
@@ -1429,7 +1429,7 @@ int15e820:
 		if (i || vmf.vmf_eax != SMAP_SIG)
 			break;
 		if (boothowto & RB_VERBOSE)
-			printf("SMAP type=%02x base=%08x %08x len=%08x %08x\n",
+			kprintf("SMAP type=%02x base=%08x %08x len=%08x %08x\n",
 				smap->type,
 				*(u_int32_t *)((char *)&smap->base + 4),
 				(u_int32_t)smap->base,
@@ -1443,7 +1443,7 @@ int15e820:
 			goto next_run;
 
 		if (smap->base >= 0xffffffff) {
-			printf("%uK of memory above 4GB ignored\n",
+			kprintf("%uK of memory above 4GB ignored\n",
 			    (u_int)(smap->length / 1024));
 			goto next_run;
 		}
@@ -1451,7 +1451,7 @@ int15e820:
 		for (i = 0; i <= physmap_idx; i += 2) {
 			if (smap->base < physmap[i + 1]) {
 				if (boothowto & RB_VERBOSE)
-					printf(
+					kprintf(
 	"Overlapping or non-montonic memory region, ignoring second region\n");
 				goto next_run;
 			}
@@ -1464,7 +1464,7 @@ int15e820:
 
 		physmap_idx += 2;
 		if (physmap_idx == PHYSMAP_ENTRIES*2) {
-			printf(
+			kprintf(
 		"Too many segments in the physical address map, giving up\n");
 			break;
 		}
@@ -1490,7 +1490,7 @@ next_run:
 		}
 
 		if (basemem > 640) {
-			printf("Preposterous BIOS basemem of %uK, truncating to 640K\n",
+			kprintf("Preposterous BIOS basemem of %uK, truncating to 640K\n",
 				basemem);
 			basemem = 640;
 		}
@@ -1600,14 +1600,14 @@ physmap_done:
 				AllowMem = 0;
 		}
 		if (AllowMem == 0)
-			printf("Ignoring invalid memory size of '%s'\n", cp);
+			kprintf("Ignoring invalid memory size of '%s'\n", cp);
 		else
 			Maxmem = atop(AllowMem);
 	}
 
 	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
 	    (boothowto & RB_VERBOSE))
-		printf("Physical memory use set to %lluK\n", Maxmem * 4);
+		kprintf("Physical memory use set to %lluK\n", Maxmem * 4);
 
 	/*
 	 * If Maxmem has been increased beyond what the system has detected,
@@ -1731,7 +1731,7 @@ physmap_done:
 			} else {
 				pa_indx++;
 				if (pa_indx >= PHYSMAP_ENTRIES*2) {
-					printf("Too many holes in the physical address space, giving up\n");
+					kprintf("Too many holes in the physical address space, giving up\n");
 					pa_indx--;
 					break;
 				}
@@ -1947,7 +1947,7 @@ init386(int first)
 	cninit();
 
 	if (metadata_missing)
-		printf("WARNING: loader(8) metadata is missing!\n");
+		kprintf("WARNING: loader(8) metadata is missing!\n");
 
 #if	NISA >0
 	isa_defaultirq();
@@ -2085,7 +2085,7 @@ f00f_hack(void *unused)
 	if (!has_f00f_bug)
 		return;
 
-	printf("Intel Pentium detected, installing workaround for F00F bug\n");
+	kprintf("Intel Pentium detected, installing workaround for F00F bug\n");
 
 	r_idt.rd_limit = sizeof(idt0) - 1;
 
@@ -2444,7 +2444,7 @@ user_dbreg_trap(void)
 void
 Debugger(const char *msg)
 {
-	printf("Debugger(\"%s\") called.\n", msg);
+	kprintf("Debugger(\"%s\") called.\n", msg);
 }
 #endif /* no DDB */
 
@@ -2604,7 +2604,7 @@ struct spinlock_deprecated mcount_spinlock;
 /* locks com (tty) data/hardware accesses: a FASTINTR() */
 struct spinlock_deprecated com_spinlock;
 
-/* locks kernel printfs */
+/* locks kernel kprintfs */
 struct spinlock_deprecated cons_spinlock;
 
 /* lock regions around the clock hardware */

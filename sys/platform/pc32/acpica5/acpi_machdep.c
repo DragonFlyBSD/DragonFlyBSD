@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -298,7 +298,7 @@ acpi_capm_init(struct acpi_softc *sc)
 	dev_ops_add(&apm_ops, 0, 0);
         make_dev(&apm_ops, 0, 0, 5, 0664, "apm");
         make_dev(&apm_ops, 8, 0, 5, 0664, "apm");
-	printf("Warning: ACPI is disabling APM's device.  You can't run both\n");
+	kprintf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 
 int

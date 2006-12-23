@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.6 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_aout.c,v 1.7 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ X_db_sym_init(int *symtab, char *esymtab, char *name)
 	int	strlen;
 
 	if (*symtab < 4) {
-		printf ("DDB: no symbols\n");
+		kprintf ("DDB: no symbols\n");
 		return;
 	}
 

@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.13 2006/07/18 22:22:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.14 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return (EOPNOTSUPP);
 
 	if (mp->mnt_vfc->vfc_refcount == 1 && (error = at_exit(linprocfs_exit))) {
-		printf("linprocfs:  cannot register linprocfs_exit with at_exit\n");
+		kprintf("linprocfs:  cannot register linprocfs_exit with at_exit\n");
 		return(error);
 	}
 

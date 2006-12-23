@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/i386/pnpbios.c,v 1.5 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pnpbios.c,v 1.6 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -133,10 +133,10 @@ pnpbios_identify(driver_t *driver, device_t parent)
     args.entry = pt->pmentryoffset;
 
     if ((error = bios16(&args, PNP_COUNT_DEVNODES, &ndevs, &bigdev)) || (args.r.eax & 0xff))
-	printf("pnpbios: error %d/%x getting device count/size limit\n", error, args.r.eax);
+	kprintf("pnpbios: error %d/%x getting device count/size limit\n", error, args.r.eax);
     ndevs &= 0xff;				/* clear high byte garbage */
     if (bootverbose)
-	printf("pnpbios: %d devices, largest %d bytes\n", ndevs, bigdev);
+	kprintf("pnpbios: %d devices, largest %d bytes\n", ndevs, bigdev);
 
     devnodebuf = kmalloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)), M_DEVBUF, M_INTWAIT);
     pda = (struct pnp_sysdevargs *)devnodebuf;
@@ -148,21 +148,21 @@ pnpbios_identify(driver_t *driver, device_t parent)
 
 	/* get current configuration */
 	if ((error = bios16(&args, PNP_GET_DEVNODE, &pda->next, &pda->node, 1))) {
-	    printf("pnpbios: error %d making BIOS16 call\n", error);
+	    kprintf("pnpbios: error %d making BIOS16 call\n", error);
 	    break;
 	}
 	if (bootverbose)
-	    printf("pnp_get_devnode cd=%d nxt=%d size=%d handle=%d devid=%08x type=%02x%02x%02x, attrib=%04x\n", currdev, pda->next, pd->size, pd->handle, pd->devid, pd->type[0], pd->type[1], pd->type[2], pd->attrib);
+	    kprintf("pnp_get_devnode cd=%d nxt=%d size=%d handle=%d devid=%08x type=%02x%02x%02x, attrib=%04x\n", currdev, pda->next, pd->size, pd->handle, pd->devid, pd->type[0], pd->type[1], pd->type[2], pd->attrib);
 
 	if ((error = (args.r.eax & 0xff))) {
 	    if (bootverbose)
-		printf("pnpbios: %s 0x%x fetching node %d\n", error & 0x80 ? "error" : "warning", error, currdev);
+		kprintf("pnpbios: %s 0x%x fetching node %d\n", error & 0x80 ? "error" : "warning", error, currdev);
 	    if (error & 0x80) 
 		break;
 	}
 	currdev = pda->next;
 	if (pd->size < sizeof(struct pnp_sysdev)) {
-	    printf("pnpbios: bogus system node data, aborting scan\n");
+	    kprintf("pnpbios: bogus system node data, aborting scan\n");
 	    break;
 	}
 	
@@ -220,7 +220,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 		case PNP_TAG_COMPAT_DEVICE:
 		    compid = (uint32_t *)(pd->devdata + idx);
 		    if (bootverbose)
-			printf("pnpbios: node %d compat ID 0x%08x\n", pd->handle, *compid);
+			kprintf("pnpbios: node %d compat ID 0x%08x\n", pd->handle, *compid);
 		    /* FALLTHROUGH */
 		case PNP_TAG_END:
 		    idx = left;
@@ -234,12 +234,12 @@ pnpbios_identify(driver_t *driver, device_t parent)
 		idx += *(uint16_t *)(pd->devdata + idx) + 2;
 	}
 	if (bootverbose) {
-	    printf("pnpbios: handle %d device ID %s (%08x)", 
+	    kprintf("pnpbios: handle %d device ID %s (%08x)", 
 		   pd->handle, pnp_eisaformat(*devid), *devid);
 	    if (compid != NULL)
-		printf(" compat ID %s (%08x)",
+		kprintf(" compat ID %s (%08x)",
 		       pnp_eisaformat(*compid), *compid);
-	    printf("\n");
+	    kprintf("\n");
 	}
     }
     return (0);

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/imgact_linux.c,v 1.35.2.2 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.8 2006/09/11 20:25:00 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.9 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ exec_linux_imgact(struct image_params *imgp)
     }
     bss_size = round_page(a_out->a_bss);
 #ifdef DEBUG
-    printf("imgact: text: %08lx, data: %08lx, bss: %08lx\n",
+    kprintf("imgact: text: %08lx, data: %08lx, bss: %08lx\n",
 	(u_long)a_out->a_text, (u_long)a_out->a_data, bss_size);
 #endif
 
@@ -121,7 +121,7 @@ exec_linux_imgact(struct image_params *imgp)
      */
     if (file_offset & PAGE_MASK) {
 #ifdef DEBUG
-	printf("imgact: Non page aligned binary %lu\n", file_offset);
+	kprintf("imgact: Non page aligned binary %lu\n", file_offset);
 #endif
 	/*
 	 * Map text+data+bss read/write/execute
@@ -163,7 +163,7 @@ exec_linux_imgact(struct image_params *imgp)
     }
     else {
 #ifdef DEBUG
-	printf("imgact: Page aligned binary %lu\n", file_offset);
+	kprintf("imgact: Page aligned binary %lu\n", file_offset);
 #endif
 	/*
 	 * Map text+data read/execute
@@ -179,7 +179,7 @@ exec_linux_imgact(struct image_params *imgp)
 	    return (error);
     
 #ifdef DEBUG
-	printf("imgact: startaddr=%08lx, length=%08lx\n",
+	kprintf("imgact: startaddr=%08lx, length=%08lx\n",
 	    (u_long)vmaddr, a_out->a_text + a_out->a_data);
 #endif
 	/*
@@ -206,7 +206,7 @@ exec_linux_imgact(struct image_params *imgp)
 	    if (error)
 		return (error);
 #ifdef DEBUG
-	    printf("imgact: bssaddr=%08lx, length=%08lx\n",
+	    kprintf("imgact: bssaddr=%08lx, length=%08lx\n",
 		(u_long)vmaddr, bss_size);
 #endif
 

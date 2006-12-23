@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.18 2006/09/10 01:26:38 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.19 2006/12/23 00:27:03 swildner Exp $
  *
  *  Digiboard driver.
  *
@@ -453,22 +453,22 @@ dgbprobe(dev)
 		case 0:
 			sc->mem_seg=0xF000;
 			win_size=0x10000;
-			printf("dgb%d: PC/Xi 64K\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xi 64K\n",dev->id_unit);
 			break;
 		case 0x10:
 			sc->mem_seg=0xE000;
 			win_size=0x20000;
-			printf("dgb%d: PC/Xi 128K\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xi 128K\n",dev->id_unit);
 			break;
 		case 0x20:
 			sc->mem_seg=0xC000;
 			win_size=0x40000;
-			printf("dgb%d: PC/Xi 256K\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xi 256K\n",dev->id_unit);
 			break;
 		default: /* case 0x30: */
 			sc->mem_seg=0x8000;
 			win_size=0x80000;
-			printf("dgb%d: PC/Xi 512K\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xi 512K\n",dev->id_unit);
 			break;
 		}
 		sc->type=PCXI;
@@ -477,7 +477,7 @@ dgbprobe(dev)
 		v=inb(sc->port);
 
 		if( v & 0x1 ) {
-			printf("dgb%d: PC/Xm isn't supported\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xm isn't supported\n",dev->id_unit);
 			sc->status=DISABLED;
 			return 0;
 			}
@@ -486,14 +486,14 @@ dgbprobe(dev)
 
 		if(dev->id_flags==DGBFLAG_NOWIN || ( v&0xC0 )==0) {
 			win_size=0x10000;
-			printf("dgb%d: PC/Xe 64K\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xe 64K\n",dev->id_unit);
 			sc->type=PCXE;
 		} else {
 			win_size=0x2000;
-			printf("dgb%d: PC/Xe 64/8K (windowed)\n",dev->id_unit);
+			kprintf("dgb%d: PC/Xe 64/8K (windowed)\n",dev->id_unit);
 			sc->type=PCXEVE;
 			if((u_long)sc->pmem & ~0xFFE000) {
-				printf("dgb%d: warning: address 0x%lx truncated to 0x%lx\n",
+				kprintf("dgb%d: warning: address 0x%lx truncated to 0x%lx\n",
 					dev->id_unit, sc->pmem,
 					sc->pmem & 0xFFE000);
 
@@ -550,7 +550,7 @@ dgbattach(dev)
 
 	for(i=0; (inb(sc->port) & FEPMASK) != FEPRST ; i++) {
 		if(i>10000) {
-			printf("dgb%d: 1st reset failed\n",dev->id_unit);
+			kprintf("dgb%d: 1st reset failed\n",dev->id_unit);
 			sc->status=DISABLED;
 			hidewin(sc);
 			return 0;
@@ -579,7 +579,7 @@ dgbattach(dev)
 
 		for(i=0; (inb(sc->port) & FEPMASK) != (FEPRST|FEPMEM) ; i++) {
 			if(i>10000) {
-				printf("dgb%d: 2nd reset failed\n",dev->id_unit);
+				kprintf("dgb%d: 2nd reset failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
 				return 0;
@@ -597,7 +597,7 @@ dgbattach(dev)
 	addr=setinitwin(sc,BOTWIN);
 	*(u_long volatile *)(mem+addr) = 0xA55A3CC3;
 	if(*(u_long volatile *)(mem+addr)!=0xA55A3CC3) {
-		printf("dgb%d: 1st memory test failed\n",dev->id_unit);
+		kprintf("dgb%d: 1st memory test failed\n",dev->id_unit);
 		sc->status=DISABLED;
 		hidewin(sc);
 		return 0;
@@ -606,7 +606,7 @@ dgbattach(dev)
 	addr=setinitwin(sc,TOPWIN);
 	*(u_long volatile *)(mem+addr) = 0x5AA5C33C;
 	if(*(u_long volatile *)(mem+addr)!=0x5AA5C33C) {
-		printf("dgb%d: 2nd memory test failed\n",dev->id_unit);
+		kprintf("dgb%d: 2nd memory test failed\n",dev->id_unit);
 		sc->status=DISABLED;
 		hidewin(sc);
 		return 0;
@@ -615,7 +615,7 @@ dgbattach(dev)
 	addr=setinitwin(sc,BIOSCODE+((0xF000-sc->mem_seg)<<4));
 	*(u_long volatile *)(mem+addr) = 0x5AA5C33C;
 	if(*(u_long volatile *)(mem+addr)!=0x5AA5C33C) {
-		printf("dgb%d: 3rd (BIOS) memory test failed\n",dev->id_unit);
+		kprintf("dgb%d: 3rd (BIOS) memory test failed\n",dev->id_unit);
 	}
 		
 	addr=setinitwin(sc,MISCGLOBAL);
@@ -643,7 +643,7 @@ dgbattach(dev)
 0x%x instead of 0x%x\n", unit, ptr-(mem+addr), *ptr, pcxx_bios[i] );
 
 				if(++nfails>=5) {
-					printf("dgb%d: 4th memory test (BIOS load) fails\n",unit);
+					kprintf("dgb%d: 4th memory test (BIOS load) fails\n",unit);
 					break;
 					}
 				}
@@ -652,7 +652,7 @@ dgbattach(dev)
 
 		for(i=0; (inb(sc->port) & FEPMASK) != FEPMEM ; i++) {
 			if(i>10000) {
-				printf("dgb%d: BIOS start failed\n",dev->id_unit);
+				kprintf("dgb%d: BIOS start failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
 				return 0;
@@ -667,7 +667,7 @@ dgbattach(dev)
 				goto load_fep;
 			DELAY(1);
 		}
-		printf("dgb%d: BIOS download failed\n",dev->id_unit);
+		kprintf("dgb%d: BIOS download failed\n",dev->id_unit);
 		DPRINT4(DB_EXCEPT,"dgb%d: code=0x%x must be 0x%x\n",
 			dev->id_unit,
 			*((ushort volatile *)(mem+MISCGLOBAL)),
@@ -696,7 +696,7 @@ dgbattach(dev)
 0x%x instead of 0x%x\n", unit, ptr-(mem+addr), *ptr, pcxx_bios[i] );
 
 				if(++nfails>=5) {
-					printf("dgb%d: 4th memory test (BIOS load) fails\n",unit);
+					kprintf("dgb%d: 4th memory test (BIOS load) fails\n",unit);
 					break;
 					}
 				}
@@ -707,7 +707,7 @@ dgbattach(dev)
 
 		for(i=0; (inb(sc->port) & FEPMASK) != FEPCLR ; i++) {
 			if(i>10000) {
-				printf("dgb%d: BIOS start failed\n",dev->id_unit);
+				kprintf("dgb%d: BIOS start failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
 				return 0;
@@ -724,7 +724,7 @@ dgbattach(dev)
 				goto load_fep;
 			DELAY(1);
 		}
-		printf("dgb%d: BIOS download failed\n",dev->id_unit);
+		kprintf("dgb%d: BIOS download failed\n",dev->id_unit);
 		DPRINT5(DB_EXCEPT,"dgb%d: Error#(0x%x,0x%x) code=0x%x\n",
 			dev->id_unit,
 			*(ushort volatile *)(mem+0xC12),
@@ -759,7 +759,7 @@ load_fep:
 
 	for(i=0; *(ushort volatile *)(mem+addr)!=0; i++) {
 		if(i>200000) {
-			printf("dgb%d: FEP code download failed\n",unit);
+			kprintf("dgb%d: FEP code download failed\n",unit);
 			DPRINT3(DB_EXCEPT,"dgb%d: code=0x%x must be 0\n", unit,
 				*(ushort volatile *)(mem+addr));
 			sc->status=DISABLED;
@@ -782,7 +782,7 @@ load_fep:
 	addr=setwin(sc,FEPSTAT);
 	for(i=0; *(ushort volatile *)(mem+addr)!= *(ushort *)"OS"; i++) {
 		if(i>200000) {
-			printf("dgb%d: FEP/OS start failed\n",dev->id_unit);
+			kprintf("dgb%d: FEP/OS start failed\n",dev->id_unit);
 			sc->status=DISABLED;
 			hidewin(sc);
 			return 0;
@@ -793,17 +793,17 @@ load_fep:
 
 	sc->numports= *(ushort volatile *)(mem+setwin(sc,NPORT));
 
-	printf("dgb%d: %d ports\n",unit,sc->numports);
+	kprintf("dgb%d: %d ports\n",unit,sc->numports);
 
 	if(sc->numports > MAX_DGB_PORTS) {
-		printf("dgb%d: too many ports\n",unit);
+		kprintf("dgb%d: too many ports\n",unit);
 		sc->status=DISABLED;
 		hidewin(sc);
 		return 0;
 	}
 
 	if(nports+sc->numports>NDGBPORTS) {
-		printf("dgb%d: only %d ports are usable\n", unit, NDGBPORTS-nports);
+		kprintf("dgb%d: only %d ports are usable\n", unit, NDGBPORTS-nports);
 		sc->numports=NDGBPORTS-nports;
 	}
 
@@ -820,7 +820,7 @@ load_fep:
 			sc->ports[i].status=ENABLED;
 		else {
 			sc->ports[i].status=DISABLED;
-			printf("dgb%d: port%d is broken\n", unit, i);
+			kprintf("dgb%d: port%d is broken\n", unit, i);
 		}
 
 	/* We should now init per-port structures */
@@ -1045,7 +1045,7 @@ open_top:
 		bc->rout=bc->rin; /* clear input queue */
 		bc->idata=1;
 #ifdef PRINT_BUFSIZE
-		printf("dgb buffers tx=%x:%x rx=%x:%x\n",bc->tseg,bc->tmax,bc->rseg,bc->rmax);
+		kprintf("dgb buffers tx=%x:%x rx=%x:%x\n",bc->tseg,bc->tmax,bc->rseg,bc->rmax);
 #endif
 
 		hidewin(sc);
@@ -1222,7 +1222,7 @@ dgbpoll(unit_c)
 	BoardMemWinState ws=bmws_get();
 
 	if(sc->status==DISABLED) {
-		printf("dgb%d: polling of disabled board stopped\n",unit);
+		kprintf("dgb%d: polling of disabled board stopped\n",unit);
 		return;
 	}
 	
@@ -1235,7 +1235,7 @@ dgbpoll(unit_c)
 		if(head >= FEP_IMAX-FEP_ISTART 
 		|| tail >= FEP_IMAX-FEP_ISTART 
 		|| (head|tail) & 03 ) {
-			printf("dgb%d: event queue's head or tail is wrong! hd=%d,tl=%d\n", unit,head,tail);
+			kprintf("dgb%d: event queue's head or tail is wrong! hd=%d,tl=%d\n", unit,head,tail);
 			break;
 		}
 
@@ -1250,13 +1250,13 @@ dgbpoll(unit_c)
 		tp=&sc->ttys[pnum];
 
 		if(pnum>=sc->numports || port->status==DISABLED) {
-			printf("dgb%d: port%d: got event on nonexisting port\n",unit,pnum);
+			kprintf("dgb%d: port%d: got event on nonexisting port\n",unit,pnum);
 		} else if(port->used || port->wopeners>0 ) {
 
 			int wrapmask=port->rxbufsize-1;
 
 			if( !(event & ALL_IND) ) 
-				printf("dgb%d: port%d: ? event 0x%x mstat 0x%x lstat 0x%x\n",
+				kprintf("dgb%d: port%d: ? event 0x%x mstat 0x%x lstat 0x%x\n",
 					unit, pnum, event, mstat, lstat);
 
 			if(event & DATA_IND) {
@@ -1271,7 +1271,7 @@ dgbpoll(unit_c)
 				}
 
 				if(bc->orun) {
-					printf("dgb%d: port%d: overrun\n", unit, pnum);
+					kprintf("dgb%d: port%d: overrun\n", unit, pnum);
 					bc->orun=0;
 				}
 
@@ -2131,7 +2131,7 @@ fepcmd(port, cmd, op1, op2, ncmds, bytecmd)
 	int count, n;
 
 	if(port->status==DISABLED) {
-		printf("dgb%d: port%d: FEP command on disabled port\n", 
+		kprintf("dgb%d: port%d: FEP command on disabled port\n", 
 			port->unit, port->pnum);
 		return;
 	}
@@ -2140,7 +2140,7 @@ fepcmd(port, cmd, op1, op2, ncmds, bytecmd)
 	head=sc->mailbox->cin;
 
 	if(head>=(FEP_CMAX-FEP_CSTART) || (head & 3)) {
-		printf("dgb%d: port%d: wrong pointer head of command queue : 0x%x\n",
+		kprintf("dgb%d: port%d: wrong pointer head of command queue : 0x%x\n",
 			port->unit, port->pnum, head);
 		return;
 	}
@@ -2171,7 +2171,7 @@ fepcmd(port, cmd, op1, op2, ncmds, bytecmd)
 		if(n <= ncmds * (sizeof(ushort)*4))
 			return;
 	}
-	printf("dgb%d(%d): timeout on FEP cmd=0x%x\n", port->unit, port->pnum, cmd);
+	kprintf("dgb%d(%d): timeout on FEP cmd=0x%x\n", port->unit, port->pnum, cmd);
 }
 
 static void 

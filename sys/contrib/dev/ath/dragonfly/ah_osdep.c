@@ -191,14 +191,14 @@ ath_hal_setlogging(int enable)
 				sizeof (struct athregrec), ath_hal_alq_qsize);
 			ath_hal_alq_lost = 0;
 			ath_hal_alq_emitdev = 1;
-			printf("ath_hal: logging to %s enabled\n",
+			kprintf("ath_hal: logging to %s enabled\n",
 				ath_hal_logfile);
 		}
 	} else {
 		if (ath_hal_alq)
 			alq_close(ath_hal_alq);
 		ath_hal_alq = NULL;
-		printf("ath_hal: logging disabled\n");
+		kprintf("ath_hal: logging disabled\n");
 		error = 0;
 	}
 	return (error);
@@ -346,7 +346,7 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 void
 ath_hal_assert_failed(const char* filename, int lineno, const char *msg)
 {
-	printf("Atheros HAL assertion failure: %s: line %u: %s\n",
+	kprintf("Atheros HAL assertion failure: %s: line %u: %s\n",
 		filename, lineno, msg);
 	panic("ath_hal_assert");
 }
@@ -394,13 +394,13 @@ ath_hal_modevent(module_t mod, int type, void *unused)
 
 	switch (type) {
 	case MOD_LOAD:
-		printf("ath_hal: %s (", ath_hal_version);
+		kprintf("ath_hal: %s (", ath_hal_version);
 		sep = "";
 		for (i = 0; ath_hal_buildopts[i] != NULL; i++) {
-			printf("%s%s", sep, ath_hal_buildopts[i]);
+			kprintf("%s%s", sep, ath_hal_buildopts[i]);
 			sep = ", ";
 		}
-		printf(")\n");
+		kprintf(")\n");
 		return 0;
 	case MOD_UNLOAD:
 		return 0;

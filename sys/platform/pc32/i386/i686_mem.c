@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.6 2006/12/17 20:07:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.7 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -559,11 +559,11 @@ i686_mrinit(struct mem_range_softc *sc)
     /* For now, bail out if MTRRs are not enabled */
     if (!(mtrrdef & 0x800)) {
 	if (bootverbose)
-	    printf("CPU supports MTRRs but not enabled\n");
+	    kprintf("CPU supports MTRRs but not enabled\n");
 	return;
     }
     nmdesc = mtrrcap & 0xff;
-    printf("Pentium Pro MTRR support enabled\n");
+    kprintf("Pentium Pro MTRR support enabled\n");
 
     /* If fixed MTRRs supported and enabled */
     if ((mtrrcap & 0x100) && (mtrrdef & 0x400)) {

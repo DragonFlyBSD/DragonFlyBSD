@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.24 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.25 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -509,11 +509,11 @@ oltr_pci_probe(pcici_t config_id, pcidi_t device_id)
 		rc = TRlldPCIConfig(&LldDriver, &config, PCIConfigHeader);
 
 		if (rc == TRLLD_PCICONFIG_FAIL) {
-			printf("oltr: TRlldPciConfig failed!\n");
+			kprintf("oltr: TRlldPciConfig failed!\n");
 			return(NULL);
 		}
 		if (rc == TRLLD_PCICONFIG_VERSION) {
-			printf("oltr: wrong LLD version.\n");
+			kprintf("oltr: wrong LLD version.\n");
 			return(NULL);
 		}
 		return(AdapterName[config.type]);
@@ -536,7 +536,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 
 	sc = kmalloc(sizeof(struct oltr_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
-		printf("oltr%d: no memory for softc struct!\n", unit);
+		kprintf("oltr%d: no memory for softc struct!\n", unit);
 		goto config_failed;
 	}
 	sc->unit = unit;
@@ -550,32 +550,32 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	case TRLLD_PCICONFIG_OK:
 		break;
 	case TRLLD_PCICONFIG_SET_COMMAND:
-		printf("oltr%d: enabling bus master mode\n", unit);
+		kprintf("oltr%d: enabling bus master mode\n", unit);
 		command = pci_conf_read(config_id, PCIR_COMMAND);
 		pci_conf_write(config_id, PCIR_COMMAND, (command | PCIM_CMD_BUSMASTEREN));
 		command = pci_conf_read(config_id, PCIR_COMMAND);
 		if (!(command & PCIM_CMD_BUSMASTEREN)) {
-			printf("oltr%d: failed to enable bus master mode\n", unit);
+			kprintf("oltr%d: failed to enable bus master mode\n", unit);
 			goto config_failed;
 		}
 		break;
 	case TRLLD_PCICONFIG_FAIL:
-		printf("oltr%d: TRlldPciConfig failed!\n", unit);
+		kprintf("oltr%d: TRlldPciConfig failed!\n", unit);
 		goto config_failed;
 		break;
 	case TRLLD_PCICONFIG_VERSION:
-		printf("oltr%d: wrong LLD version\n", unit);
+		kprintf("oltr%d: wrong LLD version\n", unit);
 		goto config_failed;
 		break;
 	}
-	printf("oltr%d: MAC address %6D\n", unit, sc->config.macaddress, ":");
+	kprintf("oltr%d: MAC address %6D\n", unit, sc->config.macaddress, ":");
 
 	scratch_size = TRlldAdapterSize();
 	if (bootverbose)
-		printf("oltr%d: adapter memory block size %d bytes\n", unit, scratch_size);
+		kprintf("oltr%d: adapter memory block size %d bytes\n", unit, scratch_size);
 	sc->TRlldAdapter = (TRlldAdapter_t)kmalloc(scratch_size, M_DEVBUF, M_NOWAIT);
 	if (sc->TRlldAdapter == NULL) {
-		printf("oltr%d: couldn't allocate scratch buffer (%d bytes)\n",unit, scratch_size);
+		kprintf("oltr%d: couldn't allocate scratch buffer (%d bytes)\n",unit, scratch_size);
 		goto config_failed;
 	}
 
@@ -590,7 +590,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 		sc->tx_ring[i].data = (char *)kmalloc(TX_BUFFER_LEN, M_DEVBUF, M_NOWAIT);
 		sc->tx_ring[i].address = vtophys(sc->tx_ring[i].data);
 		if ((!sc->rx_ring[i].data) || (!sc->tx_ring[i].data)) {
-			printf("oltr%d: unable to allocate ring buffers\n", unit);
+			kprintf("oltr%d: unable to allocate ring buffers\n", unit);
 			while (i > 0) {
 				if (sc->rx_ring[i].data)
 					kfree(sc->rx_ring[i].data, M_DEVBUF);
@@ -606,7 +606,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	 * Allocate interrupt and DMA channel
 	 */
 	if (!pci_map_int(config_id, oltr_intr, sc)) {
-		printf("oltr%d: couldn't setup interrupt\n", unit);
+		kprintf("oltr%d: couldn't setup interrupt\n", unit);
 		goto config_failed;
 	}
 
@@ -669,7 +669,7 @@ oltr_intr(void *xsc)
 	struct oltr_softc		*sc = (struct oltr_softc *)xsc;
 
 	if (DEBUG_MASK & DEBUG_INT)
-		printf("I");
+		kprintf("I");
 
 	TRlldInterruptService(sc->TRlldAdapter);
 
@@ -695,7 +695,7 @@ outloop:
 	 * Make sure we have buffers to transmit with
 	 */
 	if (sc->tx_avail <= 0) {
-		printf("oltr%d: tx queue full\n", sc->unit);
+		kprintf("oltr%d: tx queue full\n", sc->unit);
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
@@ -735,7 +735,7 @@ outloop:
 	crit_exit();
 
 	if (rc != TRLLD_TRANSMIT_OK) {
-		printf("oltr%d: TRlldTransmitFrame returned %d\n", sc->unit, rc);
+		kprintf("oltr%d: TRlldTransmitFrame returned %d\n", sc->unit, rc);
 		ifp->if_oerrors++;
 		goto bad;
 	}
@@ -754,7 +754,7 @@ bad:
 
 nobuffers:
 
-	printf("oltr%d: queue full\n", sc->unit);
+	kprintf("oltr%d: queue full\n", sc->unit);
 	ifp->if_flags |= IFF_OACTIVE;
 	ifp->if_oerrors++;
 	/*m_freem(m0);*/
@@ -766,7 +766,7 @@ nobuffers:
 static void
 oltr_close(struct oltr_softc *sc)
 {
-	/*printf("oltr%d: oltr_close\n", sc->unit);*/
+	/*kprintf("oltr%d: oltr_close\n", sc->unit);*/
 
 	oltr_stop(sc);
 
@@ -778,7 +778,7 @@ oltr_stop(struct oltr_softc *sc)
 {
 	struct ifnet 		*ifp = &sc->arpcom.ac_if;
 
-	/*printf("oltr%d: oltr_stop\n", sc->unit);*/
+	/*kprintf("oltr%d: oltr_stop\n", sc->unit);*/
 
 	ifp->if_flags &= ~(IFF_UP | IFF_RUNNING | IFF_OACTIVE);
 	TRlldClose(sc->TRlldAdapter, 0);
@@ -798,7 +798,7 @@ oltr_init(void * xsc)
 	 * Check adapter state, don't allow multiple inits
 	 */
 	if (sc->state > OL_CLOSED) {
-		printf("oltr%d: adapter not ready\n", sc->unit);
+		kprintf("oltr%d: adapter not ready\n", sc->unit);
 		return;
 	}
 
@@ -811,19 +811,19 @@ oltr_init(void * xsc)
 	    (void *)sc, &sc->config)) != TRLLD_INIT_OK) {
 		switch(rc) {
 		case TRLLD_INIT_NOT_FOUND:
-			printf("oltr%d: adapter not found\n", sc->unit);
+			kprintf("oltr%d: adapter not found\n", sc->unit);
 			break;
 		case TRLLD_INIT_UNSUPPORTED:
-			printf("oltr%d: adapter not supported by low level driver\n", sc->unit);
+			kprintf("oltr%d: adapter not supported by low level driver\n", sc->unit);
 			break;
 		case TRLLD_INIT_PHYS16:
-			printf("oltr%d: adapter memory block above 16M cannot DMA\n", sc->unit);
+			kprintf("oltr%d: adapter memory block above 16M cannot DMA\n", sc->unit);
 			break;
 		case TRLLD_INIT_VERSION:
-			printf("oltr%d: low level driver version mismatch\n", sc->unit);
+			kprintf("oltr%d: low level driver version mismatch\n", sc->unit);
 			break;
 		default:
-			printf("oltr%d: unknown init error %d\n", sc->unit, rc);
+			kprintf("oltr%d: unknown init error %d\n", sc->unit, rc);
 			break;
 		}
 		goto init_failed;
@@ -843,7 +843,7 @@ oltr_init(void * xsc)
 
 	if (work_size) {
 		if ((sc->work_memory = kmalloc(work_size, M_DEVBUF, M_NOWAIT)) == NULL) {
-			printf("oltr%d: failed to allocate work memory (%d octets).\n", sc->unit, work_size);
+			kprintf("oltr%d: failed to allocate work memory (%d octets).\n", sc->unit, work_size);
 		} else {
 		TRlldAddMemory(sc->TRlldAdapter, sc->work_memory,
 		    vtophys(sc->work_memory), work_size);
@@ -869,27 +869,27 @@ oltr_init(void * xsc)
 	 * Download adapter micro-code
 	 */
 	if (bootverbose)
-		printf("oltr%d: Downloading adapter microcode: ", sc->unit);
+		kprintf("oltr%d: Downloading adapter microcode: ", sc->unit);
 
 	switch(sc->config.mactype) {
 	case TRLLD_MAC_TMS:
 		rc = TRlldDownload(sc->TRlldAdapter, TRlldMacCode);
 		if (bootverbose)
-			printf("TMS-380");
+			kprintf("TMS-380");
 		break;
 	case TRLLD_MAC_HAWKEYE:
 		rc = TRlldDownload(sc->TRlldAdapter, TRlldHawkeyeMac);
 		if (bootverbose)
-			printf("Hawkeye");
+			kprintf("Hawkeye");
 		break;
 	case TRLLD_MAC_BULLSEYE:
 		rc = TRlldDownload(sc->TRlldAdapter, TRlldBullseyeMac);
 		if (bootverbose)
-			printf("Bullseye");
+			kprintf("Bullseye");
 		break;
 	default:
 		if (bootverbose)
-			printf("unknown - failed!\n");
+			kprintf("unknown - failed!\n");
 		goto init_failed;
 		break;
 	}
@@ -900,18 +900,18 @@ oltr_init(void * xsc)
 	switch(rc) {
 	case TRLLD_DOWNLOAD_OK:
 		if (bootverbose)
-			printf(" - ok\n");
+			kprintf(" - ok\n");
 		break;
 	case TRLLD_DOWNLOAD_ERROR:
 		if (bootverbose)
-			printf(" - failed\n");
+			kprintf(" - failed\n");
 		else
-			printf("oltr%d: adapter microcode download failed\n", sc->unit);
+			kprintf("oltr%d: adapter microcode download failed\n", sc->unit);
 		goto init_failed;
 		break;
 	case TRLLD_STATE:
 		if (bootverbose)
-			printf(" - not ready\n");
+			kprintf(" - not ready\n");
 		goto init_failed;
 		break;
 	}
@@ -922,14 +922,14 @@ oltr_init(void * xsc)
 	i = 0;
 	while ((poll++ < SELF_TEST_POLLS) && (sc->state < OL_READY)) {
 		if (DEBUG_MASK & DEBUG_INIT)
-			printf("p");
+			kprintf("p");
 		DELAY(TRlldPoll(sc->TRlldAdapter) * 1000);
 		if (TRlldInterruptService(sc->TRlldAdapter) != 0)
-			if (DEBUG_MASK & DEBUG_INIT) printf("i");
+			if (DEBUG_MASK & DEBUG_INIT) kprintf("i");
 	}
 
 	if (sc->state != OL_CLOSED) {
-		printf("oltr%d: self-test failed\n", sc->unit);
+		kprintf("oltr%d: self-test failed\n", sc->unit);
 		goto init_failed;
 	}
 
@@ -950,19 +950,19 @@ oltr_init(void * xsc)
 		case TRLLD_OPEN_OK:
 			break;
 		case TRLLD_OPEN_STATE:
-			printf("oltr%d: adapter not ready for open\n", sc->unit);
+			kprintf("oltr%d: adapter not ready for open\n", sc->unit);
 			crit_exit();
 			return;
 		case TRLLD_OPEN_ADDRESS_ERROR:
-			printf("oltr%d: illegal MAC address\n", sc->unit);
+			kprintf("oltr%d: illegal MAC address\n", sc->unit);
 			crit_exit();
 			return;
 		case TRLLD_OPEN_MODE_ERROR:
-			printf("oltr%d: illegal open mode\n", sc->unit);
+			kprintf("oltr%d: illegal open mode\n", sc->unit);
 			crit_exit();
 			return;
 		default:
-			printf("oltr%d: unknown open error (%d)\n", sc->unit, rc);
+			kprintf("oltr%d: unknown open error (%d)\n", sc->unit, rc);
 			crit_exit();
 			return;
 	}
@@ -985,7 +985,7 @@ oltr_init(void * xsc)
 		rc = TRlldReceiveFragment(sc->TRlldAdapter, (void *)sc->rx_ring[i].data,
 			sc->rx_ring[i].address, RX_BUFFER_LEN, (void *)sc->rx_ring[i].index);
 		if (rc != TRLLD_RECEIVE_OK) {
-			printf("oltr%d: adapter refused receive fragment %d (rc = %d)\n", sc->unit, i, rc);
+			kprintf("oltr%d: adapter refused receive fragment %d (rc = %d)\n", sc->unit, i, rc);
 			break;
 		}	
 	}
@@ -1061,7 +1061,7 @@ oltr_poll(void *arg)
 
 	crit_enter();
 
-	if (DEBUG_MASK & DEBUG_POLL) printf("P");
+	if (DEBUG_MASK & DEBUG_POLL) kprintf("P");
 
 	/* Set up next adapter poll */
 	callout_reset(&sc->oltr_poll_ch,
@@ -1081,7 +1081,7 @@ oltr_stat(void *arg)
 	/* Set up next adapter poll */
 	sc->oltr_stat_ch = timeout(oltr_stat, (void *)sc, 1*hz);
 	if (TRlldGetStatistics(sc->TRlldAdapter, &sc->current, 0) != 0) {
-		/*printf("oltr%d: statistics available immediately...\n", sc->unit);*/
+		/*kprintf("oltr%d: statistics available immediately...\n", sc->unit);*/
 		DriverStatistics((void *)sc, &sc->current);
 	}
 
@@ -1126,7 +1126,7 @@ oltr_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct oltr_softc	*sc = ifp->if_softc;
 	struct ifmedia		*ifm = &sc->ifmedia;
 
-	/*printf("oltr%d: oltr_ifmedia_sts\n", sc->unit);*/
+	/*kprintf("oltr%d: oltr_ifmedia_sts\n", sc->unit);*/
 
 	ifmr->ifm_active = IFM_TYPE(ifm->ifm_media)|IFM_SUBTYPE(ifm->ifm_media);
 
@@ -1143,49 +1143,49 @@ DriverStatistics(void *DriverHandle, TRlldStatistics_t *statistics)
 	struct oltr_softc		*sc = (struct oltr_softc *)DriverHandle;
 
 	if (sc->statistics.LineErrors != statistics->LineErrors)
-		printf("oltr%d: Line Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Line Errors %lu\n", sc->unit,
 		    statistics->LineErrors);
 	if (sc->statistics.InternalErrors != statistics->InternalErrors)
-		printf("oltr%d: Internal Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Internal Errors %lu\n", sc->unit,
 		    statistics->InternalErrors);
 	if (sc->statistics.BurstErrors != statistics->BurstErrors)
-		printf("oltr%d: Burst Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Burst Errors %lu\n", sc->unit,
 		    statistics->BurstErrors);
 	if (sc->statistics.AbortDelimiters != statistics->AbortDelimiters)
-		printf("oltr%d: Abort Delimiters %lu\n", sc->unit,
+		kprintf("oltr%d: Abort Delimiters %lu\n", sc->unit,
 		    statistics->AbortDelimiters);
 	if (sc->statistics.ARIFCIErrors != statistics->ARIFCIErrors)
-		printf("oltr%d: ARIFCI Errors %lu\n", sc->unit,
+		kprintf("oltr%d: ARIFCI Errors %lu\n", sc->unit,
 		    statistics->ARIFCIErrors);
 	if (sc->statistics.LostFrames != statistics->LostFrames)
-		printf("oltr%d: Lost Frames %lu\n", sc->unit,
+		kprintf("oltr%d: Lost Frames %lu\n", sc->unit,
 		    statistics->LostFrames);
 	if (sc->statistics.CongestionErrors != statistics->CongestionErrors)
-		printf("oltr%d: Congestion Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Congestion Errors %lu\n", sc->unit,
 		    statistics->CongestionErrors);
 	if (sc->statistics.FrequencyErrors != statistics->FrequencyErrors)
-		printf("oltr%d: Frequency Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Frequency Errors %lu\n", sc->unit,
 		    statistics->FrequencyErrors);
 	if (sc->statistics.TokenErrors != statistics->TokenErrors)
-		printf("oltr%d: Token Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Token Errors %lu\n", sc->unit,
 		    statistics->TokenErrors);
 	if (sc->statistics.DMABusErrors != statistics->DMABusErrors)
-		printf("oltr%d: DMA Bus Errors %lu\n", sc->unit,
+		kprintf("oltr%d: DMA Bus Errors %lu\n", sc->unit,
 		    statistics->DMABusErrors);
 	if (sc->statistics.DMAParityErrors != statistics->DMAParityErrors)
-		printf("oltr%d: DMA Parity Errors %lu\n", sc->unit,
+		kprintf("oltr%d: DMA Parity Errors %lu\n", sc->unit,
 		    statistics->DMAParityErrors);
 	if (sc->statistics.ReceiveLongFrame != statistics->ReceiveLongFrame)
-		printf("oltr%d: Long frames received %lu\n", sc->unit,
+		kprintf("oltr%d: Long frames received %lu\n", sc->unit,
 		    statistics->ReceiveLongFrame);
 	if (sc->statistics.ReceiveCRCErrors != statistics->ReceiveCRCErrors)
-		printf("oltr%d: Receive CRC Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Receive CRC Errors %lu\n", sc->unit,
 		    statistics->ReceiveCRCErrors);
 	if (sc->statistics.ReceiveOverflow != statistics->ReceiveOverflow)
-		printf("oltr%d: Recieve overflows %lu\n", sc->unit,
+		kprintf("oltr%d: Recieve overflows %lu\n", sc->unit,
 		    statistics->ReceiveOverflow);
 	if (sc->statistics.TransmitUnderrun != statistics->TransmitUnderrun)
-		printf("oltr%d: Frequency Errors %lu\n", sc->unit,
+		kprintf("oltr%d: Frequency Errors %lu\n", sc->unit,
 		    statistics->TransmitUnderrun);
 	bcopy(statistics, &sc->statistics, sizeof(TRlldStatistics_t));
 #endif
@@ -1214,7 +1214,7 @@ DriverStatus(void *DriverHandle, TRlldStatus_t *Status)
 	switch (Status->Type) {
 
 	case TRLLD_STS_ON_WIRE:
-		printf("oltr%d: ring insert (%d Mbps - %s)\n", sc->unit,
+		kprintf("oltr%d: ring insert (%d Mbps - %s)\n", sc->unit,
 		    Status->Specification.OnWireInformation.Speed,
 		    Protocol[Status->Specification.OnWireInformation.AccessProtocol]);
 		sc->state = OL_OPEN;
@@ -1224,15 +1224,15 @@ DriverStatus(void *DriverHandle, TRlldStatus_t *Status)
 		if (Status->Specification.SelftestStatus == TRLLD_ST_OK) {
 			sc->state = OL_CLOSED;
 			if (bootverbose)
-				printf("oltr%d: self test complete\n", sc->unit);
+				kprintf("oltr%d: self test complete\n", sc->unit);
 		}
 		if (Status->Specification.SelftestStatus & TRLLD_ST_ERROR) {
-			printf("oltr%d: Adapter self test error %d", sc->unit,
+			kprintf("oltr%d: Adapter self test error %d", sc->unit,
 			Status->Specification.SelftestStatus & ~TRLLD_ST_ERROR);
 			sc->state = OL_DEAD;
 		}
 		if (Status->Specification.SelftestStatus & TRLLD_ST_TIMEOUT) {
-			printf("oltr%d: Adapter self test timed out.\n", sc->unit);
+			kprintf("oltr%d: Adapter self test timed out.\n", sc->unit);
 			sc->state = OL_DEAD;
 		}
 		break;
@@ -1244,48 +1244,48 @@ DriverStatus(void *DriverHandle, TRlldStatus_t *Status)
 			oltr_init(sc);
 			break;
 		}
-		printf("oltr%d: adapter init failure 0x%03x\n", sc->unit,
+		kprintf("oltr%d: adapter init failure 0x%03x\n", sc->unit,
 		    Status->Specification.InitStatus);
 		oltr_stop(sc);
 		break;
 	case TRLLD_STS_RING_STATUS:
 		if (Status->Specification.RingStatus) {
-			printf("oltr%d: Ring status change: ", sc->unit);
+			kprintf("oltr%d: Ring status change: ", sc->unit);
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_SIGNAL_LOSS)
-				printf(" [Signal Loss]");
+				kprintf(" [Signal Loss]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_HARD_ERROR)
-				printf(" [Hard Error]");
+				kprintf(" [Hard Error]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_SOFT_ERROR)
-				printf(" [Soft Error]");
+				kprintf(" [Soft Error]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_TRANSMIT_BEACON)
-				printf(" [Beacon]");
+				kprintf(" [Beacon]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_LOBE_WIRE_FAULT)
-				printf(" [Wire Fault]");
+				kprintf(" [Wire Fault]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_AUTO_REMOVAL_ERROR)
-				printf(" [Auto Removal]");
+				kprintf(" [Auto Removal]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_REMOVE_RECEIVED)
-				printf(" [Remove Received]");
+				kprintf(" [Remove Received]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_COUNTER_OVERFLOW)
-				printf(" [Counter Overflow]");
+				kprintf(" [Counter Overflow]");
 			if (Status->Specification.RingStatus &
 			    TRLLD_RS_SINGLE_STATION)
-				printf(" [Single Station]");
+				kprintf(" [Single Station]");
 			if (Status->Specification.RingStatus &
 				TRLLD_RS_RING_RECOVERY)
-				printf(" [Ring Recovery]");
-			printf("\n");	
+				kprintf(" [Ring Recovery]");
+			kprintf("\n");	
 		}
 		break;
 	case TRLLD_STS_ADAPTER_CHECK:
-		printf("oltr%d: adapter check (%04x %04x %04x %04x)\n", sc->unit,
+		kprintf("oltr%d: adapter check (%04x %04x %04x %04x)\n", sc->unit,
 		    Status->Specification.AdapterCheck[0],
 		    Status->Specification.AdapterCheck[1],
 		    Status->Specification.AdapterCheck[2],
@@ -1294,19 +1294,19 @@ DriverStatus(void *DriverHandle, TRlldStatus_t *Status)
 		oltr_stop(sc);
 		break;
 	case TRLLD_STS_PROMISCUOUS_STOPPED:
-		printf("oltr%d: promiscuous mode ", sc->unit);
+		kprintf("oltr%d: promiscuous mode ", sc->unit);
 		if (Status->Specification.PromRemovedCause == 1)
-			printf("remove received.");
+			kprintf("remove received.");
 		if (Status->Specification.PromRemovedCause == 2)
-			printf("poll failure.");
+			kprintf("poll failure.");
 		if (Status->Specification.PromRemovedCause == 2)
-			printf("buffer size failure.");
-		printf("\n");
+			kprintf("buffer size failure.");
+		kprintf("\n");
 		ifp->if_flags &= ~IFF_PROMISC;
 		break;
 	case TRLLD_STS_LLD_ERROR:
-		printf("oltr%d: low level driver internal error ", sc->unit);
-		printf("(%04x %04x %04x %04x).\n",
+		kprintf("oltr%d: low level driver internal error ", sc->unit);
+		kprintf("(%04x %04x %04x %04x).\n",
 		    Status->Specification.InternalError[0],
 		    Status->Specification.InternalError[1],
 		    Status->Specification.InternalError[2],
@@ -1315,11 +1315,11 @@ DriverStatus(void *DriverHandle, TRlldStatus_t *Status)
 		oltr_stop(sc);
 		break;
 	case TRLLD_STS_ADAPTER_TIMEOUT:
-		printf("oltr%d: adapter %s timeout.\n", sc->unit,
+		kprintf("oltr%d: adapter %s timeout.\n", sc->unit,
 		    Timeout[Status->Specification.AdapterTimeout]);
 		break;
 	default:
-		printf("oltr%d: driver status Type = %d\n", sc->unit, Status->Type);
+		kprintf("oltr%d: driver status Type = %d\n", sc->unit, Status->Type);
 		break;
 
 	}
@@ -1335,7 +1335,7 @@ DriverCloseCompleted(void *DriverHandle)
 {
 	struct oltr_softc		*sc = (struct oltr_softc *)DriverHandle;
 	
-	printf("oltr%d: adapter closed\n", sc->unit);
+	kprintf("oltr%d: adapter closed\n", sc->unit);
 	wakeup(sc);
 	sc->state = OL_CLOSED;
 }
@@ -1347,11 +1347,11 @@ DriverTransmitFrameCompleted(void *DriverHandle, void *FrameHandle, int Transmit
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	TRlldTransmit_t		*frame = (TRlldTransmit_t *)FrameHandle;
 	
-	/*printf("oltr%d: DriverTransmitFrameCompleted\n", sc->unit);*/
+	/*kprintf("oltr%d: DriverTransmitFrameCompleted\n", sc->unit);*/
 
 	if (TransmitStatus != TRLLD_TRANSMIT_OK) {
 		ifp->if_oerrors++;
-		printf("oltr%d: transmit error %d\n", sc->unit, TransmitStatus);
+		kprintf("oltr%d: transmit error %d\n", sc->unit, TransmitStatus);
 	} else {
 		ifp->if_opackets++;
 	}
@@ -1359,7 +1359,7 @@ DriverTransmitFrameCompleted(void *DriverHandle, void *FrameHandle, int Transmit
 	sc->tx_avail += frame->FragmentCount;
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		printf("oltr%d: queue restart\n", sc->unit);
+		kprintf("oltr%d: queue restart\n", sc->unit);
 		ifp->if_flags &= ~IFF_OACTIVE;
 		oltr_start(ifp);
 	}
@@ -1463,7 +1463,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 
 		} else {	/* Receiver error */
 			if (ReceiveStatus != TRLLD_RCV_NO_DATA) {
-				printf("oltr%d: receive error %d\n", sc->unit,
+				kprintf("oltr%d: receive error %d\n", sc->unit,
 				    ReceiveStatus);
 				ifp->if_ierrors++;
 			}
@@ -1478,7 +1478,7 @@ dropped:
 			    sc->rx_ring[RING_BUFFER(i)].address,
 			    RX_BUFFER_LEN, (void *)sc->rx_ring[RING_BUFFER(i)].index);
 			if (rc != TRLLD_RECEIVE_OK) {
-				printf("oltr%d: adapter refused receive fragment %d (rc = %d)\n", sc->unit, i, rc);
+				kprintf("oltr%d: adapter refused receive fragment %d (rc = %d)\n", sc->unit, i, rc);
 				break;
 			}
 			i++;

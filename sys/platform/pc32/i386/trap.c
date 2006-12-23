@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.86 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.87 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -432,7 +432,7 @@ trap(struct trapframe frame)
 		type = frame.tf_trapno;
 		if (ISPL(frame.tf_cs)==SEL_UPL || (frame.tf_eflags & PSL_VM)) {
 			MAKEMPSAFE(have_mplock);
-			printf(
+			kprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curproc->p_comm, type);
 		} else if (type != T_BPTFLT && type != T_TRCTRAP) {
@@ -441,7 +441,7 @@ trap(struct trapframe frame)
 			 * multiple fault in user mode.
 			 */
 			MAKEMPSAFE(have_mplock);
-			printf("kernel trap %d with interrupts disabled\n",
+			kprintf("kernel trap %d with interrupts disabled\n",
 			    type);
 		}
 		cpu_enable_intr();
@@ -595,7 +595,7 @@ restart:
 				 * for debugging.
 				 */
 				if (ddb_on_nmi) {
-					printf ("NMI ... going to debugger\n");
+					kprintf ("NMI ... going to debugger\n");
 					kdb_trap (type, 0, &frame);
 				}
 #endif /* DDB */
@@ -825,7 +825,7 @@ kernel_trap:
 				 * for debugging.
 				 */
 				if (ddb_on_nmi) {
-					printf ("NMI ... going to debugger\n");
+					kprintf ("NMI ... going to debugger\n");
 					kdb_trap (type, 0, &frame);
 				}
 #endif /* DDB */
@@ -1115,24 +1115,24 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(frame->tf_cs & 0xffff)].sd, &softseg);
 
 	if (type <= MAX_TRAP_MSG)
-		printf("\n\nFatal trap %d: %s while in %s mode\n",
+		kprintf("\n\nFatal trap %d: %s while in %s mode\n",
 			type, trap_msg[type],
         		frame->tf_eflags & PSL_VM ? "vm86" :
 			ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
-	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", mycpu->gd_cpuid);
-	printf("lapic.id = %08x\n", lapic.id);
+	kprintf("mp_lock = %08x; ", mp_lock);
+	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	if (type == T_PAGEFLT) {
-		printf("fault virtual address	= 0x%x\n", eva);
-		printf("fault code		= %s %s, %s\n",
+		kprintf("fault virtual address	= 0x%x\n", eva);
+		kprintf("fault code		= %s %s, %s\n",
 			code & PGEX_U ? "user" : "supervisor",
 			code & PGEX_W ? "write" : "read",
 			code & PGEX_P ? "protection violation" : "page not present");
 	}
-	printf("instruction pointer	= 0x%x:0x%x\n",
+	kprintf("instruction pointer	= 0x%x:0x%x\n",
 	       frame->tf_cs & 0xffff, frame->tf_eip);
         if ((ISPL(frame->tf_cs) == SEL_UPL) || (frame->tf_eflags & PSL_VM)) {
 		ss = frame->tf_ss & 0xffff;
@@ -1141,46 +1141,46 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 		ss = GSEL(GDATA_SEL, SEL_KPL);
 		esp = (int)&frame->tf_esp;
 	}
-	printf("stack pointer	        = 0x%x:0x%x\n", ss, esp);
-	printf("frame pointer	        = 0x%x:0x%x\n", ss, frame->tf_ebp);
-	printf("code segment		= base 0x%x, limit 0x%x, type 0x%x\n",
+	kprintf("stack pointer	        = 0x%x:0x%x\n", ss, esp);
+	kprintf("frame pointer	        = 0x%x:0x%x\n", ss, frame->tf_ebp);
+	kprintf("code segment		= base 0x%x, limit 0x%x, type 0x%x\n",
 	       softseg.ssd_base, softseg.ssd_limit, softseg.ssd_type);
-	printf("			= DPL %d, pres %d, def32 %d, gran %d\n",
+	kprintf("			= DPL %d, pres %d, def32 %d, gran %d\n",
 	       softseg.ssd_dpl, softseg.ssd_p, softseg.ssd_def32,
 	       softseg.ssd_gran);
-	printf("processor eflags	= ");
+	kprintf("processor eflags	= ");
 	if (frame->tf_eflags & PSL_T)
-		printf("trace trap, ");
+		kprintf("trace trap, ");
 	if (frame->tf_eflags & PSL_I)
-		printf("interrupt enabled, ");
+		kprintf("interrupt enabled, ");
 	if (frame->tf_eflags & PSL_NT)
-		printf("nested task, ");
+		kprintf("nested task, ");
 	if (frame->tf_eflags & PSL_RF)
-		printf("resume, ");
+		kprintf("resume, ");
 	if (frame->tf_eflags & PSL_VM)
-		printf("vm86, ");
-	printf("IOPL = %d\n", (frame->tf_eflags & PSL_IOPL) >> 12);
-	printf("current process		= ");
+		kprintf("vm86, ");
+	kprintf("IOPL = %d\n", (frame->tf_eflags & PSL_IOPL) >> 12);
+	kprintf("current process		= ");
 	if (curproc) {
-		printf("%lu (%s)\n",
+		kprintf("%lu (%s)\n",
 		    (u_long)curproc->p_pid, curproc->p_comm ?
 		    curproc->p_comm : "");
 	} else {
-		printf("Idle\n");
+		kprintf("Idle\n");
 	}
-	printf("current thread          = pri %d ", curthread->td_pri);
+	kprintf("current thread          = pri %d ", curthread->td_pri);
 	if (curthread->td_pri >= TDPRI_CRIT)
-		printf("(CRIT)");
-	printf("\n");
+		kprintf("(CRIT)");
+	kprintf("\n");
 #ifdef SMP
 /**
  *  XXX FIXME:
  *	we probably SHOULD have stopped the other CPUs before now!
  *	another CPU COULD have been touching cpl at this moment...
  */
-	printf(" <- SMP: XXX");
+	kprintf(" <- SMP: XXX");
 #endif
-	printf("\n");
+	kprintf("\n");
 
 #ifdef KDB
 	if (kdb_trap(&psl))
@@ -1190,7 +1190,7 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	if ((debugger_on_panic || db_active) && kdb_trap(type, code, frame))
 		return;
 #endif
-	printf("trap number		= %d\n", type);
+	kprintf("trap number		= %d\n", type);
 	if (type <= MAX_TRAP_MSG)
 		panic("%s", trap_msg[type]);
 	else
@@ -1214,15 +1214,15 @@ dblfault_handler(void)
 {
 	struct mdglobaldata *gd = mdcpu;
 
-	printf("\nFatal double fault:\n");
-	printf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
-	printf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
-	printf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
+	kprintf("\nFatal double fault:\n");
+	kprintf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
+	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
+	kprintf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
-	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", mycpu->gd_cpuid);
-	printf("lapic.id = %08x\n", lapic.id);
+	kprintf("mp_lock = %08x; ", mp_lock);
+	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");
 }

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.13 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.14 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 		 * XXX this is almost useless now.  In most cases,
 		 * trap_fatal() has already printed a much more verbose
 		 * message.  However, it is dangerous to print things in
-		 * trap_fatal() - printf() might be reentered and trap.
+		 * trap_fatal() - kprintf() might be reentered and trap.
 		 * The debugger should be given control first.
 		 */
 		if (ddb_mode)

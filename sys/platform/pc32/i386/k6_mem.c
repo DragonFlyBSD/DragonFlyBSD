@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/k6_mem.c,v 1.4.2.2 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/k6_mem.c,v 1.7 2006/12/17 20:07:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/k6_mem.c,v 1.8 2006/12/23 00:27:03 swildner Exp $
  *
  */
 
@@ -130,7 +130,7 @@ k6_mrinit(struct mem_range_softc *sc) {
 			sc->mr_desc[d].mr_flags |= MDF_UNCACHEABLE;
 	}
 	
-	printf("K6-family MTRR support enabled (%d registers)\n", sc->mr_ndesc);
+	kprintf("K6-family MTRR support enabled (%d registers)\n", sc->mr_ndesc);
 }
 
 static int

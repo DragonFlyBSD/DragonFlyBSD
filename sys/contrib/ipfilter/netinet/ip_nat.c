@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.8 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.11 2005/06/05 12:17:46 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -114,6 +114,10 @@ extern struct ifnet vpnif;
 #endif
 #undef	SOCKADDR_IN
 #define	SOCKADDR_IN	struct sockaddr_in
+
+#ifndef _KERNEL
+# define kprintf	printf
+#endif
 
 static const char sccsid[] = "@(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed";
 
@@ -1198,7 +1202,7 @@ int direction;
 		 */
 		if (ipf_nattable_max > ipf_nattable_sz) {
 			ipf_nattable_max = nat_stats.ns_inuse - 100;
-			printf("ipf_nattable_max reduced to %d\n",
+			kprintf("ipf_nattable_max reduced to %d\n",
 				ipf_nattable_max);
 		}
 		return NULL;

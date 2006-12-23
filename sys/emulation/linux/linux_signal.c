@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.11 2006/06/05 07:26:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -132,7 +132,7 @@ sys_linux_signal(struct linux_signal_args *args)
 
 #ifdef DEBUG
 	if (ldebug(signal))
-		printf(ARGS(signal, "%d, %p"),
+		kprintf(ARGS(signal, "%d, %p"),
 		    args->sig, (void *)args->handler);
 #endif
 	linux_nsa.lsa_handler = args->handler;
@@ -161,7 +161,7 @@ sys_linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 
 #ifdef DEBUG
 	if (ldebug(rt_sigaction))
-		printf(ARGS(rt_sigaction, "%ld, %p, %p, %ld"),
+		kprintf(ARGS(rt_sigaction, "%ld, %p, %p, %ld"),
 		    (long)args->sig, (void *)args->act,
 		    (void *)args->oact, (long)args->sigsetsize);
 #endif
@@ -216,7 +216,7 @@ sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sigprocmask))
-		printf(ARGS(sigprocmask, "%d, *, *"), args->how);
+		kprintf(ARGS(sigprocmask, "%d, *, *"), args->how);
 #endif
 
 	if (args->mask) {
@@ -249,7 +249,7 @@ sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 
 #ifdef DEBUG
 	if (ldebug(rt_sigprocmask))
-		printf(ARGS(rt_sigprocmask, "%d, %p, %p, %ld"),
+		kprintf(ARGS(rt_sigprocmask, "%d, %p, %p, %ld"),
 		    args->how, (void *)args->mask,
 		    (void *)args->omask, (long)args->sigsetsize);
 #endif
@@ -284,7 +284,7 @@ sys_linux_sgetmask(struct linux_sgetmask_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sgetmask))
-		printf(ARGS(sgetmask, ""));
+		kprintf(ARGS(sgetmask, ""));
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &mask);
@@ -301,7 +301,7 @@ sys_linux_ssetmask(struct linux_ssetmask_args *args)
 
 #ifdef DEBUG
 	if (ldebug(ssetmask))
-		printf(ARGS(ssetmask, "%08lx"), (unsigned long)args->mask);
+		kprintf(ARGS(ssetmask, "%08lx"), (unsigned long)args->mask);
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &lset);
@@ -326,7 +326,7 @@ sys_linux_sigpending(struct linux_sigpending_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sigpending))
-		printf(ARGS(sigpending, "*"));
+		kprintf(ARGS(sigpending, "*"));
 #endif
 
 	error = kern_sigpending(&set);
@@ -347,7 +347,7 @@ sys_linux_kill(struct linux_kill_args *args)
 
 #ifdef DEBUG
 	if (ldebug(kill))
-		printf(ARGS(kill, "%d, %d"), args->pid, args->signum);
+		kprintf(ARGS(kill, "%d, %d"), args->pid, args->signum);
 #endif
 
 	/*

@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.20 2006/12/05 23:31:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.21 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ static int apm_debug = 0;
 
 #define APM_DPRINT(args...) do	{					\
 	if (apm_debug) {						\
-		printf(args);						\
+		kprintf(args);						\
 	}								\
 } while (0)
 
@@ -246,7 +246,7 @@ apm_suspend_system(int state)
 	sc->bios.r.edx = 0;
  
 	if (apm_bioscall()) {
- 		printf("Entire system suspend failure: errcode = %d\n",
+ 		kprintf("Entire system suspend failure: errcode = %d\n",
 		       0xff & (sc->bios.r.eax >> 8));
  		return 1;
  	}
@@ -280,7 +280,7 @@ apm_display(int newstate)
 	if (apm_bioscall() == 0) {
 		return 0;
  	}
- 	printf("Display off failure: errcode = %d\n",
+ 	kprintf("Display off failure: errcode = %d\n",
 	       0xff & (sc->bios.r.eax >> 8));
  	return 1;
 }
@@ -307,7 +307,7 @@ apm_power_off(void *junk, int howto)
 static void
 apm_battery_low(void)
 {
-	printf("\007\007 * * * BATTERY IS LOW * * * \007\007");
+	kprintf("\007\007 * * * BATTERY IS LOW * * * \007\007");
 }
 
 /* APM hook manager */
@@ -368,7 +368,7 @@ apm_execute_hook(struct apmhook *list)
 	for (p = list; p != NULL; p = p->ah_next) {
 		APM_DPRINT("Execute APM hook \"%s.\"\n", p->ah_name);
 		if ((*(p->ah_fun))(p->ah_arg))
-			printf("Warning: APM hook \"%s\" failed", p->ah_name);
+			kprintf("Warning: APM hook \"%s\" failed", p->ah_name);
 	}
 }
 
@@ -572,7 +572,7 @@ apm_suspend(int state)
 		sc->standby_countdown = apm_standby_delay;
 		break;
 	default:
-		printf("apm_suspend: Unknown Suspend state 0x%x\n", state);
+		kprintf("apm_suspend: Unknown Suspend state 0x%x\n", state);
 		return;
 	}
 
@@ -810,7 +810,7 @@ apm_probe(device_t dev)
 	device_set_desc(dev, "APM BIOS");
 
 	if ( device_get_unit(dev) > 0 ) {
-		printf("apm: Only one APM driver supported.\n");
+		kprintf("apm: Only one APM driver supported.\n");
 		return ENXIO;
 	}
 
@@ -825,11 +825,11 @@ apm_probe(device_t dev)
 	if (vm86_intcall(APM_INT, &vmf))
 		return ENXIO;			/* APM not found */
 	if (vmf.vmf_bx != 0x504d) {
-		printf("apm: incorrect signature (0x%x)\n", vmf.vmf_bx);
+		kprintf("apm: incorrect signature (0x%x)\n", vmf.vmf_bx);
 		return ENXIO;
 	}
 	if ((vmf.vmf_cx & (APM_32BIT_SUPPORT | APM_16BIT_SUPPORT)) == 0) {
-		printf("apm: protected mode connections are not supported\n");
+		kprintf("apm: protected mode connections are not supported\n");
 		return ENXIO;
 	}
 
@@ -848,7 +848,7 @@ apm_probe(device_t dev)
 		vmf.vmf_al = APM_PROT32CONNECT;
 		vmf.vmf_bx = 0;
 		if (vm86_intcall(APM_INT, &vmf)) {
-			printf("apm: 32-bit connection error.\n");
+			kprintf("apm: 32-bit connection error.\n");
 			return (ENXIO);
  		}
 		sc->bios.seg.code32.base = (vmf.vmf_ax << 4) + APM_KERNBASE;
@@ -865,7 +865,7 @@ apm_probe(device_t dev)
 		vmf.vmf_al = APM_PROT16CONNECT;
 		vmf.vmf_bx = 0;
 		if (vm86_intcall(APM_INT, &vmf)) {
-			printf("apm: 16-bit connection error.\n");
+			kprintf("apm: 16-bit connection error.\n");
 			return (ENXIO);
 		}
 		sc->bios.seg.code16.base = (vmf.vmf_ax << 4) + APM_KERNBASE;
@@ -985,7 +985,7 @@ apm_processevent(void)
 		    case PMEV_NOEVENT:
 			break;
 		    default:
-			printf("Unknown Original APM Event 0x%x\n", apm_event);
+			kprintf("Unknown Original APM Event 0x%x\n", apm_event);
 			    break;
 		}
 	} while (apm_event != PMEV_NOEVENT);

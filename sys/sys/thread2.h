@@ -8,7 +8,7 @@
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.27 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.28 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -92,7 +92,7 @@ _debug_crit_exit(thread_t td, const char *id)
     if ((gid = td->td_crit_debug_array[wi & CRIT_DEBUG_ARRAY_MASK]) != id) {
 	if (td->td_in_crit_report == 0) {
 	    td->td_in_crit_report = 1;
-	    printf("crit_exit(%s) expected id %s\n", id, gid);
+	    kprintf("crit_exit(%s) expected id %s\n", id, gid);
 	    td->td_in_crit_report = 0;
 	}
     }

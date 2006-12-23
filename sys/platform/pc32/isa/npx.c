@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.37 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.38 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -327,10 +327,10 @@ npx_probe1(device_t dev)
 	DELAY(1000);		/* wait for any IRQ13 */
 #ifdef DIAGNOSTIC
 	if (npx_intrs_while_probing != 0)
-		printf("fninit caused %u bogus npx interrupt(s)\n",
+		kprintf("fninit caused %u bogus npx interrupt(s)\n",
 		       npx_intrs_while_probing);
 	if (npx_traps_while_probing != 0)
-		printf("fninit caused %u bogus npx trap(s)\n",
+		kprintf("fninit caused %u bogus npx trap(s)\n",
 		       npx_traps_while_probing);
 #endif
 	/*
@@ -469,7 +469,7 @@ npx_attach(device_t dev)
 			bcopy_vector = (void **)asm_xmm_bcopy;
 			ovbcopy_vector = (void **)asm_xmm_bcopy;
 			memcpy_vector = (void **)asm_xmm_memcpy;
-			printf("Using XMM optimized bcopy/copyin/copyout\n");
+			kprintf("Using XMM optimized bcopy/copyin/copyout\n");
 		}
 		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
 			/* XXX */
@@ -481,7 +481,7 @@ npx_attach(device_t dev)
 			bcopy_vector = (void **)asm_mmx_bcopy;
 			ovbcopy_vector = (void **)asm_mmx_bcopy;
 			memcpy_vector = (void **)asm_mmx_memcpy;
-			printf("Using MMX optimized bcopy/copyin/copyout\n");
+			kprintf("Using MMX optimized bcopy/copyin/copyout\n");
 		}
 		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
 			/* XXX */
@@ -777,13 +777,13 @@ npx_intr(void *dummy)
 	}
 	if (mdcpu->gd_npxthread == NULL || !npx_exists) {
 		get_mplock();
-		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
+		kprintf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
 		       mdcpu->gd_npxthread, curthread, npx_exists);
 		panic("npxintr from nowhere");
 	}
 	if (mdcpu->gd_npxthread != curthread) {
 		get_mplock();
-		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
+		kprintf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
 		       mdcpu->gd_npxthread, curthread, npx_exists);
 		panic("npxintr from non-current process");
 	}
@@ -857,7 +857,7 @@ npxdna(void)
 	if (!npx_exists)
 		return (0);
 	if (mdcpu->gd_npxthread != NULL) {
-		printf("npxdna: npxthread = %p, curthread = %p\n",
+		kprintf("npxdna: npxthread = %p, curthread = %p\n",
 		       mdcpu->gd_npxthread, curthread);
 		panic("npxdna");
 	}

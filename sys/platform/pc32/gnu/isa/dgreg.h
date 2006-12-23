@@ -1,6 +1,6 @@
 /*-
  *  dgreg.h $FreeBSD: src/sys/gnu/i386/isa/dgreg.h,v 1.9 1999/08/28 00:43:05 peter Exp $
- *  dgreg.h $DragonFly: src/sys/platform/pc32/gnu/isa/dgreg.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ *  dgreg.h $DragonFly: src/sys/platform/pc32/gnu/isa/dgreg.h,v 1.3 2006/12/23 00:27:03 swildner Exp $
  *
  *  Digiboard driver.
  *
@@ -361,13 +361,13 @@ struct channel {
 /* debugging printout */
 
 #ifdef DGB_DEBUG
-#define DPRINT1(l,a1)			(dgbdebug&l ? printf(a1) : 0)
-#define DPRINT2(l,a1,a2)		(dgbdebug&l ? printf(a1,a2) : 0)
-#define DPRINT3(l,a1,a2,a3)		(dgbdebug&l ? printf(a1,a2,a3) : 0)
-#define DPRINT4(l,a1,a2,a3,a4)		(dgbdebug&l ? printf(a1,a2,a3,a4) : 0)
-#define DPRINT5(l,a1,a2,a3,a4,a5)	(dgbdebug&l ? printf(a1,a2,a3,a4,a5) : 0)
-#define DPRINT6(l,a1,a2,a3,a4,a5,a6)	(dgbdebug&l ? printf(a1,a2,a3,a4,a5,a6) : 0)
-#define DPRINT7(l,a1,a2,a3,a4,a5,a6,a7) (dgbdebug&l ? printf(a1,a2,a3,a4,a5,a6,a7) : 0)
+#define DPRINT1(l,a1)			(dgbdebug&l ? kprintf(a1) : 0)
+#define DPRINT2(l,a1,a2)		(dgbdebug&l ? kprintf(a1,a2) : 0)
+#define DPRINT3(l,a1,a2,a3)		(dgbdebug&l ? kprintf(a1,a2,a3) : 0)
+#define DPRINT4(l,a1,a2,a3,a4)		(dgbdebug&l ? kprintf(a1,a2,a3,a4) : 0)
+#define DPRINT5(l,a1,a2,a3,a4,a5)	(dgbdebug&l ? kprintf(a1,a2,a3,a4,a5) : 0)
+#define DPRINT6(l,a1,a2,a3,a4,a5,a6)	(dgbdebug&l ? kprintf(a1,a2,a3,a4,a5,a6) : 0)
+#define DPRINT7(l,a1,a2,a3,a4,a5,a6,a7) (dgbdebug&l ? kprintf(a1,a2,a3,a4,a5,a6,a7) : 0)
 #else
 #define DPRINT1(l,a1)
 #define DPRINT2(l,a1,a2)

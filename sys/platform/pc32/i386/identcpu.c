@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.14 2006/12/07 13:33:04 tgen Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.15 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -166,7 +166,7 @@ printcpuinfo(void)
 	char *brand;
 
 	cpu_class = i386_cpus[cpu].cpu_class;
-	printf("CPU: ");
+	kprintf("CPU: ");
 	strncpy(cpu_model, i386_cpus[cpu].cpu_name, sizeof (cpu_model));
 
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
@@ -592,47 +592,47 @@ printcpuinfo(void)
 
 #endif
 
-	printf("%s (", cpu_model);
+	kprintf("%s (", cpu_model);
 	switch(cpu_class) {
 	case CPUCLASS_286:
-		printf("286");
+		kprintf("286");
 		break;
 #if defined(I386_CPU)
 	case CPUCLASS_386:
-		printf("386");
+		kprintf("386");
 		break;
 #endif
 #if defined(I486_CPU)
 	case CPUCLASS_486:
-		printf("486");
+		kprintf("486");
 		/* bzero = i486_bzero; */
 		break;
 #endif
 #if defined(I586_CPU)
 	case CPUCLASS_586:
-		printf("%d.%02d-MHz ",
+		kprintf("%d.%02d-MHz ",
 		       (tsc_freq + 4999) / 1000000,
 		       ((tsc_freq + 4999) / 10000) % 100);
-		printf("586");
+		kprintf("586");
 		break;
 #endif
 #if defined(I686_CPU)
 	case CPUCLASS_686:
-		printf("%d.%02d-MHz ",
+		kprintf("%d.%02d-MHz ",
 		       (tsc_freq + 4999) / 1000000,
 		       ((tsc_freq + 4999) / 10000) % 100);
-		printf("686");
+		kprintf("686");
 		break;
 #endif
 	default:
-		printf("Unknown");	/* will panic below... */
+		kprintf("Unknown");	/* will panic below... */
 	}
-	printf("-class CPU)\n");
+	kprintf("-class CPU)\n");
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
 	if(*cpu_vendor)
-		printf("  Origin = \"%s\"",cpu_vendor);
+		kprintf("  Origin = \"%s\"",cpu_vendor);
 	if(cpu_id)
-		printf("  Id = 0x%x", cpu_id);
+		kprintf("  Id = 0x%x", cpu_id);
 
 	if (strcmp(cpu_vendor, "GenuineIntel") == 0 ||
 	    strcmp(cpu_vendor, "AuthenticAMD") == 0 ||
@@ -640,9 +640,9 @@ printcpuinfo(void)
 	    strcmp(cpu_vendor, "CentaurHauls") == 0 ||
 		((strcmp(cpu_vendor, "CyrixInstead") == 0) &&
 		 ((cpu_id & 0xf00) > 0x500))) {
-		printf("  Stepping = %u", cpu_id & 0xf);
+		kprintf("  Stepping = %u", cpu_id & 0xf);
 		if (strcmp(cpu_vendor, "CyrixInstead") == 0)
-			printf("  DIR=0x%04x", cyrix_did);
+			kprintf("  DIR=0x%04x", cyrix_did);
 		if (cpu_high > 0) {
 			/*
 			 * Here we should probably set up flags indicating
@@ -652,7 +652,7 @@ printcpuinfo(void)
 			 * to check that all CPUs >= Pentium have a TSC and
 			 * MSRs.
 			 */
-			printf("\n  Features=0x%b", cpu_feature,
+			kprintf("\n  Features=0x%b", cpu_feature,
 			"\020"
 			"\001FPU"	/* Integral FPU */
 			"\002VME"	/* Extended VM86 mode support */
@@ -694,24 +694,24 @@ printcpuinfo(void)
 			 */
 			if (cpu_feature & CPUID_HTT &&
 			    (cpu_procinfo & CPUID_HTT_CORES) >> 16 > 1)
-				printf("\n  Hyperthreading: %d logical CPUs",
+				kprintf("\n  Hyperthreading: %d logical CPUs",
 				    (cpu_procinfo & CPUID_HTT_CORES) >> 16);
 		}
 		if (strcmp(cpu_vendor, "AuthenticAMD") == 0 &&
 		    cpu_exthigh >= 0x80000001)
 			print_AMD_features();
 	} else if (strcmp(cpu_vendor, "CyrixInstead") == 0) {
-		printf("  DIR=0x%04x", cyrix_did);
-		printf("  Stepping=%u", (cyrix_did & 0xf000) >> 12);
-		printf("  Revision=%u", (cyrix_did & 0x0f00) >> 8);
+		kprintf("  DIR=0x%04x", cyrix_did);
+		kprintf("  Stepping=%u", (cyrix_did & 0xf000) >> 12);
+		kprintf("  Revision=%u", (cyrix_did & 0x0f00) >> 8);
 #ifndef CYRIX_CACHE_REALLY_WORKS
 		if (cpu == CPU_M1 && (cyrix_did & 0xff00) < 0x1700)
-			printf("\n  CPU cache: write-through mode");
+			kprintf("\n  CPU cache: write-through mode");
 #endif
 	}
 	/* Avoid ugly blank lines: only print newline when we have to. */
 	if (*cpu_vendor || cpu_id)
-		printf("\n");
+		kprintf("\n");
 
 #endif
 	if (strcmp(cpu_vendor, "GenuineTMx86") == 0 ||
@@ -720,7 +720,7 @@ printcpuinfo(void)
 	}
 
 	for (i = 0; i < additional_cpu_info_count; ++i) {
-		printf("  %s\n", additional_cpu_info_ary[i]);
+		kprintf("  %s\n", additional_cpu_info_ary[i]);
 	}
 
 	if (!bootverbose)
@@ -998,9 +998,9 @@ static void
 print_AMD_assoc(int i)
 {
 	if (i == 255)
-		printf(", fully associative\n");
+		kprintf(", fully associative\n");
 	else
-		printf(", %d-way associative\n", i);
+		kprintf(", %d-way associative\n", i);
 }
 
 static void
@@ -1012,17 +1012,17 @@ print_AMD_info(void)
 		u_int regs[4];
 
 		do_cpuid(0x80000005, regs);
-		printf("Data TLB: %d entries", (regs[1] >> 16) & 0xff);
+		kprintf("Data TLB: %d entries", (regs[1] >> 16) & 0xff);
 		print_AMD_assoc(regs[1] >> 24);
-		printf("Instruction TLB: %d entries", regs[1] & 0xff);
+		kprintf("Instruction TLB: %d entries", regs[1] & 0xff);
 		print_AMD_assoc((regs[1] >> 8) & 0xff);
-		printf("L1 data cache: %d kbytes", regs[2] >> 24);
-		printf(", %d bytes/line", regs[2] & 0xff);
-		printf(", %d lines/tag", (regs[2] >> 8) & 0xff);
+		kprintf("L1 data cache: %d kbytes", regs[2] >> 24);
+		kprintf(", %d bytes/line", regs[2] & 0xff);
+		kprintf(", %d lines/tag", (regs[2] >> 8) & 0xff);
 		print_AMD_assoc((regs[2] >> 16) & 0xff);
-		printf("L1 instruction cache: %d kbytes", regs[3] >> 24);
-		printf(", %d bytes/line", regs[3] & 0xff);
-		printf(", %d lines/tag", (regs[3] >> 8) & 0xff);
+		kprintf("L1 instruction cache: %d kbytes", regs[3] >> 24);
+		kprintf(", %d bytes/line", regs[3] & 0xff);
+		kprintf(", %d lines/tag", (regs[3] >> 8) & 0xff);
 		print_AMD_assoc((regs[3] >> 16) & 0xff);
 		if (cpu_exthigh >= 0x80000006) {	/* K6-III, or later */
 			do_cpuid(0x80000006, regs);
@@ -1030,13 +1030,13 @@ print_AMD_info(void)
 			 * Report right L2 cache size on Duron rev. A0.
 			 */
 			if ((cpu_id & 0xFF0) == 0x630)
-				printf("L2 internal cache: 64 kbytes");
+				kprintf("L2 internal cache: 64 kbytes");
 			else
-				printf("L2 internal cache: %d kbytes",
+				kprintf("L2 internal cache: %d kbytes",
 					regs[2] >> 16);
 
-			printf(", %d bytes/line", regs[2] & 0xff);
-			printf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
+			kprintf(", %d bytes/line", regs[2] & 0xff);
+			kprintf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
 			print_AMD_assoc((regs[2] >> 12) & 0x0f);	
 		}
 	}
@@ -1047,11 +1047,11 @@ print_AMD_info(void)
 		/* K6-2(new core [Stepping 8-F]), K6-III or later */
 		amd_whcr = rdmsr(0xc0000082);
 		if (!(amd_whcr & (0x3ff << 22))) {
-			printf("Write Allocate Disable\n");
+			kprintf("Write Allocate Disable\n");
 		} else {
-			printf("Write Allocate Enable Limit: %dM bytes\n",
+			kprintf("Write Allocate Enable Limit: %dM bytes\n",
 			    (u_int32_t)((amd_whcr & (0x3ff << 22)) >> 22) * 4);
-			printf("Write Allocate 15-16M bytes: %s\n",
+			kprintf("Write Allocate 15-16M bytes: %s\n",
 			    (amd_whcr & (1 << 16)) ? "Enable" : "Disable");
 		}
 	} else if (((cpu_id & 0xf00) == 0x500)
@@ -1059,13 +1059,13 @@ print_AMD_info(void)
 		/* K6, K6-2(old core) */
 		amd_whcr = rdmsr(0xc0000082);
 		if (!(amd_whcr & (0x7f << 1))) {
-			printf("Write Allocate Disable\n");
+			kprintf("Write Allocate Disable\n");
 		} else {
-			printf("Write Allocate Enable Limit: %dM bytes\n",
+			kprintf("Write Allocate Enable Limit: %dM bytes\n",
 			    (u_int32_t)((amd_whcr & (0x7f << 1)) >> 1) * 4);
-			printf("Write Allocate 15-16M bytes: %s\n",
+			kprintf("Write Allocate 15-16M bytes: %s\n",
 			    (amd_whcr & 0x0001) ? "Enable" : "Disable");
-			printf("Hardware Write Allocate Control: %s\n",
+			kprintf("Hardware Write Allocate Control: %s\n",
 			    (amd_whcr & 0x0100) ? "Enable" : "Disable");
 		}
 	}
@@ -1082,7 +1082,7 @@ print_AMD_features(void)
 	 * http://www.amd.com/products/cpg/athlon/techdocs/pdf/20734.pdf
 	 */
 	do_cpuid(0x80000001, regs);
-	printf("\n  AMD Features=0x%b", regs[3] &~ cpu_feature,
+	kprintf("\n  AMD Features=0x%b", regs[3] &~ cpu_feature,
 		"\020"		/* in hex */
 		"\001FPU"	/* Integral FPU */
 		"\002VME"	/* Extended VM86 mode support */
@@ -1306,7 +1306,7 @@ print_transmeta_info(void)
 	nreg = regs[0];
 	if (nreg >= 0x80860001) {
 		do_cpuid(0x80860001, regs);
-		printf("  Processor revision %u.%u.%u.%u\n",
+		kprintf("  Processor revision %u.%u.%u.%u\n",
 		       (regs[1] >> 24) & 0xff,
 		       (regs[1] >> 16) & 0xff,
 		       (regs[1] >> 8) & 0xff,
@@ -1314,7 +1314,7 @@ print_transmeta_info(void)
 	}
 	if (nreg >= 0x80860002) {
 		do_cpuid(0x80860002, regs);
-		printf("  Code Morphing Software revision %u.%u.%u-%u-%u\n",
+		kprintf("  Code Morphing Software revision %u.%u.%u-%u-%u\n",
 		       (regs[1] >> 24) & 0xff,
 		       (regs[1] >> 16) & 0xff,
 		       (regs[1] >> 8) & 0xff,
@@ -1328,13 +1328,13 @@ print_transmeta_info(void)
 		do_cpuid(0x80860005, (u_int*) &info[32]);
 		do_cpuid(0x80860006, (u_int*) &info[48]);
 		info[64] = 0;
-		printf("  %s\n", info);
+		kprintf("  %s\n", info);
 	}
 
 	crusoe_longrun = tmx86_get_longrun_mode();
 	tmx86_get_longrun_status(&crusoe_frequency,
 				 &crusoe_voltage, &crusoe_percentage);
-	printf("  LongRun mode: %d  <%dMHz %dmV %d%%>\n", crusoe_longrun,
+	kprintf("  LongRun mode: %d  <%dMHz %dmV %d%%>\n", crusoe_longrun,
 	       crusoe_frequency, crusoe_voltage, crusoe_percentage);
 }
 

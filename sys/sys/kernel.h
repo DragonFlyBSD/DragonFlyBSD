@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.23 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.24 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -346,11 +346,11 @@ struct tunable_str {
 		void (*initfunc)(void *) = (void (*)(void *))data; \
 		switch (type) { \
 		case MOD_LOAD: \
-			/* printf(#name " module load\n"); */ \
+			/* kprintf(#name " module load\n"); */ \
 			initfunc(NULL); \
 			break; \
 		case MOD_UNLOAD: \
-			printf(#name " module unload - not possible for this module type\n"); \
+			kprintf(#name " module unload - not possible for this module type\n"); \
 			return EINVAL; \
 		} \
 		return 0; \

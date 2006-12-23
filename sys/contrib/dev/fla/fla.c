@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.16 2006/10/25 20:55:52 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.17 2006/12/23 00:27:02 swildner Exp $ 
  *
  */
 
@@ -127,7 +127,7 @@ flaopen(struct dev_open_args *ap)
 	struct disklabel *dl;
 
 	if (fla_debug)
-		printf("flaopen(%s %x %x)\n",
+		kprintf("flaopen(%s %x %x)\n",
 			devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	sc = dev->si_drv1;
@@ -135,7 +135,7 @@ flaopen(struct dev_open_args *ap)
 	error = doc2k_open(sc->unit);
 
 	if (error) {
-		printf("doc2k_open(%d) -> err %d\n", sc->unit, error);
+		kprintf("doc2k_open(%d) -> err %d\n", sc->unit, error);
 		return (EIO);
 	}
 
@@ -157,14 +157,14 @@ flaclose(struct dev_close_args *ap)
 	struct fla_s *sc;
 
 	if (fla_debug)
-		printf("flaclose(%s %x %x)\n",
+		kprintf("flaclose(%s %x %x)\n",
 			devtoname(dev), ap->a_fflag, ap->a_devtype);
 
 	sc = dev->si_drv1;
 
 	error = doc2k_close(sc->unit);
 	if (error) {
-		printf("doc2k_close(%d) -> err %d\n", sc->unit, error);
+		kprintf("doc2k_close(%d) -> err %d\n", sc->unit, error);
 		return (EIO);
 	}
 	return (0);
@@ -176,7 +176,7 @@ flaioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 
 	if (fla_debug)
-		printf("flaioctl(%s %lx %p %x)\n",
+		kprintf("flaioctl(%s %lx %p %x)\n",
 			devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag);
 
 	return (ENOIOCTL);
@@ -193,7 +193,7 @@ flastrategy(struct dev_strategy_args *ap)
 	enum doc2k_work what;
 
 	if (fla_debug > 1) {
-		printf("flastrategy(%p) %s %x, %lld, %d, %p)\n",
+		kprintf("flastrategy(%p) %s %x, %lld, %d, %p)\n",
 			bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
 			bp->b_bcount, bp->b_data);
 	}
@@ -245,7 +245,7 @@ flastrategy(struct dev_strategy_args *ap)
 		ENTER();
 
 		if (fla_debug > 1 || error) {
-			printf("fla%d: %d = rwe(%p, %d, %d, %lld, %d, %p)\n",
+			kprintf("fla%d: %d = rwe(%p, %d, %d, %lld, %d, %p)\n",
 			    unit, error, bp, unit, what, bio->bio_offset, 
 			    bp->b_bcount, bp->b_data);
 		}
@@ -301,32 +301,32 @@ flaattach (device_t dev)
 
 	error = doc2k_open(unit);
 	if (error) {
-		printf("doc2k_open(%d) -> err %d\n", unit, error);
+		kprintf("doc2k_open(%d) -> err %d\n", unit, error);
 		return (EIO);
 	}
 
 	error = doc2k_size(unit, &sc->nsect, &i, &j, &k );
 	if (error) {
-		printf("doc2k_size(%d) -> err %d\n", unit, error);
+		kprintf("doc2k_size(%d) -> err %d\n", unit, error);
 		return (EIO);
 	}
 
-	printf("fla%d: <%s %s>\n", unit, sc->ds.product, sc->ds.model);
+	kprintf("fla%d: <%s %s>\n", unit, sc->ds.product, sc->ds.model);
 
 	error = doc2k_close(unit);
 	if (error) {
-		printf("doc2k_close(%d) -> err %d\n", unit, error);
+		kprintf("doc2k_close(%d) -> err %d\n", unit, error);
 		return (EIO);
 	}
 	
 	m = 1024L * 1024L / DEV_BSIZE;
 	l = (sc->nsect * 10 + m/2) / m;
-	printf("fla%d: %d.%01dMB (%u sectors),"
+	kprintf("fla%d: %d.%01dMB (%u sectors),"
 	    " %d cyls, %d heads, %d S/T, 512 B/S\n",
 	    unit, l / 10, l % 10, sc->nsect, i, j, k);
 
 	if (bootverbose)
-		printf("fla%d: JEDEC=0x%x unitsize=%ld mediasize=%ld"
+		kprintf("fla%d: JEDEC=0x%x unitsize=%ld mediasize=%ld"
 		       " chipsize=%ld interleave=%d window=%lx\n", 
 		    unit, sc->ds.type, sc->ds.unitSize, sc->ds.mediaSize, 
 		    sc->ds.chipSize, sc->ds.interleaving, sc->ds.window);

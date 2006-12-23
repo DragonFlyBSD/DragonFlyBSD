@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.36 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.37 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -70,7 +70,7 @@ sys_linux_creat(struct linux_creat_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(creat))
-		printf(ARGS(creat, "%s, %d"), path, args->mode);
+		kprintf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -104,7 +104,7 @@ sys_linux_open(struct linux_open_args *args)
 
 #ifdef DEBUG
 	if (ldebug(open))
-		printf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
+		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
 		    args->mode);
 #endif
 	flags = 0;
@@ -151,7 +151,7 @@ sys_linux_open(struct linux_open_args *args)
 	}
 #ifdef DEBUG
 	if (ldebug(open))
-		printf(LMSG("open returns error %d"), error);
+		kprintf(LMSG("open returns error %d"), error);
 #endif
 	linux_free_path(&path);
 	return error;
@@ -164,7 +164,7 @@ sys_linux_lseek(struct linux_lseek_args *args)
 
 #ifdef DEBUG
 	if (ldebug(lseek))
-		printf(ARGS(lseek, "%d, %ld, %d"),
+		kprintf(ARGS(lseek, "%d, %ld, %d"),
 		    args->fdes, (long)args->off, args->whence);
 #endif
 	error = kern_lseek(args->fdes, args->off, args->whence,
@@ -181,7 +181,7 @@ sys_linux_llseek(struct linux_llseek_args *args)
 
 #ifdef DEBUG
 	if (ldebug(llseek))
-		printf(ARGS(llseek, "%d, %d:%d, %d"),
+		kprintf(ARGS(llseek, "%d, %d:%d, %d"),
 		    args->fd, args->ohigh, args->olow, args->whence);
 #endif
 	off = (args->olow) | (((off_t) args->ohigh) << 32);
@@ -445,7 +445,7 @@ sys_linux_getdents(struct linux_getdents_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(getdents))
-		printf(ARGS(getdents, "%d, *, %d"), args->fd, args->count);
+		kprintf(ARGS(getdents, "%d, *, %d"), args->fd, args->count);
 #endif
 	return (getdents_common((struct linux_getdents64_args*)args, 0));
 }
@@ -455,7 +455,7 @@ sys_linux_getdents64(struct linux_getdents64_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(getdents64))
-		printf(ARGS(getdents64, "%d, *, %d"), args->fd, args->count);
+		kprintf(ARGS(getdents64, "%d, *, %d"), args->fd, args->count);
 #endif
 	return (getdents_common(args, 1));
 }
@@ -476,7 +476,7 @@ sys_linux_access(struct linux_access_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(access))
-		printf(ARGS(access, "%s, %d"), path, args->flags);
+		kprintf(ARGS(access, "%s, %d"), path, args->flags);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -498,7 +498,7 @@ sys_linux_unlink(struct linux_unlink_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(unlink))
-		printf(ARGS(unlink, "%s"), path);
+		kprintf(ARGS(unlink, "%s"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
@@ -520,7 +520,7 @@ sys_linux_chdir(struct linux_chdir_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(chdir))
-		printf(ARGS(chdir, "%s"), path);
+		kprintf(ARGS(chdir, "%s"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -543,7 +543,7 @@ sys_linux_chmod(struct linux_chmod_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(chmod))
-		printf(ARGS(chmod, "%s, %d"), path, args->mode);
+		kprintf(ARGS(chmod, "%s, %d"), path, args->mode);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -565,7 +565,7 @@ sys_linux_mkdir(struct linux_mkdir_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(mkdir))
-		printf(ARGS(mkdir, "%s, %d"), path, args->mode);
+		kprintf(ARGS(mkdir, "%s, %d"), path, args->mode);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
@@ -588,7 +588,7 @@ sys_linux_rmdir(struct linux_rmdir_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(rmdir))
-		printf(ARGS(rmdir, "%s"), path);
+		kprintf(ARGS(rmdir, "%s"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
@@ -615,7 +615,7 @@ sys_linux_rename(struct linux_rename_args *args)
 	}
 #ifdef DEBUG
 	if (ldebug(rename))
-		printf(ARGS(rename, "%s, %s"), from, to);
+		kprintf(ARGS(rename, "%s, %s"), from, to);
 #endif
 	error = nlookup_init(&fromnd, from, UIO_SYSSPACE, 0);
 	if (error == 0) {
@@ -649,7 +649,7 @@ sys_linux_symlink(struct linux_symlink_args *args)
 	}
 #ifdef DEBUG
 	if (ldebug(symlink))
-		printf(ARGS(symlink, "%s, %s"), path, link);
+		kprintf(ARGS(symlink, "%s, %s"), path, link);
 #endif
 	error = nlookup_init(&nd, link, UIO_SYSSPACE, 0);
 	if (error == 0) {
@@ -674,7 +674,7 @@ sys_linux_readlink(struct linux_readlink_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(readlink))
-		printf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
+		kprintf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
 		    args->count);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
@@ -699,7 +699,7 @@ sys_linux_truncate(struct linux_truncate_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(truncate))
-		printf(ARGS(truncate, "%s, %ld"), path,
+		kprintf(ARGS(truncate, "%s, %ld"), path,
 		    (long)args->length);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
@@ -722,7 +722,7 @@ sys_linux_truncate64(struct linux_truncate64_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(truncate64))
-		printf(ARGS(truncate64, "%s, %lld"), path,
+		kprintf(ARGS(truncate64, "%s, %lld"), path,
 		    (off_t)args->length);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
@@ -740,7 +740,7 @@ sys_linux_ftruncate(struct linux_ftruncate_args *args)
 
 #ifdef DEBUG
 	if (ldebug(ftruncate))
-		printf(ARGS(ftruncate, "%d, %ld"), args->fd,
+		kprintf(ARGS(ftruncate, "%d, %ld"), args->fd,
 		    (long)args->length);
 #endif
 	error = kern_ftruncate(args->fd, args->length);
@@ -755,7 +755,7 @@ sys_linux_ftruncate64(struct linux_ftruncate64_args *args)
 
 #ifdef DEBUG
 	if (ldebug(ftruncate))
-		printf(ARGS(ftruncate64, "%d, %lld"), args->fd,
+		kprintf(ARGS(ftruncate64, "%d, %lld"), args->fd,
 		    (off_t)args->length);
 #endif
 	error = kern_ftruncate(args->fd, args->length);
@@ -780,7 +780,7 @@ sys_linux_link(struct linux_link_args *args)
 	}
 #ifdef DEBUG
 	if (ldebug(link))
-		printf(ARGS(link, "%s, %s"), path, link);
+		kprintf(ARGS(link, "%s, %s"), path, link);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
@@ -1123,7 +1123,7 @@ sys_linux_fcntl(struct linux_fcntl_args *args)
 
 #ifdef DEBUG
 	if (ldebug(fcntl))
-		printf(ARGS(fcntl, "%d, %08x, *"), args->fd, args->cmd);
+		kprintf(ARGS(fcntl, "%d, %08x, *"), args->fd, args->cmd);
 #endif
 
 	args64.fd = args->fd;
@@ -1145,7 +1145,7 @@ sys_linux_fcntl64(struct linux_fcntl64_args *args)
 
 #ifdef DEBUG
 	if (ldebug(fcntl64))
-		printf(ARGS(fcntl64, "%d, %08x, *"), args->fd, args->cmd);
+		kprintf(ARGS(fcntl64, "%d, %08x, *"), args->fd, args->cmd);
 #endif
 	if (args->cmd == LINUX_F_GETLK64 || args->cmd == LINUX_F_SETLK64 ||
 	    args->cmd == LINUX_F_SETLKW64) {
@@ -1194,7 +1194,7 @@ sys_linux_chown(struct linux_chown_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(chown))
-		printf(ARGS(chown, "%s, %d, %d"), path, args->uid, args->gid);
+		kprintf(ARGS(chown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -1216,7 +1216,7 @@ sys_linux_lchown(struct linux_lchown_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(lchown))
-		printf(ARGS(lchown, "%s, %d, %d"), path, args->uid, args->gid);
+		kprintf(ARGS(lchown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)

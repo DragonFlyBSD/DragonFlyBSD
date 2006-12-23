@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.17 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.18 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -508,7 +508,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	} while (buflen > 0);
 
 	if (buflen != 0) {
-		printf("bus_dmamap_load: Too many segs! buf_len = 0x%lx\n",
+		kprintf("bus_dmamap_load: Too many segs! buf_len = 0x%lx\n",
 		       (u_long)buflen);
 		error = EFBIG;
 	}

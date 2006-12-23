@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.8 2005/06/05 12:17:46 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.9 2006/12/23 00:27:02 swildner Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -119,6 +119,10 @@ extern kcondvar_t ipfauthwait;
 #endif
 #ifdef linux
 static struct wait_queue *ipfauthwait = NULL;
+#endif
+
+#ifndef _KERNEL
+#define kprintf		printf
 #endif
 
 int	fr_authsize = FR_NUMAUTH;
@@ -624,7 +628,7 @@ frentry_t *fr, **frptr;
 
 	if ((cmd != SIOCADAFR) && (cmd != SIOCRMAFR)) {
 		/* Should not happen */
-		printf("fr_preauthcmd called with bad cmd 0x%lx", (u_long)cmd);
+		kprintf("fr_preauthcmd called with bad cmd 0x%lx", (u_long)cmd);
 		return EIO;
 	}
 	

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_sysctl.c,v 1.2.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_sysctl.c,v 1.9 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -113,10 +113,10 @@ sys_linux_sysctl(struct linux_sysctl_args *args)
 		break;
 	}
 
-	printf("linux: sysctl: unhandled name=");
+	kprintf("linux: sysctl: unhandled name=");
 	for (i = 0; i < la.nlen; i++)
-		printf("%c%d", (i) ? ',' : '{', mib[i]);
-	printf("}\n");
+		kprintf("%c%d", (i) ? ',' : '{', mib[i]);
+	kprintf("}\n");
 
 	kfree(mib, M_TEMP);
 	return (ENOTDIR);

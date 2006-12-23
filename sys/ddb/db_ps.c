@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.19 2006/09/19 11:47:35 corecode Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.20 2006/12/23 00:27:02 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -67,7 +67,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		if (db_more(&nl) < 0)
 			return;
 		if (p == NULL) {
-			printf("oops, ran out of processes early!\n");
+			kprintf("oops, ran out of processes early!\n");
 			break;
 		}
 		pp = p->p_pptr;

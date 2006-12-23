@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.19 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.20 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -138,8 +138,8 @@ apic_initialize(void)
 void
 apic_dump(char* str)
 {
-	printf("SMP: CPU%d %s:\n", mycpu->gd_cpuid, str);
-	printf("     lint0: 0x%08x lint1: 0x%08x TPR: 0x%08x SVR: 0x%08x\n",
+	kprintf("SMP: CPU%d %s:\n", mycpu->gd_cpuid, str);
+	kprintf("     lint0: 0x%08x lint1: 0x%08x TPR: 0x%08x SVR: 0x%08x\n",
 		lapic.lvt_lint0, lapic.lvt_lint1, lapic.tpr, lapic.svr);
 }
 
@@ -178,7 +178,7 @@ io_apic_set_id(int apic, int id)
 	
 	ux = io_apic_read(apic, IOAPIC_ID);	/* get current contents */
 	if (((ux & APIC_ID_MASK) >> 24) != id) {
-		printf("Changing APIC ID for IO APIC #%d"
+		kprintf("Changing APIC ID for IO APIC #%d"
 		       " from %d to %d on chip\n",
 		       apic, ((ux & APIC_ID_MASK) >> 24), id);
 		ux &= ~APIC_ID_MASK;	/* clear the ID field */
@@ -294,7 +294,7 @@ io_apic_setup_intpin(int apic, int pin)
 	}
 	
 	if (bootverbose) {
-		printf("IOAPIC #%d intpin %d -> irq %d\n",
+		kprintf("IOAPIC #%d intpin %d -> irq %d\n",
 		       apic, pin, irq);
 	}
 
@@ -329,14 +329,14 @@ io_apic_setup(int apic)
 		apic_pin_trigger = 0;	/* default to edge-triggered */
 
 	maxpin = REDIRCNT_IOAPIC(apic);		/* pins in APIC */
-	printf("Programming %d pins in IOAPIC #%d\n", maxpin, apic);
+	kprintf("Programming %d pins in IOAPIC #%d\n", maxpin, apic);
 	
 	for (pin = 0; pin < maxpin; ++pin) {
 		io_apic_setup_intpin(apic, pin);
 	}
 	while (pin < 32) {
 		if (apic_int_type(apic, pin) >= 0) {
-			printf("Warning: IOAPIC #%d pin %d does not exist,"
+			kprintf("Warning: IOAPIC #%d pin %d does not exist,"
 				" cannot program!\n", apic, pin);
 		}
 		++pin;
@@ -425,14 +425,14 @@ trigger(int apic, int pin, u_int32_t * flags)
 		eirq = apic_src_bus_irq(apic, pin);
 
 		if (eirq < 0 || eirq > 15) {
-			printf("EISA IRQ %d?!?!\n", eirq);
+			kprintf("EISA IRQ %d?!?!\n", eirq);
 			goto bad;
 		}
 
 		if (intcontrol == -1) {
 			intcontrol = inb(ELCR1) << 8;
 			intcontrol |= inb(ELCR0);
-			printf("EISA INTCONTROL = %08x\n", intcontrol);
+			kprintf("EISA INTCONTROL = %08x\n", intcontrol);
 		}
 
 		/* Use ELCR settings to determine level or edge mode */
@@ -527,11 +527,11 @@ imen_dump(void)
 {
 	int x;
 
-	printf("SMP: enabled INTs: ");
+	kprintf("SMP: enabled INTs: ");
 	for (x = 0; x < 24; ++x)
 		if ((apic_imen & (1 << x)) == 0)
-        		printf("%d, ", x);
-	printf("apic_imen: 0x%08x\n", apic_imen);
+        		kprintf("%d, ", x);
+	kprintf("apic_imen: 0x%08x\n", apic_imen);
 }
 
 

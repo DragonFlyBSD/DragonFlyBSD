@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.12 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.13 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/ctype.h>
@@ -1673,7 +1673,7 @@ ntoskrnl_read_timer(ktimer *timer)
 __stdcall static void
 dummy(void)
 {
-	printf ("ntoskrnl dummy called...\n");
+	kprintf ("ntoskrnl dummy called...\n");
 	return;
 }
 

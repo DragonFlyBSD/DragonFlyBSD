@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.9 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.10 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -284,7 +284,7 @@ extern int kld_debug;
 
 #define KLD_DPF(cat, args)					\
 	do {							\
-		if (kld_debug & KLD_DEBUG_##cat) printf args;	\
+		if (kld_debug & KLD_DEBUG_##cat) kprintf args;	\
 	} while (0)
 
 #else

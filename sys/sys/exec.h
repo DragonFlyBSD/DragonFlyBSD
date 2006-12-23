@@ -37,7 +37,7 @@
  *
  *	@(#)exec.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/exec.h,v 1.26 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/exec.h,v 1.4 2004/06/08 10:14:45 hsu Exp $
+ * $DragonFly: src/sys/sys/exec.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_EXEC_H_
@@ -97,16 +97,16 @@ int exec_unregister (const struct execsw *);
 		int error = 0; \
 		switch (type) { \
 		case MOD_LOAD: \
-			/* printf(#name " module loaded\n"); */ \
+			/* kprintf(#name " module loaded\n"); */ \
 			error = exec_register(exec); \
 			if (error) \
-				printf(#name "register failed\n"); \
+				kprintf(#name "register failed\n"); \
 			break; \
 		case MOD_UNLOAD: \
-			/* printf(#name " module unloaded\n"); */ \
+			/* kprintf(#name " module unloaded\n"); */ \
 			error = exec_unregister(exec); \
 			if (error) \
-				printf(#name " unregister failed\n"); \
+				kprintf(#name " unregister failed\n"); \
 			break; \
 		default: \
 			break; \

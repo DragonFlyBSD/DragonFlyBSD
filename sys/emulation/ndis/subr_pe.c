@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/ndis/subr_pe.c,v 1.2 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_pe.c,v 1.3 2006/12/23 00:27:02 swildner Exp $
  * $FreeBSD: src/sys/compat/ndis/subr_pe.c,v 1.7 2004/01/13 22:49:45 obrien Exp $
  */
 
@@ -58,6 +58,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#define kprintf		printf	/* ndiscvt(8) uses this file */
 #endif
 
 #include "regcall.h"
@@ -387,7 +388,7 @@ pe_relocate(vm_offset_t imgbase)
 				*sloc += (delta & 0xFFFF);
 				break;
 			default:
-				printf ("[%d]reloc type: %d\n",i,
+				kprintf ("[%d]reloc type: %d\n",i,
 				    IMR_RELTYPE(rel));
 				break;
 			}
@@ -537,7 +538,7 @@ pe_functbl_match(image_patch_table *functbl, char *name)
 			return((vm_offset_t)p->ipt_func);
 		p++;
 	}
-	printf ("no match for %s\n", name);
+	kprintf ("no match for %s\n", name);
 	return((vm_offset_t)p->ipt_func);
 }
 

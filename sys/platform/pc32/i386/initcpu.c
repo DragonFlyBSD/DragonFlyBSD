@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.9 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.10 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -800,18 +800,18 @@ DB_SHOW_COMMAND(cyrixreg, cyrixreg)
 		write_eflags(eflags);
 
 		if ((cpu != CPU_M1SC) && (cpu != CPU_CY486DX))
-			printf("CCR0=%x, ", (u_int)ccr0);
+			kprintf("CCR0=%x, ", (u_int)ccr0);
 
-		printf("CCR1=%x, CCR2=%x, CCR3=%x",
+		kprintf("CCR1=%x, CCR2=%x, CCR3=%x",
 			(u_int)ccr1, (u_int)ccr2, (u_int)ccr3);
 		if ((cpu == CPU_M1SC) || (cpu == CPU_M1) || (cpu == CPU_M2)) {
-			printf(", CCR4=%x, ", (u_int)ccr4);
+			kprintf(", CCR4=%x, ", (u_int)ccr4);
 			if (cpu == CPU_M1SC)
-				printf("PCR0=%x\n", pcr0);
+				kprintf("PCR0=%x\n", pcr0);
 			else
-				printf("CCR5=%x\n", ccr5);
+				kprintf("CCR5=%x\n", ccr5);
 		}
 	}
-	printf("CR0=%x\n", cr0);
+	kprintf("CR0=%x\n", cr0);
 }
 #endif /* DDB */

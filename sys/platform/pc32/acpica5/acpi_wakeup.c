@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.12 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.13 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -149,17 +149,17 @@ acpi_savecpu:				\n\
 static void
 acpi_printcpu(void)
 {
-	printf("======== acpi_printcpu() debug dump ========\n");
-	printf("gdt[%04x:%08x] idt[%04x:%08x] ldt[%04x] tr[%04x] efl[%08x]\n",
+	kprintf("======== acpi_printcpu() debug dump ========\n");
+	kprintf("gdt[%04x:%08x] idt[%04x:%08x] ldt[%04x] tr[%04x] efl[%08x]\n",
 		r_gdt.rd_limit, r_gdt.rd_base, r_idt.rd_limit, r_idt.rd_base,
 		r_ldt, r_tr, r_efl);
-	printf("eax[%08x] ebx[%08x] ecx[%08x] edx[%08x]\n",
+	kprintf("eax[%08x] ebx[%08x] ecx[%08x] edx[%08x]\n",
 		r_eax, r_ebx, r_ecx, r_edx);
-	printf("esi[%08x] edi[%08x] ebp[%08x] esp[%08x]\n",
+	kprintf("esi[%08x] edi[%08x] ebp[%08x] esp[%08x]\n",
 		r_esi, r_edi, r_ebp, r_esp);
-	printf("cr0[%08x] cr2[%08x] cr3[%08x] cr4[%08x]\n",
+	kprintf("cr0[%08x] cr2[%08x] cr3[%08x] cr4[%08x]\n",
 		r_cr0, r_cr2, r_cr3, r_cr4);
-	printf("cs[%04x] ds[%04x] es[%04x] fs[%04x] gs[%04x] ss[%04x]\n",
+	kprintf("cs[%04x] ds[%04x] es[%04x] fs[%04x] gs[%04x] ss[%04x]\n",
 		r_cs, r_ds, r_es, r_fs, r_gs, r_ss);
 }
 
@@ -320,13 +320,13 @@ acpi_alloc_wakeup_handler(void)
 			       /* lowaddr below 1MB */ 0x9ffff,
 			       /* highaddr */ BUS_SPACE_MAXADDR, NULL, NULL,
 				PAGE_SIZE, 1, PAGE_SIZE, 0, &acpi_waketag) != 0) {
-		printf("acpi_alloc_wakeup_handler: can't create wake tag\n");
+		kprintf("acpi_alloc_wakeup_handler: can't create wake tag\n");
 		return;
 	}
 
 	if (bus_dmamem_alloc(acpi_waketag, (void **)&acpi_wakeaddr,
 			     BUS_DMA_NOWAIT, &acpi_wakemap)) {
-		printf("acpi_alloc_wakeup_handler: can't alloc wake memory\n");
+		kprintf("acpi_alloc_wakeup_handler: can't alloc wake memory\n");
 		return;
 	}
 }

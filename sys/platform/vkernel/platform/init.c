@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.2 2006/12/05 23:14:54 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.3 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -176,7 +176,7 @@ init_sys_memory(char *imageFile)
 		char *zmem;
 		off_t off = st.st_size & ~SEG_MASK;
 
-		printf("%s: Reserving blocks for memory image\n", imageFile);
+		kprintf("%s: Reserving blocks for memory image\n", imageFile);
 		zmem = malloc(SEG_SIZE);
 		bzero(zmem, SEG_SIZE);
 		lseek(fd, off, 0);

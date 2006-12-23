@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_sym.c,v 1.32 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_sym.c,v 1.6 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_sym.c,v 1.7 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -62,7 +62,7 @@ void
 db_add_symbol_table(char *start, char *end, char *name, char *ref)
 {
 	if (db_nsymtab >= MAXNOSYMTABS) {
-		printf ("No slots left for %s symbol table", name);
+		kprintf ("No slots left for %s symbol table", name);
 		panic ("db_sym.c: db_add_symbol_table");
 	}
 

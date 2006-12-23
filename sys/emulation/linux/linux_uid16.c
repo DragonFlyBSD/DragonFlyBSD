@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.11 2006/06/05 07:26:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -60,7 +60,7 @@ sys_linux_chown16(struct linux_chown16_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(chown16))
-		printf(ARGS(chown16, "%s, %d, %d"), path, args->uid,
+		kprintf(ARGS(chown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
@@ -85,7 +85,7 @@ sys_linux_lchown16(struct linux_lchown16_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(lchown16))
-		printf(ARGS(lchown16, "%s, %d, %d"), path, args->uid,
+		kprintf(ARGS(lchown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
@@ -109,7 +109,7 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 
 #ifdef DEBUG
 	if (ldebug(setgroups16))
-		printf(ARGS(setgroups16, "%d, *"), args->gidsetsize);
+		kprintf(ARGS(setgroups16, "%d, *"), args->gidsetsize);
 #endif
 
 	ngrp = args->gidsetsize;
@@ -163,7 +163,7 @@ sys_linux_getgroups16(struct linux_getgroups16_args *args)
 
 #ifdef DEBUG
 	if (ldebug(getgroups16))
-		printf(ARGS(getgroups16, "%d, *"), args->gidsetsize);
+		kprintf(ARGS(getgroups16, "%d, *"), args->gidsetsize);
 #endif
 
 	cred = p->p_ucred;

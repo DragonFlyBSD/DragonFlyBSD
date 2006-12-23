@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.48 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.49 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "use_npx.h"
@@ -382,12 +382,12 @@ cpu_reset_proxy(void)
 		;	 /* Wait for other cpu to disable interupts */
 	saved_mp_lock = mp_lock;
 	mp_lock = 0;	/* BSP */
-	printf("cpu_reset_proxy: Grabbed mp lock for BSP\n");
+	kprintf("cpu_reset_proxy: Grabbed mp lock for BSP\n");
 	cpu_reset_proxy_active = 3;
 	while (cpu_reset_proxy_active == 3)
 		;	/* Wait for other cpu to enable interrupts */
 	stop_cpus((1<<cpu_reset_proxyid));
-	printf("cpu_reset_proxy: Stopped CPU %d\n", cpu_reset_proxyid);
+	kprintf("cpu_reset_proxy: Stopped CPU %d\n", cpu_reset_proxyid);
 	DELAY(1000000);
 	cpu_reset_real();
 }
@@ -403,12 +403,12 @@ cpu_reset(void)
 	} else {
 		u_int map;
 		int cnt;
-		printf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
+		kprintf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 
 		map = mycpu->gd_other_cpus & ~stopped_cpus & smp_active_mask;
 
 		if (map != 0) {
-			printf("cpu_reset: Stopping other CPUs\n");
+			kprintf("cpu_reset: Stopping other CPUs\n");
 			stop_cpus(map);		/* Stop all other CPUs */
 		}
 
@@ -421,21 +421,21 @@ cpu_reset(void)
 
 			cpu_reset_proxyid = mycpu->gd_cpuid;
 			cpustop_restartfunc = cpu_reset_proxy;
-			printf("cpu_reset: Restarting BSP\n");
+			kprintf("cpu_reset: Restarting BSP\n");
 			started_cpus = (1<<0);		/* Restart CPU #0 */
 
 			cnt = 0;
 			while (cpu_reset_proxy_active == 0 && cnt < 10000000)
 				cnt++;	/* Wait for BSP to announce restart */
 			if (cpu_reset_proxy_active == 0)
-				printf("cpu_reset: Failed to restart BSP\n");
+				kprintf("cpu_reset: Failed to restart BSP\n");
 			__asm __volatile("cli" : : : "memory");
 			cpu_reset_proxy_active = 2;
 			cnt = 0;
 			while (cpu_reset_proxy_active == 2 && cnt < 10000000)
 				cnt++;	/* Do nothing */
 			if (cpu_reset_proxy_active == 2) {
-				printf("cpu_reset: BSP did not grab mp lock\n");
+				kprintf("cpu_reset: BSP did not grab mp lock\n");
 				cpu_reset_real();	/* XXX: Bogus ? */
 			}
 			cpu_reset_proxy_active = 4;
@@ -461,8 +461,8 @@ cpu_reset_real(void)
 #if !defined(BROKEN_KEYBOARD_RESET)
 	outb(IO_KBD + 4, 0xFE);
 	DELAY(500000);	/* wait 0.5 sec to see if that did it */
-	printf("Keyboard reset did not work, attempting CPU shutdown\n");
-	DELAY(1000000);	/* wait 1 sec for printf to complete */
+	kprintf("Keyboard reset did not work, attempting CPU shutdown\n");
+	DELAY(1000000);	/* wait 1 sec for kprintf to complete */
 #endif
 	/* force a shutdown by unmapping entire address space ! */
 	bzero((caddr_t) PTD, PAGE_SIZE);

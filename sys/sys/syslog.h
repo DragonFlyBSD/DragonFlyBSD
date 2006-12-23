@@ -32,7 +32,7 @@
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslog.h,v 1.19.2.2 2001/05/29 13:15:08 dwmalone Exp $
- * $DragonFly: src/sys/sys/syslog.h,v 1.4 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/syslog.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_SYSLOG_H_
@@ -156,7 +156,7 @@ CODE facilitynames[] = {
 #endif
 
 #ifdef _KERNEL
-#define	LOG_PRINTF	-1	/* pseudo-priority to indicate use of printf */
+#define	LOG_PRINTF	-1	/* pseudo-priority to indicate use of kprintf */
 #endif
 
 /*

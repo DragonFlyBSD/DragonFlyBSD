@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.23 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.24 2006/12/23 00:27:02 swildner Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -257,7 +257,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 #ifdef DEBUG
 	if (ldebug(rt_sendsig))
-		printf(ARGS(rt_sendsig, "%p, %d, %p, %lu"),
+		kprintf(ARGS(rt_sendsig, "%p, %d, %p, %lu"),
 		    catcher, sig, (void*)mask, code);
 #endif
 	/*
@@ -289,7 +289,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		SIGDELSET(p->p_sigmask, SIGILL);
 #ifdef DEBUG
 		if (ldebug(rt_sendsig))
-			printf(LMSG("rt_sendsig: bad stack %p, oonstack=%x"),
+			kprintf(LMSG("rt_sendsig: bad stack %p, oonstack=%x"),
 			    fp, oonstack);
 #endif
 		ksignal(p, SIGILL);
@@ -348,7 +348,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 #ifdef DEBUG
 	if (ldebug(rt_sendsig))
-		printf(LMSG("rt_sendsig flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
+		kprintf(LMSG("rt_sendsig flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
 		    frame.sf_sc.uc_stack.ss_flags, p->p_sigstk.ss_sp,
 		    p->p_sigstk.ss_size, frame.sf_sc.uc_mcontext.sc_mask);
 #endif
@@ -408,7 +408,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 #ifdef DEBUG
 	if (ldebug(sendsig))
-		printf(ARGS(sendsig, "%p, %d, %p, %lu"),
+		kprintf(ARGS(sendsig, "%p, %d, %p, %lu"),
 		    catcher, sig, (void*)mask, code);
 #endif
 
@@ -528,7 +528,7 @@ sys_linux_sigreturn(struct linux_sigreturn_args *args)
 
 #ifdef DEBUG
 	if (ldebug(sigreturn))
-		printf(ARGS(sigreturn, "%p"), (void *)args->sfp);
+		kprintf(ARGS(sigreturn, "%p"), (void *)args->sfp);
 #endif
 	/*
 	 * The trampoline code hands us the sigframe.
@@ -623,7 +623,7 @@ sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 
 #ifdef DEBUG
 	if (ldebug(rt_sigreturn))
-		printf(ARGS(rt_sigreturn, "%p"), (void *)args->ucp);
+		kprintf(ARGS(rt_sigreturn, "%p"), (void *)args->ucp);
 #endif
 	/*
 	 * The trampoline code hands us the ucontext.
@@ -699,7 +699,7 @@ sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 
 #ifdef DEBUG
 	if (ldebug(rt_sigreturn))
-		printf(LMSG("rt_sigret flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
+		kprintf(LMSG("rt_sigret flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
 		    ss.ss_flags, ss.ss_sp, ss.ss_size, context->sc_mask);
 #endif
 	kern_sigaltstack(&ss, NULL);
@@ -884,9 +884,9 @@ linux_elf_modevent(module_t mod, int type, void *data)
 				error = EINVAL;
 		if (error == 0) {
 			if (bootverbose)
-				printf("Linux ELF exec handler installed\n");
+				kprintf("Linux ELF exec handler installed\n");
 		} else
-			printf("cannot insert Linux ELF brand handler\n");
+			kprintf("cannot insert Linux ELF brand handler\n");
 		break;
 	case MOD_UNLOAD:
 		for (brandinfo = &linux_brandlist[0]; *brandinfo != NULL;
@@ -901,9 +901,9 @@ linux_elf_modevent(module_t mod, int type, void *data)
 		}
 		if (error == 0) {
 			if (bootverbose)
-				printf("Linux ELF exec handler removed\n");
+				kprintf("Linux ELF exec handler removed\n");
 		} else
-			printf("Could not deinstall ELF interpreter entry\n");
+			kprintf("Could not deinstall ELF interpreter entry\n");
 		break;
 	default:
 		break;

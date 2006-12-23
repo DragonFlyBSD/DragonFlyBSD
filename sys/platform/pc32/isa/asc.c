@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.16 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.17 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "use_asc.h"
@@ -73,7 +73,7 @@
 #define DMA1_READY  0x08
 #define ASCDEBUG
 #ifdef ASCDEBUG
-#	define lprintf if(scu->flags & FLAG_DEBUG) printf
+#	define lprintf if(scu->flags & FLAG_DEBUG) kprintf
 #else
 #	define lprintf (void)
 #endif
@@ -445,7 +445,7 @@ ascattach(struct isa_device *isdp)
 
   isdp->id_intr = (inthand2_t *)ascintr;
   scu->flags |= FLAG_DEBUG;
-  printf("asc%d: [GI1904/Trust Ami-Scan Grey/Color]\n", unit);
+  kprintf("asc%d: [GI1904/Trust Ami-Scan Grey/Color]\n", unit);
 
   /*
    * Initialize buffer structure.
@@ -544,7 +544,7 @@ ascopen(struct dev_open_args *ap)
     {
 #ifdef ASCDEBUG
       /* XXX lprintf isn't valid here since there is no scu. */
-      printf("asc%d.open: unconfigured unit number (max %d)\n", unit, NASC);
+      kprintf("asc%d.open: unconfigured unit number (max %d)\n", unit, NASC);
 #endif
       return ENXIO;
     }

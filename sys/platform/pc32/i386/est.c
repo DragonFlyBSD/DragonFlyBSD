@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.24 2006/03/15 22:56:38 dogcow Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.3 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.4 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -587,24 +587,24 @@ est_init(void)
 	do_cpuid(1, regs);
 #endif
 	if ((cpu_feature2 & CPUID2_EST) == 0) {
-		printf("Enhanced SpeedStep unsupported on this hardware.\n");
+		kprintf("Enhanced SpeedStep unsupported on this hardware.\n");
 		return(EOPNOTSUPP);
 	}
 
 	modellen = sizeof(hwmodel);
 	err = kernel_sysctl(mib, 2, hwmodel, &modellen, NULL, 0, NULL);
 	if (err) {
-		printf("kernel_sysctl hw.model failed\n");
+		kprintf("kernel_sysctl hw.model failed\n");
 		return(err);
 	}
 
 	msr = rdmsr(MSR_PERF_STATUS);
 	mv = MSR2MV(msr);
-	printf("%s (%d mV) ", est_desc, mv);
+	kprintf("%s (%d mV) ", est_desc, mv);
 
 	est_fqlist = findcpu(hwmodel, mv);
 	if (est_fqlist == NULL) {
-		printf(" - unknown CPU or operating point"
+		kprintf(" - unknown CPU or operating point"
 		       "(cpu_id:%#x, msr:%#llx).\n", cpu_id, msr);
 		return(EOPNOTSUPP);
 	}
@@ -613,11 +613,11 @@ est_init(void)
 	 * OK, tell the user the available frequencies.
 	 */
 	fsbmult = est_fqlist->fsbmult;
-	printf("%d MHz\n", MSR2MHZ(msr));
+	kprintf("%d MHz\n", MSR2MHZ(msr));
 	
 	freq_len = est_fqlist->tablec * (sizeof("9999 ")-1) + 1;
 	if (freq_len >= sizeof(freqs_available)) {
-		printf("increase the size of freqs_available[]\n");
+		kprintf("increase the size of freqs_available[]\n");
 		return(ENOMEM);
 	}
 	freqs_available[0] = '\0';
@@ -627,7 +627,7 @@ est_init(void)
 		    est_fqlist->table[i].mhz,
 		    i < est_fqlist->tablec - 1 ? " " : "");
 	}
-	printf("%s frequencies available (MHz): %s\n", est_desc,
+	kprintf("%s frequencies available (MHz): %s\n", est_desc,
 	       freqs_available);
 
 	/*

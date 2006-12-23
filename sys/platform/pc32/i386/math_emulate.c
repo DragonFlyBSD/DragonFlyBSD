@@ -7,7 +7,7 @@
  *
  *	from: 386BSD 0.1
  * $FreeBSD: src/sys/i386/i386/math_emulate.c,v 1.35 1999/08/28 00:43:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.7 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.8 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -114,7 +114,7 @@ math_emulate(struct trapframe *info)
 	oldeip = info->tf_eip;
 /* 0x001f means user code space */
 	if ((u_short)info->tf_cs != 0x001F) {
-		printf("math_emulate: %04x:%08lx\n", (u_short)info->tf_cs,
+		kprintf("math_emulate: %04x:%08lx\n", (u_short)info->tf_cs,
 			(u_long)oldeip);
 		panic("?Math emulation needed in kernel?");
 	}
@@ -146,7 +146,7 @@ math_emulate(struct trapframe *info)
 			ftst(PST(0));
 			return(0);
 		case 0x1e5: /* fxam */
-			printf("fxam not implemented\n");
+			kprintf("fxam not implemented\n");
 			math_abort(info,SIGILL);
 		case 0x1e6: case 0x1e7: /* fldenv */
 			math_abort(info,SIGILL);
@@ -314,7 +314,7 @@ for fcom , ??? ATS */
 			real_to_real(&tmp,&ST(code & 7));
 			return(0);
 		case 0xb8: /* ffree */
-			printf("ffree not implemented\n");
+			kprintf("ffree not implemented\n");
 			math_abort(info,SIGILL);
 		case 0xb9: /* fstp ???? where is the pop ? ATS */
 			fxchg(&ST(0),&ST(code & 7));
@@ -371,7 +371,7 @@ for fcom , ??? ATS */
 			fpop();
 			return(0);
 		case 0xf8: /* fild 16-bit mem ???? ATS */
-			printf("ffree not implemented\n");
+			kprintf("ffree not implemented\n");
 			math_abort(info,SIGILL);
 			fpop();
 			return(0);
@@ -546,7 +546,7 @@ for fcom , ??? ATS */
 			real_to_real(&tmp,&ST(0));
 			return(0);
 	}
-	printf("Unknown math-insns: %04x:%08x %04x\n",(u_short)info->tf_cs,
+	kprintf("Unknown math-insns: %04x:%08x %04x\n",(u_short)info->tf_cs,
 		info->tf_eip,code);
 	math_abort(info,SIGFPE);
 }
@@ -1552,21 +1552,21 @@ fpu_modevent(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if (pmath_emulate) {
-			printf("Another Math emulator already present\n");
+			kprintf("Another Math emulator already present\n");
 			return EBUSY;
 		}
 		pmath_emulate = math_emulate;
 		if (bootverbose)
-			printf("Math emulator present\n");
+			kprintf("Math emulator present\n");
 		break;
 	case MOD_UNLOAD:
 		if (pmath_emulate != math_emulate) {
-			printf("Cannot unload another math emulator\n");
+			kprintf("Cannot unload another math emulator\n");
 			return EACCES;
 		}
 		pmath_emulate = 0;
 		if (bootverbose)
-			printf("Math emulator unloaded\n");
+			kprintf("Math emulator unloaded\n");
 		break;
 	default:
 		break;

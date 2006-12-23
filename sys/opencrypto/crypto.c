@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.13 2006/11/07 18:50:07 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.14 2006/12/23 00:27:03 swildner Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -139,7 +139,7 @@ crypto_init(void)
 	cryptodesc_zone = zinit("cryptodesc", sizeof (struct cryptodesc),
 				0, 0, 1);
 	if (cryptodesc_zone == NULL || cryptop_zone == NULL) {
-		printf("crypto_init: cannot setup crypto zones\n");
+		kprintf("crypto_init: cannot setup crypto zones\n");
 		return ENOMEM;
 	}
 
@@ -147,7 +147,7 @@ crypto_init(void)
 	crypto_drivers = kmalloc(crypto_drivers_num *
 	    sizeof(struct cryptocap), M_CRYPTO_DATA, M_NOWAIT | M_ZERO);
 	if (crypto_drivers == NULL) {
-		printf("crypto_init: cannot malloc driver table\n");
+		kprintf("crypto_init: cannot malloc driver table\n");
 		return ENOMEM;
 	}
 
@@ -162,7 +162,7 @@ crypto_init(void)
 	error = kthread_create((void (*)(void *)) cryptoret, NULL,
 		    &cryptothread, "cryptoret");
 	if (error) {
-		printf("crypto_init: cannot start cryptoret thread; error %d",
+		kprintf("crypto_init: cannot start cryptoret thread; error %d",
 			error);
 		crypto_destroy();
 	}
@@ -190,7 +190,7 @@ crypto_modevent(module_t mod, int type, void *unused)
 	case MOD_LOAD:
 		error = crypto_init();
 		if (error == 0 && bootverbose)
-			printf("crypto: <crypto core>\n");
+			kprintf("crypto: <crypto core>\n");
 		break;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */
@@ -353,7 +353,7 @@ crypto_get_driverid(u_int32_t flags)
 		/* Be careful about wrap-around. */
 		if (2 * crypto_drivers_num <= crypto_drivers_num) {
 			crit_exit();
-			printf("crypto: driver count wraparound!\n");
+			kprintf("crypto: driver count wraparound!\n");
 			return -1;
 		}
 
@@ -361,7 +361,7 @@ crypto_get_driverid(u_int32_t flags)
 		    sizeof(struct cryptocap), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 		if (newdrv == NULL) {
 			crit_exit();
-			printf("crypto: no space to expand driver table!\n");
+			kprintf("crypto: no space to expand driver table!\n");
 			return -1;
 		}
 
@@ -378,7 +378,7 @@ crypto_get_driverid(u_int32_t flags)
 	crypto_drivers[i].cc_sessions = 1;	/* Mark */
 	crypto_drivers[i].cc_flags = flags;
 	if (bootverbose)
-		printf("crypto: assign driver %u, flags %u\n", i, flags);
+		kprintf("crypto: assign driver %u, flags %u\n", i, flags);
 
 	crit_exit();
 
@@ -418,7 +418,7 @@ crypto_kregister(u_int32_t driverid, int kalg, u_int32_t flags,
 
 		cap->cc_kalg[kalg] = flags | CRYPTO_ALG_FLAG_SUPPORTED;
 		if (bootverbose)
-			printf("crypto: driver %u registers key alg %u flags %u\n"
+			kprintf("crypto: driver %u registers key alg %u flags %u\n"
 				, driverid
 				, kalg
 				, flags
@@ -466,7 +466,7 @@ crypto_register(u_int32_t driverid, int alg, u_int16_t maxoplen,
 		cap->cc_alg[alg] = flags | CRYPTO_ALG_FLAG_SUPPORTED;
 		cap->cc_max_op_len[alg] = maxoplen;
 		if (bootverbose)
-			printf("crypto: driver %u registers alg %u flags %u maxoplen %u\n"
+			kprintf("crypto: driver %u registers alg %u flags %u maxoplen %u\n"
 				, driverid
 				, alg
 				, flags

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.11 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -157,7 +157,7 @@ extern int mod_debug;
 
 #define MOD_DPF(cat, args)					\
 	do {							\
-		if (mod_debug & MOD_DEBUG_##cat) printf args;	\
+		if (mod_debug & MOD_DEBUG_##cat) kprintf args;	\
 	} while (0)
 
 #else

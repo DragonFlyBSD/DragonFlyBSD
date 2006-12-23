@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.27 2006/12/17 20:07:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.28 2006/12/23 00:27:03 swildner Exp $
  *
  */
 
@@ -362,7 +362,7 @@ ki386_get_ldt(struct lwp *lwp, char *args, int *res)
 		return(error);
 
 #ifdef	DEBUG
-	printf("ki386_get_ldt: start=%d num=%d descs=%p\n",
+	kprintf("ki386_get_ldt: start=%d num=%d descs=%p\n",
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
 
@@ -409,7 +409,7 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 		return(error);
 
 #ifdef	DEBUG
-	printf("ki386_set_ldt: start=%d num=%d descs=%p\n",
+	kprintf("ki386_set_ldt: start=%d num=%d descs=%p\n",
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
 

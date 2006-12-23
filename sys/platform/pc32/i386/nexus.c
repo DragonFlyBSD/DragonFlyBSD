@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.28 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.29 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -247,7 +247,7 @@ nexus_print_all_resources(device_t dev)
 	int retval = 0;
 
 	if (SLIST_FIRST(rl) || ndev->nx_pcibus != -1)
-		retval += printf(" at");
+		retval += kprintf(" at");
 	
 	retval += resource_list_print_type(rl, "port", SYS_RES_IOPORT, "%#lx");
 	retval += resource_list_print_type(rl, "iomem", SYS_RES_MEMORY, "%#lx");
@@ -265,8 +265,8 @@ nexus_print_child(device_t bus, device_t child)
 	retval += bus_print_child_header(bus, child);
 	retval += nexus_print_all_resources(child);
 	if (ndev->nx_pcibus != -1)
-		retval += printf(" pcibus %d", ndev->nx_pcibus);
-	retval += printf(" on motherboard\n");
+		retval += kprintf(" pcibus %d", ndev->nx_pcibus);
+	retval += kprintf(" on motherboard\n");
 
 	return (retval);
 }

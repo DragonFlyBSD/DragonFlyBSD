@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.18 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.19 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -1462,7 +1462,7 @@ ndis_free_packetpool(ndis_handle pool)
 	if (head->np_private.npp_count == 0)
 		kfree(pool, M_DEVBUF);
 	else
-		printf("NDIS: buggy driver deleting active packet pool!\n");
+		kprintf("NDIS: buggy driver deleting active packet pool!\n");
 
 	return;
 }
@@ -1645,7 +1645,7 @@ ndis_free_bufpool(ndis_handle pool)
 	if (head->nb_bytecount == 0)
 		kfree(pool, M_DEVBUF);
 	else
-		printf("NDIS: buggy driver deleting active buffer pool!\n");
+		kprintf("NDIS: buggy driver deleting active buffer pool!\n");
 
 	return;
 }
@@ -2299,7 +2299,7 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 	if (error) {
 		*status = NDIS_STATUS_FILE_NOT_FOUND;
 		kfree(fh, M_TEMP);
-		printf("NDIS: open file %s failed: %d\n", path, error);
+		kprintf("NDIS: open file %s failed: %d\n", path, error);
 		goto done;
 	}
 
@@ -2590,7 +2590,7 @@ ndis_register_unload(ndis_handle handle, void *func)
 __stdcall static void
 dummy(void)
 {
-	printf ("NDIS dummy called...\n");
+	kprintf ("NDIS dummy called...\n");
 	return;
 }
 
