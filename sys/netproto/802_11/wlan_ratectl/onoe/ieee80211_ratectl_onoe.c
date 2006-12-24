@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.5 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.6 2006/12/24 11:39:59 sephe Exp $
  */
 
 /*
@@ -161,10 +161,18 @@ onoe_newassoc(void *arg, struct ieee80211_node *ni, int is_new)
 }
 
 static int
-onoe_findrate(void *arg __unused, struct ieee80211_node *ni,
+onoe_findrate(void *arg, struct ieee80211_node *ni,
 	      int frame_len __unused, int rateidx[], int rateidx_len)
 {
-	int i, rate_idx = ni->ni_txrate;
+	struct onoe_softc *osc = arg;
+	int i, rate_idx;
+
+	if (ni->ni_txrate >= ni->ni_rates.rs_nrates) {
+		DPRINTF(osc, 5, "%s: number of rates changed, restart\n",
+			__func__);
+		onoe_start(osc, ni);
+	}
+	rate_idx = ni->ni_txrate;
 
 	for (i = 0; i < rateidx_len; ++i) {
 		if (rate_idx < 0)
