@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.19 2006/12/09 10:56:32 sephe Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.20 2006/12/24 05:16:43 sephe Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -483,6 +483,7 @@ vendor MSI		0x0db0	Micro Star
 vendor SITECOMEU	0x0df6	Sitecom Europe
 vendor HAWKING		0x0e66	Hawking
 vendor OTI		0x0ea0	Ours Technology
+vendor NOVATECH		0x0eb0	Nova Technology
 vendor PILOTECH		0x0eaf  Pilotech
 vendor EGALAX		0x0eef  eGalax
 vendor MICROTUNE	0x0f4d	Microtune, Inc.
@@ -495,6 +496,7 @@ vendor CCYU		0x1065	CCYU Technology
 vendor PLX		0x10b5	PLX
 vendor ASANTE		0x10bd	Asante
 vendor JRC		0x1145	Japan Radio Company
+vendor SPHAIRON		0x114b	Sphairon Access Systems GmbH
 vendor DELORME		0x1163	DeLorme Publishing
 vendor SERVERWORKS	0x1166	ServerWorks
 vendor ACERCM		0x1189	Acer Communications & Multimedia
@@ -1582,6 +1584,9 @@ product NIKON LS40		0x4000	CoolScan LS40 ED
 /* NHJ product */
 product NHJ CAM2		0x9120	Camera
 
+/* Nova Technology product */
+product NOVATECH NV902W		0x9020	NV-902W
+
 /* Olympus products */
 product OLYMPUS C1		0x0102	C-1 Digital Camera
 product OLYMPUS C700		0x0105	C-700 Ultra Zoom
@@ -1751,6 +1756,7 @@ product RAINBOW IKEY2000	0x1200	i-Key 2000
 /* Ralink Technology products */
 product RALINK RT2570		0x1706	RT2500USB wireless adapter
 product RALINK RT2570_2		0x2570	RT2500USB wireless adapter
+product RALINK RT2570_3		0x9020	RT2500USB wireless adapter
 product RALINK RT2573		0x2573	RT2573
 product RALINK RT2671		0x2671	RT2671
 
@@ -1920,6 +1926,9 @@ product SONY CLIE_41		0x009a	Sony Clie v4.1
 product SONY CLIE_NX60		0x00da	Sony Clie nx60
 product SONY CLIE_TJ25		0x0169	Sony Clie tj25
 
+/* Sphairon Access Systems GmbH product */
+product SPHAIRON UB801R		0x0110	UB801R
+
 /* Sony Ericsson products */
 product SUSTEEN	DCU10		0x0528	USB Cable
 
@@ -1950,6 +1959,7 @@ product SUN2 KEYBOARD		0x0005	Type 6 USB keyboard
 product SUN2 MOUSE		0x0100	Type 6 USB mouse
 
 /* Surecom Technology products */
+product SURECOM RT2570		0x11f3	RT2570
 product SURECOM RT2573		0x31f3	RT2573
 
 /* Susteen products */
