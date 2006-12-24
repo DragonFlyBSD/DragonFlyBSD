@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.6 2006/12/13 14:48:26 tgen Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.7 2006/12/24 04:58:27 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -256,7 +256,19 @@ static const struct nfe_dev {
 	  "NVIDIA MCP65 Gigabit Ethernet" },
 
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN4,
-	  "NVIDIA MCP65 Gigabit Ethernet" }
+	  "NVIDIA MCP65 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN1,
+	  "NVIDIA MCP67 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN2,
+	  "NVIDIA MCP67 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN3,
+	  "NVIDIA MCP67 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN4,
+	  "NVIDIA MCP67 Gigabit Ethernet" }
 };
 
 static device_method_t nfe_methods[] = {
@@ -319,6 +331,10 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN4:
+			case PCI_PRODUCT_NVIDIA_MCP67_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP67_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP67_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP67_LAN4:
 				sc->sc_flags = NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_CK804_LAN1:
