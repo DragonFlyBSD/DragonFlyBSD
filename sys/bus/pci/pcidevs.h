@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.22 2006/11/14 12:32:18 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.23 2006/12/24 04:57:13 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.21 2006/10/17 12:37:46 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.22 2006/11/14 12:30:51 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2249,6 +2249,10 @@
 #define	PCI_PRODUCT_NVIDIA_MCP65_LAN2	0x0451		/* MCP65 Lan */
 #define	PCI_PRODUCT_NVIDIA_MCP65_LAN3	0x0452		/* MCP65 Lan */
 #define	PCI_PRODUCT_NVIDIA_MCP65_LAN4	0x0453		/* MCP65 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP67_LAN1	0x054c		/* MCP67 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP67_LAN2	0x054d		/* MCP67 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP67_LAN3	0x054e		/* MCP67 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP67_LAN4	0x054f		/* MCP67 Lan */
 
 /* Nvidia Corporation & SGS-Thomson Microelectronics */
 #define	PCI_PRODUCT_NVIDIA_SGS_RIVA128	0x0018		/* Riva 128 */
