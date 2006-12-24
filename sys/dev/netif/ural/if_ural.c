@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.3 2006/12/22 23:26:22 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.4 2006/12/24 05:18:22 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -85,8 +85,12 @@ static const struct usb_devno ural_devs[] = {
 	{ USB_VENDOR_MSI,		USB_PRODUCT_MSI_RT2570 },
 	{ USB_VENDOR_MSI,		USB_PRODUCT_MSI_RT2570_2 },
 	{ USB_VENDOR_MSI,		USB_PRODUCT_MSI_RT2570_3 },
+	{ USB_VENDOR_NOVATECH,		USB_PRODUCT_NOVATECH_NV902W },
 	{ USB_VENDOR_RALINK,		USB_PRODUCT_RALINK_RT2570 },
 	{ USB_VENDOR_RALINK,		USB_PRODUCT_RALINK_RT2570_2 },
+	{ USB_VENDOR_RALINK,		USB_PRODUCT_RALINK_RT2570_3 },
+	{ USB_VENDOR_SPHAIRON,		USB_PRODUCT_SPHAIRON_UB801R },
+	{ USB_VENDOR_SURECOM,		USB_PRODUCT_SURECOM_RT2570 },
 	{ USB_VENDOR_VTECH,		USB_PRODUCT_VTECH_RT2570 },
 	{ USB_VENDOR_ZINWELL,		USB_PRODUCT_ZINWELL_RT2570 }
 };
