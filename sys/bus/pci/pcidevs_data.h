@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.23 2006/12/24 04:57:13 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.24 2006/12/25 14:05:40 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.22 2006/11/14 12:30:51 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.23 2006/12/24 04:56:37 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2463,6 +2463,48 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5901A 10/100 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4301,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4301 802.11b Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4307,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4307 802.11b Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4318,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4318 802.11b/g Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4306_1,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4306 802.11b/g Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4306_2,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4306 802.11a Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4309,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4309 802.11a/b/g Wireless Lan",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4306_3,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4306 802.11b/g Wireless Lan",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401,
