@@ -7,5 +7,7 @@ A list of files and directories removed is in README.DELETED
 # update config.h in usr.sbin/tcpdump/tcpdump/:
 ./configure --without-crypto --disable-ipv6
 
-These sources are used in usr.sbin/tcpdump/tcpdump/ and
-usr.sbin/tcpdump/tcpslice/.
+These sources are used in:
+usr.sbin/ndp/
+usr.sbin/tcpdump/tcpdump/
+usr.sbin/tcpdump/tcpslice/
