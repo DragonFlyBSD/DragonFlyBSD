@@ -1,0 +1,11 @@
+Original Source can be downloaded from:
+http://www.tcpdump.org/release/tcpdump-3.9.5.tar.gz
+MD5 (tcpdump-3.9.5.tar.gz) = 2135e7b1f09af0eaf66d2af822bed44a
+
+A list of files and directories removed is in README.DELETED
+
+# update config.h in usr.sbin/tcpdump/tcpdump/:
+./configure --without-crypto --disable-ipv6
+
+These sources are used in usr.sbin/tcpdump/tcpdump/ and
+usr.sbin/tcpdump/tcpslice/.

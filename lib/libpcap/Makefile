@@ -1,6 +1,6 @@
 # Makefile for libpcap
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.8 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/lib/libpcap/Makefile,v 1.9 2006/12/25 00:42:00 pavalos Exp $
 
 LIB=    pcap
 SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
@@ -13,6 +13,7 @@ CLEANFILES=tokdefs.h version.c version.h
 
 CFLAGS+=-DHAVE_CONFIG_H -Dyylval=pcap_lval -I${.CURDIR} -I.
 CFLAGS+=-D_U_="__attribute__((unused))"
+CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
 .endif
@@ -22,7 +23,7 @@ SHLIB_MAJOR=3
 #
 # Magic to grab sources out of src/contrib
 #
-PCAP_DISTDIR?=${.CURDIR}/../../contrib/libpcap-0.8.3
+PCAP_DISTDIR?=${.CURDIR}/../../contrib/libpcap-0.9
 CFLAGS+=-I${PCAP_DISTDIR}
 .PATH:	${PCAP_DISTDIR}
 .PATH:	${PCAP_DISTDIR}/bpf/net
@@ -38,11 +39,5 @@ version.h: ${PCAP_DISTDIR}/VERSION
 
 tokdefs.h: grammar.h
 	${LN} -sf grammar.h tokdefs.h
-
-#
-# Apply patches
-#
-CONTRIBDIR=${PCAP_DISTDIR}
-SRCS+=nametoaddr.c.patch
 
 .include <bsd.lib.mk>

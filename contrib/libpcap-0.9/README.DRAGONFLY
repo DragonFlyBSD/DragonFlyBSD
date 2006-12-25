@@ -1,0 +1,7 @@
+Original source can be downloaded from:
+http://www.tcpdump.org/release/libpcap-0.9.5.tar.gz
+MD5 (libpcap-0.9.5.tar.gz) = b0626ad59004fe5767ddd2ce743a2271
+
+A list of files and directories removed is in README.DELETED
+
+Remember to update lib/libpcap/config.h.

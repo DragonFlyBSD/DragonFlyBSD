@@ -1,37 +1,43 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
-# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.6 2006/01/18 02:33:38 dillon Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.7 2006/12/25 00:42:01 pavalos Exp $
 
 
-TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.8.3
+TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
 .PATH: ${TCPDUMP_DISTDIR}
 
 PROG=	tcpdump
-SRCS=	addrtoname.c gmpls.c gmt2local.c machdep.c \
-	oui.c parsenfsfh.c print-802_11.c print-ap1394.c \
-	print-ah.c print-arcnet.c print-aodv.c print-arp.c \
-	print-ascii.c print-atalk.c print-atm.c print-beep.c \
-	print-bfd.c print-bgp.c print-bootp.c print-cdp.c \
-	print-chdlc.c print-cip.c print-cnfp.c print-decnet.c \
+SRCS=	addrtoname.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
+	nlpid.c l2vpn.c machdep.c parsenfsfh.c \
+	print-802_11.c print-ap1394.c print-ah.c print-arcnet.c \
+	print-aodv.c print-arp.c print-ascii.c print-atalk.c print-atm.c \
+	print-beep.c print-bfd.c print-bgp.c print-bootp.c print-cdp.c \
+	print-chdlc.c print-cip.c print-cnfp.c print-dccp.c print-decnet.c \
 	print-domain.c print-dvmrp.c print-enc.c print-egp.c \
+	print-eap.c print-eigrp.c \
 	print-esp.c print-ether.c print-fddi.c print-fr.c \
 	print-gre.c print-hsrp.c print-icmp.c print-igmp.c \
 	print-igrp.c print-ip.c print-ipcomp.c print-ipfc.c \
-	print-ipx.c print-isakmp.c print-isoclns.c print-krb.c \
+	print-ipx.c print-isakmp.c print-isoclns.c print-juniper.c print-krb.c \
 	print-l2tp.c print-lane.c print-ldp.c print-llc.c \
+	print-lmp.c print-lspping.c \
 	print-lwres.c print-mobile.c print-mpls.c print-msdp.c \
 	print-nfs.c print-ntp.c print-null.c print-ospf.c \
-	print-pflog.c print-pim.c print-ppp.c print-pppoe.c \
+	print-pflog.c print-pgm.c print-pim.c print-ppp.c print-pppoe.c \
 	print-pptp.c print-radius.c print-raw.c print-rip.c \
-	print-rsvp.c print-rx.c print-sctp.c print-sl.c \
-	print-sll.c print-smb.c print-snmp.c print-stp.c \
-	print-sunatm.c print-sunrpc.c print-tcp.c print-telnet.c \
-	print-tftp.c print-timed.c print-token.c print-udp.c \
-	print-vjc.c print-vrrp.c print-wb.c print-zephyr.c \
-	setsignal.c smbutil.c tcpdump.c util.c version.c
+	print-rsvp.c print-rx.c print-sctp.c print-sip.c print-sl.c print-sll.c \
+	print-slow.c print-snmp.c print-stp.c print-sunatm.c print-sunrpc.c \
+	print-symantec.c print-syslog.c print-tcp.c print-telnet.c print-tftp.c \
+	print-timed.c print-token.c print-udp.c print-vjc.c print-vrrp.c \
+	print-wb.c print-zephyr.c setsignal.c tcpdump.c util.c
+SRCS+=	print-smb.c smbutil.c version.c
 CLEANFILES+=	version.c
 
 CFLAGS+= -I${.CURDIR} -I${TCPDUMP_DISTDIR}
 CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
+
+CFLAGS+= -DHAVE_RES_STATE_EXT -DHAVE_NEW_RES_STATE -DUSE_GETIPNODEBY
+CFLAGS+= -DHAVE_PCAP_VERSION -UHAVE_YYDEBUG -DHAVE_GETADDRINFO -DHAVE_GETNAMEINFO
+CFLAGS+= -DHAVE_STRUCT_ETHER_ADDR
 
 .if !defined(NOINET6)
 SRCS+=	print-ip6.c print-ip6opts.c print-mobility.c \
@@ -53,7 +59,7 @@ LDADD=	-ll -lpcap
 DISTRIBUTION=crypto
 DPADD+= ${LIBCRYPTO}
 LDADD+= -lcrypto
-CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_RC5_H -DHAVE_CAST_H
+CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
 .endif
 
 version.c: ${TCPDUMP_DISTDIR}/VERSION
