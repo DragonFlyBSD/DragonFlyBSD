@@ -1,6 +1,6 @@
 /* $FreeBSD: src/sys/net80211/ieee80211_radiotap.h,v 1.5.2.1 2006/01/29 07:13:58 sam Exp $ */
 /* $NetBSD: ieee80211_radiotap.h,v 1.10 2005/01/04 00:34:58 dyoung Exp $ */
-/* $DragonFly: src/sys/netproto/802_11/ieee80211_radiotap.h,v 1.2 2006/05/18 13:51:46 sephe Exp $ */
+/* $DragonFly: src/sys/netproto/802_11/ieee80211_radiotap.h,v 1.3 2006/12/25 14:42:36 sephe Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 David Young.  All rights reserved.
@@ -34,11 +34,11 @@
 #define _NET_IF_IEEE80211RADIOTAP_H_
 
 /*
- * A generic radio capture format is desirable. There is one for
- * Linux, but it is neither rigidly defined (there were not even
- * units given for some fields) nor easily extensible.
+ * A generic radio capture format is desirable. It must be
+ * rigidly defined (e.g., units for fields should be given),
+ * and easily extensible.
  *
- * I suggest the following extensible radio capture format. It is
+ * The following is an extensible radio capture format. It is
  * based on a bitmap indicating which fields are present.
  *
  * I am trying to describe precisely what the application programmer
@@ -60,7 +60,11 @@
  */
 #define IEEE80211_RADIOTAP_HDRLEN	64
 
-/* The radio capture header precedes the 802.11 header. */
+/*
+ * The radio capture header precedes the 802.11 header.
+ *
+ * Note well: all radiotap fields are little-endian.
+ */
 struct ieee80211_radiotap_header {
 	uint8_t		it_version;	/* Version 0. Only increases
 					 * for drastic changes,
@@ -82,7 +86,8 @@ struct ieee80211_radiotap_header {
 					 */
 } __packed;
 
-/* Name                                 Data type       Units
+/*
+ * Name                                 Data type       Units
  * ----                                 ---------       -----
  *
  * IEEE80211_RADIOTAP_TSFT              uint64_t        microseconds
@@ -161,10 +166,6 @@ struct ieee80211_radiotap_header {
  *
  *      Unitless indication of the Rx/Tx antenna for this packet.
  *      The first antenna is antenna 0.
- *
- * IEEE80211_RADIOTAP_FCS           	uint32_t        data
- *
- *	FCS from frame in network byte order.
  */
 enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_TSFT = 0,
