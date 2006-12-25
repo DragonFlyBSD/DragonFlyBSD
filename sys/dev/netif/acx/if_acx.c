@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.12 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.13 2006/12/25 12:19:10 sephe Exp $
  */
 
 /*
@@ -421,6 +421,9 @@ acx_attach(device_t dev)
 	}
 
 	ieee80211_ifattach(ic);
+
+	/* Enable software beacon missing */
+	ic->ic_flags_ext |= IEEE80211_FEXT_SWBMISS;
 
 	/* Override newstate */
 	sc->sc_newstate = ic->ic_newstate;
