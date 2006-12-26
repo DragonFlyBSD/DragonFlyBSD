@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.2 2006/12/22 23:26:21 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.3 2006/12/26 12:41:40 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -380,6 +380,9 @@ USB_ATTACH(rum)
 	ic->ic_ratectl.rc_st_change = rum_ratectl_change;
 
 	ieee80211_ifattach(ic);
+
+	/* Enable software beacon missing handling. */
+	ic->ic_flags_ext |= IEEE80211_FEXT_SWBMISS;
 
 	/* override state transition machine */
 	sc->sc_newstate = ic->ic_newstate;
