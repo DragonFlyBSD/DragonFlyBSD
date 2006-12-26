@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.2 2006/12/26 20:46:12 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -136,7 +136,7 @@ struct privatespace {
 
 #ifdef _KERNEL
 
-extern struct privatespace CPU_prvspace[];
+extern struct privatespace *CPU_prvspace;
 
 #endif
 

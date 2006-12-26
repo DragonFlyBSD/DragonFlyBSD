@@ -31,14 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.3 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.4 2006/12/26 20:46:15 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/tls.h>
 #include <vm/vm_page.h>
+
+#include <machine/globaldata.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +50,7 @@
 #include <string.h>
 #include <err.h>
 #include <errno.h>
+#include <assert.h>
 
 vm_paddr_t Maxmem;
 int MemImageFd = -1;
@@ -54,8 +58,11 @@ int RootImageFd = -1;
 vm_offset_t KvaBase;
 vm_offset_t KvaSize;
 
+struct privatespace *CPU_prvspace;
+
 static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);
+static void init_globaldata(void);
 static void init_rootdevice(char *imageFile);
 static void usage(const char *ctl);
 
@@ -69,6 +76,8 @@ main(int ac, char **av)
 	char *rootImageFile = NULL;
 	char *suffix;
 	int c;
+
+	ncpus = 1;
 
 	/*
 	 * Process options
@@ -113,6 +122,7 @@ main(int ac, char **av)
 
 	init_sys_memory(memImageFile);
 	init_kern_memory();
+	init_globaldata();
 	init_rootdevice(rootImageFile);
 	mi_startup();
 	/* NOT REACHED */
@@ -224,6 +234,26 @@ init_kern_memory(void)
 }
 
 /*
+ * Map the per-cpu globaldata
+ */
+static
+void
+init_globaldata(void)
+{
+	struct tls_info info;
+	int r;
+
+	CPU_prvspace = mmap(NULL, ncpus * sizeof(struct privatespace),
+			    PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
+	assert(CPU_prvspace != MAP_FAILED);
+	bzero(&info, sizeof(info));
+	info.base = CPU_prvspace;
+	info.size = sizeof(struct privatespace);
+	r = sys_set_tls_area(0, &info, sizeof(info));
+	assert(r == 0);
+}
+
+/*
  * The root filesystem path for the virtual kernel is optional.  If specified
  * it points to a filesystem image.
  */
@@ -240,3 +270,9 @@ usage(const char *ctl)
 	
 }
 
+void
+cpu_reset(void)
+{
+	kprintf("cpu reset\n");
+	exit(0);
+}

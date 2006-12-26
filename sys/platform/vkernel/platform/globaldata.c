@@ -31,61 +31,31 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.2 2006/12/26 20:46:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/globaldata.c,v 1.1 2006/12/26 20:46:15 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/machintr.h>
-#include <sys/errno.h>
+#include <sys/systm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/tls.h>
+#include <vm/vm_page.h>
+
+#include <machine/globaldata.h>
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <err.h>
+#include <errno.h>
+#include <assert.h>
 
-static void dummy_intrdis(int);
-static void dummy_intren(int);
-static int dummy_vectorctl(int, int, int);
-static int dummy_setvar(int, const void *);
-static int dummy_getvar(int, void *);
-static void dummy_finalize(void);
-
-struct machintr_abi MachIntrABI = {
-	MACHINTR_GENERIC,
-	dummy_intrdis,
-	dummy_intren,
-	dummy_vectorctl,
-	dummy_setvar,
-	dummy_getvar,
-	dummy_finalize
-};
-
-static void
-dummy_intrdis(int intr)
+struct globaldata *
+globaldata_find(int cpu)
 {
-}
-
-static void
-dummy_intren(int intr)
-{
-}
-
-static int
-dummy_vectorctl(int op, int intr, int flags)
-{
-	return (EOPNOTSUPP);
-}
-
-static int
-dummy_setvar(int varid, const void *buf)
-{
-	return (ENOENT);
-}
-
-static int
-dummy_getvar(int varid, void *buf)
-{
-	return (ENOENT);
-}
-
-static void
-dummy_finalize(void)
-{
+	KKASSERT(cpu >= 0 && cpu < ncpus);
+	return (&CPU_prvspace[cpu].mdglobaldata.mi);
 }
 

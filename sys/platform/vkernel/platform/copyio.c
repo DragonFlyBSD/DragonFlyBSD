@@ -31,61 +31,102 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.2 2006/12/26 20:46:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.1 2006/12/26 20:46:15 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/machintr.h>
-#include <sys/errno.h>
-#include <stdio.h>
+#include <sys/systm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <vm/vm_page.h>
+#include <assert.h>
 
-static void dummy_intrdis(int);
-static void dummy_intren(int);
-static int dummy_vectorctl(int, int, int);
-static int dummy_setvar(int, const void *);
-static int dummy_getvar(int, void *);
-static void dummy_finalize(void);
-
-struct machintr_abi MachIntrABI = {
-	MACHINTR_GENERIC,
-	dummy_intrdis,
-	dummy_intren,
-	dummy_vectorctl,
-	dummy_setvar,
-	dummy_getvar,
-	dummy_finalize
-};
-
-static void
-dummy_intrdis(int intr)
+/*
+ * Copies a NUL-terminated string from user space to kernel space.
+ * The number of bytes copied, including the terminator, is returned in
+ * (*res).
+ *
+ * Returns 0 on success, EFAULT or ENAMETOOLONG on failure.
+ */
+int
+copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 {
+	assert(0);
 }
 
-static void
-dummy_intren(int intr)
+/*
+ * Copy a binary buffer from user space to kernel space.
+ *
+ * Returns 0 on success, EFAULT on failure.
+ */
+int
+copyin (const void *udaddr, void *kaddr, size_t len)
 {
+	assert(0);
 }
 
-static int
-dummy_vectorctl(int op, int intr, int flags)
+/*
+ * Copy a binary buffer from kernel space to user space.
+ *
+ * Returns 0 on success, EFAULT on failure.
+ */
+int
+copyout (const void *kaddr, void *udaddr, size_t len)
 {
-	return (EOPNOTSUPP);
+	assert(0);
+}
+ 
+/*
+ * Fetch the byte at the specified user address.  Returns -1 on failure.
+ */
+int
+fubyte(const void *base)
+{
+	assert(0);
 }
 
-static int
-dummy_setvar(int varid, const void *buf)
+/*
+ * Store a byte at the specified user address.  Returns -1 on failure.
+ */
+int
+subyte (void *base, int byte)
 {
-	return (ENOENT);
+	assert(0);
 }
 
-static int
-dummy_getvar(int varid, void *buf)
+/*
+ * Fetch a word (integer, 32 bits) from user space
+ */
+long
+fuword (const void *base)
 {
-	return (ENOENT);
+	assert(0);
 }
 
-static void
-dummy_finalize(void)
+/*
+ * Store a word (integer, 32 bits) to user space
+ */
+int
+suword (void *base, long word)
 {
+	assert(0);
+}
+
+/*
+ * Fetch an short word (16 bits) from user space
+ */
+int
+fusword (void *base)
+{
+	assert(0);
+}
+
+/*
+ * Store a short word (16 bits) to user space
+ */
+int
+susword (void *base, int word)
+{
+	assert(0);
 }
 
