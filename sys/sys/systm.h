@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.54 2006/12/26 11:01:07 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.55 2006/12/26 20:43:53 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -189,7 +189,6 @@ int	copyout (const void *kaddr, void *udaddr, size_t len);
 
 int	fubyte (const void *base);
 int	subyte (void *base, int byte);
-int	suibyte (void *base, int byte);
 long	fuword (const void *base);
 int	suword (void *base, long word);
 int	fusword (void *base);

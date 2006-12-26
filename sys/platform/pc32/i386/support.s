@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.16 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.17 2006/12/26 20:43:56 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -527,9 +527,8 @@ ENTRY(susword)
 	ret
 
 /*
- * su[i]byte - MP SAFE (if not I386_CPU)
+ * subyte - MP SAFE (if not I386_CPU)
  */
-ALTENTRY(suibyte)
 ENTRY(subyte)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx

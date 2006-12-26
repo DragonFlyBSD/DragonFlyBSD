@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.24 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.25 2006/12/26 20:43:56 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -44,10 +44,6 @@
 	.globl	CPU_prvspace, lapic
 	.set	CPU_prvspace,(MPPTDI << PDRSHIFT)
 	.set	lapic,CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
-
-	.globl  gd_idlestack,gd_idlestack_top
-	.set    gd_idlestack,PS_IDLESTACK
-	.set    gd_idlestack_top,PS_IDLESTACK_TOP
 
 	.globl	globaldata
 	.set	globaldata,0
