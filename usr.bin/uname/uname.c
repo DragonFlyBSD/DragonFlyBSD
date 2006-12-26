@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uname.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
- * $DragonFly: src/usr.bin/uname/uname.c,v 1.3 2003/10/24 17:19:16 dillon Exp $
+ * $DragonFly: src/usr.bin/uname/uname.c,v 1.4 2006/12/26 11:27:44 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -223,7 +223,7 @@ NATIVE_SYSCTL2_GET(version, CTL_KERN, KERN_VERSION) {
 			*p = ' ';
 } NATIVE_SET;
 
-NATIVE_SYSCTL2_GET(platform, CTL_HW, HW_MACHINE) {
+NATIVE_SYSCTL2_GET(platform, CTL_HW, HW_MACHINE_UNAME) {
 } NATIVE_SET;
 
 NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {

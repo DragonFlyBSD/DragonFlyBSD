@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.11 2006/12/04 18:04:00 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.12 2006/12/26 11:27:44 sephe Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -83,6 +83,10 @@
 
 #ifndef MACHINE_CPU
 #define MACHINE_CPU	"i386"	/* minimum supported cpu rev */
+#endif
+
+#ifndef MACHINE_UNAME
+#define MACHINE_UNAME	"i386"	/* for uname(1)/uname(3) */
 #endif
 
 #define MID_MACHINE	MID_I386
