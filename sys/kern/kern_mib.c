@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.12 2006/12/26 11:27:44 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.13 2006/12/26 12:16:56 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -154,7 +154,7 @@ SYSCTL_STRING(_hw, HW_MACHINE_ARCH, machine_arch, CTLFLAG_RD,
 
 static char	machine_cpu[] = MACHINE_CPU;
 SYSCTL_STRING(_hw, HW_MACHINE_CPU, machine_cpu, CTLFLAG_RD,
-    machine_arch, 0, "Cpu architecture");
+    machine_cpu, 0, "Cpu architecture");
 
 static char	machine_uname[] = MACHINE_UNAME;
 SYSCTL_STRING(_hw, HW_MACHINE_UNAME, machine_uname, CTLFLAG_RD,
