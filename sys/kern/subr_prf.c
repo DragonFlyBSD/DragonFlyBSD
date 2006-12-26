@@ -37,8 +37,10 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.16 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.17 2006/12/26 11:01:07 swildner Exp $
  */
+
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -48,11 +50,17 @@
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/tprintf.h>
+#include <sys/stdint.h>
 #include <sys/syslog.h>
 #include <sys/cons.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
+#include <sys/ctype.h>
+
+#ifdef DDB
+#include <ddb/ddb.h>
+#endif
 
 /*
  * Note that stdarg.h and the ANSI style va_start macro is used for both
@@ -66,7 +74,7 @@
 #define TOLOG	0x04
 
 /* Max number conversion buffer length: a u_quad_t in base 2, plus NUL byte. */
-#define MAXNBUF	(sizeof(quad_t) * NBBY + 1)
+#define MAXNBUF	(sizeof(intmax_t) * NBBY + 1)
 
 struct putchar_arg {
 	int	flags;
@@ -87,8 +95,8 @@ static void (*v_putc)(int) = cnputc;	/* routine to putc on virtual console */
 static void  msglogchar(int c, int pri);
 static void  msgaddchar(int c, void *dummy);
 static void  kputchar (int ch, void *arg);
-static char *ksprintn (char *nbuf, u_long num, int base, int *len);
-static char *ksprintqn (char *nbuf, u_quad_t num, int base, int *len);
+static char *ksprintn (char *nbuf, uintmax_t num, int base, int *lenp,
+		       int upper);
 static void  snprintf_func (int ch, void *arg);
 
 static int consintr = 1;		/* Ok to handle console interrupts? */
@@ -117,8 +125,6 @@ tablefull(const char *tab)
 
 /*
  * Uprintf prints to the controlling terminal for the current process.
- * It may block if the tty queue is overfull.  No message is printed if
- * the queue does not clear in a reasonable time.
  */
 int
 uprintf(const char *fmt, ...)
@@ -137,7 +143,7 @@ uprintf(const char *fmt, ...)
 		retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 		__va_end(ap);
 	}
-	return retval;
+	return (retval);
 }
 
 tpr_t
@@ -183,7 +189,7 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 	msgbuftrigger = 1;
-	return retval;
+	return (retval);
 }
 
 /*
@@ -203,7 +209,7 @@ ttyprintf(struct tty *tp, const char *fmt, ...)
 	pca.flags = TOTTY;
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
-	return retval;
+	return (retval);
 }
 
 /*
@@ -220,25 +226,6 @@ log(int level, const char *fmt, ...)
 
 	pca.tty = NULL;
 	pca.pri = level;
-	pca.flags = log_open ? TOLOG : TOCONS;
-
-	__va_start(ap, fmt);
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
-	__va_end(ap);
-
-	msgbuftrigger = 1;
-	return (retval);
-}
-
-int
-addlog(const char *fmt, ...)
-{
-	__va_list ap;
-	int retval;
-	struct putchar_arg pca;
-
-	pca.tty = NULL;
-	pca.pri = -1;
 	pca.flags = log_open ? TOLOG : TOCONS;
 
 	__va_start(ap, fmt);
@@ -277,7 +264,7 @@ log_console(struct uio *uio)
 		c = imin(uio->uio_resid, CONSCHUNK);
 		error = uiomove(consbuffer, c, uio);
 		if (error != 0)
-			return;
+			break;
 		for (i = 0; i < c; i++) {
 			msglogchar(consbuffer[i], pri);
 			if (consbuffer[i] == '\n')
@@ -320,7 +307,7 @@ kprintf(const char *fmt, ...)
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
-	return retval;
+	return (retval);
 }
 
 int
@@ -341,7 +328,7 @@ kvprintf(const char *fmt, __va_list ap)
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
-	return retval;
+	return (retval);
 }
 
 /*
@@ -385,7 +372,7 @@ ksprintf(char *buf, const char *cfmt, ...)
 	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
 	__va_end(ap);
-	return retval;
+	return (retval);
 }
 
 /*
@@ -398,7 +385,7 @@ kvsprintf(char *buf, const char *cfmt, __va_list ap)
 
 	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
-	return retval;
+	return (retval);
 }
 
 /*
@@ -430,7 +417,7 @@ kvsnprintf(char *str, size_t size, const char *format, __va_list ap)
 	retval = kvcprintf(format, snprintf_func, &info, 10, ap);
 	if (info.remain >= 1)
 		*info.str++ = '\0';
-	return retval;
+	return (retval);
 }
 
 static void
@@ -451,30 +438,16 @@ snprintf_func(int ch, void *arg)
  * The buffer pointed to by `nbuf' must have length >= MAXNBUF.
  */
 static char *
-ksprintn(char *nbuf, u_long ul, int base, int *lenp)
+ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
 {
-	char *p;
+	char *p, c;
 
 	p = nbuf;
 	*p = '\0';
 	do {
-		*++p = hex2ascii(ul % base);
-	} while (ul /= base);
-	if (lenp)
-		*lenp = p - nbuf;
-	return (p);
-}
-/* ksprintn, but for a quad_t. */
-static char *
-ksprintqn(char *nbuf, u_quad_t uq, int base, int *lenp)
-{
-	char *p;
-
-	p = nbuf;
-	*p = '\0';
-	do {
-		*++p = hex2ascii(uq % base);
-	} while (uq /= base);
+		c = hex2ascii(num % base);
+		*++p = upper ? toupper(c) : c;
+	} while (num /= base);
 	if (lenp)
 		*lenp = p - nbuf;
 	return (p);
@@ -511,18 +484,18 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 {
 #define PCHAR(c) {int cc=(c); if (func) (*func)(cc,arg); else *d++ = cc; retval++; }
 	char nbuf[MAXNBUF];
-	char *p, *q, *d;
+	char *d;
+	const char *p, *percent, *q;
 	u_char *up;
 	int ch, n;
-	u_long ul;
-	u_quad_t uq;
-	int base, lflag, qflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
-	int dwidth;
+	uintmax_t num;
+	int base, tmp, width, ladjust, sharpflag, neg, sign, dot;
+	int jflag, lflag, qflag, tflag;
+	int dwidth, upper;
 	char padc;
-	int retval = 0;
+	int retval = 0, stop = 0;
 
-	ul = 0;
-	uq = 0;
+	num = 0;
 	if (!func)
 		d = (char *) arg;
 	else
@@ -537,14 +510,17 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 	for (;;) {
 		padc = ' ';
 		width = 0;
-		while ((ch = (u_char)*fmt++) != '%') {
-			if (ch == '\0') 
-				return retval;
+		while ((ch = (u_char)*fmt++) != '%' || stop) {
+			if (ch == '\0')
+				return (retval);
 			PCHAR(ch);
 		}
-		qflag = 0; lflag = 0; ladjust = 0; sharpflag = 0; neg = 0;
-		sign = 0; dot = 0; dwidth = 0;
-reswitch:	switch (ch = (u_char)*fmt++) {
+		percent = fmt - 1;
+		dot = dwidth = ladjust = neg = sharpflag = sign = upper = 0;
+		jflag = lflag = qflag = tflag = 0;
+
+reswitch:
+		switch (ch = (u_char)*fmt++) {
 		case '.':
 			dot = 1;
 			goto reswitch;
@@ -590,17 +566,17 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				width = n;
 			goto reswitch;
 		case 'b':
-			ul = __va_arg(ap, int);
+			num = (u_int)__va_arg(ap, int);
 			p = __va_arg(ap, char *);
-			for (q = ksprintn(nbuf, ul, *p++, NULL); *q;)
+			for (q = ksprintn(nbuf, num, *p++, NULL, 0); *q;)
 				PCHAR(*q--);
 
-			if (!ul)
+			if (num == 0)
 				break;
 
 			for (tmp = 0; *p;) {
 				n = *p++;
-				if (ul & (1 << (n - 1))) {
+				if (num & (1 << (n - 1))) {
 					PCHAR(tmp ? ',' : '<');
 					for (; (n = *p) > ' '; ++p)
 						PCHAR(n);
@@ -630,15 +606,13 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			}
 			break;
 		case 'd':
-			if (qflag)
-				uq = __va_arg(ap, quad_t);
-			else if (lflag)
-				ul = __va_arg(ap, long);
-			else
-				ul = __va_arg(ap, int);
-			sign = 1;
+		case 'i':
 			base = 10;
-			goto number;
+			sign = 1;
+			goto handle_sign;
+		case 'j':
+			jflag = 1;
+			goto reswitch;
 		case 'l':
 			if (lflag) {
 				lflag = 0;
@@ -646,34 +620,33 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			} else
 				lflag = 1;
 			goto reswitch;
-		case 'o':
-			if (qflag)
-				uq = __va_arg(ap, u_quad_t);
+		case 'n':
+			if (jflag)
+				*(__va_arg(ap, intmax_t *)) = retval;
 			else if (lflag)
-				ul = __va_arg(ap, u_long);
+				*(__va_arg(ap, long *)) = retval;
+			else if (qflag)
+				*(__va_arg(ap, quad_t *)) = retval;
 			else
-				ul = __va_arg(ap, u_int);
+				*(__va_arg(ap, int *)) = retval;
+			break;
+		case 'o':
 			base = 8;
-			goto nosign;
+			goto handle_nosign;
 		case 'p':
-			ul = (uintptr_t)__va_arg(ap, void *);
 			base = 16;
 			sharpflag = (width == 0);
-			goto nosign;
+			sign = 0;
+			num = (uintptr_t)__va_arg(ap, void *);
+			goto number;
 		case 'q':
 			qflag = 1;
 			goto reswitch;
-		case 'n':
 		case 'r':
-			if (qflag)
-				uq = __va_arg(ap, u_quad_t);
-			else if (lflag)
-				ul = __va_arg(ap, u_long);
-			else
-				ul = sign ?
-				    (u_long)__va_arg(ap, int) : __va_arg(ap, u_int);
 			base = radix;
-			goto number;
+			if (sign)
+				goto handle_sign;
+			goto handle_nosign;
 		case 's':
 			p = __va_arg(ap, char *);
 			if (p == NULL)
@@ -695,51 +668,53 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				while (width--)
 					PCHAR(padc);
 			break;
+		case 't':
+			tflag = 1;
+			goto reswitch;
 		case 'u':
-			if (qflag)
-				uq = __va_arg(ap, u_quad_t);
-			else if (lflag)
-				ul = __va_arg(ap, u_long);
-			else
-				ul = __va_arg(ap, u_int);
 			base = 10;
-			goto nosign;
-		case 'x':
+			goto handle_nosign;
 		case 'X':
-			if (qflag)
-				uq = __va_arg(ap, u_quad_t);
-			else if (lflag)
-				ul = __va_arg(ap, u_long);
-			else
-				ul = __va_arg(ap, u_int);
+			upper = 1;
+			/* FALLTHROUGH */
+		case 'x':
 			base = 16;
-			goto nosign;
+			goto handle_nosign;
 		case 'z':
-			if (qflag)
-				uq = __va_arg(ap, u_quad_t);
-			else if (lflag)
-				ul = __va_arg(ap, u_long);
-			else
-				ul = sign ?
-				    (u_long)__va_arg(ap, int) : __va_arg(ap, u_int);
 			base = 16;
+			sign = 1;
+			goto handle_sign;
+handle_nosign:
+			sign = 0;
+			if (jflag)
+				num = __va_arg(ap, uintmax_t);
+			else if (lflag)
+				num = __va_arg(ap, u_long);
+			else if (qflag)
+				num = __va_arg(ap, u_quad_t);
+			else if (tflag)
+				num = __va_arg(ap, ptrdiff_t);
+			else
+				num = __va_arg(ap, u_int);
 			goto number;
-nosign:			sign = 0;
-number:			
-			if (qflag) {
-				if (sign && (quad_t)uq < 0) {
-					neg = 1;
-					uq = -(quad_t)uq;
-				}
-				p = ksprintqn(nbuf, uq, base, &tmp);
-			} else {
-				if (sign && (long)ul < 0) {
-					neg = 1;
-					ul = -(long)ul;
-				}
-				p = ksprintn(nbuf, ul, base, &tmp);
+handle_sign:
+			if (jflag)
+				num = __va_arg(ap, intmax_t);
+			else if (lflag)
+				num = __va_arg(ap, long);
+			else if (qflag)
+				num = __va_arg(ap, quad_t);
+			else if (tflag)
+				num = __va_arg(ap, ptrdiff_t);
+			else
+				num = __va_arg(ap, int);
+number:
+			if (sign && (intmax_t)num < 0) {
+				neg = 1;
+				num = -(intmax_t)num;
 			}
-			if (sharpflag && (qflag ? uq != 0 : ul != 0)) {
+			p = ksprintn(nbuf, num, base, &tmp, upper);
+			if (sharpflag && num != 0) {
 				if (base == 8)
 					tmp++;
 				else if (base == 16)
@@ -748,12 +723,14 @@ number:
 			if (neg)
 				tmp++;
 
-			if (!ladjust && width && (width -= tmp) > 0)
+			if (!ladjust && padc != '0' && width &&
+			    (width -= tmp) > 0) {
 				while (width--)
 					PCHAR(padc);
+			}
 			if (neg)
 				PCHAR('-');
-			if (sharpflag && (qflag ? uq != 0 : ul != 0)) {
+			if (sharpflag && num != 0) {
 				if (base == 8) {
 					PCHAR('0');
 				} else if (base == 16) {
@@ -761,6 +738,9 @@ number:
 					PCHAR('x');
 				}
 			}
+			if (!ladjust && width && (width -= tmp) > 0)
+				while (width--)
+					PCHAR(padc);
 
 			while (*p)
 				PCHAR(*p--);
@@ -771,10 +751,15 @@ number:
 
 			break;
 		default:
-			PCHAR('%');
-			if (lflag)
-				PCHAR('l');
-			PCHAR(ch);
+			while (percent < fmt)
+				PCHAR(*percent++);
+			/*
+			 * Since we ignore an formatting argument it is no 
+			 * longer safe to obey the remaining formatting
+			 * arguments as the arguments will no longer match
+			 * the format specs.
+			 */
+			stop = 1;
 			break;
 		}
 	}
@@ -804,7 +789,7 @@ msglogchar(int c, int pri)
 			dangling = 0;
 		}
 		msgaddchar('<', NULL);
-		for (p = ksprintn(nbuf, (u_long)pri, 10, NULL); *p;)
+		for (p = ksprintn(nbuf, (uintmax_t)pri, 10, NULL, 0); *p;)
 			msgaddchar(*p--, NULL);
 		msgaddchar('>', NULL);
 		lastpri = pri;
@@ -941,12 +926,10 @@ sysctl_kern_msgbuf_clear(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_kern, OID_AUTO, msgbuf_clear,
-    CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_SECURE, &msgbuf_clear, 0, 
+    CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_SECURE, &msgbuf_clear, 0,
     sysctl_kern_msgbuf_clear, "I", "Clear kernel message buffer");
 
-#include "opt_ddb.h"
 #ifdef DDB
-#include <ddb/ddb.h>
 
 DB_SHOW_COMMAND(msgbuf, db_show_msgbuf)
 {

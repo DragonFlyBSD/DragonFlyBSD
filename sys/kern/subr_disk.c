@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.27 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.28 2006/12/26 11:01:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -753,7 +753,7 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * been converted to use them.  The message is printed with kprintf
  * if pri is LOG_PRINTF, otherwise it uses log at the specified priority.
  * The message should be completed (with at least a newline) with kprintf
- * or addlog, respectively.  There is no trailing space.
+ * or log(-1, ...), respectively.  There is no trailing space.
  */
 void
 diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, 

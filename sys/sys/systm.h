@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.53 2006/12/23 20:05:34 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.54 2006/12/26 11:01:07 swildner Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -143,7 +143,6 @@ uint32_t crc32(const void *buf, size_t size);
 void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
-int	addlog (const char *, ...) __printflike(1, 2);
 int	kvcprintf (char const *, void (*)(int, void*), void *, int,
 		      __va_list) __printflike(1, 0);
 int	log (int, const char *, ...) __printflike(2, 3);
