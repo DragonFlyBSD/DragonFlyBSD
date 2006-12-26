@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.63 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.64 2006/12/26 22:50:58 dillon Exp $
  */
 
 /*
@@ -149,9 +149,9 @@ static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
 
 pmap_t kernel_pmap;
 
-vm_paddr_t avail_start;	/* PA of first available physical page */
+vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
-vm_offset_t virtual_avail;	/* VA of first avail page (after kernel bss) */
+vm_offset_t virtual_start;	/* VA of first avail page (after kernel bss) */
 vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 static int pgeflag;		/* PG_G or-in */
@@ -317,15 +317,15 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	avail_start = firstaddr;
 
 	/*
-	 * XXX The calculation of virtual_avail is wrong. It's NKPT*PAGE_SIZE too
-	 * large. It should instead be correctly calculated in locore.s and
+	 * XXX The calculation of virtual_start is wrong. It's NKPT*PAGE_SIZE
+	 * too large. It should instead be correctly calculated in locore.s and
 	 * not based on 'first' (which is a physical address, not a virtual
 	 * address, for the start of unused physical memory). The kernel
 	 * page tables are NOT double mapped and thus should not be included
 	 * in this calculation.
 	 */
-	virtual_avail = (vm_offset_t) KERNBASE + firstaddr;
-	virtual_avail = pmap_kmem_choose(virtual_avail);
+	virtual_start = (vm_offset_t) KERNBASE + firstaddr;
+	virtual_start = pmap_kmem_choose(virtual_start);
 
 	virtual_end = VM_MAX_KERNEL_ADDRESS;
 
@@ -354,7 +354,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 #define	SYSMAP(c, p, v, n)	\
 	v = (c)va; va += ((n)*PAGE_SIZE); p = pte; pte += (n);
 
-	va = virtual_avail;
+	va = virtual_start;
 	pte = (pt_entry_t *) pmap_pte(kernel_pmap, va);
 
 	/*
@@ -380,7 +380,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	SYSMAP(struct msgbuf *, msgbufmap, msgbufp,
 	       atop(round_page(MSGBUF_SIZE)))
 
-	virtual_avail = va;
+	virtual_start = va;
 
 	*(int *) CMAP1 = 0;
 	for (i = 0; i < NKPT; i++)
