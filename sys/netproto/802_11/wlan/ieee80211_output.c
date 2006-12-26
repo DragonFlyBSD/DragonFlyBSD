@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.11 2006/12/23 09:14:02 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.12 2006/12/26 14:53:21 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -992,6 +992,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	struct ifnet *ifp = ic->ic_ifp;
 	enum ieee80211_phymode mode;
 	struct ieee80211_frame *wh;
+	struct ieee80211_rateset rs;
 	struct mbuf *m;
 	uint8_t *frm;
 
@@ -1027,9 +1028,20 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	}
 
 	frm = ieee80211_add_ssid(frm, ssid, ssidlen);
+
+	/*
+	 * XXX
+	 * Clear basic rates.
+	 *
+	 * Though according to 802.11 standard: MSB of each supported rate
+	 * octet in (Extended) Supported Rates ie of probe requests should
+	 * be ignored, some HostAP implementations still check it ...
+	 */
 	mode = ieee80211_chan2mode(ic, ic->ic_curchan);
-	frm = ieee80211_add_rates(frm, &ic->ic_sup_rates[mode]);
-	frm = ieee80211_add_xrates(frm, &ic->ic_sup_rates[mode]);
+	rs = ic->ic_sup_rates[mode];
+	ieee80211_set11gbasicrates(&rs, IEEE80211_MODE_AUTO);
+	frm = ieee80211_add_rates(frm, &rs);
+	frm = ieee80211_add_xrates(frm, &rs);
 
 	if (optie != NULL) {
 		memcpy(frm, optie, optielen);
