@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.55 2006/12/26 20:43:53 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.56 2006/12/27 17:20:28 tgen Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -90,7 +90,10 @@ extern int ncpus2_shift;	/* log base 2 of ncpus2 */
 extern int ncpus2_mask;		/* ncpus2 - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */
 
+/* XXX TGEN these don't belong here, they're MD on i386/amd64 */
 extern u_int cpu_feature;	/* CPUID_* features */
+extern u_int cpu_feature2;	/* CPUID2_* features */
+
 extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
 extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 

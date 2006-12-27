@@ -32,7 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.6 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.7 2006/12/27 17:20:28 tgen Exp $
  */
 
 #ifndef _CPU_SPECIALREG_H_
@@ -111,6 +111,14 @@
 #define	CPUID_TM	0x20000000
 #define	CPUID_B30	0x40000000
 #define	CPUID_PBE	0x80000000
+
+#define	CPUID2_SSE3	0x00000001
+#define	CPUID2_MON	0x00000008
+#define	CPUID2_DS_CPL	0x00000010
+#define	CPUID2_EST	0x00000080
+#define	CPUID2_TM2	0x00000100
+#define	CPUID2_CNTXID	0x00000400
+#define	CPUID2_CX16	0x00002000
 
 /*
  * CPUID instruction 1 ebx info

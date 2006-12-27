@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.11 2005/11/07 20:05:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.12 2006/12/27 17:20:28 tgen Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -103,12 +103,13 @@
 	.globl	boothowto,bootdev
 
 	.globl	cpu,cpu_vendor,cpu_id,bootinfo
-	.globl	cpu_high, cpu_feature, cpu_procinfo
+	.globl	cpu_high, cpu_feature, cpu_feature2, cpu_procinfo
 
 cpu:		.long	0			/* are we 386, 386sx, or 486 */
 cpu_id:		.long	0			/* stepping ID */
 cpu_high:	.long	0			/* highest arg to CPUID */
 cpu_feature:	.long	0			/* features */
+cpu_feature2:	.long	0			/* additional features */
 cpu_procinfo:	.long	0			/* brand index / HTT info */
 cpu_vendor:	.space	20			/* CPU origin code */
 bootinfo:	.space	BOOTINFO_SIZE		/* bootinfo buffer space */
@@ -623,6 +624,7 @@ trycpuid:	/* Use the `cpuid' instruction. */
 	movl	%eax,R(cpu_id)			# store cpu_id
 	movl	%ebx,R(cpu_procinfo)		# store cpu_procinfo
 	movl	%edx,R(cpu_feature)		# store cpu_feature
+	movl	%ecx,R(cpu_feature2)		# store cpu_feature2
 	rorl	$8,%eax				# extract family type
 	andl	$15,%eax
 	cmpl	$5,%eax

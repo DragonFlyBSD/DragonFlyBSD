@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.24 2006/03/15 22:56:38 dogcow Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.4 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.5 2006/12/27 17:20:28 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -578,14 +578,6 @@ est_init(void)
 	int			err;
 	size_t			i;
 
-#ifndef CPUID2_EST
-	int			regs[4];
-
-#define cpu_feature2	regs[2]
-#define CPUID2_EST	0x00000080
-
-	do_cpuid(1, regs);
-#endif
 	if ((cpu_feature2 & CPUID2_EST) == 0) {
 		kprintf("Enhanced SpeedStep unsupported on this hardware.\n");
 		return(EOPNOTSUPP);
