@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.106 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.107 2006/12/27 20:41:59 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1867,20 +1867,7 @@ init386(int first)
 
 	mi_gdinit(&gd->mi, 0);
 	cpu_gdinit(gd, 0);
-	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, &gd->mi);
-	lwkt_set_comm(&thread0, "thread0");
-	proc0.p_addr = (void *)thread0.td_kstack;
-	LIST_INIT(&proc0.p_lwps);
-	LIST_INSERT_HEAD(&proc0.p_lwps, &proc0.p_lwp, lwp_list);
-	proc0.p_lwp.lwp_thread = &thread0;
-	proc0.p_lwp.lwp_proc = &proc0;
-	proc0.p_usched = usched_init();
-	proc0.p_lwp.lwp_cpumask = 0xFFFFFFFF;
-	varsymset_init(&proc0.p_varsymset, NULL);
-	thread0.td_flags |= TDF_RUNNING;
-	thread0.td_proc = &proc0;
-	thread0.td_lwp = &proc0.p_lwp;
-	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
+	mi_proc0init(&gd->mi, proc0paddr);
 	safepri = TDPRI_MAX;
 
 	/* make ldt memory segments */

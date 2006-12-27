@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.68 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.69 2006/12/27 20:41:57 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -143,6 +143,31 @@ sysinit_add(struct sysinit **set, struct sysinit **set_end)
 		kfree(newsysinit, M_TEMP);
 	newsysinit = newset;
 	newsysinit_end = newset + count;
+}
+
+/*
+ * Callbacks from machine-dependant startup code (e.g. init386) to set
+ * up low level entities related to cpu #0's globaldata.
+ *
+ * Called from very low level boot code.
+ */
+void
+mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
+{
+	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
+	lwkt_set_comm(&thread0, "thread0");
+	proc0.p_addr = (void *)thread0.td_kstack;
+	LIST_INIT(&proc0.p_lwps);
+	LIST_INSERT_HEAD(&proc0.p_lwps, &proc0.p_lwp, lwp_list);
+	proc0.p_lwp.lwp_thread = &thread0;
+	proc0.p_lwp.lwp_proc = &proc0;
+	proc0.p_usched = usched_init();
+	proc0.p_lwp.lwp_cpumask = 0xFFFFFFFF;
+	varsymset_init(&proc0.p_varsymset, NULL);
+	thread0.td_flags |= TDF_RUNNING;
+	thread0.td_proc = &proc0;
+	thread0.td_lwp = &proc0.p_lwp;
+	thread0.td_switch = cpu_heavy_switch;   /* YYY eventually LWKT */
 }
 
 /*

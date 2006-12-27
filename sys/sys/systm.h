@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.56 2006/12/27 17:20:28 tgen Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.57 2006/12/27 20:41:58 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -124,10 +124,12 @@ struct uio;
 struct globaldata;
 struct thread;
 struct trapframe;
+struct user;
 
 void	Debugger (const char *msg);
 void	backtrace(void);
 void	mi_gdinit (struct globaldata *gd, int cpu);
+void	mi_proc0init(struct globaldata *gd, struct user *proc0paddr);
 int	dumpstatus (vm_offset_t addr, off_t count);
 int	nullop (void);
 int	seltrue (cdev_t dev, int which);
