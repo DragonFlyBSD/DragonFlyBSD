@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.8 2005/11/06 12:44:49 swildner Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.9 2006/12/27 23:01:19 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -72,10 +72,6 @@ int	debug = 0;
 #endif
 
 struct	nfsd_srvargs nsd;
-#ifdef OLD_SETPROCTITLE
-char	**Argv = NULL;		/* pointer to argument vector */
-char	*LastArg = NULL;	/* end of argv */
-#endif
 
 #ifdef NFSKERB
 char		lnam[ANAME_SZ];
@@ -92,11 +88,6 @@ NFSKERBKEYSCHED_T kerb_keysched;
 void	nonfs(int);
 void	reapchild(int);
 void	setbindhost(struct sockaddr_in *ia, const char *bindhost);
-#ifdef OLD_SETPROCTITLE
-#ifdef __FreeBSD__
-void	setproctitle(char *);
-#endif
-#endif
 void	usage(void);
 
 /*
@@ -143,7 +134,6 @@ main(int argc, char **argv, char **envp)
 	struct timeval ktv;
 	char **cpp;
 #endif
-#ifdef __FreeBSD__
 	struct vfsconf vfc;
 	int error;
 
@@ -156,17 +146,6 @@ main(int argc, char **argv, char **envp)
 	}
 	if (error)
 		errx(1, "NFS is not available in the running kernel");
-#endif
-
-#ifdef OLD_SETPROCTITLE
-	/* Save start and extent of argv for setproctitle. */
-	Argv = argv;
-	if (envp == 0 || *envp == 0)
-		envp = argv;
-	while (*envp)
-		envp++;
-	LastArg = envp[-1] + strlen(envp[-1]);
-#endif
 
 #define	MAXNFSDCNT	20
 #define	DEFNFSDCNT	 4
@@ -672,22 +651,3 @@ reapchild(int signo)
 
 	while (wait3(NULL, WNOHANG, NULL) > 0);
 }
-
-#ifdef OLD_SETPROCTITLE
-#ifdef __FreeBSD__
-void
-setproctitle(char *a)
-{
-	char *cp;
-	char buf[80];
-
-	cp = Argv[0];
-	snprintf(buf, sizeof(buf), "nfsd-%s", a);
-	strncpy(cp, buf, LastArg - cp);
-	cp += strlen(cp);
-	while (cp < LastArg)
-		*cp++ = '\0';
-	Argv[1] = NULL;
-}
-#endif	/* __FreeBSD__ */
-#endif
