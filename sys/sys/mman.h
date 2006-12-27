@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.7 2006/12/18 19:44:51 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.8 2006/12/27 20:43:09 dillon Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -142,8 +142,6 @@
 #define	MINCORE_REFERENCED_OTHER 0x8 /* Page has been referenced */
 #define	MINCORE_MODIFIED_OTHER	0x10 /* Page has been modified */
 
-#ifndef _KERNEL
-
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -174,7 +172,5 @@ int	mincore (const void *, size_t, char *);
 int	minherit (void *, size_t, int);
 #endif
 __END_DECLS
-
-#endif /* !_KERNEL */
 
 #endif
