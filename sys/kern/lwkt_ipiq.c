@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.19 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.20 2006/12/27 06:51:47 dillon Exp $
  */
 
 /*
@@ -70,8 +70,6 @@
 #include <machine/stdarg.h>
 #include <machine/smp.h>
 #include <machine/atomic.h>
-
-#define THREAD_STACK	(UPAGES * PAGE_SIZE)
 
 #else
 

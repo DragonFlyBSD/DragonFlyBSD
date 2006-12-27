@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.28 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.29 2006/12/27 06:51:47 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -65,8 +65,6 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
-
-#define THREAD_STACK	(UPAGES * PAGE_SIZE)
 
 #else
 
