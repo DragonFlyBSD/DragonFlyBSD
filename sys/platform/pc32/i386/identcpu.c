@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.16 2006/12/27 17:20:28 tgen Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.17 2006/12/27 18:37:15 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -689,7 +689,7 @@ printcpuinfo(void)
 			);
 
 			if (cpu_feature2 != 0) {
-				printf("\n  Features2=0x%b", cpu_feature2,
+				kprintf("\n  Features2=0x%b", cpu_feature2,
 				"\020"
 				"\001SSE3"	/* SSE3 */
 				"\002<b1>"
