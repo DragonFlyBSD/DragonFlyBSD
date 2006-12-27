@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.9 2006/12/27 23:01:19 corecode Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.10 2006/12/27 23:06:29 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,7 @@ void	usage(void);
  * followed by "n" which is the number of nfsds' to fork off
  */
 int
-main(int argc, char **argv, char **envp)
+main(int argc, char **argv)
 {
 	struct nfsd_args nfsdargs;
 	struct sockaddr_in inetaddr, inetpeer;
@@ -640,13 +640,13 @@ usage(void)
 }
 
 void
-nonfs(int signo)
+nonfs(int signo __unused)
 {
 	syslog(LOG_ERR, "missing system call: NFS not available");
 }
 
 void
-reapchild(int signo)
+reapchild(int signo __unused)
 {
 
 	while (wait3(NULL, WNOHANG, NULL) > 0);
