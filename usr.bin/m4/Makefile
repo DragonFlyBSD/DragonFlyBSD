@@ -1,6 +1,6 @@
 #	$OpenBSD: Makefile,v 1.10 2002/04/26 13:13:41 espie Exp $
-# $FreeBSD: src/usr.bin/m4/Makefile,v 1.2.12.1 2002/07/15 02:06:15 jmallett Exp $
-# $DragonFly: src/usr.bin/m4/Makefile,v 1.2 2003/06/17 04:29:28 dillon Exp $
+# $FreeBSD: src/usr.bin/m4/Makefile,v 1.7 2005/01/28 16:08:07 ru Exp $
+# $DragonFly: src/usr.bin/m4/Makefile,v 1.3 2006/12/27 21:29:02 pavalos Exp $
 
 # -DEXTENDED 
 # 	if you want the paste & spaste macros.
@@ -9,6 +9,5 @@ PROG=	m4
 CFLAGS+=-DEXTENDED
 
 SRCS=	eval.c expr.c look.c main.c misc.c gnum4.c trace.c
-MAN=	m4.1
 
 .include <bsd.prog.mk>

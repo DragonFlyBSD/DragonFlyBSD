@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)mdef.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/m4/mdef.h,v 1.3.12.2 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/mdef.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/mdef.h,v 1.10 2002/07/15 02:15:12 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/mdef.h,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 #define MACRTYPE        1
@@ -85,7 +85,7 @@
 #define TRACEONTYPE	42
 #define TRACEOFFTYPE	43
 
- 
+
 #define TYPEMASK	63	/* Keep bits really corresponding to a type. */
 #define RECDEF		256	/* Pure recursive def, don't expand it */
 #define NOARGS		512	/* builtin needs no args */
@@ -94,7 +94,7 @@
 /*
  * m4 special characters
  */
- 
+
 #define ARGFLAG         '$'
 #define LPAREN          '('
 #define RPAREN          ')'
@@ -121,10 +121,10 @@
 #define MAXTOK          512          	/* maximum chars in a tokn 	    */
 #define HASHSIZE        199             /* maximum size of hashtab 	    */
 #define MAXCCHARS	5		/* max size of comment/quote delim  */
- 
+
 #define ALL             1
 #define TOP             0
- 
+
 #define TRUE            1
 #define FALSE           0
 #define cycle           for(;;)
@@ -132,9 +132,9 @@
 /*
  * m4 data structures
  */
- 
+
 typedef struct ndblock *ndptr;
- 
+
 struct ndblock {		/* hastable structure         */
 	char		*name;	/* entry name..               */
 	char		*defn;	/* definition..               */
@@ -142,9 +142,9 @@ struct ndblock {		/* hastable structure         */
 	unsigned int 	hv;	/* hash function value..      */
 	ndptr		nxtptr;	/* link to next entry..       */
 };
- 
+
 #define nil     ((ndptr) 0)
- 
+
 struct keyblk {
         const char    *knam;    /* keyword name */
         int     ktyp;           /* keyword type */

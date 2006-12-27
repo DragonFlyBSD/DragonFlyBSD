@@ -38,8 +38,8 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $OpenBSD: misc.c,v 1.27 2002/04/26 16:15:16 espie Exp $
- * $FreeBSD: src/usr.bin/m4/misc.c,v 1.5.2.4 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/misc.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/misc.c,v 1.15 2002/07/15 02:15:12 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/misc.c,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -143,7 +143,7 @@ pbunsigned(unsigned long n)
 	while ((n /= 10) > 0);
 }
 
-void 
+void
 initspaces(void)
 {
 	int i;
@@ -159,7 +159,7 @@ initspaces(void)
 		bbase[i] = buf;
 }
 
-void 
+void
 enlarge_strspace(void)
 {
 	char *newstrspace;
@@ -170,9 +170,9 @@ enlarge_strspace(void)
 	if (!newstrspace)
 		errx(1, "string space overflow");
 	memcpy(newstrspace, strspace, strsize/2);
-	for (i = 0; i <= sp; i++) 
+	for (i = 0; i <= sp; i++)
 		if (sstack[i])
-			mstack[i].sstr = (mstack[i].sstr - strspace) 
+			mstack[i].sstr = (mstack[i].sstr - strspace)
 			    + newstrspace;
 	ep = (ep-strspace) + newstrspace;
 	free(strspace);
@@ -204,7 +204,7 @@ enlarge_bufspace(void)
 void
 chrsave(int c)
 {
-	if (ep >= endest) 
+	if (ep >= endest)
 		enlarge_strspace();
 	*ep++ = c;
 }
@@ -291,7 +291,7 @@ usage(void)
 	exit(1);
 }
 
-int 
+int
 obtain_char(struct input_file *f)
 {
 	if (f->c == EOF)
@@ -303,7 +303,7 @@ obtain_char(struct input_file *f)
 	return f->c;
 }
 
-void 
+void
 set_input(struct input_file *f, FILE *real, const char *name)
 {
 	f->file = real;
@@ -312,14 +312,14 @@ set_input(struct input_file *f, FILE *real, const char *name)
 	f->name = xstrdup(name);
 }
 
-void 
+void
 release_input(struct input_file *f)
 {
 	if (f->file != stdin)
 	    fclose(f->file);
 	f->c = EOF;
 	/*
-	 * XXX can't free filename, as there might still be 
+	 * XXX can't free filename, as there might still be
 	 * error information pointing to it.
 	 */
 }
@@ -338,7 +338,7 @@ doprintfilename(struct input_file *f)
 	pbstr(lquote);
 }
 
-/* 
+/*
  * buffer_mark/dump_buffer: allows one to save a mark in a buffer,
  * and later dump everything that was added since then to a file.
  */

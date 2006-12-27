@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/m4/pathnames.h,v 1.1.1.1.14.2 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/pathnames.h,v 1.3 2004/01/21 21:48:21 rob Exp $
+ * $FreeBSD: src/usr.bin/m4/pathnames.h,v 1.4 2002/05/02 05:25:23 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/pathnames.h,v 1.4 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /*

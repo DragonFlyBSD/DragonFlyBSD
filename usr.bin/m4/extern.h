@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/m4/extern.h,v 1.3.6.3 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/extern.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/extern.h,v 1.12 2004/08/16 14:18:22 tjr Exp $
+ * $DragonFly: src/usr.bin/m4/extern.h,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /* eval.c */
@@ -61,7 +61,7 @@ extern void doprintlineno(struct input_file *);
 extern void doprintfilename(struct input_file *);
 
 extern void doesyscmd(const char *);
- 
+
 
 /* look.c */
 extern ndptr	addent(const char *);
@@ -105,7 +105,7 @@ extern void	release_input(struct input_file *);
 			enlarge_bufspace();	\
 		*bp++ = (c);			\
 	} while(0)
-	
+
 #define CHRSAVE(c)				\
 	do {					\
 		if (ep >= endest)		\
@@ -150,7 +150,7 @@ extern char ecommt[MAXCCHARS+1];/* end character for comment */
 extern char *ep;		/* first free char in strspace */
 extern char lquote[MAXCCHARS+1];/* left quote character (`) */
 extern const char *m4wraps;	/* m4wrap string default. */
-extern const char *null;	/* as it says.. just a null. */
+extern char null[];		/* as it says.. just a null. */
 extern char rquote[MAXCCHARS+1];/* right quote character (') */
 extern char scommt[MAXCCHARS+1];/* start character for comment */
 extern int synccpp;		/* Line synchronisation for C preprocessor */
@@ -163,7 +163,7 @@ static __inline int gpbc(void)
 	int chscratch;		/* Scratch space. */
 
 	if (bp > bufbase) {
-		if (*--bp) 
+		if (*--bp)
 			return ((unsigned char)*bp);
 		else
 			return (EOF);

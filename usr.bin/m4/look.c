@@ -35,8 +35,8 @@
  *
  * @(#)look.c	8.1 (Berkeley) 6/6/93
  * $OpenBSD: look.c,v 1.10 2002/04/26 16:15:16 espie Exp $
- * $FreeBSD: src/usr.bin/m4/look.c,v 1.2.12.1 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/look.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/look.c,v 1.7 2002/07/15 02:15:12 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/look.c,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ hash(const char *name)
 /*
  * find name in the hash table
  */
-ndptr 
+ndptr
 lookup(const char *name)
 {
 	ndptr p;
@@ -85,7 +85,7 @@ lookup(const char *name)
  * hash and create an entry in the hash table.
  * The new entry is added in front of a hash bucket.
  */
-ndptr 
+ndptr
 addent(const char *name)
 {
 	unsigned int h;

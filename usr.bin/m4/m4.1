@@ -1,8 +1,8 @@
 .\"	@(#) $OpenBSD: m4.1,v 1.24 2002/04/18 18:57:23 espie Exp $
-.\" $FreeBSD: src/usr.bin/m4/m4.1,v 1.10.2.9 2003/04/26 14:29:55 schweikh Exp $
-.\" $DragonFly: src/usr.bin/m4/m4.1,v 1.2 2003/06/17 04:29:28 dillon Exp $
+.\" $FreeBSD: src/usr.bin/m4/m4.1,v 1.27 2005/01/17 07:44:22 ru Exp $
+.\" $DragonFly: src/usr.bin/m4/m4.1,v 1.3 2006/12/27 21:29:02 pavalos Exp $
 .\"
-.Dd April 17, 2002
+.Dd July 3, 2004
 .Dt M4 1
 .Os
 .Sh NAME
@@ -22,8 +22,9 @@ The
 .Nm
 utility is a macro processor that can be used as a front end to any
 language (e.g., C, ratfor, fortran, lex, and yacc).
+The
 .Nm
-reads from the standard input and writes
+utility reads from the standard input and writes
 the processed text to the standard output.
 .Pp
 Macro calls have the form
@@ -248,7 +249,7 @@ argument is not found,
 returns \-1.
 .It Ic indir
 Indirectly calls the macro whose name is passed as the first arguments,
-with the remaining arguments passed as first, etc. arguments.
+with the remaining arguments passed as first, etc.\& arguments.
 .It Ic len
 Returns the number of characters in the first argument.
 Extra arguments
@@ -350,16 +351,18 @@ Returns the current file's line number.
 .It Ic __file__
 Returns the current file's name.
 .El
-.Sh DIAGNOSTICS
+.Sh EXIT STATUS
 .Ex -std
 .Pp
 The
 .Ic m4exit
 macro may be used to change the exit status from the input file.
 .Sh COMPATIBILITY
+The
 .Nm
-follows the Single Unix 2 specification, along with a few extensions taken
-from GNU-m4.
+utility follows the
+.St -susv2 ,
+along with a few extensions taken from GNU-m4.
 Flags
 .Fl I , d ,
 and
@@ -413,3 +416,7 @@ and
 .An Richard A. O'Keefe Aq ok@goanna.cs.rmit.OZ.AU .
 GNU-m4 compatibility extensions by
 .An Marc Espie Aq espie@cvs.openbsd.org .
+.Sh BUGS
+The
+.Nm
+utility does not recognize multibyte characters.

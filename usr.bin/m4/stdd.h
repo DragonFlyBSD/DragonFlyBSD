@@ -37,8 +37,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)stdd.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/m4/stdd.h,v 1.2.12.1 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/stdd.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/stdd.h,v 1.4 2002/07/15 02:15:12 jmallett Exp $
+ * $DragonFly: src/usr.bin/m4/stdd.h,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /*
@@ -50,9 +50,9 @@
 
 #define iswhite(c) ((c) == ' ' || (c) == '\t')
 
-/* 
- * STREQ is an optimised strcmp(a,b)==0 
- * STREQN is an optimised strncmp(a,b,n)==0; assumes n > 0 
+/*
+ * STREQ is an optimised strcmp(a,b)==0
+ * STREQN is an optimised strncmp(a,b,n)==0; assumes n > 0
  */
 #define STREQ(a, b) ((a)[0] == (b)[0] && strcmp(a, b) == 0)
 #define STREQN(a, b, n) ((a)[0] == (b)[0] && strncmp(a, b, n) == 0)

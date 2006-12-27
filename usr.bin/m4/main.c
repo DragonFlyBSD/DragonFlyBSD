@@ -39,8 +39,8 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $OpenBSD: main.c,v 1.53 2002/04/26 16:15:16 espie Exp $
- * $FreeBSD: src/usr.bin/m4/main.c,v 1.6.2.6 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/main.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $FreeBSD: src/usr.bin/m4/main.c,v 1.26 2004/08/16 14:18:22 tjr Exp $
+ * $DragonFly: src/usr.bin/m4/main.c,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <err.h>
+#include <locale.h>
 #include "mdef.h"
 #include "stdd.h"
 #include "extern.h"
@@ -79,7 +80,7 @@ int maxout;
 FILE *active;			/* active output file pointer  */
 int ilevel = 0; 		/* input file stack pointer    */
 int oindex = 0; 		/* diversion index..	       */
-const char *null = "";          /* as it says.. just a null..  */
+char null[] = "";		/* as it says.. just a null..  */
 const char *m4wraps = "";       /* m4wrap string default..     */
 char lquote[MAXCCHARS+1] = {LQUOTE};	/* left quote character  (`)   */
 char rquote[MAXCCHARS+1] = {RQUOTE};	/* right quote character (')   */
@@ -134,7 +135,7 @@ struct keyblk keywrds[] = {	/* m4 keywords to be installed */
 	{ "traceon",	  TRACEONTYPE | NOARGS },
 	{ "traceoff",	  TRACEOFFTYPE | NOARGS },
 
-#if defined(unix) || defined(__unix__) 
+#if defined(unix) || defined(__unix__)
 	{ "unix",         SELFTYPE | NOARGS },
 #else
 #ifdef vms
@@ -169,6 +170,8 @@ main(int argc, char *argv[])
 	int rval;
 	char *p;
 
+	setlocale(LC_ALL, "");
+
 	traceout = stderr;
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
@@ -191,6 +194,8 @@ main(int argc, char *argv[])
 			for (p = optarg; *p; p++)
 				if (*p == '=')
 					break;
+			if (p == optarg)
+				errx(1, "null variable cannot be defined");
 			if (*p)
 				*p++ = EOS;
 			dodefine(optarg, p);
@@ -248,7 +253,7 @@ main(int argc, char *argv[])
 				continue;
 			}
 			sp = -1;
-			fp = 0; 
+			fp = 0;
 			if ((inname[0] = strdup(p)) == NULL)
 				err(1, NULL);
 			inlineno[0] = 1;
@@ -324,7 +329,7 @@ macro(void)
 			p = inspect(t, token);
 			if (p != nil)
 				putback(l = gpbc());
-			if (p == nil || (l != LPAREN && 
+			if (p == nil || (l != LPAREN &&
 			    (p->type & NEEDARGS) != 0))
 				outputstr(token);
 			else {
@@ -342,13 +347,13 @@ macro(void)
 				pushs1(p->name);	/* macro name  */
 				pushs(ep);	      	/* start next..*/
 
-				if (l != LPAREN && PARLEV == 0)  {   
+				if (l != LPAREN && PARLEV == 0)  {
 				    /* no bracks  */
 					chrsave(EOS);
 
 					if ((uintptr_t)sp == STACKMAX)
 						errx(1, "internal stack overflow");
-					eval((const char **) mstack+fp+1, 2, 
+					eval((const char **) mstack+fp+1, 2,
 					    CALTYP);
 
 					ep = PREVEP;	/* flush strspace */
@@ -448,7 +453,7 @@ macro(void)
 				if ((uintptr_t)sp == STACKMAX)
 					errx(1, "internal stack overflow");
 
-				eval((const char **) mstack+fp+1, sp-fp, 
+				eval((const char **) mstack+fp+1, sp-fp,
 				    CALTYP);
 
 				ep = PREVEP;	/* flush strspace */
@@ -491,8 +496,8 @@ macro(void)
 	}
 }
 
-/* 
- * output string directly, without pushing it for reparses. 
+/*
+ * output string directly, without pushing it for reparses.
  */
 void
 outputstr(const char *s)
@@ -511,13 +516,13 @@ outputstr(const char *s)
  * combo with lookup to speed things up.
  */
 static ndptr
-inspect(int c, char *tp) 
+inspect(int c, char *tp)
 {
 	char *name = tp;
 	char *etp = tp+MAXTOK;
 	ndptr p;
 	unsigned int h;
-	
+
 	h = *tp++ = c;
 
 	while ((isalnum(c = gpbc()) || c == '_') && tp < etp)
@@ -546,9 +551,9 @@ inspect(int c, char *tp)
 }
 
 /*
- * initkwds - initialise m4 keywords as fast as possible. 
+ * initkwds - initialise m4 keywords as fast as possible.
  * This very similar to install, but without certain overheads,
- * such as calling lookup. Malloc is not used for storing the 
+ * such as calling lookup. Malloc is not used for storing the
  * keyword strings, since we simply use the static pointers
  * within keywrds block.
  */
@@ -565,7 +570,7 @@ initkwds(void)
 		p->nxtptr = hashtab[h % HASHSIZE];
 		hashtab[h % HASHSIZE] = p;
 		p->name = xstrdup(keywrds[i].knam);
-		p->defn = xstrdup(null);
+		p->defn = null;
 		p->hv = h;
 		p->type = keywrds[i].ktyp & TYPEMASK;
 		if ((keywrds[i].ktyp & NOARGS) == 0)
@@ -574,7 +579,7 @@ initkwds(void)
 }
 
 /* Look up a builtin type, even if overridden by the user */
-int 
+int
 builtin_type(const char *key)
 {
 	int i;
@@ -615,20 +620,20 @@ dump_stack(struct position *t, int lev)
 			fprintf(stderr, "   ...\n");
 			break;
 		}
-		fprintf(stderr, "   %s at line %lu\n", 
+		fprintf(stderr, "   %s at line %lu\n",
 			t[i].name, t[i].line);
 	}
 }
 
 
-static void 
+static void
 enlarge_stack(void)
 {
 	STACKMAX *= 2;
 	mstack = realloc(mstack, sizeof(stae) * STACKMAX);
 	sstack = realloc(sstack, STACKMAX);
 	if (mstack == NULL || sstack == NULL)
-		errx(1, "Evaluation stack overflow (%lu)", 
+		errx(1, "Evaluation stack overflow (%lu)",
 		    (unsigned long)STACKMAX);
 }
 
