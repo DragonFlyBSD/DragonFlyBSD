@@ -37,7 +37,7 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.8 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.h,v 1.9 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -102,7 +102,7 @@ MALLOC_DECLARE(M_VMPGDATA);
 
 struct vnode;
 
-extern vm_map_t pager_map;
+extern struct vm_map pager_map;
 extern int pager_map_size;
 extern struct pagerops *pagertab[];
 

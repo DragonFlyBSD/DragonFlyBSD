@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.53 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.54 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -197,7 +197,7 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	vm = zalloc(vmspace_zone);
 	bzero(&vm->vm_startcopy,
 		(char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
-	vm_map_init(&vm->vm_map, min, max);
+	vm_map_init(&vm->vm_map, min, max, NULL);
 	pmap_pinit(vmspace_pmap(vm));
 	vm->vm_map.pmap = vmspace_pmap(vm);		/* XXX */
 	vm->vm_refcnt = 1;
@@ -327,13 +327,11 @@ vmspace_swap_count(struct vmspace *vmspace)
  *	the given lower and upper address bounds.
  */
 vm_map_t
-vm_map_create(pmap_t pmap, vm_offset_t min, vm_offset_t max)
+vm_map_create(vm_map_t result, pmap_t pmap, vm_offset_t min, vm_offset_t max)
 {
-	vm_map_t result;
-
-	result = zalloc(mapzone);
-	vm_map_init(result, min, max);
-	result->pmap = pmap;
+	if (result == NULL)
+		result = zalloc(mapzone);
+	vm_map_init(result, min, max, pmap);
 	return (result);
 }
 
@@ -343,7 +341,7 @@ vm_map_create(pmap_t pmap, vm_offset_t min, vm_offset_t max)
  * The pmap is set elsewhere.
  */
 void
-vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
+vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 {
 	map->header.next = map->header.prev = &map->header;
 	RB_INIT(&map->rb_root);
@@ -353,6 +351,7 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 	map->infork = 0;
 	map->min_offset = min;
 	map->max_offset = max;
+	map->pmap = pmap;
 	map->first_free = &map->header;
 	map->hint = &map->header;
 	map->timestamp = 0;
@@ -959,7 +958,7 @@ retry:
 			break;
 	}
 	map->hint = entry;
-	if (map == kernel_map) {
+	if (map == &kernel_map) {
 		vm_offset_t ksize;
 		if ((ksize = round_page(start + length)) > kernel_vm_end) {
 			pmap_growkernel(ksize);

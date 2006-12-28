@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.88 2006/12/28 18:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.89 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -976,7 +976,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * always have pte pages mapped, we just have to fault
 		 * the page.
 		 */
-		rv = vm_fault(kernel_map, va, ftype, VM_FAULT_NORMAL);
+		rv = vm_fault(&kernel_map, va, ftype, VM_FAULT_NORMAL);
 	}
 
 	if (rv == KERN_SUCCESS)
@@ -1029,7 +1029,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		if (usermode)
 			goto nogo;
 
-		map = kernel_map;
+		map = &kernel_map;
 	} else {
 		/*
 		 * This is a fault on non-kernel virtual memory.
@@ -1050,7 +1050,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	else
 		ftype = VM_PROT_READ;
 
-	if (map != kernel_map) {
+	if (map != &kernel_map) {
 		/*
 		 * Keep swapout from messing with us during this
 		 *	critical time.

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.51 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.52 2006/12/28 21:24:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -688,7 +688,7 @@ exec_copyin_args(struct image_args *args, char *fname,
 	size_t	length;
 
 	bzero(args, sizeof(*args));
-	args->buf = (char *) kmem_alloc_wait(exec_map, PATH_MAX + ARG_MAX);
+	args->buf = (char *) kmem_alloc_wait(&exec_map, PATH_MAX + ARG_MAX);
 	if (args->buf == NULL)
 		return (ENOMEM);
 	args->begin_argv = args->buf;
@@ -779,7 +779,7 @@ void
 exec_free_args(struct image_args *args)
 {
 	if (args->buf) {
-		kmem_free_wakeup(exec_map,
+		kmem_free_wakeup(&exec_map,
 				(vm_offset_t)args->buf, PATH_MAX + ARG_MAX);
 		args->buf = NULL;
 	}

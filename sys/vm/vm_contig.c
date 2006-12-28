@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.20 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.21 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -381,7 +381,7 @@ vm_contig_pg_free(int start, u_long size)
  *
  * Map previously allocated (vm_contig_pg_alloc) range of pages from
  * vm_page_array[] into the KVA.  Once mapped, the pages are part of
- * the Kernel, and are to free'ed with kmem_free(kernel_map, addr, size).
+ * the Kernel, and are to free'ed with kmem_free(&kernel_map, addr, size).
  */
 vm_offset_t
 vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
@@ -415,9 +415,13 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		crit_exit();
 		return (0);
 	}
+
+	/*
+	 * kernel_object maps 1:1 to kernel_map.
+	 */
 	vm_object_reference(&kernel_object);
 	vm_map_insert(map, &count, 
-		      &kernel_object, addr - KvaStart,
+		      &kernel_object, addr,
 		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
@@ -428,8 +432,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	tmp_addr = addr;
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
 		vm_page_t m = &pga[i];
-		vm_page_insert(m, &kernel_object,
-			OFF_TO_IDX(tmp_addr - KvaStart));
+		vm_page_insert(m, &kernel_object, OFF_TO_IDX(tmp_addr));
 		if ((flags & M_ZERO) && !(m->flags & PG_ZERO))
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->flags = 0;
@@ -452,7 +455,7 @@ contigmalloc(
 	unsigned long boundary)
 {
 	return contigmalloc_map(size, type, flags, low, high, alignment,
-			boundary, kernel_map);
+			boundary, &kernel_map);
 }
 
 void *
@@ -485,7 +488,7 @@ contigmalloc_map(
 void
 contigfree(void *addr, unsigned long size, struct malloc_type *type)
 {
-	kmem_free(kernel_map, (vm_offset_t)addr, size);
+	kmem_free(&kernel_map, (vm_offset_t)addr, size);
 }
 
 vm_offset_t
@@ -496,5 +499,5 @@ vm_page_alloc_contig(
 	vm_offset_t alignment)
 {
 	return ((vm_offset_t)contigmalloc_map(size, M_DEVBUF, M_NOWAIT, low,
-				high, alignment, 0ul, kernel_map));
+				high, alignment, 0ul, &kernel_map));
 }

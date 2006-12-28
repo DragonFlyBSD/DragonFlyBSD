@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.45 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.46 2006/12/28 21:24:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -353,7 +353,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 
 	if (copy_len != 0) {
 		vm_object_reference(object);
-		rv = vm_map_find(exec_map,
+		rv = vm_map_find(&exec_map,
 				 object, 
 				 trunc_page(offset + filsz),
 				 &data_buf,
@@ -369,7 +369,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 
 		/* send the page fragment to user space */
 		error = copyout((caddr_t)data_buf, (caddr_t)map_addr, copy_len);
-		vm_map_remove(exec_map, data_buf, data_buf + PAGE_SIZE);
+		vm_map_remove(&exec_map, data_buf, data_buf + PAGE_SIZE);
 		if (error) {
 			return (error);
 		}

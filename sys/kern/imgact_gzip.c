@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/imgact_gzip.c,v 1.40.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.8 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.9 2006/12/28 21:24:01 dillon Exp $
  *
  * This module handles execution of a.out files which have been run through
  * "gzip".  This saves diskspace, but wastes cpu-cycles and VM.
@@ -132,9 +132,8 @@ exec_gzip_imgact(struct image_params *imgp)
 	}
 
 	if (igz.inbuf) {
-		error2 =
-			vm_map_remove(kernel_map, (vm_offset_t) igz.inbuf,
-			    (vm_offset_t) igz.inbuf + PAGE_SIZE);
+		error2 = vm_map_remove(&kernel_map, (vm_offset_t)igz.inbuf,
+				       (vm_offset_t)igz.inbuf + PAGE_SIZE);
 	}
 	if (igz.error || error || error2) {
 		kprintf("Output=%lu ", igz.output);
@@ -289,8 +288,8 @@ NextByte(void *vp)
 		return igz->inbuf[(igz->idx++) - igz->offset];
 	}
 	if (igz->inbuf) {
-		error = vm_map_remove(kernel_map, (vm_offset_t) igz->inbuf,
-			    (vm_offset_t) igz->inbuf + PAGE_SIZE);
+		error = vm_map_remove(&kernel_map, (vm_offset_t)igz->inbuf,
+				      (vm_offset_t)igz->inbuf + PAGE_SIZE);
 		if (error) {
 			igz->where = __LINE__;
 			igz->error = error;
@@ -299,7 +298,7 @@ NextByte(void *vp)
 	}
 	igz->offset = igz->idx & ~PAGE_MASK;
 
-	error = vm_mmap(kernel_map,	/* map */
+	error = vm_mmap(&kernel_map,	/* map */
 			(vm_offset_t *) & igz->inbuf,	/* address */
 			PAGE_SIZE,	/* size */
 			VM_PROT_READ,	/* protection */

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.22 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.23 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -176,7 +176,8 @@ int npagers = sizeof(pagertab) / sizeof(pagertab[0]);
 #define PAGER_MAP_SIZE	(8 * 1024 * 1024)
 
 int pager_map_size = PAGER_MAP_SIZE;
-vm_map_t pager_map;
+struct vm_map pager_map;
+
 static int bswneeded;
 static vm_offset_t swapbkva;		/* swap buffers kva */
 static TAILQ_HEAD(swqueue, buf) bswlist;
@@ -208,7 +209,7 @@ vm_pager_bufferinit(void)
 	/*
 	 * Reserve KVM space for pbuf data.
 	 */
-	swapbkva = kmem_alloc_pageable(pager_map, nswbuf * MAXPHYS);
+	swapbkva = kmem_alloc_pageable(&pager_map, nswbuf * MAXPHYS);
 	if (!swapbkva)
 		panic("Not enough pager_map VM space for physical buffers");
 

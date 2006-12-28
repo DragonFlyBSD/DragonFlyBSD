@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.13 2006/12/22 23:26:23 swildner Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.14 2006/12/28 21:23:58 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -164,7 +164,7 @@ dpt_physmap(u_int32_t req_paddr, vm_size_t req_size)
 	paddr = req_paddr & 0xfffff000;
 	offset = req_paddr - paddr;
 
-	va = kmem_alloc_pageable(kernel_map, size);
+	va = kmem_alloc_pageable(&kernel_map, size);
 	if (va == (vm_offset_t) 0)
 		return (va);
 
@@ -193,7 +193,7 @@ dpt_unphysmap(u_int8_t * vaddr, vm_size_t size)
 		pmap_kremove((vm_offset_t) vaddr + ndx);
 	}
 
-	kmem_free(kernel_map, (vm_offset_t) vaddr, size);
+	kmem_free(&kernel_map, (vm_offset_t) vaddr, size);
 }
 
 /**

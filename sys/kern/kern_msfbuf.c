@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.18 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.19 2006/12/28 21:24:01 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -118,8 +118,8 @@ msf_buf_init(void *__dummy)
 
 	TAILQ_INIT(&msf_buf_freelist);
 
-	msf_base = kmem_alloc_nofault(kernel_map,
-					msf_buf_count * XIO_INTERNAL_SIZE);
+	msf_base = kmem_alloc_nofault(&kernel_map,
+				      msf_buf_count * XIO_INTERNAL_SIZE);
 
 	msf_bufs = kmalloc(msf_buf_count * sizeof(struct msf_buf), M_MSFBUF,
 			M_WAITOK|M_ZERO);

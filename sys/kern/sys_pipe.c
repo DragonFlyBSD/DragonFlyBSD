@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.43 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.44 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -315,9 +315,9 @@ pipespace(struct pipe *cpipe, int size)
 	 */
 	if (object == NULL || object->size != npages) {
 		object = vm_object_allocate(OBJT_DEFAULT, npages);
-		buffer = (caddr_t) vm_map_min(kernel_map);
+		buffer = (caddr_t)vm_map_min(&kernel_map);
 
-		error = vm_map_find(kernel_map, object, 0,
+		error = vm_map_find(&kernel_map, object, 0,
 				    (vm_offset_t *)&buffer, size,
 				    1,
 				    VM_MAPTYPE_NORMAL,
@@ -677,7 +677,7 @@ pipe_build_write_buffer(struct pipe *wpipe, struct uio *uio)
 	case PIPE_SFBUF2:
 		if (wpipe->pipe_kva == NULL) {
 			wpipe->pipe_kva = 
-			    kmem_alloc_nofault(kernel_map, XIO_INTERNAL_SIZE);
+			    kmem_alloc_nofault(&kernel_map, XIO_INTERNAL_SIZE);
 			wpipe->pipe_kvamask = 0;
 		}
 		if (wpipe->pipe_feature == PIPE_KMEM) {
@@ -732,7 +732,7 @@ pipe_clone_write_buffer(struct pipe *wpipe)
 	xio_release(&wpipe->pipe_map);
 	if (wpipe->pipe_kva) {
 		pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
-		kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
+		kmem_free(&kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
 		wpipe->pipe_kva = NULL;
 	}
 }
@@ -803,7 +803,7 @@ retry:
 			xio_release(&wpipe->pipe_map);
 			if (wpipe->pipe_kva) {
 				pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
-				kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
+				kmem_free(&kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
 				wpipe->pipe_kva = NULL;
 			}
 			pipeunlock(wpipe);
@@ -1348,7 +1348,7 @@ pipe_free_kmem(struct pipe *cpipe)
 	if (cpipe->pipe_buffer.buffer != NULL) {
 		if (cpipe->pipe_buffer.size > PIPE_SIZE)
 			--pipe_nbig;
-		kmem_free(kernel_map,
+		kmem_free(&kernel_map,
 			(vm_offset_t)cpipe->pipe_buffer.buffer,
 			cpipe->pipe_buffer.size);
 		cpipe->pipe_buffer.buffer = NULL;
@@ -1399,7 +1399,7 @@ pipeclose(struct pipe *cpipe)
 
 	if (cpipe->pipe_kva) {
 		pmap_qremove(cpipe->pipe_kva, XIO_INTERNAL_PAGES);
-		kmem_free(kernel_map, cpipe->pipe_kva, XIO_INTERNAL_SIZE);
+		kmem_free(&kernel_map, cpipe->pipe_kva, XIO_INTERNAL_SIZE);
 		cpipe->pipe_kva = NULL;
 	}
 

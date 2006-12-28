@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.11 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.12 2006/12/28 21:23:57 dillon Exp $
  *
  */
 
@@ -92,10 +92,10 @@ enum _pdq_type_t {
 #define	PDQ_OS_MEMFREE(p, n)		kfree((void *) p, M_DEVBUF)
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	PDQ_OS_MEMALLOC_CONTIG(n)	vm_page_alloc_contig(n, 0, 0xffffffff, PAGE_SIZE)
-#define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)
+#define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(&kernel_map, (vm_offset_t) p, n)
 #else
-#define	PDQ_OS_MEMALLOC_CONTIG(n)	kmem_alloc(kernel_map, round_page(n))
-#define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)
+#define	PDQ_OS_MEMALLOC_CONTIG(n)	kmem_alloc(&kernel_map, round_page(n))
+#define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(&kernel_map, (vm_offset_t) p, n)
 #endif /* __FreeBSD__ */
 
 #include <vm/pmap.h>

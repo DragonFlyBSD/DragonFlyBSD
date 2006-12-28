@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.16 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.17 2006/12/28 21:24:00 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -845,7 +845,7 @@ vesa_unmap_buffer(vm_offset_t vaddr, size_t size)
 #if VESA_DEBUG > 1
 	kprintf("vesa_unmap_buffer: vaddr:%x size:%x\n", vaddr, size);
 #endif
-	kmem_free(kernel_map, vaddr, size);
+	kmem_free(&kernel_map, vaddr, size);
 }
 
 /* entry points */

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.22 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.23 2006/12/28 21:24:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -179,7 +179,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		totsize = round_page(z->zsize * nentries);
 		zone_kmem_kvaspace += totsize;
 
-		z->zkva = kmem_alloc_pageable(kernel_map, totsize);
+		z->zkva = kmem_alloc_pageable(&kernel_map, totsize);
 		if (z->zkva == 0) {
 			zlist = z->znext;
 			return 0;
@@ -353,7 +353,7 @@ zget(vm_zone_t z)
 		 */
 		nbytes = z->zalloc * PAGE_SIZE;
 
-		item = (void *)kmem_alloc3(kernel_map, nbytes, KM_KRESERVE);
+		item = (void *)kmem_alloc3(&kernel_map, nbytes, KM_KRESERVE);
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
@@ -369,7 +369,7 @@ zget(vm_zone_t z)
 		 */
 		nbytes = z->zalloc * PAGE_SIZE;
 
-		item = (void *)kmem_alloc3(kernel_map, nbytes, 0);
+		item = (void *)kmem_alloc3(&kernel_map, nbytes, 0);
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {

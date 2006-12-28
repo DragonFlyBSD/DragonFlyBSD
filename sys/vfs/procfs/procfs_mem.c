@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.11 2004/10/12 19:29:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.12 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	writing = uio->uio_rw == UIO_WRITE;
 	reqprot = writing ? (VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE) : VM_PROT_READ;
 
-	kva = kmem_alloc_pageable(kernel_map, PAGE_SIZE);
+	kva = kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 
 	/*
 	 * Only map in one page at a time.  We don't have to, but it
@@ -214,7 +214,7 @@ again:
 		crit_exit();
 	} while (error == 0 && uio->uio_resid > 0);
 
-	kmem_free(kernel_map, kva, PAGE_SIZE);
+	kmem_free(&kernel_map, kva, PAGE_SIZE);
 	vmspace_free(vm);
 	return (error);
 }

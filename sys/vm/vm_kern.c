@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.25 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.26 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -85,10 +85,10 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 
-vm_map_t kernel_map=0;
-vm_map_t exec_map=0;
-vm_map_t clean_map=0;
-vm_map_t buffer_map=0;
+struct vm_map kernel_map;
+struct vm_map exec_map;
+struct vm_map clean_map;
+struct vm_map buffer_map;
 
 /*
  *	kmem_alloc_pageable:
@@ -149,7 +149,6 @@ vm_offset_t
 kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 {
 	vm_offset_t addr;
-	vm_offset_t offset;
 	vm_offset_t i;
 	int count;
 
@@ -177,10 +176,9 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 			vm_map_entry_release(count);
 		return (0);
 	}
-	offset = addr - KvaStart;
 	vm_object_reference(&kernel_object);
 	vm_map_insert(map, &count,
-		      &kernel_object, offset, addr, addr + size,
+		      &kernel_object, addr, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
 		      0);
@@ -211,7 +209,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	for (i = 0; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
-		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(offset + i),
+		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
 			    VM_ALLOC_ZERO | VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		if ((mem->flags & PG_ZERO) == 0)
 			vm_page_zero_fill(mem);
@@ -247,22 +245,21 @@ kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
 /*
  *	kmem_suballoc:
  *
- *	Allocates a map to manage a subrange
- *	of the kernel virtual address space.
- *
- *	Arguments are as follows:
+ *	Used to break a system map into smaller maps, usually to reduce
+ *	contention and to provide large KVA spaces for subsystems like the
+ *	buffer cache.
  *
  *	parent		Map to take range from
+ *	result	
  *	size		Size of range to find
  *	min, max	Returned endpoints of map
  *	pageable	Can the region be paged
  */
-vm_map_t
-kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
-    vm_size_t size)
+void
+kmem_suballoc(vm_map_t parent, vm_map_t result,
+	      vm_offset_t *min, vm_offset_t *max, vm_size_t size)
 {
 	int ret;
-	vm_map_t result;
 
 	size = round_page(size);
 
@@ -279,12 +276,9 @@ kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
 	}
 	*max = *min + size;
 	pmap_reference(vm_map_pmap(parent));
-	result = vm_map_create(vm_map_pmap(parent), *min, *max);
-	if (result == NULL)
-		panic("kmem_suballoc: cannot create submap");
+	vm_map_init(result, *min, *max, vm_map_pmap(parent));
 	if ((ret = vm_map_submap(parent, *min, *max, result)) != KERN_SUCCESS)
 		panic("kmem_suballoc: unable to change range to submap");
-	return (result);
 }
 
 /*
@@ -356,10 +350,13 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 /*
  * 	kmem_init:
  *
- *	Create the kernel map; insert a mapping covering kernel text, 
- *	data, bss, and all space allocated thus far (`boostrap' data).
- *	That is, the area (0,start) and (end,KvaEnd) must be marked
- *	as allocated.
+ *	Create the kernel_map and insert mappings to cover areas already
+ *	allocated or reserved thus far.  That is, the area (KvaStart,start)
+ *	and (end,KvaEnd) must be marked as allocated.
+ *
+ *	We could use a min_offset of 0 instead of KvaStart, but since the
+ *	min_offset is not used for any calculations other then a bounds check
+ *	it does not effect readability.  KvaStart is more appropriate.
  *
  *	Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
  */
@@ -369,22 +366,25 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_t m;
 	int count;
 
-	m = vm_map_create(kernel_pmap, KvaStart, KvaEnd);
+	m = vm_map_create(&kernel_map, kernel_pmap, KvaStart, KvaEnd);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
-	kernel_map = m;
-	kernel_map->system_map = 1;
+	m->system_map = 1;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-		      KvaStart, start,
-		      VM_MAPTYPE_NORMAL,
-		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
-	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-		      end, KvaEnd,
-		      VM_MAPTYPE_NORMAL,
-		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
+	if (KvaStart != start) {
+		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
+			      KvaStart, start,
+			      VM_MAPTYPE_NORMAL,
+			      VM_PROT_ALL, VM_PROT_ALL,
+			      0);
+	}
+	if (KvaEnd != end) {
+		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
+			      end, KvaEnd,
+			      VM_MAPTYPE_NORMAL,
+			      VM_PROT_ALL, VM_PROT_ALL,
+			      0);
+	}
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);
 	vm_map_entry_release(count);

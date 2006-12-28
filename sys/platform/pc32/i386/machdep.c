@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.107 2006/12/27 20:41:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.108 2006/12/28 21:24:02 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -248,7 +248,7 @@ cpu_startup(void *dummy)
 	vm_offset_t minaddr;
 	vm_offset_t maxaddr;
 	vm_size_t size = 0;
-	int firstaddr;
+	vm_offset_t firstaddr;
 
 	if (boothowto & RB_VERBOSE)
 		bootverbose++;
@@ -331,10 +331,8 @@ again:
 	 * Do not allow the buffer_map to be more then 1/2 the size of the
 	 * kernel_map.
 	 */
-	if (nbuf > (kernel_map->max_offset - kernel_map->min_offset) / 
-	    (BKVASIZE * 2)) {
-		nbuf = (kernel_map->max_offset - kernel_map->min_offset) / 
-		    (BKVASIZE * 2);
+	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
+		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
 		kprintf("Warning: nbufs capped at %d\n", nbuf);
 	}
 
@@ -355,7 +353,7 @@ again:
 	 */
 	if (firstaddr == 0) {
 		size = (vm_size_t)(v - firstaddr);
-		firstaddr = (int)kmem_alloc(kernel_map, round_page(size));
+		firstaddr = kmem_alloc(&kernel_map, round_page(size));
 		if (firstaddr == 0)
 			panic("startup: no room for tables");
 		goto again;
@@ -367,16 +365,16 @@ again:
 	if ((vm_size_t)(v - firstaddr) != size)
 		panic("startup: table size inconsistency");
 
-	clean_map = kmem_suballoc(kernel_map, &clean_sva, &clean_eva,
-			(nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
-	buffer_map = kmem_suballoc(clean_map, &buffer_sva, &buffer_eva,
-				(nbuf*BKVASIZE));
-	buffer_map->system_map = 1;
-	pager_map = kmem_suballoc(clean_map, &pager_sva, &pager_eva,
-				(nswbuf*MAXPHYS) + pager_map_size);
-	pager_map->system_map = 1;
-	exec_map = kmem_suballoc(kernel_map, &minaddr, &maxaddr,
-				(16*(ARG_MAX+(PAGE_SIZE*3))));
+	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
+		      (nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
+	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
+		      (nbuf*BKVASIZE));
+	buffer_map.system_map = 1;
+	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
+		      (nswbuf*MAXPHYS) + pager_map_size);
+	pager_map.system_map = 1;
+	kmem_suballoc(&kernel_map, &exec_map, &minaddr, &maxaddr,
+		      (16*(ARG_MAX+(PAGE_SIZE*3))));
 
 #if defined(USERCONFIG)
 	userconfig();
@@ -2076,7 +2074,7 @@ f00f_hack(void *unused)
 
 	r_idt.rd_limit = sizeof(idt0) - 1;
 
-	tmp = kmem_alloc(kernel_map, PAGE_SIZE * 2);
+	tmp = kmem_alloc(&kernel_map, PAGE_SIZE * 2);
 	if (tmp == 0)
 		panic("kmem_alloc returned 0");
 	if (((unsigned int)tmp & (PAGE_SIZE-1)) != 0)
@@ -2087,7 +2085,7 @@ f00f_hack(void *unused)
 	r_idt.rd_base = (int)new_idt;
 	lidt(&r_idt);
 	idt = new_idt;
-	if (vm_map_protect(kernel_map, tmp, tmp + PAGE_SIZE,
+	if (vm_map_protect(&kernel_map, tmp, tmp + PAGE_SIZE,
 			   VM_PROT_READ, FALSE) != KERN_SUCCESS)
 		panic("vm_map_protect failed");
 	return;

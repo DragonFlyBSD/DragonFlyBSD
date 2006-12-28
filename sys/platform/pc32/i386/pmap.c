@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.65 2006/12/28 18:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.66 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -533,7 +533,7 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (struct pv_entry *) kmem_alloc(kernel_map,
+	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
 		initial_pvs * sizeof (struct pv_entry));
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
 	    vm_page_array_size);
@@ -1037,7 +1037,7 @@ void
 pmap_pinit0(struct pmap *pmap)
 {
 	pmap->pm_pdir =
-		(pd_entry_t *)kmem_alloc_pageable(kernel_map, PAGE_SIZE);
+		(pd_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 	pmap_kenter((vm_offset_t)pmap->pm_pdir, (vm_offset_t) IdlePTD);
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
@@ -1061,7 +1061,7 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if (pmap->pm_pdir == NULL) {
 		pmap->pm_pdir =
-			(pd_entry_t *)kmem_alloc_pageable(kernel_map, PAGE_SIZE);
+		    (pd_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 	}
 
 	/*
@@ -3110,7 +3110,7 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_nofault(kernel_map, size);
+	va = kmem_alloc_nofault(&kernel_map, size);
 	if (!va)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 
@@ -3137,7 +3137,7 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 	offset = va & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 	pmap_qremove(va, size >> PAGE_SHIFT);
-	kmem_free(kernel_map, base, size);
+	kmem_free(&kernel_map, base, size);
 }
 
 /*

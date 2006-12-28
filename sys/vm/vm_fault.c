@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.32 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.33 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -791,7 +791,7 @@ readrest:
 			 * around having the machine panic on a kernel space
 			 * fault w/ I/O error.
 			 */
-			if (((fs->map != kernel_map) && (rv == VM_PAGER_ERROR)) ||
+			if (((fs->map != &kernel_map) && (rv == VM_PAGER_ERROR)) ||
 				(rv == VM_PAGER_BAD)) {
 				vm_page_free(fs->m);
 				fs->m = NULL;

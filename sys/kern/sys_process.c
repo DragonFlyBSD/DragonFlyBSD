@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.25 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.26 2006/12/28 21:24:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (kernel_map, object, IDX_TO_OFF(pindex),
+	rv = vm_map_find (&kernel_map, object, IDX_TO_OFF(pindex),
 			  &kva, PAGE_SIZE, 
 			  0, 
 			  VM_MAPTYPE_NORMAL,
@@ -92,13 +92,13 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	if (!rv) {
 		vm_object_reference (object);
 
-		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 			*retval = 0;
 			bcopy ((caddr_t)kva + page_offset,
 			       retval, sizeof *retval);
 		}
-		vm_map_remove (kernel_map, kva, kva + PAGE_SIZE);
+		vm_map_remove (&kernel_map, kva, kva + PAGE_SIZE);
 	}
 
 	return rv;
@@ -172,7 +172,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 		return EFAULT;
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (kernel_map, object, IDX_TO_OFF(pindex),
+	rv = vm_map_find (&kernel_map, object, IDX_TO_OFF(pindex),
 			  &kva, PAGE_SIZE,
 			  0,
 			  VM_MAPTYPE_NORMAL,
@@ -181,11 +181,11 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	if (!rv) {
 		vm_object_reference (object);
 
-		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 		  bcopy (&datum, (caddr_t)kva + page_offset, sizeof datum);
 		}
-		vm_map_remove (kernel_map, kva, kva + PAGE_SIZE);
+		vm_map_remove (&kernel_map, kva, kva + PAGE_SIZE);
 	}
 
 	if (fix_prot)

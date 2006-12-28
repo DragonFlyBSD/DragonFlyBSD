@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.84 2006/12/28 18:29:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.85 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -441,10 +441,10 @@ bufinit(void)
  * from buf_daemon.
  */
 
-	bogus_offset = kmem_alloc_pageable(kernel_map, PAGE_SIZE);
+	bogus_offset = kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 	bogus_page = vm_page_alloc(&kernel_object,
-			((bogus_offset - KvaStart) >> PAGE_SHIFT),
-			VM_ALLOC_NORMAL);
+				   (bogus_offset >> PAGE_SHIFT),
+				   VM_ALLOC_NORMAL);
 	vmstats.v_wire_count++;
 
 }
@@ -543,14 +543,14 @@ bfreekva(struct buf *bp)
 	if (bp->b_kvasize) {
 		++buffreekvacnt;
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-		vm_map_lock(buffer_map);
+		vm_map_lock(&buffer_map);
 		bufspace -= bp->b_kvasize;
-		vm_map_delete(buffer_map,
+		vm_map_delete(&buffer_map,
 		    (vm_offset_t) bp->b_kvabase,
 		    (vm_offset_t) bp->b_kvabase + bp->b_kvasize,
 		    &count
 		);
-		vm_map_unlock(buffer_map);
+		vm_map_unlock(&buffer_map);
 		vm_map_entry_release(count);
 		bp->b_kvasize = 0;
 		bufspacewakeup();
@@ -1791,16 +1791,16 @@ restart:
 			bfreekva(bp);
 
 			count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-			vm_map_lock(buffer_map);
+			vm_map_lock(&buffer_map);
 
-			if (vm_map_findspace(buffer_map,
-				    vm_map_min(buffer_map), maxsize,
+			if (vm_map_findspace(&buffer_map,
+				    vm_map_min(&buffer_map), maxsize,
 				    maxsize, &addr)) {
 				/*
 				 * Uh oh.  Buffer map is too fragmented.  We
 				 * must defragment the map.
 				 */
-				vm_map_unlock(buffer_map);
+				vm_map_unlock(&buffer_map);
 				vm_map_entry_release(count);
 				++bufdefragcnt;
 				defrag = 1;
@@ -1809,7 +1809,7 @@ restart:
 				goto restart;
 			}
 			if (addr) {
-				vm_map_insert(buffer_map, &count,
+				vm_map_insert(&buffer_map, &count,
 					NULL, 0,
 					addr, addr + maxsize,
 					VM_MAPTYPE_NORMAL,
@@ -1821,7 +1821,7 @@ restart:
 				bufspace += bp->b_kvasize;
 				++bufreusecnt;
 			}
-			vm_map_unlock(buffer_map);
+			vm_map_unlock(&buffer_map);
 			vm_map_entry_release(count);
 		}
 		bp->b_data = bp->b_kvabase;
@@ -3342,8 +3342,8 @@ tryagain:
 		 * process we are.
 		 */
 		p = vm_page_alloc(&kernel_object,
-			((pg - KvaStart) >> PAGE_SHIFT),
-			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
+				  (pg >> PAGE_SHIFT),
+				  VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 		if (!p) {
 			vm_pageout_deficit += (to - from) >> PAGE_SHIFT;
 			vm_wait();

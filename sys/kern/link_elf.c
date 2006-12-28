@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.25 2006/12/28 21:24:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -554,8 +554,8 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	goto out;
     }
     vm_object_reference(ef->object);
-    ef->address = (caddr_t) vm_map_min(kernel_map);
-    error = vm_map_find(kernel_map, ef->object, 0,
+    ef->address = (caddr_t)vm_map_min(&kernel_map);
+    error = vm_map_find(&kernel_map, ef->object, 0,
 			(vm_offset_t *)&ef->address, mapsize,
 			1,
 			VM_MAPTYPE_NORMAL,
@@ -581,7 +581,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
 	if (error) {
 #ifdef SPARSE_MAPPING
-	    vm_map_remove(kernel_map, (vm_offset_t) ef->address,
+	    vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
 			  (vm_offset_t) ef->address
 			  + (ef->object->size << PAGE_SHIFT));
 	    vm_object_deallocate(ef->object);
@@ -598,10 +598,10 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	/*
 	 * Wire down the pages
 	 */
-	vm_map_wire(kernel_map,
-			(vm_offset_t) segbase,
-			(vm_offset_t) segbase + segs[i]->p_memsz,
-			0);
+	vm_map_wire(&kernel_map,
+		    (vm_offset_t) segbase,
+		    (vm_offset_t) segbase + segs[i]->p_memsz,
+		    0);
 #endif
     }
 
@@ -610,7 +610,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     lf = linker_make_file(filename, ef, &link_elf_file_ops);
     if (lf == NULL) {
 #ifdef SPARSE_MAPPING
-	vm_map_remove(kernel_map, (vm_offset_t) ef->address,
+	vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
 		      (vm_offset_t) ef->address
 		      + (ef->object->size << PAGE_SHIFT));
 	vm_object_deallocate(ef->object);
@@ -711,7 +711,7 @@ link_elf_unload_file(linker_file_t file)
     if (ef) {
 #ifdef SPARSE_MAPPING
 	if (ef->object) {
-	    vm_map_remove(kernel_map, (vm_offset_t) ef->address,
+	    vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
 			  (vm_offset_t) ef->address
 			  + (ef->object->size << PAGE_SHIFT));
 	    vm_object_deallocate(ef->object);

@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.20 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.21 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*		Change History:
@@ -1220,7 +1220,8 @@ meteor_close(struct dev_close_args *ap)
 
 #ifdef METEOR_DEALLOC_PAGES
 	if (mtr->bigbuf != NULL) {
-		kmem_free(kernel_map,mtr->bigbuf,(mtr->alloc_pages*PAGE_SIZE));
+		kmem_free(&kernel_map, mtr->bigbuf,
+			  (mtr->alloc_pages * PAGE_SIZE));
 		mtr->bigbuf = NULL;
 		mtr->alloc_pages = 0;
 	}
@@ -1228,7 +1229,7 @@ meteor_close(struct dev_close_args *ap)
 #ifdef METEOR_DEALLOC_ABOVE
 	if (mtr->bigbuf != NULL && mtr->alloc_pages > METEOR_DEALLOC_ABOVE) {
 		temp = METEOR_DEALLOC_ABOVE - mtr->alloc_pages;
-		kmem_free(kernel_map,
+		kmem_free(&kernel_map,
 			  mtr->bigbuf+((mtr->alloc_pages - temp) * PAGE_SIZE),
 			  (temp * PAGE_SIZE));
 		mtr->alloc_pages = METEOR_DEALLOC_ABOVE;
@@ -1759,7 +1760,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 			) {
 				buf = get_meteor_mem(unit, temp*PAGE_SIZE);
 				if(buf != 0) {
-					kmem_free(kernel_map, mtr->bigbuf,
+					kmem_free(&kernel_map, mtr->bigbuf,
 					  (mtr->alloc_pages * PAGE_SIZE));
 					mtr->bigbuf = buf;
 					mtr->alloc_pages = temp;

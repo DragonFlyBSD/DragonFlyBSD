@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.28 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.29 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ vm_object_init(void)
 {
 	TAILQ_INIT(&vm_object_list);
 	
-	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaSize),
+	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
 			    &kernel_object);
 
 	obj_zone = &obj_zone_store;
@@ -1769,11 +1769,11 @@ vm_object_in_map(vm_object_t object)
 	allproc_scan(vm_object_in_map_callback, &info);
 	if (info.rv)
 		return 1;
-	if( _vm_object_in_map( kernel_map, object, 0))
+	if( _vm_object_in_map(&kernel_map, object, 0))
 		return 1;
-	if( _vm_object_in_map( pager_map, object, 0))
+	if( _vm_object_in_map(&pager_map, object, 0))
 		return 1;
-	if( _vm_object_in_map( buffer_map, object, 0))
+	if( _vm_object_in_map(&buffer_map, object, 0))
 		return 1;
 	return 0;
 }

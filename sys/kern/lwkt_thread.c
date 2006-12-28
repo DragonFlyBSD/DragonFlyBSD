@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.104 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.105 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -265,7 +265,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
 #ifdef _KERNEL
-	    kmem_free(kernel_map, (vm_offset_t)stack, td->td_kstack_size);
+	    kmem_free(&kernel_map, (vm_offset_t)stack, td->td_kstack_size);
 #else
 	    libcaps_free_stack(stack, td->td_kstack_size);
 #endif
@@ -274,7 +274,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
     }
     if (stack == NULL) {
 #ifdef _KERNEL
-	stack = (void *)kmem_alloc(kernel_map, stksize);
+	stack = (void *)kmem_alloc(&kernel_map, stksize);
 #else
 	stack = libcaps_alloc_stack(stksize);
 #endif
@@ -412,7 +412,7 @@ lwkt_free_thread(thread_t td)
 	crit_exit_gd(gd);
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
 #ifdef _KERNEL
-	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+	    kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
 #else
 	    libcaps_free_stack(td->td_kstack, td->td_kstack_size);
 #endif

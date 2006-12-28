@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.54 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.55 2006/12/28 21:24:02 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2075,7 +2075,7 @@ start_all_aps(u_int boot_addr)
 		pg = x * i386_btop(sizeof(struct privatespace));
 
 		/* allocate new private data page(s) */
-		gd = (struct mdglobaldata *)kmem_alloc(kernel_map, 
+		gd = (struct mdglobaldata *)kmem_alloc(&kernel_map, 
 				MDGLOBALDATA_BASEALLOC_SIZE);
 		/* wire it into the private page table page */
 		for (i = 0; i < MDGLOBALDATA_BASEALLOC_SIZE; i += PAGE_SIZE) {
@@ -2090,7 +2090,7 @@ start_all_aps(u_int boot_addr)
 		SMPpt[pg + 3] = 0;		/* *gd_PMAP1 */
 
 		/* allocate and set up an idle stack data page */
-		stack = (char *)kmem_alloc(kernel_map, UPAGES*PAGE_SIZE);
+		stack = (char *)kmem_alloc(&kernel_map, UPAGES*PAGE_SIZE);
 		for (i = 0; i < UPAGES; i++) {
 			SMPpt[pg + 4 + i] = (pt_entry_t)
 			    (PG_V | PG_RW | vtophys_pte(PAGE_SIZE * i + stack));
@@ -2111,7 +2111,7 @@ start_all_aps(u_int boot_addr)
 		gd->gd_CADDR2 = ps->CPAGE2;
 		gd->gd_CADDR3 = ps->CPAGE3;
 		gd->gd_PADDR1 = (unsigned *)ps->PPAGE1;
-		gd->mi.gd_ipiq = (void *)kmem_alloc(kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
+		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
 		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
 
 		/* setup a vector to our boot code */
@@ -2154,7 +2154,7 @@ start_all_aps(u_int boot_addr)
 
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(kernel_map, sizeof(lwkt_ipiq) * ncpus);
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
 	/* fill in our (BSP) APIC version */

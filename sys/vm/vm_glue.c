@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.46 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.47 2006/12/28 21:24:02 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -142,16 +142,16 @@ kernacc(c_caddr_t addr, int len, int rw)
 	/*
 	 * Nominal kernel memory access - check access via kernel_map.
 	 */
-	if ((vm_offset_t)addr + len > kernel_map->max_offset ||
+	if ((vm_offset_t)addr + len > kernel_map.max_offset ||
 	    (vm_offset_t)addr + len < (vm_offset_t)addr) {
 		return (FALSE);
 	}
 	prot = rw;
 	saddr = trunc_page((vm_offset_t)addr);
 	eaddr = round_page((vm_offset_t)addr + len);
-	vm_map_lock_read(kernel_map);
-	rv = vm_map_check_protection(kernel_map, saddr, eaddr, prot);
-	vm_map_unlock_read(kernel_map);
+	vm_map_lock_read(&kernel_map);
+	rv = vm_map_check_protection(&kernel_map, saddr, eaddr, prot);
+	vm_map_unlock_read(&kernel_map);
 	return (rv == TRUE);
 }
 

@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.20 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.21 2006/12/28 21:23:59 dillon Exp $
  */
 
 /*
@@ -1681,7 +1681,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 
                                 buf = get_bktr_mem(unit, temp*PAGE_SIZE);
                                 if (buf != 0) {
-                                        kmem_free(kernel_map, bktr->bigbuf,
+                                        kmem_free(&kernel_map, bktr->bigbuf,
                                           (bktr->alloc_pages * PAGE_SIZE));
 
 					bktr->bigbuf = buf;

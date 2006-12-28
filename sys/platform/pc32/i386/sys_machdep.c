@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.28 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.29 2006/12/28 21:24:02 dillon Exp $
  *
  */
 
@@ -126,8 +126,8 @@ i386_extend_pcb(struct lwp *lp)
 		0			/* granularity */
 	};
 
-	ext = (struct pcb_ext *)kmem_alloc(kernel_map, ctob(IOPAGES+1));
-	if (ext == 0)
+	ext = (struct pcb_ext *)kmem_alloc(&kernel_map, ctob(IOPAGES+1));
+	if (ext == NULL)
 		return (ENOMEM);
 	bzero(ext, sizeof(struct pcb_ext)); 
 	ext->ext_tss.tss_esp0 = (unsigned)((char *)lp->lwp_thread->td_pcb - 16);
@@ -301,8 +301,8 @@ user_ldt_alloc(struct pcb *pcb, int len)
 		return NULL;
 
 	new_ldt->ldt_len = len = NEW_MAX_LD(len);
-	new_ldt->ldt_base = (caddr_t)kmem_alloc(kernel_map,
-		len * sizeof(union descriptor));
+	new_ldt->ldt_base = (caddr_t)kmem_alloc(&kernel_map,
+					        len * sizeof(union descriptor));
 	if (new_ldt->ldt_base == NULL) {
 		FREE(new_ldt, M_SUBPROC);
 		return NULL;
@@ -342,8 +342,8 @@ user_ldt_free(struct pcb *pcb)
 	crit_exit();
 
 	if (--pcb_ldt->ldt_refcnt == 0) {
-		kmem_free(kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
-			pcb_ldt->ldt_len * sizeof(union descriptor));
+		kmem_free(&kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
+			  pcb_ldt->ldt_len * sizeof(union descriptor));
 		FREE(pcb_ldt, M_SUBPROC);
 	}
 }
@@ -430,8 +430,8 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 			return ENOMEM;
 		if (pcb_ldt) {
 			pcb_ldt->ldt_sd = new_ldt->ldt_sd;
-			kmem_free(kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
-				pcb_ldt->ldt_len * sizeof(union descriptor));
+			kmem_free(&kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
+				  pcb_ldt->ldt_len * sizeof(union descriptor));
 			pcb_ldt->ldt_base = new_ldt->ldt_base;
 			pcb_ldt->ldt_len = new_ldt->ldt_len;
 			FREE(new_ldt, M_SUBPROC);
@@ -451,18 +451,18 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 	}
 
 	descs_size = uap->num * sizeof(union descriptor);
-	descs = (union descriptor *)kmem_alloc(kernel_map, descs_size);
+	descs = (union descriptor *)kmem_alloc(&kernel_map, descs_size);
 	if (descs == NULL)
 		return (ENOMEM);
 	error = copyin(&uap->descs[0], descs, descs_size);
 	if (error) {
-		kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+		kmem_free(&kernel_map, (vm_offset_t)descs, descs_size);
 		return (error);
 	}
 	/* Check descriptors for access violations */
 	error = check_descs(descs, uap->num);
 	if (error) {
-		kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+		kmem_free(&kernel_map, (vm_offset_t)descs, descs_size);
 		return (error);
 	}
 
@@ -479,7 +479,7 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 	*res = uap->start;
 
 	crit_exit();
-	kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+	kmem_free(&kernel_map, (vm_offset_t)descs, descs_size);
 	return (0);
 }
 

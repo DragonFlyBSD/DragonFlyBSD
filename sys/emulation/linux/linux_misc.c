@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.32 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.33 2006/12/28 21:24:02 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -312,7 +312,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	locked = 0;
 
 	/* Pull in executable header into kernel_map */
-	error = vm_mmap(kernel_map, (vm_offset_t *)&a_out, PAGE_SIZE,
+	error = vm_mmap(&kernel_map, (vm_offset_t *)&a_out, PAGE_SIZE,
 	    VM_PROT_READ, VM_PROT_READ, 0, (caddr_t)vp, 0);
 	if (error)
 		goto cleanup;
@@ -393,7 +393,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 			goto cleanup;
 
 		/* map file into kernel_map */
-		error = vm_mmap(kernel_map, &buffer,
+		error = vm_mmap(&kernel_map, &buffer,
 		    round_page(a_out->a_text + a_out->a_data + file_offset),
 		    VM_PROT_READ, VM_PROT_READ, 0, (caddr_t)vp,
 		    trunc_page(file_offset));
@@ -405,7 +405,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		    (caddr_t)vmaddr, a_out->a_text + a_out->a_data);
 
 		/* release temporary kernel space */
-		vm_map_remove(kernel_map, buffer, buffer +
+		vm_map_remove(&kernel_map, buffer, buffer +
 		    round_page(a_out->a_text + a_out->a_data + file_offset));
 
 		if (error)
@@ -459,7 +459,7 @@ cleanup:
 	}
 	/* Release the kernel mapping. */
 	if (a_out) {
-		vm_map_remove(kernel_map, (vm_offset_t)a_out,
+		vm_map_remove(&kernel_map, (vm_offset_t)a_out,
 		    (vm_offset_t)a_out + PAGE_SIZE);
 	}
 	nlookup_done(&nd);

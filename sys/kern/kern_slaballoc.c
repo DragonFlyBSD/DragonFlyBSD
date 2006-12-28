@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.45 2006/12/28 18:29:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.46 2006/12/28 21:24:01 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1035,13 +1035,11 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 {
     vm_size_t i;
     vm_offset_t addr;
-    vm_offset_t offset;
     int count, vmflags, base_vmflags;
     thread_t td;
-    vm_map_t map = kernel_map;
 
     size = round_page(size);
-    addr = vm_map_min(map);
+    addr = vm_map_min(&kernel_map);
 
     /*
      * Reserve properly aligned space from kernel_map.  RNOWAIT allocations
@@ -1055,9 +1053,9 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
-    vm_map_lock(map);
-    if (vm_map_findspace(map, vm_map_min(map), size, align, &addr)) {
-	vm_map_unlock(map);
+    vm_map_lock(&kernel_map);
+    if (vm_map_findspace(&kernel_map, addr, size, align, &addr)) {
+	vm_map_unlock(&kernel_map);
 	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
@@ -1065,10 +1063,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	rel_mplock();
 	return(NULL);
     }
-    offset = addr - KvaStart;
+
+    /*
+     * kernel_object maps 1:1 to kernel_map.
+     */
     vm_object_reference(&kernel_object);
-    vm_map_insert(map, &count, 
-		    &kernel_object, offset, addr, addr + size,
+    vm_map_insert(&kernel_map, &count, 
+		    &kernel_object, addr, addr, addr + size,
 		    VM_MAPTYPE_NORMAL,
 		    VM_PROT_ALL, VM_PROT_ALL,
 		    0);
@@ -1091,7 +1092,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      */
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
-	vm_pindex_t idx = OFF_TO_IDX(offset + i);
 
 	/*
 	 * VM_ALLOC_NORMAL can only be set if we are not preempting.
@@ -1109,7 +1109,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		vmflags |= VM_ALLOC_NORMAL;
 	}
 
-	m = vm_page_alloc(&kernel_object, idx, vmflags);
+	m = vm_page_alloc(&kernel_object, OFF_TO_IDX(addr + i), vmflags);
 
 	/*
 	 * If the allocation failed we either return NULL or we retry.
@@ -1123,13 +1123,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	if (m == NULL) {
 	    if (flags & M_WAITOK) {
 		if (td->td_preempted) {
-		    vm_map_unlock(map);
+		    vm_map_unlock(&kernel_map);
 		    lwkt_yield();
-		    vm_map_lock(map);
+		    vm_map_lock(&kernel_map);
 		} else {
-		    vm_map_unlock(map);
+		    vm_map_unlock(&kernel_map);
 		    vm_wait();
-		    vm_map_lock(map);
+		    vm_map_lock(&kernel_map);
 		}
 		i -= PAGE_SIZE;	/* retry */
 		continue;
@@ -1140,11 +1140,11 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	     */
 	    while (i != 0) {
 		i -= PAGE_SIZE;
-		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(offset + i));
+		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 		vm_page_free(m);
 	    }
-	    vm_map_delete(map, addr, addr + size, &count);
-	    vm_map_unlock(map);
+	    vm_map_delete(&kernel_map, addr, addr + size, &count);
+	    vm_map_unlock(&kernel_map);
 	    crit_exit();
 	    vm_map_entry_release(count);
 	    rel_mplock();
@@ -1158,7 +1158,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      * Mark the map entry as non-pageable using a routine that allows us to
      * populate the underlying pages.
      */
-    vm_map_set_wired_quick(map, addr, size, &count);
+    vm_map_set_wired_quick(&kernel_map, addr, size, &count);
     crit_exit();
 
     /*
@@ -1167,7 +1167,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 
-	m = vm_page_lookup(&kernel_object, OFF_TO_IDX(offset + i));
+	m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_wire(m);
 	vm_page_wakeup(m);
@@ -1177,7 +1177,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	vm_page_flag_clear(m, PG_ZERO);
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_REFERENCED);
     }
-    vm_map_unlock(map);
+    vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);
     rel_mplock();
     return((void *)addr);
@@ -1193,7 +1193,7 @@ kmem_slab_free(void *ptr, vm_size_t size)
 {
     get_mplock();
     crit_enter();
-    vm_map_remove(kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
+    vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
     crit_exit();
     rel_mplock();
 }

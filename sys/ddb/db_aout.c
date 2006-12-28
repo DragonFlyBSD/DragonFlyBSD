@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.7 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_aout.c,v 1.8 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -361,7 +361,7 @@ read_symtab_from_file(struct file *fp, char *symtab_name)
 	table_size = sizeof(int) + symsize + strsize;
 	table_size = (table_size + sizeof(int)-1) & ~(sizeof(int)-1);
 
-	symtab = kmem_alloc_wired(kernel_map, table_size);
+	symtab = kmem_alloc_wired(&kernel_map, table_size);
 
 	*(int *)symtab = symsize;
 

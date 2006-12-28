@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.c,v 1.18 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.c,v 1.6 2006/11/07 17:51:22 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_break.c,v 1.7 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -295,8 +295,8 @@ boolean_t
 db_map_equal(vm_map_t map1, vm_map_t map2)
 {
 	return ((map1 == map2) ||
-		((map1 == NULL) && (map2 == kernel_map)) ||
-		((map1 == kernel_map) && (map2 == NULL)));
+		((map1 == NULL) && (map2 == &kernel_map)) ||
+		((map1 == &kernel_map) && (map2 == NULL)));
 }
 
 boolean_t
@@ -306,7 +306,7 @@ db_map_current(vm_map_t map)
 	thread_t	thread;
 
 	return ((map == NULL) ||
-		(map == kernel_map) ||
+		(map == &kernel_map) ||
 		(((thread = current_thread()) != NULL) &&
 		 (map == thread->task->map)));
 #else
@@ -317,5 +317,5 @@ db_map_current(vm_map_t map)
 vm_map_t
 db_map_addr(vm_offset_t addr)
 {
-	return kernel_map;
+	return &kernel_map;
 }
