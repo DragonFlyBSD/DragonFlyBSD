@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.100 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.101 2006/12/28 18:29:03 dillon Exp $
  */
 
 /*
@@ -179,8 +179,8 @@ vfs_subr_init(void)
 	 */
 	/* desiredvnodes = maxproc + vmstats.v_page_count / 4; */
 	desiredvnodes =
-		min(maxproc + vmstats.v_page_count /4,
-		    2 * (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) /
+		min(maxproc + vmstats.v_page_count / 4,
+		    2 * KvaSize /
 		    (5 * (sizeof(struct vm_object) + sizeof(struct vnode))));
 
 	lwkt_token_init(&spechash_token);

@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.44 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.45 2006/12/28 18:29:03 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -222,8 +222,8 @@ kmeminit(void *dummy)
     vm_pindex_t npg;
 
     limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
-    if (limsize > VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS)
-	limsize = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
+    if (limsize > KvaSize)
+	limsize = KvaSize;
 
     usesize = (int)(limsize / 1024);	/* convert to KB */
 
@@ -236,8 +236,9 @@ kmeminit(void *dummy)
     ZoneMask = ZoneSize - 1;
     ZonePageCount = ZoneSize / PAGE_SIZE;
 
-    npg = (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) / PAGE_SIZE;
-    kmemusage = kmem_slab_alloc(npg * sizeof(struct kmemusage), PAGE_SIZE, M_WAITOK|M_ZERO);
+    npg = KvaSize / PAGE_SIZE;
+    kmemusage = kmem_slab_alloc(npg * sizeof(struct kmemusage), 
+				PAGE_SIZE, M_WAITOK|M_ZERO);
 
     for (i = 0; i < arysize(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
@@ -265,8 +266,8 @@ malloc_init(void *data)
 	panic("malloc_init not allowed before vm init");
 
     limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
-    if (limsize > VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS)
-	limsize = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
+    if (limsize > KvaSize)
+	limsize = KvaSize;
     type->ks_limit = limsize / 10;
 
     type->ks_next = kmemstatistics;
@@ -542,9 +543,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 			((intptr_t)chunk & IN_SAME_PAGE_MASK));
 #endif
 #ifdef INVARIANTS
-		if ((uintptr_t)chunk < VM_MIN_KERNEL_ADDRESS)
+		if ((vm_offset_t)chunk < KvaStart || (vm_offset_t)chunk >= KvaEnd)
 			panic("chunk %p FFPG %d/%d", chunk, z->z_FirstFreePg, ZonePageCount);
-		if (chunk->c_Next && (uintptr_t)chunk->c_Next < VM_MIN_KERNEL_ADDRESS)
+		if (chunk->c_Next && (vm_offset_t)chunk->c_Next < KvaStart)
 			panic("chunkNEXT %p %p FFPG %d/%d", chunk, chunk->c_Next, z->z_FirstFreePg, ZonePageCount);
 		chunk_mark_allocated(z, chunk);
 #endif
@@ -926,13 +927,13 @@ kfree(void *ptr, struct malloc_type *type)
      * z_FirstFreePg.
      */
 #ifdef INVARIANTS
-    if ((uintptr_t)chunk < VM_MIN_KERNEL_ADDRESS)
+    if ((vm_offset_t)chunk < KvaStart || (vm_offset_t)chunk >= KvaEnd)
 	panic("BADFREE %p", chunk);
 #endif
     chunk->c_Next = z->z_PageAry[pgno];
     z->z_PageAry[pgno] = chunk;
 #ifdef INVARIANTS
-    if (chunk->c_Next && (uintptr_t)chunk->c_Next < VM_MIN_KERNEL_ADDRESS)
+    if (chunk->c_Next && (vm_offset_t)chunk->c_Next < KvaStart)
 	panic("BADFREE2");
 #endif
     if (z->z_FirstFreePg > pgno)
@@ -1064,10 +1065,10 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	rel_mplock();
 	return(NULL);
     }
-    offset = addr - VM_MIN_KERNEL_ADDRESS;
-    vm_object_reference(kernel_object);
+    offset = addr - KvaStart;
+    vm_object_reference(&kernel_object);
     vm_map_insert(map, &count, 
-		    kernel_object, offset, addr, addr + size,
+		    &kernel_object, offset, addr, addr + size,
 		    VM_MAPTYPE_NORMAL,
 		    VM_PROT_ALL, VM_PROT_ALL,
 		    0);
@@ -1108,7 +1109,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		vmflags |= VM_ALLOC_NORMAL;
 	}
 
-	m = vm_page_alloc(kernel_object, idx, vmflags);
+	m = vm_page_alloc(&kernel_object, idx, vmflags);
 
 	/*
 	 * If the allocation failed we either return NULL or we retry.
@@ -1139,7 +1140,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	     */
 	    while (i != 0) {
 		i -= PAGE_SIZE;
-		m = vm_page_lookup(kernel_object, OFF_TO_IDX(offset + i));
+		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(offset + i));
 		vm_page_free(m);
 	    }
 	    vm_map_delete(map, addr, addr + size, &count);
@@ -1166,7 +1167,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 
-	m = vm_page_lookup(kernel_object, OFF_TO_IDX(offset + i));
+	m = vm_page_lookup(&kernel_object, OFF_TO_IDX(offset + i));
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_wire(m);
 	vm_page_wakeup(m);

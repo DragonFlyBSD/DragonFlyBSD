@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.24 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.25 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -177,10 +177,10 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 			vm_map_entry_release(count);
 		return (0);
 	}
-	offset = addr - VM_MIN_KERNEL_ADDRESS;
-	vm_object_reference(kernel_object);
+	offset = addr - KvaStart;
+	vm_object_reference(&kernel_object);
 	vm_map_insert(map, &count,
-		      kernel_object, offset, addr, addr + size,
+		      &kernel_object, offset, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
 		      0);
@@ -211,7 +211,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	for (i = 0; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
-		mem = vm_page_grab(kernel_object, OFF_TO_IDX(offset + i),
+		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(offset + i),
 			    VM_ALLOC_ZERO | VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		if ((mem->flags & PG_ZERO) == 0)
 			vm_page_zero_fill(mem);
@@ -288,165 +288,6 @@ kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
 }
 
 /*
- *	kmem_malloc:
- *
- * 	Allocate wired-down memory in the kernel's address map for the higher
- * 	level kernel memory allocator (kern/kern_malloc.c).  We cannot use
- * 	kmem_alloc() because we may need to allocate memory at interrupt
- * 	level where we cannot block (canwait == FALSE).
- *
- * 	We don't worry about expanding the map (adding entries) since entries
- * 	for wired maps are statically allocated.
- *
- *	NOTE:  Please see kmem_slab_alloc() for a better explanation of the
- *	M_* flags.
- */
-vm_offset_t
-kmem_malloc(vm_map_t map, vm_size_t size, int flags)
-{
-	vm_offset_t offset, i;
-	vm_map_entry_t entry;
-	vm_offset_t addr;
-	vm_page_t m;
-	int count, vmflags, wanted_reserve;
-	thread_t td;
-
-	if (map != kernel_map)
-		panic("kmem_malloc: map != kernel_map");
-
-	size = round_page(size);
-	addr = vm_map_min(map);
-
-	/*
-	 * Locate sufficient space in the map.  This will give us the final
-	 * virtual address for the new memory, and thus will tell us the
-	 * offset within the kernel map.  If we are unable to allocate space
-	 * and neither RNOWAIT or NULLOK is set, we panic.
-	 */
-	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
-		vm_map_unlock(map);
-		vm_map_entry_release(count);
-		if ((flags & M_NULLOK) == 0) {
-			panic("kmem_malloc(%ld): kernel_map too small: "
-				"%ld total allocated",
-				(long)size, (long)map->size);
-		}
-		return (0);
-	}
-	offset = addr - VM_MIN_KERNEL_ADDRESS;
-	vm_object_reference(kmem_object);
-	vm_map_insert(map, &count,
-		      kmem_object, offset, addr, addr + size,
-		      VM_MAPTYPE_NORMAL,
-		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
-
-	td = curthread;
-	wanted_reserve = 0;
-
-	vmflags = VM_ALLOC_SYSTEM;	/* XXX M_USE_RESERVE? */
-	if ((flags & (M_WAITOK|M_RNOWAIT)) == 0)
-		panic("kmem_malloc: bad flags %08x (%p)\n", flags, ((int **)&map)[-1]);
-	if (flags & M_USE_INTERRUPT_RESERVE)
-		vmflags |= VM_ALLOC_INTERRUPT;
-
-	for (i = 0; i < size; i += PAGE_SIZE) {
-		/*
-		 * Only allocate PQ_CACHE pages for M_WAITOK requests and 
-		 * then only if we are not preempting.
-		 */
-		if (flags & M_WAITOK) {
-			if (td->td_preempted) {
-				vmflags &= ~VM_ALLOC_NORMAL;
-				wanted_reserve = 1;
-			} else {
-				vmflags |= VM_ALLOC_NORMAL;
-				wanted_reserve = 0;
-			}
-		}
-
-		m = vm_page_alloc(kmem_object, OFF_TO_IDX(offset + i), vmflags);
-
-		/*
-		 * Ran out of space, free everything up and return.  Don't need
-		 * to lock page queues here as we know that the pages we got
-		 * aren't on any queues.
-		 *
-		 * If M_WAITOK is set we can yield or block.
-		 */
-		if (m == NULL) {
-			if (flags & M_WAITOK) {
-				if (wanted_reserve) {
-					vm_map_unlock(map);
-					lwkt_yield();
-					vm_map_lock(map);
-				} else {
-					vm_map_unlock(map);
-					vm_wait();
-					vm_map_lock(map);
-				}
-				i -= PAGE_SIZE;	/* retry */
-				continue;
-			}
-			/* 
-			 * Free the pages before removing the map entry.
-			 * They are already marked busy.  Calling
-			 * vm_map_delete before the pages has been freed or
-			 * unbusied will cause a deadlock.
-			 */
-			while (i != 0) {
-				i -= PAGE_SIZE;
-				m = vm_page_lookup(kmem_object,
-						   OFF_TO_IDX(offset + i));
-				vm_page_free(m);
-			}
-			vm_map_delete(map, addr, addr + size, &count);
-			vm_map_unlock(map);
-			vm_map_entry_release(count);
-			return (0);
-		}
-		vm_page_flag_clear(m, PG_ZERO);
-		m->valid = VM_PAGE_BITS_ALL;
-	}
-
-	/*
-	 * Mark map entry as non-pageable. Assert: vm_map_insert() will never
-	 * be able to extend the previous entry so there will be a new entry
-	 * exactly corresponding to this address range and it will have
-	 * wired_count == 0.
-	 */
-	if (!vm_map_lookup_entry(map, addr, &entry) ||
-	    entry->start != addr || entry->end != addr + size ||
-	    entry->wired_count != 0)
-		panic("kmem_malloc: entry not found or misaligned");
-	entry->wired_count = 1;
-
-	vm_map_simplify_entry(map, entry, &count);
-
-	/*
-	 * Loop thru pages, entering them in the pmap. (We cannot add them to
-	 * the wired count without wrapping the vm_page_queue_lock in
-	 * splimp...)
-	 */
-	for (i = 0; i < size; i += PAGE_SIZE) {
-		m = vm_page_lookup(kmem_object, OFF_TO_IDX(offset + i));
-		vm_page_wire(m);
-		vm_page_wakeup(m);
-		/*
-		 * Because this is kernel_pmap, this call will not block.
-		 */
-		pmap_enter(kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
-		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_REFERENCED);
-	}
-	vm_map_unlock(map);
-	vm_map_entry_release(count);
-
-	return (addr);
-}
-
-/*
  *	kmem_alloc_wait:
  *
  *	Allocates pageable memory from a sub-map of the kernel.  If the submap
@@ -516,9 +357,9 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
  * 	kmem_init:
  *
  *	Create the kernel map; insert a mapping covering kernel text, 
- *	data, bss, and all space allocated thus far (`boostrap' data).  The 
- *	new map will thus map the range between VM_MIN_KERNEL_ADDRESS and 
- *	`start' as allocated, and the range between `start' and `end' as free.
+ *	data, bss, and all space allocated thus far (`boostrap' data).
+ *	That is, the area (0,start) and (end,KvaEnd) must be marked
+ *	as allocated.
  *
  *	Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
  */
@@ -528,14 +369,19 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_t m;
 	int count;
 
-	m = vm_map_create(kernel_pmap, VM_MIN_KERNEL_ADDRESS, end);
+	m = vm_map_create(kernel_pmap, KvaStart, KvaEnd);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
 	kernel_map = m;
 	kernel_map->system_map = 1;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-		      VM_MIN_KERNEL_ADDRESS, start,
+		      KvaStart, start,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL,
+		      0);
+	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
+		      end, KvaEnd,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
 		      0);

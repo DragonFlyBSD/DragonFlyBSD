@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.24 2006/12/17 20:07:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.25 2006/12/28 18:29:03 dillon Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			/*
 			 * minor device 1 is kernel memory, /dev/kmem 
 			 */
-			vm_offset_t addr, eaddr;
+			vm_offset_t saddr, eaddr;
 			c = iov->iov_len;
 
 			/*
@@ -192,22 +192,23 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			 * resident so that we don't create any zero-fill
 			 * pages.
 			 */
-			addr = trunc_page(uio->uio_offset);
+			saddr = trunc_page(uio->uio_offset);
 			eaddr = round_page(uio->uio_offset + c);
 
-			if (addr < (vm_offset_t)VADDR(PTDPTDI, 0))
+			if (saddr < KvaStart)
 				return EFAULT;
-			if (eaddr >= (vm_offset_t)VADDR(APTDPTDI, 0))
+			if (eaddr >= KvaEnd)
 				return EFAULT;
-			for (; addr < eaddr; addr += PAGE_SIZE) 
-				if (pmap_extract(kernel_pmap, addr) == 0)
+			for (; saddr < eaddr; saddr += PAGE_SIZE)  {
+				if (pmap_extract(kernel_pmap, saddr) == 0)
 					return EFAULT;
+			}
 			
 			if (!kernacc((caddr_t)(int)uio->uio_offset, c,
 			    uio->uio_rw == UIO_READ ? 
 			    VM_PROT_READ : VM_PROT_WRITE))
 				return (EFAULT);
-			error = uiomove((caddr_t)(int)uio->uio_offset, (int)c, uio);
+			error = uiomove((caddr_t)(vm_offset_t)uio->uio_offset, (int)c, uio);
 			continue;
 		}
 		case 2:

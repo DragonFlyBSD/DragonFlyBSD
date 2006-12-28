@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.83 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.84 2006/12/28 18:29:03 dillon Exp $
  */
 
 /*
@@ -442,8 +442,8 @@ bufinit(void)
  */
 
 	bogus_offset = kmem_alloc_pageable(kernel_map, PAGE_SIZE);
-	bogus_page = vm_page_alloc(kernel_object,
-			((bogus_offset - VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT),
+	bogus_page = vm_page_alloc(&kernel_object,
+			((bogus_offset - KvaStart) >> PAGE_SHIFT),
 			VM_ALLOC_NORMAL);
 	vmstats.v_wire_count++;
 
@@ -3341,8 +3341,8 @@ tryagain:
 		 * could intefere with paging I/O, no matter which
 		 * process we are.
 		 */
-		p = vm_page_alloc(kernel_object,
-			((pg - VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT),
+		p = vm_page_alloc(&kernel_object,
+			((pg - KvaStart) >> PAGE_SHIFT),
 			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 		if (!p) {
 			vm_pageout_deficit += (to - from) >> PAGE_SHIFT;

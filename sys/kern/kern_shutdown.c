@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.45 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.46 2006/12/28 18:29:03 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -77,6 +77,7 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>		/* smp_active_mask, cpuid */
+#include <machine/vmparam.h>
 
 #include <sys/signalvar.h>
 

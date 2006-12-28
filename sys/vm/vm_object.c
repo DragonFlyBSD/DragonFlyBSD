@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.27 2006/12/02 23:13:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.28 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -125,11 +125,9 @@ static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
  */
 
 struct object_q vm_object_list;
+struct vm_object kernel_object;
+
 static long vm_object_count;		/* count of all objects */
-vm_object_t kernel_object;
-vm_object_t kmem_object;
-static struct vm_object kernel_object_store;
-static struct vm_object kmem_object_store;
 extern int vm_pageout_page_count;
 
 static long object_collapses;
@@ -193,13 +191,8 @@ vm_object_init(void)
 {
 	TAILQ_INIT(&vm_object_list);
 	
-	kernel_object = &kernel_object_store;
-	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS),
-	    kernel_object);
-
-	kmem_object = &kmem_object_store;
-	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS),
-	    kmem_object);
+	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaSize),
+			    &kernel_object);
 
 	obj_zone = &obj_zone_store;
 	zbootinit(obj_zone, "VM OBJECT", sizeof (struct vm_object),

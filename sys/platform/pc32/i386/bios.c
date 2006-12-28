@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.13 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.14 2006/12/28 18:29:04 dillon Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
+#include <machine/vmparam.h>
 #include <machine/globaldata.h>
 #include <machine/pc/bios.h>
 

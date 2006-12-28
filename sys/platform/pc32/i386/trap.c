@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.87 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.88 2006/12/28 18:29:04 dillon Exp $
  */
 
 /*
@@ -914,7 +914,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		ftype = VM_PROT_READ;
 
 	va = trunc_page(eva);
-	if (va < VM_MIN_KERNEL_ADDRESS) {
+	if (va < KvaStart) {
 		vm_offset_t v;
 		vm_page_t mpte;
 

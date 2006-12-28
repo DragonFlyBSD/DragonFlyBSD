@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.28 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.29 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -409,7 +409,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	vm_object_pip_add(object, count);
 
 	vm_pager_put_pages(object, mc, count,
-	    (flags | ((object == kernel_object) ? VM_PAGER_PUT_SYNC : 0)),
+	    (flags | ((object == &kernel_object) ? VM_PAGER_PUT_SYNC : 0)),
 	    pageout_status);
 
 	for (i = 0; i < count; i++) {

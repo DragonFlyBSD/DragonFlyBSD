@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.11 2006/12/02 23:13:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.12 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -199,8 +199,7 @@ extern struct object_q vm_object_list;	/* list of allocated objects */
 
  /* lock for object list and count */
 
-extern vm_object_t kernel_object;	/* the single kernel object */
-extern vm_object_t kmem_object;
+extern struct vm_object kernel_object;	/* the single kernel object */
 
 #endif				/* _KERNEL */
 

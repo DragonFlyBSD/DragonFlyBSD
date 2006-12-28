@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.19 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.20 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -415,9 +415,9 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		crit_exit();
 		return (0);
 	}
-	vm_object_reference(kernel_object);
+	vm_object_reference(&kernel_object);
 	vm_map_insert(map, &count, 
-		      kernel_object, addr - VM_MIN_KERNEL_ADDRESS,
+		      &kernel_object, addr - KvaStart,
 		      addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
@@ -428,8 +428,8 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	tmp_addr = addr;
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
 		vm_page_t m = &pga[i];
-		vm_page_insert(m, kernel_object,
-			OFF_TO_IDX(tmp_addr - VM_MIN_KERNEL_ADDRESS));
+		vm_page_insert(m, &kernel_object,
+			OFF_TO_IDX(tmp_addr - KvaStart));
 		if ((flags & M_ZERO) && !(m->flags & PG_ZERO))
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->flags = 0;

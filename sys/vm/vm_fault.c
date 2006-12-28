@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.31 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.32 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -559,8 +559,7 @@ vm_fault_object(struct faultstate *fs,
 			crit_exit();
 
 			if (((fs->m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) &&
-			    fs->m->object != kernel_object &&
-			    fs->m->object != kmem_object) {
+			    fs->m->object != &kernel_object) {
 				goto readrest;
 			}
 			break; /* break to PAGE HAS BEEN FOUND */

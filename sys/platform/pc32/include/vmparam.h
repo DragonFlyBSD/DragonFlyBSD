@@ -37,7 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/vmparam.h,v 1.8 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/vmparam.h,v 1.9 2006/12/28 18:29:06 dillon Exp $
  */
 
 
@@ -90,9 +90,6 @@
  * Because of the page that is both a PD and PT, it looks a little
  * messy at times, but hey, we'll do anything to save a page :-)
  */
-
-#define VM_MAX_KERNEL_ADDRESS	VADDR(KPTDI+NKPDE-1, NPTEPG-1)
-#define VM_MIN_KERNEL_ADDRESS	VADDR(PTDPTDI, PTDPTDI)
 
 #define	KERNBASE		VADDR(KPTDI, 0)
 

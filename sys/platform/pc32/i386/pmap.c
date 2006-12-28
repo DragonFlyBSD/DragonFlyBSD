@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.64 2006/12/26 22:50:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.65 2006/12/28 18:29:04 dillon Exp $
  */
 
 /*
@@ -153,6 +153,9 @@ vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
 vm_offset_t virtual_start;	/* VA of first avail page (after kernel bss) */
 vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
+vm_offset_t KvaStart;		/* VA start of KVA space */
+vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
+vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 static int pgeflag;		/* PG_G or-in */
 static int pseflag;		/* PG_PS or-in */
@@ -314,6 +317,10 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	int i;
 	int pg;
 
+	KvaStart = (vm_offset_t)VADDR(PTDPTDI, 0);
+	KvaSize = (vm_offset_t)VADDR(APTDPTDI, 0) - KvaStart;
+	KvaEnd  = KvaStart + KvaSize;
+
 	avail_start = firstaddr;
 
 	/*
@@ -326,8 +333,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	 */
 	virtual_start = (vm_offset_t) KERNBASE + firstaddr;
 	virtual_start = pmap_kmem_choose(virtual_start);
-
-	virtual_end = VM_MAX_KERNEL_ADDRESS;
+	virtual_end = VADDR(KPTDI+NKPDE-1, NPTEPG-1);
 
 	/*
 	 * Initialize protection array.
@@ -1345,7 +1351,7 @@ pmap_release_callback(struct vm_page *p, void *data)
 static int
 kvm_size(SYSCTL_HANDLER_ARGS)
 {
-	unsigned long ksize = VM_MAX_KERNEL_ADDRESS - KERNBASE;
+	unsigned long ksize = KvaSize;
 
         return sysctl_handle_long(oidp, &ksize, 0, req);
 }
@@ -1355,7 +1361,7 @@ SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_LONG|CTLFLAG_RD,
 static int
 kvm_free(SYSCTL_HANDLER_ARGS)
 {
-	unsigned long kfree = VM_MAX_KERNEL_ADDRESS - kernel_vm_end;
+	unsigned long kfree = virtual_end - kernel_vm_end;
 
         return sysctl_handle_long(oidp, &kfree, 0, req);
 }
@@ -1929,7 +1935,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 	va &= PG_FRAME;
 #ifdef PMAP_DIAGNOSTIC
-	if (va > VM_MAX_KERNEL_ADDRESS)
+	if (va >= KvaEnd)
 		panic("pmap_enter: toobig");
 	if ((va >= UPT_MIN_ADDRESS) && (va < UPT_MAX_ADDRESS))
 		panic("pmap_enter: invalid to pmap_enter page table pages (va: 0x%x)", va);

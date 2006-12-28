@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.6 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.7 2006/12/28 18:29:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,8 @@
 
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
+
+#include <machine/vmparam.h>
 
 static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_common *vc,
 						  void *id);

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.19 2006/10/20 17:02:09 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.20 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -90,6 +90,32 @@
 struct proc;
 struct thread;
 struct vm_page;
+
+/*
+ * Most of these variables represent parameters set up by low level MD kernel
+ * boot code to be used by higher level MI initialization code to identify
+ * the portions of kernel and physical memory which are free for allocation.
+ *
+ * KvaStart/KvaEnd/	- Reserved Kernel Virtual Memory address space.
+ * KvaSize		  This range represents the entire KVA space but
+ *			  might omit certain special mapping areas.  It is
+ *			  used to determine what kernel memory userland has
+ *			  access to.
+ *
+ * virtual_{start,end}	- KVA space available for allocation, not including
+ *			  KVA space reserved during MD startup.  Used by
+ *			  the KMEM subsystem, used to initialize kernel_map.
+ *
+ * phys_avail[]		- Array of {start,end} physical addresses, not
+ *			  including physical memory allocated by MD startup
+ *			  code.  Used to initialize the VM subsystem.
+ */
+extern vm_offset_t KvaStart;
+extern vm_offset_t KvaEnd;
+extern vm_offset_t KvaSize;
+extern vm_offset_t virtual_start;
+extern vm_offset_t virtual_end;
+extern vm_paddr_t phys_avail[];	
 
 void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t);
 void		 pmap_clear_modify (struct vm_page *m);

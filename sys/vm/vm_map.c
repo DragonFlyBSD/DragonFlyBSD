@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.52 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.53 2006/12/28 18:29:08 dillon Exp $
  */
 
 /*
@@ -2508,7 +2508,7 @@ again:
 
 		offidxend = offidxstart + count;
 
-		if ((object == kernel_object) || (object == kmem_object)) {
+		if (object == &kernel_object) {
 			vm_object_page_remove(object, offidxstart, offidxend, FALSE);
 		} else {
 			pmap_remove(map->pmap, s, e);
