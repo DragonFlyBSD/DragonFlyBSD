@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.26 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.27 2006/12/29 17:10:20 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -461,8 +461,8 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	 */
 #ifdef DEBUG
 	if (prtrealloc)
-		kprintf("realloc: ino %d, lbns %d-%d\n\told:", ip->i_number,
-		    start_lbn, end_lbn);
+		kprintf("realloc: ino %ju, lbns %d-%d\n\told:",
+		    (uintmax_t)ip->i_number, start_lbn, end_lbn);
 #endif
 	blkno = newblk;
 	for (bap = &sbap[soff], i = 0; i < len; i++, blkno += fs->fs_frag) {
