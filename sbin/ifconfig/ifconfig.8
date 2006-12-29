@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.14 2006/12/19 00:11:09 dillon Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.15 2006/12/29 20:50:55 swildner Exp $
 .\"
 .Dd November 19, 2006
 .Dt IFCONFIG 8
@@ -1451,9 +1451,6 @@ This information is not printed by default, as it may be considered
 sensitive.
 .Pp
 Only the super-user may modify the configuration of a network interface.
-.Sh NOTES
-The media selection system is relatively new and only some drivers support
-it (or have need for it).
 .Sh DIAGNOSTICS
 Messages indicating the specified interface does not exist, the
 requested address is unknown, or the user is not privileged and
