@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.95 2006/12/26 11:27:44 sephe Exp $
+# $DragonFly: src/Makefile.inc1,v 1.96 2006/12/29 22:43:32 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -774,7 +774,7 @@ bootstrap-tools:
     usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
     usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
     usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
-    usr.bin/vi usr.bin/cap_mkdb usr.bin/vgrind usr.bin/true usr.bin/false \
+    usr.bin/cap_mkdb usr.bin/true usr.bin/false \
     usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
     usr.bin/tail \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
