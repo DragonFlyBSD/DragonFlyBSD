@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.19 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.20 2006/12/29 00:10:35 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -435,7 +435,6 @@ static void clear_mode_map(video_adapter_t *, u_char **, int, int);
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
 static int map_mode_num(int);
 #endif
-static int map_gen_mode_num(int, int, int);
 static int map_bios_mode_num(int, int, int);
 static u_char *get_mode_param(int);
 #ifndef VGA_NO_BIOS
@@ -586,58 +585,6 @@ map_mode_num(int mode)
     return mode;
 }
 #endif /* !VGA_NO_BIOS && !VGA_NO_MODE_CHANGE */
-
-/* map a generic video mode to a known mode number */
-static int
-map_gen_mode_num(int type, int color, int mode)
-{
-    static struct {
-	int from;
-	int to_color;
-	int to_mono;
-    } mode_map[] = {
-	{ M_TEXT_80x30,	M_VGA_C80x30, M_VGA_M80x30, },
-	{ M_TEXT_80x43,	M_ENH_C80x43, M_ENH_B80x43, },
-	{ M_TEXT_80x50,	M_VGA_C80x50, M_VGA_M80x50, },
-	{ M_TEXT_80x60,	M_VGA_C80x60, M_VGA_M80x60, },
-    };
-    int i;
-
-    if (mode == M_TEXT_80x25) {
-	switch (type) {
-
-	case KD_VGA:
-	    if (color)
-		return M_VGA_C80x25;
-	    else
-		return M_VGA_M80x25;
-	    break;
-
-	case KD_EGA:
-	    if (color)
-		return M_ENH_C80x25;
-	    else
-		return M_EGAMONO80x25;
-	    break;
-
-	case KD_CGA:
-	    return M_C80x25;
-
-	case KD_MONO:
-	case KD_HERCULES:
-	    return M_EGAMONO80x25;	/* XXX: this name is confusing */
-
- 	default:
-	    return -1;
-	}
-    }
-
-    for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
-        if (mode_map[i].from == mode)
-            return ((color) ? mode_map[i].to_color : mode_map[i].to_mono);
-    }
-    return mode;
-}
 
 /* turn the BIOS video number into our video mode number */
 static int
@@ -1395,7 +1342,6 @@ vga_get_info(video_adapter_t *adp, int mode, video_info_t *info)
     if (!vga_init_done)
 	return ENXIO;
 
-    mode = map_gen_mode_num(adp->va_type, adp->va_flags & V_ADP_COLOR, mode);
 #ifndef VGA_NO_MODE_CHANGE
     if (adp->va_flags & V_ADP_MODECHANGE) {
 	/*
@@ -1518,8 +1464,6 @@ vga_set_mode(video_adapter_t *adp, int mode)
 
     prologue(adp, V_ADP_MODECHANGE, ENODEV);
 
-    mode = map_gen_mode_num(adp->va_type, 
-			    adp->va_flags & V_ADP_COLOR, mode);
     if (vga_get_info(adp, mode, &info))
 	return EINVAL;
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.17 2006/12/28 21:24:00 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.18 2006/12/29 00:10:35 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -197,7 +197,6 @@ static int vesa_bios_set_line_length(int pixel, int *bytes, int *lines);
 static int vesa_bios_get_start(int *x, int *y);
 #endif
 static int vesa_bios_set_start(int x, int y);
-static int vesa_map_gen_mode_num(int type, int color, int mode);
 static int vesa_translate_flags(uint16_t vflags);
 static int vesa_translate_mmodel(uint8_t vmodel);
 static void *vesa_fix_ptr(uint32_t p, uint16_t seg, uint16_t off, 
@@ -526,28 +525,6 @@ vesa_bios_set_start(int x, int y)
 	vmf.vmf_ecx = x;
 	err = vm86_intcall(0x10, &vmf);
 	return ((err != 0) || (vmf.vmf_ax != 0x4f));
-}
-
-/* map a generic video mode to a known mode */
-static int
-vesa_map_gen_mode_num(int type, int color, int mode)
-{
-	static struct {
-		int from;
-		int to;
-	} mode_map[] = {
-		{ M_TEXT_132x25, M_VESA_C132x25 },
-		{ M_TEXT_132x43, M_VESA_C132x43 },
-		{ M_TEXT_132x50, M_VESA_C132x50 },
-		{ M_TEXT_132x60, M_VESA_C132x60 },
-	};
-	int i;
-
-	for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
-		if (mode_map[i].from == mode)
-			return mode_map[i].to;
-	}
-	return mode;
 }
 
 static int
@@ -953,8 +930,6 @@ vesa_get_info(video_adapter_t *adp, int mode, video_info_t *info)
 	if (adp != vesa_adp)
 		return 1;
 
-	mode = vesa_map_gen_mode_num(vesa_adp->va_type, 
-				     vesa_adp->va_flags & V_ADP_COLOR, mode);
 	for (i = 0; vesa_vmode[i].vi_mode != EOT; ++i) {
 		if (vesa_vmode[i].vi_mode == NA)
 			continue;
@@ -1014,8 +989,6 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 	if (adp != vesa_adp)
 		return (*prevvidsw->set_mode)(adp, mode);
 
-	mode = vesa_map_gen_mode_num(adp->va_type, 
-				     adp->va_flags & V_ADP_COLOR, mode);
 #if VESA_DEBUG > 0
 	kprintf("VESA: set_mode(): %d(%x) -> %d(%x)\n",
 		adp->va_mode, adp->va_mode, mode, mode);

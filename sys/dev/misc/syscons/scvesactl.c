@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvesactl.c,v 1.15 2000/01/29 15:08:47 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.8 2006/12/29 00:10:35 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -61,14 +61,6 @@ vesa_ioctl(struct dev_ioctl_args *ap)
 	scp = SC_STAT(tp->t_dev);
 
 	switch (ap->a_cmd) {
-
-	/* generic text modes */
-	case SW_TEXT_132x25: case SW_TEXT_132x30:
-	case SW_TEXT_132x43: case SW_TEXT_132x50:
-	case SW_TEXT_132x60:
-		if (!(scp->sc->adp->va_flags & V_ADP_MODECHANGE))
-			return ENODEV;
-		return sc_set_text_mode(scp, tp, ap->a_cmd & 0xff, 0, 0, 0);
 
 	/* text modes */
 	case SW_VESA_C80x60:

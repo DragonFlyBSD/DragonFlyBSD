@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.10 2005/03/02 06:08:29 joerg Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.11 2006/12/29 00:10:35 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -531,16 +531,15 @@ video_mode(int argc, char **argv, int *mode_index)
 		const char *name;
 		unsigned long mode;
 		unsigned long mode_num;
-	} modes[] = {{ "80x25",        SW_TEXT_80x25,   M_TEXT_80x25 },
-		     { "80x30",        SW_TEXT_80x30,   M_TEXT_80x30 },
-		     { "80x43",        SW_TEXT_80x43,   M_TEXT_80x43 },
-		     { "80x50",        SW_TEXT_80x50,   M_TEXT_80x50 },
-		     { "80x60",        SW_TEXT_80x60,   M_TEXT_80x60 },
-		     { "132x25",       SW_TEXT_132x25,  M_TEXT_132x25 },
-		     { "132x30",       SW_TEXT_132x30,  M_TEXT_132x30 },
-		     { "132x43",       SW_TEXT_132x43,  M_TEXT_132x43 },
-		     { "132x50",       SW_TEXT_132x50,  M_TEXT_132x50 },
-		     { "132x60",       SW_TEXT_132x60,  M_TEXT_132x60 },
+	} modes[] = {{ "80x25",        SW_VGA_C80x25,   M_VGA_C80x25 },
+		     { "80x30",        SW_VGA_C80x30,   M_VGA_C80x30 },
+		     { "80x43",        SW_ENH_C80x43,   M_ENH_C80x43 },
+		     { "80x50",        SW_VGA_C80x50,   M_VGA_C80x50 },
+		     { "80x60",        SW_VGA_C80x60,   M_VGA_C80x60 },
+		     { "132x25",       SW_VESA_C132x25,  M_VESA_C132x25 },
+		     { "132x43",       SW_VESA_C132x43,  M_VESA_C132x43 },
+		     { "132x50",       SW_VESA_C132x50,  M_VESA_C132x50 },
+		     { "132x60",       SW_VESA_C132x60,  M_VESA_C132x60 },
 		     { "VGA_40x25",    SW_VGA_C40x25,   M_VGA_C40x25 },
 		     { "VGA_80x25",    SW_VGA_C80x25,   M_VGA_C80x25 },
 		     { "VGA_80x30",    SW_VGA_C80x30,   M_VGA_C80x30 },

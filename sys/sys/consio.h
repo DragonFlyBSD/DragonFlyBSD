@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
- * $DragonFly: src/sys/sys/consio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/consio.h,v 1.5 2006/12/29 00:10:35 swildner Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_
@@ -372,17 +372,6 @@ typedef struct vt_mode vtmode_t;
 #define SW_VGA_M90x50	_IO('S', M_VGA_M90x50)
 #define SW_VGA_C90x60	_IO('S', M_VGA_C90x60)
 #define SW_VGA_M90x60	_IO('S', M_VGA_M90x60)
-
-#define SW_TEXT_80x25	_IO('S', M_TEXT_80x25)
-#define SW_TEXT_80x30	_IO('S', M_TEXT_80x30)
-#define SW_TEXT_80x43	_IO('S', M_TEXT_80x43)
-#define SW_TEXT_80x50	_IO('S', M_TEXT_80x50)
-#define SW_TEXT_80x60	_IO('S', M_TEXT_80x60)
-#define SW_TEXT_132x25	_IO('S', M_TEXT_132x25)
-#define SW_TEXT_132x30	_IO('S', M_TEXT_132x30)
-#define SW_TEXT_132x43	_IO('S', M_TEXT_132x43)
-#define SW_TEXT_132x50	_IO('S', M_TEXT_132x50)
-#define SW_TEXT_132x60	_IO('S', M_TEXT_132x60)
 
 #define SW_VESA_CG640x400	_IO('V', M_VESA_CG640x400 - M_VESA_BASE)
 #define SW_VESA_CG640x480	_IO('V', M_VESA_CG640x480 - M_VESA_BASE)

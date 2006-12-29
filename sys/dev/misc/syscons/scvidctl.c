@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.15 2006/12/29 00:10:35 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -477,12 +477,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	return fb_ioctl(adp, cmd, data);
 
 #ifndef SC_NO_MODE_CHANGE
-    /* generic text modes */
-    case SW_TEXT_80x25:	case SW_TEXT_80x30:
-    case SW_TEXT_80x43: case SW_TEXT_80x50:
-    case SW_TEXT_80x60:
-	/* FALL THROUGH */
-
     /* VGA TEXT MODES */
     case SW_VGA_C40x25:
     case SW_VGA_C80x25: case SW_VGA_M80x25:

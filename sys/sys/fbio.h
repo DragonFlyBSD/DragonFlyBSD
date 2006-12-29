@@ -37,7 +37,7 @@
  *	@(#)fbio.h	8.2 (Berkeley) 10/30/93
  *
  * $FreeBSD: src/sys/sys/fbio.h,v 1.9.2.1 2000/05/05 09:16:16 nyan Exp $
- * $DragonFly: src/sys/sys/fbio.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/fbio.h,v 1.6 2006/12/29 00:10:35 swildner Exp $
  */
 
 #ifndef _SYS_FBIO_H_
@@ -385,17 +385,6 @@ typedef struct video_adapter_info video_adapter_info_t;
 #define M_HGC_P0	0xe0	/* hercules graphics - page 0 @ B0000 */
 #define M_HGC_P1	0xe1	/* hercules graphics - page 1 @ B8000 */
 #define M_MCA_MODE	0xff	/* monochrome adapter mode */
-
-#define M_TEXT_80x25	200	/* generic text modes */
-#define M_TEXT_80x30	201
-#define M_TEXT_80x43	202
-#define M_TEXT_80x50	203
-#define M_TEXT_80x60	204
-#define M_TEXT_132x25	205
-#define M_TEXT_132x30	206
-#define M_TEXT_132x43	207
-#define M_TEXT_132x50	208
-#define M_TEXT_132x60	209
 
 #define M_VESA_BASE		0x100	/* VESA mode number base */
 #define M_VESA_CG640x400	0x100	/* 640x400, 256 color */
