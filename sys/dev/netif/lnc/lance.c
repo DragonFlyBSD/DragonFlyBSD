@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.5 2006/10/25 20:55:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.6 2006/12/29 15:26:14 corecode Exp $	*/
 
 
 /*-
@@ -341,7 +341,7 @@ lance_get(struct lance_softc *sc, int boff, int totlen)
 {
 	struct ifnet *ifp = sc->ifp;
 	struct mbuf *m0 = NULL, *newm;
-	struct mbuf *m;			/* really is initialized before use */
+	struct mbuf *m = NULL;
 	int mlen;
 
 	if (totlen <= ETHER_HDR_LEN || totlen > LEBLEN - ETHER_CRC_LEN) {
