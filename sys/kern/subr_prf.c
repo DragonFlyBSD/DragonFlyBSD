@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.10 2005/11/21 21:56:14 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.10.4.1 2006/12/29 13:15:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -277,7 +277,7 @@ log_console(struct uio *uio)
 		c = imin(uio->uio_resid, CONSCHUNK);
 		error = uiomove(consbuffer, c, uio);
 		if (error != 0)
-			return;
+			break;
 		for (i = 0; i < c; i++) {
 			msglogchar(consbuffer[i], pri);
 			if (consbuffer[i] == '\n')
@@ -754,7 +754,8 @@ number:
 			if (neg)
 				tmp++;
 
-			if (!ladjust && width && (width -= tmp) > 0)
+			if (!ladjust && padc != '0' && width &&
+			    (width -= tmp) > 0)
 				while (width--)
 					PCHAR(padc);
 			if (neg)
@@ -767,6 +768,9 @@ number:
 					PCHAR('x');
 				}
 			}
+			if (!ladjust && width && (width -= tmp) > 0)
+				while (width--)
+					PCHAR(padc);
 
 			while (*p)
 				PCHAR(*p--);
