@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.40 2006/12/05 23:31:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.41 2006/12/29 18:02:56 victor Exp $
  */
 
 #include "opt_ipsec.h"
@@ -254,10 +254,12 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct proc *p = td->td_proc;
 	unsigned short *lastport;
 	struct sockaddr_in *sin;
+	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct ucred *cred = NULL;
 	u_short lport = 0;
 	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
-	int error, prison = 0;
+	int error;
 
 	KKASSERT(p);
 
@@ -267,6 +269,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		return (EINVAL);	/* already bound */
 	if (!(so->so_options & (SO_REUSEADDR|SO_REUSEPORT)))
 		wild = 1;    /* neither SO_REUSEADDR nor SO_REUSEPORT is set */
+	if (p)
+		cred = p->p_ucred;
 	if (nam != NULL) {
 		sin = (struct sockaddr_in *)nam;
 		if (nam->sa_len != sizeof *sin)
@@ -279,8 +283,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (sin->sin_family != AF_INET)
 			return (EAFNOSUPPORT);
 #endif
-		if (sin->sin_addr.s_addr != INADDR_ANY &&
-		    prison_ip(td, 0, &sin->sin_addr.s_addr))
+		if (!prison_replace_wildcards(td, nam))
 				return (EINVAL);
 		lport = sin->sin_port;
 		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -304,15 +307,13 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED &&
-			    p && suser_cred(p->p_ucred, PRISON_ROOT))
+			    cred && suser_cred(cred, PRISON_ROOT))
 				return (EACCES);
-			if (p && p->p_ucred->cr_prison)
-				prison = 1;
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 				t = in_pcblookup_local(inp->inp_pcbinfo,
 				    sin->sin_addr, lport,
-				    prison ? 0 : INPLOOKUP_WILDCARD);
+				    INPLOOKUP_WILDCARD, cred);
 				if (t &&
 				    (!in_nullhost(sin->sin_addr) ||
 				     !in_nullhost(t->inp_laddr) ||
@@ -329,10 +330,10 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 					return (EADDRINUSE);
 				}
 			}
-			if (prison && prison_ip(td, 0, &sin->sin_addr.s_addr))
+			if (cred && !prison_replace_wildcards(td, nam))
 				return (EADDRNOTAVAIL);
-			t = in_pcblookup_local(pcbinfo, sin->sin_addr,
-			    lport, prison ? 0 : wild);
+			t = in_pcblookup_local(pcbinfo, sin->sin_addr, lport,
+					       wild, cred);
 			if (t && !(reuseport & t->inp_socket->so_options)) {
 #ifdef INET6
 				if (!in_nullhost(sin->sin_addr) ||
@@ -348,11 +349,14 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		ushort first, last;
 		int count;
 
-		if (inp->inp_laddr.s_addr != INADDR_ANY &&
-		    prison_ip(td, 0, &inp->inp_laddr.s_addr )) {
+		jsin.sin_family = AF_INET;
+		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
+		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (EINVAL);
 		}
+		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+
 		inp->inp_flags |= INP_ANONPORT;
 
 		if (inp->inp_flags & INP_HIGHPORT) {
@@ -360,8 +364,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			last  = ipport_hilastauto;
 			lastport = &pcbinfo->lasthi;
 		} else if (inp->inp_flags & INP_LOWPORT) {
-			if (p &&
-			    (error = suser_cred(p->p_ucred, PRISON_ROOT))) {
+			if (cred &&
+			    (error = suser_cred(cred, PRISON_ROOT))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return (error);
 			}
@@ -395,8 +399,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				if (*lastport > first || *lastport < last)
 					*lastport = first;
 				lport = htons(*lastport);
-			} while (in_pcblookup_local(pcbinfo,
-				 inp->inp_laddr, lport, wild));
+			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
+				 lport, wild, cred));
 		} else {
 			/*
 			 * counting up
@@ -412,16 +416,21 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				if (*lastport < first || *lastport > last)
 					*lastport = first;
 				lport = htons(*lastport);
-			} while (in_pcblookup_local(pcbinfo,
-				 inp->inp_laddr, lport, wild));
+			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
+				 lport, wild, cred));
 		}
 	}
 	inp->inp_lport = lport;
-	if (prison_ip(td, 0, &inp->inp_laddr.s_addr)) {
+
+	jsin.sin_family = AF_INET;
+	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
+	if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin)) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
 		return (EINVAL);
 	}
+	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+
 	if (in_pcbinsporthash(inp) != 0) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
@@ -442,10 +451,14 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
  *   have forced minor changes in every protocol).
  */
 int
-in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal_sin)
+in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
+	struct sockaddr_in **plocal_sin, struct thread *td)
 {
 	struct in_ifaddr *ia;
+	struct ucred *cred = NULL;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+	struct sockaddr_in jsin;
+	int jailed = 0;
 
 	if (nam->sa_len != sizeof *sin)
 		return (EINVAL);
@@ -453,6 +466,10 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal
 		return (EAFNOSUPPORT);
 	if (sin->sin_port == 0)
 		return (EADDRNOTAVAIL);
+	if (td && td->td_proc && td->td_proc->p_ucred)
+		cred = td->td_proc->p_ucred;
+	if (cred && cred->cr_prison)
+		jailed = 1;
 	if (!TAILQ_EMPTY(&in_ifaddrhead)) {
 		ia = TAILQ_FIRST(&in_ifaddrhead);
 		/*
@@ -505,19 +522,37 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal
 		 * unless it is the loopback (in case a route
 		 * to our address on another net goes to loopback).
 		 */
-		if (ro->ro_rt && !(ro->ro_rt->rt_ifp->if_flags & IFF_LOOPBACK))
-			ia = ifatoia(ro->ro_rt->rt_ifa);
+		if (ro->ro_rt && !(ro->ro_rt->rt_ifp->if_flags & IFF_LOOPBACK)) {
+			if (jailed) {
+				if (jailed_ip(cred->cr_prison, 
+				    ro->ro_rt->rt_ifa->ifa_addr)) {
+					ia = ifatoia(ro->ro_rt->rt_ifa);
+				}
+			} else {
+				ia = ifatoia(ro->ro_rt->rt_ifa);
+			}
+		}
 		if (ia == NULL) {
 			u_short fport = sin->sin_port;
 
 			sin->sin_port = 0;
 			ia = ifatoia(ifa_ifwithdstaddr(sintosa(sin)));
+			if (ia && jailed && !jailed_ip(cred->cr_prison,
+			    sintosa(&ia->ia_addr)))
+				ia = NULL;
 			if (ia == NULL)
 				ia = ifatoia(ifa_ifwithnet(sintosa(sin)));
+			if (ia && jailed && !jailed_ip(cred->cr_prison,
+			    sintosa(&ia->ia_addr)))
+				ia = NULL;
 			sin->sin_port = fport;
 			if (ia == NULL)
 				ia = TAILQ_FIRST(&in_ifaddrhead);
-			if (ia == NULL)
+			if (ia && jailed && !jailed_ip(cred->cr_prison,
+			    sintosa(&ia->ia_addr)))
+				ia = NULL;
+
+			if (!jailed && ia == NULL)
 				return (EADDRNOTAVAIL);
 		}
 		/*
@@ -525,7 +560,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal
 		 * interface has been set as a multicast option, use the
 		 * address of that interface as our source address.
 		 */
-		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr)) &&
+		if (!jailed && IN_MULTICAST(ntohl(sin->sin_addr.s_addr)) &&
 		    inp->inp_moptions != NULL) {
 			struct ip_moptions *imo;
 			struct ifnet *ifp;
@@ -544,8 +579,17 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal
 		 * Don't do pcblookup call here; return interface in plocal_sin
 		 * and exit to caller, that will do the lookup.
 		 */
-		*plocal_sin = &ia->ia_addr;
-
+		if (jailed) {
+			jsin.sin_family = AF_INET;
+			if (!prison_get_nonlocal(cred->cr_prison,
+			    sintosa(&jsin)) &&
+			    !prison_get_local(cred->cr_prison, sintosa(&jsin)))
+					/* IPv6 only Jail */
+					return (EADDRNOTAVAIL);
+			*plocal_sin = &jsin;
+		} else {
+			*plocal_sin = &ia->ia_addr;
+		}
 	}
 	return (0);
 }
@@ -562,22 +606,10 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct sockaddr_in *if_sin;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-	struct sockaddr_in sa;
-	struct ucred *cr = td->td_proc ? td->td_proc->p_ucred : NULL;
 	int error;
 
-	if (cr && cr->cr_prison != NULL && in_nullhost(inp->inp_laddr)) {
-		bzero(&sa, sizeof sa);
-		sa.sin_addr.s_addr = htonl(cr->cr_prison->pr_ip);
-		sa.sin_len = sizeof sa;
-		sa.sin_family = AF_INET;
-		error = in_pcbbind(inp, (struct sockaddr *)&sa, td);
-		if (error)
-			return (error);
-	}
-
 	/* Call inner routine to assign local interface address. */
-	if ((error = in_pcbladdr(inp, nam, &if_sin)) != 0)
+	if ((error = in_pcbladdr(inp, nam, &if_sin, td)) != 0)
 		return (error);
 
 	if (in_pcblookup_hash(inp->inp_cpcbinfo, sin->sin_addr, sin->sin_port,
@@ -814,8 +846,8 @@ in_rtchange(struct inpcb *inp, int err)
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr, u_int lport_arg,
-		   int wild_okay)
+in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
+		   u_int lport_arg, int wild_okay, struct ucred *cred)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -861,7 +893,10 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr, u_int lport_
 			}
 			if (wildcard && !wild_okay)
 				continue;
-			if (wildcard < matchwild) {
+			if (wildcard < matchwild &&
+			    (cred == NULL ||
+			     cred->cr_prison == 
+					inp->inp_socket->so_cred->cr_prison)) {
 				match = inp;
 				matchwild = wildcard;
 				if (matchwild == 0) {
@@ -882,7 +917,7 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr, u_int fport_a
 		  struct ifnet *ifp)
 {
 	struct inpcbhead *head;
-	struct inpcb *inp;
+	struct inpcb *inp, *jinp=NULL;
 	u_short fport = fport_arg, lport = lport_arg;
 
 	/*
@@ -899,32 +934,67 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr, u_int fport_a
 		    in_hosteq(inp->inp_laddr, laddr) &&
 		    inp->inp_fport == fport && inp->inp_lport == lport) {
 			/* found */
-			return (inp);
+			if (inp->inp_socket == NULL ||
+			    inp->inp_socket->so_cred->cr_prison == NULL) {
+				return (inp);
+			} else {
+				if  (jinp == NULL)
+					jinp = inp;
+			}
 		}
 	}
-
+	if (jinp != NULL)
+		return (jinp);
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
+		struct inpcb *jinp_wild = NULL;
 #ifdef INET6
 		struct inpcb *local_wild_mapped = NULL;
 #endif
 		struct inpcontainer *ic;
 		struct inpcontainerhead *chead;
+		struct sockaddr_in jsin;
+		struct ucred *cred;
 
+		/*
+		 * Order of socket selection:
+		 * 1. non-jailed, non-wild.
+		 * 2. non-jailed, wild.
+		 * 3. jailed, non-wild.
+		 * 4. jailed, wild.
+		 */
+		jsin.sin_family = AF_INET;
 		chead = &pcbinfo->wildcardhashbase[
 		    INP_PCBWILDCARDHASH(lport, pcbinfo->wildcardhashmask)];
 		LIST_FOREACH(ic, chead, ic_list) {
 			inp = ic->ic_inp;
+			jsin.sin_addr.s_addr = laddr.s_addr;
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
 				continue;
 #endif
+			if (inp->inp_socket != NULL)
+				cred = inp->inp_socket->so_cred;
+			else
+				cred = NULL;
+			if (cred != NULL && jailed(cred)) {
+				if (jinp != NULL)
+					continue;
+				else
+					if (!jailed_ip(cred->cr_prison,
+					    (struct sockaddr *)&jsin))
+						continue;
+			}
 			if (inp->inp_lport == lport) {
 				if (ifp && ifp->if_type == IFT_FAITH &&
 				    !(inp->inp_flags & INP_FAITH))
 					continue;
-				if (inp->inp_laddr.s_addr == laddr.s_addr)
-					return (inp);
+				if (inp->inp_laddr.s_addr == laddr.s_addr) {
+					if (cred != NULL && jailed(cred))
+						jinp = inp;
+					else
+						return (inp);
+				}
 				if (inp->inp_laddr.s_addr == INADDR_ANY) {
 #ifdef INET6
 					if (INP_CHECK_SOCKAF(inp->inp_socket,
@@ -932,15 +1002,23 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr, u_int fport_a
 						local_wild_mapped = inp;
 					else
 #endif
-						local_wild = inp;
+						if (cred != NULL &&
+						    jailed(cred))
+							jinp_wild = inp;
+						else
+							local_wild = inp;
 				}
 			}
 		}
+		if (local_wild != NULL)
+			return (local_wild);
 #ifdef INET6
-		if (local_wild == NULL)
+		if (local_wild_mapped != NULL)
 			return (local_wild_mapped);
 #endif
-		return (local_wild);
+		if (jinp != NULL)
+			return (jinp);
+		return (jinp_wild);
 	}
 
 	/*
@@ -1127,7 +1205,9 @@ prison_xinpcb(struct thread *td, struct inpcb *inp)
 	cr = td->td_proc->p_ucred;
 	if (cr->cr_prison == NULL)
 		return (0);
-	if (ntohl(inp->inp_laddr.s_addr) == cr->cr_prison->pr_ip)
+	if (inp->inp_socket && inp->inp_socket->so_cred &&
+	    inp->inp_socket->so_cred->cr_prison &&
+	    cr->cr_prison == inp->inp_socket->so_cred->cr_prison)
 		return (0);
 	return (1);
 }

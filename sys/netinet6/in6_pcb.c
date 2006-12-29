@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.32 2006/12/05 23:31:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.33 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -128,7 +128,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)NULL;
+	struct sockaddr_in6 jsin6;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct proc *p = td->td_proc;
+	struct ucred *cred = NULL;
 	u_short	lport = 0;
 	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 
@@ -138,6 +141,8 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		return (EINVAL);
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
 		wild = 1;
+	if (p)
+		cred = p->p_ucred;
 	if (nam) {
 		sin6 = (struct sockaddr_in6 *)nam;
 		if (nam->sa_len != sizeof(*sin6))
@@ -147,6 +152,9 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 */
 		if (nam->sa_family != AF_INET6)
 			return (EAFNOSUPPORT);
+
+		if (!prison_replace_wildcards(td, nam))
+			return (EINVAL);
 
 		/* KAME hack: embed scopeid */
 		if (in6_embedscope(&sin6->sin6_addr, sin6, inp, NULL) != 0)
@@ -169,6 +177,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			struct ifaddr *ia = NULL;
 
 			sin6->sin6_port = 0;		/* yech... */
+			if (!prison_replace_wildcards(td, (struct sockaddr *)sin6)) {
+				sin6->sin6_addr = kin6addr_any;
+				return(EINVAL);
+			}
 			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == 0)
 				return (EADDRNOTAVAIL);
 
@@ -186,17 +198,16 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 		if (lport) {
 			struct inpcb *t;
-			struct proc *p = td->td_proc; /* may be NULL */
 
 			/* GROSS */
-			if (ntohs(lport) < IPV6PORT_RESERVED && p &&
-			    suser_cred(p->p_ucred, PRISON_ROOT))
+			if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
+			    suser_cred(cred, PRISON_ROOT))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
 				t = in6_pcblookup_local(pcbinfo,
 				    &sin6->sin6_addr, lport,
-				    INPLOOKUP_WILDCARD);
+				    INPLOOKUP_WILDCARD, cred);
 				if (t &&
 				    (!IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr) ||
 				     !IN6_IS_ADDR_UNSPECIFIED(&t->in6p_laddr) ||
@@ -212,7 +223,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 					in6_sin6_2_sin(&sin, sin6);
 					t = in_pcblookup_local(pcbinfo,
 						sin.sin_addr, lport,
-						INPLOOKUP_WILDCARD);
+						INPLOOKUP_WILDCARD, cred);
 					if (t &&
 					    (so->so_cred->cr_uid !=
 					     t->inp_socket->so_cred->cr_uid) &&
@@ -223,8 +234,11 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 						return (EADDRINUSE);
 				}
 			}
+			if (cred && cred->cr_prison &&
+			    !prison_replace_wildcards(td, nam))
+				return(EADDRNOTAVAIL);
 			t = in6_pcblookup_local(pcbinfo, &sin6->sin6_addr,
-						lport, wild);
+						lport, wild, cred);
 			if (t && (reuseport & t->inp_socket->so_options) == 0)
 				return (EADDRINUSE);
 			if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
@@ -232,8 +246,9 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				struct sockaddr_in sin;
 
 				in6_sin6_2_sin(&sin, sin6);
-				t = in_pcblookup_local(pcbinfo, sin.sin_addr,
-						       lport, wild);
+				t = in_pcblookup_local(pcbinfo,
+						       sin.sin_addr, lport,
+						       wild, cred);
 				if (t &&
 				    (reuseport & t->inp_socket->so_options)
 				    == 0 &&
@@ -248,6 +263,15 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	if (lport == 0) {
 		int e;
+
+		jsin6.sin6_addr = inp->in6p_laddr;
+		jsin6.sin6_family = AF_INET6;
+		if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin6)) {
+			inp->in6p_laddr = kin6addr_any;
+			inp->inp_lport = 0;
+			return (EINVAL);
+		}
+
 		if ((e = in6_pcbsetport(&inp->in6p_laddr, inp, td)) != 0)
 			return (e);
 	}
@@ -276,7 +300,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 int
 in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
-	     struct in6_addr **plocal_addr6)
+	     struct in6_addr **plocal_addr6, struct thread *td)
 {
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	struct ifnet *ifp = NULL;
@@ -310,7 +334,7 @@ in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		*plocal_addr6 = in6_selectsrc(sin6, inp->in6p_outputopts,
 					      inp->in6p_moptions,
 					      &inp->in6p_route,
-					      &inp->in6p_laddr, &error);
+					      &inp->in6p_laddr, &error, td);
 		if (*plocal_addr6 == 0) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
@@ -347,7 +371,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	 * Call inner routine, to assign local interface address.
 	 * in6_pcbladdr() may automatically fill in sin6_scope_id.
 	 */
-	if ((error = in6_pcbladdr(inp, nam, &addr6)) != 0)
+	if ((error = in6_pcbladdr(inp, nam, &addr6, td)) != 0)
 		return (error);
 
 	if (in6_pcblookup_hash(inp->inp_cpcbinfo, &sin6->sin6_addr,
@@ -387,12 +411,20 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 struct in6_addr *
 in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	      struct ip6_moptions *mopts, struct route_in6 *ro,
-	      struct in6_addr *laddr, int *errorp)
+	      struct in6_addr *laddr, int *errorp, struct thread *td)
 {
+	struct sockaddr_in6 jsin6;
+	struct ucred *cred = NULL;
 	struct in6_addr *dst;
 	struct in6_ifaddr *ia6 = 0;
 	struct in6_pktinfo *pi = NULL;
+	int jailed = 0;
 
+	if (td && td->td_proc && td->td_proc->p_ucred)
+		cred = td->td_proc->p_ucred;
+	if (cred && cred->cr_prison)
+		jailed = 1;
+	jsin6.sin6_family = AF_INET6;
 	dst = &dstsock->sin6_addr;
 	*errorp = 0;
 
@@ -401,15 +433,29 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 * use it.
 	 */
 	if (opts && (pi = opts->ip6po_pktinfo) &&
-	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr))
-		return (&pi->ipi6_addr);
+	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr)) {
+		jsin6.sin6_addr = pi->ipi6_addr;
+		if (jailed && !jailed_ip(cred->cr_prison,
+		    (struct sockaddr *)&jsin6)) {
+			return(0);
+		} else {
+			return (&pi->ipi6_addr);
+		}
+	}
 
 	/*
 	 * If the source address is not specified but the socket(if any)
 	 * is already bound, use the bound address.
 	 */
-	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr))
-		return (laddr);
+	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr)) {
+		jsin6.sin6_addr = *laddr;
+		if (jailed && !jailed_ip(cred->cr_prison,
+		    (struct sockaddr *)&jsin6)) {
+			return(0);
+		} else {
+			return (laddr);
+		}
+	}
 
 	/*
 	 * If the caller doesn't specify the source address but
@@ -420,6 +466,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		/* XXX boundary check is assumed to be already done. */
 		ia6 = in6_ifawithscope(ifindex2ifnet[pi->ipi6_ifindex],
 				       dst);
+
+		if (ia6 && jailed) {
+			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+			if (!jailed_ip(cred->cr_prison,
+				(struct sockaddr *)&jsin6))
+				ia6 = 0;
+		}
+
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
@@ -449,6 +503,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		}
 		ia6 = in6_ifawithscope(ifindex2ifnet[dstsock->sin6_scope_id],
 				       dst);
+
+		if (ia6 && jailed) {
+			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+			if (!jailed_ip(cred->cr_prison,
+				(struct sockaddr *)&jsin6))
+				ia6 = 0;
+		}
+
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
@@ -465,7 +527,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 * Even if the outgoing interface is not specified, we also
 	 * choose a loopback interface as the outgoing interface.
 	 */
-	if (IN6_IS_ADDR_MULTICAST(dst)) {
+	if (!jailed && IN6_IS_ADDR_MULTICAST(dst)) {
 		struct ifnet *ifp = mopts ? mopts->im6o_multicast_ifp : NULL;
 
 		if (ifp == NULL && IN6_IS_ADDR_MC_NODELOCAL(dst)) {
@@ -499,6 +561,13 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 				if (ia6 == 0)
 					ia6 = ifatoia6(rt->rt_ifa);
 			}
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
+
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
 				return (0);
@@ -526,7 +595,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			dst6->sin6_family = AF_INET6;
 			dst6->sin6_len = sizeof(struct sockaddr_in6);
 			dst6->sin6_addr = *dst;
-			if (IN6_IS_ADDR_MULTICAST(dst)) {
+			if (!jailed && IN6_IS_ADDR_MULTICAST(dst)) {
 				ro->ro_rt =
 				  rtpurelookup((struct sockaddr *)&ro->ro_dst);
 			} else {
@@ -543,8 +612,22 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 
 		if (ro->ro_rt) {
 			ia6 = in6_ifawithscope(ro->ro_rt->rt_ifa->ifa_ifp, dst);
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
+
 			if (ia6 == 0) /* xxx scope error ?*/
 				ia6 = ifatoia6(ro->ro_rt->rt_ifa);
+
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
 		}
 		if (ia6 == 0) {
 			*errorp = EHOSTUNREACH;	/* no route */
@@ -832,7 +915,7 @@ do_notify:
  */
 struct inpcb *
 in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
-		    u_int lport_arg, int wild_okay)
+		    u_int lport_arg, int wild_okay, struct ucred *cred)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -876,8 +959,12 @@ in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
 			}
 			if (wildcard && !wild_okay)
 				continue;
-			if (wildcard < matchwild) {
+			if (wildcard < matchwild &&
+			    (cred == NULL ||
+			     cred->cr_prison == 
+					inp->inp_socket->so_cred->cr_prison)) {
 				match = inp;
+				matchwild = wildcard;
 				if (wildcard == 0)
 					break;
 				else
@@ -984,6 +1071,7 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 {
 	struct inpcbhead *head;
 	struct inpcb *inp;
+	struct inpcb *jinp = NULL;
 	u_short fport = fport_arg, lport = lport_arg;
 	int faith;
 
@@ -1010,14 +1098,33 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 			/*
 			 * Found.
 			 */
-			return (inp);
+			if (inp->inp_socket == NULL ||
+			inp->inp_socket->so_cred->cr_prison == NULL) {
+				return (inp);
+			} else {
+				if  (jinp == NULL)
+					jinp = inp;
+			}
 		}
 	}
+	if (jinp != NULL)
+		return(jinp);
 	if (wildcard) {
 		struct inpcontainerhead *chead;
 		struct inpcontainer *ic;
 		struct inpcb *local_wild = NULL;
+		struct inpcb *jinp_wild = NULL;
+		struct sockaddr_in6 jsin6;
+		struct ucred *cred;
 
+		/*
+		 * Order of socket selection:
+		 * 1. non-jailed, non-wild.
+		 * 2. non-jailed, wild.
+		 * 3. jailed, non-wild.
+		 * 4. jailed, wild.
+		 */
+		jsin6.sin6_family = AF_INET6;
 		chead = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
 		    pcbinfo->wildcardhashmask)];
 		LIST_FOREACH(ic, chead, ic_list) {
@@ -1025,18 +1132,44 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 
 			if (!(inp->inp_vflag & INP_IPV6))
 				continue;
+			if (inp->inp_socket != NULL)
+				cred = inp->inp_socket->so_cred;
+			else
+				cred = NULL;
+
+			if (cred != NULL && jailed(cred)) {
+				if (jinp != NULL) {
+					continue;
+				} else {
+		                        jsin6.sin6_addr = *laddr;
+					if (!jailed_ip(cred->cr_prison,
+					    (struct sockaddr *)&jsin6))
+						continue;
+				}
+			}
 			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
 			    inp->inp_lport == lport) {
 				if (faith && (inp->inp_flags & INP_FAITH) == 0)
 					continue;
 				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr,
-						       laddr))
-					return (inp);
-				else if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
-					local_wild = inp;
+						       laddr)) {
+					if (cred != NULL && jailed(cred))
+						jinp = inp;
+					else
+						return (inp);
+				} else if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
+					if (cred != NULL && jailed(cred))
+						jinp_wild = inp;
+					else
+						local_wild = inp;
+				}
 			}
 		}
-		return (local_wild);
+		if (local_wild != NULL)
+			return (local_wild);
+		if (jinp != NULL)
+			return (jinp);
+		return (jinp_wild);
 	}
 
 	/*

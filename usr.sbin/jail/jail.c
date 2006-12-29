@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
- * $DragonFly: src/usr.sbin/jail/jail.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.5 2006/12/29 18:02:57 victor Exp $
  * 
  */
 
@@ -33,13 +33,16 @@ main(int argc, char **argv)
 {
 	login_cap_t *lcap = NULL;
 	struct jail j;
+	struct sockaddr_in *sin4;
+	struct sockaddr_in6 *sin6;
 	struct passwd *pwd = NULL;
-	struct in_addr in;
 	gid_t groups[NGROUPS];
-	int ch, ngroups;
-	char *username;
+	int ch, ngroups, i;
+	char *username, *curpos;
 
 	username = NULL;
+	j.ips = malloc(sizeof(struct sockaddr_storage)*20);
+	bzero(j.ips, sizeof(struct sockaddr_storage)*20);
 
 	while ((ch = getopt(argc, argv, "u:")) != -1)
 		switch (ch) {
@@ -68,13 +71,35 @@ main(int argc, char **argv)
 	}
 	if (chdir(argv[0]) != 0)
 		err(1, "chdir: %s", argv[0]);
-	memset(&j, 0, sizeof(j));
-	j.version = 0;
+	j.version = 1;
 	j.path = argv[0];
 	j.hostname = argv[1];
-	if (inet_aton(argv[2], &in) == 0)
-		errx(1, "Could not make sense of ip-number: %s", argv[2]);
-	j.ip_number = ntohl(in.s_addr);
+	curpos = strtok(argv[2], ",");
+	for (i=0; curpos != NULL; i++) {
+		if (i && i%20 == 0) {
+			if ( (j.ips = realloc(j.ips, sizeof(struct sockaddr_storage)*i+20)) == NULL) {
+				perror("Can't allocate memory");
+				exit(1);
+			}
+		}
+
+		sin4 = (struct sockaddr_in *)(j.ips+i);
+		sin6 = (struct sockaddr_in6 *)(j.ips+i);
+
+		if (inet_pton(AF_INET, curpos, &sin4->sin_addr) == 1) {
+			sin4->sin_family = AF_INET;
+		} else {
+			if (inet_pton(AF_INET6, curpos, &sin6->sin6_addr) == 1) {
+				sin6->sin6_family = AF_INET6;
+			} else {
+				printf("Invalid value %s\n", curpos);
+				exit(1);
+			}
+		}
+		curpos = strtok(NULL, ",");
+	}
+
+	j.n_ips = i; 
 	if (jail(&j) != 0)
 		err(1, "jail");
 	if (username != NULL) {

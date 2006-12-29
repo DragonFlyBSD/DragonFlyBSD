@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.12 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.13 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -71,6 +71,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/jail.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
@@ -110,12 +111,20 @@
 struct in6_addr *
 in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	      struct ip6_moptions *mopts, struct route_in6 *ro,
-	      struct in6_addr *laddr, int *errorp)
+	      struct in6_addr *laddr, int *errorp, struct thread *td)
 {
+	struct sockaddr_in6 jsin6;
+	struct ucred *cred = NULL;
 	struct in6_addr *dst;
 	struct in6_ifaddr *ia6 = 0;
 	struct in6_pktinfo *pi = NULL;
+	int jailed = 0;
 
+	if (td && td->td_proc && td->td_proc->p_ucred)
+		cred = td->td_proc->p_ucred;
+	if (cred && cred->cr_prison)
+		jailed = 1;
+	jsin6.sin6_family = AF_INET6;
 	dst = &dstsock->sin6_addr;
 	*errorp = 0;
 
@@ -124,15 +133,29 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 * use it.
 	 */
 	if (opts && (pi = opts->ip6po_pktinfo) &&
-	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr))
-		return (&pi->ipi6_addr);
+	    !IN6_IS_ADDR_UNSPECIFIED(&pi->ipi6_addr)) {
+		jsin6.sin6_addr = pi->ipi6_addr;
+		if (jailed && !jailed_ip(cred->cr_prison,
+		    (struct sockaddr *)&jsin6)) {
+			return(0);
+		} else {
+			return (&pi->ipi6_addr);
+		}
+	}
 
 	/*
 	 * If the source address is not specified but the socket(if any)
 	 * is already bound, use the bound address.
 	 */
-	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr))
-		return (laddr);
+	if (laddr && !IN6_IS_ADDR_UNSPECIFIED(laddr)) {
+		jsin6.sin6_addr = *laddr;
+		if (jailed && !jailed_ip(cred->cr_prison,
+		    (struct sockaddr *)&jsin6)) {
+			return(0);
+		} else {
+			return (laddr);
+		}
+	}
 
 	/*
 	 * If the caller doesn't specify the source address but
@@ -143,6 +166,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		/* XXX boundary check is assumed to be already done. */
 		ia6 = in6_ifawithscope(ifindex2ifnet[pi->ipi6_ifindex],
 				       dst);
+
+		if (ia6 && jailed) {
+			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+			if (!jailed_ip(cred->cr_prison,
+				(struct sockaddr *)&jsin6))
+				ia6 = 0;
+		}
+
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
@@ -172,6 +203,14 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		}
 		ia6 = in6_ifawithscope(ifindex2ifnet[dstsock->sin6_scope_id],
 				       dst);
+
+		if (ia6 && jailed) {
+			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+			if (!jailed_ip(cred->cr_prison,
+				(struct sockaddr *)&jsin6))
+				ia6 = 0;
+		}
+
 		if (ia6 == 0) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
@@ -188,7 +227,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	 * Even if the outgoing interface is not specified, we also
 	 * choose a loopback interface as the outgoing interface.
 	 */
-	if (IN6_IS_ADDR_MULTICAST(dst)) {
+	if (!jailed && IN6_IS_ADDR_MULTICAST(dst)) {
 		struct ifnet *ifp = mopts ? mopts->im6o_multicast_ifp : NULL;
 
 		if (ifp == NULL && IN6_IS_ADDR_MC_NODELOCAL(dst)) {
@@ -222,6 +261,13 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 				if (ia6 == 0)
 					ia6 = ifatoia6(rt->rt_ifa);
 			}
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
+
 			if (ia6 == 0) {
 				*errorp = EADDRNOTAVAIL;
 				return (0);
@@ -253,7 +299,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			sa6->sin6_len = sizeof(struct sockaddr_in6);
 			sa6->sin6_addr = *dst;
 			sa6->sin6_scope_id = dstsock->sin6_scope_id;
-			if (IN6_IS_ADDR_MULTICAST(dst)) {
+			if (!jailed && IN6_IS_ADDR_MULTICAST(dst)) {
 				ro->ro_rt =
 				  rtpurelookup((struct sockaddr *)&ro->ro_dst);
 			} else {
@@ -270,8 +316,22 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 
 		if (ro->ro_rt) {
 			ia6 = in6_ifawithscope(ro->ro_rt->rt_ifa->ifa_ifp, dst);
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
+
 			if (ia6 == 0) /* xxx scope error ?*/
 				ia6 = ifatoia6(ro->ro_rt->rt_ifa);
+
+			if (ia6 && jailed) {
+				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
+				if (!jailed_ip(cred->cr_prison,
+					(struct sockaddr *)&jsin6))
+					ia6 = 0;
+			}
 		}
 #if 0
 		/*
@@ -332,10 +392,13 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	u_int16_t lport = 0, first, last, *lastport;
 	int count, error = 0, wild = 0;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct ucred *cred = NULL;
 
 	/* XXX: this is redundant when called from in6_pcbbind */
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
 		wild = INPLOOKUP_WILDCARD;
+	if (td->td_proc && td->td_proc->p_ucred)
+		cred = td->td_proc->p_ucred;
 
 	inp->inp_flags |= INP_ANONPORT;
 
@@ -380,8 +443,8 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in6_pcblookup_local(pcbinfo,
-					     &inp->in6p_laddr, lport, wild));
+		} while (in6_pcblookup_local(pcbinfo, &inp->in6p_laddr,
+			 lport, wild, cred));
 	} else {
 		/*
 		 * counting up
@@ -401,8 +464,8 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in6_pcblookup_local(pcbinfo,
-					     &inp->in6p_laddr, lport, wild));
+		} while (in6_pcblookup_local(pcbinfo, &inp->in6p_laddr,
+			 lport, wild, cred));
 	}
 
 	inp->inp_lport = lport;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.23 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.24 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -649,6 +649,8 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		return EISCONN;
 	if (inp->inp_flags & INP_WILDCARD)
 		in_pcbremwildcardhash(inp);
+	if (!prison_remote_ip(td, nam))
+		return(EAFNOSUPPORT); /* IPv4 only jail */
 	crit_enter();
 	error = in6_pcbconnect(inp, nam, td);
 	crit_exit();

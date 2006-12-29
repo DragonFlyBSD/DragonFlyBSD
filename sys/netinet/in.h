@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.13 2005/07/15 17:54:47 eirikn Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.14 2006/12/29 18:02:56 victor Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -516,8 +516,8 @@ int	 in_canforward (struct in_addr);
 int	 in_localaddr (struct in_addr);
 char	*inet_ntoa (struct in_addr); /* in libkern */
 
-int	prison_ip (struct thread *td, int flag, u_int32_t *ip);
-void	prison_remote_ip (struct thread *td, int flag, u_int32_t *ip);
+int	prison_replace_wildcards (struct thread *td, struct sockaddr *ip);
+int	prison_remote_ip (struct thread *td, struct sockaddr *ip);
 
 #define in_hosteq(s, t)	((s).s_addr == (t).s_addr)
 #define in_nullhost(x)	((x).s_addr == INADDR_ANY)

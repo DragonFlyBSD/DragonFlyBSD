@@ -6,15 +6,43 @@
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
  *
- * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.13 2006/10/27 04:56:31 dillon Exp $
- *
  */
+/*-
+ * Copyright (c) 2006 Victor Balada Diaz <victor@bsdes.net>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+
+/*
+ * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.14 2006/12/29 18:02:56 victor Exp $
+ */
+
 
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/kernel.h>
-#include <sys/kinfo.h>
 #include <sys/systm.h>
 #include <sys/errno.h>
 #include <sys/sysproto.h>
@@ -28,6 +56,7 @@
 #include <sys/kern_syscall.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <netinet6/in6_var.h>
 
 static struct prison	*prison_find(int);
 
@@ -44,7 +73,7 @@ SYSCTL_INT(_jail, OID_AUTO, set_hostname_allowed, CTLFLAG_RW,
 int	jail_socket_unixiproute_only = 1;
 SYSCTL_INT(_jail, OID_AUTO, socket_unixiproute_only, CTLFLAG_RW,
     &jail_socket_unixiproute_only, 0,
-    "Processes in jail are limited to creating UNIX/IPv4/route sockets only");
+    "Processes in jail are limited to creating UNIX/IPv[46]/route sockets only");
 
 int	jail_sysvipc_allowed = 0;
 SYSCTL_INT(_jail, OID_AUTO, sysvipc_allowed, CTLFLAG_RW,
@@ -95,19 +124,60 @@ sys_jail(struct jail_args *uap)
 {
 	struct prison *pr, *tpr;
 	struct jail j;
+	struct jail_v0 jv0;
 	struct thread *td = curthread;
-	int error, tryprid;
+	int error, tryprid, i;
+	uint32_t jversion;
 	struct nlookupdata nd;
+	/* Multiip */
+	struct sockaddr_storage *uips; /* Userland ips */
+	struct sockaddr_in ip4addr;
+	struct jail_ip_storage *jip;
+	/* Multiip */
 
 	error = suser(td);
 	if (error)
 		return(error);
-	error = copyin(uap->jail, &j, sizeof j);
+	error = copyin(uap->jail, &jversion, sizeof jversion);
 	if (error)
 		return(error);
-	if (j.version != 0)
-		return(EINVAL);
-	MALLOC(pr, struct prison *, sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
+	pr = kmalloc(sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
+	SLIST_INIT(&pr->pr_ips);
+
+	switch (jversion) {
+	case 0:
+		error = copyin(uap->jail, &jv0, sizeof(struct jail_v0));
+		if (error)
+			goto bail;
+		jip = kmalloc(sizeof(*jip),  M_PRISON, M_WAITOK | M_ZERO);
+		ip4addr.sin_family = AF_INET;
+		ip4addr.sin_addr.s_addr = htonl(jv0.ip_number);
+		memcpy(&jip->ip, &ip4addr, sizeof(ip4addr));
+		SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
+		break;
+	case 1:
+		error = copyin(uap->jail, &j, sizeof(j));
+		if (error)
+			goto bail;
+		uips = kmalloc((sizeof(*uips) * j.n_ips), M_PRISON,
+				M_WAITOK | M_ZERO);
+		error = copyin(j.ips, uips, (sizeof(*uips) * j.n_ips));
+		if (error) {
+			kfree(uips, M_PRISON);
+			goto bail;
+		}
+		for (i = 0; i < j.n_ips; i++) {
+			jip = kmalloc(sizeof(*jip),  M_PRISON,
+				      M_WAITOK | M_ZERO);
+			memcpy(&jip->ip, &uips[i], sizeof(*uips));
+			SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
+		}
+		kfree(uips, M_PRISON);
+		break;
+	default:
+		error = EINVAL;
+		goto bail;
+	}
 
 	error = copyinstr(j.hostname, &pr->pr_host, sizeof pr->pr_host, 0);
 	if (error)
@@ -120,7 +190,6 @@ sys_jail(struct jail_args *uap)
 		goto nlookup_init_clean;
 	cache_copy(&nd.nl_nch, &pr->pr_root);
 
-	pr->pr_ip = j.ip_number;
 	varsymset_init(&pr->pr_varsymset, NULL);
 
 	tryprid = lastprid + 1;
@@ -132,7 +201,7 @@ next:
 			continue;
 		tryprid++;
 		if (tryprid == JAIL_MAX) {
-			error = EAGAIN;
+			error = ERANGE;
 			goto varsym_clean;
 		}
 		goto next;
@@ -155,6 +224,12 @@ varsym_clean:
 nlookup_init_clean:
 	nlookup_done(&nd);
 bail:
+	/* Delete all ips */
+	while (!SLIST_EMPTY(&pr->pr_ips)) {
+		jip = SLIST_FIRST(&pr->pr_ips);
+		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
+		FREE(jip, M_PRISON);
+	}
 	FREE(pr, M_PRISON);
 	return(error);
 }
@@ -175,60 +250,232 @@ sys_jail_attach(struct jail_attach_args *uap)
 	return(kern_jail_attach(uap->jid));
 }
 
+/* 
+ * Changes INADDR_LOOPBACK for a valid jail address.
+ * ip is in network byte order.
+ * Returns 1 if the ip is among jail valid ips.
+ * Returns 0 if is not among jail valid ips or
+ * if couldn't replace INADDR_LOOPBACK for a valid
+ * IP.
+ */
 int
-prison_ip(struct thread *td, int flag, u_int32_t *ip)
+prison_replace_wildcards(struct thread *td, struct sockaddr *ip)
 {
-	u_int32_t tmp;
+	struct sockaddr_in *ip4 = (struct sockaddr_in *)ip;
+	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
 	struct prison *pr;
 
 	if (td->td_proc == NULL)
-		return (0);
-	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
-		return (0);
-	if (flag)
-		tmp = *ip;
-	else
-		tmp = ntohl(*ip);
-	if (tmp == INADDR_ANY) {
-		if (flag)
-			*ip = pr->pr_ip;
-		else
-			*ip = htonl(pr->pr_ip);
-		return (0);
-	}
-	if (tmp == INADDR_LOOPBACK) {
-		if (flag)
-			*ip = pr->pr_ip;
-		else
-			*ip = htonl(pr->pr_ip);
-		return (0);
-	}
-	if (pr->pr_ip != tmp)
 		return (1);
-	return (0);
+	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
+		return (1);
+
+	if ((ip->sa_family == AF_INET &&
+	    ip4->sin_addr.s_addr == htonl(INADDR_ANY)) ||
+	    (ip->sa_family == AF_INET6 &&
+	    IN6_IS_ADDR_UNSPECIFIED(&ip6->sin6_addr)))
+		return (1);
+	if ((ip->sa_family == AF_INET &&
+	    ip4->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) ||
+	    (ip->sa_family == AF_INET6 &&
+	    IN6_IS_ADDR_LOOPBACK(&ip6->sin6_addr))) {
+		if (!prison_get_local(pr, ip) && !prison_get_nonlocal(pr, ip))
+			return(0);
+		else
+			return(1);
+	}
+	if (jailed_ip(pr, ip))
+		return(1);
+	return(0);
 }
 
-void
-prison_remote_ip(struct thread *td, int flag, u_int32_t *ip)
+int
+prison_remote_ip(struct thread *td, struct sockaddr *ip)
 {
-	u_int32_t tmp;
+	struct sockaddr_in *ip4 = (struct sockaddr_in *)ip;
+	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
 	struct prison *pr;
 
 	if (td == NULL || td->td_proc == NULL)
-		return;
+		return(1);
 	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
-		return;
-	if (flag)
-		tmp = *ip;
-	else
-		tmp = ntohl(*ip);
-	if (tmp == INADDR_LOOPBACK) {
-		if (flag)
-			*ip = pr->pr_ip;
+		return(1);
+	if ((ip->sa_family == AF_INET &&
+	    ip4->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) ||
+	    (ip->sa_family == AF_INET6 &&
+	    IN6_IS_ADDR_LOOPBACK(&ip6->sin6_addr))) {
+		if (!prison_get_local(pr, ip) && !prison_get_nonlocal(pr, ip))
+			return(0);
 		else
-			*ip = htonl(pr->pr_ip);
+			return(1);
 	}
-	return;
+	return(1);
+}
+
+/*
+ * Prison get non loopback ip:
+ * Put on *ip the first IP address that is not a loopback address.
+ * af is the address family of the ip we want (AF_INET|AF_INET6).
+ * ip is in network by order and we don't touch it unless we find a valid ip.
+ * Return 1 if we've found a non loopback ip, else return 0.
+ */
+int
+prison_get_nonlocal(struct prison *pr, struct sockaddr *ip)
+{
+	struct jail_ip_storage *jis;
+	struct sockaddr_in *jip4, *ip4;
+	struct sockaddr_in6 *jip6, *ip6;
+
+	ip4 = (struct sockaddr_in *)ip;
+	ip6 = (struct sockaddr_in6 *)ip;
+	/* Check if it is cached */
+	switch(ip->sa_family) {
+		case AF_INET:
+			/* -1 Means that we don't have any address */
+			if (pr->nonlocal_ip4 == (struct sockaddr_storage *)-1)
+				return(0);
+			if (pr->nonlocal_ip4 != NULL) {
+				jip4 = (struct sockaddr_in *) pr->nonlocal_ip4;
+				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
+			}
+		break;
+		case AF_INET6:
+			/* -1 Means that we don't have any address */
+			if (pr->nonlocal_ip6 == (struct sockaddr_storage *)-1)
+				return(0);
+			if (pr->nonlocal_ip6 != NULL) {
+				jip6 = (struct sockaddr_in6 *) pr->nonlocal_ip6;
+				ip6->sin6_addr = jip6->sin6_addr;
+			}
+		break;
+	};
+	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
+		switch (ip->sa_family) {
+		case AF_INET:
+			jip4 = (struct sockaddr_in *) &jis->ip;
+			if (jip4->sin_family == AF_INET &&
+    ((ntohl(jip4->sin_addr.s_addr) >> IN_CLASSA_NSHIFT) != IN_LOOPBACKNET)) {
+				pr->nonlocal_ip4 = &jis->ip;
+				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
+				return(1);
+			}
+			break;
+		case AF_INET6:
+			jip6 = (struct sockaddr_in6 *) &jis->ip;
+			if ( jip6->sin6_family == AF_INET6 &&
+			     !IN6_IS_ADDR_LOOPBACK(&jip6->sin6_addr)) {
+				pr->nonlocal_ip6 = &jis->ip;
+				ip6->sin6_addr = jip6->sin6_addr;
+				return(1);
+			}
+			break;
+		}
+	}
+	if (ip->sa_family == AF_INET)
+		pr->nonlocal_ip4 = (struct sockaddr_storage *)-1;
+	else
+		pr->nonlocal_ip6 = (struct sockaddr_storage *)-1;
+	return(0);
+}
+
+/*
+ * Prison get loopback ip.
+ * Put on *ip the first loopback IP address.
+ * af is the address family of the ip we want (AF_INET|PF_INET).
+ * *ip is in network by order and we don't touch it unless we find a valid ip.
+ * return 1 if we've found a loopback ip, else return 0.
+ */
+int
+prison_get_local(struct prison *pr, struct sockaddr *ip)
+{
+	struct jail_ip_storage *jis;
+	struct sockaddr_in *jip4, *ip4;
+	struct sockaddr_in6 *jip6, *ip6;
+
+	ip4 = (struct sockaddr_in *)ip;
+	ip6 = (struct sockaddr_in6 *)ip;
+	/* Check if it is cached */
+	switch(ip->sa_family) {
+		case AF_INET:
+			/* -1 Means that we don't have any address */
+			if (pr->local_ip4 == (struct sockaddr_storage *)-1)
+				return(0);
+			if (pr->local_ip4 != NULL) {
+				jip4 = (struct sockaddr_in *) pr->local_ip4;
+				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
+			}
+		break;
+		case AF_INET6:
+			/* -1 Means that we don't have any address */
+			if (pr->local_ip6 == (struct sockaddr_storage *)-1)
+				return(0);
+			if (pr->local_ip6 != NULL) {
+				jip6 = (struct sockaddr_in6 *) pr->local_ip6;
+				ip6->sin6_addr = jip6->sin6_addr;
+			}
+		break;
+	};
+	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
+		switch(ip->sa_family) {
+		case AF_INET:
+			jip4 = (struct sockaddr_in *) &jis->ip;
+			if (jip4->sin_family == AF_INET &&
+			    ((ntohl(jip4->sin_addr.s_addr) >> IN_CLASSA_NSHIFT)
+			    == IN_LOOPBACKNET)) {
+				pr->local_ip4 = &jis->ip;
+				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
+				return(1);
+			}
+			break;
+		case AF_INET6:
+			jip6 = (struct sockaddr_in6 *) &jis->ip;
+			if (jip6->sin6_family == AF_INET6 &&
+			     IN6_IS_ADDR_LOOPBACK(&jip6->sin6_addr)) {
+				pr->local_ip6 = &jis->ip;
+				ip6->sin6_addr = jip6->sin6_addr;
+				return(1);
+			}
+			break;
+		}
+	}
+	if (ip->sa_family == AF_INET)
+		pr->local_ip4 = (struct sockaddr_storage *)-1;
+	else
+		pr->local_ip6 = (struct sockaddr_storage *)-1;
+	return(0);
+}
+
+/* Check if the IP is among ours, if it is return 1, else 0 */
+int
+jailed_ip(struct prison *pr, struct sockaddr *ip)
+{
+	struct jail_ip_storage *jis;
+	struct sockaddr_in *jip4, *ip4;
+	struct sockaddr_in6 *jip6, *ip6;
+
+	if (pr == NULL)
+		return(0);
+	ip4 = (struct sockaddr_in *)ip;
+	ip6 = (struct sockaddr_in6 *)ip;
+	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
+		switch (ip->sa_family) {
+		case AF_INET:
+			jip4 = (struct sockaddr_in *) &jis->ip;
+			if (jip4->sin_family == AF_INET &&
+			    ip4->sin_addr.s_addr == jip4->sin_addr.s_addr)
+				return(1);
+			break;
+		case AF_INET6:
+			jip6 = (struct sockaddr_in6 *) &jis->ip;
+			if (jip6->sin6_family == AF_INET6 &&
+			    IN6_ARE_ADDR_EQUAL(&ip6->sin6_addr,
+					       &jip6->sin6_addr))
+				return(1);
+			break;
+		}
+	}
+	/* Ip not in list */
+	return(0);
 }
 
 int
@@ -236,19 +483,17 @@ prison_if(struct ucred *cred, struct sockaddr *sa)
 {
 	struct prison *pr;
 	struct sockaddr_in *sai = (struct sockaddr_in*) sa;
-	int ok;
 
 	pr = cred->cr_prison;
 
-	if ((sai->sin_family != AF_INET) && jail_socket_unixiproute_only)
-		ok = 1;
-	else if (sai->sin_family != AF_INET)
-		ok = 0;
-	else if (pr->pr_ip != ntohl(sai->sin_addr.s_addr))
-		ok = 1;
-	else
-		ok = 0;
-	return (ok);
+	if (((sai->sin_family != AF_INET) && (sai->sin_family != AF_INET6))
+	    && jail_socket_unixiproute_only)
+		return(1);
+	else if ((sai->sin_family != AF_INET) && (sai->sin_family != AF_INET6))
+		return(0);
+	else if (jailed_ip(pr, sa))
+		return(0);
+	return(1);
 }
 
 /*
@@ -269,11 +514,18 @@ prison_find(int prid)
 static int
 sysctl_jail_list(SYSCTL_HANDLER_ARGS)
 {
+	struct jail_ip_storage *jip;
+	struct sockaddr_in6 *jsin6;
+	struct sockaddr_in *jsin;
 	struct proc *p;
-	struct kinfo_prison *xp, *sxp;
 	struct prison *pr;
+	unsigned int jlssize, jlsused;
 	int count, error;
+	char *jls; /* Jail list */
+	char *oip; /* Output ip */
+	char *fullpath, *freepath;
 
+	jlsused = 0;
 	p = curthread->td_proc;
 
 	if (jailed(p->p_ucred))
@@ -284,36 +536,62 @@ retry:
 	if (count == 0)
 		return(0);
 
-	sxp = xp = kmalloc(sizeof(*xp) * count, M_TEMP, M_WAITOK | M_ZERO);
+	jlssize = (count * 1024);
+	jls = kmalloc(jlssize + 1, M_TEMP, M_WAITOK | M_ZERO);
 	if (count < prisoncount) {
-		kfree(sxp, M_TEMP);
+		kfree(jls, M_TEMP);
 		goto retry;
 	}
 	count = prisoncount;
 
 	LIST_FOREACH(pr, &allprison, pr_list) {
-		char *fullpath, *freepath;
-		xp->pr_version = KINFO_PRISON_VERSION;
-		xp->pr_id = pr->pr_id;
 		error = cache_fullpath(p, &pr->pr_root, &fullpath, &freepath);
-		if (error == 0) {
-			strlcpy(xp->pr_path, fullpath, sizeof(xp->pr_path));
-			kfree(freepath, M_TEMP);
-		} else {
-			bzero(xp->pr_path, sizeof(xp->pr_path));
+		if (error != 0)
+			goto end;
+		if (jlsused == 0)
+			count = ksnprintf(jls, (jlssize-jlsused), "%d %s %s",
+				 	 pr->pr_id, pr->pr_host, fullpath);
+		else
+			count = ksnprintf(&jls[jlsused], (jlssize-jlsused),
+					 "\n%d %s %s", pr->pr_id,
+					 pr->pr_host, fullpath);
+		kfree(freepath, M_TEMP);		
+		if (count < 0)
+			goto end;
+		jlsused += count;
+
+		/* Copy the IPS */
+		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
+			jsin = (struct sockaddr_in *)&jip->ip;
+			jsin6 = (struct sockaddr_in6 *)&jip->ip;
+
+			if (jsin->sin_family == AF_INET)
+				oip = inet_ntoa(jsin->sin_addr);
+			else
+				oip = ip6_sprintf(&jsin6->sin6_addr);
+
+			if ( (jlssize - jlsused) < (sizeof(oip) + 1)) {
+				error = ERANGE;
+				goto end;
+			}
+			strlcat(jls, " ", jlssize);
+			strlcat(jls, oip, jlssize);
+			jlsused += strlen(oip)+1;
 		}
-		strlcpy(xp->pr_host, pr->pr_host, sizeof(xp->pr_host));
-		xp->pr_ip = pr->pr_ip;
-		xp++;
 	}
 
-	error = SYSCTL_OUT(req, sxp, sizeof(*sxp) * count);
-	kfree(sxp, M_TEMP);
+	/* 
+	 * The format is:
+	 * pr_id <SPC> hostname1 <SPC> PATH1 <SPC> IP1 <SPC> IP2\npr_id...
+	 */
+	error = SYSCTL_OUT(req, jls, jlsused);
+end:
+	kfree(jls, M_TEMP);
 	return(error);
 }
 
-SYSCTL_OID(_jail, OID_AUTO, list, CTLTYPE_STRUCT | CTLFLAG_RD, NULL, 0,
-	   sysctl_jail_list, "S", "List of active jails");
+SYSCTL_OID(_jail, OID_AUTO, list, CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
+	   sysctl_jail_list, "A", "List of active jails");
 
 void
 prison_hold(struct prison *pr)
@@ -324,11 +602,18 @@ prison_hold(struct prison *pr)
 void
 prison_free(struct prison *pr)
 {
+	struct jail_ip_storage *jls;
 	KKASSERT(pr->pr_ref >= 1);
 
 	if (--pr->pr_ref > 0)
 		return;
 
+	/* Delete all ips */
+	while (!SLIST_EMPTY(&pr->pr_ips)) {
+		jls = SLIST_FIRST(&pr->pr_ips);
+		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
+		FREE(jls, M_PRISON);
+	}
 	LIST_REMOVE(pr, pr_list);
 	prisoncount--;
 

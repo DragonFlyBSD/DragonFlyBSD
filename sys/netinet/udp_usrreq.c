@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.36 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.37 2006/12/29 18:02:56 victor Exp $
  */
 
 #include "opt_ipsec.h"
@@ -704,7 +704,10 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 			goto release;
 		}
 		sin = (struct sockaddr_in *)dstaddr;
-		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
+		if (!prison_remote_ip(td, (struct sockaddr *)&sin)) {
+			error = EAFNOSUPPORT; /* IPv6 only jail */
+			goto release;
+		}
 	} else {
 		if (inp->inp_faddr.s_addr == INADDR_ANY) {
 			/* no destination specified and not already connected */
@@ -760,7 +763,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 		}
 
 		/* Look up outgoing interface. */
-		if ((error = in_pcbladdr(inp, dstaddr, &if_sin)))
+		if ((error = in_pcbladdr(inp, dstaddr, &if_sin, td)))
 			goto release;
 		ui->ui_src = if_sin->sin_addr;	/* use address of interface */
 	} else {
@@ -879,7 +882,6 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
 	int error;
-	struct sockaddr_in *sin;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -893,8 +895,8 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = in_pcbbind(inp, NULL, td);
 	}
 	if (error == 0) {
-		sin = (struct sockaddr_in *)nam;
-		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
+		if (!prison_remote_ip(td, nam))
+			return(EAFNOSUPPORT); /* IPv6 only jail */
 		if (inp->inp_flags & INP_WILDCARD)
 			in_pcbremwildcardhash(inp);
 		error = in_pcbconnect(inp, nam, td);

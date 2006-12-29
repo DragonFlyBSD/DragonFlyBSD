@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.38 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.39 2006/12/29 18:02:56 victor Exp $
  */
 
 #include "opt_ipsec.h"
@@ -473,7 +473,10 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		goto out;
 	}
 
-	prison_remote_ip(td, 0, &sinp->sin_addr.s_addr);
+	if (!prison_remote_ip(td, (struct sockaddr*)sinp)) {
+		error = EAFNOSUPPORT; /* IPv6 only jail */
+		goto out;
+	}
 
 	if ((error = tcp_connect(tp, nam, td)) != 0)
 		goto out;
@@ -499,6 +502,11 @@ tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (sin6p->sin6_family == AF_INET6
 	    && IN6_IS_ADDR_MULTICAST(&sin6p->sin6_addr)) {
 		error = EAFNOSUPPORT;
+		goto out;
+	}
+
+	if (!prison_remote_ip(td, nam)) {
+		error = EAFNOSUPPORT; /* IPv4 only jail */
 		goto out;
 	}
 
@@ -951,7 +959,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	 * earlier incarnation of this same connection still in
 	 * TIME_WAIT state, creating an ADDRINUSE error.
 	 */
-	error = in_pcbladdr(inp, nam, &if_sin);
+	error = in_pcbladdr(inp, nam, &if_sin, td);
 	if (error)
 		return (error);
 
@@ -1001,7 +1009,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	 * earlier incarnation of this same connection still in
 	 * TIME_WAIT state, creating an ADDRINUSE error.
 	 */
-	error = in6_pcbladdr(inp, nam, &addr6);
+	error = in6_pcbladdr(inp, nam, &addr6, td);
 	if (error)
 		return error;
 	oinp = in6_pcblookup_hash(inp->inp_cpcbinfo,

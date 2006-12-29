@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.7 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.8 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -164,6 +164,10 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 			error = EISCONN;
 			goto release;
 		}
+		if (!prison_remote_ip(td, (struct sockaddr *)addr6)) {
+			error = EAFNOSUPPORT; /* IPv4 only jail */
+			goto release;
+		}
 
 		/* protect *sin6 from overwrites */
 		tmp = *sin6;
@@ -200,7 +204,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 			laddr = in6_selectsrc(sin6, in6p->in6p_outputopts,
 					      in6p->in6p_moptions,
 					      &in6p->in6p_route,
-					      &in6p->in6p_laddr, &error);
+					      &in6p->in6p_laddr, &error, NULL);
 		} else
 			laddr = &in6p->in6p_laddr;	/* XXX */
 		if (laddr == NULL) {

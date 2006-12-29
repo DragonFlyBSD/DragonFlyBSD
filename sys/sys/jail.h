@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.8 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.9 2006/12/29 18:02:56 victor Exp $
  *
  */
 
@@ -20,11 +20,25 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 #ifndef _SYS_UCRED_H_
 #include <sys/ucred.h>
 #endif
+#ifndef _SYS_IF_H_
+#include <net/if.h>
+#endif
 
 struct jail {
+	uint32_t	version;
+	char		*path;
+	char		*hostname;
+	uint32_t	n_ips;     /* Number of ips */
+	struct sockaddr_storage *ips;
+};
+
+struct jail_v0 {
 	uint32_t	version;
 	char		*path;
 	char		*hostname;
@@ -51,6 +65,13 @@ MALLOC_DECLARE(M_PRISON);
 
 #define	JAIL_MAX	999999
 
+/* Used to store the IPs of the jail */
+
+struct jail_ip_storage {
+	SLIST_ENTRY(jail_ip_storage) entries;
+	struct sockaddr_storage ip;
+};
+
 /*
  * This structure describes a prison.  It is pointed to by all struct
  * proc's of the inmates.  pr_ref keeps track of them and is used to
@@ -63,7 +84,11 @@ struct prison {
 	int		pr_ref;				/* reference count */
 	struct nchandle pr_root;			/* namecache entry of root */
 	char 		pr_host[MAXHOSTNAMELEN];	/* host name */
-	uint32_t	pr_ip;				/* IP address */
+	SLIST_HEAD(iplist, jail_ip_storage) pr_ips;	/* list of IP addresses */
+	struct sockaddr_storage	*local_ip4;		/* cache for a loopback ipv4 address */
+	struct sockaddr_storage	*nonlocal_ip4;		/* cache for a non loopback ipv4 address */
+	struct sockaddr_storage	*local_ip6;		/* cache for a loopback ipv6 address */
+	struct sockaddr_storage	*nonlocal_ip6;		/* cache for a non loopback ipv6 address */
 	void		*pr_linux;			/* Linux ABI emulation */
 	int		 pr_securelevel;		/* jail securelevel */
 	struct varsymset pr_varsymset;			/* jail varsyms */
@@ -79,6 +104,9 @@ extern int	jail_chflags_allowed;
 
 void	prison_hold(struct prison *);
 void	prison_free(struct prison *);
+int	jailed_ip(struct prison *, struct sockaddr *);
+int	prison_get_local(struct prison *pr, struct sockaddr *);
+int	prison_get_nonlocal(struct prison *pr, struct sockaddr *);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.

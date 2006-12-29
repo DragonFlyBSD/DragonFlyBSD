@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.8 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.9 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*
@@ -103,10 +103,10 @@ int	in6_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in6_pcbdetach (struct inpcb *);
 void	in6_pcbdisconnect (struct inpcb *);
 int	in6_pcbladdr (struct inpcb *, struct sockaddr *,
-			  struct in6_addr **);
+			  struct in6_addr **, struct thread *);
 struct	inpcb *
-	in6_pcblookup_local (struct inpcbinfo *,
-				 struct in6_addr *, u_int, int);
+	in6_pcblookup_local (struct inpcbinfo *, struct in6_addr *, u_int,
+			     int, struct ucred *);
 struct	inpcb *
 	in6_pcblookup_hash (struct inpcbinfo *,
 				struct in6_addr *, u_int, struct in6_addr *,
@@ -123,7 +123,7 @@ struct	in6_addr *in6_selectsrc (struct sockaddr_in6 *,
 				     struct ip6_pktopts *,
 				     struct ip6_moptions *,
 				     struct route_in6 *,
-				     struct in6_addr *, int *);
+				     struct in6_addr *, int *, struct thread *);
 int	in6_selecthlim (struct in6pcb *, struct ifnet *);
 int	in6_pcbsetport (struct in6_addr *, struct inpcb *, struct thread *);
 void	init_sin6 (struct sockaddr_in6 *sin6, struct mbuf *m);

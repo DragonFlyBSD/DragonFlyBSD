@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.22 2006/10/24 06:18:42 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.23 2006/12/29 18:02:56 victor Exp $
  */
 
 /*
@@ -410,7 +410,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 					  in6p->in6p_moptions,
 					  &in6p->in6p_route,
 					  &in6p->in6p_laddr,
-					  &error)) == NULL) {
+					  &error, NULL)) == NULL) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
 			goto bad;
@@ -667,7 +667,7 @@ rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	/* Source address selection. XXX: need pcblookup? */
 	in6a = in6_selectsrc(addr, inp->in6p_outputopts,
 			     inp->in6p_moptions, &inp->in6p_route,
-			     &inp->in6p_laddr, &error);
+			     &inp->in6p_laddr, &error, NULL);
 	if (in6a == NULL)
 		return (error ? error : EADDRNOTAVAIL);
 	inp->in6p_laddr = *in6a;

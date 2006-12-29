@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
-.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.5 2006/09/09 16:22:52 corecode Exp $
+.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.6 2006/12/29 18:02:56 victor Exp $
 .\"
 .Dd December 12, 2001
 .Dt JAIL 8
@@ -43,7 +43,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl u Ar username
-.Ar path hostname ip-number command ...
+.Ar path hostname ip-list command ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -59,8 +59,8 @@ should run.
 Directory which is to be the root of the prison.
 .It Ar hostname
 Hostname of the prison.
-.It Ar ip-number
-IP number assigned to the prison.
+.It Ar ip-list
+Comma separated IP list assigned to the prison.
 .It Ar command
 Pathname of the program which is to be executed.
 .El
@@ -105,9 +105,9 @@ to build the jail directory tree.
 For the sake of this example, we will
 assume you built it in
 .Pa /data/jail/192.168.11.100 ,
-named for the jailed IP address.
+named for the external jail IP address.
 Substitute below as needed with your
-own directory, IP address, and hostname.
+own directory, IP addresses, and hostname.
 .Pp
 First, you will want to set up your real system's environment to be
 .Dq jail-friendly .
@@ -184,7 +184,7 @@ zone, etc.
 .Pp
 Now start the jail:
 .Pp
-.Dl "jail /data/jail/192.168.11.100 testhostname 192.168.11.100 /bin/sh"
+.Dl "jail /data/jail/192.168.11.100 testhostname 127.0.0.1,192.168.11.100 /bin/sh"
 .Pp
 You will end up with a shell prompt, assuming no errors, within the jail.
 You can now do the post-install configuration to set various configuration
@@ -250,7 +250,7 @@ it must be set before starting any jails, and once each boot.
 .Bd -literal -offset indent
 ifconfig ed0 inet alias 192.168.11.100/32
 mount -t procfs proc /data/jail/192.168.11.100/proc
-jail /data/jail/192.168.11.100 testhostname 192.168.11.100 \\
+jail /data/jail/192.168.11.100 testhostname 127.0.0.1,192.168.11.100 \\
 	/bin/sh /etc/rc
 .Ed
 .Pp
@@ -354,20 +354,20 @@ information in
 As such, this should be disabled in environments where privileged access to
 jails is given out to untrusted parties.
 .It Va jail.socket_unixiproute_only
-The jail functionality binds an IPv4 address to each jail, and limits
-access to other network addresses in the IPv4 space that may be available
+The jail functionality binds IPv4 and IPv6 addresses to each jail, and limits
+access to other network addresses in the IPv4 and IPv6 space that may be available
 in the host environment.
 However, jail is not currently able to limit access to other network
 protocol stacks that have not had jail functionality added to them.
 As such, by default, processes within jails may only access protocols
 in the following domains:
-.Dv PF_LOCAL , PF_INET ,
+.Dv PF_LOCAL , PF_INET , PF_INET6 ,
 and
 .Dv PF_ROUTE ,
 permitting them access to
 .Ux
 domain sockets,
-IPv4 addresses, and routing sockets.
+IPv4 and IPv6 addresses, and routing sockets.
 To enable access to other domains, this MIB variable may be set to
 0.
 .It Va jail.sysvipc_allowed
@@ -404,6 +404,10 @@ The
 .Nm
 command appeared in
 .Fx 4.0 .
+.Pp
+Support for multiple IPs and IPv6 appeared in
+.Dx
+1.7.
 .Sh AUTHORS
 .An -nosplit
 The jail feature was written by
@@ -416,6 +420,11 @@ who contributed it to
 .An Robert Watson
 wrote the extended documentation, found a few bugs, added
 a few new features, and cleaned up the userland jail environment.
+.Pp
+.An Victor Balada Diaz
+wrote the support for multiple IPs and IPv6. Multiple IPs support
+is based on work done by
+.An Pawel Jakub Dawidek .
 .Sh BUGS
 Jail currently lacks strong management functionality, such as the ability
 to deliver signals to all processes in a jail, and to allow access to

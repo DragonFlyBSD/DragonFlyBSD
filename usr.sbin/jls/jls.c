@@ -24,11 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/jls/jls.c,v 1.3 2003/04/22 13:24:56 mike Exp $
- * $DragonFly: src/usr.sbin/jls/jls.c,v 1.1 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/usr.sbin/jls/jls.c,v 1.2 2006/12/29 18:02:57 victor Exp $
  */
 
 #include <sys/param.h>
-#include <sys/kinfo.h>
 #include <sys/sysctl.h>
 
 #include <err.h>
@@ -36,6 +35,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -43,9 +43,9 @@
 int
 main(void)
 { 
-	struct kinfo_prison *sxp, *xp;
-	struct in_addr in;
-	size_t i, len;
+	size_t len, i;
+	char *jls; /* Jail list */
+	char *curpos;
 
 	if (sysctlbyname("jail.list", NULL, &len, NULL, 0) == -1)
 		err(1, "sysctlbyname(): jail.list");
@@ -53,29 +53,26 @@ retry:
 	if (len == 0)
 		exit(0);	
 
-	sxp = xp = malloc(len);
-	if (sxp == NULL)
+	jls = malloc(len);
+	if (jls == NULL)
 		err(1, "malloc failed");
 
-	if (sysctlbyname("jail.list", xp, &len, NULL, 0) == -1) {
+	if (sysctlbyname("jail.list", jls, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM) {
-			free(sxp);
+			free(jls);
 			goto retry;
 		}
 		err(1, "sysctlbyname(): jail.list");
 	}
-	if (len < sizeof(*xp) || len % sizeof(*xp) ||
-	    xp->pr_version != KINFO_PRISON_VERSION)
-		errx(1, "Kernel and userland out of sync");
-
-	len /= sizeof(*xp);
-	printf("   JID  IP Address      Hostname                      Path\n");
-	for (i = 0; i < len; i++) {
-		in.s_addr = ntohl(xp->pr_ip);
-		printf("%6d  %-15.15s %-29.29s %.74s\n",
-		    xp->pr_id, inet_ntoa(in), xp->pr_host, xp->pr_path);
-		xp++;
-	}
-	free(sxp);
+	printf("JID\tHostname\tPath\tIPs\n");
+	curpos = jls;
+	do {
+		for (i = 0; i < 3; i++) {
+			curpos = strchr(curpos, ' ');
+			*curpos = '\t';
+		}
+	} while ( (curpos = strchr(curpos, '\n')) != NULL);
+	printf("%s\n", jls);
+	free(jls);
 	exit(0);
 }

@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.40 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.41 2006/12/29 18:02:56 victor Exp $
  */
 
 #include "opt_inet.h"
@@ -194,6 +194,7 @@ socreate(int dom, struct socket **aso, int type,
 	if (p->p_ucred->cr_prison && jail_socket_unixiproute_only &&
 	    prp->pr_domain->dom_family != PF_LOCAL &&
 	    prp->pr_domain->dom_family != PF_INET &&
+	    prp->pr_domain->dom_family != PF_INET6 &&
 	    prp->pr_domain->dom_family != PF_ROUTE) {
 		return (EPROTONOSUPPORT);
 	}

@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.20 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.21 2006/12/29 18:02:56 victor Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -395,10 +395,10 @@ void	in_pcbinswildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbinsconnhash(struct inpcb *inp);
 int	in_pcbinsporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
-	    struct sockaddr_in **);
+	    struct sockaddr_in **, struct thread *);
 struct inpcb *
-	in_pcblookup_local (struct inpcbinfo *,
-	    struct in_addr, u_int, int);
+	in_pcblookup_local (struct inpcbinfo *, struct in_addr, u_int, int,
+			    struct ucred *);
 struct inpcb *
 	in_pcblookup_hash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
