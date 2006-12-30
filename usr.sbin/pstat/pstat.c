@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.18 2006/03/27 16:18:15 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.19 2006/12/30 18:36:45 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -493,7 +493,7 @@ ufs_print(struct vnode *vp)
 		*flags++ = '-';
 	*flags = '\0';
 
-	printf(" %6d %5s", ip->i_number, flagbuf);
+	printf(" %6ju %5s", (uintmax_t)ip->i_number, flagbuf);
 	type = ip->i_mode & S_IFMT;
 	if (S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode))
 		if (usenumflag || ((name = devname(ip->i_rdev, type)) == NULL))
