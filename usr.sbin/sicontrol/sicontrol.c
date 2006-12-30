@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $
- * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.4 2006/05/21 03:43:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.5 2006/12/30 17:58:10 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -473,7 +473,7 @@ tty_stat(int ac, char **av)
 	printf("%s: ", Devname);
 
 	printf("\tt_outq.c_cc %d.\n", TTY.t_outq.c_cc);	/* struct clist t_outq */
-	printf("\tt_dev 0x%x\n", TTY.t_dev);		/* dev_t t_dev */
+	printf("\tt_dev %p\n", TTY.t_dev);		/* t_dev */
 	printf("\tt_flags 0x%x\n", TTY.t_flags);	/* int	t_flags */
 	printf("\tt_state 0x%x\n", TTY.t_state);	/* int	t_state */
 	printf("\tt_ihiwat %d.\n", TTY.t_ihiwat);	/* int	t_ihiwat */
