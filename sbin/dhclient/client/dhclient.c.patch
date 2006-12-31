@@ -1,4 +1,4 @@
-$DragonFly: src/sbin/dhclient/client/Attic/dhclient.c.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+$DragonFly: src/sbin/dhclient/client/Attic/dhclient.c.patch,v 1.2 2006/12/31 20:18:35 dillon Exp $
 --- dhclient.c.orig	2004-06-10 19:59:12.000000000 +0200
 +++ dhclient.c	2004-06-24 17:02:09.000000000 +0200
 @@ -38,6 +38,13 @@
@@ -12,9 +12,9 @@ $DragonFly: src/sbin/dhclient/client/Attic/dhclient.c.patch,v 1.1 2005/01/04 19:
 +#include <net80211/ieee80211.h>
 +#endif
 +
- TIME cur_time;
  TIME default_lease_time = 43200; /* 12 hours... */
  TIME max_lease_time = 86400; /* 24 hours... */
+ 
 @@ -73,8 +80,11 @@
  struct string_list *client_env=NULL;
  int client_env_count=0;
