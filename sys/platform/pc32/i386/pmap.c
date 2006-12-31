@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.66 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.67 2006/12/31 03:52:47 dillon Exp $
  */
 
 /*
@@ -536,7 +536,7 @@ pmap_init(void)
 	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
 		initial_pvs * sizeof (struct pv_entry));
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
-	    vm_page_array_size);
+		initial_pvs);
 
 	/*
 	 * Now it is safe to enable pv_table recording.
@@ -1347,26 +1347,6 @@ pmap_release_callback(struct vm_page *p, void *data)
 	}
 	return(0);
 }
-
-static int
-kvm_size(SYSCTL_HANDLER_ARGS)
-{
-	unsigned long ksize = KvaSize;
-
-        return sysctl_handle_long(oidp, &ksize, 0, req);
-}
-SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_LONG|CTLFLAG_RD, 
-    0, 0, kvm_size, "IU", "Size of KVM");
-
-static int
-kvm_free(SYSCTL_HANDLER_ARGS)
-{
-	unsigned long kfree = virtual_end - kernel_vm_end;
-
-        return sysctl_handle_long(oidp, &kfree, 0, req);
-}
-SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_LONG|CTLFLAG_RD, 
-    0, 0, kvm_free, "IU", "Amount of KVM free");
 
 /*
  * Grow the number of kernel page table entries, if needed.

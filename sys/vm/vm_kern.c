@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.26 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.27 2006/12/31 03:52:45 dillon Exp $
  */
 
 /*
@@ -73,6 +73,8 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -389,3 +391,24 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_unlock(m);
 	vm_map_entry_release(count);
 }
+
+static int
+kvm_size(SYSCTL_HANDLER_ARGS)
+{
+	unsigned long ksize = KvaSize;
+
+	return sysctl_handle_long(oidp, &ksize, 0, req);
+}
+SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_LONG|CTLFLAG_RD,
+    0, 0, kvm_size, "IU", "Size of KVM");
+ 
+static int
+kvm_free(SYSCTL_HANDLER_ARGS)
+{
+	unsigned long kfree = virtual_end - kernel_vm_end;
+
+	return sysctl_handle_long(oidp, &kfree, 0, req);
+}
+SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_LONG|CTLFLAG_RD,
+    0, 0, kvm_free, "IU", "Amount of KVM free");
+
