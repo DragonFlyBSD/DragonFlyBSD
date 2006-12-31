@@ -36,7 +36,7 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.14 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.15 2006/12/31 19:36:54 dillon Exp $
  */
 
 
@@ -515,7 +515,9 @@ static int
 sysctl_jail_list(SYSCTL_HANDLER_ARGS)
 {
 	struct jail_ip_storage *jip;
+#ifdef INET6
 	struct sockaddr_in6 *jsin6;
+#endif
 	struct sockaddr_in *jsin;
 	struct proc *p;
 	struct prison *pr;
@@ -546,15 +548,13 @@ retry:
 
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		error = cache_fullpath(p, &pr->pr_root, &fullpath, &freepath);
-		if (error != 0)
-			goto end;
-		if (jlsused == 0)
-			count = ksnprintf(jls, (jlssize-jlsused), "%d %s %s",
-				 	 pr->pr_id, pr->pr_host, fullpath);
-		else
-			count = ksnprintf(&jls[jlsused], (jlssize-jlsused),
-					 "\n%d %s %s", pr->pr_id,
-					 pr->pr_host, fullpath);
+		if (error)
+			continue;
+		if (jlsused && jlsused < jlssize)
+			jls[jlsused++] = '\n';
+		count = ksnprintf(jls + jlsused, (jlssize - jlsused),
+				 "%d %s %s", 
+				 pr->pr_id, pr->pr_host, fullpath);
 		kfree(freepath, M_TEMP);		
 		if (count < 0)
 			goto end;
@@ -563,20 +563,31 @@ retry:
 		/* Copy the IPS */
 		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
 			jsin = (struct sockaddr_in *)&jip->ip;
-			jsin6 = (struct sockaddr_in6 *)&jip->ip;
 
-			if (jsin->sin_family == AF_INET)
+			switch(jsin->sin_family) {
+			case AF_INET:
 				oip = inet_ntoa(jsin->sin_addr);
-			else
+				break;
+#ifdef INET6
+			case AF_INET6:
+				jsin6 = (struct sockaddr_in6 *)&jip->ip;
 				oip = ip6_sprintf(&jsin6->sin6_addr);
+				break;
+#endif
+			default:
+				oip = "?family?";
+				break;
+			}
 
-			if ( (jlssize - jlsused) < (sizeof(oip) + 1)) {
+			if ((jlssize - jlsused) < (strlen(oip) + 1)) {
 				error = ERANGE;
 				goto end;
 			}
-			strlcat(jls, " ", jlssize);
-			strlcat(jls, oip, jlssize);
-			jlsused += strlen(oip)+1;
+			count = ksnprintf(jls + jlsused, (jlssize - jlsused),
+					  " %s", oip);
+			if (count < 0)
+				goto end;
+			jlsused += count;
 		}
 	}
 
