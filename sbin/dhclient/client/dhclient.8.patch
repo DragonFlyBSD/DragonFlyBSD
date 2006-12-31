@@ -1,9 +1,9 @@
-$DragonFly: src/sbin/dhclient/client/Attic/dhclient.8.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
---- dhclient.8.orig	2004-06-10 19:59:12.000000000 +0200
-+++ dhclient.8	2004-06-24 16:35:57.000000000 +0200
+$DragonFly: src/sbin/dhclient/client/Attic/dhclient.8.patch,v 1.2 2006/12/31 20:06:38 dillon Exp $
+--- dhclient.8.orig	2006-12-19 11:29:36.000000000 +0100
++++ dhclient.8	2006-12-19 11:47:00.000000000 +0100
 @@ -23,6 +23,10 @@
  .\"
- .\" $Id: dhclient.8,v 1.12.2.8 2004/06/10 17:59:12 dhankins Exp $
+ .\" $Id: dhclient.8,v 1.12.2.9 2004/09/29 23:01:46 dhankins Exp $
  .\"
 +.\" Portions copyright (c) 2000 David E. O'Brien.
 +.\" All rights reserved.
@@ -82,3 +82,12 @@ $DragonFly: src/sbin/dhclient/client/Attic/dhclient.8.patch,v 1.1 2005/01/04 19:
  .PP
  The client normally doesn't release the current lease as it is not
  required by the DHCP protocol.  Some cable ISPs require their clients
+@@ -235,7 +268,7 @@
+ .B -w
+ flag can be used to cause the client not to exit when it doesn't find
+ any such interfaces.   The
+-.B omshell (8)
++.B omshell (1)
+ program can then be used to notify the client when a network interface
+ has been added or removed, so that the client can attempt to configure an IP
+ address on that interface.
