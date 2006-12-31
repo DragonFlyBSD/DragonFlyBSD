@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.16 2006/12/22 23:12:17 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.17 2006/12/31 20:34:04 dillon Exp $
  *
  */
 
@@ -367,7 +367,6 @@ nexus_legacypci_probe(device_t dev)
 					if (strcmp(device_get_name(devs[i]),
 					    "pcib") != 0)
 						continue;
-					kprintf("compare %d\n", nexus_get_pcibus(devs[i]));
 					if (nexus_get_pcibus(devs[i]) == busnum)
 						s = NULL;
 				}
