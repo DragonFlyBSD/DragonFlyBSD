@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.85 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.86 2006/12/31 03:50:07 dillon Exp $
  */
 
 /*
@@ -494,7 +494,7 @@ push_bio(struct bio *bio)
 
 	if ((nbio = bio->bio_next) == NULL) {
 		int index = bio - &bio->bio_buf->b_bio_array[0];
-		if (index >= NBUF_BIO) {
+		if (index >= NBUF_BIO - 1) {
 			panic("push_bio: too many layers bp %p\n",
 				bio->bio_buf);
 		}
