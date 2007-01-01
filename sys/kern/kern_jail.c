@@ -36,7 +36,7 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.15 2006/12/31 19:36:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.16 2007/01/01 19:45:54 victor Exp $
  */
 
 
@@ -136,11 +136,15 @@ sys_jail(struct jail_args *uap)
 	/* Multiip */
 
 	error = suser(td);
-	if (error)
+	if (error) {
+		uap->sysmsg_result = -1;
 		return(error);
+	}
 	error = copyin(uap->jail, &jversion, sizeof jversion);
-	if (error)
+	if (error) {
+		uap->sysmsg_result = -1;
 		return(error);
+	}
 	pr = kmalloc(sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
 	SLIST_INIT(&pr->pr_ips);
 
@@ -215,6 +219,7 @@ next:
 		goto jail_attach_clean;
 
 	nlookup_done(&nd);
+	uap->sysmsg_result = pr->pr_id;
 	return (0);
 
 jail_attach_clean:

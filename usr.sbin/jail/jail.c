@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
- * $DragonFly: src/usr.sbin/jail/jail.c,v 1.5 2006/12/29 18:02:57 victor Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.6 2007/01/01 19:45:54 victor Exp $
  * 
  */
 
@@ -37,15 +37,19 @@ main(int argc, char **argv)
 	struct sockaddr_in6 *sin6;
 	struct passwd *pwd = NULL;
 	gid_t groups[NGROUPS];
-	int ch, ngroups, i;
+	int ch, ngroups, i, iflag;
 	char *username, *curpos;
 
+	iflag = 0;
 	username = NULL;
 	j.ips = malloc(sizeof(struct sockaddr_storage)*20);
 	bzero(j.ips, sizeof(struct sockaddr_storage)*20);
 
-	while ((ch = getopt(argc, argv, "u:")) != -1)
+	while ((ch = getopt(argc, argv, "iu:")) != -1)
 		switch (ch) {
+		case 'i':
+			iflag = 1;
+			break;
 		case 'u':
 			username = optarg;
 			break;
@@ -100,8 +104,13 @@ main(int argc, char **argv)
 	}
 
 	j.n_ips = i; 
-	if (jail(&j) != 0)
+	i = jail(&j);
+	if (i == -1)
 		err(1, "jail");
+	if (iflag) {
+		printf("%d\n", i);
+		fflush(stdout);
+	}
 	if (username != NULL) {
 		if (setgroups(ngroups, groups) != 0)
 			err(1, "setgroups");
@@ -122,6 +131,6 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n",
-	    "Usage: jail [-u username] path hostname ip-number command ...");
+	    "Usage: jail [-i] [-u username] path hostname ip-number command ...");
 	exit(1);
 }
