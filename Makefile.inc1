@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.96 2006/12/29 22:43:32 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.97 2007/01/01 19:59:25 swildner Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -795,10 +795,6 @@ bootstrap-tools:
 # XXX we may be able to remove or consolidate this into bootstrap-tools
 # now that we have the native helper (.nx/.no) infrastructure.
 #
-.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
-_games=	games/adventure games/hack games/phantasia
-.endif
-
 .if exists(${.CURDIR}/share) && !defined(NO_SHARE)
 _share=	share/syscons/scrnmaps
 .endif
