@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.12 2006/12/26 14:53:21 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.13 2007/01/01 08:51:45 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1039,7 +1039,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	 */
 	mode = ieee80211_chan2mode(ic, ic->ic_curchan);
 	rs = ic->ic_sup_rates[mode];
-	ieee80211_set11gbasicrates(&rs, IEEE80211_MODE_AUTO);
+	ieee80211_set_basicrates(&rs, IEEE80211_MODE_AUTO, 0);
 	frm = ieee80211_add_rates(frm, &rs);
 	frm = ieee80211_add_xrates(frm, &rs);
 

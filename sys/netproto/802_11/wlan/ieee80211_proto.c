@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.7 2006/12/23 09:14:02 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.8 2007/01/01 08:51:45 sephe Exp $
  */
 
 /*
@@ -556,26 +556,39 @@ ieee80211_iserp_rateset(struct ieee80211com *ic, struct ieee80211_rateset *rs)
  * the basic OFDM rates.
  */
 void
-ieee80211_set11gbasicrates(struct ieee80211_rateset *rs, enum ieee80211_phymode mode)
+ieee80211_set_basicrates(struct ieee80211_rateset *rs,
+			 enum ieee80211_phymode mode, int pureg)
 {
 	static const struct ieee80211_rateset basic[] = {
-	    { 0 },			/* IEEE80211_MODE_AUTO */
-	    { 3, { 12, 24, 48 } },	/* IEEE80211_MODE_11A */
-	    { 2, { 2, 4 } },		/* IEEE80211_MODE_11B */
-	    { 4, { 2, 4, 11, 22 } },	/* IEEE80211_MODE_11G (mixed b/g) */
-	    { 0 },			/* IEEE80211_MODE_FH */
-					/* IEEE80211_MODE_PUREG (not yet) */
-	    { 7, { 2, 4, 11, 22, 12, 24, 48 } },
+	    [IEEE80211_MODE_AUTO]	= { 0 },
+	    [IEEE80211_MODE_11A]	= { 3, { 12, 24, 48 } },
+	    [IEEE80211_MODE_11B]	= { 2, { 2, 4 } },
+	    [IEEE80211_MODE_11G]	= { 4, { 2, 4, 11, 22 } },
+	    [IEEE80211_MODE_FH]		= { 0 },
+	    [IEEE80211_MODE_TURBO_A]	= { 3, { 12, 24, 48 } },
+	    [IEEE80211_MODE_TURBO_G]	= { 4, { 2, 4, 11, 22 } }
 	};
+	static const struct ieee80211_rateset basic_pureg =
+	    { 7, { 2, 4, 11, 22, 12, 24, 48 } };
+	const struct ieee80211_rateset *basic_rs;
 	int i, j;
+
+	KASSERT(mode < IEEE80211_MODE_MAX, ("invalid phymode %u\n", mode));
+
+	if ((mode == IEEE80211_MODE_11G || mode == IEEE80211_MODE_TURBO_G) &&
+	    pureg)
+		basic_rs = &basic_pureg;
+	else
+		basic_rs = &basic[mode];
 
 	for (i = 0; i < rs->rs_nrates; i++) {
 		rs->rs_rates[i] &= IEEE80211_RATE_VAL;
-		for (j = 0; j < basic[mode].rs_nrates; j++)
-			if (basic[mode].rs_rates[j] == rs->rs_rates[i]) {
+		for (j = 0; j < basic_rs->rs_nrates; j++) {
+			if (basic_rs->rs_rates[j] == rs->rs_rates[i]) {
 				rs->rs_rates[i] |= IEEE80211_RATE_BASIC;
 				break;
 			}
+		}
 	}
 }
 

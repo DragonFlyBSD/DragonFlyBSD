@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.13 2006/12/23 09:14:02 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.14 2007/01/01 08:51:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1786,7 +1786,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 	struct ieee80211_frame *wh;
 	uint8_t *frm, *efrm;
 	uint8_t *ssid, *rates, *xrates, *wpa, *wme;
-	int reassoc, resp, allocbs;
+	int reassoc, resp;
 	uint8_t rate;
 
 	wh = mtod(m0, struct ieee80211_frame *);
@@ -2075,7 +2075,9 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		break;
 	}
 
-	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+	case IEEE80211_FC0_SUBTYPE_PROBE_REQ: {
+		int is_tmpnode;
+
 		if (ic->ic_opmode == IEEE80211_M_STA ||
 		    ic->ic_state != IEEE80211_S_RUN) {
 			ic->ic_stats.is_rx_mgtdiscard++;
@@ -2121,11 +2123,11 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			return;
 		}
 
-		allocbs = 0;
+		is_tmpnode = 0;
 		if (ni == ic->ic_bss) {
 			if (ic->ic_opmode != IEEE80211_M_IBSS) {
 				ni = ieee80211_tmp_node(ic, wh->i_addr2);
-				allocbs = 1;
+				is_tmpnode = 1;
 			} else if (!IEEE80211_ADDR_EQ(wh->i_addr2, ni->ni_macaddr)) {
 				/*
 				 * XXX Cannot tell if the sender is operating
@@ -2143,19 +2145,20 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		    "[%6D] recv probe req\n", wh->i_addr2, ":");
 		ni->ni_rssi = rssi;
 		ni->ni_rstamp = rstamp;
-		rate = ieee80211_setup_rates(ni, rates, xrates,
-			  IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE
-			| IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 0);
-		if (rate & IEEE80211_RATE_BASIC) {
-			IEEE80211_DISCARD(ic, IEEE80211_MSG_XRATE,
-			    wh, ieee80211_mgt_subtype_name[subtype >>
-				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    "%s", "recv'd rate set invalid");
-		} else {
-			IEEE80211_SEND_MGMT(ic, ni,
-				IEEE80211_FC0_SUBTYPE_PROBE_RESP, 0);
+
+		/*
+		 * Since temporary node's rate set will not be used,
+		 * there is no need to do rate negotiation for it.
+		 */
+		if (!is_tmpnode) {
+			ieee80211_setup_rates(ni, rates, xrates,
+				IEEE80211_F_DOSORT | IEEE80211_F_DOFRATE |
+				IEEE80211_F_DONEGO | IEEE80211_F_DODEL, 0);
 		}
-		if (allocbs) {
+
+		IEEE80211_SEND_MGMT(ic, ni,
+			IEEE80211_FC0_SUBTYPE_PROBE_RESP, 0);
+		if (is_tmpnode) {
 			/*
 			 * Temporary node created just to send a
 			 * response, reclaim immediately.
@@ -2163,6 +2166,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			ieee80211_free_node(ni);
 		}
 		break;
+	}
 
 	case IEEE80211_FC0_SUBTYPE_AUTH: {
 		uint16_t algo, seq, status;

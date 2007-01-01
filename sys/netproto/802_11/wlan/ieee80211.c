@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.10 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.11 2007/01/01 08:51:45 sephe Exp $
  */
 
 /*
@@ -894,22 +894,6 @@ ieee80211_setmode(struct ieee80211com *ic, enum ieee80211_phymode mode)
 	    isclr(ic->ic_chan_active, ieee80211_chan2ieee(ic, ic->ic_des_chan)))
 		ic->ic_des_chan = IEEE80211_CHAN_ANYC;
 
-	/*
-	 * Do mode-specific rate setup.
-	 */
-	if (mode == IEEE80211_MODE_11G) {
-		/*
-		 * Use a mixed 11b/11g rate set.
-		 */
-		ieee80211_set11gbasicrates(&ic->ic_sup_rates[mode],
-			IEEE80211_MODE_11G);
-	} else if (mode == IEEE80211_MODE_11B) {
-		/*
-		 * Force pure 11b rate set.
-		 */
-		ieee80211_set11gbasicrates(&ic->ic_sup_rates[mode],
-			IEEE80211_MODE_11B);
-	}
 	/*
 	 * Setup an initial rate set according to the
 	 * current/default channel selected above.  This

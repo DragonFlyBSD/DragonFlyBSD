@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.15 2006/09/02 17:09:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.9 2006/12/01 04:42:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.10 2007/01/01 08:51:45 sephe Exp $
  */
 
 /*
@@ -2481,8 +2481,15 @@ ieee80211_ioctl_set80211(struct ieee80211com *ic, u_long cmd, struct ieee80211re
 			ic->ic_flags |= IEEE80211_F_PUREG;
 		else
 			ic->ic_flags &= ~IEEE80211_F_PUREG;
-		/* NB: reset only if we're operating on an 11g channel */
-		if (ic->ic_curmode == IEEE80211_MODE_11G)
+
+		/*
+		 * NB: reset only if we're operating on an 11g channel
+		 *     and we act as AP or we are a member of an IBSS.
+		 */
+		if ((ic->ic_curmode == IEEE80211_MODE_11G ||
+		     ic->ic_curmode == IEEE80211_MODE_TURBO_G) &&
+		    (ic->ic_opmode == IEEE80211_M_HOSTAP ||
+		     ic->ic_opmode == IEEE80211_M_IBSS))
 			error = ENETRESET;
 		break;
 	case IEEE80211_IOC_MCAST_RATE:

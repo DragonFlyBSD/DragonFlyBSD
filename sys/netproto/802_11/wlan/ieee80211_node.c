@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.14 2006/12/23 09:14:02 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.15 2007/01/01 08:51:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -446,17 +446,8 @@ ieee80211_create_ibss(struct ieee80211com* ic, struct ieee80211_channel *chan)
 	/*
 	 * Do mode-specific rate setup.
 	 */
-	if (ic->ic_curmode == IEEE80211_MODE_11G) {
-		/*
-		 * Use a mixed 11b/11g rate set.
-		 */
-		ieee80211_set11gbasicrates(&ni->ni_rates, IEEE80211_MODE_11G);
-	} else if (ic->ic_curmode == IEEE80211_MODE_11B) {
-		/*
-		 * Force pure 11b rate set.
-		 */
-		ieee80211_set11gbasicrates(&ni->ni_rates, IEEE80211_MODE_11B);
-	}
+	ieee80211_set_basicrates(&ni->ni_rates, ic->ic_curmode,
+				 ic->ic_flags & IEEE80211_F_PUREG);
 
 	ieee80211_sta_join(ic, ieee80211_ref_node(ni));
 }
@@ -1045,8 +1036,6 @@ ieee80211_tmp_node(struct ieee80211com *ic, const uint8_t *macaddr)
 
 		ni->ni_table = NULL;		/* NB: pedantic */
 		ni->ni_ic = ic;
-
-		ieee80211_ratectl_data_alloc(ni);
 	} else {
 		/* XXX msg */
 		ic->ic_stats.is_rx_nodealloc++;
@@ -1723,8 +1712,6 @@ node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 		__func__, ni, ni->ni_macaddr, ":",
 		nt->nt_name, ieee80211_node_refcnt(ni)-1);
 
-	ieee80211_ratectl_data_free(ni);
-
 	/*
 	 * Clear any entry in the unicast key mapping table.
 	 * We need to do it here so rx lookups don't find it
@@ -1751,6 +1738,15 @@ node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 		TAILQ_REMOVE(&nt->nt_node, ni, ni_list);
 		LIST_REMOVE(ni, ni_hash);
 		ni->ni_table = NULL;		/* clear reference */
+
+		/*
+		 * XXX
+		 * We may want to put reclaimed node on <gone> table
+		 * so that ratectl modules can find them and free
+		 * the resources in their detach routines instead of
+		 * freeing the resources here.
+		 */
+		ieee80211_ratectl_data_free(ni);
 	} else
 		_ieee80211_free_node(ni);
 }
