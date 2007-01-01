@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.15 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.16 2007/01/01 22:51:18 corecode Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -111,7 +111,9 @@ struct kinfo_proc {
 		struct	ucred e_ucred;		/* current credentials */
 		struct  procsig e_procsig;	/* shared signal structure */
 		struct	vmspace e_vm;		/* address space */
+#ifdef old
 		struct	pstats e_stats;		/* process stats */
+#endif
 		u_int64_t e_uticks;		/* time accouting */
 		u_int64_t e_sticks;
 		u_int64_t e_iticks;
@@ -151,12 +153,10 @@ void fill_eproc (struct proc *, struct eproc *);
  */
 struct	user {
 	struct	sigacts u_sigacts;	/* p_sigacts points here (use it!) */
-	struct	pstats u_stats;		/* p_stats points here (use it!) */
 	/*
 	 * Remaining fields for a.out core dumps - not valid at other times!
 	 */
 	struct	kinfo_proc u_kproc;	/* proc + eproc */
-	struct	md_coredump u_md;	/* machine dependent glop */
 };
 
 #endif

@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.41 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.42 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_inet.h"
@@ -534,8 +534,8 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	dontroute =
 	    (flags & MSG_DONTROUTE) && (so->so_options & SO_DONTROUTE) == 0 &&
 	    (so->so_proto->pr_flags & PR_ATOMIC);
-	if (td->td_proc && td->td_proc->p_stats)
-		td->td_proc->p_stats->p_ru.ru_msgsnd++;
+	if (td->td_lwp != NULL)
+		td->td_lwp->lwp_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
 #define	gotoerr(errcode)	{ error = errcode; crit_exit(); goto release; }
@@ -700,8 +700,8 @@ sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	int resid, error;
 	boolean_t dontroute;		/* temporary SO_DONTROUTE setting */
 
-	if (td->td_proc && td->td_proc->p_stats)
-		td->td_proc->p_stats->p_ru.ru_msgsnd++;
+	if (td->td_lwp != NULL)
+		td->td_lwp->lwp_ru.ru_msgsnd++;
 	if (control)
 		m_freem(control);
 
@@ -884,7 +884,7 @@ restart:
 	}
 dontblock:
 	if (uio->uio_td && uio->uio_td->td_proc)
-		uio->uio_td->td_proc->p_stats->p_ru.ru_msgrcv++;
+		uio->uio_td->td_lwp->lwp_ru.ru_msgrcv++;
 
 	/*
 	 * note: m should be == sb_mb here.  Cache the next record while

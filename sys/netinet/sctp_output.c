@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.8 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.9 2007/01/01 22:51:17 corecode Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -10308,7 +10308,7 @@ sctp_sosend(struct socket *so,
 	/* Ok, we will attempt a msgsnd :> */
 	if (p)
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-		p->td_proc->p_stats->p_ru.ru_msgsnd++;
+		p->td_lwp->lwp_stats->lwp_ru.ru_msgsnd++;
 #else
 	p->p_stats->p_ru.ru_msgsnd++;
 #endif

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.5 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.6 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,7 @@ dummy_acquire_curproc(struct lwp *lp)
 		lwkt_deschedule_self(td);
 		dummy_setrunqueue(lp);
 		if ((td->td_flags & TDF_RUNQ) == 0)
-			++lp->lwp_stats->p_ru.ru_nivcsw;
+			++lp->lwp_ru.ru_nivcsw;
 		lwkt_switch();		/* WE MAY MIGRATE TO ANOTHER CPU */
 		crit_exit();
 		gd = mycpu;

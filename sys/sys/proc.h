@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.88 2006/10/26 12:58:30 swildner Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.89 2007/01/01 22:51:18 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -145,7 +145,6 @@ struct lwp {
 
 	lwpid_t		lwp_tid;	/* Our thread id . */
 
-	struct pstats	*lwp_stats;	/* Accounting/statistics (PROC ONLY). */
 #ifdef notyet
 	int		lwp_flag;	/* P_* flags. */
 	char		lwp_stat;	/* S* process status. */
@@ -165,6 +164,8 @@ struct lwp {
 
 	int		lwp_traceflag;	/* Kernel trace points. */
 
+	struct rusage	lwp_ru;		/* stats for this lwp */
+
 	union usched_data lwp_usdata;	/* User scheduler specific */
 #define lwp_endzero	lwp_startcopy
 
@@ -178,9 +179,6 @@ struct lwp {
 	struct rtprio	lwp_rtprio;	/* Realtime priority. */
 #define	lwp_endcopy	lwp_md
 
-#ifdef notyet
-	struct user	*lwp_addr;	/* XXX Really struct user? */
-#endif
 	struct mdproc	lwp_md;		/* Any machine-dependent fields. */
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
@@ -194,7 +192,6 @@ struct	proc {
 	struct ucred	*p_ucred;	/* Process owner's identity. */
 	struct filedesc	*p_fd;		/* Ptr to open files structure. */
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node XXX lwp */
-#define p_stats p_lwp.lwp_stats
 	struct plimit	*p_limit;	/* Process limits. */
 	void		*p_pad0;
 	struct	procsig	*p_procsig;
@@ -255,6 +252,9 @@ struct	proc {
 
 	struct timeval	p_start;	/* start time for a process */
 
+	struct rusage	p_ru;		/* stats for this proc */
+	struct rusage	p_cru;		/* sum of stats for reaped children */
+
 /* End area that is zeroed on creation. */
 #define	p_endzero	p_startcopy
 
@@ -283,7 +283,6 @@ struct	proc {
 
 	u_short		p_xstat;	/* Exit status or last stop signal */
 	u_short		p_acflag;	/* Accounting flags. */
-	struct		rusage *p_ru;	/* Exit information. XXX */
 
 	int		p_nthreads;	/* Number of threads in this process. */
 	int		p_nstopped;	/* Number of stopped threads. */
@@ -360,6 +359,15 @@ struct	proc {
 #define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 #define P_XCPU		0x40000000 /* SIGXCPU */
+
+#define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
+#define	FOREACH_LWP_IN_PROC(lp, p)	\
+	LIST_FOREACH((lp), &(p)->p_lwps, lwp_list)
+#define	ONLY_LWP_IN_PROC(p)		\
+	(p->p_nthreads != 1 &&		\
+	(panic("%s: proc %p (pid %d cmd %s) has more than one thread",	\
+	       __func__, p, p->p_pid, p->p_comm), 1),	\
+	FIRST_LWP_IN_PROC(p))
 
 #ifdef _KERNEL
 

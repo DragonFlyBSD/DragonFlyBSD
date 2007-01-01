@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.33 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.34 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -675,13 +675,13 @@ sys_linux_times(struct linux_times_args *args)
 		kprintf(ARGS(times, "*"));
 #endif
 
-	calcru(p, &ru.ru_utime, &ru.ru_stime, NULL);
+	calcru_proc(p, &ru);
 
 	tms.tms_utime = CONVTCK(ru.ru_utime);
 	tms.tms_stime = CONVTCK(ru.ru_stime);
 
-	tms.tms_cutime = CONVTCK(p->p_stats->p_cru.ru_utime);
-	tms.tms_cstime = CONVTCK(p->p_stats->p_cru.ru_stime);
+	tms.tms_cutime = CONVTCK(p->p_cru.ru_utime);
+	tms.tms_cstime = CONVTCK(p->p_cru.ru_stime);
 
 	if ((error = copyout(&tms, (caddr_t)args->buf, sizeof(tms))))
 		return error;

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.18 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.19 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -268,7 +268,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		lwkt_deschedule_self(gd->gd_curthread);
 		bsd4_setrunqueue(lp);
 		if ((gd->gd_curthread->td_flags & TDF_RUNQ) == 0)
-			++lp->lwp_stats->p_ru.ru_nivcsw;
+			++lp->lwp_ru.ru_nivcsw;
 		lwkt_switch();
 		crit_exit();
 		gd = mycpu;

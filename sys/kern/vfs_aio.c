@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.33 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.34 2007/01/01 22:51:17 corecode Exp $
  */
 
 /*
@@ -572,8 +572,8 @@ aio_process(struct aiocblist *aiocbe)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = mytd;
 
-	inblock_st = mytd->td_proc->p_stats->p_ru.ru_inblock;
-	oublock_st = mytd->td_proc->p_stats->p_ru.ru_oublock;
+	inblock_st = mytd->td_lwp->lwp_ru.ru_inblock;
+	oublock_st = mytd->td_lwp->lwp_ru.ru_oublock;
 	/*
 	 * _aio_aqueue() acquires a reference to the file that is
 	 * released in aio_free_entry().
@@ -585,8 +585,8 @@ aio_process(struct aiocblist *aiocbe)
 		auio.uio_rw = UIO_WRITE;
 		error = fo_write(fp, &auio, fp->f_cred, O_FOFFSET);
 	}
-	inblock_end = mytd->td_proc->p_stats->p_ru.ru_inblock;
-	oublock_end = mytd->td_proc->p_stats->p_ru.ru_oublock;
+	inblock_end = mytd->td_lwp->lwp_ru.ru_inblock;
+	oublock_end = mytd->td_lwp->lwp_ru.ru_oublock;
 
 	aiocbe->inputcharge = inblock_end - inblock_st;
 	aiocbe->outputcharge = oublock_end - oublock_st;
@@ -1398,6 +1398,7 @@ sys_aio_return(struct aio_return_args *uap)
 	return ENOSYS;
 #else
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	long jobref;
 	struct aiocblist *cb, *ncb;
 	struct aiocb *ujob;
@@ -1422,11 +1423,10 @@ sys_aio_return(struct aio_return_args *uap)
 			} else
 				uap->sysmsg_result = EFAULT;
 			if (cb->uaiocb.aio_lio_opcode == LIO_WRITE) {
-				p->p_stats->p_ru.ru_oublock +=
-				    cb->outputcharge;
+				lp->lwp_ru.ru_oublock += cb->outputcharge;
 				cb->outputcharge = 0;
 			} else if (cb->uaiocb.aio_lio_opcode == LIO_READ) {
-				p->p_stats->p_ru.ru_inblock += cb->inputcharge;
+				lp->lwp_ru.ru_inblock += cb->inputcharge;
 				cb->inputcharge = 0;
 			}
 			aio_free_entry(cb);
@@ -1806,6 +1806,7 @@ sys_lio_listio(struct lio_listio_args *uap)
 	return ENOSYS;
 #else
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	int nent, nentqueued;
 	struct aiocb *iocb, * const *cbptr;
 	struct aiocblist *cb;
@@ -1925,14 +1926,13 @@ sys_lio_listio(struct lio_listio_args *uap)
 					    == jobref) {
 						if (cb->uaiocb.aio_lio_opcode
 						    == LIO_WRITE) {
-							p->p_stats->p_ru.ru_oublock
-							    +=
+							lp->lwp_ru.ru_oublock +=
 							    cb->outputcharge;
 							cb->outputcharge = 0;
 						} else if (cb->uaiocb.aio_lio_opcode
 						    == LIO_READ) {
-							p->p_stats->p_ru.ru_inblock
-							    += cb->inputcharge;
+							lp->lwp_ru.ru_inblock +=
+							    cb->inputcharge;
 							cb->inputcharge = 0;
 						}
 						found++;
@@ -2075,6 +2075,7 @@ sys_aio_waitcomplete(struct aio_waitcomplete_args *uap)
 	return ENOSYS;
 #else
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct timeval atv;
 	struct timespec ts;
 	struct kaioinfo *ki;
@@ -2108,11 +2109,11 @@ sys_aio_waitcomplete(struct aio_waitcomplete_args *uap)
 			suword(uap->aiocbp, (uintptr_t)cb->uuaiocb);
 			uap->sysmsg_result = cb->uaiocb._aiocb_private.status;
 			if (cb->uaiocb.aio_lio_opcode == LIO_WRITE) {
-				p->p_stats->p_ru.ru_oublock +=
+				lp->lwp_ru.ru_oublock +=
 				    cb->outputcharge;
 				cb->outputcharge = 0;
 			} else if (cb->uaiocb.aio_lio_opcode == LIO_READ) {
-				p->p_stats->p_ru.ru_inblock += cb->inputcharge;
+				lp->lwp_ru.ru_inblock += cb->inputcharge;
 				cb->inputcharge = 0;
 			}
 			aio_free_entry(cb);

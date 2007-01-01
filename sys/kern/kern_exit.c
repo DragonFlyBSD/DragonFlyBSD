@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.66 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.67 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -167,8 +167,6 @@ exit1(int rv)
 
 	if (p->p_flag & P_PROFIL)
 		stopprofclock(p);
-	MALLOC(p->p_ru, struct rusage *, sizeof(struct rusage),
-		M_ZOMBIE, M_WAITOK);
 	/*
 	 * If parent is waiting for us to exit or exec,
 	 * P_PPWAIT is set; we will wakeup the parent below.
@@ -340,9 +338,8 @@ exit1(int rv)
 	 * info and self times.
 	 */
 	p->p_xstat = rv;
-	*p->p_ru = p->p_stats->p_ru;
-	calcru(p, &p->p_ru->ru_utime, &p->p_ru->ru_stime, NULL);
-	ruadd(p->p_ru, &p->p_stats->p_cru);
+	calcru_proc(p, &p->p_ru);
+	ruadd(&p->p_ru, &p->p_cru);
 
 	/*
 	 * notify interested parties of our demise.
@@ -513,7 +510,7 @@ loop:
 			if (status)
 				*status = p->p_xstat;
 			if (rusage)
-				*rusage = *p->p_ru;
+				*rusage = p->p_ru;
 			/*
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
@@ -526,9 +523,7 @@ loop:
 				return (0);
 			}
 			p->p_xstat = 0;
-			ruadd(&q->p_stats->p_cru, p->p_ru);
-			FREE(p->p_ru, M_ZOMBIE);
-			p->p_ru = NULL;
+			ruadd(&q->p_cru, &p->p_ru);
 
 			/*
 			 * Decrement the count of procs running with this uid.

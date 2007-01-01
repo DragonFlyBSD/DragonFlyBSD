@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.26 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.27 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -194,7 +194,8 @@ acct_process(struct proc *p)
 {
 	struct acct acct;
 	struct rusage *r;
-	struct timeval ut, st, tmp;
+	struct rusage ru;
+	struct timeval tmp;
 	struct rlimit rlim;
 	int t;
 	struct vnode *vp;
@@ -212,9 +213,9 @@ acct_process(struct proc *p)
 	bcopy(p->p_comm, acct.ac_comm, sizeof acct.ac_comm);
 
 	/* (2) The amount of user and system time that was used */
-	calcru(p, &ut, &st, NULL);
-	acct.ac_utime = encode_comp_t(ut.tv_sec, ut.tv_usec);
-	acct.ac_stime = encode_comp_t(st.tv_sec, st.tv_usec);
+	calcru_proc(p, &ru);
+	acct.ac_utime = encode_comp_t(ru.ru_utime.tv_sec, ru.ru_utime.tv_usec);
+	acct.ac_stime = encode_comp_t(ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
 
 	/* (3) The elapsed time the commmand ran (and its starting time) */
 	acct.ac_btime = p->p_start.tv_sec;
@@ -223,9 +224,9 @@ acct_process(struct proc *p)
 	acct.ac_etime = encode_comp_t(tmp.tv_sec, tmp.tv_usec);
 
 	/* (4) The average amount of memory used */
-	r = &p->p_stats->p_ru;
-	tmp = ut;
-	timevaladd(&tmp, &st);
+	r = &p->p_ru;
+	tmp = ru.ru_utime;;
+	timevaladd(&tmp, &ru.ru_stime);
 	t = tmp.tv_sec * hz + tmp.tv_usec / tick;
 	if (t)
 		acct.ac_mem = (r->ru_ixrss + r->ru_idrss + r->ru_isrss) / t;

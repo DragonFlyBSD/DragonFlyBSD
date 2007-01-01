@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.29 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.30 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -357,7 +357,7 @@ sys_getrlimit(struct __getrlimit_args *uap)
 }
 
 /*
- * Transform the running time and tick information in proc p into user,
+ * Transform the running time and tick information in lwp lp's thread into user,
  * system, and interrupt time usage.
  *
  * Since we are limited to statclock tick granularity this is a statisical
@@ -365,10 +365,9 @@ sys_getrlimit(struct __getrlimit_args *uap)
  * expected to measure fine grained deltas.
  */
 void
-calcru(struct proc *p, struct timeval *up, struct timeval *sp,
-	struct timeval *ip)
+calcru(struct lwp *lp, struct timeval *up, struct timeval *sp)
 {
-	struct thread *td = p->p_thread;
+	struct thread *td = lp->lwp_thread;
 
 	/*
 	 * Calculate at the statclock level.  YYY if the thread is owned by
@@ -380,29 +379,59 @@ calcru(struct proc *p, struct timeval *up, struct timeval *sp,
 	up->tv_usec = td->td_uticks % 1000000;
 	sp->tv_sec = td->td_sticks / 1000000;
 	sp->tv_usec = td->td_sticks % 1000000;
-	if (ip != NULL) {
-		ip->tv_sec = td->td_iticks / 1000000;
-		ip->tv_usec = td->td_iticks % 1000000;
-	}
 	crit_exit();
 }
+
+/*
+ * Aggregate resource statistics of all lwps of a process.
+ *
+ * proc.p_ru keeps track of all statistics directly related to a proc.  This
+ * consists of RSS usage and nswap information and aggregate numbers for all
+ * former lwps of this proc.
+ *
+ * proc.p_cru is the sum of all stats of reaped children.
+ *
+ * lwp.lwp_ru contains the stats directly related to one specific lwp, meaning
+ * packet, scheduler switch or page fault counts, etc.  This information gets
+ * added to lwp.lwp_proc.p_ru when the lwp exits.
+ */
+void
+calcru_proc(struct proc *p, struct rusage *ru)
+{
+	struct timeval upt, spt;
+	long *rip1, *rip2;
+	struct lwp *lp;
+
+	*ru = p->p_ru;
+
+	FOREACH_LWP_IN_PROC(lp, p) {
+		calcru(lp, &upt, &spt);
+		timevaladd(&ru->ru_utime, &upt);
+		timevaladd(&ru->ru_stime, &spt);
+		for (rip1 = &ru->ru_first, rip2 = &lp->lwp_ru.ru_first;
+		     rip1 <= &ru->ru_last;
+		     rip1++, rip2++)
+			*rip1 += *rip2;
+	}
+}
+
 
 /* ARGSUSED */
 int
 sys_getrusage(struct getrusage_args *uap)
 {
-	struct proc *p = curproc;
+	struct rusage ru;
 	struct rusage *rup;
 
 	switch (uap->who) {
 
 	case RUSAGE_SELF:
-		rup = &p->p_stats->p_ru;
-		calcru(p, &rup->ru_utime, &rup->ru_stime, NULL);
+		rup = &ru;
+		calcru_proc(curproc, rup);
 		break;
 
 	case RUSAGE_CHILDREN:
-		rup = &p->p_stats->p_cru;
+		rup = &curproc->p_cru;
 		break;
 
 	default:

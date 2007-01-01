@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.86 2006/12/31 03:50:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.87 2007/01/01 22:51:17 corecode Exp $
  */
 
 /*
@@ -3097,7 +3097,7 @@ void
 vfs_busy_pages(struct vnode *vp, struct buf *bp)
 {
 	int i, bogus;
-	struct proc *p = curthread->td_proc;
+	struct lwp *lp = curthread->td_lwp;
 
 	/*
 	 * The buffer's I/O command must already be set.  If reading,
@@ -3167,11 +3167,11 @@ retry:
 	 * This is the easiest place to put the process accounting for the I/O
 	 * for now.
 	 */
-	if (p != NULL) {
+	if (lp != NULL) {
 		if (bp->b_cmd == BUF_CMD_READ)
-			p->p_stats->p_ru.ru_inblock++;
+			lp->lwp_ru.ru_inblock++;
 		else
-			p->p_stats->p_ru.ru_oublock++;
+			lp->lwp_ru.ru_oublock++;
 	}
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.13 2006/05/23 20:35:12 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.14 2007/01/01 22:51:18 corecode Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -56,15 +56,6 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
-
-/*
- * Kernel per-process accounting / statistics
- * (not necessarily resident except when running).
- */
-struct pstats {
-	struct	rusage p_ru;		/* stats for this proc */
-	struct	rusage p_cru;		/* sum of stats for reaped children */
-};
 
 struct uprof {			/* profile arguments */
 	caddr_t	pr_base;	/* buffer base */
@@ -111,11 +102,12 @@ struct uidinfo {
 #ifdef _KERNEL
 
 struct proc;
+struct lwp;
 
 void	addupc_intr (struct proc *p, u_long pc, u_int ticks);
 void	addupc_task (struct proc *p, u_long pc, u_int ticks);
-void	calcru (struct proc *p, struct timeval *up, struct timeval *sp,
-	    struct timeval *ip);
+void	calcru (struct lwp *lp, struct timeval *up, struct timeval *sp);
+void	calcru_proc (struct proc *p, struct rusage *ru);
 int	chgproccnt (struct uidinfo *uip, int diff, int max);
 int	chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max);
 int	fuswintr (void *base);

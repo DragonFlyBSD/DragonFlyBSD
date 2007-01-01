@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.55 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.56 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_ntp.h"
@@ -337,7 +337,6 @@ hardclock(systimer_t info, struct intrframe *frame)
 {
 	sysclock_t cputicks;
 	struct proc *p;
-	struct pstats *pstats;
 	struct globaldata *gd = mycpu;
 
 	/*
@@ -513,7 +512,6 @@ hardclock(systimer_t info, struct intrframe *frame)
 	 * is mpsafe on curproc, so XXX get the mplock.
 	 */
 	if ((p = curproc) != NULL && try_mplock()) {
-		pstats = p->p_stats;
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
 		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], tick) == 0)
@@ -703,7 +701,6 @@ static void
 schedclock(systimer_t info, struct intrframe *frame)
 {
 	struct lwp *lp;
-	struct pstats *pstats;
 	struct rusage *ru;
 	struct vmspace *vm;
 	long rss;
@@ -722,8 +719,7 @@ schedclock(systimer_t info, struct intrframe *frame)
 		/*
 		 * Update resource usage integrals and maximums.
 		 */
-		if ((pstats = lp->lwp_stats) != NULL &&
-		    (ru = &pstats->p_ru) != NULL &&
+		if ((ru = &lp->lwp_proc->p_ru) &&
 		    (vm = lp->lwp_proc->p_vmspace) != NULL) {
 			ru->ru_ixrss += pgtok(vm->vm_tsize);
 			ru->ru_idrss += pgtok(vm->vm_dsize);

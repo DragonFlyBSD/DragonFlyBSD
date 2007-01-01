@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.12 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.13 2007/01/01 22:51:18 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -123,15 +123,15 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " -1,-1 -1,-1 -1,-1");
 	} else {
-		struct timeval ut, st;
+		struct rusage ru;
 
-		calcru(p, &ut, &st, (struct timeval *) NULL);
+		calcru_proc(p, &ru);
 		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " %ld,%ld %ld,%ld %ld,%ld",
 		    p->p_start.tv_sec,
 		    p->p_start.tv_usec,
-		    ut.tv_sec, ut.tv_usec,
-		    st.tv_sec, st.tv_usec);
+		    ru.ru_utime.tv_sec, ru.ru_utime.tv_usec,
+		    ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
 	}
 	DOCHECK();
 

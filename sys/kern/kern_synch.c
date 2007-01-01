@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.68 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.69 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -438,7 +438,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 */
 		KKASSERT((p->p_flag & P_ONRUNQ) == 0);
 		p->p_stat = SSLEEP;
-		p->p_stats->p_ru.ru_nvcsw++;
+		p->p_lwp.lwp_ru.ru_nvcsw++;
 		lwkt_switch();
 
 		/*

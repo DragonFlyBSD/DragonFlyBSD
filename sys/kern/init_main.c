@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.70 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.71 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -372,10 +372,11 @@ proc0_init(void *dummy __unused)
 		    vmspace_pmap(&vmspace0));
 
 	/*
-	 * We continue to place resource usage info and signal
+	 * We continue to place signal
 	 * actions in the user struct so they're pageable.
+	 *
+	 * XXX old + cufty.  will be removed
 	 */
-	p->p_stats = &p->p_addr->u_stats;
 	p->p_sigacts = &p->p_addr->u_sigacts;
 
 	/*

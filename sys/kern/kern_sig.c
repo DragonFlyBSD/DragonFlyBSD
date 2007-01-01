@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.58 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.59 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -746,7 +746,7 @@ trapsignal(struct proc *p, int sig, u_long code)
 
 	if ((p->p_flag & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
 	    !SIGISMEMBER(p->p_sigmask, sig)) {
-		p->p_stats->p_ru.ru_nsignals++;
+		p->p_lwp.lwp_ru.ru_nsignals++;
 #ifdef KTRACE
 		if (KTRPOINT(p->p_thread, KTR_PSIG))
 			ktrpsig(p, sig, ps->ps_sigact[_SIG_IDX(sig)],
@@ -1504,7 +1504,7 @@ postsig(int sig)
 			ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 		}
 		crit_exit();
-		p->p_stats->p_ru.ru_nsignals++;
+		p->p_lwp.lwp_ru.ru_nsignals++;
 		if (p->p_sig != sig) {
 			code = 0;
 		} else {

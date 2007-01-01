@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.24 2005/11/14 18:49:48 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.25 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -341,11 +341,6 @@ started(const KINFO *k, const struct varent *vent)
 	char buf[100];
 	static int  use_ampm = -1;
 
-	if (!k->ki_u.u_valid) {
-		printf("%-*s", vent->width, "-");
-		return;
-	}
-
 	if (use_ampm < 0)
 		use_ampm = (*nl_langinfo(T_FMT_AMPM) != '\0');
 
@@ -374,10 +369,6 @@ lstarted(const KINFO *k, const struct varent *vent)
 	time_t then;
 	char buf[100];
 
-	if (!k->ki_u.u_valid) {
-		printf("%-*s", vent->width, "-");
-		return;
-	}
 	then = k->ki_u.u_start.tv_sec;
 	strftime(buf, sizeof(buf) -1, "%c", localtime(&then));
 	printf("%-*s", vent->width, buf);
@@ -431,7 +422,7 @@ cputime(const KINFO *k, const struct varent *vent)
 	if (decimal_point == '\0')
 		decimal_point = localeconv()->decimal_point[0];
 
-	if (KI_PROC(k)->p_stat == SZOMB || !k->ki_u.u_valid) {
+	if (KI_PROC(k)->p_stat == SZOMB) {
 		secs = 0;
 		psecs = 0;
 	} else {
@@ -550,8 +541,7 @@ pmem(const KINFO *k, const struct varent *vent)
 void
 pagein(const KINFO *k, const struct varent *vent)
 {
-	printf("%*ld", vent->width,
-	       k->ki_u.u_valid ? k->ki_u.u_ru.ru_majflt : 0);
+	printf("%*ld", vent->width, k->ki_u.u_ru.ru_majflt);
 }
 
 /* ARGSUSED */
@@ -679,19 +669,13 @@ evar(const KINFO *k, const struct varent *vent)
 void
 uvar(const KINFO *k, const struct varent *vent)
 {
-	if (k->ki_u.u_valid)
-		printval(((const char *)&k->ki_u + vent->var->off), vent);
-	else
-		printf("%*s", vent->width, "-");
+	printval(((const char *)&k->ki_u + vent->var->off), vent);
 }
 
 void
 rvar(const KINFO *k, const struct varent *vent)
 {
-	if (k->ki_u.u_valid)
-		printval(((const char *)&k->ki_u.u_ru + vent->var->off), vent);
-	else
-		printf("%*s", vent->width, "-");
+	printval(((const char *)&k->ki_u.u_ru + vent->var->off), vent);
 }
 
 static const char *

@@ -32,7 +32,7 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.7 2004/11/16 12:16:36 joerg Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.8 2007/01/01 22:51:17 corecode Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
@@ -43,7 +43,6 @@ struct usave {
 	struct	rusage u_ru;
 	struct	rusage u_cru;
 	char	u_acflag;
-	char	u_valid;
 };
 
 #define KI_PROC(ki) (&(ki)->ki_p->kp_proc)

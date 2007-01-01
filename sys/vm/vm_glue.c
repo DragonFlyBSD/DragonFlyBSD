@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.47 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.48 2007/01/01 22:51:18 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -278,15 +278,12 @@ vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 	 * If procsig->ps_refcnt is 1 and p2->p_sigacts is NULL we dont' need
 	 * to share sigacts, so we use the up->u_sigacts.
 	 */
-	p2->p_stats = &up->u_stats;
 	if (p2->p_sigacts == NULL) {
 		if (p2->p_procsig->ps_refcnt != 1)
 			kprintf ("PID:%d NULL sigacts with refcnt not 1!\n",p2->p_pid);
 		p2->p_sigacts = &up->u_sigacts;
 		up->u_sigacts = *p1->p_sigacts;
 	}
-
-	bzero(&up->u_stats, sizeof(struct pstats));
 
 	/*
 	 * cpu_fork will copy and update the pcb, set up the kernel stack,
@@ -303,7 +300,6 @@ vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 void
 vm_waitproc(struct proc *p)
 {
-	p->p_stats = NULL;
 	cpu_proc_wait(p);
 	vmspace_exitfree(p);	/* and clean-out the vmspace */
 }
@@ -581,7 +577,7 @@ swapout(struct proc *p)
 	if (swap_debug)
 		kprintf("swapping out %d (%s)\n", p->p_pid, p->p_comm);
 #endif
-	++p->p_stats->p_ru.ru_nswap;
+	++p->p_ru.ru_nswap;
 	/*
 	 * remember the process resident count
 	 */

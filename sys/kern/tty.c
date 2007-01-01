@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.34 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.35 2007/01/01 22:51:17 corecode Exp $
  */
 
 /*-
@@ -2307,7 +2307,7 @@ void
 ttyinfo(struct tty *tp)
 {
 	struct proc *p, *pick;
-	struct timeval utime, stime;
+	struct rusage ru;
 	int tmp;
 
 	if (ttycheckoutq(tp,0) == 0)
@@ -2374,7 +2374,7 @@ ttyinfo(struct tty *tp)
 		 * section.
 		 */
 		if (pick->p_thread && (pick->p_flag & P_SWAPPEDOUT) == 0) {
-			calcru(pick, &utime, &stime, NULL);
+			calcru_proc(pick, &ru);
 			isinmem = 1;
 		} else {
 			isinmem = 0;
@@ -2393,14 +2393,10 @@ ttyinfo(struct tty *tp)
 		 * Dump the output
 		 */
 		ttyprintf(tp, " %s ", buf);
-		if (isinmem) {
-			ttyprintf(tp, "%ld.%02ldu ",
-				utime.tv_sec, utime.tv_usec / 10000);
-			ttyprintf(tp, "%ld.%02lds ",
-				stime.tv_sec, stime.tv_usec / 10000);
-		} else {
-			ttyprintf(tp, "?.??u ?.??s ");
-		}
+		ttyprintf(tp, "%ld.%02ldu ",
+			ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 10000);
+		ttyprintf(tp, "%ld.%02lds ",
+			ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 10000);
 		ttyprintf(tp, "%d%% %ldk\n", pctcpu / 100, vmsz);
 	}
 	tp->t_rocount = 0;	/* so pending input will be retyped if BS */

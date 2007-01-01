@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.30 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.31 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -651,8 +651,6 @@ fill_eproc(struct proc *p, struct eproc *ep)
 		ep->e_vm = *vm;
 		ep->e_vm.vm_rssize = vmspace_resident_count(vm); /*XXX*/
 	}
-	if ((p->p_flag & P_SWAPPEDOUT) == 0 && p->p_stats)
-		ep->e_stats = *p->p_stats;
 	if (p->p_pptr)
 		ep->e_ppid = p->p_pptr->p_pid;
 	if (p->p_pgrp) {
@@ -709,6 +707,11 @@ sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int d
 		td = p->p_thread;
 		fill_eproc(p, &eproc);
 		xproc = *p;
+
+		/*
+		 * Aggregate rusage information
+		 */
+		calcru_proc(p, &xproc.p_ru);
 
 		/*
 		 * p_stat fixup.  If we are in a thread sleep mark p_stat

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.20 2006/08/13 02:13:45 swildner Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.21 2007/01/01 22:51:17 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -537,19 +537,10 @@ saveuser(KINFO *ki)
 
 	usp = &ki->ki_u;
 
-	if ((KI_PROC(ki)->p_flag & P_SWAPPEDOUT) == 0) {
-		/*
-		 * The u-area might be swapped out, and we can't get
-		 * at it because we have a crashdump and no swap.
-		 * If it's here fill in these fields, otherwise, just
-		 * leave them 0.
-		 */
-		usp->u_start = KI_PROC(ki)->p_start;
-		usp->u_ru = KI_EPROC(ki)->e_stats.p_ru;
-		usp->u_cru = KI_EPROC(ki)->e_stats.p_cru;
-		usp->u_valid = 1;
-	} else
-		usp->u_valid = 0;
+	usp->u_start = KI_PROC(ki)->p_start;
+	usp->u_ru = KI_PROC(ki)->p_ru;
+	usp->u_cru = KI_PROC(ki)->p_cru;
+
 	/*
 	 * save arguments if needed
 	 */
