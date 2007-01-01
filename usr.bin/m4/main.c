@@ -40,7 +40,7 @@
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $OpenBSD: main.c,v 1.53 2002/04/26 16:15:16 espie Exp $
  * $FreeBSD: src/usr.bin/m4/main.c,v 1.26 2004/08/16 14:18:22 tjr Exp $
- * $DragonFly: src/usr.bin/m4/main.c,v 1.3 2006/12/27 21:29:02 pavalos Exp $
+ * $DragonFly: src/usr.bin/m4/main.c,v 1.4 2007/01/01 00:41:58 pavalos Exp $
  */
 
 /*
@@ -82,6 +82,7 @@ int ilevel = 0; 		/* input file stack pointer    */
 int oindex = 0; 		/* diversion index..	       */
 char null[] = "";		/* as it says.. just a null..  */
 const char *m4wraps = "";       /* m4wrap string default..     */
+int m4prefix = 0;		/* prefix keywords with m4_    */
 char lquote[MAXCCHARS+1] = {LQUOTE};	/* left quote character  (`)   */
 char rquote[MAXCCHARS+1] = {RQUOTE};	/* right quote character (')   */
 char scommt[MAXCCHARS+1] = {SCOMMT};	/* start character for comment */
@@ -168,6 +169,7 @@ main(int argc, char *argv[])
 	int c;
 	int n;
 	int rval;
+	const char *optstr = "D:I:PU:gd:o:st:";
 	char *p;
 
 	setlocale(LC_ALL, "");
@@ -176,6 +178,14 @@ main(int argc, char *argv[])
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
 		signal(SIGINT, onintr);
+
+	/*
+	 * We need to know if -P is there before checking -D and -U.
+	 */
+	while ((c = getopt(argc, argv, optstr)) != -1)
+		if (c == 'P')
+			m4prefix = 1;
+	optind = optreset = 1;
 
 	initkwds();
 	initspaces();
@@ -188,7 +198,7 @@ main(int argc, char *argv[])
 	outfile = NULL;
 	resizedivs(MAXOUT);
 
-	while ((c = getopt(argc, argv, "gst:d:D:U:o:I:")) != -1)
+	while ((c = getopt(argc, argv, optstr)) != -1)
 		switch(c) {
 		case 'D':               /* define something..*/
 			for (p = optarg; *p; p++)
@@ -202,6 +212,8 @@ main(int argc, char *argv[])
 			break;
 		case 'I':
 			addtoincludepath(optarg);
+			break;
+		case 'P':
 			break;
 		case 'U':               /* undefine...       */
 			remhash(optarg, TOP);
@@ -563,9 +575,16 @@ initkwds(void)
 	size_t i;
 	unsigned int h;
 	ndptr p;
+	char *k;
 
 	for (i = 0; i < MAXKEYS; i++) {
-		h = hash(keywrds[i].knam);
+		k = (char *)keywrds[i].knam;
+		if (m4prefix) {
+			if (asprintf(&k, "m4_%s", k) == -1)
+				err(1, "asprintf");
+			keywrds[i].knam = k;
+		}
+		h = hash(k);
 		p = (ndptr) xalloc(sizeof(struct ndblock));
 		p->nxtptr = hashtab[h % HASHSIZE];
 		hashtab[h % HASHSIZE] = p;
