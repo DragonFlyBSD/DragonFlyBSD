@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.13 2006/12/25 12:19:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.14 2007/01/01 03:31:52 sephe Exp $
  */
 
 /*
@@ -196,7 +196,6 @@ const struct ieee80211_rateset	acx_rates_11g =
 	{ 13, { 2, 4, 11, 22, 44, 12, 18, 24, 36, 48, 72, 96, 108 } };
 
 static int	acx_chanscan_rate = 5;	/* 5/second */
-int		acx_beacon_intvl = 100;	/* 100 TU */
 
 static const struct acx_device {
 	uint16_t	vid;
@@ -403,7 +402,6 @@ acx_attach(device_t dev)
 
 	ic->ic_opmode = IEEE80211_M_STA;
 	ic->ic_state = IEEE80211_S_INIT;
-	ic->ic_bintval = acx_beacon_intvl;
 
 	/*
 	 * NOTE: Don't overwrite ic_caps set by chip specific code
