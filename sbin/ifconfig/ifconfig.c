@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.113.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.28 2006/12/19 00:11:09 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.29 2007/01/01 01:42:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -288,6 +288,7 @@ retry:
 
 	next = buf;
 	while (next < lim) {
+		int name_len;
 
 		ifm = (struct if_msghdr *)next;
 		
@@ -327,11 +328,14 @@ retry:
 			addrcount++;
 			next += nextifm->ifm_msglen;
 		}
-		memcpy(name, sdl->sdl_data,
-		    sizeof(name) < sdl->sdl_nlen ?
-		    sizeof(name)-1 : sdl->sdl_nlen);
-		name[sizeof(name) < sdl->sdl_nlen ?
-		    sizeof(name)-1 : sdl->sdl_nlen] = '\0';
+
+		if (sizeof(name) <= sdl->sdl_nlen)
+			name_len = sizeof(name) - 1;
+		else
+			name_len = sdl->sdl_nlen;
+
+		memcpy(name, sdl->sdl_data, name_len);
+		name[name_len] = '\0';
 
 		if (all || namesonly) {
 			if (uponly)
