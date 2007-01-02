@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.7 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.8 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*
@@ -2739,11 +2739,11 @@ rt2560_stop(void *priv)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
 
+	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
+
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 
 	/* abort Tx */
 	RAL_WRITE(sc, RT2560_TXCSR0, RT2560_ABORT_TX);

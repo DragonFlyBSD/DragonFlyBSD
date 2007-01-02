@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.14 2007/01/01 03:31:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.15 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*
@@ -719,6 +719,8 @@ acx_stop(struct acx_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	ieee80211_new_state(&sc->sc_ic, IEEE80211_S_INIT, -1);
+
 	sc->sc_firmware_ver = 0;
 	sc->sc_hardware_id = 0;
 
@@ -775,7 +777,6 @@ acx_stop(struct acx_softc *sc)
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	ieee80211_new_state(&sc->sc_ic, IEEE80211_S_INIT, -1);
 
 	return 0;
 }

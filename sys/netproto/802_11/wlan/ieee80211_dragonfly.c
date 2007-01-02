@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.8 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.9 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*
@@ -519,6 +519,26 @@ ieee80211_mbuf_clone(struct mbuf *m0, int how)
 		mprev = mfirst;
 	}
 	return (m0);
+}
+
+void
+ieee80211_drain_mgtq(struct ifqueue *ifq)
+{
+	for (;;) {
+		struct ieee80211_node *ni;
+		struct mbuf *m;
+
+		IF_DEQUEUE(ifq, m);
+		if (m == NULL)
+			break;
+
+		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
+		KKASSERT(ni != NULL);
+		ieee80211_free_node(ni);
+
+		m->m_pkthdr.rcvif = NULL;
+		m_freem(m);
+	}
 }
 
 /*

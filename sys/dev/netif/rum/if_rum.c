@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.3 2006/12/26 12:41:40 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.4 2007/01/02 23:28:49 swildner Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -509,11 +509,10 @@ rum_free_tx_list(struct rum_softc *sc)
 			data->xfer = NULL;
 		}
 
-		/*
-		 * The node has already been freed at that point so don't call
-		 * ieee80211_free_node() here.
-		 */
-		data->ni = NULL;
+		if (data->ni != NULL) {
+			ieee80211_free_node(data->ni);
+			data->ni = NULL;
+		}
 	}
 }
 
@@ -2021,11 +2020,11 @@ rum_stop(struct rum_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);	/* free all nodes */
+
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);	/* free all nodes */
 
 	/* disable Rx */
 	tmp = rum_read(sc, RT2573_TXRX_CSR0);

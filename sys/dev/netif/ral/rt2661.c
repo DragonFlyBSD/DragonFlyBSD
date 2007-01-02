@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.9 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.10 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*
@@ -2697,11 +2697,11 @@ rt2661_stop(void *priv)
 	struct rt2661_tx_ratectl *rctl;
 	uint32_t tmp;
 
+	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
+
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 
 	/* abort Tx (for all 5 Tx rings) */
 	RAL_WRITE(sc, RT2661_TX_CNTL_CSR, 0x1f << 16);

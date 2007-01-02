@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.18 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.19 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*-
@@ -2146,6 +2146,8 @@ ipw_stop(void *priv)
 	struct ifnet *ifp = &ic->ic_if;
 	int i;
 
+	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
+
 	ipw_stop_master(sc);
 	CSR_WRITE_4(sc, IPW_CSR_RST, IPW_RST_SW_RESET);
 
@@ -2158,8 +2160,6 @@ ipw_stop(void *priv)
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 }
 
 static int

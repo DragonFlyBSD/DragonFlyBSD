@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.h,v 1.5.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_dragonfly.h,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_dragonfly.h,v 1.2 2007/01/02 23:28:49 swildner Exp $
  */
 #ifndef _NET80211_IEEE80211_DRAGONFLY_H_
 #define _NET80211_IEEE80211_DRAGONFLY_H_
@@ -123,6 +123,7 @@ void	ieee80211_sysctl_detach(struct ieee80211com *);
 void	ieee80211_load_module(const char *);
 int	ieee80211_mbuf_append(struct mbuf *, int, const uint8_t *);
 struct mbuf *ieee80211_mbuf_clone(struct mbuf *, int);
+void	ieee80211_drain_mgtq(struct ifqueue *);
 
 /* XXX this stuff belongs elsewhere */
 /*

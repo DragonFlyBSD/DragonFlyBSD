@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.8 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.9 2007/01/02 23:28:49 swildner Exp $
  */
 
 /*
@@ -128,7 +128,7 @@ ieee80211_proto_detach(struct ieee80211com *ic)
 	if (ic->ic_auth->ia_detach)
 		ic->ic_auth->ia_detach(ic);
 
-	IF_DRAIN(&ic->ic_mgtq);
+	ieee80211_drain_mgtq(&ic->ic_mgtq);
 
 	/*
 	 * Detach any ACL'ator.
@@ -998,9 +998,12 @@ ieee80211_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg
 	if (ic->ic_flags_ext & IEEE80211_FEXT_SWBMISS)
 		callout_stop(&ic->ic_swbmiss);
 	switch (nstate) {
-	case IEEE80211_S_INIT:
+	case IEEE80211_S_INIT: {
+		int reset = 1;
+
 		switch (ostate) {
 		case IEEE80211_S_INIT:
+			reset = 0;
 			break;
 		case IEEE80211_S_RUN:
 			switch (ic->ic_opmode) {
@@ -1017,7 +1020,7 @@ ieee80211_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg
 			default:
 				break;
 			}
-			goto reset;
+			break;
 		case IEEE80211_S_ASSOC:
 			switch (ic->ic_opmode) {
 			case IEEE80211_M_STA:
@@ -1032,20 +1035,25 @@ ieee80211_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg
 			default:
 				break;
 			}
-			goto reset;
+			break;
 		case IEEE80211_S_SCAN:
 			ieee80211_cancel_scan(ic);
-			goto reset;
+			/* FALL THROUGH */
 		case IEEE80211_S_AUTH:
-		reset:
-			ic->ic_mgt_timer = 0;
-			IF_DRAIN(&ic->ic_mgtq);
-			ieee80211_reset_bss(ic);
 			break;
 		}
+
+		if (reset) {
+			ic->ic_mgt_timer = 0;
+			ieee80211_drain_mgtq(&ic->ic_mgtq);
+			ieee80211_reset_bss(ic);
+		}
+
 		if (ic->ic_auth->ia_detach != NULL)
 			ic->ic_auth->ia_detach(ic);
 		break;
+	}
+
 	case IEEE80211_S_SCAN:
 		switch (ostate) {
 		case IEEE80211_S_INIT:
