@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.53 2006/11/07 17:51:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.54 2007/01/02 04:24:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,6 @@ ASSYM(PAGE_SHIFT, PAGE_SHIFT);
 ASSYM(PAGE_MASK, PAGE_MASK);
 ASSYM(USRSTACK, USRSTACK);
 ASSYM(VM_MAX_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-ASSYM(KERNBASE, KERNBASE);
 ASSYM(MCLBYTES, MCLBYTES);
 
 /* PCB_CR3 */
@@ -127,7 +126,7 @@ ASSYM(TSS_ESP0, offsetof(struct i386tss, tss_esp0));
 /*ASSYM(PCB_USERLDT, offsetof(struct pcb, pcb_ldt));*/
 
 ASSYM(PCB_GS, offsetof(struct pcb, pcb_gs));
-#if 0
+#if 1
 ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
 ASSYM(PCB_DR1, offsetof(struct pcb, pcb_dr1));
 ASSYM(PCB_DR2, offsetof(struct pcb, pcb_dr2));

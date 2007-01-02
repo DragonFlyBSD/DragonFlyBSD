@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.2 2006/12/26 20:46:12 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.3 2007/01/02 04:24:26 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -41,6 +41,9 @@
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>		/* struct thread */
+#endif
+#ifndef _SYS_VKERNEL_H_
+#include <sys/vkernel.h>	/* vpte_t */
 #endif
 #ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>	/* struct segment_descriptor */
@@ -84,16 +87,27 @@ struct mdglobaldata {
 	u_int		unused001;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;
-	pt_entry_t	*gd_CMAP1;
-	pt_entry_t	*gd_CMAP2;
-	pt_entry_t	*gd_CMAP3;
-	pt_entry_t	*gd_PMAP1;
+	vpte_t		*gd_CMAP1;	/* pointer to pte for CADDR1 */
+	vpte_t		*gd_CMAP2;
+	vpte_t		*gd_CMAP3;
+	vpte_t		*gd_PMAP1;
+
 	caddr_t		gd_CADDR1;
 	caddr_t		gd_CADDR2;
 	caddr_t		gd_CADDR3;
-	unsigned	*gd_PADDR1;
-	u_int		gd_acpi_id;
-	u_int		gd_apic_id;
+	vpte_t		*gd_PADDR1;
+
+	/*
+	 * Page table mappings, see get_ptbase()
+	 */
+	vpte_t		*gd_PT1map;	/* points into privatedata */
+	vpte_t		*gd_PT1pdir;	/* KVA of page directory */
+	vpte_t		*gd_PT1pde;	/* pointer to pde */
+	vpte_t		*gd_PT2map;
+	vpte_t		*gd_PT2pdir;
+	vpte_t		*gd_PT2pde;
+	int		gd_PTflip;
+
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\
@@ -108,27 +122,33 @@ struct mdglobaldata {
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
  *
- * WARNING!  page-bounded fields and page table indexes are hardwired
- * for SMPpt[] setup in i386/i386/mp_machdep.c and locore.s.
- *
- * WARNING!  sizeof(privatespace[SMP_MAXCPU]) must fit in the KVA
- * reserved for the SMPpt page table (typically one page table page).
- *
- * WARNING!  This structure must be a multiple of PAGE_SIZE.
+ * WARNING!  This structure must be segment-aligned and portions within the
+ *           structure must also be segment-aligned.  The structure typically
+ *	     takes 3 segments per cpu (12MB).
  */
+#define PRIVATESPACE_SEGPAD	\
+	(SEG_SIZE - 		\
+	((sizeof(struct mdglobaldata) + MDGLOBALDATA_PAD + PAGE_SIZE * 4 +  \
+	UPAGES * PAGE_SIZE) % SEG_SIZE))				    \
+
 struct privatespace {
 	/* main data page */
 	struct mdglobaldata mdglobaldata;
 	char		__filler0[MDGLOBALDATA_PAD];
 
 	/* mapping pages - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
-	char		CPAGE1[PAGE_SIZE];		/* SMPpt[n+0] */
-	char		CPAGE2[PAGE_SIZE];		/* SMPpt[n+1] */
-	char		CPAGE3[PAGE_SIZE];		/* SMPpt[n+2] */
-	char		PPAGE1[PAGE_SIZE];		/* SMPpt[n+3] */
+	char		CPAGE1[PAGE_SIZE];
+	char		CPAGE2[PAGE_SIZE];
+	char		CPAGE3[PAGE_SIZE];
+	vpte_t		PPAGE1[PAGE_SIZE / sizeof(vpte_t)];
 
 	/* idle stack (UPAGES pages) */
-	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[n+4] */
+	char		idlestack[UPAGES * PAGE_SIZE];
+
+	/* we must PAD to SEG_SIZE */
+	char		__filler1[PRIVATESPACE_SEGPAD];
+	vpte_t		PT1MAP[SEG_SIZE / sizeof(vpte_t)];
+	vpte_t		PT2MAP[SEG_SIZE / sizeof(vpte_t)];
 };
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
 

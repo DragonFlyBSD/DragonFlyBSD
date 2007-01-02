@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.1 2006/12/26 20:46:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.2 2007/01/02 04:24:26 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,6 +40,15 @@
 #include <sys/mman.h>
 #include <vm/vm_page.h>
 #include <assert.h>
+
+/*
+ * A bcopy that works dring low level boot, before FP is working
+ */
+void
+ovbcopy(const void *src, void *dst, size_t len)
+{
+	bcopy(src, dst, len);
+}
 
 /*
  * Copies a NUL-terminated string from user space to kernel space.
@@ -52,6 +61,7 @@ int
 copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -63,6 +73,7 @@ int
 copyin (const void *udaddr, void *kaddr, size_t len)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -74,6 +85,7 @@ int
 copyout (const void *kaddr, void *udaddr, size_t len)
 {
 	assert(0);
+	return (EFAULT);
 }
  
 /*
@@ -83,6 +95,7 @@ int
 fubyte(const void *base)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -92,6 +105,7 @@ int
 subyte (void *base, int byte)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -101,6 +115,7 @@ long
 fuword (const void *base)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -110,6 +125,7 @@ int
 suword (void *base, long word)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -119,6 +135,7 @@ int
 fusword (void *base)
 {
 	assert(0);
+	return (EFAULT);
 }
 
 /*
@@ -128,5 +145,6 @@ int
 susword (void *base, int word)
 {
 	assert(0);
+	return (EFAULT);
 }
 

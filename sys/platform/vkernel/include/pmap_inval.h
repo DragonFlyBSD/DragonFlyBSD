@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,62 +31,37 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/vmparam.h,v 1.3 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap_inval.h,v 1.1 2007/01/02 04:24:26 dillon Exp $
  */
 
-#ifndef _MACHINE_VMPARAM_H_
-#define _MACHINE_VMPARAM_H_
+#ifndef _MACHINE_PMAP_INVAL_H_
+#define	_MACHINE_PMAP_INVAL_H_
 
-/*
- * Indicate that read access also means execution access (XXX newer PCs
- * have a separate bit).
- */
-#define VM_PROT_READ_IS_EXEC
-
-/*
- * Virtual memory related constants, all in bytes
- */
-#define	MAXTSIZ		(128UL*1024*1024)	/* max text size */
-#ifndef DFLDSIZ
-#define	DFLDSIZ		(128UL*1024*1024)	/* initial data size limit */
-#endif
-#ifndef MAXDSIZ
-#define	MAXDSIZ		(512UL*1024*1024)	/* max data size */
-#endif
-#ifndef	DFLSSIZ
-#define	DFLSSIZ		(8UL*1024*1024)		/* initial stack size limit */
-#endif
-#ifndef	MAXSSIZ
-#define	MAXSSIZ		(64UL*1024*1024)	/* max stack size */
-#endif
-#ifndef SGROWSIZ
-#define SGROWSIZ	(128UL*1024)		/* amount to grow stack */
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
 #endif
 
-/*
- * After this period of time allow a process to become swappable.  This
- * parameter is mostly obsolete now.
- */
-#define	MAXSLP 		20
+typedef struct pmap_inval_info {
+    int			pir_flags;
+    struct lwkt_cpusync	pir_cpusync;
+} pmap_inval_info;
 
-/*
- * For virtual kernels running as userland processes the user and kernel
- * address spaces exist in different VM spaces and can overlap.
- */
-#define KERNEL_KVA_SIZE		0x40000000
+typedef pmap_inval_info *pmap_inval_info_t;
 
-#define VM_MIN_USER_ADDRESS	0x00000000
-#define VM_MAX_USER_ADDRESS	0xC0000000	/* XXX match to real kernel */
+#define PIRF_INVLTLB	0x0001	/* request invalidation of whole table */
+#define PIRF_INVL1PG	0x0002	/* else request invalidation of one page */
+#define PIRF_CPUSYNC	0x0004	/* cpusync is currently active */
 
-#define USRSTACK		VM_MAX_USER_ADDRESS
+#ifdef _KERNEL
 
-#define KERNBASE		0xC0000000	/* XXX totally wrong */
-
-/*
- * Initial memory map preload 
- */
-#ifndef VM_INITIAL_PAGEIN
-#define	VM_INITIAL_PAGEIN	16
+#ifndef _MACHINE_PMAP_H_
+#include <machine/pmap.h>
 #endif
 
-#endif /* _MACHINE_VMPARAM_H_ */
+void pmap_inval_init(pmap_inval_info_t);
+void pmap_inval_add(pmap_inval_info_t, pmap_t, vm_offset_t);
+void pmap_inval_flush(pmap_inval_info_t);
+
+#endif
+
+#endif

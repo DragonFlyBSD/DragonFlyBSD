@@ -1,6 +1,6 @@
 # VKERNEL - test rid for virtual kernel
 #
-# $DragonFly: src/sys/config/VKERNEL,v 1.3 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/config/VKERNEL,v 1.4 2007/01/02 04:24:22 dillon Exp $
 
 machine		vkernel		# platform architecture (i386, vkernel, etc)
 machine_arch	i386		# cpu architecture (i386, etc)
@@ -74,7 +74,7 @@ options 	DDB_TRACE
 options 	INVARIANTS
 
 # Floating point support - do not disable.
-#device		npx0	at nexus? port IO_NPX irq 13
+device		npx0	at nexus?
 
 # Pseudo devices - the number indicates how many units to allocate.
 pseudo-device	loop		# Network loopback

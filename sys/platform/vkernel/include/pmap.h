@@ -43,7 +43,7 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.2 2007/01/02 04:24:26 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -65,31 +65,6 @@
  */
 #define VADDR(pdi, pti) ((vm_offset_t)(((pdi)<<PDRSHIFT)|((pti)<<PAGE_SHIFT)))
 
-#ifndef NKPT
-#define	NKPT		30	/* actual number of kernel page tables */
-#endif
-#ifndef NKPDE
-#define NKPDE	(KVA_PAGES - 2)	/* addressable number of page tables/pde's */
-#endif
-#if NKPDE > KVA_PAGES - 2
-#error "Maximum NKPDE is KVA_PAGES - 2"
-#endif
-
-/*
- * The *PTDI values control the layout of virtual memory
- *
- * XXX This works for now, but I am not real happy with it, I'll fix it
- * right after I fix locore.s and the magic 28K hole
- *
- * SMP_PRIVPAGES: The per-cpu address space is 0xff80000 -> 0xffbfffff
- */
-#define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
-#define MPPTDI		(APTDPTDI-1)	/* per cpu ptd entry */
-#define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
-#define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
-#define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
-#define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
-
 #ifndef LOCORE
 
 #ifndef _SYS_TYPES_H_
@@ -98,6 +73,9 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_VKERNEL_H_
+#include <sys/vkernel.h>
+#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
@@ -105,55 +83,15 @@
 #include <machine/param.h>
 #endif
 
-/*
- * Address of current and alternate address space page table maps
- * and directories.
- */
 #ifdef _KERNEL
-extern pt_entry_t PTmap[], APTmap[], Upte;
-extern pd_entry_t PTD[], APTD[], PTDpde, APTDpde, Upde;
 
-extern pd_entry_t IdlePTD;	/* physical address of "Idle" state directory */
-#endif
-
-#ifdef _KERNEL
-/*
- * virtual address to page table entry and
- * to physical address. Likewise for alternate address space.
- * Note: these work recursively, thus vtopte of a pte will give
- * the corresponding pde that in turn maps it.
- */
-#define	vtopte(va)	(PTmap + i386_btop(va))
-
-#define	avtopte(va)	(APTmap + i386_btop(va))
-
-/*
- *	Routine:	pmap_kextract
- *	Function:
- *		Extract the physical page address associated
- *		kernel virtual address.
- */
-static __inline vm_paddr_t
-pmap_kextract(vm_offset_t va)
-{
-	vm_paddr_t pa;
-
-	if ((pa = (vm_offset_t) PTD[va >> PDRSHIFT]) & PG_PS) {
-		pa = (pa & ~(NBPDR - 1)) | (va & (NBPDR - 1));
-	} else {
-		pa = *(vm_offset_t *)vtopte(va);
-		pa = (pa & PG_FRAME) | (va & PAGE_MASK);
-	}
-	return pa;
-}
+vm_paddr_t pmap_kextract(vm_offset_t);
 
 /*
  * XXX
  */
 #define	vtophys(va)	pmap_kextract(((vm_offset_t)(va)))
 #define	vtophys_pte(va)	((pt_entry_t)pmap_kextract(((vm_offset_t)(va))))
-
-#define	avtophys(va)	(((vm_offset_t) (*avtopte(va))&PG_FRAME) | ((vm_offset_t)(va) & PAGE_MASK))
 
 #endif
 
@@ -183,11 +121,13 @@ typedef struct pmap_statistics *pmap_statistics_t;
 
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
+	vpte_t			pm_pdirpte;	/* pte mapping phys page */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
+	int			pm_pdindex;	/* page dir page in obj */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 };
@@ -197,7 +137,7 @@ struct pmap {
 typedef struct pmap	*pmap_t;
 
 #ifdef _KERNEL
-extern pmap_t		kernel_pmap;
+extern struct pmap	kernel_pmap;
 #endif
 
 /*
@@ -214,30 +154,15 @@ typedef struct pv_entry {
 
 #ifdef	_KERNEL
 
-#define NPPROVMTRR		8
-#define PPRO_VMTRRphysBase0	0x200
-#define PPRO_VMTRRphysMask0	0x201
-struct ppro_vmtrr {
-	u_int64_t base, mask;
-};
-extern struct ppro_vmtrr PPro_vmtrr[NPPROVMTRR];
-
 extern caddr_t	CADDR1;
 extern pt_entry_t *CMAP1;
-extern vm_paddr_t avail_end;
-extern vm_paddr_t avail_start;
-extern vm_offset_t clean_eva;
-extern vm_offset_t clean_sva;
-extern vm_paddr_t phys_avail[];
 extern char *ptvmmap;		/* poor name! */
-extern vm_offset_t virtual_avail;
-extern vm_offset_t virtual_end;
+extern vm_offset_t clean_sva;
+extern vm_offset_t clean_eva;
 
-void	pmap_bootstrap ( vm_paddr_t, vm_paddr_t);
-pmap_t	pmap_kernel (void);
+void	pmap_bootstrap (void);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
-unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
 void	pmap_set_opt (void);

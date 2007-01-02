@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.1 2006/11/08 16:40:00 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.2 2007/01/02 04:24:26 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -40,9 +40,20 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_VKERNEL_H_
+#include <sys/vkernel.h>
+#endif
 
 extern	char	sigcode[];
 extern	int	szsigcode;
+extern	vpte_t	*KernelPTA;
+extern	vpte_t	*KernelPTD;
+extern	vm_offset_t crashdumpmap;
+
+struct mdglobaldata;
+
+void cpu_gdinit (struct mdglobaldata *gd, int cpu);
+void cpu_idle_restore (void);
 
 #endif
 
