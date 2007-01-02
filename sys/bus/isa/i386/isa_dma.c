@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.13 2007/01/02 04:21:12 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <vm/pmap.h>
 #include "isa.h"
 #include <machine_base/isa/ic/i8237.h>
+#include <machine/pmap.h>
 #include <bus/isa/isavar.h>
 
 /*
@@ -248,7 +249,7 @@ isa_dmastart(int flags, caddr_t addr, u_int nbytes, int chan)
 	}
 
 	/* translate to physical */
-	phys = pmap_extract(pmap_kernel(), (vm_offset_t)addr);
+	phys = pmap_extract(&kernel_pmap, (vm_offset_t)addr);
 
 	if (flags & ISADMA_RAW) {
 	    dma_auto_mode |= (1 << chan);
@@ -370,7 +371,7 @@ isa_dmarangecheck(caddr_t va, u_int length, int chan)
 
 	endva = (vm_offset_t)round_page((vm_offset_t)va + length);
 	for (; va < (caddr_t) endva ; va += PAGE_SIZE) {
-		phys = trunc_page(pmap_extract(pmap_kernel(), (vm_offset_t)va));
+		phys = trunc_page(pmap_extract(&kernel_pmap, (vm_offset_t)va));
 #define ISARAM_END	RAM_END
 		if (phys == 0)
 			panic("isa_dmacheck: no physical page present");

@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.46 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.47 2007/01/02 04:21:13 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1171,7 +1171,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_wire(m);
 	vm_page_wakeup(m);
-	pmap_enter(kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
+	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
 	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
 	    bzero((char *)addr + i, PAGE_SIZE);
 	vm_page_flag_clear(m, PG_ZERO);

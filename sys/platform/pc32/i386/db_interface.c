@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.14 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.15 2007/01/02 04:21:15 dillon Exp $
  */
 
 /*
@@ -228,7 +228,7 @@ db_write_bytes(vm_offset_t addr, size_t size, char *data)
 	if (addr > trunc_page((vm_offset_t)btext) - size &&
 	    addr < round_page((vm_offset_t)etext)) {
 
-	    ptep0 = pmap_pte(kernel_pmap, addr);
+	    ptep0 = pmap_pte(&kernel_pmap, addr);
 	    oldmap0 = *ptep0;
 	    *ptep0 |= PG_RW;
 
@@ -236,14 +236,14 @@ db_write_bytes(vm_offset_t addr, size_t size, char *data)
 	    if ((*ptep0 & PG_PS) == 0) {
 	    	addr1 = trunc_page(addr + size - 1);
 	    	if (trunc_page(addr) != addr1) {
-		    ptep1 = pmap_pte(kernel_pmap, addr1);
+		    ptep1 = pmap_pte(&kernel_pmap, addr1);
 		    oldmap1 = *ptep1;
 		    *ptep1 |= PG_RW;
 	    	}
 	    } else {
 		addr1 = trunc_4mpage(addr + size - 1);
 		if (trunc_4mpage(addr) != addr1) {
-		    ptep1 = pmap_pte(kernel_pmap, addr1);
+		    ptep1 = pmap_pte(&kernel_pmap, addr1);
 		    oldmap1 = *ptep1;
 		    *ptep1 |= PG_RW;
 		}

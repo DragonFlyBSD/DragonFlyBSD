@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.25 2006/12/28 18:29:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.26 2007/01/02 04:21:13 dillon Exp $
  */
 
 /*
@@ -200,7 +200,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			if (eaddr >= KvaEnd)
 				return EFAULT;
 			for (; saddr < eaddr; saddr += PAGE_SIZE)  {
-				if (pmap_extract(kernel_pmap, saddr) == 0)
+				if (pmap_extract(&kernel_pmap, saddr) == 0)
 					return EFAULT;
 			}
 			

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.67 2006/12/31 03:52:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.68 2007/01/02 04:21:15 dillon Exp $
  */
 
 /*
@@ -106,6 +106,8 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
+#include <ddb/ddb.h>
+
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
 #define PMAP_SHPGPERPROC 200
@@ -144,10 +146,8 @@
 	(protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
 static int protection_codes[8];
 
-static struct pmap kernel_pmap_store;
+struct pmap kernel_pmap;
 static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
-
-pmap_t kernel_pmap;
 
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
@@ -283,7 +283,7 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 		unsigned frame = (unsigned) pmap->pm_pdir[PTDPTDI] & PG_FRAME;
 		unsigned index = i386_btop(va);
 		/* are we current address space or kernel? */
-		if ((pmap == kernel_pmap) ||
+		if ((pmap == &kernel_pmap) ||
 			(frame == (((unsigned) PTDpde) & PG_FRAME))) {
 			return (unsigned *) PTmap + index;
 		}
@@ -345,12 +345,10 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	 * pmap_create, which is unlikely to work correctly at this part of
 	 * the boot sequence (XXX and which no longer exists).
 	 */
-	kernel_pmap = &kernel_pmap_store;
-
-	kernel_pmap->pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
-	kernel_pmap->pm_count = 1;
-	kernel_pmap->pm_active = (cpumask_t)-1;	/* don't allow deactivation */
-	TAILQ_INIT(&kernel_pmap->pm_pvlist);
+	kernel_pmap.pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
+	kernel_pmap.pm_count = 1;
+	kernel_pmap.pm_active = (cpumask_t)-1;	/* don't allow deactivation */
+	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	nkpt = NKPT;
 
 	/*
@@ -361,7 +359,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	v = (c)va; va += ((n)*PAGE_SIZE); p = pte; pte += (n);
 
 	va = virtual_start;
-	pte = (pt_entry_t *) pmap_pte(kernel_pmap, va);
+	pte = (pt_entry_t *) pmap_pte(&kernel_pmap, va);
 
 	/*
 	 * CMAP1/CMAP2 are used for zeroing and copying pages.
@@ -444,7 +442,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 		 * PSE will be enabled as soon as all APs are up.
 		 */
 		PTD[KPTDI] = (pd_entry_t)ptditmp;
-		kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t)ptditmp;
+		kernel_pmap.pm_pdir[KPTDI] = (pd_entry_t)ptditmp;
 		cpu_invltlb();
 #endif
 	}
@@ -487,7 +485,7 @@ pmap_set_opt(void)
 	if (pseflag && (cpu_feature & CPUID_PSE)) {
 		load_cr4(rcr4() | CR4_PSE);
 		if (pdir4mb && mycpu->gd_cpuid == 0) {	/* only on BSP */
-			kernel_pmap->pm_pdir[KPTDI] =
+			kernel_pmap.pm_pdir[KPTDI] =
 			    PTD[KPTDI] = (pd_entry_t)pdir4mb;
 			cpu_invltlb();
 		}
@@ -607,7 +605,7 @@ get_ptbase(pmap_t pmap)
 	struct globaldata *gd = mycpu;
 
 	/* are we current address space or kernel? */
-	if (pmap == kernel_pmap || frame == (((unsigned) PTDpde) & PG_FRAME)) {
+	if (pmap == &kernel_pmap || frame == (((unsigned) PTDpde) & PG_FRAME)) {
 		return (unsigned *) PTmap;
 	}
 
@@ -708,7 +706,7 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
-	pmap_inval_add(&info, kernel_pmap, va);
+	pmap_inval_add(&info, &kernel_pmap, va);
 	npte = pa | PG_RW | PG_V | pgeflag;
 	pte = (unsigned *)vtopte(va);
 	*pte = npte;
@@ -739,7 +737,7 @@ pmap_kenter_sync(vm_offset_t va)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
-	pmap_inval_add(&info, kernel_pmap, va);
+	pmap_inval_add(&info, &kernel_pmap, va);
 	pmap_inval_flush(&info);
 }
 
@@ -759,7 +757,7 @@ pmap_kremove(vm_offset_t va)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
-	pmap_inval_add(&info, kernel_pmap, va);
+	pmap_inval_add(&info, &kernel_pmap, va);
 	pte = (unsigned *)vtopte(va);
 	*pte = 0;
 	pmap_inval_flush(&info);
@@ -1029,9 +1027,12 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 }
 
 /*
- * Initialize pmap0/vmspace0 - the kernel pmap.  This pmap is not added
- * to pmap_list because it, and IdlePTD, represents the template used
- * to update all other pmaps.
+ * Initialize pmap0/vmspace0.  This pmap is not added to pmap_list because
+ * it, and IdlePTD, represents the template used to update all other pmaps.
+ *
+ * On architectures where the kernel pmap is not integrated into the user
+ * process pmap, this pmap represents the process pmap, not the kernel pmap.
+ * kernel_pmap should be used to directly access the kernel_pmap.
  */
 void
 pmap_pinit0(struct pmap *pmap)
@@ -1389,7 +1390,7 @@ pmap_growkernel(vm_offset_t addr)
 		pmap_zero_page(ptppaddr);
 		newpdir = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
 		pdir_pde(PTD, kernel_vm_end) = newpdir;
-		*pmap_pde(kernel_pmap, kernel_vm_end) = newpdir;
+		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
 		nkpt++;
 
 		/*
@@ -1920,6 +1921,18 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((va >= UPT_MIN_ADDRESS) && (va < UPT_MAX_ADDRESS))
 		panic("pmap_enter: invalid to pmap_enter page table pages (va: 0x%x)", va);
 #endif
+	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
+		kprintf("Warning: pmap_enter called on UVA with kernel_pmap\n");
+#ifdef DDB
+		db_print_backtrace();
+#endif
+	}
+	if (va >= UPT_MAX_ADDRESS && pmap != &kernel_pmap) {
+		kprintf("Warning: pmap_enter called on KVA without kernel_pmap\n");
+#ifdef DDB
+		db_print_backtrace();
+#endif
+	}
 
 	mpte = NULL;
 	/*
@@ -2034,7 +2047,7 @@ validate:
 		newpte |= PG_W;
 	if (va < UPT_MIN_ADDRESS)
 		newpte |= PG_U;
-	if (pmap == kernel_pmap)
+	if (pmap == &kernel_pmap)
 		newpte |= pgeflag;
 
 	/*
@@ -2066,6 +2079,19 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
+
+	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
+		kprintf("Warning: pmap_enter_quick called on UVA with kernel_pmap\n");
+#ifdef DDB
+		db_print_backtrace();
+#endif
+	}
+	if (va >= UPT_MAX_ADDRESS && pmap != &kernel_pmap) {
+		kprintf("Warning: pmap_enter_quick called on KVA without kernel_pmap\n");
+#ifdef DDB
+		db_print_backtrace();
+#endif
+	}
 
 	/*
 	 * In the case that a page table page is not
@@ -2530,17 +2556,6 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	crit_exit();
 	pmap_inval_flush(&info);
 }	
-
-/*
- *	Routine:	pmap_kernel
- *	Function:
- *		Returns the physical map handle for the kernel.
- */
-pmap_t
-pmap_kernel(void)
-{
-	return (kernel_pmap);
-}
 
 /*
  * pmap_zero_page:
@@ -3233,15 +3248,15 @@ pads(pmap_t pm)
 	unsigned va, i, j;
 	unsigned *ptep;
 
-	if (pm == kernel_pmap)
+	if (pm == &kernel_pmap)
 		return;
 	for (i = 0; i < 1024; i++)
 		if (pm->pm_pdir[i])
 			for (j = 0; j < 1024; j++) {
 				va = (i << PDRSHIFT) + (j << PAGE_SHIFT);
-				if (pm == kernel_pmap && va < KERNBASE)
+				if (pm == &kernel_pmap && va < KERNBASE)
 					continue;
-				if (pm != kernel_pmap && va > UPT_MAX_ADDRESS)
+				if (pm != &kernel_pmap && va > UPT_MAX_ADDRESS)
 					continue;
 				ptep = pmap_pte_quick(pm, va);
 				if (pmap_pte_v(ptep))
