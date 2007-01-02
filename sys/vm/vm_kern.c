@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.27 2006/12/31 03:52:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.28 2007/01/02 04:52:31 dillon Exp $
  */
 
 /*
@@ -368,7 +368,7 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_t m;
 	int count;
 
-	m = vm_map_create(&kernel_map, kernel_pmap, KvaStart, KvaEnd);
+	m = vm_map_create(&kernel_map, &kernel_pmap, KvaStart, KvaEnd);
 	vm_map_lock(m);
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
 	m->system_map = 1;
