@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_ctx_init.9,v 1.2.2.6 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sysctl_ctx_init.9,v 1.3 2006/06/22 20:44:46 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl_ctx_init.9,v 1.4 2007/01/02 00:25:43 swildner Exp $
 .\"
 .Dd July 15, 2000
 .Dt SYSCTL_CTX_INIT 9
@@ -203,10 +203,10 @@ oidp = SYSCTL_ADD_STRING( &clist, SYSCTL_CHILDREN(oidp),
  ...
 /* Now we can free up the oids */
 if(sysctl_ctx_free(&clist)) {
-	printf("can't free this context - other oids depend on it");
+	kprintf("can't free this context - other oids depend on it");
 	return(ENOTEMPTY);
 } else {
-	printf("Success!\\n"):
+	kprintf("Success!\\n"):
 	return(0);
 }
 .Ed
