@@ -35,7 +35,7 @@
  *
  * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
  * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.29 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.30 2007/01/03 13:33:02 swildner Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -129,12 +129,10 @@
 #include <dev/netif/awi/awivar.h>
 
 static int awi_ioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
-#ifdef IFM_IEEE80211
 static int awi_media_rate2opt (struct awi_softc *sc, int rate);
 static int awi_media_opt2rate (struct awi_softc *sc, int opt);
 static int awi_media_change (struct ifnet *ifp);
 static void awi_media_status (struct ifnet *ifp, struct ifmediareq *imr);
-#endif
 static void awi_watchdog (struct ifnet *ifp);
 static void awi_start (struct ifnet *ifp);
 static void awi_txint (struct awi_softc *sc);
@@ -199,12 +197,10 @@ awi_attach(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
-#ifdef IFM_IEEE80211
 	int i;
 	u_int8_t *phy_rates;
 	int mword;
 	struct ifmediareq imr;
-#endif
 
 	/*
 	 * Even if we can sleep in initialization state,
@@ -247,7 +243,6 @@ awi_attach(struct awi_softc *sc)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-#ifdef IFM_IEEE80211
 	ifmedia_init(&sc->sc_media, 0, awi_media_change, awi_media_status);
 	phy_rates = sc->sc_mib_phy.aSuprt_Data_Rates;
 	for (i = 0; i < phy_rates[1]; i++) {
@@ -264,7 +259,6 @@ awi_attach(struct awi_softc *sc)
 	}
 	awi_media_status(ifp, &imr);
 	ifmedia_set(&sc->sc_media, imr.ifm_active);
-#endif
 	/* Attach is successful. */
 	sc->sc_attached = 1;
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -368,12 +362,10 @@ awi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCG80211NWKEY:
 		error = awi_wep_getnwkey(sc, (struct ieee80211_nwkey *)data);
 		break;
-#ifdef IFM_IEEE80211
 	case SIOCSIFMEDIA:
 	case SIOCGIFMEDIA:
 		error = ifmedia_ioctl(ifp, ifr, &sc->sc_media, cmd);
 		break;
-#endif
 	default:
 		error = awi_wicfg(ifp, cmd, data);
 		break;
@@ -381,7 +373,6 @@ awi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	return error;
 }
 
-#ifdef IFM_IEEE80211
 static int
 awi_media_rate2opt(struct awi_softc *sc, int rate)
 {
@@ -510,7 +501,6 @@ awi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 			imr->ifm_active |= IFM_FLAG0;
 	}
 }
-#endif /* IFM_IEEE80211 */
 
 int
 awi_intr(void *arg)
