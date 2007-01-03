@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.15.2.1 2007/01/03 14:53:40 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.15.2.2 2007/01/03 15:01:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -2058,6 +2058,7 @@ ndis_stop(sc)
  */
 void
 ndis_shutdown(dev)
+	device_t		dev;
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
