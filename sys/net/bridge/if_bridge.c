@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.16 2007/01/04 18:55:18 tgen Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.17 2007/01/04 21:14:40 tgen Exp $
  */
 
 /*
@@ -2003,6 +2003,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
  * bridge_rtupdate:
  *
  *	Add a bridge routing entry.
+ *	Can be called from interrupt context.
  */
 static int
 bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
@@ -2024,7 +2025,8 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		 * initialize the expiration time and Ethernet
 		 * address.
 		 */
-		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF, M_WAITOK|M_ZERO);
+		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF,
+			      M_INTNOWAIT|M_ZERO);
 		if (brt == NULL)
 			return (ENOMEM);
 
