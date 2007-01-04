@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uname.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
- * $DragonFly: src/usr.bin/uname/uname.c,v 1.4 2006/12/26 11:27:44 sephe Exp $
+ * $DragonFly: src/usr.bin/uname/uname.c,v 1.5 2007/01/04 14:19:03 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#ifndef HW_MACHINE_UNAME
+#define HW_MACHINE_UNAME	HW_MACHINE
+#endif
 
 #define	MFLAG	0x01
 #define	NFLAG	0x02
