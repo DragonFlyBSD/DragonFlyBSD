@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.15 2006/12/22 23:44:55 swildner Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.16 2007/01/04 18:55:18 tgen Exp $
  */
 
 /*
@@ -792,7 +792,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	if (ifs->if_bridge != NULL)
 		return (EBUSY);
 
-	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
+	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK|M_ZERO);
 	if (bif == NULL)
 		return (ENOMEM);
 
@@ -1242,7 +1242,7 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 			return (EINVAL);
 	}
 
-	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_RNOWAIT|M_ZERO);
+	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK|M_ZERO);
 	if (bif == NULL)
 		return (ENOMEM);
 
@@ -2024,7 +2024,7 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		 * initialize the expiration time and Ethernet
 		 * address.
 		 */
-		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF, M_RNOWAIT|M_ZERO);
+		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF, M_WAITOK|M_ZERO);
 		if (brt == NULL)
 			return (ENOMEM);
 
