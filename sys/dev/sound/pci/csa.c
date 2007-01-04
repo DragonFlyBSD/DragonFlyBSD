@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1999 Seigo Tanimura
  * All rights reserved.
  *
@@ -27,8 +27,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.33.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -48,9 +48,9 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include "gnu/csaimg.h"
+#include <dev/sound/pci/gnu/csaimg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013
@@ -84,13 +84,11 @@ static int csa_release_resource(device_t bus, device_t child, int type, int rid,
 				   struct resource *r);
 static int csa_setup_intr(device_t bus, device_t child,
 			  struct resource *irq, int flags,
-			  driver_intr_t *intr, void *arg,
-			  void **cookiep, lwkt_serialize_t serializer);
+			  driver_intr_t *intr, void *arg, void **cookiep);
 static int csa_teardown_intr(device_t bus, device_t child,
 			     struct resource *irq, void *cookie);
 static driver_intr_t csa_intr;
 static int csa_initialize(sc_p scp);
-static void csa_resetdsp(csa_res *resp);
 static int csa_downloadimage(csa_res *resp);
 
 static devclass_t csa_devclass;
@@ -229,7 +227,7 @@ csa_probe(device_t dev)
 	card = csa_findcard(dev);
 	if (card) {
 		device_set_desc(dev, card->name);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 	return ENXIO;
 }
@@ -261,21 +259,24 @@ csa_attach(device_t dev)
 	scp->card = csa_findsubcard(dev);
 	scp->binfo.card = scp->card;
 	kprintf("csa: card is %s\n", scp->card->name);
-	resp->io_rid = PCIR_MAPS;
-	resp->io = bus_alloc_resource(dev, SYS_RES_MEMORY, &resp->io_rid, 0, ~0, 1, RF_ACTIVE);
+	resp->io_rid = PCIR_BAR(0);
+	resp->io = bus_alloc_resource_any(dev, SYS_RES_MEMORY, 
+		&resp->io_rid, RF_ACTIVE);
 	if (resp->io == NULL)
 		return (ENXIO);
-	resp->mem_rid = PCIR_MAPS + 4;
-	resp->mem = bus_alloc_resource(dev, SYS_RES_MEMORY, &resp->mem_rid, 0, ~0, 1, RF_ACTIVE);
+	resp->mem_rid = PCIR_BAR(1);
+	resp->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+		&resp->mem_rid, RF_ACTIVE);
 	if (resp->mem == NULL)
 		goto err_io;
 	resp->irq_rid = 0;
-	resp->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &resp->irq_rid, 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+	resp->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+		&resp->irq_rid, RF_ACTIVE | RF_SHAREABLE);
 	if (resp->irq == NULL)
 		goto err_mem;
 
 	/* Enable interrupt. */
-	if (snd_setup_intr(dev, resp->irq, INTR_MPSAFE, csa_intr, scp, &scp->ih, NULL))
+	if (snd_setup_intr(dev, resp->irq, 0, csa_intr, scp, &scp->ih))
 		goto err_intr;
 #if 0
 	if ((csa_readio(resp, BA0_HISR) & HISR_INTENA) == 0)
@@ -363,6 +364,29 @@ csa_detach(device_t dev)
 	return bus_generic_detach(dev);
 }
 
+static int
+csa_resume(device_t dev)
+{
+	csa_res *resp;
+	sc_p scp;
+
+	scp = device_get_softc(dev);
+	resp = &scp->res;
+
+	/* Initialize the chip. */
+	if (csa_initialize(scp))
+		return (ENXIO);
+
+	/* Reset the Processor. */
+	csa_resetdsp(resp);
+
+	/* Download the Processor Image to the processor. */
+	if (csa_downloadimage(resp))
+		return (ENXIO);
+
+	return (bus_generic_resume(dev));
+}
+
 static struct resource *
 csa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 		      u_long start, u_long end, u_long count, u_int flags)
@@ -381,10 +405,10 @@ csa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 		break;
 	case SYS_RES_MEMORY:
 		switch (*rid) {
-		case PCIR_MAPS:
+		case PCIR_BAR(0):
 			res = resp->io;
 			break;
-		case PCIR_MAPS + 4:
+		case PCIR_BAR(1):
 			res = resp->mem;
 			break;
 		default:
@@ -417,8 +441,7 @@ csa_release_resource(device_t bus, device_t child, int type, int rid,
 static int
 csa_setup_intr(device_t bus, device_t child,
 	       struct resource *irq, int flags,
-	       driver_intr_t *intr, void *arg, 
-	       void **cookiep, lwkt_serialize_t serializer)
+	       driver_intr_t *intr, void *arg, void **cookiep)
 {
 	sc_p scp;
 	csa_res *resp;
@@ -426,8 +449,6 @@ csa_setup_intr(device_t bus, device_t child,
 
 	scp = device_get_softc(bus);
 	resp = &scp->res;
-
-	KKASSERT(serializer == NULL);	/* not yet supported */
 
 	/*
 	 * Look at the function code of the child to determine
@@ -625,7 +646,7 @@ csa_initialize(sc_p scp)
 	/*
 	 * Set the serial port FIFO pointer to the first sample in the FIFO.
 	 */
-#if notdef
+#ifdef notdef
 	csa_writeio(resp, BA0_SERBSP, 0);
 #endif /* notdef */
 
@@ -679,7 +700,7 @@ csa_initialize(sc_p scp)
 		 * First, lets wait a short while to let things settle out a bit,
 		 * and to prevent retrying the read too quickly.
 		 */
-#if notdef
+#ifdef notdef
 		DELAY(10000000L); /* clw */
 #else
 		DELAY(1000);
@@ -709,7 +730,7 @@ csa_initialize(sc_p scp)
 	 * Power down the DAC and ADC.  We will power them up (if) when we need
 	 * them.
 	 */
-#if notdef
+#ifdef notdef
 	csa_writeio(resp, BA0_AC97_POWERDOWN, 0x300);
 #endif /* notdef */
 
@@ -717,7 +738,7 @@ csa_initialize(sc_p scp)
 	 * Turn off the Processor by turning off the software clock enable flag in
 	 * the clock control register.
 	 */
-#if notdef
+#ifdef notdef
 	clkcr1 = csa_readio(resp, BA0_CLKCR1) & ~CLKCR1_SWCE;
 	csa_writeio(resp, BA0_CLKCR1, clkcr1);
 #endif /* notdef */
@@ -783,7 +804,7 @@ csa_clearserialfifos(csa_res *resp)
 		csa_writeio(resp, BA0_CLKCR1, clkcr1);
 }
 
-static void
+void
 csa_resetdsp(csa_res *resp)
 {
 	int i;
@@ -1029,7 +1050,7 @@ static device_method_t csa_methods[] = {
 	DEVMETHOD(device_detach,	csa_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	bus_generic_resume),
+	DEVMETHOD(device_resume,	csa_resume),
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
@@ -1053,5 +1074,5 @@ static driver_t csa_driver = {
  * csa can be attached to a pci bus.
  */
 DRIVER_MODULE(snd_csa, pci, csa_driver, csa_devclass, 0, 0);
-MODULE_DEPEND(snd_csa, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_csa, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_csa, 1);

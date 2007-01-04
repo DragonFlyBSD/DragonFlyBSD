@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.147 2006/12/17 20:07:27 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.148 2007/01/04 21:47:00 corecode Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -31,6 +31,11 @@ aic79xx_{seq.h,reg.h,reg_print.c}	optional ahd pci		   \
 aic79xx_reg_print.o		optional ahd pci ahd_reg_pretty_print	\
 	compile-with	"${NORMAL_C}"					\
 	no-implicit-rule local
+emu10k1-alsa%diked.h		optional snd_emu10k1 pci			   \
+	dependency	"$S/tools/emu10k1-mkalsa.sh $S/dev/sound/pci/gnu/emu10k1-alsa.h" \
+	compile-with	"CC=${CC} AWK=${AWK} sh $S/tools/emu10k1-mkalsa.sh $S/dev/sound/pci/gnu/emu10k1-alsa.h emu10k1-alsa%diked.h" \
+	no-obj no-implicit-rule before-depend				   \
+	clean		"emu10k1-alsa%diked.h"
 kern/device_if.m			standard
 kern/bus_if.m				standard
 bus/cam/cam.c				optional scbus
@@ -1198,82 +1203,57 @@ dev/misc/orm/orm.c		optional isa
 bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa
 #
-dev/sound/isa/ad1816.c		optional snd_ad1816
-dev/sound/isa/ad1816.c		optional snd isa
-dev/sound/isa/es1888.c		optional snd_ess
-dev/sound/isa/es1888.c		optional snd isa
-dev/sound/isa/ess.c		optional snd_ess
-dev/sound/isa/ess.c		optional snd isa
-dev/sound/isa/gusc.c		optional snd_mss
-dev/sound/isa/gusc.c		optional snd isa
-dev/sound/isa/mss.c		optional snd_mss
-dev/sound/isa/mss.c		optional snd isa
-dev/sound/isa/sb16.c		optional snd_sb16
-dev/sound/isa/sb16.c		optional snd isa
-dev/sound/isa/sb8.c		optional snd_sb8
-dev/sound/isa/sb8.c		optional snd isa
-dev/sound/isa/sbc.c		optional snd_sbc
-dev/sound/isa/sbc.c		optional snd isa
-#
-dev/sound/pci/als4000.c		optional snd_als4000
-dev/sound/pci/als4000.c		optional snd pci
-dev/sound/pci/cmi.c		optional snd_cmi
-dev/sound/pci/cmi.c		optional snd pci
-dev/sound/pci/cs4281.c		optional snd_cs4281
-dev/sound/pci/cs4281.c		optional snd pci
-dev/sound/pci/csa.c		optional snd_csa
-dev/sound/pci/csa.c		optional pcm pci
-dev/sound/pci/csapcm.c		optional snd_csa
-dev/sound/pci/csapcm.c		optional snd pci
-dev/sound/pci/ds1.c		optional snd_sa1
-dev/sound/pci/ds1.c		optional snd pci
-dev/sound/pci/emu10k1.c		optional snd_emu10k1
-dev/sound/pci/emu10k1.c		optional snd pci
-dev/sound/pci/es137x.c		optional snd_es137x
-dev/sound/pci/es137x.c		optional snd pci
-dev/sound/pci/fm801.c		optional snd_fm801
-dev/sound/pci/fm801.c		optional snd pci
-dev/sound/pci/ich.c		optional snd_ich
-dev/sound/pci/ich.c		optional snd pci
-dev/sound/pci/maestro.c		optional snd_maestro
-dev/sound/pci/maestro.c		optional snd pci
-dev/sound/pci/maestro3.c	optional snd_maestro3
-dev/sound/pci/maestro3.c	optional snd pci
-dev/sound/pci/neomagic.c	optional snd_neomagic
-dev/sound/pci/neomagic.c	optional snd pci
-dev/sound/pci/solo.c		optional snd_solo
-dev/sound/pci/solo.c		optional snd pci
-dev/sound/pci/t4dwave.c		optional snd_t4dwave
-dev/sound/pci/t4dwave.c		optional snd pci
-dev/sound/pci/via8233.c		optional snd_via8233
-dev/sound/pci/via8233.c		optional snd pci
-dev/sound/pci/via82c686.c	optional snd_via82c686
-dev/sound/pci/via82c686.c	optional snd pci
-dev/sound/pci/vibes.c		optional snd_vibes
-dev/sound/pci/vibes.c		optional snd pci
-dev/sound/usb/uaudio.c		optional snd_uaudio
-dev/sound/usb/uaudio.c		optional snd usb
-dev/sound/usb/uaudio_pcm.c	optional snd_uaudio
-dev/sound/usb/uaudio_pcm.c	optional snd usb
-#
+dev/sound/isa/ad1816.c		optional snd_ad1816 isa
+dev/sound/isa/es1888.c		optional snd_ess isa
+dev/sound/isa/ess.c		optional snd_ess isa
+dev/sound/isa/gusc.c		optional snd_gusc isa
+dev/sound/isa/mss.c		optional snd_mss isa
+dev/sound/isa/sb16.c		optional snd_sb16 isa
+dev/sound/isa/sb8.c		optional snd_sb8 isa
+dev/sound/isa/sbc.c		optional snd_sbc isa
+dev/sound/isa/sndbuf_dma.c	optional pcm isa
+dev/sound/pci/als4000.c		optional snd_als4000 pci
+dev/sound/pci/atiixp.c		optional snd_atiixp pci
+#dev/sound/pci/au88x0.c		optional snd_au88x0 pci
+dev/sound/pci/cmi.c		optional snd_cmi pci
+dev/sound/pci/cs4281.c		optional snd_cs4281 pci
+dev/sound/pci/csa.c		optional snd_csa pci
+dev/sound/pci/csapcm.c		optional snd_csa pci
+dev/sound/pci/ds1.c		optional snd_ds1 pci
+dev/sound/pci/emu10k1.c		optional snd_emu10k1 pci \
+	dependency "emu10k1-alsa%diked.h"
+dev/sound/pci/es137x.c		optional snd_es137x pci
+dev/sound/pci/fm801.c		optional snd_fm801 pci
+dev/sound/pci/ich.c		optional snd_ich pci
+dev/sound/pci/maestro.c 	optional snd_maestro pci
+dev/sound/pci/maestro3.c	optional snd_maestro3 pci
+dev/sound/pci/neomagic.c	optional snd_neomagic pci
+dev/sound/pci/solo.c		optional snd_solo pci
+dev/sound/pci/t4dwave.c		optional snd_t4dwave pci
+dev/sound/pci/via8233.c		optional snd_via8233 pci
+dev/sound/pci/via82c686.c	optional snd_via82c686 pci
+dev/sound/pci/vibes.c		optional snd_vibes pci
+dev/sound/pcm/ac97.c		optional pcm
 dev/sound/pcm/ac97_if.m		optional pcm
+dev/sound/pcm/ac97_patch.c	optional pcm
+dev/sound/pcm/buffer.c		optional pcm
+dev/sound/pcm/channel.c		optional pcm
 dev/sound/pcm/channel_if.m	optional pcm
+dev/sound/pcm/dsp.c		optional pcm
+dev/sound/pcm/fake.c		optional pcm
+dev/sound/pcm/feeder.c		optional pcm
+dev/sound/pcm/feeder_fmt.c	optional pcm
 dev/sound/pcm/feeder_if.m	optional pcm
+dev/sound/pcm/feeder_rate.c	optional pcm
+dev/sound/pcm/feeder_volume.c	optional pcm
+dev/sound/pcm/mixer.c		optional pcm
 dev/sound/pcm/mixer_if.m	optional pcm
-#
-dev/sound/pcm/ac97.c			optional pcm
-dev/sound/pcm/ac97_patch.c		optional pcm
-dev/sound/pcm/buffer.c			optional pcm
-dev/sound/pcm/channel.c			optional pcm
-dev/sound/pcm/dsp.c			optional pcm
-dev/sound/pcm/fake.c			optional pcm
-dev/sound/pcm/feeder.c			optional pcm
-dev/sound/pcm/feeder_fmt.c		optional pcm
-dev/sound/pcm/feeder_rate.c		optional pcm
-dev/sound/pcm/mixer.c			optional pcm
-dev/sound/pcm/sndstat.c			optional pcm
-dev/sound/pcm/sound.c			optional pcm
-dev/sound/pcm/vchan.c			optional pcm
+dev/sound/pcm/sndstat.c		optional pcm
+dev/sound/pcm/sound.c		optional pcm
+dev/sound/pcm/vchan.c		optional pcm
+#dev/sound/usb/upcm.c		optional snd_upcm usb
+dev/sound/usb/uaudio.c		optional snd_uaudio usb
+dev/sound/usb/uaudio_pcm.c	optional snd_uaudio usb
 #
 # These files in libkern/ are those needed by all architectures.  Some
 # of the files in libkern/ are only needed on some architectures, e.g.,

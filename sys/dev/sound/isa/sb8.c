@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * Copyright 1997,1998 Luigi Rizzo.
  *
  * Derived from files in the Voxware 3.5 distribution,
@@ -28,8 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.62.2.5 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.6 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.79.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,9 +37,11 @@
 #include  <dev/sound/isa/sb.h>
 #include  <dev/sound/chip.h>
 
+#include <bus/isa/isavar.h>
+
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.6 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.7 2007/01/04 21:47:02 corecode Exp $");
 
 #define SB_DEFAULT_BUFSZ	4096
 
@@ -287,13 +289,16 @@ sb_alloc_resources(struct sb_info *sb, device_t dev)
 
 	rid = 0;
 	if (!sb->io_base)
-    		sb->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->io_base = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+			&rid, RF_ACTIVE);
 	rid = 0;
 	if (!sb->irq)
-    		sb->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+			&rid, RF_ACTIVE);
 	rid = 0;
 	if (!sb->drq)
-    		sb->drq = bus_alloc_resource(dev, SYS_RES_DRQ, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->drq = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+			&rid, RF_ACTIVE);
 
 	if (sb->io_base && sb->drq && sb->irq) {
 		isa_dma_acquire(rman_get_start(sb->drq));
@@ -473,11 +478,17 @@ sb_intr(void *arg)
     	struct sb_info *sb = (struct sb_info *)arg;
 
 	sb_lock(sb);
-    	if (sndbuf_runsz(sb->pch.buffer) > 0)
+    	if (sndbuf_runsz(sb->pch.buffer) > 0) {
+		sb_unlock(sb);
 		chn_intr(sb->pch.channel);
+		sb_lock(sb);
+	}
 
-    	if (sndbuf_runsz(sb->rch.buffer) > 0)
+    	if (sndbuf_runsz(sb->rch.buffer) > 0) {
+		sb_unlock(sb);
 		chn_intr(sb->rch.channel);
+		sb_lock(sb);
+	}
 
 	sb_rd(sb, DSP_DATA_AVAIL); /* int ack */
 	sb_unlock(sb);
@@ -562,8 +573,16 @@ sb_stop(struct sb_chinfo *ch)
 	sb_lock(sb);
     	if (sb->bd_flags & BD_F_HISPEED)
 		sb_reset_dsp(sb);
-	else
+	else {
+#if 0
+		/*
+		 * NOTE: DSP_CMD_DMAEXIT_8 does not work with old
+		 * soundblaster.
+		 */
 		sb_cmd(sb, DSP_CMD_DMAEXIT_8);
+#endif
+		sb_reset_dsp(sb);
+	}
 
 	if (play)
 		sb_cmd(sb, DSP_CMD_SPKOFF); /* speaker off */
@@ -583,9 +602,9 @@ sbchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c
 	ch->channel = c;
 	ch->dir = dir;
 	ch->buffer = b;
-	if (sndbuf_alloc(ch->buffer, sb->parent_dmat, sb->bufsize) == -1)
+	if (sndbuf_alloc(ch->buffer, sb->parent_dmat, sb->bufsize) != 0)
 		return NULL;
-	sndbuf_isadmasetup(ch->buffer, sb->drq);
+	sndbuf_dmasetup(ch->buffer, sb->drq);
 	return ch;
 }
 
@@ -624,7 +643,7 @@ sbchan_trigger(kobj_t obj, void *data, int go)
 	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
 		return 0;
 
-	sndbuf_isadma(ch->buffer, go);
+	sndbuf_dma(ch->buffer, go);
 	if (go == PCMTRIG_START)
 		sb_start(ch);
 	else
@@ -637,7 +656,7 @@ sbchan_getptr(kobj_t obj, void *data)
 {
 	struct sb_chinfo *ch = data;
 
-	return sndbuf_isadmaptr(ch->buffer);
+	return sndbuf_dmaptr(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -714,7 +733,7 @@ sb_attach(device_t dev)
 		goto no;
     	if (mixer_init(dev, (sb->bd_id < 0x300)? &sbmix_mixer_class : &sbpromix_mixer_class, sb))
 		goto no;
-	if (snd_setup_intr(dev, sb->irq, INTR_MPSAFE, sb_intr, sb, &sb->ih, NULL))
+	if (snd_setup_intr(dev, sb->irq, 0, sb_intr, sb, &sb->ih))
 		goto no;
 
 	pcm_setflags(dev, pcm_getflags(dev) | SD_F_SIMPLEX);
@@ -724,14 +743,15 @@ sb_attach(device_t dev)
 			/*highaddr*/BUS_SPACE_MAXADDR,
 			/*filter*/NULL, /*filterarg*/NULL,
 			/*maxsize*/sb->bufsize, /*nsegments*/1,
-			/*maxsegz*/0x3ffff,
-			/*flags*/0, &sb->parent_dmat) != 0) {
+			/*maxsegz*/0x3ffff, /*flags*/0,
+			&sb->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto no;
     	}
 
-    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld bufsz %u",
-    	     	rman_get_start(sb->io_base), rman_get_start(sb->irq), rman_get_start(sb->drq), sb->bufsize);
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld bufsz %u %s",
+    	     	rman_get_start(sb->io_base), rman_get_start(sb->irq),
+		rman_get_start(sb->drq), sb->bufsize, PCM_KLDSTRING(snd_sb8));
 
     	if (pcm_register(dev, sb, 1, 1))
 		goto no;
@@ -778,7 +798,7 @@ static driver_t sb_driver = {
 };
 
 DRIVER_MODULE(snd_sb8, sbc, sb_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_sb8, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_sb8, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_sb8, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_sb8, 1);
 

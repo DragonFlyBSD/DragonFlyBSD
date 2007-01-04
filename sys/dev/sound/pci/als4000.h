@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Orion Hodson <O.Hodson@cs.ucl.ac.uk>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/als4000.h,v 1.1.2.3 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/als4000.h,v 1.3 2005/01/06 01:43:18 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #define ALS_PCI_ID0 		0x40004005

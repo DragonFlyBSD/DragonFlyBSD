@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Derived from the public domain Linux driver
@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.7.2.11 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.6 2006/12/20 18:14:40 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.34.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,7 +37,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.6 2006/12/20 18:14:40 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.7 2007/01/04 21:47:02 corecode Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -226,7 +226,16 @@ nm_initcd(kobj_t obj, void *devinfo)
 	struct sc_info *sc = (struct sc_info *)devinfo;
 
 	nm_wr(sc, 0x6c0, 0x01, 1);
+#if 0
+	/*
+	 * The following code-line may cause a hang for some chipsets, see
+	 * PR 56617.
+	 * In case of a bugreport without this line have a look at the PR and
+	 * conditionize the code-line based upon the specific version of
+	 * the chip.
+	 */
 	nm_wr(sc, 0x6cc, 0x87, 1);
+#endif
 	nm_wr(sc, 0x6cc, 0x80, 1);
 	nm_wr(sc, 0x6cc, 0x00, 1);
 	return 1;
@@ -611,10 +620,10 @@ nm_pci_probe(device_t dev)
 					 PCIM_CMD_PORTEN | PCIM_CMD_MEMEN |
 					 PCIM_CMD_BUSMASTEREN, 2);
 
-			sc->regid = PCIR_MAPS + 4;
-			sc->reg = bus_alloc_resource(dev, SYS_RES_MEMORY,
-						     &sc->regid, 0, ~0, 1,
-						     RF_ACTIVE);
+			sc->regid = PCIR_BAR(1);
+			sc->reg = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+							 &sc->regid,
+							 RF_ACTIVE);
 
 			if (!sc->reg) {
 				device_printf(dev, "unable to map register space\n");
@@ -678,12 +687,12 @@ nm_pci_attach(device_t dev)
 	pci_write_config(dev, PCIR_COMMAND, data, 2);
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
-	sc->bufid = PCIR_MAPS;
-	sc->buf = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->bufid,
-				     0, ~0, 1, RF_ACTIVE);
-	sc->regid = PCIR_MAPS + 4;
-	sc->reg = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->regid,
-				     0, ~0, 1, RF_ACTIVE);
+	sc->bufid = PCIR_BAR(0);
+	sc->buf = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->bufid,
+					 RF_ACTIVE);
+	sc->regid = PCIR_BAR(1);
+	sc->reg = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->regid,
+					 RF_ACTIVE);
 
 	if (!sc->buf || !sc->reg) {
 		device_printf(dev, "unable to map register space\n");
@@ -700,16 +709,16 @@ nm_pci_attach(device_t dev)
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto bad;
 
 	sc->irqid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!sc->irq || snd_setup_intr(dev, sc->irq, 0, nm_intr, sc, &sc->ih, NULL)) {
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+					 RF_ACTIVE | RF_SHAREABLE);
+	if (!sc->irq || snd_setup_intr(dev, sc->irq, 0, nm_intr, sc, &sc->ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx, 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx, 0x%lx irq %ld %s",
 		 rman_get_start(sc->buf), rman_get_start(sc->reg),
-		 rman_get_start(sc->irq));
+		 rman_get_start(sc->irq),PCM_KLDSTRING(snd_neomagic));
 
 	if (pcm_register(dev, sc, 1, 1)) goto bad;
 	pcm_addchan(dev, PCMDIR_REC, &nmchan_class, sc);
@@ -821,5 +830,5 @@ static driver_t nm_driver = {
 };
 
 DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_neomagic, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_neomagic, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_neomagic, 1);

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Derived from the public domain Linux driver
@@ -25,13 +25,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/neomagic-coeff.h,v 1.1.2.2 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/neomagic-coeff.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/neomagic-coeff.h,v 1.4 2005/01/06 01:43:19 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/neomagic-coeff.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #define NM_TOTAL_COEFF_COUNT 0x3158
 
-static char coefficients[NM_TOTAL_COEFF_COUNT * 4] = {
+static u_char coefficients[NM_TOTAL_COEFF_COUNT * 4] = {
 	0xFF, 0xFF, 0x2F, 0x00, 0x4B, 0xFF, 0xA5, 0x01, 0xEF, 0xFC, 0x21,
 	0x05, 0x87, 0xF7, 0x62, 0x11, 0xE9, 0x45, 0x5E, 0xF9, 0xB5, 0x01,
 	0xDE, 0xFF, 0xA4, 0xFF, 0x60, 0x00, 0xCA, 0xFF, 0x0D, 0x00, 0xFD,

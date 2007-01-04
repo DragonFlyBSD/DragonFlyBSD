@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/driver.c,v 1.7.2.1 2001/02/27 04:47:47 cg Exp $
- * $DragonFly: src/sys/dev/sound/driver.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/driver.c,v 1.13.2.2 2006/01/24 18:56:11 joel Exp $
+ * $DragonFly: src/sys/dev/sound/driver.c,v 1.3 2007/01/04 21:47:00 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,6 +39,7 @@ snd_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		break;
 	default:
+		return (EOPNOTSUPP);
 		break;
 	}
 	return 0;
@@ -49,5 +50,35 @@ static moduledata_t snd_mod = {
 	snd_modevent,
 	NULL
 };
-DECLARE_MODULE(snd, snd_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+DECLARE_MODULE(snd_driver, snd_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+MODULE_VERSION(snd_driver, 1);
 
+MODULE_DEPEND(snd_driver, snd_ad1816, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_als4000, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_atiixp, 1, 1, 1);
+/* MODULE_DEPEND(snd_driver, snd_aureal, 1, 1, 1); */
+MODULE_DEPEND(snd_driver, snd_cmi, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_cs4281, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_csa, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_csapcm, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_ds1, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_emu10k1, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_es137x, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_es1888, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_ess, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_fm801, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_gusc, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_hda, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_ich, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_maestro, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_maestro3, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_mss, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_neomagic, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_sb16, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_sb8, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_sbc, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_solo, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_t4dwave, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_via8233, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_via82c686, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_vibes, 1, 1, 1);

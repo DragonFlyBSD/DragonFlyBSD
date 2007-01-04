@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Dmitry Dicky diwil@dataart.com
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.27.2.1 2006/01/10 01:01:24 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -117,33 +117,33 @@ static u_int32_t fmts[] = {
 };
 
 static struct pcmchan_caps fm801ch_caps = {
-	4000, 48000,
+	5500, 48000,
 	fmts, 0
 };
 
 struct fm801_info;
 
 struct fm801_chinfo {
-	struct fm801_info 	*parent;
-	struct pcm_channel 		*channel;
-	struct snd_dbuf 		*buffer;
-	u_int32_t 		spd, dir, fmt;	/* speed, direction, format */
+	struct fm801_info	*parent;
+	struct pcm_channel	*channel;
+	struct snd_dbuf		*buffer;
+	u_int32_t		spd, dir, fmt;  /* speed, direction, format */
 	u_int32_t		shift;
 };
 
 struct fm801_info {
-	int 			type;
-	bus_space_tag_t 	st;
-	bus_space_handle_t 	sh;
-	bus_dma_tag_t   	parent_dmat;
+	int			type;
+	bus_space_tag_t		st;
+	bus_space_handle_t	sh;
+	bus_dma_tag_t		parent_dmat;
 
-	device_t 		dev;
-	int 			num;
-	u_int32_t 		unit;
+	device_t		dev;
+	int			num;
+	u_int32_t		unit;
 
-	struct resource 	*reg, *irq;
-	int             	regtype, regid, irqid;
-	void            	*ih;
+	struct resource		*reg, *irq;
+	int			regtype, regid, irqid;
+	void			*ih;
 
 	u_int32_t		play_flip,
 				play_nextblk,
@@ -161,7 +161,7 @@ struct fm801_info {
 				rec_shift,
 				rec_size;
 
-	unsigned int 		bufsz;
+	unsigned int		bufsz;
 
 	struct fm801_chinfo	pch, rch;
 
@@ -337,7 +337,8 @@ fm801ch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->channel = c;
 	ch->buffer = b;
 	ch->dir = dir;
-	if (sndbuf_alloc(ch->buffer, fm801->parent_dmat, fm801->bufsz) == -1) return NULL;
+	if (sndbuf_alloc(ch->buffer, fm801->parent_dmat, fm801->bufsz) != 0)
+		return NULL;
 	return (void *)ch;
 }
 
@@ -391,7 +392,7 @@ fm801ch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct fm801_chinfo *ch = data;
 	struct fm801_info *fm801 = ch->parent;
-	int i;
+	register int i;
 
 
 	for (i = 0; i < 10 && fm801_rates[i].limit <= speed; i++) ;
@@ -439,7 +440,7 @@ fm801ch_trigger(kobj_t obj, void *data, int go)
 {
 	struct fm801_chinfo *ch = data;
 	struct fm801_info *fm801 = ch->parent;
-	u_int32_t baseaddr = vtophys(sndbuf_getbuf(ch->buffer));
+	u_int32_t baseaddr = sndbuf_getbufaddr(ch->buffer);
 	u_int32_t k1;
 
 	DPRINT("fm801ch_trigger go %d , ", go);
@@ -590,15 +591,17 @@ fm801_pci_attach(device_t dev)
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
 	for (i = 0; (mapped == 0) && (i < PCI_MAXMAPS_0); i++) {
-		fm801->regid = PCIR_MAPS + i*4;
+		fm801->regid = PCIR_BAR(i);
 		fm801->regtype = SYS_RES_MEMORY;
-		fm801->reg = bus_alloc_resource(dev, fm801->regtype, &fm801->regid,
-						0, ~0, 1, RF_ACTIVE);
+		fm801->reg = bus_alloc_resource_any(dev, fm801->regtype,
+						    &fm801->regid, RF_ACTIVE);
 		if(!fm801->reg)
 		{
 			fm801->regtype = SYS_RES_IOPORT;
-			fm801->reg = bus_alloc_resource(dev, fm801->regtype, &fm801->regid,
-						0, ~0, 1, RF_ACTIVE);
+			fm801->reg = bus_alloc_resource_any(dev, 
+							    fm801->regtype,
+							    &fm801->regid,
+							    RF_ACTIVE);
 		}
 
 		if(fm801->reg) {
@@ -623,9 +626,9 @@ fm801_pci_attach(device_t dev)
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto oops;
 
 	fm801->irqid = 0;
-	fm801->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &fm801->irqid,
-				0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!fm801->irq || snd_setup_intr(dev, fm801->irq, 0, fm801_intr, fm801, &fm801->ih, NULL)) {
+	fm801->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &fm801->irqid,
+					    RF_ACTIVE | RF_SHAREABLE);
+	if (!fm801->irq || snd_setup_intr(dev, fm801->irq, 0, fm801_intr, fm801, &fm801->ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto oops;
 	}
@@ -635,14 +638,15 @@ fm801_pci_attach(device_t dev)
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/fm801->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0, &fm801->parent_dmat) != 0) {
+		/*flags*/0,
+		&fm801->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto oops;
 	}
 
-	ksnprintf(status, 64, "at %s 0x%lx irq %ld",
+	ksnprintf(status, 64, "at %s 0x%lx irq %ld %s",
 		(fm801->regtype == SYS_RES_IOPORT)? "io" : "memory",
-		rman_get_start(fm801->reg), rman_get_start(fm801->irq));
+		rman_get_start(fm801->reg), rman_get_start(fm801->irq),PCM_KLDSTRING(snd_fm801));
 
 #define FM801_MAXPLAYCH	1
 	if (pcm_register(dev, fm801, FM801_MAXPLAYCH, 1)) goto oops;
@@ -700,63 +704,11 @@ fm801_pci_detach(device_t dev)
 static int
 fm801_pci_probe( device_t dev )
 {
-	u_int32_t data;
-	int id, regtype, regid, result;
-	struct resource *reg;
-	bus_space_tag_t st;
-	bus_space_handle_t sh;
+	int id;
 
-	result = ENXIO;
-	
 	if ((id = pci_get_devid(dev)) == PCI_DEVICE_FORTEMEDIA1 ) {
-		data = pci_read_config(dev, PCIR_COMMAND, 2);
-		data |= (PCIM_CMD_PORTEN|PCIM_CMD_BUSMASTEREN);
-		pci_write_config(dev, PCIR_COMMAND, data, 2);
-		data = pci_read_config(dev, PCIR_COMMAND, 2);
-
-		regid = PCIR_MAPS;
-		regtype = SYS_RES_IOPORT;
-		reg = bus_alloc_resource(dev, regtype, &regid, 0, ~0, 1,
-		    RF_ACTIVE);
-
-		if (reg == NULL)
-			return ENXIO;
-
-		st = rman_get_bustag(reg);
-		sh = rman_get_bushandle(reg);
-		/*
-		 * XXX: quick check that device actually has sound capabilities.
-		 * The problem is that some cards built around FM801 chip only
-		 * have radio tuner onboard, but no sound capabilities. There
-		 * is no "official" way to quickly check this, because all
-		 * IDs are exactly the same. The only difference is 0x28
-		 * device control register, described in FM801 specification
-		 * as "SRC/Mixer Test Control/DFC Status", but without
-		 * any more detailed explanation. According to specs, and
-		 * available sample cards (SF256-PCP-R and SF256-PCS-R) its
-		 * power-on value should be `0', while on AC97-less tuner
-		 * card (SF64-PCR) it was 0x80.
-		 */
-		/*
-		 * HACK (on top of the hack above?)
-		 * Unfortunately, some fully-sound-capable cards, like the
-		 * TerraTec 512i, return 0x80.  I don't know of any other
-		 * differences to detect between the cards.  As I have one
-		 * of these cards but not an SF64-PCR, I'd prefer to have
-		 * the card work, as would others with the same card.
-		 * Therefore, not knowing better, disable this check.
-		 */
-#ifdef I_HAVE_SF64_PCR
-		if (bus_space_read_1(st, sh, 0x28) == 0) {
-#endif
-			device_set_desc(dev,
-			    "Forte Media FM801 Audio Controller");
-			result = 0;
-#ifdef I_HAVE_SF64_PCR
-		}
-#endif
-
-		bus_release_resource(dev, regtype, regid, reg);
+		device_set_desc(dev, "Forte Media FM801 Audio Controller");
+		return BUS_PROBE_DEFAULT;
 	}
 /*
 	if ((id = pci_get_devid(dev)) == PCI_DEVICE_FORTEMEDIA2 ) {
@@ -764,7 +716,7 @@ fm801_pci_probe( device_t dev )
 		return ENXIO;
 	}
 */
-	return (result);
+	return ENXIO;
 }
 
 static struct resource *
@@ -775,7 +727,7 @@ fm801_alloc_resource(device_t bus, device_t child, int type, int *rid,
 
 	fm801 = pcm_getdevinfo(bus);
 
-	if (type == SYS_RES_IOPORT && *rid == PCIR_MAPS)
+	if (type == SYS_RES_IOPORT && *rid == PCIR_BAR(0))
 		return (fm801->reg);
 
 	return (NULL);
@@ -813,5 +765,5 @@ static driver_t fm801_driver = {
 };
 
 DRIVER_MODULE(snd_fm801, pci, fm801_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_fm801, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_fm801, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_fm801, 1);

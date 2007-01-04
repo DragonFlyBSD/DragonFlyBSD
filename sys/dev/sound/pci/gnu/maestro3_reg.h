@@ -1,6 +1,6 @@
-/* $FreeBSD: src/sys/gnu/dev/sound/pci/maestro3_reg.h,v 1.1.2.2 2001/08/01 03:41:09 cg Exp $ */
-/* $DragonFly: src/sys/dev/sound/pci/gnu/maestro3_reg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $ */
-/*
+/* $FreeBSD: src/sys/gnu/dev/sound/pci/maestro3_reg.h,v 1.5 2005/01/06 18:27:30 imp Exp $ */
+/* $DragonFly: src/sys/dev/sound/pci/gnu/maestro3_reg.h,v 1.3 2007/01/04 21:47:03 corecode Exp $ */
+/*-
  *      ESS Technology allegro audio driver.
  *
  *      Copyright (C) 1992-2000  Don Kim (don.kim@esstech.com)

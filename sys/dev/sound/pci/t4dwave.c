@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.48 2005/03/01 08:58:05 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,8 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -93,7 +94,7 @@ struct tr_info {
 	int regtype, regid, irqid;
 	void *ih;
 
-	void *lock;
+	struct spinlock *lock;
 
 	u_int32_t playchns;
 	unsigned int bufsz;
@@ -274,7 +275,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		}
 	}
 	if (tr->type != ALI_PCI_ID || i > 0) {
-		for (i=TR_TIMEOUT_CDC; (i>0) && (j & trw); i--) 
+		for (i=TR_TIMEOUT_CDC; (i>0) && (j & trw); i--)
 			j=tr_rd(tr, treg, 4);
 		if (tr->type == ALI_PCI_ID && tr->rev > 0x01)
 		      	trw |= 0x0100;
@@ -543,7 +544,7 @@ trpchan_trigger(kobj_t obj, void *data, int go)
 		ch->fms = 0;
 		ch->ec = 0;
 		ch->alpha = 0;
-		ch->lba = vtophys(sndbuf_getbuf(ch->buffer));
+		ch->lba = sndbuf_getbufaddr(ch->buffer);
 		ch->cso = 0;
 		ch->eso = (sndbuf_getsize(ch->buffer) / sndbuf_getbps(ch->buffer)) - 1;
 		ch->rvol = ch->cvol = 0x7f;
@@ -669,7 +670,7 @@ trrchan_trigger(kobj_t obj, void *data, int go)
 		i = tr_rd(tr, TR_REG_DMAR11, 1) & 0x03;
 		tr_wr(tr, TR_REG_DMAR11, i | 0x54, 1);
 		/* set up base address */
-	   	tr_wr(tr, TR_REG_DMAR0, vtophys(sndbuf_getbuf(ch->buffer)), 4);
+	   	tr_wr(tr, TR_REG_DMAR0, sndbuf_getbufaddr(ch->buffer), 4);
 		/* set up buffer size */
 		i = tr_rd(tr, TR_REG_DMAR4, 4) & ~0x00ffffff;
 		tr_wr(tr, TR_REG_DMAR4, i | (sndbuf_runsz(ch->buffer) - 1), 4);
@@ -692,7 +693,7 @@ trrchan_getptr(kobj_t obj, void *data)
 	struct tr_info *tr = ch->parent;
 
 	/* return current byte offset of channel */
-	return tr_rd(tr, TR_REG_DMAR0, 4) - vtophys(sndbuf_getbuf(ch->buffer));
+	return tr_rd(tr, TR_REG_DMAR0, 4) - sndbuf_getbufaddr(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -792,16 +793,16 @@ tr_pci_probe(device_t dev)
 	switch (pci_get_devid(dev)) {
 		case SPA_PCI_ID:
 			device_set_desc(dev, "SiS 7018");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case ALI_PCI_ID:
 			device_set_desc(dev, "Acer Labs M5451");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case TDX_PCI_ID:
 			device_set_desc(dev, "Trident 4DWave DX");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case TNX_PCI_ID:
 			device_set_desc(dev, "Trident 4DWave NX");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 	}
 
 	return ENXIO;
@@ -830,9 +831,10 @@ tr_pci_attach(device_t dev)
 	pci_write_config(dev, PCIR_COMMAND, data, 2);
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
-	tr->regid = PCIR_MAPS;
+	tr->regid = PCIR_BAR(0);
 	tr->regtype = SYS_RES_IOPORT;
-	tr->reg = bus_alloc_resource(dev, tr->regtype, &tr->regid, 0, ~0, 1, RF_ACTIVE);
+	tr->reg = bus_alloc_resource_any(dev, tr->regtype, &tr->regid,
+		RF_ACTIVE);
 	if (tr->reg) {
 		tr->st = rman_get_bustag(tr->reg);
 		tr->sh = rman_get_bushandle(tr->reg);
@@ -854,9 +856,9 @@ tr_pci_attach(device_t dev)
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto bad;
 
 	tr->irqid = 0;
-	tr->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &tr->irqid,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!tr->irq || snd_setup_intr(dev, tr->irq, INTR_MPSAFE, tr_intr, tr, &tr->ih, NULL)) {
+	tr->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &tr->irqid,
+				 RF_ACTIVE | RF_SHAREABLE);
+	if (!tr->irq || snd_setup_intr(dev, tr->irq, 0, tr_intr, tr, &tr->ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
@@ -866,13 +868,14 @@ tr_pci_attach(device_t dev)
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/tr->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0, &tr->parent_dmat) != 0) {
+		/*flags*/0,
+		&tr->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
 
-	ksnprintf(status, 64, "at io 0x%lx irq %ld",
-		 rman_get_start(tr->reg), rman_get_start(tr->irq));
+	ksnprintf(status, 64, "at io 0x%lx irq %ld %s",
+		 rman_get_start(tr->reg), rman_get_start(tr->irq),PCM_KLDSTRING(snd_t4dwave));
 
 	if (pcm_register(dev, tr, TR_MAXPLAYCH, 1)) goto bad;
 	pcm_addchan(dev, PCMDIR_REC, &trrchan_class, tr);
@@ -985,5 +988,5 @@ static driver_t tr_driver = {
 };
 
 DRIVER_MODULE(snd_t4dwave, pci, tr_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_t4dwave, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_t4dwave, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_t4dwave, 1);

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,14 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/mixer.h,v 1.2.2.6 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.4 2006/07/28 02:17:38 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/mixer.h,v 1.14 2005/01/06 01:43:21 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.5 2007/01/04 21:47:03 corecode Exp $
  */
 
 int mixer_init(device_t dev, kobj_class_t cls, void *devinfo);
 int mixer_uninit(device_t dev);
 int mixer_reinit(device_t dev);
-int mixer_ioctl(struct dev_ioctl_args *);
+d_ioctl_t mixer_ioctl;
 
 int mixer_hwvol_init(device_t dev);
 void mixer_hwvol_mute(device_t dev);

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/csavar.h,v 1.2.2.2 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/csavar.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/csavar.h,v 1.5 2005/06/27 07:43:57 glebius Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csavar.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #ifndef _CSA_VAR_H
@@ -67,4 +67,5 @@ void csa_writeio(csa_res *resp, u_long offset, u_int32_t data);
 u_int32_t csa_readmem(csa_res *resp, u_long offset);
 void csa_writemem(csa_res *resp, u_long offset, u_int32_t data);
 
+void csa_resetdsp(csa_res *resp);
 #endif /* _CSA_VAR_H */

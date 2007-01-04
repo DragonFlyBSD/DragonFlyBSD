@@ -1,7 +1,7 @@
-/* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.1.2.1 2002/08/24 08:03:07 nsayer Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.5 2006/12/20 18:14:41 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.15.2.1 2005/12/30 19:55:54 netchild Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.6 2007/01/04 21:47:03 corecode Exp $ */
 
-/*
+/*-
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,32 +41,29 @@ struct ua_chinfo {
 	struct ua_info *parent;
 	struct pcm_channel *channel;
 	struct snd_dbuf *buffer;
+	u_char *buf;
 	int dir, hwch;
 	u_int32_t fmt, spd, blksz;	/* XXXXX */
 };
 
 struct ua_info {
 	device_t sc_dev;
+	u_int32_t bufsz;
 	struct ua_chinfo pch, rch;
-	bus_dma_tag_t	parent_dmat;
+#define FORMAT_NUM	32
+	u_int32_t ua_playfmt[FORMAT_NUM*2+1]; /* FORMAT_NUM format * (stereo or mono) + endptr */
+	u_int32_t ua_recfmt[FORMAT_NUM*2+1]; /* FORMAT_NUM format * (stereo or mono) + endptr */
+	struct pcmchan_caps ua_playcaps;
+	struct pcmchan_caps ua_reccaps;
 };
 
-static u_int32_t ua_playfmt[8*2+1]; /* 8 format * (stereo or mono) + endptr */
-
-static struct pcmchan_caps ua_playcaps = {8000, 48000, ua_playfmt, 0};
-
-static u_int32_t ua_recfmt[8*2+1]; /* 8 format * (stereo or mono) + endptr */
-
-static struct pcmchan_caps ua_reccaps = {8000, 48000, ua_recfmt, 0};
-
-#define UAUDIO_PCM_BUFF_SIZE	16*1024
+#define UAUDIO_DEFAULT_BUFSZ		16*1024
 
 /************************************************************/
 static void *
 ua_chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c, int dir)
 {
 	device_t pa_dev;
-	u_char *buf,*end;
 
 	struct ua_info *sc = devinfo;
 	struct ua_chinfo *ch = (dir == PCMDIR_PLAY)? &sc->pch : &sc->rch;
@@ -74,19 +71,21 @@ ua_chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->parent = sc;
 	ch->channel = c;
 	ch->buffer = b;
-
-	/* allocate PCM side DMA buffer */
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, UAUDIO_PCM_BUFF_SIZE) != 0) {
-	    return NULL;
-        }
+	ch->dir = dir;
 
 	pa_dev = device_get_parent(sc->sc_dev);
-	buf = end = sndbuf_getbuf(b);
-	end += sndbuf_getsize(b);
-	uaudio_chan_set_param_pcm_dma_buff(pa_dev, buf, end, ch->channel);
 
-	/* Create ua_playfmt[] & ua_recfmt[] */
-	uaudio_query_formats(pa_dev, (u_int32_t *)&ua_playfmt, (u_int32_t *)&ua_recfmt);
+	ch->buf = kmalloc(sc->bufsz, M_DEVBUF, M_NOWAIT);
+	if (ch->buf == NULL)
+		return NULL;
+	if (sndbuf_setup(b, ch->buf, sc->bufsz) != 0) {
+		kfree(ch->buf, M_DEVBUF);
+		return NULL;
+	}
+	uaudio_chan_set_param_pcm_dma_buff(pa_dev, ch->buf, ch->buf+sc->bufsz, ch->channel, dir);
+	if (bootverbose)
+		device_printf(pa_dev, "%s buf %p\n", (dir == PCMDIR_PLAY)?
+			      "play" : "rec", sndbuf_getbuf(ch->buffer));
 
 	ch->dir = dir;
 #ifndef NO_RECORDING
@@ -101,6 +100,16 @@ ua_chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 }
 
 static int
+ua_chan_free(kobj_t obj, void *data)
+{
+	struct ua_chinfo *ua = data;
+
+	if (ua->buf != NULL)
+		kfree(ua->buf, M_DEVBUF);
+	return 0;
+}
+
+static int
 ua_chan_setformat(kobj_t obj, void *data, u_int32_t format)
 {
 	device_t pa_dev;
@@ -108,9 +117,12 @@ ua_chan_setformat(kobj_t obj, void *data, u_int32_t format)
 
 	struct ua_chinfo *ch = data;
 
+	/*
+	 * At this point, no need to query as we shouldn't select an unsorted format
+	 */
 	ua = ch->parent;
 	pa_dev = device_get_parent(ua->sc_dev);
-	uaudio_chan_set_param_format(pa_dev, format);
+	uaudio_chan_set_param_format(pa_dev, format, ch->dir);
 
 	ch->fmt = format;
 	return 0;
@@ -119,15 +131,15 @@ ua_chan_setformat(kobj_t obj, void *data, u_int32_t format)
 static int
 ua_chan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
+	struct ua_chinfo *ch;
 	device_t pa_dev;
-	struct ua_info *ua;
+	int bestspeed;
 
-	struct ua_chinfo *ch = data;
-	ch->spd = speed;
+	ch = data;
+	pa_dev = device_get_parent(ch->parent->sc_dev);
 
-	ua = ch->parent;
-	pa_dev = device_get_parent(ua->sc_dev);
-	uaudio_chan_set_param_speed(pa_dev, speed);
+	if ((bestspeed = uaudio_chan_set_param_speed(pa_dev, speed, ch->dir)))
+		ch->spd = bestspeed;
 
 	return ch->spd;
 }
@@ -136,19 +148,17 @@ static int
 ua_chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	device_t pa_dev;
-	struct ua_info *ua;
 	struct ua_chinfo *ch = data;
-	/* ch->blksz = blocksize; */
-	if (blocksize) {
-		ch->blksz = blocksize;
-	} else {
-		ch->blksz = UAUDIO_PCM_BUFF_SIZE/2;
-	}
+	struct ua_info *ua = ch->parent;
 
-	/* XXXXX */
-	ua = ch->parent;
+	if (blocksize) {
+		RANGE(blocksize, 128, ua->bufsz / 2);
+		if (sndbuf_resize(ch->buffer, ua->bufsz/blocksize, blocksize) != 0) {
+			ch->blksz = blocksize;
+		}
+	}
 	pa_dev = device_get_parent(ua->sc_dev);
-	uaudio_chan_set_param_blocksize(pa_dev, blocksize);
+	uaudio_chan_set_param_blocksize(pa_dev, blocksize, ch->dir);
 
 	return ch->blksz;
 }
@@ -195,19 +205,21 @@ ua_chan_getptr(kobj_t obj, void *data)
 	ua = ch->parent;
 	pa_dev = device_get_parent(ua->sc_dev);
 
-	return uaudio_chan_getptr(pa_dev);
+	return uaudio_chan_getptr(pa_dev, ch->dir);
 }
 
 static struct pcmchan_caps *
 ua_chan_getcaps(kobj_t obj, void *data)
 {
-	struct ua_chinfo *ch = data;
+	struct ua_chinfo *ch;
 
-	return (ch->dir == PCMDIR_PLAY) ? &ua_playcaps : & ua_reccaps;
+	ch = data;
+	return (ch->dir == PCMDIR_PLAY) ? &(ch->parent->ua_playcaps) : &(ch->parent->ua_reccaps);
 }
 
 static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_init,		ua_chan_init),
+	KOBJMETHOD(channel_free,                ua_chan_free),
 	KOBJMETHOD(channel_setformat,		ua_chan_setformat),
 	KOBJMETHOD(channel_setspeed,		ua_chan_setspeed),
 	KOBJMETHOD(channel_setblocksize,	ua_chan_setblocksize),
@@ -225,12 +237,24 @@ ua_mixer_init(struct snd_mixer *m)
 {
 	u_int32_t mask;
 	device_t pa_dev;
+	struct snddev_info *d;
 	struct ua_info *ua = mix_getdevinfo(m);
 
 	pa_dev = device_get_parent(ua->sc_dev);
+	d = device_get_softc(ua->sc_dev);
 
 	mask = uaudio_query_mix_info(pa_dev);
+	if (d && !(mask & SOUND_MIXER_PCM)) {
+		/*
+		 * Emulate missing pcm mixer controller
+		 * through FEEDER_VOLUME
+		 */
+		 d->flags |= SD_F_SOFTVOL;
+	}
 	mix_setdevs(m,	mask);
+
+	mask = uaudio_query_recsrc_info(pa_dev);
+	mix_setrecdevs(m, mask);
 
 	return 0;
 }
@@ -250,7 +274,11 @@ ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 static int
 ua_mixer_setrecsrc(struct snd_mixer *m, u_int32_t src)
 {
-	return src;
+	device_t pa_dev;
+	struct ua_info *ua = mix_getdevinfo(m);
+
+	pa_dev = device_get_parent(ua->sc_dev);
+	return uaudio_mixer_setrecsrc(pa_dev, src);
 }
 
 static kobj_method_t ua_mixer_methods[] = {
@@ -279,7 +307,7 @@ ua_probe(device_t dev)
 	s = "USB Audio";
 
 	device_set_desc(dev, s);
-	return 0;
+	return BUS_PROBE_DEFAULT;
 }
 
 static int
@@ -287,50 +315,62 @@ ua_attach(device_t dev)
 {
 	struct ua_info *ua;
 	char status[SND_STATUSLEN];
-	unsigned int bufsz;
+	device_t pa_dev;
+	u_int32_t nplay, nrec;
+	int i;
 
-	ua = (struct ua_info *)kmalloc(sizeof *ua, M_DEVBUF, M_NOWAIT);
-	if (!ua)
+	ua = (struct ua_info *)kmalloc(sizeof *ua, M_DEVBUF, M_ZERO | M_NOWAIT);
+	if (ua == NULL)
 		return ENXIO;
-	bzero(ua, sizeof *ua);
 
 	ua->sc_dev = dev;
 
-	bufsz = pcm_getbuffersize(dev, 4096, UAUDIO_PCM_BUFF_SIZE, 65536);
+	pa_dev = device_get_parent(dev);
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
-				/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
-				/*highaddr*/BUS_SPACE_MAXADDR,
-				/*filter*/NULL, /*filterarg*/NULL,
-				/*maxsize*/bufsz, /*nsegments*/1,
-				/*maxsegz*/0x3fff, /*flags*/0,
-				&ua->parent_dmat) != 0) {
-		device_printf(dev, "unable to create dma tag\n");
+	ua->bufsz = pcm_getbuffersize(dev, 4096, UAUDIO_DEFAULT_BUFSZ, 65536);
+	if (bootverbose)
+		device_printf(dev, "using a default buffer size of %jd\n", (intmax_t)ua->bufsz);
+
+	if (mixer_init(dev, &ua_mixer_class, ua)) {
 		goto bad;
 	}
 
-	if (mixer_init(dev, &ua_mixer_class, ua)) {
-		return(ENXIO);
-	}
+	ksnprintf(status, SND_STATUSLEN, "at ? %s", PCM_KLDSTRING(snd_uaudio));
 
-	ksnprintf(status, SND_STATUSLEN, "at addr ?");
+	ua->ua_playcaps.fmtlist = ua->ua_playfmt;
+	ua->ua_reccaps.fmtlist = ua->ua_recfmt;
+	nplay = uaudio_query_formats(pa_dev, PCMDIR_PLAY, FORMAT_NUM * 2, &ua->ua_playcaps);
+	nrec = uaudio_query_formats(pa_dev, PCMDIR_REC, FORMAT_NUM * 2, &ua->ua_reccaps);
 
-	if (pcm_register(dev, ua, 1, 0)) {
-		return(ENXIO);
-	}
+	if (nplay > 1)
+		nplay = 1;
+	if (nrec > 1)
+		nrec = 1;
 
-	pcm_addchan(dev, PCMDIR_PLAY, &ua_chan_class, ua);
 #ifndef NO_RECORDING
-	pcm_addchan(dev, PCMDIR_REC, &ua_chan_class, ua);
+	if (pcm_register(dev, ua, nplay, nrec)) {
+#else
+	if (pcm_register(dev, ua, nplay, 0)) {
+#endif
+		goto bad;
+	}
+
+	sndstat_unregister(dev);
+	uaudio_sndstat_register(dev);
+
+	for (i = 0; i < nplay; i++) {
+		pcm_addchan(dev, PCMDIR_PLAY, &ua_chan_class, ua);
+	}
+#ifndef NO_RECORDING
+	for (i = 0; i < nrec; i++) {
+		pcm_addchan(dev, PCMDIR_REC, &ua_chan_class, ua);
+	}
 #endif
 	pcm_setstatus(dev, status);
 
 	return 0;
-bad:
-	if (ua->parent_dmat)
-		bus_dma_tag_destroy(ua->parent_dmat);
-	kfree(ua, M_DEVBUF);
 
+bad:	kfree(ua, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -345,7 +385,6 @@ ua_detach(device_t dev)
 		return r;
 
 	sc = pcm_getdevinfo(dev);
-	bus_dma_tag_destroy(sc->parent_dmat);
 	kfree(sc, M_DEVBUF);
 
 	return 0;
@@ -368,7 +407,10 @@ static driver_t ua_pcm_driver = {
 	PCM_SOFTC_SIZE,
 };
 
+static devclass_t pcm_devclass;
+
+
 DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(ua_pcm, uaudio, 1, 1, 1);
-MODULE_DEPEND(ua_pcm, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(ua_pcm, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(ua_pcm, 1);

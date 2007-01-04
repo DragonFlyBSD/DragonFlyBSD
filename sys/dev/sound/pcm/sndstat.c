@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2001 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 2001 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,14 +23,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.10 2006/09/05 00:55:43 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.20.2.2 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.11 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
+#ifdef	USING_MUTEX
+#include <sys/lock.h>
+#endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.10 2006/09/05 00:55:43 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.11 2007/01/04 21:47:03 corecode Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -43,8 +46,9 @@ static d_open_t sndstat_open;
 static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
-static struct dev_ops sndstat_ops = {
+static struct dev_ops sndstat_cdevsw = {
 	{ "sndstat", SND_CDEV_MAJOR, 0 },
+	/* .d_flags =	D_NEEDGIANT, */
 	.d_open =	sndstat_open,
 	.d_close =	sndstat_close,
 	.d_read =	sndstat_read,
@@ -58,6 +62,9 @@ struct sndstat_entry {
 	int type, unit;
 };
 
+#ifdef	USING_MUTEX
+static struct lock sndstat_lock;
+#endif
 static struct sbuf sndstat_sbuf;
 static int sndstat_isopen = 0;
 static int sndstat_bufptr;
@@ -83,12 +90,12 @@ sysctl_hw_sndverbose(SYSCTL_HANDLER_ARGS)
 	verbose = sndstat_verbose;
 	error = sysctl_handle_int(oidp, &verbose, sizeof(verbose), req);
 	if (error == 0 && req->newptr != NULL) {
-		crit_enter();
+		lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 		if (verbose < 0 || verbose > 3)
 			error = EINVAL;
 		else
 			sndstat_verbose = verbose;
-		crit_exit();
+		lockmgr(&sndstat_lock, LK_RELEASE);
 	}
 	return error;
 }
@@ -98,60 +105,61 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, verbose, CTLTYPE_INT | CTLFLAG_RW,
 static int
 sndstat_open(struct dev_open_args *ap)
 {
-	int err;
+	int error;
 
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (sndstat_isopen) {
-		crit_exit();
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
+	sndstat_isopen = 1;
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	if (sbuf_new(&sndstat_sbuf, NULL, 4096, 0) == NULL) {
-		crit_exit();
-		return ENXIO;
+		error = ENXIO;
+		goto out;
 	}
 	sndstat_bufptr = 0;
-	err = (sndstat_prepare(&sndstat_sbuf) > 0)? 0 : ENOMEM;
-	if (!err)
-		sndstat_isopen = 1;
-
-	crit_exit();
-	return err;
+	error = (sndstat_prepare(&sndstat_sbuf) > 0) ? 0 : ENOMEM;
+out:
+	if (error) {
+		lockmgr(&sndstat_lock, LK_EXCLUSIVE);
+		sndstat_isopen = 0;
+		lockmgr(&sndstat_lock, LK_RELEASE);
+	}
+	return (error);
 }
 
 static int
 sndstat_close(struct dev_close_args *ap)
 {
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (!sndstat_isopen) {
-		crit_exit();
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
 	sbuf_delete(&sndstat_sbuf);
 	sndstat_isopen = 0;
 
-	crit_exit();
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
 
 static int
 sndstat_read(struct dev_read_args *ap)
 {
-	struct uio *uio = ap->a_uio;
+	struct uio *buf = ap->a_uio;
 	int l, err;
 
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (!sndstat_isopen) {
-		crit_exit();
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
-    	l = min(uio->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
-	if (l > 0)
-	    err = uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, uio);
-	else
-	    err = 0;
+    	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
+	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
 	sndstat_bufptr += l;
 
-	crit_exit();
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return err;
 }
 
@@ -168,6 +176,32 @@ sndstat_find(int type, int unit)
 	}
 
 	return NULL;
+}
+
+int
+sndstat_acquire(void)
+{
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
+	if (sndstat_isopen) {
+		lockmgr(&sndstat_lock, LK_RELEASE);
+		return EBUSY;
+	}
+	sndstat_isopen = 1;
+	lockmgr(&sndstat_lock, LK_RELEASE);
+	return 0;
+}
+
+int
+sndstat_release(void)
+{
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
+	if (!sndstat_isopen) {
+		lockmgr(&sndstat_lock, LK_RELEASE);
+		return EBADF;
+	}
+	sndstat_isopen = 0;
+	lockmgr(&sndstat_lock, LK_RELEASE);
+	return 0;
 }
 
 int
@@ -203,12 +237,12 @@ sndstat_register(device_t dev, char *str, sndstat_handler handler)
 	ent->unit = unit;
 	ent->handler = handler;
 
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&sndstat_devlist, ent, link);
 	if (type == SS_TYPE_MODULE)
 		sndstat_files++;
 	sndstat_maxunit = (unit > sndstat_maxunit)? unit : sndstat_maxunit;
-	crit_exit();
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -224,17 +258,17 @@ sndstat_unregister(device_t dev)
 {
 	struct sndstat_entry *ent;
 
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == dev) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
+			lockmgr(&sndstat_lock, LK_RELEASE);
 			kfree(ent, M_DEVBUF);
-			crit_exit();
 
 			return 0;
 		}
 	}
-	crit_exit();
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return ENXIO;
 }
@@ -244,18 +278,18 @@ sndstat_unregisterfile(char *str)
 {
 	struct sndstat_entry *ent;
 
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == NULL && ent->str == str) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
-			kfree(ent, M_DEVBUF);
 			sndstat_files--;
-			crit_exit();
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			kfree(ent, M_DEVBUF);
 
 			return 0;
 		}
 	}
-	crit_exit();
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return ENXIO;
 }
@@ -309,29 +343,28 @@ sndstat_prepare(struct sbuf *s)
 static int
 sndstat_init(void)
 {
-	dev_ops_add(&sndstat_ops, -1, SND_DEV_STATUS);
-	make_dev(&sndstat_ops, SND_DEV_STATUS, 
-		UID_ROOT, GID_WHEEL, 0444, "sndstat");
-	return (0);
+	lockinit(&sndstat_lock, "sndstat", 0, 0);
+	if (make_dev(&sndstat_cdevsw, SND_DEV_STATUS,
+		     UID_ROOT, GID_WHEEL, 0444, "sndstat") == NOCDEV)
+		return ENXIO;
+	dev_ops_add(&sndstat_cdevsw, -1, SND_DEV_STATUS);
+
+	return 0;
 }
 
 static int
 sndstat_uninit(void)
 {
-	crit_enter();
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (sndstat_isopen) {
-		crit_exit();
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
-	dev_ops_remove(&sndstat_ops, -1, SND_DEV_STATUS);
-	crit_exit();
-	return 0;
-}
 
-int
-sndstat_busy(void)
-{
-	return (sndstat_isopen);
+	dev_ops_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
+
+	lockmgr(&sndstat_lock, LK_RELEASE);
+	return 0;
 }
 
 static void
@@ -343,7 +376,10 @@ sndstat_sysinit(void *p)
 static void
 sndstat_sysuninit(void *p)
 {
-	sndstat_uninit();
+	int error;
+
+	error = sndstat_uninit();
+	KASSERT(error == 0, ("%s: error = %d", __func__, error));
 }
 
 SYSINIT(sndstat_sysinit, SI_SUB_DRIVERS, SI_ORDER_FIRST, sndstat_sysinit, NULL);

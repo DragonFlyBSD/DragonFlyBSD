@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * Copyright 1997,1998 Luigi Rizzo.
  *
  * Derived from files in the Voxware 3.5 distribution,
@@ -28,8 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.3.2.8 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.6 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.34.2.2 2006/01/19 01:17:00 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,9 +37,11 @@
 #include  <dev/sound/isa/sb.h>
 #include  <dev/sound/chip.h>
 
+#include <bus/isa/isavar.h>
+
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.6 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ess.c,v 1.7 2007/01/04 21:47:02 corecode Exp $");
 
 #define ESS_BUFFSIZE (4096)
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -62,7 +64,7 @@ static u_int32_t ess_pfmt[] = {
 	0
 };
 
-static struct pcmchan_caps ess_playcaps = {5000, 49000, ess_pfmt, 0};
+static struct pcmchan_caps ess_playcaps = {6000, 48000, ess_pfmt, 0};
 
 static u_int32_t ess_rfmt[] = {
 	AFMT_U8,
@@ -76,7 +78,7 @@ static u_int32_t ess_rfmt[] = {
 	0
 };
 
-static struct pcmchan_caps ess_reccaps = {5000, 49000, ess_rfmt, 0};
+static struct pcmchan_caps ess_reccaps = {6000, 48000, ess_rfmt, 0};
 
 struct ess_info;
 
@@ -317,24 +319,20 @@ ess_alloc_resources(struct ess_info *sc, device_t dev)
 
 	rid = 0;
 	if (!sc->io_base)
-    		sc->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT,
-						 &rid, 0, ~0, 1,
-						 RF_ACTIVE);
+    		sc->io_base = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+						     &rid, RF_ACTIVE);
 	rid = 0;
 	if (!sc->irq)
-    		sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ,
-					     &rid, 0, ~0, 1,
-					     RF_ACTIVE);
+    		sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+						 &rid, RF_ACTIVE);
 	rid = 0;
 	if (!sc->drq1)
-    		sc->drq1 = bus_alloc_resource(dev, SYS_RES_DRQ,
-					      &rid, 0, ~0, 1,
-					      RF_ACTIVE);
+    		sc->drq1 = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+						  &rid, RF_ACTIVE);
 	rid = 1;
 	if (!sc->drq2)
-        	sc->drq2 = bus_alloc_resource(dev, SYS_RES_DRQ,
-					      &rid, 0, ~0, 1,
-					      RF_ACTIVE);
+        	sc->drq2 = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+						  &rid, RF_ACTIVE);
 
     	if (sc->io_base && sc->drq1 && sc->irq) {
   		isa_dma_acquire(rman_get_start(sc->drq1));
@@ -366,11 +364,14 @@ ess_intr(void *arg)
 	rirq = (src & sc->rch.hwch)? 1 : 0;
 
 	if (pirq) {
-		if (sc->pch.run)
+		if (sc->pch.run) {
+			ess_unlock(sc);
 			chn_intr(sc->pch.channel);
+			ess_lock(sc);
+		}
 		if (sc->pch.stopping) {
 			sc->pch.run = 0;
-			sndbuf_isadma(sc->pch.buffer, PCMTRIG_STOP);
+			sndbuf_dma(sc->pch.buffer, PCMTRIG_STOP);
 			sc->pch.stopping = 0;
 			if (sc->pch.hwch == 1)
 				ess_write(sc, 0xb8, ess_read(sc, 0xb8) & ~0x01);
@@ -380,11 +381,14 @@ ess_intr(void *arg)
 	}
 
 	if (rirq) {
-		if (sc->rch.run)
+		if (sc->rch.run) {
+			ess_unlock(sc);
 			chn_intr(sc->rch.channel);
+			ess_lock(sc);
+		}
 		if (sc->rch.stopping) {
 			sc->rch.run = 0;
-			sndbuf_isadma(sc->rch.buffer, PCMTRIG_STOP);
+			sndbuf_dma(sc->rch.buffer, PCMTRIG_STOP);
 			sc->rch.stopping = 0;
 			/* XXX: will this stop audio2? */
 			ess_write(sc, 0xb8, ess_read(sc, 0xb8) & ~0x01);
@@ -562,13 +566,13 @@ esschan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->parent = sc;
 	ch->channel = c;
 	ch->buffer = b;
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsize) == -1)
+	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsize) != 0)
 		return NULL;
 	ch->dir = dir;
 	ch->hwch = 1;
 	if ((dir == PCMDIR_PLAY) && (sc->duplex))
 		ch->hwch = 2;
-	sndbuf_isadmasetup(ch->buffer, (ch->hwch == 1)? sc->drq1 : sc->drq2);
+	sndbuf_dmasetup(ch->buffer, (ch->hwch == 1)? sc->drq1 : sc->drq2);
 	return ch;
 }
 
@@ -615,7 +619,7 @@ esschan_trigger(kobj_t obj, void *data, int go)
 	switch (go) {
 	case PCMTRIG_START:
 		ch->run = 1;
-		sndbuf_isadma(ch->buffer, go);
+		sndbuf_dma(ch->buffer, go);
 		ess_start(ch);
 		break;
 
@@ -633,7 +637,7 @@ esschan_getptr(kobj_t obj, void *data)
 {
 	struct ess_chinfo *ch = data;
 
-	return sndbuf_isadmaptr(ch->buffer);
+	return sndbuf_dmaptr(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -846,7 +850,7 @@ ess_attach(device_t dev)
 	if (sc->newspeed)
 		ess_setmixer(sc, 0x71, 0x22);
 
-	snd_setup_intr(dev, sc->irq, INTR_MPSAFE, ess_intr, sc, &sc->ih, NULL);
+	snd_setup_intr(dev, sc->irq, 0, ess_intr, sc, &sc->ih);
     	if (!sc->duplex)
 		pcm_setflags(dev, pcm_getflags(dev) | SD_F_SIMPLEX);
 
@@ -856,7 +860,8 @@ ess_attach(device_t dev)
 			/*filter*/NULL, /*filterarg*/NULL,
 			/*maxsize*/sc->bufsize, /*nsegments*/1,
 			/*maxsegz*/0x3ffff,
-			/*flags*/0, &sc->parent_dmat) != 0) {
+			/*flags*/0,
+			&sc->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto no;
     	}
@@ -866,9 +871,10 @@ ess_attach(device_t dev)
 	else
 		buf[0] = '\0';
 
-    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u %s",
     	     	rman_get_start(sc->io_base), rman_get_start(sc->irq),
-		rman_get_start(sc->drq1), buf, sc->bufsize);
+		rman_get_start(sc->drq1), buf, sc->bufsize,
+		PCM_KLDSTRING(snd_ess));
 
     	if (pcm_register(dev, sc, 1, 1))
 		goto no;
@@ -935,7 +941,7 @@ static driver_t ess_driver = {
 };
 
 DRIVER_MODULE(snd_ess, sbc, ess_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_ess, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_ess, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_ess, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_ess, 1);
 
@@ -967,7 +973,7 @@ esscontrol_attach(device_t dev)
 	int rid, i, x;
 
 	rid = 0;
-    	io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1, RF_ACTIVE);
+    	io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
 	x = 0;
 	for (i = 0; i < 0x100; i++) {
 		port_wr(io, 0, i);
@@ -1007,4 +1013,4 @@ static driver_t esscontrol_driver = {
 };
 
 DRIVER_MODULE(esscontrol, isa, esscontrol_driver, esscontrol_devclass, 0, 0);
-
+DRIVER_MODULE(esscontrol, acpi, esscontrol_driver, esscontrol_devclass, 0, 0);

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.8.2.9 2003/04/28 03:59:03 simokawa Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.43.2.1 2006/01/18 01:05:34 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -119,7 +119,7 @@ struct sc_info {
 	struct resource *reg, *irq;
 	int		regid, irqid;
 	void		*ih;
-	void		*lock;
+	struct spinlock	*lock;
 
 	void *regbase;
 	u_int32_t *pbase, pbankbase, pbanksize;
@@ -364,7 +364,7 @@ ds_allocpslot(struct sc_info *sc)
 }
 
 static int
-ds_initpbank(volatile struct pbank *pb, int ch, int b16, int stereo, u_int32_t rate, void *base, u_int32_t len)
+ds_initpbank(volatile struct pbank *pb, int ch, int b16, int stereo, u_int32_t rate, bus_addr_t base, u_int32_t len)
 {
 	u_int32_t lv[] = {1, 1, 0, 0, 0};
 	u_int32_t rv[] = {1, 0, 1, 0, 0};
@@ -399,7 +399,7 @@ ds_initpbank(volatile struct pbank *pb, int ch, int b16, int stereo, u_int32_t r
 	pb->Format |= b16? 0 : 0x80000000;
 	pb->Format |= (stereo && (ch == 2 || ch == 4))? 0x00000001 : 0;
 	pb->LoopDefault = 0;
-	pb->PgBase = base? vtophys(base) : 0;
+	pb->PgBase = base? base : 0;
 	pb->PgLoop = 0;
 	pb->PgLoopEnd = len >> ss;
 	pb->PgLoopFrac = 0;
@@ -433,18 +433,18 @@ static void
 ds_setuppch(struct sc_pchinfo *ch)
 {
 	int stereo, b16, c, sz;
-	void *buf;
+	bus_addr_t addr;
 
 	stereo = (ch->fmt & AFMT_STEREO)? 1 : 0;
 	b16 = (ch->fmt & AFMT_16BIT)? 1 : 0;
 	c = stereo? 1 : 0;
-	buf = sndbuf_getbuf(ch->buffer);
+	addr = sndbuf_getbufaddr(ch->buffer);
 	sz = sndbuf_getsize(ch->buffer);
 
-	ds_initpbank(ch->lslot, c, stereo, b16, ch->spd, buf, sz);
-	ds_initpbank(ch->lslot + 1, c, stereo, b16, ch->spd, buf, sz);
-	ds_initpbank(ch->rslot, 2, stereo, b16, ch->spd, buf, sz);
-	ds_initpbank(ch->rslot + 1, 2, stereo, b16, ch->spd, buf, sz);
+	ds_initpbank(ch->lslot, c, stereo, b16, ch->spd, addr, sz);
+	ds_initpbank(ch->lslot + 1, c, stereo, b16, ch->spd, addr, sz);
+	ds_initpbank(ch->rslot, 2, stereo, b16, ch->spd, addr, sz);
+	ds_initpbank(ch->rslot + 1, 2, stereo, b16, ch->spd, addr, sz);
 }
 
 static void
@@ -453,16 +453,16 @@ ds_setuprch(struct sc_rchinfo *ch)
 	struct sc_info *sc = ch->parent;
 	int stereo, b16, i, sz, pri;
 	u_int32_t x, y;
-	void *buf;
+	bus_addr_t addr;
 
 	stereo = (ch->fmt & AFMT_STEREO)? 1 : 0;
 	b16 = (ch->fmt & AFMT_16BIT)? 1 : 0;
-	buf = sndbuf_getbuf(ch->buffer);
+	addr = sndbuf_getbufaddr(ch->buffer);
 	sz = sndbuf_getsize(ch->buffer);
 	pri = (ch->num == DS1_RECPRIMARY)? 1 : 0;
 
 	for (i = 0; i < 2; i++) {
-		ch->slot[i].PgBase = vtophys(buf);
+		ch->slot[i].PgBase = addr;
 		ch->slot[i].PgLoopEnd = sz;
 		ch->slot[i].PgStart = 0;
 		ch->slot[i].NumOfLoops = 0;
@@ -493,7 +493,7 @@ ds1pchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel 
 	ch->fmt = AFMT_U8;
 	ch->spd = 8000;
 	ch->run = 0;
-	if (sndbuf_alloc(ch->buffer, sc->buffer_dmat, sc->bufsz) == -1)
+	if (sndbuf_alloc(ch->buffer, sc->buffer_dmat, sc->bufsz) != 0)
 		return NULL;
 	else {
 		ch->lsnum = sc->pslotfree;
@@ -529,12 +529,13 @@ static int
 ds1pchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_pchinfo *ch = data;
+	struct sc_info *sc = ch->parent;
 	int drate;
 
 	/* irq rate is fixed at 187.5hz */
 	drate = ch->spd * sndbuf_getbps(ch->buffer);
-	blocksize = (drate << 8) / DS1_IRQHZ;
-	sndbuf_resize(ch->buffer, DS1_BUFFSIZE / blocksize, blocksize);
+	blocksize = roundup2((drate << 8) / DS1_IRQHZ, 4);
+	sndbuf_resize(ch->buffer, sc->bufsz / blocksize, blocksize);
 
 	return blocksize;
 }
@@ -623,7 +624,7 @@ ds1rchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel 
 	ch->dir = dir;
 	ch->fmt = AFMT_U8;
 	ch->spd = 8000;
-	if (sndbuf_alloc(ch->buffer, sc->buffer_dmat, sc->bufsz) == -1)
+	if (sndbuf_alloc(ch->buffer, sc->buffer_dmat, sc->bufsz) != 0)
 		return NULL;
 	else {
 		ch->slot = (ch->num == DS1_RECPRIMARY)? sc->rbank + 2: sc->rbank;
@@ -656,12 +657,13 @@ static int
 ds1rchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_rchinfo *ch = data;
+	struct sc_info *sc = ch->parent;
 	int drate;
 
 	/* irq rate is fixed at 187.5hz */
 	drate = ch->spd * sndbuf_getbps(ch->buffer);
-	blocksize = (drate << 8) / DS1_IRQHZ;
-	sndbuf_resize(ch->buffer, DS1_BUFFSIZE / blocksize, blocksize);
+	blocksize = roundup2((drate << 8) / DS1_IRQHZ, 4);
+	sndbuf_resize(ch->buffer, sc->bufsz / blocksize, blocksize);
 
 	return blocksize;
 }
@@ -744,13 +746,17 @@ ds_intr(void *p)
 		for (i = 0; i < DS1_CHANS; i++) {
 			if (sc->pch[i].run) {
 				x = 1;
+				snd_mtxunlock(sc->lock);
 				chn_intr(sc->pch[i].channel);
+				snd_mtxlock(sc->lock);
 			}
 		}
 		for (i = 0; i < 2; i++) {
 			if (sc->rch[i].run) {
 				x = 1;
+				snd_mtxunlock(sc->lock);
 				chn_intr(sc->rch[i].channel);
+				snd_mtxlock(sc->lock);
 			}
 		}
 		i = ds_rd(sc, YDSXGR_MODE, 4);
@@ -831,7 +837,8 @@ ds_init(struct sc_info *sc)
 
 	if (sc->regbase == NULL) {
 		if (bus_dma_tag_create(NULL, 2, 0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				       NULL, NULL, memsz, 1, memsz, 0, &sc->control_dmat))
+				       NULL, NULL, memsz, 1, memsz, 0,
+				       &sc->control_dmat))
 			return -1;
 		if (bus_dmamem_alloc(sc->control_dmat, &buf, BUS_DMA_NOWAIT, &sc->map))
 			return -1;
@@ -923,7 +930,7 @@ ds_pci_probe(device_t dev)
 	i = ds_finddev(pci_get_devid(dev), subdev);
 	if (i >= 0) {
 		device_set_desc(dev, ds_devs[i].name);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	} else
 		return ENXIO;
 }
@@ -953,9 +960,9 @@ ds_pci_attach(device_t dev)
 	pci_write_config(dev, PCIR_COMMAND, data, 2);
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
-	sc->regid = PCIR_MAPS;
-	sc->reg = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->regid,
-					     0, ~0, 1, RF_ACTIVE);
+	sc->regid = PCIR_BAR(0);
+	sc->reg = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->regid,
+					 RF_ACTIVE);
 	if (!sc->reg) {
 		device_printf(dev, "unable to map register space\n");
 		goto bad;
@@ -971,7 +978,8 @@ ds_pci_attach(device_t dev)
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/sc->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0, &sc->buffer_dmat) != 0) {
+		/*flags*/0,
+		&sc->buffer_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -985,18 +993,29 @@ ds_pci_attach(device_t dev)
 	codec = AC97_CREATE(dev, sc, ds_ac97);
 	if (codec == NULL)
 		goto bad;
+	/*
+	 * Turn on inverted external amplifier sense flags for few
+	 * 'special' boards.
+	 */
+	switch (subdev) {
+	case 0x81171033:	/* NEC ValueStar (VT550/0) */
+		ac97_setflags(codec, ac97_getflags(codec) | AC97_F_EAPD_INV);
+		break;
+	default:
+		break;
+	}
 	mixer_init(dev, ac97_getmixerclass(), codec);
 
 	sc->irqid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, ds_intr, sc, &sc->ih, NULL)) {
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+					 RF_ACTIVE | RF_SHAREABLE);
+	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, ds_intr, sc, &sc->ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx irq %ld",
-		 rman_get_start(sc->reg), rman_get_start(sc->irq));
+	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx irq %ld %s",
+		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_ds1));
 
 	if (pcm_register(dev, sc, DS1_CHANS, 2))
 		goto bad;
@@ -1083,5 +1102,5 @@ static driver_t ds1_driver = {
 };
 
 DRIVER_MODULE(snd_ds1, pci, ds1_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_ds1, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_ds1, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_ds1, 1);

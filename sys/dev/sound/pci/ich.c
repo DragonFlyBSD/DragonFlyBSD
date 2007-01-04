@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Katsurajima Naoto <raven@katsurajima.seya.yokohama.jp>
  * Copyright (c) 2001 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.12 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.8 2006/08/22 02:37:03 yongari Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.13 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.12 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.13 2007/01/04 21:47:02 corecode Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -44,10 +44,84 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.12 2006/12/22 23:2
 #define ICH_DEFAULT_BUFSZ 16384
 #define ICH_MAX_BUFSZ 65536
 
-#define SIS7012ID       0x70121039      /* SiS 7012 needs special handling */
-#define ICH4ID		0x24c58086	/* ICH4 needs special handling too */
-#define ICH5ID		0x24d58086	/* ICH5 needs to be treated as ICH4 */
-#define ICH6ID		0x266e8086	/* ICH6 needs to be treated as ICH4 */
+#define INTEL_VENDORID	0x8086
+#define SIS_VENDORID	0x1039
+#define NVIDIA_VENDORID	0x10de
+#define AMD_VENDORID	0x1022
+
+#define INTEL_82440MX	0x7195
+#define INTEL_82801AA	0x2415
+#define INTEL_82801AB	0x2425
+#define INTEL_82801BA	0x2445
+#define INTEL_82801CA	0x2485
+#define INTEL_82801DB	0x24c5	/* ICH4 needs special handling */
+#define INTEL_82801EB	0x24d5	/* ICH5 needs to be treated as ICH4 */
+#define INTEL_6300ESB	0x25a6	/* 6300ESB needs to be treated as ICH4 */
+#define INTEL_82801FB	0x266e	/* ICH6 needs to be treated as ICH4 */
+#define INTEL_82801GB	0x27de	/* ICH7 needs to be treated as ICH4 */
+#define SIS_7012	0x7012	/* SiS 7012 needs special handling */
+#define NVIDIA_NFORCE	0x01b1
+#define NVIDIA_NFORCE2	0x006a
+#define NVIDIA_NFORCE2_400	0x008a
+#define NVIDIA_NFORCE3	0x00da
+#define NVIDIA_NFORCE3_250	0x00ea
+#define NVIDIA_NFORCE4	0x0059
+#define NVIDIA_NFORCE_410_MCP	0x026b
+#define AMD_768		0x7445
+#define AMD_8111	0x746d
+
+#define ICH_LOCK(sc)		snd_mtxlock((sc)->ich_lock)
+#define ICH_UNLOCK(sc)		snd_mtxunlock((sc)->ich_lock)
+#define ICH_LOCK_ASSERT(sc)	snd_mtxassert((sc)->ich_lock)
+
+static const struct ich_type {
+        uint16_t	vendor;
+        uint16_t	devid;
+	uint32_t	options;
+#define PROBE_LOW	0x01
+        char		*name;
+} ich_devs[] = {
+	{ INTEL_VENDORID,	INTEL_82440MX,	0,
+		"Intel 440MX" },
+	{ INTEL_VENDORID,	INTEL_82801AA,	0,
+		"Intel ICH (82801AA)" },
+	{ INTEL_VENDORID,	INTEL_82801AB,	0,
+		"Intel ICH (82801AB)" },
+	{ INTEL_VENDORID,	INTEL_82801BA,	0,
+		"Intel ICH2 (82801BA)" },
+	{ INTEL_VENDORID,	INTEL_82801CA,	0,
+		"Intel ICH3 (82801CA)" },
+	{ INTEL_VENDORID,	INTEL_82801DB,	PROBE_LOW,
+		"Intel ICH4 (82801DB)" },
+	{ INTEL_VENDORID,	INTEL_82801EB,	PROBE_LOW,
+		"Intel ICH5 (82801EB)" },
+	{ INTEL_VENDORID,	INTEL_6300ESB,	PROBE_LOW,
+		"Intel 6300ESB" },
+	{ INTEL_VENDORID,	INTEL_82801FB,	PROBE_LOW,
+		"Intel ICH6 (82801FB)" },
+	{ INTEL_VENDORID,	INTEL_82801GB,	PROBE_LOW,
+		"Intel ICH7 (82801GB)" },
+	{ SIS_VENDORID,		SIS_7012,	0,
+		"SiS 7012" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE,	0,
+		"nVidia nForce" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE2,	0,
+		"nVidia nForce2" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE2_400,	0,
+		"nVidia nForce2 400" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE3,	0,
+		"nVidia nForce3" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE3_250,	0,
+		"nVidia nForce3 250" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE4,	0,
+		"nVidia nForce4" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE_410_MCP,	0,
+		"nVidia nForce 410 MCP" },
+	{ AMD_VENDORID,		AMD_768,	0,
+		"AMD-768" },
+	{ AMD_VENDORID,		AMD_8111,	0,
+		"AMD-8111" }
+};
 
 /* buffer descriptor */
 struct ich_desc {
@@ -70,6 +144,7 @@ struct sc_chinfo {
 	struct sc_info *parent;
 
 	struct ich_desc *dtbl;
+	bus_addr_t desc_addr;
 };
 
 /* device private data */
@@ -91,8 +166,14 @@ struct sc_info {
 	struct sc_chinfo ch[3];
 	int ac97rate;
 	struct ich_desc *dtbl;
+	bus_addr_t desc_addr;
 	struct intr_config_hook	intrhook;
 	int use_intrhook;
+	uint16_t vendor;
+	uint16_t devid;
+	uint32_t flags;
+#define IGNORE_PCR	0x01
+	struct spinlock *ich_lock;
 };
 
 /* -------------------------------------------------------------------- */
@@ -106,7 +187,7 @@ static struct pcmchan_caps ich_caps = {48000, 48000, ich_fmt, 0};
 
 /* -------------------------------------------------------------------- */
 /* Hardware */
-static u_int32_t
+static __inline u_int32_t
 ich_rd(struct sc_info *sc, int regno, int size)
 {
 	switch (size) {
@@ -121,7 +202,7 @@ ich_rd(struct sc_info *sc, int regno, int size)
 	}
 }
 
-static void
+static __inline void
 ich_wr(struct sc_info *sc, int regno, u_int32_t data, int size)
 {
 	switch (size) {
@@ -149,7 +230,10 @@ ich_waitcd(void *devinfo)
 		data = ich_rd(sc, ICH_REG_ACC_SEMA, 1);
 		if ((data & 0x01) == 0)
 			return 0;
+		DELAY(1);
 	}
+	if ((sc->flags & IGNORE_PCR) != 0)
+		return (0);
 	device_printf(sc->dev, "CODEC semaphore timeout\n");
 	return ETIMEDOUT;
 }
@@ -190,15 +274,15 @@ AC97_DECLARE(ich_ac97);
 static void
 ich_filldtbl(struct sc_chinfo *ch)
 {
+	struct sc_info *sc = ch->parent;
 	u_int32_t base;
 	int i;
 
-	base = vtophys(sndbuf_getbuf(ch->buffer));
-	ch->blkcnt = sndbuf_getsize(ch->buffer) / ch->blksz;
-	if (ch->blkcnt != 2 && ch->blkcnt != 4 && ch->blkcnt != 8 && ch->blkcnt != 16 && ch->blkcnt != 32) {
-		ch->blkcnt = 2;
-		ch->blksz = sndbuf_getsize(ch->buffer) / ch->blkcnt;
-	}
+	base = sndbuf_getbufaddr(ch->buffer);
+	if (ch->blksz > sc->bufsz / ch->blkcnt)
+		ch->blksz = sc->bufsz / ch->blkcnt;
+	sndbuf_resize(ch->buffer, ch->blkcnt, ch->blksz);
+	ch->blksz = sndbuf_getblksz(ch->buffer);
 
 	for (i = 0; i < ICH_DTBL_LENGTH; i++) {
 		ch->dtbl[i].buffer = base + (ch->blksz * (i % ch->blkcnt));
@@ -222,7 +306,12 @@ ich_resetchan(struct sc_info *sc, int num)
 		return ENXIO;
 
 	ich_wr(sc, regbase + ICH_REG_X_CR, 0, 1);
+#if 1
+	/* This may result in no sound output on NForce 2 MBs, see PR 73987 */
 	DELAY(100);
+#else
+	(void)ich_rd(sc, regbase + ICH_REG_X_CR, 1);
+#endif
 	ich_wr(sc, regbase + ICH_REG_X_CR, ICH_X_CR_RR, 1);
 	for (i = 0; i < ICH_TIMEOUT; i++) {
 		cr = ich_rd(sc, regbase + ICH_REG_X_CR, 1);
@@ -244,6 +333,7 @@ ichchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	struct sc_chinfo *ch;
 	unsigned int num;
 
+	ICH_LOCK(sc);
 	num = sc->chnum++;
 	ch = &sc->ch[num];
 	ch->num = num;
@@ -252,6 +342,8 @@ ichchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->parent = sc;
 	ch->run = 0;
 	ch->dtbl = sc->dtbl + (ch->num * ICH_DTBL_LENGTH);
+	ch->desc_addr = sc->desc_addr + (ch->num * ICH_DTBL_LENGTH) *
+		sizeof(struct ich_desc);
 	ch->blkcnt = 2;
 	ch->blksz = sc->bufsz / ch->blkcnt;
 
@@ -281,10 +373,13 @@ ichchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 		return NULL;
 	}
 
-	if (sndbuf_alloc(ch->buffer, sc->dmat, sc->bufsz))
+	ICH_UNLOCK(sc);
+	if (sndbuf_alloc(ch->buffer, sc->dmat, sc->bufsz) != 0)
 		return NULL;
 
-	ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)vtophys(ch->dtbl), 4);
+	ICH_LOCK(sc);
+	ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)(ch->desc_addr), 4);
+	ICH_UNLOCK(sc);
 
 	return ch;
 }
@@ -302,16 +397,20 @@ ichchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	struct sc_info *sc = ch->parent;
 
 	if (ch->spdreg) {
-		int r;
+		int r, ac97rate;
+
+		ICH_LOCK(sc);
 		if (sc->ac97rate <= 32000 || sc->ac97rate >= 64000)
 			sc->ac97rate = 48000;
-		r = (speed * 48000) / sc->ac97rate;
+		ac97rate = sc->ac97rate;
+		ICH_UNLOCK(sc);
+		r = (speed * 48000) / ac97rate;
 		/*
 		 * Cast the return value of ac97_setrate() to u_int so that
 		 * the math don't overflow into the negative range.
 		 */
 		ch->spd = ((u_int)ac97_setrate(sc->codec, ch->spdreg, r) *
-		    sc->ac97rate) / 48000;
+				ac97rate) / 48000;
 	} else {
 		ch->spd = 48000;
 	}
@@ -326,7 +425,9 @@ ichchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 
 	ch->blksz = blocksize;
 	ich_filldtbl(ch);
+	ICH_LOCK(sc);
 	ich_wr(sc, ch->regbase + ICH_REG_X_LVI, ch->blkcnt - 1, 1);
+	ICH_UNLOCK(sc);
 
 	return ch->blksz;
 }
@@ -340,12 +441,16 @@ ichchan_trigger(kobj_t obj, void *data, int go)
 	switch (go) {
 	case PCMTRIG_START:
 		ch->run = 1;
-		ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)vtophys(ch->dtbl), 4);
+		ICH_LOCK(sc);
+		ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)(ch->desc_addr), 4);
 		ich_wr(sc, ch->regbase + ICH_REG_X_CR, ICH_X_CR_RPBM | ICH_X_CR_LVBIE | ICH_X_CR_IOCE, 1);
+		ICH_UNLOCK(sc);
 		break;
 
 	case PCMTRIG_ABORT:
+		ICH_LOCK(sc);
 		ich_resetchan(sc, ch->num);
+		ICH_UNLOCK(sc);
 		ch->run = 0;
 		break;
 	}
@@ -359,7 +464,9 @@ ichchan_getptr(kobj_t obj, void *data)
 	struct sc_info *sc = ch->parent;
       	u_int32_t pos;
 
+	ICH_LOCK(sc);
 	ch->civ = ich_rd(sc, ch->regbase + ICH_REG_X_CIV, 1) % ch->blkcnt;
+	ICH_UNLOCK(sc);
 
 	pos = ch->civ * ch->blksz;
 
@@ -397,6 +504,7 @@ ich_intr(void *p)
 	u_int32_t cbi, lbi, lvi, st, gs;
 	int i;
 
+	ICH_LOCK(sc);
 	gs = ich_rd(sc, ICH_REG_GLOB_STA, 4) & ICH_GLOB_STA_IMASK;
 	if (gs & (ICH_GLOB_STA_PRES | ICH_GLOB_STA_SRES)) {
 		/* Clear resume interrupt(s) - nothing doing with them */
@@ -415,8 +523,11 @@ ich_intr(void *p)
 		st &= ICH_X_SR_FIFOE | ICH_X_SR_BCIS | ICH_X_SR_LVBCI;
 		if (st & (ICH_X_SR_BCIS | ICH_X_SR_LVBCI)) {
 				/* block complete - update buffer */
-			if (ch->run)
+			if (ch->run) {
+				ICH_UNLOCK(sc);
 				chn_intr(ch->channel);
+				ICH_LOCK(sc);
+			}
 			lvi = ich_rd(sc, ch->regbase + ICH_REG_X_LVI, 1);
 			cbi = ch->civ % ch->blkcnt;
 			if (cbi == 0)
@@ -437,6 +548,7 @@ ich_intr(void *p)
 			   (sc->swap_reg ? ICH_REG_X_PICB : ICH_REG_X_SR),
 		       st, 2);
 	}
+	ICH_UNLOCK(sc);
 	if (gs != 0) {
 		device_printf(sc->dev,
 			      "Unhandled interrupt, gs_intr = %x\n", gs);
@@ -508,7 +620,7 @@ void ich_calibrate(void *arg)
 	/* prepare */
 	ociv = ich_rd(sc, ch->regbase + ICH_REG_X_CIV, 1);
 	nciv = ociv;
-	ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)vtophys(ch->dtbl), 4);
+	ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (u_int32_t)(ch->desc_addr), 4);
 
 	/* start */
 	microtime(&t1);
@@ -562,6 +674,8 @@ void ich_calibrate(void *arg)
 static void
 ich_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
+	struct sc_info *sc = (struct sc_info *)arg;
+	sc->desc_addr = segs->ds_addr;
 	return;
 }
 
@@ -569,7 +683,6 @@ static int
 ich_init(struct sc_info *sc)
 {
 	u_int32_t stat;
-	int sz;
 
 	ich_wr(sc, ICH_REG_GLOB_CNT, ICH_GLOB_CTL_COLD, 4);
 	DELAY(600000);
@@ -577,28 +690,25 @@ ich_init(struct sc_info *sc)
 
 	if ((stat & ICH_GLOB_STA_PCR) == 0) {
 		/* ICH4/ICH5 may fail when busmastering is enabled. Continue */
-		if ((pci_get_devid(sc->dev) != ICH4ID) &&
-		    (pci_get_devid(sc->dev) != ICH5ID) &&
-		    (pci_get_devid(sc->dev) != ICH6ID)) {
-			return ENXIO;
+		if (sc->vendor == INTEL_VENDORID && (
+		    sc->devid == INTEL_82801DB || sc->devid == INTEL_82801EB ||
+		    sc->devid == INTEL_6300ESB || sc->devid == INTEL_82801FB ||
+		    sc->devid == INTEL_82801GB)) {
+			sc->flags |= IGNORE_PCR;
+			device_printf(sc->dev, "primary codec not ready!\n");
 		}
 	}
 
+#if 0
 	ich_wr(sc, ICH_REG_GLOB_CNT, ICH_GLOB_CTL_COLD | ICH_GLOB_CTL_PRES, 4);
+#else
+	ich_wr(sc, ICH_REG_GLOB_CNT, ICH_GLOB_CTL_COLD, 4);
+#endif
 
 	if (ich_resetchan(sc, 0) || ich_resetchan(sc, 1))
 		return ENXIO;
 	if (sc->hasmic && ich_resetchan(sc, 2))
 		return ENXIO;
-
-	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->dtbl, BUS_DMA_NOWAIT, &sc->dtmap))
-		return ENOSPC;
-
-	sz = sizeof(struct ich_desc) * ICH_DTBL_LENGTH * 3;
-	if (bus_dmamap_load(sc->dmat, sc->dtmap, sc->dtbl, sz, ich_setmap, NULL, 0)) {
-		bus_dmamem_free(sc->dmat, (void **)&sc->dtbl, sc->dtmap);
-		return ENOSPC;
-	}
 
 	return 0;
 }
@@ -606,96 +716,49 @@ ich_init(struct sc_info *sc)
 static int
 ich_pci_probe(device_t dev)
 {
-	switch(pci_get_devid(dev)) {
-	case 0x71958086:
-		device_set_desc(dev, "Intel 443MX");
-		return 0;
+	int i;
+	uint16_t devid, vendor;
 
-	case 0x24158086:
-		device_set_desc(dev, "Intel ICH (82801AA)");
-		return 0;
-
-	case 0x24258086:
-		device_set_desc(dev, "Intel ICH (82801AB)");
-		return 0;
-
-	case 0x24458086:
-		device_set_desc(dev, "Intel ICH2 (82801BA)");
-		return 0;
-
-	case 0x24858086:
-		device_set_desc(dev, "Intel ICH3 (82801CA)");
-		return 0;
-
-	case ICH4ID:
-		device_set_desc(dev, "Intel ICH4 (82801DB)");
-		return -1000;	/* allow a better driver to override us */
-
-	case ICH5ID:
-		device_set_desc(dev, "Intel ICH5 (82801EB)");
-		return -1000;	/* allow a better driver to override us */
-
-	case ICH6ID:
-		device_set_desc(dev, "Intel ICH6 (82801FB)");
-		return -1000;	/* allow a better driver to override us */
-
-	case SIS7012ID:
-		device_set_desc(dev, "SiS 7012");
-		return 0;
-
-	case 0x01b110de:
-		device_set_desc(dev, "nVidia nForce");
-		return 0;
-
-	case 0x006a10de:
-		device_set_desc(dev, "nVidia nForce2");
-		return 0;
-
-	case 0x008a10de:
-		device_set_desc(dev, "nVidia nForce2 400");
-		return 0;
-
-	case 0x00da10de:
-		device_set_desc(dev, "nVidia nForce3");
-		return 0;
-
-	case 0x00ea10de:
-		device_set_desc(dev, "nVidia nForce3 250");
-		return 0;
-
-	case 0x74451022:
-		device_set_desc(dev, "AMD-768");
-		return 0;
-
-	case 0x746d1022:
-		device_set_desc(dev, "AMD-8111");
-		return 0;
-
-	default:
-		return ENXIO;
+	vendor = pci_get_vendor(dev);
+	devid = pci_get_device(dev);
+	for (i = 0; i < sizeof(ich_devs)/sizeof(ich_devs[0]); i++) {
+		if (vendor == ich_devs[i].vendor &&
+				devid == ich_devs[i].devid) {
+			device_set_desc(dev, ich_devs[i].name);
+			/* allow a better driver to override us */
+			if ((ich_devs[i].options & PROBE_LOW) != 0)
+				return (BUS_PROBE_LOW_PRIORITY);
+			return (BUS_PROBE_DEFAULT);
+		}
 	}
+	return (ENXIO);
 }
 
 static int
 ich_pci_attach(device_t dev)
 {
+	uint32_t		subdev;
 	u_int16_t		extcaps;
+	uint16_t		devid, vendor;
 	struct sc_info 		*sc;
 	char 			status[SND_STATUSLEN];
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
 
-	bzero(sc, sizeof(*sc));
+	sc->ich_lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;
 
+	vendor = sc->vendor = pci_get_vendor(dev);
+	devid = sc->devid = pci_get_device(dev);
+	subdev = (pci_get_subdevice(dev) << 16) | pci_get_subvendor(dev);
 	/*
 	 * The SiS 7012 register set isn't quite like the standard ich.
 	 * There really should be a general "quirks" mechanism.
 	 */
-	if (pci_get_devid(dev) == SIS7012ID) {
+	if (vendor == SIS_VENDORID && devid == SIS_7012) {
 		sc->swap_reg = 1;
 		sc->sample_size = 1;
 	} else {
@@ -704,36 +767,35 @@ ich_pci_attach(device_t dev)
 	}
 
 	/*
+	 * Enable bus master. On ich4/5 this may prevent the detection of
+	 * the primary codec becoming ready in ich_init().
+	 */
+	pci_enable_busmaster(dev);
+
+	/*
 	 * By default, ich4 has NAMBAR and NABMBAR i/o spaces as
 	 * read-only.  Need to enable "legacy support", by poking into
 	 * pci config space.  The driver should use MMBAR and MBBAR,
 	 * but doing so will mess things up here.  ich4 has enough new
 	 * features it warrants it's own driver. 
 	 */
-	if (pci_get_devid(dev) == ICH4ID) {
-		pci_write_config(dev, PCIR_ICH_LEGACY, ICH_LEGACY_ENABLE, 1);
-	}
-
-	/*
-	 * Enable bus master. On ich4/5 this may prevent the detection of
-	 * the primary codec becoming ready in ich_init().
-	 */
-	pci_enable_busmaster(dev);
-
-	if (pci_get_devid(dev) == ICH5ID || pci_get_devid(dev) == ICH6ID) {
+	if (vendor == INTEL_VENDORID && (devid == INTEL_82801DB ||
+	    devid == INTEL_82801EB || devid == INTEL_6300ESB ||
+	    devid == INTEL_82801FB || devid == INTEL_82801GB)) {
 		sc->nambarid = PCIR_MMBAR;
 		sc->nabmbarid = PCIR_MBBAR;
 		sc->regtype = SYS_RES_MEMORY;
-		pci_enable_io(dev, SYS_RES_MEMORY);
+		pci_write_config(dev, PCIR_ICH_LEGACY, ICH_LEGACY_ENABLE, 1);
 	} else {
 		sc->nambarid = PCIR_NAMBAR;
 		sc->nabmbarid = PCIR_NABMBAR;
 		sc->regtype = SYS_RES_IOPORT;
-		pci_enable_io(dev, SYS_RES_IOPORT);
 	}
 
-	sc->nambar = bus_alloc_resource(dev, sc->regtype, &sc->nambarid, 0, ~0, 1, RF_ACTIVE);
-	sc->nabmbar = bus_alloc_resource(dev, sc->regtype, &sc->nabmbarid, 0, ~0, 1, RF_ACTIVE);
+	sc->nambar = bus_alloc_resource_any(dev, sc->regtype, 
+		&sc->nambarid, RF_ACTIVE);
+	sc->nabmbar = bus_alloc_resource_any(dev, sc->regtype, 
+		&sc->nabmbarid, RF_ACTIVE);
 
 	if (!sc->nambar || !sc->nabmbar) {
 		device_printf(dev, "unable to map IO port space\n");
@@ -747,14 +809,16 @@ ich_pci_attach(device_t dev)
 
 	sc->bufsz = pcm_getbuffersize(dev, 4096, ICH_DEFAULT_BUFSZ, ICH_MAX_BUFSZ);
 	if (bus_dma_tag_create(NULL, 8, 0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-			       NULL, NULL, sc->bufsz, 1, 0x3ffff, 0, &sc->dmat) != 0) {
+			       NULL, NULL, sc->bufsz, 1, 0x3ffff, 0,
+			       &sc->dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
 
 	sc->irqid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid, 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, ich_intr, sc, &sc->ih, NULL)) {
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+		RF_ACTIVE | RF_SHAREABLE);
+	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, ich_intr, sc, &sc->ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
@@ -764,9 +828,38 @@ ich_pci_attach(device_t dev)
 		goto bad;
 	}
 
+	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->dtbl,
+		    BUS_DMA_NOWAIT, &sc->dtmap))
+		goto bad;
+
+	if (bus_dmamap_load(sc->dmat, sc->dtmap, sc->dtbl,
+		    sizeof(struct ich_desc) * ICH_DTBL_LENGTH * 3,
+		    ich_setmap, sc, 0))
+		goto bad;
+
 	sc->codec = AC97_CREATE(dev, sc, ich_ac97);
 	if (sc->codec == NULL)
 		goto bad;
+
+	/*
+	 * Turn on inverted external amplifier sense flags for few
+	 * 'special' boards.
+	 */
+	switch (subdev) {
+	case 0x202f161f:	/* Gateway 7326GZ */
+	case 0x203a161f:	/* Gateway 4028GZ */
+	case 0x204c161f:	/* Kvazar-Micro Senator 3592XT */
+	case 0x8144104d:	/* Sony VAIO PCG-TR* */
+	case 0x8197104d:	/* Sony S1XP */
+	case 0x81c0104d:	/* Sony VAIO type T */
+	case 0x81c5104d:	/* Sony VAIO VGN B1VP/B1XP */
+	case 0x3089103c:	/* Compaq Presario B3800 */
+		ac97_setflags(sc->codec, ac97_getflags(sc->codec) | AC97_F_EAPD_INV);
+		break;
+	default:
+		break;
+	}
+
 	mixer_init(dev, ac97_getmixerclass(), sc->codec);
 
 	/* check and set VRA function */
@@ -784,8 +877,8 @@ ich_pci_attach(device_t dev)
 	if (sc->hasmic)
 		pcm_addchan(dev, PCMDIR_REC, &ichchan_class, sc);	/* record mic */
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx, 0x%lx irq %ld bufsz %u",
-		 rman_get_start(sc->nambar), rman_get_start(sc->nabmbar), rman_get_start(sc->irq), sc->bufsz);
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx, 0x%lx irq %ld bufsz %u %s",
+		 rman_get_start(sc->nambar), rman_get_start(sc->nabmbar), rman_get_start(sc->irq), sc->bufsz,PCM_KLDSTRING(snd_ich));
 
 	pcm_setstatus(dev, status);
 
@@ -793,7 +886,6 @@ ich_pci_attach(device_t dev)
 
 	sc->intrhook.ich_func = ich_calibrate;
 	sc->intrhook.ich_arg = sc;
-	sc->intrhook.ich_desc = "ich";
 	sc->use_intrhook = 1;
 	if (config_intrhook_establish(&sc->intrhook) != 0) {
 		device_printf(dev, "Cannot establish calibration hook, will calibrate now\n");
@@ -816,6 +908,12 @@ bad:
 	if (sc->nabmbar)
 		bus_release_resource(dev, sc->regtype,
 		    sc->nabmbarid, sc->nabmbar);
+	if (sc->dtmap)
+		bus_dmamap_unload(sc->dmat, sc->dtmap);
+	if (sc->dmat)
+		bus_dma_tag_destroy(sc->dmat);
+	if (sc->ich_lock)
+		snd_mtxfree(sc->ich_lock);
 	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
@@ -835,9 +933,33 @@ ich_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
 	bus_release_resource(dev, sc->regtype, sc->nambarid, sc->nambar);
 	bus_release_resource(dev, sc->regtype, sc->nabmbarid, sc->nabmbar);
+	bus_dmamap_unload(sc->dmat, sc->dtmap);
 	bus_dma_tag_destroy(sc->dmat);
+	snd_mtxfree(sc->ich_lock);
 	kfree(sc, M_DEVBUF);
 	return 0;
+}
+
+static void
+ich_pci_codec_reset(struct sc_info *sc)
+{
+	int i;
+	uint32_t control;
+
+	control = ich_rd(sc, ICH_REG_GLOB_CNT, 4); 
+	control &= ~(ICH_GLOB_CTL_SHUT);
+	control |= (control & ICH_GLOB_CTL_COLD) ?
+		    ICH_GLOB_CTL_WARM : ICH_GLOB_CTL_COLD;
+	ich_wr(sc, ICH_REG_GLOB_CNT, control, 4);
+
+	for (i = 500000; i; i--) {
+	     	if (ich_rd(sc, ICH_REG_GLOB_STA, 4) & ICH_GLOB_STA_PCR)
+			break;		/*		or ICH_SCR? */
+		DELAY(1);
+	}
+
+	if (i <= 0)
+		kprintf("%s: time out\n", __func__);
 }
 
 static int
@@ -847,12 +969,16 @@ ich_pci_suspend(device_t dev)
 	int i;
 
 	sc = pcm_getdevinfo(dev);
+	ICH_LOCK(sc);
 	for (i = 0 ; i < 3; i++) {
 		sc->ch[i].run_save = sc->ch[i].run;
 		if (sc->ch[i].run) {
+			ICH_UNLOCK(sc);
 			ichchan_trigger(0, &sc->ch[i], PCMTRIG_ABORT);
+			ICH_LOCK(sc);
 		}
 	}
+	ICH_UNLOCK(sc);
 	return 0;
 }
 
@@ -864,12 +990,23 @@ ich_pci_resume(device_t dev)
 
 	sc = pcm_getdevinfo(dev);
 
+	if (sc->regtype == SYS_RES_IOPORT)
+		pci_enable_io(dev, SYS_RES_IOPORT);
+	else
+		pci_enable_io(dev, SYS_RES_MEMORY);
+	pci_enable_busmaster(dev);
+
+	ICH_LOCK(sc);
 	/* Reinit audio device */
     	if (ich_init(sc) == -1) {
 		device_printf(dev, "unable to reinitialize the card\n");
+		ICH_UNLOCK(sc);
 		return ENXIO;
 	}
 	/* Reinit mixer */
+	ich_pci_codec_reset(sc);
+	ICH_UNLOCK(sc);
+	ac97_setextmode(sc->codec, sc->hasvra | sc->hasvrm);
     	if (mixer_reinit(dev) == -1) {
 		device_printf(dev, "unable to reinitialize the mixer\n");
 		return ENXIO;
@@ -903,5 +1040,5 @@ static driver_t ich_driver = {
 };
 
 DRIVER_MODULE(snd_ich, pci, ich_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_ich, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_ich, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_ich, 1);

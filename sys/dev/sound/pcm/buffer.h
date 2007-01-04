@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,18 +23,42 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.1.2.3 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.10 2005/01/06 01:43:20 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
  */
 
-#define ISA_DMA(b) (sndbuf_getflags((b)) & SNDBUF_F_ISADMA)
+#define SND_DMA(b) (sndbuf_getflags((b)) & SNDBUF_F_DMA)
 #define SNDBUF_LOCKASSERT(b)
 
-#define	SNDBUF_F_ISADMA		0x00000001
+#define	SNDBUF_F_DMA		0x00000001
 #define	SNDBUF_F_XRUN		0x00000002
 #define	SNDBUF_F_RUNNING	0x00000004
 
-struct snd_dbuf *sndbuf_create(device_t dev, char *drv, char *desc);
+#define SNDBUF_NAMELEN	48
+
+struct snd_dbuf {
+	device_t dev;
+	u_int8_t *buf, *tmpbuf;
+	unsigned int bufsize, maxsize;
+	volatile int dl; /* transfer size */
+	volatile int rp; /* pointers to the ready area */
+	volatile int rl; /* length of ready area */
+	volatile int hp;
+	volatile u_int32_t total, prev_total;
+	int dmachan, dir;       /* dma channel */
+	u_int32_t fmt, spd, bps;
+	unsigned int blksz, blkcnt;
+	int xrun;
+	u_int32_t flags;
+	bus_dmamap_t dmamap;
+	bus_dma_tag_t dmatag;
+	u_int32_t buf_addr;
+	struct selinfo sel;
+	struct pcm_channel *channel;
+	char name[SNDBUF_NAMELEN];
+};
+
+struct snd_dbuf *sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel);
 void sndbuf_destroy(struct snd_dbuf *b);
 
 void sndbuf_dump(struct snd_dbuf *b, char *s, u_int32_t what);
@@ -53,6 +77,8 @@ int sndbuf_setfmt(struct snd_dbuf *b, u_int32_t fmt);
 unsigned int sndbuf_getspd(struct snd_dbuf *b);
 void sndbuf_setspd(struct snd_dbuf *b, unsigned int spd);
 unsigned int sndbuf_getbps(struct snd_dbuf *b);
+
+bus_addr_t sndbuf_getbufaddr(struct snd_dbuf *buf);
 
 void *sndbuf_getbuf(struct snd_dbuf *b);
 void *sndbuf_getbufofs(struct snd_dbuf *b, unsigned int ofs);
@@ -82,16 +108,13 @@ void sndbuf_updateprevtotal(struct snd_dbuf *b);
 
 int sndbuf_acquire(struct snd_dbuf *b, u_int8_t *from, unsigned int count);
 int sndbuf_dispose(struct snd_dbuf *b, u_int8_t *to, unsigned int count);
-int sndbuf_uiomove(struct snd_dbuf *b, struct uio *uio, unsigned int count);
 int sndbuf_feed(struct snd_dbuf *from, struct snd_dbuf *to, struct pcm_channel *channel, struct pcm_feeder *feeder, unsigned int count);
 
 u_int32_t sndbuf_getflags(struct snd_dbuf *b);
 void sndbuf_setflags(struct snd_dbuf *b, u_int32_t flags, int on);
 
-int sndbuf_isadmasetup(struct snd_dbuf *b, struct resource *drq);
-int sndbuf_isadmasetdir(struct snd_dbuf *b, int dir);
-void sndbuf_isadma(struct snd_dbuf *b, int go);
-int sndbuf_isadmaptr(struct snd_dbuf *b);
-void sndbuf_isadmabounce(struct snd_dbuf *b);
-
-
+int sndbuf_dmasetup(struct snd_dbuf *b, struct resource *drq);
+int sndbuf_dmasetdir(struct snd_dbuf *b, int dir);
+void sndbuf_dma(struct snd_dbuf *b, int go);
+int sndbuf_dmaptr(struct snd_dbuf *b);
+void sndbuf_dmabounce(struct snd_dbuf *b);

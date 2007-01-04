@@ -27,8 +27,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/csareg.h,v 1.2.2.2 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/csareg.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/csareg.h,v 1.4 2005/06/27 07:43:57 glebius Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csareg.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #ifndef _CSA_REG_H
@@ -1931,6 +1931,24 @@
 #define BA1_CFG2                0x138    /* BA1_CAPTURE_FRAME_GROUP_2_REG */
 #define BA1_CCST                0x13c    /* BA1_CAPTURE_CONSTANT_REG */
 #define BA1_CSPB                0x340    /* BA1_CAPTURE_SPB_ADDRESS */
+
+/* PM state definitions */
+#define CS461x_AC97_HIGHESTREGTORESTORE	0x26
+#define CS461x_AC97_NUMBER_RESTORE_REGS	(CS461x_AC97_HIGHESTREGTORESTORE/2-1)
+
+#define CS_POWER_DAC			0x0001
+#define CS_POWER_ADC			0x0002
+#define CS_POWER_MIXVON			0x0004
+#define CS_POWER_MIXVOFF		0x0008
+#define CS_AC97_POWER_CONTROL_ON	0xf000	/* always on bits (inverted) */
+#define CS_AC97_POWER_CONTROL_ADC	0x0100
+#define CS_AC97_POWER_CONTROL_DAC	0x0200
+#define CS_AC97_POWER_CONTROL_MIXVON	0x0400
+#define CS_AC97_POWER_CONTROL_MIXVOFF	0x0800
+#define CS_AC97_POWER_CONTROL_ADC_ON	0x0001
+#define CS_AC97_POWER_CONTROL_DAC_ON	0x0002
+#define CS_AC97_POWER_CONTROL_MIXVON_ON	0x0004
+#define CS_AC97_POWER_CONTROL_MIXVOFF_ON 0x0008
 
 /* The following struct holds the initialization array. */
 

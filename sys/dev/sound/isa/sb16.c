@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * Copyright 1997,1998 Luigi Rizzo.
  *
  * Derived from files in the Voxware 3.5 distribution,
@@ -28,8 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.90.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,9 +37,11 @@
 #include  <dev/sound/isa/sb.h>
 #include  <dev/sound/chip.h>
 
+#include <bus/isa/isavar.h>
+
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)
@@ -125,6 +127,12 @@ sb_lock(struct sb_info *sb) {
 }
 
 static void
+sb_lockassert(struct sb_info *sb) {
+
+	sbc_lockassert(device_get_softc(sb->parent_dev));
+}
+
+static void
 sb_unlock(struct sb_info *sb) {
 
 	sbc_unlock(device_get_softc(sb->parent_dev));
@@ -167,7 +175,7 @@ sb_dspwr(struct sb_info *sb, u_char val)
 			return 1;
 		}
     	}
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
+#if __FreeBSD_version > 500000
 	if (curthread->td_intr_nesting_level == 0)
 		kprintf("sb_dspwr(0x%02x) timed out.\n", val);
 #endif
@@ -204,7 +212,7 @@ sb_cmd2(struct sb_info *sb, u_char cmd, int val)
 #if 0
     	kprintf("sb_cmd2: %x, %x\n", cmd, val);
 #endif
-	sb_lock(sb);
+	sb_lockassert(sb);
 	r = 0;
     	if (sb_dspwr(sb, cmd)) {
 		if (sb_dspwr(sb, val & 0xff)) {
@@ -213,7 +221,6 @@ sb_cmd2(struct sb_info *sb, u_char cmd, int val)
 			}
 		}
     	}
-	sb_unlock(sb);
 
 	return r;
 }
@@ -238,12 +245,11 @@ sb_getmixer(struct sb_info *sb, u_int port)
 {
     	int val;
 
-	sb_lock(sb);
+    	sb_lockassert(sb);
     	sb_wr(sb, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	val = sb_rd(sb, SB_MIX_DATA);
     	DELAY(10);
-	sb_unlock(sb);
 
     	return val;
 }
@@ -267,12 +273,11 @@ sb_reset_dsp(struct sb_info *sb)
 {
 	u_char b;
 
-	sb_lock(sb);
+	sb_lockassert(sb);
     	sb_wr(sb, SBDSP_RST, 3);
     	DELAY(100);
     	sb_wr(sb, SBDSP_RST, 0);
 	b = sb_get_byte(sb);
-	sb_unlock(sb);
     	if (b != 0xAA) {
         	DEB(kprintf("sb_reset_dsp 0x%lx failed\n",
 			   rman_get_start(sb->io_base)));
@@ -327,6 +332,19 @@ sb16mix_init(struct snd_mixer *m)
 }
 
 static int
+rel2abs_volume(int x, int max)
+{
+	int temp;
+	
+	temp = ((x * max) + 50) / 100;
+	if (temp > max)
+		temp = max;
+	else if (temp < 0)
+		temp = 0;
+	return (temp);
+}
+
+static int
 sb16mix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 {
     	struct sb_info *sb = mix_getdevinfo(m);
@@ -336,8 +354,8 @@ sb16mix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 	e = &sb16_mixtab[dev];
 	max = (1 << e->bits) - 1;
 
-	left = (left * max) / 100;
-	right = (right * max) / 100;
+	left = rel2abs_volume(left, max);
+	right = rel2abs_volume(right, max);
 
 	sb_setmixer(sb, e->reg, left << e->ofs);
 	if (e->stereo)
@@ -355,23 +373,32 @@ static int
 sb16mix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 {
     	struct sb_info *sb = mix_getdevinfo(m);
-    	u_char recdev;
+    	u_char recdev_l, recdev_r;
 
-	recdev = 0;
-	if (src & SOUND_MASK_MIC)
-		recdev |= 0x01; /* mono mic */
+	recdev_l = 0;
+	recdev_r = 0;
+	if (src & SOUND_MASK_MIC) {
+		recdev_l |= 0x01; /* mono mic */
+		recdev_r |= 0x01;
+	}
 
-	if (src & SOUND_MASK_CD)
-		recdev |= 0x06; /* l+r cd */
+	if (src & SOUND_MASK_CD) {
+		recdev_l |= 0x04; /* l cd */
+		recdev_r |= 0x02; /* r cd */
+	}
 
-	if (src & SOUND_MASK_LINE)
-		recdev |= 0x18; /* l+r line */
+	if (src & SOUND_MASK_LINE) {
+		recdev_l |= 0x10; /* l line */
+		recdev_r |= 0x08; /* r line */
+	}
 
-	if (src & SOUND_MASK_SYNTH)
-		recdev |= 0x60; /* l+r midi */
+	if (src & SOUND_MASK_SYNTH) {
+		recdev_l |= 0x40; /* l midi */
+		recdev_r |= 0x20; /* r midi */
+	}
 
-	sb_setmixer(sb, SB16_IMASK_L, recdev);
-	sb_setmixer(sb, SB16_IMASK_R, recdev);
+	sb_setmixer(sb, SB16_IMASK_L, recdev_l);
+	sb_setmixer(sb, SB16_IMASK_R, recdev_r);
 
 	/* Switch on/off FM tuner source */
 	if (src & SOUND_MASK_LINE1)
@@ -441,19 +468,23 @@ sb16_alloc_resources(struct sb_info *sb, device_t dev)
 
 	rid = 0;
 	if (!sb->io_base)
-    		sb->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->io_base = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+			&rid, RF_ACTIVE);
 
 	rid = 0;
 	if (!sb->irq)
-    		sb->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+			RF_ACTIVE);
 
 	rid = 0;
 	if (!sb->drq1)
-    		sb->drq1 = bus_alloc_resource(dev, SYS_RES_DRQ, &rid, 0, ~0, 1, RF_ACTIVE);
+    		sb->drq1 = bus_alloc_resource_any(dev, SYS_RES_DRQ, &rid,
+			RF_ACTIVE);
 
 	rid = 1;
 	if (!sb->drq2)
-        	sb->drq2 = bus_alloc_resource(dev, SYS_RES_DRQ, &rid, 0, ~0, 1, RF_ACTIVE);
+        	sb->drq2 = bus_alloc_resource_any(dev, SYS_RES_DRQ, &rid,
+			RF_ACTIVE);
 
     	if (sb->io_base && sb->drq1 && sb->irq) {
 		isa_dma_acquire(rman_get_start(sb->drq1));
@@ -475,7 +506,7 @@ static void
 sb_intr(void *arg)
 {
     	struct sb_info *sb = (struct sb_info *)arg;
-    	int reason = 3, c;
+    	int reason, c;
 
     	/*
      	 * The Vibra16X has separate flags for 8 and 16 bit transfers, but
@@ -543,43 +574,44 @@ sb_setup(struct sb_info *sb)
 
 	sb_lock(sb);
 	if (sb->bd_flags & BD_F_DMARUN)
-		sndbuf_isadma(sb->pch.buffer, PCMTRIG_STOP);
+		sndbuf_dma(sb->pch.buffer, PCMTRIG_STOP);
 	if (sb->bd_flags & BD_F_DMARUN2)
-		sndbuf_isadma(sb->rch.buffer, PCMTRIG_STOP);
+		sndbuf_dma(sb->rch.buffer, PCMTRIG_STOP);
 	sb->bd_flags &= ~(BD_F_DMARUN | BD_F_DMARUN2);
 
 	sb_reset_dsp(sb);
 
 	if (sb->bd_flags & BD_F_SB16X) {
+		/* full-duplex doesn't work! */
 		pprio = sb->pch.run? 1 : 0;
-		sndbuf_isadmasetup(sb->pch.buffer, pprio? sb->drq1 : NULL);
+		sndbuf_dmasetup(sb->pch.buffer, pprio? sb->drq1 : sb->drq2);
 		sb->pch.dch = pprio? 1 : 0;
-		sndbuf_isadmasetup(sb->rch.buffer, pprio? sb->drq2 : sb->drq1);
+		sndbuf_dmasetup(sb->rch.buffer, pprio? sb->drq2 : sb->drq1);
 		sb->rch.dch = pprio? 2 : 1;
 	} else {
 		if (sb->pch.run && sb->rch.run) {
 			pprio = (sb->rch.fmt & AFMT_16BIT)? 0 : 1;
-			sndbuf_isadmasetup(sb->pch.buffer, pprio? sb->drq2 : sb->drq1);
+			sndbuf_dmasetup(sb->pch.buffer, pprio? sb->drq2 : sb->drq1);
 			sb->pch.dch = pprio? 2 : 1;
-			sndbuf_isadmasetup(sb->rch.buffer, pprio? sb->drq1 : sb->drq2);
+			sndbuf_dmasetup(sb->rch.buffer, pprio? sb->drq1 : sb->drq2);
 			sb->rch.dch = pprio? 1 : 2;
 		} else {
 			if (sb->pch.run) {
-				sndbuf_isadmasetup(sb->pch.buffer, (sb->pch.fmt & AFMT_16BIT)? sb->drq2 : sb->drq1);
+				sndbuf_dmasetup(sb->pch.buffer, (sb->pch.fmt & AFMT_16BIT)? sb->drq2 : sb->drq1);
 				sb->pch.dch = (sb->pch.fmt & AFMT_16BIT)? 2 : 1;
-				sndbuf_isadmasetup(sb->rch.buffer, (sb->pch.fmt & AFMT_16BIT)? sb->drq1 : sb->drq2);
+				sndbuf_dmasetup(sb->rch.buffer, (sb->pch.fmt & AFMT_16BIT)? sb->drq1 : sb->drq2);
 				sb->rch.dch = (sb->pch.fmt & AFMT_16BIT)? 1 : 2;
 			} else if (sb->rch.run) {
-				sndbuf_isadmasetup(sb->pch.buffer, (sb->rch.fmt & AFMT_16BIT)? sb->drq1 : sb->drq2);
+				sndbuf_dmasetup(sb->pch.buffer, (sb->rch.fmt & AFMT_16BIT)? sb->drq1 : sb->drq2);
 				sb->pch.dch = (sb->rch.fmt & AFMT_16BIT)? 1 : 2;
-				sndbuf_isadmasetup(sb->rch.buffer, (sb->rch.fmt & AFMT_16BIT)? sb->drq2 : sb->drq1);
+				sndbuf_dmasetup(sb->rch.buffer, (sb->rch.fmt & AFMT_16BIT)? sb->drq2 : sb->drq1);
 				sb->rch.dch = (sb->rch.fmt & AFMT_16BIT)? 2 : 1;
 			}
 		}
 	}
 
-	sndbuf_isadmasetdir(sb->pch.buffer, PCMDIR_PLAY);
-	sndbuf_isadmasetdir(sb->rch.buffer, PCMDIR_REC);
+	sndbuf_dmasetdir(sb->pch.buffer, PCMDIR_PLAY);
+	sndbuf_dmasetdir(sb->rch.buffer, PCMDIR_REC);
 
 	/*
 	kprintf("setup: [pch = %d, pfmt = %d, pgo = %d] [rch = %d, rfmt = %d, rgo = %d]\n",
@@ -607,7 +639,7 @@ sb_setup(struct sb_info *sb)
 		v = (ch->fmt & AFMT_STEREO)? DSP_F16_STEREO : 0;
 		v |= (ch->fmt & AFMT_SIGNED)? DSP_F16_SIGNED : 0;
 		sb_cmd2(sb, v, l);
-		sndbuf_isadma(ch->buffer, PCMTRIG_START);
+		sndbuf_dma(ch->buffer, PCMTRIG_START);
 		sb->bd_flags |= BD_F_DMARUN;
 	}
 
@@ -632,7 +664,7 @@ sb_setup(struct sb_info *sb)
 		v = (ch->fmt & AFMT_STEREO)? DSP_F16_STEREO : 0;
 		v |= (ch->fmt & AFMT_SIGNED)? DSP_F16_SIGNED : 0;
 		sb_cmd2(sb, v, l);
-		sndbuf_isadma(ch->buffer, PCMTRIG_START);
+		sndbuf_dma(ch->buffer, PCMTRIG_START);
 		sb->bd_flags |= BD_F_DMARUN2;
 	}
 	sb_unlock(sb);
@@ -652,7 +684,7 @@ sb16chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel 
 	ch->buffer = b;
 	ch->dir = dir;
 
-	if (sndbuf_alloc(ch->buffer, sb->parent_dmat, sb->bufsize) == -1)
+	if (sndbuf_alloc(ch->buffer, sb->parent_dmat, sb->bufsize) != 0)
 		return NULL;
 
 	return ch;
@@ -713,7 +745,7 @@ sb16chan_getptr(kobj_t obj, void *data)
 {
 	struct sb_chinfo *ch = data;
 
-	return sndbuf_isadmaptr(ch->buffer);
+	return sndbuf_dmaptr(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -794,13 +826,17 @@ sb16_attach(device_t dev)
 	sb->bd_flags = (ver & 0xffff0000) >> 16;
 	sb->bufsize = pcm_getbuffersize(dev, 4096, SB16_BUFFSIZE, 65536);
 
-    	if (sb16_alloc_resources(sb, dev))
+	if (sb16_alloc_resources(sb, dev))
 		goto no;
-    	if (sb_reset_dsp(sb))
+	sb_lock(sb);
+	if (sb_reset_dsp(sb)) {
+		sb_unlock(sb);
 		goto no;
+	}
+	sb_unlock(sb);
 	if (mixer_init(dev, &sb16mix_mixer_class, sb))
 		goto no;
-	if (snd_setup_intr(dev, sb->irq, INTR_MPSAFE, sb_intr, sb, &sb->ih, NULL))
+	if (snd_setup_intr(dev, sb->irq, 0, sb_intr, sb, &sb->ih))
 		goto no;
 
 	if (sb->bd_flags & BD_F_SB16X)
@@ -813,8 +849,8 @@ sb16_attach(device_t dev)
 			/*highaddr*/BUS_SPACE_MAXADDR,
 			/*filter*/NULL, /*filterarg*/NULL,
 			/*maxsize*/sb->bufsize, /*nsegments*/1,
-			/*maxsegz*/0x3ffff,
-			/*flags*/0, &sb->parent_dmat) != 0) {
+			/*maxsegz*/0x3ffff, /*flags*/0,
+			&sb->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto no;
     	}
@@ -824,9 +860,10 @@ sb16_attach(device_t dev)
 	else
 		status2[0] = '\0';
 
-    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %ud",
+    	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld drq %ld%s bufsz %u %s",
     	     	rman_get_start(sb->io_base), rman_get_start(sb->irq),
-		rman_get_start(sb->drq1), status2, sb->bufsize);
+		rman_get_start(sb->drq1), status2, sb->bufsize,
+		PCM_KLDSTRING(snd_sb16));
 
     	if (pcm_register(dev, sb, 1, 1))
 		goto no;
@@ -873,6 +910,6 @@ static driver_t sb16_driver = {
 };
 
 DRIVER_MODULE(snd_sb16, sbc, sb16_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_sb16, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_sb16, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_sb16, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_sb16, 1);

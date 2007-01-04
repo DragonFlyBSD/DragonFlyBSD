@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1999 Seigo Tanimura
  * All rights reserved.
  *
@@ -23,15 +23,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.44.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
+#include <bus/isa/isavar.h>
+
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -67,7 +69,7 @@ struct sbc_softc {
 
 	void *ih[IRQ_MAX];
 
-	void *lock;
+	struct spinlock *lock;
 
 	u_int32_t bd_ver;
 };
@@ -82,7 +84,7 @@ static int sbc_release_resource(device_t bus, device_t child, int type, int rid,
 				struct resource *r);
 static int sbc_setup_intr(device_t dev, device_t child, struct resource *irq,
    	       int flags, driver_intr_t *intr, void *arg,
-   	       void **cookiep, lwkt_serialize_t serializer);
+   	       void **cookiep);
 static int sbc_teardown_intr(device_t dev, device_t child, struct resource *irq,
   		  void *cookie);
 
@@ -92,6 +94,20 @@ static int release_resource(struct sbc_softc *scp);
 static devclass_t sbc_devclass;
 
 static int io_range[3] = {0x10, 0x2, 0x4};
+
+#ifdef PC98 /* I/O address table for PC98 */
+static bus_addr_t pcm_iat[] = {
+	0x000, 0x100, 0x200, 0x300, 0x400, 0x500, 0x600, 0x700,
+	0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00
+};
+static bus_addr_t midi_iat[] = {
+	0x000, 0x100
+};
+static bus_addr_t opl_iat[] = {
+	0x000, 0x100, 0x200, 0x300
+};
+static bus_addr_t *sb_iat[] = { pcm_iat, midi_iat, opl_iat };
+#endif
 
 static int sb_rd(struct resource *io, int reg);
 static void sb_wr(struct resource *io, int reg, u_int8_t val);
@@ -116,6 +132,12 @@ void
 sbc_lock(struct sbc_softc *scp)
 {
 	snd_mtxlock(scp->lock);
+}
+
+void
+sbc_lockassert(struct sbc_softc *scp)
+{
+	snd_mtxassert(scp->lock);
 }
 
 void
@@ -171,12 +193,12 @@ sb_cmd(struct resource *io, u_char val)
 static void
 sb_setmixer(struct resource *io, u_int port, u_int value)
 {
-	crit_enter();
+    	crit_enter();
     	sb_wr(io, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	sb_wr(io, SB_MIX_DATA, (u_char) (value & 0xff));
     	DELAY(10);
-	crit_exit();
+    	crit_exit();
 }
 
 static u_int
@@ -238,6 +260,7 @@ static struct isa_pnp_id sbc_ids[] = {
 
 	{0x81167316, "ESS ES1681"},			/* ESS1681 */
 	{0x02017316, "ESS ES1688"},			/* ESS1688 */
+	{0x68097316, "ESS ES1688"},			/* ESS1688 */
 	{0x68187316, "ESS ES1868"},			/* ESS1868 */
 	{0x03007316, "ESS ES1869"},			/* ESS1869 */
 	{0x69187316, "ESS ES1869"},			/* ESS1869 */
@@ -268,9 +291,17 @@ sbc_probe(device_t dev)
 		int rid = 0, ver;
 	    	struct resource *io;
 
+#ifdef PC98
+		io = isa_alloc_resourcev(dev, SYS_RES_IOPORT, &rid,
+					 pcm_iat, 16, RF_ACTIVE);
+#else
 		io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
 		  		    	0, ~0, 16, RF_ACTIVE);
+#endif
 		if (!io) goto bad;
+#ifdef PC98
+		isa_load_resourcev(io, pcm_iat, 16);
+#endif
     		if (sb_reset_dsp(io)) goto bad2;
 		ver = sb_identify_board(io);
 		if (ver == 0) goto bad2;
@@ -362,6 +393,20 @@ sbc_attach(device_t dev)
 		/* soft irq/dma configuration */
 		x = -1;
 		irq = rman_get_start(scp->irq[0]);
+#ifdef PC98
+		/* SB16 in PC98 use different IRQ table */
+		if	(irq == 3) x = 1;
+		else if (irq == 5) x = 8;
+		else if (irq == 10) x = 2;
+		else if (irq == 12) x = 4;
+		if (x == -1) {
+			err = "bad irq (3/5/10/12 valid)";
+			goto bad;
+		}
+		else sb_setmixer(scp->io[0], IRQ_NR, x);
+		/* SB16 in PC98 use different dma setting */
+		sb_setmixer(scp->io[0], DMA_NR, dh == 0 ? 1 : 2);
+#else
 		if      (irq == 5) x = 2;
 		else if (irq == 7) x = 4;
 		else if (irq == 9) x = 1;
@@ -372,6 +417,7 @@ sbc_attach(device_t dev)
 		}
 		else sb_setmixer(scp->io[0], IRQ_NR, x);
 		sb_setmixer(scp->io[0], DMA_NR, (1 << dh) | (1 << dl));
+#endif
 		if (bootverbose) {
 			device_printf(dev, "setting card to irq %d, drq %d", irq, dl);
 			if (dl != dh) kprintf(", %d", dh);
@@ -392,7 +438,7 @@ sbc_attach(device_t dev)
 	err = "setup_intr";
 	for (i = 0; i < IRQ_MAX; i++) {
 		scp->ihl[i].parent = scp;
-		if (snd_setup_intr(dev, scp->irq[i], INTR_MPSAFE, sbc_intr, &scp->ihl[i], &scp->ih[i], NULL))
+		if (snd_setup_intr(dev, scp->irq[i], 0, sbc_intr, &scp->ihl[i], &scp->ih[i]))
 			goto bad;
 	}
 
@@ -459,13 +505,11 @@ sbc_intr(void *p)
 static int
 sbc_setup_intr(device_t dev, device_t child, struct resource *irq,
    	       int flags, driver_intr_t *intr, void *arg,
-   	       void **cookiep, lwkt_serialize_t serializer)
+   	       void **cookiep)
 {
 	struct sbc_softc *scp = device_get_softc(dev);
 	struct sbc_ihl *ihl = NULL;
 	int i, ret;
-
-	KKASSERT(serializer == NULL);	/* not yet supported */
 
 	sbc_lock(scp);
 	i = 0;
@@ -523,13 +567,22 @@ sbc_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	struct sbc_softc *scp;
 	int *alloced, rid_max, alloced_max;
 	struct resource **res;
+#ifdef PC98
+	int i;
+#endif
 
 	scp = device_get_softc(bus);
 	switch (type) {
 	case SYS_RES_IOPORT:
 		alloced = scp->io_alloced;
 		res = scp->io;
+#ifdef PC98
+		rid_max = 0;
+		for (i = 0; i < IO_MAX; i++)
+			rid_max += io_range[i];
+#else
 		rid_max = IO_MAX - 1;
+#endif
 		alloced_max = 1;
 		break;
 	case SYS_RES_DRQ:
@@ -630,9 +683,23 @@ alloc_resource(struct sbc_softc *scp)
 
 	for (i = 0 ; i < IO_MAX ; i++) {
 		if (scp->io[i] == NULL) {
+#ifdef PC98
+			scp->io_rid[i] = i > 0 ?
+				scp->io_rid[i - 1] + io_range[i - 1] : 0;
+			scp->io[i] = isa_alloc_resourcev(scp->dev,
+							 SYS_RES_IOPORT,
+							 &scp->io_rid[i],
+							 sb_iat[i],
+							 io_range[i],
+							 RF_ACTIVE);
+			if (scp->io[i] != NULL)
+				isa_load_resourcev(scp->io[i], sb_iat[i],
+						   io_range[i]);
+#else
 			scp->io_rid[i] = i;
 			scp->io[i] = bus_alloc_resource(scp->dev, SYS_RES_IOPORT, &scp->io_rid[i],
 							0, ~0, io_range[i], RF_ACTIVE);
+#endif
 			if (i == 0 && scp->io[i] == NULL)
 				return (1);
 			scp->io_alloced[i] = 0;
@@ -641,8 +708,10 @@ alloc_resource(struct sbc_softc *scp)
 	for (i = 0 ; i < DRQ_MAX ; i++) {
 		if (scp->drq[i] == NULL) {
 			scp->drq_rid[i] = i;
-			scp->drq[i] = bus_alloc_resource(scp->dev, SYS_RES_DRQ, &scp->drq_rid[i],
-							 0, ~0, 1, RF_ACTIVE);
+			scp->drq[i] = bus_alloc_resource_any(scp->dev,
+							     SYS_RES_DRQ,
+							     &scp->drq_rid[i],
+							     RF_ACTIVE);
 			if (i == 0 && scp->drq[i] == NULL)
 				return (1);
 			scp->drq_alloced[i] = 0;
@@ -651,8 +720,10 @@ alloc_resource(struct sbc_softc *scp)
 	for (i = 0 ; i < IRQ_MAX ; i++) {
 	 	if (scp->irq[i] == NULL) {
 			scp->irq_rid[i] = i;
-			scp->irq[i] = bus_alloc_resource(scp->dev, SYS_RES_IRQ, &scp->irq_rid[i],
-							 0, ~0, 1, RF_ACTIVE);
+			scp->irq[i] = bus_alloc_resource_any(scp->dev,
+							     SYS_RES_IRQ,
+							     &scp->irq_rid[i],
+							     RF_ACTIVE);
 			if (i == 0 && scp->irq[i] == NULL)
 				return (1);
 			scp->irq_alloced[i] = 0;
@@ -721,5 +792,6 @@ static driver_t sbc_driver = {
 
 /* sbc can be attached to an isa bus. */
 DRIVER_MODULE(snd_sbc, isa, sbc_driver, sbc_devclass, 0, 0);
-MODULE_DEPEND(snd_sbc, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+DRIVER_MODULE(snd_sbc, acpi, sbc_driver, sbc_devclass, 0, 0);
+MODULE_DEPEND(snd_sbc, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_sbc, 1);

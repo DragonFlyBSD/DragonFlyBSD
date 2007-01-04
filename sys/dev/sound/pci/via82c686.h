@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/via82c686.h,v 1.1.2.7 2003/05/11 01:45:49 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/via82c686.h,v 1.6 2003/03/26 05:35:38 orion Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #ifndef _VIA_H

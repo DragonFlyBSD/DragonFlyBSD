@@ -1,3 +1,4 @@
+#-
 # KOBJ
 #
 # Copyright (c) 2000 Cameron Grant <cg@freebsd.org>
@@ -24,8 +25,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/sound/pcm/channel_if.m,v 1.1.2.3 2002/04/22 15:49:36 cg Exp $
-# $DragonFly: src/sys/dev/sound/pcm/channel_if.m,v 1.2 2003/06/17 04:28:31 dillon Exp $
+# $FreeBSD: src/sys/dev/sound/pcm/channel_if.m,v 1.5 2005/01/06 01:43:20 imp Exp $
+# $DragonFly: src/sys/dev/sound/pcm/channel_if.m,v 1.3 2007/01/04 21:47:03 corecode Exp $
 #
 
 #include <dev/sound/pcm/sound.h>

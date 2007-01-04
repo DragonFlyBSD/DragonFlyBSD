@@ -1,10 +1,12 @@
-# $FreeBSD: src/sys/modules/sound/driver/ess/Makefile,v 1.1.2.2 2001/02/27 04:31:28 cg Exp $
-# $DragonFly: src/sys/dev/sound/driver/ess/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $FreeBSD: src/sys/modules/sound/driver/ess/Makefile,v 1.3 2002/01/23 03:32:36 cg Exp $
+# $DragonFly: src/sys/dev/sound/driver/ess/Makefile,v 1.3 2007/01/04 21:47:01 corecode Exp $
 
-.PATH:		${.CURDIR}/../../../../dev/sound/isa
-KMOD		= snd_ess
-SRCS		= device_if.h bus_if.h isa_if.h pci_if.h
-SRCS		+= ess.c es1888.c
-KMODDEPS 	= snd_pcm snd_sbc
+.PATH: ${.CURDIR}/../../../../dev/sound/isa
+
+KMOD=	snd_ess
+SRCS=	device_if.h bus_if.h isa_if.h pci_if.h
+SRCS+=	ess.c
+
+KMODDEPS=	sound snd_sbc
 
 .include <bsd.kmod.mk>

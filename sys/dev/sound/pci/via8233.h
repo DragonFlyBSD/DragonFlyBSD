@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2002 Orion Hodson <orion@freebsd.org>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/via8233.h,v 1.1.2.1 2002/08/22 17:32:48 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via8233.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/via8233.h,v 1.4 2005/01/06 01:43:19 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #ifndef _SYS_SOUND_PCI_VIA8233_H_
@@ -35,10 +35,29 @@
  *
  * Documentation sources:
  *
- * V8233C specs. from VIA, gratefully received under NDA.
- * AC97 R2.2 specs.
- * ALSA driver (very useful comments)
+ * o V8233C specs. from VIA, gratefully received under NDA.
+ * o AC97 R2.2 specs.
+ * o ALSA driver (very useful comments)
  */
+
+#define	VIA_PCI_SPDIF		0x49
+#define		VIA_SPDIF_EN		0x08
+
+#define VIA_DXS0_BASE		0x00
+#define VIA_DXS1_BASE		0x10
+#define VIA_DXS2_BASE		0x20
+#define VIA_DXS3_BASE		0x30
+#define VIA_DXS_BASE(n)		(0x10 * (n))
+#define BASE_IS_VIA_DXS_REG(x)	((x) <= VIA_DXS3_BASE)
+
+#define VIA8233_RP_DXS_LVOL	      0x02
+#define VIA8233_RP_DXS_RVOL	      0x03
+#define 	VIA8233_DXS_MUTE		0x3f
+#define VIA8233_RP_DXS_RATEFMT	      0x08
+#define		VIA8233_DXS_STOP_INDEX		0xff000000
+#define 	VIA8233_DXS_RATEFMT_48K		0x000fffff
+#define		VIA8233_DXS_RATEFMT_STEREO	0x00100000
+#define		VIA8233_DXS_RATEFMT_16BIT	0x00200000
 
 #define VIA_PCI_ACLINK_STAT	0x40
 #	define VIA_PCI_ACLINK_C11_READY	0x20
@@ -54,6 +73,10 @@
 #	define VIA_PCI_ACLINK_SERIAL	0x10
 #	define VIA_PCI_ACLINK_VRATE	0x08
 #	define VIA_PCI_ACLINK_SGD	0x04
+#	define VIA_PCI_ACLINK_DESIRED 	(VIA_PCI_ACLINK_EN | 		      \
+					 VIA_PCI_ACLINK_NRST |		      \
+					 VIA_PCI_ACLINK_VRATE | 	      \
+					 VIA_PCI_ACLINK_SGD)
 
 #define VIA_MC_SGD_STATUS	0x40
 #define VIA_WR0_SGD_STATUS	0x60
@@ -65,6 +88,8 @@
 #	define SGD_STATUS_EOL		0x02
 #	define SGD_STATUS_FLAG		0x01
 #	define SGD_STATUS_INTR		(SGD_STATUS_EOL | SGD_STATUS_FLAG)
+
+#define VIA_WR_BASE(n)			(0x60 + (n) * 0x10)
 
 #define VIA_MC_SGD_CONTROL	0x41
 #define VIA_WR0_SGD_CONTROL	0x61
@@ -84,6 +109,7 @@
 
 #define VIA_WR0_SGD_FORMAT	0x62
 #define VIA_WR1_SGD_FORMAT	0x72
+#define VIA_WR_RP_SGD_FORMAT		0x02
 #	define WR_FIFO_ENABLE		0x40
 
 #define VIA_WR0_SGD_INPUT	0x63
@@ -133,7 +159,6 @@
 #	define VIA_AC97_READ		0x00800000
 #	define VIA_AC97_INDEX(x)	((x) << 16)
 #	define VIA_AC97_DATA(x)		((x) & 0xffff)
-
 
 #define         VIA_CODEC_BUSY                0x01000000
 #define         VIA_CODEC_PRIVALID            0x02000000

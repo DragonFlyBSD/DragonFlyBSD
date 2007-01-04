@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Orion Hodson <O.Hodson@cs.ucl.ac.uk>
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * woller (twoller@crystal.cirrus.com).  Shingo Watanabe (nabe@nabechan.org)
  * contributed towards power management.
  *
- * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.22 2005/03/01 08:58:05 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -490,7 +490,7 @@ adcdac_prog(struct sc_chinfo *ch)
     if (!ch->dma_setup) {
 	go = adcdac_go(ch, 0);
 	cs4281_wr(sc, CS4281PCI_DBA(ch->dma_chan),
-		  vtophys(sndbuf_getbuf(ch->buffer)));
+		  sndbuf_getbufaddr(ch->buffer));
 	cs4281_wr(sc, CS4281PCI_DBC(ch->dma_chan),
 		  sndbuf_getsize(ch->buffer) / ch->bps - 1);
 	ch->dma_setup = 1;
@@ -745,7 +745,7 @@ cs4281_pci_probe(device_t dev)
 
     if (s)
 	device_set_desc(dev, s);
-    return s ? 0 : ENXIO;
+    return s ? BUS_PROBE_DEFAULT : ENXIO;
 }
 
 static int
@@ -768,7 +768,7 @@ cs4281_pci_attach(device_t dev)
     data |= (PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
     pci_write_config(dev, PCIR_COMMAND, data, 2);
 
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
+#if __FreeBSD_version > 500000
     if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 	/* Reset the power state. */
 	device_printf(dev, "chip is in D%d power mode "
@@ -788,7 +788,7 @@ cs4281_pci_attach(device_t dev)
     }
 #endif
 
-    sc->regid   = PCIR_MAPS;
+    sc->regid   = PCIR_BAR(0);
     sc->regtype = SYS_RES_MEMORY;
     sc->reg = bus_alloc_resource(dev, sc->regtype, &sc->regid,
 				 0, ~0, CS4281PCI_BA0_SIZE, RF_ACTIVE);
@@ -804,7 +804,7 @@ cs4281_pci_attach(device_t dev)
     sc->st = rman_get_bustag(sc->reg);
     sc->sh = rman_get_bushandle(sc->reg);
 
-    sc->memid = PCIR_MAPS + 4;
+    sc->memid = PCIR_BAR(1);
     sc->mem = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->memid, 0,
 				 ~0, CS4281PCI_BA1_SIZE, RF_ACTIVE);
     if (sc->mem == NULL) {
@@ -813,14 +813,14 @@ cs4281_pci_attach(device_t dev)
     }
 
     sc->irqid = 0;
-    sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+    sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+				     RF_ACTIVE | RF_SHAREABLE);
     if (!sc->irq) {
 	device_printf(dev, "unable to allocate interrupt\n");
 	goto bad;
     }
 
-    if (snd_setup_intr(dev, sc->irq, 0, cs4281_intr, sc, &sc->ih, NULL)) {
+    if (snd_setup_intr(dev, sc->irq, 0, cs4281_intr, sc, &sc->ih)) {
 	device_printf(dev, "unable to setup interrupt\n");
 	goto bad;
     }
@@ -833,7 +833,8 @@ cs4281_pci_attach(device_t dev)
 			   /*filter*/NULL, /*filterarg*/NULL,
 			   /*maxsize*/sc->bufsz, /*nsegments*/1,
 			   /*maxsegz*/0x3ffff,
-			   /*flags*/0, &sc->parent_dmat) != 0) {
+			   /*flags*/0,
+			   &sc->parent_dmat) != 0) {
 	device_printf(dev, "unable to create dma tag\n");
 	goto bad;
     }
@@ -860,9 +861,9 @@ cs4281_pci_attach(device_t dev)
     pcm_addchan(dev, PCMDIR_PLAY, &cs4281chan_class, sc);
     pcm_addchan(dev, PCMDIR_REC, &cs4281chan_class, sc);
 
-    ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+    ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 	     (sc->regtype == SYS_RES_IOPORT)? "io" : "memory",
-	     rman_get_start(sc->reg), rman_get_start(sc->irq));
+	     rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_cs4281));
     pcm_setstatus(dev, status);
 
     return 0;
@@ -978,5 +979,5 @@ static driver_t cs4281_driver = {
 };
 
 DRIVER_MODULE(snd_cs4281, pci, cs4281_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_cs4281, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_cs4281, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_cs4281, 1);

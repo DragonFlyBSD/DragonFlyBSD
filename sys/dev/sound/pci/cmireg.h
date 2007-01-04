@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/cmireg.h,v 1.1.2.4 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmireg.h,v 1.3 2006/10/23 21:50:32 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/cmireg.h,v 1.3 2005/01/06 01:43:19 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmireg.h,v 1.4 2007/01/04 21:47:02 corecode Exp $
  */
 
 /* C-Media CMI8x38 Audio Chip Support */

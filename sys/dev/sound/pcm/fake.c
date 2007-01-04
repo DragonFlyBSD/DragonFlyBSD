@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,15 +23,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.4.2.5 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.4 2006/12/20 18:14:41 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.14.2.1 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.5 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.4 2006/12/20 18:14:41 dillon Exp $");
 
 static u_int32_t fk_fmt[] = {
+	AFMT_MU_LAW,
+	AFMT_STEREO | AFMT_MU_LAW,
+	AFMT_A_LAW,
+	AFMT_STEREO | AFMT_A_LAW,
 	AFMT_U8,
 	AFMT_STEREO | AFMT_U8,
 	AFMT_S8,
@@ -44,6 +47,22 @@ static u_int32_t fk_fmt[] = {
 	AFMT_STEREO | AFMT_S16_BE,
 	AFMT_U16_BE,
 	AFMT_STEREO | AFMT_U16_BE,
+	AFMT_S24_LE,
+	AFMT_STEREO | AFMT_S24_LE,
+	AFMT_U24_LE,
+	AFMT_STEREO | AFMT_U24_LE,
+	AFMT_S24_BE,
+	AFMT_STEREO | AFMT_S24_BE,
+	AFMT_U24_BE,
+	AFMT_STEREO | AFMT_U24_BE,
+	AFMT_S32_LE,
+	AFMT_STEREO | AFMT_S32_LE,
+	AFMT_U32_LE,
+	AFMT_STEREO | AFMT_U32_LE,
+	AFMT_S32_BE,
+	AFMT_STEREO | AFMT_S32_BE,
+	AFMT_U32_BE,
+	AFMT_STEREO | AFMT_U32_BE,
 	0
 };
 static struct pcmchan_caps fk_caps = {0, 1000000, fk_fmt, 0};
@@ -123,6 +142,12 @@ fkchan_setup(device_t dev)
 	c = kmalloc(sizeof(*c), M_DEVBUF, M_WAITOK);
 	c->methods = kobj_create(&fkchan_class, M_DEVBUF, M_WAITOK);
 	c->parentsnddev = d;
+	/*
+	 * Fake channel is such a blessing in disguise. Using this,
+	 * we can keep track prefered virtual channel speed without
+	 * querying kernel hint repetitively (see vchan_create / vchan.c).
+	 */
+	c->speed = 0;
 	ksnprintf(c->name, CHN_NAMELEN, "%s:fake", device_get_nameunit(dev));
 
 	return c;

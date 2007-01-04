@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/feeder.h,v 1.2.2.4 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/feeder.h,v 1.12.2.1 2006/01/29 02:27:28 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
  */
 
 struct pcm_feederdesc {
@@ -54,19 +54,24 @@ struct pcm_feeder {
 void feeder_register(void *p);
 struct feeder_class *feeder_getclass(struct pcm_feederdesc *desc);
 
+int chn_fmtscore(u_int32_t fmt);
+u_int32_t chn_fmtbestbit(u_int32_t fmt, u_int32_t *fmts);
+u_int32_t chn_fmtbeststereo(u_int32_t fmt, u_int32_t *fmts);
+u_int32_t chn_fmtbest(u_int32_t fmt, u_int32_t *fmts);
 u_int32_t chn_fmtchain(struct pcm_channel *c, u_int32_t *to);
 int chn_addfeeder(struct pcm_channel *c, struct feeder_class *fc, struct pcm_feederdesc *desc);
 int chn_removefeeder(struct pcm_channel *c);
 struct pcm_feeder *chn_findfeeder(struct pcm_channel *c, u_int32_t type);
+void feeder_printchain(struct pcm_feeder *head);
 
 #define FEEDER_DECLARE(feeder, palign, pdata) \
 static struct feeder_class feeder ## _class = { \
-	name:		#feeder, \
-	methods:	feeder ## _methods, \
-	size:		sizeof(struct pcm_feeder), \
-	align:		palign, \
-	desc:		feeder ## _desc, \
-	data:		pdata, \
+	.name =		#feeder, \
+	.methods =	feeder ## _methods, \
+	.size =		sizeof(struct pcm_feeder), \
+	.align =	palign, \
+	.desc =		feeder ## _desc, \
+	.data =		pdata, \
 }; \
 SYSINIT(feeder, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, feeder_register, &feeder ## _class);
 

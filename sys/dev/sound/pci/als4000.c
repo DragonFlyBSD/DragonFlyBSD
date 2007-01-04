@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Orion Hodson <oho@acm.org>
  * All rights reserved.
  *
@@ -23,14 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.18.2.1 2005/12/30 19:55:53 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 /*
  * als4000.c - driver for the Avance Logic ALS 4000 chipset.
  *
- * The ALS4000 is a effectively an SB16 with a PCI interface.
+ * The ALS4000 is effectively an SB16 with a PCI interface.
  *
  * This driver derives from ALS4000a.PDF, Bart Hartgers alsa driver, and
  * SB16 register descriptions.
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -78,6 +78,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void			*ih;
+	struct spinlock		*lock;
 
 	unsigned int		bufsz;
 	struct sc_chinfo	pch, rch;
@@ -93,7 +94,11 @@ static u_int32_t als_format[] = {
         0
 };
 
-static struct pcmchan_caps als_caps = { 4000, 48000, als_format, 0 };
+/*
+ * I don't believe this rotten soundcard can do 48k, really,
+ * trust me.
+ */
+static struct pcmchan_caps als_caps = { 4000, 44100, als_format, 0 };
 
 /* ------------------------------------------------------------------------- */
 /* Register Utilities */
@@ -202,6 +207,7 @@ alschan_init(kobj_t obj, void *devinfo,
 	struct	sc_info	*sc = devinfo;
 	struct	sc_chinfo *ch;
 
+	snd_mtxlock(sc->lock);
 	if (dir == PCMDIR_PLAY) {
 		ch = &sc->pch;
 		ch->gcr_fifo_status = ALS_GCR_FIFO0_STATUS;
@@ -216,9 +222,11 @@ alschan_init(kobj_t obj, void *devinfo,
 	ch->format = AFMT_U8;
 	ch->speed = DSP_DEFAULT_SPEED;
 	ch->buffer = b;
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0) {
+	snd_mtxunlock(sc->lock);
+
+	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0)
 		return NULL;
-	}
+
 	return ch;
 }
 
@@ -266,9 +274,12 @@ static int
 alschan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo *ch = data;
+	struct sc_info *sc = ch->parent;
 	int32_t pos, sz;
 
+	snd_mtxlock(sc->lock);
 	pos = als_gcr_rd(ch->parent, ch->gcr_fifo_status) & 0xffff;
+	snd_mtxunlock(sc->lock);
 	sz  = sndbuf_getsize(ch->buffer);
 	return (2 * sz - pos - 1) % sz;
 }
@@ -337,7 +348,7 @@ als_playback_start(struct sc_chinfo *ch)
 	struct	sc_info *sc = ch->parent;
 	u_int32_t	buf, bufsz, count, dma_prog;
 
-	buf = vtophys(sndbuf_getbuf(ch->buffer));
+	buf = sndbuf_getbufaddr(ch->buffer);
 	bufsz = sndbuf_getsize(ch->buffer);
 	count = bufsz / 2;
 	if (ch->format & AFMT_16BIT)
@@ -381,7 +392,9 @@ static int
 alspchan_trigger(kobj_t obj, void *data, int go)
 {
 	struct	sc_chinfo *ch = data;
+	struct sc_info *sc = ch->parent;
 
+	snd_mtxlock(sc->lock);
 	switch(go) {
 	case PCMTRIG_START:
 		als_playback_start(ch);
@@ -390,6 +403,7 @@ alspchan_trigger(kobj_t obj, void *data, int go)
 		als_playback_stop(ch);
 		break;
 	}
+	snd_mtxunlock(sc->lock);
 	return 0;
 }
 
@@ -431,7 +445,7 @@ als_capture_start(struct sc_chinfo *ch)
 	struct	sc_info *sc = ch->parent;
 	u_int32_t	buf, bufsz, count, dma_prog;
 
-	buf = vtophys(sndbuf_getbuf(ch->buffer));
+	buf = sndbuf_getbufaddr(ch->buffer);
 	bufsz = sndbuf_getsize(ch->buffer);
 	count = bufsz / 2;
 	if (ch->format & AFMT_16BIT)
@@ -471,7 +485,9 @@ static int
 alsrchan_trigger(kobj_t obj, void *data, int go)
 {
 	struct	sc_chinfo *ch = data;
+	struct sc_info *sc = ch->parent;
 
+	snd_mtxlock(sc->lock);
 	switch(go) {
 	case PCMTRIG_START:
 		als_capture_start(ch);
@@ -480,6 +496,7 @@ alsrchan_trigger(kobj_t obj, void *data, int go)
 		als_capture_stop(ch);
 		break;
 	}
+	snd_mtxunlock(sc->lock);
 	return 0;
 }
 
@@ -581,8 +598,13 @@ alsmix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 
 	for (i = l = r = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if (src & (1 << i)) {
-			l |= amt[i].iselect;
-			r |= amt[i].iselect << 1;
+			if (amt[i].iselect == 1) {	/* microphone */
+				l |= amt[i].iselect;
+				r |= amt[i].iselect;
+			} else {
+				l |= amt[i].iselect;
+				r |= amt[i].iselect >> 1;
+			}
 		}
 	}
 
@@ -608,13 +630,20 @@ als_intr(void *p)
 	struct sc_info *sc = (struct sc_info *)p;
 	u_int8_t intr, sb_status;
 
+	snd_mtxlock(sc->lock);
 	intr = als_intr_rd(sc);
 
-	if (intr & 0x80)
+	if (intr & 0x80) {
+		snd_mtxunlock(sc->lock);
 		chn_intr(sc->pch.channel);
+		snd_mtxlock(sc->lock);
+	}
 
-	if (intr & 0x40)
+	if (intr & 0x40) {
+		snd_mtxunlock(sc->lock);
 		chn_intr(sc->rch.channel);
+		snd_mtxlock(sc->lock);
+	}
 
 	/* ACK interrupt in PCI core */
 	als_intr_wr(sc, intr);
@@ -630,6 +659,8 @@ als_intr(void *p)
 		als_ack_read(sc, ALS_MIDI_DATA);
 	if (sb_status & ALS_IRQ_CR1E)
 		als_ack_read(sc, ALS_CR1E_ACK_PORT);
+
+	snd_mtxunlock(sc->lock);
 	return;
 }
 
@@ -687,7 +718,7 @@ als_pci_probe(device_t dev)
 {
 	if (pci_get_devid(dev) == ALS_PCI_ID0) {
 		device_set_desc(dev, "Avance Logic ALS4000");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 	return ENXIO;
 }
@@ -711,12 +742,16 @@ als_resource_free(device_t dev, struct sc_info *sc)
 		bus_dma_tag_destroy(sc->parent_dmat);
 		sc->parent_dmat = 0;
 	}
+	if (sc->lock) {
+		snd_mtxfree(sc->lock);
+		sc->lock = NULL;
+	}
 }
 
 static int
 als_resource_grab(device_t dev, struct sc_info *sc)
 {
-	sc->regid = PCIR_MAPS;
+	sc->regid = PCIR_BAR(0);
 	sc->reg = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->regid, 0, ~0,
 				     ALS_CONFIG_SPACE_BYTES, RF_ACTIVE);
 	if (sc->reg == 0) {
@@ -726,14 +761,15 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 	sc->st = rman_get_bustag(sc->reg);
 	sc->sh = rman_get_bushandle(sc->reg);
 
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid, 0, ~0, 1,
-				     RF_ACTIVE | RF_SHAREABLE);
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+					 RF_ACTIVE | RF_SHAREABLE);
 	if (sc->irq == 0) {
 		device_printf(dev, "unable to allocate interrupt\n");
 		goto bad;
 	}
 
-	if (bus_setup_intr(dev, sc->irq, 0, als_intr, sc, &sc->ih, NULL)) {
+	if (snd_setup_intr(dev, sc->irq, INTR_MPSAFE, als_intr,
+			   sc, &sc->ih)) {
 		device_printf(dev, "unable to setup interrupt\n");
 		goto bad;
 	}
@@ -747,7 +783,8 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 			       /*filter*/NULL, /*filterarg*/NULL,
 			       /*maxsize*/sc->bufsz,
 			       /*nsegments*/1, /*maxsegz*/0x3ffff,
-			       /*flags*/0, &sc->parent_dmat) != 0) {
+			       /*flags*/0,
+			       &sc->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -769,6 +806,7 @@ als_pci_attach(device_t dev)
 		return ENXIO;
 	}
 
+	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;
 
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
@@ -779,7 +817,7 @@ als_pci_attach(device_t dev)
          * ALS4000 is entirely controlled by the pci powerstate.  We
          * could attempt finer grained control by setting GCR6.31.
 	 */
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
+#if __FreeBSD_version > 500000
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		/* Reset the power state. */
 		device_printf(dev, "chip is in D%d power mode "
@@ -819,8 +857,8 @@ als_pci_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &alspchan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC,  &alsrchan_class, sc);
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
-		 rman_get_start(sc->reg), rman_get_start(sc->irq));
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_als4000));
 	pcm_setstatus(dev, status);
 	return 0;
 
@@ -852,9 +890,11 @@ als_pci_suspend(device_t dev)
 {
 	struct sc_info *sc = pcm_getdevinfo(dev);
 
+	snd_mtxlock(sc->lock);
 	sc->pch.dma_was_active = als_playback_stop(&sc->pch);
 	sc->rch.dma_was_active = als_capture_stop(&sc->rch);
 	als_uninit(sc);
+	snd_mtxunlock(sc->lock);
 	return 0;
 }
 
@@ -863,13 +903,17 @@ als_pci_resume(device_t dev)
 {
 	struct sc_info *sc = pcm_getdevinfo(dev);
 
+
+	snd_mtxlock(sc->lock);
 	if (als_init(sc) != 0) {
 		device_printf(dev, "unable to reinitialize the card\n");
+		snd_mtxunlock(sc->lock);
 		return ENXIO;
 	}
 
 	if (mixer_reinit(dev) != 0) {
 		device_printf(dev, "unable to reinitialize the mixer\n");
+		snd_mtxunlock(sc->lock);
 		return ENXIO;
 	}
 
@@ -880,6 +924,8 @@ als_pci_resume(device_t dev)
 	if (sc->rch.dma_was_active) {
 		als_capture_start(&sc->rch);
 	}
+	snd_mtxunlock(sc->lock);
+
 	return 0;
 }
 
@@ -900,5 +946,5 @@ static driver_t als_driver = {
 };
 
 DRIVER_MODULE(snd_als4000, pci, als_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_als4000, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_als4000, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_als4000, 1);

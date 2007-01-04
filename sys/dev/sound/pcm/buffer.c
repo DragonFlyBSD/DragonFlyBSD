@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,46 +23,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.7 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.1 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.8 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.7 2006/12/22 23:26:25 swildner Exp $");
-
-#define SNDBUF_NAMELEN	48
-struct snd_dbuf {
-	device_t dev;
-        u_int8_t *buf, *tmpbuf;
-        unsigned int bufsize, maxsize;
-        volatile int dl; /* transfer size */
-        volatile int rp; /* pointers to the ready area */
-	volatile int rl; /* length of ready area */
-	volatile int hp;
-	volatile u_int32_t total, prev_total;
-	int isadmachan;       /* dma channel */
-	u_int32_t fmt, spd, bps;
-	unsigned int blksz, blkcnt;
-	int xrun;
-	u_int32_t flags;
-	bus_dmamap_t dmamap;
-	bus_dma_tag_t dmatag;
-	unsigned dmaflags;
-	struct selinfo sel;
-	char name[SNDBUF_NAMELEN];
-};
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.8 2007/01/04 21:47:03 corecode Exp $");
 
 struct snd_dbuf *
-sndbuf_create(device_t dev, char *drv, char *desc)
+sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 {
 	struct snd_dbuf *b;
 
 	b = kmalloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
 	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
+	b->channel = channel;
 
 	return b;
 }
@@ -73,33 +52,56 @@ sndbuf_destroy(struct snd_dbuf *b)
 	kfree(b, M_DEVBUF);
 }
 
+bus_addr_t
+sndbuf_getbufaddr(struct snd_dbuf *buf)
+{
+	return (buf->buf_addr);
+}
+
 static void
 sndbuf_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	struct snd_dbuf *b = (struct snd_dbuf *)arg;
 
 	if (bootverbose) {
-		device_printf(b->dev, "sndbuf_setmap %lx, %lx; ", (unsigned long)segs->ds_addr,
-		       (unsigned long)segs->ds_len);
-		kprintf("%p -> %lx\n", b->buf, (unsigned long)vtophys(b->buf));
+		device_printf(b->dev, "sndbuf_setmap %lx, %lx; ",
+		    (u_long)segs[0].ds_addr, (u_long)segs[0].ds_len);
+		kprintf("%p -> %lx\n", b->buf, (u_long)segs[0].ds_addr);
 	}
+	if (error == 0)
+		b->buf_addr = segs[0].ds_addr;
+	else
+		b->buf_addr = 0;
 }
 
 /*
  * Allocate memory for DMA buffer. If the device does not use DMA transfers,
- * the driver can call malloc(9) and sndbuf_setup() itself.
+ * the driver can call kmalloc(9) and sndbuf_setup() itself.
  */
+
 int
 sndbuf_alloc(struct snd_dbuf *b, bus_dma_tag_t dmatag, unsigned int size)
 {
+	int ret;
+
 	b->dmatag = dmatag;
 	b->maxsize = size;
 	b->bufsize = b->maxsize;
-	if (bus_dmamem_alloc(b->dmatag, (void **)&b->buf, BUS_DMA_NOWAIT, &b->dmamap))
-		return ENOSPC;
-	if (bus_dmamap_load(b->dmatag, b->dmamap, b->buf, b->maxsize, sndbuf_setmap, b, 0))
-		return ENOSPC;
-	return sndbuf_resize(b, 2, b->maxsize / 2);
+	b->buf_addr = 0;
+	if (bus_dmamem_alloc(b->dmatag, (void **)&b->buf, BUS_DMA_NOWAIT,
+	    &b->dmamap))
+		return (ENOMEM);
+	if (bus_dmamap_load(b->dmatag, b->dmamap, b->buf, b->maxsize,
+	    sndbuf_setmap, b, 0) != 0 || b->buf_addr == 0) {
+		bus_dmamem_free(b->dmatag, b->buf, b->dmamap);
+		b->dmamap = NULL;
+		return (ENOMEM);
+	}
+
+	ret = sndbuf_resize(b, 2, b->maxsize / 2);
+	if (ret != 0)
+		sndbuf_free(b);
+	return (ret);
 }
 
 int
@@ -130,52 +132,90 @@ sndbuf_free(struct snd_dbuf *b)
 int
 sndbuf_resize(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 {
+	u_int8_t *tmpbuf, *f2;
+
+	chn_lock(b->channel);
 	if (b->maxsize == 0)
-		return 0;
+		goto out;
 	if (blkcnt == 0)
 		blkcnt = b->blkcnt;
 	if (blksz == 0)
 		blksz = b->blksz;
-	if (blkcnt < 2 || blksz < 16 || (blkcnt * blksz > b->maxsize))
+	if (blkcnt < 2 || blksz < 16 || (blkcnt * blksz > b->maxsize)) {
+		chn_unlock(b->channel);
 		return EINVAL;
+	}
 	if (blkcnt == b->blkcnt && blksz == b->blksz)
-		return 0;
+		goto out;
+
+	chn_unlock(b->channel);
+	tmpbuf = kmalloc(blkcnt * blksz, M_DEVBUF, M_NOWAIT);
+	if (tmpbuf == NULL)
+		return ENOMEM;
+	chn_lock(b->channel);
 	b->blkcnt = blkcnt;
 	b->blksz = blksz;
 	b->bufsize = blkcnt * blksz;
-	if (b->tmpbuf)
-		kfree(b->tmpbuf, M_DEVBUF);
-	b->tmpbuf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
+	f2 =  b->tmpbuf;
+	b->tmpbuf = tmpbuf;
 	sndbuf_reset(b);
+	chn_unlock(b->channel);
+	if (f2 != NULL)
+		kfree(f2, M_DEVBUF);
+	return 0;
+out:
+	chn_unlock(b->channel);
 	return 0;
 }
 
 int
 sndbuf_remalloc(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 {
+        u_int8_t *buf, *tmpbuf, *f1, *f2;
+        unsigned int bufsize;
+	int ret;
+
 	if (blkcnt < 2 || blksz < 16)
 		return EINVAL;
 
+	bufsize = blksz * blkcnt;
+
+	chn_unlock(b->channel);
+	buf = kmalloc(bufsize, M_DEVBUF, M_WAITOK);
+	if (buf == NULL) {
+		ret = ENOMEM;
+		goto out;
+	}
+
+	tmpbuf = kmalloc(bufsize, M_DEVBUF, M_WAITOK);
+   	if (tmpbuf == NULL) {
+		kfree(buf, M_DEVBUF);
+		ret = ENOMEM;
+		goto out;
+	}
+	chn_lock(b->channel);
+
 	b->blkcnt = blkcnt;
 	b->blksz = blksz;
-
-	b->maxsize = blkcnt * blksz;
-	b->bufsize = b->maxsize;
-
-	if (b->buf)
-		kfree(b->buf, M_DEVBUF);
-	b->buf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
-	if (b->buf == NULL)
-		return ENOMEM;
-
-	if (b->tmpbuf)
-		kfree(b->tmpbuf, M_DEVBUF);
-	b->tmpbuf = kmalloc(b->bufsize, M_DEVBUF, M_WAITOK);
-	if (b->tmpbuf == NULL)
-		return ENOMEM;
+	b->bufsize = bufsize;
+	b->maxsize = bufsize;
+	f1 = b->buf;
+	f2 = b->tmpbuf;
+	b->buf = buf;
+	b->tmpbuf = tmpbuf;
 
 	sndbuf_reset(b);
-	return 0;
+
+	chn_unlock(b->channel);
+      	if (f1)
+		kfree(f1, M_DEVBUF);
+      	if (f2)
+		kfree(f2, M_DEVBUF);
+
+	ret = 0;
+out:
+	chn_lock(b->channel);
+	return ret;
 }
 
 void
@@ -250,8 +290,12 @@ sndbuf_setfmt(struct snd_dbuf *b, u_int32_t fmt)
 	b->fmt = fmt;
 	b->bps = 1;
 	b->bps <<= (b->fmt & AFMT_STEREO)? 1 : 0;
-	b->bps <<= (b->fmt & AFMT_16BIT)? 1 : 0;
-	b->bps <<= (b->fmt & AFMT_32BIT)? 2 : 0;
+	if (b->fmt & AFMT_16BIT)
+		b->bps <<= 1;
+	else if (b->fmt & AFMT_24BIT)
+		b->bps *= 3;
+	else if (b->fmt & AFMT_32BIT)
+		b->bps <<= 2;
 	return 0;
 }
 
@@ -458,7 +502,7 @@ sndbuf_acquire(struct snd_dbuf *b, u_int8_t *from, unsigned int count)
 {
 	int l;
 
-	KASSERT(count <= sndbuf_getfree(b), ("%s: count %d > free %d", __func__, count, sndbuf_getfree(b)));
+	KASSERT(count <= sndbuf_getfree(b), ("%s: count %d > kfree %d", __func__, count, sndbuf_getfree(b)));
 	KASSERT((b->rl >= 0) && (b->rl <= b->bufsize), ("%s: b->rl invalid %d", __func__, b->rl));
 	b->total += count;
 	if (from != NULL) {
@@ -497,33 +541,6 @@ sndbuf_dispose(struct snd_dbuf *b, u_int8_t *to, unsigned int count)
 		b->rp = (b->rp + count) % b->bufsize;
 	}
 	KASSERT((b->rl >= 0) && (b->rl <= b->bufsize), ("%s: b->rl invalid %d, count %d", __func__, b->rl, count));
-
-	return 0;
-}
-
-int
-sndbuf_uiomove(struct snd_dbuf *b, struct uio *uio, unsigned int count)
-{
-	int x, c, p, rd, err;
-
-	err = 0;
-	rd = (uio->uio_rw == UIO_READ)? 1 : 0;
-	if (count > uio->uio_resid)
-		return EINVAL;
-
-	if (count > (rd? sndbuf_getready(b) : sndbuf_getfree(b))) {
-		return EINVAL;
-	}
-
-	while (err == 0 && count > 0) {
-		p = rd? sndbuf_getreadyptr(b) : sndbuf_getfreeptr(b);
-		c = MIN(count, sndbuf_getsize(b) - p);
-		x = uio->uio_resid;
-		err = uiomove(sndbuf_getbufofs(b, p), c, uio);
-		x -= uio->uio_resid;
-		count -= x;
-		x = rd? sndbuf_dispose(b, NULL, x) : sndbuf_acquire(b, NULL, x);
-	}
 
 	return 0;
 }
@@ -578,78 +595,3 @@ sndbuf_setflags(struct snd_dbuf *b, u_int32_t flags, int on)
 	if (on)
 		b->flags |= flags;
 }
-
-/************************************************************/
-
-int
-sndbuf_isadmasetup(struct snd_dbuf *b, struct resource *drq)
-{
-	/* should do isa_dma_acquire/isa_dma_release here */
-	if (drq == NULL) {
-		b->isadmachan = -1;
-	} else {
-		sndbuf_setflags(b, SNDBUF_F_ISADMA, 1);
-		b->isadmachan = rman_get_start(drq);
-	}
-	return 0;
-}
-
-int
-sndbuf_isadmasetdir(struct snd_dbuf *b, int dir)
-{
-	KASSERT(b, ("sndbuf_isadmasetdir called with b == NULL"));
-	KASSERT(sndbuf_getflags(b) & SNDBUF_F_ISADMA, ("sndbuf_isadmasetdir called on non-ISA buffer"));
-
-	b->dmaflags = (dir == PCMDIR_PLAY)? ISADMA_WRITE : ISADMA_READ;
-	return 0;
-}
-
-void
-sndbuf_isadma(struct snd_dbuf *b, int go)
-{
-	KASSERT(b, ("sndbuf_isadma called with b == NULL"));
-	KASSERT(sndbuf_getflags(b) & SNDBUF_F_ISADMA, ("sndbuf_isadma called on non-ISA buffer"));
-
-	switch (go) {
-	case PCMTRIG_START:
-		/* isa_dmainit(b->chan, size); */
-		isa_dmastart(b->dmaflags | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
-		break;
-
-	case PCMTRIG_STOP:
-	case PCMTRIG_ABORT:
-		isa_dmastop(b->isadmachan);
-		isa_dmadone(b->dmaflags | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
-		break;
-	}
-
-	DEB(kprintf("buf 0x%p ISA DMA %s, channel %d\n",
-		b,
-		(go == PCMTRIG_START)? "started" : "stopped",
-		b->isadmachan));
-}
-
-int
-sndbuf_isadmaptr(struct snd_dbuf *b)
-{
-	int i;
-
-	KASSERT(b, ("sndbuf_isadmaptr called with b == NULL"));
-	KASSERT(sndbuf_getflags(b) & SNDBUF_F_ISADMA, ("sndbuf_isadmaptr called on non-ISA buffer"));
-
-	if (!sndbuf_runsz(b))
-		return 0;
-	i = isa_dmastatus(b->isadmachan);
-	KASSERT(i >= 0, ("isa_dmastatus returned %d", i));
-	return b->bufsize - i;
-}
-
-void
-sndbuf_isadmabounce(struct snd_dbuf *b)
-{
-	KASSERT(b, ("sndbuf_isadmabounce called with b == NULL"));
-	KASSERT(sndbuf_getflags(b) & SNDBUF_F_ISADMA, ("sndbuf_isadmabounce called on non-ISA buffer"));
-
-	/* tell isa_dma to bounce data in/out */
-}
-

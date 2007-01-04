@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,11 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/dsp.h,v 1.2.2.3 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/dsp.h,v 1.9 2005/01/06 01:43:20 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
  */
 
-int dsp_register(int unit, int channel);
-int dsp_registerrec(int unit, int channel);
-int dsp_unregister(int unit, int channel);
-int dsp_unregisterrec(int unit, int channel);
+extern struct dev_ops dsp_cdevsw;

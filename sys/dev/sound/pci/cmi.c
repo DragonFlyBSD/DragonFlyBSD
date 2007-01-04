@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2000 Orion Hodson <O.Hodson@cs.ucl.ac.uk>
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * Much of register handling is based on NetBSD CMI8x38 audio driver
  * by Takuya Shiozaki <AoiMoe@imou.to>.  Chen-Li Tien
  * <cltien@cmedia.com.tw> clarified points regarding the DMA related
- * registers and the 8738 mixer devices.  His Linux was driver a also
+ * registers and the 8738 mixer devices.  His Linux driver was also a
  * useful reference point.
  *
  * TODO: MIDI
@@ -39,8 +39,8 @@
  * differences visible in register dumps between times that work and
  * those that don't.
  *
- * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.8 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.32.2.2 2006/01/24 18:54:22 joel Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.8 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -110,7 +110,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void 			*ih;
-	void			*lock;
+	struct spinlock		*lock;
 
 	int			spdif_enabled;
 	unsigned int		bufsz;
@@ -242,7 +242,7 @@ cmi_dma_prog(struct sc_info *sc, struct sc_chinfo *ch, u_int32_t base)
 {
 	u_int32_t s, i, sz;
 
-	ch->phys_buf = vtophys(sndbuf_getbuf(ch->buffer));
+	ch->phys_buf = sndbuf_getbufaddr(ch->buffer);
 
 	cmi_wr(sc, base, ch->phys_buf, 4);
 	sz = (u_int32_t)sndbuf_getsize(ch->buffer);
@@ -519,41 +519,41 @@ cmi_intr(void *data)
 {
 	struct sc_info *sc = data;
 	u_int32_t intrstat;
+	u_int32_t toclear;
 
 	snd_mtxlock(sc->lock);
 	intrstat = cmi_rd(sc, CMPCI_REG_INTR_STATUS, 4);
-	if ((intrstat & CMPCI_REG_ANY_INTR) == 0) {
-		goto out;
-	}
+	if ((intrstat & CMPCI_REG_ANY_INTR) != 0) {
 
-	/* Disable interrupts */
-	if (intrstat & CMPCI_REG_CH0_INTR) {
-		cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH0_INTR_ENABLE);
-	}
+		toclear = 0;
+		if (intrstat & CMPCI_REG_CH0_INTR) {
+			toclear |= CMPCI_REG_CH0_INTR_ENABLE;
+			/* cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH0_INTR_ENABLE); */
+		}
 
-	if (intrstat & CMPCI_REG_CH1_INTR) {
-		cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH1_INTR_ENABLE);
-	}
+		if (intrstat & CMPCI_REG_CH1_INTR) {
+			toclear |= CMPCI_REG_CH1_INTR_ENABLE;
+			/* cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH1_INTR_ENABLE); */
+		}
 
-	/* Signal interrupts to channel */
-	if (intrstat & CMPCI_REG_CH0_INTR) {
-		chn_intr(sc->pch.channel);
-	}
+		if (toclear) {
+			cmi_clr4(sc, CMPCI_REG_INTR_CTRL, toclear);
+			snd_mtxunlock(sc->lock);
 
-	if (intrstat & CMPCI_REG_CH1_INTR) {
-		chn_intr(sc->rch.channel);
-	}
+			/* Signal interrupts to channel */
+			if (intrstat & CMPCI_REG_CH0_INTR) {
+				chn_intr(sc->pch.channel);
+			}
 
-	/* Enable interrupts */
-	if (intrstat & CMPCI_REG_CH0_INTR) {
-		cmi_set4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH0_INTR_ENABLE);
-	}
+			if (intrstat & CMPCI_REG_CH1_INTR) {
+				chn_intr(sc->rch.channel);
+			}
 
-	if (intrstat & CMPCI_REG_CH1_INTR) {
-		cmi_set4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH1_INTR_ENABLE);
-	}
+			snd_mtxlock(sc->lock);
+			cmi_set4(sc, CMPCI_REG_INTR_CTRL, toclear);
 
-out:
+		}
+	}
 	snd_mtxunlock(sc->lock);
 	return;
 }
@@ -815,16 +815,16 @@ cmi_probe(device_t dev)
 	switch(pci_get_devid(dev)) {
 	case CMI8338A_PCI_ID:
 		device_set_desc(dev, "CMedia CMI8338A");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	case CMI8338B_PCI_ID:
 		device_set_desc(dev, "CMedia CMI8338B");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	case CMI8738_PCI_ID:
 		device_set_desc(dev, "CMedia CMI8738");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	case CMI8738B_PCI_ID:
 		device_set_desc(dev, "CMedia CMI8738B");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	default:
 		return ENXIO;
 	}
@@ -833,12 +833,10 @@ cmi_probe(device_t dev)
 static int
 cmi_attach(device_t dev)
 {
-	struct snddev_info	*d;
 	struct sc_info		*sc;
 	u_int32_t		data;
 	char			status[SND_STATUSLEN];
 
-	d = device_get_softc(dev);
 	sc = kmalloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
@@ -852,9 +850,9 @@ cmi_attach(device_t dev)
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
 	sc->dev = dev;
-	sc->regid = PCIR_MAPS;
-	sc->reg = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->regid,
-				      0, BUS_SPACE_UNRESTRICTED, 1, RF_ACTIVE);
+	sc->regid = PCIR_BAR(0);
+	sc->reg = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &sc->regid,
+					 RF_ACTIVE);
 	if (!sc->reg) {
 		device_printf(dev, "cmi_attach: Cannot allocate bus resource\n");
 		goto bad;
@@ -863,10 +861,10 @@ cmi_attach(device_t dev)
 	sc->sh = rman_get_bushandle(sc->reg);
 
 	sc->irqid = 0;
-	sc->irq   = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
-					0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+	sc->irq   = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
+					   RF_ACTIVE | RF_SHAREABLE);
 	if (!sc->irq ||
-	    snd_setup_intr(dev, sc->irq, INTR_MPSAFE, cmi_intr, sc, &sc->ih, NULL)) {
+	    snd_setup_intr(dev, sc->irq, INTR_MPSAFE, cmi_intr, sc, &sc->ih)) {
 		device_printf(dev, "cmi_attach: Unable to map interrupt\n");
 		goto bad;
 	}
@@ -899,8 +897,8 @@ cmi_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &cmichan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC, &cmichan_class, sc);
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
-		 rman_get_start(sc->reg), rman_get_start(sc->irq));
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_cmi));
 	pcm_setstatus(dev, status);
 
 	DEB(kprintf("cmi_attach: succeeded\n"));
@@ -1008,7 +1006,6 @@ static driver_t cmi_driver = {
 	PCM_SOFTC_SIZE
 };
 
-DECLARE_DUMMY_MODULE(snd_cmi);
 DRIVER_MODULE(snd_cmi, pci, cmi_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_cmi, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_cmi, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_cmi, 1);

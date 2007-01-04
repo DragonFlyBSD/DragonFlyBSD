@@ -1,7 +1,7 @@
 /*
  * file: sbcard.h
- * $FreeBSD: src/sys/dev/sound/isa/sb.h,v 1.12.2.3 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/sb.h,v 1.15 2004/05/13 11:32:54 truckman Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
  */
 
 #ifndef SB_H
@@ -9,6 +9,7 @@
 
 struct sbc_softc;
 void sbc_lock(struct sbc_softc *);
+void sbc_lockassert(struct sbc_softc *);
 void sbc_unlock(struct sbc_softc *);
 
 /*

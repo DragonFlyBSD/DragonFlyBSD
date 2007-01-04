@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/channel.h,v 1.5.2.6 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.4 2006/07/28 02:17:38 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/channel.h,v 1.31.2.1 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.5 2007/01/04 21:47:03 corecode Exp $
  */
 
 struct pcmchan_children {
@@ -63,7 +63,7 @@ struct pcm_channel {
 	void *devinfo;
 	device_t dev;
 	char name[CHN_NAMELEN];
-	void *lock;
+	struct spinlock *lock;
 	SLIST_HEAD(, pcmchan_children) children;
 };
 
@@ -75,9 +75,9 @@ int chn_read(struct pcm_channel *c, struct uio *buf, int ioflags);
 u_int32_t chn_start(struct pcm_channel *c, int force);
 int chn_sync(struct pcm_channel *c, int threshold);
 int chn_flush(struct pcm_channel *c);
-int chn_poll(struct pcm_channel *c, int ev);
+int chn_poll(struct pcm_channel *c, int ev, struct thread *td);
 
-int chn_init(struct pcm_channel *c, void *devinfo, int dir);
+int chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction);
 int chn_kill(struct pcm_channel *c);
 int chn_setdir(struct pcm_channel *c, int dir);
 int chn_reset(struct pcm_channel *c, u_int32_t fmt);
@@ -100,10 +100,12 @@ void chn_wrupdate(struct pcm_channel *c);
 void chn_rdupdate(struct pcm_channel *c);
 
 int chn_notify(struct pcm_channel *c, u_int32_t flags);
+void chn_lock(struct pcm_channel *c);
+void chn_unlock(struct pcm_channel *c);
 
 #ifdef	USING_MUTEX
-#define CHN_LOCK(c) mtx_lock((struct mtx *)((c)->lock))
-#define CHN_UNLOCK(c) mtx_unlock((struct mtx *)((c)->lock))
+#define CHN_LOCK(c) spin_lock_wr((struct spinlock *)((c)->lock))
+#define CHN_UNLOCK(c) spin_unlock_wr((struct spinlock *)((c)->lock))
 #define CHN_LOCKASSERT(c)
 #else
 #define CHN_LOCK(c)
@@ -135,10 +137,14 @@ int fmtvalid(u_int32_t fmt, u_int32_t *fmtlist);
 #define CHN_F_MAPPED		0x00010000  /* has been mmap()ed */
 #define CHN_F_DEAD		0x00020000
 #define CHN_F_BADSETTING	0x00040000
+#define CHN_F_SETBLOCKSIZE	0x00080000
+#define CHN_F_HAS_VCHAN		0x00100000
 
 #define	CHN_F_VIRTUAL		0x10000000  /* not backed by hardware */
 
-#define CHN_F_RESET		(CHN_F_BUSY | CHN_F_DEAD | CHN_F_VIRTUAL)
+#define CHN_F_RESET		(CHN_F_BUSY | CHN_F_DEAD | \
+					CHN_F_HAS_VCHAN | CHN_F_VIRTUAL)
+					
 
 #define CHN_N_RATE		0x00000001
 #define CHN_N_FORMAT		0x00000002

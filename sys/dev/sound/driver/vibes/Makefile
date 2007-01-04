@@ -1,10 +1,12 @@
-# $FreeBSD: src/sys/modules/sound/driver/vibes/Makefile,v 1.3.2.1 2001/04/23 22:58:26 orion Exp $
-# $DragonFly: src/sys/dev/sound/driver/vibes/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $FreeBSD: src/sys/modules/sound/driver/vibes/Makefile,v 1.4 2003/02/07 13:56:33 nyan Exp $
+# $DragonFly: src/sys/dev/sound/driver/vibes/Makefile,v 1.3 2007/01/04 21:47:02 corecode Exp $
 
-.PATH:		${.CURDIR}/../../../../dev/sound/pci
-KMOD		= snd_vibes
-SRCS		= device_if.h bus_if.h isa_if.h pci_if.h
-SRCS		+= vibes.c
-KMODDEPS 	= snd_pcm
+.PATH: ${.CURDIR}/../../../../dev/sound/pci
+
+KMOD=	snd_vibes
+SRCS=	device_if.h bus_if.h pci_if.h
+SRCS+=	vibes.c
+
+KMODDEPS=	sound
 
 .include <bsd.kmod.mk>

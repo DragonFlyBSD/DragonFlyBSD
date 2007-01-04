@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.32 2005/03/01 08:58:05 imp Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
@@ -76,7 +76,7 @@ struct au_info {
 	bus_space_handle_t sh[3];
 
 	bus_dma_tag_t	parent_dmat;
-	void *lock;
+	struct spinlock *lock;
 
 	u_int32_t	x[32], y[128];
 	char		z[128];
@@ -246,7 +246,7 @@ au_prepareoutput(struct au_chinfo *ch, u_int32_t format)
 {
 	struct au_info *au = ch->parent;
 	int i, stereo = (format & AFMT_STEREO)? 1 : 0;
-	u_int32_t baseaddr = vtophys(sndbuf_getbuf(ch->buffer));
+	u_int32_t baseaddr = sndbuf_getbufaddr(ch->buffer);
 
 	au_wr(au, 0, 0x1061c, 0, 4);
 	au_wr(au, 0, 0x10620, 0, 4);
@@ -306,7 +306,8 @@ auchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c
 	ch->channel = c;
 	ch->buffer = b;
 	ch->dir = dir;
-	if (sndbuf_alloc(ch->buffer, au->parent_dmat, AU_BUFFSIZE) == -1) return NULL;
+	if (sndbuf_alloc(ch->buffer, au->parent_dmat, AU_BUFFSIZE) != 0)
+		return NULL;
 	return ch;
 }
 
@@ -539,7 +540,7 @@ au_pci_probe(device_t dev)
 {
 	if (pci_get_devid(dev) == AU8820_PCI_ID) {
 		device_set_desc(dev, "Aureal Vortex 8820");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 
 	return ENXIO;
@@ -585,14 +586,14 @@ au_pci_attach(device_t dev)
 			kprintf("at 0x%x...", config_id->map[i].base);
 		}
 #endif
-		regid[j] = PCIR_MAPS + i*4;
+		regid[j] = PCIR_BAR(i);
 		type[j] = SYS_RES_MEMORY;
-		reg[j] = bus_alloc_resource(dev, type[j], &regid[j],
-					    0, ~0, 1, RF_ACTIVE);
+		reg[j] = bus_alloc_resource_any(dev, type[j], &regid[j],
+						RF_ACTIVE);
 		if (!reg[j]) {
 			type[j] = SYS_RES_IOPORT;
-			reg[j] = bus_alloc_resource(dev, type[j], &regid[j],
-						    0, ~0, 1, RF_ACTIVE);
+			reg[j] = bus_alloc_resource_any(dev, type[j], 
+							&regid[j], RF_ACTIVE);
 		}
 		if (reg[j]) {
 			au->st[i] = rman_get_bustag(reg[j]);
@@ -621,9 +622,9 @@ au_pci_attach(device_t dev)
 	au_wr(au, 0, AU_REG_IRQEN, 0, 4);
 
 	irqid = 0;
-	irq = bus_alloc_resource(dev, SYS_RES_IRQ, &irqid,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!irq || snd_setup_intr(dev, irq, 0, au_intr, au, &ih, NULL)) {
+	irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &irqid,
+				     RF_ACTIVE | RF_SHAREABLE);
+	if (!irq || snd_setup_intr(dev, irq, 0, au_intr, au, &ih)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
@@ -644,14 +645,15 @@ au_pci_attach(device_t dev)
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/AU_BUFFSIZE, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0, &au->parent_dmat) != 0) {
+		/*flags*/0, /*lockfunc*/busdma_lock_mutex,
+		/*lockarg*/&Giant, &au->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld",
+	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 		 (type[0] == SYS_RES_IOPORT)? "io" : "memory",
-		 rman_get_start(reg[0]), rman_get_start(irq));
+		 rman_get_start(reg[0]), rman_get_start(irq),PCM_KLDSTRING(snd_aureal));
 
 	if (pcm_register(dev, au, 1, 1)) goto bad;
 	/* pcm_addchan(dev, PCMDIR_REC, &au_chantemplate, au); */
@@ -684,5 +686,5 @@ static driver_t au_driver = {
 };
 
 DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_aureal, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_aureal, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_aureal, 1);

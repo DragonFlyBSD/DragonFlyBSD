@@ -1,3 +1,4 @@
+#-
 # KOBJ
 #
 # Copyright (c) 2000 Cameron Grant <cg@freebsd.org>
@@ -24,8 +25,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/sound/pcm/feeder_if.m,v 1.1.2.3 2002/04/22 15:49:36 cg Exp $
-# $DragonFly: src/sys/dev/sound/pcm/feeder_if.m,v 1.3 2003/11/15 21:12:53 asmodai Exp $
+# $FreeBSD: src/sys/dev/sound/pcm/feeder_if.m,v 1.6 2005/01/06 01:43:21 imp Exp $
+# $DragonFly: src/sys/dev/sound/pcm/feeder_if.m,v 1.4 2007/01/04 21:47:03 corecode Exp $
 #
 
 #include <dev/sound/pcm/sound.h>
@@ -86,5 +87,3 @@ METHOD int feed {
 	u_int32_t count;
 	void* source;
 };
-
-

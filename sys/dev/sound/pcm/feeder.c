@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,15 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.8.2.9 2003/02/08 01:43:07 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.5 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.33.2.3 2006/03/07 15:51:19 jhb Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.6 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.5 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.6 2007/01/04 21:47:03 corecode Exp $");
 
 MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 
@@ -62,9 +62,11 @@ feeder_register(void *p)
 		KASSERT(fc->desc == NULL, ("first feeder not root: %s", fc->name));
 
 		SLIST_INIT(&feedertab);
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
 		if (fte == NULL) {
-			kprintf("can't allocate memory for root feeder\n");
+			kprintf("can't allocate memory for root feeder: %s\n",
+			    fc->name);
+
 			return;
 		}
 		fte->feederclass = fc;
@@ -85,7 +87,7 @@ feeder_register(void *p)
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
 		/* kprintf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
 		if (fte == NULL) {
 			kprintf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
 
@@ -138,7 +140,7 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 	struct pcm_feeder *f;
 	int err;
 
-	f = (struct pcm_feeder *)kobj_create((kobj_class_t)fc, M_FEEDER, M_WAITOK | M_ZERO);
+	f = (struct pcm_feeder *)kobj_create((kobj_class_t)fc, M_FEEDER, M_NOWAIT | M_ZERO);
 	if (f == NULL)
 		return NULL;
 
@@ -195,11 +197,13 @@ chn_addfeeder(struct pcm_channel *c, struct feeder_class *fc, struct pcm_feederd
 
 	nf->source = c->feeder;
 
+	/* XXX we should use the lowest common denominator for align */
 	if (nf->align > 0)
 		c->align += nf->align;
 	else if (nf->align < 0 && c->align < -nf->align)
 		c->align = -nf->align;
-
+	if (c->feeder != NULL)
+		c->feeder->parent = nf;
 	c->feeder = nf;
 
 	return 0;
@@ -264,9 +268,9 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 	struct feedertab_entry *fte;
 	struct pcm_feeder *try, *ret;
 
-	/* kprintf("trying %s (%x -> %x)...\n", source->class->name, source->desc->in, source->desc->out); */
+	DEB(kprintf("trying %s (0x%08x -> 0x%08x)...\n", source->class->name, source->desc->in, source->desc->out));
 	if (fmtvalid(source->desc->out, to)) {
-		/* kprintf("got it\n"); */
+		DEB(kprintf("got it\n"));
 		return source;
 	}
 
@@ -294,11 +298,105 @@ feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *sto
 	return NULL;
 }
 
+int
+chn_fmtscore(u_int32_t fmt)
+{
+	if (fmt & AFMT_32BIT)
+		return 60;
+	if (fmt & AFMT_24BIT)
+		return 50;
+	if (fmt & AFMT_16BIT)
+		return 40;
+	if (fmt & (AFMT_U8|AFMT_S8))
+		return 30;
+	if (fmt & AFMT_MU_LAW)
+		return 20;
+	if (fmt & AFMT_A_LAW)
+		return 10;
+	return 0;
+}
+
+u_int32_t
+chn_fmtbestbit(u_int32_t fmt, u_int32_t *fmts)
+{
+	u_int32_t best;
+	int i, score, score2, oldscore;
+
+	best = 0;
+	score = chn_fmtscore(fmt);
+	oldscore = 0;
+	for (i = 0; fmts[i] != 0; i++) {
+		score2 = chn_fmtscore(fmts[i]);
+		if (oldscore == 0 || (score2 == score) ||
+			    (score2 > oldscore && score2 < score) ||
+			    (score2 < oldscore && score2 > score) ||
+			    (oldscore < score && score2 > oldscore)) {
+			best = fmts[i];
+			oldscore = score2;
+		}
+	}
+	return best;
+}
+
+u_int32_t
+chn_fmtbeststereo(u_int32_t fmt, u_int32_t *fmts)
+{
+	u_int32_t best;
+	int i, score, score2, oldscore;
+
+	best = 0;
+	score = chn_fmtscore(fmt);
+	oldscore = 0;
+	for (i = 0; fmts[i] != 0; i++) {
+		if ((fmt & AFMT_STEREO) == (fmts[i] & AFMT_STEREO)) {
+			score2 = chn_fmtscore(fmts[i]);
+			if (oldscore == 0 || (score2 == score) ||
+				    (score2 > oldscore && score2 < score) ||
+				    (score2 < oldscore && score2 > score) ||
+				    (oldscore < score && score2 > oldscore)) {
+				best = fmts[i];
+				oldscore = score2;
+			}
+		}
+	}
+	return best;
+}
+
+u_int32_t
+chn_fmtbest(u_int32_t fmt, u_int32_t *fmts)
+{
+	u_int32_t best1, best2;
+	int score, score1, score2;
+
+	best1 = chn_fmtbeststereo(fmt, fmts);
+	best2 = chn_fmtbestbit(fmt, fmts);
+
+	if (best1 != 0 && best2 != 0) {
+		if (fmt & AFMT_STEREO)
+			return best1;
+		else {
+			score = chn_fmtscore(fmt);
+			score1 = chn_fmtscore(best1);
+			score2 = chn_fmtscore(best2);
+			if (score1 == score2 || score1 == score)
+				return best1;
+			else if (score2 == score)
+				return best2;
+			else if (score1 > score2)
+				return best1;
+			return best2;
+		}
+	} else if (best2 == 0)
+		return best1;
+	else
+		return best2;
+}
+
 u_int32_t
 chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
 {
 	struct pcm_feeder *try, *del, *stop;
-	u_int32_t tmpfrom[2], best, *from;
+	u_int32_t tmpfrom[2], tmpto[2], best, *from;
 	int i, max, bestmax;
 
 	KASSERT(c != NULL, ("c == NULL"));
@@ -310,10 +408,34 @@ chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
 
 	if (c->direction == PCMDIR_REC && c->feeder->desc->type == FEEDER_ROOT) {
 		from = chn_getcaps(c)->fmtlist;
+		if (fmtvalid(to[0], from))
+			from = to;
+		else {
+			best = chn_fmtbest(to[0], from);
+			if (best != 0) {
+				tmpfrom[0] = best;
+				tmpfrom[1] = 0;
+				from = tmpfrom;
+			}
+		}
 	} else {
 		tmpfrom[0] = c->feeder->desc->out;
 		tmpfrom[1] = 0;
 		from = tmpfrom;
+		if (to[1] != 0) {
+			if (fmtvalid(tmpfrom[0], to)) {
+				tmpto[0] = tmpfrom[0];
+				tmpto[1] = 0;
+				to = tmpto;
+			} else {
+				best = chn_fmtbest(tmpfrom[0], to);
+				if (best != 0) {
+					tmpto[0] = best;
+					tmpto[1] = 0;
+					to = tmpto;
+				}
+			}
+		}
 	}
 
 	i = 0;
@@ -370,7 +492,30 @@ chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
 	kprintf("%s [%d]\n", try->class->name, try->desc->idx);
 #endif
 
-	return (c->direction == PCMDIR_REC)? best : c->feeder->desc->out;
+	if (c->direction == PCMDIR_REC) {
+		try = c->feeder;
+		while (try != NULL) {
+			if (try->desc->type == FEEDER_ROOT)
+				return try->desc->out;
+			try = try->source;
+		}
+		return best;
+	} else
+		return c->feeder->desc->out;
+}
+
+void
+feeder_printchain(struct pcm_feeder *head)
+{
+	struct pcm_feeder *f;
+
+	kprintf("feeder chain (head @%p)\n", head);
+	f = head;
+	while (f != NULL) {
+		kprintf("%s/%d @ %p\n", f->class->name, f->desc->idx, f);
+		f = f->source;
+	}
+	kprintf("[end]\n\n");
 }
 
 /*****************************************************************************/
@@ -410,12 +555,12 @@ static kobj_method_t feeder_root_methods[] = {
 	{ 0, 0 }
 };
 static struct feeder_class feeder_root_class = {
-	name:		"feeder_root",
-	methods:	feeder_root_methods,
-	size:		sizeof(struct pcm_feeder),
-	align:		0,
-	desc:		NULL,
-	data:		NULL,
+	.name =		"feeder_root",
+	.methods =	feeder_root_methods,
+	.size =		sizeof(struct pcm_feeder),
+	.align =	0,
+	.desc =		NULL,
+	.data =		NULL,
 };
 SYSINIT(feeder_root, SI_SUB_DRIVERS, SI_ORDER_FIRST, feeder_register, &feeder_root_class);
 SYSUNINIT(feeder_root, SI_SUB_DRIVERS, SI_ORDER_FIRST, feeder_unregisterall, NULL);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)selinfo.h	8.2 (Berkeley) 1/4/94
- * $DragonFly: src/sys/sys/selinfo.h,v 1.1 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/sys/selinfo.h,v 1.2 2007/01/04 21:47:03 corecode Exp $
  */
 
 #ifndef _SYS_SELINFO_H_
@@ -55,6 +55,8 @@ struct selinfo {
 	short	si_flags;		/* see below */
 };
 #define	SI_COLL	0x0001		/* collision occurred */
+
+#define SEL_WAITING(sel)	(sel->si_pid != 0 || (sel->si_flags & SI_COLL) != 0)
 
 struct thread;
 

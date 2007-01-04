@@ -1,6 +1,6 @@
-/*
+/*-
  * Copyright (c) 2001 George Reid <greid@ukug.uk.freebsd.org>
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * Copyright Luigi Rizzo, 1997,1998
  * Copyright by Hannu Savolainen 1994, 1995
  * All rights reserved.
@@ -26,23 +26,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.95.2.3 2006/04/04 17:30:59 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
 #include <dev/sound/isa/sb.h>
 #include <dev/sound/chip.h>
 
+#include <bus/isa/isavar.h>
+
 #include "mixer_if.h"
 
 #define MSS_DEFAULT_BUFSZ (4096)
-#define	abs(x)	(((x) < 0) ? -(x) : (x))
 #define MSS_INDEXED_REGS 0x20
 #define OPL_INDEXED_REGS 0x19
 
@@ -69,7 +70,7 @@ struct mss_info {
     int		     drq2_rid;
     void 	    *ih;
     bus_dma_tag_t    parent_dmat;
-    void	    *lock;
+    struct spinlock *lock;
 
     char mss_indexed_regs[MSS_INDEXED_REGS];
     char opl_indexed_regs[OPL_INDEXED_REGS];
@@ -94,7 +95,9 @@ static driver_intr_t 	mss_intr;
 
 /* prototypes for local functions */
 static int 		mss_detect(device_t dev, struct mss_info *mss);
+#ifndef PC98
 static int		opti_detect(device_t dev, struct mss_info *mss);
+#endif
 static char 		*ymf_test(device_t dev, struct mss_info *mss);
 static void		ad_unmute(struct mss_info *mss);
 
@@ -113,7 +116,9 @@ static void             ad_leave_MCE(struct mss_info *mss);
 /* OPTi-specific functions */
 static void		opti_write(struct mss_info *mss, u_char reg,
 				   u_char data);
+#ifndef PC98
 static u_char		opti_read(struct mss_info *mss, u_char reg);
+#endif
 static int		opti_init(device_t dev, struct mss_info *mss);
 
 /* io primitives */
@@ -161,6 +166,7 @@ static struct pcmchan_caps opti931_caps = {4000, 48000, opti931_fmt, 0};
 #define MD_AD1848	0x91
 #define MD_AD1845	0x92
 #define MD_CS42XX	0xA1
+#define MD_CS423X	0xA2
 #define MD_OPTI930	0xB0
 #define	MD_OPTI931	0xB1
 #define MD_OPTI925	0xB2
@@ -315,20 +321,23 @@ mss_alloc_resources(struct mss_info *mss, device_t dev)
 {
     	int pdma, rdma, ok = 1;
 	if (!mss->io_base)
-    		mss->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &mss->io_rid,
-						  0, ~0, 1, RF_ACTIVE);
+    		mss->io_base = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+						      &mss->io_rid, RF_ACTIVE);
 	if (!mss->irq)
-    		mss->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &mss->irq_rid,
-					      0, ~0, 1, RF_ACTIVE);
+    		mss->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+						  &mss->irq_rid, RF_ACTIVE);
 	if (!mss->drq1)
-    		mss->drq1 = bus_alloc_resource(dev, SYS_RES_DRQ, &mss->drq1_rid,
-					       0, ~0, 1, RF_ACTIVE);
+    		mss->drq1 = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+						   &mss->drq1_rid,
+						   RF_ACTIVE);
     	if (mss->conf_rid >= 0 && !mss->conf_base)
-        	mss->conf_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &mss->conf_rid,
-						    0, ~0, 1, RF_ACTIVE);
+        	mss->conf_base = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+							&mss->conf_rid,
+							RF_ACTIVE);
     	if (mss->drq2_rid >= 0 && !mss->drq2)
-        	mss->drq2 = bus_alloc_resource(dev, SYS_RES_DRQ, &mss->drq2_rid,
-					       0, ~0, 1, RF_ACTIVE);
+        	mss->drq2 = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+						   &mss->drq2_rid,
+						   RF_ACTIVE);
 
 	if (!mss->io_base || !mss->drq1 || !mss->irq) ok = 0;
 	if (mss->conf_rid >= 0 && !mss->conf_base) ok = 0;
@@ -705,8 +714,8 @@ mss_init(struct mss_info *mss, device_t dev)
     		/* end of reset */
 
 		rid = 0;
-    		alt = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-    				     0, ~0, 1, RF_ACTIVE);
+    		alt = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+					     RF_ACTIVE);
 		if (alt == NULL) {
 			kprintf("XXX couldn't init GUS PnP/MAX\n");
 			break;
@@ -792,11 +801,15 @@ mss_intr(void *arg)
 		c &= ~served;
 		if (sndbuf_runsz(mss->pch.buffer) && (c & 0x10)) {
 	    		served |= 0x10;
+			mss_unlock(mss);
 	    		chn_intr(mss->pch.channel);
+			mss_lock(mss);
 		}
 		if (sndbuf_runsz(mss->rch.buffer) && (c & 0x20)) {
 	    		served |= 0x20;
+			mss_unlock(mss);
 	    		chn_intr(mss->rch.channel);
+			mss_lock(mss);
 		}
 		/* now ack the interrupt */
 		if (FULL_DUPLEX(mss)) ad_write(mss, 24, ~c); /* ack selectively */
@@ -962,11 +975,14 @@ mss_speed(struct mss_chinfo *ch, int speed)
       	    	{8000, 5512, 16000, 11025, 27429, 18900, 32000, 22050,
 	    	-1, 37800, -1, 44100, 48000, 33075, 9600, 6615};
 
+#define abs(i) (i < 0 ? -i : i)
         	for (i = 1; i < 16; i++)
    		    	if (speeds[i] > 0 &&
 			    abs(speed-speeds[i]) < abs(speed-speeds[sel])) sel = i;
+#undef abs
         	speed = speeds[sel];
         	ad_write(mss, 8, (ad_read(mss, 8) & 0xf0) | sel);
+		ad_wait_init(mss, 10000);
     	}
     	ad_leave_MCE(mss);
 
@@ -1006,7 +1022,11 @@ mss_format(struct mss_chinfo *ch, u_int32_t format)
     	arg <<= 4;
     	ad_enter_MCE(mss);
     	ad_write(mss, 8, (ad_read(mss, 8) & 0x0f) | arg);
-    	if (FULL_DUPLEX(mss)) ad_write(mss, 28, arg); /* capture mode */
+	ad_wait_init(mss, 10000);
+    	if (ad_read(mss, 12) & 0x40) {	/* mode2? */
+		ad_write(mss, 28, arg); /* capture mode */
+		ad_wait_init(mss, 10000);
+	}
     	ad_leave_MCE(mss);
     	return format;
 }
@@ -1101,15 +1121,23 @@ opti931_intr(void *arg)
 		if (reason & 1) {
 	    		DEB(kprintf("one more try...\n");)
 	    		if (--loops) goto again;
-	    		else DDB(kprintf("intr, but mc11 not set\n");)
+	    		else BVDDB(kprintf("intr, but mc11 not set\n");)
 		}
 		if (loops == 0) BVDDB(kprintf("intr, nothing in mcir11 0x%02x\n", mc11));
 		mss_unlock(mss);
 		return;
     	}
 
-    	if (sndbuf_runsz(mss->rch.buffer) && (mc11 & 8)) chn_intr(mss->rch.channel);
-    	if (sndbuf_runsz(mss->pch.buffer) && (mc11 & 4)) chn_intr(mss->pch.channel);
+    	if (sndbuf_runsz(mss->rch.buffer) && (mc11 & 8)) {
+		mss_unlock(mss);
+		chn_intr(mss->rch.channel);
+		mss_lock(mss);
+	}
+    	if (sndbuf_runsz(mss->pch.buffer) && (mc11 & 4)) {
+		mss_unlock(mss);
+		chn_intr(mss->pch.channel);
+		mss_lock(mss);
+	}
     	opti_wr(mss, 11, ~mc11); /* ack */
     	if (--loops) goto again;
 	mss_unlock(mss);
@@ -1128,8 +1156,9 @@ msschan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->channel = c;
 	ch->buffer = b;
 	ch->dir = dir;
-	if (sndbuf_alloc(ch->buffer, mss->parent_dmat, mss->bufsize) == -1) return NULL;
-	sndbuf_isadmasetup(ch->buffer, (dir == PCMDIR_PLAY)? mss->drq1 : mss->drq2);
+	if (sndbuf_alloc(ch->buffer, mss->parent_dmat, mss->bufsize) != 0)
+		return NULL;
+	sndbuf_dmasetup(ch->buffer, (dir == PCMDIR_PLAY)? mss->drq1 : mss->drq2);
 	return ch;
 }
 
@@ -1179,7 +1208,7 @@ msschan_trigger(kobj_t obj, void *data, int go)
 	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
 		return 0;
 
-	sndbuf_isadma(ch->buffer, go);
+	sndbuf_dma(ch->buffer, go);
 	mss_lock(mss);
 	mss_trigger(ch, go);
 	mss_unlock(mss);
@@ -1190,7 +1219,7 @@ static int
 msschan_getptr(kobj_t obj, void *data)
 {
 	struct mss_chinfo *ch = data;
-	return sndbuf_isadmaptr(ch->buffer);
+	return sndbuf_dmaptr(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -1347,6 +1376,7 @@ mss_detect(device_t dev, struct mss_info *mss)
     	name = "AD1848";
     	mss->bd_id = MD_AD1848; /* AD1848 or CS4248 */
 
+#ifndef PC98
 	if (opti_detect(dev, mss)) {
 		switch (mss->bd_id) {
 			case MD_OPTI924:
@@ -1359,6 +1389,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 		kprintf("Found OPTi device %s\n", name);
 		if (opti_init(dev, mss) == 0) goto gotit;
 	}
+#endif
 
    	/*
      	* Check that the I/O address is in use.
@@ -1374,7 +1405,7 @@ mss_detect(device_t dev, struct mss_info *mss)
 		if ((tmp = io_rd(mss, MSS_INDEX)) & MSS_IDXBUSY) DELAY(10000);
 		else break;
 
-    	if (i >= 10) {	/* Not a AD1848 */
+    	if (i >= 10) {	/* Not an AD1848 */
 		BVDDB(kprintf("mss_detect, busy still set (0x%02x)\n", tmp));
 		goto no;
     	}
@@ -1565,6 +1596,7 @@ no:
     	return ENXIO;
 }
 
+#ifndef PC98
 static int
 opti_detect(device_t dev, struct mss_info *mss)
 {
@@ -1610,6 +1642,7 @@ opti_detect(device_t dev, struct mss_info *mss)
 	}
 	return 0;
 }
+#endif
 
 static char *
 ymf_test(device_t dev, struct mss_info *mss)
@@ -1644,6 +1677,10 @@ ymf_test(device_t dev, struct mss_info *mss)
 		if (!j) {
 	    		bus_release_resource(dev, SYS_RES_IOPORT,
 			 		     mss->conf_rid, mss->conf_base);
+#ifdef PC98
+			/* PC98 need this. I don't know reason why. */
+			bus_delete_resource(dev, SYS_RES_IOPORT, mss->conf_rid);
+#endif
 	    		mss->conf_base = 0;
 	    		continue;
 		}
@@ -1667,16 +1704,23 @@ mss_doattach(device_t dev, struct mss_info *mss)
 	rdma = rman_get_start(mss->drq2);
     	if (flags & DV_F_TRUE_MSS) {
 		/* has IRQ/DMA registers, set IRQ and DMA addr */
+#ifdef PC98 /* CS423[12] in PC98 can use IRQ3,5,10,12 */
+		static char     interrupt_bits[13] =
+	        {-1, -1, -1, 0x08, -1, 0x10, -1, -1, -1, -1, 0x18, -1, 0x20};
+#else
 		static char     interrupt_bits[12] =
 	    	{-1, -1, -1, -1, -1, 0x28, -1, 0x08, -1, 0x10, 0x18, 0x20};
+#endif
 		static char     pdma_bits[4] =  {1, 2, -1, 3};
 		static char	valid_rdma[4] = {1, 0, -1, 0};
 		char		bits;
 
 		if (!mss->irq || (bits = interrupt_bits[rman_get_start(mss->irq)]) == -1)
 			goto no;
+#ifndef PC98 /* CS423[12] in PC98 don't support this. */
 		io_wr(mss, 0, bits | 0x40);	/* config port */
 		if ((io_rd(mss, 3) & 0x40) == 0) device_printf(dev, "IRQ Conflict?\n");
+#endif
 		/* Write IRQ+DMA setup */
 		if (pdma_bits[pdma] == -1) goto no;
 		bits |= pdma_bits[pdma];
@@ -1693,10 +1737,10 @@ mss_doattach(device_t dev, struct mss_info *mss)
     	mixer_init(dev, (mss->bd_id == MD_YM0020)? &ymmix_mixer_class : &mssmix_mixer_class, mss);
     	switch (mss->bd_id) {
     	case MD_OPTI931:
-		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, opti931_intr, mss, &mss->ih, NULL);
+		snd_setup_intr(dev, mss->irq, 0, opti931_intr, mss, &mss->ih);
 		break;
     	default:
-		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, mss_intr, mss, &mss->ih, NULL);
+		snd_setup_intr(dev, mss->irq, 0, mss_intr, mss, &mss->ih);
     	}
     	if (pdma == rdma)
 		pcm_setflags(dev, pcm_getflags(dev) | SD_F_SIMPLEX);
@@ -1705,8 +1749,8 @@ mss_doattach(device_t dev, struct mss_info *mss)
 			/*highaddr*/BUS_SPACE_MAXADDR,
 			/*filter*/NULL, /*filterarg*/NULL,
 			/*maxsize*/mss->bufsize, /*nsegments*/1,
-			/*maxsegz*/0x3ffff,
-			/*flags*/0, &mss->parent_dmat) != 0) {
+			/*maxsegz*/0x3ffff, /*flags*/0,
+			&mss->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto no;
     	}
@@ -1794,8 +1838,7 @@ mss_resume(device_t dev)
 
     	mss = pcm_getdevinfo(dev);
 
-    	if (mss->bd_id == MD_YM0020)
-    	{
+    	if(mss->bd_id == MD_YM0020 || mss->bd_id == MD_CS423X) {
 		/* This works on a Toshiba Libretto 100CT. */
 		for (i = 0; i < MSS_INDEXED_REGS; i++)
     			ad_write(mss, i, mss->mss_indexed_regs[i]);
@@ -1803,6 +1846,15 @@ mss_resume(device_t dev)
     			conf_wr(mss, i, mss->opl_indexed_regs[i]);
 		mss_intr(mss);
     	}
+
+	if (mss->bd_id == MD_CS423X) {
+		/* Needed on IBM Thinkpad 600E */
+		mss_lock(mss);
+		mss_format(&mss->pch, mss->pch.channel->format);
+		mss_speed(&mss->pch, mss->pch.channel->speed);
+		mss_unlock(mss);
+	}
+
     	return 0;
 
 }
@@ -1824,7 +1876,7 @@ mss_suspend(device_t dev)
 
     	mss = pcm_getdevinfo(dev);
 
-    	if(mss->bd_id == MD_YM0020)
+    	if(mss->bd_id == MD_YM0020 || mss->bd_id == MD_CS423X)
     	{
 		/* this stops playback. */
 		conf_wr(mss, 0x12, 0x0c);
@@ -1855,7 +1907,7 @@ static driver_t mss_driver = {
 };
 
 DRIVER_MODULE(snd_mss, isa, mss_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_mss, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_mss, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_mss, 1);
 
 static int
@@ -1866,8 +1918,7 @@ azt2320_mss_mode(struct mss_info *mss, device_t dev)
 
 	rid = 0;
 	ret = -1;
-	sbport = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-				    0, ~0, 1, RF_ACTIVE);
+	sbport = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
 	if (sbport) {
 		for (i = 0; i < 1000; i++) {
 			if ((port_rd(sbport, SBDSP_STATUS) & 0x80))
@@ -1941,6 +1992,7 @@ pnpmss_attach(device_t dev)
 	case 0x0000630e:			/* CSC0000 */
 	case 0x0001630e:			/* CSC0100 */
 	    mss->bd_flags |= BD_F_MSS_OFFSET;
+	    mss->bd_id = MD_CS423X;
 	    break;
 
 	case 0x2100a865:			/* YHM0021 */
@@ -1974,8 +2026,10 @@ pnpmss_attach(device_t dev)
 	    mss->conf_rid = 3;
 	    mss->bd_id = MD_OPTI924;
 	    mss->bd_flags |= BD_F_924PNP;
-	    if(opti_init(dev, mss) != 0)
+	    if(opti_init(dev, mss) != 0) {
+		    kfree(mss, M_DEVBUF);
 		    return ENXIO;
+	    }
 	    break;
 
 	case 0x1022b839:			/* NMX2210 */
@@ -1984,8 +2038,10 @@ pnpmss_attach(device_t dev)
 
 	case 0x01005407:			/* AZT0001 */
 	    /* put into MSS mode first (snatched from NetBSD) */
-	    if (azt2320_mss_mode(mss, dev) == -1)
+	    if (azt2320_mss_mode(mss, dev) == -1) {
+		    kfree(mss, M_DEVBUF);
 		    return ENXIO;
+	    }
 
 	    mss->bd_flags |= BD_F_MSS_OFFSET;
 	    mss->io_rid = 2;
@@ -2124,6 +2180,7 @@ opti_write(struct mss_info *mss, u_char reg, u_char val)
 	}
 }
 
+#ifndef PC98
 u_char
 opti_read(struct mss_info *mss, u_char reg)
 {
@@ -2147,6 +2204,7 @@ opti_read(struct mss_info *mss, u_char reg)
 	}
 	return -1;
 }
+#endif
 
 static device_method_t pnpmss_methods[] = {
 	/* Device interface */
@@ -2166,7 +2224,8 @@ static driver_t pnpmss_driver = {
 };
 
 DRIVER_MODULE(snd_pnpmss, isa, pnpmss_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_pnpmss, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+DRIVER_MODULE(snd_pnpmss, acpi, pnpmss_driver, pcm_devclass, 0, 0);
+MODULE_DEPEND(snd_pnpmss, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_pnpmss, 1);
 
 static int
@@ -2250,7 +2309,7 @@ static driver_t guspcm_driver = {
 };
 
 DRIVER_MODULE(snd_guspcm, gusc, guspcm_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_guspcm, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_guspcm, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_guspcm, 1);
 
 

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97.h,v 1.15 2003/09/07 16:28:03 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.h,v 1.3 2004/01/21 20:02:08 asmodai Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97.h,v 1.16.2.1 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.h,v 1.4 2007/01/04 21:47:03 corecode Exp $
  */
 
 #define AC97_MUTE	0x8080
@@ -82,6 +82,8 @@
 #define AC97_REG_ID2	0x7e
 
 #define	AC97_F_EAPD_INV		0x00000001
+#define	AC97_F_RDCD_BUG		0x00000002
+#define	AC97_F_SOFTVOL		0x00000004
 
 #define AC97_DECLARE(name) static DEFINE_CLASS(name, name ## _methods, sizeof(struct kobj))
 #define AC97_CREATE(dev, devinfo, cls) ac97_create(dev, devinfo, &cls ## _class)

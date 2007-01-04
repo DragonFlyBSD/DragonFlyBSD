@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1999 Cameron Grant <gandalf@vilnya.demon.co.uk>
+/*-
+ * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
  * Copyright by Hannu Savolainen 1995
  * All rights reserved.
  *
@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.9 2006/10/25 20:56:02 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.2 2006/04/04 17:43:48 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.10 2007/01/04 21:47:03 corecode Exp $
  */
 
 /*
@@ -54,6 +54,9 @@
 #include <sys/malloc.h>
 #include <sys/bus.h>
 #include <sys/buf.h>
+#include <machine/clock.h>	/* for DELAY */
+#include <sys/resource.h>
+#include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
@@ -65,18 +68,17 @@
 
 #include <machine/clock.h>	/* for DELAY */
 
-#include <bus/isa/isavar.h>
-
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
 #undef	USING_MUTEX
 #undef	USING_DEVFS
 
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
+
 #define USING_MUTEX
-#define USING_DEVFS
-#endif
+#define INTR_TYPE_AV	0
 
 #define SND_DYNSYSCTL
 
@@ -89,18 +91,16 @@ struct snd_mixer;
 #include <dev/sound/pcm/channel.h>
 #include <dev/sound/pcm/feeder.h>
 #include <dev/sound/pcm/mixer.h>
-#include <dev/sound/pcm/dsp.h>
 
 #define	PCM_SOFTC_SIZE	512
 
 #define SND_STATUSLEN	64
-/* descriptor of audio device */
 
-#define PCM_MODVER	1
+#define SOUND_MODVER	1
 
-#define PCM_MINVER	1
-#define PCM_PREFVER	PCM_MODVER
-#define PCM_MAXVER	1
+#define SOUND_MINVER	1
+#define SOUND_PREFVER	SOUND_MODVER
+#define SOUND_MAXVER	1
 
 /*
 PROPOSAL:
@@ -121,14 +121,19 @@ nomenclature:
 	[etc.]
 */
 
-#define PCMMINOR(x) (minor(x))
-#define PCMCHAN(x) ((PCMMINOR(x) & 0x00ff0000) >> 16)
-#define PCMUNIT(x) ((PCMMINOR(x) & 0x000000f0) >> 4)
-#define PCMDEV(x)   (PCMMINOR(x) & 0x0000000f)
-#define PCMMKMINOR(u, d, c) ((((c) & 0xff) << 16) | (((u) & 0x0f) << 4) | ((d) & 0x0f))
+#define PCMMAXCHAN		0xff
+#define PCMMAXDEV		0x0f
+#define PCMMAXUNIT		0x0f
+#define PCMMINOR(x)		(minor(x))
+#define PCMCHAN(x)		((PCMMINOR(x) >> 16) & PCMMAXCHAN)
+#define PCMUNIT(x)		((PCMMINOR(x) >> 4) & PCMMAXUNIT)
+#define PCMDEV(x)		(PCMMINOR(x) & PCMMAXDEV)
+#define PCMMKMINOR(u, d, c)	((((c) & PCMMAXCHAN) << 16) | \
+				(((u) & PCMMAXUNIT) << 4) | ((d) & PCMMAXDEV))
 
 #define SD_F_SIMPLEX		0x00000001
-#define	SD_F_AUTOVCHAN		0x00000002
+#define SD_F_AUTOVCHAN		0x00000002
+#define SD_F_SOFTVOL		0x00000004
 #define SD_F_PRIO_RD		0x10000000
 #define SD_F_PRIO_WR		0x20000000
 #define SD_F_PRIO_SET		(SD_F_PRIO_RD | SD_F_PRIO_WR)
@@ -142,10 +147,13 @@ nomenclature:
 
 /* make figuring out what a format is easier. got AFMT_STEREO already */
 #define AFMT_32BIT (AFMT_S32_LE | AFMT_S32_BE | AFMT_U32_LE | AFMT_U32_BE)
+#define AFMT_24BIT (AFMT_S24_LE | AFMT_S24_BE | AFMT_U24_LE | AFMT_U24_BE)
 #define AFMT_16BIT (AFMT_S16_LE | AFMT_S16_BE | AFMT_U16_LE | AFMT_U16_BE)
-#define AFMT_8BIT (AFMT_U8 | AFMT_S8)
-#define AFMT_SIGNED (AFMT_S16_LE | AFMT_S16_BE | AFMT_S8)
-#define AFMT_BIGENDIAN (AFMT_S16_BE | AFMT_U16_BE)
+#define AFMT_8BIT (AFMT_MU_LAW | AFMT_A_LAW | AFMT_U8 | AFMT_S8)
+#define AFMT_SIGNED (AFMT_S32_LE | AFMT_S32_BE | AFMT_S24_LE | AFMT_S24_BE | \
+			AFMT_S16_LE | AFMT_S16_BE | AFMT_S8)
+#define AFMT_BIGENDIAN (AFMT_S32_BE | AFMT_U32_BE | AFMT_S24_BE | AFMT_U24_BE | \
+			AFMT_S16_BE | AFMT_U16_BE)
 
 struct pcm_channel *fkchan_setup(device_t dev);
 int fkchan_kill(struct pcm_channel *c);
@@ -155,7 +163,8 @@ int fkchan_kill(struct pcm_channel *c);
  */
 #define SND_CDEV_MAJOR 30
 
-#define	SND_MAXVCHANS	255
+/* XXX Flawed definition. I'll fix it someday. */
+#define	SND_MAXVCHANS	PCMMAXCHAN
 
 /*
  * Minor numbers for the sound driver.
@@ -194,7 +203,6 @@ extern devclass_t pcm_devclass;
  * DDB/DEB to enable/disable debugging stuff
  * BVDDB   to enable debugging when bootverbose
  */
-#define DDB(x)	x	/* XXX */
 #define BVDDB(x) if (bootverbose) x
 
 #ifndef DEB
@@ -206,18 +214,16 @@ SYSCTL_DECL(_hw_snd);
 struct sysctl_ctx_list *snd_sysctl_tree(device_t dev);
 struct sysctl_oid *snd_sysctl_tree_top(device_t dev);
 
-void pcm_lock(struct snddev_info *d);
-void pcm_unlock(struct snddev_info *d);
 struct pcm_channel *pcm_getfakechan(struct snddev_info *d);
-struct pcm_channel *pcm_chnalloc(struct snddev_info *d, int direction, pid_t pid, int chnum);
+int pcm_chnalloc(struct snddev_info *d, struct pcm_channel **ch, int direction, pid_t pid, int chnum);
 int pcm_chnrelease(struct pcm_channel *c);
 int pcm_chnref(struct pcm_channel *c, int ref);
 int pcm_inprog(struct snddev_info *d, int delta);
 
 struct pcm_channel *pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t cls, int dir, void *devinfo);
 int pcm_chn_destroy(struct pcm_channel *ch);
-int pcm_chn_add(struct snddev_info *d, struct pcm_channel *ch, int mkdev);
-int pcm_chn_remove(struct snddev_info *d, struct pcm_channel *ch, int rmdev);
+int pcm_chn_add(struct snddev_info *d, struct pcm_channel *ch);
+int pcm_chn_remove(struct snddev_info *d, struct pcm_channel *ch);
 
 int pcm_addchan(device_t dev, int dir, kobj_class_t cls, void *devinfo);
 unsigned int pcm_getbuffersize(device_t dev, unsigned int min, unsigned int deflt, unsigned int max);
@@ -228,24 +234,25 @@ u_int32_t pcm_getflags(device_t dev);
 void pcm_setflags(device_t dev, u_int32_t val);
 void *pcm_getdevinfo(device_t dev);
 
+
 int snd_setup_intr(device_t dev, struct resource *res, int flags,
-		   driver_intr_t hand, void *param, 
-		   void **cookiep, lwkt_serialize_t serializer);
+		   driver_intr_t hand, void *param, void **cookiep);
 
 void *snd_mtxcreate(const char *desc, const char *type);
 void snd_mtxfree(void *m);
 void snd_mtxassert(void *m);
-void snd_mtxlock(void *m);
-void snd_mtxunlock(void *m);
+#define	snd_mtxlock(m) spin_lock_wr(m)
+#define	snd_mtxunlock(m) spin_unlock_wr(m)
 
 int sysctl_hw_snd_vchans(SYSCTL_HANDLER_ARGS);
 
 typedef int (*sndstat_handler)(struct sbuf *s, device_t dev, int verbose);
+int sndstat_acquire(void);
+int sndstat_release(void);
 int sndstat_register(device_t dev, char *str, sndstat_handler handler);
 int sndstat_registerfile(char *str);
 int sndstat_unregister(device_t dev);
 int sndstat_unregisterfile(char *str);
-int sndstat_busy(void);
 
 #define SND_DECLARE_FILE(version) \
 	_SND_DECLARE_FILE(__LINE__, version)
@@ -262,9 +269,58 @@ int sndstat_busy(void);
 #define DV_F_DRQ_MASK	0x00000007	/* mask for secondary drq */
 #define	DV_F_DUAL_DMA	0x00000010	/* set to use secondary dma channel */
 
-/* ought to be made obsolete */
+/* ought to be made obsolete but still used by mss */
 #define	DV_F_DEV_MASK	0x0000ff00	/* force device type/class */
 #define	DV_F_DEV_SHIFT	8		/* force device type/class */
+
+#define	PCM_DEBUG_MTX
+
+/*
+ * this is rather kludgey- we need to duplicate these struct def'ns from sound.c
+ * so that the macro versions of pcm_{,un}lock can dereference them.
+ * we also have to do this now makedev() has gone away.
+ */
+
+struct snddev_channel {
+	SLIST_ENTRY(snddev_channel) link;
+	struct pcm_channel *channel;
+	int chan_num;
+	struct cdev *dsp_devt;
+	struct cdev *dspW_devt;
+	struct cdev *audio_devt;
+	struct cdev *dspr_devt;
+};
+
+struct snddev_info {
+	SLIST_HEAD(, snddev_channel) channels;
+	struct pcm_channel *fakechan;
+	unsigned devcount, playcount, reccount, vchancount;
+	unsigned flags;
+	int inprog;
+	unsigned int bufsz;
+	void *devinfo;
+	device_t dev;
+	char status[SND_STATUSLEN];
+	struct sysctl_ctx_list sysctl_tree;
+	struct sysctl_oid *sysctl_tree_top;
+	struct spinlock *lock;
+	struct cdev *mixer_dev;
+
+};
+
+#ifdef	PCM_DEBUG_MTX
+#define	pcm_lock(d) spin_lock_wr(((struct snddev_info *)(d))->lock)
+#define	pcm_unlock(d) spin_unlock_wr(((struct snddev_info *)(d))->lock)
+#else
+void pcm_lock(struct snddev_info *d);
+void pcm_unlock(struct snddev_info *d);
+#endif
+
+#ifdef KLD_MODULE
+#define PCM_KLDSTRING(a) ("kld " # a)
+#else
+#define PCM_KLDSTRING(a) ""
+#endif
 
 #endif /* _KERNEL */
 

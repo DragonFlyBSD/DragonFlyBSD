@@ -1,6 +1,8 @@
 /*
  * soundcard.h
- *
+ */
+
+/*-
  * Copyright by Hannu Savolainen 1993
  * Modified for the new FreeBSD sound driver by Luigi Rizzo, 1997
  *
@@ -27,8 +29,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/soundcard.h,v 1.33.2.4 2003/06/07 21:31:56 mbr Exp $
- * $DragonFly: src/sys/sys/soundcard.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
+ * $FreeBSD: src/sys/sys/soundcard.h,v 1.44.2.1 2005/12/30 19:55:52 netchild Exp $
+ * $DragonFly: src/sys/sys/soundcard.h,v 1.7 2007/01/04 21:47:03 corecode Exp $
  */
 
 #ifndef _SYS_SOUNDCARD_H_
@@ -90,20 +92,16 @@
 #define SNDCARD_CS4232_MPU     22
 #define SNDCARD_MAUI           23
 #define SNDCARD_PSEUDO_MSS     24
-#define SNDCARD_AWE32           25
+#define SNDCARD_AWE32          25
 #define SNDCARD_NSS            26
 #define SNDCARD_UART16550      27
 #define SNDCARD_OPL            28
 
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
-#if !defined(_IOWR) && !defined(_SYS_IOCCOM_H_)
+#ifndef _IOWR
 #include <sys/ioccom.h>
-#endif
+#endif  /* !_IOWR */
 
 /*
  * The first part of this file contains the new FreeBSD sound ioctl
@@ -170,10 +168,8 @@ struct snd_size {
 
 #if _BYTE_ORDER == _LITTLE_ENDIAN
 #define AFMT_S16_NE	AFMT_S16_LE	/* native endian signed 16 */
-#elif _BYTE_ORDER == _BIG_ENDIAN
-#define AFMT_S16_NE	AFMT_S16_BE
 #else
-#error "Byte order not implemented"
+#define AFMT_S16_NE	AFMT_S16_BE
 #endif
 
 /*
@@ -185,6 +181,10 @@ struct snd_size {
 #define AFMT_S32_BE	0x00002000	/* Big endian signed 32-bit */
 #define AFMT_U32_LE	0x00004000	/* Little endian unsigned 32-bit */
 #define AFMT_U32_BE	0x00008000	/* Big endian unsigned 32-bit */
+#define AFMT_S24_LE	0x00010000	/* Little endian signed 24-bit */
+#define AFMT_S24_BE	0x00020000	/* Big endian signed 24-bit */
+#define AFMT_U24_LE	0x00040000	/* Little endian unsigned 24-bit */
+#define AFMT_U24_BE	0x00080000	/* Big endian unsigned 24-bit */
 
 #define AFMT_STEREO	0x10000000	/* can do/want stereo	*/
 
@@ -303,6 +303,7 @@ typedef struct _snd_capabilities {
 #define SNDCTL_PMGR_ACCESS	_IOWR('Q',16, struct patmgr_info)
 #define SNDCTL_SEQ_PANIC	_IO  ('Q',17)
 #define SNDCTL_SEQ_OUTOFBAND	_IOW ('Q',18, struct seq_event_rec)
+#define SNDCTL_SEQ_GETTIME	_IOR ('Q',19, int)
 
 struct seq_event_rec {
 	u_char arr[8];
@@ -379,7 +380,7 @@ struct patch_info {
  *
  * The low_note and high_note fields define the minimum and maximum note
  * frequencies for which this sample is valid. It is possible to define
- * more than one samples for a instrument number at the same time. The
+ * more than one samples for an instrument number at the same time. The
  * low_note and high_note fields are used to select the most suitable one.
  *
  * The fields base_note, high_note and low_note should contain
@@ -461,7 +462,7 @@ struct patmgr_info {	/* Note! size must be < 4k since kmalloc() is used */
 	  u_long key;	/* Don't worry. Reserved for communication
 	  			   between the patch manager and the driver. */
 #define PM_K_EVENT		1 /* Event from the /dev/sequencer driver */
-#define PM_K_COMMAND		2 /* Request from a application */
+#define PM_K_COMMAND		2 /* Request from an application */
 #define PM_K_RESPONSE		3 /* From patmgr to application */
 #define PM_ERROR		4 /* Error returned by the patmgr */
 	  int device;
@@ -697,6 +698,7 @@ struct synth_info {	/* Read only */
 	int	synth_subtype;
 #define FM_TYPE_ADLIB			0x00
 #define FM_TYPE_OPL3			0x01
+#define MIDI_TYPE_MPU401		0x401
 
 #define SAMPLE_TYPE_BASIC		0x10
 #define SAMPLE_TYPE_GUS			SAMPLE_TYPE_BASIC
@@ -1028,6 +1030,14 @@ typedef struct copr_msg {
 #define SOUND_MIXER_READ_LINE1		MIXER_READ(SOUND_MIXER_LINE1)
 #define SOUND_MIXER_READ_LINE2		MIXER_READ(SOUND_MIXER_LINE2)
 #define SOUND_MIXER_READ_LINE3		MIXER_READ(SOUND_MIXER_LINE3)
+#define SOUND_MIXER_READ_DIGITAL1	MIXER_READ(SOUND_MIXER_DIGITAL1)
+#define SOUND_MIXER_READ_DIGITAL2	MIXER_READ(SOUND_MIXER_DIGITAL2)
+#define SOUND_MIXER_READ_DIGITAL3	MIXER_READ(SOUND_MIXER_DIGITAL3)
+#define SOUND_MIXER_READ_PHONEIN      	MIXER_READ(SOUND_MIXER_PHONEIN)
+#define SOUND_MIXER_READ_PHONEOUT	MIXER_READ(SOUND_MIXER_PHONEOUT)
+#define SOUND_MIXER_READ_RADIO		MIXER_READ(SOUND_MIXER_RADIO)
+#define SOUND_MIXER_READ_VIDEO		MIXER_READ(SOUND_MIXER_VIDEO)
+#define SOUND_MIXER_READ_MONITOR	MIXER_READ(SOUND_MIXER_MONITOR)
 
 /* Obsolete macros */
 #define SOUND_MIXER_READ_MUTE		MIXER_READ(SOUND_MIXER_MUTE)
@@ -1058,11 +1068,29 @@ typedef struct copr_msg {
 #define SOUND_MIXER_WRITE_LINE1		MIXER_WRITE(SOUND_MIXER_LINE1)
 #define SOUND_MIXER_WRITE_LINE2		MIXER_WRITE(SOUND_MIXER_LINE2)
 #define SOUND_MIXER_WRITE_LINE3		MIXER_WRITE(SOUND_MIXER_LINE3)
+#define SOUND_MIXER_WRITE_DIGITAL1	MIXER_WRITE(SOUND_MIXER_DIGITAL1)
+#define SOUND_MIXER_WRITE_DIGITAL2	MIXER_WRITE(SOUND_MIXER_DIGITAL2)
+#define SOUND_MIXER_WRITE_DIGITAL3	MIXER_WRITE(SOUND_MIXER_DIGITAL3)
+#define SOUND_MIXER_WRITE_PHONEIN      	MIXER_WRITE(SOUND_MIXER_PHONEIN)
+#define SOUND_MIXER_WRITE_PHONEOUT	MIXER_WRITE(SOUND_MIXER_PHONEOUT)
+#define SOUND_MIXER_WRITE_RADIO		MIXER_WRITE(SOUND_MIXER_RADIO)
+#define SOUND_MIXER_WRITE_VIDEO		MIXER_WRITE(SOUND_MIXER_VIDEO)
+#define SOUND_MIXER_WRITE_MONITOR	MIXER_WRITE(SOUND_MIXER_MONITOR)
+
 #define SOUND_MIXER_WRITE_MUTE		MIXER_WRITE(SOUND_MIXER_MUTE)
 #define SOUND_MIXER_WRITE_ENHANCE	MIXER_WRITE(SOUND_MIXER_ENHANCE)
 #define SOUND_MIXER_WRITE_LOUD		MIXER_WRITE(SOUND_MIXER_LOUD)
 
 #define SOUND_MIXER_WRITE_RECSRC	MIXER_WRITE(SOUND_MIXER_RECSRC)
+
+typedef struct mixer_info {
+  char id[16];
+  char name[32];
+  int  modify_counter;
+  int fillers[10];
+} mixer_info;
+
+#define SOUND_MIXER_INFO		_IOR('M', 101, mixer_info)
 
 #define LEFT_CHN	0
 #define RIGHT_CHN	1
@@ -1142,7 +1170,7 @@ typedef struct copr_msg {
  */
 
 #ifndef USE_SIMPLE_MACROS
-void seqbuf_dump (void);	/* This function must be provided by programs */
+void seqbuf_dump(void);	/* This function must be provided by programs */
 
 /* Sample seqbuf_dump() implementation:
  *
@@ -1358,7 +1386,7 @@ void seqbuf_dump (void);	/* This function must be provided by programs */
 
 #define SEQ_PLAYAUDIO(devmask)		_LOCAL_EVENT(LOCL_STARTAUDIO, devmask)
 /*
- * Events for the level 1 interface only 
+ * Events for the level 1 interface only
  */
 
 #define SEQ_MIDIOUT(device, byte)	{ \

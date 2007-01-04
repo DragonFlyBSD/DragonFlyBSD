@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.23 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.24 2007/01/04 21:47:03 corecode Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -367,6 +367,41 @@ int	resource_set_long(const char *name, int unit, const char *resname,
 int	resource_set_string(const char *name, int unit, const char *resname,
 			    const char *value);
 int	resource_count(void);
+
+/**
+ * Some convenience defines for probe routines to return.  These are just
+ * suggested values, and there's nothing magical about them.
+ * BUS_PROBE_SPECIFIC is for devices that cannot be reprobed, and that no
+ * possible other driver may exist (typically legacy drivers who don't fallow
+ * all the rules, or special needs drivers).  BUS_PROBE_VENDOR is the
+ * suggested value that vendor supplied drivers use.  This is for source or
+ * binary drivers that are not yet integrated into the FreeBSD tree.  Its use
+ * in the base OS is prohibited.  BUS_PROBE_DEFAULT is the normal return value
+ * for drivers to use.  It is intended that nearly all of the drivers in the
+ * tree should return this value.  BUS_PROBE_LOW_PRIORITY are for drivers that
+ * have special requirements like when there are two drivers that support
+ * overlapping series of hardware devices.  In this case the one that supports
+ * the older part of the line would return this value, while the one that
+ * supports the newer ones would return BUS_PROBE_DEFAULT.  BUS_PROBE_GENERIC
+ * is for drivers that wish to have a generic form and a specialized form,
+ * like is done with the pci bus and the acpi pci bus.  BUS_PROBE_HOOVER is
+ * for those busses that implement a generic device place-holder for devices on
+ * the bus that have no more specific driver for them (aka ugen).
+ */
+#define BUS_PROBE_SPECIFIC      0       /* Only I can use this device */
+#if notyet
+#define BUS_PROBE_VENDOR        (-10)   /* Vendor supplied driver */
+#define BUS_PROBE_DEFAULT       (-20)   /* Base OS default driver */
+#define BUS_PROBE_LOW_PRIORITY  (-40)   /* Older, less desirable drivers */
+#define BUS_PROBE_GENERIC       (-100)  /* generic driver for dev */
+#define BUS_PROBE_HOOVER        (-500)  /* Generic dev for all devs on bus */
+#else
+#define BUS_PROBE_VENDOR        0
+#define BUS_PROBE_DEFAULT       0
+#define BUS_PROBE_LOW_PRIORITY  0
+#define BUS_PROBE_GENERIC       0
+#define BUS_PROBE_HOOVER        0
+#endif
 
 /*
  * Shorthand for constructing method tables.

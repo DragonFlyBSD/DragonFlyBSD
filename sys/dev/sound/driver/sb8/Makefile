@@ -1,11 +1,12 @@
-# $FreeBSD: src/sys/modules/sound/driver/sb8/Makefile,v 1.2.2.1 2001/02/03 02:09:24 cg Exp $
-# $DragonFly: src/sys/dev/sound/driver/sb8/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $FreeBSD: src/sys/modules/sound/driver/sb8/Makefile,v 1.2 2001/01/06 14:00:20 obrien Exp $
+# $DragonFly: src/sys/dev/sound/driver/sb8/Makefile,v 1.3 2007/01/04 21:47:01 corecode Exp $
 
 .PATH: ${.CURDIR}/../../../../dev/sound/isa
 
 KMOD=	snd_sb8
 SRCS=	device_if.h bus_if.h isa_if.h pci_if.h
 SRCS+=	sb8.c
-KMODDEPS 	= snd_pcm snd_sbc
+
+KMODDEPS=	sound snd_sbc
 
 .include <bsd.kmod.mk>

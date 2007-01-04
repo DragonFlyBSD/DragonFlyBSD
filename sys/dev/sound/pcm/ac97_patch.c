@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright 2002 FreeBSD, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,15 +22,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.2 2003/08/21 15:44:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3 2004/01/21 20:02:08 asmodai Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.1 2005/12/30 19:55:54 netchild Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.4 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3 2004/01/21 20:02:08 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.4 2007/01/04 21:47:03 corecode Exp $");
 
 void ad1886_patch(struct ac97_info* codec)
 {
@@ -49,3 +49,13 @@ void ad198x_patch(struct ac97_info* codec)
 	ac97_wrcd(codec, 0x76, ac97_rdcd(codec, 0x76) | 0x0420);
 }
 
+void cmi9739_patch(struct ac97_info* codec)
+{
+	/*
+	 * Few laptops (notably ASUS W1000N) need extra register
+	 * initialization to power up the internal speakers.
+	 */
+	ac97_wrcd(codec, AC97_REG_POWER, 0x000f);
+	ac97_wrcd(codec, AC97_MIXEXT_CLFE, 0x0000);
+	ac97_wrcd(codec, 0x64, 0x7110);
+}

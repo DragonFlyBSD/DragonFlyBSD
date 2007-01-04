@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.49 2006/12/14 16:21:34 swildner Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.50 2007/01/04 21:47:00 corecode Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -204,6 +204,35 @@ MAN=	aac.4 \
 	smbus.4 \
 	smp.4 \
 	sn.4 \
+	snd_ad1816.4 \
+	snd_als4000.4 \
+	snd_atiixp.4 \
+	snd_cmi.4 \
+	snd_cs4281.4 \
+	snd_csa.4 \
+	snd_ds1.4 \
+	snd_emu10k1.4 \
+	snd_emu10kx.4 \
+	snd_envy24.4 \
+	snd_envy24ht.4 \
+	snd_es137x.4 \
+	snd_ess.4 \
+	snd_fm801.4 \
+	snd_gusc.4 \
+	snd_hda.4 \
+	snd_ich.4 \
+	snd_maestro.4 \
+	snd_maestro3.4 \
+	snd_mss.4 \
+	snd_neomagic.4 \
+	snd_sbc.4 \
+	snd_solo.4 \
+	snd_spicds.4 \
+	snd_t4dwave.4 \
+	snd_uaudio.4 \
+	snd_via8233.4 \
+	snd_via82c686.4 \
+	snd_vibes.4 \
 	snp.4 \
 	spic.4 \
 	splash.4 \
@@ -284,7 +313,7 @@ MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
 MLINKS+=netintro.4 networking.4
 MLINKS+=pccbb.4 cbb.4
-MLINKS+=pcm.4 snd.4
+MLINKS+=pcm.4 sound.4
 MLINKS+=scsi.4 CAM.4
 MLINKS+=scsi.4 SCSI.4
 MLINKS+=scsi.4 cam.4

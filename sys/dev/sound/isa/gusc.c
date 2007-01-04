@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1999 Seigo Tanimura
  * Copyright (c) 1999 Ville-Pertti Keinonen
  * All rights reserved.
@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.10 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.16 2005/01/06 01:43:17 imp Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.11 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <bus/isa/isavar.h>
 #include <bus/isa/isa_common.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.10 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.11 2007/01/04 21:47:02 corecode Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e
@@ -317,9 +317,8 @@ gusc_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	if (scp->irq != NULL) {
-		bus_setup_intr(dev, scp->irq, 0, gusc_intr, scp, &ih, NULL);
-	}
+	if (scp->irq != NULL)
+		bus_setup_intr(dev, scp->irq, INTR_TYPE_AV, gusc_intr, scp, &ih, NULL);
 	bus_generic_attach(dev);
 
 	return (0);
@@ -422,8 +421,7 @@ gusc_release_resource(device_t bus, device_t child, int type, int rid,
 
 static int
 gusc_setup_intr(device_t dev, device_t child, struct resource *irq,
-		int flags, driver_intr_t *intr, void *arg, 
-		void **cookiep, lwkt_serialize_t serializer)
+		int flags, driver_intr_t *intr, void *arg, void **cookiep)
 {
 	sc_p scp = (sc_p)device_get_softc(dev);
 	devclass_t devclass;
@@ -439,7 +437,7 @@ gusc_setup_intr(device_t dev, device_t child, struct resource *irq,
 		return 0;
 	}
 	return bus_generic_setup_intr(dev, child, irq, flags, intr,
-				      arg, cookiep, serializer);
+				      arg, cookiep, NULL);
 }
 
 static device_t
@@ -505,8 +503,10 @@ alloc_resource(sc_p scp)
 		}
 		if (scp->irq == NULL) {
 			scp->irq_rid = 0;
-			scp->irq = bus_alloc_resource(scp->dev, SYS_RES_IRQ, &scp->irq_rid,
-						      0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+			scp->irq = 
+				bus_alloc_resource_any(scp->dev, SYS_RES_IRQ, 
+						       &scp->irq_rid,
+						       RF_ACTIVE|RF_SHAREABLE);
 			if (scp->irq == NULL)
 				return (1);
 			scp->irq_alloced = 0;
@@ -515,8 +515,11 @@ alloc_resource(sc_p scp)
 			if (scp->drq[i] == NULL) {
 				scp->drq_rid[i] = i;
 				if (base == 0 || i == 0)
-					scp->drq[i] = bus_alloc_resource(scp->dev, SYS_RES_DRQ, &scp->drq_rid[i],
-									 0, ~0, 1, RF_ACTIVE);
+					scp->drq[i] = 
+						bus_alloc_resource_any(
+							scp->dev, SYS_RES_DRQ,
+							&scp->drq_rid[i],
+							RF_ACTIVE);
 				else if ((flags & DV_F_DUAL_DMA) != 0)
 					/* XXX The secondary drq is specified in the flag. */
 					scp->drq[i] = bus_alloc_resource(scp->dev, SYS_RES_DRQ, &scp->drq_rid[i],
@@ -652,7 +655,8 @@ static driver_t gusc_driver = {
  * gusc can be attached to an isa bus.
  */
 DRIVER_MODULE(snd_gusc, isa, gusc_driver, gusc_devclass, 0, 0);
-MODULE_DEPEND(snd_gusc, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+DRIVER_MODULE(snd_gusc, acpi, gusc_driver, gusc_devclass, 0, 0);
+MODULE_DEPEND(snd_gusc, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_gusc, 1);
 
 

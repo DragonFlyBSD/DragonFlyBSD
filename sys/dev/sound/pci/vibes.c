@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Orion Hodson <O.Hodson@cs.ucl.ac.uk>
  * All rights reserved.
  *
@@ -27,8 +27,8 @@
  * detached, haven't been able to remedy this with any combination of
  * muting.
  * 
- * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.19.2.1 2006/01/24 18:54:22 joel Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.9 2006/12/22 23:26:25 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -327,7 +327,7 @@ svrchan_trigger(kobj_t obj, void *data, int go)
 		/* Program DMA */
 		count = sndbuf_getsize(ch->buffer) / 2; /* DMAC uses words */
 		sv_dma_set_config(sc->dmac_st, sc->dmac_sh,
-				  vtophys(sndbuf_getbuf(ch->buffer)),
+				  sndbuf_getbufaddr(ch->buffer),
 				  count - 1,
 				  SV_DMA_MODE_AUTO | SV_DMA_MODE_RD);
 		count = count / SV_INTR_PER_BUFFER - 1;
@@ -402,7 +402,7 @@ svpchan_trigger(kobj_t obj, void *data, int go)
 		/* Program DMA */
 		count = sndbuf_getsize(ch->buffer);
 		sv_dma_set_config(sc->dmaa_st, sc->dmaa_sh,
-				  vtophys(sndbuf_getbuf(ch->buffer)),
+				  sndbuf_getbufaddr(ch->buffer),
 				  count - 1,
 				  SV_DMA_MODE_AUTO | SV_DMA_MODE_WR);
 		count = count / SV_INTR_PER_BUFFER - 1;
@@ -550,6 +550,7 @@ sv_mix_setrecsrc(struct snd_mixer *m, u_int32_t mask)
 		}
 	}
 	DEB(kprintf("sv_mix_setrecsrc: mask 0x%08x adc_input 0x%02x\n", mask, v));
+	sv_indirect_set(sc, SV_REG_ADC_INPUT, v);
 	return mask;
 }
 
@@ -706,7 +707,7 @@ sv_probe(device_t dev)
 	switch(pci_get_devid(dev)) {
 	case SV_PCI_ID:
 		device_set_desc(dev, "S3 Sonicvibes");
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	default:
 		return ENXIO;
 	}
@@ -714,13 +715,10 @@ sv_probe(device_t dev)
 
 static int
 sv_attach(device_t dev) {
-	struct snddev_info	*d;
 	struct sc_info	*sc;
 	u_int32_t	data;
 	char		status[SND_STATUSLEN];
 	u_long		midi_start, games_start, count, sdmaa, sdmac, ml, mu;
-
-	d = device_get_softc(dev);
 
 	sc = kmalloc(sizeof(struct sc_info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
@@ -734,7 +732,7 @@ sv_attach(device_t dev) {
 	pci_write_config(dev, PCIR_COMMAND, data, 2);
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
+#if __FreeBSD_version > 500000
         if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
                 device_printf(dev, "chip is in D%d power mode "
                               "-- setting to D0\n", pci_get_powerstate(dev));
@@ -767,7 +765,7 @@ sv_attach(device_t dev) {
         sc->irq   = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
 				       0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
         if (!sc->irq ||
-	    bus_setup_intr(dev, sc->irq, 0, sv_intr, sc, &sc->ih, NULL)) {
+	    bus_setup_intr(dev, sc->irq, INTR_TYPE_AV, sv_intr, sc, &sc->ih, NULL)) {
                 device_printf(dev, "sv_attach: Unable to map interrupt\n");
                 goto fail;
         }
@@ -779,7 +777,7 @@ sv_attach(device_t dev) {
                                /*filter*/NULL, /*filterarg*/NULL,
                                /*maxsize*/sc->bufsz, /*nsegments*/1,
                                /*maxsegz*/0x3ffff, /*flags*/0,
-                               &sc->parent_dmat) != 0) {
+			       &sc->parent_dmat) != 0) {
                 device_printf(dev, "sv_attach: Unable to create dma tag\n");
                 goto fail;
         }
@@ -880,8 +878,8 @@ sv_attach(device_t dev) {
         pcm_addchan(dev, PCMDIR_PLAY, &svpchan_class, sc);
         pcm_addchan(dev, PCMDIR_REC,  &svrchan_class, sc);
 
-        ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld",
-                 rman_get_start(sc->enh_reg),  rman_get_start(sc->irq));
+        ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+                 rman_get_start(sc->enh_reg),  rman_get_start(sc->irq),PCM_KLDSTRING(snd_vibes));
         pcm_setstatus(dev, status);
 
         DEB(kprintf("sv_attach: succeeded\n"));
@@ -944,5 +942,5 @@ static driver_t sonicvibes_driver = {
 };
 
 DRIVER_MODULE(snd_vibes, pci, sonicvibes_driver, pcm_devclass, 0, 0);
-MODULE_DEPEND(snd_vibes, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
+MODULE_DEPEND(snd_vibes, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_vibes, 1);
