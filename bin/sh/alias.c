@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)alias.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/alias.c,v 1.12.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/alias.c,v 1.4 2004/03/19 18:39:40 cpressey Exp $
+ * $FreeBSD: src/bin/sh/alias.c,v 1.20 2005/09/02 22:43:28 stefanf Exp $
+ * $DragonFly: src/bin/sh/alias.c,v 1.5 2007/01/04 06:35:12 pavalos Exp $
  */
 
 #include <stdlib.h>
@@ -242,7 +242,7 @@ unaliascmd(int argc __unused, char **argv __unused)
 		}
 	}
 	for (i = 0; *argptr; argptr++)
-		i = unalias(*argptr);
+		i |= unalias(*argptr);
 
 	return (i);
 }
