@@ -31,9 +31,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)arith.h	1.1 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/arith.h,v 1.5.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith.h,v 1.3 2004/03/19 18:39:40 cpressey Exp $
+ * $FreeBSD: src/bin/sh/arith.h,v 1.11 2005/08/13 07:59:46 stefanf Exp $
+ * $DragonFly: src/bin/sh/arith.h,v 1.4 2007/01/04 14:06:21 pavalos Exp $
  */
 
+extern const char *arith_buf, *arith_startbuf;
+
 int arith(const char *);
+void arith_lex_reset(void);
 int expcmd(int , char **);

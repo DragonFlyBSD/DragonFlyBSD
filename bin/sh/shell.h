@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)shell.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/shell.h,v 1.11.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/shell.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $FreeBSD: src/bin/sh/shell.h,v 1.17 2004/04/06 20:06:51 markm Exp $
+ * $DragonFly: src/bin/sh/shell.h,v 1.3 2007/01/04 14:06:21 pavalos Exp $
  */
 
 /*
@@ -49,20 +49,27 @@
  */
 
 
-#define JOBS 1
+#define	JOBS 1
 /* #define DEBUG 1 */
+
+/*
+ * Type of used arithmetics. SUSv3 requires us to have at least signed long.
+ */
+typedef long arith_t;
+#define	ARITH_FORMAT_STR  "%ld"
+#define	atoarith_t(arg)  strtol(arg, NULL, 0)
+#define	strtoarith_t(nptr, endptr, base)  strtol(nptr, endptr, base)
 
 typedef void *pointer;
 #define STATIC  static
-#define MKINIT	/* empty */
+#define MKINIT  /* empty */
 
 #include <sys/cdefs.h>
 
 extern char nullstr[1];		/* null string */
 
-
 #ifdef DEBUG
-#define TRACE(param)	sh_trace param
+#define TRACE(param)  sh_trace param
 #else
 #define TRACE(param)
 #endif

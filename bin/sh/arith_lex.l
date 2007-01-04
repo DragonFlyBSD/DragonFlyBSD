@@ -35,57 +35,100 @@
  * SUCH DAMAGE.
  *
  * @(#)arith_lex.l	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/arith_lex.l,v 1.14.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith_lex.l,v 1.4 2005/04/19 05:18:19 cpressey Exp $
+ * $FreeBSD: src/bin/sh/arith_lex.l,v 1.24 2005/08/13 07:59:46 stefanf Exp $
+ * $DragonFly: src/bin/sh/arith_lex.l,v 1.5 2007/01/04 14:06:21 pavalos Exp $
  */
 
+#include <string.h>
 #include <unistd.h>
 
+#include "arith.h"
+#include "shell.h"
 #include "y.tab.h"
 #include "error.h"
+#include "memalloc.h"
+#include "var.h"
 
-extern int yylex(void);
+int yylex(void);
 
-extern int yylval;
-extern const char *arith_buf, *arith_startbuf;
 #undef YY_INPUT
 #define YY_INPUT(buf,result,max) \
 	result = (*buf = *arith_buf++) ? 1 : YY_NULL;
 #define YY_NO_UNPUT
-
-void arith_lex_reset(void);
 %}
 
 %%
 [ \t\n]	{ ; }
-[0-9]+	{ yylval = atol(yytext); return(ARITH_NUM); }
-"("	{ return(ARITH_LPAREN); }
-")"	{ return(ARITH_RPAREN); }
-"||"	{ return(ARITH_OR); }
-"&&"	{ return(ARITH_AND); }
-"|"	{ return(ARITH_BOR); }
-"^"	{ return(ARITH_BXOR); }
-"&"	{ return(ARITH_BAND); }
-"=="	{ return(ARITH_EQ); }
-"!="	{ return(ARITH_NE); }
-">"	{ return(ARITH_GT); }
-">="	{ return(ARITH_GE); }
-"<"	{ return(ARITH_LT); }
-"<="	{ return(ARITH_LE); }
-"<<"	{ return(ARITH_LSHIFT); }
-">>"	{ return(ARITH_RSHIFT); }
-"*"	{ return(ARITH_MUL); }
-"/"	{ return(ARITH_DIV); }
-"%"	{ return(ARITH_REM); }
-"+"	{ return(ARITH_ADD); }
-"-"	{ return(ARITH_SUB); }
-"~"	{ return(ARITH_BNOT); }
-"!"	{ return(ARITH_NOT); }
-.	{ error("arith: syntax error: \"%s\"\n", arith_startbuf); }
+
+0x[a-fA-F0-9]+	{
+			yylval.l_value = strtoarith_t(yytext, NULL, 16);
+			return ARITH_NUM;
+		}
+
+0[0-7]+		{
+			yylval.l_value = strtoarith_t(yytext, NULL, 8);
+			return ARITH_NUM;
+		}
+
+[0-9]+		{
+			yylval.l_value = strtoarith_t(yytext, NULL, 10);
+			return ARITH_NUM;
+		}
+
+[A-Za-z][A-Za-z0-9_]*	{
+			/*
+			 * If variable doesn't exist, we should initialize
+			 * it to zero.
+			 */
+			char *temp;
+			if (lookupvar(yytext) == NULL)
+				setvarsafe(yytext, "0", 0);
+			temp = (char *)ckmalloc(strlen(yytext) + 1);
+			yylval.s_value = strcpy(temp, yytext);
+
+			return ARITH_VAR;
+		}
+
+"("		{	return ARITH_LPAREN;	}
+")"		{	return ARITH_RPAREN;	}
+"||"		{	return ARITH_OR;	}
+"&&"		{	return ARITH_AND;	}
+"|"		{	return ARITH_BOR;	}
+"^"		{	return ARITH_BXOR;	}
+"&"		{	return ARITH_BAND;	}
+"=="		{	return ARITH_EQ;	}
+"!="		{	return ARITH_NE;	}
+">"		{	return ARITH_GT;	}
+">="		{	return ARITH_GE;	}
+"<"		{	return ARITH_LT;	}
+"<="		{	return ARITH_LE;	}
+"<<"		{	return ARITH_LSHIFT;	}
+">>"		{	return ARITH_RSHIFT;	}
+"*"		{	return ARITH_MUL;	}
+"/"		{	return ARITH_DIV;	}
+"%"		{	return ARITH_REM;	}
+"+"		{	return ARITH_ADD;	}
+"-"		{	return ARITH_SUB;	}
+"~"		{	return ARITH_BNOT;	}
+"!"		{	return ARITH_NOT;	}
+"="		{	return ARITH_ASSIGN;	}
+"+="		{	return ARITH_ADDASSIGN;	}
+"-="		{	return ARITH_SUBASSIGN;	}
+"*="		{	return ARITH_MULASSIGN;	}
+"/="		{	return ARITH_DIVASSIGN;	}
+"%="		{	return ARITH_REMASSIGN;	}
+">>="		{	return ARITH_RSHASSIGN;	}
+"<<="		{	return ARITH_LSHASSIGN;	}
+"&="		{	return ARITH_BANDASSIGN; }
+"^="		{	return ARITH_BXORASSIGN; }
+"|="		{	return ARITH_BORASSIGN;	}
+.		{
+			error("arith: syntax error: \"%s\"\n", arith_startbuf);
+		}
 %%
 
 void
-arith_lex_reset()
+arith_lex_reset(void)
 {
 	YY_NEW_FILE;
 }
