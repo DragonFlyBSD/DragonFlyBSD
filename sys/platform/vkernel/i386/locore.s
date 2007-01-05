@@ -31,10 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.3 2006/12/04 18:04:01 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.4 2007/01/05 22:18:18 dillon Exp $
  */
 
+#include <sys/syscall.h>
 #include <machine/asmacros.h>
+#include <machine/psl.h>
 #include "assym.s"
 	
 	.globl	kernbase
@@ -57,10 +59,14 @@ NON_GPROF_ENTRY(sigcode)
 	call	*SIGF_HANDLER(%esp)		/* call signal handler */
 	lea	SIGF_UC(%esp),%eax		/* get ucontext_t */
 	pushl	%eax
+#if 0
 	testl	$PSL_VM,UC_EFLAGS(%eax)
 	jne	9f
+#endif
 	movl	UC_GS(%eax),%gs			/* restore %gs */
+#if 0
 9:
+#endif
 	movl	$SYS_sigreturn,%eax
 	pushl	%eax				/* junk to fake return addr. */
 	int	$0x80				/* enter kernel with args */
@@ -68,6 +74,17 @@ NON_GPROF_ENTRY(sigcode)
 
 	ALIGN_TEXT
 esigcode:
+
+/* void reset_dbregs() */
+ENTRY(reset_dbregs)
+        movl    $0,%eax
+        movl    %eax,%dr7     /* disable all breapoints first */
+        movl    %eax,%dr0
+        movl    %eax,%dr1
+        movl    %eax,%dr2
+        movl    %eax,%dr3
+        movl    %eax,%dr6
+        ret
 
 	.data
 	.globl	szsigcode

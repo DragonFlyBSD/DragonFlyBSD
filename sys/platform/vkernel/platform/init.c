@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.5 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.6 2007/01/05 22:18:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <sys/vkernel.h>
 #include <sys/tls.h>
 #include <sys/proc.h>
+#include <sys/msgbuf.h>
 #include <vm/vm_page.h>
 
 #include <machine/globaldata.h>
@@ -71,8 +72,14 @@ vm_offset_t virtual_start;
 vm_offset_t virtual_end;
 vm_offset_t kernel_vm_end;
 vm_offset_t crashdumpmap;
+vm_offset_t clean_sva;
+vm_offset_t clean_eva;
+struct msgbuf *msgbufp;
+caddr_t ptvmmap;
 vpte_t	*KernelPTD;
 vpte_t	*KernelPTA;
+u_int cpu_feature;	/* XXX */
+u_int tsc_present;	/* XXX */
 
 struct privatespace *CPU_prvspace;
 
@@ -322,6 +329,24 @@ init_kern_memory(void)
 	virtual_start += MAXDUMPPGS * PAGE_SIZE;
 
 	/*
+	 * msgbufp maps the system message buffer
+	 */
+	assert((MSGBUF_SIZE & PAGE_MASK) == 0);
+	msgbufp = (void *)virtual_start;
+	for (i = 0; i < (MSGBUF_SIZE >> PAGE_SHIFT); ++i) {
+		pmap_kenter_quick(virtual_start, phys_avail[0]);
+		virtual_start += PAGE_SIZE;
+		phys_avail[0] += PAGE_SIZE;
+	}
+	msgbufinit(msgbufp, MSGBUF_SIZE);
+
+	/*
+	 * used by kern_memio for /dev/mem access
+	 */
+	ptvmmap = (caddr_t)virtual_start;
+	virtual_start += PAGE_SIZE;
+
+	/*
 	 * Bootstrap the kernel_pmap
 	 */
 	pmap_bootstrap();
@@ -442,4 +467,12 @@ cpu_reset(void)
 {
 	kprintf("cpu reset\n");
 	exit(0);
+}
+
+void
+cpu_halt(void)
+{
+	kprintf("cpu halt\n");
+	for (;;)
+		__asm__ __volatile("hlt");
 }

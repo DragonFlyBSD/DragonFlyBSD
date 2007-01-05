@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.1 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.2 2007/01/05 22:18:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -409,7 +409,7 @@ pmap_pte(struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t *ptep;
 
-	ptep = pmap->pm_pdir[va >> PAGE_SHIFT];
+	ptep = &pmap->pm_pdir[va >> PAGE_SHIFT];
 	if (*ptep & VPTE_PS)
 		return(ptep);
 	if (*ptep)
@@ -448,6 +448,46 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	} else {
 		*ptep = npte;
 	}
+}
+
+void
+pmap_kenter_sync(vm_offset_t va)
+{
+	pmap_inval_info info;
+
+	pmap_inval_init(&info);
+	pmap_inval_add(&info, &kernel_pmap, va);
+	pmap_inval_flush(&info);
+}
+
+void
+pmap_kenter_sync_quick(vm_offset_t va)
+{
+	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+}
+
+/*
+ * Map a contiguous range of physical memory to a KVM
+ */
+vm_offset_t
+pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
+{
+	while (start < end) {
+		pmap_kenter(virt, start);
+		virt += PAGE_SIZE;
+		start += PAGE_SIZE;
+	}
+	return (virt);
+}
+
+vpte_t *
+pmap_kpte(vm_offset_t va)
+{
+	vpte_t *ptep;
+
+	KKASSERT(va >= KvaStart && va < KvaEnd);
+	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	return(ptep);
 }
 
 /*
@@ -1148,7 +1188,7 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 	 * the SMP case.
 	 */
 	if (oldpte & VPTE_G)
-		cpu_invlpg((void *)va);
+		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 	pmap->pm_stats.resident_count -= 1;
 	if (oldpte & PG_MANAGED) {
 		m = PHYS_TO_VM_PAGE(oldpte);
@@ -1711,6 +1751,25 @@ retry:
 	return mpte;
 }
 
+vm_paddr_t
+pmap_extract(pmap_t pmap, vm_offset_t va)
+{
+	vm_paddr_t rtval;
+	vpte_t pte;
+
+	if (pmap && (pte = pmap->pm_pdir[va >> SEG_SHIFT]) != 0) {
+		if (pte & VPTE_PS) {
+			rtval = pte & ~((vpte_t)(1 << SEG_SHIFT) - 1);
+			rtval |= va & SEG_MASK;
+		} else {
+			pte = *(get_ptbase(pmap) + (va >> PAGE_SHIFT));
+			rtval = (pte & VPTE_FRAME) | (va & PAGE_MASK);
+		}
+		return(rtval);
+	}
+	return(0);
+}
+
 #define MAX_INIT_PT (96)
 
 /*
@@ -2108,7 +2167,7 @@ pmap_zero_page(vm_paddr_t phys)
 		panic("pmap_zero_page: CMAP3 busy");
 	*(int *)gd->gd_CMAP3 =
 		    VPTE_V | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
-	cpu_invlpg(gd->gd_CADDR3);
+	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero(gd->gd_CADDR3, PAGE_SIZE);
 	*(int *) gd->gd_CMAP3 = 0;
@@ -2131,7 +2190,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 		panic("pmap_zero_page: CMAP3 busy");
 	*(int *)gd->gd_CMAP3 =
 		    VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
-	cpu_invlpg(gd->gd_CADDR3);
+	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 	for (i = 0; i < PAGE_SIZE; i += 4) {
 	    if (*(int *)((char *)gd->gd_CADDR3 + i) != 0) {
 		panic("pmap_page_assertzero() @ %p not zero!\n",
@@ -2159,7 +2218,7 @@ pmap_zero_page_area(vm_paddr_t phys, int off, int size)
 	if (*(int *) gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
 	*(int *) gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
-	cpu_invlpg(gd->gd_CADDR3);
+	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero((char *)gd->gd_CADDR3 + off, size);
 	*(int *) gd->gd_CMAP3 = 0;
@@ -2187,8 +2246,8 @@ pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 	*(int *) gd->gd_CMAP1 = VPTE_V | (src & PG_FRAME) | PG_A;
 	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_R | VPTE_W | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
 
-	cpu_invlpg(gd->gd_CADDR1);
-	cpu_invlpg(gd->gd_CADDR2);
+	madvise(gd->gd_CADDR1, PAGE_SIZE, MADV_INVAL);
+	madvise(gd->gd_CADDR2, PAGE_SIZE, MADV_INVAL);
 
 	bcopy(gd->gd_CADDR1, gd->gd_CADDR2, PAGE_SIZE);
 
@@ -2218,8 +2277,8 @@ pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
 	*(int *) gd->gd_CMAP1 = VPTE_V | (src & VPTE_FRAME) | VPTE_A;
 	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_R | VPTE_W | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
 
-	cpu_invlpg(gd->gd_CADDR1);
-	cpu_invlpg(gd->gd_CADDR2);
+	madvise(gd->gd_CADDR1, PAGE_SIZE, MADV_INVAL);
+	madvise(gd->gd_CADDR2, PAGE_SIZE, MADV_INVAL);
 
 	bcopy((char *)gd->gd_CADDR1 + (src & PAGE_MASK),
 	      (char *)gd->gd_CADDR2 + (dst & PAGE_MASK),
@@ -2709,8 +2768,11 @@ pmap_activate(struct proc *p)
 #if defined(SWTCH_OPTIM_STATS)
 	tlb_flush_count++;
 #endif
+	panic("pmap_activate");	/* XXX store vmspace id in context */
+#if 0
 	p->p_thread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
 	load_cr3(p->p_thread->td_pcb->pcb_cr3);
+#endif
 }
 
 void

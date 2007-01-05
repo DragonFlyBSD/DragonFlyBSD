@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.1 2007/01/02 04:24:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.2 2007/01/05 22:18:18 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -212,12 +212,14 @@ ENTRY(cpu_exit_switch)
 	/*
 	 * Get us out of the vmspace
 	 */
+#if 0
 	movl	IdlePTD,%ecx
 	movl	%cr3,%eax
 	cmpl	%ecx,%eax
 	je	1f
 	movl	%ecx,%cr3
 1:
+#endif
 	movl	PCPU(curthread),%ebx
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -282,6 +284,7 @@ ENTRY(cpu_heavy_restore)
 	 * YYY which naturally also means that the PM_ACTIVE bit had better
 	 * already have been set before we set it above, check? YYY
 	 */
+#if 0
 	movl	%cr3,%esi
 	movl	PCB_CR3(%edx),%ecx
 	cmpl	%esi,%ecx
@@ -292,6 +295,7 @@ ENTRY(cpu_heavy_restore)
 #endif
 	movl	%ecx,%cr3
 4:
+#endif
 	/*
 	 * Clear TDF_RUNNING flag in old thread only after cleaning up
 	 * %cr3.  The target thread is already protected by being TDF_RUNQ
@@ -300,6 +304,7 @@ ENTRY(cpu_heavy_restore)
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)
 
+#if 0
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
@@ -344,8 +349,8 @@ ENTRY(cpu_heavy_restore)
 	movl	%eax, 4(%ebx)
 	movl	$GPROC0_SEL*8, %esi		/* GSEL(entry, SEL_KPL) */
 	ltr	%si
-
 3:
+#endif
 	/*
 	 * Restore general registers.
 	 */
@@ -357,6 +362,7 @@ ENTRY(cpu_heavy_restore)
 	movl	PCB_EIP(%edx),%eax
 	movl	%eax,(%esp)
 
+#if 0
 	/*
 	 * Restore the user LDT if we have one
 	 */
@@ -372,12 +378,16 @@ ENTRY(cpu_heavy_restore)
 	call	set_user_ldt
 	popl	%edx
 2:
+#endif
+#if 0
 	/*
 	 * Restore the user TLS if we have one
 	 */
 	pushl	%edx
 	call	set_user_TLS
 	popl	%edx
+#endif
+#if 0
 	/*
 	 * Restore the %gs segment register, which must be done after
 	 * loading the user LDT.  Since user processes can modify the
@@ -388,6 +398,7 @@ ENTRY(cpu_heavy_restore)
 	.globl	cpu_switch_load_gs
 cpu_switch_load_gs:
 	movl	PCB_GS(%edx),%gs
+#endif
 
 	/*
 	 * Restore the DEBUG register state if necessary.

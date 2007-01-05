@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.1 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.2 2007/01/05 22:18:20 dillon Exp $
  */
 
 /*
@@ -52,6 +52,8 @@
 #include <sys/vmmeter.h>
 #include <sys/thread2.h>
 
+#include <sys/mman.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_object.h>
@@ -64,21 +66,18 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
-#ifdef SMP
-
 static void
 _cpu_invltlb(void *dummy)
 {
-    cpu_invltlb();
+    /* XXX madvise over entire address space is really expensive */
+    madvise((void *)KvaStart, KvaSize, MADV_INVAL);	
 }
 
 static void
 _cpu_invl1pg(void *data)
 {
-    cpu_invlpg(data);
+    madvise(data, PAGE_SIZE, MADV_INVAL);
 }
-
-#endif
 
 /*
  * Initialize for add or flush
@@ -142,9 +141,9 @@ pmap_inval_flush(pmap_inval_info_t info)
 	lwkt_cpusync_finish(&info->pir_cpusync);
 #else
     if (info->pir_flags & PIRF_INVLTLB)
-	cpu_invltlb();
+	_cpu_invltlb(NULL);
     else if (info->pir_flags & PIRF_INVL1PG)
-	cpu_invlpg(info->pir_cpusync.cs_data);
+	_cpu_invl1pg(info->pir_cpusync.cs_data);
 #endif
     info->pir_flags = 0;
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.2 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.3 2007/01/05 22:18:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -48,6 +48,26 @@ void
 ovbcopy(const void *src, void *dst, size_t len)
 {
 	bcopy(src, dst, len);
+}
+
+void
+bcopyi(const void *src, void *dst, size_t len)
+{
+	bcopy(src, dst, len);
+}
+
+int
+copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *lencopied)
+{
+	size_t i;
+
+	for (i = 0; i < len; ++i) {
+		if ((((char *)kdaddr)[i] = ((const char *)kfaddr)[i]) == 0) {
+			*lencopied = i + 1;
+			return(0);
+		}
+	}
+	return (ENAMETOOLONG);
 }
 
 /*

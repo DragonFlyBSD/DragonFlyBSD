@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.5 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.6 2007/01/05 22:18:18 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <sys/systm.h>
 #include <sys/bootmaj.h>
 #include <sys/bus.h>
+#include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
@@ -71,6 +72,11 @@
 #include <sys/thread.h>
 #include <sys/device.h>
 #include <sys/machintr.h>
+
+#include <vm/pmap.h>
+#include <vm/vm_kern.h>
+#include <vm/vm_extern.h>
+#include <vm/vm_pager.h>
 
 #if 0
 #include <machine/pcb.h>
@@ -85,9 +91,10 @@
 device_t isa_bus_device = 0;
 #endif
 
-static void	configure_first (void *);
-static void	configure (void *);
-static void	configure_final (void *);
+static void cpu_startup (void *);
+static void configure_first (void *);
+static void configure (void *);
+static void configure_final (void *);
 
 #if defined(FFS) && defined(FFS_ROOT)
 static void	setroot (void);
@@ -99,6 +106,7 @@ static void	pxe_setup_nfsdiskless(void);
 #endif
 #endif
 
+SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL);
 SYSINIT(configure1, SI_SUB_CONFIGURE, SI_ORDER_FIRST, configure_first, NULL);
 /* SI_ORDER_SECOND is hookable */
 SYSINIT(configure2, SI_SUB_CONFIGURE, SI_ORDER_THIRD, configure, NULL);
@@ -107,6 +115,73 @@ SYSINIT(configure3, SI_SUB_CONFIGURE, SI_ORDER_ANY, configure_final, NULL);
 
 cdev_t	rootdev = NOCDEV;
 cdev_t	dumpdev = NOCDEV;
+
+/*
+ * 
+ */
+static void
+cpu_startup(void *dummy)
+{
+	vm_offset_t buffer_sva;
+	vm_offset_t buffer_eva;
+	vm_offset_t pager_sva;
+	vm_offset_t pager_eva;
+	vm_offset_t minaddr;
+	vm_offset_t maxaddr;
+
+	kprintf("%s", version);
+	kprintf("real memory = %llu (%lluK bytes)\n",
+		ptoa(Maxmem), ptoa(Maxmem) / 1024);
+
+	if (nbuf == 0) {
+		int factor = 4 * BKVASIZE / 1024;
+		int kbytes = physmem * (PAGE_SIZE / 1024);
+
+		nbuf = 50;
+		if (kbytes > 4096)
+			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
+		if (kbytes > 65536)
+			nbuf += (kbytes - 65536) * 2 / (factor * 5);
+		if (maxbcache && nbuf > maxbcache / BKVASIZE)
+			nbuf = maxbcache / BKVASIZE;
+	}
+	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
+		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
+		kprintf("Warning: nbufs capped at %d\n", nbuf);
+	}
+
+	nswbuf = max(min(nbuf/4, 256), 16);
+#ifdef NSWBUF_MIN
+	if (nswbuf < NSWBUF_MIN)
+		nswbuf = NSWBUF_MIN;
+#endif
+#ifdef DIRECTIO
+        ffs_rawread_setup();
+#endif
+	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
+		      (nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
+	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
+		      (nbuf*BKVASIZE));
+	buffer_map.system_map = 1;
+	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
+		      (nswbuf*MAXPHYS) + pager_map_size);
+	pager_map.system_map = 1;
+	kmem_suballoc(&kernel_map, &exec_map, &minaddr, &maxaddr,
+		      (16*(ARG_MAX+(PAGE_SIZE*3))));
+#if defined(USERCONFIG)
+        userconfig();
+	cninit();               /* the preferred console may have changed */
+#endif
+	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
+		ptoa(vmstats.v_free_count) / 1024);
+	bufinit();
+	vm_pager_bufferinit();
+#ifdef SMP
+	mp_start();
+	mp_announce();
+#endif
+	cpu_setregs();
+}
 
 /*
  * Determine i/o configuration for a machine.

@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.1 2007/01/02 04:24:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.2 2007/01/05 22:18:18 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -365,12 +365,16 @@ npx_intr(void *dummy)
 	 * before we entered our critical section.  If that occured, the
 	 * TS bit will be set and npxthread will be NULL.
 	 */
+	panic("npx_intr: not coded");
+	/* XXX FP STATE FLAG MUST BE PART OF CONTEXT SUPPLIED BY REAL KERNEL */
+#if 0
 	if (rcr0() & CR0_TS) {
 		KASSERT(mdcpu->gd_npxthread == NULL, ("gd_npxthread was %p with TS set!", mdcpu->gd_npxthread));
 		npxdna();
 		crit_exit();
 		return;
 	}
+#endif
 	if (mdcpu->gd_npxthread == NULL) {
 		get_mplock();
 		kprintf("npxintr: npxthread = %p, curthread = %p\n",
@@ -396,7 +400,7 @@ npx_intr(void *dummy)
 	 * Pass exception to process.
 	 */
 	frame = (struct intrframe *)&dummy;	/* XXX */
-	if ((ISPL(frame->if_cs) == SEL_UPL) || (frame->if_eflags & PSL_VM)) {
+	if ((ISPL(frame->if_cs) == SEL_UPL) /*||(frame->if_eflags&PSL_VM)*/) {
 		/*
 		 * Interrupt is essentially a trap, so we can afford to call
 		 * the SIGFPE handler (if any) as soon as the interrupt

@@ -31,13 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.2 2006/12/26 20:46:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.3 2007/01/05 22:18:20 dillon Exp $
  */
 
 #include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/machintr.h>
 #include <sys/errno.h>
 #include <stdio.h>
+
+/*
+ * Interrupt Subsystem ABI
+ */
 
 static void dummy_intrdis(int);
 static void dummy_intren(int);
@@ -89,3 +95,10 @@ dummy_finalize(void)
 {
 }
 
+/*
+ * Process pending interrupts
+ */
+void
+splz(void)
+{
+}

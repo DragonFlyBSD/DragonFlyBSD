@@ -31,38 +31,30 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.3 2007/01/05 22:18:19 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/sysarch.c,v 1.1 2007/01/05 22:18:20 dillon Exp $
  */
-
-#ifndef _MACHINE_MD_VAR_H_
-#define _MACHINE_MD_VAR_H_
-
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-#ifndef _SYS_VKERNEL_H_
-#include <sys/vkernel.h>
-#endif
+#include <sys/kernel.h>
+#include <sys/systm.h>
+#include <sys/sysproto.h>
+#include <sys/memrange.h>
+#include <sys/errno.h>
 
-extern	char	sigcode[];
-extern	int	szsigcode;
-extern	vpte_t	*KernelPTA;
-extern	vpte_t	*KernelPTD;
-extern	vm_offset_t crashdumpmap;
-extern  int	cpu_fxsr;
+int
+sys_sysarch(struct sysarch_args *uap)
+{
+	return (EOPNOTSUPP);
+}
 
-struct mdglobaldata;
+int
+cpu_set_iopl(void)
+{
+	return (EOPNOTSUPP);
+}
 
-vpte_t *pmap_kpte(vm_offset_t va);
-void cpu_gdinit (struct mdglobaldata *gd, int cpu);
-
-void cpu_heavy_restore(void);	/* cannot be called from C */
-void cpu_lwkt_restore(void);    /* cannot be called from C */
-void cpu_idle_restore(void);    /* cannot be called from C */
-void cpu_kthread_restore(void);	/* cannot be called from C */
-void cpu_exit_switch (struct thread *next);
-void cpu_setregs (void);
-void cpu_idle (void);
-
-#endif
+int
+cpu_clr_iopl(void)
+{
+	return (EOPNOTSUPP);
+}
 

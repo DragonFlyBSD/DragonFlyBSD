@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/global.s,v 1.1 2006/12/26 20:46:10 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/global.s,v 1.2 2007/01/05 22:18:18 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -75,10 +75,9 @@
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
 	.globl  gd_spending, gd_ipending, gd_fpending
-	.globl	gd_cnt, gd_private_tss
+	.globl	gd_cnt
 
 	.set    gd_cpuid,globaldata + GD_CPUID
-	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_intr_nesting_level,globaldata + GD_INTR_NESTING_LEVEL
