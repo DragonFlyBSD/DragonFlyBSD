@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.13 2006/09/21 16:16:07 dillon Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.14 2007/01/05 23:00:10 corecode Exp $
  */
 
 #ifdef __i386__
@@ -309,6 +309,26 @@ S_loadavg(int l2, void *p)
 		(double)tv->ldavg[0]/(double)tv->fscale,
 		(double)tv->ldavg[1]/(double)tv->fscale,
 		(double)tv->ldavg[2]/(double)tv->fscale);
+	return (0);
+}
+
+static int
+S_timespec(int l2, void *p)
+{
+	struct timespec *ts = (struct timespec*)p;
+	time_t tv_sec;
+	char *p1, *p2;
+
+	if (l2 != sizeof(*ts))
+		err(1, "S_timespec %d != %d", l2, sizeof(*ts));
+	printf("{ sec = %ld, nsec = %ld } ",
+		ts->tv_sec, ts->tv_nsec);
+	tv_sec = ts->tv_sec;
+	p1 = strdup(ctime(&tv_sec));
+	for (p2=p1; *p2 ; p2++)
+		if (*p2 == '\n')
+			*p2 = '\0';
+	fputs(p1, stdout);
 	return (0);
 }
 
@@ -593,6 +613,8 @@ show_var(int *oid, size_t nlen)
 			i = 0;
 			if (strcmp(fmt, "S,clockinfo") == 0)
 				func = S_clockinfo;
+			else if (strcmp(fmt, "S,timespec") == 0)
+				func = S_timespec;
 			else if (strcmp(fmt, "S,timeval") == 0)
 				func = S_timeval;
 			else if (strcmp(fmt, "S,loadavg") == 0)
