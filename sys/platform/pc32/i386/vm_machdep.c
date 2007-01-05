@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.50 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.51 2007/01/05 22:16:30 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -491,78 +491,6 @@ static int cnt_prezero;
 
 SYSCTL_INT(_vm_stats_misc, OID_AUTO,
 	cnt_prezero, CTLFLAG_RD, &cnt_prezero, 0, "");
-
-/*
- * Implement the pre-zeroed page mechanism.
- * This routine is called from the idle loop.
- */
-
-#define ZIDLE_LO(v)	((v) * 2 / 3)
-#define ZIDLE_HI(v)	((v) * 4 / 5)
-
-int
-vm_page_zero_idle(void)
-{
-	static int free_rover;
-	static int zero_state;
-	vm_page_t m;
-
-	/*
-	 * Attempt to maintain approximately 1/2 of our free pages in a
-	 * PG_ZERO'd state.   Add some hysteresis to (attempt to) avoid
-	 * generally zeroing a page when the system is near steady-state.
-	 * Otherwise we might get 'flutter' during disk I/O / IPC or 
-	 * fast sleeps.  We also do not want to be continuously zeroing
-	 * pages because doing so may flush our L1 and L2 caches too much.
-	 */
-
-	if (zero_state && vm_page_zero_count >= ZIDLE_LO(vmstats.v_free_count))
-		return(0);
-	if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
-		return(0);
-
-#ifdef SMP
-	if (try_mplock()) {
-#endif
-		crit_enter();
-		__asm __volatile("sti" : : : "memory");
-		zero_state = 0;
-		m = vm_page_list_find(PQ_FREE, free_rover, FALSE);
-		if (m != NULL && (m->flags & PG_ZERO) == 0) {
-			vm_page_queues[m->queue].lcnt--;
-			TAILQ_REMOVE(&vm_page_queues[m->queue].pl, m, pageq);
-			m->queue = PQ_NONE;
-			crit_exit();
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-			crit_enter();
-			vm_page_flag_set(m, PG_ZERO);
-			m->queue = PQ_FREE + m->pc;
-			vm_page_queues[m->queue].lcnt++;
-			TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m,
-			    pageq);
-			++vm_page_zero_count;
-			++cnt_prezero;
-			if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
-				zero_state = 1;
-		}
-		free_rover = (free_rover + PQ_PRIME2) & PQ_L2_MASK;
-		crit_exit();
-		__asm __volatile("cli" : : : "memory");
-#ifdef SMP
-		rel_mplock();
-#endif
-		return (1);
-#ifdef SMP
-	}
-#endif
-	/*
-	 * We have to enable interrupts for a moment if the try_mplock fails
-	 * in order to potentially take an IPI.   XXX this should be in 
-	 * swtch.s
-	 */
-	__asm __volatile("sti; nop; cli" : : : "memory");
-	return (0);
-}
 
 static void
 swi_vm(void *arg, void *frame)

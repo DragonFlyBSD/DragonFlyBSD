@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/platform/pc32/conf/files,v 1.4 2006/12/17 20:07:30 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/conf/files,v 1.5 2007/01/05 22:16:29 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -155,11 +155,11 @@ cpu/i386/misc/atomic.c		standard				\
 cpu/i386/misc/elf_machdep.c		standard
 cpu/i386/misc/in_cksum2.s		optional	inet
 cpu/i386/misc/ktr.c			optional	ktr
+cpu/i386/misc/db_disasm.c		optional	ddb
 machine/pc32/i386/autoconf.c		standard
 machine/pc32/i386/bios.c		standard
 machine/pc32/i386/bioscall.s		standard
 machine/pc32/i386/busdma_machdep.c	standard
-machine/pc32/i386/db_disasm.c		optional	ddb
 machine/pc32/i386/db_interface.c	optional	ddb
 machine/pc32/i386/db_trace.c		optional	ddb
 machine/pc32/i386/elan-mmcr.c		optional	cpu_elan

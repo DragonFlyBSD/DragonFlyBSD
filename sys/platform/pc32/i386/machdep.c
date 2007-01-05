@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.108 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.109 2007/01/05 22:16:30 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -232,7 +232,6 @@ SYSCTL_PROC(_machdep, OID_AUTO, msgbuf_clear, CTLTYPE_INT|CTLFLAG_RW,
 	"Clear kernel message buffer");
 
 vm_paddr_t Maxmem = 0;
-long dumplo;
 
 vm_paddr_t phys_avail[PHYSMAP_ENTRIES*2+2];
 
@@ -806,7 +805,7 @@ void
 cpu_halt(void)
 {
 	for (;;)
-		__asm__ ("hlt");
+		__asm__ __volatile("hlt");
 }
 
 /*

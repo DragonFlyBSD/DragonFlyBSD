@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.46 2006/12/28 18:29:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.47 2007/01/05 22:16:28 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -143,6 +143,7 @@ globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 
 int bootverbose = 0;			/* note: assignment to force non-bss */
 int cold = 1;				/* note: assignment to force non-bss */
+long dumplo;
 
 static void boot (int) __dead2;
 static void dumpsys (void);

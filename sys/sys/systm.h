@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.57 2006/12/27 20:41:58 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.58 2007/01/05 22:16:32 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -141,8 +141,11 @@ int	cpu_sanitize_frame (struct trapframe *);
 void	cpu_halt (void);
 void	cpu_reset (void);
 void	cpu_boot (int);
-
 void	cpu_rootconf (void);
+
+vm_paddr_t kvtop(void *addr);
+int	is_physical_memory (vm_offset_t addr);
+
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
 void	init_param1 (void);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.25 2007/01/05 22:16:28 dillon Exp $
  */
 
 #include "opt_polling.h"
@@ -39,7 +39,6 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 
-#include <machine/md_var.h>	/* for vm_page_zero_idle()	*/
 #include <net/if.h>			/* for IFF_* flags		*/
 #include <net/netisr.h>			/* for NETISR_POLL		*/
 
