@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.145 2007/01/05 17:09:10 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.146 2007/01/05 17:14:31 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -152,9 +152,6 @@ upgrade_etc:	preupgrade
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
-.if !defined(NOMAN)
-	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
-.endif
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
@@ -464,6 +461,9 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/man/man4/snd.4.gz
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
+.if !defined(NOMAN)
+	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
+.endif
 .if !defined(NO_MAKEDEV)
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
