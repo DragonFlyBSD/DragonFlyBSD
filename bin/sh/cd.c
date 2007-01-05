@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.20.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/cd.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.35 2006/06/12 21:06:00 stefanf Exp $
+ * $DragonFly: src/bin/sh/cd.c,v 1.5 2007/01/05 22:18:52 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -124,8 +124,9 @@ cdcmd(int argc, char **argv)
 				 * XXX - rethink
 				 */
 				if (p[0] == '.' && p[1] == '/' && p[2] != '\0')
-					p += 2;
-				print = strcmp(p, dest);
+					print = strcmp(p + 2, dest);
+				else
+					print = strcmp(p, dest);
 			}
 			if (docd(p, print, phys) >= 0)
 				return 0;
