@@ -92,7 +92,7 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
-/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.5 2007/01/06 03:33:48 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.6 2007/01/06 03:34:39 dillon Exp $ */
 
 #include "opt_ddb.h"
 
@@ -107,11 +107,6 @@
 
 void		gdb_handle_exception (db_regs_t *, int, int);
 
-void
-gdb_handle_exception (db_regs_t *raw_regs, int type, int code)
-{
-}
-#else
 /************************************************************************/
 
 extern jmp_buf	db_jmpbuf;
