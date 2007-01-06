@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.8 2007/01/06 19:40:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.9 2007/01/06 19:57:01 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -163,6 +163,7 @@ void
 init_sys_memory(char *imageFile)
 {
 	struct stat st;
+	int i;
 	int fd;
 
 	/*
@@ -195,9 +196,20 @@ init_sys_memory(char *imageFile)
 	 * file exclusively locked.  Do not allow multiple virtual kernels
 	 * to use the same image file.
 	 */
-	if (imageFile == NULL)
-		asprintf(&imageFile, "/var/vkernel/image.%05d", (int)getpid());
-	fd = open(imageFile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
+	if (imageFile == NULL) {
+		for (i = 0; i < 1000000; ++i) {
+			asprintf(&imageFile, "/var/vkernel/image.%06d", i);
+			fd = open(imageFile, 
+				  O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
+			if (fd < 0 && fd == EWOULDBLOCK) {
+				free(imageFile);
+				continue;
+			}
+			break;
+		}
+	} else {
+		fd = open(imageFile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
+	}
 	if (fd < 0 || fstat(fd, &st) < 0) {
 		err(1, "Unable to open/create %s: %s",
 		      imageFile, strerror(errno));
@@ -241,6 +253,7 @@ void
 init_kern_memory(void)
 {
 	void *base;
+	char *zero;
 	vpte_t pte;
 	int i;
 
@@ -284,6 +297,18 @@ init_kern_memory(void)
 		pte = (i * PAGE_SIZE) | VPTE_V | VPTE_R | VPTE_W;
 		write(MemImageFd, &pte, sizeof(pte));
 	}
+
+	/*
+	 * Initialize remaining PTEs to 0.  We may be reusing a memory image
+	 * file.  This is approximately a megabyte.
+	 */
+	i = (KERNEL_KVA_SIZE / PAGE_SIZE - i) * sizeof(pte);
+	zero = malloc(PAGE_SIZE);
+	while (i) {
+		write(MemImageFd, zero, (i > PAGE_SIZE) ? PAGE_SIZE : i);
+		i = i - ((i > PAGE_SIZE) ? PAGE_SIZE : i);
+	}
+	free(zero);
 
 	/*
 	 * Enable the page table and calculate pointers to our self-map
