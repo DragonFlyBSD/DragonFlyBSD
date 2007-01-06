@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.9 2007/01/06 19:57:01 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.10 2007/01/06 22:43:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -84,6 +84,7 @@ u_int tsc_present;	/* XXX */
 
 struct privatespace *CPU_prvspace;
 
+static struct trapframe proc0_tf;
 static void *proc0paddr;
 
 static void init_sys_memory(char *imageFile);
@@ -454,6 +455,8 @@ init_vkernel(void)
 	mi_gdinit(&gd->mi, 0);
 	cpu_gdinit(gd, 0);
 	mi_proc0init(&gd->mi, proc0paddr);
+	proc0.p_lwp.lwp_md.md_regs = &proc0_tf;
+
 	/*init_locks();*/
 	cninit();
 	rand_initialize();
