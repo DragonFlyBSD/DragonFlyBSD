@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/platform/vkernel/conf/kern.mk,v 1.2 2006/12/05 23:14:53 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/kern.mk,v 1.3 2007/01/06 08:57:30 dillon Exp $
 #
 # On the i386, do not align the stack to 16-byte boundaries.  Otherwise GCC
 # adds code to the entry and exit point of every function to align the
@@ -16,5 +16,9 @@ CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 CFLAGS+=	-D_KERNEL_VIRTUAL
+
+# Remove the dynamic library hack for now
+#
+SYSTEM_OBJS:= ${SYSTEM_OBJS:Nhack.So}
 
 INLINE_LIMIT=	8000
