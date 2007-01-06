@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/sys/platform/pc32/include/param.h,v 1.1 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/param.h,v 1.2 2007/01/06 08:25:01 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -17,6 +17,8 @@
 #ifndef MACHINE
 #define MACHINE         "pc32"
 #endif
+
+#define _GDT_ARRAY_PRESENT	/* used by db_disasm */
 
 #endif
 
