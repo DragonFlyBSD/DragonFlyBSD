@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.12 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.13 2007/01/06 22:35:46 dillon Exp $
  */
 
 /*
@@ -103,15 +103,8 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	 * makes things easier.  This way is trivial - right?
 	 */
 	do {
-		vm_map_t tmap;
 		vm_offset_t uva;
 		int page_offset;		/* offset into page */
-		vm_map_entry_t out_entry;
-		vm_prot_t out_prot;
-		boolean_t wired;
-		vm_pindex_t pindex;
-		vm_object_t object;
-		vm_object_t nobject;
 		u_int len;
 		vm_page_t m;
 
@@ -131,68 +124,10 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		/*
 		 * Fault the page on behalf of the process
 		 */
-		error = vm_fault(map, pageno, reqprot, VM_FAULT_NORMAL);
+		m = vm_fault_page(map, pageno, reqprot,
+				  VM_FAULT_NORMAL, &error);
 		if (error) {
-			error = EFAULT;
-			break;
-		}
-
-		/*
-		 * Now we need to get the page.  out_entry, out_prot, wired,
-		 * and single_use aren't used.  One would think the vm code
-		 * would be a *bit* nicer...  We use tmap because
-		 * vm_map_lookup() can change the map argument.
-		 */
-		tmap = map;
-		error = vm_map_lookup(&tmap, pageno, reqprot,
-			      &out_entry, &object, &pindex, &out_prot,
-			      &wired);
-
-		if (error) {
-			error = EFAULT;
-			break;
-		}
-
-		/*
-		 * spl protection is required to avoid interrupt freeing
-		 * races, reference the object to avoid it being ripped
-		 * out from under us if we block.
-		 */
-		crit_enter();
-		vm_object_reference(object);
-again:
-		m = vm_page_lookup(object, pindex);
-
-		/*
-		 * Allow fallback to backing objects if we are reading
-		 */
-		while (m == NULL && !writing && object->backing_object) {
-			pindex += OFF_TO_IDX(object->backing_object_offset);
-			nobject = object->backing_object;
-			vm_object_reference(nobject);
-			vm_object_deallocate(object);
-			object = nobject;
-			m = vm_page_lookup(object, pindex);
-		}
-
-		/*
-		 * Wait for any I/O's to complete, then hold the page
-		 * so we can release the spl.
-		 */
-		if (m) {
-			if (vm_page_sleep_busy(m, FALSE, "rwmem"))
-				goto again;
-			vm_page_hold(m);
-		}
-		crit_exit();
-
-		/*
-		 * We no longer need the object.  If we do not have a page
-		 * then cleanup.
-		 */
-		vm_object_deallocate(object);
-		if (m == NULL) {
-			vm_map_lookup_done(tmap, out_entry, 0);
+			KKASSERT(m == NULL);
 			error = EFAULT;
 			break;
 		}
@@ -201,7 +136,6 @@ again:
 		 * Cleanup tmap then create a temporary KVA mapping and
 		 * do the I/O.
 		 */
-		vm_map_lookup_done(tmap, out_entry, 0);
 		pmap_kenter(kva, VM_PAGE_TO_PHYS(m));
 		error = uiomove((caddr_t)(kva + page_offset), len, uio);
 		pmap_kremove(kva);

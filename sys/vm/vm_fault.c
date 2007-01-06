@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.34 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.35 2007/01/06 22:35:47 dillon Exp $
  */
 
 /*
@@ -401,6 +401,172 @@ RetryFault:
 	vm_object_deallocate(fs.first_object);
 
 	return (KERN_SUCCESS);
+}
+
+/*
+ * Fault-in the specified virtual address in the specified map, doing all
+ * necessary manipulation of the object store and all necessary I/O.  Return
+ * a held VM page or NULL, and set *errorp.  The related pmap is not
+ * updated.
+ *
+ * Since the pmap is not updated, this routine may not be used to wire
+ * the page.
+ */
+vm_page_t
+vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
+	      int fault_flags, int *errorp)
+{
+	int result;
+	vm_pindex_t first_pindex;
+	struct faultstate fs;
+
+	mycpu->gd_cnt.v_vm_faults++;
+
+	fs.didlimit = 0;
+	fs.hardfault = 0;
+	fs.fault_flags = fault_flags;
+	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
+
+RetryFault:
+	/*
+	 * Find the vm_map_entry representing the backing store and resolve
+	 * the top level object and page index.  This may have the side
+	 * effect of executing a copy-on-write on the map entry and/or
+	 * creating a shadow object, but will not COW any actual VM pages.
+	 *
+	 * On success fs.map is left read-locked and various other fields 
+	 * are initialized but not otherwise referenced or locked.
+	 *
+	 * NOTE!  vm_map_lookup will upgrade the fault_type to VM_FAULT_WRITE
+	 * if the map entry is a virtual page table and also writable,
+	 * so we can set the 'A'accessed bit in the virtual page table entry.
+	 */
+	fs.map = map;
+	result = vm_map_lookup(&fs.map, vaddr, fault_type,
+			       &fs.entry, &fs.first_object,
+			       &first_pindex, &fs.first_prot, &fs.wired);
+
+	if (result != KERN_SUCCESS) {
+		*errorp = result;
+		return (NULL);
+	}
+
+	/*
+	 * fs.map is read-locked
+	 *
+	 * Misc checks.  Save the map generation number to detect races.
+	 */
+	fs.map_generation = fs.map->timestamp;
+
+	if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
+		panic("vm_fault: fault on nofault entry, addr: %lx",
+		    (u_long)vaddr);
+	}
+
+	/*
+	 * A system map entry may return a NULL object.  No object means
+	 * no pager means an unrecoverable kernel fault.
+	 */
+	if (fs.first_object == NULL) {
+		panic("vm_fault: unrecoverable fault at %p in entry %p",
+			(void *)vaddr, fs.entry);
+	}
+
+	/*
+	 * Make a reference to this object to prevent its disposal while we
+	 * are messing with it.  Once we have the reference, the map is free
+	 * to be diddled.  Since objects reference their shadows (and copies),
+	 * they will stay around as well.
+	 *
+	 * Bump the paging-in-progress count to prevent size changes (e.g.
+	 * truncation operations) during I/O.  This must be done after
+	 * obtaining the vnode lock in order to avoid possible deadlocks.
+	 */
+	vm_object_reference(fs.first_object);
+	fs.vp = vnode_pager_lock(fs.first_object);
+	vm_object_pip_add(fs.first_object, 1);
+
+	fs.lookup_still_valid = TRUE;
+	fs.first_m = NULL;
+	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+
+	/*
+	 * If the entry is wired we cannot change the page protection.
+	 */
+	if (fs.wired)
+		fault_type = fs.first_prot;
+
+	/*
+	 * The page we want is at (first_object, first_pindex), but if the
+	 * vm_map_entry is VM_MAPTYPE_VPAGETABLE we have to traverse the
+	 * page table to figure out the actual pindex.
+	 *
+	 * NOTE!  DEVELOPMENT IN PROGRESS, THIS IS AN INITIAL IMPLEMENTATION
+	 * ONLY
+	 */
+	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		result = vm_fault_vpagetable(&fs, &first_pindex,
+					     fs.entry->aux.master_pde);
+		if (result == KERN_TRY_AGAIN)
+			goto RetryFault;
+		if (result != KERN_SUCCESS) {
+			*errorp = result;
+			return (NULL);
+		}
+	}
+
+	/*
+	 * Now we have the actual (object, pindex), fault in the page.  If
+	 * vm_fault_object() fails it will unlock and deallocate the FS
+	 * data.   If it succeeds everything remains locked and fs->object
+	 * will have an additinal PIP count if it is not equal to
+	 * fs->first_object
+	 */
+	result = vm_fault_object(&fs, first_pindex, fault_type);
+
+	if (result == KERN_TRY_AGAIN)
+		goto RetryFault;
+	if (result != KERN_SUCCESS) {
+		*errorp = result;
+		return(NULL);
+	}
+
+	/*
+	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
+	 * will contain a busied page.
+	 */
+	unlock_things(&fs);
+
+	/*
+	 * Return a held page.  We are not doing any pmap manipulation so do
+	 * not set PG_MAPPED.
+	 */
+	vm_page_flag_clear(fs.m, PG_ZERO);
+	vm_page_flag_set(fs.m, PG_REFERENCED);
+	vm_page_hold(fs.m);
+
+	/*
+	 * Unbusy the page by activating it.  It remains held and will not
+	 * be reclaimed.
+	 */
+	vm_page_activate(fs.m);
+
+	if (curthread->td_lwp) {
+		if (fs.hardfault) {
+			curthread->td_lwp->lwp_ru.ru_majflt++;
+		} else {
+			curthread->td_lwp->lwp_ru.ru_minflt++;
+		}
+	}
+
+	/*
+	 * Unlock everything, and return the held page.
+	 */
+	vm_page_wakeup(fs.m);
+	vm_object_deallocate(fs.first_object);
+
+	*errorp = 0;
+	return(fs.m);
 }
 
 /*
