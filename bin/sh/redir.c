@@ -35,7 +35,7 @@
  *
  * @(#)redir.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/redir.c,v 1.12.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/redir.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/redir.c,v 1.4 2007/01/06 03:44:04 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -175,7 +175,7 @@ openredirect(union node *redir, char memory[10])
 	case NFROM:
 		fname = redir->nfile.expfname;
 		if ((f = open(fname, O_RDONLY)) < 0)
-			error("cannot open %s: %s", fname, errmsg(errno, E_OPEN));
+			error("cannot open %s: %s", fname, strerror(errno));
 movefd:
 		if (f != fd) {
 			close(fd);
@@ -185,54 +185,26 @@ movefd:
 		break;
 	case NFROMTO:
 		fname = redir->nfile.expfname;
-#ifdef O_CREAT
 		if ((f = open(fname, O_RDWR|O_CREAT, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-#else
-		if ((f = open(fname, O_RDWR, 0666)) < 0) {
-			if (errno != ENOENT)
-				error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-			else if ((f = creat(fname, 0666)) < 0)
-				error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-			else {
-				close(f);
-				if ((f = open(fname, O_RDWR)) < 0) {
-					error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-					remove(fname);
-				}
-			}
-		}
-#endif
+			error("cannot create %s: %s", fname, strerror(errno));
 		goto movefd;
 	case NTO:
 		fname = redir->nfile.expfname;
 		if (Cflag && stat(fname, &sb) != -1 && S_ISREG(sb.st_mode))
 			error("cannot create %s: %s", fname,
-			    errmsg(EEXIST, E_CREAT));
-#ifdef O_CREAT
+			    strerror(EEXIST));
 		if ((f = open(fname, O_WRONLY|O_CREAT|O_TRUNC, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-#else
-		if ((f = creat(fname, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-#endif
+			error("cannot create %s: %s", fname, strerror(errno));
 		goto movefd;
 	case NCLOBBER:
 		fname = redir->nfile.expfname;
 		if ((f = open(fname, O_WRONLY|O_CREAT|O_TRUNC, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
+			error("cannot create %s: %s", fname, strerror(errno));
 		goto movefd;
 	case NAPPEND:
 		fname = redir->nfile.expfname;
-#ifdef O_APPEND
 		if ((f = open(fname, O_WRONLY|O_CREAT|O_APPEND, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-#else
-		if ((f = open(fname, O_WRONLY)) < 0
-		 && (f = creat(fname, 0666)) < 0)
-			error("cannot create %s: %s", fname, errmsg(errno, E_CREAT));
-		lseek(f, (off_t)0, 2);
-#endif
+			error("cannot create %s: %s", fname, strerror(errno));
 		goto movefd;
 	case NTOFD:
 	case NFROMFD:
@@ -283,9 +255,7 @@ openhere(union node *redir)
 		signal(SIGINT, SIG_IGN);
 		signal(SIGQUIT, SIG_IGN);
 		signal(SIGHUP, SIG_IGN);
-#ifdef SIGTSTP
 		signal(SIGTSTP, SIG_IGN);
-#endif
 		signal(SIGPIPE, SIG_DFL);
 		if (redir->type == NHERE)
 			xwrite(pip[1], redir->nhere.doc->narg.text, len);

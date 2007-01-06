@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.8 2006/09/28 22:29:44 pavalos Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.9 2007/01/06 03:44:04 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -140,7 +140,9 @@ shellexec(char **argv, char **envp, const char *path, int idx)
 		exerrno = 2;
 		break;
 	}
-	exerror(EXEXEC, "%s: %s", argv[0], errmsg(e, E_EXEC));
+	if (e == ENOENT || e == ENOTDIR)
+		exerror(EXEXEC, "%s: not found", argv[0]);
+	exerror(EXEXEC, "%s: %s", argv[0], strerror(e));
 }
 
 
@@ -416,8 +418,12 @@ loop:
 	/* We failed.  If there was an entry for this command, delete it */
 	if (cmdp)
 		delete_cmd_entry();
-	if (printerr)
-		outfmt(out2, "%s: %s\n", name, errmsg(e, E_EXEC));
+	if (printerr) {
+		if (e == ENOENT || e == ENOTDIR)
+			outfmt(out2, "%s: not found\n", name);
+		else
+			outfmt(out2, "%s: %s\n", name, strerror(e));
+	}
 	entry->cmdtype = CMDUNKNOWN;
 	return;
 

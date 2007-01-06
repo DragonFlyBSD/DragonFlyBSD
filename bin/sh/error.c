@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)error.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/error.c,v 1.15.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/error.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/error.c,v 1.26 2006/02/04 14:37:50 schweikh Exp $
+ * $DragonFly: src/bin/sh/error.c,v 1.4 2007/01/06 03:44:04 pavalos Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ onint(void)
 	 * This doesn't seem to be needed, since main() emits a newline.
 	 */
 #if 0
-	if (tcgetpgrp(0) == getpid())	
+	if (tcgetpgrp(0) == getpid())
 		write(STDERR_FILENO, "\n", 1);
 #endif
 	if (rootshell && iflag)
@@ -175,92 +175,4 @@ exerror(int cond, const char *msg, ...)
 	va_start(ap, msg);
 	exverror(cond, msg, ap);
 	va_end(ap);
-}
-
-
-
-/*
- * Table of error messages.
- */
-
-struct errname {
-	short errcode;		/* error number */
-	short action;		/* operation which encountered the error */
-	const char *msg;	/* text describing the error */
-};
-
-
-#define ALL (E_OPEN|E_CREAT|E_EXEC)
-
-STATIC const struct errname errormsg[] = {
-	{ EINTR,	ALL,	"interrupted" },
-	{ EACCES,	ALL,	"permission denied" },
-	{ EIO,		ALL,	"I/O error" },
-	{ ENOENT,	E_OPEN,	"no such file" },
-	{ ENOENT,	E_CREAT,"directory nonexistent" },
-	{ ENOENT,	E_EXEC,	"not found" },
-	{ ENOTDIR,	E_OPEN,	"no such file" },
-	{ ENOTDIR,	E_CREAT,"directory nonexistent" },
-	{ ENOTDIR,	E_EXEC,	"not found" },
-	{ EISDIR,	ALL,	"is a directory" },
-#ifdef notdef
-	{ EMFILE,	ALL,	"too many open files" },
-#endif
-	{ ENFILE,	ALL,	"file table overflow" },
-	{ ENOSPC,	ALL,	"file system full" },
-#ifdef EDQUOT
-	{ EDQUOT,	ALL,	"disk quota exceeded" },
-#endif
-#ifdef ENOSR
-	{ ENOSR,	ALL,	"no streams resources" },
-#endif
-	{ ENXIO,	ALL,	"no such device or address" },
-	{ EROFS,	ALL,	"read-only file system" },
-	{ ETXTBSY,	ALL,	"text busy" },
-	{ ENOMEM,	ALL,	"not enough memory" },
-#ifdef ENOLINK
-	{ ENOLINK,	ALL,	"remote access failed" },
-#endif
-#ifdef EMULTIHOP
-	{ EMULTIHOP,	ALL,	"remote access failed" },
-#endif
-#ifdef ECOMM
-	{ ECOMM,	ALL,	"remote access failed" },
-#endif
-#ifdef ESTALE
-	{ ESTALE,	ALL,	"remote access failed" },
-#endif
-#ifdef ETIMEDOUT
-	{ ETIMEDOUT,	ALL,	"remote access failed" },
-#endif
-#ifdef ELOOP
-	{ ELOOP,	ALL,	"symbolic link loop" },
-#endif
-	{ E2BIG,	E_EXEC,	"argument list too long" },
-#ifdef ELIBACC
-	{ ELIBACC,	E_EXEC,	"shared library missing" },
-#endif
-	{ EEXIST,	E_CREAT, "file exists" },
-	{ 0,		0,	NULL },
-};
-
-
-/*
- * Return a string describing an error.  The returned string may be a
- * pointer to a static buffer that will be overwritten on the next call.
- * Action describes the operation that got the error.
- */
-
-const char *
-errmsg(int e, int action)
-{
-	struct errname const *ep;
-	static char buf[12];
-
-	for (ep = errormsg ; ep->errcode ; ep++) {
-		if (ep->errcode == e && (ep->action & action) != 0)
-			return ep->msg;
-	}
-	fmtstr(buf, sizeof buf, "error %d", e);
-	return buf;
 }

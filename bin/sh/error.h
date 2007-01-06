@@ -34,18 +34,9 @@
  * SUCH DAMAGE.
  *
  *	@(#)error.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/error.h,v 1.11.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/error.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/error.h,v 1.17 2004/04/06 20:06:51 markm Exp $
+ * $DragonFly: src/bin/sh/error.h,v 1.4 2007/01/06 03:44:04 pavalos Exp $
  */
-
-/*
- * Types of operations (passed to the errmsg routine).
- */
-
-#define E_OPEN 01	/* opening a file */
-#define E_CREAT 02	/* creating a file */
-#define E_EXEC 04	/* executing a program */
-
 
 /*
  * We enclose jmp_buf in a structure so that we can declare pointers to
@@ -94,7 +85,6 @@ void exraise(int);
 void onint(void);
 void error(const char *, ...) __printf0like(1, 2);
 void exerror(int, const char *, ...) __printf0like(2, 3);
-const char *errmsg(int, int);
 
 
 /*
