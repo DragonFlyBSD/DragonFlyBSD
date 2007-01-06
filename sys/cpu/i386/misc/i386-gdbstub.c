@@ -92,9 +92,8 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
-/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.4 2006/09/09 19:34:46 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.5 2007/01/06 03:33:48 dillon Exp $ */
 
-#include "use_sio.h"
 #include "opt_ddb.h"
 
 #include <sys/param.h>
@@ -108,7 +107,6 @@
 
 void		gdb_handle_exception (db_regs_t *, int, int);
 
-#if NSIO == 0
 void
 gdb_handle_exception (db_regs_t *raw_regs, int type, int code)
 {
@@ -616,4 +614,4 @@ gdb_handle_exception (db_regs_t *raw_regs, int type, int code)
       putpacket (remcomOutBuffer);
     }
 }
-#endif /* NSIO > 0 */
+
