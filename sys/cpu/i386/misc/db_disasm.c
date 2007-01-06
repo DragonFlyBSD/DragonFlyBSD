@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.5 2006/09/13 18:45:12 swildner Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.6 2007/01/06 08:24:41 dillon Exp $
  */
 
 /*
@@ -1120,10 +1120,13 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *regs)
 	get_value_inc(inst, loc, 1, FALSE);
 	seg = 0;
 
+#ifdef _GDT_ARRAY_PRESENT
 	if (regs && gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_cs & 0xFFFF)].sd.sd_def32 == 0) {
 		size = WORD;
 		short_addr = TRUE;
-	} else {
+	} else
+#endif
+	{
 		size = LONG;
 		short_addr = FALSE;
 	}
