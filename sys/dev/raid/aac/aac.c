@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.28 2006/12/22 23:26:23 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.29 2007/01/06 19:37:17 dillon Exp $
  */
 
 /*
@@ -1541,7 +1541,8 @@ aac_init(struct aac_softc *sc)
 	ip->PrintfBufferSize = AAC_PRINTF_BUFSIZE;
 
 	/* The adapter assumes that pages are 4K in size */
-	ip->HostPhysMemPages = ctob(physmem) / AAC_PAGE_SIZE;
+	/* XXX why should the adapter care? */
+	ip->HostPhysMemPages = ctob((int)Maxmem) / AAC_PAGE_SIZE;
 	ip->HostElapsedSeconds = time_second;	/* reset later if invalid */
 
 	/*

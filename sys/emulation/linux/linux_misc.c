@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.34 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.35 2007/01/06 19:37:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -133,7 +133,7 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 	for (i = 0; i < 3; i++)
 		sysinfo.loads[i] = averunnable.ldavg[i];
 
-	sysinfo.totalram = physmem * PAGE_SIZE;
+	sysinfo.totalram = Maxmem * PAGE_SIZE;
 	sysinfo.freeram = sysinfo.totalram - vmstats.v_wire_count * PAGE_SIZE;
 
 	sysinfo.sharedram = 0;

@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.15 2006/12/20 18:14:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.16 2007/01/06 19:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
 
-	memtotal = physmem * PAGE_SIZE;
+	memtotal = Maxmem * PAGE_SIZE;
 	/*
 	 * The correct thing here would be:
 	 *
