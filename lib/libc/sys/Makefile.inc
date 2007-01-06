@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.21 2006/09/13 17:10:33 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.22 2007/01/06 01:46:36 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -145,7 +145,7 @@ MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
 	sched_get_priority_max.2 sched_rr_get_interval.2
 MLINKS+=sched_setparam.2 sched_getparam.2
 MLINKS+=sched_setscheduler.2 sched_getscheduler.2
-MLINKS+=tls.2 sys_set_tls_area.2 tls.2 sys_get_tls_area.2
+MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
 MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
 .endif
 .endif

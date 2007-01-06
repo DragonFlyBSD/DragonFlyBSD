@@ -4,7 +4,7 @@
  *	Rapidly switch between threads with different TLS pointers to
  *	test that the operating system properly switches the TLS segment.
  *
- * $DragonFly: src/test/stress/eattls.c,v 1.1 2005/05/02 19:33:52 dillon Exp $
+ * $DragonFly: src/test/stress/eattls.c,v 1.2 2007/01/06 01:46:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -41,8 +41,8 @@ main(int ac, char **av)
     test = (void *)buf;
     info.base = buf;
     info.size = sizeof(struct test);
-    if ((gs = sys_set_tls_area(2, &info, sizeof(info))) < 0) {
-	perror("sys_set_tls_area");
+    if ((gs = set_tls_area(2, &info, sizeof(info))) < 0) {
+	perror("set_tls_area");
 	exit(1);
     }
     test->random1 = random1;

@@ -30,26 +30,26 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.6 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.7 2007/01/06 01:46:36 dillon Exp $
 .\"
 .Dd February 21, 2005
 .Dt TLS 2
 .Os
 .Sh NAME
-.Nm sys_set_tls_area ,
-.Nm sys_get_tls_area
+.Nm set_tls_area ,
+.Nm get_tls_area
 .Nd kernel TLS (thread local storage) support.
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In sys/tls.h
 .Ft int
-.Fn sys_set_tls_area "int which" "struct tls_info *info" "size_t infosize"
+.Fn set_tls_area "int which" "struct tls_info *info" "size_t infosize"
 .Ft int
-.Fn sys_get_tls_area "int which" "struct tls_info *info" "size_t infosize"
+.Fn get_tls_area "int which" "struct tls_info *info" "size_t infosize"
 .Sh DESCRIPTION
 The
-.Fn sys_set_tls_area
+.Fn set_tls_area
 system call creates an entry for the TLS facility
 .Fa which
 representing thread local storage as specified by the
@@ -58,7 +58,7 @@ structure.  A descriptor representing the facility is returned, or -1 if
 an error occured.  The facility may be cleared by specifying a NULL pointer
 and an infosize of 0.
 The
-.Fn sys_get_tls_area
+.Fn get_tls_area
 system call retrieves the requested TLS facility.  A descriptor representing
 the facility is returned, or -1 if an error occured.  If you simply want the
 descriptor you may specify a NULL pointer and an infosize of 0.
@@ -70,7 +70,7 @@ load value is returned.
 The
 .Fa tls_info
 structure passed to
-.Fn sys_set_tls_area
+.Fn set_tls_area
 should first be zerod (to remain compatible with future extensions)
 and then initialized.
 .Pp
@@ -112,14 +112,14 @@ main(int ac, char **av)
 
     info.base = &X;
     info.size = sizeof(X);
-    if ((gs = sys_set_tls_area(0, &info, sizeof(info))) < 0) {
+    if ((gs = set_tls_area(0, &info, sizeof(info))) < 0) {
         perror("setarea");
         exit(1);
     }
     printf("gs = %04x\en", gs);
     __asm __volatile("movl %0,%%eax; movl %%eax,%%gs" : "=m" (gs) : : "ax");
 
-    if (sys_get_tls_area(0, &info, sizeof(info)) < 0) {
+    if (get_tls_area(0, &info, sizeof(info)) < 0) {
         perror("getarea");
         exit(1);
     }
@@ -156,15 +156,15 @@ is not supported.
 .It Bq Er EINVAL
 An invalid parameter has been specified.
 .It Bq Er ENOENT
-(sys_get_tls_area) The specified facility has not been initialized with
+(get_tls_area) The specified facility has not been initialized with
 .Fn sys_set_tls_area .
 .El
 .Sh SEE ALSO
 .Xr umtx 2
 .Sh HISTORY
 The
-.Fn sys_set_tls_area ,
+.Fn set_tls_area ,
 and
-.Fn sys_get_tls_area
+.Fn get_tls_area
 function calls first appeared in
 .Dx 1.1 .

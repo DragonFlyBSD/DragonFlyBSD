@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/tls.c,v 1.6 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/tls.c,v 1.7 2007/01/06 01:46:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@
  * (struct tls_info *info, int infosize, int which)
  */
 int
-sys_sys_set_tls_area(struct sys_set_tls_area_args *uap)
+sys_set_tls_area(struct set_tls_area_args *uap)
 {
 	struct tls_info info;
 	struct segment_descriptor *desc;
@@ -157,7 +157,7 @@ sys_sys_set_tls_area(struct sys_set_tls_area_args *uap)
  * (struct tls_info *info, int infosize, int which)
  */
 int
-sys_sys_get_tls_area(struct sys_get_tls_area_args *uap)
+sys_get_tls_area(struct get_tls_area_args *uap)
 {
 	struct tls_info info;
 	struct segment_descriptor *desc;

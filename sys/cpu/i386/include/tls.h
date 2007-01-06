@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.10 2006/12/27 20:43:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.11 2007/01/06 01:46:39 dillon Exp $
  */
 
 #ifndef	_CPU_TLS_H_
@@ -103,7 +103,7 @@ tls_set_tcb(struct tls_tcb *tcb)
 
 	info.base = tcb;
 	info.size = -1;
-	seg = sys_set_tls_area(0, &info, sizeof(info));
+	seg = set_tls_area(0, &info, sizeof(info));
 	__asm __volatile("movl %0, %%gs" : : "r" (seg));
 }
 
@@ -115,8 +115,20 @@ tls_set_gs(void *base, size_t bytes)
 
 	info.base = base;
 	info.size = bytes;
-	seg = sys_set_tls_area(0, &info, sizeof(info));
+	seg = set_tls_area(0, &info, sizeof(info));
 	__asm __volatile("movl %0, %%gs" : : "r" (seg));
+}
+
+static __inline void
+tls_set_fs(void *base, size_t bytes)
+{
+	struct tls_info info;
+	int seg;
+
+	info.base = base;
+	info.size = bytes;
+	seg = set_tls_area(1, &info, sizeof(info));
+	__asm __volatile("movl %0, %%fs" : : "r" (seg));
 }
 
 #ifndef _KERNEL

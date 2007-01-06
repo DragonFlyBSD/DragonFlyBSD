@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.45 2006/10/10 15:43:14 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.46 2007/01/06 01:46:40 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -644,8 +644,8 @@
 469	STD	BSD	{ int umtx_sleep(volatile const int *ptr, int value, int timeout); }
 470	STD	BSD	{ int umtx_wakeup(volatile const int *ptr, int count); }
 471	STD	BSD	{ int jail_attach(int jid); }
-472	STD	BSD	{ int sys_set_tls_area(int which, struct tls_info *info, size_t infosize); }
-473	STD	BSD	{ int sys_get_tls_area(int which, struct tls_info *info, size_t infosize); }
+472	STD	BSD	{ int set_tls_area(int which, struct tls_info *info, size_t infosize); }
+473	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
 474	MPSAFE	STD	BSD	{ int closefrom(int fd); }
 475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
 476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
