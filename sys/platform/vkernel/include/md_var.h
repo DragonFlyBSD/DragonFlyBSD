@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.3 2007/01/05 22:18:19 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.4 2007/01/06 08:34:53 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -51,6 +51,9 @@ extern	vpte_t	*KernelPTD;
 extern	vm_offset_t crashdumpmap;
 extern  int	cpu_fxsr;
 
+extern  char    cpu_vendor[];	/* XXX belongs in i386 */
+extern  u_int   cpu_id;		/* XXX belongs in i386 */
+
 struct mdglobaldata;
 
 vpte_t *pmap_kpte(vm_offset_t va);
@@ -63,6 +66,7 @@ void cpu_kthread_restore(void);	/* cannot be called from C */
 void cpu_exit_switch (struct thread *next);
 void cpu_setregs (void);
 void cpu_idle (void);
+void go_user (void);
 
 #endif
 

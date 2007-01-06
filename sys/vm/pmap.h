@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.20 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.21 2007/01/06 08:34:53 dillon Exp $
  */
 
 /*
@@ -153,6 +153,8 @@ void		 pmap_kenter (vm_offset_t, vm_paddr_t);
 void		 pmap_kenter_quick (vm_offset_t, vm_paddr_t);
 void		 pmap_kenter_sync (vm_offset_t);
 void		 pmap_kenter_sync_quick (vm_offset_t);
+void		 pmap_kmodify_rw(vm_offset_t va);
+void		 pmap_kmodify_nc(vm_offset_t va);
 void		 pmap_kremove (vm_offset_t);
 void		 pmap_kremove_quick (vm_offset_t);
 void		 pmap_reference (pmap_t);

@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.2 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.3 2007/01/06 08:34:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -464,6 +464,25 @@ void
 pmap_kenter_sync_quick(vm_offset_t va)
 {
 	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+}
+
+/*
+ * XXX these need to be recoded.  They are not used in any critical path.
+ */
+void
+pmap_kmodify_rw(vm_offset_t va)
+{
+        *pmap_kpte(va) |= VPTE_R | VPTE_W;
+	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+}
+
+void
+pmap_kmodify_nc(vm_offset_t va)
+{
+#if 0
+        *pmap_kpte(va) |= VPTE_N;
+	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+#endif
 }
 
 /*

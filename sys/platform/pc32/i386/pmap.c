@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.68 2007/01/02 04:21:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.69 2007/01/06 08:34:52 dillon Exp $
  */
 
 /*
@@ -769,6 +769,23 @@ pmap_kremove_quick(vm_offset_t va)
 	unsigned *pte;
 	pte = (unsigned *)vtopte(va);
 	*pte = 0;
+	cpu_invlpg((void *)va);
+}
+
+/*
+ * XXX these need to be recoded.  They are not used in any critical path.
+ */
+void
+pmap_kmodify_rw(vm_offset_t va)
+{
+	*vtopte(va) |= PG_RW;
+	cpu_invlpg((void *)va);
+}
+
+void
+pmap_kmodify_nc(vm_offset_t va)
+{
+	*vtopte(va) |= PG_N;
 	cpu_invlpg((void *)va);
 }
 

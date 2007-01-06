@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.6 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.7 2007/01/06 08:34:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -395,7 +395,7 @@ init_globaldata(void)
 	 * Setup the %gs for cpu #0.  The mycpu macro works after this
 	 * point.
 	 */
-	tls_set_gs(&CPU_prvspace[0], sizeof(struct privatespace));
+	tls_set_fs(&CPU_prvspace[0], sizeof(struct privatespace));
 }
 
 /*

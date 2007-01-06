@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.1 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.2 2007/01/06 08:34:53 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -86,6 +86,9 @@
 char machine[] = MACHINE_CPU;
 SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD,
 	      machine, 0, "Machine class");
+
+char cpu_vendor[] = "DragonFly";	/* XXX */
+u_int cpu_id = 0x80000000;		/* XXX */
 
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.

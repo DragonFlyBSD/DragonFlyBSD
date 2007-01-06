@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.1 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.2 2007/01/06 08:34:53 dillon Exp $
  */
 
 /*
@@ -1548,4 +1548,10 @@ fork_return(struct lwp *lp, struct trapframe frame)
 	KKASSERT(lp->lwp_thread->td_mpcount == 1);
 	rel_mplock();
 #endif
+}
+
+void
+go_user(void)
+{
+	panic("GO USER");
 }

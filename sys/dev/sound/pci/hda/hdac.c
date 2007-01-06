@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.6 2006/10/12 04:19:37 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.1 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.2 2007/01/06 08:34:52 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define HDA_DRV_TEST_REV	"20061009_0031"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.1 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.2 2007/01/06 08:34:52 dillon Exp $");
 
 #undef HDA_DEBUG_ENABLED
 #define HDA_DEBUG_ENABLED	1
@@ -1070,15 +1070,10 @@ static void
 hdac_dma_nocache(void *ptr)
 {
 #if defined(__i386__) || defined(__amd64__)
-	pt_entry_t *pte;
 	vm_offset_t va;
 
 	va = (vm_offset_t)ptr;
-	pte = vtopte(va);
-	if (pte)  {
-		*pte |= PG_N;
-		cpu_invltlb();
-	}
+	pmap_kmodify_nc(va);
 #endif
 }
 

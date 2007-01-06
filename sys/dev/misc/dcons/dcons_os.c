@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.9 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.10 2007/01/06 08:34:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -487,7 +487,7 @@ dcons_drv_init(int stage)
 		 * Allow read/write access to dcons buffer.
 		 */
 		for (pa = trunc_page(addr); pa < addr + size; pa += PAGE_SIZE)
-			*vtopte(KERNBASE + pa) |= PG_RW;
+			pmap_kmodify_rw((vm_offset_t)(KERNBASE + pa));
 		cpu_invltlb();
 		/* XXX P to V */
 		dg.buf = (struct dcons_buf *)(vm_offset_t)(KERNBASE + addr);
