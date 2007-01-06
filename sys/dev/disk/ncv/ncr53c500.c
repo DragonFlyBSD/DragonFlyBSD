@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.12 2006/12/22 23:26:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.13 2007/01/06 08:28:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -53,7 +53,6 @@
 #include <machine/cpu.h>
 
 #include "dvcfg.h"
-#include <machine/physio_proc.h>
 
 #include <bus/cam/scsi/scsi_low.h>
 
@@ -906,7 +905,6 @@ ncvintr(void *arg)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct targ_info *ti;
-	struct physio_proc *pp;
 	struct buf *bp;
 	u_int derror, flags;
 	int len;
@@ -1056,7 +1054,6 @@ again:
 			scsi_low_attention(slp);
 		}
 
-		pp = physio_proc_enter(bp);
 		if (slp->sl_scp.scp_datalen <= 0)
 		{
 			if ((ireason & INTR_BS) == 0)
@@ -1089,7 +1086,6 @@ again:
 			}
 			ncv_pio_write(sc, slp->sl_scp.scp_data, len);
 		}
-		physio_proc_leave(pp);
 		break;
 
 	case DATA_IN_PHASE: /* data in */
@@ -1099,7 +1095,6 @@ again:
 			scsi_low_attention(slp);
 		}
 
-		pp = physio_proc_enter(bp);
 		if (slp->sl_scp.scp_datalen <= 0)
 		{
 			if ((ireason & INTR_BS) == 0)
@@ -1132,7 +1127,6 @@ again:
 			}
 			ncv_pio_read(sc, slp->sl_scp.scp_data, len);
 		}
-		physio_proc_leave(pp);
 		break;
 
 	case COMMAND_PHASE: /* cmd out */

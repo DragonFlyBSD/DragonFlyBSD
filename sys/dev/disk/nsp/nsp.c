@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.11 2006/12/22 23:26:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.12 2007/01/06 08:28:54 dillon Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -54,7 +54,6 @@
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
-#include <machine/physio_proc.h>
 
 #include <bus/cam/scsi/scsi_low.h>
 #include "nspreg.h"
@@ -1367,7 +1366,6 @@ nspintr(void *arg)
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
 	struct targ_info *ti;
-	struct physio_proc *pp;
 	struct buf *bp;
 	u_int derror, flags;
 	int len, rv;
@@ -1596,9 +1594,7 @@ nspintr(void *arg)
 			scsi_low_attention(slp);
 		}
 	
-		pp = physio_proc_enter(bp);
 		nsp_pio_write(sc, sc->sc_suspendio);
-		physio_proc_leave(pp);
 		break;
 
 	case IRQPHS_DATAIN:
@@ -1608,9 +1604,7 @@ nspintr(void *arg)
 			scsi_low_attention(slp);
 		}
 
-		pp = physio_proc_enter(bp);
 		nsp_pio_read(sc, sc->sc_suspendio);
-		physio_proc_leave(pp);
 		break;
 
 	case IRQPHS_STATUS:

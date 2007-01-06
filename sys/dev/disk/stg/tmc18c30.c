@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.13 2006/12/22 23:26:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.14 2007/01/06 08:33:34 dillon Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -53,8 +53,6 @@
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
-
-#include <machine/physio_proc.h>
 
 #include <bus/cam/scsi/scsi_low.h>
 #include "tmc18c30reg.h"
@@ -953,7 +951,6 @@ stgintr(void *arg)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct targ_info *ti;
-	struct physio_proc *pp;
 	struct buf *bp;
 	u_int derror, flags;
 	int len;
@@ -1157,12 +1154,10 @@ arb_fail:
 			scsi_low_attention(slp);
 		}
 
-		pp = physio_proc_enter(bp);
 		if ((sc->sc_icinit & ICTL_FIFO) != 0)
 			stg_pio_write(sc, ti, sc->sc_wthold);
 		else
 			stg_pio_write(sc, ti, 0);
-		physio_proc_leave(pp);
 		break;
 
 	case DATA_IN_PHASE:
@@ -1172,12 +1167,10 @@ arb_fail:
 			scsi_low_attention(slp);
 		}
 
-		pp = physio_proc_enter(bp);
 		if ((sc->sc_icinit & ICTL_FIFO) != 0)
 			stg_pio_read(sc, ti, sc->sc_rthold);
 		else
 			stg_pio_read(sc, ti, 0);
-		physio_proc_leave(pp);
 		break;
 
 	case STATUS_PHASE:
