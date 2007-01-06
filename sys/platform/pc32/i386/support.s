@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.17 2006/12/26 20:43:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.18 2007/01/06 03:23:19 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -362,17 +362,6 @@ ENTRY(fuword)
 
 	movl	(%edx),%eax
 	movl	$0,PCB_ONFAULT(%ecx)
-	ret
-
-/*
- * These two routines are called from the profiling code, potentially
- * at interrupt time. If they fail, that's okay, good things will
- * happen later. Fail all the time for now - until the trap code is
- * able to deal with this.
- */
-ALTENTRY(suswintr)
-ENTRY(fuswintr)
-	movl	$-1,%eax
 	ret
 
 /*

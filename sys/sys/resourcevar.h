@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.14 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.15 2007/01/06 03:23:20 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -110,9 +110,7 @@ void	calcru (struct lwp *lp, struct timeval *up, struct timeval *sp);
 void	calcru_proc (struct proc *p, struct rusage *ru);
 int	chgproccnt (struct uidinfo *uip, int diff, int max);
 int	chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max);
-int	fuswintr (void *base);
 void	ruadd (struct rusage *ru, struct rusage *ru2);
-int	suswintr (void *base, int word);
 struct uidinfo *uifind (uid_t uid);
 void	uihold (struct uidinfo *uip);
 void	uidrop (struct uidinfo *uip);

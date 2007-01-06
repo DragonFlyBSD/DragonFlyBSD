@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.15 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.16 2007/01/06 03:23:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -386,6 +386,9 @@ sys_profil(struct profil_args *uap)
  * an AST that will vector us to trap() with a context in which copyin
  * and copyout will work.  Trap will then call addupc_task().
  *
+ * XXX fuswintr() and suswintr() never worked (always returnde -1), remove
+ * them.  It's just a bad idea to try to do this from a hard interrupt.
+ *
  * Note that we may (rarely) not get around to the AST soon enough, and
  * lose profile ticks when the next tick overwrites this one, but in this
  * case the system is overloaded and the profile is probably already
@@ -397,7 +400,6 @@ addupc_intr(struct proc *p, u_long pc, u_int ticks)
 	struct uprof *prof;
 	caddr_t addr;
 	u_int i;
-	int v;
 
 	if (ticks == 0)
 		return;
@@ -407,11 +409,9 @@ addupc_intr(struct proc *p, u_long pc, u_int ticks)
 		return;			/* out of range; ignore */
 
 	addr = prof->pr_base + i;
-	if ((v = fuswintr(addr)) == -1 || suswintr(addr, v + ticks) == -1) {
-		prof->pr_addr = pc;
-		prof->pr_ticks = ticks;
-		need_proftick();
-	}
+	prof->pr_addr = pc;
+	prof->pr_ticks = ticks;
+	need_proftick();
 }
 
 /*
