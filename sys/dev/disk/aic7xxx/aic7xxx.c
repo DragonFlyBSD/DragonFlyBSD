@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.12 2007/01/06 08:27:54 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -74,7 +74,7 @@ static const u_int num_chip_names = NUM_ELEMENTS(ahc_chip_names);
  * Hardware error codes.
  */
 struct ahc_hard_error_entry {
-        uint8_t errno;
+        uint8_t error;
 	char *errmesg;
 };
 
