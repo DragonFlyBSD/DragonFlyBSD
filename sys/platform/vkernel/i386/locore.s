@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.4 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.5 2007/01/06 19:40:53 dillon Exp $
  */
 
 #include <sys/syscall.h>
@@ -41,6 +41,13 @@
 	
 	.globl	kernbase
 	.set	kernbase,KERNBASE
+
+	/*
+	 * The sysinit and sysuninit sections have to be read-write data
+	 * sections, not read-only data sections.
+	 */
+	.section	set_sysinit_set, "aw"
+	.section	set_sysuninit_set, "aw"
 
 	.data
 	ALIGN_DATA		/* just to be sure */

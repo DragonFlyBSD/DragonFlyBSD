@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.3 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.4 2007/01/06 19:40:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -129,15 +129,19 @@ pmap_init2(void)
 /*
  * Bootstrap the kernel_pmap so it can be used with pmap_enter().  
  *
+ * NOTE! pm_pdir for the kernel pmap is offset so VA's translate
+ * directly into PTD indexes (PTA is also offset for the same reason).
+ * This is necessary because, for now, KVA is not mapped at address 0.
+ *
  * Page table pages are not managed like they are in normal pmaps, so
  * no pteobj is needed.
  */
 void
 pmap_bootstrap(void)
 {
-	vm_pindex_t i = (((vm_offset_t)KernelPTD - KvaStart) >> PAGE_SHIFT);
+	vm_pindex_t i = (vm_offset_t)KernelPTD >> PAGE_SHIFT;
 
-	kernel_pmap.pm_pdir = KernelPTD;
+	kernel_pmap.pm_pdir = KernelPTD - (KvaStart >> SEG_SHIFT);
 	kernel_pmap.pm_pdirpte = KernelPTA[i];
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1;
@@ -331,16 +335,17 @@ pmap_reference(pmap_t pmap)
  * This maps the requested page table and gives us access to it.
  */
 static vpte_t *
-get_ptbase(struct pmap *pmap)
+get_ptbase(struct pmap *pmap, vm_offset_t va)
 {
 	struct mdglobaldata *gd = mdcpu;
 
 	if (pmap == &kernel_pmap) {
-		return(KernelPTA);
+		KKASSERT(va >= KvaStart && va < KvaEnd);
+		return(KernelPTA + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT1pdir) {
-		return(gd->gd_PT1map);
+		return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT2pdir) {
-		return(gd->gd_PT2map);
+		return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 	}
 
 	/*
@@ -354,49 +359,51 @@ get_ptbase(struct pmap *pmap)
 		gd->gd_PT1pdir = pmap->pm_pdir;
 		*gd->gd_PT1pde = pmap->pm_pdirpte;
 		madvise(gd->gd_PT1map, SEG_SIZE, MADV_INVAL);
-		return(gd->gd_PT1map);
+		return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 	} else {
 		gd->gd_PT2pdir = pmap->pm_pdir;
 		*gd->gd_PT2pde = pmap->pm_pdirpte;
 		madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL);
-		return(gd->gd_PT2map);
+		return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 	}
 }
 
 static vpte_t *
-get_ptbase1(struct pmap *pmap)
+get_ptbase1(struct pmap *pmap, vm_offset_t va)
 {
 	struct mdglobaldata *gd = mdcpu;
 
 	if (pmap == &kernel_pmap) {
-		return(KernelPTA);
+		KKASSERT(va >= KvaStart && va < KvaEnd);
+		return(KernelPTA + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT1pdir) {
-		return(gd->gd_PT1map);
+		return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 	}
 	KKASSERT(gd->mi.gd_intr_nesting_level == 0 &&
 		 (gd->mi.gd_curthread->td_flags & TDF_INTTHREAD) == 0);
 	gd->gd_PT1pdir = pmap->pm_pdir;
 	*gd->gd_PT1pde = pmap->pm_pdirpte;
 	madvise(gd->gd_PT1map, SEG_SIZE, MADV_INVAL);
-	return(gd->gd_PT1map);
+	return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 }
 
 static vpte_t *
-get_ptbase2(struct pmap *pmap)
+get_ptbase2(struct pmap *pmap, vm_offset_t va)
 {
 	struct mdglobaldata *gd = mdcpu;
 
 	if (pmap == &kernel_pmap) {
-		return(KernelPTA);
+		KKASSERT(va >= KvaStart && va < KvaEnd);
+		return(KernelPTA + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT2pdir) {
-		return(gd->gd_PT2map);
+		return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 	}
 	KKASSERT(gd->mi.gd_intr_nesting_level == 0 &&
 		 (gd->mi.gd_curthread->td_flags & TDF_INTTHREAD) == 0);
 	gd->gd_PT2pdir = pmap->pm_pdir;
 	*gd->gd_PT2pde = pmap->pm_pdirpte;
 	madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL);
-	return(gd->gd_PT2map);
+	return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 }
 
 /*
@@ -409,11 +416,11 @@ pmap_pte(struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t *ptep;
 
-	ptep = &pmap->pm_pdir[va >> PAGE_SHIFT];
+	ptep = &pmap->pm_pdir[va >> SEG_SHIFT];
 	if (*ptep & VPTE_PS)
 		return(ptep);
 	if (*ptep)
-		return (get_ptbase(pmap) + (va >> PAGE_SHIFT));
+		return (get_ptbase(pmap, va));
 	return(NULL);
 }
 
@@ -433,7 +440,7 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 	npte = (vpte_t)pa | VPTE_R | VPTE_W | VPTE_V;
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V) {
 #ifdef SMP
 		pmap_inval_init(&info);
@@ -505,7 +512,7 @@ pmap_kpte(vm_offset_t va)
 	vpte_t *ptep;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	return(ptep);
 }
 
@@ -523,7 +530,7 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
 	npte = (vpte_t)pa | VPTE_R | VPTE_W | VPTE_V;
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V) {
 		*ptep = npte;
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
@@ -556,7 +563,7 @@ pmap_kremove(vm_offset_t va)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V) {
 #ifdef SMP
 		pmap_inval_init(&info);
@@ -585,7 +592,7 @@ pmap_kremove_quick(vm_offset_t va)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V) {
 		*ptep = 0;
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
@@ -606,7 +613,7 @@ pmap_kextract(vm_offset_t va)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	pa = (vm_paddr_t)(*ptep & VPTE_FRAME) | (va & PAGE_MASK);
 	return(pa);
 }
@@ -621,7 +628,7 @@ pmap_qenter(vm_offset_t va, struct vm_page **m, int count)
 	while (count) {
 		vpte_t *ptep;
 
-		ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+		ptep = KernelPTA + (va >> PAGE_SHIFT);
 		if (*ptep & VPTE_V)
 			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 		*ptep = (vpte_t)(*m)->phys_addr | VPTE_R | VPTE_W | VPTE_V;
@@ -651,7 +658,7 @@ pmap_qenter2(vm_offset_t va, struct vm_page **m, int count, cpumask_t *mask)
 		vpte_t *ptep;
 		vpte_t npte;
 
-		ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+		ptep = KernelPTA + (va >> PAGE_SHIFT);
 		npte = (vpte_t)(*m)->phys_addr | VPTE_R | VPTE_W | VPTE_V;
 		if (*ptep != npte) {
 			*mask = 0;
@@ -677,7 +684,7 @@ pmap_qremove(vm_offset_t va, int count)
 	while (count) {
 		vpte_t *ptep;
 
-		ptep = KernelPTA + ((va - KvaStart) >> PAGE_SHIFT);
+		ptep = KernelPTA + (va >> PAGE_SHIFT);
 		if (*ptep & VPTE_V)
 			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 		*ptep = 0;
@@ -1250,7 +1257,7 @@ pmap_remove_page(struct pmap *pmap, vm_offset_t va, pmap_inval_info_t info)
 	 * get a local va for mappings for this pmap and remove the entry.
 	 */
 	if (*pmap_pde(pmap, va) != 0) {
-		ptq = get_ptbase(pmap) + (va >> PAGE_SHIFT);
+		ptq = get_ptbase(pmap, va);
 		if (*ptq) {
 			pmap_remove_pte(pmap, ptq, va, info);
 		}
@@ -1274,7 +1281,8 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	vpte_t *ptbase;
 	vm_offset_t pdnxt;
 	vm_offset_t ptpaddr;
-	vm_offset_t sindex, eindex;
+	vm_pindex_t sindex, eindex;
+	vm_pindex_t sbase;
 	struct pmap_inval_info info;
 
 	if (pmap == NULL)
@@ -1300,11 +1308,15 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	/*
 	 * Get a local virtual address for the mappings that are being
 	 * worked with.
+	 *
+	 * XXX this is really messy because the kernel pmap is not relative
+	 * to address 0
 	 */
-	ptbase = get_ptbase(pmap);
+	ptbase = get_ptbase(pmap, sva);
 
 	sindex = (sva >> PAGE_SHIFT);
 	eindex = (eva >> PAGE_SHIFT);
+	sbase = sindex;
 
 	for (; sindex < eindex; sindex = pdnxt) {
 		vpte_t pdirindex;
@@ -1342,10 +1354,10 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 
 		for (; sindex != pdnxt; sindex++) {
 			vm_offset_t va;
-			if (ptbase[sindex] == 0)
+			if (ptbase[sindex - sbase] == 0)
 				continue;
 			va = i386_ptob(sindex);
-			if (pmap_remove_pte(pmap, ptbase + sindex, va, &info))
+			if (pmap_remove_pte(pmap, ptbase + sindex - sbase, va, &info))
 				break;
 		}
 	}
@@ -1433,6 +1445,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	vpte_t *ptbase;
 	vm_offset_t pdnxt, ptpaddr;
 	vm_pindex_t sindex, eindex;
+	vm_pindex_t sbase;
 	pmap_inval_info info;
 
 	if (pmap == NULL)
@@ -1448,10 +1461,11 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 	pmap_inval_init(&info);
 
-	ptbase = get_ptbase(pmap);
+	ptbase = get_ptbase(pmap, sva);
 
 	sindex = (sva >> PAGE_SHIFT);
 	eindex = (eva >> PAGE_SHIFT);
+	sbase = sindex;
 
 	for (; sindex < eindex; sindex = pdnxt) {
 
@@ -1485,7 +1499,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 			/* XXX this isn't optimal */
 			pmap_inval_add(&info, pmap, i386_ptob(sindex));
-			pbits = ptbase[sindex];
+			pbits = ptbase[sindex - sbase];
 
 			if (pbits & PG_MANAGED) {
 				m = NULL;
@@ -1506,8 +1520,8 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 			pbits &= ~VPTE_W;
 
-			if (pbits != ptbase[sindex]) {
-				ptbase[sindex] = pbits;
+			if (pbits != ptbase[sindex - sbase]) {
+				ptbase[sindex - sbase] = pbits;
 			}
 		}
 	}
@@ -1781,7 +1795,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 			rtval = pte & ~((vpte_t)(1 << SEG_SHIFT) - 1);
 			rtval |= va & SEG_MASK;
 		} else {
-			pte = *(get_ptbase(pmap) + (va >> PAGE_SHIFT));
+			pte = *get_ptbase(pmap, va);
 			rtval = (pte & VPTE_FRAME) | (va & PAGE_MASK);
 		}
 		return(rtval);
@@ -1956,7 +1970,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 		 * Get a pointer to the pte and make sure that no valid page
 		 * has been mapped.
 		 */
-		pte = get_ptbase(pmap) + (addr >> PAGE_SHIFT);
+		pte = get_ptbase(pmap, addr);
 		if (*pte)
 			continue;
 
@@ -2019,7 +2033,7 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	if (pmap == NULL)
 		return;
 
-	pte = get_ptbase(pmap) + (va >> PAGE_SHIFT);
+	pte = get_ptbase(pmap, va);
 
 	if (wired && (*pte & VPTE_W) == 0)
 		pmap->pm_stats.wired_count++;
@@ -2072,8 +2086,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	if (src_pmap->pm_pdir == NULL)
 		return;
 
-	src_frame = get_ptbase1(src_pmap);
-	dst_frame = get_ptbase2(dst_pmap);
+	src_frame = get_ptbase1(src_pmap, src_addr);
+	dst_frame = get_ptbase2(dst_pmap, src_addr);
 
 	pmap_inval_init(&info);
 	pmap_inval_add(&info, dst_pmap, -1);
@@ -2126,8 +2140,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 		if (pdnxt > end_addr)
 			pdnxt = end_addr;
 
-		src_pte = src_frame + (addr >> PAGE_SHIFT);
-		dst_pte = dst_frame + (addr >> PAGE_SHIFT);
+		src_pte = src_frame + ((addr - src_addr) >> PAGE_SHIFT);
+		dst_pte = dst_frame + ((addr - src_addr) >> PAGE_SHIFT);
 		while (addr < pdnxt) {
 			vpte_t ptetemp;
 			ptetemp = *src_pte;
@@ -2182,14 +2196,13 @@ pmap_zero_page(vm_paddr_t phys)
 	struct mdglobaldata *gd = mdcpu;
 
 	crit_enter();
-	if (*(int *)gd->gd_CMAP3)
+	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*(int *)gd->gd_CMAP3 =
-		    VPTE_V | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*gd->gd_CMAP3 = VPTE_V | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero(gd->gd_CADDR3, PAGE_SIZE);
-	*(int *) gd->gd_CMAP3 = 0;
+	*gd->gd_CMAP3 = 0;
 	crit_exit();
 }
 
@@ -2205,10 +2218,10 @@ pmap_page_assertzero(vm_paddr_t phys)
 	int i;
 
 	crit_enter();
-	if (*(int *)gd->gd_CMAP3)
+	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*(int *)gd->gd_CMAP3 =
-		    VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W |
+			(phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 	for (i = 0; i < PAGE_SIZE; i += 4) {
 	    if (*(int *)((char *)gd->gd_CADDR3 + i) != 0) {
@@ -2216,7 +2229,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 		    (void *)gd->gd_CADDR3);
 	    }
 	}
-	*(int *) gd->gd_CMAP3 = 0;
+	*gd->gd_CMAP3 = 0;
 	crit_exit();
 }
 
@@ -2234,13 +2247,14 @@ pmap_zero_page_area(vm_paddr_t phys, int off, int size)
 	struct mdglobaldata *gd = mdcpu;
 
 	crit_enter();
-	if (*(int *) gd->gd_CMAP3)
+	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*(int *) gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W |
+			(phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero((char *)gd->gd_CADDR3 + off, size);
-	*(int *) gd->gd_CMAP3 = 0;
+	*gd->gd_CMAP3 = 0;
 	crit_exit();
 }
 

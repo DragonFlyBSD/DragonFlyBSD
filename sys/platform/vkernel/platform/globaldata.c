@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/globaldata.c,v 1.2 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/globaldata.c,v 1.3 2007/01/06 19:40:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 
 #include <machine/md_var.h>
 #include <machine/globaldata.h>
+#include <machine/vmparam.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,11 +100,13 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 
 	gd->gd_PT1map = gd->mi.gd_prvspace->PT1MAP;
 	gd->gd_PT1pdir = NULL;
-	gd->gd_PT1pde = &KernelPTD[(vm_offset_t)gd->gd_PT1map / SEG_SIZE];
+	gd->gd_PT1pde = &KernelPTD[((vm_offset_t)gd->gd_PT1map - KvaStart) / 
+				   SEG_SIZE];
 
 	gd->gd_PT2map = gd->mi.gd_prvspace->PT2MAP;
 	gd->gd_PT2pdir = NULL;
-	gd->gd_PT2pde = &KernelPTD[(vm_offset_t)gd->gd_PT2map / SEG_SIZE];
+	gd->gd_PT2pde = &KernelPTD[((vm_offset_t)gd->gd_PT2map - KvaStart) / 
+				   SEG_SIZE];
 }
 
 int

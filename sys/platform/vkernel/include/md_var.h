@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.4 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.5 2007/01/06 19:40:55 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -46,7 +46,7 @@
 
 extern	char	sigcode[];
 extern	int	szsigcode;
-extern	vpte_t	*KernelPTA;
+extern	vpte_t	*KernelPTA;	/* NOTE: Offset for direct VA translation */
 extern	vpte_t	*KernelPTD;
 extern	vm_offset_t crashdumpmap;
 extern  int	cpu_fxsr;

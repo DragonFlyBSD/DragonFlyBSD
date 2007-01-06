@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.1 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.2 2007/01/06 19:40:53 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -132,12 +132,10 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 
-int physmem = 0;
-
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob(physmem), req);
+	int error = sysctl_handle_int(oidp, 0, ctob((int)Maxmem), req);
 	return (error);
 }
 
@@ -148,7 +146,7 @@ static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
 {
 	int error = sysctl_handle_int(oidp, 0,
-		ctob(physmem - vmstats.v_wire_count), req);
+		ctob((int)Maxmem - vmstats.v_wire_count), req);
 	return (error);
 }
 

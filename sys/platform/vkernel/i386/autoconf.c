@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.6 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.7 2007/01/06 19:40:53 dillon Exp $
  */
 
 /*
@@ -84,6 +84,7 @@
 #include <machine/vm86.h>
 #endif
 #include <machine/globaldata.h>
+#include <machine/md_var.h>
 
 #if NISA > 0
 #include <bus/isa/isavar.h>
@@ -135,7 +136,7 @@ cpu_startup(void *dummy)
 
 	if (nbuf == 0) {
 		int factor = 4 * BKVASIZE / 1024;
-		int kbytes = physmem * (PAGE_SIZE / 1024);
+		int kbytes = Maxmem * (PAGE_SIZE / 1024);
 
 		nbuf = 50;
 		if (kbytes > 4096)
@@ -155,6 +156,14 @@ cpu_startup(void *dummy)
 	if (nswbuf < NSWBUF_MIN)
 		nswbuf = NSWBUF_MIN;
 #endif
+
+	/*
+	 * Allocate memory for the buffer cache
+	 */
+	buf = (void *)kmem_alloc(&kernel_map, nbuf * sizeof(struct buf));
+	swbuf = (void *)kmem_alloc(&kernel_map, nswbuf * sizeof(struct buf));
+
+
 #ifdef DIRECTIO
         ffs_rawread_setup();
 #endif

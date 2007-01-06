@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.7 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.8 2007/01/06 19:40:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -63,6 +63,7 @@
 
 vm_paddr_t phys_avail[16];
 vm_paddr_t Maxmem;
+vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
 int RootImageFd = -1;
 vm_offset_t KvaStart;
@@ -77,7 +78,7 @@ vm_offset_t clean_eva;
 struct msgbuf *msgbufp;
 caddr_t ptvmmap;
 vpte_t	*KernelPTD;
-vpte_t	*KernelPTA;
+vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 u_int cpu_feature;	/* XXX */
 u_int tsc_present;	/* XXX */
 
@@ -118,23 +119,23 @@ main(int ac, char **av)
 			rootImageFile = optarg;
 			break;
 		case 'm':
-			Maxmem = strtoull(optarg, &suffix, 0);
+			Maxmem_bytes = strtoull(optarg, &suffix, 0);
 			if (suffix) {
 				switch(*suffix) {
 				case 'g':
 				case 'G':
-					Maxmem <<= 30;
+					Maxmem_bytes <<= 30;
 					break;
 				case 'm':
 				case 'M':
-					Maxmem <<= 20;
+					Maxmem_bytes <<= 20;
 					break;
 				case 'k':
 				case 'K':
-					Maxmem <<= 10;
+					Maxmem_bytes <<= 10;
 					break;
 				default:
-					Maxmem = 0;
+					Maxmem_bytes = 0;
 					usage("Bad maxmem option");
 					/* NOT REACHED */
 					break;
@@ -169,9 +170,10 @@ init_sys_memory(char *imageFile)
 	 * specified and -m was not specified, use the image file's size.
 	 */
 
-	if (imageFile && stat(imageFile, &st) == 0 && Maxmem == 0)
-		Maxmem = (vm_paddr_t)st.st_size;
-	if ((imageFile == NULL || stat(imageFile, &st) < 0) && Maxmem == 0) {
+	if (imageFile && stat(imageFile, &st) == 0 && Maxmem_bytes == 0)
+		Maxmem_bytes = (vm_paddr_t)st.st_size;
+	if ((imageFile == NULL || stat(imageFile, &st) < 0) && 
+	    Maxmem_bytes == 0) {
 		err(1, "Cannot create new memory file %s unless "
 		       "system memory size is specified with -m",
 		       imageFile);
@@ -181,7 +183,7 @@ init_sys_memory(char *imageFile)
 	/*
 	 * Maxmem must be known at this time
 	 */
-	if (Maxmem < 32 * 1024 * 1024 || (Maxmem & SEG_MASK)) {
+	if (Maxmem_bytes < 32 * 1024 * 1024 || (Maxmem_bytes & SEG_MASK)) {
 		err(1, "Bad maxmem specification: 32MB minimum, "
 		       "multiples of %dMB only",
 		       SEG_SIZE / 1024 / 1024);
@@ -205,9 +207,9 @@ init_sys_memory(char *imageFile)
 	/*
 	 * Truncate or extend the file as necessary.
 	 */
-	if (st.st_size > Maxmem) {
-		ftruncate(fd, Maxmem);
-	} else if (st.st_size < Maxmem) {
+	if (st.st_size > Maxmem_bytes) {
+		ftruncate(fd, Maxmem_bytes);
+	} else if (st.st_size < Maxmem_bytes) {
 		char *zmem;
 		off_t off = st.st_size & ~SEG_MASK;
 
@@ -215,7 +217,7 @@ init_sys_memory(char *imageFile)
 		zmem = malloc(SEG_SIZE);
 		bzero(zmem, SEG_SIZE);
 		lseek(fd, off, 0);
-		while (off < Maxmem) {
+		while (off < Maxmem_bytes) {
 			if (write(fd, zmem, SEG_SIZE) != SEG_SIZE) {
 				err(1, "Unable to reserve blocks for memory image");
 				/* NOT REACHED */
@@ -227,6 +229,7 @@ init_sys_memory(char *imageFile)
 		free(zmem);
 	}
 	MemImageFd = fd;
+	Maxmem = Maxmem_bytes >> PAGE_SHIFT;
 }
 
 /*
@@ -245,9 +248,12 @@ init_kern_memory(void)
 	 * Memory map our kernel virtual memory space.  Note that the
 	 * kernel image itself is not made part of this memory for the
 	 * moment.
+	 *
+	 * The memory map must be segment-aligned so we can properly
+	 * offset KernelPTD.
 	 */
-	base = mmap(NULL, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
-		    MAP_FILE|MAP_VPAGETABLE, MemImageFd, 0);
+	base = mmap((void *)0x40000000, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
+		    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE, MemImageFd, 0);
 	if (base == MAP_FAILED) {
 		err(1, "Unable to mmap() kernel virtual memory!");
 		/* NOT REACHED */
@@ -274,7 +280,7 @@ init_kern_memory(void)
 	 * at the base so we go one more loop then normal.
 	 */
 	lseek(MemImageFd, PAGE_SIZE, 0);
-	for (i = 0; i <= KERNEL_KVA_SIZE / PAGE_SIZE; ++i) {
+	for (i = 0; i <= KERNEL_KVA_SIZE / SEG_SIZE * sizeof(vpte_t); ++i) {
 		pte = (i * PAGE_SIZE) | VPTE_V | VPTE_R | VPTE_W;
 		write(MemImageFd, &pte, sizeof(pte));
 	}
@@ -282,10 +288,14 @@ init_kern_memory(void)
 	/*
 	 * Enable the page table and calculate pointers to our self-map
 	 * for easy kernel page table manipulation.
+	 *
+	 * KernelPTA must be offset so we can do direct VA translations
 	 */
-	mcontrol(base, KERNEL_KVA_SIZE, MADV_SETMAP, 0);
+	mcontrol(base, KERNEL_KVA_SIZE, MADV_SETMAP,
+		 0 | VPTE_R | VPTE_W | VPTE_V);
 	KernelPTD = (vpte_t *)base;			  /* pg directory */
 	KernelPTA = (vpte_t *)((char *)base + PAGE_SIZE); /* pg table pages */
+	KernelPTA -= KvaStart >> PAGE_SHIFT;
 
 	/*
 	 * phys_avail[] represents unallocated physical memory.  MI code
@@ -294,7 +304,7 @@ init_kern_memory(void)
 	phys_avail[0] = PAGE_SIZE +
 			KERNEL_KVA_SIZE / PAGE_SIZE * sizeof(vpte_t);
 	phys_avail[0] = (phys_avail[0] + PAGE_MASK) & ~(vm_paddr_t)PAGE_MASK;
-	phys_avail[1] = Maxmem;
+	phys_avail[1] = Maxmem_bytes;
 
 	/*
 	 * (virtual_start, virtual_end) represent unallocated kernel virtual
@@ -411,6 +421,7 @@ init_vkernel(void)
 	bzero(gd, sizeof(*gd));
 
 	gd->mi.gd_curthread = &thread0;
+	thread0.td_gd = &gd->mi;
 	ncpus = 1;
 	ncpus2 = 1;
 	init_param1();
