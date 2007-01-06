@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.109 2007/01/05 22:16:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.110 2007/01/06 19:38:20 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1801,6 +1801,7 @@ init386(int first)
 	bzero(gd, sizeof(*gd));
 
 	gd->mi.gd_curthread = &thread0;
+	thread0.td_gd = gd;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
