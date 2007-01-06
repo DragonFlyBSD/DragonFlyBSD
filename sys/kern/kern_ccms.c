@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_ccms.c,v 1.2 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_ccms.c,v 1.3 2007/01/06 19:35:30 dillon Exp $
  */
 /*
  * The Cache Coherency Management System (CCMS)
@@ -80,7 +80,6 @@ static void
 ccmsinit(void *dummy)
 {
     ccms_oc = objcache_create_simple(M_CCMS, sizeof(struct ccms_cst));
-    kprintf("CCMSINIT\n");
 }
 SYSINIT(ccms, SI_SUB_OBJCACHE, SI_ORDER_ANY, ccmsinit, NULL);
 
