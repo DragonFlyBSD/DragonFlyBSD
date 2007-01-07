@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.89 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.90 2007/01/07 05:41:02 dillon Exp $
  */
 
 /*
@@ -570,10 +570,13 @@ restart:
 			 * The code is lost because tf_err is overwritten
 			 * with the fault address.  Store it in the upper
 			 * 16 bits of tf_trapno for vkernel consumption.
+			 *
+			 * This is a horrible kludge but saves us from having
+			 * to add a new field to the trapframe (making it
+			 * incompatible with existing apps).
 			 */
-			if (p->p_vkernel && p->p_vkernel->vk_current) {
+			if (p->p_vkernel)
 				frame.tf_trapno |= (code << 16);
-			}
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
