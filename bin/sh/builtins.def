@@ -37,7 +37,7 @@
 #
 #	@(#)builtins.def	8.4 (Berkeley) 5/4/95
 # $FreeBSD: src/bin/sh/builtins.def,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
-# $DragonFly: src/bin/sh/builtins.def,v 1.3 2007/01/07 01:14:53 pavalos Exp $
+# $DragonFly: src/bin/sh/builtins.def,v 1.4 2007/01/07 02:52:07 pavalos Exp $
 
 #
 # This file lists all the builtin commands.  The first column is the name
@@ -54,12 +54,12 @@
 # NOTE: bltincmd must come first!
 
 bltincmd	builtin
-commandcmd	command
-#alloccmd	alloc
+aliascmd	alias
 bgcmd -j	bg
+bindcmd		bind
 breakcmd	-s break -s continue
-#catfcmd	catf
 cdcmd		cd chdir
+commandcmd	command
 dotcmd		-s .
 echocmd		echo
 evalcmd		-s eval
@@ -67,17 +67,14 @@ execcmd		-s exec
 exitcmd		-s exit
 expcmd		exp let
 exportcmd	-s export -s readonly
-#exprcmd		expr
 falsecmd	false
-histcmd -h	fc
 fgcmd -j	fg
 getoptscmd	getopts
 hashcmd		hash
+histcmd -h	fc
 jobidcmd	jobid
 jobscmd		jobs
-#linecmd		line
 localcmd	local
-#nlechocmd	nlecho
 printfcmd	printf
 pwdcmd		pwd
 readcmd		read
@@ -85,16 +82,13 @@ returncmd	-s return
 setcmd		-s set
 setvarcmd	setvar
 shiftcmd	-s shift
+testcmd		test [
 timescmd	-s times
 trapcmd		-s trap
 truecmd		-s : true
 typecmd		type
+ulimitcmd	ulimit
 umaskcmd	umask
 unaliascmd	unalias
 unsetcmd	-s unset
 waitcmd		wait
-#foocmd		foo
-aliascmd	alias
-ulimitcmd	ulimit
-testcmd		test [
-bindcmd		bind
