@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.12 2006/09/28 22:29:44 pavalos Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.13 2007/01/07 01:14:53 pavalos Exp $
  */
 
 #include <unistd.h>
@@ -87,6 +87,7 @@ struct var vpath;
 struct var vppid;
 struct var vps1;
 struct var vps2;
+struct var vps4;
 struct var vvers;
 STATIC struct var voptind;
 
@@ -109,6 +110,8 @@ STATIC const struct varinit varinit[] = {
 	 * vps1 depends on uid
 	 */
 	{ &vps2,	VSTRFIXED|VTEXTFIXED,		"PS2=> ",
+	  NULL },
+	{ &vps4,	VSTRFIXED|VTEXTFIXED,		"PS4=+ ",
 	  NULL },
 	{ &voptind,	VSTRFIXED|VTEXTFIXED,		"OPTIND=1",
 	  getoptsreset },

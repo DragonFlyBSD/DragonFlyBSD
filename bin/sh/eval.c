@@ -34,10 +34,11 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.9 2006/09/28 22:29:44 pavalos Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.53 2006/06/15 07:57:05 stefanf Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.10 2007/01/07 01:14:53 pavalos Exp $
  */
 
+#include <sys/resource.h>
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
 
 #include <errno.h>
@@ -194,7 +195,7 @@ evaltree(union node *n, int flags)
 #ifndef NO_HISTORY
 	displayhist = 1;	/* show history substitutions done with fc */
 #endif
-	TRACE(("evaltree(0x%lx: %d) called\n", (long)n, n->type));
+	TRACE(("evaltree(%p: %d) called\n", (void *)n, n->type));
 	switch (n->type) {
 	case NSEMI:
 		evaltree(n->nbinary.ch1, flags & ~EV_EXIT);
@@ -462,7 +463,7 @@ evalpipe(union node *n)
 	int prevfd;
 	int pip[2];
 
-	TRACE(("evalpipe(0x%lx) called\n", (long)n));
+	TRACE(("evalpipe(%p) called\n", (void *)n));
 	pipelen = 0;
 	for (lp = n->npipe.cmdlist ; lp ; lp = lp->next)
 		pipelen++;
@@ -482,16 +483,14 @@ evalpipe(union node *n)
 		if (forkshell(jp, lp->n, n->npipe.backgnd) == 0) {
 			INTON;
 			if (prevfd > 0) {
-				close(0);
-				copyfd(prevfd, 0);
+				dup2(prevfd, 0);
 				close(prevfd);
 			}
 			if (pip[1] >= 0) {
 				if (!(prevfd >= 0 && pip[0] == 0))
 					close(pip[0]);
 				if (pip[1] != 1) {
-					close(1);
-					copyfd(pip[1], 1);
+					dup2(pip[1], 1);
 					close(pip[1]);
 				}
 			}
@@ -548,8 +547,7 @@ evalbackcmd(union node *n, struct backcmd *result)
 			FORCEINTON;
 			close(pip[0]);
 			if (pip[1] != 1) {
-				close(1);
-				copyfd(pip[1], 1);
+				dup2(pip[1], 1);
 				close(pip[1]);
 			}
 			evaltree(n, EV_EXIT);
@@ -560,7 +558,7 @@ evalbackcmd(union node *n, struct backcmd *result)
 	}
 out:
 	popstackmark(&smark);
-	TRACE(("evalbackcmd done: fd=%d buf=0x%x nleft=%d jp=0x%x\n",
+	TRACE(("evalbackcmd done: fd=%d buf=%p nleft=%d jp=%p\n",
 		result->fd, result->buf, result->nleft, result->jp));
 }
 
@@ -605,7 +603,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 #endif
 
 	/* First expand the arguments. */
-	TRACE(("evalcommand(0x%lx, %d) called\n", (long)cmd, flags));
+	TRACE(("evalcommand(%p, %d) called\n", (void *)cmd, flags));
 	setstackmark(&smark);
 	arglist.lastp = &arglist.list;
 	varlist.lastp = &varlist.list;
@@ -647,14 +645,19 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 
 	/* Print the command if xflag is set. */
 	if (xflag) {
-		outc('+', &errout);
+		char sep = 0;
+		out2str(ps4val());
 		for (sp = varlist.list ; sp ; sp = sp->next) {
-			outc(' ', &errout);
+			if (sep != 0)
+				outc(' ', &errout);
 			out2str(sp->text);
+			sep = ' ';
 		}
 		for (sp = arglist.list ; sp ; sp = sp->next) {
-			outc(' ', &errout);
+			if (sep != 0)
+				outc(' ', &errout);
 			out2str(sp->text);
+			sep = ' ';
 		}
 		outc('\n', &errout);
 		flushout(&errout);
@@ -662,8 +665,10 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 
 	/* Now locate the command. */
 	if (argc == 0) {
+		/* Variable assignment(s) without command */
 		cmdentry.cmdtype = CMDBUILTIN;
 		cmdentry.u.index = BLTINCMD;
+		cmdentry.special = 1;
 	} else {
 		static const char PATH[] = "PATH=";
 		const char *path = pathval();
@@ -675,15 +680,15 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 		for (sp = varlist.list ; sp ; sp = sp->next)
 			if (strncmp(sp->text, PATH, sizeof(PATH) - 1) == 0) {
 				path = sp->text + sizeof(PATH) - 1;
-				/* 
+				/*
 				 * On `PATH=... command`, we need to make
 				 * sure that the command isn't using the
 				 * non-updated hash table of the outer PATH
-				 * setting and we need to make sure that 
+				 * setting and we need to make sure that
 				 * the hash table isn't filled with items
 				 * from the temporary setting.
 				 *
-				 * It would be better to forbit using and 
+				 * It would be better to forbit using and
 				 * updating the table while this command
 				 * runs, by the command finding mechanism
 				 * is heavily integrated with hash handling,
@@ -691,7 +696,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 				 * the command runs. Partly deleting like
 				 * changepatch() does doesn't seem worth the
 				 * bookinging effort, since most such runs add
-				 * diretories in front of the new PATH.
+				 * directories in front of the new PATH.
 				 */
 				clearcmdentry(0);
 				do_clearcmdentry = 1;
@@ -709,7 +714,8 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 				argv++;
 				if (--argc == 0)
 					break;
-				if ((cmdentry.u.index = find_builtin(*argv)) < 0) {
+				if ((cmdentry.u.index = find_builtin(*argv,
+				    &cmdentry.special)) < 0) {
 					outfmt(&errout, "%s: not found\n", *argv);
 					exitstatus = 127;
 					flushout(&errout);
@@ -745,8 +751,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 			FORCEINTON;
 			close(pip[0]);
 			if (pip[1] != 1) {
-				close(1);
-				copyfd(pip[1], 1);
+				dup2(pip[1], 1);
 				close(pip[1]);
 			}
 		}
@@ -817,7 +822,6 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 			memout.bufsize = 64;
 			mode |= REDIR_BACKQ;
 		}
-		redirect(cmd->ncmd.redirect, mode);
 		savecmdname = commandname;
 		cmdenviron = varlist.list;
 		e = -1;
@@ -828,6 +832,9 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 		}
 		savehandler = handler;
 		handler = &jmploc;
+		redirect(cmd->ncmd.redirect, mode);
+		if (cmdentry.special)
+			listsetvar(cmdenviron);
 		commandname = argv[0];
 		argptr = argv + 1;
 		optptr = NULL;			/* initialize nextopt */
@@ -847,14 +854,7 @@ cmddone:
 		handler = savehandler;
 		if (e != -1) {
 			if ((e != EXERROR && e != EXEXEC)
-			   || cmdentry.u.index == BLTINCMD
-			   || cmdentry.u.index == DOTCMD
-			   || cmdentry.u.index == EVALCMD
-#ifndef NO_HISTORY
-			   || cmdentry.u.index == HISTCMD
-#endif
-			   || cmdentry.u.index == EXECCMD
-			   || cmdentry.u.index == COMMANDCMD)
+			    || cmdentry.special)
 				exraise(e);
 			FORCEINTON;
 		}
@@ -916,7 +916,7 @@ prehash(union node *n)
 {
 	struct cmdentry entry;
 
-	if (n->type == NCMD && n->ncmd.args)
+	if (n && n->type == NCMD && n->ncmd.args)
 		if (goodname(n->ncmd.args->narg.text))
 			find_command(n->ncmd.args->narg.text, &entry, 0,
 				     pathval());
@@ -930,14 +930,12 @@ prehash(union node *n)
  */
 
 /*
- * No command given, or a bltin command with no arguments.  Set the
- * specified variables.
+ * No command given, or a bltin command with no arguments.
  */
 
 int
 bltincmd(int argc __unused, char **argv __unused)
 {
-	listsetvar(cmdenviron);
 	/*
 	 * Preserve exitstatus of a previous possible redirection
 	 * as POSIX mandates
@@ -982,6 +980,7 @@ commandcmd(int argc, char **argv)
 	struct strlist *sp;
 	const char *path;
 	int ch;
+	int cmd = -1;
 
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
@@ -996,10 +995,16 @@ commandcmd(int argc, char **argv)
 
 	optind = optreset = 1;
 	opterr = 0;
-	while ((ch = getopt(argc, argv, "p")) != -1) {
+	while ((ch = getopt(argc, argv, "pvV")) != -1) {
 		switch (ch) {
 		case 'p':
 			path = stdpath;
+			break;
+		case 'v':
+			cmd = TYPECMD_SMALLV;
+			break;
+		case 'V':
+			cmd = TYPECMD_BIGV;
 			break;
 		case '?':
 		default:
@@ -1009,6 +1014,11 @@ commandcmd(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (cmd != -1) {
+		if (argc != 1)
+			error("wrong number of arguments");
+		return typecmd_impl(2, argv - 1, cmd);
+	}
 	if (argc != 0) {
 		old = handler;
 		handler = &loc;
@@ -1077,5 +1087,30 @@ execcmd(int argc, char **argv)
 		shellexec(argv + 1, environment(), pathval(), 0);
 
 	}
+	return 0;
+}
+
+
+int
+timescmd(int argc __unused, char **argv __unused)
+{
+	struct rusage ru;
+	long shumins, shsmins, chumins, chsmins;
+	double shusecs, shssecs, chusecs, chssecs;
+
+	if (getrusage(RUSAGE_SELF, &ru) < 0)
+		return 1;
+	shumins = ru.ru_utime.tv_sec / 60;
+	shusecs = ru.ru_utime.tv_sec % 60 + ru.ru_utime.tv_usec / 1000000.;
+	shsmins = ru.ru_stime.tv_sec / 60;
+	shssecs = ru.ru_stime.tv_sec % 60 + ru.ru_stime.tv_usec / 1000000.;
+	if (getrusage(RUSAGE_CHILDREN, &ru) < 0)
+		return 1;
+	chumins = ru.ru_utime.tv_sec / 60;
+	chusecs = ru.ru_utime.tv_sec % 60 + ru.ru_utime.tv_usec / 1000000.;
+	chsmins = ru.ru_stime.tv_sec / 60;
+	chssecs = ru.ru_stime.tv_sec % 60 + ru.ru_stime.tv_usec / 1000000.;
+	out1fmt("%ldm%.3fs %ldm%.3fs\n%ldm%.3fs %ldm%.3fs\n", shumins,
+	    shusecs, shsmins, shssecs, chumins, chusecs, chsmins, chssecs);
 	return 0;
 }

@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)exec.h	8.3 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.h,v 1.9.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/exec.h,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/exec.h,v 1.15 2006/04/09 12:21:20 stefanf Exp $
+ * $DragonFly: src/bin/sh/exec.h,v 1.5 2007/01/07 01:14:53 pavalos Exp $
  */
 
 /* values of cmdtype */
@@ -44,6 +44,12 @@
 #define CMDBUILTIN 1		/* command is a shell builtin */
 #define CMDFUNCTION 2		/* command is a shell function */
 
+/* values for typecmd_impl's third parameter */
+enum {
+	TYPECMD_SMALLV,		/* command -v */
+	TYPECMD_BIGV,		/* command -V */
+	TYPECMD_TYPE		/* type */
+};
 
 struct cmdentry {
 	int cmdtype;
@@ -51,6 +57,7 @@ struct cmdentry {
 		int index;
 		union node *func;
 	} u;
+	int special;
 };
 
 
@@ -61,12 +68,13 @@ void shellexec(char **, char **, const char *, int);
 char *padvance(const char **, const char *);
 int hashcmd(int, char **);
 void find_command(char *, struct cmdentry *, int, const char *);
-int find_builtin(char *);
+int find_builtin(char *, int *);
 void hashcd(void);
 void changepath(const char *);
 void deletefuncs(void);
 void addcmdentry(char *, struct cmdentry *);
 void defun(char *, union node *);
 int unsetfunc(char *);
+int typecmd_impl(int, char **, int);
 int typecmd(int, char **);
 void clearcmdentry(int);

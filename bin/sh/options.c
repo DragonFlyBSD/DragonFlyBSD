@@ -35,7 +35,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/options.c,v 1.15.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/options.c,v 1.5 2006/09/28 22:29:44 pavalos Exp $
+ * $DragonFly: src/bin/sh/options.c,v 1.6 2007/01/07 01:14:53 pavalos Exp $
  */
 
 #include <signal.h>
@@ -326,7 +326,7 @@ shiftcmd(int argc, char **argv)
 	if (argc > 1)
 		n = number(argv[1]);
 	if (n > shellparam.nparam)
-		error("can't shift that many");
+		return 1;
 	INTOFF;
 	shellparam.nparam -= n;
 	for (ap1 = shellparam.p ; --n >= 0 ; ap1++) {

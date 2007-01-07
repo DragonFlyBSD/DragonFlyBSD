@@ -35,7 +35,7 @@
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.h,v 1.8.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/var.h,v 1.4 2004/10/01 20:30:25 dillon Exp $
+ * $DragonFly: src/bin/sh/var.h,v 1.5 2007/01/07 01:14:53 pavalos Exp $
  */
 
 /*
@@ -79,6 +79,7 @@ extern struct var vpath;
 extern struct var vppid;
 extern struct var vps1;
 extern struct var vps2;
+extern struct var vps4;
 #ifndef NO_HISTORY
 extern struct var vhistsize;
 #endif
@@ -96,6 +97,7 @@ extern struct var vhistsize;
 #define pathval()	(vpath.text + 5)
 #define ps1val()	(vps1.text + 4)
 #define ps2val()	(vps2.text + 4)
+#define ps4val()	(vps4.text + 4)
 #define optindval()	(voptind.text + 7)
 #ifndef NO_HISTORY
 #define histsizeval()	(vhistsize.text + 9)

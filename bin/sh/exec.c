@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.9 2007/01/06 03:44:04 pavalos Exp $
+ * $FreeBSD: src/bin/sh/exec.c,v 1.29 2006/04/09 12:21:20 stefanf Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.10 2007/01/07 01:14:53 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -84,6 +84,7 @@
 struct tblentry {
 	struct tblentry *next;	/* next entry in hash chain */
 	union param param;	/* definition of builtin function */
+	int special;		/* flag for special builtin commands */
 	short cmdtype;		/* index identifying command */
 	char rehash;		/* if set, cd done since entry created */
 	char cmdname[ARB];	/* name of command */
@@ -318,6 +319,7 @@ find_command(char *name, struct cmdentry *entry, int printerr, const char *path)
 	struct stat statb;
 	int e;
 	int i;
+	int spec;
 
 	/* If name contains a slash, don't use the hash table */
 	if (strchr(name, '/') != NULL) {
@@ -331,11 +333,12 @@ find_command(char *name, struct cmdentry *entry, int printerr, const char *path)
 		goto success;
 
 	/* If %builtin not in path, check for builtin next */
-	if (builtinloc < 0 && (i = find_builtin(name)) >= 0) {
+	if (builtinloc < 0 && (i = find_builtin(name, &spec)) >= 0) {
 		INTOFF;
 		cmdp = cmdlookup(name, 1);
 		cmdp->cmdtype = CMDBUILTIN;
 		cmdp->param.index = i;
+		cmdp->special = spec;
 		INTON;
 		goto success;
 	}
@@ -357,12 +360,13 @@ loop:
 		idx++;
 		if (pathopt) {
 			if (prefix("builtin", pathopt)) {
-				if ((i = find_builtin(name)) < 0)
+				if ((i = find_builtin(name, &spec)) < 0)
 					goto loop;
 				INTOFF;
 				cmdp = cmdlookup(name, 1);
 				cmdp->cmdtype = CMDBUILTIN;
 				cmdp->param.index = i;
+				cmdp->special = spec;
 				INTON;
 				goto success;
 			} else if (prefix("func", pathopt)) {
@@ -432,6 +436,7 @@ success:
 		cmdp->rehash = 0;
 		entry->cmdtype = cmdp->cmdtype;
 		entry->u = cmdp->param;
+		entry->special = cmdp->special;
 	} else
 		entry->cmdtype = CMDUNKNOWN;
 }
@@ -443,13 +448,15 @@ success:
  */
 
 int
-find_builtin(char *name)
+find_builtin(char *name, int *special)
 {
 	const struct builtincmd *bp;
 
 	for (bp = builtincmd ; bp->name ; bp++) {
-		if (*bp->name == *name && equal(bp->name, name))
+		if (*bp->name == *name && equal(bp->name, name)) {
+			*special = bp->special;
 			return bp->code;
+		}
 	}
 	return -1;
 }
@@ -708,11 +715,12 @@ unsetfunc(char *name)
 }
 
 /*
- * Locate and print what a word is...
+ * Shared code for the following builtin commands:
+ *    type, command -v, command -V
  */
 
 int
-typecmd(int argc, char **argv)
+typecmd_impl(int argc, char **argv, int cmd)
 {
 	struct cmdentry entry;
 	struct tblentry *cmdp;
@@ -722,20 +730,28 @@ typecmd(int argc, char **argv)
 	int err = 0;
 
 	for (i = 1; i < argc; i++) {
-		out1str(argv[i]);
+		if (cmd != TYPECMD_SMALLV)
+			out1str(argv[i]);
+
 		/* First look at the keywords */
 		for (pp = parsekwd; *pp; pp++)
 			if (**pp == *argv[i] && equal(*pp, argv[i]))
 				break;
 
 		if (*pp) {
-			out1str(" is a shell keyword\n");
+			if (cmd == TYPECMD_SMALLV)
+				out1fmt("%s\n", argv[i]);
+			else
+				out1str(" is a shell keyword\n");
 			continue;
 		}
 
 		/* Then look at the aliases */
 		if ((ap = lookupalias(argv[i], 1)) != NULL) {
-			out1fmt(" is an alias for %s\n", ap->val);
+			if (cmd == TYPECMD_SMALLV)
+				out1fmt("alias %s='%s'\n", argv[i], ap->val);
+			else
+				out1fmt(" is an alias for %s\n", ap->val);
 			continue;
 		}
 
@@ -759,11 +775,19 @@ typecmd(int argc, char **argv)
 					name = padvance(&path, argv[i]);
 					stunalloc(name);
 				} while (--j >= 0);
-				out1fmt(" is%s %s\n",
-				    cmdp ? " a tracked alias for" : "", name);
+				if (cmd == TYPECMD_SMALLV)
+					out1fmt("%s\n", name);
+				else
+					out1fmt(" is%s %s\n",
+					    (cmdp && cmd == TYPECMD_TYPE) ?
+						" a tracked alias for" : "",
+					    name);
 			} else {
 				if (access(argv[i], X_OK) == 0) {
-					out1fmt(" is %s\n", argv[i]);
+					if (cmd == TYPECMD_SMALLV)
+						out1fmt("%s\n", argv[i]);
+					else
+						out1fmt(" is %s\n", argv[i]);
 				}
 				else {
 					out1fmt(": %s\n", strerror(errno));
@@ -773,18 +797,35 @@ typecmd(int argc, char **argv)
 			break;
 		}
 		case CMDFUNCTION:
-			out1str(" is a shell function\n");
+			if (cmd == TYPECMD_SMALLV)
+				out1fmt("%s\n", argv[i]);
+			else
+				out1str(" is a shell function\n");
 			break;
 
 		case CMDBUILTIN:
-			out1str(" is a shell builtin\n");
+			if (cmd == TYPECMD_SMALLV)
+				out1fmt("%s\n", argv[i]);
+			else
+				out1str(" is a shell builtin\n");
 			break;
 
 		default:
-			out1str(": not found\n");
+			if (cmd != TYPECMD_SMALLV)
+				out1str(": not found\n");
 			err |= 127;
 			break;
 		}
 	}
 	return err;
+}
+
+/*
+ * Locate and print what a word is...
+ */
+
+int
+typecmd(int argc, char **argv)
+{
+	return typecmd_impl(argc, argv, TYPECMD_TYPE);
 }

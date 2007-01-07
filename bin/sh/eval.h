@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/eval.h,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/eval.h,v 1.11 2005/12/04 18:44:21 stefanf Exp $
+ * $DragonFly: src/bin/sh/eval.h,v 1.4 2007/01/07 01:14:53 pavalos Exp $
  */
 
 extern const char *commandname;	/* currently executing command */
@@ -61,6 +61,7 @@ int returncmd(int, char **);
 int falsecmd(int, char **);
 int truecmd(int, char **);
 int execcmd(int, char **);
+int timescmd(int, char **);
 int commandcmd(int, char **);
 
 /* in_function returns nonzero if we are currently evaluating a function */

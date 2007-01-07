@@ -1,5 +1,6 @@
 #!/bin/sh -
-#
+
+#-
 # Copyright (c) 1991, 1993
 #	The Regents of the University of California.  All rights reserved.
 #
@@ -36,17 +37,19 @@
 #
 #	@(#)builtins.def	8.4 (Berkeley) 5/4/95
 # $FreeBSD: src/bin/sh/builtins.def,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
-# $DragonFly: src/bin/sh/builtins.def,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $DragonFly: src/bin/sh/builtins.def,v 1.3 2007/01/07 01:14:53 pavalos Exp $
 
 #
 # This file lists all the builtin commands.  The first column is the name
-# of a C routine.  The -j flag, if present, specifies that this command
-# is to be excluded from systems without job control, and the -h flag,
-# if present specifies that this command is to be excluded from systems
-# based on the NO_HISTORY compile-time symbol.  The rest of the line
-# specifies the command name or names used to run the command.  The entry
-# for bltincmd, which is run when the user does not specify a command, must
-# come first.
+# of a C routine.
+# The -j flag specifies that this command is to be excluded from systems
+# without job control.
+# The -h flag specifies that this command is to be excluded from systems
+# based on the NO_HISTORY compile-time symbol.
+# The -s flag specifies that this is a POSIX 'special built-in' command.
+# The rest of the line specifies the command name or names used to run the
+# command.  The entry for bltincmd, which is run when the user does not specify
+# a command, must come first.
 #
 # NOTE: bltincmd must come first!
 
@@ -54,16 +57,16 @@ bltincmd	builtin
 commandcmd	command
 #alloccmd	alloc
 bgcmd -j	bg
-breakcmd	break continue
+breakcmd	-s break -s continue
 #catfcmd	catf
 cdcmd		cd chdir
-dotcmd		.
+dotcmd		-s .
 echocmd		echo
-evalcmd		eval
-execcmd		exec
-exitcmd		exit
+evalcmd		-s eval
+execcmd		-s exec
+exitcmd		-s exit
 expcmd		exp let
-exportcmd	export readonly
+exportcmd	-s export -s readonly
 #exprcmd		expr
 falsecmd	false
 histcmd -h	fc
@@ -78,16 +81,17 @@ localcmd	local
 printfcmd	printf
 pwdcmd		pwd
 readcmd		read
-returncmd	return
-setcmd		set
+returncmd	-s return
+setcmd		-s set
 setvarcmd	setvar
-shiftcmd	shift
-trapcmd		trap
-truecmd		: true
+shiftcmd	-s shift
+timescmd	-s times
+trapcmd		-s trap
+truecmd		-s : true
 typecmd		type
 umaskcmd	umask
 unaliascmd	unalias
-unsetcmd	unset
+unsetcmd	-s unset
 waitcmd		wait
 #foocmd		foo
 aliascmd	alias
