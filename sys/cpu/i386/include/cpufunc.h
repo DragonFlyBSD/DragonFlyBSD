@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.18 2006/11/07 20:48:10 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.19 2007/01/07 00:43:22 dillon Exp $
  */
 
 /*
@@ -135,17 +135,25 @@ do_cpuid(u_int ax, u_int *p)
 			 :  "0" (ax));
 }
 
+#ifndef _CPU_DISABLE_INTR_DEFINED
+
 static __inline void
 cpu_disable_intr(void)
 {
 	__asm __volatile("cli" : : : "memory");
 }
 
+#endif
+
+#ifndef _CPU_ENABLE_INTR_DEFINED
+
 static __inline void
 cpu_enable_intr(void)
 {
 	__asm __volatile("sti");
 }
+
+#endif
 
 /*
  * Cpu and compiler memory ordering fence.  mfence ensures strong read and
@@ -347,6 +355,8 @@ void smp_invltlb(void);
 #define smp_invltlb()
 #endif
 
+#ifndef _CPU_INVLPG_DEFINED
+
 /*
  * Invalidate a patricular VA on this cpu only
  */
@@ -355,6 +365,10 @@ cpu_invlpg(void *addr)
 {
 	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
 }
+
+#endif
+
+#ifndef _CPU_INVLTLB_DEFINED
 
 /*
  * Invalidate the TLB on this cpu only
@@ -373,6 +387,8 @@ cpu_invltlb(void)
 	++tlb_flush_count;
 #endif
 }
+
+#endif
 
 static __inline void
 cpu_nop(void)
