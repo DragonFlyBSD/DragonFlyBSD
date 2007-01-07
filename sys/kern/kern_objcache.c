@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.15 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.16 2007/01/07 04:06:51 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -716,7 +716,6 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 				wakeup(depot);
 			return (TRUE);
 		}
-		crit_exit();
 		spin_lock_wr(&depot->spin);
 		maglist_disassociate(depot, &depot->fullmagazines,
 				     &tmplist, FALSE);
