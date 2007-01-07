@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.12 2007/01/07 05:45:06 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.13 2007/01/07 05:52:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,6 +45,7 @@
 #include <sys/tls.h>
 #include <sys/proc.h>
 #include <sys/msgbuf.h>
+#include <sys/vmspace.h>
 #include <vm/vm_page.h>
 
 #include <machine/globaldata.h>
@@ -513,6 +514,7 @@ init_rootdevice(char *imageFile)
 			    imageFile, strerror(errno));
 			/* NOT REACHED */
 		}
+		rootdevnames[0] = "ufs:vd0a";
 	}
 }
 
