@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.1 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.2 2007/01/07 05:45:06 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -214,10 +214,15 @@ static int
 vconsgetc(cdev_t dev)
 {
 	unsigned char c;
+	ssize_t n;
 
-	if (read(0, &c, 1) == 1)
-		return((int)c);
-	return(-1);
+	for (;;) {
+		if ((n = read(0, &c, 1)) == 1)
+			return((int)c);
+		if (n < 0 && errno == EINTR)
+			continue;
+		panic("vconsgetc: EOF on console %d %d", n ,errno);
+	}
 }
 
 static int

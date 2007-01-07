@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.10 2007/01/07 02:42:12 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.11 2007/01/07 05:45:03 dillon Exp $
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -47,16 +47,8 @@ kern/subr_diskmbr.c			standard
 dev/virtual/disk/vdisk.c		optional	vd
 #dev/virtual/net/vnet.c			optional	vnet
 
-#vkernel/vkernel/pmap.c		standard
-#vkernel/vkernel/pmap_inval.c	standard
-#vkernel/vkernel/spinlock.s	standard
-#vkernel/vkernel/copyin.c	standard
-#vkernel/vkernel/swtch.s		standard
-#vkernel/vkernel/trap.c		standard
-#vkernel/vkernel/clock.c		standard
-#vkernel/vkernel/float.c		standard
-#
 # PLATFORM FILES
+#
 machine/vkernel/i386/global.s		standard
 machine/vkernel/i386/swtch.s		standard
 machine/vkernel/i386/npx.c		mandatory       npx
@@ -67,6 +59,7 @@ machine/vkernel/i386/cpu_regs.c		standard
 machine/vkernel/i386/userldt.c		standard
 machine/vkernel/i386/tls.c		standard
 machine/vkernel/i386/trap.c		standard
+machine/vkernel/i386/exception.c	standard
 machine/vkernel/i386/procfs_machdep.c	standard
 machine/vkernel/i386/fork_tramp.s	standard
 machine/vkernel/platform/init.c		standard

@@ -31,15 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.4 2007/01/07 02:42:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.5 2007/01/07 05:45:06 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/sfbuf.h>
+#include <vm/vm_page.h>
+#include <vm/vm_extern.h>
+#include <assert.h>
+
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <vm/vm_page.h>
-#include <assert.h>
 
 /*
  * A bcopy that works dring low level boot, before FP is working
@@ -81,8 +84,34 @@ copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *lencopied)
 int
 copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 {
-	assert(0);
-	return (EFAULT);
+	int error;
+	size_t n;
+	const char *uptr = udaddr;
+	char *kptr = kaddr;
+
+	if (res)
+		*res = 0;
+	while (len) {
+		n = PAGE_SIZE - ((vm_offset_t)uptr & PAGE_MASK);
+		if (n > 32)
+			n = 32;
+		if (n > len)
+			n = len;
+		if ((error = copyin(uptr, kptr, n)) != 0)
+			return(error);
+		while (n) {
+			if (res)
+				++*res;
+			if (*kptr == 0)
+				return(0);
+			++kptr;
+			++uptr;
+			--n;
+			--len;
+		}
+
+	}
+	return(ENAMETOOLONG);
 }
 
 /*
@@ -91,10 +120,34 @@ copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
  * Returns 0 on success, EFAULT on failure.
  */
 int
-copyin (const void *udaddr, void *kaddr, size_t len)
+copyin(const void *udaddr, void *kaddr, size_t len)
 {
-	assert(0);
-	return (EFAULT);
+	struct vmspace *vm = curproc->p_vmspace;
+	struct sf_buf *sf;
+	vm_page_t m;
+	int error;
+	size_t n;
+
+	error = 0;
+	while (len) {
+		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
+				  VM_PROT_READ, VM_FAULT_NORMAL, &error);
+		if (error)
+			break;
+		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
+		if (n > len)
+			n = len;
+		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+		bcopy((char *)sf_buf_kva(sf)+((vm_offset_t)udaddr & PAGE_MASK),
+		      kaddr, n);
+		len -= n;
+		udaddr = (const char *)udaddr + n;
+		kaddr = (char *)kaddr + n;
+		vm_page_flag_set(m, PG_REFERENCED);
+		vm_page_unhold(m);
+		sf_buf_free(sf);
+	}
+	return (error);
 }
 
 /*
@@ -103,10 +156,35 @@ copyin (const void *udaddr, void *kaddr, size_t len)
  * Returns 0 on success, EFAULT on failure.
  */
 int
-copyout (const void *kaddr, void *udaddr, size_t len)
+copyout(const void *kaddr, void *udaddr, size_t len)
 {
-	assert(0);
-	return (EFAULT);
+	struct vmspace *vm = curproc->p_vmspace;
+	struct sf_buf *sf;
+	vm_page_t m;
+	int error;
+	size_t n;
+
+	error = 0;
+	while (len) {
+		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
+				  VM_PROT_WRITE, VM_FAULT_NORMAL, &error);
+		if (error)
+			break;
+		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
+		if (n > len)
+			n = len;
+		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+		bcopy(kaddr, (char *)sf_buf_kva(sf) +
+			     ((vm_offset_t)udaddr & PAGE_MASK), n);
+		len -= n;
+		udaddr = (char *)udaddr + n;
+		kaddr = (const char *)kaddr + n;
+		vm_page_flag_set(m, PG_REFERENCED);
+		vm_page_dirty(m);
+		vm_page_unhold(m);
+		sf_buf_free(sf);
+	}
+	return (error);
 }
  
 /*
@@ -115,8 +193,12 @@ copyout (const void *kaddr, void *udaddr, size_t len)
 int
 fubyte(const void *base)
 {
-	assert(0);
-	return (EFAULT);
+	unsigned char c;
+	int error;
+
+	if ((error = copyin(base, &c, 1)) == 0)
+		return((int)c);
+	return(-1);
 }
 
 /*
@@ -125,38 +207,53 @@ fubyte(const void *base)
 int
 subyte (void *base, int byte)
 {
-	assert(0);
-	return (EFAULT);
+	unsigned char c = byte;
+	int error;
+
+	if ((error = copyout(&c, base, 1)) == 0)
+		return(0);
+	return(-1);
 }
 
 /*
  * Fetch a word (integer, 32 bits) from user space
  */
 long
-fuword (const void *base)
+fuword(const void *base)
 {
-	assert(0);
-	return (EFAULT);
+	long v;
+	int error;
+
+	if ((error = copyin(base, &v, sizeof(v))) == 0)
+		return((long)v);
+	return(-1);
 }
 
 /*
  * Store a word (integer, 32 bits) to user space
  */
 int
-suword (void *base, long word)
+suword(void *base, long word)
 {
-	assert(0);
-	return (EFAULT);
+	int error;
+
+	if ((error = copyout(&word, base, sizeof(word))) == 0)
+		return(0);
+	return(-1);
 }
 
 /*
  * Fetch an short word (16 bits) from user space
  */
 int
-fusword (void *base)
+fusword(void *base)
 {
-	assert(0);
-	return (EFAULT);
+	unsigned short sword;
+	int error;
+
+	if ((error = copyin(base, &sword, sizeof(sword))) == 0)
+		return((int)sword);
+	return(-1);
 }
 
 /*
@@ -165,7 +262,11 @@ fusword (void *base)
 int
 susword (void *base, int word)
 {
-	assert(0);
-	return (EFAULT);
+	unsigned short sword = word;
+	int error;
+
+	if ((error = copyout(&sword, base, sizeof(sword))) == 0)
+		return(0);
+	return(-1);
 }
 

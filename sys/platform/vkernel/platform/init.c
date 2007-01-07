@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.11 2007/01/07 02:42:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.12 2007/01/07 05:45:06 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -146,11 +146,22 @@ main(int ac, char **av)
 		}
 	}
 
+	/*
+	 * Enable virtual kernel support by creating a dummy VM space.
+	 * This also causes bus and seg fault signals to generate 
+	 * an augmented tf_trapno.
+	 */
+	if (vmspace_create((void *)1, 0, NULL) < 0) {
+		err(1, "Virtual Kernel support disabled on this system");
+		/* NOT REACHED */
+	}
+
 	init_sys_memory(memImageFile);
 	init_kern_memory();
 	init_globaldata();
 	init_vkernel();
 	init_rootdevice(rootImageFile);
+	init_exceptions();
 	mi_startup();
 	/* NOT REACHED */
 	exit(1);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.2 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.3 2007/01/07 05:45:04 dillon Exp $
  */
 
 /*
@@ -108,12 +108,10 @@
 
 int (*pmath_emulate) (struct trapframe *);
 
-extern void trap (struct trapframe frame);
 extern int trapwrite (unsigned addr);
-extern void syscall2 (struct trapframe frame);
 
 static int trap_pfault (struct trapframe *, int, vm_offset_t);
-static void trap_fatal (struct trapframe *, vm_offset_t);
+static void trap_fatal (struct trapframe *, int, vm_offset_t);
 void dblfault_handler (void);
 
 #if 0
@@ -358,7 +356,7 @@ userexit(struct lwp *lp)
  */
 
 void
-trap(struct trapframe frame)
+user_trap(struct trapframe *frame)
 {
 	struct globaldata *gd = mycpu;
 	struct thread *td = gd->gd_curthread;
@@ -377,10 +375,10 @@ trap(struct trapframe frame)
 	p = td->td_proc;
 #ifdef DDB
 	if (db_active) {
-		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
+		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
 		MAKEMPSAFE(have_mplock);
-		trap_fatal(&frame, eva);
+		trap_fatal(frame, TRUE, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
 	}
@@ -388,7 +386,7 @@ trap(struct trapframe frame)
 
 	eva = 0;
 	++gd->gd_trap_nesting_level;
-	if (frame.tf_trapno == T_PAGEFLT) {
+	if (frame->tf_trapno == T_PAGEFLT) {
 		/*
 		 * For some Cyrix CPUs, %cr2 is clobbered by interrupts.
 		 * This problem is worked around by using an interrupt
@@ -410,435 +408,164 @@ trap(struct trapframe frame)
 
 	--gd->gd_trap_nesting_level;
 
-	if (!(frame.tf_eflags & PSL_I)) {
-		/*
-		 * Buggy application or kernel code has disabled interrupts
-		 * and then trapped.  Enabling interrupts now is wrong, but
-		 * it is better than running with interrupts disabled until
-		 * they are accidentally enabled later.
-		 */
-		type = frame.tf_trapno;
-		if (ISPL(frame.tf_cs)==SEL_UPL /*||(frame.tf_eflags&PSL_VM)*/) {
-			MAKEMPSAFE(have_mplock);
-			kprintf(
-			    "pid %ld (%s): trap %d with interrupts disabled\n",
-			    (long)curproc->p_pid, curproc->p_comm, type);
-		} else if (type != T_BPTFLT && type != T_TRCTRAP) {
-			/*
-			 * XXX not quite right, since this may be for a
-			 * multiple fault in user mode.
-			 */
-			MAKEMPSAFE(have_mplock);
-			kprintf("kernel trap %d with interrupts disabled\n",
-			    type);
-		}
-		cpu_enable_intr();
-	}
-
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 restart:
 #endif
-	type = frame.tf_trapno;
-	code = frame.tf_err;
+	type = frame->tf_trapno;
+	code = frame->tf_err;
 
-#if 0
-	if (in_vm86call) {
-		ASSERT_MP_LOCK_HELD(curthread);
-		if (frame.tf_eflags & PSL_VM &&
-		    (type == T_PROTFLT || type == T_STKFLT)) {
-#ifdef SMP
-			KKASSERT(td->td_mpcount > 0);
-#endif
-			i = vm86_emulate((struct vm86frame *)&frame);
-#ifdef SMP
-			KKASSERT(td->td_mpcount > 0);
-#endif
-			if (i != 0) {
-				/*
-				 * returns to original process
-				 */
-#ifdef SMP
-				vm86_trap((struct vm86frame *)&frame,
-					  have_mplock);
-#else
-				vm86_trap((struct vm86frame *)&frame, 0);
-#endif
-				KKASSERT(0); /* NOT REACHED */
-			}
-			goto out2;
+	userenter(td);
+
+	sticks = (int)td->td_sticks;
+	lp->lwp_md.md_regs = frame;
+
+	switch (type) {
+	case T_PRIVINFLT:	/* privileged instruction fault */
+		ucode = type;
+		i = SIGILL;
+		break;
+
+	case T_BPTFLT:		/* bpt instruction fault */
+	case T_TRCTRAP:		/* trace trap */
+		frame->tf_eflags &= ~PSL_T;
+		i = SIGTRAP;
+		break;
+
+	case T_ARITHTRAP:	/* arithmetic trap */
+		ucode = code;
+		i = SIGFPE;
+		break;
+
+	case T_ASTFLT:		/* Allow process switch */
+		mycpu->gd_cnt.v_soft++;
+		if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
+			atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
+				    RQF_AST_OWEUPC);
+			addupc_task(p, p->p_prof.pr_addr,
+				    p->p_prof.pr_ticks);
 		}
-		switch (type) {
-			/*
-			 * these traps want either a process context, or
-			 * assume a normal userspace trap.
-			 */
-		case T_PROTFLT:
-		case T_SEGNPFLT:
-			trap_fatal(&frame, eva);
-			goto out2;
-		case T_TRCTRAP:
-			type = T_BPTFLT;	/* kernel breakpoint */
-			/* FALL THROUGH */
-		}
-		goto kernel_trap;	/* normal kernel trap handling */
-	}
-#endif
+		goto out;
 
-        if ((ISPL(frame.tf_cs) == SEL_UPL) /*||(frame.tf_eflags & PSL_VM)*/) {
-		/* user trap */
-
-		userenter(td);
-
-		sticks = (int)td->td_sticks;
-		lp->lwp_md.md_regs = &frame;
-
-		switch (type) {
-		case T_PRIVINFLT:	/* privileged instruction fault */
-			ucode = type;
-			i = SIGILL;
-			break;
-
-		case T_BPTFLT:		/* bpt instruction fault */
-		case T_TRCTRAP:		/* trace trap */
-			frame.tf_eflags &= ~PSL_T;
-			i = SIGTRAP;
-			break;
-
-		case T_ARITHTRAP:	/* arithmetic trap */
-			ucode = code;
-			i = SIGFPE;
-			break;
-
-		case T_ASTFLT:		/* Allow process switch */
-			mycpu->gd_cnt.v_soft++;
-			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
-				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
-					    RQF_AST_OWEUPC);
-				addupc_task(p, p->p_prof.pr_addr,
-					    p->p_prof.pr_ticks);
-			}
-			goto out;
-
-			/*
-			 * The following two traps can happen in
-			 * vm86 mode, and, if so, we want to handle
-			 * them specially.
-			 */
-		case T_PROTFLT:		/* general protection fault */
-		case T_STKFLT:		/* stack fault */
+		/*
+		 * The following two traps can happen in
+		 * vm86 mode, and, if so, we want to handle
+		 * them specially.
+		 */
+	case T_PROTFLT:		/* general protection fault */
+	case T_STKFLT:		/* stack fault */
 #if 0
-			if (frame.tf_eflags & PSL_VM) {
-				i = vm86_emulate((struct vm86frame *)&frame);
-				if (i == 0)
-					goto out;
-				break;
-			}
-#endif
-			/* FALL THROUGH */
-
-		case T_SEGNPFLT:	/* segment not present fault */
-		case T_TSSFLT:		/* invalid TSS fault */
-		case T_DOUBLEFLT:	/* double fault */
-		default:
-			ucode = code + BUS_SEGM_FAULT ;
-			i = SIGBUS;
-			break;
-
-		case T_PAGEFLT:		/* page fault */
-			MAKEMPSAFE(have_mplock);
-			i = trap_pfault(&frame, TRUE, eva);
-			if (i == -1)
-				goto out;
-#if defined(I586_CPU) && !defined(NO_F00F_HACK)
-			if (i == -2)
-				goto restart;
-#endif
+		if (frame->tf_eflags & PSL_VM) {
+			i = vm86_emulate((struct vm86frame *)frame);
 			if (i == 0)
 				goto out;
-
-			ucode = T_PAGEFLT;
-
-			/*
-			 * The code is lost because tf_err is overwritten
-			 * with the fault address.  Store it in the upper
-			 * 16 bits of tf_trapno for vkernel consumption.
-			 */
-			if (p->p_vkernel && p->p_vkernel->vk_current) {
-				frame.tf_trapno |= (code << 16);
-			}
-			break;
-
-		case T_DIVIDE:		/* integer divide fault */
-			ucode = FPE_INTDIV;
-			i = SIGFPE;
-			break;
-
-#if NISA > 0
-		case T_NMI:
-			MAKEMPSAFE(have_mplock);
-			/* machine/parity/power fail/"kitchen sink" faults */
-			if (isa_nmi(code) == 0) {
-#ifdef DDB
-				/*
-				 * NMI can be hooked up to a pushbutton
-				 * for debugging.
-				 */
-				if (ddb_on_nmi) {
-					kprintf ("NMI ... going to debugger\n");
-					kdb_trap (type, 0, &frame);
-				}
-#endif /* DDB */
-				goto out2;
-			} else if (panic_on_nmi)
-				panic("NMI indicates hardware failure");
-			break;
-#endif /* NISA > 0 */
-
-		case T_OFLOW:		/* integer overflow fault */
-			ucode = FPE_INTOVF;
-			i = SIGFPE;
-			break;
-
-		case T_BOUND:		/* bounds check fault */
-			ucode = FPE_FLTSUB;
-			i = SIGFPE;
-			break;
-
-		case T_DNA:
-#if NNPX > 0
-			/* 
-			 * The kernel may have switched out the FP unit's
-			 * state, causing the user process to take a fault
-			 * when it tries to use the FP unit.  Restore the
-			 * state here
-			 */
-			if (npxdna())
-				goto out;
-#endif
-			if (!pmath_emulate) {
-				i = SIGFPE;
-				ucode = FPE_FPU_NP_TRAP;
-				break;
-			}
-			i = (*pmath_emulate)(&frame);
-			if (i == 0) {
-				if (!(frame.tf_eflags & PSL_T))
-					goto out2;
-				frame.tf_eflags &= ~PSL_T;
-				i = SIGTRAP;
-			}
-			/* else ucode = emulator_only_knows() XXX */
-			break;
-
-		case T_FPOPFLT:		/* FPU operand fetch fault */
-			ucode = T_FPOPFLT;
-			i = SIGILL;
-			break;
-
-		case T_XMMFLT:		/* SIMD floating-point exception */
-			ucode = 0; /* XXX */
-			i = SIGFPE;
 			break;
 		}
-	} else {
-#if 0
-kernel_trap:
 #endif
-		/* kernel trap */
+		/* FALL THROUGH */
 
-		switch (type) {
-		case T_PAGEFLT:			/* page fault */
-			MAKEMPSAFE(have_mplock);
-			trap_pfault(&frame, FALSE, eva);
-			goto out2;
+	case T_SEGNPFLT:	/* segment not present fault */
+	case T_TSSFLT:		/* invalid TSS fault */
+	case T_DOUBLEFLT:	/* double fault */
+	default:
+		ucode = code + BUS_SEGM_FAULT ;
+		i = SIGBUS;
+		break;
 
-		case T_DNA:
-#if NNPX > 0
-			/*
-			 * The kernel may be using npx for copying or other
-			 * purposes.
-			 */
-			if (npxdna())
-				goto out2;
-#endif
-			break;
-
-		case T_PROTFLT:		/* general protection fault */
-		case T_SEGNPFLT:	/* segment not present fault */
-			/*
-			 * Invalid segment selectors and out of bounds
-			 * %eip's and %esp's can be set up in user mode.
-			 * This causes a fault in kernel mode when the
-			 * kernel tries to return to user mode.  We want
-			 * to get this fault so that we can fix the
-			 * problem here and not have to check all the
-			 * selectors and pointers when the user changes
-			 * them.
-			 */
-#define	MAYBE_DORETI_FAULT(where, whereto)				\
-	do {								\
-		if (frame.tf_eip == (int)where) {			\
-			frame.tf_eip = (int)whereto;			\
-			goto out2;					\
-		}							\
-	} while (0)
-
-#if 0
-			/*
-			 * Since we don't save %gs across an interrupt
-			 * frame this check must occur outside the intr
-			 * nesting level check.
-			 */
-			if (frame.tf_eip == (int)cpu_switch_load_gs) {
-				td->td_pcb->pcb_gs = 0;
-				MAKEMPSAFE(have_mplock);
-				ksignal(p, SIGBUS);
-				goto out2;
-			}
-#endif
-			if (mycpu->gd_intr_nesting_level == 0) {
-#if 0
-				/*
-				 * Invalid %fs's and %gs's can be created using
-				 * procfs or PT_SETREGS or by invalidating the
-				 * underlying LDT entry.  This causes a fault
-				 * in kernel mode when the kernel attempts to
-				 * switch contexts.  Lose the bad context
-				 * (XXX) so that we can continue, and generate
-				 * a signal.
-				 */
-				MAYBE_DORETI_FAULT(doreti_iret,
-						   doreti_iret_fault);
-				MAYBE_DORETI_FAULT(doreti_popl_ds,
-						   doreti_popl_ds_fault);
-				MAYBE_DORETI_FAULT(doreti_popl_es,
-						   doreti_popl_es_fault);
-				MAYBE_DORETI_FAULT(doreti_popl_fs,
-						   doreti_popl_fs_fault);
-#endif
-				if (td->td_pcb->pcb_onfault) {
-					frame.tf_eip = 
-					    (register_t)td->td_pcb->pcb_onfault;
-					goto out2;
-				}
-			}
-			break;
-
-		case T_TSSFLT:
-			/*
-			 * PSL_NT can be set in user mode and isn't cleared
-			 * automatically when the kernel is entered.  This
-			 * causes a TSS fault when the kernel attempts to
-			 * `iret' because the TSS link is uninitialized.  We
-			 * want to get this fault so that we can fix the
-			 * problem here and not every time the kernel is
-			 * entered.
-			 */
-			if (frame.tf_eflags & PSL_NT) {
-				frame.tf_eflags &= ~PSL_NT;
-				goto out2;
-			}
-			break;
-
-		case T_TRCTRAP:	 /* trace trap */
-#if 0
-			if (frame.tf_eip == (int)IDTVEC(syscall)) {
-				/*
-				 * We've just entered system mode via the
-				 * syscall lcall.  Continue single stepping
-				 * silently until the syscall handler has
-				 * saved the flags.
-				 */
-				goto out2;
-			}
-			if (frame.tf_eip == (int)IDTVEC(syscall) + 1) {
-				/*
-				 * The syscall handler has now saved the
-				 * flags.  Stop single stepping it.
-				 */
-				frame.tf_eflags &= ~PSL_T;
-				goto out2;
-			}
-#endif
-#if 0
-                        /*
-                         * Ignore debug register trace traps due to
-                         * accesses in the user's address space, which
-                         * can happen under several conditions such as
-                         * if a user sets a watchpoint on a buffer and
-                         * then passes that buffer to a system call.
-                         * We still want to get TRCTRAPS for addresses
-                         * in kernel space because that is useful when
-                         * debugging the kernel.
-                         */
-                        if (user_dbreg_trap()) {
-                                /*
-                                 * Reset breakpoint bits because the
-                                 * processor doesn't
-                                 */
-                                load_dr6(rdr6() & 0xfffffff0);
-                                goto out2;
-                        }
-#endif
-			/*
-			 * Fall through (TRCTRAP kernel mode, kernel address)
-			 */
-		case T_BPTFLT:
-			/*
-			 * If DDB is enabled, let it handle the debugger trap.
-			 * Otherwise, debugger traps "can't happen".
-			 */
-#ifdef DDB
-			MAKEMPSAFE(have_mplock);
-			if (kdb_trap (type, 0, &frame))
-				goto out2;
-#endif
-			break;
-
-#if NISA > 0
-		case T_NMI:
-			MAKEMPSAFE(have_mplock);
-#ifdef POWERFAIL_NMI
-#ifndef TIMER_FREQ
-#  define TIMER_FREQ 1193182
-#endif
-	handle_powerfail:
-		{
-		  static unsigned lastalert = 0;
-
-		  if(time_second - lastalert > 10)
-		    {
-		      log(LOG_WARNING, "NMI: power fail\n");
-		      sysbeep(TIMER_FREQ/880, hz);
-		      lastalert = time_second;
-		    }
-		    /* YYY mp count */
-		  goto out2;
-		}
-#else /* !POWERFAIL_NMI */
-			/* machine/parity/power fail/"kitchen sink" faults */
-			if (isa_nmi(code) == 0) {
-#ifdef DDB
-				/*
-				 * NMI can be hooked up to a pushbutton
-				 * for debugging.
-				 */
-				if (ddb_on_nmi) {
-					kprintf ("NMI ... going to debugger\n");
-					kdb_trap (type, 0, &frame);
-				}
-#endif /* DDB */
-				goto out2;
-			} else if (panic_on_nmi == 0)
-				goto out2;
-			/* FALL THROUGH */
-#endif /* POWERFAIL_NMI */
-#endif /* NISA > 0 */
-		}
-
+	case T_PAGEFLT:		/* page fault */
 		MAKEMPSAFE(have_mplock);
-		trap_fatal(&frame, eva);
-		goto out2;
+		i = trap_pfault(frame, TRUE, eva);
+		if (i == -1)
+			goto out;
+#if defined(I586_CPU) && !defined(NO_F00F_HACK)
+		if (i == -2)
+			goto restart;
+#endif
+		if (i == 0)
+			goto out;
+
+		ucode = T_PAGEFLT;
+
+		/*
+		 * The code is lost because tf_err is overwritten
+		 * with the fault address.  Store it in the upper
+		 * 16 bits of tf_trapno for vkernel consumption.
+		 */
+		if (p->p_vkernel) {
+			frame->tf_trapno |= (code << 16);
+		}
+		break;
+
+	case T_DIVIDE:		/* integer divide fault */
+		ucode = FPE_INTDIV;
+		i = SIGFPE;
+		break;
+
+#if NISA > 0
+	case T_NMI:
+		MAKEMPSAFE(have_mplock);
+		/* machine/parity/power fail/"kitchen sink" faults */
+		if (isa_nmi(code) == 0) {
+#ifdef DDB
+			/*
+			 * NMI can be hooked up to a pushbutton
+			 * for debugging.
+			 */
+			if (ddb_on_nmi) {
+				kprintf ("NMI ... going to debugger\n");
+				kdb_trap (type, 0, frame);
+			}
+#endif /* DDB */
+			goto out2;
+		} else if (panic_on_nmi)
+			panic("NMI indicates hardware failure");
+		break;
+#endif /* NISA > 0 */
+
+	case T_OFLOW:		/* integer overflow fault */
+		ucode = FPE_INTOVF;
+		i = SIGFPE;
+		break;
+
+	case T_BOUND:		/* bounds check fault */
+		ucode = FPE_FLTSUB;
+		i = SIGFPE;
+		break;
+
+	case T_DNA:
+#if NNPX > 0
+		/* 
+		 * The kernel may have switched out the FP unit's
+		 * state, causing the user process to take a fault
+		 * when it tries to use the FP unit.  Restore the
+		 * state here
+		 */
+		if (npxdna())
+			goto out;
+#endif
+		if (!pmath_emulate) {
+			i = SIGFPE;
+			ucode = FPE_FPU_NP_TRAP;
+			break;
+		}
+		i = (*pmath_emulate)(frame);
+		if (i == 0) {
+			if (!(frame->tf_eflags & PSL_T))
+				goto out2;
+			frame->tf_eflags &= ~PSL_T;
+			i = SIGTRAP;
+		}
+		/* else ucode = emulator_only_knows() XXX */
+		break;
+
+	case T_FPOPFLT:		/* FPU operand fetch fault */
+		ucode = T_FPOPFLT;
+		i = SIGILL;
+		break;
+
+	case T_XMMFLT:		/* SIMD floating-point exception */
+		ucode = 0; /* XXX */
+		i = SIGFPE;
+		break;
 	}
 
 	/*
@@ -847,7 +574,7 @@ kernel_trap:
 	 * handle it.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		vkernel_trap(p, &frame);
+		vkernel_trap(p, frame);
 		goto out;
 	}
 
@@ -872,10 +599,9 @@ kernel_trap:
 
 out:
 #ifdef SMP
-        if (ISPL(frame.tf_cs) == SEL_UPL)
-		KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame->tf_eip));
 #endif
-	userret(lp, &frame, sticks);
+	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
 #ifdef SMP
@@ -889,114 +615,209 @@ out2:	;
 #endif
 }
 
-#ifdef notyet
-/*
- * This version doesn't allow a page fault to user space while
- * in the kernel. The rest of the kernel needs to be made "safe"
- * before this can be used. I think the only things remaining
- * to be made safe is the process tracing/debugging code.
- */
-static int
-trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
+void
+kern_trap(struct trapframe *frame)
 {
-	vm_offset_t va;
-	struct vmspace *vm = NULL;
-	vm_map_t map = 0;
-	int rv = 0;
-	vm_prot_t ftype;
-	thread_t td = curthread;
-	struct proc *p = td->td_proc;	/* may be NULL */
-
-	if (frame->tf_err & PGEX_W)
-		ftype = VM_PROT_WRITE;
-	else
-		ftype = VM_PROT_READ;
-
-	va = trunc_page(eva);
-	if (va < KvaStart) {
-		vm_offset_t v;
-		vm_page_t mpte;
-
-		if (p == NULL ||
-		    (!usermode && va < VM_MAX_USER_ADDRESS &&
-		     (td->td_gd->gd_intr_nesting_level != 0 || 
-		      td->td_pcb->pcb_onfault == NULL))) {
-			trap_fatal(frame, eva);
-			return (-1);
-		}
-
-		/*
-		 * This is a fault on non-kernel virtual memory.
-		 * vm is initialized above to NULL. If curproc is NULL
-		 * or curproc->p_vmspace is NULL the fault is fatal.
-		 */
-		vm = p->p_vmspace;
-		if (vm == NULL)
-			goto nogo;
-
-		map = &vm->vm_map;
-
-		/*
-		 * Keep swapout from messing with us during this
-		 *	critical time.
-		 */
-		++p->p_lock;
-
-		/*
-		 * Grow the stack if necessary
-		 */
-		/* grow_stack returns false only if va falls into
-		 * a growable stack region and the stack growth
-		 * fails.  It returns true if va was not within
-		 * a growable stack region, or if the stack 
-		 * growth succeeded.
-		 */
-		if (!grow_stack (p, va)) {
-			rv = KERN_FAILURE;
-			--p->p_lock;
-			goto nogo;
-		}
-		
-		/* Fault in the user page: */
-		rv = vm_fault(map, va, ftype,
-			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
-						      : VM_FAULT_NORMAL);
-
-		--p->p_lock;
-	} else {
-		/*
-		 * Don't allow user-mode faults in kernel address space.
-		 */
-		if (usermode)
-			goto nogo;
-
-		/*
-		 * Since we know that kernel virtual address addresses
-		 * always have pte pages mapped, we just have to fault
-		 * the page.
-		 */
-		rv = vm_fault(&kernel_map, va, ftype, VM_FAULT_NORMAL);
-	}
-
-	if (rv == KERN_SUCCESS)
-		return (0);
-nogo:
-	if (!usermode) {
-		if (mtd->td_gd->gd_intr_nesting_level == 0 && 
-		    td->td_pcb->pcb_onfault) {
-			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
-			return (0);
-		}
-		trap_fatal(frame, eva);
-		return (-1);
-	}
-
-	/* kludge to pass faulting virtual address to sendsig */
-	frame->tf_err = eva;
-
-	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
-}
+	struct globaldata *gd = mycpu;
+	struct thread *td = gd->gd_curthread;
+	struct proc *p;
+	int i = 0, ucode = 0, type, code;
+#ifdef SMP
+	int have_mplock = 0;
 #endif
+#ifdef INVARIANTS
+	int crit_count = td->td_pri & ~TDPRI_MASK;
+#endif
+	vm_offset_t eva;
+
+	p = td->td_proc;
+#ifdef DDB
+	if (db_active) {
+		eva = (frame->tf_trapno == T_PAGEFLT ? frame->tf_err : 0);
+		++gd->gd_trap_nesting_level;
+		MAKEMPSAFE(have_mplock);
+		trap_fatal(frame, FALSE, eva);
+		--gd->gd_trap_nesting_level;
+		goto out2;
+	}
+#endif
+
+	eva = 0;
+	++gd->gd_trap_nesting_level;
+
+	/*
+	 * This is a bad kludge to avoid changing the various trapframe
+	 * structures.  Because we are enabled as a virtual kernel,
+	 * the original tf_err field will be passed to us shifted 16
+	 * over in the tf_trapno field for T_PAGEFLT.
+	 */
+	if ((int16_t)frame->tf_trapno == T_PAGEFLT) {
+		eva = frame->tf_err;
+		frame->tf_err = frame->tf_trapno >> 16;
+		frame->tf_trapno &= 0xFFFF;
+		/*cpu_enable_intr();*/
+	}
+#ifdef SMP
+	if (trap_mpsafe == 0)
+		MAKEMPSAFE(have_mplock);
+#endif
+
+	--gd->gd_trap_nesting_level;
+
+	type = frame->tf_trapno;
+	code = frame->tf_err;
+
+#if 0
+kernel_trap:
+#endif
+	/* kernel trap */
+
+	switch (type) {
+	case T_PAGEFLT:			/* page fault */
+		MAKEMPSAFE(have_mplock);
+		trap_pfault(frame, FALSE, eva);
+		goto out2;
+
+	case T_DNA:
+#if NNPX > 0
+		/*
+		 * The kernel may be using npx for copying or other
+		 * purposes.
+		 */
+		if (npxdna())
+			goto out2;
+#endif
+		break;
+
+	case T_PROTFLT:		/* general protection fault */
+	case T_SEGNPFLT:	/* segment not present fault */
+		/*
+		 * Invalid segment selectors and out of bounds
+		 * %eip's and %esp's can be set up in user mode.
+		 * This causes a fault in kernel mode when the
+		 * kernel tries to return to user mode.  We want
+		 * to get this fault so that we can fix the
+		 * problem here and not have to check all the
+		 * selectors and pointers when the user changes
+		 * them.
+		 */
+		if (mycpu->gd_intr_nesting_level == 0) {
+			if (td->td_pcb->pcb_onfault) {
+				frame->tf_eip = 
+				    (register_t)td->td_pcb->pcb_onfault;
+				goto out2;
+			}
+		}
+		break;
+
+	case T_TSSFLT:
+		/*
+		 * PSL_NT can be set in user mode and isn't cleared
+		 * automatically when the kernel is entered.  This
+		 * causes a TSS fault when the kernel attempts to
+		 * `iret' because the TSS link is uninitialized.  We
+		 * want to get this fault so that we can fix the
+		 * problem here and not every time the kernel is
+		 * entered.
+		 */
+		if (frame->tf_eflags & PSL_NT) {
+			frame->tf_eflags &= ~PSL_NT;
+			goto out2;
+		}
+		break;
+
+	case T_TRCTRAP:	 /* trace trap */
+#if 0
+		if (frame->tf_eip == (int)IDTVEC(syscall)) {
+			/*
+			 * We've just entered system mode via the
+			 * syscall lcall.  Continue single stepping
+			 * silently until the syscall handler has
+			 * saved the flags.
+			 */
+			goto out2;
+		}
+		if (frame->tf_eip == (int)IDTVEC(syscall) + 1) {
+			/*
+			 * The syscall handler has now saved the
+			 * flags.  Stop single stepping it.
+			 */
+			frame->tf_eflags &= ~PSL_T;
+			goto out2;
+		}
+#endif
+#if 0
+		/*
+		 * Ignore debug register trace traps due to
+		 * accesses in the user's address space, which
+		 * can happen under several conditions such as
+		 * if a user sets a watchpoint on a buffer and
+		 * then passes that buffer to a system call.
+		 * We still want to get TRCTRAPS for addresses
+		 * in kernel space because that is useful when
+		 * debugging the kernel.
+		 */
+		if (user_dbreg_trap()) {
+			/*
+			 * Reset breakpoint bits because the
+			 * processor doesn't
+			 */
+			load_dr6(rdr6() & 0xfffffff0);
+			goto out2;
+		}
+#endif
+		/*
+		 * Fall through (TRCTRAP kernel mode, kernel address)
+		 */
+	case T_BPTFLT:
+		/*
+		 * If DDB is enabled, let it handle the debugger trap.
+		 * Otherwise, debugger traps "can't happen".
+		 */
+#ifdef DDB
+		MAKEMPSAFE(have_mplock);
+		if (kdb_trap (type, 0, frame))
+			goto out2;
+#endif
+		break;
+
+	case T_NMI:
+		MAKEMPSAFE(have_mplock);
+		trap_fatal(frame, FALSE, eva);
+		goto out2;
+	}
+
+	/*
+	 * Translate fault for emulators (e.g. Linux) 
+	 */
+	if (*p->p_sysent->sv_transtrap)
+		i = (*p->p_sysent->sv_transtrap)(i, type);
+
+	MAKEMPSAFE(have_mplock);
+	trapsignal(p, i, ucode);
+
+#ifdef DEBUG
+	if (type <= MAX_TRAP_MSG) {
+		uprintf("fatal process exception: %s",
+			trap_msg[type]);
+		if ((type == T_PAGEFLT) || (type == T_PROTFLT))
+			uprintf(", fault VA = 0x%lx", (u_long)eva);
+		uprintf("\n");
+	}
+#endif
+
+out2:	
+	;
+#ifdef SMP
+	if (have_mplock)
+		rel_mplock();
+#endif
+#ifdef INVARIANTS
+	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
+		("syscall: critical section count mismatch! %d/%d",
+		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
+#endif
+}
 
 int
 trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
@@ -1010,18 +831,10 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	struct proc *p = td->td_proc;
 
 	va = trunc_page(eva);
-	if (va >= KERNBASE) {
+	if (usermode == FALSE) {
 		/*
-		 * Don't allow user-mode faults in kernel address space.
-		 * An exception:  if the faulting address is the invalid
-		 * instruction entry in the IDT, then the Intel Pentium
-		 * F00F bug workaround was triggered, and we need to
-		 * treat it is as an illegal instruction, and not a page
-		 * fault.
+		 * This is a fault on kernel virtual memory.
 		 */
-		if (usermode)
-			goto nogo;
-
 		map = &kernel_map;
 	} else {
 		/*
@@ -1087,7 +900,7 @@ nogo:
 			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
 			return (0);
 		}
-		trap_fatal(frame, eva);
+		trap_fatal(frame, usermode, eva);
 		return (-1);
 	}
 
@@ -1098,7 +911,7 @@ nogo:
 }
 
 static void
-trap_fatal(struct trapframe *frame, vm_offset_t eva)
+trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 {
 	int code, type, ss, esp;
 
@@ -1119,7 +932,7 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= 0x%x\n", eva);
 		kprintf("fault code		= %s %s, %s\n",
-			code & PGEX_U ? "user" : "supervisor",
+			usermode ? "user" : "supervisor",
 			code & PGEX_W ? "write" : "read",
 			code & PGEX_P ? "protection violation" : "page not present");
 	}
@@ -1275,7 +1088,7 @@ trapwrite(unsigned addr)
  */
 
 void
-syscall2(struct trapframe frame)
+syscall2(struct trapframe *frame)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1296,7 +1109,7 @@ syscall2(struct trapframe frame)
 	union sysunion args;
 
 #ifdef DIAGNOSTIC
-	if (ISPL(frame.tf_cs) != SEL_UPL) {
+	if (ISPL(frame->tf_cs) != SEL_UPL) {
 		get_mplock();
 		panic("syscall");
 		/* NOT REACHED */
@@ -1304,7 +1117,7 @@ syscall2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
@@ -1314,7 +1127,7 @@ syscall2(struct trapframe frame)
 	 * Misc
 	 */
 	sticks = (int)td->td_sticks;
-	orig_tf_eflags = frame.tf_eflags;
+	orig_tf_eflags = frame->tf_eflags;
 
 	/*
 	 * Virtual kernel intercept - if a VM context managed by a virtual
@@ -1323,10 +1136,10 @@ syscall2(struct trapframe frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		error = vkernel_trap(p, &frame);
-		frame.tf_eax = error;
+		error = vkernel_trap(p, frame);
+		frame->tf_eax = error;
 		if (error)
-			frame.tf_eflags |= PSL_C;
+			frame->tf_eflags |= PSL_C;
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1334,13 +1147,13 @@ syscall2(struct trapframe frame)
 	/*
 	 * Get the system call parameters and account for time
 	 */
-	lp->lwp_md.md_regs = &frame;
-	params = (caddr_t)frame.tf_esp + sizeof(int);
-	code = frame.tf_eax;
+	lp->lwp_md.md_regs = frame;
+	params = (caddr_t)frame->tf_esp + sizeof(int);
+	code = frame->tf_eax;
 
 	if (p->p_sysent->sv_prepsyscall) {
 		(*p->p_sysent->sv_prepsyscall)(
-			&frame, (int *)(&args.nosys.sysmsg + 1),
+			frame, (int *)(&args.nosys.sysmsg + 1),
 			&code, &params);
 	} else {
 		/*
@@ -1403,13 +1216,13 @@ syscall2(struct trapframe frame)
 	 * system call returns we pre-set it here.
 	 */
 	args.sysmsg_fds[0] = 0;
-	args.sysmsg_fds[1] = frame.tf_edx;
+	args.sysmsg_fds[1] = frame->tf_edx;
 
 	/*
 	 * The syscall might manipulate the trap frame. If it does it
 	 * will probably return EJUSTRETURN.
 	 */
-	args.sysmsg_frame = &frame;
+	args.sysmsg_frame = frame;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1437,16 +1250,16 @@ out:
 		 */
 		p = curproc;
 		lp = curthread->td_lwp;
-		frame.tf_eax = args.sysmsg_fds[0];
-		frame.tf_edx = args.sysmsg_fds[1];
-		frame.tf_eflags &= ~PSL_C;
+		frame->tf_eax = args.sysmsg_fds[0];
+		frame->tf_edx = args.sysmsg_fds[1];
+		frame->tf_eflags &= ~PSL_C;
 		break;
 	case ERESTART:
 		/*
 		 * Reconstruct pc, assuming lcall $X,y is 7 bytes,
 		 * int 0x80 is 2 bytes. We saved this in tf_err.
 		 */
-		frame.tf_eip -= frame.tf_err;
+		frame->tf_eip -= frame->tf_err;
 		break;
 	case EJUSTRETURN:
 		break;
@@ -1460,8 +1273,8 @@ bad:
 			else
 				error = p->p_sysent->sv_errtbl[error];
 		}
-		frame.tf_eax = error;
-		frame.tf_eflags |= PSL_C;
+		frame->tf_eax = error;
+		frame->tf_eflags |= PSL_C;
 		break;
 	}
 
@@ -1470,14 +1283,14 @@ bad:
 	 */
 	if ((orig_tf_eflags & PSL_T) /*&& !(orig_tf_eflags & PSL_VM)*/) {
 		MAKEMPSAFE(have_mplock);
-		frame.tf_eflags &= ~PSL_T;
+		frame->tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
 
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	userret(lp, &frame, sticks);
+	userret(lp, frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
@@ -1499,7 +1312,7 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p", (void *)frame.tf_eip));
+		("badmpcount syscall2/end from %p", (void *)frame->tf_eip));
 	if (have_mplock)
 		rel_mplock();
 #endif
