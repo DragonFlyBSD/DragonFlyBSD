@@ -23,77 +23,94 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ktr.9,v 1.8 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ktr.9,v 1.9 2007/01/07 11:25:12 swildner Exp $
 .\"
-.Dd February 15, 2001
+.Dd January 6, 2006
 .Dt KTR 9
 .Os
 .Sh NAME
-.Nm CTR0 ,
-.Nm CTR1 ,
-.Nm CTR2 ,
-.Nm CTR3 ,
-.Nm CTR4 ,
-.Nm CTR5 ,
-.Nm CTR6
+.Nm KTR_INFO_MASTER ,
+.Nm KTR_INFO ,
+.Nm KTR_LOG ,
+.Nm KTR_LOG_PTR
 .Nd kernel tracing facility
 .Sh SYNOPSIS
-.In sys/param.h
 .In sys/ktr.h
-.Vt "extern int ktr_cpumask" ;
 .Vt "extern int ktr_entries" ;
-.Vt "extern int ktr_extend" ;
-.Vt "extern int ktr_mask" ;
 .Vt "extern int ktr_verbose" ;
-.Vt "extern struct ktr_entry ktr_buf[]" ;
-.Ft void
-.Fn CTR0 "u_int mask" "char *format"
-.Ft void
-.Fn CTR1 "u_int mask" "char *format" "arg1"
-.Ft void
-.Fn CTR2 "u_int mask" "char *format" "arg1" "arg2"
-.Ft void
-.Fn CTR3 "u_int mask" "char *format" "arg1" "arg2" "arg3"
-.Ft void
-.Fn CTR4 "u_int mask" "char *format" "arg1" "arg2" "arg3" "arg4"
-.Ft void
-.Fn CTR5 "u_int mask" "char *format" "arg1" "arg2" "arg3" "arg4" "arg5"
-.Ft void
-.Fn CTR6 "u_int mask" "char *format" "arg1" "arg2" "arg3" "arg4" "arg5" "arg6"
+.Vt "extern struct ktr_entry *ktr_buf[MAXCPU]" ;
+.Fn KTR_INFO_MASTER "master"
+.Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "datasize"
+.Fn KTR_LOG "info" "arg ..."
+.Fn KTR_LOG_PTR "info" "ptr"
 .Sh DESCRIPTION
-KTR provides a circular buffer of events that can be logged in a
-.Xr printf 9
-style
-fashion.
+The
+.Nm ktr
+facility provides a circular buffer of events that can be logged in a
+.Xr kprintf 9
+style fashion.
 These events can then be dumped with
 .Xr ddb 4 ,
 .Xr gdb 1
 or
 .Xr ktrdump 8 .
 .Pp
-Events are created and logged in the kernel via the
-.Dv CTR Ns Ar x
-macros.
-The first parameter is a mask of event types
-.Pq Dv KTR_*
-defined in
-.In sys/ktr.h .
-The event will be logged only if any of the event types specified in
-.Fa mask
-are enabled in the global event mask stored in
-.Va ktr_mask .
+.Fn KTR_INFO_MASTER
+declares a new master variable
+.Dv ktr Ns _ Ns Fa master Ns _ Ns Dv enable
+that is used to turn on and off event logging.
+.Pp
+The
+.Fn KTR_INFO
+macro registers a new event
+.Fa name
+that will be controlled by the
+.Fa master
+enable variable.
+Code for logging this event will be compiled in when
+.Fa compile
+is defined.
 The
 .Fa format
 argument is a
-.Xr printf 9
-style format string used to build the text of the event log message.
-Following the
+.Xr kprintf 9
+style format string used to build the text of the event log message while
+.Fa datasize
+specifies the size of the data to be logged, either the total size of the
+arguments required by the
 .Fa format
-string are zero to five arguments referenced by
-.Fa format .
-Note that the different macros differ only in the number of arguments each
-one takes, as indicated by its name.
-Each event is logged with a timestamp in addition to the log message.
+string or the size of the data pointer
+.Fa ptr .
+For logging a fixed string with
+.Fn KTR_INFO ,
+.Fa datasize
+is 0.
+The
+.Fa maskbit
+is currently unused and can be set to 0.
+.Pp
+Kernel events are logged via the
+.Fn KTR_LOG
+and
+.Fn KTR_LOG_PTR
+macros.
+The
+.Fa info
+parameter is an identifier of the format
+.Fa master Ns _ Ns Fa name .
+.Fn KTR_LOG
+accepts zero or more additional
+.Fa arg
+arguments as required by the
+.Fa format
+string passed to the associated
+.Fn KTR_INFO
+call.
+The
+.Fn KTR_LOG_PTR
+macro behaves similarly but takes a single data pointer
+.Fa ptr
+instead.
 .Pp
 The
 .Va ktr_entries
@@ -104,46 +121,39 @@ These variables are mostly useful for post-mortem crash dump tools to locate
 the base of the circular trace buffer and its length.
 .Pp
 The
-.Va ktr_mask
-variable contains the run time mask of events to log.
-.Pp
-The CPU event mask is stored in the
-.Va ktr_cpumask
-variable.
-.Pp
-The
 .Va ktr_verbose
 variable stores the verbose flag that controls whether events are logged to
 the console in addition to the event buffer.
 .Sh EXAMPLES
-This example demonstrates the use of tracepoints at the
-.Dv KTR_PROC
-logging level.
+This example demonstrates a simple usage of the KTR facility:
+.Pp
 .Bd -literal -compact
+KTR_INFO_MASTER(ktrtest);
+KTR_INFO(KTR_TEST, ktrtest, t1, 0, "func() called", 0);
+
+\&...
+
 void
-mi_switch()
+func(void)
 {
-	...
-	/*
-	 * Pick a new current process and record its start time.
-	 */
-	...
-	CTR3(KTR_PROC, "mi_switch: old proc %p (pid %d, %s)", p, p->p_pid,
-	    p->p_comm);
-	...
-	cpu_switch();
-	...
-	CTR3(KTR_PROC, "mi_switch: new proc %p (pid %d, %s)", p, p->p_pid,
-	    p->p_comm);
+	KTR_LOG(ktrtest_t1);
 	...
 }
 .Ed
 .Sh SEE ALSO
-.Xr ktr 4
+.Xr gdb 1 ,
+.Xr ddb 4 ,
+.Xr ktr 4 ,
+.Xr ktrdump 8 ,
+.Xr kprintf 9
 .Sh HISTORY
-The KTR kernel tracing facility first appeared in
+The
+.Nm ktr
+kernel tracing facility first appeared in
 .Bsx 3.0
 and was imported into
 .Fx 5.0
 and
 .Dx 1.1 .
+It was completely rewritten by Matthew Dillon in
+.Dx 1.3 .

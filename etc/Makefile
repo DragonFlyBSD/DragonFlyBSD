@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.148 2007/01/06 01:46:33 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.149 2007/01/07 11:25:12 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -460,6 +460,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}2/sys_{get,set}_tls_area.2.gz"
 	csh -c "rm -f ${DESTDIR}/modules/{snd,snd_pcm}.ko"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/CTR[0-6].9.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.37 2007/01/02 23:08:58 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.38 2007/01/07 11:25:12 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -246,13 +246,10 @@ MLINKS+=devclass_add_driver.9 devclass_find_driver.9
 MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=bus_generic_read_ivar.9 bus_generic_write_ivar.9
 
-MLINKS+=ktr.9 CTR0.9
-MLINKS+=ktr.9 CTR1.9
-MLINKS+=ktr.9 CTR2.9
-MLINKS+=ktr.9 CTR3.9
-MLINKS+=ktr.9 CTR4.9
-MLINKS+=ktr.9 CTR5.9
-MLINKS+=ktr.9 CTR6.9
+MLINKS+=ktr.9 KTR_INFO.9
+MLINKS+=ktr.9 KTR_INFO_MASTER.9
+MLINKS+=ktr.9 KTR_LOG.9
+MLINKS+=ktr.9 KTR_LOG_PTR.9
 
 MLINKS+=lock.9 lockcount.9
 MLINKS+=lock.9 lockcountnb.9
