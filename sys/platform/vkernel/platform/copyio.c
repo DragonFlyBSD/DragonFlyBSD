@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.3 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.4 2007/01/07 02:42:24 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -63,7 +63,8 @@ copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *lencopied)
 
 	for (i = 0; i < len; ++i) {
 		if ((((char *)kdaddr)[i] = ((const char *)kfaddr)[i]) == 0) {
-			*lencopied = i + 1;
+			if (lencopied)
+				*lencopied = i + 1;
 			return(0);
 		}
 	}

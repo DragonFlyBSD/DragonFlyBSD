@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.2 2007/01/07 00:44:32 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.3 2007/01/07 02:42:24 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -190,7 +190,13 @@ cputimer_intr(int signo)
 void
 inittodr(time_t base)
 {
-	panic("inittodr");
+	struct timespec ts;
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	ts.tv_sec = tv.tv_sec;
+	ts.tv_nsec = tv.tv_usec * 1000;
+	set_timeofday(&ts);
 }
 
 /*
@@ -199,7 +205,7 @@ inittodr(time_t base)
 void
 resettodr(void)
 {
-	panic("resettodr");
+	kprintf("XXX resettodr(): save relative time in file?\n");
 }
 
 void

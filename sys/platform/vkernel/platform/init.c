@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.10 2007/01/06 22:43:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.11 2007/01/07 02:42:24 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -108,7 +108,7 @@ main(int ac, char **av)
 	/*
 	 * Process options
 	 */
-	while ((c = getopt(ac, av, "vm:")) != -1) {
+	while ((c = getopt(ac, av, "vm:r:")) != -1) {
 		switch(c) {
 		case 'v':
 			bootverbose = 1;
@@ -199,10 +199,10 @@ init_sys_memory(char *imageFile)
 	 */
 	if (imageFile == NULL) {
 		for (i = 0; i < 1000000; ++i) {
-			asprintf(&imageFile, "/var/vkernel/image.%06d", i);
+			asprintf(&imageFile, "/var/vkernel/memimg.%06d", i);
 			fd = open(imageFile, 
 				  O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
-			if (fd < 0 && fd == EWOULDBLOCK) {
+			if (fd < 0 && errno == EWOULDBLOCK) {
 				free(imageFile);
 				continue;
 			}
@@ -211,6 +211,7 @@ init_sys_memory(char *imageFile)
 	} else {
 		fd = open(imageFile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
 	}
+	printf("Using memory file: %s\n", imageFile);
 	if (fd < 0 || fstat(fd, &st) < 0) {
 		err(1, "Unable to open/create %s: %s",
 		      imageFile, strerror(errno));
@@ -492,6 +493,16 @@ static
 void
 init_rootdevice(char *imageFile)
 {
+	struct stat st;
+
+	if (imageFile) {
+		RootImageFd = open(imageFile, O_RDWR, 0644);
+		if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0) {
+			err(1, "Unable to open/create %s: %s",
+			    imageFile, strerror(errno));
+			/* NOT REACHED */
+		}
+	}
 }
 
 static

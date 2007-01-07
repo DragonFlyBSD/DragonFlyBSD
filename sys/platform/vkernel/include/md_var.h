@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.5 2007/01/06 19:40:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.6 2007/01/07 02:42:15 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -53,6 +53,8 @@ extern  int	cpu_fxsr;
 
 extern  char    cpu_vendor[];	/* XXX belongs in i386 */
 extern  u_int   cpu_id;		/* XXX belongs in i386 */
+
+extern int	RootImageFd;
 
 struct mdglobaldata;
 
