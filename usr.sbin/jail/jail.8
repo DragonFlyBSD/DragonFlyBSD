@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
-.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.7 2007/01/01 19:45:54 victor Exp $
+.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.8 2007/01/07 18:12:46 victor Exp $
 .\"
 .Dd December 12, 2001
 .Dt JAIL 8
@@ -43,7 +43,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl i
-.Op Fl u Ar username
+.Op Fl l u Ar username | Fl U Ar username
 .Ar path hostname ip-list command ...
 .Sh DESCRIPTION
 The
@@ -54,9 +54,29 @@ The options are as follows:
 .Bl -tag -width ".Fl u Ar username"
 .It Fl i
 Output the jail identifier of the newly crated jail.
+.It Fl l
+Run program in the clean environment.
+The environment is discarded except for
+.Ev HOME , SHELL , TERM
+and
+.Ev USER .
+.Ev HOME
+and
+.Ev SHELL
+are set to the target login's default values.
+.Ev USER
+is set to the target login.
+.Ev TERM
+is imported from the current environment.
+The environment variables from the login class capability database for the
+target login are also set.
 .It Fl u Ar username
 The user name as whom the
 .Ar command
+should run.
+.It Fl U Ar username
+The user name from jailed environment as whom the
+.ar command
 should run.
 .It Ar path
 Directory which is to be the root of the prison.

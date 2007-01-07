@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
- * $DragonFly: src/usr.sbin/jail/jail.c,v 1.6 2007/01/01 19:45:54 victor Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.7 2007/01/07 18:12:46 victor Exp $
  * 
  */
 
@@ -18,8 +18,10 @@
 #include <arpa/inet.h>
 
 #include <err.h>
+#include <errno.h>
 #include <grp.h>
 #include <login_cap.h>
+#include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +29,23 @@
 #include <unistd.h>
 
 static void	usage(void);
+extern char	**environ;
+
+#define GET_USER_INFO do {						\
+	pwd = getpwnam(username);					\
+	if (pwd == NULL) {						\
+		if (errno)						\
+			err(1, "getpwnam: %s", username);		\
+		else							\
+			errx(1, "%s: no such user", username);		\
+	}								\
+	lcap = login_getpwclass(pwd);					\
+	if (lcap == NULL)						\
+		err(1, "getpwclass: %s", username);			\
+	ngroups = NGROUPS;						\
+	if (getgrouplist(username, pwd->pw_gid, groups, &ngroups) != 0)	\
+		err(1, "getgrouplist: %s", username);			\
+} while (0)
 
 int
 main(int argc, char **argv)
@@ -37,21 +56,31 @@ main(int argc, char **argv)
 	struct sockaddr_in6 *sin6;
 	struct passwd *pwd = NULL;
 	gid_t groups[NGROUPS];
-	int ch, ngroups, i, iflag;
-	char *username, *curpos;
+	int ch, ngroups, i, iflag, lflag, uflag, Uflag;
+	static char *cleanenv;
+	const char *shell, *p = NULL;
+	char path[PATH_MAX], *username, *curpos;
 
-	iflag = 0;
+	iflag = lflag = uflag = Uflag = 0;
 	username = NULL;
 	j.ips = malloc(sizeof(struct sockaddr_storage)*20);
 	bzero(j.ips, sizeof(struct sockaddr_storage)*20);
 
-	while ((ch = getopt(argc, argv, "iu:")) != -1)
+	while ((ch = getopt(argc, argv, "ilu:U:")) != -1)
 		switch (ch) {
 		case 'i':
 			iflag = 1;
 			break;
+		case 'l':
+			lflag = 1;
+			break;
 		case 'u':
 			username = optarg;
+			uflag = 1;
+			break;
+		case 'U':
+			username = optarg;
+			Uflag = 1;
 			break;
 		default:
 			usage();
@@ -61,22 +90,19 @@ main(int argc, char **argv)
 	argv += optind;
 	if (argc < 4)
 		usage();
+	if (uflag && Uflag)
+		usage();
+	if (lflag && username == NULL)
+		usage();
+	if (uflag)
+		GET_USER_INFO;
+	if (realpath(argv[0], path) == NULL)
+		err(1, "realpath: %s", argv[0]);
+	if (chdir(path) != 0)
+		err(1, "chdir: %s", path);
 
-	if (username != NULL) {
-		pwd = getpwnam(username);
-		if (pwd == NULL)
-			err(1, "getpwnam: %s", username);
-		lcap = login_getpwclass(pwd);
-		if (lcap == NULL)
-			err(1, "getpwclass: %s", username);
-		ngroups = NGROUPS;
-		if (getgrouplist(username, pwd->pw_gid, groups, &ngroups) != 0)
-			err(1, "getgrouplist: %s", username);
-	}
-	if (chdir(argv[0]) != 0)
-		err(1, "chdir: %s", argv[0]);
 	j.version = 1;
-	j.path = argv[0];
+	j.path = path;
 	j.hostname = argv[1];
 	curpos = strtok(argv[2], ",");
 	for (i=0; curpos != NULL; i++) {
@@ -112,6 +138,12 @@ main(int argc, char **argv)
 		fflush(stdout);
 	}
 	if (username != NULL) {
+		if (Uflag)
+			GET_USER_INFO;
+		if (lflag) {
+			p = getenv("TERM");
+			environ = &cleanenv;
+		}
 		if (setgroups(ngroups, groups) != 0)
 			err(1, "setgroups");
 		if (setgid(pwd->pw_gid) != 0)
@@ -120,6 +152,19 @@ main(int argc, char **argv)
 		    LOGIN_SETALL & ~LOGIN_SETGROUP) != 0)
 			err(1, "setusercontext");
 		login_close(lcap);
+	}
+	if (lflag) {
+		if (*pwd->pw_shell)
+			shell = pwd->pw_shell;
+		else
+			shell = _PATH_BSHELL;
+		if (chdir(pwd->pw_dir) < 0)
+			errx(1, "no home directory");
+		setenv("HOME", pwd->pw_dir, 1);
+		setenv("SHELL", shell, 1);
+		setenv("USER", pwd->pw_name, 1);
+		if (p)
+			setenv("TERM", p, 1);
 	}
 	if (execv(argv[3], argv + 3) != 0)
 		err(1, "execv: %s", argv[3]);
@@ -131,6 +176,6 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n",
-	    "Usage: jail [-i] [-u username] path hostname ip-number command ...");
+	    "Usage: jail [-i] [-l -u username | -U username] path hostname ip-number command ...");
 	exit(1);
 }
