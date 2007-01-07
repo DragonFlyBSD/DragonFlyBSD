@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.11 2006/05/17 14:41:48 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.12 2007/01/07 01:28:51 swildner Exp $
 .\"
-.Dd May 17, 2006
+.Dd January 6, 2007
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -133,27 +133,36 @@ Build user commands, no libraries or include files.
 Install user commands, no libraries or include files.
 .El
 .Sh ENVIRONMENT
-.Bl -tag -width ".Va TARGET_ARCH"
-.It Va TARGET_ARCH
+.Bl -tag -width ".Ev TARGET_ARCH"
+.It Ev TARGET_ARCH
 The target machine processor architecture.
 This is analogous to the
 .Dq Nm uname Fl p
 output.
 .\"Set this to cross-build for a different architecture.
-.It Va TARGET
+.It Ev TARGET
 The target hardware platform.
 This is analogous to the
 .Dq Nm uname Fl m
 output.
 .\"This is necessary to cross-build some target architectures.
-.It Va NO_WERROR
+.It Ev NO_WERROR
 If defined, warnings will not cause the build to halt, even if the
 makefile says otherwise.
-.It Va DESTDIR
+.It Ev DESTDIR
 The directory hierarchy where the resulting binaries will be
-installed.
-.It Va MAKEOBJDIRPREFIX
-The directory hierarchy where the object files will be built.
+installed (the default is
+.Pa / ) .
+.It Ev MAKEOBJDIRPREFIX
+The directory hierarchy where the object files will be built (the default is
+.Pa /usr/obj ) .
+.It Ev KERNCONF
+The name of the kernel configuration file from which the kernel should
+be built (the default is
+.Li GENERIC ) .
+.It Ev KERNCONFDIR
+The directory where the kernel configuration files are kept (the default is
+.Pa /usr/src/sys/config ) .
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/share/doc/Makefile" -compact
@@ -175,22 +184,6 @@ make installworld
 make upgrade
 .Ed
 .Pp
-.Dq FOO
-must be replaced with the name of the kernel configuration file from which
-the kernel should be built.
-Alternatively, the
-.Va KERNCONF
-variable in
-.Pa /etc/make.conf
-can be set to the name of the kernel to build;
-in this case the
-.Dq KERNCONF=FOO
-part of the
-.Cm buildkernel
-and
-.Cm installkernel
-commands can be omitted.
-.Pp
 After running these commands a system reboot is required,
 otherwise many programs which have been rebuilt
 (such as
@@ -205,18 +198,18 @@ section enforces that the new kernel is installed before the new
 world.
 Sometimes it might be necessary to reboot the system between those two
 steps.
-In this case the
-.Cm installworld
-target will tell you so.
+In this case
+.Dq Nm make Cm installworld
+will tell you to do so.
 .Pp
 Also note that you should
 .Em never
-run the
-.Cm upgrade
-target before having installed the new kernel and world because your
+run
+.Dq Nm make Cm upgrade
+before having installed the new kernel and world because your
 system might (in the worst case) be rendered useless if you do so.
 This can happen because
-.Cm upgrade
+.Dq Nm make Cm upgrade
 might remove something that the old system still needs for
 functioning correctly.
 .Sh SEE ALSO
