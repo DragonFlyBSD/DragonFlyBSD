@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.59 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.60 2007/01/07 00:02:03 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -74,7 +74,7 @@
 
 static int	coredump(struct proc *);
 static char	*expand_name(const char *, uid_t, pid_t);
-static int	killpg(int sig, int pgid, int all);
+static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
 #ifdef SMP
@@ -604,7 +604,7 @@ struct killpg_info {
 static int killpg_all_callback(struct proc *p, void *data);
 
 static int
-killpg(int sig, int pgid, int all)
+dokillpg(int sig, int pgid, int all)
 {
 	struct killpg_info info;
 	struct proc *cp = curproc;
@@ -681,11 +681,11 @@ kern_kill(int sig, int pid)
 	}
 	switch (pid) {
 	case -1:		/* broadcast signal */
-		return (killpg(sig, 0, 1));
+		return (dokillpg(sig, 0, 1));
 	case 0:			/* signal own process group */
-		return (killpg(sig, 0, 0));
+		return (dokillpg(sig, 0, 0));
 	default:		/* negative explicit process group */
-		return (killpg(sig, -pid, 0));
+		return (dokillpg(sig, -pid, 0));
 	}
 	/* NOTREACHED */
 }
