@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.149 2007/01/07 11:25:12 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.150 2007/01/07 15:36:54 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -461,6 +461,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/modules/{snd,snd_pcm}.ko"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd.4.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/CTR[0-6].9.gz"
+	rm -f ${DESTDIR}/usr/include/machine/physio_proc.h
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
