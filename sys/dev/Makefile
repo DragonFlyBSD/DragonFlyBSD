@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/Makefile,v 1.9 2007/01/06 08:08:23 dillon Exp $
+# $DragonFly: src/sys/dev/Makefile,v 1.10 2007/01/07 02:41:18 dillon Exp $
 #
 
 .include "../machine/${MACHINE}/Makefile.inc"
@@ -50,6 +50,9 @@ SUBDIR+= usbmisc
 .endif
 .ifdef DEV_VIDEO_SUPPORT
 SUBDIR+= video
+.endif
+.ifdef DEV_VIRTUAL_SUPPORT
+SUBDIR+= virtual
 .endif
 
 .include <bsd.subdir.mk>
