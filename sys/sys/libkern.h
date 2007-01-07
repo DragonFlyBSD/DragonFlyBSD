@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.12 2006/12/13 21:58:52 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.13 2007/01/07 00:42:26 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -41,6 +41,13 @@
 #if !defined(_KERNEL)
 #error "This file should not be included by userland programs."
 #else
+
+/*
+ * Hacks to prevent conflicts with standard header files
+ */
+#ifndef _KERNEL_VIRTUAL
+#define _KERNEL_VIRTUAL
+#endif
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
