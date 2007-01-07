@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.110 2007/01/06 19:38:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.111 2007/01/07 00:39:15 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -513,7 +513,12 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
-	regs->tf_fs = _udatasel;
+
+	/*
+	 * Allow the signal handler to inherit %fs in addition to %gs as
+	 * the userland program might be using both
+	 */
+	/*regs->tf_fs = _udatasel;*/
 	regs->tf_ss = _udatasel;
 }
 
