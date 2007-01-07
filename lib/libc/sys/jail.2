@@ -7,7 +7,7 @@
 .\"----------------------------------------------------------------------------
 .\"
 .\"$FreeBSD: src/lib/libc/sys/jail.2,v 1.10.2.10 2002/12/12 05:26:38 trhodes Exp $
-.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.6 2006/12/29 18:02:56 victor Exp $
+.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.7 2007/01/07 18:33:38 victor Exp $
 .\"
 .Dd April 28, 1999
 .Dt JAIL 2
@@ -85,9 +85,15 @@ set for the prison for jailed processes.
 The program
 .Xr jls 8
 ca be used to identify all active jails.
+.Sh RETURN VALUES
+If successful, jail() returns a non-negative integer, termed the jail
+identifier (JID). It returns -1 on failure, and sets errno to indicate
+the error.
+
 .Sh ERRORS
+The
 .Fn jail
-will fail if:
+system call will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The version number of the argument is not correct.
