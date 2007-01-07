@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)expand.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/expand.h,v 1.9.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/expand.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $FreeBSD: src/bin/sh/expand.h,v 1.12 2004/04/06 20:06:51 markm Exp $
+ * $DragonFly: src/bin/sh/expand.h,v 1.3 2007/01/07 08:26:55 pavalos Exp $
  */
 
 struct strlist {
@@ -66,3 +66,4 @@ void expari(int);
 int patmatch(char *, char *, int);
 void rmescapes(char *);
 int casematch(union node *, char *);
+int wordexpcmd(int, char **);

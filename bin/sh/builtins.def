@@ -36,8 +36,8 @@
 # SUCH DAMAGE.
 #
 #	@(#)builtins.def	8.4 (Berkeley) 5/4/95
-# $FreeBSD: src/bin/sh/builtins.def,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
-# $DragonFly: src/bin/sh/builtins.def,v 1.4 2007/01/07 02:52:07 pavalos Exp $
+# $FreeBSD: src/bin/sh/builtins.def,v 1.19 2006/04/02 18:43:33 stefanf Exp $
+# $DragonFly: src/bin/sh/builtins.def,v 1.5 2007/01/07 08:26:55 pavalos Exp $
 
 #
 # This file lists all the builtin commands.  The first column is the name
@@ -92,3 +92,4 @@ umaskcmd	umask
 unaliascmd	unalias
 unsetcmd	-s unset
 waitcmd		wait
+wordexpcmd	wordexp

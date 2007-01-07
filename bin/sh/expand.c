@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.7 2006/09/28 22:29:44 pavalos Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.8 2007/01/07 08:26:55 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 /*
  * Routines to expand arguments to commands.  We have to deal with
@@ -1517,4 +1518,25 @@ cvtnum(int num, char *buf)
 	while (*p)
 		STPUTC(*p++, buf);
 	return buf;
+}
+
+/*
+ * Do most of the work for wordexp(3).
+ */
+
+int
+wordexpcmd(int argc, char **argv)
+{
+	size_t len;
+	int i;
+
+	out1fmt("%08x", argc - 1);
+	for (i = 1, len = 0; i < argc; i++)
+		len += strlen(argv[i]);
+	out1fmt("%08x", (int)len);
+	for (i = 1; i < argc; i++) {
+		out1str(argv[i]);
+		out1c('\0');
+	}
+        return (0);
 }
