@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.10 2006/09/30 21:23:28 swildner Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.11 2007/01/07 00:41:29 dillon Exp $
  */
 
 /* 
@@ -4134,7 +4134,7 @@ local int huft_build OF((
     uIntf *,            /* maximum lookup bits (returns actual) */
     z_streamp ));       /* for zalloc function */
 
-local voidpf falloc OF((
+local voidpf zfalloc OF((
     voidpf,             /* opaque pointer (not used) */
     uInt,               /* number of items */
     uInt));             /* size of item */
@@ -4509,10 +4509,10 @@ local inflate_huft *fixed_td;
  *	s:	size of item
  */
 local voidpf
-falloc(voidpf q, uInt n, uInt s)
+zfalloc(voidpf q, uInt n, uInt s)
 {
   Assert(s == sizeof(inflate_huft) && n <= *(intf *)q,
-         "inflate_trees falloc overflow");
+         "inflate_trees zfalloc overflow");
   *(intf *)q -= n+s-s; /* s-s to avoid warning */
   return (voidpf)(fixed_mem + *(intf *)q);
 }
@@ -4533,11 +4533,11 @@ inflate_trees_fixed(uIntf *bl, uIntf *bd, inflate_huft * FAR *tl,
   {
     int k;              /* temporary variable */
     unsigned c[288];    /* length list for huft_build */
-    z_stream z;         /* for falloc function */
+    z_stream z;         /* for zfalloc function */
     int f = FIXEDH;     /* number of hufts left in fixed_mem */
 
     /* set up fake z_stream for memory routines */
-    z.zalloc = falloc;
+    z.zalloc = zfalloc;
     z.zfree = Z_NULL;
     z.opaque = (voidpf)&f;
 
