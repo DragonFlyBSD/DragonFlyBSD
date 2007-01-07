@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.8 2007/01/07 08:26:55 pavalos Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.51 2006/11/07 22:46:13 stefanf Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.9 2007/01/07 16:58:30 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -98,9 +98,9 @@ STATIC void expbackq(union node *, int, int);
 STATIC int subevalvar(char *, char *, int, int, int, int);
 STATIC char *evalvar(char *, int);
 STATIC int varisset(char *, int);
-STATIC void varvalue(char *, int, int);
+STATIC void varvalue(char *, int, int, int);
 STATIC void recordregion(int, int, int);
-STATIC void removerecordregions(int); 
+STATIC void removerecordregions(int);
 STATIC void ifsbreakup(char *, struct arglist *);
 STATIC void expandmeta(struct strlist *, int);
 STATIC void expmeta(char *, char *);
@@ -112,20 +112,13 @@ STATIC char *cvtnum(int, char *);
 STATIC int collate_range_cmp(int, int);
 
 STATIC int
-collate_range_cmp (int c1, int c2)
+collate_range_cmp(int c1, int c2)
 {
 	static char s1[2], s2[2];
-	int ret;
 
-	c1 &= UCHAR_MAX;
-	c2 &= UCHAR_MAX;
-	if (c1 == c2)
-		return (0);
 	s1[0] = c1;
 	s2[0] = c2;
-	if ((ret = strcoll(s1, s2)) != 0)
-		return (ret);
-	return (c1 - c2);
+	return (strcoll(s1, s2));
 }
 
 extern int oexitstatus;
@@ -318,7 +311,7 @@ lose:
 }
 
 
-STATIC void 
+STATIC void
 removerecordregions(int endoff)
 {
 	if (ifslastp == NULL)
@@ -341,7 +334,7 @@ removerecordregions(int endoff)
 		}
 		return;
 	}
-	
+
 	ifslastp = &ifsfirst;
 	while (ifslastp->next && ifslastp->next->begoff < endoff)
 		ifslastp=ifslastp->next;
@@ -529,7 +522,7 @@ subevalvar(char *p, char *str, int strloc, int subtype, int startloc,
 			outfmt(&errout, "%s\n", startp);
 			error((char *)NULL);
 		}
-		error("%.*s: parameter %snot set", p - str - 1,
+		error("%.*s: parameter %snot set", (int)(p - str - 1),
 		      str, (varflags & VSNUL) ? "null or "
 					      : nullstr);
 		return 0;
@@ -578,7 +571,7 @@ subevalvar(char *p, char *str, int strloc, int subtype, int startloc,
 			}
 			loc--;
 			if ((varflags & VSQUOTE) && loc > startp &&
-			    *(loc - 1) == CTLESC) { 
+			    *(loc - 1) == CTLESC) {
 				for (q = startp; q < loc; q++)
 					if (*q == CTLESC)
 						q++;
@@ -635,7 +628,7 @@ evalvar(char *p, int flag)
 	int easy;
 	int quotes = flag & (EXP_FULL | EXP_CASE | EXP_REDIR);
 
-	varflags = *p++;
+	varflags = (unsigned char)*p++;
 	subtype = varflags & VSTYPE;
 	var = p;
 	special = 0;
@@ -664,13 +657,14 @@ again: /* jump here after setting a variable with ${var=text} */
 		case VSTRIMRIGHT:
 		case VSTRIMRIGHTMAX:
 		case VSLENGTH:
-			error("%.*s: parameter not set", p - var - 1, var);
+			error("%.*s: parameter not set", (int)(p - var - 1),
+			    var);
 		}
 	}
 	if (set && subtype != VSPLUS) {
 		/* insert the value of the variable */
 		if (special) {
-			varvalue(var, varflags & VSQUOTE, flag & EXP_FULL);
+			varvalue(var, varflags & VSQUOTE, subtype, flag);
 			if (subtype == VSLENGTH) {
 				varlen = expdest - stackblock() - startloc;
 				STADJUST(-varlen, expdest);
@@ -751,9 +745,9 @@ record:
 		if (!set) {
 			if (subevalvar(p, var, 0, subtype, startloc, varflags)) {
 				varflags &= ~VSNUL;
-				/* 
-				 * Remove any recorded regions beyond 
-				 * start of variable 
+				/*
+				 * Remove any recorded regions beyond
+				 * start of variable
 				 */
 				removerecordregions(startloc);
 				goto again;
@@ -763,6 +757,11 @@ record:
 		if (easy)
 			goto record;
 		break;
+
+	case VSERROR:
+		c = p - var - 1;
+		error("${%.*s%s}: Bad substitution", c, var,
+		    (c > 0 && *p != CTLENDVAR) ? "..." : "");
 
 	default:
 		abort();
@@ -837,7 +836,7 @@ varisset(char *name, int nulok)
  */
 
 STATIC void
-varvalue(char *name, int quoted, int allow_split)
+varvalue(char *name, int quoted, int subtype, int flag)
 {
 	int num;
 	char *p;
@@ -848,7 +847,7 @@ varvalue(char *name, int quoted, int allow_split)
 
 #define STRTODEST(p) \
 	do {\
-	if (allow_split) { \
+	if (flag & (EXP_FULL | EXP_CASE) && subtype != VSLENGTH) { \
 		syntax = quoted? DQSYNTAX : BASESYNTAX; \
 		while (*p) { \
 			if (syntax[(int)*p] == CCTL) \
@@ -883,7 +882,7 @@ numvar:
 		}
 		break;
 	case '@':
-		if (allow_split && quoted) {
+		if (flag & EXP_FULL && quoted) {
 			for (ap = shellparam.p ; (p = *ap++) != NULL ; ) {
 				STRTODEST(p);
 				if (*ap)
@@ -891,9 +890,9 @@ numvar:
 			}
 			break;
 		}
-		/* fall through */
+		/* FALLTHROUGH */
 	case '*':
-		if (ifsset() != 0)
+		if (ifsset())
 			sep = ifsval()[0];
 		else
 			sep = ' ';
@@ -972,7 +971,7 @@ ifsbreakup(char *string, struct arglist *arglist)
 		do {
 			p = string + ifsp->begoff;
 			nulonly = ifsp->nulonly;
-			ifs = nulonly ? nullstr : 
+			ifs = nulonly ? nullstr :
 				( ifsset() ? ifsval() : " \t\n" );
 			ifsspc = 0;
 			while (p < string + ifsp->endoff) {
@@ -1022,8 +1021,7 @@ ifsbreakup(char *string, struct arglist *arglist)
 					p++;
 			}
 		} while ((ifsp = ifsp->next) != NULL);
-		if (*start || (!ifsspc && start > string && 
-			(nulonly || 1))) {
+		if (*start || (!ifsspc && start > string)) {
 			sp = (struct strlist *)stalloc(sizeof *sp);
 			sp->text = start;
 			*arglist->lastp = sp;

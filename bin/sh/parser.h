@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/parser.h,v 1.8.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/parser.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/parser.h,v 1.11 2006/11/05 18:36:05 stefanf Exp $
+ * $DragonFly: src/bin/sh/parser.h,v 1.4 2007/01/07 16:58:30 pavalos Exp $
  */
 
 /* control characters in argument strings */
@@ -65,6 +65,7 @@
 #define VSTRIMRIGHT	0x8		/* ${var%pattern} */
 #define VSTRIMRIGHTMAX 	0x9		/* ${var%%pattern} */
 #define VSLENGTH	0xa		/* ${#var} */
+#define VSERROR		0xb		/* Syntax error, issue when expanded */
 
 
 /*
