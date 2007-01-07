@@ -26,10 +26,11 @@
  *
  * $OpenBSD: strlcpy.c,v 1.4 1999/05/01 18:56:41 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcpy.c,v 1.2.4.1 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/sys/libkern/strlcpy.c,v 1.3 2004/12/19 11:56:45 liamfoy Exp $
+ * $DragonFly: src/sys/libkern/strlcpy.c,v 1.4 2007/01/07 00:02:17 dillon Exp $
  */
 
 #include <sys/types.h>
+#include <sys/libkern.h>
 #include <string.h>
 
 /*
