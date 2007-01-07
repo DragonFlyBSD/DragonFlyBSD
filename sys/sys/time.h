@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.15 2005/04/14 15:05:29 eirikn Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.16 2007/01/07 00:42:55 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -223,10 +223,13 @@ void	timevaladd (struct timeval *, struct timeval *);
 void	timevalsub (struct timeval *, struct timeval *);
 int	tvtohz_high (struct timeval *);
 int	tvtohz_low (struct timeval *);
-#else /* !_KERNEL */
-#include <time.h>
 
+#else /* !_KERNEL */
+
+#include <time.h>
 #include <sys/cdefs.h>
+
+#endif /* !_KERNEL */
 
 __BEGIN_DECLS
 int	adjtime (const struct timeval *, struct timeval *);
@@ -239,6 +242,5 @@ int	settimeofday (const struct timeval *, const struct timezone *);
 int	utimes (const char *, const struct timeval *);
 __END_DECLS
 
-#endif /* !_KERNEL */
 
 #endif /* !_SYS_TIME_H_ */
