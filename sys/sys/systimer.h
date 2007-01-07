@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.11 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.12 2007/01/07 00:44:33 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -110,10 +110,12 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_8254_SEL1	1
 #define CPUTIMER_8254_SEL2	2
 #define CPUTIMER_ACPI		3
+#define CPUTIMER_VKERNEL	4
 
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0
 #define CPUTIMER_PRI_ACPI	10
+#define CPUTIMER_PRI_VKERNEL	20
 
 /*
  * note that cputimer_count() always returns a full-width wrapping counter.

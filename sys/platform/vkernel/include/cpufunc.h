@@ -31,101 +31,36 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.4 2007/01/07 00:44:32 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/cpufunc.h,v 1.1 2007/01/07 00:44:31 dillon Exp $
  */
+#ifndef _MACHINE_CPUFUNC_H_
+#define	_MACHINE_CPUFUNC_H_
 
+#ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
 #include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/machintr.h>
-#include <sys/errno.h>
+#include <sys/proc.h>
+#include <vm/pmap.h>
+
 #include <sys/mman.h>
-#include <stdio.h>
 #include <signal.h>
 
-/*
- * Interrupt Subsystem ABI
- */
+#define _CPU_ENABLE_INTR_DEFINED
+#define _CPU_DISABLE_INTR_DEFINED
+#define _CPU_INVLPG_DEFINED
+#define _CPU_INVLTLB_DEFINED
 
-static void dummy_intrdis(int);
-static void dummy_intren(int);
-static int dummy_vectorctl(int, int, int);
-static int dummy_setvar(int, const void *);
-static int dummy_getvar(int, void *);
-static void dummy_finalize(void);
+void cpu_disable_intr(void);
+void cpu_enable_intr(void);
+void cpu_invlpg(void *addr);
+void cpu_invltlb(void);
 
-struct machintr_abi MachIntrABI = {
-	MACHINTR_GENERIC,
-	dummy_intrdis,
-	dummy_intren,
-	dummy_vectorctl,
-	dummy_setvar,
-	dummy_getvar,
-	dummy_finalize
-};
+#endif
 
-static void
-dummy_intrdis(int intr)
-{
-}
+#include <cpu/cpufunc.h>
 
-static void
-dummy_intren(int intr)
-{
-}
-
-static int
-dummy_vectorctl(int op, int intr, int flags)
-{
-	return (EOPNOTSUPP);
-}
-
-static int
-dummy_setvar(int varid, const void *buf)
-{
-	return (ENOENT);
-}
-
-static int
-dummy_getvar(int varid, void *buf)
-{
-	return (ENOENT);
-}
-
-static void
-dummy_finalize(void)
-{
-}
-
-/*
- * Process pending interrupts
- */
-void
-splz(void)
-{
-}
-
-void
-cpu_disable_intr(void)
-{
-	sigblock(-1 & ~((1 << SIGINT) | (1 << SIGQUIT)));
-}
-
-void
-cpu_enable_intr(void)
-{
-	sigsetmask(0);
-}
-
-void
-cpu_invlpg(void *addr)
-{
-	madvise(addr, PAGE_SIZE, MADV_INVAL);
-}
-
-void
-cpu_invltlb(void)
-{
-	madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
-}
+#endif /* !_MACHINE_TYPES_H_ */
 

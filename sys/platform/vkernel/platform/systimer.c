@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.1 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.2 2007/01/07 00:44:32 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -39,33 +39,148 @@
 #include <sys/kernel.h>
 #include <sys/systimer.h>
 #include <sys/sysctl.h>
+#include <sys/signal.h>
+#include <sys/time.h>
 #include <machine/cpu.h>
 
 #include <unistd.h>
+#include <signal.h>
 
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	   CTLFLAG_RW, &disable_rtc_set, 0, "");
 
 int adjkerntz;
-int wall_cmos_clock = 1;
+int wall_cmos_clock = 0;
 
+/*
+ * SYSTIMER IMPLEMENTATION
+ */
+static sysclock_t vkernel_timer_get_timecount(void);
+static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
+static void cputimer_intr(int signo);
+
+static struct cputimer vkernel_cputimer = {
+        SLIST_ENTRY_INITIALIZER,
+        "VKERNEL",
+        CPUTIMER_PRI_VKERNEL,
+        CPUTIMER_VKERNEL,
+        vkernel_timer_get_timecount,
+        cputimer_default_fromhz,
+        cputimer_default_fromus,
+        vkernel_timer_construct,
+        cputimer_default_destruct,
+        1000000,			/* 1us granularity */
+        0, 0, 0
+};
+
+/*
+ * Initialize the systimer subsystem, called from MI code in early boot.
+ */
 void
 cpu_initclocks(void)
 {
-	panic("cpu_initclocks");
+	kprintf("initclocks\n");
+	cputimer_register(&vkernel_cputimer);
+	cputimer_select(&vkernel_cputimer, 0);
 }
 
+/*
+ * Constructor to initialize timer->base and get an initial count.
+ */
+static void
+vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
+{
+	timer->base = 0;
+	timer->base = oclock - vkernel_timer_get_timecount();
+}
+
+/*
+ * Get the current counter, with 2's complement rollover.
+ */
+static sysclock_t
+vkernel_timer_get_timecount(void)
+{
+	static sysclock_t vkernel_last_counter;
+	struct timeval tv;
+	sysclock_t counter;
+
+	/* XXX NO PROTECTION FROM INTERRUPT */
+	gettimeofday(&tv, NULL);
+	counter = (sysclock_t)tv.tv_usec;
+	if (counter < vkernel_last_counter)
+		vkernel_cputimer.base += 1000000;
+	vkernel_last_counter = counter;
+	counter += vkernel_cputimer.base;
+	return(counter);
+}
+
+/*
+ * Configure the interrupt for our core systimer
+ */
 void
 cputimer_intr_config(struct cputimer *timer)
 {
-	panic("cputimer_intr_config");
+	struct sigaction sa;
+
+	kprintf("cputimer_intr_config\n");
+	bzero(&sa, sizeof(sa));
+	sa.sa_handler = cputimer_intr;
+	sigemptyset(&sa.sa_mask);
+	sigaddset(&sa.sa_mask, SIGIO);
+	sigaction(SIGALRM, &sa, NULL);
 }
 
+/*
+ * Reload the interrupt for our core systimer.
+ */
 void
 cputimer_intr_reload(sysclock_t reload)
 {
-	panic("cputimer_intr_reload");
+	struct itimerval it;
+
+	it.it_interval.tv_usec = 0;
+	it.it_interval.tv_sec = 0;
+	it.it_value.tv_usec = reload;
+	it.it_value.tv_sec = 0;
+
+	setitimer(ITIMER_REAL, &it, NULL);
+}
+
+/*
+ * Clock interrupt (SIGALRM)
+ *
+ * Upon a clock interrupt, dispatch to the systimer subsystem
+ *
+ * XXX NO FRAME PROVIDED
+ */
+static
+void
+cputimer_intr(int signo)
+{
+	static sysclock_t sysclock_count;
+	struct globaldata *gd = mycpu;
+#ifdef SMP
+        struct globaldata *gscan;
+	int n;
+#endif
+	sysclock_count = sys_cputimer->count();
+#ifdef SMP
+	for (n = 0; n < ncpus; ++n) {
+		gscan = globaldata_find(n);
+		if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
+			continue;
+		if (gscan != gd) {
+			lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr,
+					&sysclock_count, 0);
+		} else {
+			systimer_intr(&sysclock_count, 0, NULL);
+		}
+	}
+#else
+	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
+		systimer_intr(&sysclock_count, 0, NULL);
+#endif
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.2 2007/01/06 19:40:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.3 2007/01/07 00:44:30 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -624,6 +624,7 @@ cpu_idle_default_hook(void)
 	 * We must guarentee that hlt is exactly the instruction
 	 * following the sti.
 	 */
+	kprintf("idle halt\n");
 	__asm __volatile("hlt");	/* sti; hlt */
 }
 
