@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.90 2007/01/07 05:41:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.91 2007/01/07 08:37:34 dillon Exp $
  */
 
 /*
@@ -1338,6 +1338,7 @@ syscall2(struct trapframe frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		frame.tf_trapno = T_SYSCALL80;
 		error = vkernel_trap(p, &frame);
 		frame.tf_eax = error;
 		if (error)

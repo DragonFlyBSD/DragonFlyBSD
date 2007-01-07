@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.54 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.55 2007/01/07 08:37:37 dillon Exp $
  */
 
 /*
@@ -203,6 +203,7 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	vm->vm_refcnt = 1;
 	vm->vm_shm = NULL;
 	vm->vm_exitingcnt = 0;
+	cpu_vmspace_alloc(vm);
 	return (vm);
 }
 
@@ -221,6 +222,8 @@ static __inline void
 vmspace_dofree(struct vmspace *vm)
 {
 	int count;
+
+	cpu_vmspace_free(vm);
 
 	/*
 	 * Make sure any SysV shm is freed, it might not have in

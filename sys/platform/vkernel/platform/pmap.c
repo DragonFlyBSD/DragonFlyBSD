@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.4 2007/01/06 19:40:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.5 2007/01/07 08:37:37 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,6 +50,7 @@
 #include <sys/proc.h>
 #include <sys/thread.h>
 #include <sys/user.h>
+#include <sys/vmspace.h>
 
 #include <vm/pmap.h>
 #include <vm/vm_page.h>
@@ -209,6 +210,7 @@ pmap_pinit(struct pmap *pmap)
 	ptdpg->valid = VM_PAGE_BITS_ALL;
 
 	pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
+	pmap->pm_pdirpte = KernelPTA[(vm_offset_t)pmap->pm_pdir >> PAGE_SHIFT];
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pdir, PAGE_SIZE);
 
@@ -325,6 +327,65 @@ pmap_reference(pmap_t pmap)
 	if (pmap != NULL) {
 		pmap->pm_count++;
 	}
+}
+
+/************************************************************************
+ *	   		VMSPACE MANAGEMENT				*
+ ************************************************************************
+ *
+ * The VMSPACE management we do in our virtual kernel must be reflected
+ * in the real kernel.  This is accomplished by making vmspace system
+ * calls to the real kernel.
+ */
+void
+cpu_vmspace_alloc(struct vmspace *vm)
+{
+	int r;
+	void *rp;
+
+#define LAST_EXTENT	(VM_MAX_USER_ADDRESS - 0x80000000)
+
+	if (vmspace_create(vm, 0, NULL) < 0)
+		panic("vmspace_create() failed");
+
+	rp = vmspace_mmap(vm, (void *)0x00000000, 0x40000000,
+			  PROT_READ|PROT_WRITE,
+			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
+			  MemImageFd, 0);
+	if (rp == MAP_FAILED)
+		panic("vmspace_mmap: failed1");
+	rp = vmspace_mmap(vm, (void *)0x40000000, 0x40000000,
+			  PROT_READ|PROT_WRITE,
+			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
+			  MemImageFd, 0x40000000);
+	if (rp == MAP_FAILED)
+		panic("vmspace_mmap: failed2");
+	rp = vmspace_mmap(vm, (void *)0x80000000, LAST_EXTENT,
+			  PROT_READ|PROT_WRITE,
+			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
+			  MemImageFd, 0x80000000);
+	if (rp == MAP_FAILED)
+		panic("vmspace_mmap: failed3");
+
+	r = vmspace_mcontrol(vm, (void *)0x00000000, 0x40000000, MADV_SETMAP,
+			     vmspace_pmap(vm)->pm_pdirpte);
+	if (r < 0)
+		panic("vmspace_mcontrol: failed1");
+	r = vmspace_mcontrol(vm, (void *)0x40000000, 0x40000000, MADV_SETMAP,
+			     vmspace_pmap(vm)->pm_pdirpte);
+	if (r < 0)
+		panic("vmspace_mcontrol: failed2");
+	r = vmspace_mcontrol(vm, (void *)0x80000000, LAST_EXTENT, MADV_SETMAP,
+			     vmspace_pmap(vm)->pm_pdirpte);
+	if (r < 0)
+		panic("vmspace_mcontrol: failed3");
+}
+
+void
+cpu_vmspace_free(struct vmspace *vm)
+{
+	if (vmspace_destroy(vm) < 0)
+		panic("vmspace_destroy() failed");
 }
 
 /************************************************************************
@@ -1699,6 +1760,8 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
 	vpte_t *pte;
 	vm_paddr_t pa;
 	pmap_inval_info info;
+	unsigned ptepindex;
+	vm_offset_t ptepa;
 
 	KKASSERT(pmap != &kernel_pmap);
 	pmap_inval_init(&info);
@@ -1708,8 +1771,6 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
 	/*
 	 * Instantiate the page table page if required
 	 */
-	unsigned ptepindex;
-	vm_offset_t ptepa;
 
 	/*
 	 * Calculate pagetable page index

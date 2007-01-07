@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/userldt.c,v 1.1 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/userldt.c,v 1.2 2007/01/07 08:37:35 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -55,6 +55,7 @@ user_ldt_alloc (struct pcb *pcb, int len)
 void
 user_ldt_free (struct pcb *pcb)
 {
-	panic("user_ldt_free");
+	if (pcb->pcb_ldt)
+		panic("user_ldt_free");
 }
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)trap.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/trap.h,v 1.10.2.2 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/trap.h,v 1.3 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/trap.h,v 1.4 2007/01/07 08:37:33 dillon Exp $
  */
 
 #ifndef _CPU_TRAP_H_
@@ -104,6 +104,7 @@
 #define	    BUS_SEGM_FAULT	T_RESERVED	/* segment protection base */
 
 /* Trap's coming from user mode */
-#define	T_USER	0x100
+#define T_SYSCALL80		0x080
+#define	T_USER			0x100
 
 #endif /* !_CPU_TRAP_H_ */

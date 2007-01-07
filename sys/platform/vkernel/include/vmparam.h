@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/vmparam.h,v 1.3 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/vmparam.h,v 1.4 2007/01/07 08:37:36 dillon Exp $
  */
 
 #ifndef _MACHINE_VMPARAM_H_
@@ -76,7 +76,7 @@
 #define KERNEL_KVA_SIZE		0x40000000
 
 #define VM_MIN_USER_ADDRESS	0x00000000
-#define VM_MAX_USER_ADDRESS	0xC0000000	/* XXX match to real kernel */
+#define VM_MAX_USER_ADDRESS	0xB8000000	/* XXX match to real kernel */
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 

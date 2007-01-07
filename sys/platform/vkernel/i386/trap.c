@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.3 2007/01/07 05:45:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.4 2007/01/07 08:37:35 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/vkernel.h>
 #include <sys/sysproto.h>
 #include <sys/sysunion.h>
+#include <sys/vmspace.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -373,6 +374,33 @@ user_trap(struct trapframe *frame)
 	vm_offset_t eva;
 
 	p = td->td_proc;
+
+	/*
+	 * This is a bad kludge to avoid changing the various trapframe
+	 * structures.  Because we are enabled as a virtual kernel,
+	 * the original tf_err field will be passed to us shifted 16
+	 * over in the tf_trapno field for T_PAGEFLT.
+	 */
+	if ((int16_t)frame->tf_trapno == T_PAGEFLT) {
+		eva = frame->tf_err;
+		frame->tf_err = frame->tf_trapno >> 16;
+		frame->tf_trapno &= 0xFFFF;
+		/*cpu_enable_intr();*/
+	} else {
+		eva = 0;
+	}
+	kprintf("USER_TRAP AT %08x err %d trapno %d eva %08x\n", 
+		frame->tf_eip, frame->tf_err, frame->tf_trapno, eva);
+
+	/*
+	 * Everything coming from user mode runs through user_trap,
+	 * including system calls.
+	 */
+	if (frame->tf_trapno == T_SYSCALL80) {
+		syscall2(frame);
+		return;
+	}
+
 #ifdef DDB
 	if (db_active) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
@@ -384,23 +412,7 @@ user_trap(struct trapframe *frame)
 	}
 #endif
 
-	eva = 0;
 	++gd->gd_trap_nesting_level;
-	if (frame->tf_trapno == T_PAGEFLT) {
-		/*
-		 * For some Cyrix CPUs, %cr2 is clobbered by interrupts.
-		 * This problem is worked around by using an interrupt
-		 * gate for the pagefault handler.  We are finally ready
-		 * to read %cr2 and then must reenable interrupts.
-		 *
-		 * XXX this should be in the switch statement, but the
-		 * NO_FOOF_HACK and VM86 goto and ifdefs obfuscate the
-		 * flow of control too much for this to be obviously
-		 * correct.
-		 */
-		eva = rcr2();
-		cpu_enable_intr();
-	}
 #ifdef SMP
 	if (trap_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
@@ -631,19 +643,6 @@ kern_trap(struct trapframe *frame)
 	vm_offset_t eva;
 
 	p = td->td_proc;
-#ifdef DDB
-	if (db_active) {
-		eva = (frame->tf_trapno == T_PAGEFLT ? frame->tf_err : 0);
-		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
-		trap_fatal(frame, FALSE, eva);
-		--gd->gd_trap_nesting_level;
-		goto out2;
-	}
-#endif
-
-	eva = 0;
-	++gd->gd_trap_nesting_level;
 
 	/*
 	 * This is a bad kludge to avoid changing the various trapframe
@@ -656,7 +655,22 @@ kern_trap(struct trapframe *frame)
 		frame->tf_err = frame->tf_trapno >> 16;
 		frame->tf_trapno &= 0xFFFF;
 		/*cpu_enable_intr();*/
+	} else {
+		eva = 0;
 	}
+
+#ifdef DDB
+	if (db_active) {
+		++gd->gd_trap_nesting_level;
+		MAKEMPSAFE(have_mplock);
+		trap_fatal(frame, FALSE, eva);
+		--gd->gd_trap_nesting_level;
+		goto out2;
+	}
+#endif
+
+	++gd->gd_trap_nesting_level;
+
 #ifdef SMP
 	if (trap_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
@@ -1364,7 +1378,14 @@ fork_return(struct lwp *lp, struct trapframe frame)
 }
 
 void
-go_user(void)
+go_user(struct trapframe frame)
 {
-	panic("GO USER");
+	for (;;) {
+		kprintf("GO USER");
+		vmspace_ctl(curproc->p_vmspace, VMSPACE_CTL_RUN,
+			    &frame, sizeof(frame), 0);
+		kprintf("RETURN USER");
+		user_trap(&frame);
+	}
 }
+
