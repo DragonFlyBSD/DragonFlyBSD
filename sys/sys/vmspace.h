@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vmspace.h,v 1.4 2006/10/20 17:02:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vmspace.h,v 1.5 2007/01/07 05:54:01 dillon Exp $
  */
 /*
  * VMSPACE - Virtualized Environment control from user mode.  The VMSPACE
@@ -53,8 +53,6 @@
 #define VMSPACE_TRAP		3
 #define VMSPACE_SYSCALL		4
 
-#ifndef _KERNEL
-
 int vmspace_create(void *, int, void *);
 int vmspace_destroy(void *);
 int vmspace_ctl(void *, int, void *, int, int);
@@ -63,8 +61,6 @@ int vmspace_munmap(void *, void *, size_t);
 int vmspace_mcontrol(void *, void *, size_t, int, off_t);
 ssize_t vmspace_pread(void *, void *, size_t, int, off_t);
 ssize_t vmspace_pwrite(void *, const void *, size_t, int, off_t);
-
-#endif
 
 #endif
 
