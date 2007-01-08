@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.150 2007/01/07 15:36:54 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.151 2007/01/08 01:52:14 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -378,11 +378,11 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/runetype.h
 	rm -f ${DESTDIR}/modules/if_snc.ko
 .for tzfile in Africa/Timbuktu America/Argentina/ComodRivadavia \
-	America/Indianapolis America/Louisville CST6CDT EST EST5EDT \
-	Europe/Belfast HST MST MST7MDT PST8PDT Pacific/Yap \
-	America/Coral_Harbour
+	America/Indianapolis America/Louisville Europe/Belfast \
+	Pacific/Yap America/Coral_Harbour
 	rm -f ${DESTDIR}/usr/share/zoneinfo/${tzfile}
 .endfor
+	rm -rf ${DESTDIR}/usr/share/zoneinfo/SystemV
 .if exists(${DESTDIR}/usr/freebsd_pkg/sbin/pkg_add)
 	csh -c "rm -f ${DESTDIR}/usr/sbin/pkg_{install,add,create,delete,info,sign,version,check,update}"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version,check,update}.1.gz"
