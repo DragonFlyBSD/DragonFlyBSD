@@ -32,7 +32,7 @@
  *
  *	@(#)termios.h	8.3 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/termios.h,v 1.13.2.1 2001/03/06 06:31:44 jhb Exp $
- * $DragonFly: src/sys/sys/termios.h,v 1.4 2003/10/13 21:08:50 dillon Exp $
+ * $DragonFly: src/sys/sys/termios.h,v 1.5 2007/01/08 19:29:23 dillon Exp $
  */
 
 #ifndef _SYS_TERMIOS_H_
@@ -234,8 +234,6 @@ struct termios {
 #define EXTB	38400
 #endif  /* !_POSIX_SOURCE */
 
-#ifndef _KERNEL
-
 #define	TCIFLUSH	1
 #define	TCOFLUSH	2
 #define TCIOFLUSH	3
@@ -263,8 +261,6 @@ void	cfmakeraw (struct termios *);
 int	cfsetspeed (struct termios *, speed_t);
 #endif /* !_POSIX_SOURCE */
 __END_DECLS
-
-#endif /* !_KERNEL */
 
 #ifndef _POSIX_SOURCE
 
