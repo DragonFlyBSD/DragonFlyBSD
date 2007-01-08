@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.22 2006/08/25 22:37:08 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.23 2007/01/08 19:48:35 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -57,6 +57,7 @@
 #	pst*	Promise SuperTrak RAID disks
 #	scd*	Sony CD-ROM disks
 #	vn*	vnode disks
+#	vd*	virtual kernel disk
 #
 # Console ports:
 #	vty*	virtual console devices for syscons
@@ -487,6 +488,7 @@ all)
 	sh MAKEDEV ar0 ar1				# bdev, ATA RAID disk
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
 	sh MAKEDEV vn0					# bdev, virtual disk
+	sh MAKEDEV vd0					# bdev, virtual disk
 	sh MAKEDEV cd0 mcd0 scd0			# bdev, cdrom
 	sh MAKEDEV sa0 wt0				# bdev, tape
 	sh MAKEDEV vty12				# cdev, virtual tty
@@ -537,6 +539,7 @@ fixit)
 	sh MAKEDEV ad0		 			# bdev, ATA disk
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
 	sh MAKEDEV vn0					# bdev, virtual disk
+	sh MAKEDEV vd0					# bdev, virtual disk
 	sh MAKEDEV cd0					# bdev, cdrom
 	sh MAKEDEV sa0					# bdev, tape
 	sh MAKEDEV vty2					# cdev, virtual tty
@@ -650,7 +653,7 @@ wt*)
 
 #-----------------------------------------------------------------------------
 
-aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*)
+aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vd*s*)
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
 	ad*s*)   name=ad;   chr=116;;
@@ -666,6 +669,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|ps
 	pst*s*)  name=pst;  chr=168;;
 	twed*s*) name=twed; chr=147;;
 	vn*s*)   name=vn;   chr=43;;
+	vd*s*)   name=vd;   chr=97;;
 	esac
 
 	case $i in
@@ -836,7 +840,7 @@ fd*)
 
 #-----------------------------------------------------------------------------
 
-aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*)
+aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vd*)
 	case $i in
 	aacd*) name=aacd; chr=151;;
 	ad*)   name=ad;   chr=116;;
@@ -852,6 +856,7 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*)
 	pst*)  name=pst;  chr=168;;
 	twed*) name=twed; chr=147;;
 	vn*)   name=vn;   chr=43;;
+	vd*)   name=vd;   chr=97;;
 	esac
 
 	case $i in
