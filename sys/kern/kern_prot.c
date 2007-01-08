@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.26 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.27 2007/01/08 21:32:57 corecode Exp $
  */
 
 /*
@@ -361,7 +361,7 @@ sys_setuid(struct setuid_args *uap)
 		 * Set the real uid and transfer proc count to new user.
 		 */
 		if (uid != cr->cr_ruid) {
-			change_ruid(uid);
+			cr = change_ruid(uid);
 			setsugid();
 		}
 		/*
@@ -587,11 +587,11 @@ sys_setreuid(struct setreuid_args *uap)
 		return (error);
 
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
-		change_euid(euid);
+		cr = change_euid(euid);
 		setsugid();
 	}
 	if (ruid != (uid_t)-1 && cr->cr_ruid != ruid) {
-		change_ruid(ruid);
+		cr = change_ruid(ruid);
 		setsugid();
 	}
 	if ((ruid != (uid_t)-1 || cr->cr_uid != cr->cr_ruid) &&
@@ -670,11 +670,11 @@ sys_setresuid(struct setresuid_args *uap)
 	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
 		return (error);
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
-		change_euid(euid);
+		cr = change_euid(euid);
 		setsugid();
 	}
 	if (ruid != (uid_t)-1 && cr->cr_ruid != ruid) {
-		change_ruid(ruid);
+		cr = change_ruid(ruid);
 		setsugid();
 	}
 	if (suid != (uid_t)-1 && cr->cr_svuid != suid) {
@@ -1112,7 +1112,7 @@ setsugid(void)
 /*
  * Helper function to change the effective uid of a process
  */
-void
+struct ucred *
 change_euid(uid_t euid)
 {
 	struct	proc *p = curproc;
@@ -1124,6 +1124,7 @@ change_euid(uid_t euid)
 	cr->cr_uid = euid;
 	uireplace(&cr->cr_uidinfo, uifind(euid));
 	lf_count_adjust(p, 1);
+	return (cr);
 }
 
 /*
@@ -1132,7 +1133,7 @@ change_euid(uid_t euid)
  * The per-uid process count for this process is transfered from
  * the old uid to the new uid.
  */
-void
+struct ucred *
 change_ruid(uid_t ruid)
 {
 	struct	proc *p = curproc;
@@ -1141,9 +1142,9 @@ change_ruid(uid_t ruid)
 	KKASSERT(p != NULL);
 
 	cr = cratom(&p->p_ucred);
-	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
-	/* It is assumed that pcred is not shared between processes */
+	chgproccnt(cr->cr_ruidinfo, -1, 0);
 	cr->cr_ruid = ruid;
 	uireplace(&cr->cr_ruidinfo, uifind(ruid));
-	(void)chgproccnt(cr->cr_ruidinfo, 1, 0);
+	chgproccnt(cr->cr_ruidinfo, 1, 0);
+	return (cr);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.8 2006/05/26 00:33:13 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.9 2007/01/08 21:32:57 corecode Exp $
  */
 
 #ifndef _SYS_UCRED_H_
@@ -92,8 +92,8 @@ struct xucred {
 
 struct proc;
 
-void		change_euid (uid_t euid);
-void		change_ruid (uid_t ruid);
+struct ucred	*change_euid (uid_t euid);
+struct ucred	*change_ruid (uid_t ruid);
 struct ucred	*cratom (struct ucred **pcr);
 struct ucred	*crcopy (struct ucred *cr);
 struct ucred	*crdup (struct ucred *cr);
