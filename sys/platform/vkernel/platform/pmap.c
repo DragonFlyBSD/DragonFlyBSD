@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.7 2007/01/08 08:17:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.8 2007/01/08 16:03:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -486,6 +486,33 @@ get_ptbase2(struct pmap *pmap, vm_offset_t va)
 }
 
 /*
+ * When removing a page directory the related VA range in the self-mapping
+ * of the page table must be invalidated.
+ */
+static void
+inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
+{
+	struct mdglobaldata *gd = mdcpu;
+	vm_offset_t va;
+
+#ifdef SMP
+#error "Must inval self-mappings in all gd's"
+#endif
+	if (pmap == &kernel_pmap) {
+		va = (vm_offset_t)KernelPTA + (pindex << PAGE_SHIFT);
+		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	}
+	if (pmap->pm_pdir == gd->gd_PT1pdir) {
+		va = (vm_offset_t)gd->gd_PT1map + (pindex << PAGE_SHIFT);
+		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	}
+	if (pmap->pm_pdir == gd->gd_PT2pdir) {
+		va = (vm_offset_t)gd->gd_PT2map + (pindex << PAGE_SHIFT);
+		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	}
+}
+
+/*
  * Return a pointer to the page table entry for the specified va in the
  * specified pmap.  NULL is returned if there is no valid page table page
  * for the VA.
@@ -903,9 +930,9 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 		/*
 		 * unmap the page table page
 		 */
-		pmap_inval_add(info, pmap, -1);
 		pmap->pm_pdir[m->pindex] = 0;
 		--pmap->pm_stats.resident_count;
+		inval_ptbase_pagedir(pmap, m->pindex);
 
 		if (pmap->pm_ptphint == m)
 			pmap->pm_ptphint = NULL;
@@ -1409,9 +1436,9 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 
 		pdirindex = sindex / NPDEPG;
 		if (((ptpaddr = pmap->pm_pdir[pdirindex]) & VPTE_PS) != 0) {
-			pmap_inval_add(&info, pmap, -1);
 			pmap->pm_pdir[pdirindex] = 0;
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+			inval_ptbase_pagedir(pmap, pdirindex);
 			continue;
 		}
 
@@ -1554,9 +1581,9 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 		pdirindex = sindex / NPDEPG;
 		if (((ptpaddr = pmap->pm_pdir[pdirindex]) & VPTE_PS) != 0) {
-			pmap_inval_add(&info, pmap, -1);
 			pmap->pm_pdir[pdirindex] &= ~(VPTE_M|VPTE_W);
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+			inval_ptbase_pagedir(pmap, pdirindex);
 			continue;
 		}
 
@@ -2172,8 +2199,11 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	dst_frame = get_ptbase2(dst_pmap, src_addr);
 
 	pmap_inval_init(&info);
+#if 0
+	/* XXX */
 	pmap_inval_add(&info, dst_pmap, -1);
 	pmap_inval_add(&info, src_pmap, -1);
+#endif
 
 	/*
 	 * critical section protection is required to maintain the page/object
@@ -2492,7 +2522,6 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		if (tpte & VPTE_M) {
 			vm_page_dirty(m);
 		}
-
 
 		npv = TAILQ_NEXT(pv, pv_plist);
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);

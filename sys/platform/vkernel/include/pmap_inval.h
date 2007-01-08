@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/pmap_inval.h,v 1.1 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap_inval.h,v 1.2 2007/01/08 16:03:24 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_INVAL_H_
@@ -60,6 +60,8 @@ typedef pmap_inval_info *pmap_inval_info_t;
 
 void pmap_inval_init(pmap_inval_info_t);
 void pmap_inval_add(pmap_inval_info_t, pmap_t, vm_offset_t);
+void pmap_inval_add_seg(pmap_inval_info_t, pmap_t, vm_offset_t);
+void pmap_inval_add_all(pmap_inval_info_t, pmap_t);
 void pmap_inval_flush(pmap_inval_info_t);
 
 #endif

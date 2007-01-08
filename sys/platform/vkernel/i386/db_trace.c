@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.4 2007/01/08 16:03:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -221,9 +221,10 @@ db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 	tf = (struct trapframe *) ((int)*fp + 8);
 
 	esp = (ISPL(tf->tf_cs) == SEL_UPL) ?  tf->tf_esp : (int)&tf->tf_esp;
+
 	switch (frame_type) {
 	case TRAP:
-		if (INKERNEL((int) tf)) {
+		{
 			eip = tf->tf_eip;
 			ebp = tf->tf_ebp;
 			db_printf(
@@ -232,7 +233,7 @@ db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 		}
 		break;
 	case SYSCALL:
-		if (INKERNEL((int) tf)) {
+		{
 			eip = tf->tf_eip;
 			ebp = tf->tf_ebp;
 			db_printf(
@@ -242,7 +243,7 @@ db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 		break;
 	case INTERRUPT:
 		tf = (struct trapframe *)((int)*fp + 16);
-		if (INKERNEL((int) tf)) {
+		{
 			eip = tf->tf_eip;
 			ebp = tf->tf_ebp;
 			db_printf(
@@ -276,47 +277,6 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		if (frame == NULL)
 			frame = (struct i386_frame *)(SP_REGS(&ddb_regs) - 4);
 		callpc = PC_REGS(&ddb_regs);
-	} else if (!INKERNEL(addr)) {
-#if needswork
-		pid = (addr % 16) + ((addr >> 4) % 16) * 10 +
-		    ((addr >> 8) % 16) * 100 + ((addr >> 12) % 16) * 1000 +
-		    ((addr >> 16) % 16) * 10000;
-		/*
-		 * The pcb for curproc is not valid at this point,
-		 * so fall back to the default case.
-		 */
-		if ((curproc != NULL) && (pid == curproc->p_pid)) {
-			frame = (struct i386_frame *)BP_REGS(&ddb_regs);
-			if (frame == NULL)
-				frame = (struct i386_frame *)
-				    (SP_REGS(&ddb_regs) - 4);
-			callpc = PC_REGS(&ddb_regs);
-		} else {
-			pid_t pid;
-			struct proc *p;
-			struct pcb *pcb;
-
-			p = pfind(pid);
-			if (p == NULL) {
-				db_printf("pid %d not found\n", pid);
-				return;
-			}
-			if ((p->p_flag & P_SWAPPEDOUT)) {
-				db_printf("pid %d swapped out\n", pid);
-				return;
-			}
-			pcb = p->p_thread->td_pcb;
-			frame = (struct i386_frame *)pcb->pcb_ebp;
-			if (frame == NULL)
-				frame = (struct i386_frame *)
-				    (pcb->pcb_esp - 4);
-			callpc = (db_addr_t)pcb->pcb_eip;
-		}
-#else
-		/* XXX */
-		db_printf("no kernel stack address\n");
-		return;
-#endif
 	} else {
 		/*
 		 * Look for something that might be a frame pointer, just as
@@ -424,15 +384,14 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 
 		db_nextframe(&frame, &callpc);
 
-		if (INKERNEL((int) callpc) && !INKERNEL((int) frame)) {
+		{
 			sym = db_search_symbol(callpc, DB_STGY_ANY, &offset);
 			db_symbol_values(sym, &name, NULL);
 			db_print_stack_entry(name, 0, 0, 0, callpc);
 			break;
 		}
-		if (!INKERNEL((int) frame)) {
+		if (frame == 0)
 			break;
-		}
 	}
 }
 
