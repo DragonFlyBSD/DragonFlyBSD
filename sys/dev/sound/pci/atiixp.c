@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.4 2006/04/04 17:24:33 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.1 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.5 2006/11/14 13:08:11 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.2 2007/01/08 01:38:02 swildner Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 
 #include <dev/sound/pci/atiixp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.1 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.2 2007/01/08 01:38:02 swildner Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -965,7 +965,7 @@ atiixp_pci_attach(device_t dev)
 	/*
 	 * DMA tag for scatter-gather buffers and link pointers
 	 */
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/sc->bufsz, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,

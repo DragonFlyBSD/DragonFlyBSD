@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.8 2006/08/22 02:37:03 yongari Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.13 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.9 2006/12/24 05:44:10 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.14 2007/01/08 01:38:02 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.13 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.14 2007/01/08 01:38:02 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -67,6 +67,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.13 2007/01/04 21:4
 #define NVIDIA_NFORCE3_250	0x00ea
 #define NVIDIA_NFORCE4	0x0059
 #define NVIDIA_NFORCE_410_MCP	0x026b
+#define NVIDIA_NFORCE4_MCP	0x003a
 #define AMD_768		0x7445
 #define AMD_8111	0x746d
 
@@ -117,6 +118,8 @@ static const struct ich_type {
 		"nVidia nForce4" },
 	{ NVIDIA_VENDORID,	NVIDIA_NFORCE_410_MCP,	0,
 		"nVidia nForce 410 MCP" },
+	{ NVIDIA_VENDORID,	NVIDIA_NFORCE4_MCP,	0,
+		"nVidia nForce 4 MCP" },
 	{ AMD_VENDORID,		AMD_768,	0,
 		"AMD-768" },
 	{ AMD_VENDORID,		AMD_8111,	0,
@@ -854,6 +857,9 @@ ich_pci_attach(device_t dev)
 	case 0x81c0104d:	/* Sony VAIO type T */
 	case 0x81c5104d:	/* Sony VAIO VGN B1VP/B1XP */
 	case 0x3089103c:	/* Compaq Presario B3800 */
+	case 0x309a103c:	/* HP Compaq nx4300 */
+	case 0x82131033:	/* NEC VersaPro VJ10F/BH */
+	case 0x82be1033:	/* NEC VersaPro VJ12F/CH */
 		ac97_setflags(sc->codec, ac97_getflags(sc->codec) | AC97_F_EAPD_INV);
 		break;
 	default:

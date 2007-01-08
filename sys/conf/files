@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.148 2007/01/04 21:47:00 corecode Exp $
+# $DragonFly: src/sys/conf/files,v 1.149 2007/01/08 01:38:02 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1204,7 +1204,6 @@ bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa
 #
 dev/sound/isa/ad1816.c		optional snd_ad1816 isa
-dev/sound/isa/es1888.c		optional snd_ess isa
 dev/sound/isa/ess.c		optional snd_ess isa
 dev/sound/isa/gusc.c		optional snd_gusc isa
 dev/sound/isa/mss.c		optional snd_mss isa
@@ -1214,7 +1213,6 @@ dev/sound/isa/sbc.c		optional snd_sbc isa
 dev/sound/isa/sndbuf_dma.c	optional pcm isa
 dev/sound/pci/als4000.c		optional snd_als4000 pci
 dev/sound/pci/atiixp.c		optional snd_atiixp pci
-#dev/sound/pci/au88x0.c		optional snd_au88x0 pci
 dev/sound/pci/cmi.c		optional snd_cmi pci
 dev/sound/pci/cs4281.c		optional snd_cs4281 pci
 dev/sound/pci/csa.c		optional snd_csa pci
@@ -1224,6 +1222,7 @@ dev/sound/pci/emu10k1.c		optional snd_emu10k1 pci \
 	dependency "emu10k1-alsa%diked.h"
 dev/sound/pci/es137x.c		optional snd_es137x pci
 dev/sound/pci/fm801.c		optional snd_fm801 pci
+dev/sound/pci/hda/hdac.c	optional snd_hda pci
 dev/sound/pci/ich.c		optional snd_ich pci
 dev/sound/pci/maestro.c 	optional snd_maestro pci
 dev/sound/pci/maestro3.c	optional snd_maestro3 pci
@@ -1251,7 +1250,6 @@ dev/sound/pcm/mixer_if.m	optional pcm
 dev/sound/pcm/sndstat.c		optional pcm
 dev/sound/pcm/sound.c		optional pcm
 dev/sound/pcm/vchan.c		optional pcm
-#dev/sound/usb/upcm.c		optional snd_upcm usb
 dev/sound/usb/uaudio.c		optional snd_uaudio usb
 dev/sound/usb/uaudio_pcm.c	optional snd_uaudio usb
 #
