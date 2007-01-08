@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.22 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.23 2007/01/08 12:21:50 swildner Exp $
  */
 
 /*
@@ -1303,7 +1303,9 @@ psmopen(struct dev_open_args *ap)
     if (sc->state & PSM_OPEN)
         return (EBUSY);
 
+#if 0
     device_busy(devclass_get_device(psm_devclass, unit));
+#endif
 
     /* Initialize state */
     sc->rsel.si_flags = 0;
@@ -1448,7 +1450,9 @@ psmclose(struct dev_close_args *ap)
     /* close is almost always successful */
     sc->state &= ~PSM_OPEN;
     kbdc_lock(sc->kbdc, FALSE);
+#if 0
     device_unbusy(devclass_get_device(psm_devclass, unit));
+#endif
     return (0);
 }
 
