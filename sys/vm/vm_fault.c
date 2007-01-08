@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.37 2007/01/08 19:41:01 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.38 2007/01/08 23:41:31 dillon Exp $
  */
 
 /*
@@ -576,6 +576,13 @@ RetryFault:
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
+
+	/*
+	 * Update the pmap.  We really only have to do this if a COW
+	 * occured to replace the read-only page with the new page.  For
+	 * now just do it unconditionally. XXX
+	 */
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 
 	/*
 	 * Unbusy the page by activating it.  It remains held and will not
