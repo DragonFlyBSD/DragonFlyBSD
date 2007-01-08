@@ -1,0 +1,162 @@
+.\"
+.\" Copyright (c) 2003, 2004, 2005, 2006, 2007
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.1 2007/01/08 08:55:44 swildner Exp $
+.\"
+.Dd January 8, 2007
+.Dt VKERNEL 7
+.Os
+.Sh NAME
+.Nm vkernel
+.Nd virtual kernel architecture
+.Sh SYNOPSIS
+.Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
+.Op Fl e Ar environment
+.\".Op Fl i Ar file
+.Op Fl m Ar size
+.Op Fl r Ar file
+.Op Fl v
+.Sh DESCRIPTION
+The
+.Nm
+architecture allows for running
+.Dx
+kernels in userland.
+.Pp
+The following options are available:
+.Bl -tag -width ".Fl m Ar size"
+.It Fl e Ar environment
+Specify an to be used by the kernel.
+The
+.Ar environment
+argument is a string of the form
+.Li name=value:name=value:...
+.\".It Fl i Ar file
+.\"Specify a memory image
+.\".Ar file
+.\"to be used by the kernel.
+.It Fl m Ar size
+Specify the amount of memory to be used by the kernel in bytes,
+.Cm K
+(kilobytes),
+.Cm M
+(megabytes) or
+.Cm G
+(gigabytes).
+Lowercase version of
+.Cm K , M ,
+and
+.Cm G
+are allowed.
+.It Fl r Ar file
+Specify the root image
+.Ar file
+to be used by the kernel.
+See
+.Sx CONFIGURING AND RUNNING VIRTUAL KERNELS
+for further information on how to prepare a root image.
+.It Fl v
+Turn on verbose booting.
+.El
+.Sh CONFIGURING AND RUNNING VIRTUAL KERNELS
+A couple of steps are necessary in order to prepare the system to build and
+run a virtual kernel.
+.Ss Setting up the filesystem
+The
+.Nm
+architecture needs a number of files which reside in
+.Pa /var/vkernel .
+Since these files tend to get rather big and the
+.Pa /var
+partition is usually of limited size, we recommend the directory to be
+created in the
+.Pa /home
+partition with a link to it in
+.Pa /var :
+.Bd -literal -offset indent
+mkdir /home/var.vkernel
+ln -s /home/var.vkernel /var/vkernel
+.Ed
+.Pp
+Next, a filesystem image to be used by the virtual kernel has to be
+created:
+.Bd -literal -offset indent
+dd if=/dev/zero of=/var/vkernel/rootimg.01 bs=1m count=2048
+vnconfig -c -s labels vn0 /var/vkernel/rootimg.01
+disklabel -r -w vn0 auto
+(edit the label to create a vn0a partition)
+newfs /dev/vn0a
+mount /dev/vn0a /mnt
+cpdup / /mnt
+umount /mnt
+vnconfig -u vn0
+.Ed
+.Ss Compiling the virtual kernel
+In order to compile a virtual kernel use the
+.Li VKERNEL
+kernel configuration file residing in
+.Pa /usr/src/sys/config
+(or a configuration file derived thereof):
+.Bd -literal -offset indent
+cd /usr/src
+make buildkernel KERNCONF=VKERNEL
+.Ed
+.Ss Enabling virtual kernel operation
+A special
+.Xr sysctl 8 ,
+.Va vm.vkernel_enable ,
+must be set to enable
+.Nm
+operation:
+.Bd -literal -offset indent
+sysctl vm.vkernel_enable=1
+.Ed
+.Ss Running the kernel
+Finally, the virtual kernel can be run:
+.Bd -literal -offset indent
+cd /usr/obj/usr/src/sys/VKERNEL
+\&./kernel.debug -m 64m -r /var/vkernel/rootimg.01
+.Ed
+.Sh SEE ALSO
+.Xr build 7
+.Sh HISTORY
+Virtual kernels were introduced in
+.Dx 1.7 .
+.Sh AUTHORS
+.An -nosplit
+.An Matt Dillon
+thought up and implemented the
+.Nm
+architecture.
+This manual page was written by
+.An Sascha Wildner .
+.Sh BUGS
+Virtual kernels are not yet fully operational.
