@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.4 2007/01/08 08:17:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.5 2007/01/08 19:45:38 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -42,6 +42,7 @@
 #include <sys/termios.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 
 static int console_stolen_by_kernel;
 static struct callout console_callout;
@@ -223,9 +224,17 @@ CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsterm, vconsgetc,
 static void
 vconsprobe(struct consdev *cp)
 {
-    cp->cn_pri = CN_NORMAL;
-    cp->cn_dev = make_dev(&vcons_ops, 255,
-			  UID_ROOT, GID_WHEEL, 0600, "vconsolectl");
+	struct termios tio;
+
+	cp->cn_pri = CN_NORMAL;
+	cp->cn_dev = make_dev(&vcons_ops, 255,
+			      UID_ROOT, GID_WHEEL, 0600, "vconsolectl");
+
+	if (tcgetattr(0, &tio) == 0) {
+		cfmakeraw(&tio);
+		tio.c_lflag |= ISIG;
+		tcsetattr(0, TCSAFLUSH, &tio);
+	}
 }
 
 static void

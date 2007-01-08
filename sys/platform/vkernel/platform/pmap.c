@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.8 2007/01/08 16:03:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.9 2007/01/08 19:45:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -295,6 +295,8 @@ pmap_release(struct pmap *pmap)
 		}
 		crit_exit();
 	} while (info.error);
+	pmap->pm_pdir = NULL;
+	pmap->pm_pdirpte = 0;
 }
 
 static int
@@ -1312,8 +1314,9 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 
 	pmap_inval_add(info, pmap, va);
 	oldpte = loadandclear(ptq);
-	if (oldpte & VPTE_W)
-		pmap->pm_stats.wired_count -= 1;
+	if (oldpte & VPTE_WIRED)
+		--pmap->pm_stats.wired_count;
+	KKASSERT(pmap->pm_stats.wired_count >= 0);
 	/*
 	 * Machines that don't support invlpg, also don't support
 	 * VPTE_G.  XXX VPTE_G is disabled for SMP so don't worry about
@@ -1322,7 +1325,7 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 	if (oldpte & VPTE_G)
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 	pmap->pm_stats.resident_count -= 1;
-	if (oldpte & PG_MANAGED) {
+	if (oldpte & VPTE_MANAGED) {
 		m = PHYS_TO_VM_PAGE(oldpte);
 		if (oldpte & VPTE_M) {
 #if defined(PMAP_DIAGNOSTIC)
@@ -1454,9 +1457,8 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		 * by the current page table page, or to the end of the
 		 * range being removed.
 		 */
-		if (pdnxt > eindex) {
+		if (pdnxt > eindex)
 			pdnxt = eindex;
-		}
 
 		for (; sindex != pdnxt; sindex++) {
 			vm_offset_t va;
@@ -1503,9 +1505,12 @@ pmap_remove_all(vm_page_t m)
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 
+		KKASSERT(pte != NULL);
+
 		tpte = loadandclear(pte);
-		if (tpte & VPTE_W)
-			pv->pv_pmap->pm_stats.wired_count--;
+		if (tpte & VPTE_WIRED)
+			--pv->pv_pmap->pm_stats.wired_count;
+		KKASSERT(pv->pv_pmap->pm_stats.wired_count >= 0);
 
 		if (tpte & VPTE_A)
 			vm_page_flag_set(m, PG_REFERENCED);
@@ -1607,7 +1612,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			pmap_inval_add(&info, pmap, i386_ptob(sindex));
 			pbits = ptbase[sindex - sbase];
 
-			if (pbits & PG_MANAGED) {
+			if (pbits & VPTE_MANAGED) {
 				m = NULL;
 				if (pbits & VPTE_A) {
 					m = PHYS_TO_VM_PAGE(pbits);
@@ -1705,10 +1710,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * are valid mappings in them. Hence, if a user page is wired,
 		 * the PT page will be also.
 		 */
-		if (wired && ((origpte & VPTE_W) == 0))
-			pmap->pm_stats.wired_count++;
-		else if (!wired && (origpte & VPTE_W))
-			pmap->pm_stats.wired_count--;
+		if (wired && ((origpte & VPTE_WIRED) == 0))
+			++pmap->pm_stats.wired_count;
+		else if (!wired && (origpte & VPTE_WIRED))
+			--pmap->pm_stats.wired_count;
+		KKASSERT(pmap->pm_stats.wired_count >= 0);
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pmap_nw_modified((pt_entry_t) origpte)) {
@@ -1731,13 +1737,13 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * We might be turning off write access to the page,
 		 * so we go ahead and sense modify status.
 		 */
-		if (origpte & PG_MANAGED) {
+		if (origpte & VPTE_MANAGED) {
 			if ((origpte & VPTE_M) && pmap_track_modified(va)) {
 				vm_page_t om;
 				om = PHYS_TO_VM_PAGE(opa);
 				vm_page_dirty(om);
 			}
-			pa |= PG_MANAGED;
+			pa |= VPTE_MANAGED;
 		}
 		goto validate;
 	} 
@@ -1760,7 +1766,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if (pmap_initialized && 
 	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pmap_insert_entry(pmap, va, mpte, m);
-		pa |= PG_MANAGED;
+		pa |= VPTE_MANAGED;
 	}
 
 	/*
@@ -1777,7 +1783,7 @@ validate:
 	newpte = (vm_offset_t) (pa | pte_prot(pmap, prot) | VPTE_V);
 
 	if (wired)
-		newpte |= VPTE_W;
+		newpte |= VPTE_WIRED;
 	newpte |= VPTE_U;
 
 	/*
@@ -1893,6 +1899,10 @@ retry:
 	return mpte;
 }
 
+/*
+ * Extract the physical address for the translation at the specified
+ * virtual address in the pmap.
+ */
 vm_paddr_t
 pmap_extract(pmap_t pmap, vm_offset_t va)
 {
@@ -2144,10 +2154,11 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 
 	pte = get_ptbase(pmap, va);
 
-	if (wired && (*pte & VPTE_W) == 0)
-		pmap->pm_stats.wired_count++;
-	else if (!wired && (*pte & VPTE_W))
-		pmap->pm_stats.wired_count--;
+	if (wired && (*pte & VPTE_WIRED) == 0)
+		++pmap->pm_stats.wired_count;
+	else if (!wired && (*pte & VPTE_WIRED))
+		--pmap->pm_stats.wired_count;
+	KKASSERT(pmap->pm_stats.wired_count >= 0);
 
 	/*
 	 * Wiring is not a hardware characteristic so there is no need to
@@ -2156,17 +2167,10 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	 * the pmap_inval_*() API that is)... it's ok to do this for simple
 	 * wiring changes.
 	 */
-#ifdef SMP
 	if (wired)
-		atomic_set_int(pte, VPTE_W);
+		atomic_set_int(pte, VPTE_WIRED);
 	else
-		atomic_clear_int(pte, VPTE_W);
-#else
-	if (wired)
-		atomic_set_int_nonlocked(pte, VPTE_W);
-	else
-		atomic_clear_int_nonlocked(pte, VPTE_W);
-#endif
+		atomic_clear_int(pte, VPTE_WIRED);
 }
 
 /*
@@ -2260,7 +2264,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			/*
 			 * we only virtual copy managed pages
 			 */
-			if ((ptetemp & PG_MANAGED) != 0) {
+			if ((ptetemp & VPTE_MANAGED) != 0) {
 				/*
 				 * We have to check after allocpte for the
 				 * pte still being around...  allocpte can
@@ -2503,7 +2507,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		 * We cannot remove wired pages from a process' mapping
 		 * at this time
 		 */
-		if (tpte & VPTE_W) {
+		if (tpte & VPTE_WIRED) {
 			npv = TAILQ_NEXT(pv, pv_plist);
 			continue;
 		}
@@ -2643,17 +2647,9 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 					if (pbits & VPTE_M) {
 						vm_page_dirty(m);
 					}
-#ifdef SMP
 					atomic_clear_int(pte, VPTE_M|VPTE_W);
-#else
-					atomic_clear_int_nonlocked(pte, VPTE_M|VPTE_W);
-#endif
 				} else {
-#ifdef SMP
 					atomic_clear_int(pte, bit);
-#else
-					atomic_clear_int_nonlocked(pte, bit);
-#endif
 				}
 			}
 		}
