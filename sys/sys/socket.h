@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.14 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.15 2007/01/08 17:19:25 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -448,8 +448,10 @@ struct sf_hdtr {
 
 __BEGIN_DECLS
 int	accept (int, struct sockaddr *, socklen_t *);
+int	__accept (int, int, struct sockaddr *, socklen_t *);
 int	bind (int, const struct sockaddr *, socklen_t);
 int	connect (int, const struct sockaddr *, socklen_t);
+int	__connect (int, int, struct sockaddr *, socklen_t);
 int	getpeername (int, struct sockaddr *, socklen_t *);
 int	getsockname (int, struct sockaddr *, socklen_t *);
 int	getsockopt (int, int, int, void *, socklen_t *);

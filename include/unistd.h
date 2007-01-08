@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.16 2006/06/13 20:01:51 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.17 2007/01/08 17:19:26 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -56,6 +56,8 @@
 #define	F_TLOCK		2	/* test and lock a section for exclusive use */
 #define	F_TEST		3	/* test a section for locks by other procs */
 #endif
+
+struct iovec;
 
 __BEGIN_DECLS
 void	 _exit(int) __dead2;
@@ -163,8 +165,12 @@ char	*mktemp(char *);
 int	 nfssvc(int, void *);
 int	 nice(int);
 ssize_t	 pread(int, void *, size_t, off_t);
+ssize_t	__pread(int, void *, size_t, int, off_t);
+ssize_t __preadv(int, struct iovec *, u_int, int, off_t);
 int	 profil(char *, size_t, vm_offset_t, int);
 ssize_t	 pwrite(int, const void *, size_t, off_t);
+ssize_t	__pwrite(int, const void *, size_t, int, off_t);
+ssize_t __pwritev(int, struct iovec *, u_int, int, off_t);
 int	 rcmd(char **, int, const char *, const char *, const char *, int *);
 int	 rcmd_af(char **, int, const char *, const char *, const char *, int *,
 		 int);
