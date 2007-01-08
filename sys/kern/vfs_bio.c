@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.87 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.88 2007/01/08 19:42:24 dillon Exp $
  */
 
 /*
@@ -3406,11 +3406,12 @@ int
 vmapbuf(struct buf *bp, caddr_t udata, int bytes)
 {
 	caddr_t addr;
-	vm_paddr_t pa;
+	vm_offset_t va;
+	vm_page_t m;
+	int vmprot;
+	int error;
 	int pidx;
 	int i;
-	int vmprot;
-	struct vm_page *m;
 
 	/* 
 	 * bp had better have a command and it better be a pbuf.
@@ -3435,31 +3436,20 @@ vmapbuf(struct buf *bp, caddr_t udata, int bytes)
 		/*
 		 * Do the vm_fault if needed; do the copy-on-write thing
 		 * when reading stuff off device into memory.
+		 *
+		 * vm_fault_page*() returns a held VM page.
 		 */
-retry:
-		if (addr >= udata)
-			i = vm_fault_quick(addr, vmprot);
-		else
-			i = vm_fault_quick(udata, vmprot);
-		if (i < 0) {
+		va = (addr >= udata) ? (vm_offset_t)addr : (vm_offset_t)udata;
+		va = trunc_page(va);
+
+		m = vm_fault_page_quick(va, vmprot, &error);
+		if (m == NULL) {
 			for (i = 0; i < pidx; ++i) {
 			    vm_page_unhold(bp->b_xio.xio_pages[i]);
 			    bp->b_xio.xio_pages[i] = NULL;
 			}
 			return(-1);
 		}
-
-		/*
-		 * Extract from current process's address map.  Since the
-		 * fault succeeded, an empty page indicates a race.
-		 */
-		pa = pmap_extract(&curproc->p_vmspace->vm_pmap, (vm_offset_t)addr);
-		if (pa == 0) {
-			kprintf("vmapbuf: warning, race against user address during I/O");
-			goto retry;
-		}
-		m = PHYS_TO_VM_PAGE(pa);
-		vm_page_hold(m);
 		bp->b_xio.xio_pages[pidx] = m;
 		addr += PAGE_SIZE;
 		++pidx;
