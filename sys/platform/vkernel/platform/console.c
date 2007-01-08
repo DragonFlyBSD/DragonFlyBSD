@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.4 2007/01/08 08:17:17 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -42,6 +42,9 @@
 #include <sys/termios.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
+
+static int console_stolen_by_kernel;
+static struct callout console_callout;
 
 /*
  * Global console locking functions
@@ -66,6 +69,7 @@ cons_unlock(void)
 
 static int vcons_tty_param(struct tty *tp, struct termios *tio);
 static void vcons_tty_start(struct tty *tp);
+static void vcons_intr(void *tpx);
 
 static d_open_t         vcons_open;
 static d_close_t        vcons_close;
@@ -111,6 +115,10 @@ vcons_open(struct dev_open_args *ap)
 	ttsetwater(tp);
 
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
+	if (error == 0) {
+		callout_init(&console_callout);
+		callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
+	}
 	return(error);
 }
 
@@ -124,6 +132,7 @@ vcons_close(struct dev_close_args *ap)
 		return(ENXIO);
 	tp = dev->si_tty;
 	if (tp->t_state & TS_ISOPEN) {
+		callout_stop(&console_callout);
 		(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 		ttyclose(tp);
 	}
@@ -176,6 +185,25 @@ vcons_tty_start(struct tty *tp)
 	ttwwakeup(tp);
 }
 
+static
+void
+vcons_intr(void *tpx)
+{
+	struct tty *tp = tpx;
+	unsigned char buf[32];
+	int i;
+	int n;
+
+	if (console_stolen_by_kernel == 0 && (tp->t_state & TS_ISOPEN)) {
+		do {
+			n = __pread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
+			for (i = 0; i < n; ++i)
+				(*linesw[tp->t_line].l_rint)(buf[i], tp);
+		} while (n > 0);
+	}
+	callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
+}
+
 /************************************************************************
  *			KERNEL CONSOLE INTERFACE			*
  ************************************************************************
@@ -216,13 +244,16 @@ vconsgetc(cdev_t dev)
 	unsigned char c;
 	ssize_t n;
 
+	console_stolen_by_kernel = 1;
 	for (;;) {
 		if ((n = read(0, &c, 1)) == 1)
-			return((int)c);
+			break;
 		if (n < 0 && errno == EINTR)
 			continue;
 		panic("vconsgetc: EOF on console %d %d", n ,errno);
 	}
+	console_stolen_by_kernel = 0;
+	return((int)c);
 }
 
 static int

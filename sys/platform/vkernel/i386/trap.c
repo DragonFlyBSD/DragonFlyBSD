@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.5 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.6 2007/01/08 08:17:15 dillon Exp $
  */
 
 /*
@@ -1241,11 +1241,12 @@ syscall2(struct trapframe *frame)
 	if ((callp->sy_narg & SYF_MPSAFE) == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
-#if 0
-	kprintf("system call %d\n", code);
-#endif
 
 	error = (*callp->sy_call)(&args);
+
+#if 0
+	kprintf("system call %d returned %d\n", code, error);
+#endif
 
 out:
 	/*
@@ -1392,17 +1393,26 @@ go_user(struct trapframe frame)
 	int r;
 
 	for (;;) {
+#if 0
 		kprintf("GO USER VMSPC %p pid %-4d %s\n", 
 			&curproc->p_vmspace->vm_pmap,
 			curproc->p_pid, curproc->p_comm);
+#endif
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				&frame, &curthread->td_savevext);
 		if (r < 0)
 			panic("vmspace_ctl had problems with the context");
-		if (frame.tf_trapno)
+		if (frame.tf_trapno) {
+#if 0
+			kprintf("User trapno %d eip %08x err %08x xflags %d\n",
+				frame.tf_trapno, frame.tf_eip, frame.tf_err, frame.tf_xflags);
+#endif
 			user_trap(&frame);
-		else
+		} else {
+#if 0
 			kprintf("Kernel AST\n");
+#endif
+		}
 	}
 }
 

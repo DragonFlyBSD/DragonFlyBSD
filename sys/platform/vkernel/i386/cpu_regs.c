@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.4 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.5 2007/01/08 08:17:15 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -386,16 +386,17 @@ sys_sigreturn(struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
-	ucontext_t *ucp;
-	int cs, eflags;
+	ucontext_t ucp;
+	int cs;
+	int eflags;
+	int error;
 
-	ucp = uap->sigcntxp;
-
-	if (!useracc((caddr_t)ucp, sizeof(ucontext_t), VM_PROT_READ))
-		return (EFAULT);
+	error = copyin(uap->sigcntxp, &ucp, sizeof(ucp));
+	if (error)
+		return (error);
 
 	regs = lp->lwp_md.md_regs;
-	eflags = ucp->uc_mcontext.mc_eflags;
+	eflags = ucp.uc_mcontext.mc_eflags;
 
 #if 0
 	if (eflags & PSL_VM) {
@@ -423,7 +424,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 			vm86->vm86_eflags = eflags;	/* save VIF, VIP */
 			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |					    (eflags & VM_USERCHANGE) | PSL_VM;
 		}
-		bcopy(&ucp->uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
+		bcopy(&ucp.uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
 		tf->tf_eflags = eflags;
 		tf->tf_vm86_ds = tf->tf_ds;
 		tf->tf_vm86_es = tf->tf_es;
@@ -461,21 +462,21 @@ sys_sigreturn(struct sigreturn_args *uap)
 		 * hardware check for invalid selectors, excess privilege in
 		 * other selectors, invalid %eip's and invalid %esp's.
 		 */
-		cs = ucp->uc_mcontext.mc_cs;
+		cs = ucp.uc_mcontext.mc_cs;
 		if (!CS_SECURE(cs)) {
 			kprintf("sigreturn: cs = 0x%x\n", cs);
 			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
-		bcopy(&ucp->uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
+		bcopy(&ucp.uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
 	}
 
-	if (ucp->uc_mcontext.mc_onstack & 1)
+	if (ucp.uc_mcontext.mc_onstack & 1)
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	else
 		lp->lwp_sigstk.ss_flags &= ~SS_ONSTACK;
 
-	lp->lwp_sigmask = ucp->uc_sigmask;
+	lp->lwp_sigmask = ucp.uc_sigmask;
 	SIG_CANTMASK(lp->lwp_sigmask);
 	return(EJUSTRETURN);
 }

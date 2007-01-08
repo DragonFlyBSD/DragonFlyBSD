@@ -32,22 +32,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.2 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.3 2007/01/08 08:17:15 dillon Exp $
  */
 
+#include "opt_ddb.h"
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <ddb/ddb.h>
 #include <machine/trap.h>
 #include <machine/md_var.h>
 #include <machine/segments.h>
-
 #include <signal.h>
 
 int _ucodesel = LSEL(LUCODE_SEL, SEL_UPL);
 int _udatasel = LSEL(LUDATA_SEL, SEL_UPL);
 
 static void exc_segfault(int signo, siginfo_t *info, void *ctx);
+#ifdef DDB
+static void exc_debugger(int signo, siginfo_t *info, void *ctx);
+#endif
 
 void
 init_exceptions(void)
@@ -60,6 +64,10 @@ init_exceptions(void)
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
 	sigaction(SIGTRAP, &sa, NULL);
+#ifdef DDB
+	sa.sa_sigaction = exc_debugger;
+	sigaction(SIGQUIT, &sa, NULL);
+#endif
 }
 
 /*
@@ -73,12 +81,23 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
 
-	printf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d err %d\n",
+#if 0
+	kprintf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d err %d\n",
 		ctx->uc_mcontext.mc_eip,
 		ctx->uc_mcontext.mc_err,
 		ctx->uc_mcontext.mc_trapno & 0xFFFF,
 		ctx->uc_mcontext.mc_trapno >> 16);
+#endif
 	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_gs);
 	splz();
 }
 
+#ifdef DDB
+
+static void
+exc_debugger(int signo, siginfo_t *info, void *ctx)
+{
+	Debugger("interrupt from console");
+}
+
+#endif

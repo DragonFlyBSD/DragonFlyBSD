@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.14 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.15 2007/01/08 08:17:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -105,12 +105,29 @@ main(int ac, char **av)
 	char *rootImageFile = NULL;
 	char *suffix;
 	int c;
+	int i;
+	int n;
 
 	/*
 	 * Process options
 	 */
-	while ((c = getopt(ac, av, "vm:r:")) != -1) {
+	while ((c = getopt(ac, av, "vm:r:e:")) != -1) {
 		switch(c) {
+		case 'e':
+			/*
+			 * name=value:name=value:name=value...
+			 */
+			n = strlen(optarg);
+			kern_envp = malloc(n + 2);
+			for (i = 0; i < n; ++i) {
+				if (optarg[i] == ':')
+					kern_envp[i] = 0;
+				else
+					kern_envp[i] = optarg[i];
+			}
+			kern_envp[i++] = 0;
+			kern_envp[i++] = 0;
+			break;
 		case 'v':
 			bootverbose = 1;
 			break;

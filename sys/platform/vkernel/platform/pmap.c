@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.6 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.7 2007/01/08 08:17:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -247,6 +247,7 @@ static int pmap_release_callback(struct vm_page *p, void *data);
 void
 pmap_release(struct pmap *pmap)
 {
+	struct mdglobaldata *gd = mdcpu;
 	vm_object_t object = pmap->pm_pteobj;
 	struct rb_vm_page_scan_info info;
 
@@ -256,6 +257,23 @@ pmap_release(struct pmap *pmap)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
 #endif
+#ifdef SMP
+#error "Must write code to clear PTxpdir cache across all CPUs"
+#endif
+	/*
+	 * Once we destroy the page table, the mapping becomes invalid.
+	 * Rather then waste time doing a madvise 
+	 */
+	if (pmap->pm_pdir == gd->gd_PT1pdir) {
+		gd->gd_PT1pdir = NULL;
+		*gd->gd_PT1pde = 0;
+		/* madvise(gd->gd_PT1map, SEG_SIZE, MADV_INVAL); */
+	}
+	if (pmap->pm_pdir == gd->gd_PT2pdir) {
+		gd->gd_PT2pdir = NULL;
+		*gd->gd_PT2pde = 0;
+		/* madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL); */
+	}
 	
 	info.pmap = pmap;
 	info.object = object;
@@ -1643,6 +1661,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	pmap_inval_add(&info, pmap, va); /* XXX non-optimal */
 	origpte = *pte;
 	opa = origpte & VPTE_FRAME;
+#if 0
+	printf("pmap_enter: pmap %p va %08x pa %08x PDE %08x origpte %08x\n", pmap, va, (int)pa, pmap->pm_pdir[va >> SEG_SHIFT], origpte);
+#endif
 
 	if (origpte & VPTE_PS)
 		panic("pmap_enter: attempted pmap_enter on 4MB page");
@@ -2861,7 +2882,6 @@ pmap_activate(struct proc *p)
 #if defined(SWTCH_OPTIM_STATS)
 	tlb_flush_count++;
 #endif
-	panic("pmap_activate");	/* XXX store vmspace id in context */
 #if 0
 	p->p_thread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
 	load_cr3(p->p_thread->td_pcb->pcb_cr3);
