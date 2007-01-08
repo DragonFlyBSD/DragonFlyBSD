@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.35 2007/01/06 22:35:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.36 2007/01/08 03:33:43 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ struct faultstate {
 };
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
-static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t);
+static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
 static int vm_fault_ratelimit(struct vmspace *);
 
@@ -234,9 +234,10 @@ RetryFault:
 	 * On success fs.map is left read-locked and various other fields 
 	 * are initialized but not otherwise referenced or locked.
 	 *
-	 * NOTE!  vm_map_lookup will upgrade the fault_type to VM_FAULT_WRITE
-	 * if the map entry is a virtual page table and also writable,
-	 * so we can set the 'A'accessed bit in the virtual page table entry.
+	 * NOTE!  vm_map_lookup will try to upgrade the fault_type to
+	 * VM_FAULT_WRITE if the map entry is a virtual page table and also
+	 * writable, so we can set the 'A'accessed bit in the virtual page
+	 * table entry.
 	 */
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
@@ -334,7 +335,8 @@ RetryFault:
 	 */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		result = vm_fault_vpagetable(&fs, &first_pindex,
-					     fs.entry->aux.master_pde);
+					     fs.entry->aux.master_pde,
+					     fault_type);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
 		if (result != KERN_SUCCESS)
@@ -347,6 +349,12 @@ RetryFault:
 	 * data.   If it succeeds everything remains locked and fs->object
 	 * will have an additinal PIP count if it is not equal to
 	 * fs->first_object
+	 *
+	 * vm_fault_object will set fs->prot for the pmap operation.  It is
+	 * allowed to set VM_PROT_WRITE if fault_type == VM_PROT_READ if the
+	 * page can be safely written.  However, it will force a read-only
+	 * mapping for a read fault if the memory is managed by a virtual
+	 * page table.
 	 */
 	result = vm_fault_object(&fs, first_pindex, fault_type);
 
@@ -506,7 +514,8 @@ RetryFault:
 	 */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		result = vm_fault_vpagetable(&fs, &first_pindex,
-					     fs.entry->aux.master_pde);
+					     fs.entry->aux.master_pde,
+					     fault_type);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
 		if (result != KERN_SUCCESS) {
@@ -580,14 +589,28 @@ RetryFault:
  */
 static
 int
-vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex, vpte_t vpte)
+vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
+		    vpte_t vpte, int fault_type)
 {
 	struct sf_buf *sf;
 	int vshift = 32 - PAGE_SHIFT;	/* page index bits remaining */
 	int result = KERN_SUCCESS;
+	vpte_t *ptep;
 
 	for (;;) {
+		/*
+		 * We cannot proceed if the vpte is not valid, not readable
+		 * for a read fault, or not writable for a write fault.
+		 */
 		if ((vpte & VPTE_V) == 0) {
+			unlock_and_deallocate(fs);
+			return (KERN_FAILURE);
+		}
+		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_R) == 0) {
+			unlock_and_deallocate(fs);
+			return (KERN_FAILURE);
+		}
+		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_W) == 0) {
 			unlock_and_deallocate(fs);
 			return (KERN_FAILURE);
 		}
@@ -596,9 +619,13 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex, vpte_t vpte)
 		KKASSERT(vshift >= VPTE_PAGE_BITS);
 
 		/*
-		 * Get the page table page
+		 * Get the page table page.  Nominally we only read the page
+		 * table, but since we are actively setting VPTE_M and VPTE_A,
+		 * tell vm_fault_object() that we are writing it. 
+		 *
+		 * There is currently no real need to optimize this.
 		 */
-		result = vm_fault_object(fs, vpte >> PAGE_SHIFT, VM_PROT_READ);
+		result = vm_fault_object(fs, vpte >> PAGE_SHIFT, VM_PROT_WRITE);
 		if (result != KERN_SUCCESS)
 			return (result);
 
@@ -608,8 +635,32 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex, vpte_t vpte)
 		 */
 		vshift -= VPTE_PAGE_BITS;
 		sf = sf_buf_alloc(fs->m, SFB_CPUPRIVATE);
-		vpte = *((vpte_t *)sf_buf_kva(sf) +
-		       ((*pindex >> vshift) & VPTE_PAGE_MASK));
+		ptep = ((vpte_t *)sf_buf_kva(sf) +
+		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
+		vpte = *ptep;
+
+		/*
+		 * Page table write-back.  If the vpte is valid for the
+		 * requested operation, do a write-back to the page table.
+		 *
+		 * XXX VPTE_M is not set properly for page directory pages.
+		 * It doesn't get set in the page directory if the page table
+		 * is modified during a read access.
+		 */
+		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
+		    (vpte & VPTE_W)) {
+			if ((vpte & (VPTE_M|VPTE_A)) == 0) {
+				atomic_set_int(ptep, VPTE_M|VPTE_A);
+				vm_page_dirty(fs->m);
+			}
+		}
+		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V) &&
+		    (vpte & VPTE_R)) {
+			if ((vpte & VPTE_A) == 0) {
+				atomic_set_int(ptep, VPTE_A);
+				vm_page_dirty(fs->m);
+			}
+		}
 		sf_buf_free(sf);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_activate(fs->m);
@@ -650,6 +701,25 @@ vm_fault_object(struct faultstate *fs,
 	fs->prot = fs->first_prot;
 	fs->object = fs->first_object;
 	pindex = first_pindex;
+
+	/* 
+	 * If a read fault occurs we try to make the page writable if
+	 * possible.  There are three cases where we cannot make the
+	 * page mapping writable:
+	 *
+	 * (1) The mapping is read-only or the VM object is read-only,
+	 *     fs->prot above will simply not have VM_PROT_WRITE SET.
+	 *
+	 * (2) If the mapping is a virtual page table we need to be able
+	 *     to detect writes so we can set VPTE_M.
+	 *
+	 * (3) If the VM page is read-only or copy-on-write, upgrading would
+	 *     just result in an unnecessary COW fault.
+	 */
+	if (fault_type == VM_PROT_READ && 
+	    fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		fs->prot &= ~VM_PROT_WRITE;
+	}
 
 	for (;;) {
 		/*

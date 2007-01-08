@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.28 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.29 2007/01/08 03:33:42 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -63,13 +63,16 @@
 #define PUSH_FRAME							\
 	pushl	$0 ;		/* dummy error code */			\
 	pushl	$0 ;		/* dummy trap type */			\
+	pushl	$0 ;		/* dummy xflags */			\
 	pushal ;		/* 8 registers */			\
 	pushl	%ds ;							\
 	pushl	%es ;							\
 	pushl	%fs ;							\
+	pushl	%gs ;							\
 	mov	$KDSEL,%ax ; 						\
 	mov	%ax,%ds ; 						\
 	mov	%ax,%es ; 						\
+	mov	%ax,%gs ; 						\
 	mov	$KPSEL,%ax ;						\
 	mov	%ax,%fs ;						\
 
@@ -79,7 +82,8 @@
 	pushl	12(%esp) ;	/* original caller eip */		\
 	pushl	$0 ;		/* dummy error code */			\
 	pushl	$0 ;		/* dummy trap type */			\
-	subl	$12*4,%esp ;	/* pushal + 3 seg regs (dummy) + CPL */	\
+	pushl	$0 ;		/* dummy xflags */			\
+	subl	$13*4,%esp ;	/* pushal + 4 seg regs (dummy) + CPL */	\
 
 /*
  * Warning: POP_FRAME can only be used if there is no chance of a
@@ -87,6 +91,7 @@
  * have to use doreti.
  */
 #define POP_FRAME							\
+	popl	%gs ;							\
 	popl	%fs ;							\
 	popl	%es ;							\
 	popl	%ds ;							\
@@ -94,7 +99,7 @@
 	addl	$2*4,%esp ;	/* dummy trap & error codes */		\
 
 #define POP_DUMMY							\
-	addl	$17*4,%esp ;						\
+	addl	$19*4,%esp ;						\
 
 #define MASK_IRQ(icu, irq_num)						\
 	ICU_IMASK_LOCK ;						\
@@ -134,7 +139,7 @@
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	PUSH_FRAME ;							\
-	FAKE_MCOUNT(13*4(%esp)) ; 					\
+	FAKE_MCOUNT(15*4(%esp)) ; 					\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
@@ -186,7 +191,7 @@ IDTVEC(vec_name) ; 							\
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	PUSH_FRAME ;							\
-	FAKE_MCOUNT(13*4(%esp)) ;					\
+	FAKE_MCOUNT(15*4(%esp)) ;					\
 	MASK_IRQ(icu, irq_num) ;					\
 	incl    PCPU(cnt) + V_INTR ;                                    \
 	enable_icus ;							\

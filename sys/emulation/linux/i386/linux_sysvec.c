@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.24 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.25 2007/01/08 03:33:40 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -327,7 +327,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	bsd_to_linux_sigset(mask, &frame.sf_sc.uc_sigmask);
 
 	frame.sf_sc.uc_mcontext.sc_mask   = frame.sf_sc.uc_sigmask.__bits[0];
-	frame.sf_sc.uc_mcontext.sc_gs     = rgs();
+	frame.sf_sc.uc_mcontext.sc_gs     = regs->tf_gs;
 	frame.sf_sc.uc_mcontext.sc_fs     = regs->tf_fs;
 	frame.sf_sc.uc_mcontext.sc_es     = regs->tf_es;
 	frame.sf_sc.uc_mcontext.sc_ds     = regs->tf_ds;
@@ -372,7 +372,11 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
+	/* allow %fs and %gs to be inherited by the signal handler */
+	/*
 	regs->tf_fs = _udatasel;
+	regs->tf_gs = _udatasel;
+	*/
 	regs->tf_ss = _udatasel;
 }
 
@@ -459,7 +463,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 * Build the signal context to be used by sigreturn.
 	 */
 	frame.sf_sc.sc_mask   = lmask.__bits[0];
-	frame.sf_sc.sc_gs     = rgs();
+	frame.sf_sc.sc_gs     = regs->tf_gs;
 	frame.sf_sc.sc_fs     = regs->tf_fs;
 	frame.sf_sc.sc_es     = regs->tf_es;
 	frame.sf_sc.sc_ds     = regs->tf_ds;
@@ -501,7 +505,11 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
+	/* Allow %fs and %gs to be inherited by the signal handler */
+	/*
 	regs->tf_fs = _udatasel;
+	regs->tf_gs = _udatasel;
+	*/
 	regs->tf_ss = _udatasel;
 }
 

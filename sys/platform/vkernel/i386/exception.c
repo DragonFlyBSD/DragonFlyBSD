@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.1 2007/01/07 05:45:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.2 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,8 +40,12 @@
 #include <sys/kernel.h>
 #include <machine/trap.h>
 #include <machine/md_var.h>
+#include <machine/segments.h>
 
 #include <signal.h>
+
+int _ucodesel = LSEL(LUCODE_SEL, SEL_UPL);
+int _udatasel = LSEL(LUDATA_SEL, SEL_UPL);
 
 static void exc_segfault(int signo, siginfo_t *info, void *ctx);
 
@@ -55,6 +59,7 @@ init_exceptions(void)
 	sa.sa_flags |= SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGTRAP, &sa, NULL);
 }
 
 /*
@@ -67,13 +72,13 @@ static void
 exc_segfault(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
-	int trapno;
 
-	printf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d\n",
+	printf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d err %d\n",
 		ctx->uc_mcontext.mc_eip,
 		ctx->uc_mcontext.mc_err,
-		ctx->uc_mcontext.mc_trapno);
-	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_fs);
+		ctx->uc_mcontext.mc_trapno & 0xFFFF,
+		ctx->uc_mcontext.mc_trapno >> 16);
+	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_gs);
 	splz();
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.8 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.9 2007/01/08 03:33:42 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_EXT_H_
@@ -69,7 +69,6 @@ struct pcb;
 void set_user_ldt (struct pcb *);
 struct pcb_ldt *user_ldt_alloc (struct pcb *, int);
 void user_ldt_free (struct pcb *);
-void set_user_TLS (void);
 
 #endif
 

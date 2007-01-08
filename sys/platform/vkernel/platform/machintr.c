@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.4 2007/01/07 00:44:32 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.5 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,8 +40,11 @@
 #include <sys/machintr.h>
 #include <sys/errno.h>
 #include <sys/mman.h>
+#include <sys/globaldata.h>
+#include <sys/interrupt.h>
 #include <stdio.h>
 #include <signal.h>
+#include <machine/globaldata.h>
 
 /*
  * Interrupt Subsystem ABI
@@ -103,6 +106,14 @@ dummy_finalize(void)
 void
 splz(void)
 {
+	struct mdglobaldata *gd = mdcpu;
+	int irq;
+
+	atomic_clear_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
+	while ((irq = ffs(gd->gd_spending)) != 0) {
+	    irq = irq - 1 + FIRST_SOFTINT;
+	    sched_ithd(irq);
+	}
 }
 
 void

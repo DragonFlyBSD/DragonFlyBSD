@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.8 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_SIGNAL_H_
@@ -85,6 +85,7 @@ struct	sigcontext {
 	int	sc_edx;
 	int	sc_ecx;
 	int	sc_eax;
+	int	sc_xflags;
 	int	sc_trapno;
 	int	sc_err;
 	int	sc_eip;
@@ -92,13 +93,12 @@ struct	sigcontext {
 	int	sc_efl;
 	int	sc_esp;
 	int	sc_ss;
+
 	/*
-	 * XXX FPU state is 27 * 4 bytes h/w, 1 * 4 bytes s/w (probably not
-	 * needed here), or that + 16 * 4 bytes for emulators (probably all
-	 * needed here).  The "spare" bytes are mostly not spare.
+	 * Full FPU state is 512 bytes.  Add another 16 bytes worth of spare.
 	 */
-	int	sc_fpregs[28];		/* machine state (FPU): */
-	int	sc_spare[17];
+	int	sc_fpregs[128];		/* machine state (FPU): */
+	int	sc_spare[16];
 };
 
 #define	sc_sp		sc_esp

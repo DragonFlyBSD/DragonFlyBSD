@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vmspace.h,v 1.5 2007/01/07 05:54:01 dillon Exp $
+ * $DragonFly: src/sys/sys/vmspace.h,v 1.6 2007/01/08 03:33:43 dillon Exp $
  */
 /*
  * VMSPACE - Virtualized Environment control from user mode.  The VMSPACE
@@ -46,6 +46,9 @@
 #include <sys/types.h>
 #endif
 
+struct trapframe;
+struct vextframe;
+
 #define VMSPACE_CTL_RUN		1
 
 #define VMSPACE_PAGEFAULT	1
@@ -55,7 +58,8 @@
 
 int vmspace_create(void *, int, void *);
 int vmspace_destroy(void *);
-int vmspace_ctl(void *, int, void *, int, int);
+int vmspace_ctl (void *, int, struct trapframe *, struct vextframe *);
+
 void *vmspace_mmap(void *, void *, size_t, int, int, int, off_t);
 int vmspace_munmap(void *, void *, size_t);
 int vmspace_mcontrol(void *, void *, size_t, int, off_t);

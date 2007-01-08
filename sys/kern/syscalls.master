@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.46 2007/01/06 01:46:40 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.47 2007/01/08 03:33:41 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -662,8 +662,9 @@
 485	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
 486	STD	BSD	{ int vmspace_create(void *id, int type, void *data); } 
 487	STD	BSD	{ int vmspace_destroy(void *id); }
-488	STD	BSD	{ int vmspace_ctl(void *id, int cmd, void *ctx,	\
-					  int ctx_bytes, int timeout_us); }
+488	STD	BSD	{ int vmspace_ctl(void *id, int cmd, 		\
+					  struct trapframe *tframe,	\
+					  struct vextframe *vframe); }
 489	STD	BSD	{ int vmspace_mmap(void *id, void *addr, size_t len, \
 					  int prot, int flags, int fd, \
 					  off_t offset); }

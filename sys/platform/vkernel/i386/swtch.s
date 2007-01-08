@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.3 2007/01/07 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.4 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -124,9 +124,6 @@ ENTRY(cpu_heavy_switch)
 	movl	%ebp,PCB_EBP(%edx)
 	movl	%esi,PCB_ESI(%edx)
 	movl	%edi,PCB_EDI(%edx)
-#if 0
-	movl	%gs,PCB_GS(%edx)
-#endif
 
 	movl	%ecx,%ebx			/* EBX = curthread */
 	movl	TD_PROC(%ecx),%ecx
@@ -389,18 +386,6 @@ ENTRY(cpu_heavy_restore)
 	call	set_user_TLS
 	popl	%edx
 #endif
-#if 0
-	/*
-	 * Restore the %gs segment register, which must be done after
-	 * loading the user LDT.  Since user processes can modify the
-	 * register via procfs, this may result in a fault which is
-	 * detected by checking the fault address against cpu_switch_load_gs
-	 * in i386/i386/trap.c
-	 */
-	.globl	cpu_switch_load_gs
-cpu_switch_load_gs:
-	movl	PCB_GS(%edx),%gs
-#endif
 
 	/*
 	 * Restore the DEBUG register state if necessary.
@@ -447,9 +432,6 @@ ENTRY(savectx)
 	movl	%ebp,PCB_EBP(%ecx)
 	movl	%esi,PCB_ESI(%ecx)
 	movl	%edi,PCB_EDI(%ecx)
-#if 0
-	movl	%gs,PCB_GS(%ecx)
-#endif
 
 #if NNPX > 0
 	/*

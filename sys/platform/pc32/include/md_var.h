@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.23 2007/01/05 22:16:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.24 2007/01/08 03:33:42 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -89,6 +89,8 @@ void	doreti_popl_es (void) __asm(__STRING(doreti_popl_es));
 void	doreti_popl_es_fault (void) __asm(__STRING(doreti_popl_es_fault));
 void	doreti_popl_fs (void) __asm(__STRING(doreti_popl_fs));
 void	doreti_popl_fs_fault (void) __asm(__STRING(doreti_popl_fs_fault));
+void	doreti_popl_gs (void) __asm(__STRING(doreti_popl_gs));
+void	doreti_popl_gs_fault (void) __asm(__STRING(doreti_popl_gs_fault));
 void	enable_sse (void);
 void	fillw (int /*u_short*/ pat, void *base, size_t cnt);
 #if 0

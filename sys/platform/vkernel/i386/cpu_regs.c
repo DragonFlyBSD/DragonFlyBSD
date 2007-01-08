@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.3 2007/01/07 00:44:30 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.4 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -227,8 +227,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	sf.sf_uc.uc_sigmask = *mask;
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
-	sf.sf_uc.uc_mcontext.mc_gs = rgs();
-	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_fs, sizeof(struct trapframe));
+	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_gs, sizeof(struct trapframe));
 
 	/* Allocate and validate space for the signal handler context. */
 	/* XXX lwp flags */
@@ -312,11 +311,14 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_esp = (int)sfp;
 	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
 	regs->tf_eflags &= ~PSL_T;
-	regs->tf_cs = 0;
-	regs->tf_ds = 0;
-	regs->tf_es = 0;
-	regs->tf_fs = 0;
-	regs->tf_ss = 0;
+	regs->tf_cs = _ucodesel;
+	regs->tf_ds = _udatasel;
+	regs->tf_es = _udatasel;
+	if (regs->tf_trapno == T_PROTFLT) {
+		regs->tf_fs = _udatasel;
+		regs->tf_gs = _udatasel;
+	}
+	regs->tf_ss = _udatasel;
 }
 
 /*
@@ -330,14 +332,39 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 int
 cpu_sanitize_frame(struct trapframe *frame)
 {
-	frame->tf_cs = 0;
-	frame->tf_ds = 0;
-	frame->tf_es = 0;
-	frame->tf_fs = 0;
-	frame->tf_ss = 0;
-	frame->tf_eflags &= (PSL_USER | PSL_RF);
+	frame->tf_cs = _ucodesel;
+	frame->tf_ds = _udatasel;
+	frame->tf_es = _udatasel;
+#if 0
+	frame->tf_fs = _udatasel;
+	frame->tf_gs = _udatasel;
+#endif
+	frame->tf_ss = _udatasel;
+	frame->tf_eflags &= (PSL_RF | PSL_USERCHANGE);
 	frame->tf_eflags |= PSL_RESERVED_DEFAULT | PSL_I;
 	return(0);
+}
+
+int
+cpu_sanitize_tls(struct savetls *tls)
+{
+	 struct segment_descriptor *desc;
+	 int i;
+
+	 for (i = 0; i < NGTLS; ++i) {
+		desc = &tls->tls[i];
+		if (desc->sd_dpl == 0 && desc->sd_type == 0)
+			continue;
+		if (desc->sd_def32 == 0)
+			return(ENXIO);
+		if (desc->sd_type != SDT_MEMRWA)
+			return(ENXIO);
+		if (desc->sd_dpl != SEL_UPL)
+			return(ENXIO);
+		if (desc->sd_xx != 0 || desc->sd_p != 1)
+			return(ENXIO);
+	 }
+	 return(0);
 }
 
 /*
@@ -396,15 +423,18 @@ sys_sigreturn(struct sigreturn_args *uap)
 			vm86->vm86_eflags = eflags;	/* save VIF, VIP */
 			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |					    (eflags & VM_USERCHANGE) | PSL_VM;
 		}
-		bcopy(&ucp->uc_mcontext.mc_fs, tf, sizeof(struct trapframe));
+		bcopy(&ucp->uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
 		tf->tf_eflags = eflags;
 		tf->tf_vm86_ds = tf->tf_ds;
 		tf->tf_vm86_es = tf->tf_es;
 		tf->tf_vm86_fs = tf->tf_fs;
-		tf->tf_vm86_gs = ucp->uc_mcontext.mc_gs;
-		tf->tf_ds = 0;
-		tf->tf_es = 0;
-		tf->tf_fs = 0;
+		tf->tf_vm86_gs = tf->tf_gs;
+		tf->tf_ds = _udatasel;
+		tf->tf_es = _udatasel;
+#if 0
+		tf->tf_fs = _udatasel;
+		tf->tf_gs = _udatasel;
+#endif
 	} else 
 #endif
 	{
@@ -437,7 +467,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
-		bcopy(&ucp->uc_mcontext.mc_fs, regs, sizeof(struct trapframe));
+		bcopy(&ucp->uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
 	}
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
@@ -617,20 +647,6 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
     &cpu_idle_spincnt, 0, "Idle loop entry spins");
 
-static void
-cpu_idle_default_hook(void)
-{
-	/*
-	 * We must guarentee that hlt is exactly the instruction
-	 * following the sti.
-	 */
-	kprintf("idle halt\n");
-	__asm __volatile("hlt");	/* sti; hlt */
-}
-
-/* Other subsystems (e.g., ACPI) can hook this later. */
-void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
-
 void
 cpu_idle(void)
 {
@@ -651,13 +667,17 @@ cpu_idle(void)
 		 */
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
-			/* __asm __volatile("cli"); */
+			sigblock(SIGALRM);
 			splz();
-			if (!lwkt_runnable())
-			    cpu_idle_hook();
+			if (!lwkt_runnable()) {
+				sigpause(0);
+			} else {
+				sigblock(0);
+			}
 #ifdef SMP
-			else
+			else {
 			    __asm __volatile("pause");
+			}
 #endif
 			++cpu_idle_hltcnt;
 		} else {
@@ -683,12 +703,6 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 	struct trapframe *regs = lp->lwp_md.md_regs;
 	struct pcb *pcb = lp->lwp_thread->td_pcb;
 
-	/* Reset pc->pcb_gs and %gs before possibly invalidating it. */
-	pcb->pcb_gs = 0;
-#if 0
-	load_gs(_udatasel);
-#endif
-
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
   
@@ -700,6 +714,7 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 	regs->tf_ds = 0;
 	regs->tf_es = 0;
 	regs->tf_fs = 0;
+	regs->tf_gs = 0;
 	regs->tf_cs = 0;
 
 	/* PS_STRINGS value for BSD/OS binaries.  It is 0 for non-BSD/OS. */
@@ -840,10 +855,10 @@ ptrace_single_step(struct lwp *lp)
 int
 fill_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
+	regs->r_gs = tp->tf_gs;
 	regs->r_fs = tp->tf_fs;
 	regs->r_es = tp->tf_es;
 	regs->r_ds = tp->tf_ds;
@@ -859,21 +874,19 @@ fill_regs(struct lwp *lp, struct reg *regs)
 	regs->r_eflags = tp->tf_eflags;
 	regs->r_esp = tp->tf_esp;
 	regs->r_ss = tp->tf_ss;
-	pcb = lp->lwp_thread->td_pcb;
-	regs->r_gs = pcb->pcb_gs;
 	return (0);
 }
 
 int
 set_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
 	if (!EFL_SECURE(regs->r_eflags, tp->tf_eflags) ||
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
+	tp->tf_gs = regs->r_gs;
 	tp->tf_fs = regs->r_fs;
 	tp->tf_es = regs->r_es;
 	tp->tf_ds = regs->r_ds;
@@ -889,8 +902,6 @@ set_regs(struct lwp *lp, struct reg *regs)
 	tp->tf_eflags = regs->r_eflags;
 	tp->tf_esp = regs->r_esp;
 	tp->tf_ss = regs->r_ss;
-	pcb = lp->lwp_thread->td_pcb;
-	pcb->pcb_gs = regs->r_gs;
 	return (0);
 }
 

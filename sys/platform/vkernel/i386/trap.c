@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.4 2007/01/07 08:37:35 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.5 2007/01/08 03:33:43 dillon Exp $
  */
 
 /*
@@ -247,8 +247,12 @@ recheck:
 	 * Post any pending upcalls
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
-		p->p_flag &= ~P_UPCALLPEND;
 		get_mplock();
+		if (p->p_vkernel && p->p_vkernel->vk_current) {
+			frame->tf_trapno = 0;
+			vkernel_trap(p, frame);
+		}
+		p->p_flag &= ~P_UPCALLPEND;
 		postupcall(lp);
 		rel_mplock();
 		goto recheck;
@@ -259,6 +263,10 @@ recheck:
 	 */
 	if ((sig = CURSIG(p)) != 0) {
 		get_mplock();
+		if (p->p_vkernel && p->p_vkernel->vk_current) {
+			frame->tf_trapno = 0;
+			vkernel_trap(p, frame);
+		}
 		postsig(sig);
 		rel_mplock();
 		goto recheck;
@@ -381,16 +389,14 @@ user_trap(struct trapframe *frame)
 	 * the original tf_err field will be passed to us shifted 16
 	 * over in the tf_trapno field for T_PAGEFLT.
 	 */
-	if ((int16_t)frame->tf_trapno == T_PAGEFLT) {
+	if (frame->tf_trapno == T_PAGEFLT)
 		eva = frame->tf_err;
-		frame->tf_err = frame->tf_trapno >> 16;
-		frame->tf_trapno &= 0xFFFF;
-		/*cpu_enable_intr();*/
-	} else {
+	else
 		eva = 0;
-	}
-	kprintf("USER_TRAP AT %08x err %d trapno %d eva %08x\n", 
-		frame->tf_eip, frame->tf_err, frame->tf_trapno, eva);
+#if 0
+	kprintf("USER_TRAP AT %08x xflags %d trapno %d eva %08x\n", 
+		frame->tf_eip, frame->tf_xflags, frame->tf_trapno, eva);
+#endif
 
 	/*
 	 * Everything coming from user mode runs through user_trap,
@@ -644,20 +650,10 @@ kern_trap(struct trapframe *frame)
 
 	p = td->td_proc;
 
-	/*
-	 * This is a bad kludge to avoid changing the various trapframe
-	 * structures.  Because we are enabled as a virtual kernel,
-	 * the original tf_err field will be passed to us shifted 16
-	 * over in the tf_trapno field for T_PAGEFLT.
-	 */
-	if ((int16_t)frame->tf_trapno == T_PAGEFLT) {
+	if (frame->tf_trapno == T_PAGEFLT) 
 		eva = frame->tf_err;
-		frame->tf_err = frame->tf_trapno >> 16;
-		frame->tf_trapno &= 0xFFFF;
-		/*cpu_enable_intr();*/
-	} else {
+	else
 		eva = 0;
-	}
 
 #ifdef DDB
 	if (db_active) {
@@ -865,7 +861,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		map = &vm->vm_map;
 	}
 
-	if (frame->tf_err & PGEX_W)
+	if (frame->tf_xflags & PGEX_W)
 		ftype = VM_PROT_WRITE;
 	else
 		ftype = VM_PROT_READ;
@@ -917,10 +913,6 @@ nogo:
 		trap_fatal(frame, usermode, eva);
 		return (-1);
 	}
-
-	/* kludge to pass faulting virtual address to sendsig */
-	frame->tf_err = eva;
-
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
 
@@ -929,7 +921,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 {
 	int code, type, ss, esp;
 
-	code = frame->tf_err;
+	code = frame->tf_xflags;
 	type = frame->tf_trapno;
 
 	if (type <= MAX_TRAP_MSG)
@@ -1249,6 +1241,9 @@ syscall2(struct trapframe *frame)
 	if ((callp->sy_narg & SYF_MPSAFE) == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
+#if 0
+	kprintf("system call %d\n", code);
+#endif
 
 	error = (*callp->sy_call)(&args);
 
@@ -1377,15 +1372,37 @@ fork_return(struct lwp *lp, struct trapframe frame)
 #endif
 }
 
+/*
+ * doreti has turned into this.  The frame is directly on the stack.  We
+ * pull everything else we need (fpu and tls context) from the current
+ * thread.
+ *
+ * Note on fpu interactions: In a virtual kernel, the fpu context for
+ * an emulated user mode process is not shared with the virtual kernel's
+ * fpu context, so we only have to 'stack' fpu contexts within the virtual
+ * kernel itself, and not even then since the signal() contexts that we care
+ * about save and restore the FPU state (I think anyhow).
+ *
+ * vmspace_ctl() returns an error only if it had problems instaling the
+ * context we supplied or problems copying data to/from our VM space.
+ */
 void
 go_user(struct trapframe frame)
 {
+	int r;
+
 	for (;;) {
-		kprintf("GO USER");
-		vmspace_ctl(curproc->p_vmspace, VMSPACE_CTL_RUN,
-			    &frame, sizeof(frame), 0);
-		kprintf("RETURN USER");
-		user_trap(&frame);
+		kprintf("GO USER VMSPC %p pid %-4d %s\n", 
+			&curproc->p_vmspace->vm_pmap,
+			curproc->p_pid, curproc->p_comm);
+		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
+				&frame, &curthread->td_savevext);
+		if (r < 0)
+			panic("vmspace_ctl had problems with the context");
+		if (frame.tf_trapno)
+			user_trap(&frame);
+		else
+			kprintf("Kernel AST\n");
 	}
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.2 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/thread2.h>
 
 #include <sys/mman.h>
+#include <sys/vmspace.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -66,19 +67,6 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
-static void
-_cpu_invltlb(void *dummy)
-{
-    /* XXX madvise over entire address space is really expensive */
-    madvise((void *)KvaStart, KvaSize, MADV_INVAL);	
-}
-
-static void
-_cpu_invl1pg(void *data)
-{
-    madvise(data, PAGE_SIZE, MADV_INVAL);
-}
-
 /*
  * Initialize for add or flush
  */
@@ -87,6 +75,24 @@ pmap_inval_init(pmap_inval_info_t info)
 {
     info->pir_flags = 0;
 }
+
+void
+pmap_inval_add(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
+{
+    if (pmap == &kernel_pmap) {
+	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+    } else {
+	vmspace_mcontrol(pmap, (void *)va, PAGE_SIZE, MADV_INVAL, 0);
+    }
+}
+
+void
+pmap_inval_flush(pmap_inval_info_t info)
+{
+    info->pir_flags = 0;
+}
+
+#if 0
 
 /*
  * Add a (pmap, va) pair to the invalidation list and protect access
@@ -148,3 +154,4 @@ pmap_inval_flush(pmap_inval_info_t info)
     info->pir_flags = 0;
 }
 
+#endif

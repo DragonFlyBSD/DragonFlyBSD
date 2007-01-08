@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.8 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.9 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_VM86_H_
@@ -54,6 +54,7 @@ typedef union {
 /* layout must match definition of struct trapframe_vm86 in <machine/frame.h> */
 
 struct vm86frame {
+	int	kernel_gs;
 	int	kernel_fs;
 	int	kernel_es;
 	int	kernel_ds;
@@ -65,6 +66,7 @@ struct vm86frame {
 	reg86_t	edx;
 	reg86_t	ecx;
 	reg86_t	eax;
+	int	vmf_xflags;
 	int	vmf_trapno;
 	int	vmf_err;
 	reg86_t	eip;

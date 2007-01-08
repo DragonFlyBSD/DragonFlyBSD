@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.16 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.17 2007/01/08 03:33:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,9 +66,7 @@ struct db_variable db_regs[] = {
 	{ "ds",		&ddb_regs.tf_ds,     FCN_NULL },
 	{ "es",		&ddb_regs.tf_es,     FCN_NULL },
 	{ "fs",		&ddb_regs.tf_fs,     FCN_NULL },
-#if 0
 	{ "gs",		&ddb_regs.tf_gs,     FCN_NULL },
-#endif
 	{ "ss",		&ddb_regs.tf_ss,     FCN_NULL },
 	{ "eax",	&ddb_regs.tf_eax,    FCN_NULL },
 	{ "ecx",	&ddb_regs.tf_ecx,    FCN_NULL },

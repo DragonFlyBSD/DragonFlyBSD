@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.5 2007/01/06 19:40:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.6 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/syscall.h>
@@ -70,7 +70,6 @@ NON_GPROF_ENTRY(sigcode)
 	testl	$PSL_VM,UC_EFLAGS(%eax)
 	jne	9f
 #endif
-	movl	UC_GS(%eax),%gs			/* restore %gs */
 #if 0
 9:
 #endif

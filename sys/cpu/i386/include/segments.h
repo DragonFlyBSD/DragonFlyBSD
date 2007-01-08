@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.12 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.13 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_SEGMENTS_H_
@@ -249,6 +249,14 @@ struct region_descriptor {
 /* #define	LPOSIXCALLS_SEL	5*/	/* notyet */
 #define LBSDICALLS_SEL	16	/* BSDI system call gate */
 #define NLDT		(LBSDICALLS_SEL + 1)
+
+#ifndef LOCORE
+
+struct savetls {
+	struct segment_descriptor tls[NGTLS];
+};
+
+#endif
 
 #if defined(_KERNEL) && !defined(LOCORE)
 

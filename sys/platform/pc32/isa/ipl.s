@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.26 2005/12/06 02:02:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.27 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -159,12 +159,24 @@ doreti_next:
 	andl	$~RQF_INTPEND,PCPU(reqflags)
 5:
 	MEXITCOUNT
+
+	/*
+	 * Restore the segment registers.  Since segment register values
+	 * can be set from user mode, this can result in a kernel mode
+	 * exception.  The trap code will revector to the *_fault code
+	 * which then sets up a T_PROTFLT signal.  If the signal is
+	 * sent to userland, sendsig() will automatically clean up all
+	 * the segment registers to avoid a loop.
+	 */
+	.globl	doreti_popl_gs
 	.globl	doreti_popl_fs
 	.globl	doreti_popl_es
 	.globl	doreti_popl_ds
 	.globl	doreti_iret
 	.globl	doreti_syscall_ret
 doreti_syscall_ret:
+doreti_popl_gs:
+	popl	%gs
 doreti_popl_fs:
 	popl	%fs
 doreti_popl_es:
@@ -172,14 +184,14 @@ doreti_popl_es:
 doreti_popl_ds:
 	popl	%ds
 	popal
-	addl	$8,%esp
+	addl	$3*4,%esp	/* xflags, trap, err */
 doreti_iret:
 	iret
 
 	ALIGN_TEXT
 	.globl	doreti_iret_fault
 doreti_iret_fault:
-	subl	$8,%esp
+	subl	$3*4,%esp	/* xflags, trap, err */
 	pushal
 	pushl	%ds
 	.globl	doreti_popl_ds_fault
@@ -190,6 +202,9 @@ doreti_popl_es_fault:
 	pushl	%fs
 	.globl	doreti_popl_fs_fault
 doreti_popl_fs_fault:
+	pushl	%gs
+	.globl	doreti_popl_gs_fault
+doreti_popl_gs_fault:
 	movl	$0,TF_ERR(%esp)	/* XXX should be the error code */
 	movl	$T_PROTFLT,TF_TRAPNO(%esp)
 	jmp	alltraps_with_regs_pushed
@@ -477,10 +492,11 @@ splz_ipiq:
 	pushl	12(%esp) ;	/* original caller eip */		\
 	pushl	$0 ;		/* dummy error code */			\
 	pushl	$0 ;		/* dummy trap type */			\
-	subl	$12*4,%esp ;	/* pushal + 3 seg regs (dummy) + CPL */	\
+	pushl	$0 ;		/* dummy xflags */			\
+	subl	$13*4,%esp ;	/* pushal + 4 seg regs (dummy) + CPL */	\
 
 #define POP_DUMMY							\
-	addl	$17*4,%esp ;						\
+	addl	$19*4,%esp ;						\
 
 dofastunpend:
 	pushl	%ebp			/* frame for backtrace */

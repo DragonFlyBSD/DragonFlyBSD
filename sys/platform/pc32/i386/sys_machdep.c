@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.29 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.30 2007/01/08 03:33:42 dillon Exp $
  *
  */
 
@@ -253,7 +253,7 @@ set_user_TLS(void)
 	const int off = GTLS_START;
 #endif
 	for (i = 0; i < NGTLS; ++i)
-		gdt[off + i].sd = td->td_tls[i];
+		gdt[off + i].sd = td->td_tls.tls[i];
 }
 
 #ifdef SMP
@@ -467,8 +467,8 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 	}
 
 	/*
-	 * Fill in the actual ldt entries.  Since %fs might point to one of
-	 * these entries a critical section is required to prevent an
+	 * Fill in the actual ldt entries.  Since %fs or %gs might point to
+	 * one of these entries a critical section is required to prevent an
 	 * interrupt thread from preempting us, switch back, and faulting
 	 * on the load of %fs due to a half-formed descriptor.
 	 */

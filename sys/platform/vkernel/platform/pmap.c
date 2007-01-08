@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.5 2007/01/07 08:37:37 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.6 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -345,38 +345,38 @@ cpu_vmspace_alloc(struct vmspace *vm)
 
 #define LAST_EXTENT	(VM_MAX_USER_ADDRESS - 0x80000000)
 
-	if (vmspace_create(vm, 0, NULL) < 0)
+	if (vmspace_create(&vm->vm_pmap, 0, NULL) < 0)
 		panic("vmspace_create() failed");
 
-	rp = vmspace_mmap(vm, (void *)0x00000000, 0x40000000,
+	rp = vmspace_mmap(&vm->vm_pmap, (void *)0x00000000, 0x40000000,
 			  PROT_READ|PROT_WRITE,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed1");
-	rp = vmspace_mmap(vm, (void *)0x40000000, 0x40000000,
+	rp = vmspace_mmap(&vm->vm_pmap, (void *)0x40000000, 0x40000000,
 			  PROT_READ|PROT_WRITE,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0x40000000);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed2");
-	rp = vmspace_mmap(vm, (void *)0x80000000, LAST_EXTENT,
+	rp = vmspace_mmap(&vm->vm_pmap, (void *)0x80000000, LAST_EXTENT,
 			  PROT_READ|PROT_WRITE,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0x80000000);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed3");
 
-	r = vmspace_mcontrol(vm, (void *)0x00000000, 0x40000000, MADV_SETMAP,
-			     vmspace_pmap(vm)->pm_pdirpte);
+	r = vmspace_mcontrol(&vm->vm_pmap, (void *)0x00000000, 0x40000000, 
+			     MADV_SETMAP, vmspace_pmap(vm)->pm_pdirpte);
 	if (r < 0)
 		panic("vmspace_mcontrol: failed1");
-	r = vmspace_mcontrol(vm, (void *)0x40000000, 0x40000000, MADV_SETMAP,
-			     vmspace_pmap(vm)->pm_pdirpte);
+	r = vmspace_mcontrol(&vm->vm_pmap, (void *)0x40000000, 0x40000000,
+			     MADV_SETMAP, vmspace_pmap(vm)->pm_pdirpte);
 	if (r < 0)
 		panic("vmspace_mcontrol: failed2");
-	r = vmspace_mcontrol(vm, (void *)0x80000000, LAST_EXTENT, MADV_SETMAP,
-			     vmspace_pmap(vm)->pm_pdirpte);
+	r = vmspace_mcontrol(&vm->vm_pmap, (void *)0x80000000, LAST_EXTENT,
+			     MADV_SETMAP, vmspace_pmap(vm)->pm_pdirpte);
 	if (r < 0)
 		panic("vmspace_mcontrol: failed3");
 }
@@ -384,7 +384,7 @@ cpu_vmspace_alloc(struct vmspace *vm)
 void
 cpu_vmspace_free(struct vmspace *vm)
 {
-	if (vmspace_destroy(vm) < 0)
+	if (vmspace_destroy(&vm->vm_pmap) < 0)
 		panic("vmspace_destroy() failed");
 }
 
@@ -2337,7 +2337,7 @@ pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 	if (*(int *) gd->gd_CMAP2)
 		panic("pmap_copy_page: CMAP2 busy");
 
-	*(int *) gd->gd_CMAP1 = VPTE_V | (src & PG_FRAME) | PG_A;
+	*(int *) gd->gd_CMAP1 = VPTE_V | VPTE_R | (src & PG_FRAME) | VPTE_A;
 	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_R | VPTE_W | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
 
 	madvise(gd->gd_CADDR1, PAGE_SIZE, MADV_INVAL);
@@ -2445,8 +2445,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
-		if (pmap->pm_active)
-			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
+		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 		tpte = *pte;
 
 		/*
@@ -2588,7 +2587,7 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 			atomic_set_int_nonlocked(pte, bit);
 #endif
 		} else {
-			vm_offset_t pbits = *(vm_offset_t *)pte;
+			vpte_t pbits = *pte;
 			if (pbits & bit) {
 				if (bit == VPTE_W) {
 					if (pbits & VPTE_M) {
@@ -2950,3 +2949,4 @@ pmap_pvdump(vm_paddr_t pa)
 	kprintf(" ");
 }
 #endif
+

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.111 2007/01/07 00:39:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.112 2007/01/08 03:33:42 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -427,8 +427,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	sf.sf_uc.uc_sigmask = *mask;
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
-	sf.sf_uc.uc_mcontext.mc_gs = rgs();
-	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_fs, sizeof(struct trapframe));
+	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_gs, sizeof(struct trapframe));
 
 	/* Allocate and validate space for the signal handler context. */
 	/* XXX lwp flags */
@@ -437,9 +436,9 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
 		    lp->lwp_sigstk.ss_size - sizeof(struct sigframe));
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
-	}
-	else
+	} else {
 		sfp = (struct sigframe *)regs->tf_esp - 1;
+	}
 
 	/* Translate the signal is appropriate */
 	if (p->p_sysent->sv_sigtbl) {
@@ -516,31 +515,63 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	/*
 	 * Allow the signal handler to inherit %fs in addition to %gs as
-	 * the userland program might be using both
+	 * the userland program might be using both.
+	 *
+	 * However, if a T_PROTFLT occured the segment registers could be
+	 * totally broken.  They must be reset in order to be able to
+	 * return to userland.
 	 */
-	/*regs->tf_fs = _udatasel;*/
+	if (regs->tf_trapno == T_PROTFLT) {
+		regs->tf_fs = _udatasel;
+		regs->tf_gs = _udatasel;
+	}
 	regs->tf_ss = _udatasel;
 }
 
 /*
  * Sanitize the trapframe for a virtual kernel passing control to a custom
- * VM context.
+ * VM context.  Remove any items that would otherwise create a privilage
+ * issue.
  *
- * Allow userland to set or maintain PSL_RF, the resume flag.  This flag
- * basically controls whether the return PC should skip the first instruction
- * (as in an explicit system call) or re-execute it (as in an exception).
+ * XXX at the moment we allow userland to set the resume flag.  Is this a
+ * bad idea?
  */
 int
 cpu_sanitize_frame(struct trapframe *frame)
 {
 	frame->tf_cs = _ucodesel;
 	frame->tf_ds = _udatasel;
-	frame->tf_es = _udatasel;
+	frame->tf_es = _udatasel;	/* XXX allow userland this one too? */
+#if 0
 	frame->tf_fs = _udatasel;
+	frame->tf_gs = _udatasel;
+#endif
 	frame->tf_ss = _udatasel;
-	frame->tf_eflags &= (PSL_USER | PSL_RF);
+	frame->tf_eflags &= (PSL_RF | PSL_USERCHANGE);
 	frame->tf_eflags |= PSL_RESERVED_DEFAULT | PSL_I;
 	return(0);
+}
+
+int
+cpu_sanitize_tls(struct savetls *tls)
+{
+	 struct segment_descriptor *desc;
+	 int i;
+
+	 for (i = 0; i < NGTLS; ++i) {
+		desc = &tls->tls[i];
+		if (desc->sd_dpl == 0 && desc->sd_type == 0)
+			continue;
+		if (desc->sd_def32 == 0)
+			return(ENXIO);
+		if (desc->sd_type != SDT_MEMRWA)
+			return(ENXIO);
+		if (desc->sd_dpl != SEL_UPL)
+			return(ENXIO);
+		if (desc->sd_xx != 0 || desc->sd_p != 1)
+			return(ENXIO);
+	 }
+	 return(0);
 }
 
 /*
@@ -598,15 +629,18 @@ sys_sigreturn(struct sigreturn_args *uap)
 			vm86->vm86_eflags = eflags;	/* save VIF, VIP */
 			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |					    (eflags & VM_USERCHANGE) | PSL_VM;
 		}
-		bcopy(&ucp->uc_mcontext.mc_fs, tf, sizeof(struct trapframe));
+		bcopy(&ucp->uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
 		tf->tf_eflags = eflags;
 		tf->tf_vm86_ds = tf->tf_ds;
 		tf->tf_vm86_es = tf->tf_es;
 		tf->tf_vm86_fs = tf->tf_fs;
-		tf->tf_vm86_gs = ucp->uc_mcontext.mc_gs;
+		tf->tf_vm86_gs = tf->tf_gs;
 		tf->tf_ds = _udatasel;
 		tf->tf_es = _udatasel;
+#if 0
 		tf->tf_fs = _udatasel;
+		tf->tf_gs = _udatasel;
+#endif
 	} else {
 		/*
 		 * Don't allow users to change privileged or reserved flags.
@@ -637,7 +671,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
-		bcopy(&ucp->uc_mcontext.mc_fs, regs, sizeof(struct trapframe));
+		bcopy(&ucp->uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
 	}
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
@@ -902,10 +936,6 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 	struct trapframe *regs = lp->lwp_md.md_regs;
 	struct pcb *pcb = lp->lwp_thread->td_pcb;
 
-	/* Reset pc->pcb_gs and %gs before possibly invalidating it. */
-	pcb->pcb_gs = _udatasel;
-	load_gs(_udatasel);
-
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
   
@@ -917,6 +947,7 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
 	regs->tf_fs = _udatasel;
+	regs->tf_gs = _udatasel;
 	regs->tf_cs = _ucodesel;
 
 	/* PS_STRINGS value for BSD/OS binaries.  It is 0 for non-BSD/OS. */
@@ -1806,7 +1837,7 @@ init386(int first)
 	bzero(gd, sizeof(*gd));
 
 	gd->mi.gd_curthread = &thread0;
-	thread0.td_gd = gd;
+	thread0.td_gd = &gd->mi;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
@@ -2118,6 +2149,7 @@ fill_regs(struct lwp *lp, struct reg *regs)
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
+	regs->r_gs = tp->tf_gs;
 	regs->r_fs = tp->tf_fs;
 	regs->r_es = tp->tf_es;
 	regs->r_ds = tp->tf_ds;
@@ -2134,7 +2166,6 @@ fill_regs(struct lwp *lp, struct reg *regs)
 	regs->r_esp = tp->tf_esp;
 	regs->r_ss = tp->tf_ss;
 	pcb = lp->lwp_thread->td_pcb;
-	regs->r_gs = pcb->pcb_gs;
 	return (0);
 }
 
@@ -2148,6 +2179,7 @@ set_regs(struct lwp *lp, struct reg *regs)
 	if (!EFL_SECURE(regs->r_eflags, tp->tf_eflags) ||
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
+	tp->tf_gs = regs->r_gs;
 	tp->tf_fs = regs->r_fs;
 	tp->tf_es = regs->r_es;
 	tp->tf_ds = regs->r_ds;
@@ -2164,7 +2196,6 @@ set_regs(struct lwp *lp, struct reg *regs)
 	tp->tf_esp = regs->r_esp;
 	tp->tf_ss = regs->r_ss;
 	pcb = lp->lwp_thread->td_pcb;
-	pcb->pcb_gs = regs->r_gs;
 	return (0);
 }
 

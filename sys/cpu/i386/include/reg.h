@@ -35,7 +35,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.8 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_REG_H_
@@ -52,23 +52,26 @@
  * stopped accessing the registers in the trap frame via PT_{READ,WRITE}_U
  * and we can stop supporting the user area soon.
  */
-#define	tFS	(0)
-#define	tES	(1)
-#define	tDS	(2)
-#define	tEDI	(3)
-#define	tESI	(4)
-#define	tEBP	(5)
-#define	tISP	(6)
-#define	tEBX	(7)
-#define	tEDX	(8)
-#define	tECX	(9)
-#define	tEAX	(10)
-#define	tERR	(12)
-#define	tEIP	(13)
-#define	tCS	(14)
-#define	tEFLAGS	(15)
-#define	tESP	(16)
-#define	tSS	(17)
+#define	tGS	(0)
+#define	tFS	(1)
+#define	tES	(2)
+#define	tDS	(3)
+#define	tEDI	(4)
+#define	tESI	(5)
+#define	tEBP	(6)
+#define	tISP	(7)
+#define	tEBX	(8)
+#define	tEDX	(9)
+#define	tECX	(10)
+#define	tEAX	(11)
+#define tXFLAGS	(12)
+#define	tTRAPNO	(13)
+#define	tERR	(14)
+#define	tEIP	(15)
+#define	tCS	(16)
+#define	tEFLAGS	(17)
+#define	tESP	(18)
+#define	tSS	(19)
 
 /*
  * Indices for registers in `struct regs' only.
@@ -77,12 +80,12 @@
  * other registers in application interfaces that copy all the registers
  * to or from a `struct regs'.
  */
-#define	tGS	(18)
 
 /*
  * Register set accessible via /proc/$pid/regs and PT_{SET,GET}REGS.
  */
 struct reg {
+	unsigned int	r_gs;
 	unsigned int	r_fs;
 	unsigned int	r_es;
 	unsigned int	r_ds;
@@ -94,6 +97,7 @@ struct reg {
 	unsigned int	r_edx;
 	unsigned int	r_ecx;
 	unsigned int	r_eax;
+	unsigned int	r_xflags;
 	unsigned int	r_trapno;
 	unsigned int	r_err;
 	unsigned int	r_eip;
@@ -101,7 +105,6 @@ struct reg {
 	unsigned int	r_eflags;
 	unsigned int	r_esp;
 	unsigned int	r_ss;
-	unsigned int	r_gs;
 };
 
 /*

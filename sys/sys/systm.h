@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.59 2007/01/07 08:37:37 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.60 2007/01/08 03:33:43 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -126,6 +126,7 @@ struct thread;
 struct trapframe;
 struct user;
 struct vmspace;
+struct savetls;
 
 void	Debugger (const char *msg);
 void	backtrace(void);
@@ -139,12 +140,14 @@ void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 
 int	cpu_sanitize_frame (struct trapframe *);
+int	cpu_sanitize_tls (struct savetls *);
 void	cpu_halt (void);
 void	cpu_reset (void);
 void	cpu_boot (int);
 void	cpu_rootconf (void);
 void	cpu_vmspace_alloc(struct vmspace *);
 void	cpu_vmspace_free(struct vmspace *);
+void	set_user_TLS(void);
 
 vm_paddr_t kvtop(void *addr);
 int	is_physical_memory (vm_offset_t addr);

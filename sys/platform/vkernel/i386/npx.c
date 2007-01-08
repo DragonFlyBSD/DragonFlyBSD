@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.2 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -531,6 +531,13 @@ fpusave(union savefpu *addr)
 		fxsave(addr);
 	else
 		fnsave(addr);
+}
+
+void
+npxsync(void)
+{
+	if (curthread == mdcpu->gd_npxthread)
+		npxsave(curthread->td_savefpu);
 }
 
 #ifndef CPU_DISABLE_SSE

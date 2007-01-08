@@ -31,8 +31,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.7 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.8 2007/01/08 03:33:43 dillon Exp $
  */
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -49,6 +50,7 @@
 
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
+#include <ddb/ddb.h>
 
 #include <machine/vmparam.h>
 
@@ -132,7 +134,8 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 }
 
 /*
- * vmspace_ctl (void *id, int cmd, void *ctx, int ctx_bytes, int timeout_us)
+ * vmspace_ctl (void *id, int cmd, struct trapframe *tframe,
+ *		struct vextframe *vframe);
  *
  * Transfer control to a VMSPACE.  Control is returned after the specified
  * number of microseconds or if a page fault, signal, trap, or system call
@@ -166,13 +169,23 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		framesz = sizeof(struct trapframe);
 		vk->vk_current = ve;
 		vk->vk_save_vmspace = p->p_vmspace;
-		vk->vk_user_frame = uap->ctx;
-		bcopy(uap->sysmsg_frame, &vk->vk_save_frame, framesz);
-		error = copyin(uap->ctx, uap->sysmsg_frame, framesz);
+		vk->vk_user_trapframe = uap->tframe;
+		vk->vk_user_vextframe = uap->vframe;
+		bcopy(uap->sysmsg_frame, &vk->vk_save_trapframe, framesz);
+		bcopy(&curthread->td_tls, &vk->vk_save_vextframe.vx_tls,
+		      sizeof(vk->vk_save_vextframe.vx_tls));
+		error = copyin(uap->tframe, uap->sysmsg_frame, framesz);
+		if (error == 0)
+			error = copyin(&uap->vframe->vx_tls, &curthread->td_tls, sizeof(struct savetls));
 		if (error == 0)
 			error = cpu_sanitize_frame(uap->sysmsg_frame);
+		if (error == 0)
+			error = cpu_sanitize_tls(&curthread->td_tls);
 		if (error) {
-			bcopy(&vk->vk_save_frame, uap->sysmsg_frame, framesz);
+			bcopy(&vk->vk_save_trapframe, uap->sysmsg_frame, framesz);
+			bcopy(&vk->vk_save_vextframe.vx_tls, &curthread->td_tls,
+			      sizeof(vk->vk_save_vextframe.vx_tls));
+			set_user_TLS();
 			vk->vk_current = NULL;
 			vk->vk_save_vmspace = NULL;
 			--ve->refs;
@@ -180,6 +193,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			pmap_deactivate(p);
 			p->p_vmspace = ve->vmspace;
 			pmap_activate(p);
+			set_user_TLS();
 			error = EJUSTRETURN;
 		}
 		break;
@@ -443,9 +457,16 @@ vkernel_exit(struct proc *p)
 	/*
 	 * Restore the original VM context if we are killed while running
 	 * a different one.
+	 *
+	 * This isn't supposed to happen.  What is supposed to happen is
+	 * that the process should enter vkernel_trap() before the handling
+	 * the signal.
 	 */
 	if ((ve = vk->vk_current) != NULL) {
-		kprintf("killed with active VC\n");
+		kprintf("Killed with active VC, notify kernel list\n");
+#ifdef DDB
+		db_print_backtrace();
+#endif
 		vk->vk_current = NULL;
 		pmap_deactivate(p);
 		p->p_vmspace = vk->vk_save_vmspace;
@@ -483,10 +504,6 @@ vkernel_trap(struct proc *p, struct trapframe *frame)
 	struct vkernel *vk;
 	int error;
 
-	kprintf("trap for vkernel type %d wm=%d\n", 
-		frame->tf_trapno & 0x7FFFFFFF,
-		((frame->tf_trapno & 0x80000000) ? 1 : 0));
-
 	/*
 	 * Which vmspace entry was running?
 	 */
@@ -506,12 +523,18 @@ vkernel_trap(struct proc *p, struct trapframe *frame)
 	--ve->refs;
 
 	/*
-	 * Copy the trapframe to the virtual kernel's userspace, then
-	 * restore virtual kernel's original syscall trap frame so we
-	 * can 'return' from the system call that ran the custom VM space.
+	 * Copy the emulated process frame to the virtual kernel process.
+	 * The emulated process cannot change TLS descriptors so don't
+	 * bother saving them, we already have a copy.
+	 *
+	 * Restore the virtual kernel's saved context so the virtual kernel
+	 * process can resume.
 	 */
-	error = copyout(frame, vk->vk_user_frame, sizeof(*frame));
-	bcopy(&vk->vk_save_frame, frame, sizeof(*frame));
+	error = copyout(frame, vk->vk_user_trapframe, sizeof(*frame));
+	bcopy(&vk->vk_save_trapframe, frame, sizeof(*frame));
+	bcopy(&vk->vk_save_vextframe.vx_tls, &curthread->td_tls,
+	      sizeof(vk->vk_save_vextframe.vx_tls));
+	set_user_TLS();
 	return(error);
 }
 

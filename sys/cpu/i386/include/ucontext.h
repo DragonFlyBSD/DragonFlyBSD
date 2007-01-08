@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ucontext.h,v 1.4 1999/10/11 20:33:09 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.3 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.4 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_UCONTEXT_H_
@@ -51,6 +51,7 @@ typedef struct __mcontext {
 	int	mc_edx;
 	int	mc_ecx;
 	int	mc_eax;
+	int	mc_xflags;
 	int	mc_trapno;
 	int	mc_err;
 	int	mc_eip;
@@ -59,8 +60,8 @@ typedef struct __mcontext {
 	int	mc_esp;			/* machine state */
 	int	mc_ss;
 
-	int	mc_fpregs[28];		/* env87 + fpacc87 + u_long */
-	int	__spare__[17];
+	int	mc_fpregs[128];		/* full fp state */
+	int	__spare__[16];
 } mcontext_t;
 
 #endif /* !_CPU_UCONTEXT_H_ */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.53 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.54 2007/01/08 03:33:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,7 +135,6 @@ ASSYM(TSS_ESP0, offsetof(struct i386tss, tss_esp0));
 
 ASSYM(PCB_USERLDT, offsetof(struct pcb, pcb_ldt));
 
-ASSYM(PCB_GS, offsetof(struct pcb, pcb_gs));
 ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
 ASSYM(PCB_DR1, offsetof(struct pcb, pcb_dr1));
 ASSYM(PCB_DR2, offsetof(struct pcb, pcb_dr2));
@@ -154,6 +153,7 @@ ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
 
 ASSYM(PCB_SIZE, sizeof(struct pcb));
 
+ASSYM(TF_XFLAGS, offsetof(struct trapframe, tf_xflags));
 ASSYM(TF_TRAPNO, offsetof(struct trapframe, tf_trapno));
 ASSYM(TF_ERR, offsetof(struct trapframe, tf_err));
 ASSYM(TF_CS, offsetof(struct trapframe, tf_cs));
@@ -161,7 +161,6 @@ ASSYM(TF_EFLAGS, offsetof(struct trapframe, tf_eflags));
 ASSYM(SIGF_HANDLER, offsetof(struct sigframe, sf_ahu.sf_handler));
 ASSYM(SIGF_UC, offsetof(struct sigframe, sf_uc));
 ASSYM(UC_EFLAGS, offsetof(ucontext_t, uc_mcontext.mc_eflags));
-ASSYM(UC_GS, offsetof(ucontext_t, uc_mcontext.mc_gs));
 ASSYM(ENOENT, ENOENT);
 ASSYM(EFAULT, EFAULT);
 ASSYM(ENAMETOOLONG, ENAMETOOLONG);

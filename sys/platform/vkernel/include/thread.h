@@ -31,28 +31,30 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/thread.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/thread.h,v 1.2 2007/01/08 03:33:43 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
+#ifndef _MACHINE_VFRAME_H_
+#include <machine/vframe.h>
 #endif
-
-union savefpu;
+#ifndef _MACHINE_NPX_H_
+#include <machine/npx.h>
+#endif
 
 struct md_thread {
     unsigned int	mtd_unused;	/* used to be mtd_cpl */
-    union savefpu	*mtd_savefpu;
-    struct segment_descriptor mtd_tls[NGTLS];
+    union savefpu	*mtd_savefpu;	/* pointer to current fpu context */
+    struct vextframe	mtd_savevext;
 };
 
 #ifdef _KERNEL
 
 #define td_savefpu	td_mach.mtd_savefpu
-#define td_tls		td_mach.mtd_tls
+#define td_tls		td_mach.mtd_savevext.vx_tls
+#define td_savevext	td_mach.mtd_savevext
 
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.23 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.24 2007/01/08 03:33:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -584,7 +584,7 @@ vm86_prepcall(struct vm86frame vmf)
 		vmf.vmf_cs = 0;
 	}
 	vmf.vmf_sp = addr[1] - 2;              /* keep aligned */
-	vmf.kernel_fs = vmf.kernel_es = vmf.kernel_ds = 0;
+	vmf.kernel_fs = vmf.kernel_es = vmf.kernel_ds = vmf.kernel_gs = 0;
 	vmf.vmf_ss = 0;
 	vmf.vmf_eflags = PSL_VIF | PSL_VM | PSL_USER;
 	vm86_initflags(&vmf);

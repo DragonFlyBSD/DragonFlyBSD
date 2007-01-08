@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_interface.c,v 1.1 2007/01/05 22:18:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_interface.c,v 1.2 2007/01/08 03:33:43 dillon Exp $
  */
 
 /*
@@ -189,6 +189,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	regs->tf_edi    = ddb_regs.tf_edi;
 	regs->tf_es     = ddb_regs.tf_es & 0xffff;
 	regs->tf_fs     = ddb_regs.tf_fs & 0xffff;
+	regs->tf_gs     = ddb_regs.tf_gs & 0xffff;
 	regs->tf_cs     = ddb_regs.tf_cs & 0xffff;
 	regs->tf_ds     = ddb_regs.tf_ds & 0xffff;
 	return (1);

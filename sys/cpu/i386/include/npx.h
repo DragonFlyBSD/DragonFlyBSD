@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.10 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.11 2007/01/08 03:33:37 dillon Exp $
  */
 
 /*
@@ -110,13 +110,16 @@ struct  xmmacc {
 	u_char	xmm_bytes[16];
 };
 
+/*
+ * savexmm is a 512-byte structure
+ */
 struct  savexmm {
-	struct	envxmm	sv_env;
+	struct	envxmm	sv_env;			/* 32 */
 	struct {
-		struct fpacc87	fp_acc;
-		u_char		fp_pad[6];      /* padding */
+		struct fpacc87	fp_acc;		/* 10 */
+		u_char		fp_pad[6];      /* 6  (padding) */
 	} sv_fp[8];
-	struct xmmacc	sv_xmm[8];
+	struct xmmacc	sv_xmm[8];		/* 128 */
 	u_long sv_ex_sw;	/* status word for last exception */
 	u_char sv_pad[220];
 } __attribute__((aligned(16)));
@@ -153,6 +156,7 @@ int	npxdna (void);
 void	npxexit (void);
 void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
+void	npxsync (void);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

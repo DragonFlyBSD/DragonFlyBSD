@@ -35,7 +35,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.6 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.7 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_FRAME_H_
@@ -50,6 +50,7 @@
  */
 
 struct trapframe {
+	int	tf_gs;
 	int	tf_fs;
 	int	tf_es;
 	int	tf_ds;
@@ -61,6 +62,7 @@ struct trapframe {
 	int	tf_edx;
 	int	tf_ecx;
 	int	tf_eax;
+	int	tf_xflags;
 	int	tf_trapno;
 	/* below portion defined in 386 hardware */
 	int	tf_err;
@@ -75,6 +77,7 @@ struct trapframe {
 /* Superset of trap frame, for traps from virtual-8086 mode */
 
 struct trapframe_vm86 {
+	int	tf_gs;
 	int	tf_fs;
 	int	tf_es;
 	int	tf_ds;
@@ -86,6 +89,7 @@ struct trapframe_vm86 {
 	int	tf_edx;
 	int	tf_ecx;
 	int	tf_eax;
+	int	tf_xflags;
 	int	tf_trapno;
 	/* below portion defined in 386 hardware */
 	int	tf_err;
@@ -107,6 +111,7 @@ struct trapframe_vm86 {
 struct intrframe {
 	int	if_vec;
 	int	if_ppl;
+	int	if_gs;
 	int	if_fs;
 	int	if_es;
 	int	if_ds;
@@ -119,6 +124,7 @@ struct intrframe {
 	int	if_ecx;
 	int	if_eax;
 	int	:32;		/* for compat with trap frame - trapno */
+	int	:32;		/* for compat with trap frame - xflags */
 	int	:32;		/* for compat with trap frame - err */
 	/* below portion defined in 386 hardware */
 	int	if_eip;

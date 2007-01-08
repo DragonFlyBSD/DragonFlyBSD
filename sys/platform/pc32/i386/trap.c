@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.91 2007/01/07 08:37:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.92 2007/01/08 03:33:42 dillon Exp $
  */
 
 /*
@@ -257,9 +257,14 @@ recheck:
 	}
 
 	/*
-	 * Post any pending upcalls
+	 * Post any pending upcalls.  If running a virtual kernel be sure
+	 * to restore the virtual kernel's vmspace before posting the upcall.
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
+		if (p->p_vkernel && p->p_vkernel->vk_current) {
+			frame->tf_trapno = 0;
+			vkernel_trap(p, frame);
+		}
 		p->p_flag &= ~P_UPCALLPEND;
 		get_mplock();
 		postupcall(lp);
@@ -268,9 +273,14 @@ recheck:
 	}
 
 	/*
-	 * Post any pending signals
+	 * Post any pending signals.  If running a virtual kernel be sure
+	 * to restore the virtual kernel's vmspace before posting the signal.
 	 */
 	if ((sig = CURSIG(p)) != 0) {
+		if (p->p_vkernel && p->p_vkernel->vk_current) {
+			frame->tf_trapno = 0;
+			vkernel_trap(p, frame);
+		}
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
@@ -565,18 +575,6 @@ restart:
 				goto out;
 
 			ucode = T_PAGEFLT;
-
-			/*
-			 * The code is lost because tf_err is overwritten
-			 * with the fault address.  Store it in the upper
-			 * 16 bits of tf_trapno for vkernel consumption.
-			 *
-			 * This is a horrible kludge but saves us from having
-			 * to add a new field to the trapframe (making it
-			 * incompatible with existing apps).
-			 */
-			if (p->p_vkernel)
-				frame.tf_trapno |= (code << 16);
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -695,17 +693,6 @@ kernel_trap:
 			goto out2;					\
 		}							\
 	} while (0)
-			/*
-			 * Since we don't save %gs across an interrupt
-			 * frame this check must occur outside the intr
-			 * nesting level check.
-			 */
-			if (frame.tf_eip == (int)cpu_switch_load_gs) {
-				td->td_pcb->pcb_gs = 0;
-				MAKEMPSAFE(have_mplock);
-				ksignal(p, SIGBUS);
-				goto out2;
-			}
 			if (mycpu->gd_intr_nesting_level == 0) {
 				/*
 				 * Invalid %fs's and %gs's can be created using
@@ -724,6 +711,8 @@ kernel_trap:
 						   doreti_popl_es_fault);
 				MAYBE_DORETI_FAULT(doreti_popl_fs,
 						   doreti_popl_fs_fault);
+				MAYBE_DORETI_FAULT(doreti_popl_gs,
+						   doreti_popl_gs_fault);
 				if (td->td_pcb->pcb_onfault) {
 					frame.tf_eip = 
 					    (register_t)td->td_pcb->pcb_onfault;
@@ -893,115 +882,6 @@ out2:	;
 #endif
 }
 
-#ifdef notyet
-/*
- * This version doesn't allow a page fault to user space while
- * in the kernel. The rest of the kernel needs to be made "safe"
- * before this can be used. I think the only things remaining
- * to be made safe is the process tracing/debugging code.
- */
-static int
-trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
-{
-	vm_offset_t va;
-	struct vmspace *vm = NULL;
-	vm_map_t map = 0;
-	int rv = 0;
-	vm_prot_t ftype;
-	thread_t td = curthread;
-	struct proc *p = td->td_proc;	/* may be NULL */
-
-	if (frame->tf_err & PGEX_W)
-		ftype = VM_PROT_WRITE;
-	else
-		ftype = VM_PROT_READ;
-
-	va = trunc_page(eva);
-	if (va < KvaStart) {
-		vm_offset_t v;
-		vm_page_t mpte;
-
-		if (p == NULL ||
-		    (!usermode && va < VM_MAX_USER_ADDRESS &&
-		     (td->td_gd->gd_intr_nesting_level != 0 || 
-		      td->td_pcb->pcb_onfault == NULL))) {
-			trap_fatal(frame, eva);
-			return (-1);
-		}
-
-		/*
-		 * This is a fault on non-kernel virtual memory.
-		 * vm is initialized above to NULL. If curproc is NULL
-		 * or curproc->p_vmspace is NULL the fault is fatal.
-		 */
-		vm = p->p_vmspace;
-		if (vm == NULL)
-			goto nogo;
-
-		map = &vm->vm_map;
-
-		/*
-		 * Keep swapout from messing with us during this
-		 *	critical time.
-		 */
-		++p->p_lock;
-
-		/*
-		 * Grow the stack if necessary
-		 */
-		/* grow_stack returns false only if va falls into
-		 * a growable stack region and the stack growth
-		 * fails.  It returns true if va was not within
-		 * a growable stack region, or if the stack 
-		 * growth succeeded.
-		 */
-		if (!grow_stack (p, va)) {
-			rv = KERN_FAILURE;
-			--p->p_lock;
-			goto nogo;
-		}
-		
-		/* Fault in the user page: */
-		rv = vm_fault(map, va, ftype,
-			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
-						      : VM_FAULT_NORMAL);
-
-		--p->p_lock;
-	} else {
-		/*
-		 * Don't allow user-mode faults in kernel address space.
-		 */
-		if (usermode)
-			goto nogo;
-
-		/*
-		 * Since we know that kernel virtual address addresses
-		 * always have pte pages mapped, we just have to fault
-		 * the page.
-		 */
-		rv = vm_fault(&kernel_map, va, ftype, VM_FAULT_NORMAL);
-	}
-
-	if (rv == KERN_SUCCESS)
-		return (0);
-nogo:
-	if (!usermode) {
-		if (mtd->td_gd->gd_intr_nesting_level == 0 && 
-		    td->td_pcb->pcb_onfault) {
-			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
-			return (0);
-		}
-		trap_fatal(frame, eva);
-		return (-1);
-	}
-
-	/* kludge to pass faulting virtual address to sendsig */
-	frame->tf_err = eva;
-
-	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
-}
-#endif
-
 int
 trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 {
@@ -1102,6 +982,7 @@ nogo:
 	}
 
 	/* kludge to pass faulting virtual address to sendsig */
+	frame->tf_xflags = frame->tf_err;
 	frame->tf_err = eva;
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
@@ -1338,7 +1219,6 @@ syscall2(struct trapframe frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		frame.tf_trapno = T_SYSCALL80;
 		error = vkernel_trap(p, &frame);
 		frame.tf_eax = error;
 		if (error)

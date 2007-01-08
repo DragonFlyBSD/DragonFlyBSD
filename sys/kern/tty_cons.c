@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.19 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.20 2007/01/08 03:33:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -180,8 +180,9 @@ cninit_finish(void)
 	/*
 	 * Hook the open and close functions.  XXX bad hack.
 	 */
-	if (dev_is_good(cn_tab->cn_dev))
+	if (dev_is_good(cn_tab->cn_dev)) {
 		cn_fwd_ops = dev_ops_intercept(cn_tab->cn_dev, &cn_iops);
+	}
 	cn_dev = cn_tab->cn_dev;
 	cn_udev = dev2udev(cn_dev);
 	console_pausing = 0;

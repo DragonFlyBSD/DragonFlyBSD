@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.2 2007/01/07 05:45:06 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -88,7 +88,7 @@ vcons_open(struct dev_open_args *ap)
 	struct tty *tp;
 	int error;
 
-	if (minor(dev) != 0)
+	if (minor(dev) != 255)
 		return(ENXIO);
 
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
@@ -100,7 +100,7 @@ vcons_open(struct dev_open_args *ap)
 	if (tp->t_state & TS_ISOPEN)
 		return (EBUSY);
 
-	tp->t_state |= TS_CARR_ON;
+	tp->t_state |= TS_CARR_ON | TS_CONNECTED;
 	ttychars(tp);
 	tp->t_iflag = TTYDEF_IFLAG;
 	tp->t_oflag = TTYDEF_OFLAG;

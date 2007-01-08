@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.6 2006/12/31 03:52:46 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.7 2007/01/08 03:33:43 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -57,6 +57,9 @@
 #ifndef _MACHINE_FRAME_H_
 #include <machine/frame.h>
 #endif
+#ifndef _MACHINE_VFRAME_H_
+#include <machine/vframe.h>
+#endif
 
 struct vmspace_rb_tree;
 struct vmspace_entry;
@@ -69,8 +72,10 @@ RB_PROTOTYPE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
  */
 struct vkernel {
 	struct vmspace *vk_save_vmspace;	/* saved VM space */
-	struct trapframe vk_save_frame;		/* saved trap frame */
-	struct trapframe *vk_user_frame;	/* copyback to user process */
+	struct trapframe vk_save_trapframe;	/* swapped context */
+	struct vextframe vk_save_vextframe;
+	struct trapframe *vk_user_trapframe;	/* copyback to vkernel */
+	struct vextframe *vk_user_vextframe;
 	struct vkernel_common *vk_common;	/* shared data */
 	struct vmspace_entry *vk_current;
 };

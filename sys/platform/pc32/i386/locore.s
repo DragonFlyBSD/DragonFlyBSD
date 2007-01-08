@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.12 2006/12/27 17:20:28 tgen Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.13 2007/01/08 03:33:42 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -347,7 +347,6 @@ NON_GPROF_ENTRY(sigcode)
 	pushl	%eax
 	testl	$PSL_VM,UC_EFLAGS(%eax)
 	jne	9f
-	movl	UC_GS(%eax),%gs			/* restore %gs */
 9:
 	movl	$SYS_sigreturn,%eax
 	pushl	%eax				/* junk to fake return addr. */

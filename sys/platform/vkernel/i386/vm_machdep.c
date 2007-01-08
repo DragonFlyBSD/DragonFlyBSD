@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.2 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -125,7 +125,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	 * Copy lp1's PCB.  This really only applies to the
 	 * debug registers and FP state, but its faster to just copy the
 	 * whole thing.  Because we only save the PCB at switchout time,
-	 * the register state (including pcb_gs) may not be current.
+	 * the register state may not be current.
 	 */
 	pcb2 = lp2->lwp_thread->td_pcb;
 	*pcb2 = *lp1->lwp_thread->td_pcb;
@@ -167,11 +167,6 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	*(u_int32_t *)lp2->lwp_thread->td_sp = PSL_USER;
 	lp2->lwp_thread->td_sp -= sizeof(void *);
 	*(void **)lp2->lwp_thread->td_sp = (void *)cpu_heavy_restore;
-
-	/*
-	 * Segment registers.
-	 */
-	pcb2->pcb_gs = rgs();
 
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.

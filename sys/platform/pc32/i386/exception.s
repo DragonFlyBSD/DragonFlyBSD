@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.29 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.30 2007/01/08 03:33:42 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -110,8 +110,9 @@ Xrsvdary:
  *
  * The cpu does not push the general registers, we must do that, and we 
  * must restore them prior to calling 'iret'.  The cpu adjusts the %cs and
- * %ss segment registers, but does not mess with %ds, %es, or %fs.  Thus we
- * must load them with appropriate values for supervisor mode operation.
+ * %ss segment registers, but does not mess with %ds, %es, %fs, or %gs.
+ * Thus we must load the ones we use (which is most of them) with appropriate
+ * values for supervisor mode operation.
  *
  * On entry to a trap or interrupt WE DO NOT OWN THE MP LOCK.  This means
  * that we must be careful in regards to accessing global variables.  We
@@ -703,19 +704,24 @@ IDTVEC(fpu)
 	 * call npx_intr to clear the error.  It would be better to handle
 	 * npx interrupts as traps.  Nested interrupts would probably have
 	 * to be converted to ASTs.
+	 *
+	 * Convert everything to a full trapframe
 	 */
 	pushl	$0			/* dummy error code */
 	pushl	$0			/* dummy trap type */
+	pushl	$0			/* dummy xflags */
 	pushal
 	pushl	%ds
-	pushl	%es			/* now stack frame is a trap frame */
+	pushl	%es
 	pushl	%fs
+	pushl	%gs
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
+	mov	%ax,%gs
 	mov	$KPSEL,%ax
 	mov	%ax,%fs
-	FAKE_MCOUNT(13*4(%esp))
+	FAKE_MCOUNT(15*4(%esp))
 
 	incl	PCPU(cnt)+V_TRAP
 
@@ -754,18 +760,21 @@ IDTVEC(xmm)
 	.globl	alltraps
 	.type	alltraps,@function
 alltraps:
+	pushl	$0	/* xflags (inherits hardware err on pagefault) */
 	pushal
 	pushl	%ds
 	pushl	%es
 	pushl	%fs
+	pushl	%gs
 	.globl	alltraps_with_regs_pushed
 alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
+	mov	%ax,%gs
 	mov	$KPSEL,%ax
 	mov	%ax,%fs
-	FAKE_MCOUNT(13*4(%esp))
+	FAKE_MCOUNT(15*4(%esp))
 calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
 	incl	PCPU(cnt)+V_TRAP
@@ -798,20 +807,23 @@ calltrap:
 	SUPERALIGN_TEXT
 IDTVEC(syscall)
 	pushfl				/* save eflags in tf_err for now */
-	subl	$4,%esp			/* skip over tf_trapno */
+	pushl	$T_SYSCALL80		/* tf_trapno */
+	pushl	$0			/* tf_xflags */
 	pushal
 	pushl	%ds
 	pushl	%es
 	pushl	%fs
+	pushl	%gs
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
+	mov	%ax,%gs
 	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	movl	TF_ERR(%esp),%eax	/* copy saved eflags to final spot */
 	movl	%eax,TF_EFLAGS(%esp)
 	movl	$7,TF_ERR(%esp) 	/* sizeof "lcall 7,0" */
-	FAKE_MCOUNT(13*4(%esp))
+	FAKE_MCOUNT(15*4(%esp))
 	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	/* warning, trap frame dummy arg, no extra reg pushes */
 	call	syscall2
@@ -834,18 +846,22 @@ IDTVEC(syscall)
  */
 	SUPERALIGN_TEXT
 IDTVEC(int0x80_syscall)
-	subl	$8,%esp			/* skip over tf_trapno and tf_err */
+	pushl	$0			/* tf_err */
+	pushl	$T_SYSCALL80		/* tf_trapno */
+	pushl	$0			/* tf_xflags */
 	pushal
 	pushl	%ds
 	pushl	%es
 	pushl	%fs
+	pushl	%gs
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
+	mov	%ax,%gs
 	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	movl	$2,TF_ERR(%esp)		/* sizeof "int 0x80" */
-	FAKE_MCOUNT(13*4(%esp))
+	FAKE_MCOUNT(15*4(%esp))
 	incl	PCPU(cnt)+V_SYSCALL
 	/* warning, trap frame dummy arg, no extra reg pushes */
 	call	syscall2

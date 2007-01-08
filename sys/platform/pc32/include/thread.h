@@ -33,7 +33,7 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.16 2006/10/23 21:50:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.17 2007/01/08 03:33:42 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -48,13 +48,13 @@ union savefpu;
 struct md_thread {
     unsigned int	mtd_unused;	/* used to be mtd_cpl */
     union savefpu	*mtd_savefpu;
-    struct segment_descriptor mtd_tls[NGTLS];
+    struct savetls	mtd_savetls;
 };
 
 #ifdef _KERNEL
 
 #define td_savefpu	td_mach.mtd_savefpu
-#define td_tls		td_mach.mtd_tls
+#define td_tls		td_mach.mtd_savetls
 
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.
