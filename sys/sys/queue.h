@@ -32,7 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.7 2005/03/04 02:21:49 hsu Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.8 2007/01/08 12:15:27 swildner Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -103,11 +103,13 @@
  * _PREV		-	-	-	+	+
  * _LAST		-	-	+	+	+
  * _FOREACH		+	+	+	+	+
+ * _FOREACH_MUTABLE	-	+	-	+	-
  * _FOREACH_REVERSE	-	-	-	+	+
  * _INSERT_HEAD		+	+	+	+	+
  * _INSERT_BEFORE	-	+	-	+	+
  * _INSERT_AFTER	+	+	+	+	+
  * _INSERT_TAIL		-	-	+	+	+
+ * _CONCAT		-	-	+	+	-
  * _REMOVE_HEAD		+	-	+	-	-
  * _REMOVE		+	+	+	+	+
  *
@@ -196,6 +198,14 @@ struct {								\
 /*
  * Singly-linked Tail queue functions.
  */
+#define	STAILQ_CONCAT(head1, head2) do {				\
+	if (!STAILQ_EMPTY((head2))) {					\
+		*(head1)->stqh_last = (head2)->stqh_first;		\
+		(head1)->stqh_last = (head2)->stqh_last;		\
+		STAILQ_INIT((head2));					\
+	}								\
+} while (0)
+
 #define	STAILQ_EMPTY(head)	((head)->stqh_first == NULL)
 
 #define	STAILQ_FIRST(head)	((head)->stqh_first)
@@ -352,6 +362,15 @@ struct {								\
 /*
  * Tail queue functions.
  */
+#define	TAILQ_CONCAT(head1, head2, field) do {				\
+	if (!TAILQ_EMPTY(head2)) {					\
+		*(head1)->tqh_last = (head2)->tqh_first;		\
+		(head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;	\
+		(head1)->tqh_last = (head2)->tqh_last;			\
+		TAILQ_INIT((head2));					\
+	}								\
+} while (0)
+
 #define	TAILQ_EMPTY(head)	((head)->tqh_first == NULL)
 
 #define	TAILQ_FIRST(head)	((head)->tqh_first)

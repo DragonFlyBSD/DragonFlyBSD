@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath_pci.c,v 1.12 2005/03/05 19:06:12 imp Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.2 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.3 2007/01/08 12:15:27 swildner Exp $
  */
 
 /*
@@ -144,7 +144,7 @@ ath_pci_attach(device_t dev)
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL, 0x3ffff/* maxsize XXX */,
-				   ATH_MAX_SCATTER, BUS_SPACE_MAXADDR,
+				   ATH_MAX_SCATTER, 0x3ffff/* maxsegsize XXX */,
 				   BUS_DMA_ALLOCNOW, &sc->sc_dmat);
 	if (error) {
 		device_printf(dev, "cannot allocate DMA tag\n");

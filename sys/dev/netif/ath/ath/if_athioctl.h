@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/if_athioctl.h,v 1.10.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athioctl.h,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $FreeBSD: src/sys/dev/ath/if_athioctl.h,v 1.10.2.4 2006/07/10 00:55:19 sam Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_athioctl.h,v 1.2 2007/01/08 12:15:27 swildner Exp $
  */
 
 /*
@@ -107,7 +107,9 @@ struct ath_stats {
 	uint32_t	ast_ant_txswitch;/* tx antenna switches */
 	uint32_t	ast_ant_rx[8];	/* rx frames with antenna */
 	uint32_t	ast_ant_tx[8];	/* tx frames with antenna */
-	uint32_t	ast_pad[32];
+	uint32_t	ast_cabq_xmit;	/* cabq frames transmitted */
+	uint32_t	ast_cabq_busy;	/* cabq found busy */
+	uint32_t	ast_pad[30];
 };
 
 #define	SIOCGATHSTATS	_IOWR('i', 137, struct ifreq)

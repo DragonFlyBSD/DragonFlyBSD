@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/if_athvar.h,v 1.27.2.5 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athvar.h,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $FreeBSD: src/sys/dev/ath/if_athvar.h,v 1.27.2.7 2006/07/10 01:15:24 sam Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_athvar.h,v 1.2 2007/01/08 12:15:27 swildner Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ struct ath_descdma {
 	const char*		dd_name;
 	struct ath_desc		*dd_desc;	/* descriptors */
 	bus_addr_t		dd_desc_paddr;	/* physical addr of dd_desc */
-	bus_addr_t		dd_desc_len;	/* size of dd_desc */
+	bus_size_t		dd_desc_len;	/* size of dd_desc */
 	bus_dma_segment_t	dd_dseg;
 	bus_dma_tag_t		dd_dmat;	/* bus DMA tag */
 	bus_dmamap_t		dd_dmamap;	/* DMA map for descriptors */
@@ -250,9 +250,6 @@ struct ath_softc {
 
 	struct ath_descdma	sc_txdma;	/* TX descriptors */
 	ath_bufhead		sc_txbuf;	/* transmit buffer */
-#if 0
-	struct mtx		sc_txbuflock;	/* txbuf lock */
-#endif
 	char			sc_txname[12];	/* e.g. "ath0_buf" */
 	int			sc_tx_timer;	/* transmit timeout */
 	u_int			sc_txqsetup;	/* h/w queues setup */
@@ -272,6 +269,7 @@ struct ath_softc {
 		UPDATE,				/* update pending */
 		COMMIT				/* beacon sent, commit change */
 	} sc_updateslot;			/* slot time update fsm */
+	struct ath_txq		sc_mcastq;	/* mcast xmits w/ ps sta's */
 
 	struct callout		sc_cal_ch;	/* callout handle for cals */
 	int			sc_calinterval;	/* current polling interval */
@@ -386,6 +384,8 @@ void	ath_intr(void *);
 	((*(_ah)->ah_startPcuReceive)((_ah)))
 #define	ath_hal_stopdmarecv(_ah) \
 	((*(_ah)->ah_stopDmaReceive)((_ah)))
+#define	ath_hal_getfatalstate(_ah, _outdata, _outsize) \
+	ath_hal_getdiagstate(_ah, 27, NULL, 0, (void **)(_outdata), _outsize)
 #define	ath_hal_getdiagstate(_ah, _id, _indata, _insize, _outdata, _outsize) \
 	((*(_ah)->ah_getDiagState)((_ah), (_id), \
 		(_indata), (_insize), (_outdata), (_outsize)))
