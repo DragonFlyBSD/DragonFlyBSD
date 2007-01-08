@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.38 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.39 2007/01/08 21:41:56 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -119,7 +119,7 @@ sys_read(struct read_args *uap)
  * MPSAFE
  */
 int
-sys___pread(struct __pread_args *uap)
+sys_extpread(struct extpread_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -185,7 +185,7 @@ sys_readv(struct readv_args *uap)
  * MPSAFE
  */
 int
-sys___preadv(struct __preadv_args *uap)
+sys_extpreadv(struct extpreadv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -333,7 +333,7 @@ sys_write(struct write_args *uap)
  * MPSAFE
  */
 int
-sys___pwrite(struct __pwrite_args *uap)
+sys_extpwrite(struct extpwrite_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -398,7 +398,7 @@ sys_writev(struct writev_args *uap)
  * MPSAFE
  */
 int
-sys___pwritev(struct __pwritev_args *uap)
+sys_extpwritev(struct extpwritev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;

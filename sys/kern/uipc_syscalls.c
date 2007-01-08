@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.76 2006/09/16 03:37:12 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.77 2007/01/08 21:41:56 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -394,10 +394,10 @@ sys_accept(struct accept_args *uap)
 }
 
 /*
- * __accept(int s, int fflags, caddr_t name, int *anamelen)
+ * extaccept(int s, int fflags, caddr_t name, int *anamelen)
  */
 int
-sys___accept(struct __accept_args *uap)
+sys_extaccept(struct extaccept_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int sa_len;
@@ -526,7 +526,7 @@ sys_connect(struct connect_args *uap)
  * connect_args(int s, int fflags, caddr_t name, int namelen)
  */
 int
-sys___connect(struct __connect_args *uap)
+sys_extconnect(struct extconnect_args *uap)
 {
 	struct sockaddr *sa;
 	int error;

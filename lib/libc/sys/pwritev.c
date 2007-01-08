@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
- * $DragonFly: src/lib/libc/sys/pwritev.c,v 1.1 2006/06/13 08:17:42 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/pwritev.c,v 1.2 2007/01/08 21:41:51 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -39,14 +39,12 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-ssize_t __pwritev(int, const struct iovec *, u_int, int, off_t);
-
 /*
- * The kernel __pwritev includes a flags argument that allows the blocking
+ * The kernel extpwritev includes a flags argument that allows the blocking
  * and append mode(s) to be overridden.
  */
 ssize_t
 pwritev(int fd, const struct iovec *iovp, int iovcnt, off_t offset)
 {
-	return (__pwritev(fd, iovp, iovcnt, 0, offset));
+	return (extpwritev(fd, iovp, iovcnt, 0, offset));
 }

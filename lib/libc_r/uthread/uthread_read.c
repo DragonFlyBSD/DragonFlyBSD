@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_read.c,v 1.11.2.4 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_read.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_read.c,v 1.4 2007/01/08 21:41:53 dillon Exp $
  *
  */
 #include <sys/types.h>
@@ -67,7 +67,7 @@ _read(int fd, void *buf, size_t nbytes)
 		}
 
 		/* Perform a non-blocking read syscall: */
-		while ((ret = __sys___pread(fd, buf, nbytes, O_FNONBLOCKING, -1)) < 0) {
+		while ((ret = __sys_extpread(fd, buf, nbytes, O_FNONBLOCKING, -1)) < 0) {
 			if ((_thread_fd_getflags(fd) & O_NONBLOCK) == 0 &&
 			    (errno == EWOULDBLOCK || errno == EAGAIN)) {
 				curthread->data.fd.fd = fd;

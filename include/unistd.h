@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.17 2007/01/08 17:19:26 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.18 2007/01/08 21:41:50 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -165,12 +165,12 @@ char	*mktemp(char *);
 int	 nfssvc(int, void *);
 int	 nice(int);
 ssize_t	 pread(int, void *, size_t, off_t);
-ssize_t	__pread(int, void *, size_t, int, off_t);
-ssize_t __preadv(int, struct iovec *, u_int, int, off_t);
+ssize_t	 extpread(int, void *, size_t, int, off_t);
+ssize_t  extpreadv(int, const struct iovec *, u_int, int, off_t);
 int	 profil(char *, size_t, vm_offset_t, int);
 ssize_t	 pwrite(int, const void *, size_t, off_t);
-ssize_t	__pwrite(int, const void *, size_t, int, off_t);
-ssize_t __pwritev(int, struct iovec *, u_int, int, off_t);
+ssize_t	 extpwrite(int, const void *, size_t, int, off_t);
+ssize_t  extpwritev(int, const struct iovec *, u_int, int, off_t);
 int	 rcmd(char **, int, const char *, const char *, const char *, int *);
 int	 rcmd_af(char **, int, const char *, const char *, const char *, int *,
 		 int);

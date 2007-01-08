@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.11 2006/07/27 00:43:02 corecode Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.12 2007/01/08 21:41:53 dillon Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -120,12 +120,12 @@
 #define stdout_debug(args...)	do {		\
 	char buf[128];				\
 	snprintf(buf, sizeof(buf), ##args);	\
-	__sys___pwrite(1, buf, strlen(buf), O_FBLOCKING, -1);	\
+	__sys_extpwrite(1, buf, strlen(buf), O_FBLOCKING, -1);	\
 } while (0)
 #define stderr_debug(args...)	do {		\
 	char buf[128];				\
 	snprintf(buf, sizeof(buf), ##args);	\
-	__sys___pwrite(2, buf, strlen(buf), O_FBLOCKING, -1);	\
+	__sys_extpwrite(2, buf, strlen(buf), O_FBLOCKING, -1);	\
 } while (0)
 
 
@@ -1269,10 +1269,10 @@ int	__sys_fstatfs(int, struct statfs *);
 /* #include <sys/socket.h> */
 #ifdef _SYS_SOCKET_H_
 int	__sys_accept(int, struct sockaddr *, socklen_t *);
-int	__sys___accept(int, int, struct sockaddr *, socklen_t *);
+int	__sys_extaccept(int, int, struct sockaddr *, socklen_t *);
 int	__sys_bind(int, const struct sockaddr *, socklen_t);
 int	__sys_connect(int, const struct sockaddr *, socklen_t);
-int	__sys___connect(int, int, const struct sockaddr *, socklen_t);
+int	__sys_extconnect(int, int, const struct sockaddr *, socklen_t);
 int	__sys_getpeername(int, struct sockaddr *, socklen_t *);
 int	__sys_getsockname(int, struct sockaddr *, socklen_t *);
 int	__sys_getsockopt(int, int, int, void *, socklen_t *);
@@ -1299,8 +1299,8 @@ int	__sys_fstat(int, struct stat *);
 #ifdef _SYS_UIO_H_
 ssize_t	__sys_readv(int, const struct iovec *, int);
 ssize_t	__sys_writev(int, const struct iovec *, int);
-ssize_t	__sys___preadv(int, const struct iovec *, int, int, off_t);
-ssize_t	__sys___pwritev(int, const struct iovec *, int, int, off_t);
+ssize_t	__sys_extpreadv(int, const struct iovec *, int, int, off_t);
+ssize_t	__sys_extpwritev(int, const struct iovec *, int, int, off_t);
 #endif
 
 /* #include <sys/wait.h> */
@@ -1346,9 +1346,9 @@ long	__sys_fpathconf(int, int);
 int	__sys_fsync(int);
 int	__sys_pipe(int *);
 ssize_t	__sys_read(int, void *, size_t);
-ssize_t	__sys___pread(int, void *, size_t, int, off_t);
+ssize_t	__sys_extpread(int, void *, size_t, int, off_t);
 ssize_t	__sys_write(int, const void *, size_t);
-ssize_t	__sys___pwrite(int, const void *, size_t, int, off_t);
+ssize_t	__sys_extpwrite(int, const void *, size_t, int, off_t);
 #endif
 
 /* #include <setjmp.h> */

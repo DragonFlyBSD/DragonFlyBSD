@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_exit.c,v 1.16.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.5 2006/06/14 01:45:28 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.6 2007/01/08 21:41:53 dillon Exp $
  */
 #include <errno.h>
 #include <unistd.h>
@@ -98,7 +98,7 @@ _thread_exit(char *fname, int lineno, char *string)
 
 	/* Write the string to the standard error file descriptor: */
 	/* XXX should this be non-blocking ? */
-	__sys___pwrite(2, s, strlen(s), O_FNONBLOCKING, -1);
+	__sys_extpwrite(2, s, strlen(s), O_FNONBLOCKING, -1);
 
 	/* Force this process to exit: */
 	/* XXX - Do we want abort to be conditional on _PTHREADS_INVARIANTS? */

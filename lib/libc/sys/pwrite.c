@@ -31,21 +31,19 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
- * $DragonFly: src/lib/libc/sys/pwrite.c,v 1.4 2006/06/13 08:17:42 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/pwrite.c,v 1.5 2007/01/08 21:41:51 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-ssize_t __pwrite(int, const void *, size_t, int, off_t);
-
 /*
- * The kernel __pwrite includes a flags argument that allows the blocking
+ * The kernel extpwrite includes a flags argument that allows the blocking
  * and append mode(s) to be overridden.
  */
 ssize_t
 pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
-	return (__pwrite(fd, buf, nbyte, 0, offset));
+	return (extpwrite(fd, buf, nbyte, 0, offset));
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.5 2007/01/08 19:45:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.6 2007/01/08 21:41:58 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -102,8 +102,10 @@ vcons_open(struct dev_open_args *ap)
 	tp->t_stop = nottystop;
 	tp->t_dev = dev;
 
+#if 0
 	if (tp->t_state & TS_ISOPEN)
 		return (EBUSY);
+#endif
 
 	tp->t_state |= TS_CARR_ON | TS_CONNECTED;
 	ttychars(tp);
@@ -129,7 +131,7 @@ vcons_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
-	if (minor(dev) != 0)
+	if (minor(dev) != 255)
 		return(ENXIO);
 	tp = dev->si_tty;
 	if (tp->t_state & TS_ISOPEN) {
@@ -147,7 +149,7 @@ vcons_ioctl(struct dev_ioctl_args *ap)
 	struct tty *tp;
 	int error;
 
-	if (minor(dev) != 0)
+	if (minor(dev) != 255)
 		return(ENXIO);
 	tp = dev->si_tty;
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
@@ -197,7 +199,7 @@ vcons_intr(void *tpx)
 
 	if (console_stolen_by_kernel == 0 && (tp->t_state & TS_ISOPEN)) {
 		do {
-			n = __pread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
+			n = extpread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
 			for (i = 0; i < n; ++i)
 				(*linesw[tp->t_line].l_rint)(buf[i], tp);
 		} while (n > 0);
@@ -270,7 +272,7 @@ vconscheckc(cdev_t dev)
 {
 	unsigned char c;
 
-	if (__pread(0, &c, 1, O_FNONBLOCKING, -1LL) == 1)
+	if (extpread(0, &c, 1, O_FNONBLOCKING, -1LL) == 1)
 		return((int)c);
 	return(-1);
 }

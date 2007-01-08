@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kern.c,v 1.28.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.5 2006/06/14 01:45:28 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.6 2007/01/08 21:41:53 dillon Exp $
  *
  */
 #include <errno.h>
@@ -1094,7 +1094,7 @@ dequeue_signals(void)
 	/*
 	 * Enter a loop to clear the pthread kernel pipe:
 	 */
-	while (((num = __sys___pread(_thread_kern_pipe[0], bufr,
+	while (((num = __sys_extpread(_thread_kern_pipe[0], bufr,
 	    sizeof(bufr), O_FNONBLOCKING, -1)) > 0) ||
 	    (num == -1 && errno == EINTR)) {
 		;

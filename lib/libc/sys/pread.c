@@ -31,21 +31,19 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
- * $DragonFly: src/lib/libc/sys/pread.c,v 1.4 2006/06/13 08:17:42 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/pread.c,v 1.5 2007/01/08 21:41:51 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-ssize_t __pread(int, void *, size_t, int, off_t);
-
 /*
- * The kernel __pread includes a flags argument that allows the blocking
+ * The kernel extpread includes a flags argument that allows the blocking
  * and append mode(s) to be overridden.
  */
 ssize_t
 pread(int fd, void *buf, size_t nbyte, off_t offset)
 {
-	return (__pread(fd, buf, nbyte, 0, offset));
+	return (extpread(fd, buf, nbyte, 0, offset));
 }
