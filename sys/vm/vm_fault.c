@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.36 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.37 2007/01/08 19:41:01 dillon Exp $
  */
 
 /*
@@ -412,10 +412,28 @@ RetryFault:
 }
 
 /*
- * Fault-in the specified virtual address in the specified map, doing all
+ * Fault in the specified virtual address in the current process map, 
+ * returning a held VM page or NULL.  See vm_fault_page() for more 
+ * information.
+ */
+vm_page_t
+vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
+{
+	vm_page_t m;
+
+	m = vm_fault_page(&curproc->p_vmspace->vm_map, va, 
+			  fault_type, VM_FAULT_NORMAL, errorp);
+	return(m);
+}
+
+/*
+ * Fault in the specified virtual address in the specified map, doing all
  * necessary manipulation of the object store and all necessary I/O.  Return
  * a held VM page or NULL, and set *errorp.  The related pmap is not
  * updated.
+ *
+ * The returned page will be properly dirtied if VM_PROT_WRITE was specified,
+ * and marked PG_REFERENCED as well.
  *
  * Since the pmap is not updated, this routine may not be used to wire
  * the page.
@@ -548,11 +566,16 @@ RetryFault:
 
 	/*
 	 * Return a held page.  We are not doing any pmap manipulation so do
-	 * not set PG_MAPPED.
+	 * not set PG_MAPPED.  However, adjust the page flags according to
+	 * the fault type because the caller may not use a managed pmapping
+	 * (so we don't want to lose the fact that the page will be dirtied
+	 * if a write fault was specified).
 	 */
+	vm_page_hold(fs.m);
 	vm_page_flag_clear(fs.m, PG_ZERO);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
-	vm_page_hold(fs.m);
+	if (fault_type & VM_PROT_WRITE)
+		vm_page_dirty(fs.m);
 
 	/*
 	 * Unbusy the page by activating it.  It remains held and will not
