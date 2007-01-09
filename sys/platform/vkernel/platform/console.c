@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.6 2007/01/08 21:41:58 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.7 2007/01/09 00:20:20 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -41,6 +41,7 @@
 #include <sys/tty.h>
 #include <sys/termios.h>
 #include <sys/fcntl.h>
+#include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
 
@@ -236,6 +237,7 @@ vconsprobe(struct consdev *cp)
 		cfmakeraw(&tio);
 		tio.c_lflag |= ISIG;
 		tcsetattr(0, TCSAFLUSH, &tio);
+		vcons_set_mode(0);
 	}
 }
 
@@ -284,5 +286,27 @@ vconsputc(cdev_t dev, int c)
 
 	write(1, &cc, 1);
 }
+
+void
+vcons_set_mode(int in_debugger)
+{
+	struct termios tio;
+
+	if (tcgetattr(0, &tio) < 0)
+		return;
+	cfmakeraw(&tio);
+	tio.c_lflag |= ISIG;
+	if (in_debugger) {
+		tio.c_cc[VINTR] = 'c' & 0x1f;
+		tio.c_cc[VSUSP] = 'z' & 0x1f;
+		tio.c_cc[VSTATUS] = 't' & 0x1f;
+	} else {
+		tio.c_cc[VINTR] = 0;
+		tio.c_cc[VSUSP] = 0;
+		tio.c_cc[VSTATUS] = 0;
+	}
+	tcsetattr(0, TCSAFLUSH, &tio);
+}
+
 
 

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_interface.c,v 1.2 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_interface.c,v 1.3 2007/01/09 00:20:17 dillon Exp $
  */
 
 /*
@@ -145,6 +145,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	setjmp(db_global_jmpbuf);
 	db_global_jmpbuf_valid = TRUE;
 	db_active++;
+	vcons_set_mode(1);
 	if (ddb_mode) {
 	    cndbctl(TRUE);
 	    db_trap(type, code);
@@ -152,6 +153,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	} else
 	    gdb_handle_exception(&ddb_regs, type, code);
 	db_active--;
+	vcons_set_mode(0);
 	db_global_jmpbuf_valid = FALSE;
 
 #ifdef SMP
