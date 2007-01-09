@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.7 2007/01/09 00:20:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.8 2007/01/09 07:23:03 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -98,31 +98,24 @@ vcons_open(struct dev_open_args *ap)
 		return(ENXIO);
 
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
-	tp->t_oproc = vcons_tty_start;
-	tp->t_param = vcons_tty_param;
-	tp->t_stop = nottystop;
-	tp->t_dev = dev;
+	if ((tp->t_state & TS_ISOPEN) == 0) {
+		tp->t_oproc = vcons_tty_start;
+		tp->t_param = vcons_tty_param;
+		tp->t_stop = nottystop;
+		tp->t_dev = dev;
 
-#if 0
-	if (tp->t_state & TS_ISOPEN)
-		return (EBUSY);
-#endif
-
-	tp->t_state |= TS_CARR_ON | TS_CONNECTED;
-	ttychars(tp);
-	tp->t_iflag = TTYDEF_IFLAG;
-	tp->t_oflag = TTYDEF_OFLAG;
-	tp->t_cflag = TTYDEF_CFLAG;
-	tp->t_lflag = TTYDEF_LFLAG;
-	tp->t_ispeed = TTYDEF_SPEED;
-	tp->t_ospeed = TTYDEF_SPEED;
-	ttsetwater(tp);
-
-	error = (*linesw[tp->t_line].l_open)(dev, tp);
-	if (error == 0) {
-		callout_init(&console_callout);
-		callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
+		tp->t_state |= TS_CARR_ON | TS_CONNECTED;
+		ttychars(tp);
+		tp->t_iflag = TTYDEF_IFLAG;
+		tp->t_oflag = TTYDEF_OFLAG;
+		tp->t_cflag = TTYDEF_CFLAG;
+		tp->t_lflag = TTYDEF_LFLAG;
+		tp->t_ispeed = TTYDEF_SPEED;
+		tp->t_ospeed = TTYDEF_SPEED;
+		ttsetwater(tp);
 	}
+	error = (*linesw[tp->t_line].l_open)(dev, tp);
+	callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
 	return(error);
 }
 
@@ -135,11 +128,8 @@ vcons_close(struct dev_close_args *ap)
 	if (minor(dev) != 255)
 		return(ENXIO);
 	tp = dev->si_tty;
-	if (tp->t_state & TS_ISOPEN) {
-		callout_stop(&console_callout);
-		(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
-		ttyclose(tp);
-	}
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
+	ttyclose(tp);
 	return(0);
 }
 
@@ -198,6 +188,16 @@ vcons_intr(void *tpx)
 	int i;
 	int n;
 
+	/*
+	 * If we aren't open we only have synchronous traffic via the
+	 * debugger and do not need to poll.
+	 */
+	if ((tp->t_state & TS_ISOPEN) == 0)
+		return;
+
+	/*
+	 * Only poll if we are open and haven't been stolen by the debugger.
+	 */
 	if (console_stolen_by_kernel == 0 && (tp->t_state & TS_ISOPEN)) {
 		do {
 			n = extpread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
@@ -239,6 +239,7 @@ vconsprobe(struct consdev *cp)
 		tcsetattr(0, TCSAFLUSH, &tio);
 		vcons_set_mode(0);
 	}
+	callout_init(&console_callout);
 }
 
 static void

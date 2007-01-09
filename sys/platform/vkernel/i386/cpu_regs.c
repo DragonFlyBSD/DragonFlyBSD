@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.6 2007/01/09 06:04:57 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.7 2007/01/09 07:23:02 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -221,6 +221,16 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	regs = lp->lwp_md.md_regs;
 	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
+
+	/*
+	 * If we are a virtual kernel running an emulated user process
+	 * context, switch back to the virtual kernel context before
+	 * trying to post the signal.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		regs->tf_trapno = 0;
+		vkernel_trap(p, regs);
+	}
 
 	/* save user context */
 	bzero(&sf, sizeof(struct sigframe));
@@ -498,10 +508,21 @@ void
 sendupcall(struct vmupcall *vu, int morepending)
 {
 	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	struct upcall upcall;
 	struct upc_frame upc_frame;
 	int	crit_count = 0;
+
+	/*
+	 * If we are a virtual kernel running an emulated user process
+	 * context, switch back to the virtual kernel context before
+	 * trying to post the signal.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		lp->lwp_md.md_regs->tf_trapno = 0;
+		vkernel_trap(p, lp->lwp_md.md_regs);
+	}
 
 	/*
 	 * Get the upcall data structure

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.4 2007/01/09 00:49:03 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.5 2007/01/09 07:23:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,6 +45,8 @@
 #include <sys/time.h>
 #include <machine/cpu.h>
 #include <machine/globaldata.h>
+
+#include <sys/thread2.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -173,7 +175,9 @@ cputimer_intr_hard(int signo)
 		atomic_set_int(&gd->gd_fpending, 1);
 		atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
 	} else {
+		crit_enter();
 		cputimer_intr(NULL, NULL);
+		crit_exit();
 	}
 }
 

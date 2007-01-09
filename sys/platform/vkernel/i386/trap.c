@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.6 2007/01/08 08:17:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.7 2007/01/09 07:23:02 dillon Exp $
  */
 
 /*
@@ -248,10 +248,6 @@ recheck:
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
 		get_mplock();
-		if (p->p_vkernel && p->p_vkernel->vk_current) {
-			frame->tf_trapno = 0;
-			vkernel_trap(p, frame);
-		}
 		p->p_flag &= ~P_UPCALLPEND;
 		postupcall(lp);
 		rel_mplock();
@@ -263,10 +259,6 @@ recheck:
 	 */
 	if ((sig = CURSIG(p)) != 0) {
 		get_mplock();
-		if (p->p_vkernel && p->p_vkernel->vk_current) {
-			frame->tf_trapno = 0;
-			vkernel_trap(p, frame);
-		}
 		postsig(sig);
 		rel_mplock();
 		goto recheck;
@@ -502,15 +494,6 @@ restart:
 			goto out;
 
 		ucode = T_PAGEFLT;
-
-		/*
-		 * The code is lost because tf_err is overwritten
-		 * with the fault address.  Store it in the upper
-		 * 16 bits of tf_trapno for vkernel consumption.
-		 */
-		if (p->p_vkernel) {
-			frame->tf_trapno |= (code << 16);
-		}
 		break;
 
 	case T_DIVIDE:		/* integer divide fault */
@@ -1392,11 +1375,21 @@ go_user(struct trapframe frame)
 {
 	int r;
 
+	/*
+	 * Interrupts may be disabled on entry, make sure all signals
+	 * can be received before beginning our loop.
+	 */
+	sigsetmask(0);
+
+	/*
+	 * Switch to the current simulated user process, then call
+	 * user_trap() when we break out of it (usually due to a signal).
+	 */
 	for (;;) {
 #if 0
-		kprintf("GO USER VMSPC %p pid %-4d %s\n", 
+		kprintf("GO USER VMSPC %p pid %-4d %s (blocked %08x)\n", 
 			&curproc->p_vmspace->vm_pmap,
-			curproc->p_pid, curproc->p_comm);
+			curproc->p_pid, curproc->p_comm, sigblock(0));
 #endif
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				&frame, &curthread->td_savevext);
@@ -1408,9 +1401,15 @@ go_user(struct trapframe frame)
 				frame.tf_trapno, frame.tf_eip, frame.tf_err, frame.tf_xflags);
 #endif
 			user_trap(&frame);
+		} else if (mycpu->gd_reqflags & RQF_AST_MASK) {
+#if 0
+			kprintf("reqflags %08x %08x %d\n", mycpu->gd_reqflags, sigblock(0), curthread->td_pri);
+#endif
+			frame.tf_trapno = T_ASTFLT;
+			user_trap(&frame);
 		} else {
 #if 0
-			kprintf("Kernel AST\n");
+			kprintf("Kernel AST %08x\n", sigblock(0));
 #endif
 		}
 	}
