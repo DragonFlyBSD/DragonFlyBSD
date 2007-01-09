@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.5 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.6 2007/01/09 00:49:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -111,7 +111,14 @@ splz(void)
 
 	atomic_clear_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
 	while ((irq = ffs(gd->gd_spending)) != 0) {
-	    irq = irq - 1 + FIRST_SOFTINT;
+	    --irq;
+	    atomic_clear_int(&gd->gd_spending, 1 << irq);
+	    irq += FIRST_SOFTINT;
+	    sched_ithd(irq);
+	}
+	while ((irq = ffs(gd->gd_fpending)) != 0) {
+	    --irq;
+	    atomic_clear_int(&gd->gd_fpending, 1 << irq);
 	    sched_ithd(irq);
 	}
 }

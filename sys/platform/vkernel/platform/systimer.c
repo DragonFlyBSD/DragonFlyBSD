@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.3 2007/01/07 02:42:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.4 2007/01/09 00:49:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,8 +40,11 @@
 #include <sys/systimer.h>
 #include <sys/sysctl.h>
 #include <sys/signal.h>
+#include <sys/interrupt.h>
+#include <sys/bus.h>
 #include <sys/time.h>
 #include <machine/cpu.h>
+#include <machine/globaldata.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -58,7 +61,8 @@ int wall_cmos_clock = 0;
  */
 static sysclock_t vkernel_timer_get_timecount(void);
 static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
-static void cputimer_intr(int signo);
+static void cputimer_intr_hard(int signo);
+static void cputimer_intr(void *dummy, void *frame);
 
 static struct cputimer vkernel_cputimer = {
         SLIST_ENTRY_INITIALIZER,
@@ -125,10 +129,12 @@ cputimer_intr_config(struct cputimer *timer)
 
 	kprintf("cputimer_intr_config\n");
 	bzero(&sa, sizeof(sa));
-	sa.sa_handler = cputimer_intr;
+	sa.sa_handler = cputimer_intr_hard;
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGIO);
 	sigaction(SIGALRM, &sa, NULL);
+	register_int(0, cputimer_intr, NULL, "timer",
+		     NULL, INTR_FAST|INTR_MPSAFE);
 }
 
 /*
@@ -156,7 +162,24 @@ cputimer_intr_reload(sysclock_t reload)
  */
 static
 void
-cputimer_intr(int signo)
+cputimer_intr_hard(int signo)
+{
+	struct mdglobaldata *gd = mdcpu;
+
+	/*
+	 * XXX check critical section hack
+	 */
+	if (curthread->td_pri >= TDPRI_CRIT) {
+		atomic_set_int(&gd->gd_fpending, 1);
+		atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
+	} else {
+		cputimer_intr(NULL, NULL);
+	}
+}
+
+static
+void
+cputimer_intr(void *dummy, void *frame)
 {
 	static sysclock_t sysclock_count;
 	struct globaldata *gd = mycpu;
