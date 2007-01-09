@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.92 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.93 2007/01/09 07:03:32 dillon Exp $
  */
 
 /*
@@ -261,10 +261,6 @@ recheck:
 	 * to restore the virtual kernel's vmspace before posting the upcall.
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
-		if (p->p_vkernel && p->p_vkernel->vk_current) {
-			frame->tf_trapno = 0;
-			vkernel_trap(p, frame);
-		}
 		p->p_flag &= ~P_UPCALLPEND;
 		get_mplock();
 		postupcall(lp);
@@ -277,10 +273,6 @@ recheck:
 	 * to restore the virtual kernel's vmspace before posting the signal.
 	 */
 	if ((sig = CURSIG(p)) != 0) {
-		if (p->p_vkernel && p->p_vkernel->vk_current) {
-			frame->tf_trapno = 0;
-			vkernel_trap(p, frame);
-		}
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
