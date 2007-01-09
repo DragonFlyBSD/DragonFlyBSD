@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.6 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.7 2007/01/09 21:17:00 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -326,6 +326,20 @@ ata_interrupt(void *data)
 	/* do we have a running request */
 	if (!(request = ch->running))
 	    break;
+
+	/* XXX TGEN Ignore weird ATAPI+DMA interrupts on SMP */
+	if (ch->dma && (request->flags & ATA_R_ATAPI)) {
+            int status = ATA_IDX_INB(ch, ATA_STATUS);
+	    int error = ATA_IDX_INB(ch, ATA_ERROR);
+	    int bmstat = ATA_IDX_INB(ch, ATA_BMSTAT_PORT) & ATA_BMSTAT_MASK;
+	    if (((status & (ATA_S_DWF|ATA_S_DRQ)) == (ATA_S_DWF|ATA_S_DRQ)) &&
+		((error & ATA_E_ILI) == ATA_E_ILI) &&
+		!(bmstat & ATA_BMSTAT_ERROR)) {
+                if (bootverbose)
+                    device_printf(request->dev, "ignoring weird interrupt\n");
+		break;
+	    }
+	}
 
 	ATA_DEBUG_RQ(request, "interrupt");
 
