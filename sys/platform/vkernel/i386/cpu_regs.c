@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.5 2007/01/08 08:17:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.6 2007/01/09 06:04:57 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -673,7 +673,7 @@ cpu_idle(void)
 			if (!lwkt_runnable()) {
 				sigpause(0);
 			} else {
-				sigblock(0);
+				sigsetmask(0);
 			}
 #ifdef SMP
 			else {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.6 2007/01/09 00:49:03 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.7 2007/01/09 06:04:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -126,7 +126,7 @@ splz(void)
 void
 cpu_disable_intr(void)
 {
-	sigblock(-1 & ~((1 << SIGINT) | (1 << SIGQUIT)));
+	sigblock(SIGALRM);
 }
 
 void
