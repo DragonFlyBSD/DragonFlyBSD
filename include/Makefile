@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.31 2006/11/07 06:57:02 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.32 2007/01/09 14:22:16 corecode Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -53,7 +53,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
 	vfs/smbfs vfs/udf vfs/ufs \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
-	net/bridge net/tun net/ppp net/ppp_layer net/sl \
+	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
 	net/pf net/altq \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
