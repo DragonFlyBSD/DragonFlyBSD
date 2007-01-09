@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.3 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.4 2007/01/09 20:56:16 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -216,6 +216,12 @@ static int
 acd_open(struct dev_open_args *ap)
 {
     device_t dev = ap->a_head.a_dev->si_drv1;
+    /* XXX TGEN Sometimes, we're fed a cdev_t which we didn't create. It
+       doesn't have si_drv1 set, leading to evil NULL derefs. I can actually
+       recover our device_t otherwise, but really, this is a bug, so I'll bail
+       out. */
+    if (!dev)
+        return ENXIO;
     struct ata_device *atadev = device_get_softc(dev);
     struct acd_softc *cdp = device_get_ivars(dev);
     struct ata_request *request;
