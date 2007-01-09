@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.152 2007/01/09 08:28:10 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.153 2007/01/09 17:04:01 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -460,7 +460,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}2/sys_{get,set}_tls_area.2.gz"
 	csh -c "rm -f ${DESTDIR}/modules/{snd,snd_pcm}.ko"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/CTR[0-6].9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/CTR{0,1,2,3,4,5,6}.9.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/a{sleep,wait}.9.gz"
 	rm -f ${DESTDIR}/usr/include/machine/physio_proc.h
 	ldconfig -R
