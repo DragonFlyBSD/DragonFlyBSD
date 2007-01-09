@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/vframe.h,v 1.1 2007/01/08 16:34:10 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/vframe.h,v 1.2 2007/01/09 23:34:01 dillon Exp $
  */
 
 #ifndef _CPU_VFRAME_H_
@@ -49,15 +49,8 @@
  * addition to trapframe.
  */
 struct vextframe {
-        int     vx_features;    /* enabled features */
-        int     vx_changes;     /* changes made on control transfer */
-        union savefpu vx_fpu;
 	struct savetls vx_tls;
 };
-
-#define VXF_FP87	0x0001
-#define VXF_XMM		0x0002
-#define VXF_TLS		0x0004
 
 #endif
 

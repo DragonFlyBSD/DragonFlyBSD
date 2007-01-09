@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.24 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.25 2007/01/09 23:34:03 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -112,5 +112,6 @@ void	setidt (int idx, alias_for_inthand_t *func, int typ, int dpl,
 		    int selec);
 void	userconfig (void);
 int     user_dbreg_trap (void);
+int     npxdna(void);
 
 #endif /* !_MACHINE_MD_VAR_H_ */

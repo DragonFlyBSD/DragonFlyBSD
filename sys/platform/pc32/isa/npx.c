@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.39 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.40 2007/01/09 23:34:04 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -973,13 +973,6 @@ fpusave(union savefpu *addr)
 	else
 #endif
 		fnsave(addr);
-}
-
-void
-npxsync(void)
-{
-	if (curthread == mdcpu->gd_npxthread)
-		npxsave(curthread->td_savefpu);
 }
 
 #ifndef CPU_DISABLE_SSE

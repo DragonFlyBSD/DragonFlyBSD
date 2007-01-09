@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.4 2007/01/09 23:34:05 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -102,7 +102,6 @@ static	void	fpu_clean_state(void);
 int cpu_fxsr = 0;
 
 static	int	npx_attach	(device_t dev);
-	void	npx_intr	(void *);
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
@@ -326,6 +325,8 @@ static char fpetable[128] = {
 	FPE_FLTSUB,	/* 7F - INV | DNML | DZ | OFL | UFL | IMP | STK */
 };
 
+#if 0
+
 /*
  * Preserve the FP status word, clear FP exceptions, then generate a SIGFPE.
  *
@@ -441,6 +442,8 @@ npx_intr(void *dummy)
 	crit_exit();
 }
 
+#endif
+
 /*
  * Implement the device not available (DNA) exception.  gd_npxthread had 
  * better be NULL.  Restore the current thread's FP state and set gd_npxthread
@@ -450,7 +453,7 @@ npx_intr(void *dummy)
  * section to stabilize the FP state.
  */
 int
-npxdna(void)
+npxdna(struct trapframe *frame)
 {
 	u_long *exstat;
 
@@ -531,13 +534,6 @@ fpusave(union savefpu *addr)
 		fxsave(addr);
 	else
 		fnsave(addr);
-}
-
-void
-npxsync(void)
-{
-	if (curthread == mdcpu->gd_npxthread)
-		npxsave(curthread->td_savefpu);
 }
 
 #ifndef CPU_DISABLE_SSE

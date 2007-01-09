@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.8 2006/06/10 18:07:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.9 2007/01/09 23:34:02 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -337,6 +337,9 @@ ENTRY(asm_generic_bcopy)
 	 * critical section, because TS may get set by a preemptive
 	 * interrupt.  However, we *can* race a load/set-ts/store against
 	 * an interrupt doing the same thing.
+	 *
+	 * WARNING! A Virtual kernel depends on CR0_TS remaining set after
+	 * we use the FP unit if it asked it to be set.
 	 */
 
 #define MMX_RESTORE_BLOCK			\

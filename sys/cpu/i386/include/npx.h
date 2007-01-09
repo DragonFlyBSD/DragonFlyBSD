@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.11 2007/01/08 03:33:37 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.12 2007/01/09 23:34:01 dillon Exp $
  */
 
 /*
@@ -151,12 +151,11 @@ union	savefpu {
 #ifdef _KERNEL
 
 struct proc;
+struct trapframe;
 
-int	npxdna (void);
 void	npxexit (void);
 void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
-void	npxsync (void);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

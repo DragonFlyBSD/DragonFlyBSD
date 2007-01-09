@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.8 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.9 2007/01/09 23:34:06 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -194,6 +194,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			p->p_vmspace = ve->vmspace;
 			pmap_activate(p);
 			set_user_TLS();
+			set_vkernel_fp(uap->sysmsg_frame);
 			error = EJUSTRETURN;
 		}
 		break;

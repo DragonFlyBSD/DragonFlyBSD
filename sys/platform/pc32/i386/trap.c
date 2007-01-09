@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.93 2007/01/09 07:03:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.94 2007/01/09 23:34:02 dillon Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #include <machine/pcb.h>
 #include <machine/smp.h>
 #include <machine/tss.h>
+#include <machine/specialreg.h>
 #include <machine/globaldata.h>
 
 #include <machine_base/isa/intr_machdep.h>
@@ -610,6 +611,24 @@ restart:
 			break;
 
 		case T_DNA:
+			/*
+			 * Virtual kernel intercept - pass the DNA exception
+			 * to the virtual kernel if it asked to handle it.
+			 * This occurs when the virtual kernel is holding
+			 * onto the FP context for a different emulated
+			 * process then the one currently running.
+			 *
+			 * We must still call npxdna() since we may have
+			 * saved FP state that the virtual kernel needs
+			 * to hand over to a different emulated process.
+			 */
+			if (p->p_vkernel && p->p_vkernel->vk_current &&
+			    (td->td_pcb->pcb_flags & FP_VIRTFP)
+			) {
+				npxdna();
+				break;
+			}
+
 #if NNPX > 0
 			/* 
 			 * The kernel may have switched out the FP unit's
@@ -1437,3 +1456,25 @@ fork_return(struct lwp *lp, struct trapframe frame)
 	rel_mplock();
 #endif
 }
+
+/*
+ * If FPEX_FAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
+ * fault (which is then passed back to the virtual kernel) if an attempt is
+ * made to use the FP unit.
+ *
+ * XXX this is a fairly big hack.
+ */
+void
+set_vkernel_fp(struct trapframe *frame)
+{
+	struct thread *td = curthread;
+
+	if (frame->tf_xflags & FPEX_FAULT) {
+		td->td_pcb->pcb_flags |= FP_VIRTFP;
+		if (mdcpu->gd_npxthread == td)
+			npxexit();
+	} else {
+		td->td_pcb->pcb_flags &= ~FP_VIRTFP;
+	}
+}
+

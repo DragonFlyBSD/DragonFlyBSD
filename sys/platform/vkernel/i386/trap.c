@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.7 2007/01/09 07:23:02 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.8 2007/01/09 23:34:05 dillon Exp $
  */
 
 /*
@@ -533,6 +533,23 @@ restart:
 		break;
 
 	case T_DNA:
+		/*
+		 * Virtual kernel intercept - pass the DNA exception
+		 * to the (emulated) virtual kernel if it asked to handle 
+		 * it.  This occurs when the virtual kernel is holding
+		 * onto the FP context for a different emulated
+		 * process then the one currently running.
+		 *
+		 * We must still call npxdna() since we may have
+		 * saved FP state that the (emulated) virtual kernel
+		 * needs to hand over to a different emulated process.
+		 */
+		if (p->p_vkernel && p->p_vkernel->vk_current &&
+		    (td->td_pcb->pcb_flags & FP_VIRTFP)
+		) {
+			npxdna(frame);
+			break;
+		}
 #if NNPX > 0
 		/* 
 		 * The kernel may have switched out the FP unit's
@@ -540,7 +557,7 @@ restart:
 		 * when it tries to use the FP unit.  Restore the
 		 * state here
 		 */
-		if (npxdna())
+		if (npxdna(frame))
 			goto out;
 #endif
 		if (!pmath_emulate) {
@@ -677,7 +694,8 @@ kernel_trap:
 		 * The kernel may be using npx for copying or other
 		 * purposes.
 		 */
-		if (npxdna())
+		panic("kernel NPX should not happen");
+		if (npxdna(frame))
 			goto out2;
 #endif
 		break;
@@ -1391,6 +1409,20 @@ go_user(struct trapframe frame)
 			&curproc->p_vmspace->vm_pmap,
 			curproc->p_pid, curproc->p_comm, sigblock(0));
 #endif
+
+		/*
+		 * Tell the real kernel whether it is ok to use the FP
+		 * unit or not.
+		 */
+		if (mdcpu->gd_npxthread == curthread) {
+			frame.tf_xflags &= ~FPEX_FAULT;
+		} else {
+			frame.tf_xflags |= FPEX_FAULT;
+		}
+
+		/*
+		 * Run emulated user process context
+		 */
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				&frame, &curthread->td_savevext);
 		if (r < 0)
@@ -1412,6 +1444,28 @@ go_user(struct trapframe frame)
 			kprintf("Kernel AST %08x\n", sigblock(0));
 #endif
 		}
+	}
+}
+
+/*
+ * If FPEX_FAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
+ * fault (which is then passed back to the virtual kernel) if an attempt is
+ * made to use the FP unit.
+ * 
+ * XXX this is a fairly big hack.
+ */
+void
+set_vkernel_fp(struct trapframe *frame)
+{
+	struct thread *td = curthread;
+
+	panic("set_vkernel_fp: vkernel-within-vkernel not yet supported");
+	if (frame->tf_xflags & FPEX_FAULT) {
+		td->td_pcb->pcb_flags |= FP_VIRTFP;
+		if (mdcpu->gd_npxthread == td)
+			npxexit();
+	} else {
+		td->td_pcb->pcb_flags &= ~FP_VIRTFP;
 	}
 }
 

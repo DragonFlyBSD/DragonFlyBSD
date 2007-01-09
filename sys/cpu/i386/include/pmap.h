@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.12 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.13 2007/01/09 23:34:01 dillon Exp $
  */
 
 #ifndef _CPU_PMAP_H_
@@ -76,11 +76,20 @@
 #define PG_N		(PG_NC_PWT|PG_NC_PCD)	/* Non-cacheable */
 
 /*
- * Page Protection Exception bits
+ * Page Protection Exception bits, stored in tf_err on a real fault
+ * and in tf_xflags on a signal frame or virtual kernel's trap frame.
+ * These only apply to T_PAGEFLT faults.
  */
-
 #define PGEX_P		0x01	/* Protection violation vs. not present */
 #define PGEX_W		0x02	/* during a Write cycle */
 #define PGEX_U		0x04	/* access from User mode (UPL) */
+
+/*
+ * Virtual kernel bits, managed by software.
+ *
+ * FPEX_FAULT -	Force the FP unit to generate a T_DNA fault if an emulated
+ *		user process tried to use it.
+ */
+#define FPEX_FAULT	0x80
 
 #endif /* !_CPU_PMAP_H_ */

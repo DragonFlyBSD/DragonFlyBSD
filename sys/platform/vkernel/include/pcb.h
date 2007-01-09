@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pcb.h,v 1.2 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pcb.h,v 1.3 2007/01/09 23:34:05 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_H_
@@ -47,7 +47,7 @@
 #include <machine/npx.h>
 
 struct pcb {
-	int	pcb_cr3;
+	int	pcb_unused01;
 	int	pcb_edi;
 	int	pcb_esi;
 	int	pcb_ebp;
@@ -67,6 +67,7 @@ struct pcb {
 	u_char	pcb_flags;
 #define	FP_SOFTFP	0x01	/* process using software fltng pnt emulator */
 #define	PCB_DBREGS	0x02	/* process using debug registers */
+#define FP_VIRTFP	0x04	/* virtual kernel wants exception */
 	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
 	int	pcb_unused;
 	struct	pcb_ext	*pcb_ext;	/* optional pcb extension */
