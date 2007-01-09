@@ -1,6 +1,6 @@
 # VKERNEL - test rid for virtual kernel
 #
-# $DragonFly: src/sys/config/VKERNEL,v 1.5 2007/01/07 02:42:10 dillon Exp $
+# $DragonFly: src/sys/config/VKERNEL,v 1.6 2007/01/09 18:26:55 dillon Exp $
 
 machine		vkernel		# platform architecture (i386, vkernel, etc)
 machine_arch	i386		# cpu architecture (i386, etc)
@@ -93,4 +93,4 @@ pseudo-device	bpf		#Berkeley packet filter
 
 # VIRTUAL DEVICES
 #
-device		vd
+device		vkd

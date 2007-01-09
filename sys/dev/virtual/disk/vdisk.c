@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.1 2007/01/07 02:41:20 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.2 2007/01/09 18:26:56 dillon Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-struct vd_softc {
+struct vkd_softc {
 	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
@@ -67,22 +67,22 @@ struct vd_softc {
 
 #define CDEV_MAJOR	97
 
-static d_strategy_t	vdstrategy;
-static d_open_t		vdopen;
+static d_strategy_t	vkdstrategy;
+static d_open_t		vkdopen;
 
-static struct dev_ops vd_ops = {
-	{ "vd", CDEV_MAJOR, D_DISK },
-        .d_open =	vdopen,
+static struct dev_ops vkd_ops = {
+	{ "vkd", CDEV_MAJOR, D_DISK },
+        .d_open =	vkdopen,
         .d_close =	nullclose,
         .d_read =	physread,
         .d_write =	physwrite,
-        .d_strategy =	vdstrategy,
+        .d_strategy =	vkdstrategy,
 };
 
 static void
-vdinit(void *dummy __unused)
+vkdinit(void *dummy __unused)
 {
-	struct vd_softc *sc;
+	struct vkd_softc *sc;
 	struct stat st;
 
 	if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0)
@@ -92,11 +92,11 @@ vdinit(void *dummy __unused)
 	sc->unit = 0;
 	sc->fd = RootImageFd;
 	bioq_init(&sc->bio_queue);
-	devstat_add_entry(&sc->stats, "vd", sc->unit, DEV_BSIZE,
+	devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
 			  DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 			  DEVSTAT_PRIORITY_DISK);
-	sc->dev = disk_create(sc->unit, &sc->disk, 0, &vd_ops);
+	sc->dev = disk_create(sc->unit, &sc->disk, 0, &vkd_ops);
 	sc->dev->si_drv1 = sc;
 	sc->dev->si_iosize_max = 256 * 1024;
 #if 0
@@ -110,12 +110,12 @@ vdinit(void *dummy __unused)
 #endif
 }
 
-SYSINIT(vdisk, SI_SUB_DRIVERS, SI_ORDER_FIRST, vdinit, NULL);
+SYSINIT(vkdisk, SI_SUB_DRIVERS, SI_ORDER_FIRST, vkdinit, NULL);
 
 static int
-vdopen(struct dev_open_args *ap)
+vkdopen(struct dev_open_args *ap)
 {
-	struct vd_softc *sc;
+	struct vkd_softc *sc;
 	struct disklabel *dl;
 	struct stat st;
 	cdev_t dev;
@@ -139,11 +139,11 @@ vdopen(struct dev_open_args *ap)
 }
 
 static int
-vdstrategy(struct dev_strategy_args *ap)
+vkdstrategy(struct dev_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
 	struct buf *bp;
-	struct vd_softc *sc;
+	struct vkd_softc *sc;
 	cdev_t dev;
 	int n;
 
@@ -168,7 +168,7 @@ vdstrategy(struct dev_strategy_args *ap)
 			n = write(sc->fd, bp->b_data, bp->b_bcount);
 			break;
 		default:
-			panic("vd: bad b_cmd %d", bp->b_cmd);
+			panic("vkd: bad b_cmd %d", bp->b_cmd);
 			break; /* not reached */
 		}
 		if (n != bp->b_bcount) {
