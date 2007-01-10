@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.30 2004/10/05 21:24:20 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.5 2007/01/10 08:41:18 hsu Exp $
+ *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.31 2005/02/14 11:21:48 scottl Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.6 2007/01/10 12:23:23 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -378,6 +378,28 @@ acpi_handle_ecdt(struct ACPIsdt *sdp)
 }
 
 static void
+acpi_handle_mcfg(struct ACPIsdt *sdp)
+{
+	struct MCFGbody *mcfg;
+	u_int i, e;
+
+	printf(BEGIN_COMMENT);
+	acpi_print_sdt(sdp);
+	mcfg = (struct MCFGbody *) sdp->body;
+
+	e = (sdp->len - ((caddr_t)&mcfg->s[0] - (caddr_t)sdp)) /
+	    sizeof(*mcfg->s);
+	for (i = 0; i < e; i++, mcfg++) {
+		printf("\n");
+		printf("\tBase Address= 0x%016jx\n", mcfg->s[i].baseaddr);
+		printf("\tSegment Group= 0x%04x\n", mcfg->s[i].seg_grp);
+		printf("\tStart Bus= %d\n", mcfg->s[i].start);
+		printf("\tEnd Bus= %d\n", mcfg->s[i].end);
+	}
+	printf(END_COMMENT);
+}
+
+static void
 acpi_print_sdt(struct ACPIsdt *sdp)
 {
 	printf("  ");
@@ -684,6 +706,8 @@ acpi_handle_rsdt(struct ACPIsdt *rsdp)
 			acpi_handle_hpet(sdp);
 		else if (!memcmp(sdp->signature, "ECDT", 4))
 			acpi_handle_ecdt(sdp);
+		else if (!memcmp(sdp->signature, "MCFG", 4))
+			acpi_handle_mcfg(sdp);
 		else {
 			printf(BEGIN_COMMENT);
 			acpi_print_sdt(sdp);

@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.19 2004/10/05 20:45:05 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.3 2007/01/10 08:44:30 hsu Exp $
+ *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.21 2005/02/17 21:09:26 scottl Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.4 2007/01/10 12:23:23 hsu Exp $
  */
 
 #ifndef _ACPIDUMP_H_
@@ -292,6 +292,18 @@ struct ECDTbody {
 	uint32_t	uid;		/* Same value as _UID in namespace */
 	uint8_t		gpe_bit;	/* GPE bit for the EC */
 	u_char		ec_id[1];	/* Variable length name string */
+} __packed;
+
+/* Memory Mapped PCI config space base allocation structure */
+struct MCFGbody {
+	uint8_t		rsvd[8];
+	struct {
+		uint64_t	baseaddr;	/* Base Address */
+		uint16_t	seg_grp;	/* Segment group number */
+		uint8_t		start;		/* Starting bus number */
+		uint8_t		end;		/* Ending bus number */
+		uint8_t		rsvd[4];	/* Reserved */
+	} s[1] __packed;
 } __packed;
 
 /*
