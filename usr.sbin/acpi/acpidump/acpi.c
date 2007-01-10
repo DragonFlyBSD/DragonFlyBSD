@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.27 2004/08/18 05:56:07 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.4 2007/01/10 07:37:44 hsu Exp $
+ *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.30 2004/10/05 21:24:20 njl Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.5 2007/01/10 08:41:18 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -720,6 +720,7 @@ sdt_load_devmem(void)
 	return (rsdp);
 }
 
+/* Write the DSDT to a file, concatenating any SSDTs (if present). */
 static int
 write_dsdt(int fd, struct ACPIsdt *rsdt, struct ACPIsdt *dsdt)
 {
@@ -727,6 +728,7 @@ write_dsdt(int fd, struct ACPIsdt *rsdt, struct ACPIsdt *dsdt)
 	struct ACPIsdt *ssdt;
 	uint8_t sum;
 
+	/* Create a new checksum to account for the DSDT and any SSDTs. */
 	sdt = *dsdt;
 	if (rsdt != NULL) {
 		sdt.check = 0;
@@ -741,8 +743,12 @@ write_dsdt(int fd, struct ACPIsdt *rsdt, struct ACPIsdt *dsdt)
 		sum += acpi_checksum(&sdt, SIZEOF_SDT_HDR);
 		sdt.check -= sum;
 	}
+
+	/* Write out the DSDT header and body. */
 	write(fd, &sdt, SIZEOF_SDT_HDR);
 	write(fd, dsdt->body, dsdt->len - SIZEOF_SDT_HDR);
+
+	/* Write out any SSDTs (if present.) */
 	if (rsdt != NULL) {
 		ssdt = sdt_from_rsdt(rsdt, "SSDT", NULL);
 		while (ssdt != NULL) {
