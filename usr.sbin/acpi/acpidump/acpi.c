@@ -24,9 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.26 2004/08/13 22:59:09 m
- arcel Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.3 2007/01/10 07:23:49 hsu Exp $
+ *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.27 2004/08/18 05:56:07 njl Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.4 2007/01/10 07:37:44 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -672,8 +671,11 @@ acpi_handle_rsdt(struct ACPIsdt *rsdp)
 		}
 
 		sdp = (struct ACPIsdt *)acpi_map_sdt(addr);
-		if (acpi_checksum(sdp, sdp->len))
-			errx(1, "RSDT entry %d is corrupt", i);
+		if (acpi_checksum(sdp, sdp->len)) {
+			warnx("RSDT entry %d (sig %.4s) is corrupt", i,
+			    sdp->signature);
+			continue;
+		}
 		if (!memcmp(sdp->signature, "FACP", 4))
 			acpi_handle_fadt(sdp);
 		else if (!memcmp(sdp->signature, "APIC", 4))
