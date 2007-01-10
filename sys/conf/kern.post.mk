@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.5 2006/12/13 19:39:52 tgen Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.6 2007/01/10 16:41:37 corecode Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -8,7 +8,7 @@
 all: ${KERNEL}.stripped
 
 _MACHINE_FWD=	${.OBJDIR}
-depend kernel-depend modules-depend: forwarding-headers
+depend kernel-depend modules-depend: ${FORWARD_HEADERS_COOKIE}
 
 depend: kernel-depend
 clean:  kernel-clean
@@ -66,7 +66,7 @@ hack.So: Makefile
 assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
-genassym.o: $S/machine/$P/$M/genassym.c forwarding-headers
+genassym.o: $S/machine/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE}
 	${CC} -c ${CFLAGS:N-fno-common} $S/machine/$P/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h

@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.6 2006/12/13 15:29:50 y0netan1 Exp $
+# $DragonFly: src/sys/conf/kern.fwd.mk,v 1.7 2007/01/10 16:41:37 corecode Exp $
 
 # Create forwarding headers for ${SYSDIR}/cpu/${MACHINE_ARCH}/*.h in
 # ${_MACHINE_FWD}/include/machine and share the directory among module build
@@ -39,8 +39,9 @@ ${_fwd}: ${SYSDIR}/sys/${_h}
 ${_MACHINE_FWD} ${_MACHINE_FWD}/include/machine:
 	@mkdir -p ${.TARGET}
 
-forwarding-headers: ${_MACHINE_FWD}/include/machine ${_FWDHDRS} ${_LHDRS}
-	@touch ${_MACHINE_FWD}/.done
+FORWARD_HEADERS_COOKIE=	${_MACHINE_FWD}/.done
+${FORWARD_HEADERS_COOKIE}: ${_MACHINE_FWD}/include/machine ${_FWDHDRS} ${_LHDRS}
+	@touch ${.TARGET}
 
 ${_FWDHDRS}:
 	@(echo "creating machine/ forwarding header ${.TARGET}" 1>&2; \
