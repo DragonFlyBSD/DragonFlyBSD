@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.17 2007/01/10 03:04:28 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.18 2007/01/10 08:08:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -288,6 +288,7 @@ init_kern_memory(void)
 	 */
 	base = mmap((void *)0x40000000, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
 		    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE, MemImageFd, 0);
+	madvise(base, KERNEL_KVA_SIZE, MADV_NOSYNC);
 	if (base == MAP_FAILED) {
 		err(1, "Unable to mmap() kernel virtual memory!");
 		/* NOT REACHED */

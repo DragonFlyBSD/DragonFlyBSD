@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.9 2007/01/08 19:45:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.10 2007/01/10 08:08:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -374,16 +374,22 @@ cpu_vmspace_alloc(struct vmspace *vm)
 			  MemImageFd, 0);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed1");
+	vmspace_mcontrol(&vm->vm_pmap, (void *)0x00000000, 0x40000000,
+			 MADV_NOSYNC, 0);
 	rp = vmspace_mmap(&vm->vm_pmap, (void *)0x40000000, 0x40000000,
 			  PROT_READ|PROT_WRITE,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0x40000000);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed2");
+	vmspace_mcontrol(&vm->vm_pmap, (void *)0x40000000, 0x40000000,
+			 MADV_NOSYNC, 0);
 	rp = vmspace_mmap(&vm->vm_pmap, (void *)0x80000000, LAST_EXTENT,
 			  PROT_READ|PROT_WRITE,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0x80000000);
+	vmspace_mcontrol(&vm->vm_pmap, (void *)0x80000000, LAST_EXTENT,
+			 MADV_NOSYNC, 0);
 	if (rp == MAP_FAILED)
 		panic("vmspace_mmap: failed3");
 
