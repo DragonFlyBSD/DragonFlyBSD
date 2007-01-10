@@ -27,8 +27,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.16 2004/06/04 19:21:06 ru Exp $
-.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.4 2006/08/18 01:42:58 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.18 2004/08/16 20:33:20
+marcel Exp $
+.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.5 2007/01/10 07:23:49 hsu Exp $
 .\"
 .Dd August 31, 2000
 .Dt ACPIDUMP 8
@@ -67,6 +68,9 @@ The
 .Nm
 utility can extract the DSDT data block from physical memory and store it into
 a DSDT output file and optionally also disassemble it.
+If Secondary System Description Table (SSDT) entries exist, then the DSDT
+output file will include those tables.
+Disassembly of the DSDT will also include SSDT tables, if such exist.
 .Pp
 When
 .Nm
@@ -186,6 +190,5 @@ and
 In the current implementation,
 .Nm
 does not dump the
-Secondary System Descriptor Table (SSDT),
 Embedded Controller Descriptor Table (ECDT),
 or BOOT structures.
