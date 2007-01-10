@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.18 2007/01/10 08:08:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.19 2007/01/10 13:33:23 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -67,6 +67,7 @@ vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
 int RootImageFd = -1;
+int NetifFd = -1;
 vm_offset_t KvaStart;
 vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
@@ -93,6 +94,7 @@ static void init_kern_memory(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
 static void init_rootdevice(char *imageFile);
+static void init_netif(char *netifFile);
 static void usage(const char *ctl);
 
 /*
@@ -103,6 +105,7 @@ main(int ac, char **av)
 {
 	char *memImageFile = NULL;
 	char *rootImageFile = NULL;
+	char *netifFile = NULL;
 	char *suffix;
 	int c;
 	int i;
@@ -111,7 +114,7 @@ main(int ac, char **av)
 	/*
 	 * Process options
 	 */
-	while ((c = getopt(ac, av, "vm:r:e:")) != -1) {
+	while ((c = getopt(ac, av, "vm:r:e:I:")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -133,6 +136,9 @@ main(int ac, char **av)
 			break;
 		case 'i':
 			memImageFile = optarg;
+			break;
+		case 'I':
+			netifFile = optarg;
 			break;
 		case 'r':
 			rootImageFile = optarg;
@@ -169,6 +175,7 @@ main(int ac, char **av)
 	init_globaldata();
 	init_vkernel();
 	init_rootdevice(rootImageFile);
+	init_netif(netifFile);
 	init_exceptions();
 	mi_startup();
 	/* NOT REACHED */
@@ -523,6 +530,19 @@ init_rootdevice(char *imageFile)
 			/* NOT REACHED */
 		}
 		rootdevnames[0] = "ufs:vkd0a";
+	}
+}
+
+static
+void
+init_netif(char *netifFile)
+{
+	if (netifFile) {
+		NetifFd = open(netifFile, O_RDWR | O_NONBLOCK);
+		if (NetifFd < 0) {
+			warn("Unable to open %s: %s",
+			     netifFile, strerror(errno));
+		}
 	}
 }
 

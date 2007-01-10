@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.31 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.32 2007/01/10 13:33:23 swildner Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -220,7 +220,7 @@ tapcreate(cdev_t dev)
 	/* generate fake MAC address: 00 bd xx xx xx unit_no */
 	ether_addr[0] = 0x00;
 	ether_addr[1] = 0xbd;
-	bcopy(&ticks, ether_addr, 4);
+	bcopy(&ticks, &ether_addr[2], 3);
 	ether_addr[5] = (u_char)unit;
 
 	/* fill the rest and attach interface */	

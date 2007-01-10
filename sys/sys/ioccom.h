@@ -32,7 +32,7 @@
  *
  *	@(#)ioccom.h	8.2 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/ioccom.h,v 1.9 1999/12/29 04:24:42 peter Exp $
- * $DragonFly: src/sys/sys/ioccom.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/ioccom.h,v 1.4 2007/01/10 13:33:22 swildner Exp $
  */
 
 #ifndef	_SYS_IOCCOM_H_
@@ -63,7 +63,7 @@
 /* this should be _IORW, but stdio got there first */
 #define	_IOWR(g,n,t)	_IOC(IOC_INOUT,	(g), (n), sizeof(t))
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 #include <sys/cdefs.h>
 
