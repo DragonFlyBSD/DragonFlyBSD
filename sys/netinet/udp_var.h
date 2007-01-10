@@ -82,7 +82,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.14 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.15 2007/01/10 07:44:02 dillon Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -168,7 +168,7 @@ void			udp_ctlinput (int, struct sockaddr *, void *);
 void			udp_init (void);
 void			udp_thread_init (void);
 void			udp_input (struct mbuf *, ...);
-void			udp_notify (struct inpcb *inp, int errno);
+void			udp_notify (struct inpcb *inp, int error);
 int			udp_shutdown (struct socket *so);
 struct lwkt_port	*udp_soport (struct socket *, struct sockaddr *, int);
 

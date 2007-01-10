@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.37 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.38 2007/01/10 07:44:02 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -604,9 +604,9 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
  * just wake up so that he can collect error status.
  */
 void
-udp_notify(struct inpcb *inp, int errno)
+udp_notify(struct inpcb *inp, int error)
 {
-	inp->inp_socket->so_error = errno;
+	inp->inp_socket->so_error = error;
 	sorwakeup(inp->inp_socket);
 	sowwakeup(inp->inp_socket);
 }
