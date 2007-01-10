@@ -43,7 +43,7 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pmap.h,v 1.4 2007/01/02 04:21:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pmap.h,v 1.5 2007/01/10 09:37:52 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -178,6 +178,9 @@ struct md_page {
  * keep certain statistics.  They may do this anyway they
  * so choose, but are expected to return the statistics
  * in the following structure.
+ *
+ * NOTE: We try to match the size of the pc32 pmap with the vkernel pmap
+ * so the same utilities (like 'ps') can be used on both.
  */
 struct pmap_statistics {
 	long resident_count;    /* # of pages mapped (total) */
@@ -187,11 +190,13 @@ typedef struct pmap_statistics *pmap_statistics_t;
 
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
+	int32_t			pm_filler01;
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
+	int			pm_filler02;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 };
