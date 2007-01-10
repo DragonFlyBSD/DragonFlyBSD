@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.17 2004/08/13 22:59:09 marcel Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.2 2007/01/10 07:23:49 hsu Exp $
+ *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.19 2004/10/05 20:45:05 njl Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpidump.h,v 1.3 2007/01/10 08:44:30 hsu Exp $
  */
 
 #ifndef _ACPIDUMP_H_
