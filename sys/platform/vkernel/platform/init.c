@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.16 2007/01/09 18:26:59 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.17 2007/01/10 03:04:28 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -249,7 +249,7 @@ init_sys_memory(char *imageFile)
 		kprintf("%s: Reserving blocks for memory image\n", imageFile);
 		zmem = malloc(SEG_SIZE);
 		bzero(zmem, SEG_SIZE);
-		lseek(fd, off, 0);
+		lseek(fd, off, SEEK_SET);
 		while (off < Maxmem_bytes) {
 			if (write(fd, zmem, SEG_SIZE) != SEG_SIZE) {
 				err(1, "Unable to reserve blocks for memory image");
