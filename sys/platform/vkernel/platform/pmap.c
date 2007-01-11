@@ -38,7 +38,15 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.10 2007/01/10 08:08:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.11 2007/01/11 10:25:52 dillon Exp $
+ */
+/*
+ * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
+ * the PTE in the page table, because a cpu synchronization might be required.
+ * The actual invalidation is delayed until the following call or flush.  In
+ * the VKERNEL build this function is called prior to adjusting the PTE and
+ * invalidates the table synchronously (not delayed), and is not SMP safe
+ * as a consequence.
  */
 
 #include <sys/types.h>
@@ -509,6 +517,13 @@ inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
 	if (pmap == &kernel_pmap) {
 		va = (vm_offset_t)KernelPTA + (pindex << PAGE_SHIFT);
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	} else {
+		/*
+		 * XXX this should not strictly be needed because the page
+		 * dir should alread be invalidated.  test and remove
+		 */
+		va = (vm_offset_t)pindex << PAGE_SHIFT;
+		vmspace_mcontrol(pmap, (void *)va, SEG_SIZE, MADV_INVAL, 0);
 	}
 	if (pmap->pm_pdir == gd->gd_PT1pdir) {
 		va = (vm_offset_t)gd->gd_PT1map + (pindex << PAGE_SHIFT);
@@ -881,10 +896,15 @@ pmap_growkernel(vm_offset_t size)
  * The modification bit is not tracked for any pages in this range. XXX
  * such pages in this maps should always use pmap_k*() functions and not
  * be managed anyhow.
+ *
+ * XXX User and kernel address spaces are independant for virtual kernels,
+ * this function only applies to the kernel pmap.
  */
 static int
-pmap_track_modified(vm_offset_t va)
+pmap_track_modified(pmap_t pmap, vm_offset_t va)
 {
+	if (pmap != &kernel_pmap)
+		return 1;
 	if ((va < clean_sva) || (va >= clean_eva))
 		return 1;
 	else
@@ -1016,11 +1036,6 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		return 0;
 
 	vm_page_busy(p);
-
-	/*
-	 * Remove the page table page from the processes address space.
-	 */
-	pde[p->pindex] = 0;
 	pmap->pm_stats.resident_count--;
 
 	if (p->hold_count)  {
@@ -1033,10 +1048,17 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 * In virtual kernels there is no 'kernel stuff'.  For the moment
 	 * I just make sure the whole thing has been zero'd even though
 	 * it should already be completely zero'd.
+	 *
+	 * pmaps for vkernels do not self-map because they do not share
+	 * their address space with the vkernel.  Clearing of pde[] thus
+	 * only applies to page table pages and not to the page directory
+	 * page.
 	 */
 	if (p->pindex == pmap->pm_pdindex) {
 		bzero(pde, VPTE_PAGETABLE_SIZE);
 		pmap_kremove((vm_offset_t)pmap->pm_pdir);
+	} else {
+		pde[p->pindex] = 0;
 	}
 
 	/*
@@ -1318,11 +1340,13 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 	vpte_t oldpte;
 	vm_page_t m;
 
-	pmap_inval_add(info, pmap, va);
 	oldpte = loadandclear(ptq);
+	pmap_inval_add(info, pmap, va);	/* See NOTE: PMAP_INVAL_ADD */
 	if (oldpte & VPTE_WIRED)
 		--pmap->pm_stats.wired_count;
 	KKASSERT(pmap->pm_stats.wired_count >= 0);
+
+#if 0
 	/*
 	 * Machines that don't support invlpg, also don't support
 	 * VPTE_G.  XXX VPTE_G is disabled for SMP so don't worry about
@@ -1330,6 +1354,7 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 	 */
 	if (oldpte & VPTE_G)
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+#endif
 	pmap->pm_stats.resident_count -= 1;
 	if (oldpte & VPTE_MANAGED) {
 		m = PHYS_TO_VM_PAGE(oldpte);
@@ -1341,7 +1366,7 @@ pmap_remove_pte(struct pmap *pmap, vpte_t *ptq, vm_offset_t va,
 				    va, oldpte);
 			}
 #endif
-			if (pmap_track_modified(va))
+			if (pmap_track_modified(pmap, va))
 				vm_page_dirty(m);
 		}
 		if (oldpte & VPTE_A)
@@ -1403,6 +1428,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	if (pmap == NULL)
 		return;
 
+ 	KKASSERT(pmap->pm_stats.resident_count >= 0);
 	if (pmap->pm_stats.resident_count == 0)
 		return;
 
@@ -1509,11 +1535,11 @@ pmap_remove_all(vm_page_t m)
 		pv->pv_pmap->pm_stats.resident_count--;
 
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
-		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
-
 		KKASSERT(pte != NULL);
 
 		tpte = loadandclear(pte);
+		/* See NOTE: PMAP_INVAL_ADD */
+		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 		if (tpte & VPTE_WIRED)
 			--pv->pv_pmap->pm_stats.wired_count;
 		KKASSERT(pv->pv_pmap->pm_stats.wired_count >= 0);
@@ -1532,7 +1558,7 @@ pmap_remove_all(vm_page_t m)
 				    pv->pv_va, tpte);
 			}
 #endif
-			if (pmap_track_modified(pv->pv_va))
+			if (pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				vm_page_dirty(m);
 		}
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
@@ -1610,12 +1636,9 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		}
 
 		for (; sindex != pdnxt; sindex++) {
-
-			unsigned pbits;
+			vpte_t pbits;
 			vm_page_t m;
 
-			/* XXX this isn't optimal */
-			pmap_inval_add(&info, pmap, i386_ptob(sindex));
 			pbits = ptbase[sindex - sbase];
 
 			if (pbits & VPTE_MANAGED) {
@@ -1626,7 +1649,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 					pbits &= ~VPTE_A;
 				}
 				if (pbits & VPTE_M) {
-					if (pmap_track_modified(i386_ptob(sindex))) {
+					if (pmap_track_modified(pmap, i386_ptob(sindex))) {
 						if (m == NULL)
 							m = PHYS_TO_VM_PAGE(pbits);
 						vm_page_dirty(m);
@@ -1639,6 +1662,8 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 			if (pbits != ptbase[sindex - sbase]) {
 				ptbase[sindex - sbase] = pbits;
+				/* See NOTE: PMAP_INVAL_ADD */
+				pmap_inval_add(&info, pmap, i386_ptob(sindex));
 			}
 		}
 	}
@@ -1696,7 +1721,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	}
 
 	pa = VM_PAGE_TO_PHYS(m) & VPTE_FRAME;
-	pmap_inval_add(&info, pmap, va); /* XXX non-optimal */
 	origpte = *pte;
 	opa = origpte & VPTE_FRAME;
 #if 0
@@ -1744,7 +1768,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * so we go ahead and sense modify status.
 		 */
 		if (origpte & VPTE_MANAGED) {
-			if ((origpte & VPTE_M) && pmap_track_modified(va)) {
+			if ((origpte & VPTE_M) && pmap_track_modified(pmap, va)) {
 				vm_page_t om;
 				om = PHYS_TO_VM_PAGE(opa);
 				vm_page_dirty(om);
@@ -1798,6 +1822,8 @@ validate:
 	 */
 	if ((origpte & ~(VPTE_M|VPTE_A)) != newpte) {
 		*pte = newpte | VPTE_A;
+		/* See NOTE: PMAP_INVAL_ADD */
+		pmap_inval_add(&info, pmap, va); /* XXX non-optimal */
 	}
 	pmap_inval_flush(&info);
 }
@@ -2282,9 +2308,13 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 					 * Clear the modified and
 					 * accessed (referenced) bits
 					 * during the copy.
+					 *
+					 * Clear the Write bit to force a
+					 * fault if under vpagetable 
+					 * management.
 					 */
 					m = PHYS_TO_VM_PAGE(ptetemp);
-					*dst_pte = ptetemp & ~(VPTE_M | VPTE_A);
+					*dst_pte = ptetemp & ~(VPTE_M | VPTE_A | VPTE_W);
 					dst_pmap->pm_stats.resident_count++;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
@@ -2506,7 +2536,6 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
-		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 		tpte = *pte;
 
 		/*
@@ -2518,6 +2547,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			continue;
 		}
 		*pte = 0;
+		/* See NOTE: PMAP_INVAL_ADD */
+		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 
 		m = PHYS_TO_VM_PAGE(tpte);
 
@@ -2575,7 +2606,7 @@ pmap_testbit(vm_page_t m, int bit)
 		 * modified.
 		 */
 		if (bit & (VPTE_A|VPTE_M)) {
-			if (!pmap_track_modified(pv->pv_va))
+			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				continue;
 		}
 
@@ -2599,11 +2630,12 @@ pmap_testbit(vm_page_t m, int bit)
  * this routine is used to modify bits in ptes
  */
 static __inline void
-pmap_changebit(vm_page_t m, int bit, boolean_t setem)
+pmap_clearbit(vm_page_t m, int bit)
 {
 	struct pmap_inval_info info;
 	pv_entry_t pv;
 	vpte_t *pte;
+	vpte_t pbits;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
@@ -2619,8 +2651,8 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (!setem && (bit == VPTE_W)) {
-			if (!pmap_track_modified(pv->pv_va))
+		if (bit == VPTE_W) {
+			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				continue;
 		}
 
@@ -2635,28 +2667,31 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 		 * Careful here.  We can use a locked bus instruction to
 		 * clear VPTE_A or VPTE_M safely but we need to synchronize
 		 * with the target cpus when we mess with VPTE_W.
+		 *
+		 * On virtual kernels we also have to synchronize if clearing
+		 * VPTE_M since the real kernel may have to force a fault
+		 * to set it again.
 		 */
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
-		if (bit == VPTE_W)
+		if (bit & (VPTE_W|VPTE_M))
 			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 
-		if (setem) {
-#ifdef SMP
-			atomic_set_int(pte, bit);
-#else
-			atomic_set_int_nonlocked(pte, bit);
-#endif
-		} else {
-			vpte_t pbits = *pte;
-			if (pbits & bit) {
-				if (bit == VPTE_W) {
-					if (pbits & VPTE_M) {
-						vm_page_dirty(m);
-					}
-					atomic_clear_int(pte, VPTE_M|VPTE_W);
-				} else {
-					atomic_clear_int(pte, bit);
+		pbits = *pte;
+		if (pbits & bit) {
+			if (bit == VPTE_W) {
+				if (pbits & VPTE_M) {
+					vm_page_dirty(m);
 				}
+				atomic_clear_int(pte, VPTE_M|VPTE_W);
+			} else if (bit == VPTE_M) {
+				/*
+				 * When clearing the modified bit also
+				 * make the page read-only to force
+				 * a fault.
+				 */
+				atomic_clear_int(pte, VPTE_M|VPTE_W);
+			} else {
+				atomic_clear_int(pte, bit);
 			}
 		}
 	}
@@ -2674,7 +2709,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 {
 	if ((prot & VM_PROT_WRITE) == 0) {
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
-			pmap_changebit(m, VPTE_W, FALSE);
+			pmap_clearbit(m, VPTE_W);
 		} else {
 			pmap_remove_all(m);
 		}
@@ -2722,7 +2757,7 @@ pmap_ts_referenced(vm_page_t m)
 
 			TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 
-			if (!pmap_track_modified(pv->pv_va))
+			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				continue;
 
 			pte = pmap_pte(pv->pv_pmap, pv->pv_va);
@@ -2763,7 +2798,7 @@ pmap_is_modified(vm_page_t m)
 void
 pmap_clear_modify(vm_page_t m)
 {
-	pmap_changebit(m, VPTE_M, FALSE);
+	pmap_clearbit(m, VPTE_M);
 }
 
 /*
@@ -2774,7 +2809,7 @@ pmap_clear_modify(vm_page_t m)
 void
 pmap_clear_reference(vm_page_t m)
 {
-	pmap_changebit(m, VPTE_A, FALSE);
+	pmap_clearbit(m, VPTE_A);
 }
 
 /*
