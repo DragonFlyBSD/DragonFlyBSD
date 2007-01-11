@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.38 2007/01/08 23:41:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.39 2007/01/11 10:15:21 dillon Exp $
  */
 
 /*
@@ -378,8 +378,6 @@ RetryFault:
 
 	vm_page_flag_clear(fs.m, PG_ZERO);
 	vm_page_flag_set(fs.m, PG_MAPPED|PG_REFERENCED);
-	if (fs.fault_flags & VM_FAULT_HOLD)
-		vm_page_hold(fs.m);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -434,9 +432,6 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
  *
  * The returned page will be properly dirtied if VM_PROT_WRITE was specified,
  * and marked PG_REFERENCED as well.
- *
- * Since the pmap is not updated, this routine may not be used to wire
- * the page.
  */
 vm_page_t
 vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
@@ -573,7 +568,6 @@ RetryFault:
 	 */
 	vm_page_hold(fs.m);
 	vm_page_flag_clear(fs.m, PG_ZERO);
-	vm_page_flag_set(fs.m, PG_REFERENCED);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
@@ -583,6 +577,7 @@ RetryFault:
 	 * now just do it unconditionally. XXX
 	 */
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
+	vm_page_flag_set(fs.m, PG_REFERENCED|PG_MAPPED);
 
 	/*
 	 * Unbusy the page by activating it.  It remains held and will not
@@ -655,7 +650,8 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 *
 		 * There is currently no real need to optimize this.
 		 */
-		result = vm_fault_object(fs, vpte >> PAGE_SHIFT, VM_PROT_WRITE);
+		result = vm_fault_object(fs, vpte >> PAGE_SHIFT,
+					 VM_PROT_READ|VM_PROT_WRITE);
 		if (result != KERN_SUCCESS)
 			return (result);
 
@@ -679,7 +675,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 */
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
 		    (vpte & VPTE_W)) {
-			if ((vpte & (VPTE_M|VPTE_A)) == 0) {
+			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
 				atomic_set_int(ptep, VPTE_M|VPTE_A);
 				vm_page_dirty(fs->m);
 			}
@@ -738,17 +734,21 @@ vm_fault_object(struct faultstate *fs,
 	 * page mapping writable:
 	 *
 	 * (1) The mapping is read-only or the VM object is read-only,
-	 *     fs->prot above will simply not have VM_PROT_WRITE SET.
+	 *     fs->prot above will simply not have VM_PROT_WRITE set.
 	 *
 	 * (2) If the mapping is a virtual page table we need to be able
 	 *     to detect writes so we can set VPTE_M.
 	 *
 	 * (3) If the VM page is read-only or copy-on-write, upgrading would
 	 *     just result in an unnecessary COW fault.
+	 *
+	 * VM_PROT_VPAGED is set if faulting via a virtual page table and
+	 * causes adjustments to the 'M'odify bit to also turn off write
+	 * access to force a re-fault.
 	 */
-	if (fault_type == VM_PROT_READ && 
-	    fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
-		fs->prot &= ~VM_PROT_WRITE;
+	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		if ((fault_type & VM_PROT_WRITE) == 0)
+			fs->prot &= ~VM_PROT_WRITE;
 	}
 
 	for (;;) {

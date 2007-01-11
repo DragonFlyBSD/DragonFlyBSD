@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.8 2007/01/09 23:34:05 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.9 2007/01/11 10:15:17 dillon Exp $
  */
 
 /*
@@ -863,7 +863,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	}
 
 	if (frame->tf_xflags & PGEX_W)
-		ftype = VM_PROT_WRITE;
+		ftype = VM_PROT_READ | VM_PROT_WRITE;
 	else
 		ftype = VM_PROT_READ;
 
@@ -1427,6 +1427,7 @@ go_user(struct trapframe frame)
 				&frame, &curthread->td_savevext);
 		if (r < 0)
 			panic("vmspace_ctl had problems with the context");
+
 		if (frame.tf_trapno) {
 #if 0
 			kprintf("User trapno %d eip %08x err %08x xflags %d\n",

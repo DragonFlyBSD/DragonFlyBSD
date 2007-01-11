@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.6 2007/01/08 19:45:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.7 2007/01/11 10:15:18 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -131,7 +131,8 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 	error = 0;
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
-				  VM_PROT_READ, VM_FAULT_NORMAL, &error);
+				  VM_PROT_READ,
+				  VM_FAULT_NORMAL, &error);
 		if (error)
 			break;
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
@@ -166,7 +167,8 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 	error = 0;
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
-				  VM_PROT_WRITE, VM_FAULT_NORMAL, &error);
+				  VM_PROT_READ|VM_PROT_WRITE, 
+				  VM_FAULT_NORMAL, &error);
 		if (error)
 			break;
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);

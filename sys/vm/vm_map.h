@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.28 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.29 2007/01/11 10:15:21 dillon Exp $
  */
 
 /*
@@ -413,12 +413,11 @@ vmspace_resident_count(struct vmspace *vmspace)
 /*
  * vm_fault option flags
  */
-#define VM_FAULT_NORMAL 0		/* Nothing special */
-#define VM_FAULT_CHANGE_WIRING 1	/* Change the wiring as appropriate */
-#define VM_FAULT_USER_WIRE 2		/* Likewise, but for user purposes */
-#define VM_FAULT_WIRE_MASK (VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
-#define	VM_FAULT_HOLD 4			/* Hold the page */
-#define VM_FAULT_DIRTY 8		/* Dirty the page */
+#define VM_FAULT_NORMAL		0x00	/* Nothing special */
+#define VM_FAULT_CHANGE_WIRING	0x01	/* Change the wiring as appropriate */
+#define VM_FAULT_USER_WIRE	0x02	/* Likewise, but for user purposes */
+#define VM_FAULT_DIRTY		0x08	/* Dirty the page */
+#define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 
 #ifdef _KERNEL
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
