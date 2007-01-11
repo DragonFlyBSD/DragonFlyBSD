@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.6 2007/01/10 16:41:37 corecode Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.7 2007/01/11 02:49:56 corecode Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -8,6 +8,8 @@
 all: ${KERNEL}.stripped
 
 _MACHINE_FWD=	${.OBJDIR}
+.include "$S/conf/kern.fwd.mk"
+
 depend kernel-depend modules-depend: ${FORWARD_HEADERS_COOKIE}
 
 depend: kernel-depend
@@ -211,5 +213,4 @@ vers.o:
 #vnode_if.o:
 #	${NORMAL_C}
 
-.include "$S/conf/kern.fwd.mk"
 .include "$S/conf/bsd.kern.mk"
