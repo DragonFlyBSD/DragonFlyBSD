@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.20 2007/01/11 02:46:48 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.21 2007/01/11 10:08:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -170,6 +170,7 @@ main(int ac, char **av)
 		}
 	}
 
+	cpu_disable_intr();
 	init_sys_memory(memImageFile);
 	init_kern_memory();
 	init_globaldata();
