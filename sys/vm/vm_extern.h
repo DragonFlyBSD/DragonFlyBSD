@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.23 2007/01/08 19:41:01 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.24 2007/01/11 20:53:42 dillon Exp $
  */
 
 #ifndef _VM_VM_EXTERN_H_
@@ -111,7 +111,6 @@ void vslock (caddr_t, u_int);
 void vsunlock (caddr_t, u_int);
 void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,
 			  char *);
-int vm_fault_quick (caddr_t v, int prot);
 
 static __inline
 vm_offset_t

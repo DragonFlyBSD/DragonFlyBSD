@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.5 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.6 2007/01/11 20:53:41 dillon Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/sysunion.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
+#include <sys/sfbuf.h>
 #include <sys/module.h>
 
 #include <vm/vm.h>
@@ -90,33 +91,36 @@ int
 sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
     int error = EBUSY;
-    vm_paddr_t pa;
+    struct sf_buf *sf;
     vm_page_t m;
     void *waddr;
+    int offset;
     int timeout;
 
     if ((unsigned int)uap->timeout > 1000000)
 	return (EINVAL);
-    if (vm_fault_quick((caddr_t)__DEQUALIFY(int *, uap->ptr), VM_PROT_READ) < 0)
+    if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
+    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
+    if (m == NULL)
+	return (EFAULT);
+    sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
 
-    if (fuword(__DEQUALIFY(const int *, uap->ptr)) == uap->value) {
-	if ((pa = pmap_kextract((vm_offset_t)uap->ptr)) == 0)
-	    return (EFAULT);
-	m = PHYS_TO_VM_PAGE(pa);
-	vm_page_hold(m);
-
+    if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
 	if ((timeout = uap->timeout) != 0)
 	    timeout = (timeout * hz + 999999) / 1000000;
-	waddr = (void *)((intptr_t)pa + ((intptr_t)uap->ptr & PAGE_MASK));
+	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 	error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
-	vm_page_unhold(m);
 	/* Can not restart timeout wait. */
 	if (timeout != 0 && error == ERESTART)
 		error = EINTR;
     } else {
 	error = EBUSY;
     }
+
+    sf_buf_free(sf);
+    vm_page_unhold(m);
     return(error);
 }
 
@@ -132,21 +136,27 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 int
 sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 {
-    vm_paddr_t pa;
+    vm_page_t m;
+    int offset;
+    int error;
     void *waddr;
 
     cpu_mfence();
-    if (vm_fault_quick((caddr_t)__DEQUALIFY(int *, uap->ptr), VM_PROT_READ) < 0)
+    if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
-    if ((pa = pmap_kextract((vm_offset_t)uap->ptr)) == 0)
+    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
+    if (m == NULL)
 	return (EFAULT);
-    waddr = (void *)((intptr_t)pa + ((intptr_t)uap->ptr & PAGE_MASK));
+    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
+    waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
+
     if (uap->count == 1) {
 	wakeup_domain_one(waddr, PDOMAIN_UMTX);
     } else {
 	/* XXX wakes them all up for now */
 	wakeup_domain(waddr, PDOMAIN_UMTX);
     }
+    vm_page_unhold(m);
     return(0);
 }
 
