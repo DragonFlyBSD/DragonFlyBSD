@@ -57,7 +57,7 @@
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.17 2006/11/07 18:50:07 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.18 2007/01/11 23:23:57 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -80,26 +80,26 @@ typedef void inthand2_t (void *, void *);
  * may be dispatched when a nested h/w interrupt handler returns.
  */
 #define	SWI_TTY		(FIRST_SOFTINT + 0)
-#define	SWI_NET		(FIRST_SOFTINT + 1)
+#define	SWI_UNUSED01	(FIRST_SOFTINT + 1)
 #define	SWI_CAMNET	(FIRST_SOFTINT + 2)
 #define	SWI_CRYPTO	SWI_CAMNET
 #define	SWI_CAMBIO	(FIRST_SOFTINT + 3)
 #define	SWI_VM		(FIRST_SOFTINT + 4)
 #define	SWI_TQ		(FIRST_SOFTINT + 5)
-#define	SWI_CLOCK	(FIRST_SOFTINT + 6)
+#define	SWI_UNUSED02	(FIRST_SOFTINT + 6)
 
 /*
  * Corresponding interrupt-pending bits for spending.  NOTE: i386 only
  * supports 32 software interupts (due to its gd_spending mask).
  */
 #define	SWI_TTY_PENDING		(1 << (SWI_TTY - FIRST_SOFTINT))
-#define	SWI_NET_PENDING		(1 << (SWI_NET - FIRST_SOFTINT))
+#define	SWI_UNUSED01_PENDING	(1 << (SWI_UNUSED01 - FIRST_SOFTINT))
 #define	SWI_CAMNET_PENDING	(1 << (SWI_CAMNET - FIRST_SOFTINT))
 #define	SWI_CRYPTO_PENDING	SWI_CAMNET_PENDING
 #define	SWI_CAMBIO_PENDING	(1 << (SWI_CAMBIO - FIRST_SOFTINT))
 #define	SWI_VM_PENDING		(1 << (SWI_VM - FIRST_SOFTINT))
 #define	SWI_TQ_PENDING		(1 << (SWI_TQ - FIRST_SOFTINT))
-#define	SWI_CLOCK_PENDING	(1 << (SWI_CLOCK - FIRST_SOFTINT))
+#define	SWI_UNUSED02_PENDING	(1 << (SWI_UNUSED02 - FIRST_SOFTINT))
 
 #ifdef _KERNEL
 

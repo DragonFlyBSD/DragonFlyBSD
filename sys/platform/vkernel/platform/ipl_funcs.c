@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/ipl_funcs.c,v 1.1 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/ipl_funcs.c,v 1.2 2007/01/11 23:23:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,24 +55,18 @@ DO_SETBITS(setdelayed,   &gd->gd_spending, loadandclear(&gd->gd_sdelayed))
 
 DO_SETBITS(setsoftcamnet,&gd->gd_spending, SWI_CAMNET_PENDING)
 DO_SETBITS(setsoftcambio,&gd->gd_spending, SWI_CAMBIO_PENDING)
-DO_SETBITS(setsoftclock, &gd->gd_spending, SWI_CLOCK_PENDING)
-DO_SETBITS(setsoftnet,   &gd->gd_spending, SWI_NET_PENDING)
+/*DO_SETBITS(setsoftunused02, &gd->gd_spending, SWI_UNUSED02_PENDING)*/
+/*DO_SETBITS(setsoftunused01,   &gd->gd_spending, SWI_UNUSED01_PENDING)*/
 DO_SETBITS(setsofttty,   &gd->gd_spending, SWI_TTY_PENDING)
 DO_SETBITS(setsoftvm,	 &gd->gd_spending, SWI_VM_PENDING)
 DO_SETBITS(setsofttq,	 &gd->gd_spending, SWI_TQ_PENDING)
 DO_SETBITS(setsoftcrypto,&gd->gd_spending, SWI_CRYPTO_PENDING)
 
-DO_SETBITS(schedsoftcamnet, &gd->gd_sdelayed, SWI_CAMNET_PENDING)
-DO_SETBITS(schedsoftcambio, &gd->gd_sdelayed, SWI_CAMBIO_PENDING)
-DO_SETBITS(schedsoftnet, &gd->gd_sdelayed, SWI_NET_PENDING)
+/*DO_SETBITS(schedsoftcamnet, &gd->gd_sdelayed, SWI_CAMNET_PENDING)*/
+/*DO_SETBITS(schedsoftcambio, &gd->gd_sdelayed, SWI_CAMBIO_PENDING)*/
+/*DO_SETBITS(schedsoftunused01, &gd->gd_sdelayed, SWI_UNUSED01_PENDING)*/
 DO_SETBITS(schedsofttty, &gd->gd_sdelayed, SWI_TTY_PENDING)
-DO_SETBITS(schedsoftvm,	 &gd->gd_sdelayed, SWI_VM_PENDING)
-DO_SETBITS(schedsofttq,	 &gd->gd_sdelayed, SWI_TQ_PENDING)
+/*DO_SETBITS(schedsoftvm, &gd->gd_sdelayed, SWI_VM_PENDING)*/
+/*DO_SETBITS(schedsofttq, &gd->gd_sdelayed, SWI_TQ_PENDING)*/
 /* YYY schedsoft what? */
-
-unsigned
-softclockpending(void)
-{
-	return (mdcpu->gd_spending & SWI_CLOCK_PENDING);
-}
 

@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.61 2007/01/09 23:34:05 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.62 2007/01/11 23:23:57 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -274,22 +274,15 @@ void	untimeout (timeout_t *, void *, struct callout_handle);
  */
 #ifdef __i386__
 void		setdelayed (void);
-void		setsoftast (void);
 void		setsoftcambio (void);
 void		setsoftcamnet (void);
-void		setsoftclock (void);
+void		setsoftunused02 (void);
 void		setsoftcrypto (void);
-void		setsoftnet (void);
+void		setsoftunused01 (void);
 void		setsofttty (void);
 void		setsoftvm (void);
 void		setsofttq (void);
-void		schedsoftcamnet (void);
-void		schedsoftcambio (void);
-void		schedsoftnet (void);
 void		schedsofttty (void);
-void		schedsoftvm (void);
-void		schedsofttq (void);
-intrmask_t	softclockpending (void);
 void		splz (void);
 #endif /* __i386__ */
 
