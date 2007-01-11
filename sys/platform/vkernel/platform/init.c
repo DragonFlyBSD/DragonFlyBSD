@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.19 2007/01/10 13:33:23 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.20 2007/01/11 02:46:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -515,6 +515,10 @@ init_vkernel(void)
 /*
  * The root filesystem path for the virtual kernel is optional.  If specified
  * it points to a filesystem image.
+ *
+ * The virtual kernel caches data from our 'disk' just like a normal kernel,
+ * so we do not really want the real kernel to cache the data too.  Use
+ * O_DIRECT to remove the duplication.
  */
 static
 void
@@ -523,7 +527,7 @@ init_rootdevice(char *imageFile)
 	struct stat st;
 
 	if (imageFile) {
-		RootImageFd = open(imageFile, O_RDWR, 0644);
+		RootImageFd = open(imageFile, O_RDWR|O_DIRECT, 0644);
 		if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0) {
 			err(1, "Unable to open/create %s: %s",
 			    imageFile, strerror(errno));
