@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.21 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.22 2007/01/11 10:39:41 dillon Exp $
  */
 
 /*
@@ -129,7 +129,6 @@ void		 pmap_destroy (pmap_t);
 void		 pmap_enter (pmap_t, vm_offset_t, struct vm_page *,
 			vm_prot_t, boolean_t);
 vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
-struct vm_page	 *pmap_extract_vmpage (pmap_t pmap, vm_offset_t va, int prot);
 void		 pmap_growkernel (vm_offset_t);
 void		 pmap_init (void);
 boolean_t	 pmap_is_modified (struct vm_page *m);

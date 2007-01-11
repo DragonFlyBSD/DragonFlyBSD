@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.69 2007/01/06 08:34:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.70 2007/01/11 10:39:40 dillon Exp $
  */
 
 /*
@@ -195,7 +195,7 @@ static PMAP_INLINE void	free_pv_entry (pv_entry_t pv);
 static unsigned * get_ptbase (pmap_t pmap);
 static pv_entry_t get_pv_entry (void);
 static void	i386_protection_init (void);
-static __inline void	pmap_changebit (vm_page_t m, int bit, boolean_t setem);
+static __inline void	pmap_clearbit (vm_page_t m, int bit);
 
 static void	pmap_remove_all (vm_page_t m);
 static vm_page_t pmap_enter_quick (pmap_t pmap, vm_offset_t va,
@@ -647,44 +647,6 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 		return rtval;
 	}
 	return 0;
-}
-
-/*
- * Extract user accessible page only, return NULL if the page is not
- * present or if it's current state is not sufficient.  Caller will
- * generally call vm_fault() on failure and try again.
- */
-vm_page_t
-pmap_extract_vmpage(pmap_t pmap, vm_offset_t va, int prot)
-{
-	vm_offset_t rtval;
-	vm_offset_t pdirindex;
-
-	pdirindex = va >> PDRSHIFT;
-	if (pmap && (rtval = (unsigned) pmap->pm_pdir[pdirindex])) {
-		unsigned *pte;
-		vm_page_t m;
-
-		if ((rtval & PG_PS) != 0) {
-			if ((rtval & (PG_V|PG_U)) != (PG_V|PG_U))
-				return (NULL);
-			if ((prot & VM_PROT_WRITE) && (rtval & PG_RW) == 0)
-				return (NULL);
-			rtval &= ~(NBPDR - 1);
-			rtval |= va & (NBPDR - 1);
-			m = PHYS_TO_VM_PAGE(rtval);
-		} else {
-			pte = get_ptbase(pmap) + i386_btop(va);
-			if ((*pte & (PG_V|PG_U)) != (PG_V|PG_U))
-				return (NULL);
-			if ((prot & VM_PROT_WRITE) && (*pte & PG_RW) == 0)
-				return (NULL);
-			rtval = ((*pte & PG_FRAME) | (va & PAGE_MASK));
-			m = PHYS_TO_VM_PAGE(rtval);
-		}
-		return(m);
-	}
-	return (NULL);
 }
 
 /***************************************************
@@ -2537,6 +2499,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 		dst_pte = (unsigned *) avtopte(addr);
 		while (addr < pdnxt) {
 			unsigned ptetemp;
+
 			ptetemp = *src_pte;
 			/*
 			 * we only virtual copy managed pages
@@ -2553,9 +2516,13 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 					 * Clear the modified and
 					 * accessed (referenced) bits
 					 * during the copy.
+					 *
+					 * Clear PG_RW to force a fault on
+					 * modify so virtual page tables can
+					 * be updated.
 					 */
 					m = PHYS_TO_VM_PAGE(ptetemp);
-					*dst_pte = ptetemp & ~(PG_M | PG_A);
+					*dst_pte = ptetemp & ~(PG_M | PG_A | PG_RW);
 					dst_pmap->pm_stats.resident_count++;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
@@ -2838,7 +2805,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 
 /*
  * pmap_testbit tests bits in pte's
- * note that the testbit/changebit routines are inline,
+ * note that the testbit/clearbit routines are inline,
  * and a lot of things compile-time evaluate.
  */
 static boolean_t
@@ -2886,11 +2853,12 @@ pmap_testbit(vm_page_t m, int bit)
  * this routine is used to modify bits in ptes
  */
 static __inline void
-pmap_changebit(vm_page_t m, int bit, boolean_t setem)
+pmap_clearbit(vm_page_t m, int bit)
 {
 	struct pmap_inval_info info;
 	pv_entry_t pv;
 	unsigned *pte;
+	unsigned pbits;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
@@ -2906,7 +2874,7 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (!setem && (bit == PG_RW)) {
+		if (bit == PG_RW) {
 			if (!pmap_track_modified(pv->pv_va))
 				continue;
 		}
@@ -2924,34 +2892,24 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 		 * with the target cpus when we mess with PG_RW.
 		 */
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-		if (bit == PG_RW)
+		if (bit & (PG_RW | PG_M))
 			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 
-		if (setem) {
-#ifdef SMP
-			atomic_set_int(pte, bit);
-#else
-			atomic_set_int_nonlocked(pte, bit);
-#endif
-		} else {
-			vm_offset_t pbits = *(vm_offset_t *)pte;
-			if (pbits & bit) {
-				if (bit == PG_RW) {
-					if (pbits & PG_M) {
-						vm_page_dirty(m);
-					}
-#ifdef SMP
-					atomic_clear_int(pte, PG_M|PG_RW);
-#else
-					atomic_clear_int_nonlocked(pte, PG_M|PG_RW);
-#endif
-				} else {
-#ifdef SMP
-					atomic_clear_int(pte, bit);
-#else
-					atomic_clear_int_nonlocked(pte, bit);
-#endif
-				}
+		pbits = *pte;
+		if (pbits & bit) {
+			if (bit == PG_RW) {
+				if (pbits & PG_M)
+					vm_page_dirty(m);
+				atomic_clear_int(pte, PG_M|PG_RW);
+			} else if (bit == PG_M) {
+				/*
+				 * When clearing the modified bit
+				 * also make the page read only to
+				 * force a fault-on-write.
+				 */
+				atomic_clear_int(pte, PG_M|PG_RW);
+			} else {
+				atomic_clear_int(pte, bit);
 			}
 		}
 	}
@@ -2969,7 +2927,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 {
 	if ((prot & VM_PROT_WRITE) == 0) {
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
-			pmap_changebit(m, PG_RW, FALSE);
+			pmap_clearbit(m, PG_RW);
 		} else {
 			pmap_remove_all(m);
 		}
@@ -3058,7 +3016,7 @@ pmap_is_modified(vm_page_t m)
 void
 pmap_clear_modify(vm_page_t m)
 {
-	pmap_changebit(m, PG_M, FALSE);
+	pmap_clearbit(m, PG_M);
 }
 
 /*
@@ -3069,7 +3027,7 @@ pmap_clear_modify(vm_page_t m)
 void
 pmap_clear_reference(vm_page_t m)
 {
-	pmap_changebit(m, PG_A, FALSE);
+	pmap_clearbit(m, PG_A);
 }
 
 /*
