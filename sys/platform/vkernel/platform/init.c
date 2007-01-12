@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.21 2007/01/11 10:08:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.22 2007/01/12 18:03:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -371,11 +371,12 @@ init_kern_memory(void)
 	virtual_end = KvaStart + KERNEL_KVA_SIZE;
 
 	/*
-	 * Because we just pre-allocate the entire page table the demark used
-	 * to determine when KVM must be grown is just set to the end of
-	 * KVM.  pmap_growkernel() simply panics.
+	 * kernel_vm_end could be set to virtual_end but we want some 
+	 * indication of how much of the kernel_map we've used, so
+	 * set it low and let pmap_growkernel increase it even though we
+	 * don't need to create any new page table pages.
 	 */
-	kernel_vm_end = virtual_end;
+	kernel_vm_end = virtual_start;
 
 	/*
 	 * Allocate space for process 0's UAREA.

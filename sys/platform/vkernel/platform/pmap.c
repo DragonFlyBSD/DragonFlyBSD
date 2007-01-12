@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.11 2007/01/11 10:25:52 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.12 2007/01/12 18:03:48 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -303,7 +303,10 @@ pmap_release(struct pmap *pmap)
 		}
 		crit_exit();
 	} while (info.error);
-	pmap->pm_pdir = NULL;
+
+	/*
+	 * Leave the KVA reservation for pm_pdir cached for later reuse.
+	 */
 	pmap->pm_pdirpte = 0;
 }
 
@@ -887,9 +890,13 @@ pmap_dispose_proc(struct proc *p)
  * this routine will only be called if KVM has been exhausted.
  */
 void
-pmap_growkernel(vm_offset_t size)
+pmap_growkernel(vm_offset_t addr)
 {
-	panic("KVM exhausted");
+	addr = (addr + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+
+	if (addr > virtual_end - SEG_SIZE)
+		panic("KVM exhausted");
+	kernel_vm_end = addr;
 }
 
 /*
