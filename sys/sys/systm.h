@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.62 2007/01/11 23:23:57 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.63 2007/01/12 03:05:49 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -149,6 +149,7 @@ void	cpu_vmspace_alloc(struct vmspace *);
 void	cpu_vmspace_free(struct vmspace *);
 void	set_user_TLS(void);
 void	set_vkernel_fp(struct trapframe *);
+int	kvm_access_check(vm_offset_t, vm_offset_t, int);
 
 vm_paddr_t kvtop(void *addr);
 int	is_physical_memory (vm_offset_t addr);

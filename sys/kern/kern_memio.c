@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.26 2007/01/02 04:21:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.27 2007/01/12 03:05:49 dillon Exp $
  */
 
 /*
@@ -185,6 +185,8 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			 * minor device 1 is kernel memory, /dev/kmem 
 			 */
 			vm_offset_t saddr, eaddr;
+			int prot;
+
 			c = iov->iov_len;
 
 			/*
@@ -194,21 +196,23 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			 */
 			saddr = trunc_page(uio->uio_offset);
 			eaddr = round_page(uio->uio_offset + c);
+			if (saddr > eaddr)
+				return EFAULT;
 
-			if (saddr < KvaStart)
-				return EFAULT;
-			if (eaddr >= KvaEnd)
-				return EFAULT;
-			for (; saddr < eaddr; saddr += PAGE_SIZE)  {
-				if (pmap_extract(&kernel_pmap, saddr) == 0)
-					return EFAULT;
-			}
-			
-			if (!kernacc((caddr_t)(int)uio->uio_offset, c,
-			    uio->uio_rw == UIO_READ ? 
-			    VM_PROT_READ : VM_PROT_WRITE))
-				return (EFAULT);
-			error = uiomove((caddr_t)(vm_offset_t)uio->uio_offset, (int)c, uio);
+			/*
+			 * Make sure the kernel addresses are mapped.
+			 * platform_direct_mapped() can be used to bypass
+			 * default mapping via the page table (virtual kernels
+			 * contain a lot of out-of-band data).
+			 */
+			prot = VM_PROT_READ;
+			if (uio->uio_rw != UIO_READ)
+				prot |= VM_PROT_WRITE;
+			error = kvm_access_check(saddr, eaddr, prot);
+			if (error)
+				return (error);
+			error = uiomove((caddr_t)(vm_offset_t)uio->uio_offset,
+					(int)c, uio);
 			continue;
 		}
 		case 2:

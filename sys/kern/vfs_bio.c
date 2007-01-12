@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.88 2007/01/08 19:42:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.89 2007/01/12 03:05:49 dillon Exp $
  */
 
 /*
@@ -106,11 +106,15 @@ static void buf_daemon (void);
 vm_page_t bogus_page;
 int runningbufspace;
 
-static int bufspace, maxbufspace,
+/*
+ * These are all static, but make the ones we export globals so we do
+ * not need to use compiler magic.
+ */
+int bufspace, maxbufspace,
 	bufmallocspace, maxbufmallocspace, lobufspace, hibufspace;
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
 static int lorunningspace, hirunningspace, runningbufreq;
-static int numdirtybuffers, lodirtybuffers, hidirtybuffers;
+int numdirtybuffers, lodirtybuffers, hidirtybuffers;
 static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;

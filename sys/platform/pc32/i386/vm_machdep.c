@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.53 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.54 2007/01/12 03:05:47 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -540,3 +540,26 @@ void
 cpu_vmspace_free(struct vmspace *vm __unused)
 {
 }
+
+/*
+ * Used by /dev/kmem to determine if we can safely read or write
+ * the requested KVA range.
+ */
+int
+kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
+{
+	vm_offset_t addr;
+
+	if (saddr < KvaStart)
+		return EFAULT;
+	if (eaddr >= KvaEnd)
+		return EFAULT;
+	for (addr = saddr; addr < eaddr; addr += PAGE_SIZE)  {
+		if (pmap_extract(&kernel_pmap, addr) == 0)
+			return EFAULT;
+	}
+	if (!kernacc((caddr_t)saddr, eaddr - saddr, prot))
+		return EFAULT;
+	return 0;
+}
+

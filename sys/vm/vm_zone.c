@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.23 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.24 2007/01/12 03:05:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ zfree(vm_zone_t z, void *item)
  * zalloc, zfree, are the allocation/free routines.
  */
 
-static struct vm_zone *zlist;
+struct vm_zone *zlist;	/* exported to vmstat */
 static int sysctl_vm_zone(SYSCTL_HANDLER_ARGS);
 static int zone_kmem_pages, zone_kern_pages, zone_kmem_kvaspace;
 

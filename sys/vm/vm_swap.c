@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.32 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.33 2007/01/12 03:05:49 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -65,9 +65,9 @@
 #define NSWAPDEV	4
 #endif
 static struct swdevt should_be_malloced[NSWAPDEV];
-static struct swdevt *swdevt = should_be_malloced;
+struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
 static int nswap;		/* first block after the interleaved devs */
-static int nswdev = NSWAPDEV;
+int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
 
 static int swapdev_strategy (struct vop_strategy_args *ap);

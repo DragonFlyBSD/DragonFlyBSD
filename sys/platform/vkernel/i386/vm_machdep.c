@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.4 2007/01/09 23:34:05 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.5 2007/01/12 03:05:49 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -392,5 +392,33 @@ int
 is_physical_memory(vm_offset_t addr)
 {
 	return 1;
+}
+
+/*
+ * Used by /dev/kmem to determine if we can safely read or write
+ * the requested KVA range.  Some portions of kernel memory are
+ * not governed by our virtual page table.
+ */
+extern int32_t _end;
+extern void _start(void);
+
+int
+kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
+{
+	vm_offset_t addr;
+
+	if (saddr >= (vm_offset_t)&_start && eaddr <= (vm_offset_t)&_end) 
+		return 0;
+	if (saddr < KvaStart)
+		return EFAULT;
+	if (eaddr >= KvaEnd)
+		return EFAULT;
+	for (addr = saddr; addr < eaddr; addr += PAGE_SIZE)  {
+		if (pmap_extract(&kernel_pmap, addr) == 0)
+			return EFAULT;
+	}
+	if (!kernacc((caddr_t)saddr, eaddr - saddr, prot))
+		return EFAULT;
+	return 0;
 }
 

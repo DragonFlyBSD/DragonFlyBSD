@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.69 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.70 2007/01/12 03:05:49 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -153,7 +153,7 @@ SYSCTL_INT(_kern, OID_AUTO, ccpu, CTLFLAG_RD, &ccpu, 0, "");
 /*
  * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
  */
-static int     fscale __unused = FSCALE;
+int     fscale __unused = FSCALE;	/* exported to systat */
 SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 
 /*

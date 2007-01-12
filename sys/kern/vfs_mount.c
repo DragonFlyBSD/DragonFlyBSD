@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.25 2007/01/12 03:05:49 dillon Exp $
  */
 
 /*
@@ -114,7 +114,8 @@ SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 
 static struct lwkt_token mntid_token;
 
-static struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
+/* note: mountlist exported to pstat */
+struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
 static TAILQ_HEAD(,mountscan_info) mountscan_list;
 static struct lwkt_token mountlist_token;
 static TAILQ_HEAD(,vmntvnodescan_info) mntvnodescan_list;
