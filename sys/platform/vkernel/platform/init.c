@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.22 2007/01/12 18:03:48 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.23 2007/01/12 18:27:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -334,6 +334,7 @@ init_kern_memory(void)
 	 */
 	i = (KERNEL_KVA_SIZE / PAGE_SIZE - i) * sizeof(pte);
 	zero = malloc(PAGE_SIZE);
+	bzero(zero, PAGE_SIZE);
 	while (i) {
 		write(MemImageFd, zero, (i > PAGE_SIZE) ? PAGE_SIZE : i);
 		i = i - ((i > PAGE_SIZE) ? PAGE_SIZE : i);
