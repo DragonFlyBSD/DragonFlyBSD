@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.14 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.15 2007/01/12 06:06:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -99,7 +99,7 @@ read_check(struct file *fp, void *buf, size_t nbyte)
 	int error;
 
 	PRINTF(("reading %d bytes\n", nbyte));
-	error = fp_read(fp, buf, nbyte, &nread, 1);
+	error = fp_read(fp, buf, nbyte, &nread, 1, UIO_SYSSPACE);
 	if (error) {
                 PRINTF(("read failed - %d", error));
 	} else if (nread != nbyte) {

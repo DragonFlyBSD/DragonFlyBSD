@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.19 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.20 2007/01/12 06:06:57 dillon Exp $
  */
 
 /*
@@ -204,7 +204,8 @@ bad2:
  * transfer will be used.
  */
 int
-fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
+fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res,
+	 enum uio_seg seg)
 {
     struct uio auio;
     struct iovec aiov;
@@ -223,10 +224,7 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_READ;
-    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
-	auio.uio_segflg = UIO_USERSPACE;
-    else
-	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_segflg = seg;
     auio.uio_td = curthread;
 
     count = nbytes;
@@ -245,7 +243,8 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 }
 
 int
-fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
+fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all,
+	enum uio_seg seg)
 {
     struct uio auio;
     struct iovec aiov;
@@ -264,10 +263,7 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
     auio.uio_offset = 0;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_READ;
-    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
-	auio.uio_segflg = UIO_USERSPACE;
-    else
-	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_segflg = seg;
     auio.uio_td = curthread;
 
     /*
@@ -305,7 +301,8 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
 }
 
 int
-fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
+fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res,
+	  enum uio_seg seg)
 {
     struct uio auio;
     struct iovec aiov;
@@ -324,10 +321,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_WRITE;
-    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
-	auio.uio_segflg = UIO_USERSPACE;
-    else
-	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_segflg = seg;
     auio.uio_td = curthread;
 
     count = nbytes;
@@ -347,7 +341,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 
 
 int
-fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res)
+fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res, enum uio_seg seg)
 {
     struct uio auio;
     struct iovec aiov;
@@ -366,10 +360,7 @@ fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res)
     auio.uio_offset = 0;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_WRITE;
-    if ((vm_offset_t)buf < VM_MAX_USER_ADDRESS)
-	auio.uio_segflg = UIO_USERSPACE;
-    else
-	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_segflg = seg;
     auio.uio_td = curthread;
 
     count = nbytes;

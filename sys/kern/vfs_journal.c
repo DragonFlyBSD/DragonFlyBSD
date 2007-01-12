@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.30 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.31 2007/01/12 06:06:57 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -255,7 +255,7 @@ journal_wthread(void *info)
 	jo->fifo.rindex += bytes;
 	error = fp_write(jo->fp, 
 			jo->fifo.membase + ((jo->fifo.rindex - bytes) & jo->fifo.mask),
-			bytes, &res);
+			bytes, &res, UIO_SYSSPACE);
 	if (error) {
 	    kprintf("journal_thread(%s) write, error %d\n", jo->id, error);
 	    /* XXX */
@@ -316,7 +316,8 @@ journal_rthread(void *info)
 	 * stream.
 	 */
 	if (transid == 0) {
-	    error = fp_read(jo->fp, &ack, sizeof(ack), &count, 1);
+	    error = fp_read(jo->fp, &ack, sizeof(ack), &count, 
+			    1, UIO_SYSSPACE);
 #if 0
 	    kprintf("fp_read ack error %d count %d\n", error, count);
 #endif

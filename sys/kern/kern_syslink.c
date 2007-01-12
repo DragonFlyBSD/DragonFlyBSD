@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.4 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.5 2007/01/12 06:06:57 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -257,8 +257,8 @@ syslink_rthread(void *arg)
 		if (count == 0)
 		    break;
 		error = fp_read(sldata->xfp,
-				slbuf->buf + (slbuf->windex & slbuf->bufmask), count,
-				&count, 0);
+				slbuf->buf + (slbuf->windex & slbuf->bufmask),
+				count, &count, 0, UIO_SYSSPACE);
 		if (error)
 		    break;
 		if (count == 0)
@@ -386,7 +386,8 @@ syslink_wthread(void *arg)
 	     * Write it out whether it is PAD or not.   XXX re-PAD for output
 	     * here.
 	     */
-	    error = fp_write(sldata->xfp, head, aligned_reclen, &count);
+	    error = fp_write(sldata->xfp, head, aligned_reclen, &count,
+			     UIO_SYSSPACE);
 	    if (error)
 		break;
 	    if (count != aligned_reclen) {

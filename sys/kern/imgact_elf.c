@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.46 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.47 2007/01/12 06:06:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -994,7 +994,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 		php = (Elf_Phdr *)(target.buf + sizeof(Elf_Ehdr)) + 1;
 		for (i = 0; i < seginfo.count; i++) {
 			error = fp_write(fp, (caddr_t)php->p_vaddr,
-					php->p_filesz, &nbytes);
+					php->p_filesz, &nbytes, UIO_USERSPACE);
 			if (error != 0)
 				break;
 			php++;
@@ -1266,8 +1266,10 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	kfree(tempdata, M_TEMP);
 
 	/* Write it to the core file. */
-	if (error == 0)
-		error = fp_write(fp, target->buf, target->off, &nbytes);
+	if (error == 0) {
+		error = fp_write(fp, target->buf, target->off, &nbytes,
+				 UIO_SYSSPACE);
+	}
 	return error;
 }
 
