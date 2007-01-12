@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.17 2006/12/27 18:37:15 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.18 2007/01/12 22:59:16 tgen Exp $
  */
 
 #include "opt_cpu.h"
@@ -700,13 +700,13 @@ printcpuinfo(void)
 				"\007<b6>"
 				"\010EST"	/* Enhanced SpeedStep */
 				"\011TM2"	/* Thermal Monitor 2 */
-				"\012<b9>"
+				"\012SSSE3"	/* Supplemental SSE3 */
 				"\013CNTX-ID"	/* L1 context ID available */
 				"\014<b11>"
 				"\015<b12>"
 				"\016CX16"	/* CMPXCHG16B Instruction */
 				"\017XTPR"	/* Send Task Priority Messages*/
-				"\020<b15>"
+				"\020RSVD15"	/* "Reserved" bit 15 */
 				"\021<b16>"
 				"\022<b17>"
 				"\023<b18>"
