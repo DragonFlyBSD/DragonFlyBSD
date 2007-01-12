@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.9 2007/01/11 10:15:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.10 2007/01/12 06:07:29 dillon Exp $
  */
 
 /*
@@ -925,11 +925,11 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	code = frame->tf_xflags;
 	type = frame->tf_trapno;
 
-	if (type <= MAX_TRAP_MSG)
+	if (type <= MAX_TRAP_MSG) {
 		kprintf("\n\nFatal trap %d: %s while in %s mode\n",
 			type, trap_msg[type],
-        		/*frame->tf_eflags & PSL_VM ? "vm86" :*/
-			ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
+			(usermode ? "user" : "kernel"));
+	}
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("mp_lock = %08x; ", mp_lock);
@@ -945,7 +945,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	}
 	kprintf("instruction pointer	= 0x%x:0x%x\n",
 	       frame->tf_cs & 0xffff, frame->tf_eip);
-        if ((ISPL(frame->tf_cs) == SEL_UPL) /*||(frame->tf_eflags&PSL_VM)*/) {
+	if (usermode) {
 		ss = frame->tf_ss & 0xffff;
 		esp = frame->tf_esp;
 	} else {
@@ -1114,14 +1114,6 @@ syscall2(struct trapframe *frame)
 #endif
 	u_int code;
 	union sysunion args;
-
-#ifdef DIAGNOSTIC
-	if (ISPL(frame->tf_cs) != SEL_UPL) {
-		get_mplock();
-		panic("syscall");
-		/* NOT REACHED */
-	}
-#endif
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));

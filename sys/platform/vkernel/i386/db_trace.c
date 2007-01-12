@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.4 2007/01/08 16:03:22 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.5 2007/01/12 06:07:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -220,7 +220,10 @@ db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 	 */
 	tf = (struct trapframe *) ((int)*fp + 8);
 
+#if 0
 	esp = (ISPL(tf->tf_cs) == SEL_UPL) ?  tf->tf_esp : (int)&tf->tf_esp;
+#endif
+	esp = (int)&tf->tf_esp;
 
 	switch (frame_type) {
 	case TRAP:
