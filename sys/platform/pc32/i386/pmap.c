@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.70 2007/01/11 10:39:40 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.71 2007/01/12 22:12:51 dillon Exp $
  */
 
 /*
@@ -2516,13 +2516,9 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 					 * Clear the modified and
 					 * accessed (referenced) bits
 					 * during the copy.
-					 *
-					 * Clear PG_RW to force a fault on
-					 * modify so virtual page tables can
-					 * be updated.
 					 */
 					m = PHYS_TO_VM_PAGE(ptetemp);
-					*dst_pte = ptetemp & ~(PG_M | PG_A | PG_RW);
+					*dst_pte = ptetemp & ~(PG_M | PG_A);
 					dst_pmap->pm_stats.resident_count++;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
@@ -2890,9 +2886,14 @@ pmap_clearbit(vm_page_t m, int bit)
 		 * Careful here.  We can use a locked bus instruction to
 		 * clear PG_A or PG_M safely but we need to synchronize
 		 * with the target cpus when we mess with PG_RW.
+		 *
+		 * We do not have to force synchronization when clearing
+		 * PG_M even for PTEs generated via virtual memory maps,
+		 * because the virtual kernel will invalidate the pmap
+		 * entry when/if it needs to resynchronize the Modify bit.
 		 */
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-		if (bit & (PG_RW | PG_M))
+		if (bit & PG_RW)
 			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
 
 		pbits = *pte;
@@ -2903,11 +2904,14 @@ pmap_clearbit(vm_page_t m, int bit)
 				atomic_clear_int(pte, PG_M|PG_RW);
 			} else if (bit == PG_M) {
 				/*
-				 * When clearing the modified bit
-				 * also make the page read only to
-				 * force a fault-on-write.
+				 * We could also clear PG_RW here to force
+				 * a fault on write to redetect PG_M for
+				 * virtual kernels, but it isn't necessary
+				 * since virtual kernels invalidate the pte 
+				 * when they clear the VPTE_M bit in their
+				 * virtual page tables.
 				 */
-				atomic_clear_int(pte, PG_M|PG_RW);
+				atomic_clear_int(pte, PG_M);
 			} else {
 				atomic_clear_int(pte, bit);
 			}

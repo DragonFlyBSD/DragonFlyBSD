@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.40 2007/01/11 20:53:42 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.41 2007/01/12 22:12:53 dillon Exp $
  */
 
 /*
@@ -737,7 +737,8 @@ vm_fault_object(struct faultstate *fs,
 	 *     fs->prot above will simply not have VM_PROT_WRITE set.
 	 *
 	 * (2) If the mapping is a virtual page table we need to be able
-	 *     to detect writes so we can set VPTE_M.
+	 *     to detect writes so we can set VPTE_M in the virtual page
+	 *     table.
 	 *
 	 * (3) If the VM page is read-only or copy-on-write, upgrading would
 	 *     just result in an unnecessary COW fault.

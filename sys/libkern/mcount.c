@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.8 2006/11/07 17:51:23 dillon Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.9 2007/01/12 22:12:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,8 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 	 * When we are called from an exception handler, frompci may be
 	 * for a user address.  Convert such frompci's to the index of
 	 * user() to merge all user counts.
+	 *
+	 * XXX doesn't work properly with vkernel
 	 */
 	if (frompci >= p->textsize) {
 		if (frompci + p->lowpc

@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.12 2007/01/12 18:03:48 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.13 2007/01/12 22:12:52 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2312,16 +2312,16 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 				dstmpte = pmap_allocpte(dst_pmap, addr);
 				if ((*dst_pte == 0) && (ptetemp = *src_pte)) {
 					/*
-					 * Clear the modified and
-					 * accessed (referenced) bits
-					 * during the copy.
+					 * Clear the modified and accessed
+					 * (referenced) bits during the copy.
 					 *
-					 * Clear the Write bit to force a
-					 * fault if under vpagetable 
-					 * management.
+					 * We do not have to clear the write
+					 * bit to force a fault-on-modify
+					 * because the real kernel's target
+					 * pmap is empty and will fault anyway.
 					 */
 					m = PHYS_TO_VM_PAGE(ptetemp);
-					*dst_pte = ptetemp & ~(VPTE_M | VPTE_A | VPTE_W);
+					*dst_pte = ptetemp & ~(VPTE_M | VPTE_A);
 					dst_pmap->pm_stats.resident_count++;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
@@ -2634,7 +2634,8 @@ pmap_testbit(vm_page_t m, int bit)
 }
 
 /*
- * this routine is used to modify bits in ptes
+ * This routine is used to clear bits in ptes.  Certain bits require special
+ * handling, in particular (on virtual kernels) the VPTE_M (modify) bit.
  */
 static __inline void
 pmap_clearbit(vm_page_t m, int bit)
@@ -2675,9 +2676,10 @@ pmap_clearbit(vm_page_t m, int bit)
 		 * clear VPTE_A or VPTE_M safely but we need to synchronize
 		 * with the target cpus when we mess with VPTE_W.
 		 *
-		 * On virtual kernels we also have to synchronize if clearing
-		 * VPTE_M since the real kernel may have to force a fault
-		 * to set it again.
+		 * On virtual kernels we must force a new fault-on-write
+		 * in the real kernel if we clear the Modify bit ourselves,
+		 * otherwise the real kernel will not get a new fault and
+		 * will never set our Modify bit again. 
 		 */
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 		if (bit & (VPTE_W|VPTE_M))
@@ -2692,11 +2694,17 @@ pmap_clearbit(vm_page_t m, int bit)
 				atomic_clear_int(pte, VPTE_M|VPTE_W);
 			} else if (bit == VPTE_M) {
 				/*
-				 * When clearing the modified bit also
-				 * make the page read-only to force
-				 * a fault.
+				 * We do not have to make the page read-only
+				 * when clearing the Modify bit.  The real
+				 * kernel will make the real PTE read-only
+				 * or otherwise detect the write and set
+				 * our VPTE_M again simply by us invalidating
+				 * the real kernel VA for the pmap (as we did
+				 * above).  This allows the real kernel to
+				 * handle the write fault without forwarding
+				 * the fault to us.
 				 */
-				atomic_clear_int(pte, VPTE_M|VPTE_W);
+				atomic_clear_int(pte, VPTE_M);
 			} else {
 				atomic_clear_int(pte, bit);
 			}
