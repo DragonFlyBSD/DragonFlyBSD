@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/miscbltin.c,v 1.22.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/miscbltin.c,v 1.4 2004/04/22 16:52:53 dillon Exp $
+ * $FreeBSD: src/bin/sh/miscbltin.c,v 1.35 2006/02/04 14:37:50 schweikh Exp $
+ * $DragonFly: src/bin/sh/miscbltin.c,v 1.5 2007/01/13 22:39:30 pavalos Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -191,13 +192,7 @@ readcmd(int argc __unused, char **argv __unused)
 			continue;
 		}
 		startword = 0;
-		if (backslash && c == '\\') {
-			if (read(STDIN_FILENO, &c, 1) != 1) {
-				status = 1;
-				break;
-			}
-			STPUTC(c, p);
-		} else if (ap[1] != NULL && strchr(ifs, c) != NULL) {
+		if (ap[1] != NULL && strchr(ifs, c) != NULL) {
 			STACKSTRNUL(p);
 			setvar(*ap, stackblock(), 0);
 			ap++;
@@ -217,7 +212,7 @@ readcmd(int argc __unused, char **argv __unused)
 
 
 int
-umaskcmd(int argc __unused, char **argv)
+umaskcmd(int argc __unused, char **argv __unused)
 {
 	char *ap;
 	int mask;
@@ -273,18 +268,20 @@ umaskcmd(int argc __unused, char **argv)
 			mask = 0;
 			do {
 				if (*ap >= '8' || *ap < '0')
-					error("Illegal number: %s", argv[1]);
+					error("Illegal number: %s", *argptr);
 				mask = (mask << 3) + (*ap - '0');
 			} while (*++ap != '\0');
 			umask(mask);
 		} else {
 			void *set;
+			INTOFF;
 			if ((set = setmode (ap)) == 0)
 				error("Illegal number: %s", ap);
 
 			mask = getmode (set, ~mask & 0777);
 			umask(~mask & 0777);
 			free(set);
+			INTON;
 		}
 	}
 	return 0;
@@ -355,7 +352,7 @@ int
 ulimitcmd(int argc __unused, char **argv __unused)
 {
 	int	c;
-	quad_t val = 0;
+	rlim_t val = 0;
 	enum { SOFT = 0x1, HARD = 0x2 }
 			how = SOFT | HARD;
 	const struct limits	*l;
@@ -382,35 +379,35 @@ ulimitcmd(int argc __unused, char **argv __unused)
 	for (l = limits; l->name && l->option != what; l++)
 		;
 	if (!l->name)
-		error("ulimit: internal error (%c)", what);
+		error("internal error (%c)", what);
 
 	set = *argptr ? 1 : 0;
 	if (set) {
 		char *p = *argptr;
 
 		if (all || argptr[1])
-			error("ulimit: too many arguments");
+			error("too many arguments");
 		if (strcmp(p, "unlimited") == 0)
 			val = RLIM_INFINITY;
 		else {
-			val = (quad_t) 0;
+			val = 0;
 
 			while ((c = *p++) >= '0' && c <= '9')
 			{
 				val = (val * 10) + (long)(c - '0');
-				if (val < (quad_t) 0)
+				if (val < 0)
 					break;
 			}
 			if (c)
-				error("ulimit: bad number");
+				error("bad number");
 			val *= l->factor;
 		}
 	}
 	if (all) {
-		for (l = limits; l->name; l++) { 
+		for (l = limits; l->name; l++) {
 			char optbuf[40];
 			if (getrlimit(l->cmd, &limit) < 0)
-				error("ulimit: can't get limit: %s", strerror(errno));
+				error("can't get limit: %s", strerror(errno));
 			if (how & SOFT)
 				val = limit.rlim_cur;
 			else if (how & HARD)
@@ -428,21 +425,21 @@ ulimitcmd(int argc __unused, char **argv __unused)
 			else
 			{
 				val /= l->factor;
-				out1fmt("%qd\n", (quad_t) val);
+				out1fmt("%jd\n", (intmax_t)val);
 			}
 		}
 		return 0;
 	}
 
 	if (getrlimit(l->cmd, &limit) < 0)
-		error("ulimit: can't get limit: %s", strerror(errno));
+		error("can't get limit: %s", strerror(errno));
 	if (set) {
 		if (how & SOFT)
 			limit.rlim_cur = val;
 		if (how & HARD)
 			limit.rlim_max = val;
 		if (setrlimit(l->cmd, &limit) < 0)
-			error("ulimit: bad limit: %s", strerror(errno));
+			error("bad limit: %s", strerror(errno));
 	} else {
 		if (how & SOFT)
 			val = limit.rlim_cur;
@@ -454,7 +451,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 		else
 		{
 			val /= l->factor;
-			out1fmt("%qd\n", (quad_t) val);
+			out1fmt("%jd\n", (intmax_t)val);
 		}
 	}
 	return 0;
