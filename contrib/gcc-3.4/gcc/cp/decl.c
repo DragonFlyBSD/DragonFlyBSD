@@ -1380,10 +1380,7 @@ duplicate_decls (tree newdecl, tree olddecl)
 	  else
 	    return NULL_TREE;
 	}
-
-      /* Already complained about this, so don't do so again.  */
-      else if (current_class_type == NULL_TREE
-	  || IDENTIFIER_ERROR_LOCUS (DECL_ASSEMBLER_NAME (newdecl)) != current_class_type)
+      else
 	{
 	  error ("conflicting declaration '%#D'", newdecl);
 	  cp_error_at ("'%D' has a previous declaration as `%#D'",
@@ -2647,16 +2644,7 @@ make_typename_type (tree context, tree name, tsubst_flags_t complain)
       return error_mark_node;
     }
   my_friendly_assert (TREE_CODE (name) == IDENTIFIER_NODE, 20030802);
-  
-  if (TREE_CODE (context) == NAMESPACE_DECL)
-    {
-      /* We can get here from typename_sub0 in the explicit_template_type
-	 expansion.  Just fail.  */
-      if (complain & tf_error)
-	error ("no class template named `%#T' in `%#T'",
-		  name, context);
-      return error_mark_node;
-    }
+  my_friendly_assert (TYPE_P (context), 20050905);
 
   if (!dependent_type_p (context)
       || currently_open_class (context))
@@ -5903,6 +5891,7 @@ grokvardecl (tree type,
              tree scope)
 {
   tree decl;
+  tree explicit_scope;
   RID_BIT_TYPE specbits;
 
   my_friendly_assert (!name || TREE_CODE (name) == IDENTIFIER_NODE, 
@@ -5910,7 +5899,9 @@ grokvardecl (tree type,
 
   specbits = *specbits_in;
 
-  /* Compute the scope in which to place the variable.  */
+  /* Compute the scope in which to place the variable, but remember
+     whether or not that scope was explicitly specified by the user.  */
+  explicit_scope = scope;
   if (!scope)
     {
       /* An explicit "extern" specifier indicates a namespace-scope
@@ -5939,8 +5930,8 @@ grokvardecl (tree type,
   else
     decl = build_decl (VAR_DECL, name, type);
 
-  if (scope && TREE_CODE (scope) == NAMESPACE_DECL)
-    set_decl_namespace (decl, scope, 0);
+  if (explicit_scope && TREE_CODE (explicit_scope) == NAMESPACE_DECL)
+    set_decl_namespace (decl, explicit_scope, 0);
   else
     DECL_CONTEXT (decl) = scope;
 
@@ -7197,8 +7188,8 @@ grokdeclarator (tree declarator,
 
   if (virtualp && staticp == 2)
     {
-      error ("member `%D' cannot be declared both virtual and static",
-		dname);
+      error ("member `%D' cannot be declared both virtual and static", dname);
+      RIDBIT_RESET (RID_STATIC, specbits);
       staticp = 0;
     }
   friendp = RIDBIT_SETP (RID_FRIEND, specbits);
@@ -9022,17 +9013,19 @@ grok_op_properties (tree decl, bool complain)
   tree name = DECL_NAME (decl);
   enum tree_code operator_code;
   int arity;
+  bool ellipsis_p;
   bool ok;
   tree class_type;
 
   /* Assume that the declaration is valid.  */
   ok = true;
 
-  /* Count the number of arguments.  */
+  /* Count the number of arguments. and check for ellipsis  */
   for (argtype = argtypes, arity = 0;
        argtype && argtype != void_list_node;
        argtype = TREE_CHAIN (argtype))
     ++arity;
+  ellipsis_p = !argtype;
 
   class_type = DECL_CONTEXT (decl);
   if (class_type && !CLASS_TYPE_P (class_type))
@@ -9172,11 +9165,14 @@ grok_op_properties (tree decl, bool complain)
 	    warning ("conversion to %s%s will never use a type conversion operator",
 		     ref ? "a reference to " : "", what);
 	}
+
       if (operator_code == COND_EXPR)
 	{
 	  /* 13.4.0.3 */
 	  error ("ISO C++ prohibits overloading operator ?:");
 	}
+      else if (ellipsis_p)
+	error ("`%D' must not have variable number of arguments", decl);
       else if (ambi_op_p (operator_code))
 	{
 	  if (arity == 1)
@@ -9341,9 +9337,11 @@ tag_name (enum tag_types code)
     case class_type:
       return "class";
     case union_type:
-      return "union ";
+      return "union";
     case enum_type:
       return "enum";
+    case typename_type:
+      return "typename";
     default:
       abort ();
     }
@@ -9381,7 +9379,8 @@ check_elaborated_type_specifier (enum tag_types tag_code,
      In other words, the only legitimate declaration to use in the
      elaborated type specifier is the implicit typedef created when
      the type is declared.  */
-  if (!DECL_IMPLICIT_TYPEDEF_P (decl))
+  if (!DECL_IMPLICIT_TYPEDEF_P (decl)
+      && tag_code != typename_type)
     {
       error ("using typedef-name `%D' after `%s'", decl, tag_name (tag_code));
       return IS_AGGR_TYPE (type) ? type : error_mark_node;
@@ -9395,7 +9394,8 @@ check_elaborated_type_specifier (enum tag_types tag_code,
     }
   else if (TREE_CODE (type) != RECORD_TYPE
 	   && TREE_CODE (type) != UNION_TYPE
-	   && tag_code != enum_type)
+	   && tag_code != enum_type
+	   && tag_code != typename_type)
     {
       error ("`%T' referred to as `%s'", type, tag_name (tag_code));
       return error_mark_node;
@@ -10317,7 +10317,11 @@ start_function (tree declspecs, tree declarator, tree attrs, int flags)
      class scope, current_class_type will be NULL_TREE until set above
      by push_nested_class.)  */
   if (processing_template_decl)
-    decl1 = push_template_decl (decl1);
+    {
+      tree newdecl1 = push_template_decl (decl1);
+      if (newdecl1 != error_mark_node)
+	decl1 = newdecl1;
+    }
 
   /* We are now in the scope of the function being defined.  */
   current_function_decl = decl1;
@@ -10331,6 +10335,8 @@ start_function (tree declspecs, tree declarator, tree attrs, int flags)
      must be complete when you define the function.  */
   if (! processing_template_decl)
     check_function_type (decl1, current_function_parms);
+  /* Make sure no default arg is missing.  */
+  check_default_args (decl1);
 
   /* Build the return declaration for the function.  */
   restype = TREE_TYPE (fntype);
@@ -10394,8 +10400,6 @@ start_function (tree declspecs, tree declarator, tree attrs, int flags)
 	  /* We need to set the DECL_CONTEXT.  */
 	  if (!DECL_CONTEXT (decl1) && DECL_TEMPLATE_INFO (decl1))
 	    DECL_CONTEXT (decl1) = DECL_CONTEXT (DECL_TI_TEMPLATE (decl1));
-	  /* And make sure we have enough default args.  */
-	  check_default_args (decl1);
 	}
       fntype = TREE_TYPE (decl1);
     }
