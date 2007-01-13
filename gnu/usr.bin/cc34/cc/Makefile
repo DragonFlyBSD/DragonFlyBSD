@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.4 2005/07/01 21:00:15 swildner Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.5 2007/01/13 16:32:16 corecode Exp $
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
@@ -17,5 +17,10 @@ SRCS+=	xmalloc.c xstrdup.c xmemdup.c xstrerror.c
 CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
+
+cc.1: ${GCCDIR}/gcc/doc/gcc.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	cc.1
 
 .include <bsd.prog.mk>
