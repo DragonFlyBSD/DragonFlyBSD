@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.7 2006/09/28 22:29:44 pavalos Exp $
+ * $FreeBSD: src/bin/sh/input.c,v 1.23 2006/04/29 10:29:10 stefanf Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.8 2007/01/13 20:10:26 pavalos Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -183,14 +183,23 @@ preadfd(void)
 retry:
 #ifndef NO_HISTORY
 	if (parsefile->fd == 0 && el) {
-		const char *rl_cp;
+		static const char *rl_cp;
+		static int el_len;
 
-		rl_cp = el_gets(el, &nr);
+		if (rl_cp == NULL)
+			rl_cp = el_gets(el, &el_len);
 		if (rl_cp == NULL)
 			nr = 0;
 		else {
-			/* XXX - BUFSIZE should redesign so not necessary */
-			strcpy(parsenextc, rl_cp);
+			nr = el_len;
+			if (nr > BUFSIZ - 1)
+				nr = BUFSIZ - 1;
+			memcpy(parsenextc, rl_cp, nr);
+			if (nr != el_len) {
+				el_len -= nr;
+				rl_cp += nr;
+			} else
+				rl_cp = NULL;
 		}
 	} else
 #endif
@@ -382,7 +391,7 @@ setinputfile(const char *fname, int push)
 	if ((fd = open(fname, O_RDONLY)) < 0)
 		error("Can't open %s: %s", fname, strerror(errno));
 	if (fd < 10) {
-		fd2 = copyfd(fd, 10);
+		fd2 = fcntl(fd, F_DUPFD, 10);
 		close(fd);
 		if (fd2 < 0)
 			error("Out of file descriptors");
