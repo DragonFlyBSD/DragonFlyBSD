@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.8 2007/01/09 07:23:03 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.9 2007/01/13 17:06:19 y0netan1 Exp $
  */
 
 #include <sys/systm.h>
@@ -302,9 +302,9 @@ vcons_set_mode(int in_debugger)
 		tio.c_cc[VSUSP] = 'z' & 0x1f;
 		tio.c_cc[VSTATUS] = 't' & 0x1f;
 	} else {
-		tio.c_cc[VINTR] = 0;
-		tio.c_cc[VSUSP] = 0;
-		tio.c_cc[VSTATUS] = 0;
+		tio.c_cc[VINTR] = _POSIX_VDISABLE;
+		tio.c_cc[VSUSP] = _POSIX_VDISABLE;
+		tio.c_cc[VSTATUS] = _POSIX_VDISABLE;
 	}
 	tcsetattr(0, TCSAFLUSH, &tio);
 }
