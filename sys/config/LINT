@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.102 2007/01/11 17:16:02 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.103 2007/01/13 22:26:54 tgen Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2672,6 +2672,7 @@ options		DEBUG_PCTRACK
 
 options 	ACPI_DEBUG
 #options	ACPI_NO_SEMAPHORES
+options 	ACPI_QUIRK_VMWARE
 options 	AHC_DUMP_EEPROM
 #options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
