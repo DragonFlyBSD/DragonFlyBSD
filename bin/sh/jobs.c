@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.c,v 1.27.2.10 2003/04/04 08:16:26 tjr Exp $
- * $DragonFly: src/bin/sh/jobs.c,v 1.8 2007/01/13 20:33:47 pavalos Exp $
+ * $FreeBSD: src/bin/sh/jobs.c,v 1.72 2006/10/07 16:51:16 stefanf Exp $
+ * $DragonFly: src/bin/sh/jobs.c,v 1.9 2007/01/13 21:27:45 pavalos Exp $
  */
 
 #include <fcntl.h>
@@ -230,7 +230,7 @@ bgcmd(int argc, char **argv)
 			continue;
 		restartjob(jp);
 		jp->foreground = 0;
-		fmtstr(s, 64, "[%d] ", jp - jobtab + 1);
+		fmtstr(s, 64, "[%td] ", jp - jobtab + 1);
 		out1str(s);
 		out1str(jp->ps[0].cmd);
 		out1c('\n');
@@ -359,7 +359,7 @@ showjob(struct job *jp, pid_t pid, int mode)
 				    WEXITSTATUS(ps->status));
 		} else {
 #if JOBS
-			if (WIFSTOPPED(ps->status)) 
+			if (WIFSTOPPED(ps->status))
 				i = WSTOPSIG(ps->status);
 			else
 #endif
@@ -653,7 +653,7 @@ makejob(union node *node __unused, int nprocs)
 		jp->ps = &jp->ps0;
 	}
 	INTON;
-	TRACE(("makejob(0x%lx, %d) returns %%%d\n", (long)node, nprocs,
+	TRACE(("makejob(%p, %d) returns %%%d\n", (void *)node, nprocs,
 	    jp - jobtab + 1));
 	return jp;
 }
@@ -739,7 +739,7 @@ forkshell(struct job *jp, union node *n, int mode)
 	pid_t pid;
 	pid_t pgrp;
 
-	TRACE(("forkshell(%%%d, 0x%lx, %d) called\n", jp - jobtab, (long)n,
+	TRACE(("forkshell(%%%d, %p, %d) called\n", jp - jobtab, (void *)n,
 	    mode));
 	INTOFF;
 	flushall();
@@ -793,7 +793,7 @@ forkshell(struct job *jp, union node *n, int mode)
 			    ! fd0_redirected_p ()) {
 				close(0);
 				if (open(_PATH_DEVNULL, O_RDONLY) != 0)
-					error("Can't open %s: %s", 
+					error("Can't open %s: %s",
 					    _PATH_DEVNULL, strerror(errno));
 			}
 		}
@@ -928,8 +928,10 @@ dowait(int block, struct job *job)
 		pid = waitproc(block, &status);
 		TRACE(("wait returns %d, status=%d\n", (int)pid, status));
 	} while ((pid == -1 && errno == EINTR && breakwaitcmd == 0) ||
-	    (WIFSTOPPED(status) && !iflag));
+		 (pid > 0 && WIFSTOPPED(status) && !iflag));
 	in_dowait--;
+	if (pid == -1 && errno == ECHILD && job != NULL)
+		job->state = JOBDONE;
 	if (breakwaitcmd != 0) {
 		breakwaitcmd = 0;
 		/*
@@ -1003,7 +1005,7 @@ dowait(int block, struct job *job)
 				showjob(thisjob, pid, SHOWJOBS_DEFAULT);
 		}
 	} else {
-		TRACE(("Not printing status, rootshell=%d, job=0x%x\n", rootshell, job));
+		TRACE(("Not printing status, rootshell=%d, job=%p\n", rootshell, job));
 		if (thisjob)
 			thisjob->changed = 1;
 	}
