@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.63 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.64 2007/01/13 21:33:30 tgen Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -224,9 +224,17 @@ void	setstatclockrate (int hzrate);
 void	cons_lock(void); 
 void	cons_unlock(void);
 
+/*
+ * Kernel environment support functions and sundry.
+ */
 char	*kgetenv (const char *name);
-#define	testenv	kgetenv
-#define	freeenv(p)
+int	ksetenv(const char *name, const char *value);
+int	kunsetenv(const char *name);
+void	kfreeenv(char *env);
+int	ktestenv(const char *name);
+/* XXX TGEN Get rid of these compat defines. */
+#define	testenv	ktestenv
+#define	freeenv kfreeenv
 int	kgetenv_int (const char *name, int *data);
 int	kgetenv_string (const char *name, char *data, int size);
 int	kgetenv_quad (const char *name, quad_t *data);
