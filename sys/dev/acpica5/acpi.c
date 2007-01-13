@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.26 2006/12/22 23:26:14 swildner Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.27 2007/01/13 21:58:11 tgen Exp $
  */
 
 #include "opt_acpi.h"
@@ -94,7 +94,19 @@ static struct acpi_quirks acpi_quirks_table[] = {
     /* Bad PCI routing table.  Used on some SuperMicro boards. */
     { "PTLTD ", 0x06040000, "pci_link" },
 #endif
-
+#ifdef ACPI_QUIRK_VMWARE
+    /*
+     * VMware's ACPI-fast24 timer runs roughly 65 times too fast, and not
+     * predictably/monotonic either. This is observed at least under SMP
+     * conditions.
+     *
+     * NOTE: this combination of OemId and OemRevision is NOT unique; it is
+     * known or suspected that at least some SuperMicro boards (see above) and
+     * the Compaq Presario 1952 use this combination. That's why this quirks
+     * entry is guarded by an #ifdef, and associated config option.
+     */
+    { "PTLTD ", 0x06040000, "timer" },
+#endif /* ACPI_QUIRK_VMWARE */
     { NULL, 0, NULL }
 };
 
@@ -652,7 +664,7 @@ acpi_quirks_set(void)
 	/* XXX No strcasecmp but this is good enough. */
 	if (*env == 'Y' || *env == 'y')
 	    goto out;
-	freeenv(env);
+	kfreeenv(env);
     }
     if ((env = kgetenv("debug.acpi.disabled")) != NULL) {
 	if (strstr("quirks", env) != NULL)
@@ -673,9 +685,7 @@ acpi_quirks_set(void)
 		if ((tmp = kmalloc(len, M_TEMP, M_NOWAIT)) == NULL)
 		    goto out;
 		ksprintf(tmp, "%s %s", env ? env : "", quirk->value);
-#ifdef notyet
-		setenv("debug.acpi.disabled", tmp);
-#endif /* notyet */
+		ksetenv("debug.acpi.disabled", tmp);
 		kfree(tmp, M_TEMP);
 		break;
 	}
@@ -683,7 +693,7 @@ acpi_quirks_set(void)
 
 out:
     if (env)
-	freeenv(env);
+	kfreeenv(env);
 }
 
 /*

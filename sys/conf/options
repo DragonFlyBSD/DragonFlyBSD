@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.59 2007/01/11 17:16:02 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.60 2007/01/13 21:58:11 tgen Exp $
 #
 #        On the handling of kernel options
 #
@@ -77,6 +77,7 @@ TWA_FLASH_FIRMWARE	opt_twa.h
 #options for ACPI support
 ACPI_DEBUG		opt_acpi.h
 ACPI_NO_SEMAPHORES	opt_acpi.h
+ACPI_QUIRK_VMWARE	opt_acpi.h
 
 # Miscellaneous options.
 COMPAT_DF12	opt_compatdf12.h
