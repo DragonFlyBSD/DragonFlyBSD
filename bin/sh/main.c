@@ -35,8 +35,8 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.7 2007/01/13 20:33:47 pavalos Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.29 2006/10/07 16:51:16 stefanf Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.8 2007/01/13 23:36:14 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -68,14 +68,8 @@
 #include "exec.h"
 #include "cd.h"
 
-#define PROFILE 0
-
 int rootpid;
 int rootshell;
-#if PROFILE
-short profile_buf[16384];
-extern int etext();
-#endif
 
 STATIC void read_profile(const char *);
 STATIC const char *find_dot_file(const char *);
@@ -98,9 +92,6 @@ main(int argc, char *argv[])
 	volatile int state;
 	char *shinit;
 
-#if PROFILE
-	monitor(4, etext, profile_buf, sizeof profile_buf, 50);
-#endif
 	setlocale(LC_ALL, "");
 	state = 0;
 	if (setjmp(jmploc.loc)) {
@@ -161,6 +152,8 @@ main(int argc, char *argv[])
 	procargs(argc, argv);
 	if (getpwd() == NULL && iflag)
 		out2str("sh: cannot determine working directory\n");
+	if (getpwd() != NULL)
+		setvar ("PWD", getpwd(), VEXPORT);
 	if (argv[0] && argv[0][0] == '-') {
 		state = 1;
 		read_profile("/etc/profile");
@@ -188,9 +181,6 @@ state3:
 state4:	/* XXX ??? - why isn't this before the "if" statement */
 		cmdloop(1);
 	}
-#if PROFILE
-	monitor(0);
-#endif
 	exitshell(exitstatus);
 	/*NOTREACHED*/
 	return 0;
@@ -323,19 +313,21 @@ int
 dotcmd(int argc, char **argv)
 {
 	struct strlist *sp;
+	const char *fullname;
+
+	if (argc < 2)
+		error("missing filename");
+
 	exitstatus = 0;
 
 	for (sp = cmdenviron; sp ; sp = sp->next)
 		setvareq(savestr(sp->text), VSTRFIXED|VTEXTFIXED);
 
-	if (argc >= 2) {		/* That's what SVR2 does */
-		const char *fullname = find_dot_file(argv[1]);
-
-		setinputfile(fullname, 1);
-		commandname = fullname;
-		cmdloop(0);
-		popfile();
-	}
+	fullname = find_dot_file(argv[1]);
+	setinputfile(fullname, 1);
+	commandname = fullname;
+	cmdloop(0);
+	popfile();
 	return exitstatus;
 }
 
