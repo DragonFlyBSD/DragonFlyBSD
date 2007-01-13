@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.113 2007/01/09 07:03:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.114 2007/01/13 21:15:56 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -439,6 +439,9 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
 	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_gs, sizeof(struct trapframe));
+
+	/* make the size of the saved context visible to userland */
+	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
 
 	/* Allocate and validate space for the signal handler context. */
 	/* XXX lwp flags */

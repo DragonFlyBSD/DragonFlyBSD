@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ucontext.h,v 1.4 1999/10/11 20:33:09 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.4 2007/01/08 03:33:37 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/ucontext.h,v 1.5 2007/01/13 21:15:55 dillon Exp $
  */
 
 #ifndef _CPU_UCONTEXT_H_
@@ -60,8 +60,22 @@ typedef struct __mcontext {
 	int	mc_esp;			/* machine state */
 	int	mc_ss;
 
+	int	mc_len;
+	int	mc_fpformat;
+	int	mc_ownedfp;
+
+	/* 16 byte aligned */
+
 	int	mc_fpregs[128];		/* full fp state */
 	int	__spare__[16];
 } mcontext_t;
+
+#define _MC_FPFMT_NODEV		0x10000 /* device not present or configured */
+#define _MC_FPFMT_387		0x10001
+#define _MC_FPFMT_XMM		0x10002
+
+#define _MC_FPOWNED_NONE	0x20000 /* FP state not used */
+#define _MC_FPOWNED_FPU		0x20001 /* FP state came from FPU */
+#define _MC_FPOWNED_PCB		0x20002 /* FP state came from PCB */
 
 #endif /* !_CPU_UCONTEXT_H_ */

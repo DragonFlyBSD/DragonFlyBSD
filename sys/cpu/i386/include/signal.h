@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.8 2007/01/08 03:33:37 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.9 2007/01/13 21:15:55 dillon Exp $
  */
 
 #ifndef _CPU_SIGNAL_H_
@@ -94,8 +94,14 @@ struct	sigcontext {
 	int	sc_esp;
 	int	sc_ss;
 
+	int	mc_len;
+	int	mc_fpformat;
+	int	mc_ownedfp;
+
 	/*
 	 * Full FPU state is 512 bytes.  Add another 16 bytes worth of spare.
+	 *
+	 * This field must be 16-byte aligned.
 	 */
 	int	sc_fpregs[128];		/* machine state (FPU): */
 	int	sc_spare[16];
