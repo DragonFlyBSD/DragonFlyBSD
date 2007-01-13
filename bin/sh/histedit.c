@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.9 2006/09/28 22:29:44 pavalos Exp $
+ * $FreeBSD: src/bin/sh/histedit.c,v 1.29 2006/08/04 07:56:31 yar Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.10 2007/01/13 19:47:55 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@
 History *hist;	/* history cookie */
 EditLine *el;	/* editline cookie */
 int displayhist;
-static FILE *el_in, *el_out;
+static FILE *el_in, *el_out, *el_err;
 
 STATIC char *fc_replace(const char *, char *, char *);
 
@@ -77,7 +77,6 @@ STATIC char *fc_replace(const char *, char *, char *);
 void
 histedit(void)
 {
-	FILE *el_err;
 
 #define editing (Eflag || Vflag)
 
@@ -104,11 +103,12 @@ histedit(void)
 			INTOFF;
 			if (el_in == NULL)
 				el_in = fdopen(0, "r");
+			if (el_err == NULL)
+				el_err = fdopen(1, "w");
 			if (el_out == NULL)
 				el_out = fdopen(2, "w");
-			if (el_in == NULL || el_out == NULL)
+			if (el_in == NULL || el_err == NULL || el_out == NULL)
 				goto bad;
-			el_err = el_out;
 			term = lookupvar("TERM");
 			if (term) {
 				if (setenv("TERM", term, 1) == -1)
@@ -171,10 +171,6 @@ sethistsize(const char *hs)
 	}
 }
 
-/*
- *  This command is provided since POSIX decided to standardize
- *  the Korn shell fc command.  Oh well...
- */
 int
 histcmd(int argc, char **argv)
 {
@@ -185,12 +181,13 @@ histcmd(int argc, char **argv)
 	int i, retval;
 	const char *firststr, *laststr;
 	int first, last, direction;
-	char *pat = NULL, *repl;	/* ksh "fc old=new" crap */
+	char *pat = NULL, *repl;
 	static int active = 0;
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler;
 	char editfile[PATH_MAX];
 	FILE *efp;
+	int oldhistnum;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &editor;
@@ -370,13 +367,21 @@ histcmd(int argc, char **argv)
 					 *  XXX what about recursive and
 					 *  relative histnums.
 					 */
+					oldhistnum = he.num;
 					history(hist, &he, H_ENTER, s);
+					/*
+					 * XXX H_ENTER moves the internal
+					 * cursor, set it back to the current
+					 * entry.
+					 */
+					retval = history(hist, &he,
+					    H_NEXT_EVENT, oldhistnum);
 				}
 			} else
 				fputs(s, efp);
 		}
 		/*
-		 * At end?  (if we were to loose last, we'd sure be
+		 * At end?  (if we were to lose last, we'd sure be
 		 * messed up).
 		 */
 		if (he.num == last)
@@ -439,10 +444,9 @@ str_to_event(const char *str, int last)
 	HistEvent he;
 	const char *s = str;
 	int relative = 0;
-	int i;
-	int retval = 0;
+	int i, retval;
 
-	history(hist, &he, H_FIRST);
+	retval = history(hist, &he, H_FIRST);
 	switch (*s) {
 	case '-':
 		relative = 1;
