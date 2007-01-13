@@ -95,6 +95,9 @@ require_complete_type (tree value)
   else
     type = TREE_TYPE (value);
 
+  if (type == error_mark_node)
+    return error_mark_node;
+
   /* First, detect a valid value with a complete type.  */
   if (COMPLETE_TYPE_P (type))
     return value;
@@ -4794,7 +4797,7 @@ build_const_cast (tree type, tree expr)
 {
   tree intype;
 
-  if (type == error_mark_node || expr == error_mark_node)
+  if (type == error_mark_node || error_operand_p (expr))
     return error_mark_node;
 
   if (processing_template_decl)
@@ -6084,6 +6087,15 @@ check_return_expr (tree retval)
     /* Remember that this function did return a value.  */
     current_function_returns_value = 1;
 
+  /* Check for erroneous operands -- but after giving ourselves a
+     chance to provide an error about returning a value from a void
+     function.  */
+  if (error_operand_p (retval))
+    {
+      current_function_return_value = error_mark_node;
+      return error_mark_node;
+    }
+
   /* Only operator new(...) throw(), can return NULL [expr.new/13].  */
   if ((DECL_OVERLOADED_OPERATOR_P (current_function_decl) == NEW_EXPR
        || DECL_OVERLOADED_OPERATOR_P (current_function_decl) == VEC_NEW_EXPR)
@@ -6140,8 +6152,8 @@ check_return_expr (tree retval)
 
   /* We don't need to do any conversions when there's nothing being
      returned.  */
-  if (!retval || retval == error_mark_node)
-    return retval;
+  if (!retval)
+    return NULL_TREE;
 
   /* Do any required conversions.  */
   if (retval == result || DECL_CONSTRUCTOR_P (current_function_decl))
