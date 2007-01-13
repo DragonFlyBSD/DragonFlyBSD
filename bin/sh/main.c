@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
  * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.6 2006/09/28 22:29:44 pavalos Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.7 2007/01/13 20:33:47 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -218,7 +218,7 @@ cmdloop(int top)
 		inter = 0;
 		if (iflag && top) {
 			inter++;
-			showjobs(1, 0, 0);
+			showjobs(1, SHOWJOBS_DEFAULT);
 			chkmail(0);
 			flushout(&output);
 		}

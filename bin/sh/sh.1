@@ -34,7 +34,7 @@
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
 .\" $FreeBSD: src/bin/sh/sh.1,v 1.39.2.25 2003/02/13 19:28:08 fanf Exp $
-.\" $DragonFly: src/bin/sh/sh.1,v 1.6 2007/01/07 01:14:53 pavalos Exp $
+.\" $DragonFly: src/bin/sh/sh.1,v 1.7 2007/01/13 20:33:47 pavalos Exp $
 .\"
 .Dd December 4, 2005
 .Dt SH 1
@@ -1628,7 +1628,7 @@ Print the process id's of the processes in the specified
 If the
 .Ar job
 argument is omitted, use the current job.
-.It Ic jobs Oo Fl ls Oc Op Ar job ...
+.It Ic jobs Oo Fl lps Oc Op Ar job ...
 Print information about the specified jobs, or all jobs if no
 .Ar job
 argument is given.
@@ -1638,8 +1638,13 @@ If the
 .Fl l
 option is specified, the PID of each job is also printed.
 If the
+.Fl p
+option is specified, only the process IDs for the process group leaders
+are printed, one per line.
+If the
 .Fl s
-option is specified, only the PIDs of the jobs are printed, one per line.
+option is specified, only the PIDs of the job commands are printed, one per
+line.
 .It Ic pwd Op Fl LP
 Print the path of the current directory.  The built-in command may
 differ from the program of the same name because the
