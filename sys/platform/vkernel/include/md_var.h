@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.13 2007/01/14 07:59:06 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.14 2007/01/14 14:24:56 sephe Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -43,6 +43,15 @@
 #ifndef _SYS_VKERNEL_H_
 #include <sys/vkernel.h>
 #endif
+
+#define VKNETIF_MAX	16
+
+struct vknetif_info {
+	int		tap_fd;
+	int		tap_unit;
+	in_addr_t	netif_addr;
+	in_addr_t	netif_mask;
+};
 
 extern	char	sigcode[];
 extern	int	szsigcode;
@@ -56,7 +65,8 @@ extern  u_int   cpu_id;		/* XXX belongs in i386 */
 
 extern int	RootImageFd;
 extern int	MemImageFd;
-extern int	NetifFd;
+extern struct vknetif_info NetifInfo[VKNETIF_MAX];
+extern int	NetifNum;
 extern int	_ucodesel, _udatasel;
 
 struct mdglobaldata;
@@ -82,4 +92,3 @@ void signalmailbox(struct intrframe *);
 int npxdna(struct trapframe *);
 
 #endif
-

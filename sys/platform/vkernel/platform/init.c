@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.25 2007/01/14 00:01:08 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.26 2007/01/14 14:24:56 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -47,12 +47,21 @@
 #include <sys/proc.h>
 #include <sys/msgbuf.h>
 #include <sys/vmspace.h>
+#include <sys/socket.h>
+#include <sys/sockio.h>
 #include <vm/vm_page.h>
 
 #include <machine/globaldata.h>
 #include <machine/tls.h>
 #include <machine/md_var.h>
 #include <machine/vmparam.h>
+
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <net/ethernet.h>
+#include <net/bridge/if_bridgevar.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,7 +77,8 @@ vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
 int RootImageFd = -1;
-int NetifFd = -1;
+struct vknetif_info NetifInfo[VKNETIF_MAX];
+int NetifNum;
 vm_offset_t KvaStart;
 vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
@@ -95,7 +105,7 @@ static void init_kern_memory(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
 static void init_rootdevice(char *imageFile);
-static void init_netif(char *netifFile);
+static void init_netif(char *netifFile[], int netifFileNum);
 static void usage(const char *ctl);
 
 /*
@@ -106,8 +116,9 @@ main(int ac, char **av)
 {
 	char *memImageFile = NULL;
 	char *rootImageFile = NULL;
-	char *netifFile = NULL;
+	char *netifFile[VKNETIF_MAX];
 	char *suffix;
+	int netifFileNum = 0;
 	int c;
 	int i;
 	int n;
@@ -142,7 +153,8 @@ main(int ac, char **av)
 			memImageFile = optarg;
 			break;
 		case 'I':
-			netifFile = optarg;
+			if (netifFileNum < VKNETIF_MAX)
+				netifFile[netifFileNum++] = optarg;
 			break;
 		case 'r':
 			rootImageFile = optarg;
@@ -180,7 +192,7 @@ main(int ac, char **av)
 	init_globaldata();
 	init_vkernel();
 	init_rootdevice(rootImageFile);
-	init_netif(netifFile);
+	init_netif(netifFile, netifFileNum);
 	init_exceptions();
 	mi_startup();
 	/* NOT REACHED */
@@ -545,16 +557,402 @@ init_rootdevice(char *imageFile)
 }
 
 static
-void
-init_netif(char *netifFile)
+int
+netif_set_tapflags(int tap_unit, int f, int s)
 {
-	if (netifFile) {
-		NetifFd = open(netifFile, O_RDWR | O_NONBLOCK);
-		if (NetifFd < 0) {
-			warn("Unable to open %s: %s",
-			     netifFile, strerror(errno));
+	struct ifreq ifr;
+	int flags;
+
+	bzero(&ifr, sizeof(ifr));
+
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tap%d", tap_unit);
+	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
+		warn("tap%d: ioctl(SIOCGIFFLAGS) failed: %s",
+		     tap_unit, strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Adjust if_flags
+	 *
+	 * If the flags are already set/cleared, then we return
+	 * immediately to avoid extra syscalls
+	 */
+	flags = (ifr.ifr_flags & 0xffff) | (ifr.ifr_flagshigh << 16);
+	if (f < 0) {
+		/* Turn off flags */
+		f = -f;
+		if ((flags & f) == 0)
+			return 0;
+		flags &= ~f;
+	} else {
+		/* Turn on flags */
+		if (flags & f)
+			return 0;
+		flags |= f;
+	}
+
+	/*
+	 * Fix up ifreq.ifr_name, since it may be trashed
+	 * in previous ioctl(SIOCGIFFLAGS)
+	 */
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tap%d", tap_unit);
+
+	ifr.ifr_flags = flags & 0xffff;
+	ifr.ifr_flagshigh = flags >> 16;
+	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) {
+		warn("tap%d: ioctl(SIOCSIFFLAGS) failed: %s",
+		     tap_unit, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static
+int
+netif_set_tapaddr(int tap_unit, in_addr_t addr, in_addr_t mask, int s)
+{
+	struct ifaliasreq ifra;
+	struct sockaddr_in *in;
+
+	bzero(&ifra, sizeof(ifra));
+	snprintf(ifra.ifra_name, sizeof(ifra.ifra_name), "tap%d", tap_unit);
+
+	/* Setup address */
+	in = (struct sockaddr_in *)&ifra.ifra_addr;
+	in->sin_family = AF_INET;
+	in->sin_len = sizeof(*in);
+	in->sin_addr.s_addr = addr;
+
+	if (mask != 0) {
+		/* Setup netmask */
+		in = (struct sockaddr_in *)&ifra.ifra_mask;
+		in->sin_len = sizeof(*in);
+		in->sin_addr.s_addr = mask;
+	}
+
+	if (ioctl(s, SIOCAIFADDR, &ifra) < 0) {
+		warn("tap%d: ioctl(SIOCAIFADDR) failed: %s",
+		     tap_unit, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static
+int
+netif_add_tap2brg(int tap_unit, const char *ifbridge, int s)
+{
+	struct ifbreq ifbr;
+	struct ifdrv ifd;
+
+	bzero(&ifbr, sizeof(ifbr));
+	snprintf(ifbr.ifbr_ifsname, sizeof(ifbr.ifbr_ifsname),
+		 "tap%d", tap_unit);
+
+	bzero(&ifd, sizeof(ifd));
+	strlcpy(ifd.ifd_name, ifbridge, sizeof(ifd.ifd_name));
+	ifd.ifd_cmd = BRDGADD;
+	ifd.ifd_len = sizeof(ifbr);
+	ifd.ifd_data = &ifbr;
+
+	if (ioctl(s, SIOCSDRVSPEC, &ifd) < 0) {
+		/*
+		 * 'errno == EEXIST' means that the tap(4) is already
+		 * a member of the bridge(4)
+		 */
+		if (errno != EEXIST) {
+			warn("ioctl(%s, SIOCSDRVSPEC) failed: %s",
+			     ifbridge, strerror(errno));
+			return -1;
 		}
 	}
+	return 0;
+}
+
+#define TAPDEV_OFLAGS	(O_RDWR | O_NONBLOCK)
+
+/* XXX major()/minor() can't be used in vkernel */
+#define TAPDEV_MAJOR(x)	((int)(((u_int)(x) >> 8) & 0xff))
+#define TAPDEV_MINOR(x)	((int)((x) & 0xffff00ff))
+
+#ifndef TAP_CDEV_MAJOR
+#define TAP_CDEV_MAJOR	149
+#endif
+
+/*
+ * Locate the first unused tap(4) device file if auto mode is requested,
+ * or open the user supplied device file, and bring up the corresponding
+ * tap(4) interface.
+ *
+ * NOTE: Only tap(4) device file is supported currently
+ */
+static
+int
+netif_open_tap(const char *netif, int *tap_unit, int s)
+{
+	char tap_dev[MAXPATHLEN];
+	int tap_fd, failed;
+	struct stat st;
+
+	*tap_unit = -1;
+
+	if (strcmp(netif, "auto") == 0) {
+		int i;
+
+		/*
+		 * Find first unused tap(4) device file
+		 */
+		for (i = 0; ; ++i) {
+			snprintf(tap_dev, sizeof(tap_dev), "/dev/tap%d", i);
+			tap_fd = open(tap_dev, TAPDEV_OFLAGS);
+			if (tap_fd >= 0 || errno == ENOENT)
+				break;
+		}
+		if (tap_fd < 0) {
+			warnx("Unable to find a free tap(4)");
+			return -1;
+		}
+	} else {
+		/*
+		 * User supplied tap(4) device file
+		 */
+		if (netif[0] == '/')	/* Absolute path */
+			strlcpy(tap_dev, netif, sizeof(tap_dev));
+		else
+			snprintf(tap_dev, sizeof(tap_dev), "/dev/%s", netif);
+
+		tap_fd = open(tap_dev, TAPDEV_OFLAGS);
+		if (tap_fd < 0) {
+			warn("Unable to open %s: %s",
+			     tap_dev, strerror(errno));
+			return -1;
+		}
+	}
+
+	/*
+	 * Check whether the device file is a tap(4)
+	 */
+	failed = 1;
+	if (fstat(tap_fd, &st) == 0 && S_ISCHR(st.st_mode) &&
+	    TAPDEV_MAJOR(st.st_rdev) == TAP_CDEV_MAJOR) {
+		*tap_unit = TAPDEV_MINOR(st.st_rdev);
+
+		/*
+		 * Bring up the corresponding tap(4) interface
+		 */
+		if (netif_set_tapflags(*tap_unit, IFF_UP, s) == 0)
+			failed = 0;
+	} else {
+		warnx("%s is not a tap(4) device", tap_dev);
+	}
+
+	if (failed) {
+		close(tap_fd);
+		tap_fd = -1;
+		*tap_unit = -1;
+	}
+	return tap_fd;
+}
+
+#undef TAPDEV_MAJOR
+#undef TAPDEV_MINOR
+#undef TAPDEV_OFLAGS
+
+/*
+ * Following syntax is supported,
+ * 1) x.x.x.x             tap(4)'s address is x.x.x.x
+ *
+ * 2) x.x.x.x/z           tap(4)'s address is x.x.x.x
+ *                        tap(4)'s netmask len is z
+ *
+ * 3) x.x.x.x:y.y.y.y     tap(4)'s address is x.x.x.x
+ *                        pseudo netif's address is y.y.y.y
+ *
+ * 4) x.x.x.x:y.y.y.y/z   tap(4)'s address is x.x.x.x
+ *                        pseudo netif's address is y.y.y.y
+ *                        tap(4) and pseudo netif's netmask len are z
+ *
+ * 5) bridgeX             tap(4) will be added to bridgeX
+ *
+ * 6) bridgeX:y.y.y.y     tap(4) will be added to bridgeX
+ *                        pseudo netif's address is y.y.y.y
+ *
+ * 7) bridgeX:y.y.y.y/z   tap(4) will be added to bridgeX
+ *                        pseudo netif's address is y.y.y.y
+ *                        pseudo netif's netmask len is z
+ */
+static
+int
+netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, int s)
+{
+	in_addr_t tap_addr, netmask, netif_addr;
+	int next_netif_addr;
+	char *tok, *masklen_str, *ifbridge;
+
+	*addr = 0;
+	*mask = 0;
+
+	tok = strtok(NULL, ":/");
+	if (tok == NULL) {
+		/*
+		 * Nothing special, simply use tap(4) as backend
+		 */
+		return 0;
+	}
+
+	if (inet_pton(AF_INET, tok, &tap_addr) > 0) {
+		/*
+		 * tap(4)'s address is supplied
+		 */
+		ifbridge = NULL;
+
+		/*
+		 * If there is next token, then it may be pseudo
+		 * netif's address or netmask len for tap(4)
+		 */
+		next_netif_addr = 0;
+	} else {
+		/*
+		 * Not tap(4)'s address, assume it as a bridge(4)
+		 * iface name
+		 */
+		tap_addr = 0;
+		ifbridge = tok;
+
+		/*
+		 * If there is next token, then it must be pseudo
+		 * netif's address
+		 */
+		next_netif_addr = 1;
+	}
+
+	netmask = netif_addr = 0;
+
+	tok = strtok(NULL, ":/");
+	if (tok == NULL)
+		goto back;
+
+	if (inet_pton(AF_INET, tok, &netif_addr) <= 0) {
+		if (next_netif_addr) {
+			warnx("Invalid pseudo netif address: %s", tok);
+			return -1;
+		}
+		netif_addr = 0;
+
+		/*
+		 * Current token is not address, then it must be netmask len
+		 */
+		masklen_str = tok;
+	} else {
+		/*
+		 * Current token is pseudo netif address, if there is next token
+		 * it must be netmask len
+		 */
+		masklen_str = strtok(NULL, "/");
+	}
+
+	/* Calculate netmask */
+	if (masklen_str != NULL) {
+		u_long masklen;
+
+		masklen = strtoul(masklen_str, NULL, 10);
+		if (masklen < 32 && masklen > 0) {
+			netmask = htonl(~((1LL << (32 - masklen)) - 1)
+					& 0xffffffff);
+		} else {
+			warnx("Invalid netmask len: %lu", masklen);
+			return -1;
+		}
+	}
+
+	/* Make sure there is no more token left */
+	if (strtok(NULL, ":/") != NULL) {
+		warnx("Invalid argument to '-I'");
+		return -1;
+	}
+
+back:
+	if (ifbridge == NULL) {
+		/* Set tap(4) address/netmask */
+		if (netif_set_tapaddr(tap_unit, tap_addr, netmask, s) < 0)
+			return -1;
+	} else {
+		/* Tie tap(4) to bridge(4) */
+		if (netif_add_tap2brg(tap_unit, ifbridge, s) < 0)
+			return -1;
+	}
+
+	*addr = netif_addr;
+	*mask = netmask;
+	return 0;
+}
+
+/*
+ * NetifInfo[] will be filled for pseudo netif initialization.
+ * NetifNum will be bumped to reflect the number of valid entries
+ * in NetifInfo[].
+ */
+static
+void
+init_netif(char *netifExp[], int netifExpNum)
+{
+	int i, s;
+
+	if (netifExpNum == 0)
+		return;
+
+	s = socket(AF_INET, SOCK_DGRAM, 0);	/* for ioctl(SIOC) */
+	if (s < 0)
+		return;
+
+	for (i = 0; i < netifExpNum; ++i) {
+		struct vknetif_info *info;
+		in_addr_t netif_addr, netif_mask;
+		int tap_fd, tap_unit;
+		char *netif;
+
+		netif = strtok(netifExp[i], ":");
+		if (netif == NULL) {
+			warnx("Invalide argument to '-I'");
+			continue;
+		}
+
+		/*
+		 * Open tap(4) device file and bring up the
+		 * corresponding interface
+		 */
+		tap_fd = netif_open_tap(netif, &tap_unit, s);
+		if (tap_fd < 0)
+			continue;
+
+		/*
+		 * Initialize tap(4) and get address/netmask
+		 * for pseudo netif
+		 *
+		 * NB: Rest part of netifExp[i] is passed
+		 *     to netif_init_tap() implicitly.
+		 */
+		if (netif_init_tap(tap_unit, &netif_addr, &netif_mask, s) < 0) {
+			/*
+			 * NB: Closing tap(4) device file will bring
+			 *     down the corresponding interface
+			 */
+			close(tap_fd);
+			continue;
+		}
+
+		info = &NetifInfo[NetifNum];
+		info->tap_fd = tap_fd;
+		info->tap_unit = tap_unit;
+		info->netif_addr = netif_addr;
+		info->netif_mask = netif_mask;
+
+		NetifNum++;
+		if (NetifNum >= VKNETIF_MAX)	/* XXX will this happen? */
+			break;
+	}
+	close(s);
 }
 
 static
