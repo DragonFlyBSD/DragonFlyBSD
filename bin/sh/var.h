@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.8.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/var.h,v 1.5 2007/01/07 01:14:53 pavalos Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.14 2006/06/15 07:00:49 stefanf Exp $
+ * $DragonFly: src/bin/sh/var.h,v 1.6 2007/01/14 15:16:49 pavalos Exp $
  */
 
 /*
@@ -45,8 +45,8 @@
 /* flags */
 #define VEXPORT		0x01	/* variable is exported */
 #define VREADONLY	0x02	/* variable cannot be modified */
-#define VSTRFIXED	0x04	/* variable struct is staticly allocated */
-#define VTEXTFIXED	0x08	/* text is staticly allocated */
+#define VSTRFIXED	0x04	/* variable struct is statically allocated */
+#define VTEXTFIXED	0x08	/* text is statically allocated */
 #define VSTACK		0x10	/* text is allocated on the stack */
 #define VUNSET		0x20	/* the variable is not set */
 #define VNOFUNC		0x40	/* don't call the callback function */
