@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.13 2007/01/07 01:14:53 pavalos Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.14 2007/01/14 15:14:52 pavalos Exp $
  */
 
 #include <unistd.h>
@@ -210,7 +210,7 @@ setvarsafe(const char *name, const char *val, int flags)
 }
 
 /*
- * Set the value of a variable.  The flags argument is tored with the
+ * Set the value of a variable.  The flags argument is stored with the
  * flags of the variable.  If val is NULL, the variable is unset.
  */
 
@@ -484,6 +484,21 @@ shprocvar(void)
 }
 
 
+static int
+var_compare(const void *a, const void *b)
+{
+	const char *const *sa, *const *sb;
+
+	sa = a;
+	sb = b;
+	/*
+	 * This compares two var=value strings which creates a different
+	 * order from what you would probably expect.  POSIX is somewhat
+	 * ambiguous on what should be sorted exactly.
+	 */
+	return strcoll(*sa, *sb);
+}
+
 
 /*
  * Command to list all variables which are set.  Currently this command
@@ -497,18 +512,41 @@ showvarscmd(int argc __unused, char **argv __unused)
 	struct var **vpp;
 	struct var *vp;
 	const char *s;
+	const char **vars;
+	int i, n;
 
-	for (vpp = vartab ; vpp < vartab + VTABSIZE ; vpp++) {
-		for (vp = *vpp ; vp ; vp = vp->next) {
-			if (vp->flags & VUNSET)
-				continue;
-			for (s = vp->text; *s != '='; s++)
-				out1c(*s);
-			out1c('=');
-			out1qstr(s + 1);
-			out1c('\n');
+	/*
+	 * POSIX requires us to sort the variables.
+	 */
+	n = 0;
+	for (vpp = vartab; vpp < vartab + VTABSIZE; vpp++) {
+		for (vp = *vpp; vp; vp = vp->next) {
+			if (!(vp->flags & VUNSET))
+				n++;
 		}
 	}
+
+	INTON;
+	vars = ckmalloc(n * sizeof(*vars));
+	i = 0;
+	for (vpp = vartab; vpp < vartab + VTABSIZE; vpp++) {
+		for (vp = *vpp; vp; vp = vp->next) {
+			if (!(vp->flags & VUNSET))
+				vars[i++] = vp->text;
+		}
+	}
+
+	qsort(vars, n, sizeof(*vars), var_compare);
+	for (i = 0; i < n; i++) {
+		for (s = vars[i]; *s != '='; s++)
+			out1c(*s);
+		out1c('=');
+		out1qstr(s + 1);
+		out1c('\n');
+	}
+	ckfree(vars);
+	INTOFF;
+
 	return 0;
 }
 
@@ -546,9 +584,11 @@ exportcmd(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (values && argc != 0)
+		error("-p requires no arguments");
 	listsetvar(cmdenviron);
 	if (argc != 0) {
-		while ((name = *argptr++) != NULL) {
+		while ((name = *argv++) != NULL) {
 			if ((p = strchr(name, '=')) != NULL) {
 				p++;
 			} else {
