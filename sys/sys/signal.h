@@ -37,7 +37,7 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/signal.h,v 1.6 2007/01/14 07:59:08 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
@@ -127,6 +127,9 @@
  * has no way to do this, but on most machines 1-arg and 3-arg functions
  * have the same calling protocol so there is no problem in practice.
  * A bit in sa_flags could be used to specify the number of args.
+ *
+ * SIG_EINTR causes system calls to interrupt but generates no signal
+ * delivery.  The caller is responsible for polling the event.
  */
 typedef void __sighandler_t (int);
 
@@ -196,8 +199,8 @@ struct __siginfo;
 struct	sigaction {
 	union {
 		void    (*__sa_handler) (int);
-		void    (*__sa_sigaction) (int, struct __siginfo *,
-					       void *);
+		void    (*__sa_sigaction) (int, struct __siginfo *, void *);
+		int	*__sa_mailbox;
 	} __sigaction_u;		/* signal handler */
 	int	sa_flags;		/* see signal options below */
 	sigset_t sa_mask;		/* signal mask to apply */
@@ -211,6 +214,7 @@ struct	sigaction {
 #if !defined(_POSIX_SOURCE)
 
 #define	sa_sigaction	__sigaction_u.__sa_sigaction
+#define sa_mailbox	__sigaction_u.__sa_mailbox
 
 #define SA_ONSTACK	0x0001	/* take signal on signal stack */
 #define SA_RESTART	0x0002	/* restart system call on signal return */
@@ -221,6 +225,7 @@ struct	sigaction {
 #ifdef COMPAT_SUNOS
 #define	SA_USERTRAMP	0x0100	/* do not bounce off kernel's sigtramp */
 #endif
+#define SA_MAILBOX	0x1000	/* store to mailbox */
 
 #define NSIG		64	/* size of sigptbl */
 

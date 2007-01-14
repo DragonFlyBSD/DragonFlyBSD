@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.70 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.71 2007/01/14 07:59:03 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -393,6 +393,16 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 				goto resume;
 
 			/*
+			 * Early termination if PCATCH was set and a
+			 * mailbox signal was possibly delivered prior to
+			 * the system call even being made, in order to
+			 * allow the user to interlock without having to
+			 * make additional system calls.
+			 */
+			if (p->p_flag & P_MAILBOX)
+				goto resume;
+
+			/*
 			 * Causes ksignal to wake us up when.
 			 */
 			p->p_flag |= P_SINTR;
@@ -484,17 +494,28 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	td->td_wdomain = 0;
 
 	/*
-	 * Figure out the correct error return
+	 * Figure out the correct error return.  If interrupted by a
+	 * signal we want to return EINTR or ERESTART.  
+	 *
+	 * If P_MAILBOX is set no automatic system call restart occurs
+	 * and we return EINTR.  P_MAILBOX is meant to be used as an
+	 * interlock, the user must poll it prior to any system call
+	 * that it wishes to interlock a mailbox signal against since
+	 * the flag is cleared on *any* system call that sleeps.
 	 */
 resume:
 	if (p) {
-		p->p_flag &= ~(P_BREAKTSLEEP | P_SINTR);
-		if (catch && error == 0 && (sig != 0 || (sig = CURSIG(p)))) {
-			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
+		if (catch && error == 0) {
+			if ((p->p_flag & P_MAILBOX) && sig == 0) {
 				error = EINTR;
-			else
-				error = ERESTART;
+			} else if ((sig != 0 || (sig = CURSIG(p)))) {
+				if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
+					error = EINTR;
+				else
+					error = ERESTART;
+			}
 		}
+		p->p_flag &= ~(P_BREAKTSLEEP | P_SINTR | P_MAILBOX);
 	}
 	logtsleep(tsleep_end);
 	crit_exit_quick(td);

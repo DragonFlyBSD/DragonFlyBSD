@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.1 2007/01/06 08:34:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.2 2007/01/14 07:59:05 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -91,6 +91,8 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
 	 * Return via doreti to handle ASTs.
 	 */
 	MEXITCOUNT
+	pushl	$0		/* if_ppl */
+	pushl	$0		/* if_vec */
 	call	go_user
 	/* NOT REACHED */
 

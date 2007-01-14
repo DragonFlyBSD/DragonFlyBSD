@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.9 2007/01/09 23:34:06 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.10 2007/01/14 07:59:09 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -156,6 +156,14 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	vc = vk->vk_common;
 	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
 		return (ENOENT);
+
+	/*
+	 * Signal mailbox interlock
+	 */
+	if (curproc->p_flag & P_MAILBOX) {
+		curproc->p_flag &= ~P_MAILBOX;
+		return (EINTR);
+	}
 
 	switch(uap->cmd) {
 	case VMSPACE_CTL_RUN:

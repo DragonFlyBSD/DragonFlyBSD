@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.12 2007/01/10 13:33:23 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.13 2007/01/14 07:59:06 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -71,13 +71,14 @@ void cpu_kthread_restore(void);	/* cannot be called from C */
 void cpu_exit_switch (struct thread *next);
 void cpu_setregs (void);
 void cpu_idle (void);
-void go_user (struct trapframe frame);
+void go_user (struct intrframe frame);
 
 void init_exceptions(void);
 void kern_trap(struct trapframe *);
 void user_trap(struct trapframe *);
 void syscall2 (struct trapframe *);
 void vcons_set_mode(int);
+void signalmailbox(struct intrframe *);
 int npxdna(struct trapframe *);
 
 #endif

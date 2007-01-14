@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.15 2006/10/10 15:40:47 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.16 2007/01/14 07:59:08 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -67,6 +67,7 @@ struct	sigacts {
 	sigset_t ps_signodefer;		/* signals not masked while handled */
 	sigset_t ps_siginfo;		/* signals that want SA_SIGINFO args */
 	sigset_t ps_usertramp;		/* SunOS compat; libc sigtramp XXX */
+	sigset_t ps_sigmailbox;		/* signals that update a mailbox */
 };
 
 /* additional signal action values, used only temporarily/internally */

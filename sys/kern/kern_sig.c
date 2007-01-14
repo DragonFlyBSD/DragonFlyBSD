@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.60 2007/01/07 00:02:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.61 2007/01/14 07:59:03 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -67,6 +67,7 @@
 #include <sys/interrupt.h>
 #include <sys/unistd.h>
 #include <sys/kern_syscall.h>
+#include <sys/vkernel.h>
 #include <sys/thread2.h>
 
 #include <machine/cpu.h>
@@ -247,15 +248,27 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			oact->sa_flags |= SA_NODEFER;
 		if (SIGISMEMBER(ps->ps_siginfo, sig))
 			oact->sa_flags |= SA_SIGINFO;
+		if (SIGISMEMBER(ps->ps_sigmailbox, sig))
+			oact->sa_flags |= SA_MAILBOX;
 		if (sig == SIGCHLD && p->p_procsig->ps_flag & PS_NOCLDSTOP)
 			oact->sa_flags |= SA_NOCLDSTOP;
 		if (sig == SIGCHLD && p->p_procsig->ps_flag & PS_NOCLDWAIT)
 			oact->sa_flags |= SA_NOCLDWAIT;
 	}
 	if (act) {
-		if ((sig == SIGKILL || sig == SIGSTOP) &&
-		    act->sa_handler != SIG_DFL)
-			return (EINVAL);
+		/*
+		 * Check for invalid requests.  KILL and STOP cannot be
+		 * caught.
+		 */
+		if (sig == SIGKILL || sig == SIGSTOP) {
+			if (act->sa_handler != SIG_DFL)
+				return (EINVAL);
+#if 0
+			/* (not needed, SIG_DFL forces action to occur) */
+			if (act->sa_flags & SA_MAILBOX)
+				return (EINVAL);
+#endif
+		}
 
 		/*
 		 * Change setting atomically.
@@ -288,6 +301,10 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			SIGADDSET(ps->ps_signodefer, sig);
 		else
 			SIGDELSET(ps->ps_signodefer, sig);
+		if (act->sa_flags & SA_MAILBOX)
+			SIGADDSET(ps->ps_sigmailbox, sig);
+		else
+			SIGDELSET(ps->ps_sigmailbox, sig);
 		if (sig == SIGCHLD) {
 			if (act->sa_flags & SA_NOCLDSTOP)
 				p->p_procsig->ps_flag |= PS_NOCLDSTOP;
@@ -743,6 +760,18 @@ void
 trapsignal(struct proc *p, int sig, u_long code)
 {
 	struct sigacts *ps = p->p_sigacts;
+
+	/*
+	 * If we are a virtual kernel running an emulated user process
+	 * context, switch back to the virtual kernel context before
+	 * trying to post the signal.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		struct trapframe *tf = curthread->td_lwp->lwp_md.md_regs;
+		tf->tf_trapno = 0;
+		vkernel_trap(p, tf);
+	}
+
 
 	if ((p->p_flag & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
 	    !SIGISMEMBER(p->p_sigmask, sig)) {
@@ -1450,6 +1479,17 @@ postsig(int sig)
 
 	KASSERT(sig != 0, ("postsig"));
 
+	/*
+	 * If we are a virtual kernel running an emulated user process
+	 * context, switch back to the virtual kernel context before
+	 * trying to post the signal.
+	 */
+	if (p->p_vkernel && p->p_vkernel->vk_current) {
+		struct trapframe *tf = curthread->td_lwp->lwp_md.md_regs;
+		tf->tf_trapno = 0;
+		vkernel_trap(p, tf);
+	}
+
 	SIGDELSET(p->p_siglist, sig);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
@@ -1472,27 +1512,12 @@ postsig(int sig)
 		 */
 		KASSERT(action != SIG_IGN && !SIGISMEMBER(p->p_sigmask, sig),
 		    ("postsig action"));
-		/*
-		 * Set the new mask value and also defer further
-		 * occurrences of this signal.
-		 *
-		 * Special case: user has done a sigsuspend.  Here the
-		 * current mask is not of interest, but rather the
-		 * mask from before the sigsuspend is what we want
-		 * restored after the signal processing is completed.
-		 */
+
 		crit_enter();
-		if (p->p_flag & P_OLDMASK) {
-			returnmask = p->p_oldsigmask;
-			p->p_flag &= ~P_OLDMASK;
-		} else {
-			returnmask = p->p_sigmask;
-		}
 
-		SIGSETOR(p->p_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
-		if (!SIGISMEMBER(ps->ps_signodefer, sig))
-			SIGADDSET(p->p_sigmask, sig);
-
+		/*
+		 * Reset the signal handler if asked to
+		 */
 		if (SIGISMEMBER(ps->ps_sigreset, sig)) {
 			/*
 			 * See kern_sigaction() for origin of this code.
@@ -1503,6 +1528,40 @@ postsig(int sig)
 				SIGADDSET(p->p_sigignore, sig);
 			ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 		}
+
+		/*
+		 * Handle the mailbox case.  Copyout to the appropriate
+		 * location but do not generate a signal frame.  The system
+		 * call simply returns EINTR and the user is responsible for
+		 * polling the mailbox.
+		 */
+		if (SIGISMEMBER(ps->ps_sigmailbox, sig)) {
+			int sig_copy = sig;
+			copyout(&sig_copy, (void *)action, sizeof(int));
+			curproc->p_flag |= P_MAILBOX;
+			crit_exit();
+			goto done;
+		}
+
+		/*
+		 * Set the signal mask and calculate the mask to restore
+		 * when the signal function returns.
+		 *
+		 * Special case: user has done a sigsuspend.  Here the
+		 * current mask is not of interest, but rather the
+		 * mask from before the sigsuspend is what we want
+		 * restored after the signal processing is completed.
+		 */
+		if (p->p_flag & P_OLDMASK) {
+			returnmask = p->p_oldsigmask;
+			p->p_flag &= ~P_OLDMASK;
+		} else {
+			returnmask = p->p_sigmask;
+		}
+		SIGSETOR(p->p_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
+		if (!SIGISMEMBER(ps->ps_signodefer, sig))
+			SIGADDSET(p->p_sigmask, sig);
+
 		crit_exit();
 		p->p_lwp.lwp_ru.ru_nsignals++;
 		if (p->p_sig != sig) {
@@ -1514,6 +1573,8 @@ postsig(int sig)
 		}
 		(*p->p_sysent->sv_sendsig)(action, sig, &returnmask, code);
 	}
+done:
+	;
 }
 
 /*
@@ -1522,7 +1583,8 @@ postsig(int sig)
 void
 killproc(struct proc *p, char *why)
 {
-	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n", p->p_pid, p->p_comm,
+	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n", 
+		p->p_pid, p->p_comm,
 		p->p_ucred ? p->p_ucred->cr_uid : -1, why);
 	ksignal(p, SIGKILL);
 }

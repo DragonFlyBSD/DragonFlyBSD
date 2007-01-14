@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.4 2007/01/05 22:18:19 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.5 2007/01/14 07:59:06 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -83,7 +83,7 @@ struct mdglobaldata {
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
-	int		unused000;
+	int		gd_mailbox;	/* signal delivery mailbox */
 	u_int		unused001;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;

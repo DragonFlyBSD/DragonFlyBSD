@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.11 2007/01/14 00:01:06 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.12 2007/01/14 07:59:05 dillon Exp $
  */
 
 /*
@@ -1381,8 +1381,9 @@ fork_return(struct lwp *lp, struct trapframe frame)
  * context we supplied or problems copying data to/from our VM space.
  */
 void
-go_user(struct trapframe frame)
+go_user(struct intrframe frame)
 {
+	struct trapframe *tf = (void *)&frame.if_gs;
 	int r;
 
 	/*
@@ -1396,46 +1397,44 @@ go_user(struct trapframe frame)
 	 * user_trap() when we break out of it (usually due to a signal).
 	 */
 	for (;;) {
-#if 0
-		kprintf("GO USER VMSPC %p pid %-4d %s (blocked %08x)\n", 
-			&curproc->p_vmspace->vm_pmap,
-			curproc->p_pid, curproc->p_comm, sigblock(0));
-#endif
-
 		/*
 		 * Tell the real kernel whether it is ok to use the FP
 		 * unit or not.
 		 */
 		if (mdcpu->gd_npxthread == curthread) {
-			frame.tf_xflags &= ~FPEX_FAULT;
+			tf->tf_xflags &= ~FPEX_FAULT;
 		} else {
-			frame.tf_xflags |= FPEX_FAULT;
+			tf->tf_xflags |= FPEX_FAULT;
 		}
 
 		/*
-		 * Run emulated user process context
+		 * We must poll the mailbox prior to making the system call
+		 * to properly interlock new mailbox signals against the 
+		 * system call.
+		 */
+		if (mdcpu->gd_mailbox)
+			signalmailbox(&frame);
+
+		/*
+		 * Run emulated user process context.  This call interlocks
+		 * with new mailbox signals.
 		 */
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
-				&frame, &curthread->td_savevext);
-		if (r < 0)
-			panic("vmspace_ctl had problems with the context");
-
-		if (frame.tf_trapno) {
-#if 0
-			kprintf("User trapno %d eip %08x err %08x xflags %d\n",
-				frame.tf_trapno, frame.tf_eip, frame.tf_err, frame.tf_xflags);
-#endif
-			user_trap(&frame);
-		} else if (mycpu->gd_reqflags & RQF_AST_MASK) {
-#if 0
-			kprintf("reqflags %08x %08x %d\n", mycpu->gd_reqflags, sigblock(0), curthread->td_pri);
-#endif
-			frame.tf_trapno = T_ASTFLT;
-			user_trap(&frame);
+				tf, &curthread->td_savevext);
+		if (r < 0) {
+			if (errno == EINTR)
+				signalmailbox(&frame);
+			else
+				panic("vmspace_ctl failed");
 		} else {
-#if 0
-			kprintf("Kernel AST %08x\n", sigblock(0));
-#endif
+			signalmailbox(&frame);
+			if (tf->tf_trapno) {
+				user_trap(tf);
+			} else if (mycpu->gd_reqflags & RQF_AST_MASK) {
+				tf->tf_trapno = T_ASTFLT;
+				user_trap(tf);
+			}
+			tf->tf_trapno = 0;
 		}
 	}
 }

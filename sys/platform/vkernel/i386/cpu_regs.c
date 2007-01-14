@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.9 2007/01/13 21:15:57 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.10 2007/01/14 07:59:05 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -221,16 +221,6 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	regs = lp->lwp_md.md_regs;
 	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
-
-	/*
-	 * If we are a virtual kernel running an emulated user process
-	 * context, switch back to the virtual kernel context before
-	 * trying to post the signal.
-	 */
-	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		regs->tf_trapno = 0;
-		vkernel_trap(p, regs);
-	}
 
 	/* save user context */
 	bzero(&sf, sizeof(struct sigframe));
@@ -689,15 +679,16 @@ cpu_idle(void)
 		 * If we are going to halt call splz unconditionally after
 		 * CLIing to catch any interrupt races.  Note that we are
 		 * at SPL0 and interrupts are enabled.
+		 *
+		 * We must poll our mailbox signals prior to calling 
+		 * sigpause() in order to properly interlock with them.
 		 */
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
-			sigblock(1 << SIGALRM);
 			splz();
+			signalmailbox(NULL);
 			if (!lwkt_runnable()) {
 				sigpause(0);
-			} else {
-				sigsetmask(0);
 			}
 #ifdef SMP
 			else {
@@ -708,6 +699,7 @@ cpu_idle(void)
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
+			signalmailbox(NULL);
 #ifdef SMP
 			/*__asm __volatile("sti; pause");*/
 			__asm __volatile("pause");

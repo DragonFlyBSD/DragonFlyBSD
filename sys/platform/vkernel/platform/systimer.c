@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.6 2007/01/09 18:26:59 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.7 2007/01/14 07:59:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,6 +45,7 @@
 #include <sys/time.h>
 #include <machine/cpu.h>
 #include <machine/globaldata.h>
+#include <machine/md_var.h>
 
 #include <sys/thread2.h>
 
@@ -63,7 +64,7 @@ int wall_cmos_clock = 0;
  */
 static sysclock_t vkernel_timer_get_timecount(void);
 static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
-static void cputimer_intr_hard(int signo);
+/*static void cputimer_intr_hard(int signo);*/
 static void cputimer_intr(void *dummy, void *frame);
 
 static struct cputimer vkernel_cputimer = {
@@ -131,7 +132,8 @@ cputimer_intr_config(struct cputimer *timer)
 
 	kprintf("cputimer_intr_config\n");
 	bzero(&sa, sizeof(sa));
-	sa.sa_handler = cputimer_intr_hard;
+	sa.sa_mailbox = &mdcpu->gd_mailbox;
+	sa.sa_flags = SA_MAILBOX;
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGIO);
 	sigaction(SIGALRM, &sa, NULL);
@@ -155,6 +157,20 @@ cputimer_intr_reload(sysclock_t reload)
 	setitimer(ITIMER_REAL, &it, NULL);
 }
 
+void
+signalmailbox(struct intrframe *frame)
+{
+	struct mdglobaldata *gd = mdcpu;
+
+	if (gd->gd_mailbox) {
+		gd->gd_mailbox = 0;
+		crit_enter();
+		cputimer_intr(NULL, frame);
+		crit_exit();
+	}
+}
+
+#if 0
 /*
  * Clock interrupt (SIGALRM)
  *
@@ -180,6 +196,8 @@ cputimer_intr_hard(int signo)
 		crit_exit();
 	}
 }
+
+#endif
 
 static
 void
