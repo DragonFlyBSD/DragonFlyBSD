@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.94 2007/01/09 23:34:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.95 2007/01/14 20:07:12 dillon Exp $
  */
 
 /*
@@ -1458,7 +1458,7 @@ fork_return(struct lwp *lp, struct trapframe frame)
 }
 
 /*
- * If FPEX_FAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
+ * If PGEX_FPFAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
  * fault (which is then passed back to the virtual kernel) if an attempt is
  * made to use the FP unit.
  *
@@ -1469,7 +1469,7 @@ set_vkernel_fp(struct trapframe *frame)
 {
 	struct thread *td = curthread;
 
-	if (frame->tf_xflags & FPEX_FAULT) {
+	if (frame->tf_xflags & PGEX_FPFAULT) {
 		td->td_pcb->pcb_flags |= FP_VIRTFP;
 		if (mdcpu->gd_npxthread == td)
 			npxexit();

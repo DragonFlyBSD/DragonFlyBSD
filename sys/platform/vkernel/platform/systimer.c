@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.7 2007/01/14 07:59:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.8 2007/01/14 20:07:15 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -199,6 +199,11 @@ cputimer_intr_hard(int signo)
 
 #endif
 
+/*
+ * clock interrupt.
+ *
+ * NOTE: frame is a struct intrframe pointer.
+ */
 static
 void
 cputimer_intr(void *dummy, void *frame)
@@ -219,12 +224,12 @@ cputimer_intr(void *dummy, void *frame)
 			lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr,
 					&sysclock_count, 0);
 		} else {
-			systimer_intr(&sysclock_count, 0, NULL);
+			systimer_intr(&sysclock_count, 0, frame);
 		}
 	}
 #else
 	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
-		systimer_intr(&sysclock_count, 0, NULL);
+		systimer_intr(&sysclock_count, 0, frame);
 #endif
 }
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.12 2007/01/14 07:59:05 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.13 2007/01/14 20:07:14 dillon Exp $
  */
 
 /*
@@ -1402,25 +1402,37 @@ go_user(struct intrframe frame)
 		 * unit or not.
 		 */
 		if (mdcpu->gd_npxthread == curthread) {
-			tf->tf_xflags &= ~FPEX_FAULT;
+			tf->tf_xflags &= ~PGEX_FPFAULT;
 		} else {
-			tf->tf_xflags |= FPEX_FAULT;
+			tf->tf_xflags |= PGEX_FPFAULT;
 		}
 
 		/*
 		 * We must poll the mailbox prior to making the system call
 		 * to properly interlock new mailbox signals against the 
 		 * system call.
+		 *
+		 * Passing a NULL frame causes the interrupt code to assume
+		 * the supervisor.
 		 */
 		if (mdcpu->gd_mailbox)
-			signalmailbox(&frame);
+			signalmailbox(NULL);
 
 		/*
 		 * Run emulated user process context.  This call interlocks
 		 * with new mailbox signals.
+		 *
+		 * Set PGEX_U unconditionally, indicating a user frame (the
+		 * bit is normally set only by T_PAGEFLT).
 		 */
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				tf, &curthread->td_savevext);
+		frame.if_xflags |= PGEX_U;
+#if 0
+		kprintf("GO USER %d trap %d EVA %08x EIP %08x ESP %08x XFLAGS %02x/%02x\n", 
+			r, tf->tf_trapno, tf->tf_err, tf->tf_eip, tf->tf_esp,
+			tf->tf_xflags, frame.if_xflags);
+#endif
 		if (r < 0) {
 			if (errno == EINTR)
 				signalmailbox(&frame);
@@ -1440,7 +1452,7 @@ go_user(struct intrframe frame)
 }
 
 /*
- * If FPEX_FAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
+ * If PGEX_FPFAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
  * fault (which is then passed back to the virtual kernel) if an attempt is
  * made to use the FP unit.
  * 
@@ -1451,7 +1463,7 @@ set_vkernel_fp(struct trapframe *frame)
 {
 	struct thread *td = curthread;
 
-	if (frame->tf_xflags & FPEX_FAULT) {
+	if (frame->tf_xflags & PGEX_FPFAULT) {
 		td->td_pcb->pcb_flags |= FP_VIRTFP;
 		if (mdcpu->gd_npxthread == td)
 			npxexit();

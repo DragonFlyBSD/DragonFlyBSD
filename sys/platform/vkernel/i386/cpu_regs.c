@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.10 2007/01/14 07:59:05 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.11 2007/01/14 20:07:14 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -232,6 +232,11 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/* make the size of the saved context visible to userland */
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext); 
 
+	/* save mailbox pending state for syscall interlock semantics */
+	if (p->p_flag & P_MAILBOX)
+		sf.sf_uc.uc_mcontext.mc_xflags |= PGEX_MAILBOX;
+
+
 	/* Allocate and validate space for the signal handler context. */
 	/* XXX lwp flags */
         if ((p->p_flag & P_ALTSTACK) != 0 && !oonstack &&
@@ -388,6 +393,7 @@ int
 sys_sigreturn(struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	ucontext_t ucp;
 	int cs;
@@ -473,6 +479,13 @@ sys_sigreturn(struct sigreturn_args *uap)
 		}
 		bcopy(&ucp.uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
 	}
+
+	/*
+	 * Merge saved signal mailbox pending flag to maintain interlock
+	 * semantics against system calls.
+	 */
+	if (ucp.uc_mcontext.mc_xflags & PGEX_MAILBOX)
+		p->p_flag |= P_MAILBOX;
 
 	if (ucp.uc_mcontext.mc_onstack & 1)
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;

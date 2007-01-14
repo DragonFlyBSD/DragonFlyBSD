@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.13 2007/01/09 23:34:01 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.14 2007/01/14 20:07:11 dillon Exp $
  */
 
 #ifndef _CPU_PMAP_H_
@@ -79,17 +79,26 @@
  * Page Protection Exception bits, stored in tf_err on a real fault
  * and in tf_xflags on a signal frame or virtual kernel's trap frame.
  * These only apply to T_PAGEFLT faults.
+ *
+ * PGEX_U is also used internally by the virtual kernel to indicate
+ * whether the frame is a userland frame or a supervisor frame.
  */
 #define PGEX_P		0x01	/* Protection violation vs. not present */
 #define PGEX_W		0x02	/* during a Write cycle */
 #define PGEX_U		0x04	/* access from User mode (UPL) */
 
 /*
- * Virtual kernel bits, managed by software.
+ * Virtual kernel bits, managed by software.  Stored in tf_xflags.
  *
- * FPEX_FAULT -	Force the FP unit to generate a T_DNA fault if an emulated
- *		user process tried to use it.
+ * PGEX_FPFAULT - Force the FP unit to generate a T_DNA fault if an
+ *		  emulated user process tried to use it.  This bit is
+ *		  only used by vmspace_ctl().
+ *
+ * PGEX_MAILBOX - Set in xflags by signal code to indicate that a mailbox
+ *		  signal was pending.  Remerged on signal return.  This
+ *		  bit is only used in a signal vector frame.
  */
-#define FPEX_FAULT	0x80
+#define PGEX_MAILBOX	0x40
+#define PGEX_FPFAULT	0x80
 
 #endif /* !_CPU_PMAP_H_ */

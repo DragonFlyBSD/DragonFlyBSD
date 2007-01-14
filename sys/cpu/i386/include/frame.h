@@ -35,7 +35,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.7 2007/01/08 03:33:37 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.8 2007/01/14 20:07:11 dillon Exp $
  */
 
 #ifndef _CPU_FRAME_H_
@@ -46,9 +46,9 @@
  */
 
 /*
- * Exception/Trap Stack Frame
+ * Exception/Trap Stack Frame.  This frame must match or be embedded within
+ * all other frame types, including signal context frames.
  */
-
 struct trapframe {
 	int	tf_gs;
 	int	tf_fs;
@@ -74,8 +74,10 @@ struct trapframe {
 	int	tf_ss;
 };
 
-/* Superset of trap frame, for traps from virtual-8086 mode */
-
+/*
+ * This frame is postfixed with additinoal information for traps from
+ * virtual-8086 mode but must otherwise match the trapframe.
+ */
 struct trapframe_vm86 {
 	int	tf_gs;
 	int	tf_fs;
@@ -106,8 +108,10 @@ struct trapframe_vm86 {
 	int	tf_vm86_gs;
 };
 
-/* Interrupt stack frame */
-
+/*
+ * Interrupt stack frame.  This frame is prefixed with additional
+ * information but must otherwise match the trapframe.
+ */
 struct intrframe {
 	int	if_vec;
 	int	if_ppl;
@@ -118,14 +122,14 @@ struct intrframe {
 	int	if_edi;
 	int	if_esi;
 	int	if_ebp;
-	int	:32;
+	int	if_isp;		/* unused/trap frame compat - isp */
 	int	if_ebx;
 	int	if_edx;
 	int	if_ecx;
 	int	if_eax;
-	int	:32;		/* for compat with trap frame - trapno */
-	int	:32;		/* for compat with trap frame - xflags */
-	int	:32;		/* for compat with trap frame - err */
+	int	if_xflags;	/* trap frame compat - xflags (vkernel) */
+	int	if_trapno;	/* unused/trap frame compat - trapno */
+	int	if_err;		/* unused/trap frame compat - err */
 	/* below portion defined in 386 hardware */
 	int	if_eip;
 	int	if_cs;
