@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.53 2006/06/15 07:57:05 stefanf Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.10 2007/01/07 01:14:53 pavalos Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.11 2007/01/14 17:29:58 pavalos Exp $
  */
 
 #include <sys/resource.h>
@@ -569,14 +569,15 @@ out:
  */
 
 STATIC void
-evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
+evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 {
 	struct stackmark smark;
 	union node *argp;
 	struct arglist arglist;
 	struct arglist varlist;
-	char **argv;
-	int argc;
+	volatile int flags = flgs;
+	char **volatile argv;
+	volatile int argc;
 	char **envp;
 	int varflag;
 	struct strlist *sp;
@@ -590,17 +591,9 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 	volatile struct shparam saveparam;
 	struct localvar *volatile savelocalvars;
 	volatile int e;
-	char *lastarg;
+	char *volatile lastarg;
 	int realstatus;
-	int do_clearcmdentry;
-#if __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &argv;
-	(void) &argc;
-	(void) &lastarg;
-	(void) &flags;
-	(void) &do_clearcmdentry;
-#endif
+	volatile int do_clearcmdentry;
 
 	/* First expand the arguments. */
 	TRACE(("evalcommand(%p, %d) called\n", (void *)cmd, flags));
@@ -978,16 +971,9 @@ commandcmd(int argc, char **argv)
 	static char stdpath[] = _PATH_STDPATH;
 	struct jmploc loc, *old;
 	struct strlist *sp;
-	const char *path;
+	const char *volatile path;
 	int ch;
 	int cmd = -1;
-
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &path;
-	(void) &argc;
-	(void) &argv;
-#endif
 
 	for (sp = cmdenviron; sp ; sp = sp->next)
 		setvareq(sp->text, VEXPORT|VSTACK);

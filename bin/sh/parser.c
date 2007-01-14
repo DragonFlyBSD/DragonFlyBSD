@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.58 2006/11/05 18:36:05 stefanf Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.10 2007/01/14 05:39:22 pavalos Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.11 2007/01/14 17:29:58 pavalos Exp $
  */
 
 #include <stdlib.h>
@@ -880,34 +880,22 @@ breakloop:
 #define	PARSEARITH()	{goto parsearith; parsearith_return:;}
 
 STATIC int
-readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
+readtoken1(int firstc, char const *syn, char *eofmark, int striptabs)
 {
 	int c = firstc;
-	char *out;
+	char const * volatile syntax = syn;
+	char * volatile out;
 	int len;
 	char line[EOFMARKLEN + 1];
 	struct nodelist *bqlist;
-	int quotef;
-	int dblquote;
-	int varnest;	/* levels of variables expansion */
-	int arinest;	/* levels of arithmetic expansion */
-	int parenlevel;	/* levels of parens in arithmetic */
-	int oldstyle;
-	char const *prevsyntax;	/* syntax before arithmetic */
+	volatile int quotef;
+	volatile int dblquote;
+	volatile int varnest;	/* levels of variables expansion */
+	volatile int arinest;	/* levels of arithmetic expansion */
+	volatile int parenlevel;	/* levels of parens in arithmetic */
+	volatile int oldstyle;
+	char const * volatile prevsyntax = NULL;	/* syntax before arithmetic */
 	int synentry;
-#if __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &out;
-	(void) &quotef;
-	(void) &dblquote;
-	(void) &varnest;
-	(void) &arinest;
-	(void) &parenlevel;
-	(void) &oldstyle;
-	(void) &prevsyntax;
-	(void) &syntax;
-	(void) &synentry;
-#endif
 
 	startlinno = plinno;
 	dblquote = 0;
@@ -1300,11 +1288,7 @@ parsebackq: {
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler;
 	int savelen;
-	int saveprompt;
-#if __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &saveprompt;
-#endif
+	volatile int saveprompt;
 
 	savepbq = parsebackquote;
 	if (setjmp(jmploc.loc)) {

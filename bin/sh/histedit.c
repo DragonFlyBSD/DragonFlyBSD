@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.29 2006/08/04 07:56:31 yar Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.10 2007/01/13 19:47:55 pavalos Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.11 2007/01/14 17:29:58 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -175,34 +175,19 @@ int
 histcmd(int argc, char **argv)
 {
 	int ch;
-	const char *editor = NULL;
+	const char *volatile editor = NULL;
 	HistEvent he;
-	int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
+	volatile int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
 	int i, retval;
-	const char *firststr, *laststr;
+	const char *firststr = NULL, *laststr = NULL;
 	int first, last, direction;
-	char *pat = NULL, *repl;
+	char *pat = NULL, *repl = NULL;
 	static int active = 0;
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler;
 	char editfile[PATH_MAX];
-	FILE *efp;
+	FILE *efp = NULL;
 	int oldhistnum;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &editor;
-	(void) &lflg;
-	(void) &nflg;
-	(void) &rflg;
-	(void) &sflg;
-	(void) &firststr;
-	(void) &laststr;
-	(void) &pat;
-	(void) &repl;
-	(void) &efp;
-	(void) &argc;
-	(void) &argv;
-#endif
 
 	if (hist == NULL)
 		error("history not active");

@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.14 2007/01/14 15:14:52 pavalos Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.15 2007/01/14 17:29:58 pavalos Exp $
  */
 
 #include <unistd.h>
@@ -194,10 +194,6 @@ setvarsafe(const char *name, const char *val, int flags)
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler = handler;
 	int err = 0;
-#if __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &err;
-#endif
 
 	if (setjmp(jmploc.loc))
 		err = 1;
