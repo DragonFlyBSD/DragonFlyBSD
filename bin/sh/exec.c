@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.c,v 1.29 2006/04/09 12:21:20 stefanf Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.10 2007/01/07 01:14:53 pavalos Exp $
+ * $FreeBSD: src/bin/sh/exec.c,v 1.30 2007/01/11 00:19:00 stefanf Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.11 2007/01/14 18:14:39 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -788,9 +788,10 @@ typecmd_impl(int argc, char **argv, int cmd)
 						out1fmt("%s\n", argv[i]);
 					else
 						out1fmt(" is %s\n", argv[i]);
-				}
-				else {
-					out1fmt(": %s\n", strerror(errno));
+				} else {
+					if (cmd != TYPECMD_SMALLV)
+						out1fmt(": %s\n",
+						    strerror(errno));
 					err |= 127;
 				}
 			}
