@@ -29,21 +29,26 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.1 2007/01/08 08:55:44 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.2 2007/01/14 10:43:32 swildner Exp $
 .\"
-.Dd January 8, 2007
+.Dd January 14, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
 .Nm vkernel
 .Nd virtual kernel architecture
 .Sh SYNOPSIS
+.Cd "machine vkernel"
+.Cd "device vkd"
+.Cd "device vke"
+.Pp
 .Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
+.Op Fl sv
 .Op Fl e Ar environment
 .\".Op Fl i Ar file
+.\".Op Fl I Ar interface
 .Op Fl m Ar size
 .Op Fl r Ar file
-.Op Fl v
 .Sh DESCRIPTION
 The
 .Nm
@@ -54,15 +59,20 @@ kernels in userland.
 The following options are available:
 .Bl -tag -width ".Fl m Ar size"
 .It Fl e Ar environment
-Specify an to be used by the kernel.
-The
+Specify an
 .Ar environment
-argument is a string of the form
+to be used by the kernel.
+The argument is a string of the form
 .Li name=value:name=value:...
 .\".It Fl i Ar file
 .\"Specify a memory image
 .\".Ar file
 .\"to be used by the kernel.
+.\".It Fl I Ar interface
+.\"Specify the host system's network interface to be used by the virtual kernel.
+.\"This is usually a
+.\".Xr tap 4
+.\"interface.
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
@@ -81,12 +91,14 @@ Specify the root image
 .Ar file
 to be used by the kernel.
 See
-.Sx CONFIGURING AND RUNNING VIRTUAL KERNELS
+.Sx EXAMPLES
 for further information on how to prepare a root image.
+.It Fl s
+Boot into single-user mode.
 .It Fl v
 Turn on verbose booting.
 .El
-.Sh CONFIGURING AND RUNNING VIRTUAL KERNELS
+.Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
 .Ss Setting up the filesystem
@@ -101,21 +113,26 @@ created in the
 .Pa /home
 partition with a link to it in
 .Pa /var :
-.Bd -literal -offset indent
+.Bd -literal
 mkdir /home/var.vkernel
 ln -s /home/var.vkernel /var/vkernel
 .Ed
 .Pp
 Next, a filesystem image to be used by the virtual kernel has to be
-created:
-.Bd -literal -offset indent
+created and populated (assuming world has been built previously):
+.Bd -literal
 dd if=/dev/zero of=/var/vkernel/rootimg.01 bs=1m count=2048
 vnconfig -c -s labels vn0 /var/vkernel/rootimg.01
 disklabel -r -w vn0 auto
-(edit the label to create a vn0a partition)
+disklabel -e vn0	# edit the label to create a vn0a partition
 newfs /dev/vn0a
 mount /dev/vn0a /mnt
-cpdup / /mnt
+cd /usr/src
+make installworld DESTDIR=/mnt
+cd etc
+make distribution DESTDIR=/mnt
+echo '/dev/vkd0 / ufs rw 1 1' >/mnt/etc/fstab
+echo 'console "/usr/libexec/getty Pc" cons25 on secure' >/mnt/etc/ttys
 umount /mnt
 vnconfig -u vn0
 .Ed
@@ -125,7 +142,7 @@ In order to compile a virtual kernel use the
 kernel configuration file residing in
 .Pa /usr/src/sys/config
 (or a configuration file derived thereof):
-.Bd -literal -offset indent
+.Bd -literal
 cd /usr/src
 make buildkernel KERNCONF=VKERNEL
 .Ed
@@ -136,17 +153,29 @@ A special
 must be set to enable
 .Nm
 operation:
-.Bd -literal -offset indent
+.Bd -literal
 sysctl vm.vkernel_enable=1
 .Ed
 .Ss Running the kernel
 Finally, the virtual kernel can be run:
-.Bd -literal -offset indent
+.Bd -literal
 cd /usr/obj/usr/src/sys/VKERNEL
 \&./kernel.debug -m 64m -r /var/vkernel/rootimg.01
 .Ed
+.Pp
+The
+.Xr reboot 8
+command can be used to stop a virtual kernel.
+.\".Ss Setting up the network in the host system
+.\".Bd -literal
+.\"XXX
+.\".Ed
 .Sh SEE ALSO
-.Xr build 7
+.\".Xr tap 4 ,
+.Xr vn 4 ,
+.Xr build 7 ,
+.Xr disklabel 8 ,
+.Xr vnconfig 8
 .Sh HISTORY
 Virtual kernels were introduced in
 .Dx 1.7 .
