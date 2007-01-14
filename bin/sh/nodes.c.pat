@@ -34,10 +34,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)nodes.c.pat	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.7.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/nodes.c.pat,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.15 2004/04/06 20:06:51 markm Exp $
+ * $DragonFly: src/bin/sh/nodes.c.pat,v 1.4 2007/01/14 03:59:57 pavalos Exp $
  */
 
+#include <sys/param.h>
 #include <stdlib.h>
 /*
  * Routine for dealing with parsed shell commands.
@@ -46,7 +47,6 @@
 #include "shell.h"
 #include "nodes.h"
 #include "memalloc.h"
-#include "machdep.h"
 #include "mystring.h"
 
 

@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)memalloc.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/memalloc.h,v 1.6.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/memalloc.h,v 1.3 2004/01/28 16:25:29 joerg Exp $
+ * $FreeBSD: src/bin/sh/memalloc.h,v 1.10 2005/10/28 10:45:19 stefanf Exp $
+ * $DragonFly: src/bin/sh/memalloc.h,v 1.4 2007/01/14 03:59:57 pavalos Exp $
  */
 
 struct stackmark {
@@ -53,6 +53,7 @@ extern int herefd;
 
 pointer ckmalloc(int);
 pointer ckrealloc(pointer, int);
+void ckfree(pointer);
 char *savestr(const char *);
 pointer stalloc(int);
 void stunalloc(pointer);
@@ -77,5 +78,3 @@ void ungrabstackstr(char *, char *);
 #define STTOPC(p)	p[-1]
 #define STADJUST(amount, p)	(p += (amount), sstrnleft -= (amount))
 #define grabstackstr(p)	stalloc(stackblocksize() - sstrnleft)
-
-#define ckfree(p)	free((pointer)(p))
