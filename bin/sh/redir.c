@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)redir.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/redir.c,v 1.12.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/redir.c,v 1.4 2007/01/06 03:44:04 pavalos Exp $
+ * $FreeBSD: src/bin/sh/redir.c,v 1.26 2004/04/06 20:06:51 markm Exp $
+ * $DragonFly: src/bin/sh/redir.c,v 1.5 2007/01/14 05:48:08 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -178,8 +178,7 @@ openredirect(union node *redir, char memory[10])
 			error("cannot open %s: %s", fname, strerror(errno));
 movefd:
 		if (f != fd) {
-			close(fd);
-			copyfd(f, fd);
+			dup2(f, fd);
 			close(f);
 		}
 		break;
@@ -211,12 +210,11 @@ movefd:
 		if (redir->ndup.dupfd >= 0) {	/* if not ">&-" */
 			if (memory[redir->ndup.dupfd])
 				memory[fd] = 1;
-			else {
-				close(fd);
-				copyfd(redir->ndup.dupfd, fd);
-			}
-		} else
+			else
+				dup2(redir->ndup.dupfd, fd);
+		} else {
 			close(fd);
+		}
 		break;
 	case NHERE:
 	case NXHERE:
@@ -284,10 +282,11 @@ popredir(void)
 		if (rp->renamed[i] != EMPTY) {
                         if (i == 0)
                                 fd0_redirected--;
-			close(i);
 			if (rp->renamed[i] >= 0) {
-				copyfd(rp->renamed[i], i);
+				dup2(rp->renamed[i], i);
 				close(rp->renamed[i]);
+			} else {
+				close(i);
 			}
 		}
 	}
@@ -341,27 +340,4 @@ clearredir(void)
 			rp->renamed[i] = EMPTY;
 		}
 	}
-}
-
-
-
-/*
- * Copy a file descriptor to be >= to.  Returns -1
- * if the source file descriptor is closed, EMPTY if there are no unused
- * file descriptors left.
- */
-
-int
-copyfd(int from, int to)
-{
-	int newfd;
-
-	newfd = fcntl(from, F_DUPFD, to);
-	if (newfd < 0) {
-		if (errno == EMFILE)
-			return EMPTY;
-		else
-			error("%d: %s", from, strerror(errno));
-	}
-	return newfd;
 }
