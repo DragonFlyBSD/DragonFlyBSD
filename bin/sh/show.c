@@ -34,11 +34,13 @@
  * SUCH DAMAGE.
  *
  * @(#)show.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/show.c,v 1.11.2.3 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/show.c,v 1.3 2004/11/07 20:54:52 eirikn Exp $
+ * $FreeBSD: src/bin/sh/show.c,v 1.23 2006/04/14 13:59:03 schweikh Exp $
+ * $DragonFly: src/bin/sh/show.c,v 1.4 2007/01/14 06:21:52 pavalos Exp $
  */
 
+#include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
 
@@ -142,6 +144,8 @@ shcmd(union node *cmd, FILE *fp)
 			case NFROM:	s = "<";  dftfd = 0; break;
 			case NFROMTO:	s = "<>"; dftfd = 0; break;
 			case NFROMFD:	s = "<&"; dftfd = 0; break;
+			case NHERE:	s = "<<"; dftfd = 0; break;
+			case NXHERE:	s = "<<"; dftfd = 0; break;
 			default:  	s = "*error*"; dftfd = 0; break;
 		}
 		if (np->nfile.fd != dftfd)
@@ -152,6 +156,10 @@ shcmd(union node *cmd, FILE *fp)
 				fprintf(fp, "%d", np->ndup.dupfd);
 			else
 				fprintf(fp, "-");
+		} else if (np->nfile.type == NHERE) {
+				fprintf(fp, "HERE");
+		} else if (np->nfile.type == NXHERE) {
+				fprintf(fp, "XHERE");
 		} else {
 			sharg(np->nfile.fname, fp);
 		}
@@ -369,10 +377,7 @@ void
 opentrace(void)
 {
 	char s[100];
-	char *getenv();
-#ifdef O_APPEND
 	int flags;
-#endif
 
 	if (!debug)
 		return;
@@ -395,10 +400,8 @@ opentrace(void)
 		fprintf(stderr, "Can't open %s: %s\n", s, strerror(errno));
 		return;
 	}
-#ifdef O_APPEND
 	if ((flags = fcntl(fileno(tracefile), F_GETFL, 0)) >= 0)
 		fcntl(fileno(tracefile), F_SETFL, flags | O_APPEND);
-#endif
 	fputs("\nTracing started.\n", tracefile);
 	fflush(tracefile);
 }
