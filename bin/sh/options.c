@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.15.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/options.c,v 1.6 2007/01/07 01:14:53 pavalos Exp $
+ * $FreeBSD: src/bin/sh/options.c,v 1.25 2006/04/09 12:20:42 stefanf Exp $
+ * $DragonFly: src/bin/sh/options.c,v 1.7 2007/01/14 04:41:32 pavalos Exp $
  */
 
 #include <signal.h>
@@ -138,7 +138,7 @@ optschanged(void)
 STATIC void
 options(int cmdline)
 {
-	char *p;
+	char *kp, *p;
 	int val;
 	int c;
 
@@ -148,16 +148,29 @@ options(int cmdline)
 		argptr++;
 		if ((c = *p++) == '-') {
 			val = 1;
-                        if (p[0] == '\0' || (p[0] == '-' && p[1] == '\0')) {
-                                if (!cmdline) {
-                                        /* "-" means turn off -x and -v */
-                                        if (p[0] == '\0')
-                                                xflag = vflag = 0;
-                                        /* "--" means reset params */
-                                        else if (*argptr == NULL)
-						setparam(argptr);
-                                }
-				break;	  /* "-" or  "--" terminates options */
+			/* A "-" or  "--" terminates options */
+			if (p[0] == '\0')
+				goto end_options1;
+			if (p[0] == '-' && p[1] == '\0')
+				goto end_options2;
+			/**
+			 * For the benefit of `#!' lines in shell scripts,
+			 * treat a string of '-- *#.*' the same as '--'.
+			 * This is needed so that a script starting with:
+			 *	#!/bin/sh -- # -*- perl -*-
+			 * will continue to work after a change is made to
+			 * kern/imgact_shell.c to NOT token-ize the options
+			 * specified on a '#!' line.  A bit of a kludge,
+			 * but that trick is recommended in documentation
+			 * for some scripting languages, and we might as
+			 * well continue to support it.
+			 */
+			if (p[0] == '-') {
+				kp = p + 1;
+				while (*kp == ' ' || *kp == '\t')
+					kp++;
+				if (*kp == '#' || *kp == '\0')
+					goto end_options2;
 			}
 		} else if (c == '+') {
 			val = 0;
@@ -191,12 +204,50 @@ options(int cmdline)
 			}
 		}
 	}
+	return;
+
+	/* When processing `set', a single "-" means turn off -x and -v */
+end_options1:
+	if (!cmdline) {
+		xflag = vflag = 0;
+		return;
+	}
+
+	/*
+	 * When processing `set', a "--" means the remaining arguments
+	 * replace the positional parameters in the active shell.  If
+	 * there are no remaining options, then all the positional
+	 * parameters are cleared (equivalent to doing ``shift $#'').
+	 */
+end_options2:
+	if (!cmdline) {
+		if (*argptr == NULL)
+			setparam(argptr);
+		return;
+	}
+
+	/*
+	 * At this point we are processing options given to 'sh' on a command
+	 * line.  If an end-of-options marker ("-" or "--") is followed by an
+	 * arg of "#", then skip over all remaining arguments.  Some scripting
+	 * languages (e.g.: perl) document that /bin/sh will implement this
+	 * behavior, and they recommend that users take advantage of it to
+	 * solve certain issues that can come up when writing a perl script.
+	 * Yes, this feature is in /bin/sh to help users write perl scripts.
+	 */
+	p = *argptr;
+	if (p != NULL && p[0] == '#' && p[1] == '\0') {
+		while (*argptr != NULL)
+			argptr++;
+		/* We need to keep the final argument */
+		argptr--;
+	}
 }
 
 STATIC void
 minus_o(char *name, int val)
 {
-	int doneset, i;
+	int i;
 
 	if (name == NULL) {
 		if (val) {
@@ -207,16 +258,13 @@ minus_o(char *name, int val)
 					optlist[i].val ? "on" : "off");
 		} else {
 			/* Output suitable for re-input to shell. */
-			for (doneset = i = 0; i < NOPTS; i++)
-				if (optlist[i].val) {
-					if (!doneset) {
-						out1str("set");
-						doneset = 1;
-					}
-					out1fmt(" -o %s", optlist[i].name);
-				}
-			if (doneset)
-				out1c('\n');
+			for (i = 0; i < NOPTS; i++) {
+				if (i % 6 == 0)
+					out1str(i == 0 ? "set" : "\nset");
+				out1fmt(" %co %s", optlist[i].val ? '-' : '+',
+					optlist[i].name);
+			}
+			out1c('\n');
 		}
 	} else {
 		for (i = 0; i < NOPTS; i++)
