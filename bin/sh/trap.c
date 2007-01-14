@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: src/bin/sh/trap.c,v 1.20.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/trap.c,v 1.4 2004/01/30 18:21:18 dillon Exp $
+ * $FreeBSD: src/bin/sh/trap.c,v 1.32 2006/04/17 17:55:11 schweikh Exp $
+ * $DragonFly: src/bin/sh/trap.c,v 1.5 2007/01/14 06:38:27 pavalos Exp $
  */
 
 #include <signal.h>
@@ -75,7 +75,7 @@ MKINIT char sigmode[NSIG];	/* current value of signal */
 int pendingsigs;		/* indicates some signal received */
 int in_dotrap;			/* do we execute in a trap handler? */
 static char *volatile trap[NSIG];	/* trap handler commands */
-static volatile sig_atomic_t gotsig[NSIG]; 
+static volatile sig_atomic_t gotsig[NSIG];
 				/* indicates specified signal received */
 static int ignore_sigchld;	/* Used while handling SIGCHLD traps. */
 volatile sig_atomic_t gotwinch;
@@ -104,10 +104,10 @@ sigstring_to_signum(char *sig)
 
 		if (strncasecmp(sig, "sig", 3) == 0)
 			sig += 3;
-		for (n = 1; n < sys_nsig; n++) {
-			if (sys_signame[n] && strcasecmp(sys_signame[n], sig) == 0)
+		for (n = 1; n < sys_nsig; n++)
+			if (sys_signame[n] &&
+			    strcasecmp(sys_signame[n], sig) == 0)
 				return (n);
-		}
 	}
 	return (-1);
 }
@@ -119,9 +119,9 @@ sigstring_to_signum(char *sig)
 static void
 printsignals(void)
 {
-	int n;
-	int outlen = 0;
+	int n, outlen;
 
+	outlen = 0;
 	for (n = 1; n < sys_nsig; n++) {
 		if (sys_signame[n]) {
 			out1fmt("%s", sys_signame[n]);
@@ -151,18 +151,16 @@ trapcmd(int argc, char **argv)
 	int signo;
 
 	if (argc <= 1) {
-		for (signo = 0 ; signo < sys_nsig; signo++) {
+		for (signo = 0 ; signo < sys_nsig ; signo++) {
 			if (signo < NSIG && trap[signo] != NULL) {
+				out1str("trap -- ");
+				out1qstr(trap[signo]);
 				if (signo == 0) {
-					out1fmt("trap -- '%s' %s\n", 
-						trap[signo], "exit");
+					out1str(" exit\n");
 				} else if (sys_signame[signo]) {
-					out1fmt("trap -- '%s' %s\n", 
-						trap[signo],
-						sys_signame[signo]);
+					out1fmt(" %s\n", sys_signame[signo]);
 				} else {
-					out1fmt("trap -- '%s' %d\n", 
-						trap[signo], signo);
+					out1fmt(" %d\n", signo);
 				}
 			}
 		}
@@ -377,13 +375,13 @@ onsig(int signo)
 	/* If we are currently in a wait builtin, prepare to break it */
 	if ((signo == SIGINT || signo == SIGQUIT) && in_waitcmd != 0)
 		breakwaitcmd = 1;
-	/* 
-	 * If a trap is set, not ignored and not the null command, we need 
+	/*
+	 * If a trap is set, not ignored and not the null command, we need
 	 * to make sure traps are executed even when a child blocks signals.
 	 */
 	if (Tflag &&
-	    trap[signo] != NULL && 
-	    ! trap[signo][0] == '\0' &&
+	    trap[signo] != NULL &&
+	    ! (trap[signo][0] == '\0') &&
 	    ! (trap[signo][0] == ':' && trap[signo][1] == '\0'))
 		breakwaitcmd = 1;
 
@@ -411,8 +409,9 @@ dotrap(void)
 				gotsig[i] = 0;
 				if (trap[i]) {
 					/*
-					 * Ignore SIGCHLD to avoid infinite recursion
-					 * if the trap action does a fork.
+					 * Ignore SIGCHLD to avoid infinite
+					 * recursion if the trap action does
+					 * a fork.
 					 */
 					if (i == SIGCHLD)
 						ignore_sigchld++;
