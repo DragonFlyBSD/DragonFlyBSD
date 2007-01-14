@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.32 2007/01/10 13:33:23 swildner Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.33 2007/01/14 04:02:58 sephe Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -309,6 +309,8 @@ tapclose(struct dev_close_args *ap)
 	 */
 
 	if (((tp->tap_flags & TAP_VMNET) == 0) && (ifp->if_flags & IFF_UP)) {
+		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+
 		if_down(ifp);
 		lwkt_serialize_enter(ifp->if_serializer);
 		if (ifp->if_flags & IFF_RUNNING) {
