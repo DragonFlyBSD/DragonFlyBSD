@@ -34,17 +34,17 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.9 2007/01/07 16:58:30 pavalos Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.58 2006/11/05 18:36:05 stefanf Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.10 2007/01/14 05:39:22 pavalos Exp $
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "shell.h"
 #include "parser.h"
 #include "nodes.h"
 #include "expand.h"	/* defines rmescapes() */
-#include "redir.h"	/* defines copyfd() */
 #include "syntax.h"
 #include "options.h"
 #include "input.h"
@@ -64,7 +64,8 @@
  * Shell command parser.
  */
 
-#define EOFMARKLEN 79
+#define	EOFMARKLEN	79
+#define	PROMPTLEN	128
 
 /* values returned by readtoken */
 #include "token.h"
@@ -96,6 +97,7 @@ STATIC int startlinno;		/* line # where last token started */
 
 /* XXX When 'noaliases' is set to one, no alias expansion takes place. */
 static int noaliases = 0;
+
 
 STATIC union node *list(int);
 STATIC union node *andor(void);
@@ -182,7 +184,7 @@ list(int nlflag)
 		case TBACKGND:
 		case TSEMI:
 			tok = readtoken();
-			/* fall through */
+			/* FALLTHROUGH */
 		case TNL:
 			if (tok == TNL) {
 				parseheredoc();
@@ -312,7 +314,8 @@ command(void)
 	case TIF:
 		n1 = (union node *)stalloc(sizeof (struct nif));
 		n1->type = NIF;
-		n1->nif.test = list(0);
+		if ((n1->nif.test = list(0)) == NULL)
+			synexpect(-1);
 		if (readtoken() != TTHEN)
 			synexpect(TTHEN);
 		n1->nif.ifpart = list(0);
@@ -321,7 +324,8 @@ command(void)
 			n2->nif.elsepart = (union node *)stalloc(sizeof (struct nif));
 			n2 = n2->nif.elsepart;
 			n2->type = NIF;
-			n2->nif.test = list(0);
+			if ((n2->nif.test = list(0)) == NULL)
+				synexpect(-1);
 			if (readtoken() != TTHEN)
 				synexpect(TTHEN);
 			n2->nif.ifpart = list(0);
@@ -341,7 +345,8 @@ command(void)
 		int got;
 		n1 = (union node *)stalloc(sizeof (struct nbinary));
 		n1->type = (lasttoken == TWHILE)? NWHILE : NUNTIL;
-		n1->nbinary.ch1 = list(0);
+		if ((n1->nbinary.ch1 = list(0)) == NULL)
+			synexpect(-1);
 		if ((got=readtoken()) != TDO) {
 TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 			synexpect(TDO);
@@ -373,7 +378,9 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 			if (lasttoken != TNL && lasttoken != TSEMI)
 				synexpect(-1);
 		} else {
-			static char argvars[5] = {CTLVAR, VSNORMAL|VSQUOTE, '@', '=', '\0'};
+			static char argvars[5] = {
+				CTLVAR, VSNORMAL|VSQUOTE, '@', '=', '\0'
+			};
 			n2 = (union node *)stalloc(sizeof (struct narg));
 			n2->type = NARG;
 			n2->narg.text = argvars;
@@ -946,6 +953,7 @@ readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
 					USTPUTC('\\', out);
 					pungetc();
 				} else if (c == '\n') {
+					plinno++;
 					if (doprompt)
 						setprompt(2);
 					else
@@ -1560,14 +1568,100 @@ setprompt(int which)
 const char *
 getprompt(void *unused __unused)
 {
+	static char ps[PROMPTLEN];
+	const char *fmt;
+	int i, j, trim;
+
+	/*
+	 * Select prompt format.
+	 */
 	switch (whichprompt) {
 	case 0:
-		return "";
+		fmt = "";
+		break;
 	case 1:
-		return ps1val();
+		fmt = ps1val();
+		break;
 	case 2:
-		return ps2val();
+		fmt = ps2val();
+		break;
 	default:
 		return "<internal prompt error>";
 	}
+
+	/*
+	 * Format prompt string.
+	 */
+	for (i = 0; (i < 127) && (*fmt != '\0'); i++, fmt++)
+		if (*fmt == '\\')
+			switch (*++fmt) {
+
+				/*
+				 * Hostname.
+				 *
+				 * \h specifies just the local hostname,
+				 * \H specifies fully-qualified hostname.
+				 */
+			case 'h':
+			case 'H':
+				ps[i] = '\0';
+				gethostname(&ps[i], PROMPTLEN - i);
+				/* Skip to end of hostname. */
+				trim = (*fmt == 'h') ? '.' : '\0';
+				while ((ps[i+1] != '\0') && (ps[i+1] != trim))
+					i++;
+				break;
+
+				/*
+				 * Working directory.
+				 *
+				 * \W specifies just the final component,
+				 * \w specifies the entire path.
+				 */
+			case 'W':
+			case 'w':
+				ps[i] = '\0';
+				getcwd(&ps[i], PROMPTLEN - i);
+				if (*fmt == 'W') {
+					/* Final path component only. */
+					trim = 1;
+					for (j = i; ps[j] != '\0'; j++)
+					  if (ps[j] == '/')
+						trim = j + 1;
+					memmove(&ps[i], &ps[trim],
+					    j - trim + 1);
+				}
+				/* Skip to end of path. */
+				while (ps[i + 1] != '\0')
+					i++;
+				break;
+
+				/*
+				 * Superuser status.
+				 *
+				 * '$' for normal users, '#' for root.
+				 */
+			case '$':
+				ps[i] = (geteuid() != 0) ? '$' : '#';
+				break;
+
+				/*
+				 * A literal \.
+				 */
+			case '\\':
+				ps[i] = '\\';
+				break;
+
+				/*
+				 * Emit unrecognized formats verbatim.
+				 */
+			default:
+				ps[i++] = '\\';
+				ps[i] = *fmt;
+				break;
+			}
+		else
+			ps[i] = *fmt;
+	ps[i] = '\0';
+	return (ps);
 }
