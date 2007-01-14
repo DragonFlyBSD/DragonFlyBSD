@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.13 2007/01/12 22:12:52 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.14 2007/01/14 00:01:08 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2357,7 +2357,7 @@ pmap_zero_page(vm_paddr_t phys)
 	crit_enter();
 	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*gd->gd_CMAP3 = VPTE_V | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero(gd->gd_CADDR3, PAGE_SIZE);

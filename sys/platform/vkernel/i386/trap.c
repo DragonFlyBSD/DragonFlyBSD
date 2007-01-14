@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.10 2007/01/12 06:07:29 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.11 2007/01/14 00:01:06 dillon Exp $
  */
 
 /*
@@ -1452,7 +1452,6 @@ set_vkernel_fp(struct trapframe *frame)
 {
 	struct thread *td = curthread;
 
-	panic("set_vkernel_fp: vkernel-within-vkernel not yet supported");
 	if (frame->tf_xflags & FPEX_FAULT) {
 		td->td_pcb->pcb_flags |= FP_VIRTFP;
 		if (mdcpu->gd_npxthread == td)
