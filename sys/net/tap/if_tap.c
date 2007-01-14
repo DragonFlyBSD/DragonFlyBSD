@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.33 2007/01/14 04:02:58 sephe Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.34 2007/01/14 07:25:59 sephe Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -256,8 +256,9 @@ static int
 tapopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tap_softc	*tp = NULL;
-	int			 error;
+	struct tap_softc *tp = NULL;
+	struct ifnet *ifp = NULL;
+	int error;
 
 	if ((error = suser_cred(ap->a_cred, 0)) != 0)
 		return (error);
@@ -266,6 +267,14 @@ tapopen(struct dev_open_args *ap)
 	if (tp == NULL) {
 		tapcreate(dev);
 		tp = dev->si_drv1;
+		ifp = &tp->arpcom.ac_if;
+	} else {
+		ifp = &tp->arpcom.ac_if;
+
+                EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+
+		/* Announce the return of the interface. */
+		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
 	}
 
 	if (tp->tap_flags & TAP_OPEN)
@@ -277,8 +286,7 @@ tapopen(struct dev_open_args *ap)
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
 
-	TAPDEBUG(&tp->arpcom.ac_if,
-		 "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
+	TAPDEBUG(ifp, "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
 	return (0);
@@ -310,6 +318,9 @@ tapclose(struct dev_close_args *ap)
 
 	if (((tp->tap_flags & TAP_VMNET) == 0) && (ifp->if_flags & IFF_UP)) {
 		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+
+		/* Announce the departure of the interface. */
+		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 
 		if_down(ifp);
 		lwkt_serialize_enter(ifp->if_serializer);
@@ -398,8 +409,18 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			dummy = ether_ioctl(ifp, cmd, data);
 			return (dummy);
 
-		case SIOCSIFFLAGS: /* XXX -- just like vmnet does */
-		case SIOCADDMULTI:
+		case SIOCSIFFLAGS:
+			if ((tp->tap_flags & TAP_VMNET) == 0) {
+				/*
+				 * Only for non-vmnet tap(4)
+				 */
+				if (ifp->if_flags & IFF_UP) {
+					if ((ifp->if_flags & IFF_RUNNING) == 0)
+						tapifinit(tp);
+				}
+			}
+			break;
+		case SIOCADDMULTI: /* XXX -- just like vmnet does */
 		case SIOCDELMULTI:
 			break;
 
