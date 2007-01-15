@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.29 2006/12/23 03:41:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.30 2007/01/15 12:53:26 sephe Exp $
  */
 
 /*
@@ -149,10 +149,6 @@
 #include <dev/netif/re/if_rereg.h>
 #include <dev/netif/re/if_revar.h>
 
-/*
- * The hardware supports checksumming but, as usual, some chipsets screw it
- * all up and produce bogus packets, so we disable it by default.
- */
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
 #if 0
 #define RE_DISABLE_HWCSUM
@@ -193,15 +189,15 @@ static const struct re_type re_devs[] = {
 
 static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	"C+" },
-	{ RE_HWREV_8168_SPIN1,	RE_8169,	0,		"8168" },
-	{ RE_HWREV_8168_SPIN2,	RE_8169,	0,		"8168" },
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	"8168" },
+	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,	"8168" },
 	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,	"8169" },
 	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	"8169S" },
 	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	"8110S" },
 	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,	"8169SB" },
 	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		"8169SC" },
 	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	"8100E" },
-	{ RE_HWREV_8101E,	RE_8169,	0,		"8101E" },
+	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,	"8101E" },
 	{ 0, 0, 0, NULL }
 };
 
@@ -1219,13 +1215,24 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 100000000;
 	ifq_set_maxlen(&ifp->if_snd, RE_IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
+
 #ifdef RE_DISABLE_HWCSUM
 	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
 	ifp->if_hwassist = 0;
 #else
-	ifp->if_capenable = ifp->if_capabilities;
-	ifp->if_hwassist = RE_CSUM_FEATURES;
-#endif
+	if (sc->re_flags & RE_F_PCIE) {
+		/*
+		 * The hardware supports checksumming but, as usual, PCIe
+		 * chipsets screw it all up and produce bogus packets, so
+		 * we don't enable it by default.
+		 */
+		ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
+		ifp->if_hwassist = 0;
+	} else {
+		ifp->if_capenable = ifp->if_capabilities;
+		ifp->if_hwassist = RE_CSUM_FEATURES;
+	}
+#endif	/* RE_DISABLE_HWCSUM */
 
 	/*
 	 * Call MI attach routine.

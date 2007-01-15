@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.2 2006/12/23 03:41:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.3 2007/01/15 12:53:26 sephe Exp $
  */
 
 struct re_chain_data {
@@ -157,6 +157,7 @@ struct re_softc {
 };
 
 #define RE_F_HASMPC		0x1
+#define RE_F_PCIE		0x2
 
 #define RE_TX_MODERATION_IS_ENABLED(sc)			\
 	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)
