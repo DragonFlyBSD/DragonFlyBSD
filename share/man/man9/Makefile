@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.39 2007/01/09 08:28:10 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.40 2007/01/15 22:08:03 tgen Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -23,7 +23,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
 	ieee80211_radiotap.9 \
 	ifnet.9 inittodr.9 intro.9 kernacc.9 kobj.9 kmalloc.9 kprintf.9 ktr.9 \
-	lock.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 \
+	kenv.9 lock.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 \
 	nlookup.9 \
 	panic.9 pci.9 pfil.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \
@@ -159,6 +159,14 @@ MLINKS+=kernacc.9 useracc.9
 MLINKS+=kmalloc.9 kfree.9 kmalloc.9 krealloc.9
 MLINKS+=kmalloc.9 FREE.9 kmalloc.9 MALLOC.9
 MLINKS+=kmalloc.9 MALLOC_DEFINE.9 kmalloc.9 MALLOC_DECLARE.9
+MLINKS+=kenv.9 kfreeenv.9 \
+	kenv.9 kgetenv.9 \
+	kenv.9 kgetenv_int.9 \
+	kenv.9 kgetenv_quad.9 \
+	kenv.9 kgetenv_string.9 \
+	kenv.9 ksetenv.9 \
+	kenv.9 ktestenv.9 \
+	kenv.9 kunsetenv.9
 MLINKS+=kobj.9 DEFINE_CLASS.9
 MLINKS+=kobj.9 kobj_class_compile.9
 MLINKS+=kobj.9 kobj_class_free.9
