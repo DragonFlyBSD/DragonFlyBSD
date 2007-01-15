@@ -1,0 +1,12 @@
+$DragonFly: src/lib/csu/README,v 1.1 2007/01/15 18:01:44 corecode Exp $
+
+How does CSU work in DragonFly?
+===============================
+
+Every GCC carries its own CSU sources which need to be used.  However, we
+also provide a part of the startup files.  Unfortunately, GCC does not
+support a search path for startup dirs, so we have to put all of them into
+the GCC specific library dir, namely /usr/lib/$GCCVER.
+
+This is realized by providing Makefile glue to gnu/lib/gcc*/csu, which
+includes lib/csu/${MACHINE_ARCH}/Makefile.csu.

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.98 2007/01/04 14:19:03 y0netan1 Exp $
+# $DragonFly: src/Makefile.inc1,v 1.99 2007/01/15 18:01:44 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -890,15 +890,14 @@ libraries:
 
 # These dependencies are not automatically generated:
 #
-# gnu/lib/${CCVER}/libgcc and lib/csu must be built before all
+# gnu/lib/${CCVER}/libgcc and gnu/lib/${CCVER}/csu must be built before all
 # shared libraries for ELF.  The target for _startup_libs34 is
 # specifically built using gcc34.  Same goes for _startup_libs40.
 #
-_startup_libs34=	gnu/lib/gcc34/libgcc
-_startup_libs40=	gnu/lib/gcc40/libgcc
-_startup_libs41=	gnu/lib/gcc41/libgcc
-_startup_libs=	lib/csu/${MACHINE_ARCH}
-_startup_libs+=	lib/csu/common lib/libc lib/libc_rtld
+_startup_libs34=	gnu/lib/gcc34/csu gnu/lib/gcc34/libgcc
+_startup_libs40=	gnu/lib/gcc40/csu gnu/lib/gcc40/libgcc
+_startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
+_startup_libs=		lib/libc lib/libc_rtld
 
 _prebuild_libs=	lib/libarchive
 _prebuild_libs+=	lib/libutil

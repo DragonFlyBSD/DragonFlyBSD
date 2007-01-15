@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.2 2006/10/04 13:18:57 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.3 2007/01/15 18:01:44 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -172,7 +172,7 @@ is built with the --enable-threads configure-time option.}		\
 #define	STANDARD_EXEC_PREFIX		PREFIX2"/libexec/gcc41/"
 #endif
 #ifndef STANDARD_STARTFILE_PREFIX
-#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
+#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/gcc41/"
 #endif
 #ifndef TOOLDIR_BASE_PREFIX
 #define TOOLDIR_BASE_PREFIX		PREFIX2"/libexec/gcc41"

@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.11 2006/07/27 00:29:57 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.12 2007/01/15 18:01:44 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -164,7 +164,7 @@ is built with the --enable-threads configure-time option.}		\
 #define	DFBSD_DYNAMIC_LINKER		"/usr/libexec/ld-elf.so.2"
 #define	STANDARD_STARTFILE_PREFIX_1	PREFIX2"/lib/gcc34/"
 #define	STANDARD_EXEC_PREFIX		PREFIX2"/libexec/gcc34/"
-#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
+#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/gcc34/"
 #define TOOLDIR_BASE_PREFIX		PREFIX2"/libexec/gcc34"
 #define STANDARD_BINDIR_PREFIX		PREFIX2"/libexec/gcc34"
 #define STANDARD_LIBEXEC_PREFIX		PREFIX2"/libexec/gcc34"
