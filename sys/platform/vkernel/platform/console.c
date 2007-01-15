@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.9 2007/01/13 17:06:19 y0netan1 Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.10 2007/01/15 05:27:31 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -46,7 +46,7 @@
 #include <termios.h>
 
 static int console_stolen_by_kernel;
-static struct callout console_callout;
+static struct kqueue_info *kqueue_console_info;
 
 /*
  * Global console locking functions
@@ -71,7 +71,7 @@ cons_unlock(void)
 
 static int vcons_tty_param(struct tty *tp, struct termios *tio);
 static void vcons_tty_start(struct tty *tp);
-static void vcons_intr(void *tpx);
+static void vcons_intr(void *tpx, struct intrframe *frame __unused);
 
 static d_open_t         vcons_open;
 static d_close_t        vcons_close;
@@ -115,7 +115,8 @@ vcons_open(struct dev_open_args *ap)
 		ttsetwater(tp);
 	}
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
-	callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
+	if (kqueue_console_info == NULL)
+		kqueue_console_info = kqueue_add(0, vcons_intr, tp);
 	return(error);
 }
 
@@ -181,7 +182,7 @@ vcons_tty_start(struct tty *tp)
 
 static
 void
-vcons_intr(void *tpx)
+vcons_intr(void *tpx, struct intrframe *frame __unused)
 {
 	struct tty *tp = tpx;
 	unsigned char buf[32];
@@ -205,7 +206,6 @@ vcons_intr(void *tpx)
 				(*linesw[tp->t_line].l_rint)(buf[i], tp);
 		} while (n > 0);
 	}
-	callout_reset(&console_callout, hz / 30 + 1, vcons_intr, tp);
 }
 
 /************************************************************************
@@ -239,7 +239,6 @@ vconsprobe(struct consdev *cp)
 		tcsetattr(0, TCSAFLUSH, &tio);
 		vcons_set_mode(0);
 	}
-	callout_init(&console_callout);
 }
 
 static void

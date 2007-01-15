@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.3 2007/01/15 01:29:00 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.4 2007/01/15 05:27:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,7 @@ static void	vke_init(void *);
 static int	vke_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int	vke_attach(const struct vknetif_info *, int);
-static void	vke_intr(void *);
+static void	vke_intr(void *, struct intrframe *);
 static int	vke_stop(struct vke_softc *);
 static int	vke_rxeof(struct vke_softc *);
 static int	vke_init_addr(struct ifnet *, in_addr_t, in_addr_t);
@@ -236,7 +236,7 @@ vke_stop(struct vke_softc *sc)
 }
 
 static void
-vke_intr(void *xsc)
+vke_intr(void *xsc, struct intrframe *frame __unused)
 {
 	struct vke_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;

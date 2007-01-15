@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.9 2007/01/15 01:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.10 2007/01/15 05:27:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -52,12 +52,16 @@
 #include <unistd.h>
 #include <signal.h>
 
+static void cputimer_intr(void *dummy, struct intrframe *frame);
+
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	   CTLFLAG_RW, &disable_rtc_set, 0, "");
 
 int adjkerntz;
 int wall_cmos_clock = 0;
+static struct kqueue_info *kqueue_timer_info;
+
 
 /*
  * SYSTIMER IMPLEMENTATION
@@ -121,21 +125,13 @@ vkernel_timer_get_timecount(void)
 }
 
 /*
- * Configure the interrupt for our core systimer
+ * Configure the interrupt for our core systimer.  Use the kqueue timer
+ * support functions.
  */
 void
 cputimer_intr_config(struct cputimer *timer)
 {
-	struct sigaction sa;
-
-	kprintf("cputimer_intr_config\n");
-	bzero(&sa, sizeof(sa));
-	sa.sa_mailbox = &mdcpu->gd_mailbox;
-	sa.sa_flags = SA_MAILBOX;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGALRM, &sa, NULL);
-	register_int(0, cputimer_intr, NULL, "timer",
-		     NULL, INTR_FAST|INTR_MPSAFE);
+	kqueue_timer_info = kqueue_add_timer(cputimer_intr, NULL);
 }
 
 /*
@@ -144,14 +140,8 @@ cputimer_intr_config(struct cputimer *timer)
 void
 cputimer_intr_reload(sysclock_t reload)
 {
-	struct itimerval it;
-
-	it.it_interval.tv_usec = 0;
-	it.it_interval.tv_sec = 0;
-	it.it_value.tv_usec = reload;
-	it.it_value.tv_sec = 0;
-
-	setitimer(ITIMER_REAL, &it, NULL);
+	if (kqueue_timer_info)
+		kqueue_reload_timer(kqueue_timer_info, (reload + 999) / 1000);
 }
 
 /*
@@ -159,8 +149,8 @@ cputimer_intr_reload(sysclock_t reload)
  *
  * NOTE: frame is a struct intrframe pointer.
  */
-void
-cputimer_intr(void *dummy, void *frame)
+static void
+cputimer_intr(void *dummy, struct intrframe *frame)
 {
 	static sysclock_t sysclock_count;
 	struct globaldata *gd = mycpu;
@@ -168,6 +158,7 @@ cputimer_intr(void *dummy, void *frame)
         struct globaldata *gscan;
 	int n;
 #endif
+	
 	sysclock_count = sys_cputimer->count();
 #ifdef SMP
 	for (n = 0; n < ncpus; ++n) {
@@ -216,5 +207,4 @@ DELAY(int usec)
 {
 	usleep(usec);
 }
-
 

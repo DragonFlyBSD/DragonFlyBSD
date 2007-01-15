@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.1 2007/01/15 01:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.2 2007/01/15 05:27:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@
 #include <fcntl.h>
 
 struct kqueue_info {
-	void (*func)(void *data);
+	void (*func)(void *, struct intrframe *);
 	void *data;
 	int fd;
 };
@@ -79,7 +79,7 @@ init_kqueue(void)
 
 	bzero(&sa, sizeof(sa));
 	sa.sa_mailbox = &mdcpu->gd_mailbox;
-	sa.sa_flags = SA_MAILBOX;
+	sa.sa_flags = SA_MAILBOX | SA_NODEFER;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGIO, &sa, NULL);
 	KQueueFd = kqueue();
@@ -89,30 +89,47 @@ init_kqueue(void)
 		panic("Cannot configure kqueue for SIGIO, update your kernel");
 }
 
+/*
+ * A SIGIO mailbox event cause a system call interruption and a timely
+ * poll.  If the mailbox is active we clean out all pending kqueue events.
+ * It is really that simple.
+ *
+ * We specify EV_CLEAR for all events to ensure no requeues before their
+ * time.  A new SIGIO is not generated unless all events are cleared from
+ * the kqueue.
+ */
 void
-kqueue_intr(struct intrframe *frame)
+signalmailbox(struct intrframe *frame)
 {
-	struct timespec ts = { 0, 0 };
+	struct mdglobaldata *gd = mdcpu;
+	struct timespec ts;
 	struct kevent kevary[8];
 	int n;
 	int i;
 
-	n = 8;
-	while (n == 8) {
+	if (gd->gd_mailbox == 0)
+		return;
+	gd->gd_mailbox = 0;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 0;
+	crit_enter();
+	do {
 		n = kevent(KQueueFd, NULL, 0, kevary, 8, &ts);
 		for (i = 0; i < n; ++i) {
 			struct kevent *kev = &kevary[i];
 			struct kqueue_info *info = (void *)kev->udata;
 
-			if (kev->filter == EVFILT_READ) {
-				info->func(info->data);
-			}
+			info->func(info->data, frame);
 		}
-	}
+	} while (n == 8);
+	crit_exit();
 }
 
+/*
+ * Generic I/O event support
+ */
 struct kqueue_info *
-kqueue_add(int fd, void (*func)(void * data), void *data)
+kqueue_add(int fd, void (*func)(void *, struct intrframe *), void *data)
 {
 	struct timespec ts = { 0, 0 };
 	struct kqueue_info *info;
@@ -122,12 +139,42 @@ kqueue_add(int fd, void (*func)(void * data), void *data)
 	info->func = func;
 	info->data = data;
 	info->fd = fd;
-	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, info);
+	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE|EV_CLEAR, 0, 0, info);
 	if (kevent(KQueueFd, &kev, 1, NULL, 0, &ts) < 0)
 		panic("kqueue: kevent() call could not add descriptor");
 	return(info);
 }
 
+/*
+ * Medium resolution timer support
+ */
+struct kqueue_info *
+kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data)
+{
+	struct kqueue_info *info;
+
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
+	info->func = func;
+	info->data = data;
+	info->fd = (uintptr_t)info;
+	return(info);
+}
+
+void
+kqueue_reload_timer(struct kqueue_info *info, int ms)
+{
+	struct timespec ts = { 0, 0 };
+	struct kevent kev;
+
+	EV_SET(&kev, info->fd, EVFILT_TIMER,
+		EV_ADD|EV_ENABLE|EV_ONESHOT|EV_CLEAR, 0, (uintptr_t)ms, info);
+	if (kevent(KQueueFd, &kev, 1, NULL, 0, &ts) < 0)
+		panic("kqueue_reload_timer: Failed");
+}
+
+/*
+ * Destroy a previously added kqueue event
+ */
 void
 kqueue_del(struct kqueue_info *info)
 {

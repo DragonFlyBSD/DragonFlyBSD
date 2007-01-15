@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.4 2007/01/15 01:29:02 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.5 2007/01/15 05:27:29 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -101,23 +101,6 @@ static void
 exc_debugger(int signo, siginfo_t *info, void *ctx)
 {
 	Debugger("interrupt from console");
-}
-
-/*
- * This routine is polled when we possibly have a mailbox signal
- */
-void
-signalmailbox(struct intrframe *frame)
-{
-	struct mdglobaldata *gd = mdcpu;
-
-	if (gd->gd_mailbox) {
-		gd->gd_mailbox = 0;
-		crit_enter();
-		cputimer_intr(NULL, frame);
-		kqueue_intr(frame);
-		crit_exit();
-	}
 }
 
 #endif

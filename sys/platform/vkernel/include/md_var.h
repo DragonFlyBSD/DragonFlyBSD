@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.15 2007/01/15 01:29:03 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.16 2007/01/15 05:27:30 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -65,6 +65,7 @@ extern  u_int   cpu_id;		/* XXX belongs in i386 */
 
 extern int	RootImageFd;
 extern int	MemImageFd;
+extern int	KQueueFd;
 extern struct vknetif_info NetifInfo[VKNETIF_MAX];
 extern int	NetifNum;
 extern int	_ucodesel, _udatasel;
@@ -90,13 +91,13 @@ void user_trap(struct trapframe *);
 void syscall2 (struct trapframe *);
 void vcons_set_mode(int);
 void signalmailbox(struct intrframe *);
-void kqueue_intr(struct intrframe *);
-void cputimer_intr(void *, void *);
 int npxdna(struct trapframe *);
 
 struct kqueue_info;
-struct kqueue_info *kqueue_add(int, void (*)(void *), void *);
+struct kqueue_info *kqueue_add(int, void (*)(void *, struct intrframe *), void *);
 void kqueue_del(struct kqueue_info *);
+struct kqueue_info *kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data);
+void kqueue_reload_timer(struct kqueue_info *info, int ms);
 
 
 #endif
