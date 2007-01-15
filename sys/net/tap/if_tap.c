@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.34 2007/01/14 07:25:59 sephe Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.35 2007/01/15 00:51:43 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -99,6 +99,7 @@ static d_read_t		tapread;
 static d_write_t	tapwrite;
 static d_ioctl_t	tapioctl;
 static d_poll_t		tappoll;
+static d_kqfilter_t	tapkqfilter;
 
 static struct dev_ops	tap_ops = {
 	{ CDEV_NAME, CDEV_MAJOR, 0 },
@@ -108,6 +109,7 @@ static struct dev_ops	tap_ops = {
 	.d_write =	tapwrite,
 	.d_ioctl =	tapioctl,
 	.d_poll =	tappoll,
+	.d_kqfilter =	tapkqfilter
 };
 
 static int		taprefcnt = 0;		/* module ref. counter   */
@@ -482,6 +484,7 @@ tapifstart(struct ifnet *ifp)
 			tp->tap_flags &= ~TAP_RWAIT;
 			wakeup((caddr_t)tp);
 		}
+		KNOTE(&tp->tap_rsel.si_note, 0);
 
 		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL))
 			pgsigio(tp->tap_sigio, SIGIO, 0);
@@ -792,3 +795,63 @@ tappoll(struct dev_poll_args *ap)
 	ap->a_events = revents;
 	return(0);
 } /* tappoll */
+
+static int filt_tapread(struct knote *kn, long hint);
+static void filt_tapdetach(struct knote *kn);
+static struct filterops tapread_filtops =
+	{ 1, NULL, filt_tapdetach, filt_tapread };
+
+int
+tapkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct tap_softc *tp;
+	struct klist *list;
+	struct ifnet *ifp;
+
+	get_mplock();
+	tp = dev->si_drv1;
+	ifp = &tp->tap_if;
+	ap->a_result =0;
+
+	switch(kn->kn_filter) {
+	case EVFILT_READ:
+		list = &tp->tap_rsel.si_note;
+		kn->kn_fop = &tapread_filtops;
+		kn->kn_hook = (void *)tp;
+		break;
+	case EVFILT_WRITE:
+		/* fall through */
+	default:
+		ap->a_result = 1;
+		rel_mplock();
+		return(0);
+	}
+	crit_enter();
+	SLIST_INSERT_HEAD(list, kn, kn_selnext);
+	crit_exit();
+	rel_mplock();
+	return(0);
+}
+
+static int
+filt_tapread(struct knote *kn, long hint)
+{
+	struct tap_softc *tp = (void *)kn->kn_hook;
+	struct ifnet *ifp = &tp->tap_if;
+
+	if (ifq_is_empty(&ifp->if_snd) == 0) {
+		return(1);
+	} else {
+		return(0);
+	}
+}
+
+static void
+filt_tapdetach(struct knote *kn)
+{
+	struct tap_softc *tp = (void *)kn->kn_hook;
+
+	SLIST_REMOVE(&tp->tap_rsel.si_note, kn, knote, kn_selnext);
+}
