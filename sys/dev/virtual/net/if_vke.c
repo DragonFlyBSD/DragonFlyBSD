@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.2 2007/01/14 14:24:56 sephe Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.3 2007/01/15 01:29:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,17 +64,12 @@
 
 #define VKE_DEVNAME		"vke"
 
-/* XXX */
-#define VKE_TX_THRESHOLD	32
-#define VKE_RX_THRESHOLD	32
-
 struct vke_softc {
 	struct arpcom		arpcom;
 	int			sc_fd;
 	int			sc_unit;
 
-	struct callout		sc_intr;
-	int			sc_intr_rate;	/* #intr/second */
+	struct kqueue_info	*sc_kqueue;
 
 	void			*sc_txbuf;
 	struct mbuf		*sc_rx_mbuf;
@@ -96,7 +91,6 @@ static void	vke_intr(void *);
 static int	vke_stop(struct vke_softc *);
 static int	vke_rxeof(struct vke_softc *);
 static int	vke_init_addr(struct ifnet *, in_addr_t, in_addr_t);
-static int	vke_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 
 static void
 vke_sysinit(void *arg __unused)
@@ -143,7 +137,6 @@ vke_init(void *xsc)
 		vke_init_addr(ifp, addr, mask);
 	}
 
-	callout_reset(&sc->sc_intr, hz / sc->sc_intr_rate, vke_intr, sc);
 	ifp->if_start(ifp);
 }
 
@@ -152,24 +145,21 @@ vke_start(struct ifnet *ifp)
 {
 	struct vke_softc *sc = ifp->if_softc;
 	struct mbuf *m;
-	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
-	for (i = 0; i < VKE_TX_THRESHOLD; ++i) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
-		if (m != NULL) {
-			m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
-			write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
-			m_freem(m);
+	if (sc->sc_kqueue == NULL) {
+		sc->sc_kqueue = kqueue_add(sc->sc_fd, vke_intr, sc);
+	}
 
-			ifp->if_opackets++;
-		} else {
-			break;
-		}
+	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+		m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
+		write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
+		m_freem(m);
+		ifp->if_opackets++;
 	}
 }
 
@@ -233,7 +223,10 @@ vke_stop(struct vke_softc *sc)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	callout_stop(&sc->sc_intr);
+	if (sc->sc_kqueue) {
+		kqueue_del(sc->sc_kqueue);
+		sc->sc_kqueue = NULL;
+	}
 
 	if (sc->sc_rx_mbuf != NULL) {
 		m_freem(sc->sc_rx_mbuf);
@@ -256,7 +249,6 @@ vke_intr(void *xsc)
 	vke_rxeof(sc);
 
 	ifp->if_start(ifp);
-	callout_reset(&sc->sc_intr, hz / sc->sc_intr_rate, vke_intr, sc);
 
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -267,11 +259,10 @@ vke_rxeof(struct vke_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
-	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	for (i = 0; i < VKE_RX_THRESHOLD; ++i) {
+	for (;;) {
 		int n;
 
 		if (sc->sc_rx_mbuf != NULL) {
@@ -331,8 +322,6 @@ vke_attach(const struct vknetif_info *info, int unit)
 	sc->sc_tap_unit = info->tap_unit;
 	sc->sc_addr = info->netif_addr;
 	sc->sc_mask = info->netif_mask;
-	sc->sc_intr_rate = 20;	/* Tunable?? */
-	callout_init(&sc->sc_intr);
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, VKE_DEVNAME, sc->sc_unit);
@@ -346,13 +335,6 @@ vke_attach(const struct vknetif_info *info, int unit)
 	if (sc->sc_sysctl_tree == NULL) {
 		kprintf(VKE_DEVNAME "%d: can't add sysctl node\n", unit);
 	} else {
-		SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-				SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-				OID_AUTO, "intr_rate",
-				CTLTYPE_INT | CTLFLAG_RW,
-				sc, 0, vke_sysctl_intr_rate, "I",
-				"RX intr rate (#/s)");
-
 		SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
 			       SYSCTL_CHILDREN(sc->sc_sysctl_tree),
 			       OID_AUTO, "tap_unit",
@@ -424,25 +406,3 @@ vke_init_addr(struct ifnet *ifp, in_addr_t addr, in_addr_t mask)
 	return ret;
 }
 
-static int
-vke_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
-{
-	struct vke_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_intr_rate;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0 || v > hz) {
-		error = EINVAL;
-		goto back;
-	}
-	sc->sc_intr_rate = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}

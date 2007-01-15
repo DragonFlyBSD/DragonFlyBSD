@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.26 2007/01/14 14:24:56 sephe Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.27 2007/01/15 01:29:04 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -191,6 +191,7 @@ main(int ac, char **av)
 	init_kern_memory();
 	init_globaldata();
 	init_vkernel();
+	init_kqueue();
 	init_rootdevice(rootImageFile);
 	init_netif(netifFile, netifFileNum);
 	init_exceptions();

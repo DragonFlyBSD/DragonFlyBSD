@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.8 2007/01/14 20:07:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.9 2007/01/15 01:29:04 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,8 +64,6 @@ int wall_cmos_clock = 0;
  */
 static sysclock_t vkernel_timer_get_timecount(void);
 static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
-/*static void cputimer_intr_hard(int signo);*/
-static void cputimer_intr(void *dummy, void *frame);
 
 static struct cputimer vkernel_cputimer = {
         SLIST_ENTRY_INITIALIZER,
@@ -135,7 +133,6 @@ cputimer_intr_config(struct cputimer *timer)
 	sa.sa_mailbox = &mdcpu->gd_mailbox;
 	sa.sa_flags = SA_MAILBOX;
 	sigemptyset(&sa.sa_mask);
-	sigaddset(&sa.sa_mask, SIGIO);
 	sigaction(SIGALRM, &sa, NULL);
 	register_int(0, cputimer_intr, NULL, "timer",
 		     NULL, INTR_FAST|INTR_MPSAFE);
@@ -157,54 +154,11 @@ cputimer_intr_reload(sysclock_t reload)
 	setitimer(ITIMER_REAL, &it, NULL);
 }
 
-void
-signalmailbox(struct intrframe *frame)
-{
-	struct mdglobaldata *gd = mdcpu;
-
-	if (gd->gd_mailbox) {
-		gd->gd_mailbox = 0;
-		crit_enter();
-		cputimer_intr(NULL, frame);
-		crit_exit();
-	}
-}
-
-#if 0
-/*
- * Clock interrupt (SIGALRM)
- *
- * Upon a clock interrupt, dispatch to the systimer subsystem
- *
- * XXX NO FRAME PROVIDED
- */
-static
-void
-cputimer_intr_hard(int signo)
-{
-	struct mdglobaldata *gd = mdcpu;
-
-	/*
-	 * XXX check critical section hack
-	 */
-	if (curthread->td_pri >= TDPRI_CRIT) {
-		atomic_set_int(&gd->gd_fpending, 1);
-		atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
-	} else {
-		crit_enter();
-		cputimer_intr(NULL, NULL);
-		crit_exit();
-	}
-}
-
-#endif
-
 /*
  * clock interrupt.
  *
  * NOTE: frame is a struct intrframe pointer.
  */
-static
 void
 cputimer_intr(void *dummy, void *frame)
 {
