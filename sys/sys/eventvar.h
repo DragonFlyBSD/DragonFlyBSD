@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.6 2006/06/10 20:00:17 dillon Exp $
+ *	$DragonFly: src/sys/sys/eventvar.h,v 1.7 2007/01/15 01:26:56 dillon Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
@@ -45,6 +45,9 @@
 #ifndef _SYS_SELINFO_H_
 #include <sys/selinfo.h>
 #endif
+#ifndef _SYS_FILEDESC_H_
+#include <sys/filedesc.h>
+#endif
 
 
 #define KQ_NEVENTS	8		/* minimize copy{in,out} calls */
@@ -53,11 +56,13 @@
 struct kqueue {
 	TAILQ_HEAD(kqlist, knote) kq_head;	/* list of pending event */
 	int		kq_count;		/* number of pending events */
+	struct		sigio *kq_sigio;
 	struct		selinfo kq_sel;	
 	struct		filedesc *kq_fdp;
 	int		kq_state;
 #define KQ_SEL		0x01
 #define KQ_SLEEP	0x02
+#define KQ_ASYNC	0x04
 	struct		kevent kq_kev[KQ_NEVENTS];
 };
 

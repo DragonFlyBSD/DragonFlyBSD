@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.31 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.32 2007/01/15 01:26:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,8 @@
 #include <sys/sysproto.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
+#include <sys/signalvar.h>
+#include <sys/filio.h>
 #include <sys/file2.h>
 
 #include <vm/vm_zone.h>
@@ -751,7 +753,29 @@ kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 static int
 kqueue_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
 {
-	return (ENOTTY);
+	struct kqueue *kq;
+	int error;
+
+	get_mplock();
+	kq = (struct kqueue *)fp->f_data;
+
+	switch(com) {
+	case FIOASYNC:
+		if (*(int *)data)
+			kq->kq_state |= KQ_ASYNC;
+		else
+			kq->kq_state &= ~KQ_ASYNC;
+		error = 0;
+		break;
+	case FIOSETOWN:
+		error = fsetown(*(int *)data, &kq->kq_sigio);
+		break;
+	default:
+		error = ENOTTY;
+		break;
+	}
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -844,6 +868,7 @@ kqueue_close(struct file *fp)
 		}
 	}
 	fp->f_data = NULL;
+	funsetown(kq->kq_sigio);
 	rel_mplock();
 
 	kfree(kq, M_KQUEUE);
@@ -977,7 +1002,13 @@ knote_enqueue(struct knote *kn)
 
 	TAILQ_INSERT_TAIL(&kq->kq_head, kn, kn_tqe); 
 	kn->kn_status |= KN_QUEUED;
-	kq->kq_count++;
+	++kq->kq_count;
+
+	/*
+	 * Send SIGIO on request (typically set up as a mailbox signal)
+	 */
+	if (kq->kq_sigio && (kq->kq_state & KQ_ASYNC) && kq->kq_count == 1)
+		pgsigio(kq->kq_sigio, SIGIO, 0);
 	crit_exit();
 	kqueue_wakeup(kq);
 }
