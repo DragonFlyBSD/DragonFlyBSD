@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.27 2007/01/15 01:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.28 2007/01/15 20:51:15 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -126,7 +126,9 @@ main(int ac, char **av)
 	/*
 	 * Process options
 	 */
-	while ((c = getopt(ac, av, "svm:r:e:I:")) != -1) {
+	kernel_mem_readonly = 1;
+
+	while ((c = getopt(ac, av, "svm:r:e:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -182,6 +184,9 @@ main(int ac, char **av)
 					break;
 				}
 			}
+			break;
+		case 'U':
+			kernel_mem_readonly = 0;
 			break;
 		}
 	}

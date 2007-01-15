@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.64 2007/01/13 21:33:30 tgen Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.65 2007/01/15 20:51:16 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -58,6 +58,7 @@
 #include <sys/callout.h>
 
 extern int securelevel;		/* system security level (see init(8)) */
+extern int kernel_mem_readonly;	/* disable writes to kernel memory */
 
 extern int cold;		/* nonzero if we are doing a cold boot */
 extern const char *panicstr;	/* panic message */

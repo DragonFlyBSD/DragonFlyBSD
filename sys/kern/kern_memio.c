@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.27 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.28 2007/01/15 20:51:14 dillon Exp $
  */
 
 /*
@@ -106,15 +106,17 @@ mmopen(struct dev_open_args *ap)
 	switch (minor(dev)) {
 	case 0:
 	case 1:
-		if ((ap->a_oflags & FWRITE) && securelevel > 0)
-			return (EPERM);
+		if (ap->a_oflags & FWRITE) {
+			if (securelevel > 0 || kernel_mem_readonly)
+				return (EPERM);
+		}
 		error = 0;
 		break;
 	case 14:
 		error = suser_cred(ap->a_cred, 0);
 		if (error != 0)
 			break;
-		if (securelevel > 0) {
+		if (securelevel > 0 || kernel_mem_readonly) {
 			error = EPERM;
 			break;
 		}

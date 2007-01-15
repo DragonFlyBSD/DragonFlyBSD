@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.13 2006/12/26 12:16:56 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.14 2007/01/15 20:51:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,6 +187,7 @@ SYSCTL_PROC(_kern, KERN_HOSTNAME, hostname,
        0, 0, sysctl_hostname, "A", "Hostname");
 
 int securelevel = -1;
+int kernel_mem_readonly = 0;
 
 static int
 sysctl_kern_securelvl(SYSCTL_HANDLER_ARGS)

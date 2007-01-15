@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.32 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.33 2007/01/15 20:51:14 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -239,7 +239,7 @@ linker_load_file(const char* filename, linker_file_t* result)
     char *koname = NULL;
 
     /* Refuse to load modules if securelevel raised */
-    if (securelevel > 0)
+    if (securelevel > 0 || kernel_mem_readonly)
 	return EPERM; 
 
     lf = linker_find_file_by_name(filename);
@@ -405,7 +405,7 @@ linker_file_unload(linker_file_t file)
     int i;
 
     /* Refuse to unload modules if securelevel raised */
-    if (securelevel > 0)
+    if (securelevel > 0 || kernel_mem_readonly)
 	return EPERM; 
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
@@ -708,7 +708,7 @@ sys_kldload(struct kldload_args *uap)
 
     uap->sysmsg_result = -1;
 
-    if (securelevel > 0)	/* redundant, but that's OK */
+    if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
     if ((error = suser(td)) != 0)
@@ -748,7 +748,7 @@ sys_kldunload(struct kldunload_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    if (securelevel > 0)	/* redundant, but that's OK */
+    if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
     if ((error = suser(td)) != 0)
