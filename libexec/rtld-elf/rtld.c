@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.24 2006/07/16 22:15:38 corecode Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.25 2007/01/15 04:45:40 corecode Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ typedef struct Struct_DoneList {
  * Function declarations.
  */
 static void die(void);
-static void digest_dynamic(Obj_Entry *);
+static void digest_dynamic(Obj_Entry *, int);
 static const char *_getenv_ld(const char *id);
 static Obj_Entry *digest_phdr(const Elf_Phdr *, int, caddr_t, const char *);
 static Obj_Entry *dlcheck(void *);
@@ -116,7 +116,7 @@ static void objlist_push_tail(Objlist *, Obj_Entry *);
 static void objlist_remove(Objlist *, Obj_Entry *);
 static void objlist_remove_unref(Objlist *);
 static void *path_enumerate(const char *, path_enum_proc, void *);
-static int relocate_objects(Obj_Entry *, bool);
+static int relocate_objects(Obj_Entry *, bool, Obj_Entry *);
 static int rtld_dirname(const char *, char *);
 static void rtld_exit(void);
 static char *search_library_path(const char *, const char *);
@@ -396,7 +396,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	__progname = obj_rtld.path;
     }
 
-    digest_dynamic(obj_main);
+    digest_dynamic(obj_main, 0);
 
     linkmap_add(obj_main);
     linkmap_add(&obj_rtld);
@@ -459,7 +459,7 @@ resident_skip1:
      */
 
     if (relocate_objects(obj_main,
-	ld_bind_now != NULL && *ld_bind_now != '\0') == -1)
+	ld_bind_now != NULL && *ld_bind_now != '\0', &obj_rtld) == -1)
 	die();
 
     dbg("doing copy relocations");
@@ -627,7 +627,7 @@ die(void)
  * information in its Obj_Entry structure.
  */
 static void
-digest_dynamic(Obj_Entry *obj)
+digest_dynamic(Obj_Entry *obj, int early)
 {
     const Elf_Dyn *dynp;
     Needed_Entry **needed_tail = &obj->needed;
@@ -750,7 +750,8 @@ digest_dynamic(Obj_Entry *obj)
 
 	case DT_DEBUG:
 	    /* XXX - not implemented yet */
-	    dbg("Filling in DT_DEBUG entry");
+	    if (!early)
+		dbg("Filling in DT_DEBUG entry");
 	    ((Elf_Dyn*)dynp)->d_un.d_ptr = (Elf_Addr) &r_debug;
 	    break;
 
@@ -771,7 +772,8 @@ digest_dynamic(Obj_Entry *obj)
 	    break;
 
 	default:
-	    dbg("Ignoring d_tag %d = %#x", dynp->d_tag, dynp->d_tag);
+	    if (!early)
+		dbg("Ignoring d_tag %d = %#x", dynp->d_tag, dynp->d_tag);
 	    break;
 	}
     }
@@ -993,7 +995,17 @@ find_symdef(unsigned long symnum, const Obj_Entry *refobj,
     hash = elf_hash(name);
     defobj = NULL;
 
-    def = symlook_default(name, hash, refobj, &defobj, in_plt);
+    /* Handle STT_SECTION specially. */
+    if (ELF_ST_TYPE(ref->st_info) == STT_SECTION) {
+	if (ELF_ST_BIND(ref->st_info) != STB_LOCAL ||
+	    ref->st_shndx != symnum) {
+	    _rtld_error("%s: Bogus symbol table entry %lu", refobj->path,
+		symnum);
+	}
+	def = ref;
+	defobj = refobj;
+    } else
+	def = symlook_default(name, hash, refobj, &defobj, in_plt);
 
     /*
      * If we found no definition and the reference is weak, treat the
@@ -1086,43 +1098,42 @@ init_dag1(Obj_Entry *root, Obj_Entry *obj, DoneList *dlp)
 static void
 init_rtld(caddr_t mapbase)
 {
+    Obj_Entry objtmp;	/* Temporary rtld object */
+
     /*
      * Conjure up an Obj_Entry structure for the dynamic linker.
      *
-     * The "path" member is supposed to be dynamically-allocated, but we
-     * aren't yet initialized sufficiently to do that.  Below we will
-     * replace the static version with a dynamically-allocated copy.
+     * The "path" member can't be initialized yet because string constatns
+     * cannot yet be acessed. Below we will set it correctly.
      */
-    obj_rtld.path = PATH_RTLD;
-    obj_rtld.rtld = true;
-    obj_rtld.mapbase = mapbase;
+    objtmp.path = NULL;
+    objtmp.rtld = true;
+    objtmp.mapbase = mapbase;
 #ifdef PIC
-    obj_rtld.relocbase = mapbase;
+    objtmp.relocbase = mapbase;
 #endif
     if (&_DYNAMIC != 0) {
-	obj_rtld.dynamic = rtld_dynamic(&obj_rtld);
-	digest_dynamic(&obj_rtld);
-	assert(obj_rtld.needed == NULL);
-	assert(!obj_rtld.textrel);
+	objtmp.dynamic = rtld_dynamic(&objtmp);
+	digest_dynamic(&objtmp, 1);
+	assert(objtmp.needed == NULL);
+	assert(!objtmp.textrel);
 
 	/*
 	 * Temporarily put the dynamic linker entry into the object list, so
 	 * that symbols can be found.
 	 */
-	obj_list = &obj_rtld;
-	obj_tail = &obj_rtld.next;
-	obj_count = 1;
 
-	relocate_objects(&obj_rtld, true);
+	relocate_objects(&objtmp, true, &objtmp);
     }
 
-    /* Make the object list empty again. */
-    obj_list = NULL;
+    /* Initialize the object list. */
     obj_tail = &obj_list;
-    obj_count = 0;
+
+    /* Now that non-local variables can be accesses, copy out obj_rtld. */
+    memcpy(&obj_rtld, &objtmp, sizeof(obj_rtld));
 
     /* Replace the path with a dynamically allocated copy. */
-    obj_rtld.path = xstrdup(obj_rtld.path);
+    obj_rtld.path = xstrdup(PATH_RTLD);
 
     r_debug.r_brk = r_debug_state;
     r_debug.r_state = RT_CONSISTENT;
@@ -1342,7 +1353,7 @@ load_object(char *path)
     }
 
     obj->path = path;
-    digest_dynamic(obj);
+    digest_dynamic(obj, 0);
 
     *obj_tail = obj;
     obj_tail = &obj->next;
@@ -1528,12 +1539,12 @@ objlist_remove_unref(Objlist *list)
  * or -1 on failure.
  */
 static int
-relocate_objects(Obj_Entry *first, bool bind_now)
+relocate_objects(Obj_Entry *first, bool bind_now, Obj_Entry *rtldobj)
 {
     Obj_Entry *obj;
 
     for (obj = first;  obj != NULL;  obj = obj->next) {
-	if (obj != &obj_rtld)
+	if (obj != rtldobj)
 	    dbg("relocating \"%s\"", obj->path);
 	if (obj->nbuckets == 0 || obj->nchains == 0 || obj->buckets == NULL ||
 	    obj->symtab == NULL || obj->strtab == NULL) {
@@ -1553,7 +1564,7 @@ relocate_objects(Obj_Entry *first, bool bind_now)
 	}
 
 	/* Process the non-PLT relocations. */
-	if (reloc_non_plt(obj, &obj_rtld))
+	if (reloc_non_plt(obj, rtldobj))
 		return -1;
 
 	/*
@@ -1783,7 +1794,8 @@ dlopen(const char *name, int mode)
 		goto trace;
 
 	    if (result == -1 ||
-	      (init_dag(obj), relocate_objects(obj, mode == RTLD_NOW)) == -1) {
+	      (init_dag(obj), relocate_objects(obj, mode == RTLD_NOW,
+	       &obj_rtld)) == -1) {
 		obj->dl_refcount--;
 		unref_dag(obj);
 		if (obj->refcount == 0)
