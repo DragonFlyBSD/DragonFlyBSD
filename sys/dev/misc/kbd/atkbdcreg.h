@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdcreg.h,v 1.4.2.2 2000/03/31 12:51:57 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdcreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdcreg.h,v 1.3 2007/01/15 00:11:36 dillon Exp $
  * from kbdio.h,v 1.8 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -174,7 +174,7 @@
 
 #define KBDQ_BUFSIZE	32
 
-typedef struct _kqueue {
+typedef struct _kbdkqueue {
     int head;
     int tail;
     unsigned char q[KBDQ_BUFSIZE];
@@ -183,7 +183,7 @@ typedef struct _kqueue {
     int qcount;
     int max_qcount;
 #endif
-} kqueue;
+} kbdkqueue;
 
 struct resource;
 
@@ -196,8 +196,8 @@ typedef struct atkbdc_softc {
     int command_byte;		/* current command byte value */
     int command_mask;		/* command byte mask bits for kbd/aux devices */
     int lock;			/* FIXME: XXX not quite a semaphore... */
-    kqueue kbd;			/* keyboard data queue */
-    kqueue aux;			/* auxiliary data queue */
+    kbdkqueue kbd;		/* keyboard data queue */
+    kbdkqueue aux;		/* auxiliary data queue */
 } atkbdc_softc_t; 
 
 enum kbdc_device_ivar {

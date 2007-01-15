@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.8 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.9 2007/01/15 00:11:36 dillon Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -91,8 +91,8 @@ static int verbose = KBDIO_DEBUG;
 
 static int atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag,
 			bus_space_handle_t h0, bus_space_handle_t h1);
-static int addq(kqueue *q, int c);
-static int removeq(kqueue *q);
+static int addq(kbdkqueue *q, int c);
+static int removeq(kbdkqueue *q);
 static int wait_while_controller_busy(atkbdc_softc_t *kbdc);
 static int wait_for_data(atkbdc_softc_t *kbdc);
 static int wait_for_kbd_data(atkbdc_softc_t *kbdc);
@@ -264,7 +264,7 @@ kbdc_data_ready(KBDC p)
 /* queuing functions */
 
 static int
-addq(kqueue *q, int c)
+addq(kbdkqueue *q, int c)
 {
     if (nextq(q->tail) != q->head) {
 	q->q[q->tail] = c;
@@ -281,7 +281,7 @@ addq(kqueue *q, int c)
 }
 
 static int
-removeq(kqueue *q)
+removeq(kbdkqueue *q)
 {
     int c;
 
