@@ -1,6 +1,6 @@
-# $DragonFly: src/gnu/lib/gcc34/Makefile,v 1.5 2005/12/21 17:07:33 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/Makefile,v 1.6 2007/01/15 23:09:05 corecode Exp $
 
-SUBDIR=		libgcc libgcov
+SUBDIR=		csu libgcc libgcov
 
 .if !defined(.DIRECTIVE_MAKEENV)
 MAKE := HOST_CCVER=${HOST_CCVER} CCVER=gcc34 ${MAKE}
