@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.14 2007/01/14 00:01:08 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.15 2007/01/15 09:28:40 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -1303,12 +1303,13 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	 */
 	rtval = 0;
 	if (pv) {
-		rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		m->md.pv_list_count--;
 		if (TAILQ_FIRST(&m->md.pv_list) == NULL)
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+		++pmap->pm_generation;
+		rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
 		free_pv_entry(pv);
 	}
 	crit_exit();
@@ -1429,7 +1430,6 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	vm_offset_t pdnxt;
 	vm_offset_t ptpaddr;
 	vm_pindex_t sindex, eindex;
-	vm_pindex_t sbase;
 	struct pmap_inval_info info;
 
 	if (pmap == NULL)
@@ -1460,11 +1460,8 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	 * XXX this is really messy because the kernel pmap is not relative
 	 * to address 0
 	 */
-	ptbase = get_ptbase(pmap, sva);
-
 	sindex = (sva >> PAGE_SHIFT);
 	eindex = (eva >> PAGE_SHIFT);
-	sbase = sindex;
 
 	for (; sindex < eindex; sindex = pdnxt) {
 		vpte_t pdirindex;
@@ -1499,12 +1496,17 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		if (pdnxt > eindex)
 			pdnxt = eindex;
 
+		/*
+		 * NOTE: pmap_remove_pte() can block.
+		 */
 		for (; sindex != pdnxt; sindex++) {
 			vm_offset_t va;
-			if (ptbase[sindex - sbase] == 0)
+
+			ptbase = get_ptbase(pmap, sindex << PAGE_SHIFT);
+			if (*ptbase == 0)
 				continue;
 			va = i386_ptob(sindex);
-			if (pmap_remove_pte(pmap, ptbase + sindex - sbase, va, &info))
+			if (pmap_remove_pte(pmap, ptbase, va, &info))
 				break;
 		}
 	}
@@ -1568,8 +1570,9 @@ pmap_remove_all(vm_page_t m)
 			if (pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				vm_page_dirty(m);
 		}
-		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
+		++pv->pv_pmap->pm_generation;
 		m->md.pv_list_count--;
 		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
 		free_pv_entry(pv);
@@ -2528,6 +2531,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	vm_page_t m;
 	pmap_inval_info info;
 	int iscurrentpmap;
+	int32_t save_generation;
 
 	if (curproc && pmap == vmspace_pmap(curproc->p_vmspace))
 		iscurrentpmap = 1;
@@ -2542,7 +2546,9 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			continue;
 		}
 
-		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
+		KKASSERT(pmap == pv->pv_pmap);
+
+		pte = pmap_pte(pmap, pv->pv_va);
 		tpte = *pte;
 
 		/*
@@ -2555,14 +2561,14 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 		*pte = 0;
 		/* See NOTE: PMAP_INVAL_ADD */
-		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
+		pmap_inval_add(&info, pmap, pv->pv_va);
 
 		m = PHYS_TO_VM_PAGE(tpte);
 
 		KASSERT(m < &vm_page_array[vm_page_array_size],
 			("pmap_remove_pages: bad tpte %x", tpte));
 
-		pv->pv_pmap->pm_stats.resident_count--;
+		pmap->pm_stats.resident_count--;
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
@@ -2572,7 +2578,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 
 		npv = TAILQ_NEXT(pv, pv_plist);
-		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
+		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+		save_generation = ++pmap->pm_generation;
 
 		m->md.pv_list_count--;
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
@@ -2580,8 +2587,17 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		}
 
-		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
+		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem, &info);
 		free_pv_entry(pv);
+
+		/*
+		 * Restart the scan if we blocked during the unuse or free
+		 * calls and other removals were made.
+		 */
+		if (save_generation != pmap->pm_generation) {
+			kprintf("Warning: pmap_remove_pages race-A avoided\n");
+			pv = TAILQ_FIRST(&pmap->pm_pvlist);
+		}
 	}
 	pmap_inval_flush(&info);
 	crit_exit();

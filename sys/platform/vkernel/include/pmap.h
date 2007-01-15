@@ -43,7 +43,7 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.2 2007/01/02 04:24:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.3 2007/01/15 09:28:39 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -130,6 +130,7 @@ struct pmap {
 	int			pm_pdindex;	/* page dir page in obj */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
+	int			pm_generation;	/* detect pvlist deletions */
 };
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
