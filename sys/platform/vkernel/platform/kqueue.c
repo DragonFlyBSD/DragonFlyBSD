@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.2 2007/01/15 05:27:31 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.3 2007/01/15 19:08:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -165,6 +165,8 @@ kqueue_reload_timer(struct kqueue_info *info, int ms)
 {
 	struct timespec ts = { 0, 0 };
 	struct kevent kev;
+
+	KKASSERT(ms > 0);
 
 	EV_SET(&kev, info->fd, EVFILT_TIMER,
 		EV_ADD|EV_ENABLE|EV_ONESHOT|EV_CLEAR, 0, (uintptr_t)ms, info);

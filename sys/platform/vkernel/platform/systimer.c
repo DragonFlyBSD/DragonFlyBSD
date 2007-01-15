@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.10 2007/01/15 05:27:31 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.11 2007/01/15 19:08:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -135,13 +135,18 @@ cputimer_intr_config(struct cputimer *timer)
 }
 
 /*
- * Reload the interrupt for our core systimer.
+ * Reload the interrupt for our core systimer.  Because the caller's
+ * reload calculation can be negatively indexed, we need a minimal
+ * check to ensure that a reasonable reload value is selected. 
  */
 void
 cputimer_intr_reload(sysclock_t reload)
 {
-	if (kqueue_timer_info)
+	if (kqueue_timer_info) {
+		if ((int)reload < 1)
+			reload = 1;
 		kqueue_reload_timer(kqueue_timer_info, (reload + 999) / 1000);
+	}
 }
 
 /*
