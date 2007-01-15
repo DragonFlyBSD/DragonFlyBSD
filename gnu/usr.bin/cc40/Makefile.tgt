@@ -1,8 +1,0 @@
-# $DragonFly: src/gnu/usr.bin/cc40/Attic/Makefile.tgt,v 1.2 2005/09/11 13:09:08 corecode Exp $
-
-TARGET_ARCH?=	${MACHINE_ARCH}
-
-version=	4.0.1
-target=		${TARGET_ARCH}-our-dragonflybsd
-
-GCC_CPU?=	i386
