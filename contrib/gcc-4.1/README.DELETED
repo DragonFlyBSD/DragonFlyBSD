@@ -303,7 +303,6 @@ gcc/cp/Make-lang.in
 gcc/cp/NEWS
 gcc/cp/cfns.gperf
 gcc/cp/config-lang.in
-gcc/crtstuff.c
 gcc/cstamp-h.in
 gcc/doc/fsf-funding.7
 gcc/doc/gcj-dbtool.1
