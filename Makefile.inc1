@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.99 2007/01/15 18:01:44 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.100 2007/01/15 18:29:44 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -801,10 +801,6 @@ _share=	share/syscons/scrnmaps
 
 _gcc34_cross= gnu/usr.bin/cc34
 _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
-.if defined(WANT_GCC40)
-_gcc40_cross= gnu/usr.bin/cc40
-_gcc40_tools= gnu/usr.bin/cc40/cc_prep gnu/usr.bin/cc40/cc_tools
-.endif
 .if defined(WANT_GCC41)
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
@@ -822,7 +818,7 @@ _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
 .endif
 
 build-tools:
-.for _tool in ${_gcc34_tools} ${_gcc40_tools} ${_gcc41_tools} ${_fortran} ${_libkrb5} ${_share}
+.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_fortran} ${_libkrb5} ${_share}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -842,7 +838,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
-	      ${_gcc34_cross} ${_gcc40_cross} ${_gcc41_cross}
+	      ${_gcc34_cross} ${_gcc41_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -872,11 +868,6 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
 		${MAKE} -f Makefile.inc1 _startup_libs34;
-.if defined(WANT_GCC40)
-	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc40 \
-		${MAKE} -f Makefile.inc1 _startup_libs40;
-.endif
 .if defined(WANT_GCC41)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
@@ -892,10 +883,9 @@ libraries:
 #
 # gnu/lib/${CCVER}/libgcc and gnu/lib/${CCVER}/csu must be built before all
 # shared libraries for ELF.  The target for _startup_libs34 is
-# specifically built using gcc34.  Same goes for _startup_libs40.
+# specifically built using gcc34.  Same goes for _startup_libs41.
 #
 _startup_libs34=	gnu/lib/gcc34/csu gnu/lib/gcc34/libgcc
-_startup_libs40=	gnu/lib/gcc40/csu gnu/lib/gcc40/libgcc
 _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
 _startup_libs=		lib/libc lib/libc_rtld
 
@@ -935,7 +925,7 @@ _generic_libs+=	secure/lib
 
 _generic_libs+=	usr.bin/lex/lib
 
-.for _lib in ${_startup_libs34} ${_startup_libs40} ${_startup_libs41} \
+.for _lib in ${_startup_libs34} ${_startup_libs41} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -949,7 +939,6 @@ ${_lib}__L: .PHONY
 
 _startup_libs: ${_startup_libs:S/$/__L/}
 _startup_libs34: ${_startup_libs34:S/$/__L/}
-_startup_libs40: ${_startup_libs40:S/$/__L/}
 _startup_libs41: ${_startup_libs41:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
@@ -958,7 +947,6 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # races (e.g. generation of tconfig.h)
 #
 .ORDER: ${_startup_libs34:S/$/__L/}
-.ORDER: ${_startup_libs40:S/$/__L/}
 .ORDER: ${_startup_libs41:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}

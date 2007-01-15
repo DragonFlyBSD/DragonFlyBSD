@@ -1,6 +1,6 @@
 #	@(#)bsd.README	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/share/mk/bsd.README,v 1.15.2.6 2002/07/19 08:34:07 ru Exp $
-# $DragonFly: src/share/mk/bsd.README,v 1.6 2006/09/27 12:10:35 corecode Exp $
+# $DragonFly: src/share/mk/bsd.README,v 1.7 2007/01/15 18:29:44 corecode Exp $
 
 XXX This document is seriously out of date, it is currenly being revised.
 
@@ -9,7 +9,6 @@ source tree.  The files are installed in /usr/share/mk, and are, by
 convention, named with the suffix ".mk".
 
 bsd.cpu.gcc34.mk	- handle GCC 3.4 specific CPU flags & variables
-bsd.cpu.gcc40.mk	- handle GCC 4.0 specific CPU flags & variables
 bsd.cpu.gcc41.mk	- handle GCC 4.1 specific CPU flags & variables
 bsd.cpu.mk		- handle CPU flags & variables
 bsd.dep.mk		- handle Makefile dependencies
