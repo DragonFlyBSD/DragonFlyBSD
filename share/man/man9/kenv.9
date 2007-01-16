@@ -28,12 +28,13 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/kenv.9,v 1.2 2007/01/15 22:42:55 tgen Exp $
+.\" $DragonFly: src/share/man/man9/kenv.9,v 1.3 2007/01/16 19:34:54 tgen Exp $
 .\"
-.Dd January 15, 2007
-.Os
+.Dd January 16, 2007
 .Dt KENV 9
+.Os
 .Sh NAME
+.Nm kenv
 .Nm kfreeenv ,
 .Nm kgetenv ,
 .Nm kgetenv_int ,
@@ -41,7 +42,8 @@
 .Nm kgetenv_string ,
 .Nm ksetenv ,
 .Nm ktestenv ,
-.Nm kunsetenv ,
+.Nm kunsetenv
+.Nd API for manipulation of the kernel environment
 .Sh SYNOPSIS
 .In sys/systm.h
 .Ft void
@@ -61,10 +63,10 @@
 .Ft int
 .Fn kunsetenv "const char *name"
 .Sh DESCRIPTION
-The
-.Fn k*env*
-family of functions manipulate and provide data from the kernel
-environment of a live system.
+.Nm
+provides an API for manipulation of the kernel environment of a live system by
+.Dq consumers
+(other kernel subsystems).
 Upon boot, the kernel environment is inherited from
 .Xr loader 8 .
 The static environment inherited is converted to a dynamic array at the end of
@@ -130,6 +132,11 @@ It returns
 if the key does not exist, or if the dynamic was not setup yet.
 If successful, it returns
 .Dv 0 .
+.Sh SYSCTLS
+.Bl -tag -width indent
+.It Va kern.environment
+Current static kernel environment query OID.
+.El
 .Sh COMPATIBILITY
 For compatibility reasons,
 .Fn freeenv
@@ -143,9 +150,15 @@ respectively.
 However, this compatibility is set to be removed in the future, so new
 consumers should use the right calls.
 Also, existing code needs to be converted.
+.Sh FILES
+.Bl -tag -width ".Pa sys/kern/kern_environment.c"
+.It Pa sys/kern/kern_environment.c
+.El
 .Sh SEE ALSO
 .Xr loader 8 ,
-.Xr loader.conf 5
+.Xr loader.conf 5 ,
+.Xr sysctl 3 ,
+.Xr sysctl 8
 .Sh HISTORY
 A
 .Fn getenv
@@ -167,7 +180,7 @@ and subsequently
 .Sh AUTHORS
 .An -nosplit
 The original
-.Nm kenv
+.Nm
 implementation was written by
 .An Michael Smith .
 It was subsequently extended by
@@ -177,3 +190,12 @@ and
 .An Maxime Henrion .
 This manual page was written by
 .An Thomas E. Spanjaard .
+.Sh BUGS
+The
+.Fa kern.environment
+sysctl OID currently only reports information about the static kernel
+environment, not the dynamic one.
+.Pp
+The return values from various functions could do with some standardisation,
+using the error codes from
+.In sys/errno.h .
