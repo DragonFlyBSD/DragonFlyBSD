@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.22 2006/05/17 14:06:37 swildner Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.23 2007/01/16 07:16:23 dillon Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -33,8 +33,8 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
 	timezone.c toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
-	ualarm.c ulimit.c uname.c unvis.c usleep.c utime.c valloc.c vis.c \
-	wait.c wait3.c waitpid.c
+	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
+	valloc.c vis.c wait.c wait3.c waitpid.c
 
 .if ${LIB} != {c_rtld}
 SRCS+=	tls.c
@@ -50,7 +50,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
 	err.3 exec.3 fmtcheck.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 \
-	getbootfile.3 getbsize.3 getcap.3 getcwd.3 \
+	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdiskbyname.3 getdomainname.3 getfsent.3 \
 	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
 	getmntinfo.3 getnetgrent.3 getobjformat.3 getosreldate.3 \
@@ -59,7 +59,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	glob.3 initgroups.3 isalnum.3 isalpha.3 isascii.3 isblank.3 \
 	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
 	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 isnormal.3 \
-	ldexp.3 lockf.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
+	ldexp.3 lockf.3 makecontext.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
 	nice.3 nlist.3 pause.3 popen.3 psignal.3 pwcache.3 \
 	raise.3 rand48.3 readpassphrase.3 rfork_thread.3 \
 	scandir.3 setjmp.3 setmode.3 setproctitle.3 shm_open.3 \
@@ -108,6 +108,8 @@ MLINKS+=getvfsent.3 endvfsent.3 getvfsent.3 getvfsbytype.3 \
 	getvfsent.3 setvfsent.3 getvfsent.3 vfsisloadable.3 \
 	getvfsent.3 vfsload.3
 MLINKS+=glob.3 globfree.3
+MLINKS+=getcontext.3 setcontext.3
+MLINKS+=makecontext.3 swapcontext.3
 MLINKS+=popen.3 pclose.3
 MLINKS+=psignal.3 sys_siglist.3 psignal.3 sys_signame.3
 MLINKS+=psignal.3 strsignal.3 psignal.3 sys_siglist.3 psignal.3 sys_signame.3

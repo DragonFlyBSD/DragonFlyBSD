@@ -33,77 +33,89 @@
 .\" THE USE OF THIS SOFTWARE, EVEN IF PACKET DESIGN IS ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/gen/ucontext.3,v 1.3 2004/07/03 22:30:08 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/ucontext.3,v 1.6 2007/01/16 07:16:23 dillon Exp $
+.\" $FreeBSD: src/lib/libc/gen/makecontext.3,v 1.4 2002/12/19 09:40:21 ru Exp $
+.\" $DragonFly: src/lib/libc/gen/makecontext.3,v 1.1 2007/01/16 07:16:23 dillon Exp $
 .\"
 .Dd September 10, 2002
-.Dt UCONTEXT 3
+.Dt MAKECONTEXT 3
 .Os
 .Sh NAME
-.Nm ucontext
-.Nd user thread context
+.Nm makecontext , swapcontext
+.Nd modify and exchange user thread contexts
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In ucontext.h
+.Ft void
+.Fo makecontext
+.Fa "ucontext_t *ucp"
+.Fa "void \*[lp]*func\*[rp]\*[lp]void\*[rp]"
+.Fa "int argc" ...
+.Fc
+.Ft int
+.Fn swapcontext "ucontext_t *oucp" "const ucontext_t *ucp"
 .Sh DESCRIPTION
 The
-.Vt ucontext_t
-type is a structure type suitable for holding the context for a user
-thread of execution.
-A thread's context includes its stack, saved registers, and list of
-blocked signals.
+.Fn makecontext
+function
+modifies the user thread context pointed to by
+.Fa ucp ,
+which must have previously been initialized by a call to
+.Xr getcontext 3
+and had a stack allocated for it.
+The context is modified so that it will continue execution by invoking
+.Fn func
+with the arguments provided.
+The
+.Fa argc
+argument
+must be equal to the number of additional arguments provided to
+.Fn makecontext
+and also equal to the number of arguments to
+.Fn func ,
+or else the behavior is undefined.
 .Pp
 The
-.Vt ucontext_t
-structure contains at least these fields:
-.Pp
-.Bl -tag -width ".Va mcontext_t\ \ uc_mcontext" -offset 3n -compact
-.It Va "ucontext_t *uc_link"
-context to assume when this one returns
-.It Va "sigset_t uc_sigmask"
-signals being blocked
-.It Va "stack_t uc_stack"
-stack area
-.It Va "mcontext_t uc_mcontext"
-saved registers
-.El
-.Pp
-The
-.Va uc_link
-field points to the context to resume when this context's entry point
-function returns.
-If
-.Va uc_link
-is equal to
+.Fa "ucp->uc_link"
+argument
+must be initialized before calling
+.Fn makecontext
+and determines the action to take when
+.Fn func
+returns:
+if equal to
 .Dv NULL ,
-then the process exits when this context returns.
+the process exits;
+otherwise,
+.Fn setcontext "ucp->uc_link"
+is implicitly invoked.
 .Pp
 The
-.Va uc_mcontext
-field is machine-dependent and should be treated as opaque by
-portable applications.
-.Pp
-The following functions are defined to manipulate
-.Vt ucontext_t
-structures:
-.Pp
-.Bl -item -offset 3n -compact
-.It
-.Ft int
-.Fn getcontext "ucontext_t *" ;
-.It
-.Ft int
-.Fn setcontext "const ucontext_t *" ;
-.It
-.Ft void
-.Fn makecontext "ucontext_t *" "void \*[lp]*\*[rp]\*[lp]void\*[rp]" int ... ;
-.It
-.Ft int
-.Fn swapcontext "ucontext_t *" "const ucontext_t *" ;
+.Fn swapcontext
+function
+saves the current thread context in
+.Fa "*oucp"
+and makes
+.Fa "*ucp"
+the currently active context.
+.Sh RETURN VALUES
+If successful,
+.Fn swapcontext
+returns zero;
+otherwise \-1 is returned and the global variable
+.Va errno
+is set appropriately.
+.Sh ERRORS
+The
+.Fn swapcontext
+function
+will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+There is not enough stack space in
+.Fa ucp
+to complete the operation.
 .El
 .Sh SEE ALSO
-.Xr sigaltstack 2 ,
-.Xr getcontext 3 ,
-.Xr makecontext 3
-.Dx .
+.Xr setcontext 3 ,
+.Xr ucontext 3

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.116 2007/01/14 20:07:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.117 2007/01/16 07:16:20 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -635,7 +635,8 @@ sys_sigreturn(struct sigreturn_args *uap)
 			    (eflags & VME_USERCHANGE) | PSL_VM;
 		} else {
 			vm86->vm86_eflags = eflags;	/* save VIF, VIP */
-			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |					    (eflags & VM_USERCHANGE) | PSL_VM;
+			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |
+			    (eflags & VM_USERCHANGE) | PSL_VM;
 		}
 		bcopy(&ucp->uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
 		tf->tf_eflags = eflags;
