@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/ucontext.h,v 1.4 1999/10/11 20:33:17 luoqi Exp $
- * $DragonFly: src/sys/sys/ucontext.h,v 1.4 2007/01/16 07:16:21 dillon Exp $
+ * $DragonFly: src/sys/sys/ucontext.h,v 1.5 2007/01/16 09:58:02 swildner Exp $
  */
 
 #ifndef _SYS_UCONTEXT_H_
@@ -66,5 +66,7 @@ void	makecontext(ucontext_t *, void (*)(void), int, ...);
 int	swapcontext(ucontext_t *, const ucontext_t *);
    
 __END_DECLS
+
+#endif /* !_KERNEL */
 
 #endif /* !_SYS_UCONTEXT_H_ */
