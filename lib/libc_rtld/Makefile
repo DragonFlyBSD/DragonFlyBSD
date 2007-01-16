@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libc_rtld/Makefile,v 1.1 2005/04/29 21:46:41 joerg Exp $
+# $DragonFly: src/lib/libc_rtld/Makefile,v 1.2 2007/01/16 18:38:08 dillon Exp $
 
 LIB=	c_rtld
 INTERNALLIB=
@@ -7,8 +7,9 @@ NOPROFILE=
 CFLAGS+=-I${.CURDIR}/../libc/include
 CFLAGS+=-I${.CURDIR}/../../include -D__thread=
 
-AINC=	-I${.CURDIR}/../libc/${MACHINE_ARCH}
+AINC=	-I${.OBJDIR} -I${.CURDIR}/../libc/${MACHINE_ARCH}
 PRECIOUSLIB=	yes
+
 
 #
 # This is a list of syscalls that are renamed as __sys_{syscall}
