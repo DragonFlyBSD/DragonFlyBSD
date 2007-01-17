@@ -1,6 +1,6 @@
 #	from: Makefile.inc,v 1.1 1993/09/03 19:04:23 jtc Exp
 # $FreeBSD: src/lib/libc/i386/sys/Makefile.inc,v 1.17.2.3 2002/10/15 19:46:46 fjoe Exp $
-# $DragonFly: src/lib/libc/i386/sys/Makefile.inc,v 1.7 2007/01/16 07:16:23 dillon Exp $
+# $DragonFly: src/lib/libc/i386/sys/Makefile.inc,v 1.8 2007/01/17 02:17:36 corecode Exp $
 
 SRCS+=	i386_clr_watch.c i386_get_ioperm.c i386_get_ldt.c i386_set_ioperm.c \
 	i386_set_ldt.c i386_set_watch.c i386_vm86.c
@@ -19,15 +19,13 @@ PSEUDO=	_getlogin.o _exit.o
 
 # getcontext.S needs certain offsets
 #
+# XXX this should be moved to a non-arch directory
 SRCS+= asmcontext.h
-CLEANFILES+= asmcontext.h genasmcontext.nx
+CLEANFILES+= asmcontext.h asmcontext.o
 
-asmcontext.h: genasmcontext.nx
-	./genasmcontext.nx > ${.TARGET}
-
-genasmcontext.nx: ${.CURDIR}/../libc/i386/sys/genasmcontext.c
-	${NXCC} -I${.CURDIR}/include -I${.CURDIR}/${MACHINE_ARCH} \
-		${NXCFLAGS} ${NXLDFLAGS} $> -o ${.TARGET}
+GENASSYM= NM=nm sh ${.CURDIR}/../../sys/kern/genassym.sh
+asmcontext.h: asmcontext.o
+	${GENASSYM} ${.ALLSRC} > ${.TARGET}
 
 .if ${LIB} == "c"
 MAN+=	i386_get_ioperm.2 i386_get_ldt.2 i386_vm86.2
