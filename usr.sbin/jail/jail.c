@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
- * $DragonFly: src/usr.sbin/jail/jail.c,v 1.7 2007/01/07 18:12:46 victor Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.8 2007/01/17 10:37:48 victor Exp $
  * 
  */
 
@@ -176,6 +176,6 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n",
-	    "Usage: jail [-i] [-l -u username | -U username] path hostname ip-number command ...");
+	    "Usage: jail [-i] [-l -u username | -U username] path hostname ip-list command ...");
 	exit(1);
 }
