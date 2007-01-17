@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/acpica_machdep.h,v 1.5 2003/09/10 01:14:42 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.3 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.4 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /******************************************************************************
@@ -60,46 +60,19 @@
 
 #define ACPI_FLUSH_CPU_CACHE()	wbinvd()
 
-#define asm         __asm
+/* Section 5.2.9.1:  global lock acquire/release functions */
+extern int	acpi_acquire_global_lock(uint32_t *lock);
+extern int	acpi_release_global_lock(uint32_t *lock);
+#define ACPI_ACQUIRE_GLOBAL_LOCK(FACSptr, Acq) \
+		((Acq) = acpi_acquire_global_lock(&(FACSptr)->GlobalLock))
+#define ACPI_RELEASE_GLOBAL_LOCK(FACSptr, Acq) \
+		((Acq) = acpi_release_global_lock(&(FACSptr)->GlobalLock))
+
 /*! [Begin] no source code translation
  *
- * A brief explanation as GNU inline assembly is a bit hairy
- *  %0 is the output parameter in EAX ("=a")
- *  %1 and %2 are the input parameters in ECX ("c")
- *  and an immediate value ("i") respectively
- *  All actual register references are preceded with "%%" as in "%%edx"
- *  Immediate values in the assembly are preceded by "$" as in "$0x1"
- *  The final asm parameter are the operation altered non-output registers.
- */
-#define ACPI_ACQUIRE_GLOBAL_LOCK(GLptr, Acq) \
-    do { \
-        asm("1:     movl %1,%%eax;" \
-            "movl   %%eax,%%edx;" \
-            "andl   %2,%%edx;" \
-            "btsl   $0x1,%%edx;" \
-            "adcl   $0x0,%%edx;" \
-            "lock;  cmpxchgl %%edx,%1;" \
-            "jnz    1b;" \
-            "cmpb   $0x3,%%dl;" \
-            "sbbl   %%eax,%%eax" \
-            : "=a" (Acq), "+m" (GLptr) : "i" (~1L) : "edx"); \
-    } while(0)
-
-#define ACPI_RELEASE_GLOBAL_LOCK(GLptr, Acq) \
-    do { \
-        asm("1:     movl %1,%%eax;" \
-            "movl   %%eax,%%edx;" \
-            "andl   %2,%%edx;" \
-            "lock;  cmpxchgl %%edx,%1;" \
-            "jnz    1b;" \
-            "andl   $0x1,%%eax" \
-            : "=a" (Acq), "+m" (GLptr) : "i" (~3L) : "edx"); \
-    } while(0)
-
-
-/*
  * Math helper asm macros
  */
+#define asm         __asm
 #define ACPI_DIV_64_BY_32(n_hi, n_lo, d32, q32, r32) \
         asm("divl %2;"        \
         :"=a"(q32), "=d"(r32) \

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.149 2007/01/08 01:38:02 swildner Exp $
+# $DragonFly: src/sys/conf/files,v 1.150 2007/01/17 17:31:19 y0netan1 Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1364,8 +1364,10 @@ ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_thermal.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_timer.c		optional acpi
+${OSACPI_MI_DIR}/Osd/OsdCache.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdDebug.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdHardware.c	optional acpi
+${OSACPI_MI_DIR}/Osd/OsdInterface.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdInterrupt.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdMemory.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdSchedule.c	optional acpi
@@ -1442,6 +1444,7 @@ ${ACPICA_DIR}/interpreter/executer/exstorob.c	optional acpi
 ${ACPICA_DIR}/interpreter/executer/exsystem.c	optional acpi
 ${ACPICA_DIR}/interpreter/executer/exutils.c	optional acpi
 ${ACPICA_DIR}/interpreter/parser/psargs.c	optional acpi
+${ACPICA_DIR}/interpreter/parser/psloop.c	optional acpi
 ${ACPICA_DIR}/interpreter/parser/psopcode.c	optional acpi
 ${ACPICA_DIR}/interpreter/parser/psparse.c	optional acpi
 ${ACPICA_DIR}/interpreter/parser/psscope.c	optional acpi
@@ -1469,6 +1472,7 @@ ${ACPICA_DIR}/resources/rsaddr.c		optional acpi
 ${ACPICA_DIR}/resources/rscalc.c		optional acpi
 ${ACPICA_DIR}/resources/rscreate.c		optional acpi
 ${ACPICA_DIR}/resources/rsdump.c		optional acpi
+${ACPICA_DIR}/resources/rsinfo.c		optional acpi
 ${ACPICA_DIR}/resources/rsio.c			optional acpi
 ${ACPICA_DIR}/resources/rsirq.c			optional acpi
 ${ACPICA_DIR}/resources/rslist.c		optional acpi
@@ -1476,11 +1480,9 @@ ${ACPICA_DIR}/resources/rsmemory.c		optional acpi
 ${ACPICA_DIR}/resources/rsmisc.c		optional acpi
 ${ACPICA_DIR}/resources/rsutils.c		optional acpi
 ${ACPICA_DIR}/resources/rsxface.c		optional acpi
-${ACPICA_DIR}/tables/tbconvrt.c			optional acpi
-${ACPICA_DIR}/tables/tbget.c			optional acpi
-${ACPICA_DIR}/tables/tbgetall.c			optional acpi
+${ACPICA_DIR}/tables/tbfadt.c			optional acpi
+${ACPICA_DIR}/tables/tbfind.c			optional acpi
 ${ACPICA_DIR}/tables/tbinstal.c			optional acpi
-${ACPICA_DIR}/tables/tbrsdt.c			optional acpi
 ${ACPICA_DIR}/tables/tbutils.c			optional acpi
 ${ACPICA_DIR}/tables/tbxface.c			optional acpi
 ${ACPICA_DIR}/tables/tbxfroot.c			optional acpi
@@ -1494,5 +1496,8 @@ ${ACPICA_DIR}/utilities/utglobal.c		optional acpi
 ${ACPICA_DIR}/utilities/utinit.c		optional acpi
 ${ACPICA_DIR}/utilities/utmath.c		optional acpi
 ${ACPICA_DIR}/utilities/utmisc.c		optional acpi
+${ACPICA_DIR}/utilities/utmutex.c		optional acpi
 ${ACPICA_DIR}/utilities/utobject.c		optional acpi
+${ACPICA_DIR}/utilities/utresrc.c		optional acpi
+${ACPICA_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_DIR}/utilities/utxface.c		optional acpi

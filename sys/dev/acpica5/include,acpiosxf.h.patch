@@ -1,0 +1,57 @@
+# $DragonFly: src/sys/dev/acpica5/include,acpiosxf.h.patch,v 1.1 2007/01/17 17:31:19 y0netan1 Exp $
+
+--- acpiosxf.h.orig	2006-11-30 05:58:15.000000000 +0900
++++ acpiosxf.h	2006-11-30 06:02:56.000000000 +0900
+@@ -197,9 +197,18 @@
+ AcpiOsDeleteLock (
+     ACPI_SPINLOCK           Handle);
+ 
++#if ACPI_DEBUG_LOCKS
++#define AcpiOsAcquireLock(Handle) \
++_AcpiOsAcquireLock(Handle, __func__, __LINE__)
+ ACPI_CPU_FLAGS
+-AcpiOsAcquireLock (
++_AcpiOsAcquireLock (
++    ACPI_SPINLOCK           Handle,
++    const char *func, int line);
++#else
++ACPI_CPU_FLAGS
++AcpiOsAcquireLock (
+     ACPI_SPINLOCK           Handle);
++#endif
+ 
+ void
+ AcpiOsReleaseLock (
+@@ -271,6 +280,24 @@
+ AcpiOsFree (
+     void *                  Memory);
+ 
++#if ACPI_DEBUG_MEMMAP
++#define AcpiOsMapMemory(Where, Length) \
++_AcpiOsMapMemory((Where), (Length), __func__, __LINE__)
++#define AcpiOsUnmapMemory(LogicalAddress, Size) \
++_AcpiOsUnmapMemory((LogicalAddress), (Size), __func__, __LINE__)
++
++void *
++_AcpiOsMapMemory (
++    ACPI_PHYSICAL_ADDRESS   Where,
++    ACPI_NATIVE_UINT        Length,
++    const char *caller, int line);
++
++void
++_AcpiOsUnmapMemory (
++    void                    *LogicalAddress,
++    ACPI_SIZE               Size,
++    const char *caller, int line);
++#else
+ void *
+ AcpiOsMapMemory (
+     ACPI_PHYSICAL_ADDRESS   Where,
+@@ -280,6 +307,7 @@
+ AcpiOsUnmapMemory (
+     void                    *LogicalAddress,
+     ACPI_SIZE               Size);
++#endif
+ 
+ ACPI_STATUS
+ AcpiOsGetPhysicalAddress (

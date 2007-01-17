@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.27 2007/01/13 21:58:11 tgen Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.28 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -49,6 +49,7 @@
 #include <sys/rman.h>
 
 #include <sys/thread2.h>
+#include <sys/lock.h>
 
 #include <machine/clock.h>
 #include <machine/globaldata.h>
@@ -265,17 +266,6 @@ acpi_Startup(void)
 	return_VALUE (error);
     started = 1;
 
-#if __FreeBSD_version >= 500000
-    /* Initialise the ACPI mutex */
-    mtx_init(&acpi_mutex, "ACPI global lock", NULL, MTX_DEF);
-#endif
-
-    /*
-     * Set the globals from our tunables.  This is needed because ACPI-CA
-     * uses UINT8 for some values and we have no tunable_byte.
-     */
-    AcpiGbl_AllMethodsSerialized = (UINT8)acpi_serialize_methods;
-
     /* Start up the ACPI CA subsystem. */
 #ifdef ACPI_DEBUGGER
     debugpoint = kgetenv("debug.acpi.debugger");
@@ -285,22 +275,10 @@ acpi_Startup(void)
 	freeenv(debugpoint);
     }
 #endif
-    if (ACPI_FAILURE(error = AcpiInitializeSubsystem())) {
-	kprintf("ACPI: initialisation failed: %s\n", AcpiFormatException(error));
+    error = AcpiInitializeTables(NULL, 16, TRUE);
+    if (ACPI_FAILURE(error)) {
+	kprintf("ACPI: table initialization failed:\n");
 	return_VALUE (error);
-    }
-#ifdef ACPI_DEBUGGER
-    debugpoint = kgetenv("debug.acpi.debugger");
-    if (debugpoint) {
-	if (!strcmp(debugpoint, "tables"))
-	    acpi_EnterDebugger();
-	freeenv(debugpoint);
-    }
-#endif
-
-    if (ACPI_FAILURE(error = AcpiLoadTables())) {
-	kprintf("ACPI: table load failed: %s\n", AcpiFormatException(error));
-	return_VALUE(error);
     }
 
     /* Set up any quirks we have for this XSDT. */
@@ -353,16 +331,41 @@ acpi_identify(driver_t *driver, device_t parent)
 }
 
 /*
+ * Get a mapping of the root table header, as ACPICA code no longer
+ * keeps local copy of RSDT/XSDT
+ *
+ * return value: if non-NULL, mapped physical address of root table header.
+ * caller is supposed to unmap the region by AcpiOsUnmapMemory()
+ */
+static ACPI_TABLE_HEADER *
+acpi_map_rsdt_header(void)
+{
+    ACPI_PHYSICAL_ADDRESS rsdp_addr, addr;
+    ACPI_TABLE_RSDP *rsdp;
+
+    if ((rsdp_addr = AcpiOsGetRootPointer()) == NULL)
+	return(NULL);
+    if ((rsdp = AcpiOsMapMemory(rsdp_addr, sizeof(*rsdp))) == NULL)
+	return(NULL);
+    if (rsdp->Revision > 1 && rsdp->XsdtPhysicalAddress)
+	addr = (ACPI_PHYSICAL_ADDRESS)rsdp->XsdtPhysicalAddress;
+    else
+	addr = (ACPI_PHYSICAL_ADDRESS)rsdp->RsdtPhysicalAddress;
+    AcpiOsUnmapMemory(rsdp, sizeof(*rsdp));
+
+    return AcpiOsMapMemory(addr, sizeof(ACPI_TABLE_HEADER));
+}
+
+/*
  * Fetch some descriptive data from ACPI to put in our attach message
  */
 static int
 acpi_probe(device_t dev)
 {
-    ACPI_TABLE_HEADER	th;
+    ACPI_TABLE_HEADER	*th;
     char		buf[20];
     int			error;
     struct sbuf		sb;
-    ACPI_STATUS		status;
     ACPI_LOCK_DECL;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -376,22 +379,25 @@ acpi_probe(device_t dev)
 
     ACPI_LOCK;
 
-    if (ACPI_FAILURE(status = AcpiGetTableHeader(ACPI_TABLE_XSDT, 1, &th))) {
-	device_printf(dev, "couldn't get XSDT header: %s\n",
-		      AcpiFormatException(status));
+    th = acpi_map_rsdt_header();
+    if (th == NULL) {
+	device_printf(dev, "couldn't get RSDT header\n");
 	error = ENXIO;
-    } else {
-	sbuf_new(&sb, buf, sizeof(buf), SBUF_FIXEDLEN);
-	sbuf_bcat(&sb, th.OemId, 6);
-	sbuf_trim(&sb);
-	sbuf_putc(&sb, ' ');
-	sbuf_bcat(&sb, th.OemTableId, 8);
-	sbuf_trim(&sb);
-	sbuf_finish(&sb);
-	device_set_desc_copy(dev, sbuf_data(&sb));
-	sbuf_delete(&sb);
-	error = 0;
+	goto unlock;
     }
+
+    sbuf_new(&sb, buf, sizeof(buf), SBUF_FIXEDLEN);
+    sbuf_bcat(&sb, th->OemId, 6);
+    sbuf_trim(&sb);
+    sbuf_putc(&sb, ' ');
+    sbuf_bcat(&sb, th->OemTableId, 8);
+    sbuf_trim(&sb);
+    sbuf_finish(&sb);
+    device_set_desc_copy(dev, sbuf_data(&sb));
+    sbuf_delete(&sb);
+    AcpiOsUnmapMemory(th, sizeof(*th));
+    error = 0;
+unlock:
     ACPI_UNLOCK;
     return_VALUE(error);
 }
@@ -405,17 +411,50 @@ acpi_attach(device_t dev)
     UINT32		flags;
     UINT8		TypeA, TypeB;
     char		*env;
+    ACPI_TABLE_FACS	*facsp;
 #ifdef ACPI_DEBUGGER
     char		*debugpoint;
 #endif
     ACPI_LOCK_DECL;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+#if __FreeBSD_version >= 500000
+    /* Initialise the ACPI mutex */
+    mtx_init(&acpi_mutex, "ACPI global lock", NULL, MTX_DEF);
+#endif
+
     ACPI_LOCK;
     sc = device_get_softc(dev);
     bzero(sc, sizeof(*sc));
     sc->acpi_dev = dev;
     callout_init(&sc->acpi_sleep_timer);
+
+    /*
+     * Set the globals from our tunables.  This is needed because ACPI-CA
+     * uses UINT8 for some values and we have no tunable_byte.
+     */
+    AcpiGbl_AllMethodsSerialized = (UINT8)acpi_serialize_methods;
+    AcpiGbl_EnableInterpreterSlack = TRUE;
+
+    error = ENXIO;
+#ifdef ACPI_DEBUGGER
+    debugpoint = kgetenv("debug.acpi.debugger");
+    if (debugpoint) {
+	if (!strcmp(debugpoint, "tables"))
+	    acpi_EnterDebugger();
+	freeenv(debugpoint);
+    }
+#endif
+
+    if (ACPI_FAILURE(status = AcpiInitializeSubsystem())) {
+	kprintf("ACPI: initialisation failed: %s\n",
+	       AcpiFormatException(status));
+	goto out;
+    }
+    if (ACPI_FAILURE(status = AcpiLoadTables())) {
+	kprintf("ACPI: table load failed: %s\n", AcpiFormatException(status));
+	goto out;
+    }
 
 #ifdef ACPI_DEBUGGER
     debugpoint = kgetenv("debug.acpi.debugger");
@@ -425,9 +464,7 @@ acpi_attach(device_t dev)
 	freeenv(debugpoint);
     }
 #endif
-
     /* Install the default address space handlers. */
-    error = ENXIO;
     status = AcpiInstallAddressSpaceHandler(ACPI_ROOT_OBJECT,
 		ACPI_ADR_SPACE_SYSTEM_MEMORY, ACPI_DEFAULT_HANDLER, NULL, NULL);
     if (ACPI_FAILURE(status)) {
@@ -548,8 +585,12 @@ acpi_attach(device_t dev)
     }
 
     /* Only enable S4BIOS by default if the FACS says it is available. */
-    if (AcpiGbl_FACS->S4Bios_f != 0)
+    status = AcpiGetTableByIndex(ACPI_TABLE_INDEX_FACS,
+				(ACPI_TABLE_HEADER **)&facsp);
+    if (ACPI_SUCCESS(status)) {
+	if ((facsp->Flags & ACPI_FACS_S4_BIOS_PRESENT) != 0)
 	    sc->acpi_s4bios = 1;
+    }
 
     /*
      * Dispatch the default sleep state to devices.  The lid switch is set
@@ -650,7 +691,7 @@ acpi_shutdown(device_t dev)
 static void
 acpi_quirks_set(void)
 {
-    XSDT_DESCRIPTOR *xsdt;
+    ACPI_TABLE_HEADER *rsdt;
     struct acpi_quirks *quirk;
     char *env, *tmp;
     int len;
@@ -676,10 +717,11 @@ acpi_quirks_set(void)
      * Search through our quirk table and concatenate the disabled
      * values with whatever we find.
      */
-    xsdt = AcpiGbl_XSDT;
+    if ((rsdt = acpi_map_rsdt_header()) == NULL)
+	goto out;
     for (quirk = acpi_quirks_table; quirk->OemId; quirk++) {
-	if (!strncmp(xsdt->OemId, quirk->OemId, strlen(quirk->OemId)) &&
-	    (xsdt->OemRevision == quirk->OemRevision ||
+	if (!strncmp(rsdt->OemId, quirk->OemId, strlen(quirk->OemId)) &&
+	    (rsdt->OemRevision == quirk->OemRevision ||
 	    quirk->OemRevision == ACPI_OEM_REV_ANY)) {
 		len += strlen(quirk->value) + 2;
 		if ((tmp = kmalloc(len, M_TEMP, M_NOWAIT)) == NULL)
@@ -690,6 +732,7 @@ acpi_quirks_set(void)
 		break;
 	}
     }
+    AcpiOsUnmapMemory(rsdt, sizeof(*rsdt));
 
 out:
     if (env)
@@ -904,11 +947,10 @@ acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas)
 {
     int type;
 
-    if (gas == NULL || !ACPI_VALID_ADDRESS(gas->Address) ||
-	gas->RegisterBitWidth < 8)
+    if (gas == NULL || !ACPI_VALID_ADDRESS(gas->Address) || gas->BitWidth < 8)
 	return (NULL);
 
-    switch (gas->AddressSpaceId) {
+    switch (gas->SpaceId) {
     case ACPI_ADR_SPACE_SYSTEM_MEMORY:
 	type = SYS_RES_MEMORY;
 	break;
@@ -919,7 +961,7 @@ acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas)
 	return (NULL);
     }
 
-    bus_set_resource(dev, type, *rid, gas->Address, gas->RegisterBitWidth / 8);
+    bus_set_resource(dev, type, *rid, gas->Address, gas->BitWidth / 8);
     return (bus_alloc_resource_any(dev, type, rid, RF_ACTIVE));
 }
 
@@ -1262,14 +1304,14 @@ acpi_enable_fixed_events(struct acpi_softc *sc)
     ACPI_ASSERTLOCK;
 
     /* Enable and clear fixed events and install handlers. */
-    if (AcpiGbl_FADT != NULL && AcpiGbl_FADT->PwrButton == 0) {
+    if ((AcpiGbl_FADT.Flags & ACPI_FADT_POWER_BUTTON) == 0) {
 	AcpiClearEvent(ACPI_EVENT_POWER_BUTTON);
 	AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON,
 				     acpi_event_power_button_sleep, sc);
 	if (first_time)
 	    device_printf(sc->acpi_dev, "Power Button (fixed)\n");
     }
-    if (AcpiGbl_FADT != NULL && AcpiGbl_FADT->SleepButton == 0) {
+    if ((AcpiGbl_FADT.Flags & ACPI_FADT_SLEEP_BUTTON) == 0) {
 	AcpiClearEvent(ACPI_EVENT_SLEEP_BUTTON);
 	AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON,
 				     acpi_event_sleep_button_sleep, sc);
@@ -1431,7 +1473,7 @@ acpi_TimerDelta(uint32_t end, uint32_t start)
 
     if (end >= start)
 	delta = end - start;
-    else if (AcpiGbl_FADT->TmrValExt == 0)
+    else if ((AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) == 0)
 	delta = ((0x00FFFFFF - start) + end + 1) & 0x00FFFFFF;
     else
 	delta = ((0xFFFFFFFF - start) + end + 1);
@@ -1584,7 +1626,7 @@ acpi_FindIndexedResource(ACPI_BUFFER *buf, int index, ACPI_RESOURCE **resp)
 	    return (AE_BAD_PARAMETER);
 
 	/* Check for terminator */
-	if (rp->Id == ACPI_RSTYPE_END_TAG || rp->Length == 0)
+	if (rp->Type == ACPI_RESOURCE_TYPE_END_TAG || rp->Length == 0)
 	    return (AE_NOT_FOUND);
 	rp = ACPI_NEXT_RESOURCE(rp);
     }
@@ -1616,7 +1658,7 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
 	if ((buf->Pointer = AcpiOsAllocate(buf->Length)) == NULL)
 	    return (AE_NO_MEMORY);
 	rp = (ACPI_RESOURCE *)buf->Pointer;
-	rp->Id = ACPI_RSTYPE_END_TAG;
+	rp->Type = ACPI_RESOURCE_TYPE_END_TAG;
 	rp->Length = 0;
     }
     if (res == NULL)
@@ -1632,7 +1674,7 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
 	/* Range check, don't go outside the buffer */
 	if (rp >= (ACPI_RESOURCE *)((u_int8_t *)buf->Pointer + buf->Length))
 	    return (AE_BAD_PARAMETER);
-	if (rp->Id == ACPI_RSTYPE_END_TAG || rp->Length == 0)
+	if (rp->Type == ACPI_RESOURCE_TYPE_END_TAG || rp->Length == 0)
 	    break;
 	rp = ACPI_NEXT_RESOURCE(rp);
     }
@@ -1649,8 +1691,8 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
      * for some reason we are stuffing a *really* huge resource.
      */
     while ((((u_int8_t *)rp - (u_int8_t *)buf->Pointer) + 
-	    res->Length + ACPI_RESOURCE_LENGTH_NO_DATA +
-	    ACPI_RESOURCE_LENGTH) >= buf->Length) {
+	    res->Length + ACPI_RS_SIZE_NO_DATA +
+	    ACPI_RS_SIZE_MIN) >= buf->Length) {
 	if ((newp = AcpiOsAllocate(buf->Length * 2)) == NULL)
 	    return (AE_NO_MEMORY);
 	bcopy(buf->Pointer, newp, buf->Length);
@@ -1662,11 +1704,11 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
     }
     
     /* Insert the new resource. */
-    bcopy(res, rp, res->Length + ACPI_RESOURCE_LENGTH_NO_DATA);
+    bcopy(res, rp, res->Length + ACPI_RS_SIZE_NO_DATA);
     
     /* And add the terminator. */
     rp = ACPI_NEXT_RESOURCE(rp);
-    rp->Id = ACPI_RSTYPE_END_TAG;
+    rp->Type = ACPI_RESOURCE_TYPE_END_TAG;
     rp->Length = 0;
 
     return (AE_OK);
@@ -1759,14 +1801,10 @@ acpi_SetSleepState(struct acpi_softc *sc, int state)
 
 	if (state != ACPI_STATE_S1) {
 	    acpi_sleep_machdep(sc, state);
-
+#if 0
 	    /* AcpiEnterSleepState() may be incomplete, unlock if locked. */
-	    if (AcpiGbl_MutexInfo[ACPI_MTX_HARDWARE].OwnerId !=
-		ACPI_MUTEX_NOT_ACQUIRED) {
-
-		AcpiUtReleaseMutex(ACPI_MTX_HARDWARE);
-	    }
-
+	    AcpiOsReleaseLock(AcpiGbl_HardwareLock, 1);
+#endif
 	    /* Re-enable ACPI hardware on wakeup from sleep state 4. */
 	    if (state == ACPI_STATE_S4)
 		AcpiEnable();

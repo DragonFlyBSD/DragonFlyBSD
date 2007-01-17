@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/acpi/iasl/Makefile,v 1.5 2004/01/13 20:53:56 ru Exp $
-# $DragonFly: src/usr.sbin/acpi/iasl/Makefile,v 1.1 2004/07/05 00:22:43 dillon Exp $
+# $DragonFly: src/usr.sbin/acpi/iasl/Makefile,v 1.2 2007/01/17 17:31:20 y0netan1 Exp $
 
 PROG=	iasl
 SRCS=	aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
@@ -23,13 +23,15 @@ SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
 	nsparse.c nssearch.c nsutils.c nswalk.c nsxfobj.c \
         psargs.c psopcode.c psparse.c psscope.c \
         pstree.c psutils.c pswalk.c \
-        tbinstal.c tbutils.c \
+        tbfadt.c tbinstal.c tbutils.c tbxface.c \
 	utalloc.c utcopy.c utdebug.c utdelete.c \
         utglobal.c utobject.c utmisc.c utmath.c
 
+SRCS+=	adfile.c adwalk.c dmrestag.c dmtbdump.c dmtbinfo.c dmtable.c psloop.c utcache.c utmutex.c utresrc.c utstate.c
+
 MAN=	iasl.8
 
-CFLAGS+= -D_ACPI_ASL_COMPILER -I.
+CFLAGS+= -D_ACPI_ASL_COMPILER -DACPI_ASL_COMPILER -I.
 
 CFLAGS+= -D_USE_BERKELEY_YACC
 LFLAGS=	-i -PAslCompiler

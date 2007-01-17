@@ -2,7 +2,7 @@
  *
  * Name: acfreebsd.h - OS specific defines, etc.
  *       $Revision: 11 $
- *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.2 2004/07/05 00:07:35 dillon Exp $
+ *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.3 2007/01/17 17:31:19 y0netan1 Exp $
  *
  *****************************************************************************/
 
@@ -121,8 +121,10 @@
 /* DragonFly uses GCC */
 
 #include <platform/acgcc.h>
+#include <sys/types.h>
 #include <machine/acpica_machdep.h>
 
+#define ACPI_UINTPTR_T		uintptr_t
 #ifdef _KERNEL
 #include "opt_acpi.h"
 #endif
@@ -150,6 +152,13 @@
 #endif /* DDB */
 #endif /* ACPI_DEBUG_OUTPUT */
 
+#define ACPI_SPINLOCK	struct acpi_spinlock *
+struct acpi_spinlock;
+
+#ifndef ACPI_USE_LOCAL_CACHE
+#define ACPI_CACHE_T	struct acpicache
+struct acpicache;
+#endif
 #else /* _KERNEL */
 
 /* Not building kernel code, so use libc */
@@ -199,4 +208,5 @@ strstr(char *s, char *find)
 }
 #endif /* _KERNEL */
 
+#define inline		__inline
 #endif /* __ACDRAGONFLY_H_ */

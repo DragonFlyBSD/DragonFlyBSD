@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.11 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.12 2007/01/17 17:31:19 y0netan1 Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -132,7 +132,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    if (acpi_disabled("timer") || AcpiGbl_FADT == NULL)
+    if (acpi_disabled("timer"))
 	return (ENXIO);
 
     if ((dev = BUS_ADD_CHILD(parent, parent, 0, "acpi_timer", 0)) == NULL) {
@@ -142,10 +142,10 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     acpi_timer_dev = dev;
 
     rid = 0;
-    rlen = AcpiGbl_FADT->PmTmLen;
-    rtype = (AcpiGbl_FADT->XPmTmrBlk.AddressSpaceId)
+    rlen = AcpiGbl_FADT.PmTimerLength;
+    rtype = (AcpiGbl_FADT.XPmTimerBlock.SpaceId)
       ? SYS_RES_IOPORT : SYS_RES_MEMORY;
-    rstart = AcpiGbl_FADT->XPmTmrBlk.Address;
+    rstart = AcpiGbl_FADT.XPmTimerBlock.Address;
     bus_set_resource(dev, rtype, rid, rstart, rlen);
     acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
     if (acpi_timer_reg == NULL) {
@@ -155,7 +155,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     }
     acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
     acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
-    if (AcpiGbl_FADT->TmrValExt != 0)
+    if ((AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) != 0)
 	acpi_counter_mask = 0xffffffff;
     else
 	acpi_counter_mask = 0x00ffffff;
@@ -182,7 +182,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     }
 
     ksprintf(desc, "%d-bit timer at 3.579545MHz",
-	    AcpiGbl_FADT->TmrValExt ? 32 : 24);
+	    (AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) ? 32 : 24);
     device_set_desc_copy(dev, desc);
 
     cputimer_register(&acpi_cputimer);

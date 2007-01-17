@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/acpi/acpidb/Makefile,v 1.5 2004/05/25 02:56:55 njl Exp $
-# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.3 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.4 2007/01/17 17:31:19 y0netan1 Exp $
 
 PROG=	acpidb
 SRCS+=	acpidb.c
@@ -24,25 +24,27 @@ SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	nsinit.c nsload.c nsnames.c nsobject.c \
 	nsparse.c nssearch.c nsutils.c nswalk.c \
 	nsxfeval.c nsxfname.c nsxfobj.c \
-	psargs.c psopcode.c psparse.c psscope.c \
+	psargs.c psloop.c psopcode.c psparse.c psscope.c \
 	pstree.c psutils.c pswalk.c psxface.c \
-	rsaddr.c rscalc.c rscreate.c rsdump.c \
+	rsaddr.c rscalc.c rscreate.c rsdump.c rsinfo.c \
 	rsio.c rsirq.c rslist.c rsmemory.c \
 	rsmisc.c rsutils.c rsxface.c \
-	tbconvrt.c tbget.c tbgetall.c tbinstal.c \
-	tbrsdt.c tbutils.c tbxface.c tbxfroot.c \
-	utalloc.c utcopy.c utdebug.c utdelete.c \
+	tbfadt.c tbfind.c tbinstal.c tbutils.c tbxface.c tbxfroot.c \
+	utalloc.c utcache.c utcopy.c utdebug.c utdelete.c \
 	uteval.c utglobal.c utinit.c utmath.c \
-	utmisc.c utobject.c utxface.c
+	utmisc.c utmutex.c utobject.c utresrc.c utstate.c utxface.c
+
+SRCS+=	aeexec.c
 
 .include <bsd.init.mk>
-.if ${ACPICA_VERSION} >= 20041203
-CONTRIBDIR= ${SYSDIR}/${ACPICA_DIR}
-SRCS+=	osunixxf.c.patch
-.endif
 MAN=	acpidb.8
+.PATH:	${SYSDIR}/${ACPICA_DIR}/tools/acpiexec
 
 CFLAGS+= -DACPI_APPLICATION -DACPI_DEBUG_OUTPUT -DACPI_DEBUGGER \
-	-DACPI_DISASSEMBLER
+	-DACPI_DISASSEMBLER -D__cdecl=
+
+CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
+SRCS+=		osunixxf.c.patch
 
 .include <bsd.prog.mk>
+OBJS:=		${OBJS:N*/*}

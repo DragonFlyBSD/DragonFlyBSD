@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.6 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.7 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ struct acpi_task {
     struct lwkt_msg		at_msg;
     ACPI_OSD_EXEC_CALLBACK	at_function;
     void			*at_context;
-    int				at_priority;
+    ACPI_EXECUTE_TYPE		at_type;
 };
 
 static struct thread *acpi_task_td;
@@ -111,29 +111,18 @@ acpi_task_thread(void *arg)
  * to automatically free the message.
  */
 ACPI_STATUS
-AcpiOsQueueForExecution(UINT32 Priority, ACPI_OSD_EXEC_CALLBACK Function,
-    void *Context)
+AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function,
+	      void *Context)
 {
     struct acpi_task	*at;
-    int pri;
 
-    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
-    if (Function == NULL)
-	return_ACPI_STATUS (AE_BAD_PARAMETER);
-
-    switch (Priority) {
-    case OSD_PRIORITY_GPE:
-	pri = 4;
-	break;
-    case OSD_PRIORITY_HIGH:
-	pri = 3;
-	break;
-    case OSD_PRIORITY_MED:
-	pri = 2;
-	break;
-    case OSD_PRIORITY_LO:
-	pri = 1;
+    switch (Type) {
+    case OSL_GLOBAL_LOCK_HANDLER:
+    case OSL_NOTIFY_HANDLER:
+    case OSL_GPE_HANDLER:
+    case OSL_DEBUGGER_THREAD:
+    case OSL_EC_POLL_HANDLER:
+    case OSL_EC_BURST_HANDLER:
 	break;
     default:
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
@@ -145,7 +134,7 @@ AcpiOsQueueForExecution(UINT32 Priority, ACPI_OSD_EXEC_CALLBACK Function,
 		lwkt_cmd_op_none, lwkt_cmd_op_none);
     at->at_function = Function;
     at->at_context = Context;
-    at->at_priority = pri;
+    at->at_type = Type;
     lwkt_sendmsg(&acpi_task_td->td_msgport, &at->at_msg);
     return_ACPI_STATUS (AE_OK);
 }

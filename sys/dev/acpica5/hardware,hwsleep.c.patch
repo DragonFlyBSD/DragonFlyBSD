@@ -1,0 +1,17 @@
+# $DragonFly: src/sys/dev/acpica5/hardware,hwsleep.c.patch,v 1.1 2007/01/17 17:31:19 y0netan1 Exp $
+
+--- hwsleep.c.orig	2006-11-10 05:56:25.000000000 +0900
++++ hwsleep.c	2007-01-14 13:02:22.000000000 +0900
+@@ -509,10 +509,12 @@
+         }
+     }
+ 
++    ACPI_FLUSH_CPU_CACHE ();
+     /* Wait until we enter sleep state */
+ 
+     do
+     {
++        AcpiOsStall(1000);
+         Status = AcpiGetRegister (ACPI_BITREG_WAKE_STATUS, &InValue);
+         if (ACPI_FAILURE (Status))
+         {

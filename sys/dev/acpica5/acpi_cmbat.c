@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.29 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.9 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.10 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -280,7 +280,7 @@ acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     case ACPI_NOTIFY_BUS_CHECK:
     case ACPI_BATTERY_BIF_CHANGE:
 	timespecclear(&sc->bif_lastupdated);
-	AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_cmbat_get_bif, dev);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_get_bif, dev);
 	break;
     default:
 	break;
@@ -344,7 +344,7 @@ acpi_cmbat_attach(device_t dev)
     acpi_cmbat_units++;
     timespecclear(&acpi_cmbat_info_lastupdated);
     sc->initializing = 0;
-    AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_cmbat_init_battery, dev);
+    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
 
     return (0);
 }
@@ -352,7 +352,7 @@ acpi_cmbat_attach(device_t dev)
 static int
 acpi_cmbat_resume(device_t dev)
 {
-    AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_cmbat_init_battery, dev);
+    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
     return (0);
 }
 

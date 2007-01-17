@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/acpi/acpidb/acpidb.c,v 1.1 2003/08/07 16:51:50 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidb/acpidb.c,v 1.1 2004/07/05 00:22:43 dillon Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidb/acpidb.c,v 1.2 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -338,11 +338,13 @@ DECLARE_VM_SPACE_HANDLER(smbus,		ACPI_ADR_SPACE_SMBUS);
 DECLARE_VM_SPACE_HANDLER(cmos,		ACPI_ADR_SPACE_CMOS);
 DECLARE_VM_SPACE_HANDLER(pci_bar_target,ACPI_ADR_SPACE_PCI_BAR_TARGET);
 
+static u_int8_t *mapped_rsdp;
+#define ACPI_MAX_INIT_TABLES (16)
+static ACPI_TABLE_DESC		Tables[ACPI_MAX_INIT_TABLES];
+
 /*
  * Load DSDT data file and invoke debugger
  */
-
-static UINT32	DummyGlobalLock;
 
 static int
 load_dsdt(const char *dsdtfile)
@@ -352,7 +354,7 @@ load_dsdt(const char *dsdtfile)
 	struct stat		 sb;
 	int			 fd, fd2;
 	int			 error;
-	ACPI_TABLE_HEADER	*tableptr;
+	ACPI_TABLE_HEADER	*Table;
 
 	fd = open(dsdtfile, O_RDONLY, 0);
 	if (fd == -1) {
@@ -368,7 +370,9 @@ load_dsdt(const char *dsdtfile)
 		perror("mmap");
 		return (-1);
 	}
+	mapped_rsdp = code;
 	if ((error = AcpiInitializeSubsystem()) != AE_OK) {
+		err(1, "AcpiInitializeSubsystem returned %d", error);
 		return (-1);
 	}
 
@@ -445,17 +449,22 @@ load_dsdt(const char *dsdtfile)
 		return (-1);
 	}
 
-	AcpiGbl_FACS = malloc(sizeof (ACPI_COMMON_FACS));
-	if (AcpiGbl_FACS == NULL) {
-		fprintf(stderr, "could not allocate memory for FACS\n");
-		return (-1);
-	}
-	DummyGlobalLock = 0;
-	AcpiGbl_CommonFACS.GlobalLock = &DummyGlobalLock;
 	AcpiGbl_GlobalLockPresent = TRUE;
 
-	AcpiDbGetTableFromFile(filetmp, NULL);
-	AcpiUtSetIntegerWidth (AcpiGbl_DSDT->Revision);
+	error = AcpiDbReadTableFromFile (filetmp, &Table);
+	if (ACPI_FAILURE(error)) {
+		fprintf(stderr, "AcpiDbReadTableFromFile failed: %s\n",
+			AcpiFormatException(error));
+		return (-1);
+	}
+	AeBuildLocalTables(Table);
+	if (ACPI_FAILURE(error = AeInstallTables())) {
+		fprintf(stderr, "AeInstallTables failed: %s\n",
+			AcpiFormatException(error));
+		return (-1);
+	}
+
+	AcpiUtSetIntegerWidth (Table->Revision);
 
 	AcpiDbInitialize();
 	AcpiGbl_DebuggerConfiguration = 0;
@@ -476,6 +485,8 @@ usage(const char *progname)
 	exit(1);
 }
 
+BOOLEAN		AcpiGbl_IgnoreErrors = FALSE;
+
 int
 main(int argc, char *argv[])
 {
@@ -488,6 +499,7 @@ main(int argc, char *argv[])
 	}
 
 	AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
+	AcpiGbl_EnableInterpreterSlack = TRUE;
 
 	aml_simulation_regload("region.ini");
 	if (load_dsdt(argv[1]) == 0) {

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/OsdEnvironment.c,v 1.10 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/OsdEnvironment.c,v 1.2 2004/06/27 08:52:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/OsdEnvironment.c,v 1.3 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /*
@@ -54,10 +54,10 @@ AcpiOsTerminate(void)
 	return(0);
 }
 
-ACPI_STATUS
-AcpiOsGetRootPointer(UINT32 Flags, ACPI_POINTER *RsdpPhysicalAddress)
+ACPI_PHYSICAL_ADDRESS
+AcpiOsGetRootPointer(void)
 {
-	ACPI_POINTER ptr;
+	ACPI_NATIVE_UINT ptr;
 	ACPI_STATUS status;
 
 	if (i386_acpi_root == 0) {
@@ -66,13 +66,10 @@ AcpiOsGetRootPointer(UINT32 Flags, ACPI_POINTER *RsdpPhysicalAddress)
 		 * RSDP in a hint.  We could recover this rather than searching
 		 * manually here.
 		 */
-		status = AcpiFindRootPointer(Flags, &ptr);
+		status = AcpiFindRootPointer(&ptr);
 		if (status == AE_OK)
-			i386_acpi_root = ptr.Pointer.Physical;
-	} else
-		status = AE_OK;
+			i386_acpi_root = ptr;
+	}
 
-	RsdpPhysicalAddress->PointerType = ACPI_PHYSICAL_POINTER;
-	RsdpPhysicalAddress->Pointer.Physical = i386_acpi_root;
-	return (status);
+	return (i386_acpi_root);
 }

@@ -1,0 +1,19 @@
+# $DragonFly: src/sys/dev/acpica5/include,acglobal.h.patch,v 1.1 2007/01/17 17:31:19 y0netan1 Exp $
+
+--- acglobal.h.orig	2006-09-13 02:49:30.000000000 +0900
++++ acglobal.h	2006-11-05 21:06:38.000000000 +0900
+@@ -321,12 +321,13 @@
+ extern const char                      *AcpiGbl_RegionTypes[ACPI_NUM_PREDEFINED_REGIONS];
+ 
+ /* Exception codes */
+-
++#ifndef DEFINE_ACPI_GLOBALS
+ extern      char const                 *AcpiGbl_ExceptionNames_Env[];
+ extern      char const                 *AcpiGbl_ExceptionNames_Pgm[];
+ extern      char const                 *AcpiGbl_ExceptionNames_Tbl[];
+ extern      char const                 *AcpiGbl_ExceptionNames_Aml[];
+ extern      char const                 *AcpiGbl_ExceptionNames_Ctrl[];
++#endif
+ 
+ 
+ /*****************************************************************************

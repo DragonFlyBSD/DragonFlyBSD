@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.26 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_button.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_button.c,v 1.4 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -249,12 +249,10 @@ acpi_button_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     sc = (struct acpi_button_softc *)context;
     switch (notify) {
     case ACPI_NOTIFY_BUTTON_PRESSED_FOR_SLEEP:
-	AcpiOsQueueForExecution(OSD_PRIORITY_LO,
-				acpi_button_notify_sleep, sc);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_button_notify_sleep, sc);
 	break;   
     case ACPI_NOTIFY_BUTTON_PRESSED_FOR_WAKEUP:
-	AcpiOsQueueForExecution(OSD_PRIORITY_LO,
-				acpi_button_notify_wakeup, sc);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_button_notify_wakeup, sc);
 	break;   
     default:
 	device_printf(sc->button_dev, "unknown notify %#x\n", notify);

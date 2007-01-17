@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.9 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.10 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /*
@@ -41,36 +41,23 @@
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #define _COMPONENT	ACPI_OS_SERVICES
 ACPI_MODULE_NAME("SYNCH")
 
 MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
-#if defined(__DragonFly__)
-# define AS_LOCK(as)		crit_enter()
-# define AS_UNLOCK(as)		crit_exit()
-# define AS_LOCK_DECL
-# define msleep(a, b, c, d, e)	tsleep(a, c, d, e)
-#elif __FreeBSD_version < 500000
-# define AS_LOCK(as)		s = splhigh()
-# define AS_UNLOCK(as)		splx(s)
-# define AS_LOCK_DECL		int s
-# define msleep(a, b, c, d, e)	tsleep(a, c, d, e)
-#else
-# define AS_LOCK(as)		mtx_lock(&(as)->as_mtx)
-# define AS_UNLOCK(as)		mtx_unlock(&(as)->as_mtx)
-# define AS_LOCK_DECL
-#endif
+#define AS_LOCK(as)		spin_lock_wr(&(as)->as_mtx)
+#define AS_UNLOCK(as)		spin_unlock_wr(&(as)->as_mtx)
+#define AS_LOCK_DECL
 
 /*
  * Simple counting semaphore implemented using a mutex.  (Subsequently used
  * in the OSI code to implement a mutex.  Go figure.)
  */
 struct acpi_semaphore {
-#if __FreeBSD_version >= 500000
-    struct mtx	as_mtx;
-#endif
+    struct	spinlock as_mtx;
     UINT32	as_units;
     UINT32	as_maxunits;
     UINT32	as_pendings;
@@ -105,9 +92,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
 
     as = kmalloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
 
-#if __FreeBSD_version >= 500000
-    mtx_init(&as->as_mtx, "ACPI semaphore", NULL, MTX_DEF);
-#endif
+    spin_init(&as->as_mtx);
     as->as_units = InitialUnits;
     as->as_maxunits = MaxUnits;
     as->as_pendings = as->as_resetting = as->as_timeouts = 0;
@@ -133,20 +118,13 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "destroyed semaphore %p\n", as));
-#if __FreeBSD_version >= 500000
-    mtx_destroy(&as->as_mtx);
-#endif
+    spin_uninit(&as->as_mtx);
     kfree(as, M_ACPISEM);
 #endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
 }
 
-/*
- * This implementation has a bug, in that it has to stall for the entire
- * timeout before it will return AE_TIME.  A better implementation would
- * use getmicrotime() to correctly adjust the timeout after being woken up.
- */
 ACPI_STATUS
 AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 {
@@ -197,7 +175,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
     }
 
     /* calculate timeout value in timeval */
-    getmicrotime(&currenttv);
+    getmicrouptime(&currenttv);
     timevaladd(&timeouttv, &currenttv);
 
     AS_LOCK(as);
@@ -227,11 +205,9 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	    break;
 	}
 
-#if __FreeBSD_version >= 500000
 	ACPI_DEBUG_PRINT((ACPI_DB_MUTEX,
 	    "semaphore blocked, calling msleep(%p, %p, %d, \"acsem\", %d)\n",
 	    as, &as->as_mtx, PCATCH, tmo));
-#endif
 
 	as->as_pendings++;
 
@@ -263,7 +239,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 
 	/* check if we already awaited enough */
 	timelefttv = timeouttv;
-	getmicrotime(&currenttv);
+	getmicrouptime(&currenttv);
 	timevalsub(&timelefttv, &currenttv);
 	if (timelefttv.tv_sec < 0) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "await semaphore %p timeout\n",
@@ -343,52 +319,95 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
     return_ACPI_STATUS (AE_OK);
 }
 
+struct acpi_spinlock {
+    struct spinlock lock;
+#ifdef ACPI_DEBUG_LOCKS
+    thread_t	owner;
+    const char *func;
+    int line;
+#endif
+};
+
 ACPI_STATUS
-AcpiOsCreateLock(ACPI_HANDLE *OutHandle)
+AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 {
-    struct lock *lock;
+    ACPI_SPINLOCK spin;
 
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
-    lock = kmalloc(sizeof(*lock), M_ACPISEM, M_INTWAIT|M_ZERO);
-    lockinit(lock, "oslck", 0, 0);
-    *OutHandle = (ACPI_HANDLE)lock;
+    spin = kmalloc(sizeof(*spin), M_ACPISEM, M_INTWAIT|M_ZERO);
+    spin_init(&spin->lock);
+#ifdef ACPI_DEBUG_LOCKS
+    spin->owner = NULL;
+    spin->func = "";
+    spin->line = 0;
+#endif
+    *OutHandle = spin;
     return (AE_OK);
 }
 
 void
-AcpiOsDeleteLock (ACPI_HANDLE Handle)
+AcpiOsDeleteLock (ACPI_SPINLOCK Spin)
 {
-    struct lock *lock;
-
-    if ((lock = (struct lock *)Handle) != NULL)
-	    kfree(lock, M_ACPISEM);
+    if (Spin == NULL)
+	return;
+    spin_uninit(&Spin->lock);
+    kfree(Spin, M_ACPISEM);
 }
 
+#ifdef ACPI_DEBUG_LOCKS
+void db_print_backtrace(void);
+#endif
 /*
- * The Flags parameter seems to state whether or not caller is an ISR
- * (and thus can't block) but since we have ithreads, we don't worry
- * about potentially blocking.
+ * OS-dependent locking primitives.  These routines should be able to be
+ * called from an interrupt-handler or cpu_idle thread.
+ *
+ * NB: some of ACPI-CA functions with locking flags, say AcpiSetRegister(),
+ * are changed to unconditionally call AcpiOsAcquireLock/AcpiOsReleaseLock.
  */
-void
-AcpiOsAcquireLock (ACPI_HANDLE Handle, UINT32 Flags)
+ACPI_CPU_FLAGS
+#ifdef ACPI_DEBUG_LOCKS
+_AcpiOsAcquireLock (ACPI_SPINLOCK Spin, const char *func, int line)
+#else
+AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
+#endif
 {
-    struct lock *lock;
+    thread_t td = curthread;
 
-    if ((lock = (struct lock *)Handle) != NULL)
-	lockmgr(lock, LK_EXCLUSIVE|LK_RETRY);
+    spin_lock_wr(&Spin->lock);
+#ifdef ACPI_DEBUG_LOCKS
+    if (Spin->owner) {
+	kprintf("%p(%s:%d): acpi_spinlock %p already held by %p(%s:%d)\n",
+		td, func, line, Spin, Spin->owner, Spin->func, Spin->line);
+	db_print_backtrace();
+    } else {
+	Spin->owner = td;
+	Spin->func = func;
+	Spin->line = line;
+    }
+#endif
+    return(0);
 }
 
 void
-AcpiOsReleaseLock (ACPI_HANDLE Handle, UINT32 Flags)
+AcpiOsReleaseLock (ACPI_SPINLOCK Spin, UINT32 Flags)
 {
-    struct lock *lock;
-
-    if ((lock = (struct lock *)Handle) != NULL)
-	lockmgr(lock, LK_RELEASE);
+#ifdef ACPI_DEBUG_LOCKS
+    if (Flags) {
+	if (Spin->owner != NULL) {
+	    kprintf("%p: acpi_spinlock %p is unexectedly held by %p(%s:%d)\n",
+		    curthread, Spin, Spin->owner, Spin->func, Spin->line);
+	    db_print_backtrace();
+	} else
+	    return;
+    }
+    Spin->owner = NULL;
+    Spin->func = "";
+    Spin->line = 0;
+#endif
+    spin_unlock_wr(&Spin->lock);
 }
 
-#ifdef notyet
 /* Section 5.2.9.1:  global lock acquire/release functions */
 #define GL_ACQUIRED	(-1)
 #define GL_BUSY		0
@@ -410,7 +429,7 @@ acpi_acquire_global_lock(uint32_t *lock)
 		old = *lock;
 		new = ((old & ~GL_BIT_MASK) | GL_BIT_OWNED) |
 			((old >> 1) & GL_BIT_PENDING);
-	} while (atomic_cmpset_acq_int(lock, old, new) == 0);
+	} while (atomic_cmpset_int(lock, old, new) == 0);
 
 	return ((new < GL_BIT_MASK) ? GL_ACQUIRED : GL_BUSY);
 }
@@ -428,8 +447,7 @@ acpi_release_global_lock(uint32_t *lock)
 	do {
 		old = *lock;
 		new = old & ~GL_BIT_MASK;
-	} while (atomic_cmpset_rel_int(lock, old, new) == 0);
+	} while (atomic_cmpset_int(lock, old, new) == 0);
 
 	return (old & GL_BIT_PENDING);
 }
-#endif /* notyet */

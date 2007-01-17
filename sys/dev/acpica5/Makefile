@@ -1,10 +1,26 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.14 2006/11/07 06:43:23 dillon Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.15 2007/01/17 17:31:19 y0netan1 Exp $
+
+CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
+PATCHES=	hardware,hwsleep.c.patch include,acglobal.h.patch
 
 SYSDIR?= ${.CURDIR}/../..
+.if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP
+CFLAGS+=	-I${.OBJDIR}/include
+.if ACPI_DEBUG_LOCKS
+CFLAGS+=	-DACPI_DEBUG_LOCKS=1
+.endif
+.if ACPI_DEBUG_MEMMAP
+CFLAGS+=	-DACPI_DEBUG_MEMMAP=1
+.endif
+PATCHES+=	include,acpiosxf.h.patch
+.endif
+
 .include "Makefile.inc"
 
-.PATH:	${SYSDIR}/${OSACPI_MD_DIR}			\
+.PATH:	${.OBJDIR}					\
+	${.OBJDIR}/include				\
+	${SYSDIR}/${OSACPI_MD_DIR}			\
 	${SYSDIR}/machine/${MACHINE}/isa		\
 	${SYSDIR}/bus/pci 				\
 	${.CURDIR}/Osd					\
@@ -13,6 +29,7 @@ SYSDIR?= ${.CURDIR}/../..
 
 KMOD	= acpi
 
+SRCS+=		${PATCHES}
 # ACPI CA sources
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
@@ -27,15 +44,15 @@ SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c
 SRCS+=	nsaccess.c nsalloc.c nsdump.c nseval.c nsinit.c
 SRCS+=	nsload.c nsnames.c nsobject.c nsparse.c nssearch.c
 SRCS+=	nsutils.c nswalk.c nsxfeval.c nsxfname.c nsxfobj.c
-SRCS+=	psargs.c psopcode.c psparse.c psscope.c
+SRCS+=	psargs.c psloop.c psopcode.c psparse.c psscope.c
 SRCS+=	pstree.c psutils.c pswalk.c psxface.c
-SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsio.c
+SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsinfo.c rsio.c
 SRCS+=	rsirq.c rslist.c rsmemory.c rsmisc.c rsutils.c
-SRCS+=	rsxface.c tbconvrt.c tbget.c tbgetall.c tbinstal.c
-SRCS+=	tbrsdt.c tbutils.c tbxface.c tbxfroot.c utalloc.c
+SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c
+SRCS+=	tbutils.c tbxface.c tbxfroot.c utalloc.c
 SRCS+=	utclib.c utcopy.c utdebug.c utdelete.c uteval.c
-SRCS+=	utglobal.c utinit.c utmath.c utmisc.c utobject.c
-SRCS+=	utxface.c
+SRCS+=	utglobal.c utinit.c utmath.c utmisc.c utmutex.c utobject.c
+SRCS+=	utresrc.c utstate.c utxface.c
 
 # OSD layer
 #
@@ -48,7 +65,7 @@ SRCS+=  acpi_package.c
 SRCS+=  acpi_powerres.c acpi_resource.c acpi_thermal.c
 SRCS+=  acpi_timer.c
 SRCS+=  OsdDebug.c
-SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
+SRCS+=  OsdHardware.c OsdInterface.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
 SRCS+=  opt_acpi.h opt_bus.h opt_ddb.h
 SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h
@@ -71,6 +88,12 @@ opt_ddb.h: Makefile
 opt_ddb.h: Makefile
 	echo -n > ${.TARGET}
 .endif
+.if ACPI_USE_LOCAL_CACHE
+CFLAGS+= -DACPI_USE_LOCAL_CACHE
+SRCS+=		utcache.c
+.else
+SRCS+=		OsdCache.c
+.endif
 
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h acpi_wakeup.c
@@ -90,3 +113,7 @@ SUBDIR=	acpi_toshiba
 all: ${PROG} ${SUBDIR}
 
 .include <bsd.kmod.mk>
+
+# *.o files compiled from the patched C sources in the subdirectories of
+# ${OBJDIR} are placed right under ${OBJDIR}, not under each subdirectory
+OBJS:=		${OBJS:N*/*}

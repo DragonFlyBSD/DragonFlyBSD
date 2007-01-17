@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.26 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.6 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.7 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -124,7 +124,7 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     case ACPI_DEVICE_CHECK_EXISTENCE:
     case ACPI_POWERSOURCE_STAT_CHANGE:
 	/* Temporarily.  It is better to notify policy manager */
-	AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_acad_get_status, context);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_get_status, context);
 	break;
     default:
 	device_printf(dev, "unknown notify %#x\n", notify);
@@ -180,7 +180,7 @@ acpi_acad_attach(device_t dev)
 			     acpi_acad_notify_handler, dev);
     AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY,
 			     acpi_acad_notify_handler, dev);
-    AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_acad_init_acline, dev);
+    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_init_acline, dev);
 
     return (0);
 }

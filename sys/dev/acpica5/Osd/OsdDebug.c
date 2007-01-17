@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.9 2004/09/02 04:28:05 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.5 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.6 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /*
@@ -60,6 +60,7 @@ AcpiOsGetLine(char *Buffer)
 #endif /* DDB */
 }
 
+#if 0	/* unused for ages */
 void
 AcpiOsDbgAssert(void *FailedAssertion, void *FileName, UINT32 LineNumber,
     char *Message)
@@ -67,6 +68,7 @@ AcpiOsDbgAssert(void *FailedAssertion, void *FileName, UINT32 LineNumber,
     kprintf("ACPI: %s:%d - %s\n", (char *)FileName, LineNumber, Message);
     kprintf("ACPI: assertion  %s\n", (char *)FailedAssertion);
 }
+#endif
 
 ACPI_STATUS
 AcpiOsSignal(UINT32 Function, void *Info)

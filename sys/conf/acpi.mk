@@ -1,7 +1,7 @@
-# $DragonFly: src/sys/conf/acpi.mk,v 1.4 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/conf/acpi.mk,v 1.5 2007/01/17 17:31:19 y0netan1 Exp $
 #
 
-ACPICA_VERSION=		20050309
+ACPICA_VERSION=		20061109
 ACPICA_DIR?=		contrib/dev/acpica-unix-${ACPICA_VERSION}
 OSACPI_MI_DIR?=		dev/acpica5
 OSACPI_MD_DIR?=		machine/${MACHINE}/acpica5

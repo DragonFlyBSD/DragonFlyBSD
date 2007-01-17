@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.10 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.11 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "bus_if.h"
@@ -255,9 +255,11 @@ struct acpi_parse_resource_set {
 		    uint32_t length);
     void	(*set_memoryrange)(device_t dev, void *context, uint32_t low,
 		    uint32_t high, uint32_t length, uint32_t align);
-    void	(*set_irq)(device_t dev, void *context, u_int32_t *irq,
+    void	(*set_irq)(device_t dev, void *context, u_int8_t *irq,
 		    int count, int trig, int pol);
-    void	(*set_drq)(device_t dev, void *context, u_int32_t *drq,
+    void	(*set_ext_irq)(device_t dev, void *context, u_int32_t *irq,
+		    int count, int trig, int pol);
+    void	(*set_drq)(device_t dev, void *context, u_int8_t *drq,
 		    int count);
     void	(*set_start_dependant)(device_t dev, void *context,
 		    int preference);

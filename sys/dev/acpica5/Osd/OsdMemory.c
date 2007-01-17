@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.11 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.5 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.6 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 /*
@@ -46,6 +46,13 @@ struct acpi_memtrack {
     struct acpi_memtrack *next;
     void *base;
     ACPI_SIZE size;
+#if ACPI_DEBUG_MEMMAP
+    int freed;
+    struct {
+	const char *func;
+	int line;
+    } mapper, unmapper;
+#endif
 };
 
 typedef struct acpi_memtrack *acpi_memtrack_t;
@@ -64,40 +71,79 @@ AcpiOsFree(void *Memory)
     kfree(Memory, M_ACPICA);
 }
 
-ACPI_STATUS
-AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length,
-    void **LogicalAddress)
+#if ACPI_DEBUG_MEMMAP
+void *
+_AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length,
+		 const char *caller, int line)
+#else
+void *
+AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
+#endif
 {
     acpi_memtrack_t track;
+    void *map;
 
-    *LogicalAddress = pmap_mapdev((vm_offset_t)PhysicalAddress, Length);
-    if (*LogicalAddress == NULL)
-	return(AE_BAD_ADDRESS);
+    map = pmap_mapdev((vm_offset_t)Where, Length);
+    if (map == NULL)
+	return(NULL);
     else {
-	track = kmalloc(sizeof(struct acpi_memtrack), M_ACPICA, M_INTWAIT);
-	track->next = acpi_mapbase;
-	track->base = *LogicalAddress;
+#if ACPI_DEBUG_MEMMAP
+	for (track = acpi_mapbase; track != NULL; track = track->next) {
+	    if (track->base == map)
+		break;
+	}
+#else
+	track = NULL;
+#endif
+	if (track == NULL) {
+	    track = kmalloc(sizeof(*track), M_ACPICA, M_INTWAIT);
+	    track->next = acpi_mapbase;
+	    track->base = map;
+	}
 	track->size = Length;
+#if ACPI_DEBUG_MEMMAP
+	track->freed = 0;
+	track->mapper.func = caller;
+	track->mapper.line = line;
+	track->unmapper.func = "";
+	track->unmapper.line = 0;
+#endif
 	acpi_mapbase = track;
     }
-    return(AE_OK);
+    return(map);
 }
 
+#if ACPI_DEBUG_MEMMAP
+void
+_AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Length,
+		   const char *caller, int line)
+#else
 void
 AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Length)
+#endif
 {
     struct acpi_memtrack **ptrack;
     acpi_memtrack_t track;
 
 again:
     for (ptrack = &acpi_mapbase; (track = *ptrack); ptrack = &track->next) {
+#if ACPI_DEBUG_MEMMAP
+	if (track->freed)
+	    continue;
+#endif
 	/*
 	 * Exact match, degenerate case
 	 */
 	if (track->base == LogicalAddress && track->size == Length) {
 	    *ptrack = track->next;
 	    pmap_unmapdev((vm_offset_t)track->base, track->size);
+#if ACPI_DEBUG_MEMMAP
+	    track->freed = 1;
+	    track->unmapper.func = caller;
+	    track->unmapper.line = line;
+#else
 	    kfree(track, M_ACPICA);
+#endif
 	    return;
 	}
 	/*
@@ -112,7 +158,13 @@ again:
 		   " large! %p/%08x (actual was %p/%08x)\n",
 		   LogicalAddress, Length,
 		   track->base, track->size);
+#if ACPI_DEBUG_MEMMAP
+	    track->freed = 1;
+	    track->unmapper.func = caller;
+	    track->unmapper.line = line;
+#else
 	    kfree(track, M_ACPICA);
+#endif
 	    goto again;
 	}
 
@@ -130,6 +182,18 @@ again:
     }
     kprintf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08x\n",
 	LogicalAddress, Length);
+#if ACPI_DEBUG_MEMMAP
+    for (track = acpi_mapbase; track != NULL; track = track->next) {
+	if (track->freed && track->base == LogicalAddress) {
+	    kprintf("%s: unmapping: %p/%08x, mapped by %s:%d,"
+		   "last unmapped by %s:%d\n",
+		__func__, LogicalAddress, Length,
+		track->mapper.func, track->mapper.line,
+		track->unmapper.func, track->unmapper.line
+	    );
+	}
+    }
+#endif
 }
 
 ACPI_STATUS
@@ -161,7 +225,8 @@ AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 *Value, UINT32 Width)
 {
     void	*LogicalAddress;
 
-    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK)
+    LogicalAddress = AcpiOsMapMemory(Address, Width / 8);
+    if (LogicalAddress == NULL)
 	return (AE_NOT_EXIST);
 
     switch (Width) {
@@ -192,7 +257,8 @@ AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 Value, UINT32 Width)
 {
     void	*LogicalAddress;
 
-    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK)
+    LogicalAddress = AcpiOsMapMemory(Address, Width / 8);
+    if (LogicalAddress == NULL)
 	return (AE_NOT_EXIST);
 
     switch (Width) {
@@ -215,5 +281,17 @@ AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 Value, UINT32 Width)
 
     AcpiOsUnmapMemory(LogicalAddress, Width / 8);
 
+    return (AE_OK);
+}
+
+ACPI_STATUS
+AcpiOsValidateAddress (UINT8 SpaceId, ACPI_PHYSICAL_ADDRESS Address,
+    ACPI_SIZE Length)
+{
+#if 0
+    if (Address == 0)
+	return (AE_AML_ILLEGAL_ADDRESS);
+    /* XXX */
+#endif
     return (AE_OK);
 }

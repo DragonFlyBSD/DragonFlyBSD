@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.22 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.4 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -183,8 +183,7 @@ acpi_lid_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     sc = (struct acpi_lid_softc *)context;
     switch (notify) {
     case ACPI_NOTIFY_STATUS_CHANGED:
-	AcpiOsQueueForExecution(OSD_PRIORITY_LO,
-				acpi_lid_notify_status_changed, sc);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_lid_notify_status_changed, sc);
 	break;
     default:
 	device_printf(sc->lid_dev, "unknown notify %#x\n", notify);

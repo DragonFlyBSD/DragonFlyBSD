@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.13 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -320,8 +320,8 @@ acpi_machdep_init(device_t dev)
 	acpi_install_wakeup_handler(sc);
 
 	if (intr_model == ACPI_INTR_PIC)
-		BUS_CONFIG_INTR(dev, AcpiGbl_FADT->SciInt, INTR_TRIGGER_LEVEL,
-		    INTR_POLARITY_LOW);
+		BUS_CONFIG_INTR(dev, AcpiGbl_FADT.SciInterrupt,
+		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	else
 		acpi_SetIntrModel(intr_model);
 
