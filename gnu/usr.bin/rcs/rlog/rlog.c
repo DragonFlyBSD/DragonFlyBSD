@@ -29,7 +29,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/rlog/rlog.c,v 1.13 1999/08/27 23:36:59 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/rlog/rlog.c,v 1.2 2003/06/17 04:25:48 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/rlog/rlog.c,v 1.3 2007/01/17 17:56:24 y0netan1 Exp $
  *
  * Revision 5.18  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -221,7 +221,7 @@ static struct rcslockers *lockerlist;
 static struct stateattri *statelist;
 
 
-mainProg(rlogId, "rlog", "$DragonFly: src/gnu/usr.bin/rcs/rlog/rlog.c,v 1.2 2003/06/17 04:25:48 dillon Exp $")
+mainProg(rlogId, "rlog", "$DragonFly: src/gnu/usr.bin/rcs/rlog/rlog.c,v 1.3 2007/01/17 17:56:24 y0netan1 Exp $")
 {
 	static char const cmdusage[] =
 		"\nrlog usage: rlog -{bhLNRt} -v[string] -ddates -l[lockers] -r[revs] -sstates -Vn -w[logins] -xsuff -zzone file ...";
@@ -607,6 +607,10 @@ putadelta(node,editscript,trunk)
            else
 	      aprintf(out, insDelFormat,
                              editscript->insertlns, editscript->deletelns);
+
+	if ( node->commitid )
+	   aprintf(out, "%s commitid: %s", (editscript) ? ";" : "",
+		   node->commitid);
 
         newbranch = node->branches;
         if ( newbranch ) {

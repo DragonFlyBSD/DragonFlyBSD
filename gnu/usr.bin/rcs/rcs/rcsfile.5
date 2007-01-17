@@ -6,7 +6,7 @@
 .ds Dt \\$4
 ..
 .Id $FreeBSD: src/gnu/usr.bin/rcs/rcs/rcsfile.5,v 1.5.2.1 2001/07/22 11:01:34 dd Exp $
-.Id $DragonFly: src/gnu/usr.bin/rcs/rcs/rcsfile.5,v 1.2 2003/06/17 04:25:47 dillon Exp $
+.Id $DragonFly: src/gnu/usr.bin/rcs/rcs/rcsfile.5,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
 .ds r \s-1RCS\s0
 .if n .ds - \%--
 .if t .ds - \(em
@@ -70,6 +70,7 @@ nonterminal symbols are in
 		\f3state\fP	{\f2id\fP}\f3;\fP
 		\f3branches\fP	{\f2num\fP}*\f3;\fP
 		\f3next\fP	{\f2num\fP}\f3;\fP
+		{ \f3commitid\fP \f2id\fP\f3;\fP }
 		{ \f2newphrase\fP }*
 .LP
 \f2desc\fP	::=	\f3desc\fP	\f2string\fP
@@ -127,6 +128,18 @@ contains just the last two digits of the year
 for years from 1900 through 1999,
 and all the digits of years thereafter.
 Dates use the Gregorian calendar; times use UTC.
+.PP
+The
+.I commitid
+is followed by an
+.I id
+token. This token is intended to be unique across
+multiple files and is used to help group files as
+being a part of the same logical commit.
+This token must uniquely identify the commit
+operation that was applied to a set of RCS files.
+In particular, it must be unique among all the
+commitids in this file.
 .PP
 The
 .I newphrase

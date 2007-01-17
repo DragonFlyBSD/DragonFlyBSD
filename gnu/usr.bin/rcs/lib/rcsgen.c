@@ -29,7 +29,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsgen.c,v 1.7 1999/08/27 23:36:46 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsgen.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsgen.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
  *
  * Revision 5.16  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -143,7 +143,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(genId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsgen.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
+libId(genId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsgen.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $")
 
 int interactiveflag;  /* Should we act as if stdin is a tty?  */
 struct buf curlogbuf;  /* buffer for current log message */
@@ -549,6 +549,10 @@ putdelta(node, fout)
 
 	aprintf(fout, ";\n%s\t%s;\n", Knext, node->next?node->next->num:"");
 	awrite(node->ig.string, node->ig.size, fout);
+#ifdef RCS_EMIT_COMMITID
+	if (node->commitid)
+		aprintf(fout, "%s\t%s;\n", Kcommitid, node->commitid);
+#endif
 }
 
 

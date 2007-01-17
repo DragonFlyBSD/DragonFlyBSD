@@ -1,6 +1,6 @@
 /* RCS common definitions and data structures */
 
-#define RCSBASE "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.2 2003/06/17 04:25:47 dillon Exp $"
+#define RCSBASE "$DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $"
 
 /* Copyright 1982, 1988, 1989 Walter Tichy
    Copyright 1990, 1991, 1992, 1993, 1994, 1995 Paul Eggert
@@ -31,7 +31,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.10 1999/08/27 23:36:44 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsbase.h,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
  *
  * Revision 5.20  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -224,6 +224,11 @@ Report problems and direct all questions to:
                               /* 1 sets the default locking to strict;      */
                               /* used in production environments.           */
 
+/* base64_encode(128 random bits) needs 24 bytes + 1 for NUL */
+/* time_t may be 64bits on some machines needs 16 bytes + 1 as hex */
+#define commitidsize	   64 /* time+1+base64(128bits)+1 | pid+time+rand+1 */
+#define urandom_dev "/dev/urandom"
+
 #define yearlength	   16 /* (good through AD 9,999,999,999,999,999)    */
 #define datesize (yearlength+16)	/* size of output of time2date */
 #define RCSTMPPREFIX '_' /* prefix for temp files in working dir  */
@@ -360,6 +365,7 @@ struct hshentry {
 	char const	  * lockedby; /* who locks the revision		    */
 	char const	  * state;    /* state of revision (Exp by default) */
 	char const	  * name;     /* name (if any) by which retrieved   */
+	char const        * commitid; /* text string to associate commits   */
 	struct cbuf	    log;      /* log message requested at checkin   */
         struct branchhead * branches; /* list of first revisions on branches*/
 	struct cbuf	    ig;	      /* ignored phrases in admin part	    */
@@ -670,6 +676,7 @@ extern int               TotalDeltas;
 extern char const *const expand_names[];
 extern char const
 	Kaccess[], Kauthor[], Kbranch[], Kcomment[],
+	Kcommitid[],
 	Kdate[], Kdesc[], Kexpand[], Khead[], Klocks[], Klog[],
 	Knext[], Kstate[], Kstrict[], Ksymbols[], Ktext[];
 void unexpected_EOF P((void)) exiting;

@@ -37,7 +37,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.7 1999/08/27 23:36:48 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
  *
  * Revision 5.15  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -156,7 +156,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(synId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
+libId(synId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $")
 
 static char const *getkeyval P((char const*,enum tokens,int));
 static int getdelta P((void));
@@ -173,6 +173,7 @@ char const
 	Kauthor[]   = "author",
 	Kbranch[]   = "branch",
 	Kcomment[]  = "comment",
+	Kcommitid[] = "commitid",
 	Kdate[]     = "date",
 	Kdesc[]     = "desc",
 	Kexpand[]   = "expand",
@@ -435,6 +436,13 @@ getdelta()
 	Delta->lockedby = 0;
 	Delta->log.string = 0;
 	Delta->selector = true;
+
+	if (getkeyopt(Kcommitid)) {
+		Delta->commitid = NextString;
+		nextlex();
+		getsemi(Kcommitid);
+        }
+
 	Delta->ig = getphrases(Kdesc);
         TotalDeltas++;
         return (true);

@@ -29,7 +29,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/ci/ci.c,v 1.7 1999/08/27 23:36:38 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
  *
  * Revision 5.30  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -264,6 +264,10 @@ static void cleanup P((void));
 static void incnum P((char const*,struct buf*));
 static void addassoclst P((int,char const*));
 
+enum {RANDOM_BYTES = 8};
+enum {COMMITID_RAW_SIZE = (sizeof(time_t) + RANDOM_BYTES)};
+static void convert P((char const input[COMMITID_RAW_SIZE], char *output));
+
 static FILE *exfile;
 static RILE *workptr;			/* working file pointer		*/
 static struct buf newdelnum;		/* new revision number		*/
@@ -277,7 +281,7 @@ static struct hshentry newdelta;	/* new delta to be inserted	*/
 static struct stat workstat;
 static struct Symrev *assoclst, **nextassoc;
 
-mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 04:25:47 dillon Exp $")
+mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $")
 {
 	static char const cmdusage[] =
 		"\nci usage: ci -{fIklMqru}[rev] -d[date] -mmsg -{nN}name -sstate -ttext -T -Vn -wwho -xsuff -zzone file ...";
@@ -287,6 +291,7 @@ mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 0
 	char olddate[datesize];
 	char newdatebuf[datesize + zonelenmax];
 	char targetdatebuf[datesize + zonelenmax];
+	char commitid[commitidsize];
 	char *a, **newargv, *textfile;
 	char const *author, *krev, *rev, *state;
 	char const *diffname, *expname;
@@ -310,6 +315,45 @@ mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 0
 	usestatdate=false;
 	suffixes = X_DEFAULT;
 	nextassoc = &assoclst;
+
+	{
+		char buf[COMMITID_RAW_SIZE] = { 0, };
+		ssize_t len = 0;
+		time_t rightnow = time (NULL);
+		char *startrand = buf + sizeof (time_t);
+		unsigned char *p = (unsigned char *) startrand;
+		size_t randbytes = RANDOM_BYTES;
+		int flags = O_RDONLY;
+		int fd;
+#ifdef O_NOCTTY
+		flags |= O_NOCTTY;
+#endif
+		if (rightnow != (time_t)-1)
+			while (rightnow > 0) {
+				*--p = rightnow % (UCHAR_MAX + 1);
+				rightnow /= UCHAR_MAX + 1;
+			}
+		else {
+			/* try to use more random data */
+			randbytes = COMMITID_RAW_SIZE;
+			startrand = buf;
+		}
+		fd = open (urandom_dev, flags);
+		if (fd >= 0) {
+			len = read (fd, startrand, randbytes);
+			close (fd);
+		}
+		if (len <= 0) {
+			/* no random data was available so use pid */
+			long int pid = (long int)getpid ();
+			p = (unsigned char *) (startrand + sizeof (pid));
+			while (pid > 0) {
+			    *--p = pid % (UCHAR_MAX + 1);
+			    pid /= UCHAR_MAX + 1;
+			}
+		}
+		convert(buf, commitid);
+	}
 
 	argc = getRCSINIT(argc, argv, &newargv);
 	argv = newargv;
@@ -534,6 +578,8 @@ mainProg(ciId, "ci", "$DragonFly: src/gnu/usr.bin/rcs/ci/ci.c,v 1.2 2003/06/17 0
 	newdelta.name = 0;
 	clear_buf(&newdelta.ig);
 	clear_buf(&newdelta.igtext);
+	/* set commitid */
+	newdelta.commitid = commitid;
 	/* set author */
 	if (author)
 		newdelta.author=author;     /* set author given by -w         */
@@ -1318,4 +1364,39 @@ addassoclst(flag, sp)
 	pt->nextsym = 0;
 	*nextassoc = pt;
 	nextassoc = &pt->nextsym;
+}
+
+static char const alphabet[62] =
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/* Divide BUF by D, returning the remainder.  Replace BUF by the
+   quotient.  BUF[0] is the most significant part of BUF.
+   D must not exceed UINT_MAX >> CHAR_BIT.  */
+static unsigned int
+divide_by (unsigned char buf[COMMITID_RAW_SIZE], unsigned int d)
+{
+  unsigned int carry = 0;
+  int i;
+  for (i = 0; i < COMMITID_RAW_SIZE; i++)
+    {
+      unsigned int byte = buf[i];
+      unsigned int dividend = (carry << CHAR_BIT) + byte;
+      buf[i] = dividend / d;
+      carry = dividend % d;
+    }
+  return carry;
+}
+
+static void
+convert (char const input[COMMITID_RAW_SIZE], char *output)
+{
+  static char const zero[COMMITID_RAW_SIZE] = { 0, };
+  unsigned char buf[COMMITID_RAW_SIZE];
+  size_t o = 0;
+  memcpy (buf, input, COMMITID_RAW_SIZE);
+  while (memcmp (buf, zero, COMMITID_RAW_SIZE) != 0)
+    output[o++] = alphabet[divide_by (buf, sizeof alphabet)];
+  if (! o)
+    output[o++] = '0';
+  output[o] = '\0';
 }
