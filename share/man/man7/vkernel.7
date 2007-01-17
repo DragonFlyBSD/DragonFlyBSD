@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.2 2007/01/14 10:43:32 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.3 2007/01/17 08:44:32 swildner Exp $
 .\"
-.Dd January 14, 2007
+.Dd January 17, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -44,9 +44,9 @@
 .Pp
 .Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
 .Op Fl sv
-.Op Fl e Ar environment
+.Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .\".Op Fl i Ar file
-.\".Op Fl I Ar interface
+.Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
 .Op Fl m Ar size
 .Op Fl r Ar file
 .Sh DESCRIPTION
@@ -58,21 +58,57 @@ kernels in userland.
 .Pp
 The following options are available:
 .Bl -tag -width ".Fl m Ar size"
-.It Fl e Ar environment
-Specify an
-.Ar environment
-to be used by the kernel.
-The argument is a string of the form
-.Li name=value:name=value:...
+.It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
+Specify an environment to be used by the kernel.
 .\".It Fl i Ar file
 .\"Specify a memory image
 .\".Ar file
 .\"to be used by the kernel.
-.\".It Fl I Ar interface
-.\"Specify the host system's network interface to be used by the virtual kernel.
-.\"This is usually a
-.\".Xr tap 4
-.\"interface.
+.It Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
+Create a virtual network device, with the first
+.Fl I
+option defining
+.Dq Li vke0 ,
+the second one
+.Dq Li vke1 ,
+and so on.
+.Pp
+The
+.Ar interface
+argument is the name of a
+.Xr tap 4
+device node.
+The
+.Pa /dev/
+path prefix does not have to be specified and will be automatically prepended.
+Specifying
+.Cm auto
+will pick the first unused
+.Xr tap 4
+device.
+.Pp
+The
+.Ar address1
+and
+.Ar address2
+arguments are the IP addresses of the
+.Xr tap 4
+and
+.Xr vke 4
+interfaces.
+Optionally,
+.Ar address1
+may be of the form
+.Li bridge Ns Em X
+in which case the
+.Xr tap 4
+interface is added to the specified
+.Xr bridge 4
+interface.
+.Pp
+The
+.Ar netmask
+argument applies to all interfaces for which an address is specified.
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
@@ -81,7 +117,7 @@ Specify the amount of memory to be used by the kernel in bytes,
 (megabytes) or
 .Cm G
 (gigabytes).
-Lowercase version of
+Lowercase versions of
 .Cm K , M ,
 and
 .Cm G
@@ -144,7 +180,7 @@ kernel configuration file residing in
 (or a configuration file derived thereof):
 .Bd -literal
 cd /usr/src
-make buildkernel KERNCONF=VKERNEL
+make -DNO_MODULES buildkernel KERNCONF=VKERNEL
 .Ed
 .Ss Enabling virtual kernel operation
 A special
@@ -156,25 +192,38 @@ operation:
 .Bd -literal
 sysctl vm.vkernel_enable=1
 .Ed
+.Ss Configuring the network on the host system
+In order to access a network interface of the host system from the
+.Nm ,
+you must add the interface to a
+.Xr bridge 4
+device which will then be passed to the
+.Fl I
+option:
+.Bd -literal
+kldload if_bridge.ko
+kldload if_tap.ko
+ifconfig bridge0 create
+ifconfig bridge0 addm re0	# assuming re0 is the host's interface
+ifconfig bridge0 up
+.Ed
 .Ss Running the kernel
 Finally, the virtual kernel can be run:
 .Bd -literal
 cd /usr/obj/usr/src/sys/VKERNEL
-\&./kernel.debug -m 64m -r /var/vkernel/rootimg.01
+\&./kernel.debug -m 64m -r /var/vkernel/rootimg.01 -I auto:bridge0
 .Ed
 .Pp
 The
 .Xr reboot 8
 command can be used to stop a virtual kernel.
-.\".Ss Setting up the network in the host system
-.\".Bd -literal
-.\"XXX
-.\".Ed
 .Sh SEE ALSO
-.\".Xr tap 4 ,
+.Xr bridge 4 ,
+.Xr tap 4 ,
 .Xr vn 4 ,
 .Xr build 7 ,
 .Xr disklabel 8 ,
+.Xr ifconfig 8 ,
 .Xr vnconfig 8
 .Sh HISTORY
 Virtual kernels were introduced in
@@ -187,5 +236,3 @@ thought up and implemented the
 architecture.
 This manual page was written by
 .An Sascha Wildner .
-.Sh BUGS
-Virtual kernels are not yet fully operational.
