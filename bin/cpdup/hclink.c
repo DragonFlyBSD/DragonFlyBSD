@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.3 2006/08/18 01:13:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.4 2007/01/17 02:34:10 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,7 @@ hcc_connect(struct HostConf *hc)
 	dup2(fdout[0], 0);
 	close(fdout[0]);
 	close(fdout[1]);
-	execl("/usr/bin/ssh", "ssh", "-T", hc->host, "cpdup", "-S", NULL);
+	execl("/usr/bin/ssh", "ssh", "-T", hc->host, "cpdup", "-S", (char *) NULL);
 	_exit(1);
     } else if (hc->pid < 0) {
 	return(-1);
