@@ -36,7 +36,7 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.16 2007/01/01 19:45:54 victor Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.17 2007/01/18 12:34:46 victor Exp $
  */
 
 
@@ -59,6 +59,7 @@
 #include <netinet6/in6_var.h>
 
 static struct prison	*prison_find(int);
+static void		prison_ipcache_init(struct prison *);
 
 MALLOC_DEFINE(M_PRISON, "prison", "Prison structures");
 
@@ -195,6 +196,7 @@ sys_jail(struct jail_args *uap)
 	cache_copy(&nd.nl_nch, &pr->pr_root);
 
 	varsymset_init(&pr->pr_varsymset, NULL);
+	prison_ipcache_init(pr);
 
 	tryprid = lastprid + 1;
 	if (tryprid == JAIL_MAX)
@@ -255,6 +257,45 @@ sys_jail_attach(struct jail_attach_args *uap)
 	return(kern_jail_attach(uap->jid));
 }
 
+static void
+prison_ipcache_init(struct prison *pr)
+{
+	struct jail_ip_storage *jis;
+	struct sockaddr_in *ip4;
+	struct sockaddr_in6 *ip6;
+
+	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
+		switch (jis->ip.ss_family) {
+		case AF_INET:
+			ip4 = (struct sockaddr_in *)&jis->ip;
+			if ((ntohl(ip4->sin_addr.s_addr) >> IN_CLASSA_NSHIFT) ==
+			    IN_LOOPBACKNET) {
+				/* loopback address */
+				if (pr->local_ip4 == NULL)
+					pr->local_ip4 = ip4;
+			} else {
+				/* public address */
+				if (pr->nonlocal_ip4 == NULL)
+					pr->nonlocal_ip4 = ip4;
+			}
+			break;
+
+		case AF_INET6:
+			ip6 = (struct sockaddr_in6 *)&jis->ip;
+			if (IN6_IS_ADDR_LOOPBACK(&ip6->sin6_addr)) {
+				/* loopback address */
+				if (pr->local_ip6 == NULL)
+					pr->local_ip6 = ip6;
+			} else {
+				/* public address */
+				if (pr->nonlocal_ip6 == NULL)
+					pr->nonlocal_ip6 = ip6;
+			}
+			break;
+		}
+	}
+}
+
 /* 
  * Changes INADDR_LOOPBACK for a valid jail address.
  * ip is in network byte order.
@@ -284,7 +325,8 @@ prison_replace_wildcards(struct thread *td, struct sockaddr *ip)
 	    ip4->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) ||
 	    (ip->sa_family == AF_INET6 &&
 	    IN6_IS_ADDR_LOOPBACK(&ip6->sin6_addr))) {
-		if (!prison_get_local(pr, ip) && !prison_get_nonlocal(pr, ip))
+		if (!prison_get_local(pr, ip->sa_family, ip) &&
+		    !prison_get_nonlocal(pr, ip->sa_family, ip))
 			return(0);
 		else
 			return(1);
@@ -309,7 +351,8 @@ prison_remote_ip(struct thread *td, struct sockaddr *ip)
 	    ip4->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) ||
 	    (ip->sa_family == AF_INET6 &&
 	    IN6_IS_ADDR_LOOPBACK(&ip6->sin6_addr))) {
-		if (!prison_get_local(pr, ip) && !prison_get_nonlocal(pr, ip))
+		if (!prison_get_local(pr, ip->sa_family, ip) &&
+		    !prison_get_nonlocal(pr, ip->sa_family, ip))
 			return(0);
 		else
 			return(1);
@@ -319,135 +362,68 @@ prison_remote_ip(struct thread *td, struct sockaddr *ip)
 
 /*
  * Prison get non loopback ip:
- * Put on *ip the first IP address that is not a loopback address.
- * af is the address family of the ip we want (AF_INET|AF_INET6).
+ * - af is the address family of the ip we want (AF_INET|AF_INET6).
+ * - If ip != NULL, put the first IP address that is not a loopback address
+ *   into *ip.
+ *
  * ip is in network by order and we don't touch it unless we find a valid ip.
- * Return 1 if we've found a non loopback ip, else return 0.
+ * No matter if ip == NULL or not, we return either a valid struct sockaddr *,
+ * or NULL.  This struct may not be modified.
  */
-int
-prison_get_nonlocal(struct prison *pr, struct sockaddr *ip)
+struct sockaddr *
+prison_get_nonlocal(struct prison *pr, sa_family_t af, struct sockaddr *ip)
 {
-	struct jail_ip_storage *jis;
-	struct sockaddr_in *jip4, *ip4;
-	struct sockaddr_in6 *jip6, *ip6;
+	struct sockaddr_in *ip4 = (struct sockaddr_in *)ip;
+	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
 
-	ip4 = (struct sockaddr_in *)ip;
-	ip6 = (struct sockaddr_in6 *)ip;
 	/* Check if it is cached */
-	switch(ip->sa_family) {
-		case AF_INET:
-			/* -1 Means that we don't have any address */
-			if (pr->nonlocal_ip4 == (struct sockaddr_storage *)-1)
-				return(0);
-			if (pr->nonlocal_ip4 != NULL) {
-				jip4 = (struct sockaddr_in *) pr->nonlocal_ip4;
-				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
-			}
-		break;
-		case AF_INET6:
-			/* -1 Means that we don't have any address */
-			if (pr->nonlocal_ip6 == (struct sockaddr_storage *)-1)
-				return(0);
-			if (pr->nonlocal_ip6 != NULL) {
-				jip6 = (struct sockaddr_in6 *) pr->nonlocal_ip6;
-				ip6->sin6_addr = jip6->sin6_addr;
-			}
-		break;
-	};
-	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
-		switch (ip->sa_family) {
-		case AF_INET:
-			jip4 = (struct sockaddr_in *) &jis->ip;
-			if (jip4->sin_family == AF_INET &&
-    ((ntohl(jip4->sin_addr.s_addr) >> IN_CLASSA_NSHIFT) != IN_LOOPBACKNET)) {
-				pr->nonlocal_ip4 = &jis->ip;
-				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
-				return(1);
-			}
-			break;
-		case AF_INET6:
-			jip6 = (struct sockaddr_in6 *) &jis->ip;
-			if ( jip6->sin6_family == AF_INET6 &&
-			     !IN6_IS_ADDR_LOOPBACK(&jip6->sin6_addr)) {
-				pr->nonlocal_ip6 = &jis->ip;
-				ip6->sin6_addr = jip6->sin6_addr;
-				return(1);
-			}
-			break;
-		}
+	switch(af) {
+	case AF_INET:
+		if (ip4 != NULL && pr->nonlocal_ip4 != NULL)
+			ip4->sin_addr.s_addr = pr->nonlocal_ip4->sin_addr.s_addr;
+		return (struct sockaddr *)pr->nonlocal_ip4;
+
+	case AF_INET6:
+		if (ip6 != NULL && pr->nonlocal_ip6 != NULL)
+			ip6->sin6_addr = pr->nonlocal_ip6->sin6_addr;
+		return (struct sockaddr *)pr->nonlocal_ip6;
 	}
-	if (ip->sa_family == AF_INET)
-		pr->nonlocal_ip4 = (struct sockaddr_storage *)-1;
-	else
-		pr->nonlocal_ip6 = (struct sockaddr_storage *)-1;
-	return(0);
+
+	/* NOTREACHED */
+	return NULL;
 }
 
 /*
  * Prison get loopback ip.
- * Put on *ip the first loopback IP address.
- * af is the address family of the ip we want (AF_INET|PF_INET).
- * *ip is in network by order and we don't touch it unless we find a valid ip.
- * return 1 if we've found a loopback ip, else return 0.
+ * - af is the address family of the ip we want (AF_INET|AF_INET6).
+ * - If ip != NULL, put the first IP address that is not a loopback address
+ *   into *ip.
+ *
+ * ip is in network by order and we don't touch it unless we find a valid ip.
+ * No matter if ip == NULL or not, we return either a valid struct sockaddr *,
+ * or NULL.  This struct may not be modified.
  */
-int
-prison_get_local(struct prison *pr, struct sockaddr *ip)
+struct sockaddr *
+prison_get_local(struct prison *pr, sa_family_t af, struct sockaddr *ip)
 {
-	struct jail_ip_storage *jis;
-	struct sockaddr_in *jip4, *ip4;
-	struct sockaddr_in6 *jip6, *ip6;
+	struct sockaddr_in *ip4 = (struct sockaddr_in *)ip;
+	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
 
-	ip4 = (struct sockaddr_in *)ip;
-	ip6 = (struct sockaddr_in6 *)ip;
 	/* Check if it is cached */
-	switch(ip->sa_family) {
-		case AF_INET:
-			/* -1 Means that we don't have any address */
-			if (pr->local_ip4 == (struct sockaddr_storage *)-1)
-				return(0);
-			if (pr->local_ip4 != NULL) {
-				jip4 = (struct sockaddr_in *) pr->local_ip4;
-				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
-			}
-		break;
-		case AF_INET6:
-			/* -1 Means that we don't have any address */
-			if (pr->local_ip6 == (struct sockaddr_storage *)-1)
-				return(0);
-			if (pr->local_ip6 != NULL) {
-				jip6 = (struct sockaddr_in6 *) pr->local_ip6;
-				ip6->sin6_addr = jip6->sin6_addr;
-			}
-		break;
-	};
-	SLIST_FOREACH(jis, &pr->pr_ips, entries) {
-		switch(ip->sa_family) {
-		case AF_INET:
-			jip4 = (struct sockaddr_in *) &jis->ip;
-			if (jip4->sin_family == AF_INET &&
-			    ((ntohl(jip4->sin_addr.s_addr) >> IN_CLASSA_NSHIFT)
-			    == IN_LOOPBACKNET)) {
-				pr->local_ip4 = &jis->ip;
-				ip4->sin_addr.s_addr = jip4->sin_addr.s_addr;
-				return(1);
-			}
-			break;
-		case AF_INET6:
-			jip6 = (struct sockaddr_in6 *) &jis->ip;
-			if (jip6->sin6_family == AF_INET6 &&
-			     IN6_IS_ADDR_LOOPBACK(&jip6->sin6_addr)) {
-				pr->local_ip6 = &jis->ip;
-				ip6->sin6_addr = jip6->sin6_addr;
-				return(1);
-			}
-			break;
-		}
+	switch(af) {
+	case AF_INET:
+		if (ip4 != NULL && pr->local_ip4 != NULL)
+			ip4->sin_addr.s_addr = pr->local_ip4->sin_addr.s_addr;
+		return (struct sockaddr *)pr->local_ip4;
+
+	case AF_INET6:
+		if (ip6 != NULL && pr->local_ip6 != NULL)
+			ip6->sin6_addr = pr->local_ip6->sin6_addr;
+		return (struct sockaddr *)pr->local_ip6;
 	}
-	if (ip->sa_family == AF_INET)
-		pr->local_ip4 = (struct sockaddr_storage *)-1;
-	else
-		pr->local_ip6 = (struct sockaddr_storage *)-1;
-	return(0);
+
+	/* NOTREACHED */
+	return NULL;
 }
 
 /* Check if the IP is among ours, if it is return 1, else 0 */

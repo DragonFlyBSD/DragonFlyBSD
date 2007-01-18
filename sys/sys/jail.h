@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.9 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.10 2007/01/18 12:34:46 victor Exp $
  *
  */
 
@@ -68,8 +68,8 @@ MALLOC_DECLARE(M_PRISON);
 /* Used to store the IPs of the jail */
 
 struct jail_ip_storage {
-	SLIST_ENTRY(jail_ip_storage) entries;
 	struct sockaddr_storage ip;
+	SLIST_ENTRY(jail_ip_storage) entries;
 };
 
 /*
@@ -85,10 +85,10 @@ struct prison {
 	struct nchandle pr_root;			/* namecache entry of root */
 	char 		pr_host[MAXHOSTNAMELEN];	/* host name */
 	SLIST_HEAD(iplist, jail_ip_storage) pr_ips;	/* list of IP addresses */
-	struct sockaddr_storage	*local_ip4;		/* cache for a loopback ipv4 address */
-	struct sockaddr_storage	*nonlocal_ip4;		/* cache for a non loopback ipv4 address */
-	struct sockaddr_storage	*local_ip6;		/* cache for a loopback ipv6 address */
-	struct sockaddr_storage	*nonlocal_ip6;		/* cache for a non loopback ipv6 address */
+	struct sockaddr_in	*local_ip4;		/* cache for a loopback ipv4 address */
+	struct sockaddr_in	*nonlocal_ip4;		/* cache for a non loopback ipv4 address */
+	struct sockaddr_in6	*local_ip6;		/* cache for a loopback ipv6 address */
+	struct sockaddr_in6	*nonlocal_ip6;		/* cache for a non loopback ipv6 address */
 	void		*pr_linux;			/* Linux ABI emulation */
 	int		 pr_securelevel;		/* jail securelevel */
 	struct varsymset pr_varsymset;			/* jail varsyms */
@@ -105,8 +105,10 @@ extern int	jail_chflags_allowed;
 void	prison_hold(struct prison *);
 void	prison_free(struct prison *);
 int	jailed_ip(struct prison *, struct sockaddr *);
-int	prison_get_local(struct prison *pr, struct sockaddr *);
-int	prison_get_nonlocal(struct prison *pr, struct sockaddr *);
+struct sockaddr *
+	prison_get_local(struct prison *pr, sa_family_t, struct sockaddr *);
+struct sockaddr *
+	prison_get_nonlocal(struct prison *pr, sa_family_t, struct sockaddr *);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.

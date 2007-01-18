@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.41 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.42 2007/01/18 12:34:46 victor Exp $
  */
 
 #include "opt_ipsec.h"
@@ -457,7 +457,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 	struct in_ifaddr *ia;
 	struct ucred *cred = NULL;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-	struct sockaddr_in jsin;
+	struct sockaddr *jsin;
 	int jailed = 0;
 
 	if (nam->sa_len != sizeof *sin)
@@ -579,14 +579,13 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		 * Don't do pcblookup call here; return interface in plocal_sin
 		 * and exit to caller, that will do the lookup.
 		 */
-		if (jailed) {
-			jsin.sin_family = AF_INET;
-			if (!prison_get_nonlocal(cred->cr_prison,
-			    sintosa(&jsin)) &&
-			    !prison_get_local(cred->cr_prison, sintosa(&jsin)))
-					/* IPv6 only Jail */
-					return (EADDRNOTAVAIL);
-			*plocal_sin = &jsin;
+		if (ia == NULL && jailed) {
+			if ((jsin = prison_get_nonlocal(cred->cr_prison, AF_INET, NULL)) != NULL ||
+			    (jsin = prison_get_local(cred->cr_prison, AF_INET, NULL)) != NULL)
+				*plocal_sin = satosin(jsin);
+			else
+				/* IPv6 only Jail */
+				return (EADDRNOTAVAIL);
 		} else {
 			*plocal_sin = &ia->ia_addr;
 		}
