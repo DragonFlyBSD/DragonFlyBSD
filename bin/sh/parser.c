@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.58 2006/11/05 18:36:05 stefanf Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.11 2007/01/14 17:29:58 pavalos Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.12 2007/01/18 17:03:18 corecode Exp $
  */
 
 #include <stdlib.h>
@@ -88,7 +88,12 @@ STATIC int needprompt;		/* true if interactive and at start of line */
 STATIC int lasttoken;		/* last token read */
 MKINIT int tokpushback;		/* last token pushed back */
 STATIC char *wordtext;		/* text of last word returned by readtoken */
-MKINIT int checkkwd;            /* 1 == check for kwds, 2 == also eat newlines */
+/*
+ * 1 == check for kwds
+ * 2 == also eat newlines
+ * 3 == check for TNOT
+ */
+MKINIT int checkkwd;
 STATIC struct nodelist *backquotelist;
 STATIC union node *redirnode;
 STATIC struct heredoc *heredoc;
@@ -250,9 +255,12 @@ pipeline(void)
 
 	negate = 0;
 	TRACE(("pipeline: entered\n"));
+
+	checkkwd = 3;
 	while (readtoken() == TNOT)
 		negate = !negate;
 	tokpushback++;
+
 	n1 = command();
 	if (readtoken() == TPIPE) {
 		pipenode = (union node *)stalloc(sizeof (struct npipe));
@@ -262,10 +270,24 @@ pipeline(void)
 		pipenode->npipe.cmdlist = lp;
 		lp->n = n1;
 		do {
+			int innernegate = 0;
+
+			checkkwd = 3;
+			while (readtoken() == TNOT)
+				innernegate = !innernegate;
+			tokpushback++;
+
 			prev = lp;
 			lp = (struct nodelist *)stalloc(sizeof (struct nodelist));
 			lp->n = command();
 			prev->next = lp;
+
+			if (innernegate) {
+				n2 = (union node *)stalloc(sizeof (struct nnot));
+				n2->type = NNOT;
+				n2->nnot.com = lp->n;
+				lp->n = n2;
+			}
 		} while (readtoken() == TPIPE);
 		lp->next = NULL;
 		n1 = pipenode;
@@ -289,7 +311,7 @@ command(void)
 	union node *ap, **app;
 	union node *cp, **cpp;
 	union node *redir, **rpp;
-	int t, negate = 0;
+	int t;
 
 	checkkwd = 2;
 	redir = NULL;
@@ -301,12 +323,6 @@ command(void)
 		*rpp = n2 = redirnode;
 		rpp = &n2->nfile.next;
 		parsefname();
-	}
-	tokpushback++;
-
-	while (readtoken() == TNOT) {
-		TRACE(("command: TNOT recognized\n"));
-		negate = !negate;
 	}
 	tokpushback++;
 
@@ -486,8 +502,7 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 	case TWORD:
 	case TRP:
 		tokpushback++;
-		n1 = simplecmd(rpp, redir);
-		goto checkneg;
+		return simplecmd(rpp, redir);
 	default:
 		synexpect(-1);
 	}
@@ -509,16 +524,7 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 		}
 		n1->nredir.redirect = redir;
 	}
-
-checkneg:
-	if (negate) {
-		n2 = (union node *)stalloc(sizeof (struct nnot));
-		n2->type = NNOT;
-		n2->nnot.com = n1;
-		return n2;
-	}
-	else
-		return n1;
+	return n1;
 }
 
 
@@ -527,8 +533,7 @@ simplecmd(union node **rpp, union node *redir)
 {
 	union node *args, **app;
 	union node **orig_rpp = rpp;
-	union node *n = NULL, *n2;
-	int negate = 0;
+	union node *n = NULL;
 
 	/* If we don't have any redirections already, then we must reset */
 	/* rpp to be the address of the local redir variable.  */
@@ -543,12 +548,6 @@ simplecmd(union node **rpp, union node *redir)
 	 * the function name and the open parenthesis.
 	 */
 	orig_rpp = rpp;
-
-	while (readtoken() == TNOT) {
-		TRACE(("command: TNOT recognized\n"));
-		negate = !negate;
-	}
-	tokpushback++;
 
 	for (;;) {
 		if (readtoken() == TWORD) {
@@ -573,7 +572,7 @@ simplecmd(union node **rpp, union node *redir)
 #endif
 			n->type = NDEFUN;
 			n->narg.next = command();
-			goto checkneg;
+			return n;
 		} else {
 			tokpushback++;
 			break;
@@ -586,16 +585,7 @@ simplecmd(union node **rpp, union node *redir)
 	n->ncmd.backgnd = 0;
 	n->ncmd.args = args;
 	n->ncmd.redirect = redir;
-
-checkneg:
-	if (negate) {
-		n2 = (union node *)stalloc(sizeof (struct nnot));
-		n2->type = NNOT;
-		n2->nnot.com = n;
-		return n2;
-	}
-	else
-		return n;
+	return n;
 }
 
 STATIC union node *
@@ -725,7 +715,7 @@ readtoken(void)
 		/*
 		 * eat newlines
 		 */
-		if (checkkwd == 2) {
+		if (checkkwd > 1) {
 			checkkwd = 0;
 			while (t == TNL) {
 				parseheredoc();
@@ -756,7 +746,7 @@ readtoken(void)
 			}
 		}
 out:
-		checkkwd = (t == TNOT) ? savecheckkwd : 0;
+		checkkwd = 0;
 	}
 #ifdef DEBUG
 	if (!alreadyseen)
@@ -849,6 +839,10 @@ xxreadtoken(void)
 			RETURN(TLP);
 		case ')':
 			RETURN(TRP);
+		case '!':
+			if (checkkwd == 3)
+				RETURN(TNOT);
+			/* else FALLTHROUGH */
 		default:
 			goto breakloop;
 		}
