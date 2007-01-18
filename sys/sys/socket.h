@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.17 2007/01/14 14:19:57 sephe Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.18 2007/01/18 11:46:32 sephe Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -474,7 +474,13 @@ __END_DECLS
 #endif /* !_KERNEL */
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
+
+__BEGIN_DECLS
 int	socket (int, int, int);
+__END_DECLS
 #endif	/* !_KERNEL || _KERNEL_VIRTUAL */
 
 #endif /* !_SYS_SOCKET_H_ */
