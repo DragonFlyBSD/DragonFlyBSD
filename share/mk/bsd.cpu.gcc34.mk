@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.cpu.gcc34.mk,v 1.3 2006/11/19 22:04:19 victor Exp $
+# $DragonFly: src/share/mk/bsd.cpu.gcc34.mk,v 1.4 2007/01/19 10:38:59 corecode Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -99,12 +99,16 @@ MACHINE_CPU = i586 i486 i386
 MACHINE_CPU = i486 i386
 .  elif ${CPUTYPE} == "i386"
 MACHINE_CPU = i386
+.  else
+.warning Unknown CPUTYPE=${CPUTYPE}
 .  endif
 . elif ${MACHINE_ARCH} == "amd64"
 MACHINE_CPU = amd64 sse2 sse
 . elif ${MACHINE_ARCH} == "ia64"
 .  if ${CPUTYPE} == "itanium"
 MACHINE_CPU = itanium
+.  else
+.warning Unknown CPUTYPE=${CPUTYPE}
 .  endif
 . endif
 .endif
