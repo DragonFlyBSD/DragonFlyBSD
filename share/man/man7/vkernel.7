@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.3 2007/01/17 08:44:32 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.4 2007/01/19 08:13:44 swildner Exp $
 .\"
-.Dd January 17, 2007
+.Dd January 19, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -43,7 +43,7 @@
 .Cd "device vke"
 .Pp
 .Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
-.Op Fl sv
+.Op Fl sUv
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .\".Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
@@ -131,6 +131,9 @@ See
 for further information on how to prepare a root image.
 .It Fl s
 Boot into single-user mode.
+.It Fl U
+Enable writing to kernel memory and module loading.
+By default, those are disabled for security reasons.
 .It Fl v
 Turn on verbose booting.
 .El
