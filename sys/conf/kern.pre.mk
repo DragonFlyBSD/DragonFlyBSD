@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.3 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/conf/kern.pre.mk,v 1.4 2007/01/19 07:23:42 dillon Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -11,7 +11,7 @@ KERNEL?=	kernel
 
 # Set the platform and machine architectures
 #
-P=	${MACHINE}
+P=	${MACHINE_PLATFORM}
 M=	${MACHINE_ARCH}
 
 SIZE?=		size
@@ -77,17 +77,17 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
-GEN_CFILES= $S/machine/$P/$M/genassym.c
+GEN_CFILES= $S/platform/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
-SYSTEM_SFILES= $S/machine/$P/$M/locore.s
+SYSTEM_SFILES= $S/platform/$P/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_LD= @${LD} -Bdynamic -T $S/machine/$P/conf/ldscript.$M \
+SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
 	-export-dynamic -dynamic-linker /red/herring \
 	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
 SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \
 	${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
-SYSTEM_DEP+= $S/machine/$P/conf/ldscript.$M
+SYSTEM_DEP+= $S/platform/$P/conf/ldscript.$M
 
 # Normalize output files to make it absolutely crystal clear to
 # anyone examining the build directory.

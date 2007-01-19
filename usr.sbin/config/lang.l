@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.12 2006/11/07 06:57:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.13 2007/01/19 07:23:43 dillon Exp $
  */
 
 #include <ctype.h>
@@ -74,6 +74,7 @@ struct kt {
 	{ "nexus",	NEXUS },
 	{ "option",	OPTIONS },
 	{ "options",	OPTIONS },
+	{ "platform",	CONFIG_PLATFORM },
 	{ "port",	PORT },
 	{ "pseudo-device",PSEUDO_DEVICE },
 	{ "tape",	TAPE },

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.15 2007/01/17 17:31:19 y0netan1 Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.16 2007/01/19 07:23:42 dillon Exp $
 
 CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
 PATCHES=	hardware,hwsleep.c.patch include,acglobal.h.patch
@@ -21,7 +21,7 @@ PATCHES+=	include,acpiosxf.h.patch
 .PATH:	${.OBJDIR}					\
 	${.OBJDIR}/include				\
 	${SYSDIR}/${OSACPI_MD_DIR}			\
-	${SYSDIR}/machine/${MACHINE}/isa		\
+	${SYSDIR}/platform/${MACHINE_PLATFORM}/isa	\
 	${SYSDIR}/bus/pci 				\
 	${.CURDIR}/Osd					\
 	${.CURDIR}					\

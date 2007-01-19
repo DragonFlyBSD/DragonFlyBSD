@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.18 2006/11/15 03:27:10 corecode Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.19 2007/01/19 07:23:41 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -114,9 +114,9 @@ YFLAGS		?=	-d
 
 # The 'make' program is expected to define the following.
 #
-# MACHINE	machine class
-# MACHINE_ARCH	machine architecture (i386, amd64, vkernel, etc)
-# MACHINE_CPU	cpu architecture (i386)
+# MACHINE_PLATFORM	platform architecture (vkernel, pc32)
+# MACHINE		machine architecture (i386, etc..)
+# MACHINE_ARCH		cpu architecture (i386, amd64, etc)
 #
 .if !defined(MACHINE)
 .error "MACHINE was not defined by make"
@@ -124,17 +124,17 @@ YFLAGS		?=	-d
 .if !defined(MACHINE_ARCH)
 .error "MACHINE_ARCH was not defined by make"
 .endif
-# I want to do this too, but bmake apparently uses these .mk files too.
-#
-#.if !defined(MACHINE_CPU)
-#.error "MACHINE_CPU was not defined by make"
-#.endif
 
-# Backwards compat:  old systems have hw.machine set to "i386", but it
-# is expected to be "pc32" in the build system.  Try and don't break
-# build/installworld for upgrading users.
-.if ${MACHINE} == "i386"
-MACHINE=pc32
+# Backwards compatibility.  There was a time during 1.7 development
+# where we tried to rename MACHINE.  This failed and was reverted,
+# and MACHINE_PLATFORM was added to make the distinction.  These shims
+# prevent buildworld from breaking.
+#
+.if !defined(MACHINE_PLATFORM)
+MACHINE_PLATFORM=pc32
+.endif
+.if ${MACHINE} == "pc32"
+MACHINE=i386
 .endif
 
 .if defined(%POSIX)

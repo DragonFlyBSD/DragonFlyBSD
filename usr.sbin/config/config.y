@@ -11,6 +11,7 @@
 %token	CONFIG
 %token	CONFIG_MACHINE
 %token	CONFIG_MACHINE_ARCH
+%token	CONFIG_PLATFORM
 %token	CONFLICTS
 %token	CONTROLLER
 %token	CPU
@@ -84,7 +85,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.13 2006/11/07 06:57:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.14 2007/01/19 07:23:43 dillon Exp $
  */
 
 #include <ctype.h>
@@ -131,6 +132,14 @@ Spec:
 		;
 
 Config_spec:
+	CONFIG_PLATFORM Save_id
+	    = {
+		if (platformname != NULL) {
+		    errx(1, "%d: only one platform directive is allowed",
+			yyline);
+		}
+		platformname = $2;
+	      } |
 	CONFIG_MACHINE Save_id
 	    = {
 		if (machinename != NULL) {

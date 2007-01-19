@@ -1,8 +1,9 @@
 # DragonFly BSD Tinderbox Configuration File
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.21 2006/11/07 06:43:22 dillon Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.22 2007/01/19 07:23:42 dillon Exp $
 
-machine		pc32
+platform	pc32
+machine		i386
 machine_arch	i386
 cpu		I686_CPU
 ident		TINDERBOX

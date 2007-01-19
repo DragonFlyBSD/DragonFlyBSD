@@ -32,7 +32,7 @@
  *
  * @(#)uname.c	8.1 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/gen/uname.c,v 1.7 1999/08/27 23:59:06 peter Exp $
- * $DragonFly: src/lib/libc/gen/uname.c,v 1.4 2006/12/26 11:27:44 sephe Exp $
+ * $DragonFly: src/lib/libc/gen/uname.c,v 1.5 2007/01/19 07:23:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@ uname(struct utsname *name)
 	int mib[2], rval;
 	size_t len;
 	char *p;
-	int oerrno, noent = 0;
+	int oerrno;
 
 	rval = 0;
 
@@ -108,17 +108,12 @@ uname(struct utsname *name)
 	}
 
 	oerrno = errno;
-	mib[1] = HW_MACHINE_UNAME;
-again:
+	mib[1] = HW_MACHINE;
 	mib[0] = CTL_HW;
 	len = sizeof(name->machine);
 	if (sysctl(mib, 2, &name->machine, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM) {
 			errno = oerrno;
-		} else if (!noent && errno == ENOENT) {
-			noent = 1;
-			mib[1] = HW_MACHINE;
-			goto again;
 		} else {
 			rval = -1;
 		}

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uname.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
- * $DragonFly: src/usr.bin/uname/uname.c,v 1.5 2007/01/04 14:19:03 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/uname/uname.c,v 1.6 2007/01/19 07:23:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,10 +45,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifndef HW_MACHINE_UNAME
-#define HW_MACHINE_UNAME	HW_MACHINE
-#endif
-
 #define	MFLAG	0x01
 #define	NFLAG	0x02
 #define	PFLAG	0x04
@@ -58,10 +54,10 @@
 #define	IFLAG   0x40
 
 typedef void (*get_t)(void);
-get_t get_ident, get_platform, get_hostname, get_arch, get_release, get_sysname, get_version;
+get_t get_ident, get_machine, get_hostname, get_arch, get_release, get_sysname, get_version;
   
 void native_ident(void);
-void native_platform(void);
+void native_machine(void);
 void native_hostname(void);
 void native_arch(void);
 void native_release(void);
@@ -71,7 +67,7 @@ void print_uname(u_int);
 void setup_get(void);
 void usage(void);
 
-char *ident, *platform, *hostname, *arch, *release, *sysname, *version;
+char *ident, *machine, *hostname, *arch, *release, *sysname, *version;
 int space;
 
 int
@@ -143,7 +139,7 @@ setup_get(void)
 	CHECK_ENV("n", hostname);
 	CHECK_ENV("r", release);
 	CHECK_ENV("v", version);
-	CHECK_ENV("m", platform);
+	CHECK_ENV("m", machine);
 	CHECK_ENV("p", arch);
 	CHECK_ENV("i", ident);
 }
@@ -166,7 +162,7 @@ print_uname(u_int flags)
 	PRINT_FLAG(flags, NFLAG, hostname);
 	PRINT_FLAG(flags, RFLAG, release);
 	PRINT_FLAG(flags, VFLAG, version);
-	PRINT_FLAG(flags, MFLAG, platform);
+	PRINT_FLAG(flags, MFLAG, machine);
 	PRINT_FLAG(flags, PFLAG, arch);
 	PRINT_FLAG(flags, IFLAG, ident);
 	printf("\n");
@@ -227,7 +223,7 @@ NATIVE_SYSCTL2_GET(version, CTL_KERN, KERN_VERSION) {
 			*p = ' ';
 } NATIVE_SET;
 
-NATIVE_SYSCTL2_GET(platform, CTL_HW, HW_MACHINE_UNAME) {
+NATIVE_SYSCTL2_GET(machine, CTL_HW, HW_MACHINE) {
 } NATIVE_SET;
 
 NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {

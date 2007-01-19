@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.20 2006/11/19 07:49:34 sephe Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.21 2007/01/19 07:23:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -157,8 +157,12 @@ main(int argc, char *argv[])
 	dtab = NULL;
 	if (yyparse())
 		exit(3);
+	if (platformname == NULL) {
+		printf("Specify platform architecture, e.g. 'platform pc32'\n");
+		exit(1);
+	}
 	if (machinename == NULL) {
-		printf("Specify platform architecture, e.g. 'machine pc32'\n");
+		printf("Specify machine architecture, e.g. 'machine i386'\n");
 		exit(1);
 	}
 	if (machinearchname == NULL) {
@@ -168,25 +172,25 @@ main(int argc, char *argv[])
 	newbus_ioconf();
 	
 	/*
-	 * "machine" points into machine/<MACHINE>/include
+	 * "machine" points into platform/<PLATFORM>/include
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../machine/%s/include",
-		    machinename);
+		snprintf(linkdest, sizeof(linkdest), "../../platform/%s/include",
+		    platformname);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/machine/%s/include",
-		    srcdir, machinename);
+		snprintf(linkdest, sizeof(linkdest), "%s/platform/%s/include",
+		    srcdir, platformname);
 	symlink(linkdest, path("machine"));
 
 	/*
-	 * "machine_base" points into machine/<MACHINE>
+	 * "machine_base" points into platform/<PLATFORM>
 	 */
 	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest), "../../machine/%s",
-		    machinename);
+		snprintf(linkdest, sizeof(linkdest), "../../platform/%s",
+		    platformname);
 	else
-		snprintf(linkdest, sizeof(linkdest), "%s/machine/%s",
-		    srcdir, machinename);
+		snprintf(linkdest, sizeof(linkdest), "%s/platform/%s",
+		    srcdir, platformname);
 	symlink(linkdest, path("machine_base"));
 
 	/*

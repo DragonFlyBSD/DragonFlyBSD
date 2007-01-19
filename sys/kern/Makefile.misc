@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/kern/Makefile.misc,v 1.6 2006/11/07 06:43:24 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile.misc,v 1.7 2007/01/19 07:23:42 dillon Exp $
 #
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -29,7 +29,7 @@ ${.CURDIR}/../sys/sysunion.h: ${.CURDIR}/makesyscalls.sh ${.CURDIR}/syscalls.mas
 # are placed in each source directory.  We need to have links to tags files
 # from the generic directories that are relative to the machine type, even
 # via remote mounts; therefore we use symlinks to $SYSTAGS, which points at
-# ${SYSDIR}/machine/${MACHINE}/tags.
+# ${SYSDIR}/platform/${MACHINE_PLATFORM}/tags.
 
 SYSTAGS=/var/db/sys_tags
 SYSDIR=${.CURDIR:H}
@@ -52,7 +52,7 @@ DGEN=	conf \
 #
 #links::
 #	rm -f ${.CURDIR}/${SYSTAGS}
-#	-${LN} -s ${SYSDIR}/machine/${MACHINE}/tags ${.CURDIR}/${SYSTAGS}
+#	-${LN} -s ${SYSDIR}/platform/${MACHINE_PLATFORM}/tags ${.CURDIR}/${SYSTAGS}
 #	-cd ${.CURDIR} && for i in ${DGEN}; do \
 #	    (cd ../$$i && { rm -f tags; ${LN} -s ${SYSTAGS} tags; }) done
 #	-cd ${.CURDIR} && for i in ${TAGARCH}; do \

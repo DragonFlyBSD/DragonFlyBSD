@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.100 2007/01/15 18:29:44 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.101 2007/01/19 07:23:33 dillon Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -144,6 +144,14 @@ BUILD_ARCH!=	sysctl -n hw.machine_arch
 .endif
 .endif
 
+# Backwards compatibility with older make's or older sys.mk's.  make
+# is expected to define MACHINE_PLATFORM.
+#
+.if !defined(MACHINE_PLATFORM)
+MACHINE_PLATFORM= pc32
+.endif
+TARGET_PLATFORM?= ${MACHINE_PLATFORM}
+
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.
 #		We will not use the native system's exec path once we start
@@ -155,10 +163,12 @@ BUILD_ARCH!=	sysctl -n hw.machine_arch
 # WORLD		(Cross built) Our ultimate buildworld, using only BTOOLS and
 #		CTOOLS.
 #
-# MACHINE	Platform Architecture we are buliding on
+# MACHINE_PLATFORM Platform Architecture we are building on
+# MACHINE	Machine Architecture (usually the same as MACHINE_ARCH)
 # MACHINE_ARCH	Cpu Architecture we are building on
 #
-# TARGET	Platform Architecture we are building for
+# TARGET_PLATFORM Platform Architecture we are building for
+# TARGET	Machine Architecture we are building for
 # TARGET_ARCH	Cpu Architecture we are building for
 #
 BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
@@ -253,6 +263,7 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		OBJTREE=${OBJTREE} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
+		MACHINE_PLATFORM=${TARGET_PLATFORM} \
 		OBJFORMAT_PATH=${CTOOLSDEST}
 
 WMAKEENV=	${CROSSENV} \

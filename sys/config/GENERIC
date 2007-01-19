@@ -4,9 +4,10 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.47 2007/01/13 21:58:11 tgen Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.48 2007/01/19 07:23:42 dillon Exp $
 
-machine		pc32
+platform	pc32
+machine		i386
 machine_arch	i386
 cpu		I386_CPU
 cpu		I486_CPU

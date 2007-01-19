@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.32 2007/01/09 14:22:16 corecode Exp $
+# $DragonFly: src/include/Makefile,v 1.33 2007/01/19 07:23:39 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -174,12 +174,12 @@ copies:		mtree_setup
 	# then it needs to.
 	cpdup -o ${DESTDIR}/usr/include/cpu ${DESTDIR}/usr/include/machine
 .endif
-.if exists(${.CURDIR}/../sys/machine/${MACHINE}/include)
-	cd ${.CURDIR}/../sys/machine/${MACHINE}/include; \
+.if exists(${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include)
+	cd ${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine
-.if exists(${.CURDIR}/../sys/machine/${MACHINE}/include/pc)
-	cd ${.CURDIR}/../sys/machine/${MACHINE}/include/pc; \
+.if exists(${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include/pc)
+	cd ${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include/pc; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
 		${DESTDIR}/usr/include/machine/pc
 .endif
@@ -217,7 +217,7 @@ symlinks:	mtree_setup
 	rm -rf ${DESTDIR}/usr/include/machine
 	cpdup ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include \
 		${DESTDIR}/usr/include/machine
-	cpdup -o ${.CURDIR}/../sys/machine/${MACHINE}/include \
+	cpdup -o ${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include \
 		${DESTDIR}/usr/include/machine
 	rm -rf ${DESTDIR}/usr/include/i4b_machine
 	${LN} -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine

@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.12 2006/12/26 11:27:44 sephe Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.13 2007/01/19 07:23:42 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -66,27 +66,22 @@
 #define _ALIGN(p)	(((unsigned)(p) + _ALIGNBYTES) & ~_ALIGNBYTES)
 #endif
 
+#ifndef _MACHINE
+#define	_MACHINE	i386	/* cpu architecture */
+#endif
 #ifndef _MACHINE_ARCH
 #define	_MACHINE_ARCH	i386	/* cpu architecture */
-#endif
-#ifndef _MACHINE_CPU
-#define _MACHINE_CPU	i386	/* minimum supported cpu rev */
 #endif
 
 #endif	/* _CPU_PARAM_H1_ */
 
 #ifndef _NO_NAMESPACE_POLLUTION
 
+#ifndef MACHINE
+#define	MACHINE		"i386"	/* cpu architecture */
+#endif
 #ifndef MACHINE_ARCH
 #define	MACHINE_ARCH	"i386"	/* cpu architecture */
-#endif
-
-#ifndef MACHINE_CPU
-#define MACHINE_CPU	"i386"	/* minimum supported cpu rev */
-#endif
-
-#ifndef MACHINE_UNAME
-#define MACHINE_UNAME	"i386"	/* for uname(1)/uname(3) */
 #endif
 
 #define MID_MACHINE	MID_I386

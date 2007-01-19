@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.14 2007/01/15 20:51:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.15 2007/01/19 07:23:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,17 +148,13 @@ SYSCTL_INT(_hw, HW_BYTEORDER, byteorder, CTLFLAG_RD,
 SYSCTL_INT(_hw, HW_PAGESIZE, pagesize, CTLFLAG_RD, 
     0, PAGE_SIZE, "System memory page size");
 
+static char	platform[] = MACHINE_PLATFORM;
+SYSCTL_STRING(_hw, HW_MACHINE_PLATFORM, platform, CTLFLAG_RD,
+    platform, 0, "Platform architecture");
+
 static char	machine_arch[] = MACHINE_ARCH;
 SYSCTL_STRING(_hw, HW_MACHINE_ARCH, machine_arch, CTLFLAG_RD,
-    machine_arch, 0, "System architecture");
-
-static char	machine_cpu[] = MACHINE_CPU;
-SYSCTL_STRING(_hw, HW_MACHINE_CPU, machine_cpu, CTLFLAG_RD,
-    machine_cpu, 0, "Cpu architecture");
-
-static char	machine_uname[] = MACHINE_UNAME;
-SYSCTL_STRING(_hw, HW_MACHINE_UNAME, machine_uname, CTLFLAG_RD,
-    machine_uname, 0, "Machine class (for uname)");
+    machine_arch, 0, "Cpu architecture");
 
 char hostname[MAXHOSTNAMELEN];
 

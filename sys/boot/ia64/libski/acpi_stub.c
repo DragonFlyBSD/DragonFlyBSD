@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ia64/libski/acpi_stub.c,v 1.2 2003/09/08 09:11:32 obrien Exp $
- * $DragonFly: src/sys/boot/ia64/libski/acpi_stub.c,v 1.1 2003/11/10 06:08:37 dillon Exp $
+ * $DragonFly: src/sys/boot/ia64/libski/acpi_stub.c,v 1.2 2007/01/19 07:23:42 dillon Exp $
  */
 
 #include <contrib/dev/acpica/acpi.h>
@@ -159,7 +159,7 @@ struct {
 	NULL				/* XXX APIC table address. */
 };
 
-RSDP_DESCRIPTOR acpi_root = {
+ACPI_TABLE_RSDP acpi_root = {
 	RSDP_SIG,
 	0,				/* XXX checksum. */
 	"FBSD",

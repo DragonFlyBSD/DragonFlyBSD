@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.20 2006/12/26 11:27:44 sephe Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.21 2007/01/19 07:23:43 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -458,9 +458,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	HW_DISKSTATS	 9		/* struct: diskstats[] */
 #define HW_FLOATINGPT	10		/* int: has HW floating point? */
 #define HW_MACHINE_ARCH	11		/* string: machine architecture */
-#define HW_MACHINE_CPU	12		/* string: cpu architecture */
-#define HW_MACHINE_UNAME 13		/* string: machine class
-					 *         (for uname only) */
+#define HW_MACHINE_PLATFORM 12		/* string: platform architecture */
+#define HW_MACHINE_RES13 13		/* no longer used (was machine_uname) */
 #define	HW_MAXID	14		/* number of valid hw ids */
 
 #define CTL_HW_NAMES { \

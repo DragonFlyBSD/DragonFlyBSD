@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.145 2006/11/07 06:57:02 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.146 2007/01/19 07:23:43 dillon Exp $
  */
 
 /*
@@ -766,9 +766,9 @@ FindObjDir(const char machine[], char curdir[], char objdir[])
 static void
 InitVariables(const char progname[])
 {
-	const char	*machine;
+	const char	*machine_platform;
 	const char	*machine_arch;
-	const char	*machine_cpu;
+	const char	*machine;
 	char buf[256];
 	size_t bufsiz;
 
@@ -783,26 +783,34 @@ InitVariables(const char progname[])
 #endif
 
 	/*
-	 * The make program defines MACHINE and MACHINE_ARCH.  These
-	 * parameters are taken from the running system but can be
+	 * The make program defines MACHINE_PLATFORM, MACHINE and MACHINE_ARCH.
+	 * These parameters are taken from the running system but can be
 	 * overridden by environment variables.
 	 *
-	 * MACHINE	- This is the platform, e.g. "vkernel", "i386", "sun",
+	 * MACHINE_PLATFORM	
+	 *		- This is the platform, e.g. "vkernel", "pc32", 
 	 *		  and so forth.
+	 *
+	 * MACHINE	- This is the machine architecture and in most
+	 *		  cases is the same as the cpu architecture.
 	 *
 	 * MACHINE_ARCH - This is the cpu architecture, for example "i386".
 	 *		  Several different platforms may use the same
 	 *		  cpu architecture.
 	 *
-	 * MACHINE_CPU  - This is the minimum supported cpu revision based on
-	 *		  the target cpu architecture.  e.g. "i486", "i586",
-	 *		  etc.  NOTE: This field will often be "i386" even 
-	 *		  for kernels built without I386_CPU.
+	 * In most, but not all cases, MACHINE == MACHINE_ARCH.
 	 *
-	 * In some, but not all cases, MACHINE == MACHINE_ARCH.  A virtual
-	 * kernel build, for example, would set MACHINE to "vkernel" and
-	 * MACHINE_ARCH to the cpu architecture.
+	 * PLATFORM distinguishes differences between, say, a virtual kernel
+	 * build and a real kernel build.
 	 */
+	if ((machine_platform = getenv("MACHINE_PLATFORM")) == NULL) {
+		bufsiz = sizeof(buf);
+		if (sysctlbyname("hw.platform", buf, &bufsiz, NULL, 0) < 0)
+			machine_platform = "unknown";
+		else
+			machine_platform = strdup(buf);
+	}
+
 	if ((machine = getenv("MACHINE")) == NULL) {
 		bufsiz = sizeof(buf);
 		if (sysctlbyname("hw.machine", buf, &bufsiz, NULL, 0) < 0)
@@ -819,21 +827,9 @@ InitVariables(const char progname[])
 			machine_arch = strdup(buf);
 	}
 
-	/*
-	 * Only newer kernels have machine_cpu.  If not otherwise known set
-	 * the minimum supported cpu architecture to the machine architecture.
-	 */
-	if ((machine_cpu = getenv("MACHINE_CPU")) == NULL) {
-		bufsiz = sizeof(buf);
-		if (sysctlbyname("hw.machine_cpu", buf, &bufsiz, NULL, 0) < 0)
-			machine_cpu = machine_arch;
-		else
-			machine_cpu = strdup(buf);
-	}
-
+	Var_SetGlobal("MACHINE_PLATFORM", machine_platform);
 	Var_SetGlobal("MACHINE", machine);
 	Var_SetGlobal("MACHINE_ARCH", machine_arch);
-	Var_SetGlobal("MACHINE_CPU", machine_cpu);
 }
 
 /**

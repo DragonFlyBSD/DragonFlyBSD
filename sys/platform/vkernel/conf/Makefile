@@ -1,7 +1,7 @@
-# $DragonFly: src/sys/platform/vkernel/conf/Makefile,v 1.5 2007/01/12 03:05:49 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/Makefile,v 1.6 2007/01/19 07:23:42 dillon Exp $
 #
 # Which version of config(8) is required.
-%VERSREQ=	400025
+%VERSREQ=	400026
 
 .if !defined(S)
 .if exists(./@/.)

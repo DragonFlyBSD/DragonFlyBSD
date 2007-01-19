@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.14 2007/01/15 01:29:01 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.15 2007/01/19 07:23:42 dillon Exp $
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -30,7 +30,7 @@ vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/i386/misc/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
-machine/vkernel/i386/autoconf.c	standard
+platform/vkernel/i386/autoconf.c	standard
 #
 # DDB XXX
 cpu/i386/misc/elf_machdep.c		standard
@@ -49,28 +49,28 @@ dev/virtual/net/if_vke.c		optional	vke
 
 # PLATFORM FILES
 #
-machine/vkernel/i386/global.s		standard
-machine/vkernel/i386/swtch.s		standard
-machine/vkernel/i386/npx.c		mandatory       npx
-machine/vkernel/i386/db_interface.c	standard
-machine/vkernel/i386/db_trace.c		standard
-machine/vkernel/i386/vm_machdep.c	standard
-machine/vkernel/i386/cpu_regs.c		standard
-machine/vkernel/i386/userldt.c		standard
-machine/vkernel/i386/tls.c		standard
-machine/vkernel/i386/trap.c		standard
-machine/vkernel/i386/exception.c	standard
-machine/vkernel/i386/procfs_machdep.c	standard
-machine/vkernel/i386/fork_tramp.s	standard
-machine/vkernel/platform/init.c		standard
-machine/vkernel/platform/globaldata.c	standard
-machine/vkernel/platform/kqueue.c	standard
-machine/vkernel/platform/machintr.c	standard
-machine/vkernel/platform/copyio.c	standard
-machine/vkernel/platform/pmap.c		standard
-machine/vkernel/platform/pmap_inval.c	standard
-machine/vkernel/platform/busdma_machdep.c standard
-machine/vkernel/platform/sysarch.c	standard
-machine/vkernel/platform/systimer.c	standard
-machine/vkernel/platform/console.c	standard
-machine/vkernel/platform/ipl_funcs.c	standard
+platform/vkernel/i386/global.s		standard
+platform/vkernel/i386/swtch.s		standard
+platform/vkernel/i386/npx.c		mandatory       npx
+platform/vkernel/i386/db_interface.c	standard
+platform/vkernel/i386/db_trace.c	standard
+platform/vkernel/i386/vm_machdep.c	standard
+platform/vkernel/i386/cpu_regs.c	standard
+platform/vkernel/i386/userldt.c		standard
+platform/vkernel/i386/tls.c		standard
+platform/vkernel/i386/trap.c		standard
+platform/vkernel/i386/exception.c	standard
+platform/vkernel/i386/procfs_machdep.c	standard
+platform/vkernel/i386/fork_tramp.s	standard
+platform/vkernel/platform/init.c	standard
+platform/vkernel/platform/globaldata.c	standard
+platform/vkernel/platform/kqueue.c	standard
+platform/vkernel/platform/machintr.c	standard
+platform/vkernel/platform/copyio.c	standard
+platform/vkernel/platform/pmap.c	standard
+platform/vkernel/platform/pmap_inval.c	standard
+platform/vkernel/platform/busdma_machdep.c standard
+platform/vkernel/platform/sysarch.c	standard
+platform/vkernel/platform/systimer.c	standard
+platform/vkernel/platform/console.c	standard
+platform/vkernel/platform/ipl_funcs.c	standard

@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.17 2006/11/07 06:57:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.18 2007/01/19 07:23:43 dillon Exp $
  */
 
 /*
@@ -144,11 +144,11 @@ makefile(void)
 	int versreq;
 
 	read_files();
-	snprintf(line, sizeof(line), "../machine/%s/conf/Makefile",
-		 machinename);
+	snprintf(line, sizeof(line), "../platform/%s/conf/Makefile",
+		 platformname);
 	ifp = fopen(line, "r");
 	if (ifp == NULL) {
-		snprintf(line, sizeof(line), "Makefile.%s", machinename);
+		snprintf(line, sizeof(line), "Makefile.%s", platformname);
 		ifp = fopen(line, "r");
 	}
 	if (ifp == NULL)
@@ -157,8 +157,10 @@ makefile(void)
 	if (ofp == NULL)
 		err(1, "%s", path("Makefile.new"));
 	fprintf(ofp, "KERN_IDENT=%s\n", raisestr(ident));
+	fprintf(ofp, "MACHINE_PLATFORM=%s\n", platformname);
 	fprintf(ofp, "MACHINE=%s\n", machinename);
 	fprintf(ofp, "MACHINE_ARCH=%s\n", machinearchname);
+	fprintf(ofp, ".makeenv MACHINE_PLATFORM\n");
 	fprintf(ofp, ".makeenv MACHINE\n");
 	fprintf(ofp, ".makeenv MACHINE_ARCH\n");
 	fprintf(ofp, "IDENT=");
@@ -267,13 +269,13 @@ next:
 		if (first == 1) {
 			first++;
 			snprintf(fname, sizeof(fname),
-			    "../machine/%s/conf/files",
-			    machinename);
+			    "../platform/%s/conf/files",
+			    platformname);
 			fp = fopen(fname, "r");
 			if (fp != NULL)
 				goto next;
 			snprintf(fname, sizeof(fname),
-			    "files.%s", machinename);
+			    "files.%s", platformname);
 			goto openit;
 		}
 		if (first == 2) {

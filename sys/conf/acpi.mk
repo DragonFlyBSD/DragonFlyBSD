@@ -1,10 +1,10 @@
-# $DragonFly: src/sys/conf/acpi.mk,v 1.5 2007/01/17 17:31:19 y0netan1 Exp $
+# $DragonFly: src/sys/conf/acpi.mk,v 1.6 2007/01/19 07:23:42 dillon Exp $
 #
 
 ACPICA_VERSION=		20061109
 ACPICA_DIR?=		contrib/dev/acpica-unix-${ACPICA_VERSION}
 OSACPI_MI_DIR?=		dev/acpica5
-OSACPI_MD_DIR?=		machine/${MACHINE}/acpica5
+OSACPI_MD_DIR?=		platform/${MACHINE_PLATFORM}/acpica5
 
 .if !defined(SYSDIR) && defined(S)
 SYSDIR=	$S

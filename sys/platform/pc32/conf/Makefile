@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/platform/pc32/conf/Makefile,v 1.3 2006/11/07 06:43:24 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/conf/Makefile,v 1.4 2007/01/19 07:23:42 dillon Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -24,7 +24,7 @@
 #	-DDESTDIR		Where to install, defaults to /
 
 # Which version of config(8) is required.
-%VERSREQ=	400025
+%VERSREQ=	400026
 
 .if !defined(S)
 .if exists(./@/.)

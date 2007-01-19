@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/modules/syscons/Makefile,v 1.11.2.2 2003/05/15 02:02:39 murray Exp $
-# $DragonFly: src/sys/dev/misc/syscons/Makefile,v 1.3 2006/11/07 20:48:11 dillon Exp $
+# $DragonFly: src/sys/dev/misc/syscons/Makefile,v 1.4 2007/01/19 07:23:42 dillon Exp $
 #
 
-.include "../../../machine/${MACHINE}/Makefile.inc"
+.include "../../../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 SUBDIR =
 SUBDIR += blank

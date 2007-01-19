@@ -1,7 +1,7 @@
-# $DragonFly: src/sys/dev/Makefile,v 1.10 2007/01/07 02:41:18 dillon Exp $
+# $DragonFly: src/sys/dev/Makefile,v 1.11 2007/01/19 07:23:42 dillon Exp $
 #
 
-.include "../machine/${MACHINE}/Makefile.inc"
+.include "../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 .ifdef DEV_ACPICA5_SUPPORT
 SUBDIR+= acpica5

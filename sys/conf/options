@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.60 2007/01/13 21:58:11 tgen Exp $
+# $DragonFly: src/sys/conf/options,v 1.61 2007/01/19 07:23:42 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -13,7 +13,7 @@
 # coverage.
 #
 # All new options shall also be listed in either "conf/options" or
-# "<machine>/conf/options.<machine>".  Options that affect a single
+# "<platform>/conf/options.<platform>".  Options that affect a single
 # source-file <xxx>.[c|s] should be directed into "opt_<xxx>.h", while
 # options that affect multiple files should either go in
 # "opt_global.h" if this is a kernel-wide option (used just about
@@ -149,7 +149,7 @@ UDF		opt_dontuse.h
 NTFS		opt_dontuse.h
 
 # These static filesystems has one slightly bogus static dependency in
-# sys/machine/.../i386/autoconf.c.  If any of these filesystems are
+# sys/platform/.../i386/autoconf.c.  If any of these filesystems are
 # statically compiled into the kernel, code for mounting them as root
 # filesystems will be enabled - but look below.  Boot-code is purposely
 # unavailable for the LKM-based versions.
