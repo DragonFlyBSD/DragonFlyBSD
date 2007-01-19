@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.1 2007/01/17 17:31:19 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.2 2007/01/19 23:58:53 y0netan1 Exp $
  */
 
 #include <sys/objcache.h>
@@ -52,8 +52,8 @@ AcpiOsCreateCache(char *CacheName, UINT16 ObjectSize, UINT16 MaxDepth,
 	cache = kmalloc(sizeof(*cache), M_TEMP, M_WAITOK);
 	cache->args.objsize = ObjectSize;
 	cache->args.mtype = M_CACHE;
-	cache->cache = objcache_create(CacheName, MaxDepth, 0, NULL, NULL, NULL,
-	    objcache_malloc_alloc, objcache_malloc_free, &cache->args);
+	cache->cache = objcache_create(CacheName, 0, 0, NULL, NULL,
+	    NULL, objcache_malloc_alloc, objcache_malloc_free, &cache->args);
 	*ReturnCache = cache;
 	return AE_OK;
 }
