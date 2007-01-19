@@ -1,8 +1,8 @@
-# $DragonFly: src/gnu/lib/gcc41/libstdc++/Makefile,v 1.1 2006/09/27 12:10:33 corecode Exp $
+# $DragonFly: src/gnu/lib/gcc41/libstdc++/Makefile,v 1.2 2007/01/19 10:38:38 corecode Exp $
 
 .include "../Makefile.inc"
 
-.if ${MACHINE_ARCH} == "i386" && ${MACHINE_CPU} != 'i386'
+.if ${MACHINE_ARCH} == "i386" && !empty(MACHINE_CPU:Mi486)
 MARCHDIR=	i486
 .else
 MARCHDIR=	${MACHINE_ARCH}

@@ -1,10 +1,10 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.7 2006/07/27 00:29:49 corecode Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.8 2007/01/19 10:38:38 corecode Exp $
 
 .include "../Makefile.inc"
 
 .if ${MACHINE_ARCH} == "sparc64"
 MARCHDIR=	sparc
-.elif ${MACHINE_ARCH} == "i386" && ${MACHINE_CPU} != 'i386'
+.elif ${MACHINE_ARCH} == "i386" && !empty(MACHINE_CPU:Mi486)
 MARCHDIR=	i486
 .elif ${MACHINE_ARCH} == "amd64"
 MARCHDIR=	i486
