@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.bin/kadmin/Makefile,v 1.18 2004/02/05 18:51:51 ru Exp $
-# $DragonFly: src/kerberos5/usr.bin/kadmin/Makefile,v 1.1 2005/01/16 14:25:47 eirikn Exp $
+# $DragonFly: src/kerberos5/usr.bin/kadmin/Makefile,v 1.2 2007/01/20 19:01:45 dillon Exp $
 
 PROG=	kadmin
 MAN=	kadmin.8
@@ -28,7 +28,7 @@ DPADD=	${LIBKADM5CLNT} ${LIBKADM5SRV} ${LIBHDB} ${LIBKRB5} \
 LDADD=	-lkadm5clnt -lkadm5srv -lhdb -lkrb5 \
 	${LIBSL} -lroken ${LIBVERS} -lasn1 \
 	-lcrypto -lcrypt -lcom_err \
-	-lreadline -lncurses ${LDAPLDADD}
+	-lncurses ${LDAPLDADD}
 LDFLAGS=${LDAPLDFLAGS}
 
 .include <bsd.prog.mk>

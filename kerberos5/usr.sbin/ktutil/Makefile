@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/usr.sbin/ktutil/Makefile,v 1.17 2004/02/05 18:51:52 ru Exp $
-# $DragonFly: src/kerberos5/usr.sbin/ktutil/Makefile,v 1.4 2005/01/16 14:25:47 eirikn Exp $
+# $DragonFly: src/kerberos5/usr.sbin/ktutil/Makefile,v 1.5 2007/01/20 19:01:46 dillon Exp $
 
 PROG=	ktutil
 MAN=	ktutil.8
@@ -20,7 +20,7 @@ DPADD=	${LIBKADM5CLNT} ${LIBKRB5} ${LIBSL} ${LIBROKEN} ${LIBVERS} \
 	${LIBREADLINE} ${LIBNCURSES}
 LDADD=	-lkadm5clnt -lkrb5 ${LIBSL} -lroken ${LIBVERS} \
 	-lasn1 -lcrypto -lcrypt -lcom_err \
-	-lreadline -lncurses
+	-lncurses
 
 .include <bsd.prog.mk>
 
