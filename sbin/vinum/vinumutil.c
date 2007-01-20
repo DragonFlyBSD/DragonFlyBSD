@@ -15,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Nan Yang Computer
- *      Services Limited.
- * 4. Neither the name of the Company nor the names of its contributors
+ * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.6 2005/02/03 22:05:27 joerg Exp $
+ * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.7 2007/01/20 19:20:39 dillon Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */

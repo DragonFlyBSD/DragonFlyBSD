@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Nan Yang Computer
- *      Services Limited.
- * 4. Neither the name of the Company nor the names of its contributors
+ * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
 /*
  * $Id: vext.h,v 1.17 2000/05/07 04:17:12 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/vext.h,v 1.16.2.2 2000/06/08 01:53:16 grog Exp $
- * $DragonFly: src/sbin/vinum/vext.h,v 1.2 2003/06/17 04:27:35 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vext.h,v 1.3 2007/01/20 19:20:39 dillon Exp $
  */
 
 #define MAXARGS 64					    /* maximum number of args on a line */

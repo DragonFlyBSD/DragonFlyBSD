@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Nan Yang Computer
- *      Services Limited.
- * 4. Neither the name of the Company nor the names of its contributors
+ * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -38,7 +34,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.6 2005/11/06 12:51:40 swildner Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.7 2007/01/20 19:20:39 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES

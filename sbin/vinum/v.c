@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Nan Yang Computer
- *      Services Limited.
- * 4. Neither the name of the Company nor the names of its contributors
+ * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -38,7 +34,7 @@
  *
  * $Id: v.c,v 1.31 2000/09/03 01:29:26 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/v.c,v 1.26.2.3 2001/03/13 03:04:06 grog Exp $
- * $DragonFly: src/sbin/vinum/v.c,v 1.4 2005/11/06 12:51:40 swildner Exp $
+ * $DragonFly: src/sbin/vinum/v.c,v 1.5 2007/01/20 19:20:39 dillon Exp $
  */
 
 #include <ctype.h>
