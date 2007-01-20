@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.2 2006/10/06 18:59:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.1 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.2 2007/01/20 21:32:36 swildner Exp $
  */
 
 #ifndef _HDAC_PRIVATE_H_
@@ -83,11 +83,6 @@
 #define HDAC_BSDBDPL(sc, n)	(_HDAC_BSDBDPL((n), (sc)->num_iss, (sc)->num_oss))
 #define HDAC_BSDBDPU(sc, n)	(_HDAC_BSDBDPU((n), (sc)->num_iss, (sc)->num_oss))
 
-
-/****************************************************************************
- * Custom hdac malloc type
- ****************************************************************************/
-MALLOC_DECLARE(M_HDAC);
 
 /****************************************************************************
  * struct hdac_mem

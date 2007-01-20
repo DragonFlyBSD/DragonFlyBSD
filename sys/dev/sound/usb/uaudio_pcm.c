@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.15.2.1 2005/12/30 19:55:54 netchild Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.6 2007/01/04 21:47:03 corecode Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.7 2007/01/20 21:32:36 swildner Exp $ */
 
 /*-
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -406,8 +406,6 @@ static driver_t ua_pcm_driver = {
 	ua_pcm_methods,
 	PCM_SOFTC_SIZE,
 };
-
-static devclass_t pcm_devclass;
 
 
 DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, 0, 0);
