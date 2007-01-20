@@ -1,5 +1,6 @@
 # Subversion control for DragonFly 1.5.X-DEVELOPMENT
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_6,v 1.1.2.3 2006/10/10 17:45:55 corecode Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_6,v 1.1.2.4 2007/01/20 09:11:51 corecode Exp $
 0	-
 1	- fix indefinite blocking in flock()
 2	build on -DEVEL, acpi, em(4), iwi(4), rl(4), unix sockets, headers; ppp, openssl, openssh, bind security fixes
+3	pkgsrc paths, propolice, ifconfig, zoneinfo, firewire(4), bge(4), dc(4), em(4), vinum, linux emu, kernel mem leaks, mbuf allocation
