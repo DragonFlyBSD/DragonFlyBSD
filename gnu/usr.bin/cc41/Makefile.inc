@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/Makefile.inc,v 1.1 2006/09/27 12:10:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/Makefile.inc,v 1.2 2007/01/20 03:51:33 corecode Exp $
 
 .if !target(__<cc.Makefile.inc>__)
 __<cc.Makefile.inc>__:
@@ -38,8 +38,12 @@ MD_FILE=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.md
 .PATH:	${OTOPDIR}/cc_prep ${STOPDIR}/cc_prep ${GCCDIR}/gcc
 .endif
 
+LIBBACKEND=	${.OBJDIR}/../libbackend/libbackend.a
+LIBCPP=		${.OBJDIR}/../libcpp/libcpp.a
+
 .if !defined(GCC_NO_LIBERTY)
-LDADD+=	-L../libiberty -liberty
+LDADD+=		${.OBJDIR}/../libiberty/libiberty.a
+DPADD+=		${.OBJDIR}/../libiberty/libiberty.a
 .endif
 
 .endif

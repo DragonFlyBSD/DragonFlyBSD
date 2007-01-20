@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc1plus/Makefile,v 1.1 2006/09/27 12:10:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/cc1plus/Makefile,v 1.2 2007/01/20 03:51:33 corecode Exp $
 
 GCC_LANG_DIR=	gcc/cp
 
@@ -29,7 +29,8 @@ SRCS+=	gtype-desc.h insn-modes.h insn-config.h options.h insn-modes.c
 SRCS+=	insn-emit.c insn-codes.h insn-attrtab.c insn-attr.h insn-extract.c
 SRCS+=	insn-opinit.c
 
-LDADD+=	-L../libbackend -lbackend -L../libcpp -lcpp
+LDADD+=	${LIBBACKEND} ${LIBCPP}
+DPADD+=	${LIBBACKEND} ${LIBCPP}
 
 CFLAGS+= -I. -I${CONTRIBDIR}
 

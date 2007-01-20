@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.4 2005/10/01 12:40:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.5 2007/01/20 03:51:33 corecode Exp $
 
 BINDIR?=	/usr/libexec/gcc34
 .include "../Makefile.inc"
@@ -34,3 +34,6 @@ MD_FILE=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.md
 .if !defined(GCC_NO_PATH)
 .PATH:	${OTOPDIR}/cc_prep ${STOPDIR}/cc_prep ${GCCDIR}/gcc ${GCCDIR}/libiberty
 .endif
+
+LIBBACKEND=	${.OBJDIR}/../libbackend/libbackend.a
+LIBCPP=		${.OBJDIR}/../libcpp/libcpp.a

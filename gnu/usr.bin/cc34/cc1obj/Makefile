@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc1obj/Makefile,v 1.1 2004/06/14 22:27:53 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc1obj/Makefile,v 1.2 2007/01/20 03:51:33 corecode Exp $
 
 GCC_LANG_DIR=	gcc/objc
 
@@ -26,7 +26,8 @@ SRCS+=	concat.c fibheap.c getpwd.c getruntime.c hashtab.c hex.c lbasename.c
 SRCS+=	lrealpath.c md5.c obstack.c physmem.c safe-ctype.c splay-tree.c
 SRCS+=	xexit.c xmalloc.c xmemdup.c xstrdup.c xstrerror.c
 
-LDADD=	-L../libbackend -lbackend -L../libcpp -lcpp
+LDADD+=	${LIBBACKEND} ${LIBCPP}
+DPADD+=	${LIBBACKEND} ${LIBCPP}
 
 CFLAGS+=	-I${GCCDIR}/gcc/objc
 CFLAGS+=	-I.

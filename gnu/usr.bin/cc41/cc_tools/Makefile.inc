@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile.inc,v 1.1 2006/09/27 12:10:34 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile.inc,v 1.2 2007/01/20 03:51:33 corecode Exp $
 #
 # Portions of our build system need this file early, make sure it isn't
 # included twice (because e.g. bsd.init.mk would also include it)
@@ -11,6 +11,7 @@ NATIVE_TOOLS=	yes
 
 .if !defined(GCC_NO_LIBERTY)
 LDADD+=	../libiberty/libiberty.na
+DPADD+=	../libiberty/libiberty.na
 GCC_NO_LIBERTY=	yes
 .endif
 

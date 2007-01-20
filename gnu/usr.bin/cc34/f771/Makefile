@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/f771/Attic/Makefile,v 1.2 2004/06/21 03:48:06 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/f771/Attic/Makefile,v 1.3 2007/01/20 03:51:33 corecode Exp $
 
 GCC_LANG_DIR=	gcc/f
 
@@ -64,7 +64,8 @@ str-ot.j str-ot.h: ${TOOLDIR}/fini/fini.nx
 CLEANFILES+=	str-1t.j str-2t.j str-fo.j str-io.j str-nq.j str-op.j str-ot.j
 CLEANFILES+=	str-1t.h str-2t.h str-fo.h str-io.h str-nq.h str-op.h str-ot.h
 
-LDADD=	-L../libbackend -lbackend -L../libcpp -lcpp
+LDADD+=	${LIBBACKEND} ${LIBCPP}
+DPADD+=	${LIBBACKEND} ${LIBCPP}
 
 CFLAGS+=	-I.
 
