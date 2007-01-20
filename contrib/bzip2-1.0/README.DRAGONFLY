@@ -1,5 +1,11 @@
 Original source can be obtained from:
-http://www.bzip.org/1.0.3/bzip2-1.0.3.tar.gz
-MD5 (bzip2-1.0.3.tar.gz) = 8a716bebecb6e647d2e8a29ea5d8447f
+http://www.bzip.org/1.0.4/bzip2-1.0.4.tar.gz
+MD5 (bzip2-1.0.4.tar.gz) = fc310b254f6ba5fbb5da018f04533688
 
 The file README.DELETED contains a list of deleted files.
+
+This is used by:
+lib/libbz2/
+lib/libstand/
+usr.bin/bzip2/
+usr.bin/bzip2recover/

@@ -1,13 +1,12 @@
 # $FreeBSD: src/usr.bin/bzip2/Makefile,v 1.5.2.2 2001/08/02 01:09:06 obrien Exp $
-# $DragonFly: src/usr.bin/bzip2/Makefile,v 1.6 2005/12/30 12:52:31 swildner Exp $
+# $DragonFly: src/usr.bin/bzip2/Makefile,v 1.7 2007/01/20 05:57:40 pavalos Exp $
 
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2-1.0
-CONTRIBDIR= ${BZ2DIR}
 
 .PATH: ${BZ2DIR}
 
 PROG=	bzip2
-SRCS=	bzip2.c bzip2.c.patch
+SRCS=	bzip2.c
 
 MAN=	bzip2.1
 CFLAGS+= -D_FILE_OFFSET_BITS=64

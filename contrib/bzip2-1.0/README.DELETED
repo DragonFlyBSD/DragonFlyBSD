@@ -2,7 +2,6 @@ Makefile
 Makefile-libbz2_so
 README.COMPILATION.PROBLEMS
 README.XML.STUFF
-Y2K_INFO
 bz-common.xsl
 bz-fo.xsl
 bz-html.xsl
