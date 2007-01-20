@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc41/libstdc++/Makefile,v 1.2 2007/01/19 10:38:38 corecode Exp $
+# $DragonFly: src/gnu/lib/gcc41/libstdc++/Makefile,v 1.3 2007/01/20 18:24:34 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -27,10 +27,8 @@ CXXFLAGS+=	-I${SRCDIR}/config/cpu/${MARCHDIR}
 CXXFLAGS+=	-fno-implicit-templates -ffunction-sections -fdata-sections \
 		-Wno-deprecated
 
-LDADD=		-lm
+LDADD+=		-lm
 DPADD+=		${LIBM}
-
-GCC_NO_LIBERTY=	#
 
 # libstdc++ sources (libstdc++/src/Makefile.in, do not reorder)
 SRCS+=	\
