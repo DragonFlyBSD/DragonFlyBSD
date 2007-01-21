@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.10 2006/08/25 22:37:08 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.11 2007/01/21 10:06:10 swildner Exp $
 .\"
-.Dd July 30, 1999
+.Dd January 21, 2007
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -546,7 +546,7 @@ headswitch: 0           # milliseconds
 track-to-track seek: 0  # milliseconds
 drivedata: 0
 
-8 partitions:
+16 partitions:
 #        size   offset    fstype   [fsize bsize bps/cpg]
   a:    81920        0    4.2BSD     1024  8192    16   # (Cyl.    0 - 84*)
   b:   160000    81920      swap                        # (Cyl.   84* - 218*)
@@ -591,7 +591,7 @@ partition table described in
 .Xr fdisk 8 .
 .El
 .Pp
-The partition table can have up to 8 entries.
+The partition table can have up to 16 entries.
 It contains the following information:
 .Bl -tag -width indent
 .It Ar #
@@ -856,7 +856,7 @@ headswitch: 0		# milliseconds
 track-to-track seek: 0	# milliseconds
 drivedata: 0
 
-8 partitions:
+16 partitions:
 #        size   offset    fstype   [fsize bsize bps/cpg]
   a:   400M        0    4.2BSD     4096 16384    75 	# (Cyl.    0 - 812*)
   b:     1G        *      swap
