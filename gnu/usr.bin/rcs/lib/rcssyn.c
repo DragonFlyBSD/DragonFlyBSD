@@ -37,7 +37,7 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.7 1999/08/27 23:36:48 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $
+ * $DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.4 2007/01/21 17:58:42 pavalos Exp $
  *
  * Revision 5.15  1995/06/16 06:19:24  eggert
  * Update FSF address.
@@ -156,7 +156,7 @@ Report problems and direct all questions to:
 
 #include "rcsbase.h"
 
-libId(synId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.3 2007/01/17 17:56:23 y0netan1 Exp $")
+libId(synId, "$DragonFly: src/gnu/usr.bin/rcs/lib/rcssyn.c,v 1.4 2007/01/21 17:58:42 pavalos Exp $")
 
 static char const *getkeyval P((char const*,enum tokens,int));
 static int getdelta P((void));
@@ -441,7 +441,9 @@ getdelta()
 		Delta->commitid = NextString;
 		nextlex();
 		getsemi(Kcommitid);
-        }
+        } else {
+		Delta->commitid = NULL;
+	}
 
 	Delta->ig = getphrases(Kdesc);
         TotalDeltas++;
