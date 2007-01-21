@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.53 2006/12/23 10:39:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.54 2007/01/21 10:44:45 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -131,6 +131,8 @@
 
 #include <dev/netif/em/if_em_hw.h>
 #include <dev/netif/em/if_em.h>
+
+#define EM_X60_WORKAROUND
 
 /*********************************************************************
  *  Set this to one to display debug statistics
@@ -2883,6 +2885,11 @@ em_initialize_receive_unit(struct adapter *adapter)
 		reg_rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
 		E1000_WRITE_REG(&adapter->hw, RXCSUM, reg_rxcsum);
 	}
+
+#ifdef EM_X60_WORKAROUND
+	if (adapter->hw.mac_type == em_82573)
+		E1000_WRITE_REG(&adapter->hw, RDTR, 32);
+#endif
 
 	/* Enable Receives */
 	E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
