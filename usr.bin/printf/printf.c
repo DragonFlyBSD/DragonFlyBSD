@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/printf/printf.c,v 1.27 2004/03/07 22:22:13 cperciva Exp $
- * $DragonFly: src/usr.bin/printf/printf.c,v 1.6 2004/12/31 20:32:59 cpressey Exp $
+ * $DragonFly: src/usr.bin/printf/printf.c,v 1.7 2007/01/21 00:24:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -451,6 +451,7 @@ getdouble(double *dp)
 	int rval;
 
 	if (!*gargv)
+		*dp = 0.0;
 		return (0);
 	if (**gargv == '"' || **gargv == '\'') {
 		*dp = asciicode();
