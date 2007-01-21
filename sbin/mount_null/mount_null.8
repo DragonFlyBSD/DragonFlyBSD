@@ -36,9 +36,9 @@
 .\"
 .\"     @(#)mount_null.8	8.6 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/mount_null/mount_null.8,v 1.11.2.6 2001/12/20 16:40:00 ru Exp $
-.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.5 2006/05/14 18:07:29 swildner Exp $
+.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.6 2007/01/21 10:07:50 swildner Exp $
 .\"
-.Dd May 14, 2006
+.Dd January 21, 2007
 .Dt MOUNT_NULL 8
 .Os
 .Sh NAME
@@ -231,13 +231,9 @@ The
 .Nm
 utility first appeared in
 .Bx 4.4 .
-.Sh BUGS
-THIS FILESYSTEM TYPE IS NOT YET FULLY SUPPORTED (READ: IT DOESN'T WORK)
-AND USING IT MAY, IN FACT, DESTROY DATA ON YOUR SYSTEM.  USE AT YOUR
-OWN RISK.  BEWARE OF DOG.  SLIPPERY WHEN WET.
-.Pp
-This code also needs an owner in order to be less dangerous - serious
-hackers can apply by sending mail to
-.Aq hackers@FreeBSD.org
-and announcing
-their intent to take it over.
+.An Matthew Dillon
+made
+.Nm
+work in
+.Dx 1.7 ,
+after it had been broken for some time.
