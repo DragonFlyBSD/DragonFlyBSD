@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.156 2007/01/15 18:29:44 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.157 2007/01/21 12:24:43 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -467,7 +467,7 @@ upgrade_etc:	preupgrade
 		${DESTDIR}/usr/lib/gcc40 \
 		${DESTDIR}/usr/libexec/gcc40 \
 		${DESTDIR}/usr/libdata/gcc40
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{cpp,g++,gcc,gcov}41.1.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{cpp,g++,gcc,gcov}40.1.gz"
 	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc40.mk
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
