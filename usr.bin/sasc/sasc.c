@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sasc/sasc.c,v 1.7.2.1 2000/06/30 09:47:52 ps Exp $
- * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.5 2005/01/22 14:01:36 liamfoy Exp $
+ * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.6 2007/01/21 10:40:39 swildner Exp $
  *
  */
 
@@ -101,7 +101,7 @@ asc_get(int fd, u_long asc_setting)
 	int asc_value;
 
 	if (ioctl(fd, asc_setting, &asc_value) < 0)
-		err(1, "ioctl failed", asc_value);
+		err(1, "ioctl failed");
 
 	return(asc_value);
 }
