@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.29 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.30 2007/01/21 10:37:29 y0netan1 Exp $
  */
 
 /*
@@ -344,7 +344,7 @@ vnstrategy(struct dev_strategy_args *ap)
 			bp->b_bcount = (vn->sc_size - pbn) * vn->sc_secsize;
 		}
 		nbio = push_bio(bio);
-		nbio->bio_offset = pbn * vn->sc_secsize;
+		nbio->bio_offset = (off_t)pbn * vn->sc_secsize;
 	}
 
 	/*
