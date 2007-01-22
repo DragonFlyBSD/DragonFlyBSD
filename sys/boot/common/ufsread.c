@@ -22,7 +22,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/common/ufsread.c,v 1.12 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/ufsread.c,v 1.3 2005/08/09 23:10:11 dillon Exp $
+ * $DragonFly: src/sys/boot/common/ufsread.c,v 1.4 2007/01/22 15:31:37 y0netan1 Exp $
  */
 
 #include <vfs/ufs/dir.h>
@@ -229,7 +229,7 @@ fsread(ino_t inode, void *buf, size_t nbyte)
 		} else if (lbn < NDADDR + NINDIR(fs)) {
 			n = INDIRPERVBLK(fs);
 			addr = DIP(di_ib[0]);
-			u = (u_int)(lbn - NDADDR) / (n * DBPERVBLK);
+			u = (u_int)(lbn - NDADDR) / n * DBPERVBLK;
 			vbaddr = fsbtodb(fs, addr) + u;
 			if (indmap != vbaddr) {
 				if (dskread(indbuf, vbaddr, DBPERVBLK))
