@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.95 2007/01/14 20:07:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.96 2007/01/22 19:37:04 corecode Exp $
  */
 
 /*
@@ -119,9 +119,9 @@
 
 int (*pmath_emulate) (struct trapframe *);
 
-extern void trap (struct trapframe frame);
+extern void trap (struct trapframe *frame);
 extern int trapwrite (unsigned addr);
-extern void syscall2 (struct trapframe frame);
+extern void syscall2 (struct trapframe *frame);
 
 static int trap_pfault (struct trapframe *, int, vm_offset_t);
 static void trap_fatal (struct trapframe *, vm_offset_t);
@@ -373,7 +373,7 @@ userexit(struct lwp *lp)
  */
 
 void
-trap(struct trapframe frame)
+trap(struct trapframe *frame)
 {
 	struct globaldata *gd = mycpu;
 	struct thread *td = gd->gd_curthread;
@@ -392,10 +392,10 @@ trap(struct trapframe frame)
 	p = td->td_proc;
 #ifdef DDB
 	if (db_active) {
-		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
+		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
 		MAKEMPSAFE(have_mplock);
-		trap_fatal(&frame, eva);
+		trap_fatal(frame, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
 	}
@@ -403,7 +403,7 @@ trap(struct trapframe frame)
 
 	eva = 0;
 	++gd->gd_trap_nesting_level;
-	if (frame.tf_trapno == T_PAGEFLT) {
+	if (frame->tf_trapno == T_PAGEFLT) {
 		/*
 		 * For some Cyrix CPUs, %cr2 is clobbered by interrupts.
 		 * This problem is worked around by using an interrupt
@@ -425,15 +425,15 @@ trap(struct trapframe frame)
 
 	--gd->gd_trap_nesting_level;
 
-	if (!(frame.tf_eflags & PSL_I)) {
+	if (!(frame->tf_eflags & PSL_I)) {
 		/*
 		 * Buggy application or kernel code has disabled interrupts
 		 * and then trapped.  Enabling interrupts now is wrong, but
 		 * it is better than running with interrupts disabled until
 		 * they are accidentally enabled later.
 		 */
-		type = frame.tf_trapno;
-		if (ISPL(frame.tf_cs)==SEL_UPL || (frame.tf_eflags & PSL_VM)) {
+		type = frame->tf_trapno;
+		if (ISPL(frame->tf_cs)==SEL_UPL || (frame->tf_eflags & PSL_VM)) {
 			MAKEMPSAFE(have_mplock);
 			kprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
@@ -453,17 +453,17 @@ trap(struct trapframe frame)
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 restart:
 #endif
-	type = frame.tf_trapno;
-	code = frame.tf_err;
+	type = frame->tf_trapno;
+	code = frame->tf_err;
 
 	if (in_vm86call) {
 		ASSERT_MP_LOCK_HELD(curthread);
-		if (frame.tf_eflags & PSL_VM &&
+		if (frame->tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
 #ifdef SMP
 			KKASSERT(td->td_mpcount > 0);
 #endif
-			i = vm86_emulate((struct vm86frame *)&frame);
+			i = vm86_emulate((struct vm86frame *)frame);
 #ifdef SMP
 			KKASSERT(td->td_mpcount > 0);
 #endif
@@ -472,10 +472,10 @@ restart:
 				 * returns to original process
 				 */
 #ifdef SMP
-				vm86_trap((struct vm86frame *)&frame,
+				vm86_trap((struct vm86frame *)frame,
 					  have_mplock);
 #else
-				vm86_trap((struct vm86frame *)&frame, 0);
+				vm86_trap((struct vm86frame *)frame, 0);
 #endif
 				KKASSERT(0); /* NOT REACHED */
 			}
@@ -488,7 +488,7 @@ restart:
 			 */
 		case T_PROTFLT:
 		case T_SEGNPFLT:
-			trap_fatal(&frame, eva);
+			trap_fatal(frame, eva);
 			goto out2;
 		case T_TRCTRAP:
 			type = T_BPTFLT;	/* kernel breakpoint */
@@ -497,13 +497,13 @@ restart:
 		goto kernel_trap;	/* normal kernel trap handling */
 	}
 
-        if ((ISPL(frame.tf_cs) == SEL_UPL) || (frame.tf_eflags & PSL_VM)) {
+        if ((ISPL(frame->tf_cs) == SEL_UPL) || (frame->tf_eflags & PSL_VM)) {
 		/* user trap */
 
 		userenter(td);
 
 		sticks = (int)td->td_sticks;
-		lp->lwp_md.md_regs = &frame;
+		lp->lwp_md.md_regs = frame;
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
@@ -513,7 +513,7 @@ restart:
 
 		case T_BPTFLT:		/* bpt instruction fault */
 		case T_TRCTRAP:		/* trace trap */
-			frame.tf_eflags &= ~PSL_T;
+			frame->tf_eflags &= ~PSL_T;
 			i = SIGTRAP;
 			break;
 
@@ -539,8 +539,8 @@ restart:
 			 */
 		case T_PROTFLT:		/* general protection fault */
 		case T_STKFLT:		/* stack fault */
-			if (frame.tf_eflags & PSL_VM) {
-				i = vm86_emulate((struct vm86frame *)&frame);
+			if (frame->tf_eflags & PSL_VM) {
+				i = vm86_emulate((struct vm86frame *)frame);
 				if (i == 0)
 					goto out;
 				break;
@@ -557,7 +557,7 @@ restart:
 
 		case T_PAGEFLT:		/* page fault */
 			MAKEMPSAFE(have_mplock);
-			i = trap_pfault(&frame, TRUE, eva);
+			i = trap_pfault(frame, TRUE, eva);
 			if (i == -1)
 				goto out;
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
@@ -590,7 +590,7 @@ restart:
 				 */
 				if (ddb_on_nmi) {
 					kprintf ("NMI ... going to debugger\n");
-					kdb_trap (type, 0, &frame);
+					kdb_trap (type, 0, frame);
 				}
 #endif /* DDB */
 				goto out2;
@@ -644,11 +644,11 @@ restart:
 				ucode = FPE_FPU_NP_TRAP;
 				break;
 			}
-			i = (*pmath_emulate)(&frame);
+			i = (*pmath_emulate)(frame);
 			if (i == 0) {
-				if (!(frame.tf_eflags & PSL_T))
+				if (!(frame->tf_eflags & PSL_T))
 					goto out2;
-				frame.tf_eflags &= ~PSL_T;
+				frame->tf_eflags &= ~PSL_T;
 				i = SIGTRAP;
 			}
 			/* else ucode = emulator_only_knows() XXX */
@@ -671,7 +671,7 @@ kernel_trap:
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
 			MAKEMPSAFE(have_mplock);
-			trap_pfault(&frame, FALSE, eva);
+			trap_pfault(frame, FALSE, eva);
 			goto out2;
 
 		case T_DNA:
@@ -699,8 +699,8 @@ kernel_trap:
 			 */
 #define	MAYBE_DORETI_FAULT(where, whereto)				\
 	do {								\
-		if (frame.tf_eip == (int)where) {			\
-			frame.tf_eip = (int)whereto;			\
+		if (frame->tf_eip == (int)where) {			\
+			frame->tf_eip = (int)whereto;			\
 			goto out2;					\
 		}							\
 	} while (0)
@@ -725,7 +725,7 @@ kernel_trap:
 				MAYBE_DORETI_FAULT(doreti_popl_gs,
 						   doreti_popl_gs_fault);
 				if (td->td_pcb->pcb_onfault) {
-					frame.tf_eip = 
+					frame->tf_eip = 
 					    (register_t)td->td_pcb->pcb_onfault;
 					goto out2;
 				}
@@ -742,14 +742,14 @@ kernel_trap:
 			 * problem here and not every time the kernel is
 			 * entered.
 			 */
-			if (frame.tf_eflags & PSL_NT) {
-				frame.tf_eflags &= ~PSL_NT;
+			if (frame->tf_eflags & PSL_NT) {
+				frame->tf_eflags &= ~PSL_NT;
 				goto out2;
 			}
 			break;
 
 		case T_TRCTRAP:	 /* trace trap */
-			if (frame.tf_eip == (int)IDTVEC(syscall)) {
+			if (frame->tf_eip == (int)IDTVEC(syscall)) {
 				/*
 				 * We've just entered system mode via the
 				 * syscall lcall.  Continue single stepping
@@ -758,12 +758,12 @@ kernel_trap:
 				 */
 				goto out2;
 			}
-			if (frame.tf_eip == (int)IDTVEC(syscall) + 1) {
+			if (frame->tf_eip == (int)IDTVEC(syscall) + 1) {
 				/*
 				 * The syscall handler has now saved the
 				 * flags.  Stop single stepping it.
 				 */
-				frame.tf_eflags &= ~PSL_T;
+				frame->tf_eflags &= ~PSL_T;
 				goto out2;
 			}
                         /*
@@ -794,7 +794,7 @@ kernel_trap:
 			 */
 #ifdef DDB
 			MAKEMPSAFE(have_mplock);
-			if (kdb_trap (type, 0, &frame))
+			if (kdb_trap (type, 0, frame))
 				goto out2;
 #endif
 			break;
@@ -829,7 +829,7 @@ kernel_trap:
 				 */
 				if (ddb_on_nmi) {
 					kprintf ("NMI ... going to debugger\n");
-					kdb_trap (type, 0, &frame);
+					kdb_trap (type, 0, frame);
 				}
 #endif /* DDB */
 				goto out2;
@@ -841,7 +841,7 @@ kernel_trap:
 		}
 
 		MAKEMPSAFE(have_mplock);
-		trap_fatal(&frame, eva);
+		trap_fatal(frame, eva);
 		goto out2;
 	}
 
@@ -851,7 +851,7 @@ kernel_trap:
 	 * handle it.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		vkernel_trap(p, &frame);
+		vkernel_trap(p, frame);
 		goto out;
 	}
 
@@ -876,10 +876,10 @@ kernel_trap:
 
 out:
 #ifdef SMP
-        if (ISPL(frame.tf_cs) == SEL_UPL)
-		KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame.tf_eip));
+        if (ISPL(frame->tf_cs) == SEL_UPL)
+		KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame->tf_eip));
 #endif
-	userret(lp, &frame, sticks);
+	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
 #ifdef SMP
@@ -1182,7 +1182,7 @@ trapwrite(unsigned addr)
  */
 
 void
-syscall2(struct trapframe frame)
+syscall2(struct trapframe *frame)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1203,7 +1203,7 @@ syscall2(struct trapframe frame)
 	union sysunion args;
 
 #ifdef DIAGNOSTIC
-	if (ISPL(frame.tf_cs) != SEL_UPL) {
+	if (ISPL(frame->tf_cs) != SEL_UPL) {
 		get_mplock();
 		panic("syscall");
 		/* NOT REACHED */
@@ -1211,7 +1211,7 @@ syscall2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
@@ -1221,7 +1221,7 @@ syscall2(struct trapframe frame)
 	 * Misc
 	 */
 	sticks = (int)td->td_sticks;
-	orig_tf_eflags = frame.tf_eflags;
+	orig_tf_eflags = frame->tf_eflags;
 
 	/*
 	 * Virtual kernel intercept - if a VM context managed by a virtual
@@ -1230,10 +1230,10 @@ syscall2(struct trapframe frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		error = vkernel_trap(p, &frame);
-		frame.tf_eax = error;
+		error = vkernel_trap(p, frame);
+		frame->tf_eax = error;
 		if (error)
-			frame.tf_eflags |= PSL_C;
+			frame->tf_eflags |= PSL_C;
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1241,13 +1241,13 @@ syscall2(struct trapframe frame)
 	/*
 	 * Get the system call parameters and account for time
 	 */
-	lp->lwp_md.md_regs = &frame;
-	params = (caddr_t)frame.tf_esp + sizeof(int);
-	code = frame.tf_eax;
+	lp->lwp_md.md_regs = frame;
+	params = (caddr_t)frame->tf_esp + sizeof(int);
+	code = frame->tf_eax;
 
 	if (p->p_sysent->sv_prepsyscall) {
 		(*p->p_sysent->sv_prepsyscall)(
-			&frame, (int *)(&args.nosys.sysmsg + 1),
+			frame, (int *)(&args.nosys.sysmsg + 1),
 			&code, &params);
 	} else {
 		/*
@@ -1310,13 +1310,13 @@ syscall2(struct trapframe frame)
 	 * system call returns we pre-set it here.
 	 */
 	args.sysmsg_fds[0] = 0;
-	args.sysmsg_fds[1] = frame.tf_edx;
+	args.sysmsg_fds[1] = frame->tf_edx;
 
 	/*
 	 * The syscall might manipulate the trap frame. If it does it
 	 * will probably return EJUSTRETURN.
 	 */
-	args.sysmsg_frame = &frame;
+	args.sysmsg_frame = frame;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1344,16 +1344,16 @@ out:
 		 */
 		p = curproc;
 		lp = curthread->td_lwp;
-		frame.tf_eax = args.sysmsg_fds[0];
-		frame.tf_edx = args.sysmsg_fds[1];
-		frame.tf_eflags &= ~PSL_C;
+		frame->tf_eax = args.sysmsg_fds[0];
+		frame->tf_edx = args.sysmsg_fds[1];
+		frame->tf_eflags &= ~PSL_C;
 		break;
 	case ERESTART:
 		/*
 		 * Reconstruct pc, assuming lcall $X,y is 7 bytes,
 		 * int 0x80 is 2 bytes. We saved this in tf_err.
 		 */
-		frame.tf_eip -= frame.tf_err;
+		frame->tf_eip -= frame->tf_err;
 		break;
 	case EJUSTRETURN:
 		break;
@@ -1367,8 +1367,8 @@ bad:
 			else
 				error = p->p_sysent->sv_errtbl[error];
 		}
-		frame.tf_eax = error;
-		frame.tf_eflags |= PSL_C;
+		frame->tf_eax = error;
+		frame->tf_eflags |= PSL_C;
 		break;
 	}
 
@@ -1377,14 +1377,14 @@ bad:
 	 */
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
 		MAKEMPSAFE(have_mplock);
-		frame.tf_eflags &= ~PSL_T;
+		frame->tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
 
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	userret(lp, &frame, sticks);
+	userret(lp, frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
@@ -1406,7 +1406,7 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p", (void *)frame.tf_eip));
+		("badmpcount syscall2/end from %p", (void *)frame->tf_eip));
 	if (have_mplock)
 		rel_mplock();
 #endif
@@ -1424,13 +1424,13 @@ bad:
  * trampoline code which then runs doreti.
  */
 void
-fork_return(struct lwp *lp, struct trapframe frame)
+fork_return(struct lwp *lp, struct trapframe *frame)
 {
 	struct proc *p = lp->lwp_proc;
 
-	frame.tf_eax = 0;		/* Child returns zero */
-	frame.tf_eflags &= ~PSL_C;	/* success */
-	frame.tf_edx = 1;
+	frame->tf_eax = 0;		/* Child returns zero */
+	frame->tf_eflags &= ~PSL_C;	/* success */
+	frame->tf_edx = 1;
 
 	/*
 	 * Newly forked processes are given a kernel priority.  We have to
@@ -1443,7 +1443,7 @@ fork_return(struct lwp *lp, struct trapframe frame)
 	 */
 	lwkt_setpri_self(TDPRI_USER_NORM);
 	userenter(lp->lwp_thread);
-	userret(lp, &frame, 0);
+	userret(lp, frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
 		ktrsysret(p, SYS_fork, 0, 0);

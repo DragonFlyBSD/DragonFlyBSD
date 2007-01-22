@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.27 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.28 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -310,9 +310,11 @@ doreti_ast:
 	sti
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
+	pushl	%esp			/* pass frame by reference */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	call	trap
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	addl	$4,%esp
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
@@ -325,8 +327,9 @@ doreti_ipiq:
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	subl	$8,%esp			/* add dummy vec and ppl */
+	pushl	%esp			/* pass frame by reference */
 	call	lwkt_process_ipiq_frame
-	addl	$8,%esp
+	addl	$12,%esp
 	decl	PCPU(intr_nesting_level)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
@@ -504,7 +507,9 @@ dofastunpend:
 	PUSH_DUMMY
 	pushl	%ecx			/* last part of intrframe = intr */
 	incl	fastunpend_count
+	pushl	%esp			/* pass frame by reference */
 	call	ithread_fast_handler	/* returns 0 to unmask */
+	addl	$4,%esp			/* remove pointer, now intr on top */
 	cmpl	$0,%eax
 	jnz	1f
 	movl	MachIntrABI + MACHINTR_INTREN, %eax

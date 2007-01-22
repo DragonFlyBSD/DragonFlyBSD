@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.30 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.31 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -779,7 +779,9 @@ calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
 	incl	PCPU(cnt)+V_TRAP
 	/* warning, trap frame dummy arg, no extra reg pushes */
+	pushl	%esp			/* pass frame by reference */
 	call	trap
+	addl	$4,%esp
 
 	/*
 	 * Return via doreti to handle ASTs.  Have to change trap frame
@@ -826,7 +828,9 @@ IDTVEC(syscall)
 	FAKE_MCOUNT(15*4(%esp))
 	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	/* warning, trap frame dummy arg, no extra reg pushes */
+	push	%esp			/* pass frame by reference */
 	call	syscall2
+	addl	$4,%esp
 	MEXITCOUNT
 	cli				/* atomic reqflags interlock w/iret */
 	cmpl    $0,PCPU(reqflags)
@@ -864,7 +868,9 @@ IDTVEC(int0x80_syscall)
 	FAKE_MCOUNT(15*4(%esp))
 	incl	PCPU(cnt)+V_SYSCALL
 	/* warning, trap frame dummy arg, no extra reg pushes */
+	push	%esp			/* pass frame by reference */
 	call	syscall2
+	addl	$4,%esp
 	MEXITCOUNT
 	cli				/* atomic reqflags interlock w/irq */
 	cmpl    $0,PCPU(reqflags)
@@ -893,10 +899,16 @@ ENTRY(fork_trampoline)
 	 *
 	 * initproc has its own fork handler, start_init(), which DOES
 	 * return.
+	 *
+	 * The function (set in pcb_esi) gets passed two arguments,
+	 * the primary parameter set in pcb_ebx and a pointer to the
+	 * trapframe.
+	 *   void (func)(int arg, struct trapframe *frame);
 	 */
+	pushl	%esp			/* pass frame by reference */
 	pushl	%ebx			/* arg1 */
 	call	*%esi			/* function */
-	addl	$4,%esp
+	addl	$8,%esp
 	/* cut from syscall */
 
 	sti

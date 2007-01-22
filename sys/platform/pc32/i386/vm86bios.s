@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.13 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.14 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -130,7 +130,9 @@ ENTRY(vm86_bioscall)
 	movl	%ecx,%cr3		/* new page tables */
 	movl	SCR_VMFRAME(%edx),%esp	/* switch to new stack */
 	
+	pushl	%esp			/* pass frame by reference */
 	call	vm86_prepcall		/* finish setup */
+	addl	$4,%esp
 
 	movl	$1,in_vm86call		/* set flag for trap() */
 

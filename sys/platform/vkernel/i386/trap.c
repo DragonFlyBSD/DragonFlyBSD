@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.13 2007/01/14 20:07:14 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.14 2007/01/22 19:37:04 corecode Exp $
  */
 
 /*
@@ -1333,13 +1333,13 @@ bad:
  * trampoline code which then runs doreti.
  */
 void
-fork_return(struct lwp *lp, struct trapframe frame)
+fork_return(struct lwp *lp, struct trapframe *frame)
 {
 	struct proc *p = lp->lwp_proc;
 
-	frame.tf_eax = 0;		/* Child returns zero */
-	frame.tf_eflags &= ~PSL_C;	/* success */
-	frame.tf_edx = 1;
+	frame->tf_eax = 0;		/* Child returns zero */
+	frame->tf_eflags &= ~PSL_C;	/* success */
+	frame->tf_edx = 1;
 
 	/*
 	 * Newly forked processes are given a kernel priority.  We have to
@@ -1352,7 +1352,7 @@ fork_return(struct lwp *lp, struct trapframe frame)
 	 */
 	lwkt_setpri_self(TDPRI_USER_NORM);
 	userenter(lp->lwp_thread);
-	userret(lp, &frame, 0);
+	userret(lp, frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
 		ktrsysret(p, SYS_fork, 0, 0);
@@ -1381,9 +1381,9 @@ fork_return(struct lwp *lp, struct trapframe frame)
  * context we supplied or problems copying data to/from our VM space.
  */
 void
-go_user(struct intrframe frame)
+go_user(struct intrframe *frame)
 {
-	struct trapframe *tf = (void *)&frame.if_gs;
+	struct trapframe *tf = (void *)&frame->if_gs;
 	int r;
 
 	/*
@@ -1427,19 +1427,19 @@ go_user(struct intrframe frame)
 		 */
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				tf, &curthread->td_savevext);
-		frame.if_xflags |= PGEX_U;
+		frame->if_xflags |= PGEX_U;
 #if 0
 		kprintf("GO USER %d trap %d EVA %08x EIP %08x ESP %08x XFLAGS %02x/%02x\n", 
 			r, tf->tf_trapno, tf->tf_err, tf->tf_eip, tf->tf_esp,
-			tf->tf_xflags, frame.if_xflags);
+			tf->tf_xflags, frame->if_xflags);
 #endif
 		if (r < 0) {
 			if (errno == EINTR)
-				signalmailbox(&frame);
+				signalmailbox(frame);
 			else
 				panic("vmspace_ctl failed");
 		} else {
-			signalmailbox(&frame);
+			signalmailbox(frame);
 			if (tf->tf_trapno) {
 				user_trap(tf);
 			} else if (mycpu->gd_reqflags & RQF_AST_MASK) {

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.29 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.30 2007/01/22 19:37:04 corecode Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -155,8 +155,9 @@ IDTVEC(vec_name) ; 							\
 	/* clear pending bit, run handler */				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	$irq_num ;						\
+	pushl	%esp ;			/* pass frame by reference */	\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
-	addl	$4,%esp ;						\
+	addl	$8,%esp ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
 5: ;									\
 	MEXITCOUNT ;							\

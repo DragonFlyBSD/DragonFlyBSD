@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apicvar.h,v 1.5 2003/11/14 22:21:30 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.2 2004/06/27 08:52:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.3 2007/01/22 19:37:04 corecode Exp $
  */
 
 #ifndef _MACHINE_APICVAR_H_
@@ -148,7 +148,7 @@ int	lapic_intr_pending(u_int vector);
 void	lapic_ipi_raw(register_t icrlo, u_int dest);
 void	lapic_ipi_vectored(u_int vector, int dest);
 int	lapic_ipi_wait(int delay);
-void	lapic_handle_intr(struct intrframe frame);
+void	lapic_handle_intr(struct intrframe *frame);
 void	lapic_set_logical_id(u_int apic_id, u_int cluster, u_int cluster_id);
 int	lapic_set_lvt_mask(u_int apic_id, u_int lvt, u_char masked);
 int	lapic_set_lvt_mode(u_int apic_id, u_int lvt, u_int32_t mode);

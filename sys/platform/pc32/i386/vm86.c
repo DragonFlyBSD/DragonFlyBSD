@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.24 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.25 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ struct vm86_layout {
 	char	vml_iomap_trailer;
 };
 
-void vm86_prepcall(struct vm86frame);
+void vm86_prepcall(struct vm86frame *);
 
 struct system_map {
 	int		type;
@@ -569,25 +569,25 @@ vm86_initflags(struct vm86frame *vmf)
  * called from vm86_bioscall, while in vm86 address space, to finalize setup.
  */
 void
-vm86_prepcall(struct vm86frame vmf)
+vm86_prepcall(struct vm86frame *vmf)
 {
 	uintptr_t addr[] = { 0xA00, 0x1000 };	/* code, stack */
 	u_char intcall[] = {
 		CLI, INTn, 0x00, STI, HLT
 	};
 
-	if ((vmf.vmf_trapno & PAGE_MASK) <= 0xff) {
+	if ((vmf->vmf_trapno & PAGE_MASK) <= 0xff) {
 		/* interrupt call requested */
-        	intcall[2] = (u_char)(vmf.vmf_trapno & 0xff);
+        	intcall[2] = (u_char)(vmf->vmf_trapno & 0xff);
 		memcpy((void *)addr[0], (void *)intcall, sizeof(intcall));
-		vmf.vmf_ip = addr[0];
-		vmf.vmf_cs = 0;
+		vmf->vmf_ip = addr[0];
+		vmf->vmf_cs = 0;
 	}
-	vmf.vmf_sp = addr[1] - 2;              /* keep aligned */
-	vmf.kernel_fs = vmf.kernel_es = vmf.kernel_ds = vmf.kernel_gs = 0;
-	vmf.vmf_ss = 0;
-	vmf.vmf_eflags = PSL_VIF | PSL_VM | PSL_USER;
-	vm86_initflags(&vmf);
+	vmf->vmf_sp = addr[1] - 2;              /* keep aligned */
+	vmf->kernel_fs = vmf->kernel_es = vmf->kernel_ds = vmf->kernel_gs = 0;
+	vmf->vmf_ss = 0;
+	vmf->vmf_eflags = PSL_VIF | PSL_VM | PSL_USER;
+	vm86_initflags(vmf);
 }
 
 /*

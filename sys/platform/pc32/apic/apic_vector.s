@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.35 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.36 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -166,8 +166,9 @@ IDTVEC(vec_name) ;							\
 	/* clear pending bit, run handler */				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	$irq_num ;						\
+	pushl	%esp ;			 /* pass frame by reference */	\
 	call	ithread_fast_handler ;	 /* returns 0 to unmask */	\
-	addl	$4, %esp ;						\
+	addl	$8, %esp ;						\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
@@ -378,12 +379,13 @@ Xipiq:
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
 	jge	1f
 	subl	$8,%esp			/* make same as interrupt frame */
+	pushl	%esp			/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 	call	lwkt_process_ipiq_frame
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	decl	PCPU(intr_nesting_level)
-	addl	$8,%esp
+	addl	$12,%esp
 	pushl	$0			/* CPL for frame (REMOVED) */
 	MEXITCOUNT
 	jmp	doreti

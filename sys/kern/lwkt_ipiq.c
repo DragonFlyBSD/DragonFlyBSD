@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.20 2006/12/27 06:51:47 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.21 2007/01/22 19:37:04 corecode Exp $
  */
 
 /*
@@ -465,7 +465,7 @@ again:
 
 #ifdef _KERNEL
 void
-lwkt_process_ipiq_frame(struct intrframe frame)
+lwkt_process_ipiq_frame(struct intrframe *frame)
 {
     globaldata_t gd = mycpu;
     globaldata_t sgd;
@@ -478,13 +478,13 @@ again:
 	    sgd = globaldata_find(n);
 	    ip = sgd->gd_ipiq;
 	    if (ip != NULL) {
-		while (lwkt_process_ipiq_core(sgd, &ip[gd->gd_cpuid], &frame))
+		while (lwkt_process_ipiq_core(sgd, &ip[gd->gd_cpuid], frame))
 		    ;
 	    }
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, &frame)) {
+	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, frame)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
 	    need_ipiq();

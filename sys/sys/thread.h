@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.86 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.87 2007/01/22 19:37:05 corecode Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -389,7 +389,7 @@ extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);
 extern int  lwkt_seq_ipiq(struct globaldata *targ);
 extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
-extern void lwkt_process_ipiq_frame(struct intrframe frame);
+extern void lwkt_process_ipiq_frame(struct intrframe *frame);
 #endif
 extern void lwkt_smp_stopped(void);
 

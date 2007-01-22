@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.45 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.46 2007/01/22 19:37:04 corecode Exp $
  *
  */
 
@@ -536,10 +536,10 @@ ithread_livelock_wakeup(systimer_t st)
  * Must return non-zero if we do not want the vector code to re-enable
  * the interrupt (which we don't if we have to schedule the interrupt)
  */
-int ithread_fast_handler(struct intrframe frame);
+int ithread_fast_handler(struct intrframe *frame);
 
 int
-ithread_fast_handler(struct intrframe frame)
+ithread_fast_handler(struct intrframe *frame)
 {
     int intr;
     struct intr_info *info;
@@ -551,7 +551,7 @@ ithread_fast_handler(struct intrframe frame)
     intrec_t rec, next_rec;
     globaldata_t gd;
 
-    intr = frame.if_vec;
+    intr = frame->if_vec;
     gd = mycpu;
 
     info = &intr_info_ary[intr];
@@ -622,9 +622,9 @@ ithread_fast_handler(struct intrframe frame)
 	    if (rec->serializer) {
 		must_schedule += lwkt_serialize_handler_try(
 					rec->serializer, rec->handler,
-					rec->argument, &frame);
+					rec->argument, frame);
 	    } else {
-		rec->handler(rec->argument, &frame);
+		rec->handler(rec->argument, frame);
 	    }
 	}
     }

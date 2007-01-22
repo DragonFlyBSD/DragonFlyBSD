@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.2 2007/01/14 07:59:05 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.3 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -67,10 +67,16 @@ ENTRY(fork_trampoline)
 	 *
 	 * initproc has its own fork handler, start_init(), which DOES
 	 * return.
+	 *
+	 * The function (set in pcb_esi) gets passed two arguments,
+	 * the primary parameter set in pcb_ebx and a pointer to the
+	 * trapframe.
+	 *   void (func)(int arg, struct trapframe *frame);
 	 */
+	pushl	%esp			/* pass frame by reference */
 	pushl	%ebx			/* arg1 */
 	call	*%esi			/* function */
-	addl	$4,%esp
+	addl	$8,%esp
 	/* cut from syscall */
 
 	call	splz
@@ -93,6 +99,7 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
 	MEXITCOUNT
 	pushl	$0		/* if_ppl */
 	pushl	$0		/* if_vec */
+	pushl	%esp		/* pass by reference */
 	call	go_user
 	/* NOT REACHED */
 
