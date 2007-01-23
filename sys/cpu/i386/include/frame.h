@@ -35,7 +35,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.8 2007/01/14 20:07:11 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.9 2007/01/23 08:43:02 dillon Exp $
  */
 
 #ifndef _CPU_FRAME_H_
@@ -142,6 +142,6 @@ struct intrframe {
 int	kdb_trap (int, int, struct trapframe *);
 extern  int (*pmath_emulate) (struct trapframe *);
 
-#define	INTR_TO_TRAPFRAME(frame) ((struct trapframe *)&(frame)->if_fs)
+#define	INTR_TO_TRAPFRAME(frame) ((struct trapframe *)&(frame)->if_gs)
 
 #endif /* _CPU_FRAME_H_ */
