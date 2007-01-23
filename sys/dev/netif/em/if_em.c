@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.54 2007/01/21 10:44:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.55 2007/01/23 11:09:25 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2035,9 +2035,11 @@ em_hardware_init(struct adapter *adapter)
 
 	/* Make sure we have a good EEPROM before we read from it */
 	if (em_validate_eeprom_checksum(&adapter->hw) < 0) {
-		device_printf(adapter->dev,
-			      "The EEPROM Checksum Is Not Valid\n");
-		return (EIO);
+		if (em_validate_eeprom_checksum(&adapter->hw) < 0) {
+			device_printf(adapter->dev,
+				      "The EEPROM Checksum Is Not Valid\n");
+			return (EIO);
+		}
 	}
 
 	if (em_read_part_num(&adapter->hw, &(adapter->part_num)) < 0) {
