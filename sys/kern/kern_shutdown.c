@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.47 2007/01/05 22:16:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.48 2007/01/24 16:09:29 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -522,8 +522,10 @@ shutdown_cleanup_proc(struct proc *p)
  *
  * exported (symorder) and used at least by savecore(8)
  *
+ * Mark it as used so that gcc doesn't optimize it away.
  */
-static u_long const	dumpmag = 0x8fca0101UL;	
+__attribute__((__used__))
+	static u_long const dumpmag = 0x8fca0101UL;	
 
 static int	dumpsize = 0;		/* also for savecore */
 
