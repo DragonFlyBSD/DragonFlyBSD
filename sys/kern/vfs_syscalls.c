@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.111 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.112 2007/01/24 01:25:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@
 
 static void mount_warning(struct mount *mp, const char *ctl, ...);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
-static void checkdirs (struct vnode *olddp, struct nchandle *nch);
+static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (const struct timeval *, struct timespec *);
@@ -376,7 +376,7 @@ update:
 		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
 		vp->v_flag &= ~VMOUNT;
 		mountlist_insert(mp, MNTINS_LAST);
-		checkdirs(vp, &mp->mnt_ncmounton);
+		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		vn_unlock(vp);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp);
@@ -408,36 +408,55 @@ update:
  * mount point.
  */
 struct checkdirs_info {
-	struct vnode *olddp;
-	struct vnode *newdp;
-	struct nchandle nch;
+	struct nchandle old_nch;
+	struct nchandle new_nch;
+	struct vnode *old_vp;
+	struct vnode *new_vp;
 };
 
 static int checkdirs_callback(struct proc *p, void *data);
 
 static void
-checkdirs(struct vnode *olddp, struct nchandle *nch)
+checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 {
 	struct checkdirs_info info;
+	struct vnode *olddp;
 	struct vnode *newdp;
 	struct mount *mp;
 
-	if (olddp->v_usecount == 1)
+	/*
+	 * If the old mount point's vnode has a usecount of 1, it is not
+	 * being held as a descriptor anywhere.
+	 */
+	olddp = old_nch->ncp->nc_vp;
+	if (olddp == NULL || olddp->v_usecount == 1)
 		return;
-	mp = nch->mount;
+
+	/*
+	 * Force the root vnode of the new mount point to be resolved
+	 * so we can update any matching processes.
+	 */
+	mp = new_nch->mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
-	cache_setunresolved(nch);
-	cache_setvp(nch, newdp);
+	cache_setunresolved(new_nch);
+	cache_setvp(new_nch, newdp);
 
+	/*
+	 * Special handling of the root node
+	 */
 	if (rootvnode == olddp) {
 		vref(newdp);
-		vfs_cache_setroot(newdp, cache_hold(nch));
+		vfs_cache_setroot(newdp, cache_hold(new_nch));
 	}
 
-	info.olddp = olddp;
-	info.newdp = newdp;
-	info.nch = *nch;
+	/*
+	 * Pass newdp separately so the callback does not have to access
+	 * it via new_nch->ncp->nc_vp.
+	 */
+	info.old_nch = *old_nch;
+	info.new_nch = *new_nch;
+	info.new_vp = newdp;
 	allproc_scan(checkdirs_callback, &info);
 	vput(newdp);
 }
@@ -470,19 +489,21 @@ checkdirs_callback(struct proc *p, void *data)
 		 * because we are making this change globally.
 		 */
 		spin_lock_wr(&fdp->fd_spin);
-		if (fdp->fd_cdir == info->olddp) {
+		if (fdp->fd_ncdir.mount == info->old_nch.mount &&
+		    fdp->fd_ncdir.ncp == info->old_nch.ncp) {
 			vprele1 = fdp->fd_cdir;
-			vref(info->newdp);
-			fdp->fd_cdir = info->newdp;
+			vref(info->new_vp);
+			fdp->fd_cdir = info->new_vp;
 			ncdrop1 = fdp->fd_ncdir;
-			cache_copy(&info->nch, &fdp->fd_ncdir);
+			cache_copy(&info->new_nch, &fdp->fd_ncdir);
 		}
-		if (fdp->fd_rdir == info->olddp) {
+		if (fdp->fd_nrdir.mount == info->old_nch.mount &&
+		    fdp->fd_nrdir.ncp == info->old_nch.ncp) {
 			vprele2 = fdp->fd_rdir;
-			vref(info->newdp);
-			fdp->fd_rdir = info->newdp;
+			vref(info->new_vp);
+			fdp->fd_rdir = info->new_vp;
 			ncdrop2 = fdp->fd_nrdir;
-			cache_copy(&info->nch, &fdp->fd_nrdir);
+			cache_copy(&info->new_nch, &fdp->fd_nrdir);
 		}
 		spin_unlock_wr(&fdp->fd_spin);
 		if (ncdrop1.ncp)
