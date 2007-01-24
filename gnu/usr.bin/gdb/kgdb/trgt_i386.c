@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2005/09/11 05:36:30 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.3 2006/07/09 01:38:57 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.4 2007/01/24 18:56:30 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -147,7 +147,16 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 		*this_cache = cache;
 		cache->pc = frame_func_unwind(next_frame);
 		find_pc_partial_function(cache->pc, &pname, NULL, NULL);
-		cache->intrframe = (pname[0] == 'X') ? 1 : 0;
+
+		/*
+		 * Handle weird trapframe cases
+		 */
+		if (pname[0] == 'X')
+			cache->intrframe = 4;
+		else if (strcmp(pname, "calltrap") == 0)
+			cache->intrframe = 4;
+		else
+			cache->intrframe = 0;
 		frame_unwind_register(next_frame, SP_REGNUM, buf);
 		cache->sp = extract_unsigned_integer(buf,
 		    register_size(current_gdbarch, SP_REGNUM));
@@ -190,7 +199,7 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 	cache = kgdb_trgt_frame_cache(next_frame, this_cache);
 
 	ofs = kgdb_trgt_frame_offset[regnum];
-	*addrp = cache->sp + ofs + (cache->intrframe ? 4 : 0);
+	*addrp = cache->sp + ofs + cache->intrframe;
 
 	/*
 	 * If we are in the kernel, we don't have esp stored in the
