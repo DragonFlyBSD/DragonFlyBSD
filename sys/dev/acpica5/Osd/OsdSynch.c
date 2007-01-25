@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.10 2007/01/17 17:31:19 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.11 2007/01/25 15:12:06 y0netan1 Exp $
  */
 
 /*
@@ -372,16 +372,16 @@ _AcpiOsAcquireLock (ACPI_SPINLOCK Spin, const char *func, int line)
 AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 #endif
 {
-    thread_t td = curthread;
-
     spin_lock_wr(&Spin->lock);
+
 #ifdef ACPI_DEBUG_LOCKS
     if (Spin->owner) {
 	kprintf("%p(%s:%d): acpi_spinlock %p already held by %p(%s:%d)\n",
-		td, func, line, Spin, Spin->owner, Spin->func, Spin->line);
+		curthread, func, line, Spin, Spin->owner, Spin->func,
+		Spin->line);
 	db_print_backtrace();
     } else {
-	Spin->owner = td;
+	Spin->owner = curthread;
 	Spin->func = func;
 	Spin->line = line;
     }
