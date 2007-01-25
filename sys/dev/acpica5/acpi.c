@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.28 2007/01/17 17:31:19 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.29 2007/01/25 02:43:35 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -429,6 +429,11 @@ acpi_attach(device_t dev)
     sc->acpi_dev = dev;
     callout_init(&sc->acpi_sleep_timer);
 
+    if ((error = acpi_task_thread_init())) {
+	device_printf(dev, "Could not start task thread.\n");
+	goto out;
+    }
+
     /*
      * Set the globals from our tunables.  This is needed because ACPI-CA
      * uses UINT8 for some values and we have no tunable_byte.
@@ -657,9 +662,6 @@ acpi_attach(device_t dev)
 	freeenv(debugpoint);
     }
 #endif
-
-    if ((error = acpi_task_thread_init()))
-	goto out;
 
     if ((error = acpi_machdep_init(dev)))
 	goto out;
