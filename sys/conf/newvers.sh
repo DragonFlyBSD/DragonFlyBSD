@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.17 2006/07/17 00:11:59 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.18 2007/01/25 18:57:44 dillon Exp $
 
 tag="\$Name:  $"
 
@@ -53,14 +53,14 @@ BRANCH=${BRANCH%_Slip}
 # implicitly or explicitly.
 #
 if [ "X${BRANCH}" = "X$" ]; then
-    BRANCH="DEVELOPMENT_1_7"
+    BRANCH="DEVELOPMENT_1_9"
 fi
 if [ "X${BRANCH}" = "XHEAD" ]; then
-    BRANCH="DEVELOPMENT_1_7"
+    BRANCH="DEVELOPMENT_1_9"
 fi
 if [ "X${BRANCH}" = "XPreview" ]; then
-    BRANCH="PREVIEW_1_7"
-    SHORTTAG="DEVELOPMENT_1_7"
+    BRANCH="PREVIEW_1_9"
+    SHORTTAG="DEVELOPMENT_1_9"
 fi
 
 # This case occurs if the $Name:  $ field has not been expanded.
