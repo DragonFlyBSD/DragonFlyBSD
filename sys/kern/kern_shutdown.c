@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.48 2007/01/24 16:09:29 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.49 2007/01/25 09:18:13 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -278,12 +278,22 @@ boot(int howto)
 	 * Try to get rid of any remaining FS references.  The calling
 	 * process, proc0, and init may still hold references.  The
 	 * VFS cache subsystem may still hold a root reference to root.
+	 *
+	 * XXX this needs work.  We really need to SIGSTOP all remaining
+	 * processes in order to avoid blowups due to proc0's filesystem
+	 * references going away.  For now just make sure that the init
+	 * process is stopped.
 	 */
 	if (panicstr == NULL) {
 		shutdown_cleanup_proc(curproc);
 		shutdown_cleanup_proc(&proc0);
-		if (initproc)
+		if (initproc) {
+			if (initproc != curproc) {
+				ksignal(initproc, SIGSTOP);
+				tsleep(boot, 0, "shutdn", hz / 20);
+			}
 			shutdown_cleanup_proc(initproc);
+		}
 		vfs_cache_setroot(NULL, NULL);
 	}
 
