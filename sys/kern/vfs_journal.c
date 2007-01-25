@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.31 2007/01/12 06:06:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.32 2007/01/25 18:19:31 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -1160,7 +1160,8 @@ jrecord_write_path(struct jrecord *jrec, int16_t rectype, struct namecache *ncp)
 again:
     pathlen = 0;
     for (scan = ncp; scan; scan = scan->nc_parent) {
-	pathlen += scan->nc_nlen + 1;
+	if (scan->nc_nlen > 0)
+	    pathlen += scan->nc_nlen + 1;
     }
 
     if (pathlen <= sizeof(buf))
@@ -1173,6 +1174,8 @@ again:
      */
     index = pathlen;
     for (scan = ncp; scan; scan = scan->nc_parent) {
+	if (scan->nc_nlen == 0)
+	    continue;
 	if (scan->nc_nlen >= index) {
 	    if (base != buf)
 		kfree(base, M_TEMP);
