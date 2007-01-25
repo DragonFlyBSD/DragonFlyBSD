@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.20 2006/08/12 22:34:23 swildner Exp $
+# $DragonFly: src/Makefile,v 1.21 2007/01/25 18:46:01 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -195,6 +195,9 @@ update_release1_4_slip_tag:     iamoncrater
 
 update_release1_6_slip_tag:     iamoncrater
 	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_6 DragonFly_RELEASE_1_6_Slip src
+
+update_release1_8_slip_tag:     iamoncrater
+	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_8 DragonFly_RELEASE_1_8_Slip src
 
 iamoncrater:
 	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
