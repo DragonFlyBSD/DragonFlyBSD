@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.5 2007/01/24 20:09:34 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.6 2007/01/26 23:05:36 eirikn Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -318,7 +318,7 @@ rsync
 </TR>
 
 <TR>
-<TD>ftp.pvvntnu.no (Norway)</TD>
+<TD>ftp.pvv.ntnu.no (Norway)</TD>
 <TD>binary pkgsrc packages </TD>
 <TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/i386/All/">i386 packages</a>, 
 <a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
