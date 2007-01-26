@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.10 2005/11/06 12:32:56 swildner Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.11 2007/01/26 18:58:55 dillon Exp $
  */
 
 #include "jscan.h"
@@ -188,6 +188,18 @@ main(int ac, char **av)
 			"or zero if stdin is to be the input.\n");
 	usage(av[0]);
     }
+    if (strcmp(mirror_directory, ".") != 0) {
+	struct stat sb;
+	if (stat(mirror_directory, &sb) != 0) {
+	    perror ("Could not stat mirror directory");
+	    usage(av[0]);
+	}
+	if (!S_ISDIR(sb.st_mode))
+	{
+	    fprintf (stderr, "Mirror directory '%s' is not a directory\n", mirror_directory);
+	    usage(av[0]);
+	}
+    }
     if (jdirection == JD_BACKWARDS && (jmodes & (JMODEF_RECORD|JMODEF_OUTPUT))) {
 	fprintf(stderr, "Undo mode is only good in mirroring mode and "
 			"cannot be mixed with other modes.\n");
@@ -267,6 +279,13 @@ main(int ac, char **av)
 	if (jmodes & JMODEF_RECORD) {
 	    fprintf(stderr, "Starting transid for RECORD: %016llx\n",
 		    record_transid);
+	}
+    }
+
+    if (strcmp(mirror_directory, ".") != 0) {
+	if (chdir (mirror_directory) != 0) {
+	    perror ("Could not enter mirror directory");
+	    exit (1);
 	}
     }
 
