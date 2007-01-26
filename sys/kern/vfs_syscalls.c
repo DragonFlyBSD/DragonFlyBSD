@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.112 2007/01/24 01:25:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.113 2007/01/26 18:05:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,6 +79,7 @@
 #include <vfs/union/union.h>
 
 static void mount_warning(struct mount *mp, const char *ctl, ...);
+static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
@@ -765,6 +766,27 @@ mount_warning(struct mount *mp, const char *ctl, ...)
 }
 
 /*
+ * Shim cache_fullpath() to handle the case where a process is chrooted into
+ * a subdirectory of a mount.  In this case if the root mount matches the
+ * process root directory's mount we have to specify the process's root
+ * directory instead of the mount point, because the mount point might
+ * be above the root directory.
+ */
+static
+int
+mount_path(struct proc *p, struct mount *mp, char **rb, char **fb)
+{
+	struct nchandle *nch;
+	int error;
+
+	if (p && p->p_fd->fd_nrdir.mount == mp)
+		nch = &p->p_fd->fd_nrdir;
+	else
+		nch = &mp->mnt_ncmountpt;
+	return(cache_fullpath(p, nch, rb, fb));
+}
+
+/*
  * Sync each mounted filesystem.
  */
 
@@ -986,7 +1008,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 	if ((error = VFS_STATFS(mp, sp, nd->nl_cred)) != 0)
 		return (error);
 
-	error = cache_fullpath(p, &mp->mnt_ncmountpt, &fullpath, &freepath);
+	error = mount_path(p, mp, &fullpath, &freepath);
 	if (error)
 		return(error);
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
@@ -1049,7 +1071,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	if ((error = VFS_STATFS(mp, sp, fp->f_cred)) != 0)
 		goto done;
 
-	if ((error = cache_fullpath(p, &mp->mnt_ncmountpt, &fullpath, &freepath)) != 0)
+	if ((error = mount_path(p, mp, &fullpath, &freepath)) != 0)
 		goto done;
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
@@ -1152,8 +1174,7 @@ getfsstat_callback(struct mount *mp, void *data)
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
-		error = cache_fullpath(info->p, &mp->mnt_ncmountpt,
-					&fullpath, &freepath);
+		error = mount_path(info->p, mp, &fullpath, &freepath);
 		if (error) {
 			info->error = error;
 			return(-1);
@@ -3542,7 +3563,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	if ((error = VFS_STATFS(mp, sp, p->p_ucred)) != 0)
 		return (error);
 
-	error = cache_fullpath(p, &mp->mnt_ncmountpt, &fullpath, &freepath);
+	error = mount_path(p, mp, &fullpath, &freepath);
 	if (error)
 		return(error);
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
@@ -3806,6 +3827,15 @@ chroot_visible_mnt(struct mount *mp, struct proc *p)
 			nch.ncp = nch.ncp->nc_parent;
 		}
 	}
+
+	/*
+	 * If the mount point is not visible to the process, but the
+	 * process root is in a subdirectory of the mount, return
+	 * TRUE anyway.
+	 */
+	if (p->p_fd->fd_nrdir.mount == mp)
+		return(1);
+
 	return(0);
 }
 
