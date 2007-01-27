@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.12 2007/01/06 08:27:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.13 2007/01/27 15:03:25 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -6842,7 +6842,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 	struct	   ahc_tmode_lstate *lstate;
 	struct	   ccb_en_lun *cel;
 	cam_status status;
-	u_long	   s;
 	u_int	   target;
 	u_int	   lun;
 	u_int	   target_mask;
@@ -6924,14 +6923,13 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 	 */
 	if ((ahc->flags & AHC_TARGETROLE) == 0
 	 && ccb->ccb_h.target_id != CAM_TARGET_WILDCARD) {
-		u_long	 s;
 		ahc_flag saved_flags;
 
 		kprintf("Configuring Target Mode\n");
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		if (LIST_FIRST(&ahc->pending_scbs) != NULL) {
 			ccb->ccb_h.status = CAM_BUSY;
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			return;
 		}
 		saved_flags = ahc->flags;
@@ -6952,12 +6950,12 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			ahc->flags = saved_flags;
 			(void)ahc_loadseq(ahc);
 			ahc_restart(ahc);
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
 			return;
 		}
 		ahc_restart(ahc);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 	}
 	cel = &ccb->cel;
 	target = ccb->ccb_h.target_id;
@@ -7016,7 +7014,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		}
 		SLIST_INIT(&lstate->accept_tios);
 		SLIST_INIT(&lstate->immed_notifies);
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		ahc_pause(ahc);
 		if (target != CAM_TARGET_WILDCARD) {
 			tstate->enabled_luns[lun] = lstate;
@@ -7082,7 +7080,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			ahc_outb(ahc, SCSISEQ, scsiseq);
 		}
 		ahc_unpause(ahc);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_print_path(ccb->ccb_h.path);
 		kprintf("Lun now enabled for target mode\n");
@@ -7095,7 +7093,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			return;
 		}
 
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		LIST_FOREACH(scb, &ahc->pending_scbs, pending_links) {
@@ -7106,7 +7104,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			 && !xpt_path_comp(ccbh->path, ccb->ccb_h.path)){
 				kprintf("CTIO pending\n");
 				ccb->ccb_h.status = CAM_REQ_INVALID;
-				ahc_unlock(ahc, &s);
+				ahc_unlock();
 				return;
 			}
 		}
@@ -7122,7 +7120,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		}
 
 		if (ccb->ccb_h.status != CAM_REQ_CMP) {
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			return;
 		}
 
@@ -7197,7 +7195,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			}
 		}
 		ahc_unpause(ahc);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 	}
 }
 

@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.12 2007/01/27 15:03:25 swildner Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -117,7 +117,6 @@ ahd_attach(struct ahd_softc *ahd)
 	struct ccb_setasync csa;
 	struct cam_sim *sim;
 	struct cam_path *path;
-	long s;
 	int count;
 
 	count = 0;
@@ -125,7 +124,7 @@ ahd_attach(struct ahd_softc *ahd)
 
 	ahd_controller_info(ahd, ahd_info);
 	kprintf("%s\n", ahd_info);
-	ahd_lock(ahd, &s);
+	ahd_lock();
 
 	/*
 	 * Construct our SIM entry
@@ -170,7 +169,7 @@ fail:
 		ahd_intr_enable(ahd, TRUE);
 	}
 
-	ahd_unlock(ahd, &s);
+	ahd_unlock();
 
 	return (count);
 }
@@ -340,7 +339,6 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 #endif
 	u_int	target_id;
 	u_int	our_id;
-	long	s;
 
 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("ahd_action\n"));
 	
@@ -374,13 +372,13 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 		}
 		if (ccb->ccb_h.func_code == XPT_ACCEPT_TARGET_IO) {
 
-			ahd_lock(ahd, &s);
+			ahd_lock();
 			SLIST_INSERT_HEAD(&lstate->accept_tios, &ccb->ccb_h,
 					  sim_links.sle);
 			ccb->ccb_h.status = CAM_REQ_INPROG;
 			if ((ahd->flags & AHD_TQINFIFO_BLOCKED) != 0)
 				ahd_run_tqinfifo(ahd, /*paused*/FALSE);
-			ahd_unlock(ahd, &s);
+			ahd_unlock();
 			break;
 		}
 
@@ -414,7 +412,7 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 		/*
 		 * get an scb to use.
 		 */
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		tinfo = ahd_fetch_transinfo(ahd, 'A', our_id,
 					    target_id, &tstate);
 		if ((ccb->ccb_h.flags & CAM_TAG_ACTION_VALID) == 0
@@ -429,12 +427,12 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 	
 			xpt_freeze_simq(sim, /*count*/1);
 			ahd->flags |= AHD_RESOURCE_SHORTAGE;
-			ahd_unlock(ahd, &s);
+			ahd_unlock();
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
 			return;
 		}
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		
 		hscb = scb->hscb;
 		
@@ -522,20 +520,20 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 	}
 	case XPT_SET_TRAN_SETTINGS:
 	{
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		ahd_set_tran_settings(ahd, SIM_SCSI_ID(ahd, sim),
 				      SIM_CHANNEL(ahd, sim), &ccb->cts);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		xpt_done(ccb);
 		break;
 	}
 	case XPT_GET_TRAN_SETTINGS:
 	/* Get default/user set transfer settings for the target */
 	{
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		ahd_get_tran_settings(ahd, SIM_SCSI_ID(ahd, sim),
 				      SIM_CHANNEL(ahd, sim), &ccb->cts);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		xpt_done(ccb);
 		break;
 	}
@@ -568,10 +566,10 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 	{
 		int  found;
 		
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		found = ahd_reset_channel(ahd, SIM_CHANNEL(ahd, sim),
 					  /*initiate reset*/TRUE);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		if (bootverbose) {
 			xpt_print_path(SIM_PATH(ahd, sim));
 			kprintf("SCSI bus reset delivered. "
@@ -989,7 +987,6 @@ ahd_async(void *callback_arg, uint32_t code, struct cam_path *path, void *arg)
 	case AC_LOST_DEVICE:
 	{
 		struct	ahd_devinfo devinfo;
-		long	s;
 
 		ahd_compile_devinfo(&devinfo, SIM_SCSI_ID(ahd, sim),
 				    xpt_path_target_id(path),
@@ -1001,13 +998,13 @@ ahd_async(void *callback_arg, uint32_t code, struct cam_path *path, void *arg)
 		 * Revert to async/narrow transfers
 		 * for the next device.
 		 */
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		ahd_set_width(ahd, &devinfo, MSG_EXT_WDTR_BUS_8_BIT,
 			      AHD_TRANS_GOAL|AHD_TRANS_CUR, /*paused*/FALSE);
 		ahd_set_syncrate(ahd, &devinfo, /*period*/0, /*offset*/0,
 				 /*ppr_options*/0, AHD_TRANS_GOAL|AHD_TRANS_CUR,
 				 /*paused*/FALSE);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		break;
 	}
 	default:
@@ -1025,7 +1022,6 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 	struct	ahd_initiator_tinfo *tinfo;
 	struct	ahd_tmode_tstate *tstate;
 	u_int	mask;
-	u_long	s;
 
 	scb = (struct scb *)arg;
 	ccb = scb->io_ctx;
@@ -1038,9 +1034,9 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 			ahd_set_transaction_status(scb, CAM_REQ_CMP_ERR);
 		if (nsegments != 0)
 			bus_dmamap_unload(ahd->buffer_dmat, scb->dmamap);
-		ahd_lock(ahd, &s);
+		ahd_lock();
 		ahd_free_scb(ahd, scb);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		xpt_done(ccb);
 		return;
 	}
@@ -1078,7 +1074,7 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		}
 	}
 
-	ahd_lock(ahd, &s);
+	ahd_lock();
 
 	/*
 	 * Last time we need to check if this SCB needs to
@@ -1089,7 +1085,7 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 			bus_dmamap_unload(ahd->buffer_dmat,
 					  scb->dmamap);
 		ahd_free_scb(ahd, scb);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		xpt_done(ccb);
 		return;
 	}
@@ -1149,7 +1145,7 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		ahd_queue_scb(ahd, scb);
 	}
 
-	ahd_unlock(ahd, &s);
+	ahd_unlock();
 }
 
 static void
@@ -1176,8 +1172,6 @@ ahd_setup_data(struct ahd_softc *ahd, struct cam_sim *sim,
 
 			if (hscb->cdb_len > MAX_CDB_LEN
 			 && (ccb_h->flags & CAM_CDB_PHYS) == 0) {
-				u_long s;
-
 				/*
 				 * Should CAM start to support CDB sizes
 				 * greater than 16 bytes, we could use
@@ -1185,9 +1179,9 @@ ahd_setup_data(struct ahd_softc *ahd, struct cam_sim *sim,
 				 */
 				ahd_set_transaction_status(scb,
 							   CAM_REQ_INVALID);
-				ahd_lock(ahd, &s);
+				ahd_lock();
 				ahd_free_scb(ahd, scb);
-				ahd_unlock(ahd, &s);
+				ahd_unlock();
 				xpt_done((union ccb *)csio);
 				return;
 			}
@@ -1204,13 +1198,11 @@ ahd_setup_data(struct ahd_softc *ahd, struct cam_sim *sim,
 			}
 		} else {
 			if (hscb->cdb_len > MAX_CDB_LEN) {
-				u_long s;
-
 				ahd_set_transaction_status(scb,
 							   CAM_REQ_INVALID);
-				ahd_lock(ahd, &s);
+				ahd_lock();
 				ahd_free_scb(ahd, scb);
-				ahd_unlock(ahd, &s);
+				ahd_unlock();
 				xpt_done((union ccb *)csio);
 				return;
 			}
@@ -1319,7 +1311,6 @@ ahd_timeout(void *arg)
 	struct	scb	  *scb;
 	struct	ahd_softc *ahd;
 	ahd_mode_state	   saved_modes;
-	long		   s;
 	int		   target;
 	int		   lun;
 	char		   channel;
@@ -1333,7 +1324,7 @@ ahd_timeout(void *arg)
 	scb = (struct scb *)arg; 
 	ahd = (struct ahd_softc *)scb->ahd_softc;
 
-	ahd_lock(ahd, &s);
+	ahd_lock();
 
 	ahd_pause_and_flushwork(ahd);
 
@@ -1351,7 +1342,7 @@ ahd_timeout(void *arg)
 		kprintf("%s: Timedout SCB already complete. "
 		       "Interrupts may not be functioning.\n", ahd_name(ahd));
 		ahd_unpause(ahd);
-		ahd_unlock(ahd, &s);
+		ahd_unlock();
 		return;
 	}
 
@@ -1364,7 +1355,7 @@ ahd_timeout(void *arg)
 	ahd_dump_card_state(ahd);
 	ahd_reset_channel(ahd, SIM_CHANNEL(ahd, sim),
 			  /*initiate reset*/TRUE);
-	ahd_unlock(ahd, &s);
+	ahd_unlock();
 	return;
 #if NOT_YET
 	last_phase = ahd_inb(ahd, LASTPHASE);
@@ -1446,7 +1437,7 @@ bus_reset:
 				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
 				    newtimeout, ahd_timeout, scb);
 				ahd_unpause(ahd);
-				ahd_unlock(ahd, &s);
+				ahd_unlock();
 				return;
 			} 
 
@@ -1466,7 +1457,7 @@ bus_reset:
 
 				/* Will clear us from the bus */
 				ahd_restart(ahd);
-				ahd_unlock(ahd, &s);
+				ahd_unlock();
 				return;
 			}
 
@@ -1493,7 +1484,7 @@ bus_reset:
 				kprintf("%s: Hung target selection\n",
 				       ahd_name(ahd));
 				ahd_restart(ahd);
-				ahd_unlock(ahd, &s);
+				ahd_unlock();
 				return;
 			}
 
@@ -1568,7 +1559,7 @@ bus_reset:
 			}
 		}
 	}
-	ahd_unlock(ahd, &s);
+	ahd_unlock();
 #endif
 }
 
@@ -1784,24 +1775,19 @@ int
 ahd_detach(device_t dev)
 {
 	struct ahd_softc *ahd;
-	u_long l;
-	u_long s;
 
-	ahd_list_lock(&l);
 	device_printf(dev, "detaching device\n");
 	ahd = device_get_softc(dev);
 	ahd = ahd_find_softc(ahd);
 	if (ahd == NULL) {
 		device_printf(dev, "aic7xxx already detached\n");
-		ahd_list_unlock(&l);
 		return (ENOENT);
 	}
-	ahd_lock(ahd, &s);
+	ahd_lock();
 	ahd_intr_enable(ahd, FALSE);
 	bus_teardown_intr(dev, ahd->platform_data->irq, ahd->platform_data->ih);
-	ahd_unlock(ahd, &s);
+	ahd_unlock();
 	ahd_free(ahd);
-	ahd_list_unlock(&l);
 	return (0);
 }
 

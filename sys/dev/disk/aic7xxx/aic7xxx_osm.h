@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#15 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.14.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.8 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.9 2007/01/27 15:03:25 swildner Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -276,68 +276,21 @@ ahc_flush_device_writes(struct ahc_softc *ahc)
 
 /**************************** Locking Primitives ******************************/
 /* Lock protecting internal data structures */
-static __inline void ahc_lockinit(struct ahc_softc *);
-static __inline void ahc_lock(struct ahc_softc *, unsigned long *flags);
-static __inline void ahc_unlock(struct ahc_softc *, unsigned long *flags);
-
-/* Lock held during command compeletion to the upper layer */
-static __inline void ahc_done_lockinit(struct ahc_softc *);
-static __inline void ahc_done_lock(struct ahc_softc *, unsigned long *flags);
-static __inline void ahc_done_unlock(struct ahc_softc *, unsigned long *flags);
-
-/* Lock held during ahc_list manipulation and ahc softc frees */
-static __inline void ahc_list_lockinit(void);
-static __inline void ahc_list_lock(unsigned long *flags);
-static __inline void ahc_list_unlock(unsigned long *flags);
+static __inline void ahc_lock(void);
+static __inline void ahc_unlock(void);
 
 static __inline void
-ahc_lockinit(struct ahc_softc *ahc)
-{
-}
-
-static __inline void
-ahc_lock(struct ahc_softc *ahc, unsigned long *flags __unused)
+ahc_lock(void)
 {
 	crit_enter_id("ahc");
 }
 
 static __inline void
-ahc_unlock(struct ahc_softc *ahc, unsigned long *flags __unused)
+ahc_unlock(void)
 {
 	crit_exit_id("ahc");
 }
 
-/* Lock held during command compeletion to the upper layer */
-static __inline void
-ahc_done_lockinit(struct ahc_softc *ahc)
-{
-}
-
-static __inline void
-ahc_done_lock(struct ahc_softc *ahc, unsigned long *flags)
-{
-}
-
-static __inline void
-ahc_done_unlock(struct ahc_softc *ahc, unsigned long *flags)
-{
-}
-
-/* Lock held during ahc_list manipulation and ahc softc frees */
-static __inline void
-ahc_list_lockinit(void)
-{
-}
-
-static __inline void
-ahc_list_lock(unsigned long *flags)
-{
-}
-
-static __inline void
-ahc_list_unlock(unsigned long *flags)
-{
-}
 /****************************** OS Primitives *********************************/
 #define ahc_delay DELAY
 

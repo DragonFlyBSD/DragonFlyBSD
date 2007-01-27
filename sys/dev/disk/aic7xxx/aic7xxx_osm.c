@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.11 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.12 2007/01/27 15:03:25 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -113,7 +113,6 @@ ahc_attach(struct ahc_softc *ahc)
 	struct cam_sim *sim2;
 	struct cam_path *path;
 	struct cam_path *path2;
-	long s;
 	int count;
 
 	count = 0;
@@ -122,7 +121,7 @@ ahc_attach(struct ahc_softc *ahc)
 
 	ahc_controller_info(ahc, ahc_info);
 	kprintf("%s\n", ahc_info);
-	ahc_lock(ahc, &s);
+	ahc_lock();
 	/*
 	 * Attach secondary channel first if the user has
 	 * declared it the primary channel.
@@ -230,7 +229,7 @@ fail:
 		ahc_intr_enable(ahc, TRUE);
 	}
 
-	ahc_unlock(ahc, &s);
+	ahc_unlock();
 	return (count);
 }
 
@@ -385,7 +384,6 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 	struct	ahc_tmode_lstate *lstate;
 	u_int	target_id;
 	u_int	our_id;
-	long	s;
 
 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("ahc_action\n"));
 	
@@ -418,13 +416,13 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 		}
 		if (ccb->ccb_h.func_code == XPT_ACCEPT_TARGET_IO) {
 
-			ahc_lock(ahc, &s);
+			ahc_lock();
 			SLIST_INSERT_HEAD(&lstate->accept_tios, &ccb->ccb_h,
 					  sim_links.sle);
 			ccb->ccb_h.status = CAM_REQ_INPROG;
 			if ((ahc->flags & AHC_TQINFIFO_BLOCKED) != 0)
 				ahc_run_tqinfifo(ahc, /*paused*/FALSE);
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			break;
 		}
 
@@ -454,17 +452,17 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 		/*
 		 * get an scb to use.
 		 */
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		if ((scb = ahc_get_scb(ahc)) == NULL) {
 	
 			xpt_freeze_simq(sim, /*count*/1);
 			ahc->flags |= AHC_RESOURCE_SHORTAGE;
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
 			return;
 		}
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		
 		hscb = scb->hscb;
 		
@@ -595,7 +593,7 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 			break;
 		}
 		
-		ahc_lock(ahc, &s);
+		ahc_lock();
 
 		if ((spi->valid & CTS_SPI_VALID_DISC) != 0) {
 			if ((spi->flags & CTS_SPI_FLAGS_DISC_ENB) != 0)
@@ -672,7 +670,7 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 					 spi->ppr_options, update_type,
 					 /*paused*/FALSE);
 		}
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 #else
@@ -683,7 +681,6 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 		uint16_t *discenable;
 		uint16_t *tagenable;
 		u_int	  update_type;
-		long	  s;
 
 		cts = &ccb->cts;
 		ahc_compile_devinfo(&devinfo, SIM_SCSI_ID(ahc, sim),
@@ -709,7 +706,7 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 			break;
 		}
 		
-		ahc_lock(ahc, &s);
+		ahc_lock();
 
 		if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
 			if ((cts->flags & CCB_TRANS_DISC_ENB) != 0)
@@ -791,7 +788,7 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 					 ppr_options, update_type,
 					 /*paused*/FALSE);
 		}
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 #endif
@@ -801,10 +798,10 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 	/* Get default/user set transfer settings for the target */
 	{
 
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		ahc_get_tran_settings(ahc, SIM_SCSI_ID(ahc, sim),
 				      SIM_CHANNEL(ahc, sim), &ccb->cts);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		xpt_done(ccb);
 		break;
 	}
@@ -839,10 +836,10 @@ ahc_action(struct cam_sim *sim, union ccb *ccb)
 	{
 		int  found;
 		
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		found = ahc_reset_channel(ahc, SIM_CHANNEL(ahc, sim),
 					  /*initiate reset*/TRUE);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		if (bootverbose) {
 			xpt_print_path(SIM_PATH(ahc, sim));
 			kprintf("SCSI bus reset delivered. "
@@ -1039,7 +1036,6 @@ ahc_async(void *callback_arg, uint32_t code, struct cam_path *path, void *arg)
 	case AC_LOST_DEVICE:
 	{
 		struct	ahc_devinfo devinfo;
-		long	s;
 
 		ahc_compile_devinfo(&devinfo, SIM_SCSI_ID(ahc, sim),
 				    xpt_path_target_id(path),
@@ -1051,14 +1047,14 @@ ahc_async(void *callback_arg, uint32_t code, struct cam_path *path, void *arg)
 		 * Revert to async/narrow transfers
 		 * for the next device.
 		 */
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		ahc_set_width(ahc, &devinfo, MSG_EXT_WDTR_BUS_8_BIT,
 			      AHC_TRANS_GOAL|AHC_TRANS_CUR, /*paused*/FALSE);
 		ahc_set_syncrate(ahc, &devinfo, /*syncrate*/NULL,
 				 /*period*/0, /*offset*/0, /*ppr_options*/0,
 				 AHC_TRANS_GOAL|AHC_TRANS_CUR,
 				 /*paused*/FALSE);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		break;
 	}
 	default:
@@ -1076,7 +1072,6 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 	struct	ahc_initiator_tinfo *tinfo;
 	struct	ahc_tmode_tstate *tstate;
 	u_int	mask;
-	long	s;
 
 	scb = (struct scb *)arg;
 	ccb = scb->io_ctx;
@@ -1089,9 +1084,9 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 			ahc_set_transaction_status(scb, CAM_REQ_CMP_ERR);
 		if (nsegments != 0)
 			bus_dmamap_unload(ahc->buffer_dmat, scb->dmamap);
-		ahc_lock(ahc, &s);
+		ahc_lock();
 		ahc_free_scb(ahc, scb);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		xpt_done(ccb);
 		return;
 	}
@@ -1161,9 +1156,9 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 					    CAM_REQ_TOO_BIG);
 					bus_dmamap_unload(ahc->buffer_dmat,
 							  scb->dmamap);
-					ahc_lock(ahc, &s);
+					ahc_lock();
 					ahc_free_scb(ahc, scb);
-					ahc_unlock(ahc, &s);
+					ahc_unlock();
 					xpt_done(ccb);
 					return;
 				}
@@ -1186,7 +1181,7 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 	
 	scb->sg_count = nsegments;
 
-	ahc_lock(ahc, &s);
+	ahc_lock();
 
 	/*
 	 * Last time we need to check if this SCB needs to
@@ -1196,7 +1191,7 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		if (nsegments != 0)
 			bus_dmamap_unload(ahc->buffer_dmat, scb->dmamap);
 		ahc_free_scb(ahc, scb);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		xpt_done(ccb);
 		return;
 	}
@@ -1259,7 +1254,7 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		TAILQ_INSERT_TAIL(untagged_q, scb, links.tqe);
 		scb->flags |= SCB_UNTAGGEDQ;
 		if (TAILQ_FIRST(untagged_q) != scb) {
-			ahc_unlock(ahc, &s);
+			ahc_unlock();
 			return;
 		}
 	}
@@ -1277,7 +1272,7 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		ahc_queue_scb(ahc, scb);
 	}
 
-	ahc_unlock(ahc, &s);
+	ahc_unlock();
 }
 
 static void
@@ -1307,13 +1302,11 @@ ahc_setup_data(struct ahc_softc *ahc, struct cam_sim *sim,
 
 			if (hscb->cdb_len > sizeof(hscb->cdb32)
 			 || (ccb_h->flags & CAM_CDB_PHYS) != 0) {
-				u_long s;
-
 				ahc_set_transaction_status(scb,
 							   CAM_REQ_INVALID);
-				ahc_lock(ahc, &s);
+				ahc_lock();
 				ahc_free_scb(ahc, scb);
-				ahc_unlock(ahc, &s);
+				ahc_unlock();
 				xpt_done((union ccb *)csio);
 				return;
 			}
@@ -1437,7 +1430,6 @@ ahc_timeout(void *arg)
 {
 	struct	scb *scb;
 	struct	ahc_softc *ahc;
-	long	s;
 	int	found;
 	u_int	last_phase;
 	int	target;
@@ -1448,7 +1440,7 @@ ahc_timeout(void *arg)
 	scb = (struct scb *)arg; 
 	ahc = (struct ahc_softc *)scb->ahc_softc;
 
-	ahc_lock(ahc, &s);
+	ahc_lock();
 
 	ahc_pause_and_flushwork(ahc);
 
@@ -1457,7 +1449,7 @@ ahc_timeout(void *arg)
 		kprintf("%s: Timedout SCB already complete. "
 		       "Interrupts may not be functioning.\n", ahc_name(ahc));
 		ahc_unpause(ahc);
-		ahc_unlock(ahc, &s);
+		ahc_unlock();
 		return;
 	}
 
@@ -1545,7 +1537,7 @@ bus_reset:
 				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
 				    newtimeout, ahc_timeout, scb);
 				ahc_unpause(ahc);
-				ahc_unlock(ahc, &s);
+				ahc_unlock();
 				return;
 			} 
 
@@ -1565,7 +1557,7 @@ bus_reset:
 
 				/* Will clear us from the bus */
 				ahc_restart(ahc);
-				ahc_unlock(ahc, &s);
+				ahc_unlock();
 				return;
 			}
 
@@ -1592,7 +1584,7 @@ bus_reset:
 				kprintf("%s: Hung target selection\n",
 				       ahc_name(ahc));
 				ahc_restart(ahc);
-				ahc_unlock(ahc, &s);
+				ahc_unlock();
 				return;
 			}
 
@@ -1684,7 +1676,7 @@ bus_reset:
 			}
 		}
 	}
-	ahc_unlock(ahc, &s);
+	ahc_unlock();
 }
 
 static void
@@ -1893,24 +1885,19 @@ int
 ahc_detach(device_t dev)
 {
 	struct ahc_softc *ahc;
-	u_long l;
-	u_long s;
 
-	ahc_list_lock(&l);
 	device_printf(dev, "detaching device\n");
 	ahc = device_get_softc(dev);
 	ahc = ahc_find_softc(ahc);
 	if (ahc == NULL) {
 		device_printf(dev, "aic7xxx already detached\n");
-		ahc_list_unlock(&l);
 		return (ENOENT);
 	}
-	ahc_lock(ahc, &s);
+	ahc_lock();
 	ahc_intr_enable(ahc, FALSE);
 	bus_teardown_intr(dev, ahc->platform_data->irq, ahc->platform_data->ih);
-	ahc_unlock(ahc, &s);
+	ahc_unlock();
 	ahc_free(ahc);
-	ahc_list_unlock(&l);
 	return (0);
 }
 
