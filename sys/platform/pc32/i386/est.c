@@ -1,4 +1,4 @@
-/*	$NetBSD: est.c,v 1.24 2006/03/15 22:56:38 dogcow Exp $	*/
+/*	$NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $	*/
 /*
  * Copyright (c) 2003 Michael Eriksson.
  * All rights reserved.
@@ -84,8 +84,8 @@
  *
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
- * $NetBSD: est.c,v 1.24 2006/03/15 22:56:38 dogcow Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.5 2006/12/27 17:20:28 tgen Exp $
+ * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.6 2007/01/28 17:32:35 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -136,6 +136,17 @@ static const struct fq_info pentium_m_1200[] = {
 	{ 1000, 1100 },
 	{  900, 1020 },
 	{  800, 1004 },
+	{  600,  956 },
+};
+
+/* Low Voltage Intel Pentium M processor 1.30 GHz */
+static const struct fq_info pentium_m_1300_lv[] = {
+	{ 1300, 1180 },
+	{ 1200, 1164 },
+	{ 1100, 1100 },
+	{ 1000, 1020 },
+	{  900, 1004 },
+	{  800,  988 },
 	{  600,  956 },
 };
 
@@ -348,6 +359,14 @@ static const struct fq_info pentium_m_n750[] = {
 	{  800,  988 }
 };
 
+static const struct fq_info pentium_m_n750_2[] = {
+	{ 1867, 1356 },
+	{ 1600, 1228 },
+	{ 1333, 1148 },
+	{ 1067, 1068 },
+	{  800,  988 }
+};
+
 /* Intel Pentium M processor 755 2.0 GHz */
 static const struct fq_info pentium_m_n755[] = {
 	{ 2000, 1340 },
@@ -363,6 +382,15 @@ static const struct fq_info pentium_m_n755[] = {
 /* Intel Pentium M processor 760 2.0 GHz */
 static const struct fq_info pentium_m_n760[] = {
 	{ 2000, 1356 },
+	{ 1600, 1244 },
+	{ 1333, 1164 },
+	{ 1067, 1084 },
+	{  800,  988 }
+};
+
+/* Intel Pentium M processor 760 2.0 GHz */
+static const struct fq_info pentium_m_n760_2[] = {
+	{ 2000, 1308 },
 	{ 1600, 1244 },
 	{ 1333, 1164 },
 	{ 1067, 1084 },
@@ -393,6 +421,16 @@ static const struct fq_info pentium_m_n770[] = {
 	{  600,  988 }
 };
 
+/* Intel Pentium M processor 770 2.13 GHz */
+static const struct fq_info pentium_m_n770_2[] = {
+	{ 2133, 1356 },
+	{ 1867, 1292 },
+	{ 1600, 1212 },
+	{ 1333, 1148 },
+	{ 1067, 1068 },
+	{  800,  988 }
+};
+
 struct fqlist {
 	const char *brand_tag;
 	const u_int cpu_id;
@@ -408,6 +446,7 @@ static const struct fqlist pentium_m[] = { /* Banias */
 	ENTRY("1100", 0x0695, pentium_m_1100, 3),
 	ENTRY("1200", 0x0695, pentium_m_1200, 3),
 	ENTRY("1300", 0x0695, pentium_m_1300, 3),
+	ENTRY("1300", 0x0695, pentium_m_1300_lv, 3),
 	ENTRY("1400", 0x0695, pentium_m_1400, 3),
 	ENTRY("1500", 0x0695, pentium_m_1500, 3),
 	ENTRY("1600", 0x0695, pentium_m_1600, 3),
@@ -430,6 +469,7 @@ static const struct fqlist pentium_m_dothan[] = {
 	/* 'regular' 400 MHz FSB CPUs */
 	ENTRY("1.40", 0x06d6, pentium_m_n710, 3),
 	ENTRY("1.50", 0x06d6, pentium_m_n715, 3),
+	ENTRY("1.50", 0x06d8, pentium_m_n715, 3),
 	ENTRY("1.60", 0x06d6, pentium_m_n725, 3),
 	ENTRY("1.70", 0x06d6, pentium_m_n735, 3),
 	ENTRY("1.80", 0x06d6, pentium_m_n745, 3),
@@ -441,8 +481,11 @@ static const struct fqlist pentium_m_dothan[] = {
 	ENTRY("1.73", 0x06d8, pentium_m_n740, 4),
 	ENTRY("1.73", 0x06d8, pentium_m_n740_2, 4),
 	ENTRY("1.86", 0x06d8, pentium_m_n750, 4),
+	ENTRY("1.86", 0x06d8, pentium_m_n750_2, 4),
 	ENTRY("2.00", 0x06d8, pentium_m_n760, 4),
+	ENTRY("2.00", 0x06d8, pentium_m_n760_2, 4),
 	ENTRY("2.13", 0x06d8, pentium_m_n770, 4),
+	ENTRY("2.13", 0x06d8, pentium_m_n770_2, 4),
 
 };
 #undef ENTRY
