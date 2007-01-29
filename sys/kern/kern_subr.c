@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.20 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.20.4.1 2007/01/29 21:00:14 tgen Exp $
  */
 
 #include "opt_ddb.h"
@@ -330,9 +330,9 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 	struct iovec *iovp;
 	int error, i;
 
-	if (iov_cnt >= UIO_MAXIOV)
+	if (iov_cnt > UIO_MAXIOV)
 		return EMSGSIZE;
-	if (iov_cnt >= UIO_SMALLIOV) {
+	if (iov_cnt > UIO_SMALLIOV) {
 		MALLOC(*kiov, struct iovec *, sizeof(struct iovec) * iov_cnt,
 		    M_IOV, M_WAITOK);
 	} else {
