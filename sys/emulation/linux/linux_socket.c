@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.26 2006/09/16 03:37:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.26.2.1 2007/01/29 14:16:42 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -781,8 +781,12 @@ linux_recvfrom(struct linux_recvfrom_args *args, int *res)
 	    NULL, &flags, res);
 
 	if (error == 0 && linux_args.from) {
-		fromlen = MIN(fromlen, sa->sa_len);
-		error = linux_copyout_sockaddr(sa, linux_args.from, fromlen);
+		if (sa != NULL) {
+			fromlen = MIN(fromlen, sa->sa_len);
+			error = linux_copyout_sockaddr(sa, linux_args.from,
+							fromlen);
+		} else
+			fromlen = 0;
 		if (error == 0)
 			copyout(&fromlen, linux_args.fromlen,
 			    sizeof(fromlen));
@@ -952,8 +956,12 @@ linux_recvmsg(struct linux_recvmsg_args *args, int *res)
 	 * Copyout msg.msg_name and msg.msg_namelen.
 	 */
 	if (error == 0 && msg.msg_name) {
-		fromlen = MIN(msg.msg_namelen, sa->sa_len);
-		error = linux_copyout_sockaddr(sa, msg.msg_name, fromlen);
+		if (sa != NULL) {
+			fromlen = MIN(msg.msg_namelen, sa->sa_len);
+			error = linux_copyout_sockaddr(sa, msg.msg_name,
+							fromlen);
+		} else
+			fromlen = 0;
 		if (error == 0)
 			error = copyout(&fromlen, ufromlenp,
 			    sizeof(*ufromlenp));

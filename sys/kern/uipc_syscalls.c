@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.77 2007/01/08 21:41:56 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.77.2.1 2007/01/29 14:16:42 y0netan1 Exp $
  */
 
 #include "opt_ktrace.h"
@@ -970,8 +970,12 @@ sys_recvmsg(struct recvmsg_args *uap)
 	 * Conditionally copyout the name and populate the namelen field.
 	 */
 	if (error == 0 && msg.msg_name) {
-		fromlen = MIN(msg.msg_namelen, sa->sa_len);
-		error = copyout(sa, msg.msg_name, fromlen);
+		/* note: sa may still be NULL */
+		if (sa != NULL) {
+			fromlen = MIN(msg.msg_namelen, sa->sa_len);
+			error = copyout(sa, msg.msg_name, fromlen);
+		} else
+			fromlen = 0;
 		if (error == 0)
 			error = copyout(&fromlen, ufromlenp,
 			    sizeof(*ufromlenp));

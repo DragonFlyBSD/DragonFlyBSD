@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.9 2006/09/16 03:37:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.9.2.1 2007/01/29 14:16:42 y0netan1 Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -347,8 +347,12 @@ sys_orecvfrom(struct recvfrom_args *uap)
 	    &uap->flags, &uap->sysmsg_result);
 
 	if (error == 0 && uap->from) {
-		fromlen = MIN(fromlen, sa->sa_len);
-		error = compat_43_copyout_sockaddr(sa, uap->from, fromlen);
+		if (sa != NULL) {
+			fromlen = MIN(fromlen, sa->sa_len);
+			error = compat_43_copyout_sockaddr(sa, uap->from,
+							   fromlen);
+		} else
+			fromlen = 0;
 		if (error == 0)
 			/*
 			 * Old recvfrom didn't signal an error if this
@@ -417,8 +421,12 @@ sys_orecvmsg(struct orecvmsg_args *uap)
 	 * Copyout msg.msg_name and msg.msg_namelen.
 	 */
 	if (error == 0 && msg.msg_name) {
-		fromlen = MIN(msg.msg_namelen, sa->sa_len);
-		error = compat_43_copyout_sockaddr(sa, msg.msg_name, fromlen);
+		if (sa != NULL) {
+			fromlen = MIN(msg.msg_namelen, sa->sa_len);
+			error = compat_43_copyout_sockaddr(sa, msg.msg_name,
+							   fromlen);
+		} else
+			fromlen = 0;
 		if (error == 0)
 			/*
 			 * Old recvfrom didn't signal an error if this
