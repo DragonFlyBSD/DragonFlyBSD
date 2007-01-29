@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
- * $DragonFly: src/sys/kern/kern_environment.c,v 1.4 2007/01/13 21:33:30 tgen Exp $
+ * $DragonFly: src/sys/kern/kern_environment.c,v 1.4.2.1 2007/01/29 14:09:15 y0netan1 Exp $
  */
 
 /*
@@ -83,7 +83,7 @@ kenv_getstring_dynamic(const char *name, int *idx)
 
 	len = strlen(name);
 	/* note: kunsetenv() never leaves NULL holes in the array */
-	for (cp = kenv_dynp[0], i=0; cp != NULL; cp = kenv_dynp[i++]) {
+	for (i = 0; (cp = kenv_dynp[i]) != NULL; i++) {
 		if ((strncmp(cp, name, len) == 0) && (cp[len] == '=')) {
 			if (idx != NULL)
 				*idx = i;
