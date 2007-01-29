@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.36 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.36.2.1 2007/01/29 06:11:20 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1041,6 +1041,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 	
 	SMBVDEBUG("\n");
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
+	*vpp = NULL;
 	if (dvp->v_type != VDIR)
 		return ENOTDIR;
 	if ((flags & CNP_ISDOTDOT) && (dvp->v_flag & VROOT)) {
@@ -1075,7 +1076,6 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 		return ENOENT;
 
 	error = 0;
-	*vpp = NULLVP;
 	smb_makescred(&scred, td, cnp->cn_cred);
 	fap = &fattr;
 	if (flags & CNP_ISDOTDOT) {
