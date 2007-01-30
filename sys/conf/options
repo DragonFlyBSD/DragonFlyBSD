@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.61 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.62 2007/01/30 15:53:30 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -389,7 +389,6 @@ DONTPROBE_1284		opt_ppb_1284.h
 ENABLE_ALART		opt_intpm.h
 
 # These cause changes all over the kernel
-VIRTUAL_KERNEL		opt_global.h
 BLKDEV_IOSIZE		opt_global.h
 DEBUG			opt_global.h
 DEBUG_LOCKS		opt_global.h
