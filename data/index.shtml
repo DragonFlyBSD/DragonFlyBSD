@@ -1,6 +1,6 @@
 <!--#set var="title" value="Welcome to DragonFlyBSD.org" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/index.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/index.shtml,v 1.2 2007/01/30 19:51:14 dillon Exp $ -->
 
 	<h1>Ongoing DragonFly News</h1>
 	<p>
@@ -14,11 +14,11 @@
 	to DragonFly.
     </p>
 
-    <h1>DragonFly-1.6.x RELEASED!</h1>
-	<h1>24 July 2006</h1>
+    <h1>DragonFly-1.8.x RELEASED!</h1>
+	<h1>30 January 2007</h1>
 
 <p>
-The <a href="/community/release1_6.cgi"><b>DragonFly-1.6.x Release</b></a> is ready!
+The <a href="/community/release1_8.shtml"><b>DragonFly-1.8.x Release</b></a> is ready!
 
 </p>
 
@@ -34,40 +34,29 @@ kernel subsystems.
 DragonFly belongs to the same class of operating system as BSD and Linux
 and is based on the same UNIX ideals and APIs.  DragonFly gives the BSD
 base an opportunity to grow in an entirely different direction from the one
-taken in the FreeBSD-5 series.</p>
+taken in the FreeBSD, NetBSD, and OpenBSD series.</p>
 <p>
-It is our belief that the correct choice of features and algorithms can
-yield the potential for excellent scalability,
-robustness, and debuggability in a number of broad system categories.  Not
-just for SMP or NUMA, but for everything from a single-node UP system to a
-massively clustered system.  We believe that a fairly simple
-but wide-ranging set of goals will lay the groundwork for future growth.
-The existing BSD cores, including FreeBSD-5, are still primarily based on
-models which could at best be called 'strained' as applied to modern
-systems.  True innovation has given way to basically just laying on hacks
-to add features, such as encrypted disks and security layering that in a
-better environment could be developed at far less cost and with far greater
-flexibility.</p>
+From 2003 to early 2007 the DragonFly project focused on rewriting most
+of the major kernel subsystems in order to support the second phase of
+the project.  This involved a great deal of work in nearly every subsystem,
+particularly the filsystem APIs and kernel core.  During all of this we have
+managed to keep the system up-to-date with regards to the third party
+applications and base system utilities that are needed to make any system
+usable in production.  We have also adopted the PkgSrc system for
+management of all non-base-system third-party applications in order to pool
+our resources with NetBSD and OpenBSD in that regard.</p>
 <p>
-We also believe that it is important to provide API solutions which
-allow reasonable backwards and forwards version compatibility, at least
-between userland and the kernel, in a mix-and-match environment.  If one
-considers the situation from the ultimate in clustering... secure anonymous
-system clustering over the internet, the necessity of having properly 
-specified APIs becomes apparent.</p>
-
-<p>
-Finally, we believe that a fully integrated and feature-full upgrade
-mechanism should exist to allow end users and system operators of all
-walks of life to easily maintain their systems.  In this regard, DragonFly
-has chosen to adopt the BSD PkgSrc system.
-</p>
-<p>
-DragonFly's ultimate goal is to provide fully cache coherent and fully
-transparent single-system-image style clustering.  Achieving this goal
-has required a great deal of groundwork to be laid down, with more on
-its way, in order to properly support the models and functionality
-required.  As of 2006 we are well past the half way mark to our goal!
+The second phase of the project is now upon us.  The DragonFly project's
+ultimate goal is to provide generic clustering support natively in 
+the kernel.  This involves the creation of a sophisticated cache management
+framework for filesystem namespaces, file spaces, and VM spaces, which
+allows heavily interactive programs to run across multiple machines with
+cache coherency fully guarenteed in all respects.  This also involves being
+able to chop up resources, including the cpu by way of a controlled VM
+context, for safe assignment to unsecured third-party clusters over the
+internet (though the security of such clusters itself might be in doubt,
+the first and most important thing is for systems donating resources to not
+be made vulnerable through their donation).
 </p>
 
 <!--#include virtual="/includes/footer.shtml" -->
