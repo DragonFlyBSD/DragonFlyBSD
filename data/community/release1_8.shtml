@@ -1,0 +1,267 @@
+<!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Download" -->
+<!--#include virtual="/includes/header.shtml" -->
+
+<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.1 2007/01/30 19:36:25 dillon Exp $ -->
+
+<h1>Obtaining DragonFly 1.8.x for your system</h1>
+
+<h2>1.8.0 ISO Images for CDs</h2>
+
+<p>
+DragonFly CDs are 'live', which means that the CD will boot your system 
+and let you log in as root (no password).  You can use this feature to
+check for hardware compatibility and play with DragonFly a little before
+actually installing it on your hard drive. 
+</p>
+<p>
+The CD includes an installer that can be run at the console, or
+(experimentally) via a web browser.  Make sure you read the
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a>
+file for more information.   To activate the installer, boot the CD and
+login as 'installer'.
+</p>
+<p>
+The installer has a Netboot server option.  You can
+boot the CD on one machine, enable the feature via the installer, and
+then PXEBoot other systems and do a network based install.  System
+operators should be aware that running the netboot server hardwires
+a 10.1.0.X network and runs a DHCP server which might interfere with
+other DHCP servers on your LAN.
+</p>
+<p>
+See the 'Download Site' list below for a list of download locations. 
+</p>
+
+<p>
+<b>The MD5 for the release is:
+<br/>MD5 (dfly-1.8.0_REL.iso) = d5ffce6709ca82be458d95634d73a58b
+<br/>MD5 (dfly-1.8.0_REL.iso.gz) = 893b606ce5c0f156ea74c57ebf554c2b
+
+</b><br /> </p>
+
+<h2>1.8.x Release Errata</h2>
+<p>
+    DragonFly releases are meant to be stable, dependable entities.  We
+    backport compatible bug fixes from current development into release
+    branches but we do not generally backport new features. 
+    The release CD is always a '.0', e.g. 1.6.0.   The most common way to
+    track a release is to use cvsup to track the release sources and then
+    build and install a new world and kernel to keep your system updated.
+</p>
+<p>
+    <B>We do not always get every last little fix into a release.  Please
+    be sure to read the errata page for the release CD!</B>
+</p>
+<TABLE BORDER="1">
+<TR>
+<TH>Version</TH>
+<TH>Date</TH>
+<TH>Comments</TH>
+<TH></TH>
+</TR>
+<TR>
+<TD>1.8.0</TD>
+<TD>30-Jan-2007</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata1_8.shtml">Errata</A></TD>
+</TR>
+</TABLE>
+
+<p>
+</p>
+
+
+<h2>1.8.x Release Sites</h2>
+
+<TABLE BORDER="1">
+<TR>
+<TH>Organization</TH>
+<TH>Mirrored Data</TH>
+<TH>Access methods</TH>
+</TR>
+
+<TR><TD>Fortunaty.net</TD>
+<TD>1.8.0_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A></TD></TR>
+
+<TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>1.8.0_REL image</TD>
+<TD>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+</TD>
+</TR>
+
+<!--
+<TR><TD>BGP4.net (USA)</TD>
+<TD>1.8.0_REL image</TD>
+<TD>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+</TD></TR>
+-->
+
+<TR><TD>TheShell.com</TD>
+<TD>1.8.0_REL image</TD>
+<TD>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+
+<TR><TD>Dragonflybsd.org (USA)</TD>
+<TD>1.8.0_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+(<I>try to find another site first</I>)</TD></TR>
+
+</TABLE>
+
+<h1>Release Notes for DragonFly 1.8.0</h1>
+
+<p>
+1.8 is our fifth major DragonFly release.  DragonFly's policy is to
+only commit bug fixes to release branches.
+</p>
+<p>
+The biggest kernel change in this release is the addition of virtual kernel
+support and a virtual kernel build target (VKERNEL).  Virtual kernels are
+systems-in-a-box... you can run a complete kernel as a userland process.
+All standard non-hardware-specific applications will run inside the virtual
+kernel.  Performance depends on how heavily an application interacts with
+the VM system and how often it makes system calls, since these operations
+have to bed forwarded by the real kernel to the virtual kernel.
+</p>
+<p>
+The biggest user-visible changes include updates to third party applications
+included in the base system, a major rewrite of NULLFS which removes all
+directory recursion restrictions from mount_null and removes nearly all
+the kernel resource overhead when using such mounts, and a multi-ip feature
+for jails.
+</p>
+<p>
+A more complete list is included below.  We consider 1.8 to be more
+stable then 1.6.
+</p>
+<p>
+<ul>
+	<li><b>Implement Virtual Kernel support and add a VKERNEL target.</b>
+	    Virtual kernels are run as userland processes and provide a 
+	    complete (minus hardware drivers) working kernel environment.
+	    A simulated disk driver is included and a simulated network
+	    driver using the TAP interface is included, allowing network
+	    access.  See the vkernel(7) manual page for more information.
+	<li>Jails are now IPv6 aware and support multiple IP addresses.
+	<li>Bridging support has been greatly improved.
+	<li>Many, Many new network drivers and chipsets have been added.
+	<li>Major infrastructure for 802.x wireless support added (WPA,
+	    TX rate control, major API layer for all wireless network
+	    devices, better ifconfig integration, and more).
+	<li>The cpdup program has been greatly enhanced and now supports
+	    remote copies via ssh.
+	<li>Improved support for old-style disklabels.
+	<li>Kernel sources are now included on release CDs.
+	<li>Major rewrite of the vnode operations infrastructure, greatly
+	    simplifying the layer.
+	<li>Fix a bug related to POSIX locking.
+	<li>Tons of documentation updates and code readability cleanups.
+	<li>Restructure the kernel build to accomodate multiple architectures.
+	    Start separting platform components from cpu components.
+	<li>Synchronize a bunch of AMD64 related items (but we don't support
+	    64 bit mode yet).
+	<li><b>Major rewrite of the mount glue infrastructure and NULLFS which
+	    allows the namecache topology to be shared for multiple NULLFS
+	    mounts and also allows arbitrary stacking of read-only and
+	    read-write NULLFS mounts with basically zero kernel overhead.</b>
+	<li>Unconditionally associate a namecache reference with all 
+	    file descriptors, allowing us to share vnodes across different
+	    mounts (NULLFS).
+	<li><b>NULLFS mounts may now be arbitrarily stacked and distinct paths
+	    are no longer required.</b>
+	<li>Properly dereference mount point roots when unmounting.  Raise
+	    hell if unmounting a filesystem which still has references.
+	<li>Do a massive reorganization of the device operations vector and
+	    remove many instances where devops functions were dependant on
+	    the calling process or thread to obtain cred information.
+	<li>Do a run through of all system header files to make sure they
+	    include any dependancies themselves, instead of requiring the
+	    originating source file to include the dependancies first.
+	    This greatly reduces the effort required to use kernel header
+	    files in new sources.
+	<li><b>Synchronize MII support with NetBSD and OpenBSD, including adding
+	    standard conforming GMII support.  Er. In otherwords, improve
+	    driver support for physical network interfaces (phys's).</b>
+	<li>Remove VOP locking vectors.  Make VOP locking functions direct
+	    calls (and thus mandatory).
+	<li>Control access to vnode ref count fields with a spinlock
+	<li>Fix a dubious construct in usr.bin/tail (no, really! That's
+	    what the commit message said!).
+	<li>Add support for %j to the kernel printf.
+	<li>Major symbol separation for most kernel functions which 
+	    inexactly mimic libc functions. e.g. printf -> kprintf,
+	    in order to allow user-mode kernels to be linked against libc.
+	<li>Update to sendmail to 8.13.8.
+	<li>Update to OpenSSL to 0.9.8d
+	<li>Update to OpenSSH 4.5p1
+	<li>Update to Bind 9.3.2-P1
+	<li>Update to less 3.9.4
+	<li>Update to awk 20050424
+	<li>Update to file 4.19
+	<li>Update to tcpdump 3.9.5
+	<li>Update to libpcap 0.9.5
+	<li>Synchronize m4 with FreeBSD
+	<li>Import libarchive
+	<li>Import bsdtar 1.3.1 and make bsdtar our default tar.  GNU tar
+	    is still installed as gtar.
+	<li>Import NetBSD's ftp client under its new name (tnftp).
+	<li>Bring in GCC-4.1 (setenv CCVER GCC41 to use).
+	<li>Significant code cleanups to make the world and kernel compile
+	    under GCC-4.1.  Note that the default compiler is still GCC 3.4
+	    (GCC-4.x will probably become the default sometime in 2007).
+	<li>More work on LWP/THREAD/PROC separation for 1:1 threading support.
+	<li>Fix a major bug in /bin/make that can cause make (or some child
+	    make in a large build) to ignore ^C.  make temporarily installs
+	    SIG_IGN when polling whether a signal is being ignored or not.
+	    Fix the code to not do this.
+	<li><b>Fix a long standing signal/fork race that could cause a process
+	    group signal to not make it to a newly fork child if it occurs
+	    while the fork is in progress.</b>
+	<li>Synchronize the zoneinfo database with tzdata2006p.
+	<li>Add an ECC detection device, currently supporting AMD64's memory
+	    controller.
+	<li>Greatly reduce the memory allocated by fsck when fscking 
+	    filesytems with a huge number of directories (primarily mirors
+	    with lots of hardlinked files).  Otherwise fsck can run out
+	    of memory on such filesystems.
+	<li>Adjust RCNG to support 'blah=YES/NO' as well as
+	    'blah_enable=YES/NO', giving us better compatibility with
+	    PkgSrc based RC scripts.
+	<li>Fix a bug related to ALTQ when setting the algorithm for a queue
+	    on which packets are already present.
+	<li>Do a major clean up of the BUSDMA header file architecture.
+	<li>We have a new web site layout!
+	<li>Use spinlocks in the objcache instead of tokens (the critical
+	    path is still lockless).
+	<li>Replace the global VM page hash table with a per-VM-object
+	    Red-Black tree.
+	<li>A considerable amount of work on IPSEC support has been done.
+	<li>NATA has been ported from FreeBSD and is currently being tested.
+	<li>Sync USB support with FreeBSD6 - use task queues to handle
+	    operations that cannot be handled from an interrupt thread.
+	<li>Explore low-speed USB busses during cold boot so the USB keyboard
+	    starts working earlier in the boot sequence.
+	<li>Start introducing glue for the SYSLINK and CCMS infrastructures.
+	    (system link protocol and cache coherency management subsystems).
+	<li>Introduce a system call skeleton and test code for SYSLINK.
+	<li>Introduce the algorithm and structural topology that will be
+	    used for cache coherency into the VFS path.
+	<li>Introduce a user-managed virtuallized page table infrastructure
+	    which can be accessed via mmap(), as part of the infrastructure
+	    to support virtual kernels running in userland (MAP_VPAGETABLE).
+	<li>Introduce vmspace_*() system calls which allows a user process
+	    to manage and control multiple VM spaces, as part of the
+	    virtualization support effort.
+</ul>
+</p>
+
+
+<!--#include virtual="/includes/footer.shtml" -->

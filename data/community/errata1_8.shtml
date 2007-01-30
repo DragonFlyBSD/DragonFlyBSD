@@ -1,0 +1,25 @@
+<!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Errata Page" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/community/errata1_8.shtml,v 1.1 2007/01/30 19:36:25 dillon Exp $ -->
+
+
+<h1>Errata Page for DragonFly 1.8.x</h1>
+
+<p>
+General note on errata:  We do not roll a release CD every time we bump
+the sub-version.  The standard upgrade method is to build from sources.
+The 
+<A HREF="http://leaf.dragonflybsd.org/cgi/web-man?command=build&section=ANY">build</A>
+manual page gives you information on how to upgrade your system from
+sources.  See the <A HREF="download.cgi">download</A> page for information on tracking changes with
+cvsup.
+</p>
+
+<h2>1.8.0 Errata</h2>
+<ul>
+    <li>There are known bugs with SMBFS</li>
+    <li>ACPI continues to give us some problems</li>
+</ul>
+
+
+<!--#include virtual="/includes/footer.shtml" -->
