@@ -1,23 +1,9 @@
 # Used by the device build to check for device support
 #
-# $DragonFly: src/sys/platform/pc32/Makefile.inc,v 1.4 2007/01/06 08:08:24 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/Makefile.inc,v 1.5 2007/01/30 14:50:11 corecode Exp $
 
-DEV_ACPICA5_SUPPORT=1
-DEV_AGP_SUPPORT=1
-DEV_BRIDGE_SUPPORT=1
-DEV_CRYPTO_SUPPORT=1
-DEV_DISK_SUPPORT=1
-DEV_DRM_SUPPORT=1
-DEV_EST_SUPPORT=1
-DEV_MISC_SUPPORT=1
-DEV_NETIF_SUPPORT=1
-DEV_PCCARD_SUPPORT=1
-DEV_POWERMNG_SUPPORT=1
-DEV_RAID_SUPPORT=1
-DEV_SERIAL_SUPPORT=1
-DEV_SOUND_SUPPORT=1
-DEV_USBMISC_SUPPORT=1
-DEV_VIDEO_SUPPORT=1
+DEV_SUPPORT=	acpica5 agp bridge crypto disk drm est misc netif \
+		pccard powermng raid serial sound usbmisc video
 
 SYSCONS_APM_SUPPORT=1
 BOOT0CFG_SUPPORT=1
