@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.3 2005/01/11 23:58:55 cpressey Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.4 2007/01/30 16:03:04 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -1060,7 +1060,7 @@ rescan_or_reset_bus(int mybus, int rescan)
 	retval = 0;
 
 	if ((fd = open(XPT_DEVICE, O_RDWR)) < 0) {
-		warnx("error opening tranport layer device %s", XPT_DEVICE);
+		warnx("error opening transport layer device %s", XPT_DEVICE);
 		warn("%s", XPT_DEVICE);
 		return(1);
 	}
@@ -1246,7 +1246,7 @@ scanlun_or_reset_dev(int mybus, int mytarget, int mylun, int scan)
 
 	if (scan) {
 		if ((fd = open(XPT_DEVICE, O_RDWR)) < 0) {
-			warnx("error opening tranport layer device %s\n",
+			warnx("error opening transport layer device %s\n",
 			    XPT_DEVICE);
 			warn("%s", XPT_DEVICE);
 			return(1);
