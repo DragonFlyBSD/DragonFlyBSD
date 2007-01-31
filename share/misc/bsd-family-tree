@@ -209,7 +209,7 @@ FreeBSD 5.2           |      |                 |                       |
  |     |              |      | | NetBSD 3.0.2  |                       |
  |     |              |      | NetBSD 3.1      |                       |
  | FreeBSD 6.2        |      |                 |                       |
- |     |              |      |                 |                       |
+ |     |              |      |                 |                 DragonFly 1.8.0
  |     V              |      |                 |                       |
 FreeBSD 7 -current    |  NetBSD -current  OpenBSD -current             |
  |                    |      |                 |                       |
@@ -461,6 +461,7 @@ OpenBSD 4.0		2006-11-01 [OBD]
 NetBSD 3.0.2		2006-11-04 [NBD] (security/critical release)
 NetBSD 3.1		2006-11-04 [NBD]
 FreeBSD 6.2		2007-01-15 [FBD]
+DragonFly 1.8.0		2007-01-30 [DFB]
 
 Bibliography
 ------------------------
@@ -521,5 +522,5 @@ Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 Copyright (c) 1997-2007 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
-$FreeBSD: src/share/misc/bsd-family-tree,v 1.110 2007/01/15 06:14:50 maxim Exp $
-$DragonFly: src/share/misc/bsd-family-tree,v 1.10 2007/01/15 15:27:11 swildner Exp $
+$FreeBSD: src/share/misc/bsd-family-tree,v 1.111 2007/01/31 04:58:03 maxim Exp $
+$DragonFly: src/share/misc/bsd-family-tree,v 1.11 2007/01/31 08:28:23 swildner Exp $
