@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.1 2007/01/30 19:36:25 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.2 2007/01/31 07:48:34 swildner Exp $ -->
 
 <h1>Obtaining DragonFly 1.8.x for your system</h1>
 
@@ -129,7 +129,7 @@ systems-in-a-box... you can run a complete kernel as a userland process.
 All standard non-hardware-specific applications will run inside the virtual
 kernel.  Performance depends on how heavily an application interacts with
 the VM system and how often it makes system calls, since these operations
-have to bed forwarded by the real kernel to the virtual kernel.
+have to be forwarded by the real kernel to the virtual kernel.
 </p>
 <p>
 The biggest user-visible changes include updates to third party applications
@@ -152,7 +152,7 @@ stable then 1.6.
 	    access.  See the vkernel(7) manual page for more information.
 	<li>Jails are now IPv6 aware and support multiple IP addresses.
 	<li>Bridging support has been greatly improved.
-	<li>Many, Many new network drivers and chipsets have been added.
+	<li>Many, many new network drivers and chipsets have been added.
 	<li>Major infrastructure for 802.x wireless support added (WPA,
 	    TX rate control, major API layer for all wireless network
 	    devices, better ifconfig integration, and more).
