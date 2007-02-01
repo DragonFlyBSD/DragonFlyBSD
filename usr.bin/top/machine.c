@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.19 2006/10/03 12:20:11 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.20 2007/02/01 10:33:26 corecode Exp $
  */
 
 
@@ -81,17 +81,16 @@ struct handle
 /* declarations for load_avg */
 #include "loadavg.h"
 
-#define PP(pp, field) ((pp)->kp_proc . field)
-#define EP(pp, field) ((pp)->kp_eproc . field)
-#define TP(pp, field) ((pp)->kp_thread . field)
-#define VP(pp, field) ((pp)->kp_eproc.e_vm . field)
+#define PP(pp, field) ((pp)->kp_ ## field)
+#define LP(pp, field) ((pp)->kp_lwp.kl_ ## field)
+#define VP(pp, field) ((pp)->kp_vm_ ## field)
 
 /* define what weighted cpu is.  */
-#define weighted_cpu(pct, pp) (PP((pp), p_swtime) == 0 ? 0.0 : \
-			 ((pct) / (1.0 - exp(PP((pp), p_swtime) * logcpu))))
+#define weighted_cpu(pct, pp) (LP((pp), swtime) == 0 ? 0.0 : \
+			 ((pct) / (1.0 - exp(LP((pp), swtime) * logcpu))))
 
 /* what we consider to be process size: */
-#define PROCSIZE(pp) (VP((pp), vm_map.size) / 1024)
+#define PROCSIZE(pp) (VP((pp), map_size) / 1024)
 
 /*
  *  These definitions control the format of the per-process area
@@ -496,18 +495,18 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	 *  status field.  Processes with P_SYSTEM set are system
 	 *  processes---these get ignored unless show_sysprocs is set.
 	 */
-	if ((show_threads && (TP(pp, td_proc) == NULL)) ||
-	    (!show_only_threads && (PP(pp, p_stat) != 0 &&
-	    (show_self != PP(pp, p_pid)) &&
-	    (show_system || ((PP(pp, p_flag) & P_SYSTEM) == 0)))))
+	if ((show_threads && (LP(pp, pid) == 0)) ||
+	    (!show_only_threads && (PP(pp, stat) != 0 &&
+	    (show_self != PP(pp, pid)) &&
+	    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0)))))
 	{
 	    total_procs++;
-	    process_states[(unsigned char) PP(pp, p_stat)]++;
-	    if ((show_threads && (TP(pp, td_proc) == NULL)) ||
-		(!show_only_threads && (PP(pp, p_stat) != SZOMB) &&
-		(show_idle || (PP(pp, p_pctcpu) != 0) ||
-		 (PP(pp, p_stat) == SRUN)) &&
-		(!show_uid || EP(pp, e_ucred.cr_ruid) == (uid_t)sel->uid)))
+	    process_states[(unsigned char) PP(pp, stat)]++;
+	    if ((show_threads && (LP(pp, pid) == 0)) ||
+		(!show_only_threads && (PP(pp, stat) != SZOMB) &&
+		(show_idle || (LP(pp, pctcpu) != 0) ||
+		 (PP(pp, stat) == SRUN)) &&
+		(!show_uid || PP(pp, ruid) == (uid_t)sel->uid)))
 	    {
 		*prefp++ = pp;
 		active_procs++;
@@ -550,19 +549,19 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     hp->remaining--;
     
     /* set the wrapper for the process/thread name */
-    if ((PP(pp, p_flag) & P_SWAPPEDOUT))
+    if ((PP(pp, flags) & P_SWAPPEDOUT))
 	 wrapper = "[]"; /* swapped process [pname] */
-    else if (((PP(pp, p_flag) & P_SYSTEM) != 0) && (TP(pp, td_proc) != NULL))
+    else if (((PP(pp, flags) & P_SYSTEM) != 0) && (LP(pp, pid) != 0))
 	 wrapper = "()"; /* system process (pname) */
-    else if (show_threads && (TP(pp, td_proc) == NULL))
+    else if (show_threads && (LP(pp, pid) == 0))
 	 wrapper = "<>"; /* pure kernel threads <thread> */
     else
 	 wrapper = NULL;
   
     /* get the process's command name */
     if (wrapper != NULL) {
-	char *comm = TP(pp, td_comm);
-#define COMSIZ sizeof(TP(pp, td_comm))
+	char *comm = PP(pp, comm);
+#define COMSIZ sizeof(PP(pp, comm))
 	char buf[COMSIZ];
 	(void) strncpy(buf, comm, COMSIZ);
 	comm[0] = wrapper[0];
@@ -577,22 +576,22 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
      * time includes the interrupt time although that is not wanted here.
      * ps(1) is similarly sloppy.
      */
-    cputime = (EP(pp, e_uticks) + EP(pp, e_sticks)) / 1000000;
+    cputime = (LP(pp, uticks) + LP(pp, sticks)) / 1000000;
 
     /* calculate the base for cpu percentages */
-    pct = pctdouble(PP(pp, p_pctcpu));
+    pct = pctdouble(LP(pp, pctcpu));
 
     /* generate "STATE" field */
-    switch (state = PP(pp, p_stat)) {
+    switch (state = PP(pp, stat)) {
 	case SRUN:
-	    if (smpmode && TP(pp, td_flags) & TDF_RUNNING)
-		sprintf(status, "CPU%d", EP(pp, e_cpuid));
+	    if (smpmode && LP(pp, tdflags) & TDF_RUNNING)
+		sprintf(status, "CPU%d", LP(pp, cpuid));
 	    else
 		strcpy(status, "RUN");
 	    break;
 	case SSLEEP:
-	    if (TP(pp, td_wmesg) != NULL) {
-		sprintf(status, "%.6s", EP(pp, e_wmesg));
+	    if (LP(pp, wmesg) != NULL) {
+		sprintf(status, "%.6s", LP(pp, wmesg));
 		break;
 	    }
 	    /* fall through */
@@ -612,18 +611,18 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
      * real time 0 - 31 -> nice value -52 - -21
      * thread    0 - 31 -> nice value -53 -
      */
-    switch(PP(pp, p_rtprio.type)) {
+    switch(LP(pp, rtprio.type)) {
     case RTP_PRIO_REALTIME:
-	nice = PRIO_MIN - 1 - RTP_PRIO_MAX + PP(pp, p_rtprio.prio);
+	nice = PRIO_MIN - 1 - RTP_PRIO_MAX + LP(pp, rtprio.prio);
 	break;
     case RTP_PRIO_IDLE:
-	nice = PRIO_MAX + 1 + PP(pp, p_rtprio.prio);
+	nice = PRIO_MAX + 1 + LP(pp, rtprio.prio);
 	break;
     case RTP_PRIO_THREAD:
-	nice = PRIO_MIN - 1 - RTP_PRIO_MAX - PP(pp, p_rtprio.prio);
+	nice = PRIO_MIN - 1 - RTP_PRIO_MAX - LP(pp, rtprio.prio);
 	break;
     default:
-	nice = PP(pp, p_nice);
+	nice = PP(pp, nice);
 	break;
     }
 
@@ -631,21 +630,21 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     /* format this entry */
     snprintf(fmt, sizeof(fmt),
 	    smpmode ? smp_Proc_format : up_Proc_format,
-	    PP(pp, p_pid),
+	    PP(pp, pid),
 	    namelength, namelength,
-	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
-	    (show_threads && (TP(pp, td_proc) == NULL)) ? TP(pp, td_pri) :
-	    	PP(pp, p_usdata.bsd4.priority),
+	    (*get_userid)(PP(pp, ruid)),
+	    (show_threads && (LP(pp, pid) == 0)) ? LP(pp, tdprio) :
+	    	LP(pp, prio),
 	    nice,
 	    format_k2(PROCSIZE(pp)),
-	    format_k2(pagetok(VP(pp, vm_rssize))),
+	    format_k2(pagetok(VP(pp, rssize))),
 	    status,
-	    smpmode ? EP(pp, e_cpuid) : 0,
+	    smpmode ? LP(pp, cpuid) : 0,
 	    format_time(cputime),
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
 	    cmdlength,
-	    printable(TP(pp, td_comm)));
+	    printable(PP(pp, comm)));
 
     /* return the result */
     return(fmt);
@@ -708,30 +707,30 @@ static unsigned char sorted_state[] =
  
 
 #define ORDERKEY_PCTCPU \
-  if (lresult = (long) PP(p2, p_pctcpu) - (long) PP(p1, p_pctcpu), \
+  if (lresult = (long) LP(p2, pctcpu) - (long) LP(p1, pctcpu), \
      (result = lresult > 0 ? 1 : lresult < 0 ? -1 : 0) == 0)
 
-#define CPTICKS(p)	(EP(p, e_uticks) + EP(p, e_sticks))
+#define CPTICKS(p)	(LP(p, uticks) + LP(p, sticks))
 
 #define ORDERKEY_CPTICKS \
   if ((result = CPTICKS(p2) > CPTICKS(p1) ? 1 : \
 		CPTICKS(p2) < CPTICKS(p1) ? -1 : 0) == 0)
 
 #define ORDERKEY_STATE \
-  if ((result = sorted_state[(unsigned char) PP(p2, p_stat)] - \
-                sorted_state[(unsigned char) PP(p1, p_stat)]) == 0)
+  if ((result = sorted_state[(unsigned char) PP(p2, stat)] - \
+                sorted_state[(unsigned char) PP(p1, stat)]) == 0)
 
 #define ORDERKEY_PRIO \
-  if ((result = PP(p2, p_usdata.bsd4.priority) - PP(p1, p_usdata.bsd4.priority)) == 0)
+  if ((result = LP(p2, prio) - LP(p1, prio)) == 0)
 
 #define ORDERKEY_KTHREADS \
-  if ((result = (TP(p1, td_proc) == NULL) - (TP(p2, td_proc) == NULL)) == 0)
+  if ((result = (LP(p1, pid) == 0) - (LP(p2, pid) == 0)) == 0)
 
 #define ORDERKEY_KTHREADS_PRIO \
-  if ((result = TP(p2, td_pri) - TP(p1, td_pri)) == 0)
+  if ((result = LP(p2, tdprio) - LP(p1, tdprio)) == 0)
 
 #define ORDERKEY_RSSIZE \
-  if ((result = VP(p2, vm_rssize) - VP(p1, vm_rssize)) == 0) 
+  if ((result = VP(p2, rssize) - VP(p1, rssize)) == 0) 
 
 #define ORDERKEY_MEM \
   if ( (result = PROCSIZE(p2) - PROCSIZE(p1)) == 0 )
@@ -931,9 +930,9 @@ int proc_owner(int pid)
     while (--cnt >= 0)
     {
 	pp = *prefp++;	
-	if (PP(pp, p_pid) == (pid_t)pid)
+	if (PP(pp, pid) == (pid_t)pid)
 	{
-	    return((int)EP(pp, e_ucred.cr_ruid));
+	    return((int)PP(pp, ruid));
 	}
     }
     return(-1);

@@ -32,26 +32,17 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.8 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.9 2007/02/01 10:33:25 corecode Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
 enum type { CHAR, UCHAR, SHORT, USHORT, INT, UINT, LONG, ULONG, KPTR };
 
-struct usave {
-	struct	timeval u_start;
-	struct	rusage u_ru;
-	struct	rusage u_cru;
-	char	u_acflag;
-};
-
-#define KI_PROC(ki) (&(ki)->ki_p->kp_proc)
-#define KI_THREAD(ki) (&(ki)->ki_p->kp_thread)
-#define KI_EPROC(ki) (&(ki)->ki_p->kp_eproc)
+#define KI_PROC(ki, f) ((ki)->ki_proc->kp_ ## f)
+#define KI_LWP(ki, f) ((ki)->ki_proc->kp_lwp.kl_ ## f)
 
 typedef struct kinfo {
-	struct kinfo_proc *ki_p;	/* proc structure */
-	struct usave ki_u;		/* interesting parts of user */
+	struct kinfo_proc *ki_proc;	/* proc info structure */
 	const char *ki_args;		/* exec args */
 	const char *ki_env;		/* environment */
 } KINFO;

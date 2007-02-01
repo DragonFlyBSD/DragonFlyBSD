@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.8 2005/08/02 16:27:48 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.9 2007/02/01 10:33:26 corecode Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -263,7 +263,7 @@ main(int argc, char **argv)
 		}
 
 		for (i = 0, kp = plist; i < nproc; i++, kp++) {
-			if ((kp->kp_proc.p_flag & P_SYSTEM) != 0 || kp->kp_proc.p_pid == mypid)
+			if ((kp->kp_flags & P_SYSTEM) != 0 || kp->kp_pid == mypid)
 				continue;
 
 			if (matchargs) {
@@ -280,7 +280,7 @@ main(int argc, char **argv)
 
 				mstr = buf;
 			} else
-				mstr = kp->kp_thread.td_comm;
+				mstr = kp->kp_comm;
 
 			rv = regexec(&reg, mstr, 1, &regmatch, 0);
 			if (rv == 0) {
@@ -304,11 +304,11 @@ main(int argc, char **argv)
 	 * if it fails to meet the established criteria.
 	 */
 	for (i = 0, kp = plist; i < nproc; i++, kp++) {
-		if ((kp->kp_proc.p_flag & P_SYSTEM) != 0)
+		if ((kp->kp_flags & P_SYSTEM) != 0)
 			continue;
 
 		SLIST_FOREACH(li, &ruidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_ruid == li->li_datum.ld_uid)
+			if (kp->kp_ruid == li->li_datum.ld_uid)
 				break;
 		}
 		if (SLIST_FIRST(&ruidlist) != NULL && li == NULL) {
@@ -317,7 +317,7 @@ main(int argc, char **argv)
 		}
 	
 		SLIST_FOREACH(li, &rgidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_rgid == li->li_datum.ld_gid)
+			if (kp->kp_rgid == li->li_datum.ld_gid)
 				break;
 		}
 		if (SLIST_FIRST(&rgidlist) != NULL && li == NULL) {
@@ -326,7 +326,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &euidlist, li_chain) {
-			if (kp->kp_eproc.e_ucred.cr_uid == li->li_datum.ld_uid)
+			if (kp->kp_uid == li->li_datum.ld_uid)
 				break;
 		}
 		if (SLIST_FIRST(&euidlist) != NULL && li == NULL) {
@@ -335,7 +335,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &ppidlist, li_chain) {
-			if (kp->kp_eproc.e_ppid == li->li_datum.ld_pid)
+			if (kp->kp_ppid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&ppidlist) != NULL && li == NULL) {
@@ -344,7 +344,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &pgrplist, li_chain) {
-			if (kp->kp_eproc.e_pgid == li->li_datum.ld_pid)
+			if (kp->kp_pgid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&pgrplist) != NULL && li == NULL) {
@@ -354,9 +354,9 @@ main(int argc, char **argv)
 
 		SLIST_FOREACH(li, &tdevlist, li_chain) {
 			if (li->li_datum.ld_dev == NODEV &&
-			    (kp->kp_proc.p_flag & P_CONTROLT) == 0)
+			    (kp->kp_flags & P_CONTROLT) == 0)
 				break;
-			if (kp->kp_eproc.e_tdev == li->li_datum.ld_dev)
+			if (kp->kp_tdev == li->li_datum.ld_dev)
 				break;
 		}
 		if (SLIST_FIRST(&tdevlist) != NULL && li == NULL) {
@@ -365,7 +365,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &sidlist, li_chain) {
-			if (kp->kp_eproc.e_sess->s_sid == li->li_datum.ld_pid)
+			if (kp->kp_sid == li->li_datum.ld_pid)
 				break;
 		}
 		if (SLIST_FIRST(&sidlist) != NULL && li == NULL) {
@@ -386,11 +386,11 @@ main(int argc, char **argv)
 			if (!selected[i])
 				continue;
 
-			if (kp->kp_thread.td_start.tv_sec > best.tv_sec ||
-			    (kp->kp_thread.td_start.tv_sec == best.tv_sec
-			    && kp->kp_thread.td_start.tv_usec > best.tv_usec)) {
-			    	best.tv_sec = kp->kp_thread.td_start.tv_sec;
-			    	best.tv_usec = kp->kp_thread.td_start.tv_usec;
+			if (kp->kp_start.tv_sec > best.tv_sec ||
+			    (kp->kp_start.tv_sec == best.tv_sec
+			    && kp->kp_start.tv_usec > best.tv_usec)) {
+			    	best.tv_sec = kp->kp_start.tv_sec;
+			    	best.tv_usec = kp->kp_start.tv_usec;
 				bestidx = i;
 			}
 		}
@@ -404,7 +404,7 @@ main(int argc, char **argv)
 	 * Take the appropriate action for each matched process, if any.
 	 */
 	for (i = 0, j = 0, rv = 0, kp = plist; i < nproc; i++, kp++) {
-		if (kp->kp_proc.p_pid == mypid)
+		if (kp->kp_pid == mypid)
 			continue;
 		if (selected[i]) {
 			if (inverse)
@@ -412,7 +412,7 @@ main(int argc, char **argv)
 		} else if (!inverse)
 			continue;
 
-		if ((kp->kp_proc.p_flag & P_SYSTEM) != 0)
+		if ((kp->kp_flags & P_SYSTEM) != 0)
 			continue;
 
 		rv = 1;
@@ -449,8 +449,8 @@ usage(void)
 void
 killact(struct kinfo_proc *kp, int dummy __unused)
 {
-	if (kill(kp->kp_proc.p_pid, signum) == -1)
-		err(STATUS_ERROR, "signalling pid %d", (int)kp->kp_proc.p_pid);
+	if (kill(kp->kp_pid, signum) == -1)
+		err(STATUS_ERROR, "signalling pid %d", (int)kp->kp_pid);
 }
 
 /*
@@ -468,16 +468,16 @@ grepact(struct kinfo_proc *kp, int printdelim)
 		if ((argv = kvm_getargv(kd, kp, 0)) == NULL)
 			return;
 
-		printf("%d ", (int)kp->kp_proc.p_pid);
+		printf("%d ", (int)kp->kp_pid);
 		for (; *argv != NULL; argv++) {
 			printf("%s", *argv);
 			if (argv[1] != NULL)
 				putchar(' ');
 		}
 	} else if (longfmt)
-		printf("%d %s", (int)kp->kp_proc.p_pid, kp->kp_thread.td_comm);
+		printf("%d %s", (int)kp->kp_pid, kp->kp_comm);
 	else
-		printf("%d", (int)kp->kp_proc.p_pid);
+		printf("%d", (int)kp->kp_pid);
 
 }
 

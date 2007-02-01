@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.7 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.8 2007/02/01 10:33:26 corecode Exp $
  */
 
 /*
@@ -70,15 +70,13 @@
 #include "extern.h"
 
 static void	core(int, int, struct kinfo_proc *);
-static void	datadump(int, int, struct proc *, u_long, int);
+static void	datadump(int, int, pid_t, u_long, int);
 static void	killed(int);
 static void	restart_target(void);
 static void	usage(void) __dead2;
-static void	userdump(int, struct proc *, u_long, int);
+static void	userdump(int, pid_t, u_long, int);
 
 kvm_t *kd;
-/* XXX undocumented routine, should be in kvm.h? */
-ssize_t kvm_uread(kvm_t *, const struct proc *, u_long, char *, size_t);
 
 static int data_offset;
 static pid_t pid;
@@ -86,7 +84,6 @@ static pid_t pid;
 int
 main(int argc, char **argv)
 {
-	struct proc *p;
 	struct kinfo_proc *ki = NULL;
 	struct exec exec;
 	int ch, cnt, efd, fd, sflag, uid;
@@ -152,23 +149,22 @@ main(int argc, char **argv)
 		if (ki == NULL || cnt != 1)
 			errx(1, "%d: not found", pid);
 
-		p = &ki->kp_proc;
-		if (ki->kp_eproc.e_ucred.cr_ruid != uid && uid != 0)
+		if (ki->kp_ruid != uid && uid != 0)
 			errx(1, "%d: not owner", pid);
 
-		if (p->p_stat == SZOMB)
+		if (ki->kp_stat == SZOMB)
 			errx(1, "%d: zombie", pid);
 
-		if (p->p_flag & P_WEXIT)
+		if (ki->kp_flags & P_WEXIT)
 			errx(1, "%d: process exiting", pid);
-		if (p->p_flag & P_SYSTEM)	/* Swapper or pagedaemon. */
+		if (ki->kp_flags & P_SYSTEM)	/* Swapper or pagedaemon. */
 			errx(1, "%d: system process", pid);
-		if (exec.a_text != ptoa(ki->kp_eproc.e_vm.vm_tsize))
+		if (exec.a_text != ptoa(ki->kp_vm_tsize))
 			errx(1, "The executable %s does not belong to"
 			    " process %d!\n"
 			    "Text segment size (in bytes): executable %ld,"
 			    " process %d", binfile, pid, exec.a_text, 
-			     ptoa(ki->kp_eproc.e_vm.vm_tsize));
+			     ptoa(ki->kp_vm_tsize));
 		data_offset = N_DATOFF(exec);
 	} else if (IS_ELF(*(Elf_Ehdr *)&exec)) {
 		is_aout = 0;
@@ -213,14 +209,13 @@ core(int efd, int fd, struct kinfo_proc *ki)
 		struct user user;
 		char ubytes[ctob(UPAGES)];
 	} uarea;
-	struct proc *p = &ki->kp_proc;
-	int tsize = ki->kp_eproc.e_vm.vm_tsize;
-	int dsize = ki->kp_eproc.e_vm.vm_dsize;
-	int ssize = ki->kp_eproc.e_vm.vm_ssize;
+	int tsize = ki->kp_vm_tsize;
+	int dsize = ki->kp_vm_dsize;
+	int ssize = ki->kp_vm_ssize;
 	int cnt;
 
 	/* Read in user struct */
-	cnt = kvm_read(kd, (u_long)p->p_addr, &uarea, sizeof(uarea));
+	cnt = kvm_read(kd, ki->kp_pid, &uarea, sizeof(uarea));
 	if (cnt != sizeof(uarea))
 		errx(1, "read user structure: %s",
 		    cnt > 0 ? strerror(EIO) : strerror(errno));
@@ -238,17 +233,17 @@ core(int efd, int fd, struct kinfo_proc *ki)
 		    cnt > 0 ? strerror(EIO) : strerror(errno));
 
 	/* Dump data segment */
-	datadump(efd, fd, p, USRTEXT + ctob(tsize), dsize);
+	datadump(efd, fd, ki->kp_pid, USRTEXT + ctob(tsize), dsize);
 
 	/* Dump stack segment */
-	userdump(fd, p, USRSTACK - ctob(ssize), ssize);
+	userdump(fd, ki->kp_pid, USRSTACK - ctob(ssize), ssize);
 
 	/* Dump machine dependent portions of the core. */
 	md_core(kd, fd, ki);
 }
 
 void
-datadump(int efd, int fd, struct proc *p,
+datadump(int efd, int fd, pid_t pid,
          u_long addr, int npage)
 {
 	int cc, delta;
@@ -256,7 +251,7 @@ datadump(int efd, int fd, struct proc *p,
 
 	delta = data_offset - addr;
 	while (--npage >= 0) {
-		cc = kvm_uread(kd, p, addr, buffer, PAGE_SIZE);
+		cc = kvm_uread(kd, pid, addr, buffer, PAGE_SIZE);
 		if (cc != PAGE_SIZE) {
 			/* Try to read the page from the executable. */
 			if (lseek(efd, (off_t)addr + delta, SEEK_SET) == -1)
@@ -292,14 +287,14 @@ restart_target(void)
 }
 
 void
-userdump(int fd, struct proc *p, u_long addr,
+userdump(int fd, pid_t pid, u_long addr,
          int npage)
 {
 	int cc;
 	char buffer[PAGE_SIZE];
 
 	while (--npage >= 0) {
-		cc = kvm_uread(kd, p, addr, buffer, PAGE_SIZE);
+		cc = kvm_uread(kd, pid, addr, buffer, PAGE_SIZE);
 		if (cc != PAGE_SIZE)
 			/* Could be an untouched fill-with-zero page. */
 			bzero(buffer, PAGE_SIZE);

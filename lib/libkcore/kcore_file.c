@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.3 2005/06/22 01:51:40 dillon Exp $
+ * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.4 2007/02/01 10:33:25 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -54,7 +54,7 @@ int
 kcore_get_files(struct kcore_data *kc, struct kinfo_file **files, size_t *len)
 {
 	struct kinfo_proc *procs, *oprocs;
-	struct proc *p;
+	struct proc p;
 	struct filedesc fdp;
 	struct file fp, *fpp;
 	size_t len_procs;
@@ -85,30 +85,35 @@ kcore_get_files(struct kcore_data *kc, struct kinfo_file **files, size_t *len)
 
 	oprocs = procs;
 	for (; len_procs-- > 0; procs++) {
-		p = &procs->kp_proc;
-		if (p->p_fd == NULL || p->p_stat == SIDL)
+		if (kvm_read(kc->kd, procs->kp_paddr, &p,
+			     sizeof (p)) != sizeof(p)) {
+			warnx("cannot read proc at %p for pid %d\n",
+			      (void *)procs->kp_paddr, procs->kp_pid);
 			continue;
-		if (kvm_read(kc->kd, (long)p->p_fd, &fdp,
+		}
+		if (p.p_fd == NULL || procs->kp_stat == SIDL)
+			continue;
+		if (kvm_read(kc->kd, (long)p.p_fd, &fdp,
 			     sizeof (fdp)) != sizeof(fdp)) {
 			warnx("cannot read filedesc at %p for pid %d\n",
-			      p->p_fd, p->p_pid);
+			      p.p_fd, procs->kp_pid);
 			continue;
 		}
 		for (n = 0; n < fdp.fd_nfiles; n++) {
 			if (kvm_read(kc->kd, (long)(&fdp.fd_files[n].fp), &fpp,
 				     sizeof(fpp)) != sizeof(fpp)) {
 				warnx("cannot read filep  at %p for pid %d\n",
-				      &fdp.fd_files[n].fp, p->p_pid);
+				      &fdp.fd_files[n].fp, procs->kp_pid);
 			}
 			if (fpp == NULL)
 				continue;
 			if (kvm_read(kc->kd, (long)fpp, &fp,
 				     sizeof(fp)) != sizeof(fp)) {
 				warnx("cannot read file at %p for pid %d\n",
-				      fpp, p->p_pid);
+				      fpp, procs->kp_pid);
 				continue;
 			}
-			kcore_make_file(*files + *len, &fp, p->p_pid, 0, n);
+			kcore_make_file(*files + *len, &fp, procs->kp_pid, 0, n);
 			(*len)++;
 		}
 	}	

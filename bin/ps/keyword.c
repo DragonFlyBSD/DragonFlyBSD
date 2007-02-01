@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.24 2006/05/18 08:17:14 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.25 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -68,10 +68,8 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 #endif
 
 /* Compute offset in common structures. */
-#define	POFF(x)	offsetof(struct proc, x)
-#define	TOFF(x)	offsetof(struct thread, x)
-#define	EOFF(x)	offsetof(struct eproc, x)
-#define	UOFF(x)	offsetof(struct usave, x)
+#define	POFF(x)	offsetof(struct kinfo_proc, kp_##x)
+#define	LPOFF(x) offsetof(struct kinfo_lwp, kl_##x)
 #define	ROFF(x)	offsetof(struct rusage, x)
 
 #define	UIDFMT	"u"
@@ -83,17 +81,17 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 static const VAR var[] = {
 	{"%cpu", "%CPU", NULL, 0, pcpu, NULL, 4, 0, 0, NULL, NULL},
 	{"%mem", "%MEM", NULL, 0, pmem, NULL, 4, 0, 0, NULL, NULL},
-	{"acflag", "ACFLG", NULL, 0, pvar, NULL, 3, POFF(p_acflag), USHORT, "x",
+	{"acflag", "ACFLG", NULL, 0, pvar, NULL, 3, POFF(acflag), USHORT, "x",
 		NULL},
 	{"acflg", "", "acflag", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"batch", "BAT", NULL, 0, pest, NULL, 3, POFF(p_usdata.bsd4.origcpu), UINT, "d", NULL},
+	{"batch", "BAT", NULL, 0, lpest, NULL, 3, LPOFF(origcpu), UINT, "d", NULL},
 	{"blocked", "", "sigmask", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"caught", "", "sigcatch", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"command", "COMMAND", NULL, COMM|LJUST|USER, command, NULL, 16, 0, 0, NULL,
 		NULL},
-	{"cpu", "CPU", NULL, 0, pest, NULL, 3, POFF(p_usdata.bsd4.estcpu), UINT, "d", NULL},
+	{"cpu", "CPU", NULL, 0, lpest, NULL, 3, LPOFF(estcpu), UINT, "d", NULL},
 	{"cputime", "", "time", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(p_flag), INT, "x", NULL},
+	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(flags), INT, "x", NULL},
 	{"flags", "", "f", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 #if 0
 	{"iac", "IAC",  NULL, 0, pvar, NULL, 4, POFF(p_usdata.bsd4.interactive), CHAR, PIDFMT,
@@ -103,13 +101,15 @@ static const VAR var[] = {
 	{"inblk", "INBLK", NULL, USER, rvar, NULL, 4, ROFF(ru_inblock), LONG, "ld",
 		NULL},
 	{"inblock", "", "inblk", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"jail", "JAIL", NULL, 0, evar, NULL, 3, EOFF(e_jailid), INT, "d", NULL},
-	{"jobc", "JOBC", NULL, 0, evar, NULL, 4, EOFF(e_jobc), SHORT, "d", NULL},
-	{"ktrace", "KTRACE", NULL, 0, pvar, NULL, 8, POFF(p_traceflag), INT, "x",
+	{"jail", "JAIL", NULL, 0, pvar, NULL, 3, POFF(jailid), INT, "d", NULL},
+	{"jobc", "JOBC", NULL, 0, pvar, NULL, 4, POFF(jobc), SHORT, "d", NULL},
+	{"ktrace", "KTRACE", NULL, 0, pvar, NULL, 8, POFF(traceflag), INT, "x",
 		NULL},
+#if 0
 	{"ktracep", "KTRACEP", NULL, 0, pvar, NULL, 8, POFF(p_tracenode), LONG, "lx",
 		NULL},
-	{"lastcpu", "C", NULL, 0, evar, NULL, 3, EOFF(e_cpuid), UINT, "d", NULL},
+#endif
+	{"lastcpu", "C", NULL, 0, lpvar, NULL, 3, LPOFF(cpuid), UINT, "d", NULL},
 	{"lim", "LIM", NULL, 0, maxrss, NULL, 5, 0, 0, NULL, NULL},
 	{"login", "LOGIN", NULL, LJUST, logname, NULL, MAXLOGNAME-1, 0, 0, NULL,
 		NULL},
@@ -134,68 +134,71 @@ static const VAR var[] = {
 		NULL},
 	{"nvcsw", "NVCSW", NULL, USER, rvar, NULL, 5, ROFF(ru_nvcsw), LONG, "ld",
 		NULL},
-	{"nwchan", "WCHAN", NULL, 0, tvar, NULL, 8, TOFF(td_wchan), KPTR, "lx", NULL},
+	{"nwchan", "WCHAN", NULL, 0, lpvar, NULL, 8, LPOFF(wchan), KPTR, "lx", NULL},
 	{"oublk", "OUBLK", NULL, USER, rvar, NULL, 4, ROFF(ru_oublock), LONG, "ld",
 		NULL},
 	{"oublock", "", "oublk", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"p_ru", "P_RU", NULL, 0, pvar, NULL, 6, POFF(p_ru), KPTR, "lx", NULL},
-	{"paddr", "PADDR", NULL, 0, evar, NULL, 8, EOFF(e_paddr), KPTR, "lx", NULL},
+	{"p_ru", "P_RU", NULL, 0, pvar, NULL, 6, POFF(ru), KPTR, "lx", NULL},
+	{"paddr", "PADDR", NULL, 0, pvar, NULL, 8, POFF(paddr), KPTR, "lx", NULL},
 	{"pagein", "PAGEIN", NULL, USER, pagein, NULL, 6, 0, 0, NULL, NULL},
 	{"pcpu", "", "%cpu", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"pending", "", "sig", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"pgid", "PGID", NULL, 0, evar, NULL, PIDLEN, EOFF(e_pgid), UINT, PIDFMT,
+	{"pgid", "PGID", NULL, 0, pvar, NULL, PIDLEN, POFF(pgid), UINT, PIDFMT,
 		NULL},
-	{"pid", "PID", NULL, 0, pvar, NULL, PIDLEN, POFF(p_pid), UINT, PIDFMT,
+	{"pid", "PID", NULL, 0, pvar, NULL, PIDLEN, POFF(pid), UINT, PIDFMT,
 		NULL},
 	{"pmem", "", "%mem", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"ppid", "PPID", NULL, 0, evar, NULL, PIDLEN, EOFF(e_ppid), UINT, PIDFMT,
+	{"ppid", "PPID", NULL, 0, pvar, NULL, PIDLEN, POFF(ppid), UINT, PIDFMT,
 		NULL},
 	{"pri", "PRI", NULL, 0, pri, NULL, 3, 0, 0, NULL, NULL},
-	{"re", "RE", NULL, 0, pvar, NULL, 3, POFF(p_swtime), UINT, "d", NULL},
-	{"rgid", "RGID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_rgid),
+	{"re", "RE", NULL, 0, lpvar, NULL, 3, LPOFF(swtime), UINT, "d", NULL},
+	{"rgid", "RGID", NULL, 0, pvar, NULL, UIDLEN, POFF(rgid),
 		UINT, UIDFMT, NULL},
+#if 0
 	{"rlink", "RLINK", NULL, 0, pvar, NULL, 8, POFF(p_lwp.lwp_procq.tqe_prev), KPTR, "lx",
 		NULL},
+#endif
 	{"rss", "RSS", NULL, 0, p_rssize, NULL, 4, 0, 0, NULL, NULL},
 	{"rssize", "", "rsz", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"rsz", "RSZ", NULL, 0, rssize, NULL, 4, 0, 0, NULL, NULL},
-	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, POFF(p_rtprio), 0, NULL, NULL},
-	{"ruid", "RUID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_ruid),
+	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, NULL, 0, NULL, NULL},
+	{"ruid", "RUID", NULL, 0, pvar, NULL, UIDLEN, POFF(ruid),
 		UINT, UIDFMT, NULL},
 	{"ruser", "RUSER", NULL, LJUST|DSIZ, runame, s_runame, USERLEN, 0, 0, NULL,
 		NULL},
-	{"sess", "SESS", NULL, 0, evar, NULL, 6, EOFF(e_sess), KPTR, "lx", NULL},
-	{"sig", "PENDING", NULL, 0, pvar, NULL, 8, POFF(p_siglist), INT, "x", NULL},
-	{"sigcatch", "CAUGHT", NULL, 0, evar, NULL, 8, EOFF(e_procsig.ps_sigcatch),
+	{"sess", "SESS", NULL, 0, pvar, NULL, 6, POFF(sid), UINT, PIDFMT, NULL},
+	{"sig", "PENDING", NULL, 0, lpvar, NULL, 8, LPOFF(siglist), INT, "x", NULL},
+	{"sigcatch", "CAUGHT", NULL, 0, pvar, NULL, 8, POFF(sigcatch),
 		UINT, "x", NULL},
-	{"sigignore", "IGNORED", NULL, 0, evar, NULL, 8, EOFF(e_procsig.ps_sigignore),
+	{"sigignore", "IGNORED", NULL, 0, pvar, NULL, 8, POFF(sigignore),
 		UINT, "x", NULL},
-	{"sigmask", "BLOCKED", NULL, 0, pvar, NULL, 8, POFF(p_sigmask), UINT, "x",
+	{"sigmask", "BLOCKED", NULL, 0, lpvar, NULL, 8, LPOFF(sigmask), UINT, "x",
 		NULL},
-	{"sl", "SL", NULL, 0, pvar, NULL, 3, POFF(p_slptime), UINT, "d", NULL},
+	{"sigproc", "PENDING", NULL, 0, pvar, NULL, 8, POFF(siglist), INT, "x", NULL},
+	{"sl", "SL", NULL, 0, lpvar, NULL, 3, LPOFF(slptime), UINT, "d", NULL},
 	{"start", "STARTED", NULL, LJUST|USER, started, NULL, 7, 0, 0, NULL, NULL},
 	{"stat", "", "state", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"state", "STAT", NULL, 0, state, NULL, 4, 0, 0, NULL, NULL},
-	{"svgid", "SVGID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_svgid), UINT,
+	{"svgid", "SVGID", NULL, 0, pvar, NULL, UIDLEN, POFF(svgid), UINT,
 		UIDFMT, NULL},
-	{"svuid", "SVUID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_svuid), UINT,
+	{"svuid", "SVUID", NULL, 0, pvar, NULL, UIDLEN, POFF(svuid), UINT,
 		UIDFMT, NULL},
 	{"tdev", "TDEV", NULL, 0, tdev, NULL, 4, 0, 0, NULL, NULL},
 	{"tdpri", "TDPRI", NULL, 0, tdpri, NULL, 5, 0, 0, NULL, NULL},
 	{"time", "TIME", NULL, USER, cputime, NULL, 9, 0, 0, NULL, NULL},
-	{"tpgid", "TPGID", NULL, 0, evar, NULL, 4, EOFF(e_tpgid), UINT, PIDFMT, NULL},
-	{"tsess", "TSESS", NULL, 0, evar, NULL, 6, EOFF(e_tsess), KPTR, "lx", NULL},
+	{"tpgid", "TPGID", NULL, 0, pvar, NULL, 4, POFF(tpgid), UINT, PIDFMT, NULL},
+	{"tsess", "TSESS", NULL, 0, pvar, NULL, 6, POFF(tsid), UINT, PIDFMT, NULL},
 	{"tsiz", "TSIZ", NULL, 0, tsize, NULL, 4, 0, 0, NULL, NULL},
 	{"tt", "TT ", NULL, 0, tname, NULL, 4, 0, 0, NULL, NULL},
 	{"tty", "TTY", NULL, LJUST, longtname, NULL, 8, 0, 0, NULL, NULL},
 	{"ucomm", "UCOMM", NULL, LJUST, ucomm, NULL, MAXCOMLEN, 0, 0, NULL, NULL},
-	{"uid", "UID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_uid),
+	{"uid", "UID", NULL, 0, pvar, NULL, UIDLEN, POFF(uid),
 		UINT, UIDFMT, NULL},
 	{"user", "USER", NULL, LJUST|DSIZ, uname, s_uname, USERLEN, 0, 0, NULL, NULL},
 	{"vsize", "", "vsz", 0, 0, NULL, 0, 0, 0, NULL, NULL},
 	{"vsz", "VSZ", NULL, 0, vsize, NULL, 5, 0, 0, NULL, NULL},
 	{"wchan", "WCHAN", NULL, LJUST, wchan, NULL, 6, 0, 0, NULL, NULL},
-	{"xstat", "XSTAT", NULL, 0, pvar, NULL, 4, POFF(p_xstat), USHORT, "x", NULL},
+	{"xstat", "XSTAT", NULL, 0, pvar, NULL, 4, POFF(exitstat), USHORT, "x", NULL},
 	{"", NULL, NULL, 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 };
 

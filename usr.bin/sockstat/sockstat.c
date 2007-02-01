@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.6 2006/04/14 16:48:27 dillon Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.7 2007/02/01 10:33:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -428,7 +428,7 @@ getprocname(pid_t pid)
 		warn("sysctl()");
 		return ("??");
 	}
-	return (proc.kp_thread.td_comm);
+	return (proc.kp_comm);
 }
 
 static int

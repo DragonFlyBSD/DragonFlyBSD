@@ -1,5 +1,5 @@
 /* $FreeBSD: src/contrib/ipfilter/ipsend/sock.c,v 1.3.2.4 2003/03/01 03:55:53 darrenr Exp $ */
-/* $DragonFly: src/contrib/ipfilter/ipsend/sock.c,v 1.3 2005/06/22 02:08:19 dillon Exp $ */
+/* $DragonFly: src/contrib/ipfilter/ipsend/sock.c,v 1.4 2007/02/01 10:33:25 corecode Exp $ */
 /*
  * sock.c (C) 1995-1998 Darren Reed
  *
@@ -286,21 +286,12 @@ struct	tcpiphdr *ti;
 		return NULL;
 
 	fd = (struct filedesc *)malloc(sizeof(*fd));
-#if defined( __FreeBSD_version) && __FreeBSD_version >= 500013
-	if (KMCPY(fd, p->ki_fd, sizeof(*fd)) == -1)
+	if (KMCPY(fd, p->kp_fd, sizeof(*fd)) == -1)
 	    {
 		fprintf(stderr, "read(%#lx,%#lx) failed\n",
-			(u_long)p, (u_long)p->ki_fd);
+			(u_long)p, (u_long)p->kp_fd);
 		return NULL;
 	    }
-#else
-	if (KMCPY(fd, p->kp_proc.p_fd, sizeof(*fd)) == -1)
-	    {
-		fprintf(stderr, "read(%#lx,%#lx) failed\n",
-			(u_long)p, (u_long)p->kp_proc.p_fd);
-		return NULL;
-	    }
-#endif
 
 	o = (struct fdnode *)calloc(1, sizeof(*o) * (fd->fd_lastfile + 1));
 	if (KMCPY(o, fd->fd_files, (fd->fd_lastfile + 1) * sizeof(*o)) == -1)

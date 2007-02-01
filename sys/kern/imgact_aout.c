@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.13 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.14 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ struct sysentvec aout_sysvec = {
 	&szsigcode,
 	0,
 	"FreeBSD a.out",
-	aout_coredump,
+	NULL,
 	NULL,
 	MINSIGSTKSZ
 };
@@ -242,35 +242,6 @@ exec_aout_imgact(struct image_params *imgp)
 	imgp->vp->v_flag |= VTEXT;
 
 	return (0);
-}
-
-/*
- * Dump core, into a file named as described in the comments for
- * expand_name(), unless the process was setuid/setgid.
- */
-int
-aout_coredump(struct proc *p, struct vnode *vp, off_t limit)
-{
-	struct ucred *cred = p->p_ucred;
-	struct vmspace *vm = p->p_vmspace;
-	int error;
-
-	if (ctob(UPAGES + vm->vm_dsize + vm->vm_ssize) >= limit)
-		return (EFAULT);
-	bcopy(p, &p->p_addr->u_kproc.kp_proc, sizeof(struct proc));
-	fill_eproc(p, &p->p_addr->u_kproc.kp_eproc);
-	error = cpu_coredump(p->p_thread, vp, cred);
-	if (error == 0)
-		error = vn_rdwr_inchunks(UIO_WRITE, vp, vm->vm_daddr,
-		    (int)ctob(vm->vm_dsize), (off_t)ctob(UPAGES), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL);
-	if (error == 0)
-		error = vn_rdwr_inchunks(UIO_WRITE, vp,
-		    (caddr_t) trunc_page(USRSTACK - ctob(vm->vm_ssize)),
-		    round_page(ctob(vm->vm_ssize)),
-		    (off_t)ctob(UPAGES) + ctob(vm->vm_dsize), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL);
-	return (error);
 }
 
 /*

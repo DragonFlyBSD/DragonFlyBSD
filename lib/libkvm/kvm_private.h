@@ -36,7 +36,7 @@
  *
  *	@(#)kvm_private.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_private.h,v 1.5 1999/12/27 07:14:58 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_private.h,v 1.3 2003/11/12 20:21:30 eirikn Exp $
+ * $DragonFly: src/lib/libkvm/kvm_private.h,v 1.4 2007/02/01 10:33:25 corecode Exp $
  */
 
 struct __kvm {
@@ -54,6 +54,7 @@ struct __kvm {
 	int	unused;		/* was: swap file (e.g., /dev/drum) */
 	int	nlfd;		/* namelist file (e.g., /kernel) */
 	struct kinfo_proc *procbase;
+	struct kinfo_proc *procend;
 	char	*argspc;	/* (dynamic) storage for argv strings */
 	int	arglen;		/* length of the above */
 	char	**argv;		/* (dynamic) storage for argv pointers */

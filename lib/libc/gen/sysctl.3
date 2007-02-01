@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.5 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.6 2007/02/01 10:33:26 corecode Exp $
 .\"
 .Dd January 23, 2001
 .Dt SYSCTL 3
@@ -434,6 +434,11 @@ The third and fourth level names are as follows:
 .It "KERN\_PROC\_UID	A user ID"
 .It "KERN\_PROC\_RUID	A real user ID"
 .El
+.Pp
+Adding the flag
+.Li KERN_PROC_FLAG_LWP
+to the third level name signals that information about all
+light weight processes of the selected processes should be returned.
 .It Li KERN_PROF
 Return profiling information about the kernel.
 If the kernel is not compiled for profiling,

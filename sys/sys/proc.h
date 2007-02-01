@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.90 2007/01/14 07:59:08 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.91 2007/02/01 10:33:26 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -302,12 +302,10 @@ struct	proc {
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 };
 
-#if defined(_KERNEL)
 #define p_wchan		p_thread->td_wchan
 #define p_wmesg		p_thread->td_wmesg
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
-#endif
 
 /*
  * Status values.   Please note that p_stat doesn't actually take on
@@ -369,6 +367,15 @@ struct	proc {
 	       __func__, p, p->p_pid, p->p_comm), 1),	\
 	FIRST_LWP_IN_PROC(p))
 
+/*
+ * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
+ * as it is used to represent "no process group".
+ */
+#define	PID_MAX		99999
+#define	NO_PID		100000
+
+#define SESS_LEADER(p)	((p)->p_session->s_leader == (p))
+
 #ifdef _KERNEL
 
 #ifdef MALLOC_DECLARE
@@ -385,15 +392,6 @@ MALLOC_DECLARE(M_PARGS);
 
 #define PRISON_CHECK(cr1, cr2) \
 	((!(cr1)->cr_prison) || (cr1)->cr_prison == (cr2)->cr_prison)
-
-/*
- * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
- * as it is used to represent "no process group".
- */
-#define	PID_MAX		99999
-#define	NO_PID		100000
-
-#define SESS_LEADER(p)	((p)->p_session->s_leader == (p))
 
 /*
  * STOPEVENT

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.67 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.68 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -546,8 +546,8 @@ loop:
 			 * Finally finished with old proc entry.
 			 * Unlink it from its process group and free it.
 			 */
-			leavepgrp(p);
 			proc_remove_zombie(p);
+			leavepgrp(p);
 
 			if (--p->p_procsig->ps_refcnt == 0) {
 				if (p->p_sigacts != &p->p_addr->u_sigacts)

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.8 2006/03/27 09:02:07 joerg Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.9 2007/02/01 10:33:26 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -304,16 +304,16 @@ main(int ac, char **av)
 	mypid = getpid();
 
 	for (i = 0; i < nprocs; i++) {
-		thispid = procs[i].kp_proc.p_pid;
-		strncpy(thiscmd, procs[i].kp_thread.td_comm, MAXCOMLEN);
+		thispid = procs[i].kp_pid;
+		strncpy(thiscmd, procs[i].kp_comm, MAXCOMLEN);
 		thiscmd[MAXCOMLEN] = '\0';
-		thistdev = procs[i].kp_eproc.e_tdev;
-		thisuid = procs[i].kp_eproc.e_ucred.cr_ruid;	/* real uid */
+		thistdev = procs[i].kp_tdev;
+		thisuid = procs[i].kp_ruid;	/* real uid */
 
 		if (thispid == mypid)
 			continue;
 		matched = 1;
-		if ((int)procs[i].kp_proc.p_pid < 0)
+		if ((int)procs[i].kp_pid < 0)
 			matched = 0;
 		if (user) {
 			if (thisuid != uid)
@@ -324,7 +324,7 @@ main(int ac, char **av)
 				matched = 0;
 		}
 		if (jflag) {
-			if (procs[i].kp_eproc.e_jailid != jailid)
+			if (procs[i].kp_jailid != jailid)
 				matched = 0;
 		}
 		if (cmd) {

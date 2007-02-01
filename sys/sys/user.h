@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.16 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.17 2007/02/01 10:33:26 corecode Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -99,53 +99,7 @@
 #ifndef _MACHINE_COREDUMP_H_
 #include <machine/coredump.h>
 #endif
-
-/*
- * KERN_PROC subtype ops return arrays of augmented proc structures:
- */
-struct kinfo_proc {
-	struct	proc kp_proc;			/* proc structure */
-	struct	eproc {
-		struct	proc *e_paddr;		/* address of proc */
-		struct	session *e_sess;	/* session pointer */
-		struct	ucred e_ucred;		/* current credentials */
-		struct  procsig e_procsig;	/* shared signal structure */
-		struct	vmspace e_vm;		/* address space */
-#ifdef old
-		struct	pstats e_stats;		/* process stats */
-#endif
-		u_int64_t e_uticks;		/* time accouting */
-		u_int64_t e_sticks;
-		u_int64_t e_iticks;
-		int	e_cpuid;		/* last scheduled on cpu */
-		pid_t	e_ppid;			/* parent process id */
-		pid_t	e_pgid;			/* process group id */
-		short	e_jobc;			/* job control counter */
-#ifdef _KERNEL
-		udev_t	e_tdev;			/* controlling tty dev */
-#else
-		dev_t	e_tdev;			/* controlling tty dev */
-#endif
-		pid_t	e_tpgid;		/* tty process group id */
-		struct	session *e_tsess;	/* tty session pointer */
-#define	WMESGLEN	7
-		char	e_wmesg[WMESGLEN+1];	/* wchan message */
-		segsz_t e_xsize;		/* text size */
-		short	e_xrssize;		/* text rss */
-		short	e_xccount;		/* text references */
-		short	e_xswrss;
-		long	e_flag;
-#define	EPROC_CTTY	0x01	/* controlling tty vnode active */
-#define	EPROC_SLEADER	0x02	/* session leader */
-		char	e_login[roundup(MAXLOGNAME, sizeof(long))];	/* setlogin() name */
-		int	e_jailid;
-		long	e_spare[1];
-	} kp_eproc;
-	struct thread kp_thread;		/* thread structure */
-};
-void fill_eproc_td (struct thread *, struct eproc *, struct proc *);
-void fill_eproc (struct proc *, struct eproc *);
-
+#include <sys/kinfo.h>
 
 /*
  * Per process structure containing data that isn't needed in core

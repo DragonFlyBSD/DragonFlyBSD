@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.31 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.32 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -596,6 +596,7 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 }
 #endif /* DDB */
 
+#if 0
 /*
  * Fill in an eproc structure for the specified thread.
  */
@@ -678,6 +679,7 @@ fill_eproc(struct proc *p, struct eproc *ep)
 	if (p->p_ucred->cr_prison)
 		ep->e_jailid = p->p_ucred->cr_prison->pr_id;
 }
+#endif
 
 /*
  * Locate a process on the zombie list.  Return a held process or NULL.
@@ -694,52 +696,29 @@ zpfind(pid_t pid)
 }
 
 static int
-sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int doingzomb)
+sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 {
-	struct eproc eproc;
-	struct proc xproc;
+	struct kinfo_proc ki;
+	struct lwp *lp;
+	int skp = 1, had_output = 0;
 	int error;
-#if 0
-	pid_t pid = p->p_pid;
-#endif
 
-	if (p) {
-		td = p->p_thread;
-		fill_eproc(p, &eproc);
-		xproc = *p;
-
-		/*
-		 * Aggregate rusage information
-		 */
-		calcru_proc(p, &xproc.p_ru);
-
-		/*
-		 * p_stat fixup.  If we are in a thread sleep mark p_stat
-		 * as sleeping if the thread is blocked.
-		 */
-		if (p->p_stat == SRUN && td && (td->td_flags & TDF_BLOCKED)) {
-			xproc.p_stat = SSLEEP;
-		}
-		/*
-		 * If the process is being stopped but is in a normal tsleep,
-		 * mark it as being SSTOP.
-		 */
-		if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED))
-			xproc.p_stat = SSTOP;
-		if (p->p_flag & P_ZOMBIE)
-			xproc.p_stat = SZOMB;
-	} else if (td) {
-		fill_eproc_td(td, &eproc, &xproc);
+	fill_kinfo_proc(p, &ki);
+	if ((flags & KERN_PROC_FLAG_LWP) == 0)
+		skp = 1;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		fill_kinfo_lwp(lp, &ki.kp_lwp);
+output:
+		had_output = 1;
+		error = SYSCTL_OUT(req, &ki, sizeof(ki));
+		if (error)
+			return error;
+		if (skp)
+			break;
 	}
-	error = SYSCTL_OUT(req,(caddr_t)&xproc, sizeof(struct proc));
-	if (error)
-		return (error);
-	error = SYSCTL_OUT(req,(caddr_t)&eproc, sizeof(eproc));
-	if (error)
-		return (error);
-	error = SYSCTL_OUT(req,(caddr_t)td, sizeof(struct thread));
-	if (error)
-		return (error);
+	/* We need to output at least the proc, even if there is no lwp. */
+	if (!had_output)
+		goto output;
 #if 0
 	if (!doingzomb && pid && (pfind(pid) != p))
 		return EAGAIN;
@@ -753,45 +732,44 @@ static int
 sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 {
 	int *name = (int*) arg1;
+	int oid = oidp->oid_number;
 	u_int namelen = arg2;
-	struct proc *p;
-	struct thread *td;
-	int doingzomb;
+	struct proc *p, *np;
+	struct proclist *plist;
+	int doingzomb, flags = 0;
 	int error = 0;
-	int n;
 	int origcpu;
 	struct ucred *cr1 = curproc->p_ucred;
 
-	if (oidp->oid_number == KERN_PROC_PID) {
-		if (namelen != 1) 
-			return (EINVAL);
+	flags = oid & KERN_PROC_FLAGMASK;
+	oid &= ~KERN_PROC_FLAGMASK;
+
+	if ((oid == KERN_PROC_ALL && namelen != 0) ||
+	    (oid != KERN_PROC_ALL && namelen != 1))
+		return (EINVAL);
+
+	if (oid == KERN_PROC_PID) {
 		p = pfind((pid_t)name[0]);
 		if (!p)
 			return (0);
 		if (!PRISON_CHECK(cr1, p->p_ucred))
 			return (0);
-		error = sysctl_out_proc(p, NULL, req, 0);
+		error = sysctl_out_proc(p, req, flags);
 		return (error);
 	}
-	if (oidp->oid_number == KERN_PROC_ALL && !namelen)
-		;
-	else if (oidp->oid_number != KERN_PROC_ALL && namelen == 1)
-		;
-	else
-		return (EINVAL);
-	
+
 	if (!req->oldptr) {
 		/* overestimate by 5 procs */
 		error = SYSCTL_OUT(req, 0, sizeof (struct kinfo_proc) * 5);
 		if (error)
 			return (error);
 	}
-	for (doingzomb=0 ; doingzomb < 2 ; doingzomb++) {
-		if (!doingzomb)
-			p = LIST_FIRST(&allproc);
+	for (doingzomb = 0; doingzomb <= 1; doingzomb++) {
+		if (doingzomb)
+			plist = &zombproc;
 		else
-			p = LIST_FIRST(&zombproc);
-		for (; p != 0; p = LIST_NEXT(p, p_list)) {
+			plist = &allproc;
+		LIST_FOREACH_MUTABLE(p, plist, p_list, np) {
 			/*
 			 * Show a user only their processes.
 			 */
@@ -806,7 +784,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			 * TODO - make more efficient (see notes below).
 			 * do by session.
 			 */
-			switch (oidp->oid_number) {
+			switch (oid) {
 			case KERN_PROC_PGRP:
 				/* could do this by traversing pgrp */
 				if (p->p_pgrp == NULL || 
@@ -839,7 +817,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			if (!PRISON_CHECK(cr1, p->p_ucred))
 				continue;
 			PHOLD(p);
-			error = sysctl_out_proc(p, NULL, req, doingzomb);
+			error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
 			if (error)
 				return (error);
@@ -856,6 +834,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	origcpu = mycpu->gd_cpuid;
 	if (!ps_showallthreads || jailed(cr1))
 		goto post_threads;
+#if 0
 	for (n = 1; n <= ncpus; ++n) {
 		globaldata_t rgd;
 		int nid;
@@ -885,6 +864,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				return (error);
 		}
 	}
+#endif
 post_threads:
 	return (0);
 }
@@ -960,6 +940,24 @@ SYSCTL_NODE(_kern_proc, KERN_PROC_RUID, ruid, CTLFLAG_RD,
 	sysctl_kern_proc, "Process table");
 
 SYSCTL_NODE(_kern_proc, KERN_PROC_PID, pid, CTLFLAG_RD, 
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_ALL | KERN_PROC_FLAG_LWP), all_lwp, CTLFLAG_RD,
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_PGRP | KERN_PROC_FLAG_LWP), pgrp_lwp, CTLFLAG_RD, 
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_TTY | KERN_PROC_FLAG_LWP), tty_lwp, CTLFLAG_RD, 
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_UID | KERN_PROC_FLAG_LWP), uid_lwp, CTLFLAG_RD, 
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_RUID | KERN_PROC_FLAG_LWP), ruid_lwp, CTLFLAG_RD, 
+	sysctl_kern_proc, "Process table");
+
+SYSCTL_NODE(_kern_proc, (KERN_PROC_PID | KERN_PROC_FLAG_LWP), pid_lwp, CTLFLAG_RD, 
 	sysctl_kern_proc, "Process table");
 
 SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args, CTLFLAG_RW | CTLFLAG_ANYBODY,

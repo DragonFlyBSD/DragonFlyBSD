@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.8 2006/01/11 01:12:59 corecode Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.9 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,8 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 	kd->pmfd = -1;
 	kd->nlfd = -1;
 	kd->vmst = 0;
-	kd->procbase = 0;
+	kd->procbase = NULL;
+	kd->procend = NULL;
 	kd->argspc = 0;
 	kd->argv = 0;
 
@@ -266,8 +267,8 @@ kvm_close(kvm_t *kd)
 		error |= close(kd->nlfd);
 	if (kd->vmst)
 		_kvm_freevtop(kd);
-	if (kd->procbase != 0)
-		free((void *)kd->procbase);
+	if (kd->procbase != NULL)
+		free(kd->procbase);
 	if (kd->argv != 0)
 		free((void *)kd->argv);
 	free((void *)kd);

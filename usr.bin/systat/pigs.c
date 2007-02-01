@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.11 2005/11/14 18:50:17 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.12 2007/02/01 10:33:26 corecode Exp $
  */
 
 /*
@@ -88,7 +88,6 @@ void
 showpigs(void)
 {
 	register int i, j, y, k;
-	struct	eproc *ep;
 	float total;
 	int factor;
 	char *uname, *pname, pidname[30];
@@ -115,7 +114,7 @@ showpigs(void)
 		char buf[256];
 		if (pt[k].pt_pctcpu <= 0.01 &&
 		    (pt[k].pt_kp == NULL ||
-		    pt[k].pt_kp->kp_proc.p_slptime > 1)
+		    pt[k].pt_kp->kp_lwp.kl_slptime > 1)
 		) {
 			--y;
 			continue;
@@ -124,9 +123,8 @@ showpigs(void)
 			uname = "";
 			pname = "<idle>";
 		} else {
-			ep = &pt[k].pt_kp->kp_eproc;
-			uname = (char *)user_from_uid(ep->e_ucred.cr_uid, 0);
-			pname = pt[k].pt_kp->kp_thread.td_comm;
+			uname = (char *)user_from_uid(pt[k].pt_kp->kp_uid, 0);
+			pname = pt[k].pt_kp->kp_comm;
 		}
 		wmove(wnd, y, 0);
 		wclrtoeol(wnd);
@@ -179,9 +177,8 @@ fetchpigs(void)
 {
 	int i;
 	float time;
-	struct proc *pp;
 	float *pctp;
-	struct kinfo_proc *kpp;
+	struct kinfo_proc *kpp, *pp;
 	struct kinfo_cputime cp_time, diff_cp_time;
 	double t;
 	static int lastnproc = 0;
@@ -208,13 +205,13 @@ fetchpigs(void)
 	 */
 	for (i = 0; i < nproc; i++) {
 		pt[i].pt_kp = &kpp[i];
-		pp = &kpp[i].kp_proc;
+		pp = &kpp[i];
 		pctp = &pt[i].pt_pctcpu;
-		time = pp->p_swtime;
-		if (time == 0 || (pp->p_flag & P_SWAPPEDOUT))
+		time = pp->kp_lwp.kl_swtime;
+		if (time == 0 || (pp->kp_flags & P_SWAPPEDOUT))
 			*pctp = 0;
 		else
-			*pctp = ((double) pp->p_pctcpu /
+			*pctp = ((double) pp->kp_lwp.kl_pctcpu /
 					fscale) / (1.0 - exp(time * lccpu));
 	}
 	/*
@@ -271,18 +268,18 @@ compar(const void *a, const void *b)
 	/*
 	 * Then check sleep times and run status.
 	 */
-	if (pta->pt_kp->kp_proc.p_slptime < ptb->pt_kp->kp_proc.p_slptime)
+	if (pta->pt_kp->kp_lwp.kl_slptime < ptb->pt_kp->kp_lwp.kl_slptime)
 		return(-1);
-	if (pta->pt_kp->kp_proc.p_slptime > ptb->pt_kp->kp_proc.p_slptime)
+	if (pta->pt_kp->kp_lwp.kl_slptime > ptb->pt_kp->kp_lwp.kl_slptime)
 		return(1);
 
 	/*
 	 * Runnability
 	 */
-	if (pta->pt_kp->kp_proc.p_stat != ptb->pt_kp->kp_proc.p_stat) {
-		if (pta->pt_kp->kp_proc.p_stat == SRUN)
+	if (pta->pt_kp->kp_stat != ptb->pt_kp->kp_stat) {
+		if (pta->pt_kp->kp_stat == SRUN)
 			return(-1);
-		if (ptb->pt_kp->kp_proc.p_stat == SRUN)
+		if (ptb->pt_kp->kp_stat == SRUN)
 			return(1);
 	}
 	return(0);

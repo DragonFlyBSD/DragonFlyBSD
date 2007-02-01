@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.10 2007/01/18 12:34:46 victor Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.11 2007/02/01 10:33:26 corecode Exp $
  *
  */
 
@@ -50,7 +50,9 @@ struct jail_v0 {
 int jail(struct jail *);
 int jail_attach(int);
 
-#else /* _KERNEL */
+#endif
+
+#ifdef _KERNEL
 
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
@@ -62,6 +64,10 @@ int jail_attach(int);
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_PRISON);
 #endif
+
+#endif	/* _KERNEL */
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #define	JAIL_MAX	999999
 
@@ -119,5 +125,5 @@ jailed(struct ucred *cred)
 	return(cred->cr_prison != NULL);
 }
 
-#endif /* !_KERNEL */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* !_SYS_JAIL_H_ */

@@ -32,7 +32,7 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.5 2005/06/27 18:38:03 dillon Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.6 2007/02/01 10:33:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -60,14 +60,14 @@
  * TODO - consider whether pctcpu should be used.
  */
 
-#define ISRUN(p)	(((p)->p_stat == SRUN) || ((p)->p_stat == SIDL))
+#define ISRUN(p)	(((p)->kp_stat == SRUN) || ((p)->kp_stat == SIDL))
 #define TESTAB(a, b)    ((a)<<1 | (b))
 #define ONLYA   2
 #define ONLYB   1
 #define BOTH    3
 
 int
-proc_compare(register struct proc *p1, register struct proc *p2)
+proc_compare(struct kinfo_proc *p1, struct kinfo_proc *p2)
 {
 
 	if (p1 == NULL)
@@ -84,36 +84,36 @@ proc_compare(register struct proc *p1, register struct proc *p2)
 		/*
 		 * tie - favor one with highest recent cpu utilization
 		 */
-		if (p2->p_usdata.bsd4.estcpu > p1->p_usdata.bsd4.estcpu)
+		if (p2->kp_lwp.kl_estcpu > p1->kp_lwp.kl_estcpu)
 			return (1);
-		if (p1->p_usdata.bsd4.estcpu > p2->p_usdata.bsd4.estcpu)
+		if (p1->kp_lwp.kl_estcpu > p2->kp_lwp.kl_estcpu)
 			return (0);
-		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
+		return (p2->kp_pid > p1->kp_pid);	/* tie - return highest pid */
 	}
 	/*
  	 * weed out zombies
 	 */
-	switch (TESTAB(p1->p_stat == SZOMB, p2->p_stat == SZOMB)) {
+	switch (TESTAB(p1->kp_stat == SZOMB, p2->kp_stat == SZOMB)) {
 	case ONLYA:
 		return (1);
 	case ONLYB:
 		return (0);
 	case BOTH:
-		return (p2->p_pid > p1->p_pid); /* tie - return highest pid */
+		return (p2->kp_pid > p1->kp_pid); /* tie - return highest pid */
 	}
 	/*
 	 * pick the one with the smallest sleep time
 	 */
-	if (p2->p_slptime > p1->p_slptime)
+	if (p2->kp_lwp.kl_slptime > p1->kp_lwp.kl_slptime)
 		return (0);
-	if (p1->p_slptime > p2->p_slptime)
+	if (p1->kp_lwp.kl_slptime > p2->kp_lwp.kl_slptime)
 		return (1);
 	/*
 	 * favor one sleeping in a non-interruptible sleep
 	 */
-	if (p1->p_flag & P_SINTR && (p2->p_flag & P_SINTR) == 0)
+	if (p1->kp_flags & P_SINTR && (p2->kp_flags & P_SINTR) == 0)
 		return (1);
-	if (p2->p_flag & P_SINTR && (p1->p_flag & P_SINTR) == 0)
+	if (p2->kp_flags & P_SINTR && (p1->kp_flags & P_SINTR) == 0)
 		return (0);
-	return (p2->p_pid > p1->p_pid);		/* tie - return highest pid */
+	return (p2->kp_pid > p1->kp_pid);		/* tie - return highest pid */
 }

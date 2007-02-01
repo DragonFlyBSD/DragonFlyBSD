@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.21 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.22 2007/02/01 10:33:25 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -367,7 +367,7 @@ main(int argc, char **argv)
 	if ((kinfo = malloc(nentries * sizeof(*kinfo))) == NULL)
 		err(1, NULL);
 	for (i = nentries; --i >= 0; ++kp) {
-		kinfo[i].ki_p = kp;
+		kinfo[i].ki_proc = kp;
 		if (needuser)
 			saveuser(&kinfo[i]);
 		dynsizevars(&kinfo[i]);
@@ -389,12 +389,12 @@ main(int argc, char **argv)
 	 * for each proc, call each variable output function.
 	 */
 	for (i = lineno = 0; i < nentries; i++) {
-		if (xflg == 0 && (KI_EPROC(&kinfo[i])->e_tdev == NODEV ||
-		    (KI_PROC(&kinfo[i])->p_flag & P_CONTROLT ) == 0))
+		if (xflg == 0 && (KI_PROC(&kinfo[i], tdev) == NODEV ||
+		    (KI_PROC(&kinfo[i], flags) & P_CONTROLT ) == 0))
 			continue;
 		if (nuids > 1) {
 			for (uid = 0; uid < nuids; uid++)
-				if (KI_EPROC(&kinfo[i])->e_ucred.cr_uid ==
+				if (KI_PROC(&kinfo[i], uid) ==
 				    uids[uid])
 					break;
 			if (uid == nuids)
@@ -522,43 +522,25 @@ getfmt(char **(*fn) (kvm_t *, const struct kinfo_proc *, int), KINFO *ki, char
 	const char *s;
 
 	if ((s =
-	    fmt_argv((*fn)(kd, ki->ki_p, termwidth), comm, maxlen)) == NULL)
+	    fmt_argv((*fn)(kd, ki->ki_proc, termwidth), comm, maxlen)) == NULL)
 		err(1, NULL);
 	return (s);
 }
 
-#define UREADOK(ki)	\
-	(forceuread || (KI_PROC(ki)->p_flag & P_SWAPPEDOUT) == 0)
-
 static void
 saveuser(KINFO *ki)
 {
-	struct usave *usp;
-
-	usp = &ki->ki_u;
-
-	usp->u_start = KI_PROC(ki)->p_start;
-	usp->u_ru = KI_PROC(ki)->p_ru;
-	usp->u_cru = KI_PROC(ki)->p_cru;
-
 	/*
 	 * save arguments if needed
 	 */
-	if (needcomm && (UREADOK(ki) || (KI_PROC(ki)->p_args != NULL))) {
-		ki->ki_args = getfmt(kvm_getargv, ki, KI_THREAD(ki)->td_comm,
+	if (needcomm) {
+		ki->ki_args = getfmt(kvm_getargv, ki, KI_PROC(ki, comm),
 		    MAXCOMLEN);
-	} else if (needcomm) {
-		char *tmp;
-		tmp = malloc(strlen(KI_THREAD(ki)->td_comm) + 3);
-		sprintf(tmp, "(%s)", KI_THREAD(ki)->td_comm);
-		ki->ki_args = tmp;
 	} else {
 		ki->ki_args = NULL;
 	}
-	if (needenv && UREADOK(ki)) {
+	if (needenv) {
 		ki->ki_env = getfmt(kvm_getenvv, ki, (char *)NULL, 0);
-	} else if (needenv) {
-		ki->ki_env = "()";
 	} else {
 		ki->ki_env = NULL;
 	}
@@ -568,8 +550,8 @@ static int
 pscomp(const void *a, const void *b)
 {
 	int i;
-#define VSIZE(k) (KI_EPROC(k)->e_vm.vm_dsize + KI_EPROC(k)->e_vm.vm_ssize + \
-		  KI_EPROC(k)->e_vm.vm_tsize)
+#define VSIZE(k) (KI_PROC(k, vm_dsize) + KI_PROC(k, vm_ssize) + \
+		  KI_PROC(k, vm_tsize))
 
 #if 0
 	if (sortby == SORTIAC)
@@ -579,9 +561,9 @@ pscomp(const void *a, const void *b)
 		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
 	if (sortby == SORTMEM)
 		return (VSIZE((const KINFO *)b) - VSIZE((const KINFO *)a));
-	i =  KI_EPROC((const KINFO *)a)->e_tdev - KI_EPROC((const KINFO *)b)->e_tdev;
+	i =  KI_PROC((const KINFO *)a, tdev) - KI_PROC((const KINFO *)b, tdev);
 	if (i == 0)
-		i = KI_PROC((const KINFO *)a)->p_pid - KI_PROC((const KINFO *)b)->p_pid;
+		i = KI_PROC((const KINFO *)a, pid) - KI_PROC((const KINFO *)b, pid);
 	return (i);
 }
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.21 2006/10/27 05:04:35 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.22 2007/02/01 10:33:26 corecode Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -136,8 +136,8 @@ int maxfiles;
 
 kvm_t *kd;
 
-void dofiles(struct kinfo_proc *kp);
-void dommap(struct kinfo_proc *kp);
+void dofiles(struct kinfo_proc *kp, struct proc *p);
+void dommap(struct proc *p);
 void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag);
 int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
 int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
@@ -154,6 +154,7 @@ main(int argc, char **argv)
 {
 	struct passwd *passwd;
 	struct kinfo_proc *p, *plast;
+	struct proc proc;
 	int arg, ch, what;
 	char *memf, *nlistf;
 	char buf[_POSIX2_LINE_MAX];
@@ -259,11 +260,16 @@ main(int argc, char **argv)
 		putchar('\n');
 
 	for (plast = &p[cnt]; p < plast; ++p) {
-		if (p->kp_proc.p_stat == SZOMB)
+		if (p->kp_stat == SZOMB)
 			continue;
-		dofiles(p);
+		if (!kread((void *)p->kp_paddr, &proc, sizeof(proc))) {
+			dprintf(stderr, "can't read proc at %p for pid %d\n",
+			    (void *)p->kp_paddr, Pid);
+			continue;
+		}
+		dofiles(p, &proc);
 		if (mflg)
-			dommap(p);
+			dommap(&proc);
 	}
 	exit(0);
 }
@@ -298,18 +304,16 @@ int	Pid;
  * print open files attributed to this process
  */
 void
-dofiles(struct kinfo_proc *kp)
+dofiles(struct kinfo_proc *kp, struct proc *p)
 {
 	int i;
 	struct file file;
 	struct filedesc filed;
 	struct ktrace_node ktrace_node;
-	struct proc *p = &kp->kp_proc;
-	struct eproc *ep = &kp->kp_eproc;
 
-	Uname = user_from_uid(ep->e_ucred.cr_uid, 0);
-	Pid = p->p_pid;
-	Comm = kp->kp_thread.td_comm;
+	Uname = user_from_uid(kp->kp_uid, 0);
+	Pid = kp->kp_pid;
+	Comm = kp->kp_comm;
 	make_printable(Comm, strlen(Comm));
 
 	if (p->p_fd == NULL)
@@ -389,9 +393,8 @@ dofiles(struct kinfo_proc *kp)
 }
 
 void
-dommap(struct kinfo_proc *kp)
+dommap(struct proc *p)
 {
-	struct proc *p = &kp->kp_proc;
 	struct vmspace vmspace;
 	vm_map_t map;
 	struct vm_map_entry entry;

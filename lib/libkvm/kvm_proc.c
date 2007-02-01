@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.9 2006/11/09 16:52:41 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.10 2007/02/01 10:33:25 corecode Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -56,6 +56,7 @@
 #include <sys/ioctl.h>
 #include <sys/tty.h>
 #include <sys/file.h>
+#include <sys/jail.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -89,37 +90,63 @@ kvm_readswap(kvm_t *kd, const struct proc *p, u_long va, u_long *cnt)
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, (char *)(obj), sizeof(*obj)) != sizeof(*obj))
 
+
+static struct kinfo_proc *
+kinfo_resize_proc(kvm_t *kd, struct kinfo_proc *bp)
+{
+	if (bp < kd->procend)
+		return bp;
+
+	size_t pos = bp - kd->procend;
+	size_t size = kd->procend - kd->procbase;
+
+	if (size == 0)
+		size = 8;
+	else
+		size *= 2;
+	kd->procbase = _kvm_realloc(kd, kd->procbase, sizeof(*bp) * size);
+	if (kd->procbase == NULL)
+		return NULL;
+	kd->procend = kd->procbase + size;
+	bp = kd->procbase + pos;
+	return bp;
+}
+
 /*
  * Read proc's from memory file into buffer bp, which has space to hold
  * at most maxcnt procs.
  */
 static int
 kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
-	     struct kinfo_proc *bp, int maxcnt)
+	     struct kinfo_proc *bp)
 {
-	int cnt = 0;
-	struct eproc eproc;
 	struct pgrp pgrp;
+	struct pgrp tpgrp;
 	struct session sess;
 	struct tty tty;
 	struct proc proc;
+	struct ucred ucred;
 	struct thread thread;
 	struct proc pproc;
 	struct cdev cdev;
+	struct vmspace vmspace;
+	struct prison prison;
+	struct lwp lwp;
+	uintptr_t lwppos;
 
-	for (; cnt < maxcnt && p != NULL; p = proc.p_list.le_next) {
+	for (; p != NULL; p = proc.p_list.le_next) {
 		if (KREAD(kd, (u_long)p, &proc)) {
 			_kvm_err(kd, kd->program, "can't read proc at %x", p);
 			return (-1);
 		}
-		if (KREAD(kd, (u_long)proc.p_thread, &thread)) {
-			_kvm_err(kd, kd->program, "can't read thread at %x",
-			    proc.p_thread);
+		if (KREAD(kd, (u_long)proc.p_ucred, &ucred)) {
+			_kvm_err(kd, kd->program, "can't read ucred at %p",
+				 proc.p_ucred);
 			return (-1);
 		}
-		KREAD(kd, (u_long)proc.p_ucred, &eproc.e_ucred);
+		proc.p_ucred = &ucred;
 
-		switch(what) {
+		switch(what & ~KERN_PROC_FLAGMASK) {
 
 		case KERN_PROC_PID:
 			if (proc.p_pid != (pid_t)arg)
@@ -127,131 +154,140 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 			break;
 
 		case KERN_PROC_UID:
-			if (eproc.e_ucred.cr_uid != (uid_t)arg)
+			if (ucred.cr_uid != (uid_t)arg)
 				continue;
 			break;
 
 		case KERN_PROC_RUID:
-			if (eproc.e_ucred.cr_ruid != (uid_t)arg)
+			if (ucred.cr_ruid != (uid_t)arg)
 				continue;
 			break;
 		}
-		/*
-		 * We're going to add another proc to the set.  If this
-		 * will overflow the buffer, assume the reason is because
-		 * nprocs (or the proc list) is corrupt and declare an error.
-		 */
-		if (cnt >= maxcnt) {
-			_kvm_err(kd, kd->program, "nprocs corrupt");
-			return (-1);
-		}
-		/*
-		 * gather eproc
-		 */
-		eproc.e_paddr = p;
+
 		if (KREAD(kd, (u_long)proc.p_pgrp, &pgrp)) {
 			_kvm_err(kd, kd->program, "can't read pgrp at %x",
 				 proc.p_pgrp);
 			return (-1);
 		}
-		if (proc.p_oppid)
-		  eproc.e_ppid = proc.p_oppid;
-		else if (proc.p_pptr) {
+		proc.p_pgrp = &pgrp;
+		if (proc.p_pptr) {
 		  if (KREAD(kd, (u_long)proc.p_pptr, &pproc)) {
 			_kvm_err(kd, kd->program, "can't read pproc at %x",
 				 proc.p_pptr);
 			return (-1);
 		  }
-		  eproc.e_ppid = pproc.p_pid;
-		} else 
-		  eproc.e_ppid = 0;
-		eproc.e_sess = pgrp.pg_session;
-		eproc.e_pgid = pgrp.pg_id;
-		eproc.e_jobc = pgrp.pg_jobc;
+		  proc.p_pptr = &pproc;
+		}
 		if (KREAD(kd, (u_long)pgrp.pg_session, &sess)) {
 			_kvm_err(kd, kd->program, "can't read session at %x",
 				pgrp.pg_session);
 			return (-1);
 		}
-		(void)memcpy(eproc.e_login, sess.s_login,
-						sizeof(eproc.e_login));
+		pgrp.pg_session = &sess;
+
 		if ((proc.p_flag & P_CONTROLT) && sess.s_ttyp != NULL) {
 			if (KREAD(kd, (u_long)sess.s_ttyp, &tty)) {
 				_kvm_err(kd, kd->program,
 					 "can't read tty at %x", sess.s_ttyp);
 				return (-1);
 			}
+			sess.s_ttyp = &tty;
 			if (tty.t_dev && tty.t_dev != NOCDEV) {
-				if (KREAD(kd, (u_long)tty.t_dev, &cdev)) {
-					eproc.e_tdev = cdev.si_udev;
-				} else {
-					eproc.e_tdev = NODEV;
-				}
-			} else {
-				eproc.e_tdev = NODEV;
+				if (KREAD(kd, (u_long)tty.t_dev, &cdev))
+					tty.t_dev = NOCDEV;
+				else
+					tty.t_dev = &cdev;
 			}
-			eproc.e_tsess = tty.t_session;
 			if (tty.t_pgrp != NULL) {
-				if (KREAD(kd, (u_long)tty.t_pgrp, &pgrp)) {
+				if (KREAD(kd, (u_long)tty.t_pgrp, &tpgrp)) {
 					_kvm_err(kd, kd->program,
 						 "can't read tpgrp at %x",
 						tty.t_pgrp);
 					return (-1);
 				}
-				eproc.e_tpgid = pgrp.pg_id;
-			} else
-				eproc.e_tpgid = -1;
-		} else
-			eproc.e_tdev = NODEV;
-		eproc.e_flag = sess.s_ttyvp ? EPROC_CTTY : 0;
-		if (sess.s_leader == p)
-			eproc.e_flag |= EPROC_SLEADER;
-		if (thread.td_wmesg)
-			(void)kvm_read(kd, (u_long)thread.td_wmesg,
-			    eproc.e_wmesg, WMESGLEN);
+				tty.t_pgrp = &tpgrp;
+			}
+		}
 
-#ifdef sparc
-		(void)kvm_read(kd, (u_long)&proc.p_vmspace->vm_rssize,
-		    (char *)&eproc.e_vm.vm_rssize,
-		    sizeof(eproc.e_vm.vm_rssize));
-		(void)kvm_read(kd, (u_long)&proc.p_vmspace->vm_tsize,
-		    (char *)&eproc.e_vm.vm_tsize,
-		    3 * sizeof(eproc.e_vm.vm_rssize));	/* XXX */
-#else
-		(void)kvm_read(kd, (u_long)proc.p_vmspace,
-		    (char *)&eproc.e_vm, sizeof(eproc.e_vm));
-#endif
-		eproc.e_xsize = eproc.e_xrssize = 0;
-		eproc.e_xccount = eproc.e_xswrss = 0;
+		if (KREAD(kd, (u_long)proc.p_vmspace, &vmspace)) {
+			_kvm_err(kd, kd->program, "can't read vmspace at %p",
+				 proc.p_vmspace);
+			return (-1);
+		}
+		proc.p_vmspace = &vmspace;
 
-		switch (what) {
+		if (ucred.cr_prison != NULL) {
+			if (KREAD(kd, (u_long)ucred.cr_prison, &prison)) {
+				_kvm_err(kd, kd->program, "can't read prison at %p",
+					 ucred.cr_prison);
+				return (-1);
+			}
+			ucred.cr_prison = &prison;
+		}
+
+		switch (what & ~KERN_PROC_FLAGMASK) {
 
 		case KERN_PROC_PGRP:
-			if (eproc.e_pgid != (pid_t)arg)
+			if (proc.p_pgrp->pg_id != (pid_t)arg)
 				continue;
 			break;
 
 		case KERN_PROC_TTY:
 			if ((proc.p_flag & P_CONTROLT) == 0 ||
-			     eproc.e_tdev != (dev_t)arg)
+			    proc.p_pgrp->pg_session->s_ttyp->t_dev->si_udev
+					!= (dev_t)arg)
 				continue;
 			break;
 		}
-		bcopy(&proc, &bp->kp_proc, sizeof(proc));
-		bcopy(&eproc, &bp->kp_eproc, sizeof(eproc));
-		++bp;
-		++cnt;
+
+		if ((bp = kinfo_resize_proc(kd, bp)) == NULL)
+			return (-1);
+		fill_kinfo_proc(&proc, bp);
+		bp->kp_paddr = (uintptr_t)p;
+
+		lwppos = (uintptr_t)proc.p_lwps.lh_first;
+		if (lwppos == 0)
+			bp++;		/* Just export the proc then */
+		while (lwppos != 0) {
+			if (KREAD(kd, lwppos, &lwp)) {
+				_kvm_err(kd, kd->program, "can't read lwp at %p",
+				    lwppos);
+				return (-1);
+			}
+			if (p != lwp.lwp_proc) {
+				_kvm_err(kd, kd->program, "lwp has wrong parent");
+				return (-1);
+			}
+			lwp.lwp_proc = &proc;
+			if (KREAD(kd, (u_long)lwp.lwp_thread, &thread)) {
+				_kvm_err(kd, kd->program, "can't read thread at %x",
+				    lwp.lwp_thread);
+				return (-1);
+			}
+			lwp.lwp_thread = &thread;
+
+			if ((bp = kinfo_resize_proc(kd, bp)) == NULL)
+				return (-1);
+			fill_kinfo_proc(&proc, bp);
+			fill_kinfo_lwp(&lwp, &bp->kp_lwp);
+			bp->kp_paddr = (uintptr_t)p;
+			bp++;
+			if ((what & KERN_PROC_FLAG_LWP) == 0)
+				break;
+
+			lwppos = (uintptr_t)lwp.lwp_list.le_next;
+		}
 	}
-	return (cnt);
+	return (0);
 }
 
 /*
  * Build proc info array by reading in proc list from a crash dump.
- * Return number of procs read.  maxcnt is the max we will read.
+ * We reallocate kd->procbase as necessary.
  */
 static int
 kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
-	      u_long a_zombproc, int maxcnt)
+	      u_long a_zombproc)
 {
 	struct kinfo_proc *bp = kd->procbase;
 	int acnt, zcnt;
@@ -261,7 +297,7 @@ kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
 		_kvm_err(kd, kd->program, "cannot read allproc");
 		return (-1);
 	}
-	acnt = kvm_proclist(kd, what, arg, p, bp, maxcnt);
+	acnt = kvm_proclist(kd, what, arg, p, bp);
 	if (acnt < 0)
 		return (acnt);
 
@@ -269,7 +305,7 @@ kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
 		_kvm_err(kd, kd->program, "cannot read zombproc");
 		return (-1);
 	}
-	zcnt = kvm_proclist(kd, what, arg, p, bp + acnt, maxcnt - acnt);
+	zcnt = kvm_proclist(kd, what, arg, p, bp + acnt);
 	if (zcnt < 0)
 		zcnt = 0;
 
@@ -340,13 +376,8 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 			_kvm_err(kd, kd->program, "can't read nprocs");
 			return (0);
 		}
-		size = nprocs * sizeof(struct kinfo_proc);
-		kd->procbase = (struct kinfo_proc *)_kvm_malloc(kd, size);
-		if (kd->procbase == 0)
-			return (0);
-
 		nprocs = kvm_deadprocs(kd, op, arg, nl[1].n_value,
-				      nl[2].n_value, nprocs);
+				      nl[2].n_value);
 #ifdef notdef
 		size = nprocs * sizeof(struct kinfo_proc);
 		(void)realloc(kd->procbase, size);
@@ -382,13 +413,13 @@ _kvm_realloc(kvm_t *kd, void *p, size_t n)
 #endif
 
 /*
- * Read in an argument vector from the user address space of process p.
+ * Read in an argument vector from the user address space of process pid.
  * addr if the user-space base address of narg null-terminated contiguous
  * strings.  This is used to read in both the command arguments and
  * environment strings.  Read at most maxcnt characters of strings.
  */
 static char **
-kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
+kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 {
 	char *np, *cp, *ep, *ap;
 	u_long oaddr = -1;
@@ -446,7 +477,7 @@ kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
 
 	/* Pull in the target process'es argv vector */
 	cc = sizeof(char *) * narg;
-	if (kvm_uread(kd, p, addr, (char *)kd->argv, cc) != cc)
+	if (kvm_uread(kd, pid, addr, (char *)kd->argv, cc) != cc)
 		return (0);
 	/*
 	 * ap : saved start address of string we're working on in kd->argspc
@@ -474,7 +505,7 @@ kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
 
 		/* is it the same page as the last one? */
 		if (addr != oaddr) {
-			if (kvm_uread(kd, p, addr, kd->argbuf, PAGE_SIZE) !=
+			if (kvm_uread(kd, pid, addr, kd->argbuf, PAGE_SIZE) !=
 			    PAGE_SIZE)
 				return (0);
 			oaddr = addr;
@@ -580,28 +611,32 @@ ps_str_e(struct ps_strings *p, u_long *addr, int *n)
  * being wrong are very low.
  */
 static int
-proc_verify(kvm_t *kd, u_long kernp, const struct proc *p)
+proc_verify(kvm_t *kd, const struct kinfo_proc *p)
 {
 	struct kinfo_proc kp;
 	int mib[4];
 	size_t len;
+	int error;
 
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_PROC;
 	mib[2] = KERN_PROC_PID;
-	mib[3] = p->p_pid;
+	mib[3] = p->kp_pid;
+
 	len = sizeof(kp);
-	if (sysctl(mib, 4, &kp, &len, NULL, 0) == -1)
+	error = sysctl(mib, 4, &kp, &len, NULL, 0);
+	if (error)
 		return (0);
-	return (p->p_pid == kp.kp_proc.p_pid &&
-	    (kp.kp_proc.p_stat != SZOMB || p->p_stat == SZOMB));
+
+	error = (p->kp_pid == kp.kp_pid &&
+	    (kp.kp_stat != SZOMB || p->kp_stat == SZOMB));
+	return (error);
 }
 
 static char **
 kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	   void (*info)(struct ps_strings *, u_long *, int *))
 {
-	const struct proc *p = &kp->kp_proc;
 	char **ap;
 	u_long addr;
 	int cnt;
@@ -619,20 +654,20 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	/*
 	 * Pointers are stored at the top of the user stack.
 	 */
-	if (p->p_stat == SZOMB ||
-	    kvm_uread(kd, p, ps_strings, (char *)&arginfo,
+	if (kp->kp_stat == SZOMB ||
+	    kvm_uread(kd, kp->kp_pid, ps_strings, (char *)&arginfo,
 		      sizeof(arginfo)) != sizeof(arginfo))
 		return (0);
 
 	(*info)(&arginfo, &addr, &cnt);
 	if (cnt == 0)
 		return (0);
-	ap = kvm_argv(kd, p, addr, cnt, nchr);
+	ap = kvm_argv(kd, kp->kp_pid, addr, cnt, nchr);
 	/*
 	 * For live kernels, make sure this process didn't go away.
 	 */
 	if (ap != 0 && ISALIVE(kd) &&
-	    !proc_verify(kd, (u_long)kp->kp_eproc.e_paddr, p))
+	    !proc_verify(kd, kp))
 		ap = 0;
 	return (ap);
 }
@@ -675,7 +710,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 		oid[0] = CTL_KERN;
 		oid[1] = KERN_PROC;
 		oid[2] = KERN_PROC_ARGS;
-		oid[3] = kp->kp_proc.p_pid;
+		oid[3] = kp->kp_pid;
 		bufsz = buflen;
 		i = sysctl(oid, 4, buf, &bufsz, 0, 0);
 		if (i == 0 && bufsz > 0) {
@@ -694,7 +729,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 			return (bufp);
 		}
 	}
-	if (kp->kp_proc.p_flag & P_SYSTEM)
+	if (kp->kp_flags & P_SYSTEM)
 		return (NULL);
 	return (kvm_doargv(kd, kp, nchr, ps_str_a));
 }
@@ -706,10 +741,10 @@ kvm_getenvv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 }
 
 /*
- * Read from user space.  The user context is given by p.
+ * Read from user space.  The user context is given by pid.
  */
 ssize_t
-kvm_uread(kvm_t *kd, const struct proc *p, u_long uva, char *buf, size_t len)
+kvm_uread(kvm_t *kd, pid_t pid, u_long uva, char *buf, size_t len)
 {
 	char *cp;
 	char procfile[MAXPATHLEN];
@@ -722,7 +757,7 @@ kvm_uread(kvm_t *kd, const struct proc *p, u_long uva, char *buf, size_t len)
 		return (0);
 	}
 
-	sprintf(procfile, "/proc/%d/mem", p->p_pid);
+	sprintf(procfile, "/proc/%d/mem", pid);
 	fd = open(procfile, O_RDONLY, 0);
 	if (fd < 0) {
 		_kvm_err(kd, kd->program, "cannot open %s", procfile);

@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.12 2005/06/29 01:25:10 dillon Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.13 2007/02/01 10:33:25 corecode Exp $
  */
 
 struct kinfo;
@@ -71,7 +71,8 @@ void	 tdpri(const KINFO *, const struct varent *);
 void	 rtprior(const KINFO *, const struct varent *);
 void	 printheader(void);
 void	 pvar(const KINFO *, const struct varent *);
-void	 pest(const KINFO *, const struct varent *);
+void	 lpvar(const KINFO *, const struct varent *);
+void	 lpest(const KINFO *, const struct varent *);
 void	 tvar(const KINFO *, const struct varent *);
 void	 rssize(const KINFO *, const struct varent *);
 void	 runame(const KINFO *, const struct varent *);
@@ -86,7 +87,6 @@ void	 tsize(const KINFO *, const struct varent *);
 void	 ucomm(const KINFO *, const struct varent *);
 void	 uname(const KINFO *, const struct varent *);
 int	 s_uname(const KINFO *);
-void	 uvar(const KINFO *, const struct varent *);
 void	 vsize(const KINFO *, const struct varent *);
 void	 wchan(const KINFO *, const struct varent *);
 __END_DECLS

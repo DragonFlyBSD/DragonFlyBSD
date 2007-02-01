@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.8 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.9 2007/02/01 10:33:26 corecode Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -43,6 +43,8 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#include <sys/resource.h>
+#include <sys/rtprio.h>
 
 struct kinfo_file {
 	size_t	 f_size;	/* size of struct kinfo_file */
@@ -96,6 +98,118 @@ struct kinfo_clockinfo {
 	int	ci_stathz;	/* statistics clock frequency */
 	int	ci_profhz;	/* profiling clock frequency */
 };
+
+/*
+ * Structure definition for the KERN_LWP subtype op.
+ */
+struct kinfo_lwp {
+	pid_t		kl_pid;	/* PID of our associated proc */
+	lwpid_t		kl_tid;	/* thread id */
+
+	int		kl_flags;	/* LWP_ flags */
+	char		kl_stat;	/* S* lwp status */
+	int		kl_tdflags;	/* thread flags */
+	int		kl_mpcount;	/* MP lock held count */
+	int		kl_prio;	/* scheduling priority */
+	int		kl_tdprio;	/* lwkt sched priority */
+	struct rtprio	kl_rtprio;	/* real-time scheduling prio */
+
+	/* accounting */
+	uint64_t	kl_uticks;	/* time accounting */
+	uint64_t	kl_sticks;
+	uint64_t	kl_iticks;
+	uint64_t	kl_cpticks;	/* sched quantums used */
+	u_int		kl_pctcpu;	/* percentage cputime */
+	u_int		kl_swtime;	/* time swapped in or out */
+	u_int		kl_slptime;	/* time since last blocked */
+	int		kl_origcpu;	/* originally scheduled on cpu */
+	int		kl_estcpu;
+	int		kl_cpuid;	/* CPU this lwp was last scheduled on */
+
+	struct rusage	kl_ru;		/* resource usage stats */
+
+	sigset_t	kl_siglist;	/* pending signals */
+	sigset_t	kl_sigmask;	/* masked signals */
+#define WMESGLEN 7
+	uintptr_t	kl_wchan;	/* waiting channel */
+	char		kl_wmesg[WMESGLEN+1];	/* waiting message */
+};
+
+/*
+ * KERN_PROC subtype ops return arrays of normalized proc structures:
+ */
+struct kinfo_proc {
+	uintptr_t	kp_paddr;	/* address of this proc */
+
+	/* proc information */
+	int		kp_flags;
+	int		kp_stat;
+	int		kp_lock;
+	int		kp_acflag;	/* accounting flags */
+	int		kp_traceflag;
+
+	uintptr_t	kp_fd;		/* address of the proc's files */
+
+	sigset_t	kp_siglist;
+	sigset_t	kp_sigignore;
+	sigset_t	kp_sigcatch;
+	int		kp_sigflag;	/* from ps_flag */
+	struct timeval	kp_start;
+
+	char		kp_comm[MAXCOMLEN+1];
+
+	/* cred information */
+	uid_t		kp_uid;
+	short		kp_ngroups;
+	gid_t		kp_groups[NGROUPS];
+	uid_t		kp_ruid;
+	uid_t		kp_svuid;
+	gid_t		kp_rgid;
+	gid_t		kp_svgid;
+
+	pid_t		kp_pid;	/* process id */
+	pid_t		kp_ppid;	/* parent process id */
+	pid_t		kp_pgid;	/* process group id */
+	int		kp_jobc;	/* job control counter */
+	pid_t		kp_sid;	/* session id */
+	char		kp_login[roundup(MAXLOGNAME, sizeof(long))];	/* setlogin() name */
+	dev_t		kp_tdev;	/* controlling tty dev */
+	pid_t		kp_tpgid;	/* tty process group id */
+	pid_t		kp_tsid;	/* tty session id */
+
+	u_short		kp_exitstat;	/* exit status information */
+	int		kp_nthreads;
+	int		kp_nice;
+
+	vm_size_t	kp_vm_map_size;	/* vmmap virtual size */
+	segsz_t		kp_vm_rssize;		/* resident set size */
+	segsz_t		kp_vm_swrss;		/* rss before last swap */
+	segsz_t		kp_vm_tsize;		/* text size */
+	segsz_t		kp_vm_dsize;		/* data size */
+	segsz_t		kp_vm_ssize;		/* stack size */
+
+	int		kp_jailid;
+
+	struct rusage	kp_ru;
+	struct rusage	kp_cru;
+
+	int		kp_auxflags;	/* generated flags */
+#define KI_CTTY	1
+#define KI_SLEADER	2
+
+	struct kinfo_lwp kp_lwp;
+
+	int		kp_spare[4];
+};
+
+struct proc;
+struct lwp;
+
+void fill_kinfo_proc(struct proc *, struct kinfo_proc *);
+void fill_kinfo_lwp(struct lwp *, struct kinfo_lwp *);
+
+#define KINFO_NEXT(kp)	((union kinfo *)((uintptr_t)kp + kp->gen.len))
+#define KINFO_END(kp)	(kp->gen.type == KINFO_TYPE_END)
 
 #if defined(_KERNEL)
 #ifdef SMP
