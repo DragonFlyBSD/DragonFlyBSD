@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.10 2007/01/15 05:27:31 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.11 2007/02/01 17:31:31 corecode Exp $
  */
 
 #include <sys/systm.h>
@@ -44,6 +44,7 @@
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
+#include <stdlib.h>
 
 static int console_stolen_by_kernel;
 static struct kqueue_info *kqueue_console_info;
@@ -224,31 +225,70 @@ static cn_putc_t	vconsputc;
 CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsterm, vconsgetc, 
 		vconscheckc, vconsputc, NULL);
 
+static struct termios init_tio;
+
 static void
 vconsprobe(struct consdev *cp)
 {
-	struct termios tio;
-
 	cp->cn_pri = CN_NORMAL;
 	cp->cn_dev = make_dev(&vcons_ops, 255,
 			      UID_ROOT, GID_WHEEL, 0600, "vconsolectl");
+}
 
-	if (tcgetattr(0, &tio) == 0) {
-		cfmakeraw(&tio);
-		tio.c_lflag |= ISIG;
-		tcsetattr(0, TCSAFLUSH, &tio);
-		vcons_set_mode(0);
-	}
+/*
+ * This is a little bulky handler to set proper terminal
+ * settings in the case of a signal which might lead to
+ * termination or suspension.
+ */
+static void
+vconssignal(int sig)
+{
+	struct termios curtio;
+	struct sigaction sa, osa;
+	sigset_t ss, oss;
+
+	tcgetattr(0, &curtio);
+	tcsetattr(0, TCSAFLUSH, &init_tio);
+	bzero(&sa, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = SIG_DFL;
+	sigaction(sig, &sa, &osa);
+	sigemptyset(&ss);
+	sigaddset(&ss, sig);
+	sigprocmask(SIG_UNBLOCK, &ss, &oss);
+	raise(sig);	/* now hand down the sig */
+	sigprocmask(SIG_SETMASK, &oss, NULL);
+	sigaction(sig, &osa, NULL);
+	tcsetattr(0, TCSAFLUSH, &curtio);
+	write(1, "back\n", 5);
+}
+
+static void vconscleanup(void)
+{
+	tcsetattr(0, TCSAFLUSH, &init_tio);
 }
 
 static void
 vconsinit(struct consdev *cp)
 {
+	struct sigaction sa;
+
+	tcgetattr(0, &init_tio);
+	bzero(&sa, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = vconssignal;
+	sigaction(SIGTSTP, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	atexit(vconscleanup);
+
+	vcons_set_mode(0);
 }
 
 static void
 vconsterm(struct consdev *vp)
 {
+	vconscleanup();
 }
 
 static int
@@ -297,9 +337,9 @@ vcons_set_mode(int in_debugger)
 	cfmakeraw(&tio);
 	tio.c_lflag |= ISIG;
 	if (in_debugger) {
-		tio.c_cc[VINTR] = 'c' & 0x1f;
-		tio.c_cc[VSUSP] = 'z' & 0x1f;
-		tio.c_cc[VSTATUS] = 't' & 0x1f;
+		tio.c_cc[VINTR] = init_tio.c_cc[VINTR];
+		tio.c_cc[VSUSP] = init_tio.c_cc[VSUSP];
+		tio.c_cc[VSTATUS] = init_tio.c_cc[VSTATUS];
 	} else {
 		tio.c_cc[VINTR] = _POSIX_VDISABLE;
 		tio.c_cc[VSUSP] = _POSIX_VDISABLE;
@@ -307,6 +347,3 @@ vcons_set_mode(int in_debugger)
 	}
 	tcsetattr(0, TCSAFLUSH, &tio);
 }
-
-
-
