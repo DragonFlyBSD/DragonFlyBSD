@@ -1,11 +1,14 @@
 # Makefile.modules - build the modules (executed from the modules: target
 # in Makefile).
 #
-# $DragonFly: src/sys/Makefile.modules,v 1.5 2004/11/23 20:03:40 dillon Exp $
+# $DragonFly: src/sys/Makefile.modules,v 1.6 2007/02/01 08:42:18 corecode Exp $
 .if defined(MODULES_OVERRIDE)
 SUBDIR=${MODULES_OVERRIDE}
 .else
-SUBDIR=bus crypto emulation dev kern net netgraph netproto vfs
+.if ${MACHINE_PLATFORM} != "vkernel"
+SUBDIR=bus
+.endif
+SUBDIR+=crypto emulation dev kern net netgraph netproto vfs
 SUBDIR+=libiconv
 .endif
 
