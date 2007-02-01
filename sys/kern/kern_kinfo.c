@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.1 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.2 2007/02/01 12:15:13 corecode Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	if (p->p_oppid != 0)
 		kp->kp_ppid = p->p_oppid;
 	else
-		kp->kp_ppid = p->p_pptr != NULL ? p->p_pptr->p_pid : NO_PID;
+		kp->kp_ppid = p->p_pptr != NULL ? p->p_pptr->p_pid : -1;
 	kp->kp_pgid = p->p_pgrp->pg_id;
 	kp->kp_jobc = p->p_pgrp->pg_jobc;
 	kp->kp_sid = sess->s_sid;
@@ -113,7 +113,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
 		else
-			kp->kp_tpgid = NO_PID;
+			kp->kp_tpgid = -1;
 		kp->kp_tsid = sess->s_ttyp->t_session->s_sid;
 	} else {
 		kp->kp_tdev = NOUDEV;
