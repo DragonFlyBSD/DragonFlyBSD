@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.2 2007/02/01 12:15:13 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.3 2007/02/01 20:27:05 tgen Exp $
  */
 
 /*
@@ -106,15 +106,18 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		kp->kp_auxflags |= KI_CTTY;
 	if (SESS_LEADER(p))
 		kp->kp_auxflags |= KI_SLEADER;
-	if ((p->p_flag & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
-		kp->kp_tdev = sess->s_ttyp->t_dev != NOCDEV ?
+	if (((p->p_flag & P_CONTROLT) != 0) && (sess->s_ttyp != NULL)) {
+		kp->kp_tdev = (sess->s_ttyp->t_dev != NOCDEV) ?
 					sess->s_ttyp->t_dev->si_udev :
 					NOUDEV;
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
 		else
 			kp->kp_tpgid = -1;
-		kp->kp_tsid = sess->s_ttyp->t_session->s_sid;
+		if (sess->s_ttyp->t_session != NULL)
+			kp->kp_tsid = sess->s_ttyp->t_session->s_sid;
+		else
+			kp->kp_tsid = -1;
 	} else {
 		kp->kp_tdev = NOUDEV;
 	}
@@ -182,5 +185,63 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	if (lwp->lwp_thread->td_wmesg) {
 		strncpy(kl->kl_wmesg, lwp->lwp_thread->td_wmesg, WMESGLEN);
 		kl->kl_wmesg[WMESGLEN] = 0;
+	}
+}
+
+/*
+ * Fill in a struct kinfo_proc for kernel threads (i.e. those without proc).
+ */
+void
+fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
+{
+	bzero(kp, sizeof(*kp));
+
+	/*
+	 * Fill in fake proc information and semi-fake lwp info.
+	 */
+	kp->kp_pid = -1;
+	kp->kp_tdev = NOUDEV;
+	strncpy(kp->kp_comm, td->td_comm, sizeof(kp->kp_comm) - 1);
+	kp->kp_comm[sizeof(kp->kp_comm) - 1] = 0;
+#ifdef notyet
+	kp->kp_lwp.kl_flags = LWP_SYSTEM;
+#else
+	kp->kp_flags = P_SYSTEM;
+#endif
+	kp->kp_lwp.kl_pid = -1;
+	kp->kp_lwp.kl_tid = (uintptr_t)td;
+	kp->kp_lwp.kl_tdflags = td->td_flags;
+#ifdef SMP
+	kp->kp_lwp.kl_mpcount = td->td_mpcount;
+#else /* !SMP */
+	kp->kp_lwp.kl_mpcount = 0;
+#endif /* SMP */
+
+	kp->kp_lwp.kl_tdprio = td->td_pri;
+	kp->kp_lwp.kl_rtprio.type = RTP_PRIO_THREAD;
+	kp->kp_lwp.kl_rtprio.prio = td->td_pri & TDPRI_MASK;
+
+	kp->kp_lwp.kl_uticks = td->td_uticks;
+	kp->kp_lwp.kl_sticks = td->td_sticks;
+	kp->kp_lwp.kl_iticks = td->td_iticks;
+	kp->kp_lwp.kl_cpuid = td->td_gd->gd_cpuid;
+
+	kp->kp_lwp.kl_wchan = (uintptr_t)td->td_wchan;
+	if (td->td_wchan) {
+#ifdef notyet
+		kp->kp_lwp.kl_stat = SSLEEP;
+#else
+		kp->kp_stat = SSLEEP;
+#endif
+	} else {
+#ifdef notyet
+		kp->kp_lwp.kl_stat = SRUN;
+#else
+		kp->kp_stat = SRUN;
+#endif
+	}
+	if (td->td_wmesg) {
+		strncpy(kp->kp_lwp.kl_wmesg, td->td_wmesg, WMESGLEN);
+		kp->kp_lwp.kl_wmesg[WMESGLEN] = 0;
 	}
 }

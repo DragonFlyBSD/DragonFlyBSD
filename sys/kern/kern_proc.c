@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.32 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.33 2007/02/01 20:27:05 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -729,6 +729,19 @@ output:
 }
 
 static int
+sysctl_out_proc_kthread(struct thread *td, struct sysctl_req *req, int flags)
+{
+	struct kinfo_proc ki;
+	int error;
+
+	fill_kinfo_proc_kthread(td, &ki);
+	error = SYSCTL_OUT(req, &ki, sizeof(ki));
+	if (error)
+		return error;
+	return(0);
+}
+
+static int
 sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 {
 	int *name = (int*) arg1;
@@ -736,8 +749,10 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	u_int namelen = arg2;
 	struct proc *p, *np;
 	struct proclist *plist;
+	struct thread *td;
 	int doingzomb, flags = 0;
 	int error = 0;
+	int n;
 	int origcpu;
 	struct ucred *cr1 = curproc->p_ucred;
 
@@ -834,7 +849,6 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	origcpu = mycpu->gd_cpuid;
 	if (!ps_showallthreads || jailed(cr1))
 		goto post_threads;
-#if 0
 	for (n = 1; n <= ncpus; ++n) {
 		globaldata_t rgd;
 		int nid;
@@ -848,7 +862,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		TAILQ_FOREACH(td, &mycpu->gd_tdallq, td_allq) {
 			if (td->td_proc)
 				continue;
-			switch (oidp->oid_number) {
+			switch (oid) {
 			case KERN_PROC_PGRP:
 			case KERN_PROC_TTY:
 			case KERN_PROC_UID:
@@ -858,13 +872,12 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				break;
 			}
 			lwkt_hold(td);
-			error = sysctl_out_proc(NULL, td, req, doingzomb);
+			error = sysctl_out_proc_kthread(td, req, doingzomb);
 			lwkt_rele(td);
 			if (error)
 				return (error);
 		}
 	}
-#endif
 post_threads:
 	return (0);
 }

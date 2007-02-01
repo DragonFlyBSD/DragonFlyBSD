@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.9 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.10 2007/02/01 20:27:05 tgen Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -100,11 +100,11 @@ struct kinfo_clockinfo {
 };
 
 /*
- * Structure definition for the KERN_LWP subtype op.
+ * Structure definition for the lwp-specific data in struct kinfo_proc.
  */
 struct kinfo_lwp {
-	pid_t		kl_pid;	/* PID of our associated proc */
-	lwpid_t		kl_tid;	/* thread id */
+	pid_t		kl_pid;		/* PID of our associated proc */
+	lwpid_t		kl_tid;		/* thread id */
 
 	int		kl_flags;	/* LWP_ flags */
 	char		kl_stat;	/* S* lwp status */
@@ -204,9 +204,11 @@ struct kinfo_proc {
 
 struct proc;
 struct lwp;
+struct thread;
 
 void fill_kinfo_proc(struct proc *, struct kinfo_proc *);
 void fill_kinfo_lwp(struct lwp *, struct kinfo_lwp *);
+void fill_kinfo_proc_kthread(struct thread *, struct kinfo_proc *);
 
 #define KINFO_NEXT(kp)	((union kinfo *)((uintptr_t)kp + kp->gen.len))
 #define KINFO_END(kp)	(kp->gen.type == KINFO_TYPE_END)
