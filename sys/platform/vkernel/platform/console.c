@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.11 2007/02/01 17:31:31 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.12 2007/02/01 20:53:19 corecode Exp $
  */
 
 #include <sys/systm.h>
@@ -41,6 +41,7 @@
 #include <sys/tty.h>
 #include <sys/termios.h>
 #include <sys/fcntl.h>
+#include <sys/signalvar.h>
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
@@ -116,6 +117,8 @@ vcons_open(struct dev_open_args *ap)
 		ttsetwater(tp);
 	}
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
+	ioctl(0, TIOCGWINSZ, &tp->t_winsize);
+
 	if (kqueue_console_info == NULL)
 		kqueue_console_info = kqueue_add(0, vcons_intr, tp);
 	return(error);
@@ -226,6 +229,7 @@ CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsterm, vconsgetc,
 		vconscheckc, vconsputc, NULL);
 
 static struct termios init_tio;
+static struct consdev *vconsole;
 
 static void
 vconsprobe(struct consdev *cp)
@@ -260,10 +264,30 @@ vconssignal(int sig)
 	sigprocmask(SIG_SETMASK, &oss, NULL);
 	sigaction(sig, &osa, NULL);
 	tcsetattr(0, TCSAFLUSH, &curtio);
-	write(1, "back\n", 5);
 }
 
-static void vconscleanup(void)
+static void
+vconswinch(int __unused sig)
+{
+	struct winsize newsize;
+
+	if (vconsole != NULL && vconsole->cn_dev->si_tty != NULL) {
+		ioctl(0, TIOCGWINSZ, &newsize);
+		/*
+		 * ttioctl(vconsole->cn_dev->si_tty, TIOCSWINSZ, &newsize, 0);
+		 * I wished.  Unfortunately this needs a curproc, so do it
+		 * manually.
+		 */
+		if (bcmp(&newsize, &vconsole->cn_dev->si_tty->t_winsize,
+			 sizeof(newsize)) != 0) {
+			vconsole->cn_dev->si_tty->t_winsize = newsize;
+			pgsignal(vconsole->cn_dev->si_tty->t_pgrp, SIGWINCH, 1);
+		}
+	}
+}
+
+static void
+vconscleanup(void)
 {
 	tcsetattr(0, TCSAFLUSH, &init_tio);
 }
@@ -272,6 +296,8 @@ static void
 vconsinit(struct consdev *cp)
 {
 	struct sigaction sa;
+
+	vconsole = cp;
 
 	tcgetattr(0, &init_tio);
 	bzero(&sa, sizeof(sa));
@@ -282,12 +308,16 @@ vconsinit(struct consdev *cp)
 	sigaction(SIGTERM, &sa, NULL);
 	atexit(vconscleanup);
 
+	sa.sa_handler = vconswinch;
+	sigaction(SIGWINCH, &sa, NULL);
+
 	vcons_set_mode(0);
 }
 
 static void
 vconsterm(struct consdev *vp)
 {
+	vconsole = NULL;
 	vconscleanup();
 }
 
