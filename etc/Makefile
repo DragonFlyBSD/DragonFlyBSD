@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.158 2007/02/02 06:33:16 pavalos Exp $
+# $DragonFly: src/etc/Makefile,v 1.159 2007/02/02 16:06:13 pavalos Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -469,6 +469,26 @@ upgrade_etc:	preupgrade
 		${DESTDIR}/usr/libdata/gcc40
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{cpp,g++,gcc,gcov}40.1.gz"
 	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc40.mk
+.if exists(${DESTDIR}/usr/share/info/cpp40.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/cpp40.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/cpp40.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/cpp40.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/cppinternals40.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/cppinternals40.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/cppinternals40.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/cppinternals40.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/gcc40.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gcc40.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gcc40.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gcc40.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/gccint40.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gccint40.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gccint40.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gccint40.info
+.endif
 	rm -f ${DESTDIR}/usr/bin/gtar
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/gtar.1.gz"
 .if exists(${DESTDIR}/usr/share/info/tar.info.gz)
