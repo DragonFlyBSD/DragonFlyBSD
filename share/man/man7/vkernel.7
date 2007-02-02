@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.4 2007/01/19 08:13:44 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.4.2.1 2007/02/02 15:31:42 swildner Exp $
 .\"
 .Dd January 19, 2007
 .Dt VKERNEL 7
@@ -170,7 +170,7 @@ cd /usr/src
 make installworld DESTDIR=/mnt
 cd etc
 make distribution DESTDIR=/mnt
-echo '/dev/vkd0 / ufs rw 1 1' >/mnt/etc/fstab
+echo '/dev/vkd0a / ufs rw 1 1' >/mnt/etc/fstab
 echo 'console "/usr/libexec/getty Pc" cons25 on secure' >/mnt/etc/ttys
 umount /mnt
 vnconfig -u vn0
