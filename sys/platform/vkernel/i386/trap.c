@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.14 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.15 2007/02/02 20:00:22 tgen Exp $
  */
 
 /*
@@ -795,6 +795,16 @@ kernel_trap:
 	case T_NMI:
 		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
+		goto out2;
+	case T_SYSCALL80:
+		/*
+		 * Ignore this trap generated from a spurious SIGTRAP.
+		 *
+		 * single stepping in / syscalls leads to spurious / SIGTRAP
+		 * so ignore
+		 *
+		 * Haiku (c) 2007 Simon 'corecode' Schubert
+		 */
 		goto out2;
 	}
 
