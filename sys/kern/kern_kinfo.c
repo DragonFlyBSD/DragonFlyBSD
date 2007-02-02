@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.3 2007/02/01 20:27:05 tgen Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.4 2007/02/02 19:57:31 corecode Exp $
  */
 
 /*
@@ -133,7 +133,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_vm_ssize = p->p_vmspace->vm_ssize;
 
 	if (jailed(p->p_ucred))
-	    kp->kp_jailid = p->p_ucred->cr_prison->pr_id;
+		kp->kp_jailid = p->p_ucred->cr_prison->pr_id;
 
 	kp->kp_ru = p->p_ru;
 	kp->kp_ru = p->p_cru;
