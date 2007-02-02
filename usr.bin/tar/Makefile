@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.bin/tar/Makefile,v 1.4 2006/09/23 20:31:45 pavalos Exp $
+# $DragonFly: src/usr.bin/tar/Makefile,v 1.5 2007/02/02 06:33:17 pavalos Exp $
 
 PROG=	bsdtar
 SRCS=	bsdtar.c getdate.y matching.c read.c tree.c util.c write.c
@@ -15,10 +15,5 @@ NAME=		bsdtar
 VERSION=	1.3.1
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I-
 CFLAGS+=	-DHAVE_CONFIG_H
-
-.if !defined(WITH_GTAR)
-SYMLINKS=	${BINDIR}/bsdtar ${BINDIR}/tar
-MLINKS=	bsdtar.1 tar.1
-.endif
 
 .include <bsd.prog.mk>

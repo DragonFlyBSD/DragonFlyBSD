@@ -1,7 +1,7 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/Makefile,v 1.25 2007/01/17 12:09:42 swildner Exp $
+# $DragonFly: src/gnu/usr.bin/Makefile,v 1.26 2007/02/02 06:33:16 pavalos Exp $
 
-SUBDIR= cpio dialog diff diff3 grep groff man rcs sdiff sort tar texinfo
+SUBDIR= cpio dialog diff diff3 grep groff man rcs sdiff sort texinfo
 
 .if !defined(NO_CVS)
 SUBDIR+=cvs
