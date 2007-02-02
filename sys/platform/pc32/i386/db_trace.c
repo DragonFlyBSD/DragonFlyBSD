@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.17 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.17.2.1 2007/02/02 20:15:52 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -391,7 +391,8 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 					actframe = (struct i386_frame *)
 					    (SP_REGS(&ddb_regs) - 4);
 				}
-			} else if (!strcmp(name, "fork_trampoline")) {
+			} else if (name != NULL &&
+				   strcmp(name, "fork_trampoline") == 0) {
 				/*
 				 * Don't try to walk back on a stack for a
 				 * process that hasn't actually been run yet.
