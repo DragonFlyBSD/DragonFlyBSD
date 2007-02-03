@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.24 2007/01/09 18:26:53 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.25 2007/02/03 17:00:12 tgen Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -1166,12 +1166,20 @@ acd*|cd*|mcd*|scd*)
 		do
 			dname=$name$i
 			rm -rf ${dname}*
-			mknod $name ${i}a c $chr $(($i * 8)) root:operator 640
 
 			case $name in 
-			acd) ln -f ${dname}a ${dname}c;;
-			*) mknod $name ${i}c c $chr $(($i * 8 + 2)) \
-				root:operator 640;;
+			acd)
+				mknod $name ${i} c $chr $(($i * 8 )) \
+					root:operator 640
+				ln -f ${dname} ${dname}a
+				ln -f ${dname} ${dname}c
+				;;
+			*)
+				mknod $name ${i}a c $chr $(($i * 8)) \
+					root:operator 640
+				mknod $name ${i}c c $chr $(($i * 8 + 2)) \
+					root:operator 640
+				;;
 			esac
 
 			rm -f r${dname}a
