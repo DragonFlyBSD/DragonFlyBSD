@@ -39,7 +39,7 @@
  *	@(#)procfs.h	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs.h,v 1.2.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.9 2006/11/07 20:48:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.10 2007/02/03 09:50:49 y0netan1 Exp $
  */
 
 /*
@@ -114,6 +114,7 @@ struct dbreg;
 
 #define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
 
+void linprocfs_init (void);
 void linprocfs_exit (struct thread *);
 int linprocfs_freevp (struct vnode *);
 int linprocfs_allocvp (struct mount *, struct vnode **, long, pfstype);
