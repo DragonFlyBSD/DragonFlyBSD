@@ -32,7 +32,7 @@
  *
  *	from: @(#)exec.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/imgact_aout.h,v 1.13 1999/12/29 04:24:41 peter Exp $
- * $DragonFly: src/sys/sys/imgact_aout.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact_aout.h,v 1.6 2007/02/03 09:56:04 y0netan1 Exp $
  */
 
 #ifndef	_IMGACT_AOUT_H_
@@ -155,8 +155,6 @@ struct exec {
 #ifdef _KERNEL
 struct proc;
 struct vnode;
-
-int	aout_coredump (struct proc *p, struct vnode *vp, off_t limit);
 #endif
 
 #endif /* !_IMGACT_AOUT_H_ */

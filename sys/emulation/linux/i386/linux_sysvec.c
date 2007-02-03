@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.25 2007/01/08 03:33:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.26 2007/02/03 09:56:04 y0netan1 Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -780,7 +780,7 @@ struct sysentvec linux_sysvec = {
 	&linux_szsigcode,
 	linux_prepsyscall,
 	"Linux a.out",
-	aout_coredump,
+	NULL,
 	exec_linux_imgact_try,
 	LINUX_MINSIGSTKSZ
 };
