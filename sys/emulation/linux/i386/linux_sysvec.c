@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.26 2007/02/03 09:56:04 y0netan1 Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.27 2007/02/03 17:05:57 corecode Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -248,12 +248,13 @@ static void
 linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
 	struct l_rt_sigframe *fp, frame;
 	int oonstack;
 
-	regs = p->p_md.md_regs;
-	oonstack = p->p_sigstk.ss_flags & SS_ONSTACK;
+	regs = lp->lwp_md.md_regs;
+	oonstack = lp->lwp_sigstk.ss_flags & SS_ONSTACK;
 
 #ifdef DEBUG
 	if (ldebug(rt_sendsig))
@@ -263,11 +264,11 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/*
 	 * Allocate space for the signal handler context.
 	 */
-	if ((p->p_flag & P_ALTSTACK) && !oonstack &&
+	if ((lp->lwp_flag & LWP_ALTSTACK) && !oonstack &&
 	    SIGISMEMBER(p->p_sigacts->ps_sigonstack, sig)) {
-		fp = (struct l_rt_sigframe *)(p->p_sigstk.ss_sp +
-		    p->p_sigstk.ss_size - sizeof(struct l_rt_sigframe));
-		p->p_sigstk.ss_flags |= SS_ONSTACK;
+		fp = (struct l_rt_sigframe *)(lp->lwp_sigstk.ss_sp +
+		    lp->lwp_sigstk.ss_size - sizeof(struct l_rt_sigframe));
+		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else
 		fp = (struct l_rt_sigframe *)regs->tf_esp - 1;
 
@@ -286,7 +287,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		SIGACTION(p, SIGILL) = SIG_DFL;
 		SIGDELSET(p->p_sigignore, SIGILL);
 		SIGDELSET(p->p_sigcatch, SIGILL);
-		SIGDELSET(p->p_sigmask, SIGILL);
+		SIGDELSET(lp->lwp_sigmask, SIGILL);
 #ifdef DEBUG
 		if (ldebug(rt_sendsig))
 			kprintf(LMSG("rt_sendsig: bad stack %p, oonstack=%x"),
@@ -319,9 +320,9 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	frame.sf_sc.uc_flags = 0;		/* XXX ??? */
 	frame.sf_sc.uc_link = NULL;		/* XXX ??? */
 
-	frame.sf_sc.uc_stack.ss_sp = p->p_sigstk.ss_sp;
-	frame.sf_sc.uc_stack.ss_size = p->p_sigstk.ss_size;
-	frame.sf_sc.uc_stack.ss_flags = (p->p_flag & P_ALTSTACK)
+	frame.sf_sc.uc_stack.ss_sp = lp->lwp_sigstk.ss_sp;
+	frame.sf_sc.uc_stack.ss_size = lp->lwp_sigstk.ss_size;
+	frame.sf_sc.uc_stack.ss_flags = (lp->lwp_flag & LWP_ALTSTACK)
 	    ? ((oonstack) ? LINUX_SS_ONSTACK : 0) : LINUX_SS_DISABLE;
 
 	bsd_to_linux_sigset(mask, &frame.sf_sc.uc_sigmask);
@@ -350,7 +351,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	if (ldebug(rt_sendsig))
 		kprintf(LMSG("rt_sendsig flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
 		    frame.sf_sc.uc_stack.ss_flags, p->p_sigstk.ss_sp,
-		    p->p_sigstk.ss_size, frame.sf_sc.uc_mcontext.sc_mask);
+		    lp->lwp_sigstk.ss_size, frame.sf_sc.uc_mcontext.sc_mask);
 #endif
 
 	if (copyout(&frame, fp, sizeof(frame)) != 0) {
@@ -396,6 +397,7 @@ static void
 linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
 	struct l_sigframe *fp, frame;
 	l_sigset_t lmask;
@@ -407,8 +409,8 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		return;
 	}
 
-	regs = p->p_md.md_regs;
-	oonstack = p->p_sigstk.ss_flags & SS_ONSTACK;
+	regs = lp->lwp_md.md_regs;
+	oonstack = lp->lwp_sigstk.ss_flags & SS_ONSTACK;
 
 #ifdef DEBUG
 	if (ldebug(sendsig))
@@ -419,11 +421,11 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/*
 	 * Allocate space for the signal handler context.
 	 */
-	if ((p->p_flag & P_ALTSTACK) && !oonstack &&
+	if ((lp->lwp_flag & LWP_ALTSTACK) && !oonstack &&
 	    SIGISMEMBER(p->p_sigacts->ps_sigonstack, sig)) {
-		fp = (struct l_sigframe *)(p->p_sigstk.ss_sp +
-		    p->p_sigstk.ss_size - sizeof(struct l_sigframe));
-		p->p_sigstk.ss_flags |= SS_ONSTACK;
+		fp = (struct l_sigframe *)(lp->lwp_sigstk.ss_sp +
+		    lp->lwp_sigstk.ss_size - sizeof(struct l_sigframe));
+		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else
 		fp = (struct l_sigframe *)regs->tf_esp - 1;
 
@@ -442,7 +444,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		SIGACTION(p, SIGILL) = SIG_DFL;
 		SIGDELSET(p->p_sigignore, SIGILL);
 		SIGDELSET(p->p_sigcatch, SIGILL);
-		SIGDELSET(p->p_sigmask, SIGILL);
+		SIGDELSET(lp->lwp_sigmask, SIGILL);
 		ksignal(p, SIGILL);
 		return;
 	}
@@ -526,13 +528,13 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 int
 sys_linux_sigreturn(struct linux_sigreturn_args *args)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct l_sigframe frame;
 	struct trapframe *regs;
 	l_sigset_t lmask;
 	int eflags, i;
 
-	regs = p->p_md.md_regs;
+	regs = lp->lwp_md.md_regs;
 
 #ifdef DEBUG
 	if (ldebug(sigreturn))
@@ -572,16 +574,16 @@ sys_linux_sigreturn(struct linux_sigreturn_args *args)
 	 */
 #define	CS_SECURE(cs)	(ISPL(cs) == SEL_UPL)
 	if (!CS_SECURE(frame.sf_sc.sc_cs)) {
-		trapsignal(p, SIGBUS, T_PROTFLT);
+		trapsignal(lp, SIGBUS, T_PROTFLT);
 		return(EINVAL);
 	}
 
-	p->p_sigstk.ss_flags &= ~SS_ONSTACK;
+	lp->lwp_sigstk.ss_flags &= ~SS_ONSTACK;
 	lmask.__bits[0] = frame.sf_sc.sc_mask;
 	for (i = 0; i < (LINUX_NSIG_WORDS-1); i++)
 		lmask.__bits[i+1] = frame.sf_extramask[i];
-	linux_to_bsd_sigset(&lmask, &p->p_sigmask);
-	SIG_CANTMASK(p->p_sigmask);
+	linux_to_bsd_sigset(&lmask, &lp->lwp_sigmask);
+	SIG_CANTMASK(lp->lwp_sigmask);
 
 	/*
 	 * Restore signal context.
@@ -619,7 +621,7 @@ sys_linux_sigreturn(struct linux_sigreturn_args *args)
 int
 sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct l_ucontext uc;
 	struct l_sigcontext *context;
 	l_stack_t *lss;
@@ -627,7 +629,7 @@ sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 	struct trapframe *regs;
 	int eflags;
 
-	regs = p->p_md.md_regs;
+	regs = lp->lwp_md.md_regs;
 
 #ifdef DEBUG
 	if (ldebug(rt_sigreturn))
@@ -669,13 +671,13 @@ sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 	 */
 #define	CS_SECURE(cs)	(ISPL(cs) == SEL_UPL)
 	if (!CS_SECURE(context->sc_cs)) {
-		trapsignal(p, SIGBUS, T_PROTFLT);
+		trapsignal(lp, SIGBUS, T_PROTFLT);
 		return(EINVAL);
 	}
 
-	p->p_sigstk.ss_flags &= ~SS_ONSTACK;
-	linux_to_bsd_sigset(&uc.uc_sigmask, &p->p_sigmask);
-	SIG_CANTMASK(p->p_sigmask);
+	lp->lwp_sigstk.ss_flags &= ~SS_ONSTACK;
+	linux_to_bsd_sigset(&uc.uc_sigmask, &lp->lwp_sigmask);
+	SIG_CANTMASK(lp->lwp_sigmask);
 
 	/*
 	 * Restore signal context

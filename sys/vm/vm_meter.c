@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.10 2006/09/11 20:25:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.11 2007/02/03 17:05:59 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -137,12 +137,16 @@ static int
 do_vmtotal_callback(struct proc *p, void *data)
 {
 	struct vmtotal *totalp = data;
+	struct lwp *lp;
 	vm_map_entry_t entry;
 	vm_map_t map;
 	int paging;
 
 	if (p->p_flag & P_SYSTEM)
 		return(0);
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 
 	switch (p->p_stat) {
 	case 0:
@@ -151,12 +155,12 @@ do_vmtotal_callback(struct proc *p, void *data)
 		if ((p->p_flag & P_SWAPPEDOUT) == 0) {
 			if ((p->p_flag & P_SINTR) == 0)
 				totalp->t_dw++;
-			else if (p->p_slptime < maxslp)
+			else if (lp->lwp_slptime < maxslp)
 				totalp->t_sl++;
-		} else if (p->p_slptime < maxslp) {
+		} else if (lp->lwp_slptime < maxslp) {
 			totalp->t_sw++;
 		}
-		if (p->p_slptime >= maxslp)
+		if (lp->lwp_slptime >= maxslp)
 			return(0);
 		break;
 

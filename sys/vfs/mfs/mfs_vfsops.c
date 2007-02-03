@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.35 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.36 2007/02/03 17:05:59 corecode Exp $
  */
 
 
@@ -441,7 +441,7 @@ mfs_start(struct mount *mp, int flags)
 			gotsig = 0;
 			if (dounmount(mp, 0) != 0) {
 				KKASSERT(td->td_proc);
-				sig = CURSIG(td->td_proc);
+				sig = CURSIG(td->td_lwp);
 				if (sig)
 					SIGDELSET(td->td_proc->p_siglist, sig);
 			}

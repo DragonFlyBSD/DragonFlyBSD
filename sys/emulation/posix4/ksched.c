@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.7 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.8 2007/02/03 17:05:57 corecode Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -95,11 +95,11 @@ int ksched_detach(struct ksched *p)
 #define P1B_PRIO_MAX rtpprio_to_p4prio(RTP_PRIO_MIN)
 
 static __inline int
-getscheduler(register_t *ret, struct ksched *ksched, struct proc *p)
+getscheduler(register_t *ret, struct ksched *ksched, struct lwp *lp)
 {
 	int e = 0;
 
-	switch (p->p_lwp.lwp_rtprio.type)
+	switch (lp->lwp_rtprio.type)
 	{
 		case RTP_PRIO_FIFO:
 		*ret = SCHED_FIFO;
@@ -118,29 +118,29 @@ getscheduler(register_t *ret, struct ksched *ksched, struct proc *p)
 }
 
 int ksched_setparam(register_t *ret, struct ksched *ksched,
-	struct proc *p, const struct sched_param *param)
+	struct lwp *lp, const struct sched_param *param)
 {
 	register_t policy;
 	int e;
 
-	e = getscheduler(&policy, ksched, p);
+	e = getscheduler(&policy, ksched, lp);
 
 	if (e == 0)
 	{
 		if (policy == SCHED_OTHER)
 			e = EINVAL;
 		else
-			e = ksched_setscheduler(ret, ksched, p, policy, param);
+			e = ksched_setscheduler(ret, ksched, lp, policy, param);
 	}
 
 	return e;
 }
 
 int ksched_getparam(register_t *ret, struct ksched *ksched,
-	struct proc *p, struct sched_param *param)
+	struct lwp *lp, struct sched_param *param)
 {
-	if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
-		param->sched_priority = rtpprio_to_p4prio(p->p_rtprio.prio);
+	if (RTP_PRIO_IS_REALTIME(lp->lwp_rtprio.type))
+		param->sched_priority = rtpprio_to_p4prio(lp->lwp_rtprio.prio);
 
 	return 0;
 }
@@ -153,7 +153,7 @@ int ksched_getparam(register_t *ret, struct ksched *ksched,
  *
  */
 int ksched_setscheduler(register_t *ret, struct ksched *ksched,
-	struct proc *p, int policy, const struct sched_param *param)
+	struct lwp *lp, int policy, const struct sched_param *param)
 {
 	int e = 0;
 	struct rtprio rtp;
@@ -170,7 +170,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 			rtp.type = (policy == SCHED_FIFO)
 				? RTP_PRIO_FIFO : RTP_PRIO_REALTIME;
 
-			p->p_lwp.lwp_rtprio = rtp;
+			lp->lwp_rtprio = rtp;
 			need_user_resched();
 		}
 		else
@@ -183,7 +183,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 		{
 			rtp.type = RTP_PRIO_NORMAL;
 			rtp.prio = p4prio_to_rtpprio(param->sched_priority);
-			p->p_lwp.lwp_rtprio = rtp;
+			lp->lwp_rtprio = rtp;
 
 			/* XXX Simply revert to whatever we had for last
 			 *     normal scheduler priorities.
@@ -199,9 +199,9 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 	return e;
 }
 
-int ksched_getscheduler(register_t *ret, struct ksched *ksched, struct proc *p)
+int ksched_getscheduler(register_t *ret, struct ksched *ksched, struct lwp *lp)
 {
-	return getscheduler(ret, ksched, p);
+	return getscheduler(ret, ksched, lp);
 }
 
 /* ksched_yield: Yield the CPU.
@@ -257,7 +257,7 @@ int ksched_get_priority_min(register_t *ret, struct ksched *ksched, int policy)
 }
 
 int ksched_rr_get_interval(register_t *ret, struct ksched *ksched,
-	struct proc *p, struct timespec *timespec)
+	struct lwp *lp, struct timespec *timespec)
 {
 	*timespec = ksched->rr_interval;
 

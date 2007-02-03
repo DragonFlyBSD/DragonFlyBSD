@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.76 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.77 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -1631,7 +1631,7 @@ void
 fdfree(struct proc *p)
 {
 	/* Take any thread of p */
-	struct thread *td = LIST_FIRST(&p->p_lwps)->lwp_thread;
+	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	struct fdnode *fdnode;
 	int i;
@@ -1879,7 +1879,7 @@ void
 setugidsafety(struct proc *p)
 {
 	/* Take any thread of p */
-	struct thread *td = LIST_FIRST(&p->p_lwps)->lwp_thread;
+	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1918,7 +1918,7 @@ void
 fdcloseexec(struct proc *p)
 {
 	/* Take any thread of p */
-	struct thread *td = LIST_FIRST(&p->p_lwps)->lwp_thread;
+	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 

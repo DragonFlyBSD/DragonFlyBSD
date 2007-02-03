@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.40 2007/01/09 23:34:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.41 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "opt_cpu.h"
@@ -812,14 +812,14 @@ npx_intr(void *dummy)
 		 * in doreti, and the frame for that could easily be set up
 		 * just before it is used).
 		 */
-		curproc->p_md.md_regs = INTR_TO_TRAPFRAME(frame);
+		curthread->td_lwp->lwp_md.md_regs = INTR_TO_TRAPFRAME(frame);
 		/*
 		 * Encode the appropriate code for detailed information on
 		 * this exception.
 		 */
 		code = 
 		    fpetable[(*exstat & ~control & 0x3f) | (*exstat & 0x40)];
-		trapsignal(curproc, SIGFPE, code);
+		trapsignal(curthread->td_lwp, SIGFPE, code);
 	} else {
 		/*
 		 * Nested interrupt.  These losers occur when:

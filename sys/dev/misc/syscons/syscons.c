@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.29 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.30 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "use_splash.h"
@@ -996,11 +996,11 @@ scioctl(struct dev_ioctl_args *ap)
 	    return error;
 	if (securelevel > 0)
 	    return EPERM;
-	curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
-	curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */

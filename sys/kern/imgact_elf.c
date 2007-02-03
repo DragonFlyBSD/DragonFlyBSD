@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.47 2007/01/12 06:06:57 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.48 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -1249,9 +1249,10 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	status->pr_osreldate = osreldate;
 	status->pr_cursig = p->p_sig;
 	status->pr_pid = p->p_pid;
-	fill_regs(&p->p_lwp, &status->pr_reg);
+	/* XXX lwp */
+	fill_regs(FIRST_LWP_IN_PROC(p), &status->pr_reg);
 
-	fill_fpregs(&p->p_lwp, fpregset);
+	fill_fpregs(FIRST_LWP_IN_PROC(p), fpregset);
 
 	psinfo->pr_version = PRPSINFO_VERSION;
 	psinfo->pr_psinfosz = sizeof(prpsinfo_t);
@@ -1415,7 +1416,9 @@ elf_putsigs(struct proc *p, elf_buf_t target)
 		bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
 		bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
 		bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
-		bcopy(&p->p_sigmask, &csi->csi_sigmask, sizeof(sigset_t));
+		/* XXX lwp */
+		bcopy(&FIRST_LWP_IN_PROC(p)->lwp_sigmask, &csi->csi_sigmask,
+			sizeof(sigset_t));
 		csi->csi_sigparent = p->p_sigparent;
 	}
 	return(error);

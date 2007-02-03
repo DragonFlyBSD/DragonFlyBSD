@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.60 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.61 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -217,7 +217,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	pgrp = NULL;
 	if ((flags & RFPGLOCK) && (pgrp = p1->p_pgrp) != NULL) {
 		lockmgr(&pgrp->pg_lock, LK_SHARED);
-		if (CURSIGNB(p1)) {
+		if (CURSIGNB(lp1)) {
 			error = ERESTART;
 			goto done;
 		}
@@ -266,6 +266,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	/* Allocate new proc. */
 	p2 = zalloc(proc_zone);
+	lp2 = zalloc(lwp_zone);
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
@@ -286,7 +287,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	LIST_INIT(&p2->p_lwps);
 
 	/* XXX lwp */
-	lp2 = &p2->p_lwp;
 	lp2->lwp_proc = p2;
 	lp2->lwp_tid = 0;
 	LIST_INSERT_HEAD(&p2->p_lwps, lp2, lwp_list);
@@ -313,7 +313,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			(caddr_t)&lp2->lwp_startzero));
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
-	bcopy(&p1->p_lwp.lwp_startcopy, &lp2->lwp_startcopy,
+	bcopy(&lp1->lwp_startcopy, &lp2->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp2->lwp_endcopy -
 			(caddr_t)&lp2->lwp_startcopy));
 
@@ -413,7 +413,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Preserve some more flags in subprocess.  P_PROFIL has already
 	 * been preserved.
 	 */
-	p2->p_flag |= p1->p_flag & (P_SUGID | P_ALTSTACK);
+	p2->p_flag |= p1->p_flag & P_SUGID;
+	lp2->lwp_flag |= lp1->lwp_flag & LWP_ALTSTACK;
 	if (p1->p_session->s_ttyvp != NULL && p1->p_flag & P_CONTROLT)
 		p2->p_flag |= P_CONTROLT;
 	if (flags & RFPPWAIT)
@@ -475,7 +476,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	p2->p_usched = p1->p_usched;
 	lp2->lwp_cpbase = mycpu->gd_schedclock.time -
 			mycpu->gd_schedclock.periodic;
-	p2->p_usched->heuristic_forking(&p1->p_lwp, lp2);
+	p2->p_usched->heuristic_forking(lp1, lp2);
 	crit_exit();
 
 	/*
@@ -489,7 +490,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * execution path later.  (ie: directly into user mode)
 	 */
 	vm_fork(lp1, p2, flags);
-	caps_fork(p1, p2, flags);
+	caps_fork(lp1->lwp_thread, lp2->lwp_thread, flags);
 
 	if (flags == (RFFDG | RFPROC)) {
 		mycpu->gd_cnt.v_forks++;
@@ -589,11 +590,7 @@ rm_at_fork(forklist_fn function)
 void
 start_forked_proc(struct lwp *lp1, struct proc *p2)
 {
-	struct lwp *lp2;
-
-	KKASSERT(p2 != NULL && p2->p_nthreads == 1);
-
-	lp2 = LIST_FIRST(&p2->p_lwps);
+	struct lwp *lp2 = ONLY_LWP_IN_PROC(p2);
 
 	/*
 	 * Move from SIDL to RUN queue, and activate the process's thread.

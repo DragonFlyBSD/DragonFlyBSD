@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.25 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.26 2007/02/03 17:05:58 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -78,13 +78,16 @@ smb_proc_intr(struct thread *td)
 {
 	sigset_t tmpset;
 	struct proc *p;
+	struct lwp *lp;
 
 	if (td == NULL || (p = td->td_proc) == NULL)
 		return 0;
+	lp = td->td_lwp;
 	tmpset = p->p_siglist;
-	SIGSETNAND(tmpset, p->p_sigmask);
+	SIGSETOR(tmpset, lp->lwp_siglist);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	SIGSETNAND(tmpset, p->p_sigignore);
-	if (SIGNOTEMPTY(p->p_siglist) && SMB_SIGMASK(tmpset))
+	if (SIGNOTEMPTY(tmpset) && SMB_SIGMASK(tmpset))
                 return EINTR;
 	return 0;
 }
@@ -374,7 +377,7 @@ kthread_create2(void (*func)(void *), void *arg,
 	struct proc *p2;
 	struct lwp *lp2;
 
-	error = fork1(&proc0.p_lwp, RFMEM | RFFDG | RFPROC | flags, &p2);
+	error = fork1(&lwp0, RFMEM | RFFDG | RFPROC | flags, &p2);
 	if (error)
 		return error;
 
@@ -386,7 +389,7 @@ kthread_create2(void (*func)(void *), void *arg,
 	p2->p_flag |= P_SYSTEM;
 	p2->p_procsig->ps_flag |= PS_NOCLDWAIT;
 
-	lp2 = LIST_FIRST(&p2->p_lwps);
+	lp2 = ONLY_LWP_IN_PROC(p2);
 
 	/* set up arg0 for 'ps', et al */
 	__va_start(ap, fmt);
@@ -395,7 +398,7 @@ kthread_create2(void (*func)(void *), void *arg,
 
 	/* call the processes' main()... */
 	cpu_set_fork_handler(lp2, func, arg);
-	start_forked_proc(&proc0.p_lwp, p2);
+	start_forked_proc(&lwp0, p2);
 
 	return 0;
 }

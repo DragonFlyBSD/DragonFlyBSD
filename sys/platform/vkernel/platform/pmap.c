@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.15 2007/01/15 09:28:40 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.16 2007/02/03 17:05:59 corecode Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -855,10 +855,12 @@ pmap_init_thread(thread_t td)
 void
 pmap_init_proc(struct proc *p, struct thread *td)
 {
+	struct lwp *lp = ONLY_LWP_IN_PROC(p);
+
 	p->p_addr = (void *)td->td_kstack;
-	p->p_thread = td;
+	lp->lwp_thread = td;
 	td->td_proc = p;
-	td->td_lwp = &p->p_lwp;
+	td->td_lwp = lp;
 	td->td_switch = cpu_heavy_switch;
 #ifdef SMP
 	KKASSERT(td->td_mpcount == 1);
@@ -873,12 +875,15 @@ pmap_init_proc(struct proc *p, struct thread *td)
 struct thread *
 pmap_dispose_proc(struct proc *p)
 {
-	struct thread *td;
+	struct thread *td = NULL;
+	struct lwp *lp;
 
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
 
-	if ((td = p->p_thread) != NULL) {
-		p->p_thread = NULL;
+	lp = ONLY_LWP_IN_PROC(p);
+	if (lp != NULL && (td = lp->lwp_thread) != NULL) {
+		lp->lwp_thread = NULL;
+		td->td_lwp = NULL;
 		td->td_proc = NULL;
 	}
 	p->p_addr = NULL;
@@ -2980,8 +2985,10 @@ pmap_activate(struct proc *p)
 	tlb_flush_count++;
 #endif
 #if 0
-	p->p_thread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
-	load_cr3(p->p_thread->td_pcb->pcb_cr3);
+	KKASSERT((p == curproc));
+
+	curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
+	load_cr3(curthread->td_pcb->pcb_cr3);
 #endif
 }
 

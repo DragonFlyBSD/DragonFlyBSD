@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.48 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.49 2007/02/03 17:05:59 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -429,11 +429,14 @@ static int
 scheduler_callback(struct proc *p, void *data)
 {
 	struct scheduler_info *info = data;
+	struct lwp *lp;
 	segsz_t pgs;
 	int pri;
 
 	if (p->p_flag & P_SWAPWAIT) {
-		pri = p->p_swtime + p->p_slptime - p->p_nice * 8;
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(p);
+		pri = p->p_swtime + lp->lwp_slptime - p->p_nice * 8;
 
 		/*
 		 * The more pages paged out while we were swapped,
@@ -519,6 +522,7 @@ static int
 swapout_procs_callback(struct proc *p, void *data)
 {
 	struct vmspace *vm;
+	struct lwp *lp;
 	int action = *(int *)data;
 
 	if (!swappable(p))
@@ -530,13 +534,15 @@ swapout_procs_callback(struct proc *p, void *data)
 		/*
 		 * do not swap out a realtime process
 		 */
-		if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(p);
+		if (RTP_PRIO_IS_REALTIME(lp->lwp_rtprio.type))
 			return(0);
 
 		/*
 		 * Guarentee swap_idle_threshold time in memory
 		 */
-		if (p->p_slptime < swap_idle_threshold1)
+		if (lp->lwp_slptime < swap_idle_threshold1)
 			return(0);
 
 		/*
@@ -546,7 +552,7 @@ swapout_procs_callback(struct proc *p, void *data)
 		 */
 		if (((action & VM_SWAP_NORMAL) == 0) &&
 		    (((action & VM_SWAP_IDLE) == 0) ||
-		     (p->p_slptime < swap_idle_threshold2))) {
+		     (lp->lwp_slptime < swap_idle_threshold2))) {
 			return(0);
 		}
 
@@ -558,7 +564,7 @@ swapout_procs_callback(struct proc *p, void *data)
 		 */
 		if ((action & VM_SWAP_NORMAL) ||
 		    ((action & VM_SWAP_IDLE) &&
-		     (p->p_slptime > swap_idle_threshold2))) {
+		     (lp->lwp_slptime > swap_idle_threshold2))) {
 			swapout(p);
 		}
 

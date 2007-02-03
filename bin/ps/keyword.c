@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.25 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.26 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ static const VAR var[] = {
 	{"ppid", "PPID", NULL, 0, pvar, NULL, PIDLEN, POFF(ppid), UINT, PIDFMT,
 		NULL},
 	{"pri", "PRI", NULL, 0, pri, NULL, 3, 0, 0, NULL, NULL},
-	{"re", "RE", NULL, 0, lpvar, NULL, 3, LPOFF(swtime), UINT, "d", NULL},
+	{"re", "RE", NULL, 0, lpvar, NULL, 3, POFF(swtime), UINT, "d", NULL},
 	{"rgid", "RGID", NULL, 0, pvar, NULL, UIDLEN, POFF(rgid),
 		UINT, UIDFMT, NULL},
 #if 0

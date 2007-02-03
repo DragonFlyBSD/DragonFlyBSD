@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.23 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.24 2007/02/03 17:05:57 corecode Exp $
  */
 
 #ifndef _CPU_CPU_H_
@@ -62,7 +62,7 @@
 
 #define	cpu_exec(p)	/* nothing */
 #define cpu_swapin(p)	/* nothing */
-#define cpu_setstack(p, ap)		((p)->p_md.md_regs[SP] = (ap))
+#define cpu_setstack(lp, ap)		((lp)->lwp_md.md_regs[SP] = (ap))
 
 #define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level > 1 || (curthread->td_flags & TDF_INTTHREAD))
 #define	CLKF_PC(framep)		((framep)->if_eip)

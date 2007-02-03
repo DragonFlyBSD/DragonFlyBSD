@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.68 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.69 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -212,7 +212,7 @@ exit1(int rv)
 	 * Release upcalls associated with this process
 	 */
 	if (vm->vm_upcalls)
-		upc_release(vm, &p->p_lwp);
+		upc_release(vm, lp);
 
 	/* clean up data related to virtual kernel operation */
 	if (p->p_vkernel)
@@ -421,7 +421,7 @@ int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 {
 	struct thread *td = curthread;
-	struct thread *deadtd;
+	struct lwp *deadlp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
 	int nfound, error;
@@ -470,8 +470,7 @@ loop:
 
 		nfound++;
 		if (p->p_flag & P_ZOMBIE) {
-			KKASSERT((p->p_nthreads == 1));
-			deadtd = LIST_FIRST(&p->p_lwps)->lwp_thread;
+			deadlp = ONLY_LWP_IN_PROC(p);
 
 			/*
 			 * Other kernel threads may be in the middle of 
@@ -484,7 +483,7 @@ loop:
 				while (p->p_lock)
 					tsleep(p, 0, "reap3", hz);
 			}
-			lwkt_wait_free(deadtd);
+			lwkt_wait_free(deadlp->lwp_thread);
 
 			/*
 			 * The process's thread may still be in the middle
@@ -497,13 +496,13 @@ loop:
 			 *
 			 * YYY no wakeup occurs so we depend on the timeout.
 			 */
-			if ((deadtd->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
-				tsleep(deadtd, 0, "reap2", 1);
+			if ((deadlp->lwp_thread->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
+				tsleep(deadlp->lwp_thread, 0, "reap2", 1);
 				goto loop;
 			}
 
 			/* scheduling hook for heuristic */
-			p->p_usched->heuristic_exiting(td->td_lwp, deadtd->td_lwp);
+			p->p_usched->heuristic_exiting(td->td_lwp, deadlp);
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
@@ -557,6 +556,7 @@ loop:
 			}
 
 			vm_waitproc(p);
+			zfree(lwp_zone, deadlp);
 			zfree(proc_zone, p);
 			nprocs--;
 			return (0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.52 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.53 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -146,6 +146,7 @@ int
 kern_execve(struct nlookupdata *nd, struct image_args *args)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	register_t *stack_base;
 	int error, len, i;
@@ -347,7 +348,7 @@ interpret:
 	len = min(nd->nl_nch.ncp->nc_nlen, MAXCOMLEN);
 	bcopy(nd->nl_nch.ncp->nc_name, p->p_comm, len);
 	p->p_comm[len] = 0;
-	bcopy(p->p_comm, p->p_lwp.lwp_thread->td_comm, MAXCOMLEN+1);
+	bcopy(p->p_comm, lp->lwp_thread->td_comm, MAXCOMLEN+1);
 
 	/*
 	 * mark as execed, wakeup the process that vforked (if any) and tell
@@ -442,7 +443,7 @@ interpret:
 	p->p_acflag &= ~AFORK;
 
 	/* Set values passed into the program in registers. */
-	setregs(td->td_lwp, imgp->entry_addr, (u_long)(uintptr_t)stack_base,
+	exec_setregs(imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
 
 	/* Free any previous argument cache */
@@ -627,6 +628,10 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	imgp->vmspace_destroyed = 1;
 
 	/*
+	 * XXX lwp here would be a good place to kill sibling lwps
+	 */
+
+	/*
 	 * Prevent a pending AIO from modifying the new address space.
 	 */
 	aio_proc_rundown(imgp->proc);
@@ -649,7 +654,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	} else if (vmspace->vm_refcnt == 1 && vmspace->vm_exitingcnt == 0) {
 		shmexit(vmspace);
 		if (vmspace->vm_upcalls)
-			upc_release(vmspace, &imgp->proc->p_lwp);
+			upc_release(vmspace, ONLY_LWP_IN_PROC(imgp->proc));
 		pmap_remove_pages(vmspace_pmap(vmspace),
 			0, VM_MAX_USER_ADDRESS);
 		vm_map_remove(map, 0, VM_MAX_USER_ADDRESS);

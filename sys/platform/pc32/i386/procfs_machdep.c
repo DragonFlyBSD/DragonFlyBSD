@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/procfs_machdep.c,v 1.7 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/procfs_machdep.c,v 1.8 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*
@@ -84,33 +84,52 @@
 int
 procfs_read_regs(struct proc *p, struct reg *regs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (fill_regs(&p->p_lwp, regs));
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (fill_regs(lp, regs));
 }
 
 int
 procfs_write_regs(struct proc *p, struct reg *regs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (set_regs(&p->p_lwp, regs));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (set_regs(lp, regs));
 }
 
 int
 procfs_read_dbregs(struct proc *p, struct dbreg *dbregs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (fill_dbregs(&p->p_lwp, dbregs));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (fill_dbregs(lp, dbregs));
 }
 
 int
 procfs_write_dbregs(struct proc *p, struct dbreg *dbregs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (set_dbregs(&p->p_lwp, dbregs));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (set_dbregs(lp, dbregs));
 }
 
 /*
@@ -121,23 +140,38 @@ procfs_write_dbregs(struct proc *p, struct dbreg *dbregs)
 int
 procfs_read_fpregs(struct proc *p, struct fpreg *fpregs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (fill_fpregs(&p->p_lwp, fpregs));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (fill_fpregs(lp, fpregs));
 }
 
 int
 procfs_write_fpregs(struct proc *p, struct fpreg *fpregs)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (set_fpregs(&p->p_lwp, fpregs));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (set_fpregs(lp, fpregs));
 }
 
 int
 procfs_sstep(struct proc *p)
 {
+	struct lwp *lp;
+
 	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
-	return (ptrace_single_step(&p->p_lwp));
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	return (ptrace_single_step(lp));
 }

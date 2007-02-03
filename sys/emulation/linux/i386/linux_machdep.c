@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.19 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.20 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -429,7 +429,8 @@ sys_linux_clone(struct linux_clone_args *args)
 		return (ESRCH);
 
 	p2->p_sigparent = exit_signal;
-	p2->p_md.md_regs->tf_esp = (unsigned int)args->stack;
+	ONLY_LWP_IN_PROC(p2)->lwp_md.md_regs->tf_esp =
+	    (unsigned int)args->stack;
 
 #ifdef DEBUG
 	if (ldebug(clone))
@@ -661,10 +662,10 @@ int
 sys_linux_iopl(struct linux_iopl_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	int error;
 
-	KKASSERT(p);
+	KKASSERT(lp);
 
 	if (args->level < 0 || args->level > 3)
 		return (EINVAL);
@@ -672,7 +673,8 @@ sys_linux_iopl(struct linux_iopl_args *args)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);
-	p->p_md.md_regs->tf_eflags = (p->p_md.md_regs->tf_eflags & ~PSL_IOPL) |
+	lp->lwp_md.md_regs->tf_eflags =
+	    (lp->lwp_md.md_regs->tf_eflags & ~PSL_IOPL) |
 	    (args->level * (PSL_IOPL / 3));
 	return (0);
 }
@@ -841,7 +843,7 @@ int
 sys_linux_pause(struct linux_pause_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	sigset_t mask;
 	int error;
 
@@ -850,7 +852,7 @@ sys_linux_pause(struct linux_pause_args *args)
 		kprintf(ARGS(pause, ""));
 #endif
 
-	mask = p->p_sigmask;
+	mask = lp->lwp_sigmask;
 
 	error = kern_sigsuspend(&mask);
 

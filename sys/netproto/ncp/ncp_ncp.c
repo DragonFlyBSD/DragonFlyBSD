@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.11 2007/02/03 17:05:58 corecode Exp $
  *
  * Core of NCP protocol
  */
@@ -89,14 +89,16 @@ int
 ncp_chkintr(struct ncp_conn *conn, struct thread *td)
 {
 	sigset_t tmpset;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 
 	if (p == NULL)
 		return 0;
 	tmpset = p->p_siglist;
-	SIGSETNAND(tmpset, p->p_sigmask);
+	SIGSETOR(tmpset, lp->lwp_siglist);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	SIGSETNAND(tmpset, p->p_sigignore);
-	if (SIGNOTEMPTY(p->p_siglist) && NCP_SIGMASK(tmpset))
+	if (SIGNOTEMPTY(tmpset) && NCP_SIGMASK(tmpset))
                 return EINTR;
 	return 0;
 }

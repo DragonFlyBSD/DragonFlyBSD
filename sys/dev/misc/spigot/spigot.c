@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.14 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.15 2007/02/03 17:05:57 corecode Exp $
  *
  */
 
@@ -237,10 +237,10 @@ spigot_ioctl(struct dev_ioctl_args *ap)
 		if (securelevel > 0)
 			return EPERM;
 #endif
-		curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+		curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
 		break;
 	case	SPIGOT_IOPL_OFF: /* deny access to the IO PAGE */
-		curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+		curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 		break;
 	case	SPIGOT_GET_INFO:
 		info = (struct spigot_info *)data;

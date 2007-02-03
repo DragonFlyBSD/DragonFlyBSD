@@ -35,7 +35,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/sys/reg.h,v 1.2 2006/11/07 20:48:15 dillon Exp $
+ * $DragonFly: src/sys/sys/reg.h,v 1.3 2007/02/03 17:05:59 corecode Exp $
  */
 /*
  * Machine independant interface to abstract cpu registers that a process
@@ -61,7 +61,7 @@ int	fill_regs (struct lwp *lp, struct reg *regs);
 int	fill_dbregs (struct lwp *lp, struct dbreg *dbregs);
 int	set_fpregs (struct lwp *, struct fpreg *);
 int	set_regs (struct lwp *lp, struct reg *regs);
-void	setregs (struct lwp *, u_long, u_long, u_long);
+void	exec_setregs (u_long, u_long, u_long);
 int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
 
 #endif

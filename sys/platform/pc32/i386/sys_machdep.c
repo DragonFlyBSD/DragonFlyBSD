@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.30 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.31 2007/02/03 17:05:58 corecode Exp $
  *
  */
 
@@ -558,7 +558,7 @@ check_descs(union descriptor *descs, int num)
 int
 cpu_set_iopl(void)
 {
-	curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
 	return(0);
 }
 
@@ -568,7 +568,7 @@ cpu_set_iopl(void)
 int
 cpu_clr_iopl(void)
 {
-	curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 	return(0);
 }
 

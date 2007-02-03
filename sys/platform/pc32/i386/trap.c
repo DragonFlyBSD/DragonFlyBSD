@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.96 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.97 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*
@@ -273,7 +273,7 @@ recheck:
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
 	 */
-	if ((sig = CURSIG(p)) != 0) {
+	if ((sig = CURSIG(lp)) != 0) {
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
@@ -862,7 +862,7 @@ kernel_trap:
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
 	MAKEMPSAFE(have_mplock);
-	trapsignal(p, i, ucode);
+	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG
 	if (type <= MAX_TRAP_MSG) {
@@ -1378,7 +1378,7 @@ bad:
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
 		MAKEMPSAFE(have_mplock);
 		frame->tf_eflags &= ~PSL_T;
-		trapsignal(p, SIGTRAP, 0);
+		trapsignal(lp, SIGTRAP, 0);
 	}
 
 	/*

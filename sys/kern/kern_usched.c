@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.7 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.8 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include <sys/errno.h>
@@ -185,8 +185,12 @@ sys_usched_set(struct usched_set_args *uap)
 		 * disassociation' and another ABI call to do a 'full
 		 * reassociation'
 		 */
+		/* XXX lwp have to deal with multiple lwps here */
+		if (p->p_nthreads != 1)
+			return (EINVAL);
 		if (item && item != p->p_usched) {
-			p->p_usched->release_curproc(&p->p_lwp);
+			/* XXX lwp */
+			p->p_usched->release_curproc(ONLY_LWP_IN_PROC(p));
 			p->p_usched = item;
 		} else if (item == NULL) {
 			error = EINVAL;

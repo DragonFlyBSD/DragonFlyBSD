@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.16 2007/01/14 07:59:08 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.17 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -189,16 +189,16 @@ extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
 void	check_sigacts (void);
 void	execsigs (struct proc *p);
 void	gsignal (int pgid, int sig);
-int	issignal (struct proc *p);
-int	iscaught (struct proc *p);
+int	issignal (struct lwp *lp);
+int	iscaught (struct lwp *p);
 void	killproc (struct proc *p, char *why);
 void	pgsigio (struct sigio *, int signum, int checkctty);
 void	pgsignal (struct pgrp *pgrp, int sig, int checkctty);
 void	postsig (int sig);
 void	ksignal (struct proc *p, int sig);
 void	siginit (struct proc *p);
-void	trapsignal (struct proc *p, int sig, u_long code);
-static int __cursig (struct proc *p);
+void	trapsignal (struct lwp *p, int sig, u_long code);
+static int __cursig (struct lwp *p);
 
 /*
  * Machine-dependent functions:
@@ -212,8 +212,8 @@ int	checkpoint_signal_handler(struct proc *p);
 /*
  * Inline functions:
  */
-#define	CURSIG(p)	__cursig(p)
-#define CURSIGNB(p)	__cursignb(p)
+#define	CURSIG(lp)	__cursig(lp)
+#define CURSIGNB(lp)	__cursignb(lp)
 
 /*
  * Determine signal that should be delivered to process p, the current
@@ -224,31 +224,34 @@ int	checkpoint_signal_handler(struct proc *p);
  */
 static __inline
 int
-__cursig(struct proc *p)
+__cursig(struct lwp *lp)
 {
+	struct proc *p;
 	sigset_t tmpset;
 	int r;
 
+	p = lp->lwp_proc;
 	tmpset = p->p_siglist;
-	SIGSETNAND(tmpset, p->p_sigmask);
-	if (SIGISEMPTY(p->p_siglist) ||
-	     (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
+	SIGSETOR(tmpset, lp->lwp_siglist);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
+	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
 		return(0);
-	}
-	r = issignal(p);
+	r = issignal(lp);
 	return(r);
 }
 
 static __inline
 int
-__cursignb(struct proc *p)
+__cursignb(struct lwp *lp)
 {
+	struct proc *p;
 	sigset_t tmpset;
 
+	p = lp->lwp_proc;
 	tmpset = p->p_siglist;
-	SIGSETNAND(tmpset, p->p_sigmask);
-	if (SIGISEMPTY(p->p_siglist) ||
-	     (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
+	SIGSETOR(tmpset, lp->lwp_siglist);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
+	if ((!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
 		return(FALSE);
 	}
 	return (TRUE);

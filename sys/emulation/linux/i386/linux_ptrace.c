@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.13 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.14 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_cpu.h"
@@ -217,29 +217,33 @@ struct linux_pt_fpxreg {
 
 #ifndef CPU_DISABLE_SSE
 static int
-linux_proc_read_fpxregs(struct thread *td, struct linux_pt_fpxreg *fpxregs)
+linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 {
+	/* XXX lwp */
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	int error;
 
 	error = 0;
 	if (cpu_fxsr == 0)
 		error = EIO;
 	else
-		bcopy(&td->td_pcb->pcb_save.sv_xmm,
+		bcopy(&lp->lwp_thread->td_pcb->pcb_save.sv_xmm,
 		    fpxregs, sizeof(*fpxregs));
 	return (error);
 }
 
 static int
-linux_proc_write_fpxregs(struct thread *td, struct linux_pt_fpxreg *fpxregs)
+linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 {
+	/* XXX lwp */
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	int error;
 
 	error = 0;
 	if (cpu_fxsr == 0)
 		error = EIO;
 	else
-		bcopy(fpxregs, &td->td_pcb->pcb_save.sv_xmm,
+		bcopy(fpxregs, &lp->lwp_thread->td_pcb->pcb_save.sv_xmm,
 		    sizeof(*fpxregs));
 	return (error);
 }
@@ -397,7 +401,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 
 		if (req == PTRACE_GETFPXREGS) {
 			PHOLD(p);
-			error = linux_proc_read_fpxregs(td, &r.fpxreg);
+			error = linux_proc_read_fpxregs(p, &r.fpxreg);
 			PRELE(p);
 			if (error == 0)
 				error = copyout(&r.fpxreg, (caddr_t)uap->data,
@@ -406,7 +410,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 			/* clear dangerous bits exactly as Linux does*/
 			r.fpxreg.mxcsr &= 0xffbf;
 			PHOLD(p);
-			error = linux_proc_write_fpxregs(td, &r.fpxreg);
+			error = linux_proc_write_fpxregs(p, &r.fpxreg);
 			PRELE(p);
 		}
 		break;

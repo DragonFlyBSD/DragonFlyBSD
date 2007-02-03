@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.91 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.92 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -145,8 +145,8 @@ struct lwp {
 
 	lwpid_t		lwp_tid;	/* Our thread id . */
 
-#ifdef notyet
 	int		lwp_flag;	/* P_* flags. */
+#ifdef notyet
 	char		lwp_stat;	/* S* process status. */
 #endif
 
@@ -159,7 +159,6 @@ struct lwp {
 	sysclock_t	lwp_cpticks;	/* cpu used in sched clock ticks */
 	sysclock_t	lwp_cpbase;	/* Measurement base */
 	fixpt_t		lwp_pctcpu;	/* %cpu for this process */
-	u_int		lwp_swtime;	/* Time swapped in or out. */
 	u_int		lwp_slptime;	/* Time since last blocked. */
 
 	int		lwp_traceflag;	/* Kernel trace points. */
@@ -193,6 +192,7 @@ struct	proc {
 	struct filedesc	*p_fd;		/* Ptr to open files structure. */
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node XXX lwp */
 	struct plimit	*p_limit;	/* Process limits. */
+	struct pstats	*p_stats;
 	void		*p_pad0;
 	struct	procsig	*p_procsig;
 #define p_sigacts	p_procsig->ps_sigacts
@@ -220,11 +220,7 @@ struct	proc {
 
 	struct vmspace	*p_vmspace;	/* Current address space. */
 
-#define p_cpticks p_lwp.lwp_cpticks
-#define p_cpbase p_lwp.lwp_cpbase
-#define p_pctcpu p_lwp.lwp_pctcpu
-#define p_swtime p_lwp.lwp_swtime
-#define p_slptime p_lwp.lwp_slptime
+	unsigned int	p_swtime;	/* Time swapped in or out */
 
 	struct itimerval p_realtimer;	/* Alarm timer. */
 	struct itimerval p_timer[3];	/* Virtual-time timers. */
@@ -236,8 +232,6 @@ struct	proc {
 
 	struct vnode	*p_textvp;	/* Vnode of executable. */
 
-#define p_usdata p_lwp.lwp_usdata
-	
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
 	char		p_step;		/* procfs stop *once* flag */
@@ -245,7 +239,6 @@ struct	proc {
 	char		p_pad2[2];	/* padding for alignment */
 	struct		sigiolst p_sigiolst;	/* list of sigio sources */
 	int		p_sigparent;	/* signal to parent on exit */
-#define p_oldsigmask p_lwp.lwp_oldsigmask
 	int		p_sig;		/* for core dump/debugger XXX */
         u_long		p_code;		/* for core dump/debugger XXX */
 	struct klist	p_klist;	/* knotes attached to this process */
@@ -260,9 +253,6 @@ struct	proc {
 
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
-
-#define p_sigmask p_lwp.lwp_sigmask
-#define p_sigstk p_lwp.lwp_sigstk
 
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
 	char		p_lock;		/* Process lock (prevent swap) count. */
@@ -279,7 +269,6 @@ struct	proc {
 /* End area that is copied on creation. */
 #define	p_endcopy	p_addr
 	struct user	*p_addr;	/* Kernel virtual addr of u-area (PROC ONLY) XXX lwp */
-#define p_md p_lwp.lwp_md
 
 	u_short		p_xstat;	/* Exit status or last stop signal */
 	u_short		p_acflag;	/* Accounting flags. */
@@ -293,17 +282,15 @@ struct	proc {
 	struct proc	*p_peers;	/* XXX lwp */
 	struct proc	*p_leader;	/* XXX lwp */
 	void		*p_emuldata;	/* process-specific emulator state */
-#define p_thread p_lwp.lwp_thread
 	struct usched	*p_usched;	/* Userland scheduling control */
 	struct vkernel	*p_vkernel;	/* Virtual kernel extension */
 	int		p_numposixlocks; /* number of POSIX locks */
 
-	struct lwp	p_lwp;		/* Embedded lwp XXX */
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 };
 
-#define p_wchan		p_thread->td_wchan
-#define p_wmesg		p_thread->td_wmesg
+#define lwp_wchan	lwp_thread->td_wchan
+#define lwp_wmesg	lwp_thread->td_wmesg
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
 
@@ -351,12 +338,15 @@ struct	proc {
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 
 #define	P_JAILED	0x1000000 /* Process is in jail */
-#define	P_OLDMASK	0x2000000 /* need to restore mask before pause */
-#define	P_ALTSTACK	0x4000000 /* have alternate signal stack */
+#define	P_UNUSED0	0x2000000 /* need to restore mask before pause */
+#define	P_UNUSED1	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
 #define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 #define P_XCPU		0x40000000 /* SIGXCPU */
+
+#define	LWP_ALTSTACK	0x0000001 /* have alternate signal stack */
+#define	LWP_OLDMASK	0x0000002 /* need to restore mask before pause */
 
 #define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
@@ -423,6 +413,7 @@ extern u_long pgrphash;
 #endif
 
 extern struct proc proc0;		/* Process slot for swapper. */
+extern struct lwp lwp0;			/* LWP slot for swapper. */
 extern struct thread thread0;		/* Thread slot for swapper. */
 extern int hogticks;			/* Limit on kernel cpu hogs. */
 extern int nprocs, maxproc;		/* Current and max number of procs. */
@@ -453,6 +444,7 @@ struct proc *zpfind (pid_t);	/* Find zombie process by id. */
 struct vm_zone;
 struct globaldata;
 extern struct vm_zone *proc_zone;
+extern struct vm_zone *lwp_zone;
 
 int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	proc_add_allproc(struct proc *p);

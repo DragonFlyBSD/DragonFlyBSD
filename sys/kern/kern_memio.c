@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.28 2007/01/15 20:51:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.29 2007/02/03 17:05:57 corecode Exp $
  */
 
 /*
@@ -260,7 +260,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 				error = EPERM;
 				break;
 			}
-			if (CURSIG(curproc) != 0) {
+			if (CURSIG(curthread->td_lwp) != 0) {
 				/*
 				 * Use tsleep() to get the error code right.
 				 * It should return immediately.

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.15 2007/01/12 06:06:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.16 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -287,6 +287,7 @@ static int
 elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status, 
 	   prfpregset_t *fpregset) 
 {
+	struct lwp *lp;
 	int error;
 
 	/* validate status and psinfo */
@@ -301,9 +302,11 @@ elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status,
 		error = EINVAL;
 		goto done;
 	}
-	if ((error = set_regs(&p->p_lwp, &status->pr_reg)) != 0)
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	if ((error = set_regs(lp, &status->pr_reg)) != 0)
 		goto done;
-	error = set_fpregs(&p->p_lwp, fpregset);
+	error = set_fpregs(lp, fpregset);
 	strlcpy(p->p_comm, psinfo->pr_fname, sizeof(p->p_comm));
 	/* XXX psinfo->pr_psargs not yet implemented */
  done:	
@@ -449,6 +452,7 @@ elf_getsigs(struct proc *p, struct file *fp)
 	int error;
 	struct ckpt_siginfo *csi;
 	struct sigacts *tmpsigacts;
+	struct lwp *lp;
 
 	TRACE_ENTER;
 	csi = kmalloc(sizeof(struct ckpt_siginfo), M_TEMP, M_ZERO | M_WAITOK);
@@ -466,7 +470,9 @@ elf_getsigs(struct proc *p, struct file *fp)
 	bcopy(&csi->csi_sigacts, p->p_procsig->ps_sigacts, sizeof(struct sigacts));
 	bcopy(&csi->csi_itimerval, &p->p_realtimer, sizeof(struct itimerval));
 	SIG_CANTMASK(csi->csi_sigmask);
-	bcopy(&csi->csi_sigmask, &p->p_sigmask, sizeof(sigset_t));
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+	bcopy(&csi->csi_sigmask, &lp->lwp_sigmask, sizeof(sigset_t));
 	p->p_sigparent = csi->csi_sigparent;
  done:
 	if (csi)

@@ -32,7 +32,7 @@
  *
  *	@(#)ptrace.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ptrace.h,v 1.10.2.2 2003/01/02 20:39:13 kan Exp $
- * $DragonFly: src/sys/sys/ptrace.h,v 1.8 2006/09/19 11:47:36 corecode Exp $
+ * $DragonFly: src/sys/sys/ptrace.h,v 1.9 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef	_SYS_PTRACE_H_
@@ -84,7 +84,7 @@ struct proc;
 struct lwp;
 
 void	proc_reparent (struct proc *child, struct proc *newparent);
-int	ptrace_set_pc (struct proc *p, unsigned long addr);
+int	ptrace_set_pc (struct lwp *p, unsigned long addr);
 int	ptrace_single_step (struct lwp *lp);
 int	kern_ptrace (struct proc *p, int req, pid_t pid, void *addr,
 		int data, int *res);

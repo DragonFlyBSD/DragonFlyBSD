@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.20 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.21 2007/02/03 17:05:59 corecode Exp $
  */
 
 
@@ -86,8 +86,8 @@ struct handle
 #define VP(pp, field) ((pp)->kp_vm_ ## field)
 
 /* define what weighted cpu is.  */
-#define weighted_cpu(pct, pp) (LP((pp), swtime) == 0 ? 0.0 : \
-			 ((pct) / (1.0 - exp(LP((pp), swtime) * logcpu))))
+#define weighted_cpu(pct, pp) (PP((pp), swtime) == 0 ? 0.0 : \
+			 ((pct) / (1.0 - exp(PP((pp), swtime) * logcpu))))
 
 /* what we consider to be process size: */
 #define PROCSIZE(pp) (VP((pp), map_size) / 1024)

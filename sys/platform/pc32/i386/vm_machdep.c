@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.55 2007/02/03 10:30:12 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.56 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -192,12 +192,12 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	bcopy(&lp1->lwp_thread->td_tls, &lp2->lwp_thread->td_tls,
 	      sizeof(lp2->lwp_thread->td_tls));
 	/*
-	 * Now, cpu_switch() can schedule the new process.
+	 * Now, cpu_switch() can schedule the new lwp.
 	 * pcb_esp is loaded pointing to the cpu_switch() stack frame
 	 * containing the return address when exiting cpu_switch.
 	 * This will normally be to fork_trampoline(), which will have
-	 * %ebx loaded with the new proc's pointer.  fork_trampoline()
-	 * will set up a stack to call fork_return(p, frame); to complete
+	 * %ebx loaded with the new lwp's pointer.  fork_trampoline()
+	 * will set up a stack to call fork_return(lp, frame); to complete
 	 * the return to user-mode.
 	 */
 }

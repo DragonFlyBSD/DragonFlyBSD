@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.4 2007/02/02 19:57:31 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.5 2007/02/03 17:05:57 corecode Exp $
  */
 
 /*
@@ -124,6 +124,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_exitstat = p->p_xstat;
 	kp->kp_nthreads = p->p_nthreads;
 	kp->kp_nice = p->p_nice;
+	kp->kp_swtime = p->p_swtime;
 
 	kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
 	kp->kp_vm_rssize = p->p_vmspace->vm_rssize;
@@ -150,8 +151,8 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_pid = lwp->lwp_proc->p_pid;
 	kl->kl_tid = lwp->lwp_tid;
 
-#ifdef notyet
 	kl->kl_flags = lwp->lwp_flag;
+#ifdef notyet
 	kl->kl_stat = lwp->lwp_stat;
 #endif
 	kl->kl_tdflags = lwp->lwp_thread->td_flags;
@@ -170,7 +171,6 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_iticks = lwp->lwp_thread->td_iticks;
 	kl->kl_cpticks = lwp->lwp_cpticks;
 	kl->kl_pctcpu = lwp->lwp_pctcpu;
-	kl->kl_swtime = lwp->lwp_swtime;
 	kl->kl_slptime = lwp->lwp_slptime;
 	kl->kl_origcpu = lwp->lwp_usdata.bsd4.origcpu;	/* XXX TGEN same */
 	kl->kl_estcpu = lwp->lwp_usdata.bsd4.estcpu;

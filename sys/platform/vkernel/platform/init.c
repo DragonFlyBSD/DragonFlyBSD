@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.28 2007/01/15 20:51:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.29 2007/02/03 17:05:59 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -508,7 +508,7 @@ init_vkernel(void)
 	mi_gdinit(&gd->mi, 0);
 	cpu_gdinit(gd, 0);
 	mi_proc0init(&gd->mi, proc0paddr);
-	proc0.p_lwp.lwp_md.md_regs = &proc0_tf;
+	lwp0.lwp_md.md_regs = &proc0_tf;
 
 	/*init_locks();*/
 	cninit();
@@ -533,7 +533,7 @@ init_vkernel(void)
 #endif
 #if 0
 	thread0.td_pcb_cr3 ... MMU
-	proc0.p_lwp.lwp_md.md_regs = &proc0_tf;
+	lwp0.lwp_md.md_regs = &proc0_tf;
 #endif
 }
 

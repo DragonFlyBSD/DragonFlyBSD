@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.71 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.72 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -84,6 +84,7 @@ static struct plimit limit0;
 static struct vmspace vmspace0;
 struct proc *initproc;
 struct proc proc0;
+struct lwp lwp0;
 struct thread thread0;
 
 int cmask = CMASK;
@@ -158,15 +159,15 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwkt_set_comm(&thread0, "thread0");
 	proc0.p_addr = (void *)thread0.td_kstack;
 	LIST_INIT(&proc0.p_lwps);
-	LIST_INSERT_HEAD(&proc0.p_lwps, &proc0.p_lwp, lwp_list);
-	proc0.p_lwp.lwp_thread = &thread0;
-	proc0.p_lwp.lwp_proc = &proc0;
+	LIST_INSERT_HEAD(&proc0.p_lwps, &lwp0, lwp_list);
+	lwp0.lwp_thread = &thread0;
+	lwp0.lwp_proc = &proc0;
 	proc0.p_usched = usched_init();
-	proc0.p_lwp.lwp_cpumask = 0xFFFFFFFF;
+	lwp0.lwp_cpumask = 0xFFFFFFFF;
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
-	thread0.td_lwp = &proc0.p_lwp;
+	thread0.td_lwp = &lwp0;
 	thread0.td_switch = cpu_heavy_switch;   /* YYY eventually LWKT */
 }
 
@@ -299,7 +300,7 @@ proc0_init(void *dummy __unused)
 	struct lwp *lp;
 
 	p = &proc0;
-	lp = &proc0.p_lwp;	/* XXX lwp to be: lwp0 */
+	lp = &lwp0;
 
 	/*
 	 * Initialize process and pgrp structures.
@@ -331,7 +332,7 @@ proc0_init(void *dummy __unused)
 	p->p_nice = NZERO;
 	p->p_rtprio.type = RTP_PRIO_NORMAL;
 	p->p_rtprio.prio = 0;
-	p->p_lwp.lwp_rtprio = p->p_rtprio;
+	lp->lwp_rtprio = p->p_rtprio;
 
 	p->p_peers = 0;
 	p->p_leader = p;
@@ -469,9 +470,7 @@ start_init(void *dummy)
 
 	p = curproc;
 
-	KKASSERT(p->p_nthreads == 1);
-
-	lp = LIST_FIRST(&p->p_lwps);
+	lp = ONLY_LWP_IN_PROC(p);
 
 	/* Get the vnode for '/'.  Set p->p_fd->fd_cdir to reference it. */
 	mp = mountlist_boot_getfirst();
@@ -610,11 +609,11 @@ create_init(const void *udata __unused)
 	struct lwp *lp;
 
 	crit_enter();
-	error = fork1(&proc0.p_lwp, RFFDG | RFPROC, &initproc);
+	error = fork1(&lwp0, RFFDG | RFPROC, &initproc);
 	if (error)
 		panic("cannot fork init: %d", error);
 	initproc->p_flag |= P_SYSTEM;
-	lp = LIST_FIRST(&initproc->p_lwps);
+	lp = ONLY_LWP_IN_PROC(initproc);
 	cpu_set_fork_handler(lp, start_init, NULL);
 	crit_exit();
 }
@@ -626,7 +625,7 @@ SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
 static void
 kick_init(const void *udata __unused)
 {
-	start_forked_proc(&proc0.p_lwp, initproc);
+	start_forked_proc(&lwp0, initproc);
 }
 SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 

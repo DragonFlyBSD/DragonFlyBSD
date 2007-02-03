@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.13 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 int
 sys_linux_sgetmask(struct linux_sgetmask_args *args)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	l_sigset_t mask;
 
 #ifdef DEBUG
@@ -287,7 +287,7 @@ sys_linux_sgetmask(struct linux_sgetmask_args *args)
 		kprintf(ARGS(sgetmask, ""));
 #endif
 
-	bsd_to_linux_sigset(&p->p_sigmask, &mask);
+	bsd_to_linux_sigset(&lp->lwp_sigmask, &mask);
 	args->sysmsg_result = mask.__bits[0];
 	return (0);
 }
@@ -295,7 +295,7 @@ sys_linux_sgetmask(struct linux_sgetmask_args *args)
 int
 sys_linux_ssetmask(struct linux_ssetmask_args *args)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	l_sigset_t lset;
 	sigset_t bset;
 
@@ -304,13 +304,13 @@ sys_linux_ssetmask(struct linux_ssetmask_args *args)
 		kprintf(ARGS(ssetmask, "%08lx"), (unsigned long)args->mask);
 #endif
 
-	bsd_to_linux_sigset(&p->p_sigmask, &lset);
+	bsd_to_linux_sigset(&lp->lwp_sigmask, &lset);
 	args->sysmsg_result = lset.__bits[0];
 	LINUX_SIGEMPTYSET(lset);
 	lset.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&lset, &bset);
-	p->p_sigmask = bset;
-	SIG_CANTMASK(p->p_sigmask);
+	lp->lwp_sigmask = bset;
+	SIG_CANTMASK(lp->lwp_sigmask);
 	return (0);
 }
 
@@ -318,7 +318,7 @@ int
 sys_linux_sigpending(struct linux_sigpending_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	sigset_t set;
 	l_sigset_t linux_set;
 	l_osigset_t mask;
@@ -332,7 +332,7 @@ sys_linux_sigpending(struct linux_sigpending_args *args)
 	error = kern_sigpending(&set);
 
 	if (error == 0) {
-		SIGSETAND(set, p->p_sigmask);
+		SIGSETAND(set, lp->lwp_sigmask);
 		bsd_to_linux_sigset(&set, &linux_set);
 		mask = linux_set.__bits[0];
 		error = copyout(&mask, args->mask, sizeof(mask));

@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.12 2007/02/03 09:25:10 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.13 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "use_ether.h"
@@ -241,7 +241,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	/* Allocate and validate space for the signal handler context. */
 	/* XXX lwp flags */
-        if ((p->p_flag & P_ALTSTACK) != 0 && !oonstack &&
+        if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
 		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
 		    lp->lwp_sigstk.ss_size - sizeof(struct sigframe));
@@ -476,7 +476,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 		cs = ucp.uc_mcontext.mc_cs;
 		if (!CS_SECURE(cs)) {
 			kprintf("sigreturn: cs = 0x%x\n", cs);
-			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
+			trapsignal(lp, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
 		bcopy(&ucp.uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
@@ -730,8 +730,10 @@ cpu_idle(void)
  * Clear registers on exec
  */
 void
-setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
+exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 {
+	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct trapframe *regs = lp->lwp_md.md_regs;
 	struct pcb *pcb = lp->lwp_thread->td_pcb;
 
@@ -763,7 +765,7 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
                 pcb->pcb_dr3 = 0;
                 pcb->pcb_dr6 = 0;
                 pcb->pcb_dr7 = 0;
-                if (pcb == curthread->td_pcb) {
+                if (pcb == td->td_pcb) {
 		        /*
 			 * Clear the debug registers on the running
 			 * CPU, otherwise they will end up affecting
@@ -781,7 +783,7 @@ setregs(struct lwp *lp, u_long entry, u_long stack, u_long ps_strings)
 	 * traps to the emulator (if it is done at all) mainly because
 	 * emulators don't provide an entry point for initialization.
 	 */
-	lp->lwp_thread->td_pcb->pcb_flags &= ~FP_SOFTFP;
+	pcb->pcb_flags &= ~FP_SOFTFP;
 
 	/*
 	 * note: do not set CR0_TS here.  npxinit() must do it after clearing
@@ -871,9 +873,9 @@ extern inthand_t *Xrsvdary[256];
 #endif
 
 int
-ptrace_set_pc(struct proc *p, unsigned long addr)
+ptrace_set_pc(struct lwp *lp, unsigned long addr)
 {
-	p->p_md.md_regs->tf_eip = addr;
+	lp->lwp_md.md_regs->tf_eip = addr;
 	return (0);
 }
 

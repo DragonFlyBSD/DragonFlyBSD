@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.38 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.39 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -268,7 +268,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 				lwkt_switch();
 				systimer_del(&info); /* make sure it's gone */
 			}
-			error = iscaught(td->td_proc);
+			error = iscaught(td->td_lwp);
 		} else if (tv.tv_sec == 0) {
 			error = tsleep(&nanowait, PCATCH, "nanslp", ticks);
 		} else {

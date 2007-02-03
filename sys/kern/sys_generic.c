@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.39 2007/01/08 21:41:56 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.40 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1072,6 +1072,7 @@ void
 selrecord(struct thread *selector, struct selinfo *sip)
 {
 	struct proc *p;
+	struct lwp *lp;
 	pid_t mypid;
 
 	if ((p = selector->td_proc) == NULL)
@@ -1080,8 +1081,12 @@ selrecord(struct thread *selector, struct selinfo *sip)
 	mypid = p->p_pid;
 	if (sip->si_pid == mypid)
 		return;
+	/* XXX lwp
+	 * pfind ? this is seriously broken code for LWP
+	 */
 	if (sip->si_pid && (p = pfind(sip->si_pid)) &&
-	    p->p_wchan == (caddr_t)&selwait) {
+	    (lp = FIRST_LWP_IN_PROC(p)) &&
+	    lp->lwp_wchan == (caddr_t)&selwait) {
 		sip->si_flags |= SI_COLL;
 	} else {
 		sip->si_pid = mypid;
@@ -1106,8 +1111,10 @@ selwakeup(struct selinfo *sip)
 	p = pfind(sip->si_pid);
 	sip->si_pid = 0;
 	if (p != NULL) {
+		/* XXX lwp */
+		struct lwp *lp = FIRST_LWP_IN_PROC(p);
 		crit_enter();
-		if (p->p_wchan == (caddr_t)&selwait) {
+		if (lp->lwp_wchan == (caddr_t)&selwait) {
 			/*
 			 * Flag the process to break the tsleep when 
 			 * setrunnable is called, but only call setrunnable

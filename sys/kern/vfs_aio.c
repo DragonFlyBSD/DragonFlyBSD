@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.34 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.35 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*
@@ -347,7 +347,8 @@ aio_free_entry(struct aiocblist *aiocbe)
 	}
 
 	/* aiocbe is going away, we need to destroy any knotes */
-	knote_remove(p->p_thread, &aiocbe->klist);
+	/* XXX lwp knote wants a thread, but only cares about the process */
+	knote_remove(FIRST_LWP_IN_PROC(p)->lwp_thread, &aiocbe->klist);
 
 	if ((ki->kaio_flags & KAIO_WAKEUP) || ((ki->kaio_flags & KAIO_RUNDOWN)
 	    && ((ki->kaio_buffer_count == 0) && (ki->kaio_queue_count == 0)))) {
@@ -874,11 +875,11 @@ aio_newproc(void)
 	struct lwp *lp, *nlp;
 	struct proc *np;
 
-	lp = &proc0.p_lwp;
+	lp = &lwp0;
 	error = fork1(lp, RFPROC|RFMEM|RFNOWAIT, &np);
 	if (error)
 		return error;
-	nlp = LIST_FIRST(&np->p_lwps);
+	nlp = ONLY_LWP_IN_PROC(np);
 	cpu_set_fork_handler(nlp, aio_daemon, curproc);
 	start_forked_proc(lp, np);
 
@@ -1262,7 +1263,8 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 	kev.filter = EVFILT_AIO;
 	kev.flags = EV_ADD | EV_ENABLE | EV_FLAG1;
 	kev.data = (intptr_t)aiocbe;
-	error = kqueue_register(kq, &kev, p->p_thread);
+	/* XXX lwp kqueue_register takes a thread, but only uses its proc */
+	error = kqueue_register(kq, &kev, FIRST_LWP_IN_PROC(p)->lwp_thread);
 aqueue_fail:
 	if (error) {
 		fdrop(fp);

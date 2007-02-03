@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.35 2006/11/07 18:50:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.36 2007/02/03 17:05:58 corecode Exp $
  */
 
 #ifdef _KERNEL
@@ -685,7 +685,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 		     * completion after sending an abort request.
 		     */
 		    if (msg->ms_flags & MSGF_PCATCH) {
-			if (sentabort == 0 && CURSIG(port->mp_td->td_proc)) {
+			if (sentabort == 0 && CURSIG(port->mp_td->td_lwp)) {
 			    sentabort = 1;
 			    lwkt_abortmsg(msg);
 			    continue;

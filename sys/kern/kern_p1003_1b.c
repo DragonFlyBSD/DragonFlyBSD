@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.8 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.9 2007/02/03 17:05:57 corecode Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -172,13 +172,15 @@ int
 sys_sched_setparam(struct sched_setparam_args *uap)
 {
 	struct proc *p = curproc;
+	struct lwp *lp;
 	int e;
 
 	struct sched_param sched_param;
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-		e = ksched_setparam(&uap->sysmsg_result, ksched, p,
+		lp = FIRST_LWP_IN_PROC(p); /* XXX lwp */
+		e = ksched_setparam(&uap->sysmsg_result, ksched, lp,
 		    (const struct sched_param *)&sched_param);
 	}
 	return e;
@@ -189,6 +191,7 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *targetp;
+	struct lwp *lp;
 	struct sched_param sched_param;
 	int e;
  
@@ -200,7 +203,8 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 		targetp = p;
 	}
  
-	e = ksched_getparam(&uap->sysmsg_result, ksched, targetp, &sched_param);
+	lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
+	e = ksched_getparam(&uap->sysmsg_result, ksched, lp, &sched_param);
 
 	if (!e)
 		copyout(&sched_param, uap->param, sizeof(sched_param));
@@ -212,13 +216,15 @@ int
 sys_sched_setscheduler(struct sched_setscheduler_args *uap)
 {
 	struct proc *p = curproc;
+	struct lwp *lp;
 	int e;
 
 	struct sched_param sched_param;
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-		e = ksched_setscheduler(&uap->sysmsg_result, ksched, p,
+		lp = FIRST_LWP_IN_PROC(p); /* XXX lwp */
+		e = ksched_setscheduler(&uap->sysmsg_result, ksched, lp,
 		    uap->policy, (const struct sched_param *)&sched_param);
 	}
 	return e;
@@ -229,6 +235,7 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *targetp;
+	struct lwp *lp;
 	int e;
  
 	if (uap->pid != 0 && uap->pid != p->p_pid) {
@@ -239,7 +246,8 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 		targetp = p;
 	}
  
-	e = ksched_getscheduler(&uap->sysmsg_result, ksched, targetp);
+	lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
+	e = ksched_getscheduler(&uap->sysmsg_result, ksched, lp);
 
 	return e;
 }
@@ -267,10 +275,11 @@ sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 {
 	int e;
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
 	    e = ksched_rr_get_interval(&uap->sysmsg_result, ksched,
-		    p, uap->interval);
+		    lp, uap->interval);
 	}
 	return e;
 }

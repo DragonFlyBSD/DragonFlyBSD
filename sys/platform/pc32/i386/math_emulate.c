@@ -7,7 +7,7 @@
  *
  *	from: 386BSD 0.1
  * $FreeBSD: src/sys/i386/i386/math_emulate.c,v 1.35 1999/08/28 00:43:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.8 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emulate.c,v 1.9 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*
@@ -606,7 +606,7 @@ static int __regoffset[] = {
 	tEAX, tECX, tEDX, tEBX, tESP, tEBP, tESI, tEDI
 };
 
-#define REG(x) (((int *)curproc->p_md.md_regs)[__regoffset[(x)]])
+#define REG(x) (((int *)curthread->td_lwp->lwp_md.md_regs)[__regoffset[(x)]])
 
 static char *
 sib(struct trapframe *info, int mod)

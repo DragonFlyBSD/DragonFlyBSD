@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.18 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.19 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*
@@ -233,13 +233,17 @@ ptsread(struct dev_read_args *ap)
 	struct proc *p = curproc;
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
+	struct lwp *lp;
+
 	int error = 0;
+
+	lp = curthread->td_lwp;
 
 again:
 	if (pti->pt_flags & PF_REMOTE) {
 		while (isbackground(p, tp)) {
 			if (SIGISMEMBER(p->p_sigignore, SIGTTIN) ||
-			    SIGISMEMBER(p->p_sigmask, SIGTTIN) ||
+			    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
 			    p->p_pgrp->pg_jobc == 0 || p->p_flag & P_PPWAIT)
 				return (EIO);
 			pgsignal(p->p_pgrp, SIGTTIN, 1);

@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.10 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -164,7 +164,7 @@ typedef struct caps_kmsg {
  * kernel support
  */
 void caps_exit(struct thread *td);
-void caps_fork(struct proc *p1, struct proc *p2, int flags);
+void caps_fork(struct thread *td1, struct thread *td2, int flags);
 
 #else
 

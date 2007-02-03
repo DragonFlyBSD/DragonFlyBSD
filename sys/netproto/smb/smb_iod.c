@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.14 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.15 2007/02/03 17:05:58 corecode Exp $
  */
  
 #include <sys/param.h>
@@ -682,7 +682,8 @@ smb_iod_create(struct smb_vc *vcp)
 		kfree(iod, M_SMBIOD);
 		return error;
 	}
-	iod->iod_td = newp->p_thread;
+	/* XXX lwp */
+	iod->iod_td = ONLY_LWP_IN_PROC(newp)->lwp_thread;
 	return 0;
 }
 

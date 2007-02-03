@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.34 2007/02/03 10:02:01 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.35 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -83,6 +83,7 @@ struct proclist allproc;
 struct proclist zombproc;
 struct spinlock allproc_spin;
 vm_zone_t proc_zone;
+vm_zone_t lwp_zone;
 vm_zone_t thread_zone;
 
 /*
@@ -129,6 +130,7 @@ procinit(void)
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	proc_zone = zinit("PROC", sizeof (struct proc), 0, 0, 5);
+	lwp_zone = zinit("LWP", sizeof (struct lwp), 0, 0, 5);
 	thread_zone = zinit("THREAD", sizeof (struct thread), 0, 0, 5);
 	uihashinit();
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.20 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.21 2007/02/03 17:05:57 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,6 +49,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	int cpuidx;
 	int nl = 0;
 	volatile struct proc *p, *pp;
+	struct lwp *lp;
 
 	np = nprocs;
 
@@ -74,16 +75,21 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		if (pp == NULL)
 			pp = p;
 
-		db_printf("%5d %8p %4d %5d %5d %06x  %d",
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(p);
+		db_printf("%5d %8p %8p %4d %5d %5d %06x  %d",
 		    p->p_pid, (volatile void *)p,
+		    (void *)lp->lwp_thread->td_pcb,
 		    p->p_ucred ? p->p_ucred->cr_ruid : 0, pp->p_pid,
 		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag, p->p_stat);
-		if (p->p_wchan) {
-			db_printf("  %6s %8p", p->p_wmesg, (void *)p->p_wchan);
+		if (lp->lwp_wchan) {
+			db_printf("  %6s %8p", lp->lwp_wmesg,
+			    (void *)lp->lwp_wchan);
 		} else {
 			db_printf("                 ");
 		}
 		db_printf(" %s\n", p->p_comm ? p->p_comm : "");
+		db_dump_td_tokens(lp->lwp_thread);
 
 		p = p->p_list.le_next;
 		if (p == NULL && np > 0)

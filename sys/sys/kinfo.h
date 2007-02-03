@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.10 2007/02/01 20:27:05 tgen Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.11 2007/02/03 17:05:59 corecode Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -120,7 +120,6 @@ struct kinfo_lwp {
 	uint64_t	kl_iticks;
 	uint64_t	kl_cpticks;	/* sched quantums used */
 	u_int		kl_pctcpu;	/* percentage cputime */
-	u_int		kl_swtime;	/* time swapped in or out */
 	u_int		kl_slptime;	/* time since last blocked */
 	int		kl_origcpu;	/* originally scheduled on cpu */
 	int		kl_estcpu;
@@ -180,6 +179,7 @@ struct kinfo_proc {
 	u_short		kp_exitstat;	/* exit status information */
 	int		kp_nthreads;
 	int		kp_nice;
+	unsigned int	kp_swtime;
 
 	vm_size_t	kp_vm_map_size;	/* vmmap virtual size */
 	segsz_t		kp_vm_rssize;		/* resident set size */

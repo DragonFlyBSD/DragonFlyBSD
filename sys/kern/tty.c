@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.35 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.36 2007/02/03 17:05:58 corecode Exp $
  */
 
 /*-
@@ -760,6 +760,7 @@ int
 ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	int error;
 
@@ -801,7 +802,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 #endif
 		while (isbackground(p, tp) && !(p->p_flag & P_PPWAIT) &&
 		    !SIGISMEMBER(p->p_sigignore, SIGTTOU) &&
-		    !SIGISMEMBER(p->p_sigmask, SIGTTOU)) {
+		    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 			if (p->p_pgrp->pg_jobc == 0)
 				return (EIO);
 			pgsignal(p->p_pgrp, SIGTTOU, 1);
@@ -1542,10 +1543,13 @@ ttread(struct tty *tp, struct uio *uio, int flag)
 	tcflag_t lflag;
 	cc_t *cc = tp->t_cc;
 	struct proc *pp;
+	struct lwp *lp;
 	int first, error = 0;
 	int has_stime = 0, last_cc = 0;
 	long slp = 0;		/* XXX this should be renamed `timo'. */
 	struct timeval stime;
+
+	lp = curthread->td_lwp;
 
 loop:
 	crit_enter();
@@ -1565,7 +1569,7 @@ loop:
 	if ((pp = curproc) && isbackground(pp, tp)) {
 		crit_exit();
 		if (SIGISMEMBER(pp->p_sigignore, SIGTTIN) ||
-		    SIGISMEMBER(pp->p_sigmask, SIGTTIN) ||
+		    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
 		    (pp->p_flag & P_PPWAIT) || pp->p_pgrp->pg_jobc == 0)
 			return (EIO);
 		pgsignal(pp->p_pgrp, SIGTTIN, 1);
@@ -1833,9 +1837,11 @@ ttwrite(struct tty *tp, struct uio *uio, int flag)
 	char *cp = NULL;
 	int cc, ce;
 	struct proc *pp;
+	struct lwp *lp;
 	int i, hiwat, cnt, error;
 	char obuf[OBUFSIZ];
 
+	lp = curthread->td_lwp;
 	hiwat = tp->t_ohiwat;
 	cnt = uio->uio_resid;
 	error = 0;
@@ -1868,7 +1874,7 @@ loop:
 	if ((pp = curproc) && isbackground(pp, tp) &&
 	    ISSET(tp->t_lflag, TOSTOP) && !(pp->p_flag & P_PPWAIT) &&
 	    !SIGISMEMBER(pp->p_sigignore, SIGTTOU) &&
-	    !SIGISMEMBER(pp->p_sigmask, SIGTTOU)) {
+	    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 		if (pp->p_pgrp->pg_jobc == 0) {
 			error = EIO;
 			goto out;
@@ -2307,6 +2313,7 @@ void
 ttyinfo(struct tty *tp)
 {
 	struct proc *p, *pick;
+	struct lwp *lp;
 	struct rusage ru;
 	int tmp;
 
@@ -2332,8 +2339,7 @@ ttyinfo(struct tty *tp)
 		 * in particular the wmesg, require a critical section for
 		 * safe access (YYY and we are still not MP safe).
 		 *
-		 * NOTE: p_wmesg is p_thread->td_wmesg, and p_comm is
-		 * p_thread->td_comm.
+		 * NOTE: lwp_wmesg is lwp_thread->td_wmesg.
 		 */
 		char buf[64];
 		const char *str;
@@ -2350,9 +2356,21 @@ ttyinfo(struct tty *tp)
 				pick = p;
 		}
 
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(pick);
+		if (lp == NULL) {
+			ttyprintf(tp, "foreground process without lwp\n");
+			tp->t_rocount = 0;
+			return;
+		}
+
 		/*
 		 * Figure out what wait/process-state message, and command
 		 * buffer to present
+		 */
+		/*
+		 * XXX lwp This is a horrible mixture.  We need to rework this
+		 * as soon as lwps have their own runnable status.
 		 */
 		if (pick->p_flag & P_WEXIT)
 			str = "exiting";
@@ -2360,8 +2378,8 @@ ttyinfo(struct tty *tp)
 			str = "running";
 		else if (pick->p_stat == SIDL)
 			str = "spawning";
-		else if (pick->p_wmesg)	/* p_thread must not be NULL */
-			str = pick->p_wmesg;
+		else if (lp->lwp_wmesg)	/* lwp_thread must not be NULL */
+			str = lp->lwp_wmesg;
 		else
 			str = "iowait";
 
@@ -2373,14 +2391,14 @@ ttyinfo(struct tty *tp)
 		 * 'pick' becomes invalid the moment we exit the critical
 		 * section.
 		 */
-		if (pick->p_thread && (pick->p_flag & P_SWAPPEDOUT) == 0) {
+		if (lp->lwp_thread && (pick->p_flag & P_SWAPPEDOUT) == 0) {
 			calcru_proc(pick, &ru);
 			isinmem = 1;
 		} else {
 			isinmem = 0;
 		}
 
-		pctcpu = (pick->p_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
+		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
 
 		if (pick->p_stat == SIDL || (pick->p_flag & P_ZOMBIE))
 		    vmsz = 0;
@@ -2424,9 +2442,14 @@ ttyinfo(struct tty *tp)
 static int
 proc_compare(struct proc *p1, struct proc *p2)
 {
-
+	struct lwp *lp1, *lp2;
 	if (p1 == NULL)
 		return (1);
+
+	/* XXX lwp */
+	lp1 = FIRST_LWP_IN_PROC(p1);
+	lp2 = FIRST_LWP_IN_PROC(p2);
+
 	/*
 	 * see if at least one of them is runnable
 	 */
@@ -2439,9 +2462,9 @@ proc_compare(struct proc *p1, struct proc *p2)
 		/*
 		 * tie - favor one with highest recent cpu utilization
 		 */
-		if (p2->p_cpticks > p1->p_cpticks)
+		if (lp2->lwp_cpticks > lp1->lwp_cpticks)
 			return (1);
-		if (p1->p_cpticks > p2->p_cpticks)
+		if (lp1->lwp_cpticks > lp2->lwp_cpticks)
 			return (0);
 		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
 	}
@@ -2459,9 +2482,9 @@ proc_compare(struct proc *p1, struct proc *p2)
 	/*
 	 * pick the one with the smallest sleep time
 	 */
-	if (p2->p_slptime > p1->p_slptime)
+	if (lp2->lwp_slptime > lp1->lwp_slptime)
 		return (0);
-	if (p1->p_slptime > p2->p_slptime)
+	if (lp1->lwp_slptime > lp2->lwp_slptime)
 		return (1);
 	/*
 	 * favor one sleeping in a non-interruptible sleep

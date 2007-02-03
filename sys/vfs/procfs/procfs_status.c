@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.13 2007/01/01 22:51:18 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.14 2007/02/03 17:05:59 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -61,6 +61,7 @@ int
 procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		struct uio *uio)
 {
+	struct lwp *lp;
 	struct session *sess;
 	struct tty *tp;
 	struct ucred *cr;
@@ -87,6 +88,8 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	KASSERT(sizeof(psbuf) > MAXCOMLEN,
 			("Too short buffer for new MAXCOMLEN"));
 
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 	ps = psbuf;
 	bcopy(p->p_comm, ps, MAXCOMLEN);
 	ps[MAXCOMLEN] = '\0';
@@ -136,7 +139,7 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	DOCHECK();
 
 	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps, " %s",
-		(p->p_wchan && p->p_wmesg) ? p->p_wmesg : "nochan");
+		(lp->lwp_wchan && lp->lwp_wmesg) ? lp->lwp_wmesg : "nochan");
 	DOCHECK();
 
 	cr = p->p_ucred;

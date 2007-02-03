@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.30 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.31 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -243,6 +243,7 @@ donice(struct proc *chgp, int n)
 {
 	struct proc *curp = curproc;
 	struct ucred *cr = curp->p_ucred;
+	struct lwp *lp;
 
 	if (cr->cr_uid && cr->cr_ruid &&
 	    cr->cr_uid != chgp->p_ucred->cr_uid &&
@@ -255,7 +256,8 @@ donice(struct proc *chgp, int n)
 	if (n < chgp->p_nice && suser_cred(cr, 0))
 		return (EACCES);
 	chgp->p_nice = n;
-	chgp->p_usched->resetpriority(&chgp->p_lwp);
+	FOREACH_LWP_IN_PROC(lp, chgp)
+		chgp->p_usched->resetpriority(lp);
 	return (0);
 }
 
@@ -268,6 +270,7 @@ sys_rtprio(struct rtprio_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *p;
+	struct lwp *lp;
 	struct ucred *cr = curp->p_ucred;
 	struct rtprio rtp;
 	int error;
@@ -284,9 +287,11 @@ sys_rtprio(struct rtprio_args *uap)
 	if (p == 0)
 		return (ESRCH);
 
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 	switch (uap->function) {
 	case RTP_LOOKUP:
-		return (copyout(&p->p_lwp.lwp_rtprio, uap->rtp, sizeof(struct rtprio)));
+		return (copyout(&lp->lwp_rtprio, uap->rtp, sizeof(struct rtprio)));
 	case RTP_SET:
 		if (cr->cr_uid && cr->cr_ruid &&
 		    cr->cr_uid != p->p_ucred->cr_uid &&
@@ -317,7 +322,7 @@ sys_rtprio(struct rtprio_args *uap)
 		case RTP_PRIO_IDLE:
 			if (rtp.prio > RTP_PRIO_MAX)
 				return (EINVAL);
-			p->p_lwp.lwp_rtprio = rtp;
+			lp->lwp_rtprio = rtp;
 			return (0);
 		default:
 			return (EINVAL);

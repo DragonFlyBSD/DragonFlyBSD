@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.26 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.27 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -466,12 +466,12 @@ getpcpu(const KINFO *k)
 #define	fxtofl(fixpt)	((double)(fixpt) / fscale)
 
 	/* XXX - I don't like this */
-	if (KI_LWP(k, swtime) == 0 || (KI_PROC(k, flags) & P_SWAPPEDOUT))
+	if (KI_PROC(k, swtime) == 0 || (KI_PROC(k, flags) & P_SWAPPEDOUT))
 		return (0.0);
 	if (rawcpu)
 		return (100.0 * fxtofl(KI_LWP(k, pctcpu)));
 	return (100.0 * fxtofl(KI_LWP(k, pctcpu)) /
-		(1.0 - exp(KI_LWP(k, swtime) * log(fxtofl(ccpu)))));
+		(1.0 - exp(KI_PROC(k, swtime) * log(fxtofl(ccpu)))));
 }
 
 void

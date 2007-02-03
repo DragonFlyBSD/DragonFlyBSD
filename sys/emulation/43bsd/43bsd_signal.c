@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.4 2007/02/03 17:05:57 corecode Exp $
  * 	from: DragonFly kern/kern_sig.c,v 1.22
  *
  * These syscalls used to live in kern/kern_sig.c.  They are modified
@@ -113,14 +113,14 @@ sys_osigvec(struct osigvec_args *uap)
 int
 sys_osigblock(struct osigblock_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	sigset_t set;
 
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	crit_enter();
-	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
-	SIGSETOR(p->p_sigmask, set);
+	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_result);
+	SIGSETOR(lp->lwp_sigmask, set);
 	crit_exit();
 	return (0);
 }
@@ -128,14 +128,14 @@ sys_osigblock(struct osigblock_args *uap)
 int
 sys_osigsetmask(struct osigsetmask_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	sigset_t set;
 
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	crit_enter();
-	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
-	SIGSETLO(p->p_sigmask, set);
+	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_result);
+	SIGSETLO(lp->lwp_sigmask, set);
 	crit_exit();
 	return (0);
 }
@@ -143,20 +143,20 @@ sys_osigsetmask(struct osigsetmask_args *uap)
 int
 sys_osigstack(struct osigstack_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct sigstack ss;
 	int error = 0;
 
-	ss.ss_sp = p->p_sigstk.ss_sp;
-	ss.ss_onstack = p->p_sigstk.ss_flags & SS_ONSTACK;
+	ss.ss_sp = lp->lwp_sigstk.ss_sp;
+	ss.ss_onstack = lp->lwp_sigstk.ss_flags & SS_ONSTACK;
 	if (uap->oss && (error = copyout(&ss, uap->oss,
 	    sizeof(struct sigstack))))
 		return (error);
 	if (uap->nss && (error = copyin(uap->nss, &ss, sizeof(ss))) == 0) {
-		p->p_sigstk.ss_sp = ss.ss_sp;
-		p->p_sigstk.ss_size = 0;
-		p->p_sigstk.ss_flags |= ss.ss_onstack & SS_ONSTACK;
-		p->p_flag |= P_ALTSTACK;
+		lp->lwp_sigstk.ss_sp = ss.ss_sp;
+		lp->lwp_sigstk.ss_size = 0;
+		lp->lwp_sigstk.ss_flags |= ss.ss_onstack & SS_ONSTACK;
+		lp->lwp_flag |= LWP_ALTSTACK;
 	}
 	return (error);
 }

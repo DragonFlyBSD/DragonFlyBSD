@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
- * $DragonFly: src/sys/sys/posix4.h,v 1.6 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/sys/posix4.h,v 1.7 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include "opt_posix.h"
@@ -48,6 +48,7 @@ MALLOC_DECLARE(M_P31B);
 #define p31b_free(P) kfree((P), M_P31B)
 
 struct proc;
+struct lwp;
 
 int p31b_proc (struct proc *, pid_t, struct proc **);
 
@@ -83,13 +84,13 @@ int ksched_attach(struct ksched **);
 int ksched_detach(struct ksched *);
 
 int ksched_setparam(register_t *, struct ksched *,
-	struct proc *, const struct sched_param *);
+	struct lwp *, const struct sched_param *);
 int ksched_getparam(register_t *, struct ksched *,
-	struct proc *, struct sched_param *);
+	struct lwp *, struct sched_param *);
 
 int ksched_setscheduler(register_t *, struct ksched *,
-	struct proc *, int, const struct sched_param *);
-int ksched_getscheduler(register_t *, struct ksched *, struct proc *);
+	struct lwp *, int, const struct sched_param *);
+int ksched_getscheduler(register_t *, struct ksched *, struct lwp *);
 
 int ksched_yield(register_t *, struct ksched *);
 
@@ -97,7 +98,7 @@ int ksched_get_priority_max(register_t *, struct ksched *, int);
 int ksched_get_priority_min(register_t *, struct ksched *, int);
 
 int ksched_rr_get_interval(register_t *, struct ksched *,
-	struct proc *, struct timespec *);
+	struct lwp *, struct timespec *);
 
 #endif /* _KPOSIX_PRIORITY_SCHEDULING */
 

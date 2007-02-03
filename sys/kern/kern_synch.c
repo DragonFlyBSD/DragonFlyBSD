@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.71 2007/01/14 07:59:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.72 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -143,7 +143,7 @@ SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
  * can set CCPU_SHIFT to (FSHIFT + 1) which will use a slower/less-accurate
  * (more general) method of calculating the %age of CPU used by a process.
  *
- * decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing 
+ * decay 95% of `lwp_pctcpu' in 60 seconds; see CCPU_SHIFT before changing
  */
 #define CCPU_SHIFT	11
 
@@ -190,19 +190,23 @@ schedcpu(void *arg)
 static int
 schedcpu_stats(struct proc *p, void *data __unused)
 {
+	struct lwp *lp;
+
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	p->p_swtime++;
 	if (p->p_stat == SSLEEP)
-		p->p_slptime++;
+		lp->lwp_slptime++;
 
 	/*
 	 * Only recalculate processes that are active or have slept
 	 * less then 2 seconds.  The schedulers understand this.
 	 */
-	if (p->p_slptime <= 1) {
-		p->p_usched->recalculate(&p->p_lwp);
+	if (lp->lwp_slptime <= 1) {
+		p->p_usched->recalculate(lp);
 	} else {
-		p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
+		lp->lwp_pctcpu = (lp->lwp_pctcpu * ccpu) >> FSHIFT;
 	}
 	crit_exit();
 	return(0);
@@ -217,18 +221,21 @@ static int
 schedcpu_resource(struct proc *p, void *data __unused)
 {
 	u_int64_t ttime;
+	struct lwp *lp;
 
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	if (p->p_stat == SIDL || 
 	    (p->p_flag & P_ZOMBIE) ||
 	    p->p_limit == NULL || 
-	    p->p_thread == NULL
+	    lp->lwp_thread == NULL
 	) {
 		crit_exit();
 		return(0);
 	}
 
-	ttime = p->p_thread->td_sticks + p->p_thread->td_uticks;
+	ttime = lp->lwp_thread->td_sticks + lp->lwp_thread->td_uticks;
 
 	switch(plimit_testcpulimit(p->p_limit, ttime)) {
 	case PLIMIT_TESTCPU_KILL:
@@ -326,6 +333,7 @@ int
 tsleep(void *ident, int flags, const char *wmesg, int timo)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;		/* may be NULL */
 	globaldata_t gd;
 	int sig;
@@ -379,7 +387,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	/*
 	 * Setup for the current process (if this is a process). 
 	 */
-	if (p) {
+	if (lp) {
 		if (catch) {
 			/*
 			 * Early termination if PCATCH was set and a
@@ -389,7 +397,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 			 * Early termination only occurs when tsleep() is
 			 * entered while in a normal SRUN state.
 			 */
-			if ((sig = CURSIG(p)) != 0)
+			if ((sig = CURSIG(lp)) != 0)
 				goto resume;
 
 			/*
@@ -415,8 +423,8 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 */
 		if (flags & PNORESCHED)
 			td->td_flags |= TDF_NORESCHED;
-		p->p_usched->release_curproc(&p->p_lwp);
-		p->p_slptime = 0;
+		p->p_usched->release_curproc(lp);
+		lp->lwp_slptime = 0;
 	}
 
 	/*
@@ -442,13 +450,13 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	/*
 	 * Beddy bye bye.
 	 */
-	if (p) {
+	if (lp) {
 		/*
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
 		KKASSERT((p->p_flag & P_ONRUNQ) == 0);
 		p->p_stat = SSLEEP;
-		p->p_lwp.lwp_ru.ru_nvcsw++;
+		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();
 
 		/*
@@ -456,9 +464,9 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 * slept for over a second, recalculate our estcpu.
 		 */
 		p->p_stat = SRUN;
-		if (p->p_slptime)
-			p->p_usched->recalculate(&p->p_lwp);
-		p->p_slptime = 0;
+		if (lp->lwp_slptime)
+			p->p_usched->recalculate(lp);
+		lp->lwp_slptime = 0;
 	} else {
 		lwkt_switch();
 	}
@@ -508,7 +516,7 @@ resume:
 		if (catch && error == 0) {
 			if ((p->p_flag & P_MAILBOX) && sig == 0) {
 				error = EINTR;
-			} else if ((sig != 0 || (sig = CURSIG(p)))) {
+			} else if (sig != 0 || (sig = CURSIG(lp))) {
 				if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
 					error = EINTR;
 				else
@@ -899,11 +907,13 @@ wakeup_domain_one(void *ident, int domain)
 void
 setrunnable(struct proc *p)
 {
+	/* XXX lwp */
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	ASSERT_MP_LOCK_HELD(curthread);
 	p->p_flag &= ~P_STOPPED;
 	if (p->p_stat == SSLEEP && (p->p_flag & P_BREAKTSLEEP)) {
-		unsleep_and_wakeup_thread(p->p_thread);
+		unsleep_and_wakeup_thread(lp->lwp_thread);
 	}
 	crit_exit();
 }
@@ -995,12 +1005,15 @@ loadav(void *arg)
 static int
 loadav_count_runnable(struct proc *p, void *data)
 {
+	struct lwp *lp;
 	int *nrunp = data;
 	thread_t td;
 
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 	switch (p->p_stat) {
 	case SRUN:
-		if ((td = p->p_thread) == NULL)
+		if ((td = lp->lwp_thread) == NULL)
 			break;
 		if (td->td_flags & TDF_BLOCKED)
 			break;

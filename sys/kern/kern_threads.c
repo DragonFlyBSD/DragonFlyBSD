@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.10 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,14 @@
 #include <sys/resourcevar.h>
 #include <sys/sysproto.h>
 #include <sys/uio.h>		/* uio_yield() fixme */
+
+
+/*
+ * XXX lwp
+ *
+ * I am unhappy code, please remove me
+ */
+
 
 /*
  * Low level support for sleep/wakeup paradigm
@@ -132,7 +140,8 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 	}
 
 	pSlave->p_wakeup++;
-	if((pSlave->p_stat == SSLEEP) && (pSlave->p_wchan == pSlave)) {
+	if((pSlave->p_stat == SSLEEP) &&
+	   (FIRST_LWP_IN_PROC(pSlave)->lwp_wchan == pSlave)) {
 		wakeup(pSlave);
 		return(0);
 	}

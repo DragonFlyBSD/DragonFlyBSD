@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.61 2007/01/14 07:59:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.62 2007/02/03 17:05:58 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -395,6 +395,7 @@ void
 execsigs(struct proc *p)
 {
 	struct sigacts *ps = p->p_sigacts;
+	struct lwp *lp;
 	int sig;
 
 	/*
@@ -416,10 +417,11 @@ execsigs(struct proc *p)
 	 * Reset stack state to the user stack.
 	 * Clear set of signals caught on the signal stack.
 	 */
-	p->p_sigstk.ss_flags = SS_DISABLE;
-	p->p_sigstk.ss_size = 0;
-	p->p_sigstk.ss_sp = 0;
-	p->p_flag &= ~P_ALTSTACK;
+	lp = ONLY_LWP_IN_PROC(p);
+	lp->lwp_sigstk.ss_flags = SS_DISABLE;
+	lp->lwp_sigstk.ss_size = 0;
+	lp->lwp_sigstk.ss_sp = 0;
+	lp->lwp_flag &= ~LWP_ALTSTACK;
 	/*
 	 * Reset no zombies if child dies flag as Solaris does.
 	 */
@@ -436,25 +438,25 @@ int
 kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	int error;
 
 	if (oset != NULL)
-		*oset = p->p_sigmask;
+		*oset = lp->lwp_sigmask;
 
 	error = 0;
 	if (set != NULL) {
 		switch (how) {
 		case SIG_BLOCK:
 			SIG_CANTMASK(*set);
-			SIGSETOR(p->p_sigmask, *set);
+			SIGSETOR(lp->lwp_sigmask, *set);
 			break;
 		case SIG_UNBLOCK:
-			SIGSETNAND(p->p_sigmask, *set);
+			SIGSETNAND(lp->lwp_sigmask, *set);
 			break;
 		case SIG_SETMASK:
 			SIG_CANTMASK(*set);
-			p->p_sigmask = *set;
+			lp->lwp_sigmask = *set;
 			break;
 		default:
 			error = EINVAL;
@@ -520,6 +522,7 @@ int
 kern_sigsuspend(struct __sigset *set)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	struct sigacts *ps = p->p_sigacts;
 
@@ -530,11 +533,11 @@ kern_sigsuspend(struct __sigset *set)
 	 * save it here and mark the sigacts structure
 	 * to indicate this.
 	 */
-	p->p_oldsigmask = p->p_sigmask;
-	p->p_flag |= P_OLDMASK;
+	lp->lwp_oldsigmask = lp->lwp_sigmask;
+	lp->lwp_flag |= LWP_OLDMASK;
 
 	SIG_CANTMASK(*set);
-	p->p_sigmask = *set;
+	lp->lwp_sigmask = *set;
 	while (tsleep(ps, PCATCH, "pause", 0) == 0)
 		/* void */;
 	/* always return EINTR rather than ERESTART... */
@@ -564,25 +567,26 @@ int
 kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 
-	if ((p->p_flag & P_ALTSTACK) == 0)
-		p->p_sigstk.ss_flags |= SS_DISABLE;
+	if ((lp->lwp_flag & LWP_ALTSTACK) == 0)
+		lp->lwp_sigstk.ss_flags |= SS_DISABLE;
 
 	if (oss)
-		*oss = p->p_sigstk;
+		*oss = lp->lwp_sigstk;
 
 	if (ss) {
 		if (ss->ss_flags & SS_DISABLE) {
-			if (p->p_sigstk.ss_flags & SS_ONSTACK)
+			if (lp->lwp_sigstk.ss_flags & SS_ONSTACK)
 				return (EINVAL);
-			p->p_flag &= ~P_ALTSTACK;
-			p->p_sigstk.ss_flags = ss->ss_flags;
+			lp->lwp_flag &= ~LWP_ALTSTACK;
+			lp->lwp_sigstk.ss_flags = ss->ss_flags;
 		} else {
 			if (ss->ss_size < p->p_sysent->sv_minsigstksz)
 				return (ENOMEM);
-			p->p_flag |= P_ALTSTACK;
-			p->p_sigstk = *ss;
+			lp->lwp_flag |= LWP_ALTSTACK;
+			lp->lwp_sigstk = *ss;
 		}
 	}
 
@@ -757,8 +761,9 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
  * Otherwise, post it normally.
  */
 void
-trapsignal(struct proc *p, int sig, u_long code)
+trapsignal(struct lwp *lp, int sig, u_long code)
 {
+	struct proc *p = lp->lwp_proc;
 	struct sigacts *ps = p->p_sigacts;
 
 	/*
@@ -774,18 +779,18 @@ trapsignal(struct proc *p, int sig, u_long code)
 
 
 	if ((p->p_flag & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
-	    !SIGISMEMBER(p->p_sigmask, sig)) {
-		p->p_lwp.lwp_ru.ru_nsignals++;
+	    !SIGISMEMBER(lp->lwp_sigmask, sig)) {
+		lp->lwp_ru.ru_nsignals++;
 #ifdef KTRACE
-		if (KTRPOINT(p->p_thread, KTR_PSIG))
+		if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
 			ktrpsig(p, sig, ps->ps_sigact[_SIG_IDX(sig)],
-				&p->p_sigmask, code);
+				&lp->lwp_sigmask, code);
 #endif
 		(*p->p_sysent->sv_sendsig)(ps->ps_sigact[_SIG_IDX(sig)], sig,
-						&p->p_sigmask, code);
-		SIGSETOR(p->p_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
+						&lp->lwp_sigmask, code);
+		SIGSETOR(lp->lwp_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
 		if (!SIGISMEMBER(ps->ps_signodefer, sig))
-			SIGADDSET(p->p_sigmask, sig);
+			SIGADDSET(lp->lwp_sigmask, sig);
 		if (SIGISMEMBER(ps->ps_sigreset, sig)) {
 			/*
 			 * See kern_sigaction() for origin of this code.
@@ -819,7 +824,8 @@ trapsignal(struct proc *p, int sig, u_long code)
 void
 ksignal(struct proc *p, int sig)
 {
-	struct lwp *lp = &p->p_lwp;
+	/* XXX lwp more intelligent lwp choice needed */
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	int prop;
 	sig_t action;
 
@@ -851,7 +857,7 @@ ksignal(struct proc *p, int sig)
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig) || (p->p_flag & P_WEXIT))
 			return;
-		if (SIGISMEMBER(p->p_sigmask, sig))
+		if (SIGISMEMBER(lp->lwp_sigmask, sig))
 			action = SIG_HOLD;
 		else if (SIGISMEMBER(p->p_sigcatch, sig))
 			action = SIG_CATCH;
@@ -1056,7 +1062,7 @@ ksignal(struct proc *p, int sig)
 	if (lp == lwkt_preempted_proc()) {
 		signotify();
 	} else if (p->p_stat == SRUN) {
-		struct thread *td = p->p_thread;
+		struct thread *td = lp->lwp_thread;
 
 		KASSERT(td != NULL, 
 		    ("pid %d NULL p_thread stat %d flags %08x",
@@ -1111,6 +1117,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 {
 	sigset_t savedmask, set;
 	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	int error, sig, hz, timevalid = 0;
 	struct timespec rts, ets, ts;
 	struct timeval tv;
@@ -1118,7 +1125,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 	error = 0;
 	sig = 0;
 	SIG_CANTMASK(waitset);
-	savedmask = p->p_sigmask;
+	savedmask = lp->lwp_sigmask;
 
 	if (timeout) {
 		if (timeout->tv_sec >= 0 && timeout->tv_nsec >= 0 &&
@@ -1134,10 +1141,10 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		set = p->p_siglist;
 		SIGSETAND(set, waitset);
 		if ((sig = sig_ffs(&set)) != 0) {
-			SIGFILLSET(p->p_sigmask);
-			SIGDELSET(p->p_sigmask, sig);
-			SIG_CANTMASK(p->p_sigmask);
-			sig = issignal(p);
+			SIGFILLSET(lp->lwp_sigmask);
+			SIGDELSET(lp->lwp_sigmask, sig);
+			SIG_CANTMASK(lp->lwp_sigmask);
+			sig = issignal(lp);
 			/*
 			 * It may be a STOP signal, in the case, issignal
 			 * returns 0, because we may stop there, and new
@@ -1178,8 +1185,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		} else
 			hz = 0;
 
-		p->p_sigmask = savedmask;
-		SIGSETNAND(p->p_sigmask, waitset);
+		lp->lwp_sigmask = savedmask;
+		SIGSETNAND(lp->lwp_sigmask, waitset);
 		error = tsleep(&p->p_sigacts, PCATCH, "sigwt", hz);
 		if (timeout) {
 			if (error == ERESTART) {
@@ -1193,7 +1200,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		/* Retry ... */
 	}
 
-	p->p_sigmask = savedmask;
+	lp->lwp_sigmask = savedmask;
 	if (sig) {
 		error = 0;
 		bzero(info, sizeof(*info));
@@ -1267,12 +1274,13 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
  * system call, return EINTR or ERESTART as appropriate.
  */
 int
-iscaught(struct proc *p)
+iscaught(struct lwp *lp)
 {
+	struct proc *p = lp->lwp_proc;
 	int sig;
 
 	if (p) {
-		if ((sig = CURSIG(p)) != 0) {
+		if ((sig = CURSIG(lp)) != 0) {
 			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
 				return (EINTR);                        
 			return (ERESTART);     
@@ -1297,8 +1305,9 @@ iscaught(struct proc *p)
  *		postsig(sig);
  */
 int
-issignal(struct proc *p)
+issignal(struct lwp *lp)
 {
+	struct proc *p = lp->lwp_proc;
 	sigset_t mask;
 	int sig, prop;
 
@@ -1307,7 +1316,7 @@ issignal(struct proc *p)
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
 
 		mask = p->p_siglist;
-		SIGSETNAND(mask, p->p_sigmask);
+		SIGSETNAND(mask, lp->lwp_sigmask);
 		if (p->p_flag & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
 		if (!SIGNOTEMPTY(mask)) { 	/* no signal to send */
@@ -1360,7 +1369,7 @@ issignal(struct proc *p)
 			 * signal is being masked, look for other signals.
 			 */
 			SIGADDSET(p->p_siglist, sig);
-			if (SIGISMEMBER(p->p_sigmask, sig))
+			if (SIGISMEMBER(lp->lwp_sigmask, sig))
 				continue;
 
 			/*
@@ -1470,8 +1479,8 @@ issignal(struct proc *p)
 void
 postsig(int sig)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
 	struct sigacts *ps = p->p_sigacts;
 	sig_t action;
 	sigset_t returnmask;
@@ -1493,9 +1502,9 @@ postsig(int sig)
 	SIGDELSET(p->p_siglist, sig);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
-	if (KTRPOINT(td, KTR_PSIG))
-		ktrpsig(p, sig, action, p->p_flag & P_OLDMASK ?
-			&p->p_oldsigmask : &p->p_sigmask, 0);
+	if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
+		ktrpsig(p, sig, action, lp->lwp_flag & LWP_OLDMASK ?
+			&lp->lwp_oldsigmask : &lp->lwp_sigmask, 0);
 #endif
 	STOPEVENT(p, S_SIG, sig);
 
@@ -1510,7 +1519,7 @@ postsig(int sig)
 		/*
 		 * If we get here, the signal must be caught.
 		 */
-		KASSERT(action != SIG_IGN && !SIGISMEMBER(p->p_sigmask, sig),
+		KASSERT(action != SIG_IGN && !SIGISMEMBER(lp->lwp_sigmask, sig),
 		    ("postsig action"));
 
 		crit_enter();
@@ -1552,18 +1561,19 @@ postsig(int sig)
 		 * mask from before the sigsuspend is what we want
 		 * restored after the signal processing is completed.
 		 */
-		if (p->p_flag & P_OLDMASK) {
-			returnmask = p->p_oldsigmask;
-			p->p_flag &= ~P_OLDMASK;
+		if (lp->lwp_flag & LWP_OLDMASK) {
+			returnmask = lp->lwp_oldsigmask;
+			lp->lwp_flag &= ~LWP_OLDMASK;
 		} else {
-			returnmask = p->p_sigmask;
+			returnmask = lp->lwp_sigmask;
 		}
-		SIGSETOR(p->p_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
+
+		SIGSETOR(lp->lwp_sigmask, ps->ps_catchmask[_SIG_IDX(sig)]);
 		if (!SIGISMEMBER(ps->ps_signodefer, sig))
-			SIGADDSET(p->p_sigmask, sig);
+			SIGADDSET(lp->lwp_sigmask, sig);
 
 		crit_exit();
-		p->p_lwp.lwp_ru.ru_nsignals++;
+		lp->lwp_ru.ru_nsignals++;
 		if (p->p_sig != sig) {
 			code = 0;
 		} else {
