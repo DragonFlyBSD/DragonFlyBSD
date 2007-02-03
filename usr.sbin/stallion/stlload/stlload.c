@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlload/stlload.c,v 1.10.2.2 2002/02/13 22:55:45 dbaker Exp $
- * $DragonFly: src/usr.sbin/stallion/stlload/stlload.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlload/stlload.c,v 1.4 2007/02/03 23:13:19 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -200,7 +200,7 @@ download(void)
 		printf("Stoping any current slave\n");
 	if (ioctl(memfd, STL_BSTOP, 0) < 0) {
 		warn("ioctl(STL_BSTOP)");
-		printf(" (Perhaps you're trying to download firmare to a PCI card that\n doesn't require this?)\n");
+		printf(" (Perhaps you're trying to download firmware to a PCI card that\n doesn't require this?)\n");
 		return(-1);
 	}
 

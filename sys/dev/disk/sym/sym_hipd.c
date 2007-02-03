@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.20 2006/12/22 23:26:17 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.21 2007/02/03 23:13:19 swildner Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -2362,7 +2362,7 @@ static void sym_fw_bind_script (hcb_p np, u32 *start, int len)
 }
 
 /*--------------------------------------------------------------------------*/
-/*--------------------------- END OF FIRMARES  -----------------------------*/
+/*--------------------------- END OF FIRMWARES  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
 /*
