@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.5 2007/02/02 15:22:08 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.6 2007/02/03 11:27:07 swildner Exp $
 .\"
 .Dd January 19, 2007
 .Dt VKERNEL 7
@@ -137,6 +137,16 @@ By default, those are disabled for security reasons.
 .It Fl v
 Turn on verbose booting.
 .El
+.Sh SIGNALS
+The virtual kernel enables all terminal signals while in
+.Xr ddb 4
+mode but only enables
+.Ql \&^\e
+.Pq Dv SIGQUIT
+while operating as a console which causes the virtual kernel to enter its
+internal
+.Xr ddb 4
+debugger.
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
