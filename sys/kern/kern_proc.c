@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.33 2007/02/01 20:27:05 tgen Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.34 2007/02/03 10:02:01 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -595,91 +595,6 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 	}
 }
 #endif /* DDB */
-
-#if 0
-/*
- * Fill in an eproc structure for the specified thread.
- */
-void
-fill_eproc_td(thread_t td, struct eproc *ep, struct proc *xp)
-{
-	bzero(ep, sizeof(*ep));
-
-	ep->e_uticks = td->td_uticks;
-	ep->e_sticks = td->td_sticks;
-	ep->e_iticks = td->td_iticks;
-	ep->e_tdev = NOUDEV;
-	ep->e_cpuid = td->td_gd->gd_cpuid;
-	if (td->td_wmesg) {
-		strncpy(ep->e_wmesg, td->td_wmesg, WMESGLEN);
-		ep->e_wmesg[WMESGLEN] = 0;
-	}
-
-	/*
-	 * Fake up portions of the proc structure copied out by the sysctl
-	 * to return useful information.  Note that using td_pri directly
-	 * is messy because it includes critial section data so we fake
-	 * up an rtprio.prio for threads.
-	 */
-	if (xp) {
-		*xp = *initproc;
-		xp->p_rtprio.type = RTP_PRIO_THREAD;
-		xp->p_rtprio.prio = td->td_pri & TDPRI_MASK;
-		xp->p_pid = -1;
-	}
-}
-
-/*
- * Fill in an eproc structure for the specified process.
- */
-void
-fill_eproc(struct proc *p, struct eproc *ep)
-{
-	struct tty *tp;
-
-	fill_eproc_td(p->p_thread, ep, NULL);
-
-	ep->e_paddr = p;
-	if (p->p_ucred) {
-		ep->e_ucred = *p->p_ucred;
-	}
-	if (p->p_procsig) {
-		ep->e_procsig = *p->p_procsig;
-	}
-	if (p->p_stat != SIDL && (p->p_flag & P_ZOMBIE) == 0 && 
-	    p->p_vmspace != NULL) {
-		struct vmspace *vm = p->p_vmspace;
-		ep->e_vm = *vm;
-		ep->e_vm.vm_rssize = vmspace_resident_count(vm); /*XXX*/
-	}
-	if (p->p_pptr)
-		ep->e_ppid = p->p_pptr->p_pid;
-	if (p->p_pgrp) {
-		ep->e_pgid = p->p_pgrp->pg_id;
-		ep->e_jobc = p->p_pgrp->pg_jobc;
-		ep->e_sess = p->p_pgrp->pg_session;
-
-		if (ep->e_sess) {
-			bcopy(ep->e_sess->s_login, ep->e_login, sizeof(ep->e_login));
-			if (ep->e_sess->s_ttyvp)
-				ep->e_flag = EPROC_CTTY;
-			if (p->p_session && SESS_LEADER(p))
-				ep->e_flag |= EPROC_SLEADER;
-		}
-	}
-	if ((p->p_flag & P_CONTROLT) &&
-	    (ep->e_sess != NULL) &&
-	    ((tp = ep->e_sess->s_ttyp) != NULL)) {
-		ep->e_tdev = dev2udev(tp->t_dev);
-		ep->e_tpgid = tp->t_pgrp ? tp->t_pgrp->pg_id : NO_PID;
-		ep->e_tsess = tp->t_session;
-	} else {
-		ep->e_tdev = NOUDEV;
-	}
-	if (p->p_ucred->cr_prison)
-		ep->e_jailid = p->p_ucred->cr_prison->pr_id;
-}
-#endif
 
 /*
  * Locate a process on the zombie list.  Return a held process or NULL.
