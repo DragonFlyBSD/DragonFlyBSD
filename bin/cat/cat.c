@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.14 2007/02/04 18:43:39 pavalos Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.15 2007/02/04 19:27:58 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -293,8 +293,11 @@ udom_open(const char *path, int flags)
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd >= 0) {
 		sou.sun_family = AF_UNIX;
-		snprintf(sou.sun_path, sizeof(sou.sun_path), "%s", path);
-		len = strlen(sou.sun_path);
+		if ((len = strlcpy(sou.sun_path, path,
+		    sizeof(sou.sun_path))) >= sizeof(sou.sun_path)) {
+			errno = ENAMETOOLONG;
+			return (-1);
+		}
 		len = offsetof(struct sockaddr_un, sun_path[len+1]);
 
 		if (connect(fd, (void *)&sou, len) < 0) {
