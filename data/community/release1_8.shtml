@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.2 2007/01/31 07:48:34 swildner Exp $ -->
+<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.3 2007/02/04 17:20:57 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.8.x for your system</h1>
 
@@ -158,6 +158,7 @@ stable then 1.6.
 	    devices, better ifconfig integration, and more).
 	<li>The cpdup program has been greatly enhanced and now supports
 	    remote copies via ssh.
+	<li>Introduce getcontext(3), setcontext(3), and friends
 	<li>Improved support for old-style disklabels.
 	<li>Kernel sources are now included on release CDs.
 	<li>Major rewrite of the vnode operations infrastructure, greatly
