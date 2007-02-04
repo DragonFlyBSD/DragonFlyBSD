@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/firewire/fwe/Makefile,v 1.2.2.2 2003/04/28 03:29:19 simokawa Exp $
-# $DragonFly: src/sys/dev/netif/fwe/Makefile,v 1.5 2005/10/24 08:06:15 sephe Exp $
+# $DragonFly: src/sys/dev/netif/fwe/Makefile,v 1.6 2007/02/04 05:26:05 swildner Exp $
 
 # Makefile for the fwe(4) module (Ethernet over IEEE1394)
 
@@ -11,5 +11,7 @@ SRCS+=	bus_if.h device_if.h opt_inet.h opt_polling.h
 opt_polling.h:
 	echo '#define DEVICE_POLLING 1' > ${.OBJDIR}/${.TARGET}
 .endif
+
+KMODDEPS=	firewire
 
 .include <bsd.kmod.mk>
