@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/kenv.9,v 1.4 2007/01/17 13:17:31 tgen Exp $
+.\" $DragonFly: src/share/man/man9/kenv.9,v 1.5 2007/02/04 04:31:13 swildner Exp $
 .\"
 .Dd January 16, 2007
 .Dt KENV 9
@@ -84,7 +84,7 @@ The
 functions look up a given entry in the kernel environment, and return it if
 found.
 The
-.Fn kgetenv_{int,quad.string}
+.Fn kgetenv_{int,quad,string}
 functions return
 .Dv 1
 if unsuccessful,
