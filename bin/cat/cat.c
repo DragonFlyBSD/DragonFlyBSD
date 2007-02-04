@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.13 2004/11/07 23:44:38 dillon Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.14 2007/02/04 18:43:39 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -180,29 +180,23 @@ cook_cat(FILE *fp)
 	line = gobble = 0;
 	for (prev = '\n'; (ch = getc(fp)) != EOF; prev = ch) {
 		if (prev == '\n') {
-			if (ch == '\n') {
-				if (sflag) {
-					if (!gobble && putchar(ch) == EOF)
-						break;
+			if (sflag) {
+				if (ch == '\n') {
+					if (gobble)
+						continue;
 					gobble = 1;
-					continue;
-				}
-				if (nflag && !bflag) {
-					fprintf(stdout, "%6d\t", ++line);
-					if (ferror(stdout))
-						break;
-				}
-			} else if (nflag) {
+				} else
+					gobble = 0;
+			}
+			if (nflag && (!bflag || ch != '\n')) {
 				fprintf(stdout, "%6d\t", ++line);
 				if (ferror(stdout))
 					break;
 			}
 		}
-		gobble = 0;
 		if (ch == '\n') {
-			if (eflag)
-				if (putchar('$') == EOF)
-					break;
+			if (eflag && putchar('$') == EOF)
+				break;
 		} else if (ch == '\t') {
 			if (tflag) {
 				if (putchar('^') == EOF || putchar('I') == EOF)
