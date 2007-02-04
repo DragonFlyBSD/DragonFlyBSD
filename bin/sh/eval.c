@@ -35,9 +35,10 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.53 2006/06/15 07:57:05 stefanf Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.11 2007/01/14 17:29:58 pavalos Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.12 2007/02/04 19:45:24 corecode Exp $
  */
 
+#include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
 
