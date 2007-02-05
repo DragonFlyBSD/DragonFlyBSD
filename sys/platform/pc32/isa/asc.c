@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.17 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.18 2007/02/05 09:38:19 corecode Exp $
  */
 
 #include "use_asc.h"
@@ -862,12 +862,8 @@ ascpoll(struct dev_poll_args *ap)
 	else {
 	    if (!(scu->flags & DMA_ACTIVE))
 		dma_restart(scu);
-	    
-	    if (scu->selp.si_pid && (p1=pfind(scu->selp.si_pid))
-		    && p1->p_wchan == (caddr_t)&selwait)
-		scu->selp.si_flags = SI_COLL;
-	    else
-		scu->selp.si_pid = curproc->p_pid;
+
+	    selrecord(curthread, &scu->selp);
 	}
     }
     crit_exit();
