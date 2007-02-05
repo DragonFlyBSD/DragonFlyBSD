@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.8 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.9 2007/02/05 15:19:04 sephe Exp $
  */
 
 /*
@@ -50,6 +50,14 @@
 #include <dev/netif/ral/if_ralrate.h>
 #include <dev/netif/ral/rt2560reg.h>
 #include <dev/netif/ral/rt2560var.h>
+
+#ifdef notyet
+#define RT2560_RSSI(sc, rssi)					\
+	((rssi) > (RT2560_NOISE_FLOOR + (sc)->rssi_corr) ?	\
+	 ((rssi) - RT2560_NOISE_FLOOR - (sc)->rssi_corr) : 0)
+#else
+#define RT2560_RSSI(sc, rssi)	(rssi)
+#endif
 
 #ifdef RAL_DEBUG
 #define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
@@ -1285,7 +1293,7 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 			tap->wr_chan_freq = htole16(ic->ic_curchan->ic_freq);
 			tap->wr_chan_flags = htole16(ic->ic_curchan->ic_flags);
 			tap->wr_antenna = sc->rx_ant;
-			tap->wr_antsignal = desc->rssi;
+			tap->wr_antsignal = RT2560_RSSI(sc, desc->rssi);
 
 			bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 		}
@@ -1295,11 +1303,12 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		    (struct ieee80211_frame_min *)wh);
 
 		/* send the frame to the 802.11 layer */
-		ieee80211_input(ic, m, ni, desc->rssi, 0);
+		ieee80211_input(ic, m, ni, RT2560_RSSI(sc, desc->rssi), 0);
 
 		/* give rssi to the rate adatation algorithm */
 		rn = (struct rt2560_node *)ni;
-		ral_rssadapt_input(ic, ni, &rn->rssadapt, desc->rssi);
+		ral_rssadapt_input(ic, ni, &rn->rssadapt,
+				   RT2560_RSSI(sc, desc->rssi));
 
 		/* node is no longer needed */
 		ieee80211_free_node(ni);
@@ -2542,6 +2551,14 @@ rt2560_read_eeprom(struct rt2560_softc *sc)
 		sc->txpow[i * 2] = val >> 8;
 		sc->txpow[i * 2 + 1] = val & 0xff;
 	}
+
+	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CALIBRATE);
+	if ((val & 0xff00) == 0xff00)
+		sc->rssi_corr = RT2560_DEFAULT_RSSI_CORR;
+	else
+		sc->rssi_corr = val >> 8;
+	DPRINTF(("rssi correction %d, calibrate 0x%02x\n",
+		 sc->rssi_corr, val));
 }
 
 static int
