@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.8 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.9 2007/02/05 22:19:28 corecode Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -103,7 +103,7 @@ kernel-tags:
 	rm -f tags1
 	sed -e 's,      ../,    ,' tags > tags1
 
-# Note: when moving the existing kernel to .old, make sure it is stripped
+# Note: when moving the existing kernel to .old, it is by default stripped
 # so we do not have two full debug environments sitting in / eating up space.
 #
 kernel-install:
@@ -112,16 +112,24 @@ kernel-install:
 		exit 1 ; \
 	fi
 .ifdef NOFSCHG
-.if exists(${DESTDIR}/${KERNEL})
+.  if exists(${DESTDIR}/${KERNEL})
+.    ifdef NO_KERNEL_OLD_STRIP
+	cp -p ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+.    else
 	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
-.endif
+.    endif
+.  endif
 	${INSTALL} -m 555 -o root -g wheel \
 		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
 .else
-.if exists(${DESTDIR}/${KERNEL})
+.  if exists(${DESTDIR}/${KERNEL})
 	-chflags noschg ${DESTDIR}/${KERNEL}
+.    ifdef NO_KERNEL_OLD_STRIP
+	cp -p ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+.    else
 	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
-.endif
+.    endif
+.  endif
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
 .endif
@@ -172,11 +180,20 @@ modules-cleandir:
 modules-tags:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules tags
 
-# Note: when moving the existing modules to .old, make sure they are stripped
+# Note: when moving the existing modules to .old, they are by default stripped
 # so we do not have two full debug environments sitting in / eating up space.
 #
 modules-install:
 .if !defined(NO_MODULES_OLD)
+.  ifdef NO_KERNEL_OLD_STRIP
+	set -- ${DESTDIR}/modules/*; \
+	if [ -f "$$1" ]; then \
+		mkdir -p ${DESTDIR}/modules.old; \
+		for file; do \
+		cp -p $$file ${DESTDIR}/modules.old; \
+		done; \
+	fi
+.  else
 	set -- ${DESTDIR}/modules/*; \
 	if [ -f "$$1" ]; then \
 		mkdir -p ${DESTDIR}/modules.old; \
@@ -184,6 +201,7 @@ modules-install:
 		${OBJCOPY} --strip-debug $$file ${DESTDIR}/modules.old/$${file##*/}; \
 		done; \
 	fi
+.  endif
 .endif
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
