@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.197 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.2 2007/02/05 18:10:14 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -362,25 +362,12 @@ ad_dump(struct dev_dump_args *ap)
 {
     device_t dev = ap->a_head.a_dev->si_drv1;
     struct ata_device *atadev = device_get_softc(dev);
-    struct bio bp;
-    struct buf bbp;
-    struct dev_strategy_args dsap;
+    struct ata_request request;
     vm_paddr_t addr = 0;
     long blkcnt;
     int dumppages = MAXDUMPPGS;
     int error = 0;
     int i;
-
-#if 0
-    /* XXX TGEN Figure out if we need to support this as well. */
-    /* XXX TGEN Seems like we don't, ad_dump isn't called recursively. */
-    /* length zero is special and really means flush buffers to media */
-    if (!length) {
-	if (atadev->param.support.command2 & ATA_SUPPORT_FLUSHCACHE)
-	    error = ata_controlcmd(dev, ATA_FLUSHCACHE, 0, 0, 0);
-	return error;
-    }
-#endif /* 0 */
 
     blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
@@ -398,21 +385,27 @@ ad_dump(struct dev_dump_args *ap)
 		va = pmap_kenter_temporary(trunc_page(0), i);
 	}
 
-	bzero(&bp, sizeof(struct bio));
-	bzero(&bbp, sizeof(struct buf));
-	bzero(&dsap, sizeof(struct dev_strategy_args));
-	bp.bio_buf = &bbp;
-	/* bio_offset is byte granularity, convert block granularity a_blkno */
-	bp.bio_offset = (off_t)(ap->a_blkno << DEV_BSHIFT);
-	bbp.b_bcount = PAGE_SIZE * dumppages;
-	bbp.b_data = va;
-	bbp.b_cmd = BUF_CMD_WRITE;
-	/* XXX TGEN With the previous bzero probably not efficient. */
-	dsap.a_head = ap->a_head;
-	dsap.a_bio = &bp;
-	ad_strategy(&dsap);
-	if (bbp.b_error)
-	    return bbp.b_error;
+	bzero(&request, sizeof(struct ata_request));
+	request.dev = dev;
+	/* request.bio = NULL; */
+	request.timeout = 5;
+	request.retries = 2;
+	request.data = va;
+	request.bytecount = dumppages * PAGE_SIZE;
+	request.u.ata.lba = ap->a_blkno;
+	request.u.ata.count = request.bytecount / DEV_BSIZE;
+	request.transfersize = min(request.bytecount, atadev->max_iosize);
+	request.flags = ATA_R_WRITE | ATA_R_AT_HEAD;
+	if (atadev->mode >= ATA_DMA) {
+	    request.u.ata.command = ATA_WRITE_DMA;
+	    request.flags |= ATA_DMA;
+	} else if (request.transfersize > DEV_BSIZE)
+	    request.u.ata.command = ATA_WRITE_MUL;
+	else
+	    request.u.ata.command = ATA_WRITE;
+	ata_queue_request(&request);
+	if (request.result)
+	    return request.result;
 
 	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
 	    return EINTR;
