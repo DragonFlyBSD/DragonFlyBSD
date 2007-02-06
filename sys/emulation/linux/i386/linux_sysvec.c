@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.27 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.28 2007/02/06 05:56:03 y0netan1 Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -350,7 +350,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 #ifdef DEBUG
 	if (ldebug(rt_sendsig))
 		kprintf(LMSG("rt_sendsig flags: 0x%x, sp: %p, ss: 0x%x, mask: 0x%x"),
-		    frame.sf_sc.uc_stack.ss_flags, p->p_sigstk.ss_sp,
+		    frame.sf_sc.uc_stack.ss_flags, lp->lwp_sigstk.ss_sp,
 		    lp->lwp_sigstk.ss_size, frame.sf_sc.uc_mcontext.sc_mask);
 #endif
 
