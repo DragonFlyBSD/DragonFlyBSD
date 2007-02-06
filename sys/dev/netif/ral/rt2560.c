@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.9 2007/02/05 15:19:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.10 2007/02/06 12:38:30 sephe Exp $
  */
 
 /*
@@ -51,13 +51,9 @@
 #include <dev/netif/ral/rt2560reg.h>
 #include <dev/netif/ral/rt2560var.h>
 
-#ifdef notyet
 #define RT2560_RSSI(sc, rssi)					\
 	((rssi) > (RT2560_NOISE_FLOOR + (sc)->rssi_corr) ?	\
 	 ((rssi) - RT2560_NOISE_FLOOR - (sc)->rssi_corr) : 0)
-#else
-#define RT2560_RSSI(sc, rssi)	(rssi)
-#endif
 
 #ifdef RAL_DEBUG
 #define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
