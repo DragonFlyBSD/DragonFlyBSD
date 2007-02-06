@@ -24,42 +24,43 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.3 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.4 2007/02/06 15:17:44 tgen Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include "opt_ata.h"
+
 #include <sys/param.h>
-#include <sys/systm.h> 
-#include <sys/nata.h> 
-#include <sys/kernel.h>
-#include <sys/malloc.h>
-#include <sys/module.h>
-#include <sys/endian.h>
 #include <sys/bio.h>
+#include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/disk.h>
-#include <sys/cons.h>
-#include <sys/sema.h>
-#include <sys/taskqueue.h>
-#include <sys/objcache.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
-#include <dev/pci/pcivar.h>
-#include <geom/geom_disk.h>
-#include <dev/ata/ata-all.h>
-#include <dev/ata/ata-disk.h>
-#include <dev/ata/ata-raid.h>
-#include <dev/ata/ata-pci.h>
-#include <ata_if.h>
+#include <sys/endian.h>
+#include <sys/libkern.h>
+#include <sys/malloc.h>
+#include <sys/module.h>
+#include <sys/nata.h>
+#include <sys/systm.h>
+
+#include <vm/pmap.h>
+
+#include <machine/md_var.h>
+
+#include <bus/pci/pcivar.h>
+
+#include "ata-all.h"
+#include "ata-disk.h"
+#include "ata-raid.h"
+#include "ata-pci.h"
+#include "ata_if.h"
+
 
 /* device structure */
 static	d_strategy_t	ata_raid_strategy;
 static	d_dump_t	ata_raid_dump;
-static struct dev_ops ata_raid_ops = {
-	{ "ata_raid", 157, D_DISK },
+static struct dev_ops ar_ops = {
+	{ "ar", 157, D_DISK },
 	.d_open =	nullopen,
 	.d_close =	nullclose,
 	.d_read =	physread,
@@ -130,7 +131,7 @@ static int testing = 0;
 static void
 ata_raid_attach(struct ar_softc *rdp, int writeback)
 {
-    dev_t device;
+    cdev_t cdev;
     char buffer[32];
     int disk;
 
@@ -147,10 +148,12 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     }
     else
 	buffer[0] = '\0';
-    device = disk_create(rdp->lun, &rdp->disk, 0, &ata_raid_ops);
-    device->si_drv1 = rdp;
-    device->si_iosize_max = 128 * DEV_BSIZE;
-    rdp->dev = device;
+    /* XXX TGEN add devstats? */
+    cdev = disk_create(rdp->lun, &rdp->disk, 0, &ar_ops);
+    cdev->si_drv1 = rdp;
+    cdev->si_iosize_max = 128 * DEV_BSIZE;
+    rdp->cdev = cdev;
+    bzero(&rdp->disk.d_label, sizeof(struct disklabel));
     rdp->disk.d_label.d_secsize = DEV_BSIZE;
     rdp->disk.d_label.d_nsectors = rdp->sectors;
     rdp->disk.d_label.d_ntracks = rdp->heads;
@@ -250,9 +253,9 @@ ata_raid_ioctl(u_long cmd, caddr_t data)
 static int
 ata_raid_strategy(struct dev_strategy_args *ap)
 {
+    struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
     struct bio *bp = ap->a_bio;
     struct buf *bbp = bp->bio_buf;
-    struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
     struct ata_request *request;
     caddr_t data;
     u_int64_t blkno, lba, blk = 0;
@@ -263,7 +266,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	bbp->b_flags |= B_ERROR;
 	bbp->b_error = EIO;
 	biodone(bp);
-	return;
+	return(0);
     }
 
     bbp->b_resid = bbp->b_bcount;
@@ -314,7 +317,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    bbp->b_flags |= B_ERROR;
 	    bbp->b_error = EIO;
 	    biodone(bp);
-	    return;
+	    return(0);
 	}
 	 
 	/* offset on all but "first on HPTv2" */
@@ -325,7 +328,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    bbp->b_flags |= B_ERROR;
 	    bbp->b_error = EIO;
 	    biodone(bp);
-	    return;
+	    return(0);
 	}
 	request->data = data;
 	request->bytecount = chunk * DEV_BSIZE;
@@ -344,7 +347,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		bbp->b_flags |= B_ERROR;
 		bbp->b_error = EIO;
 		biodone(bp);
-		return;
+		return(0);
 	    }
 	    request->this = drv;
 	    request->dev = rdp->disks[request->this].dev;
@@ -372,7 +375,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		bbp->b_flags |= B_ERROR;
 		bbp->b_error = EIO;
 		biodone(bp);
-		return;
+		return(0);
 	    }
 
 	    if (rdp->status & AR_S_REBUILDING)
@@ -549,7 +552,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		bbp->b_flags |= B_ERROR;
 		bbp->b_error = EIO;
 		biodone(bp);
-		return;
+		return(0);
 	    }
 	    if (rdp->status & AR_S_DEGRADED) {
 		/* do the XOR game if possible */
@@ -562,6 +565,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		}
 		if (bbp->b_cmd == BUF_CMD_WRITE) { 
 		    ata_raid_send_request(request);
+		    /* XXX TGEN no, I don't speak Danish either */
 		    // sikre at læs-modify-skriv til hver disk er atomarisk.
 		    // par kopi af request
 		    // læse orgdata fra drv
@@ -576,6 +580,8 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    kprintf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
 	}
     }
+
+    return(0);
 }
 
 static void
@@ -797,28 +803,12 @@ static int
 ata_raid_dump(struct dev_dump_args *ap)
 {
     struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
-    struct bio bp;
-    struct buf bbp;
-    struct dev_strategy_args dsap;
+    struct buf dbuf;
     vm_paddr_t addr = 0;
     long blkcnt;
     int dumppages = MAXDUMPPGS;
     int error = 0;
-    int disk = 0;
     int i;
-
-#if 0
-    /* XXX TGEN Figure out if we need to support this as well. */
-    /* XXX TGEN Seems like we don't, ata_raid_dump isn't called recursively. */
-    /* length zero is special and really means flush buffers to media */
-    if (!length) {
-	for (disk = 0, error = 0; disk < rdp->total_disks; disk++) 
-	    if (rdp->disks[disk].dev)
-		error |= ata_controlcmd(rdp->disks[disk].dev,
-					ATA_FLUSHCACHE, 0, 0, 0);
-	return (error ? EIO : 0);
-    }
-#endif /* 0 */
 
     blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
@@ -836,24 +826,26 @@ ata_raid_dump(struct dev_dump_args *ap)
 		va = pmap_kenter_temporary(trunc_page(0), i);
 	}
 
-	bzero(&bp, sizeof(struct bio));
-	bzero(&bbp, sizeof(struct buf));
-	bzero(&dsap, sizeof(struct dev_strategy_args));
-	bp.bio_buf = &bbp;
+	bzero(&dbuf, sizeof(struct buf));
+	BUF_LOCKINIT(&dbuf);
+	BUF_LOCK(&dbuf, LK_EXCLUSIVE);
+	initbufbio(&dbuf);
 	/* bio_offset is byte granularity, convert block granularity a_blkno */
-	bp.bio_offset = (off_t)(ap->a_blkno << DEV_BSHIFT);
-	bbp.b_bcount = PAGE_SIZE * dumppages;
-	bbp.b_data = va;
-	bbp.b_cmd = BUF_CMD_WRITE;
-	/* XXX TGEN With the previous bzero probably not efficient. */
-	dsap.a_head = ap->a_head;
-	dsap.a_bio = &bp;
-	ata_raid_strategy(&dsap);
-	if (bbp.b_error)
-	    return bbp.b_error;
+	dbuf.b_bio1.bio_offset = (off_t)(ap->a_blkno << DEV_BSHIFT);
+	dbuf.b_bio1.bio_caller_info1.ptr = (void *)rdp;
+	dbuf.b_bcount = dumppages * PAGE_SIZE;
+	dbuf.b_data = va;
+	dbuf.b_cmd = BUF_CMD_WRITE;
+	dev_dstrategy(rdp->cdev, &dbuf.b_bio1);
+	/* wait for completion, unlock the buffer, check status */
+	if (biowait(&dbuf)) {
+	    BUF_UNLOCK(&dbuf);
+	    return(dbuf.b_error ? dbuf.b_error : EIO);
+	}
+	BUF_UNLOCK(&dbuf);
 
 	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return EINTR;
+	    return(EINTR);
 
 	ap->a_blkno += blkcnt * dumppages;
 	ap->a_count -= blkcnt * dumppages;

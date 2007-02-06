@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.h,v 1.44 2006/02/17 13:02:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.h,v 1.2 2007/02/06 15:17:44 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,8 @@ struct ar_softc {
     int                 toggle;         /* performance hack for RAID1's */
     u_int64_t           rebuild_lba;    /* rebuild progress indicator */
     struct spinlock     lock;           /* metadata lock */
-    struct disk         *disk;          /* disklabel/slice stuff */
+    struct disk		disk;		/* disklabel/slice stuff */
+    cdev_t		cdev;		/* device placeholder */
     struct proc         *pid;           /* rebuilder process id */
 };
 
