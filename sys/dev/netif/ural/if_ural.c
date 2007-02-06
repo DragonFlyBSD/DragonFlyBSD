@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.4 2006/12/24 05:18:22 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.5 2007/02/06 13:50:25 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -51,8 +51,8 @@
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdevs.h>
 
-#include "if_uralreg.h"
-#include "if_uralvar.h"
+#include <dev/netif/ural/if_uralreg.h>
+#include <dev/netif/ural/if_uralvar.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	do { if (uraldebug > 0) logprintf x; } while (0)
@@ -65,6 +65,10 @@ SYSCTL_INT(_hw_usb_ural, OID_AUTO, debug, CTLFLAG_RW, &uraldebug, 0,
 #define DPRINTF(x)
 #define DPRINTFN(n, x)
 #endif
+
+#define URAL_RSSI(rssi)					\
+	((rssi) > (RAL_NOISE_FLOOR + RAL_RSSI_CORR) ?	\
+	 ((rssi) - RAL_NOISE_FLOOR + RAL_RSSI_CORR) : 0)
 
 /* various supported device vendors/products */
 static const struct usb_devno ural_devs[] = {
@@ -998,7 +1002,7 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		tap->wr_chan_freq = htole16(ic->ic_curchan->ic_freq);
 		tap->wr_chan_flags = htole16(ic->ic_curchan->ic_flags);
 		tap->wr_antenna = sc->rx_ant;
-		tap->wr_antsignal = desc->rssi;
+		tap->wr_antsignal = URAL_RSSI(desc->rssi);
 
 		bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 	}
@@ -1010,7 +1014,7 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	ni = ieee80211_find_rxnode(ic, (struct ieee80211_frame_min *)wh);
 
 	/* send the frame to the 802.11 layer */
-	ieee80211_input(ic, m, ni, desc->rssi, 0);
+	ieee80211_input(ic, m, ni, URAL_RSSI(desc->rssi), 0);
 
 	/* node is no longer needed */
 	ieee80211_free_node(ni);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralreg.h,v 1.1.2.1 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralreg.h,v 1.1 2006/12/10 02:53:34 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralreg.h,v 1.2 2007/02/06 13:50:25 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -17,6 +17,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#define RAL_NOISE_FLOOR		-95
+#define RAL_RSSI_CORR		120
 
 #define RAL_RX_DESC_SIZE	(sizeof (struct ural_rx_desc))
 #define RAL_TX_DESC_SIZE	(sizeof (struct ural_tx_desc))
