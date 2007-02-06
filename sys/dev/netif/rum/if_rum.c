@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.4 2007/01/02 23:28:49 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.5 2007/02/06 14:33:39 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -167,6 +167,7 @@ Static void		rum_stats(struct ieee80211com *,
 				  struct ieee80211_ratectl_stats *);
 Static void		rum_ratectl_change(struct ieee80211com *ic, u_int,
 					   u_int);
+Static int		rum_get_rssi(struct rum_softc *, uint8_t);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -786,7 +787,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	struct ieee80211_frame_min *wh;
 	struct ieee80211_node *ni;
 	struct mbuf *mnew, *m;
-	int len;
+	int len, rssi;
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
@@ -841,6 +842,8 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	rssi = rum_get_rssi(sc, desc->rssi);
+
 	if (sc->sc_drvbpf != NULL) {
 		struct rum_rx_radiotap_header *tap = &sc->sc_rxtap;
 
@@ -849,7 +852,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		tap->wr_chan_freq = htole16(ic->ic_bss->ni_chan->ic_freq);
 		tap->wr_chan_flags = htole16(ic->ic_bss->ni_chan->ic_flags);
 		tap->wr_antenna = sc->rx_ant;
-		tap->wr_antsignal = desc->rssi;
+		tap->wr_antsignal = rssi;
 
 		bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 	}
@@ -858,7 +861,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	ni = ieee80211_find_rxnode(ic, wh);
 
 	/* send the frame to the 802.11 layer */
-	ieee80211_input(ic, m, ni, desc->rssi, 0);
+	ieee80211_input(ic, m, ni, rssi, 0);
 
 	/* node is no longer needed */
 	ieee80211_free_node(ni);
@@ -1799,10 +1802,23 @@ rum_read_eeprom(struct rum_softc *sc)
 	if ((val & 0xff) != 0xff)
 		sc->rssi_2ghz_corr = (int8_t)(val & 0xff);	/* signed */
 
+	/* Only [-10, 10] is valid */
+	if (sc->rssi_2ghz_corr < -10 || sc->rssi_2ghz_corr > 10)
+		sc->rssi_2ghz_corr = 0;
+
 	rum_eeprom_read(sc, RT2573_EEPROM_RSSI_5GHZ_OFFSET, &val, 2);
 	val = le16toh(val);
 	if ((val & 0xff) != 0xff)
 		sc->rssi_5ghz_corr = (int8_t)(val & 0xff);	/* signed */
+
+	/* Only [-10, 10] is valid */
+	if (sc->rssi_5ghz_corr < -10 || sc->rssi_5ghz_corr > 10)
+		sc->rssi_5ghz_corr = 0;
+
+	if (sc->ext_2ghz_lna)
+		sc->rssi_2ghz_corr -= 14;
+	if (sc->ext_5ghz_lna)
+		sc->rssi_5ghz_corr -= 14;
 
 	DPRINTF(("RSSI 2GHz corr=%d\nRSSI 5GHz corr=%d\n",
 	    sc->rssi_2ghz_corr, sc->rssi_5ghz_corr));
@@ -2220,4 +2236,39 @@ rum_ratectl_change(struct ieee80211com *ic, u_int orc __unused, u_int nrc)
 	default:
 		panic("unknown rate control algo %u\n", nrc);
 	}
+}
+
+Static int
+rum_get_rssi(struct rum_softc *sc, uint8_t raw)
+{
+	int lna, agc, rssi;
+
+	lna = (raw >> 5) & 0x3;
+	agc = raw & 0x1f;
+
+	rssi = (2 * agc) - RT2573_NOISE_FLOOR;
+
+	if (IEEE80211_IS_CHAN_2GHZ(sc->sc_curchan)) {
+		rssi += sc->rssi_2ghz_corr;
+
+		if (lna == 1)
+			rssi -= 64;
+		else if (lna == 2)
+			rssi -= 74;
+		else if (lna == 3)
+			rssi -= 90;
+	} else {
+		rssi += sc->rssi_5ghz_corr;
+
+		if (!sc->ext_5ghz_lna && lna != 1)
+			rssi += 4;
+
+		if (lna == 1)
+			rssi -= 64;
+		else if (lna == 2)
+			rssi -= 86;
+		else if (lna == 3)
+			rssi -= 100;
+	}
+	return rssi;
 }

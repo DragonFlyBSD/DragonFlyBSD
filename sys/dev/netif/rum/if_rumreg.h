@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rumreg.h,v 1.12 2006/08/09 08:21:08 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rumreg.h,v 1.1 2006/12/10 03:24:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rumreg.h,v 1.2 2007/02/06 14:33:39 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -17,6 +17,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#define RT2573_NOISE_FLOOR	-95
 
 #define RT2573_TX_DESC_SIZE	(sizeof (struct rum_tx_desc))
 #define RT2573_RX_DESC_SIZE	(sizeof (struct rum_rx_desc))
