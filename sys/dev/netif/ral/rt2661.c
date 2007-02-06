@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.11 2007/02/06 12:46:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.12 2007/02/06 14:40:32 sephe Exp $
  */
 
 /*
@@ -2466,9 +2466,17 @@ rt2661_read_eeprom(struct rt2661_softc *sc)
 	if ((val & 0xff) != 0xff)
 		sc->rssi_2ghz_corr = (int8_t)(val & 0xff);	/* signed */
 
+	/* Only [-10, 10] is valid */
+	if (sc->rssi_2ghz_corr < -10 || sc->rssi_2ghz_corr > 10)
+		sc->rssi_2ghz_corr = 0;
+
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_RSSI_5GHZ_OFFSET);
 	if ((val & 0xff) != 0xff)
 		sc->rssi_5ghz_corr = (int8_t)(val & 0xff);	/* signed */
+
+	/* Only [-10, 10] is valid */
+	if (sc->rssi_5ghz_corr < -10 || sc->rssi_5ghz_corr > 10)
+		sc->rssi_5ghz_corr = 0;
 
 	/* adjust RSSI correction for external low-noise amplifier */
 	if (sc->ext_2ghz_lna)
