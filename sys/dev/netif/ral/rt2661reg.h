@@ -15,8 +15,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.3 2006/11/18 06:46:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.4 2007/02/06 12:46:09 sephe Exp $
  */
+
+#define RT2661_NOISE_FLOOR	-95
 
 #define RT2661_TX_RING_COUNT	32
 #define RT2661_MGT_RING_COUNT	32

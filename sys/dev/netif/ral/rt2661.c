@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.10 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.11 2007/02/06 12:46:09 sephe Exp $
  */
 
 /*
@@ -1147,6 +1147,8 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 	    BUS_DMASYNC_POSTREAD);
 
 	for (;;) {
+		int rssi;
+
 		desc = &sc->rxq.desc[sc->rxq.cur];
 		data = &sc->rxq.data[sc->rxq.cur];
 
@@ -1219,6 +1221,8 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		m->m_pkthdr.len = m->m_len =
 		    (le32toh(desc->flags) >> 16) & 0xfff;
 
+		rssi = rt2661_get_rssi(sc, desc->rssi);
+
 		if (sc->sc_drvbpf != NULL) {
 			struct rt2661_rx_radiotap_header *tap = &sc->sc_rxtap;
 			uint32_t tsf_lo, tsf_hi;
@@ -1233,7 +1237,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 			tap->wr_rate = rt2661_rxrate(desc);
 			tap->wr_chan_freq = htole16(ic->ic_curchan->ic_freq);
 			tap->wr_chan_flags = htole16(ic->ic_curchan->ic_flags);
-			tap->wr_antsignal = desc->rssi;
+			tap->wr_antsignal = rssi;
 
 			bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 		}
@@ -1243,12 +1247,11 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		    (struct ieee80211_frame_min *)wh);
 
 		/* send the frame to the 802.11 layer */
-		ieee80211_input(ic, m, ni, desc->rssi, 0);
+		ieee80211_input(ic, m, ni, rssi, 0);
 
 		/* give rssi to the rate adatation algorithm */
 		rn = (struct rt2661_node *)ni;
-		ral_rssadapt_input(ic, ni, &rn->rssadapt,
-		    rt2661_get_rssi(sc, desc->rssi));
+		ral_rssadapt_input(ic, ni, &rn->rssadapt, rssi);
 
 		/* node is no longer needed */
 		ieee80211_free_node(ni);
@@ -2968,7 +2971,7 @@ rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw)
 	lna = (raw >> 5) & 0x3;
 	agc = raw & 0x1f;
 
-	rssi = 2 * agc;
+	rssi = (2 * agc) - RT2661_NOISE_FLOOR;
 
 	if (IEEE80211_IS_CHAN_2GHZ(sc->sc_curchan)) {
 		rssi += sc->rssi_2ghz_corr;
