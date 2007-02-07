@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwreg.h,v 1.19 2006/03/10 23:37:35 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwreg.h,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwreg.h,v 1.2 2007/02/07 14:52:42 sephe Exp $
  */
 
 /* RTL8180L Host Control and Status Registers */
@@ -1098,3 +1098,6 @@ struct rtw_rxdesc {
 #define RTW_BBP_CHSQLIM		0x1a	/* guess: channel signal-quality
 					 * threshold
 					 */
+
+#define RTW_NOISE_FLOOR		-95	/* guess */
+#define RTW_RSSI_CORR		131	/* Linux driver (256 - 125) */

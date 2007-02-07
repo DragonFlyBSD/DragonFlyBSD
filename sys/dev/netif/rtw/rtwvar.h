@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwvar.h,v 1.28 2006/02/16 20:17:16 perry Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.3 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.4 2007/02/07 14:52:42 sephe Exp $
  */
 
 #ifndef _DEV_IC_RTWVAR_H_
@@ -411,8 +411,6 @@ struct rtw_sa2400 {
 	int			sa_digphy;	/* 1: digital PHY */
 };
 
-typedef void (*rtw_pwrstate_t)(struct rtw_regs *, enum rtw_pwrstate, int, int);
-
 union rtw_keys {
 	uint8_t		rk_keys[4][16];
 	uint32_t	rk_words[16];
@@ -464,7 +462,11 @@ struct rtw_softc {
 
 	enum rtw_pwrstate	sc_pwrstate;
 
-	rtw_pwrstate_t		sc_pwrstate_cb;
+	void			(*sc_pwrstate_cb)
+				(struct rtw_regs *, enum rtw_pwrstate,
+				 int, int);
+
+	int			(*sc_getrssi)(uint8_t, uint8_t);
 
 	struct rtw_rf		*sc_rf;
 

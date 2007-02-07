@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.5 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.6 2007/02/07 14:52:42 sephe Exp $
  */
 
 /*
@@ -97,6 +97,7 @@
 #include "rtwphyio.h"
 #include "rtwphy.h"
 #include "smc93cx6var.h"
+#include "sa2400reg.h"
 
 /* XXX */
 #define IEEE80211_DUR_DS_LONG_PREAMBLE	144
@@ -260,6 +261,11 @@ static int	rtw_compute_duration(const struct ieee80211_frame_min *,
 				     uint32_t, int, int,
 				     struct rtw_duration *,
 				     struct rtw_duration *, int *, int);
+
+static int	rtw_get_rssi(struct rtw_softc *, uint8_t, uint8_t);
+static int	rtw_maxim_getrssi(uint8_t, uint8_t);
+static int	rtw_gct_getrssi(uint8_t, uint8_t);
+static int	rtw_philips_getrssi(uint8_t, uint8_t);
 
 #ifdef RTW_DEBUG
 static void
@@ -1461,17 +1467,10 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 			goto next;
 		}
 
-		if (sc->sc_rfchipid == RTW_RFCHIPID_PHILIPS) {
-			rssi = SHIFTOUT(hrssi, RTW_RXRSSI_RSSI);
-		} else {
-			rssi = SHIFTOUT(hrssi, RTW_RXRSSI_IMR_RSSI);
-			/* TBD find out each front-end's LNA gain in the
-			 * front-end's units
-			 */
-			if ((hrssi & RTW_RXRSSI_IMR_LNA) == 0)
-				rssi |= 0x80;
-		}
+		rssi = SHIFTOUT(hrssi, RTW_RXRSSI_RSSI);
 		sq = SHIFTOUT(hrssi, RTW_RXRSSI_SQ);
+
+		rssi = rtw_get_rssi(sc, rssi, sq);
 
 		/*
 		 * Note well: now we cannot recycle the rs_mbuf unless
@@ -3694,14 +3693,17 @@ rtw_rf_attach(struct rtw_softc *sc, enum rtw_rfchipid rfchipid, int digphy)
 	case RTW_RFCHIPID_GCT:
 		rf = rtw_grf5101_create(&sc->sc_regs, rf_write, 0);
 		sc->sc_pwrstate_cb = rtw_maxim_pwrstate;
+		sc->sc_getrssi = rtw_gct_getrssi;
 		break;
 	case RTW_RFCHIPID_MAXIM:
 		rf = rtw_max2820_create(&sc->sc_regs, rf_write, 0);
 		sc->sc_pwrstate_cb = rtw_maxim_pwrstate;
+		sc->sc_getrssi = rtw_maxim_getrssi;
 		break;
 	case RTW_RFCHIPID_PHILIPS:
 		rf = rtw_sa2400_create(&sc->sc_regs, rf_write, digphy);
 		sc->sc_pwrstate_cb = rtw_philips_pwrstate;
+		sc->sc_getrssi = rtw_philips_getrssi;
 		break;
 	case RTW_RFCHIPID_RFMD:
 		/* XXX RFMD has no RF constructor */
@@ -4444,4 +4446,69 @@ rtw_compute_duration(const struct ieee80211_frame_min *wh,
 		return 0;
 	}
 	return rtw_compute_duration1(lastlen + hdrlen, ack, icflags, rate, dn);
+}
+
+static int
+rtw_get_rssi(struct rtw_softc *sc, uint8_t raw, uint8_t sq)
+{
+	int rssi;
+
+	rssi = sc->sc_getrssi(raw, sq);
+
+	if (rssi == 0)
+		rssi = 1;
+	else if (rssi > 100)
+		rssi = 100;
+
+	if (rssi > (RTW_NOISE_FLOOR + RTW_RSSI_CORR))
+		rssi -= (RTW_NOISE_FLOOR + RTW_RSSI_CORR);
+	else
+		rssi = 0;
+
+	return rssi;
+}
+
+static int
+rtw_maxim_getrssi(uint8_t raw, uint8_t sq __unused)
+{
+	int rssi = raw;
+
+	rssi &= 0x7e;
+	rssi >>= 1;
+	rssi += 0x42;
+	if (raw & 0x1)
+		rssi += 0xa;
+	rssi &= 0xff;
+
+	return rssi;
+}
+
+static int
+rtw_gct_getrssi(uint8_t raw, uint8_t sq __unused)
+{
+	int rssi = raw;
+
+	rssi &= 0x7e;
+	if ((raw & 0x1) == 0 || rssi > 0x3c)
+		rssi = 100;
+	else
+		rssi = (100 * rssi) / 0x3c;
+	rssi &= 0xff;
+
+	return rssi;
+}
+
+static int
+rtw_philips_getrssi(uint8_t raw, uint8_t sq)
+{
+	static const uint8_t sq_rssi_map[SA2400_SQ_RSSI_MAP_MAX] =
+	{ SA2400_SQ_RSSI_MAP };
+
+	if (sq < SA2400_SQ_RSSI_MAP_MAX - 1)	/* NB: -1 is intended */
+		return sq_rssi_map[sq];
+
+	if (sq == 0x80)
+		return 1;
+	else
+		return 0x32;
 }
