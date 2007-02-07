@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.5 2007/02/06 14:33:39 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.6 2007/02/07 12:34:26 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -844,6 +844,13 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	rssi = rum_get_rssi(sc, desc->rssi);
 
+	wh = mtod(m, struct ieee80211_frame_min *);
+	ni = ieee80211_find_rxnode(ic, wh);
+
+	/* Error happened during RSSI conversion. */
+	if (rssi < 0)
+		rssi = ni->ni_rssi;
+
 	if (sc->sc_drvbpf != NULL) {
 		struct rum_rx_radiotap_header *tap = &sc->sc_rxtap;
 
@@ -856,9 +863,6 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 		bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 	}
-
-	wh = mtod(m, struct ieee80211_frame_min *);
-	ni = ieee80211_find_rxnode(ic, wh);
 
 	/* send the frame to the 802.11 layer */
 	ieee80211_input(ic, m, ni, rssi, 0);
@@ -2245,6 +2249,16 @@ rum_get_rssi(struct rum_softc *sc, uint8_t raw)
 
 	lna = (raw >> 5) & 0x3;
 	agc = raw & 0x1f;
+
+	if (lna == 0) {
+		/*
+		 * No RSSI mapping
+		 *
+		 * NB: Since RSSI is relative to noise floor, -1 is
+		 *     adequate for caller to know error happened.
+		 */
+		return -1;
+	}
 
 	rssi = (2 * agc) - RT2573_NOISE_FLOOR;
 

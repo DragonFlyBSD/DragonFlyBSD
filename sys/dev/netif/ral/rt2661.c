@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.12 2007/02/06 14:40:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.13 2007/02/07 12:34:26 sephe Exp $
  */
 
 /*
@@ -1137,7 +1137,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 	struct rt2661_rx_desc *desc;
 	struct rt2661_data *data;
 	bus_addr_t physaddr;
-	struct ieee80211_frame *wh;
+	struct ieee80211_frame_min *wh;
 	struct ieee80211_node *ni;
 	struct rt2661_node *rn;
 	struct mbuf *mnew, *m;
@@ -1223,6 +1223,13 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 
 		rssi = rt2661_get_rssi(sc, desc->rssi);
 
+		wh = mtod(m, struct ieee80211_frame_min *);
+		ni = ieee80211_find_rxnode(ic, wh);
+
+		/* Error happened during RSSI conversion. */
+		if (rssi < 0)
+			rssi = ni->ni_rssi;
+
 		if (sc->sc_drvbpf != NULL) {
 			struct rt2661_rx_radiotap_header *tap = &sc->sc_rxtap;
 			uint32_t tsf_lo, tsf_hi;
@@ -1241,10 +1248,6 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 
 			bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 		}
-
-		wh = mtod(m, struct ieee80211_frame *);
-		ni = ieee80211_find_rxnode(ic,
-		    (struct ieee80211_frame_min *)wh);
 
 		/* send the frame to the 802.11 layer */
 		ieee80211_input(ic, m, ni, rssi, 0);
@@ -2978,6 +2981,16 @@ rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw)
 
 	lna = (raw >> 5) & 0x3;
 	agc = raw & 0x1f;
+
+	if (lna == 0) {
+		/*
+		 * No RSSI mapping
+		 *
+		 * NB: Since RSSI is relative to noise floor, -1 is
+		 *     adequate for caller to know error happened.
+		 */
+		return -1;
+	}
 
 	rssi = (2 * agc) - RT2661_NOISE_FLOOR;
 
