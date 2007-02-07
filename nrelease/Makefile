@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.57 2006/12/11 20:54:22 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.58 2007/02/07 16:35:25 corecode Exp $
 #
 
 # compat target
@@ -29,7 +29,7 @@ ENVCMD?=	env
 TAR?=	tar
 
 PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
-PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20051221
+PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070205
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20051229
 
 PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
@@ -152,6 +152,7 @@ customizeiso:
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT} ${ISOROOT}/tmp/bootstrap
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
+	mkdir -p ${ISOROOT}/tmp/bootstrap/distfiles	# new bootstrap insists in that
 	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap/bootstrap; ./bootstrap"
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
