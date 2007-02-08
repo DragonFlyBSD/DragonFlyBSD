@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.27 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.28 2007/02/08 10:18:21 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -170,7 +170,7 @@ state(const KINFO *k, const struct varent *vent)
 	char *cp;
 	char buf[16];
 
-	flag = KI_LWP(k, flags);
+	flag = KI_PROC(k, flags);
 	cp = buf;
 
 	switch (KI_PROC(k, stat)) {
