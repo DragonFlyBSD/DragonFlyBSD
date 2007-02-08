@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.15 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.16 2007/02/08 15:39:39 sephe Exp $
  */
 
 /*
@@ -240,6 +240,15 @@ MODULE_DEPEND(acx, wlan_ratectl_onoe, 1, 1, 1);
 MODULE_DEPEND(acx, wlan_ratectl_amrr, 1, 1, 1);
 MODULE_DEPEND(acx, pci, 1, 1, 1);
 MODULE_DEPEND(acx, cardbus, 1, 1, 1);
+
+static __inline int
+acx_get_rssi(struct acx_softc *sc, uint8_t raw)
+{
+	int rssi;
+
+	rssi = ((sc->chip_rssi_corr / 2) + (raw * 5)) / sc->chip_rssi_corr;
+	return rssi > 100 ? 100 : rssi;
+}
 
 static int
 acx_probe(device_t dev)
@@ -1478,6 +1487,7 @@ acx_rxeof(struct acx_softc *sc)
 		    len < MCLBYTES) {
 			struct ieee80211_frame *f;
 			struct ieee80211_node *ni;
+			int rssi;
 
 			m_adj(m, sizeof(struct acx_rxbuf_hdr) +
 				 sc->chip_rxbuf_exhdr);
@@ -1495,13 +1505,15 @@ acx_rxeof(struct acx_softc *sc)
 				}
 			}
 
+			rssi = acx_get_rssi(sc, head->rbh_level);
+
 			ni = ieee80211_find_rxnode(ic,
 				(struct ieee80211_frame_min *)f);
 
 			m->m_len = m->m_pkthdr.len = len;
 			m->m_pkthdr.rcvif = &ic->ic_if;
 
-			ieee80211_input(ic, m, ni, head->rbh_level,
+			ieee80211_input(ic, m, ni, rssi,
 					le32toh(head->rbh_time));
 
 			ieee80211_free_node(ni);

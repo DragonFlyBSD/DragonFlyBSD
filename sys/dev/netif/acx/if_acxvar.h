@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.6 2006/12/01 07:37:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.7 2007/02/08 15:39:39 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -370,6 +370,7 @@ struct acx_softc {
 	uint32_t		chip_ee_eaddr_ofs;
 	enum ieee80211_phymode	chip_phymode;	/* see IEEE80211_MODE_ */
 	uint8_t			chip_fw_txdesc_ctrl;
+	int			chip_rssi_corr;
 
 	uint8_t			sc_eeprom_ver;	/* unused */
 	uint8_t			sc_form_factor;	/* unused */

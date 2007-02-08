@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.7 2006/12/23 09:26:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.8 2007/02/08 15:39:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -70,6 +70,7 @@
 
 #define ACX100_RATE(rate)	((rate) * 5)
 
+#define ACX100_RSSI_CORR	8
 #define ACX100_TXPOWER		18
 #define ACX100_GPIO_POWER_LED	0x0800
 #define ACX100_EE_EADDR_OFS	0x1a
@@ -315,6 +316,7 @@ acx100_set_param(device_t dev)
 				  DESC_CTRL_RECLAIM |
 				  DESC_CTRL_FIRST_FRAG;
 	sc->chip_short_retry_limit = 7;
+	sc->chip_rssi_corr = ACX100_RSSI_CORR;
 
 	sc->chip_phymode = IEEE80211_MODE_11B;
 	sc->chip_chan_flags = IEEE80211_CHAN_B;

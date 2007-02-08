@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.8 2006/12/23 09:26:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.9 2007/02/08 15:39:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -84,6 +84,7 @@
 #define ACX111_RATE_108		0x1000
 #define ACX111_RATE(rate)	[rate] = ACX111_RATE_##rate
 
+#define ACX111_RSSI_CORR	5
 #define ACX111_TXPOWER		15
 #define ACX111_GPIO_POWER_LED	0x0040
 #define ACX111_EE_EADDR_OFS	0x21
@@ -350,6 +351,7 @@ acx111_set_param(device_t dev)
 	sc->chip_intr_disable = ACX111_INTR_DISABLE;
 	sc->chip_gpio_pled = ACX111_GPIO_POWER_LED;
 	sc->chip_ee_eaddr_ofs = ACX111_EE_EADDR_OFS;
+	sc->chip_rssi_corr = ACX111_RSSI_CORR;
 
 	sc->chip_phymode = IEEE80211_MODE_11G;
 	sc->chip_chan_flags = IEEE80211_CHAN_CCK |
