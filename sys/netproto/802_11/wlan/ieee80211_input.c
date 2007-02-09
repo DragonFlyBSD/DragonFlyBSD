@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.14 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.15 2007/02/09 11:31:41 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 	struct ieee80211_frame *wh;
 	struct ieee80211_key *key;
 	struct ether_header *eh;
-	int hdrspace;
+	int hdrspace, need_tap;
 	uint8_t dir, type, subtype;
 	uint8_t *bssid;
 	uint16_t rxseq;
@@ -151,6 +151,7 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 	KASSERT(ni != NULL, ("null node"));
 	ni->ni_inact = ni->ni_inact_reload;
 
+	need_tap = 1;			/* mbuf need to be tapped */
 	type = -1;			/* undefined */
 	/*
 	 * In monitor mode, send everything directly to bpf.
@@ -425,6 +426,7 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 		/* copy to listener after decrypt */
 		if (ic->ic_rawbpf)
 			bpf_mtap(ic->ic_rawbpf, m);
+		need_tap = 0;
 
 		/*
 		 * Finally, strip the 802.11 header.
@@ -561,7 +563,7 @@ err:
 	ifp->if_ierrors++;
 out:
 	if (m != NULL) {
-		if (ic->ic_rawbpf)
+		if (ic->ic_rawbpf && need_tap)
 			bpf_mtap(ic->ic_rawbpf, m);
 		m_freem(m);
 	}
