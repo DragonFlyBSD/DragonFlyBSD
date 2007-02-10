@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.20 2006/12/24 05:16:43 sephe Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.21 2007/02/10 05:43:08 sephe Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -524,6 +524,7 @@ vendor GOODWAY		0x1631	Good Way Technology
 vendor ENTREGA		0x1645	Entrega
 vendor ACTIONTEC	0x1668	Actiontec Electronics
 vendor GIGASET		0x1690	Gigaset
+vendor AMIT		0x18c5	AMIT
 vendor QCOM		0x18e8	Qcom
 vendor LINKSYS3		0x1915	Linksys
 vendor DLINK		0x2001	D-Link
@@ -589,6 +590,10 @@ product ABOCOM XX9		0x4104	XX9
 product ABOCOM UFE2000		0x420a	UFE2000 USB2.0 Fast Ethernet Adapter
 product ABOCOM XX10		0xabc1	XX10
 product ABOCOM RT2573		0xb21d	RT2573
+product ABOCOM HWU54DM		0xb21b	HWU54DM
+product ABOCOM RT2573_1		0xb21c	RT2573
+product ABOCOM RT2573_2		0xb21e	RT2573
+product ABOCOM WUG2700		0xb21f	WUG2700
 
 /* Accton products */
 product ACCTON USB320_EC	0x1046	USB320-EC Ethernet Adapter
@@ -680,6 +685,9 @@ product ALTEC ASC495		0xff05	ASC495 Speakers
 /* American Power Conversion products */
 product APC UPSPRO500		0x0002	Back-UPS Pro 500
 
+/* AMIT products */
+product AMIT CGWLUSB2GO		0x0002	CG-WLUSB2GO
+
 /* Anchor products */
 product ANCHOR EZUSB		0x2131	EZUSB
 product ANCHOR EZLINK		0x2720	EZLINK
@@ -704,6 +712,7 @@ product ASIX AX88172		0x1720	USB 2.0 10/100 ethernet controller
 /* ASUS products */
 product ASUS WL167G		0x1707	WL-167g wireless adapter
 product ASUS WL167G_2		0x1723	WL-167g wireless adapter
+product ASUS WL167G_3		0x1724	WL-167g wireless adapter
 
 /* ATen products */
 product ATEN UC1284		0x2001	Parallel printer adapter
@@ -1047,6 +1056,7 @@ product GENESYS GL641USB2IDE	0x0702	GL641USB USB-IDE Bridge
 /* GIGABYTE products */
 product GIGABYTE GNWBKG		0x8007	GN-WBKG
 product GIGABYTE GNWB01GS	0x8008	GN-WB01GS
+product GIGABYTE GNWI05GS	0x800a	GN-WI05GS
 
 /* Gigaset products */
 product GIGASET RT2573		0x0722	RT2573
@@ -1070,6 +1080,8 @@ product GRIFFIN POWERMATE	0x0410	PowerMate Assignable Controller
 /* Guillemot Corporation */
 product GUILLEMOT DALEADER	0xa300	DA Leader
 product GUILLEMOT HWGUSB254	0xe000	HWGUSB2-54 WLAN
+product GUILLEMOT HWGUSB254LB	0xe010	HWGUSB2-54-LB
+product GUILLEMOT HWGUSB254V2AP	0xe020	HWGUSB2-54V2-AP
 
 /* Hagiwara products */
 product HAGIWARA FGSM		0x0002	FlashGate SmartMedia Card Reader
@@ -1336,6 +1348,7 @@ product LINKSYS4 WUSB54G	0x000d	WUSB54G wireless adapter
 product LINKSYS4 WUSB54GP	0x0011	WUSB54GP wireless adapter
 product LINKSYS4 HU200TS	0x001a	HU200TS wireless adapter
 product LINKSYS4 WUSB54GC	0x0020	WUSB54GC
+product LINKSYS4 WUSB54GR	0x0023	WUSB54GR
 product LINKSYS MAUSB2		0x0105	Camedia MAUSB-2
 product LINKSYS USB10TX1	0x200c	USB10TX
 product LINKSYS USB10T		0x2202	USB10T Ethernet
@@ -1431,6 +1444,8 @@ product MELCO KG54YB		0x005e	WLI-U2-KG54-YB WLAN
 product MELCO KG54		0x0066	WLI-U2-KG54 WLAN
 product MELCO KG54AI		0x0067	WLI-U2-KG54-AI WLAN
 product MELCO NINWIFI		0x008b	Nintendo Wi-Fi
+product MELCO SG54HP		0x00d8	WLI-U2-SG54HP
+product MELCO G54HP		0x00d9	WLI-U2-G54HP
 
 /* Metricom products */
 product METRICOM RICOCHET_GS	0x0001	Ricochet GS
@@ -1444,6 +1459,7 @@ product MSI RT2570		0x6861	RT2570
 product MSI RT2570_2		0x6865	RT2570
 product MSI RT2570_3		0x6869	RT2570
 product MSI RT2573		0x6877	RT2573
+product MSI RT2573_1		0x6874	RT2573
 product MSI RT2573_2		0xa861	RT2573
 product MSI RT2573_3		0xa874	RT2573
 
@@ -1586,6 +1602,7 @@ product NHJ CAM2		0x9120	Camera
 
 /* Nova Technology product */
 product NOVATECH NV902W		0x9020	NV-902W
+product NOVATECH RT2573		0x9021	RT2573
 
 /* Olympus products */
 product OLYMPUS C1		0x0102	C-1 Digital Camera
@@ -1675,7 +1692,9 @@ product PILOTECH CRW600		0x0001	CRW-600 6-in-1 Reader
 
 /* Planex Communications products */
 product PLANEX GW_US11H		0x14ea	GW-US11H WLAN
+product PLANEX2 GWUS54HP	0xab01	GW-US54HP
 product PLANEX2 GWUSMM		0xed02	GW-USMM
+product PLANEX2 GWUS54MINI2	0xab50	GW-US54Mini2
 
 /* Plantronics products */
 product PLANTRONICS HEADSET	0x0ca1	Platronics DSP-400 Headset
@@ -1759,6 +1778,7 @@ product RALINK RT2570_2		0x2570	RT2500USB wireless adapter
 product RALINK RT2570_3		0x9020	RT2500USB wireless adapter
 product RALINK RT2573		0x2573	RT2573
 product RALINK RT2671		0x2671	RT2671
+product RALINK RT2573_2		0x9021	RT2573
 
 /* RATOC Systems products */
 product RATOC REXUSB60		0xb000	USB serial REX-USB60
