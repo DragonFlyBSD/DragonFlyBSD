@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.40 2007/01/15 22:08:03 tgen Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.41 2007/02/10 20:46:36 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -109,7 +109,7 @@ MLINKS+=devstat.9 devicestat.9 devstat.9 devstat_add_entry.9
 MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction_buf.9
-MLINKS+=fetch.9 fubyte.9 fetch.9 fuswintr.9 fetch.9 fusword.9 fetch.9 fuword.9
+MLINKS+=fetch.9 fubyte.9 fetch.9 fusword.9 fetch.9 fuword.9
 MLINKS+=hash.9 hashinit.9 hash.9 phashinit.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_chan2mode.9 \
@@ -227,7 +227,7 @@ MLINKS+=spinlock.9 spin_unlock_rd.9
 MLINKS+=spinlock.9 spin_unlock_rd_quick.9
 MLINKS+=spinlock.9 spin_unlock_wr.9
 MLINKS+=spinlock.9 spin_unlock_wr_quick.9
-MLINKS+=store.9 subyte.9 store.9 suswintr.9 store.9 susword.9 store.9 suword.9
+MLINKS+=store.9 subyte.9 store.9 susword.9 store.9 suword.9
 MLINKS+=suser.9 suser_cred.9
 MLINKS+=time.9 boottime.9 time.9 mono_time.9 time.9 runtime.9
 MLINKS+=timeout.9 untimeout.9
