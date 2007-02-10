@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.4 2007/01/15 05:27:28 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.4.2.1 2007/02/10 11:38:03 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -157,6 +157,7 @@ vke_start(struct ifnet *ifp)
 
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
 		m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
+		BPF_MTAP(ifp, m);
 		write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
 		m_freem(m);
 		ifp->if_opackets++;
