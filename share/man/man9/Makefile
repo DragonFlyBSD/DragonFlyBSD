@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.41 2007/02/10 20:46:36 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.42 2007/02/10 23:54:18 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -56,7 +56,6 @@ MAN+=	device.9 device_add_child.9 device_delete_child.9 device_enable.9 \
 	vn_fullpath.9 \
 	zone.9
 
-MLINKS+=DRIVER_MODULE.9 MULTI_DRIVER_MODULE.9
 MLINKS+=KASSERT.9 KKASSERT.9
 MLINKS+=MD5.9 MD5Init.9 MD5.9 MD5Transform.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9
