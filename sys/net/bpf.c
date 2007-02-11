@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.35 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.36 2007/02/11 10:23:29 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -1217,14 +1217,7 @@ static int
 bpf_allocbufs(struct bpf_d *d)
 {
 	d->bd_fbuf = kmalloc(d->bd_bufsize, M_BPF, M_WAITOK);
-	if (d->bd_fbuf == NULL)
-		return(ENOBUFS);
-
 	d->bd_sbuf = kmalloc(d->bd_bufsize, M_BPF, M_WAITOK);
-	if (d->bd_sbuf == NULL) {
-		kfree(d->bd_fbuf, M_BPF);
-		return(ENOBUFS);
-	}
 	d->bd_slen = 0;
 	d->bd_hlen = 0;
 	return(0);
