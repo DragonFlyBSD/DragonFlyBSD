@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.36 2007/02/11 10:23:29 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.37 2007/02/11 11:30:05 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -1136,6 +1136,7 @@ bpf_ptap(struct bpf_if *bp, struct mbuf *m, const void *data, u_int dlen)
 	mb.m_next = m;
 	mb.m_data = __DECONST(void *, data); /* LINTED */
 	mb.m_len = dlen;
+	mb.m_pkthdr.rcvif = m->m_pkthdr.rcvif;
 
 	bpf_mtap(bp, &mb);
 }
