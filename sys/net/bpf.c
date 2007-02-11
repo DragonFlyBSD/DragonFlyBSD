@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.37 2007/02/11 11:30:05 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.38 2007/02/11 12:10:04 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -95,6 +95,7 @@ static struct bpf_if	*bpf_iflist;
 static int	bpf_allocbufs(struct bpf_d *);
 static void	bpf_attachd(struct bpf_d *d, struct bpf_if *bp);
 static void	bpf_detachd(struct bpf_d *d);
+static void	bpf_resetd(struct bpf_d *);
 static void	bpf_freed(struct bpf_d *);
 static void	bpf_mcopy(const void *, void *, size_t);
 static int	bpf_movein(struct uio *, int, struct mbuf **,
@@ -105,7 +106,6 @@ static void	bpf_wakeup(struct bpf_d *);
 static void	catchpacket(struct bpf_d *, u_char *, u_int, u_int,
 			    void (*)(const void *, void *, size_t),
 			    const struct timeval *);
-static void	reset_d(struct bpf_d *);
 static int	bpf_setf(struct bpf_d *, struct bpf_program *);
 static int	bpf_getdltlist(struct bpf_d *, struct bpf_dltlist *);
 static int	bpf_setdlt(struct bpf_d *, u_int);
@@ -542,7 +542,7 @@ bpfwrite(struct dev_write_args *ap)
  * receive and drop counts.  Should be called at splimp.
  */
 static void
-reset_d(struct bpf_d *d)
+bpf_resetd(struct bpf_d *d)
 {
 	if (d->bd_hbuf) {
 		/* Free the hold buffer. */
@@ -663,7 +663,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 	 */
 	case BIOCFLUSH:
 		crit_enter();
-		reset_d(d);
+		bpf_resetd(d);
 		crit_exit();
 		break;
 
@@ -880,7 +880,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 			return(EINVAL);
 		crit_enter();
 		d->bd_filter = NULL;
-		reset_d(d);
+		bpf_resetd(d);
 		crit_exit();
 		if (old != 0)
 			kfree(old, M_BPF);
@@ -896,7 +896,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 	    bpf_validate(fcode, (int)flen)) {
 		crit_enter();
 		d->bd_filter = fcode;
-		reset_d(d);
+		bpf_resetd(d);
 		crit_exit();
 		if (old != 0)
 			kfree(old, M_BPF);
@@ -960,7 +960,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 
 			bpf_attachd(d, bp);
 		}
-		reset_d(d);
+		bpf_resetd(d);
 		crit_exit();
 		return(0);
 	}
@@ -1079,7 +1079,6 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 {
 	struct bpf_d *d;
 	u_int pktlen, slen;
-	struct mbuf *m0;
 	struct timeval tv;
 	int gottime = 0;
 
@@ -1087,9 +1086,7 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 	if (SLIST_EMPTY(&bp->bif_dlist))
 		return;
 
-	pktlen = 0;
-	for (m0 = m; m0 != NULL; m0 = m0->m_next)
-		pktlen += m0->m_len;
+	pktlen = m_lengthm(m, NULL);
 
 	SLIST_FOREACH(d, &bp->bif_dlist, bd_next) {
 		if (!d->bd_seesent && (m->m_pkthdr.rcvif == NULL))
@@ -1113,7 +1110,7 @@ bpf_mtap_family(struct bpf_if *bp, struct mbuf *m, sa_family_t family)
 	u_int family4;
 
 	KKASSERT(family != AF_UNSPEC);
-	
+
 	family4 = (u_int)family;
 	bpf_ptap(bp, m, &family4, sizeof(family4));
 }
@@ -1382,7 +1379,7 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 		crit_enter();
 		bpf_detachd(d);
 		bpf_attachd(d, bp);
-		reset_d(d);
+		bpf_resetd(d);
 		if (opromisc) {
 			error = ifpromisc(bp->bif_ifp, 1);
 			if (error)
