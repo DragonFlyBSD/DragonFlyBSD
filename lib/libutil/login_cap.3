@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login_cap.3,v 1.17.2.8 2002/12/29 16:35:36 schweikh Exp $
-.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.4 2006/05/26 19:39:38 swildner Exp $
+.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.5 2007/02/11 00:47:01 swildner Exp $
 .\"
 .Dd December 27, 1996
 .Os
@@ -178,10 +178,10 @@ function to the authorisation style, according to the requirements
 of the program handling a login itself.
 .Pp
 As noted above, the
-.Fn get*class
+.Fn login_get*class
 functions return a login_cap_t object which is used to access
 the matching or default record in the capabilities database.
-.Fn getclassbyname
+.Fn login_getclassbyname
 accepts two arguments: the first one is the record identifier of the
 record to be retrieved, the second is an optional directory name.
 If the first
