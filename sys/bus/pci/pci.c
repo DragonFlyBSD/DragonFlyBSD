@@ -24,14 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.36 2006/12/22 23:12:17 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.37 2007/02/11 01:51:28 swildner Exp $
  *
  */
 
 #include "opt_bus.h"
 #include "opt_pci.h"
 
-#include "opt_simos.h"
 #include "opt_compat_oldpci.h"
 
 #include <sys/param.h>

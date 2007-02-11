@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.151 2007/02/01 10:33:25 corecode Exp $
+# $DragonFly: src/sys/conf/files,v 1.152 2007/02/11 01:51:28 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1094,7 +1094,6 @@ bus/pci/pci_pcib.c		optional pci
 bus/pci/pcisupport.c		optional pci
 bus/pci/pci_if.m		optional pci
 bus/pci/pcib_if.m		optional pci
-dev/disk/simos/simos.c		optional simos
 dev/powermng/i386/alpm/alpm.c	optional alpm
 dev/misc/xrpu/xrpu.c		optional xrpu
 emulation/posix4/posix4_mib.c	standard
