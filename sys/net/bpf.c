@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.39 2007/02/12 14:05:13 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.40 2007/02/12 15:02:33 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -607,9 +607,9 @@ bpfioctl(struct dev_ioctl_args *ap)
 		{
 			struct ifnet *ifp;
 
-			if (d->bd_bif == NULL)
+			if (d->bd_bif == NULL) {
 				error = EINVAL;
-			else {
+			} else {
 				ifp = d->bd_bif->bif_ifp;
 				lwkt_serialize_enter(ifp->if_serializer);
 				error = ifp->if_ioctl(ifp, ap->a_cmd,
@@ -630,9 +630,9 @@ bpfioctl(struct dev_ioctl_args *ap)
 	 * Set buffer length.
 	 */
 	case BIOCSBLEN:
-		if (d->bd_bif != 0)
+		if (d->bd_bif != NULL) {
 			error = EINVAL;
-		else {
+		} else {
 			u_int size = *(u_int *)ap->a_data;
 
 			if (size > bpf_maxbufsize)
@@ -693,10 +693,12 @@ bpfioctl(struct dev_ioctl_args *ap)
 	 * Get a list of supported data link types.
 	 */
 	case BIOCGDLTLIST:
-		if (d->bd_bif == NULL)
+		if (d->bd_bif == NULL) {
 			error = EINVAL;
-		else
-			error = bpf_getdltlist(d, (struct bpf_dltlist *)ap->a_data);
+		} else {
+			error = bpf_getdltlist(d,
+				(struct bpf_dltlist *)ap->a_data);
+		}
 		break;
 
 	/*
@@ -874,7 +876,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 		d->bd_filter = NULL;
 		bpf_resetd(d);
 		crit_exit();
-		if (old != 0)
+		if (old != NULL)
 			kfree(old, M_BPF);
 		return(0);
 	}
@@ -890,7 +892,7 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 		d->bd_filter = fcode;
 		bpf_resetd(d);
 		crit_exit();
-		if (old != 0)
+		if (old != NULL)
 			kfree(old, M_BPF);
 
 		return(0);
@@ -918,7 +920,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 	/*
 	 * Look through attached interfaces for the named one.
 	 */
-	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
+	for (bp = bpf_iflist; bp != NULL; bp = bp->bif_next) {
 		struct ifnet *ifp = bp->bif_ifp;
 
 		if (ifp == NULL || ifp != theywant)
@@ -989,9 +991,9 @@ bpfpoll(struct dev_poll_args *ap)
 		 */
 		if (d->bd_hlen != 0 ||
 		    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
-		    d->bd_slen != 0))
+		    d->bd_slen != 0)) {
 			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else {
+		} else {
 			selrecord(curthread, &d->bd_sel);
 			/* Start the read timeout if necessary. */
 			if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
@@ -1177,14 +1179,14 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 		ROTATE_BUFFERS(d);
 		bpf_wakeup(d);
 		curlen = 0;
-	}
-	else if (d->bd_immediate || d->bd_state == BPF_TIMED_OUT)
+	} else if (d->bd_immediate || d->bd_state == BPF_TIMED_OUT) {
 		/*
 		 * Immediate mode is set, or the read timeout has
 		 * already expired during a select call.  A packet
 		 * arrived, so the reader should be woken up.
 		 */
 		bpf_wakeup(d);
+	}
 
 	/*
 	 * Append the bpf header.
@@ -1214,7 +1216,7 @@ bpf_allocbufs(struct bpf_d *d)
 }
 
 /*
- * Free buffers currently in use by a descriptor.
+ * Free buffers and packet filter program currently in use by a descriptor.
  * Called on close.
  */
 static void
@@ -1232,7 +1234,7 @@ bpf_freed(struct bpf_d *d)
 		if (d->bd_fbuf != NULL)
 			kfree(d->bd_fbuf, M_BPF);
 	}
-	if (d->bd_filter)
+	if (d->bd_filter != NULL)
 		kfree(d->bd_filter, M_BPF);
 }
 
@@ -1333,7 +1335,7 @@ bpf_getdltlist(struct bpf_d *d, struct bpf_dltlist *bfl)
 	ifp = d->bd_bif->bif_ifp;
 	n = 0;
 	error = 0;
-	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
+	for (bp = bpf_iflist; bp != NULL; bp = bp->bif_next) {
 		if (bp->bif_ifp != ifp)
 			continue;
 		if (bfl->bfl_list != NULL) {
@@ -1362,7 +1364,7 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 	if (d->bd_bif->bif_dlt == dlt)
 		return (0);
 	ifp = d->bd_bif->bif_ifp;
-	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
+	for (bp = bpf_iflist; bp != NULL; bp = bp->bif_next) {
 		if (bp->bif_ifp == ifp && bp->bif_dlt == dlt)
 			break;
 	}
@@ -1374,12 +1376,13 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 		bpf_resetd(d);
 		if (opromisc) {
 			error = ifpromisc(bp->bif_ifp, 1);
-			if (error)
+			if (error) {
 				if_printf(bp->bif_ifp,
 					"bpf_setdlt: ifpromisc failed (%d)\n",
 					error);
-			else
+			} else {
 				d->bd_promisc = 1;
+			}
 		}
 		crit_exit();
 	}
