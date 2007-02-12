@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.38 2007/02/11 12:10:04 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.39 2007/02/12 14:05:13 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -149,7 +149,6 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 	 * for the link level header.
 	 */
 	switch (linktype) {
-
 	case DLT_SLIP:
 		sockp->sa_family = AF_INET;
 		hlen = 0;
@@ -196,16 +195,9 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 	if ((unsigned)len > MCLBYTES)
 		return(EIO);
 
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	m = m_getl(len, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return(ENOBUFS);
-	if (len > MHLEN) {
-		MCLGET(m, MB_WAIT);
-		if (!(m->m_flags & M_EXT)) {
-			error = ENOBUFS;
-			goto bad;
-		}
-	}
 	m->m_pkthdr.len = m->m_len = len;
 	m->m_pkthdr.rcvif = NULL;
 	*mp = m;
