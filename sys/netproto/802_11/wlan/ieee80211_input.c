@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.15 2007/02/09 11:31:41 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.16 2007/02/13 14:15:57 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -881,13 +881,21 @@ ieee80211_auth_open(struct ieee80211com *ic, struct ieee80211_frame *wh,
     struct ieee80211_node *ni, int rssi, uint32_t rstamp, uint16_t seq,
     uint16_t status)
 {
-
 	if (ni->ni_authmode == IEEE80211_AUTH_SHARED) {
 		IEEE80211_DISCARD_MAC(ic, IEEE80211_MSG_AUTH,
 		    ni->ni_macaddr, "open auth",
 		    "bad sta auth mode %u", ni->ni_authmode);
 		ic->ic_stats.is_rx_bad_auth++;	/* XXX */
 		if (ic->ic_opmode == IEEE80211_M_HOSTAP) {
+			/*
+			 * Clear any challenge text that may be there if
+			 * a previous shared key auth failed and then an
+			 * open auth is attempted.
+			 */
+			if (ni->ni_challenge != NULL) {
+				FREE(ni->ni_challenge, M_DEVBUF);
+				ni->ni_challenge = NULL;
+			}
 			/* XXX hack to workaround calling convention */
 			ieee80211_send_error(ic, ni, wh->i_addr2, 
 			    IEEE80211_FC0_SUBTYPE_AUTH,
