@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.30 2007/01/15 12:53:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.31 2007/02/14 13:00:34 sephe Exp $
  */
 
 /*
@@ -1220,18 +1220,8 @@ re_attach(device_t dev)
 	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
 	ifp->if_hwassist = 0;
 #else
-	if (sc->re_flags & RE_F_PCIE) {
-		/*
-		 * The hardware supports checksumming but, as usual, PCIe
-		 * chipsets screw it all up and produce bogus packets, so
-		 * we don't enable it by default.
-		 */
-		ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
-		ifp->if_hwassist = 0;
-	} else {
-		ifp->if_capenable = ifp->if_capabilities;
-		ifp->if_hwassist = RE_CSUM_FEATURES;
-	}
+	ifp->if_capenable = ifp->if_capabilities;
+	ifp->if_hwassist = RE_CSUM_FEATURES;
 #endif	/* RE_DISABLE_HWCSUM */
 
 	/*
@@ -1853,8 +1843,12 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	 * the mbuf chain has too many fragments so the coalescing code
 	 * below can assemble the packet into a single buffer that's
 	 * padded out to the mininum frame size.
+	 *
+	 * Note: this appears unnecessary for TCP, and doing it for TCP
+	 * with PCIe adapters seems to result in bad checksums.
 	 */
-	if (arg.re_flags && m->m_pkthdr.len < RE_MIN_FRAMELEN) {
+	if (arg.re_flags && !(arg.re_flags & RE_TDESC_CMD_TCPCSUM) &&
+	    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
 		error = EFBIG;
 	} else {
 		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map,
@@ -1870,9 +1864,9 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 
 	if (error || arg.re_maxsegs == 0) {
 		m_new = m_defrag_nofree(m, MB_DONTWAIT);
-		if (m_new == NULL)
+		if (m_new == NULL) {
 			return(1);
-		else {
+		} else {
 			m = m_new;
 			*m_head = m;
 		}
