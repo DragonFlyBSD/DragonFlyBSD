@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2006 Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2004-2007 Internet Systems Consortium, Inc. ("ISC")
  * Copyright (C) 1998-2003 Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -14,7 +14,7 @@
  * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $DragonFly: src/usr.sbin/named/code.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/usr.sbin/named/code.h,v 1.3 2007/02/15 20:28:49 victor Exp $ */
 
 /***************
  ***************
@@ -78,7 +78,7 @@
 #include "./rdata/generic/unspec_103.c"
 #include "./rdata/generic/tkey_249.c"
 #include "./rdata/any_255/tsig_250.c"
-#include "./rdata/generic/dlv_65323.c"
+#include "./rdata/generic/dlv_32769.c"
 
 
 
@@ -179,7 +179,7 @@
 		default: result = DNS_R_UNKNOWN; break; \
 		} \
 		break; \
-	case 65323: result = fromtext_dlv(rdclass, type, lexer, origin, options, target, callbacks); break; \
+	case 32769: result = fromtext_dlv(rdclass, type, lexer, origin, options, target, callbacks); break; \
 	default: result = DNS_R_UNKNOWN; break; \
 	}
 
@@ -280,7 +280,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = totext_dlv(rdata, tctx, target); break; \
+	case 32769: result = totext_dlv(rdata, tctx, target); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -381,7 +381,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = fromwire_dlv(rdclass, type, source, dctx, options, target); break; \
+	case 32769: result = fromwire_dlv(rdclass, type, source, dctx, options, target); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -482,7 +482,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = towire_dlv(rdata, cctx, target); break; \
+	case 32769: result = towire_dlv(rdata, cctx, target); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -583,7 +583,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = compare_dlv(rdata1, rdata2); break; \
+	case 32769: result = compare_dlv(rdata1, rdata2); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -684,7 +684,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = fromstruct_dlv(rdclass, type, source, target); break; \
+	case 32769: result = fromstruct_dlv(rdclass, type, source, target); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -785,7 +785,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = tostruct_dlv(rdata, target, mctx); break; \
+	case 32769: result = tostruct_dlv(rdata, target, mctx); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -886,7 +886,7 @@
 		default: break; \
 		} \
 		break; \
-	case 65323: freestruct_dlv(source); break; \
+	case 32769: freestruct_dlv(source); break; \
 	default: break; \
 	}
 
@@ -987,7 +987,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = additionaldata_dlv(rdata, add, arg); break; \
+	case 32769: result = additionaldata_dlv(rdata, add, arg); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -1088,7 +1088,7 @@
 		default: use_default = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = digest_dlv(rdata, digest, arg); break; \
+	case 32769: result = digest_dlv(rdata, digest, arg); break; \
 	default: use_default = ISC_TRUE; break; \
 	}
 
@@ -1189,7 +1189,7 @@
 		default: result = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = checkowner_dlv(name, rdclass, type, wildcard); break; \
+	case 32769: result = checkowner_dlv(name, rdclass, type, wildcard); break; \
 	default: result = ISC_TRUE; break; \
 	}
 
@@ -1290,7 +1290,7 @@
 		default: result = ISC_TRUE; break; \
 		} \
 		break; \
-	case 65323: result = checknames_dlv(rdata, owner, bad); break; \
+	case 32769: result = checknames_dlv(rdata, owner, bad); break; \
 	default: result = ISC_TRUE; break; \
 	}
 #define RDATATYPE_COMPARE(_s, _d, _tn, _n, _tp) \
@@ -1379,7 +1379,7 @@
 			break; \
 		case 122: \
 			RDATATYPE_COMPARE("sig", 24, _typename, _length, _typep); \
-			RDATATYPE_COMPARE("dlv", 65323, _typename, _length, _typep); \
+			RDATATYPE_COMPARE("dlv", 32769, _typename, _length, _typep); \
 			break; \
 		case 254: \
 			RDATATYPE_COMPARE("key", 25, _typename, _length, _typep); \
@@ -1530,7 +1530,7 @@
 	case 253: return (DNS_RDATATYPEATTR_META | DNS_RDATATYPEATTR_QUESTIONONLY); \
 	case 254: return (DNS_RDATATYPEATTR_META | DNS_RDATATYPEATTR_QUESTIONONLY); \
 	case 255: return (DNS_RDATATYPEATTR_META | DNS_RDATATYPEATTR_QUESTIONONLY); \
-	case 65323: return (RRTYPE_DLV_ATTRIBUTES); \
+	case 32769: return (RRTYPE_DLV_ATTRIBUTES); \
 	}
 #define RDATATYPE_TOTEXT_SW \
 	switch (type) { \
@@ -1592,6 +1592,6 @@
 	case 253: return (str_totext("MAILB", target)); \
 	case 254: return (str_totext("MAILA", target)); \
 	case 255: return (str_totext("ANY", target)); \
-	case 65323: return (str_totext("DLV", target)); \
+	case 32769: return (str_totext("DLV", target)); \
 	}
 #endif /* DNS_CODE_H */

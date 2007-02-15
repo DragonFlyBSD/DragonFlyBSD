@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2006 Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2004-2007 Internet Systems Consortium, Inc. ("ISC")
  * Copyright (C) 1998-2003 Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -14,7 +14,7 @@
  * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $DragonFly: src/usr.sbin/named/include/dns/enumtype.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/usr.sbin/named/include/dns/enumtype.h,v 1.3 2007/02/15 20:28:50 victor Exp $ */
 
 /***************
  ***************
@@ -74,7 +74,7 @@ enum {
 	dns_rdatatype_unspec = 103,
 	dns_rdatatype_tkey = 249,
 	dns_rdatatype_tsig = 250,
-	dns_rdatatype_dlv = 65323,
+	dns_rdatatype_dlv = 32769,
 	dns_rdatatype_ixfr = 251,
 	dns_rdatatype_axfr = 252,
 	dns_rdatatype_mailb = 253,

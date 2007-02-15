@@ -18,7 +18,7 @@
  */
 
 /* $Id: config.h.in,v 1.47.2.3.2.20 2005/10/20 23:57:38 marka Exp $ */
-/* $DragonFly: src/usr.sbin/named/config.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/usr.sbin/named/config.h,v 1.3 2007/02/15 20:28:49 victor Exp $ */
 
 /***
  *** This file is not to be included by any public header files, because
@@ -148,8 +148,21 @@ int sigwait(const unsigned int *set, int *sig);
 /* Define if threads need PTHREAD_SCOPE_SYSTEM */
 /* #undef NEED_PTHREAD_SCOPE_SYSTEM */
 
+/* Define if recvmsg() does not meet all of the BSD socket API specifications.
+   */
+/* #undef BROKEN_RECVMSG */
+
+/* Define if you cannot bind() before connect() for TCP sockets. */
+/* #undef BROKEN_TCP_BIND_BEFORE_CONNECT */
+
+/* Define if libcrypto has DH_generate_parameters */
+#define HAVE_DH_GENERATE_PARAMETERS 1
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 /* #undef HAVE_DLFCN_H */
+
+/* Define if libcrypto has DSA_generate_parameters */
+#define HAVE_DSA_GENERATE_PARAMETERS 1
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
@@ -183,6 +196,9 @@ int sigwait(const unsigned int *set, int *sig);
 
 /* Define to 1 if you have the <net/if6.h> header file. */
 /* #undef HAVE_NET_IF6_H */
+
+/* Define if libcrypto has RSA_generate_key */
+#define HAVE_RSA_GENERATE_KEY 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1

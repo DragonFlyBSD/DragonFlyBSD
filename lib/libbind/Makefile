@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/lib/libbind/Makefile,v 1.9 2006/09/20 21:48:39 victor Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.10 2007/02/15 20:28:49 victor Exp $
 
 BIND_DIR=${.CURDIR}/../../contrib/bind-9.3
 
@@ -30,15 +30,9 @@ SRCS+=	dns.c dns_gr.c dns_ho.c dns_nw.c dns_pr.c dns_pw.c \
 	getpwent_r.c getservent.c getservent_r.c hesiod.c \
 	irp.c irp_gr.c irp_ho.c irp_ng.c irp_nw.c irp_pr.c \
 	irp_pw.c irp_sv.c irpmarshall.c irs_data.c lcl.c \
-	lcl_gr.c lcl_ho.c lcl_ng.c lcl_nw.c lcl_pr.c\
+	lcl_gr.c lcl_ho.c lcl_ng.c lcl_nw.c lcl_pr.c \
 	lcl_pw.c lcl_sv.c nis.c nis_gr.c nis_ho.c nis_ng.c \
 	nis_nw.c nis_pr.c nis_pw.c nis_sv.c nul_ng.c util.c
-
-# kind of a messy way to patch this file
-#
-CONTRIBDIR= ${BIND_DIR}/lib/bind/irs
-CFLAGS+=-I${CONTRIBDIR}
-SRCS+=	dns_ho.c.patch
 
 .PATH:	${BIND_DIR}/lib/bind/nameser
 SRCS+=	ns_date.c ns_name.c ns_netint.c \

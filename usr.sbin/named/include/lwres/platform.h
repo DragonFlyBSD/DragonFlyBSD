@@ -16,7 +16,7 @@
  */
 
 /* $Id: platform.h.in,v 1.12.2.1.10.5 2005/06/08 02:08:32 marka Exp $ */
-/* $DragonFly: src/usr.sbin/named/include/lwres/platform.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/usr.sbin/named/include/lwres/platform.h,v 1.3 2007/02/15 20:28:50 victor Exp $ */
 
 #ifndef LWRES_PLATFORM_H
 #define LWRES_PLATFORM_H 1
@@ -97,7 +97,7 @@
 /*! \brief
  * Define if this system needs strtoul.
  */
-#undef ISC_PLATFORM_NEEDSTRTOUL
+#undef LWRES_PLATFORM_NEEDSTRTOUL
 
 #ifndef LWRES_PLATFORM_USEDECLSPEC
 #define LIBLWRES_EXTERNAL_DATA

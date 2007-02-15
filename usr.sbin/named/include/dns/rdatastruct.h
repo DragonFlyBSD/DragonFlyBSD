@@ -40,7 +40,7 @@
  */
 
 /* $Id: rdatastructpre.h,v 1.13.206.1 2004/03/06 08:14:02 marka Exp $ */
-/* $DragonFly: src/usr.sbin/named/include/dns/rdatastruct.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/usr.sbin/named/include/dns/rdatastruct.h,v 1.3 2007/02/15 20:28:50 victor Exp $ */
 
 #ifndef DNS_RDATASTRUCT_H
 #define DNS_RDATASTRUCT_H 1
@@ -1694,8 +1694,8 @@ typedef struct dns_rdata_any_tsig {
 /* $Id: dlv_65323.h,v 1.2.2.3 2004/03/15 01:02:55 marka Exp $ */
 
 /* draft-ietf-dnsext-delegation-signer-05.txt */
-#ifndef GENERIC_DLV_65323_H
-#define GENERIC_DLV_65323_H 1
+#ifndef GENERIC_DLV_32769_H
+#define GENERIC_DLV_32769_H 1
 
 typedef struct dns_rdata_dlv {
 	dns_rdatacommon_t	common;
@@ -1707,7 +1707,7 @@ typedef struct dns_rdata_dlv {
 	unsigned char		*digest;
 } dns_rdata_dlv_t;
 
-#endif /* GENERIC_DLV_65323_H */
+#endif /* GENERIC_DLV_32769_H */
 /*
  * Copyright (C) 2004  Internet Systems Consortium, Inc. ("ISC")
  * Copyright (C) 1999-2001  Internet Software Consortium.
