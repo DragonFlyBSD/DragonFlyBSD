@@ -28,11 +28,13 @@ lib/bind/port/solaris
 lib/bind/port/sunos
 lib/bind/port/ultrix
 lib/bind/port/unixware*
+acconfig.h
 win32utils
 make
 contrib
 doc
 docutil
+FAQ.xml
 *.m4
 */*/*.m4
 config*

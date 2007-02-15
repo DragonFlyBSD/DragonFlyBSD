@@ -1,8 +1,8 @@
 
-			BIND-9.3.2-P1 AS USED BY DRAGONFLY
+			BIND-9.3.4 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the ISC
-    bind-9.3.2-P1.tar.gz distribution.  No files have been moved
+    bind-9.3.4.tar.gz distribution.  No files have been moved
     or modified from their extracted position.
 
     This distribution was downloaded from the following site:
