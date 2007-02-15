@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.7 2007/02/08 15:39:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.8 2007/02/15 09:05:11 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -426,6 +426,7 @@ struct acx_softc {
 };
 
 #define ACX_FLAG_FW_LOADED	0x1
+#define ACX_FLAG_PROMISC	0x2
 
 #define ACX_RADIO_TYPE_MAXIM	0x0d
 #define ACX_RADIO_TYPE_RFMD	0x11

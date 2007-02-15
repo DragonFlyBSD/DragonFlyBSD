@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.3 2006/12/09 08:10:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.4 2007/02/15 09:05:11 sephe Exp $
  */
 
 #ifndef _ACXCMD_H
@@ -44,7 +44,8 @@ void	acx_init_cmd_reg(struct acx_softc *);
 int	acx_enable_txchan(struct acx_softc *, uint8_t);
 int	acx_enable_rxchan(struct acx_softc *, uint8_t);
 int	acx_init_radio(struct acx_softc *, uint32_t, uint32_t);
-int	acx_join_bss(struct acx_softc *, uint8_t, struct ieee80211_node *);
+int	acx_join_bss(struct acx_softc *, uint8_t,
+		     struct ieee80211_node *, uint8_t);
 
 /*
  * Possible values for the second parameter of acx_join_bss()

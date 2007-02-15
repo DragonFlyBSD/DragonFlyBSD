@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.5 2007/01/01 03:31:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.6 2007/02/15 09:05:11 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,8 @@ acx_init_cmd_reg(struct acx_softc *sc)
 }
 
 int
-acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node)
+acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node,
+	     uint8_t chan)
 {
 	uint8_t bj_buf[BSS_JOIN_BUFLEN];
 	struct bss_join_hdr *bj;
@@ -147,7 +148,7 @@ acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node)
 	bj->ndata_txrate = ACX_NDATA_TXRATE_2;
 	bj->ndata_txopt = 0;
 	bj->mode = mode;
-	bj->channel = ieee80211_chan2ieee(&sc->sc_ic, node->ni_chan);
+	bj->channel = chan;
 	bj->esslen = node->ni_esslen;
 	bcopy(node->ni_essid, bj->essid, node->ni_esslen);
 

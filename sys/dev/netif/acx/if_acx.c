@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.16 2007/02/08 15:39:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.17 2007/02/15 09:05:11 sephe Exp $
  */
 
 /*
@@ -139,10 +139,8 @@ static void	acx_init_info_reg(struct acx_softc *);
 static int	acx_config(struct acx_softc *);
 static int	acx_read_config(struct acx_softc *, struct acx_config *);
 static int	acx_write_config(struct acx_softc *, struct acx_config *);
+static int	acx_rx_config(struct acx_softc *, int);
 static int	acx_set_crypt_keys(struct acx_softc *);
-#ifdef foo
-static void	acx_begin_scan(struct acx_softc *);
-#endif
 static void	acx_next_scan(void *);
 
 static void	acx_start(struct ifnet *);
@@ -416,7 +414,8 @@ acx_attach(device_t dev)
 	 * NOTE: Don't overwrite ic_caps set by chip specific code
 	 */
 	ic->ic_caps |= IEEE80211_C_WEP |	/* WEP */
-		       IEEE80211_C_HOSTAP |	/* Host AP modes */
+		       IEEE80211_C_HOSTAP |	/* HostAP mode */
+		       IEEE80211_C_MONITOR |	/* Monitor mode */
 		       IEEE80211_C_IBSS |	/* IBSS modes */
 		       IEEE80211_C_SHPREAMBLE;	/* Short preamble */
 	ic->ic_caps_ext = IEEE80211_CEXT_PBCC;	/* PBCC modulation */
@@ -533,7 +532,8 @@ static void
 acx_init(void *arg)
 {
 	struct acx_softc *sc = arg;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = &ic->ic_if;
 	struct acx_firmware *fw = &sc->sc_firmware;
 	int error;
 
@@ -612,13 +612,12 @@ acx_init(void *arg)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	/* Begin background scanning */
-#ifdef foo
-	acx_begin_scan(sc);
-#else
-	ieee80211_new_state(&sc->sc_ic, IEEE80211_S_SCAN, -1);
-#endif
-
+	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
+		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
+			ieee80211_new_state(&sc->sc_ic, IEEE80211_S_SCAN, -1);
+	} else {
+		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+	}
 back:
 	if (error)
 		acx_stop(sc);
@@ -666,26 +665,6 @@ acx_set_crypt_keys(struct acx_softc *sc)
 	}
 	return 0;
 }
-
-#ifdef foo
-static void
-acx_begin_scan(struct acx_softc *sc)
-{
-	struct ieee80211com *ic = &sc->sc_ic;
-	uint8_t chan;
-
-	ieee80211_begin_scan(ic, 1);
-
-	chan = ieee80211_chan2ieee(ic, ic->ic_bss->ni_chan);
-
-	ACX_ENABLE_TXCHAN(sc, chan);
-	ACX_ENABLE_RXCHAN(sc, chan);
-
-	/* Start background scanning */
-	callout_reset(&sc->sc_chanscan_timer, hz / acx_chanscan_rate,
-		      acx_next_scan, sc);
-}
-#endif
 
 static void
 acx_next_scan(void *arg)
@@ -801,6 +780,10 @@ acx_config(struct acx_softc *sc)
 		return error;
 
 	error = acx_write_config(sc, &conf);
+	if (error)
+		return error;
+
+	error = acx_rx_config(sc, sc->sc_flags & ACX_FLAG_PROMISC);
 	if (error)
 		return error;
 
@@ -928,7 +911,6 @@ acx_write_config(struct acx_softc *sc, struct acx_config *conf)
 	struct acx_conf_rate_fallback rate_fb;
 	struct acx_conf_antenna ant;
 	struct acx_conf_regdom reg_dom;
-	struct acx_conf_rxopt rx_opt;
 	int error;
 
 	/* Set number of long/short retry */
@@ -979,23 +961,6 @@ acx_write_config(struct acx_softc *sc, struct acx_config *conf)
 			return error;
 	}
 
-	/* What we want to receive and how to receive */
-	/* XXX may not belong here, acx_init() */
-	rx_opt.opt1 = RXOPT1_FILT_FDEST | RXOPT1_INCL_RXBUF_HDR;
-	rx_opt.opt2 = RXOPT2_RECV_ASSOC_REQ |
-		      RXOPT2_RECV_AUTH |
-		      RXOPT2_RECV_BEACON |
-		      RXOPT2_RECV_CF |
-		      RXOPT2_RECV_CTRL |
-		      RXOPT2_RECV_DATA |
-		      RXOPT2_RECV_MGMT |
-		      RXOPT2_RECV_PROBE_REQ |
-		      RXOPT2_RECV_PROBE_RESP |
-		      RXOPT2_RECV_OTHER;
-	if (acx_set_rxopt_conf(sc, &rx_opt) != 0) {
-		if_printf(&sc->sc_ic.ic_if, "can't set RX option\n");
-		return ENXIO;
-	}
 	return 0;
 }
 
@@ -1003,6 +968,7 @@ static int
 acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct acx_softc *sc = ifp->if_softc;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifreq *req;
 	int error;
 
@@ -1041,19 +1007,42 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
-			if ((ifp->if_flags & IFF_RUNNING) == 0)
+			if ((ifp->if_flags & IFF_RUNNING)) {
+				int promisc = -1;
+
+				if ((ifp->if_flags & IFF_PROMISC) &&
+				    (sc->sc_flags & ACX_FLAG_PROMISC) == 0)
+					promisc = 1;
+				else if ((ifp->if_flags & IFF_PROMISC) == 0 &&
+					 (sc->sc_flags & ACX_FLAG_PROMISC))
+					promisc = 0;
+
+				/*
+				 * Promisc mode is always enabled when
+				 * operation mode is Monitor.
+				 */
+				if (ic->ic_opmode != IEEE80211_M_MONITOR &&
+				    promisc >= 0)
+					error = acx_rx_config(sc, promisc);
+			} else {
 				acx_init(sc);
+			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
 				acx_stop(sc);
 		}
+
+		if (ifp->if_flags & IFF_PROMISC)
+			sc->sc_flags |= ACX_FLAG_PROMISC;
+		else
+			sc->sc_flags &= ~ACX_FLAG_PROMISC;
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		/* TODO */
 		break;
 	default:
-		error = ieee80211_ioctl(&sc->sc_ic, cmd, data, cr);
+		error = ieee80211_ioctl(ic, cmd, data, cr);
 		break;
 	}
 
@@ -1151,17 +1140,20 @@ acx_start(struct ifnet *ifp)
 
 			/* TODO power save */
 
+			BPF_MTAP(ifp, m);
+
 			m = ieee80211_encap(ic, m, ni);
 			if (m == NULL) {
 				ieee80211_free_node(ni);
 				ifp->if_oerrors++;
 				continue;
 			}
-
-			BPF_MTAP(ifp, m);
 		} else {
 			break;
 		}
+
+		if (ic->ic_rawbpf != NULL)
+			bpf_mtap(ic->ic_rawbpf, m);
 
 		f = mtod(m, struct ieee80211_frame *);
 		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && !sc->chip_hw_crypt) {
@@ -1173,9 +1165,6 @@ acx_start(struct ifnet *ifp)
 				continue;
 			}
 		}
-
-		if (ic->ic_rawbpf != NULL)
-			bpf_mtap(ic->ic_rawbpf, m);
 
 		/*
 		 * Since mgmt data are transmitted at fixed rate
@@ -1485,13 +1474,13 @@ acx_rxeof(struct acx_softc *sc)
 		len = le16toh(head->rbh_len) & ACX_RXBUF_LEN_MASK;
 		if (len >= sizeof(struct ieee80211_frame_min) &&
 		    len < MCLBYTES) {
-			struct ieee80211_frame *f;
+			struct ieee80211_frame_min *f;
 			struct ieee80211_node *ni;
 			int rssi;
 
 			m_adj(m, sizeof(struct acx_rxbuf_hdr) +
 				 sc->chip_rxbuf_exhdr);
-			f = mtod(m, struct ieee80211_frame *);
+			f = mtod(m, struct ieee80211_frame_min *);
 
 			if ((f->i_fc[1] & IEEE80211_FC1_WEP) &&
 			    sc->chip_hw_crypt) {
@@ -1501,14 +1490,14 @@ acx_rxeof(struct acx_softc *sc)
 				/* Do chip specific RX buffer processing */
 				if (sc->chip_proc_wep_rxbuf != NULL) {
 					sc->chip_proc_wep_rxbuf(sc, m, &len);
-					f = mtod(m, struct ieee80211_frame *);
+					f = mtod(m,
+					    struct ieee80211_frame_min *);
 				}
 			}
 
 			rssi = acx_get_rssi(sc, head->rbh_level);
 
-			ni = ieee80211_find_rxnode(ic,
-				(struct ieee80211_frame_min *)f);
+			ni = ieee80211_find_rxnode(ic, f);
 
 			m->m_len = m->m_pkthdr.len = len;
 			m->m_pkthdr.rcvif = &ic->ic_if;
@@ -1519,8 +1508,20 @@ acx_rxeof(struct acx_softc *sc)
 			ieee80211_free_node(ni);
 			ifp->if_ipackets++;
 		} else {
+			if (len < sizeof(struct ieee80211_frame_min)) {
+				if (ic->ic_rawbpf != NULL &&
+				    len >= sizeof(struct ieee80211_frame_ack)) {
+					m_adj(m, sizeof(struct acx_rxbuf_hdr) +
+						 sc->chip_rxbuf_exhdr);
+					m->m_len = m->m_pkthdr.len = len;
+					m->m_pkthdr.rcvif = &ic->ic_if;
+					bpf_mtap(ic->ic_rawbpf, m);
+				}
+
+				if (ic->ic_opmode != IEEE80211_M_MONITOR)
+					ic->ic_stats.is_rx_tooshort++;
+			}
 			m_freem(m);
-			ifp->if_ierrors++;
 		}
 
 next:
@@ -1838,7 +1839,9 @@ static int
 acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
 	struct acx_softc *sc = ic->ic_if.if_softc;
+	struct ieee80211_node *ni;
 	int error = 0, mode = 0;
+	uint8_t chan;
 
 	ASSERT_SERIALIZED(ic->ic_if.if_serializer);
 
@@ -1847,8 +1850,6 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	switch (nstate) {
 	case IEEE80211_S_SCAN:
 		if (ic->ic_state != IEEE80211_S_INIT) {
-			uint8_t chan;
-
 			chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
 			ACX_ENABLE_TXCHAN(sc, chan);
 			ACX_ENABLE_RXCHAN(sc, chan);
@@ -1860,11 +1861,9 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		break;
 	case IEEE80211_S_AUTH:
 		if (ic->ic_opmode == IEEE80211_M_STA) {
-			struct ieee80211_node *ni;
-
 			ni = ic->ic_bss;
-
-			if (acx_join_bss(sc, ACX_MODE_STA, ni) != 0) {
+			chan = ieee80211_chan2ieee(ic, ni->ni_chan);
+			if (acx_join_bss(sc, ACX_MODE_STA, ni, chan) != 0) {
 				if_printf(&ic->ic_if, "join BSS failed\n");
 				error = 1;
 				goto back;
@@ -1881,9 +1880,6 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	case IEEE80211_S_RUN:
 		if (ic->ic_opmode == IEEE80211_M_IBSS ||
 		    ic->ic_opmode == IEEE80211_M_HOSTAP) {
-			struct ieee80211_node *ni;
-			uint8_t chan;
-
 			ni = ic->ic_bss;
 			chan = ieee80211_chan2ieee(ic, ni->ni_chan);
 
@@ -1920,12 +1916,35 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 			else
 				mode = ACX_MODE_AP;
 
-			if (acx_join_bss(sc, mode, ni) != 0) {
+			if (acx_join_bss(sc, mode, ni, chan) != 0) {
 				if_printf(&ic->ic_if, "acx_join_ibss failed\n");
 				goto back;
 			}
 
 			DPRINTF((&ic->ic_if, "join IBSS\n"));
+			error = 0;
+		} else if (ic->ic_opmode == IEEE80211_M_MONITOR) {
+			chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
+			error = 1;
+
+			if (acx_enable_txchan(sc, chan) != 0) {
+				if_printf(&ic->ic_if,
+					  "enable TX on channel %d failed\n",
+					  chan);
+				goto back;
+			}
+			if (acx_enable_rxchan(sc, chan) != 0) {
+				if_printf(&ic->ic_if,
+					  "enable RX on channel %d failed\n",
+					  chan);
+				goto back;
+			}
+
+			if (acx_join_bss(sc, ACX_MODE_STA,
+					 ic->ic_bss, chan) != 0) {
+				if_printf(&ic->ic_if, "join BSS failed\n");
+				goto back;
+			}
 			error = 0;
 		}
 		break;
@@ -2551,5 +2570,42 @@ acx_media_change(struct ifnet *ifp)
 
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
 		acx_init(ifp->if_softc);
+	return 0;
+}
+
+static int
+acx_rx_config(struct acx_softc *sc, int promisc)
+{
+	struct acx_conf_rxopt rx_opt;
+	struct ieee80211com *ic = &sc->sc_ic;
+
+	/*
+	 * What we want to receive and how to receive
+	 */
+
+	/* Common for all operational modes */
+	rx_opt.opt1 = RXOPT1_INCL_RXBUF_HDR;
+	rx_opt.opt2 = RXOPT2_RECV_ASSOC_REQ |
+		      RXOPT2_RECV_AUTH |
+		      RXOPT2_RECV_BEACON |
+		      RXOPT2_RECV_CF |
+		      RXOPT2_RECV_CTRL |
+		      RXOPT2_RECV_DATA |
+		      RXOPT2_RECV_MGMT |
+		      RXOPT2_RECV_PROBE_REQ |
+		      RXOPT2_RECV_PROBE_RESP |
+		      RXOPT2_RECV_OTHER;
+
+	if (ic->ic_opmode == IEEE80211_M_MONITOR) {
+		rx_opt.opt1 |= RXOPT1_PROMISC;
+		rx_opt.opt2 |= RXOPT2_RECV_BROKEN | RXOPT2_RECV_ACK;
+	} else {
+		rx_opt.opt1 |= promisc ? RXOPT1_PROMISC : RXOPT1_FILT_FDEST;
+	}
+
+	if (acx_set_rxopt_conf(sc, &rx_opt) != 0) {
+		if_printf(&sc->sc_ic.ic_if, "can't config RX\n");
+		return ENXIO;
+	}
 	return 0;
 }
