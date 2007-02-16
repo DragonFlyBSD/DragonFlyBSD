@@ -36,9 +36,10 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.17 2007/01/18 12:34:46 victor Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.18 2007/02/16 23:41:02 victor Exp $
  */
 
+#include "opt_inet6.h"
 
 #include <sys/param.h>
 #include <sys/types.h>
