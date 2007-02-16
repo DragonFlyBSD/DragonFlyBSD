@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.5 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.6 2007/02/16 02:15:25 corecode Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_swtime = p->p_swtime;
 
 	kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
-	kp->kp_vm_rssize = p->p_vmspace->vm_rssize;
+	kp->kp_vm_rssize = vmspace_resident_count(p->p_vmspace);
 	kp->kp_vm_swrss = p->p_vmspace->vm_swrss;
 	kp->kp_vm_tsize = p->p_vmspace->vm_tsize;
 	kp->kp_vm_dsize = p->p_vmspace->vm_dsize;
