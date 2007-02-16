@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.18 2007/02/16 06:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.19 2007/02/16 11:46:47 sephe Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -100,9 +101,9 @@
 
 #define ACX_DEBUG
 
-#include "if_acxreg.h"
-#include "if_acxvar.h"
-#include "acxcmd.h"
+#include <dev/netif/acx/if_acxreg.h>
+#include <dev/netif/acx/if_acxvar.h>
+#include <dev/netif/acx/acxcmd.h>
 
 #define SIOCSLOADFW	_IOW('i', 137, struct ifreq)	/* load firmware */
 #define SIOCGRADIO	_IOW('i', 138, struct ifreq)	/* get radio type */
@@ -373,6 +374,31 @@ acx_attach(device_t dev)
 		goto fail;
 	DPRINTF((&sc->sc_ic.ic_if, "EEPROM version %u\n", sc->sc_eeprom_ver));
 
+	/*
+	 * Initialize device sysctl before ieee80211_ifattach()
+	 */
+	sc->sc_long_retry_limit = 4;
+	sc->sc_msdu_lifetime = 4096;
+	sc->sc_scan_dwell = 200;	/* 200 milliseconds */
+
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+					     SYSCTL_STATIC_CHILDREN(_hw),
+					     OID_AUTO,
+					     device_get_nameunit(dev),
+					     CTLFLAG_RD, 0, "");
+	if (sc->sc_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
+	}
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "msdu_lifetime",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, acx_sysctl_msdu_lifetime, "I",
+			"MSDU life time");
+
 	ifp->if_softc = sc;
 	ifp->if_init = acx_init;
 	ifp->if_ioctl = acx_ioctl;
@@ -419,42 +445,34 @@ acx_attach(device_t dev)
 
 	ieee80211_media_init(ic, acx_media_change, ieee80211_media_status);
 
-	sc->sc_long_retry_limit = 4;
-	sc->sc_msdu_lifetime = 4096;
-	sc->sc_scan_dwell = 200;	/* 200 milliseconds */
+	/*
+	 * Radio tap attaching
+	 */
+	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
+		      sizeof(struct ieee80211_frame) + sizeof(sc->sc_tx_th),
+		      &sc->sc_drvbpf);
 
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail1;
-	}
+	sc->sc_tx_th_len = roundup(sizeof(sc->sc_tx_th), sizeof(uint32_t));
+	sc->sc_tx_th.wt_ihdr.it_len = htole16(sc->sc_tx_th_len);
+	sc->sc_tx_th.wt_ihdr.it_present = htole32(ACX_TX_RADIOTAP_PRESENT);
 
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "msdu_lifetime",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_msdu_lifetime, "I",
-			"MSDU life time");
+	sc->sc_rx_th_len = roundup(sizeof(sc->sc_rx_th), sizeof(uint32_t));
+	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
+	sc->sc_rx_th.wr_ihdr.it_present = htole32(ACX_RX_RADIOTAP_PRESENT);
 
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, acx_intr, sc,
 			       &sc->sc_irq_handle, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "can't set up interrupt\n");
-		goto fail1;
+		bpfdetach(ifp);
+		ieee80211_ifdetach(ic);
+		goto fail;
 	}
 
 	if (bootverbose)
 		ieee80211_announce(ic);
 
 	return 0;
-fail1:
-	ieee80211_ifdetach(ic);
 fail:
 	acx_detach(dev);
 	return error;
@@ -477,6 +495,7 @@ acx_detach(device_t dev)
 
 		lwkt_serialize_exit(ifp->if_serializer);
 
+		bpfdetach(ifp);
 		ieee80211_ifdetach(ic);
 	}
 
@@ -1409,10 +1428,11 @@ acx_rxeof(struct acx_softc *sc)
 	do {
 		struct acx_rxbuf_hdr *head;
 		struct acx_rxbuf *buf;
+		struct ieee80211_frame_min *wh;
 		struct mbuf *m;
 		uint32_t desc_status;
 		uint16_t desc_ctrl;
-		int len, error;
+		int len, error, rssi, is_priv;
 
 		buf = &bd->rx_buf[idx];
 
@@ -1434,60 +1454,83 @@ acx_rxeof(struct acx_softc *sc)
 		}
 
 		head = mtod(m, struct acx_rxbuf_hdr *);
-
 		len = le16toh(head->rbh_len) & ACX_RXBUF_LEN_MASK;
+		rssi = acx_get_rssi(sc, head->rbh_level);
+
+		m_adj(m, sizeof(struct acx_rxbuf_hdr) + sc->chip_rxbuf_exhdr);
+		m->m_len = m->m_pkthdr.len = len;
+		m->m_pkthdr.rcvif = &ic->ic_if;
+
+		wh = mtod(m, struct ieee80211_frame_min *);
+		is_priv = (wh->i_fc[1] & IEEE80211_FC1_WEP);
+
+		if (sc->sc_drvbpf != NULL) {
+			sc->sc_rx_th.wr_tsf = htole32(head->rbh_time);
+
+			sc->sc_rx_th.wr_flags = 0;
+			if (is_priv) {
+				sc->sc_rx_th.wr_flags |=
+					IEEE80211_RADIOTAP_F_WEP;
+			}
+			if (head->rbh_bbp_stat & ACX_RXBUF_STAT_SHPRE) {
+				sc->sc_rx_th.wr_flags |=
+					IEEE80211_RADIOTAP_F_SHORTPRE;
+			}
+
+			if (sc->chip_phymode == IEEE80211_MODE_11G) {
+				sc->sc_rx_th.wr_rate =
+				    ieee80211_plcp2rate(head->rbh_plcp,
+				    head->rbh_bbp_stat & ACX_RXBUF_STAT_OFDM);
+			} else {
+				sc->sc_rx_th.wr_rate =
+				    ieee80211_plcp2rate(head->rbh_plcp, 0);
+			}
+
+			sc->sc_rx_th.wr_antsignal = rssi;
+
+			if (head->rbh_bbp_stat & ACX_RXBUF_STAT_ANT1)
+				sc->sc_rx_th.wr_antenna = 1;
+			else
+				sc->sc_rx_th.wr_antenna = 0;
+
+			bpf_ptap(sc->sc_drvbpf, m, &sc->sc_rx_th,
+				 sc->sc_rx_th_len);
+		}
+
 		if (len >= sizeof(struct ieee80211_frame_min) &&
 		    len < MCLBYTES) {
-			struct ieee80211_frame_min *f;
 			struct ieee80211_node *ni;
-			int rssi;
 
-			m_adj(m, sizeof(struct acx_rxbuf_hdr) +
-				 sc->chip_rxbuf_exhdr);
-			f = mtod(m, struct ieee80211_frame_min *);
-
-			if ((f->i_fc[1] & IEEE80211_FC1_WEP) &&
-			    sc->chip_hw_crypt) {
+			if (is_priv && sc->chip_hw_crypt) {
 				/* Short circuit software WEP */
-				f->i_fc[1] &= ~IEEE80211_FC1_WEP;
+				wh->i_fc[1] &= ~IEEE80211_FC1_WEP;
 
 				/* Do chip specific RX buffer processing */
 				if (sc->chip_proc_wep_rxbuf != NULL) {
 					sc->chip_proc_wep_rxbuf(sc, m, &len);
-					f = mtod(m,
-					    struct ieee80211_frame_min *);
+					wh = mtod(m,
+					     struct ieee80211_frame_min *);
 				}
 			}
-
-			rssi = acx_get_rssi(sc, head->rbh_level);
-
-			ni = ieee80211_find_rxnode(ic, f);
-
 			m->m_len = m->m_pkthdr.len = len;
-			m->m_pkthdr.rcvif = &ic->ic_if;
 
+			ni = ieee80211_find_rxnode(ic, wh);
 			ieee80211_input(ic, m, ni, rssi,
 					le32toh(head->rbh_time));
-
 			ieee80211_free_node(ni);
+
 			ifp->if_ipackets++;
 		} else {
 			if (len < sizeof(struct ieee80211_frame_min)) {
 				if (ic->ic_rawbpf != NULL &&
-				    len >= sizeof(struct ieee80211_frame_ack)) {
-					m_adj(m, sizeof(struct acx_rxbuf_hdr) +
-						 sc->chip_rxbuf_exhdr);
-					m->m_len = m->m_pkthdr.len = len;
-					m->m_pkthdr.rcvif = &ic->ic_if;
+				    len >= sizeof(struct ieee80211_frame_ack))
 					bpf_mtap(ic->ic_rawbpf, m);
-				}
 
 				if (ic->ic_opmode != IEEE80211_M_MONITOR)
 					ic->ic_stats.is_rx_tooshort++;
 			}
 			m_freem(m);
 		}
-
 next:
 		buf->rb_desc->h_ctrl = htole16(desc_ctrl & ~DESC_CTRL_HOSTOWN);
 		buf->rb_desc->h_status = 0;
@@ -2230,7 +2273,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	struct acx_buf_data *bd = &sc->sc_buf_data;
 	struct acx_ring_data *rd = &sc->sc_ring_data;
 	uint32_t paddr;
-	uint8_t ctrl;
+	uint8_t ctrl, rate;
 	int error;
 
 	KASSERT(txbuf->tb_mbuf == NULL, ("free TX buf has mbuf installed\n"));
@@ -2328,7 +2371,19 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_data_nretry, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_rts_nretry, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_rts_ok, 0);
-	sc->chip_set_fw_txdesc_rate(sc, txbuf, ni, m->m_pkthdr.len);
+	rate = sc->chip_set_fw_txdesc_rate(sc, txbuf, ni, m->m_pkthdr.len);
+
+	if (sc->sc_drvbpf != NULL) {
+		struct ieee80211_frame_min *wh;
+
+		wh = mtod(m, struct ieee80211_frame_min *);
+		sc->sc_tx_th.wt_flags = 0;
+		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_WEP;
+		sc->sc_tx_th.wt_rate = rate;
+
+		bpf_ptap(sc->sc_drvbpf, m, &sc->sc_tx_th, sc->sc_tx_th_len);
+	}
 
 	txbuf->tb_desc1->h_ctrl = 0;
 	txbuf->tb_desc2->h_ctrl = 0;
@@ -2531,6 +2586,7 @@ static int
 acx_set_chan(struct acx_softc *sc, struct ieee80211_channel *c)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	uint16_t flags;
 	uint8_t chan;
 
 	chan = ieee80211_chan2ieee(ic, c);
@@ -2543,5 +2599,15 @@ acx_set_chan(struct acx_softc *sc, struct ieee80211_channel *c)
 		if_printf(&ic->ic_if, "enable RX on channel %d failed\n", chan);
 		return EIO;
 	}
+
+	if (IEEE80211_IS_CHAN_G(c))
+		flags = IEEE80211_CHAN_G;
+	else
+		flags = IEEE80211_CHAN_B;
+
+	sc->sc_tx_th.wt_chan_freq = sc->sc_rx_th.wr_chan_freq =
+		htole16(c->ic_freq);
+	sc->sc_tx_th.wt_chan_flags = sc->sc_rx_th.wr_chan_flags =
+		htole16(flags);
 	return 0;
 }

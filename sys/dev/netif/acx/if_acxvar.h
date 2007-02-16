@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.9 2007/02/16 06:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.10 2007/02/16 11:46:47 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -219,7 +219,7 @@ struct acx_rxbuf_hdr {
 	uint16_t	rbh_len;	/* ACX_RXBUG_LEN_MASK part is len */
 	uint8_t		rbh_memblk_cnt;
 	uint8_t		rbh_status;
-	uint8_t		rbh_stat_baseband; /* see ACX_RXBUF_STAT_ */
+	uint8_t		rbh_bbp_stat;	/* see ACX_RXBUF_STAT_ */
 	uint8_t		rbh_plcp;
 	uint8_t		rbh_level;	/* signal level */
 	uint8_t		rbh_snr;	/* signal noise ratio */
@@ -232,7 +232,10 @@ struct acx_rxbuf_hdr {
 } __packed;
 
 #define ACX_RXBUF_LEN_MASK	0xfff
-#define ACX_RXBUF_STAT_LNA	0x80	/* low noise amplifier */
+
+#define ACX_RXBUF_STAT_OFDM	0x04
+#define ACX_RXBUF_STAT_ANT1	0x10
+#define ACX_RXBUF_STAT_SHPRE	0x80
 
 struct acx_ring_data {
 	struct acx_host_desc	*rx_ring;
@@ -311,12 +314,61 @@ struct acx_stats {
 	uint64_t	err_unkn;	/* XXX unknown error */
 };
 
+#define ACX_RX_RADIOTAP_PRESENT				\
+	((1 << IEEE80211_RADIOTAP_TSFT)		|	\
+	 (1 << IEEE80211_RADIOTAP_FLAGS)	|	\
+	 (1 << IEEE80211_RADIOTAP_RATE)		|	\
+	 (1 << IEEE80211_RADIOTAP_CHANNEL)	|	\
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL)|	\
+	 (1 << IEEE80211_RADIOTAP_ANTENNA))
+
+struct acx_rx_radiotap_header {
+	struct ieee80211_radiotap_header wr_ihdr;
+	uint64_t	wr_tsf;
+	uint8_t		wr_flags;
+	uint8_t		wr_rate;
+	uint16_t	wr_chan_freq;
+	uint16_t	wr_chan_flags;
+	uint8_t		wr_antsignal;
+	uint8_t		wr_antenna;
+};
+
+#define ACX_TX_RADIOTAP_PRESENT				\
+	((1 << IEEE80211_RADIOTAP_FLAGS)	|	\
+	 (1 << IEEE80211_RADIOTAP_RATE)		|	\
+	 (1 << IEEE80211_RADIOTAP_CHANNEL))
+
+struct acx_tx_radiotap_header {
+	struct ieee80211_radiotap_header wt_ihdr;
+	uint8_t		wt_flags;
+	uint8_t		wt_rate;
+	uint16_t	wt_chan_freq;
+	uint16_t	wt_chan_flags;
+};
+
 struct acx_softc {
 	/*
 	 * sc_xxx are filled in by common code
 	 * chip_xxx are filled in by chip specific code
 	 */
 	struct ieee80211com	sc_ic;
+
+	/*
+	 * Radio tap
+	 */
+	struct bpf_if		*sc_drvbpf;
+	union {
+		struct acx_tx_radiotap_header u_tx_th;
+		uint8_t		u_pad[IEEE80211_RADIOTAP_HDRLEN];
+	} sc_u_tx_th;
+	int			sc_tx_th_len;
+	union {
+		struct acx_rx_radiotap_header u_rx_th;
+		uint8_t		u_pad[IEEE80211_RADIOTAP_HDRLEN];
+	} sc_u_rx_th;
+	int			sc_rx_th_len;
+#define sc_tx_th	sc_u_tx_th.u_tx_th
+#define sc_rx_th	sc_u_rx_th.u_rx_th
 
 	struct callout		sc_scan_timer;
 	uint32_t		sc_flags;	/* see ACX_FLAG_ */
@@ -410,7 +462,7 @@ struct acx_softc {
 	int			(*chip_write_config)
 				(struct acx_softc *, struct acx_config *);
 
-	void			(*chip_set_fw_txdesc_rate) /* non-NULL */
+	uint8_t			(*chip_set_fw_txdesc_rate) /* non-NULL */
 				(struct acx_softc *, struct acx_txbuf *,
 				 struct ieee80211_node *, int);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.7 2007/02/16 06:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.8 2007/02/16 11:46:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -47,12 +47,13 @@
 #include <net/if_media.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
 #define ACX_DEBUG
 
-#include "if_acxreg.h"
-#include "if_acxvar.h"
-#include "acxcmd.h"
+#include <dev/netif/acx/if_acxreg.h>
+#include <dev/netif/acx/if_acxvar.h>
+#include <dev/netif/acx/acxcmd.h>
 
 #define CMDPRM_WRITE_REGION_1(sc, r, rlen)		\
 	bus_space_write_region_1((sc)->sc_mem2_bt,	\

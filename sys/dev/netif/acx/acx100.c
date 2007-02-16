@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.8 2007/02/08 15:39:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.9 2007/02/16 11:46:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -45,16 +45,16 @@
 #include <net/if_arp.h>
 #include <net/if_media.h>
 
-#include <netproto/802_11/ieee80211.h>
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
 #include <bus/pci/pcireg.h>
 
 #define ACX_DEBUG
 
-#include "if_acxreg.h"
-#include "if_acxvar.h"
-#include "acxcmd.h"
+#include <dev/netif/acx/if_acxreg.h>
+#include <dev/netif/acx/if_acxvar.h>
+#include <dev/netif/acx/acxcmd.h>
 
 #define ACX100_CONF_FW_RING	0x0003
 #define ACX100_CONF_MEMOPT	0x0005
@@ -262,7 +262,7 @@ static int	acx100_write_config(struct acx_softc *, struct acx_config *);
 
 static int	acx100_set_txpower(struct acx_softc *);
 
-static void	acx100_set_fw_txdesc_rate(struct acx_softc *,
+static uint8_t	acx100_set_fw_txdesc_rate(struct acx_softc *,
 					  struct acx_txbuf *,
 					  struct ieee80211_node *, int);
 static void	acx100_tx_complete(struct acx_softc *, struct acx_txbuf *,
@@ -708,7 +708,7 @@ acx100_set_txpower(struct acx_softc *sc)
 	return 0;
 }
 
-static void
+static uint8_t
 acx100_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			  struct ieee80211_node *ni, int data_len)
 {
@@ -728,6 +728,8 @@ acx100_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			rate = 2;
 	}
 	FW_TXDESC_SETFIELD_1(sc, tx_buf, f_tx_rate100, ACX100_RATE(rate));
+
+	return rate;
 }
 
 static void

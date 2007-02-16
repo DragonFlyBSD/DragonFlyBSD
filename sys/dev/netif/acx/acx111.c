@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.9 2007/02/08 15:39:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.10 2007/02/16 11:46:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -46,14 +46,15 @@
 #include <net/if_media.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
 #include <bus/pci/pcireg.h>
 
 #define ACX_DEBUG
 
-#include "if_acxreg.h"
-#include "if_acxvar.h"
-#include "acxcmd.h"
+#include <dev/netif/acx/if_acxreg.h>
+#include <dev/netif/acx/if_acxvar.h>
+#include <dev/netif/acx/acxcmd.h>
 
 #define ACX111_CONF_MEM		0x0003
 #define ACX111_CONF_MEMINFO	0x0005
@@ -298,13 +299,13 @@ static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
 
 static void	acx111_ratectl_change(struct ieee80211com *, u_int, u_int);
 
-static void	_acx111_set_fw_txdesc_rate(struct acx_softc *,
+static uint8_t	_acx111_set_fw_txdesc_rate(struct acx_softc *,
 					   struct acx_txbuf *,
 					   struct ieee80211_node *, int, int);
-static void	acx111_set_fw_txdesc_rate_onoe(struct acx_softc *,
+static uint8_t	acx111_set_fw_txdesc_rate_onoe(struct acx_softc *,
 					       struct acx_txbuf *,
 					       struct ieee80211_node *, int);
-static void	acx111_set_fw_txdesc_rate_amrr(struct acx_softc *,
+static uint8_t	acx111_set_fw_txdesc_rate_amrr(struct acx_softc *,
 					       struct acx_txbuf *,
 					       struct ieee80211_node *, int);
 
@@ -519,18 +520,20 @@ acx111_write_config(struct acx_softc *sc, struct acx_config *conf)
 	return 0;
 }
 
-static void
+static uint8_t
 _acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			   struct ieee80211_node *ni, int data_len,
 			   int rateidx_max)
 {
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	uint16_t rate;
+	uint8_t ret = 0;
 
 	KKASSERT(rateidx_max <= IEEE80211_RATEIDX_MAX);
 
 	if (ni == NULL) {
 		rate = ACX111_RATE_2;	/* 1Mbit/s */
+		ret = 2;
 		tx_buf->tb_rateidx_len = 1;
 		tx_buf->tb_rateidx[0] = 0;
 	} else {
@@ -548,11 +551,15 @@ _acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			if (ACX111_CHK_RATE(ifp, map_idx, rateidx[i]) < 0)
 				continue;
 
+			if (ret == 0)
+				ret = map_idx;
+
 			rate |= acx111_rate_map[map_idx];
 		}
 		if (rate == 0) {
 			if_printf(ifp, "WARNING no rate, set to 1Mbit/s\n");
 			rate = ACX111_RATE_2;
+			ret = 2;
 			tx_buf->tb_rateidx_len = 1;
 			tx_buf->tb_rateidx[0] = 0;
 		} else {
@@ -560,22 +567,24 @@ _acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 		}
 	}
 	FW_TXDESC_SETFIELD_2(sc, tx_buf, u.r2.rate111, rate);
+
+	return ret;
 }
 
-static void
+static uint8_t
 acx111_set_fw_txdesc_rate_onoe(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			       struct ieee80211_node *ni, int data_len)
 {
-	_acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
-				   ACX111_ONOE_RATEIDX_MAX);
+	return _acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
+					  ACX111_ONOE_RATEIDX_MAX);
 }
 
-static void
+static uint8_t
 acx111_set_fw_txdesc_rate_amrr(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 			       struct ieee80211_node *ni, int data_len)
 {
-	_acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
-				   ACX111_AMRR_RATEIDX_MAX);
+	return _acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
+					  ACX111_AMRR_RATEIDX_MAX);
 }
 
 static void
