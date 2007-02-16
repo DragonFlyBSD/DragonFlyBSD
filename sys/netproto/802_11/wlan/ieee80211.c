@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.11 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.12 2007/02/16 11:17:01 sephe Exp $
  */
 
 /*
@@ -1045,4 +1045,43 @@ ieee80211_media2rate(int mword)
 	return IFM_SUBTYPE(mword) < N(ieeerates) ?
 		ieeerates[IFM_SUBTYPE(mword)] : 0;
 #undef N
+}
+
+/*
+ * Covert PLCP signal/rate field to net80211 rate (.5Mbits/s)
+ */
+uint8_t
+ieee80211_plcp2rate(uint8_t plcp, int ofdm)
+{
+	if (!ofdm) {
+		switch (plcp) {
+		/* IEEE Std 802.11b-1999 page 15, subclause 18.2.3.3 */
+		case 0x0a:
+		case 0x14:
+		case 0x37:
+		case 0x6e:
+		/* IEEE Std 802.11g-2003 page 19, subclause 19.3.2.1 */
+		case 0xdc:
+			return plcp / 5;
+		}
+	} else {
+#define _OFDM_PLCP2RATE_MAX	16
+
+		/* IEEE Std 802.11a-1999 page 14, subclause 17.3.4.1 */
+		static const uint8_t ofdm_plcp2rate[_OFDM_PLCP2RATE_MAX] = {
+			[0xb]	= 12,
+			[0xf]	= 18,
+			[0xa]	= 24,
+			[0xe]	= 36,
+			[0x9]	= 48,
+			[0xd]	= 72,
+			[0x8]	= 96,
+			[0xc]	= 108
+		};
+		if (plcp < _OFDM_PLCP2RATE_MAX)
+			return ofdm_plcp2rate[plcp];
+
+#undef _OFDM_PLCP2RATE_MAX
+	}
+	return 0;
 }
