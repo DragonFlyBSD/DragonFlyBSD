@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.26 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.27 2007/02/16 12:45:12 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -167,14 +167,13 @@ static const VAR var[] = {
 	{"ruser", "RUSER", NULL, LJUST|DSIZ, runame, s_runame, USERLEN, 0, 0, NULL,
 		NULL},
 	{"sess", "SESS", NULL, 0, pvar, NULL, 6, POFF(sid), UINT, PIDFMT, NULL},
-	{"sig", "PENDING", NULL, 0, lpvar, NULL, 8, LPOFF(siglist), INT, "x", NULL},
+	{"sig", "PENDING", NULL, 0, lpvar, NULL, 8, POFF(siglist), INT, "x", NULL},
 	{"sigcatch", "CAUGHT", NULL, 0, pvar, NULL, 8, POFF(sigcatch),
 		UINT, "x", NULL},
 	{"sigignore", "IGNORED", NULL, 0, pvar, NULL, 8, POFF(sigignore),
 		UINT, "x", NULL},
 	{"sigmask", "BLOCKED", NULL, 0, lpvar, NULL, 8, LPOFF(sigmask), UINT, "x",
 		NULL},
-	{"sigproc", "PENDING", NULL, 0, pvar, NULL, 8, POFF(siglist), INT, "x", NULL},
 	{"sl", "SL", NULL, 0, lpvar, NULL, 3, LPOFF(slptime), UINT, "d", NULL},
 	{"start", "STARTED", NULL, LJUST|USER, started, NULL, 7, 0, 0, NULL, NULL},
 	{"stat", "", "state", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
@@ -188,6 +187,7 @@ static const VAR var[] = {
 	{"time", "TIME", NULL, USER, cputime, NULL, 9, 0, 0, NULL, NULL},
 	{"tpgid", "TPGID", NULL, 0, pvar, NULL, 4, POFF(tpgid), UINT, PIDFMT, NULL},
 	{"tsess", "TSESS", NULL, 0, pvar, NULL, 6, POFF(tsid), UINT, PIDFMT, NULL},
+	{"tsig", "PENDING", NULL, 0, pvar, NULL, 8, LPOFF(siglist), INT, "x", NULL},
 	{"tsiz", "TSIZ", NULL, 0, tsize, NULL, 4, 0, 0, NULL, NULL},
 	{"tt", "TT ", NULL, 0, tname, NULL, 4, 0, 0, NULL, NULL},
 	{"tty", "TTY", NULL, LJUST, longtname, NULL, 8, 0, 0, NULL, NULL},
