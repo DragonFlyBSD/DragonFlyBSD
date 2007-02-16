@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.62 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.63 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -896,16 +896,19 @@ ksignal(struct proc *p, int sig)
 	 * except that stopped processes must be continued by SIGCONT.
 	 */
 	if (action == SIG_HOLD) {
-		if ((prop & SA_CONT) == 0 || (p->p_flag & P_STOPPED) == 0)
+		if ((prop & SA_CONT) == 0 || p->p_stat != SSTOP)
 			return;
 	}
 
 	crit_enter();
 
+
+	/* XXX lwp handle stop/continue */
+
 	/*
-	 * Process is in tsleep and not stopped
+	 * LWP is in tsleep and not stopped
 	 */
-	if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED) == 0) {
+	if (lp->lwp_stat == LSSLEEP && p->p_stat != SSTOP) {
 		/*
 		 * If the process is sleeping uninterruptibly
 		 * we can't interrupt the sleep... the signal will
@@ -957,13 +960,12 @@ ksignal(struct proc *p, int sig)
 				goto out;
 
 			/*
-			 * Do not actually try to manipulate the process
-			 * while it is sleeping, simply set P_STOPPED to
-			 * indicate that it should stop as soon as it safely
-			 * can.
+			 * Do not actually try to manipulate the process while
+			 * it is sleeping, simply set SSTOP to indicate that
+			 * lwps should stop as soon as they safely can.
 			 */
 			SIGDELSET(p->p_siglist, sig);
-			p->p_flag |= P_STOPPED;
+			p->p_stat = SSTOP;
 			p->p_flag &= ~P_WAITED;
 			p->p_xstat = sig;
 			wakeup(p->p_pptr);
@@ -981,7 +983,7 @@ ksignal(struct proc *p, int sig)
 	/*
 	 * Process is in tsleep and is stopped
 	 */
-	if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED)) {
+	if (lp->lwp_stat == LSSLEEP && p->p_stat == SSTOP) {
 		/*
 		 * If the process is stopped and is being traced, then no
 		 * further action is necessary.
@@ -1061,12 +1063,12 @@ ksignal(struct proc *p, int sig)
 	 */
 	if (lp == lwkt_preempted_proc()) {
 		signotify();
-	} else if (p->p_stat == SRUN) {
+	} else if (lp->lwp_stat == LSRUN) {
 		struct thread *td = lp->lwp_thread;
 
 		KASSERT(td != NULL, 
-		    ("pid %d NULL p_thread stat %d flags %08x",
-		    p->p_pid, p->p_stat, p->p_flag));
+		    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
+		    p->p_pid, lp->lwp_tid, lp->lwp_stat, p->p_flag, lp->lwp_flag));
 
 #ifdef SMP
 		if (td->td_gd != mycpu)
@@ -1340,19 +1342,21 @@ issignal(struct lwp *lp)
 			 * If traced, always stop, and stay stopped until
 			 * released by the parent.
 			 *
-			 * NOTE: P_STOPPED may get cleared during the loop,
+			 * NOTE: SSTOP may get cleared during the loop,
 			 * but we do not re-notify the parent if we have 
 			 * to loop several times waiting for the parent
 			 * to let us continue.
+			 *
+			 * XXX not sure if this is still true
 			 */
 			p->p_xstat = sig;
-			p->p_flag |= P_STOPPED;
+			p->p_stat = SSTOP;
 			p->p_flag &= ~P_WAITED;
 			ksignal(p->p_pptr, SIGCHLD);
 			do {
 				tstop(p);
 			} while (!trace_req(p) && (p->p_flag & P_TRACED));
-			p->p_flag &= ~P_STOPPED;
+			p->p_stat = SACTIVE;
 
 			/*
 			 * If parent wants us to take the signal,
@@ -1426,12 +1430,12 @@ issignal(struct lwp *lp)
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				p->p_xstat = sig;
-				p->p_flag |= P_STOPPED;
+				p->p_stat = SSTOP;
 				p->p_flag &= ~P_WAITED;
 
 				if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
 					ksignal(p->p_pptr, SIGCHLD);
-				while (p->p_flag & P_STOPPED) {
+				while (p->p_stat == SSTOP) {
 					tstop(p);
 				}
 				break;

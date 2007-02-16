@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.28 2007/02/08 10:18:21 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.29 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -179,33 +179,41 @@ state(const KINFO *k, const struct varent *vent)
 		*cp = 'T';
 		break;
 
-	case SSLEEP:
-		if (flag & P_SINTR)	/* interruptable (long) */
-			*cp = KI_LWP(k, slptime) >= MAXSLP ? 'I' : 'S';
-		else if (KI_LWP(k, tdflags) & TDF_SINTR)
-			*cp = 'S';
-		else
-			*cp = 'D';
-		break;
+	case SACTIVE:
+		switch (KI_LWP(k, stat)) {
+		case LSSLEEP:
+			if (flag & P_SINTR)	/* interruptable (long) */
+				*cp = KI_LWP(k, slptime) >= MAXSLP ? 'I' : 'S';
+			else if (KI_LWP(k, tdflags) & TDF_SINTR)
+				*cp = 'S';
+			else
+				*cp = 'D';
+			break;
 
-	case SRUN:
-	case SIDL:
-		*cp = 'R';
-		if (KI_LWP(k, tdflags) & TDF_RUNNING) {
-		    ++cp;
-		    sprintf(cp, "%d", KI_LWP(k, cpuid));
-		    while (cp[1])
-			++cp;
+		case LSRUN:
+			*cp = 'R';
+			if (KI_LWP(k, tdflags) & TDF_RUNNING) {
+			    ++cp;
+			    sprintf(cp, "%d", KI_LWP(k, cpuid));
+			    while (cp[1])
+				++cp;
+			}
+			break;
+
+		case LSSTOP:
+			/* shouldn't happen anyways */
+			*cp = 'T';
+			break;
 		}
-		break;
-
-	case SZOMB:
-		*cp = 'Z';
 		break;
 
 	default:
 		*cp = '?';
 	}
+
+	if (flag & P_ZOMBIE)
+		*cp = 'Z';
+
 	cp++;
 	if (flag & P_SWAPPEDOUT)
 		*cp++ = 'W';
@@ -215,7 +223,7 @@ state(const KINFO *k, const struct varent *vent)
 		*cp++ = 'N';
 	if (flag & P_TRACED)
 		*cp++ = 'X';
-	if (flag & P_WEXIT && KI_LWP(k, stat) != SZOMB)
+	if (flag & P_WEXIT && (flag & P_ZOMBIE) == 0)
 		*cp++ = 'E';
 	if (flag & P_PPWAIT)
 		*cp++ = 'V';
@@ -414,40 +422,34 @@ cputime(const KINFO *k, const struct varent *vent)
 {
 	long secs;
 	long psecs;	/* "parts" of a second. first micro, then centi */
+	u_int64_t timeus;
 	char obuff[128];
 	static char decimal_point = '\0';
 
 	if (decimal_point == '\0')
 		decimal_point = localeconv()->decimal_point[0];
 
-	if (KI_LWP(k, stat) == SZOMB) {
-		secs = 0;
-		psecs = 0;
-	} else {
-		u_int64_t timeus;
-
-		/*
-		 * This counts time spent handling interrupts.  We could
-		 * fix this, but it is not 100% trivial (and interrupt
-		 * time fractions only work on the sparc anyway).	XXX
-		 */
-		timeus = KI_LWP(k, uticks) + KI_LWP(k, sticks) +
-			KI_LWP(k, iticks);
-		secs = timeus / 1000000;
-		psecs = timeus % 1000000;
-		if (sumrusage) {
-			secs += KI_PROC(k, cru).ru_utime.tv_sec +
-				KI_PROC(k, cru).ru_stime.tv_sec;
-			psecs += KI_PROC(k, cru).ru_utime.tv_usec +
-				KI_PROC(k, cru).ru_stime.tv_usec;
-		}
-		/*
-		 * round and scale to 100's
-		 */
-		psecs = (psecs + 5000) / 10000;
-		secs += psecs / 100;
-		psecs = psecs % 100;
+	/*
+	 * This counts time spent handling interrupts.  We could
+	 * fix this, but it is not 100% trivial (and interrupt
+	 * time fractions only work on the sparc anyway).	XXX
+	 */
+	timeus = KI_LWP(k, uticks) + KI_LWP(k, sticks) +
+		KI_LWP(k, iticks);
+	secs = timeus / 1000000;
+	psecs = timeus % 1000000;
+	if (sumrusage) {
+		secs += KI_PROC(k, cru).ru_utime.tv_sec +
+			KI_PROC(k, cru).ru_stime.tv_sec;
+		psecs += KI_PROC(k, cru).ru_utime.tv_usec +
+			KI_PROC(k, cru).ru_stime.tv_usec;
 	}
+	/*
+	 * round and scale to 100's
+	 */
+	psecs = (psecs + 5000) / 10000;
+	secs += psecs / 100;
+	psecs = psecs % 100;
 	snprintf(obuff, sizeof(obuff),
 	    "%3ld:%02ld%c%02ld", secs/60, secs%60, decimal_point, psecs);
 	printf("%*s", vent->width, obuff);

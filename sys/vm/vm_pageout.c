@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.30 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.31 2007/02/16 23:11:40 corecode Exp $
  */
 
 /*
@@ -1210,7 +1210,7 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SRUN && p->p_stat != SSLEEP) {
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
 		return (0);
 	}
 
@@ -1529,7 +1529,7 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SRUN && p->p_stat != SSLEEP)
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
 		return (0);
 
 	/*

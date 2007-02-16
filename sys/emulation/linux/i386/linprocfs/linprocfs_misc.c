@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.16 2007/01/06 19:37:20 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.17 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -372,9 +372,9 @@ static char *state_str[] = {
 	"? (unknown)",
 	"I (idle)",
 	"R (running)",
-	"S (sleeping)",
 	"T (stopped)",
 	"Z (zombie)",
+	"S (sleeping)",
 	"W (waiting)",
 	"M (mutex)"
 };
@@ -393,6 +393,8 @@ linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		state = state_str[0];
 	else
 		state = state_str[(int)p->p_stat];
+	if (p->p_flag & P_ZOMBIE)
+		state = state_str[4];
 
 #define PS_ADD ps += ksprintf
 	PS_ADD(ps, "Name:\t%s\n",	  p->p_comm); /* XXX escape */

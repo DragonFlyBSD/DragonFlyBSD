@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.6 2007/02/16 02:15:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.7 2007/02/16 23:11:39 corecode Exp $
  */
 
 /*
@@ -152,9 +152,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_tid = lwp->lwp_tid;
 
 	kl->kl_flags = lwp->lwp_flag;
-#ifdef notyet
 	kl->kl_stat = lwp->lwp_stat;
-#endif
 	kl->kl_tdflags = lwp->lwp_thread->td_flags;
 #ifdef SMP
 	kl->kl_mpcount = lwp->lwp_thread->td_mpcount;
@@ -203,11 +201,9 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_tdev = NOUDEV;
 	strncpy(kp->kp_comm, td->td_comm, sizeof(kp->kp_comm) - 1);
 	kp->kp_comm[sizeof(kp->kp_comm) - 1] = 0;
-#ifdef notyet
-	kp->kp_lwp.kl_flags = LWP_SYSTEM;
-#else
 	kp->kp_flags = P_SYSTEM;
-#endif
+	kp->kp_stat = SACTIVE;
+
 	kp->kp_lwp.kl_pid = -1;
 	kp->kp_lwp.kl_tid = (uintptr_t)td;
 	kp->kp_lwp.kl_tdflags = td->td_flags;
@@ -227,19 +223,10 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_lwp.kl_cpuid = td->td_gd->gd_cpuid;
 
 	kp->kp_lwp.kl_wchan = (uintptr_t)td->td_wchan;
-	if (td->td_wchan) {
-#ifdef notyet
-		kp->kp_lwp.kl_stat = SSLEEP;
-#else
-		kp->kp_stat = SSLEEP;
-#endif
-	} else {
-#ifdef notyet
-		kp->kp_lwp.kl_stat = SRUN;
-#else
-		kp->kp_stat = SRUN;
-#endif
-	}
+	if (td->td_wchan)
+		kp->kp_lwp.kl_stat = LSSLEEP;
+	else
+		kp->kp_lwp.kl_stat = LSRUN;
 	if (td->td_wmesg) {
 		strncpy(kp->kp_lwp.kl_wmesg, td->td_wmesg, WMESGLEN);
 		kp->kp_lwp.kl_wmesg[WMESGLEN] = 0;

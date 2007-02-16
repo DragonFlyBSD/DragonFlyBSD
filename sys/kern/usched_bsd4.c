@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.19 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.20 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -428,10 +428,10 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * We are in control of the process.
 	 */
 	crit_enter();
-	KASSERT(lp->lwp_proc->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
+	KASSERT(lp->lwp_stat == LSRUN, ("setrunqueue: lwp not LSRUN"));
 	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0,
-	    ("lwp %d/%d already on runq! flag %08x", lp->lwp_proc->p_pid,
-	     lp->lwp_tid, lp->lwp_proc->p_flag));
+	    ("lwp %d/%d already on runq! flag %08x/%08x", lp->lwp_proc->p_pid,
+	     lp->lwp_tid, lp->lwp_proc->p_flag, lp->lwp_flag));
 	KKASSERT((lp->lwp_thread->td_flags & TDF_RUNQ) == 0);
 
 	/*

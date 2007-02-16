@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.11 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.12 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -148,10 +148,10 @@ do_vmtotal_callback(struct proc *p, void *data)
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
 
-	switch (p->p_stat) {
+	switch (lp->lwp_stat) {
 	case 0:
 		return(0);
-	case SSLEEP:
+	case LSSLEEP:
 		if ((p->p_flag & P_SWAPPEDOUT) == 0) {
 			if ((p->p_flag & P_SINTR) == 0)
 				totalp->t_dw++;
@@ -164,8 +164,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 			return(0);
 		break;
 
-	case SRUN:
-	case SIDL:
+	case LSRUN:
 		if (p->p_flag & P_SWAPPEDOUT)
 			totalp->t_sw++;
 		else

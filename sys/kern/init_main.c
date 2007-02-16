@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.72 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.73 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -328,7 +328,8 @@ proc0_init(void *dummy __unused)
 	p->p_sysent = &aout_sysvec;
 
 	p->p_flag = P_SYSTEM;
-	p->p_stat = SRUN;
+	p->p_stat = SACTIVE;
+	lp->lwp_stat = LSRUN;
 	p->p_nice = NZERO;
 	p->p_rtprio.type = RTP_PRIO_NORMAL;
 	p->p_rtprio.prio = 0;

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.92 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.93 2007/02/16 23:11:40 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -137,6 +137,18 @@ struct jail;
 struct vkernel;
 struct ktrace_node;
 
+enum lwpstat {
+	LSRUN = 1,
+	LSSTOP = 2,
+	LSSLEEP = 3,
+};
+
+enum procstat {
+	SIDL = 1,
+	SACTIVE = 2,
+	SSTOP = 3,
+};
+
 struct lwp {
 	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
 	LIST_ENTRY(lwp) lwp_list;	/* List of all threads in the proc. */
@@ -145,10 +157,8 @@ struct lwp {
 
 	lwpid_t		lwp_tid;	/* Our thread id . */
 
-	int		lwp_flag;	/* P_* flags. */
-#ifdef notyet
-	char		lwp_stat;	/* S* process status. */
-#endif
+	int		lwp_flag;	/* LWP_* flags. */
+	enum lwpstat	lwp_stat;	/* LS* lwp status. */
 
 #define lwp_startzero	lwp_dupfd
 	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
@@ -201,7 +211,7 @@ struct	proc {
 #define	p_rlimit	p_limit->pl_rlimit
 
 	int		p_flag;		/* P_* flags. */
-	char		p_stat;		/* S* process status. */
+	enum procstat	p_stat;		/* S* process status. */
 	char		p_pad1[3];
 
 	pid_t		p_pid;		/* Process identifier. */
@@ -294,17 +304,6 @@ struct	proc {
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
 
-/*
- * Status values.   Please note that p_stat doesn't actually take on
- * synthesized states.
- */
-#define	SIDL	1		/* Process being created by fork. */
-#define	SRUN	2		/* Currently runnable. */
-#define	SSLEEP	3		/* Sleeping on an address. */
-#define	SSTOP	4		/* Synthesized from SSLEEP + P_STOPPED */
-#define	SZOMB	5		/* Synthesized from P_ZOMBIE for eproc only */
-#define STHREAD	6		/* Synthesized for eproc only */
-
 /* These flags are kept in p_flags. */
 #define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock. */
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal. */
@@ -316,7 +315,7 @@ struct	proc {
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
-#define	P_STOPPED	0x00400	/* SIGSTOP status */
+#define	P_UNUSED2	0x00400	/* was: SIGSTOP status */
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
 #define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
 #define	P_WEXIT		0x02000	/* Working on exiting. */

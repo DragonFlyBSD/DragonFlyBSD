@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.43 2007/01/08 03:33:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.44 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -245,7 +245,7 @@ ENTRY(cpu_exit_switch)
  *	do is clear the TDF_RUNNING bit in the old thread and set it in the
  *	new thread.
  *
- *	NOTE: The process may be in any state, not necessarily SRUN, because
+ *	NOTE: The lwp may be in any state, not necessarily LSRUN, because
  *	a preemption switch may interrupt the process and then return via 
  *	cpu_heavy_restore.
  *

@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.49 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.50 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -530,12 +530,13 @@ swapout_procs_callback(struct proc *p, void *data)
 
 	vm = p->p_vmspace;
 
-	if (p->p_stat == SSLEEP || p->p_stat == SRUN) {
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
+
+	if (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSRUN) {
 		/*
 		 * do not swap out a realtime process
 		 */
-		/* XXX lwp */
-		lp = FIRST_LWP_IN_PROC(p);
 		if (RTP_PRIO_IS_REALTIME(lp->lwp_rtprio.type))
 			return(0);
 

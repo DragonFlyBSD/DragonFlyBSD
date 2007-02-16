@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.72 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.73 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -196,7 +196,7 @@ schedcpu_stats(struct proc *p, void *data __unused)
 	lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	p->p_swtime++;
-	if (p->p_stat == SSLEEP)
+	if (lp->lwp_stat == LSSLEEP)
 		lp->lwp_slptime++;
 
 	/*
@@ -381,8 +381,8 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	crit_enter_quick(td);
 
 	KASSERT(ident != NULL, ("tsleep: no ident"));
-	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
-		ident, wmesg, p->p_stat));
+	KASSERT(lp == NULL || lp->lwp_stat == LSRUN, ("tsleep %p %s %d",
+		ident, wmesg, lp->lwp_stat));
 
 	/*
 	 * Setup for the current process (if this is a process). 
@@ -395,7 +395,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 			 * critical section.
 			 *
 			 * Early termination only occurs when tsleep() is
-			 * entered while in a normal SRUN state.
+			 * entered while in a normal LSRUN state.
 			 */
 			if ((sig = CURSIG(lp)) != 0)
 				goto resume;
@@ -455,15 +455,15 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
 		KKASSERT((p->p_flag & P_ONRUNQ) == 0);
-		p->p_stat = SSLEEP;
+		lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();
 
 		/*
-		 * And when we are woken up, put us back in SRUN.  If we
+		 * And when we are woken up, put us back in LSRUN.  If we
 		 * slept for over a second, recalculate our estcpu.
 		 */
-		p->p_stat = SRUN;
+		lp->lwp_stat = LSRUN;
 		if (lp->lwp_slptime)
 			p->p_usched->recalculate(lp);
 		lp->lwp_slptime = 0;
@@ -621,7 +621,7 @@ endtsleep(void *arg)
 
 		if ((p = td->td_proc) != NULL) {
 			p->p_flag |= P_BREAKTSLEEP;
-			if ((p->p_flag & P_STOPPED) == 0)
+			if (p->p_stat != SSTOP)
 				setrunnable(p);
 		} else {
 			unsleep_and_wakeup_thread(td);
@@ -911,18 +911,18 @@ setrunnable(struct proc *p)
 	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	ASSERT_MP_LOCK_HELD(curthread);
-	p->p_flag &= ~P_STOPPED;
-	if (p->p_stat == SSLEEP && (p->p_flag & P_BREAKTSLEEP)) {
+	p->p_stat = SACTIVE;	/* XXX lwp */
+	if (lp->lwp_stat == LSSLEEP && (p->p_flag & P_BREAKTSLEEP)) {
 		unsleep_and_wakeup_thread(lp->lwp_thread);
 	}
 	crit_exit();
 }
 
 /*
- * The process is stopped due to some condition, usually because P_STOPPED
- * is set but also possibly due to being traced.  
+ * The process is stopped due to some condition, usually because p_stat is
+ * set to SSTOP, but also possibly due to being traced.  
  *
- * NOTE!  If the caller sets P_STOPPED, the caller must also clear P_WAITED
+ * NOTE!  If the caller sets SSTOP, the caller must also clear P_WAITED
  * because the parent may check the child's status before the child actually
  * gets to this routine.
  *
@@ -1011,14 +1011,12 @@ loadav_count_runnable(struct proc *p, void *data)
 
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
-	switch (p->p_stat) {
-	case SRUN:
+	switch (lp->lwp_stat) {
+	case LSRUN:
 		if ((td = lp->lwp_thread) == NULL)
 			break;
 		if (td->td_flags & TDF_BLOCKED)
 			break;
-		/* fall through */
-	case SIDL:
 		++*nrunp;
 		break;
 	default:

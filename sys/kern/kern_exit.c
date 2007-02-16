@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.69 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.70 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -447,7 +447,7 @@ loop:
 	 * the CONT when both are stopped and continued together.  This litte
 	 * two-line hack restores this effect.
 	 */
-	while (q->p_flag & P_STOPPED)  
+	while (q->p_stat == SSTOP)
             tstop(q);
 
 	nfound = 0;
@@ -561,7 +561,7 @@ loop:
 			nprocs--;
 			return (0);
 		}
-		if ((p->p_flag & P_STOPPED) && (p->p_flag & P_WAITED) == 0 &&
+		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
 		    (p->p_flag & P_TRACED || options & WUNTRACED)) {
 			p->p_flag |= P_WAITED;
 

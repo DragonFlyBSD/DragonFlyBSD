@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.36 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.37 2007/02/16 23:11:40 corecode Exp $
  */
 
 /*-
@@ -2374,7 +2374,7 @@ ttyinfo(struct tty *tp)
 		 */
 		if (pick->p_flag & P_WEXIT)
 			str = "exiting";
-		else if (pick->p_stat == SRUN)
+		else if (lp->lwp_stat == LSRUN)
 			str = "running";
 		else if (pick->p_stat == SIDL)
 			str = "spawning";
@@ -2433,7 +2433,7 @@ ttyinfo(struct tty *tp)
  *	   we pick out just "short-term" sleepers (P_SINTR == 0).
  *	4) Further ties are broken by picking the highest pid.
  */
-#define ISRUN(p)	(((p)->p_stat == SRUN) || ((p)->p_stat == SIDL))
+#define ISRUN(lp)	((lp)->lwp_stat == LSRUN)
 #define TESTAB(a, b)    ((a)<<1 | (b))
 #define ONLYA   2
 #define ONLYB   1
@@ -2453,7 +2453,7 @@ proc_compare(struct proc *p1, struct proc *p2)
 	/*
 	 * see if at least one of them is runnable
 	 */
-	switch (TESTAB(ISRUN(p1), ISRUN(p2))) {
+	switch (TESTAB(ISRUN(lp1), ISRUN(lp2))) {
 	case ONLYA:
 		return (0);
 	case ONLYB:

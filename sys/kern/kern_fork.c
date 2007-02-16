@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.61 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.62 2007/02/16 23:11:39 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -299,6 +299,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * process once it starts getting hooked into the rest of the system.
 	 */
 	p2->p_stat = SIDL;
+	lp2->lwp_stat = LSRUN;	/* XXX use other state?  start_forked_proc() handles this*/
 	proc_add_allproc(p2);
 
 	/*
@@ -605,7 +606,8 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 	    ("cannot start forked process, bad status: %p", p2));
 	p2->p_usched->resetpriority(lp2);
 	crit_enter();
-	p2->p_stat = SRUN;
+	p2->p_stat = SACTIVE;
+	lp2->lwp_stat = LSRUN;
 	p2->p_usched->setrunqueue(lp2);
 	crit_exit();
 

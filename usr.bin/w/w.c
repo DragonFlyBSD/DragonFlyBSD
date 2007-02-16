@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.8 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.9 2007/02/16 23:11:40 corecode Exp $
  */
 
 /*
@@ -275,7 +275,7 @@ main(int argc, char **argv)
 	if ((kp = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nentries)) == NULL)
 		err(1, "%s", kvm_geterr(kd));
 	for (i = 0; i < nentries; i++, kp++) {
-		if (kp->kp_stat == SIDL || kp->kp_stat == SZOMB)
+		if (kp->kp_stat == SIDL || (kp->kp_flags & P_ZOMBIE))
 			continue;
 		for (ep = ehead; ep != NULL; ep = ep->next) {
 			if (ep->tdev == kp->kp_tdev) {

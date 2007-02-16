@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.13 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.14 2007/02/16 23:11:40 corecode Exp $
  */
 
 /*
@@ -276,10 +276,10 @@ compar(const void *a, const void *b)
 	/*
 	 * Runnability
 	 */
-	if (pta->pt_kp->kp_stat != ptb->pt_kp->kp_stat) {
-		if (pta->pt_kp->kp_stat == SRUN)
+	if (pta->pt_kp->kp_lwp.kl_stat != ptb->pt_kp->kp_lwp.kl_stat) {
+		if (pta->pt_kp->kp_lwp.kl_stat == LSRUN)
 			return(-1);
-		if (ptb->pt_kp->kp_stat == SRUN)
+		if (ptb->pt_kp->kp_lwp.kl_stat == LSRUN)
 			return(1);
 	}
 	return(0);

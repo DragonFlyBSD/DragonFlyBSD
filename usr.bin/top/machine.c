@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.21 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.22 2007/02/16 23:11:40 corecode Exp $
  */
 
 
@@ -116,7 +116,7 @@ static char up_header[] =
 
 char *state_abbrev[] =
 {
-    "", "START", "RUN\0\0\0", "SLEEP", "STOP", "ZOMB",
+    "", "RUN\0\0\0", "STOP", "SLEEP",
 };
 
 
@@ -503,9 +503,9 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, stat)]++;
 	    if ((show_threads && (LP(pp, pid) == 0)) ||
-		(!show_only_threads && (PP(pp, stat) != SZOMB) &&
+		(!show_only_threads && ((PP(pp, flags) & P_ZOMBIE) == 0) &&
 		(show_idle || (LP(pp, pctcpu) != 0) ||
-		 (PP(pp, stat) == SRUN)) &&
+		 (LP(pp, stat) == LSRUN)) &&
 		(!show_uid || PP(pp, ruid) == (uid_t)sel->uid)))
 	    {
 		*prefp++ = pp;
@@ -582,14 +582,14 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     pct = pctdouble(LP(pp, pctcpu));
 
     /* generate "STATE" field */
-    switch (state = PP(pp, stat)) {
-	case SRUN:
+    switch (state = LP(pp, stat)) {
+	case LSRUN:
 	    if (smpmode && LP(pp, tdflags) & TDF_RUNNING)
 		sprintf(status, "CPU%d", LP(pp, cpuid));
 	    else
 		strcpy(status, "RUN");
 	    break;
-	case SSLEEP:
+	case LSSLEEP:
 	    if (LP(pp, wmesg) != NULL) {
 		sprintf(status, "%.6s", LP(pp, wmesg));
 		break;
@@ -604,6 +604,9 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
 		    sprintf(status, "?%5d", state);
 	    break;
     }
+
+    if (PP(pp, flags) & P_ZOMBIE)
+	    strcpy(status, "ZOMB");
 
     /*
      * idle time 0 - 31 -> nice value +21 - +52

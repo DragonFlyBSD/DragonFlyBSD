@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.10 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.11 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -130,6 +130,7 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pSlave = p->p_leader;
+	struct lwp *lpSlave;
 
 	while(pSlave && (pSlave->p_pid != uap->pid))
 		pSlave = pSlave->p_peers;
@@ -139,9 +140,9 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 		return(0);
 	}
 
+	lpSlave = FIRST_LWP_IN_PROC(pSlave);
 	pSlave->p_wakeup++;
-	if((pSlave->p_stat == SSLEEP) &&
-	   (FIRST_LWP_IN_PROC(pSlave)->lwp_wchan == pSlave)) {
+	if((lpSlave->lwp_stat == LSSLEEP) && lpSlave->lwp_wchan == pSlave) {
 		wakeup(pSlave);
 		return(0);
 	}

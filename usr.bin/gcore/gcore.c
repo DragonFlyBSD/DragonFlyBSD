@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.8 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.9 2007/02/16 23:11:40 corecode Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ main(int argc, char **argv)
 		if (ki->kp_ruid != uid && uid != 0)
 			errx(1, "%d: not owner", pid);
 
-		if (ki->kp_stat == SZOMB)
+		if (ki->kp_flags & P_ZOMBIE)
 			errx(1, "%d: zombie", pid);
 
 		if (ki->kp_flags & P_WEXIT)

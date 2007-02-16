@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.11 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.12 2007/02/16 23:11:40 corecode Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -45,6 +45,10 @@
 #endif
 #include <sys/resource.h>
 #include <sys/rtprio.h>
+#ifndef _KERNEL_STRUCTURES
+#define _KERNEL_STRUCTURES
+#endif
+#include <sys/proc.h>
 
 struct kinfo_file {
 	size_t	 f_size;	/* size of struct kinfo_file */
@@ -107,7 +111,7 @@ struct kinfo_lwp {
 	lwpid_t		kl_tid;		/* thread id */
 
 	int		kl_flags;	/* LWP_ flags */
-	char		kl_stat;	/* S* lwp status */
+	enum lwpstat	kl_stat;	/* LS* lwp status */
 	int		kl_tdflags;	/* thread flags */
 	int		kl_mpcount;	/* MP lock held count */
 	int		kl_prio;	/* scheduling priority */
@@ -142,7 +146,7 @@ struct kinfo_proc {
 
 	/* proc information */
 	int		kp_flags;
-	int		kp_stat;
+	enum procstat	kp_stat;
 	int		kp_lock;
 	int		kp_acflag;	/* accounting flags */
 	int		kp_traceflag;

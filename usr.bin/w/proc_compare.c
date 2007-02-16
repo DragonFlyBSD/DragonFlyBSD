@@ -32,7 +32,7 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.6 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.7 2007/02/16 23:11:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@
  * TODO - consider whether pctcpu should be used.
  */
 
-#define ISRUN(p)	(((p)->kp_stat == SRUN) || ((p)->kp_stat == SIDL))
+#define ISRUN(p)	((p)->kp_lwp.kl_stat == LSRUN)
 #define TESTAB(a, b)    ((a)<<1 | (b))
 #define ONLYA   2
 #define ONLYB   1
@@ -93,7 +93,7 @@ proc_compare(struct kinfo_proc *p1, struct kinfo_proc *p2)
 	/*
  	 * weed out zombies
 	 */
-	switch (TESTAB(p1->kp_stat == SZOMB, p2->kp_stat == SZOMB)) {
+	switch (TESTAB(p1->kp_flags & P_ZOMBIE, p2->kp_flags & P_ZOMBIE)) {
 	case ONLYA:
 		return (1);
 	case ONLYB:
