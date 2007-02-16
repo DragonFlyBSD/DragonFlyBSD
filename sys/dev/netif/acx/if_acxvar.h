@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.8 2007/02/15 09:05:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.9 2007/02/16 06:34:10 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -256,10 +256,9 @@ struct acx_txbuf {
 	uint32_t		tb_fwdesc_ofs;
 
 	/*
-	 * Used by tx rate updating
+	 * TX rate control
 	 */
-	struct ieee80211_node	*tb_node;	/* remote node */
-
+	struct ieee80211_node	*tb_node;
 	int			tb_rateidx_len;
 	int			tb_rateidx[IEEE80211_RATEIDX_MAX];
 };
@@ -319,7 +318,7 @@ struct acx_softc {
 	 */
 	struct ieee80211com	sc_ic;
 
-	struct callout		sc_chanscan_timer;
+	struct callout		sc_scan_timer;
 	uint32_t		sc_flags;	/* see ACX_FLAG_ */
 	int			sc_tx_timer;
 
@@ -392,6 +391,7 @@ struct acx_softc {
 	 * Per interface sysctl variables
 	 */
 	int			sc_msdu_lifetime;
+	int			sc_scan_dwell;	/* unit: millisecond */
 
 	int			(*sc_newstate)
 				(struct ieee80211com *,
@@ -437,7 +437,6 @@ struct acx_softc {
 
 extern const struct ieee80211_rateset	acx_rates_11b;
 extern const struct ieee80211_rateset	acx_rates_11g;
-extern int				acx_beacon_intvl;
 
 void	acx100_set_param(device_t);
 void	acx111_set_param(device_t);

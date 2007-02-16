@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.6 2007/02/15 09:05:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.7 2007/02/16 06:34:10 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -127,32 +127,32 @@ acx_init_cmd_reg(struct acx_softc *sc)
 }
 
 int
-acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node,
-	     uint8_t chan)
+acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *ni,
+	     struct ieee80211_channel *c)
 {
 	uint8_t bj_buf[BSS_JOIN_BUFLEN];
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct bss_join_hdr *bj;
-	int i, dtim_intvl;
+	int i;
 
 	bzero(bj_buf, sizeof(bj_buf));
 	bj = (struct bss_join_hdr *)bj_buf;
 
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i)
-		bj->bssid[i] = node->ni_bssid[IEEE80211_ADDR_LEN - i - 1];
+		bj->bssid[i] = ni->ni_bssid[IEEE80211_ADDR_LEN - i - 1];
 
-	bj->beacon_intvl = htole16(node->ni_intval);
+	bj->beacon_intvl = htole16(ni->ni_intval);
 
-	dtim_intvl = sc->sc_ic.ic_dtim_period;
-	sc->chip_set_bss_join_param(sc, bj->chip_spec, dtim_intvl);
+	sc->chip_set_bss_join_param(sc, bj->chip_spec, ic->ic_dtim_period);
 
 	bj->ndata_txrate = ACX_NDATA_TXRATE_2;
 	bj->ndata_txopt = 0;
 	bj->mode = mode;
-	bj->channel = chan;
-	bj->esslen = node->ni_esslen;
-	bcopy(node->ni_essid, bj->essid, node->ni_esslen);
+	bj->channel = ieee80211_chan2ieee(ic, c);
+	bj->esslen = ni->ni_esslen;
+	bcopy(ni->ni_essid, bj->essid, ni->ni_esslen);
 
-	DPRINTF((&sc->sc_ic.ic_if, "join BSS/IBSS on channel %d\n", bj->channel));
+	DPRINTF((&ic->ic_if, "join BSS/IBSS on channel %d\n", bj->channel));
 	return acx_exec_command(sc, ACXCMD_JOIN_BSS,
 				bj, BSS_JOIN_PARAM_SIZE(bj), NULL, 0);
 }

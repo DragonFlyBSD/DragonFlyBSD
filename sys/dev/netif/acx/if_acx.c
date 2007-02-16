@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.17 2007/02/15 09:05:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.18 2007/02/16 06:34:10 sephe Exp $
  */
 
 /*
@@ -104,22 +104,6 @@
 #include "if_acxvar.h"
 #include "acxcmd.h"
 
-#define ACX_ENABLE_TXCHAN(sc, chan)					\
-do {									\
-	if (acx_enable_txchan((sc), (chan)) != 0) {			\
-		if_printf(&(sc)->sc_ic.ic_if,				\
-			  "enable TX on channel %d failed\n", (chan));	\
-	}								\
-} while (0)
-
-#define ACX_ENABLE_RXCHAN(sc, chan)					\
-do {									\
-	if (acx_enable_rxchan((sc), (chan)) != 0) {			\
-		if_printf(&(sc)->sc_ic.ic_if,				\
-			  "enable RX on channel %d failed\n", (chan));	\
-	}								\
-} while (0)
-
 #define SIOCSLOADFW	_IOW('i', 137, struct ifreq)	/* load firmware */
 #define SIOCGRADIO	_IOW('i', 138, struct ifreq)	/* get radio type */
 #define SIOCGSTATS	_IOW('i', 139, struct ifreq)	/* get acx stats */
@@ -131,9 +115,20 @@ static int	acx_probe(device_t);
 static int	acx_attach(device_t);
 static int	acx_detach(device_t);
 static int	acx_shutdown(device_t);
-static int	acx_media_change(struct ifnet *);
 
 static void	acx_init(void *);
+static void	acx_start(struct ifnet *);
+static int	acx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void	acx_watchdog(struct ifnet *);
+
+static void	acx_intr(void *);
+static void	acx_txeof(struct acx_softc *);
+static void	acx_txerr(struct acx_softc *, uint8_t);
+static void	acx_rxeof(struct acx_softc *);
+static void	acx_disable_intr(struct acx_softc *);
+static void	acx_enable_intr(struct acx_softc *);
+
+static int	acx_reset(struct acx_softc *);
 static int	acx_stop(struct acx_softc *);
 static void	acx_init_info_reg(struct acx_softc *);
 static int	acx_config(struct acx_softc *);
@@ -141,19 +136,6 @@ static int	acx_read_config(struct acx_softc *, struct acx_config *);
 static int	acx_write_config(struct acx_softc *, struct acx_config *);
 static int	acx_rx_config(struct acx_softc *, int);
 static int	acx_set_crypt_keys(struct acx_softc *);
-static void	acx_next_scan(void *);
-
-static void	acx_start(struct ifnet *);
-static void	acx_watchdog(struct ifnet *);
-
-static int	acx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-
-static void	acx_intr(void *);
-static void	acx_disable_intr(struct acx_softc *);
-static void	acx_enable_intr(struct acx_softc *);
-static void	acx_txeof(struct acx_softc *);
-static void	acx_txerr(struct acx_softc *, uint8_t);
-static void	acx_rxeof(struct acx_softc *);
 
 static int	acx_dma_alloc(struct acx_softc *);
 static void	acx_dma_free(struct acx_softc *);
@@ -162,8 +144,6 @@ static int	acx_init_rx_ring(struct acx_softc *);
 static int	acx_newbuf(struct acx_softc *, struct acx_rxbuf *, int);
 static int	acx_encap(struct acx_softc *, struct acx_txbuf *,
 			  struct mbuf *, struct ieee80211_node *);
-
-static int	acx_reset(struct acx_softc *);
 
 static int	acx_set_null_tmplt(struct acx_softc *);
 static int	acx_set_probe_req_tmplt(struct acx_softc *, const char *, int);
@@ -184,6 +164,10 @@ static int	acx_load_radio_firmware(struct acx_softc *, const uint8_t *,
 static int	acx_load_base_firmware(struct acx_softc *, const uint8_t *,
 				       uint32_t);
 
+static void	acx_next_scan(void *);
+static int	acx_set_chan(struct acx_softc *, struct ieee80211_channel *);
+
+static int	acx_media_change(struct ifnet *);
 static int	acx_newstate(struct ieee80211com *, enum ieee80211_state, int);
 
 static int	acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS);
@@ -192,8 +176,6 @@ const struct ieee80211_rateset	acx_rates_11b =
 	{ 5, { 2, 4, 11, 22, 44 } };
 const struct ieee80211_rateset	acx_rates_11g =
 	{ 13, { 2, 4, 11, 22, 44, 12, 18, 24, 36, 48, 72, 96, 108 } };
-
-static int	acx_chanscan_rate = 5;	/* 5/second */
 
 static const struct acx_device {
 	uint16_t	vid;
@@ -337,7 +319,7 @@ acx_attach(device_t dev)
 	}
 
 	/* Initilize channel scanning timer */
-	callout_init(&sc->sc_chanscan_timer);
+	callout_init(&sc->sc_scan_timer);
 
 	/* Allocate busdma stuffs */
 	error = acx_dma_alloc(sc);
@@ -439,6 +421,7 @@ acx_attach(device_t dev)
 
 	sc->sc_long_retry_limit = 4;
 	sc->sc_msdu_lifetime = 4096;
+	sc->sc_scan_dwell = 200;	/* 200 milliseconds */
 
 	sysctl_ctx_init(&sc->sc_sysctl_ctx);
 	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
@@ -675,23 +658,8 @@ acx_next_scan(void *arg)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	if (ic->ic_state == IEEE80211_S_SCAN) {
-#if 0
-		uint8_t chan;
-#endif
-
+	if (ic->ic_state == IEEE80211_S_SCAN)
 		ieee80211_next_scan(ic);
-
-#if 0
-		chan = ieee80211_chan2ieee(ic, ic->ic_bss->ni_chan);
-
-		ACX_ENABLE_TXCHAN(sc, chan);
-		ACX_ENABLE_RXCHAN(sc, chan);
-
-		callout_reset(&sc->sc_chanscan_timer, hz / acx_chanscan_rate,
-			      acx_next_scan, sc);
-#endif
-	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
 }
@@ -723,7 +691,7 @@ acx_stop(struct acx_softc *sc)
 	acx_disable_intr(sc);
 
 	/* Stop backgroud scanning */
-	callout_stop(&sc->sc_chanscan_timer);
+	callout_stop(&sc->sc_scan_timer);
 
 	/* Turn off power led */
 	CSR_SETB_2(sc, ACXREG_GPIO_OUT, sc->chip_gpio_pled);
@@ -1111,12 +1079,8 @@ acx_start(struct ifnet *ifp)
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN) {
-				if_printf(ifp, "data packet dropped due to "
-					  "not RUN.  Current state %d\n",
-					  ic->ic_state);
+			if (ic->ic_state != IEEE80211_S_RUN)
 				break;
-			}
 
 			m = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m == NULL)
@@ -1838,120 +1802,73 @@ acx_load_firmware(struct acx_softc *sc, uint32_t offset, const uint8_t *data,
 static int
 acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
-	struct acx_softc *sc = ic->ic_if.if_softc;
-	struct ieee80211_node *ni;
-	int error = 0, mode = 0;
-	uint8_t chan;
+	struct ifnet *ifp = &ic->ic_if;
+	struct acx_softc *sc = ifp->if_softc;
+	struct ieee80211_node *ni = NULL;
+	struct ieee80211_channel *c = NULL;
+	int error = 1, mode = 0;
 
-	ASSERT_SERIALIZED(ic->ic_if.if_serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ieee80211_ratectl_newstate(ic, nstate);
+	callout_stop(&sc->sc_scan_timer);
 
 	switch (nstate) {
 	case IEEE80211_S_SCAN:
-		if (ic->ic_state != IEEE80211_S_INIT) {
-			chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
-			ACX_ENABLE_TXCHAN(sc, chan);
-			ACX_ENABLE_RXCHAN(sc, chan);
-
-			callout_reset(&sc->sc_chanscan_timer,
-				      hz / acx_chanscan_rate,
-				      acx_next_scan, sc);
-		}
+		acx_set_chan(sc, ic->ic_curchan);
+		callout_reset(&sc->sc_scan_timer,
+			      (hz * sc->sc_scan_dwell) / 1000,
+			      acx_next_scan, sc);
 		break;
 	case IEEE80211_S_AUTH:
 		if (ic->ic_opmode == IEEE80211_M_STA) {
 			ni = ic->ic_bss;
-			chan = ieee80211_chan2ieee(ic, ni->ni_chan);
-			if (acx_join_bss(sc, ACX_MODE_STA, ni, chan) != 0) {
-				if_printf(&ic->ic_if, "join BSS failed\n");
-				error = 1;
-				goto back;
-			}
-
-			DPRINTF((&ic->ic_if, "join BSS\n"));
-			if (ic->ic_state == IEEE80211_S_ASSOC) {
-				DPRINTF((&ic->ic_if,
-					 "change from assoc to run\n"));
-				ic->ic_state = IEEE80211_S_RUN;
-			}
+			c = ni->ni_chan;
+			mode = ACX_MODE_STA;
 		}
 		break;
 	case IEEE80211_S_RUN:
 		if (ic->ic_opmode == IEEE80211_M_IBSS ||
 		    ic->ic_opmode == IEEE80211_M_HOSTAP) {
 			ni = ic->ic_bss;
-			chan = ieee80211_chan2ieee(ic, ni->ni_chan);
-
-			error = 1;
-
-			if (acx_enable_txchan(sc, chan) != 0) {
-				if_printf(&ic->ic_if,
-					  "enable TX on channel %d failed\n",
-					  chan);
-				goto back;
-			}
-
-			if (acx_enable_rxchan(sc, chan) != 0) {
-				if_printf(&ic->ic_if,
-					  "enable RX on channel %d failed\n",
-					  chan);
-				goto back;
-			}
-
-			if (acx_set_beacon_tmplt(sc, ni) != 0) {
-				if_printf(&ic->ic_if,
-					  "set bescon template failed\n");
-				goto back;
-			}
-
-			if (acx_set_probe_resp_tmplt(sc, ni) != 0) {
-				if_printf(&ic->ic_if, "set probe response "
-					  "template failed\n");
-				goto back;
-			}
-
+			c = ni->ni_chan;
 			if (ic->ic_opmode == IEEE80211_M_IBSS)
 				mode = ACX_MODE_ADHOC;
 			else
 				mode = ACX_MODE_AP;
 
-			if (acx_join_bss(sc, mode, ni, chan) != 0) {
-				if_printf(&ic->ic_if, "acx_join_ibss failed\n");
+			if (acx_set_beacon_tmplt(sc, ni) != 0) {
+				if_printf(ifp, "set bescon template failed\n");
 				goto back;
 			}
-
-			DPRINTF((&ic->ic_if, "join IBSS\n"));
-			error = 0;
+			if (acx_set_probe_resp_tmplt(sc, ni) != 0) {
+				if_printf(ifp, "set probe response template"
+					  " failed\n");
+				goto back;
+			}
 		} else if (ic->ic_opmode == IEEE80211_M_MONITOR) {
-			chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
-			error = 1;
-
-			if (acx_enable_txchan(sc, chan) != 0) {
-				if_printf(&ic->ic_if,
-					  "enable TX on channel %d failed\n",
-					  chan);
-				goto back;
-			}
-			if (acx_enable_rxchan(sc, chan) != 0) {
-				if_printf(&ic->ic_if,
-					  "enable RX on channel %d failed\n",
-					  chan);
-				goto back;
-			}
-
-			if (acx_join_bss(sc, ACX_MODE_STA,
-					 ic->ic_bss, chan) != 0) {
-				if_printf(&ic->ic_if, "join BSS failed\n");
-				goto back;
-			}
-			error = 0;
+			ni = ic->ic_bss;
+			c = ic->ic_curchan;
+			mode = ACX_MODE_STA;
 		}
 		break;
 	default:
 		break;
 	}
 
+	if (ni != NULL) {
+		KKASSERT(c != NULL);
+
+		if (acx_set_chan(sc, c) != 0)
+			goto back;
+
+		if (acx_join_bss(sc, mode, ni, c) != 0) {
+			if_printf(ifp, "join BSS failed\n");
+			goto back;
+		}
+	}
+
+	error = 0;
 back:
 	if (error) {
 		/* XXX */
@@ -2606,6 +2523,25 @@ acx_rx_config(struct acx_softc *sc, int promisc)
 	if (acx_set_rxopt_conf(sc, &rx_opt) != 0) {
 		if_printf(&sc->sc_ic.ic_if, "can't config RX\n");
 		return ENXIO;
+	}
+	return 0;
+}
+
+static int
+acx_set_chan(struct acx_softc *sc, struct ieee80211_channel *c)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	uint8_t chan;
+
+	chan = ieee80211_chan2ieee(ic, c);
+	DPRINTF((&ic->ic_if, "to chan %u\n", chan));
+	if (acx_enable_txchan(sc, chan) != 0) {
+		if_printf(&ic->ic_if, "enable TX on channel %d failed\n", chan);
+		return EIO;
+	}
+	if (acx_enable_rxchan(sc, chan) != 0) {
+		if_printf(&ic->ic_if, "enable RX on channel %d failed\n", chan);
+		return EIO;
 	}
 	return 0;
 }
