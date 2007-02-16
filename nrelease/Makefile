@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.58 2007/02/07 16:35:25 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.59 2007/02/16 10:11:46 swildner Exp $
 #
 
 # compat target
@@ -23,7 +23,7 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.4.4-RELEASE-BUILD
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.9.0-DEVELOPMENT
 
 ENVCMD?=	env
 TAR?=	tar
