@@ -1,8 +1,8 @@
 
-			GCC-4.1.1 AS USED BY DRAGONFLY
+			GCC-4.1.2 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the gnu 
-    gcc-4.1.1 distribution.  The basis are the `core' and `g++' parts,
+    gcc-4.1.2 distribution.  The basis are the `core' and `g++' parts,
     which are 117MB together, but we really only need 35MB of those.
     No files have been moved or modified from their extracted position.
 
@@ -15,12 +15,12 @@
     are README.DRAGONFLY and README.DELETED. 
 
 
-SHA1 (gcc-core-4.1.1.tar.bz2) = 147e12bf96a8d857fda1d43f0d7ea599b89cebf9
-SHA1 (gcc-g++-4.1.1.tar.bz2) = 909672543af9a7b88898cd256e25ccd4a9f009b1
+SHA1 (gcc-core-4.1.2.tar.bz2) = d6875295f6df1bec4a6f4ab8f0da54bfb8d97306
+SHA1 (gcc-g++-4.1.2.tar.bz2) = e29c6e151050f8b5ac5d680b99483df522606143
 
     UPGRADE PROCEDURE:
 
-	* download a new gcc-4.1.X dist greater then 4.1.1, notably the
+	* download a new gcc-4.1.X dist greater then 4.1.2, notably the
 	  `core' and `g++' sets.  The complete set is not needed!
 
 	* extract the archive into this directory, overlaying the
