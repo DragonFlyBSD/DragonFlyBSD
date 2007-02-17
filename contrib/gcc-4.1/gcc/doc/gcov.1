@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GCOV 1"
-.TH GCOV 1 "2006-05-24" "gcc-4.1.1" "GNU"
+.TH GCOV 1 "2007-02-14" "gcc-4.1.2" "GNU"
 .SH "NAME"
 gcov \- coverage testing tool
 .SH "SYNOPSIS"
@@ -522,7 +522,7 @@ message \*(L"never executed\*(R" is printed.
 For a call, if it was executed at least once, then a percentage
 indicating the number of times the call returned divided by the number
 of times the call was executed will be printed.  This will usually be
-100%, but may be less for functions call \f(CW\*(C`exit\*(C'\fR or \f(CW\*(C`longjmp\*(C'\fR,
+100%, but may be less for functions that call \f(CW\*(C`exit\*(C'\fR or \f(CW\*(C`longjmp\*(C'\fR,
 and thus may not return every time they are called.
 .PP
 The execution counts are cumulative.  If the example program were

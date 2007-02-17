@@ -1067,7 +1067,7 @@ gimplify_decl_expr (tree *stmt_p)
     {
       tree init = DECL_INITIAL (decl);
 
-      if (!TREE_CONSTANT (DECL_SIZE (decl)))
+      if (TREE_CODE (DECL_SIZE (decl)) != INTEGER_CST)
 	{
 	  /* This is a variable-sized decl.  Simplify its size and mark it
 	     for deferred expansion.  Note that mudflap depends on the format
@@ -1717,7 +1717,7 @@ gimplify_self_mod_expr (tree *expr_p, tree *pre_p, tree *post_p,
 			bool want_value)
 {
   enum tree_code code;
-  tree lhs, lvalue, rhs, t1;
+  tree lhs, lvalue, rhs, t1, post = NULL, *orig_post_p = post_p;
   bool postfix;
   enum tree_code arith_code;
   enum gimplify_status ret;
@@ -1733,6 +1733,11 @@ gimplify_self_mod_expr (tree *expr_p, tree *pre_p, tree *post_p,
     postfix = want_value;
   else
     postfix = false;
+
+  /* For postfix, make sure the inner expression's post side effects
+     are executed after side effects from this expression.  */
+  if (postfix)
+    post_p = &post;
 
   /* Add or subtract?  */
   if (code == PREINCREMENT_EXPR || code == POSTINCREMENT_EXPR)
@@ -1764,7 +1769,8 @@ gimplify_self_mod_expr (tree *expr_p, tree *pre_p, tree *post_p,
 
   if (postfix)
     {
-      gimplify_and_add (t1, post_p);
+      gimplify_and_add (t1, orig_post_p);
+      append_to_statement_list (post, orig_post_p);
       *expr_p = lhs;
       return GS_ALL_DONE;
     }
@@ -2517,7 +2523,7 @@ gimplify_init_ctor_preeval (tree *expr_p, tree *pre_p, tree *post_p,
 
   /* If this is of variable size, we have no choice but to assume it doesn't
      overlap since we can't make a temporary for it.  */
-  if (!TREE_CONSTANT (TYPE_SIZE (TREE_TYPE (*expr_p))))
+  if (TREE_CODE (TYPE_SIZE (TREE_TYPE (*expr_p))) != INTEGER_CST)
     return;
 
   /* Otherwise, we must search for overlap ...  */
@@ -3016,7 +3022,7 @@ fold_indirect_ref_rhs (tree t)
   tree sub = t;
   tree subtype;
 
-  STRIP_NOPS (sub);
+  STRIP_USELESS_TYPE_CONVERSION (sub);
   subtype = TREE_TYPE (sub);
   if (!POINTER_TYPE_P (subtype))
     return NULL_TREE;
@@ -3787,9 +3793,9 @@ gimplify_asm_expr (tree *expr_p, tree *pre_p, tree *post_p)
       /* If the operand is a memory input, it should be an lvalue.  */
       if (!allows_reg && allows_mem)
 	{
-	  lang_hooks.mark_addressable (TREE_VALUE (link));
 	  tret = gimplify_expr (&TREE_VALUE (link), pre_p, post_p,
 				is_gimple_lvalue, fb_lvalue | fb_mayfail);
+	  lang_hooks.mark_addressable (TREE_VALUE (link));
 	  if (tret == GS_ERROR)
 	    {
 	      error ("memory input %d is not directly addressable", i);
@@ -4558,7 +4564,8 @@ gimplify_expr (tree *expr_p, tree *pre_p, tree *post_p,
 			     gimple_test_f, fallback);
 	      break;
 
-	    case ARRAY_REF: case ARRAY_RANGE_REF:
+	    case ARRAY_REF:
+	    case ARRAY_RANGE_REF:
 	      gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
 			     gimple_test_f, fallback);
 	      gimplify_expr (&TREE_OPERAND (*expr_p, 1), pre_p, post_p,
@@ -4567,16 +4574,17 @@ gimplify_expr (tree *expr_p, tree *pre_p, tree *post_p,
 
 	    default:
 	       /* Anything else with side-effects must be converted to
-	       	  a valid statement before we get here.  */
+		  a valid statement before we get here.  */
 	      gcc_unreachable ();
 	    }
 
 	  *expr_p = NULL;
 	}
-      else if (COMPLETE_TYPE_P (TREE_TYPE (*expr_p)))
+      else if (COMPLETE_TYPE_P (TREE_TYPE (*expr_p))
+	       && TYPE_MODE (TREE_TYPE (*expr_p)) != BLKmode)
 	{
-	  /* Historically, the compiler has treated a bare
-	     reference to a volatile lvalue as forcing a load.  */
+	  /* Historically, the compiler has treated a bare reference
+	     to a non-BLKmode volatile lvalue as forcing a load.  */
 	  tree type = TYPE_MAIN_VARIANT (TREE_TYPE (*expr_p));
 	  /* Normally, we do not want to create a temporary for a
 	     TREE_ADDRESSABLE type because such a type should not be
@@ -4591,7 +4599,10 @@ gimplify_expr (tree *expr_p, tree *pre_p, tree *post_p,
 	}
       else
 	/* We can't do anything useful with a volatile reference to
-	   incomplete type, so just throw it away.  */
+	   an incomplete type, so just throw it away.  Likewise for
+	   a BLKmode type, since any implicit inner load should
+	   already have been turned into an explicit one by the
+	   gimplification process.  */
 	*expr_p = NULL;
     }
 

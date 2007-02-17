@@ -714,7 +714,19 @@ standard_conversion (tree to, tree from, tree expr, bool c_cast_p,
 		  that necessitates this conversion is ill-formed.
 		  Therefore, we use DERIVED_FROM_P, and do not check
 		  access or uniqueness.  */
-	       && DERIVED_FROM_P (TREE_TYPE (to), TREE_TYPE (from)))
+	       && DERIVED_FROM_P (TREE_TYPE (to), TREE_TYPE (from))
+	       /* If FROM is not yet complete, then we must be parsing
+		  the body of a class.  We know what's derived from
+		  what, but we can't actually perform a
+		  derived-to-base conversion.  For example, in:
+
+		     struct D : public B { 
+                       static const int i = sizeof((B*)(D*)0);
+                     };
+
+                  the D*-to-B* conversion is a reinterpret_cast, not a
+		  static_cast.  */
+	       && COMPLETE_TYPE_P (TREE_TYPE (from)))
 	{
 	  from =
 	    cp_build_qualified_type (TREE_TYPE (to),
@@ -1785,14 +1797,19 @@ add_builtin_candidate (struct z_candidate **candidates, enum tree_code code,
 	break;
       if (TYPE_PTR_P (type1) && TYPE_PTR_P (type2))
 	break;
-      if (TREE_CODE (type1) == ENUMERAL_TYPE && TREE_CODE (type2) == ENUMERAL_TYPE)
+      if (TREE_CODE (type1) == ENUMERAL_TYPE 
+	  && TREE_CODE (type2) == ENUMERAL_TYPE)
 	break;
-      if (TYPE_PTR_P (type1) && null_ptr_cst_p (args[1]))
+      if (TYPE_PTR_P (type1) 
+	  && null_ptr_cst_p (args[1])
+	  && !uses_template_parms (type1))
 	{
 	  type2 = type1;
 	  break;
 	}
-      if (null_ptr_cst_p (args[0]) && TYPE_PTR_P (type2))
+      if (null_ptr_cst_p (args[0]) 
+	  && TYPE_PTR_P (type2)
+	  && !uses_template_parms (type2))
 	{
 	  type1 = type2;
 	  break;
@@ -2693,6 +2710,8 @@ resolve_args (tree args)
 	  error ("invalid use of void expression");
 	  return error_mark_node;
 	}
+      else if (invalid_nonstatic_memfn_p (arg))
+	return error_mark_node;
     }
   return args;
 }
@@ -3283,12 +3302,21 @@ build_conditional_expr (tree arg1, tree arg2, tree arg3)
 	  arg2 = convert_like (conv2, arg2);
 	  arg2 = convert_from_reference (arg2);
 	  arg2_type = TREE_TYPE (arg2);
+	  /* Even if CONV2 is a valid conversion, the result of the
+	     conversion may be invalid.  For example, if ARG3 has type
+	     "volatile X", and X does not have a copy constructor
+	     accepting a "volatile X&", then even if ARG2 can be
+	     converted to X, the conversion will fail.  */
+	  if (error_operand_p (arg2))
+	    result = error_mark_node;
 	}
       else if (conv3 && (!conv3->bad_p || !conv2))
 	{
 	  arg3 = convert_like (conv3, arg3);
 	  arg3 = convert_from_reference (arg3);
 	  arg3_type = TREE_TYPE (arg3);
+	  if (error_operand_p (arg3))
+	    result = error_mark_node;
 	}
 
       /* Free all the conversions we allocated.  */
@@ -4495,10 +4523,12 @@ build_x_va_arg (tree expr, tree type)
 
   if (! pod_type_p (type))
     {
+      /* Remove reference types so we don't ICE later on.  */
+      tree type1 = non_reference (type);
       /* Undefined behavior [expr.call] 5.2.2/7.  */
       warning (0, "cannot receive objects of non-POD type %q#T through %<...%>; "
 	       "call will abort at runtime", type);
-      expr = convert (build_pointer_type (type), null_node);
+      expr = convert (build_pointer_type (type1), null_node);
       expr = build2 (COMPOUND_EXPR, TREE_TYPE (expr),
 		     call_builtin_trap (), expr);
       expr = build_indirect_ref (expr, NULL);
@@ -4798,6 +4828,12 @@ build_over_call (struct z_candidate *cand, int flags)
       tree type = TREE_VALUE (parm);
 
       conv = convs[i];
+
+      /* Don't make a copy here if build_call is going to.  */
+      if (conv->kind == ck_rvalue
+	  && !TREE_ADDRESSABLE (complete_type (type)))
+	conv = conv->u.next;
+
       val = convert_like_with_context
 	(conv, TREE_VALUE (arg), fn, i - is_method);
 
@@ -5442,9 +5478,9 @@ build_new_method_call (tree instance, tree fns, tree args,
 		 none-the-less evaluated.  */
 	      if (TREE_CODE (TREE_TYPE (cand->fn)) != METHOD_TYPE
 		  && !is_dummy_object (instance_ptr)
-		  && TREE_SIDE_EFFECTS (instance))
+		  && TREE_SIDE_EFFECTS (instance_ptr))
 		call = build2 (COMPOUND_EXPR, TREE_TYPE (call),
-			       instance, call);
+			       instance_ptr, call);
 	    }
 	}
     }
@@ -6352,6 +6388,14 @@ perform_implicit_conversion (tree type, tree expr)
     {
       error ("could not convert %qE to %qT", expr, type);
       expr = error_mark_node;
+    }
+  else if (processing_template_decl)
+    {
+      /* In a template, we are only concerned about determining the
+	 type of non-dependent expressions, so we do not have to
+	 perform the actual conversion.  */
+      if (TREE_TYPE (expr) != type)
+	expr = build_nop (type, expr);
     }
   else
     expr = convert_like (conv, expr);

@@ -975,12 +975,18 @@ begin_try_block (void)
   return r;
 }
 
-/* Likewise, for a function-try-block.  */
+/* Likewise, for a function-try-block.  The block returned in
+   *COMPOUND_STMT is an artificial outer scope, containing the
+   function-try-block.  */
 
 tree
-begin_function_try_block (void)
+begin_function_try_block (tree *compound_stmt)
 {
-  tree r = begin_try_block ();
+  tree r;
+  /* This outer scope does not exist in the C++ standard, but we need
+     a place to put __FUNCTION__ and similar variables.  */
+  *compound_stmt = begin_compound_stmt (0);
+  r = begin_try_block ();
   FN_TRY_BLOCK_P (r) = 1;
   return r;
 }
@@ -1034,13 +1040,16 @@ finish_handler_sequence (tree try_block)
   check_handlers (TRY_HANDLERS (try_block));
 }
 
-/* Likewise, for a function-try-block.  */
+/* Finish the handler-seq for a function-try-block, given by
+   TRY_BLOCK.  COMPOUND_STMT is the outer block created by
+   begin_function_try_block.  */
 
 void
-finish_function_handler_sequence (tree try_block)
+finish_function_handler_sequence (tree try_block, tree compound_stmt)
 {
   in_function_try_handler = 0;
   finish_handler_sequence (try_block);
+  finish_compound_stmt (compound_stmt);
 }
 
 /* Begin a handler.  Returns a HANDLER if appropriate.  */
@@ -1285,6 +1294,10 @@ tree
 finish_label_stmt (tree name)
 {
   tree decl = define_label (input_location, name);
+
+  if (decl == error_mark_node)
+    return error_mark_node;
+
   return add_stmt (build_stmt (LABEL_EXPR, decl));
 }
 
@@ -1494,9 +1507,11 @@ check_accessibility_of_qualified_id (tree decl,
        its bases.  */
     qualifying_type = currently_open_derived_class (scope);
 
-  if (qualifying_type && IS_AGGR_TYPE_CODE (TREE_CODE (qualifying_type)))
-    /* It is possible for qualifying type to be a TEMPLATE_TYPE_PARM
-       or similar in a default argument value.  */
+  if (qualifying_type 
+      /* It is possible for qualifying type to be a TEMPLATE_TYPE_PARM
+	 or similar in a default argument value.  */
+      && CLASS_TYPE_P (qualifying_type)
+      && !dependent_type_p (qualifying_type))
     perform_or_defer_access_check (TYPE_BINFO (qualifying_type), decl);
 }
 
@@ -1957,6 +1972,13 @@ finish_pseudo_destructor_expr (tree object, tree scope, tree destructor)
 	  error ("invalid qualifying scope in pseudo-destructor name");
 	  return error_mark_node;
 	}
+      if (scope && TYPE_P (scope) && !check_dtor_name (scope, destructor))
+	{
+	  error ("qualified type %qT does not match destructor name ~%qT",
+		 scope, destructor);
+	  return error_mark_node;
+	}
+
 
       /* [expr.pseudo] says both:
 
@@ -2012,6 +2034,12 @@ tree
 finish_compound_literal (tree type, VEC(constructor_elt,gc) *initializer_list)
 {
   tree compound_literal;
+
+  if (!TYPE_OBJ_P (type))
+    {
+      error ("compound literal of non-object type %qT", type);
+      return error_mark_node;
+    }
 
   /* Build a CONSTRUCTOR for the INITIALIZER_LIST.  */
   compound_literal = build_constructor (NULL_TREE, initializer_list);
@@ -2114,19 +2142,8 @@ check_template_template_default_arg (tree argument)
       && TREE_CODE (argument) != UNBOUND_CLASS_TEMPLATE)
     {
       if (TREE_CODE (argument) == TYPE_DECL)
-	{
-	  tree t = TREE_TYPE (argument);
-
-	  /* Try to emit a slightly smarter error message if we detect
-	     that the user is using a template instantiation.  */
-	  if (CLASSTYPE_TEMPLATE_INFO (t)
-	      && CLASSTYPE_TEMPLATE_INSTANTIATION (t))
-	    error ("invalid use of type %qT as a default value for a "
-		   "template template-parameter", t);
-	  else
-	    error ("invalid use of %qD as a default value for a template "
-		   "template-parameter", argument);
-	}
+	error ("invalid use of type %qT as a default value for a template "
+	       "template-parameter", TREE_TYPE (argument));
       else
 	error ("invalid default argument for a template template parameter");
       return error_mark_node;
@@ -2192,7 +2209,7 @@ begin_class_definition (tree t)
      before.  */
   if (! TYPE_ANONYMOUS_P (t))
     {
-      struct c_fileinfo *finfo = get_fileinfo (lbasename (input_filename));
+      struct c_fileinfo *finfo = get_fileinfo (input_filename);
       CLASSTYPE_INTERFACE_ONLY (t) = finfo->interface_only;
       SET_CLASSTYPE_INTERFACE_UNKNOWN_X
 	(t, finfo->interface_unknown);
@@ -2309,8 +2326,9 @@ note_decl_for_pch (tree decl)
 
   /* There's a good chance that we'll have to mangle names at some
      point, even if only for emission in debugging information.  */
-  if (TREE_CODE (decl) == VAR_DECL
-      || TREE_CODE (decl) == FUNCTION_DECL)
+  if ((TREE_CODE (decl) == VAR_DECL
+       || TREE_CODE (decl) == FUNCTION_DECL)
+      && !processing_template_decl)
     mangle_decl (decl);
 }
 
@@ -2856,6 +2874,30 @@ finish_typeof (tree expr)
     }
 
   return type;
+}
+
+/* Perform C++-specific checks for __builtin_offsetof before calling
+   fold_offsetof.  */
+
+tree
+finish_offsetof (tree expr)
+{
+  if (TREE_CODE (expr) == PSEUDO_DTOR_EXPR)
+    {
+      error ("cannot apply %<offsetof%> to destructor %<~%T%>",
+	      TREE_OPERAND (expr, 2));
+      return error_mark_node;
+    }
+  if (TREE_CODE (TREE_TYPE (expr)) == FUNCTION_TYPE
+      || TREE_CODE (TREE_TYPE (expr)) == METHOD_TYPE
+      || TREE_CODE (TREE_TYPE (expr)) == UNKNOWN_TYPE)
+    {
+      if (TREE_CODE (expr) == COMPONENT_REF)
+	expr = TREE_OPERAND (expr, 1);
+      error ("cannot apply %<offsetof%> to member function %qD", expr);
+      return error_mark_node;
+    }
+  return fold_offsetof (expr);
 }
 
 /* Called from expand_body via walk_tree.  Replace all AGGR_INIT_EXPRs

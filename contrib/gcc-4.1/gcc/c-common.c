@@ -4313,20 +4313,9 @@ handle_externally_visible_attribute (tree *pnode, tree name,
 	       "%qE attribute have effect only on public objects", name);
       *no_add_attrs = true;
     }
-  else if (TREE_CODE (node) == FUNCTION_DECL)
-    {
-      struct cgraph_node *n = cgraph_node (node);
-      n->local.externally_visible = true;
-      if (n->local.finalized)
-	cgraph_mark_needed_node (n);
-    }
-  else if (TREE_CODE (node) == VAR_DECL)
-    {
-      struct cgraph_varpool_node *n = cgraph_varpool_node (node);
-      n->externally_visible = true;
-      if (n->finalized)
-	cgraph_varpool_mark_needed_node (n);
-    }
+  else if (TREE_CODE (node) == FUNCTION_DECL
+	   || TREE_CODE (node) == VAR_DECL)
+    ;
   else
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
@@ -4827,6 +4816,16 @@ handle_weakref_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 {
   tree attr = NULL_TREE;
 
+  /* We must ignore the attribute when it is associated with
+     local-scoped decls, since attribute alias is ignored and many
+     such symbols do not even have a DECL_WEAK field.  */
+  if (decl_function_context (*node) || current_function_decl)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+
   /* The idea here is that `weakref("name")' mutates into `weakref,
      alias("name")', and weakref without arguments, in turn,
      implicitly adds weak. */
@@ -5221,6 +5220,8 @@ handle_vector_size_attribute (tree *node, tree name, tree args,
   orig_mode = TYPE_MODE (type);
 
   if (TREE_CODE (type) == RECORD_TYPE
+      || TREE_CODE (type) == UNION_TYPE
+      || TREE_CODE (type) == VECTOR_TYPE
       || (GET_MODE_CLASS (orig_mode) != MODE_FLOAT
 	  && GET_MODE_CLASS (orig_mode) != MODE_INT)
       || !host_integerp (TYPE_SIZE_UNIT (type), 1))
@@ -5958,6 +5959,10 @@ fold_offsetof_1 (tree expr)
     {
     case ERROR_MARK:
       return expr;
+
+    case VAR_DECL:
+      error ("cannot apply %<offsetof%> to static data member %qD", expr);
+      return error_mark_node;
 
     case INDIRECT_REF:
       return size_zero_node;

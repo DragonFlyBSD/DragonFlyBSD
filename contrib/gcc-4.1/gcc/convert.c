@@ -1,6 +1,6 @@
 /* Utility routines for data type conversion for GCC.
    Copyright (C) 1987, 1988, 1991, 1992, 1993, 1994, 1995, 1997, 1998,
-   2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
+   2000, 2001, 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -240,10 +240,12 @@ convert_to_real (tree type, tree expr)
   if (itype != type && FLOAT_TYPE_P (type))
     switch (TREE_CODE (expr))
       {
-	/* Convert (float)-x into -(float)x.  This is always safe.  */
+	/* Convert (float)-x into -(float)x.  This is safe for
+	   round-to-nearest rounding mode.  */
 	case ABS_EXPR:
 	case NEGATE_EXPR:
-	  if (TYPE_PRECISION (type) < TYPE_PRECISION (TREE_TYPE (expr)))
+	  if (!flag_rounding_math
+	      && TYPE_PRECISION (type) < TYPE_PRECISION (TREE_TYPE (expr)))
 	    return build1 (TREE_CODE (expr), type,
 			   fold (convert_to_real (type,
 						  TREE_OPERAND (expr, 0))));
@@ -355,27 +357,36 @@ convert_to_integer (tree type, tree expr)
 	  /* Only convert in ISO C99 mode.  */
 	  if (!TARGET_C99_FUNCTIONS)
 	    break;
-	  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (long_long_integer_type_node))
-	    fn = mathfn_built_in (s_intype, BUILT_IN_LLCEIL);
-	  else
+	  if (outprec < TYPE_PRECISION (long_integer_type_node)
+	      || (outprec == TYPE_PRECISION (long_integer_type_node)
+		  && !TYPE_UNSIGNED (type)))
 	    fn = mathfn_built_in (s_intype, BUILT_IN_LCEIL);
+	  else if (outprec == TYPE_PRECISION (long_long_integer_type_node)
+		   && !TYPE_UNSIGNED (type))
+	    fn = mathfn_built_in (s_intype, BUILT_IN_LLCEIL);
 	  break;
 
 	case BUILT_IN_FLOOR: case BUILT_IN_FLOORF: case BUILT_IN_FLOORL:
 	  /* Only convert in ISO C99 mode.  */
 	  if (!TARGET_C99_FUNCTIONS)
 	    break;
-	  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (long_long_integer_type_node))
-	    fn = mathfn_built_in (s_intype, BUILT_IN_LLFLOOR);
-	  else
+	  if (outprec < TYPE_PRECISION (long_integer_type_node)
+	      || (outprec == TYPE_PRECISION (long_integer_type_node)
+		  && !TYPE_UNSIGNED (type)))
 	    fn = mathfn_built_in (s_intype, BUILT_IN_LFLOOR);
+	  else if (outprec == TYPE_PRECISION (long_long_integer_type_node)
+		   && !TYPE_UNSIGNED (type))
+	    fn = mathfn_built_in (s_intype, BUILT_IN_LLFLOOR);
 	  break;
 
 	case BUILT_IN_ROUND: case BUILT_IN_ROUNDF: case BUILT_IN_ROUNDL:
-	  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (long_long_integer_type_node))
-	    fn = mathfn_built_in (s_intype, BUILT_IN_LLROUND);
-	  else
+	  if (outprec < TYPE_PRECISION (long_integer_type_node)
+	      || (outprec == TYPE_PRECISION (long_integer_type_node)
+		  && !TYPE_UNSIGNED (type)))
 	    fn = mathfn_built_in (s_intype, BUILT_IN_LROUND);
+	  else if (outprec == TYPE_PRECISION (long_long_integer_type_node)
+		   && !TYPE_UNSIGNED (type))
+	    fn = mathfn_built_in (s_intype, BUILT_IN_LLROUND);
 	  break;
 
 	case BUILT_IN_RINT: case BUILT_IN_RINTF: case BUILT_IN_RINTL:
@@ -383,11 +394,16 @@ convert_to_integer (tree type, tree expr)
 	  if (flag_trapping_math)
 	    break;
 	  /* ... Fall through ...  */
-	case BUILT_IN_NEARBYINT: case BUILT_IN_NEARBYINTF: case BUILT_IN_NEARBYINTL:
-	  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (long_long_integer_type_node))
-            fn = mathfn_built_in (s_intype, BUILT_IN_LLRINT);
-	  else
-            fn = mathfn_built_in (s_intype, BUILT_IN_LRINT);
+	case BUILT_IN_NEARBYINT:
+	case BUILT_IN_NEARBYINTF:
+	case BUILT_IN_NEARBYINTL:
+	  if (outprec < TYPE_PRECISION (long_integer_type_node)
+	      || (outprec == TYPE_PRECISION (long_integer_type_node)
+		  && !TYPE_UNSIGNED (type)))
+	    fn = mathfn_built_in (s_intype, BUILT_IN_LRINT);
+	  else if (outprec == TYPE_PRECISION (long_long_integer_type_node)
+		   && !TYPE_UNSIGNED (type))
+	    fn = mathfn_built_in (s_intype, BUILT_IN_LLRINT);
 	  break;
 
 	case BUILT_IN_TRUNC: case BUILT_IN_TRUNCF: case BUILT_IN_TRUNCL:

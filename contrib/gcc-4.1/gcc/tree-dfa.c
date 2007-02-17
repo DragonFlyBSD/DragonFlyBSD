@@ -610,11 +610,18 @@ static void
 add_referenced_var (tree var, bool always)
 {
   var_ann_t v_ann;
+  tree ref;
 
   v_ann = get_var_ann (var);
   gcc_assert (DECL_P (var));
-  
-  if (always || referenced_var_lookup_if_exists (DECL_UID (var)) == NULL_TREE)
+
+  ref = referenced_var_lookup_if_exists (DECL_UID (var));  
+
+  /* Catch PRs 26757 and 27793.  If this assert triggers, REF and VAR are
+     two different variables in this function with the same DECL_UID.  */
+  gcc_assert (!ref || ref == var);
+
+  if (always || ref == NULL_TREE)
     {
       /* This is the first time we find this variable, add it to the
          REFERENCED_VARS array and annotate it with attributes that are

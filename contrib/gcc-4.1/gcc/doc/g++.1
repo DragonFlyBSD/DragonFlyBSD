@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GCC 1"
-.TH GCC 1 "2006-05-24" "gcc-4.1.1" "GNU"
+.TH GCC 1 "2007-02-14" "gcc-4.1.2" "GNU"
 .SH "NAME"
 gcc \- GNU project C and C++ compiler
 .SH "SYNOPSIS"
@@ -913,14 +913,13 @@ Specify explicitly the \fIlanguage\fR for the following input files
 name suffix).  This option applies to all following input files until
 the next \fB\-x\fR option.  Possible values for \fIlanguage\fR are:
 .Sp
-.Vb 10
+.Vb 9
 \&        c  c-header  c-cpp-output
 \&        c++  c++-header  c++-cpp-output
 \&        objective-c  objective-c-header  objective-c-cpp-output
 \&        objective-c++ objective-c++-header objective-c++-cpp-output
 \&        assembler  assembler-with-cpp
 \&        ada
-\&        f77  f77-cpp-input
 \&        f95  f95-cpp-input
 \&        java
 \&        treelang
@@ -2423,7 +2422,7 @@ To suppress this warning use the \fBunused\fR attribute.
 .IP "\fB\-Wunused\-variable\fR" 4
 .IX Item "-Wunused-variable"
 Warn whenever a local variable or non-constant static variable is unused
-aside from its declaration
+aside from its declaration.
 This warning is enabled by \fB\-Wall\fR.
 .Sp
 To suppress this warning use the \fBunused\fR attribute.
@@ -3967,7 +3966,7 @@ the performance and/or code size at the expense of compilation time
 and possibly the ability to debug the program.
 .PP
 The compiler performs optimization based on the knowledge it has of
-the program.  Optimization levels \fB\-O2\fR and above, in
+the program.  Optimization levels \fB\-O\fR and above, in
 particular, enable \fIunit-at-a-time\fR mode, which allows the
 compiler to consider information gained from later functions in
 the file when compiling a function.  Compiling multiple files at
@@ -4008,6 +4007,7 @@ compilation time.
 \&\-ftree\-copyrename 
 \&\-ftree\-fre 
 \&\-ftree\-ch 
+\&\-funit\-at\-a\-time 
 \&\-fmerge\-constants\fR
 .Sp
 \&\fB\-O\fR also turns on \fB\-fomit\-frame\-pointer\fR on machines
@@ -4042,7 +4042,6 @@ also turns on the following optimization flags:
 \&\-fstrict\-aliasing 
 \&\-fdelete\-null\-pointer\-checks 
 \&\-freorder\-blocks  \-freorder\-functions 
-\&\-funit\-at\-a\-time 
 \&\-falign\-functions  \-falign\-jumps 
 \&\-falign\-loops  \-falign\-labels 
 \&\-ftree\-vrp 
@@ -4181,16 +4180,25 @@ specified individually by using \fB\-\-param\fR \fIname\fR\fB=\fR\fIvalue\fR.
 The \fB\-finline\-limit=\fR\fIn\fR option sets some of these parameters
 as follows:
 .RS 4
-.Sp
-.Vb 8
-\& @item max-inline-insns-single
-\&  is set to I<n>/2.
-\& @item max-inline-insns-auto
-\&  is set to I<n>/2.
-\& @item min-inline-insns
-\&  is set to 130 or I<n>/4, whichever is smaller.
-\& @item max-inline-insns-rtl
-\&  is set to I<n>.
+.IP "\fBmax-inline-insns-single\fR" 4
+.IX Item "max-inline-insns-single"
+.Vb 1
+\& is set to I<n>/2.
+.Ve
+.IP "\fBmax-inline-insns-auto\fR" 4
+.IX Item "max-inline-insns-auto"
+.Vb 1
+\& is set to I<n>/2.
+.Ve
+.IP "\fBmin-inline-insns\fR" 4
+.IX Item "min-inline-insns"
+.Vb 1
+\& is set to 130 or I<n>/4, whichever is smaller.
+.Ve
+.IP "\fBmax-inline-insns-rtl\fR" 4
+.IX Item "max-inline-insns-rtl"
+.Vb 1
+\& is set to I<n>.
 .Ve
 .RE
 .RS 4
@@ -4934,7 +4942,7 @@ attribute \f(CW\*(C`used\*(C'\fR will prevent this behavior.
 As a temporary workaround, \fB\-fno\-unit\-at\-a\-time\fR can be used,
 but this scheme may not be supported by future releases of \s-1GCC\s0.
 .Sp
-Enabled at levels \fB\-O2\fR, \fB\-O3\fR.
+Enabled at levels \fB\-O\fR, \fB\-O2\fR, \fB\-O3\fR, \fB\-Os\fR.
 .RE
 .IP "\fB\-fweb\fR" 4
 .IX Item "-fweb"
@@ -5405,7 +5413,7 @@ Specifies maximum number of instructions out-of-line copy of self recursive inli
 function can grow into by performing recursive inlining.
 .Sp
 For functions declared inline \fB\-\-param max-inline-insns-recursive\fR is
-taken into acount.  For function not declared inline, recursive inlining
+taken into account.  For function not declared inline, recursive inlining
 happens only when \fB\-finline\-functions\fR (included in \fB\-O3\fR) is
 enabled and \fB\-\-param max-inline-insns-recursive-auto\fR is used.  The
 default value is 450.
@@ -5418,7 +5426,7 @@ default value is 450.
 Specifies maximum recursion depth used by the recursive inlining.
 .Sp
 For functions declared inline \fB\-\-param max-inline-recursive-depth\fR is
-taken into acount.  For function not declared inline, recursive inlining
+taken into account.  For function not declared inline, recursive inlining
 happens only when \fB\-finline\-functions\fR (included in \fB\-O3\fR) is
 enabled and \fB\-\-param max-inline-recursive-depth-auto\fR is used.  The
 default value is 450.
@@ -5618,7 +5626,7 @@ compile time increase with probably slightly better performance.  The default
 value is 100.
 .IP "\fBmax-cselib-memory-location\fR" 4
 .IX Item "max-cselib-memory-location"
-The maximum number of memory locations cselib should take into acount.
+The maximum number of memory locations cselib should take into account.
 Increasing values mean more aggressive optimization, making the compile time
 increase with probably slightly better performance.  The default value is 500.
 .IP "\fBmax-flow-memory-location\fR" 4
@@ -8562,6 +8570,8 @@ boundary.  Aligning \f(CW\*(C`double\*(C'\fR variables on a two word boundary wi
 produce code that runs somewhat faster on a \fBPentium\fR at the
 expense of more memory.
 .Sp
+On x86\-64, \fB\-malign\-double\fR is enabled by default.
+.Sp
 \&\fBWarning:\fR if you use the \fB\-malign\-double\fR switch,
 structures containing the above types will be aligned differently than
 the published application binary interface specifications for the 386
@@ -8658,15 +8668,13 @@ the system libraries and startup modules.
 .IX Item "-mpreferred-stack-boundary=num"
 Attempt to keep the stack boundary aligned to a 2 raised to \fInum\fR
 byte boundary.  If \fB\-mpreferred\-stack\-boundary\fR is not specified,
-the default is 4 (16 bytes or 128 bits), except when optimizing for code
-size (\fB\-Os\fR), in which case the default is the minimum correct
-alignment (4 bytes for x86, and 8 bytes for x86\-64).
+the default is 4 (16 bytes or 128 bits).
 .Sp
 On Pentium and PentiumPro, \f(CW\*(C`double\*(C'\fR and \f(CW\*(C`long double\*(C'\fR values
 should be aligned to an 8 byte boundary (see \fB\-malign\-double\fR) or
 suffer significant run time performance penalties.  On Pentium \s-1III\s0, the
-Streaming \s-1SIMD\s0 Extension (\s-1SSE\s0) data type \f(CW\*(C`_\|_m128\*(C'\fR suffers similar
-penalties if it is not 16 byte aligned.
+Streaming \s-1SIMD\s0 Extension (\s-1SSE\s0) data type \f(CW\*(C`_\|_m128\*(C'\fR may not work
+properly if it is not 16 byte aligned.
 .Sp
 To ensure proper alignment of this values on the stack, the stack boundary
 must be as aligned as that required by any value stored on the stack.
@@ -10241,7 +10249,7 @@ Supported values for \fIcpu_type\fR are \fB401\fR, \fB403\fR,
 \&\fB7450\fR, \fB750\fR, \fB801\fR, \fB821\fR, \fB823\fR,
 \&\fB860\fR, \fB970\fR, \fB8540\fR, \fBec603e\fR, \fBG3\fR,
 \&\fBG4\fR, \fBG5\fR, \fBpower\fR, \fBpower2\fR, \fBpower3\fR,
-\&\fBpower4\fR, \fBpower5\fR, \fBpower5+\fR,
+\&\fBpower4\fR, \fBpower5\fR, \fBpower5+\fR, \fBpower6\fR,
 \&\fBcommon\fR, \fBpowerpc\fR, \fBpowerpc64\fR,
 \&\fBrios\fR, \fBrios1\fR, \fBrios2\fR, \fBrsc\fR, and \fBrs64\fR.
 .Sp
@@ -11924,7 +11932,7 @@ it.
 .IX Item "-fbounds-check"
 For front-ends that support it, generate additional code to check that
 indices used to access arrays are within the declared range.  This is
-currently only supported by the Java and Fortran 77 front\-ends, where
+currently only supported by the Java and Fortran front\-ends, where
 this option defaults to true and false respectively.
 .IP "\fB\-ftrapv\fR" 4
 .IX Item "-ftrapv"

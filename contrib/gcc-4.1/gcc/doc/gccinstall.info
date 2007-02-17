@@ -1,5 +1,5 @@
 This is doc/gccinstall.info, produced by makeinfo version 4.8 from
-/scratch/mitchell/gcc-releases/gcc-4.1.1/gcc-4.1.1/gcc/doc/install.texi.
+/scratch/mitchell/gcc-releases/gcc-4.1.2/gcc-4.1.2/gcc/doc/install.texi.
 
    Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
@@ -687,7 +687,7 @@ option.
 
 `--disable-multilib'
      Specify that multiple target libraries to support different target
-     variants, calling conventions, etc should not be built.  The
+     variants, calling conventions, etc. should not be built.  The
      default is to build a predefined set of them.
 
      Some targets provide finer-grained control over which multilibs
@@ -1677,7 +1677,10 @@ it with
      cd OBJDIR; make install
 
    We strongly recommend to install into a target directory where there
-is no previous version of GCC present.
+is no previous version of GCC present.  Also, the GNAT runtime should
+not be stripped, as this would break certain features of the debugger
+that depend on this debugging information (catching Ada exceptions for
+instance).
 
    That step completes the installation of GCC; user level binaries can
 be found in `PREFIX/bin' where PREFIX is the value you specified with
@@ -2804,6 +2807,11 @@ this, running into an internal error of the native `ld'.  A sure fix is
 to increase this limit (`ncargs') to its maximum of 262144 bytes.  If
 you have root access, you can use the `systune' command to do this.
 
+   `wchar_t' support in `libstdc++' is not available for old IRIX 6.5.x
+releases, x < 19.  The problem cannot be autodetected and in order to
+build GCC for such targets you need to configure with
+`--disable-wchar_t'.
+
    See `http://freeware.sgi.com/' for more information about using GCC
 on IRIX platforms.
 
@@ -2938,7 +2946,7 @@ runtime in some cases for C++ programs.
 because of a single bug.  It has been fixed on the 2.15 branch in the
 CVS repository.  You can obtain a working version by checking out the
 binutils-2_15-branch from the CVS repository or applying the patch
-`http://sources.redhat.com/ml/binutils-cvs/2004-09/msg00036.html' to the
+`http://sourceware.org/ml/binutils-cvs/2004-09/msg00036.html' to the
 release.
 
    We recommend using GNU binutils 2.16 or later in conjunction with
@@ -3033,11 +3041,14 @@ following:
    To work around this problem, compile with `-gstabs+' instead of
 plain `-g'.
 
-   When configuring the GNU Multiple Precision Library (GMP) on a
-Solaris 7 or later system, the canonical target triplet must be
-specified as the `build' parameter on the configure line:
+   When configuring the GNU Multiple Precision Library (GMP) or the MPFR
+library on a Solaris 7 or later system, the canonical target triplet
+must be specified as the `build' parameter on the configure line.  This
+triplet can be obtained by invoking ./config.guess in the toplevel
+source directory of GCC (and not that of GMP or MPFR).  For example on
+a Solaris 7 system:
 
-     ./configure --build=sparc-sun-solaris2.7 --prefix=xxx --enable-mpfr
+        % ./configure --build=sparc-sun-solaris2.7 --prefix=xxx
 
 sparc-sun-solaris2.7
 ====================
@@ -3100,13 +3111,19 @@ mishandled unaligned relocations on `sparc-*-*' targets.
 sparc64-*-solaris2*
 ===================
 
-The following compiler flags must be specified in the configure step in
-order to bootstrap this target with the Sun compiler:
+When configuring the GNU Multiple Precision Library (GMP) or the MPFR
+library, the canonical target triplet must be specified as the `build'
+parameter on the configure line.  For example on a Solaris 7 system:
 
-        % CC="cc -xildoff -xarch=v9" SRCDIR/configure [OPTIONS] [TARGET]
+        % ./configure --build=sparc64-sun-solaris2.7 --prefix=xxx
 
-   `-xildoff' turns off the incremental linker, and `-xarch=v9'
-specifies the SPARC-V9 architecture to the Sun linker and assembler.
+   The following compiler flags must be specified in the configure step
+in order to bootstrap this target with the Sun compiler:
+
+        % CC="cc -xarch=v9 -xildoff" SRCDIR/configure [OPTIONS] [TARGET]
+
+   `-xarch=v9' specifies the SPARC-V9 architecture to the Sun toolchain
+and `-xildoff' turns off the incremental linker.
 
 sparcv9-*-solaris2*
 ===================
@@ -3258,8 +3275,8 @@ requirements would be likely to be accepted, since they should not
 affect the support for more modern targets.
 
    For some systems, old versions of GNU binutils may also be useful,
-and are available from `pub/binutils/old-releases' on
-sources.redhat.com mirror sites.
+and are available from `pub/binutils/old-releases' on sourceware.org
+mirror sites.
 
    Some of the information on specific systems above relates to such
 older systems, but much of the information about GCC on such systems
@@ -3904,80 +3921,80 @@ Node: Configuration12326
 Ref: with-gnu-as25155
 Ref: with-as26342
 Ref: with-gnu-ld27347
-Node: Building52835
-Node: Testing63002
-Node: Final install70864
-Node: Binaries75727
-Node: Specific77588
-Ref: alpha-x-x77875
-Ref: alpha-dec-osf78364
-Ref: alphaev5-cray-unicosmk81941
-Ref: arc-x-elf82888
-Ref: arm-x-elf82988
-Ref: xscale-x-x83009
-Ref: arm-x-coff83245
-Ref: arm-x-aout83447
-Ref: avr83569
-Ref: bfin84253
-Ref: c4x84495
-Ref: cris85093
-Ref: crx86075
-Ref: dos86738
-Ref: x-x-freebsd87061
-Ref: h8300-hms89444
-Ref: hppa-hp-hpux89796
-Ref: hppa-hp-hpux1092284
-Ref: hppa-hp-hpux1193341
-Ref: x-x-linux-gnu100196
-Ref: ix86-x-linuxaout100388
-Ref: ix86-x-linux100547
-Ref: ix86-x-sco32v5100860
-Ref: ix86-x-solaris210103029
-Ref: ix86-x-udk103415
-Ref: ia64-x-linux104779
-Ref: ia64-x-hpux105549
-Ref: x-ibm-aix106104
-Ref: iq2000-x-elf111960
-Ref: m32c-x-elf112100
-Ref: m32r-x-elf112202
-Ref: m6811-elf112304
-Ref: m6812-elf112454
-Ref: m68k-hp-hpux112604
-Ref: mips-x-x114343
-Ref: mips-sgi-irix5116012
-Ref: mips-sgi-irix6116960
-Ref: powerpc-x-x119652
-Ref: powerpc-x-darwin119797
-Ref: powerpc-x-elf120388
-Ref: powerpc-x-linux-gnu120507
-Ref: powerpc-x-netbsd120609
-Ref: powerpc-x-eabisim120805
-Ref: powerpc-x-eabi120931
-Ref: powerpcle-x-elf121007
-Ref: powerpcle-x-eabisim121137
-Ref: powerpcle-x-eabi121270
-Ref: s390-x-linux121353
-Ref: s390x-x-linux121425
-Ref: s390x-ibm-tpf121512
-Ref: x-x-solaris2121643
-Ref: sparc-sun-solaris2125675
-Ref: sparc-sun-solaris27128664
-Ref: sparc-x-linux131128
-Ref: sparc64-x-solaris2131353
-Ref: sparcv9-x-solaris2131729
-Ref: x-x-sysv131814
-Ref: vax-dec-ultrix132775
-Ref: x-x-vxworks132927
-Ref: x86-64-x-x134449
-Ref: xtensa-x-elf134777
-Ref: xtensa-x-linux135446
-Ref: windows135784
-Ref: os2136038
-Ref: older136229
-Ref: elf138350
-Node: Old138608
-Node: Configurations141745
-Node: GNU Free Documentation License145727
-Node: Concept Index168143
+Node: Building52836
+Node: Testing63003
+Node: Final install70865
+Node: Binaries75911
+Node: Specific77772
+Ref: alpha-x-x78059
+Ref: alpha-dec-osf78548
+Ref: alphaev5-cray-unicosmk82125
+Ref: arc-x-elf83072
+Ref: arm-x-elf83172
+Ref: xscale-x-x83193
+Ref: arm-x-coff83429
+Ref: arm-x-aout83631
+Ref: avr83753
+Ref: bfin84437
+Ref: c4x84679
+Ref: cris85277
+Ref: crx86259
+Ref: dos86922
+Ref: x-x-freebsd87245
+Ref: h8300-hms89628
+Ref: hppa-hp-hpux89980
+Ref: hppa-hp-hpux1092468
+Ref: hppa-hp-hpux1193525
+Ref: x-x-linux-gnu100380
+Ref: ix86-x-linuxaout100572
+Ref: ix86-x-linux100731
+Ref: ix86-x-sco32v5101044
+Ref: ix86-x-solaris210103213
+Ref: ix86-x-udk103599
+Ref: ia64-x-linux104963
+Ref: ia64-x-hpux105733
+Ref: x-ibm-aix106288
+Ref: iq2000-x-elf112144
+Ref: m32c-x-elf112284
+Ref: m32r-x-elf112386
+Ref: m6811-elf112488
+Ref: m6812-elf112638
+Ref: m68k-hp-hpux112788
+Ref: mips-x-x114527
+Ref: mips-sgi-irix5116196
+Ref: mips-sgi-irix6117144
+Ref: powerpc-x-x120054
+Ref: powerpc-x-darwin120199
+Ref: powerpc-x-elf120790
+Ref: powerpc-x-linux-gnu120909
+Ref: powerpc-x-netbsd121011
+Ref: powerpc-x-eabisim121207
+Ref: powerpc-x-eabi121333
+Ref: powerpcle-x-elf121409
+Ref: powerpcle-x-eabisim121539
+Ref: powerpcle-x-eabi121672
+Ref: s390-x-linux121755
+Ref: s390x-x-linux121827
+Ref: s390x-ibm-tpf121914
+Ref: x-x-solaris2122045
+Ref: sparc-sun-solaris2126073
+Ref: sparc-sun-solaris27129237
+Ref: sparc-x-linux131701
+Ref: sparc64-x-solaris2131926
+Ref: sparcv9-x-solaris2132571
+Ref: x-x-sysv132656
+Ref: vax-dec-ultrix133617
+Ref: x-x-vxworks133769
+Ref: x86-64-x-x135291
+Ref: xtensa-x-elf135619
+Ref: xtensa-x-linux136288
+Ref: windows136626
+Ref: os2136880
+Ref: older137071
+Ref: elf139188
+Node: Old139446
+Node: Configurations142583
+Node: GNU Free Documentation License146565
+Node: Concept Index168981
 
 End Tag Table

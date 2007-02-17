@@ -1,4 +1,4 @@
-@c Copyright (C) 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
+@c Copyright (C) 2002, 2003, 2004, 2005, 2007 Free Software Foundation, Inc.
 @c This is part of the GCC manual.
 @c For copying conditions, see the file gcc.texi.
 
@@ -833,7 +833,7 @@ here; FIXME: document the others.
 @node Test Idioms
 @subsection Idioms Used in Testsuite Code
 
-In general C testcases have a trailing @file{-@var{n}.c}, starting
+In general, C testcases have a trailing @file{-@var{n}.c}, starting
 with @file{-1.c}, in case other testcases with similar names are added
 later.  If the test is a test of some well-defined feature, it should
 have a name referring to that feature such as
@@ -913,7 +913,7 @@ FIXME: discuss non-C testsuites here.
 @subsection Directives used within DejaGnu tests
 
 Test directives appear within comments in a test source file and begin
-with @code{dg-}.  Some of these are defined within DegaGnu and others
+with @code{dg-}.  Some of these are defined within DejaGnu and others
 are local to the GCC testsuite.
 
 The order in which test directives appear in a test can be important:
@@ -1005,6 +1005,10 @@ specific procedure does not examine the argument.
 Skip the test if the test target, including current multilib flags,
 is not covered by the effective-target keyword.
 This directive must appear after any @code{dg-do} directive in the test.
+
+@item  @{ dg-shouldfail @var{comment} @{ @var{selector} @} @{ @var{include-opts} @} @{ @var{exclude-opts} @} @}
+Expect the test executable to return a nonzero exit status if the
+conditions (which are the same as for @code{dg-skip-if}) are met.
 
 @item @{ dg-error @var{regexp} [@var{comment} [@{ target/xfail @var{selector} @} [@var{line}] @}]] @}
 This DejaGnu directive appears on a source line that is expected to get
@@ -1124,6 +1128,12 @@ suffix @var{suffix}.
 @item scan-tree-dump-dem-not @var{regex} @var{suffix} [@{ target/xfail @var{selector} @}]
 Passes if @var{regex} does not match demangled text in the dump file with
 suffix @var{suffix}.
+
+@item output-exists [@{ target/xfail @var{selector} @}]
+Passes if compiler output file exists.
+
+@item output-exists-not [@{ target/xfail @var{selector} @}]
+Passes if compiler output file does not exist.
 
 @item run-gcov @var{sourcefile}
 Check line counts in @command{gcov} tests.
@@ -1275,7 +1285,7 @@ Runtime tests are executed via @samp{make check} in the
 tree.  Additional runtime tests can be checked into this testsuite.
 
 Regression testing of the core packages in libgcj is also covered by the
-Mauve testsuite.  The @uref{http://sources.redhat.com/mauve/,,Mauve Project}
+Mauve testsuite.  The @uref{http://sourceware.org/mauve/,,Mauve Project}
 develops tests for the Java Class Libraries.  These tests are run as part
 of libgcj testing by placing the Mauve tree within the libjava testsuite
 sources at @file{libjava/testsuite/libjava.mauve/mauve}, or by specifying
@@ -1288,7 +1298,7 @@ failures for a test run against the list of expected failures in
 Update this file when adding new failing tests to Mauve, or when fixing
 bugs in libgcj that had caused Mauve test failures.
 
-The @uref{http://sources.redhat.com/mauve/jacks.html,,
+The @uref{http://sourceware.org/mauve/jacks.html,,
 Jacks} project provides a testsuite for Java compilers that can be used
 to test changes that affect the GCJ front end.  This testsuite is run as
 part of Java testing by placing the Jacks tree within the libjava

@@ -1,5 +1,5 @@
 This is doc/gcc.info, produced by makeinfo version 4.8 from
-/scratch/mitchell/gcc-releases/gcc-4.1.1/gcc-4.1.1/gcc/doc/gcc.texi.
+/scratch/mitchell/gcc-releases/gcc-4.1.2/gcc-4.1.2/gcc/doc/gcc.texi.
 
  Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
@@ -58,7 +58,7 @@ Introduction
 
 This manual documents how to use the GNU compilers, as well as their
 features and incompatibilities, and how to report bugs.  It corresponds
-to GCC version 4.1.1.  The internals of the GNU compilers, including
+to GCC version 4.1.2.  The internals of the GNU compilers, including
 how to port them to new targets and some information about how to write
 front ends for new languages, are documented in a separate manual.
 *Note Introduction: (gccint)Top.
@@ -1102,7 +1102,6 @@ compilation is done:
           objective-c++ objective-c++-header objective-c++-cpp-output
           assembler  assembler-with-cpp
           ada
-          f77  f77-cpp-input
           f95  f95-cpp-input
           java
           treelang
@@ -2602,7 +2601,7 @@ Options::.
 
 `-Wunused-variable'
      Warn whenever a local variable or non-constant static variable is
-     unused aside from its declaration This warning is enabled by
+     unused aside from its declaration.  This warning is enabled by
      `-Wall'.
 
      To suppress this warning use the `unused' attribute (*note
@@ -4051,8 +4050,8 @@ the performance and/or code size at the expense of compilation time and
 possibly the ability to debug the program.
 
  The compiler performs optimization based on the knowledge it has of
-the program.  Optimization levels `-O2' and above, in particular,
-enable _unit-at-a-time_ mode, which allows the compiler to consider
+the program.  Optimization levels `-O' and above, in particular, enable
+_unit-at-a-time_ mode, which allows the compiler to consider
 information gained from later functions in the file when compiling a
 function.  Compiling multiple files at once to a single output file in
 _unit-at-a-time_ mode allows the compiler to use information gained
@@ -4088,6 +4087,7 @@ optimizations that have a flag are listed.
           -ftree-copyrename
           -ftree-fre
           -ftree-ch
+          -funit-at-a-time
           -fmerge-constants
 
      `-O' also turns on `-fomit-frame-pointer' on machines where doing
@@ -4122,7 +4122,6 @@ optimizations that have a flag are listed.
           -fstrict-aliasing
           -fdelete-null-pointer-checks
           -freorder-blocks  -freorder-functions
-          -funit-at-a-time
           -falign-functions  -falign-jumps
           -falign-loops  -falign-labels
           -ftree-vrp
@@ -5014,7 +5013,7 @@ optimizations to be performed is desired.
      As a temporary workaround, `-fno-unit-at-a-time' can be used, but
      this scheme may not be supported by future releases of GCC.
 
-     Enabled at levels `-O2', `-O3'.
+     Enabled at levels `-O', `-O2', `-O3', `-Os'.
 
 `-fweb'
      Constructs webs as commonly used for register allocation purposes
@@ -5502,7 +5501,7 @@ includes experimental options that may produce broken code.
           recursive inlining.
 
           For functions declared inline `--param
-          max-inline-insns-recursive' is taken into acount.  For
+          max-inline-insns-recursive' is taken into account.  For
           function not declared inline, recursive inlining happens only
           when `-finline-functions' (included in `-O3') is enabled and
           `--param max-inline-insns-recursive-auto' is used.  The
@@ -5514,7 +5513,7 @@ includes experimental options that may produce broken code.
           inlining.
 
           For functions declared inline `--param
-          max-inline-recursive-depth' is taken into acount.  For
+          max-inline-recursive-depth' is taken into account.  For
           function not declared inline, recursive inlining happens only
           when `-finline-functions' (included in `-O3') is enabled and
           `--param max-inline-recursive-depth-auto' is used.  The
@@ -5732,7 +5731,7 @@ includes experimental options that may produce broken code.
 
     `max-cselib-memory-location'
           The maximum number of memory locations cselib should take
-          into acount.  Increasing values mean more aggressive
+          into account.  Increasing values mean more aggressive
           optimization, making the compile time increase with probably
           slightly better performance.  The default value is 500.
 
@@ -9030,6 +9029,8 @@ computers:
      code that runs somewhat faster on a `Pentium' at the expense of
      more memory.
 
+     On x86-64, `-malign-double' is enabled by default.
+
      *Warning:* if you use the `-malign-double' switch, structures
      containing the above types will be aligned differently than the
      published application binary interface specifications for the 386
@@ -9123,15 +9124,13 @@ computers:
 `-mpreferred-stack-boundary=NUM'
      Attempt to keep the stack boundary aligned to a 2 raised to NUM
      byte boundary.  If `-mpreferred-stack-boundary' is not specified,
-     the default is 4 (16 bytes or 128 bits), except when optimizing
-     for code size (`-Os'), in which case the default is the minimum
-     correct alignment (4 bytes for x86, and 8 bytes for x86-64).
+     the default is 4 (16 bytes or 128 bits).
 
      On Pentium and PentiumPro, `double' and `long double' values
      should be aligned to an 8 byte boundary (see `-malign-double') or
      suffer significant run time performance penalties.  On Pentium
-     III, the Streaming SIMD Extension (SSE) data type `__m128' suffers
-     similar penalties if it is not 16 byte aligned.
+     III, the Streaming SIMD Extension (SSE) data type `__m128' may not
+     work properly if it is not 16 byte aligned.
 
      To ensure proper alignment of this values on the stack, the stack
      boundary must be as aligned as that required by any value stored
@@ -10510,9 +10509,9 @@ These `-m' options are defined for the IBM RS/6000 and PowerPC:
      `440', `440fp', `505', `601', `602', `603', `603e', `604', `604e',
      `620', `630', `740', `7400', `7450', `750', `801', `821', `823',
      `860', `970', `8540', `ec603e', `G3', `G4', `G5', `power',
-     `power2', `power3', `power4', `power5', `power5+', `common',
-     `powerpc', `powerpc64', `rios', `rios1', `rios2', `rsc', and
-     `rs64'.
+     `power2', `power3', `power4', `power5', `power5+', `power6',
+     `common', `powerpc', `powerpc64', `rios', `rios1', `rios2', `rsc',
+     and `rs64'.
 
      `-mcpu=common' selects a completely generic processor.  Code
      generated under this option will run on any POWER or PowerPC
@@ -12050,7 +12049,7 @@ the other form by either removing `no-' or adding it.
 `-fbounds-check'
      For front-ends that support it, generate additional code to check
      that indices used to access arrays are within the declared range.
-     This is currently only supported by the Java and Fortran 77
+     This is currently only supported by the Java and Fortran
      front-ends, where this option defaults to true and false
      respectively.
 
@@ -13345,7 +13344,37 @@ File: gcc.info,  Node: Qualifiers implementation,  Next: Declarators implementat
    * `What constitutes an access to an object that has
      volatile-qualified type (C90 6.5.3, C99 6.7.3).'
 
-     *Note When is a Volatile Object Accessed?: Volatiles.
+     Such an object is normally accessed by pointers and used for
+     accessing hardware.  In most expressions, it is intuitively
+     obvious what is a read and what is a write.  For example
+
+          volatile int *dst = SOMEVALUE;
+          volatile int *src = SOMEOTHERVALUE;
+          *dst = *src;
+
+     will cause a read of the volatile object pointed to by SRC and
+     store the value into the volatile object pointed to by DST.  There
+     is no guarantee that these reads and writes are atomic, especially
+     for objects larger than `int'.
+
+     However, if the volatile storage is not being modified, and the
+     value of the volatile storage is not used, then the situation is
+     less obvious.  For example
+
+          volatile int *src = SOMEVALUE;
+          *src;
+
+     According to the C standard, such an expression is an rvalue whose
+     type is the unqualified version of its original type, i.e. `int'.
+     Whether GCC interprets this as a read of the volatile object being
+     pointed to or only as a request to evaluate the expression for its
+     side-effects depends on this type.
+
+     If it is a scalar type, or on most targets an aggregate type whose
+     only member object is of a scalar type, or a union type whose
+     member objects are of scalar types, the expression is interpreted
+     by GCC as a read of the volatile object; in the other cases, the
+     expression is only evaluated for its side-effects.
 
 
 
@@ -14525,11 +14554,11 @@ allowed, but then the compound literal is equivalent to a cast.
  As a GNU extension, GCC allows initialization of objects with static
 storage duration by compound literals (which is not possible in ISO
 C99, because the initializer is not a constant).  It is handled as if
-the object was initialized only with the bracket enclosed list if
-compound literal's and object types match.  The initializer list of the
-compound literal must be constant.  If the object being initialized has
-array type of unknown size, the size is determined by compound literal
-size.
+the object was initialized only with the bracket enclosed list if the
+types of the compound literal and the object match.  The initializer
+list of the compound literal must be constant.  If the object being
+initialized has array type of unknown size, the size is determined by
+compound literal size.
 
      static struct foo x = (struct foo) {1, 'a', 'b'};
      static int y[] = (int []) {1, 2, 3};
@@ -15316,7 +15345,7 @@ attributes.
 
 `sseregparm'
      On the Intel 386 with SSE support, the `sseregparm' attribute
-     causes the compiler to pass up to 8 floating point arguments in
+     causes the compiler to pass up to 3 floating point arguments in
      SSE registers instead of on the stack.  Functions that take a
      variable number of arguments will continue to pass all of their
      floating point arguments on the stack.
@@ -20431,15 +20460,172 @@ All of them generate the machine instruction that is part of the name.
 `void __builtin_ia32_storelps (v4sf, v2si *)'
      Generates the `movlps' machine instruction as a store to memory.
 
+ The following built-in functions are available when `-msse2' is used.
+All of them generate the machine instruction that is part of the name.
+
+     int __builtin_ia32_comisdeq (v2df, v2df)
+     int __builtin_ia32_comisdlt (v2df, v2df)
+     int __builtin_ia32_comisdle (v2df, v2df)
+     int __builtin_ia32_comisdgt (v2df, v2df)
+     int __builtin_ia32_comisdge (v2df, v2df)
+     int __builtin_ia32_comisdneq (v2df, v2df)
+     int __builtin_ia32_ucomisdeq (v2df, v2df)
+     int __builtin_ia32_ucomisdlt (v2df, v2df)
+     int __builtin_ia32_ucomisdle (v2df, v2df)
+     int __builtin_ia32_ucomisdgt (v2df, v2df)
+     int __builtin_ia32_ucomisdge (v2df, v2df)
+     int __builtin_ia32_ucomisdneq (v2df, v2df)
+     v2df __builtin_ia32_cmpeqpd (v2df, v2df)
+     v2df __builtin_ia32_cmpltpd (v2df, v2df)
+     v2df __builtin_ia32_cmplepd (v2df, v2df)
+     v2df __builtin_ia32_cmpgtpd (v2df, v2df)
+     v2df __builtin_ia32_cmpgepd (v2df, v2df)
+     v2df __builtin_ia32_cmpunordpd (v2df, v2df)
+     v2df __builtin_ia32_cmpneqpd (v2df, v2df)
+     v2df __builtin_ia32_cmpnltpd (v2df, v2df)
+     v2df __builtin_ia32_cmpnlepd (v2df, v2df)
+     v2df __builtin_ia32_cmpngtpd (v2df, v2df)
+     v2df __builtin_ia32_cmpngepd (v2df, v2df)
+     v2df __builtin_ia32_cmpordpd (v2df, v2df)
+     v2df __builtin_ia32_cmpeqsd (v2df, v2df)
+     v2df __builtin_ia32_cmpltsd (v2df, v2df)
+     v2df __builtin_ia32_cmplesd (v2df, v2df)
+     v2df __builtin_ia32_cmpunordsd (v2df, v2df)
+     v2df __builtin_ia32_cmpneqsd (v2df, v2df)
+     v2df __builtin_ia32_cmpnltsd (v2df, v2df)
+     v2df __builtin_ia32_cmpnlesd (v2df, v2df)
+     v2df __builtin_ia32_cmpordsd (v2df, v2df)
+     v2di __builtin_ia32_paddq (v2di, v2di)
+     v2di __builtin_ia32_psubq (v2di, v2di)
+     v2df __builtin_ia32_addpd (v2df, v2df)
+     v2df __builtin_ia32_subpd (v2df, v2df)
+     v2df __builtin_ia32_mulpd (v2df, v2df)
+     v2df __builtin_ia32_divpd (v2df, v2df)
+     v2df __builtin_ia32_addsd (v2df, v2df)
+     v2df __builtin_ia32_subsd (v2df, v2df)
+     v2df __builtin_ia32_mulsd (v2df, v2df)
+     v2df __builtin_ia32_divsd (v2df, v2df)
+     v2df __builtin_ia32_minpd (v2df, v2df)
+     v2df __builtin_ia32_maxpd (v2df, v2df)
+     v2df __builtin_ia32_minsd (v2df, v2df)
+     v2df __builtin_ia32_maxsd (v2df, v2df)
+     v2df __builtin_ia32_andpd (v2df, v2df)
+     v2df __builtin_ia32_andnpd (v2df, v2df)
+     v2df __builtin_ia32_orpd (v2df, v2df)
+     v2df __builtin_ia32_xorpd (v2df, v2df)
+     v2df __builtin_ia32_movsd (v2df, v2df)
+     v2df __builtin_ia32_unpckhpd (v2df, v2df)
+     v2df __builtin_ia32_unpcklpd (v2df, v2df)
+     v16qi __builtin_ia32_paddb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_paddw128 (v8hi, v8hi)
+     v4si __builtin_ia32_paddd128 (v4si, v4si)
+     v2di __builtin_ia32_paddq128 (v2di, v2di)
+     v16qi __builtin_ia32_psubb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_psubw128 (v8hi, v8hi)
+     v4si __builtin_ia32_psubd128 (v4si, v4si)
+     v2di __builtin_ia32_psubq128 (v2di, v2di)
+     v8hi __builtin_ia32_pmullw128 (v8hi, v8hi)
+     v8hi __builtin_ia32_pmulhw128 (v8hi, v8hi)
+     v2di __builtin_ia32_pand128 (v2di, v2di)
+     v2di __builtin_ia32_pandn128 (v2di, v2di)
+     v2di __builtin_ia32_por128 (v2di, v2di)
+     v2di __builtin_ia32_pxor128 (v2di, v2di)
+     v16qi __builtin_ia32_pavgb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pavgw128 (v8hi, v8hi)
+     v16qi __builtin_ia32_pcmpeqb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pcmpeqw128 (v8hi, v8hi)
+     v4si __builtin_ia32_pcmpeqd128 (v4si, v4si)
+     v16qi __builtin_ia32_pcmpgtb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pcmpgtw128 (v8hi, v8hi)
+     v4si __builtin_ia32_pcmpgtd128 (v4si, v4si)
+     v16qi __builtin_ia32_pmaxub128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pmaxsw128 (v8hi, v8hi)
+     v16qi __builtin_ia32_pminub128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pminsw128 (v8hi, v8hi)
+     v16qi __builtin_ia32_punpckhbw128 (v16qi, v16qi)
+     v8hi __builtin_ia32_punpckhwd128 (v8hi, v8hi)
+     v4si __builtin_ia32_punpckhdq128 (v4si, v4si)
+     v2di __builtin_ia32_punpckhqdq128 (v2di, v2di)
+     v16qi __builtin_ia32_punpcklbw128 (v16qi, v16qi)
+     v8hi __builtin_ia32_punpcklwd128 (v8hi, v8hi)
+     v4si __builtin_ia32_punpckldq128 (v4si, v4si)
+     v2di __builtin_ia32_punpcklqdq128 (v2di, v2di)
+     v16qi __builtin_ia32_packsswb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_packssdw128 (v8hi, v8hi)
+     v16qi __builtin_ia32_packuswb128 (v16qi, v16qi)
+     v8hi __builtin_ia32_pmulhuw128 (v8hi, v8hi)
+     void __builtin_ia32_maskmovdqu (v16qi, v16qi)
+     v2df __builtin_ia32_loadupd (double *)
+     void __builtin_ia32_storeupd (double *, v2df)
+     v2df __builtin_ia32_loadhpd (v2df, double *)
+     v2df __builtin_ia32_loadlpd (v2df, double *)
+     int __builtin_ia32_movmskpd (v2df)
+     int __builtin_ia32_pmovmskb128 (v16qi)
+     void __builtin_ia32_movnti (int *, int)
+     void __builtin_ia32_movntpd (double *, v2df)
+     void __builtin_ia32_movntdq (v2df *, v2df)
+     v4si __builtin_ia32_pshufd (v4si, int)
+     v8hi __builtin_ia32_pshuflw (v8hi, int)
+     v8hi __builtin_ia32_pshufhw (v8hi, int)
+     v2di __builtin_ia32_psadbw128 (v16qi, v16qi)
+     v2df __builtin_ia32_sqrtpd (v2df)
+     v2df __builtin_ia32_sqrtsd (v2df)
+     v2df __builtin_ia32_shufpd (v2df, v2df, int)
+     v2df __builtin_ia32_cvtdq2pd (v4si)
+     v4sf __builtin_ia32_cvtdq2ps (v4si)
+     v4si __builtin_ia32_cvtpd2dq (v2df)
+     v2si __builtin_ia32_cvtpd2pi (v2df)
+     v4sf __builtin_ia32_cvtpd2ps (v2df)
+     v4si __builtin_ia32_cvttpd2dq (v2df)
+     v2si __builtin_ia32_cvttpd2pi (v2df)
+     v2df __builtin_ia32_cvtpi2pd (v2si)
+     int __builtin_ia32_cvtsd2si (v2df)
+     int __builtin_ia32_cvttsd2si (v2df)
+     long long __builtin_ia32_cvtsd2si64 (v2df)
+     long long __builtin_ia32_cvttsd2si64 (v2df)
+     v4si __builtin_ia32_cvtps2dq (v4sf)
+     v2df __builtin_ia32_cvtps2pd (v4sf)
+     v4si __builtin_ia32_cvttps2dq (v4sf)
+     v2df __builtin_ia32_cvtsi2sd (v2df, int)
+     v2df __builtin_ia32_cvtsi642sd (v2df, long long)
+     v4sf __builtin_ia32_cvtsd2ss (v4sf, v2df)
+     v2df __builtin_ia32_cvtss2sd (v2df, v4sf)
+     void __builtin_ia32_clflush (const void *)
+     void __builtin_ia32_lfence (void)
+     void __builtin_ia32_mfence (void)
+     v16qi __builtin_ia32_loaddqu (const char *)
+     void __builtin_ia32_storedqu (char *, v16qi)
+     unsigned long long __builtin_ia32_pmuludq (v2si, v2si)
+     v2di __builtin_ia32_pmuludq128 (v4si, v4si)
+     v8hi __builtin_ia32_psllw128 (v8hi, v2di)
+     v4si __builtin_ia32_pslld128 (v4si, v2di)
+     v2di __builtin_ia32_psllq128 (v4si, v2di)
+     v8hi __builtin_ia32_psrlw128 (v8hi, v2di)
+     v4si __builtin_ia32_psrld128 (v4si, v2di)
+     v2di __builtin_ia32_psrlq128 (v2di, v2di)
+     v8hi __builtin_ia32_psraw128 (v8hi, v2di)
+     v4si __builtin_ia32_psrad128 (v4si, v2di)
+     v2di __builtin_ia32_pslldqi128 (v2di, int)
+     v8hi __builtin_ia32_psllwi128 (v8hi, int)
+     v4si __builtin_ia32_pslldi128 (v4si, int)
+     v2di __builtin_ia32_psllqi128 (v2di, int)
+     v2di __builtin_ia32_psrldqi128 (v2di, int)
+     v8hi __builtin_ia32_psrlwi128 (v8hi, int)
+     v4si __builtin_ia32_psrldi128 (v4si, int)
+     v2di __builtin_ia32_psrlqi128 (v2di, int)
+     v8hi __builtin_ia32_psrawi128 (v8hi, int)
+     v4si __builtin_ia32_psradi128 (v4si, int)
+     v4si __builtin_ia32_pmaddwd128 (v8hi, v8hi)
+
  The following built-in functions are available when `-msse3' is used.
 All of them generate the machine instruction that is part of the name.
 
      v2df __builtin_ia32_addsubpd (v2df, v2df)
-     v2df __builtin_ia32_addsubps (v2df, v2df)
+     v4sf __builtin_ia32_addsubps (v4sf, v4sf)
      v2df __builtin_ia32_haddpd (v2df, v2df)
-     v2df __builtin_ia32_haddps (v2df, v2df)
+     v4sf __builtin_ia32_haddps (v4sf, v4sf)
      v2df __builtin_ia32_hsubpd (v2df, v2df)
-     v2df __builtin_ia32_hsubps (v2df, v2df)
+     v4sf __builtin_ia32_hsubps (v4sf, v4sf)
      v16qi __builtin_ia32_lddqu (char const *)
      void __builtin_ia32_monitor (void *, unsigned int, unsigned int)
      v2df __builtin_ia32_movddup (v2df)
@@ -23462,61 +23648,40 @@ File: gcc.info,  Node: Volatiles,  Next: Restricted Pointers,  Up: C++ Extension
 Both the C and C++ standard have the concept of volatile objects.  These
 are normally accessed by pointers and used for accessing hardware.  The
 standards encourage compilers to refrain from optimizations concerning
-accesses to volatile objects that it might perform on non-volatile
-objects.  The C standard leaves it implementation defined as to what
-constitutes a volatile access.  The C++ standard omits to specify this,
-except to say that C++ should behave in a similar manner to C with
-respect to volatiles, where possible.  The minimum either standard
-specifies is that at a sequence point all previous accesses to volatile
-objects have stabilized and no subsequent accesses have occurred.  Thus
-an implementation is free to reorder and combine volatile accesses
-which occur between sequence points, but cannot do so for accesses
-across a sequence point.  The use of volatiles does not allow you to
-violate the restriction on updating objects multiple times within a
-sequence point.
+accesses to volatile objects.  The C standard leaves it implementation
+defined  as to what constitutes a volatile access.  The C++ standard
+omits to specify this, except to say that C++ should behave in a
+similar manner to C with respect to volatiles, where possible.  The
+minimum either standard specifies is that at a sequence point all
+previous accesses to volatile objects have stabilized and no subsequent
+accesses have occurred.  Thus an implementation is free to reorder and
+combine volatile accesses which occur between sequence points, but
+cannot do so for accesses across a sequence point.  The use of
+volatiles does not allow you to violate the restriction on updating
+objects multiple times within a sequence point.
 
- In most expressions, it is intuitively obvious what is a read and what
-is a write.  For instance
+ *Note Volatile qualifier and the C compiler: Qualifiers implementation.
 
-     volatile int *dst = SOMEVALUE;
-     volatile int *src = SOMEOTHERVALUE;
-     *dst = *src;
-
-will cause a read of the volatile object pointed to by SRC and stores
-the value into the volatile object pointed to by DST.  There is no
-guarantee that these reads and writes are atomic, especially for objects
-larger than `int'.
-
- Less obvious expressions are where something which looks like an access
-is used in a void context.  An example would be,
+ The behavior differs slightly between C and C++ in the non-obvious
+cases:
 
      volatile int *src = SOMEVALUE;
      *src;
 
- With C, such expressions are rvalues, and as rvalues cause a read of
-the object, GCC interprets this as a read of the volatile being pointed
-to.  The C++ standard specifies that such expressions do not undergo
-lvalue to rvalue conversion, and that the type of the dereferenced
-object may be incomplete.  The C++ standard does not specify explicitly
-that it is this lvalue to rvalue conversion which is responsible for
-causing an access.  However, there is reason to believe that it is,
-because otherwise certain simple expressions become undefined.  However,
-because it would surprise most programmers, G++ treats dereferencing a
-pointer to volatile object of complete type in a void context as a read
-of the object.  When the object has incomplete type, G++ issues a
-warning.
-
-     struct S;
-     struct T {int m;};
-     volatile S *ptr1 = SOMEVALUE;
-     volatile T *ptr2 = SOMEVALUE;
-     *ptr1;
-     *ptr2;
-
- In this example, a warning is issued for `*ptr1', and `*ptr2' causes a
-read of the object pointed to.  If you wish to force an error on the
-first case, you must force a conversion to rvalue with, for instance a
-static cast, `static_cast<S>(*ptr1)'.
+ With C, such expressions are rvalues, and GCC interprets this either
+as a read of the volatile object being pointed to or only as request to
+evaluate the side-effects.  The C++ standard specifies that such
+expressions do not undergo lvalue to rvalue conversion, and that the
+type of the dereferenced object may be incomplete.  The C++ standard
+does not specify explicitly that it is this lvalue to rvalue conversion
+which may be responsible for causing an access.  However, there is
+reason to believe that it is, because otherwise certain simple
+expressions become undefined.  However, because it would surprise most
+programmers, G++ treats dereferencing a pointer to volatile object of
+complete type when the value is unused as GCC would do for an
+equivalent type in C.  When the object has incomplete type, G++ issues
+a warning; if you wish to force an error, you must force a conversion
+to rvalue with, for instance, a static cast.
 
  When using a reference to volatile, G++ does not treat equivalent
 expressions as accesses to volatiles, but instead issues a warning that
@@ -24074,7 +24239,7 @@ and are now removed from G++.
 from G++.
 
  The use of default arguments in function pointers, function typedefs
-and and other places where they are not permitted by the standard is
+and other places where they are not permitted by the standard is
 deprecated and will be removed from a future version of G++.
 
  G++ allows floating-point literals to appear in integral constant
@@ -25017,8 +25182,8 @@ message "never executed" is printed.
  For a call, if it was executed at least once, then a percentage
 indicating the number of times the call returned divided by the number
 of times the call was executed will be printed.  This will usually be
-100%, but may be less for functions call `exit' or `longjmp', and thus
-may not return every time they are called.
+100%, but may be less for functions that call `exit' or `longjmp', and
+thus may not return every time they are called.
 
  The execution counts are cumulative.  If the example program were
 executed again without removing the `.gcda' file, the count for the
@@ -28507,7 +28672,7 @@ look up both forms.
  [index ]
 * Menu:
 
-* ###:                                   Overall Options.    (line  192)
+* ###:                                   Overall Options.    (line  191)
 * -dynamiclib:                           Darwin Options.     (line  116)
 * -force_cpusubtype_ALL:                 Darwin Options.     (line  121)
 * -fsplit-ivs-in-unroller:               Optimize Options.   (line  767)
@@ -28536,9 +28701,9 @@ look up both forms.
 * c:                                     Link Options.       (line   20)
 * C:                                     Preprocessor Options.
                                                              (line  553)
-* c:                                     Overall Options.    (line  147)
+* c:                                     Overall Options.    (line  146)
 * client_name:                           Darwin Options.     (line  182)
-* combine:                               Overall Options.    (line  203)
+* combine:                               Overall Options.    (line  202)
 * compatibility_version:                 Darwin Options.     (line  182)
 * coverage:                              Debugging Options.  (line  161)
 * crossjumping:                          Optimize Options.   (line  461)
@@ -28603,7 +28768,7 @@ look up both forms.
 * dZ:                                    Debugging Options.  (line  380)
 * dz:                                    Debugging Options.  (line  376)
 * E <1>:                                 Link Options.       (line   20)
-* E:                                     Overall Options.    (line  168)
+* E:                                     Overall Options.    (line  167)
 * EB <1>:                                MIPS Options.       (line    7)
 * EB:                                    ARC Options.        (line   12)
 * EL <1>:                                MIPS Options.       (line   10)
@@ -29007,7 +29172,7 @@ look up both forms.
 * headerpad_max_install_names:           Darwin Options.     (line  182)
 * help <1>:                              Preprocessor Options.
                                                              (line  600)
-* help:                                  Overall Options.    (line  219)
+* help:                                  Overall Options.    (line  218)
 * hp-ld:                                 HPPA Options.       (line  125)
 * I <1>:                                 Directory Options.  (line   10)
 * I:                                     Preprocessor Options.
@@ -29048,7 +29213,7 @@ look up both forms.
 * m1:                                    SH Options.         (line    9)
 * m10:                                   PDP-11 Options.     (line   29)
 * m128bit-long-double:                   i386 and x86-64 Options.
-                                                             (line  217)
+                                                             (line  219)
 * m16-bit:                               CRIS Options.       (line   69)
 * m2:                                    SH Options.         (line   12)
 * m210:                                  MCore Options.      (line   43)
@@ -29108,7 +29273,7 @@ look up both forms.
 * m68S12:                                M68hc1x Options.    (line   23)
 * m8-bit:                                CRIS Options.       (line   69)
 * m96bit-long-double:                    i386 and x86-64 Options.
-                                                             (line  217)
+                                                             (line  219)
 * mabi <1>:                              RS/6000 and PowerPC Options.
                                                              (line  476)
 * mabi:                                  ARM Options.        (line   10)
@@ -29438,7 +29603,7 @@ look up both forms.
 * ml:                                    SH Options.         (line   61)
 * mlarge-data:                           DEC Alpha Options.  (line  195)
 * mlarge-data-threshold=NUMBER:          i386 and x86-64 Options.
-                                                             (line  243)
+                                                             (line  245)
 * mlarge-text:                           DEC Alpha Options.  (line  213)
 * mlibfuncs:                             MMIX Options.       (line   10)
 * mlibrary-pic:                          FRV Options.        (line  110)
@@ -29715,7 +29880,7 @@ look up both forms.
 * mno-sum-in-toc:                        RS/6000 and PowerPC Options.
                                                              (line  233)
 * mno-svr3-shlib:                        i386 and x86-64 Options.
-                                                             (line  250)
+                                                             (line  252)
 * mno-swdiv:                             RS/6000 and PowerPC Options.
                                                              (line  154)
 * mno-sym32:                             MIPS Options.       (line  187)
@@ -29795,7 +29960,7 @@ look up both forms.
                                                              (line   25)
 * mprefergot:                            SH Options.         (line  113)
 * mpreferred-stack-boundary:             i386 and x86-64 Options.
-                                                             (line  300)
+                                                             (line  302)
 * mprioritize-restricted-insns:          RS/6000 and PowerPC Options.
                                                              (line  412)
 * mprolog-function:                      V850 Options.       (line   23)
@@ -29814,7 +29979,7 @@ look up both forms.
 * mregparm <1>:                          TMS320C3x/C4x Options.
                                                              (line  109)
 * mregparm:                              i386 and x86-64 Options.
-                                                             (line  279)
+                                                             (line  281)
 * mrelax <1>:                            SH Options.         (line   70)
 * mrelax <2>:                            MN10300 Options.    (line   34)
 * mrelax:                                H8/300 Options.     (line    9)
@@ -29833,7 +29998,7 @@ look up both forms.
                                                              (line   59)
 * mrtd <2>:                              M680x0 Options.     (line  105)
 * mrtd:                                  i386 and x86-64 Options.
-                                                             (line  255)
+                                                             (line  257)
 * ms:                                    H8/300 Options.     (line   17)
 * ms2600:                                H8/300 Options.     (line   24)
 * mscc:                                  FRV Options.        (line  140)
@@ -29907,7 +30072,7 @@ look up both forms.
 * msse:                                  i386 and x86-64 Options.
                                                              (line  340)
 * msseregparm:                           i386 and x86-64 Options.
-                                                             (line  290)
+                                                             (line  292)
 * mstack-align:                          CRIS Options.       (line   60)
 * mstack-bias:                           SPARC Options.      (line  218)
 * mstack-guard:                          S/390 and zSeries Options.
@@ -29921,7 +30086,7 @@ look up both forms.
                                                              (line  328)
 * mstructure-size-boundary:              ARM Options.        (line  129)
 * msvr3-shlib:                           i386 and x86-64 Options.
-                                                             (line  250)
+                                                             (line  252)
 * msvr4-struct-return:                   RS/6000 and PowerPC Options.
                                                              (line  472)
 * mswdiv:                                RS/6000 and PowerPC Options.
@@ -30032,10 +30197,10 @@ look up both forms.
 * o:                                     Preprocessor Options.
                                                              (line   72)
 * O:                                     Optimize Options.   (line   32)
-* o:                                     Overall Options.    (line  175)
+* o:                                     Overall Options.    (line  174)
 * O0:                                    Optimize Options.   (line  106)
 * O1:                                    Optimize Options.   (line   32)
-* O2:                                    Optimize Options.   (line   67)
+* O2:                                    Optimize Options.   (line   68)
 * O3:                                    Optimize Options.   (line  101)
 * Os:                                    Optimize Options.   (line  109)
 * P:                                     Preprocessor Options.
@@ -30043,7 +30208,7 @@ look up both forms.
 * p:                                     Debugging Options.  (line  122)
 * pagezero_size:                         Darwin Options.     (line  182)
 * param:                                 Optimize Options.   (line 1317)
-* pass-exit-codes:                       Overall Options.    (line  134)
+* pass-exit-codes:                       Overall Options.    (line  133)
 * pedantic <1>:                          Warnings and Errors.
                                                              (line   25)
 * pedantic <2>:                          Alternate Keywords. (line   29)
@@ -30061,7 +30226,7 @@ look up both forms.
 * pedantic-errors:                       Standards.          (line   13)
 * pg:                                    Debugging Options.  (line  128)
 * pie:                                   Link Options.       (line   92)
-* pipe:                                  Overall Options.    (line  197)
+* pipe:                                  Overall Options.    (line  196)
 * prebind:                               Darwin Options.     (line  182)
 * prebind_all_twolevel_modules:          Darwin Options.     (line  182)
 * preprocessor:                          Preprocessor Options.
@@ -30089,7 +30254,7 @@ look up both forms.
                                                              (line  595)
 * s:                                     Link Options.       (line  105)
 * S <1>:                                 Link Options.       (line   20)
-* S:                                     Overall Options.    (line  158)
+* S:                                     Overall Options.    (line  157)
 * save-temps:                            Debugging Options.  (line  661)
 * sectalign:                             Darwin Options.     (line  182)
 * sectcreate:                            Darwin Options.     (line  182)
@@ -30125,7 +30290,7 @@ look up both forms.
 * sysroot:                               Directory Options.  (line   92)
 * target-help <1>:                       Preprocessor Options.
                                                              (line  600)
-* target-help:                           Overall Options.    (line  228)
+* target-help:                           Overall Options.    (line  227)
 * threads <1>:                           SPARC Options.      (line  226)
 * threads:                               HPPA Options.       (line  207)
 * time:                                  Debugging Options.  (line  675)
@@ -30151,10 +30316,10 @@ look up both forms.
 * V:                                     Target Options.     (line   24)
 * v <1>:                                 Preprocessor Options.
                                                              (line  604)
-* v:                                     Overall Options.    (line  186)
+* v:                                     Overall Options.    (line  185)
 * version <1>:                           Preprocessor Options.
                                                              (line  617)
-* version:                               Overall Options.    (line  232)
+* version:                               Overall Options.    (line  231)
 * W:                                     Incompatibilities.  (line   64)
 * w:                                     Preprocessor Options.
                                                              (line  159)
@@ -31243,7 +31408,7 @@ Keyword Index
 * order of evaluation, side effects:     Non-bugs.           (line  196)
 * order of options:                      Invoking GCC.       (line   30)
 * other register constraints:            Simple Constraints. (line  151)
-* output file option:                    Overall Options.    (line  174)
+* output file option:                    Overall Options.    (line  173)
 * overloaded virtual fn, warning:        C++ Dialect Options.
                                                              (line  395)
 * p in constraint:                       Simple Constraints. (line  142)
@@ -31614,227 +31779,227 @@ Node: Standards5805
 Node: Invoking GCC12932
 Node: Option Summary16688
 Node: Overall Options44294
-Node: Invoking G++52793
-Node: C Dialect Options54415
-Node: C++ Dialect Options65425
-Node: Objective-C and Objective-C++ Dialect Options83883
-Node: Language Independent Options95490
-Node: Warning Options97573
-Node: Debugging Options143616
-Node: Optimize Options173536
-Node: Preprocessor Options250373
-Ref: Wtrigraphs254337
-Ref: dashMF259094
-Ref: fdollars-in-identifiers268145
-Node: Assembler Options276201
-Node: Link Options276906
-Ref: Link Options-Footnote-1285474
-Node: Directory Options285808
-Node: Spec Files291870
-Node: Target Options311158
-Node: Submodel Options312582
-Node: ARC Options314172
-Node: ARM Options315362
-Node: AVR Options326973
-Node: Blackfin Options329106
-Node: CRIS Options331874
-Node: CRX Options336093
-Node: Darwin Options336518
-Node: DEC Alpha Options343106
-Node: DEC Alpha/VMS Options354584
-Node: FRV Options354969
-Node: H8/300 Options361636
-Node: HPPA Options362697
-Node: i386 and x86-64 Options372290
-Node: IA-64 Options391212
-Node: M32C Options395203
-Node: M32R/D Options396494
-Node: M680x0 Options400081
-Node: M68hc1x Options407314
-Node: MCore Options408882
-Node: MIPS Options409903
-Node: MMIX Options423975
-Node: MN10300 Options426457
-Node: MT Options427875
-Node: PDP-11 Options428789
-Node: PowerPC Options430623
-Node: RS/6000 and PowerPC Options430857
-Node: S/390 and zSeries Options458917
-Node: SH Options466229
-Node: SPARC Options475465
-Node: System V Options486148
-Node: TMS320C3x/C4x Options486982
-Node: V850 Options492507
-Node: VAX Options495652
-Node: x86-64 Options496199
-Node: Xstormy16 Options496413
-Node: Xtensa Options496702
-Node: zSeries Options500542
-Node: Code Gen Options500738
-Node: Environment Variables520361
-Node: Precompiled Headers528033
-Node: Running Protoize534270
-Node: C Implementation540607
-Node: Translation implementation542270
-Node: Environment implementation542844
-Node: Identifiers implementation543394
-Node: Characters implementation544448
-Node: Integers implementation547254
-Node: Floating point implementation549079
-Node: Arrays and pointers implementation552008
-Ref: Arrays and pointers implementation-Footnote-1553443
-Node: Hints implementation553567
-Node: Structures unions enumerations and bit-fields implementation555033
-Node: Qualifiers implementation556996
-Node: Declarators implementation557379
-Node: Statements implementation557721
-Node: Preprocessing directives implementation558048
-Node: Library functions implementation560153
-Node: Architecture implementation560793
-Node: Locale-specific behavior implementation561496
-Node: C Extensions561801
-Node: Statement Exprs566151
-Node: Local Labels570664
-Node: Labels as Values573643
-Ref: Labels as Values-Footnote-1575697
-Node: Nested Functions575880
-Node: Constructing Calls579774
-Node: Typeof582110
-Node: Conditionals585276
-Node: Long Long586167
-Node: Complex587668
-Node: Hex Floats590234
-Node: Zero Length591269
-Node: Empty Structures594546
-Node: Variable Length594962
-Node: Variadic Macros597729
-Node: Escaped Newlines600111
-Node: Subscripting600950
-Node: Pointer Arith601673
-Node: Initializers602241
-Node: Compound Literals602737
-Node: Designated Inits604899
-Node: Case Ranges608554
-Node: Cast to Union609237
-Node: Mixed Declarations610333
-Node: Function Attributes610839
-Node: Attribute Syntax648874
-Node: Function Prototypes659958
-Node: C++ Comments661739
-Node: Dollar Signs662258
-Node: Character Escapes662723
-Node: Alignment663017
-Node: Variable Attributes664334
-Node: Type Attributes678366
-Node: Inline691817
-Node: Extended Asm696521
-Ref: Example of asm with clobbered asm reg702607
-Node: Constraints716703
-Node: Simple Constraints717553
-Node: Multi-Alternative724081
-Node: Modifiers725798
-Node: Machine Constraints728692
-Node: Asm Labels754827
-Node: Explicit Reg Vars756503
-Node: Global Reg Vars758111
-Node: Local Reg Vars762661
-Node: Alternate Keywords765102
-Node: Incomplete Enums766530
-Node: Function Names767287
-Node: Return Address769477
-Node: Vector Extensions772274
-Node: Offsetof775776
-Node: Atomic Builtins776562
-Node: Object Size Checking781647
-Node: Other Builtins787004
-Node: Target Builtins808198
-Node: Alpha Built-in Functions808931
-Node: ARM Built-in Functions811923
-Node: Blackfin Built-in Functions818630
-Node: FR-V Built-in Functions819247
-Node: Argument Types820106
-Node: Directly-mapped Integer Functions821862
-Node: Directly-mapped Media Functions822944
-Node: Raw read/write Functions829976
-Node: Other Built-in Functions830888
-Node: X86 Built-in Functions832077
-Node: MIPS DSP Built-in Functions842910
-Node: MIPS Paired-Single Support851335
-Node: Paired-Single Arithmetic852945
-Node: Paired-Single Built-in Functions853885
-Node: MIPS-3D Built-in Functions856549
-Node: PowerPC AltiVec Built-in Functions861918
-Node: SPARC VIS Built-in Functions963222
-Node: Target Format Checks964881
-Node: Solaris Format Checks965288
-Node: Pragmas965685
-Node: ARM Pragmas966269
-Node: M32C Pragmas966872
-Node: RS/6000 and PowerPC Pragmas967448
-Node: Darwin Pragmas968190
-Node: Solaris Pragmas969257
-Node: Symbol-Renaming Pragmas970418
-Node: Structure-Packing Pragmas973040
-Node: Weak Pragmas974303
-Node: Unnamed Fields975078
-Node: Thread-Local976588
-Node: C99 Thread-Local Edits978672
-Node: C++98 Thread-Local Edits980684
-Node: C++ Extensions984129
-Node: Volatiles985701
-Node: Restricted Pointers989047
-Node: Vague Linkage990641
-Node: C++ Interface994297
-Ref: C++ Interface-Footnote-1998594
-Node: Template Instantiation998731
-Node: Bound member functions1005743
-Node: C++ Attributes1007286
-Node: Strong Using1008926
-Node: Java Exceptions1010175
-Node: Deprecated Features1011571
-Node: Backwards Compatibility1014550
-Node: Objective-C1015905
-Node: Executing code before main1016486
-Node: What you can and what you cannot do in +load1019092
-Node: Type encoding1021259
-Node: Garbage Collection1024502
-Node: Constant string objects1027126
-Node: compatibility_alias1029634
-Node: Compatibility1030512
-Node: Gcov1037079
-Node: Gcov Intro1037603
-Node: Invoking Gcov1040319
-Node: Gcov and Optimization1052170
-Node: Gcov Data Files1054823
-Node: Cross-profiling1055961
-Node: Trouble1057787
-Node: Actual Bugs1059327
-Node: Cross-Compiler Problems1060067
-Node: Interoperation1060481
-Node: Incompatibilities1068079
-Node: Fixed Headers1076229
-Node: Standard Libraries1077892
-Node: Disappointments1079264
-Node: C++ Misunderstandings1083622
-Node: Static Definitions1084441
-Node: Name lookup1085494
-Ref: Name lookup-Footnote-11090272
-Node: Temporaries1090459
-Node: Copy Assignment1092435
-Node: Protoize Caveats1094242
-Node: Non-bugs1098204
-Node: Warnings and Errors1108708
-Node: Bugs1110472
-Node: Bug Criteria1111036
-Node: Bug Reporting1113246
-Node: Service1113638
-Node: Contributing1114457
-Node: Funding1115197
-Node: GNU Project1117686
-Node: Copying1118332
-Node: GNU Free Documentation License1137509
-Node: Contributors1159915
-Node: Option Index1195479
-Node: Keyword Index1327225
+Node: Invoking G++52764
+Node: C Dialect Options54386
+Node: C++ Dialect Options65396
+Node: Objective-C and Objective-C++ Dialect Options83854
+Node: Language Independent Options95461
+Node: Warning Options97544
+Node: Debugging Options143589
+Node: Optimize Options173509
+Node: Preprocessor Options250361
+Ref: Wtrigraphs254325
+Ref: dashMF259082
+Ref: fdollars-in-identifiers268133
+Node: Assembler Options276189
+Node: Link Options276894
+Ref: Link Options-Footnote-1285462
+Node: Directory Options285796
+Node: Spec Files291858
+Node: Target Options311146
+Node: Submodel Options312570
+Node: ARC Options314160
+Node: ARM Options315350
+Node: AVR Options326961
+Node: Blackfin Options329094
+Node: CRIS Options331862
+Node: CRX Options336081
+Node: Darwin Options336506
+Node: DEC Alpha Options343094
+Node: DEC Alpha/VMS Options354572
+Node: FRV Options354957
+Node: H8/300 Options361624
+Node: HPPA Options362685
+Node: i386 and x86-64 Options372278
+Node: IA-64 Options391095
+Node: M32C Options395086
+Node: M32R/D Options396377
+Node: M680x0 Options399964
+Node: M68hc1x Options407197
+Node: MCore Options408765
+Node: MIPS Options409786
+Node: MMIX Options423858
+Node: MN10300 Options426340
+Node: MT Options427758
+Node: PDP-11 Options428672
+Node: PowerPC Options430506
+Node: RS/6000 and PowerPC Options430740
+Node: S/390 and zSeries Options458810
+Node: SH Options466122
+Node: SPARC Options475358
+Node: System V Options486041
+Node: TMS320C3x/C4x Options486875
+Node: V850 Options492400
+Node: VAX Options495545
+Node: x86-64 Options496092
+Node: Xstormy16 Options496306
+Node: Xtensa Options496595
+Node: zSeries Options500435
+Node: Code Gen Options500631
+Node: Environment Variables520251
+Node: Precompiled Headers527923
+Node: Running Protoize534160
+Node: C Implementation540497
+Node: Translation implementation542160
+Node: Environment implementation542734
+Node: Identifiers implementation543284
+Node: Characters implementation544338
+Node: Integers implementation547144
+Node: Floating point implementation548969
+Node: Arrays and pointers implementation551898
+Ref: Arrays and pointers implementation-Footnote-1553333
+Node: Hints implementation553457
+Node: Structures unions enumerations and bit-fields implementation554923
+Node: Qualifiers implementation556886
+Node: Declarators implementation558658
+Node: Statements implementation559000
+Node: Preprocessing directives implementation559327
+Node: Library functions implementation561432
+Node: Architecture implementation562072
+Node: Locale-specific behavior implementation562775
+Node: C Extensions563080
+Node: Statement Exprs567430
+Node: Local Labels571943
+Node: Labels as Values574922
+Ref: Labels as Values-Footnote-1576976
+Node: Nested Functions577159
+Node: Constructing Calls581053
+Node: Typeof583389
+Node: Conditionals586555
+Node: Long Long587446
+Node: Complex588947
+Node: Hex Floats591513
+Node: Zero Length592548
+Node: Empty Structures595825
+Node: Variable Length596241
+Node: Variadic Macros599008
+Node: Escaped Newlines601390
+Node: Subscripting602229
+Node: Pointer Arith602952
+Node: Initializers603520
+Node: Compound Literals604016
+Node: Designated Inits606191
+Node: Case Ranges609846
+Node: Cast to Union610529
+Node: Mixed Declarations611625
+Node: Function Attributes612131
+Node: Attribute Syntax650166
+Node: Function Prototypes661250
+Node: C++ Comments663031
+Node: Dollar Signs663550
+Node: Character Escapes664015
+Node: Alignment664309
+Node: Variable Attributes665626
+Node: Type Attributes679658
+Node: Inline693109
+Node: Extended Asm697813
+Ref: Example of asm with clobbered asm reg703899
+Node: Constraints717995
+Node: Simple Constraints718845
+Node: Multi-Alternative725373
+Node: Modifiers727090
+Node: Machine Constraints729984
+Node: Asm Labels756119
+Node: Explicit Reg Vars757795
+Node: Global Reg Vars759403
+Node: Local Reg Vars763953
+Node: Alternate Keywords766394
+Node: Incomplete Enums767822
+Node: Function Names768579
+Node: Return Address770769
+Node: Vector Extensions773566
+Node: Offsetof777068
+Node: Atomic Builtins777854
+Node: Object Size Checking782939
+Node: Other Builtins788296
+Node: Target Builtins809490
+Node: Alpha Built-in Functions810223
+Node: ARM Built-in Functions813215
+Node: Blackfin Built-in Functions819922
+Node: FR-V Built-in Functions820539
+Node: Argument Types821398
+Node: Directly-mapped Integer Functions823154
+Node: Directly-mapped Media Functions824236
+Node: Raw read/write Functions831268
+Node: Other Built-in Functions832180
+Node: X86 Built-in Functions833369
+Node: MIPS DSP Built-in Functions851492
+Node: MIPS Paired-Single Support859917
+Node: Paired-Single Arithmetic861527
+Node: Paired-Single Built-in Functions862467
+Node: MIPS-3D Built-in Functions865131
+Node: PowerPC AltiVec Built-in Functions870500
+Node: SPARC VIS Built-in Functions971804
+Node: Target Format Checks973463
+Node: Solaris Format Checks973870
+Node: Pragmas974267
+Node: ARM Pragmas974851
+Node: M32C Pragmas975454
+Node: RS/6000 and PowerPC Pragmas976030
+Node: Darwin Pragmas976772
+Node: Solaris Pragmas977839
+Node: Symbol-Renaming Pragmas979000
+Node: Structure-Packing Pragmas981622
+Node: Weak Pragmas982885
+Node: Unnamed Fields983660
+Node: Thread-Local985170
+Node: C99 Thread-Local Edits987254
+Node: C++98 Thread-Local Edits989266
+Node: C++ Extensions992711
+Node: Volatiles994283
+Node: Restricted Pointers996959
+Node: Vague Linkage998553
+Node: C++ Interface1002209
+Ref: C++ Interface-Footnote-11006506
+Node: Template Instantiation1006643
+Node: Bound member functions1013655
+Node: C++ Attributes1015198
+Node: Strong Using1016838
+Node: Java Exceptions1018087
+Node: Deprecated Features1019483
+Node: Backwards Compatibility1022458
+Node: Objective-C1023813
+Node: Executing code before main1024394
+Node: What you can and what you cannot do in +load1027000
+Node: Type encoding1029167
+Node: Garbage Collection1032410
+Node: Constant string objects1035034
+Node: compatibility_alias1037542
+Node: Compatibility1038420
+Node: Gcov1044987
+Node: Gcov Intro1045511
+Node: Invoking Gcov1048227
+Node: Gcov and Optimization1060083
+Node: Gcov Data Files1062736
+Node: Cross-profiling1063874
+Node: Trouble1065700
+Node: Actual Bugs1067240
+Node: Cross-Compiler Problems1067980
+Node: Interoperation1068394
+Node: Incompatibilities1075992
+Node: Fixed Headers1084142
+Node: Standard Libraries1085805
+Node: Disappointments1087177
+Node: C++ Misunderstandings1091535
+Node: Static Definitions1092354
+Node: Name lookup1093407
+Ref: Name lookup-Footnote-11098185
+Node: Temporaries1098372
+Node: Copy Assignment1100348
+Node: Protoize Caveats1102155
+Node: Non-bugs1106117
+Node: Warnings and Errors1116621
+Node: Bugs1118385
+Node: Bug Criteria1118949
+Node: Bug Reporting1121159
+Node: Service1121551
+Node: Contributing1122370
+Node: Funding1123110
+Node: GNU Project1125599
+Node: Copying1126245
+Node: GNU Free Documentation License1145422
+Node: Contributors1167828
+Node: Option Index1203392
+Node: Keyword Index1335138
 
 End Tag Table

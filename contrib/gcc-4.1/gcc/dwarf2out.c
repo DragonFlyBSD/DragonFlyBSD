@@ -656,13 +656,19 @@ add_fde_cfi (const char *label, dw_cfi_ref cfi)
 	{
 	  dw_cfi_ref xcfi;
 
-	  fde->dw_fde_current_label = label = xstrdup (label);
+	  label = xstrdup (label);
 
 	  /* Set the location counter to the new label.  */
 	  xcfi = new_cfi ();
-	  xcfi->dw_cfi_opc = DW_CFA_advance_loc4;
+	  /* If we have a current label, advance from there, otherwise
+	     set the location directly using set_loc.  */
+	  xcfi->dw_cfi_opc = fde->dw_fde_current_label
+			     ? DW_CFA_advance_loc4
+			     : DW_CFA_set_loc;
 	  xcfi->dw_cfi_oprnd1.dw_cfi_addr = label;
 	  add_cfi (&fde->dw_fde_cfi, xcfi);
+
+	  fde->dw_fde_current_label = label;
 	}
 
       add_cfi (&fde->dw_fde_cfi, cfi);
@@ -1524,9 +1530,9 @@ static dw_cfa_location cfa_temp;
 	   cfa.base_offset = -cfa_temp.offset
 	   cfa_temp.offset -= mode_size(mem)
 
-  Rule 15:
-  (set <reg> {unspec, unspec_volatile})
-  effects: target-dependent  */
+  Rule 15:
+  (set <reg> {unspec, unspec_volatile})
+  effects: target-dependent  */
 
 static void
 dwarf2out_frame_debug_expr (rtx expr, const char *label)
@@ -2050,6 +2056,7 @@ output_cfi (dw_cfi_ref cfi, dw_fde_ref fde, int for_eh)
 	  else
 	    dw2_asm_output_addr (DWARF2_ADDR_SIZE,
 				 cfi->dw_cfi_oprnd1.dw_cfi_addr, NULL);
+	  fde->dw_fde_current_label = cfi->dw_cfi_oprnd1.dw_cfi_addr;
 	  break;
 
 	case DW_CFA_advance_loc1:
@@ -2532,7 +2539,7 @@ dwarf2out_begin_prologue (unsigned int line ATTRIBUTE_UNUSED,
   fde = &fde_table[fde_table_in_use++];
   fde->decl = current_function_decl;
   fde->dw_fde_begin = dup_label;
-  fde->dw_fde_current_label = NULL;
+  fde->dw_fde_current_label = dup_label;
   fde->dw_fde_hot_section_label = NULL;
   fde->dw_fde_hot_section_end_label = NULL;
   fde->dw_fde_unlikely_section_label = NULL;
@@ -3934,6 +3941,10 @@ dwarf2out_switch_text_section (void)
   fde->dw_fde_unlikely_section_label = cfun->cold_section_label;
   fde->dw_fde_unlikely_section_end_label = cfun->cold_section_end_label;
   have_switched_text_section = true;
+
+  /* Reset the current label on switching text sections, so that we
+     don't attempt to advance_loc4 between labels in different sections.  */
+  fde->dw_fde_current_label = NULL;
 }
 
 #endif
@@ -8504,7 +8515,12 @@ dbx_reg_number (rtx rtl)
   gcc_assert (regno < FIRST_PSEUDO_REGISTER);
 
 #ifdef LEAF_REG_REMAP
-  regno = LEAF_REG_REMAP (regno);
+  if (current_function_uses_only_leaf_regs)
+    {
+      int leaf_reg = LEAF_REG_REMAP (regno);
+      if (leaf_reg != -1)
+	regno = (unsigned) leaf_reg;
+    }
 #endif
 
   return DBX_REGISTER_NUMBER (regno);
@@ -8573,7 +8589,12 @@ multiple_reg_loc_descriptor (rtx rtl, rtx regs)
 
   reg = REGNO (rtl);
 #ifdef LEAF_REG_REMAP
-  reg = LEAF_REG_REMAP (reg);
+  if (current_function_uses_only_leaf_regs)
+    {
+      int leaf_reg = LEAF_REG_REMAP (reg);
+      if (leaf_reg != -1)
+	reg = (unsigned) leaf_reg;
+    }
 #endif
   gcc_assert ((unsigned) DBX_REGISTER_NUMBER (reg) == dbx_reg_number (rtl));
   nregs = hard_regno_nregs[REGNO (rtl)][GET_MODE (rtl)];
@@ -9095,6 +9116,7 @@ loc_descriptor_from_tree_1 (tree loc, int want_address)
       /* FALLTHRU */
 
     case RESULT_DECL:
+    case FUNCTION_DECL:
       {
 	rtx rtl = rtl_for_decl_location (loc);
 
@@ -10378,6 +10400,7 @@ convert_cfa_to_loc_list (void)
   for (cfi = fde->dw_fde_cfi; cfi; cfi = cfi->dw_cfi_next)
     switch (cfi->dw_cfi_opc)
       {
+      case DW_CFA_set_loc:
       case DW_CFA_advance_loc1:
       case DW_CFA_advance_loc2:
       case DW_CFA_advance_loc4:
@@ -12557,7 +12580,12 @@ gen_type_die (tree type, dw_die_ref context_die)
 	}
 
       if (TREE_CODE (type) == ENUMERAL_TYPE)
-	gen_enumeration_type_die (type, context_die);
+	{
+	  /* This might have been written out by the call to
+	     declare_in_namespace.  */
+	  if (!TREE_ASM_WRITTEN (type))
+	    gen_enumeration_type_die (type, context_die);
+	}
       else
 	gen_struct_or_union_type_die (type, context_die);
 

@@ -3531,7 +3531,7 @@ finish_decl (tree decl, tree init, tree asmspec_tree)
     }
 
   /* If this was marked 'used', be sure it will be output.  */
-  if (lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
+  if (!flag_unit_at_a_time && lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
     mark_decl_referenced (decl);
 
   if (TREE_CODE (decl) == TYPE_DECL)
@@ -3933,6 +3933,14 @@ grokdeclarator (const struct c_declarator *declarator,
   if (declspecs->deprecated_p && deprecated_state != DEPRECATED_SUPPRESS)
     warn_deprecated_use (declspecs->type);
 
+  if ((decl_context == NORMAL || decl_context == FIELD)
+      && current_scope == file_scope
+      && variably_modified_type_p (type, NULL_TREE))
+    {
+      error ("variably modified %qs at file scope", name);
+      type = integer_type_node;
+    }
+
   typedef_type = type;
   size_varies = C_TYPE_VARIABLE_SIZE (type);
 
@@ -4197,6 +4205,12 @@ grokdeclarator (const struct c_declarator *declarator,
 			size = integer_one_node;
 		      }
 		  }
+		else if ((decl_context == NORMAL || decl_context == FIELD)
+			 && current_scope == file_scope)
+		  {
+		    error ("variably modified %qs at file scope", name);
+		    size = integer_one_node;
+		  }
 		else
 		  {
 		    /* Make sure the array size remains visibly
@@ -4276,18 +4290,35 @@ grokdeclarator (const struct c_declarator *declarator,
 	        type = error_mark_node;
 	      }
 	    else
+	    /* When itype is NULL, a shared incomplete array type is
+	       returned for all array of a given type.  Elsewhere we
+	       make sure we don't complete that type before copying
+	       it, but here we want to make sure we don't ever
+	       modify the shared type, so we gcc_assert (itype)
+	       below.  */
 	      type = build_array_type (type, itype);
 
 	    if (type != error_mark_node)
 	      {
 		if (size_varies)
-		C_TYPE_VARIABLE_SIZE (type) = 1;
+		  {
+		    /* It is ok to modify type here even if itype is
+		       NULL: if size_varies, we're in a
+		       multi-dimentional array and the inner type has
+		       variable size, so the enclosing shared array type
+		       must too.  */
+		    if (size && TREE_CODE (size) == INTEGER_CST)
+		      type
+			= build_distinct_type_copy (TYPE_MAIN_VARIANT (type));
+		    C_TYPE_VARIABLE_SIZE (type) = 1;
+		  }
 
 		/* The GCC extension for zero-length arrays differs from
 		   ISO flexible array members in that sizeof yields
 		   zero.  */
 		if (size && integer_zerop (size))
 		  {
+		    gcc_assert (itype);
 		    TYPE_SIZE (type) = bitsize_zero_node;
 		    TYPE_SIZE_UNIT (type) = size_zero_node;
 		  }
@@ -4443,21 +4474,6 @@ grokdeclarator (const struct c_declarator *declarator,
       if (declspecs->inline_p)
 	pedwarn ("typedef %q+D declared %<inline%>", decl);
       return decl;
-    }
-
-  /* Detect the case of an array type of unspecified size
-     which came, as such, direct from a typedef name.
-     We must copy the type, so that each identifier gets
-     a distinct type, so that each identifier's size can be
-     controlled separately by its own initializer.  */
-
-  if (type != 0 && typedef_type != 0
-      && TREE_CODE (type) == ARRAY_TYPE && TYPE_DOMAIN (type) == 0
-      && TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (typedef_type))
-    {
-      type = build_array_type (TREE_TYPE (type), 0);
-      if (size_varies)
-	C_TYPE_VARIABLE_SIZE (type) = 1;
     }
 
   /* If this is a type name (such as, in a cast or sizeof),
@@ -5345,6 +5361,9 @@ finish_struct (tree t, tree fieldlist, tree attributes)
   saw_named_field = 0;
   for (x = fieldlist; x; x = TREE_CHAIN (x))
     {
+      if (TREE_TYPE (x) == error_mark_node)
+	continue;
+
       DECL_CONTEXT (x) = t;
 
       if (TYPE_PACKED (t) && TYPE_ALIGN (TREE_TYPE (x)) > BITS_PER_UNIT)
@@ -5906,6 +5925,8 @@ start_function (struct c_declspecs *declspecs, struct c_declarator *declarator,
   /* If this definition isn't a prototype and we had a prototype declaration
      before, copy the arg type info from that prototype.  */
   old_decl = lookup_name_in_scope (DECL_NAME (decl1), current_scope);
+  if (old_decl && TREE_CODE (old_decl) != FUNCTION_DECL)
+    old_decl = 0;
   current_function_prototype_locus = UNKNOWN_LOCATION;
   current_function_prototype_built_in = false;
   current_function_prototype_arg_types = NULL_TREE;
