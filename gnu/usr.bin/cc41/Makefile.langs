@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/Makefile.langs,v 1.1 2006/09/27 12:10:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/Makefile.langs,v 1.2 2007/02/17 02:24:20 corecode Exp $
 
 .if !defined(NO_CXX)
 gencheck_defs=	cp/cp-tree.def
@@ -44,7 +44,7 @@ GTFILES = $(srcdir)/input.h $(srcdir)/coretypes.h \
   $(srcdir)/cselib.h $(srcdir)/basic-block.h  $(srcdir)/cgraph.h \
   $(srcdir)/c-common.h $(srcdir)/c-tree.h $(srcdir)/reload.h \
   $(srcdir)/alias.c $(srcdir)/bitmap.c $(srcdir)/cselib.c $(srcdir)/cgraph.c \
-  $(srcdir)/ipa-prop.c $(srcdir)/ipa-cp.c\
+  $(srcdir)/ipa-prop.c $(srcdir)/ipa-cp.c $(srcdir)/cgraphunit.c \
   $(srcdir)/dbxout.c $(srcdir)/dwarf2out.c $(srcdir)/dwarf2asm.c \
   $(srcdir)/dojump.c $(srcdir)/tree-profile.c \
   $(srcdir)/emit-rtl.c $(srcdir)/except.c $(srcdir)/explow.c $(srcdir)/expr.c \
