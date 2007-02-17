@@ -173,6 +173,10 @@ static void cgraph_expand_function (struct cgraph_node *);
 static tree record_reference (tree *, int *, void *);
 static void cgraph_analyze_function (struct cgraph_node *node);
 
+/* Local static variables needs to be passed to debug info after the function
+   bodies are compiled.  */
+static GTY(()) VEC(tree,gc) *local_static_output;
+
 /* Records tree nodes seen in record_reference.  Simply using
    walk_tree_without_duplicates doesn't guarantee each node is visited
    once because it gets a new htab upon each recursive call from
@@ -198,8 +202,10 @@ decide_is_function_needed (struct cgraph_node *node, tree decl)
     }
 
   /* If the user told us it is used, then it must be so.  */
-  if (node->local.externally_visible
-      || lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
+  if (node->local.externally_visible)
+    return true;
+
+  if (!flag_unit_at_a_time && lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
     return true;
 
   /* ??? If the assembler name is set by hand, it is possible to assemble
@@ -807,6 +813,15 @@ verify_cgraph (void)
 }
 
 
+static void
+cgraph_varpool_debug_local_statics (void)
+{
+  timevar_push (TV_SYMOUT);
+  while (VEC_length (tree, local_static_output) > 0)
+    (*debug_hooks->global_decl) (VEC_pop (tree, local_static_output));
+  timevar_pop (TV_SYMOUT);
+}
+
 /* Output all variables enqueued to be assembled.  */
 bool
 cgraph_varpool_assemble_pending_decls (void)
@@ -837,9 +852,9 @@ cgraph_varpool_assemble_pending_decls (void)
 	          || TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL)
 	      && errorcount == 0 && sorrycount == 0)
 	    {
-	      timevar_push (TV_SYMOUT);
-	      (*debug_hooks->global_decl) (decl);
-	      timevar_pop (TV_SYMOUT);
+	      if (!local_static_output)
+		local_static_output = VEC_alloc (tree, gc, 20);
+	      VEC_safe_push (tree, gc, local_static_output, decl);
 	    }
 	  changed = true;
 	}
@@ -877,6 +892,71 @@ cgraph_analyze_function (struct cgraph_node *node)
   current_function_decl = NULL;
 }
 
+/* Look for externally_visible and used attributes and mark cgraph nodes
+   accordingly.
+
+   We cannot mark the nodes at the point the attributes are processed (in
+   handle_*_attribute) because the copy of the declarations available at that
+   point may not be canonical.  For example, in:
+
+    void f();
+    void f() __attribute__((used));
+
+   the declaration we see in handle_used_attribute will be the second
+   declaration -- but the front end will subsequently merge that declaration
+   with the original declaration and discard the second declaration.
+
+   Furthermore, we can't mark these nodes in cgraph_finalize_function because:
+
+    void f() {}
+    void f() __attribute__((externally_visible));
+
+   is valid.
+
+   So, we walk the nodes at the end of the translation unit, applying the
+   attributes at that point.  */
+
+static void
+process_function_and_variable_attributes (struct cgraph_node *first,
+                                          struct cgraph_varpool_node *first_var)
+{
+  struct cgraph_node *node;
+  struct cgraph_varpool_node *vnode;
+
+  for (node = cgraph_nodes; node != first; node = node->next)
+    {
+      tree decl = node->decl;
+      if (lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
+	{
+	  mark_decl_referenced (decl);
+	  if (node->local.finalized)
+	     cgraph_mark_needed_node (node);
+	}
+      if (lookup_attribute ("externally_visible", DECL_ATTRIBUTES (decl)))
+	{
+	  if (node->local.finalized)
+	    cgraph_mark_needed_node (node);
+	  node->externally_visible = true;
+	}
+    }
+  for (vnode = cgraph_varpool_nodes; vnode != first_var; vnode = vnode->next)
+    {
+      tree decl = vnode->decl;
+      if (lookup_attribute ("used", DECL_ATTRIBUTES (decl)))
+	{
+	  mark_decl_referenced (decl);
+	  if (vnode->finalized)
+	    cgraph_varpool_mark_needed_node (vnode);
+	}
+      if (lookup_attribute ("externally_visible", DECL_ATTRIBUTES (decl)))
+	{
+	  if (vnode->finalized)
+	    cgraph_varpool_mark_needed_node (vnode);
+	  vnode->externally_visible = true;
+	}
+    }
+}
+
 /* Analyze the whole compilation unit once it is parsed completely.  */
 
 void
@@ -886,6 +966,10 @@ cgraph_finalize_compilation_unit (void)
   /* Keep track of already processed nodes when called multiple times for
      intermodule optimization.  */
   static struct cgraph_node *first_analyzed;
+  static struct cgraph_varpool_node *first_analyzed_var;
+
+  if (errorcount || sorrycount)
+    return;
 
   finish_aliases_1 ();
 
@@ -902,6 +986,7 @@ cgraph_finalize_compilation_unit (void)
     }
 
   timevar_push (TV_CGRAPH);
+  process_function_and_variable_attributes (first_analyzed, first_analyzed_var);
   cgraph_varpool_analyze_pending_decls ();
   if (cgraph_dump_file)
     {
@@ -986,6 +1071,7 @@ cgraph_finalize_compilation_unit (void)
       dump_cgraph (cgraph_dump_file);
     }
   first_analyzed = cgraph_nodes;
+  first_analyzed_var = cgraph_varpool_nodes;
   ggc_collect ();
   timevar_pop (TV_CGRAPH);
 }
@@ -1206,7 +1292,9 @@ cgraph_preserve_function_body_p (tree decl)
   if (dump_enabled_p (TDI_tree_all))
     return true;
   if (!cgraph_global_info_ready)
-    return (DECL_INLINE (decl) && !flag_really_no_inline);
+    return (flag_really_no_inline
+	    ? lang_hooks.tree_inlining.disregard_inline_limits (decl)
+	    : DECL_INLINE (decl));
   /* Look if there is any clone around.  */
   for (node = cgraph_node (decl); node; node = node->next_clone)
     if (node->global.inlined_to)
@@ -1229,12 +1317,16 @@ ipa_passes (void)
 void
 cgraph_optimize (void)
 {
+  if (errorcount || sorrycount)
+    return;
+
 #ifdef ENABLE_CHECKING
   verify_cgraph ();
 #endif
   if (!flag_unit_at_a_time)
     {
       cgraph_varpool_assemble_pending_decls ();
+      cgraph_varpool_debug_local_statics ();
       return;
     }
 
@@ -1308,6 +1400,7 @@ cgraph_optimize (void)
 	internal_error ("nodes with no released memory found");
     }
 #endif
+ cgraph_varpool_debug_local_statics ();
 }
 
 /* Generate and emit a static constructor or destructor.  WHICH must be
@@ -1521,3 +1614,5 @@ cgraph_function_versioning (struct cgraph_node *old_version_node,
   new_version_node->lowered = true;
   return new_version_node;
 }
+
+#include "gt-cgraphunit.h"

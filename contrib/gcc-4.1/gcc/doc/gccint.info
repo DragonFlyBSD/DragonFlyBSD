@@ -1,5 +1,5 @@
 This is doc/gccint.info, produced by makeinfo version 4.8 from
-/scratch/mitchell/gcc-releases/gcc-4.1.1/gcc-4.1.1/gcc/doc/gccint.texi.
+/scratch/mitchell/gcc-releases/gcc-4.1.2/gcc-4.1.2/gcc/doc/gccint.texi.
 
  Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
@@ -58,7 +58,7 @@ Introduction
 
 This manual documents the internals of the GNU compilers, including how
 to port them to new targets and some information about how to write
-front ends for new languages.  It corresponds to GCC version 4.1.1.
+front ends for new languages.  It corresponds to GCC version 4.1.2.
 The use of the GNU compilers is documented in a separate manual.  *Note
 Introduction: (gcc)Top.
 
@@ -1855,10 +1855,10 @@ File: gccint.info,  Node: Test Idioms,  Next: Test Directives,  Up: Testsuites
 6.4.1 Idioms Used in Testsuite Code
 -----------------------------------
 
-In general C testcases have a trailing `-N.c', starting with `-1.c', in
-case other testcases with similar names are added later.  If the test
-is a test of some well-defined feature, it should have a name referring
-to that feature such as `FEATURE-1.c'.  If it does not test a
+In general, C testcases have a trailing `-N.c', starting with `-1.c',
+in case other testcases with similar names are added later.  If the
+test is a test of some well-defined feature, it should have a name
+referring to that feature such as `FEATURE-1.c'.  If it does not test a
 well-defined feature but just happens to exercise a bug somewhere in
 the compiler, and a bug report has been filed for this bug in the GCC
 bug database, `prBUG-NUMBER-1.c' is the appropriate form of name.
@@ -1930,7 +1930,7 @@ File: gccint.info,  Node: Test Directives,  Next: Ada Tests,  Prev: Test Idioms,
 ------------------------------------------
 
 Test directives appear within comments in a test source file and begin
-with `dg-'.  Some of these are defined within DegaGnu and others are
+with `dg-'.  Some of these are defined within DejaGnu and others are
 local to the GCC testsuite.
 
  The order in which test directives appear in a test can be important:
@@ -2020,6 +2020,10 @@ For example:
      Skip the test if the test target, including current multilib flags,
      is not covered by the effective-target keyword.  This directive
      must appear after any `dg-do' directive in the test.
+
+`{ dg-shouldfail COMMENT { SELECTOR } { INCLUDE-OPTS } { EXCLUDE-OPTS } }'
+     Expect the test executable to return a nonzero exit status if the
+     conditions (which are the same as for `dg-skip-if') are met.
 
 `{ dg-error REGEXP [COMMENT [{ target/xfail SELECTOR } [LINE] }]] }'
      This DejaGnu directive appears on a source line that is expected
@@ -2144,6 +2148,12 @@ For example:
     `scan-tree-dump-dem-not REGEX SUFFIX [{ target/xfail SELECTOR }]'
           Passes if REGEX does not match demangled text in the dump
           file with suffix SUFFIX.
+
+    `output-exists [{ target/xfail SELECTOR }]'
+          Passes if compiler output file exists.
+
+    `output-exists-not [{ target/xfail SELECTOR }]'
+          Passes if compiler output file does not exist.
 
     `run-gcov SOURCEFILE'
           Check line counts in `gcov' tests.
@@ -2927,12 +2937,12 @@ run after gimplification and what source files they are located in.
 
    * Lower control flow
 
-     This pass flattens `if' statements (`COND_EXPR') and and moves
-     lexical bindings (`BIND_EXPR') out of line.  After this pass, all
-     `if' statements will have exactly two `goto' statements in its
-     `then' and `else' arms.  Lexical binding information for each
-     statement will be found in `TREE_BLOCK' rather than being inferred
-     from its position under a `BIND_EXPR'.  This pass is found in
+     This pass flattens `if' statements (`COND_EXPR') and moves lexical
+     bindings (`BIND_EXPR') out of line.  After this pass, all `if'
+     statements will have exactly two `goto' statements in its `then'
+     and `else' arms.  Lexical binding information for each statement
+     will be found in `TREE_BLOCK' rather than being inferred from its
+     position under a `BIND_EXPR'.  This pass is found in
      `gimple-low.c' and is described by `pass_lower_cf'.
 
    * Lower exception handling control flow
@@ -2968,7 +2978,7 @@ run after gimplification and what source files they are located in.
      This pass rewrites the function such that it is in SSA form.  After
      this pass, all `is_gimple_reg' variables will be referenced by
      `SSA_NAME', and all occurrences of other variables will be
-     annotated with `VDEFS' and `VUSES'; phi nodes will have been
+     annotated with `VDEFS' and `VUSES'; PHI nodes will have been
      inserted as necessary for each basic block.  This pass is located
      in `tree-ssa.c' and is described by `pass_build_ssa'.
 
@@ -2998,9 +3008,9 @@ run after gimplification and what source files they are located in.
      run multiple times throughout the optimization process.  It it
      located in `tree-ssa-dom.c' and is described by `pass_dominator'.
 
-   * Redundant phi elimination
+   * Redundant PHI elimination
 
-     This pass removes phi nodes for which all of the arguments are the
+     This pass removes PHI nodes for which all of the arguments are the
      same value, excluding feedback.  Such degenerate forms are
      typically created by removing unreachable code.  The pass is run
      multiple times throughout the optimization process.  It is located
@@ -3024,7 +3034,7 @@ run after gimplification and what source files they are located in.
 
    * PHI node optimizations
 
-     This pass recognizes forms of phi inputs that can be represented as
+     This pass recognizes forms of PHI inputs that can be represented as
      conditional expressions and rewrites them into straight line code.
      It is located in `tree-ssa-phiopt.c' and is described by
      `pass_phiopt'.
@@ -3036,7 +3046,7 @@ run after gimplification and what source files they are located in.
      information is used to promote variables from in-memory
      addressable objects to non-aliased variables that can be renamed
      into SSA form.  We also update the `VDEF'/`VUSE' memory tags for
-     non-renamable aggregates so that we get fewer false kills.  The
+     non-renameable aggregates so that we get fewer false kills.  The
      pass is located in `tree-ssa-alias.c' and is described by
      `pass_may_alias'.
 
@@ -3090,6 +3100,12 @@ run after gimplification and what source files they are located in.
      divisions to multiplications by the reciprocal.  The pass is
      located in `tree-ssa-math-opts.c' and is described by
      `pass_cse_reciprocal'.
+
+   * Full redundancy elimination
+
+     This is a simpler form of PRE that only eliminate redundancies that
+     occur an all paths.  It is located in `tree-ssa-pre.c' and
+     described by `pass_fre'.
 
    * Loop optimization
 
@@ -3149,12 +3165,12 @@ run after gimplification and what source files they are located in.
    * Tree level if-conversion for vectorizer
 
      This pass applies if-conversion to simple loops to help vectorizer.
-     We identify if convertable loops, if-convert statements and merge
+     We identify if convertible loops, if-convert statements and merge
      basic blocks in one big block.  The idea is to present loop in such
      form so that vectorizer can have one to one mapping between
      statements and available vector operations.  This patch
      re-introduces COND_EXPR at GIMPLE level.  This pass is located in
-     `tree-if-conv.c'.
+     `tree-if-conv.c' and is described by `pass_if_conversion'.
 
    * Conditional constant propagation
 
@@ -3163,9 +3179,38 @@ run after gimplification and what source files they are located in.
      The pass is located in `tree-ssa-ccp.c' and is described by
      `pass_ccp'.
 
-   * Folding builtin functions
+     A related pass that works on memory loads and stores, and not just
+     register values, is located in `tree-ssa-ccp.c' and described by
+     `pass_store_ccp'.
 
-     This pass simplifies builtin functions, as applicable, with
+   * Conditional copy propagation
+
+     This is similar to constant propagation but the lattice of values
+     is the "copy-of" relation.  It eliminates redundant copies from the
+     code.  The pass is located in `tree-ssa-copy.c' and described by
+     `pass_copy_prop'.
+
+     A related pass that works on memory copies, and not just register
+     copies, is located in `tree-ssa-copy.c' and described by
+     `pass_store_copy_prop'.
+
+   * Value range propagation
+
+     This transformation is similar to constant propagation but instead
+     of propagating single constant values, it propagates known value
+     ranges.  The implementation is based on Patterson's range
+     propagation algorithm (Accurate Static Branch Prediction by Value
+     Range Propagation, J. R. C. Patterson, PLDI '95).  In contrast to
+     Patterson's algorithm, this implementation does not propagate
+     branch probabilities nor it uses more than a single range per SSA
+     name. This means that the current implementation cannot be used
+     for branch prediction (though adapting it would not be difficult).
+     The pass is located in `tree-vrp.c' and is described by
+     `pass_vrp'.
+
+   * Folding built-in functions
+
+     This pass simplifies built-in functions, as applicable, with
      constant arguments or with inferrable string lengths.  It is
      located in `tree-ssa-ccp.c' and is described by
      `pass_fold_builtins'.
@@ -3175,12 +3220,6 @@ run after gimplification and what source files they are located in.
      This pass identifies critical edges and inserts empty basic blocks
      such that the edge is no longer critical.  The pass is located in
      `tree-cfg.c' and is described by `pass_split_crit_edges'.
-
-   * Partial redundancy elimination
-
-     This pass answers the question "given a hypothetical temporary
-     variable, what expressions could we eliminate?"  It is located in
-     `tree-ssa-pre.c' and is described by `pass_pre'.
 
    * Control dependence dead code elimination
 
@@ -3226,8 +3265,86 @@ run after gimplification and what source files they are located in.
      This pass rewrites the function such that it is in normal form.  At
      the same time, we eliminate as many single-use temporaries as
      possible, so the intermediate language is no longer GIMPLE, but
-     GENERIC.  The pass is located in `tree-ssa.c' and is described by
-     `pass_del_ssa'.
+     GENERIC.  The pass is located in `tree-outof-ssa.c' and is
+     described by `pass_del_ssa'.
+
+   * Merge PHI nodes that feed into one another
+
+     This is part of the CFG cleanup passes.  It attempts to join PHI
+     nodes from a forwarder CFG block into another block with PHI
+     nodes.  The pass is located in `tree-cfgcleanup.c' and is
+     described by `pass_merge_phi'.
+
+   * Return value optimization
+
+     If a function always returns the same local variable, and that
+     local variable is an aggregate type, then the variable is replaced
+     with the return value for the function (i.e., the function's
+     DECL_RESULT).  This is equivalent to the C++ named return value
+     optimization applied to GIMPLE.  The pass is located in
+     `tree-nrv.c' and is described by `pass_nrv'.
+
+   * Return slot optimization
+
+     If a function returns a memory object and is called as `var =
+     foo()', this pass tries to change the call so that the address of
+     `var' is sent to the caller to avoid an extra memory copy.  This
+     pass is located in `tree-nrv.c' and is described by
+     `pass_return_slot'.
+
+   * Optimize calls to `__builtin_object_size'
+
+     This is a propagation pass similar to CCP that tries to remove
+     calls to `__builtin_object_size' when the size of the object can be
+     computed at compile-time.  This pass is located in
+     `tree-object-size.c' and is described by `pass_object_sizes'.
+
+   * Loop invariant motion
+
+     This pass removes expensive loop-invariant computations out of
+     loops.  The pass is located in `tree-ssa-loop.c' and described by
+     `pass_lim'.
+
+   * Loop nest optimizations
+
+     This is a family of loop transformations that works on loop nests.
+     It includes loop interchange, scaling, skewing and reversal and
+     they are all geared to the optimization of data locality in array
+     traversals and the removal of dependencies that hamper
+     optimizations such as loop parallelization and vectorization.  The
+     pass is located in `tree-loop-linear.c' and described by
+     `pass_linear_transform'.
+
+   * Removal of empty loops
+
+     This pass removes loops with no code in them.  The pass is located
+     in `tree-ssa-loop-ivcanon.c' and described by `pass_empty_loop'.
+
+   * Unrolling of small loops
+
+     This pass completely unrolls loops with few iterations.  The pass
+     is located in `tree-ssa-loop-ivcanon.c' and described by
+     `pass_complete_unroll'.
+
+   * Reassociation
+
+     This pass rewrites arithmetic expressions to enable optimizations
+     that operate on them, like redundancy elimination and
+     vectorization.  The pass is located in `tree-ssa-reassoc.c' and
+     described by `pass_reassoc'.
+
+   * Optimization of `stdarg' functions
+
+     This pass tries to avoid the saving of register arguments into the
+     stack on entry to `stdarg' functions.  If the function doesn't use
+     any `va_start' macros, no registers need to be saved.  If
+     `va_start' macros are used, the `va_list' variables don't escape
+     the function, it is only necessary to save registers that will be
+     used in `va_arg' macros.  For instance, if `va_arg' is only used
+     with integral types in the function, floating point registers
+     don't need to be saved.  This pass is located in `tree-stdarg.c'
+     and described by `pass_stdarg'.
+
 
 
 File: gccint.info,  Node: RTL passes,  Prev: Tree-SSA passes,  Up: Passes
@@ -5225,9 +5342,9 @@ kinds of expressions:
 
 `FIX_TRUNC_EXPR'
      These nodes represent conversion of a floating-point value to an
-     integer.  The single operand will have a floating-point type,
-     while the the complete expression will have an integral (or
-     boolean) type.  The operand is rounded towards zero.
+     integer.  The single operand will have a floating-point type, while
+     the complete expression will have an integral (or boolean) type.
+     The operand is rounded towards zero.
 
 `FLOAT_EXPR'
      These nodes represent conversion of an integral (or boolean) value
@@ -6532,7 +6649,7 @@ about them.
 
  Operands are updated as soon as the statement is finished via a call
 to `update_stmt'.  If statement elements are changed via `SET_USE' or
-`SET_DEF', then no further action is required (ie, those macros take
+`SET_DEF', then no further action is required (i.e., those macros take
 care of updating the statement).  If changes are made by manipulating
 the statement's tree directly, then a call must be made to
 `update_stmt' when complete.  Calling one of the `bsi_insert' routines
@@ -6725,7 +6842,7 @@ instance, to change each use of `ssa_var' to `ssa_var2':
          SET_USE (imm_use_p, ssa_var_2);
 
  There are 2 iterators which can be used. `FOR_EACH_IMM_USE_FAST' is
-used when the immediate uses are not changed, ie. you are looking at
+used when the immediate uses are not changed, i.e., you are looking at
 the uses, but not setting them.
 
  If they do get changed, then care must be taken that things are not
@@ -18961,6 +19078,32 @@ consecutive registers are needed for a given mode.
              ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1)  \
               / UNITS_PER_WORD)
 
+ -- Macro: HARD_REGNO_NREGS_HAS_PADDING (REGNO, MODE)
+     A C expression that is nonzero if a value of mode MODE, stored in
+     memory, ends with padding that causes it to take up more space than
+     in registers starting at register number REGNO (as determined by
+     multiplying GCC's notion of the size of the register when
+     containing this mode by the number of registers returned by
+     `HARD_REGNO_NREGS').  By default this is zero.
+
+     For example, if a floating-point value is stored in three 32-bit
+     registers but takes up 128 bits in memory, then this would be
+     nonzero.
+
+     This macros only needs to be defined if there are cases where
+     `subreg_regno_offset' and `subreg_offset_representable_p' would
+     otherwise wrongly determine that a `subreg' can be represented by
+     an offset to the register number, when in fact such a `subreg'
+     would contain some of the padding not stored in registers and so
+     not be representable.
+
+ -- Macro: HARD_REGNO_NREGS_WITH_PADDING (REGNO, MODE)
+     For values of REGNO and MODE for which
+     `HARD_REGNO_NREGS_HAS_PADDING' returns nonzero, a C expression
+     returning the greater number of registers required to hold the
+     value including any padding.  In the example above, the value
+     would be four.
+
  -- Macro: REGMODE_NATURAL_SIZE (MODE)
      Define this macro if the natural size of registers that hold values
      of mode MODE is not the word size.  It is a C expression that
@@ -21228,11 +21371,11 @@ These macros will help you generate code for profiling.
      not support profiling.
 
  -- Macro: NO_PROFILE_COUNTERS
-     Define this macro if the `mcount' subroutine on your system does
-     not need a counter variable allocated for each function.  This is
-     true for almost all modern implementations.  If you define this
-     macro, you must not use the LABELNO argument to
-     `FUNCTION_PROFILER'.
+     Define this macro to be an expression with a nonzero value if the
+     `mcount' subroutine on your system does not need a counter variable
+     allocated for each function.  This is true for almost all modern
+     implementations.  If you define this macro, you must not use the
+     LABELNO argument to `FUNCTION_PROFILER'.
 
  -- Macro: PROFILE_BEFORE_PROLOGUE
      Define this macro if the code for function profiling should come
@@ -29544,7 +29687,7 @@ Concept Index
 * automaton based scheduler:             Processor pipeline description.
                                                              (line    6)
 * AVOID_CCMODE_COPIES:                   Values in Registers.
-                                                             (line  117)
+                                                             (line  143)
 * backslash:                             Output Template.    (line   46)
 * barrier:                               Insns.              (line  165)
 * barrier and /f:                        Flags.              (line  111)
@@ -30365,11 +30508,15 @@ Concept Index
 * HARD_REGNO_CALL_PART_CLOBBERED:        Register Basics.    (line   53)
 * HARD_REGNO_CALLER_SAVE_MODE:           Caller Saves.       (line   20)
 * HARD_REGNO_MODE_OK:                    Values in Registers.
-                                                             (line   31)
+                                                             (line   57)
 * HARD_REGNO_NREGS:                      Values in Registers.
                                                              (line   11)
+* HARD_REGNO_NREGS_HAS_PADDING:          Values in Registers.
+                                                             (line   23)
+* HARD_REGNO_NREGS_WITH_PADDING:         Values in Registers.
+                                                             (line   42)
 * HARD_REGNO_RENAME_OK:                  Values in Registers.
-                                                             (line   92)
+                                                             (line  118)
 * HAS_INIT_SECTION:                      Macros for Initialization.
                                                              (line   19)
 * HAS_LONG_COND_BRANCH:                  Misc.               (line    9)
@@ -30767,7 +30914,7 @@ Concept Index
 * MODE_PRIORITY_TO_MODE:                 Mode Switching.     (line   66)
 * MODE_RANDOM:                           Machine Modes.      (line  167)
 * MODES_TIEABLE_P:                       Values in Registers.
-                                                             (line  102)
+                                                             (line  128)
 * modifiers in constraints:              Modifiers.          (line    6)
 * MODIFY_EXPR:                           Expression trees.   (line    6)
 * MODIFY_JNI_METHOD_CALL:                Misc.               (line  713)
@@ -31177,7 +31324,7 @@ Concept Index
 * register class definitions:            Register Classes.   (line    6)
 * register class preference constraints: Class Preferences.  (line    6)
 * register pairs:                        Values in Registers.
-                                                             (line   42)
+                                                             (line   68)
 * Register Transfer Language (RTL):      RTL.                (line    6)
 * register usage:                        Registers.          (line    6)
 * REGISTER_MOVE_COST:                    Costs.              (line   10)
@@ -31189,7 +31336,7 @@ Concept Index
 * registers arguments:                   Register Arguments. (line    6)
 * registers in constraints:              Simple Constraints. (line   54)
 * REGMODE_NATURAL_SIZE:                  Values in Registers.
-                                                             (line   23)
+                                                             (line   49)
 * REGNO_MODE_OK_FOR_BASE_P:              Register Classes.   (line  165)
 * REGNO_MODE_OK_FOR_REG_BASE_P:          Register Classes.   (line  173)
 * REGNO_OK_FOR_BASE_P:                   Register Classes.   (line  159)
@@ -32043,228 +32190,228 @@ Node: Front End Config68898
 Node: Back End71816
 Node: Testsuites75490
 Node: Test Idioms76282
-Node: Test Directives79682
-Node: Ada Tests89309
-Node: C Tests90601
-Node: libgcj Tests94956
-Node: gcov Testing96376
-Node: profopt Testing99360
-Node: compat Testing100803
-Node: Options105025
-Node: Option file format105466
-Node: Option properties108016
-Node: Passes113482
-Node: Parsing pass114217
-Node: Gimplification pass117745
-Node: Pass manager119572
-Node: Tree-SSA passes120900
-Node: RTL passes136675
-Node: Trees148348
-Node: Deficiencies151074
-Node: Tree overview151311
-Node: Macros and Functions155434
-Node: Identifiers155580
-Node: Containers157105
-Node: Types158260
-Node: Scopes170868
-Node: Namespaces171630
-Node: Classes174442
-Node: Declarations179199
-Node: Working with declarations179694
-Node: Internal structure185566
-Node: Current structure hierarchy185948
-Node: Adding new DECL node types188040
-Node: Functions192111
-Node: Function Basics194514
-Node: Function Bodies201679
-Node: Attributes213655
-Node: Expression trees214896
-Node: Tree SSA245046
-Node: GENERIC246903
-Node: GIMPLE248513
-Node: Interfaces249804
-Node: Temporaries251682
-Ref: Temporaries-Footnote-1253002
-Node: GIMPLE Expressions253065
-Node: Compound Expressions253837
-Node: Compound Lvalues254085
-Node: Conditional Expressions254865
-Node: Logical Operators255542
-Node: Statements256035
-Node: Blocks256743
-Node: Statement Sequences258160
-Node: Empty Statements258497
-Node: Loops259075
-Node: Selection Statements259319
-Node: Jumps260172
-Node: Cleanups260817
-Node: GIMPLE Exception Handling262608
-Node: GIMPLE Example264487
-Node: Rough GIMPLE Grammar265898
-Node: Annotations271154
-Node: Statement Operands271820
-Node: SSA286716
-Node: Alias analysis297786
-Node: RTL304953
-Node: RTL Objects307057
-Node: RTL Classes310931
-Node: Accessors315883
-Node: Special Accessors318277
-Node: Flags322147
-Node: Machine Modes337601
-Node: Constants346326
-Node: Regs and Memory352581
-Node: Arithmetic365655
-Node: Comparisons373788
-Node: Bit-Fields378080
-Node: Vector Operations379632
-Node: Conversions381258
-Node: RTL Declarations384573
-Node: Side Effects385394
-Node: Incdec401510
-Node: Assembler404850
-Node: Insns406382
-Node: Calls432209
-Node: Sharing434802
-Node: Reading RTL437912
-Node: Control Flow438902
-Node: Basic Blocks439873
-Node: Edges444441
-Node: Profile information453003
-Node: Maintaining the CFG457689
-Node: Liveness information464581
-Node: Machine Desc467001
-Node: Overview469456
-Node: Patterns471497
-Node: Example474935
-Node: RTL Template476370
-Node: Output Template487025
-Node: Output Statement490991
-Node: Predicates494953
-Node: Machine-Independent Predicates497871
-Node: Defining Predicates502503
-Node: Constraints507152
-Node: Simple Constraints508181
-Node: Multi-Alternative520569
-Node: Class Preferences523410
-Node: Modifiers524302
-Node: Machine Constraints528428
-Node: Standard Names554566
-Ref: shift patterns567160
-Ref: prologue instruction pattern604238
-Ref: epilogue instruction pattern604731
-Node: Pattern Ordering613754
-Node: Dependent Patterns614990
-Node: Jump Patterns617804
-Node: Looping Patterns623500
-Node: Insn Canonicalizations628102
-Node: Expander Definitions632264
-Node: Insn Splitting640382
-Node: Including Patterns649978
-Node: Peephole Definitions651758
-Node: define_peephole653011
-Node: define_peephole2659342
-Node: Insn Attributes662409
-Node: Defining Attributes663515
-Node: Expressions665532
-Node: Tagging Insns672134
-Node: Attr Example676487
-Node: Insn Lengths678861
-Node: Constant Attributes681920
-Node: Delay Slots683089
-Node: Processor pipeline description686313
-Ref: Processor pipeline description-Footnote-1703555
-Node: Conditional Execution703885
-Node: Constant Definitions706738
-Node: Macros708330
-Node: Mode Macros708759
-Node: Defining Mode Macros709698
-Node: Substitutions711162
-Node: Examples713366
-Node: Code Macros714802
-Node: Target Macros717017
-Node: Target Structure719823
-Node: Driver721092
-Node: Run-time Target743352
-Node: Per-Function Data749287
-Node: Storage Layout752050
-Node: Type Layout776333
-Node: Registers787209
-Node: Register Basics788132
-Node: Allocation Order793699
-Node: Values in Registers795144
-Node: Leaf Functions800820
-Node: Stack Registers803678
-Node: Register Classes804794
-Node: Stack and Calling830967
-Node: Frame Layout831500
-Node: Exception Handling841399
-Node: Stack Checking847747
-Node: Frame Registers851376
-Node: Elimination857980
-Node: Stack Arguments862009
-Node: Register Arguments868584
-Node: Scalar Return882811
-Node: Aggregate Return887582
-Node: Caller Saves891033
-Node: Function Entry892209
-Node: Profiling904825
-Node: Tail Calls906481
-Node: Stack Smashing Protection907347
-Node: Varargs908457
-Node: Trampolines916417
-Node: Library Calls923192
-Node: Addressing Modes927612
-Node: Condition Code941662
-Node: Costs949949
-Node: Scheduling961949
-Node: Sections975004
-Node: PIC986852
-Node: Assembler Format988842
-Node: File Framework989921
-Node: Data Output995484
-Node: Uninitialized Data1002915
-Node: Label Output1008447
-Node: Initialization1029736
-Node: Macros for Initialization1035698
-Node: Instruction Output1041761
-Node: Dispatch Tables1050755
-Node: Exception Region Output1054240
-Node: Alignment Output1060118
-Node: Debugging Info1064262
-Node: All Debuggers1064932
-Node: DBX Options1067787
-Node: DBX Hooks1073236
-Node: File Names and DBX1075162
-Node: SDB and DWARF1077273
-Node: VMS Debug1081208
-Node: Floating Point1081778
-Node: Mode Switching1086600
-Node: Target Attributes1090526
-Node: MIPS Coprocessors1095268
-Node: PCH Target1096842
-Node: C++ ABI1098363
-Node: Misc1102335
-Ref: TARGET_SHIFT_TRUNCATION_MASK1109706
-Node: Host Config1144615
-Node: Host Common1145675
-Node: Filesystem1148054
-Node: Host Misc1152169
-Node: Fragments1154529
-Node: Target Fragment1155724
-Node: Host Fragment1161390
-Node: Collect21162832
-Node: Header Dirs1165375
-Node: Type Information1166798
-Node: GTY Options1168986
-Node: GGC Roots1179120
-Node: Files1179840
-Node: Funding1182504
-Node: GNU Project1185000
-Node: Copying1185649
-Node: GNU Free Documentation License1204829
-Node: Contributors1227238
-Node: Option Index1262805
-Node: Concept Index1263390
+Node: Test Directives79683
+Node: Ada Tests89731
+Node: C Tests91023
+Node: libgcj Tests95378
+Node: gcov Testing96798
+Node: profopt Testing99782
+Node: compat Testing101225
+Node: Options105447
+Node: Option file format105888
+Node: Option properties108438
+Node: Passes113904
+Node: Parsing pass114639
+Node: Gimplification pass118167
+Node: Pass manager119994
+Node: Tree-SSA passes121322
+Node: RTL passes141697
+Node: Trees153370
+Node: Deficiencies156096
+Node: Tree overview156333
+Node: Macros and Functions160456
+Node: Identifiers160602
+Node: Containers162127
+Node: Types163282
+Node: Scopes175890
+Node: Namespaces176652
+Node: Classes179464
+Node: Declarations184221
+Node: Working with declarations184716
+Node: Internal structure190588
+Node: Current structure hierarchy190970
+Node: Adding new DECL node types193062
+Node: Functions197133
+Node: Function Basics199536
+Node: Function Bodies206701
+Node: Attributes218677
+Node: Expression trees219918
+Node: Tree SSA250063
+Node: GENERIC251920
+Node: GIMPLE253530
+Node: Interfaces254821
+Node: Temporaries256699
+Ref: Temporaries-Footnote-1258019
+Node: GIMPLE Expressions258082
+Node: Compound Expressions258854
+Node: Compound Lvalues259102
+Node: Conditional Expressions259882
+Node: Logical Operators260559
+Node: Statements261052
+Node: Blocks261760
+Node: Statement Sequences263177
+Node: Empty Statements263514
+Node: Loops264092
+Node: Selection Statements264336
+Node: Jumps265189
+Node: Cleanups265834
+Node: GIMPLE Exception Handling267625
+Node: GIMPLE Example269504
+Node: Rough GIMPLE Grammar270915
+Node: Annotations276171
+Node: Statement Operands276837
+Node: SSA291737
+Node: Alias analysis302807
+Node: RTL309974
+Node: RTL Objects312078
+Node: RTL Classes315952
+Node: Accessors320904
+Node: Special Accessors323298
+Node: Flags327168
+Node: Machine Modes342622
+Node: Constants351347
+Node: Regs and Memory357602
+Node: Arithmetic370676
+Node: Comparisons378809
+Node: Bit-Fields383101
+Node: Vector Operations384653
+Node: Conversions386279
+Node: RTL Declarations389594
+Node: Side Effects390415
+Node: Incdec406531
+Node: Assembler409871
+Node: Insns411403
+Node: Calls437230
+Node: Sharing439823
+Node: Reading RTL442933
+Node: Control Flow443923
+Node: Basic Blocks444894
+Node: Edges449462
+Node: Profile information458024
+Node: Maintaining the CFG462710
+Node: Liveness information469602
+Node: Machine Desc472022
+Node: Overview474477
+Node: Patterns476518
+Node: Example479956
+Node: RTL Template481391
+Node: Output Template492046
+Node: Output Statement496012
+Node: Predicates499974
+Node: Machine-Independent Predicates502892
+Node: Defining Predicates507524
+Node: Constraints512173
+Node: Simple Constraints513202
+Node: Multi-Alternative525590
+Node: Class Preferences528431
+Node: Modifiers529323
+Node: Machine Constraints533449
+Node: Standard Names559587
+Ref: shift patterns572181
+Ref: prologue instruction pattern609259
+Ref: epilogue instruction pattern609752
+Node: Pattern Ordering618775
+Node: Dependent Patterns620011
+Node: Jump Patterns622825
+Node: Looping Patterns628521
+Node: Insn Canonicalizations633123
+Node: Expander Definitions637285
+Node: Insn Splitting645403
+Node: Including Patterns654999
+Node: Peephole Definitions656779
+Node: define_peephole658032
+Node: define_peephole2664363
+Node: Insn Attributes667430
+Node: Defining Attributes668536
+Node: Expressions670553
+Node: Tagging Insns677155
+Node: Attr Example681508
+Node: Insn Lengths683882
+Node: Constant Attributes686941
+Node: Delay Slots688110
+Node: Processor pipeline description691334
+Ref: Processor pipeline description-Footnote-1708576
+Node: Conditional Execution708906
+Node: Constant Definitions711759
+Node: Macros713351
+Node: Mode Macros713780
+Node: Defining Mode Macros714719
+Node: Substitutions716183
+Node: Examples718387
+Node: Code Macros719823
+Node: Target Macros722038
+Node: Target Structure724844
+Node: Driver726113
+Node: Run-time Target748373
+Node: Per-Function Data754308
+Node: Storage Layout757071
+Node: Type Layout781354
+Node: Registers792230
+Node: Register Basics793153
+Node: Allocation Order798720
+Node: Values in Registers800165
+Node: Leaf Functions807138
+Node: Stack Registers809996
+Node: Register Classes811112
+Node: Stack and Calling837285
+Node: Frame Layout837818
+Node: Exception Handling847717
+Node: Stack Checking854065
+Node: Frame Registers857694
+Node: Elimination864298
+Node: Stack Arguments868327
+Node: Register Arguments874902
+Node: Scalar Return889129
+Node: Aggregate Return893900
+Node: Caller Saves897351
+Node: Function Entry898527
+Node: Profiling911143
+Node: Tail Calls912840
+Node: Stack Smashing Protection913706
+Node: Varargs914816
+Node: Trampolines922776
+Node: Library Calls929551
+Node: Addressing Modes933971
+Node: Condition Code948021
+Node: Costs956308
+Node: Scheduling968308
+Node: Sections981363
+Node: PIC993211
+Node: Assembler Format995201
+Node: File Framework996280
+Node: Data Output1001843
+Node: Uninitialized Data1009274
+Node: Label Output1014806
+Node: Initialization1036095
+Node: Macros for Initialization1042057
+Node: Instruction Output1048120
+Node: Dispatch Tables1057114
+Node: Exception Region Output1060599
+Node: Alignment Output1066477
+Node: Debugging Info1070621
+Node: All Debuggers1071291
+Node: DBX Options1074146
+Node: DBX Hooks1079595
+Node: File Names and DBX1081521
+Node: SDB and DWARF1083632
+Node: VMS Debug1087567
+Node: Floating Point1088137
+Node: Mode Switching1092959
+Node: Target Attributes1096885
+Node: MIPS Coprocessors1101627
+Node: PCH Target1103201
+Node: C++ ABI1104722
+Node: Misc1108694
+Ref: TARGET_SHIFT_TRUNCATION_MASK1116065
+Node: Host Config1150974
+Node: Host Common1152034
+Node: Filesystem1154413
+Node: Host Misc1158528
+Node: Fragments1160888
+Node: Target Fragment1162083
+Node: Host Fragment1167749
+Node: Collect21169191
+Node: Header Dirs1171734
+Node: Type Information1173157
+Node: GTY Options1175345
+Node: GGC Roots1185479
+Node: Files1186199
+Node: Funding1188863
+Node: GNU Project1191359
+Node: Copying1192008
+Node: GNU Free Documentation License1211188
+Node: Contributors1233597
+Node: Option Index1269164
+Node: Concept Index1269749
 
 End Tag Table

@@ -1,5 +1,5 @@
 This is doc/cppinternals.info, produced by makeinfo version 4.8 from
-/scratch/mitchell/gcc-releases/gcc-4.1.1/gcc-4.1.1/gcc/doc/cppinternals.texi.
+/scratch/mitchell/gcc-releases/gcc-4.1.2/gcc-4.1.2/gcc/doc/cppinternals.texi.
 
 INFO-DIR-SECTION Programming
 START-INFO-DIR-ENTRY
@@ -894,7 +894,7 @@ no `#else' or `#elif' for it to survive and be copied to `mi_cmacro' by
 conditional block for the optimization to be on.
 
    Note that whilst we are inside the conditional block, `mi_valid' is
-likely to be reset to `false', but this does not matter since the the
+likely to be reset to `false', but this does not matter since the
 closing `#endif' restores it to `true' if appropriate.
 
    Finally, since `_cpp_lex_direct' pops the file off the buffer stack
@@ -1029,7 +1029,7 @@ Node: Macro Expansion21118
 Node: Token Spacing30065
 Node: Line Numbering35925
 Node: Guard Macros40010
-Node: Files44805
-Node: Concept Index48271
+Node: Files44801
+Node: Concept Index48267
 
 End Tag Table

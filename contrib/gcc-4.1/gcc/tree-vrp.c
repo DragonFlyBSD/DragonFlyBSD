@@ -280,6 +280,25 @@ get_value_range (tree var)
   return vr;
 }
 
+/* Return true, if VAL1 and VAL2 are equal values for VRP purposes.  */
+
+static inline bool
+vrp_operand_equal_p (tree val1, tree val2)
+{
+  return (val1 == val2
+	  || (val1 && val2
+	      && operand_equal_p (val1, val2, 0)));
+}
+
+/* Return true, if the bitmaps B1 and B2 are equal.  */
+
+static inline bool
+vrp_bitmap_equal_p (bitmap b1, bitmap b2)
+{
+  return (b1 == b2
+	  || (b1 && b2
+	      && bitmap_equal_p (b1, b2)));
+}
 
 /* Update the value range and equivalence set for variable VAR to
    NEW_VR.  Return true if NEW_VR is different from VAR's previous
@@ -300,11 +319,9 @@ update_value_range (tree var, value_range_t *new_vr)
   /* Update the value range, if necessary.  */
   old_vr = get_value_range (var);
   is_new = old_vr->type != new_vr->type
-           || old_vr->min != new_vr->min
-	   || old_vr->max != new_vr->max
-	   || (old_vr->equiv == NULL && new_vr->equiv)
-	   || (old_vr->equiv && new_vr->equiv == NULL)
-	   || (!bitmap_equal_p (old_vr->equiv, new_vr->equiv));
+	   || !vrp_operand_equal_p (old_vr->min, new_vr->min)
+	   || !vrp_operand_equal_p (old_vr->max, new_vr->max)
+	   || !vrp_bitmap_equal_p (old_vr->equiv, new_vr->equiv);
 
   if (is_new)
     set_value_range (old_vr, new_vr->type, new_vr->min, new_vr->max,
@@ -1743,7 +1760,7 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
 			tree var)
 {
   tree init, step, chrec;
-  bool init_is_max, unknown_max;
+  enum ev_direction dir;
 
   /* TODO.  Don't adjust anti-ranges.  An anti-range may provide
      better opportunities than a regular range, but I'm not sure.  */
@@ -1763,11 +1780,14 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
       || !is_gimple_min_invariant (step))
     return;
 
-  /* Do not adjust ranges when chrec may wrap.  */
-  if (scev_probably_wraps_p (chrec_type (chrec), init, step, stmt,
-			     cfg_loops->parray[CHREC_VARIABLE (chrec)],
-			     &init_is_max, &unknown_max)
-      || unknown_max)
+  dir = scev_direction (chrec);
+  if (/* Do not adjust ranges if we do not know whether the iv increases
+	 or decreases,  ... */
+      dir == EV_DIR_UNKNOWN
+      /* ... or if it may wrap.  */
+      || scev_probably_wraps_p (init, step, stmt,
+				cfg_loops->parray[CHREC_VARIABLE (chrec)],
+				true))
     return;
 
   if (!POINTER_TYPE_P (TREE_TYPE (init))
@@ -1775,7 +1795,7 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
     {
       /* For VARYING or UNDEFINED ranges, just about anything we get
 	 from scalar evolutions should be better.  */
-      if (init_is_max)
+      if (dir == EV_DIR_DECREASES)
 	set_value_range (vr, VR_RANGE, TYPE_MIN_VALUE (TREE_TYPE (init)),
 	                 init, vr->equiv);
       else
@@ -1787,7 +1807,7 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
       tree min = vr->min;
       tree max = vr->max;
 
-      if (init_is_max)
+      if (dir == EV_DIR_DECREASES)
 	{
 	  /* INIT is the maximum value.  If INIT is lower than VR->MAX
 	     but no smaller than VR->MIN, set VR->MAX to INIT.  */
@@ -1796,10 +1816,11 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
 	      max = init;
 
 	      /* If we just created an invalid range with the minimum
-		 greater than the maximum, take the minimum all the
-		 way to -INF.  */
+		 greater than the maximum, we fail conservatively.
+		 This should happen only in unreachable
+		 parts of code, or for invalid programs.  */
 	      if (compare_values (min, max) == 1)
-		min = TYPE_MIN_VALUE (TREE_TYPE (min));
+		return;
 	    }
 	}
       else
@@ -1809,11 +1830,9 @@ adjust_range_with_scev (value_range_t *vr, struct loop *loop, tree stmt,
 	    {
 	      min = init;
 
-	      /* If we just created an invalid range with the minimum
-		 greater than the maximum, take the maximum all the
-		 way to +INF.  */
+	      /* Again, avoid creating invalid range by failing.  */
 	      if (compare_values (min, max) == 1)
-		max = TYPE_MAX_VALUE (TREE_TYPE (max));
+		return;
 	    }
 	}
 
@@ -2952,6 +2971,66 @@ insert_range_assertions (void)
 }
 
 
+/* Replaces all uses of NAME by VAL.  */
+
+static void
+replace_uses_by_vrp (tree name, tree val)
+{
+  imm_use_iterator imm_iter;
+  use_operand_p use;
+  tree stmt;
+  edge e;
+  unsigned i;
+  VEC(tree,heap) *stmts = VEC_alloc (tree, heap, 20);
+
+  FOR_EACH_IMM_USE_SAFE (use, imm_iter, name)
+    {
+      stmt = USE_STMT (use);
+      SET_USE (use, val);
+
+      if (TREE_CODE (stmt) == PHI_NODE)
+	{
+	  e = PHI_ARG_EDGE (stmt, PHI_ARG_INDEX_FROM_USE (use));
+	  if (e->flags & EDGE_ABNORMAL)
+	    {
+	      /* This can only occur for virtual operands, since
+		 for the real ones SSA_NAME_OCCURS_IN_ABNORMAL_PHI (name))
+		 would prevent replacement.  */
+	      gcc_assert (!is_gimple_reg (name));
+	      SSA_NAME_OCCURS_IN_ABNORMAL_PHI (val) = 1;
+	    }
+	}
+      else
+	VEC_safe_push (tree, heap, stmts, stmt);
+    }
+ 
+  /* We do not update the statements in the loop above.  Consider
+     x = w * w;
+
+     If we performed the update in the first loop, the statement
+     would be rescanned after first occurrence of w is replaced,
+     the new uses would be placed to the beginning of the list,
+     and we would never process them.  */
+  for (i = 0; VEC_iterate (tree, stmts, i, stmt); i++)
+    update_stmt (stmt);
+
+  VEC_free (tree, heap, stmts);
+
+  /* Also update the trees stored in loop structures.  */
+  if (current_loops)
+    {
+      struct loop *loop;
+
+      for (i = 0; i < current_loops->num; i++)
+	{
+	  loop = current_loops->parray[i];
+	  if (loop)
+	    substitute_in_loop_info (loop, name, val);
+	}
+    }
+}
+
+
 /* Convert range assertion expressions into the implied copies and
    copy propagate away the copies.  Doing the trivial copy propagation
    here avoids the need to run the full copy propagation pass after
@@ -2995,8 +3074,7 @@ remove_range_assertions (void)
 	  {
 	    tree rhs = TREE_OPERAND (stmt, 1);
 	    tree cond = fold (ASSERT_EXPR_COND (rhs));
-	    use_operand_p use_p;
-	    imm_use_iterator iter;
+	    tree lhs = TREE_OPERAND (stmt, 0);
 
 	    gcc_assert (cond != boolean_false_node);
 	    TREE_OPERAND (stmt, 1) = ASSERT_EXPR_VAR (rhs);
@@ -3004,11 +3082,7 @@ remove_range_assertions (void)
 
 	    /* The statement is now a copy.  Propagate the RHS into
 	       every use of the LHS.  */
-	    FOR_EACH_IMM_USE_SAFE (use_p, iter, TREE_OPERAND (stmt, 0))
-	      {
-		SET_USE (use_p, ASSERT_EXPR_VAR (rhs));
-		update_stmt (USE_STMT (use_p));
-	      }
+	    replace_uses_by_vrp (lhs, ASSERT_EXPR_VAR (rhs));
 
 	    /* And finally, remove the copy, it is not needed.  */
 	    bsi_remove (&si);

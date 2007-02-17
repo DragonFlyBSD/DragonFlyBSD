@@ -297,7 +297,7 @@ return A();
 
 Fortran
 
-   Fortran  bugs  are documented in the G77 manual rather than explicitly
+   G77  bugs  are  documented  in  the  G77 manual rather than explicitly
    listed  here.  Please see [29]Known Causes of Trouble with GNU Fortran
    in the G77 manual.
      _________________________________________________________________
@@ -799,7 +799,7 @@ References
   26. http://gcc.gnu.org/bugs.html#detailed
   27. http://gcc.gnu.org/bugs.html#detailed
   28. http://gcc.gnu.org/bugs.html#new34
-  29. http://gcc.gnu.org/onlinedocs/g77/Trouble.html
+  29. http://gcc.gnu.org/onlinedocs/gcc-3.4.6/g77/Trouble.html
   30. http://gcc.gnu.org/PR323
   31. http://www.validlab.com/goldberg/paper.ps
   32. http://gcc.gnu.org/PR11751

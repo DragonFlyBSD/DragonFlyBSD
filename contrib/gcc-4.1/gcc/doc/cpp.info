@@ -1,5 +1,5 @@
 This is doc/cpp.info, produced by makeinfo version 4.8 from
-/scratch/mitchell/gcc-releases/gcc-4.1.1/gcc-4.1.1/gcc/doc/cpp.texi.
+/scratch/mitchell/gcc-releases/gcc-4.1.2/gcc-4.1.2/gcc/doc/cpp.texi.
 
    Copyright (C) 1987, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software
@@ -3433,7 +3433,7 @@ it.
 
      Currently, CPP requires its input to be ASCII or UTF-8.  The
      execution character set may be controlled by the user, with the
-     `-ftarget-charset' and `-ftarget-wide-charset' options.
+     `-fexec-charset' and `-fwide-exec-charset' options.
 
    * Identifier characters.
 
@@ -5211,20 +5211,20 @@ Node: Traditional miscellany136377
 Node: Traditional warnings137374
 Node: Implementation Details139571
 Node: Implementation-defined behavior140192
-Ref: Identifier characters140929
-Node: Implementation limits144014
-Node: Obsolete Features146688
-Node: Assertions147143
-Node: Obsolete once-only headers149684
-Node: Differences from previous versions151419
-Node: Invocation155627
-Ref: Wtrigraphs159958
-Ref: dashMF164742
-Ref: fdollars-in-identifiers172657
-Node: Environment Variables180310
-Node: GNU Free Documentation License183276
-Node: Index of Directives205709
-Node: Option Index207638
-Node: Concept Index213676
+Ref: Identifier characters140925
+Node: Implementation limits144010
+Node: Obsolete Features146684
+Node: Assertions147139
+Node: Obsolete once-only headers149680
+Node: Differences from previous versions151415
+Node: Invocation155623
+Ref: Wtrigraphs159954
+Ref: dashMF164738
+Ref: fdollars-in-identifiers172653
+Node: Environment Variables180306
+Node: GNU Free Documentation License183272
+Node: Index of Directives205705
+Node: Option Index207634
+Node: Concept Index213672
 
 End Tag Table
