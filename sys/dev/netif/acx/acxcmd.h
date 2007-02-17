@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.5 2007/02/16 06:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.6 2007/02/17 07:05:53 sephe Exp $
  */
 
 #ifndef _ACXCMD_H
@@ -214,10 +214,6 @@ struct acx_tmplt_probe_resp {
 	}		data;
 } __packed;
 
-#define ACX_TMPLT_PROBE_RESP_SIZ(var_len)				\
-	(sizeof(uint16_t) + sizeof(struct ieee80211_frame) +		\
-	 8 * sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint16_t) + (var_len))
-
 /* XXX same as acx_tmplt_probe_resp */
 struct acx_tmplt_beacon {
 	uint16_t	size;
@@ -233,45 +229,13 @@ struct acx_tmplt_beacon {
 	}		data;
 } __packed;
 
-/* XXX C&P of ACX_TMPLT_PROVE_RESP_SIZ() */
-#define ACX_TMPLT_BEACON_SIZ(var_len)					\
-	(sizeof(uint16_t) + sizeof(struct ieee80211_frame) +		\
-	 8 * sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint16_t) + (var_len))
-
-/* XXX do NOT belong here */
-struct tim_head {
-	uint8_t	eid;
-	uint8_t	len;
-	uint8_t	dtim_count;
-	uint8_t	dtim_period;
-	uint8_t	bitmap_ctrl;
-} __packed;
-
-/* For tim_head.len (tim_head - eid - len + bitmap) */
-#define ACX_TIM_LEN(bitmap_len)	\
-	(sizeof(struct tim_head) - (2 * sizeof(uint8_t)) + (bitmap_len))
-#define ACX_TIM_BITMAP_LEN	1
-
 struct acx_tmplt_tim {
 	uint16_t	size;
 	union {
-		struct {
-			struct tim_head	th;
-			uint8_t		bitmap[1];
-		} __packed	u_data;
-		uint8_t		u_mem[0x100];
+		struct ieee80211_tim_ie	u_tim;
+		uint8_t			u_mem[0x100];
 	}		data;
-#define tim_eid		data.u_data.th.eid
-#define tim_len		data.u_data.th.len
-#define tim_dtim_count	data.u_data.th.dtim_count
-#define tim_dtim_period	data.u_data.th.dtim_period
-#define tim_bitmap_ctrl	data.u_data.th.bitmap_ctrl
-#define tim_bitmap	data.u_data.bitmap
 } __packed;
-
-#define ACX_TMPLT_TIM_SIZ(bitmap_len)	\
-	(sizeof(uint16_t) + sizeof(struct tim_head) + (bitmap_len))
-
 
 #define ACX_INIT_TMPLT_FUNC(name)			\
 static __inline int					\

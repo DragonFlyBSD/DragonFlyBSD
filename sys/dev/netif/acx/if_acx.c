@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.19 2007/02/16 11:46:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.20 2007/02/17 07:05:54 sephe Exp $
  */
 
 /*
@@ -1924,8 +1924,6 @@ back:
 int
 acx_init_tmplt_ordered(struct acx_softc *sc)
 {
-	struct acx_tmplt_tim tim;
-
 #define INIT_TMPLT(name)			\
 do {						\
 	if (acx_init_##name##_tmplt(sc) != 0)	\
@@ -1947,17 +1945,6 @@ do {						\
 	INIT_TMPLT(beacon);
 	INIT_TMPLT(tim);
 	INIT_TMPLT(probe_resp);
-
-	/* Setup TIM template */
-	bzero(&tim, sizeof(tim));
-	tim.tim_eid = IEEE80211_ELEMID_TIM;
-	tim.tim_len = ACX_TIM_LEN(ACX_TIM_BITMAP_LEN);
-	if (_acx_set_tim_tmplt(sc, &tim,
-			       ACX_TMPLT_TIM_SIZ(ACX_TIM_BITMAP_LEN)) != 0) {
-		if_printf(&sc->sc_ic.ic_if, "%s can't set tim tmplt\n",
-			  __func__);
-		return 1;
-	}
 
 #undef INIT_TMPLT
 	return 0;
@@ -2477,9 +2464,10 @@ acx_set_beacon_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_tmplt_beacon beacon;
+	struct acx_tmplt_tim tim;
 	struct ieee80211_beacon_offsets bo;
 	struct mbuf *m;
-	int len;
+	int beacon_tmplt_len = 0, tim_tmplt_len = 0;
 
 	bzero(&bo, sizeof(bo));
 	m = ieee80211_beacon_alloc(ic, ni, &bo);
@@ -2488,12 +2476,33 @@ acx_set_beacon_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 	DPRINTF((&ic->ic_if, "%s alloc beacon size %d\n", __func__,
 		 m->m_pkthdr.len));
 
+	if (bo.bo_tim_len == 0) {
+		beacon_tmplt_len = m->m_pkthdr.len;
+	} else {
+		beacon_tmplt_len = bo.bo_tim - mtod(m, uint8_t *);
+		tim_tmplt_len = m->m_pkthdr.len - beacon_tmplt_len;
+	}
+
 	bzero(&beacon, sizeof(beacon));
-	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&beacon.data);
-	len = m->m_pkthdr.len + sizeof(beacon.size);
+	bzero(&tim, sizeof(tim));
+
+	m_copydata(m, 0, beacon_tmplt_len, (caddr_t)&beacon.data);
+	if (tim_tmplt_len != 0) {
+		m_copydata(m, beacon_tmplt_len, tim_tmplt_len,
+			   (caddr_t)&tim.data);
+	}
 	m_freem(m);
 
-	return _acx_set_beacon_tmplt(sc, &beacon, len);
+	beacon_tmplt_len += sizeof(beacon.size);
+	if (_acx_set_beacon_tmplt(sc, &beacon, beacon_tmplt_len) != 0)
+		return 1;
+
+	if (tim_tmplt_len != 0) {
+		tim_tmplt_len += sizeof(tim.size);
+		if (_acx_set_tim_tmplt(sc, &tim, tim_tmplt_len) != 0)
+			return 1;
+	}
+	return 0;
 }
 
 static int
