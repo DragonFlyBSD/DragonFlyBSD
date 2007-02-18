@@ -31,22 +31,23 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/cpufunc.h,v 1.1 2007/01/07 00:44:31 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/cpufunc.h,v 1.2 2007/02/18 14:28:18 corecode Exp $
  */
 #ifndef _MACHINE_CPUFUNC_H_
 #define	_MACHINE_CPUFUNC_H_
 
 #ifdef _KERNEL
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#include <sys/systm.h>
-#include <sys/proc.h>
-#include <vm/pmap.h>
-
-#include <sys/mman.h>
-#include <signal.h>
+/*
+ * First declare our overriding functions.  We have to do this to prevent
+ * cpu/cpufunc.h to define inline assembler versions.  However, we need
+ * cpu/cpufunc.h to define other functions like ``ffs'', which will otherwise
+ * be defined by libkern (via sys/systm.h).  This is why the order needs to be:
+ *
+ * 1. Declare our overrides
+ * 2. include cpu/cpufunc.h
+ * 3. include the remaining needed headers for our overrides
+ */
 
 #define _CPU_ENABLE_INTR_DEFINED
 #define _CPU_DISABLE_INTR_DEFINED
@@ -62,5 +63,17 @@ void cpu_invltlb(void);
 
 #include <cpu/cpufunc.h>
 
-#endif /* !_MACHINE_TYPES_H_ */
+#ifdef _KERNEL
+
+#include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
+#include <vm/pmap.h>
+
+#include <sys/mman.h>
+#include <signal.h>
+
+#endif /* _KERNEL */
+
+#endif /* !_MACHINE_CPUFUNC_H_ */
 
