@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.94 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.95 2007/02/18 16:13:27 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -311,7 +311,7 @@ struct	proc {
 #define P_UNUSED3	0x00008	/* was: Event pending, break tsleep on sigcont */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit. */
 #define	P_PROFIL	0x00020	/* Has started profiling. */
-#define P_SELECT	0x00040 /* Selecting; wakeup/waiting danger. */
+#define P_UNUSED5	0x00040 /* was: Selecting; wakeup/waiting danger. */
 #define	P_UNUSED4	0x00080	/* was: Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
@@ -348,6 +348,7 @@ struct	proc {
 #define	LWP_OLDMASK	0x0000002 /* need to restore mask before pause */
 #define LWP_BREAKTSLEEP	0x0000004 /* Event pending, break tsleep on sigcont */
 #define	LWP_SINTR	0x0000008 /* Sleep is interruptible. */
+#define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
 
 #define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

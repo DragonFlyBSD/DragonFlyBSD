@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)selinfo.h	8.2 (Berkeley) 1/4/94
- * $DragonFly: src/sys/sys/selinfo.h,v 1.2 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/sys/selinfo.h,v 1.3 2007/02/18 16:13:27 corecode Exp $
  */
 
 #ifndef _SYS_SELINFO_H_
@@ -50,6 +50,7 @@
  */
 struct selinfo {
 	pid_t	si_pid;			/* process to be notified */
+	lwpid_t	si_tid;			/* lwp within this process */
 	struct	klist si_note;		/* kernel note list */
 	struct	notifymsglist si_mlist;	/* list of pending predicate messages */
 	short	si_flags;		/* see below */

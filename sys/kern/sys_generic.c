@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.42 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.43 2007/02/18 16:13:27 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -759,6 +759,7 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 int
 sys_select(struct select_args *uap)
 {
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curproc;
 
 	/*
@@ -840,7 +841,7 @@ sys_select(struct select_args *uap)
 	timo = 0;
 retry:
 	ncoll = nselcoll;
-	p->p_flag |= P_SELECT;
+	lp->lwp_flag |= LWP_SELECT;
 	error = selscan(p, ibits, obits, uap->nd, &uap->sysmsg_result);
 	if (error || uap->sysmsg_result)
 		goto done;
@@ -854,11 +855,11 @@ retry:
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	}
 	crit_enter();
-	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {
+	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
 		crit_exit();
 		goto retry;
 	}
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 
 	error = tsleep((caddr_t)&selwait, PCATCH, "select", timo);
 	
@@ -866,7 +867,7 @@ retry:
 	if (error == 0)
 		goto retry;
 done:
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	/* select is not restarted after signals... */
 	if (error == ERESTART)
 		error = EINTR;
@@ -935,6 +936,7 @@ sys_poll(struct poll_args *uap)
 	int ncoll, error = 0, timo;
 	u_int nfds;
 	size_t ni;
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curproc;
 
 	nfds = uap->nfds;
@@ -971,7 +973,7 @@ sys_poll(struct poll_args *uap)
 	timo = 0;
 retry:
 	ncoll = nselcoll;
-	p->p_flag |= P_SELECT;
+	lp->lwp_flag |= LWP_SELECT;
 	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
 	if (error || uap->sysmsg_result)
 		goto done;
@@ -985,17 +987,17 @@ retry:
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	} 
 	crit_enter();
-	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {
+	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
 		crit_exit();
 		goto retry;
 	}
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	error = tsleep((caddr_t)&selwait, PCATCH, "poll", timo);
 	crit_exit();
 	if (error == 0)
 		goto retry;
 done:
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	/* poll is not restarted after signals... */
 	if (error == ERESTART)
 		error = EINTR;
@@ -1072,24 +1074,24 @@ void
 selrecord(struct thread *selector, struct selinfo *sip)
 {
 	struct proc *p;
-	struct lwp *lp;
-	pid_t mypid;
+	struct lwp *lp = NULL;
 
-	if ((p = selector->td_proc) == NULL)
+	if (selector->td_lwp == NULL)
 		panic("selrecord: thread needs a process");
 
-	mypid = p->p_pid;
-	if (sip->si_pid == mypid)
+	if (sip->si_pid == selector->td_proc->p_pid &&
+	    sip->si_tid == selector->td_lwp->lwp_tid)
 		return;
-	/* XXX lwp
-	 * pfind ? this is seriously broken code for LWP
-	 */
-	if (sip->si_pid && (p = pfind(sip->si_pid)) &&
-	    (lp = FIRST_LWP_IN_PROC(p)) &&
-	    lp->lwp_wchan == (caddr_t)&selwait) {
+	if (sip->si_pid && (p = pfind(sip->si_pid))) {
+		FOREACH_LWP_IN_PROC(lp, p) {
+			if (sip->si_tid == lp->lwp_tid)
+				break;
+		}
+	}
+	if (lp != NULL && lp->lwp_wchan == (caddr_t)&selwait) {
 		sip->si_flags |= SI_COLL;
 	} else {
-		sip->si_pid = mypid;
+		sip->si_pid = selector->td_proc->p_pid;
 	}
 }
 
@@ -1100,6 +1102,7 @@ void
 selwakeup(struct selinfo *sip)
 {
 	struct proc *p;
+	struct lwp *lp = NULL;
 
 	if (sip->si_pid == 0)
 		return;
@@ -1110,23 +1113,28 @@ selwakeup(struct selinfo *sip)
 	}
 	p = pfind(sip->si_pid);
 	sip->si_pid = 0;
-	if (p != NULL) {
-		/* XXX lwp */
-		struct lwp *lp = FIRST_LWP_IN_PROC(p);
-		crit_enter();
-		if (lp->lwp_wchan == (caddr_t)&selwait) {
-			/*
-			 * Flag the process to break the tsleep when 
-			 * setrunnable is called, but only call setrunnable
-			 * here if the process is not in a stopped state.
-			 */
-			lp->lwp_flag |= LWP_BREAKTSLEEP;
-			if (p->p_stat != SSTOP)
-				setrunnable(lp);
-		} else if (p->p_flag & P_SELECT) {
-			p->p_flag &= ~P_SELECT;
-		}
-		crit_exit();
+	if (p == NULL)
+		return;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		if (lp->lwp_tid == sip->si_tid)
+			break;
 	}
+	if (lp == NULL)
+		return;
+
+	crit_enter();
+	if (lp->lwp_wchan == (caddr_t)&selwait) {
+		/*
+		 * Flag the process to break the tsleep when
+		 * setrunnable is called, but only call setrunnable
+		 * here if the process is not in a stopped state.
+		 */
+		lp->lwp_flag |= LWP_BREAKTSLEEP;
+		if (p->p_stat != SSTOP)
+			setrunnable(lp);
+	} else if (lp->lwp_flag & LWP_SELECT) {
+		lp->lwp_flag &= ~LWP_SELECT;
+	}
+	crit_exit();
 }
 

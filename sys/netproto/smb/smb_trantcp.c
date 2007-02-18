@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.16 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.17 2007/02/18 16:13:27 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -103,7 +103,7 @@ nb_poll(struct nbpcb *nbp, int events, struct thread *td)
 static int
 nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct thread *td)
 {
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	struct timeval atv, rtv, ttv;
 	int timo, error;
 
@@ -117,9 +117,9 @@ nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct thread *
 		timevaladd(&atv, &rtv);
 	}
 	timo = 0;
-	KKASSERT(p);
+	KKASSERT(lp);
 retry:
-	p->p_flag |= P_SELECT;
+	lp->lwp_flag |= LWP_SELECT;
 	error = nb_poll(nbp, events, td);
 	if (error) {
 		error = 0;
@@ -134,15 +134,15 @@ retry:
 		timo = tvtohz_high(&ttv);
 	}
 	crit_enter();
-	if ((p->p_flag & P_SELECT) == 0) {
+	if ((lp->lwp_flag & LWP_SELECT) == 0) {
 		crit_exit();
 		goto retry;
 	}
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	error = tsleep((caddr_t)&selwait, 0, "nbsel", timo);
 	crit_exit();
 done:
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	if (error == ERESTART)
 		return 0;
 	return error;

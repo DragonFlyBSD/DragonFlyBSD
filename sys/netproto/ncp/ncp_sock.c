@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.15 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.16 2007/02/18 16:13:27 corecode Exp $
  *
  * Low level socket routines
  */
@@ -202,10 +202,10 @@ ncp_sock_rselect(struct socket *so, struct thread *td,
 	struct timeval *tv, int events)
 {
 	struct timeval atv,rtv,ttv;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	int timo,error=0;
 
-	KKASSERT(p);
+	KKASSERT(lp);
 
 	if (tv) {
 		atv=*tv;
@@ -218,7 +218,7 @@ ncp_sock_rselect(struct socket *so, struct thread *td,
 	}
 	timo = 0;
 retry:
-	p->p_flag |= P_SELECT;
+	lp->lwp_flag |= LWP_SELECT;
 	error = ncp_poll(so, events);
 	if (error) {
 		error = 0;
@@ -233,15 +233,15 @@ retry:
 		timo = tvtohz_high(&ttv);
 	}
 	crit_enter();
-	if ((p->p_flag & P_SELECT) == 0) {
+	if ((lp->lwp_flag & LWP_SELECT) == 0) {
 		crit_exit();
 		goto retry;
 	}
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	error = tsleep((caddr_t)&selwait, 0, "ncpslt", timo);
 	crit_exit();
 done:
-	p->p_flag &= ~P_SELECT;
+	lp->lwp_flag &= ~LWP_SELECT;
 	if (error == ERESTART) {
 /*		kprintf("Signal: %x", CURSIG(p));*/
 		error = 0;
