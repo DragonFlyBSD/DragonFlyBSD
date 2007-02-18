@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.101 2007/01/19 07:23:33 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.102 2007/02/18 23:46:10 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -812,7 +812,7 @@ _share=	share/syscons/scrnmaps
 
 _gcc34_cross= gnu/usr.bin/cc34
 _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
-.if defined(WANT_GCC41)
+.if !defined(NO_GCC41)
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
 .endif
@@ -879,7 +879,7 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
 		${MAKE} -f Makefile.inc1 _startup_libs34;
-.if defined(WANT_GCC41)
+.if !defined(NO_GCC41)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
 		${MAKE} -f Makefile.inc1 _startup_libs41;
