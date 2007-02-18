@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.11 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.12 2007/02/18 16:15:23 corecode Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -629,7 +629,7 @@ proc_verify(kvm_t *kd, const struct kinfo_proc *p)
 		return (0);
 
 	error = (p->kp_pid == kp.kp_pid &&
-	    ((kp.kp_flags & P_ZOMBIE) == 0 || (p->kp_flags & P_ZOMBIE)));
+	    (kp.kp_stat != SZOMB || p->kp_stat == SZOMB));
 	return (error);
 }
 
@@ -654,7 +654,7 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	/*
 	 * Pointers are stored at the top of the user stack.
 	 */
-	if ((kp->kp_flags & P_ZOMBIE) ||
+	if (kp->kp_stat == SZOMB ||
 	    kvm_uread(kd, kp->kp_pid, ps_strings, (char *)&arginfo,
 		      sizeof(arginfo)) != sizeof(arginfo))
 		return (0);

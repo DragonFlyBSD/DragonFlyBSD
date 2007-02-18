@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.36 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.37 2007/02/18 16:15:23 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -352,7 +352,7 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 	LIST_FOREACH(p, &p->p_children, p_sibling)
 		if ((hispgrp = p->p_pgrp) != pgrp &&
 		    hispgrp->pg_session == mysession &&
-		    (p->p_flag & P_ZOMBIE) == 0) {
+		    p->p_stat != SZOMB) {
 			if (entering)
 				hispgrp->pg_jobc++;
 			else if (--hispgrp->pg_jobc == 0)
@@ -492,7 +492,7 @@ proc_move_allproc_zombie(struct proc *p)
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
 	LIST_REMOVE(p, p_hash);
-	p->p_flag |= P_ZOMBIE;
+	p->p_stat = SZOMB;
 	spin_unlock_wr(&allproc_spin);
 }
 

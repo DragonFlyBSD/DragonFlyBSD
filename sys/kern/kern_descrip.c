@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.77 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.78 2007/02/18 16:15:23 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -2400,7 +2400,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 	uid_t uid;
 	int n;
 
-	if (p->p_stat == SIDL || (p->p_flag & P_ZOMBIE))
+	if (p->p_stat == SIDL || p->p_stat == SZOMB)
 		return(0);
 	if (!PRISON_CHECK(info->req->td->td_proc->p_ucred, p->p_ucred) != 0)
 		return(0);

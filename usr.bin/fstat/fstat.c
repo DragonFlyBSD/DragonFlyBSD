@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.23 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.24 2007/02/18 16:15:24 corecode Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -260,7 +260,7 @@ main(int argc, char **argv)
 		putchar('\n');
 
 	for (plast = &p[cnt]; p < plast; ++p) {
-		if (p->kp_flags & P_ZOMBIE)
+		if (p->kp_stat == SZOMB)
 			continue;
 		if (!kread((void *)p->kp_paddr, &proc, sizeof(proc))) {
 			dprintf(stderr, "can't read proc at %p for pid %d\n",

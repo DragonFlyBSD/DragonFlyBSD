@@ -32,7 +32,7 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.8 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.9 2007/02/18 16:15:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ proc_compare(struct kinfo_proc *p1, struct kinfo_proc *p2)
 	/*
  	 * weed out zombies
 	 */
-	switch (TESTAB(p1->kp_flags & P_ZOMBIE, p2->kp_flags & P_ZOMBIE)) {
+	switch (TESTAB(p1->kp_stat == SZOMB, p2->kp_stat == SZOMB)) {
 	case ONLYA:
 		return (1);
 	case ONLYB:

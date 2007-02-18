@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.38 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.39 2007/02/18 16:15:23 corecode Exp $
  */
 
 /*-
@@ -2400,7 +2400,7 @@ ttyinfo(struct tty *tp)
 
 		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
 
-		if (pick->p_stat == SIDL || (pick->p_flag & P_ZOMBIE))
+		if (pick->p_stat == SIDL || pick->p_stat == SZOMB)
 		    vmsz = 0;
 		else
 		    vmsz = pgtok(vmspace_resident_count(pick->p_vmspace));
@@ -2471,7 +2471,7 @@ proc_compare(struct proc *p1, struct proc *p2)
 	/*
  	 * weed out zombies
 	 */
-	switch (TESTAB((p1->p_flag & P_ZOMBIE), (p2->p_flag & P_ZOMBIE))) {
+	switch (TESTAB(p1->p_stat == SZOMB, p2->p_stat == SZOMB)) {
 	case ONLYA:
 		return (1);
 	case ONLYB:

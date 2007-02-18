@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.30 2007/02/18 16:12:42 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.31 2007/02/18 16:15:23 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -207,12 +207,13 @@ state(const KINFO *k, const struct varent *vent)
 		}
 		break;
 
+	case SZOMB:
+		*cp = 'Z';
+		break;
+
 	default:
 		*cp = '?';
 	}
-
-	if (flag & P_ZOMBIE)
-		*cp = 'Z';
 
 	cp++;
 	if (flag & P_SWAPPEDOUT)
@@ -223,7 +224,7 @@ state(const KINFO *k, const struct varent *vent)
 		*cp++ = 'N';
 	if (flag & P_TRACED)
 		*cp++ = 'X';
-	if (flag & P_WEXIT && (flag & P_ZOMBIE) == 0)
+	if (flag & P_WEXIT && KI_PROC(k, stat) != SZOMB)
 		*cp++ = 'E';
 	if (flag & P_PPWAIT)
 		*cp++ = 'V';

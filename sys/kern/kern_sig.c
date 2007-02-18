@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.64 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.65 2007/02/18 16:15:23 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -654,7 +654,8 @@ dokillpg(int sig, int pgid, int all)
 		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (p->p_pid <= 1 || 
-			    (p->p_flag & (P_SYSTEM | P_ZOMBIE)) ||
+			    p->p_stat == SZOMB ||
+			    (p->p_flag & P_SYSTEM) ||
 			    !CANSIGNAL(p, sig)) {
 				continue;
 			}

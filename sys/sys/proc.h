@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.95 2007/02/18 16:13:27 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.96 2007/02/18 16:15:24 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -147,6 +147,7 @@ enum procstat {
 	SIDL = 1,
 	SACTIVE = 2,
 	SSTOP = 3,
+	SZOMB = 4,
 };
 
 struct lwp {
@@ -328,7 +329,7 @@ struct	proc {
 #define	P_UPCALLPEND	0x20000	/* an upcall is pending */
 
 #define	P_SWAPWAIT	0x40000	/* Waiting for a swapin */
-#define	P_ZOMBIE	0x80000	/* Now in a zombied state */
+#define	P_UNUSED6	0x80000	/* was: Now in a zombied state */
 
 /* Marked a kernel thread */
 #define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */

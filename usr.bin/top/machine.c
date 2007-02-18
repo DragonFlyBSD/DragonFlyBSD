@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.22 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.23 2007/02/18 16:15:24 corecode Exp $
  */
 
 
@@ -503,7 +503,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, stat)]++;
 	    if ((show_threads && (LP(pp, pid) == 0)) ||
-		(!show_only_threads && ((PP(pp, flags) & P_ZOMBIE) == 0) &&
+		(!show_only_threads && PP(pp, stat) != SZOMB &&
 		(show_idle || (LP(pp, pctcpu) != 0) ||
 		 (LP(pp, stat) == LSRUN)) &&
 		(!show_uid || PP(pp, ruid) == (uid_t)sel->uid)))
@@ -605,7 +605,7 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
 	    break;
     }
 
-    if (PP(pp, flags) & P_ZOMBIE)
+    if (PP(pp, stat) == SZOMB)
 	    strcpy(status, "ZOMB");
 
     /*
