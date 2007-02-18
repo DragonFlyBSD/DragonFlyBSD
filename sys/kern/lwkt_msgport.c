@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.36 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.37 2007/02/18 16:12:43 corecode Exp $
  */
 
 #ifdef _KERNEL
@@ -695,7 +695,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 		    /*
 		     * XXX set TDF_SINTR so 'ps' knows the difference between
 		     * an interruptable wait and a disk wait.  YYY eventually
-		     * move P_SINTR to TDF_SINTR to reduce duplication.
+		     * move LWP_SINTR to TDF_SINTR to reduce duplication.
 		     */
 		    td->td_flags |= TDF_SINTR | TDF_BLOCKED;
 		    lwkt_deschedule_self(td);

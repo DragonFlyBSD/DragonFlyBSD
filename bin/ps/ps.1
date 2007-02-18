@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.13 2007/02/16 12:45:12 corecode Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.14 2007/02/18 16:12:43 corecode Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -197,37 +197,7 @@ The percentage of real memory used by this process.
 .It Cm flags
 The flags associated with the process as in
 the include file
-.In sys/proc.h :
-.Bl -column P_BREAKTSLEEP 0x10000000
-.It Dv "P_ADVLOCK" Ta No "0x00001	Process may hold a POSIX advisory lock"
-.It Dv "P_CONTROLT" Ta No "0x00002	Has a controlling terminal"
-.It Dv "P_SWAPPEDOUT" Ta No "0x00004	Swapped out of memory"
-.It Dv "P_BREAKTSLEEP" Ta No "0x00008	Event pending, break tsleep on sigcont"
-.It Dv "P_PPWAIT" Ta No "0x00010	Parent is waiting for child to exec/exit"
-.It Dv "P_PROFIL" Ta No "0x00020	Has started profiling"
-.It Dv "P_SELECT" Ta No "0x00040 	Selecting; wakeup/waiting danger"
-.It Dv "P_SINTR" Ta No "0x00080		Sleep is interruptible"
-.It Dv "P_SUGID" Ta No "0x00100		Had set id privileges since last exec"
-.It Dv "P_SYSTEM" Ta No "0x00200	System proc: no sigs, stats or swapping"
-.It Dv "P_STOPPED" Ta No "0x00400	SIGSTOP status"
-.It Dv "P_TRACED" Ta No "0x00800	Debugged process being traced"
-.It Dv "P_WAITED" Ta No "0x01000	SIGSTOP status was returned by wait3/4"
-.It Dv "P_WEXIT" Ta No "0x02000		Working on exiting"
-.It Dv "P_EXEC" Ta No "0x04000		Process called exec"
-.It Dv "P_UPCALLPEND" Ta No "0x20000	An upcall is pending"
-.It Dv "P_SWAPWAIT" Ta No "0x40000	Waiting for a swapin"
-.It Dv "P_ZOMBIE" Ta No "0x80000	Now in a zombied state"
-.It Dv "P_ONRUNQ" Ta No "0x100000	On a user scheduling run queue"
-.It Dv "P_KTHREADP" Ta No "0x200000	Process is really a kernel thread"
-.It Dv "P_IDLESWAP" Ta No "0x400000	Swapout was due to idleswap, not load"
-.It Dv "P_DEADLKTREAT" Ta No "0x800000	Lock aquisition - deadlock treatment"
-.It Dv "P_JAILED" Ta No "0x1000000	Process is in jail"
-.It Dv "P_OLDMASK" Ta No "0x2000000	Need to restore mask before pause"
-.It Dv "P_ALTSTACK" Ta No "0x4000000	have alternate signal stack"
-.It Dv "P_INEXEC" Ta No "0x8000000	Process is in execve()"
-.It Dv "P_PASSIVE_ACQ" Ta No "0x10000000	Passive acquire cpu (see kern_switch)"
-.It Dv "P_UPCALLWAIT" Ta No "0x20000000	Wait for upcall or signal"
-.El
+.In sys/proc.h .
 .It Cm lim
 The soft limit on memory used, specified via a call to
 .Xr setrlimit 2 .

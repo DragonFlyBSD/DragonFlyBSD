@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.37 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.38 2007/02/18 16:12:43 corecode Exp $
  */
 
 /*-
@@ -2430,7 +2430,7 @@ ttyinfo(struct tty *tp)
  *	   with the highest cpu utilization is picked (p_cpticks).  Ties are
  *	   broken by picking the highest pid.
  *	3) The sleeper with the shortest sleep time is next.  With ties,
- *	   we pick out just "short-term" sleepers (P_SINTR == 0).
+ *	   we pick out just "short-term" sleepers (LWP_SINTR == 0).
  *	4) Further ties are broken by picking the highest pid.
  */
 #define ISRUN(lp)	((lp)->lwp_stat == LSRUN)
@@ -2489,9 +2489,9 @@ proc_compare(struct proc *p1, struct proc *p2)
 	/*
 	 * favor one sleeping in a non-interruptible sleep
 	 */
-	if (p1->p_flag & P_SINTR && (p2->p_flag & P_SINTR) == 0)
+	if (lp1->lwp_flag & LWP_SINTR && (lp2->lwp_flag & LWP_SINTR) == 0)
 		return (1);
-	if (p2->p_flag & P_SINTR && (p1->p_flag & P_SINTR) == 0)
+	if (lp2->lwp_flag & LWP_SINTR && (lp1->lwp_flag & LWP_SINTR) == 0)
 		return (0);
 	return (p2->p_pid > p1->p_pid);		/* tie - return highest pid */
 }

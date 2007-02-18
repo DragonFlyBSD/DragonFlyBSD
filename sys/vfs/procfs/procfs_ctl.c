@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.10 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.11 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -268,11 +268,11 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 
 	/*
 	 * If the process is in a stopped state, make it runnable again.
-	 * Do not set P_BREAKTSLEEP - that is, do not break a tsleep that
+	 * Do not set LWP_BREAKTSLEEP - that is, do not break a tsleep that
 	 * might be in progress.
 	 */
 	if (p->p_stat == SSTOP)
-		setrunnable(p);
+		proc_unstop(p);
 	return (0);
 }
 
@@ -319,7 +319,7 @@ procfs_doctl(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 				 * Make the process runnable but do not
 				 * break its tsleep.
 				 */
-				setrunnable(p);
+				proc_unstop(p);
 			} else {
 				ksignal(p, nm->nm_val);
 			}

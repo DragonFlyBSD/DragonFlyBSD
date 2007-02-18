@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.28 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.29 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -452,13 +452,13 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	sendsig:
 		/*
 		 * Deliver or queue signal.  If the process is stopped
-		 * force it to SRUN again.
+		 * force it to be SACTIVE again.
 		 */
 		crit_enter();
 		if (p->p_stat == SSTOP) {
 			p->p_xstat = data;
-			p->p_flag |= P_BREAKTSLEEP;
-			setrunnable(p);
+			lp->lwp_flag |= LWP_BREAKTSLEEP;
+			proc_unstop(p);
 		} else if (data) {
 			ksignal(p, data);
 		}

@@ -32,7 +32,7 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.7 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.8 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
  *	   with the highest cpu utilization is picked (p_estcpu).  Ties are
  *	   broken by picking the highest pid.
  *	3) The sleeper with the shortest sleep time is next.  With ties,
- *	   we pick out just "short-term" sleepers (P_SINTR == 0).
+ *	   we pick out just "short-term" sleepers (LWP_SINTR == 0).
  *	4) Further ties are broken by picking the highest pid.
  *
  * If you change this, be sure to consider making the change in the kernel
@@ -111,9 +111,9 @@ proc_compare(struct kinfo_proc *p1, struct kinfo_proc *p2)
 	/*
 	 * favor one sleeping in a non-interruptible sleep
 	 */
-	if (p1->kp_flags & P_SINTR && (p2->kp_flags & P_SINTR) == 0)
+	if (p1->kp_lwp.kl_flags & LWP_SINTR && (p2->kp_lwp.kl_flags & LWP_SINTR) == 0)
 		return (1);
-	if (p2->kp_flags & P_SINTR && (p1->kp_flags & P_SINTR) == 0)
+	if (p2->kp_lwp.kl_flags & LWP_SINTR && (p1->kp_lwp.kl_flags & LWP_SINTR) == 0)
 		return (0);
 	return (p2->kp_pid > p1->kp_pid);		/* tie - return highest pid */
 }

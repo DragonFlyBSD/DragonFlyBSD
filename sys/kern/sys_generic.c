@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.41 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.42 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1120,9 +1120,9 @@ selwakeup(struct selinfo *sip)
 			 * setrunnable is called, but only call setrunnable
 			 * here if the process is not in a stopped state.
 			 */
-			p->p_flag |= P_BREAKTSLEEP;
+			lp->lwp_flag |= LWP_BREAKTSLEEP;
 			if (p->p_stat != SSTOP)
-				setrunnable(p);
+				setrunnable(lp);
 		} else if (p->p_flag & P_SELECT) {
 			p->p_flag &= ~P_SELECT;
 		}

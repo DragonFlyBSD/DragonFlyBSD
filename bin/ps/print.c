@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.29 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.30 2007/02/18 16:12:42 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -182,7 +182,7 @@ state(const KINFO *k, const struct varent *vent)
 	case SACTIVE:
 		switch (KI_LWP(k, stat)) {
 		case LSSLEEP:
-			if (flag & P_SINTR)	/* interruptable (long) */
+			if (KI_LWP(k, flags) & LWP_SINTR)	/* interruptable (long) */
 				*cp = KI_LWP(k, slptime) >= MAXSLP ? 'I' : 'S';
 			else if (KI_LWP(k, tdflags) & TDF_SINTR)
 				*cp = 'S';

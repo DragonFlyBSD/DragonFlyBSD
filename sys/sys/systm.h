@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.65 2007/01/15 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.66 2007/02/18 16:12:43 corecode Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -331,7 +331,7 @@ extern watchdog_tickle_fn	wdog_tickler;
 int	tsleep (void *, int, const char *, int);
 int	msleep (void *, struct spinlock *, int, const char *, int);
 void	tsleep_interlock (void *chan);
-void	tstop (struct proc *);
+void	tstop (void);
 void	wakeup (void *chan);
 void	wakeup_one (void *chan);
 void	wakeup_mycpu (void *chan);

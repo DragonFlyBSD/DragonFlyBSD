@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.63 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.64 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -915,7 +915,7 @@ ksignal(struct proc *p, int sig)
 		 * be noticed when the process returns through
 		 * trap() or syscall().
 		 */
-		if ((p->p_flag & P_SINTR) == 0)
+		if ((lp->lwp_flag & LWP_SINTR) == 0)
 			goto out;
 
 		/*
@@ -933,7 +933,7 @@ ksignal(struct proc *p, int sig)
 		 * If the process is sleeping and SA_CONT, and the signal
 		 * mode is SIG_DFL, then make the process runnable.
 		 *
-		 * However, do *NOT* set P_BREAKTSLEEP.  We do not want 
+		 * However, do *NOT* set LWP_BREAKTSLEEP.  We do not want
 		 * a SIGCONT to terminate an interruptable tsleep early
 		 * and generate a spurious EINTR.
 		 */
@@ -965,12 +965,8 @@ ksignal(struct proc *p, int sig)
 			 * lwps should stop as soon as they safely can.
 			 */
 			SIGDELSET(p->p_siglist, sig);
-			p->p_stat = SSTOP;
-			p->p_flag &= ~P_WAITED;
 			p->p_xstat = sig;
-			wakeup(p->p_pptr);
-			if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
-				ksignal(p->p_pptr, SIGCHLD);
+			proc_stop(p, 1);
 			goto out;
 		}
 
@@ -995,8 +991,10 @@ ksignal(struct proc *p, int sig)
 		 * If the process is stopped and receives a KILL signal,
 		 * make the process runnable.
 		 */
-		if (sig == SIGKILL)
-			goto run;
+		if (sig == SIGKILL) {
+			proc_unstop(p);
+			goto out;
+		}
 
 		/*
 		 * If the process is stopped and receives a CONT signal,
@@ -1013,14 +1011,10 @@ ksignal(struct proc *p, int sig)
 			 */
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
+			proc_unstop(p);
 			if (action == SIG_CATCH)
 				goto run;
-
-			/*
-			 * Make runnable but do not break a tsleep unless
-			 * some other signal was pending.
-			 */
-			goto run_no_break;
+			goto out;
 		}
 
 		/*
@@ -1035,11 +1029,11 @@ ksignal(struct proc *p, int sig)
 
 		/*
 		 * Otherwise the process is sleeping interruptably but
-		 * is stopped, just set the P_BREAKTSLEEP flag and take
+		 * is stopped, just set the LWP_BREAKTSLEEP flag and take
 		 * no further action.  The next runnable action will wake
 		 * the process up.
 		 */
-		p->p_flag |= P_BREAKTSLEEP;
+		lp->lwp_flag |= LWP_BREAKTSLEEP;
 		goto out;
 	}
 
@@ -1084,9 +1078,9 @@ run:
 	/*
 	 * Make runnable and break out of any tsleep as well.
 	 */
-	p->p_flag |= P_BREAKTSLEEP;
+	lp->lwp_flag |= LWP_BREAKTSLEEP;
 run_no_break:
-	setrunnable(p);
+	setrunnable(lp);
 out:
 	crit_exit();
 }
@@ -1113,6 +1107,27 @@ signotify_remote(void *arg)
 }
 
 #endif
+
+void
+proc_stop(struct proc *p, int notify)
+{
+	/* XXX lwp */
+	p->p_stat = SSTOP;
+	p->p_flag &= ~P_WAITED;
+	wakeup(p->p_pptr);
+	if (notify > 1 ||
+	    notify && (p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
+		ksignal(p->p_pptr, SIGCHLD);
+}
+
+void
+proc_unstop(struct proc *p)
+{
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);	/* XXX lwp */
+
+	p->p_stat = SACTIVE;
+	setrunnable(lp);
+}
 
 static int
 kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
@@ -1350,13 +1365,10 @@ issignal(struct lwp *lp)
 			 * XXX not sure if this is still true
 			 */
 			p->p_xstat = sig;
-			p->p_stat = SSTOP;
-			p->p_flag &= ~P_WAITED;
-			ksignal(p->p_pptr, SIGCHLD);
+			proc_stop(p, 2);
 			do {
-				tstop(p);
+				tstop();
 			} while (!trace_req(p) && (p->p_flag & P_TRACED));
-			p->p_stat = SACTIVE;
 
 			/*
 			 * If parent wants us to take the signal,
@@ -1430,13 +1442,9 @@ issignal(struct lwp *lp)
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				p->p_xstat = sig;
-				p->p_stat = SSTOP;
-				p->p_flag &= ~P_WAITED;
-
-				if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
-					ksignal(p->p_pptr, SIGCHLD);
+				proc_stop(p, 1);
 				while (p->p_stat == SSTOP) {
-					tstop(p);
+					tstop();
 				}
 				break;
 			} else if (prop & SA_IGNORE) {

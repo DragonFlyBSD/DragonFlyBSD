@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.73 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.74 2007/02/18 16:12:43 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -413,7 +413,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 			/*
 			 * Causes ksignal to wake us up when.
 			 */
-			p->p_flag |= P_SINTR;
+			lp->lwp_flag |= LWP_SINTR;
 		}
 
 		/*
@@ -523,7 +523,8 @@ resume:
 					error = ERESTART;
 			}
 		}
-		p->p_flag &= ~(P_BREAKTSLEEP | P_SINTR | P_MAILBOX);
+		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
+		p->p_flag &= ~P_MAILBOX;
 	}
 	logtsleep(tsleep_end);
 	crit_exit_quick(td);
@@ -596,7 +597,7 @@ msleep(void *ident, struct spinlock *spin, int flags,
 /*
  * Implement the timeout for tsleep.
  *
- * We set P_BREAKTSLEEP to indicate that an event has occured, but
+ * We set LWP_BREAKTSLEEP to indicate that an event has occured, but
  * we only call setrunnable if the process is not stopped.
  *
  * This type of callout timeout is scheduled on the same cpu the process
@@ -606,7 +607,7 @@ static void
 endtsleep(void *arg)
 {
 	thread_t td = arg;
-	struct proc *p;
+	struct lwp *lp;
 
 	ASSERT_MP_LOCK_HELD(curthread);
 	crit_enter();
@@ -619,10 +620,10 @@ endtsleep(void *arg)
 	if (td->td_flags & TDF_TSLEEPQ) {
 		td->td_flags |= TDF_TIMEOUT;
 
-		if ((p = td->td_proc) != NULL) {
-			p->p_flag |= P_BREAKTSLEEP;
-			if (p->p_stat != SSTOP)
-				setrunnable(p);
+		if ((lp = td->td_lwp) != NULL) {
+			lp->lwp_flag |= LWP_BREAKTSLEEP;
+			if (lp->lwp_proc->p_stat != SSTOP)
+				setrunnable(lp);
 		} else {
 			unsleep_and_wakeup_thread(td);
 		}
@@ -899,22 +900,22 @@ wakeup_domain_one(void *ident, int domain)
  *
  * Make a process runnable.  The MP lock must be held on call.  This only
  * has an effect if we are in SSLEEP.  We only break out of the
- * tsleep if P_BREAKTSLEEP is set, otherwise we just fix-up the state.
+ * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
  * NOTE: With the MP lock held we can only safely manipulate the process
  * structure.  We cannot safely manipulate the thread structure.
  */
 void
-setrunnable(struct proc *p)
+setrunnable(struct lwp *lp)
 {
-	/* XXX lwp */
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);
+	enum lwpstat stat;
+
 	crit_enter();
 	ASSERT_MP_LOCK_HELD(curthread);
-	p->p_stat = SACTIVE;	/* XXX lwp */
-	if (lp->lwp_stat == LSSLEEP && (p->p_flag & P_BREAKTSLEEP)) {
+	stat = lp->lwp_stat;
+	lp->lwp_stat = LSRUN;
+	if (stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))
 		unsleep_and_wakeup_thread(lp->lwp_thread);
-	}
 	crit_exit();
 }
 
@@ -926,18 +927,19 @@ setrunnable(struct proc *p)
  * because the parent may check the child's status before the child actually
  * gets to this routine.
  *
- * This routine is called with the current process only, typically just
+ * This routine is called with the current lwp only, typically just
  * before returning to userland.
  *
- * Setting P_BREAKTSLEEP before entering the tsleep will cause a passive
+ * Setting LWP_BREAKTSLEEP before entering the tsleep will cause a passive
  * SIGCONT to break out of the tsleep.
  */
 void
-tstop(struct proc *p)
+tstop(void)
 {
-	wakeup((caddr_t)p->p_pptr);
-	p->p_flag |= P_BREAKTSLEEP;
-	tsleep(p, 0, "stop", 0);
+	struct lwp *lp = curthread->td_lwp;
+
+	lp->lwp_flag |= LWP_BREAKTSLEEP;
+	tsleep(lp->lwp_proc, 0, "stop", 0);
 }
 
 /*

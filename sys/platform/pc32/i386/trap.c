@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.98 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.99 2007/02/18 16:12:43 corecode Exp $
  */
 
 /*
@@ -252,7 +252,7 @@ recheck:
 	 */
 	if (p->p_stat == SSTOP) {
 		get_mplock();
-		tstop(p);
+		tstop();
 		rel_mplock();
 		goto recheck;
 	}
