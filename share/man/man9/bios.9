@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man9/bios.9,v 1.4.2.6 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/bios.9,v 1.3 2007/02/18 09:09:43 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bios.9,v 1.4 2007/02/18 14:17:29 swildner Exp $
 .\"
 .\" Copyright (c) 1997 Michael Smith
 .\" All rights reserved.
@@ -31,7 +31,9 @@
 .Sh NAME
 .Nm bios_sigsearch ,
 .Nm bios32_SDlookup ,
-.Nm bios32
+.Nm bios32 ,
+.Nm BIOS_PADDRTOVADDR ,
+.Nm BIOS_VADDRTOPADDR
 .Nd interact with PC BIOS
 .Sh SYNOPSIS
 .In sys/types.h
@@ -50,7 +52,7 @@
 .Sh DESCRIPTION
 These functions provide a general-purpose interface for dealing with
 the BIOS functions and data encountered on x86 PC-architecture systems.
-.Bl -tag -width 20n
+.Bl -tag -width ".Fn BIOS_PADDRTOVADDR"
 .It Fn bios_sigsearch
 Searches the BIOS address space for a service signature, usually an
 uppercase ASCII sequence surrounded by underscores.  The search begins
@@ -77,12 +79,12 @@ virtual address
 Returns the kernel virtual address which corresponds to the effective
 physical address
 .Fa addr .
-.It SMBIOStable
+.It Va SMBIOStable
 If not NULL, points to a
 .Ft struct SMBIOS_table
 structure containing information read from the System Management BIOS table
 during system startup.
-.It DMItable
+.It Va DMItable
 If not NULL, points to a
 .Ft struct DMI_table
 structure containing information read from the Desktop Management Interface
@@ -92,7 +94,7 @@ parameter table during system startup.
 At system startup, the BIOS is scanned for the BIOS32 Service Directory
 (part of the PCI specification), and the existence of the directory is
 recorded.  This can then be used to locate other services.
-.Bl -tag -width 20n
+.Bl -tag -width ".Fn BIOS_PADDRTOVADDR"
 .It Fn bios32_SDlookup
 Attempts to locate the BIOS32 service matching the 4-byte identifier
 passed in the
@@ -107,7 +109,7 @@ of the entrypoint is supplied in
 .Fa entry
 and the register arguments to the function are supplied in
 .Fa args .
-.It PCIbios
+.It Va PCIbios
 If not NULL, points to a
 .Ft struct bios32_SDentry
 structure describing the PCI BIOS entrypoint which was found during system
