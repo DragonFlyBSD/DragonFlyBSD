@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.97 2007/02/18 16:16:11 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.98 2007/02/18 16:17:09 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -160,6 +160,7 @@ struct lwp {
 
 	int		lwp_flag;	/* LWP_* flags. */
 	enum lwpstat	lwp_stat;	/* LS* lwp status. */
+	int		lwp_lock;	/* lwp lock (prevent destruct) count */
 
 #define lwp_startzero	lwp_dupfd
 	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
@@ -266,7 +267,7 @@ struct	proc {
 #define	p_startcopy	p_comm
 
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
-	char		p_lock;		/* Process lock (prevent swap) count. */
+	char		p_lock;		/* Process lock (prevent destruct) count. */
 	char		p_nice;		/* Process "nice" value. */
 	char		p_pad3;
 
@@ -398,9 +399,13 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 		}				\
 	} while (0)
 
-/* hold process U-area in memory, normally for ptrace/procfs work */
+/* hold process in memory, don't destruct , normally for ptrace/procfs work */
 #define PHOLD(p)	(++(p)->p_lock)
 #define PRELE(p)	(--(p)->p_lock)
+
+/* hold lwp in memory, don't destruct , normally for ptrace/procfs work */
+#define LWPHOLD(lp)	(++(lp)->lwp_lock)
+#define LWPRELE(lp)	(--(lp)->lwp_lock)
 
 #define	PIDHASH(pid)	(&pidhashtbl[(pid) & pidhash])
 extern LIST_HEAD(pidhashhead, proc) *pidhashtbl;

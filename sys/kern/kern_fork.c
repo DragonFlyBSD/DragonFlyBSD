@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.62 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.63 2007/02/18 16:17:09 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -328,6 +328,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	p2->p_flag = 0;
 	p2->p_lock = 0;
+	lp2->lwp_lock = 0;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.72 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.73 2007/02/18 16:17:09 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -479,7 +479,9 @@ loop:
 			 * At the moment, if this occurs, we are not woken
 			 * up and rely on a one-second retry.
 			 */
-			if (p->p_lock) {
+			while (p->p_lock || deadlp->lwp_lock) {
+				while (deadlp->lwp_lock)
+					tsleep(deadlp, 0, "reap3l", hz);
 				while (p->p_lock)
 					tsleep(p, 0, "reap3", hz);
 			}
@@ -547,6 +549,13 @@ loop:
 			 */
 			proc_remove_zombie(p);
 			leavepgrp(p);
+
+			/*
+			 * Drain all references to the last lwp.
+			 * Not sure if this is needed, but better safe than sorry.
+			 */
+			while (deadlp->lwp_lock)
+				tsleep(deadlp, 0, "reapl", hz);
 
 			if (--p->p_procsig->ps_refcnt == 0) {
 				if (p->p_sigacts != &p->p_addr->u_sigacts)

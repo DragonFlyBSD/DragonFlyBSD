@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.7 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.8 2007/02/18 16:17:09 corecode Exp $
  */
 
 /*
@@ -153,6 +153,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 
 	kl->kl_flags = lwp->lwp_flag;
 	kl->kl_stat = lwp->lwp_stat;
+	kl->kl_lock = lwp->lwp_lock;
 	kl->kl_tdflags = lwp->lwp_thread->td_flags;
 #ifdef SMP
 	kl->kl_mpcount = lwp->lwp_thread->td_mpcount;

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.99 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.100 2007/02/18 16:17:09 corecode Exp $
  */
 
 /*
@@ -949,7 +949,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * Keep swapout from messing with us during this
 		 *	critical time.
 		 */
-		++p->p_lock;
+		PHOLD(p);
 
 		/*
 		 * Grow the stack if necessary
@@ -962,7 +962,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 */
 		if (!grow_stack (p, va)) {
 			rv = KERN_FAILURE;
-			--p->p_lock;
+			PRELE(p);
 			goto nogo;
 		}
 
@@ -971,7 +971,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
 						      : VM_FAULT_NORMAL);
 
-		--p->p_lock;
+		PRELE(p);
 	} else {
 		/*
 		 * Don't have to worry about process locking or stacks in the kernel.
@@ -1146,10 +1146,10 @@ trapwrite(unsigned addr)
 	p = curproc;
 	vm = p->p_vmspace;
 
-	++p->p_lock;
+	PHOLD(p);
 
 	if (!grow_stack (p, va)) {
-		--p->p_lock;
+		PRELE(p);
 		return (1);
 	}
 
@@ -1158,7 +1158,7 @@ trapwrite(unsigned addr)
 	 */
 	rv = vm_fault(&vm->vm_map, va, VM_PROT_WRITE, VM_FAULT_DIRTY);
 
-	--p->p_lock;
+	PRELE(p);
 
 	if (rv != KERN_SUCCESS)
 		return 1;

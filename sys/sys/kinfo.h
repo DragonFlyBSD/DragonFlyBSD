@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.12 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.13 2007/02/18 16:17:09 corecode Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -112,6 +112,7 @@ struct kinfo_lwp {
 
 	int		kl_flags;	/* LWP_ flags */
 	enum lwpstat	kl_stat;	/* LS* lwp status */
+	int		kl_lock;	/* lwp lock (prevent destruct) count */
 	int		kl_tdflags;	/* thread flags */
 	int		kl_mpcount;	/* MP lock held count */
 	int		kl_prio;	/* scheduling priority */
