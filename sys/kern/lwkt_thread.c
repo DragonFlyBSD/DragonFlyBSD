@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.105 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.106 2007/02/18 16:16:11 corecode Exp $
  */
 
 /*
@@ -188,7 +188,7 @@ lwkt_schedule_self(thread_t td)
 {
     crit_enter_quick(td);
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
-    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
     crit_exit_quick(td);
 }
@@ -992,7 +992,7 @@ lwkt_schedule(thread_t td)
 
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
     crit_enter_gd(mygd);
-    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     if (td == mygd->gd_curthread) {
 	_lwkt_enqueue(td);
     } else {
@@ -1235,7 +1235,7 @@ lwkt_setcpu_remote(void *arg)
     td->td_gd = gd;
     cpu_sfence();
     td->td_flags &= ~TDF_MIGRATING;
-    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
 }
 #endif

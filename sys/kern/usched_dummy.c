@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.6 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.7 2007/02/18 16:16:11 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -179,7 +179,7 @@ dummy_acquire_curproc(struct lwp *lp)
 		crit_exit();
 		gd = mycpu;
 		dd = &dummy_pcpu[gd->gd_cpuid];
-		KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 	} while (dd->uschedcp != lp);
 }
 
@@ -207,7 +207,7 @@ dummy_release_curproc(struct lwp *lp)
 	globaldata_t gd = mycpu;
 	dummy_pcpu_t dd = &dummy_pcpu[gd->gd_cpuid];
 
-	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 	if (dd->uschedcp == lp) {
 		dummy_select_curproc(gd);
 	}
@@ -242,7 +242,7 @@ dummy_select_curproc(globaldata_t gd)
 	} else {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
-		lp->lwp_proc->p_flag &= ~P_ONRUNQ;
+		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
 		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
 		spin_unlock_wr(&dummy_spin);
@@ -282,11 +282,11 @@ dummy_setrunqueue(struct lwp *lp)
 		/*
 		 * Add to our global runq
 		 */
-		KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 		spin_lock_wr(&dummy_spin);
 		++dummy_runqcount;
 		TAILQ_INSERT_TAIL(&dummy_runq, lp, lwp_procq);
-		lp->lwp_proc->p_flag |= P_ONRUNQ;
+		lp->lwp_flag |= LWP_ONRUNQ;
 #ifdef SMP
 		lwkt_giveaway(lp->lwp_thread);
 #endif
@@ -488,7 +488,7 @@ dummy_sched_thread(void *dummy)
 	} else if ((lp = TAILQ_FIRST(&dummy_runq)) != NULL) {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
-		lp->lwp_proc->p_flag &= ~P_ONRUNQ;
+		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
 		atomic_set_int(&dummy_curprocmask, cpumask);
 		spin_unlock_wr(&dummy_spin);

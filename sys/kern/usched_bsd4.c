@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.20 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.21 2007/02/18 16:16:11 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -274,7 +274,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		gd = mycpu;
 		dd = &bsd4_pcpu[gd->gd_cpuid];
 	} while (dd->uschedcp != lp);
-	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 }
 
 /*
@@ -315,7 +315,7 @@ bsd4_release_curproc(struct lwp *lp)
 		 * unnecessary scheduler helper wakeups.  
 		 * bsd4_select_curproc() will clean it up.
 		 */
-		KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 		dd->uschedcp = NULL;	/* don't let lp be selected */
 		bsd4_select_curproc(gd);
 	}
@@ -429,7 +429,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	crit_enter();
 	KASSERT(lp->lwp_stat == LSRUN, ("setrunqueue: lwp not LSRUN"));
-	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0,
+	KASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0,
 	    ("lwp %d/%d already on runq! flag %08x/%08x", lp->lwp_proc->p_pid,
 	     lp->lwp_tid, lp->lwp_proc->p_flag, lp->lwp_flag));
 	KKASSERT((lp->lwp_thread->td_flags & TDF_RUNQ) == 0);
@@ -762,7 +762,7 @@ bsd4_resetpriority(struct lwp *lp)
 	 */
 	if ((lp->lwp_priority ^ newpriority) & ~PPQMASK) {
 		lp->lwp_priority = newpriority;
-		if (lp->lwp_proc->p_flag & P_ONRUNQ) {
+		if (lp->lwp_flag & LWP_ONRUNQ) {
 			bsd4_remrunqueue_locked(lp);
 			lp->lwp_rqtype = newrqtype;
 			lp->lwp_rqindex = (newpriority & PRIMASK) / PPQ;
@@ -943,8 +943,8 @@ again:
 	--bsd4_runqcount;
 	if (TAILQ_EMPTY(q))
 		*which &= ~(1 << pri);
-	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) != 0, ("not on runq6!"));
-	lp->lwp_proc->p_flag &= ~P_ONRUNQ;
+	KASSERT((lp->lwp_flag & LWP_ONRUNQ) != 0, ("not on runq6!"));
+	lp->lwp_flag &= ~LWP_ONRUNQ;
 	return lp;
 }
 
@@ -982,8 +982,8 @@ bsd4_remrunqueue_locked(struct lwp *lp)
 	u_int32_t *which;
 	u_int8_t pri;
 
-	KKASSERT(lp->lwp_proc->p_flag & P_ONRUNQ);
-	lp->lwp_proc->p_flag &= ~P_ONRUNQ;
+	KKASSERT(lp->lwp_flag & LWP_ONRUNQ);
+	lp->lwp_flag &= ~LWP_ONRUNQ;
 	--bsd4_runqcount;
 	KKASSERT(bsd4_runqcount >= 0);
 
@@ -1032,8 +1032,8 @@ bsd4_setrunqueue_locked(struct lwp *lp)
 	u_int32_t *which;
 	int pri;
 
-	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
-	lp->lwp_proc->p_flag |= P_ONRUNQ;
+	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+	lp->lwp_flag |= LWP_ONRUNQ;
 	++bsd4_runqcount;
 
 	pri = lp->lwp_rqindex;

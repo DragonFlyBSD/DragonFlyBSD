@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.75 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.76 2007/02/18 16:16:11 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -454,7 +454,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		/*
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
-		KKASSERT((p->p_flag & P_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 		lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();

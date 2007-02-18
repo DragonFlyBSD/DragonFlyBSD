@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.96 2007/02/18 16:15:24 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.97 2007/02/18 16:16:11 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -332,7 +332,7 @@ struct	proc {
 #define	P_UNUSED6	0x80000	/* was: Now in a zombied state */
 
 /* Marked a kernel thread */
-#define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */
+#define	P_UNUSED07	0x100000 /* was: on a user scheduling run queue */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
 #define P_IDLESWAP	0x400000 /* Swapout was due to idleswap, not load */
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
@@ -350,6 +350,7 @@ struct	proc {
 #define LWP_BREAKTSLEEP	0x0000004 /* Event pending, break tsleep on sigcont */
 #define	LWP_SINTR	0x0000008 /* Sleep is interruptible. */
 #define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
+#define	LWP_ONRUNQ	0x0000020 /* on a user scheduling run queue */
 
 #define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
