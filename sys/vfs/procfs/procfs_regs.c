@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_regs.c,v 1.10.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.10 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.11 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -50,9 +50,10 @@
 #include <vm/vm_extern.h>
 
 int
-procfs_doregs(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_doregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	      struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
 	int error;
 	struct reg r;
 	char *kv;
@@ -71,25 +72,25 @@ procfs_doregs(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	if (kl > uio->uio_resid)
 		kl = uio->uio_resid;
 
-	PHOLD(p);
+	LWPHOLD(lp);
 
-		error = procfs_read_regs(p, &r);
+	error = procfs_read_regs(lp, &r);
 	if (error == 0)
 		error = uiomove_frombuf(&r, sizeof(r), uio);
 	if (error == 0 && uio->uio_rw == UIO_WRITE) {
 		if (p->p_stat != SSTOP)
 			error = EBUSY;
 		else
-			error = procfs_write_regs(p, &r);
+			error = procfs_write_regs(lp, &r);
 	}
-	PRELE(p);
+	LWPRELE(lp);
 
 	uio->uio_offset = 0;
 	return (error);
 }
 
 int
-procfs_validregs(struct proc *p)
+procfs_validregs(struct lwp *lp)
 {
-	return ((p->p_flag & P_SYSTEM) == 0);
+	return ((lp->lwp_proc->p_flag & P_SYSTEM) == 0);
 }

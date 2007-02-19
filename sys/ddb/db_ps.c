@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.21 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.22 2007/02/19 01:14:23 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -57,11 +57,12 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		p = allproc.lh_first;
 	else
 		p = &proc0;
+	lp = FIRST_LWP_IN_PROC(p);
 
 	if (db_more(&nl) < 0)
 	    return;
-	db_printf("  pid   proc     uid  ppid  pgrp  flag stat wmesg   wchan   cmd\n");
-	while (--np >= 0) {
+	db_printf("  pid      lwp  uid  ppid  pgrp  pflag  lflag stat  wmesg    wchan cmd\n");
+	for (;;) {
 		/*
 		 * XXX just take 20 for now...
 		 */
@@ -75,15 +76,13 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		if (pp == NULL)
 			pp = p;
 
-		/* XXX lwp */
-		lp = FIRST_LWP_IN_PROC(p);
-		db_printf("%5d %8p %8p %4d %5d %5d %06x  %d",
-		    p->p_pid, (volatile void *)p,
-		    (void *)lp->lwp_thread->td_pcb,
+		db_printf("%5d %8p %4d %5d %5d %06x %06x  %d %d",
+		    p->p_pid, (volatile void *)lp,
 		    p->p_ucred ? p->p_ucred->cr_ruid : 0, pp->p_pid,
-		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag, p->p_stat);
+		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag,
+		    lp->lwp_flag, p->p_stat, lp->lwp_stat);
 		if (lp->lwp_wchan) {
-			db_printf("  %6s %8p", lp->lwp_wmesg,
+			db_printf(" %6s %8p", lp->lwp_wmesg,
 			    (void *)lp->lwp_wchan);
 		} else {
 			db_printf("                 ");
@@ -91,9 +90,16 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		db_printf(" %s\n", p->p_comm ? p->p_comm : "");
 		db_dump_td_tokens(lp->lwp_thread);
 
-		p = p->p_list.le_next;
-		if (p == NULL && np > 0)
-			p = zombproc.lh_first;
+		lp = LIST_NEXT(lp, lwp_list);
+		if (lp == NULL) {
+			--np;
+			p = p->p_list.le_next;
+			if (p == NULL && np > 0)
+				p = zombproc.lh_first;
+			if (p == NULL)
+				break;
+			lp = FIRST_LWP_IN_PROC(p);
+		}
     	}
 
 	/*

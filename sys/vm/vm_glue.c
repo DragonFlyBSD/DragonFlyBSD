@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.50 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.51 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -434,9 +434,12 @@ scheduler_callback(struct proc *p, void *data)
 	int pri;
 
 	if (p->p_flag & P_SWAPWAIT) {
-		/* XXX lwp */
-		lp = FIRST_LWP_IN_PROC(p);
-		pri = p->p_swtime + lp->lwp_slptime - p->p_nice * 8;
+		pri = 0;
+		FOREACH_LWP_IN_PROC(lp, p) {
+			/* XXX lwp might need a different metric */
+			pri += lp->lwp_slptime;
+		}
+		pri += p->p_swtime - p->p_nice * 8;
 
 		/*
 		 * The more pages paged out while we were swapped,
@@ -524,16 +527,20 @@ swapout_procs_callback(struct proc *p, void *data)
 	struct vmspace *vm;
 	struct lwp *lp;
 	int action = *(int *)data;
+	int minslp = -1;
 
 	if (!swappable(p))
 		return(0);
 
 	vm = p->p_vmspace;
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
+	/*
+	 * We only consider active processes.
+	 */
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
+		return(0);
 
-	if (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSRUN) {
+	FOREACH_LWP_IN_PROC(lp, p) {
 		/*
 		 * do not swap out a realtime process
 		 */
@@ -557,23 +564,27 @@ swapout_procs_callback(struct proc *p, void *data)
 			return(0);
 		}
 
-		++vm->vm_refcnt;
-
-		/*
-		 * If the process has been asleep for awhile, swap
-		 * it out.
-		 */
-		if ((action & VM_SWAP_NORMAL) ||
-		    ((action & VM_SWAP_IDLE) &&
-		     (lp->lwp_slptime > swap_idle_threshold2))) {
-			swapout(p);
-		}
-
-		/*
-		 * cleanup our reference
-		 */
-		vmspace_free(vm);
+		if (minslp == -1 || lp->lwp_slptime < minslp)
+			minslp = lp->lwp_slptime;
 	}
+
+	++vm->vm_refcnt;
+
+	/*
+	 * If the process has been asleep for awhile, swap
+	 * it out.
+	 */
+	if ((action & VM_SWAP_NORMAL) ||
+	    ((action & VM_SWAP_IDLE) &&
+	     (minslp > swap_idle_threshold2))) {
+		swapout(p);
+	}
+
+	/*
+	 * cleanup our reference
+	 */
+	vmspace_free(vm);
+
 	return(0);
 }
 

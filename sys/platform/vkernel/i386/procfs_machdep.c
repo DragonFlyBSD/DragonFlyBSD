@@ -38,18 +38,18 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/procfs_machdep.c,v 1.2 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/procfs_machdep.c,v 1.3 2007/02/19 01:14:23 corecode Exp $
  */
 
 /*
  * Functions to be implemented here are:
  *
- * procfs_read_regs(proc, regs)
+ * procfs_read_regs(lwp, regs)
  *	Get the current user-visible register set from the process
  *	and copy it into the regs structure (<machine/reg.h>).
  *	The process is stopped at the time read_regs is called.
  *
- * procfs_write_regs(proc, regs)
+ * procfs_write_regs(lwp, regs)
  *	Update the current register set from the passed in regs
  *	structure.  Take care to avoid clobbering special CPU
  *	registers or privileged bits in the PSL.
@@ -63,7 +63,7 @@
  * procfs_read_dbregs, procfs_write_dbregs
  *	deal with the processor debug register set, otherwise as above.
  *
- * procfs_sstep(proc)
+ * procfs_sstep(lwp)
  *	Arrange for the process to trap after executing a single instruction.
  *
  */
@@ -82,50 +82,26 @@
 #include <vm/vm_map.h>
 
 int
-procfs_read_regs(struct proc *p, struct reg *regs)
+procfs_read_regs(struct lwp *lp, struct reg *regs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (fill_regs(lp, regs));
 }
 
 int
-procfs_write_regs(struct proc *p, struct reg *regs)
+procfs_write_regs(struct lwp *lp, struct reg *regs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (set_regs(lp, regs));
 }
 
 int
-procfs_read_dbregs(struct proc *p, struct dbreg *dbregs)
+procfs_read_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (fill_dbregs(lp, dbregs));
 }
 
 int
-procfs_write_dbregs(struct proc *p, struct dbreg *dbregs)
+procfs_write_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (set_dbregs(lp, dbregs));
 }
 
@@ -135,37 +111,19 @@ procfs_write_dbregs(struct proc *p, struct dbreg *dbregs)
  */
 
 int
-procfs_read_fpregs(struct proc *p, struct fpreg *fpregs)
+procfs_read_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (fill_fpregs(lp, fpregs));
 }
 
 int
-procfs_write_fpregs(struct proc *p, struct fpreg *fpregs)
+procfs_write_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (set_fpregs(lp, fpregs));
 }
 
 int
-procfs_sstep(struct proc *p)
+procfs_sstep(struct lwp *lp)
 {
-	struct lwp *lp;
-
-	if (p->p_flag & P_SWAPPEDOUT)
-		return (EIO);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	return (ptrace_single_step(lp));
 }

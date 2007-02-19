@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_rlimit.c,v 1.5 1999/12/08 08:59:37 phk Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.6 2006/12/20 18:14:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.7 2007/02/19 01:14:24 corecode Exp $
  */
 
 /*
@@ -57,9 +57,10 @@
 
 
 int
-procfs_dorlimit(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
 	char *ps;
 	int i;
 	int xlen;

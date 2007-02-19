@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.14 2007/01/11 10:15:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.15 2007/02/19 01:14:24 corecode Exp $
  */
 
 /*
@@ -162,9 +162,11 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
  * from the kernel address space.
  */
 int
-procfs_domem(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_domem(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	     struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
+
 	if (uio->uio_resid == 0)
 		return (0);
 

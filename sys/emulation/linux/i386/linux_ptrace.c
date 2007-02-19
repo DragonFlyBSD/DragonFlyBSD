@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.14 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.15 2007/02/19 01:14:23 corecode Exp $
  */
 
 #include "opt_cpu.h"
@@ -217,10 +217,8 @@ struct linux_pt_fpxreg {
 
 #ifndef CPU_DISABLE_SSE
 static int
-linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
+linux_proc_read_fpxregs(struct lwp *lp, struct linux_pt_fpxreg *fpxregs)
 {
-	/* XXX lwp */
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	int error;
 
 	error = 0;
@@ -233,10 +231,8 @@ linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 }
 
 static int
-linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
+linux_proc_write_fpxregs(struct lwp *lp, struct linux_pt_fpxreg *fpxregs)
 {
-	/* XXX lwp */
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);
 	int error;
 
 	error = 0;
@@ -354,6 +350,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 	case PTRACE_GETFPXREGS: {
 #ifndef CPU_DISABLE_SSE
 		struct proc *p;
+		struct lwp *lp;
 
 		if (sizeof(struct linux_pt_fpxreg) != sizeof(struct savexmm)) {
 			static int once = 0;
@@ -399,19 +396,22 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 			goto fail;
 		}
 
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(p);
+
 		if (req == PTRACE_GETFPXREGS) {
-			PHOLD(p);
-			error = linux_proc_read_fpxregs(p, &r.fpxreg);
-			PRELE(p);
+			LWPHOLD(lp);
+			error = linux_proc_read_fpxregs(lp, &r.fpxreg);
+			LWPRELE(lp);
 			if (error == 0)
 				error = copyout(&r.fpxreg, (caddr_t)uap->data,
 				    sizeof(r.fpxreg));
 		} else {
 			/* clear dangerous bits exactly as Linux does*/
 			r.fpxreg.mxcsr &= 0xffbf;
-			PHOLD(p);
-			error = linux_proc_write_fpxregs(p, &r.fpxreg);
-			PRELE(p);
+			LWPHOLD(lp);
+			error = linux_proc_write_fpxregs(lp, &r.fpxreg);
+			LWPRELE(lp);
 		}
 		break;
 

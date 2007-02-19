@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.76 2007/02/18 16:16:11 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.77 2007/02/19 01:14:23 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -192,21 +192,21 @@ schedcpu_stats(struct proc *p, void *data __unused)
 {
 	struct lwp *lp;
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	p->p_swtime++;
-	if (lp->lwp_stat == LSSLEEP)
-		lp->lwp_slptime++;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		if (lp->lwp_stat == LSSLEEP)
+			lp->lwp_slptime++;
 
-	/*
-	 * Only recalculate processes that are active or have slept
-	 * less then 2 seconds.  The schedulers understand this.
-	 */
-	if (lp->lwp_slptime <= 1) {
-		p->p_usched->recalculate(lp);
-	} else {
-		lp->lwp_pctcpu = (lp->lwp_pctcpu * ccpu) >> FSHIFT;
+		/*
+		 * Only recalculate processes that are active or have slept
+		 * less then 2 seconds.  The schedulers understand this.
+		 */
+		if (lp->lwp_slptime <= 1) {
+			p->p_usched->recalculate(lp);
+		} else {
+			lp->lwp_pctcpu = (lp->lwp_pctcpu * ccpu) >> FSHIFT;
+		}
 	}
 	crit_exit();
 	return(0);
@@ -223,19 +223,20 @@ schedcpu_resource(struct proc *p, void *data __unused)
 	u_int64_t ttime;
 	struct lwp *lp;
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	crit_enter();
 	if (p->p_stat == SIDL || 
 	    p->p_stat == SZOMB ||
-	    p->p_limit == NULL || 
-	    lp->lwp_thread == NULL
+	    p->p_limit == NULL
 	) {
 		crit_exit();
 		return(0);
 	}
 
-	ttime = lp->lwp_thread->td_sticks + lp->lwp_thread->td_uticks;
+	ttime = 0;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		ttime += lp->lwp_thread->td_sticks;
+		ttime += lp->lwp_thread->td_uticks;
+	}
 
 	switch(plimit_testcpulimit(p->p_limit, ttime)) {
 	case PLIMIT_TESTCPU_KILL:
@@ -979,7 +980,7 @@ uio_yield(void)
  * Compute a tenex style load average of a quantity on
  * 1, 5 and 15 minute intervals.
  */
-static int loadav_count_runnable(struct proc *p, void *data);
+static int loadav_count_runnable(struct lwp *p, void *data);
 
 static void
 loadav(void *arg)
@@ -988,7 +989,7 @@ loadav(void *arg)
 	int i, nrun;
 
 	nrun = 0;
-	allproc_scan(loadav_count_runnable, &nrun);
+	alllwp_scan(loadav_count_runnable, &nrun);
 	avg = &averunnable;
 	for (i = 0; i < 3; i++) {
 		avg->ldavg[i] = (cexp[i] * avg->ldavg[i] +
@@ -1005,14 +1006,11 @@ loadav(void *arg)
 }
 
 static int
-loadav_count_runnable(struct proc *p, void *data)
+loadav_count_runnable(struct lwp *lp, void *data)
 {
-	struct lwp *lp;
 	int *nrunp = data;
 	thread_t td;
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	switch (lp->lwp_stat) {
 	case LSRUN:
 		if ((td = lp->lwp_thread) == NULL)

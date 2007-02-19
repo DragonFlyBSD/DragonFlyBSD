@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.14 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.15 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -58,10 +58,10 @@
 
 #define DOCHECK() do { if (ps >= psbuf+sizeof(psbuf)) goto bailout; } while (0)
 int
-procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		struct uio *uio)
 {
-	struct lwp *lp;
+	struct proc *p = lp->lwp_proc;
 	struct session *sess;
 	struct tty *tp;
 	struct ucred *cr;
@@ -88,8 +88,6 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	KASSERT(sizeof(psbuf) > MAXCOMLEN,
 			("Too short buffer for new MAXCOMLEN"));
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
 	ps = psbuf;
 	bcopy(p->p_comm, ps, MAXCOMLEN);
 	ps[MAXCOMLEN] = '\0';
@@ -184,9 +182,10 @@ bailout:
 }
 
 int
-procfs_docmdline(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		 struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
 	char *ps;
 	int xlen;
 	int error;

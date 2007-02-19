@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs.h,v 1.32.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.7 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.8 2007/02/19 01:14:24 corecode Exp $
  */
 
 /*
@@ -127,33 +127,32 @@ void procfs_exit (struct thread *);
 int procfs_freevp (struct vnode *);
 int procfs_allocvp (struct mount *, struct vnode **, long, pfstype);
 struct vnode *procfs_findtextvp (struct proc *);
-int procfs_sstep (struct proc *);
-void procfs_fix_sstep (struct proc *);
-int procfs_read_regs (struct proc *, struct reg *);
-int procfs_write_regs (struct proc *, struct reg *);
-int procfs_read_fpregs (struct proc *, struct fpreg *);
-int procfs_write_fpregs (struct proc *, struct fpreg *);
-int procfs_read_dbregs (struct proc *, struct dbreg *);
-int procfs_write_dbregs (struct proc *, struct dbreg *);
-int procfs_donote (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_doregs (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_dofpregs (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_dodbregs (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_doctl (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_dostatus (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_domap (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_dotype (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_docmdline (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-int procfs_dorlimit (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_sstep (struct lwp *);
+int procfs_read_regs (struct lwp *, struct reg *);
+int procfs_write_regs (struct lwp *, struct reg *);
+int procfs_read_fpregs (struct lwp *, struct fpreg *);
+int procfs_write_fpregs (struct lwp *, struct fpreg *);
+int procfs_read_dbregs (struct lwp *, struct dbreg *);
+int procfs_write_dbregs (struct lwp *, struct dbreg *);
+int procfs_donote (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_doregs (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_dofpregs (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_dodbregs (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_domem (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_doctl (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_dostatus (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_domap (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_dotype (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_docmdline (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
+int procfs_dorlimit (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
 
 /* functions to check whether or not files should be displayed */
-int procfs_validfile (struct proc *);
-int procfs_validfpregs (struct proc *);
-int procfs_validregs (struct proc *);
-int procfs_validdbregs (struct proc *);
-int procfs_validmap (struct proc *);
-int procfs_validtype (struct proc *);
+int procfs_validfile (struct lwp *);
+int procfs_validfpregs (struct lwp *);
+int procfs_validregs (struct lwp *);
+int procfs_validdbregs (struct lwp *);
+int procfs_validmap (struct lwp *);
+int procfs_validtype (struct lwp *);
 
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02

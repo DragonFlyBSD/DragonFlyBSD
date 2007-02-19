@@ -37,7 +37,7 @@
  *	@(#)procfs_note.c	8.2 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_note.c,v 1.6 1999/08/28 00:46:55 peter Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_note.c,v 1.4 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_note.c,v 1.5 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <vfs/procfs/procfs.h>
 
 int
-procfs_donote(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_donote(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	      struct uio *uio)
 {
 	int xlen;

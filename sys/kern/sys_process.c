@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.29 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.30 2007/02/19 01:14:23 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -384,7 +384,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	/*
 	 * Single step fixup ala procfs
 	 */
-	FIX_SSTEP(p);
+	FIX_SSTEP(lp);
 #endif
 
 	/*
@@ -416,11 +416,11 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		if (data < 0 || data > _SIG_MAXSIG)
 			return EINVAL;
 
-		PHOLD(p);
+		LWPHOLD(lp);
 
 		if (req == PT_STEP) {
 			if ((error = ptrace_single_step (lp))) {
-				PRELE(p);
+				LWPRELE(lp);
 				return error;
 			}
 		}
@@ -428,11 +428,11 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		if (addr != (void *)1) {
 			if ((error = ptrace_set_pc (lp,
 			    (u_long)(uintfptr_t)addr))) {
-				PRELE(p);
+				LWPRELE(lp);
 				return error;
 			}
 		}
-		PRELE(p);
+		LWPRELE(lp);
 
 		if (req == PT_DETACH) {
 			/* reset process parent */
@@ -489,7 +489,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		uio.uio_segflg = UIO_SYSSPACE;
 		uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 		uio.uio_td = curthread;
-		error = procfs_domem(curp, p, NULL, &uio);
+		error = procfs_domem(curp, lp, NULL, &uio);
 		if (uio.uio_resid != 0) {
 			/*
 			 * XXX procfs_domem() doesn't currently return ENOSPC,
@@ -535,7 +535,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		default:
 			return (EINVAL);
 		}
-		error = procfs_domem(curp, p, NULL, &uio);
+		error = procfs_domem(curp, lp, NULL, &uio);
 		piod->piod_len -= uio.uio_resid;
 		return (error);
 
@@ -553,7 +553,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* write = 0 above */
 #endif /* PT_SETREGS */
 #if defined(PT_SETREGS) || defined(PT_GETREGS)
-		if (!procfs_validregs(p))	/* no P_SYSTEM procs please */
+		if (!procfs_validregs(lp))	/* no P_SYSTEM procs please */
 			return EINVAL;
 		else {
 			iov.iov_base = addr;
@@ -565,7 +565,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
-			return (procfs_doregs(curp, p, NULL, &uio));
+			return (procfs_doregs(curp, lp, NULL, &uio));
 		}
 #endif /* defined(PT_SETREGS) || defined(PT_GETREGS) */
 
@@ -579,7 +579,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* write = 0 above */
 #endif /* PT_SETFPREGS */
 #if defined(PT_SETFPREGS) || defined(PT_GETFPREGS)
-		if (!procfs_validfpregs(p))	/* no P_SYSTEM procs please */
+		if (!procfs_validfpregs(lp))	/* no P_SYSTEM procs please */
 			return EINVAL;
 		else {
 			iov.iov_base = addr;
@@ -591,7 +591,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
-			return (procfs_dofpregs(curp, p, NULL, &uio));
+			return (procfs_dofpregs(curp, lp, NULL, &uio));
 		}
 #endif /* defined(PT_SETFPREGS) || defined(PT_GETFPREGS) */
 
@@ -605,7 +605,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* write = 0 above */
 #endif /* PT_SETDBREGS */
 #if defined(PT_SETDBREGS) || defined(PT_GETDBREGS)
-		if (!procfs_validdbregs(p))	/* no P_SYSTEM procs please */
+		if (!procfs_validdbregs(lp))	/* no P_SYSTEM procs please */
 			return EINVAL;
 		else {
 			iov.iov_base = addr;
@@ -617,7 +617,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_segflg = UIO_SYSSPACE;
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
-			return (procfs_dodbregs(curp, p, NULL, &uio));
+			return (procfs_dodbregs(curp, lp, NULL, &uio));
 		}
 #endif /* defined(PT_SETDBREGS) || defined(PT_GETDBREGS) */
 

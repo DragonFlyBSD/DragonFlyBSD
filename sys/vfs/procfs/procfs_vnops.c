@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.41 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.42 2007/02/19 01:14:24 corecode Exp $
  */
 
 /*
@@ -126,7 +126,7 @@ static struct proc_target {
 	u_char	pt_namlen;
 	char	*pt_name;
 	pfstype	pt_pfstype;
-	int	(*pt_valid) (struct proc *p);
+	int	(*pt_valid) (struct lwp *p);
 } proc_targets[] = {
 #define N(s) sizeof(s)-1, s
 	/*	  name		type		validp */
@@ -709,6 +709,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 	pid_t pid;
 	struct pfsnode *pfs;
 	struct proc *p;
+	struct lwp *lp;
 	int i;
 	int error;
 
@@ -762,6 +763,8 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		p = PFIND(pfs->pfs_pid);
 		if (p == NULL)
 			break;
+		/* XXX lwp */
+		lp = FIRST_LWP_IN_PROC(p);
 
 		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))
 			break;
@@ -773,7 +776,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		for (pt = proc_targets, i = 0; i < nproc_targets; pt++, i++) {
 			if (cnp->cn_namelen == pt->pt_namlen &&
 			    bcmp(pt->pt_name, pname, cnp->cn_namelen) == 0 &&
-			    (pt->pt_valid == NULL || (*pt->pt_valid)(p)))
+			    (pt->pt_valid == NULL || (*pt->pt_valid)(lp)))
 				goto found;
 		}
 		break;
@@ -810,9 +813,9 @@ out:
  * Does this process have a text file?
  */
 int
-procfs_validfile(struct proc *p)
+procfs_validfile(struct lwp *lp)
 {
-	return (procfs_findtextvp(p) != NULLVP);
+	return (procfs_findtextvp(lp->lwp_proc) != NULLVP);
 }
 
 /*
@@ -868,6 +871,7 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	struct pfsnode *pfs;
 	int error, i, retval;
 	struct proc *p;
+	struct lwp *lp;
 	struct proc_target *pt;
 	struct uio *uio = ap->a_uio;
 
@@ -877,6 +881,8 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 		return(0);
 	if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
 		return(0);
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 
 	error = 0;
 	i = (int)uio->uio_offset;
@@ -885,7 +891,7 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 
 	for (pt = &proc_targets[i];
 	     !error && uio->uio_resid > 0 && i < nproc_targets; pt++, i++) {
-		if (pt->pt_valid && (*pt->pt_valid)(p) == 0)
+		if (pt->pt_valid && (*pt->pt_valid)(lp) == 0)
 			continue;
 
 		retval = vop_write_dirent(&error, uio,

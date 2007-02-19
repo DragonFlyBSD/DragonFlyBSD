@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.11 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.12 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include <vm/vm.h>
 
 #ifndef FIX_SSTEP
-#define FIX_SSTEP(p)
+#define FIX_SSTEP(lp)
 #endif
 
 /*
@@ -101,11 +101,12 @@ static vfs_namemap_t signames[] = {
 	{ 0 },
 };
 
-static int	procfs_control (struct proc *curp, struct proc *p, int op);
+static int	procfs_control (struct proc *curp, struct lwp *lp, int op);
 
 static int
-procfs_control(struct proc *curp, struct proc *p, int op)
+procfs_control(struct proc *curp, struct lwp *lp, int op)
 {
+	struct proc *p = lp->lwp_proc;
 	int error;
 
 	/* Can't trace a process that's currently exec'ing. */ 
@@ -178,7 +179,7 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 	/*
 	 * do single-step fixup if needed
 	 */
-	FIX_SSTEP(p);
+	FIX_SSTEP(lp);
 #endif
 
 	/*
@@ -203,6 +204,7 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 
 		/* remove pending SIGTRAP, else the process will die */
 		SIGDELSET(p->p_siglist, SIGTRAP);
+		SIGDELSET(lp->lwp_siglist, SIGTRAP);
 
 		/* give process back to original parent */
 		if (p->p_oppid != p->p_pptr->p_pid) {
@@ -223,9 +225,9 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 	 * Step.  Let the target process execute a single instruction.
 	 */
 	case PROCFS_CTL_STEP:
-		PHOLD(p);
-		error = procfs_sstep(p);
-		PRELE(p);
+		LWPHOLD(lp);
+		error = procfs_sstep(lp);
+		LWPRELE(lp);
 		if (error)
 			return (error);
 		break;
@@ -277,9 +279,10 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 }
 
 int
-procfs_doctl(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_doctl(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	     struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
 	int xlen;
 	int error;
 	char msg[PROCFS_CTLLEN+1];
@@ -306,14 +309,14 @@ procfs_doctl(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	nm = vfs_findname(ctlnames, msg, xlen);
 	if (nm) {
-		error = procfs_control(curp, p, nm->nm_val);
+		error = procfs_control(curp, lp, nm->nm_val);
 	} else {
 		nm = vfs_findname(signames, msg, xlen);
 		if (nm) {
 			if (TRACE_WAIT_P(curp, p)) {
 				p->p_xstat = nm->nm_val;
 #ifdef FIX_SSTEP
-				FIX_SSTEP(p);
+				FIX_SSTEP(lp);
 #endif
 				/*
 				 * Make the process runnable but do not

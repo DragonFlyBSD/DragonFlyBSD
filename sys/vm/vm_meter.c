@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.13 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.14 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -145,33 +145,34 @@ do_vmtotal_callback(struct proc *p, void *data)
 	if (p->p_flag & P_SYSTEM)
 		return(0);
 
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
+	FOREACH_LWP_IN_PROC(lp, p) {
+		switch (lp->lwp_stat) {
+		case LSSTOP:
+		case LSSLEEP:
+			if ((p->p_flag & P_SWAPPEDOUT) == 0) {
+				if ((lp->lwp_flag & LWP_SINTR) == 0)
+					totalp->t_dw++;
+				else if (lp->lwp_slptime < maxslp)
+					totalp->t_sl++;
+			} else if (lp->lwp_slptime < maxslp) {
+				totalp->t_sw++;
+			}
+			if (lp->lwp_slptime >= maxslp)
+				return(0);
+			break;
 
-	switch (lp->lwp_stat) {
-	case 0:
-		return(0);
-	case LSSLEEP:
-		if ((p->p_flag & P_SWAPPEDOUT) == 0) {
-			if ((lp->lwp_flag & LWP_SINTR) == 0)
-				totalp->t_dw++;
-			else if (lp->lwp_slptime < maxslp)
-				totalp->t_sl++;
-		} else if (lp->lwp_slptime < maxslp) {
-			totalp->t_sw++;
+		case LSRUN:
+			if (p->p_flag & P_SWAPPEDOUT)
+				totalp->t_sw++;
+			else
+				totalp->t_rq++;
+			if (p->p_stat == SIDL)
+				return(0);
+			break;
+
+		default:
+			return (0);
 		}
-		if (lp->lwp_slptime >= maxslp)
-			return(0);
-		break;
-
-	case LSRUN:
-		if (p->p_flag & P_SWAPPEDOUT)
-			totalp->t_sw++;
-		else
-			totalp->t_rq++;
-		if (p->p_stat == SIDL)
-			return(0);
-		break;
 	}
 	/*
 	 * Note active objects.

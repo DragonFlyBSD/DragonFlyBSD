@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_type.c,v 1.6 1999/08/28 00:46:56 peter Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_type.c,v 1.4 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_type.c,v 1.5 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -46,9 +46,10 @@
 #include <vfs/procfs/procfs.h>
 
 int
-procfs_dotype(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+procfs_dotype(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	      struct uio *uio)
 {
+	struct proc *p = lp->lwp_proc;
 	int len;
 	int error;
 	/*
@@ -76,7 +77,7 @@ procfs_dotype(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 }
 
 int
-procfs_validtype(struct proc *p)
+procfs_validtype(struct lwp *lp)
 {
-	return ((p->p_flag & P_SYSTEM) == 0);
+	return ((lp->lwp_proc->p_flag & P_SYSTEM) == 0);
 }

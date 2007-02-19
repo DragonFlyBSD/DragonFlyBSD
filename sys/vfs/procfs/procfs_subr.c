@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.15 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.16 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -264,6 +264,7 @@ procfs_rw(struct vop_read_args *ap)
 	struct proc *curp;
 	struct pfsnode *pfs = VTOPFS(vp);
 	struct proc *p;
+	struct lwp *lp;
 	int rtval;
 
 	if (curtd == NULL)
@@ -276,6 +277,8 @@ procfs_rw(struct vop_read_args *ap)
 		return (EINVAL);
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE)
 		return (EACCES);
+	/* XXX lwp */
+	lp = FIRST_LWP_IN_PROC(p);
 
 	while (pfs->pfs_lockowner) {
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
@@ -285,47 +288,47 @@ procfs_rw(struct vop_read_args *ap)
 	switch (pfs->pfs_type) {
 	case Pnote:
 	case Pnotepg:
-		rtval = procfs_donote(curp, p, pfs, uio);
+		rtval = procfs_donote(curp, lp, pfs, uio);
 		break;
 
 	case Pregs:
-		rtval = procfs_doregs(curp, p, pfs, uio);
+		rtval = procfs_doregs(curp, lp, pfs, uio);
 		break;
 
 	case Pfpregs:
-		rtval = procfs_dofpregs(curp, p, pfs, uio);
+		rtval = procfs_dofpregs(curp, lp, pfs, uio);
 		break;
 
         case Pdbregs:
-                rtval = procfs_dodbregs(curp, p, pfs, uio);
+                rtval = procfs_dodbregs(curp, lp, pfs, uio);
                 break;
 
 	case Pctl:
-		rtval = procfs_doctl(curp, p, pfs, uio);
+		rtval = procfs_doctl(curp, lp, pfs, uio);
 		break;
 
 	case Pstatus:
-		rtval = procfs_dostatus(curp, p, pfs, uio);
+		rtval = procfs_dostatus(curp, lp, pfs, uio);
 		break;
 
 	case Pmap:
-		rtval = procfs_domap(curp, p, pfs, uio);
+		rtval = procfs_domap(curp, lp, pfs, uio);
 		break;
 
 	case Pmem:
-		rtval = procfs_domem(curp, p, pfs, uio);
+		rtval = procfs_domem(curp, lp, pfs, uio);
 		break;
 
 	case Ptype:
-		rtval = procfs_dotype(curp, p, pfs, uio);
+		rtval = procfs_dotype(curp, lp, pfs, uio);
 		break;
 
 	case Pcmdline:
-		rtval = procfs_docmdline(curp, p, pfs, uio);
+		rtval = procfs_docmdline(curp, lp, pfs, uio);
 		break;
 
 	case Prlimit:
-		rtval = procfs_dorlimit(curp, p, pfs, uio);
+		rtval = procfs_dorlimit(curp, lp, pfs, uio);
 		break;
 
 	default:

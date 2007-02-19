@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.37 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.38 2007/02/19 01:14:23 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -534,6 +534,36 @@ allproc_scan(int (*callback)(struct proc *, void *), void *data)
 		PHOLD(p);
 		spin_unlock_rd(&allproc_spin);
 		r = callback(p, data);
+		spin_lock_rd(&allproc_spin);
+		PRELE(p);
+		if (r < 0)
+			break;
+	}
+	spin_unlock_rd(&allproc_spin);
+}
+
+/*
+ * Scan all lwps of processes on the allproc list.  The lwp is automatically
+ * held for the callback.  A return value of -1 terminates the loop.
+ *
+ * possibly not MPSAFE, needs to access foreingn proc structures
+ */
+void
+alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
+{
+	struct proc *p;
+	struct lwp *lp;
+	int r = 0;
+
+	spin_lock_rd(&allproc_spin);
+	LIST_FOREACH(p, &allproc, p_list) {
+		PHOLD(p);
+		spin_unlock_rd(&allproc_spin);
+		FOREACH_LWP_IN_PROC(lp, p) {
+			LWPHOLD(lp);
+			r = callback(lp, data);
+			LWPRELE(lp);
+		}
 		spin_lock_rd(&allproc_spin);
 		PRELE(p);
 		if (r < 0)

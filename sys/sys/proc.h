@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.98 2007/02/18 16:17:09 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.99 2007/02/19 01:14:23 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -460,6 +460,7 @@ void	proc_add_allproc(struct proc *p);
 void	proc_move_allproc_zombie(struct proc *);
 void	proc_remove_zombie(struct proc *);
 void	allproc_scan(int (*callback)(struct proc *, void *), void *data);
+void	alllwp_scan(int (*callback)(struct lwp *, void *), void *data);
 void	zombproc_scan(int (*callback)(struct proc *, void *), void *data);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
 void	updatepcpu(struct lwp *, int, int);
