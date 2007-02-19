@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/firewall.7,v 1.1.2.8 2003/04/29 07:57:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/firewall.7,v 1.8 2006/05/21 14:15:05 swildner Exp $
+.\" $DragonFly: src/share/man/man7/firewall.7,v 1.9 2007/02/19 11:10:11 swildner Exp $
 .\"
 .Dd May 26, 2001
 .Dt FIREWALL 7
@@ -45,7 +45,7 @@ or other purposes.
 .Pp
 Constructing a firewall may appear to be trivial, but most people
 get them wrong.  The most common mistake is to create an exclusive
-firewall rather then an inclusive firewall.  An exclusive firewall
+firewall rather than an inclusive firewall.  An exclusive firewall
 allows all packets through except for those matching a set of rules.
 An inclusive firewall allows only packets matching the rulset
 through.  Inclusive firewalls are much, much safer then exclusive
@@ -58,7 +58,7 @@ system daemons make reverse connections to the
 .Sy auth
 service in an attempt to authenticate the user making a connection.
 Auth is rather dangerous but the proper implementation is to return
-a TCP reset for the connection attempt rather then simply blackholing
+a TCP reset for the connection attempt rather than simply blackholing
 the packet.  We cover these and other quirks involved with constructing
 a firewall in the sample firewall section below.
 .Sh IPFW KERNEL CONFIGURATION
@@ -339,7 +339,7 @@ add 06000 deny all from any to any
 We've mentioned multi-homing hosts and binding services to internal or
 external addresses but we haven't really explained it.  When you have a
 host with multiple IP addresses assigned to it, you can bind services run
-on that host to specific IPs or interfaces rather then all IPs.  Take
+on that host to specific IPs or interfaces rather than all IPs.  Take
 the firewall machine for example:  With three interfaces
 and two exposed IP addresses
 on one of those interfaces, the firewall machine is known by 5 different

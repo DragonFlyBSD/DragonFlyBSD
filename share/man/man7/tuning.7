@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.9 2006/10/15 00:04:45 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.10 2007/02/19 11:10:11 swildner Exp $
 .\"
 .Dd May 11, 2006
 .Dt TUNING 7
@@ -622,7 +622,7 @@ This gives a helping hand
 to the pageout daemon.
 Do not turn this option on unless you need it,
 because the tradeoff you are making is to essentially pre-page memory sooner
-rather then later, eating more swap and disk bandwidth.
+rather than later, eating more swap and disk bandwidth.
 In a small system
 this option will have a detrimental effect but in a large system that is
 already doing moderate paging this option allows the VM system to stage
@@ -819,7 +819,7 @@ For example, in
 we describe a firewall protecting internal hosts with a topology where
 the externally visible hosts are not routed through it.
 Use 100BaseT rather
-than 10BaseT, or use 1000BaseT rather then 100BaseT, depending on your needs.
+than 10BaseT, or use 1000BaseT rather than 100BaseT, depending on your needs.
 Most bottlenecks occur at the WAN link (e.g.\&
 modem, T1, DSL, whatever).
 If expanding the link is not an option it may be possible to use the

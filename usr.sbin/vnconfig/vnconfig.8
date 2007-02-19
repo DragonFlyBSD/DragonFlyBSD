@@ -36,7 +36,7 @@
 .\"
 .\"     @(#)vnconfig.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/usr.sbin/vnconfig/vnconfig.8,v 1.14.2.8 2003/01/04 22:35:53 keramida Exp $
-.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.3 2006/02/10 19:01:10 swildner Exp $
+.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.4 2007/02/19 11:10:12 swildner Exp $
 .\"
 .Dd July 8, 1993
 .Dt VNCONFIG 8
@@ -115,7 +115,7 @@ works for swap backing store.  This option also disables on-the-fly freeing of
 the underlying backing store (for example, when you remove a large file).
 Use this option if you wish to avoid long-term fragmentation of the backing
 store.  Also note that when this option is used, the initial contents of the
-backing store may contain garbage rather then zeros.  It may even be possible to
+backing store may contain garbage rather than zeros.  It may even be possible to
 recover the prior contents of a swap-backed VN across a reboot if the VN device
 is configured before any swap is allocated by the system.
 .It Ar follow
@@ -253,7 +253,7 @@ and to initialize and then edit the label.  Once you create the label, you
 can partition your VN disk and, for example, create a filesystem on one of
 the partitions.  If you are using a file as backing store, it may be possible
 to recover your VN disk after a crash by vnconfig'ing the same file again
-and using the VN configuration already stored in the file rather then
+and using the VN configuration already stored in the file rather than
 relabeling and recreating the filesystem.  It is even possible to fsck the
 VN partitions that previously contained filesystems.
 .Pp

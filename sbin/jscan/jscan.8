@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.11 2006/03/27 16:45:44 swildner Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.12 2007/02/19 11:10:12 swildner Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -74,7 +74,7 @@ format on stderr.  Note that stdout is used only for
 .It Fl f
 .Nm
 will sleep for 5 seconds and loop when it hits EOF on file or prefix
-set input rather then exit.  This option is typically used when running
+set input rather than exit.  This option is typically used when running
 on an input file or prefix set which is live (being written to by
 another
 .Nm
@@ -195,7 +195,7 @@ will be able to quickly seek to the restart point.
 NOTE: If
 you are generating a mirror with the same command via
 .Fl m ,
-and the journaling data input is a stream rather then a file or prefix
+and the journaling data input is a stream rather than a file or prefix
 set, you must use
 .Fl w/W
 if you want the mirror to be restartable.  This is because while we can
@@ -276,7 +276,7 @@ to buffer the journaling input data via
 If
 .Fl w/W
 is not specified then neither the mirroring or output modes will fork.  Under
-these conditions, if the input is a stream rather then a file
+these conditions, if the input is a stream rather than a file
 .Nm
 will be forced to buffer meta-transactions (for mirroring) entirely in
 memory, which could present a serious problem since a single meta-transaction
