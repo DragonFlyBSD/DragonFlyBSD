@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.16 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.17 2007/02/19 00:51:54 swildner Exp $
  */
 
 /*
@@ -46,8 +46,6 @@
 #include <sys/errno.h>
 #include <sys/stat.h>
 #include <sys/acl.h>
-
-static MALLOC_DEFINE(M_ACL, "acl", "access control list");
 
 static int vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);
 static int vacl_get_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/acl.h,v 1.8 2000/01/28 15:22:51 rwatson Exp $
- * $DragonFly: src/sys/sys/acl.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/acl.h,v 1.5 2007/02/19 00:51:54 swildner Exp $
  */
 
 /* 
@@ -96,16 +96,7 @@ typedef struct acl	*acl_t;
 #define	ACL_PERM_BITS	(ACL_PERM_EXEC | ACL_PERM_WRITE | ACL_PERM_READ)
 #define	ACL_POSIX1E_BITS	(ACL_PERM_EXEC | ACL_PERM_WRITE | ACL_PERM_READ)
 
-#ifdef _KERNEL
-
-/*
- * Storage for ACLs and support structures
- */
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_ACL);
-#endif
-
-#else /* !_KERNEL */
+#ifndef _KERNEL
 
 /*
  * Syscall interface -- use the library calls instead as the syscalls
