@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.13 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.14 2007/02/19 01:14:40 corecode Exp $
  */
 
 #include "use_ether.h"
@@ -240,7 +240,6 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 
 	/* Allocate and validate space for the signal handler context. */
-	/* XXX lwp flags */
         if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
 		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
