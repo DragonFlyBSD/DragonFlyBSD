@@ -39,7 +39,7 @@
 .\"     @(#)boot_i386.8	8.2 (Berkeley) 4/19/94
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
-.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.7 2006/11/12 18:15:11 swildner Exp $
+.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.8 2007/02/19 09:34:33 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt BOOT 8 i386
@@ -92,13 +92,12 @@ program is documented separately.
 After the boot blocks have been loaded,
 you should see a prompt similar to the following:
 .Bd -literal
->> BSD/i386 BOOT
-Default: 0:ad(0,a)/kernel
-boot:
+DragonFly boot
+0:ad(0,a)/boot/loader:
 .Ed
 .Pp
 The automatic boot will attempt to load
-.Pa /kernel
+.Pa /boot/loader
 from partition
 .Ql a
 of either the floppy or the hard disk.
