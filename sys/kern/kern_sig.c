@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.65 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.66 2007/02/19 01:14:54 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1117,7 +1117,7 @@ proc_stop(struct proc *p, int notify)
 	p->p_flag &= ~P_WAITED;
 	wakeup(p->p_pptr);
 	if (notify > 1 ||
-	    notify && (p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
+	    (notify && (p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0))
 		ksignal(p->p_pptr, SIGCHLD);
 }
 
