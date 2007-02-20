@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/rconfig/rconfig.c,v 1.3 2004/08/19 23:57:02 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/rconfig.c,v 1.4 2007/02/20 15:52:43 swildner Exp $
  */
 
 #include "defs.h"
@@ -94,7 +94,7 @@ main(int ac, char **av)
     if (AddrBase && AddrBase->name == NULL && AddrBase->next) {
 	fprintf(stderr,
 		"You cannot specify both -a AND a list of hosts.  If you want\n"
-		"to use auto-broadcast mode with a tag other then 'auto',\n"
+		"to use auto-broadcast mode with a tag other than 'auto',\n"
 		"just specify the tag without a host, e.g. ':<tag>'\n");
 	exit(1);
     }
