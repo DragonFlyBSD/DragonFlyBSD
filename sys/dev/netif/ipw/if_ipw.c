@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.19 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.20 2007/02/20 14:24:21 sephe Exp $
  */
 
 /*-
@@ -1491,9 +1491,12 @@ ipw_start(struct ifnet *ifp)
 	struct mbuf *m0;
 	struct ieee80211_node *ni;
 
-	if (ic->ic_state != IEEE80211_S_RUN) {
+	if (ic->ic_state != IEEE80211_S_RUN)
 		return;
-	}
+
+	IF_POLL(&ic->ic_mgtq, m0);
+	if (m0 != NULL)
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
 
 	for (;;) {
 		struct ether_header *eh;

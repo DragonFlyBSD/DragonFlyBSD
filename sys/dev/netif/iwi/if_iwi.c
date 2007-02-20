@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.18 2006/12/23 09:44:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.19 2007/02/20 14:24:21 sephe Exp $
  */
 
 /*-
@@ -1842,6 +1842,10 @@ iwi_start(struct ifnet *ifp)
 
 	if (ic->ic_state != IEEE80211_S_RUN)
 		return;
+
+	IF_POLL(&ic->ic_mgtq, m0);
+	if (m0 != NULL)
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
 
 	for (;;) {
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);
