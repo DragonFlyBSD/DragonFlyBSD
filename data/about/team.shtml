@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.2 2007/02/20 16:25:56 justin Exp $ -->
 
 
 <p>
@@ -199,6 +199,14 @@ r in Japan (AllBSD) (commit access)
 (commit access)
 </td>
 </tr>
+
+<tr><td valign="top">
+<a href="mailto: tgen 'at' netphreax 'dot' net">Thomas E. Spanjaard</a></td>
+<td valign="top">kernel work, NATA
+(commit access)
+</td>
+</tr>
+
 
 <tr><td valign="top">
 <a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
