@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.105 2007/02/17 09:53:22 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.106 2007/02/20 15:58:27 tgen Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1265,6 +1265,17 @@ device		atapifd		# ATAPI floppy drives
 device		atapist		# ATAPI tape drives
 device		atapicam	# emulate ATAPI devices as SCSI ditto via CAM
 				# needs CAM to be present (scbus & pass)
+# The 'NATA' set of drivers are set to replace the previous ATA drivers,
+# and this set of drivers is mutually exclusive with the old ones. This means,
+# you can't have both at the same time!
+#device		nata
+#device		natadisk	# ATA disk drives
+#device		natapicd	# ATAPI CD/DVD drives
+#device		natapifd	# ATAPI floppy drives
+#device		natapist	# ATAPI tape drives
+#device		natapicam	# ATAPI CAM layer emulation
+#device		natapiraid	# support for ATA software RAID controllers
+#device		natausb		# ATA-over-USB support
 
 #The following options are valid on the ATA driver:
 #
@@ -1690,6 +1701,9 @@ device		pci
 options 	PCI_ENABLE_IO_MODES
 #options 	PCI_QUIET	#quiets PCI code on chipset settings
 options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
+#options	PCI_MAP_FIXUP	#fixup lazy PCI mappings for certain devices,
+				#e.g. ATA controllers in legacy mode. NATA
+				#requires this, don't use it with old ATA!
 
 # AGP GART support
 #
