@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.2 2007/02/20 16:25:56 justin Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.3 2007/02/20 19:13:16 justin Exp $ -->
 
 
 <p>
@@ -207,14 +207,6 @@ r in Japan (AllBSD) (commit access)
 </td>
 </tr>
 
-
-<tr><td valign="top">
-<a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build proble
-ms, testing patches (commit access)
-</td>
-</tr>
-
 <tr><td valign="top">
 <a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
@@ -235,6 +227,14 @@ ms, testing patches (commit access)
 <tr><td valign="top">
 <a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
 <td valign="top">1:1 Threading library (commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu<
+/a></td>
+<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build proble
+ms, testing patches (commit access)
+</td>
 </tr>
 
 <tr><td valign="top">
