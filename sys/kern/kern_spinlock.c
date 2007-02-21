@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.9 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.10 2007/02/21 02:19:39 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ spin_lock_wr_contested(struct spinlock *mtx, int value)
 	logspin(beg, mtx, 'w');
 
 	while (value & SPINLOCK_EXCLUSIVE) {
-		value = atomic_swap_int(&mtx->lock, 0x80000000);
+		value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
 		if (exponential_backoff(&backoff)) {
 			value &= ~SPINLOCK_EXCLUSIVE;
 			break;
