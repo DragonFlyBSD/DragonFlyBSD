@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.40 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.41 2007/02/21 15:46:48 corecode Exp $
  */
 
 /*
@@ -1562,8 +1562,7 @@ nfs_sigintr(struct nfsmount *nmp, struct nfsreq *rep, struct thread *td)
 		return (0);
 
 	lp = td->td_lwp;
-	tmpset = lp->lwp_siglist;
-	SIGSETOR(tmpset, p->p_siglist);
+	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	SIGSETNAND(tmpset, p->p_sigignore);
 	if (SIGNOTEMPTY(tmpset) && NFSINT_SIGMASK(tmpset))

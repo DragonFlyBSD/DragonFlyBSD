@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.18 2007/02/21 15:45:37 corecode Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.19 2007/02/21 15:46:48 corecode Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -212,6 +212,29 @@ int	checkpoint_signal_handler(struct lwp *p);
 /*
  * Inline functions:
  */
+/*
+ * Determine which signals are pending for a lwp.
+ */
+static __inline sigset_t
+lwp_sigpend(struct lwp *lp)
+{
+	sigset_t set;
+
+	set = lp->lwp_proc->p_siglist;
+	SIGSETOR(set, lp->lwp_siglist);
+	return (set);
+}
+
+/*
+ * Mark a signal as handled by the lwp.
+ */
+static __inline void
+lwp_delsig(struct lwp *lp, int sig)
+{
+	SIGDELSET(lp->lwp_siglist, sig);
+	SIGDELSET(lp->lwp_proc->p_siglist, sig);
+}
+
 #define	CURSIG(lp)	__cursig(lp)
 #define CURSIGNB(lp)	__cursignb(lp)
 
@@ -231,8 +254,7 @@ __cursig(struct lwp *lp)
 	int r;
 
 	p = lp->lwp_proc;
-	tmpset = p->p_siglist;
-	SIGSETOR(tmpset, lp->lwp_siglist);
+	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
 		return(0);
@@ -248,8 +270,7 @@ __cursignb(struct lwp *lp)
 	sigset_t tmpset;
 
 	p = lp->lwp_proc;
-	tmpset = p->p_siglist;
-	SIGSETOR(tmpset, lp->lwp_siglist);
+	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	if ((!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
 		return(FALSE);

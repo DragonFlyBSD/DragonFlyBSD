@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.73 2007/02/18 16:17:09 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.74 2007/02/21 15:46:48 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -174,6 +174,7 @@ exit1(int rv)
 	p->p_flag &= ~(P_TRACED | P_PPWAIT);
 	p->p_flag |= P_WEXIT;
 	SIGEMPTYSET(p->p_siglist);
+	SIGEMPTYSET(lp->lwp_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
 		callout_stop(&p->p_ithandle);
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.35 2007/01/06 19:37:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.36 2007/02/21 15:46:48 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -797,11 +797,11 @@ int
 sys_linux_wait4(struct linux_wait4_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	struct rusage rusage;
 	int error, options, status;
 
-	KKASSERT(p);
+	KKASSERT(lp);
 
 #ifdef DEBUG
 	if (ldebug(wait4))
@@ -818,7 +818,7 @@ sys_linux_wait4(struct linux_wait4_args *args)
 	    args->rusage ? &rusage : NULL, &args->sysmsg_result);
 
 	if (error == 0)
-		SIGDELSET(p->p_siglist, SIGCHLD);
+		lwp_delsig(lp, SIGCHLD);
 
 	if (error == 0 && args->status) {
 		status &= 0xffff;

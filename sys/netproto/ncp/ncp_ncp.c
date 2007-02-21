@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.11 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.12 2007/02/21 15:46:48 corecode Exp $
  *
  * Core of NCP protocol
  */
@@ -94,8 +94,7 @@ ncp_chkintr(struct ncp_conn *conn, struct thread *td)
 
 	if (p == NULL)
 		return 0;
-	tmpset = p->p_siglist;
-	SIGSETOR(tmpset, lp->lwp_siglist);
+	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	SIGSETNAND(tmpset, p->p_sigignore);
 	if (SIGNOTEMPTY(tmpset) && NCP_SIGMASK(tmpset))

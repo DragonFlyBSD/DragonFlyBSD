@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.36 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.37 2007/02/21 15:46:48 corecode Exp $
  */
 
 
@@ -443,7 +443,7 @@ mfs_start(struct mount *mp, int flags)
 				KKASSERT(td->td_proc);
 				sig = CURSIG(td->td_lwp);
 				if (sig)
-					SIGDELSET(td->td_proc->p_siglist, sig);
+					lwp_delsig(td->td_lwp, sig);
 			}
 		}
 		else if (tsleep((caddr_t)mfsp, PCATCH, "mfsidl", 0))

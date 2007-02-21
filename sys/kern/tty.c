@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.39 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.40 2007/02/21 15:46:48 corecode Exp $
  */
 
 /*-
@@ -1803,20 +1803,24 @@ out:
 int
 ttycheckoutq(struct tty *tp, int wait)
 {
+	struct lwp *lp = curthread->td_lwp;
 	int hiwat;
-	sigset_t oldmask;
+	sigset_t oldset, newset;
 
 	hiwat = tp->t_ohiwat;
-	SIGEMPTYSET(oldmask);
+	SIGEMPTYSET(oldset);
+	SIGEMPTYSET(newset);
 	crit_enter();
 	if (wait)
-		oldmask = curproc->p_siglist;
+		oldset = lwp_sigpend(lp);
 	if (tp->t_outq.c_cc > hiwat + OBUFSIZ + 100) {
 		while (tp->t_outq.c_cc > hiwat) {
 			ttstart(tp);
 			if (tp->t_outq.c_cc <= hiwat)
 				break;
-			if (!(wait && SIGSETEQ(curproc->p_siglist, oldmask))) {
+			if (wait)
+				newset = lwp_sigpend(lp);
+			if (!wait || SIGSETNEQ(oldset, newset)) {
 				crit_exit();
 				return (0);
 			}

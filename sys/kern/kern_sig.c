@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.67 2007/02/21 15:45:36 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.68 2007/02/21 15:46:48 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -229,6 +229,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp;
 	struct sigacts *ps = p->p_sigacts;
 
 	if (sig <= 0 || sig > _SIG_MAXSIG)
@@ -336,6 +337,12 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		     ps->ps_sigact[_SIG_IDX(sig)] == SIG_DFL)) {
 			/* never to be seen again */
 			SIGDELSET(p->p_siglist, sig);
+			/*
+			 * Remove the signal also from the thread lists.
+			 */
+			FOREACH_LWP_IN_PROC(lp, p) {
+				SIGDELSET(lp->lwp_siglist, sig);
+			}
 			if (sig != SIGCONT)
 				/* easier in ksignal */
 				SIGADDSET(p->p_sigignore, sig);
@@ -398,6 +405,8 @@ execsigs(struct proc *p)
 	struct lwp *lp;
 	int sig;
 
+	lp = ONLY_LWP_IN_PROC(p);
+
 	/*
 	 * Reset caught signals.  Held signals remain held
 	 * through p_sigmask (unless they were caught,
@@ -410,14 +419,15 @@ execsigs(struct proc *p)
 			if (sig != SIGCONT)
 				SIGADDSET(p->p_sigignore, sig);
 			SIGDELSET(p->p_siglist, sig);
+			SIGDELSET(lp->lwp_siglist, sig);
 		}
 		ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 	}
+
 	/*
 	 * Reset stack state to the user stack.
 	 * Clear set of signals caught on the signal stack.
 	 */
-	lp = ONLY_LWP_IN_PROC(p);
 	lp->lwp_sigstk.ss_flags = SS_DISABLE;
 	lp->lwp_sigstk.ss_size = 0;
 	lp->lwp_sigstk.ss_sp = 0;
@@ -493,10 +503,9 @@ sys_sigprocmask(struct sigprocmask_args *uap)
 int
 kern_sigpending(struct __sigset *set)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = curthread->td_lwp;
 
-	*set = p->p_siglist;
+	*set = lwp_sigpend(lp);
 
 	return (0);
 }
@@ -1156,7 +1165,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 	}
 
 	for (;;) {
-		set = p->p_siglist;
+		set = lwp_sigpend(lp);
 		SIGSETAND(set, waitset);
 		if ((sig = sig_ffs(&set)) != 0) {
 			SIGFILLSET(lp->lwp_sigmask);
@@ -1223,7 +1232,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		error = 0;
 		bzero(info, sizeof(*info));
 		info->si_signo = sig;
-		SIGDELSET(p->p_siglist, sig);	/* take the signal! */
+		lwp_delsig(lp, sig);	/* take the signal! */
 
 		if (sig == SIGKILL)
 			sigexit(p, sig);
@@ -1333,7 +1342,7 @@ issignal(struct lwp *lp)
 	for (;;) {
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
 
-		mask = p->p_siglist;
+		mask = lwp_sigpend(lp);
 		SIGSETNAND(mask, lp->lwp_sigmask);
 		if (p->p_flag & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
@@ -1350,7 +1359,7 @@ issignal(struct lwp *lp)
 		 * only if P_TRACED was on when they were posted.
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig) && (traced == 0)) {
-			SIGDELSET(p->p_siglist, sig);
+			lwp_delsig(lp, sig);
 			continue;
 		}
 		if ((p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
@@ -1376,7 +1385,7 @@ issignal(struct lwp *lp)
 			 * then it will leave it in p->p_xstat;
 			 * otherwise we just look for signals again.
 			 */
-			SIGDELSET(p->p_siglist, sig);	/* clear old signal */
+			lwp_delsig(lp, sig);	/* clear old signal */
 			sig = p->p_xstat;
 			if (sig == 0)
 				continue;
@@ -1385,6 +1394,7 @@ issignal(struct lwp *lp)
 			 * Put the new signal into p_siglist.  If the
 			 * signal is being masked, look for other signals.
 			 */
+			/* XXX should run via ksignal? */
 			SIGADDSET(p->p_siglist, sig);
 			if (SIGISMEMBER(lp->lwp_sigmask, sig))
 				continue;
@@ -1480,7 +1490,7 @@ issignal(struct lwp *lp)
 			rel_mplock();
 			return (sig);
 		}
-		SIGDELSET(p->p_siglist, sig);		/* take the signal! */
+		lwp_delsig(lp, sig);		/* take the signal! */
 	}
 	/* NOTREACHED */
 }
@@ -1512,7 +1522,7 @@ postsig(int sig)
 		vkernel_trap(p, tf);
 	}
 
-	SIGDELSET(p->p_siglist, sig);
+	lwp_delsig(lp, sig);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
