@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.68 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.69 2007/02/21 15:47:02 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -819,6 +819,61 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 }
 
 /*
+ * Find a suitable lwp to deliver the signal to.
+ *
+ * Returns NULL if all lwps hold the signal blocked.
+ */
+static struct lwp *
+find_lwp_for_signal(struct proc *p, int sig)
+{
+	struct lwp *lp;
+	struct lwp *run, *sleep, *stop;
+
+	/*
+	 * If the running/preempted thread belongs to the proc to which
+	 * the signal is being delivered and this thread does not block
+	 * the signal, then we can avoid a context switch by delivering
+	 * the signal to this thread, because it will return to userland
+	 * soon anyways.
+	 */
+	lp = lwkt_preempted_proc();
+	if (lp != NULL && lp->lwp_proc == p && !SIGISMEMBER(lp->lwp_sigmask, sig))
+		return (lp);
+
+	run = sleep = stop = NULL;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		/*
+		 * If the signal is being blocked by the lwp, then this
+		 * lwp is not eligible for receiving the signal.
+		 */
+		if (SIGISMEMBER(lp->lwp_sigmask, sig))
+			continue;
+
+		switch (lp->lwp_stat) {
+		case LSRUN:
+			run = lp;
+			break;
+
+		case LSSTOP:
+			stop = lp;
+			break;
+
+		case LSSLEEP:
+			if (lp->lwp_flag & LWP_SINTR)
+				sleep = lp;
+			break;
+		}
+	}
+
+	if (run != NULL)
+		return (run);
+	else if (sleep != NULL)
+		return (sleep);
+	else
+		return (stop);
+}
+
+/*
  * Send the signal to the process.  If the signal has an action, the action
  * is usually performed by the target process rather than the caller; we add
  * the signal to the set of pending signals for the process.
@@ -834,8 +889,7 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 void
 ksignal(struct proc *p, int sig)
 {
-	/* XXX lwp more intelligent lwp choice needed */
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);
+	struct lwp *lp;
 	int prop;
 	sig_t action;
 
@@ -867,17 +921,10 @@ ksignal(struct proc *p, int sig)
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig) || (p->p_flag & P_WEXIT))
 			return;
-		if (SIGISMEMBER(lp->lwp_sigmask, sig))
-			action = SIG_HOLD;
-		else if (SIGISMEMBER(p->p_sigcatch, sig))
+		if (SIGISMEMBER(p->p_sigcatch, sig))
 			action = SIG_CATCH;
 		else
 			action = SIG_DFL;
-	}
-
-	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
-	    (p->p_flag & P_TRACED) == 0) {
-		p->p_nice = NZERO;
 	}
 
 	/*
@@ -899,97 +946,16 @@ ksignal(struct proc *p, int sig)
 		}
 		SIG_CONTSIGMASK(p->p_siglist);
 	}
-	SIGADDSET(p->p_siglist, sig);
-
-	/*
-	 * Defer further processing for signals which are held,
-	 * except that stopped processes must be continued by SIGCONT.
-	 */
-	if (action == SIG_HOLD) {
-		if ((prop & SA_CONT) == 0 || p->p_stat != SSTOP)
-			return;
-	}
 
 	crit_enter();
 
-
-	/* XXX lwp handle stop/continue */
-
-	/*
-	 * LWP is in tsleep and not stopped
-	 */
-	if (lp->lwp_stat == LSSLEEP && p->p_stat != SSTOP) {
+	if (p->p_stat == SSTOP) {
 		/*
-		 * If the process is sleeping uninterruptibly
-		 * we can't interrupt the sleep... the signal will
-		 * be noticed when the process returns through
-		 * trap() or syscall().
+		 * Nobody can handle this signal, so add it to the process
+		 * pending list.
 		 */
-		if ((lp->lwp_flag & LWP_SINTR) == 0)
-			goto out;
+		SIGADDSET(p->p_siglist, sig);
 
-		/*
-		 * If the process is sleeping and traced, make it runnable
-		 * so it can discover the signal in issignal() and stop
-		 * for the parent.
-		 *
-		 * If the process is stopped and traced, no further action
-		 * is necessary.
-		 */
-		if (p->p_flag & P_TRACED)
-			goto run;
-
-		/*
-		 * If the process is sleeping and SA_CONT, and the signal
-		 * mode is SIG_DFL, then make the process runnable.
-		 *
-		 * However, do *NOT* set LWP_BREAKTSLEEP.  We do not want
-		 * a SIGCONT to terminate an interruptable tsleep early
-		 * and generate a spurious EINTR.
-		 */
-		if ((prop & SA_CONT) && action == SIG_DFL) {
-			SIGDELSET(p->p_siglist, sig);
-			goto run_no_break;
-		}
-
-		/*
-		 * If the process is sleeping and receives a STOP signal,
-		 * process immediately if possible.  All other (caught or
-		 * default) signals cause the process to run.
-		 */
-		if (prop & SA_STOP) {
-			if (action != SIG_DFL)
-				goto run;
-
-			/*
-			 * If a child holding parent blocked, stopping 
-			 * could cause deadlock.  Take no action at this
-			 * time.
-			 */
-			if (p->p_flag & P_PPWAIT)
-				goto out;
-
-			/*
-			 * Do not actually try to manipulate the process while
-			 * it is sleeping, simply set SSTOP to indicate that
-			 * lwps should stop as soon as they safely can.
-			 */
-			SIGDELSET(p->p_siglist, sig);
-			p->p_xstat = sig;
-			proc_stop(p, 1);
-			goto out;
-		}
-
-		/*
-		 * Otherwise the signal can interrupt the sleep.
-		 */
-		goto run;
-	}
-
-	/*
-	 * Process is in tsleep and is stopped
-	 */
-	if (lp->lwp_stat == LSSLEEP && p->p_stat == SSTOP) {
 		/*
 		 * If the process is stopped and is being traced, then no
 		 * further action is necessary.
@@ -1019,11 +985,12 @@ ksignal(struct proc *p, int sig)
 			 * p_siglist.  If the process catches SIGCONT, let it
 			 * handle the signal itself.
 			 */
+			/* XXX what if the signal is being held blocked? */
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
 			proc_unstop(p);
 			if (action == SIG_CATCH)
-				goto run;
+				goto active_process;
 			goto out;
 		}
 
@@ -1038,59 +1005,136 @@ ksignal(struct proc *p, int sig)
 		}
 
 		/*
-		 * Otherwise the process is sleeping interruptably but
-		 * is stopped, just set the LWP_BREAKTSLEEP flag and take
-		 * no further action.  The next runnable action will wake
-		 * the process up.
+		 * Otherwise the process is stopped and it received some
+		 * signal, which does not change its stopped state.
+		 * Just exit, as soon as the process continues, it will
+		 * process the signal.
 		 */
-		lp->lwp_flag |= LWP_BREAKTSLEEP;
+		goto out;
+
+		/* NOTREACHED */
+	}
+	/* else not stopped */
+active_process:
+
+	lp = find_lwp_for_signal(p, sig);
+
+	/*
+	 * If lp == NULL, there is no thread available which does
+	 * not block the signal.  Defer further processing for this signal.
+	 * Add the signal to the process pending list.
+	 */
+	if (lp == NULL) {
+		SIGADDSET(p->p_siglist, sig);
+		goto out;
+	}
+	/* else we have a lwp to deliver the signal to */
+
+	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
+	    (p->p_flag & P_TRACED) == 0) {
+		p->p_nice = NZERO;
+	}
+
+	/*
+	 * If the process receives a STOP signal which indeed needs to
+	 * stop the process, do so.  If the process chose to catch the
+	 * signal, it will be treated like any other signal.
+	 */
+	if ((prop & SA_STOP) && action == SIG_DFL) {
+		/*
+		 * If a child holding parent blocked, stopping
+		 * could cause deadlock.  Take no action at this
+		 * time.
+		 */
+		if (p->p_flag & P_PPWAIT) {
+			SIGADDSET(p->p_siglist, sig);
+			goto out;
+		}
+
+		/*
+		 * Do not actually try to manipulate the process, but simply
+		 * stop it.  Lwps will stop as soon as they safely can.
+		 */
+		p->p_xstat = sig;
+		proc_stop(p, 1);
 		goto out;
 	}
 
 	/*
-	 * Otherwise the process is running
-	 *
-	 * SRUN, SIDL, SZOMB do nothing with the signal,
-	 * other than kicking ourselves if we are running.
-	 * It will either never be noticed, or noticed very soon.
-	 *
-	 * Note that p_thread may be NULL or may not be completely
-	 * initialized if the process is in the SIDL or SZOMB state.
-	 *
-	 * For SMP we may have to forward the request to another cpu.
-	 * YYY the MP lock prevents the target process from moving
-	 * to another cpu, see kern/kern_switch.c
-	 *
-	 * If the target thread is waiting on its message port,
-	 * wakeup the target thread so it can check (or ignore)
-	 * the new signal.  YYY needs cleanup.
+	 * If it is a CONT signal with default action, just ignore it.
 	 */
-	if (lp == lwkt_preempted_proc()) {
-		signotify();
-	} else if (lp->lwp_stat == LSRUN) {
-		struct thread *td = lp->lwp_thread;
+	if ((prop & SA_CONT) && action == SIG_DFL)
+		goto out;
 
-		KASSERT(td != NULL, 
-		    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
-		    p->p_pid, lp->lwp_tid, lp->lwp_stat, p->p_flag, lp->lwp_flag));
+	/*
+	 * Mark signal pending at this specific thread.
+	 */
+	SIGADDSET(lp->lwp_siglist, sig);
+
+	if (lp->lwp_stat == LSSLEEP) {
+		/*
+		 * Thread is in tsleep.
+		 */
+
+		/*
+		 * If the thread is sleeping uninterruptibly
+		 * we can't interrupt the sleep... the signal will
+		 * be noticed when the lwp returns through
+		 * trap() or syscall().
+		 */
+		if ((lp->lwp_flag & LWP_SINTR) == 0)
+			goto out;
+
+		/*
+		 * Otherwise the signal can interrupt the sleep.
+		 *
+		 * If the process is traced, the lwp will handle the
+		 * tracing in issignal() when it returns to userland.
+		 */
+		/*
+		 * Make runnable and break out of any tsleep as well.
+		 */
+		lp->lwp_flag |= LWP_BREAKTSLEEP;
+		setrunnable(lp);
+	} else {
+		/*
+		 * Otherwise the thread is running
+		 *
+		 * LSRUN does nothing with the signal, other than kicking
+		 * ourselves if we are running.
+		 * SZOMB and SIDL mean that it will either never be noticed,
+		 * or noticed very soon.
+		 *
+		 * Note that lwp_thread may be NULL or may not be completely
+		 * initialized if the process is in the SIDL or SZOMB state.
+		 *
+		 * For SMP we may have to forward the request to another cpu.
+		 * YYY the MP lock prevents the target process from moving
+		 * to another cpu, see kern/kern_switch.c
+		 *
+		 * If the target thread is waiting on its message port,
+		 * wakeup the target thread so it can check (or ignore)
+		 * the new signal.  YYY needs cleanup.
+		 */
+		if (lp == lwkt_preempted_proc()) {
+			signotify();
+		} else if (lp->lwp_stat == LSRUN) {
+			struct thread *td = lp->lwp_thread;
+
+			KASSERT(td != NULL,
+			    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
+			    p->p_pid, lp->lwp_tid, lp->lwp_stat,
+			    p->p_flag, lp->lwp_flag));
 
 #ifdef SMP
-		if (td->td_gd != mycpu)
-			lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
-		else
+			if (td->td_gd != mycpu)
+				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
+			else
 #endif
-		if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
-			lwkt_schedule(td);
+			if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+				lwkt_schedule(td);
+		}
 	}
-	goto out;
-	/*NOTREACHED*/
-run:
-	/*
-	 * Make runnable and break out of any tsleep as well.
-	 */
-	lp->lwp_flag |= LWP_BREAKTSLEEP;
-run_no_break:
-	setrunnable(lp);
 out:
 	crit_exit();
 }
@@ -1346,7 +1390,7 @@ issignal(struct lwp *lp)
 		SIGSETNAND(mask, lp->lwp_sigmask);
 		if (p->p_flag & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
-		if (!SIGNOTEMPTY(mask)) { 	/* no signal to send */
+		if (SIGISEMPTY(mask)) {		/* no signal to send */
 			rel_mplock();
 			return (0);
 		}
@@ -1393,6 +1437,8 @@ issignal(struct lwp *lp)
 			/*
 			 * Put the new signal into p_siglist.  If the
 			 * signal is being masked, look for other signals.
+			 *
+			 * XXX lwp might need a call to ksignal()
 			 */
 			/* XXX should run via ksignal? */
 			SIGADDSET(p->p_siglist, sig);
@@ -1452,8 +1498,6 @@ issignal(struct lwp *lp)
 		    		    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
-				p->p_xstat = sig;
-				proc_stop(p, 1);
 				while (p->p_stat == SSTOP) {
 					tstop();
 				}
