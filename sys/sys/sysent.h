@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.11 2006/06/07 03:02:11 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.12 2007/02/21 15:45:37 corecode Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -41,7 +41,7 @@
 #include <sys/types.h>
 #endif
 
-struct proc;
+struct lwp;
 
 typedef	int	sy_call_t (void *);
 
@@ -83,7 +83,7 @@ struct sysentvec {
 	void		(*sv_prepsyscall) (struct trapframe *, int *,
 					       u_int *, caddr_t *);
 	char		*sv_name;	/* name of binary type */
-	int		(*sv_coredump) (struct proc *, struct vnode *,
+	int		(*sv_coredump) (struct lwp *, int, struct vnode *,
 					    off_t);
 					/* function to dump core, or NULL */
 	int		(*sv_imgact_try) (struct image_params *);

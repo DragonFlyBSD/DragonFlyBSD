@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.66 2007/02/19 01:14:54 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.67 2007/02/21 15:45:36 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -73,7 +73,7 @@
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
-static int	coredump(struct proc *);
+static int	coredump(struct lwp *, int);
 static char	*expand_name(const char *, uid_t, pid_t);
 static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
@@ -803,8 +803,8 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 			ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 		}
 	} else {
-		p->p_code = code;	/* XXX for core dump/debugger */
-		p->p_sig = sig;		/* XXX to verify code */
+		lp->lwp_code = code;	/* XXX for core dump/debugger */
+		lp->lwp_sig = sig;	/* XXX to verify code */
 		ksignal(p, sig);
 	}
 }
@@ -1426,7 +1426,7 @@ issignal(struct lwp *lp)
 			 * Handle the in-kernel checkpoint action
 			 */
 			if (prop & SA_CKPT) {
-				checkpoint_signal_handler(p);
+				checkpoint_signal_handler(lp);
 				break;
 			}
 
@@ -1587,12 +1587,12 @@ postsig(int sig)
 
 		crit_exit();
 		lp->lwp_ru.ru_nsignals++;
-		if (p->p_sig != sig) {
+		if (lp->lwp_sig != sig) {
 			code = 0;
 		} else {
-			code = p->p_code;
-			p->p_code = 0;
-			p->p_sig = 0;
+			code = lp->lwp_code;
+			lp->lwp_code = 0;
+			lp->lwp_sig = 0;
 		}
 		(*p->p_sysent->sv_sendsig)(action, sig, &returnmask, code);
 	}
@@ -1623,16 +1623,18 @@ killproc(struct proc *p, char *why)
 void
 sigexit(struct proc *p, int sig)
 {
+	struct lwp *lp = FIRST_LWP_IN_PROC(p);	/* XXX lwp */
+
 	p->p_acflag |= AXSIG;
 	if (sigprop(sig) & SA_CORE) {
-		p->p_sig = sig;
+		lp->lwp_sig = sig;
 		/*
 		 * Log signals which would cause core dumps
 		 * (Log as LOG_INFO to appease those who don't want
 		 * these messages.)
 		 * XXX : Todo, as well as euid, write out ruid too
 		 */
-		if (coredump(p) == 0)
+		if (coredump(lp, sig) == 0)
 			sig |= WCOREFLAG;
 		if (kern_logsigexit)
 			log(LOG_INFO,
@@ -1734,11 +1736,14 @@ expand_name(const char *name, uid_t uid, pid_t pid)
  * then it passes on a vnode and a size limit to the process-specific
  * coredump routine if there is one; if there _is not_ one, it returns
  * ENOSYS; otherwise it returns the error from the process-specific routine.
+ *
+ * The parameter `lp' is the lwp which triggered the coredump.
  */
 
 static int
-coredump(struct proc *p)
+coredump(struct lwp *lp, int sig)
 {
+	struct proc *p = lp->lwp_proc;
 	struct vnode *vp;
 	struct ucred *cred = p->p_ucred;
 	struct flock lf;
@@ -1804,7 +1809,7 @@ coredump(struct proc *p)
 	vn_unlock(vp);
 
 	error = p->p_sysent->sv_coredump ?
-		  p->p_sysent->sv_coredump(p, vp, limit) : ENOSYS;
+		  p->p_sysent->sv_coredump(lp, sig, vp, limit) : ENOSYS;
 
 out1:
 	lf.l_type = F_UNLCK;

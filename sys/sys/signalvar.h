@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.17 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.18 2007/02/21 15:45:37 corecode Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -207,7 +207,7 @@ void	sendsig (sig_t action, int sig, sigset_t *retmask, u_long code);
 void	sendupcall (struct vmupcall *vu, int morepending);
 int	fetchupcall (struct vmupcall *vu, int morepending, void *rsp);
 void	sigexit (struct proc *p, int sig);
-int	checkpoint_signal_handler(struct proc *p);
+int	checkpoint_signal_handler(struct lwp *p);
 
 /*
  * Inline functions:

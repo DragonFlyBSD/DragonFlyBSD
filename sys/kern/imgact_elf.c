@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.48 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.49 2007/02/21 15:45:36 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -903,27 +903,27 @@ static int cb_put_fp(vm_map_entry_t, void *);
 
 
 static int each_segment (struct proc *, segment_callback, void *, int);
-static int elf_corehdr (struct proc *, struct file *, struct ucred *,
+static int elf_corehdr (struct lwp *, int, struct file *, struct ucred *,
 			int, elf_buf_t);
-static int elf_puthdr (struct proc *, elf_buf_t, const prstatus_t *,
+static int elf_puthdr (struct lwp *, elf_buf_t, const prstatus_t *,
 			const prfpregset_t *, const prpsinfo_t *, int);
 static int elf_putnote (elf_buf_t, const char *, int, const void *, size_t);
 
-static int elf_putsigs(struct proc *, elf_buf_t);
+static int elf_putsigs(struct lwp *, elf_buf_t);
 static int elf_puttextvp(struct proc *, elf_buf_t);
 static int elf_putfiles(struct proc *, elf_buf_t);
 
 extern int osreldate;
 
 int
-elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
+elf_coredump(struct lwp *lp, int sig, struct vnode *vp, off_t limit)
 {
 	struct file *fp; 
 	int error;
 
 	if ((error = falloc(NULL, &fp, NULL)) != 0)
 		return (error);
-	fsetcred(fp, p->p_ucred);
+	fsetcred(fp, lp->lwp_proc->p_ucred);
 
 	/*
 	 * XXX fixme.
@@ -934,7 +934,7 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 	fp->f_data = vp;
 	vn_unlock(vp);
 	
-	error = generic_elf_coredump(p, fp, limit);
+	error = generic_elf_coredump(lp, sig, fp, limit);
 
 	fp->f_type = 0;
 	fp->f_flag = 0;
@@ -945,8 +945,9 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 }
 
 int
-generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
+generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 {
+	struct proc *p = lp->lwp_proc;
 	struct ucred *cred = p->p_ucred;
 	int error = 0;
 	struct sseg_closure seginfo;
@@ -968,7 +969,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	 * size is calculated.
 	 */
 	bzero(&target, sizeof(target));
-	elf_puthdr(p, &target, NULL, NULL, NULL, seginfo.count);
+	elf_puthdr(lp, &target, NULL, NULL, NULL, seginfo.count);
 
 	if (target.off + seginfo.vsize >= limit)
 		return (EFAULT);
@@ -983,7 +984,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 
 	if (target.buf == NULL)
 		return EINVAL;
-	error = elf_corehdr(p, fp, cred, seginfo.count, &target);
+	error = elf_corehdr(lp, sig, fp, cred, seginfo.count, &target);
 
 	/* Write the contents of all of the writable segments. */
 	if (error == 0) {
@@ -1223,9 +1224,11 @@ target_reserve(elf_buf_t target, size_t bytes, int *error)
  * the page boundary.
  */
 static int
-elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs, 
+elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred, int numsegs,
 	    elf_buf_t target)
 {
+	/* XXX lwp handle more than one lwp */
+	struct proc *p = lp->lwp_proc;
 	struct {
 		prstatus_t status;
 		prfpregset_t fpregset;
@@ -1236,6 +1239,7 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	prfpregset_t *fpregset;
 	prpsinfo_t *psinfo;
 	int nbytes;
+
 	tempdata = kmalloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
 	status = &tempdata->status;
 	fpregset = &tempdata->fpregset;
@@ -1247,12 +1251,11 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	status->pr_gregsetsz = sizeof(gregset_t);
 	status->pr_fpregsetsz = sizeof(fpregset_t);
 	status->pr_osreldate = osreldate;
-	status->pr_cursig = p->p_sig;
+	status->pr_cursig = sig;
 	status->pr_pid = p->p_pid;
-	/* XXX lwp */
-	fill_regs(FIRST_LWP_IN_PROC(p), &status->pr_reg);
+	fill_regs(lp, &status->pr_reg);
 
-	fill_fpregs(FIRST_LWP_IN_PROC(p), fpregset);
+	fill_fpregs(lp, fpregset);
 
 	psinfo->pr_version = PRPSINFO_VERSION;
 	psinfo->pr_psinfosz = sizeof(prpsinfo_t);
@@ -1262,7 +1265,7 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
 
 	/* Fill in the header. */
-	error = elf_puthdr(p, target, status, fpregset, psinfo, numsegs);
+	error = elf_puthdr(lp, target, status, fpregset, psinfo, numsegs);
 
 	kfree(tempdata, M_TEMP);
 
@@ -1275,9 +1278,10 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 }
 
 static int
-elf_puthdr(struct proc *p, elf_buf_t target, const prstatus_t *status,
+elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
 	const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs)
 {
+	struct proc *p = lp->lwp_proc;
 	int error = 0;
 	size_t phoff;
 	size_t noteoff;
@@ -1315,7 +1319,7 @@ elf_puthdr(struct proc *p, elf_buf_t target, const prstatus_t *status,
 	if (error == 0)
 		error = elf_puttextvp(p, target);
 	if (error == 0)
-		error = elf_putsigs(p, target);
+		error = elf_putsigs(lp, target);
 	if (error == 0)
 		error = elf_putfiles(p, target);
 
@@ -1405,8 +1409,10 @@ elf_putnote(elf_buf_t target, const char *name, int type,
 
 
 static int
-elf_putsigs(struct proc *p, elf_buf_t target)
+elf_putsigs(struct lwp *lp, elf_buf_t target)
 {
+	/* XXX lwp handle more than one lwp */
+	struct proc *p = lp->lwp_proc;
 	int error = 0;
 	struct ckpt_siginfo *csi;
 
@@ -1416,8 +1422,7 @@ elf_putsigs(struct proc *p, elf_buf_t target)
 		bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
 		bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
 		bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
-		/* XXX lwp */
-		bcopy(&FIRST_LWP_IN_PROC(p)->lwp_sigmask, &csi->csi_sigmask,
+		bcopy(&lp->lwp_sigmask, &csi->csi_sigmask,
 			sizeof(sigset_t));
 		csi->csi_sigparent = p->p_sigparent;
 	}

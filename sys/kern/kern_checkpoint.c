@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.16 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.17 2007/02/21 15:45:36 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -75,12 +75,12 @@
 
 
 static int elf_loadphdrs(struct file *fp,  Elf_Phdr *phdr, int numsegs);
-static int elf_getnotes(struct proc *p, struct file *fp, size_t notesz);
+static int elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz);
 static int elf_demarshalnotes(void *src, prpsinfo_t *psinfo,
 		 prstatus_t *status, prfpregset_t *fpregset, int nthreads); 
-static int elf_loadnotes(struct proc *, prpsinfo_t *, prstatus_t *, 
+static int elf_loadnotes(struct lwp *, prpsinfo_t *, prstatus_t *,
 		 prfpregset_t *);
-static int elf_getsigs(struct proc *p, struct file *fp); 
+static int elf_getsigs(struct lwp *lp, struct file *fp);
 static int elf_getfiles(struct proc *p, struct file *fp);
 static int elf_gettextvp(struct proc *p, struct file *fp);
 static char *ckpt_expand_name(const char *name, uid_t uid, pid_t pid);
@@ -176,7 +176,7 @@ elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 
 
 static int
-elf_getnotes(struct proc *p, struct file *fp, size_t notesz) 
+elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz)
 {
 	int error;
 	int nthreads;
@@ -204,7 +204,7 @@ elf_getnotes(struct proc *p, struct file *fp, size_t notesz)
 	if (error)
 		goto done;
 	/* fetch register state from notes */
-	error = elf_loadnotes(p, psinfo, status, fpregset);
+	error = elf_loadnotes(lp, psinfo, status, fpregset);
  done:
 	if (psinfo)
 		kfree(psinfo, M_TEMP);
@@ -218,9 +218,9 @@ elf_getnotes(struct proc *p, struct file *fp, size_t notesz)
 }
 
 static int
-ckpt_thaw_proc(struct proc *p, struct file *fp)
+ckpt_thaw_proc(struct lwp *lp, struct file *fp)
 {
-
+	struct proc *p = lp->lwp_proc;
 	Elf_Phdr *phdr = NULL;
 	Elf_Ehdr *ehdr = NULL;
 	int error;
@@ -240,7 +240,7 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 		goto done;
 
 	/* fetch notes section containing register state */
-	if ((error = elf_getnotes(p, fp, phdr->p_filesz)) != 0)
+	if ((error = elf_getnotes(lp, fp, phdr->p_filesz)) != 0)
 		goto done;
 
 	/* fetch program text vnodes */
@@ -248,7 +248,7 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 		goto done;
 
 	/* fetch signal disposition */
-	if ((error = elf_getsigs(p, fp)) != 0) {
+	if ((error = elf_getsigs(lp, fp)) != 0) {
 		kprintf("failure in recovering signals\n");
 		goto done;
 	}
@@ -284,10 +284,10 @@ done:
 }
 
 static int
-elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status, 
+elf_loadnotes(struct lwp *lp, prpsinfo_t *psinfo, prstatus_t *status,
 	   prfpregset_t *fpregset) 
 {
-	struct lwp *lp;
+	struct proc *p = lp->lwp_proc;
 	int error;
 
 	/* validate status and psinfo */
@@ -302,8 +302,7 @@ elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status,
 		error = EINVAL;
 		goto done;
 	}
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
+	/* XXX lwp handle more than one lwp*/
 	if ((error = set_regs(lp, &status->pr_reg)) != 0)
 		goto done;
 	error = set_fpregs(lp, fpregset);
@@ -447,12 +446,12 @@ elf_loadphdrs(struct file *fp, Elf_Phdr *phdr, int numsegs)
 }
 
 static int
-elf_getsigs(struct proc *p, struct file *fp) 
+elf_getsigs(struct lwp *lp, struct file *fp) 
 {
+	struct proc *p = lp->lwp_proc;
 	int error;
 	struct ckpt_siginfo *csi;
 	struct sigacts *tmpsigacts;
-	struct lwp *lp;
 
 	TRACE_ENTER;
 	csi = kmalloc(sizeof(struct ckpt_siginfo), M_TEMP, M_ZERO | M_WAITOK);
@@ -470,8 +469,7 @@ elf_getsigs(struct proc *p, struct file *fp)
 	bcopy(&csi->csi_sigacts, p->p_procsig->ps_sigacts, sizeof(struct sigacts));
 	bcopy(&csi->csi_itimerval, &p->p_realtimer, sizeof(struct itimerval));
 	SIG_CANTMASK(csi->csi_sigmask);
-	/* XXX lwp */
-	lp = FIRST_LWP_IN_PROC(p);
+	/* XXX lwp handle more than one lwp */
 	bcopy(&csi->csi_sigmask, &lp->lwp_sigmask, sizeof(sigset_t));
 	p->p_sigparent = csi->csi_sigparent;
  done:
@@ -672,15 +670,16 @@ elf_getfiles(struct proc *p, struct file *fp)
 }
 
 static int
-ckpt_freeze_proc (struct proc *p, struct file *fp)
+ckpt_freeze_proc(struct lwp *lp, struct file *fp)
 {
+	struct proc *p = lp->lwp_proc;
 	rlim_t limit;
 	int error;
 
         PRINTF(("calling generic_elf_coredump\n"));
 	limit = p->p_rlimit[RLIMIT_CORE].rlim_cur;
 	if (limit) {
-		error = generic_elf_coredump(p, fp, limit);
+		error = generic_elf_coredump(lp, SIGCKPT, fp, limit);
 	} else {
 		error = ERANGE;
 	}
@@ -691,6 +690,7 @@ int
 sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 {
         int error = 0;
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curthread->td_proc;
 	struct file *fp;
 
@@ -711,11 +711,11 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 	case CKPT_FREEZE:
 		fp = NULL;
 		if (uap->fd == -1 && uap->pid == (pid_t)-1)
-			error = checkpoint_signal_handler(p);
+			error = checkpoint_signal_handler(lp);
 		else if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 			error = EBADF;
 		else
-			error = ckpt_freeze_proc(p, fp);
+			error = ckpt_freeze_proc(lp, fp);
 		if (fp)
 			fdrop(fp);
 		break;
@@ -725,7 +725,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 		if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 			return EBADF;
 		uap->sysmsg_result = uap->retval;
-	        error = ckpt_thaw_proc(p, fp);
+	        error = ckpt_thaw_proc(lp, fp);
 		fdrop(fp);
 		break;
 	default:
@@ -736,8 +736,9 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 }
 
 int
-checkpoint_signal_handler(struct proc *p) 
+checkpoint_signal_handler(struct lwp *lp)
 {
+	struct proc *p = lp->lwp_proc;
 	char *buf;
 	struct file *fp;
 	struct nlookupdata nd;
@@ -781,7 +782,7 @@ checkpoint_signal_handler(struct proc *p)
 	nlookup_done(&nd);
 	error = fp_open(buf, O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW, 0600, &fp);
 	if (error == 0) {
-		error = ckpt_freeze_proc(p, fp);
+		error = ckpt_freeze_proc(lp, fp);
 		fp_close(fp);
 	} else {
 		kprintf("checkpoint failed with open - error: %d\n", error);

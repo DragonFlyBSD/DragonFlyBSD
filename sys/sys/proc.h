@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.99 2007/02/19 01:14:23 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.100 2007/02/21 15:45:37 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -166,6 +166,19 @@ struct lwp {
 	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
 
 	/*
+	 * The following two fields are marked XXX since (at least) the
+	 * 4.4BSD-Lite2 import.  I can only guess the reason:  It is ugly.
+	 * These fields are used to pass the trap code from trapsignal() to
+	 * postsig(), which gets called later from userret().
+	 *
+	 * The correct "fix" for these XXX is to convert our signal system
+	 * to use signal queues, where each signal can carry its own meta
+	 * data.
+	 */
+	int		lwp_sig;	/* for core dump/debugger XXX */
+        u_long		lwp_code;	/* for core dump/debugger XXX */
+
+	/*
 	 * Scheduling.
 	 */
 	sysclock_t	lwp_cpticks;	/* cpu used in sched clock ticks */
@@ -251,8 +264,6 @@ struct	proc {
 	char		p_pad2[2];	/* padding for alignment */
 	struct		sigiolst p_sigiolst;	/* list of sigio sources */
 	int		p_sigparent;	/* signal to parent on exit */
-	int		p_sig;		/* for core dump/debugger XXX */
-        u_long		p_code;		/* for core dump/debugger XXX */
 	struct klist	p_klist;	/* knotes attached to this process */
 
 	struct timeval	p_start;	/* start time for a process */
