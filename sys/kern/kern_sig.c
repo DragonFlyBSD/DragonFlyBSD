@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.69 2007/02/21 15:47:02 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.70 2007/02/22 15:48:55 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -998,10 +998,16 @@ ksignal(struct proc *p, int sig)
 		 * If the process is stopped and receives another STOP
 		 * signal, we do not need to stop it again.  If we did
 		 * the shell could get confused.
+		 *
+		 * However, if the current/preempted lwp is part of the
+		 * process receiving the signal, we need to keep it,
+		 * so that this lwp can stop in issignal() later, as
+		 * we don't want to wait until it reaches userret!
 		 */
 		if (prop & SA_STOP) {
-			SIGDELSET(p->p_siglist, sig);
-			goto out;
+			lp = lwkt_preempted_proc();
+			if (lp == NULL || lp->lwp_proc != p)
+				SIGDELSET(p->p_siglist, sig);
 		}
 
 		/*
