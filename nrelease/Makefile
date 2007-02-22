@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.59 2007/02/16 10:11:46 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.60 2007/02/22 21:02:48 corecode Exp $
 #
 
 # compat target
@@ -15,7 +15,7 @@ ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
-KERNCONF ?= GENERIC
+KERNCONF ?= GENERIC NATA
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
@@ -103,17 +103,18 @@ check:
 	@exit 1
 .endif
 
-buildworld1:
-	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make buildworld )
+buildworld1 buildworld2:
+	cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
-buildworld2:
-	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make quickworld )
-
-buildkernel1:
-	( cd ${.CURDIR}/..; CCVER=${KERNEL_CCVER} make buildkernel KERNCONF=${KERNCONF} )
-
-buildkernel2:
-	( cd ${.CURDIR}/..; CCVER=${KERNEL_CCVER} make quickkernel KERNCONF=${KERNCONF} )
+buildkernel1 buildkernel2:
+	cd ${.CURDIR}/..; \
+	first=; \
+	for kernconf in ${KERNCONF}; do \
+		CCVER=${KERNEL_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+			KERNCONF=$${kernconf} \
+			$${first:+-DNO_MODULES}; \
+		first=done; \
+	done
 
 # note that we do not want to mess with any /usr/obj directories not related
 # to buildworld, buildkernel, or nrelease, so we must supply the proper
@@ -129,8 +130,15 @@ buildiso:
 	cp -p ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
 	chroot ${ISOROOT} /usr/bin/newaliases
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
-		installkernel KERNCONF=${KERNCONF} )
+	cd ${.CURDIR}/..; \
+	first=; \
+	for kernconf in ${KERNCONF}; do \
+		make DESTDIR=${ISOROOT} \
+			installkernel KERNCONF=$${kernconf} \
+			$${first:+DESTKERNNAME=kernel.$${kernconf}} \
+			$${first:+-DNO_MODULES}; \
+		first=done; \
+	done
 	ln -s kernel ${ISOROOT}/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
@@ -229,6 +237,16 @@ pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
 	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrecord*
 .endif
+
+
+# XXX I am a tentative target, remove me when I am not needed anymore!
+buildkernel1 buildkernel2: ${.CURDIR}/../sys/config/NATA
+
+${.CURDIR}/../sys/config/NATA: ${.CURDIR}/../sys/config/GENERIC
+	( sed -e '/[[:<:]]ata[01]/d;s/[[:<:]]ata/n&/' ${.ALLSRC}; \
+	echo "options PCI_MAP_FIXUP"; \
+	echo "device nataraid" ) > ${.TARGET}
+
 
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
 .PHONY: installer_fetch

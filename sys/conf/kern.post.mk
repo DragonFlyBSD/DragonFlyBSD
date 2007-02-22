@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.9 2007/02/05 22:19:28 corecode Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.10 2007/02/22 21:02:49 corecode Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -112,35 +112,35 @@ kernel-install:
 		exit 1 ; \
 	fi
 .ifdef NOFSCHG
-.  if exists(${DESTDIR}/${KERNEL})
+.  if exists(${DESTDIR}/${DESTKERNNAME})
 .    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+	cp -p ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    else
-	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+	${OBJCOPY} --strip-debug ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    endif
 .  endif
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .else
-.  if exists(${DESTDIR}/${KERNEL})
-	-chflags noschg ${DESTDIR}/${KERNEL}
+.  if exists(${DESTDIR}/${DESTKERNNAME})
+	-chflags noschg ${DESTDIR}/${DESTKERNNAME}
 .    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+	cp -p ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    else
-	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+	${OBJCOPY} --strip-debug ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    endif
 .  endif
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .endif
 
 kernel-reinstall:
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .endif
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
