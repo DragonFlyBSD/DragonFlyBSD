@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.13 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.14 2007/02/22 15:50:50 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -154,7 +154,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 			p->p_oppid = p->p_pptr->p_pid;
 			proc_reparent(p, curp);
 		}
-		ksignal(p, SIGSTOP);
+		proc_stop(p, 1);
 		return (0);
 	}
 

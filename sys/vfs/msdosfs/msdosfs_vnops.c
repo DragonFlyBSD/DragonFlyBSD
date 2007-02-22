@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.44 2006/12/23 00:41:29 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.45 2007/02/22 15:50:50 corecode Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -666,6 +666,7 @@ msdosfs_write(struct vop_write_args *ap)
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
 	struct proc *p = (td ? td->td_proc : NULL);
+	struct lwp *lp = (td ? td->td_lwp : NULL);
 
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
@@ -698,7 +699,7 @@ msdosfs_write(struct vop_write_args *ap)
 	if (p &&
 	    ((uoff_t)uio->uio_offset + uio->uio_resid >
 	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur)) {
-		ksignal(p, SIGXFSZ);
+		lwpsignal(p, lp, SIGXFSZ);
 		return (EFBIG);
 	}
 

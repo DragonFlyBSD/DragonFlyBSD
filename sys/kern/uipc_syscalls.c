@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.78 2007/01/28 06:31:00 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.79 2007/02/22 15:50:49 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -619,6 +619,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
     struct mbuf *control, int flags, int *res)
 {
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	int len, error;
@@ -656,7 +657,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
 		if (error == EPIPE)
-			ksignal(p, SIGPIPE);
+			lwpsignal(p, lp, SIGPIPE);
 	}
 #ifdef KTRACE
 	if (ktriov != NULL) {

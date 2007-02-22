@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.39 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.40 2007/02/22 15:50:50 corecode Exp $
  */
 
 
@@ -847,7 +847,7 @@ restart:
 	 */
 	if (td->td_proc && uio->uio_offset + uio->uio_resid >
 	      td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		ksignal(td->td_proc, SIGXFSZ);
+		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		if (haverslock)
 			nfs_rsunlock(np);
 		return (EFBIG);

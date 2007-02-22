@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.5 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.6 2007/02/22 15:50:49 corecode Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -420,7 +420,7 @@ npx_intr(void *dummy)
 		 */
 		code = 
 		    fpetable[(*exstat & ~control & 0x3f) | (*exstat & 0x40)];
-		trapsignal(curproc, SIGFPE, code);
+		trapsignal(curthread->td_lwp, SIGFPE, code);
 	} else {
 		/*
 		 * Nested interrupt.  These losers occur when:
@@ -436,7 +436,7 @@ npx_intr(void *dummy)
 		 *
 		 * Treat them like a true async interrupt.
 		 */
-		ksignal(curproc, SIGFPE);
+		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
 	rel_mplock();
 	crit_exit();

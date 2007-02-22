@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.70 2007/02/22 15:48:55 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.71 2007/02/22 15:50:49 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -78,6 +78,7 @@ static char	*expand_name(const char *, uid_t, pid_t);
 static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
+static void	lwp_signotify(struct lwp *lp);
 #ifdef SMP
 static void	signotify_remote(void *arg);
 #endif
@@ -814,7 +815,7 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 	} else {
 		lp->lwp_code = code;	/* XXX for core dump/debugger */
 		lp->lwp_sig = sig;	/* XXX to verify code */
-		ksignal(p, sig);
+		lwpsignal(p, lp, sig);
 	}
 }
 
@@ -889,14 +890,25 @@ find_lwp_for_signal(struct proc *p, int sig)
 void
 ksignal(struct proc *p, int sig)
 {
-	struct lwp *lp;
+	lwpsignal(p, NULL, sig);
+}
+
+/*
+ * The core for ksignal.  lp may be NULL, then a suitable thread
+ * will be chosen.  If not, lp MUST be a member of p.
+ */
+void
+lwpsignal(struct proc *p, struct lwp *lp, int sig)
+{
 	int prop;
 	sig_t action;
 
 	if (sig > _SIG_MAXSIG || sig <= 0) {
-		kprintf("ksignal: signal %d\n", sig);
-		panic("ksignal signal number");
+		kprintf("lwpsignal: signal %d\n", sig);
+		panic("lwpsignal signal number");
 	}
+
+	KKASSERT(lp == NULL || lp->lwp_proc == p);
 
 	crit_enter();
 	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
@@ -969,7 +981,7 @@ ksignal(struct proc *p, int sig)
 		 */
 		if (sig == SIGKILL) {
 			proc_unstop(p);
-			goto out;
+			goto active_process;
 		}
 
 		/*
@@ -1005,17 +1017,24 @@ ksignal(struct proc *p, int sig)
 		 * we don't want to wait until it reaches userret!
 		 */
 		if (prop & SA_STOP) {
-			lp = lwkt_preempted_proc();
-			if (lp == NULL || lp->lwp_proc != p)
+			if (lwkt_preempted_proc() == NULL ||
+			    lwkt_preempted_proc()->lwp_proc != p)
 				SIGDELSET(p->p_siglist, sig);
 		}
 
 		/*
 		 * Otherwise the process is stopped and it received some
 		 * signal, which does not change its stopped state.
-		 * Just exit, as soon as the process continues, it will
-		 * process the signal.
+		 *
+		 * We have to select one thread to set LWP_BREAKTSLEEP,
+		 * so that the current signal will break the sleep
+		 * as soon as a SA_CONT signal will unstop the process.
 		 */
+		if (lp == NULL)
+			lp = find_lwp_for_signal(p, sig);
+		if (lp != NULL &&
+		    (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP))
+			lp->lwp_flag |= LWP_BREAKTSLEEP;
 		goto out;
 
 		/* NOTREACHED */
@@ -1023,14 +1042,19 @@ ksignal(struct proc *p, int sig)
 	/* else not stopped */
 active_process:
 
-	lp = find_lwp_for_signal(p, sig);
+	if (lp == NULL)
+		lp = find_lwp_for_signal(p, sig);
 
 	/*
 	 * If lp == NULL, there is no thread available which does
-	 * not block the signal.  Defer further processing for this signal.
+	 * not block the signal.  If lp is set, it might be a thread
+	 * specific signal, so we have to check for the thread ignoring
+	 * the signal.
+	 *
+	 * If so, defer further processing for this signal.
 	 * Add the signal to the process pending list.
 	 */
-	if (lp == NULL) {
+	if (lp == NULL || SIGISMEMBER(lp->lwp_sigmask, sig)) {
 		SIGADDSET(p->p_siglist, sig);
 		goto out;
 	}
@@ -1077,7 +1101,17 @@ active_process:
 	 */
 	SIGADDSET(lp->lwp_siglist, sig);
 
-	if (lp->lwp_stat == LSSLEEP) {
+	lwp_signotify(lp);
+
+out:
+	crit_exit();
+}
+
+static void
+lwp_signotify(struct lwp *lp)
+{
+	crit_enter();
+	if (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP) {
 		/*
 		 * Thread is in tsleep.
 		 */
@@ -1087,21 +1121,19 @@ active_process:
 		 * we can't interrupt the sleep... the signal will
 		 * be noticed when the lwp returns through
 		 * trap() or syscall().
-		 */
-		if ((lp->lwp_flag & LWP_SINTR) == 0)
-			goto out;
-
-		/*
+		 *
 		 * Otherwise the signal can interrupt the sleep.
 		 *
 		 * If the process is traced, the lwp will handle the
 		 * tracing in issignal() when it returns to userland.
 		 */
-		/*
-		 * Make runnable and break out of any tsleep as well.
-		 */
-		lp->lwp_flag |= LWP_BREAKTSLEEP;
-		setrunnable(lp);
+		if (lp->lwp_flag & LWP_SINTR) {
+			/*
+			 * Make runnable and break out of any tsleep as well.
+			 */
+			lp->lwp_flag |= LWP_BREAKTSLEEP;
+			setrunnable(lp);
+		}
 	} else {
 		/*
 		 * Otherwise the thread is running
@@ -1126,6 +1158,7 @@ active_process:
 			signotify();
 		} else if (lp->lwp_stat == LSRUN) {
 			struct thread *td = lp->lwp_thread;
+			struct proc *p = lp->lwp_proc;
 
 			KASSERT(td != NULL,
 			    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
@@ -1141,7 +1174,6 @@ active_process:
 				lwkt_schedule(td);
 		}
 	}
-out:
 	crit_exit();
 }
 
@@ -1171,8 +1203,52 @@ signotify_remote(void *arg)
 void
 proc_stop(struct proc *p, int notify)
 {
-	/* XXX lwp */
+	struct lwp *lp, *preempted;
+	int stopped;
+
+	/* If somebody raced us, be happy with it */
+	if (p->p_stat == SSTOP)
+		return;
+
 	p->p_stat = SSTOP;
+
+	preempted = lwkt_preempted_proc();
+	stopped = 0;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		switch (lp->lwp_stat) {
+		case LSSTOP:
+			/*
+			 * Do nothing, we are already counted in
+			 * p_nstopped.
+			 */
+			break;
+
+		case LSSLEEP:
+			/*
+			 * We're sleeping, but we will stop before
+			 * returning to userspace, so count us
+			 * as stopped as well.  Don't increment
+			 * p_nstopped, that will happen in tstop().
+			 */
+			++stopped;
+			break;
+
+		case LSRUN:
+			lwp_signotify(lp);
+			/*
+			 * No need to wait for the preempted/current
+			 * lwp.  It will stop on return to userland
+			 * later, so consider it as stopped.
+			 */
+			if (lp == preempted)
+				++stopped;
+			break;
+		}
+	}
+
+	while (p->p_nstopped + stopped < p->p_nthreads)
+		tsleep(&p->p_nstopped, 0, "pstop", hz);
+
 	p->p_flag &= ~P_WAITED;
 	wakeup(p->p_pptr);
 	if (notify > 1 ||
@@ -1183,10 +1259,34 @@ proc_stop(struct proc *p, int notify)
 void
 proc_unstop(struct proc *p)
 {
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);	/* XXX lwp */
+	struct lwp *lp;
 
+	if (p->p_stat != SSTOP)
+		return;
 	p->p_stat = SACTIVE;
-	setrunnable(lp);
+
+	FOREACH_LWP_IN_PROC(lp, p) {
+		switch (lp->lwp_stat) {
+		case LSRUN:
+			/*
+			 * Uh?  Not stopped?  Well, I guess that's okay.
+			 */
+			if (bootverbose)
+				kprintf("proc_unstop: lwp %d/%d not sleeping\n",
+					p->p_pid, lp->lwp_tid);
+			break;
+
+		case LSSTOP:
+			setrunnable(lp);
+			break;
+
+		case LSSLEEP:
+			/*
+			 * Still sleeping.  Don't bother waking it up.
+			 */
+			break;
+		}
+	}
 }
 
 static int
@@ -1316,6 +1416,12 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
  	if (uap->info)
 		error = copyout(&info, uap->info, sizeof(info));
 	/* Repost if we got an error. */
+	/*
+	 * XXX lwp
+	 *
+	 * This could transform a thread-specific signal to another
+	 * thread / process pending signal.
+	 */
 	if (error)
 		ksignal(curproc, info.si_signo);
 	else
@@ -1339,6 +1445,12 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 	if (uap->info)
 		error = copyout(&info, uap->info, sizeof(info));
 	/* Repost if we got an error. */
+	/*
+	 * XXX lwp
+	 *
+	 * This could transform a thread-specific signal to another
+	 * thread / process pending signal.
+	 */
 	if (error)
 		ksignal(curproc, info.si_signo);
 	else
@@ -1446,7 +1558,6 @@ issignal(struct lwp *lp)
 			 *
 			 * XXX lwp might need a call to ksignal()
 			 */
-			/* XXX should run via ksignal? */
 			SIGADDSET(p->p_siglist, sig);
 			if (SIGISMEMBER(lp->lwp_sigmask, sig))
 				continue;
@@ -1889,7 +2000,7 @@ out2:
 int
 sys_nosys(struct nosys_args *args)
 {
-	ksignal(curproc, SIGSYS);
+	lwpsignal(curproc, curthread->td_lwp, SIGSYS);
 	return (EINVAL);
 }
 

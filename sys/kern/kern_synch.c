@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.78 2007/02/22 15:49:08 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.79 2007/02/22 15:50:49 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -382,8 +382,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	crit_enter_quick(td);
 
 	KASSERT(ident != NULL, ("tsleep: no ident"));
-	KASSERT(lp == NULL || lp->lwp_stat == LSRUN, ("tsleep %p %s %d",
-		ident, wmesg, lp->lwp_stat));
+	KASSERT(lp == NULL ||
+		lp->lwp_stat == LSRUN ||	/* Obvious */
+		lp->lwp_stat == LSSTOP,		/* Set in tstop */
+		("tsleep %p %s %d",
+			ident, wmesg, lp->lwp_stat));
 
 	/*
 	 * Setup for the current process (if this is a process). 
@@ -456,7 +459,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
 		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
-		lp->lwp_stat = LSSLEEP;
+		/*
+		 * tstop() sets LSSTOP, so don't fiddle with that.
+		 */
+		if (lp->lwp_stat != LSSTOP)
+			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();
 
@@ -936,9 +943,16 @@ void
 tstop(void)
 {
 	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
 
 	lp->lwp_flag |= LWP_BREAKTSLEEP;
+	lp->lwp_stat = LSSTOP;
+	crit_enter();
+	p->p_nstopped++;
+	wakeup(&p->p_nstopped);		/* For the waiter in proc_stop() */
 	tsleep(lp->lwp_proc, 0, "stop", 0);
+	p->p_nstopped--;
+	crit_exit();
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.43 2007/02/18 16:13:27 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.44 2007/02/22 15:50:49 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -463,6 +463,7 @@ static int
 dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 {	
 	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	int error;
 	int len;
@@ -494,7 +495,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		/* Socket layer is responsible for issuing SIGPIPE. */
 		if (error == EPIPE) {
 			get_mplock();
-			ksignal(p, SIGPIPE);
+			lwpsignal(p, lp, SIGPIPE);
 			rel_mplock();
 		}
 	}
