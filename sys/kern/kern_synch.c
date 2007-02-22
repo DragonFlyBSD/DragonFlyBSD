@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.77 2007/02/19 01:14:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.78 2007/02/22 15:49:08 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -909,13 +909,11 @@ wakeup_domain_one(void *ident, int domain)
 void
 setrunnable(struct lwp *lp)
 {
-	enum lwpstat stat;
-
 	crit_enter();
 	ASSERT_MP_LOCK_HELD(curthread);
-	stat = lp->lwp_stat;
-	lp->lwp_stat = LSRUN;
-	if (stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))
+	if (lp->lwp_stat == LSSTOP)
+		lp->lwp_stat = LSSLEEP;
+	if (lp->lwp_stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))
 		unsleep_and_wakeup_thread(lp->lwp_thread);
 	crit_exit();
 }
