@@ -34,7 +34,7 @@
 # THE POSSIBILITY OF SUCH DAMAGES.
 #
 # $FreeBSD: src/sys/modules/ath_hal/Makefile,v 1.4 2005/01/18 03:28:08 sam Exp $
-# $DragonFly: src/sys/dev/netif/ath/hal/Makefile,v 1.2 2006/09/05 16:50:52 dillon Exp $
+# $DragonFly: src/sys/dev/netif/ath/hal/Makefile,v 1.3 2007/02/22 05:17:09 sephe Exp $
 #
 
 #
@@ -51,7 +51,7 @@
 .PATH: ${HAL}/public
 
 KMOD	= ath_hal
-SRCS	= ah_osdep.c ah_osdep.c.patch
+SRCS	= ah_osdep.c
 SRCS	+= bus_if.h device_if.h pci_if.h opt_ah.h
 OBJS	= hal.o
 

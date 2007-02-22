@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_athioctl.h,v 1.10.2.4 2006/07/10 00:55:19 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athioctl.h,v 1.2 2007/01/08 12:15:27 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_athioctl.h,v 1.3 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -95,6 +95,8 @@ struct ath_stats {
 	uint32_t	ast_rx_ctl;	/* rx discarded 'cuz ctl frame */
 	int8_t		ast_tx_rssi;	/* tx rssi of last ack */
 	int8_t		ast_rx_rssi;	/* rx rssi from histogram */
+	int8_t		ast_rx_noise;	/* rx noise floor */
+	uint8_t		ast_tx_rate;	/* IEEE rate of last unicast tx */
 	uint32_t	ast_be_xmit;	/* beacons transmitted */
 	uint32_t	ast_be_nombuf;	/* beacon setup failed 'cuz no mbuf */
 	uint32_t	ast_per_cal;	/* periodic calibration calls */

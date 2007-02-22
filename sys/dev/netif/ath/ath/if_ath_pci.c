@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath_pci.c,v 1.12 2005/03/05 19:06:12 imp Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.3 2007/01/08 12:15:27 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.4 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -135,8 +135,9 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "cannot map register space\n");
 		return ENXIO;
 	}
-	sc->sc_st = rman_get_bustag(psc->sc_sr);
-	sc->sc_sh = rman_get_bushandle(psc->sc_sr);
+	/* NB: these casts are known to be safe */
+	sc->sc_st = (HAL_BUS_TAG)rman_get_bustag(psc->sc_sr);
+	sc->sc_sh = (HAL_BUS_HANDLE)rman_get_bushandle(psc->sc_sr);
 
 	/*
 	 * Setup DMA descriptor area.

@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_onoe/onoe.c,v 1.4 2006/12/22 23:26:18 swildner Exp $
+ * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.12 2006/12/13 19:34:35 sam Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_onoe/onoe.c,v 1.5 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -150,16 +150,16 @@ ath_rate_setupxtxdesc(struct ath_softc *sc, struct ath_node *an,
 
 void
 ath_rate_tx_complete(struct ath_softc *sc, struct ath_node *an,
-	const struct ath_desc *ds, const struct ath_desc *ds0)
+	const struct ath_buf *bf)
 {
 	struct onoe_node *on = ATH_NODE_ONOE(an);
+	const struct ath_tx_status *ts = &bf->bf_status.ds_txstat;
 
-	if (ds->ds_txstat.ts_status == 0)
+	if (ts->ts_status == 0)
 		on->on_tx_ok++;
 	else
 		on->on_tx_err++;
-	on->on_tx_retr += ds->ds_txstat.ts_shortretry
-			+ ds->ds_txstat.ts_longretry;
+	on->on_tx_retr += ts->ts_shortretry + ts->ts_longretry;
 }
 
 void

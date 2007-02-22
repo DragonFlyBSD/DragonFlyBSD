@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_athvar.h,v 1.27.2.7 2006/07/10 01:15:24 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athvar.h,v 1.2 2007/01/08 12:15:27 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_athvar.h,v 1.3 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
 #define _DEV_ATH_ATHVAR_H
 
 #include <contrib/dev/ath/ah.h>
+#include <contrib/dev/ath/ah_desc.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <dev/netif/ath/ath/if_athioctl.h>
 #include <dev/netif/ath/ath/if_athrate.h>
@@ -101,6 +102,7 @@ struct ath_buf {
 	int			bf_nseg;
 	int			bf_flags;	/* tx descriptor flags */
 	struct ath_desc		*bf_desc;	/* virtual addr of desc */
+	struct ath_desc_status	bf_status;	/* tx/rx status */
 	bus_addr_t		bf_daddr;	/* physical addr of desc */
 	bus_dmamap_t		bf_dmamap;	/* DMA map for mbuf chain */
 	struct mbuf		*bf_m;		/* mbuf for buf */
@@ -172,8 +174,8 @@ struct ath_softc {
 					enum ieee80211_state, int);
 	void 			(*sc_node_free)(struct ieee80211_node *);
 	device_t		sc_dev;
-	bus_space_tag_t		sc_st;		/* bus space tag */
-	bus_space_handle_t	sc_sh;		/* bus space handle */
+	HAL_BUS_TAG		sc_st;		/* bus space tag */
+	HAL_BUS_HANDLE		sc_sh;		/* bus space handle */
 	bus_dma_tag_t		sc_dmat;	/* bus DMA tag */
 	struct ath_hal		*sc_ah;		/* Atheros HAL */
 	struct ath_ratectrl	*sc_rc;		/* tx rate control support */
@@ -385,7 +387,7 @@ void	ath_intr(void *);
 #define	ath_hal_stopdmarecv(_ah) \
 	((*(_ah)->ah_stopDmaReceive)((_ah)))
 #define	ath_hal_getfatalstate(_ah, _outdata, _outsize) \
-	ath_hal_getdiagstate(_ah, 27, NULL, 0, (void **)(_outdata), _outsize)
+	ath_hal_getdiagstate(_ah, 29, NULL, 0, (void **)(_outdata), _outsize)
 #define	ath_hal_getdiagstate(_ah, _id, _indata, _insize, _outdata, _outsize) \
 	((*(_ah)->ah_getDiagState)((_ah), (_id), \
 		(_indata), (_insize), (_outdata), (_outsize)))
@@ -433,8 +435,12 @@ void	ath_intr(void *);
 	((*(_ah)->ah_setRegulatoryDomain)((_ah), (_rd), NULL))
 #define	ath_hal_getcountrycode(_ah, _pcc) \
 	(*(_pcc) = (_ah)->ah_countryCode)
-#define	ath_hal_tkipsplit(_ah) \
+#define	ath_hal_hastkipsplit(_ah) \
 	(ath_hal_getcapability(_ah, HAL_CAP_TKIP_SPLIT, 0, NULL) == HAL_OK)
+#define	ath_hal_gettkipsplit(_ah) \
+	(ath_hal_getcapability(_ah, HAL_CAP_TKIP_SPLIT, 1, NULL) == HAL_OK)
+#define	ath_hal_settkipsplit(_ah, _v) \
+	ath_hal_setcapability(_ah, HAL_CAP_TKIP_SPLIT, 1, _v, NULL)
 #define	ath_hal_hwphycounters(_ah) \
 	(ath_hal_getcapability(_ah, HAL_CAP_PHYCOUNTERS, 0, NULL) == HAL_OK)
 #define	ath_hal_hasdiversity(_ah) \
@@ -516,8 +522,8 @@ void	ath_intr(void *);
 
 #define	ath_hal_setuprxdesc(_ah, _ds, _size, _intreq) \
 	((*(_ah)->ah_setupRxDesc)((_ah), (_ds), (_size), (_intreq)))
-#define	ath_hal_rxprocdesc(_ah, _ds, _dspa, _dsnext) \
-	((*(_ah)->ah_procRxDesc)((_ah), (_ds), (_dspa), (_dsnext), 0))
+#define	ath_hal_rxprocdesc(_ah, _ds, _dspa, _dsnext, _rs) \
+	((*(_ah)->ah_procRxDesc)((_ah), (_ds), (_dspa), (_dsnext), 0, (_rs)))
 #define	ath_hal_setuptxdesc(_ah, _ds, _plen, _hlen, _atype, _txpow, \
 		_txr0, _txtr0, _keyix, _ant, _flags, \
 		_rtsrate, _rtsdura) \
@@ -530,8 +536,8 @@ void	ath_intr(void *);
 		(_txr1), (_txtr1), (_txr2), (_txtr2), (_txr3), (_txtr3)))
 #define	ath_hal_filltxdesc(_ah, _ds, _l, _first, _last, _ds0) \
 	((*(_ah)->ah_fillTxDesc)((_ah), (_ds), (_l), (_first), (_last), (_ds0)))
-#define	ath_hal_txprocdesc(_ah, _ds) \
-	((*(_ah)->ah_procTxDesc)((_ah), (_ds)))
+#define	ath_hal_txprocdesc(_ah, _ds, _ts) \
+	((*(_ah)->ah_procTxDesc)((_ah), (_ds), (_ts)))
 #define	ath_hal_gettxintrtxqs(_ah, _txqs) \
 	((*(_ah)->ah_getTxIntrQueue)((_ah), (_txqs)))
 
@@ -544,12 +550,6 @@ void	ath_intr(void *);
 #define ath_hal_gpiosetintr(_ah, _gpio, _b) \
         ((*(_ah)->ah_gpioSetIntr)((_ah), (_gpio), (_b)))
 
-#define ath_hal_radar_event(_ah) \
-	((*(_ah)->ah_radarHaveEvent)((_ah)))
-#define ath_hal_procdfs(_ah, _chan) \
-	((*(_ah)->ah_processDfs)((_ah), (_chan)))
-#define ath_hal_checknol(_ah, _chan, _nchans) \
-	((*(_ah)->ah_dfsNolCheck)((_ah), (_chan), (_nchans)))
 #define ath_hal_radar_wait(_ah, _chan) \
 	((*(_ah)->ah_radarWait)((_ah), (_chan)))
 

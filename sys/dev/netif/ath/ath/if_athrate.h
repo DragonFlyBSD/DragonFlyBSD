@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_athrate.h,v 1.4 2005/04/02 18:54:30 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athrate.h,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_athrate.h,v 1.2 2007/02/22 05:17:09 sephe Exp $
  */
 #ifndef _ATH_RATECTRL_H_
 #define _ATH_RATECTRL_H_
@@ -137,6 +137,7 @@ void	ath_rate_setupxtxdesc(struct ath_softc *, struct ath_node *,
  * for packets that were successfully sent and for those that
  * failed (consult the descriptor for details).
  */
+struct ath_buf;
 void	ath_rate_tx_complete(struct ath_softc *, struct ath_node *,
-		const struct ath_desc *last, const struct ath_desc *first);
+		const struct ath_buf *);
 #endif /* _ATH_RATECTRL_H_ */

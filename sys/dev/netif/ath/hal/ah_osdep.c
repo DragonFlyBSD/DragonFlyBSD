@@ -1,39 +1,40 @@
 /*-
- * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting, Atheros
- * Communications, Inc.  All rights reserved.
+ * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms are permitted
- * provided that the following conditions are met:
- * 1. The materials contained herein are unmodified and are used
- *    unmodified.
- * 2. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following NO
- *    ''WARRANTY'' disclaimer below (''Disclaimer''), without
- *    modification.
- * 3. Redistributions in binary form must reproduce at minimum a
- *    disclaimer similar to the Disclaimer below and any redistribution
- *    must be conditioned upon including a substantially similar
- *    Disclaimer requirement for further binary redistribution.
- * 4. Neither the names of the above-listed copyright holders nor the
- *    names of any contributors may be used to endorse or promote
- *    product derived from this software without specific prior written
- *    permission.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer,
+ *    without modification.
+ * 2. Redistributions in binary form must reproduce at minimum a disclaimer
+ *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
+ *    redistribution must be conditioned upon including a substantially
+ *    similar Disclaimer requirement for further binary redistribution.
+ * 3. Neither the names of the above-listed copyright holders nor the names
+ *    of any contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * Alternatively, this software may be distributed under the terms of the
+ * GNU General Public License ("GPL") version 2 as published by the Free
+ * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF NONINFRINGEMENT,
- * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE
- * FOR SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGES.
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF NONINFRINGEMENT, MERCHANTIBILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/sw/linuxsrc/src/802_11/madwifi/hal/main/freebsd/ah_osdep.c#39 $
+ * $FreeBSD: src/sys/dev/ath/ah_osdep.c,v 1.1 2006/09/18 16:49:14 sam Exp $
+ * $DragonFly: src/sys/dev/netif/ath/hal/ah_osdep.c,v 1.1 2007/02/22 05:17:09 sephe Exp $
  */
 #include "opt_ah.h"
 
@@ -51,6 +52,20 @@
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
 #include <contrib/dev/ath/ah.h>
+
+/*
+ * WiSoC boards overload the bus tag with information about the
+ * board layout.  We must extract the bus space tag from that
+ * indirect structure.  For everyone else the tag is passed in
+ * directly.
+ * XXX cache indirect ref privately
+ */
+#ifdef AH_SUPPORT_AR5312
+#define	BUSTAG(ah) \
+	((bus_space_tag_t) ((struct ar531x_config *)((ah)->ah_st))->tag)
+#else
+#define	BUSTAG(ah)	((bus_space_tag_t) (ah)->ah_st)
+#endif
 
 extern	void ath_hal_printf(struct ath_hal *, const char*, ...)
 		__printflike(2,3);
@@ -82,6 +97,7 @@ TUNABLE_INT("hw.ath.hal.debug", &ath_hal_debug);
 SYSCTL_STRING(_hw_ath_hal, OID_AUTO, version, CTLFLAG_RD, ath_hal_version, 0,
 	"Atheros HAL version");
 
+/* NB: these are deprecated; they exist for now for compatibility */
 int	ath_hal_dma_beacon_response_time = 2;	/* in TU's */
 SYSCTL_INT(_hw_ath_hal, OID_AUTO, dma_brt, CTLFLAG_RW,
 	   &ath_hal_dma_beacon_response_time, 0,
@@ -110,7 +126,7 @@ ath_hal_free(void* p)
 }
 
 void
-ath_hal_vprintf(struct ath_hal *ah, const char* fmt, va_list ap)
+ath_hal_vprintf(struct ath_hal *ah, const char* fmt, __va_list ap)
 {
 	kvprintf(fmt, ap);
 }
@@ -118,16 +134,19 @@ ath_hal_vprintf(struct ath_hal *ah, const char* fmt, va_list ap)
 void
 ath_hal_printf(struct ath_hal *ah, const char* fmt, ...)
 {
-	va_list ap;
-	va_start(ap, fmt);
+	__va_list ap;
+	__va_start(ap, fmt);
 	ath_hal_vprintf(ah, fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 }
 
 const char*
 ath_hal_ether_sprintf(const u_int8_t *mac)
 {
-	return ether_sprintf(mac);
+	static char etherbuf[18];
+
+	ksnprintf(etherbuf, sizeof(etherbuf), "%6D", mac, ":");
+	return etherbuf;
 }
 
 #ifdef AH_DEBUG
@@ -136,9 +155,9 @@ HALDEBUG(struct ath_hal *ah, const char* fmt, ...)
 {
 	if (ath_hal_debug) {
 		__va_list ap;
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		ath_hal_vprintf(ah, fmt, ap);
-		va_end(ap);
+		__va_end(ap);
 	}
 }
 
@@ -250,6 +269,9 @@ ath_hal_alq_get(struct ath_hal *ah)
 void
 ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 {
+	bus_space_tag_t tag = BUSTAG(ah);
+	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+
 	if (ath_hal_alq) {
 		struct ale *ale = ath_hal_alq_get(ah);
 		if (ale) {
@@ -262,22 +284,25 @@ ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 	}
 #if _BYTE_ORDER == _BIG_ENDIAN
 	if (reg >= 0x4000 && reg < 0x5000)
-		bus_space_write_4(ah->ah_st, ah->ah_sh, reg, htole32(val));
+		bus_space_write_4(tag, h, reg, val);
 	else
 #endif
-		bus_space_write_4(ah->ah_st, ah->ah_sh, reg, val);
+		bus_space_write_stream_4(tag, h, reg, val);
 }
 
 u_int32_t
 ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 {
+	bus_space_tag_t tag = BUSTAG(ah);
+	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
 	u_int32_t val;
 
-	val = bus_space_read_4(ah->ah_st, ah->ah_sh, reg);
 #if _BYTE_ORDER == _BIG_ENDIAN
 	if (reg >= 0x4000 && reg < 0x5000)
-		val = le32toh(val);
+		val = bus_space_read_4(tag, h, reg);
+	else
 #endif
+		val = bus_space_read_stream_4(tag, h, reg);
 	if (ath_hal_alq) {
 		struct ale *ale = ath_hal_alq_get(ah);
 		if (ale) {
@@ -320,24 +345,30 @@ OS_MARK(struct ath_hal *ah, u_int id, u_int32_t v)
 void
 ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 {
+	bus_space_tag_t tag = BUSTAG(ah);
+	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+
 #if _BYTE_ORDER == _BIG_ENDIAN
 	if (reg >= 0x4000 && reg < 0x5000)
-		bus_space_write_4(ah->ah_st, ah->ah_sh, reg, htole32(val));
+		bus_space_write_4(tag, h, reg, val);
 	else
 #endif
-		bus_space_write_4(ah->ah_st, ah->ah_sh, reg, val);
+		bus_space_write_stream_4(tag, h, reg, val);
 }
 
 u_int32_t
 ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 {
+	bus_space_tag_t tag = BUSTAG(ah);
+	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
 	u_int32_t val;
 
-	val = bus_space_read_4(ah->ah_st, ah->ah_sh, reg);
 #if _BYTE_ORDER == _BIG_ENDIAN
 	if (reg >= 0x4000 && reg < 0x5000)
-		val = le32toh(val);
+		val = bus_space_read_4(tag, h, reg);
+	else
 #endif
+		val = bus_space_read_stream_4(tag, h, reg);
 	return val;
 }
 #endif /* AH_DEBUG || AH_REGOPS_FUNC */
@@ -364,10 +395,10 @@ ath_hal_delay(int n)
 u_int32_t
 ath_hal_getuptime(struct ath_hal *ah)
 {
-	struct bintime bt;
-	getbinuptime(&bt);
-	return (bt.sec * 1000) +
-		(((uint64_t)1000 * (uint32_t)(bt.frac >> 32)) >> 32);
+	struct timeval tv;
+
+	getmicrouptime(&tv);
+	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 }
 
 void
