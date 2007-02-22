@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.18 2007/01/17 17:31:19 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.19 2007/02/22 04:02:50 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -339,7 +339,7 @@ acpi_pcpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 
     KASSERT(acpi_id != NULL, ("Null acpi_id"));
     KASSERT(cpu_id != NULL, ("Null cpu_id"));
-    for (i = 0; i <= ncpus; i++) {
+    for (i = 0; i < ncpus; i++) {
 	if ((smp_active_mask & (1 << i)) == 0)
 	    continue;
 	md = (struct mdglobaldata *)globaldata_find(i);
