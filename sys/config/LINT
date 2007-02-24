@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.106 2007/02/20 15:58:27 tgen Exp $
+# $DragonFly: src/sys/config/LINT,v 1.107 2007/02/24 08:27:38 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -709,8 +709,10 @@ device		hfa			#FORE PCA-200E ATM PCI
 # It is strongly recommended to set the sysctl variable kern.polling.pollhz
 # to 1000 or 2000 as to achieve smoother behaviour.
 #
-# Only the "dc" "em" "fwe" "fxp" "nge" "nv" "re" "rl" "sis" "vr" and "wi"
-# devices support this mode of operation at the time of this writing.
+# Only the following devices support this mode of operation at the time of
+# this writing:
+#
+# dc, em, fwe, fxp, nfe, nge, nv, re, rl, sis, stge, vge, vr, wi and xl
  
 options         DEVICE_POLLING
 

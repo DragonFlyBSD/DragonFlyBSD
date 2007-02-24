@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.1.2.4 2003/04/14 08:58:02 maxim Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.6 2005/10/13 11:05:10 swildner Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.7 2007/02/24 08:27:38 swildner Exp $
 .\"
 .Dd October 13, 2005
 .Dt POLLING 4
@@ -98,14 +98,18 @@ As of this writing, the
 .Xr em 4 ,
 .Xr fwe 4 ,
 .Xr fxp 4 ,
+.Xr nfe 4 ,
 .Xr nge 4 ,
 .Xr nv 4 ,
 .Xr re 4 ,
 .Xr rl 4 ,
 .Xr sis 4 ,
+.Xr stge 4 ,
+.Xr vge 4 ,
 .Xr vr 4 ,
-and
 .Xr wi 4
+and
+.Xr xl 4
 devices are supported, with other in the works.
 The modifications are rather straightforward, consisting in
 the extraction of the inner part of the interrupt service routine
