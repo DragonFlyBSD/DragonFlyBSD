@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.74 2007/02/24 14:24:06 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.75 2007/02/24 14:25:07 corecode Exp $
  */
 
 /*
@@ -919,8 +919,6 @@ void
 pmap_dispose_proc(struct proc *p)
 {
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
-
-	lwp_dispose(ONLY_LWP_IN_PROC(p));
 
 	p->p_addr = NULL;
 }

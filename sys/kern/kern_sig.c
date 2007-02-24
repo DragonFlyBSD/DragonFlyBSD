@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.71 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.72 2007/02/24 14:25:07 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -78,7 +78,6 @@ static char	*expand_name(const char *, uid_t, pid_t);
 static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
-static void	lwp_signotify(struct lwp *lp);
 #ifdef SMP
 static void	signotify_remote(void *arg);
 #endif
@@ -1107,7 +1106,7 @@ out:
 	crit_exit();
 }
 
-static void
+void
 lwp_signotify(struct lwp *lp)
 {
 	crit_enter();

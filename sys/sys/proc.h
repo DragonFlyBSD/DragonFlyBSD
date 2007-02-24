@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.101 2007/02/24 14:24:06 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.102 2007/02/24 14:25:07 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -71,6 +71,9 @@
 #include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
+LIST_HEAD(proclist, proc);
+LIST_HEAD(lwplist, lwp);
+
 /*
  * One structure allocated per session.
  */
@@ -88,7 +91,7 @@ struct	session {
  */
 struct	pgrp {
 	LIST_ENTRY(pgrp) pg_hash;	/* Hash chain. */
-	LIST_HEAD(, proc) pg_members;	/* Pointer to pgrp members. */
+	struct proclist pg_members;	/* Pointer to pgrp members. */
 	struct	session *pg_session;	/* Pointer to session. */
 	struct  sigiolst pg_sigiolst;	/* List of sigio sources. */
 	pid_t	pg_id;			/* Pgrp id. */
@@ -234,7 +237,7 @@ struct	proc {
 	LIST_ENTRY(proc) p_pglist;	/* List of processes in pgrp. */
 	struct proc	*p_pptr;	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
-	LIST_HEAD(, proc) p_children;	/* Pointer to list of children. */
+	struct proclist p_children;	/* Pointer to list of children. */
 	struct callout	p_ithandle;	/* for scheduling p_realtimer */
 	struct varsymset p_varsymset;
 
@@ -299,7 +302,7 @@ struct	proc {
 	int		p_nthreads;	/* Number of threads in this process. */
 	int		p_nstopped;	/* Number of stopped threads. */
 	int		p_lasttid;	/* Last tid used. */
-	LIST_HEAD(, lwp) p_lwps;	/* List of threads in this process. */
+	struct lwplist	p_lwps;	/* List of threads in this process. */
 	void		*p_aioinfo;	/* ASYNC I/O info */
 	int		p_wakeup;	/* thread id XXX lwp */
 	struct proc	*p_peers;	/* XXX lwp */
@@ -363,6 +366,7 @@ struct	proc {
 #define	LWP_SINTR	0x0000008 /* Sleep is interruptible. */
 #define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
 #define	LWP_ONRUNQ	0x0000020 /* on a user scheduling run queue */
+#define	LWP_WEXIT	0x0000040 /* working on exiting */
 
 #define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
@@ -440,7 +444,6 @@ extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */
 extern int sched_quantum;		/* Scheduling quantum in ticks */
 
-LIST_HEAD(proclist, proc);
 extern struct proclist allproc;		/* List of all processes. */
 extern struct proclist zombproc;	/* List of zombie processes. */
 extern struct proc *initproc;		/* Process slot for init */
@@ -496,6 +499,7 @@ void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
 void	lwp_exit (void) __dead2;
 void	lwp_dispose (struct lwp *);
+void	killlwps (struct lwp *);
 void	exit1 (int) __dead2;
 void	cpu_fork (struct lwp *, struct lwp *, int);
 void	cpu_set_fork_handler (struct lwp *, void (*)(void *), void *);

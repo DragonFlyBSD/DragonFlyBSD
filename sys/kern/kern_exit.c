@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.75 2007/02/24 14:24:06 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.76 2007/02/24 14:25:06 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -56,6 +56,7 @@
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
+#include <sys/taskqueue.h>
 #include <sys/ptrace.h>
 #include <sys/acct.h>		/* for acct_process() function prototype */
 #include <sys/filedesc.h>
@@ -93,6 +94,12 @@ TAILQ_HEAD(exit_list_head, exitlist);
 static struct exit_list_head exit_list = TAILQ_HEAD_INITIALIZER(exit_list);
 
 /*
+ * LWP reaper data
+ */
+struct task *deadlwp_task[MAXCPU];
+struct lwplist deadlwp_list[MAXCPU];
+
+/*
  * exit --
  *	Death of process.
  *
@@ -103,6 +110,27 @@ sys_exit(struct exit_args *uap)
 {
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
+}
+
+void
+killlwps(struct lwp *lp)
+{
+	struct proc *p = lp->lwp_proc;
+	struct lwp *tlp;
+
+	FOREACH_LWP_IN_PROC(tlp, p) {
+		if (tlp == lp)
+			continue;	/* don't kill the current lwp */
+		tlp->lwp_flag |= LWP_WEXIT;
+		lwp_signotify(tlp);
+	}
+
+	while (p->p_nthreads > 1) {
+		if (bootverbose)
+			kprintf("killlwps: waiting for %d lwps of pid %d to die\n",
+				p->p_nthreads - 1, p->p_pid);
+		tsleep(&p->p_nthreads, 0, "killlwps", hz);
+	}
 }
 
 /*
@@ -127,7 +155,14 @@ exit1(int rv)
 		panic("Going nowhere without my init!");
 	}
 
-	/* XXX lwp kill other threads */
+	/*
+	 * Kill all other threads if there are any.
+	 *
+	 * XXX TGEN Need to protect against multiple lwps of the same proc
+	 *          entering this function?
+	 */
+	if (p->p_nthreads > 1)
+		killlwps(lp);
 
 	caps_exit(lp->lwp_thread);
 	aio_proc_rundown(p);
@@ -400,13 +435,24 @@ exit1(int rv)
 void
 lwp_exit(void)
 {
-#if notyet
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
 
+	/*
+	 * Nobody actually wakes us when the lock
+	 * count reaches zero, so just wait one tick.
+	 */
+	while (lp->lwp_lock > 0)
+		tsleep(lp, 0, "lwpexit", 1);
+
+	/* Hand down resource usage to our proc */
+	ruadd(&p->p_ru, &lp->lwp_ru);
+
 	--p->p_nthreads;
+	LIST_REMOVE(lp, lwp_list);
 	wakeup(&p->p_nthreads);
-#endif
+	LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, lwp_list);
+	taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
 	cpu_lwp_exit();
 }
 
@@ -501,7 +547,6 @@ int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 {
 	struct thread *td = curthread;
-	struct lwp *deadlp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
 	int nfound, error;
@@ -550,8 +595,6 @@ loop:
 
 		nfound++;
 		if (p->p_stat == SZOMB) {
-			deadlp = ONLY_LWP_IN_PROC(p);
-
 			/*
 			 * Other kernel threads may be in the middle of 
 			 * accessing the proc.  For example, kern/kern_proc.c
@@ -561,13 +604,12 @@ loop:
 			 */
 			while (p->p_lock)
 				tsleep(p, 0, "reap3", hz);
-			if (!lwp_wait(deadlp)) {
-				tsleep(deadlp->lwp_thread, 0, "reap2", 1);
-				goto loop;
-			}
 
 			/* scheduling hook for heuristic */
+			/* XXX no lwp available, we need a different heuristic */
+			/*
 			p->p_usched->heuristic_exiting(td->td_lwp, deadlp);
+			*/
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
@@ -612,13 +654,6 @@ loop:
 			 */
 			proc_remove_zombie(p);
 			leavepgrp(p);
-
-			/*
-			 * Drain all references to the last lwp.
-			 * Not sure if this is needed, but better safe than sorry.
-			 */
-			while (deadlp->lwp_lock)
-				tsleep(deadlp, 0, "reapl", hz);
 
 			if (--p->p_procsig->ps_refcnt == 0) {
 				if (p->p_sigacts != &p->p_addr->u_sigacts)
@@ -737,3 +772,35 @@ check_sigacts(void)
 	}
 }
 
+
+/*
+ * LWP reaper related code.
+ */
+
+static void
+reaplwps(void *context, int dummy)
+{
+	struct lwplist *lwplist = context;
+	struct lwp *lp;
+
+	while ((lp = LIST_FIRST(lwplist))) {
+		if (!lwp_wait(lp))
+			tsleep(lp, 0, "lwpreap", 1);
+		LIST_REMOVE(lp, lwp_list);
+		lwp_dispose(lp);
+	}
+}
+
+static void
+deadlwp_init(void)
+{
+	int cpu;
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		LIST_INIT(&deadlwp_list[cpu]);
+		deadlwp_task[cpu] = kmalloc(sizeof(*deadlwp_task[cpu]), M_DEVBUF, M_WAITOK);
+		TASK_INIT(deadlwp_task[cpu], 0, reaplwps, &deadlwp_list[cpu]);
+	}
+}
+
+SYSINIT(deadlwpinit, SI_SUB_CONFIGURE, SI_ORDER_ANY, deadlwp_init, NULL);

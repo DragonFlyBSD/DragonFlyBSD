@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.53 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.54 2007/02/24 14:25:06 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -627,9 +627,8 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 
 	imgp->vmspace_destroyed = 1;
 
-	/*
-	 * XXX lwp here would be a good place to kill sibling lwps
-	 */
+	if (curthread->td_proc->p_nthreads > 1)
+		killlwps(curthread->td_lwp);
 
 	/*
 	 * Prevent a pending AIO from modifying the new address space.
