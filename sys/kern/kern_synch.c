@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.79 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.80 2007/02/24 14:23:18 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -492,8 +492,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	if (timo) {
 		if (td->td_flags & TDF_TIMEOUT) {
 			td->td_flags &= ~TDF_TIMEOUT;
-			if (sig == 0)
-				error = EWOULDBLOCK;
+			error = EWOULDBLOCK;
 		} else {
 			callout_stop(&thandle);
 		}
