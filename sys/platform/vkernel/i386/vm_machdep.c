@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.7 2007/02/03 10:30:12 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.8 2007/02/24 14:24:06 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -232,7 +232,7 @@ cpu_set_thread_handler(thread_t td, void (*rfunc)(void), void *func, void *arg)
 }
 
 void
-cpu_proc_exit(void)
+cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
 	struct pcb *pcb;
@@ -295,12 +295,8 @@ cpu_thread_exit(void)
 void
 cpu_proc_wait(struct proc *p)
 {
-	struct thread *td;
-
 	/* drop per-process resources */
-	td = pmap_dispose_proc(p);
-	if (td)
-		lwkt_free_thread(td);
+	pmap_dispose_proc(p);
 }
 
 #ifdef notyet

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.100 2007/02/21 15:45:37 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.101 2007/02/24 14:24:06 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -492,8 +492,10 @@ int	suser_cred (struct ucred *cred, int flag);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);
 
-void	cpu_proc_exit (void) __dead2;
+void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
+void	lwp_exit (void) __dead2;
+void	lwp_dispose (struct lwp *);
 void	exit1 (int) __dead2;
 void	cpu_fork (struct lwp *, struct lwp *, int);
 void	cpu_set_fork_handler (struct lwp *, void (*)(void *), void *);

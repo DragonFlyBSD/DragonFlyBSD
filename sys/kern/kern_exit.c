@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.74 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.75 2007/02/24 14:24:06 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -394,7 +394,86 @@ exit1(int rv)
 	 * finish.  cpu_exit will end with a call to cpu_switch(), finishing
 	 * our execution (pun intended).
 	 */
-	cpu_proc_exit();
+	lwp_exit();
+}
+
+void
+lwp_exit(void)
+{
+#if notyet
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
+
+	--p->p_nthreads;
+	wakeup(&p->p_nthreads);
+#endif
+	cpu_lwp_exit();
+}
+
+/*
+ * Wait until a lwp is completely dead.
+ *
+ * If the thread is still executing, which can't be waited upon,
+ * return failure.  The caller is responsible of waiting a little
+ * bit and checking again.
+ *
+ * Suggested use:
+ * while (!lwp_wait(lp))
+ *	tsleep(lp, 0, "lwpwait", 1);
+ */
+static int
+lwp_wait(struct lwp *lp)
+{
+	struct thread *td = lp->lwp_thread;;
+
+	KKASSERT(lwkt_preempted_proc() != lp);
+
+	while (lp->lwp_lock > 0)
+		tsleep(lp, 0, "lwpwait1", 1);
+
+	lwkt_wait_free(td);
+
+	/*
+	 * The lwp's thread may still be in the middle
+	 * of switching away, we can't rip its stack out from
+	 * under it until TDF_EXITING is set and both
+	 * TDF_RUNNING and TDF_PREEMPT_LOCK are clear.
+	 * TDF_PREEMPT_LOCK must be checked because TDF_RUNNING
+	 * will be cleared temporarily if a thread gets
+	 * preempted.
+	 *
+	 * YYY no wakeup occurs, so we simply return failure
+	 * and let the caller deal with sleeping and calling
+	 * us again.
+	 */
+	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) !=
+	    TDF_EXITING)
+		return (0);
+
+	return (1);
+}
+
+/*
+ * Release the resources associated with a lwp.
+ * The lwp must be completely dead.
+ */
+void
+lwp_dispose(struct lwp *lp)
+{
+	struct thread *td = lp->lwp_thread;;
+
+	KKASSERT(lwkt_preempted_proc() != lp);
+	KKASSERT(td->td_refs == 0);
+	KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) ==
+		 TDF_EXITING);
+
+	if (td != NULL) {
+		td->td_proc = NULL;
+		td->td_lwp = NULL;
+		lp->lwp_thread = NULL;
+		lwkt_free_thread(td);
+	}
+	zfree(lwp_zone, lp);
 }
 
 int
@@ -480,26 +559,9 @@ loop:
 			 * At the moment, if this occurs, we are not woken
 			 * up and rely on a one-second retry.
 			 */
-			while (p->p_lock || deadlp->lwp_lock) {
-				while (deadlp->lwp_lock)
-					tsleep(deadlp, 0, "reap3l", hz);
-				while (p->p_lock)
-					tsleep(p, 0, "reap3", hz);
-			}
-			lwkt_wait_free(deadlp->lwp_thread);
-
-			/*
-			 * The process's thread may still be in the middle
-			 * of switching away, we can't rip its stack out from
-			 * under it until TDF_EXITING is set and both
-			 * TDF_RUNNING and TDF_PREEMPT_LOCK are clear.
-			 * TDF_PREEMPT_LOCK must be checked because TDF_RUNNING
-			 * will be cleared temporarily if a thread gets
-			 * preempted.
-			 *
-			 * YYY no wakeup occurs so we depend on the timeout.
-			 */
-			if ((deadlp->lwp_thread->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
+			while (p->p_lock)
+				tsleep(p, 0, "reap3", hz);
+			if (!lwp_wait(deadlp)) {
 				tsleep(deadlp->lwp_thread, 0, "reap2", 1);
 				goto loop;
 			}
@@ -566,7 +628,6 @@ loop:
 			}
 
 			vm_waitproc(p);
-			zfree(lwp_zone, deadlp);
 			zfree(proc_zone, p);
 			nprocs--;
 			return (0);

@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.16 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.17 2007/02/24 14:24:06 corecode Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -872,22 +872,13 @@ pmap_init_proc(struct proc *p, struct thread *td)
  * Destroy the UPAGES for a process that has exited and disassociate
  * the process from its thread.
  */
-struct thread *
+void
 pmap_dispose_proc(struct proc *p)
 {
-	struct thread *td = NULL;
-	struct lwp *lp;
-
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
 
-	lp = ONLY_LWP_IN_PROC(p);
-	if (lp != NULL && (td = lp->lwp_thread) != NULL) {
-		lp->lwp_thread = NULL;
-		td->td_lwp = NULL;
-		td->td_proc = NULL;
-	}
+	lwp_dispose(ONLY_LWP_IN_PROC(p));
 	p->p_addr = NULL;
-	return(td);
 }
 
 /*

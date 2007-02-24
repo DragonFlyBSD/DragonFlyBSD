@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.73 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.74 2007/02/24 14:24:06 corecode Exp $
  */
 
 /*
@@ -915,22 +915,14 @@ pmap_init_proc(struct proc *p, struct thread *td)
  * Dispose the UPAGES for a process that has exited.
  * This routine directly impacts the exit perf of a process.
  */
-struct thread *
+void
 pmap_dispose_proc(struct proc *p)
 {
-	struct thread *td = NULL;
-	struct lwp *lp;
-
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
 
-	lp = ONLY_LWP_IN_PROC(p);
-	if (lp != NULL && (td = lp->lwp_thread) != NULL) {
-	    td->td_proc = NULL;
-	    td->td_lwp = NULL;
-	    lp->lwp_thread = NULL;
-	}
+	lwp_dispose(ONLY_LWP_IN_PROC(p));
+
 	p->p_addr = NULL;
-	return(td);
 }
 
 /***************************************************
