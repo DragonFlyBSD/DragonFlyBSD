@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.10 2007/02/18 16:15:24 corecode Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.11 2007/02/25 23:07:08 corecode Exp $
  */
 
 /*
@@ -69,27 +69,21 @@
 
 #include "extern.h"
 
-static void	core(int, int, struct kinfo_proc *);
-static void	datadump(int, int, pid_t, u_long, int);
 static void	killed(int);
 static void	restart_target(void);
 static void	usage(void) __dead2;
-static void	userdump(int, pid_t, u_long, int);
 
 kvm_t *kd;
 
-static int data_offset;
 static pid_t pid;
 
 int
 main(int argc, char **argv)
 {
-	struct kinfo_proc *ki = NULL;
 	struct exec exec;
-	int ch, cnt, efd, fd, sflag, uid;
+	int ch, cnt, efd, fd, sflag;
 	char *binfile, *corefile;
-	char errbuf[_POSIX2_LINE_MAX], fname[MAXPATHLEN + 1];
-	int is_aout;
+	char fname[MAXPATHLEN + 1];
 
 	sflag = 0;
 	corefile = NULL;
@@ -133,41 +127,7 @@ main(int argc, char **argv)
 	if (cnt != sizeof(exec))
 		errx(1, "%s exec header: %s",
 		    binfile, cnt > 0 ? strerror(EIO) : strerror(errno));
-	if (!N_BADMAG(exec)) {
-		is_aout = 1;
-		/*
-		 * This legacy a.out support uses the kvm interface instead
-		 * of procfs.
-		 */
-		kd = kvm_openfiles(0, 0, 0, O_RDONLY, errbuf);
-		if (kd == NULL)
-			errx(1, "%s", errbuf);
-
-		uid = getuid();
-
-		ki = kvm_getprocs(kd, KERN_PROC_PID, pid, &cnt);
-		if (ki == NULL || cnt != 1)
-			errx(1, "%d: not found", pid);
-
-		if (ki->kp_ruid != uid && uid != 0)
-			errx(1, "%d: not owner", pid);
-
-		if (ki->kp_stat == SZOMB)
-			errx(1, "%d: zombie", pid);
-
-		if (ki->kp_flags & P_WEXIT)
-			errx(1, "%d: process exiting", pid);
-		if (ki->kp_flags & P_SYSTEM)	/* Swapper or pagedaemon. */
-			errx(1, "%d: system process", pid);
-		if (exec.a_text != ptoa(ki->kp_vm_tsize))
-			errx(1, "The executable %s does not belong to"
-			    " process %d!\n"
-			    "Text segment size (in bytes): executable %ld,"
-			    " process %d", binfile, pid, exec.a_text, 
-			     ptoa(ki->kp_vm_tsize));
-		data_offset = N_DATOFF(exec);
-	} else if (IS_ELF(*(Elf_Ehdr *)&exec)) {
-		is_aout = 0;
+	if (IS_ELF(*(Elf_Ehdr *)&exec)) {
 		close(efd);
 	} else
 		errx(1, "Invalid executable file");
@@ -189,87 +149,10 @@ main(int argc, char **argv)
 		atexit(restart_target);
 	}
 
-	if (is_aout)
-		core(efd, fd, ki);
-	else
-		elf_coredump(fd, pid);
+	elf_coredump(fd, pid);
 
 	(void)close(fd);
 	exit(0);
-}
-
-/*
- * core --
- *	Build the core file.
- */
-void
-core(int efd, int fd, struct kinfo_proc *ki)
-{
-	union {
-		struct user user;
-		char ubytes[ctob(UPAGES)];
-	} uarea;
-	int tsize = ki->kp_vm_tsize;
-	int dsize = ki->kp_vm_dsize;
-	int ssize = ki->kp_vm_ssize;
-	int cnt;
-
-	/* Read in user struct */
-	cnt = kvm_read(kd, ki->kp_pid, &uarea, sizeof(uarea));
-	if (cnt != sizeof(uarea))
-		errx(1, "read user structure: %s",
-		    cnt > 0 ? strerror(EIO) : strerror(errno));
-
-	/*
-	 * Fill in the eproc vm parameters, since these are garbage unless
-	 * the kernel is dumping core or something.
-	 */
-	uarea.user.u_kproc = *ki;
-
-	/* Dump user area */
-	cnt = write(fd, &uarea, sizeof(uarea));
-	if (cnt != sizeof(uarea))
-		errx(1, "write user structure: %s",
-		    cnt > 0 ? strerror(EIO) : strerror(errno));
-
-	/* Dump data segment */
-	datadump(efd, fd, ki->kp_pid, USRTEXT + ctob(tsize), dsize);
-
-	/* Dump stack segment */
-	userdump(fd, ki->kp_pid, USRSTACK - ctob(ssize), ssize);
-
-	/* Dump machine dependent portions of the core. */
-	md_core(kd, fd, ki);
-}
-
-void
-datadump(int efd, int fd, pid_t pid,
-         u_long addr, int npage)
-{
-	int cc, delta;
-	char buffer[PAGE_SIZE];
-
-	delta = data_offset - addr;
-	while (--npage >= 0) {
-		cc = kvm_uread(kd, pid, addr, buffer, PAGE_SIZE);
-		if (cc != PAGE_SIZE) {
-			/* Try to read the page from the executable. */
-			if (lseek(efd, (off_t)addr + delta, SEEK_SET) == -1)
-				err(1, "seek executable: %s", strerror(errno));
-			cc = read(efd, buffer, sizeof(buffer));
-			if (cc != sizeof(buffer)) {
-				if (cc < 0)
-					err(1, "read executable");
-				else	/* Assume untouched bss page. */
-					bzero(buffer, sizeof(buffer));
-			}
-		}
-		cc = write(fd, buffer, PAGE_SIZE);
-		if (cc != PAGE_SIZE)
-			errx(1, "write data segment: %s",
-			    cc > 0 ? strerror(EIO) : strerror(errno));
-		addr += PAGE_SIZE;
-	}
 }
 
 static void
@@ -284,26 +167,6 @@ static void
 restart_target(void)
 {
 	kill(pid, SIGCONT);
-}
-
-void
-userdump(int fd, pid_t pid, u_long addr,
-         int npage)
-{
-	int cc;
-	char buffer[PAGE_SIZE];
-
-	while (--npage >= 0) {
-		cc = kvm_uread(kd, pid, addr, buffer, PAGE_SIZE);
-		if (cc != PAGE_SIZE)
-			/* Could be an untouched fill-with-zero page. */
-			bzero(buffer, PAGE_SIZE);
-		cc = write(fd, buffer, PAGE_SIZE);
-		if (cc != PAGE_SIZE)
-			errx(1, "write stack segment: %s",
-			    cc > 0 ? strerror(EIO) : strerror(errno));
-		addr += PAGE_SIZE;
-	}
 }
 
 void
