@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.18 2007/01/08 21:41:50 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.19 2007/02/25 14:07:13 corecode Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -127,6 +127,7 @@ const char *crypt_get_format(void);
 int	 crypt_set_format(const char *);
 void	 endusershell(void);
 int	 exect(const char *, char * const *, char * const *);
+void	 extexit(int, int, void *);
 int	 fchdir(int);
 int	 fchown(int, uid_t, gid_t);
 char	*fflagstostr(u_long);

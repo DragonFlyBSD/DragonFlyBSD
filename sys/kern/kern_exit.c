@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.76 2007/02/24 14:25:06 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.77 2007/02/25 14:07:13 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -67,6 +67,7 @@
 #include <sys/kern_syscall.h>
 #include <sys/upcall.h>
 #include <sys/caps.h>
+#include <sys/unistd.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -109,6 +110,65 @@ int
 sys_exit(struct exit_args *uap)
 {
 	exit1(W_EXITCODE(uap->rval, 0));
+	/* NOTREACHED */
+}
+
+/*
+ * Extended exit --
+ *	Death of a lwp or process with optional bells and whistles.
+ */
+int
+sys_extexit(struct extexit_args *uap)
+{
+	int action, who;
+	int error;
+
+	action = EXTEXIT_ACTION(uap->how);
+	who = EXTEXIT_WHO(uap->how);
+
+	/* Check parameters before we might perform some action */
+	switch (who) {
+	case EXTEXIT_PROC:
+	case EXTEXIT_LWP:
+		break;
+
+	default:
+		return (EINVAL);
+	}
+
+	switch (action) {
+	case EXTEXIT_SIMPLE:
+		break;
+
+	case EXTEXIT_SETINT:
+		error = copyout(&uap->status, uap->addr, sizeof(uap->status));
+		if (error)
+			return (error);
+		break;
+
+	default:
+		return (EINVAL);
+	}
+
+	switch (who) {
+	case EXTEXIT_LWP:
+		/*
+		 * Be sure only to perform a simple lwp exit if there is at
+		 * least one more lwp in the proc, which will call exit1()
+		 * later, otherwise the proc will be an UNDEAD and not even a
+		 * SZOMB!
+		 */
+		if (curproc->p_nthreads > 1)
+			lwp_exit();
+		/* else last lwp in proc:  do the real thing */
+		/* FALLTHROUGH */
+
+	default:	/* to help gcc */
+	case EXTEXIT_PROC:
+		exit1(W_EXITCODE(uap->status, 0));
+		/* NOTREACHED */
+	}
+
 	/* NOTREACHED */
 }
 

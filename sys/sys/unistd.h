@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.6 2006/10/10 15:40:47 dillon Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.7 2007/02/25 14:07:13 corecode Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -223,6 +223,17 @@
 #define RFPPWAIT	(1<<31) /* parent sleeps until child exits (vfork) */
 #define RFKERNELONLY	(RFPPWAIT|RFPGLOCK)
 
+/*
+ * Extended exit extexit() operation modes.
+ */
+/* Types of action to communicate exit */
+#define EXTEXIT_SIMPLE	0
+#define EXTEXIT_SETINT	1
+#define EXTEXIT_ACTION(f) ((f) & 0xffff)
+/* Types describing what to exit */
+#define EXTEXIT_PROC	(0<<16)
+#define EXTEXIT_LWP	(1<<16)
+#define EXTEXIT_WHO(f)	((f) & (0xffff<<16))
 
 #endif /* !_POSIX_SOURCE */
 

@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.22 2007/01/06 01:46:36 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.23 2007/02/25 14:07:13 corecode Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -67,7 +67,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	caps_sys_setgen.2 \
 	sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 closefrom.2 \
-	connect.2 dup.2 execve.2 \
+	connect.2 dup.2 execve.2 extexit.2 \
 	fcntl.2 fhopen.2 flock.2 fork.2 fsync.2 \
 	getdirentries.2 getdtablesize.2 \
 	getfh.2 getfsstat.2 getgid.2 getgroups.2 getitimer.2 getlogin.2 \

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.48 2007/01/08 21:41:56 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.49 2007/02/25 14:07:13 corecode Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -676,3 +676,4 @@
 			    size_t nbyte, int flags, off_t offset); }
 493	STD	BSD	{ ssize_t vmspace_pwrite(void *id, const void *buf, \
 			    size_t nbyte, int flags, off_t offset); }
+494	STD	BSD	{ void extexit(int how, int status, void *addr); }
