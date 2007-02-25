@@ -7,7 +7,7 @@
 .\"----------------------------------------------------------------------------
 .\"
 .\"$FreeBSD: src/lib/libc/sys/jail.2,v 1.10.2.10 2002/12/12 05:26:38 trhodes Exp $
-.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.7 2007/01/07 18:33:38 victor Exp $
+.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.8 2007/02/25 18:50:48 swildner Exp $
 .\"
 .Dd April 28, 1999
 .Dt JAIL 2
@@ -89,7 +89,6 @@ ca be used to identify all active jails.
 If successful, jail() returns a non-negative integer, termed the jail
 identifier (JID). It returns -1 on failure, and sets errno to indicate
 the error.
-
 .Sh ERRORS
 The
 .Fn jail
