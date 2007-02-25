@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.21 2007/02/24 14:25:07 corecode Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.22 2007/02/25 23:17:13 corecode Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -59,8 +59,10 @@
  * (not necessarily resident).
  */
 struct	sigacts {
-	sig_t	ps_sigact[_SIG_MAXSIG];	/* disposition of signals */
+	sig_t	 ps_sigact[_SIG_MAXSIG];	/* disposition of signals */
 	sigset_t ps_catchmask[_SIG_MAXSIG];	/* signals to be blocked */
+	sigset_t ps_sigignore;		/* Signals being ignored. */
+	sigset_t ps_sigcatch;		/* Signals being caught by user. */
 	sigset_t ps_sigonstack;		/* signals to take on sigstack */
 	sigset_t ps_sigintr;		/* signals that interrupt syscalls */
 	sigset_t ps_sigreset;		/* signals that reset when caught */
@@ -68,6 +70,8 @@ struct	sigacts {
 	sigset_t ps_siginfo;		/* signals that want SA_SIGINFO args */
 	sigset_t ps_usertramp;		/* SunOS compat; libc sigtramp XXX */
 	sigset_t ps_sigmailbox;		/* signals that update a mailbox */
+	int	 ps_refcnt;
+	int      ps_flag;
 };
 
 /* additional signal action values, used only temporarily/internally */
@@ -186,7 +190,6 @@ extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
 /*
  * Machine-independent functions:
  */
-void	check_sigacts (void);
 void	execsigs (struct proc *p);
 void	gsignal (int pgid, int sig);
 int	issignal (struct lwp *lp);
@@ -200,7 +203,6 @@ void	lwpsignal (struct proc *p, struct lwp *lp, int sig);
 void	lwp_signotify (struct lwp *lp);
 void	siginit (struct proc *p);
 void	trapsignal (struct lwp *p, int sig, u_long code);
-static int __cursig (struct lwp *p);
 
 /*
  * Machine-dependent functions:
@@ -210,75 +212,6 @@ void	sendupcall (struct vmupcall *vu, int morepending);
 int	fetchupcall (struct vmupcall *vu, int morepending, void *rsp);
 void	sigexit (struct proc *p, int sig);
 int	checkpoint_signal_handler(struct lwp *p);
-
-/*
- * Inline functions:
- */
-/*
- * Determine which signals are pending for a lwp.
- */
-static __inline sigset_t
-lwp_sigpend(struct lwp *lp)
-{
-	sigset_t set;
-
-	set = lp->lwp_proc->p_siglist;
-	SIGSETOR(set, lp->lwp_siglist);
-	return (set);
-}
-
-/*
- * Mark a signal as handled by the lwp.
- */
-static __inline void
-lwp_delsig(struct lwp *lp, int sig)
-{
-	SIGDELSET(lp->lwp_siglist, sig);
-	SIGDELSET(lp->lwp_proc->p_siglist, sig);
-}
-
-#define	CURSIG(lp)	__cursig(lp)
-#define CURSIGNB(lp)	__cursignb(lp)
-
-/*
- * Determine signal that should be delivered to process p, the current
- * process, 0 if none.  If there is a pending stop signal with default
- * action, the process stops in issignal().
- *
- * MP SAFE
- */
-static __inline
-int
-__cursig(struct lwp *lp)
-{
-	struct proc *p;
-	sigset_t tmpset;
-	int r;
-
-	p = lp->lwp_proc;
-	tmpset = lwp_sigpend(lp);
-	SIGSETNAND(tmpset, lp->lwp_sigmask);
-	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
-		return(0);
-	r = issignal(lp);
-	return(r);
-}
-
-static __inline
-int
-__cursignb(struct lwp *lp)
-{
-	struct proc *p;
-	sigset_t tmpset;
-
-	p = lp->lwp_proc;
-	tmpset = lwp_sigpend(lp);
-	SIGSETNAND(tmpset, lp->lwp_sigmask);
-	if ((!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
-		return(FALSE);
-	}
-	return (TRUE);
-}
 
 #endif	/* _KERNEL */
 

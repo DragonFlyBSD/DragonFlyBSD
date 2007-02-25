@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.77 2007/02/25 14:07:13 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.78 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -447,7 +447,7 @@ exit1(int rv)
 	 * flag set, notify process 1 instead (and hope it will handle
 	 * this situation).
 	 */
-	if (p->p_pptr->p_procsig->ps_flag & PS_NOCLDWAIT) {
+	if (p->p_pptr->p_sigacts->ps_flag & PS_NOCLDWAIT) {
 		struct proc *pp = p->p_pptr;
 		proc_reparent(p, initproc);
 		/*
@@ -715,11 +715,9 @@ loop:
 			proc_remove_zombie(p);
 			leavepgrp(p);
 
-			if (--p->p_procsig->ps_refcnt == 0) {
-				if (p->p_sigacts != &p->p_addr->u_sigacts)
-					FREE(p->p_sigacts, M_SUBPROC);
-			        FREE(p->p_procsig, M_SUBPROC);
-				p->p_procsig = NULL;
+			if (--p->p_sigacts->ps_refcnt == 0) {
+				kfree(p->p_sigacts, M_SUBPROC);
+				p->p_sigacts = NULL;
 			}
 
 			vm_waitproc(p);
@@ -813,23 +811,6 @@ rm_at_exit(exitlist_fn function)
 		}
 	}	
 	return (0);
-}
-
-void
-check_sigacts(void)
-{
-	struct proc *p = curproc;
-	struct sigacts *pss;
-
-	if (p->p_procsig->ps_refcnt == 1 &&
-	    p->p_sigacts != &p->p_addr->u_sigacts) {
-		pss = p->p_sigacts;
-		crit_enter();
-		p->p_addr->u_sigacts = *pss;
-		p->p_sigacts = &p->p_addr->u_sigacts;
-		crit_exit();
-		FREE(pss, M_SUBPROC);
-	}
 }
 
 

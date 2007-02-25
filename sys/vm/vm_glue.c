@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.51 2007/02/19 01:14:24 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.52 2007/02/25 23:17:13 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -226,7 +226,6 @@ vsunlock(caddr_t addr, u_int len)
 void
 vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 {
-	struct user *up;
 	struct proc *p1 = lp1->lwp_proc;
 	struct thread *td2;
 
@@ -267,23 +266,6 @@ vm_fork(struct lwp *lp1, struct proc *p2, int flags)
 	pmap_init_proc(p2, td2);
 	lwkt_setpri(td2, TDPRI_KERN_USER);
 	lwkt_set_comm(td2, "%s", p1->p_comm);
-
-	up = p2->p_addr;
-
-	/*
-	 * p_stats currently points at fields in the user struct
-	 * but not at &u, instead at p_addr. Copy parts of
-	 * p_stats; zero the rest of p_stats (statistics).
-	 *
-	 * If procsig->ps_refcnt is 1 and p2->p_sigacts is NULL we dont' need
-	 * to share sigacts, so we use the up->u_sigacts.
-	 */
-	if (p2->p_sigacts == NULL) {
-		if (p2->p_procsig->ps_refcnt != 1)
-			kprintf ("PID:%d NULL sigacts with refcnt not 1!\n",p2->p_pid);
-		p2->p_sigacts = &up->u_sigacts;
-		up->u_sigacts = *p1->p_sigacts;
-	}
 
 	/*
 	 * cpu_fork will copy and update the pcb, set up the kernel stack,

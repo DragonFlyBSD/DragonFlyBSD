@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.41 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.42 2007/02/25 23:17:13 corecode Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include <sys/tprintf.h>
 #include <sys/sysctl.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>

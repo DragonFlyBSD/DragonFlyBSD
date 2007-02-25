@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.72 2007/02/24 14:25:07 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.73 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -47,6 +47,7 @@
 #include <sys/kernel.h>
 #include <sys/sysproto.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
@@ -251,9 +252,9 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			oact->sa_flags |= SA_SIGINFO;
 		if (SIGISMEMBER(ps->ps_sigmailbox, sig))
 			oact->sa_flags |= SA_MAILBOX;
-		if (sig == SIGCHLD && p->p_procsig->ps_flag & PS_NOCLDSTOP)
+		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDSTOP)
 			oact->sa_flags |= SA_NOCLDSTOP;
-		if (sig == SIGCHLD && p->p_procsig->ps_flag & PS_NOCLDWAIT)
+		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDWAIT)
 			oact->sa_flags |= SA_NOCLDWAIT;
 	}
 	if (act) {
@@ -308,9 +309,9 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			SIGDELSET(ps->ps_sigmailbox, sig);
 		if (sig == SIGCHLD) {
 			if (act->sa_flags & SA_NOCLDSTOP)
-				p->p_procsig->ps_flag |= PS_NOCLDSTOP;
+				p->p_sigacts->ps_flag |= PS_NOCLDSTOP;
 			else
-				p->p_procsig->ps_flag &= ~PS_NOCLDSTOP;
+				p->p_sigacts->ps_flag &= ~PS_NOCLDSTOP;
 			if (act->sa_flags & SA_NOCLDWAIT) {
 				/*
 				 * Paranoia: since SA_NOCLDWAIT is implemented
@@ -319,11 +320,11 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 				 * is forbidden to set SA_NOCLDWAIT.
 				 */
 				if (p->p_pid == 1)
-					p->p_procsig->ps_flag &= ~PS_NOCLDWAIT;
+					p->p_sigacts->ps_flag &= ~PS_NOCLDWAIT;
 				else
-					p->p_procsig->ps_flag |= PS_NOCLDWAIT;
+					p->p_sigacts->ps_flag |= PS_NOCLDWAIT;
 			} else {
-				p->p_procsig->ps_flag &= ~PS_NOCLDWAIT;
+				p->p_sigacts->ps_flag &= ~PS_NOCLDWAIT;
 			}
 		}
 		/*
@@ -435,7 +436,7 @@ execsigs(struct proc *p)
 	/*
 	 * Reset no zombies if child dies flag as Solaris does.
 	 */
-	p->p_procsig->ps_flag &= ~PS_NOCLDWAIT;
+	p->p_sigacts->ps_flag &= ~PS_NOCLDWAIT;
 }
 
 /*
@@ -1251,7 +1252,7 @@ proc_stop(struct proc *p, int notify)
 	p->p_flag &= ~P_WAITED;
 	wakeup(p->p_pptr);
 	if (notify > 1 ||
-	    (notify && (p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0))
+	    (notify && (p->p_pptr->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0))
 		ksignal(p->p_pptr, SIGCHLD);
 }
 
@@ -1363,6 +1364,10 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 
 		lp->lwp_sigmask = savedmask;
 		SIGSETNAND(lp->lwp_sigmask, waitset);
+		/*
+		 * We won't ever be woken up.  Instead, our sleep will
+		 * be broken in lwpsignal().
+		 */
 		error = tsleep(&p->p_sigacts, PCATCH, "sigwt", hz);
 		if (timeout) {
 			if (error == ERESTART) {

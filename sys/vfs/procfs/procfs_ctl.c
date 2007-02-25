@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.14 2007/02/22 15:50:50 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.15 2007/02/25 23:17:13 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/vnode.h>
 #include <sys/ptrace.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <vfs/procfs/procfs.h>
 
 #include <vm/vm.h>

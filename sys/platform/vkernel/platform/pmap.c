@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.18 2007/02/24 14:25:07 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.19 2007/02/25 23:17:13 corecode Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -857,7 +857,6 @@ pmap_init_proc(struct proc *p, struct thread *td)
 {
 	struct lwp *lp = ONLY_LWP_IN_PROC(p);
 
-	p->p_addr = (void *)td->td_kstack;
 	lp->lwp_thread = td;
 	td->td_proc = p;
 	td->td_lwp = lp;
@@ -865,7 +864,6 @@ pmap_init_proc(struct proc *p, struct thread *td)
 #ifdef SMP
 	KKASSERT(td->td_mpcount == 1);
 #endif
-	bzero(p->p_addr, sizeof(*p->p_addr));
 }
 
 /*
@@ -876,8 +874,6 @@ void
 pmap_dispose_proc(struct proc *p)
 {
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
-
-	p->p_addr = NULL;
 }
 
 /*

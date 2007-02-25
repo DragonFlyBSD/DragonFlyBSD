@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.101 2007/02/24 14:25:07 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.102 2007/02/25 23:17:13 corecode Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <sys/kernel.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>

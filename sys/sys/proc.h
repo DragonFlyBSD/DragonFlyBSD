@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.102 2007/02/24 14:25:07 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.103 2007/02/25 23:17:13 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -70,6 +70,7 @@
 #include <sys/systimer.h>
 #include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
+#include <sys/signalvar.h>
 
 LIST_HEAD(proclist, proc);
 LIST_HEAD(lwplist, lwp);
@@ -97,14 +98,6 @@ struct	pgrp {
 	pid_t	pg_id;			/* Pgrp id. */
 	int	pg_jobc;	/* # procs qualifying pgrp for job control */
 	struct lock pg_lock;		/* Lock during fork */
-};
-
-struct	procsig {
-	sigset_t ps_sigignore;	/* Signals being ignored. */
-	sigset_t ps_sigcatch;	/* Signals being caught by user. */
-	int      ps_flag;
-	struct	 sigacts *ps_sigacts;
-	int	 ps_refcnt;
 };
 
 #define	PS_NOCLDWAIT	0x0001	/* No zombies if child dies */
@@ -222,10 +215,9 @@ struct	proc {
 	struct plimit	*p_limit;	/* Process limits. */
 	struct pstats	*p_stats;
 	void		*p_pad0;
-	struct	procsig	*p_procsig;
-#define p_sigacts	p_procsig->ps_sigacts
-#define p_sigignore	p_procsig->ps_sigignore
-#define p_sigcatch	p_procsig->ps_sigcatch
+	struct sigacts	*p_sigacts;
+#define p_sigignore	p_sigacts->ps_sigignore
+#define p_sigcatch	p_sigacts->ps_sigcatch
 #define	p_rlimit	p_limit->pl_rlimit
 
 	int		p_flag;		/* P_* flags. */
@@ -293,8 +285,7 @@ struct	proc {
 	struct rtprio	p_rtprio;	/* Realtime priority. */
 	struct pargs	*p_args;
 /* End area that is copied on creation. */
-#define	p_endcopy	p_addr
-	struct user	*p_addr;	/* Kernel virtual addr of u-area (PROC ONLY) XXX lwp */
+#define	p_endcopy	p_xstat
 
 	u_short		p_xstat;	/* Exit status or last stop signal */
 	u_short		p_acflag;	/* Accounting flags. */

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.49 2007/02/21 15:45:36 corecode Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.50 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -1419,8 +1419,7 @@ elf_putsigs(struct lwp *lp, elf_buf_t target)
 	csi = target_reserve(target, sizeof(struct ckpt_siginfo), &error);
 	if (csi) {
 		csi->csi_ckptpisz = sizeof(struct ckpt_siginfo);
-		bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
-		bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
+		bcopy(p->p_sigacts, &csi->csi_sigacts, sizeof(*p->p_sigacts));
 		bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
 		bcopy(&lp->lwp_sigmask, &csi->csi_sigmask,
 			sizeof(sigset_t));

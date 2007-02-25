@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.12 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.13 2007/02/25 23:17:13 corecode Exp $
  *
  * Core of NCP protocol
  */
@@ -43,6 +43,7 @@
 #include <sys/proc.h>
 #include <sys/poll.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/mbuf.h>
 #include <sys/thread2.h>
 

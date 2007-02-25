@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.73 2007/02/16 23:11:39 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.74 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -78,7 +78,7 @@
 /* Components of the first process -- never freed. */
 static struct session session0;
 static struct pgrp pgrp0;
-static struct procsig procsig0;
+static struct sigacts sigacts0;
 static struct filedesc filedesc0;
 static struct plimit limit0;
 static struct vmspace vmspace0;
@@ -157,7 +157,6 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 {
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
-	proc0.p_addr = (void *)thread0.td_kstack;
 	LIST_INIT(&proc0.p_lwps);
 	LIST_INSERT_HEAD(&proc0.p_lwps, &lwp0, lwp_list);
 	lwp0.lwp_thread = &thread0;
@@ -350,9 +349,9 @@ proc0_init(void *dummy __unused)
 	/* Don't jail it */
 	p->p_ucred->cr_prison = NULL;
 
-	/* Create procsig. */
-	p->p_procsig = &procsig0;
-	p->p_procsig->ps_refcnt = 1;
+	/* Create sigacts. */
+	p->p_sigacts = &sigacts0;
+	p->p_sigacts->ps_refcnt = 1;
 
 	/* Initialize signal state for process 0. */
 	siginit(p);
@@ -372,14 +371,6 @@ proc0_init(void *dummy __unused)
 		    round_page(VM_MIN_USER_ADDRESS),
 		    trunc_page(VM_MAX_USER_ADDRESS),
 		    vmspace_pmap(&vmspace0));
-
-	/*
-	 * We continue to place signal
-	 * actions in the user struct so they're pageable.
-	 *
-	 * XXX old + cufty.  will be removed
-	 */
-	p->p_sigacts = &p->p_addr->u_sigacts;
 
 	/*
 	 * Charge root for one process.

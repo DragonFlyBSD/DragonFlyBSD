@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.36 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.37 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -47,6 +47,7 @@
 #include <sys/reboot.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>

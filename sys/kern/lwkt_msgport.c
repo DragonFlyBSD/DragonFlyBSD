@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.37 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.38 2007/02/25 23:17:12 corecode Exp $
  */
 
 #ifdef _KERNEL
@@ -48,6 +48,7 @@
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
 

@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.6 2006/09/09 19:07:27 dillon Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.7 2007/02/25 23:17:12 corecode Exp $
 set remotebaud 38400
 set remotetimeout 1
 set complaints 1
@@ -394,16 +394,16 @@ define ps
     set $nproc = nprocs
     set $aproc = allproc.lh_first
     set $proc = allproc.lh_first
-    printf "  pid    proc    addr   uid  ppid  pgrp   flag stat comm         wchan\n"
+    printf "  pid    proc    uid  ppid  pgrp   flag stat comm         wchan\n"
     while (--$nproc >= 0)
         set $pptr = $proc.p_pptr
         if ($pptr == 0)
            set $pptr = $proc
         end
         if ($proc.p_stat)
-            printf "%5d %08x %08x %4d %5d %5d  %06x  %d  %-10s   ", \
+            printf "%5d %08x %4d %5d %5d  %06x  %d  %-10s   ", \
                    $proc.p_pid, $aproc, \
-                   $proc.p_addr, $proc.p_cred->p_ruid, $pptr->p_pid, \
+                   $proc.p_cred->p_ruid, $pptr->p_pid, \
                    $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
                    &$proc.p_comm[0]
             if ($proc.p_wchan)
@@ -486,16 +486,16 @@ define btpa
     set $nproc = nprocs
     set $aproc = allproc.lh_first
     set $proc = allproc.lh_first
-    printf "  pid    proc    addr   uid  ppid  pgrp   flag stat comm         wchan\n"
+    printf "  pid    proc    uid  ppid  pgrp   flag stat comm         wchan\n"
     while (--$nproc >= 0)
         set $pptr = $proc.p_pptr
         if ($pptr == 0)
            set $pptr = $proc
         end
         if ($proc.p_stat)
-            printf "%5d %08x %08x %4d %5d %5d  %06x %d  %-10s   ", \
+            printf "%5d %08x %4d %5d %5d  %06x %d  %-10s   ", \
                    $proc.p_pid, $aproc, \
-                   $proc.p_addr, $proc.p_cred->p_ruid, $pptr->p_pid, \
+                   $proc.p_cred->p_ruid, $pptr->p_pid, \
                    $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
                    &$proc.p_comm[0]
             if ($proc.p_wchan)
@@ -543,9 +543,9 @@ define defproc
            end
 	   set $myvectorproc = $proc
            if ($proc.p_stat)
-               printf "%5d %08x %08x %4d %5d %5d  %06x %d  %-10s   ", \
+               printf "%5d %08x %4d %5d %5d  %06x %d  %-10s   ", \
                       $proc.p_pid, $aproc, \
-                      $proc.p_addr, $proc.p_cred->p_ruid, $pptr->p_pid, \
+                      $proc.p_cred->p_ruid, $pptr->p_pid, \
                      $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
                      &$proc.p_comm[0]
                if ($proc.p_wchan)

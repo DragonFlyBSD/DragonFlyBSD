@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.80 2007/02/24 14:23:18 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.81 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -47,6 +47,7 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>

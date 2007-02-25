@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1982, 1986, 1989, 1991, 1993
+ * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,75 +30,83 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)user.h	8.2 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.18 2007/02/25 23:17:13 corecode Exp $
+ *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
+ * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
+ * $DragonFly: src/sys/sys/signal2.h,v 1.1 2007/02/25 23:17:13 corecode Exp $
  */
 
-#ifndef _SYS_USER_H_
-#define _SYS_USER_H_
+#ifndef _SYS_SIGNAL2_H
+#define _SYS_SIGNAL2_H
+
+#include <sys/proc.h>
 
 /*
- * stuff that *used* to be included by user.h, or is now needed.  The
- * expectation here is that the user program wants to mess with kernel
- * structures.  To be sure we get kernel structures we have to define
- * _KERNEL_STRUCTURES.  Otherwise we might get the user version.
- *
- * This is a really aweful hack.  Fortunately nobody includes sys/user.h
- * unless they really, really, really need kinfo_proc.
+ * Inline functions:
  */
-#ifndef _KERNEL_STRUCTURES
-#define _KERNEL_STRUCTURES
-#endif
+/*
+ * Determine which signals are pending for a lwp.
+ */
+static __inline sigset_t
+lwp_sigpend(struct lwp *lp)
+{
+	sigset_t set;
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_ERRNO_H_
-#include <sys/errno.h>
-#endif
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
-#endif
-#ifndef _SYS_RESOURCE_H_
-#include <sys/resource.h>
-#endif
-#ifndef _SYS_UCRED_H_
-#include <sys/ucred.h>
-#endif
-#ifndef _SYS_UIO_H_
-#include <sys/uio.h>
-#endif
-#ifndef _SYS_PROC_H_
-#include <sys/proc.h>
-#endif
-#ifndef _SYS_LOCK_H_
-#include <sys/lock.h>		/* XXX */
-#endif
-#ifndef _VM_VM_H_
-#include <vm/vm.h>		/* XXX */
-#endif
-#ifndef _VM_PARAM_H_
-#include <vm/vm_param.h>	/* XXX */
-#endif
-#ifndef _VM_PMAP_H_
-#include <vm/pmap.h>		/* XXX */
-#endif
-#ifndef _VM_MAP_H_
-#include <vm/vm_map.h>		/* XXX */
-#endif
-#ifndef _SYS_RESOURCEVAR_H_
-#include <sys/resourcevar.h>
-#endif
-#ifndef _SYS_SIGNALVAR_H_
-#include <sys/signalvar.h>
-#endif
-#ifndef _MACHINE_PCB_H_
-#include <machine/pcb.h>
-#endif
-#ifndef _MACHINE_COREDUMP_H_
-#include <machine/coredump.h>
-#endif
-#include <sys/kinfo.h>
+	set = lp->lwp_proc->p_siglist;
+	SIGSETOR(set, lp->lwp_siglist);
+	return (set);
+}
+
+/*
+ * Mark a signal as handled by the lwp.
+ */
+static __inline void
+lwp_delsig(struct lwp *lp, int sig)
+{
+	SIGDELSET(lp->lwp_siglist, sig);
+	SIGDELSET(lp->lwp_proc->p_siglist, sig);
+}
+
+#define	CURSIG(lp)	__cursig(lp)
+#define CURSIGNB(lp)	__cursignb(lp)
+
+/*
+ * Determine signal that should be delivered to process p, the current
+ * process, 0 if none.  If there is a pending stop signal with default
+ * action, the process stops in issignal().
+ *
+ * MP SAFE
+ */
+static __inline
+int
+__cursig(struct lwp *lp)
+{
+	struct proc *p;
+	sigset_t tmpset;
+	int r;
+
+	p = lp->lwp_proc;
+	tmpset = lwp_sigpend(lp);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
+	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
+		return(0);
+	r = issignal(lp);
+	return(r);
+}
+
+static __inline
+int
+__cursignb(struct lwp *lp)
+{
+	struct proc *p;
+	sigset_t tmpset;
+
+	p = lp->lwp_proc;
+	tmpset = lwp_sigpend(lp);
+	SIGSETNAND(tmpset, lp->lwp_sigmask);
+	if ((!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))) {
+		return(FALSE);
+	}
+	return (TRUE);
+}
 
 #endif

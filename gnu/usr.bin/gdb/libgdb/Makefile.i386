@@ -1,10 +1,10 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.i386,v 1.2 2006/07/27 00:30:10 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.i386,v 1.3 2007/02/25 23:17:12 corecode Exp $
 
 SRCS+=	i386-nat.c i386-tdep.c i386bsd-nat.c i386bsd-tdep.c i386fbsd-nat.c
 SRCS+=	i386fbsd-tdep.c i387-tdep.c
 
 nm.h:
-	echo '#include "i386/nm-fbsd.h"' > ${.TARGET}
+	echo '#include "nm-dragonfly.h"' > ${.TARGET}
 
 tm.h:
 	echo '#include "i386/tm-fbsd.h"' > ${.TARGET}

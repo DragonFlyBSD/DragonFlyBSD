@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.63 2007/02/18 16:17:09 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.64 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -66,8 +66,8 @@
 #include <vm/vm_zone.h>
 
 #include <sys/vmmeter.h>
-#include <sys/user.h>
 #include <sys/thread2.h>
+#include <sys/signal2.h>
 
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
 
@@ -323,7 +323,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	/*
 	 * Duplicate sub-structures as needed.
 	 * Increase reference counts on shared objects.
-	 * The p_stats and p_sigacts substructs are set in vm_fork.
 	 * p_lock is in the copy area and must be cleared.
 	 */
 	p2->p_flag = 0;
@@ -340,33 +339,13 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_args->ar_ref++;
 
 	if (flags & RFSIGSHARE) {
-		p2->p_procsig = p1->p_procsig;
-		p2->p_procsig->ps_refcnt++;
-		if (p1->p_sigacts == &p1->p_addr->u_sigacts) {
-			struct sigacts *newsigacts;
-
-			/* Create the shared sigacts structure */
-			MALLOC(newsigacts, struct sigacts *,
-			    sizeof(struct sigacts), M_SUBPROC, M_WAITOK);
-			crit_enter();
-			/*
-			 * Set p_sigacts to the new shared structure.
-			 * Note that this is updating p1->p_sigacts at the
-			 * same time, since p_sigacts is just a pointer to
-			 * the shared p_procsig->ps_sigacts.
-			 */
-			p2->p_sigacts  = newsigacts;
-			bcopy(&p1->p_addr->u_sigacts, p2->p_sigacts,
-			    sizeof(*p2->p_sigacts));
-			*p2->p_sigacts = p1->p_addr->u_sigacts;
-			crit_exit();
-		}
+		p2->p_sigacts = p1->p_sigacts;
+		p2->p_sigacts->ps_refcnt++;
 	} else {
-		MALLOC(p2->p_procsig, struct procsig *, sizeof(struct procsig),
+		p2->p_sigacts = (struct sigacts *)kmalloc(sizeof(*p2->p_sigacts),
 		    M_SUBPROC, M_WAITOK);
-		bcopy(p1->p_procsig, p2->p_procsig, sizeof(*p2->p_procsig));
-		p2->p_procsig->ps_refcnt = 1;
-		p2->p_sigacts = NULL;	/* finished in vm_fork() */
+		bcopy(p1->p_sigacts, p2->p_sigacts, sizeof(*p2->p_sigacts));
+		p2->p_sigacts->ps_refcnt = 1;
 	}
 	if (flags & RFLINUXTHPN) 
 	        p2->p_sigparent = SIGUSR1;

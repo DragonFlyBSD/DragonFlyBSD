@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.17 2007/02/21 15:45:36 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.18 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -451,7 +451,6 @@ elf_getsigs(struct lwp *lp, struct file *fp)
 	struct proc *p = lp->lwp_proc;
 	int error;
 	struct ckpt_siginfo *csi;
-	struct sigacts *tmpsigacts;
 
 	TRACE_ENTER;
 	csi = kmalloc(sizeof(struct ckpt_siginfo), M_TEMP, M_ZERO | M_WAITOK);
@@ -463,10 +462,7 @@ elf_getsigs(struct lwp *lp, struct file *fp)
 		error = EINVAL;
 		goto done;
 	}
-	tmpsigacts = p->p_procsig->ps_sigacts;
-	bcopy(&csi->csi_procsig, p->p_procsig, sizeof(struct procsig));
-	p->p_procsig->ps_sigacts = tmpsigacts;
-	bcopy(&csi->csi_sigacts, p->p_procsig->ps_sigacts, sizeof(struct sigacts));
+	bcopy(&csi->csi_sigacts, p->p_sigacts, sizeof(p->p_sigacts));
 	bcopy(&csi->csi_itimerval, &p->p_realtimer, sizeof(struct itimerval));
 	SIG_CANTMASK(csi->csi_sigmask);
 	/* XXX lwp handle more than one lwp */

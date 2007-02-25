@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.9 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.10 2007/02/25 23:17:13 corecode Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
@@ -74,7 +74,6 @@ struct ckpt_fileinfo {
 
 struct ckpt_siginfo {
 	int		csi_ckptpisz;
-	struct procsig	csi_procsig;
 	struct sigacts	csi_sigacts;
 	struct itimerval csi_itimerval;
 	int		csi_sigparent;

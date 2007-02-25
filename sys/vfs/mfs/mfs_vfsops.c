@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.37 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.38 2007/02/25 23:17:13 corecode Exp $
  */
 
 
@@ -45,6 +45,7 @@
 #include <sys/buf.h>
 #include <sys/mount.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/linker.h>

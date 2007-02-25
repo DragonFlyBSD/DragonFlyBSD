@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.40 2007/02/21 15:46:48 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.41 2007/02/25 23:17:12 corecode Exp $
  */
 
 /*-
@@ -89,6 +89,7 @@
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
+#include <sys/signal2.h>
 #include <sys/resourcevar.h>
 #include <sys/malloc.h>
 #include <sys/filedesc.h>

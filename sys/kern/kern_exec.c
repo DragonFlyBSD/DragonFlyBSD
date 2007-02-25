@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.54 2007/02/24 14:25:06 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.55 2007/02/25 23:17:12 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -311,20 +311,15 @@ interpret:
 	 * handlers. In execsigs(), the new process will have its signals
 	 * reset.
 	 */
-	if (p->p_procsig->ps_refcnt > 1) {
-		struct procsig *newprocsig;
+	if (p->p_sigacts->ps_refcnt > 1) {
+		struct sigacts *newsigacts;
 
-		MALLOC(newprocsig, struct procsig *, sizeof(struct procsig),
+		newsigacts = (struct sigacts *)kmalloc(sizeof(*newsigacts),
 		       M_SUBPROC, M_WAITOK);
-		bcopy(p->p_procsig, newprocsig, sizeof(*newprocsig));
-		p->p_procsig->ps_refcnt--;
-		p->p_procsig = newprocsig;
-		p->p_procsig->ps_refcnt = 1;
-		if (p->p_sigacts == &p->p_addr->u_sigacts)
-			panic("shared procsig but private sigacts?");
-
-		p->p_addr->u_sigacts = *p->p_sigacts;
-		p->p_sigacts = &p->p_addr->u_sigacts;
+		bcopy(p->p_sigacts, newsigacts, sizeof(*newsigacts));
+		p->p_sigacts->ps_refcnt--;
+		p->p_sigacts = newsigacts;
+		p->p_sigacts->ps_refcnt = 1;
 	}
 
 	/*
