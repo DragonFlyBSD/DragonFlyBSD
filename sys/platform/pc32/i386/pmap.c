@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.76 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.77 2007/02/26 21:41:08 corecode Exp $
  */
 
 /*
@@ -892,21 +892,11 @@ pmap_init_thread(thread_t td)
 }
 
 /*
- * Create the UPAGES for a new process.
  * This routine directly affects the fork perf for a process.
  */
 void
-pmap_init_proc(struct proc *p, struct thread *td)
+pmap_init_proc(struct proc *p)
 {
-	struct lwp *lp = ONLY_LWP_IN_PROC(p);
-
-	lp->lwp_thread = td;
-	td->td_proc = p;
-	td->td_lwp = lp;
-	td->td_switch = cpu_heavy_switch;
-#ifdef SMP
-	KKASSERT(td->td_mpcount == 1);
-#endif
 }
 
 /*

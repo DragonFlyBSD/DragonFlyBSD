@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.64 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.65 2007/02/26 21:41:08 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -82,6 +82,8 @@ struct forklist {
 
 TAILQ_HEAD(forklist_head, forklist);
 static struct forklist_head fork_list = TAILQ_HEAD_INITIALIZER(fork_list);
+
+static struct lwp *lwp_fork(struct lwp *, struct proc *, int flags);
 
 int forksleep; /* Place for fork1() to sleep on. */
 
@@ -159,7 +161,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	struct proc *p1 = lp1->lwp_proc;
 	struct proc *p2, *pptr;
 	struct pgrp *pgrp;
-	struct lwp *lp2;
 	uid_t uid;
 	int ok, error;
 	static int curfail = 0;
@@ -176,7 +177,14 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	if ((flags & RFPROC) == 0) {
 
-		vm_fork(lp1, 0, flags);
+		/*
+		 * This kind of stunt does not work anymore if
+		 * there are native threads (lwps) running
+		 */
+		if (p1->p_nthreads != 1)
+			return (EINVAL);
+
+		vm_fork(p1, 0, flags);
 
 		/*
 		 * Close all file descriptors.
@@ -266,7 +274,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	/* Allocate new proc. */
 	p2 = zalloc(proc_zone);
-	lp2 = zalloc(lwp_zone);
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
@@ -286,11 +293,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	p2->p_emuldata = NULL;
 	LIST_INIT(&p2->p_lwps);
 
-	/* XXX lwp */
-	lp2->lwp_proc = p2;
-	lp2->lwp_tid = 0;
-	LIST_INSERT_HEAD(&p2->p_lwps, lp2, lwp_list);
-	p2->p_nthreads = 1;
+	p2->p_nthreads = 0;
 	p2->p_nstopped = 0;
 	p2->p_lasttid = 0;
 
@@ -299,7 +302,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * process once it starts getting hooked into the rest of the system.
 	 */
 	p2->p_stat = SIDL;
-	lp2->lwp_stat = LSRUN;	/* XXX use other state?  start_forked_proc() handles this*/
 	proc_add_allproc(p2);
 
 	/*
@@ -309,14 +311,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	bzero(&p2->p_startzero,
 	    (unsigned) ((caddr_t)&p2->p_endzero - (caddr_t)&p2->p_startzero));
-	bzero(&lp2->lwp_startzero,
-	    (unsigned) ((caddr_t)&lp2->lwp_endzero -
-			(caddr_t)&lp2->lwp_startzero));
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
-	bcopy(&lp1->lwp_startcopy, &lp2->lwp_startcopy,
-	    (unsigned) ((caddr_t)&lp2->lwp_endcopy -
-			(caddr_t)&lp2->lwp_startcopy));
 
 	p2->p_aioinfo = NULL;
 
@@ -327,7 +323,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	p2->p_flag = 0;
 	p2->p_lock = 0;
-	lp2->lwp_lock = 0;
+
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
@@ -337,6 +333,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	if (p2->p_args)
 		p2->p_args->ar_ref++;
+
+	p2->p_usched = p1->p_usched;
 
 	if (flags & RFSIGSHARE) {
 		p2->p_sigacts = p1->p_sigacts;
@@ -395,7 +393,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * been preserved.
 	 */
 	p2->p_flag |= p1->p_flag & P_SUGID;
-	lp2->lwp_flag |= lp1->lwp_flag & LWP_ALTSTACK;
 	if (p1->p_session->s_ttyvp != NULL && p1->p_flag & P_CONTROLT)
 		p2->p_flag |= P_CONTROLT;
 	if (flags & RFPPWAIT)
@@ -446,32 +443,22 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 #endif
 
 	/*
-	 * Inherit the scheduler and initialize scheduler-related fields. 
-	 * Set cpbase to the last timeout that occured (not the upcoming
-	 * timeout).
-	 *
-	 * A critical section is required since a timer IPI can update
-	 * scheduler specific data.
-	 */
-	crit_enter();
-	p2->p_usched = p1->p_usched;
-	lp2->lwp_cpbase = mycpu->gd_schedclock.time -
-			mycpu->gd_schedclock.periodic;
-	p2->p_usched->heuristic_forking(lp1, lp2);
-	crit_exit();
-
-	/*
 	 * This begins the section where we must prevent the parent
 	 * from being swapped.
+	 *
+	 * Gets PRELE'd in the caller in start_forked_proc().
 	 */
 	PHOLD(p1);
 
+	vm_fork(p1, p2, flags);
+
 	/*
-	 * Finish creating the child process.  It will return via a different
-	 * execution path later.  (ie: directly into user mode)
+	 * Create the first lwp associated with the new proc.
+	 * It will return via a different execution path later, directly
+	 * into userland, after it was put on the runq by
+	 * start_forked_proc().
 	 */
-	vm_fork(lp1, p2, flags);
-	caps_fork(lp1->lwp_thread, lp2->lwp_thread, flags);
+	lwp_fork(lp1, p2, flags);
 
 	if (flags == (RFFDG | RFPROC)) {
 		mycpu->gd_cnt.v_forks++;
@@ -516,6 +503,89 @@ done:
 	if (pgrp)
 		lockmgr(&pgrp->pg_lock, LK_RELEASE);
 	return (error);
+}
+
+static struct lwp *
+lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
+{
+	struct lwp *lp;
+	struct thread *td;
+	lwpid_t tid;
+
+	/*
+	 * We need to prevent wrap-around collisions.
+	 * Until we have a nice tid allocator, we need to
+	 * start searching for free tids once we wrap around.
+	 *
+	 * XXX give me a nicer allocator
+	 */
+	if (destproc->p_lasttid + 1 <= 0) {
+		tid = 0;
+restart:
+		FOREACH_LWP_IN_PROC(lp, destproc) {
+			if (lp->lwp_tid != tid)
+				continue;
+			/* tids match, search next. */
+			tid++;
+			/*
+			 * Wait -- the whole tid space is depleted?
+			 * Impossible.
+			 */
+			if (tid <= 0)
+				panic("lwp_fork: All tids depleted?!");
+			goto restart;
+		}
+		/* When we come here, the tid is not occupied */
+	} else {
+		tid = destproc->p_lasttid++;
+	}
+
+	lp = zalloc(lwp_zone);
+	lp->lwp_proc = destproc;
+	lp->lwp_tid = tid;
+	LIST_INSERT_HEAD(&destproc->p_lwps, lp, lwp_list);
+	destproc->p_nthreads++;
+	lp->lwp_stat = LSRUN;
+	bzero(&lp->lwp_startzero,
+	    (unsigned) ((caddr_t)&lp->lwp_endzero -
+			(caddr_t)&lp->lwp_startzero));
+	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
+	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
+			(caddr_t)&lp->lwp_startcopy));
+	lp->lwp_lock = 0;
+	lp->lwp_flag |= origlp->lwp_flag & LWP_ALTSTACK;
+	/*
+	 * Set cpbase to the last timeout that occured (not the upcoming
+	 * timeout).
+	 *
+	 * A critical section is required since a timer IPI can update
+	 * scheduler specific data.
+	 */
+	crit_enter();
+	lp->lwp_cpbase = mycpu->gd_schedclock.time -
+			mycpu->gd_schedclock.periodic;
+	destproc->p_usched->heuristic_forking(origlp, lp);
+	crit_exit();
+
+	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
+	lp->lwp_thread = td;
+	td->td_proc = destproc;
+	td->td_lwp = lp;
+	td->td_switch = cpu_heavy_switch;
+#ifdef SMP
+	KKASSERT(td->td_mpcount == 1);
+#endif
+	lwkt_setpri(td, TDPRI_KERN_USER);
+	lwkt_set_comm(td, "%s", destproc->p_comm);
+
+	/*
+	 * cpu_fork will copy and update the pcb, set up the kernel stack,
+	 * and make the child ready to run.
+	 */
+	cpu_fork(origlp, lp, flags);
+	caps_fork(origlp->lwp_thread, lp->lwp_thread);
+
+	return (lp);
 }
 
 /*

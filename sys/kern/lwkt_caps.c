@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.12 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.13 2007/02/26 21:41:08 corecode Exp $
  */
 
 /*
@@ -508,7 +508,7 @@ caps_free(caps_kinfo_t caps)
  * forked condition and reforge the connection.
  */
 void
-caps_fork(struct thread *td1, struct thread *td2, int flags)
+caps_fork(struct thread *td1, struct thread *td2)
 {
     caps_kinfo_t caps1;
     caps_kinfo_t caps2;

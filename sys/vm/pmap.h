@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.23 2007/02/24 14:24:06 corecode Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.24 2007/02/26 21:41:08 corecode Exp $
  */
 
 /*
@@ -165,7 +165,7 @@ void		 pmap_page_assertzero (vm_paddr_t);
 void		 pmap_zero_page_area (vm_paddr_t, int off, int size);
 void		 pmap_prefault (pmap_t, vm_offset_t, vm_map_entry_t);
 int		 pmap_mincore (pmap_t pmap, vm_offset_t addr);
-void		 pmap_init_proc (struct proc *p, struct thread *td);
+void		 pmap_init_proc (struct proc *);
 void		 pmap_init_thread (struct thread *td);
 void		 pmap_dispose_proc (struct proc *p);
 void		 pmap_activate (struct proc *p);
