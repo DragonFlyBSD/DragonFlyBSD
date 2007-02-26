@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.16 2007/02/13 14:15:57 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.17 2007/02/26 12:28:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2575,6 +2575,12 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		ic->ic_stats.is_rx_deauth++;
 		IEEE80211_NODE_STAT(ni, rx_deauth);
 
+		if (!IEEE80211_ADDR_EQ(wh->i_addr1, ic->ic_myaddr)) {
+			/* NB: can happen when in promiscuous mode */
+			ic->ic_stats.is_rx_mgtdiscard++;
+			break;
+		}
+
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_AUTH,
 		    "[%6D] recv deauthenticate (reason %d)\n",
 		    ni->ni_macaddr, ":", reason);
@@ -2611,6 +2617,12 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		reason = le16toh(*(uint16_t *)frm);
 		ic->ic_stats.is_rx_disassoc++;
 		IEEE80211_NODE_STAT(ni, rx_disassoc);
+
+		if (!IEEE80211_ADDR_EQ(wh->i_addr1, ic->ic_myaddr)) {
+			/* NB: can happen when in promiscuous mode */
+			ic->ic_stats.is_rx_mgtdiscard++;
+			break;
+		}
 
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 		    "[%6D] recv disassociate (reason %d)\n",
