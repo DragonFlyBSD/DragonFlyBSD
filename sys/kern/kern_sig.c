@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.73 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.74 2007/02/26 03:55:22 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1619,6 +1619,8 @@ issignal(struct lwp *lp)
 		    		    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
+				p->p_xstat = sig;
+				proc_stop(p, 1);
 				while (p->p_stat == SSTOP) {
 					tstop();
 				}
