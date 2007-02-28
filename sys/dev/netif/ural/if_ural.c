@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.5 2007/02/06 13:50:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.6 2007/02/28 13:04:26 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -733,20 +733,22 @@ ural_next_scan(void *arg)
 }
 
 Static void
-ural_task(void *arg)
+ural_task(void *xarg)
 {
-	struct ural_softc *sc = arg;
+	struct ural_softc *sc = xarg;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 	enum ieee80211_state ostate;
 	struct ieee80211_node *ni;
 	struct mbuf *m;
+	int arg;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	ieee80211_ratectl_newstate(ic, sc->sc_state);
 
 	ostate = ic->ic_state;
+	arg = sc->sc_newstate_arg;
 
 	switch (sc->sc_state) {
 	case IEEE80211_S_INIT:
@@ -819,7 +821,7 @@ ural_task(void *arg)
 		break;
 	}
 
-	sc->sc_newstate(ic, sc->sc_state, -1);
+	sc->sc_newstate(ic, sc->sc_state, arg);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 }
@@ -837,6 +839,7 @@ ural_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	/* do it in a process context */
 	sc->sc_state = nstate;
+	sc->sc_newstate_arg = arg;
 
 	lwkt_serialize_exit(ifp->if_serializer);
 	usb_rem_task(sc->sc_udev, &sc->sc_task);

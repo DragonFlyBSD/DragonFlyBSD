@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralvar.h,v 1.3.2.3 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.1 2006/12/10 02:53:34 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.2 2007/02/28 13:04:26 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -93,6 +93,7 @@ struct ural_softc {
 	usbd_pipe_handle		sc_tx_pipeh;
 
 	enum ieee80211_state		sc_state;
+	int				sc_newstate_arg;
 	struct usb_task			sc_task;
 
 	struct ural_rx_data		rx_data[RAL_RX_LIST_COUNT];
