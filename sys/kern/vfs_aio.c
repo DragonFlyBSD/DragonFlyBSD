@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.36 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.37 2007/03/01 16:18:11 swildner Exp $
  */
 
 /*
@@ -225,7 +225,7 @@ static int	aio_aqueue(struct aiocb *job, int type);
 static void	aio_physwakeup(struct bio *bio);
 static int	aio_fphysio(struct aiocblist *aiocbe);
 static int	aio_qphysio(struct proc *p, struct aiocblist *iocb);
-static void	aio_daemon(void *uproc);
+static void	aio_daemon(void *uproc, struct trapframe *frame);
 static void	process_signal(void *aioj);
 
 SYSINIT(aio, SI_SUB_VFS, SI_ORDER_ANY, aio_onceonly, NULL);
