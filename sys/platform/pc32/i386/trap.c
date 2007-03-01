@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.102 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.103 2007/03/01 01:46:52 corecode Exp $
  */
 
 /*
@@ -1424,6 +1424,16 @@ bad:
 #endif
 }
 
+void
+fork_return(struct lwp *lp, struct trapframe *frame)
+{
+	frame->tf_eax = 0;		/* Child returns zero */
+	frame->tf_eflags &= ~PSL_C;	/* success */
+	frame->tf_edx = 1;
+
+	generic_lwp_return(lp, frame);
+}
+
 /*
  * Simplified back end of syscall(), used when returning from fork()
  * directly into user mode.  MP lock is held on entry and should be
@@ -1431,13 +1441,9 @@ bad:
  * trampoline code which then runs doreti.
  */
 void
-fork_return(struct lwp *lp, struct trapframe *frame)
+generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 {
 	struct proc *p = lp->lwp_proc;
-
-	frame->tf_eax = 0;		/* Child returns zero */
-	frame->tf_eflags &= ~PSL_C;	/* success */
-	frame->tf_edx = 1;
 
 	/*
 	 * Newly forked processes are given a kernel priority.  We have to

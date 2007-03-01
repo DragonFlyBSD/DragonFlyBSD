@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.74 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.75 2007/03/01 01:46:52 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -448,7 +448,7 @@ SYSCTL_STRING(_kern, OID_AUTO, init_path, CTLFLAG_RD, init_path, 0, "");
  * The MP lock is held on entry.
  */
 static void
-start_init(void *dummy)
+start_init(void *dummy, struct trapframe *frame)
 {
 	vm_offset_t addr;
 	struct execve_args args;

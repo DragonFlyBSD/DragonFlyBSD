@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.35 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.36 2007/03/01 01:46:52 corecode Exp $
  */
 
 /*
@@ -611,7 +611,7 @@ aio_process(struct aiocblist *aiocbe)
  * The MP lock is held on entry.
  */
 static void
-aio_daemon(void *uproc)
+aio_daemon(void *uproc, struct trapframe *frame)
 {
 	struct aio_liojob *lj;
 	struct aiocb *cb;

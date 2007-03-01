@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.65 2007/02/26 21:41:08 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.66 2007/03/01 01:46:52 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -152,6 +152,47 @@ sys_rfork(struct rfork_args *uap)
 	return error;
 }
 
+int
+sys_lwp_create(struct lwp_create_args *uap)
+{
+	struct proc *p = curproc;
+	struct lwp *lp;
+	struct lwp_params params;
+	int error;
+
+	error = copyin(uap->params, &params, sizeof(params));
+	if (error)
+		goto fail2;
+
+	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
+	error = cpu_prepare_lwp(lp, &params);
+	if (params.tid1 != NULL &&
+	    (error = copyout(&lp->lwp_tid, params.tid1, sizeof(lp->lwp_tid))))
+		goto fail;
+	if (params.tid2 != NULL &&
+	    (error = copyout(&lp->lwp_tid, params.tid2, sizeof(lp->lwp_tid))))
+		goto fail;
+
+	/*
+	 * Now schedule the new lwp.
+	 */
+	p->p_usched->resetpriority(lp);
+	crit_enter();
+	lp->lwp_stat = LSRUN;
+	p->p_usched->setrunqueue(lp);
+	crit_exit();
+
+	return (0);
+
+fail:
+	--p->p_nthreads;
+	LIST_REMOVE(lp, lwp_list);
+	/* lwp_dispose expects a exited lwp */
+	lp->lwp_thread->td_flags = TDF_EXITING;
+	lwp_dispose(lp);
+fail2:
+	return (error);
+}
 
 int	nprocs = 1;		/* process 0 */
 

@@ -32,12 +32,13 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.7 2007/02/25 14:07:13 corecode Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.8 2007/03/01 01:46:53 corecode Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
 #define	_SYS_UNISTD_H_
 
+#include <sys/types.h>
 #include <sys/_posix.h>
 
 /* compile-time symbolic constants */
@@ -234,6 +235,18 @@
 #define EXTEXIT_PROC	(0<<16)
 #define EXTEXIT_LWP	(1<<16)
 #define EXTEXIT_WHO(f)	((f) & (0xffff<<16))
+
+
+/*
+ * Parameters for the creation of a new lwp.
+ */
+struct lwp_params {
+	void (*func)(void *);	/* Function to start execution */
+	void *arg;		/* Parameter to this function */
+	void *stack;		/* Stack address to use */
+	lwpid_t *tid1;		/* Address to copy out new tid */
+	lwpid_t *tid2;		/* Same */
+};
 
 #endif /* !_POSIX_SOURCE */
 

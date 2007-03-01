@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.57 2007/02/24 14:24:06 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.58 2007/03/01 01:46:52 corecode Exp $
  */
 
 #include "use_npx.h"
@@ -203,13 +203,46 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 }
 
 /*
+ * Prepare new lwp to return to the address specified in params.
+ */
+int
+cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
+{
+	struct trapframe *regs = lp->lwp_md.md_regs;
+	void *bad_return = NULL;
+	int error;
+
+	regs->tf_eip = params->func;
+	regs->tf_esp = params->stack;
+	/* Set up argument for function call */
+	regs->tf_esp -= sizeof(params->arg);
+	error = copyout(&params->arg, regs->tf_esp, sizeof(params->arg));
+	if (error)
+		return (error);
+	/*
+	 * Set up fake return address.  As the lwp function may never return,
+	 * we simply copy out a NULL pointer and force the lwp to receive
+	 * a SIGSEGV if it returns anyways.
+	 */
+	regs->tf_esp -= sizeof(void *);
+	error = copyout(&bad_return, regs->tf_esp, sizeof(bad_return));
+	if (error)
+		return (error);
+
+	cpu_set_fork_handler(lp,
+	    (void (*)(void *, struct trapframe *))generic_lwp_return, lp);
+	return (0);
+}
+
+/*
  * Intercept the return address from a freshly forked process that has NOT
  * been scheduled yet.
  *
  * This is needed to make kernel threads stay in kernel mode.
  */
 void
-cpu_set_fork_handler(struct lwp *lp, void (*func)(void *), void *arg)
+cpu_set_fork_handler(struct lwp *lp, void (*func)(void *, struct trapframe *),
+		     void *arg)
 {
 	/*
 	 * Note that the trap frame follows the args, so the function

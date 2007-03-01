@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.28 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.29 2007/03/01 01:46:52 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -397,7 +397,7 @@ kthread_create2(void (*func)(void *), void *arg,
 	__va_end(ap);
 
 	/* call the processes' main()... */
-	cpu_set_fork_handler(lp2, func, arg);
+	cpu_set_fork_handler(lp2, (void (*)(void *))func, arg);
 	start_forked_proc(&lwp0, p2);
 
 	return 0;

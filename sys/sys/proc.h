@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.103 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.104 2007/03/01 01:46:53 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -457,6 +457,7 @@ struct proc *zpfind (pid_t);	/* Find zombie process by id. */
 
 struct vm_zone;
 struct globaldata;
+struct lwp_params;
 extern struct vm_zone *proc_zone;
 extern struct vm_zone *lwp_zone;
 
@@ -493,7 +494,8 @@ void	lwp_dispose (struct lwp *);
 void	killlwps (struct lwp *);
 void	exit1 (int) __dead2;
 void	cpu_fork (struct lwp *, struct lwp *, int);
-void	cpu_set_fork_handler (struct lwp *, void (*)(void *), void *);
+int	cpu_prepare_lwp(struct lwp *, struct lwp_params *);
+void	cpu_set_fork_handler (struct lwp *, void (*)(void *, struct trapframe *), void *);
 void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func, void *arg);
 int	fork1 (struct lwp *, int, struct proc **);
 void	start_forked_proc (struct lwp *, struct proc *);
