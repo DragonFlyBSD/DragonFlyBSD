@@ -3,9 +3,9 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.10 2007/02/19 11:10:11 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.11 2007/03/04 20:10:34 swildner Exp $
 .\"
-.Dd May 11, 2006
+.Dd March 4, 2007
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -654,6 +654,26 @@ of file descriptors; many of the tunable values set to their defaults by
 .Va kern.maxusers
 may be individually overridden at boot-time or run-time as described
 elsewhere in this document.
+.Pp
+The
+.Va kern.dfldsiz
+and
+.Va kern.dflssiz
+tunables set the default soft limits for process data and stack size
+respectively.
+Processes may increase these up to the hard limits by calling
+.Xr setrlimit 2 .
+The
+.Va kern.maxdsiz ,
+.Va kern.maxssiz ,
+and
+.Va kern.maxtsiz
+tunables set the hard limits for process data, stack, and text size
+respectively; processes may not exceed these limits.
+The
+.Va kern.sgrowsiz
+tunable controls how much the stack segment will grow when a process
+needs to allocate more stack.
 .Pp
 .Va kern.ipc.nmbclusters
 may be adjusted to increase the number of network mbufs the system is

@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/cardbus.4,v 1.2 2002/11/29 16:30:04 ru Exp $
-.\" $DragonFly: src/share/man/man4/cardbus.4,v 1.1 2005/06/13 19:17:29 swildner Exp $
+.\" $DragonFly: src/share/man/man4/cardbus.4,v 1.2 2007/03/04 20:10:34 swildner Exp $
 .\"
-.Dd July 9, 2002
+.Dd March 4, 2007
 .Dt CARDBUS 4
 .Os
 .Sh NAME
@@ -40,6 +40,15 @@ driver implements the CardBus bus.
 The
 .Nm
 driver supports all cardbus bridges in the system.
+.Sh TUNABLES
+.Bl -tag -width ".Va hw.cardbus.cis_debug"
+.It Va hw.cardbus.debug
+A non-zero value causes more verbose information to be printed when a
+32-bit CardBus card is inserted or removed.
+.It Va hw.cardbus.cis_debug
+A non-zero value causes the CIS parsing of the 32-bit CardBus card to be
+much more verbose.
+.El
 .Sh SEE ALSO
 .Xr pccard 4 ,
 .Xr pccbb 4

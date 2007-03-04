@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/pccard.4,v 1.2 2002/11/29 16:31:09 ru Exp $
-.\" $DragonFly: src/share/man/man4/pccard.4,v 1.2 2005/06/14 16:50:43 swildner Exp $
+.\" $DragonFly: src/share/man/man4/pccard.4,v 1.3 2007/03/04 20:10:34 swildner Exp $
 .\"
-.Dd July 9, 2002
+.Dd March 4, 2007
 .Dt PCCARD 4
 .Os
 .Sh NAME
@@ -40,6 +40,15 @@ driver implements the PC Card bus.
 The
 .Nm
 driver supports all PC Card bridges in the system.
+.Sh TUNABLES
+.Bl -tag -width ".Va hw.pccard.cis_debug"
+.It Va hw.pccard.debug
+A non-zero value causes more verbose information to be printed when a
+16-bit PC Card is inserted or removed.
+.It Va hw.pccard.cis_debug
+A non-zero value causes the CIS parsing of the 16-bit PC Card to be much
+more verbose.
+.El
 .Sh SEE ALSO
 .Xr cardbus 4 ,
 .\" .Xr mecia 4 ,

@@ -30,9 +30,9 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/bge.4,v 1.1.2.4 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/bge.4,v 1.5 2007/03/04 12:18:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bge.4,v 1.6 2007/03/04 20:10:34 swildner Exp $
 .\"
-.Dd September 27, 2001
+.Dd March 4, 2007
 .Dt BGE 4
 .Os
 .Sh NAME
@@ -169,6 +169,12 @@ will set a port as a master instead.
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+.Sh TUNABLES
+.Bl -tag -width ".Va hw.bge.fake_autoneg"
+.It Va hw.bge.fake_autoneg
+Set to 1 for special handling of the BCM5704 HW.
+Disabled by default.
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "bge%d: couldn't map memory"
