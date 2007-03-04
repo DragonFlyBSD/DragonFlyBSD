@@ -30,10 +30,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.12 2007/02/16 11:17:01 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.13 2007/03/04 13:09:15 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
+
+#ifdef _KERNEL
 
 /*
  * Definitions for IEEE 802.11 drivers.
@@ -371,6 +373,8 @@ ieee80211_anyhdrspace(struct ieee80211com *ic, const void *data)
 	return size;
 }
 
+#endif	/* _KERNEL */
+
 #define	IEEE80211_MSG_DEBUG	0x40000000	/* IFF_DEBUG equivalent */
 #define	IEEE80211_MSG_DUMPPKTS	0x20000000	/* IFF_LINK2 equivalant */
 #define	IEEE80211_MSG_CRYPTO	0x10000000	/* crypto work */
@@ -398,6 +402,8 @@ ieee80211_anyhdrspace(struct ieee80211com *ic, const void *data)
 #define	IEEE80211_MSG_ROAM	0x00000040	/* sta-mode roaming */
 
 #define	IEEE80211_MSG_ANY	0xffffffff	/* anything */
+
+#ifdef _KERNEL
 
 #ifdef IEEE80211_DEBUG
 #define	ieee80211_msg(_ic, _m)	((_ic)->ic_debug & (_m))
@@ -454,5 +460,7 @@ void	ieee80211_note_frame(struct ieee80211com *ic,
 #define	ieee80211_msg_dumppkts(_ic)	0
 #define	ieee80211_msg(_ic, _m)		0
 #endif
+
+#endif	/* _KERNEL */
 
 #endif /* _NET80211_IEEE80211_VAR_H_ */
