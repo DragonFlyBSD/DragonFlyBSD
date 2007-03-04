@@ -31,24 +31,6 @@
  */
 
 /*
- * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    Permission will be granted to any DragonFly user for free.
- *    This requirement will sunset and may be removed on Jan 31, 2006,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1982, 1986, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.35 2006/12/22 23:57:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.36 2007/03/04 18:51:59 swildner Exp $
  */
 
 /*

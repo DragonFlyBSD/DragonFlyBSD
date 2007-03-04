@@ -31,24 +31,6 @@
  */
 
 /*
- * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    Permission will be granted to any DragonFly user for free.
- *    This requirement will sunset and may be removed on Jan 31, 2006,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1988, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.36 2006/11/28 14:44:03 sephe Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.37 2007/03/04 18:51:59 swildner Exp $
  */
 
 #include "opt_sctp.h"

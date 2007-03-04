@@ -32,23 +32,6 @@
  */
 
 /*
- * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    This requirement will sunset and may be removed on July 8 2005,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +65,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.15 2007/01/10 07:44:02 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.16 2007/03/04 18:51:59 swildner Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_

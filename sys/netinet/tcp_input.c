@@ -32,23 +32,6 @@
  */
 
 /*
- * Copyright (c) 2002, 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    This requirement will sunset and may be removed on July 8 2005,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +65,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.63 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.64 2007/03/04 18:51:59 swildner Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/

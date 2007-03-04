@@ -32,23 +32,6 @@
  */
 
 /*
- * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    This requirement will sunset and may be removed on July 8 2005,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * All advertising materials mentioning features or use of this software
  * must display the following acknowledgement:
  *   This product includes software developed by Jeffrey M. Hsu.
@@ -86,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.27 2006/12/22 23:57:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.28 2007/03/04 18:51:59 swildner Exp $
  */
 
 #include "opt_inet6.h"

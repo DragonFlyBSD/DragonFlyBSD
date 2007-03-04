@@ -32,23 +32,6 @@
  */
 
 /*
- * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    This requirement will sunset and may be removed on July 8 2005,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1980, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.24 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.25 2007/03/04 18:51:59 swildner Exp $
  */
 
 #ifndef _NET_NETISR_H_

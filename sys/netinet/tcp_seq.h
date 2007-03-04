@@ -32,23 +32,6 @@
  */
 
 /*
- * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    This requirement will sunset and may be removed on July 8 2005,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1982, 1986, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +65,7 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.9 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.10 2007/03/04 18:51:59 swildner Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_

@@ -31,24 +31,6 @@
  */
 
 /*
- * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
- *
- * License terms: all terms for the DragonFly license above plus the following:
- *
- * 4. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Jeffrey M. Hsu
- *	for the DragonFly Project.
- *
- *    This requirement may be waived with permission from Jeffrey Hsu.
- *    Permission will be granted to any DragonFly user for free.
- *    This requirement will sunset and may be removed on Jan 31, 2006,
- *    after which the standard DragonFly license (as shown above) will
- *    apply.
- */
-
-/*
  * Copyright (c) 1980, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -82,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.27 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.28 2007/03/04 18:51:59 swildner Exp $
  */
 
 #include "opt_inet.h"
