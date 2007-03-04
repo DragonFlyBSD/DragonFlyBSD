@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.13 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.14 2007/03/04 07:52:36 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -143,7 +143,7 @@ ieee80211_send_setup(struct ieee80211com *ic,
  */
 static int
 ieee80211_mgmt_output(struct ieee80211com *ic, struct ieee80211_node *ni,
-    struct mbuf *m, int type, int timer)
+    struct mbuf *m, int type, int timer, int encrypt)
 {
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_frame *wh;
@@ -172,8 +172,7 @@ ieee80211_mgmt_output(struct ieee80211com *ic, struct ieee80211_node *ni,
 	ieee80211_send_setup(ic, ni, wh,
 		IEEE80211_FC0_TYPE_MGT | type,
 		ic->ic_myaddr, ni->ni_macaddr, ni->ni_bssid);
-	if ((m->m_flags & M_LINK0) != 0 && ni->ni_challenge != NULL) {
-		m->m_flags &= ~M_LINK0;
+	if (encrypt) {
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_AUTH,
 			"[%6D] encrypting frame (%s)\n",
 			wh->i_addr1, ":", __func__);
@@ -1208,7 +1207,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 	struct mbuf *m;
 	uint8_t *frm;
 	uint16_t capinfo;
-	int has_challenge, is_shared_key, ret, timer, status;
+	int has_challenge, is_shared_key, ret, timer, status, encrypt;
 	const struct ieee80211_rateset *rs;
 
 	KASSERT(ni != NULL, ("null node"));
@@ -1225,6 +1224,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		ieee80211_node_refcnt(ni) + 1);
 	ieee80211_ref_node(ni);
 
+	encrypt = 0;
 	timer = 0;
 	switch (type) {
 	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
@@ -1281,7 +1281,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 				IEEE80211_DPRINTF(ic, IEEE80211_MSG_AUTH,
 				    "[%6D] request encrypt frame (%s)\n",
 				    ni->ni_macaddr, ":", __func__);
-				m->m_flags |= M_LINK0; /* WEP-encrypt, please */
+				encrypt = 1;	/* WEP-encrypt, please */
 			}
 		} else
 			m->m_pkthdr.len = m->m_len = 3 * sizeof(uint16_t);
@@ -1450,7 +1450,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		senderr(EINVAL, is_tx_unknownmgt);
 		/* NOTREACHED */
 	}
-	ret = ieee80211_mgmt_output(ic, ni, m, type, timer);
+	ret = ieee80211_mgmt_output(ic, ni, m, type, timer, encrypt);
 	if (ret != 0) {
 bad:
 		ieee80211_free_node(ni);

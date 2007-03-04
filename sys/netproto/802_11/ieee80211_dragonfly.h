@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.h,v 1.5.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_dragonfly.h,v 1.2 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_dragonfly.h,v 1.3 2007/03/04 07:52:36 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_DRAGONFLY_H_
 #define _NET80211_IEEE80211_DRAGONFLY_H_
@@ -86,7 +86,7 @@ int	ieee80211_node_dectestref(struct ieee80211_node *ni);
 #define	ieee80211_node_refcnt(_ni)	(_ni)->ni_refcnt
 
 struct mbuf *ieee80211_getmgtframe(uint8_t **frm, u_int pktlen);
-#define	M_LINK0		M_PROTO1		/* WEP requested */
+/* M_PROTO1 unused */
 #define	M_PWR_SAV	M_PROTO4		/* bypass PS handling */
 #define	M_MORE_DATA	M_PROTO5		/* more data frames to follow */
 /*
