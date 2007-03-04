@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.43 2007/02/18 14:17:29 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.44 2007/03/04 02:45:08 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -30,7 +30,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	rman.9 \
 	rtalloc.9 rtentry.9 sleep.9 spinlock.9 \
 	store.9 style.9 suser.9 time.9 timeout.9 uio.9 \
-	vget.9 vnode.9 vput.9 vref.9 vrele.9 vslock.9 \
+	vget.9 vhold.9 vnode.9 vput.9 vref.9 vrele.9 vslock.9 \
 	microtime.9 microuptime.9 tvtohz.9
 
 MAN+=	device.9 device_add_child.9 device_delete_child.9 device_enable.9 \
@@ -236,6 +236,7 @@ MLINKS+=timeout.9 callout_handle_init.9 timeout.9 callout_init.9
 MLINKS+=timeout.9 callout_stop.9 timeout.9 callout_reset.9
 MLINKS+=uio.9 uiomove.9
 MLINKS+=vref.9 VREF.9
+MLINKS+=vhold.9 vdrop.9
 MLINKS+=vslock.9 vsunlock.9
 
 MLINKS+=device_add_child.9 device_add_child_ordered.9

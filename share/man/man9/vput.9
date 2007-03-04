@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vput.9,v 1.6.2.3 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vput.9,v 1.4 2004/06/01 11:36:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/vput.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -42,9 +42,9 @@
 Decrement the
 .Va v_usecount
 field of a vnode and unlock the vnode.
-.Bl -tag -width 2n
+.Bl -tag -width ".Fa vp"
 .It Fa vp
-the vnode to decrement
+The vnode to decrement.
 .El
 .Pp
 This operation is functionally equivalent to calling
@@ -57,5 +57,5 @@ followed by
 .Xr vref 9 ,
 .Xr vrele 9
 .Sh AUTHORS
-This man page was written by
+This manual page was written by
 .An Doug Rabson .

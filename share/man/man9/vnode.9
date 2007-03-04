@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vnode.9,v 1.10.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vnode.9,v 1.4 2003/07/28 07:27:38 hmp Exp $
+.\" $DragonFly: src/share/man/man9/vnode.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
 .\"
 .Dd June 28, 2003
 .Os
@@ -112,7 +112,7 @@ field is used by the
 macros to call functions in the filesystem which implement the vnode's
 functionality.
 .Sh VNODE TYPES
-.Bl -tag -width VSOCK
+.Bl -tag -width ".Fa VSOCK"
 .It Dv VNON
 No type.
 .It Dv VREG
@@ -136,7 +136,7 @@ A FIFO (named pipe).  Advisory locking won't work on this.
 .It Dv VBAD
 An old style bad sector map
 .El
-.Sh NOTES
+.Sh IMPLEMENTATION NOTES
 VFIFO uses the "struct fileops" from
 .Pa /sys/kern/sys_pipe.c .
 VSOCK uses the "struct fileops" from

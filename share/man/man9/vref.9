@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vref.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vref.9,v 1.4 2004/06/01 11:36:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/vref.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -42,9 +42,9 @@
 Increment the
 .Va v_usecount
 field of a vnode.
-.Bl -tag -width 2n
+.Bl -tag -width ".Fa vp"
 .It Fa vp
-the vnode to increment
+The vnode to increment.
 .El
 .Pp
 Each vnode maintains a reference count of how many parts of the system
@@ -54,12 +54,12 @@ no longer being used and can be safely recycled for a different file.
 Any code in the system which is using a vnode (e.g. during the
 operation of some algorithm or to store in a data structure) should
 call
-.Xr vref 9 .
+.Fn vref .
 .Sh SEE ALSO
 .Xr vget 9 ,
 .Xr vnode 9 ,
 .Xr vput 9 ,
 .Xr vrele 9
 .Sh AUTHORS
-This man page was written by
+This manual page was written by
 .An Doug Rabson .

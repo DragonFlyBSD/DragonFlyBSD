@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vget.9,v 1.4 2004/06/01 11:36:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/vget.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
 .\"
-.Dd July 24, 1996
+.Dd March 4, 2007
 .Os
 .Dt VGET 9
 .Sh NAME
@@ -37,14 +37,14 @@
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
-.Fn vget "struct vnode *vp" "int lockflag" "struct proc *p"
+.Fn vget "struct vnode *vp" "int lockflag"
 .Sh DESCRIPTION
 Get a vnode from the free list and increment its reference count.
-.Bl -tag -width lockflag
+.Bl -tag -width ".Fa lockflag"
 .It Fa vp
-the vnode to remove from the free list
+The vnode to remove from the free list.
 .It Fa lockflag
-if non-zero, the vnode will also be locked
+If non-zero, the vnode will also be locked.
 .El
 .Pp
 When not in use, vnodes are kept on a free list.  The vnodes still
@@ -56,7 +56,7 @@ When a vnode which is on the free list is used again, for instance if
 the vnode was found in the name cache as a result of a call to
 .Xr VOP_LOOKUP 9
 then the new user must call
-.Xr vget 9
+.Fn vget
 to increment the reference count and remove it from the free list.
 .Sh SEE ALSO
 .Xr vnode 9 ,
@@ -64,5 +64,5 @@ to increment the reference count and remove it from the free list.
 .Xr vref 9 ,
 .Xr vrele 9
 .Sh AUTHORS
-This man page was written by
+This manual page was written by
 .An Doug Rabson .
