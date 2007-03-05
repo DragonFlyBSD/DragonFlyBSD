@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.29 2007/02/03 17:05:59 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.30 2007/03/05 02:41:45 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -262,8 +262,7 @@ init_sys_memory(char *imageFile)
 	}
 	printf("Using memory file: %s\n", imageFile);
 	if (fd < 0 || fstat(fd, &st) < 0) {
-		err(1, "Unable to open/create %s: %s",
-		      imageFile, strerror(errno));
+		err(1, "Unable to open/create %s", imageFile);
 		/* NOT REACHED */
 	}
 
@@ -554,8 +553,7 @@ init_rootdevice(char *imageFile)
 	if (imageFile) {
 		RootImageFd = open(imageFile, O_RDWR|O_DIRECT, 0644);
 		if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0) {
-			err(1, "Unable to open/create %s: %s",
-			    imageFile, strerror(errno));
+			err(1, "Unable to open/create %s", imageFile);
 			/* NOT REACHED */
 		}
 		rootdevnames[0] = "ufs:vkd0a";
@@ -573,8 +571,7 @@ netif_set_tapflags(int tap_unit, int f, int s)
 
 	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tap%d", tap_unit);
 	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
-		warn("tap%d: ioctl(SIOCGIFFLAGS) failed: %s",
-		     tap_unit, strerror(errno));
+		warn("tap%d: ioctl(SIOCGIFFLAGS) failed", tap_unit);
 		return -1;
 	}
 
@@ -607,8 +604,7 @@ netif_set_tapflags(int tap_unit, int f, int s)
 	ifr.ifr_flags = flags & 0xffff;
 	ifr.ifr_flagshigh = flags >> 16;
 	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) {
-		warn("tap%d: ioctl(SIOCSIFFLAGS) failed: %s",
-		     tap_unit, strerror(errno));
+		warn("tap%d: ioctl(SIOCSIFFLAGS) failed", tap_unit);
 		return -1;
 	}
 	return 0;
@@ -638,8 +634,7 @@ netif_set_tapaddr(int tap_unit, in_addr_t addr, in_addr_t mask, int s)
 	}
 
 	if (ioctl(s, SIOCAIFADDR, &ifra) < 0) {
-		warn("tap%d: ioctl(SIOCAIFADDR) failed: %s",
-		     tap_unit, strerror(errno));
+		warn("tap%d: ioctl(SIOCAIFADDR) failed", tap_unit);
 		return -1;
 	}
 	return 0;
@@ -668,8 +663,7 @@ netif_add_tap2brg(int tap_unit, const char *ifbridge, int s)
 		 * a member of the bridge(4)
 		 */
 		if (errno != EEXIST) {
-			warn("ioctl(%s, SIOCSDRVSPEC) failed: %s",
-			     ifbridge, strerror(errno));
+			warn("ioctl(%s, SIOCSDRVSPEC) failed", ifbridge);
 			return -1;
 		}
 	}
@@ -730,8 +724,7 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 
 		tap_fd = open(tap_dev, TAPDEV_OFLAGS);
 		if (tap_fd < 0) {
-			warn("Unable to open %s: %s",
-			     tap_dev, strerror(errno));
+			warn("Unable to open %s", tap_dev);
 			return -1;
 		}
 	}
