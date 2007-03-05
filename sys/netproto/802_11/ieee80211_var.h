@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.13 2007/03/04 13:09:15 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.14 2007/03/05 14:17:36 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -83,9 +83,9 @@
 #define	IEEE80211_RTS_DEFAULT		IEEE80211_RTS_MAX
 #define	IEEE80211_FRAG_DEFAULT		IEEE80211_FRAG_MAX
 
-#define	IEEE80211_MS_TO_TU(x)	(((x) * 1024) / 1000)
-#define	IEEE80211_TU_TO_MS(x)	(((x) * 1000) / 1024)
-#define	IEEE80211_TU_TO_TICKS(x)(((x) * hz) / 1024)
+#define	IEEE80211_MS_TO_TU(x)	(((x) * 1000) / 1024)
+#define	IEEE80211_TU_TO_MS(x)	(((x) * 1024) / 1000)
+#define	IEEE80211_TU_TO_TICKS(x)(((x) * 1024 * hz) / (1000 * 1000))
 
 struct ieee80211_aclator;
 struct sysctl_ctx_list;

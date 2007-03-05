@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.14 2007/03/04 07:52:36 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.15 2007/03/05 14:17:36 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1788,8 +1788,8 @@ ieee80211_pwrsave(struct ieee80211com *ic, struct ieee80211_node *ni,
 	 * Frames that sit around too long are reclaimed
 	 * using this information.
 	 */
-	/* XXX handle overflow? */
-	age = ((ni->ni_intval * ic->ic_bintval) << 2) / 1024; /* TU -> secs */
+	/* TU -> secs.  XXX handle overflow? */
+	age = IEEE80211_TU_TO_MS((ni->ni_intval * ic->ic_bintval) << 2) / 1000;
 	_IEEE80211_NODE_SAVEQ_ENQUEUE(ni, m, qlen, age);
 
 	IEEE80211_DPRINTF(ic, IEEE80211_MSG_POWER,
