@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.16 2007/03/05 12:25:05 sephe Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.17 2007/03/06 12:22:39 sephe Exp $
 .\"
 .Dd November 19, 2006
 .Dt IFCONFIG 8
@@ -784,7 +784,8 @@ and
 (same as
 .Cm powersave).
 .It Cm powersavesleep Ar sleep
-Set the desired max powersave sleep time in milliseconds.
+Set the desired max powersave sleep time in TU's (1024 usecs).
+By default the max powersave sleep time is 100 TU's.
 .It Cm protmode Ar technique
 For interfaces operating in 802.11g, use the specified
 .Ar technique
