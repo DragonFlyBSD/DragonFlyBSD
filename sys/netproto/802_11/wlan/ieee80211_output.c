@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.15 2007/03/05 14:17:36 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.16 2007/03/06 12:17:51 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1359,7 +1359,9 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		*(uint16_t *)frm = htole16(capinfo);
 		frm += 2;
 
-		*(uint16_t *)frm = htole16(ic->ic_lintval);
+		KKASSERT(ic->ic_bss->ni_intval != 0);
+		*(uint16_t *)frm = htole16(howmany(ic->ic_lintval,
+						   ic->ic_bss->ni_intval));
 		frm += 2;
 
 		if (type == IEEE80211_FC0_SUBTYPE_REASSOC_REQ) {
