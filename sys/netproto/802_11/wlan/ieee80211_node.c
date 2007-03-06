@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.15 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.16 2007/03/06 14:51:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -427,10 +427,13 @@ ieee80211_create_ibss(struct ieee80211com* ic, struct ieee80211_channel *chan)
 	if (ic->ic_opmode == IEEE80211_M_IBSS) {
 		ic->ic_flags |= IEEE80211_F_SIBSS;
 		ni->ni_capinfo |= IEEE80211_CAPINFO_IBSS;	/* XXX */
-		if (ic->ic_flags & IEEE80211_F_DESBSSID)
+		if (ic->ic_flags & IEEE80211_F_DESBSSID) {
 			IEEE80211_ADDR_COPY(ni->ni_bssid, ic->ic_des_bssid);
-		else
-			ni->ni_bssid[0] |= 0x02;	/* local bit for IBSS */
+		} else {
+			get_random_bytes(ni->ni_bssid, IEEE80211_ADDR_LEN);
+			/* Clear group bit, add local bit */
+			ni->ni_bssid[0] = (ni->ni_bssid[0] &~ 0x01) | 0x02;
+		}
 	} else if (ic->ic_opmode == IEEE80211_M_AHDEMO) {
 		if (ic->ic_flags & IEEE80211_F_DESBSSID)
 			IEEE80211_ADDR_COPY(ni->ni_bssid, ic->ic_des_bssid);
