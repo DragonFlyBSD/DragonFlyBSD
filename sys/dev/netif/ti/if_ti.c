@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.42 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.43 2007/03/07 12:33:07 sephe Exp $
  */
 
 /*
@@ -1696,12 +1696,10 @@ ti_rxeof(struct ti_softc *sc)
 		 * If we received a packet with a vlan tag, pass it
 		 * to vlan_input() instead of ether_input().
 		 */
-		lwkt_serialize_enter(ifp->if_serializer);
 		if (have_tag)
 			VLAN_INPUT_TAG(m, vlan_tag);
 		else
 			ifp->if_input(ifp, m);
-		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	/* Only necessary on the Tigon 1. */
