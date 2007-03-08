@@ -30,7 +30,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/bge.4,v 1.1.2.4 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/bge.4,v 1.6 2007/03/04 20:10:34 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bge.4,v 1.7 2007/03/08 09:46:42 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt BGE 4
@@ -172,7 +172,12 @@ For more information on configuring this device, see
 .Sh TUNABLES
 .Bl -tag -width ".Va hw.bge.fake_autoneg"
 .It Va hw.bge.fake_autoneg
-Set to 1 for special handling of the BCM5704 HW.
+Set to 1 for some
+.Tn IBM
+blade servers,
+if auto-negotiation between the onboard
+.Nm
+and the switch module is broken.
 Disabled by default.
 .El
 .Sh DIAGNOSTICS
