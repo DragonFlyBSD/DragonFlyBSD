@@ -30,7 +30,7 @@
 .\" * Other names and brands may be claimed as the property of others.
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.2.2.6 2003/02/01 01:21:31 pdeuskar Exp $
-.\" $DragonFly: src/share/man/man4/em.4,v 1.8 2007/03/04 20:10:34 swildner Exp $
+.\" $DragonFly: src/share/man/man4/em.4,v 1.9 2007/03/08 11:20:56 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt EM 4
@@ -132,7 +132,10 @@ is not specified, the driver defaults to
 For more information on configuring this device, see
 .Xr ifconfig 8 .
 .Sh TUNABLES
-.Bl -tag -width ".Va hw.em.rx_abs_int_delay"
+.Bl -tag -width ".Va hw.em.int_throttle_ceil"
+.It Va hw.em.int_throttle_ceil
+Hardware interrupt throttling rate.
+The default value is 10000Hz.
 .It Va hw.em.rxd
 Number of receive descriptors allocated by the driver.
 The default value is 256.
