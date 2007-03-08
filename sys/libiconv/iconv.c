@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/libiconv/iconv.c,v 1.5 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/libiconv/iconv.c,v 1.6 2007/03/08 16:42:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -354,6 +354,15 @@ iconv_sysctl_add(SYSCTL_HANDLER_ARGS)
 		return EINVAL;
 	if (din.ia_datalen > ICONV_CSMAXDATALEN)
 		return EINVAL;
+
+	/*
+	 * Make sure all user-supplied strings are terminated before
+	 * proceeding.
+	 */
+	din.ia_converter[ICONV_CNVNMAXLEN-1] = 0;
+	din.ia_to[ICONV_CSNMAXLEN-1] = 0;
+	din.ia_from[ICONV_CSNMAXLEN-1] = 0;
+
 	if (iconv_lookupconv(din.ia_converter, &dcp) != 0)
 		return EINVAL;
 	error = iconv_register_cspair(din.ia_to, din.ia_from, dcp, NULL, &csp);
