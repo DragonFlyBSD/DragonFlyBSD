@@ -1,5 +1,6 @@
-# $DragonFly: site/data/main/.htaccess,v 1.1 2006/11/17 03:41:06 justin Exp $ 
-Redirect permanent /main/download.cgi http://www.dragonflybsd.org/main/download.shtml
+# $DragonFly: site/data/main/.htaccess,v 1.2 2007/03/10 04:36:14 justin Exp $ 
+Redirect permanent /main/download.cgi http://www.dragonflybsd.org/community/download.shtml
+Redirect permanent /main/download.shtml http://www.dragonflybsd.org/community/download.shtml
 Redirect permanent /main/errata.cgi http://www.dragonflybsd.org/main/errata.shtml
 Redirect permanent /main/forums.cgi http://www.dragonflybsd.org/main/forums.shtml
 Redirect permanent /main/index.cgi http://www.dragonflybsd.org/
