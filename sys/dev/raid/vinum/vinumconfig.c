@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.10 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.11 2007/03/10 09:47:29 swildner Exp $
  */
 
 #define STATIC static
@@ -473,7 +473,7 @@ get_empty_drive(void)
     bzero(drive, sizeof(struct drive));
     drive->driveno = driveno;				    /* put number in structure */
     drive->flags |= VF_NEWBORN;				    /* newly born drive */
-    strcpy("unknown", drive->devicename);		    /* and make the name ``unknown'' */
+    strcpy(drive->devicename, "unknown");		    /* and make the name ``unknown'' */
     return driveno;					    /* return the index */
 }
 
