@@ -7,7 +7,7 @@
 .\" I doubt you would ever notice due to large differences.
 .\"
 .\" $FreeBSD: src/share/man/man4/miibus.4,v 1.3.2.6 2004/03/01 09:22:11 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/miibus.4,v 1.7 2006/11/18 10:01:04 swildner Exp $
+.\" $DragonFly: src/share/man/man4/miibus.4,v 1.8 2007/03/11 03:39:25 swildner Exp $
 .\"
 .Dd February 15, 2003
 .Dt MIIBUS 4
@@ -64,6 +64,8 @@ Intel EtherExpress PRO/100B
 Intel Pro/1000 82542/82543 Gigabit Ethernet
 .It Xr lge 4
 Level 1 LXT1001 NetCellerator Gigabit Ethernet
+.It Xr nfe 4
+NVIDIA nForce MCP 10/100/Gigabit Ethernet
 .It Xr nge 4
 National Semiconductor DP83820/DP83821 Gigabit Ethernet
 .It Xr nv 4
@@ -90,6 +92,8 @@ Sundance/Tamarack TC9021 Gigabit Ethernet
 Texas Instruments ThunderLAN
 .It Xr tx 4
 SMC EtherPower II (83c170)
+.It Xr vge 4
+VIA Networking Technologies VT6122 PCI Gigabit Ethernet
 .It Xr vr 4
 VIA Rhine, Rhine II
 .It Xr wb 4
@@ -118,6 +122,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr gx 4 ,
 .Xr lge 4 ,
 .Xr netintro 4 ,
+.Xr nfe 4 ,
 .Xr nge 4 ,
 .Xr nv 4 ,
 .Xr pcn 4 ,
@@ -131,6 +136,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr stge 4 ,
 .Xr tl 4 ,
 .Xr tx 4 ,
+.Xr vge 4 ,
 .Xr vr 4 ,
 .Xr wb 4 ,
 .Xr xl 4
