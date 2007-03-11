@@ -31,171 +31,146 @@
 .\"
 .\"	@(#)backgammon.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/backgammon/backgammon/backgammon.6,v 1.7.2.1 2001/07/22 11:01:21 dd Exp $
-.\" $DragonFly: src/games/backgammon/backgammon/backgammon.6,v 1.2 2003/06/17 04:25:22 dillon Exp $
+.\" $DragonFly: src/games/backgammon/backgammon/backgammon.6,v 1.3 2007/03/11 19:05:31 swildner Exp $
 .\"
-.TH BACKGAMMON 6  "May 31, 1993"
-.UC 5
-.SH NAME
-backgammon \- the game of backgammon
-.SH SYNOPSIS
-.B backgammon
-[ -h n r w b pr pw pb t\c
-.I term
-s\c
-.I file
-]
-.SH DESCRIPTION
+.Dd May 31, 1993
+.Dt BACKGAMMON 6
+.Os
+.Sh NAME
+.Nm backgammon
+.Nd the game of backgammon
+.Sh SYNOPSIS
+.Nm
+.Op Fl hnrwb
+.Op Fl pr
+.Op Fl pw
+.Op Fl pb
+.Op Fl t Ar term
+.Op Fl s Ar file
+.Sh DESCRIPTION
 This program lets you play backgammon against the computer
 or against a "friend".
-All commands only are one letter,
-so you don't need to type a carriage return,
+All commands are only one letter, so you don't need to type a carriage return,
 except at the end of a move.
-The program is mostly self documenting,
+The program is mostly self-explanatory,
 so that a question mark (?) will usually get some help.
 If you answer `y' when the program asks if you want the rules,
-you will get text explaining the rules of the game,
-some hints on strategy,
-instruction on how to use the program,
+you will get text explaining the rules of the game, some hints on strategy,
+instructions on how to use the program,
 and a tutorial consisting of a practice game against the computer.
 A description of how to use the program can be
 obtained by answering `y' when it asks if you want instructions.
-.PP
+.Pp
 The possible arguments for backgammon
 (most are unnecessary but some are very convenient)
 consist of:
-.ne 11
-.PP
-.na
-.TP 8
-.B -h
-Get a description of possible arguments and exit
-.TP 8
-.B -n
+.Bl -tag -width ".Fl pr"
+.It Fl h
+get a description of possible arguments and exit
+.It Fl n
 don't ask for rules or instructions
-.TP 8
-.B -r
-player is red (implies -n)
-.TP 8
-.B -w
-player is white (implies -n)
-.TP 8
-.B -b
-two players, red and white (implies -n)
-.TP 8
-.B -pr
+.It Fl r
+player is red (implies
+.Fl n )
+.It Fl w
+player is white (implies
+.Fl n )
+.It Fl b
+two players, red and white (implies
+.Fl n )
+.It Fl pr
 print the board before red's turn
-.TP 8
-.B -pw
+.It Fl pw
 print the board before white's turn
-.TP 8
-.B -pb
+.It Fl pb
 print the board before both player's turn
-.TP 8
-.B -t\fIterm
+.It Fl t Ar term
 terminal is type
-.IR term ,
-uses /etc/termcap
-.TP 8
-.B -s\fIfile
+.Ar term ,
+uses
+.Pa /usr/share/misc/termcap
+.It Fl s Ar file
 recover previously saved game from
-.IR file .
-.ad
-.PP
-.PP
+.Ar file
+.El
+.Pp
 If
-.IR term
+.Ar term
 has capabilities for direct cursor movement (see
-.IR termcap (5))
-.IR backgammon
+.Xr termcap 5 )
+.Nm
 ``fixes'' the board after each move,
 so the board does not need to be reprinted,
 unless the screen suffers some horrendous malady.
-Also, any `-p' option will be ignored.
-(The `-t' option is not necessary unless the terminal type does not match
-the entry in the /etc/termcap data base.)
-.SH QUICK\ REFERENCE
+Also, any `p' option will be ignored.
+(The `t' option is not necessary unless the terminal type does not match
+the entry in the
+.Pa /usr/share/misc/termcap
+data base.)
+.Sh QUICK REFERENCE
 When the program prompts by typing only your color,
 type a space or carriage return to roll, or
-.ne 5
-.PP
-.na
-.TP 8
-.B d
+.Bl -tag -width ".Ic s-f"
+.It Ic d
 to double
-.TP 8
-.B p
+.It Ic p
 to print the board
-.TP 8
-.B q
+.It Ic q
 to quit
-.TP 8
-.B s
+.It Ic s
 to save the game for later
-.PP
-.i0
-.ad
+.El
+.Pp
 When the program prompts with 'Move:', type
-.ne 4
-.PP
-.na
-.TP 8
-.B p
+.Bl -tag -width ".Ic s-f"
+.It Ic p
 to print the board
-.TP 8
-.B q
+.It Ic q
 to quit
-.TP 8
-.B s
+.It Ic s
 to save the game
-.ad
-.i0
-.PP
+.El
+.Pp
 or a
-.IR move ,
+.Em move ,
 which is a sequence of
-.ne 4
-.PP
-.na
-.TP 8
-.B s-f
+.Bl -tag -width ".Ic s-f"
+.It Ic s-f
 move from
-.BR s
+.Ic s
 to
-.BR f
-.TP 8
-.B s/r
+.Ic f
+.It Ic s/r
 move one man on
-.BR s
+.Ic s
 the roll
-.BR r
-.ad
-.PP
+.Ic r
 separated by commas or spaces and ending with a newline.
 Available abbreviations are
-.ne 4
-.PP
-.na
-.TP 10
-.B s-f1-f2
+.Bl -tag -width ".Ic s-f1-f2"
+.It Ic s-f1-f2
 means
-.BR s-f1,f1-f2
-.TP 10
-.B s/r1r2
+.Ic s-f1,f1-f2
+.It Ic s/r1r2
 means
-.BR s/r1,s/r2
-.ad
-.PP
-Use `b' for bar and `h' for home,
+.Ic s/r1,s/r2
+.El
+.El
+.Pp
+Use
+.Ic b
+for bar and
+.Ic h
+for home,
 or 0 or 25 as appropriate.
-.SH AUTHOR
-Alan Char
-.SH FILES
-.TP 25
-/usr/games/teachgammon
-\- rules and tutorial
-.br
-.TP 25
-/etc/termcap
-\- terminal capabilities
-.SH BUGS
+.Sh FILES
+.Bl -tag -width ".Pa /usr/share/misc/termcap" -compact
+.It Pa /usr/games/teachgammon
+rules and tutorial
+.It Pa /usr/share/misc/termcap
+terminal capabilities
+.El
+.Sh AUTHORS
+.An Alan Char
+.Sh BUGS
 The program's strategy needs much work.
