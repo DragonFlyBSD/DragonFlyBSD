@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.78 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.79 2007/03/12 21:05:48 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -178,6 +178,8 @@ killlwps(struct lwp *lp)
 	struct proc *p = lp->lwp_proc;
 	struct lwp *tlp;
 
+	KKASSERT((lp->lwp_flag & LWP_WEXIT) == 0);
+
 	FOREACH_LWP_IN_PROC(tlp, p) {
 		if (tlp == lp)
 			continue;	/* don't kill the current lwp */
@@ -218,9 +220,12 @@ exit1(int rv)
 	/*
 	 * Kill all other threads if there are any.
 	 *
-	 * XXX TGEN Need to protect against multiple lwps of the same proc
-	 *          entering this function?
+	 * If some other thread initiated our exit, do so.
 	 */
+	if (lp->lwp_flag & LWP_WEXIT) {
+		KKASSERT(p->p_nthreads > 1);
+		lwp_exit();
+	}
 	if (p->p_nthreads > 1)
 		killlwps(lp);
 
