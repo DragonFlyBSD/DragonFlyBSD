@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.34 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.35 2007/03/12 21:07:42 corecode Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -90,7 +90,7 @@ int kern_sigprocmask(int how, struct __sigset *set, struct __sigset *oset);
 int kern_sigpending(struct __sigset *set);
 int kern_sigsuspend(struct __sigset *mask);
 int kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss);
-int kern_kill(int sig, int id);
+int kern_kill(int sig, pid_t pid, lwpid_t tid);
 
 /*
  * Prototypes for syscalls in kern/sys_generic.c

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.74 2007/02/26 03:55:22 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.75 2007/03/12 21:07:42 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -694,10 +694,11 @@ killpg_all_callback(struct proc *p, void *data)
 }
 
 int
-kern_kill(int sig, int pid)
+kern_kill(int sig, pid_t pid, lwpid_t tid)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp = NULL;
 
 	if ((u_int)sig > _SIG_MAXSIG)
 		return (EINVAL);
@@ -707,10 +708,24 @@ kern_kill(int sig, int pid)
 			return (ESRCH);
 		if (!CANSIGNAL(p, sig))
 			return (EPERM);
+		if (tid != -1) {
+			FOREACH_LWP_IN_PROC(lp, p) {
+				if (lp->lwp_tid == tid)
+					break;
+			}
+			if (lp == NULL)
+				return (ESRCH);
+		}
 		if (sig)
-			ksignal(p, sig);
+			lwpsignal(p, lp, sig);
 		return (0);
 	}
+	/*
+	 * If we come here, pid is a special broadcast pid.
+	 * This doesn't mix with a tid.
+	 */
+	if (tid != -1)
+		return (EINVAL);
 	switch (pid) {
 	case -1:		/* broadcast signal */
 		return (dokillpg(sig, 0, 1));
@@ -727,8 +742,31 @@ sys_kill(struct kill_args *uap)
 {
 	int error;
 
-	error = kern_kill(uap->signum, uap->pid);
+	error = kern_kill(uap->signum, uap->pid, -1);
+	return (error);
+}
 
+int
+sys_lwp_kill(struct lwp_kill_args *uap)
+{
+	int error;
+	pid_t pid = uap->pid;
+
+	/*
+	 * A tid is mandatory for lwp_kill(), otherwise
+	 * you could simply use kill().
+	 */
+	if (uap->tid == -1)
+		return (EINVAL);
+
+	/*
+	 * To save on a getpid() function call for intra-process
+	 * signals, pid == -1 means current process.
+	 */
+	if (pid == -1)
+		pid = curproc->p_pid;
+
+	error = kern_kill(uap->signum, pid, uap->tid);
 	return (error);
 }
 

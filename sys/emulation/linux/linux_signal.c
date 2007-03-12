@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.13 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.14 2007/03/12 21:07:42 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -361,7 +361,7 @@ sys_linux_kill(struct linux_kill_args *args)
 	else
 		sig = args->signum;
 
-	error = kern_kill(sig, args->pid);
+	error = kern_kill(sig, args->pid, -1);
 
 	return(error);
 }

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.50 2007/03/01 01:46:52 corecode Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.51 2007/03/12 21:07:42 corecode Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -678,3 +678,5 @@
 			    size_t nbyte, int flags, off_t offset); }
 494	STD	BSD	{ void extexit(int how, int status, void *addr); }
 495	STD	BSD	{ int lwp_create(struct lwp_params *params); }
+496	STD	BSD	{ lwpid_t lwp_gettid(void); }
+497	STD	BSD	{ int lwp_kill(pid_t pid, lwpid_t tid, int signum); }

@@ -33,7 +33,7 @@
  *	@(#)signal.h	8.3 (Berkeley) 3/30/94
  *
  * $FreeBSD: src/include/signal.h,v 1.14 1999/10/02 19:33:23 marcel Exp $
- * $DragonFly: src/include/signal.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/signal.h,v 1.5 2007/03/12 21:07:41 corecode Exp $
  */
 
 #ifndef _SIGNAL_H_
@@ -80,6 +80,7 @@ __END_DECLS
 #endif
 #ifndef _POSIX_SOURCE
 int	killpg (__pid_t, int);
+int	lwp_kill (__pid_t, lwpid_t, int);
 int	sigaltstack (const stack_t *, stack_t *); 
 int	sigblock (int);
 int	siginterrupt (int, int);

@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.20 2007/03/12 21:06:00 corecode Exp $
+ * $DragonFly: src/include/unistd.h,v 1.21 2007/03/12 21:07:41 corecode Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -159,6 +159,7 @@ int	 issetugid(void);
 int	 lchown(const char *, uid_t, gid_t);
 int	 lockf(int, int, off_t);
 int	 lwp_create(struct lwp_params *);
+lwpid_t	 lwp_gettid(void);
 char	*mkdtemp(char *);
 int	 mknod(const char *, mode_t, dev_t);
 int	 mkstemp(char *);

@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.4 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.5 2007/03/12 21:07:42 corecode Exp $
  * 	from: DragonFly kern/kern_sig.c,v 1.22
  *
  * These syscalls used to live in kern/kern_sig.c.  They are modified
@@ -166,7 +166,7 @@ sys_okillpg(struct okillpg_args *uap)
 {
 	int error;
 
-	error = kern_kill(uap->signum, -uap->pgid);
+	error = kern_kill(uap->signum, -uap->pgid, -1);
 
 	return (error);
 }

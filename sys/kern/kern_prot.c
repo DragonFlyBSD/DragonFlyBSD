@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.27 2007/01/08 21:32:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.28 2007/03/12 21:07:42 corecode Exp $
  */
 
 /*
@@ -88,6 +88,16 @@ sys_getppid(struct getppid_args *uap)
 	struct proc *p = curproc;
 
 	uap->sysmsg_result = p->p_pptr->p_pid;
+	return (0);
+}
+
+/* ARGSUSED */
+int
+sys_lwp_gettid(struct lwp_gettid_args *uap)
+{
+	struct lwp *lp = curthread->td_lwp;
+
+	uap->sysmsg_result = lp->lwp_tid;
 	return (0);
 }
 
