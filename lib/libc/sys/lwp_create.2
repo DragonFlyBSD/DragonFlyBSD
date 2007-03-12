@@ -1,0 +1,122 @@
+.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Simon 'corecode' Schubert <corecode@fs.ei.tum.de>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/lwp_create.2,v 1.1 2007/03/12 21:06:18 corecode Exp $
+.\"
+.Dd March 12, 2007
+.Dt LWP_CREATE 2
+.Os
+.Sh NAME
+.Nm lwp_create
+.Nd spawn a new lwp
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In unistd.h
+.Ft int
+.Fn lwp_create "struct lwp_params *params"
+.Sh DESCRIPTION
+The
+.Fn lwp_create
+function is used to spawn a new lwp in the current process.
+In some way, this is like
+.Xr fork 2 ,
+however
+.Fn lwp_create
+does not return twice as parent and child.
+Instead, the new lwp will start running a function which
+is provided with the parameters
+.Fa params ,
+as outlined below.
+.Bd -literal
+struct lwp_params {
+	void (*func)(void *);	/* Function to start execution */
+	void *arg;		/* Parameter to this function */
+	void *stack;		/* Stack address to use */
+	lwpid_t *tid1;		/* Address to copy out new tid */
+	lwpid_t *tid2;		/* Same */
+};
+.Ed
+.Pp
+The
+.Fa params
+passed to
+.Fn lwp_create
+are as follows.
+Set
+.Fa func
+to specify the function to be executed in the new lwp.
+It is the duty of
+.Fa func
+to terminate
+execution of the lwp correctly, either by calling
+.Xr extexit 2
+or
+.Xr exit 3 .
+If the
+.Fa func
+simply returns, behavior is unspecified.
+The only function argument passed to
+.Fa func
+is
+.Fa arg .
+.Pp
+The new lwp starts out with its stack frame set to
+.Fa stack .
+This parameter, like
+.Fa func
+is mandatory.  If any of these is invalid, behavior is
+unspecified.
+.Pp
+The fields
+.Fa tid1
+and
+.Fa tid2
+point to variables where the tid of the new lwp should be stored.
+There are two parameters so that storage for both parent
+and child can be specified separately.  Set any of these fields to
+NULL in case you don't need the tid to be copied out.
+.Sh RETURN VALUES
+Upon successful completion, the value 0 is returned;
+otherwise the value -1 is returned and
+.Va errno
+will be set to
+.Er EINVAL .
+.Sh SEE ALSO
+.Xr extexit 2 ,
+.Xr rfork 2 ,
+.Xr exit 3
+.Sh HISTORY
+The
+.Fn lwp_create
+function first appeared in
+.Dx 1.9 .
