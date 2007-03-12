@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.75 2007/03/12 21:07:42 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.76 2007/03/12 21:08:15 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1124,7 +1124,7 @@ active_process:
 		 * stop it.  Lwps will stop as soon as they safely can.
 		 */
 		p->p_xstat = sig;
-		proc_stop(p, 1);
+		proc_stop(p);
 		goto out;
 	}
 
@@ -1239,19 +1239,17 @@ signotify_remote(void *arg)
 #endif
 
 void
-proc_stop(struct proc *p, int notify)
+proc_stop(struct proc *p)
 {
-	struct lwp *lp, *preempted;
-	int stopped;
+	struct lwp *lp;
 
 	/* If somebody raced us, be happy with it */
 	if (p->p_stat == SSTOP)
 		return;
 
+	crit_enter();
 	p->p_stat = SSTOP;
 
-	preempted = lwkt_preempted_proc();
-	stopped = 0;
 	FOREACH_LWP_IN_PROC(lp, p) {
 		switch (lp->lwp_stat) {
 		case LSSTOP:
@@ -1265,33 +1263,33 @@ proc_stop(struct proc *p, int notify)
 			/*
 			 * We're sleeping, but we will stop before
 			 * returning to userspace, so count us
-			 * as stopped as well.  Don't increment
-			 * p_nstopped, that will happen in tstop().
+			 * as stopped as well.  We set LWP_WSTOP
+			 * to signal the lwp that it should not
+			 * increase p_nstopped when reaching tstop().
 			 */
-			++stopped;
+			if ((lp->lwp_flag & LWP_WSTOP) == 0) {
+				lp->lwp_flag |= LWP_WSTOP;
+				++p->p_nstopped;
+			}
 			break;
 
 		case LSRUN:
-			lwp_signotify(lp);
 			/*
-			 * No need to wait for the preempted/current
-			 * lwp.  It will stop on return to userland
-			 * later, so consider it as stopped.
+			 * We might notify ourself, but that's not
+			 * a problem.
 			 */
-			if (lp == preempted)
-				++stopped;
+			lwp_signotify(lp);
 			break;
 		}
 	}
 
-	while (p->p_nstopped + stopped < p->p_nthreads)
-		tsleep(&p->p_nstopped, 0, "pstop", hz);
-
-	p->p_flag &= ~P_WAITED;
-	wakeup(p->p_pptr);
-	if (notify > 1 ||
-	    (notify && (p->p_pptr->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0))
-		ksignal(p->p_pptr, SIGCHLD);
+	if (p->p_nstopped == p->p_nthreads) {
+		p->p_flag &= ~P_WAITED;
+		wakeup(p->p_pptr);
+		if ((p->p_pptr->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
+			ksignal(p->p_pptr, SIGCHLD);
+	}
+	crit_exit();
 }
 
 void
@@ -1301,6 +1299,8 @@ proc_unstop(struct proc *p)
 
 	if (p->p_stat != SSTOP)
 		return;
+
+	crit_enter();
 	p->p_stat = SACTIVE;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
@@ -1314,17 +1314,33 @@ proc_unstop(struct proc *p)
 					p->p_pid, lp->lwp_tid);
 			break;
 
+		case LSSLEEP:
+			/*
+			 * Still sleeping.  Don't bother waking it up.
+			 * However, if this thread was counted as
+			 * stopped, undo this.
+			 *
+			 * Nevertheless we call setrunnable() so that it
+			 * will wake up in case a signal or timeout arrived
+			 * in the meantime.
+			 */
+			if (lp->lwp_flag & LWP_WSTOP) {
+				--p->p_nstopped;
+			} else {
+				if (bootverbose)
+					kprintf("proc_unstop: lwp %d/%d sleeping, not stopped\n",
+						p->p_pid, lp->lwp_tid);
+			}
+			/* FALLTHROUGH */
+
 		case LSSTOP:
 			setrunnable(lp);
 			break;
 
-		case LSSLEEP:
-			/*
-			 * Still sleeping.  Don't bother waking it up.
-			 */
-			break;
 		}
+		lp->lwp_flag &= ~LWP_WSTOP;
 	}
+	crit_exit();
 }
 
 static int
@@ -1579,7 +1595,7 @@ issignal(struct lwp *lp)
 			 * XXX not sure if this is still true
 			 */
 			p->p_xstat = sig;
-			proc_stop(p, 2);
+			proc_stop(p);
 			do {
 				tstop();
 			} while (!trace_req(p) && (p->p_flag & P_TRACED));
@@ -1658,7 +1674,7 @@ issignal(struct lwp *lp)
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				p->p_xstat = sig;
-				proc_stop(p, 1);
+				proc_stop(p);
 				while (p->p_stat == SSTOP) {
 					tstop();
 				}

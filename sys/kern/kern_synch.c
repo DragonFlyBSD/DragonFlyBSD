@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.81 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.82 2007/03/12 21:08:15 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -948,8 +948,25 @@ tstop(void)
 	lp->lwp_flag |= LWP_BREAKTSLEEP;
 	lp->lwp_stat = LSSTOP;
 	crit_enter();
-	p->p_nstopped++;
-	wakeup(&p->p_nstopped);		/* For the waiter in proc_stop() */
+	/*
+	 * If LWP_WSTOP is set, we were sleeping
+	 * while our process was stopped.  At this point
+	 * we were already counted as stopped.
+	 */
+	if ((lp->lwp_flag & LWP_WSTOP) == 0) {
+		/*
+		 * If we're the last thread to stop, signal
+		 * our parent.
+		 */
+		p->p_nstopped++;
+		lp->lwp_flag |= LWP_WSTOP;
+		if (p->p_nstopped == p->p_nthreads) {
+			p->p_flag &= ~P_WAITED;
+			wakeup(p->p_pptr);
+			if ((p->p_pptr->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
+				ksignal(p->p_pptr, SIGCHLD);
+		}
+	}
 	tsleep(lp->lwp_proc, 0, "stop", 0);
 	p->p_nstopped--;
 	crit_exit();

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.104 2007/03/01 01:46:53 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.105 2007/03/12 21:08:15 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -358,6 +358,7 @@ struct	proc {
 #define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
 #define	LWP_ONRUNQ	0x0000020 /* on a user scheduling run queue */
 #define	LWP_WEXIT	0x0000040 /* working on exiting */
+#define	LWP_WSTOP	0x0000080 /* working on stopping */
 
 #define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
@@ -479,7 +480,7 @@ void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct lwp *);
-void	proc_stop (struct proc *, int);
+void	proc_stop (struct proc *);
 void	proc_unstop (struct proc *);
 void	sleep_gdinit (struct globaldata *);
 int	suser (struct thread *td);
