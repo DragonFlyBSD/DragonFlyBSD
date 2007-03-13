@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.10 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.11 2007/03/13 00:19:29 corecode Exp $
  */
 
 #include "namespace.h"
@@ -53,11 +53,6 @@
 #include "thr_private.h"
 #include "libc_private.h"
 
-struct start_arg {
-	struct pthread	*thread;
-	volatile umtx_t	started;
-};
-
 static int  create_stack(struct pthread_attr *pattr);
 static void thread_start(void *);
 
@@ -65,7 +60,7 @@ int
 _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
        void *(*start_routine) (void *), void *arg)
 {
-	struct start_arg start_arg;
+	struct lwp_params create_params;
 	void *stack;
 	sigset_t sigmask, oldsigmask;
 	struct pthread *curthread, *new_thread;
@@ -177,22 +172,13 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	/* Schedule the new thread. */
 	stack = (char *)new_thread->attr.stackaddr_attr +
 		        new_thread->attr.stacksize_attr;
-	start_arg.thread  = new_thread;
-	start_arg.started = 0;
-	ret = rfork_thread(RFPROC | RFNOWAIT | RFMEM | RFSIGSHARE, stack,
-		           (int (*)(void *))thread_start, &start_arg);
+	bzero(&create_params, sizeof(create_params));
+	create_params.func = thread_start;
+	create_params.arg = new_thread;
+	create_params.stack = stack;
+	create_params.tid1 = &new_thread->tid;
+	ret = lwp_create(&create_params);
 	__sys_sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
-	if (ret >= 0) {
-		/*
-		 * Wait until new thread get its thread id, so we can
-		 * send signal to it immediately after we return.
-		 */
-		while (start_arg.started == 0)
-			_thr_umtx_wait(&start_arg.started, 0, NULL, 0);
-		ret = 0;
-	} else {
-		ret = EAGAIN;
-	}
 	if (ret != 0) {
 		if (!locked)
 			THR_THREAD_LOCK(curthread, new_thread);
@@ -236,14 +222,9 @@ create_stack(struct pthread_attr *pattr)
 static void
 thread_start(void *arg)
 {
-	struct pthread *curthread;
-	struct start_arg *start_arg = arg;
+	struct pthread *curthread = (struct pthread *)arg;
 
-	curthread = start_arg->thread;
-	curthread->tid = _thr_get_tid();
 	tls_set_tcb(curthread->tcb);
-	start_arg->started = 1;
-	_thr_umtx_wake(&start_arg->started, 1);
 
 	/* Thread was created with all signals blocked, unblock them. */
 	__sys_sigprocmask(SIG_SETMASK, &curthread->sigmask, NULL);

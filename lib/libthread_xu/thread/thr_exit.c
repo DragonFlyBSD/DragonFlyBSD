@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.8 2006/04/13 11:48:35 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.9 2007/03/13 00:19:29 corecode Exp $
  */
 
 #include "namespace.h"
@@ -135,18 +135,10 @@ _pthread_exit(void *status)
 	THREAD_LIST_UNLOCK(curthread);
 	if (curthread->joiner)
 		_thr_umtx_wake(&curthread->state, INT_MAX);
-
-	/* XXX
-	 * All the code is incorrect on DragonFly.
-	 * DragonFly has race condition here. it should provide
-	 * an interface to tell userland that a thread is now
-	 * in kernel, and userland stack can be safely recycled
-	 * by userland GC code.
-	 */
-	curthread->terminated = 1;
 	if (SHOULD_REPORT_EVENT(curthread, TD_DEATH))
 		_thr_report_death(curthread);
-	_exit(0);
+	/* Exit and set terminated to once we're really dead. */
+	extexit(EXTEXIT_SETINT|EXTEXIT_LWP, 1, &curthread->terminated);
 	PANIC("thr_exit() returned");
 	/* Never reach! */
 }

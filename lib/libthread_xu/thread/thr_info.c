@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_info.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_info.c,v 1.5 2007/03/13 00:19:29 corecode Exp $
  */
 
 #include "namespace.h"
@@ -76,8 +76,8 @@ _thread_dump_info(void)
 	int fd, i;
 
 	for (i = 0; i < 100000; i++) {
-		snprintf(tmpfile, sizeof(tmpfile), "/tmp/pthread.dump.%u.%i",
-			getpid(), i);
+		snprintf(tmpfile, sizeof(tmpfile), "/tmp/pthread.dump.%u.%u.%i",
+			getpid(), lwp_gettid(), i);
 		/* Open the dump file for append and create it if necessary: */
 		if ((fd = __sys_open(tmpfile, O_RDWR | O_CREAT | O_EXCL,
 			0666)) < 0) {
