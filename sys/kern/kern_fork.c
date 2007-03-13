@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.66 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.67 2007/03/13 00:18:59 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -315,6 +315,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	/* Allocate new proc. */
 	p2 = zalloc(proc_zone);
+	bzero(p2, sizeof(*p2));
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
@@ -324,19 +325,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p1->p_peers = p2;
 		p2->p_leader = p1->p_leader;
 	} else {
-		p2->p_peers = NULL;
 		p2->p_leader = p2;
 	}
 
-	p2->p_wakeup = 0;
-	p2->p_vmspace = NULL;
-	p2->p_numposixlocks = 0;
-	p2->p_emuldata = NULL;
 	LIST_INIT(&p2->p_lwps);
-
-	p2->p_nthreads = 0;
-	p2->p_nstopped = 0;
-	p2->p_lasttid = 0;
 
 	/*
 	 * Setting the state to SIDL protects the partially initialized
@@ -347,24 +339,16 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	/*
 	 * Make a proc table entry for the new process.
-	 * Start by zeroing the section of proc that is zero-initialized,
-	 * then copy the section that is copied directly from the parent.
+	 * The whole structure was zeroed above, so copy the section that is
+	 * copied directly from the parent.
 	 */
-	bzero(&p2->p_startzero,
-	    (unsigned) ((caddr_t)&p2->p_endzero - (caddr_t)&p2->p_startzero));
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
-
-	p2->p_aioinfo = NULL;
 
 	/*
 	 * Duplicate sub-structures as needed.
 	 * Increase reference counts on shared objects.
-	 * p_lock is in the copy area and must be cleared.
 	 */
-	p2->p_flag = 0;
-	p2->p_lock = 0;
-
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
@@ -443,7 +427,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Inherit the virtual kernel structure (allows a virtual kernel
 	 * to fork to simulate multiple cpus).
 	 */
-	p2->p_vkernel = NULL;
 	if (p1->p_vkernel)
 		vkernel_inherit(p1, p2);
 
@@ -582,18 +565,15 @@ restart:
 	}
 
 	lp = zalloc(lwp_zone);
+	bzero(lp, sizeof(*lp));
 	lp->lwp_proc = destproc;
 	lp->lwp_tid = tid;
 	LIST_INSERT_HEAD(&destproc->p_lwps, lp, lwp_list);
 	destproc->p_nthreads++;
 	lp->lwp_stat = LSRUN;
-	bzero(&lp->lwp_startzero,
-	    (unsigned) ((caddr_t)&lp->lwp_endzero -
-			(caddr_t)&lp->lwp_startzero));
 	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
 			(caddr_t)&lp->lwp_startcopy));
-	lp->lwp_lock = 0;
 	lp->lwp_flag |= origlp->lwp_flag & LWP_ALTSTACK;
 	/*
 	 * Set cpbase to the last timeout that occured (not the upcoming

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.105 2007/03/12 21:08:15 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.106 2007/03/13 00:18:59 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -158,7 +158,6 @@ struct lwp {
 	enum lwpstat	lwp_stat;	/* LS* lwp status. */
 	int		lwp_lock;	/* lwp lock (prevent destruct) count */
 
-#define lwp_startzero	lwp_dupfd
 	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
 
 	/*
@@ -187,7 +186,6 @@ struct lwp {
 	struct rusage	lwp_ru;		/* stats for this lwp */
 
 	union usched_data lwp_usdata;	/* User scheduler specific */
-#define lwp_endzero	lwp_startcopy
 
 #define lwp_startcopy	lwp_cpumask
 	cpumask_t	lwp_cpumask;
@@ -233,9 +231,6 @@ struct	proc {
 	struct callout	p_ithandle;	/* for scheduling p_realtimer */
 	struct varsymset p_varsymset;
 
-/* The following fields are all zeroed upon creation in fork. */
-#define	p_startzero	p_oppid
-
 	pid_t		p_oppid;	/* Save parent pid during ptrace. XXX */
 
 	struct vmspace	*p_vmspace;	/* Current address space. */
@@ -265,9 +260,6 @@ struct	proc {
 
 	struct rusage	p_ru;		/* stats for this proc */
 	struct rusage	p_cru;		/* sum of stats for reaped children */
-
-/* End area that is zeroed on creation. */
-#define	p_endzero	p_startcopy
 
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
