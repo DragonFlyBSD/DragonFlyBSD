@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.12 2006/09/10 01:26:28 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.13 2007/03/13 09:42:20 swildner Exp $
  */
 
 #include <sys/disklabel.h>
@@ -68,7 +68,7 @@ int secsize = 0;		/* the sensed sector size */
 const char *disk;
 const char *disks[] =
 {
-  "/dev/ad0", "/dev/da0", 0
+  "/dev/ad0", "/dev/da0", "/dev/vkd0", 0
 };
 
 struct disklabel disklabel;		/* disk parameters */

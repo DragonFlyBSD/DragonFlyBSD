@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.10 2006/09/10 01:26:28 dillon Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.11 2007/03/13 09:42:20 swildner Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -140,9 +140,10 @@ disk name only, e.g.\&
 or as a fully qualified device node under
 .Pa /dev .
 If omitted, the disks
-.Ql ad0
-and
+.Ql ad0 ,
 .Ql da0
+and
+.Ql vkd0
 are searched in that order, until one is found to respond.
 .Pp
 When called without options,
