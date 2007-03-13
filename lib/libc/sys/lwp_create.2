@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/lwp_create.2,v 1.1 2007/03/12 21:06:18 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/lwp_create.2,v 1.2 2007/03/13 10:16:56 swildner Exp $
 .\"
 .Dd March 12, 2007
 .Dt LWP_CREATE 2
@@ -47,16 +47,18 @@
 .Sh DESCRIPTION
 The
 .Fn lwp_create
-function is used to spawn a new lwp in the current process.
-In some way, this is like
-.Xr fork 2 ,
-however
+function spawns a new lwp in the current process.
+In a way,
+.Fn lwp_create
+is similar to
+.Xr fork 2 .
+However,
 .Fn lwp_create
 does not return twice as parent and child.
-Instead, the new lwp will start running a function which
-is provided with the parameters
-.Fa params ,
-as outlined below.
+Instead, the new lwp will execute a function provided by the
+.Fa params
+argument which is a pointer to a
+.Vt struct lwp_params .
 .Bd -literal
 struct lwp_params {
 	void (*func)(void *);	/* Function to start execution */
@@ -67,50 +69,43 @@ struct lwp_params {
 };
 .Ed
 .Pp
-The
-.Fa params
-passed to
-.Fn lwp_create
-are as follows.
-Set
+A function pointer
 .Fa func
-to specify the function to be executed in the new lwp.
+specifies the function to be executed in the new lwp.
 It is the duty of
-.Fa func
-to terminate
-execution of the lwp correctly, either by calling
+.Fn func
+to correctly terminate execution of the lwp, either by calling
 .Xr extexit 2
 or
 .Xr exit 3 .
-If the
-.Fa func
-simply returns, behavior is unspecified.
-The only function argument passed to
-.Fa func
+If
+.Fn func
+returns, behavior is unspecified.
+The only argument passed to
+.Fn func
 is
 .Fa arg .
 .Pp
-The new lwp starts out with its stack frame set to
+The new lwp starts with its stack frame set to
 .Fa stack .
-This parameter, like
+Note that both
 .Fa func
-is mandatory.  If any of these is invalid, behavior is
+and
+.Fa stack
+are mandatory.
+If either is invalid, behavior is
 unspecified.
 .Pp
 The fields
 .Fa tid1
 and
 .Fa tid2
-point to variables where the tid of the new lwp should be stored.
-There are two parameters so that storage for both parent
-and child can be specified separately.  Set any of these fields to
-NULL in case you don't need the tid to be copied out.
+point to variables where the tid of the new lwp shall be stored.
+Two parameters are provided so that storage for both parent
+and child can be specified separately.
+Setting any of these to NULL causes the respective tid not to be copied out.
 .Sh RETURN VALUES
-Upon successful completion, the value 0 is returned;
-otherwise the value -1 is returned and
-.Va errno
-will be set to
-.Er EINVAL .
+.Rv -std
 .Sh SEE ALSO
 .Xr extexit 2 ,
 .Xr rfork 2 ,
