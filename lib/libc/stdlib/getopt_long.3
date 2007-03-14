@@ -1,5 +1,5 @@
 .\"	$NetBSD: getopt_long.3,v 1.14 2003/08/07 16:43:40 agc Exp $
-.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.4 2007/03/14 10:34:17 swildner Exp $
+.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.5 2007/03/14 14:50:07 swildner Exp $
 .\"
 .\" Copyright (c) 1988, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -168,6 +168,11 @@ If an option starting with
 .Ql -
 does not match a long option but does match a single-character option,
 the single-character option is returned.
+Note that the
+.Fn getopt_long_only
+function is deprecated.
+New programs should use
+.Fn getopt_long .
 .Sh IMPLEMENTATION DIFFERENCES
 This section describes differences to the GNU implementation
 found in glibc-2.1.3:
