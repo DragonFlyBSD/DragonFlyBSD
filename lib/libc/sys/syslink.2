@@ -1,0 +1,304 @@
+.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.1 2007/03/14 21:09:34 dillon Exp $
+.\"
+.Dd March 13, 2007
+.Dt SYSLINK 2
+.Os
+.Sh NAME
+.Nm syslink
+.Nd low level connect to the cluster mesh
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/syslink.h
+.Ft int
+.Fn syslink "int fd" "int flags" "sysid_t routenode"
+.Sh DESCRIPTION
+The
+.Fn syslink
+function establishes a link to a kernel-implemented syslink route node
+as specified by
+.Fa routenode .
+If a file descriptor of -1 is specified, a file descriptor representing
+a direct connection to the specified route node will be allocated and
+returned.
+If a file descriptor is specified, it will be connected to the specified
+route node via full-duplex communication and kernel threads will be
+created to shuttle data between the descriptor and the route node.  The
+kernel may optimize and shortcut this operation.
+.Pp
+It is also perfectly legal to allocate two route nodes and then connect them
+together by passing the file descriptor returned by the first
+.Fn syslink
+call to the second
+.Fn syslink
+call.  It is legal (and usually necessary) to obtain multiple descriptors to
+the same kernel-managed syslink route node.
+.Pp
+The syslink protocol revolves around 64 bit system ids using the
+.Ft sysid_t
+type.  A system id can be logical or physical.
+Physical system ids are negotiated dynamically as system links are created
+and destroyed, while Logical system ids are persistently associated with
+particular resources in the cluster. 
+For example, a particular filesystem mount will have a persistent logical
+sysid and would have one or more physical sysids depending on how it
+connects into the cluster mesh.
+.Sh SYSLINK PROTOCOL - PHYSICAL SYSIDS
+The Syslink protocol is used to glue the cluster mesh together.  It is
+based on the concept of reliable packets and buffered streams.  Adding a
+new node to the mesh is as simple as obtaining a stream connection to any
+node already in the mesh, or tying into a packet switch with UDP.
+.Pp
+The first stage of the protocol is to negotiate a physical sysid space. 
+Each connection to the mesh negotiates its own space, meaning that
+multi-homed entities (which are expected to be common) may be accessible
+through multiple physical sysids.  The physical sysid space can take time
+to settle down and may change while the cluster is operational due to changes
+in the cluster topology.  For example, you can reconfigure the system id
+space propogated out from a seed node (or a seed node could go down, or come
+up), and effectively change some of the physical sysid assignments for
+every node in the mesh while the mesh is live.
+.Pp
+Assignment of physical sysid space is simple.  The seed nodes take their
+statically assigned sysid space (specified by a 64 bit CIDR block), cut out
+enough bits to handle the number of connections that need to be supported,
+and then dole out a subnet to each connectee.  If a connectee is a route node
+it is then able to cut up the subnet CIDR block and dole out subnets to
+nodes that connect to it.  Leaf nodes have fixed SYSID space requirements,
+typically 10 bits.  If a leaf node is handed a 24 bit sysid space it will
+still use only 10 bits of it.  A leaf node handed a sysid space below its
+minimum requirement simply ignores that space.
+.Pp
+Eventually every seed node propogates its physical sysid space to every other
+node in the mesh.  If a mesh has four seed nodes, then every node in the mesh
+will wind up with at least four SYSID spaces.  Nodes may obtain additional
+physical SYSID assignments due to loops in the graph.  For example, if you
+create a triangle between nodes A, B, and C, with B as the seed node, then
+SYSID will propogate B->C->A->B and B->A->C->B and node A will wind up with
+two physical SYSID assignments (and node B will have four) even though
+there was only one seed node.  Physical SYSID assignments represent routing
+paths.  Because the mesh is potentially too large to store the full graph
+in memory, the SYSLINK protocol only requires that the four largest SYSID
+spaces for any given seed be retained by every node.  This creates a 
+self-healing mesh with reasonable, but not ultimate redundancy.
+.Pp
+Only a limited number of hops are supported in the mesh due to the 
+limitations of the 64 bit ID space and the need to be able to route
+messages simply with a single 64 bit id - without having to retain a
+route table for the whole mesh.  Very large meshes require some attention
+to the design of the topology to retain reasonable redundancy.  For
+example, if you are trying to create an internet-wide mesh to handle
+a massively distributed problem which requires low data bandwidths,
+you might implement a couple of very large CIDR distribution blocks
+for people to connect to via TCP streams.
+.Pp
+Once physical SYSID space is assigned (and remember, the physical SYSID
+space can change on the fly as nodes go up and down), messages may be sent
+from one physical SYSID to another, or broadcast across the entire mesh.
+Only messages to immediate neighbors are guarenteed to be reliable, but
+for the cluster to operate efficiently packet loss is not tolerated.
+Message delivery failures must be almost solely due to losses which occur
+when the mesh changes (due to a node going up or down).
+.Sh SYSLINK PROTOCOL - LOGICAL SYSIDS, REGISTRATION, AND LOOKUP
+.Pp
+Logical sysids are unique, persistent entities which bear little resemblence
+to the physical sysid representing a node's connection to the mesh.
+An entity might be a particular filesystem, piece of storage, or device.
+The key to understanding the logical sysid is that it migrates with the
+entity it represents.  If you move a hard drive from one machine to another,
+the logical sysids representing the ANVIL partitions on that hard drive
+will also migrate.
+.Pp
+Whenever a leaf node connects to the mesh, it must register all entities
+under its direct control with the route node it connects to.
+A route node always collects all logical sysid registrations from all
+directly connected leafs, and may optionally propogate the registrations
+to other route nodes to further consolidate the lookup database.  In
+very large clusters route nodes typically do not propogate logical sysid
+registrations very far since this would create a massive burden on internal
+route nodes.  They need propogate only far enough to reduce the overhead
+of a LOOKUP.  LOOKUP requests translate logical sysids to physical sysids.
+A LOOKUP request is a broadcast entity which must be propogated through
+the mesh until it hits route nodes with complete registration tables. 
+The fewer such nodes exist, the less overhead a LOOKUP takes.
+LOOKUP operations almost always return multiple physical sysids.  Multiple
+sysids may be returned due to having multiple seeding nodes or due to loops
+in the graph, potentially providing a more optimal communications path for
+a packet.
+.Sh SYSLINK PROTOCOL - MESSAGE ROUTING
+A syslink message contains the logical sysid of the originator and the target,
+and may cache the physical sysid for routing purposes.  Once cached, the
+physical sysid contains all information required to fully and trivially route
+the message through the mesh.
+A leaf in the mesh typically specifies a physical sysid of 0 and lets the
+nearest route node do the logical sysid lookup of the target.  The route
+node will attempt to cache translations along with propogation times to
+choose the best physical sysid to use to get to the target.  A simple hop
+count is not used, as links might have different bandwidths and propogation
+delays.
+.Pp
+Syslink messages are transactional in nature and it is possible for a single
+transaction to be made up of multiple messages... for example, to break down
+a large buffer into smaller pieces for the purposes of transmission over the
+mesh.  The syslink protocol imposes fairly severe limitations on transactional
+messages and sizes... syslink messages are not meant to abstract very large
+multi-megabyte I/O operations but instead are meant to provide a reliable 
+communications abstraction for small messages.
+A transaction may contain no more then 32 individual messages, allowing
+the route node to use a simple bitmap to track messages which may arrive
+out of order.
+Multiple transactions may be run in parallel between two logical sysids.
+.Pp
+A 32 bit transaction space field is used to encode the whole mess.  
+One bit is used to tag the first message in a transaction, one bit
+to tag the last message (both bits would be set if the transaction 
+consists of a single message), one bit indicates which side initiated
+the transaction, allowing both sides to initiate transactions without
+creating conflicts or having to negotiate the transaction space,
+20 bits implement a unique transaction number that will not be reused for a
+very long time, allowing route nodes to weed out duplicate packets, and 8 bits
+are reserved for the sequence number within the transaction (just in case
+we want to expand the maximum number of messages to 256 in the future). 
+which is discussed in another section.  Note that a portion of the 20 bit
+unique transaction number is a timestamp.
+.Pp
+The messages making up a transaction can arrive out of order and will be
+collected by the target until all messages are present.  The originator
+must hold onto all messages it sends (so it can re-send if requested by
+the route node), until it has the complete response.
+.Pp
+The route node for a leaf is responsible for weeding out duplicate messages,
+monitoring transactions, and handling timeouts (returning a retry indication
+to the leaf). 
+If the physical sysid becomes invalid the route node is typically responsible
+for locating a new physical sysid and returning a transaction abort to the
+leaf.  
+Even though dynamic rerouting is possible, the route node and 
+originator has no idea whether the new physical sysid represents the same
+actual leaf or some different leaf with access to the same logical entity
+(such as you might find in a SAN environment).  
+Because of this, changes in the physical id require a transaction abort
+and full transaction retry.
+This greatly simplifies operation of the leaf node.
+.Pp
+The SYSLINK protocol is not intended to take the place of a reliable link
+level protocol such as TCP and mesh links should only use UDP when packet
+delivery can be virtually guarenteed (such as when operating over switched
+ethernet).  UDP-based syslinks may still buffer multiple messages within 
+the limitations of the UDP packet.
+.Pp
+The SYSLINK protocol is not intended to provide quorum guarentees.  Quorum
+protocols operate over SYSLINK, but are not implemented by SYSLINK.
+.Sh SYSLINK PROTOCOL - MESSAGE BUFFERING
+Syslinks which operate over buffered connections where messages may be
+sent or received in bulk must adhere to certain alignment and cross-over
+requirements to allow buffers to be implemented as FIFOs.  The message length
+field in a syslink message is not particular aligned, but syslink messages
+themselves must always be 16-byte aligned, creating small amounts of dead
+space in the buffer (and the data stream).  Additionally, the physical
+sysid propogation protocol also propogates a FIFO cross-over size, which is
+always a power of 2.  Typical values range from 64KB to 1024KB.  Messages
+received on a stream can be written into a buffer in FIFO fashion.  No single
+message may straddle the end of the FIFO's physical buffer (that is, cross
+back over to the beginning).  All transmitters must adhere to the FIFO
+size supplied in the initial message traffic by generating a PAD message
+when necessary.  Larger FIFO sizes are usually better since they result
+in smaller PADs.  I/O transactions containing data are typically broken up
+into smaller messages not only to accomodate limitations in transport
+protocols (such as UDP), but also to reduce the dead space created by PADs.
+On the bright side, these requirements allow very optimal hardware and
+software buffering of syslink message traffic.
+.Sh BLOCKING TRANSACTIONS
+Certain operations can block.  That is, the target may not be able to 
+immediately complete the requested transaction.  When a transaction blocks
+the target is responsible for returning a keep-alive blocking indication
+to the originator to prevent the originator from retrying or aborting
+the transaction.  Keep-alives can be directly handled by the route node
+connected to the target (since it knows if the leaf disconnects),
+simplifying leaf operation.  A route node will very occassionally do a sanity
+check request to the leaf (perhaps once a minute) to verify that
+transactions blocked for a long time are still known to the leaf.
+.Pp
+Blocking indications are special response messages that set the
+blocked-operation bit in the sequence field and do not set the
+end-transaction bit.
+.Sh TRANSACTION ABORTS
+A transaction can be aborted.  Normally aborted transactions still 
+required an acknowledgement (since the abort may race completion).
+If the target completes the transaction before receiving the abort
+request, it is as if the abort never occured.
+.Sh ASYNCHRONOUS PUSH TRANSACTIONS
+Most syslink transactions require an acknowledgement to terminate the
+transaction.  The acknowledgement is typically a single message in the
+return direction with both the start and stop bits set.  Multi-message
+responses are of course possible, such as when the transaction is
+implementing an I/O read operation.
+.Pp
+Certain syslink transactions do not require an acknowledgement and do not
+implement the retry or timeout protocols.  Such transactions are typically
+cache-push operations which are used to optimize operation of the cluster
+by allowing a node to asynchronously push data to places where it thinks
+it will be needed immediately.  The most commmon use of this sort of
+operation is the read-ahead optimization.  When one node performs a read
+transaction with another node, and the target node is capable of read-ahead
+and detemines that read-ahead is useful, the target node can initiate the
+read-ahead and push the data to the originating node in a separate 
+asyncnronous transaction.  Read-aheads are typically not directly adjacent
+to the read that just occured in order to allow the originator to initiate
+the next synchronous transaction without it crossing paths with the 
+asynchronous read-ahead push (resulting in the same data being returned to
+the originator twice).
+.Sh OPERATING AS A ROUTE NODE
+Most userland applications using syslink will operate as leaf nodes, but
+there is nothing preventing you from oprating as a route node.  Operating
+as a route node requires implementing all route node requirements including
+the handling of logical sysid registrations and the tracking of transactions
+initiated by nodes that directly connect to you.  In fact, sysid seeding
+nodes are user processes which operate as degenerate route nodes.
+.Sh RETURN VALUES
+The value -1 is returned if an error occurs in either call.
+The external variable
+.Va errno
+indicates the cause of the error.
+If a descriptor is supplied and the system call is successful, 0 is
+returned.  If a descriptor is not supplied and the system call is successful,
+a descriptor is returned representing a direct connection to the mesh's 
+route node.
+.Sh SEE ALSO
+.Sh HISTORY
+The
+.Fn syslink
+function first appeared in
+.Dx 1.9 .
