@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/mcd.4,v 1.10.2.3 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/Attic/mcd.4,v 1.4 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/Attic/mcd.4,v 1.5 2007/03/15 20:58:57 swildner Exp $
 .\"
 .Dd December 8, 1994
 .Dt MCD 4 i386
@@ -70,38 +70,38 @@ These commands
 control the CD-ROM player's audio features.
 The commands are:
 .Pp
-.Bl -tag -width CDIOCREADSUBCHANNEL -compact -offset indent
-.It CDIOCREADSUBCHANNEL
+.Bl -tag -width ".Dv CDIOCREADSUBCHANNEL" -compact -offset indent
+.It Dv CDIOCREADSUBCHANNEL
 get sub-channel information on current status of disc playing
-.It CDIOCREADTOCHEADER
+.It Dv CDIOREADTOCHEADER
 get table of contents header
-.It CDIOCREADTOCENTRYS
+.It Dv CDIOREADTOCENTRYS
 gets all of the table of contents
-.It CDIOCPLAYTRACKS
+.It Dv CDIOCPLAYTRACKS
 begins audio playing at location specified
-.It CDIOCPLAYBLOCKS
+.It Dv CDIOCPLAYBLOCKS
 fails with error
 .Er EINVAL
-.It CDIOCPLAYMSF
+.It Dv CDIOCPLAYMSF
 begins audio playing at location specified
-.It CDIOCRESUME
+.It Dv CDIOCRESUME
 resumes playing a previously paused disc
-.It CDIOCPAUSE
+.It Dv CDIOCPAUSE
 pauses a playing disc
-.It CDIOCSTART
+.It Dv CDIOCSTART
 begins playing a disc
-.It CDIOCSTOP
+.It Dv CDIOCSTOP
 stops a previously playing disc
-.It CDIOCEJECT
+.It Dv CDIOCEJECT
 opens the disc tray (there is no support for a corresponding un-eject
 command).
-.It CDIOCRESET
+.It Dv CDIOCRESET
 stops any play and resets the Mitsumi controller board
-.It CDIOCSETDEBUG
+.It Dv CDIOCSETDEBUG
 cause the kernel to print debug messages to the console about the
 .Nm
 driver
-.It CDIOCCLRDEBUG
+.It Dv CDIOCCLRDEBUG
 cause the kernel to quit printing debug messages about the
 .Nm
 driver
