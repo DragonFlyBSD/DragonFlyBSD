@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)mem.4	5.3 (Berkeley) 5/2/91
 .\" $FreeBSD: src/share/man/man4/mem.4,v 1.7.2.5 2002/02/27 03:39:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/mem.4,v 1.6 2007/02/03 23:13:18 swildner Exp $
+.\" $DragonFly: src/share/man/man4/mem.4,v 1.7 2007/03/15 21:17:45 swildner Exp $
 .\"
 .Dd May 2, 1991
 .Dt MEM 4
@@ -111,19 +111,19 @@ may also be set in the
 .Fa mr_flags
 field:
 .Bl -tag -width indent
-.It MDF_FIXBASE
+.It Dv MDF_FIXBASE
 The region's base address cannot be changed.
-.It MDF_FIXLEN
+.It Dv MDF_FIXLEN
 The region's length cannot be changed.
-.It MDF_FIRMWARE
+.It Dv MDF_FIRMWARE
 The region is believed to have been established by the system firmware.
-.It MDF_ACTIVE
+.It Dv MDF_ACTIVE
 The region is currently active.
-.It MDF_BOGUS
+.It Dv MDF_BOGUS
 We believe the region to be invalid or otherwise erroneous.
-.It MDF_FIXACTIVE
+.It Dv MDF_FIXACTIVE
 The region cannot be disabled.
-.It MDF_BUSY
+.It Dv MDF_BUSY
 The region is currently owned by another process and may not be
 altered.
 .El
