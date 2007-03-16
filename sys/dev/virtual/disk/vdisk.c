@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.2 2007/01/09 18:26:56 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.3 2007/03/16 13:41:40 swildner Exp $
  */
 
 /*
@@ -63,8 +63,6 @@ struct vkd_softc {
 	int fd;
 };
 
-
-
 #define CDEV_MAJOR	97
 
 static d_strategy_t	vkdstrategy;
@@ -82,32 +80,46 @@ static struct dev_ops vkd_ops = {
 static void
 vkdinit(void *dummy __unused)
 {
+	struct vkdisk_info *dsk;
 	struct vkd_softc *sc;
 	struct stat st;
+	int i;
 
-	if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0)
-		return;
+	KASSERT(DiskNum <= VKDISK_MAX, ("too many disks: %d\n", DiskNum));
+	
+	for (i = 0; i < DiskNum; i++) {
 
-	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK|M_ZERO);
-	sc->unit = 0;
-	sc->fd = RootImageFd;
-	bioq_init(&sc->bio_queue);
-	devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
-			  DEVSTAT_NO_ORDERED_TAGS,
-			  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
-			  DEVSTAT_PRIORITY_DISK);
-	sc->dev = disk_create(sc->unit, &sc->disk, 0, &vkd_ops);
-	sc->dev->si_drv1 = sc;
-	sc->dev->si_iosize_max = 256 * 1024;
+		/* check that the 'bus device' has been initialized */
+		dsk = &DiskInfo[i];
+		if (dsk == NULL)
+			continue;
+		if (dsk->fd < 0 || fstat(dsk->fd, &st) < 0)
+			continue;
+
+		/* and create a new device */
+		sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+		sc->unit = dsk->unit;
+		sc->fd = dsk->fd;
+		bioq_init(&sc->bio_queue);
+		devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
+				  DEVSTAT_NO_ORDERED_TAGS,
+				  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
+				  DEVSTAT_PRIORITY_DISK);
+		sc->dev = disk_create(sc->unit, &sc->disk, 0, &vkd_ops);
+		sc->dev->si_drv1 = sc;
+		sc->dev->si_iosize_max = 256 * 1024;
+
 #if 0
-	dl = &sc->disk.d_label;
-	bzero(dl, sizeof(*dl));
-	dl->d_secsize = DEV_BSIZE;
-	dl->d_nsectors = st.st_size / dl->d_secsize;
-	dl->d_ntracks = 1;
-	dl->d_secpercyl = dl->d_nsectors;
-	dl->d_ncylinders = 1;
+		dl = &sc->disk.d_label;
+		bzero(dl, sizeof(*dl));
+		dl->d_secsize = DEV_BSIZE;
+		dl->d_nsectors = st.st_size / dl->d_secsize;
+		dl->d_ntracks = 1;
+		dl->d_secpercyl = dl->d_nsectors;
+		dl->d_ncylinders = 1;
 #endif
+
+	}
 }
 
 SYSINIT(vkdisk, SI_SUB_DRIVERS, SI_ORDER_FIRST, vkdinit, NULL);
@@ -122,8 +134,6 @@ vkdopen(struct dev_open_args *ap)
 
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
-	if (sc->unit != 0)
-		return(ENXIO);
 	if (fstat(sc->fd, &st) < 0 || st.st_size == 0)
 		return(ENXIO);
 

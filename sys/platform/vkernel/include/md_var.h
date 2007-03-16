@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.17 2007/01/22 19:37:05 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.18 2007/03/16 13:41:40 swildner Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -45,12 +45,19 @@
 #endif
 
 #define VKNETIF_MAX	16
+#define VKDISK_MAX	16
 
 struct vknetif_info {
 	int		tap_fd;
 	int		tap_unit;
 	in_addr_t	netif_addr;
 	in_addr_t	netif_mask;
+};
+
+struct vkdisk_info {
+        int fd;
+        int unit;
+        char fname[MAXPATHLEN];
 };
 
 extern	char	sigcode[];
@@ -63,7 +70,8 @@ extern  int	cpu_fxsr;
 extern  char    cpu_vendor[];	/* XXX belongs in i386 */
 extern  u_int   cpu_id;		/* XXX belongs in i386 */
 
-extern int	RootImageFd;
+extern struct vkdisk_info DiskInfo[VKDISK_MAX];
+extern int	DiskNum;
 extern int	MemImageFd;
 extern int	KQueueFd;
 extern struct vknetif_info NetifInfo[VKNETIF_MAX];

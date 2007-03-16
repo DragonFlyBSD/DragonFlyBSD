@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.31 2007/03/16 13:17:20 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.32 2007/03/16 13:41:40 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -76,7 +76,8 @@ vm_paddr_t phys_avail[16];
 vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
-int RootImageFd = -1;
+struct vkdisk_info DiskInfo[VKDISK_MAX];
+int DiskNum;
 struct vknetif_info NetifInfo[VKNETIF_MAX];
 int NetifNum;
 vm_offset_t KvaStart;
@@ -104,8 +105,8 @@ static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
-static void init_rootdevice(char *imageFile);
-static void init_netif(char *netifFile[], int netifFileNum);
+static void init_disk(char *diskExp[], int diskFileNum); 
+static void init_netif(char *netifExp[], int netifFileNum);
 static void usage(const char *ctl);
 
 /*
@@ -115,10 +116,11 @@ int
 main(int ac, char **av)
 {
 	char *memImageFile = NULL;
-	char *rootImageFile = NULL;
 	char *netifFile[VKNETIF_MAX];
+	char *diskFile[VKDISK_MAX];
 	char *suffix;
 	int netifFileNum = 0;
+	int diskFileNum = 0;
 	int c;
 	int i;
 	int n;
@@ -159,7 +161,8 @@ main(int ac, char **av)
 				netifFile[netifFileNum++] = optarg;
 			break;
 		case 'r':
-			rootImageFile = optarg;
+			if (diskFileNum < VKDISK_MAX)
+				diskFile[diskFileNum++] = optarg;
 			break;
 		case 'm':
 			Maxmem_bytes = strtoull(optarg, &suffix, 0);
@@ -197,7 +200,7 @@ main(int ac, char **av)
 	init_globaldata();
 	init_vkernel();
 	init_kqueue();
-	init_rootdevice(rootImageFile);
+	init_disk(diskFile, diskFileNum);
 	init_netif(netifFile, netifFileNum);
 	init_exceptions();
 	mi_startup();
@@ -537,8 +540,9 @@ init_vkernel(void)
 }
 
 /*
- * The root filesystem path for the virtual kernel is optional.  If specified
- * it points to a filesystem image.
+ * Filesystem image paths for the virtual kernel are optional.  
+ * If specified they each should point to a disk image, 
+ * the first of which will become the root disk.
  *
  * The virtual kernel caches data from our 'disk' just like a normal kernel,
  * so we do not really want the real kernel to cache the data too.  Use
@@ -546,17 +550,49 @@ init_vkernel(void)
  */
 static
 void
-init_rootdevice(char *imageFile)
+init_disk(char *diskExp[], int diskFileNum)
 {
-	struct stat st;
+	int i;	
 
-	if (imageFile) {
-		RootImageFd = open(imageFile, O_RDWR|O_DIRECT, 0644);
-		if (RootImageFd < 0 || fstat(RootImageFd, &st) < 0) {
-			err(1, "Unable to open/create %s", imageFile);
-			/* NOT REACHED */
+        if (diskFileNum == 0)
+                return;
+
+	for(i=0; i < diskFileNum; i++){
+		char *fname;
+		fname = diskExp[i];
+
+        	if (fname == NULL) {
+                        warnx("Invalid argument to '-r'");
+                        continue;
+                }
+
+		if (DiskNum < VKDISK_MAX) {
+			struct stat st; 
+			struct vkdisk_info* info = NULL;
+			int fd;
+       			size_t l = 0;
+
+			fd = open(fname, O_RDWR|O_DIRECT, 0644);
+			if (fd < 0 || fstat(fd, &st) < 0) {
+				err(1, "Unable to open/create %s", fname);
+				/* NOT REACHED */
+			}
+
+	       		info = &DiskInfo[DiskNum];
+			l = strlen(fname);
+
+	       		info->unit = i;
+			info->fd = fd;
+	        	memcpy(info->fname, fname, l);
+
+			if (i == 0)
+				rootdevnames[0] = "ufs:vkd0a";
+
+			DiskNum++;
+		} else {
+                        warnx("vkd%d (%s) > VKD_MAX", DiskNum, fname);
+                        continue;
 		}
-		rootdevnames[0] = "ufs:vkd0a";
 	}
 }
 
@@ -913,7 +949,7 @@ init_netif(char *netifExp[], int netifExpNum)
 
 		netif = strtok(netifExp[i], ":");
 		if (netif == NULL) {
-			warnx("Invalide argument to '-I'");
+			warnx("Invalid argument to '-I'");
 			continue;
 		}
 
