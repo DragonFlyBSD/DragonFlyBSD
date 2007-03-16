@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/lwp_kill.2,v 1.1 2007/03/12 21:07:42 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/lwp_kill.2,v 1.2 2007/03/16 22:02:02 swildner Exp $
 .\"
 .Dd March 12, 2007
 .Dt LWP_KILL 2
@@ -48,7 +48,7 @@
 .Sh DESCRIPTION
 The
 .Fn lwp_kill
-function is used to send the signal
+function sends the signal
 .Fa sig
 to the lwp specified by
 .Fa pid
@@ -56,30 +56,26 @@ and
 .Fa tid .
 If
 .Fa pid
-is set to -1, the current process will be used.
-Permission checking and signal behavior is exactly like it is in
+is -1, the signal will be sent to the current process.
+Permission checking and signal behavior is exactly like in
 .Xr kill 2 .
 .Sh RETURN VALUES
-The
-.Fn lwp_kill
-function returns the value 0 if successful;
-otherwise the value -1 is returned and the global variable
-.Va errno
-is set to indicate the error.
+.Rv -std
 .Sh ERRORS
 .Fn Lwp_kill
 will fail and no signal will be sent if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
-.Fa Sig
+.Fa sig
 is not a valid signal number.
 .It Bq Er ESRCH
-No lwp can be found corresponding to that specified by
+no lwp corresponding to
 .Fa pid
 and
-.Fa tid .
+.Fa tid
+can be found.
 .It Bq Er EPERM
-The sending process is not the super-user and its effective
+the sending process is not the super-user and its effective
 user id does not match the effective user-id of the receiving process.
 .El
 .Sh SEE ALSO
