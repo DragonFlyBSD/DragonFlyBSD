@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlinfo.3,v 1.3.2.1 2003/02/20 20:42:45 kan Exp $
-.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.8 2006/11/11 18:50:04 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.9 2007/03/16 12:32:50 swildner Exp $
 .\"
 .Dd February 14, 2003
 .Os
@@ -71,7 +71,7 @@ The following are possible values for
 argument to be passed into
 .Fn dlinfo :
 .Bl -tag -width Ds
-.It RTLD_DI_LINKMAP
+.It Dv RTLD_DI_LINKMAP
 Retrieve the Link_map (or
 .Ft struct link_map )
 structure pointer for
@@ -123,7 +123,7 @@ The next Link_map structure on the link-map list.
 .It l_prev
 The previous Link_map structure on the link-map list.
 .El
-.It RTLD_DI_SERINFO
+.It Dv RTLD_DI_SERINFO
 Retrieve the library search paths associated with given
 .Fa handle
 argument.
@@ -157,7 +157,7 @@ header file.)
 See
 .Sx EXAMPLES
 (Example 2) for usage example.
-.It RTLD_DI_SERINFOSIZE
+.It Dv RTLD_DI_SERINFOSIZE
 Initialize a
 .Ft Dl_serinfo
 structure for use in a
@@ -177,7 +177,7 @@ entries and the associated search path strings.
 See
 .Sx EXAMPLES
 (Example 2) for usage example.
-.It RTLD_DI_ORIGIN
+.It Dv RTLD_DI_ORIGIN
 Retrieve the origin of the dynamic object associated with the handle.
 On successful return
 .Fa p
