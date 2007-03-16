@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.10 2007/02/24 09:07:09 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.11 2007/03/16 13:17:20 swildner Exp $
 .\"
-.Dd February 3, 2007
+.Dd March 16, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -45,7 +45,7 @@
 .Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
 .Op Fl sUv
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
-.\".Op Fl i Ar file
+.Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
 .Op Fl m Ar size
 .Op Fl r Ar file
@@ -60,10 +60,18 @@ The following options are available:
 .Bl -tag -width ".Fl m Ar size"
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
-.\".It Fl i Ar file
-.\"Specify a memory image
-.\".Ar file
-.\"to be used by the kernel.
+.It Fl i Ar file
+Specify a memory image
+.Ar file
+to be used by the virtual kernel.
+If no
+.Fl i
+option is given, the kernel will generate a name of the form
+.Pa /var/vkernel/memimg.XXXXXX ,
+with the trailing
+.Ql X Ns s
+being replaced by a sequential number, e.g.\&
+.Pa memimg.000001 .
 .It Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
 Create a virtual network device, with the first
 .Fl I

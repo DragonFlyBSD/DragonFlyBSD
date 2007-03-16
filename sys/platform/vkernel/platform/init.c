@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.30 2007/03/05 02:41:45 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.31 2007/03/16 13:17:20 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -128,7 +128,7 @@ main(int ac, char **av)
 	 */
 	kernel_mem_readonly = 1;
 
-	while ((c = getopt(ac, av, "svm:r:e:I:U")) != -1) {
+	while ((c = getopt(ac, av, "svm:r:e:i:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
