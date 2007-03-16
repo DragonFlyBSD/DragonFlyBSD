@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.11 2007/03/16 13:17:20 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.12 2007/03/16 13:34:13 swildner Exp $
 .\"
 .Dd March 16, 2007
 .Dt VKERNEL 7
@@ -117,6 +117,10 @@ interface.
 The
 .Ar netmask
 argument applies to all interfaces for which an address is specified.
+.Pp
+The
+.Nm
+architecture allows for a maximum of 16 virtual network devices.
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
