@@ -1,0 +1,40 @@
+$DragonFly: src/lib/libpcap/patches/Attic/gencode.c.patch,v 1.1 2007/03/16 12:59:10 sephe Exp $
+Index: gencode.c
+===================================================================
+RCS file: /opt/df_cvs/src/contrib/libpcap-0.9/gencode.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 gencode.c
+--- gencode.c	25 Dec 2006 00:32:18 -0000	1.1.1.1
++++ gencode.c	10 Mar 2007 04:51:54 -0000
+@@ -84,6 +84,9 @@
+ #endif /*INET6*/
+ #include <pcap-namedb.h>
+ 
++#include <netproto/802_11/ieee80211.h>
++#include <netproto/802_11/ieee80211_radiotap.h>
++
+ #define ETHERMTU	1500
+ 
+ #ifndef IPPROTO_SCTP
+@@ -6303,6 +6306,21 @@
+ 	return (b0);
+ }
+ 
++/* IEEE 802.11 wireless header */
++struct block *
++gen_p80211_type(int type, int mask)
++{
++	struct block *b0;
++
++	if (linktype != DLT_IEEE802_11 && linktype != DLT_IEEE802_11_RADIO) {
++		bpf_error("action not supported on linktype 0x%x\n", linktype);
++		/* NOTREACHED */
++	}
++	b0 = gen_mcmp(OR_LINK, offsetof(struct ieee80211_frame, i_fc[0]),
++		      BPF_B, (bpf_int32)type, (bpf_int32)mask);
++	return (b0);
++}
++
+ struct block *
+ gen_acode(eaddr, q)
+ 	register const u_char *eaddr;

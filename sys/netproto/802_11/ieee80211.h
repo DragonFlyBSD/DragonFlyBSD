@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.4 2006/11/25 05:54:22 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.5 2007/03/16 12:59:10 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -662,5 +662,40 @@ enum {
  */
 #define IEEE80211_HWBMISS_MIN   1
 #define IEEE80211_HWBMISS_MAX   255
+
+#define IEEE80211_MGT_SUBTYPE_NAMES {			\
+	"assoc-req",		"assoc-resp",		\
+	"reassoc-req",		"reassoc-resp",		\
+	"probe-req",		"probe-resp",		\
+	"reserved#6",		"reserved#7",		\
+	"beacon",		"atim",			\
+	"disassoc",		"auth",			\
+	"deauth",		"reserved#13",		\
+	"reserved#14",		"reserved#15"		\
+}
+
+#define IEEE80211_CTL_SUBTYPE_NAMES {			\
+	"reserved#0",		"reserved#1",		\
+	"reserved#2",		"reserved#3",		\
+	"reserved#3",		"reserved#5",		\
+	"reserved#6",		"reserved#7",		\
+	"reserved#8",		"reserved#9",		\
+	"ps-poll",		"rts",			\
+	"cts",			"ack",			\
+	"cf-end",		"cf-end-ack"		\
+}
+
+#define IEEE80211_DATA_SUBTYPE_NAMES {			\
+	"data",			"data-cf-ack",		\
+	"data-cf-poll",		"data-cf-ack-poll",	\
+	"null",			"cf-ack",		\
+	"cf-poll",		"cf-ack-poll",		\
+	"qos-data",		"qos-data-cf-ack",	\
+	"qos-data-cf-poll",	"qos-data-cf-ack-poll",	\
+	"qos",			"reserved#13",		\
+	"qos-cf-poll",		"qos-cf-ack-poll"	\
+}
+
+#define IEEE80211_TYPE_NAMES	{ "mgt", "ctl", "data", "reserved#4" }
 
 #endif /* _NET80211_IEEE80211_H_ */

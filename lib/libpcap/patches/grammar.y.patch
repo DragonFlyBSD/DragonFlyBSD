@@ -1,0 +1,144 @@
+$DragonFly: src/lib/libpcap/patches/Attic/grammar.y.patch,v 1.1 2007/03/16 12:59:10 sephe Exp $
+Index: grammar.y
+===================================================================
+RCS file: /opt/df_cvs/src/contrib/libpcap-0.9/grammar.y,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 grammar.y
+--- grammar.y	25 Dec 2006 00:32:18 -0000	1.1.1.1
++++ grammar.y	9 Mar 2007 13:24:29 -0000
+@@ -55,6 +55,8 @@
+ #include "pf.h"
+ #include <pcap-namedb.h>
+ 
++#include <netproto/802_11/ieee80211.h>
++
+ #ifdef HAVE_OS_PROTO_H
+ #include "os-proto.h"
+ #endif
+@@ -63,6 +65,10 @@
+ 			 (q).dir = (d),\
+ 			 (q).addr = (a)
+ 
++static const char *ieee80211_mgt_names[] = IEEE80211_MGT_SUBTYPE_NAMES;
++static const char *ieee80211_ctl_names[] = IEEE80211_CTL_SUBTYPE_NAMES;
++static const char *ieee80211_data_names[] = IEEE80211_DATA_SUBTYPE_NAMES;
++
+ int n_errors = 0;
+ 
+ static struct qual qerr = { Q_UNDEF, Q_UNDEF, Q_UNDEF, Q_UNDEF };
+@@ -109,7 +115,7 @@
+ %type	<a>	arth narth
+ %type	<i>	byteop pname pnum relop irelop
+ %type	<blk>	and or paren not null prog
+-%type	<rblk>	other pfvar
++%type	<rblk>	other pfvar p80211
+ %type	<i>	atmtype atmmultitype
+ %type	<blk>	atmfield
+ %type	<blk>	atmfieldvalue atmvalue atmlistvalue
+@@ -141,12 +147,13 @@
+ %token	VPI VCI
+ %token	RADIO
+ %token  SIO OPC DPC SLS
++%token	TYPE SUBTYPE
+ 
+ %type	<s> ID
+ %type	<e> EID
+ %type	<e> AID
+ %type	<s> HID HID6
+-%type	<i> NUM action reason
++%type	<i> NUM action reason type subtype type_subtype
+ 
+ %left OR AND
+ %nonassoc  '!'
+@@ -337,6 +344,7 @@
+ 	| PPPOED		{ $$ = gen_pppoed(); }
+ 	| PPPOES		{ $$ = gen_pppoes(); }
+ 	| pfvar			{ $$ = $1; }
++	| pqual p80211		{ $$ = $2; }
+ 	;
+ 
+ pfvar:	  PF_IFNAME ID		{ $$ = gen_pf_ifname($2); }
+@@ -347,6 +355,83 @@
+ 	| PF_ACTION action	{ $$ = gen_pf_action($2); }
+ 	;
+ 
++p80211:   TYPE type SUBTYPE subtype
++				{ $$ = gen_p80211_type($2 | $4,
++					IEEE80211_FC0_TYPE_MASK |
++					IEEE80211_FC0_SUBTYPE_MASK);
++				}
++	| TYPE type		{ $$ = gen_p80211_type($2,
++					IEEE80211_FC0_TYPE_MASK);
++				}
++	| SUBTYPE type_subtype	{ $$ = gen_p80211_type($2,
++					IEEE80211_FC0_TYPE_MASK |
++					IEEE80211_FC0_SUBTYPE_MASK);
++				}
++	;
++
++type:	  NUM
++	| ID			{ const char *names[] = IEEE80211_TYPE_NAMES;
++				  int i, lim;
++				  lim = (IEEE80211_FC0_TYPE_MASK >> IEEE80211_FC0_TYPE_SHIFT) + 1;
++				  for (i = 0; i < lim; ++i) {
++				  	if (pcap_strcasecmp($1, names[i]) == 0) {
++						$$ = i << IEEE80211_FC0_TYPE_SHIFT;
++						break;
++					}
++				  }
++				  if (i == lim)
++				  	bpf_error("unknown 802.11 type name");
++				}
++	;
++
++subtype:  NUM
++	| ID			{ const char **names;
++				  int i, lim;
++				  if ($<i>-1 == IEEE80211_FC0_TYPE_MGT)
++				  	names = ieee80211_mgt_names;
++				  else if ($<i>-1 == IEEE80211_FC0_TYPE_CTL)
++				  	names = ieee80211_ctl_names;
++				  else if ($<i>-1 == IEEE80211_FC0_TYPE_DATA)
++				  	names = ieee80211_data_names;
++				  else
++				  	bpf_error("unknown 802.11 type");
++				  lim = (IEEE80211_FC0_SUBTYPE_MASK >> IEEE80211_FC0_SUBTYPE_SHIFT) + 1;
++				  for (i = 0; i < lim; ++i) {
++				  	if (pcap_strcasecmp($1, names[i]) == 0) {
++						$$ = i << IEEE80211_FC0_SUBTYPE_SHIFT;
++						break;
++					}
++				  }
++				  if (i == lim)
++				  	bpf_error("unknown 802.11 subtype name");
++				}
++	;
++
++type_subtype:	ID		{ const char **sub_names[] = {
++					ieee80211_mgt_names,
++					ieee80211_ctl_names,
++					ieee80211_data_names
++				  };
++				  int i, j, lim, sub_lim;
++				  sub_lim = sizeof(sub_names) / sizeof(sub_names[0]);
++				  lim = (IEEE80211_FC0_SUBTYPE_MASK >> IEEE80211_FC0_SUBTYPE_SHIFT) + 1;
++				  for (i = 0; i < sub_lim; ++i) {
++				  	const char **names = sub_names[i];
++				  	for (j = 0; j < lim; ++j) {
++						if (pcap_strcasecmp($1, names[j]) == 0)
++							break;
++					}
++					if (j != lim) {
++						$$ = (i << IEEE80211_FC0_TYPE_SHIFT) |
++						     (j << IEEE80211_FC0_SUBTYPE_SHIFT);
++						break;
++					}
++				  }
++				  if (i == sub_lim)
++				  	bpf_error("unknown 802.11 subtype name");
++				}
++		;
++
+ reason:	  NUM			{ $$ = $1; }
+ 	| ID			{ const char *reasons[] = PFRES_NAMES;
+ 				  int i;

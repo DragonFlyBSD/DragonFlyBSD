@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.9 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.10 2007/03/16 12:59:10 sephe Exp $
  */
 
 /*
@@ -59,18 +59,8 @@
 
 #define	IEEE80211_RATE2MBS(r)	(((r) & IEEE80211_RATE_VAL) / 2)
 
-const char *ieee80211_mgt_subtype_name[] = {
-	"assoc_req",	"assoc_resp",	"reassoc_req",	"reassoc_resp",
-	"probe_req",	"probe_resp",	"reserved#6",	"reserved#7",
-	"beacon",	"atim",		"disassoc",	"auth",
-	"deauth",	"reserved#13",	"reserved#14",	"reserved#15"
-};
-const char *ieee80211_ctl_subtype_name[] = {
-	"reserved#0",	"reserved#1",	"reserved#2",	"reserved#3",
-	"reserved#3",	"reserved#5",	"reserved#6",	"reserved#7",
-	"reserved#8",	"reserved#9",	"ps_poll",	"rts",
-	"cts",		"ack",		"cf_end",	"cf_end_ack"
-};
+const char *ieee80211_mgt_subtype_name[] = IEEE80211_MGT_SUBTYPE_NAMES;
+const char *ieee80211_ctl_subtype_name[] = IEEE80211_CTL_SUBTYPE_NAMES;
 const char *ieee80211_state_name[IEEE80211_S_MAX] = {
 	"INIT",		/* IEEE80211_S_INIT */
 	"SCAN",		/* IEEE80211_S_SCAN */

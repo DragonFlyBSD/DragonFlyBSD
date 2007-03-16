@@ -1,0 +1,18 @@
+$DragonFly: src/lib/libpcap/patches/Attic/scanner.l.patch,v 1.1 2007/03/16 12:59:10 sephe Exp $
+Index: scanner.l
+===================================================================
+RCS file: /opt/df_cvs/src/contrib/libpcap-0.9/scanner.l,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 scanner.l
+--- scanner.l	25 Dec 2006 00:32:20 -0000	1.1.1.1
++++ scanner.l	9 Mar 2007 10:26:11 -0000
+@@ -247,6 +247,9 @@
+ 
+ gateway		return GATEWAY;
+ 
++type		return TYPE;
++subtype		return SUBTYPE;
++
+ less		return LESS;
+ greater		return GREATER;
+ byte		return CBYTE;
