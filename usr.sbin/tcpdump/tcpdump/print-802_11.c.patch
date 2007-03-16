@@ -1,0 +1,17 @@
+$DragonFly: src/usr.sbin/tcpdump/tcpdump/Attic/print-802_11.c.patch,v 1.1.2.2 2007/03/16 13:24:03 sephe Exp $
+Index: print-802_11.c
+===================================================================
+RCS file: /opt/df_cvs/src/contrib/tcpdump-3.9/print-802_11.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 print-802_11.c
+--- print-802_11.c	25 Dec 2006 00:17:38 -0000	1.1.1.1
++++ print-802_11.c	16 Mar 2007 12:50:08 -0000
+@@ -264,7 +264,7 @@
+ 
+ 			if (pbody->tim.length <= 3)
+ 				break;
+-			if (pbody->rates.length > sizeof pbody->tim.bitmap)
++			if (pbody->tim.length - 3 > sizeof pbody->tim.bitmap)
+ 				return;
+ 			if (!TTEST2(*(p + offset), pbody->tim.length - 3))
+ 				return;
