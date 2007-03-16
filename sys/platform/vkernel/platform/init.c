@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.32 2007/03/16 13:41:40 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.33 2007/03/16 15:27:10 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -590,7 +590,7 @@ init_disk(char *diskExp[], int diskFileNum)
 
 			DiskNum++;
 		} else {
-                        warnx("vkd%d (%s) > VKD_MAX", DiskNum, fname);
+                        warnx("vkd%d (%s) > VKDISK_MAX", DiskNum, fname);
                         continue;
 		}
 	}
