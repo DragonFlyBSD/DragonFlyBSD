@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.107 2007/02/24 08:27:38 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.108 2007/03/17 21:24:11 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1276,7 +1276,7 @@ device		atapicam	# emulate ATAPI devices as SCSI ditto via CAM
 #device		natapifd	# ATAPI floppy drives
 #device		natapist	# ATAPI tape drives
 #device		natapicam	# ATAPI CAM layer emulation
-#device		natapiraid	# support for ATA software RAID controllers
+#device		nataraid	# support for ATA software RAID controllers
 #device		natausb		# ATA-over-USB support
 
 #The following options are valid on the ATA driver:
