@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.7 2007/02/10 05:45:12 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.8 2007/03/18 11:49:32 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -2197,21 +2197,19 @@ rum_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 			       RUM_TX_PKT_MULTI_RETRY(sc);
 	stats->stats_pkt_err += RUM_TX_PKT_FAIL(sc);
 
-	stats->stats_short_retries += RUM_TX_PKT_ONE_RETRY(sc);
+	stats->stats_retries += RUM_TX_PKT_ONE_RETRY(sc);
 #if 1
 	/*
 	 * XXX Estimated average:
 	 * Actual number of retries for each packet should belong to
 	 * [2, RUM_TX_SHORT_RETRY_MAX]
 	 */
-	stats->stats_short_retries +=
-		RUM_TX_PKT_MULTI_RETRY(sc) *
-		((2 + RUM_TX_SHORT_RETRY_MAX) / 2);
+	stats->stats_retries += RUM_TX_PKT_MULTI_RETRY(sc) *
+				((2 + RUM_TX_SHORT_RETRY_MAX) / 2);
 #else
-	stats->stats_short_retries += RUM_TX_PKT_MULTI_RETRY(sc);
+	stats->stats_retries += RUM_TX_PKT_MULTI_RETRY(sc);
 #endif
-	stats->stats_short_retries +=
-		RUM_TX_PKT_FAIL(sc) * RUM_TX_SHORT_RETRY_MAX;
+	stats->stats_retries += RUM_TX_PKT_FAIL(sc) * RUM_TX_SHORT_RETRY_MAX;
 
 	callout_reset(&sc->stats_ch, 4 * hz / 5, rum_stats_timeout, sc);
 

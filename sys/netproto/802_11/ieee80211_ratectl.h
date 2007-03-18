@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.3 2006/10/24 14:39:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.4 2007/03/18 11:49:32 sephe Exp $
  */
 
 #ifndef _NET80211_IEEE80211_RATECTL_H
@@ -70,8 +70,7 @@ struct ieee80211_ratectl_stats {
 	int				stats_pkt_noretry;
 	int				stats_pkt_ok;
 	int				stats_pkt_err;
-	int				stats_short_retries;
-	int				stats_long_retries;
+	int				stats_retries;
 };
 
 struct ieee80211_ratectl {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.6 2007/02/28 13:04:26 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.7 2007/03/18 11:49:32 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -2357,20 +2357,19 @@ ural_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	stats->stats_pkt_noretry += sc->sta[RAL_TX_PKT_NO_RETRY];
 
-	stats->stats_short_retries += sc->sta[RAL_TX_PKT_ONE_RETRY];
+	stats->stats_retries += sc->sta[RAL_TX_PKT_ONE_RETRY];
 #if 1
 	/*
 	 * XXX Estimated average:
 	 * Actual number of retries for each packet should belong to
 	 * [2, sc->sc_tx_retries]
 	 */
-	stats->stats_short_retries += sc->sta[RAL_TX_PKT_MULTI_RETRY] *
-				      ((2 + sc->sc_tx_retries) / 2);
+	stats->stats_retries += sc->sta[RAL_TX_PKT_MULTI_RETRY] *
+				((2 + sc->sc_tx_retries) / 2);
 #else
-	stats->stats_short_retries += sc->sta[RAL_TX_PKT_MULTI_RETRY];
+	stats->stats_retries += sc->sta[RAL_TX_PKT_MULTI_RETRY];
 #endif
-	stats->stats_short_retries +=
-		sc->sta[RAL_TX_PKT_FAIL] * sc->sc_tx_retries;
+	stats->stats_retries += sc->sta[RAL_TX_PKT_FAIL] * sc->sc_tx_retries;
 
 	callout_reset(&sc->stats_ch, 4 * hz / 5, ural_stats_timeout, sc);
 

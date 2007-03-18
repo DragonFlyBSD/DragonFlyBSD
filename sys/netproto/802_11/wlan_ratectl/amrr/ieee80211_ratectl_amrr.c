@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.7 2006/12/24 11:39:59 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.8 2007/03/18 11:49:32 sephe Exp $
  */
 
 /*
@@ -348,8 +348,7 @@ amrr_gather_stats(struct amrr_softc *asc, struct ieee80211_node *ni)
 	} else if (AMRR_MEET_REQUIRE_STATS2(st->rc_st_valid_stats)) {
 		total_tries = stats.stats_pkt_ok +
 			      stats.stats_pkt_err +
-			      stats.stats_short_retries +
-			      stats.stats_long_retries;
+			      stats.stats_retries;
 	}
 
 	ad->ad_tx_cnt += total_tries;

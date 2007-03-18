@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.6 2006/12/24 11:39:59 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.7 2007/03/18 11:49:32 sephe Exp $
  */
 
 /*
@@ -333,7 +333,7 @@ onoe_gather_stats(struct onoe_softc *osc, struct ieee80211_node *ni)
 
 	od->od_tx_ok += stats.stats_pkt_ok;
 	od->od_tx_err += stats.stats_pkt_err;
-	od->od_tx_retr += stats.stats_long_retries + stats.stats_short_retries;
+	od->od_tx_retr += stats.stats_retries;
 }
 
 static void
