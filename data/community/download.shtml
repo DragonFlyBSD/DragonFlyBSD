@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.7 2007/01/30 19:51:15 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.8 2007/03/18 19:35:17 dillon Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -178,6 +178,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>Fortunaty.net (Europe)</TD>
 <TD>Daily snapshots, official ISOs</TD>
@@ -185,6 +186,7 @@ rsync
 <a href="ftp://ftp.fortunaty.net/DragonFly/">FTP</a>
 </TD>
 </TR>
+-->
 
 <!--
 <TR>
@@ -291,6 +293,24 @@ rsync
 <a href="http://ftp.duth.gr/pub/DragonflyBSD/">HTTP</a>,
 <a href="ftp://ftp.duth.gr/pub/DragonflyBSD/">FTP</a>
 <a href="rsync://ftp.duth.gr/DragonflyBSD/">rsync</a>
+</TD>
+</TR>
+
+<TR>
+<TD>High5.net (Amsterdam)</TD>
+<TD>Official ISOs</TD>
+<TD>
+<a href="http://high5.net/mirrors/DragonFly/iso-images/">HTTP</a>,
+</TD>
+</TR>
+
+<TR>
+<TD>Hasso Tepper (Estonia)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://ftp.estpak.ee/pub/DragonFly">HTTP</a>,
+<a href="ftp://ftp.estpak.ee/pub/DragonFly">FTP</a>
+<a href="rsync://ftp.estpak.ee/DragonFly">rsync</a>
 </TD>
 </TR>
 

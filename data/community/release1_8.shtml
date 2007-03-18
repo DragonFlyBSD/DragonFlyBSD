@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.3 2007/02/04 17:20:57 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.4 2007/03/18 19:35:17 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.8.x for your system</h1>
 
@@ -80,9 +80,11 @@ See the 'Download Site' list below for a list of download locations.
 <TH>Access methods</TH>
 </TR>
 
+<!--
 <TR><TD>Fortunaty.net</TD>
 <TD>1.8.0_REL image</TD>
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A></TD></TR>
+-->
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>1.8.0_REL image</TD>
@@ -106,6 +108,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD>
     <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
     <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>high5.net (Amsterdam)</TD>
+<TD>1.8.0_REL image</TD>
+<TD>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
 </TD></TR>
 
 

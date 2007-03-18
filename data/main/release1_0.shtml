@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - July 2004 Release 1.0A Download" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/main/release1_0.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/main/release1_0.shtml,v 1.2 2007/03/18 19:35:19 dillon Exp $ -->
 
 
 <h1>Obtaining DragonFly for your system</h1>
@@ -75,9 +75,11 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>,
 <A HREF="rsync://rsync.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">rsync</A><TD></TR>
 
+<!--
 <TR><TD>Fortunaty.net (Europe)</TD>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
+-->
 
 <TR><TD>univie.ac.at</TD>
 <TD>1.0A_REL image</TD>

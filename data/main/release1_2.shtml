@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - April 2005 Release 1.2.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/main/release1_2.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/main/release1_2.shtml,v 1.2 2007/03/18 19:35:19 dillon Exp $ -->
 
 
 <h1>Obtaining DragonFly 1.2.x for your system</h1>
@@ -132,9 +132,11 @@ A <a href="http://leaf.dragonflybsd.org/releaseinfo/DragonFly_RELEASE_1_2.txt">d
     <A HREF="ftp://gobsd.com/dfly-1.2.0_REL.iso.gz">FTP</A>
 </TD></TR>
 
+<!--
 <TR><TD>Fortunaty.net</TD>
 <TD>1.2.0_REL image</TD>
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A></TD></TR>
+-->
 
 <TR><TD>PFSense.com</TD>
 <TD>1.2.0_REL image</TD>
