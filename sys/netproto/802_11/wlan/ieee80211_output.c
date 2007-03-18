@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.16 2007/03/06 12:17:51 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.17 2007/03/18 05:35:54 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1353,7 +1353,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 			if (ic->ic_caps_ext & IEEE80211_CEXT_PBCC)
 				capinfo |= IEEE80211_CAPINFO_PBCC;
 		}
-		if ((ni->ni_capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME) &&
+		if (IEEE80211_IS_CHAN_2GHZ(ni->ni_chan) &&
 		    (ic->ic_caps & IEEE80211_C_SHSLOT))
 			capinfo |= IEEE80211_CAPINFO_SHORT_SLOTTIME;
 		*(uint16_t *)frm = htole16(capinfo);
