@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.6 2007/02/07 14:52:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.7 2007/03/18 05:44:23 sephe Exp $
  */
 
 /*
@@ -3854,6 +3854,7 @@ rtw_attach(device_t dev)
 	ic->ic_phytype = IEEE80211_T_DS;
 	ic->ic_opmode = IEEE80211_M_STA;
 	ic->ic_caps = IEEE80211_C_PMGT |
+		      IEEE80211_C_SHPREAMBLE |
 		      IEEE80211_C_IBSS |
 		      IEEE80211_C_HOSTAP |
 		      IEEE80211_C_MONITOR;
