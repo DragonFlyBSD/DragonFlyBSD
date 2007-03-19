@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.9 2007/02/16 11:46:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.10 2007/03/19 13:38:43 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -817,16 +817,16 @@ static void
 acx100_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 		   int frame_len, int is_fail)
 {
-	int long_retries, short_retries;
+	int rts_retries, data_retries;
 	struct ieee80211_ratectl_res rc_res;
 
-	long_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
-	short_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
+	rts_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
+	data_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
 
 	rc_res.rc_res_rateidx = tx_buf->tb_rateidx[0];
-	rc_res.rc_res_tries = short_retries + 1;
+	rc_res.rc_res_tries = data_retries + 1;
 
 	ieee80211_ratectl_tx_complete(tx_buf->tb_node, frame_len,
-				      &rc_res, 1, short_retries, long_retries,
+				      &rc_res, 1, data_retries, rts_retries,
 				      is_fail);
 }

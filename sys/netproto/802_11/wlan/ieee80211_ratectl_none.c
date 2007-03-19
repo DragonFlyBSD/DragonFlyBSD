@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl_none.c,v 1.1 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl_none.c,v 1.2 2007/03/19 13:38:43 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,7 @@ none_ratectl_tx_complete(void *arg __unused, struct ieee80211_node *ni __unused,
 			 int frame_len __unused,
 			 const struct ieee80211_ratectl_res res[] __unused,
 			 int res_len __unused,
-			 int short_retries __unused, int long_retries __unused,
+			 int data_retries __unused, int rts_retries __unused,
 			 int is_fail __unused)
 {
 }

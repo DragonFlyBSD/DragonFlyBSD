@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.10 2007/02/16 11:46:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.11 2007/03/19 13:38:43 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -683,16 +683,16 @@ _acx111_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 		    int frame_len, int is_fail, const int tries_arr[])
 {
 	struct ieee80211_ratectl_res rc_res[IEEE80211_RATEIDX_MAX];
-	int long_retries, short_retries, n, tries, prev_tries;
+	int rts_retries, data_retries, n, tries, prev_tries;
 
 	KKASSERT(tx_buf->tb_rateidx_len <= IEEE80211_RATEIDX_MAX);
 
-	long_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
-	short_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
+	rts_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
+	data_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
 
 #if 0
-	DPRINTF((&sc->sc_ic.ic_if, "s%d l%d rateidx_len %d\n",
-		 short_retries, long_retries, tx_buf->tb_rateidx_len));
+	DPRINTF((&sc->sc_ic.ic_if, "d%d r%d rateidx_len %d\n",
+		 data_retries, rts_retries, tx_buf->tb_rateidx_len));
 #endif
 
 	prev_tries = tries = 0;
@@ -700,7 +700,7 @@ _acx111_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 		rc_res[n].rc_res_tries = tries_arr[n];
 		rc_res[n].rc_res_rateidx = tx_buf->tb_rateidx[n];
 		if (!is_fail) {
-			if (short_retries + 1 <= tries)
+			if (data_retries + 1 <= tries)
 				break;
 			prev_tries = tries;
 			tries += tries_arr[n];
@@ -708,15 +708,15 @@ _acx111_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 	}
 	KKASSERT(n != 0);
 
-	if (!is_fail && short_retries + 1 <= tries) {
-		rc_res[n - 1].rc_res_tries = short_retries + 1 - prev_tries;
+	if (!is_fail && data_retries + 1 <= tries) {
+		rc_res[n - 1].rc_res_tries = data_retries + 1 - prev_tries;
 #if 0
 		DPRINTF((&sc->sc_ic.ic_if, "n %d, last tries%d\n",
 			 n, rc_res[n - 1].rc_res_tries));
 #endif
 	}
 	ieee80211_ratectl_tx_complete(tx_buf->tb_node, frame_len, rc_res, n,
-				      short_retries, long_retries, is_fail);
+				      data_retries, rts_retries, is_fail);
 }
 
 static void

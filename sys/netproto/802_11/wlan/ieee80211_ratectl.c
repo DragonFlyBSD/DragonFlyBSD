@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.2 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.3 2007/03/19 13:38:43 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -208,7 +208,7 @@ ieee80211_ratectl_newstate(struct ieee80211com *ic, enum ieee80211_state state)
 void
 ieee80211_ratectl_tx_complete(struct ieee80211_node *ni, int frame_len,
 			      const struct ieee80211_ratectl_res res[],
-			      int res_len, int short_retries, int long_retries,
+			      int res_len, int data_retries, int rts_retries,
 			      int is_fail)
 {
 	struct ieee80211com *ic = ni->ni_ic;
@@ -216,7 +216,7 @@ ieee80211_ratectl_tx_complete(struct ieee80211_node *ni, int frame_len,
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_tx_complete(rc_st->rc_st_ctx, ni, frame_len, res, res_len,
-			   long_retries, short_retries, is_fail);
+			   data_retries, rts_retries, is_fail);
 }
 
 void

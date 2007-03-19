@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.8 2007/03/19 12:38:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.9 2007/03/19 13:38:43 sephe Exp $
  */
 
 /*
@@ -1552,7 +1552,7 @@ rtw_txsoft_release(bus_dma_tag_t dmat, struct rtw_txsoft *ts,
 		struct ieee80211_ratectl_res rc_res;
 
 		rc_res.rc_res_rateidx = ts->ts_rateidx;
-		rc_res.rc_res_tries = data_retry + rts_retry + 1;
+		rc_res.rc_res_tries = data_retry + 1;
 
 		ieee80211_ratectl_tx_complete(ni, m->m_pkthdr.len,
 					      &rc_res, 1,

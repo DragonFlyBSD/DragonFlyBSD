@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.8 2007/03/18 11:49:32 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.9 2007/03/19 13:38:43 sephe Exp $
  */
 
 /*
@@ -149,8 +149,8 @@ static void
 amrr_tx_complete(void *arg __unused, struct ieee80211_node *ni,
 		 int frame_len __unused,
 		 const struct ieee80211_ratectl_res res[],
-		 int res_len, int short_retries __unused,
-		 int long_retries __unused, int is_fail)
+		 int res_len, int data_retries __unused,
+		 int rts_retries __unused, int is_fail)
 {
 	struct amrr_data *ad = ni->ni_rate_data;
 	u_int total_tries;

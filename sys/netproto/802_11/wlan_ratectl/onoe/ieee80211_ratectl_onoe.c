@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.7 2007/03/18 11:49:32 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.8 2007/03/19 13:38:43 sephe Exp $
  */
 
 /*
@@ -138,7 +138,7 @@ onoe_tx_complete(void *arg __unused, struct ieee80211_node *ni,
 		 int frame_len __unused,
 		 const struct ieee80211_ratectl_res res[] __unused,
 		 int res_len __unused,
-		 int short_retries, int long_retries, int is_fail)
+		 int data_retries, int rts_retries __unused, int is_fail)
 {
 	struct onoe_data *od = ni->ni_rate_data;
 
@@ -150,7 +150,7 @@ onoe_tx_complete(void *arg __unused, struct ieee80211_node *ni,
 	else
 		od->od_tx_ok++;
 
-	od->od_tx_retr += long_retries + short_retries;
+	od->od_tx_retr += data_retries;
 }
 
 static void
