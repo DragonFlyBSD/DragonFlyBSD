@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.29 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.30 2007/03/20 00:55:10 dillon Exp $
  */
 
 /*
@@ -460,6 +460,8 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 		vm_page_free(p);
 		mycpu->gd_cnt.v_pfree++;
 	} else {
+		if (p->queue != PQ_NONE)
+			kprintf("vm_object_terminate: Warning: Encountered wired page %p on queue %d\n", p, p->queue);
 		vm_page_busy(p);
 		vm_page_remove(p);
 		vm_page_wakeup(p);
