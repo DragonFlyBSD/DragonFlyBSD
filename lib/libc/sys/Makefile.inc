@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.24 2007/03/12 21:07:42 corecode Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.25 2007/03/20 03:51:29 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -89,7 +89,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
-	swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 \
+	swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 syslink.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 utimes.2 upc_register.2 vfork.2 wait.2 write.2
 .if !defined(NO_P1003_1B)
