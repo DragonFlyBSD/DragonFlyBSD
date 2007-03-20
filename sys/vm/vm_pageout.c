@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.31 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.32 2007/03/20 00:54:26 dillon Exp $
  */
 
 /*
@@ -646,7 +646,8 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
  * be trivially freed.
  */
 void
-vm_pageout_page_free(vm_page_t m) {
+vm_pageout_page_free(vm_page_t m) 
+{
 	vm_object_t object = m->object;
 	int type = object->type;
 
