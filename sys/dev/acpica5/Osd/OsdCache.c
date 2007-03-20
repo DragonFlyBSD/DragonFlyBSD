@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.2 2007/01/19 23:58:53 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.3 2007/03/20 00:56:30 dillon Exp $
  */
 
 #include <sys/objcache.h>
@@ -38,6 +38,20 @@ struct acpicache {
 	struct objcache *cache;
 	struct objcache_malloc_args args;
 };
+
+/*
+ * Add some magic numbers to catch double-frees earlier rather
+ * then later.
+ */
+struct acpiobjhead {
+	int state;
+	int unused;
+};
+
+#define TRACK_ALLOCATED	0x7AF45533
+#define TRACK_FREED	0x7B056644
+
+#define OBJHEADSIZE	sizeof(struct acpiobjhead)
 
 #include "acpi.h"
 
@@ -50,7 +64,7 @@ AcpiOsCreateCache(char *CacheName, UINT16 ObjectSize, UINT16 MaxDepth,
 	ACPI_CACHE_T *cache;
 
 	cache = kmalloc(sizeof(*cache), M_TEMP, M_WAITOK);
-	cache->args.objsize = ObjectSize;
+	cache->args.objsize = OBJHEADSIZE + ObjectSize;
 	cache->args.mtype = M_CACHE;
 	cache->cache = objcache_create(CacheName, 0, 0, NULL, NULL,
 	    NULL, objcache_malloc_alloc, objcache_malloc_free, &cache->args);
@@ -79,17 +93,30 @@ AcpiOsPurgeCache(ACPI_CACHE_T *Cache)
 void *
 AcpiOsAcquireObject(ACPI_CACHE_T *Cache)
 {
+	struct acpiobjhead *head;
 	void *Object;
 
-	Object = objcache_get(Cache->cache, M_WAITOK);
-	bzero(Object, Cache->args.objsize);
-	return Object;
+	head = objcache_get(Cache->cache, M_WAITOK);
+	bzero(head, Cache->args.objsize);
+	head->state = TRACK_ALLOCATED;
+	return (head + 1);
 }
 
 ACPI_STATUS
 AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 {
-	objcache_put(Cache->cache, Object);
+	struct acpiobjhead *head = (void *)((char *)Object - OBJHEADSIZE);
+
+	if (head->state != TRACK_ALLOCATED) {
+		if (head->state == TRACK_FREED)
+			kprintf("AcpiOsReleaseObject: Double Free %p (%08x)\n", Object, head->state);
+		else
+			kprintf("AcpiOsReleaseObject: Bad object %p (%08x)\n", Object, head->state);
+		return AE_OK;
+	}
+	head->state = TRACK_FREED;
+
+	objcache_put(Cache->cache, head);
 	return AE_OK;
 }
 
