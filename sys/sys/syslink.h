@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.3 2006/08/06 18:56:46 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.4 2007/03/21 20:06:36 dillon Exp $
  */
 
 /*
@@ -55,23 +55,25 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
+#endif
 
 /*
- * SYSIDs are 64 bit entities.  A SYSID is potentially routed across a
- * topology, lsb to msb.   End points typically reserve lsb bits
- * while each routing layer reserves additional bits.  Locality of reference
- * is defined as storing a value of 0 in any 'unknown' high bits,
- * allowing local meshes to be tied together into larger entities
- * without disrupting a running system.
+ * SYSIDs are 64 bit entities and come in two varieties.  Physical SYSIDs
+ * are used to efficiently route messages across the mesh, while Logical
+ * SYSIDs are persistently assigned identifiers representing specific devices
+ * or specific media or named filesystems.  That is, the logical SYSID
+ * assigned to a filesystem or ANVIL partition can be stored in that
+ * filesystem's superblock and allows the filesystem to migrate or
+ * be multi-homed (have multiple physical SYSIDs representing the same
+ * logical entity).
  *
- * Because sysid's are the primary means of identification in a potentially
- * huge mesh of machines, a way is needed to detect stale values.  For
- * this reason, each local node reserves a number of bits starting at bit 0
- * (the lsb) as a boot counter.  Sysids whos ref counts are not entirely
- * known due to a disconnect must not be recycled after a disconnect for
- * at least a number of weeks.  10-16 bits are usually reserved for this
- * purpose.  Theoretically this also means that the SYSID routing space
- * for a disconnected node should not be reassigned to another node.
+ * Physical SYSIDs can be ever-changing, and any given logical SYSID could
+ * in fact have multiple physical SYSIDs associated with it.  The mesh is
+ * self-healing and the combination of the logical and physical sysid
+ * basically validates the message at the target and determines whether
+ * the physical SYSID must be recalculated (looked up again) or not.
  */
 typedef u_int64_t       sysid_t;
 
@@ -93,26 +95,14 @@ struct syslink_generic_args;
 typedef int (*syslink_func_t)(struct syslink_generic_args *);
 
 /*
- * Commands for the syslink() system call.
- *
- * establish -	Establish a new system link with the supplied mask and match
- *		values.  A descriptor, if supplied, must be a reliable stream
- *		or packet descriptor.  If -1 is specified the kernel will
- *		supply a reliable packet descriptor.  Returns the descriptor.
- *
- *		The kernel will automatically adjust the mask to fit 
- *		available routing space.  The caller typically specifies
- *		the low one bits of the mask, e.g. 0xFFFF, to indicate to
- *		the kernel how big a chunk of the sysid space the caller
- *		needs.  If the caller supplies too large a chunk the kernel
- *		will adjust the mask on return.  The kernel sets the match
- *		bits for the unmasked bits on return.
- *
- * getsysmask - Retrieve the mask/match values associated with the kernel's
- *		syslink route node that we have connected to.
+ * Flags for the syslink system call.  Low 8 bits used to specify
+ * the number of bits to reserve for connections into the route node
+ * (e.g. '3' would allow up to 8 connections, though its actually 7
+ * since the one address is needed for the route node itself).
  */
-#define SYSLINK_ESTABLISH	0x0001	/* establish a system link */
-#define SYSLINK_GETSYSMASK	0x0004	/* retrieve kernel node mask/match */
+#define SYSLINKF_PHYSBITS	0x000000FF
+#define SYSLINKF_CREAT		0x00000100
+#define SYSLINKF_EXCL		0x00000200
 
 /*
  * A syslink structure represents an end-point for communications.  System
@@ -133,8 +123,8 @@ typedef int (*syslink_func_t)(struct syslink_generic_args *);
  * template on a per-mount basis.
  */
 struct syslink {
-	sysid_t		sl_sysid;	/* syslink id of this end-point */
-	sysid_t		sl_remote_id;	/* syslink id of remote end-point */
+	sysid_t		sl_source;
+	sysid_t		sl_target;
 	int		sl_refs;	/* track references */
 	struct syslink_ops *sl_ops;	/* operations vector */
 };
@@ -205,7 +195,7 @@ typedef struct syslink_proto *syslink_proto_t;
 typedef struct syslink_generic_args *syslink_generic_args_t;
 
 #if !defined(_KERNEL)
-int syslink(int, int, sysid_t *, sysid_t *);
+int syslink(int, int, sysid_t);
 #endif
 
 #endif

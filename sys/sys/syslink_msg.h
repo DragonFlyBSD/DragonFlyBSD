@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.3 2006/08/08 01:27:14 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.4 2007/03/21 20:06:36 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -129,57 +129,29 @@ typedef u_int16_t	sl_reclen_t;	/* item length */
  * as small as 8 bytes (msgid, cid, and reclen fields only).  The sysid
  * fields, if present, are ignored.
  */
+
+/*
+ * Raw protocol structures
+ */
 struct syslink_msg {
-	sl_msgid_t	msgid;		/* (32) transaction id for (src,dst) */
-	sl_cid_t	cid;		/* (16) command or error code */
-	sl_reclen_t	reclen;		/* (16) */
-	sysid_t		src_sysid;	/* (64) end-point identifier */
-	sysid_t		dst_sysid;	/* (64) end-point identifier */
-	/* 8-byte aligned */
-	/* one or more embedded syslink_item structures */
+	u_int16_t	sm_cmd;         /* protocol command code */
+	u_int16_t	sm_bytes;       /* unaligned size of message */
+	u_int32_t	sm_seq;
+	/* minimum syslink_msg size is 8 bytes (special PAD) */
+	sysid_t		sm_srcid;       /* origination logical sysid */
+	sysid_t		sm_dstid;       /* destination logical sysid */
+	sysid_t		sm_dstpysid;    /* cached physical sysid */
+};
+ 
+struct syslink_elm {
+	u_int16_t	se_ctl;
+	u_int16_t	se_bytes;
+	u_int32_t	se_reserved;
+	/* extended by data */
 };
 
 #define SLMSG_ALIGN(bytes)	(((bytes) + 7) & ~7)
 #define SLMSGF_RESPONSE	((sl_msgid_t)0x80000000)
-
-/*
- * A transaction contains any number of item structures.  Each item
- * structure may represent leaf data or a recursion into an array of
- * additional item structures.  The data type or field id is specified
- * by the low 14 bits of the 16 bit itemid.
- *
- * If the RECURSION bit (15) is set in the itemid, the item's data
- * represents any number of recursively embedded items.  
- * 
- * If the REFID bit (14) is set, it indicates that a leaf item is a 
- * sysid with a payload of exactly 8 bytes, and indicates that a recursion
- * contains at least one leaf item somewhere within it that is a sysid.
- *
- * The reserved bits are still counted in the 16 bit itemid so, for example,
- * an identifier of 0x0001 is different from 0x8001.  However, it is not
- * recommended that this sort of field id overloading be done.
- *
- * Both recursive and non-recursive items may use the aux field to hold
- * information.  Recursive items ONLY have the aux field available since
- * the data payload is the recursed item array.
- *
- * SYSID's passed as data (i.e. the REFID bit is set in the itemid) are
- * ref-counted by the transport layer.  XXX (need to flesh this out some
- * more w/ regard to temporary cache id's verses more persistent objects,
- * and how to deal with disconnection and reconnection).
- *
- * NOTE! The transport layer usually validates that the item data structure
- * is entirely correct before transmitting the message.  Additionally,
- * locally specified sysid's may have to be modified by the transport layer
- * if the message exits the local domain.
- */
-struct syslink_item {
-	sl_itemid_t	itemid;
-	sl_reclen_t	reclen;
-	int32_t		auxdata;
-	/* 8-byte aligned */
-	/* may be extended to include more data */
-};
 
 #define SLIF_RECURSION	((sl_cid_t)0x8000)
 #define SLIF_REFID	((sl_cid_t)0x4000)

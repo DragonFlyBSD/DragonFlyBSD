@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.51 2007/03/12 21:07:42 corecode Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.52 2007/03/21 20:06:34 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -658,7 +658,7 @@
 				int bytes); }
 482	STD	BSD	{ int extaccept(int s, int flags, caddr_t name, int *anamelen); }
 483	STD	BSD	{ int extconnect(int s, int flags, caddr_t name, int namelen); }
-484	STD	BSD	{ int syslink(int fd, int cmd, sysid_t *mask, sysid_t *match); }
+484	STD	BSD	{ int syslink(int fd, int flags, sysid_t routenode); }
 485	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
 486	STD	BSD	{ int vmspace_create(void *id, int type, void *data); } 
 487	STD	BSD	{ int vmspace_destroy(void *id); }
