@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.19 2007/02/22 04:02:50 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.20 2007/03/21 22:19:00 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -117,7 +117,6 @@ static uint32_t		 cpu_duty_width;
 
 /* Platform hardware resource information. */
 static uint32_t		 cpu_smi_cmd;	/* Value to write to SMI_CMD. */
-static uint8_t		 cpu_pstate_cnt;/* Register to take over throttling. */
 static uint8_t		 cpu_cst_cnt;	/* Indicate we are _CST aware. */
 static int		 cpu_rid;	/* Driver-wide resource id. */
 static int		 cpu_quirks;	/* Indicate any hardware bugs. */
@@ -397,7 +396,6 @@ acpi_cpu_throttle_probe(struct acpi_cpu_softc *sc)
     /* Get throttling parameters from the FADT.  0 means not supported. */
     if (device_get_unit(sc->cpu_dev) == 0) {
 	cpu_smi_cmd = AcpiGbl_FADT.SmiCommand;
-	cpu_pstate_cnt = AcpiGbl_FADT.PstateControl;
 	cpu_cst_cnt = AcpiGbl_FADT.CstControl;
 	cpu_duty_offset = AcpiGbl_FADT.DutyOffset;
 	cpu_duty_width = AcpiGbl_FADT.DutyWidth;
@@ -784,12 +782,8 @@ acpi_cpu_startup_throttling(void)
 		    CTLTYPE_INT | CTLFLAG_RW, &cpu_throttle_economy,
 		    0, acpi_cpu_throttle_sysctl, "I", "economy CPU speed");
 
-    /* If ACPI 2.0+, signal platform that we are taking over throttling. */
-    ACPI_LOCK;
-    if (cpu_pstate_cnt != 0)
-	AcpiOsWritePort(cpu_smi_cmd, cpu_pstate_cnt, 8);
-
     /* Set initial speed to maximum. */
+    ACPI_LOCK;
     acpi_cpu_throttle_set(cpu_throttle_max);
     ACPI_UNLOCK;
 
