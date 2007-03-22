@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.5 2007/01/08 04:11:44 justin Exp $ -->
+<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.6 2007/03/22 13:05:38 justin Exp $ -->
 
 <!DOCTYPE ARTICLE PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
 <!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
@@ -137,7 +137,7 @@
     <para>To install pkgsrc (You must be root to do this):
     <informalexample>
 	    <screen>&prompt.root; <userinput> cd /usr</userinput>
-    &prompt.root; <userinput>cvs -d anoncvs@anoncvo.us.netbsd.org:/cvsroot co pkgsrc</userinput></screen>
+    &prompt.root; <userinput>cvs -d anoncvs@anoncvs.us.netbsd.org:/cvsroot co pkgsrc</userinput></screen>
     </informalexample>
 
     To build and install a package from source:
