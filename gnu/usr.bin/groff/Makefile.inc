@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.11 2005/06/10 07:06:07 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.4 2006/03/22 16:54:31 y0netan1 Exp $
+# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.5 2007/03/22 23:31:22 swildner Exp $
 
 BINDIR?=	/usr/bin
 SHELL=		/bin/sh
@@ -7,7 +7,11 @@ SHELL=		/bin/sh
 # Define `page' to be letter if your PostScript printer uses 8.5x11
 # paper (USA) and define it to be A4, if it uses A4 paper (rest of the
 # world).
+.if defined(GROFF_PAPER_SIZE)
+PAGE=${GROFF_PAPER_SIZE}
+.else
 PAGE=letter
+.endif
 
 # Normally the Postscript driver, grops, produces output that conforms
 # to version 3.0 of the Adobe Document Structuring Conventions.

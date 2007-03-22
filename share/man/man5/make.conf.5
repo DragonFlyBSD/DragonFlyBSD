@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.25 2007/02/18 23:46:11 corecode Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.26 2007/03/22 23:31:22 swildner Exp $
 .\"
-.Dd February 2, 2007
+.Dd March 23, 2007
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -616,6 +616,14 @@ for simple printers or
 .Dq Li ps
 for postscript or graphics printers with a ghostscript
 filter.
+.It Va GROFF_PAPER_SIZE
+.Pq Vt str
+The default paper size for
+.Xr groff 1
+(either
+.Dq letter
+or
+.Dq A4 ) .
 .El
 .Sh FILES
 .Bl -tag -width /etc/defaults/make.conf -compact
