@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/labpc.4,v 1.8.2.2 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/labpc.4,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/labpc.4,v 1.4 2007/03/22 23:02:31 swildner Exp $
 .\"
 .Dd April 26, 1995
 .Dt LABPC 4 i386
@@ -87,27 +87,38 @@ are defined in
 and are intended to be implemented in
 other data acquisition board device drivers.
 .Pp
-AD_MICRO_PERIOD_SET takes a pointer to a long argument specifying
+.Dv AD_MICRO_PERIOD_SET
+takes a pointer to a long argument specifying
 the number of microseconds between samples.
 .Pp
-AD_MICRO_PERIOD_GET takes a pointer to a long argument and returns
+.Dv AD_MICRO_PERIOD_GET
+takes a pointer to a long argument and returns
 the current number of microseconds between samples.
 .Pp
-AD_NGAINS_GET takes a pointer to an integer and returns the number
+.Dv AD_NGAINS_GET
+takes a pointer to an integer and returns the number
 of different gain settings the board supports.  This is 8 for the
 LabPC board.
 .Pp
-AD_NCHANS_GET takes a pointer to an integer and returns the number
+.Dv AD_NCHANS_GET
+takes a pointer to an integer and returns the number
 of channels the board supports.  This is 8 for the LabPC board.
 .Pp
-AD_SUPPORTED_GAINS returns an array of NGAINS (the number obtained
-by AD_NGAINS_GET) doubles.  These are the gains the board supports.
+.Dv AD_SUPPORTED_GAINS
+returns an array of NGAINS (the number obtained
+by
+.Dv AD_NGAINS_GET )
+doubles.  These are the gains the board supports.
 .Pp
-AD_GAINS_SET takes an array of NCHANS (the number obtained by
-AD_NCHANS_GET) integers and sets the board gains.  These are indices
+.Dv AD_GAINS_SET
+takes an array of NCHANS (the number obtained by
+.Dv AD_NCHANS_GET )
+integers and sets the board gains.  These are indices
 into the supported gain array, with one gain for each channel.
 .Pp
-AD_GAINS_GET takes an array of NCHANS (returned by AD_NCHANS_GET)
+.Dv AD_GAINS_GET
+takes an array of NCHANS (returned by
+.Dv AD_NCHANS_GET )
 integers and returns the current board gains.
 .Sh BUGS
 In general, only those capabilities that I needed are present.  In
