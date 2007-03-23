@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.3.2.10 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.5 2006/06/22 20:44:46 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.6 2007/03/23 15:54:34 swildner Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL_ADD_OID 9
@@ -42,13 +42,13 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "char *name"
+.Fa "const char *name"
 .Fa "int kind"
 .Fa "void *arg1"
 .Fa "int arg2"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
-.Fa "char *format"
-.Fa "char *descr"
+.Fa "const char *format"
+.Fa "const char *descr"
 .Fc
 .Ft int
 .Fo sysctl_remove_oid
@@ -74,8 +74,8 @@
 .Fa "void *arg1"
 .Fa "int arg2"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
-.Fa "char *format"
-.Fa "char *descr"
+.Fa "const char *format"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_NODE
@@ -85,7 +85,7 @@
 .Fa "NAME"
 .Fa "int access"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_STRING
@@ -96,7 +96,7 @@
 .Fa "int access"
 .Fa "char *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_INT
@@ -107,7 +107,7 @@
 .Fa "int access"
 .Fa "int *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_QUAD
@@ -118,7 +118,7 @@
 .Fa "int access"
 .Fa "quad_t *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_UQUAD
@@ -129,7 +129,7 @@
 .Fa "int access"
 .Fa "u_quad_t *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_UINT
@@ -140,7 +140,7 @@
 .Fa "int access"
 .Fa "unsigned int *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_LONG
@@ -151,7 +151,7 @@
 .Fa "int access"
 .Fa "long *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_ULONG
@@ -162,7 +162,7 @@
 .Fa "int access"
 .Fa "unsigned long *arg"
 .Fa "0"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_OPAQUE
@@ -173,7 +173,8 @@
 .Fa "int access"
 .Fa "void *arg"
 .Fa "size_t *len"
-.Fa "char *descr"
+.Fa "const char *format"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_STRUCT
@@ -184,7 +185,7 @@
 .Fa "int access"
 .Fa "struct TYPE *arg"
 .Fa "TYPE"
-.Fa "char *descr"
+.Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_PROC
@@ -196,13 +197,13 @@
 .Fa "0"
 .Fa "0"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
-.Fa "char *format"
-.Fa "char *descr"
+.Fa "const char *format"
+.Fa "const char *descr"
 .Fc
 .Sh DESCRIPTION
 These functions and macros provide an interface
 for creating and deleting sysctl oids at runtime
-(e.g. during lifetime of a module).
+(e.g.\& during lifetime of a module).
 The alternative method,
 based on linker sets (see
 .In sys/linker_set.h
@@ -238,9 +239,9 @@ this pointer can be obtained with the
 .Fn SYSCTL_STATIC_CHILDREN
 macro, where the
 .Fa OID_NAME
-argumwent is name of the parent oid of type
+argument is name of the parent oid of type
 .Dv CTLTYPE_NODE
-(i.e. the name displayed by
+(i.e., the name displayed by
 .Xr sysctl 8 ,
 preceded by underscore, and with all dots replaced with underscores).
 .Pp
@@ -255,7 +256,7 @@ argument points to the parent oid of type
 The
 .Fn sysctl_add_oid
 function creates raw oids of any type.
-If the oid is successfuly created,
+If the oid is successfully created,
 the function returns a pointer to it;
 otherwise it returns
 .Dv NULL .
@@ -293,15 +294,15 @@ The name of the oid.
 The newly created oid will contain a copy of the name.
 .It Fa kind
 The kind of oid,
-specified as a bitmask of the type and access values defined in the
+specified as a bit mask of the type and access values defined in the
 .In sys/sysctl.h
 header file.
 Oids created dynamically always have the
-.Dv CTLTYPE_DYN
+.Dv CTLFLAG_DYN
 flag set.
 Access flags specify whether this oid is read-only or read-write,
 and whether it may be modified by all users
-or by the supseruser only.
+or by the superuser only.
 .It Fa arg1
 A pointer to any data that the oid should reference, or
 .Dv NULL .
@@ -494,14 +495,14 @@ char *string = "dynamic sysctl";
  ...
 
 root1 = SYSCTL_ADD_NODE( NULL, SYSCTL_STATIC_CHILDREN(/* tree top */),
-	OID_AUTO, newtree, CTFLAG_RW, 0, "new top level tree");
+	OID_AUTO, "newtree", CTLFLAG_RW, 0, "new top level tree");
 oidp = SYSCTL_ADD_INT( NULL, SYSCTL_CHILDREN(root1),
-	OID_AUTO, newint, CTLFLAG_RW, &a_int, 0, "new int leaf");
+	OID_AUTO, "newint", CTLFLAG_RW, &a_int, 0, "new int leaf");
  ...
 root2 = SYSCTL_ADD_NODE( NULL, SYSCTL_STATIC_CHILDREN(_debug),
-	OID_AUTO, newtree, CTFLAG_RW, 0, "new tree under debug");
+	OID_AUTO, "newtree", CTLFLAG_RW, 0, "new tree under debug");
 oidp = SYSCTL_ADD_STRING( NULL, SYSCTL_CHILDREN(root2),
-	OID_AUTO, newstring, CTLFLAG_R, string, 0, "new string leaf");
+	OID_AUTO, "newstring", CTLFLAG_RD, string, 0, "new string leaf");
 .Ed
 .Pp
 This example creates the following subtrees:
