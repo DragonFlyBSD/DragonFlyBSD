@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.15 2007/02/25 19:09:15 swildner Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.16 2007/03/23 10:11:54 swildner Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -233,7 +233,7 @@ Marks a process which is in
 The hostname of the prison can be found in
 .Pa /proc/ Ns Ao Ar pid Ac Ns Pa /status .
 .It Li R
-Marks a runnable process.
+Marks a runnable process and is followed by the CPU number.
 .It Li S
 Marks a process that is sleeping for less than about 20 seconds.
 .It Li T
