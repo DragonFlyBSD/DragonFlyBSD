@@ -1,7 +1,7 @@
 .\" NOTE:  changes to the manual page for "top" should be made in the
 .\"        file "top.X" and NOT in the file "top.1".
 .\" $FreeBSD: src/contrib/top/top.X,v 1.6.6.2 2002/08/11 17:09:25 dwmalone Exp $
-.\" $DragonFly: src/contrib/top/top.X,v 1.3 2006/02/15 12:54:36 corecode Exp $
+.\" $DragonFly: src/contrib/top/top.X,v 1.4 2007/03/23 14:51:31 swildner Exp $
 .nr N %topn%
 .nr D %delay%
 .TH TOP 1 Local
@@ -11,7 +11,7 @@ top \- display and update information about the top cpu processes
 .SH SYNOPSIS
 .B top
 [
-.B \-SbiInqutv
+.B \-SOTbiInqutv
 ] [
 .BI \-d count
 ] [
