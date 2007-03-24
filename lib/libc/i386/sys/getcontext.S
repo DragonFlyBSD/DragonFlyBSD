@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/i386/sys/getcontext.S,v 1.1 2007/01/16 07:16:23 dillon Exp $
+ * $DragonFly: src/lib/libc/i386/sys/getcontext.S,v 1.1.2.1 2007/03/24 12:24:37 corecode Exp $
  */
 
 #include <machine/asm.h>
@@ -75,10 +75,10 @@ ENTRY(_getcontext)
 	 * mask (signals are blocked right now from the setcontext call).
 	 */
 	movl	%edx,(%esp)		/* re-save the return PC */
-	addl	$UC_SIGMASK,%eax
+	addl	$UC_SIGMASK,%ecx
 	PIC_PROLOGUE
 	pushl	$0
-	pushl	%eax
+	pushl	%ecx
 	pushl	$SIG_SETMASK
 	call	PIC_PLT(_sigprocmask)	/* retrieve & save signal mask */
 	addl	$12,%esp
