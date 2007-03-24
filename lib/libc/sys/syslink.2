@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.2 2007/03/22 22:55:24 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.3 2007/03/24 18:53:57 dillon Exp $
 .\"
 .Dd March 13, 2007
 .Dt SYSLINK 2
@@ -68,29 +68,115 @@ the same kernel-managed syslink route node.
 .Pp
 The syslink protocol revolves around 64 bit system ids using the
 .Ft sysid_t
-type.  A system id can be logical or physical.
-Physical system ids are negotiated dynamically as system links are created
-and destroyed, while Logical system ids are persistently associated with
-particular resources in the cluster.
+type.  A sysid can represent one of three entities:  A session identifier,
+a logical identifier, or a physical identifier.
+Session ids are synthesized by machine nodes and used to
+uniquely identify a communications session between two entities in a way
+that prevents any possible duplication or confusion in the face of a
+constantly changing mesh, migration of logical elements, and other activities.
+Logical ids are persistent entities which uniquely identify resources.
+Examples of resources include filesystems, hard drive partitions, devices,
+VM spaces, memory, cpus, and so forth.  The logical id migrates with the
+resource, meaning that you can physically move a hard drive from one part
+of the mesh to another and the mesh will automatically figure out the
+new location.  New logical identifiers are also typically synthesized
+entities.  Physical ids are dynamically propogated through the mesh from
+seed nodes and used to route messages.  Any given node in the mesh may be
+addressable via multiple physical ids, each representing a different path
+to the node.
+.Pp
 For example, a particular filesystem mount will have a persistent logical
-sysid and would have one or more physical sysids depending on how it
-connects into the cluster mesh.
+sysid, a separate session id for every entity connecting to it, and one or
+more dynamic (changable) physical sysids depending on the mesh topology.
 .Sh SYSLINK PROTOCOL - PHYSICAL SYSIDS
 The Syslink protocol is used to glue the cluster mesh together.  It is
-based on the concept of reliable packets and buffered streams.  Adding a
-new node to the mesh is as simple as obtaining a stream connection to any
-node already in the mesh, or tying into a packet switch with UDP.
+based on the concept of (mostly) reliable packets and buffered streams.
+Adding a new node to the mesh is as simple as obtaining a stream connection
+to any node already in the mesh, or tying into a packet switch with UDP.
 .Pp
-The first stage of the protocol is to negotiate a physical sysid space.
-Each connection to the mesh negotiates its own space, meaning that
-multi-homed entities (which are expected to be common) may be accessible
-through multiple physical sysids.  The physical sysid space can take time
-to settle down and may change while the cluster is operational due to changes
-in the cluster topology.  For example, you can reconfigure the system id
-space propogated out from a seed node (or a seed node could go down, or come
-up), and effectively change some of the physical sysid assignments for
-every node in the mesh while the mesh is live.
+Physical sysids are propogated from seed nodes in the mesh.  There must be
+at least one seed node and there are usually on the order of 2-4.  Seed
+nodes are usually located at key points in the cluster topology.  A seed
+node has a statically assigned physical space.  Propogation consists of
+chopping a number of bits off the space and assigning an address value 
+for each connecting entity, then propogating the space through the connecting
+entity.  The connecting entity chops more bits off the space for its own
+connecting entities and continues propogating the address space.  Loops in
+the graph are trivially detected simply by observing the number of free bits
+in the propogated space.
 .Pp
+Physical sysid propogation occurs continuously and allows the mesh to
+dynamically adapt to changes in the topology within a few seconds.
+Due to the nature of the propogation of the space, each physical sysid
+can be used to trivially route messages between two entities.
+Link-layer communication (that is, communication between directly adjacent
+nodes) can occur independantly of physical sysid space propogation.
+Communication with seed nodes is also trivial, since seed nodes represent
+static physical sysids.
+The physical sysid of a node can change at any time, sometimes radically.
+Session ids are used to maintain sanity in a changing topology.
+.Sh SYSLINK PROTOCOL - SESSION SYSIDS
+Session sysids are used to uniquely identify a communications link between
+two entities in the mesh.  Session sysids are synthesized by individual
+machines and maintained by the two route nodes at the two end points for
+any particular communications session.  For example, if a device A wishes to
+communicate with a filesystem B, and device A connects to route node Ra
+and filesystem B connects to route node Rb, then Ra and Rb are responsible
+for translating the session sysid in the message to physical sysids for
+routing the message.  The end points simply use the session id.  Creating
+the 'connection'... that is, allocating the session id in the first place,
+is similar to an 'open' command.  The entity issuing the open talks to its
+immediate route node (A would talk to Ra) to initiate the session and obtain
+the session id.
+.Pp
+Session sysids are forever unique.  A communications session can survive
+migration and topological changes, even if the route node changes.  When
+a topological change is detected, the session must be re-trained, which is
+a simple protocol from the point of view of leaf and route nodes.
+Route nodes manage timeouts, retries, and error handling for the sessions
+under their care, greatly reducing the protocol complexity from the viewpoint
+of a leaf node (e.g. filesystem, device, whatever).  Leaf nodes (connected
+to the route node via a stream) need only detect disconnections of the
+stream.
+.Pp
+Establishment of a new session or retraining an existing session is usually
+based on the logical sysid for the two entities involved.  That is, sessions
+are created between entities defined by a logical sysid for each entity.
+The logical sysid is the ultimate rendezvous, the session sysid identifies
+a session or transaction, the physical sysid routes the message.
+.Sh SYSLINK PROTOCOL - LOGICAL SYSIDS
+Logical sysids are forever-unique, persistent entities which represent
+the ultimate rendezvous identifier.  When you label a new disk, a unique
+logical sysid will be assigned to that label which allows the disk to be
+properly identified no matter where it resides in the cluster.  
+A logical sysid is associated with an ascii name and a type for
+identification purposes.  For example, when you label a new disk it will
+be given a unique 64 bit logical sysid and you must also supply a name,
+such as 'MYDISK01'.  The disk can then be located by its logical sysid or
+by its name and type.
+Resources can be broken up into smaller pieces and those pieces can
+also be assigned logical sysids.  For example, an ANVIL disk partition can
+have its own logical sysid and name independant of the one assigned to the
+label.
+.Pp
+Logical sysids are typically synthesized by individual machines without
+mesh involvement.  Synthesized logical sysids are usually based on a
+hash of an interface MAC address combined with a timestamp and iterator.
+When making resources available to a named cluster, the logical sysids
+of the resources may be translated to cluster-friendly logical sysids
+as part of the setup, but intervention (in the form of translation) is only
+needed if an actual conflict occurs.  An external mechanism unrelated to
+the cluster itself detects conflicts -- usually a database of some sort
+which associates a much larger unique id made up of a full domain name and
+timestamp with the hash.  Typically 24 Machine-unique bits are reserved out
+of the 64 bit sysid, leaving 40 bits.  This allows several hundred to
+several thousand new unique, logical sysids to be allocated per second.
+The actual number is usually far smaller (how often do you create a new
+disklabel?).  This may seem confusing but it is really nothing more then
+a simple translation layer that allows unrelated machine resources (e.g.
+owned by different people) to be associated with the same cluster.
+Only the machine-unique bits may need to be translated.
+.Sh SYSLINK PROTOCOL - PROPOGATION OF PHYSICAL SYSID SPACE
 Assignment of physical sysid space is simple.  The seed nodes take their
 statically assigned sysid space (specified by a 64 bit CIDR block), cut out
 enough bits to handle the number of connections that need to be supported,
@@ -103,23 +189,25 @@ minimum requirement simply ignores that space.
 .Pp
 Eventually every seed node propogates its physical sysid space to every other
 node in the mesh.  If a mesh has four seed nodes, then every node in the mesh
-will wind up with at least four SYSID spaces.  Nodes may obtain additional
-physical SYSID assignments due to loops in the graph.  For example, if you
-create a triangle between nodes A, B, and C, with B as the seed node, then
-SYSID will propogate B->C->A->B and B->A->C->B and node A will wind up with
-two physical SYSID assignments (and node B will have four) even though
-there was only one seed node.  Physical SYSID assignments represent routing
-paths.  Because the mesh is potentially too large to store the full graph
+will wind up with at least four physical SYSID spaces.
+Nodes may obtain additional physical SYSID assignments due to loops
+in the graph.  For example, if you create a triangle between nodes A, B,
+and C, with B as the seed node, then SYSID will propogate B->C->A->B and
+B->A->C->B and node A will wind up with two physical SYSID assignments (and
+node B will have four) even though there was only one seed node.
+Physical SYSID assignments represent routing paths.
+Because the mesh is potentially too large to store the full graph
 in memory, the SYSLINK protocol only requires that the four largest SYSID
 spaces for any given seed be retained by every node.  This creates a
 self-healing mesh with reasonable, but not ultimate redundancy.
 .Pp
 Only a limited number of hops are supported in the mesh due to the
 limitations of the 64 bit ID space and the need to be able to route
-messages simply with a single 64 bit id - without having to retain a
-route table for the whole mesh.  Very large meshes require some attention
-to the design of the topology to retain reasonable redundancy.  For
-example, if you are trying to create an internet-wide mesh to handle
+messages trivially using a single 64 bit physical id - without having to
+retain a route table for the whole mesh in each route node.  Very large
+meshes require some attention to the design of the topology to retain
+reasonable redundancy.
+For example, if you are trying to create an internet-wide mesh to handle
 a massively distributed problem which requires low data bandwidths,
 you might implement a couple of very large CIDR distribution blocks
 for people to connect to via TCP streams.
@@ -130,43 +218,47 @@ from one physical SYSID to another, or broadcast across the entire mesh.
 Only messages to immediate neighbors are guaranteed to be reliable, but
 for the cluster to operate efficiently packet loss is not tolerated.
 Message delivery failures must be almost solely due to losses which occur
-when the mesh changes (due to a node going up or down).
-.Sh SYSLINK PROTOCOL - LOGICAL SYSIDS, REGISTRATION, AND LOOKUP
-Logical sysids are unique, persistent entities which bear little resemblance
-to the physical sysid representing a node's connection to the mesh.
-An entity might be a particular filesystem, piece of storage, or device.
-The key to understanding the logical sysid is that it migrates with the
-entity it represents.  If you move a hard drive from one machine to another,
-the logical sysids representing the ANVIL partitions on that hard drive
-will also migrate.
-.Pp
-Whenever a leaf node connects to the mesh, it must register all entities
-under its direct control with the route node it connects to.
-A route node always collects all logical sysid registrations from all
-directly connected leafs, and may optionally propogate the registrations
-to other route nodes to further consolidate the lookup database.  In
-very large clusters route nodes typically do not propogate logical sysid
-registrations very far since this would create a massive burden on internal
-route nodes.  They need propogate only far enough to reduce the overhead
-of a LOOKUP.  LOOKUP requests translate logical sysids to physical sysids.
-A LOOKUP request is a broadcast entity which must be propogated through
-the mesh until it hits route nodes with complete registration tables.
-The fewer such nodes exist, the less overhead a LOOKUP takes.
-LOOKUP operations almost always return multiple physical sysids.  Multiple
-sysids may be returned due to having multiple seeding nodes or due to loops
-in the graph, potentially providing a more optimal communications path for
-a packet.
+when the topology changes (due to a node going up or down).
+.Sh SYSLINK PROTOCOL - LOGICAL AND SESSION SYSIDS, ALLOCATION
+Logical and session sysids are synthesized based on a unique per-machine
+mesh id (usually a hash of an interface MAC address), plus timestamp and
+iterator.  As long as the machine's system time is reasonably accurate (and
+it had better be), the uniqueness will be maintained across reboots and other
+spurious events.
+.Sh SYSLINK PROTOCOL - LOGICAL AND SESSION SYSIDS, REGISTRATION AND RESOLUTION
+A leaf node must register the logical sysids it wishes to make available to
+the cluster with the route node it connects to.  These registrations allow
+the route node to resolve lookup requests from the cluster to that particular
+leaf node.  By default, lookup requests are broadcast to all route nodes.
+Bandwidth can be reduced by allowing route nodes near the leafs of the
+cluster mesh to propogate the registration(s) to a tighter set of route
+nodes within the cluster, greatly reducing the cost of doing a logical sysid
+lookup.
 .Sh SYSLINK PROTOCOL - MESSAGE ROUTING
-A syslink message contains the logical sysid of the originator and the target,
-and may cache the physical sysid for routing purposes.  Once cached, the
-physical sysid contains all information required to fully and trivially route
-the message through the mesh.
-A leaf in the mesh typically specifies a physical sysid of 0 and lets the
-nearest route node do the logical sysid lookup of the target.  The route
-node will attempt to cache translations along with propogation times to
-choose the best physical sysid to use to get to the target.  A simple hop
-count is not used, as links might have different bandwidths and propogation
-delays.
+Session sysids are the 'open/connected' abstraction for leaf entities and
+are maintained by route nodes, allowing leaf nodes to construct syslink
+messages using only the session sysid and a direction bit.  A route node
+can lose track of a session sysid... for example, a leaf node might migrate
+to another part of the cluster or might have to use a communications path
+via a different route node due to a failure or a change in the topology.  If
+a route node does not recognize the session id of a syslink message, it
+replies with a RETRAIN request to the leaf node.  The leaf node then retrains
+the session id by providing all the information required for the route node
+to reconstruct the connection (typically the originating and target logical
+sysid).  The routing node not only caches the logical sysid information, it
+is also responsible for looking up and caching physical sysids to actually
+route message(s).
+.Pp
+This may seem complex but it all comes down to a very simple messaging
+format and protocol.  The retraining protocol also serves to validate 
+communications links between entities and to allow massive changes in
+mesh topology to occur without disrupting the cluster.  For example, if
+the physical sysid of a node changes it will set off a chain of events
+at the route nodes due to the now-mismatched physical sysid and session
+sysid.  A message winds up being routed to the wrong target which detects
+the misrouting due to the unknown session id.  The error feeds back to
+the route node which can then clear its physical sysid cache and relookup
+the route.
 .Pp
 Syslink messages are transactional in nature and it is possible for a single
 transaction to be made up of multiple messages... for example, to break down
@@ -174,43 +266,37 @@ a large buffer into smaller pieces for the purposes of transmission over the
 mesh.  The syslink protocol imposes fairly severe limitations on transactional
 messages and sizes... syslink messages are not meant to abstract very large
 multi-megabyte I/O operations but instead are meant to provide a reliable
-communications abstraction for small messages.
+communications abstraction for smaller messages and buffers.
 A transaction may contain no more than 32 individual messages, allowing
 the route node to use a simple bitmap to track messages which may arrive
 out of order.
-Multiple transactions may be run in parallel between two logical sysids.
-.Pp
-A 32 bit transaction space field is used to encode the whole mess.
-One bit is used to tag the first message in a transaction, one bit
-to tag the last message (both bits would be set if the transaction
-consists of a single message), one bit indicates which side initiated
-the transaction, allowing both sides to initiate transactions without
-creating conflicts or having to negotiate the transaction space,
-20 bits implement a unique transaction number that will not be reused for a
-very long time, allowing route nodes to weed out duplicate packets, and 8 bits
-are reserved for the sequence number within the transaction (just in case
-we want to expand the maximum number of messages to 256 in the future).
-which is discussed in another section.  Note that a portion of the 20 bit
-unique transaction number is a timestamp.
+Any given session may only have one transaction pending at a time... parallel
+transactions are implemented by creating multiple sessions between the same
+two entities.
 .Pp
 The messages making up a transaction can arrive out of order and will be
 collected by the target until all messages are present.  The originator
 must hold onto all messages it sends (so it can re-send if requested by
 the route node), until it has the complete response.
-.Pp
 The route node for a leaf is responsible for weeding out duplicate messages,
 monitoring transactions, and handling timeouts (returning a retry indication
 to the leaf).
+Route nodes are not responsible for buffering messages.  It is the leaf nodes
+that must buffer and collect the messages, the route nodes only track the
+transaction.
 If the physical sysid becomes invalid the route node is typically responsible
 for locating a new physical sysid and returning a transaction abort to the
 leaf.
-Even though dynamic rerouting is possible, the route node and
-originator has no idea whether the new physical sysid represents the same
-actual leaf or some different leaf with access to the same logical entity
-(such as you might find in a SAN environment).
-Because of this, changes in the physical id require a transaction abort
-and full transaction retry.
-This greatly simplifies operation of the leaf node.
+.Pp
+Message transactions are uniquely identified by the (sessionid, msgid) fields
+in the syslink message.  Bits in the msgid field identify whether a request
+is being sent from the originator or target (determined by who initiated the
+original 'connection'), and whether the message is a command message or a
+reply message.
+Either side can initiate a transaction over an established session, which
+means that there may be a transaction going in both directions at the same
+time, each with request and reply messages.  Transactions initiated by
+the target are usually used for event and blocking/unblocking notifications.
 .Pp
 The SYSLINK protocol is not intended to take the place of a reliable link
 level protocol such as TCP and mesh links should only use UDP when packet
