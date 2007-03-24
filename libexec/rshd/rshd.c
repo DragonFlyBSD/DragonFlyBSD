@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1989, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rshd.c	8.2 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rshd/rshd.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/rshd/rshd.c,v 1.4 2007/03/24 21:52:14 swildner Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <stdarg.h>
 #ifdef	LOGIN_CAP
 #include <login_cap.h>
 #endif
@@ -75,6 +76,9 @@
 #ifndef NI_WITHSCOPEID
 #define	NI_WITHSCOPEID	0
 #endif
+
+extern int __check_rhosts_file;
+extern char *__rcmd_errstr;	/* syslog hook from libc/net/rcmd.c. */
 
 int	keepalive = 1;
 int	log_success;		/* If TRUE, log all successful accesses */
@@ -97,23 +101,24 @@ union sockunion {
 #define su_family	su_si.si_family
 #define su_port		su_si.si_port
 
-void	 doit (union sockunion *);
-void	 error (const char *, ...);
-void	 getstr (char *, int, char *);
-int	 local_domain (char *);
-char	*topdomain (char *);
-void	 usage (void);
+void	 doit(union sockunion *);
+void	 error(const char *, ...);
+void	 getstr(char *, int, const char *);
+int	 local_domain(char *);
+char	*topdomain(char *);
+void	 usage(void);
+
+char	slash[] = "/";
+char	bshell[] = _PATH_BSHELL;
 
 #define	OPTIONS	"alnDL"
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	extern int __check_rhosts_file;
 	struct linger linger;
-	int ch, on = 1, fromlen;
+	socklen_t fromlen;
+	int ch, on = 1;
 	struct sockaddr_storage from;
 
 	openlog("rshd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
@@ -188,16 +193,14 @@ char	*envinit[] =
 char	**environ;
 
 void
-doit(fromp)
-	union sockunion *fromp;
+doit(union sockunion *fromp)
 {
-	extern char *__rcmd_errstr;	/* syslog hook from libc/net/rcmd.c. */
 	struct passwd *pwd;
 	u_short port;
 	fd_set ready, readfrom;
 	int cc, nfd, pv[2], pid, s;
 	int one = 1;
-	char *errorstr;
+	const char *errorstr;
 	char *cp, sig, buf[BUFSIZ];
 	char cmdbuf[NCARGS+1], locuser[16], remuser[16];
 	char fromhost[2 * MAXHOSTNAMELEN + 1];
@@ -211,9 +214,9 @@ doit(fromp)
 	login_cap_t *lc;
 #endif
 
-	(void) signal(SIGINT, SIG_DFL);
-	(void) signal(SIGQUIT, SIG_DFL);
-	(void) signal(SIGTERM, SIG_DFL);
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
 	fromp->su_port = ntohs((u_short)fromp->su_port);
 	if (af != AF_INET
 #ifdef INET6
@@ -230,7 +233,8 @@ doit(fromp)
 #ifdef IP_OPTIONS
       if (af == AF_INET) {
 	u_char optbuf[BUFSIZ/3];
-	int optsize = sizeof(optbuf), ipproto, i;
+	socklen_t optsize = sizeof(optbuf), i;
+	int ipproto;
 	struct protoent *ip;
 
 	if ((ip = getprotobyname("ip")) != NULL)
@@ -265,7 +269,7 @@ doit(fromp)
 		exit(1);
 	}
 
-	(void) alarm(60);
+	alarm(60);
 	port = 0;
 	s = 0;		/* not set or used if port == 0 */
 	for (;;) {
@@ -281,7 +285,7 @@ doit(fromp)
 		port = port * 10 + c - '0';
 	}
 
-	(void) alarm(0);
+	alarm(0);
 	if (port != 0) {
 		int lport = IPPORT_RESERVED - 1;
 		s = rresvport_af(&lport, af);
@@ -328,11 +332,11 @@ doit(fromp)
 		des_set_key(&kdata->session, schedule);
 	}
 #endif
-	(void) alarm(60);
+	alarm(60);
 	getstr(remuser, sizeof(remuser), "remuser");
 	getstr(locuser, sizeof(locuser), "locuser");
 	getstr(cmdbuf, sizeof(cmdbuf), "command");
-	(void) alarm(0);
+	alarm(0);
 	setpwent();
 	pwd = getpwnam(locuser);
 	if (pwd == NULL) {
@@ -357,7 +361,7 @@ doit(fromp)
 			exit(0);
 		}
 #else
-		(void) chdir("/");
+		chdir("/");
 #ifdef notdef
 		syslog(LOG_INFO|LOG_AUTH,
 		    "%s@%s as %s: no home directory. cmd='%.80s'",
@@ -366,22 +370,23 @@ doit(fromp)
 		exit(1);
 #endif
 #endif
-		pwd->pw_dir = "/";
+		pwd->pw_dir = slash;
 	}
 
 		if (errorstr ||
 		    (pwd->pw_expire && time(NULL) >= pwd->pw_expire) ||
 		    iruserok_sa(fromp, fromp->su_len, pwd->pw_uid == 0,
 				 remuser, locuser) < 0) {
-			if (__rcmd_errstr)
+			if (__rcmd_errstr) {
 				syslog(LOG_INFO|LOG_AUTH,
 			    "%s@%s as %s: permission denied (%s). cmd='%.80s'",
 				    remuser, fromhost, locuser, __rcmd_errstr,
 				    cmdbuf);
-			else
+			} else {
 				syslog(LOG_INFO|LOG_AUTH,
 			    "%s@%s as %s: permission denied. cmd='%.80s'",
 				    remuser, fromhost, locuser, cmdbuf);
+			}
 fail:
 			if (errorstr == NULL)
 				errorstr = "Login incorrect.\n";
@@ -420,7 +425,7 @@ fail:
 		syslog(LOG_ERR, "setlogin() failed: %m");
 #endif
 
-	(void) write(STDERR_FILENO, "\0", 1);
+	write(STDERR_FILENO, "\0", 1);
 	sent_null = 1;
 
 	if (port) {
@@ -449,19 +454,19 @@ fail:
 #ifdef CRYPT
 			if (doencrypt) {
 				static char msg[] = SECURE_MESSAGE;
-				(void) close(pv1[1]);
-				(void) close(pv2[1]);
+				close(pv1[1]);
+				close(pv2[1]);
 				des_enc_write(s, msg, sizeof(msg) - 1, 
 					schedule, &kdata->session);
 
 			} else
 #endif
 			{
-				(void) close(0);
-				(void) close(1);
+				close(0);
+				close(1);
 			}
-			(void) close(2);
-			(void) close(pv[1]);
+			close(2);
+			close(pv[1]);
 
 			FD_ZERO(&readfrom);
 			FD_SET(s, &readfrom);
@@ -520,14 +525,13 @@ fail:
 						FD_CLR(pv[0], &readfrom);
 					} else {
 #ifdef CRYPT
-						if (doencrypt)
-							(void)
-							  des_enc_write(s, buf, cc,
-								schedule, &kdata->session);
-						else
+						if (doencrypt) {
+							des_enc_write(s, buf,
+							    cc, schedule,
+							    &kdata->session);
+						} else
 #endif
-							(void)
-							  write(s, buf, cc);
+							write(s, buf, cc);
 					}
 				}
 #ifdef CRYPT
@@ -537,10 +541,11 @@ fail:
 					if (cc <= 0) {
 						shutdown(pv1[0], 1+1);
 						FD_CLR(pv1[0], &readfrom);
-					} else
-						(void) des_enc_write(STDOUT_FILENO,
-						    buf, cc,
-							schedule, &kdata->session);
+					} else {
+						des_enc_write(STDOUT_FILENO,
+						    buf, cc, schedule,
+						    &kdata->session);
+					}
 				}
 
 				if (doencrypt && FD_ISSET(pv2[0], &wready)) {
@@ -551,8 +556,9 @@ fail:
 					if (cc <= 0) {
 						shutdown(pv2[0], 1+1);
 						FD_CLR(pv2[0], &writeto);
-					} else
-						(void) write(pv2[0], buf, cc);
+					} else {
+						write(pv2[0], buf, cc);
+					}
 				}
 #endif
 
@@ -564,8 +570,8 @@ fail:
 			exit(0);
 		}
 		setpgrp(0, getpid());
-		(void) close(s);
-		(void) close(pv[0]);
+		close(s);
+		close(pv[0]);
 #ifdef CRYPT
 		if (doencrypt) {
 			close(pv1[0]); close(pv2[0]);
@@ -579,7 +585,7 @@ fail:
 		close(pv[1]);
 	}
 	if (*pwd->pw_shell == '\0')
-		pwd->pw_shell = _PATH_BSHELL;
+		pwd->pw_shell = bshell;
 	environ = envinit;
 	strncat(homedir, pwd->pw_dir, sizeof(homedir)-6);
 	strcat(path, _PATH_DEFPATH);
@@ -597,16 +603,16 @@ fail:
 	}
 	login_close(lc);
 #else
-	(void) setgid((gid_t)pwd->pw_gid);
+	setgid((gid_t)pwd->pw_gid);
 	initgroups(pwd->pw_name, pwd->pw_gid);
-	(void) setuid((uid_t)pwd->pw_uid);
+	setuid((uid_t)pwd->pw_uid);
 #endif
 	endpwent();
 	if (log_success || pwd->pw_uid == 0) {
 		    syslog(LOG_INFO|LOG_AUTH, "%s@%s as %s: cmd='%.80s'",
 			remuser, fromhost, locuser, cmdbuf);
 	}
-	execl(pwd->pw_shell, cp, "-c", cmdbuf, 0);
+	execl(pwd->pw_shell, cp, "-c", cmdbuf, (char *)NULL);
 	perror(pwd->pw_shell);
 	exit(1);
 }
@@ -616,43 +622,26 @@ fail:
  * connected to client, or older clients will hang waiting for that
  * connection first.
  */
-#if __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 void
-#if __STDC__
 error(const char *fmt, ...)
-#else
-error(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	va_list ap;
 	int len;
 	char *bp, buf[BUFSIZ];
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	bp = buf;
 	if (sent_null == 0) {
 		*bp++ = 1;
 		len = 1;
 	} else
 		len = 0;
-	(void)vsnprintf(bp, sizeof(buf) - 1, fmt, ap);
-	(void)write(STDERR_FILENO, buf, len + strlen(bp));
+	vsnprintf(bp, sizeof(buf) - 1, fmt, ap);
+	write(STDERR_FILENO, buf, len + strlen(bp));
 }
 
 void
-getstr(buf, cnt, err)
-	char *buf, *err;
-	int cnt;
+getstr(char *buf, int cnt, const char *err)
 {
 	char c;
 
@@ -676,14 +665,13 @@ getstr(buf, cnt, err)
  * interpreted as such.
  */
 int
-local_domain(h)
-	char *h;
+local_domain(char *h)
 {
 	char localhost[MAXHOSTNAMELEN];
 	char *p1, *p2;
 
 	localhost[0] = 0;
-	(void) gethostname(localhost, sizeof(localhost) - 1);
+	gethostname(localhost, sizeof(localhost) - 1);
 	localhost[sizeof(localhost) - 1] = '\0';
 	p1 = topdomain(localhost);
 	p2 = topdomain(h);
@@ -693,8 +681,7 @@ local_domain(h)
 }
 
 char *
-topdomain(h)
-	char *h;
+topdomain(char *h)
 {
 	char *p, *maybe = NULL;
 	int dots = 0;
@@ -710,7 +697,7 @@ topdomain(h)
 }
 
 void
-usage()
+usage(void)
 {
 
 	syslog(LOG_ERR, "usage: rshd [-%s]", OPTIONS);
