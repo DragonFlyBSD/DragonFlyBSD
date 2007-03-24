@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.6 2007/03/21 20:06:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.7 2007/03/24 19:11:14 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -355,7 +355,7 @@ syslink_rthread(void *arg)
     struct sldata *sldata = arg;
     struct slbuf *slbuf = &sldata->rbuf;
     struct syslink_msg *head;
-    const int min_msg_size = offsetof(struct syslink_msg, sm_srcid);
+    const int min_msg_size = SL_MIN_MESSAGE_SIZE;
 
     while ((sldata->flags & SLF_RQUIT) == 0) {
 	int count;
@@ -430,6 +430,8 @@ syslink_rthread(void *arg)
 	    /*
 	     * Process non-pad messages.  Non-pad messages have to be at
 	     * least the size of the syslink_msg structure.
+	     *
+	     * A PAD message's sm_cmd field contains 0.
 	     */
 	    if (head->sm_cmd) {
 		if (head->sm_bytes < sizeof(struct syslink_msg)) {
@@ -483,11 +485,11 @@ syslink_wthread(void *arg)
 	    int count;
 
 	    used = slbuf->windex - slbuf->rindex;
-	    if (used < offsetof(struct syslink_msg, sm_srcid))
+	    if (used < SL_MIN_MESSAGE_SIZE)
 		break;
 
 	    head = (void *)(slbuf->buf + (slbuf->rindex & slbuf->bufmask));
-	    if (head->sm_bytes < offsetof(struct syslink_msg, sm_srcid)) {
+	    if (head->sm_bytes < SL_MIN_MESSAGE_SIZE) {
 		error = EINVAL;
 		break;
 	    }
@@ -805,7 +807,7 @@ static
 int
 syslink_validate(struct syslink_msg *head, int bytes)
 {
-    const int min_msg_size = offsetof(struct syslink_msg, sm_srcid);
+    const int min_msg_size = SL_MIN_MESSAGE_SIZE;
     int aligned_reclen;
 
     while (bytes) {
