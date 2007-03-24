@@ -1,6 +1,6 @@
 /*	$NetBSD: am7990.c,v 1.68 2005/12/11 12:21:25 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am7990.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am7990.c,v 1.3 2006/12/22 23:26:20 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/am7990.c,v 1.4 2007/03/24 08:29:57 sephe Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -345,11 +345,10 @@ am7990_tint(struct lance_softc *sc)
 				return;
 			}
 			if (tmd.tmd3 & LE_T3_LCAR) {
-#if 0
-				if (sc->sc_flags & LE_CARRIER)
-					if_link_state_change(ifp,
-					    LINK_STATE_DOWN);
-#endif
+				if (sc->sc_flags & LE_CARRIER) {
+					ifp->if_link_state = LINK_STATE_DOWN;
+					if_link_state_change(ifp);
+				}
 				sc->sc_flags &= ~LE_CARRIER;
 				if (sc->sc_nocarrier)
 					(*sc->sc_nocarrier)(sc);
@@ -465,10 +464,10 @@ am7990_intr(void *arg)
 	/*
 	 * Pretend we have carrier; if we don't this will be cleared shortly.
 	 */
-#if 0
-	if (!(sc->sc_flags & LE_CARRIER))
-		if_link_state_change(ifp, LINK_STATE_UP);
-#endif
+	if (!(sc->sc_flags & LE_CARRIER)) {
+		ifp->if_link_state = LINK_STATE_UP;
+		if_link_state_change(ifp);
+	}
 	sc->sc_flags |= LE_CARRIER;
 
 	if (isr & LE_C0_RINT)
