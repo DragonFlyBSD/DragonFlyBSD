@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.11 2006/11/07 18:50:06 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.11.2.1 2007/03/24 12:24:58 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -110,6 +110,12 @@ taskqueue_find(const char *name)
 	return 0;
 }
 
+/*
+ * NOTE!  If using the per-cpu taskqueues ``taskqueue_thread[mycpuid]'',
+ * be sure NOT TO SHARE the ``task'' between CPUs.  TASKS ARE NOT LOCKED.
+ * So either use a throwaway task which will only be enqueued once, or
+ * use one task per CPU!
+ */
 int
 taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 {
@@ -232,8 +238,9 @@ taskqueue_init(void)
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		taskqueue_thread[cpu] = taskqueue_create("thread", M_INTWAIT,
 		    taskqueue_thread_enqueue, NULL);
-		kthread_create(taskqueue_kthread, NULL,
-		    &taskqueue_thread_td[cpu], "taskqueue");
+		lwkt_create(taskqueue_kthread, NULL,
+		    &taskqueue_thread_td[cpu], NULL,
+		    0, cpu, "taskqueue %d", cpu);
 	}
 }
 
