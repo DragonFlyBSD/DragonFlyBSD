@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.26 2007/01/15 14:38:22 corecode Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.26.2.1 2007/03/24 12:24:48 corecode Exp $
  */
 
 /*
@@ -126,6 +126,8 @@ static const Elf_Sym *symlook_default(const char *, unsigned long hash,
   const Obj_Entry *refobj, const Obj_Entry **defobj_out, bool in_plt);
 static const Elf_Sym *symlook_list(const char *, unsigned long,
   const Objlist *, const Obj_Entry **, bool in_plt, DoneList *);
+static const Elf_Sym *symlook_needed(const char *, unsigned long,
+  const Needed_Entry *, const Obj_Entry **, bool in_plt, DoneList *);
 static void trace_loaded_objects(Obj_Entry *obj);
 static void unlink_object(Obj_Entry *);
 static void unload_object(Obj_Entry *);
@@ -1887,7 +1889,13 @@ dlsym(void *handle, const char *name)
 	    def = symlook_list(name, hash, &list_main, &defobj, true,
 	      &donelist);
 	} else {
-	    def = symlook_list(name, hash, &(obj->dagmembers), &defobj, true,
+	    Needed_Entry fake;
+
+	    /* Search the given object and its needed objects. */
+	    fake.next = NULL;
+	    fake.obj = (Obj_Entry *)obj;
+	    fake.name = 0;
+	    def = symlook_needed(name, hash, &fake, &defobj, true,
 	      &donelist);
 	}
     }
@@ -2380,6 +2388,56 @@ symlook_list(const char *name, unsigned long hash, const Objlist *objlist,
     }
     if (def != NULL)
 	*defobj_out = defobj;
+    return def;
+}
+
+/*
+ * Search the symbol table of a shared object and all objects needed
+ * by it for a symbol of the given name.  Search order is
+ * breadth-first.  Returns a pointer to the symbol, or NULL if no
+ * definition was found.
+ */
+static const Elf_Sym *
+symlook_needed(const char *name, unsigned long hash, const Needed_Entry *needed,
+  const Obj_Entry **defobj_out, bool in_plt, DoneList *dlp)
+{
+    const Elf_Sym *def, *def_w;
+    const Needed_Entry *n;
+    const Obj_Entry *obj, *defobj, *defobj1;
+    
+    def = def_w = NULL;
+    defobj = NULL;
+    for (n = needed; n != NULL; n = n->next) {
+        if ((obj = n->obj) == NULL ||
+            donelist_check(dlp, obj) ||
+            (def = symlook_obj(name, hash, obj, in_plt)) == NULL)
+                continue;
+        defobj = obj;
+        if (ELF_ST_BIND(def->st_info) != STB_WEAK) {
+            *defobj_out = defobj;
+            return (def);
+	}
+    }
+    /*
+     * There we come when either symbol definition is not found in
+     * directly needed objects, or found symbol is weak.
+     */
+    for (n = needed; n != NULL; n = n->next) {
+        if ((obj = n->obj) == NULL)
+            continue;
+        def_w = symlook_needed(name, hash, obj->needed, &defobj1,
+			       in_plt, dlp);
+        if (def_w == NULL)
+            continue;
+        if (def == NULL || ELF_ST_BIND(def_w->st_info) != STB_WEAK) {
+            def = def_w;
+            defobj = defobj1;
+        }
+        if (ELF_ST_BIND(def_w->st_info) != STB_WEAK)
+            break;
+    }
+    if (def != NULL)
+        *defobj_out = defobj;
     return def;
 }
 
