@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.3 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.4 2007/03/24 08:42:42 sephe Exp $
  */
 
 /*
@@ -1461,21 +1461,12 @@ vge_tick(struct vge_softc *sc)
 
 	mii_tick(mii);
 	if (sc->vge_link) {
-		if (!(mii->mii_media_status & IFM_ACTIVE)) {
+		if (!(mii->mii_media_status & IFM_ACTIVE))
 			sc->vge_link = 0;
-#if 0
-			if_link_state_change(sc->vge_ifp,
-			    LINK_STATE_DOWN);
-#endif
-		}
 	} else {
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->vge_link = 1;
-#if 0
-			if_link_state_change(sc->vge_ifp,
-			    LINK_STATE_UP);
-#endif
 			if (!ifq_is_empty(&ifp->if_snd))
 				ifp->if_start(ifp);
 		}
