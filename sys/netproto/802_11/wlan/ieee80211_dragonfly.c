@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.9 2007/01/02 23:28:49 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.10 2007/03/24 08:39:03 sephe Exp $
  */
 
 /*
@@ -49,8 +49,6 @@
 #include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
-
-#define if_link_state_change(ifp, state)	((void)0)
 
 SYSCTL_NODE(_net, OID_AUTO, wlan, CTLFLAG_RD, 0, "IEEE 80211 parameters");
 
@@ -227,7 +225,8 @@ ieee80211_notify_node_join(struct ieee80211com *ic, struct ieee80211_node *ni,
 		rt_ieee80211msg(ifp, newassoc ?
 			RTM_IEEE80211_ASSOC : RTM_IEEE80211_REASSOC,
 			&iev, sizeof(iev));
-		if_link_state_change(ifp, LINK_STATE_UP);
+		ifp->if_link_state = LINK_STATE_UP;
+		if_link_state_change(ifp);
 	} else {
 		IEEE80211_ADDR_COPY(iev.iev_addr, ni->ni_macaddr);
 		rt_ieee80211msg(ifp, newassoc ?
@@ -244,7 +243,8 @@ ieee80211_notify_node_leave(struct ieee80211com *ic, struct ieee80211_node *ni)
 
 	if (ni == ic->ic_bss) {
 		rt_ieee80211msg(ifp, RTM_IEEE80211_DISASSOC, NULL, 0);
-		if_link_state_change(ifp, LINK_STATE_DOWN);
+		ifp->if_link_state = LINK_STATE_DOWN;
+		if_link_state_change(ifp);
 	} else {
 		/* fire off wireless event station leaving */
 		memset(&iev, 0, sizeof(iev));

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.12 2007/02/16 11:17:01 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.13 2007/03/24 08:39:03 sephe Exp $
  */
 
 /*
@@ -688,10 +688,8 @@ ieee80211_media_change(struct ifnet *ifp)
 		ieee80211_wme_initparams(ic);	/* after opmode change */
 		error = ENETRESET;
 	}
-#ifdef notdef
 	if (error == 0)
 		ifp->if_baudrate = ifmedia_baudrate(ime->ifm_media);
-#endif
 	return error;
 }
 
