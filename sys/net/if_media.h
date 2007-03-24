@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.15 2006/09/10 03:40:11 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.16 2007/03/24 05:57:49 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -115,6 +115,8 @@ void	ifmedia_set(struct ifmedia *ifm, int mword);
 int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 	    struct ifmedia *ifm, u_long cmd);
 
+/* Compute baudrate for a given media. */
+int	ifmedia_baudrate(int);
 #endif /*_KERNEL */
 
 /*
@@ -541,4 +543,57 @@ struct ifmedia_description {
 	{ 0, NULL },							\
 }
 
+/*
+ * Baudrate descriptions for the various media types.
+ */
+struct ifmedia_baudrate {
+	int	ifmb_word;		/* media word */
+	int	ifmb_baudrate;		/* corresponding baudrate */
+};
+
+#define IFM_BAUDRATE_DESCRIPTIONS {					\
+	{ IFM_ETHER|IFM_10_T,		IF_Mbps(10) },			\
+	{ IFM_ETHER|IFM_10_2,		IF_Mbps(10) },			\
+	{ IFM_ETHER|IFM_10_5,		IF_Mbps(10) },			\
+	{ IFM_ETHER|IFM_100_TX,		IF_Mbps(100) },			\
+	{ IFM_ETHER|IFM_100_FX,		IF_Mbps(100) },			\
+	{ IFM_ETHER|IFM_100_T4,		IF_Mbps(100) },			\
+	{ IFM_ETHER|IFM_100_VG,		IF_Mbps(100) },			\
+	{ IFM_ETHER|IFM_100_T2,		IF_Mbps(100) },			\
+	{ IFM_ETHER|IFM_1000_SX,	IF_Mbps(1000) },		\
+	{ IFM_ETHER|IFM_10_STP,		IF_Mbps(10) },			\
+	{ IFM_ETHER|IFM_10_FL,		IF_Mbps(10) },			\
+	{ IFM_ETHER|IFM_1000_LX,	IF_Mbps(1000) },		\
+	{ IFM_ETHER|IFM_1000_CX,	IF_Mbps(1000) },		\
+	{ IFM_ETHER|IFM_1000_T,		IF_Mbps(1000) },		\
+	{ IFM_ETHER|IFM_HPNA_1,		IF_Mbps(1) },			\
+									\
+	{ IFM_TOKEN|IFM_TOK_STP4,	IF_Mbps(4) },			\
+	{ IFM_TOKEN|IFM_TOK_STP16,	IF_Mbps(16) },			\
+	{ IFM_TOKEN|IFM_TOK_UTP4,	IF_Mbps(4) },			\
+	{ IFM_TOKEN|IFM_TOK_UTP16,	IF_Mbps(16) },			\
+									\
+	{ IFM_FDDI|IFM_FDDI_SMF,	IF_Mbps(100) },			\
+	{ IFM_FDDI|IFM_FDDI_MMF,	IF_Mbps(100) },			\
+	{ IFM_FDDI|IFM_FDDI_UTP,	IF_Mbps(100) },			\
+									\
+	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_DS1, IF_Mbps(1) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_DS2, IF_Mbps(2) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_DS5, IF_Mbps(5) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_DS11, IF_Mbps(11) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_DS22, IF_Mbps(22) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM6, IF_Mbps(6) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM9, IF_Mbps(9) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM12, IF_Mbps(12) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM18, IF_Mbps(18) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM24, IF_Mbps(24) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM36, IF_Mbps(36) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM48, IF_Mbps(48) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM54, IF_Mbps(54) },		\
+	{ IFM_IEEE80211|IFM_IEEE80211_OFDM72, IF_Mbps(72) },		\
+									\
+	{ 0, 0 },							\
+}
 #endif	/* _NET_IF_MEDIA_H_ */

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.13 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.14 2007/03/24 05:57:49 sephe Exp $
  */
 
 /*
@@ -500,42 +500,61 @@ mii_phy_tick(struct mii_softc *sc)
 	return (0);
 }
 
-#ifdef notyet
-static void
+static int
 mii_phy_statusmsg(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	struct ifnet *ifp = mii->mii_ifp;
-	int s;
+	int baudrate, link_state, announce = 0;
 
-	crit_enter();
 	if (mii->mii_media_status & IFM_AVALID) {
 		if (mii->mii_media_status & IFM_ACTIVE)
-			if_link_state_change(ifp, LINK_STATE_UP);
+			link_state = LINK_STATE_UP;
 		else
-			if_link_state_change(ifp, LINK_STATE_DOWN);
+			link_state = LINK_STATE_DOWN;
 	} else
-		if_link_state_change(ifp, LINK_STATE_UNKNOWN);
-	crit_exit();
+		link_state = LINK_STATE_UNKNOWN;
 
-	ifp->if_baudrate = ifmedia_baudrate(mii->mii_media_active);
+	baudrate = ifmedia_baudrate(mii->mii_media_active);
+
+	if (link_state != ifp->if_link_state) {
+		ifp->if_link_state = link_state;
+		/*
+		 * XXX Right here we'd like to notify protocols
+		 * XXX that the link status has changed, so that
+		 * XXX e.g. Duplicate Address Detection can restart.
+		 */
+		announce = 1;
+	}
+
+	if (baudrate != ifp->if_baudrate) {
+		ifp->if_baudrate = baudrate;
+		announce = 1;
+	}
+
+	return (announce);
 }
-#endif
 
 void
 mii_phy_update(struct mii_softc *sc, int cmd)
 {
 	struct mii_data *mii = sc->mii_pdata;
+	struct ifnet *ifp = mii->mii_ifp;
+	int announce;
 
 	if (sc->mii_media_active != mii->mii_media_active ||
 	    sc->mii_media_status != mii->mii_media_status ||
 	    cmd == MII_MEDIACHG) {
-#ifdef notyet
-		mii_phy_statusmsg(sc);
-#endif
+		announce = mii_phy_statusmsg(sc);
 		MIIBUS_STATCHG(sc->mii_dev);
 		sc->mii_media_active = mii->mii_media_active;
 		sc->mii_media_status = mii->mii_media_status;
+
+		if (announce) {
+			crit_enter();
+			if_link_state_change(ifp);
+			crit_exit();
+		}
 	}
 }
 

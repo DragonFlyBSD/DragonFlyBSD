@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.49 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.50 2007/03/24 05:57:49 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -975,6 +975,16 @@ if_up(struct ifnet *ifp)
 {
 
 	if_route(ifp, IFF_UP, AF_UNSPEC);
+}
+
+/*
+ * Process a link state change.
+ * NOTE: must be called at splsoftnet or equivalent.
+ */
+void
+if_link_state_change(struct ifnet *ifp)
+{
+	rt_ifmsg(ifp);
 }
 
 /*

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.12 2006/12/22 23:44:54 swildner Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.13 2007/03/24 05:57:49 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -358,6 +358,24 @@ ifmedia_match(struct ifmedia *ifm, int target, int mask)
 	}
 
 	return match;
+}
+
+struct ifmedia_baudrate ifmedia_baudrate_descriptions[] =
+    IFM_BAUDRATE_DESCRIPTIONS;
+
+int
+ifmedia_baudrate(int mword)
+{
+	int i;
+
+	for (i = 0; ifmedia_baudrate_descriptions[i].ifmb_word != 0; i++) {
+		if ((mword & (IFM_NMASK|IFM_TMASK)) ==
+		    ifmedia_baudrate_descriptions[i].ifmb_word)
+			return (ifmedia_baudrate_descriptions[i].ifmb_baudrate);
+	}
+
+	/* Not known. */
+	return (0);
 }
 
 #ifdef IFMEDIA_DEBUG

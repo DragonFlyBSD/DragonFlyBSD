@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.17 2006/12/19 00:11:12 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.18 2007/03/24 05:57:49 sephe Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -55,6 +55,13 @@
 #endif
 
 #endif
+
+/*
+ * Values for if_link_state.
+ */
+#define	LINK_STATE_UNKNOWN	0	/* link invalid/unknown */
+#define	LINK_STATE_DOWN		1	/* link is down */
+#define	LINK_STATE_UP		2	/* link is up */
 
 struct ifnet;
 
@@ -111,6 +118,7 @@ struct if_data {
 	u_char	ifi_xmitquota;		/* polling quota for xmit intrs */
 	u_long	ifi_mtu;		/* maximum transmission unit */
 	u_long	ifi_metric;		/* routing metric (external only) */
+	u_long  ifi_link_state;		/* current link state */
 	u_long	ifi_baudrate;		/* linespeed */
 	/* volatile statistics */
 	u_long	ifi_ipackets;		/* packets received on interface */

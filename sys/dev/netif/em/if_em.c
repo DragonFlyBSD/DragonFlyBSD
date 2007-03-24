@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.55 2007/01/23 11:09:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.56 2007/03/24 05:57:49 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -1788,6 +1788,9 @@ em_local_timer(void *arg)
 static void
 em_update_link_status(struct adapter *adapter)
 {
+	struct ifnet *ifp;
+	ifp = &adapter->interface_data.ac_if;
+
 	if (E1000_READ_REG(&adapter->hw, STATUS) & E1000_STATUS_LU) {
 		if (adapter->link_active == 0) {
 			em_get_speed_and_duplex(&adapter->hw, 
@@ -1812,16 +1815,13 @@ em_update_link_status(struct adapter *adapter)
 			}
 			adapter->link_active = 1;
 			adapter->smartspeed = 0;
-#ifdef notyet
 			ifp->if_baudrate = adapter->link_speed * 1000000;
-			if_link_state_change(ifp, LINK_STATE_UP);
-#endif
+			ifp->if_link_state = LINK_STATE_UP;
+			if_link_state_change(ifp);
 		}
 	} else {
 		if (adapter->link_active == 1) {
-#ifdef notyet
 			ifp->if_baudrate = 0;
-#endif
 			adapter->link_speed = 0;
 			adapter->link_duplex = 0;
 			if (bootverbose) {
@@ -1829,9 +1829,8 @@ em_update_link_status(struct adapter *adapter)
 					  "Link is Down\n");
 			}
 			adapter->link_active = 0;
-#ifdef notyet
-			if_link_state_change(ifp, LINK_STATE_DOWN);
-#endif
+			ifp->if_link_state = LINK_STATE_DOWN;
+			if_link_state_change(ifp);
 		}
 	}
 }

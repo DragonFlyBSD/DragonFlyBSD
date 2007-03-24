@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.36 2006/09/05 00:55:46 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.37 2007/03/24 05:57:49 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -228,6 +228,7 @@ typedef void if_init_f_t (void *);
 #define	if_addrlen	if_data.ifi_addrlen
 #define	if_hdrlen	if_data.ifi_hdrlen
 #define	if_metric	if_data.ifi_metric
+#define	if_link_state	if_data.ifi_link_state
 #define	if_baudrate	if_data.ifi_baudrate
 #define	if_hwassist	if_data.ifi_hwassist
 #define	if_ipackets	if_data.ifi_ipackets
@@ -462,6 +463,7 @@ void	if_attach(struct ifnet *, struct lwkt_serialize *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);
+void	if_link_state_change(struct ifnet *);
 void	if_initname(struct ifnet *, const char *, int);
 int	if_printf(struct ifnet *, const char *, ...) __printflike(2, 3);
 void	if_route(struct ifnet *, int flag, int fam);
