@@ -1,12 +1,13 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/libexec/rlogind/Makefile,v 1.15.2.3 2001/04/25 10:40:55 ru Exp $
-# $DragonFly: src/libexec/rlogind/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
+# $DragonFly: src/libexec/rlogind/Makefile,v 1.3 2007/03/24 21:29:06 swildner Exp $
 
 PROG=	rlogind
-SRCS=	rlogind.c
 MAN=	rlogind.8
+WARNS?=	6
+
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
-CFLAGS+= -Wall -DINET6
+CFLAGS+= -DINET6
 
 .include <bsd.prog.mk>

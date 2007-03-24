@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogind.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rlogind/rlogind.c,v 1.29.2.5 2000/12/07 15:02:31 ru Exp $
- * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.4 2007/03/24 21:29:06 swildner Exp $
  */
 
 /*
@@ -83,6 +83,9 @@
 #define	NI_WITHSCOPEID	0
 #endif
 
+extern int __check_rhosts_file;
+extern	char **environ;
+
 char	*env[2];
 #define	NMAX 30
 char	lusername[NMAX+1], rusername[NMAX+1];
@@ -107,26 +110,24 @@ union sockunion {
 #define su_family	su_si.si_family
 #define su_port		su_si.si_port
 
-void	doit (int, union sockunion *);
-int	control (int, char *, int);
-void	protocol (int, int);
-void	cleanup (int);
-void	fatal (int, char *, int);
-int	do_rlogin (union sockunion *);
-void	getstr (char *, int, char *);
-void	setup_term (int);
-int	do_krb_login (struct sockaddr_in *);
-void	usage (void);
+void	doit(int, union sockunion *);
+int	control(int, char *, int);
+void	protocol(int, int);
+void	cleanup(int);
+void	fatal(int, const char *, int);
+int	do_rlogin(union sockunion *);
+void	getstr(char *, int, const char *);
+void	setup_term(int);
+int	do_krb_login(struct sockaddr_in *);
+void	usage(void);
 
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	extern int __check_rhosts_file;
 	union sockunion from;
-	int ch, fromlen, on;
+	socklen_t fromlen;
+	int ch, on;
 
 	openlog("rlogind", LOG_PID | LOG_CONS, LOG_AUTH);
 
@@ -190,15 +191,13 @@ struct winsize win = { 0, 0, 0, 0 };
 
 
 void
-doit(f, fromp)
-	int f;
-	union sockunion *fromp;
+doit(int f, union sockunion *fromp)
 {
 	int master, pid, on = 1;
 	int authenticated = 0;
 	char hostname[2 * MAXHOSTNAMELEN + 1];
 	char nameinfo[2 * INET6_ADDRSTRLEN + 1];
-	char c;
+	u_char c;
 
 	alarm(60);
 	read(f, &c, 1);
@@ -235,7 +234,8 @@ doit(f, fromp)
 		if (fromp->su_family == AF_INET)
               {
 		u_char optbuf[BUFSIZ/3];
-		int optsize = sizeof(optbuf), ipproto, i;
+		socklen_t optsize = sizeof(optbuf), i;
+		int ipproto;
 		struct protoent *ip;
 
 		if ((ip = getprotobyname("ip")) != NULL)
@@ -245,7 +245,7 @@ doit(f, fromp)
 		if (getsockopt(0, ipproto, IP_OPTIONS, (char *)optbuf,
 		    &optsize) == 0 && optsize != 0) {
 			for (i = 0; i < optsize; ) {
-				u_char c = optbuf[i];
+				c = optbuf[i];
 				if (c == IPOPT_LSRR || c == IPOPT_SSRR) {
 					syslog(LOG_NOTICE,
 						"Connection refused from %s with IP option %s",
@@ -268,11 +268,10 @@ doit(f, fromp)
 		confirmed = 1;		/* we sent the null! */
 	}
 #ifdef	CRYPT
-	if (doencrypt)
-		(void) des_enc_write(f,
-				     SECURE_MESSAGE,
-				     strlen(SECURE_MESSAGE),
-				     schedule, &kdata->session);
+	if (doencrypt) {
+		des_enc_write(f, SECURE_MESSAGE, strlen(SECURE_MESSAGE),
+		    schedule, &kdata->session);
+	}
 #endif
 	netf = f;
 
@@ -285,7 +284,7 @@ doit(f, fromp)
 	}
 	if (pid == 0) {
 		if (f > 2)	/* f should always be 0, but... */
-			(void) close(f);
+			close(f);
 		setup_term(0);
 		 if (*lusername=='-') {
 			syslog(LOG_ERR, "tried to pass user \"%s\" to login",
@@ -327,14 +326,11 @@ char	oobdata[] = {TIOCPKT_WINDOW};
  * window size changes.
  */
 int
-control(pty, cp, n)
-	int pty;
-	char *cp;
-	int n;
+control(int pty, char *cp, int n)
 {
 	struct winsize w;
 
-	if (n < 4+sizeof (w) || cp[2] != 's' || cp[3] != 's')
+	if (n < 4 + (int)sizeof(w) || cp[2] != 's' || cp[3] != 's')
 		return (0);
 	oobdata[0] &= ~TIOCPKT_WINDOW;	/* we know he heard */
 	bcopy(cp+4, (char *)&w, sizeof(w));
@@ -342,7 +338,7 @@ control(pty, cp, n)
 	w.ws_col = ntohs(w.ws_col);
 	w.ws_xpixel = ntohs(w.ws_xpixel);
 	w.ws_ypixel = ntohs(w.ws_ypixel);
-	(void)ioctl(pty, TIOCSWINSZ, &w);
+	ioctl(pty, TIOCSWINSZ, &w);
 	return (4+sizeof (w));
 }
 
@@ -350,8 +346,7 @@ control(pty, cp, n)
  * rlogin "protocol" machine.
  */
 void
-protocol(f, p)
-	register int f, p;
+protocol(int f, int p)
 {
 	char pibuf[1024+1], fibuf[1024], *pbp = NULL, *fbp = NULL;
 	int pcc = 0, fcc = 0;
@@ -363,7 +358,7 @@ protocol(f, p)
 	 * when we try and set slave pty's window shape
 	 * (our controlling tty is the master pty).
 	 */
-	(void) signal(SIGTTOU, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
 	send(f, oobdata, 1, MSG_OOB);	/* indicate new rlogin */
 	if (f > p)
 		nfd = f + 1;
@@ -427,7 +422,7 @@ protocol(f, p)
 				fcc = 0;
 			else {
 				register char *cp;
-				int left, n;
+				int left;
 
 				if (fcc <= 0)
 					break;
@@ -507,30 +502,26 @@ protocol(f, p)
 }
 
 void
-cleanup(signo)
-	int signo;
+cleanup(int signo __unused)
 {
 	char *p;
 
 	p = line + sizeof(_PATH_DEV) - 1;
 	if (logout(p))
 		logwtmp(p, "", "");
-	(void)chflags(line, 0);
-	(void)chmod(line, 0666);
-	(void)chown(line, 0, 0);
+	chflags(line, 0);
+	chmod(line, 0666);
+	chown(line, 0, 0);
 	*p = 'p';
-	(void)chflags(line, 0);
-	(void)chmod(line, 0666);
-	(void)chown(line, 0, 0);
+	chflags(line, 0);
+	chmod(line, 0666);
+	chown(line, 0, 0);
 	shutdown(netf, 2);
 	exit(1);
 }
 
 void
-fatal(f, msg, syserr)
-	int f;
-	char *msg;
-	int syserr;
+fatal(int f, const char *msg, int syserr)
 {
 	int len;
 	char buf[BUFSIZ], *bp = buf;
@@ -546,13 +537,12 @@ fatal(f, msg, syserr)
 		    msg, strerror(errno));
 	else
 		len = snprintf(bp, sizeof(buf), "rlogind: %s.\r\n", msg);
-	(void) write(f, buf, bp + len - buf);
+	write(f, buf, bp + len - buf);
 	exit(1);
 }
 
 int
-do_rlogin(dest)
-	union sockunion *dest;
+do_rlogin(union sockunion *dest)
 {
 
 	getstr(rusername, sizeof(rusername), "remuser too long");
@@ -569,10 +559,7 @@ do_rlogin(dest)
 }
 
 void
-getstr(buf, cnt, errmsg)
-	char *buf;
-	int cnt;
-	char *errmsg;
+getstr(char *buf, int cnt, const char *errmsg)
 {
 	char c;
 
@@ -585,11 +572,8 @@ getstr(buf, cnt, errmsg)
 	} while (c != 0);
 }
 
-extern	char **environ;
-
 void
-setup_term(fd)
-	int fd;
+setup_term(int fd)
 {
 	register char *cp = index(term+ENVSIZE, '/');
 	char *speed;
@@ -629,7 +613,7 @@ setup_term(fd)
 }
 
 void
-usage()
+usage(void)
 {
 	syslog(LOG_ERR, "usage: rlogind [-" ARGSTR "]");
 }
