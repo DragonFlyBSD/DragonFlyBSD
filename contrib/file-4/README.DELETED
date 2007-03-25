@@ -10,8 +10,6 @@ configure
 configure.in
 depcomp
 install-sh
-ltcf-c.sh
-ltconfig
 ltmain.sh
 missing
 mkinstalldirs

@@ -1,8 +1,8 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.16 2006/11/16 23:46:53 corecode Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.17 2007/03/25 03:33:59 pavalos Exp $
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
-MAGICDIR= ${CONTRIBDIR}/magic
-.PATH: ${CONTRIBDIR}/src
+CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
+MAGICDIR= ${CONTRIBDIR}/../magic
+.PATH: ${CONTRIBDIR}
 
 MAGIC=	/usr/share/misc/magic
 
@@ -10,11 +10,11 @@ LIB=	magic
 SHLIB_MAJOR=	2
 
 SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
-	is_tar.c magic.c print.c readelf.c softmagic.c
+	is_tar.c magic.c print.c readelf.c softmagic.c file.h.no_obj.patch
 INCS=	magic.h
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
-CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}/src
+CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}
 
 MAN=	libmagic.3
 
@@ -37,7 +37,7 @@ FILESDIR=	/usr/share/misc
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff\
 		${MAGICDIR}/Magdir/[a-z]*
 
-libmagic.3: ${CONTRIBDIR}/doc/libmagic.man libmagic.man.patch
+libmagic.3: ${CONTRIBDIR}/../doc/libmagic.man libmagic.man.patch
 	  patch -o - ${.ALLSRC} | \
 	    sed	-e s@__CSECTION__@1@g \
 		-e s@__FSECTION__@5@g \
@@ -57,9 +57,9 @@ magic.mime.mgc: mkmagic.nx ${MAGICDIR}/magic.mime
 CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
-NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.CURDIR} -I${CONTRIBDIR}/src
+NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.OBJDIR} -I- -I${.CURDIR} -I${CONTRIBDIR}
 NXCFLAGS+=	-DBOOTSTRAPPING
-mkmagic.nx: apprentice.c funcs.c magic.c print.c
+mkmagic.nx: file.h apprentice.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
 .include <bsd.lib.mk>
