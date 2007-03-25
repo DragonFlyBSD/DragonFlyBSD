@@ -26,6 +26,7 @@
  */
 #include "file.h"
 #include "magic.h"
+#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +39,7 @@
 #endif
 
 #ifndef	lint
-FILE_RCSID("@(#)$Id: funcs.c,v 1.23 2006/12/11 21:48:49 christos Exp $")
+FILE_RCSID("@(#)$File: funcs.c,v 1.28 2007/03/01 22:14:54 christos Exp $")
 #endif	/* lint */
 
 #ifndef HAVE_VSNPRINTF
@@ -52,28 +53,32 @@ protected int
 file_printf(struct magic_set *ms, const char *fmt, ...)
 {
 	va_list ap;
-	size_t len;
+	size_t len, size;
 	char *buf;
 
 	va_start(ap, fmt);
 
-	if ((len = vsnprintf(ms->o.ptr, ms->o.len, fmt, ap)) >= ms->o.len) {
+	if ((len = vsnprintf(ms->o.ptr, ms->o.left, fmt, ap)) >= ms->o.left) {
+		long diff;	/* XXX: really ptrdiff_t */
+
 		va_end(ap);
-		if ((buf = realloc(ms->o.buf, len + 1024)) == NULL) {
-			file_oomem(ms, len + 1024);
+		size = (ms->o.size - ms->o.left) + len + 1024;
+		if ((buf = realloc(ms->o.buf, size)) == NULL) {
+			file_oomem(ms, size);
 			return -1;
 		}
-		ms->o.ptr = buf + (ms->o.ptr - ms->o.buf);
+		diff = ms->o.ptr - ms->o.buf;
+		ms->o.ptr = buf + diff;
 		ms->o.buf = buf;
-		ms->o.len = ms->o.size - (ms->o.ptr - ms->o.buf);
-		ms->o.size = len + 1024;
+		ms->o.left = size - diff;
+		ms->o.size = size;
 
 		va_start(ap, fmt);
-		len = vsnprintf(ms->o.ptr, ms->o.len, fmt, ap);
+		len = vsnprintf(ms->o.ptr, ms->o.left, fmt, ap);
 	}
-	ms->o.ptr += len;
-	ms->o.len -= len;
 	va_end(ap);
+	ms->o.ptr += len;
+	ms->o.left -= len;
 	return 0;
 }
 
@@ -81,18 +86,22 @@ file_printf(struct magic_set *ms, const char *fmt, ...)
  * error - print best error message possible
  */
 /*VARARGS*/
-protected void
-file_error(struct magic_set *ms, int error, const char *f, ...)
+private void
+file_error_core(struct magic_set *ms, int error, const char *f, va_list va,
+    uint32_t lineno)
 {
-	va_list va;
+	size_t len;
 	/* Only the first error is ok */
 	if (ms->haderr)
 		return;
-	va_start(va, f);
-	(void)vsnprintf(ms->o.buf, ms->o.size, f, va);
-	va_end(va);
+	len = 0;
+	if (lineno != 0) {
+		(void)snprintf(ms->o.buf, ms->o.size, "line %u: ", lineno);
+		len = strlen(ms->o.buf);
+	}
+	(void)vsnprintf(ms->o.buf + len, ms->o.size - len, f, va);
 	if (error > 0) {
-		size_t len = strlen(ms->o.buf);
+		len = strlen(ms->o.buf);
 		(void)snprintf(ms->o.buf + len, ms->o.size - len, " (%s)",
 		    strerror(error));
 	}
@@ -100,6 +109,28 @@ file_error(struct magic_set *ms, int error, const char *f, ...)
 	ms->error = error;
 }
 
+/*VARARGS*/
+protected void
+file_error(struct magic_set *ms, int error, const char *f, ...)
+{
+	va_list va;
+	va_start(va, f);
+	file_error_core(ms, error, f, va, 0);
+	va_end(va);
+}
+
+/*
+ * Print an error with magic line number.
+ */
+/*VARARGS*/
+protected void
+file_magerror(struct magic_set *ms, const char *f, ...)
+{
+	va_list va;
+	va_start(va, f);
+	file_error_core(ms, 0, f, va, ms->line);
+	va_end(va);
+}
 
 protected void
 file_oomem(struct magic_set *ms, size_t len)
@@ -121,17 +152,36 @@ file_badread(struct magic_set *ms)
 
 #ifndef COMPILE_ONLY
 protected int
-file_buffer(struct magic_set *ms, int fd, const void *buf, size_t nb)
+file_buffer(struct magic_set *ms, int fd, const char *inname, const void *buf,
+    size_t nb)
 {
     int m;
+
+#ifdef __EMX__
+    if ((ms->flags & MAGIC_NO_CHECK_APPTYPE) == 0 && inname) {
+	switch (file_os2_apptype(ms, inname, buf, nb)) {
+	case -1:
+	    return -1;
+	case 0:
+	    break;
+	default:
+	    return 1;
+	}
+    }
+#endif
+
     /* try compression stuff */
-    if ((m = file_zmagic(ms, fd, buf, nb)) == 0) {
+    if ((ms->flags & MAGIC_NO_CHECK_COMPRESS) != 0 ||
+        (m = file_zmagic(ms, fd, inname, buf, nb)) == 0) {
 	/* Check if we have a tar file */
-	if ((m = file_is_tar(ms, buf, nb)) == 0) {
+	if ((ms->flags & MAGIC_NO_CHECK_TAR) != 0 ||
+	    (m = file_is_tar(ms, buf, nb)) == 0) {
 	    /* try tests in /etc/magic (or surrogate magic file) */
-	    if ((m = file_softmagic(ms, buf, nb)) == 0) {
+	    if ((ms->flags & MAGIC_NO_CHECK_SOFT) != 0 ||
+		(m = file_softmagic(ms, buf, nb)) == 0) {
 		/* try known keywords, check whether it is ASCII */
-		if ((m = file_ascmagic(ms, buf, nb)) == 0) {
+		if ((ms->flags & MAGIC_NO_CHECK_ASCII) != 0 ||
+		    (m = file_ascmagic(ms, buf, nb)) == 0) {
 		    /* abandon hope, all ye who remain here */
 		    if (file_printf(ms, ms->flags & MAGIC_MIME ?
 			(nb ? "application/octet-stream" :
@@ -144,6 +194,19 @@ file_buffer(struct magic_set *ms, int fd, const void *buf, size_t nb)
 	    }
 	}
     }
+#ifdef BUILTIN_ELF
+    if ((ms->flags & MAGIC_NO_CHECK_ELF) == 0 && m == 1 && nb > 5 && fd != -1) {
+	/*
+	 * We matched something in the file, so this *might*
+	 * be an ELF file, and the file is at least 5 bytes
+	 * long, so if it's an ELF file it has at least one
+	 * byte past the ELF magic number - try extracting
+	 * information from the ELF headers that cannot easily
+	 * be extracted with rules in the magic file.
+	 */
+	(void)file_tryelf(ms, fd, buf, nb);
+    }
+#endif
     return m;
 }
 #endif
@@ -172,8 +235,8 @@ file_reset(struct magic_set *ms)
 protected const char *
 file_getbuffer(struct magic_set *ms)
 {
-	char *nbuf, *op, *np;
-	size_t nsize;
+	char *pbuf, *op, *np;
+	size_t psize, len;
 
 	if (ms->haderr)
 		return NULL;
@@ -181,14 +244,17 @@ file_getbuffer(struct magic_set *ms)
 	if (ms->flags & MAGIC_RAW)
 		return ms->o.buf;
 
-	nsize = ms->o.len * 4 + 1;
-	if (ms->o.psize < nsize) {
-		if ((nbuf = realloc(ms->o.pbuf, nsize)) == NULL) {
-			file_oomem(ms, nsize);
+	len = ms->o.size - ms->o.left;
+	/* * 4 is for octal representation, + 1 is for NUL */
+	psize = len * 4 + 1;
+	assert(psize > len);
+	if (ms->o.psize < psize) {
+		if ((pbuf = realloc(ms->o.pbuf, psize)) == NULL) {
+			file_oomem(ms, psize);
 			return NULL;
 		}
-		ms->o.psize = nsize;
-		ms->o.pbuf = nbuf;
+		ms->o.psize = psize;
+		ms->o.pbuf = pbuf;
 	}
 
 #if defined(HAVE_WCHAR_H) && defined(HAVE_MBRTOWC) && defined(HAVE_WCWIDTH)
@@ -242,8 +308,8 @@ file_getbuffer(struct magic_set *ms)
 }
 
 /*
- * Yes these wrappers suffer from buffer overflows, but if your OS does not have
- * the real functions, maybe you should consider replacing your OS?
+ * Yes these wrappers suffer from buffer overflows, but if your OS does not
+ * have the real functions, maybe you should consider replacing your OS?
  */
 #ifndef HAVE_VSNPRINTF
 int
