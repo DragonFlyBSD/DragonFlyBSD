@@ -71,7 +71,7 @@
 #include "patchlevel.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$Id: file.c,v 1.104 2006/11/25 17:28:54 christos Exp $")
+FILE_RCSID("@(#)$File: file.c,v 1.107 2007/01/25 21:05:46 christos Exp $")
 #endif	/* lint */
 
 
@@ -81,7 +81,7 @@ FILE_RCSID("@(#)$Id: file.c,v 1.104 2006/11/25 17:28:54 christos Exp $")
 #define SYMLINKFLAG ""
 #endif
 
-# define USAGE  "Usage: %s [-bcik" SYMLINKFLAG "nNrsvz0] [-f namefile] [-F separator] [-m magicfiles] file...\n       %s -C -m magicfiles\n"
+# define USAGE  "Usage: %s [-bcik" SYMLINKFLAG "nNrsvz0] [-e test] [-f namefile] [-F separator] [-m magicfiles] file...\n       %s -C -m magicfiles\n"
 
 #ifndef MAXPATHLEN
 #define	MAXPATHLEN	512
@@ -122,7 +122,7 @@ private void load(const char *, int);
 int
 main(int argc, char *argv[])
 {
-	int c;
+	int c, i;
 	int action = 0, didsomefiles = 0, errflg = 0;
 	int flags = 0;
 	char *home, *usermagic;
@@ -138,6 +138,7 @@ main(int argc, char *argv[])
 		{"brief", 0, 0, 'b'},
 		{"checking-printout", 0, 0, 'c'},
 		{"debug", 0, 0, 'd'},
+		{"exclude", 0, 0, 'e' },
 		{"files-from", 1, 0, 'f'},
 		{"separator", 1, 0, 'F'},
 		{"mime", 0, 0, 'i'},
@@ -160,6 +161,21 @@ main(int argc, char *argv[])
 		{0, 0, 0, 0},
 	};
 #endif
+
+	static const struct {
+		const char *name;
+		int value;
+	} nv[] = {
+		{ "apptype",	MAGIC_NO_CHECK_APPTYPE },
+		{ "ascii",	MAGIC_NO_CHECK_ASCII },
+		{ "compress",	MAGIC_NO_CHECK_COMPRESS },
+		{ "elf",	MAGIC_NO_CHECK_ELF },
+		{ "fortran",	MAGIC_NO_CHECK_FORTRAN },
+		{ "soft",	MAGIC_NO_CHECK_SOFT },
+		{ "tar",	MAGIC_NO_CHECK_TAR },
+		{ "tokens",	MAGIC_NO_CHECK_TOKENS },
+		{ "troff",	MAGIC_NO_CHECK_TROFF },
+	};
 
 #ifdef LC_CTYPE
 	/* makes islower etc work for other langs */
@@ -223,6 +239,17 @@ main(int argc, char *argv[])
 		case 'd':
 			flags |= MAGIC_DEBUG|MAGIC_CHECK;
 			break;
+		case 'e':
+			for (i = 0; i < sizeof(nv) / sizeof(nv[0]); i++)
+				if (strcmp(nv[i].name, optarg) == 0)
+					break;
+
+			if (i == sizeof(nv) / sizeof(nv[0]))
+				errflg++;
+			else
+				flags |= nv[i].value;
+			break;
+			
 		case 'f':
 			if(action)
 				usage();
@@ -331,7 +358,7 @@ main(int argc, char *argv[])
 
 private void
 /*ARGSUSED*/
-load(const char *m, int flags)
+load(const char *m __unused, int flags)
 {
 	if (magic)
 		return;
@@ -404,7 +431,7 @@ process(const char *inname, int wid)
 	if (wid > 0 && !bflag) {
 		(void)printf("%s", std_in ? "/dev/stdin" : inname);
 		if (nulsep)
-			(void)puts('\0');
+			(void)putc('\0', stdout);
 		else
 			(void)printf("%s", separator);
 		(void)printf("%*s ",
@@ -535,6 +562,9 @@ help(void)
 "  -c, --checking-printout    print the parsed form of the magic file, use in\n"
 "                               conjunction with -m to debug a new magic file\n"
 "                               before installing it\n"
+"  -e, --exclude              exclude test from the list of test to be\n"
+"                               performed for file. Valid tests are:\n"
+"                               ascii, apptype, elf, compress, soft, tar\n"
 "  -f, --files-from FILE      read the filenames to be examined from FILE\n"
 "  -F, --separator string     use string as separator instead of `:'\n"
 "  -i, --mime                 output mime type strings\n"
