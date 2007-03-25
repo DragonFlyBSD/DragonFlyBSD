@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.17 2007/03/25 03:33:59 pavalos Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.18 2007/03/25 07:50:50 sephe Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
 MAGICDIR= ${CONTRIBDIR}/../magic
@@ -13,7 +13,8 @@ SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 	is_tar.c magic.c print.c readelf.c softmagic.c file.h.no_obj.patch
 INCS=	magic.h
 
-CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
+LIBMAGIC_CDEFS = -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
+CFLAGS+= ${LIBMAGIC_CDEFS}
 CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}
 
 MAN=	libmagic.3
@@ -57,7 +58,7 @@ magic.mime.mgc: mkmagic.nx ${MAGICDIR}/magic.mime
 CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
-NXCFLAGS+=	-DHAVE_CONFIG_H -DCOMPILE_ONLY -I${.OBJDIR} -I- -I${.CURDIR} -I${CONTRIBDIR}
+NXCFLAGS=	${LIBMAGIC_CDEFS} -DCOMPILE_ONLY -I${.OBJDIR} -I- -I${.CURDIR} -I${CONTRIBDIR}
 NXCFLAGS+=	-DBOOTSTRAPPING
 mkmagic.nx: file.h apprentice.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
