@@ -1,7 +1,7 @@
-This directory contains most of the file 4.19 distribution. The original
+This directory contains most of the file 4.20 distribution. The original
 source can be obtained from
-	ftp://ftp.astron.com/pub/file/file-4.19.tar.gz
-	MD5 (file-4.19.tar.gz) = a61ef3aa8339d5987148089afde25f60
+	ftp://ftp.astron.com/pub/file/file-4.20.tar.gz
+	MD5 (file-4.20.tar.gz) = 402bdb26356791bd5d277099adacc006
 
 A list of the omitted files and directories can be found in
 README.DELETED.
