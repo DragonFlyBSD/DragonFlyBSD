@@ -1,0 +1,10 @@
+Original source can be downloaded from:
+http://people.freebsd.org/~kientzle/libarchive/src/
+
+MD5 (libarchive-2.0.25.tar.gz) = 508c3daa2bea77b92914f0a03a8a9cf9
+
+A list of deleted files is in README.DELETED.
+
+This source is used in:
+	lib/libarchive
+	usr.bin/tar
