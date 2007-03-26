@@ -1,16 +1,16 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.5 2006/09/18 01:47:10 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.6 2007/03/26 00:03:44 pavalos Exp $
 
 LIB=	archive
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-1.3.1/libarchive
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.0/libarchive
 .PATH: ${CONTRIBDIR}
 
-VERSION= 1.3.1
-ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/\..*//'
-ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[0-9]*\.//' | sed -e 's/\..*//'
-SHLIB_MAJOR!= echo $$((${ARCHIVE_API_MAJOR} + ${ARCHIVE_API_MINOR}))
+VERSION!=	cat ${CONTRIBDIR}/../version
+ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/\..*//'
+ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/[0-9]*\.//' -e 's/\..*//'
+SHLIB_MAJOR=	5
 CFLAGS+=	-DHAVE_CONFIG_H
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I-
 WARNS?=	6
@@ -36,13 +36,17 @@ SRCS=	archive.h					\
 	archive_read_support_compression_none.c		\
 	archive_read_support_format_all.c		\
 	archive_read_support_format_cpio.c		\
+	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
 	archive_read_support_format_tar.c		\
 	archive_read_support_format_zip.c		\
 	archive_string.c				\
 	archive_string_sprintf.c			\
 	archive_util.c					\
+	archive_virtual.c				\
 	archive_write.c					\
+	archive_write_disk.c				\
+	archive_write_disk_set_standard_lookup.c	\
 	archive_write_open_fd.c				\
 	archive_write_open_file.c			\
 	archive_write_open_filename.c			\
@@ -85,6 +89,7 @@ MLINKS+=	archive_entry.3 archive_entry_copy_hardlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_hardlink_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_pathname_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_stat.3
+MLINKS+=	archive_entry.3 archive_entry_copy_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_uname_w.3
 MLINKS+=	archive_entry.3 archive_entry_dev.3
@@ -140,7 +145,6 @@ MLINKS+=	archive_read.3 archive_read_open_FILE.3
 MLINKS+=	archive_read.3 archive_read_open_fd.3
 MLINKS+=	archive_read.3 archive_read_open_filename.3
 MLINKS+=	archive_read.3 archive_read_open_memory.3
-MLINKS+=	archive_read.3 archive_read_set_bytes_per_block.3
 MLINKS+=	archive_read.3 archive_read_support_compression_all.3
 MLINKS+=	archive_read.3 archive_read_support_compression_bzip2.3
 MLINKS+=	archive_read.3 archive_read_support_compression_compress.3
@@ -148,9 +152,11 @@ MLINKS+=	archive_read.3 archive_read_support_compression_gzip.3
 MLINKS+=	archive_read.3 archive_read_support_compression_none.3
 MLINKS+=	archive_read.3 archive_read_support_format_all.3
 MLINKS+=	archive_read.3 archive_read_support_format_cpio.3
+MLINKS+=	archive_read.3 archive_read_support_format_empty.3
 MLINKS+=	archive_read.3 archive_read_support_format_iso9660.3
 MLINKS+=	archive_read.3 archive_read_support_format_tar.3
 MLINKS+=	archive_read.3 archive_read_support_format_zip.3
+MLINKS+=	archive_util.3 archive_clear_error.3
 MLINKS+=	archive_util.3 archive_compression.3
 MLINKS+=	archive_util.3 archive_compression_name.3
 MLINKS+=	archive_util.3 archive_errno.3
@@ -161,15 +167,17 @@ MLINKS+=	archive_util.3 archive_set_error.3
 MLINKS+=	archive_write.3 archive_write_close.3
 MLINKS+=	archive_write.3 archive_write_data.3
 MLINKS+=	archive_write.3 archive_write_finish.3
+MLINKS+=	archive_write.3 archive_write_finish_entry.3
+MLINKS+=	archive_write.3 archive_write_get_bytes_per_block.3
 MLINKS+=	archive_write.3 archive_write_header.3
 MLINKS+=	archive_write.3 archive_write_new.3
 MLINKS+=	archive_write.3 archive_write_open.3
 MLINKS+=	archive_write.3 archive_write_open_FILE.3
 MLINKS+=	archive_write.3 archive_write_open_fd.3
-MLINKS+=	archive_write.3 archive_write_prepare.3
-MLINKS+=	archive_write.3 archive_write_set_bytes_per_block.3
+MLINKS+=	archive_write.3 archive_write_open_filename.3
+MLINKS+=	archive_write.3 archive_write_open_memory.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_in_last_block.3
-MLINKS+=	archive_write.3 archive_write_set_callbacks.3
+MLINKS+=	archive_write.3 archive_write_set_bytes_per_block.3
 MLINKS+=	archive_write.3 archive_write_set_compression_bzip2.3
 MLINKS+=	archive_write.3 archive_write_set_compression_gzip.3
 MLINKS+=	archive_write.3 archive_write_set_format_cpio.3
