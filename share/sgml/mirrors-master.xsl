@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<!-- $DragonFly: doc/share/sgml/mirrors-master.xsl,v 1.3 2005/06/27 23:36:02 reed Exp $ -->
+<!-- $DragonFly: doc/share/sgml/mirrors-master.xsl,v 1.4 2007/03/26 20:07:34 victor Exp $ -->
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
@@ -71,7 +71,6 @@
       <xsl:for-each select="mirrors/entry[country/@role = 'primary'
 	                    and host[@type = $type]]">
 	<xsl:call-template name="mirrors-docbook-country-index">
-	  <xsl:with-param name="mirrors-docbook-country-index-without-period" select="'true'" />
 	</xsl:call-template>
       </xsl:for-each>
 
@@ -81,7 +80,6 @@
 	<xsl:sort select="country" />
 
 	<xsl:call-template name="mirrors-docbook-country-index">
-	  <xsl:with-param name="mirrors-docbook-country-index-without-period" select="'false'" />
 	</xsl:call-template>
       </xsl:for-each>
     </para>
@@ -94,11 +92,6 @@
       </xsl:attribute>
       <xsl:value-of select="country" />
     </link>
-    <xsl:choose>
-      <xsl:when test='$mirrors-docbook-country-index-without-period != "true" and
-	position() = last()'><xsl:text>.</xsl:text></xsl:when>
-      <xsl:otherwise><xsl:text>, </xsl:text></xsl:otherwise>
-    </xsl:choose>
   </xsl:template>
 
   <!-- template: "mirrors-docbook-variablelist" -->

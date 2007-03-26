@@ -1,5 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.3 2006/08/06 20:58:06 justin Exp $
+# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.4 2007/03/26 20:07:34 victor Exp $
 # matches with:
 # $FreeBSD: doc/share/mk/doc.docbook.mk,v 1.117 2004/09/02 17:12:14 murray Exp $
 #
@@ -261,6 +261,8 @@ TOUCH?=		/usr/bin/touch
 XARGS?=		/usr/bin/xargs
 
 GROFF?=		groff
+#disable for compatibility reasons with pkgsrc's tidy version
+NO_TIDY=	yes
 TIDYOPTS?=	-wrap 90 -m -raw -preserve -f /dev/null -asxml ${TIDYFLAGS}
 HTML2TXT?=	${PREFIX}/bin/links
 HTML2TXTOPTS?=	-dump ${HTML2TXTFLAGS}
@@ -601,11 +603,11 @@ ${DOC}.dvi: ${DOC}.tex ${LOCAL_IMAGES_EPS}
 	${CP} -p ${_curimage} ${.CURDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
 .endfor
 	@${ECHO} "==> TeX pass 1/3"
-	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 	@${ECHO} "==> TeX pass 2/3"
-	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 	@${ECHO} "==> TeX pass 3/3"
-	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 
 .if !target(${DOC}.pdf)
 ${DOC}.pdf: ${DOC}.tex-pdf ${IMAGES_PDF}
@@ -613,11 +615,11 @@ ${DOC}.pdf: ${DOC}.tex-pdf ${IMAGES_PDF}
 	${CP} -p ${_curimage} ${.CURDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
 .endfor
 	@${ECHO} "==> PDFTeX pass 1/3"
-	-${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 	@${ECHO} "==> PDFTeX pass 2/3"
-	-${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 	@${ECHO} "==> PDFTeX pass 3/3"
-	${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
+	-${SETENV} TEXFORMATS=${TEXFORMATS} ${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 .endif
 
 ${DOC}.ps: ${DOC}.dvi

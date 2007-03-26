@@ -1,5 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.project.mk,v 1.3 2006/08/06 20:58:06 justin Exp $
+# $DragonFly: doc/share/mk/doc.project.mk,v 1.4 2007/03/26 20:07:34 victor Exp $
 # Matches with: 
 # $FreeBSD: doc/share/mk/doc.project.mk,v 1.26 2005/02/20 17:14:25 hrs Exp $
 # This file includes the other makefiles, which contain enough
@@ -106,6 +106,7 @@ TEX_CMD?=       ${PREFIX}/bin/tex
 PDFTEX_CMD?=    ${PREFIX}/bin/pdftex
 .endif
 LATEX_CMD?=     ${PREFIX}/bin/latex
+TEXFORMATS?=    ${PREFIX}/share/texmf/web2c/
 JADETEX_CMD?=   ${TEX_CMD} "&jadetex"
 PDFJADETEX_CMD?=${PDFTEX_CMD} "&pdfjadetex"
 FOP_CMD?=       ${PREFIX}/share/fop/fop.sh
