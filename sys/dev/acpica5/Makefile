@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.19 2007/01/25 15:12:06 y0netan1 Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.20 2007/03/26 02:34:39 y0netan1 Exp $
 
 CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
 # patches to fix problems in ACPI-CA code
@@ -8,13 +8,16 @@ PATCHES=	hardware,hwsleep.c.patch tables,tbxface.c.patch
 PATCHES+=	include,acglobal.h.patch debugger,dbstats.c.patch
 
 SYSDIR?= ${.CURDIR}/../..
-.if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP
+.if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP || ACPI_DEBUG_CACHE
 CFLAGS+=	-I${.OBJDIR}/include
 .if ACPI_DEBUG_LOCKS
 CFLAGS+=	-DACPI_DEBUG_LOCKS=1
 .endif
 .if ACPI_DEBUG_MEMMAP
 CFLAGS+=	-DACPI_DEBUG_MEMMAP=1
+.endif
+.if ACPI_DEBUG_CACHE
+CFLAGS+=	-DACPI_DEBUG_CACHE=1
 .endif
 PATCHES+=	include,acpiosxf.h.patch
 .endif

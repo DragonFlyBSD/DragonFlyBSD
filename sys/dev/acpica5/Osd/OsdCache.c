@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.3 2007/03/20 00:56:30 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdCache.c,v 1.4 2007/03/26 02:34:39 y0netan1 Exp $
  */
 
 #include <sys/objcache.h>
@@ -45,6 +45,9 @@ struct acpicache {
  */
 struct acpiobjhead {
 	int state;
+	void *cache;
+	const char *func;
+	int line;
 	int unused;
 };
 
@@ -94,28 +97,53 @@ void *
 AcpiOsAcquireObject(ACPI_CACHE_T *Cache)
 {
 	struct acpiobjhead *head;
-	void *Object;
 
 	head = objcache_get(Cache->cache, M_WAITOK);
 	bzero(head, Cache->args.objsize);
 	head->state = TRACK_ALLOCATED;
+#if ACPI_DEBUG_CACHE
+	head->cache = Cache;
+	head->func = "nowhere";
+	head->line = 0;
+#endif
 	return (head + 1);
 }
 
 ACPI_STATUS
+#if ACPI_DEBUG_CACHE
+_AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object,
+ const char *func, int line)
+#else
 AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
+#endif
 {
 	struct acpiobjhead *head = (void *)((char *)Object - OBJHEADSIZE);
 
+#if ACPI_DEBUG_CACHE
+	if (head->cache != Cache) {
+		kprintf("%s: object %p belongs to %p, not %p\n",
+			__func__, Object, head->cache, Cache);
+	}
+#endif
 	if (head->state != TRACK_ALLOCATED) {
-		if (head->state == TRACK_FREED)
-			kprintf("AcpiOsReleaseObject: Double Free %p (%08x)\n", Object, head->state);
-		else
-			kprintf("AcpiOsReleaseObject: Bad object %p (%08x)\n", Object, head->state);
+		if (head->state == TRACK_FREED) {
+#if ACPI_DEBUG_CACHE
+			kprintf("%s: Double Free %p, %s:%d, first %s:%d\n",
+				__func__, Object, func, line, head->func,
+				head->line);
+#else
+			kprintf("%s: Double Free %p\n", __func__, Object);
+#endif
+		} else
+			kprintf("AcpiOsReleaseObject: Bad object %p (%08x)\n",
+				Object, head->state);
 		return AE_OK;
 	}
 	head->state = TRACK_FREED;
-
+#if ACPI_DEBUG_CACHE
+	head->func = func;
+	head->line = line;
+#endif
 	objcache_put(Cache->cache, head);
 	return AE_OK;
 }
