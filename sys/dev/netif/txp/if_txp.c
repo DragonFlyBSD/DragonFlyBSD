@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.41 2006/12/22 23:26:22 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.42 2007/03/26 12:13:58 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1718,6 +1718,7 @@ txp_capabilities(struct txp_softc *sc)
 	if (rsp->rsp_par2 & rsp->rsp_par3 & OFFLOAD_VLAN) {
 		sc->sc_tx_capability |= OFFLOAD_VLAN;
 		sc->sc_rx_capability |= OFFLOAD_VLAN;
+		ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING;
 	}
 
 #if 0

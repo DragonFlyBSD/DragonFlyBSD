@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.59 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.60 2007/03/26 12:13:58 sephe Exp $
  *
  */
 
@@ -1665,7 +1665,8 @@ bge_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hwassist = BGE_CSUM_FEATURES;
-	ifp->if_capabilities = IFCAP_HWCSUM;
+	ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_VLAN_HWTAGGING |
+	    IFCAP_VLAN_MTU;
 	ifp->if_capenable = ifp->if_capabilities;
 
 	/*

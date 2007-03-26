@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.43 2007/03/07 12:33:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.44 2007/03/26 12:13:58 sephe Exp $
  */
 
 /*
@@ -1407,7 +1407,8 @@ ti_attach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_capabilities = IFCAP_HWCSUM;
+	ifp->if_capabilities = IFCAP_HWCSUM |
+	    IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
 	ifp->if_capenable = ifp->if_capabilities;
 
 	pci_enable_busmaster(dev);

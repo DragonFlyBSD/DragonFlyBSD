@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.26 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.27 2007/03/26 12:13:58 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -332,11 +332,12 @@ gx_attach(device_t dev)
 	ifp->if_init = gx_init;
 	ifp->if_mtu = ETHERMTU;
 	ifq_set_maxlen(&ifp->if_snd, GX_TX_RING_CNT - 1);
+	ifp->if_capabilities = IFCAP_VLAN_HWTAGGING;
 	ifq_set_ready(&ifp->if_snd);
 
 	/* see if we can enable hardware checksumming */
 	if (gx->gx_vflags & GXF_CSUM) {
-		ifp->if_capabilities = IFCAP_HWCSUM;
+		ifp->if_capabilities |= IFCAP_HWCSUM;
 		ifp->if_capenable = ifp->if_capabilities;
 	}
 
