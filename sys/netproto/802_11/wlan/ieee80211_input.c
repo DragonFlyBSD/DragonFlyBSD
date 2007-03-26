@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.18 2007/03/25 08:10:51 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.19 2007/03/26 11:08:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1909,7 +1909,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			}
 			frm += frm[1] + 2;
 		}
-		IEEE80211_VERIFY_ELEMENT(scan.rates, IEEE80211_RATE_SIZE);
+		IEEE80211_VERIFY_ELEMENT(scan.rates, IEEE80211_RATE_MAXSIZE);
 		if (scan.xrates != NULL) {
 			IEEE80211_VERIFY_ELEMENT(scan.xrates,
 				IEEE80211_RATE_MAXSIZE - scan.rates[1]);
@@ -2125,7 +2125,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			}
 			frm += frm[1] + 2;
 		}
-		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_SIZE);
+		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_MAXSIZE);
 		if (xrates != NULL) {
 			IEEE80211_VERIFY_ELEMENT(xrates,
 				IEEE80211_RATE_MAXSIZE - rates[1]);
@@ -2319,7 +2319,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			}
 			frm += frm[1] + 2;
 		}
-		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_SIZE);
+		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_MAXSIZE);
 		if (xrates != NULL) {
 			IEEE80211_VERIFY_ELEMENT(xrates,
 				IEEE80211_RATE_MAXSIZE - rates[1]);
@@ -2512,7 +2512,7 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 			}
 			frm += frm[1] + 2;
 		}
-		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_SIZE);
+		IEEE80211_VERIFY_ELEMENT(rates, IEEE80211_RATE_MAXSIZE);
 		if (xrates != NULL) {
 			IEEE80211_VERIFY_ELEMENT(xrates,
 				IEEE80211_RATE_MAXSIZE - rates[1]);
