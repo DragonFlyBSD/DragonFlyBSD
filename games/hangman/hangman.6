@@ -31,22 +31,27 @@
 .\"
 .\"	@(#)hangman.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/hangman/hangman.6,v 1.4 1999/08/27 23:29:06 peter Exp $
-.\" $DragonFly: src/games/hangman/hangman.6,v 1.2 2003/06/17 04:25:24 dillon Exp $
+.\" $DragonFly: src/games/hangman/hangman.6,v 1.3 2007/03/27 10:08:02 swildner Exp $
 .\"
-.TH HANGMAN 6 "May 31, 1993"
-.UC 4
-.SH NAME
-hangman \- the game of hangman
-.SH SYNOPSIS
-.B /usr/games/hangman
-.SH DESCRIPTION
+.Dd May 31, 1993
+.Dt HANGMAN 6
+.Os
+.Sh NAME
+.Nm hangman
+.Nd the game of hangman
+.Sh SYNOPSIS
+.Nm
+.Sh DESCRIPTION
 In
-.I hangman,
+.Nm ,
 the computer picks a word from the on-line word list
 and you must try to guess it.
 The computer keeps track of which letters have been guessed
 and how many wrong guesses you have made on the screen in a graphic fashion.
-.SH FILES
-/usr/share/dict/words    On-line word list
-.SH AUTHOR
-Ken Arnold
+.Sh FILES
+.Bl -tag -width ".Pa /usr/share/dict/words" -compact
+.It Pa /usr/share/dict/words
+On-line word list
+.El
+.Sh AUTHORS
+.An Ken Arnold
