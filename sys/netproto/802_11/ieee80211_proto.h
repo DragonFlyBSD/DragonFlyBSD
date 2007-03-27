@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.h,v 1.11.2.5 2006/02/12 19:00:39 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.8 2007/01/01 08:51:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.9 2007/03/27 13:34:53 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -253,6 +253,8 @@ int	ieee80211_beacon_update(struct ieee80211com *,
 
 struct mbuf *ieee80211_probe_resp_alloc(struct ieee80211com *,
 		struct ieee80211_node *);
+
+uint8_t	ieee80211_ack_rate(struct ieee80211_node *, uint8_t);
 
 /*
  * Notification methods called from the 802.11 state machine.

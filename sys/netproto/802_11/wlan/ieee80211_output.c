@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.17 2007/03/18 05:35:54 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.18 2007/03/27 13:34:53 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1800,4 +1800,78 @@ ieee80211_pwrsave(struct ieee80211com *ic, struct ieee80211_node *ni,
 
 	if (qlen == 1)
 		ic->ic_set_tim(ni, 1);
+}
+
+#define IEEE80211_MODTYPE_CCK	0
+#define IEEE80211_MODTYPE_OFDM	1
+#define IEEE80211_MODTYPE_PBCC	2
+
+static int
+ieee80211_rate2modtype(uint8_t rate)
+{
+	if (rate == 44)
+		return IEEE80211_MODTYPE_PBCC;
+	else if (rate == 22 || rate < 12)
+		return IEEE80211_MODTYPE_CCK;
+	else
+		return IEEE80211_MODTYPE_OFDM;
+}
+
+uint8_t
+ieee80211_ack_rate(struct ieee80211_node *ni, uint8_t rate)
+{
+	const struct ieee80211_rateset *rs = &ni->ni_rates;
+	uint8_t ack_rate = 0;
+	int modtype, i;
+
+	modtype = ieee80211_rate2modtype(rate);
+
+	for (i = 0; i < rs->rs_nrates; ++i) {
+		uint8_t rate1 = IEEE80211_RS_RATE(rs, i);
+
+		if (rate1 > rate) {
+			if (ack_rate != 0)
+				return ack_rate;
+			else
+				break;
+		}
+
+		if ((rs->rs_rates[i] & IEEE80211_RATE_BASIC) &&
+		    ieee80211_rate2modtype(rate1) == modtype)
+			ack_rate = rate1;
+	}
+
+	switch (rate) {
+	/* CCK */
+	case 2:
+	case 4:
+	case 11:
+	case 22:
+		ack_rate = rate;
+		break;
+
+	/* PBCC */
+	case 44:
+		ack_rate = 22;
+		break;
+
+	/* OFDM */
+	case 12:
+	case 18:
+		ack_rate = 12;
+		break;
+	case 24:
+	case 36:
+		ack_rate = 24;
+		break;
+	case 48:
+	case 72:
+	case 96:
+	case 108:
+		ack_rate = 48;
+		break;
+	default:
+		panic("unsupported rate %d\n", rate);
+	}
+	return ack_rate;
 }

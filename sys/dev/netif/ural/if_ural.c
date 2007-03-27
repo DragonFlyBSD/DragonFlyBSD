@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.7 2007/03/18 11:49:32 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.8 2007/03/27 13:34:53 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -115,7 +115,6 @@ Static void		ural_txeof(usbd_xfer_handle, usbd_private_handle,
 			    usbd_status);
 Static void		ural_rxeof(usbd_xfer_handle, usbd_private_handle,
 			    usbd_status);
-Static int		ural_ack_rate(struct ieee80211com *, int);
 Static uint16_t		ural_txtime(int, int, uint32_t);
 Static uint8_t		ural_plcp_signal(int);
 Static void		ural_setup_tx_desc(struct ural_softc *,
@@ -1033,40 +1032,6 @@ skip:	/* setup a new transfer */
 }
 
 /*
- * Return the expected ack rate for a frame transmitted at rate `rate'.
- * XXX: this should depend on the destination node basic rate set.
- */
-Static int
-ural_ack_rate(struct ieee80211com *ic, int rate)
-{
-	switch (rate) {
-	/* CCK rates */
-	case 2:
-		return 2;
-	case 4:
-	case 11:
-	case 22:
-		return (ic->ic_curmode == IEEE80211_MODE_11B) ? 4 : rate;
-
-	/* OFDM rates */
-	case 12:
-	case 18:
-		return 12;
-	case 24:
-	case 36:
-		return 24;
-	case 48:
-	case 72:
-	case 96:
-	case 108:
-		return 48;
-	}
-
-	/* default to 1Mbps */
-	return 2;
-}
-
-/*
  * Compute the duration (in us) needed to transmit `len' bytes at rate `rate'.
  * The function automatically determines the operating mode depending on the
  * given rate. `flags' indicates whether short preamble is in use or not.
@@ -1330,7 +1295,7 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 		flags |= RAL_TX_ACK;
 		flags |= RAL_TX_RETRY(sc->sc_tx_retries);
 
-		dur = ural_txtime(RAL_ACK_SIZE, ural_ack_rate(ic, rate),
+		dur = ural_txtime(RAL_ACK_SIZE, ieee80211_ack_rate(ni, rate),
 		    ic->ic_flags) + RAL_SIFS;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 	}

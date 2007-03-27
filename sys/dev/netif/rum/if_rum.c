@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.8 2007/03/18 11:49:32 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.9 2007/03/27 13:34:53 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -131,7 +131,6 @@ Static void		rum_txeof(usbd_xfer_handle, usbd_private_handle,
 Static void		rum_rxeof(usbd_xfer_handle, usbd_private_handle,
 			    usbd_status);
 Static uint8_t		rum_rxrate(struct rum_rx_desc *);
-Static int		rum_ack_rate(struct ieee80211com *, int);
 Static uint16_t		rum_txtime(int, int, uint32_t);
 Static uint8_t		rum_plcp_signal(int);
 Static void		rum_setup_tx_desc(struct rum_softc *,
@@ -942,40 +941,6 @@ rum_rxrate(struct rum_rx_desc *desc)
 }
 
 /*
- * Return the expected ack rate for a frame transmitted at rate `rate'.
- * XXX: this should depend on the destination node basic rate set.
- */
-Static int
-rum_ack_rate(struct ieee80211com *ic, int rate)
-{
-	switch (rate) {
-	/* CCK rates */
-	case 2:
-		return 2;
-	case 4:
-	case 11:
-	case 22:
-		return (ic->ic_curmode == IEEE80211_MODE_11B) ? 4 : rate;
-
-	/* OFDM rates */
-	case 12:
-	case 18:
-		return 12;
-	case 24:
-	case 36:
-		return 24;
-	case 48:
-	case 72:
-	case 96:
-	case 108:
-		return 48;
-	}
-
-	/* default to 1Mbps */
-	return 2;
-}
-
-/*
  * Compute the duration (in us) needed to transmit `len' bytes at rate `rate'.
  * The function automatically determines the operating mode depending on the
  * given rate. `flags' indicates whether short preamble is in use or not.
@@ -1122,7 +1087,7 @@ rum_tx_data(struct rum_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2573_TX_ACK;
 
-		dur = rum_txtime(RUM_ACK_SIZE, rum_ack_rate(ic, rate),
+		dur = rum_txtime(RUM_ACK_SIZE, ieee80211_ack_rate(ni, rate),
 		    ic->ic_flags) + sc->sifs;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 

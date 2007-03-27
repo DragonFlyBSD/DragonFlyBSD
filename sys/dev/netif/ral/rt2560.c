@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.10 2007/02/06 12:38:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.11 2007/03/27 13:34:53 sephe Exp $
  */
 
 /*
@@ -97,7 +97,6 @@ static void		rt2560_rx_intr(struct rt2560_softc *);
 static void		rt2560_beacon_expire(struct rt2560_softc *);
 static void		rt2560_wakeup_expire(struct rt2560_softc *);
 static uint8_t		rt2560_rxrate(struct rt2560_rx_desc *);
-static int		rt2560_ack_rate(struct ieee80211com *, int);
 static uint16_t		rt2560_txtime(int, int, uint32_t);
 static uint8_t		rt2560_plcp_signal(int);
 static void		rt2560_setup_tx_desc(struct rt2560_softc *,
@@ -1503,40 +1502,6 @@ rt2560_rxrate(struct rt2560_rx_desc *desc)
 }
 
 /*
- * Return the expected ack rate for a frame transmitted at rate `rate'.
- * XXX: this should depend on the destination node basic rate set.
- */
-static int
-rt2560_ack_rate(struct ieee80211com *ic, int rate)
-{
-	switch (rate) {
-	/* CCK rates */
-	case 2:
-		return 2;
-	case 4:
-	case 11:
-	case 22:
-		return (ic->ic_curmode == IEEE80211_MODE_11B) ? 4 : rate;
-
-	/* OFDM rates */
-	case 12:
-	case 18:
-		return 12;
-	case 24:
-	case 36:
-		return 24;
-	case 48:
-	case 72:
-	case 96:
-	case 108:
-		return 48;
-	}
-
-	/* default to 1Mbps */
-	return 2;
-}
-
-/*
  * Compute the duration (in us) needed to transmit `len' bytes at rate `rate'.
  * The function automatically determines the operating mode depending on the
  * given rate. `flags' indicates whether short preamble is in use or not.
@@ -1851,7 +1816,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 		int rtsrate, ackrate;
 
 		rtsrate = IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan) ? 12 : 2;
-		ackrate = rt2560_ack_rate(ic, rate);
+		ackrate = ieee80211_ack_rate(ni, rate);
 
 		dur = rt2560_txtime(m0->m_pkthdr.len + 4, rate, ic->ic_flags) +
 		      rt2560_txtime(RAL_CTS_SIZE, rtsrate, ic->ic_flags) +
@@ -1961,8 +1926,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2560_TX_ACK;
-
-		dur = rt2560_txtime(RAL_ACK_SIZE, rt2560_ack_rate(ic, rate),
+		dur = rt2560_txtime(RAL_ACK_SIZE, ieee80211_ack_rate(ni, rate),
 		    ic->ic_flags) + RAL_SIFS;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 	}
