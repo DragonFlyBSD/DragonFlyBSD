@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.5 2006/11/20 05:31:49 pavalos Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.6 2007/03/28 19:05:58 pavalos Exp $ */
 /* opensslconf.h */
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
@@ -19,6 +19,9 @@
 #endif
 #ifndef OPENSSL_NO_RC5
 # define OPENSSL_NO_RC5
+#endif
+#ifndef OPENSSL_NO_RFC3779
+# define OPENSSL_NO_RFC3779
 #endif
 
 #endif /* OPENSSL_DOING_MAKEDEPEND */
@@ -51,6 +54,9 @@
 # endif
 # if defined(OPENSSL_NO_RC5) && !defined(NO_RC5)
 #  define NO_RC5
+# endif
+# if defined(OPENSSL_NO_RFC3779) && !defined(NO_RFC3779)
+#  define NO_RFC3779
 # endif
 #endif
 

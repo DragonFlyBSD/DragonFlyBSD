@@ -1,8 +1,7 @@
 Original source can be downloaded from OpenSSL at
-<http://www.openssl.org/source/openssl-0.9.8d.tar.gz>.
+<http://www.openssl.org/source/openssl-0.9.8e.tar.gz>.
 
-MD5 (openssl-0.9.8d.tar.gz) = 8ed1853538e1d05a1f5ada61ebf8bffa
-SHA1 (openssl-0.9.8d.tar.gz) = 4136fba00303a3d319d2052bfa8e1f09a2e12fc2
+MD5 (openssl-0.9.8e.tar.gz) = 3a7ff24f6ea5cd711984722ad654b927
 
 Here's some hints to upgrading:
 ./Configure shared no-asm --prefix=/usr --openssldir=/etc/ssl BSD-x86-elf

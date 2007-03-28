@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/usr.bin/openssl/Makefile.man,v 1.8 2006/11/20 05:31:53 pavalos Exp $
+# $DragonFly: src/secure/usr.bin/openssl/Makefile.man,v 1.9 2007/03/28 19:06:02 pavalos Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= CA.pl.1
 MAN+= asn1parse.1

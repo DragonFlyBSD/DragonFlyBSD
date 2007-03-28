@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/lib/libssl/Makefile.man,v 1.7 2006/11/20 05:31:52 pavalos Exp $
+# $DragonFly: src/secure/lib/libssl/Makefile.man,v 1.8 2007/03/28 19:06:01 pavalos Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= SSL_CIPHER_get_name.3
 MLINKS+= SSL_CIPHER_get_name.3 SSL_CIPHER_get_bits.3
@@ -140,7 +140,7 @@ MLINKS+= SSL_SESSION_get_ex_new_index.3 SSL_SESSION_get_ex_data.3
 MAN+= SSL_SESSION_get_time.3
 MLINKS+= SSL_SESSION_get_time.3 SSL_SESSION_set_time.3
 MLINKS+= SSL_SESSION_get_time.3 SSL_SESSION_get_timeout.3
-MLINKS+= SSL_SESSION_get_time.3 SSL_SESSION_get_timeout.3
+MLINKS+= SSL_SESSION_get_time.3 SSL_SESSION_set_timeout.3
 MAN+= SSL_accept.3
 MAN+= SSL_alert_type_string.3
 MLINKS+= SSL_alert_type_string.3 SSL_alert_type_string_long.3

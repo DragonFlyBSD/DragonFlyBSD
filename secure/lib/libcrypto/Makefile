@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.9 2006/09/06 12:40:51 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.10 2007/03/28 19:05:58 pavalos Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -216,7 +216,7 @@ SRCS+=	by_dir.c by_file.c x509_att.c x509_cmp.c x509_d2.c \
 
 # x509v3
 SRCS+=	pcy_cache.c pcy_data.c pcy_lib.c pcy_map.c pcy_node.c pcy_tree.c \
-	v3_akey.c v3_akeya.c v3_alt.c v3_bcons.c v3_bitst.c \
+	v3_addr.c v3_akey.c v3_akeya.c v3_asid.c v3_alt.c v3_bcons.c v3_bitst.c \
 	v3_conf.c v3_cpols.c v3_crld.c v3_enum.c v3_extku.c \
 	v3_genn.c v3_ia5.c v3_info.c v3_int.c v3_lib.c v3_ncons.c v3_ocsp.c \
 	v3_pci.c v3_pcia.c v3_pcons.c v3_pmaps.c v3_pku.c v3_prn.c v3_purp.c \
