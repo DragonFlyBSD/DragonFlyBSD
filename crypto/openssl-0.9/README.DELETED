@@ -73,7 +73,7 @@ crypto/asn1/p8_key.c
 crypto/asn1/tasn_prn.c
 crypto/bf/INSTALL
 crypto/bf/Makefile
-crypto/br/asm/
+crypto/bf/asm/
 crypto/bf/bf_cbc.c
 crypto/bf/bf_opts.c
 crypto/bf/bfs.cpp
