@@ -2,7 +2,7 @@
 +++ ssh_config	2006-11-20 09:42:52.000000000 -0700
 @@ -1,4 +1,5 @@
  #	$OpenBSD: ssh_config,v 1.22 2006/05/29 12:56:33 dtucker Exp $
-+#	$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.5 2006/11/20 17:15:46 pavalos Exp $
++#	$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.6 2007/03/29 00:49:01 pavalos Exp $
  
  # This is the ssh client system-wide configuration file.  See
  # ssh_config(5) for more information.  This file provides defaults for
@@ -19,7 +19,7 @@
  #   Cipher 3des
  #   Ciphers aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour,aes192-cbc,aes256-cbc
  #   EscapeChar ~
-+#   VersionAddendum DragonFly-20061120
++#   VersionAddendum DragonFly-20070328
 +
 +#   XAuthLocation /usr/pkg/xorg/bin/xauth
  #   Tunnel no

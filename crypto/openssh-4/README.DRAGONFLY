@@ -1,11 +1,11 @@
 Original source can be downloaded from OpenBSD at
-ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-4.5p1.tar.gz
+ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-4.6p1.tar.gz
 
-MD5 (openssh-4.5p1.tar.gz) = 6468c339886f78e8a149b88f695839dd
-SHA1 (openssh-4.5p1.tar.gz) = 2eefcbbeb9e4fa16fa4500dec107d1a09d3d02d7
+SHA1 (openssh-4.6p1.tar.gz) = b2aefeb1861b4688b1777436035239ec32a47da8
 
 A list of deleted files is in README.DELETED.
 
 Upgrading notes:
 Update version.h in secure/lib/libssh.
-Update ssh{,d}_config and ssh{,d}_config.5.
+Update ssh{,d}_config and ssh{,d}_config.5 in secure/usr.bin/ssh and
+secure/usr.sbin/sshd.
