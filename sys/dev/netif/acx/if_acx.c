@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.20 2007/02/17 07:05:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.21 2007/03/30 12:44:35 sephe Exp $
  */
 
 /*
@@ -2353,7 +2353,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	ctrl |= sc->chip_fw_txdesc_ctrl; /* extra chip specific flags */
 	ctrl &= ~(DESC_CTRL_HOSTOWN | DESC_CTRL_ACXDONE);
 
-	FW_TXDESC_SETFIELD_4(sc, txbuf, f_tx_len, m->m_pkthdr.len);
+	FW_TXDESC_SETFIELD_2(sc, txbuf, f_tx_len, m->m_pkthdr.len);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_error, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_data_nretry, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_rts_nretry, 0);
