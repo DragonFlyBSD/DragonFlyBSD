@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.8 2007/02/16 11:46:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.9 2007/03/30 12:46:58 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ struct bss_join_hdr {
 #define ACX_NDATA_TXOPT_SHORT_PREAMBLE	0x10
 
 #define BSS_JOIN_BUFLEN		\
-	(sizeof(struct bss_join_hdr) + IEEE80211_NWID_LEN - 1)
+	(sizeof(struct bss_join_hdr) + IEEE80211_NWID_LEN)
 #define BSS_JOIN_PARAM_SIZE(bj)	\
 	(sizeof(struct bss_join_hdr) + (bj)->esslen)
 
