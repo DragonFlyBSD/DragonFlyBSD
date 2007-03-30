@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rumvar.h,v 1.6 2006/08/18 15:11:12 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.1 2006/12/10 03:24:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.2 2007/03/30 11:39:33 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -98,6 +98,7 @@ struct rum_softc {
 
 	enum ieee80211_state		sc_state;
 	int				sc_arg;
+	int				sc_sifs;
 	struct usb_task			sc_task;
 
 	struct ieee80211_ratectl_stats	sc_stats;
@@ -128,7 +129,6 @@ struct rum_softc {
 	int				ext_5ghz_lna;
 	int				rssi_2ghz_corr;
 	int				rssi_5ghz_corr;
-	int				sifs;
 	uint8_t				bbp17;
 
 	struct bpf_if			*sc_drvbpf;

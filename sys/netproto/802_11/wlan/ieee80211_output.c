@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.18 2007/03/27 13:34:53 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.19 2007/03/30 11:39:34 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1874,4 +1874,84 @@ ieee80211_ack_rate(struct ieee80211_node *ni, uint8_t rate)
 		panic("unsupported rate %d\n", rate);
 	}
 	return ack_rate;
+}
+
+/* IEEE Std 802.11a-1999, page 9, table 79 */
+#define IEEE80211_OFDM_SYM_TIME			4
+#define IEEE80211_OFDM_PREAMBLE_TIME		16
+#define IEEE80211_OFDM_SIGNAL_TIME		4
+/* IEEE Std 802.11g-2003, page 44 */
+#define IEEE80211_OFDM_SIGNAL_EXT_TIME		6
+
+/* IEEE Std 802.11a-1999, page 7, figure 107 */
+#define IEEE80211_OFDM_PLCP_SERVICE_NBITS	16
+#define IEEE80211_OFDM_TAIL_NBITS		6
+
+#define IEEE80211_OFDM_NBITS(frmlen) \
+	(IEEE80211_OFDM_PLCP_SERVICE_NBITS + \
+	 ((frmlen) * NBBY) + \
+	 IEEE80211_OFDM_TAIL_NBITS)
+
+#define IEEE80211_OFDM_NBITS_PER_SYM(kbps) \
+	(((kbps) * IEEE80211_OFDM_SYM_TIME) / 1000)
+
+#define IEEE80211_OFDM_NSYMS(kbps, frmlen) \
+	howmany(IEEE80211_OFDM_NBITS((frmlen)), \
+		IEEE80211_OFDM_NBITS_PER_SYM((kbps)))
+
+#define IEEE80211_OFDM_TXTIME(kbps, frmlen) \
+	(IEEE80211_OFDM_PREAMBLE_TIME + \
+	 IEEE80211_OFDM_SIGNAL_TIME + \
+	 (IEEE80211_OFDM_NSYMS((kbps), (frmlen)) * IEEE80211_OFDM_SYM_TIME))
+
+/* IEEE Std 802.11b-1999, page 28, subclause 18.3.4 */
+#define IEEE80211_CCK_PREAMBLE_LEN	144
+#define IEEE80211_CCK_PLCP_HDR_TIME	48
+#define IEEE80211_CCK_SHPREAMBLE_LEN	72
+#define IEEE80211_CCK_SHPLCP_HDR_TIME	24
+
+#define IEEE80211_CCK_NBITS(frmlen)	((frmlen) * NBBY)
+#define IEEE80211_CCK_TXTIME(kbps, frmlen) \
+	(((IEEE80211_CCK_NBITS((frmlen)) * 1000) + (kbps) - 1) / (kbps))
+
+uint16_t
+ieee80211_txtime(struct ieee80211_node *ni, u_int len, uint8_t rs_rate,
+		 uint32_t flags)
+{
+	struct ieee80211com *ic = ni->ni_ic;
+	uint16_t txtime;
+	int rate, modtype;
+
+	rate = rs_rate * 500;	/* ieee80211 rate -> kbps */
+
+	modtype = ieee80211_rate2modtype(rs_rate);
+	if (modtype == IEEE80211_MODTYPE_OFDM) {
+		/*
+		 * IEEE Std 802.11a-1999, page 37, equation (29)
+		 * IEEE Std 802.11g-2003, page 44, equation (42)
+		 */
+		txtime = IEEE80211_OFDM_TXTIME(rate, len);
+		if (ic->ic_curmode == IEEE80211_MODE_11G)
+			txtime += IEEE80211_OFDM_SIGNAL_EXT_TIME;
+	} else {
+		/*
+		 * IEEE Std 802.11b-1999, page 28, subclause 18.3.4
+		 * IEEE Std 802.11g-2003, page 45, equation (43)
+		 */
+		if (modtype == IEEE80211_MODTYPE_PBCC)
+			++len;
+		txtime = IEEE80211_CCK_TXTIME(rate, len);
+
+		/*
+		 * Short preamble is not applicable for DS 1Mbits/s
+		 */
+		if (rs_rate != 2 && (flags & IEEE80211_F_SHPREAMBLE)) {
+			txtime += IEEE80211_CCK_SHPREAMBLE_LEN +
+				  IEEE80211_CCK_SHPLCP_HDR_TIME;
+		} else {
+			txtime += IEEE80211_CCK_PREAMBLE_LEN +
+				  IEEE80211_CCK_PLCP_HDR_TIME;
+		}
+	}
+	return txtime;
 }

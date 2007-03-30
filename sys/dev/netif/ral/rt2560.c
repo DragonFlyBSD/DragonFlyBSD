@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.11 2007/03/27 13:34:53 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.12 2007/03/30 11:39:33 sephe Exp $
  */
 
 /*
@@ -97,7 +97,6 @@ static void		rt2560_rx_intr(struct rt2560_softc *);
 static void		rt2560_beacon_expire(struct rt2560_softc *);
 static void		rt2560_wakeup_expire(struct rt2560_softc *);
 static uint8_t		rt2560_rxrate(struct rt2560_rx_desc *);
-static uint16_t		rt2560_txtime(int, int, uint32_t);
 static uint8_t		rt2560_plcp_signal(int);
 static void		rt2560_setup_tx_desc(struct rt2560_softc *,
 			    struct rt2560_tx_desc *, uint32_t, int, int, int,
@@ -320,6 +319,8 @@ rt2560_attach(device_t dev, int id)
 		    IEEE80211_CHAN_CCK | IEEE80211_CHAN_OFDM |
 		    IEEE80211_CHAN_DYN | IEEE80211_CHAN_2GHZ;
 	}
+
+	sc->sc_sifs = IEEE80211_DUR_SIFS;	/* Default SIFS */
 
 	ieee80211_ifattach(ic);
 	ic->ic_node_alloc = rt2560_node_alloc;
@@ -1463,10 +1464,8 @@ rt2560_intr(void *arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RAL_RATE_IS_OFDM(rate) ((rate) >= 12 && (rate) != 22)
 
-#define RAL_ACK_SIZE	14	/* 10 + 4(FCS) */
-#define RAL_CTS_SIZE	14	/* 10 + 4(FCS) */
-
-#define RAL_SIFS		10	/* us */
+#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
+#define RAL_CTS_SIZE	(sizeof(struct ieee80211_frame_cts) + IEEE80211_FCS_LEN)
 
 #define RT2560_TXRX_TURNAROUND	10	/* us */
 
@@ -1499,32 +1498,6 @@ rt2560_rxrate(struct rt2560_rx_desc *desc)
 			return 22;
 	}
 	return 2;	/* should not get there */
-}
-
-/*
- * Compute the duration (in us) needed to transmit `len' bytes at rate `rate'.
- * The function automatically determines the operating mode depending on the
- * given rate. `flags' indicates whether short preamble is in use or not.
- */
-static uint16_t
-rt2560_txtime(int len, int rate, uint32_t flags)
-{
-	uint16_t txtime;
-
-	if (RAL_RATE_IS_OFDM(rate)) {
-		/* IEEE Std 802.11a-1999, pp. 37 */
-		txtime = (8 + 4 * len + 3 + rate - 1) / rate;
-		txtime = 16 + 4 + 4 * txtime + 6;
-	} else {
-		/* IEEE Std 802.11b-1999, pp. 28 */
-		txtime = (16 * len + rate - 1) / rate;
-		if (rate != 2 && (flags & IEEE80211_F_SHPREAMBLE))
-			txtime +=  72 + 24;
-		else
-			txtime += 144 + 48;
-	}
-
-	return txtime;
 }
 
 static uint8_t
@@ -1702,8 +1675,8 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2560_TX_ACK;
 
-		dur = rt2560_txtime(RAL_ACK_SIZE, rate, ic->ic_flags) +
-		      RAL_SIFS;
+		dur = ieee80211_txtime(ni, RAL_ACK_SIZE, rate, ic->ic_flags) +
+		      sc->sc_sifs;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 
 		/* tell hardware to add timestamp for probe responses */
@@ -1777,7 +1750,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 	bus_addr_t paddr;
 	uint16_t dur;
 	uint32_t flags = 0;
-	int rate, error;
+	int rate, error, ackrate;
 
 	wh = mtod(m0, struct ieee80211_frame *);
 
@@ -1804,6 +1777,8 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 		wh = mtod(m0, struct ieee80211_frame *);
 	}
 
+	ackrate = ieee80211_ack_rate(ni, rate);
+
 	/*
 	 * IEEE Std 802.11-1999, pp 82: "A STA shall use an RTS/CTS exchange
 	 * for directed frames only when the length of the MPDU is greater
@@ -1813,15 +1788,14 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 	    m0->m_pkthdr.len > ic->ic_rtsthreshold) {
 		struct mbuf *m;
 		uint16_t dur;
-		int rtsrate, ackrate;
+		int rtsrate;
 
 		rtsrate = IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan) ? 12 : 2;
-		ackrate = ieee80211_ack_rate(ni, rate);
-
-		dur = rt2560_txtime(m0->m_pkthdr.len + 4, rate, ic->ic_flags) +
-		      rt2560_txtime(RAL_CTS_SIZE, rtsrate, ic->ic_flags) +
-		      rt2560_txtime(RAL_ACK_SIZE, ackrate, ic->ic_flags) +
-		      3 * RAL_SIFS;
+		dur = ieee80211_txtime(ni, m0->m_pkthdr.len + IEEE80211_FCS_LEN,
+				       rate, ic->ic_flags) +
+		      ieee80211_txtime(ni, RAL_CTS_SIZE, rtsrate, ic->ic_flags)+
+		      ieee80211_txtime(ni, RAL_ACK_SIZE, ackrate, ic->ic_flags)+
+		      3 * sc->sc_sifs;
 
 		m = rt2560_get_rts(sc, wh, dur);
 
@@ -1926,8 +1900,8 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2560_TX_ACK;
-		dur = rt2560_txtime(RAL_ACK_SIZE, ieee80211_ack_rate(ni, rate),
-		    ic->ic_flags) + RAL_SIFS;
+		dur = ieee80211_txtime(ni, RAL_ACK_SIZE, ackrate, ic->ic_flags)+
+		      sc->sc_sifs;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 	}
 
@@ -2262,6 +2236,9 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 		/* clear CRC errors */
 		RAL_READ(sc, RT2560_CNT0);
 	}
+
+	sc->sc_sifs = IEEE80211_IS_CHAN_5GHZ(c) ? IEEE80211_DUR_OFDM_SIFS
+						: IEEE80211_DUR_SIFS;
 }
 
 #if 0
@@ -2361,7 +2338,7 @@ rt2560_update_slot(struct ifnet *ifp)
 	slottime = (ic->ic_flags & IEEE80211_F_SHSLOT) ? 9 : 20;
 
 	/* update the MAC slot boundaries */
-	tx_sifs = RAL_SIFS - RT2560_TXRX_TURNAROUND;
+	tx_sifs = sc->sc_sifs - RT2560_TXRX_TURNAROUND;
 	tx_pifs = tx_sifs + slottime;
 	tx_difs = tx_sifs + 2 * slottime;
 	eifs = (ic->ic_curmode == IEEE80211_MODE_11B) ? 364 : 60;

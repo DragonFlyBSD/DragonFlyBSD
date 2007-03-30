@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.8 2007/03/27 13:34:53 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.9 2007/03/30 11:39:34 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -115,7 +115,6 @@ Static void		ural_txeof(usbd_xfer_handle, usbd_private_handle,
 			    usbd_status);
 Static void		ural_rxeof(usbd_xfer_handle, usbd_private_handle,
 			    usbd_status);
-Static uint16_t		ural_txtime(int, int, uint32_t);
 Static uint8_t		ural_plcp_signal(int);
 Static void		ural_setup_tx_desc(struct ural_softc *,
 			    struct ural_tx_desc *, uint32_t, int, int);
@@ -501,6 +500,8 @@ USB_ATTACH(ural)
 		    IEEE80211_CHAN_DYN | IEEE80211_CHAN_2GHZ;
 	}
 
+	sc->sc_sifs = IEEE80211_DUR_SIFS;	/* Default SIFS */
+
 	ieee80211_ifattach(ic);
 	ic->ic_reset = ural_reset;
 	/* enable s/w bmiss handling in sta mode */
@@ -857,10 +858,7 @@ ural_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RAL_RATE_IS_OFDM(rate) ((rate) >= 12 && (rate) != 22)
 
-#define RAL_ACK_SIZE	14	/* 10 + 4(FCS) */
-#define RAL_CTS_SIZE	14	/* 10 + 4(FCS) */
-
-#define RAL_SIFS		10	/* us */
+#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
 
 #define RAL_RXTX_TURNAROUND	5	/* us */
 
@@ -1031,31 +1029,6 @@ skip:	/* setup a new transfer */
 	usbd_transfer(xfer);
 }
 
-/*
- * Compute the duration (in us) needed to transmit `len' bytes at rate `rate'.
- * The function automatically determines the operating mode depending on the
- * given rate. `flags' indicates whether short preamble is in use or not.
- */
-Static uint16_t
-ural_txtime(int len, int rate, uint32_t flags)
-{
-	uint16_t txtime;
-
-	if (RAL_RATE_IS_OFDM(rate)) {
-		/* IEEE Std 802.11a-1999, pp. 37 */
-		txtime = (8 + 4 * len + 3 + rate - 1) / rate;
-		txtime = 16 + 4 + 4 * txtime + 6;
-	} else {
-		/* IEEE Std 802.11b-1999, pp. 28 */
-		txtime = (16 * len + rate - 1) / rate;
-		if (rate != 2 && (flags & IEEE80211_F_SHPREAMBLE))
-			txtime +=  72 + 24;
-		else
-			txtime += 144 + 48;
-	}
-	return txtime;
-}
-
 Static uint8_t
 ural_plcp_signal(int rate)
 {
@@ -1204,7 +1177,8 @@ ural_tx_mgt(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RAL_TX_ACK;
 
-		dur = ural_txtime(RAL_ACK_SIZE, rate, ic->ic_flags) + RAL_SIFS;
+		dur = ieee80211_txtime(ni, RAL_ACK_SIZE, rate, ic->ic_flags) +
+		      sc->sc_sifs;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 
 		/* tell hardware to add timestamp for probe responses */
@@ -1295,8 +1269,9 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 		flags |= RAL_TX_ACK;
 		flags |= RAL_TX_RETRY(sc->sc_tx_retries);
 
-		dur = ural_txtime(RAL_ACK_SIZE, ieee80211_ack_rate(ni, rate),
-		    ic->ic_flags) + RAL_SIFS;
+		dur = ieee80211_txtime(ni, RAL_ACK_SIZE,
+			ieee80211_ack_rate(ni, rate), ic->ic_flags) +
+			sc->sc_sifs;
 		*(uint16_t *)wh->i_dur = htole16(dur);
 	}
 
@@ -1784,6 +1759,9 @@ ural_set_chan(struct ural_softc *sc, struct ieee80211_channel *c)
 		DELAY(10000);
 		ural_disable_rf_tune(sc);
 	}
+
+	sc->sc_sifs = IEEE80211_IS_CHAN_5GHZ(c) ? IEEE80211_DUR_OFDM_SIFS
+						: IEEE80211_DUR_SIFS;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 }

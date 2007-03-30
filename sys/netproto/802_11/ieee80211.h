@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.5 2007/03/16 12:59:10 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.6 2007/03/30 11:39:34 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -40,6 +40,8 @@
  */
 
 #define	IEEE80211_ADDR_LEN	6		/* size of 802.11 address */
+#define IEEE80211_FCS_LEN	4		/* size of 802.11 frame FCS */
+
 /* is 802.11 address multicast/broadcast? */
 #define	IEEE80211_IS_MULTICAST(_a)	(*(_a) & 0x01)
 
@@ -662,6 +664,12 @@ enum {
  */
 #define IEEE80211_HWBMISS_MIN   1
 #define IEEE80211_HWBMISS_MAX   255
+
+/*
+ * IFS (microseconds)
+ */
+#define IEEE80211_DUR_SIFS	10	/* DS/CCK/ERP-OFDM SIFS (11b/g) */
+#define IEEE80211_DUR_OFDM_SIFS	16	/* OFDM SIFS (11a) */
 
 #define IEEE80211_MGT_SUBTYPE_NAMES {			\
 	"assoc-req",		"assoc-resp",		\

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.3 2006/11/20 15:03:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.4 2007/03/30 11:39:33 sephe Exp $
  */
 
 struct rt2661_rx_radiotap_header {
@@ -106,6 +106,7 @@ struct rt2661_softc {
 	struct callout			rssadapt_ch;
 
 	int				sc_tx_timer;
+	int				sc_sifs;
 
 	struct ieee80211_channel	*sc_curchan;
 

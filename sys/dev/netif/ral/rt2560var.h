@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.2 2007/02/05 15:19:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.3 2007/03/30 11:39:33 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -119,6 +119,7 @@ struct rt2560_softc {
 	struct callout		rssadapt_ch;
 
 	int			sc_tx_timer;
+	int			sc_sifs;
 
 	uint32_t		asic_rev;
 	uint32_t		eeprom_rev;
