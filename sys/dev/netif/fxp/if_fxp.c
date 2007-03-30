@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.48 2006/12/24 03:30:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.49 2007/03/30 14:07:13 sephe Exp $
  */
 
 /*
@@ -170,6 +170,7 @@ static struct fxp_ident fxp_ident_table[] = {
      { 0x1065,	-1,	"Intel 82562ET/EZ/GT/GZ PRO/100 VE Ethernet" },
      { 0x1068,	-1,	"Intel 82801FBM (ICH6-M) Pro/100 VE Ethernet" },
      { 0x1069,	-1,	"Intel 82562EM/EX/GX Pro/100 Ethernet" },
+     { 0x1091,	-1,	"Intel 82562GX Pro/100 Ethernet" },
      { 0x1092,	-1,	"Intel Pro/100 VE Network Connection" },
      { 0x1093,	-1,	"Intel Pro/100 VM Network Connection" },
      { 0x1094,	-1,	"Intel Pro/100 946GZ (ICH7) Network Connection" },
