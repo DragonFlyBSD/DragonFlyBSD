@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.44 2007/03/26 12:13:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.45 2007/03/31 07:47:17 sephe Exp $
  */
 
 /*
@@ -1727,7 +1727,7 @@ ti_txeof(struct ti_softc *sc)
 		uint32_t idx = 0;
 
 		idx = sc->ti_tx_saved_considx;
-		if (sc->ti_hwrev != TI_HWREV_TIGON) {
+		if (sc->ti_hwrev == TI_HWREV_TIGON) {
 			if (idx > 383)
 				CSR_WRITE_4(sc, TI_WINBASE,
 				    TI_TX_RING_BASE + 6144);
