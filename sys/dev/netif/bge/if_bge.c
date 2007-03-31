@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.59 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.59.2.1 2007/03/31 06:14:50 sephe Exp $
  *
  */
 
@@ -2859,7 +2859,10 @@ static void
 bge_shutdown(device_t dev)
 {
 	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	bge_stop(sc); 
 	bge_reset(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
