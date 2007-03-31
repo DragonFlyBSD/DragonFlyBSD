@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.25 2007/02/04 13:43:53 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.26 2007/03/31 07:19:22 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.24 2006/12/25 14:04:58 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.25 2007/02/04 13:42:08 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2301,6 +2301,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Bluesteel Networks",
 	    "5601",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5752,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5752 10/100/1000 Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5700,
