@@ -1,10 +1,10 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.46 2007/03/30 08:45:28 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.47 2007/03/31 08:16:52 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
 	accf_http.9 \
-	acl.9 extattr.9 \
+	acl.9 \
 	at_exit.9 \
 	at_fork.9 \
 	bios.9 \
@@ -63,6 +63,7 @@ MAN=	accept_filter.9 \
 	devtoname.9 \
 	driver.9 \
 	DRIVER_MODULE.9 \
+	extattr.9 \
 	fetch.9 \
 	hash.9 \
 	ieee80211.9 \
@@ -105,13 +106,14 @@ MAN=	accept_filter.9 \
 	rman.9 \
 	rtalloc.9 \
 	rtentry.9 \
-	sbuf.9 sysctl.9 \
+	sbuf.9 \
 	sleep.9 \
 	spinlock.9 \
 	store.9 \
 	style.9 \
 	suser.9 \
 	SYSCALL_MODULE.9 \
+	sysctl.9 \
 	sysctl_add_oid.9 \
 	sysctl_ctx_init.9 \
 	time.9 \
