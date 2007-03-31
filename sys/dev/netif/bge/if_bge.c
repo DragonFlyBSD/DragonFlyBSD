@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.63 2007/03/31 07:24:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.64 2007/03/31 09:31:57 sephe Exp $
  *
  */
 
@@ -221,6 +221,7 @@ static uint8_t	bge_eeprom_getbyte(struct bge_softc *, uint32_t, uint8_t *);
 static int	bge_read_eeprom(struct bge_softc *, caddr_t, uint32_t, size_t);
 
 static void	bge_setmulti(struct bge_softc *);
+static void	bge_setpromisc(struct bge_softc *);
 
 static void	bge_handle_events(struct bge_softc *);
 static int	bge_alloc_jumbo_mem(struct bge_softc *);
@@ -2502,11 +2503,7 @@ bge_init(void *xsc)
 	CSR_WRITE_4(sc, BGE_MAC_ADDR1_HI, (htons(m[1]) << 16) | htons(m[2]));
 
 	/* Enable or disable promiscuous mode as needed. */
-	if (ifp->if_flags & IFF_PROMISC) {
-		BGE_SETBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
-	} else {
-		BGE_CLRBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
-	}
+	bge_setpromisc(sc);
 
 	/* Program multicast filter. */
 	bge_setmulti(sc);
@@ -2680,26 +2677,25 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
-			/*
-			 * If only the state of the PROMISC flag changed,
-			 * then just use the 'set promisc mode' command
-			 * instead of reinitializing the entire NIC. Doing
-			 * a full re-init means reloading the firmware and
-			 * waiting for it to start up, which may take a
-			 * second or two.
-			 */
-			if (ifp->if_flags & IFF_RUNNING &&
-			    ifp->if_flags & IFF_PROMISC &&
-			    !(sc->bge_if_flags & IFF_PROMISC)) {
-				BGE_SETBIT(sc, BGE_RX_MODE,
-				    BGE_RXMODE_RX_PROMISC);
-			} else if (ifp->if_flags & IFF_RUNNING &&
-			    !(ifp->if_flags & IFF_PROMISC) &&
-			    sc->bge_if_flags & IFF_PROMISC) {
-				BGE_CLRBIT(sc, BGE_RX_MODE,
-				    BGE_RXMODE_RX_PROMISC);
-			} else
+			if (ifp->if_flags & IFF_RUNNING) {
+				int flags = ifp->if_flags & sc->bge_if_flags;
+
+				/*
+				 * If only the state of the PROMISC flag
+				 * changed, then just use the 'set promisc
+				 * mode' command instead of reinitializing
+				 * the entire NIC. Doing a full re-init
+				 * means reloading the firmware and waiting
+				 * for it to start up, which may take a
+				 * second or two.  Similarly for ALLMULTI.
+				 */
+				if (flags & IFF_PROMISC)
+					bge_setpromisc(sc);
+				if (flags & IFF_ALLMULTI)
+					bge_setmulti(sc);
+			} else {
 				bge_init(sc);
+			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
 				bge_stop(sc);
@@ -2910,4 +2906,15 @@ bge_resume(device_t dev)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
+}
+
+static void
+bge_setpromisc(struct bge_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	if (ifp->if_flags & IFF_PROMISC)
+		BGE_SETBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
+	else
+		BGE_CLRBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
 }
