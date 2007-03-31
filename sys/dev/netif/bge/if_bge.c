@@ -30,8 +30,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.60 2007/03/26 12:13:58 sephe Exp $
+ * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.61 2007/03/31 05:12:24 sephe Exp $
  *
  */
 
@@ -2486,7 +2486,7 @@ bge_init(void *xsc)
 
 	/* Specify MTU. */
 	CSR_WRITE_4(sc, BGE_RX_MTU, ifp->if_mtu +
-	    ETHER_HDR_LEN + ETHER_CRC_LEN);
+	    ETHER_HDR_LEN + ETHER_CRC_LEN + EVL_ENCAPLEN);
 
 	/* Load our MAC address. */
 	m = (uint16_t *)&sc->arpcom.ac_enaddr[0];

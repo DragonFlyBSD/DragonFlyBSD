@@ -30,8 +30,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.14 2006/08/12 05:17:03 swildner Exp $
+ * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.15 2007/03/31 05:12:24 sephe Exp $
  */
 
 /*
