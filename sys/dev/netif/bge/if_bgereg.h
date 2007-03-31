@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.15 2007/03/31 05:12:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.16 2007/03/31 07:24:34 sephe Exp $
  */
 
 /*
@@ -250,6 +250,7 @@
 #define BGE_ASICREV_BCM5705		0x03
 #define BGE_ASICREV_BCM5750		0x04
 #define BGE_ASICREV_BCM5714		0x05
+#define BGE_ASICREV_BCM5752		0x06
 
 /* chip revisions */
 #define BGE_CHIPREV(x)			((x) >> 24)

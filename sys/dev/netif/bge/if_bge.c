@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.62 2007/03/31 06:07:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.63 2007/03/31 07:24:34 sephe Exp $
  *
  */
 
@@ -169,6 +169,8 @@ static struct bge_type bge_devs[] = {
 		"Broadcom BCM5751 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5751M,
 		"Broadcom BCM5751M Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5752,
+		"Broadcom BCM5752 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
 		"Broadcom BCM5782 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5788,
@@ -1567,10 +1569,11 @@ bge_attach(device_t dev)
 	sc->bge_chiprev = BGE_CHIPREV(sc->bge_chipid);
 
 	/*
-	 * Treat the 5714 like the 5750 until we have more info
+	 * Treat the 5714 and the 5752 like the 5750 until we have more info
 	 * on this chip.
 	 */
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5714)
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5714 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5752)
 		sc->bge_asicrev = BGE_ASICREV_BCM5750;
 
 	/*
