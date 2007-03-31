@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.48 2007/03/31 10:54:52 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.49 2007/03/31 11:21:47 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -63,6 +63,7 @@ MAN=	accept_filter.9 \
 	devtoname.9 \
 	driver.9 \
 	DRIVER_MODULE.9 \
+	EVENTHANDLER.9 \
 	extattr.9 \
 	fetch.9 \
 	hash.9 \
@@ -232,6 +233,13 @@ MLINKS+=devstat.9 devicestat.9 \
 	devstat.9 devstat_end_transaction_buf.9 \
 	devstat.9 devstat_remove_entry.9 \
 	devstat.9 devstat_start_transaction.9
+MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
+	EVENTHANDLER.9 EVENTHANDLER_DEREGISTER.9 \
+	EVENTHANDLER.9 eventhandler_deregister.9 \
+	EVENTHANDLER.9 eventhandler_find_list.9 \
+	EVENTHANDLER.9 EVENTHANDLER_INVOKE.9 \
+	EVENTHANDLER.9 EVENTHANDLER_REGISTER.9 \
+	EVENTHANDLER.9 eventhandler_register.9
 MLINKS+=fetch.9 fubyte.9 \
 	fetch.9 fusword.9 \
 	fetch.9 fuword.9
