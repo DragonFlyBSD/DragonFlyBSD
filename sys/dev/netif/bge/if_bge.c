@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.61 2007/03/31 05:12:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.62 2007/03/31 06:07:16 sephe Exp $
  *
  */
 
@@ -210,6 +210,8 @@ static void	bge_init(void *);
 static void	bge_stop(struct bge_softc *);
 static void	bge_watchdog(struct ifnet *);
 static void	bge_shutdown(device_t);
+static int	bge_suspend(device_t);
+static int	bge_resume(device_t);
 static int	bge_ifmedia_upd(struct ifnet *);
 static void	bge_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
@@ -269,6 +271,8 @@ static device_method_t bge_methods[] = {
 	DEVMETHOD(device_attach,	bge_attach),
 	DEVMETHOD(device_detach,	bge_detach),
 	DEVMETHOD(device_shutdown,	bge_shutdown),
+	DEVMETHOD(device_suspend,	bge_suspend),
+	DEVMETHOD(device_resume,	bge_resume),
 
 	/* bus interface */
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
@@ -2466,9 +2470,10 @@ bge_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t *m;
 
-	if (ifp->if_flags & IFF_RUNNING) {
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (ifp->if_flags & IFF_RUNNING)
 		return;
-	}
 
 	/* Cancel pending I/O and flush buffers. */
 	bge_stop(sc);
@@ -2655,6 +2660,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	int mask, error = 0;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	switch(command) {
 	case SIOCSIFMTU:
 		/* Disallow jumbo frames on 5705/5750. */
@@ -2691,9 +2698,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			} else
 				bge_init(sc);
 		} else {
-			if (ifp->if_flags & IFF_RUNNING) {
+			if (ifp->if_flags & IFF_RUNNING)
 				bge_stop(sc);
-			}
 		}
 		sc->bge_if_flags = ifp->if_flags;
 		error = 0;
@@ -2760,6 +2766,8 @@ bge_stop(struct bge_softc *sc)
 	struct ifmedia_entry *ifm;
 	struct mii_data *mii = NULL;
 	int mtmp, itmp;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!sc->bge_tbi)
 		mii = device_get_softc(sc->bge_miibus);
@@ -2860,7 +2868,43 @@ static void
 bge_shutdown(device_t dev)
 {
 	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	bge_stop(sc); 
+	lwkt_serialize_enter(ifp->if_serializer);
+	bge_stop(sc);
 	bge_reset(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static int
+bge_suspend(device_t dev)
+{
+	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	bge_stop(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return 0;
+}
+
+static int
+bge_resume(device_t dev)
+{
+	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (ifp->if_flags & IFF_UP) {
+		bge_init(sc);
+
+		if (ifp->if_flags & IFF_RUNNING)
+			ifp->if_start(ifp);
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return 0;
 }
