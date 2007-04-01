@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.17 2007/03/06 12:22:39 sephe Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.18 2007/04/01 14:17:03 sephe Exp $
 .\"
 .Dd November 19, 2006
 .Dt IFCONFIG 8
@@ -827,7 +827,9 @@ The set of valid
 .Ar algorithm
 is
 .Cm onoe
-(Onoe TX rate control algorithm)
+(Onoe TX rate control algorithm),
+.Cm sample
+(Sample TX rate control algorithm)
 and
 .Cm amrr
 (AMRR TX rate control algorithm).
