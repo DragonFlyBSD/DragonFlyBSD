@@ -1,5 +1,5 @@
-# $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.26.2.10 2003/03/05 23:03:06 peter Exp $
-# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-cvs-supfile,v 1.1 2003/08/11 12:14:24 rob Exp $
+# $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.43 2004/05/24 06:23:15 cjc Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-cvs-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
 # CVS development tree of the FreeBSD system.
@@ -56,7 +56,9 @@
 *default release=cvs
 *default delete use-rel-suffix
 
-# If your network link is a T1 or faster, comment out the following line.
+# If you seem to be limited by CPU rather than network or disk bandwidth, try
+# commenting out the following line.  (Normally, today's CPUs are fast enough
+# that you want to run compression.)
 *default compress
 
 ## Main Source Tree.
@@ -75,6 +77,7 @@ src-all
 #src-gnu
 #src-include
 #src-kerberos5
+#src-kerberosIV
 #src-lib
 #src-libexec
 #src-release
@@ -88,6 +91,7 @@ src-all
 # collection. They are no longer export-restricted and are a part of
 # src-all
 #src-crypto
+#src-eBones
 #src-secure
 #src-sys-crypto
 
@@ -105,6 +109,8 @@ ports-all
 #
 #ports-base
 #
+#ports-accessibility
+#ports-arabic
 #ports-archivers
 #ports-astro
 #ports-audio
@@ -117,6 +123,7 @@ ports-all
 #ports-databases
 #ports-deskutils
 #ports-devel
+#ports-dns
 #ports-editors
 #ports-emulators
 #ports-finance
@@ -138,9 +145,11 @@ ports-all
 #ports-misc
 #ports-multimedia
 #ports-net
+#ports-net-mgmt
 #ports-news
 #ports-palm
 #ports-picobsd
+#ports-polish
 #ports-portuguese
 #ports-print
 #ports-russian
@@ -157,6 +166,7 @@ ports-all
 #ports-x11-fm
 #ports-x11-fonts
 #ports-x11-servers
+#ports-x11-themes
 #ports-x11-toolkits
 #ports-x11-wm
 
@@ -166,6 +176,12 @@ ports-all
 # mega-collection.  It includes all of the individual "doc-*"
 # collections,
 doc-all
+
+## Website
+#
+# This collection retrieves the www tree of the FreeBSD
+# repository
+www
 
 ## CVSROOT control files
 #

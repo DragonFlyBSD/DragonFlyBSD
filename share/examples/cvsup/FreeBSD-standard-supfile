@@ -1,8 +1,8 @@
-# $FreeBSD: src/share/examples/cvsup/standard-supfile,v 1.17.2.6 2002/08/06 08:24:46 blackend Exp $
-# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-standard-supfile,v 1.1 2003/08/11 12:14:24 rob Exp $
+# $FreeBSD: src/share/examples/cvsup/standard-supfile,v 1.23 2004/05/24 06:23:15 cjc Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-standard-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
-# FreeBSD-stable source tree.
+# FreeBSD-current source tree.
 #
 # CVSup (CVS Update Protocol) allows you to download the latest CVS
 # tree (or any branch of development therefrom) to your system easily
@@ -52,10 +52,12 @@
 *default host=CHANGE_THIS.FreeBSD.org
 *default base=/usr
 *default prefix=/usr
-*default release=cvs tag=RELENG_4
+*default release=cvs tag=.
 *default delete use-rel-suffix
 
-# If your network link is a T1 or faster, comment out the following line.
+# If you seem to be limited by CPU rather than network or disk bandwidth, try
+# commenting out the following line.  (Normally, today's CPUs are fast enough
+# that you want to run compression.)
 *default compress
 
 ## Main Source Tree.
@@ -74,6 +76,7 @@ src-all
 #src-gnu
 #src-include
 #src-kerberos5
+#src-kerberosIV
 #src-lib
 #src-libexec
 #src-release
@@ -87,5 +90,6 @@ src-all
 # collection. They are no longer export-restricted and are a part of
 # src-all
 #src-crypto
+#src-eBones
 #src-secure
 #src-sys-crypto

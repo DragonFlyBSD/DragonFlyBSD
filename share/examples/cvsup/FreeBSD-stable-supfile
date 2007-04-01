@@ -1,5 +1,5 @@
-# $FreeBSD: src/share/examples/cvsup/stable-supfile,v 1.19.2.6 2002/08/06 08:24:46 blackend Exp $
-# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-stable-supfile,v 1.1 2003/08/11 12:14:24 rob Exp $
+# $FreeBSD: src/share/examples/cvsup/stable-supfile,v 1.30 2005/09/12 13:31:33 kensmith Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-stable-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
 # FreeBSD-stable source tree.
@@ -69,12 +69,15 @@
 *default host=CHANGE_THIS.FreeBSD.org
 *default base=/usr
 *default prefix=/usr
-# The following line is for 4-stable.  If you want 3-stable or 2.2-stable,
-# change "RELENG_4" to "RELENG_3" or "RELENG_2_2" respectively.
-*default release=cvs tag=RELENG_4
+# The following line is for 6-stable.  If you want 5-stable, 4-stable,
+# 3-stable, or 2.2-stable, change to "RELENG_5", "RELENG_4", "RELENG_3",
+# or "RELENG_2_2" respectively.
+*default release=cvs tag=RELENG_6
 *default delete use-rel-suffix
 
-# If your network link is a T1 or faster, comment out the following line.
+# If you seem to be limited by CPU rather than network or disk bandwidth, try
+# commenting out the following line.  (Normally, today's CPUs are fast enough
+# that you want to run compression.)
 *default compress
 
 ## Main Source Tree.
@@ -94,6 +97,7 @@ src-all
 #src-gnu
 #src-include
 #src-kerberos5
+#src-kerberosIV
 #src-lib
 #src-libexec
 #src-release
@@ -107,5 +111,6 @@ src-all
 # collection. They are no longer export-restricted and are a part of
 # src-all
 #src-crypto
+#src-eBones
 #src-secure
 #src-sys-crypto

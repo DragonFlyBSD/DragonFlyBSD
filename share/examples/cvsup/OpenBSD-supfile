@@ -1,11 +1,11 @@
-# $DragonFly: src/share/examples/cvsup/OpenBSD-supfile,v 1.1 2003/08/11 12:42:05 rob Exp $
+# $DragonFly: src/share/examples/cvsup/OpenBSD-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # OPENBSD-CVS-SUPFILE
 #
 # This file will by default maintain a copy of the OpenBSD CVS tree in
 # /home/obcvs
 #
-# A list of OpenBSD CVSup mirrors is availible at:
+# A list of OpenBSD CVSup mirrors is available at:
 #
 #	http://www.openbsd.org/cvsup.html#CVSROOT
 #
@@ -19,8 +19,7 @@
 #
 # host=<mirror_site>
 #		This specifies the server host which will supply the
-#		file updates.  If you leave it at its default a random
-#		mirror site will be used.
+#		file updates.
 #
 # base=/usr
 #		This specifies the root where CVSup will store information
@@ -34,12 +33,12 @@
 #
 # prefix=/home/obcvs
 #		This specifies where to place the requested files.  A
-#		setting of "/home/ncvs" will place all of the files
-#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
-#		"/home/ncvs/ports/archivers").  The prefix directory
+#		setting of "/home/obcvs" will place all of the files
+#		requested in /home/obcvs (e.g., "/home/obcvs/src/bin",
+#		"/home/obcvs/ports/archivers").  The prefix directory
 #		must exist in order to run CVSup.
 #
-*default host=cvsup.usa.openbsd.org
+*default host=CHANGE_THIS.openbsd.org
 *default base=/usr
 *default prefix=/home/obcvs
 *default release=cvs

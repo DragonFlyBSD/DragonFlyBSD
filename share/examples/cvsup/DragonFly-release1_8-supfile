@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-release1_8-supfile,v 1.1 2007/01/25 18:46:02 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-release1_8-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # DRAGONFLY-RELEASE1_8-SUPFILE
 #
@@ -20,8 +20,7 @@
 #
 # host=<mirror_site>
 #		This specifies the server host which will supply the
-#		file updates.  If you leave it at its default a random
-#		mirror site will be used.
+#		file updates.
 #
 # base=/usr
 #		This specifies the root where CVSup will store information

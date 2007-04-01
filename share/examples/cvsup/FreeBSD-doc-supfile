@@ -1,5 +1,5 @@
-# $FreeBSD: src/share/examples/cvsup/doc-supfile,v 1.3.2.4 2002/08/06 08:24:46 blackend Exp $
-# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-doc-supfile,v 1.1 2003/08/11 12:14:24 rob Exp $
+# $FreeBSD: src/share/examples/cvsup/doc-supfile,v 1.9 2004/05/24 06:23:15 cjc Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-doc-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
 # source of the FreeBSD doc tree
@@ -52,10 +52,17 @@
 *default host=CHANGE_THIS.FreeBSD.org
 *default base=/usr
 *default prefix=/usr
+#
+# "tag" in the next line should always either be "." to receive the most
+# up-to-date files, or left blank (i.e., "*default release=cvs") to receive
+# the CVS ,v files.  The doc collection is not branched.
+#
 *default release=cvs tag=.
 *default delete use-rel-suffix
 
-# If your network link is a T1 or faster, comment out the following line.
+# If you seem to be limited by CPU rather than network or disk bandwidth, try
+# commenting out the following line.  (Normally, today's CPUs are fast enough
+# that you want to run compression.)
 *default compress
 
 # This will retrieve the entire doc branch of the FreeBSD repository.

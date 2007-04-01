@@ -1,11 +1,11 @@
-# $DragonFly: src/share/examples/cvsup/NetBSD-supfile,v 1.1 2003/08/11 12:42:05 rob Exp $
+# $DragonFly: src/share/examples/cvsup/NetBSD-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
 #
 # NETBSD-CVS-SUPFILE
 #
 # This file will by default maintain a copy of the NetBSD CVS tree in
 # /home/nbcvs
 #
-# A list of NetBSD CVSup mirrors is availible at
+# A list of NetBSD CVSup mirrors is available at
 #
 #	http://www.netbsd.org/mirrors/#cvsup
 #
@@ -19,8 +19,7 @@
 #
 # host=<mirror_site>
 #		This specifies the server host which will supply the
-#		file updates.  If you leave it at its default a random
-#		mirror site will be used.
+#		file updates.
 #
 # base=/usr
 #		This specifies the root where CVSup will store information
@@ -34,12 +33,11 @@
 #
 # prefix=/home/nbcvs
 #		This specifies where to place the requested files.  A
-#		setting of "/home/ncvs" will place all of the files
-#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
-#		"/home/ncvs/ports/archivers").  The prefix directory
-#		must exist in order to run CVSup.
+#		setting of "/home/nbcvs" will place all of the files
+#		requested in /home/nbcvs (e.g., "/home/nbcvs/src/bin").
+#		The prefix directory must exist in order to run CVSup.
 #
-*default host=cvsup.de.NetBSD.org
+*default host=CHANGE_THIS.NetBSD.org
 *default base=/usr
 *default prefix=/home/nbcvs
 *default release=cvs
