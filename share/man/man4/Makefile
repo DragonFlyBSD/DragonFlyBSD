@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.51 2007/02/15 09:20:57 swildner Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.52 2007/04/01 13:19:49 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -93,11 +93,11 @@ MAN=	aac.4 \
 	ip.4 \
 	ip6.4 \
 	ipfirewall.4 \
-	ipsec.4 \
 	ips.4 \
+	ipsec.4 \
+	ipw.4 \
 	isp.4 \
 	ispfw.4 \
-	ipw.4 \
 	iwi.4 \
 	joy.4 \
 	keyboard.4 \
@@ -125,11 +125,11 @@ MAN=	aac.4 \
 	netgraph.4 \
 	netintro.4 \
 	nfe.4 \
-	ng_UI.4 \
 	ng_async.4 \
 	ng_bpf.4 \
 	ng_bridge.4 \
 	ng_cisco.4 \
+	nge.4 \
 	ng_echo.4 \
 	ng_etf.4 \
 	ng_ether.4 \
@@ -148,11 +148,11 @@ MAN=	aac.4 \
 	ng_socket.4 \
 	ng_tee.4 \
 	ng_tty.4 \
+	ng_UI.4 \
 	ng_vjc.4 \
-	nge.4 \
 	nmdm.4 \
-	nv.4 \
 	null.4 \
+	nv.4 \
 	ohci.4 \
 	orm.4 \
 	pass.4 \
@@ -220,8 +220,8 @@ MAN=	aac.4 \
 	snd_gusc.4 \
 	snd_hda.4 \
 	snd_ich.4 \
-	snd_maestro.4 \
 	snd_maestro3.4 \
+	snd_maestro.4 \
 	snd_mss.4 \
 	snd_neomagic.4 \
 	snd_sbc.4 \
@@ -257,10 +257,10 @@ MAN=	aac.4 \
 	twa.4 \
 	twe.4 \
 	txp.4 \
+	ubsa.4 \
 	ubsec.4 \
 	ucom.4 \
 	udp.4 \
-	ubsa.4 \
 	ufm.4 \
 	uftdi.4 \
 	ugen.4 \
@@ -282,11 +282,11 @@ MAN=	aac.4 \
 	uvisor.4 \
 	uvscom.4 \
 	vga.4 \
+	vge.4 \
 	vinum.4 \
 	vlan.4 \
 	vn.4 \
 	vpo.4 \
-	vge.4 \
 	vr.4 \
 	wb.4 \
 	wi.4 \
@@ -302,21 +302,29 @@ MAN=	aac.4 \
 	zero.4
 
 MLINKS=	agp.4 agpgart.4
-MLINKS+=ata.4 acd.4 ata.4 ad.4 ata.4 afd.4 ata.4 ast.4 ata.4 sata.4
+MLINKS+=ata.4 acd.4 \
+	ata.4 ad.4 \
+	ata.4 afd.4 \
+	ata.4 ast.4 \
+	ata.4 sata.4
 MLINKS+=bktr.4 brooktree.4
-MLINKS+=fd.4 stderr.4 fd.4 stdin.4 fd.4 stdout.4
+MLINKS+=fd.4 stderr.4 \
+	fd.4 stdin.4 \
+	fd.4 stdout.4
 MLINKS+=fpa.4 fea.4
-MLINKS+=ipfirewall.4 ipacct.4 ipfirewall.4 ipaccounting.4 ipfirewall.4 ipfw.4
+MLINKS+=ipfirewall.4 ipaccounting.4 \
+	ipfirewall.4 ipacct.4 \
+	ipfirewall.4 ipfw.4
 MLINKS+=lo.4 loop.4
 MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
 MLINKS+=netintro.4 networking.4
 MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
-MLINKS+=scsi.4 CAM.4
-MLINKS+=scsi.4 SCSI.4
-MLINKS+=scsi.4 cam.4
-MLINKS+=scsi.4 scbus.4
+MLINKS+=scsi.4 CAM.4 \
+	scsi.4 cam.4 \
+	scsi.4 scbus.4 \
+	scsi.4 SCSI.4
 MLINKS+=smp.4 SMP.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
