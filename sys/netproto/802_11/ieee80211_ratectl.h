@@ -31,17 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.4 2007/03/18 11:49:32 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.5 2007/04/01 13:59:40 sephe Exp $
  */
 
 #ifndef _NET80211_IEEE80211_RATECTL_H
 #define _NET80211_IEEE80211_RATECTL_H
+
+#ifdef _KERNEL
 
 struct ieee80211_ratectl_stats;
 
 struct ieee80211_ratectl_state {
 	void		*rc_st_ctx;
 	void		*rc_st_param;
+	uint32_t	rc_st_flags;	   /* see IEEE80211_RATECTL_F_ */
 	u_int		rc_st_ratectl;	   /* see IEEE80211_RATECTL_ */
 	uint32_t	rc_st_ratectl_cap; /* see IEEE80211_RATECTL_CAP_ */
 	uint64_t	rc_st_valid_stats; /* see IEEE80211_RATECTL_STATS_ */
@@ -50,6 +53,9 @@ struct ieee80211_ratectl_state {
 				       struct ieee80211_node *,
 				       struct ieee80211_ratectl_stats *);
 };
+
+#define IEEE80211_RATECTL_F_RSDESC	0x1 /* Rate set must be descendant. */
+#define IEEE80211_RATECTL_F_MRR		0x2 /* Support multi-rate-retry. */
 
 struct ieee80211_ratectl_res {
 	int		rc_res_rateidx;
@@ -94,10 +100,15 @@ struct ieee80211_ratectl {
 				       int[], int);
 };
 
+#endif	/* _KERNEL */
+
 #define IEEE80211_RATECTL_NONE		0
 #define IEEE80211_RATECTL_ONOE		1
 #define IEEE80211_RATECTL_AMRR		2
-#define IEEE80211_RATECTL_MAX		3
+#define IEEE80211_RATECTL_SAMPLE	3
+#define IEEE80211_RATECTL_MAX		4
+
+#ifdef _KERNEL
 
 #define IEEE80211_RATECTL_CAP(v)	(1 << (v))
 
@@ -107,6 +118,7 @@ struct ieee80211_ratectl {
 #define IEEE80211_RATECTL_CAP_NONE	_IEEE80211_RATECTL_CAP(NONE)
 #define IEEE80211_RATECTL_CAP_ONOE	_IEEE80211_RATECTL_CAP(ONOE)
 #define IEEE80211_RATECTL_CAP_AMRR	_IEEE80211_RATECTL_CAP(AMRR)
+#define IEEE80211_RATECTL_CAP_SAMPLE	_IEEE80211_RATECTL_CAP(SAMPLE)
 
 extern const struct ieee80211_ratectl	ieee80211_ratectl_none;
 
@@ -130,5 +142,7 @@ void	ieee80211_ratectl_tx_complete(struct ieee80211_node *, int,
 				      int, int, int, int);
 void	ieee80211_ratectl_newassoc(struct ieee80211_node *, int);
 int	ieee80211_ratectl_findrate(struct ieee80211_node *, int, int[], int);
+
+#endif	/* _KERNEL */
 
 #endif	/* !_NET80211_IEEE80211_RATECTL_H */

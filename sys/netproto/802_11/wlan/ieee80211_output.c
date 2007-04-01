@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.19 2007/03/30 11:39:34 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.20 2007/04/01 13:59:41 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1802,27 +1802,15 @@ ieee80211_pwrsave(struct ieee80211com *ic, struct ieee80211_node *ni,
 		ic->ic_set_tim(ni, 1);
 }
 
-#define IEEE80211_MODTYPE_CCK	0
-#define IEEE80211_MODTYPE_OFDM	1
-#define IEEE80211_MODTYPE_PBCC	2
-
-static int
-ieee80211_rate2modtype(uint8_t rate)
-{
-	if (rate == 44)
-		return IEEE80211_MODTYPE_PBCC;
-	else if (rate == 22 || rate < 12)
-		return IEEE80211_MODTYPE_CCK;
-	else
-		return IEEE80211_MODTYPE_OFDM;
-}
-
 uint8_t
 ieee80211_ack_rate(struct ieee80211_node *ni, uint8_t rate)
 {
 	const struct ieee80211_rateset *rs = &ni->ni_rates;
 	uint8_t ack_rate = 0;
-	int modtype, i;
+	enum ieee80211_modtype modtype;
+	int i;
+
+	rate &= IEEE80211_RATE_VAL;
 
 	modtype = ieee80211_rate2modtype(rate);
 
@@ -1919,8 +1907,11 @@ ieee80211_txtime(struct ieee80211_node *ni, u_int len, uint8_t rs_rate,
 		 uint32_t flags)
 {
 	struct ieee80211com *ic = ni->ni_ic;
+	enum ieee80211_modtype modtype;
 	uint16_t txtime;
-	int rate, modtype;
+	int rate;
+
+	rs_rate &= IEEE80211_RATE_VAL;
 
 	rate = rs_rate * 500;	/* ieee80211 rate -> kbps */
 

@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.48 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.49 2007/04/01 13:59:41 sephe Exp $
 
 platform	pc32
 machine		i386
@@ -228,6 +228,7 @@ device		wlan_wep	# 802.11 WEP support
 # 802.11 TX rate control algorithms
 #device		wlan_ratectl_amrr	# AMRR
 device		wlan_ratectl_onoe	# Onoe
+device		wlan_ratectl_sample	# Sample
 
 # Aironet 4500/4800 802.11 wireless NICs.  Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
@@ -237,6 +238,8 @@ device		wlan_ratectl_onoe	# Onoe
 device		an
 device		awi		# PRISM I IEEE 802.11b wireless NIC
 device		ral		# Ralink Technology 802.11 wireless NIC
+				# Requires wlan_ratectl_onoe and
+				# wlan_ratectl_sample
 device		rtw		# RealTek 802.11 wireless NIC
 				# Requires wlan_ratectl_onoe and wlan_wep
 # WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.3 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.4 2007/04/01 13:59:40 sephe Exp $
  */
 
 /*
@@ -138,6 +138,8 @@ DRIVER_MODULE(ral, pci, ral_pci_driver, ral_devclass, 0, 0);
 DRIVER_MODULE(ral, cardbus, ral_pci_driver, ral_devclass, 0, 0);
 
 MODULE_DEPEND(ral, wlan, 1, 1, 1);
+MODULE_DEPEND(ral, wlan_ratectl_onoe, 1, 1, 1);
+MODULE_DEPEND(ral, wlan_ratectl_sample, 1, 1, 1);
 MODULE_DEPEND(ral, pci, 1, 1, 1);
 MODULE_DEPEND(ral, cardbus, 1, 1, 1);
 

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.13 2007/03/24 08:39:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.14 2007/04/01 13:59:41 sephe Exp $
  */
 
 /*
@@ -1082,4 +1082,17 @@ ieee80211_plcp2rate(uint8_t plcp, int ofdm)
 #undef _OFDM_PLCP2RATE_MAX
 	}
 	return 0;
+}
+
+enum ieee80211_modtype
+ieee80211_rate2modtype(uint8_t rate)
+{
+	rate &= IEEE80211_RATE_VAL;
+
+	if (rate == 44)
+		return IEEE80211_MODTYPE_PBCC;
+	else if (rate == 22 || rate < 12)
+		return IEEE80211_MODTYPE_DS;
+	else
+		return IEEE80211_MODTYPE_OFDM;
 }

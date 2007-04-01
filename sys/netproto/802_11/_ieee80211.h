@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/_ieee80211.h,v 1.2.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/_ieee80211.h,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/_ieee80211.h,v 1.2 2007/04/01 13:59:40 sephe Exp $
  */
 #ifndef _NET80211__IEEE80211_H_
 #define _NET80211__IEEE80211_H_
@@ -62,6 +62,13 @@ enum ieee80211_opmode {
 	IEEE80211_M_HOSTAP	= 6,	/* Software Access Point */
 	IEEE80211_M_MONITOR	= 8	/* Monitor mode */
 };
+
+enum ieee80211_modtype {
+	IEEE80211_MODTYPE_DS	= 0,	/* DS/CCK modulation */
+	IEEE80211_MODTYPE_PBCC	= 1,	/* PBCC modulation */
+	IEEE80211_MODTYPE_OFDM	= 2	/* OFDM modulation */
+};
+#define IEEE80211_MODTYPE_CCK	IEEE80211_MODTYPE_DS
 
 /*
  * 802.11g protection mode.

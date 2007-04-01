@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.3 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.4 2007/04/01 13:59:41 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,8 @@ static const struct ieee80211_ratectl *ratectls[IEEE80211_RATECTL_MAX] = {
 
 static const char *ratectl_modname[IEEE80211_RATECTL_MAX] = {
 	[IEEE80211_RATECTL_ONOE]	= "wlan_ratectl_onoe",
-	[IEEE80211_RATECTL_AMRR]	= "wlan_ratectl_amrr"
+	[IEEE80211_RATECTL_AMRR]	= "wlan_ratectl_amrr",
+	[IEEE80211_RATECTL_SAMPLE]	= "wlan_ratectl_sample"
 };
 
 void

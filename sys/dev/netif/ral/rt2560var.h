@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.3 2007/03/30 11:39:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.4 2007/04/01 13:59:40 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -56,7 +56,7 @@ struct rt2560_tx_data {
 	bus_dmamap_t			map;
 	struct mbuf			*m;
 	struct ieee80211_node		*ni;
-	struct ral_rssdesc		id;
+	int				rateidx;
 };
 
 struct rt2560_tx_ring {
@@ -93,11 +93,6 @@ struct rt2560_rx_ring {
 	int			cur_decrypt;
 };
 
-struct rt2560_node {
-	struct ieee80211_node	ni;
-	struct ral_rssadapt	rssadapt;
-};
-
 struct rt2560_softc {
 	/*
 	 * NOTE: following four fields MUST be in the
@@ -116,7 +111,6 @@ struct rt2560_softc {
 				    enum ieee80211_state, int);
 
 	struct callout		scan_ch;
-	struct callout		rssadapt_ch;
 
 	int			sc_tx_timer;
 	int			sc_sifs;

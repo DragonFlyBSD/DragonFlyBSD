@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.12 2007/03/30 11:39:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.13 2007/04/01 13:59:40 sephe Exp $
  */
 
 /*
@@ -47,7 +47,6 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 
-#include <dev/netif/ral/if_ralrate.h>
 #include <dev/netif/ral/rt2560reg.h>
 #include <dev/netif/ral/rt2560var.h>
 
@@ -80,12 +79,8 @@ static void		rt2560_reset_rx_ring(struct rt2560_softc *,
 			    struct rt2560_rx_ring *);
 static void		rt2560_free_rx_ring(struct rt2560_softc *,
 			    struct rt2560_rx_ring *);
-static struct		ieee80211_node *rt2560_node_alloc(
-			    struct ieee80211_node_table *);
 static int		rt2560_media_change(struct ifnet *);
 static void		rt2560_next_scan(void *);
-static void		rt2560_iter_func(void *, struct ieee80211_node *);
-static void		rt2560_update_rssadapt(void *);
 static int		rt2560_newstate(struct ieee80211com *,
 			    enum ieee80211_state, int);
 static uint16_t		rt2560_eeprom_read(struct rt2560_softc *, uint8_t);
@@ -193,7 +188,6 @@ rt2560_attach(device_t dev, int id)
 	int error, i;
 
 	callout_init(&sc->scan_ch);
-	callout_init(&sc->rssadapt_ch);
 
 	sc->sc_irq_rid = 0;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_irq_rid,
@@ -274,6 +268,10 @@ rt2560_attach(device_t dev, int id)
 	ic->ic_opmode = IEEE80211_M_STA; /* default to BSS mode */
 	ic->ic_state = IEEE80211_S_INIT;
 
+	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE |
+					   IEEE80211_RATECTL_CAP_SAMPLE;
+	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_SAMPLE;
+
 	/* set device capabilities */
 	ic->ic_caps =
 	    IEEE80211_C_IBSS |		/* IBSS mode supported */
@@ -323,7 +321,6 @@ rt2560_attach(device_t dev, int id)
 	sc->sc_sifs = IEEE80211_DUR_SIFS;	/* Default SIFS */
 
 	ieee80211_ifattach(ic);
-	ic->ic_node_alloc = rt2560_node_alloc;
 	ic->ic_updateslot = rt2560_update_slot;
 	ic->ic_reset = rt2560_reset;
 	/* enable s/w bmiss handling in sta mode */
@@ -391,7 +388,6 @@ rt2560_detach(void *xsc)
 		lwkt_serialize_enter(ifp->if_serializer);
 
 		callout_stop(&sc->scan_ch);
-		callout_stop(&sc->rssadapt_ch);
 
 		rt2560_stop(sc);
 		bus_teardown_intr(sc->sc_dev, sc->sc_irq, sc->sc_ih);
@@ -774,17 +770,6 @@ rt2560_free_rx_ring(struct rt2560_softc *sc, struct rt2560_rx_ring *ring)
 	}
 }
 
-static struct ieee80211_node *
-rt2560_node_alloc(struct ieee80211_node_table *nt)
-{
-	struct rt2560_node *rn;
-
-	rn = kmalloc(sizeof(struct rt2560_node), M_80211_NODE,
-	    M_NOWAIT | M_ZERO);
-
-	return (rn != NULL) ? &rn->ni : NULL;
-}
-
 static int
 rt2560_media_change(struct ifnet *ifp)
 {
@@ -817,36 +802,6 @@ rt2560_next_scan(void *arg)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-/*
- * This function is called for each node present in the node station table.
- */
-static void
-rt2560_iter_func(void *arg, struct ieee80211_node *ni)
-{
-	struct rt2560_node *rn = (struct rt2560_node *)ni;
-
-	ral_rssadapt_updatestats(&rn->rssadapt);
-}
-
-/*
- * This function is called periodically (every 100ms) in RUN state to update
- * the rate adaptation statistics.
- */
-static void
-rt2560_update_rssadapt(void *arg)
-{
-	struct rt2560_softc *sc = arg;
-	struct ieee80211com *ic = &sc->sc_ic;
-	struct ifnet *ifp = ic->ic_ifp;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	ieee80211_iterate_nodes(&ic->ic_sta, rt2560_iter_func, arg);
-	callout_reset(&sc->rssadapt_ch, hz / 10, rt2560_update_rssadapt, sc);
-
-	lwkt_serialize_exit(ifp->if_serializer);
-}
-
 static int
 rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
@@ -858,11 +813,10 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ostate = ic->ic_state;
 	callout_stop(&sc->scan_ch);
+	ieee80211_ratectl_newstate(ic, nstate);
 
 	switch (nstate) {
 	case IEEE80211_S_INIT:
-		callout_stop(&sc->rssadapt_ch);
-
 		if (ostate == IEEE80211_S_RUN) {
 			/* abort TSF synchronization */
 			RAL_WRITE(sc, RT2560_CSR14, 0);
@@ -916,12 +870,8 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		/* turn assocation led on */
 		rt2560_update_led(sc, 1, 0);
 
-		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
-			callout_reset(&sc->rssadapt_ch, hz / 10,
-			    rt2560_update_rssadapt, sc);
-
+		if (ic->ic_opmode != IEEE80211_M_MONITOR)
 			rt2560_enable_tsf_sync(sc);
-		}
 		break;
 	}
 
@@ -1038,65 +988,84 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2560_tx_desc *desc;
-	struct rt2560_tx_data *data;
-	struct rt2560_node *rn;
 
 	bus_dmamap_sync(sc->txq.desc_dmat, sc->txq.desc_map,
 	    BUS_DMASYNC_POSTREAD);
 
 	for (;;) {
+		struct rt2560_tx_desc *desc;
+		struct rt2560_tx_data *data;
+		struct ieee80211_node *ni;
+		int rateidx, data_retries, failed;
+		struct mbuf *m;
+		uint32_t flags;
+
 		desc = &sc->txq.desc[sc->txq.next];
 		data = &sc->txq.data[sc->txq.next];
 
-		if ((le32toh(desc->flags) & RT2560_TX_BUSY) ||
-		    (le32toh(desc->flags) & RT2560_TX_CIPHER_BUSY) ||
-		    !(le32toh(desc->flags) & RT2560_TX_VALID))
+		flags = le32toh(desc->flags);
+
+		if ((flags & RT2560_TX_BUSY) ||
+		    (flags & RT2560_TX_CIPHER_BUSY) ||
+		    !(flags & RT2560_TX_VALID))
 			break;
 
-		rn = (struct rt2560_node *)data->ni;
+		rateidx = data->rateidx;
+		ni = data->ni;
+		m = data->m;
 
-		switch (le32toh(desc->flags) & RT2560_TX_RESULT_MASK) {
+		data->ni = NULL;
+		data->m = NULL;
+
+		failed = 0;
+		switch (flags & RT2560_TX_RESULT_MASK) {
 		case RT2560_TX_SUCCESS:
 			DPRINTFN(10, ("data frame sent successfully\n"));
-			if (data->id.id_node != NULL) {
-				ral_rssadapt_raise_rate(ic, &rn->rssadapt,
-				    &data->id);
-			}
 			ifp->if_opackets++;
+			data_retries = 0;
 			break;
 
 		case RT2560_TX_SUCCESS_RETRY:
+			data_retries = (flags >> 5) & 0x7;
 			DPRINTFN(9, ("data frame sent after %u retries\n",
-			    (le32toh(desc->flags) >> 5) & 0x7));
+				 data_retries));
 			ifp->if_opackets++;
 			break;
 
 		case RT2560_TX_FAIL_RETRY:
 			DPRINTFN(9, ("sending data frame failed (too much "
 			    "retries)\n"));
-			if (data->id.id_node != NULL) {
-				ral_rssadapt_lower_rate(ic, data->ni,
-				    &rn->rssadapt, &data->id);
-			}
 			ifp->if_oerrors++;
+			data_retries = 7;
+			failed = 1;
 			break;
 
 		case RT2560_TX_FAIL_INVALID:
 		case RT2560_TX_FAIL_OTHER:
 		default:
+			data_retries = 7;
+			failed = 1;
 			device_printf(sc->sc_dev, "sending data frame failed "
-			    "0x%08x\n", le32toh(desc->flags));
+			    "0x%08x\n", flags);
 			ifp->if_oerrors++;
+			break;
 		}
 
 		bus_dmamap_sync(sc->txq.data_dmat, data->map,
 		    BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(sc->txq.data_dmat, data->map);
-		m_freem(data->m);
-		data->m = NULL;
-		ieee80211_free_node(data->ni);
-		data->ni = NULL;
+
+		if (rateidx >= 0) {
+			struct ieee80211_ratectl_res res;
+
+			res.rc_res_tries = data_retries + 1;
+			res.rc_res_rateidx = rateidx;
+			ieee80211_ratectl_tx_complete(ni, m->m_pkthdr.len,
+				&res, 1, data_retries, 0, failed);
+		}
+
+		m_freem(m);
+		ieee80211_free_node(ni);
 
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2560_TX_VALID);
@@ -1161,8 +1130,8 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 		bus_dmamap_unload(sc->prioq.data_dmat, data->map);
 		m_freem(data->m);
 		data->m = NULL;
-		ieee80211_free_node(data->ni);
-		data->ni = NULL;
+
+		KASSERT(data->ni == NULL, ("mgmt node is not empty\n"));
 
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2560_TX_VALID);
@@ -1195,7 +1164,6 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 	bus_addr_t physaddr;
 	struct ieee80211_frame *wh;
 	struct ieee80211_node *ni;
-	struct rt2560_node *rn;
 	struct mbuf *mnew, *m;
 	int hw, error;
 
@@ -1300,11 +1268,6 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 
 		/* send the frame to the 802.11 layer */
 		ieee80211_input(ic, m, ni, RT2560_RSSI(sc, desc->rssi), 0);
-
-		/* give rssi to the rate adatation algorithm */
-		rn = (struct rt2560_node *)ni;
-		ral_rssadapt_input(ic, ni, &rn->rssadapt,
-				   RT2560_RSSI(sc, desc->rssi));
 
 		/* node is no longer needed */
 		ieee80211_free_node(ni);
@@ -1651,6 +1614,7 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
+		ieee80211_free_node(ni);
 		m_freem(m0);
 		return error;
 	}
@@ -1668,7 +1632,7 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 	}
 
 	data->m = m0;
-	data->ni = ni;
+	data->ni = NULL;
 
 	wh = mtod(m0, struct ieee80211_frame *);
 
@@ -1700,6 +1664,8 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 	sc->prioq.queued++;
 	sc->prioq.cur = (sc->prioq.cur + 1) % RT2560_PRIO_RING_COUNT;
 	RAL_WRITE(sc, RT2560_TXCSR0, RT2560_KICK_PRIO);
+
+	ieee80211_free_node(ni);
 
 	return 0;
 }
@@ -1742,30 +1708,15 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct rt2560_tx_desc *desc;
 	struct rt2560_tx_data *data;
-	struct rt2560_node *rn;
-	struct ieee80211_rateset *rs;
 	struct ieee80211_frame *wh;
 	struct ieee80211_key *k;
 	struct mbuf *mnew;
 	bus_addr_t paddr;
 	uint16_t dur;
 	uint32_t flags = 0;
-	int rate, error, ackrate;
+	int rate, error, ackrate, rateidx;
 
 	wh = mtod(m0, struct ieee80211_frame *);
-
-	if (ic->ic_fixed_rate != IEEE80211_FIXED_RATE_NONE) {
-		rs = &ic->ic_sup_rates[ic->ic_curmode];
-		rate = rs->rs_rates[ic->ic_fixed_rate];
-	} else {
-		rs = &ni->ni_rates;
-		rn = (struct rt2560_node *)ni;
-		ni->ni_txrate = ral_rssadapt_choose(&rn->rssadapt, rs, wh,
-		    m0->m_pkthdr.len, NULL, 0);
-		rate = rs->rs_rates[ni->ni_txrate];
-	}
-	rate &= IEEE80211_RATE_VAL;
-
 	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
 		k = ieee80211_crypto_encap(ic, ni, m0);
 		if (k == NULL) {
@@ -1776,6 +1727,9 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 		/* packet header may have moved, reset our local pointer */
 		wh = mtod(m0, struct ieee80211_frame *);
 	}
+
+	ieee80211_ratectl_findrate(ni, m0->m_pkthdr.len, &rateidx, 1);
+	rate = IEEE80211_RS_RATE(&ni->ni_rates, rateidx);
 
 	ackrate = ieee80211_ack_rate(ni, rate);
 
@@ -1817,9 +1771,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 
 		data->m = m;
 		data->ni = ni;
-
-		/* RTS frames are not taken into account for rssadapt */
-		data->id.id_node = NULL;
+		data->rateidx = -1;	/* don't count RTS */
 
 		rt2560_setup_tx_desc(sc, desc, RT2560_TX_ACK |
 		    RT2560_TX_MORE_FRAG, m->m_pkthdr.len, rtsrate, 1, paddr);
@@ -1888,15 +1840,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 
 	data->m = m0;
 	data->ni = ni;
-
-	/* remember link conditions for rate adaptation algorithm */
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE) {
-		data->id.id_len = m0->m_pkthdr.len;
-		data->id.id_rateidx = ni->ni_txrate;
-		data->id.id_node = ni;
-		data->id.id_rssi = ni->ni_rssi;
-	} else
-		data->id.id_node = NULL;
+	data->rateidx = rateidx;
 
 	if (!IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		flags |= RT2560_TX_ACK;

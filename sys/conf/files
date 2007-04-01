@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.152 2007/02/11 01:51:28 swildner Exp $
+# $DragonFly: src/sys/conf/files,v 1.153 2007/04/01 13:59:41 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -755,6 +755,7 @@ netproto/802_11/wlan_wep/ieee80211_crypto_wep.c		optional wlan_wep
 netproto/802_11/wlan_xauth/ieee80211_xauth.c		optional wlan_xauth
 netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c	optional wlan_ratectl_onoe
 netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c	optional wlan_ratectl_amrr
+netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c	optional wlan_ratectl_sample
 netproto/atalk/aarp.c		optional netatalk
 netproto/atalk/at_control.c	optional netatalk
 netproto/atalk/at_proto.c	optional netatalk

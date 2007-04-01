@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.10 2006/08/10 06:09:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.17 2006/12/08 14:25:07 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.18 2007/04/01 13:59:40 sephe Exp $
  */
 
 /*-
@@ -680,6 +680,8 @@ set80211ratectl(const char *val, int d, int s, const struct afswtch *rafp)
 		ratectl = IEEE80211_RATECTL_ONOE;
 	else if (strcmp("amrr", val) == 0)
 		ratectl = IEEE80211_RATECTL_AMRR;
+	else if (strcmp("sample", val) == 0)
+		ratectl = IEEE80211_RATECTL_SAMPLE;
 	else
 		errx(1, "unknown ratectl");
 
@@ -1500,6 +1502,9 @@ ieee80211_status(int s)
 			break;
 		case IEEE80211_RATECTL_AMRR:
 			printf("\tratectl: amrr");
+			break;
+		case IEEE80211_RATECTL_SAMPLE:
+			printf("\tratectl: sample");
 			break;
 		default:
 			if (verbose)

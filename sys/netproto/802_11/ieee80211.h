@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.6 2007/03/30 11:39:34 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.7 2007/04/01 13:59:40 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -666,10 +666,29 @@ enum {
 #define IEEE80211_HWBMISS_MAX   255
 
 /*
- * IFS (microseconds)
+ * Contention window (slots).
  */
-#define IEEE80211_DUR_SIFS	10	/* DS/CCK/ERP-OFDM SIFS (11b/g) */
-#define IEEE80211_DUR_OFDM_SIFS	16	/* OFDM SIFS (11a) */
+#define IEEE80211_CW_MAX	1023	/* aCWmax */
+#define IEEE80211_CW_MIN_0	31	/* DS/CCK aCWmin, ERP aCWmin(0) */
+#define IEEE80211_CW_MIN_1	15	/* OFDM aCWmin, ERP aCWmin(1) */
+
+/*
+ * SIFS (microseconds).
+ */
+#define IEEE80211_DUR_SIFS	10	/* DS/CCK/ERP SIFS */
+#define IEEE80211_DUR_OFDM_SIFS	16	/* OFDM SIFS */
+
+/*
+ * Slot time (microseconds).
+ */
+#define IEEE80211_DUR_SLOT	20	/* DS/CCK slottime, ERP long slottime */
+#define IEEE80211_DUR_SHSLOT	9	/* ERP short slottime */
+#define IEEE80211_DUR_OFDM_SLOT	9	/* OFDM slottime */
+
+/*
+ * DIFS (microseconds).
+ */
+#define IEEE80211_DUR_DIFS(sifs, slot)	((sifs) + 2 * (slot))
 
 #define IEEE80211_MGT_SUBTYPE_NAMES {			\
 	"assoc-req",		"assoc-resp",		\
