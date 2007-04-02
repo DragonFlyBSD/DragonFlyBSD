@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.4 2007/04/01 13:59:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.5 2007/04/02 14:25:38 sephe Exp $
  */
 
 /*
@@ -50,7 +50,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include <dev/netif/ral/if_ralrate.h>
 #include <dev/netif/ral/rt2560var.h>
 #include <dev/netif/ral/rt2661var.h>
 
