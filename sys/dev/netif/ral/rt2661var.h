@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.4 2007/03/30 11:39:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.5 2007/04/02 13:46:07 sephe Exp $
  */
 
 struct rt2661_rx_radiotap_header {
@@ -50,7 +50,8 @@ struct rt2661_tx_radiotap_header {
 
 struct rt2661_tx_ratectl {
 	struct ieee80211_node	*ni;
-	struct ral_rssdesc	id;
+	int			len;
+	int			rateidx;
 	STAILQ_ENTRY(rt2661_tx_ratectl)	link;
 };
 
@@ -84,11 +85,6 @@ struct rt2661_rx_ring {
 	int			next;
 };
 
-struct rt2661_node {
-	struct ieee80211_node	ni;
-	struct ral_rssadapt	rssadapt;
-};
-
 struct rt2661_softc {
 	struct ieee80211com		sc_ic;
 	bus_space_tag_t			sc_st;
@@ -103,7 +99,6 @@ struct rt2661_softc {
 					    enum ieee80211_state, int);
 
 	struct callout			scan_ch;
-	struct callout			rssadapt_ch;
 
 	int				sc_tx_timer;
 	int				sc_sifs;
