@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.13 2007/04/01 13:59:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.14 2007/04/03 11:08:17 sephe Exp $
  */
 
 /*
@@ -2434,10 +2434,10 @@ rt2560_read_eeprom(struct rt2560_softc *sc)
 	}
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CALIBRATE);
-	if ((val & 0xff00) == 0xff00)
+	if ((val & 0xff) == 0xff)
 		sc->rssi_corr = RT2560_DEFAULT_RSSI_CORR;
 	else
-		sc->rssi_corr = val >> 8;
+		sc->rssi_corr = val & 0xff;
 	DPRINTF(("rssi correction %d, calibrate 0x%02x\n",
 		 sc->rssi_corr, val));
 }
