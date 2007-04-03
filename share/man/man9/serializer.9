@@ -1,4 +1,4 @@
-.\" 
+.\"
 .\" Copyright (c) 2007
 .\"	The DragonFly Project.  All rights reserved.
 .\"
@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/serializer.9,v 1.1 2007/03/31 10:54:52 swildner Exp $
+.\" $DragonFly: src/share/man/man9/serializer.9,v 1.2 2007/04/03 09:14:33 swildner Exp $
 .\"
 .Dd March 31, 2007
 .Os
@@ -85,7 +85,7 @@ This API was initially designed to be a replacement for SPL calls, but
 may be used whenever a low level exclusive lock (serialization) and/or
 interrupt/device interaction is required.
 Unlike tokens this serialization is not safe from deadlocks nor is it
-recursive, and care must be taken when using it. 
+recursive, and care must be taken when using it.
 Note that
 .Xr tsleep 9
 will not release a serializer that is being held.
