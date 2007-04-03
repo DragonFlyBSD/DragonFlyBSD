@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.45 2007/03/31 07:47:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.46 2007/04/03 14:20:52 sephe Exp $
  */
 
 /*
@@ -589,6 +589,7 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 		return(ENOBUFS);
 	}
 
+	lwkt_serialize_init(&sc->ti_jslot_serializer);
 	SLIST_INIT(&sc->ti_jfree_listhead);
 
 	/*
@@ -780,18 +781,23 @@ ti_newbuf_jumbo(struct ti_softc *sc, int i, struct mbuf *m)
 
 		/* Attach the buffer to the mbuf. */
 		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_buf = buf->ti_buf;
 		m_new->m_ext.ext_free = ti_jfree;
 		m_new->m_ext.ext_ref = ti_jref;
 		m_new->m_ext.ext_size = TI_JUMBO_FRAMELEN;
 
-		m_new->m_data = m_new->m_ext.ext_buf;
 		m_new->m_flags |= M_EXT;
-		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
+		/*
+	 	 * We're re-using a previously allocated mbuf;
+		 * be sure to re-init pointers and lengths to
+		 * default values.
+		 */
+		KKASSERT(m->m_flags & M_EXT);
 		m_new = m;
-		m_new->m_data = m_new->m_ext.ext_buf;
-		m_new->m_ext.ext_size = TI_JUMBO_FRAMELEN;
 	}
+	m_new->m_data = m_new->m_ext.ext_buf;
+	m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 
 	m_adj(m_new, ETHER_ALIGN);
 	/* Set up the descriptor. */
