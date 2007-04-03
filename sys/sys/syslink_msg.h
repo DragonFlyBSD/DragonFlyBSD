@@ -31,20 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.5 2007/03/24 19:11:15 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.6 2007/04/03 20:21:19 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
  * communications link.  Endpoints, defined by a sysid, are typically 
  * associated with system structures but do not have to be.
  *
- * syslink 	- Implements a communications end-point and protocol.  A
- *		  syslink is typically directly embedded in a related
- *		  structure.
- *
- * syslink_proto- Specifies a set of RPC functions.
- *
- * syslink_desc - Specifies a single RPC function within a protocol.
+ * This header file is primarily responsible for the formatting of message
+ * traffic over a syslink.
  */
 
 #ifndef _SYS_SYSLINK_MSG_H_
@@ -57,8 +52,9 @@
 #include <machine/atomic.h>
 #endif
 
-typedef u_int32_t	sl_msgid_t;
+typedef u_int32_t	sl_msgid_t;	/* transaction sequencing */
 typedef u_int16_t	sl_cmd_t;	/* command or error */
+typedef sl_cmd_t	sl_error_t;	
 typedef u_int16_t	sl_itemid_t;	/* item id */
 typedef u_int16_t	sl_reclen_t;	/* item length */
 
@@ -77,13 +73,26 @@ typedef u_int16_t	sl_reclen_t;	/* item length */
  * Sessions are identified with a session id.  The session id is a rendezvous
  * id that associates physical and logical routing information with a single
  * sysid, allowing us to both avoid storing the source and target logical id
- * in the syslink message AND ALSO providing a unique session id for an
- * abstracted connection between two entities.  Otherwise the syslink message
- * would become bloated with five sysid fields instead of the three we have
- * now.
+ * in the syslink message AND ALSO providing a unique session id and validator
+ * which manages the abstracted connection between two entities.  Otherwise
+ * the syslink message would become bloated with five sysid fields instead
+ * of the three we have now.
  *
- * Link layer communications is accomplished by specifying a session id of
- * 0.
+ * Link layer communications is accomplished by specifying a target physical
+ * address of 0.
+ *
+ * The target physical address is deconstructed as the message hops across
+ * the mesh.  All 0's, or all 0's remaining indicates a link layer message
+ * to be processed by the syslink route node itself.  All 1's indicates
+ * a broadcast message.  Broadcast messages also require special attention.
+ * Sending a message to a target address of 0 basically sends it to the
+ * directly connected syslink node. 
+ *
+ * The source physical address normally starts out as 0 and is constructed
+ * as the message hops across the mesh.  The target can use the constructed
+ * source address to respond to the originator of the message (as it must
+ * if it has not knowledge about the session id).  A target with knowledge
+ * of the session id has the option of forging its own return both.
  */
 
 /*
@@ -107,6 +116,7 @@ struct syslink_msg {
 #define SL_MSGID_BEG		0x20000000	/* first msg in transaction */
 #define SL_MSGID_END		0x10000000	/* last msg in transaction */
 #define SL_MSGID_STRUCTURED	0x08000000	/* contains structured data */
+#define SL_MSGID_COMPLETE	0x04000000	/* msg not under construction */
 #define SL_MSGID_TRANS_MASK	0x00FFFF00	/* transaction id */
 #define SL_MSGID_SEQ_MASK	0x000000FF	/* sequence no within trans */
 
