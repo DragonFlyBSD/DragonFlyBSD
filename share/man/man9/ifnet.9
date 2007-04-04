@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.6 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.7 2007/04/04 14:01:53 swildner Exp $
 .Dd January 15, 1997
 .Os
 .Dt IFNET 9
@@ -257,7 +257,7 @@ flag.
 Opaque per-interface data for the packet filter,
 .Xr bpf 4 .
 (Initialized by
-.Fn bpf_attach . )
+.Fn bpfattach . )
 .It Va if_index
 .Pq Vt u_short
 A unique number assigned to each interface in sequence as it is
