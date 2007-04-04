@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.39 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.40 2007/04/04 06:13:26 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -474,6 +474,11 @@ udp_input(struct mbuf *m, ...)
 	if (ipsec4_in_reject(m, inp))
 		goto bad;
 #endif /*FAST_IPSEC*/
+	/*
+	 * Check the minimum TTL for socket.
+	 */
+	if (ip->ip_ttl < inp->inp_ip_minttl)
+		goto bad;
 
 	/*
 	 * Construct sockaddr format source address.

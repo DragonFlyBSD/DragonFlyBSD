@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.36 2006/12/22 23:57:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.37 2007/04/04 06:13:26 dillon Exp $
  */
 
 #define _IP_VHL
@@ -1409,10 +1409,12 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 		case IP_TOS:
 		case IP_TTL:
+		case IP_MINTTL:
 		case IP_RECVOPTS:
 		case IP_RECVRETOPTS:
 		case IP_RECVDSTADDR:
 		case IP_RECVIF:
+		case IP_RECVTTL:
 		case IP_FAITH:
 			error = sooptcopyin(sopt, &optval, sizeof optval,
 					    sizeof optval);
@@ -1426,6 +1428,12 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 			case IP_TTL:
 				inp->inp_ip_ttl = optval;
+				break;
+			case IP_MINTTL:
+				if (optval > 0 && optval <= MAXTTL)
+					inp->inp_ip_minttl = optval;
+				else
+					error = EINVAL;
 				break;
 #define	OPTSET(bit) \
 	if (optval) \
@@ -1447,6 +1455,10 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 			case IP_RECVIF:
 				OPTSET(INP_RECVIF);
+				break;
+
+			case IP_RECVTTL:
+				OPTSET(INP_RECVTTL);
 				break;
 
 			case IP_FAITH:
@@ -1538,9 +1550,11 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 		case IP_TOS:
 		case IP_TTL:
+		case IP_MINTTL:
 		case IP_RECVOPTS:
 		case IP_RECVRETOPTS:
 		case IP_RECVDSTADDR:
+		case IP_RECVTTL:
 		case IP_RECVIF:
 		case IP_PORTRANGE:
 		case IP_FAITH:
@@ -1552,6 +1566,9 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 			case IP_TTL:
 				optval = inp->inp_ip_ttl;
+				break;
+			case IP_MINTTL:
+				optval = inp->inp_ip_minttl;
 				break;
 
 #define	OPTBIT(bit)	(inp->inp_flags & bit ? 1 : 0)
@@ -1566,6 +1583,10 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 			case IP_RECVDSTADDR:
 				optval = OPTBIT(INP_RECVDSTADDR);
+				break;
+
+			case IP_RECVTTL:
+				optval = OPTBIT(INP_RECVTTL);
 				break;
 
 			case IP_RECVIF:

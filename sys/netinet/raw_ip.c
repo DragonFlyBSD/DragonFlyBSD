@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.23 2005/08/15 16:46:21 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.24 2007/04/04 06:13:26 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -225,7 +225,11 @@ rip_input(struct mbuf *m, ...)
 		/* do not inject data to pcb */
 	} else
 #endif /*FAST_IPSEC*/
-	if (last) {
+	/* Check the minimum TTL for socket. */
+	if (last && ip->ip_ttl < last->inp_ip_minttl) {
+		m_freem(opts);
+		ipstat.ips_delivered--;
+	} else if (last) {
 		if (last->inp_flags & INP_CONTROLOPTS ||
 		    last->inp_socket->so_options & SO_TIMESTAMP)
 			ip_savecontrol(last, &opts, ip, m);

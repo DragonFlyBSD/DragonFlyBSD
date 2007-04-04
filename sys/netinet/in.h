@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.14 2006/12/29 18:02:56 victor Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.15 2007/04/04 06:13:26 dillon Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -354,6 +354,9 @@ struct sockaddr_in {
 #define	IP_DUMMYNET_DEL		61   /* delete a dummynet pipe from chain */
 #define	IP_DUMMYNET_FLUSH	62   /* flush dummynet */
 #define	IP_DUMMYNET_GET		64   /* get entire dummynet pipes */
+
+#define	IP_RECVTTL		65   /* bool; receive IP TTL w/dgram */
+#define	IP_MINTTL		66   /* minimum TTL for packet or drop */
 
 /*
  * Defaults and limits for options

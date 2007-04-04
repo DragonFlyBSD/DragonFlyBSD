@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.22 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.23 2007/04/04 06:13:26 dillon Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -196,6 +196,7 @@ struct inpcb {
 #define	INP_IPV6	0x2
 	u_char	inp_ip_ttl;		/* time to live proto */
 	u_char	inp_ip_p;		/* protocol proto */
+	u_char	inp_ip_minttl;		/* minimum TTL or drop */
 
 	/* protocol dependent part; options */
 	struct {
@@ -327,8 +328,10 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_RTHDRDSTOPTS	0x200000 /* receive dstoptions before rthdr */
 #define IN6P_AUTOFLOWLABEL	0x800000 /* attach flowlabel automatically */
 
+#define	INP_RECVTTL		0x80000000 /* receive incoming IP TTL */
+
 #define	INP_CONTROLOPTS		(INP_RECVOPTS|INP_RECVRETOPTS|INP_RECVDSTADDR|\
-					INP_RECVIF|\
+					INP_RECVIF|INP_RECVTTL|\
 				 IN6P_PKTINFO|IN6P_HOPLIMIT|IN6P_HOPOPTS|\
 				 IN6P_DSTOPTS|IN6P_RTHDR|IN6P_RTHDRDSTOPTS|\
 				 IN6P_AUTOFLOWLABEL)

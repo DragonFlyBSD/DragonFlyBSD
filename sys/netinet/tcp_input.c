@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.64 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.65 2007/04/04 06:13:26 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -803,6 +803,11 @@ findpcb:
 		if (ipsec4_in_reject(m, inp))
 			goto drop;
 	}
+#endif
+	/* Check the minimum TTL for socket. */
+#ifdef INET6
+	if ((isipv6 ? ip6->ip6_hlim : ip->ip_ttl) < inp->inp_ip_minttl)
+		goto drop;
 #endif
 
 	tp = intotcpcb(inp);
