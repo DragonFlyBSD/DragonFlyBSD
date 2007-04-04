@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.18 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.19 2007/04/04 07:17:52 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -143,7 +143,6 @@ static video_switch_t vesavidsw = {
 static video_switch_t *prevvidsw;
 
 /* VESA BIOS video modes */
-#define VESA_MAXMODES	64
 #define EOT		(-1)
 #define NA		(-2)
 
