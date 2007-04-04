@@ -27,12 +27,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.20 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.21 2007/04/04 07:14:26 swildner Exp $
  */
 
 #include "opt_vga.h"
 #include "opt_fb.h"
-#include "opt_syscons.h"	/* should be removed in the future, XXX */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,17 +42,19 @@
 #include <sys/fbio.h>
 #include <sys/thread2.h>
 
+#include <bus/isa/isareg.h>
+
+#include <machine/clock.h>
+#include <machine/md_var.h>
+#include <machine/pc/bios.h>
+#include <machine/pc/vesa.h>
+
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
 
-#include <machine/md_var.h>
-#include <machine/pc/bios.h>
-
 #include "fbreg.h"
 #include "vgareg.h"
-
-#include <bus/isa/isareg.h>
 
 #ifndef VGA_DEBUG
 #define VGA_DEBUG		0
@@ -144,25 +145,9 @@ vga_mmap(cdev_t dev, vga_softc_t *sc, vm_offset_t offset, int prot)
 
 /* LOW-LEVEL */
 
-#include <machine/clock.h>
-#include <machine/pc/vesa.h>
-
 #define probe_done(adp)		((adp)->va_flags & V_ADP_PROBED)
 #define init_done(adp)		((adp)->va_flags & V_ADP_INITIALIZED)
 #define config_done(adp)	((adp)->va_flags & V_ADP_REGISTERED)
-
-/* for compatibility with old kernel options */
-#ifdef SC_ALT_SEQACCESS
-#undef SC_ALT_SEQACCESS
-#undef VGA_ALT_SEQACCESS
-#define VGA_ALT_SEQACCESS	1
-#endif
-
-#ifdef SLOW_VGA
-#undef SLOW_VGA
-#undef VGA_SLOW_IOACCESS
-#define VGA_SLOW_IOACCESS	1
-#endif
 
 /* this should really be in `rtc.h' */
 #define RTC_EQUIPMENT           0x14
