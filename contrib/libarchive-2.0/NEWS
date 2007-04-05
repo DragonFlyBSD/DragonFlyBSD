@@ -1,4 +1,9 @@
 
+Apr 01, 2007: libarchive 2.0.27 released
+
+Apr 01, 2007: libarchive 2.0.26 released
+Mar 31, 2007: Several minor fixes from Colin Percival and Joerg Sonnenberger.
+
 Mar 12, 2007: libarchive 2.0.25 released
 Mar 12, 2007: Fix broken --unlink flag.
 

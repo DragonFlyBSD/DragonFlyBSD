@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_read_private.h,v 1.1 2007/03/03 07:37:36 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_read_private.h,v 1.2 2007/04/02 00:11:54 kientzle Exp $
  */
 
 #ifndef ARCHIVE_READ_PRIVATE_H_INCLUDED
@@ -93,9 +93,6 @@ struct archive_read {
 	 * test, e.g., 16 if you test a 2-byte magic value.  The
 	 * highest bidder will have their init function invoked, which
 	 * can set up pointers to specific handlers.
-	 *
-	 * On write, the client just invokes an archive_write_set function
-	 * which sets up the data here directly.
 	 */
 	struct {
 		int	(*bid)(const void *buff, size_t);
@@ -103,9 +100,8 @@ struct archive_read {
 	}	decompressors[4];
 	/* Read/write data stream (with compression). */
 	void	 *compression_data;		/* Data for (de)compressor. */
-	int	(*compression_init)(struct archive_read *);	/* Initialize. */
 	int	(*compression_finish)(struct archive_read *);
-	int	(*compression_write)(struct archive_read *, const void *, size_t);
+
 	/*
 	 * Read uses a peek/consume I/O model: the decompression code
 	 * returns a pointer to the requested block and advances the

@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.55 2007/03/11 10:36:42 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.60 2007/03/31 10:14:03 cperciva Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -129,7 +129,9 @@ struct name_cache {
 static void		 add_dir_list(struct bsdtar *bsdtar, const char *path,
 			     time_t mtime_sec, int mtime_nsec);
 static int		 append_archive(struct bsdtar *, struct archive *,
-			     const char *fname);
+			     struct archive *ina);
+static int		 append_archive_filename(struct bsdtar *,
+			     struct archive *, const char *fname);
 static void		 archive_names_from_file(struct bsdtar *bsdtar,
 			     struct archive *a);
 static int		 archive_names_from_file_helper(struct bsdtar *bsdtar,
@@ -155,7 +157,7 @@ static void		 test_for_append(struct bsdtar *);
 static void		 write_archive(struct archive *, struct bsdtar *);
 static void		 write_entry(struct bsdtar *, struct archive *,
 			     const struct stat *, const char *pathname,
-			     unsigned pathlen, const char *accpath);
+			     const char *accpath);
 static int		 write_file_data(struct bsdtar *, struct archive *,
 			     int fd);
 static void		 write_hierarchy(struct bsdtar *, struct archive *,
@@ -450,10 +452,11 @@ write_archive(struct archive *a, struct bsdtar *bsdtar)
 			}
 			set_chdir(bsdtar, arg);
 		} else {
-			if (*arg != '/' || (arg[0] == '@' && arg[1] != '/'))
+			if (*arg != '/' && (arg[0] != '@' || arg[1] != '/'))
 				do_chdir(bsdtar); /* Handle a deferred -C */
 			if (*arg == '@') {
-				if (append_archive(bsdtar, a, arg + 1) != 0)
+				if (append_archive_filename(bsdtar, a,
+				    arg + 1) != 0)
 					break;
 			} else
 				write_hierarchy(bsdtar, a, arg);
@@ -513,12 +516,11 @@ archive_names_from_file_helper(struct bsdtar *bsdtar, const char *line)
  * operation will complete and return non-zero.
  */
 static int
-append_archive(struct bsdtar *bsdtar, struct archive *a, const char *filename)
+append_archive_filename(struct bsdtar *bsdtar, struct archive *a,
+    const char *filename)
 {
 	struct archive *ina;
-	struct archive_entry *in_entry;
-	int bytes_read, bytes_written;
-	char buff[8192];
+	int rc;
 
 	if (strcmp(filename, "-") == 0)
 		filename = NULL; /* Library uses NULL for stdio. */
@@ -531,6 +533,26 @@ append_archive(struct bsdtar *bsdtar, struct archive *a, const char *filename)
 		bsdtar->return_value = 1;
 		return (0);
 	}
+
+	rc = append_archive(bsdtar, a, ina);
+
+	if (archive_errno(ina)) {
+		bsdtar_warnc(bsdtar, 0, "Error reading archive %s: %s",
+		    filename, archive_error_string(ina));
+		bsdtar->return_value = 1;
+	}
+	archive_read_finish(ina);
+
+	return (rc);
+}
+
+static int
+append_archive(struct bsdtar *bsdtar, struct archive *a, struct archive *ina)
+{
+	struct archive_entry *in_entry;
+	int bytes_read, bytes_written;
+	char buff[8192];
+
 	while (0 == archive_read_next_header(ina, &in_entry)) {
 		if (!new_enough(bsdtar, archive_entry_pathname(in_entry),
 			archive_entry_stat(in_entry)))
@@ -564,14 +586,7 @@ append_archive(struct bsdtar *bsdtar, struct archive *a, const char *filename)
 		}
 		if (bsdtar->verbose)
 			fprintf(stderr, "\n");
-
 	}
-	if (archive_errno(ina)) {
-		bsdtar_warnc(bsdtar, 0, "Error reading archive %s: %s",
-		    filename, archive_error_string(ina));
-		bsdtar->return_value = 1;
-	}
-	archive_read_finish(ina);
 
 	/* Note: If we got here, we saw no write errors, so return success. */
 	return (0);
@@ -613,8 +628,7 @@ write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
 		lst = tree_current_lstat(tree);
 		if (lst == NULL) {
 			/* Couldn't lstat(); must not exist. */
-			bsdtar_warnc(bsdtar, errno, "%s: Cannot stat", path);
-			bsdtar->return_value = 1;
+			bsdtar_warnc(bsdtar, errno, "%s: Cannot stat", name);
 			continue;
 		}
 		if (S_ISLNK(lst->st_mode))
@@ -719,7 +733,6 @@ write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
 		 * pathname editing and newness testing.
 		 */
 		write_entry(bsdtar, a, lst, name,
-		    tree_current_pathlen(tree),
 		    tree_current_access_path(tree));
 	}
 	tree_close(tree);
@@ -730,7 +743,7 @@ write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
  */
 static void
 write_entry(struct bsdtar *bsdtar, struct archive *a, const struct stat *st,
-    const char *pathname, unsigned pathlen, const char *accpath)
+    const char *pathname, const char *accpath)
 {
 	struct archive_entry	*entry;
 	int			 e;
@@ -740,8 +753,6 @@ write_entry(struct bsdtar *bsdtar, struct archive *a, const struct stat *st,
 	unsigned long		 stflags;
 #endif
 	static char		 linkbuffer[PATH_MAX+1];
-
-	(void)pathlen; /* UNUSED */
 
 	fd = -1;
 	entry = archive_entry_new();

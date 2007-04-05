@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.49 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.50 2007/03/31 22:59:43 cperciva Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -546,18 +546,8 @@ archive_read_format_tar_skip(struct archive_read *a)
 	off_t bytes_skipped;
 	struct tar* tar;
 	struct sparse_block *p;
-	int r = ARCHIVE_OK;
-	const void *b;	/* dummy variables */
-	size_t s;
-	off_t o;
-
 
 	tar = (struct tar *)*(a->pformat_data);
-	if (a->compression_skip == NULL) {
-		while (r == ARCHIVE_OK)
-			r = archive_read_format_tar_read_data(a, &b, &s, &o);
-		return (r);
-	}
 
 	/*
 	 * Compression layer skip functions are required to either skip the

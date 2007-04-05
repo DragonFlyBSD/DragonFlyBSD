@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_data_into_fd.c,v 1.14 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_data_into_fd.c,v 1.15 2007/04/02 00:21:46 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -50,8 +50,8 @@ archive_read_data_into_fd(struct archive *a, int fd)
 {
 	int r;
 	const void *buff;
-	size_t size;
-	ssize_t bytes_to_write, bytes_written, total_written;
+	size_t size, bytes_to_write;
+	ssize_t bytes_written, total_written;
 	off_t offset;
 	off_t output_offset;
 
