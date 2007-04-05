@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.10 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.11 2007/04/05 12:32:18 swildner Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -139,7 +139,7 @@ a configuration file of
 .Pa /dev/null
 if you want to disable it otherwise.
 .El
-.Sh ALGORITHM
+.Sh IMPLEMENTATION NOTES
 .Nm
 runs two linear regressions for each target against the uncorrected system
 time.  The two linear regressions are staggered so the second one is stable
