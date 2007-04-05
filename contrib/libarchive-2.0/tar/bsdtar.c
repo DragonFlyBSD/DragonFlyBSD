@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.73 2007/03/11 10:36:42 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.74 2007/03/24 03:25:49 kientzle Exp $");
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -657,6 +657,9 @@ main(int argc, char **argv)
 	}
 
 	cleanup_exclusions(bsdtar);
+	if (bsdtar->return_value != 0)
+		bsdtar_warnc(bsdtar, 0,
+		    "Error exit delayed from previous errors.");
 	return (bsdtar->return_value);
 }
 

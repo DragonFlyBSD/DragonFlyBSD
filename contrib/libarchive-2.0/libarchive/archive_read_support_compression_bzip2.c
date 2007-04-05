@@ -25,7 +25,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_bzip2.c,v 1.13 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_bzip2.c,v 1.14 2007/03/24 03:23:26 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -136,7 +136,7 @@ bid(const void *buff, size_t len)
  * archives and emit a useful message.
  */
 static int
-init(struct archive *a, const void *buff, size_t n)
+init(struct archive_read *a, const void *buff, size_t n)
 {
 	(void)a;	/* UNUSED */
 	(void)buff;	/* UNUSED */

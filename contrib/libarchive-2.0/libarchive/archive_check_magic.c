@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_check_magic.c,v 1.7 2007/01/09 08:05:54 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_check_magic.c,v 1.8 2007/04/02 00:15:45 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -72,9 +72,9 @@ state_name(unsigned s)
 
 
 static void
-write_all_states(int states)
+write_all_states(unsigned int states)
 {
-	unsigned lowbit;
+	unsigned int lowbit;
 
 	/* A trick for computing the lowest set bit. */
 	while ((lowbit = states & (-states)) != 0) {
@@ -92,8 +92,8 @@ write_all_states(int states)
  * the libarchive API.
  */
 void
-__archive_check_magic(struct archive *a, unsigned magic, unsigned state,
-    const char *function)
+__archive_check_magic(struct archive *a, unsigned int magic,
+    unsigned int state, const char *function)
 {
 	if (a->magic != magic) {
 		errmsg("INTERNAL ERROR: Function ");

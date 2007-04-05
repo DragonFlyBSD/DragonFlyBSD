@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_iso9660.c,v 1.20 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_iso9660.c,v 1.22 2007/04/02 00:29:52 kientzle Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -286,7 +286,7 @@ archive_read_format_iso9660_bid(struct archive_read *a)
 	struct iso9660 *iso9660;
 	ssize_t bytes_read;
 	const void *h;
-	const char *p;
+	const unsigned char *p;
 
 	iso9660 = (struct iso9660 *)*(a->pformat_data);
 
@@ -301,7 +301,7 @@ archive_read_format_iso9660_bid(struct archive_read *a)
 	bytes_read = (a->compression_read_ahead)(a, &h, 32768 + 8*2048);
 	if (bytes_read < 32768 + 8*2048)
 	    return (iso9660->bid = -1);
-	p = (const char *)h;
+	p = (const unsigned char *)h;
 
 	/* Skip the reserved area. */
 	bytes_read -= 32768;
@@ -312,7 +312,7 @@ archive_read_format_iso9660_bid(struct archive_read *a)
 		iso9660->bid = isPVD(iso9660, p);
 		if (iso9660->bid > 0)
 			return (iso9660->bid);
-		if (*p == '\xff') /* End-of-volume-descriptor marker. */
+		if (*p == '\177') /* End-of-volume-descriptor marker. */
 			break;
 	}
 
@@ -917,33 +917,13 @@ fprintf(stderr, " *** Discarding CE data.\n");
 			offset = file->offset;
 
 		/* Seek forward to the start of the entry. */
-		/* Use fast compression_skip if it's available. */
-		if (iso9660->current_position < offset
-		    && a->compression_skip != NULL) {
+		if (iso9660->current_position < offset) {
 			off_t step = offset - iso9660->current_position;
 			off_t bytes_read;
 			bytes_read = (a->compression_skip)(a, step);
-			iso9660->current_position += bytes_read;
-		}
-
-		/* Use a series of reads if compression_skip didn't
-		 * get us all the way there. */
-		while (iso9660->current_position < offset) {
-			ssize_t step = offset - iso9660->current_position;
-			ssize_t bytes_read;
-			const void *buff;
-
-			if (step > iso9660->logical_block_size)
-				step = iso9660->logical_block_size;
-			bytes_read = (a->compression_read_ahead)(a, &buff, step);
-			if (bytes_read <= 0) {
-				release_file(iso9660, file);
-				return (ARCHIVE_FATAL);
-			}
-			if (bytes_read > step)
-				bytes_read = step;
-			iso9660->current_position += bytes_read;
-			(a->compression_read_consume)(a, bytes_read);
+			if (bytes_read < 0)
+				return (bytes_read);
+			iso9660->current_position = offset;
 		}
 
 		/* We found body of file; handle it now. */

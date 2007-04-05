@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_compression_none.c,v 1.12 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_compression_none.c,v 1.13 2007/03/17 14:59:04 cperciva Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -143,6 +143,7 @@ archive_compressor_none_write(struct archive_write *a, const void *vbuff,
 			    a->client_data, buff, remaining);
 			if (bytes_written <= 0)
 				return (ARCHIVE_FATAL);
+			a->archive.raw_position += bytes_written;
 			remaining -= bytes_written;
 			buff += bytes_written;
 		}
