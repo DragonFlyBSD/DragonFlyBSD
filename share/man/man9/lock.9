@@ -25,7 +25,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.5 2006/06/29 19:56:19 swildner Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.6 2007/04/05 20:01:19 swildner Exp $
 .\"
 .Dd June 29, 2006
 .Dt LOCK 9
@@ -77,8 +77,6 @@ Do not sleep while acquiring the lock.
 Fail after a sleep.
 .It Dv LK_CANRECURSE
 Allow recursive exclusive locks.
-.It Dv LK_NOPAUSE
-Disable the spinlock while acquiring the lock.
 .It Dv LK_TIMELOCK
 Use
 .Fa timo
