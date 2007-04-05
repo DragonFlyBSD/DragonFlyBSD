@@ -1,10 +1,8 @@
-#!/usr/local/www/cgi-bin/tablecg
-#
-# $DragonFly: site/data/docs/nanosleep/Attic/index.cgi,v 1.1 2004/01/22 21:55:58 justin Exp $
+<!--#set var="title" value="DragonFly and Nanosleep" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/docs/nanosleep/index.shtml,v 1.1 2007/04/05 14:03:52 justin Exp $ -->
 
-$TITLE(DragonFly and nanosleep&#40;&#41;)
 
-<body>
 <center><H2><span style="font-family: helvetica,arial,sans-serif;">
 How long does <i>your</i> nanosleep() really sleep?</span></H2></center>
 <p>
@@ -262,5 +260,6 @@ Guest monthly lectures at the local laundrymat<br>
 pherman@frenchfries.net<br>
 January 8, 2004<br>
 </address>
-</BODY>
-</HTML>
+
+<!--#include virtual="/includes/footer.shtml" -->
+
