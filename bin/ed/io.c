@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  *
  * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
- * $FreeBSD: src/bin/ed/io.c,v 1.10 1999/08/27 23:14:14 peter Exp $
- * $DragonFly: src/bin/ed/io.c,v 1.5 2004/10/30 13:34:49 liamfoy Exp $
+ * $FreeBSD: src/bin/ed/io.c,v 1.14 2003/01/01 18:48:39 schweikh Exp $
+ * $DragonFly: src/bin/ed/io.c,v 1.6 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include "ed.h"
@@ -45,13 +45,13 @@ read_file(char *fn, long n)
 	fp = (*fn == '!') ? popen(fn + 1, "r") : fopen(strip_escapes(fn), "r");
 	if (fp == NULL) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
-		sprintf(errmsg, "cannot open input file");
+		errmsg = "cannot open input file";
 		return ERR;
 	} else if ((size = read_stream(fp, n)) < 0)
 		return ERR;
 	 else if (((*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
-		sprintf(errmsg, "cannot close input file");
+		errmsg = "cannot close input file";
 		return ERR;
 	}
 	fprintf(stdout, !scripted ? "%lu\n" : "", size);
@@ -132,7 +132,7 @@ get_stream_line(FILE *fp)
 		sbuf[i++] = c;
 	else if (ferror(fp)) {
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "cannot read input file");
+		errmsg = "cannot read input file";
 		return ERR;
 	} else if (i) {
 		sbuf[i++] = '\n';
@@ -153,13 +153,13 @@ write_file(const char *fn, const char *mode, long n, long m)
 	fp = (*fn == '!') ? popen(fn+1, "w") : fopen(strip_escapes(fn), mode);
 	if (fp == NULL) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
-		sprintf(errmsg, "cannot open output file");
+		errmsg = "cannot open output file";
 		return ERR;
 	} else if ((size = write_stream(fp, n, m)) < 0)
 		return ERR;
 	 else if (((*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
-		sprintf(errmsg, "cannot close output file");
+		errmsg = "cannot close output file";
 		return ERR;
 	}
 	fprintf(stdout, !scripted ? "%lu\n" : "", size);
@@ -198,18 +198,18 @@ write_stream(FILE *fp, long n, long m)
 
 /* put_stream_line: write a line of text to a stream; return status */
 int
-put_stream_line(FILE *fp, char *s, int len)
+put_stream_line(FILE *fp, const char *s, int len)
 {
 	while (len--)
 		if ((des ? put_des_char(*s++, fp) : fputc(*s++, fp)) < 0) {
 			fprintf(stderr, "%s\n", strerror(errno));
-			sprintf(errmsg, "cannot write file");
+			errmsg = "cannot write file";
 			return ERR;
 		}
 	return 0;
 }
 
-/* get_extended_line: get a an extended line from stdin */
+/* get_extended_line: get an extended line from stdin */
 char *
 get_extended_line(int *sizep, int nonl)
 {
@@ -234,7 +234,7 @@ get_extended_line(int *sizep, int nonl)
 		if ((n = get_tty_line()) < 0)
 			return NULL;
 		else if (n == 0 || ibuf[n - 1] != '\n') {
-			sprintf(errmsg, "unexpected end-of-file");
+			errmsg = "unexpected end-of-file";
 			return NULL;
 		}
 		REALLOC(cvbuf, cvbufsz, l + n, NULL);
@@ -275,7 +275,7 @@ get_tty_line(void)
 		case EOF:
 			if (ferror(stdin)) {
 				fprintf(stderr, "stdin: %s\n", strerror(errno));
-				sprintf(errmsg, "cannot read stdin");
+				errmsg = "cannot read stdin";
 				clearerr(stdin);
 				ibufp = NULL;
 				return ERR;
@@ -302,7 +302,7 @@ extern int cols;
 
 /* put_tty_line: print text to stdout */
 int
-put_tty_line(char *s, int l, long n, int gflag)
+put_tty_line(const char *s, int l, long n, int gflag)
 {
 	int col = 0;
 	int lc = 0;

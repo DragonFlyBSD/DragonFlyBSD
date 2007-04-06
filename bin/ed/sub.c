@@ -26,8 +26,8 @@
  * SUCH DAMAGE.
  *
  * @(#)sub.c,v 1.1 1994/02/01 00:34:44 alm Exp
- * $FreeBSD: src/bin/ed/sub.c,v 1.12 1999/08/27 23:14:15 peter Exp $
- * $DragonFly: src/bin/ed/sub.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: src/bin/ed/sub.c,v 1.15 2002/06/30 05:13:53 obrien Exp $
+ * $DragonFly: src/bin/ed/sub.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include "ed.h"
@@ -79,7 +79,8 @@ extract_subst_template(void)
 
 	if (*ibufp == '%' && *(ibufp + 1) == delimiter) {
 		ibufp++;
-		if (!rhbuf) sprintf(errmsg, "no previous substitution");
+		if (!rhbuf)
+			errmsg = "no previous substitution";
 		return rhbuf;
 	}
 	while (*ibufp != delimiter) {
@@ -114,8 +115,8 @@ int
 search_and_replace(pattern_t *pat, int gflag, int kth)
 {
 	undo_t *up;
-	char *txt;
-	char *eot;
+	const char *txt;
+	const char *eot;
 	long lc;
 	long xa = current_addr;
 	int nsubs = 0;
@@ -153,7 +154,7 @@ search_and_replace(pattern_t *pat, int gflag, int kth)
 	}
 	current_addr = xa;
 	if  (nsubs == 0 && !(gflag & GLB)) {
-		sprintf(errmsg, "no match");
+		errmsg = "no match";
 		return ERR;
 	} else if ((gflag & (GPR | GLS | GNP)) &&
 	    display_lines(current_addr, current_addr, gflag) < 0)
@@ -208,7 +209,7 @@ substitute_matching_text(pattern_t *pat, line_t *lp, int gflag, int kth)
 		i = eot - txt;
 		REALLOC(rbuf, rbufsz, off + i + 2, ERR);
 		if (i > 0 && !rm[0].rm_eo && (gflag & GSG)) {
-			sprintf(errmsg, "infinite substitution loop");
+			errmsg = "infinite substitution loop";
 			return  ERR;
 		}
 		if (isbinary)
@@ -223,7 +224,7 @@ substitute_matching_text(pattern_t *pat, line_t *lp, int gflag, int kth)
 /* apply_subst_template: modify text according to a substitution template;
    return offset to end of modified text */
 int
-apply_subst_template(char *boln, regmatch_t *rm, int off, int re_nsub)
+apply_subst_template(const char *boln, regmatch_t *rm, int off, int re_nsub)
 {
 	int j = 0;
 	int k = 0;

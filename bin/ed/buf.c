@@ -26,8 +26,8 @@
  * SUCH DAMAGE.
  *
  * @(#)buf.c,v 1.4 1994/02/01 00:34:35 alm Exp
- * $FreeBSD: src/bin/ed/buf.c,v 1.17 1999/08/27 23:14:12 peter Exp $
- * $DragonFly: src/bin/ed/buf.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: src/bin/ed/buf.c,v 1.22 2002/06/30 05:13:53 obrien Exp $
+ * $DragonFly: src/bin/ed/buf.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include <sys/file.h>
@@ -57,9 +57,9 @@ get_sbuf_line(line_t *lp)
 	/* out of position */
 	if (sfseek != lp->seek) {
 		sfseek = lp->seek;
-		if (fseek(sfp, sfseek, SEEK_SET) < 0) {
+		if (fseeko(sfp, sfseek, SEEK_SET) < 0) {
 			fprintf(stderr, "%s\n", strerror(errno));
-			sprintf(errmsg, "cannot seek temp file");
+			errmsg = "cannot seek temp file";
 			return NULL;
 		}
 	}
@@ -67,7 +67,7 @@ get_sbuf_line(line_t *lp)
 	REALLOC(sfbuf, sfbufsz, len + 1, NULL);
 	if ((ct = fread(sfbuf, sizeof(char), len, sfp)) <  0 || ct != len) {
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "cannot read temp file");
+		errmsg = "cannot read temp file";
 		return NULL;
 	}
 	sfseek += len;				/* update file position */
@@ -78,41 +78,41 @@ get_sbuf_line(line_t *lp)
 
 /* put_sbuf_line: write a line of text to the scratch file and add a line node
    to the editor buffer;  return a pointer to the end of the text */
-char *
-put_sbuf_line(char *cs)
+const char *
+put_sbuf_line(const char *cs)
 {
 	line_t *lp;
 	int len, ct;
-	char *s;
+	const char *s;
 
 	if ((lp = (line_t *) malloc(sizeof(line_t))) == NULL) {
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "out of memory");
+		errmsg = "out of memory";
 		return NULL;
 	}
 	/* assert: cs is '\n' terminated */
 	for (s = cs; *s != '\n'; s++)
 		;
 	if (s - cs >= LINECHARS) {
-		sprintf(errmsg, "line too long");
+		errmsg = "line too long";
 		return NULL;
 	}
 	len = s - cs;
 	/* out of position */
 	if (seek_write) {
-		if (fseek(sfp, 0L, SEEK_END) < 0) {
+		if (fseeko(sfp, (off_t)0, SEEK_END) < 0) {
 			fprintf(stderr, "%s\n", strerror(errno));
-			sprintf(errmsg, "cannot seek temp file");
+			errmsg = "cannot seek temp file";
 			return NULL;
 		}
-		sfseek = ftell(sfp);
+		sfseek = ftello(sfp);
 		seek_write = 0;
 	}
 	/* assert: SPL1() */
 	if ((ct = fwrite(cs, sizeof(char), len, sfp)) < 0 || ct != len) {
 		sfseek = -1;
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "cannot write temp file");
+		errmsg = "cannot write temp file";
 		return NULL;
 	}
 	lp->len = len;
@@ -146,7 +146,7 @@ get_line_node_addr(line_t *lp)
 	while (cp != lp && (cp = cp->q_forw) != &buffer_head)
 		n++;
 	if (n && cp == &buffer_head) {
-		sprintf(errmsg, "invalid address");
+		errmsg = "invalid address";
 		return ERR;
 	 }
 	 return n;
@@ -192,7 +192,7 @@ char sfn[15] = "";				/* scratch file name */
 int
 open_sbuf(void)
 {
-	int fd = -1;
+	int fd;
 	int u;
 
 	isbinary = newline_added = 0;
@@ -203,7 +203,7 @@ open_sbuf(void)
 		if (fd != -1)
 			close(fd);
 		perror(sfn);
-		strcpy(errmsg, "cannot open temp file");
+		errmsg = "cannot open temp file";
 		umask(u);
 		return ERR;
 	}
@@ -219,7 +219,7 @@ close_sbuf(void)
 	if (sfp) {
 		if (fclose(sfp) < 0) {
 			fprintf(stderr, "%s: %s\n", sfn, strerror(errno));
-			sprintf(errmsg, "cannot close temp file");
+			errmsg = "cannot close temp file";
 			return ERR;
 		}
 		sfp = NULL;

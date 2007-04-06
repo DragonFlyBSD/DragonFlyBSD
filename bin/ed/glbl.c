@@ -26,8 +26,8 @@
  * SUCH DAMAGE.
  *
  * @(#)glob.c,v 1.1 1994/02/01 00:34:40 alm Exp
- * $FreeBSD: src/bin/ed/glbl.c,v 1.9.2.1 2001/01/23 14:38:31 asmodai Exp $
- * $DragonFly: src/bin/ed/glbl.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: src/bin/ed/glbl.c,v 1.13 2002/06/30 05:13:53 obrien Exp $
+ * $DragonFly: src/bin/ed/glbl.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -49,7 +49,7 @@ build_active_list(int isgcmd)
 	char delimiter;
 
 	if ((delimiter = *ibufp) == ' ' || delimiter == '\n') {
-		sprintf(errmsg, "invalid pattern delimiter");
+		errmsg = "invalid pattern delimiter";
 		return ERR;
 	} else if ((pat = get_compiled_pattern()) == NULL)
 		return ERR;
@@ -107,13 +107,13 @@ exec_global(int interact, int gflag)
 			if (n < 0)
 				return ERR;
 			else if (n == 0) {
-				sprintf(errmsg, "unexpected end-of-file");
+				errmsg = "unexpected end-of-file";
 				return ERR;
 			} else if (n == 1 && !strcmp(ibuf, "\n"))
 				continue;
 			else if (n == 2 && !strcmp(ibuf, "&\n")) {
 				if (cmd == NULL) {
-					sprintf(errmsg, "no previous command");
+					errmsg = "no previous command";
 					return ERR;
 				} else cmd = ocmd;
 			} else if ((cmd = get_extended_line(&n, 0)) == NULL)
@@ -157,7 +157,7 @@ set_active_node(line_t *lp)
 			if ((ts = (line_t **) realloc(active_list,
 			    (ti += MINBUFSZ) * sizeof(line_t **))) == NULL) {
 				fprintf(stderr, "%s\n", strerror(errno));
-				sprintf(errmsg, "out of memory");
+				errmsg = "out of memory";
 				SPL0();
 				return ERR;
 			}
@@ -166,7 +166,7 @@ set_active_node(line_t *lp)
 			if ((ts = (line_t **) malloc((ti += MINBUFSZ) *
 			    sizeof(line_t **))) == NULL) {
 				fprintf(stderr, "%s\n", strerror(errno));
-				sprintf(errmsg, "out of memory");
+				errmsg = "out of memory";
 				SPL0();
 				return ERR;
 			}

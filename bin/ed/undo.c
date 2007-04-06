@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  *
  * @(#)undo.c,v 1.1 1994/02/01 00:34:44 alm Exp
- * $FreeBSD: src/bin/ed/undo.c,v 1.9 1999/08/27 23:14:15 peter Exp $
- * $DragonFly: src/bin/ed/undo.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: src/bin/ed/undo.c,v 1.12 2002/06/30 05:13:53 obrien Exp $
+ * $DragonFly: src/bin/ed/undo.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include "ed.h"
@@ -47,7 +47,7 @@ push_undo_stack(int type, long from, long to)
 	if (ustack == NULL &&
 	    (ustack = (undo_t *) malloc((usize = USIZE) * sizeof(undo_t))) == NULL) {
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "out of memory");
+		errmsg = "out of memory";
 		return NULL;
 	}
 #endif
@@ -62,7 +62,7 @@ push_undo_stack(int type, long from, long to)
 	}
 	/* out of memory - release undo stack */
 	fprintf(stderr, "%s\n", strerror(errno));
-	sprintf(errmsg, "out of memory");
+	errmsg = "out of memory";
 	clear_undo_stack();
 	free(ustack);
 	ustack = NULL;
@@ -90,7 +90,7 @@ pop_undo_stack(void)
 	long o_addr_last = addr_last;
 
 	if (u_current_addr == -1 || u_addr_last == -1) {
-		sprintf(errmsg, "nothing to undo");
+		errmsg = "nothing to undo";
 		return ERR;
 	} else if (u_p)
 		modified = 1;

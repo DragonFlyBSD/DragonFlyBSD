@@ -1,5 +1,5 @@
 /* ed.h: type and constant definitions for the ed editor. */
-/*
+/*-
  * Copyright (c) 1993 Andrew Moore
  * All rights reserved.
  *
@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
- * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.8 2007/04/06 21:33:28 pavalos Exp $
+ * $FreeBSD: src/bin/ed/ed.h,v 1.20 2005/01/10 08:39:22 imp Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.9 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ if (--mutex == 0) { \
 #define STRTOL(i, p) { \
 	if (((i = strtol(p, &p, 10)) == LONG_MIN || i == LONG_MAX) && \
 	    errno == ERANGE) { \
-		sprintf(errmsg, "number out of range"); \
+		errmsg = "number out of range"; \
 	    	i = 0; \
 		return ERR; \
 	} \
@@ -122,14 +122,14 @@ if ((i) > (n)) { \
 	if ((b) != NULL) { \
 		if ((ts = (char *) realloc((b), ti += max((i), MINBUFSZ))) == NULL) { \
 			fprintf(stderr, "%s\n", strerror(errno)); \
-			sprintf(errmsg, "out of memory"); \
+			errmsg = "out of memory"; \
 			SPL0(); \
 			return err; \
 		} \
 	} else { \
 		if ((ts = (char *) malloc(ti += max((i), MINBUFSZ))) == NULL) { \
 			fprintf(stderr, "%s\n", strerror(errno)); \
-			sprintf(errmsg, "out of memory"); \
+			errmsg = "out of memory"; \
 			SPL0(); \
 			return err; \
 		} \
@@ -147,7 +147,7 @@ if ((i) > (n)) { \
 	SPL1(); \
 	if ((ts = (char *) realloc((b), ti += max((i), MINBUFSZ))) == NULL) { \
 		fprintf(stderr, "%s\n", strerror(errno)); \
-		sprintf(errmsg, "out of memory"); \
+		errmsg = "out of memory"; \
 		SPL0(); \
 		return err; \
 	} \
@@ -176,10 +176,6 @@ if ((i) > (n)) { \
 /* NEWLINE_TO_NUL: overwrite newlines with ASCII NULs */
 #define NEWLINE_TO_NUL(s, l) translit_text(s, l, '\n', '\0')
 
-#ifdef sun
-# define strerror(n) sys_errlist[n]
-#endif
-
 #ifdef ED_DES_INCLUDES
 void des_error(const char *);
 void expand_des_key(char *, char *);
@@ -193,72 +189,72 @@ int get_des_char(FILE *);
 int put_des_char(int, FILE *);
 
 /* Local Function Declarations */
-void add_line_node (line_t *);
-int append_lines (long);
-int apply_subst_template (char *, regmatch_t *, int, int);
-int build_active_list (int);
-int cbc_decode (char *, FILE *);
-int cbc_encode (char *, int, FILE *);
-int check_addr_range (long, long);
-void clear_active_list (void);
-void clear_undo_stack (void);
-int close_sbuf (void);
-int copy_lines (long);
-int delete_lines (long, long);
-int display_lines (long, long, int);
-line_t *dup_line_node (line_t *);
-int exec_command (void);
-long exec_global (int, int);
-int extract_addr_range (void);
-char *extract_pattern (int);
-int extract_subst_tail (int *, long *);
-char *extract_subst_template (void);
-int filter_lines (long, long, char *);
-line_t *get_addressed_line_node (long);
-pattern_t *get_compiled_pattern (void);
-char *get_extended_line (int *, int);
-char *get_filename (void);
-int get_keyword (void);
-long get_line_node_addr (line_t *);
-long get_matching_node_addr (pattern_t *, int);
-long get_marked_node_addr (int);
-char *get_sbuf_line (line_t *);
-int get_shell_command (void);
-int get_stream_line (FILE *);
-int get_tty_line (void);
-void handle_hup (int);
-void handle_int (int);
-void handle_winch (int);
-int has_trailing_escape (char *, char *);
-int hex_to_binary (int, int);
-void init_buffers (void);
-int is_legal_filename (char *);
-int join_lines (long, long);
-int mark_line_node (line_t *, int);
-int move_lines (long);
-line_t *next_active_node (void);
-long next_addr (void);
-int open_sbuf (void);
-char *parse_char_class (char *);
-int pop_undo_stack (void);
-undo_t *push_undo_stack (int, long, long);
-char *put_sbuf_line (char *);
-int put_stream_line (FILE *, char *, int);
-int put_tty_line (char *, int, long, int);
-void quit (int);
-long read_file (char *, long);
-long read_stream (FILE *, long);
-int search_and_replace (pattern_t *, int, int);
-int set_active_node (line_t *);
-void signal_hup (int);
-void signal_int (int);
-char *strip_escapes (const char *);
-int substitute_matching_text (pattern_t *, line_t *, int, int);
-char *translit_text (char *, int, int, int);
-void unmark_line_node (line_t *);
-void unset_active_nodes (line_t *, line_t *);
-long write_file (const char *, const char *, long, long);
-long write_stream (FILE *, long, long);
+void add_line_node(line_t *);
+int append_lines(long);
+int apply_subst_template(const char *, regmatch_t *, int, int);
+int build_active_list(int);
+int cbc_decode(char *, FILE *);
+int cbc_encode(char *, int, FILE *);
+int check_addr_range(long, long);
+void clear_active_list(void);
+void clear_undo_stack(void);
+int close_sbuf(void);
+int copy_lines(long);
+int delete_lines(long, long);
+int display_lines(long, long, int);
+line_t *dup_line_node(line_t *);
+int exec_command(void);
+long exec_global(int, int);
+int extract_addr_range(void);
+char *extract_pattern(int);
+int extract_subst_tail(int *, long *);
+char *extract_subst_template(void);
+int filter_lines(long, long, char *);
+line_t *get_addressed_line_node(long);
+pattern_t *get_compiled_pattern(void);
+char *get_extended_line(int *, int);
+char *get_filename(void);
+int get_keyword(void);
+long get_line_node_addr(line_t *);
+long get_matching_node_addr(pattern_t *, int);
+long get_marked_node_addr(int);
+char *get_sbuf_line(line_t *);
+int get_shell_command(void);
+int get_stream_line(FILE *);
+int get_tty_line(void);
+void handle_hup(int);
+void handle_int(int);
+void handle_winch(int);
+int has_trailing_escape(char *, char *);
+int hex_to_binary(int, int);
+void init_buffers(void);
+int is_legal_filename(char *);
+int join_lines(long, long);
+int mark_line_node(line_t *, int);
+int move_lines(long);
+line_t *next_active_node(void);
+long next_addr(void);
+int open_sbuf(void);
+char *parse_char_class(char *);
+int pop_undo_stack(void);
+undo_t *push_undo_stack(int, long, long);
+const char *put_sbuf_line(const char *);
+int put_stream_line(FILE *, const char *, int);
+int put_tty_line(const char *, int, long, int);
+void quit(int);
+long read_file(char *, long);
+long read_stream(FILE *, long);
+int search_and_replace(pattern_t *, int, int);
+int set_active_node(line_t *);
+void signal_hup(int);
+void signal_int(int);
+char *strip_escapes(const char *);
+int substitute_matching_text(pattern_t *, line_t *, int, int);
+char *translit_text(char *, int, int, int);
+void unmark_line_node(line_t *);
+void unset_active_nodes(line_t *, line_t *);
+long write_file(const char *, const char *, long, long);
+long write_stream(FILE *, long, long);
 
 /* global buffers */
 extern char stdinbuf[];
@@ -275,13 +271,10 @@ extern int sigflags;
 
 /* global vars */
 extern long addr_last;
-extern long u_addr_last;
 extern long current_addr;
-extern long u_current_addr;
-extern char errmsg[];
+extern const char *errmsg;
 extern long first_addr;
 extern int lineno;
 extern long second_addr;
-#ifdef sun
-extern char *sys_errlist[];
-#endif
+extern long u_addr_last;
+extern long u_current_addr;

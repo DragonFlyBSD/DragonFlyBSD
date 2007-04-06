@@ -37,8 +37,8 @@
  *	from: @(#)bdes.c	5.5 (Berkeley) 6/27/91
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
- * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.9 2007/04/06 21:33:28 pavalos Exp $
+ * $FreeBSD: src/bin/ed/cbc.c,v 1.20 2004/04/06 20:06:47 markm Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.10 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -198,7 +198,7 @@ get_keyword(void)
 void
 des_error(const char *s)
 {
-	sprintf(errmsg, "%s", s ? s : strerror(errno));
+	errmsg = s ? s : strerror(errno);
 }
 
 /*
@@ -233,6 +233,8 @@ hex_to_binary(int c, int radix)
 
 /*
  * convert the key to a bit pattern
+ *	obuf		bit pattern
+ *	inbuf		the key itself
  */
 void
 expand_des_key(char *obuf, char *inbuf)
@@ -365,6 +367,8 @@ cbc_encode(char *msgbuf, int n, FILE *fp)
 
 /*
  * This decrypts using the Cipher Block Chaining mode of DES
+ *	msgbuf	I/O buffer
+ *	fp	input file descriptor
  */
 int
 cbc_decode(char *msgbuf, FILE *fp)

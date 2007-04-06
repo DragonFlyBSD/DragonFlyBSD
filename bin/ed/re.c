@@ -26,8 +26,8 @@
  * SUCH DAMAGE.
  *
  * @(#)re.c,v 1.6 1994/02/01 00:34:43 alm Exp
- * $FreeBSD: src/bin/ed/re.c,v 1.15.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/re.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: src/bin/ed/re.c,v 1.20 2003/07/20 10:24:09 ru Exp $
+ * $DragonFly: src/bin/ed/re.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
  */
 
 #include "ed.h"
@@ -35,42 +35,45 @@
 
 extern int patlock;
 
-char errmsg[PATH_MAX + 40] = "";
+const char *errmsg = "";
 
 /* get_compiled_pattern: return pointer to compiled pattern from command
    buffer */
 pattern_t *
 get_compiled_pattern(void)
 {
-	static pattern_t *exp = NULL;
+	static pattern_t *expr = NULL;
+	static char error[1024];
 
-	char *exps;
+	char *exprs;
 	char delimiter;
 	int n;
 
 	if ((delimiter = *ibufp) == ' ') {
-		sprintf(errmsg, "invalid pattern delimiter");
+		errmsg = "invalid pattern delimiter";
 		return NULL;
 	} else if (delimiter == '\n' || *++ibufp == '\n' || *ibufp == delimiter) {
-		if (!exp) sprintf(errmsg, "no previous pattern");
-		return exp;
-	} else if ((exps = extract_pattern(delimiter)) == NULL)
+		if (!expr)
+			errmsg = "no previous pattern";
+		return expr;
+	} else if ((exprs = extract_pattern(delimiter)) == NULL)
 		return NULL;
 	/* buffer alloc'd && not reserved */
-	if (exp && !patlock)
-		regfree(exp);
-	else if ((exp = (pattern_t *) malloc(sizeof(pattern_t))) == NULL) {
+	if (expr && !patlock)
+		regfree(expr);
+	else if ((expr = (pattern_t *) malloc(sizeof(pattern_t))) == NULL) {
 		fprintf(stderr, "%s\n", strerror(errno));
-		sprintf(errmsg, "out of memory");
+		errmsg = "out of memory";
 		return NULL;
 	}
 	patlock = 0;
-	if ((n = regcomp(exp, exps, 0))) {
-		regerror(n, exp, errmsg, sizeof errmsg);
-		free(exp);
-		return exp = NULL;
+	if ((n = regcomp(expr, exprs, 0))) {
+		regerror(n, expr, error, sizeof error);
+		errmsg = error;
+		free(expr);
+		return expr = NULL;
 	}
-	return exp;
+	return expr;
 }
 
 
@@ -91,13 +94,13 @@ extract_pattern(int delimiter)
 			break;
 		case '[':
 			if ((nd = parse_char_class(++nd)) == NULL) {
-				sprintf(errmsg, "unbalanced brackets ([])");
+				errmsg = "unbalanced brackets ([])";
 				return NULL;
 			}
 			break;
 		case '\\':
 			if (*++nd == '\n') {
-				sprintf(errmsg, "trailing backslash (\\)");
+				errmsg = "trailing backslash (\\)";
 				return NULL;
 			}
 			break;
