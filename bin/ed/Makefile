@@ -1,5 +1,5 @@
 # $FreeBSD: src/bin/ed/Makefile,v 1.18.2.1 2001/12/13 09:58:12 ru Exp $
-# $DragonFly: src/bin/ed/Makefile,v 1.8 2005/09/06 18:55:17 dillon Exp $
+# $DragonFly: src/bin/ed/Makefile,v 1.9 2007/04/06 21:33:28 pavalos Exp $
 
 PROG=	ed
 SRCS=	buf.c cbc.c glbl.c io.c main.c re.c sub.c undo.c
@@ -10,8 +10,8 @@ MLINKS=	ed.1 red.1
 .if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT)
 DISTRIBUTION=crypto
 CFLAGS+=-DDES
-DPADD=	${LIBCIPHER}
-LDADD=	-lcipher
+DPADD=	${LIBCRYPTO}
+LDADD=	-lcrypto
 .endif
 
 .include <bsd.prog.mk>

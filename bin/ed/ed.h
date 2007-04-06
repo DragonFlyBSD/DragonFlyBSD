@@ -26,7 +26,7 @@
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
  * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.7 2004/09/26 16:32:47 asmodai Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.8 2007/04/06 21:33:28 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -180,6 +180,18 @@ if ((i) > (n)) { \
 # define strerror(n) sys_errlist[n]
 #endif
 
+#ifdef ED_DES_INCLUDES
+void des_error(const char *);
+void expand_des_key(char *, char *);
+void set_des_key(DES_cblock *);
+#endif
+
+/* Other DES support stuff */
+void init_des_cipher(void);
+int flush_des_file(FILE *);
+int get_des_char(FILE *);
+int put_des_char(int, FILE *);
+
 /* Local Function Declarations */
 void add_line_node (line_t *);
 int append_lines (long);
@@ -193,21 +205,17 @@ void clear_undo_stack (void);
 int close_sbuf (void);
 int copy_lines (long);
 int delete_lines (long, long);
-void des_error (const char *);
 int display_lines (long, long, int);
 line_t *dup_line_node (line_t *);
 int exec_command (void);
 long exec_global (int, int);
-void expand_des_key (char *, char *);
 int extract_addr_range (void);
 char *extract_pattern (int);
 int extract_subst_tail (int *, long *);
 char *extract_subst_template (void);
 int filter_lines (long, long, char *);
-int flush_des_file (FILE *);
 line_t *get_addressed_line_node (long);
 pattern_t *get_compiled_pattern (void);
-int get_des_char (FILE *);
 char *get_extended_line (int *, int);
 char *get_filename (void);
 int get_keyword (void);
@@ -224,7 +232,6 @@ void handle_winch (int);
 int has_trailing_escape (char *, char *);
 int hex_to_binary (int, int);
 void init_buffers (void);
-void init_des_cipher (void);
 int is_legal_filename (char *);
 int join_lines (long, long);
 int mark_line_node (line_t *, int);
@@ -235,7 +242,6 @@ int open_sbuf (void);
 char *parse_char_class (char *);
 int pop_undo_stack (void);
 undo_t *push_undo_stack (int, long, long);
-int put_des_char (int, FILE *);
 char *put_sbuf_line (char *);
 int put_stream_line (FILE *, char *, int);
 int put_tty_line (char *, int, long, int);
@@ -244,7 +250,6 @@ long read_file (char *, long);
 long read_stream (FILE *, long);
 int search_and_replace (pattern_t *, int, int);
 int set_active_node (line_t *);
-void set_des_key (char *);
 void signal_hup (int);
 void signal_int (int);
 char *strip_escapes (const char *);
