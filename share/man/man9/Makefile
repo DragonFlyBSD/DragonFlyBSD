@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.50 2007/04/04 09:49:28 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.51 2007/04/06 21:27:06 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -143,7 +143,6 @@ MAN=	accept_filter.9 \
 	VOP_ACLCHECK.9 \
 	VOP_ADVLOCK.9 \
 	VOP_ATTRIB.9 \
-	VOP_BWRITE.9 \
 	VOP_CREATE.9 \
 	VOP_FSYNC.9 \
 	VOP_GETACL.9 \
