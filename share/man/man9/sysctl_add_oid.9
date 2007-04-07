@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.3.2.10 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.6 2007/03/23 15:54:34 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.7 2007/04/07 19:29:52 swildner Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL_ADD_OID 9
@@ -384,7 +384,7 @@ deletion of many oids later.
 .It Fa recurse
 If non-zero, attempt to remove the node and all its children.
 If
-.Pa recurse
+.Fa recurse
 is set to 0,
 any attempt to remove a node that contains any children
 will result in a
@@ -468,7 +468,7 @@ to provide proper hints to the
 utility.
 .It Fn SYSCTL_ADD_PROC
 creates an oid with the specified
-.Pa handler
+.Fa handler
 function.
 The handler is responsible for handling read and write requests
 to the oid.

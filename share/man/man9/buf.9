@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/buf.9,v 1.5.2.5 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/buf.9,v 1.4 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man9/buf.9,v 1.5 2007/04/07 19:29:52 swildner Exp $
 .\"
 .Dd December 21, 2004
 .Dt BUF 9
@@ -47,7 +47,8 @@ It also supports a relatively primitive byte-granular valid range and dirty
 range currently hardcoded for use by NFS.
 .Pp
 The code implementing the VM Buffer abstraction is mostly concentrated in
-.Pa /usr/src/sys/kern/vfs_bio.c and
+.Pa /usr/src/sys/kern/vfs_bio.c
+and
 .Pa /usr/src/sys/sys/buf.h .
 .Pp
 One of the most important things to remember when dealing with buffer pointers

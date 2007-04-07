@@ -33,7 +33,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/copy.9,v 1.6.2.5 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/copy.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/copy.9,v 1.3 2007/04/07 19:29:52 swildner Exp $
 .\"
 .Dd January 7, 1996
 .Dt COPY 9
@@ -72,47 +72,47 @@ routines provide the following functionality:
 .Bl -tag -width "copyoutstr()"
 .It Fn copyin
 Copies
-.Pa len
+.Fa len
 bytes of data from the user-space address
-.Pa uaddr
+.Fa uaddr
 to the kernel-space address
-.Pa kaddr .
+.Fa kaddr .
 .It Fn copyout
 Copies
-.Pa len
+.Fa len
 bytes of data from the kernel-space address
-.Pa kaddr
+.Fa kaddr
 to the user-space address
-.Pa uaddr .
+.Fa uaddr .
 .It Fn copystr
 Copies a NUL-terminated string, at most
-.Pa len
+.Fa len
 bytes long, from kernel-space address
-.Pa kfaddr
+.Fa kfaddr
 to kernel-space address
-.Pa kdaddr .
+.Fa kdaddr .
 The number of bytes actually copied, including the terminating
 NUL, is returned in
-.Pa *done .
+.Fa *done .
 .It Fn copyinstr
 Copies a NUL-terminated string, at most
-.Pa len
+.Fa len
 bytes long, from user-space address
-.Pa uaddr
+.Fa uaddr
 to kernel-space address
-.Pa kaddr .
+.Fa kaddr .
 The number of bytes actually copied, including the terminating
 NUL, is returned in
-.Pa *done .
+.Fa *done .
 .\" .It Fn copyoutstr
 .\" Copies a NUL-terminated string, at most
 .\" bytes long, from kernel-space address
-.\" .Pa kaddr
+.\" .Fa kaddr
 .\" to user-space address
-.\" .Pa uaddr .
+.\" .Fa uaddr .
 .\" The number of bytes actually copied, including the terminating
 .\" NUL, is returned in
-.\" .Pa *done .
+.\" .Fa *done .
 .El
 .Sh RETURN VALUES
 The
@@ -130,7 +130,7 @@ and
 functions return
 .Er ENAMETOOLONG
 if the string is longer than
-.Pa len
+.Fa len
 bytes.
 .Sh SEE ALSO
 .Xr fetch 9 ,
