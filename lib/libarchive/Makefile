@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.6 2007/03/26 00:03:44 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.7 2007/04/07 14:10:27 pavalos Exp $
 
 LIB=	archive
 
@@ -22,7 +22,6 @@ SRCS=	archive.h					\
 	archive_check_magic.c				\
 	archive_entry.c					\
 	archive_read.c					\
-	archive_read_data_into_buffer.c			\
 	archive_read_data_into_fd.c			\
 	archive_read_extract.c				\
 	archive_read_open_fd.c				\
@@ -35,6 +34,7 @@ SRCS=	archive.h					\
 	archive_read_support_compression_gzip.c		\
 	archive_read_support_compression_none.c		\
 	archive_read_support_format_all.c		\
+	archive_read_support_format_ar.c		\
 	archive_read_support_format_cpio.c		\
 	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
@@ -55,6 +55,7 @@ SRCS=	archive.h					\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
 	archive_write_set_format.c			\
+	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
 	archive_write_set_format_pax.c			\
@@ -67,6 +68,7 @@ MAN=	archive_entry.3					\
 	archive_read.3					\
 	archive_util.3					\
 	archive_write.3					\
+	archive_write_disk.3				\
 	libarchive.3					\
 	libarchive-formats.5				\
 	tar.5
@@ -186,6 +188,17 @@ MLINKS+=	archive_write.3 archive_write_set_format_pax_restricted.3
 MLINKS+=	archive_write.3 archive_write_set_format_shar.3
 MLINKS+=	archive_write.3 archive_write_set_format_shar_binary.3
 MLINKS+=	archive_write.3 archive_write_set_format_ustar.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_close.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_data.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_finish.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_finish_entry.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_header.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_new.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_set_group_lookup.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_set_options.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_set_skip_file.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_set_standard_lookup.3
+MLINKS+=	archive_write_disk.3 archive_write_disk_set_user_lookup.3
 MLINKS+=	libarchive.3 archive.3
 
 # Build archive.h from archive.h.in
