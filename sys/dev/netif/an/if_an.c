@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.41 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.42 2007/04/07 11:01:06 swildner Exp $
  */
 
 /*
@@ -1411,7 +1411,6 @@ an_write_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 	struct an_card_rid_desc an_rid_desc;
 	struct an_command	cmd;
 	struct an_reply		reply;
-	char			*buf;
 	u_int16_t		*ptr;
 	u_int8_t		*ptr2;
 	int			i, len;
@@ -1485,8 +1484,6 @@ an_write_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 			    i);
 			return(EIO);
 		}
-
-		ptr = (u_int16_t *)buf;
 
 		if (reply.an_status & AN_CMD_QUAL_MASK) {
 			if_printf(&sc->arpcom.ac_if,
