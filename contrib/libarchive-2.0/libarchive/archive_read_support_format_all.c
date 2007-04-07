@@ -24,13 +24,14 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_all.c,v 1.8 2007/02/01 06:18:16 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_all.c,v 1.9 2007/04/07 05:54:23 kientzle Exp $");
 
 #include "archive.h"
 
 int
 archive_read_support_format_all(struct archive *a)
 {
+	archive_read_support_format_ar(a);
 	archive_read_support_format_cpio(a);
 	archive_read_support_format_empty(a);
 	archive_read_support_format_iso9660(a);
