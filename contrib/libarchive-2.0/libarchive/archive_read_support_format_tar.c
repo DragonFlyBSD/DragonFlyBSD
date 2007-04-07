@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.50 2007/03/31 22:59:43 cperciva Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.52 2007/04/03 23:53:55 cperciva Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -524,15 +524,9 @@ archive_read_format_tar_read_data(struct archive_read *a,
 		(a->compression_read_consume)(a, bytes_read);
 		return (ARCHIVE_OK);
 	} else {
-		while (tar->entry_padding > 0) {
-			bytes_read = (a->compression_read_ahead)(a, buff, 1);
-			if (bytes_read <= 0)
-				return (ARCHIVE_FATAL);
-			if (bytes_read > tar->entry_padding)
-				bytes_read = tar->entry_padding;
-			(a->compression_read_consume)(a, bytes_read);
-			tar->entry_padding -= bytes_read;
-		}
+		if ((a->compression_skip)(a, tar->entry_padding) < 0)
+			return (ARCHIVE_FATAL);
+		tar->entry_padding = 0;
 		*buff = NULL;
 		*size = 0;
 		*offset = tar->entry_offset;
@@ -1301,6 +1295,10 @@ pax_attribute(struct archive_entry *entry, struct stat *st,
 			    tar_atol10(value, wcslen(value)));
 		else if (wcscmp(key, L"SCHILY.fflags")==0)
 			archive_entry_copy_fflags_text_w(entry, value);
+		else if (wcscmp(key, L"SCHILY.dev")==0)
+			st->st_dev = tar_atol10(value, wcslen(value));
+		else if (wcscmp(key, L"SCHILY.ino")==0)
+			st->st_ino = tar_atol10(value, wcslen(value));
 		else if (wcscmp(key, L"SCHILY.nlink")==0)
 			st->st_nlink = tar_atol10(value, wcslen(value));
 		break;

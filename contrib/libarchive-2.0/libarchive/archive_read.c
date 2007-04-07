@@ -32,7 +32,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read.c,v 1.32 2007/04/02 00:41:37 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read.c,v 1.34 2007/04/05 15:51:19 cperciva Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -274,8 +274,8 @@ dummy_skip(struct archive_read * a, off_t request)
 			return (ARCHIVE_FATAL);
 		}
 		if (bytes_read > request)
-			bytes_read = request;
-		(a->compression_read_consume)(a, bytes_read);
+			bytes_read = (ssize_t)request;
+		(a->compression_read_consume)(a, (size_t)bytes_read);
 		request -= bytes_read;
 		bytes_skipped += bytes_read;
 	}
@@ -448,7 +448,7 @@ archive_read_data(struct archive *_a, void *buff, size_t s)
 	dest = (char *)buff;
 
 	while (s > 0) {
-		if (a->read_data_remaining <= 0) {
+		if (a->read_data_remaining == 0) {
 			read_buf = a->read_data_block;
 			r = archive_read_data_block(&a->archive, &read_buf,
 			    &a->read_data_remaining, &a->read_data_offset);
@@ -505,6 +505,22 @@ archive_read_data(struct archive *_a, void *buff, size_t s)
 	}
 	return (bytes_read);
 }
+
+#if ARCHIVE_API_VERSION < 3
+/*
+ * Obsolete function provided for compatibility only.  Note that the API
+ * of this function doesn't allow the caller to detect if the remaining
+ * data from the archive entry is shorter than the buffer provided, or
+ * even if an error occurred while reading data.
+ */
+int
+archive_read_data_into_buffer(struct archive *a, void *d, ssize_t len)
+{
+
+	archive_read_data(a, d, len);
+	return (ARCHIVE_OK);
+}
+#endif
 
 /*
  * Skip over all remaining data in this entry.

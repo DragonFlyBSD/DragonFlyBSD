@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.40 2007/03/11 10:29:52 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.41 2007/04/05 05:20:13 kientzle Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -250,7 +250,8 @@ aes_get_mbs(struct aes *aes)
 		 * chars encode to no more than 3 bytes.  There must
 		 * be a better way... XXX
 		 */
-		int mbs_length = wcslen(aes->aes_wcs) * 3 + 64;
+		size_t mbs_length = wcslen(aes->aes_wcs) * 3 + 64;
+
 		aes->aes_mbs_alloc = (char *)malloc(mbs_length);
 		aes->aes_mbs = aes->aes_mbs_alloc;
 		if (aes->aes_mbs == NULL)
@@ -271,7 +272,8 @@ aes_get_wcs(struct aes *aes)
 		 * No single byte will be more than one wide character,
 		 * so this length estimate will always be big enough.
 		 */
-		int wcs_length = strlen(aes->aes_mbs);
+		size_t wcs_length = strlen(aes->aes_mbs);
+
 		aes->aes_wcs_alloc
 		    = (wchar_t *)malloc((wcs_length + 1) * sizeof(wchar_t));
 		aes->aes_wcs = aes->aes_wcs_alloc;
@@ -1207,14 +1209,14 @@ append_entry_w(wchar_t **wp, const wchar_t *prefix, int tag,
 	case ARCHIVE_ENTRY_ACL_USER_OBJ:
 		wname = NULL;
 		id = -1;
-		/* FALL THROUGH */
+		/* FALLTHROUGH */
 	case ARCHIVE_ENTRY_ACL_USER:
 		wcscpy(*wp, L"user");
 		break;
 	case ARCHIVE_ENTRY_ACL_GROUP_OBJ:
 		wname = NULL;
 		id = -1;
-		/* FALL THROUGH */
+		/* FALLTHROUGH */
 	case ARCHIVE_ENTRY_ACL_GROUP:
 		wcscpy(*wp, L"group");
 		break;
@@ -1648,7 +1650,7 @@ ae_fflagstostr(unsigned long bitset, unsigned long bitclear)
 	const char *sp;
 	unsigned long bits;
 	struct flag *flag;
-	int	length;
+	size_t	length;
 
 	bits = bitset | bitclear;
 	length = 0;

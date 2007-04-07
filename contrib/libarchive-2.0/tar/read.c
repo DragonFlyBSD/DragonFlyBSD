@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/read.c,v 1.28 2007/03/11 10:36:42 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/read.c,v 1.29 2007/04/07 05:56:40 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -122,18 +122,16 @@ read_archive(struct bsdtar *bsdtar, char mode)
 		r = archive_read_next_header(a, &entry);
 		if (r == ARCHIVE_EOF)
 			break;
-		if (r == ARCHIVE_WARN)
+		if (r < ARCHIVE_OK)
 			bsdtar_warnc(bsdtar, 0, "%s", archive_error_string(a));
-		if (r == ARCHIVE_FATAL) {
-			bsdtar->return_value = 1;
-			bsdtar_warnc(bsdtar, 0, "%s", archive_error_string(a));
-			break;
-		}
 		if (r == ARCHIVE_RETRY) {
 			/* Retryable error: try again */
-			bsdtar_warnc(bsdtar, 0, "%s", archive_error_string(a));
 			bsdtar_warnc(bsdtar, 0, "Retrying...");
 			continue;
+		}
+		if (r != ARCHIVE_OK) {
+			bsdtar->return_value = 1;
+			break;
 		}
 
 		/*
