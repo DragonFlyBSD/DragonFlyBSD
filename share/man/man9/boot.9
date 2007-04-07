@@ -33,9 +33,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/boot.9,v 1.4.2.2 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/boot.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/boot.9,v 1.3 2007/04/07 20:19:52 swildner Exp $
 .\"
-.Dd February 14, 1997
+.Dd April 7, 2007
 .Dt BOOT 9
 .Os
 .Sh NAME
@@ -80,8 +80,8 @@ but
 .Dv RB_HALT
 is not), saves a system crash dump.
 .It
-Runs any shutdown hooks previously set by
-.Xr at_shutdown 9 .
+Runs any shutdown hooks previously registered with
+.Xr EVENTHANDLER_REGISTER 9 .
 .It
 Prints a message indicating that the system is about to be halted
 or rebooted.
@@ -96,9 +96,9 @@ Otherwise, reboots the system.
 .Pp
 If the system has not finished autoconfiguration,
 .Fn boot
-runs any shutdown hooks previously set by
-.Xr at_shutdown 9 ,
+runs any shutdown hooks previously registered with
+.Xr EVENTHANDLER_REGISTER 9 ,
 prints a message, and halts the system.
 .Sh SEE ALSO
-.Xr at_shutdown 9 ,
+.Xr EVENTHANDLER 9 ,
 .Xr vfs_unmountall 9
