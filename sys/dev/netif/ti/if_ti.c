@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.46 2007/04/03 14:20:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.47 2007/04/08 12:03:18 sephe Exp $
  */
 
 /*
@@ -1498,9 +1498,9 @@ ti_attach(device_t dev)
 	}
 
 	/*
-	 * We really need a better way to tell a 1000baseTX card
+	 * We really need a better way to tell a 1000baseT card
 	 * from a 1000baseSX one, since in theory there could be
-	 * OEMed 1000baseTX cards from lame vendors who aren't
+	 * OEMed 1000baseT cards from lame vendors who aren't
 	 * clever enough to change the PCI ID. For the moment
 	 * though, the AceNIC is the only copper card available.
 	 */
@@ -1535,7 +1535,7 @@ ti_attach(device_t dev)
 	if (sc->ti_copper) {
 		/*
 		 * Copper cards allow manual 10/100 mode selection,
-		 * but not manual 1000baseTX mode selection. Why?
+		 * but not manual 1000baseT mode selection. Why?
 		 * Becuase currently there's no way to specify the
 		 * master/slave setting through the firmware interface,
 		 * so Alteon decided to just bag it and handle it
