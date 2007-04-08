@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.166 2007/04/06 21:27:06 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.167 2007/04/08 14:56:37 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -505,6 +505,8 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/OpenDarwin-supfile
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/bus_generic_map_intr.9.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/VOP_BWRITE.9.gz"
+	rm -f ${DESTDIR}/usr/include/net/hostcache.h
+	rm -f ${DESTDIR}/usr/include/netinet/in_hostcache.h
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
