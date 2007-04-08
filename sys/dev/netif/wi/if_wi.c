@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.180.2.7 2005/10/05 13:16:29 avatar Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.39 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.40 2007/04/08 09:43:57 sephe Exp $
  */
 
 /*
@@ -931,8 +931,7 @@ wi_start(struct ifnet *ifp)
 		if ((wh->i_fc[1] & IEEE80211_FC1_WEP) &&
 		    (sc->sc_encryption & HOST_ENCRYPT)) {
 			if (ieee80211_crypto_encap(ic, ni, m0) == NULL) {
-				if (ni != NULL)
-					ieee80211_free_node(ni);
+				ieee80211_free_node(ni);
 				m_freem(m0);
 				ifp->if_oerrors++;
 				continue;
@@ -958,8 +957,7 @@ wi_start(struct ifnet *ifp)
 		error = wi_write_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr)) != 0
 		     || wi_mwrite_bap(sc, fid, off, m0, m0->m_pkthdr.len) != 0;
 		m_freem(m0);
-		if (ni != NULL)
-			ieee80211_free_node(ni);
+		ieee80211_free_node(ni);
 		if (error) {
 			ifp->if_oerrors++;
 			continue;
