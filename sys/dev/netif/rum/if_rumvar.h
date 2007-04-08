@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rumvar.h,v 1.6 2006/08/18 15:11:12 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.2 2007/03/30 11:39:33 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.3 2007/04/08 09:41:41 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -78,6 +78,9 @@ struct rum_softc {
 
 	uint32_t			sc_flags;
 #define RUM_FLAG_SYNCTASK	0x1
+#define RUM_FLAG_STOPPED	0x2
+#define RUM_FLAG_DETACHED	0x4
+#define RUM_FLAG_CONFIG		0x8
 
 	usbd_device_handle		sc_udev;
 	usbd_interface_handle		sc_iface;
