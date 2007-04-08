@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.52 2007/04/07 19:43:32 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.53 2007/04/08 07:05:25 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -204,6 +204,9 @@ MLINKS+=bus_dma.9 busdma.9 \
 	bus_dma.9 bus_dma_tag_destroy.9
 MLINKS+=bus_generic_read_ivar.9 bus_generic_write_ivar.9
 MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
+MLINKS+=BUS_SETUP_INTR.9 bus_setup_intr.9 \
+	BUS_SETUP_INTR.9 BUS_TEARDOWN_INTR.9 \
+	BUS_SETUP_INTR.9 bus_teardown_intr.9
 MLINKS+=copy.9 copyin.9 \
 	copy.9 copyinstr.9 \
 	copy.9 copyout.9 \
