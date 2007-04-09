@@ -31,17 +31,11 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $
- * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.5 2006/12/30 17:58:10 swildner Exp $
+ * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.6 2007/04/09 09:15:48 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
-#include <ctype.h>
-#include <err.h>
-#include <fcntl.h>
-#include <paths.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -50,8 +44,41 @@
 
 #include <dev/serial/si/si.h>
 
-struct lv {
-	char	*lv_name;
+#include <ctype.h>
+#include <err.h>
+#include <fcntl.h>
+#include <paths.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define	U_DEBUG		0
+#define	U_TXINT		1
+#define	U_RXINT		2
+#define	U_NPORT		3
+#define	U_MSTATE	4
+#define	U_STAT_CCB	5
+#define	U_STAT_TTY	6
+#define	U_MAX		7
+#define	U_ALL		-1
+
+static void	ccb_stat(int, char **);
+static void	debug(int, char **);
+static void	dostat(void);
+static int	getnum(char *);
+static int	islevel(char *);
+static int	lvls2bits(char *);
+static void	mstate(int, char **);
+static void	nport(int, char **);
+static int	opencontrol(void);
+static void	prlevels(int);
+static void	prusage(int, int);
+static void	rxint(int, char **);
+static void	tty_stat(int, char **);
+static void	txint(int, char **);
+
+static struct lv {
+	const char *lv_name;
 	int 	lv_bit;
 } lv[] = {
 	{"entry",	DBG_ENTRY},
@@ -75,26 +102,8 @@ struct lv {
 	{0,		0}
 };
 
-static int alldev = 0;
-
-void ccb_stat(int, char **);
-void debug(int, char **);
-void dostat(void);
-int getnum(char *);
-int islevel(char *);
-int lvls2bits(char *);
-void mstate(int, char **);
-void nport(int, char **);
-void onoff(int, char **, int, char *, char *, int);
-int opencontrol(void);
-void prlevels(int);
-void prusage(int, int);
-void rxint(int, char **);
-void tty_stat(int, char **);
-void txint(int, char **);
-
-struct opt {
-	char	*o_name;
+static struct opt {
+	const char *o_name;
 	void	(*o_func)(int, char **);
 } opt[] = {
 	{"debug",		debug},
@@ -107,24 +116,14 @@ struct opt {
 	{0,			0}
 };
 
-struct stat_list {
+static struct stat_list {
 	void (*st_func)(int, char **);
 } stat_list[] = {
 	{mstate},
 	{0}
 };
 
-#define	U_DEBUG		0
-#define	U_TXINT		1
-#define	U_RXINT		2
-#define	U_NPORT		3
-#define	U_MSTATE	4
-#define	U_STAT_CCB	5
-#define	U_STAT_TTY	6
-
-#define	U_MAX		7
-#define	U_ALL		-1
-char *usage[] = {
+static const char *usagestr[] = {
 	"debug [[add|del|set debug_levels] | [off]]\n",
 	"int_throttle [newvalue]\n",
 	"rxint_throttle [newvalue]\n",
@@ -135,9 +134,10 @@ char *usage[] = {
 	0
 };
 
-int ctlfd;
-char *Devname;
-struct si_tcsi tc;
+static int alldev = 0;
+static int ctlfd;
+static char *Devname;
+static struct si_tcsi tc;
 
 int
 main(int argc, char **argv)
@@ -164,6 +164,7 @@ main(int argc, char **argv)
 			errx(1, "can't stat %s", Devname);
 		dev.sid_card = SI_CARD(minor(st.st_rdev));
 		dev.sid_port = SI_PORT(minor(st.st_rdev));
+		dev.sid_control = 0;
 		tc.tc_dev = dev;
 	}
 	ctlfd = opencontrol();
@@ -206,18 +207,18 @@ opencontrol(void)
 void
 prusage(int strn, int eflag)
 {
-	char **cp;
+	const char **cp;
 
 	if (strn == U_ALL) {
-		fprintf(stderr, "usage: sicontrol %s", usage[1]);
-		fprintf(stderr, "       sicontrol %s", usage[2]);
-		fprintf(stderr, "       sicontrol %s", usage[3]);
-		fprintf(stderr, "       sicontrol devname %s", usage[4]);
-		for (cp = &usage[5]; *cp; cp++)
+		fprintf(stderr, "usage: sicontrol %s", usagestr[1]);
+		fprintf(stderr, "       sicontrol %s", usagestr[2]);
+		fprintf(stderr, "       sicontrol %s", usagestr[3]);
+		fprintf(stderr, "       sicontrol devname %s", usagestr[4]);
+		for (cp = &usagestr[5]; *cp; cp++)
 			fprintf(stderr, "       sicontrol devname %s", *cp);
 	}
 	else if (strn >= 0 && strn <= U_MAX)
-		fprintf(stderr, "usage: sicontrol devname %s", usage[strn]);
+		fprintf(stderr, "usage: sicontrol devname %s", usagestr[strn]);
 	else
 		fprintf(stderr, "sicontrol: usage ???\n");
 	exit(eflag);
@@ -348,35 +349,7 @@ txint(int ac, char **av)
 }
 
 void
-onoff(int ac, char **av, int cmd, char *cmdstr, char *prstr, int usage)
-{
-	if (ac > 1)
-		prusage(usage, 1);
-	if (ac == 1) {
-		if (strcmp(av[0], "on") == 0)
-			tc.tc_int = 1;
-		else if (strcmp(av[0], "off") == 0)
-			tc.tc_int = 0;
-		else
-			prusage(usage, 1);
-	} else
-		tc.tc_int = -1;
-	if (ioctl(ctlfd, cmd, &tc) < 0)
-		err(1, "%s on %s", cmdstr, Devname);
-	switch (ac) {
-	case 0:
-		printf("%s: ", Devname);
-	case -1:
-		printf("%s ", prstr);
-		if (tc.tc_int)
-			printf("on\n");
-		else
-			printf("off\n");
-	}
-}
-
-void
-mstate(int ac, char **av)
+mstate(int ac, char **av __unused)
 {
 	switch (ac) {
 	case 0:
@@ -396,7 +369,7 @@ mstate(int ac, char **av)
 }
 
 void
-nport(int ac, char **av)
+nport(int ac, char **av __unused)
 {
 	int ports;
 
@@ -408,7 +381,7 @@ nport(int ac, char **av)
 }
 
 void
-ccb_stat(int ac, char **av)
+ccb_stat(int ac, char **av __unused)
 {
 	struct si_pstat sip;
 #define	CCB	sip.tc_ccb
@@ -460,7 +433,7 @@ ccb_stat(int ac, char **av)
 }
 
 void
-tty_stat(int ac, char **av)
+tty_stat(int ac, char **av __unused)
 {
 	struct si_pstat sip;
 #define	TTY	sip.tc_tty
