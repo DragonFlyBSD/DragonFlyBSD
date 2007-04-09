@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.10 2007/04/09 20:40:46 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.11 2007/04/09 20:47:01 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -352,18 +352,18 @@ for inspection.
 E.g., incoming packets will include the MAC header when
 .Nm
 is invoked from
-.Fn ether_demux() ,
+.Fn ether_demux ,
 but the same packets will have the MAC header stripped off when
 .Nm
 is invoked from
-.Fn ip_input() .
+.Fn ip_input .
 .Pp
 Also note that each packet is always checked against the complete ruleset,
 irrespective of the place where the check occurs, or the source of the packet.
 If a rule contains some match patterns or actions which are not valid
 for the place of invocation (e.g. trying to match a MAC header within
-.Fn ip_input()
-), the match pattern will not match, but a
+.Fn ip_input ) ,
+the match pattern will not match, but a
 .Cm not
 operator in front of such patterns
 .Em will
@@ -1725,9 +1725,9 @@ does not implement sets of rules.
 .Nm ipfw1
 does not implement filtering on MAC header fields, nor is it
 invoked on packets from
-.Fn ether_demux()
+.Fn ether_demux
 and
-.Fn ether_output_frame() .
+.Fn ether_output_frame .
 The sysctl variable
 .Em net.link.ether.ipfw
 has no effect there.
