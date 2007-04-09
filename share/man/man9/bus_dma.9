@@ -68,7 +68,7 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.7 2006/03/25 03:05:03 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.8 2007/04/09 21:20:37 swildner Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -286,7 +286,7 @@ Hardware that can DMA starting at any address would specify
 for byte alignment.
 Hardware requiring DMA transfers to start on a multiple of 4K
 would specify
-.Em 4096.
+.Em 4096 .
 .It Fa boundary
 Boundary constraint, in bytes, of the target DMA memory region.
 The boundary indicates the set of addresses, all multiples of the
@@ -324,7 +324,7 @@ Optional filter function (may be NULL) to be called for any attempt to
 map memory into the window described by
 .Fa lowaddr
 and
-.Fa highaddr.
+.Fa highaddr .
 A filter function is only required when the single window described
 by
 .Fa lowaddr
@@ -422,12 +422,12 @@ Creates a mapping in device visible address space of
 bytes of
 .Fa buf ,
 associated with the DMA map
-.Fa map.
+.Fa map .
 Arguments are as follows:
 .Bl -tag -width buflen -compact
 .It Fa dmat
 DMA tag used to allocate
-.Fa map.
+.Fa map .
 .It Fa map
 A DMA map without a currently active mapping.
 .It Fa buf

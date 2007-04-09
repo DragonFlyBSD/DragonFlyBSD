@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/stallion/bootcode/stl.4,v 1.8.2.5 2001/12/14 16:41:52 ru Exp $
-.\" $DragonFly: src/usr.sbin/stallion/bootcode/stl.4,v 1.7 2006/04/17 18:01:38 swildner Exp $
+.\" $DragonFly: src/usr.sbin/stallion/bootcode/stl.4,v 1.8 2007/04/09 21:20:38 swildner Exp $
 .\"
 .Dd January 8, 1998
 .Os
@@ -92,13 +92,13 @@ is the unit number assigned to the board.
 Any unique value between 0 and 7 is valid.
 .Pp
 The I/O address used by the board is specified by
-.Ar <io-addr>.
+.Ar <io-addr> .
 Each of the EasyIO and EasyConnection 8/32-AT boards can use
 an I/O address in the range from 0 to 0x400.
 .Pp
 All EasyIO and EasyConnection 8/32 boards require an interrupt,
 and this interrupt is specified by
-.Ar <irq>.
+.Ar <irq> .
 Legal IRQ values for the ISA boards are 3, 4, 5, 7, 10, 11, 12 and 15.
 Interrupts are software programmed on all boards except the EasyIO-8M.
 .Pp
@@ -168,7 +168,7 @@ is the unit number assigned to the board.
 Any unique value between 0 and 7 is valid.
 .Pp
 The I/O address used by the board is specified by
-.Ar <io-addr>.
+.Ar <io-addr> .
 Each of the different supported board types has restrictions on valid
 I/O addresses and also the amount of I/O space required varies between
 the boards.
@@ -181,7 +181,7 @@ from 4 kbytes to 64 kbytes.  The size of the board region is specified
 by field
 .Ar <size>
 of the configuration entry, and the address of the region is specified by
-.Ar <mem-addr>.
+.Ar <mem-addr> .
 .Pp
 The flags field specifies the particular board type that this entry
 applies to.
