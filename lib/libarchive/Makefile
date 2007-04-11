@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.7 2007/04/07 14:10:27 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.8 2007/04/11 22:49:21 corecode Exp $
 
 LIB=	archive
 
@@ -34,7 +34,6 @@ SRCS=	archive.h					\
 	archive_read_support_compression_gzip.c		\
 	archive_read_support_compression_none.c		\
 	archive_read_support_format_all.c		\
-	archive_read_support_format_ar.c		\
 	archive_read_support_format_cpio.c		\
 	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
@@ -55,7 +54,6 @@ SRCS=	archive.h					\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
 	archive_write_set_format.c			\
-	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
 	archive_write_set_format_pax.c			\
