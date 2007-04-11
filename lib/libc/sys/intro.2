@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)intro.2	8.5 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/sys/intro.2,v 1.21.2.7 2003/02/24 01:01:48 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/intro.2,v 1.6 2007/04/11 09:07:33 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/intro.2,v 1.7 2007/04/11 09:12:08 swildner Exp $
 .\"
 .Dd February 27, 1995
 .Dt INTRO 2
@@ -208,8 +208,8 @@ Maximum number of file descriptors allowable on the system
 has been reached and a requests for an open cannot be satisfied
 until at least one has been closed.
 .It Er 24 EMFILE Em "Too many open files" .
-<As released, the limit on the number of
-open files per process is 64.>
+(As released, the limit on the number of
+open files per process is 64.)
 The
 .Xr getdtablesize 2
 function will obtain the current limit.
