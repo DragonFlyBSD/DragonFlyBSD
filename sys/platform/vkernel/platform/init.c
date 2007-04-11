@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.33 2007/03/16 15:27:10 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.34 2007/04/11 21:04:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -301,12 +301,16 @@ init_sys_memory(char *imageFile)
  * Initialize kernel memory.  This reserves kernel virtual memory by using
  * MAP_VPAGETABLE
  */
+
 static
 void
 init_kern_memory(void)
 {
 	void *base;
+	void *try;
 	char *zero;
+	char dummy;
+	char *topofstack = &dummy;
 	vpte_t pte;
 	int i;
 
@@ -317,10 +321,24 @@ init_kern_memory(void)
 	 *
 	 * The memory map must be segment-aligned so we can properly
 	 * offset KernelPTD.
+	 *
+	 * If the system kernel has a different MAXDSIZ, it might not
+	 * be possible to map kernel memory in its prefered location.
+	 * Try a number of different locations.
 	 */
-	base = mmap((void *)0x40000000, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
-		    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE, MemImageFd, 0);
-	if (base == MAP_FAILED) {
+	try = (void *)0x40000000;
+	base = NULL;
+	while ((char *)try + KERNEL_KVA_SIZE < topofstack) {
+		base = mmap(try, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
+			    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE,
+			    MemImageFd, 0);
+		if (base == try)
+			break;
+		if (base != MAP_FAILED)
+			munmap(base, KERNEL_KVA_SIZE);
+		try = (char *)try + 0x10000000;
+	}
+	if (base != try) {
 		err(1, "Unable to mmap() kernel virtual memory!");
 		/* NOT REACHED */
 	}
@@ -328,6 +346,7 @@ init_kern_memory(void)
 	KvaStart = (vm_offset_t)base;
 	KvaSize = KERNEL_KVA_SIZE;
 	KvaEnd = KvaStart + KvaSize;
+	printf("KVM mapped at %p-%p\n", (void *)KvaStart, (void *)KvaEnd);
 
 	/*
 	 * Create a top-level page table self-mapping itself. 
