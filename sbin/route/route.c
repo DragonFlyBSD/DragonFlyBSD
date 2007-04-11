@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.14 2006/01/19 22:19:30 dillon Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.15 2007/04/11 18:51:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,7 +230,7 @@ flushroutes(int argc, char **argv)
 	if (uid != 0) {
 		errx(EX_NOPERM, "must be root to alter routing table");
 	}
-	shutdown(s, 0); /* Don't want to read back our messages */
+	shutdown(s, SHUT_RD); /* Don't want to read back our messages */
 	if (argc > 1) {
 		argv++;
 		if (argc == 2 && **argv == '-')
@@ -620,7 +620,7 @@ newroute(int argc, char **argv)
 	}
 	cmd = argv[0];
 	if (*cmd != 'g')
-		shutdown(s, 0); /* Don't want to read back our messages */
+		shutdown(s, SHUT_RD); /* Don't want to read back our messages */
 	while (--argc > 0) {
 		if (**(++argv)== '-') {
 			switch (key = keyword(1 + *argv)) {
