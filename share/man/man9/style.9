@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.18 2006/05/26 19:39:40 swildner Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.19 2007/04/11 06:51:35 swildner Exp $
  */
 
 /*
@@ -179,7 +179,9 @@ Enumeration values are all uppercase.
 enum enumtype { ONE, TWO } et;
 .Ed
 .Pp
-As fixed size integers the \*[Px] defined types are prefered:
+As fixed size integers the
+.Tn POSIX
+defined types are prefered:
 .Bd -literal -offset indent
 uint8_t		8 bits fixed size unsigned integer
 uint16_t	16 bits fixed size unsigned integer
@@ -241,7 +243,8 @@ When convention requires a
 make its name match the struct tag.
 Avoid typedefs ending in
 .Dq Li _t ,
-except as specified in Standard C or by \*[Px].
+except as specified in Standard C or by
+.Tn POSIX .
 .Bd -literal
 /* Make the structure name match the typedef. */
 typedef struct bar {
