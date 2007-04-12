@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.49 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.50 2007/04/12 19:50:19 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -183,8 +183,7 @@ static void nfs_convert_oargs (struct nfs_args *args,
  *
  * We force the block size to be at least a page for buffer cache efficiency.
  */
-static
-int
+static int
 nfs_iosize(int v3, int sotype)
 {
 	int iosize;
@@ -220,9 +219,7 @@ nfs_iosize(int v3, int sotype)
 }
 
 static void
-nfs_convert_oargs(args, oargs)
-	struct nfs_args *args;
-	struct onfs_args *oargs;
+nfs_convert_oargs(struct nfs_args *args, struct onfs_args *oargs)
 {
 	args->version = NFS_ARGSVERSION;
 	args->addr = oargs->addr;
@@ -244,7 +241,7 @@ nfs_convert_oargs(args, oargs)
 }
 
 static void
-nfs_convert_diskless()
+nfs_convert_diskless(void)
 {
 	int i;
 
@@ -653,9 +650,7 @@ haderror:
 }
 
 static void
-nfs_decode_args(nmp, argp)
-	struct nfsmount *nmp;
-	struct nfs_args *argp;
+nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 {
 	int adjsock;
 	int maxio;
@@ -1067,9 +1062,7 @@ nfs_free_mount(struct nfsmount *nmp)
  * Return root of a filesystem
  */
 static int
-nfs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+nfs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *vp;
 	struct nfsmount *nmp;
@@ -1140,8 +1133,7 @@ nfs_sync(struct mount *mp, int waitfor)
 	return(error);
 }
 
-static
-int
+static int
 nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
     struct scaninfo *info = data;
@@ -1153,8 +1145,7 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
     return(0);
 }
 
-static
-int
+static int
 nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
     struct scaninfo *info = data;
