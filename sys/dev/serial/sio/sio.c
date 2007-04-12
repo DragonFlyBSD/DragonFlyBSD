@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.38 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.39 2007/04/12 18:35:09 swildner Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -361,8 +361,7 @@ static struct pci_ids pci_ids[] = {
 };
 
 static int
-sio_pci_attach(dev)
-	device_t	dev;
+sio_pci_attach(device_t dev)
 {
 	u_int32_t	type;
 	struct pci_ids	*id;
@@ -382,8 +381,7 @@ sio_pci_attach(dev)
  * which will fail to work and also be unnecessary in future versions.
  */
 static void
-sio_pci_kludge_unit(dev)
-	device_t dev;
+sio_pci_kludge_unit(device_t dev)
 {
 	devclass_t	dc;
 	int		err;
@@ -407,8 +405,7 @@ sio_pci_kludge_unit(dev)
 }
 
 static int
-sio_pci_probe(dev)
-	device_t	dev;
+sio_pci_probe(device_t dev)
 {
 	u_int32_t	type;
 	struct pci_ids	*id;
@@ -426,8 +423,7 @@ sio_pci_probe(dev)
 
 #if NPUC > 0
 static int
-sio_puc_attach(dev)
-	device_t	dev;
+sio_puc_attach(device_t dev)
 {
 	u_int rclk;
 
@@ -438,8 +434,7 @@ sio_puc_attach(dev)
 }
 
 static int
-sio_puc_probe(dev)
-	device_t	dev;
+sio_puc_probe(device_t dev)
 {
 	u_int rclk;
 
@@ -537,8 +532,7 @@ static struct isa_pnp_id sio_ids[] = {
 
 
 static int
-sio_isa_probe(dev)
-	device_t	dev;
+sio_isa_probe(device_t dev)
 {
 	/* Check isapnp ids */
 	if (ISA_PNP_PROBE(device_get_parent(dev), dev, sio_ids) == ENXIO)
@@ -547,10 +541,7 @@ sio_isa_probe(dev)
 }
 
 int
-sioprobe(dev, xrid, rclk)
-	device_t	dev;
-	int		xrid;
-	u_long		rclk;
+sioprobe(device_t dev, int xrid, u_long rclk)
 {
 #if 0
 	static bool_t	already_init;
@@ -882,9 +873,7 @@ sioprobe(dev, xrid, rclk)
 
 #ifdef COM_ESP
 static int
-espattach(com, esp_port)
-	struct com_s		*com;
-	Port_t			esp_port;
+espattach(struct com_s *com, Port_t esp_port)
 {
 	u_char	dips;
 	u_char	val;
@@ -946,17 +935,13 @@ espattach(com, esp_port)
 #endif /* COM_ESP */
 
 static int
-sio_isa_attach(dev)
-	device_t	dev;
+sio_isa_attach(device_t dev)
 {
 	return (sioattach(dev, 0, 0UL));
 }
 
 int
-sioattach(dev, xrid, rclk)
-	device_t	dev;
-	int		xrid;
-	u_long		rclk;
+sioattach(device_t dev, int xrid, u_long rclk)
 {
 	struct com_s	*com;
 #ifdef COM_ESP
@@ -1456,8 +1441,7 @@ sioclose(struct dev_close_args *ap)
 }
 
 static void
-comhardclose(com)
-	struct com_s	*com;
+comhardclose(struct com_s *com)
 {
 	struct tty	*tp;
 	int		unit;
@@ -1561,8 +1545,7 @@ siowrite(struct dev_write_args *ap)
 }
 
 static void
-siobusycheck(chan)
-	void	*chan;
+siobusycheck(void *chan)
 {
 	struct com_s	*com;
 
@@ -1591,9 +1574,7 @@ siobusycheck(chan)
 }
 
 static u_int
-siodivisor(rclk, speed)
-	u_long	rclk;
-	speed_t	speed;
+siodivisor(u_long rclk, speed_t speed)
 {
 	long	actual_speed;
 	u_int	divisor;
@@ -1617,8 +1598,7 @@ siodivisor(rclk, speed)
 }
 
 static void
-siodtrwakeup(chan)
-	void	*chan;
+siodtrwakeup(void *chan)
 {
 	struct com_s	*com;
 
@@ -1628,8 +1608,7 @@ siodtrwakeup(chan)
 }
 
 static void
-sioinput(com)
-	struct com_s	*com;
+sioinput(struct com_s *com)
 {
 	u_char		*buf;
 	int		incc;
@@ -1710,8 +1689,7 @@ sioinput(com)
 }
 
 void
-siointr(arg)
-	void		*arg;
+siointr(void *arg)
 {
 #ifndef COM_MULTIPORT
 	com_lock();
@@ -1753,8 +1731,7 @@ siointr(arg)
 }
 
 static void
-siointr1(com)
-	struct com_s	*com;
+siointr1(struct com_s *com)
 {
 	u_char	line_status;
 	u_char	modem_status;
@@ -2196,9 +2173,7 @@ repeat:
 }
 
 static int
-comparam(tp, t)
-	struct tty	*tp;
-	struct termios	*t;
+comparam(struct tty *tp, struct termios *t)
 {
 	u_int		cfcr;
 	int		cflag;
@@ -2390,9 +2365,7 @@ comparam(tp, t)
 }
 
 static int
-siosetwater(com, speed)
-	struct com_s	*com;
-	speed_t		speed;
+siosetwater(struct com_s *com, speed_t speed)
 {
 	int		cp4ticks;
 	u_char		*ibuf;
@@ -2456,8 +2429,7 @@ siosetwater(com, speed)
 }
 
 static void
-comstart(tp)
-	struct tty	*tp;
+comstart(struct tty *tp)
 {
 	struct com_s	*com;
 	int		unit;
@@ -2541,9 +2513,7 @@ comstart(tp)
 }
 
 static void
-comstop(tp, rw)
-	struct tty	*tp;
-	int		rw;
+comstop(struct tty *tp, int rw)
 {
 	struct com_s	*com;
 
@@ -2582,10 +2552,7 @@ comstop(tp, rw)
 }
 
 static int
-commctl(com, bits, how)
-	struct com_s	*com;
-	int		bits;
-	int		how;
+commctl(struct com_s *com, int bits, int how)
 {
 	int	mcr;
 	int	msr;
@@ -2638,7 +2605,7 @@ commctl(com, bits, how)
 }
 
 static void
-siosettimeout()
+siosettimeout(void)
 {
 	struct com_s	*com;
 	bool_t		someopen;
@@ -2676,8 +2643,7 @@ siosettimeout()
 }
 
 static void
-comwakeup(chan)
-	void	*chan;
+comwakeup(void *chan)
 {
 	struct com_s	*com;
 	int		unit;
@@ -2731,10 +2697,7 @@ comwakeup(chan)
 }
 
 static void
-disc_optim(tp, t, com)
-	struct tty	*tp;
-	struct termios	*t;
-	struct com_s	*com;
+disc_optim(struct tty *tp, struct termios *t, struct com_s *com)
 {
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
@@ -2783,8 +2746,7 @@ CONS_DRIVER(sio, siocnprobe, siocninit, NULL, siocngetc, siocncheckc,
 #endif
 
 static void
-siocntxwait(iobase)
-	Port_t	iobase;
+siocntxwait(Port_t iobase)
 {
 	int	timo;
 
@@ -2809,9 +2771,7 @@ siocntxwait(iobase)
  */
 
 static speed_t
-siocngetspeed(iobase, rclk)
-	Port_t	iobase;
-	u_long	rclk;
+siocngetspeed(Port_t iobase, u_long rclk)
 {
 	u_int	divisor;
 	u_char	dlbh;
@@ -2835,10 +2795,7 @@ siocngetspeed(iobase, rclk)
 }
 
 static void
-siocnopen(sp, iobase, speed)
-	struct siocnstate	*sp;
-	Port_t			iobase;
-	int			speed;
+siocnopen(struct siocnstate *sp, Port_t iobase, int speed)
 {
 	u_int	divisor;
 	u_char	dlbh;
@@ -2880,9 +2837,7 @@ siocnopen(sp, iobase, speed)
 }
 
 static void
-siocnclose(sp, iobase)
-	struct siocnstate	*sp;
-	Port_t			iobase;
+siocnclose(struct siocnstate *sp, Port_t iobase)
 {
 	/*
 	 * Restore the device control registers.
@@ -2902,8 +2857,7 @@ siocnclose(sp, iobase)
 }
 
 static void
-siocnprobe(cp)
-	struct consdev	*cp;
+siocnprobe(struct consdev *cp)
 {
 	speed_t			boot_speed;
 	u_char			cfcr;
@@ -3019,15 +2973,13 @@ siocnprobe(cp)
 }
 
 static void
-siocninit(cp)
-	struct consdev	*cp;
+siocninit(struct consdev *cp)
 {
 	comconsole = DEV_TO_UNIT(cp->cn_dev);
 }
 
 static int
-siocncheckc(dev)
-	cdev_t	dev;
+siocncheckc(cdev_t dev)
 {
 	int	c;
 	Port_t	iobase;
@@ -3050,8 +3002,7 @@ siocncheckc(dev)
 
 
 int
-siocngetc(dev)
-	cdev_t	dev;
+siocngetc(cdev_t dev)
 {
 	int	c;
 	Port_t	iobase;
@@ -3072,9 +3023,7 @@ siocngetc(dev)
 }
 
 void
-siocnputc(dev, c)
-	cdev_t	dev;
-	int	c;
+siocnputc(cdev_t dev, int c)
 {
 	struct siocnstate	sp;
 	Port_t	iobase;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.9 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.10 2007/04/12 18:35:08 swildner Exp $
  */
 
 /*
@@ -67,9 +67,7 @@ static struct pci_device cy_device = {
 COMPAT_PCI_DRIVER(cy_pci, cy_device);
 
 static const char *
-cy_probe(config_id, device_id)
-	pcici_t config_id;
-	pcidi_t device_id;
+cy_probe(pcici_t config_id, pcidi_t device_id)
 {
 	device_id &= ~0x00060000;
 	if (device_id == 0x0100120e || device_id == 0x0101120e)
@@ -78,9 +76,7 @@ cy_probe(config_id, device_id)
 }
 
 static void
-cy_attach(config_id, unit)
-	pcici_t config_id;
-	int unit;
+cy_attach(pcici_t config_id, int unit)
 {
 	vm_offset_t paddr;
 	void *vaddr;

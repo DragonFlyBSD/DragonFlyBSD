@@ -20,7 +20,7 @@
  *
  * $FreeBSD: src/sys/dev/aic7xxx/93cx6.c,v 1.5 2000/01/07 23:08:17 gibbs Exp $
  * $NetBSD: smc93cx6.c,v 1.12 2005/12/11 12:21:28 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.3 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.4 2007/04/12 18:35:08 swildner Exp $
  */
 
 /*
@@ -95,11 +95,8 @@ static struct seeprom_cmd {
  * not successful.
  */
 int
-read_seeprom(sd, buf, start_addr, count)
-	struct seeprom_descriptor *sd;
-	u_int16_t *buf;
-	bus_size_t start_addr;
-	bus_size_t count;
+read_seeprom(struct seeprom_descriptor *sd, u_int16_t *buf,
+    bus_size_t start_addr, bus_size_t count)
 {
 	int i = 0;
 	u_int k = 0;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_eisa.c,v 1.12.2.1 2000/08/07 18:48:14 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.8 2006/12/22 23:26:23 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.9 2007/04/12 18:35:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -176,9 +176,8 @@ dpt_eisa_attach (device_t dev)
 	return (error);
 }
 
-static const char	*
-dpt_eisa_match(type)
-	eisa_id_t	type;
+static const char *
+dpt_eisa_match(eisa_id_t type)
 {
 	switch (type) {
 		case DPT_EISA_DPT2402:

@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.5 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.6 2007/04/12 18:35:09 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -92,8 +92,7 @@ sio_pccard_match(device_t dev)
 }
 
 static int
-sio_pccard_probe(dev)
-	device_t	dev;
+sio_pccard_probe(device_t dev)
 {
 	/* Do not probe IRQ - pccard doesn't turn on the interrupt line */
 	/* until bus_setup_intr */
@@ -103,8 +102,7 @@ sio_pccard_probe(dev)
 }
 
 static int
-sio_pccard_attach(dev)
-	device_t	dev;
+sio_pccard_attach(device_t dev)
 {
 	return (sioattach(dev, 0, 0UL));
 }
@@ -119,8 +117,7 @@ sio_pccard_attach(dev)
  *	read and write do not hang.
  */
 static int
-sio_pccard_detach(dev)
-	device_t	dev;
+sio_pccard_detach(device_t dev)
 {
 	struct com_s	*com;
 

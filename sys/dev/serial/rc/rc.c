@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.22 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.23 2007/04/12 18:35:09 swildner Exp $
  *
  */
 
@@ -188,8 +188,7 @@ static void rc_wait0            (int nec, int unit, int chan, int line);
 
 /* Quick device probing */
 static int
-rcprobe(dvp)
-	struct  isa_device      *dvp;
+rcprobe(struct isa_device *dvp)
 {
 	int             irq = ffs(dvp->id_irq) - 1;
 	int    nec = dvp->id_iobase;
@@ -217,8 +216,7 @@ rcprobe(dvp)
 }
 
 static int
-rcattach(dvp)
-	struct  isa_device      *dvp;
+rcattach(struct isa_device *dvp)
 {
 	int            chan, nec = dvp->id_iobase;
 	struct rc_softc         *rcb = &rc_softc[dvp->id_unit];
@@ -487,8 +485,8 @@ rcintr(void *arg, void *frame)
 }
 
 /* Feed characters to output buffer */
-static void rc_start(tp)
-struct tty *tp;
+static void
+rc_start(struct tty *tp)
 {
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	int                    nec = rc->rc_rcb->rcb_addr;
@@ -676,9 +674,7 @@ done1: ;
 }
 
 static	void
-rc_stop(tp, rw)
-	struct tty     *tp;
-	int                     rw;
+rc_stop(struct tty *tp, int rw)
 {
 	struct rc_chans        *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	u_char *tptr, *eptr;
@@ -801,7 +797,7 @@ out:
 	return error;
 }
 
-static	int
+static int
 rcclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -826,8 +822,8 @@ rcclose(struct dev_close_args *ap)
 	return 0;
 }
 
-static void rc_hardclose(rc)
-struct rc_chans *rc;
+static void
+rc_hardclose(struct rc_chans *rc)
 {
 	int nec = rc->rc_rcb->rcb_addr;
 	struct tty *tp = rc->rc_tp;
@@ -859,9 +855,8 @@ struct rc_chans *rc;
 }
 
 /* Reset the bastard */
-static void rc_hwreset(unit, nec, chipid)
-	int    unit, nec;
-	unsigned int    chipid;
+static void
+rc_hwreset(int unit, int nec, unsigned int chipid)
 {
 	CCRCMD(unit, -1, CCR_HWRESET);            /* Hardware reset */
 	DELAY(20000);
@@ -885,9 +880,8 @@ static void rc_hwreset(unit, nec, chipid)
 }
 
 /* Set channel parameters */
-static int rc_param(tp, ts)
-	struct  tty    *tp;
-	struct termios          *ts;
+static int
+rc_param(struct tty *tp, struct termios *ts)
 {
 	struct rc_chans *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	int    nec = rc->rc_rcb->rcb_addr;
@@ -1040,8 +1034,8 @@ static int rc_param(tp, ts)
 }
 
 /* Re-initialize board after bogus interrupts */
-static void rc_reinit(rcb)
-struct rc_softc         *rcb;
+static void
+rc_reinit(struct rc_softc *rcb)
 {
 	struct rc_chans       *rc, *rce;
 	int                    nec;
@@ -1129,9 +1123,8 @@ rcioctl(struct dev_ioctl_args *ap)
 
 /* Modem control routines */
 
-static int rc_modctl(rc, bits, cmd)
-struct rc_chans       *rc;
-int                             bits, cmd;
+static int
+rc_modctl(struct rc_chans *rc, int bits, int cmd)
 {
 	int    nec = rc->rc_rcb->rcb_addr;
 	u_char         *dtr = &rc->rc_rcb->rcb_dtr, msvr;
@@ -1200,9 +1193,8 @@ int                             bits, cmd;
 }
 
 /* Test the board. */
-int rc_test(nec, unit)
-	int    nec;
-	int             unit;
+int
+rc_test(int nec, int unit)
 {
 	int     chan = 0;
 	int     i = 0, rcnt;
@@ -1340,9 +1332,8 @@ int rc_test(nec, unit)
 }
 
 #ifdef RCDEBUG
-static void printrcflags(rc, comment)
-struct rc_chans  *rc;
-char             *comment;
+static void
+printrcflags(struct rc_chans *rc, char *comment)
 {
 	u_short f = rc->rc_flags;
 	int    nec = rc->rc_rcb->rcb_addr;
@@ -1373,8 +1364,7 @@ char             *comment;
 #endif /* RCDEBUG */
 
 static void
-rc_dtrwakeup(chan)
-	void	*chan;
+rc_dtrwakeup(void *chan)
 {
 	struct rc_chans  *rc;
 
@@ -1384,8 +1374,7 @@ rc_dtrwakeup(chan)
 }
 
 static void
-rc_discard_output(rc)
-	struct rc_chans  *rc;
+rc_discard_output(struct rc_chans *rc)
 {
 	cpu_disable_intr();
 	if (rc->rc_flags & RC_DOXXFER) {
@@ -1399,8 +1388,7 @@ rc_discard_output(rc)
 }
 
 static void
-rc_wakeup(chan)
-	void	*chan;
+rc_wakeup(void *chan)
 {
 	if (rc_scheduled_event != 0) {
 		crit_enter();
@@ -1411,10 +1399,7 @@ rc_wakeup(chan)
 }
 
 static void
-disc_optim(tp, t, rc)
-	struct tty	*tp;
-	struct termios	*t;
-	struct rc_chans	*rc;
+disc_optim(struct tty *tp, struct termios *t, struct rc_chans *rc)
 {
 
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
@@ -1430,8 +1415,7 @@ disc_optim(tp, t, rc)
 }
 
 static void
-rc_wait0(nec, unit, chan, line)
-	int     nec, unit, chan, line;
+rc_wait0(int nec, int unit, int chan, int line)
 {
 	int rcnt;
 

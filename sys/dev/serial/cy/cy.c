@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.26 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.27 2007/04/12 18:35:08 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -422,8 +422,7 @@ static	int	cy_total_devices;
 static	int	volatile RxFifoThreshold = (CD1400_RX_FIFO_SIZE / 2);
 
 static int
-sioprobe(dev)
-	struct isa_device	*dev;
+sioprobe(struct isa_device *dev)
 {
 	cy_addr	iobase;
 
@@ -441,9 +440,7 @@ sioprobe(dev)
 }
 
 static int
-cy_units(cy_iobase, cy_align)
-	cy_addr	cy_iobase;
-	int	cy_align;
+cy_units(cy_addr cy_iobase, int cy_align)
 {
 	int	cyu;
 	u_char	firmware_version = 0;  /* assign to avoid warning */
@@ -490,8 +487,7 @@ cy_units(cy_iobase, cy_align)
 }
 
 static int
-sioattach(isdp)
-	struct isa_device	*isdp;
+sioattach(struct isa_device *isdp)
 {
 	int	adapter;
 
@@ -514,9 +510,7 @@ sioattach(isdp)
 }
 
 int
-cyattach_common(cy_iobase, cy_align)
-	cy_addr	cy_iobase;
-	int	cy_align;
+cyattach_common(cy_addr cy_iobase, int cy_align)
 {
 	int	adapter;
 	int	cyu;
@@ -855,8 +849,7 @@ sioclose(struct dev_close_args *ap)
 }
 
 static void
-comhardclose(com)
-	struct com_s	*com;
+comhardclose(struct com_s *com)
 {
 	cy_addr		iobase;
 	struct tty	*tp;
@@ -967,8 +960,7 @@ siowrite(struct dev_write_args *ap)
 }
 
 static void
-siodtrwakeup(chan)
-	void	*chan;
+siodtrwakeup(void *chan)
 {
 	struct com_s	*com;
 
@@ -978,8 +970,7 @@ siodtrwakeup(chan)
 }
 
 static void
-sioinput(com)
-	struct com_s	*com;
+sioinput(struct com_s *com)
 {
 	u_char		*buf;
 	int		incc;
@@ -1545,8 +1536,7 @@ terminate_tx_service:
 
 #if 0
 static void
-siointr1(com)
-	struct com_s	*com;
+siointr1(struct com_s *com)
 {
 }
 #endif
@@ -1799,9 +1789,7 @@ repeat:
 }
 
 static int
-comparam(tp, t)
-	struct tty	*tp;
-	struct termios	*t;
+comparam(struct tty *tp, struct termios *t)
 {
 	int		bits;
 	int		cflag;
@@ -2171,9 +2159,7 @@ comparam(tp, t)
 }
 
 static int
-siosetwater(com, speed)
-	struct com_s	*com;
-	speed_t		speed;
+siosetwater(struct com_s *com, speed_t speed)
 {
 	int		cp4ticks;
 	u_char		*ibuf;
@@ -2237,8 +2223,7 @@ siosetwater(com, speed)
 }
 
 static void
-comstart(tp)
-	struct tty	*tp;
+comstart(struct tty *tp)
 {
 	struct com_s	*com;
 #ifdef CyDebug
@@ -2378,9 +2363,7 @@ comstart(tp)
 }
 
 static void
-comstop(tp, rw)
-	struct tty	*tp;
-	int		rw;
+comstop(struct tty *tp, int rw)
 {
 	struct com_s	*com;
 	bool_t		wakeup_etc;
@@ -2419,10 +2402,7 @@ comstop(tp, rw)
 }
 
 static int
-commctl(com, bits, how)
-	struct com_s	*com;
-	int		bits;
-	int		how;
+commctl(struct com_s *com, int bits, int how)
 {
 	int	mcr;
 	int	msr;
@@ -2486,7 +2466,7 @@ commctl(com, bits, how)
 }
 
 static void
-siosettimeout()
+siosettimeout(void)
 {
 	struct com_s	*com;
 	bool_t		someopen;
@@ -2526,8 +2506,7 @@ siosettimeout()
 }
 
 static void
-comwakeup(chan)
-	void	*chan;
+comwakeup(void *chan)
 {
 	struct com_s	*com;
 	int		unit;
@@ -2581,10 +2560,7 @@ comwakeup(chan)
 }
 
 static void
-disc_optim(tp, t, com)
-	struct tty	*tp;
-	struct termios	*t;
-	struct com_s	*com;
+disc_optim(struct tty *tp, struct termios *t, struct com_s *com)
 {
 #ifndef SOFT_HOTCHAR
 	u_char	opt;
@@ -2622,9 +2598,7 @@ disc_optim(tp, t, com)
 #ifdef Smarts
 /* standard line discipline input routine */
 int
-cyinput(c, tp)
-	int		c;
-	struct tty	*tp;
+cyinput(int c, struct tty *tp)
 {
 	/* XXX duplicate ttyinput(), but without the IXOFF/IXON/ISTRIP/IPARMRK
 	 * bits, as they are done by the CD1400.  Hardly worth the effort,
@@ -2634,10 +2608,7 @@ cyinput(c, tp)
 #endif /* Smarts */
 
 static int
-comspeed(speed, cy_clock, prescaler_io)
-	speed_t	speed;
-	u_long	cy_clock;
-	int	*prescaler_io;
+comspeed(speed_t speed, u_long cy_clock, int *prescaler_io)
 {
 	int	actual;
 	int	error;
@@ -2681,9 +2652,7 @@ comspeed(speed, cy_clock, prescaler_io)
 }
 
 static void
-cd1400_channel_cmd(com, cmd)
-	struct com_s	*com;
-	int		cmd;
+cd1400_channel_cmd(struct com_s *com, int cmd)
 {
 	cd1400_channel_cmd_wait(com);
 	cd_setreg(com, CD1400_CCR, cmd);
@@ -2691,8 +2660,7 @@ cd1400_channel_cmd(com, cmd)
 }
 
 static void
-cd1400_channel_cmd_wait(com)
-	struct com_s	*com;
+cd1400_channel_cmd_wait(struct com_s *com)
 {
 	struct timeval	start;
 	struct timeval	tv;
@@ -2717,9 +2685,7 @@ cd1400_channel_cmd_wait(com)
 }
 
 static void
-cd_etc(com, etc)
-	struct com_s	*com;
-	int		etc;
+cd_etc(struct com_s *com, int etc)
 {
 	/*
 	 * We can't change the hardware's ETC state while there are any
@@ -2758,9 +2724,7 @@ wait:
 }
 
 static int
-cd_getreg(com, reg)
-	struct com_s	*com;
-	int		reg;
+cd_getreg(struct com_s *com, int reg)
 {
 	struct com_s	*basecom;
 	u_char	car;
@@ -2785,10 +2749,7 @@ cd_getreg(com, reg)
 }
 
 static void
-cd_setreg(com, reg, val)
-	struct com_s	*com;
-	int		reg;
-	int		val;
+cd_setreg(struct com_s *com, int reg, int val)
 {
 	struct com_s	*basecom;
 	u_char	car;
@@ -2813,8 +2774,7 @@ cd_setreg(com, reg, val)
 #ifdef CyDebug
 /* useful in ddb */
 void
-cystatus(unit)
-	int	unit;
+cystatus(int unit)
 {
 	struct com_s	*com;
 	cy_addr		iobase;

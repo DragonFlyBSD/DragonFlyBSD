@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.24 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.25 2007/04/12 18:35:09 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -818,7 +818,7 @@ static int stlprobe(struct isa_device *idp)
  *	detected during the ISA and PCI initialization phases.
  */
 
-static int stl_findfreeunit()
+static int stl_findfreeunit(void)
 {
 	int	i;
 
@@ -1923,7 +1923,7 @@ static void stl_echpci64intr(stlbrd_t *brdp)
  *	level processing.
  */
 
-static void stl_dotimeout()
+static void stl_dotimeout(void)
 {
 #if STLDEBUG
 	kprintf("stl_dotimeout()\n");
