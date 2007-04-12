@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.14 2007/04/03 11:08:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.15 2007/04/12 12:54:07 sephe Exp $
  */
 
 /*
@@ -2045,6 +2045,16 @@ rt2560_bbp_read(struct rt2560_softc *sc, uint8_t reg)
 	uint32_t val;
 	int ntries;
 
+	for (ntries = 0; ntries < 100; ntries++) {
+		if (!(RAL_READ(sc, RT2560_BBPCSR) & RT2560_BBP_BUSY))
+			break;
+		DELAY(1);
+	}
+	if (ntries == 100) {
+		device_printf(sc->sc_dev, "could not read from BBP\n");
+		return 0;
+	}
+
 	val = RT2560_BBP_BUSY | reg << 8;
 	RAL_WRITE(sc, RT2560_BBPCSR, val);
 
@@ -2459,14 +2469,12 @@ rt2560_bbp_init(struct rt2560_softc *sc)
 		return EIO;
 	}
 
-	rt2560_set_txantenna(sc, sc->tx_ant);
-	rt2560_set_rxantenna(sc, sc->rx_ant);
-
 	/* initialize BBP registers to default values */
 	for (i = 0; i < N(rt2560_def_bbp); i++) {
 		rt2560_bbp_write(sc, rt2560_def_bbp[i].reg,
 		    rt2560_def_bbp[i].val);
 	}
+
 #if 0
 	/* initialize BBP registers to values stored in EEPROM */
 	for (i = 0; i < 16; i++) {
@@ -2494,9 +2502,8 @@ rt2560_set_txantenna(struct rt2560_softc *sc, int antenna)
 	else
 		tx |= RT2560_BBP_DIVERSITY;
 
-	/* need to force I/Q flip for RF 2525e, 2526 and 5222 */
-	if (sc->rf_rev == RT2560_RF_2525E || sc->rf_rev == RT2560_RF_2526 ||
-	    sc->rf_rev == RT2560_RF_5222)
+	/* need to force I/Q flip for RF 2525e and 5222 */
+	if (sc->rf_rev == RT2560_RF_2525E || sc->rf_rev == RT2560_RF_5222)
 		tx |= RT2560_BBP_FLIPIQ;
 
 	rt2560_bbp_write(sc, RT2560_BBP_TX, tx);
@@ -2520,8 +2527,8 @@ rt2560_set_rxantenna(struct rt2560_softc *sc, int antenna)
 	else
 		rx |= RT2560_BBP_DIVERSITY;
 
-	/* need to force no I/Q flip for RF 2525e and 2526 */
-	if (sc->rf_rev == RT2560_RF_2525E || sc->rf_rev == RT2560_RF_2526)
+	/* need to force no I/Q flip for RF 2525e */
+	if (sc->rf_rev == RT2560_RF_2525E)
 		rx &= ~RT2560_BBP_FLIPIQ;
 
 	rt2560_bbp_write(sc, RT2560_BBP_RX, rx);
@@ -2579,6 +2586,9 @@ rt2560_init(void *priv)
 		rt2560_stop(sc);
 		return;
 	}
+
+	rt2560_set_txantenna(sc, sc->tx_ant);
+	rt2560_set_rxantenna(sc, sc->rx_ant);
 
 	/* set default BSS channel */
 	rt2560_set_chan(sc, ic->ic_curchan);
