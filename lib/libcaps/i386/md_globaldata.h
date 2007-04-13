@@ -1,7 +1,7 @@
 /*
  * MD_GLOBALDATA.H
  *
- * $DragonFly: src/lib/libcaps/i386/md_globaldata.h,v 1.2 2003/12/07 04:21:54 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/md_globaldata.h,v 1.3 2007/04/13 12:12:27 corecode Exp $
  */
 
 #ifndef _MD_GLOBALDATA_H_
@@ -23,7 +23,7 @@ static __inline
 void
 _set_mycpu(int selector)
 {
-    __asm __volatile("movl %0,%%gs" :: "a"(selector));
+    __asm __volatile("mov %0,%%gs" :: "g"(selector));
 }
 
 #define mycpu   _get_mycpu()

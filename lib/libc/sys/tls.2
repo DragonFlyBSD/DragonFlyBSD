@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.7 2007/01/06 01:46:36 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.8 2007/04/13 12:12:27 corecode Exp $
 .\"
 .Dd February 21, 2005
 .Dt TLS 2
@@ -117,7 +117,7 @@ main(int ac, char **av)
         exit(1);
     }
     printf("gs = %04x\en", gs);
-    __asm __volatile("movl %0,%%eax; movl %%eax,%%gs" : "=m" (gs) : : "ax");
+    __asm __volatile("mov %0,%%gs" : : "g" (gs) );
 
     if (get_tls_area(0, &info, sizeof(info)) < 0) {
         perror("getarea");

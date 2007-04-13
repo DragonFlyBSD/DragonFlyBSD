@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/i386/gen/mcontext.S,v 1.1 2007/01/16 07:16:23 dillon Exp $
+ * $DragonFly: src/lib/libc/i386/gen/mcontext.S,v 1.2 2007/04/13 12:12:27 corecode Exp $
  */
 
 #include <machine/asm.h>
@@ -41,9 +41,9 @@
 ENTRY(_get_mcontext)
 	movl	4(%esp),%eax
 	/*	mc_onstack,0*4(%eax)	*/
-	movl	%gs,1*4(%eax)
-	movl	%fs,2*4(%eax)
-	movl	%es,3*4(%eax)
+	movw	%gs,1*4(%eax)
+	movw	%fs,2*4(%eax)
+	movw	%es,3*4(%eax)
 	/*	%ds,4*4(%eax)	*/
 	movl	%edi,5*4(%eax)
 	movl	%esi,6*4(%eax)
@@ -109,9 +109,9 @@ ENTRY(_get_mcontext)
 ENTRY(_set_mcontext)
 	movl	4(%esp),%eax
 	/*	0*4(%eax),mc_onstack	*/
-	movl	1*4(%eax),%gs
-	movl	2*4(%eax),%fs
-	movl	3*4(%eax),%es
+	movw	1*4(%eax),%gs
+	movw	2*4(%eax),%fs
+	movw	3*4(%eax),%es
 	/*	4*4(%eax),%ds	*/
 	movl	5*4(%eax),%edi
 	movl	6*4(%eax),%esi

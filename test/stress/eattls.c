@@ -4,7 +4,7 @@
  *	Rapidly switch between threads with different TLS pointers to
  *	test that the operating system properly switches the TLS segment.
  *
- * $DragonFly: src/test/stress/eattls.c,v 1.2 2007/01/06 01:46:45 dillon Exp $
+ * $DragonFly: src/test/stress/eattls.c,v 1.3 2007/04/13 12:12:27 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,7 @@ main(int ac, char **av)
     test->random1 = random1;
     test->random2 = random2;
     printf("setting %%gs to 0x%02x segment at %p\n", gs, test);
-    __asm __volatile("movl %0,%%eax; movl %%eax,%%gs" : "=m" (gs) : : "ax");
+    __asm __volatile("mov %0,%%gs" : : "g" (gs));
     for (;;) {
 	if (getdata(0) != random1 || getdata(4) != random2)
 	    printf("data verification failed!\n");

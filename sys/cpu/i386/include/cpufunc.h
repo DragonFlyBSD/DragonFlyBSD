@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.19 2007/01/07 00:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.20 2007/04/13 12:12:27 corecode Exp $
  */
 
 /*
@@ -541,7 +541,7 @@ static __inline u_int
 rfs(void)
 {
 	u_int sel;
-	__asm __volatile("movl %%fs,%0" : "=rm" (sel));
+	__asm __volatile("movw %%fs,%0" : "=rm" (sel));
 	return (sel);
 }
 
@@ -549,20 +549,20 @@ static __inline u_int
 rgs(void)
 {
 	u_int sel;
-	__asm __volatile("movl %%gs,%0" : "=rm" (sel));
+	__asm __volatile("movw %%gs,%0" : "=rm" (sel));
 	return (sel);
 }
 
 static __inline void
 load_fs(u_int sel)
 {
-	__asm __volatile("movl %0,%%fs" : : "rm" (sel));
+	__asm __volatile("movw %0,%%fs" : : "rm" (sel));
 }
 
 static __inline void
 load_gs(u_int sel)
 {
-	__asm __volatile("movl %0,%%gs" : : "rm" (sel));
+	__asm __volatile("movw %0,%%gs" : : "rm" (sel));
 }
 
 static __inline u_int
