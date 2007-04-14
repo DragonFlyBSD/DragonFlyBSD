@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.66 2007/04/14 04:35:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.67 2007/04/14 05:14:40 sephe Exp $
  *
  */
 
@@ -1969,6 +1969,10 @@ bge_rxeof(struct bge_softc *sc)
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
+	if (sc->bge_rx_saved_considx ==
+	    sc->bge_rdata->bge_status_block.bge_idx[0].bge_rx_prod_idx)
+		return;
+
 	ifp = &sc->arpcom.ac_if;
 
 	while(sc->bge_rx_saved_considx !=
@@ -2076,6 +2080,10 @@ bge_txeof(struct bge_softc *sc)
 {
 	struct bge_tx_bd *cur_tx = NULL;
 	struct ifnet *ifp;
+
+	if (sc->bge_tx_saved_considx ==
+	    sc->bge_rdata->bge_status_block.bge_idx[0].bge_tx_cons_idx)
+		return;
 
 	ifp = &sc->arpcom.ac_if;
 
