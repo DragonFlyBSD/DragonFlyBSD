@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/sendmail/mci.c.patch,v 1.3 2006/06/14 17:56:12 gshapiro Exp $
+$DragonFly: src/usr.sbin/sendmail/mci.c.patch,v 1.4 2007/04/14 17:43:48 gshapiro Exp $
 
 Index: mci.c
 ===================================================================
@@ -38,7 +38,7 @@ diff -u -r1.1.1.1 mci.c
  					continue;
  
 -				(void) sm_strlcpy(newptr, e->d_name,
--					       sizeof newpath -
+-					       sizeof(newpath) -
 -					       (newptr - newpath));
 +				if (sm_strlcpy(newptr, e->d_name, len) >= len)
 +					continue;

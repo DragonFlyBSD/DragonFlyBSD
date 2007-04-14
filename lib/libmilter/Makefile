@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libmilter/Makefile,v 1.1.2.2 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libmilter/Makefile,v 1.8 2006/08/18 03:06:59 gshapiro Exp $
+# $DragonFly: src/lib/libmilter/Makefile,v 1.9 2007/04/14 17:43:48 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 .PATH:	${SENDMAIL_DIR}/libmilter ${SENDMAIL_DIR}/libsm
 
 CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
@@ -17,8 +17,8 @@ INCS=	${SENDMAIL_DIR}/include/libmilter/mfapi.h \
 LIB=	milter
 
 SRCS+=	sm_os.h
-SRCS+=	main.c engine.c listener.c handler.c comm.c smfi.c \
-	signal.c sm_gethost.c errstring.c strl.c
+SRCS+=	main.c engine.c listener.c handler.c comm.c monitor.c smfi.c \
+	signal.c sm_gethost.c errstring.c strl.c worker.c
 CLEANFILES+=sm_os.h
 
 sm_os.h:

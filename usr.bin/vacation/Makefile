@@ -1,7 +1,7 @@
 # $FreeBSD: src/usr.bin/vacation/Makefile,v 1.6.2.3 2002/03/25 21:31:50 gshapiro Exp $
-# $DragonFly: src/usr.bin/vacation/Makefile,v 1.9 2006/08/18 03:06:59 gshapiro Exp $
+# $DragonFly: src/usr.bin/vacation/Makefile,v 1.10 2007/04/14 17:43:48 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 .PATH:	${SENDMAIL_DIR}/vacation
 
 PROG=	vacation

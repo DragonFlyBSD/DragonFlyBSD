@@ -1,8 +1,8 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.16 2006/08/18 03:07:00 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.17 2007/04/14 17:43:48 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
 
@@ -66,7 +66,7 @@ CLEANFILES+=sm_os.h
 	!defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 # STARTTLS support
 DISTRIBUTION=	crypto
-CFLAGS+=	-DSTARTTLS -D_FFR_TLS_1 -D_FFR_DEAL_WITH_ERROR_SSL
+CFLAGS+=	-DSTARTTLS -D_FFR_TLS_1
 LDADD+=		-lssl -lcrypto
 DPADD+=		${LIBSSL} ${LIBCRYPTO}
 .endif
