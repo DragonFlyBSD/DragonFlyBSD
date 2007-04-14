@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.64 2007/03/31 09:31:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.65 2007/04/14 04:22:14 sephe Exp $
  *
  */
 
@@ -919,8 +919,11 @@ bge_init_tx_ring(struct bge_softc *sc)
 {
 	sc->bge_txcnt = 0;
 	sc->bge_tx_saved_considx = 0;
+	sc->bge_tx_prodidx = 0;
 
-	CSR_WRITE_4(sc, BGE_MBX_TX_HOST_PROD0_LO, 0);
+	/* Initialize transmit producer index for host-memory send ring. */
+	CSR_WRITE_4(sc, BGE_MBX_TX_HOST_PROD0_LO, sc->bge_tx_prodidx);
+
 	/* 5700 b2 errata */
 	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
 		CSR_WRITE_4(sc, BGE_MBX_TX_HOST_PROD0_LO, 0);
@@ -2412,7 +2415,7 @@ bge_start(struct ifnet *ifp)
 	if (!sc->bge_link)
 		return;
 
-	prodidx = CSR_READ_4(sc, BGE_MBX_TX_HOST_PROD0_LO);
+	prodidx = sc->bge_tx_prodidx;
 
 	need_trans = 0;
 	while(sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
@@ -2460,6 +2463,8 @@ bge_start(struct ifnet *ifp)
 	/* 5700 b2 errata */
 	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
 		CSR_WRITE_4(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+
+	sc->bge_tx_prodidx = prodidx;
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.

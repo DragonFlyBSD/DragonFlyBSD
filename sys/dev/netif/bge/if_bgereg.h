@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.16 2007/03/31 07:24:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.17 2007/04/14 04:22:14 sephe Exp $
  */
 
 /*
@@ -2239,6 +2239,7 @@ struct bge_softc {
 	uint32_t		bge_stat_ticks;
 	uint32_t		bge_rx_coal_ticks;
 	uint32_t		bge_tx_coal_ticks;
+	uint32_t		bge_tx_prodidx;
 	uint32_t		bge_rx_max_coal_bds;
 	uint32_t		bge_tx_max_coal_bds;
 	uint32_t		bge_tx_buf_ratio;
