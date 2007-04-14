@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.65 2007/04/14 04:22:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.66 2007/04/14 04:35:10 sephe Exp $
  *
  */
 
@@ -452,7 +452,7 @@ bge_eeprom_getbyte(struct bge_softc *sc, uint32_t addr, uint8_t *dest)
 
 	if (i == BGE_TIMEOUT) {
 		if_printf(&sc->arpcom.ac_if, "eeprom read timed out\n");
-		return(0);
+		return(1);
 	}
 
 	/* Get result. */
@@ -1692,8 +1692,12 @@ bge_attach(device_t dev)
 	if (bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_SIG) == BGE_MAGIC_NUMBER)
 		hwcfg = bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_NICCFG);
 	else {
-		bge_read_eeprom(sc, (caddr_t)&hwcfg,
-				BGE_EE_HWCFG_OFFSET, sizeof(hwcfg));
+		if (bge_read_eeprom(sc, (caddr_t)&hwcfg, BGE_EE_HWCFG_OFFSET,
+				    sizeof(hwcfg))) {
+			device_printf(dev, "failed to read EEPROM\n");
+			error = ENXIO;
+			goto fail;
+		}
 		hwcfg = ntohl(hwcfg);
 	}
 
@@ -1759,12 +1763,9 @@ bge_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
 	return(0);
-
 fail:
 	bge_detach(dev);
-
 	return(error);
 }
 
