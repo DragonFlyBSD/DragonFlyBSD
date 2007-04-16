@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.7 2007/03/24 19:11:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.8 2007/04/16 17:40:13 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -43,6 +43,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/alist.h>
 #include <sys/file.h>
 #include <sys/proc.h>
 #include <sys/lock.h>
@@ -73,12 +74,13 @@ RB_PROTOTYPE2(sldata_rb_tree, sldata, rbnode,
 struct slrouter {
 	RB_ENTRY(slrouter) rbnode;		/* list of routers */
 	struct sldata_rb_tree sldata_rb_root;	/* connections to router */
-	sysid_t logid;				/* logical sysid of router */
+	sysid_t sysid;				/* logical sysid of router */
 	int flags;				/* flags passed on create */
-	int phybits;				/* accomodate connections */
+	int bits;				/* accomodate connections */
 	int count;				/* number of connections */
-	int nextphysid;				/* next physid to allocate */
 	int refs;
+	alist_t bitmap;
+	char label[SYSLINK_LABEL_SIZE];
 };
 
 /*
@@ -86,48 +88,60 @@ struct slrouter {
  * normal file descriptor.
  */
 struct slbuf {
-    char	*buf;
-    int		bufsize;	/* must be a power of 2 */
-    int		bufmask;	/* (bufsize - 1) */
-    int		rindex;		/* tail-chasing FIFO indices */
-    int		windex;
+	char	*buf;
+	int	bufsize;	/* must be a power of 2 */
+	int	bufmask;	/* (bufsize - 1) */
+	int	rindex;		/* tail-chasing FIFO indices */
+	int	windex;
 };
 
 struct sldata {
-    RB_ENTRY(sldata) rbnode;
-    struct slrouter *router;	/* organizing router */
-    struct slbuf rbuf;
-    struct slbuf wbuf;
-    struct file	*xfp;		/* external file pointer */
-    struct lock rlock;		/* synchronizing lock */
-    struct lock wlock;		/* synchronizing lock */
-    struct thread *rthread;	/* xfp -> rbuf & process */
-    struct thread *wthread;	/* wbuf -> xfp */
-    int flags;			/* connection flags */
-    int physid;
-    int refs;
+	RB_ENTRY(sldata) rbnode;
+	struct slrouter	*router;	/* organizing router */
+	struct slbuf	rbuf;
+	struct slbuf	wbuf;
+	struct file	*xfp;		/* external file pointer */
+	struct lock	rlock;		/* synchronizing lock */
+	struct lock	wlock;		/* synchronizing lock */
+	struct thread	*rthread;	/* xfp -> rbuf & process */
+	struct thread	*wthread;	/* wbuf -> xfp */
+	int	flags;			/* connection flags */
+	int	linkid;
+	int	bits;
+	int	refs;
+	char	label[SYSLINK_LABEL_SIZE];
 };
 
+/*
+ * syslink kernel thread support flags
+ */
 #define SLF_RQUIT	0x0001
 #define SLF_WQUIT	0x0002
 #define SLF_RDONE	0x0004
 #define SLF_WDONE	0x0008
+#define SLF_DESTROYED	0x8000
 
 #define SYSLINK_BUFSIZE	(128*1024)
 
 static int rb_slrouter_compare(struct slrouter *r1, struct slrouter *r2);
 static int rb_sldata_compare(struct sldata *d1, struct sldata *d2);
 
-static int syslink_read (struct file *fp, struct uio *uio,
+static int syslink_destroy(struct slrouter *slrouter);
+static int syslink_add(struct slrouter *slrouter, int fd,
+			struct syslink_info *info, int *result);
+static int syslink_rem(struct slrouter *slrouter, struct sldata *sldata,
+			struct syslink_info *info);
+
+static int syslink_read(struct file *fp, struct uio *uio,
+			struct ucred *cred, int flags);
+static int syslink_write(struct file *fp, struct uio *uio,
 			 struct ucred *cred, int flags);
-static int syslink_write (struct file *fp, struct uio *uio,
-			 struct ucred *cred, int flags);
-static int syslink_close (struct file *fp);
-static int syslink_stat (struct file *fp, struct stat *sb, struct ucred *cred);
-static int syslink_shutdown (struct file *fp, int how);
-static int syslink_ioctl (struct file *fp, u_long cmd, caddr_t data,
+static int syslink_close(struct file *fp);
+static int syslink_stat(struct file *fp, struct stat *sb, struct ucred *cred);
+static int syslink_shutdown(struct file *fp, int how);
+static int syslink_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			 struct ucred *cred);
-static int syslink_poll (struct file *fp, int events, struct ucred *cred);
+static int syslink_poll(struct file *fp, int events, struct ucred *cred);
 static int syslink_kqfilter(struct file *fp, struct knote *kn);
 
 static void syslink_rthread(void *arg);
@@ -140,9 +154,9 @@ static int process_syslink_msg(struct sldata *sldata, struct syslink_msg *head);
 static int syslink_validate(struct syslink_msg *head, int bytes);
 
 RB_GENERATE2(slrouter_rb_tree, slrouter, rbnode,
-             rb_slrouter_compare, sysid_t, logid);
+             rb_slrouter_compare, sysid_t, sysid);
 RB_GENERATE2(sldata_rb_tree, sldata, rbnode,
-             rb_sldata_compare, int, physid);
+             rb_sldata_compare, int, linkid);
 
 static struct fileops syslinkops = {
     .fo_read =		syslink_read,
@@ -169,9 +183,9 @@ static struct slrouter_rb_tree slrouter_rb_root;
 static int
 rb_slrouter_compare(struct slrouter *r1, struct slrouter *r2)
 {
-	if (r1->logid < r2->logid)
+	if (r1->sysid < r2->sysid)
 		return(-1);
-	if (r1->logid > r2->logid)
+	if (r1->sysid > r2->sysid)
 		return(1);
 	return(0);
 }
@@ -179,11 +193,61 @@ rb_slrouter_compare(struct slrouter *r1, struct slrouter *r2)
 static int
 rb_sldata_compare(struct sldata *d1, struct sldata *d2)
 {
-	if (d1->physid < d2->physid)
+	if (d1->linkid < d2->linkid)
 		return(-1);
-	if (d1->physid > d2->physid)
+	if (d1->linkid > d2->linkid)
 		return(1);
 	return(0);
+}
+
+/*
+ * Compare and callback functions for first-sysid and first-linkid searches.
+ */
+static int
+syslink_cmd_locate_cmp(struct slrouter *slrouter, void *data)
+{
+	struct syslink_info *info = data;
+
+	if (slrouter->sysid < info->sysid)
+	    return(-1);
+	if (slrouter->sysid > info->sysid)
+	    return(1);
+	return(0);
+}
+
+static int
+syslink_cmd_locate_callback(struct slrouter *slrouter, void *data)
+{
+	struct syslink_info *info = data;
+
+	info->flags = slrouter->flags;	/* also clears SLIF_ERROR */
+	bcopy(slrouter->label, info->label, SYSLINK_LABEL_SIZE);
+
+	return(-1);
+}
+
+static int
+syslink_cmd_find_cmp(struct sldata *sldata, void *data)
+{
+	struct syslink_info *info = data;
+
+	if (sldata->linkid < info->linkid)
+	    return(-1);
+	if (sldata->linkid > info->linkid)
+	    return(1);
+	return(0);
+}
+
+static int
+syslink_cmd_find_callback(struct sldata *sldata, void *data)
+{
+	struct syslink_info *info = data;
+
+	info->linkid = sldata->linkid;
+	info->flags = sldata->flags;	/* also clears SLIF_ERROR */
+	bcopy(sldata->label, info->label, SYSLINK_LABEL_SIZE);
+
+	return(-1);
 }
 
 /*
@@ -191,157 +255,319 @@ rb_sldata_compare(struct sldata *d1, struct sldata *d2)
  * (typically a pipe or a connected socket) with a sysid namespace,
  * or create a direct link.
  *
- * syslink(int fd, int flags, sysid_t routenode)
+ * syslink(int fd, int cmd, void *info, size_t *infosize)
  */
-
 int
 sys_syslink(struct syslink_args *uap)
 {
-    struct slrouter *slrouter;
-    struct slrouter *slnew;
-    struct sldata *sldata;
-    struct file *fp;
-    int numphys;
-    int physid;
-    int error;
-    int n;
+	struct syslink_info info;
+	struct slrouter *slrouter = NULL;
+	struct sldata *sldata = NULL;
+	int error;
+	int n;
 
-    /*
-     * System call is under construction and disabled by default
-     */
-    if (syslink_enabled == 0)
-	return (EAUTH);
-    error = suser(curthread);
-    if (error)
-	return (error);
-
-    /*
-     * Lookup or create the route node using passed flags.
-     */
-    slnew = kmalloc(sizeof(struct slrouter), M_SYSLINK, M_WAITOK|M_ZERO);
-    slrouter = slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root, uap->routenode);
-    if (slrouter) {
-	/* 
-	 * Existing route node
-	 */
-	if (uap->flags & SYSLINKF_EXCL) {
-		kfree(slnew, M_SYSLINK);
-		return (EEXIST);
-	}
-	++slrouter->refs;
-	kfree(slnew, M_SYSLINK);
-    } else if ((uap->flags & SYSLINKF_CREAT) == 0) {
-	/* 
-	 * Non-existent, no create flag specified
-	 */
-	kfree(slnew, M_SYSLINK);
-	return (ENOENT);
-    } else {
 	/*
-	 * Create a new route node.  Cannot block prior to tree insertion.
-	 *
-	 * Check the number of bits of physical id this route node can
-	 * dispense for validity.  The number of connections allowed must
-	 * fit in a signed 32 bit integer.
+	 * System call is under construction and disabled by default. 
+	 * Superuser access is also required.
 	 */
-	int phybits = uap->flags & SYSLINKF_PHYSBITS;
+	if (syslink_enabled == 0)
+		return (EAUTH);
+	error = suser(curthread);
+	if (error)
+		return (error);
 
-	if (phybits < 2 || phybits > 31) {
-	    kfree(slnew, M_SYSLINK);
-	    return (EINVAL);
-	}
-	slnew->logid = uap->routenode;
-	slnew->refs = 1;
-	slnew->phybits = phybits;
-	slnew->flags = uap->flags;
-	RB_INSERT(slrouter_rb_tree, &slrouter_rb_root, slnew);
-	RB_INIT(&slnew->sldata_rb_root);
-	slrouter = slnew;
-    }
-    numphys = 1 << slrouter->phybits;
-
-    /*
-     * Create a connection to the route node and allocate a physical ID.
-     * Physical ID 0 is reserved for the route node itself.
-     */
-    sldata = kmalloc(sizeof(struct sldata), M_SYSLINK, M_WAITOK|M_ZERO);
-
-    if (slrouter->count + 1 >= numphys) {
-	error = ENOSPC;
-	kfree(sldata, M_SYSLINK);
-	goto done;
-    }
-    physid = slrouter->nextphysid;
-    for (n = 0; n < numphys; ++n) {
-	if (++physid == numphys)
-	    physid = 1;
-	if (sldata_rb_tree_RB_LOOKUP(&slrouter->sldata_rb_root, physid) == NULL)
-		break;
-    }
-    if (n == numphys)
-	panic("sys_syslink: unexpected physical id allocation failure");
-
-    /*
-     * Insert the node, initializing enough fields to prevent things from
-     * being ripped out from under us before we have a chance to complete
-     * the system call.
-     */
-    slrouter->nextphysid = physid;
-    sldata->physid = physid;
-    sldata->refs = 1;
-    ++slrouter->count;
-    RB_INSERT(sldata_rb_tree, &slrouter->sldata_rb_root, sldata);
-
-    /*
-     * Complete initialization of the physical route node.  Setting 
-     * sldata->router activates the node.
-     */
-    lockinit(&sldata->rlock, "slread", 0, 0);
-    lockinit(&sldata->wlock, "slwrite", 0, 0);
-
-    if (uap->fd < 0) {
 	/*
-	 * We create a direct syslink descriptor.  Only the reader thread
-	 * is needed.
+	 * Load and validate the info structure.  Unloaded bytes are zerod out
 	 */
-	error = falloc(curproc, &fp, &uap->fd);
-	if (error == 0) {
-	    fp->f_type = DTYPE_SYSLINK;
-	    fp->f_flag = FREAD | FWRITE;
-	    fp->f_ops = &syslinkops;
-	    fp->f_data = sldata;
-	    slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
-	    slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
-	    sldata->refs += 2;	/* reader thread and descriptor */
-	    sldata->flags = SLF_WQUIT | SLF_WDONE;
-	    lwkt_create(syslink_rthread, sldata,
-			&sldata->rthread, NULL,
-			0, -1, "syslink_r");
-	    fsetfd(curproc, fp, uap->fd);
-	    fdrop(fp);
-	    uap->sysmsg_result = uap->fd;
-	}
-    } else {
-	sldata->xfp = holdfp(curproc->p_fd, uap->fd, -1);
-	if (sldata->xfp != NULL) {
-	    slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
-	    slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
-	    sldata->refs += 2;	/* reader thread and writer thread */
-	    lwkt_create(syslink_rthread, sldata,
-			&sldata->rthread, NULL,
-			0, -1, "syslink_r");
-	    lwkt_create(syslink_wthread, sldata,
-			&sldata->wthread, NULL,
-			0, -1, "syslink_w");
+	bzero(&info, sizeof(info));
+	if ((unsigned)uap->bytes <= sizeof(info)) {
+		if (uap->bytes)
+			error = copyin(uap->info, &info, uap->bytes);
 	} else {
-	    error = EBADF;
+		error = EINVAL;
 	}
-    }
-    sldata->router = slrouter;
-    sldata_rels(sldata);
-done:
-    slrouter_rels(slrouter);
-    return(error);
+	if (error)
+		return (error);
+
+	if (info.label[sizeof(info.label)-1] != 0)
+		return (EINVAL);
+
+	/*
+	 * Process command
+	 */
+
+	switch(uap->cmd) {
+	case SYSLINK_CMD_CREATE:
+		/*
+		 * Create a new syslink router node.  Set refs to prevent the
+		 * router node from being destroyed.  One ref is our temporary
+		 * reference while the other is the SLIF_DESTROYED-interlocked
+		 * reference.
+		 */
+		if (info.bits < 2 || info.bits > SYSLINK_ROUTER_MAXBITS)
+			return (EINVAL);
+		slrouter = kmalloc(sizeof(struct slrouter), M_SYSLINK,
+				    M_WAITOK|M_ZERO);
+		if (slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root, info.sysid)) {
+			kfree(slrouter, M_SYSLINK);
+			slrouter = NULL;
+			return (EINVAL);
+		}
+		slrouter->sysid = info.sysid;
+		slrouter->refs = 2;
+		slrouter->bits = info.bits;
+		slrouter->flags = info.flags & SLIF_USERFLAGS;
+		slrouter->bitmap = alist_create(1 << info.bits, M_SYSLINK);
+		RB_INIT(&slrouter->sldata_rb_root);
+		RB_INSERT(slrouter_rb_tree, &slrouter_rb_root, slrouter);
+		break;
+	case SYSLINK_CMD_DESTROY:
+		/*
+		 * Destroy a syslink router node.  The physical node is
+		 * not freed until our temporary reference is removed.
+		 */
+		slrouter = slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root,
+						      info.sysid);
+		if (slrouter) {
+			++slrouter->refs;
+			if ((slrouter->flags & SLIF_DESTROYED) == 0) {
+				slrouter->flags |= SLIF_DESTROYED;
+				/* SLIF_DESTROYED interlock */
+				slrouter_rels(slrouter);
+				error = syslink_destroy(slrouter);
+				/* still holding our private interlock */
+			}
+		}
+		break;
+	case SYSLINK_CMD_LOCATE:
+		/*
+		 * Locate the first syslink router node >= info.sysid
+		 */
+		info.flags |= SLIF_ERROR;
+		n = slrouter_rb_tree_RB_SCAN(
+			    &slrouter_rb_root,
+			    syslink_cmd_locate_cmp, syslink_cmd_locate_callback,
+			    &info);
+		if (info.flags & SLIF_ERROR)
+			error = ENOENT;
+		break;
+	case SYSLINK_CMD_ADD:
+		slrouter = slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root, info.sysid);
+		if (info.bits &&
+		    (info.bits < 2 || info.bits > SYSLINK_ROUTER_MAXBITS)) {
+			error = EINVAL;
+		} else if (slrouter && (slrouter->flags & SLIF_DESTROYED)) {
+			/*
+			 * Someone is trying to destroy this route node,
+			 * no new adds please!
+			 */
+			error = EIO;
+		} else if (slrouter) {
+			++slrouter->refs;
+			error = syslink_add(slrouter, uap->fd, &info,
+					    &uap->sysmsg_result);
+		} else {
+			error = EINVAL;
+		}
+		break;
+	case SYSLINK_CMD_REM:
+		slrouter = slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root,
+						      info.sysid);
+		if (slrouter) {
+			++slrouter->refs;
+			sldata = sldata_rb_tree_RB_LOOKUP(&slrouter->sldata_rb_root, info.linkid);
+			if (sldata) {
+				++sldata->refs;
+				error = syslink_rem(slrouter, sldata, &info);
+			} else {
+				error = ENOENT;
+			}
+		} else {
+			error = EINVAL;
+		}
+		break;
+	case SYSLINK_CMD_FIND:
+		slrouter = slrouter_rb_tree_RB_LOOKUP(&slrouter_rb_root, info.sysid);
+		info.flags |= SLIF_ERROR;
+		if (slrouter) {
+			++slrouter->refs;
+			n = sldata_rb_tree_RB_SCAN(
+				&slrouter->sldata_rb_root,
+				syslink_cmd_find_cmp, syslink_cmd_find_callback,
+				&info);
+			if (info.flags & SLIF_ERROR)
+				error = ENOENT;
+		} else {
+			error = EINVAL;
+		}
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+
+	/*
+	 * Cleanup
+	 */
+	if (sldata)
+		sldata_rels(sldata);
+	if (slrouter)
+		slrouter_rels(slrouter);
+	return (error);
+}
+
+static
+int
+syslink_destroy_callback(struct sldata *sldata, void *data __unused)
+{
+	++sldata->refs;
+	if ((sldata->flags & SLF_RQUIT) == 0) {
+		sldata->flags |= SLF_RQUIT;
+		wakeup(&sldata->rbuf);
+	}
+	if ((sldata->flags & SLF_WQUIT) == 0) {
+		sldata->flags |= SLF_WQUIT;
+		wakeup(&sldata->wbuf);
+	}
+	sldata_rels(sldata);
+	return(0);
+}
+
+/*
+ * Shutdown all the connections going into this syslink.
+ *
+ * Try to wait for completion, but return after 1 second 
+ * regardless.
+ */
+static
+int
+syslink_destroy(struct slrouter *slrouter)
+{
+	int retries = 10;
+
+	while (!RB_EMPTY(&slrouter->sldata_rb_root) && retries) {
+		RB_SCAN(sldata_rb_tree, &slrouter->sldata_rb_root, NULL,
+			syslink_destroy_callback, slrouter);
+		--retries;
+		tsleep(&retries, 0, "syslnk", hz / 10);
+	}
+	if (RB_EMPTY(&slrouter->sldata_rb_root))
+		return(0);
+	else
+		return(EINPROGRESS);
+}
+
+static
+int
+syslink_add(struct slrouter *slrouter, int fd, struct syslink_info *info,
+	    int *result)
+{
+	struct sldata *sldata;
+	struct file *fp;
+	int maxphys;
+	int numphys;
+	int linkid;
+	int error;
+
+	error = 0;
+	maxphys = 1 << slrouter->bits;
+	numphys = info->bits ? (1 << info->bits) : 1;
+
+	/*
+	 * Create a connection to the route node and allocate a physical ID.
+	 * Physical ID 0 is reserved for the route node itself, and an all-1's
+	 * ID is reserved as a broadcast address.
+	 */
+	sldata = kmalloc(sizeof(struct sldata), M_SYSLINK, M_WAITOK|M_ZERO);
+
+	linkid = alist_alloc(slrouter->bitmap, numphys);
+	if (linkid == ALIST_BLOCK_NONE) {
+		kfree(sldata, M_SYSLINK);
+		return (ENOSPC);
+	}
+
+	/*
+	 * Insert the node, initializing enough fields to prevent things from
+	 * being ripped out from under us before we have a chance to complete
+	 * the system call.
+	 */
+	sldata->linkid = linkid;
+	sldata->refs = 1;
+	++slrouter->count;
+	if (sldata_rb_tree_RB_LOOKUP(&slrouter->sldata_rb_root, linkid))
+		panic("syslink_add: free linkid wasn't free!");
+	RB_INSERT(sldata_rb_tree, &slrouter->sldata_rb_root, sldata);
+
+	/*
+	 * Complete initialization of the physical route node.  Setting 
+	 * sldata->router activates the node.
+	 */
+	lockinit(&sldata->rlock, "slread", 0, 0);
+	lockinit(&sldata->wlock, "slwrite", 0, 0);
+
+	if (fd < 0) {
+		/*
+		 * We create a direct syslink descriptor.  Only the 
+		 * reader thread is needed.
+		 */
+		error = falloc(curproc, &fp, &fd);
+		if (error == 0) {
+			fp->f_type = DTYPE_SYSLINK;
+			fp->f_flag = FREAD | FWRITE;
+			fp->f_ops = &syslinkops;
+			fp->f_data = sldata;
+			slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
+			slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
+			/* two refs: reader thread and fp descriptor */
+			sldata->refs += 2;
+			sldata->flags = SLF_WQUIT | SLF_WDONE;
+			lwkt_create(syslink_rthread, sldata,
+				    &sldata->rthread, NULL,
+				    0, -1, "syslink_r");
+			fsetfd(curproc, fp, fd);
+			fdrop(fp);
+			*result = fd;
+		}
+	} else {
+		sldata->xfp = holdfp(curproc->p_fd, fd, -1);
+		if (sldata->xfp != NULL) {
+			slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
+			slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
+			/* two refs: reader thread and writer thread */
+			sldata->refs += 2;
+			lwkt_create(syslink_rthread, sldata,
+				    &sldata->rthread, NULL,
+				    0, -1, "syslink_r");
+			lwkt_create(syslink_wthread, sldata,
+				    &sldata->wthread, NULL,
+				    0, -1, "syslink_w");
+		} else {
+			error = EBADF;
+		}
+	}
+	sldata->router = slrouter;
+	sldata_rels(sldata);
+	return(error);
+}
+
+static
+int
+syslink_rem(struct slrouter *slrouter, struct sldata *sldata,
+	    struct syslink_info *info)
+{
+	int error = EINPROGRESS;
+
+	if ((sldata->flags & SLF_RQUIT) == 0) {
+		sldata->flags |= SLF_RQUIT;
+		wakeup(&sldata->rbuf);
+		error = 0;
+	}
+	if ((sldata->flags & SLF_WQUIT) == 0) {
+		sldata->flags |= SLF_WQUIT;
+		wakeup(&sldata->wbuf);
+		error = 0;
+	}
+	return(error);
 }
 
 /*
@@ -352,115 +578,118 @@ static
 void
 syslink_rthread(void *arg)
 {
-    struct sldata *sldata = arg;
-    struct slbuf *slbuf = &sldata->rbuf;
-    struct syslink_msg *head;
-    const int min_msg_size = SL_MIN_MESSAGE_SIZE;
+	struct sldata *sldata = arg;
+	struct slbuf *slbuf = &sldata->rbuf;
+	struct syslink_msg *head;
+	const int min_msg_size = SL_MIN_MESSAGE_SIZE;
 
-    while ((sldata->flags & SLF_RQUIT) == 0) {
-	int count;
-	int used;
-	int error;
+	while ((sldata->flags & SLF_RQUIT) == 0) {
+		int count;
+		int used;
+		int error;
 
-	/*
-	 * Calculate contiguous space available to read and read as much
-	 * as possible.
-	 *
-	 * If the entire buffer is used there's probably a format error
-	 * of some sort and we terminate the link.
-	 */
-	used = slbuf->windex - slbuf->rindex;
-	error = 0;
+		/*
+		 * Calculate contiguous space available to read and read as
+		 * much as possible.
+		 *
+		 * If the entire buffer is used there's probably a format
+		 * error of some sort and we terminate the link.
+		 */
+		used = slbuf->windex - slbuf->rindex;
+		error = 0;
 
-	/*
-	 * Read some data, terminate the link if an error occurs or if EOF
-	 * is encountered.  xfp can be NULL, indicating that the data was
-	 * injected by other means.
-	 */
-	if (sldata->xfp) {
-		count = slbuf->bufsize - (slbuf->windex & slbuf->bufmask);
-		if (count > slbuf->bufsize - used)
-		    count = slbuf->bufsize - used;
-		if (count == 0)
-		    break;
-		error = fp_read(sldata->xfp,
-				slbuf->buf + (slbuf->windex & slbuf->bufmask),
-				count, &count, 0, UIO_SYSSPACE);
-		if (error)
-		    break;
-		if (count == 0)
-		    break;
-		slbuf->windex += count;
-		used += count;
-	} else {
-		tsleep(slbuf, 0, "fiford", 0);
-	}
-
-	/*
-	 * Process as many syslink messages as we can.  The record length
-	 * must be at least a minimal PAD record (8 bytes).  A sm_cmd of 0
-	 * is PAD.
-	 */
-	while (slbuf->windex - slbuf->rindex >= min_msg_size) {
-	    int aligned_reclen;
-
-	    head = (void *)(slbuf->buf + (slbuf->rindex & slbuf->bufmask));
-	    if (head->sm_bytes < min_msg_size) {
-		error = EINVAL;
-		break;
-	    }
-	    aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
-
-	    /*
-	     * Disallow wraps
-	     */
-	    if ((slbuf->rindex & slbuf->bufmask) >
-		((slbuf->rindex + aligned_reclen) & slbuf->bufmask)
-	    ) {
-		error = EINVAL;
-		break;
-	    }
-
-	    /*
-	     * Insufficient data read
-	     */
-	    if (slbuf->windex - slbuf->rindex < aligned_reclen)
-		break;
-
-	    /*
-	     * Process non-pad messages.  Non-pad messages have to be at
-	     * least the size of the syslink_msg structure.
-	     *
-	     * A PAD message's sm_cmd field contains 0.
-	     */
-	    if (head->sm_cmd) {
-		if (head->sm_bytes < sizeof(struct syslink_msg)) {
-		    error = EINVAL;
-		    break;
+		/*
+		 * Read some data, terminate the link if an error occurs or
+		 * if EOF is encountered.  xfp can be NULL, indicating that
+		 * the data was injected by other means.
+		 */
+		if (sldata->xfp) {
+			count = slbuf->bufsize - 
+				(slbuf->windex & slbuf->bufmask);
+			if (count > slbuf->bufsize - used)
+				count = slbuf->bufsize - used;
+			if (count == 0)
+				break;
+			error = fp_read(sldata->xfp,
+					slbuf->buf + 
+					 (slbuf->windex & slbuf->bufmask),
+					count, &count, 0, UIO_SYSSPACE);
+			if (error)
+				break;
+			if (count == 0)
+				break;
+			slbuf->windex += count;
+			used += count;
+		} else {
+			tsleep(slbuf, 0, "fiford", 0);
 		}
-		error = process_syslink_msg(sldata, head);
-		if (error)
-		    break;
-	    }
-	    cpu_sfence();
-	    slbuf->rindex += aligned_reclen;
-	}
-	if (error)
-	    break;
-    }
 
-    /*
-     * Mark us as done and deref sldata.  Tell the writer to terminate as
-     * well.
-     */
-    sldata->flags |= SLF_RDONE;
-    if ((sldata->flags & SLF_WDONE) == 0) {
-	    sldata->flags |= SLF_WQUIT;
-	    wakeup(&sldata->wbuf);
-    }
-    wakeup(&sldata->rbuf);
-    wakeup(&sldata->wbuf);
-    sldata_rels(sldata);
+		/*
+		 * Process as many syslink messages as we can.  The record
+		 * length must be at least a minimal PAD record (8 bytes).
+		 */
+		while (slbuf->windex - slbuf->rindex >= min_msg_size) {
+			int aligned_reclen;
+
+			head = (void *)(slbuf->buf + 
+					(slbuf->rindex & slbuf->bufmask));
+			if (head->sm_bytes < min_msg_size) {
+				error = EINVAL;
+				break;
+			}
+			aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
+
+			/*
+			 * Disallow wraps
+			 */
+			if ((slbuf->rindex & slbuf->bufmask) >
+			    ((slbuf->rindex + aligned_reclen) & slbuf->bufmask)
+			) {
+				error = EINVAL;
+				break;
+			}
+
+			/*
+			 * Insufficient data read
+			 */
+			if (slbuf->windex - slbuf->rindex < aligned_reclen)
+				break;
+
+			/*
+			 * Process non-pad messages.  Non-pad messages have
+			 * to be at least the size of the syslink_msg
+			 * structure.
+			 *
+			 * A PAD message's sm_cmd field contains 0.
+			 */
+			if (head->sm_cmd) {
+				if (head->sm_bytes < sizeof(*head)) {
+					error = EINVAL;
+					break;
+				}
+				error = process_syslink_msg(sldata, head);
+				if (error)
+					break;
+			}
+			cpu_sfence();
+			slbuf->rindex += aligned_reclen;
+		}
+		if (error)
+			break;
+	}
+
+	/*
+	 * Mark us as done and deref sldata.  Tell the writer to terminate as
+	 * well.
+	 */
+	sldata->flags |= SLF_RDONE;
+	if ((sldata->flags & SLF_WDONE) == 0) {
+		sldata->flags |= SLF_WQUIT;
+		wakeup(&sldata->wbuf);
+	}
+	wakeup(&sldata->rbuf);
+	wakeup(&sldata->wbuf);
+	sldata_rels(sldata);
 }
 
 /*
@@ -472,112 +701,119 @@ static
 void
 syslink_wthread(void *arg)
 {
-    struct sldata *sldata = arg;
-    struct slbuf *slbuf = &sldata->wbuf;
-    struct syslink_msg *head;
-    int error;
+	struct sldata *sldata = arg;
+	struct slbuf *slbuf = &sldata->wbuf;
+	struct syslink_msg *head;
+	int error;
 
-    while ((sldata->flags & SLF_WQUIT) == 0) {
-	error = 0;
-	for (;;) {
-	    int aligned_reclen;
-	    int used;
-	    int count;
+	while ((sldata->flags & SLF_WQUIT) == 0) {
+		error = 0;
+		for (;;) {
+			int aligned_reclen;
+			int used;
+			int count;
 
-	    used = slbuf->windex - slbuf->rindex;
-	    if (used < SL_MIN_MESSAGE_SIZE)
-		break;
+			used = slbuf->windex - slbuf->rindex;
+			if (used < SL_MIN_MESSAGE_SIZE)
+				break;
 
-	    head = (void *)(slbuf->buf + (slbuf->rindex & slbuf->bufmask));
-	    if (head->sm_bytes < SL_MIN_MESSAGE_SIZE) {
-		error = EINVAL;
-		break;
-	    }
-	    aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
+			head = (void *)(slbuf->buf + 
+					(slbuf->rindex & slbuf->bufmask));
+			if (head->sm_bytes < SL_MIN_MESSAGE_SIZE) {
+				error = EINVAL;
+				break;
+			}
+			aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
 
-	    /*
-	     * Disallow wraps
-	     */
-	    if ((slbuf->rindex & slbuf->bufmask) >
-		((slbuf->rindex + aligned_reclen) & slbuf->bufmask)
-	    ) {
-		error = EINVAL;
-		break;
-	    }
+			/*
+			 * Disallow wraps
+			 */
+			if ((slbuf->rindex & slbuf->bufmask) >
+			    ((slbuf->rindex + aligned_reclen) & slbuf->bufmask)
+			) {
+				error = EINVAL;
+				break;
+			}
 
-	    /*
-	     * Insufficient data read
-	     */
-	    if (used < aligned_reclen)
-		break;
+			/*
+			 * Insufficient data read
+			 */
+			if (used < aligned_reclen)
+				break;
 
-	    /*
-	     * Write it out whether it is PAD or not.   XXX re-PAD for output
-	     * here.
-	     */
-	    error = fp_write(sldata->xfp, head, aligned_reclen, &count,
-			     UIO_SYSSPACE);
-	    if (error)
-		break;
-	    if (count != aligned_reclen) {
-		error = EIO;
-		break;
-	    }
-	    slbuf->rindex += aligned_reclen;
+			/*
+			 * Write it out whether it is PAD or not.
+			 * XXX re-PAD for output here.
+			 */
+			error = fp_write(sldata->xfp, head,
+					 aligned_reclen,
+					 &count,
+					 UIO_SYSSPACE);
+			if (error && error != ENOBUFS)
+				break;
+			if (count != aligned_reclen) {
+				error = EIO;
+				break;
+			}
+			slbuf->rindex += aligned_reclen;
+		}
+		if (error)
+			break;
+		tsleep(slbuf, 0, "fifowt", 0);
 	}
-	if (error)
-	    break;
-	tsleep(slbuf, 0, "fifowt", 0);
-    }
-    sldata->flags |= SLF_WDONE;
-    sldata_rels(sldata);
+	sldata->flags |= SLF_WDONE;
+	sldata_rels(sldata);
 }
 
 static
 void
 slbuf_alloc(struct slbuf *slbuf, int bytes)
 {
-    bzero(slbuf, sizeof(*slbuf));
-    slbuf->buf = kmalloc(bytes, M_SYSLINK, M_WAITOK);
-    slbuf->bufsize = bytes;
-    slbuf->bufmask = bytes - 1;
+	bzero(slbuf, sizeof(*slbuf));
+	slbuf->buf = kmalloc(bytes, M_SYSLINK, M_WAITOK);
+	slbuf->bufsize = bytes;
+	slbuf->bufmask = bytes - 1;
 }
 
 static
 void
 slbuf_free(struct slbuf *slbuf)
 {
-    kfree(slbuf->buf, M_SYSLINK);
-    slbuf->buf = NULL;
+	kfree(slbuf->buf, M_SYSLINK);
+	slbuf->buf = NULL;
 }
 
 static
 void
 sldata_rels(struct sldata *sldata)
 {
-    struct slrouter *slrouter;
+	struct slrouter *slrouter;
 
-    if (--sldata->refs == 0) {
-	slrouter = sldata->router;
-	KKASSERT(slrouter != NULL);
-	++slrouter->refs;
-	RB_REMOVE(sldata_rb_tree, &sldata->router->sldata_rb_root, sldata);
-	sldata->router = NULL;
-	slbuf_free(&sldata->rbuf);
-	slbuf_free(&sldata->wbuf);
-	kfree(sldata, M_SYSLINK);
-	slrouter_rels(slrouter);
-    }
+	if (--sldata->refs == 0) {
+		slrouter = sldata->router;
+		KKASSERT(slrouter != NULL);
+		++slrouter->refs;
+		RB_REMOVE(sldata_rb_tree, 
+			  &sldata->router->sldata_rb_root, sldata);
+		sldata->router = NULL;
+		slbuf_free(&sldata->rbuf);
+		slbuf_free(&sldata->wbuf);
+		kfree(sldata, M_SYSLINK);
+		slrouter_rels(slrouter);
+	}
 }
 
 static
 void
 slrouter_rels(struct slrouter *slrouter)
 {
-    if (--slrouter->refs == 0 && RB_EMPTY(&slrouter->sldata_rb_root)) {
-	RB_REMOVE(slrouter_rb_tree, &slrouter_rb_root, slrouter);
-	kfree(slrouter, M_SYSLINK);
-    }
+	if (--slrouter->refs == 0 && RB_EMPTY(&slrouter->sldata_rb_root)) {
+		KKASSERT(slrouter->flags & SLIF_DESTROYED);
+		RB_REMOVE(slrouter_rb_tree, &slrouter_rb_root, slrouter);
+		alist_destroy(slrouter->bitmap, M_SYSLINK);
+		slrouter->bitmap = NULL;
+		kfree(slrouter, M_SYSLINK);
+	}
 }
 
 /*
@@ -596,69 +832,69 @@ static
 int
 syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-    struct sldata *sldata = fp->f_data;
-    struct slbuf *slbuf = &sldata->wbuf;
-    struct syslink_msg *head;
-    int bytes;
-    int contig;
-    int error;
-    int nbio;
+	struct sldata *sldata = fp->f_data;
+	struct slbuf *slbuf = &sldata->wbuf;
+	struct syslink_msg *head;
+	int bytes;
+	int contig;
+	int error;
+	int nbio;
 
-    if (flags & O_FBLOCKING)
-	nbio = 0;
-    else if (flags & O_FNONBLOCKING)
-	nbio = 1;
-    else if (fp->f_flag & O_NONBLOCK)
-	nbio = 1;
-    else
-	nbio = 0;
+	if (flags & O_FBLOCKING)
+		nbio = 0;
+	else if (flags & O_FNONBLOCKING)
+		nbio = 1;
+	else if (fp->f_flag & O_NONBLOCK)
+		nbio = 1;
+	else
+		nbio = 0;
 
-    lockmgr(&sldata->wlock, LK_EXCLUSIVE | LK_RETRY);
+	lockmgr(&sldata->wlock, LK_EXCLUSIVE | LK_RETRY);
 
-    /*
-     * Calculate the number of bytes we can transfer in one shot.  Transfers
-     * do not wrap the FIFO.
-     */
-    contig = slbuf->bufsize - (slbuf->rindex & slbuf->bufmask);
-    for (;;) {
-	bytes = slbuf->windex - slbuf->rindex;
-	if (bytes)
-	    break;
-	if (sldata->flags & SLF_RDONE) {
-	    error = EIO;
-	    break;
+	/*
+	 * Calculate the number of bytes we can transfer in one shot.  Transfers
+	 * do not wrap the FIFO.
+	 */
+	contig = slbuf->bufsize - (slbuf->rindex & slbuf->bufmask);
+	for (;;) {
+		bytes = slbuf->windex - slbuf->rindex;
+		if (bytes)
+			break;
+		if (sldata->flags & SLF_RDONE) {
+			error = EIO;
+			break;
+		}
+		if (nbio) {
+			error = EAGAIN;
+			goto done;
+		}
+		tsleep(slbuf, 0, "fiford", 0);
 	}
-	if (nbio) {
-	    error = EAGAIN;
-	    goto done;
+	if (bytes > contig)
+		bytes = contig;
+
+	/*
+	 * The uio must be able to accomodate the transfer.
+	 */
+	if (uio->uio_resid < bytes) {
+		error = ENOSPC;
+		goto done;
 	}
-	tsleep(slbuf, 0, "fiford", 0);
-    }
-    if (bytes > contig)
-	bytes = contig;
 
-    /*
-     * The uio must be able to accomodate the transfer.
-     */
-    if (uio->uio_resid < bytes) {
-	error = ENOSPC;
-	goto done;
-    }
+	/*
+	 * Copy the data to userland and update rindex.
+	 */
+	head = (void *)(slbuf->buf + (slbuf->rindex & slbuf->bufmask));
+	error = uiomove((caddr_t)head, bytes, uio);
+	if (error == 0)
+		slbuf->rindex += bytes;
 
-    /*
-     * Copy the data to userland and update rindex.
-     */
-    head = (void *)(slbuf->buf + (slbuf->rindex & slbuf->bufmask));
-    error = uiomove((caddr_t)head, bytes, uio);
-    if (error == 0)
-	slbuf->rindex += bytes;
-
-    /*
-     * Cleanup
-     */
+	/*
+	 * Cleanup
+	 */
 done:
-    lockmgr(&sldata->wlock, LK_RELEASE);
-    return (error);
+	lockmgr(&sldata->wlock, LK_RELEASE);
+	return (error);
 }
 
 /*
@@ -670,122 +906,122 @@ static
 int
 syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-    struct sldata *sldata = fp->f_data;
-    struct slbuf *slbuf = &sldata->rbuf;
-    struct syslink_msg *head;
-    int bytes;
-    int contig;
-    int nbio;
-    int error;
+	struct sldata *sldata = fp->f_data;
+	struct slbuf *slbuf = &sldata->rbuf;
+	struct syslink_msg *head;
+	int bytes;
+	int contig;
+	int nbio;
+	int error;
 
-    if (flags & O_FBLOCKING)
-	nbio = 0;
-    else if (flags & O_FNONBLOCKING)
-	nbio = 1;
-    else if (fp->f_flag & O_NONBLOCK)
-	nbio = 1;
-    else
-	nbio = 0;
+	if (flags & O_FBLOCKING)
+		nbio = 0;
+	else if (flags & O_FNONBLOCKING)
+		nbio = 1;
+	else if (fp->f_flag & O_NONBLOCK)
+		nbio = 1;
+	else
+		nbio = 0;
 
-    lockmgr(&sldata->rlock, LK_EXCLUSIVE | LK_RETRY);
+	lockmgr(&sldata->rlock, LK_EXCLUSIVE | LK_RETRY);
 
-    /* 
-     * Calculate the maximum number of contiguous bytes that may be available.
-     * Caller is required to not wrap our FIFO.
-     */
-    contig = slbuf->bufsize - (slbuf->windex & slbuf->bufmask);
-    if (uio->uio_resid > contig) {
-	error = ENOSPC;
-	goto done;
-    }
-
-    /*
-     * Truncate based on actual unused space available in the FIFO.  If
-     * the uio does not fit, block and loop.
-     */
-    for (;;) {
-	bytes = slbuf->bufsize - (slbuf->windex - slbuf->rindex);
-	if (bytes > contig)
-	    bytes = contig;
-	if (uio->uio_resid <= bytes)
-	    break;
-	if (sldata->flags & SLF_RDONE) {
-	    error = EIO;
-	    goto done;
+	/* 
+	 * Calculate the maximum number of contiguous bytes that may be
+	 * available.  Caller is required to not wrap our FIFO.
+	 */
+	contig = slbuf->bufsize - (slbuf->windex & slbuf->bufmask);
+	if (uio->uio_resid > contig) {
+		error = ENOSPC;
+		goto done;
 	}
-	if (nbio) {
-	    error = EAGAIN;
-	    goto done;
+
+	/*
+	 * Truncate based on actual unused space available in the FIFO.  If
+	 * the uio does not fit, block and loop.
+	 */
+	for (;;) {
+		bytes = slbuf->bufsize - (slbuf->windex - slbuf->rindex);
+		if (bytes > contig)
+			bytes = contig;
+		if (uio->uio_resid <= bytes)
+			break;
+		if (sldata->flags & SLF_RDONE) {
+			error = EIO;
+			goto done;
+		}
+		if (nbio) {
+		    error = EAGAIN;
+		    goto done;
+		}
+		tsleep(slbuf, 0, "fifowr", 0);
 	}
-	tsleep(slbuf, 0, "fifowr", 0);
-    }
-    bytes = uio->uio_resid;
-    head = (void *)(slbuf->buf + (slbuf->windex & slbuf->bufmask));
-    error = uiomove((caddr_t)head, bytes, uio);
-    if (error == 0)
-	error = syslink_validate(head, bytes);
-    if (error == 0) {
-	slbuf->windex += bytes;
-	wakeup(slbuf);
-    }
+	bytes = uio->uio_resid;
+	head = (void *)(slbuf->buf + (slbuf->windex & slbuf->bufmask));
+	error = uiomove((caddr_t)head, bytes, uio);
+	if (error == 0)
+		error = syslink_validate(head, bytes);
+	if (error == 0) {
+		slbuf->windex += bytes;
+		wakeup(slbuf);
+	}
 done:
-    lockmgr(&sldata->rlock, LK_RELEASE);
-    return(error);
+	lockmgr(&sldata->rlock, LK_RELEASE);
+	return(error);
 }
 
 static
 int
 syslink_close (struct file *fp)
 {
-    struct sldata *sldata;
+	struct sldata *sldata;
 
-    sldata = fp->f_data;
-    if ((sldata->flags & SLF_RQUIT) == 0) {
-	sldata->flags |= SLF_RQUIT;
-	wakeup(&sldata->rbuf);
-    }
-    if ((sldata->flags & SLF_WQUIT) == 0) {
-	sldata->flags |= SLF_WQUIT;
-	wakeup(&sldata->wbuf);
-    }
-    fp->f_data = NULL;
-    sldata_rels(sldata);
-    return(0);
+	sldata = fp->f_data;
+	if ((sldata->flags & SLF_RQUIT) == 0) {
+		sldata->flags |= SLF_RQUIT;
+		wakeup(&sldata->rbuf);
+	}
+	if ((sldata->flags & SLF_WQUIT) == 0) {
+		sldata->flags |= SLF_WQUIT;
+		wakeup(&sldata->wbuf);
+	}
+	fp->f_data = NULL;
+	sldata_rels(sldata);
+	return(0);
 }
 
 static
 int
 syslink_stat (struct file *fp, struct stat *sb, struct ucred *cred)
 {
-    return(EINVAL);
+	return(EINVAL);
 }
 
 static
 int
 syslink_shutdown (struct file *fp, int how)
 {
-    return(EINVAL);
+	return(EINVAL);
 }
 
 static
 int
 syslink_ioctl (struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
-    return(EINVAL);
+	return(EINVAL);
 }
 
 static
 int
 syslink_poll (struct file *fp, int events, struct ucred *cred)
 {
-    return(0);
+	return(0);
 }
 
 static
 int
 syslink_kqfilter(struct file *fp, struct knote *kn)
 {
-    return(0);
+	return(0);
 }
 
 /*
@@ -796,8 +1032,8 @@ static
 int
 process_syslink_msg(struct sldata *sldata, struct syslink_msg *head)
 {
-    kprintf("process syslink msg %08x\n", head->sm_cmd);
-    return(0);
+	kprintf("process syslink msg %08x\n", head->sm_cmd);
+	return(0);
 }
 
 /*
@@ -807,29 +1043,29 @@ static
 int
 syslink_validate(struct syslink_msg *head, int bytes)
 {
-    const int min_msg_size = SL_MIN_MESSAGE_SIZE;
-    int aligned_reclen;
+	const int min_msg_size = SL_MIN_MESSAGE_SIZE;
+	int aligned_reclen;
 
-    while (bytes) {
-	/*
-	 * Message size and alignment
-	 */
-	if (bytes < min_msg_size)
-	    return (EINVAL);
-	if (bytes & SL_ALIGNMASK)
-	    return (EINVAL);
-	if (head->sm_cmd && bytes < sizeof(struct syslink_msg))
-	    return (EINVAL);
+	while (bytes) {
+		/*
+		 * Message size and alignment
+		 */
+		if (bytes < min_msg_size)
+			return (EINVAL);
+		if (bytes & SL_ALIGNMASK)
+			return (EINVAL);
+		if (head->sm_cmd && bytes < sizeof(struct syslink_msg))
+			return (EINVAL);
 
-	/*
-	 * Buffer must contain entire record
-	 */
-	aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
-	if (bytes < aligned_reclen)
-	    return (EINVAL);
-	bytes -= aligned_reclen;
-	head = (void *)((char *)head + aligned_reclen);
-    }
-    return(0);
+		/*
+		 * Buffer must contain entire record
+		 */
+		aligned_reclen = SLMSG_ALIGN(head->sm_bytes);
+		if (bytes < aligned_reclen)
+			return (EINVAL);
+		bytes -= aligned_reclen;
+		head = (void *)((char *)head + aligned_reclen);
+	}
+	return(0);
 }
 
