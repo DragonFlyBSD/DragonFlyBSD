@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.103 2007/04/13 12:26:42 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.104 2007/04/17 23:20:54 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -916,7 +916,8 @@ _generic_libs+=	kerberos5/lib
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie lib/libradius \
-		lib/libskey lib/libtacplus lib/libz lib/libm lib/libpam
+		lib/libskey lib/libtacplus lib/libz lib/libm lib/libpam \
+		lib/libc_r
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 lib/libskey__L: lib/libcrypt__L lib/libmd__L
