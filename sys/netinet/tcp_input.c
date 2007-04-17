@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.65 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.66 2007/04/17 17:28:04 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -2002,8 +2002,18 @@ fastretransmit:
 				    (tp->t_dupacks - tp->snd_limited) *
 				    tp->t_maxseg;
 				tcp_output(tp);
-				if (SEQ_LT(oldsndnxt, oldsndmax))
+
+				/*
+				 * Other acks may have been processed,
+				 * snd_nxt cannot be reset to a value less
+				 * then snd_una.
+				 */
+				if (SEQ_LT(oldsndnxt, oldsndmax)) {
+				    if (SEQ_GT(oldsndnxt, tp->snd_una))
 					tp->snd_nxt = oldsndnxt;
+				    else
+					tp->snd_nxt = tp->snd_una;
+				}
 				tp->snd_cwnd = oldcwnd;
 				sent = tp->snd_max - oldsndmax;
 				if (sent > tp->t_maxseg) {
@@ -3148,7 +3158,8 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 		tcp_seq old_snd_max;
 		int error;
 
-		if (nextrexmt == tp->snd_max) ++nseg;
+		if (nextrexmt == tp->snd_max)
+			++nseg;
 		tp->snd_nxt = nextrexmt;
 		tp->snd_cwnd = nextrexmt - tp->snd_una + seglen;
 		old_snd_max = tp->snd_max;
