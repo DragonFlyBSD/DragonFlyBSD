@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.3 2007/01/15 18:01:44 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly-spec.h,v 1.4 2007/04/17 12:18:37 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -125,7 +125,7 @@ is built with the --enable-threads configure-time option.}		\
   }"
 #else
 #define DFBSD_LIB_SPEC "						\
-  %{!shared: %{pthread:-lc_r}} 						\
+  %{!shared: %{pthread:-lpthread}}					\
   %{!nostdlib: %{!nostartfiles: %{!nolibc: -lc}}}			\
   "
 #endif
