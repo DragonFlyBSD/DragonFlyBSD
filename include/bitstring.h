@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/bitstring.h,v 1.1.1.1.14.1 2000/10/30 11:21:04 dwmalone Exp $
- * $DragonFly: src/include/bitstring.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/bitstring.h,v 1.3 2007/04/18 18:39:11 swildner Exp $
  */
 
 #ifndef _BITSTRING_H_
@@ -78,10 +78,10 @@ typedef	unsigned char bitstr_t;
 
 				/* clear bits start ... stop in bitstring */
 #define	bit_nclear(name, start, stop) do { \
-	register bitstr_t *_name = (name); \
-	register int _start = (start), _stop = (stop); \
-	register int _startbyte = _bit_byte(_start); \
-	register int _stopbyte = _bit_byte(_stop); \
+	bitstr_t *_name = (name); \
+	int _start = (start), _stop = (stop); \
+	int _startbyte = _bit_byte(_start); \
+	int _stopbyte = _bit_byte(_stop); \
 	if (_startbyte == _stopbyte) { \
 		_name[_startbyte] &= ((0xff >> (8 - (_start&0x7))) | \
 				      (0xff << ((_stop&0x7) + 1))); \
@@ -95,10 +95,10 @@ typedef	unsigned char bitstr_t;
 
 				/* set bits start ... stop in bitstring */
 #define	bit_nset(name, start, stop) do { \
-	register bitstr_t *_name = (name); \
-	register int _start = (start), _stop = (stop); \
-	register int _startbyte = _bit_byte(_start); \
-	register int _stopbyte = _bit_byte(_stop); \
+	bitstr_t *_name = (name); \
+	int _start = (start), _stop = (stop); \
+	int _startbyte = _bit_byte(_start); \
+	int _stopbyte = _bit_byte(_stop); \
 	if (_startbyte == _stopbyte) { \
 		_name[_startbyte] |= ((0xff << (_start&0x7)) & \
 				    (0xff >> (7 - (_stop&0x7)))); \
@@ -112,9 +112,9 @@ typedef	unsigned char bitstr_t;
 
 				/* find first bit clear in name */
 #define	bit_ffc(name, nbits, value) do { \
-	register bitstr_t *_name = (name); \
-	register int _byte, _nbits = (nbits); \
-	register int _stopbyte = _bit_byte(_nbits - 1), _value = -1; \
+	bitstr_t *_name = (name); \
+	int _byte, _nbits = (nbits); \
+	int _stopbyte = _bit_byte(_nbits - 1), _value = -1; \
 	if (_nbits > 0) \
 		for (_byte = 0; _byte <= _stopbyte; ++_byte) \
 			if (_name[_byte] != 0xff) { \
@@ -131,9 +131,9 @@ typedef	unsigned char bitstr_t;
 
 				/* find first bit set in name */
 #define	bit_ffs(name, nbits, value) do { \
-	register bitstr_t *_name = (name); \
-	register int _byte, _nbits = (nbits); \
-	register int _stopbyte = _bit_byte(_nbits - 1), _value = -1; \
+	bitstr_t *_name = (name); \
+	int _byte, _nbits = (nbits); \
+	int _stopbyte = _bit_byte(_nbits - 1), _value = -1; \
 	if (_nbits > 0) \
 		for (_byte = 0; _byte <= _stopbyte; ++_byte) \
 			if (_name[_byte]) { \

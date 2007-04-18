@@ -51,7 +51,7 @@
 /*
  *	From: Id: nameser.h,v 8.16 1998/02/06 00:35:58 halley Exp
  * $FreeBSD: src/include/arpa/nameser.h,v 1.14.2.1 2001/06/15 22:08:27 ume Exp $
- * $DragonFly: src/include/arpa/nameser.h,v 1.4 2005/04/27 16:38:40 joerg Exp $
+ * $DragonFly: src/include/arpa/nameser.h,v 1.5 2007/04/18 18:39:11 swildner Exp $
  */
 
 #ifndef _ARPA_NAMESER_H_
@@ -360,7 +360,7 @@ typedef enum __ns_class {
  * Inline versions of get/put short/long.  Pointer is advanced.
  */
 #define NS_GET16(s, cp) { \
-	register const u_char *t_cp = (const u_char *)(cp); \
+	const u_char *t_cp = (const u_char *)(cp); \
 	(s) = ((u_int16_t)t_cp[0] << 8) \
 	    | ((u_int16_t)t_cp[1]) \
 	    ; \
@@ -368,7 +368,7 @@ typedef enum __ns_class {
 }
 
 #define NS_GET32(l, cp) { \
-	register const u_char *t_cp = (const u_char *)(cp); \
+	const u_char *t_cp = (const u_char *)(cp); \
 	(l) = ((u_int32_t)t_cp[0] << 24) \
 	    | ((u_int32_t)t_cp[1] << 16) \
 	    | ((u_int32_t)t_cp[2] << 8) \
@@ -378,16 +378,16 @@ typedef enum __ns_class {
 }
 
 #define NS_PUT16(s, cp) { \
-	register u_int16_t t_s = (u_int16_t)(s); \
-	register u_char *t_cp = (u_char *)(cp); \
+	u_int16_t t_s = (u_int16_t)(s); \
+	u_char *t_cp = (u_char *)(cp); \
 	*t_cp++ = t_s >> 8; \
 	*t_cp   = t_s; \
 	(cp) += NS_INT16SZ; \
 }
 
 #define NS_PUT32(l, cp) { \
-	register u_int32_t t_l = (u_int32_t)(l); \
-	register u_char *t_cp = (u_char *)(cp); \
+	u_int32_t t_l = (u_int32_t)(l); \
+	u_char *t_cp = (u_char *)(cp); \
 	*t_cp++ = t_l >> 24; \
 	*t_cp++ = t_l >> 16; \
 	*t_cp++ = t_l >> 8; \
