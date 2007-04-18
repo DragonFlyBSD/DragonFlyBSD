@@ -37,7 +37,7 @@
  *
  * @(#)done.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/done.c,v 1.7 1999/12/19 00:21:50 billf Exp $
- * $DragonFly: src/games/adventure/done.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
+ * $DragonFly: src/games/adventure/done.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: termination routines                  */
@@ -46,8 +46,9 @@
 #include <stdlib.h>
 #include "hdr.h"
 
+/* sort of like 20000   */
 int
-score()                                         /* sort of like 20000   */
+score(void)
 {       int scor,i;
 	mxscor=scor=0;
 	for (i=50; i<=maxtrs; i++)
@@ -83,9 +84,10 @@ score()                                         /* sort of like 20000   */
 	return(scor);
 }
 
+/* entry=1 means goto 13000 */  /* game is over         */
+/* entry=2 means goto 20000 */ /* 3=19000 */
 void
-done(entry)     /* entry=1 means goto 13000 */  /* game is over         */
-int entry;      /* entry=2 means goto 20000 */ /* 3=19000 */
+done(int entry)
 {       int i,sc;
 	if (entry==1) mspeak(1);
 	if (entry==3) rspeak(136);
@@ -112,9 +114,9 @@ int entry;      /* entry=2 means goto 20000 */ /* 3=19000 */
 }
 
 
+/* label 90             */
 void
-die(entry)                                      /* label 90             */
-int entry;
+die(int entry)
 {       int i;
 	if (entry != 99)
 	{       rspeak(23);

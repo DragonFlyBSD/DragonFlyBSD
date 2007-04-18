@@ -7,7 +7,7 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.6 2005/06/15 20:59:13 swildner Exp $
+ * $DragonFly: src/games/bs/bs.c,v 1.7 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include <assert.h>
@@ -146,7 +146,9 @@ static int getcoord (int);
 int playagain (void);
 
 /* end the game, either normally or due to signal */
-static void uninitgame(void) {
+static void
+uninitgame(void)
+{
     clear();
     refresh();
     resetterm();

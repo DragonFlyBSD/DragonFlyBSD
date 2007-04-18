@@ -37,7 +37,7 @@
  *
  * @(#)wizard.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/games/adventure/wizard.c,v 1.10.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/wizard.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/wizard.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: privileged operations                 */
@@ -53,8 +53,7 @@
 static int wizard (void);
 
 void
-datime(d,t)
-int *d,*t;
+datime(int *d, int *t)
 {       struct tm *tptr;
 	time_t tvec;
 
@@ -74,14 +73,14 @@ int *d,*t;
 char magic[6];
 
 void
-poof()
+poof(void)
 {
 	strcpy(magic, DECR(d,w,a,r,f));
 	latncy = 45;
 }
 
 int
-Start()
+Start(void)
 {       int d,t,delay;
 
 	datime(&d,&t);
@@ -106,8 +105,9 @@ Start()
 	return(FALSE);
 }
 
+/* not as complex as advent/10 (for now)        */
 static int
-wizard()                /* not as complex as advent/10 (for now)        */
+wizard(void)
 {
 	char *word,*x;
 	if (!yesm(16,0,7)) return(FALSE);
@@ -122,7 +122,7 @@ wizard()                /* not as complex as advent/10 (for now)        */
 }
 
 void
-ciao()
+ciao(void)
 {       char *c;
 	char fname[80];
 
@@ -144,8 +144,7 @@ ciao()
 
 
 int
-ran(range)
-int range;
+ran(int range)
 {
 	int i;
 

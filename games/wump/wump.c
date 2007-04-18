@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wump.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
- * $DragonFly: src/games/wump/wump.c,v 1.5 2006/09/09 02:21:49 pavalos Exp $
+ * $DragonFly: src/games/wump/wump.c,v 1.6 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*
@@ -242,7 +242,7 @@ quiver holds %d custom super anti-evil Wumpus arrows.  Good luck.\n",
 }
 
 void
-display_room_stats()
+display_room_stats(void)
 {
 	int i;
 
@@ -272,7 +272,7 @@ display_room_stats()
 }
 
 int
-take_action()
+take_action(void)
 {
 	/*
 	 * Do the action specified by the player, either 'm'ove, 's'hoot
@@ -301,8 +301,7 @@ take_action()
 }
 
 int
-move_to(room_number)
-	char *room_number;
+move_to(char *room_number)
 {
 	int i, just_moved_by_bats, next_room, tunnel_available;
 
@@ -393,8 +392,7 @@ move_to(room_number)
 }
 
 int
-shoot(room_list)
-	char *room_list;
+shoot(char *room_list)
 {
 	int chance, next, roomcnt;
 	int j, arrow_location, wumplink, ok;
@@ -506,7 +504,7 @@ The arrow is weakly shot and can go no further!\n");
 }
 
 void
-cave_init()
+cave_init(void)
 {
 	int i, j, k, wumplink;
 	int delta;
@@ -580,7 +578,7 @@ try_again:		wumplink = (random() % room_num) + 1;
 }
 
 void
-clear_things_in_cave()
+clear_things_in_cave(void)
 {
 	int i;
 
@@ -593,7 +591,7 @@ clear_things_in_cave()
 }
 
 void
-initialize_things_in_cave()
+initialize_things_in_cave(void)
 {
 	int i, loc;
 
@@ -633,8 +631,7 @@ initialize_things_in_cave()
 }
 
 int
-getans(prompt)
-	const char *prompt;
+getans(const char *prompt)
 {
 	char buf[20];
 
@@ -659,7 +656,7 @@ getans(prompt)
 }
 
 int
-bats_nearby()
+bats_nearby(void)
 {
 	int i;
 
@@ -671,7 +668,7 @@ bats_nearby()
 }
 
 int
-pit_nearby()
+pit_nearby(void)
 {
 	int i;
 
@@ -683,7 +680,7 @@ pit_nearby()
 }
 
 int
-wump_nearby()
+wump_nearby(void)
 {
 	int i, j;
 
@@ -700,14 +697,13 @@ wump_nearby()
 }
 
 void
-move_wump()
+move_wump(void)
 {
 	wumpus_loc = cave[wumpus_loc].tunnel[random() % link_num];
 }
 
 int
-int_compare(va, vb)
-	const void *va, *vb;
+int_compare(const void *va, const void *vb)
 {
 	const int	*a, *b;
 
@@ -718,7 +714,7 @@ int_compare(va, vb)
 }
 
 void
-instructions()
+instructions(void)
 {
 	const char *pager;
 	pid_t pid;
@@ -762,7 +758,7 @@ puff of greasy black smoke! (poof)\n");
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: wump [-h] [-a arrows] [-b bats] [-p pits] [-r rooms] [-t tunnels]\n");
@@ -772,7 +768,7 @@ usage()
 /* messages */
 
 void
-wump_kill()
+wump_kill(void)
 {
 	(void)printf(
 "*ROAR* *chomp* *snurfle* *chomp*!\n\
@@ -784,7 +780,7 @@ passed out from the stench!\n");
 }
 
 void
-kill_wump()
+kill_wump(void)
 {
 	(void)printf(
 "*thwock!* *groan* *crash*\n\n\
@@ -796,7 +792,7 @@ mightiest adventurer at a single whiff!!\n");
 }
 
 void
-no_arrows()
+no_arrows(void)
 {
 	(void)printf(
 "\nYou turn and look at your quiver, and realize with a sinking feeling\n\
@@ -806,7 +802,7 @@ you, and with a mighty *ROAR* eats you alive!\n");
 }
 
 void
-shoot_self()
+shoot_self(void)
 {
 	(void)printf(
 "\n*Thwack!*  A sudden piercing feeling informs you that the ricochet\n\
@@ -817,8 +813,7 @@ and immediately rushes to your side, not to help, alas, but to EAT YOU!\n\
 }
 
 void
-jump(where)
-	int where;
+jump(int where)
 {
 	(void)printf(
 "\nWith a jaunty step you enter the magic tunnel.  As you do, you\n\
@@ -827,7 +822,7 @@ a very curious, warm sensation and find yourself in room %d!!\n", where);
 }
 
 void
-pit_kill()
+pit_kill(void)
 {
 	(void)printf(
 "*AAAUUUUGGGGGHHHHHhhhhhhhhhh...*\n\
@@ -839,7 +834,7 @@ you can at least find out if Jules Verne was right...\n");
 }
 
 void
-pit_survive()
+pit_survive(void)
 {
 	(void)printf(
 "Without conscious thought you grab for the side of the cave and manage\n\

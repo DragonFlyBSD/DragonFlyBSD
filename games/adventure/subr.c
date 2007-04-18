@@ -37,7 +37,7 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/subr.c,v 1.7.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/subr.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
+ * $DragonFly: src/games/adventure/subr.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: subroutines from main                 */
@@ -57,43 +57,39 @@ static int trbridge (void);
 
 /*              Statement functions     */
 int
-toting(objj)
-int objj;
+toting(int objj)
 {       if (place[objj] == -1) return(TRUE);
 	else return(FALSE);
 }
 
 int
-here(objj)
-int objj;
+here(int objj)
 {       if (place[objj]==loc || toting(objj)) return(TRUE);
 	else return(FALSE);
 }
 
 int
-at(objj)
-int objj;
+at(int objj)
 {       if (place[objj]==loc || fixed[objj]==loc) return(TRUE);
 	else return (FALSE);
 }
 
 static int
-liq2(pbotl)
-int pbotl;
+liq2(int pbotl)
 {       return((1-pbotl)*water+(pbotl/2)*(water+oil));
 }
 
 int
-liq()
+liq(void)
 {       int i;
 	i=prop[bottle];
 	if (i>-1-i) return(liq2(i));
 	else return(liq2(-1-i));
 }
 
+/* may want to clean this one up a bit */
 int
-liqloc(locc)     /* may want to clean this one up a bit */
-int locc;
+liqloc(int locc)
 {       int i,j,l;
 	i=cond[locc]/2;
 	j=((i*2)%8)-5;
@@ -103,36 +99,34 @@ int locc;
 }
 
 static int
-bitset(l,n)
-int l,n;
+bitset(int l, int n)
 {       if (cond[l] & setbit[n]) return(TRUE);
 	return(FALSE);
 }
 
 int
-forced(locc)
-int locc;
+forced(int locc)
 {       if (cond[locc]==2) return(TRUE);
 	return(FALSE);
 }
 
 int
-dark()
+dark(void)
 {       if ((cond[loc]%2)==0 && (prop[lamp]==0 || !here(lamp)))
 		return(TRUE);
 	return(FALSE);
 }
 
 int
-pct(n)
-int n;
+pct(int n)
 {       if (ran(100)<n) return(TRUE);
 	return(FALSE);
 }
 
 
+/* 71 */
 int
-fdwarf()		/* 71 */
+fdwarf(void)
 {	int i,j;
 	struct travlist *kk;
 
@@ -250,8 +244,9 @@ fdwarf()		/* 71 */
 }
 
 
+/* label 8              */
 int
-march()                                        /* label 8              */
+march(void)
 {       int ll1,ll2;
 
 	if ((tkk=travel[newloc=loc])==0) bug(26);
@@ -315,9 +310,9 @@ l12:    /* alternative to probability move      */
 }
 
 
-
+/* 20                   */
 static int
-mback()                                         /* 20                   */
+mback(void)
 {       struct travlist *tk2,*j;
 	int ll;
 	if (forced(k=oldloc)) k=oldlc2;         /* k=location           */
@@ -351,8 +346,9 @@ mback()                                         /* 20                   */
 }
 
 
+/* 30000                */
 static int
-specials()                                      /* 30000                */
+specials(void)
 {       switch(newloc -= 300)
 	{   case 1:                             /* 30100                */
 		newloc = 99+100-loc;
@@ -372,8 +368,9 @@ specials()                                      /* 30000                */
 }
 
 
+/* 30300                */
 static int
-trbridge()                                      /* 30300                */
+trbridge(void)
 {       if (prop[troll]==1)
 	{       pspeak(troll,1);
 		prop[troll]=0;
@@ -400,8 +397,9 @@ trbridge()                                      /* 30300                */
 }
 
 
+/* 20                   */
 static void
-badmove()                                       /* 20                   */
+badmove(void)
 {       spk=12;
 	if (k>=43 && k<=50) spk=9;
 	if (k==29||k==30) spk=9;
@@ -414,15 +412,15 @@ badmove()                                       /* 20                   */
 }
 
 int
-bug(n)
-int n;
+bug(int n)
 {       printf("Please tell jim@rand.org that fatal bug %d happened.\n",n);
 	exit(1);
 }
 
 
+/* 2600 &c              */
 void
-checkhints()                                    /* 2600 &c              */
+checkhints(void)
 {       int hint;
 	for (hint=4; hint<=hntmax; hint++)
 	{       if (hinted[hint]) continue;
@@ -460,8 +458,9 @@ checkhints()                                    /* 2600 &c              */
 }
 
 
+/* 9030                 */
 int
-trsay()                                         /* 9030                 */
+trsay(void)
 {       int i;
 	if (*wd2!=0) strcpy(wd1,wd2);
 	i=vocab(wd1,-1,0);
@@ -475,8 +474,9 @@ trsay()                                         /* 9030                 */
 }
 
 
+/* 9010                 */
 int
-trtake()                                        /* 9010                 */
+trtake(void)
 {
 	if (toting(obj)) return(2011);  /* 9010 */
 	spk=25;
@@ -521,8 +521,9 @@ l9014:  if ((obj==bird||obj==cage)&&prop[bird]!=0)
 }
 
 
+/* 9021                 */
 static int
-dropper()                                       /* 9021                 */
+dropper(void)
 {       k=liq();
 	if (k==obj) obj=bottle;
 	if (obj==bottle&&k!=0) place[k]=0;
@@ -532,8 +533,9 @@ dropper()                                       /* 9021                 */
 	return(2012);
 }
 
+/* 9020                 */
 int
-trdrop()                                        /* 9020                 */
+trdrop(void)
 {
 	if (toting(rod2)&&obj==rod&&!toting(rod)) obj=rod2;
 	if (!toting(obj)) return(2011);
@@ -579,8 +581,9 @@ trdrop()                                        /* 9020                 */
 }
 
 
+/* 9040                 */
 int
-tropen()                                        /* 9040                 */
+tropen(void)
 {       if (obj==clam||obj==oyster)
 	{       k=0;                            /* 9046                 */
 		if (obj==oyster) k=1;
@@ -635,8 +638,9 @@ tropen()                                        /* 9040                 */
 }
 
 
+/* 9120                         */
 int
-trkill()                                /* 9120                         */
+trkill(void)
 {       int i;
 	for (i=1; i<=5; i++)
 		if (dloc[i]==loc&&dflag>=2) break;
@@ -693,8 +697,9 @@ trkill()                                /* 9120                         */
 }
 
 
+/* 9170: throw                  */
 int
-trtoss()                                /* 9170: throw                  */
+trtoss(void)
 {       int i;
 	if (toting(rod2)&&obj==rod&&!toting(rod)) obj=rod2;
 	if (!toting(obj)) return(2011);
@@ -748,8 +753,9 @@ trtoss()                                /* 9170: throw                  */
 }
 
 
+/* 9210                 */
 int
-trfeed()                                        /* 9210                 */
+trfeed(void)
 {       if (obj==bird)
 	{       spk=100;
 		return(2011);
@@ -787,8 +793,9 @@ trfeed()                                        /* 9210                 */
 }
 
 
+/* 9220 */
 int
-trfill()                                        /* 9220 */
+trfill(void)
 {       if (obj==vase)
 	{       spk=29;
 		if (liqloc(loc)==0) spk=144;
@@ -812,8 +819,9 @@ trfill()                                        /* 9220 */
 }
 
 
+/* 10000 */
 void
-closing()                               /* 10000 */
+closing(void)
 {       int i;
 
 	prop[grate]=prop[fissur]=0;
@@ -837,8 +845,9 @@ closing()                               /* 10000 */
 }
 
 
+/* 11000 */
 void
-caveclose()                             /* 11000 */
+caveclose(void)
 {       int i;
 	prop[bottle]=put(bottle,115,1);
 	prop[plant]=put(plant,115,0);

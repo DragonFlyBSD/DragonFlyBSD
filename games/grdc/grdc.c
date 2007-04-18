@@ -9,7 +9,7 @@
  * 03-23-04 added centering, scroll delay (cap)
  *
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
- * $DragonFly: src/games/grdc/grdc.c,v 1.5 2005/03/15 20:53:39 dillon Exp $
+ * $DragonFly: src/games/grdc/grdc.c,v 1.6 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include <err.h>
@@ -47,7 +47,8 @@ static void usage(void);
 static void draw_row(int, int);
 static void snooze(long int);
 
-void sighndl(int signo)
+void
+sighndl(int signo)
 {
 	sigtermed = signo;
 }

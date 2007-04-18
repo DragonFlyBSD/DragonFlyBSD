@@ -36,7 +36,7 @@
  * @(#)crc.c	5.2 (Berkeley) 4/4/91
  * @(#)crc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/crc.c,v 1.6 1999/12/19 00:21:50 billf Exp $
- * $DragonFly: src/games/adventure/crc.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/crc.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -109,14 +109,14 @@ u_long crcval;
 u_int step;
 
 void 
-crc_start()
+crc_start(void)
 {
 	crcval = step = 0;
 }
 
-u_long crc(ptr, nr) /* Process nr bytes at a time; ptr points to them */
-const char *ptr;
-int nr;
+/* Process nr bytes at a time; ptr points to them */
+u_long
+crc(const char *ptr, int nr)
 {
 	int 	i;
 	const char 	*p;

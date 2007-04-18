@@ -37,7 +37,7 @@
  *
  * @(#)vocab.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/vocab.c,v 1.9 1999/12/19 00:21:51 billf Exp $
- * $DragonFly: src/games/adventure/vocab.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
+ * $DragonFly: src/games/adventure/vocab.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: data structure routines               */
@@ -49,14 +49,12 @@
 #include "hdr.h"
 
 void
-dstroy(object)
-int object;
+dstroy(int object)
 {       move(object,0);
 }
 
 void
-juggle(object)
-int object;
+juggle(int object)
 {       int i,j;
 
 	i=place[object];
@@ -67,8 +65,7 @@ int object;
 
 
 void
-move(object,where)
-int object,where;
+move(int object, int where)
 {       int from;
 
 	if (object<=100)
@@ -81,15 +78,13 @@ int object,where;
 
 
 int
-put(object,where,pval)
-int object,where,pval;
+put(int object, int where, int pval)
 {       move(object,where);
 	return(-1-pval);
 }
 
 void
-carry(object,where)
-int object,where;
+carry(int object, int where)
 {       int temp;
 
 	if (object<=100)
@@ -107,8 +102,7 @@ int object,where;
 
 
 void
-drop(object,where)
-int object,where;
+drop(int object, int where)
 {	if (object>100) fixed[object-100]=where;
 	else
 	{       if (place[object]== -1) holdng--;
@@ -120,11 +114,11 @@ int object,where;
 }
 
 
+/* look up or store a word      */
+/* type is -2 for store, -1 for user word, >=0 for canned lookup*/
+/* value is used for storing only        */
 int
-vocab(word,type,value)                  /* look up or store a word      */
-const char *word;
-int type;       /* -2 for store, -1 for user word, >=0 for canned lookup*/
-int value;                              /* used for storing only        */
+vocab(const char *word, int type, int value)
 {       int adr;
 	const char *s;
 	char *t;

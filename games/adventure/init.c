@@ -37,7 +37,7 @@
  *
  * @(#)init.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/games/adventure/init.c,v 1.9.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/init.c,v 1.3 2004/09/12 17:19:58 dillon Exp $
+ * $DragonFly: src/games/adventure/init.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: data initialization                   */
@@ -55,16 +55,17 @@ int setbit[16] = {1,2,4,010,020,040,0100,0200,0400,01000,02000,04000,
 
 static void linkdata (void);
 
+/* everything for 1st time run  */
 void
-init()                                  /* everything for 1st time run  */
+init(void)
 {
 	rdata();                        /* read data from orig. file    */
 	linkdata();
 	poof();
 }
 
-char *decr(a,b,c,d,e)
-const char *a,*b,*c,*d,*e;
+char *
+decr(const char *a, const char *b, const char *c, const char *d, const char *e)
 {
 	static char buf[6];
 
@@ -77,8 +78,9 @@ const char *a,*b,*c,*d,*e;
 	return buf;
 }
 
+/*  secondary data manipulation */
 static void
-linkdata()                              /*  secondary data manipulation */
+linkdata(void)
 {       int i,j;
 
 	/*      array linkages          */
@@ -197,20 +199,16 @@ linkdata()                              /*  secondary data manipulation */
 	closng=panic=closed=scorng=FALSE;
 }
 
-
-
+/* come here if he hits a del   */
 void
-trapdel(sig)                            /* come here if he hits a del   */
-int sig;
+trapdel(int sig __unused)
 {	
-	sig = 0;
 	delhit = 1;			/* main checks, treats as QUIT  */
 	signal(2,trapdel);		/* catch subsequent DELs        */
 }
 
-
 void
-startup()
+startup(void)
 {
 	demo=Start();
 	srandomdev();

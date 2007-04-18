@@ -37,7 +37,7 @@
  *
  * @(#)io.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/io.c,v 1.8.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/io.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/io.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*      Re-coding of advent in C: file i/o and user i/o                 */
@@ -61,9 +61,10 @@ static void rvoc (void);
 static void twrite (int);
 #endif
 
+/* get command from user        */
+/* no prompt, usually           */
 void
-getin(wrd1,wrd2)                        /* get command from user        */
-char **wrd1,**wrd2;                     /* no prompt, usually           */
+getin(char **wrd1, char **wrd2)
 {       char *s;
 	static char wd1buf[MAXSTR],wd2buf[MAXSTR];
 	int first, numch;
@@ -107,9 +108,9 @@ char **wrd1,**wrd2;                     /* no prompt, usually           */
 	}
 }
 
+/* confirm with rspeak          */
 int
-yes(x,y,z)                              /* confirm with rspeak          */
-int x,y,z;
+yes(int x, int y, int z)
 {       int result;
 	int ch;
 
@@ -132,9 +133,9 @@ int x,y,z;
 	return(result);
 }
 
+/* confirm with mspeak          */
 int
-yesm(x,y,z)                             /* confirm with mspeak          */
-int x,y,z;
+yesm(int x, int y, int z)
 {       int result;
 	int ch;
 
@@ -166,8 +167,9 @@ int outsw = 0;				/* putting stuff to data file?  */
 const char iotape[] = "Ax3F'\003tt$8h\315qer*h\017nGKrX\207:!l";
 const char *tape = iotape;		/* pointer to encryption tape   */
 
+/* next virtual char, bump adr  */
 static int
-next()                                  /* next virtual char, bump adr  */
+next(void)
 {
 	int ch;
 
@@ -182,8 +184,9 @@ next()                                  /* next virtual char, bump adr  */
 
 char breakch;                           /* tell which char ended rnum   */
 
+/* "read" data from virtual file*/
 void
-rdata()                                 /* "read" data from virtual file*/
+rdata(void)
 {       int sect;
 	char ch;
 
@@ -253,8 +256,9 @@ rdata()                                 /* "read" data from virtual file*/
 char nbf[12];
 
 
+/* read initial location num    */
 static int
-rnum()                                  /* read initial location num    */
+rnum(void)
 {       char *s;
 	tape = iotape;                  /* restart encryption tape      */
 	for (s=nbf,*s=0;; s++)
@@ -268,9 +272,9 @@ rnum()                                  /* read initial location num    */
 
 char *seekhere;
 
+/* read description-format msgs */
 static void
-rdesc(sect)                             /* read description-format msgs */
-int sect;
+rdesc(int sect)
 {
 	int locc;
 	char *seekstart, *maystart;
@@ -333,8 +337,9 @@ int sect;
 }
 
 
+/* read travel table            */
 static void
-rtrav()                                 /* read travel table            */
+rtrav(void)
 {       int locc;
 	struct travlist *t;
 	char *s;
@@ -392,9 +397,9 @@ rtrav()                                 /* read travel table            */
 
 #ifdef DEBUG
 
+/* travel options from this loc */
 static void
-twrite(loq)                             /* travel options from this loc */
-int loq;
+twrite(int loq)
 {       struct travlist *t;
 	printf("If");
 	speak(&ltext[loq]);
@@ -414,7 +419,7 @@ int loq;
 #endif /* DEBUG */
 
 static void
-rvoc()
+rvoc(void)
 {       char *s;               /* read the vocabulary          */
 	int rv_index;
 	char buf[6];
@@ -433,8 +438,9 @@ rvoc()
 }
 
 
+/* initial object locations     */
 static void
-rlocs()                                 /* initial object locations     */
+rlocs(void)
 {	for (;;)
 	{       if ((obj=rnum())<0) break;
 		plac[obj]=rnum();       /* initial loc for this obj     */
@@ -444,16 +450,18 @@ rlocs()                                 /* initial object locations     */
 	}
 }
 
+/* default verb messages        */
 static void
-rdflt()                                 /* default verb messages        */
+rdflt(void)
 {	for (;;)
 	{       if ((verb=rnum())<0) break;
 		actspk[verb]=rnum();
 	}
 }
 
+/* liquid assets &c: cond bits  */
 static void
-rliq()                                  /* liquid assets &c: cond bits  */
+rliq(void)
 {       int bitnum;
 	for (;;)                        /* read new bit list            */
 	{       if ((bitnum=rnum())<0) break;
@@ -465,7 +473,7 @@ rliq()                                  /* liquid assets &c: cond bits  */
 }
 
 static void
-rhints()
+rhints(void)
 {       int hintnum,i;
 	hntmax=0;
 	for (;;)
@@ -478,22 +486,21 @@ rhints()
 
 
 void
-rspeak(msg)
-int msg;
+rspeak(int msg)
 {       if (msg!=0) speak(&rtext[msg]);
 }
 
 
 void
-mspeak(msg)
-int msg;
+mspeak(int msg)
 {       if (msg!=0) speak(&mtext[msg]);
 }
 
 
+/* read, decrypt, and print a message (not ptext)      */
+/* msg is a pointer to seek address and length of mess */
 void
-speak(msg)       /* read, decrypt, and print a message (not ptext)      */
-const struct text *msg;/* msg is a pointer to seek address and length of mess */
+speak(const struct text *msg)
 {
 	char *s, nonfirst;
 
@@ -516,10 +523,11 @@ const struct text *msg;/* msg is a pointer to seek address and length of mess */
 }
 
 
+/* read, decrypt an print a ptext message              */
+/* msg is the number of all the p msgs for this place  */
+/* assumes object 1 doesn't have prop 1, obj 2 no prop 2 &c*/
 void
-pspeak(m,skip) /* read, decrypt an print a ptext message              */
-int m;         /* msg is the number of all the p msgs for this place  */
-int skip;       /* assumes object 1 doesn't have prop 1, obj 2 no prop 2 &c*/
+pspeak(int m, int skip)
 {
 	char *s,nonfirst;
 	char *numst, ps_save;
