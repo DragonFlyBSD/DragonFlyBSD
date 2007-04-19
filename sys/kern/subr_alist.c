@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/subr_alist.c,v 1.1 2007/04/09 17:10:00 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_alist.c,v 1.2 2007/04/19 03:16:33 dillon Exp $
  */
 /*
  * This module has been adapted from the BLIST module, which was written
@@ -394,7 +394,7 @@ alst_meta_alloc(
 		for (j = 0; j < ALIST_META_RADIX; j += n / 2) {
 			if ((scan->bm_bitmap & mask) == mask) {
 				scan->bm_bitmap &= ~mask;
-				return(blk + j);
+				return(blk + j * radix);
 			}
 			mask <<= n;
 		}
@@ -439,11 +439,6 @@ alst_meta_alloc(
 				}
 				return(r);
 			}
-		} else if (scan[i].bm_bighint == (daddr_t)-1) {
-			/*
-			 * Terminator
-			 */
-			break;
 		} else if (count > radix) {
 			/*
 			 * count does not fit in object even if it were
