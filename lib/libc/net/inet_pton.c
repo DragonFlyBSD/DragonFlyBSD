@@ -16,7 +16,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_pton.c,v 1.6.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/inet_pton.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
+ * $DragonFly: src/lib/libc/net/inet_pton.c,v 1.5 2007/04/19 12:52:29 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -88,6 +88,8 @@ inet_pton4(const char *src, u_char *dst)
 		if ((pch = strchr(digits, ch)) != NULL) {
 			u_int new = *tp * 10 + (pch - digits);
 
+			if (saw_digit && *tp == 0)
+				return (0);
 			if (new > 255)
 				return (0);
 			*tp = new;
@@ -164,7 +166,8 @@ inet_pton6(const char *src, u_char *dst)
 					return (0);
 				colonp = tp;
 				continue;
-			}
+			} else if (*src == '\0')
+				return (0);
 			if (tp + NS_INT16SZ > endp)
 				return (0);
 			*tp++ = (u_char) (val >> 8) & 0xff;
@@ -195,6 +198,8 @@ inet_pton6(const char *src, u_char *dst)
 		const int n = tp - colonp;
 		int i;
 
+		if (tp == endp)
+			return (0);
 		for (i = 1; i <= n; i++) {
 			endp[- i] = colonp[n - i];
 			colonp[n - i] = 0;
