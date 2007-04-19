@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.5 2006/03/28 22:17:05 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.6 2007/04/19 19:06:01 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -414,6 +414,10 @@ RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
 struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
 #define RB_PROTOTYPE4(name, type, field, cmp, datatype)			\
+RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
+struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
+
+#define RB_PROTOTYPEX(name, type, field, cmp, rcmp, datatype)		\
 RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
 struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
@@ -873,6 +877,32 @@ name##_RB_RLOOKUP(struct name *head, datatype value)			\
 			return(tmp);					\
 		}							\
 		if (value > tmp->begfield) 				\
+			tmp = RB_RIGHT(tmp, field);			\
+		else							\
+			tmp = RB_LEFT(tmp, field);			\
+	}								\
+	return(NULL);							\
+}									\
+
+/*
+ * The 'X' version adds a generic ranged function using a callback instead
+ * of fixed functions.
+ */
+#define RB_GENERATEX(name, type, field, cmp, rcmp, datatype, begfield)	\
+RB_GENERATE2(name, type, field, cmp, datatype, begfield)		\
+									\
+struct type *								\
+name##_RB_RLOOKUP(struct name *head, datatype value)			\
+{									\
+	struct type *tmp;						\
+	int r;								\
+									\
+	tmp = RB_ROOT(head);						\
+	while (tmp) {							\
+		r = rcmp(value, tmp);					\
+		if (r == 0)						\
+			return(tmp);					\
+		if (r > 0) 						\
 			tmp = RB_RIGHT(tmp, field);			\
 		else							\
 			tmp = RB_LEFT(tmp, field);			\
