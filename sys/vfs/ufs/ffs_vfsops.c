@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.52 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.53 2007/04/20 22:20:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -355,6 +355,15 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				MNAMELEN - 1,			/* max size*/
 				&size);				/* real size*/
 		bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+
+                /* Save "last mounted on" info for mount point (NULL pad)*/
+		bzero(mp->mnt_stat.f_mntonname,
+		      sizeof(mp->mnt_stat.f_mntonname));
+		if (path) {
+			copyinstr(path, mp->mnt_stat.f_mntonname,
+				  sizeof(mp->mnt_stat.f_mntonname) - 1,
+				  &size);
+		}
 
 		error = ffs_mountfs(devvp, mp, M_FFSNODE);
 	}
@@ -739,6 +748,11 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		ump->um_quotas[i] = NULLVP;
 	dev->si_mountpoint = mp;
 	ffs_oldfscompat(fs);
+
+	/* restore "last mounted on" here */
+	bzero(fs->fs_fsmnt, sizeof(fs->fs_fsmnt));
+	ksnprintf(fs->fs_fsmnt, sizeof(fs->fs_fsmnt),
+		 "%s", mp->mnt_stat.f_mntonname);
 
 	if( mp->mnt_flag & MNT_ROOTFS) {
 		/*

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.9 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.10 2007/04/20 22:20:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ main(int argc, char **argv)
 	struct rlimit rlimit;
 
 	sync();
-	while ((ch = getopt(argc, argv, "dfpnNyYb:c:l:m:")) != -1) {
+	while ((ch = getopt(argc, argv, "dfLpnNyYb:c:l:m:")) != -1) {
 		switch (ch) {
 		case 'p':
 			preen++;
@@ -94,6 +94,10 @@ main(int argc, char **argv)
 
 		case 'l':
 			maxrun = argtoi('l', "number", optarg, 10);
+			break;
+
+		case 'L':
+			lastmntonly++;
 			break;
 
 		case 'm':
@@ -226,6 +230,10 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 	/*
 	 * 1: scan inodes tallying blocks used
 	 */
+	if (lastmntonly) {
+		printf("** %s Last Mounted on %s\n", filesys, sblock.fs_fsmnt);
+		return (0);
+	}
 	if (preen == 0) {
 		printf("** Last Mounted on %s\n", sblock.fs_fsmnt);
 		if (mntbuf != NULL && mntbuf->f_flags & MNT_ROOTFS)

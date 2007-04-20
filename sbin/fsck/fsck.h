@@ -32,7 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.8 2006/10/19 20:51:40 pavalos Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.9 2007/04/20 22:20:10 dillon Exp $
  */
 
 #include <unistd.h>
@@ -215,6 +215,7 @@ char	havesb;			/* superblock has been read */
 int	fsmodified;		/* 1 => write done to file system */
 int	fsreadfd;		/* file descriptor for reading file system */
 int	fswritefd;		/* file descriptor for writing file system */
+int	lastmntonly;		/* Output the last mounted on only */
 
 ufs_daddr_t maxfsblock;		/* number of blocks in the file system */
 char	*blockmap;		/* ptr to primary blk allocation map */
