@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.4.2.1 2007/02/10 11:38:03 sephe Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.4.2.2 2007/04/20 06:33:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -339,7 +339,7 @@ vke_attach(const struct vknetif_info *info, int unit)
 		SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
 			       SYSCTL_CHILDREN(sc->sc_sysctl_tree),
 			       OID_AUTO, "tap_unit",
-			       CTLFLAG_RW, &sc->sc_tap_unit, 0,
+			       CTLFLAG_RD, &sc->sc_tap_unit, 0,
 			       "Backend tap(4) unit");
 	}
 
