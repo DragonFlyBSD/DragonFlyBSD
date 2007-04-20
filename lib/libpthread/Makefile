@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libpthread/Makefile,v 1.1 2007/04/17 12:34:07 corecode Exp $
+# $DragonFly: src/lib/libpthread/Makefile,v 1.2 2007/04/20 20:36:34 corecode Exp $
 
 LIBNAME=	libpthread
 SHLIB_MAJOR=	0
@@ -12,9 +12,9 @@ SRCS=		dummy.c
 realinstall: linkinstall
 linkinstall:
 	# Do not overwrite existing symlinks
-	if [ ! -e ${DESTDIR}${TARGET_SHLIBDIR}/${LIBNAME}.so ]; then \
+	if [ ! -e ${DESTDIR}${TARGET_SHLIBDIR}/${SONAME} ]; then \
 		${LN} -fs lib${DEFAULT_PTHREAD_LIB}.so \
-			${DESTDIR}${TARGET_SHLIBDIR}/${LIBNAME}.so; \
+			${DESTDIR}${TARGET_SHLIBDIR}/${SONAME}; \
 	fi
 	if [ ! -e ${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a ]; then \
 		${LN} -fs lib${DEFAULT_PTHREAD_LIB}.a \
