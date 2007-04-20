@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)find.1	8.7 (Berkeley) 5/9/95
 .\" $FreeBSD: src/usr.bin/find/find.1,v 1.71 2005/01/11 10:32:51 ru Exp $
-.\" $DragonFly: src/usr.bin/find/find.1,v 1.3 2005/02/13 23:49:53 cpressey Exp $
+.\" $DragonFly: src/usr.bin/find/find.1,v 1.4 2007/04/20 08:04:20 swildner Exp $
 .\"
 .Dd May 3, 2001
 .Dt FIND 1
@@ -740,40 +740,37 @@ to be a separate argument to
 .Sh EXAMPLES
 The following examples are shown as given to the shell:
 .Bl -tag -width indent
-.It Li "find / \e! -name \*q*.c\*q -print"
+.It Li "find / \e! -name \*q*.c\*q"
 Print out a list of all the files whose names do not end in
 .Pa .c .
-.It Li "find / -newer ttt -user wnj -print"
+.It Li "find / -newer ttt -user wnj"
 Print out a list of all the files owned by user
 .Dq wnj
 that are newer
 than the file
 .Pa ttt .
-.It Li "find / \e! \e( -newer ttt -user wnj \e) -print"
+.It Li "find / \e! \e( -newer ttt -user wnj \e)"
 Print out a list of all the files which are not both newer than
 .Pa ttt
 and owned by
 .Dq wnj .
-.It Li "find / \e( -newer ttt -or -user wnj \e) -print"
+.It Li "find / \e( -newer ttt -or -user wnj \e)"
 Print out a list of all the files that are either owned by
 .Dq wnj
 or that are newer than
 .Pa ttt .
-.It Li "find / -newerct '1 minute ago' -print"
+.It Li "find / -newerct '1 minute ago'"
 Print out a list of all the files whose inode change time is more
 recent than the current time minus one minute.
 .It Li "find / -type f -exec echo {} \e;"
 Use the
 .Xr echo 1
 command to print out a list of all the files.
-.It Li "find -L /usr/ports/packages -type l -delete"
-Delete all broken symbolic links in
-.Pa /usr/ports/packages .
-.It Li "find /usr/src -name CVS -prune -o -depth +6 -print"
+.It Li "find /usr/src -name CVS -prune -o -depth +6"
 Find files and directories that are at least seven levels deep
 in the working directory
 .Pa /usr/src .
-.It Li "find /usr/src -name CVS -prune -o -mindepth 7 -print"
+.It Li "find /usr/src -name CVS -prune -o -mindepth 7"
 Is not equivalent to the previous example, since
 .Ic -prune
 is not evaluated below level seven.
