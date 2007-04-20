@@ -29,13 +29,15 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.14 2007/03/30 09:08:57 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.15 2007/04/20 07:04:09 swildner Exp $
 .\"
-.Dd March 16, 2007
+.Dd April 19, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
-.Nm vkernel
+.Nm vkernel ,
+.Nm vkd ,
+.Nm vke
 .Nd virtual kernel architecture
 .Sh SYNOPSIS
 .Cd "platform vkernel"
@@ -76,9 +78,9 @@ being replaced by a sequential number, e.g.\&
 Create a virtual network device, with the first
 .Fl I
 option defining
-.Dq Li vke0 ,
+.Li vke0 ,
 the second one
-.Dq Li vke1 ,
+.Li vke1 ,
 and so on.
 .Pp
 The
@@ -102,7 +104,7 @@ and
 arguments are the IP addresses of the
 .Xr tap 4
 and
-.Xr vke 4
+.Nm vke
 interfaces.
 Optionally,
 .Ar address1
@@ -117,10 +119,6 @@ interface.
 The
 .Ar netmask
 argument applies to all interfaces for which an address is specified.
-.Pp
-The
-.Nm
-architecture allows for a maximum of 16 virtual network devices.
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
@@ -141,22 +139,10 @@ Specify a disk image
 to be used by the kernel, with the first
 .Fl r
 option defining
-.Dq Li vkd0 ,
+.Li vkd0 ,
 the second one
-.Dq Li vkd1 ,
+.Li vkd1 ,
 and so on.
-Note that
-.Dq Li vkd0
-will be used as the root device
-.Po
-see
-.Sx EXAMPLES
-for further information on how to prepare a root image
-.Pc .
-.Pp
-The
-.Nm
-architecture allows for a maximum of 16 virtual disks.
 .It Fl s
 Boot into single-user mode.
 .It Fl U
@@ -165,6 +151,36 @@ By default, those are disabled for security reasons.
 .It Fl v
 Turn on verbose booting.
 .El
+.Sh DEVICES
+A number of virtual device drivers exist to supplement the virtual kernel.
+Their names start with
+.Li vk .
+.Ss Disk device
+The
+.Nm vkd
+driver allows for up to 16
+.Xr vn 4
+based disk devices.
+The root device will be
+.Li vkd0
+(see
+.Sx EXAMPLES
+for further information on how to prepare a root image).
+.Ss Network interface
+The
+.Nm vke
+driver supports up to 16 virtual network interfaces which are associated with
+.Xr tap 4
+devices on the host.
+For each
+.Nm vke
+device, the per-interface read only
+.Xr sysctl 3
+variable
+.Va hw.vke Ns Em X Ns Va .tap_unit
+holds the unit number of the associated
+.Xr tap 4
+device.
 .Sh SIGNALS
 The virtual kernel enables all terminal signals while in
 .Xr ddb 4
@@ -279,6 +295,12 @@ Virtual kernels were introduced in
 .An Matt Dillon
 thought up and implemented the
 .Nm
-architecture.
+architecture and wrote the
+.Nm vkd
+device driver.
+.An Sepherosa Ziehau
+wrote the
+.Nm vke
+device driver.
 This manual page was written by
 .An Sascha Wildner .
