@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.26 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.27 2007/04/20 05:42:24 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -300,6 +300,27 @@ struct accept_filter {
 	SLIST_ENTRY(accept_filter) accf_next;	/* next on the list */
 };
 
+/*
+ * Passed to so_pru_soreceive() instead of a UIO to directly obtain an
+ * mbuf chain.  The sorecv_direct API allows mbufs to be directly
+ * transfered to the caller.
+ */
+struct sorecv_direct {
+	int	len;
+	int	maxlen;
+	struct mbuf *m0;
+	struct mbuf **mapp;
+};
+
+static __inline void
+sorecv_direct_init(struct sorecv_direct *sio, int maxlen)
+{
+	sio->len = 0;
+	sio->maxlen = maxlen;
+	sio->m0 = NULL;
+	sio->mapp = &sio->m0;
+}
+
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_PCB);
 MALLOC_DECLARE(M_SONAME);
@@ -398,7 +419,7 @@ int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
 int	sopoll (struct socket *so, int events, struct ucred *cred,
 		    struct thread *td);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
-		       struct uio *uio, struct mbuf **mp0,
+		       struct uio *uio, struct sorecv_direct *sio,
 		       struct mbuf **controlp, int *flagsp);
 int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
 		   struct rlimit *rl);

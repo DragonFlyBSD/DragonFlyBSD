@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.10 2006/12/23 00:41:29 swildner Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.11 2007/04/20 05:42:25 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -199,7 +199,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	struct rpc_reply *reply;
 	struct sockopt sopt;
 	struct timeval tv;
-	struct uio auio;
+	struct sorecv_direct sio;
 	int error, rcvflg, timo, secs, len;
 	static u_int32_t xid = ~0xFF;
 	u_int16_t tport;
@@ -353,17 +353,18 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 				m_freem(m);
 				m = NULL;
 			}
-			bzero(&auio,sizeof(auio));
-			auio.uio_resid = len = 1<<16;
+			len = 1 << 16;
+			sorecv_direct_init(&sio, len);
 			rcvflg = 0;
-			error = soreceive(so, &from, &auio, &m, NULL, &rcvflg);
+			error = soreceive(so, &from, NULL, &sio, NULL, &rcvflg);
 			if (error == EWOULDBLOCK) {
 				secs--;
 				continue;
 			}
 			if (error)
 				goto out;
-			len -= auio.uio_resid;
+			len -= sio.len;
+			m = sio.m0;
 
 			/* Does the reply contain at least a header? */
 			if (len < MIN_REPLY_HDR)

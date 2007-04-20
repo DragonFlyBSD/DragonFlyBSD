@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.35 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.36 2007/04/20 05:42:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -289,8 +289,7 @@ fifo_read(struct vop_read_args *ap)
 		flags = 0;
 	startresid = uio->uio_resid;
 	vn_unlock(ap->a_vp);
-	error = soreceive(rso, (struct sockaddr **)0, uio, (struct mbuf **)0,
-	    (struct mbuf **)0, &flags);
+	error = soreceive(rso, NULL, uio, NULL, NULL, &flags);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
 }

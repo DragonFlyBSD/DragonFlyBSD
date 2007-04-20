@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.16 2007/02/18 16:13:27 corecode Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.17 2007/04/20 05:42:23 dillon Exp $
  *
  * Low level socket routines
  */
@@ -139,23 +139,16 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 }
 #endif
 int
-ncp_sock_recv(struct socket *so, struct mbuf **mp, int *rlen)
+ncp_sock_recv(struct socket *so, struct sorecv_direct *sio)
 {
-	struct uio auio;
 	struct thread *td = curthread; /* XXX */
-	int error,flags,len;
-	
-	auio.uio_resid = len = 1000000;
-	auio.uio_td = td;
+	int error, flags;
+
+	sio->len = 1000000;	/* limit data returned (inexact, hint only) */
+	sio->m0 = NULL;
 	flags = MSG_DONTWAIT;
 
-/*	error = so_pru_soreceive(so, NULL, &auio, NULL, NULL, &flags); */
-	error = so_pru_soreceive(so, NULL, &auio, mp, NULL, &flags);
-	*rlen = len - auio.uio_resid;
-/*	if (!error) {
-	    *rlen=iov.iov_len;
-	} else
-	    *rlen=0;*/
+	error = so_pru_soreceive(so, NULL, NULL, sio, NULL, &flags);
 #ifdef NCP_SOCKET_DEBUG
 	if (error)
 		kprintf("ncp_recv: err=%d\n", error);
@@ -400,32 +393,38 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 static void
 ncp_watchdog(struct ncp_conn *conn) {
 	char *buf;
-	struct mbuf *m;
 	int error, len, flags;
 	struct socket *so;
 	struct sockaddr *sa;
-	struct uio auio;
+	struct sorecv_direct sio;
 
 	sa = NULL;
 	while (conn->wdg_so) { /* not a loop */
 		so = conn->wdg_so;
-		auio.uio_resid = len = 1000000;
-		auio.uio_td = curthread;
+		sorecv_direct_init(&sio, 1000000);
 		flags = MSG_DONTWAIT;
-		error = so_pru_soreceive(so, (struct sockaddr**)&sa, &auio, &m,
-		    NULL, &flags);
-		if (error) break;
-		len -= auio.uio_resid;
+		error = so_pru_soreceive(so, (struct sockaddr**)&sa,
+					 NULL, &sio, NULL, &flags);
+		if (error)
+			break;
+		len = sio.len;
 		NCPSDEBUG("got watch dog %d\n",len);
-		if (len != 2) break;
-		buf = mtod(m, char*);
-		if (buf[1] != '?') break;
+		if (len != 2) {
+			m_freem(sio.m0);
+			break;
+		}
+		buf = mtod(sio.m0, char *);
+		if (buf[1] != '?') {
+			m_freem(sio.m0);
+			break;
+		}
 		buf[1] = 'Y';
-		error = so_pru_sosend(so, sa, NULL, m, NULL, 0, curthread);
+		error = so_pru_sosend(so, sa, NULL, sio.m0, NULL, 0, curthread);
 		NCPSDEBUG("send watch dog %d\n",error);
 		break;
 	}
-	if (sa) FREE(sa, M_SONAME);
+	if (sa)
+		FREE(sa, M_SONAME);
 	return;
 }
 #endif /* IPX */

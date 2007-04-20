@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.43 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.44 2007/04/20 05:42:20 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -763,16 +763,21 @@ out:
  */
 int
 soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
-	  struct mbuf **mp0, struct mbuf **controlp, int *flagsp)
+	  struct sorecv_direct *sio, struct mbuf **controlp, int *flagsp)
 {
-	struct mbuf *m, *n, **mp;
+	struct mbuf *m, *n;
 	struct mbuf *free_chain = NULL;
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
 	int moff, type = 0;
-	int orig_resid = uio->uio_resid;
+	int resid, orig_resid;
 
-	mp = mp0;
+	if (uio)
+		resid = uio->uio_resid;
+	else
+		resid = sio->maxlen - sio->len;
+	orig_resid = resid;
+
 	if (psa)
 		*psa = NULL;
 	if (controlp)
@@ -788,19 +793,30 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
 		if (error)
 			goto bad;
-		do {
-			error = uiomove(mtod(m, caddr_t),
-			    (int) min(uio->uio_resid, m->m_len), uio);
-			m = m_free(m);
-		} while (uio->uio_resid && error == 0 && m);
+		if (sio) {
+			do {
+				*sio->mapp = m;
+				sio->mapp = &m->m_next;
+				m = m->m_next;
+				*sio->mapp = NULL;
+				resid -= m->m_len;
+				sio->len += m->m_len;
+			} while (resid > 0 && m);
+		} else {
+			do {
+				uio->uio_resid = resid;
+				error = uiomove(mtod(m, caddr_t),
+						(int)min(resid, m->m_len), uio);
+				resid = uio->uio_resid;
+				m = m_free(m);
+			} while (uio->uio_resid && error == 0 && m);
+		}
 bad:
 		if (m)
 			m_freem(m);
 		return (error);
 	}
-	if (mp)
-		*mp = NULL;
-	if (so->so_state & SS_ISCONFIRMING && uio->uio_resid)
+	if (so->so_state & SS_ISCONFIRMING && resid)
 		so_pru_rcvd(so, 0);
 
 restart:
@@ -822,9 +838,9 @@ restart:
 	 * a short count if a timeout or signal occurs after we start.
 	 */
 	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
-	    so->so_rcv.sb_cc < uio->uio_resid) &&
+	    so->so_rcv.sb_cc < resid) &&
 	    (so->so_rcv.sb_cc < so->so_rcv.sb_lowat ||
-	    ((flags & MSG_WAITALL) && uio->uio_resid <= so->so_rcv.sb_hiwat)) &&
+	    ((flags & MSG_WAITALL) && resid <= so->so_rcv.sb_hiwat)) &&
 	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
 		KASSERT(m != NULL || !so->so_rcv.sb_cc, ("receive 1"));
 		if (so->so_error) {
@@ -852,7 +868,7 @@ restart:
 			error = ENOTCONN;
 			goto release;
 		}
-		if (uio->uio_resid == 0)
+		if (resid == 0)
 			goto release;
 		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 			error = EWOULDBLOCK;
@@ -866,7 +882,7 @@ restart:
 		goto restart;
 	}
 dontblock:
-	if (uio->uio_td && uio->uio_td->td_proc)
+	if (uio && uio->uio_td && uio->uio_td->td_proc)
 		uio->uio_td->td_lwp->lwp_ru.ru_msgrcv++;
 
 	/*
@@ -948,7 +964,7 @@ dontblock:
 	 */
 	moff = 0;
 	offset = 0;
-	while (m && uio->uio_resid > 0 && error == 0) {
+	while (m && resid > 0 && error == 0) {
 		if (m->m_type == MT_OOBDATA) {
 			if (type != MT_OOBDATA)
 				break;
@@ -958,27 +974,27 @@ dontblock:
 		    KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
 			("receive 3"));
 		so->so_state &= ~SS_RCVATMARK;
-		len = uio->uio_resid;
+		len = resid;
 		if (so->so_oobmark && len > so->so_oobmark - offset)
 			len = so->so_oobmark - offset;
 		if (len > m->m_len - moff)
 			len = m->m_len - moff;
+
 		/*
-		 * If mp is set, just pass back the mbufs.
-		 * Otherwise copy them out via the uio, then free.
-		 * Sockbuf must be consistent here (points to current mbuf,
-		 * it points to next record) when we drop priority;
-		 * we must note any additions to the sockbuf when we
-		 * block interrupts again.
+		 * Copy out to the UIO or pass the mbufs back to the SIO.
+		 * The SIO is dealt with when we eat the mbuf, but deal
+		 * with the resid here either way.
 		 */
-		if (mp == NULL) {
+		if (uio) {
 			crit_exit();
-			error = uiomove(mtod(m, caddr_t) + moff, (int)len, uio);
+			uio->uio_resid = resid;
+			error = uiomove(mtod(m, caddr_t) + moff, len, uio);
+			resid = uio->uio_resid;
 			crit_enter();
 			if (error)
 				goto release;
 		} else {
-			uio->uio_resid -= len;
+			resid -= len;
 		}
 
 		/*
@@ -995,10 +1011,11 @@ dontblock:
 				m = m->m_next;
 				moff = 0;
 			} else {
-				if (mp) {
+				if (sio) {
 					n = sbunlinkmbuf(&so->so_rcv, m, NULL);
-					*mp = m;
-					mp = &m->m_next;
+					*sio->mapp = m;
+					sio->mapp = &m->m_next;
+					sio->len += m->m_len;
 					m = n;
 				} else {
 					m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
@@ -1008,8 +1025,11 @@ dontblock:
 			if (flags & MSG_PEEK) {
 				moff += len;
 			} else {
-				if (mp)
-					*mp = m_copym(m, 0, len, MB_WAIT);
+				if (sio) {
+					*sio->mapp= m_copym(m, 0, len, MB_WAIT);
+					sio->mapp = &m->m_next;
+					sio->len += len;
+				}
 				m->m_data += len;
 				m->m_len -= len;
 				so->so_rcv.sb_cc -= len;
@@ -1032,14 +1052,14 @@ dontblock:
 			break;
 		/*
 		 * If the MSG_WAITALL flag is set (for non-atomic socket),
-		 * we must not quit until "uio->uio_resid == 0" or an error
+		 * we must not quit until resid == 0 or an error
 		 * termination.  If a signal/timeout occurs, return
 		 * with a short count but without error.
 		 * Keep sockbuf locked against other readers.
 		 */
-		while (flags & MSG_WAITALL && m == NULL && 
-		    uio->uio_resid > 0 && !sosendallatonce(so) && 
-		    so->so_rcv.sb_mb == NULL) {
+		while ((flags & MSG_WAITALL) && m == NULL && 
+		       resid > 0 && !sosendallatonce(so) && 
+		       so->so_rcv.sb_mb == NULL) {
 			if (so->so_error || so->so_state & SS_CANTRCVMORE)
 				break;
 			/*
@@ -1077,7 +1097,7 @@ dontblock:
 			so_pru_rcvd(so, flags);
 	}
 
-	if (orig_resid == uio->uio_resid && orig_resid &&
+	if (orig_resid == resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
 		sbunlock(&so->so_rcv);
 		crit_exit();

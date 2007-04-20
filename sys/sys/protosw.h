@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.17 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.18 2007/04/20 05:42:24 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -186,6 +186,7 @@ struct ifnet;
 struct stat;
 struct ucred;
 struct uio;
+struct sorecv_direct;
 
 struct pru_attach_info {
 	struct rlimit *sb_rlimit;
@@ -244,7 +245,8 @@ struct pr_usrreqs {
 				   struct thread *td);
 	int	(*pru_soreceive) (struct socket *so, 
 				      struct sockaddr **paddr,
-				      struct uio *uio, struct mbuf **mp0,
+				      struct uio *uio,
+				      struct sorecv_direct *sio,
 				      struct mbuf **controlp, int *flagsp);
 	int	(*pru_sopoll) (struct socket *so, int events,
 				     struct ucred *cred, struct thread *td);
@@ -280,7 +282,8 @@ typedef int (*pru_sosend_fn_t) (struct socket *so, struct sockaddr *addr,
 					struct mbuf *control, int flags,
 					struct thread *td);
 typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
-					struct uio *uio, struct mbuf **mp0,
+					struct uio *uio,
+					struct sorecv_direct *sio,
 					struct mbuf **controlp,
 					int *flagsp);
 typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,

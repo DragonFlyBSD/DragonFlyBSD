@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.42 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.43 2007/04/20 05:42:25 dillon Exp $
  */
 
 /*
@@ -531,6 +531,7 @@ static int
 nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 {
 	struct socket *so;
+	struct sorecv_direct sio;
 	struct uio auio;
 	struct iovec aio;
 	struct mbuf *m;
@@ -543,8 +544,8 @@ nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 	/*
 	 * Set up arguments for soreceive()
 	 */
-	*mp = (struct mbuf *)0;
-	*aname = (struct sockaddr *)0;
+	*mp = NULL;
+	*aname = NULL;
 	sotype = rep->r_nmp->nm_sotype;
 
 	/*
@@ -597,7 +598,10 @@ tryagain:
 		}
 		nfs_sndunlock(rep);
 		if (sotype == SOCK_STREAM) {
-			aio.iov_base = (caddr_t) &len;
+			/*
+			 * Get the length marker from the stream
+			 */
+			aio.iov_base = (caddr_t)&len;
 			aio.iov_len = sizeof(u_int32_t);
 			auio.uio_iov = &aio;
 			auio.uio_iovcnt = 1;
@@ -609,20 +613,18 @@ tryagain:
 			do {
 			   rcvflg = MSG_WAITALL;
 			   error = so_pru_soreceive(so, NULL, &auio, NULL,
-			       NULL, &rcvflg);
+						    NULL, &rcvflg);
 			   if (error == EWOULDBLOCK && rep) {
 				if (rep->r_flags & R_SOFTTERM)
 					return (EINTR);
 			   }
 			} while (error == EWOULDBLOCK);
-			if (!error && auio.uio_resid > 0) {
+
+			if (error == 0 && auio.uio_resid > 0) {
 			    /*
-			     * Don't log a 0 byte receive; it means
-			     * that the socket has been closed, and
-			     * can happen during normal operation
-			     * (forcible unmount or Solaris server).
+			     * Only log short packets if not EOF
 			     */
-			    if (auio.uio_resid != sizeof (u_int32_t))
+			    if (auio.uio_resid != sizeof(u_int32_t))
 			    log(LOG_INFO,
 				 "short receive (%d/%d) from nfs server %s\n",
 				 (int)(sizeof(u_int32_t) - auio.uio_resid),
@@ -645,59 +647,68 @@ tryagain:
 			    error = EFBIG;
 			    goto errout;
 			}
-			auio.uio_resid = len;
+
+			/*
+			 * Get the rest of the packet as an mbuf chain
+			 */
+			sorecv_direct_init(&sio, len);
 			do {
 			    rcvflg = MSG_WAITALL;
-			    error =  so_pru_soreceive(so, NULL, &auio, mp,
-			        NULL, &rcvflg);
+			    error = so_pru_soreceive(so, NULL, NULL, &sio,
+						     NULL, &rcvflg);
 			} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
-			if (!error && auio.uio_resid > 0) {
-			    if (len != auio.uio_resid)
+			if (error == 0 && sio.len != len) {
+			    if (sio.len != 0)
 			    log(LOG_INFO,
 				"short receive (%d/%d) from nfs server %s\n",
 				len - auio.uio_resid, len,
 				rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}
+			*mp = sio.m0;
 		} else {
 			/*
-			 * NB: Since uio_resid is big, MSG_WAITALL is ignored
-			 * and soreceive() will return when it has either a
-			 * control msg or a data msg.
+			 * Non-stream, so get the whole packet by not
+			 * specifying MSG_WAITALL and by specifying a large
+			 * length.
+			 *
 			 * We have no use for control msg., but must grab them
 			 * and then throw them away so we know what is going
 			 * on.
 			 */
-			auio.uio_resid = len = 100000000; /* Anything Big */
-			auio.uio_td = td;
+			sorecv_direct_init(&sio, 100000000);
 			do {
 			    rcvflg = 0;
-			    error =  so_pru_soreceive(so, NULL, &auio, mp,
-			        &control, &rcvflg);
+			    error =  so_pru_soreceive(so, NULL, NULL, &sio,
+						      &control, &rcvflg);
 			    if (control)
 				m_freem(control);
 			    if (error == EWOULDBLOCK && rep) {
-				if (rep->r_flags & R_SOFTTERM)
+				if (rep->r_flags & R_SOFTTERM) {
+					m_freem(sio.m0);
 					return (EINTR);
+				}
 			    }
 			} while (error == EWOULDBLOCK ||
-				 (!error && *mp == NULL && control));
+				 (error == 0 && sio.m0 == NULL && control));
 			if ((rcvflg & MSG_EOR) == 0)
 				kprintf("Egad!!\n");
-			if (!error && *mp == NULL)
+			if (error == 0 && sio.m0 == NULL)
 				error = EPIPE;
-			len -= auio.uio_resid;
+			len = sio.len;
+			*mp = sio.m0;
 		}
 errout:
 		if (error && error != EINTR && error != ERESTART) {
 			m_freem(*mp);
-			*mp = (struct mbuf *)0;
-			if (error != EPIPE)
+			*mp = NULL;
+			if (error != EPIPE) {
 				log(LOG_INFO,
 				    "receive error %d from nfs server %s\n",
 				    error,
 				 rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
+			}
 			error = nfs_sndlock(rep);
 			if (!error) {
 				error = nfs_reconnect(rep);
@@ -711,24 +722,26 @@ errout:
 		if ((so = rep->r_nmp->nm_so) == NULL)
 			return (EACCES);
 		if (so->so_state & SS_ISCONNECTED)
-			getnam = (struct sockaddr **)0;
+			getnam = NULL;
 		else
 			getnam = aname;
-		auio.uio_resid = len = 1000000;
-		auio.uio_td = td;
+		sorecv_direct_init(&sio, 100000000);
 		do {
 			rcvflg = 0;
-			error =  so_pru_soreceive(so, getnam, &auio, mp, NULL,
-			    &rcvflg);
+			error =  so_pru_soreceive(so, getnam, NULL, &sio,
+						  NULL, &rcvflg);
 			if (error == EWOULDBLOCK &&
-			    (rep->r_flags & R_SOFTTERM))
+			    (rep->r_flags & R_SOFTTERM)) {
+				m_freem(sio.m0);
 				return (EINTR);
+			}
 		} while (error == EWOULDBLOCK);
-		len -= auio.uio_resid;
+		len = sio.len;
+		*mp = sio.m0;
 	}
 	if (error) {
 		m_freem(*mp);
-		*mp = (struct mbuf *)0;
+		*mp = NULL;
 	}
 	/*
 	 * Search for any mbufs that are not a multiple of 4 bytes long
@@ -2025,9 +2038,8 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 {
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
 	struct mbuf *m;
-	struct mbuf *mp;
 	struct sockaddr *nam;
-	struct uio auio;
+	struct sorecv_direct sio;
 	int flags, error;
 	int nparallel_wakeup = 0;
 
@@ -2058,7 +2070,6 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * Handle protocol specifics to parse an RPC request.  We always
 	 * pull from the socket using non-blocking I/O.
 	 */
-	auio.uio_td = NULL;
 	if (so->so_type == SOCK_STREAM) {
 		/*
 		 * The data has to be read in an orderly fashion from a TCP
@@ -2079,12 +2090,13 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		slp->ns_flag |= SLP_GETSTREAM;
 
 		/*
-		 * Do soreceive().
+		 * Do soreceive().  Pull out as much data as possible without
+		 * blocking.
 		 */
-		auio.uio_resid = 1000000000;
+		sorecv_direct_init(&sio, 1000000000);
 		flags = MSG_DONTWAIT;
-		error = so_pru_soreceive(so, &nam, &auio, &mp, NULL, &flags);
-		if (error || mp == (struct mbuf *)0) {
+		error = so_pru_soreceive(so, &nam, NULL, &sio, NULL, &flags);
+		if (error || sio.m0 == NULL) {
 			if (error == EWOULDBLOCK)
 				slp->ns_flag |= SLP_NEEDQ;
 			else
@@ -2092,13 +2104,13 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 			slp->ns_flag &= ~SLP_GETSTREAM;
 			goto dorecs;
 		}
-		m = mp;
+		m = sio.m0;
 		if (slp->ns_rawend) {
 			slp->ns_rawend->m_next = m;
-			slp->ns_cc += 1000000000 - auio.uio_resid;
+			slp->ns_cc += sio.len;
 		} else {
 			slp->ns_raw = m;
-			slp->ns_cc = 1000000000 - auio.uio_resid;
+			slp->ns_cc = sio.len;
 		}
 		while (m->m_next)
 			m = m->m_next;
@@ -2122,11 +2134,11 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * to get the whole batch.
 		 */
 		do {
-			auio.uio_resid = 1000000000;
+			sorecv_direct_init(&sio, 1000000000);
 			flags = MSG_DONTWAIT;
-			error = so_pru_soreceive(so, &nam, &auio, &mp, NULL,
-			    &flags);
-			if (mp) {
+			error = so_pru_soreceive(so, &nam, NULL, &sio,
+						 NULL, &flags);
+			if (sio.m0) {
 				struct nfsrv_rec *rec;
 				int mf = (waitflag & MB_DONTWAIT) ?
 					    M_NOWAIT : M_WAITOK;
@@ -2135,12 +2147,12 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				if (!rec) {
 					if (nam)
 						FREE(nam, M_SONAME);
-					m_freem(mp);
+					m_freem(sio.m0);
 					continue;
 				}
-				nfs_realign(&mp, 10 * NFSX_UNSIGNED);
+				nfs_realign(&sio.m0, 10 * NFSX_UNSIGNED);
 				rec->nr_address = nam;
-				rec->nr_packet = mp;
+				rec->nr_packet = sio.m0;
 				STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 				++slp->ns_numrec;
 				++nparallel_wakeup;
@@ -2152,7 +2164,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 					goto dorecs;
 				}
 			}
-		} while (mp);
+		} while (sio.m0);
 	}
 
 	/*

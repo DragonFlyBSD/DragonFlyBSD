@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.9 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.10 2007/04/20 05:42:24 dillon Exp $
  */
 
 #ifndef _SOCKETOPS_H_
@@ -67,10 +67,10 @@ so_pru_sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 
 static __inline int
 so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
-    struct mbuf **mp0, struct mbuf **controlp, int *flagsp)
+    struct sorecv_direct *sio, struct mbuf **controlp, int *flagsp)
 {
-	return ((*so->so_proto->pr_usrreqs->pru_soreceive)(so, paddr, uio, mp0,
-	    controlp, flagsp));
+	return ((*so->so_proto->pr_usrreqs->pru_soreceive)(so, paddr, uio, sio,
+		controlp, flagsp));
 }
 
 int so_pru_abort (struct socket *so);

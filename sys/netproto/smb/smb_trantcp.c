@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.17 2007/02/18 16:13:27 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.18 2007/04/20 05:42:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -371,67 +371,63 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 	u_int8_t *rpcodep, struct thread *td)
 {
 	struct socket *so = nbp->nbp_tso;
-	struct uio auio;
-	struct mbuf *m;
+	struct sorecv_direct sio;
 	u_int8_t rpcode;
-	int len;
-	int error, rcvflg;
+	int error, rcvflg, savelen;
 
 	if (so == NULL)
 		return ENOTCONN;
 
+	sio.len = 0;
+	sio.m0 = NULL;
 	if (mpp)
 		*mpp = NULL;
+
 	for(;;) {
-		m = NULL;
-		error = nbssn_recvhdr(nbp, &len, &rpcode, MSG_DONTWAIT, td);
+		error = nbssn_recvhdr(nbp, &savelen, &rpcode, MSG_DONTWAIT, td);
 		if (so->so_state &
 		    (SS_ISDISCONNECTING | SS_ISDISCONNECTED | SS_CANTRCVMORE)) {
 			nbp->nbp_state = NBST_CLOSED;
 			NBDEBUG("session closed by peer\n");
-			return ECONNRESET;
+			error = ECONNRESET;
+			break;
 		}
 		if (error)
-			return error;
-		if (len == 0 && nbp->nbp_state != NBST_SESSION)
+			break;
+		if (savelen == 0 && nbp->nbp_state != NBST_SESSION)
 			break;
 		if (rpcode == NB_SSN_KEEPALIVE)
 			continue;
-		bzero(&auio, sizeof(auio));
-		auio.uio_resid = len;
-		auio.uio_td = td;
 		do {
+			sorecv_direct_init(&sio, savelen);
 			rcvflg = MSG_WAITALL;
-			error = so_pru_soreceive(so, NULL, &auio, &m, NULL,
-			    &rcvflg);
+			error = so_pru_soreceive(so, NULL, NULL, &sio,
+						 NULL, &rcvflg);
 		} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
 		if (error)
 			break;
-		if (auio.uio_resid > 0) {
+		if (sio.len != savelen) {
 			SMBERROR("packet is shorter than expected\n");
 			error = EPIPE;
+			m_freem(sio.m0);
 			break;
 		}
-		if (nbp->nbp_state == NBST_SESSION &&
-		    rpcode == NB_SSN_MESSAGE)
+		if (nbp->nbp_state == NBST_SESSION && rpcode == NB_SSN_MESSAGE)
 			break;
 		NBDEBUG("non-session packet %x\n", rpcode);
-		if (m)
-			m_freem(m);
+		m_freem(sio.m0);
+		sio.m0 = NULL;
 	}
-	if (error) {
-		if (m)
-			m_freem(m);
-		return error;
+	if (error == 0) {
+		if (mpp)
+			*mpp = sio.m0;
+		else
+			m_freem(sio.m0);
+		*lenp = sio.len;
+		*rpcodep = rpcode;
 	}
-	if (mpp)
-		*mpp = m;
-	else
-		m_freem(m);
-	*lenp = len;
-	*rpcodep = rpcode;
-	return 0;
+	return (error);
 }
 
 /*

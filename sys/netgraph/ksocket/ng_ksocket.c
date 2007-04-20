@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.12 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.13 2007/04/20 05:42:22 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -991,10 +991,8 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 {
 	const node_p node = arg;
 	const priv_p priv = node->private;
-	struct mbuf *m;
 	struct ng_mesg *response;
-	struct uio auio;
-	int flags, error;
+	int error;
 
 	crit_enter();
 
@@ -1051,22 +1049,25 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	}
 
 	/* Read and forward available mbuf's */
-	auio.uio_td = NULL;
-	auio.uio_resid = 1000000000;
-	flags = MSG_DONTWAIT;
 	while (1) {
 		struct sockaddr *sa = NULL;
+		struct sorecv_direct sio;
 		meta_p meta = NULL;
 		struct mbuf *n;
+		int flags;
+
+		sorecv_direct_init(&sio, 1000000000);
+		flags = MSG_DONTWAIT;
 
 		/* Try to get next packet from socket */
-		if ((error = so_pru_soreceive(so,
-		    (so->so_state & SS_ISCONNECTED) ? NULL : &sa,
-		    &auio, &m, (struct mbuf **)0, &flags)) != 0)
+		error = so_pru_soreceive(so,
+				((so->so_state & SS_ISCONNECTED) ? NULL : &sa),
+				NULL, &sio, NULL, &flags);
+		if (error)
 			break;
 
 		/* See if we got anything */
-		if (m == NULL) {
+		if (sio.m0 == NULL) {
 			if (sa != NULL)
 				FREE(sa, M_SONAME);
 			break;
@@ -1074,8 +1075,9 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 
 		/* Don't trust the various socket layers to get the
 		   packet header and length correct (eg. kern/15175) */
-		for (n = m, m->m_pkthdr.len = 0; n != NULL; n = n->m_next)
-			m->m_pkthdr.len += n->m_len;
+		sio.m0->m_pkthdr.len = 0;
+		for (n = sio.m0; n != NULL; n = n->m_next)
+			sio.m0->m_pkthdr.len += n->m_len;
 
 		/* Put peer's socket address (if any) into a meta info blob */
 		if (sa != NULL) {
@@ -1100,7 +1102,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			FREE(sa, M_SONAME);
 		}
 sendit:		/* Forward data with optional peer sockaddr as meta info */
-		NG_SEND_DATA(error, priv->hook, m, meta);
+		NG_SEND_DATA(error, priv->hook, sio.m0, meta);
 	}
 
 	/*
@@ -1108,6 +1110,8 @@ sendit:		/* Forward data with optional peer sockaddr as meta info */
 	 * to indicate end-of-file.
 	 */
 	if (so->so_state & SS_CANTRCVMORE && !(priv->flags & KSF_EOFSEEN)) {
+		struct mbuf *m;
+
 		MGETHDR(m, waitflag, MT_DATA);
 		if (m != NULL) {
 			m->m_len = m->m_pkthdr.len = 0;
