@@ -1,0 +1,79 @@
+$DragonFly: src/lib/libarchive/patches/Attic/archive_write_disk_set_standard_lookup.c.patch,v 1.1 2007/04/21 17:44:12 pavalos Exp $
+Index: archive_write_disk_set_standard_lookup.c
+===================================================================
+RCS file: /archive/FreeBSD-CVS/src/lib/libarchive/archive_write_disk_set_standard_lookup.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -u -r1.1 -r1.2
+--- archive_write_disk_set_standard_lookup.c	3 Mar 2007 07:37:36 -0000	1.1
++++ archive_write_disk_set_standard_lookup.c	20 Apr 2007 15:32:13 -0000	1.2
+@@ -24,7 +24,7 @@
+  */
+ 
+ #include "archive_platform.h"
+-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk_set_standard_lookup.c,v 1.1 2007/03/03 07:37:36 kientzle Exp $");
++__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk_set_standard_lookup.c,v 1.2 2007/04/20 15:32:13 kientzle Exp $");
+ 
+ #ifdef HAVE_SYS_TYPES_H
+ #include <sys/types.h>
+@@ -72,6 +72,7 @@
+ 	id_t	 id;
+ };
+ 
++static const size_t cache_size = 127;
+ static unsigned int	hash(const char *);
+ static gid_t	lookup_gid(void *, const char *uname, gid_t);
+ static uid_t	lookup_uid(void *, const char *uname, uid_t);
+@@ -99,10 +100,10 @@
+ int
+ archive_write_disk_set_standard_lookup(struct archive *a)
+ {
+-	struct bucket *ucache = malloc(sizeof(struct bucket[127]));
+-	struct bucket *gcache = malloc(sizeof(struct bucket[127]));
+-	memset(ucache, 0, sizeof(struct bucket[127]));
+-	memset(gcache, 0, sizeof(struct bucket[127]));
++	struct bucket *ucache = malloc(sizeof(struct bucket[cache_size]));
++	struct bucket *gcache = malloc(sizeof(struct bucket[cache_size]));
++	memset(ucache, 0, sizeof(struct bucket[cache_size]));
++	memset(gcache, 0, sizeof(struct bucket[cache_size]));
+ 	archive_write_disk_set_group_lookup(a, gcache, lookup_gid, cleanup);
+ 	archive_write_disk_set_user_lookup(a, ucache, lookup_uid, cleanup);
+ 	return (ARCHIVE_OK);
+@@ -113,11 +114,8 @@
+ {
+ 	int h;
+ 	struct bucket *b;
+-	int cache_size;
+ 	struct bucket *gcache = (struct bucket *)private_data;
+ 
+-	cache_size = 127;
+-
+ 	/* If no gname, just use the gid provided. */
+ 	if (gname == NULL || *gname == '\0')
+ 		return (gid);
+@@ -153,11 +151,8 @@
+ {
+ 	int h;
+ 	struct bucket *b;
+-	int cache_size;
+ 	struct bucket *ucache = (struct bucket *)private_data;
+ 
+-	cache_size = 127;
+-
+ 	/* If no uname, just use the uid provided. */
+ 	if (uname == NULL || *uname == '\0')
+ 		return (uid);
+@@ -191,7 +186,12 @@
+ static void
+ cleanup(void *private)
+ {
+-	free(private);
++	size_t i;
++	struct bucket *cache = (struct bucket *)private;
++
++	for (i = 0; i < cache_size; i++)
++		free(cache[i].name);
++	free(cache);
+ }
+ 
+ 
