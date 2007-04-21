@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.23 2006/12/22 23:57:54 swildner Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.24 2007/04/21 02:26:48 dillon Exp $ */
 
 /*
  *
@@ -419,12 +419,26 @@ natm_usr_sockaddr(struct socket *so, struct sockaddr **nam)
 
 /* xxx - should be const */
 struct pr_usrreqs natm_usrreqs = {
-	natm_usr_abort, pru_accept_notsupp, natm_usr_attach, natm_usr_bind,
-	natm_usr_connect, pru_connect2_notsupp, natm_usr_control,
-	natm_usr_detach, natm_usr_disconnect, pru_listen_notsupp,
-	natm_usr_peeraddr, pru_rcvd_notsupp, pru_rcvoob_notsupp,
-	natm_usr_send, pru_sense_null, natm_usr_shutdown,
-	natm_usr_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = natm_usr_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = natm_usr_attach,
+	.pru_bind = natm_usr_bind,
+	.pru_connect = natm_usr_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = natm_usr_control,
+	.pru_detach = natm_usr_detach,
+	.pru_disconnect = natm_usr_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = natm_usr_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = natm_usr_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = natm_usr_shutdown,
+	.pru_sockaddr = natm_usr_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 #else  /* !FREEBSD_USRREQS */

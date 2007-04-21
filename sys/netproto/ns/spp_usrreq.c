@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.20 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.21 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1623,19 +1623,49 @@ spp_sockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 struct pr_usrreqs spp_usrreqs = {
-	spp_usr_abort, spp_accept, spp_attach, spp_bind,
-	spp_connect, pru_connect2_notsupp, ns_control, spp_detach,
-	spp_usr_disconnect, spp_listen, spp_peeraddr, spp_rcvd,
-	spp_rcvoob, spp_send, pru_sense_null, spp_shutdown,
-	spp_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = spp_usr_abort,
+	.pru_accept = spp_accept,
+	.pru_attach = spp_attach,
+	.pru_bind = spp_bind,
+	.pru_connect = spp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ns_control,
+	.pru_detach = spp_detach,
+	.pru_disconnect = spp_usr_disconnect,
+	.pru_listen = spp_listen,
+	.pru_peeraddr = spp_peeraddr,
+	.pru_rcvd = spp_rcvd,
+	.pru_rcvoob = spp_rcvoob,
+	.pru_send = spp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = spp_shutdown,
+	.pru_sockaddr = spp_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 struct pr_usrreqs spp_usrreqs_sp = {
-	spp_usr_abort, spp_accept, spp_attach_sp, spp_bind,
-	spp_connect, pru_connect2_notsupp, ns_control, spp_detach,
-	spp_usr_disconnect, spp_listen, spp_peeraddr, spp_rcvd,
-	spp_rcvoob, spp_send, pru_sense_null, spp_shutdown,
-	spp_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = spp_usr_abort,
+	.pru_accept = spp_accept,
+	.pru_attach = spp_attach_sp,
+	.pru_bind = spp_bind,
+	.pru_connect = spp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ns_control,
+	.pru_detach = spp_detach,
+	.pru_disconnect = spp_usr_disconnect,
+	.pru_listen = spp_listen,
+	.pru_peeraddr = spp_peeraddr,
+	.pru_rcvd = spp_rcvd,
+	.pru_rcvoob = spp_rcvoob,
+	.pru_send = spp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = spp_shutdown,
+	.pru_sockaddr = spp_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 /*

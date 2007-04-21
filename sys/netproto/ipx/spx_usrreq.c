@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.18 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.19 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -109,19 +109,49 @@ static	int spx_sp_attach(struct socket *so, int proto,
 			  struct pru_attach_info *ai);
 
 struct	pr_usrreqs spx_usrreqs = {
-	spx_usr_abort, spx_accept, spx_attach, spx_bind,
-	spx_connect, pru_connect2_notsupp, ipx_control, spx_detach,
-	spx_usr_disconnect, spx_listen, ipx_peeraddr, spx_rcvd,
-	spx_rcvoob, spx_send, pru_sense_null, spx_shutdown,
-	ipx_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = spx_usr_abort,
+	.pru_accept = spx_accept,
+	.pru_attach = spx_attach,
+	.pru_bind = spx_bind,
+	.pru_connect = spx_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ipx_control,
+	.pru_detach = spx_detach,
+	.pru_disconnect = spx_usr_disconnect,
+	.pru_listen = spx_listen,
+	.pru_peeraddr = ipx_peeraddr,
+	.pru_rcvd = spx_rcvd,
+	.pru_rcvoob = spx_rcvoob,
+	.pru_send = spx_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = spx_shutdown,
+	.pru_sockaddr = ipx_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 struct	pr_usrreqs spx_usrreq_sps = {
-	spx_usr_abort, spx_accept, spx_sp_attach, spx_bind,
-	spx_connect, pru_connect2_notsupp, ipx_control, spx_detach,
-	spx_usr_disconnect, spx_listen, ipx_peeraddr, spx_rcvd,
-	spx_rcvoob, spx_send, pru_sense_null, spx_shutdown,
-	ipx_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = spx_usr_abort,
+	.pru_accept = spx_accept,
+	.pru_attach = spx_sp_attach,
+	.pru_bind = spx_bind,
+	.pru_connect = spx_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ipx_control,
+	.pru_detach = spx_detach,
+	.pru_disconnect = spx_usr_disconnect,
+	.pru_listen = spx_listen,
+	.pru_peeraddr = ipx_peeraddr,
+	.pru_rcvd = spx_rcvd,
+	.pru_rcvoob = spx_rcvoob,
+	.pru_send = spx_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = spx_shutdown,
+	.pru_sockaddr = ipx_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 static MALLOC_DEFINE(M_SPX_Q, "ipx_spx_q", "IPX Packet Management");

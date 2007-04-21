@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.10 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.11 2007/04/21 02:26:48 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -4324,26 +4324,26 @@ sctp_peeraddr(struct socket *so, struct mbuf *nam)
 
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 struct pr_usrreqs sctp_usrreqs = {
-	sctp_abort,
-	sctp_accept,
-	sctp_attach,
-	sctp_bind,
-	sctp_connect,
-	pru_connect2_notsupp,
-	in_control,
-	sctp_detach,
-	sctp_disconnect,
-	sctp_listen,
-	sctp_peeraddr,
-	sctp_usr_recvd,
-	pru_rcvoob_notsupp,
-	sctp_send,
-	pru_sense_null,
-	sctp_shutdown,
-	sctp_ingetaddr,
-	sctp_sosend,
-	soreceive,
-	sopoll
+	.pru_abort = sctp_abort,
+	.pru_accept = sctp_accept,
+	.pru_attach = sctp_attach,
+	.pru_bind = sctp_bind,
+	.pru_connect = sctp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in_control,
+	.pru_detach = sctp_detach,
+	.pru_disconnect = sctp_disconnect,
+	.pru_listen = sctp_listen,
+	.pru_peeraddr = sctp_peeraddr,
+	.pru_rcvd = sctp_usr_recvd,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = sctp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = sctp_shutdown,
+	.pru_sockaddr = sctp_ingetaddr,
+	.pru_sosend = sctp_sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 #else

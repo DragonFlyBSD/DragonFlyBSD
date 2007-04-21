@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.24 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.25 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -639,9 +639,24 @@ SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 0,
 	    in_pcblist_global, "S,xinpcb", "List of active raw IP sockets");
 
 struct pr_usrreqs rip_usrreqs = {
-	rip_abort, pru_accept_notsupp, rip_attach, rip_bind, rip_connect,
-	pru_connect2_notsupp, in_control, rip_detach, rip_disconnect,
-	pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, rip_send, pru_sense_null, rip_shutdown,
-	in_setsockaddr, sosend, soreceive, sopoll
+	.pru_abort = rip_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = rip_attach,
+	.pru_bind = rip_bind,
+	.pru_connect = rip_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in_control,
+	.pru_detach = rip_detach,
+	.pru_disconnect = rip_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = in_setpeeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = rip_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = rip_shutdown,
+	.pru_sockaddr = in_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };

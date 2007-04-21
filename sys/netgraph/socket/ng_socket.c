@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.11 2005/06/22 01:33:30 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.12 2007/04/21 02:26:47 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -890,49 +890,49 @@ ngs_rmnode(node_p node)
  */
 
 static struct pr_usrreqs ngc_usrreqs = {
-	NULL,			/* abort */
-	pru_accept_notsupp,
-	ngc_attach,
-	ngc_bind,
-	ngc_connect,
-	pru_connect2_notsupp,
-	pru_control_notsupp,
-	ngc_detach,
-	NULL,			/* disconnect */
-	pru_listen_notsupp,
-	NULL,			/* setpeeraddr */
-	pru_rcvd_notsupp,
-	pru_rcvoob_notsupp,
-	ngc_send,
-	pru_sense_null,
-	NULL,			/* shutdown */
-	ng_setsockaddr,
-	sosend,
-	soreceive,
-	sopoll
+	.pru_abort = NULL,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = ngc_attach,
+	.pru_bind = ngc_bind,
+	.pru_connect = ngc_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = pru_control_notsupp,
+	.pru_detach = ngc_detach,
+	.pru_disconnect = NULL,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = NULL,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = ngc_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = NULL,
+	.pru_sockaddr = ng_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 static struct pr_usrreqs ngd_usrreqs = {
-	NULL,			/* abort */
-	pru_accept_notsupp,
-	ngd_attach,
-	NULL,			/* bind */
-	ngd_connect,
-	pru_connect2_notsupp,
-	pru_control_notsupp,
-	ngd_detach,
-	NULL,			/* disconnect */
-	pru_listen_notsupp,
-	NULL,			/* setpeeraddr */
-	pru_rcvd_notsupp,
-	pru_rcvoob_notsupp,
-	ngd_send,
-	pru_sense_null,
-	NULL,			/* shutdown */
-	ng_setsockaddr,
-	sosend,
-	soreceive,
-	sopoll
+	.pru_abort = NULL,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = ngd_attach,
+	.pru_bind = NULL,
+	.pru_connect = ngd_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = pru_control_notsupp,
+	.pru_detach = ngd_detach,
+	.pru_disconnect = NULL,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = NULL,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = ngd_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = NULL,
+	.pru_sockaddr = ng_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 /*

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.26 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.27 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -453,9 +453,24 @@ SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, &divcbinfo, 0,
 	    in_pcblist_global, "S,xinpcb", "List of active divert sockets");
 
 struct pr_usrreqs div_usrreqs = {
-	div_abort, pru_accept_notsupp, div_attach, div_bind,
-	pru_connect_notsupp, pru_connect2_notsupp, in_control, div_detach,
-	div_disconnect, pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, div_send, pru_sense_null, div_shutdown,
-	in_setsockaddr, sosend, soreceive, sopoll
+	.pru_abort = div_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = div_attach,
+	.pru_bind = div_bind,
+	.pru_connect = pru_connect_notsupp,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in_control,
+	.pru_detach = div_detach,
+	.pru_disconnect = div_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = in_setpeeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = div_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = div_shutdown,
+	.pru_sockaddr = in_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };

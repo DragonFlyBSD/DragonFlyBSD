@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.37 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.38 2007/04/21 02:26:47 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -307,11 +307,26 @@ rts_sockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 static struct pr_usrreqs route_usrreqs = {
-	rts_abort, pru_accept_notsupp, rts_attach, rts_bind, rts_connect,
-	pru_connect2_notsupp, pru_control_notsupp, rts_detach, rts_disconnect,
-	pru_listen_notsupp, rts_peeraddr, pru_rcvd_notsupp, pru_rcvoob_notsupp,
-	rts_send, pru_sense_null, rts_shutdown, rts_sockaddr,
-	sosend, soreceive, sopoll
+	.pru_abort = rts_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = rts_attach,
+	.pru_bind = rts_bind,
+	.pru_connect = rts_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = pru_control_notsupp,
+	.pru_detach = rts_detach,
+	.pru_disconnect = rts_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = rts_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = rts_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = rts_shutdown,
+	.pru_sockaddr = rts_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 static __inline sa_family_t

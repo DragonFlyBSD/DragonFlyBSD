@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.40 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.41 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -964,10 +964,25 @@ udp_shutdown(struct socket *so)
 }
 
 struct pr_usrreqs udp_usrreqs = {
-	udp_abort, pru_accept_notsupp, udp_attach, udp_bind, udp_connect,
-	pru_connect2_notsupp, in_control, udp_detach, udp_disconnect,
-	pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, udp_send, pru_sense_null, udp_shutdown,
-	in_setsockaddr, sosendudp, soreceive, sopoll
+	.pru_abort = udp_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = udp_attach,
+	.pru_bind = udp_bind,
+	.pru_connect = udp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in_control,
+	.pru_detach = udp_detach,
+	.pru_disconnect = udp_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = in_setpeeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = udp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = udp_shutdown,
+	.pru_sockaddr = in_setsockaddr,
+	.pru_sosend = sosendudp,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 

@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.40 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.41 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -807,20 +807,50 @@ tcp_usr_rcvoob(struct socket *so, struct mbuf *m, int flags)
 
 /* xxx - should be const */
 struct pr_usrreqs tcp_usrreqs = {
-	tcp_usr_abort, tcp_usr_accept, tcp_usr_attach, tcp_usr_bind,
-	tcp_usr_connect, pru_connect2_notsupp, in_control, tcp_usr_detach,
-	tcp_usr_disconnect, tcp_usr_listen, in_setpeeraddr, tcp_usr_rcvd,
-	tcp_usr_rcvoob, tcp_usr_send, pru_sense_null, tcp_usr_shutdown,
-	in_setsockaddr, sosend, soreceive, sopoll
+	.pru_abort = tcp_usr_abort,
+	.pru_accept = tcp_usr_accept,
+	.pru_attach = tcp_usr_attach,
+	.pru_bind = tcp_usr_bind,
+	.pru_connect = tcp_usr_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in_control,
+	.pru_detach = tcp_usr_detach,
+	.pru_disconnect = tcp_usr_disconnect,
+	.pru_listen = tcp_usr_listen,
+	.pru_peeraddr = in_setpeeraddr,
+	.pru_rcvd = tcp_usr_rcvd,
+	.pru_rcvoob = tcp_usr_rcvoob,
+	.pru_send = tcp_usr_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = tcp_usr_shutdown,
+	.pru_sockaddr = in_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 #ifdef INET6
 struct pr_usrreqs tcp6_usrreqs = {
-	tcp_usr_abort, tcp6_usr_accept, tcp_usr_attach, tcp6_usr_bind,
-	tcp6_usr_connect, pru_connect2_notsupp, in6_control, tcp_usr_detach,
-	tcp_usr_disconnect, tcp6_usr_listen, in6_mapped_peeraddr, tcp_usr_rcvd,
-	tcp_usr_rcvoob, tcp_usr_send, pru_sense_null, tcp_usr_shutdown,
-	in6_mapped_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = tcp_usr_abort,
+	.pru_accept = tcp6_usr_accept,
+	.pru_attach = tcp_usr_attach,
+	.pru_bind = tcp6_usr_bind,
+	.pru_connect = tcp6_usr_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in6_control,
+	.pru_detach = tcp_usr_detach,
+	.pru_disconnect = tcp_usr_disconnect,
+	.pru_listen = tcp6_usr_listen,
+	.pru_peeraddr = in6_mapped_peeraddr,
+	.pru_rcvd = tcp_usr_rcvd,
+	.pru_rcvoob = tcp_usr_rcvoob,
+	.pru_send = tcp_usr_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = tcp_usr_shutdown,
+	.pru_sockaddr = in6_mapped_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 #endif /* INET6 */
 

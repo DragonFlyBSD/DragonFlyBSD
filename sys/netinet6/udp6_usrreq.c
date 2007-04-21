@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.24 2006/12/29 18:02:56 victor Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.25 2007/04/21 02:26:48 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -769,9 +769,25 @@ bad:
 }
 
 struct pr_usrreqs udp6_usrreqs = {
-	udp6_abort, pru_accept_notsupp, udp6_attach, udp6_bind, udp6_connect,
-	pru_connect2_notsupp, in6_control, udp6_detach, udp6_disconnect,
-	pru_listen_notsupp, in6_mapped_peeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, udp6_send, pru_sense_null, udp_shutdown,
-	in6_mapped_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = udp6_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = udp6_attach,
+	.pru_bind = udp6_bind,
+	.pru_connect = udp6_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = in6_control,
+	.pru_detach = udp6_detach,
+	.pru_disconnect = udp6_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = in6_mapped_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = udp6_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = udp_shutdown,
+	.pru_sockaddr = in6_mapped_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
+

@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.10 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.11 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include "opt_ipx.h"
@@ -90,19 +90,49 @@ static	int ripx_attach(struct socket *so, int proto,
 static	int ipx_output(struct ipxpcb *ipxp, struct mbuf *m0);
 
 struct	pr_usrreqs ipx_usrreqs = {
-	ipx_usr_abort, pru_accept_notsupp, ipx_attach, ipx_bind,
-	ipx_connect, pru_connect2_notsupp, ipx_control, ipx_detach,
-	ipx_disconnect, pru_listen_notsupp, ipx_peeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, ipx_send, pru_sense_null, ipx_shutdown,
-	ipx_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = ipx_usr_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = ipx_attach,
+	.pru_bind = ipx_bind,
+	.pru_connect = ipx_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ipx_control,
+	.pru_detach = ipx_detach,
+	.pru_disconnect = ipx_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = ipx_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = ipx_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = ipx_shutdown,
+	.pru_sockaddr = ipx_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 struct	pr_usrreqs ripx_usrreqs = {
-	ipx_usr_abort, pru_accept_notsupp, ripx_attach, ipx_bind,
-	ipx_connect, pru_connect2_notsupp, ipx_control, ipx_detach,
-	ipx_disconnect, pru_listen_notsupp, ipx_peeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, ipx_send, pru_sense_null, ipx_shutdown,
-	ipx_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = ipx_usr_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = ripx_attach,
+	.pru_bind = ipx_bind,
+	.pru_connect = ipx_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ipx_control,
+	.pru_detach = ipx_detach,
+	.pru_disconnect = ipx_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = ipx_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = ipx_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = ipx_shutdown,
+	.pru_sockaddr = ipx_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 /*

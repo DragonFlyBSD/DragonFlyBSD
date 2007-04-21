@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.13 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -586,18 +586,48 @@ idp_shutdown(struct socket *so)
 }
 
 struct pr_usrreqs idp_usrreqs = {
-	idp_usr_abort, pru_accept_notsupp, idp_attach, idp_bind,
-	idp_connect, pru_connect2_notsupp, ns_control, idp_detach,
-	idp_usr_disconnect, pru_listen_notsupp, idp_peeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, idp_send, pru_sense_null, idp_shutdown,
-	idp_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = idp_usr_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = idp_attach,
+	.pru_bind = idp_bind,
+	.pru_connect = idp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ns_control,
+	.pru_detach = idp_detach,
+	.pru_disconnect = idp_usr_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = idp_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = idp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = idp_shutdown,
+	.pru_sockaddr = idp_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 struct pr_usrreqs idp_raw_usrreqs = {
-	idp_usr_abort, pru_accept_notsupp, idp_raw_attach, idp_bind,
-	idp_connect, pru_connect2_notsupp, ns_control, idp_detach,
-	idp_usr_disconnect, pru_listen_notsupp, idp_peeraddr, pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, idp_send, pru_sense_null, idp_shutdown,
-	idp_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = idp_usr_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = idp_raw_attach,
+	.pru_bind = idp_bind,
+	.pru_connect = idp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = ns_control,
+	.pru_detach = idp_detach,
+	.pru_disconnect = idp_usr_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = idp_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = idp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = idp_shutdown,
+	.pru_sockaddr = idp_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 

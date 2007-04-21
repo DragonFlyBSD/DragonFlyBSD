@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.12 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.13 2007/04/21 02:26:48 dillon Exp $
  */
 
 /*
@@ -50,23 +50,26 @@ static int	atm_dgram_info (caddr_t);
  * New-style socket request routines
  */
 struct pr_usrreqs	atm_dgram_usrreqs = {
-	atm_proto_notsupp1,		/* pru_abort */
-	pru_accept_notsupp,		/* pru_accept */
-	atm_dgram_attach,		/* pru_attach */
-	atm_proto_notsupp2,		/* pru_bind */
-	pru_connect_notsupp,		/* pru_connect */
-	pru_connect2_notsupp,		/* pru_connect2 */
-	atm_dgram_control,		/* pru_control */
-	atm_proto_notsupp1,		/* pru_detach */
-	atm_proto_notsupp1,		/* pru_disconnect */
-	pru_listen_notsupp,		/* pru_listen */
-	atm_proto_notsupp3,		/* pru_peeraddr */
-	pru_rcvd_notsupp,		/* pru_rcvd */
-	pru_rcvoob_notsupp,		/* pru_rcvoob */
-	atm_proto_notsupp4,		/* pru_send */
-	pru_sense_null,			/* pru_sense */
-	atm_proto_notsupp1,		/* pru_shutdown */
-	atm_proto_notsupp3,		/* pru_sockaddr */
+	.pru_abort = atm_proto_notsupp1,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = atm_dgram_attach,
+	.pru_bind = atm_proto_notsupp2,
+	.pru_connect = pru_connect_notsupp,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = atm_dgram_control,
+	.pru_detach = atm_proto_notsupp1,
+	.pru_disconnect = atm_proto_notsupp1,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = atm_proto_notsupp3,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = atm_proto_notsupp4,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = atm_proto_notsupp1,
+	.pru_sockaddr = atm_proto_notsupp3,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 /*

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.15 2006/12/22 23:57:54 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.16 2007/04/21 02:26:48 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -533,13 +533,26 @@ key_sockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 struct pr_usrreqs key_usrreqs = {
-	key_abort, pru_accept_notsupp, key_attach, key_bind,
-	key_connect,
-	pru_connect2_notsupp, pru_control_notsupp, key_detach,
-	key_disconnect, pru_listen_notsupp, key_peeraddr,
-	pru_rcvd_notsupp,
-	pru_rcvoob_notsupp, key_send, pru_sense_null, key_shutdown,
-	key_sockaddr, sosend, soreceive, sopoll
+	.pru_abort = key_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = key_attach,
+	.pru_bind = key_bind,
+	.pru_connect = key_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = pru_control_notsupp,
+	.pru_detach = key_detach,
+	.pru_disconnect = key_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = key_peeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = key_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = key_shutdown,
+	.pru_sockaddr = key_sockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
 
 /* sysctl */

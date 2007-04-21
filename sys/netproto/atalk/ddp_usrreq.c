@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.11 2007/04/21 02:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -559,24 +559,24 @@ ddp_clean(void)
 #endif
 
 struct pr_usrreqs ddp_usrreqs = {
-	ddp_abort,
-	pru_accept_notsupp,
-	ddp_attach,
-	ddp_bind,
-	ddp_connect,
-	pru_connect2_notsupp,
-	at_control,
-	ddp_detach,
-	ddp_disconnect,
-	pru_listen_notsupp,
-	at_setpeeraddr,
-	pru_rcvd_notsupp,
-	pru_rcvoob_notsupp,
-	ddp_send,
-	pru_sense_null,
-	ddp_shutdown,
-	at_setsockaddr,
-	sosend,
-	soreceive,
-	sopoll
+	.pru_abort = ddp_abort,
+	.pru_accept = pru_accept_notsupp,
+	.pru_attach = ddp_attach,
+	.pru_bind = ddp_bind,
+	.pru_connect = ddp_connect,
+	.pru_connect2 = pru_connect2_notsupp,
+	.pru_control = at_control,
+	.pru_detach = ddp_detach,
+	.pru_disconnect = ddp_disconnect,
+	.pru_listen = pru_listen_notsupp,
+	.pru_peeraddr = at_setpeeraddr,
+	.pru_rcvd = pru_rcvd_notsupp,
+	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_send = ddp_send,
+	.pru_sense = pru_sense_null,
+	.pru_shutdown = ddp_shutdown,
+	.pru_sockaddr = at_setsockaddr,
+	.pru_sosend = sosend,
+	.pru_soreceive = soreceive,
+	.pru_sopoll = sopoll
 };
