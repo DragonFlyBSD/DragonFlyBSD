@@ -1,7 +1,7 @@
-/*	$NetBSD: cmds.c,v 1.118 2006/01/31 20:05:35 christos Exp $	*/
+/*	$NetBSD: cmds.c,v 1.121 2007/04/18 01:39:04 lukem Exp $	*/
 
 /*-
- * Copyright (c) 1996-2005 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2007 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -103,7 +103,7 @@
 #if 0
 static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
 #else
-__RCSID("$NetBSD: cmds.c,v 1.118 2006/01/31 20:05:35 christos Exp $");
+__RCSID("$NetBSD: cmds.c,v 1.121 2007/04/18 01:39:04 lukem Exp $");
 #endif
 #endif /* not lint */
 
@@ -131,7 +131,7 @@ __RCSID("$NetBSD: cmds.c,v 1.118 2006/01/31 20:05:35 christos Exp $");
 #include "ftp_var.h"
 #include "version.h"
 
-struct	types {
+static struct types {
 	char	*t_name;
 	char	*t_mode;
 	int	t_type;
@@ -145,30 +145,43 @@ struct	types {
 	{ NULL }
 };
 
-sigjmp_buf	 jabort;
-const char	*mname;
+static sigjmp_buf	 jabort;
 
 static int	confirm(const char *, const char *);
+static void	mintr(int);
+static void	mabort(const char *);
 
 static const char *doprocess(char *, size_t, const char *, int, int, int);
 static const char *domap(char *, size_t, const char *);
 static const char *docase(char *, size_t, const char *);
 static const char *dotrans(char *, size_t, const char *);
 
+/*
+ * Confirm if "cmd" is to be performed upon "file".
+ * If "file" is NULL, generate a "Continue with" prompt instead.
+ */
 static int
 confirm(const char *cmd, const char *file)
 {
 	const char *errormsg;
 	char line[BUFSIZ];
+	const char *promptleft, *promptright;
 
 	if (!interactive || confirmrest)
 		return (1);
+	if (file == NULL) {
+		promptleft = "Continue with";
+		promptright = cmd;
+	} else {
+		promptleft = cmd;
+		promptright = file;
+	}
 	while (1) {
-		fprintf(ttyout, "%s %s [anpqy?]? ", cmd, file);
+		fprintf(ttyout, "%s %s [anpqy?]? ", promptleft, promptright);
 		(void)fflush(ttyout);
 		if (getline(stdin, line, sizeof(line), &errormsg) < 0) {
 			mflag = 0;
-			fprintf(ttyout, "%s; %s aborted\n", errormsg, mname);
+			fprintf(ttyout, "%s; %s aborted\n", errormsg, cmd);
 			return (0);
 		}
 		switch (tolower((unsigned char)*line)) {
@@ -183,7 +196,7 @@ confirm(const char *cmd, const char *file)
 				break;
 			case 'q':
 				mflag = 0;
-				fprintf(ttyout, "%s aborted.\n", mname);
+				fprintf(ttyout, "%s aborted.\n", cmd);
 				/* FALLTHROUGH */
 			case 'n':
 				return (0);
@@ -270,8 +283,7 @@ changetype(int newtype, int show)
 		if (newtype == p->t_type)
 			break;
 	if (p->t_name == 0) {
-		warnx("internal error: unknown type %d.", newtype);
-		return;
+		errx(1, "changetype: unknown type %d", newtype);
 	}
 	if (newtype == TYPE_L && bytename[0] != '\0')
 		comret = command("TYPE %s %s", p->t_mode, bytename);
@@ -459,11 +471,10 @@ mput(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	mname = argv[0];
 	mflag = 1;
 	oldintr = xsignal(SIGINT, mintr);
 	if (sigsetjmp(jabort, 1))
-		mabort();
+		mabort(argv[0]);
 	if (proxy) {
 		char *cp;
 
@@ -481,7 +492,7 @@ mput(int argc, char *argv[])
 				if (!mflag && fromatty) {
 					ointer = interactive;
 					interactive = 1;
-					if (confirm("Continue with", "mput")) {
+					if (confirm(argv[0], NULL)) {
 						mflag++;
 					}
 					interactive = ointer;
@@ -505,7 +516,7 @@ mput(int argc, char *argv[])
 				if (!mflag && fromatty) {
 					ointer = interactive;
 					interactive = 1;
-					if (confirm("Continue with", "mput")) {
+					if (confirm(argv[0], NULL)) {
 						mflag++;
 					}
 					interactive = ointer;
@@ -517,7 +528,7 @@ mput(int argc, char *argv[])
 		memset(&gl, 0, sizeof(gl));
 		flags = GLOB_BRACE|GLOB_NOCHECK|GLOB_TILDE;
 		if (glob(argv[i], flags, NULL, &gl) || gl.gl_pathc == 0) {
-			warnx("%s: not found", argv[i]);
+			warnx("Glob pattern `%s' not found", argv[i]);
 			globfree(&gl);
 			continue;
 		}
@@ -533,7 +544,7 @@ mput(int argc, char *argv[])
 				if (!mflag && fromatty) {
 					ointer = interactive;
 					interactive = 1;
-					if (confirm("Continue with", "mput")) {
+					if (confirm(argv[0], NULL)) {
 						mflag++;
 					}
 					interactive = ointer;
@@ -607,7 +618,7 @@ getit(int argc, char *argv[], int restartit, const char *mode)
 		ret = stat(locfile, &stbuf);
 		if (restartit == 1) {
 			if (ret < 0) {
-				warn("local: %s", locfile);
+				warn("Can't stat `%s'", locfile);
 				goto freegetit;
 			}
 			restart_point = stbuf.st_size;
@@ -635,7 +646,7 @@ getit(int argc, char *argv[], int restartit, const char *mode)
 }
 
 /* ARGSUSED */
-void
+static void
 mintr(int signo)
 {
 
@@ -645,8 +656,8 @@ mintr(int signo)
 	siglongjmp(jabort, 1);
 }
 
-void
-mabort(void)
+static void
+mabort(const char *cmd)
 {
 	int ointer, oconf;
 
@@ -655,7 +666,7 @@ mabort(void)
 		oconf = confirmrest;
 		interactive = 1;
 		confirmrest = 0;
-		if (confirm("Continue with", mname)) {
+		if (confirm(cmd, NULL)) {
 			interactive = ointer;
 			confirmrest = oconf;
 			return;
@@ -684,7 +695,6 @@ mget(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	mname = argv[0];
 	mflag = 1;
 	restart_point = 0;
 	restartit = 0;
@@ -698,7 +708,7 @@ mget(int argc, char *argv[])
 	}
 	oldintr = xsignal(SIGINT, mintr);
 	if (sigsetjmp(jabort, 1))
-		mabort();
+		mabort(argv[0]);
 	while ((cp = remglob(argv, proxy, NULL)) != NULL) {
 		char buf[MAXPATHLEN];
 		if (*cp == '\0' || !connected) {
@@ -721,7 +731,7 @@ mget(int argc, char *argv[])
 			if (stat(tp, &stbuf) == 0)
 				restart_point = stbuf.st_size;
 			else
-				warn("stat %s", tp);
+				warn("Can't stat `%s'", tp);
 		}
 		recvrequest("RETR", tp, cp, restart_point ? "r+" : "w",
 		    tp != cp || !interactive, 1);
@@ -729,7 +739,7 @@ mget(int argc, char *argv[])
 		if (!mflag && fromatty) {
 			ointer = interactive;
 			interactive = 1;
-			if (confirm("Continue with", "mget"))
+			if (confirm(argv[0], NULL))
 				mflag++;
 			interactive = ointer;
 		}
@@ -755,7 +765,7 @@ fget(int argc, char *argv[])
 
 	fp = fopen(argv[1], "r");
 	if (fp == NULL) {
-		fprintf(ttyout, "Cannot open source file %s\n", argv[1]);
+		fprintf(ttyout, "Can't open source file %s\n", argv[1]);
 		code = -1;
 		return;
 	}
@@ -1171,7 +1181,7 @@ lcd(int argc, char *argv[])
 	if ((locdir = globulize(argv[1])) == NULL)
 		return;
 	if (chdir(locdir) == -1)
-		warn("lcd %s", locdir);
+		warn("Can't chdir `%s'", locdir);
 	else {
 		updatelocalcwd();
 		if (localcwd[0]) {
@@ -1217,11 +1227,10 @@ mdelete(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	mname = argv[0];
 	mflag = 1;
 	oldintr = xsignal(SIGINT, mintr);
 	if (sigsetjmp(jabort, 1))
-		mabort();
+		mabort(argv[0]);
 	while ((cp = remglob(argv, 0, NULL)) != NULL) {
 		if (*cp == '\0') {
 			mflag = 0;
@@ -1233,7 +1242,7 @@ mdelete(int argc, char *argv[])
 			if (!mflag && fromatty) {
 				ointer = interactive;
 				interactive = 1;
-				if (confirm("Continue with", "mdelete")) {
+				if (confirm(argv[0], NULL)) {
 					mflag++;
 				}
 				interactive = ointer;
@@ -1337,7 +1346,6 @@ ls(int argc, char *argv[])
 		(void)strlcpy(locfile + 1, p, len - 1);
 		freelocfile = 1;
 	} else if ((strcmp(locfile, "-") != 0) && *locfile != '|') {
-		mname = argv[0];
 		if ((locfile = globulize(locfile)) == NULL ||
 		    !confirm("output to local-file:", locfile)) {
 			code = -1;
@@ -1374,7 +1382,6 @@ mls(int argc, char *argv[])
 	}
 	odest = dest = argv[argc - 1];
 	argv[argc - 1] = NULL;
-	mname = argv[0];
 	if (strcmp(dest, "-") && *dest != '|')
 		if (((dest = globulize(dest)) == NULL) ||
 		    !confirm("output to local-file:", dest)) {
@@ -1385,7 +1392,7 @@ mls(int argc, char *argv[])
 	mflag = 1;
 	oldintr = xsignal(SIGINT, mintr);
 	if (sigsetjmp(jabort, 1))
-		mabort();
+		mabort(argv[0]);
 	for (i = 1; mflag && i < argc-1 && connected; i++) {
 		mode = (i == 1) ? "w" : "a";
 		recvrequest(dolist ? "LIST" : "NLST", dest, argv[i], mode,
@@ -1393,7 +1400,7 @@ mls(int argc, char *argv[])
 		if (!mflag && fromatty) {
 			ointer = interactive;
 			interactive = 1;
-			if (confirm("Continue with", argv[0])) {
+			if (confirm(argv[0], NULL)) {
 				mflag++;
 			}
 			interactive = ointer;
@@ -1446,7 +1453,7 @@ shell(int argc, char *argv[])
 		else {
 			execl(shell, shellnam, (char *)0);
 		}
-		warn("%s", shell);
+		warn("Can't execute `%s'", shell);
 		code = -1;
 		exit(1);
 	}
@@ -1455,7 +1462,7 @@ shell(int argc, char *argv[])
 			;
 	(void)xsignal(SIGINT, oldintr);
 	if (pid == -1) {
-		warn("Try again later");
+		warn("Can't fork a subshell; try again later");
 		code = -1;
 	} else
 		code = 0;
@@ -1468,6 +1475,7 @@ void
 user(int argc, char *argv[])
 {
 	char *password;
+	char emptypass[] = "";
 	int n, aflag = 0;
 
 	if (argc == 0)
@@ -1485,6 +1493,8 @@ user(int argc, char *argv[])
 	if (n == CONTINUE) {
 		if (argc < 3) {
 			password = getpass("Password: ");
+			if (password == NULL)
+				password = emptypass;
 		} else {
 			password = argv[2];
 		}
@@ -1495,6 +1505,8 @@ user(int argc, char *argv[])
 		aflag++;
 		if (argc < 4) {
 			password = getpass("Account: ");
+			if (password == NULL)
+				password = emptypass;
 		} else {
 			password = argv[3];
 		}
@@ -1782,6 +1794,7 @@ void
 account(int argc, char *argv[])
 {
 	char *ap;
+	char emptypass[] = "";
 
 	if (argc == 0 || argc > 2) {
 		UPRINTF("usage: %s [password]\n", argv[0]);
@@ -1790,9 +1803,13 @@ account(int argc, char *argv[])
 	}
 	else if (argc == 2)
 		ap = argv[1];
-	else
+	else {
 		ap = getpass("Account:");
+		if (ap == NULL)
+			ap = emptypass;
+	}
 	(void)command("ACCT %s", ap);
+	memset(ap, 0, strlen(ap));
 }
 
 sigjmp_buf abortprox;

@@ -1,7 +1,7 @@
-/*	$NetBSD: fetch.c,v 1.171 2006/09/22 22:29:25 elad Exp $	*/
+/*	$NetBSD: fetch.c,v 1.175 2007/04/17 05:52:03 lukem Exp $	*/
 
 /*-
- * Copyright (c) 1997-2006 The NetBSD Foundation, Inc.
+ * Copyright (c) 1997-2007 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -41,7 +41,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: fetch.c,v 1.171 2006/09/22 22:29:25 elad Exp $");
+__RCSID("$NetBSD: fetch.c,v 1.175 2007/04/17 05:52:03 lukem Exp $");
 #endif /* not lint */
 
 /*
@@ -112,7 +112,7 @@ static int	redirect_loop;
  * Determine if token is the next word in buf (case insensitive).
  * If so, advance buf past the token and any trailing LWS, and
  * return a pointer to the token (in buf).  Otherwise, return NULL.
- * token may be preceeded by LWS.
+ * token may be preceded by LWS.
  * token must be followed by LWS or NUL.  (I.e, don't partial match).
  */
 static const char *
@@ -161,7 +161,7 @@ auth_url(const char *challenge, char **response, const char *guser,
 	DPRINTF("auth_url: challenge `%s'\n", challenge);
 
 	if (! match_token(&cp, scheme)) {
-		warnx("Unsupported authentication challenge - `%s'",
+		warnx("Unsupported authentication challenge `%s'",
 		    challenge);
 		goto cleanup_auth_url;
 	}
@@ -170,7 +170,7 @@ auth_url(const char *challenge, char **response, const char *guser,
 	if (STRNEQUAL(cp, REALM))
 		cp += sizeof(REALM) - 1;
 	else {
-		warnx("Unsupported authentication challenge - `%s'",
+		warnx("Unsupported authentication challenge `%s'",
 		    challenge);
 		goto cleanup_auth_url;
 	}
@@ -181,7 +181,7 @@ auth_url(const char *challenge, char **response, const char *guser,
 		realm = (char *)ftp_malloc(len + 1);
 		(void)strlcpy(realm, cp, len + 1);
 	} else {
-		warnx("Unsupported authentication challenge - `%s'",
+		warnx("Unsupported authentication challenge `%s'",
 		    challenge);
 		goto cleanup_auth_url;
 	}
@@ -199,8 +199,13 @@ auth_url(const char *challenge, char **response, const char *guser,
 	}
 	if (gpass != NULL)
 		pass = (char *)gpass;
-	else
+	else {
 		pass = getpass("Password: ");
+		if (pass == NULL) {
+			warnx("Can't read password");
+			goto cleanup_auth_url;
+		}
+	}
 
 	clen = strlen(user) + strlen(pass) + 2;	/* user + ":" + pass + "\0" */
 	clear = (char *)ftp_malloc(clen);
@@ -467,21 +472,31 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 	struct addrinfo		hints, *res, *res0 = NULL;
 	int			error;
 	char			hbuf[NI_MAXHOST];
-	volatile sigfunc	oldintr, oldintp;
-	volatile int		s;
+	sigfunc volatile	oldintr;
+	sigfunc volatile	oldintp;
+	int volatile		s;
 	struct stat		sb;
-	int			ischunked, isproxy, rval, hcode;
+	int volatile		ischunked;
+	int volatile		isproxy;
+	int volatile		rval;
+	int volatile		hcode;
 	size_t			len;
 	static size_t		bufsize;
 	static char		*xferbuf;
 	const char		*cp, *token;
-	char			*ep, *buf, *savefile;
-	char			*auth, *location, *message;
-	char			*user, *pass, *host, *port, *path, *decodedpath;
+	char			*ep;
+	char			*volatile buf;
+	char			*volatile savefile;
+	char			*volatile auth;
+	char			*volatile location;
+	char			*volatile message;
+	char			*user, *pass, *host, *port, *path;
+	char			*volatile decodedpath;
 	char			*puser, *ppass, *useragent;
 	off_t			hashbytes, rangestart, rangeend, entitylen;
-	int			 (*closefunc)(FILE *);
-	FILE			*fin, *fout;
+	int			(*volatile closefunc)(FILE *);
+	FILE			*volatile fin;
+	FILE			*volatile fout;
 	time_t			mtime;
 	url_t			urltype;
 	in_port_t		portnum;
@@ -495,22 +510,6 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 	ischunked = isproxy = hcode = 0;
 	rval = 1;
 	user = pass = host = path = decodedpath = puser = ppass = NULL;
-
-#ifdef __GNUC__			/* shut up gcc warnings */
-	(void)&closefunc;
-	(void)&fin;
-	(void)&fout;
-	(void)&buf;
-	(void)&savefile;
-	(void)&rval;
-	(void)&isproxy;
-	(void)&hcode;
-	(void)&ischunked;
-	(void)&message;
-	(void)&location;
-	(void)&auth;
-	(void)&decodedpath;
-#endif
 
 	if (parse_url(url, "URL", &urltype, &user, &pass, &host, &port,
 	    &portnum, &path) == -1)
@@ -550,7 +549,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 			rval = fetch_ftp(url);
 			goto cleanup_fetch_url;
 		}
-		warnx("no file after directory (you must specify an "
+		warnx("No file after directory (you must specify an "
 		    "output file) `%s'", url);
 		goto cleanup_fetch_url;
 	} else {
@@ -570,7 +569,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		direction = "copied";
 		fin = fopen(decodedpath, "r");
 		if (fin == NULL) {
-			warn("Cannot open file `%s'", decodedpath);
+			warn("Can't open `%s'", decodedpath);
 			goto cleanup_fetch_url;
 		}
 		if (fstat(fileno(fin), &sb) == 0) {
@@ -579,7 +578,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		}
 		if (restart_point) {
 			if (lseek(fileno(fin), restart_point, SEEK_SET) < 0) {
-				warn("Can't lseek to restart `%s'",
+				warn("Can't seek to restart `%s'",
 				    decodedpath);
 				goto cleanup_fetch_url;
 			}
@@ -692,7 +691,9 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		hints.ai_protocol = 0;
 		error = getaddrinfo(host, NULL, &hints, &res0);
 		if (error) {
-			warnx("%s: %s", host, gai_strerror(error));
+			warnx("Can't lookup `%s': %s", host,
+			    (error == EAI_SYSTEM) ? strerror(errno)
+						  : gai_strerror(error));
 			goto cleanup_fetch_url;
 		}
 		if (res0->ai_canonname)
@@ -700,13 +701,10 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 
 		s = -1;
 		for (res = res0; res; res = res->ai_next) {
-			/*
-			 * see comment in hookup()
-			 */
 			ai_unmapped(res);
 			if (getnameinfo(res->ai_addr, res->ai_addrlen,
 			    hbuf, sizeof(hbuf), NULL, 0, NI_NUMERICHOST) != 0)
-				strlcpy(hbuf, "invalid", sizeof(hbuf));
+				strlcpy(hbuf, "?", sizeof(hbuf));
 
 			if (verbose && res0->ai_next) {
 				fprintf(ttyout, "Trying %s...\n", hbuf);
@@ -717,12 +715,13 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 			s = socket(res->ai_family, SOCK_STREAM,
 			    res->ai_protocol);
 			if (s < 0) {
-				warn("Can't create socket");
+				warn(
+				  "Can't create socket for connection to `%s'",
+				    hbuf);
 				continue;
 			}
 
 			if (ftp_connect(s, res->ai_addr, res->ai_addrlen) < 0) {
-				warn("Connect to address `%s'", hbuf);
 				close(s);
 				s = -1;
 				continue;
@@ -733,7 +732,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		}
 
 		if (s < 0) {
-			warn("Can't connect to %s", host);
+			warnx("Can't connect to `%s'", host);
 			goto cleanup_fetch_url;
 		}
 
@@ -952,12 +951,12 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 			} else if (match_token(&cp, "Transfer-Encoding:")) {
 				if (match_token(&cp, "binary")) {
 					warnx(
-			"Bogus transfer encoding - `binary' (fetching anyway)");
+			"Bogus transfer encoding `binary' (fetching anyway)");
 					continue;
 				}
 				if (! (token = match_token(&cp, "chunked"))) {
 					warnx(
-				    "Unsupported transfer encoding - `%s'",
+				    "Unsupported transfer encoding `%s'",
 					    token);
 					goto cleanup_fetch_url;
 				}
@@ -1067,7 +1066,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 #endif
 		default:
 			if (message)
-				warnx("Error retrieving file - `%s'", message);
+				warnx("Error retrieving file `%s'", message);
 			else
 				warnx("Unknown error retrieving file");
 			goto cleanup_fetch_url;
@@ -1081,7 +1080,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		oldintp = xsignal(SIGPIPE, SIG_IGN);
 		fout = popen(savefile + 1, "w");
 		if (fout == NULL) {
-			warn("Can't run `%s'", savefile + 1);
+			warn("Can't execute `%s'", savefile + 1);
 			goto cleanup_fetch_url;
 		}
 		closefunc = pclose;
