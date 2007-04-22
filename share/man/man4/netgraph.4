@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.7 2007/04/05 06:50:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.8 2007/04/22 16:29:50 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -964,7 +964,7 @@ should be used if possible to free data and meta data (see
 .In netgraph/netgraph.h ) .
 .It 3
 Messages sent using
-.Fn ng_send_message
+.Fn ng_send_msg
 are freed by the callee. As in the case above, the addresses
 associated with the message are freed by whatever allocated them so the
 recipient should copy them if it wants to keep that information.
