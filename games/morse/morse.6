@@ -32,7 +32,7 @@
 .\"
 .\"	@(#)bcd.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/morse/morse.6,v 1.4.2.7 2003/01/26 02:57:27 keramida Exp $
-.\" $DragonFly: src/games/morse/morse.6,v 1.4 2007/04/22 10:22:32 corecode Exp $
+.\" $DragonFly: src/games/morse/morse.6,v 1.5 2007/04/22 22:04:20 corecode Exp $
 .\"
 .Dd April 22, 2007
 .Dt MORSE 6
@@ -42,6 +42,7 @@
 .Nd reformat input as morse code
 .Sh SYNOPSIS
 .Nm
+.Op Fl o
 .Op Fl p
 .Op Fl P Ar dspdevice
 .Op Fl d Ar device
@@ -62,6 +63,11 @@ Available options:
 The
 .Fl s
 option produces dots and dashes rather than words.
+.It Fl o
+Write 16bit signed, 44.1kHz native endian sound data
+to the file specified by
+.Fl P ,
+or, if not specified, to standard out.
 .It Fl p
 Send morse the real way. This only works if your system has
 .Xr sound 4

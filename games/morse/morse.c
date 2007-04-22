@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.4 2007/04/22 10:22:32 corecode Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.5 2007/04/22 22:04:20 corecode Exp $
  */
 
 /*
@@ -198,11 +198,11 @@ void            show(const char *), play(const char *), morse(char);
 void		ttyout(const char *);
 void		sighandler(int);
 
-#define GETOPTOPTS "d:ef:pP:sw:"
+#define GETOPTOPTS "d:ef:opP:sw:"
 #define USAGE \
-"usage: morse [-s] [-e] [-p] [-P device] [-d device] [-w speed] [-f frequency] [string ...]\n"
+"usage: morse [-s] [-e] [-p | -o] [-P device] [-d device] [-w speed] [-f frequency] [string ...]\n"
 
-static int      pflag, sflag, eflag;
+static int      oflag, pflag, sflag, eflag;
 static int      wpm = 20;	/* words per minute */
 #define FREQUENCY 600
 static int      freq = FREQUENCY;
@@ -210,7 +210,7 @@ static char	*device;	/* for tty-controlled generator */
 
 static struct tone_data tone_dot, tone_dash, tone_silence;
 #define DSP_RATE 44100
-static const char *snddev = "/dev/dsp";
+static const char *snddev = NULL;
 
 #define DASH_LEN 3
 #define CHAR_SPACE 3
@@ -240,6 +240,9 @@ main(int argc, char **argv)
 		case 'f':
 			freq = atoi(optarg);
 			break;
+		case 'o':
+			oflag = 1;
+			/* FALLTHROUGH */
 		case 'p':
 			pflag = 1;
 			break;
@@ -257,8 +260,8 @@ main(int argc, char **argv)
 			fputs(USAGE, stderr);
 			exit(1);
 		}
-	if ((pflag || device) && sflag) {
-		fputs("morse: only one of -p, -d and -s allowed\n", stderr);
+	if (pflag + !!device + sflag > 1) {
+		fputs("morse: only one of -o, -p, -d and -s allowed\n", stderr);
 		exit(1);
 	}
 	if ((pflag || device) && ((wpm < 1) || (wpm > 60))) {
@@ -268,22 +271,38 @@ main(int argc, char **argv)
 	if ((pflag || device) && (freq == 0))
 		freq = FREQUENCY;
 	if (pflag || device) {
+		/*
+		 * A note on how to get to this magic 2.4:
+		 * x WPM = 50*x dits per minute (norm word "PARIS").
+		 * dits per sec = dits per minute / 60, thus
+		 * dits per sec = 50 * x / 60 = x / (60 / 50) = x / 2.4
+		 */
 		dot_clock = wpm / 2.4;		/* dots/sec */
 		dot_clock = 1 / dot_clock;	/* duration of a dot */
 		dot_clock = dot_clock / 2;	/* dot_clock runs at twice */
 						/* the dot rate */
 	}
+	if (snddev == NULL) {
+		if (oflag)
+			snddev = "-";
+		else /* only pflag */
+			snddev = "/dev/dsp";
+	}
 
 	if (pflag) {
 		snd_chan_param param;
 
-		if ((spkr = open(snddev, O_WRONLY, 0)) == -1)
+		if (oflag && strcmp(snddev, "-") == 0)
+			spkr = STDOUT_FILENO;
+		else
+			spkr = open(snddev, O_WRONLY, 0);
+		if (spkr == -1)
 			err(1, "%s", snddev);
 		param.play_rate = DSP_RATE;
 		param.play_format = AFMT_S16_NE;
 		param.rec_rate = 0;
 		param.rec_format = 0;
-		if (ioctl(spkr, AIOSFMT, &param) != 0)
+		if (!oflag && ioctl(spkr, AIOSFMT, &param) != 0)
 			err(1, "%s: set format", snddev);
 		alloc_soundbuf(&tone_dot, dot_clock, 1);
 		alloc_soundbuf(&tone_dash, DASH_LEN * dot_clock, 1);
