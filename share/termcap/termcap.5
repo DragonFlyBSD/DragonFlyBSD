@@ -52,7 +52,7 @@
 .\" ***************************************************************************/
 .\"
 .\" $FreeBSD: src/share/termcap/termcap.5,v 1.12.2.6 2002/08/15 08:30:27 ru Exp $
-.\" $DragonFly: src/share/termcap/termcap.5,v 1.5 2006/08/18 01:42:58 swildner Exp $
+.\" $DragonFly: src/share/termcap/termcap.5,v 1.6 2007/04/22 07:57:31 swildner Exp $
 .\"
 .Dd April 16, 1994
 .Dt TERMCAP 5
@@ -1690,7 +1690,7 @@ and
 .Sy \&st ;
 and finally
 .Sy \&if .
-.Pf ( Xr Terminfo
+.Pf ( Xr Terminfo 5
 uses
 .Sy \&i\&1-i2
 instead of
@@ -1708,7 +1708,7 @@ and
 These strings are output by the
 .Xr reset 1
 program, which is used when the terminal gets into a wedged state.
-.Pf ( Xr Terminfo
+.Pf ( Xr Terminfo 5
 uses
 .Sy "\&r1-r3"
 instead of
@@ -1825,7 +1825,7 @@ from the status line can be given as
 .Sy \&ts
 and
 .Sy \&fs .
-.Pf ( Xr \&fs
+.Pf ( Sy \&fs
 must leave the cursor position in the same place that it was before
 .Sy \&ts .
 If necessary, the
