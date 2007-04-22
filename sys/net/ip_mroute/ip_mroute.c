@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.21 2006/12/22 23:44:56 swildner Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.22 2007/04/22 01:13:13 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -1126,7 +1126,7 @@ static int
 socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in *src)
 {
     if (s) {
-	if (sbappendaddr(&s->so_rcv, (struct sockaddr *)src, mm, NULL) != 0) {
+	if (ssb_appendaddr(&s->so_rcv, (struct sockaddr *)src, mm, NULL) != 0) {
 	    sorwakeup(s);
 	    return 0;
 	}
@@ -2180,8 +2180,8 @@ X_rsvp_input(struct mbuf *m, ...)
     rsvp_src.sin_addr = ip->ip_src;
 
     if (rsvpdebug && m)
-	kprintf("rsvp_input: m->m_len = %d, sbspace() = %ld\n",
-	       m->m_len,sbspace(&(viftable[vifi].v_rsvpd->so_rcv)));
+	kprintf("rsvp_input: m->m_len = %d, ssb_space() = %ld\n",
+	       m->m_len,ssb_space(&(viftable[vifi].v_rsvpd->so_rcv)));
 
 #ifdef ALTQ
     opts = NULL;
@@ -2189,7 +2189,7 @@ X_rsvp_input(struct mbuf *m, ...)
     if (inp->inp_flags & INP_CONTROLOPTS ||
 	inp->inp_socket->so_options & SO_TIMESTAMP)
 	ip_savecontrol(inp, &opts, ip, m);
-    if (sbappendaddr(&so->so_rcv,
+    if (ssb_appendaddr(&so->so_rcv,
 		     (struct sockaddr *)&rsvp_src,m, opts) == 0) {
 	m_freem(m);
 	if (opts)

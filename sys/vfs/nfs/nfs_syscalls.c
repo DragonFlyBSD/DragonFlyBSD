@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.28 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.29 2007/04/22 01:13:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -395,10 +395,10 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		val = 1;
 		sosetopt(so, &sopt);
 	}
-	so->so_rcv.sb_flags &= ~SB_NOINTR;
-	so->so_rcv.sb_timeo = 0;
-	so->so_snd.sb_flags &= ~SB_NOINTR;
-	so->so_snd.sb_timeo = 0;
+	so->so_rcv.ssb_flags &= ~SSB_NOINTR;
+	so->so_rcv.ssb_timeo = 0;
+	so->so_snd.ssb_flags &= ~SSB_NOINTR;
+	so->so_snd.ssb_timeo = 0;
 
 	slp = (struct nfssvc_sock *)
 		kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
@@ -414,7 +414,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	crit_enter();
 	so->so_upcallarg = (caddr_t)slp;
 	so->so_upcall = nfsrv_rcv;
-	so->so_rcv.sb_flags |= SB_UPCALL;
+	so->so_rcv.ssb_flags |= SSB_UPCALL;
 	slp->ns_flag = (SLP_VALID | SLP_NEEDQ);
 	nfsrv_wakenfsd(slp, 1);
 	crit_exit();
@@ -719,7 +719,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 	if (fp) {
 		slp->ns_fp = (struct file *)0;
 		so = slp->ns_so;
-		so->so_rcv.sb_flags &= ~SB_UPCALL;
+		so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 		so->so_upcall = NULL;
 		so->so_upcallarg = NULL;
 		soshutdown(so, 2);

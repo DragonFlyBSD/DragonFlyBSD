@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/sys/aio.h,v 1.13.2.8 2002/08/31 03:18:23 alc Exp $
- * $DragonFly: src/sys/sys/aio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/aio.h,v 1.5 2007/04/22 01:13:16 dillon Exp $
  */
 
 #ifndef _SYS_AIO_H_
@@ -164,10 +164,10 @@ struct aiocblist {
 
 /* Forward declarations for prototypes below. */
 struct socket;
-struct sockbuf;
+struct signalsockbuf;
 
 void	aio_proc_rundown(struct proc *p);
-void	aio_swake(struct socket *, struct sockbuf *);
+void	aio_swake(struct socket *, struct signalsockbuf *);
 
 #endif
 

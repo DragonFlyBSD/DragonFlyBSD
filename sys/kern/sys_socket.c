@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.13 2006/08/02 01:25:25 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.14 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,17 +135,17 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 	case FIOASYNC:
 		if (*(int *)data) {
 			so->so_state |= SS_ASYNC;
-			so->so_rcv.sb_flags |= SB_ASYNC;
-			so->so_snd.sb_flags |= SB_ASYNC;
+			so->so_rcv.ssb_flags |= SSB_ASYNC;
+			so->so_snd.ssb_flags |= SSB_ASYNC;
 		} else {
 			so->so_state &= ~SS_ASYNC;
-			so->so_rcv.sb_flags &= ~SB_ASYNC;
-			so->so_snd.sb_flags &= ~SB_ASYNC;
+			so->so_rcv.ssb_flags &= ~SSB_ASYNC;
+			so->so_snd.ssb_flags &= ~SSB_ASYNC;
 		}
 		error = 0;
 		break;
 	case FIONREAD:
-		*(int *)data = so->so_rcv.sb_cc;
+		*(int *)data = so->so_rcv.ssb_cc;
 		error = 0;
 		break;
 	case FIOSETOWN:
@@ -218,11 +218,11 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	 * receive buffer, the socket is still readable.
 	 */
 	if ((so->so_state & SS_CANTRCVMORE) == 0 ||
-	    so->so_rcv.sb_cc != 0)
+	    so->so_rcv.ssb_cc != 0)
 		ub->st_mode |= S_IRUSR | S_IRGRP | S_IROTH;
 	if ((so->so_state & SS_CANTSENDMORE) == 0)
 		ub->st_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
-	ub->st_size = so->so_rcv.sb_cc;
+	ub->st_size = so->so_rcv.ssb_cc;
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
 	error = so_pru_sense(so, ub);

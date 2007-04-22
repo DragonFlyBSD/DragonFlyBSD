@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.18 2007/04/20 05:42:24 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.19 2007/04/22 01:13:16 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -207,25 +207,25 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 	nbp->nbp_tso = so;
 	so->so_upcallarg = (caddr_t)nbp;
 	so->so_upcall = nb_upcall;
-	so->so_rcv.sb_flags |= SB_UPCALL;
-	so->so_rcv.sb_timeo = (5 * hz);
-	so->so_snd.sb_timeo = (5 * hz);
+	so->so_rcv.ssb_flags |= SSB_UPCALL;
+	so->so_rcv.ssb_timeo = (5 * hz);
+	so->so_snd.ssb_timeo = (5 * hz);
 	error = soreserve(so, nbp->nbp_sndbuf, nbp->nbp_rcvbuf,
 			  &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error)
 		goto bad;
 	nb_setsockopt_int(so, SOL_SOCKET, SO_KEEPALIVE, 1);
 	nb_setsockopt_int(so, IPPROTO_TCP, TCP_NODELAY, 1);
-	so->so_rcv.sb_flags &= ~SB_NOINTR;
-	so->so_snd.sb_flags &= ~SB_NOINTR;
+	so->so_rcv.ssb_flags &= ~SSB_NOINTR;
+	so->so_snd.ssb_flags &= ~SSB_NOINTR;
 	error = soconnect(so, (struct sockaddr*)to, td);
 
 	/*
 	 * If signals are allowed nbssn_recv() can wind up in a hard loop
 	 * on EWOULDBLOCK. 
 	 */
-	so->so_rcv.sb_flags |= SB_NOINTR;
-	so->so_snd.sb_flags |= SB_NOINTR;
+	so->so_rcv.ssb_flags |= SSB_NOINTR;
+	so->so_snd.ssb_flags |= SSB_NOINTR;
 	if (error)
 		goto bad;
 	crit_enter();
@@ -371,15 +371,14 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 	u_int8_t *rpcodep, struct thread *td)
 {
 	struct socket *so = nbp->nbp_tso;
-	struct sorecv_direct sio;
+	struct sockbuf sio;
 	u_int8_t rpcode;
 	int error, rcvflg, savelen;
 
 	if (so == NULL)
 		return ENOTCONN;
 
-	sio.len = 0;
-	sio.m0 = NULL;
+	sbinit(&sio, 0);
 	if (mpp)
 		*mpp = NULL;
 
@@ -399,7 +398,7 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 		if (rpcode == NB_SSN_KEEPALIVE)
 			continue;
 		do {
-			sorecv_direct_init(&sio, savelen);
+			sbinit(&sio, savelen);
 			rcvflg = MSG_WAITALL;
 			error = so_pru_soreceive(so, NULL, NULL, &sio,
 						 NULL, &rcvflg);
@@ -407,24 +406,25 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 				 error == ERESTART);
 		if (error)
 			break;
-		if (sio.len != savelen) {
+		if (sio.sb_cc != savelen) {
 			SMBERROR("packet is shorter than expected\n");
 			error = EPIPE;
-			m_freem(sio.m0);
+			m_freem(sio.sb_mb);
 			break;
 		}
 		if (nbp->nbp_state == NBST_SESSION && rpcode == NB_SSN_MESSAGE)
 			break;
 		NBDEBUG("non-session packet %x\n", rpcode);
-		m_freem(sio.m0);
-		sio.m0 = NULL;
+		m_freem(sio.sb_mb);
+		sio.sb_mb = NULL;
+		sio.sb_cc = 0;
 	}
 	if (error == 0) {
 		if (mpp)
-			*mpp = sio.m0;
+			*mpp = sio.sb_mb;
 		else
-			m_freem(sio.m0);
-		*lenp = sio.len;
+			m_freem(sio.sb_mb);
+		*lenp = sio.sb_cc;
 		*rpcodep = rpcode;
 	}
 	return (error);

@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.27 2007/04/20 05:42:24 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.28 2007/04/22 01:13:17 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -47,17 +47,47 @@
 #ifndef _SYS_SELINFO_H_
 #include <sys/selinfo.h>		/* for struct selinfo */
 #endif
+#ifndef _SYS_SOCKBUF_H_
+#include <sys/sockbuf.h>
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-/*
- * Kernel structure per socket.
- * Contains send and receive buffer queues,
- * handle on protocol and pointer to protocol
- * private data and error information.
- */
 
 struct accept_filter;
 
+/*
+ * Signaling socket buffers contain additional elements for locking
+ * and signaling conditions.  These are used primarily by sockets.
+ */
+struct signalsockbuf {
+	struct sockbuf sb;
+	struct selinfo ssb_sel;	/* process selecting read/write */
+	short	ssb_flags;	/* flags, see below */
+	short	ssb_timeo;	/* timeout for read/write */
+	long	ssb_lowat;	/* low water mark */
+	u_long	ssb_hiwat;	/* high water mark / max actual char count */
+	u_long	ssb_mbmax;	/* max chars of mbufs to use */
+};
+
+#define ssb_cc		sb.sb_cc	/* commonly used fields */
+#define ssb_mb		sb.sb_mb	/* commonly used fields */
+#define ssb_mbcnt	sb.sb_mbcnt	/* commonly used fields */
+
+#define	SSB_LOCK	0x01		/* lock on data queue */
+#define	SSB_WANT	0x02		/* someone is waiting to lock */
+#define	SSB_WAIT	0x04		/* someone is waiting for data/space */
+#define	SSB_SEL		0x08		/* someone is selecting */
+#define	SSB_ASYNC	0x10		/* ASYNC I/O, need signals */
+#define	SSB_UPCALL	0x20		/* someone wants an upcall */
+#define	SSB_NOINTR	0x40		/* operations not interruptible */
+#define SSB_AIO		0x80		/* AIO operations queued */
+#define SSB_KNOTE	0x100		/* kernel note attached */
+#define SSB_MEVENT	0x200		/* need message event notification */
+
+/*
+ * Per-socket kernel structure.  Contains universal send and receive queues,
+ * protocol control handle, and error information.
+ */
 struct socket {
 	short	so_type;		/* generic type, see socket.h */
 	short	so_options;		/* from socket call, see socket.h */
@@ -65,59 +95,30 @@ struct socket {
 	short	so_state;		/* internal state flags SS_*, below */
 	void	*so_pcb;		/* protocol control block */
 	struct	protosw *so_proto;	/* protocol handle */
-/*
- * Variables for connection queuing.
- * Socket where accepts occur is so_head in all subsidiary sockets.
- * If so_head is 0, socket is not related to an accept.
- * For head socket so_incomp queues partially completed connections,
- * while so_comp is a queue of connections ready to be accepted.
- * If a connection is aborted and it has so_head set, then
- * it has to be pulled out of either so_incomp or so_comp.
- * We allow connections to queue up based on current queue lengths
- * and limit on number of queued connections for this socket.
- */
 	struct	socket *so_head;	/* back pointer to accept socket */
-	TAILQ_HEAD(, socket) so_incomp;	/* queue of partial unaccepted connections */
-	TAILQ_HEAD(, socket) so_comp;	/* queue of complete unaccepted connections */
+
+	/*
+	 * These fields are used to manage sockets capable of accepting
+	 * new connections.
+	 */
+	TAILQ_HEAD(, socket) so_incomp;	/* in-progress, incomplete */
+	TAILQ_HEAD(, socket) so_comp;	/* completed but not yet accepted */
 	TAILQ_ENTRY(socket) so_list;	/* list of unaccepted connections */
-	short	so_qlen;		/* number of unaccepted connections */
-	short	so_incqlen;		/* number of unaccepted incomplete
-					   connections */
+	short	so_qlen;		/* so_comp count */
+	short	so_incqlen;		/* so_incomp count */
 	short	so_qlimit;		/* max number queued connections */
+
+	/*
+	 * Misc socket support
+	 */
 	short	so_timeo;		/* connection timeout */
 	u_short	so_error;		/* error affecting connection */
 	struct  sigio *so_sigio;	/* information for async I/O or
 					   out of band data (SIGURG) */
 	u_long	so_oobmark;		/* chars to oob mark */
 	TAILQ_HEAD(, aiocblist) so_aiojobq; /* AIO ops waiting on socket */
-/*
- * Variables for socket buffering.
- */
-	struct	sockbuf {
-		u_long	sb_cc;		/* actual chars in buffer */
-		u_long	sb_hiwat;	/* max actual char count */
-		u_long	sb_mbcnt;	/* chars of mbufs used */
-		u_long	sb_mbmax;	/* max chars of mbufs to use */
-		long	sb_lowat;	/* low water mark */
-		struct	mbuf *sb_mb;	/* the mbuf chain */
-		struct	mbuf *sb_lastmbuf;	/* last mbuf in sb_mb */
-		struct	mbuf *sb_lastrecord;	/* last record in sb_mb
-						 * valid <=> sb_mb non-NULL */
-		struct	selinfo sb_sel;	/* process selecting read/write */
-		short	sb_flags;	/* flags, see below */
-		short	sb_timeo;	/* timeout for read/write */
-	} so_rcv, so_snd;
-#define	SB_MAX		(256*1024)	/* default for max chars in sockbuf */
-#define	SB_LOCK		0x01		/* lock on data queue */
-#define	SB_WANT		0x02		/* someone is waiting to lock */
-#define	SB_WAIT		0x04		/* someone is waiting for data/space */
-#define	SB_SEL		0x08		/* someone is selecting */
-#define	SB_ASYNC	0x10		/* ASYNC I/O, need signals */
-#define	SB_UPCALL	0x20		/* someone wants an upcall */
-#define	SB_NOINTR	0x40		/* operations not interruptible */
-#define SB_AIO		0x80		/* AIO operations queued */
-#define SB_KNOTE	0x100		/* kernel note attached */
-#define SB_MEVENT	0x200		/* need message event notification */
+	struct signalsockbuf so_rcv;
+	struct signalsockbuf so_snd;
 
 	void	(*so_upcall) (struct socket *, void *, int);
 	void	*so_upcallarg;
@@ -188,18 +189,49 @@ struct	xsocket {
  * Macros for sockets and socket buffering.
  */
 
-#ifdef SOCKBUF_DEBUG
-#define sbcheck(sb)	_sbcheck(sb)
-#else
-#define sbcheck(sb)
-#endif
+#define	sosendallatonce(so) \
+    ((so)->so_proto->pr_flags & PR_ATOMIC)
+
+/* can we read something from so? */
+#define	soreadable(so) \
+    ((so)->so_rcv.ssb_cc >= (so)->so_rcv.ssb_lowat || \
+	((so)->so_state & SS_CANTRCVMORE) || \
+	!TAILQ_EMPTY(&(so)->so_comp) || (so)->so_error)
+
+/* can we write something to so? */
+#define	sowriteable(so) \
+    ((ssb_space(&(so)->so_snd) >= (so)->so_snd.ssb_lowat && \
+	(((so)->so_state&SS_ISCONNECTED) || \
+	  ((so)->so_proto->pr_flags&PR_CONNREQUIRED)==0)) || \
+     ((so)->so_state & SS_CANTSENDMORE) || \
+     (so)->so_error)
 
 /*
  * Do we need to notify the other side when I/O is possible?
  */
-#define	sb_notify(sb)						\
-(((sb)->sb_flags &						\
- (SB_WAIT | SB_SEL | SB_ASYNC | SB_UPCALL | SB_AIO | SB_KNOTE | SB_MEVENT)))
+#define	ssb_notify(ssb)					\
+	(((ssb)->ssb_flags &				\
+	(SSB_WAIT | SSB_SEL | SSB_ASYNC | SSB_UPCALL |	\
+	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
+
+/* do we have to send all at once on a socket? */
+/*
+ * Set lock on sockbuf sb; sleep if lock is already held.
+ * Unless SSB_NOINTR is set on signalsockbuf, sleep is interruptible.
+ * Returns error without lock if sleep is interrupted.
+ */
+#define ssb_lock(ssb, wf) ((ssb)->ssb_flags & SSB_LOCK ? \
+		(((wf) == M_WAITOK) ? _ssb_lock(ssb) : EWOULDBLOCK) : \
+		((ssb)->ssb_flags |= SSB_LOCK), 0)
+
+/* release lock on signalsockbuf sb */
+#define	ssb_unlock(ssb) { \
+	(ssb)->ssb_flags &= ~SSB_LOCK; \
+	if ((ssb)->ssb_flags & SSB_WANT) { \
+		(ssb)->ssb_flags &= ~SSB_WANT; \
+		wakeup((caddr_t)&(ssb)->ssb_flags); \
+	} \
+}
 
 /*
  * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?
@@ -207,69 +239,43 @@ struct	xsocket {
  * still be negative (cc > hiwat or mbcnt > mbmax).  Should detect
  * overflow and return 0.  Should use "lmin" but it doesn't exist now.
  */
-#define	sbspace(sb) \
-    ((long) imin((int)((sb)->sb_hiwat - (sb)->sb_cc), \
-	 (int)((sb)->sb_mbmax - (sb)->sb_mbcnt)))
+#define ssb_space(ssb) 							\
+	((long)imin((int)((ssb)->ssb_hiwat - (ssb)->ssb_cc),		\
+		    (int)((ssb)->ssb_mbmax - (ssb)->ssb_mbcnt)))
 
-/* do we have to send all at once on a socket? */
-#define	sosendallatonce(so) \
-    ((so)->so_proto->pr_flags & PR_ATOMIC)
+#define ssb_append(ssb, m)						\
+	sbappend(&(ssb)->sb, m)
 
-/* can we read something from so? */
-#define	soreadable(so) \
-    ((so)->so_rcv.sb_cc >= (so)->so_rcv.sb_lowat || \
-	((so)->so_state & SS_CANTRCVMORE) || \
-	!TAILQ_EMPTY(&(so)->so_comp) || (so)->so_error)
+#define ssb_appendstream(ssb, m)					\
+	sbappendstream(&(ssb)->sb, m)
 
-/* can we write something to so? */
-#define	sowriteable(so) \
-    ((sbspace(&(so)->so_snd) >= (so)->so_snd.sb_lowat && \
-	(((so)->so_state&SS_ISCONNECTED) || \
-	  ((so)->so_proto->pr_flags&PR_CONNREQUIRED)==0)) || \
-     ((so)->so_state & SS_CANTSENDMORE) || \
-     (so)->so_error)
+#define ssb_appendrecord(ssb, m)					\
+	sbappendrecord(&(ssb)->sb, m)
 
-/* adjust counters in sb reflecting allocation of m */
-#define	sballoc(sb, m) { \
-	(sb)->sb_cc += (m)->m_len; \
-	(sb)->sb_mbcnt += MSIZE; \
-	if ((m)->m_flags & M_EXT) \
-		(sb)->sb_mbcnt += (m)->m_ext.ext_size; \
+#define ssb_appendaddr(ssb, src, m, control)				\
+	((ssb_space(ssb) <= 0) ? 1 : sbappendaddr(&(ssb)->sb, src, m, control))
+
+#define ssb_appendcontrol(ssb, m, control)				\
+	((ssb_space(ssb) <= 0) ? 1 : sbappendcontrol(&(ssb)->sb, m, control))
+
+#define ssb_insert_knote(ssb, kn) {					\
+        SLIST_INSERT_HEAD(&(ssb)->ssb_sel.si_note, kn, kn_selnext);	\
+	(ssb)->ssb_flags |= SSB_KNOTE;					\
 }
 
-/* adjust counters in sb reflecting freeing of m */
-#define	sbfree(sb, m) { \
-	(sb)->sb_cc -= (m)->m_len; \
-	(sb)->sb_mbcnt -= MSIZE; \
-	if ((m)->m_flags & M_EXT) \
-		(sb)->sb_mbcnt -= (m)->m_ext.ext_size; \
-}
-
-/*
- * Set lock on sockbuf sb; sleep if lock is already held.
- * Unless SB_NOINTR is set on sockbuf, sleep is interruptible.
- * Returns error without lock if sleep is interrupted.
- */
-#define sblock(sb, wf) ((sb)->sb_flags & SB_LOCK ? \
-		(((wf) == M_WAITOK) ? sb_lock(sb) : EWOULDBLOCK) : \
-		((sb)->sb_flags |= SB_LOCK), 0)
-
-/* release lock on sockbuf sb */
-#define	sbunlock(sb) { \
-	(sb)->sb_flags &= ~SB_LOCK; \
-	if ((sb)->sb_flags & SB_WANT) { \
-		(sb)->sb_flags &= ~SB_WANT; \
-		wakeup((caddr_t)&(sb)->sb_flags); \
-	} \
+#define ssb_remove_knote(ssb, kn) {					\
+        SLIST_REMOVE(&(ssb)->ssb_sel.si_note, kn, knote, kn_selnext);	\
+	if (SLIST_EMPTY(&(ssb)->ssb_sel.si_note))			\
+		(ssb)->ssb_flags &= ~SSB_KNOTE;				\
 }
 
 #define	sorwakeup(so)	do { \
-			  if (sb_notify(&(so)->so_rcv)) \
+			  if (ssb_notify(&(so)->so_rcv)) \
 			    sowakeup((so), &(so)->so_rcv); \
 			} while (0)
 
 #define	sowwakeup(so)	do { \
-			  if (sb_notify(&(so)->so_snd)) \
+			  if (ssb_notify(&(so)->so_snd)) \
 			    sowakeup((so), &(so)->so_snd); \
 			} while (0)
 
@@ -299,27 +305,6 @@ struct accept_filter {
 		(struct socket *so);
 	SLIST_ENTRY(accept_filter) accf_next;	/* next on the list */
 };
-
-/*
- * Passed to so_pru_soreceive() instead of a UIO to directly obtain an
- * mbuf chain.  The sorecv_direct API allows mbufs to be directly
- * transfered to the caller.
- */
-struct sorecv_direct {
-	int	len;
-	int	maxlen;
-	struct mbuf *m0;
-	struct mbuf **mapp;
-};
-
-static __inline void
-sorecv_direct_init(struct sorecv_direct *sio, int maxlen)
-{
-	sio->len = 0;
-	sio->maxlen = maxlen;
-	sio->m0 = NULL;
-	sio->mapp = &sio->m0;
-}
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_PCB);
@@ -362,29 +347,14 @@ int	sokqfilter (struct file *fp, struct knote *kn);
  */
 struct	sockaddr *dup_sockaddr (const struct sockaddr *sa);
 int	getsockaddr (struct sockaddr **namp, caddr_t uaddr, size_t len);
-void	sbappend (struct sockbuf *sb, struct mbuf *m);
-int	sbappendaddr (struct sockbuf *sb, const struct sockaddr *asa,
-	    struct mbuf *m0, struct mbuf *control);
-int	sbappendcontrol (struct sockbuf *sb, struct mbuf *m0,
-	    struct mbuf *control);
-void	sbappendrecord (struct sockbuf *sb, struct mbuf *m0);
-void	sbappendstream (struct sockbuf *sb, struct mbuf *m);
-void	_sbcheck (struct sockbuf *sb);
-void	sbcompress (struct sockbuf *sb, struct mbuf *m, struct mbuf *n);
-struct mbuf *
-	sbcreatecontrol (caddr_t p, int size, int type, int level);
-void	sbdrop (struct sockbuf *sb, int len);
-void	sbdroprecord (struct sockbuf *sb);
-struct mbuf *
-	sbunlinkmbuf (struct sockbuf *, struct mbuf *, struct mbuf **);
-void	sbflush (struct sockbuf *sb);
-void	sbinsertoob (struct sockbuf *sb, struct mbuf *m0);
-void	sbrelease (struct sockbuf *sb, struct socket *so);
-int	sbreserve (struct sockbuf *sb, u_long cc, struct socket *so,
+
+void	ssb_release (struct signalsockbuf *ssb, struct socket *so);
+int	ssb_reserve (struct signalsockbuf *ssb, u_long cc, struct socket *so,
 		   struct rlimit *rl);
-void	sbtoxsockbuf (struct sockbuf *sb, struct xsockbuf *xsb);
-int	sbwait (struct sockbuf *sb);
-int	sb_lock (struct sockbuf *sb);
+void	ssbtoxsockbuf (struct signalsockbuf *sb, struct xsockbuf *xsb);
+int	ssb_wait (struct signalsockbuf *sb);
+int	_ssb_lock (struct signalsockbuf *sb);
+
 int	soabort (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
 struct	socket *soalloc (int waitok);
@@ -419,7 +389,7 @@ int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
 int	sopoll (struct socket *so, int events, struct ucred *cred,
 		    struct thread *td);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
-		       struct uio *uio, struct sorecv_direct *sio,
+		       struct uio *uio, struct sockbuf *sio,
 		       struct mbuf **controlp, int *flagsp);
 int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
 		   struct rlimit *rl);
@@ -433,7 +403,7 @@ int	sosendudp (struct socket *so, struct sockaddr *addr, struct uio *uio,
 int	sosetopt (struct socket *so, struct sockopt *sopt);
 int	soshutdown (struct socket *so, int how);
 void	sotoxsocket (struct socket *so, struct xsocket *xso);
-void	sowakeup (struct socket *so, struct sockbuf *sb);
+void	sowakeup (struct socket *so, struct signalsockbuf *sb);
 
 /* accept filter functions */
 int	accept_filt_add (struct accept_filter *filt);

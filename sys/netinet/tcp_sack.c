@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.5 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.6 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -503,7 +503,7 @@ sendunsacked:
 
 	/* See if unsent data available within send window. */
 	off = tp->snd_max - tp->snd_una;
-	len = (long) ulmin(so->so_snd.sb_cc, tp->snd_wnd) - off;
+	len = (long) ulmin(so->so_snd.ssb_cc, tp->snd_wnd) - off;
 	if (len > 0) {
 		*nextrexmt = tp->snd_max;	/* Send new data. */
 		*plen = tp->t_maxseg;

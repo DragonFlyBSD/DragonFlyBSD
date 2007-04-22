@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.12 2007/04/21 02:26:47 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.13 2007/04/22 01:13:13 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -706,7 +706,7 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 	}
 
 	/* Send it up to the socket */
-	if (sbappendaddr(&so->so_rcv,
+	if (ssb_appendaddr(&so->so_rcv,
 	    (struct sockaddr *) addr, mdata, NULL) == 0) {
 		TRAP_ERROR;
 		m_freem(mdata);
@@ -825,7 +825,7 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	NG_FREE_META(meta);
 
 	/* Try to tell the socket which hook it came in on */
-	if (sbappendaddr(&so->so_rcv, (struct sockaddr *) addr, m, NULL) == 0) {
+	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *) addr, m, NULL) == 0) {
 		m_freem(m);
 		TRAP_ERROR;
 		return (ENOBUFS);

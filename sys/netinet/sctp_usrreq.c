@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.11 2007/04/21 02:26:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.12 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -812,7 +812,7 @@ sctp_detach(struct socket *so)
 		return EINVAL;
 	crit_enter();
 	if (((so->so_options & SO_LINGER) && (so->so_linger == 0)) ||
-	    (so->so_rcv.sb_cc > 0)) {
+	    (so->so_rcv.ssb_cc > 0)) {
 		sctp_inpcb_free(inp, 1);
 	} else {
 		sctp_inpcb_free(inp, 0);
@@ -968,7 +968,7 @@ sctp_disconnect(struct socket *so)
 			SCTP_TCB_LOCK(stcb);
 			if (((so->so_options & SO_LINGER) &&
 			     (so->so_linger == 0)) ||
-			    (so->so_rcv.sb_cc > 0)) {
+			    (so->so_rcv.ssb_cc > 0)) {
 				if (SCTP_GET_STATE(asoc) !=
 				    SCTP_STATE_COOKIE_WAIT) {
 					/* Left with Data unread */
@@ -2553,7 +2553,7 @@ sctp_optsget(struct socket *so,
 			sasoc->sasoc_asocmaxrxt = inp->sctp_ep.max_send_times;
 			sasoc->sasoc_number_peer_destinations = 0;
 			sasoc->sasoc_peer_rwnd = 0;
-			sasoc->sasoc_local_rwnd = sbspace(&inp->sctp_socket->so_rcv);
+			sasoc->sasoc_local_rwnd = ssb_space(&inp->sctp_socket->so_rcv);
 			sasoc->sasoc_cookie_life = inp->sctp_ep.def_cookie_life;
 			SCTP_INP_RUNLOCK(inp);
 		}
@@ -3915,7 +3915,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 			incr = 0;
 		}
 		if (((uint32_t)incr >= (stcb->asoc.smallest_mtu * SCTP_SEG_TO_RWND_UPD)) ||
-		    ((((uint32_t)incr)*SCTP_SCALE_OF_RWND_TO_UPD) >= so->so_rcv.sb_hiwat)) {
+		    ((((uint32_t)incr)*SCTP_SCALE_OF_RWND_TO_UPD) >= so->so_rcv.ssb_hiwat)) {
 			if (callout_pending(&stcb->asoc.dack_timer.timer)) {
 				/* If the timer is up, stop it */
 				sctp_timer_stop(SCTP_TIMER_TYPE_RECV,
@@ -3933,12 +3933,12 @@ sctp_usr_recvd(struct socket *so, int flags)
 		}
 	}
 	SOCKBUF_LOCK(&so->so_rcv);
-	if (( so->so_rcv.sb_mb == NULL ) &&
+	if (( so->so_rcv.ssb_mb == NULL ) &&
 	    (TAILQ_EMPTY(&inp->sctp_queue_list) == 0)) {
 		int sq_cnt=0;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-			kprintf("Something off, inp:%x so->so_rcv->sb_mb is empty and sockq is not.. cleaning\n",
+			kprintf("Something off, inp:%x so->so_rcv->ssb_mb is empty and sockq is not.. cleaning\n",
 			       (u_int)inp);
 #endif
 		if (((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0)

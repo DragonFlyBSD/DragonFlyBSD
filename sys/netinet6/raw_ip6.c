@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.24 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.25 2007/04/22 01:13:14 dillon Exp $
  */
 
 /*
@@ -199,7 +199,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */
 				m_adj(n, *offp);
-				if (sbappendaddr(&last->in6p_socket->so_rcv,
+				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 						(struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					m_freem(n);
@@ -240,7 +240,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 			ip6_savecontrol(last, &opts, ip6, m);
 		/* strip intermediate headers */
 		m_adj(m, *offp);
-		if (sbappendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 				(struct sockaddr *)&rip6src, m, opts) == 0) {
 			m_freem(m);
 			if (opts)

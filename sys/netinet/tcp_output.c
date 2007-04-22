@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.33 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.34 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -243,7 +243,7 @@ again:
 			 * to send then the probe will be the FIN
 			 * itself.
 			 */
-			if (off < so->so_snd.sb_cc)
+			if (off < so->so_snd.ssb_cc)
 				flags &= ~TH_FIN;
 			sendwin = 1;
 		} else {
@@ -254,7 +254,7 @@ again:
 
 	/*
 	 * If snd_nxt == snd_max and we have transmitted a FIN, the
-	 * offset will be > 0 even if so_snd.sb_cc is 0, resulting in
+	 * offset will be > 0 even if so_snd.ssb_cc is 0, resulting in
 	 * a negative length.  This can also occur when TCP opens up
 	 * its congestion window while receiving additional duplicate
 	 * acks after fast-retransmit because TCP will reset snd_nxt
@@ -264,7 +264,7 @@ again:
 	 * be set to snd_una, the offset will be 0, and the length may
 	 * wind up 0.
 	 */
-	len = (long)ulmin(so->so_snd.sb_cc, sendwin) - off;
+	len = (long)ulmin(so->so_snd.ssb_cc, sendwin) - off;
 
 	/*
 	 * Lop off SYN bit if it has already been sent.  However, if this
@@ -323,10 +323,10 @@ again:
 		len = tp->t_maxseg;
 		sendalot = TRUE;
 	}
-	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.sb_cc))
+	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.ssb_cc))
 		flags &= ~TH_FIN;
 
-	recvwin = sbspace(&so->so_rcv);
+	recvwin = ssb_space(&so->so_rcv);
 
 	/*
 	 * Sender silly window avoidance.   We transmit under the following
@@ -352,7 +352,7 @@ again:
 		 */
 		if (!(tp->t_flags & TF_MORETOCOME) &&	/* normal case */
 		    (idle || (tp->t_flags & TF_NODELAY)) &&
-		    len + off >= so->so_snd.sb_cc &&
+		    len + off >= so->so_snd.ssb_cc &&
 		    !(tp->t_flags & TF_NOPUSH)) {
 			goto send;
 		}
@@ -399,7 +399,7 @@ again:
 			if (adv >= (long) (2 * tp->t_maxseg))
 				goto send;
 		}
-		if (2 * adv >= (long) so->so_rcv.sb_hiwat)
+		if (2 * adv >= (long) so->so_rcv.ssb_hiwat)
 			goto send;
 	}
 
@@ -444,7 +444,7 @@ again:
 	 * if window is nonzero, transmit what we can,
 	 * otherwise force out a byte.
 	 */
-	if (so->so_snd.sb_cc > 0 &&
+	if (so->so_snd.ssb_cc > 0 &&
 	    !callout_active(tp->tt_rexmt) && !callout_active(tp->tt_persist)) {
 		tp->t_rxtshift = 0;
 		tcp_setpersist(tp);
@@ -663,7 +663,7 @@ send:
 			tcpstat.tcps_sndbyte += len;
 		}
 #ifdef notyet
-		if ((m = m_copypack(so->so_snd.sb_mb, off, (int)len,
+		if ((m = m_copypack(so->so_snd.ssb_mb, off, (int)len,
 		    max_linkhdr + hdrlen)) == NULL) {
 			error = ENOBUFS;
 			goto out;
@@ -687,11 +687,11 @@ send:
 		m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
 		if (len <= MHLEN - hdrlen - max_linkhdr) {
-			m_copydata(so->so_snd.sb_mb, off, (int) len,
+			m_copydata(so->so_snd.ssb_mb, off, (int) len,
 			    mtod(m, caddr_t) + hdrlen);
 			m->m_len += len;
 		} else {
-			m->m_next = m_copy(so->so_snd.sb_mb, off, (int) len);
+			m->m_next = m_copy(so->so_snd.ssb_mb, off, (int) len);
 			if (m->m_next == NULL) {
 				m_free(m);
 				error = ENOBUFS;
@@ -705,7 +705,7 @@ send:
 		 * give data to the user when a buffer fills or
 		 * a PUSH comes in.)
 		 */
-		if (off + len == so->so_snd.sb_cc)
+		if (off + len == so->so_snd.ssb_cc)
 			flags |= TH_PUSH;
 	} else {
 		if (tp->t_flags & TF_ACKNOW)
@@ -777,7 +777,7 @@ send:
 	 * Calculate receive window.  Don't shrink window,
 	 * but avoid silly window syndrome.
 	 */
-	if (recvwin < (long)(so->so_rcv.sb_hiwat / 4) &&
+	if (recvwin < (long)(so->so_rcv.ssb_hiwat / 4) &&
 	    recvwin < (long)tp->t_maxseg)
 		recvwin = 0;
 	if (recvwin < (long)(tp->rcv_adv - tp->rcv_nxt))

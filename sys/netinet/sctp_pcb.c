@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.11 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.12 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2285,7 +2285,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 			if ((asoc->asoc.size_on_delivery_queue  > 0) ||
 			    (asoc->asoc.size_on_reasm_queue > 0) ||
 			    (asoc->asoc.size_on_all_streams > 0) ||
-			    (so && (so->so_rcv.sb_cc > 0))
+			    (so && (so->so_rcv.ssb_cc > 0))
 				) {
 				/* Left with Data unread */
 				struct mbuf *op_err;
@@ -3594,11 +3594,11 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	/* now clean up the tasoc itself */
 	SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_asoc, stcb);
 	sctppcbinfo.ipi_count_asoc--;
-	if ((inp->sctp_socket->so_snd.sb_cc) ||
-	    (inp->sctp_socket->so_snd.sb_mbcnt)) {
+	if ((inp->sctp_socket->so_snd.ssb_cc) ||
+	    (inp->sctp_socket->so_snd.ssb_mbcnt)) {
 		/* This will happen when a abort is done */
-		inp->sctp_socket->so_snd.sb_cc = 0;
-		inp->sctp_socket->so_snd.sb_mbcnt = 0;
+		inp->sctp_socket->so_snd.ssb_cc = 0;
+		inp->sctp_socket->so_snd.ssb_mbcnt = 0;
 	}
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) {
 		if ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) {

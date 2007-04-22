@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.41 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.42 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -509,7 +509,7 @@ udp_input(struct mbuf *m, ...)
 	} else
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
-	if (sbappendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
+	if (ssb_appendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
 		udpstat.udps_fullsock++;
 		goto bad;
 	}
@@ -578,7 +578,7 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
 	m_adj(n, off);
-	if (sbappendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
+	if (ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
 		m_freem(n);
 		if (opts)
 			m_freem(opts);

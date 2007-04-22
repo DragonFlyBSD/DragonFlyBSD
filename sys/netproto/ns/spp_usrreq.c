@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.21 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.22 2007/04/22 01:13:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -423,9 +423,9 @@ spp_reass(struct sppcb *cb, struct spidp *si, struct mbuf *si_m)
 	/*
 	 * Trim Acked data from output queue.
 	 */
-	while ((m = so->so_snd.sb_mb) != NULL) {
+	while ((m = so->so_snd.ssb_mb) != NULL) {
 		if (SSEQ_LT((mtod(m, struct spidp *))->si_seq, si->si_ack))
-			sbdroprecord(&so->so_snd);
+			sbdroprecord(&so->so_snd.sb);
 		else
 			break;
 	}
@@ -537,8 +537,8 @@ present:
 			m = q->si_mbuf;
 			if (SI(q)->si_cc & SP_OB) {
 				cb->s_oobflags &= ~SF_IOOB;
-				if (so->so_rcv.sb_cc)
-					so->so_oobmark = so->so_rcv.sb_cc;
+				if (so->so_rcv.ssb_cc)
+					so->so_oobmark = so->so_rcv.ssb_cc;
 				else
 					so->so_state |= SS_RCVATMARK;
 			}
@@ -565,7 +565,7 @@ present:
 						s[0] = 5;
 						s[1] = 1;
 						*(u_char *)(&s[2]) = dt;
-						sbappend(&so->so_rcv, mm);
+						sbappend(&so->so_rcv.sb, mm);
 					}
 				}
 				if (sp->sp_cc & SP_OB) {
@@ -580,20 +580,20 @@ present:
 					m->m_pkthdr.len -= SPINC;
 				}
 				if ((sp->sp_cc & SP_EM) || packetp) {
-					sbappendrecord(&so->so_rcv, m);
+					sbappendrecord(&so->so_rcv.sb, m);
 					spp_newchecks[9]++;
 				} else
-					sbappend(&so->so_rcv, m);
+					sbappend(&so->so_rcv.sb, m);
 			} else
 #endif
 			if (packetp) {
-				sbappendrecord(&so->so_rcv, m);
+				sbappendrecord(&so->so_rcv.sb, m);
 			} else {
 				cb->s_rhdr = *mtod(m, struct sphdr *);
 				m->m_data += SPINC;
 				m->m_len -= SPINC;
 				m->m_pkthdr.len -= SPINC;
-				sbappend(&so->so_rcv, m);
+				sbappend(&so->so_rcv.sb, m);
 			}
 		  } else
 			break;
@@ -679,7 +679,7 @@ spp_fixmtu(struct nspcb *nsp)
 	struct mbuf *m;
 	struct spidp *si;
 	struct ns_errp *ep;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 	int badseq, len;
 	struct mbuf *firstbad, *m0;
 
@@ -697,10 +697,10 @@ spp_fixmtu(struct nspcb *nsp)
 		 * data at our destination will be discarded.
 		 */
 		 ep = (struct ns_errp *)nsp->nsp_notify_param;
-		 sb = &nsp->nsp_socket->so_snd;
+		 ssb = &nsp->nsp_socket->so_snd;
 		 cb->s_mtu = ep->ns_err_param;
 		 badseq = ep->ns_err_idp.si_seq;
-		 for (m = sb->sb_mb; m; m = m->m_nextpkt) {
+		 for (m = ssb->ssb_mb; m; m = m->m_nextpkt) {
 			si = mtod(m, struct spidp *);
 			if (si->si_seq == badseq)
 				break;
@@ -725,7 +725,7 @@ spp_output(struct sppcb *cb, struct mbuf *m0)
 	struct socket *so = cb->s_nspcb->nsp_socket;
 	struct mbuf *m = NULL;
 	struct spidp *si = NULL;
-	struct sockbuf *sb = &so->so_snd;
+	struct signalsockbuf *ssb = &so->so_snd;
 	int len = 0, win, rcv_win;
 	short span, off, recordp = 0;
 	u_short alo;
@@ -860,7 +860,7 @@ spp_output(struct sppcb *cb, struct mbuf *m0)
 		/*
 		 * queue stuff up for output
 		 */
-		sbappendrecord(sb, m);
+		sbappendrecord(&ssb->sb, m);
 		cb->s_seq++;
 	}
 #ifdef notdef
@@ -903,7 +903,7 @@ again:
 	}
 	if (len > 1)
 		sendalot = 1;
-	rcv_win = sbspace(&so->so_rcv);
+	rcv_win = ssb_space(&so->so_rcv);
 
 	/*
 	 * Send if we owe peer an ACK.
@@ -938,8 +938,8 @@ again:
 		u_short delta =  1 + cb->s_alo - cb->s_ack;
 		int adv = rcv_win - (delta * cb->s_mtu);
 
-		if ((so->so_rcv.sb_cc == 0 && adv >= (2 * cb->s_mtu)) ||
-		    (100 * adv / so->so_rcv.sb_hiwat >= 35)) {
+		if ((so->so_rcv.ssb_cc == 0 && adv >= (2 * cb->s_mtu)) ||
+		    (100 * adv / so->so_rcv.ssb_hiwat >= 35)) {
 			sppstat.spps_sndwinup++;
 			cb->s_flags |= SF_ACKNOW;
 			goto send;
@@ -955,7 +955,7 @@ again:
 	 * if window is nonzero, transmit what we can,
 	 * otherwise send a probe.
 	 */
-	if (so->so_snd.sb_cc && cb->s_timer[SPPT_REXMT] == 0 &&
+	if (so->so_snd.ssb_cc && cb->s_timer[SPPT_REXMT] == 0 &&
 		cb->s_timer[SPPT_PERSIST] == 0) {
 			cb->s_rxtshift = 0;
 			spp_setpersist(cb);
@@ -973,7 +973,7 @@ send:
 	si = NULL;
 	if (len > 0) {
 		cb->s_want = cb->s_snxt;
-		for (m = sb->sb_mb; m; m = m->m_nextpkt) {
+		for (m = ssb->ssb_mb; m; m = m->m_nextpkt) {
 			si = mtod(m, struct spidp *);
 			if (SSEQ_LEQ(cb->s_snxt, si->si_seq))
 				break;
@@ -1318,20 +1318,20 @@ spp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct nspcb *nsp = sotonspcb(so);
 	struct sppcb *cb;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 	int error;
 
 	if (nsp != NULL)
 		return(EISCONN);
 	if ((error = ns_pcballoc(so, &nspcb)) != 0)
 		return(error);
-	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		if ((error = soreserve(so, 3072, 3072, ai->sb_rlimit)) != 0)
 			return(error);
 	}
 	nsp = sotonspcb(so);
 
-	sb = &so->so_snd;
+	ssb = &so->so_snd;
 	cb = kmalloc(sizeof(struct sppcb), M_SPPCB, M_WAITOK|M_ZERO);
 	cb->s_idp = kmalloc(sizeof(struct idp), M_IDP, M_WAITOK|M_ZERO);
 	cb->s_state = TCPS_LISTEN;
@@ -1340,9 +1340,9 @@ spp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	cb->s_q.si_next = cb->s_q.si_prev = &cb->s_q;
 	cb->s_nspcb = nsp;
 	cb->s_mtu = 576 - sizeof (struct spidp);
-	cb->s_cwnd = sbspace(sb) * CUNIT / cb->s_mtu;
+	cb->s_cwnd = ssb_space(ssb) * CUNIT / cb->s_mtu;
 	cb->s_ssthresh = cb->s_cwnd;
-	cb->s_cwmx = sbspace(sb) * CUNIT / (2 * sizeof (struct spidp));
+	cb->s_cwmx = ssb_space(ssb) * CUNIT / (2 * sizeof (struct spidp));
 
 	/*
 	 * Above is recomputed when connecting to account
@@ -1556,7 +1556,7 @@ spp_send(struct socket *so, int flags, struct mbuf *m,
 		cb = nstosppcb(nsp);
 		error = 0;
 		if (flags & PRUS_OOB) {
-			if (sbspace(&so->so_snd) < -512) {
+			if (ssb_space(&so->so_snd) < -512) {
 				error = ENOBUFS;
 			} else {
 				cb->s_oobflags |= SF_SOOB;
@@ -1679,7 +1679,7 @@ spp_template(struct sppcb *cb)
 {
 	struct nspcb *nsp = cb->s_nspcb;
 	struct idp *idp = cb->s_idp;
-	struct sockbuf *sb = &(nsp->nsp_socket->so_snd);
+	struct signalsockbuf *ssb = &(nsp->nsp_socket->so_snd);
 
 	idp->idp_pt = NSPROTO_SPP;
 	idp->idp_sna = nsp->nsp_laddr;
@@ -1687,10 +1687,10 @@ spp_template(struct sppcb *cb)
 	cb->s_sid = htons(spp_iss);
 	spp_iss += SPP_ISSINCR/2;
 	cb->s_alo = 1;
-	cb->s_cwnd = (sbspace(sb) * CUNIT) / cb->s_mtu;
+	cb->s_cwnd = (ssb_space(ssb) * CUNIT) / cb->s_mtu;
 	cb->s_ssthresh = cb->s_cwnd; /* Try to expand fast to full complement
 					of large packets */
-	cb->s_cwmx = (sbspace(sb) * CUNIT) / (2 * sizeof(struct spidp));
+	cb->s_cwmx = (ssb_space(ssb) * CUNIT) / (2 * sizeof(struct spidp));
 	cb->s_cwmx = max(cb->s_cwmx, cb->s_cwnd);
 		/* But allow for lots of little packets as well */
 }

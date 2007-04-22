@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.10 2007/01/02 19:30:57 tgen Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.11 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -2732,7 +2732,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	/* place in my tag */
 	initm->msg.init.initiate_tag = htonl(stcb->asoc.my_vtag);
 	/* set up some of the credits. */
-	initm->msg.init.a_rwnd = htonl(max(inp->sctp_socket->so_rcv.sb_hiwat,
+	initm->msg.init.a_rwnd = htonl(max(inp->sctp_socket->so_rcv.ssb_hiwat,
 	    SCTP_MINIMAL_RWND));
 
 	initm->msg.init.num_outbound_streams = htons(stcb->asoc.pre_open_streams);
@@ -3690,7 +3690,7 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	stc.my_vtag = initackm_out->msg.init.initiate_tag;
 
 	/* set up some of the credits. */
-	initackm_out->msg.init.a_rwnd = htonl(max(inp->sctp_socket->so_rcv.sb_hiwat, SCTP_MINIMAL_RWND));
+	initackm_out->msg.init.a_rwnd = htonl(max(inp->sctp_socket->so_rcv.ssb_hiwat, SCTP_MINIMAL_RWND));
 	/* set what I want */
 	his_limit = ntohs(init_chk->init.num_inbound_streams);
 	/* choose what I want */
@@ -4309,11 +4309,11 @@ sctp_msg_append(struct sctp_tcb *stcb,
 
 	/* lock the socket buf */
 	SOCKBUF_LOCK(&so->so_snd);
-	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
+	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out_locked;
 
-	if (dataout > so->so_snd.sb_hiwat) {
+	if (dataout > so->so_snd.ssb_hiwat) {
 		/* It will NEVER fit */
 		error = EMSGSIZE;
 		goto release;
@@ -4324,21 +4324,21 @@ sctp_msg_append(struct sctp_tcb *stcb,
 		) {
 		goto zap_by_it_all;
 	}
-	if ((so->so_snd.sb_hiwat <
+	if ((so->so_snd.ssb_hiwat <
 	     (dataout + asoc->total_output_queue_size)) ||
 	    (asoc->chunks_on_out_queue > sctp_max_chunks_on_queue) ||
 	    (asoc->total_output_mbuf_queue_size >
-	     so->so_snd.sb_mbmax)
+	     so->so_snd.ssb_mbmax)
 		) {
 		/* XXX Buffer space hunt for data to skip */
 		if (asoc->peer_supports_prsctp) {
 			sctp_prune_prsctp(stcb, asoc, srcv, dataout);
 		}
-		while ((so->so_snd.sb_hiwat <
+		while ((so->so_snd.ssb_hiwat <
 		    (dataout + asoc->total_output_queue_size)) ||
 		    (asoc->chunks_on_out_queue > sctp_max_chunks_on_queue) ||
 		    (asoc->total_output_mbuf_queue_size >
-		    so->so_snd.sb_mbmax)) {
+		    so->so_snd.ssb_mbmax)) {
 			struct sctp_inpcb *inp;
 			/* Now did we free up enough room? */
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
@@ -4365,8 +4365,8 @@ sctp_msg_append(struct sctp_tcb *stcb,
 
 			inp->sctp_tcb_at_block = (void *)stcb;
 			inp->error_on_block = 0;
-			sbunlock(&so->so_snd);
-			error = sbwait(&so->so_snd);
+			ssb_unlock(&so->so_snd);
+			error = ssb_wait(&so->so_snd);
 			/*
 			 * XXX: This is ugly but I have
 			 * recreated most of what goes on to
@@ -4384,7 +4384,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 			if (error) {
 				goto out_locked;
 			}
-			error = sblock(&so->so_snd, M_WAITOK);
+			error = ssb_lock(&so->so_snd, M_WAITOK);
 			if (error)
 				goto out_locked;
 			/* Otherwise we cycle back and recheck
@@ -4658,8 +4658,8 @@ zap_by_it_all:
 	asoc->total_output_mbuf_queue_size += mbcnt;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
-		so->so_snd.sb_cc += dataout;
-		so->so_snd.sb_mbcnt += mbcnt;
+		so->so_snd.ssb_cc += dataout;
+		so->so_snd.ssb_mbcnt += mbcnt;
 	}
 
 #ifdef SCTP_DEBUG
@@ -4671,7 +4671,7 @@ zap_by_it_all:
 #endif
 
 release:
-	sbunlock(&so->so_snd);
+	ssb_unlock(&so->so_snd);
 out_locked:
 	SOCKBUF_UNLOCK(&so->so_snd);
 out:
@@ -5111,7 +5111,7 @@ sctp_move_to_outqueue(struct sctp_tcb *stcb,
 			/* A new mbuf was added, account for it */
 			if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
-				stcb->sctp_socket->so_snd.sb_mbcnt += MSIZE;
+				stcb->sctp_socket->so_snd.ssb_mbcnt += MSIZE;
 			}
 #ifdef SCTP_MBCNT_LOGGING
 			sctp_log_mbcnt(SCTP_LOG_MBCNT_INCREASE,
@@ -6412,7 +6412,7 @@ sctp_send_shutdown(struct sctp_tcb *stcb, struct sctp_nets *net)
 
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
-		stcb->sctp_ep->sctp_socket->so_snd.sb_cc = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_cc = 0;
 		soisdisconnecting(stcb->sctp_ep->sctp_socket);
 	}
 	return (0);
@@ -8147,7 +8147,7 @@ sctp_send_shutdown_complete(struct sctp_tcb *stcb,
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
 		stcb->sctp_ep->sctp_flags &= ~SCTP_PCB_FLAGS_CONNECTED;
-		stcb->sctp_ep->sctp_socket->so_snd.sb_cc = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_cc = 0;
 		soisdisconnected(stcb->sctp_ep->sctp_socket);
 	}
 	return (0);
@@ -8734,7 +8734,7 @@ sctp_send_packet_dropped(struct sctp_tcb *stcb, struct sctp_nets *net,
 	chk->rec.chunk_id = SCTP_PACKET_DROPPED;
 	drp->ch.chunk_type = SCTP_PACKET_DROPPED;
 	drp->ch.chunk_length = htons(chk->send_size);
-	spc = stcb->sctp_socket->so_rcv.sb_hiwat;
+	spc = stcb->sctp_socket->so_rcv.ssb_hiwat;
 	if (spc < 0) {
 		spc = 0;
 	}
@@ -8743,7 +8743,7 @@ sctp_send_packet_dropped(struct sctp_tcb *stcb, struct sctp_nets *net,
 				 asoc->size_on_reasm_queue +
 				 asoc->size_on_all_streams +
 				 asoc->my_rwnd_control_len +
-		                 stcb->sctp_socket->so_rcv.sb_cc);
+		                 stcb->sctp_socket->so_rcv.ssb_cc);
 	drp->reserved = 0;
 	datap = drp->data;
         m_copydata(m, iphlen, len, datap);
@@ -9516,23 +9516,23 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	sndlen = uio->uio_resid;
 	/* lock the socket buf */
 	SOCKBUF_LOCK(&so->so_snd);
-	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
+	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out_locked;
 
 	/* will it ever fit ? */
-	if (sndlen > so->so_snd.sb_hiwat) {
+	if (sndlen > so->so_snd.ssb_hiwat) {
 		/* It will NEVER fit */
 		error = EMSGSIZE;
 		crit_exit();
 		goto release;
 	}
 	/* Do I need to block? */
-	if ((so->so_snd.sb_hiwat <
+	if ((so->so_snd.ssb_hiwat <
 	    (sndlen + asoc->total_output_queue_size)) ||
 	    (asoc->chunks_on_out_queue > sctp_max_chunks_on_queue) ||
 	    (asoc->total_output_mbuf_queue_size >
-	    so->so_snd.sb_mbmax)
+	    so->so_snd.ssb_mbmax)
 	) {
 		/* prune any prsctp bufs out */
 		if (asoc->peer_supports_prsctp) {
@@ -9545,12 +9545,12 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 		 * been reset and our stcb destroyed. Returning
 		 * an error will flow back to the user...
 		 */
-		while ((so->so_snd.sb_hiwat <
+		while ((so->so_snd.ssb_hiwat <
 		    (sndlen + asoc->total_output_queue_size)) ||
 		    (asoc->chunks_on_out_queue >
 		    sctp_max_chunks_on_queue) ||
 		    (asoc->total_output_mbuf_queue_size >
-		    so->so_snd.sb_mbmax)
+		    so->so_snd.ssb_mbmax)
 		) {
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 				/* Non-blocking io in place */
@@ -9563,9 +9563,9 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 			sctp_log_block(SCTP_BLOCK_LOG_INTO_BLK,
 			    so, asoc);
 #endif
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			SCTP_TCB_UNLOCK(stcb);
-			error = sbwait(&so->so_snd);
+			error = ssb_wait(&so->so_snd);
 			SCTP_INP_RLOCK(inp);
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE)) {
@@ -9602,7 +9602,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 				crit_exit();
 				goto out_locked;
 			}
-			error = sblock(&so->so_snd, M_WAITOK);
+			error = ssb_lock(&so->so_snd, M_WAITOK);
 			if (error) {
 				/* Can't aquire the lock */
 				crit_exit();
@@ -9682,7 +9682,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 					mm = NULL;
 				}
 			}
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			SOCKBUF_UNLOCK(&so->so_snd);
 			sctp_abort_an_association(stcb->sctp_ep, stcb,
 						  SCTP_RESPONSE_TO_USER_REQ,
@@ -9949,8 +9949,8 @@ zap_by_it_now:
 	asoc->total_output_mbuf_queue_size += mbcnt;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
-		so->so_snd.sb_cc += dataout;
-		so->so_snd.sb_mbcnt += mbcnt;
+		so->so_snd.ssb_cc += dataout;
+		so->so_snd.ssb_mbcnt += mbcnt;
 	}
 	if ((srcv->sinfo_flags & MSG_EOF) &&
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE)
@@ -10012,7 +10012,7 @@ zap_by_it_now:
 #endif
 
 release:
-	sbunlock(&so->so_snd);
+	ssb_unlock(&so->so_snd);
 out_locked:
 	SOCKBUF_UNLOCK(&so->so_snd);
 out_notlocked:

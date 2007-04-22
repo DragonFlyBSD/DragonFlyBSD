@@ -1,5 +1,5 @@
 /*	$KAME: sctp_var.h,v 1.23 2004/10/27 07:57:49 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.3 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.4 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -162,7 +162,7 @@ int sctp_usrreq(struct socket *, int, struct mbuf *, struct mbuf *,
 		      struct mbuf *);
 #endif
 
-#define	sctp_sbspace(sb) ((long) (((sb)->sb_hiwat > (sb)->sb_cc) ? ((sb)->sb_hiwat - (sb)->sb_cc) : 0))
+#define	sctp_sbspace(ssb) ((long) (((ssb)->ssb_hiwat > (ssb)->ssb_cc) ? ((ssb)->ssb_hiwat - (ssb)->ssb_cc) : 0))
 
 #define sctp_sbspace_sub(a,b) ((a > b) ? (a - b) : 0)
 

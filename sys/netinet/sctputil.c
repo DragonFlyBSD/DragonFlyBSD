@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.7 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.8 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -319,9 +319,9 @@ sctp_log_block(uint8_t from, struct socket *so, struct sctp_association *asoc)
 
 	sctp_clog[sctp_cwnd_log_at].from = (u_int8_t)from;
 	sctp_clog[sctp_cwnd_log_at].event_type = (u_int8_t)SCTP_LOG_EVENT_BLOCK;
-	sctp_clog[sctp_cwnd_log_at].x.blk.maxmb = (u_int16_t)(so->so_snd.sb_mbmax/1024);
+	sctp_clog[sctp_cwnd_log_at].x.blk.maxmb = (u_int16_t)(so->so_snd.ssb_mbmax/1024);
 	sctp_clog[sctp_cwnd_log_at].x.blk.onmb = asoc->total_output_mbuf_queue_size;
-	sctp_clog[sctp_cwnd_log_at].x.blk.maxsb = (u_int16_t)(so->so_snd.sb_hiwat/1024);
+	sctp_clog[sctp_cwnd_log_at].x.blk.maxsb = (u_int16_t)(so->so_snd.ssb_hiwat/1024);
 	sctp_clog[sctp_cwnd_log_at].x.blk.onsb = asoc->total_output_queue_size;
 	sctp_clog[sctp_cwnd_log_at].x.blk.send_sent_qcnt = (u_int16_t)(asoc->send_queue_cnt + asoc->sent_queue_cnt);
 	sctp_clog[sctp_cwnd_log_at].x.blk.stream_qcnt = (u_int16_t)asoc->stream_queue_cnt;
@@ -809,8 +809,8 @@ sctp_init_asoc(struct sctp_inpcb *m, struct sctp_association *asoc,
 	}
 
 
-	asoc->my_rwnd = max(m->sctp_socket->so_rcv.sb_hiwat, SCTP_MINIMAL_RWND);
-	asoc->peers_rwnd = m->sctp_socket->so_rcv.sb_hiwat;
+	asoc->my_rwnd = max(m->sctp_socket->so_rcv.ssb_hiwat, SCTP_MINIMAL_RWND);
+	asoc->peers_rwnd = m->sctp_socket->so_rcv.ssb_hiwat;
 
 	asoc->smallest_mtu = m->sctp_frag_point;
 	asoc->minrto = m->sctp_ep.sctp_minrto;
@@ -2189,7 +2189,7 @@ sctp_notify_assoc_change(u_int32_t event, struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 	    to, m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2281,7 +2281,7 @@ sctp_notify_peer_addr_change(struct sctp_tcb *stcb, uint32_t state,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2382,7 +2382,7 @@ sctp_notify_send_failed(struct sctp_tcb *stcb, u_int32_t error,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2458,7 +2458,7 @@ sctp_notify_adaption_layer(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2534,7 +2534,7 @@ sctp_notify_partial_delivery_indication(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2619,7 +2619,7 @@ sctp_notify_shutdown_event(struct sctp_tcb *stcb)
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -2717,7 +2717,7 @@ sctp_notify_stream_reset(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
-	if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
+	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
@@ -3246,78 +3246,15 @@ sctp_print_address_pkt(struct ip *iph, struct sctphdr *sh)
 
 
 int
-sbappendaddr_nocheck(struct sockbuf *sb, struct sockaddr *asa, struct mbuf *m0,
+sctp_sbappendaddr_nocheck(struct signalsockbuf *ssb, struct sockaddr *asa, struct mbuf *m0,
 		     struct mbuf *control, u_int32_t tag,
 		     struct sctp_inpcb *inp)
 {
-#ifdef __NetBSD__
-	struct mbuf *m, *n;
-
-	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
-		panic("sbappendaddr_nocheck");
-
-	m0->m_pkthdr.csum_data = (int)tag;
-
-	for (n = control; n; n = n->m_next) {
-		if (n->m_next == 0)	/* keep pointer to last control buf */
-			break;
-	}
-	if (((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) == 0) ||
-	    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)== 0)) {
-		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
-		if (m == 0)
-			return (0);
-		m->m_len = 0;
-		if (asa->sa_len > MHLEN) {
-			MEXTMALLOC(m, asa->sa_len, M_NOWAIT);
-			if ((m->m_flags & M_EXT) == 0) {
-				m_free(m);
-				return (0);
-			}
-		}
-		m->m_len = asa->sa_len;
-		memcpy(mtod(m, caddr_t), (caddr_t)asa, asa->sa_len);
-	} else {
-		m = NULL;
-	}
-	if (n) {
-		n->m_next = m0;		/* concatenate data to control */
-	}else {
-		control = m0;
-	}
-	if (m)
-		m->m_next = control;
-	else
-		m = control;
-	m->m_pkthdr.csum_data = tag;
-
-	for (n = m; n; n = n->m_next)
-		sballoc(sb, n);
-	if ((n = sb->sb_mb) != NULL) {
-		if ((n->m_nextpkt != inp->sb_last_mpkt) && (n->m_nextpkt == NULL)) {
-			inp->sb_last_mpkt = NULL;
-		}
-		if (inp->sb_last_mpkt)
-			inp->sb_last_mpkt->m_nextpkt = m;
- 		else {
-			while (n->m_nextpkt) {
-				n = n->m_nextpkt;
-			}
-			n->m_nextpkt = m;
-		}
-		inp->sb_last_mpkt = m;
-	} else {
-		inp->sb_last_mpkt = sb->sb_mb = m;
-		inp->sctp_vtag_first = tag;
-	}
-	return (1);
-#endif
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	struct mbuf *m, *n, *nlast;
 	int cnt=0;
 
 	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
-		panic("sbappendaddr_nocheck");
+		panic("sctp_sbappendaddr_nocheck");
 
 	for (n = control; n; n = n->m_next) {
 		if (n->m_next == 0)	/* get pointer to last control buf */
@@ -3358,21 +3295,14 @@ sbappendaddr_nocheck(struct sockbuf *sb, struct sockaddr *asa, struct mbuf *m0,
 		m = control;
 	m->m_pkthdr.csum_data = (int)tag;
 
-	SOCKBUF_LOCK(sb);
+	SOCKBUF_LOCK(ssb);
 	for (n = m; n; n = n->m_next)
-		sballoc(sb, n);
+		sballoc(&ssb->sb, n);
 	nlast = n;
-	if (sb->sb_mb == NULL) {
+	if (ssb->ssb_mb == NULL) {
 		inp->sctp_vtag_first = tag;
 	}
-
-#ifdef __FREEBSD__
-	if (sb->sb_mb == NULL)
-		inp->sctp_vtag_first = tag;
-	SCTP_SBLINKRECORD(sb, m);
-	sb->sb_mbtail = nlast;
-#else
-	if ((n = sb->sb_mb) != NULL) {
+	if ((n = ssb->ssb_mb) != NULL) {
 		if ((n->m_nextpkt != inp->sb_last_mpkt) && (n->m_nextpkt == NULL)) {
 			inp->sb_last_mpkt = NULL;
 		}
@@ -3386,63 +3316,11 @@ sbappendaddr_nocheck(struct sockbuf *sb, struct sockaddr *asa, struct mbuf *m0,
 		}
 		inp->sb_last_mpkt = m;
 	} else {
-		inp->sb_last_mpkt = sb->sb_mb = m;
+		inp->sb_last_mpkt = ssb->ssb_mb = m;
 		inp->sctp_vtag_first = tag;
 	}
-#endif
-	SOCKBUF_UNLOCK(sb);
+	SOCKBUF_UNLOCK(ssb);
 	return (1);
-#endif
-#ifdef __OpenBSD__
-	struct mbuf *m, *n;
-
-	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
-		panic("sbappendaddr_nocheck");
-	m0->m_pkthdr.csum = (int)tag;
-	for (n = control; n; n = n->m_next) {
-		if (n->m_next == 0)	/* keep pointer to last control buf */
-			break;
-	}
-	if (((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) == 0) ||
-	    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)== 0)) {
-		if (asa->sa_len > MHLEN)
-			return (0);
-		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
-		if (m == 0)
-			return (0);
-		m->m_len = asa->sa_len;
-		bcopy((caddr_t)asa, mtod(m, caddr_t), asa->sa_len);
-	} else {
-		m = NULL;
-	}
-	if (n)
-		n->m_next = m0;		/* concatenate data to control */
-	else
-		control = m0;
-
-	m->m_pkthdr.csum = (int)tag;
-	m->m_next = control;
-	for (n = m; n; n = n->m_next)
-		sballoc(sb, n);
-	if ((n = sb->sb_mb) != NULL) {
-		if ((n->m_nextpkt != inp->sb_last_mpkt) && (n->m_nextpkt == NULL)) {
-			inp->sb_last_mpkt = NULL;
-		}
-		if (inp->sb_last_mpkt)
-			inp->sb_last_mpkt->m_nextpkt = m;
- 		else {
-			while (n->m_nextpkt) {
-				n = n->m_nextpkt;
-			}
-			n->m_nextpkt = m;
-		}
-		inp->sb_last_mpkt = m;
-	} else {
-		inp->sb_last_mpkt = sb->sb_mb = m;
-		inp->sctp_vtag_first = tag;
-	}
-	return (1);
-#endif
 }
 
 /*************HOLD THIS COMMENT FOR PATCH FILE OF
@@ -3507,9 +3385,9 @@ sctp_get_first_vtag_from_sb(struct socket *so)
 	u_int32_t retval;
 
 	retval = 0;
-	if (so->so_rcv.sb_mb) {
+	if (so->so_rcv.ssb_mb) {
 		/* grubbing time */
-		this = so->so_rcv.sb_mb;
+		this = so->so_rcv.ssb_mb;
 		while (this) {
 			at = this;
 			/* get to the m_pkthdr */
@@ -3551,14 +3429,14 @@ sctp_grub_through_socket_buffer(struct sctp_inpcb *inp, struct socket *old,
     struct socket *new, struct sctp_tcb *stcb)
 {
 	struct mbuf **put, **take, *next, *this;
-	struct sockbuf *old_sb, *new_sb;
+	struct signalsockbuf *old_sb, *new_sb;
 	struct sctp_association *asoc;
 	int moved_top = 0;
 
 	asoc = &stcb->asoc;
 	old_sb = &old->so_rcv;
 	new_sb = &new->so_rcv;
-	if (old_sb->sb_mb == NULL) {
+	if (old_sb->ssb_mb == NULL) {
 		/* Nothing to move */
 		return;
 	}
@@ -3568,26 +3446,26 @@ sctp_grub_through_socket_buffer(struct sctp_inpcb *inp, struct socket *old,
 	if (inp->sctp_vtag_first == asoc->my_vtag) {
 		/* First one must be moved */
 		struct mbuf *mm;
-		for (mm = old_sb->sb_mb; mm; mm = mm->m_next) {
+		for (mm = old_sb->ssb_mb; mm; mm = mm->m_next) {
 			/*
 			 * Go down the chain and fix
 			 * the space allocation of the
 			 * two sockets.
 			 */
-			sbfree(old_sb, mm);
-			sballoc(new_sb, mm);
+			sbfree(&old_sb->sb, mm);
+			sballoc(&new_sb->sb, mm);
 		}
-		new_sb->sb_mb = old_sb->sb_mb;
-		old_sb->sb_mb = new_sb->sb_mb->m_nextpkt;
-		new_sb->sb_mb->m_nextpkt = NULL;
-		put = &new_sb->sb_mb->m_nextpkt;
+		new_sb->ssb_mb = old_sb->ssb_mb;
+		old_sb->ssb_mb = new_sb->ssb_mb->m_nextpkt;
+		new_sb->ssb_mb->m_nextpkt = NULL;
+		put = &new_sb->ssb_mb->m_nextpkt;
 		moved_top = 1;
 	} else {
-		put = &new_sb->sb_mb;
+		put = &new_sb->ssb_mb;
 	}
 
-	take = &old_sb->sb_mb;
-	next = old_sb->sb_mb;
+	take = &old_sb->ssb_mb;
+	next = old_sb->ssb_mb;
 	while (next) {
 		this = next;
 		/* postion for next one */
@@ -3605,8 +3483,8 @@ sctp_grub_through_socket_buffer(struct sctp_inpcb *inp, struct socket *old,
 				 * the space allocation of the
 				 * two sockets.
 				 */
-				sbfree(old_sb, mm);
-				sballoc(new_sb, mm);
+				sbfree(&old_sb->sb, mm);
+				sballoc(&new_sb->sb, mm);
 			}
 			put = &this->m_nextpkt;
 
@@ -3655,16 +3533,16 @@ sctp_free_bufspace(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
-		if (stcb->sctp_socket->so_snd.sb_cc >= tp1->book_size) {
-			stcb->sctp_socket->so_snd.sb_cc -= tp1->book_size;
+		if (stcb->sctp_socket->so_snd.ssb_cc >= tp1->book_size) {
+			stcb->sctp_socket->so_snd.ssb_cc -= tp1->book_size;
 		} else {
-			stcb->sctp_socket->so_snd.sb_cc = 0;
+			stcb->sctp_socket->so_snd.ssb_cc = 0;
 
 		}
-		if (stcb->sctp_socket->so_snd.sb_mbcnt >= tp1->mbcnt) {
-			stcb->sctp_socket->so_snd.sb_mbcnt -= tp1->mbcnt;
+		if (stcb->sctp_socket->so_snd.ssb_mbcnt >= tp1->mbcnt) {
+			stcb->sctp_socket->so_snd.ssb_mbcnt -= tp1->mbcnt;
 		} else {
-			stcb->sctp_socket->so_snd.sb_mbcnt = 0;
+			stcb->sctp_socket->so_snd.ssb_mbcnt = 0;
 		}
 	}
 }

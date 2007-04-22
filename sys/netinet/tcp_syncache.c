@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.28 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.29 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -985,8 +985,8 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	else
 		sc->sc_iss = karc4random();
 
-	/* Initial receive window: clip sbspace to [0 .. TCP_MAXWIN] */
-	win = sbspace(&so->so_rcv);
+	/* Initial receive window: clip ssb_space to [0 .. TCP_MAXWIN] */
+	win = ssb_space(&so->so_rcv);
 	win = imax(win, 0);
 	win = imin(win, TCP_MAXWIN);
 	sc->sc_wnd = win;
@@ -1005,7 +1005,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 
 			/* Compute proper scaling value from buffer space */
 			while (wscale < TCP_MAX_WINSHIFT &&
-			    (TCP_MAXWIN << wscale) < so->so_rcv.sb_hiwat)
+			    (TCP_MAXWIN << wscale) < so->so_rcv.ssb_hiwat)
 				wscale++;
 			sc->sc_request_r_scale = wscale;
 			sc->sc_requested_s_scale = to->to_requested_s_scale;
@@ -1439,7 +1439,7 @@ syncookie_lookup(struct in_conninfo *inc, struct tcphdr *th, struct socket *so)
 	}
 	sc->sc_irs = th->th_seq - 1;
 	sc->sc_iss = th->th_ack - 1;
-	wnd = sbspace(&so->so_rcv);
+	wnd = ssb_space(&so->so_rcv);
 	wnd = imax(wnd, 0);
 	wnd = imin(wnd, TCP_MAXWIN);
 	sc->sc_wnd = wnd;

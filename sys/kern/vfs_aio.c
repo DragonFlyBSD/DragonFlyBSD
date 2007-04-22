@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.37 2007/03/01 16:18:11 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.38 2007/04/22 01:13:10 dillon Exp $
  */
 
 /*
@@ -433,8 +433,8 @@ aio_proc_rundown(struct proc *p)
 			so = (struct socket *)fp->f_data;
 			TAILQ_REMOVE(&so->so_aiojobq, aiocbe, list);
 			if (TAILQ_EMPTY(&so->so_aiojobq)) {
-				so->so_snd.sb_flags &= ~SB_AIO;
-				so->so_rcv.sb_flags &= ~SB_AIO;
+				so->so_snd.ssb_flags &= ~SSB_AIO;
+				so->so_rcv.ssb_flags &= ~SSB_AIO;
 			}
 		}
 		TAILQ_REMOVE(&ki->kaio_sockqueue, aiocbe, plist);
@@ -1074,7 +1074,7 @@ aio_fphysio(struct aiocblist *iocb)
  * Wake up aio requests that may be serviceable now.
  */
 void
-aio_swake(struct socket *so, struct sockbuf *sb)
+aio_swake(struct socket *so, struct signalsockbuf *ssb)
 {
 #ifndef VFS_AIO
 	return;
@@ -1085,12 +1085,12 @@ aio_swake(struct socket *so, struct sockbuf *sb)
 	int opcode, wakecount = 0;
 	struct aioproclist *aiop;
 
-	if (sb == &so->so_snd) {
+	if (ssb == &so->so_snd) {
 		opcode = LIO_WRITE;
-		so->so_snd.sb_flags &= ~SB_AIO;
+		so->so_snd.ssb_flags &= ~SSB_AIO;
 	} else {
 		opcode = LIO_READ;
-		so->so_rcv.sb_flags &= ~SB_AIO;
+		so->so_rcv.ssb_flags &= ~SSB_AIO;
 	}
 
 	for (cb = TAILQ_FIRST(&so->so_aiojobq); cb; cb = cbn) {
@@ -1290,7 +1290,7 @@ no_kqueue:
 		 * operation).
 		 *
 		 * If it is not ready for io, then queue the aiocbe on the
-		 * socket, and set the flags so we get a call when sbnotify()
+		 * socket, and set the flags so we get a call when ssb_notify()
 		 * happens.
 		 */
 		so = (struct socket *)fp->f_data;
@@ -1300,9 +1300,9 @@ no_kqueue:
 			TAILQ_INSERT_TAIL(&so->so_aiojobq, aiocbe, list);
 			TAILQ_INSERT_TAIL(&ki->kaio_sockqueue, aiocbe, plist);
 			if (opcode == LIO_READ)
-				so->so_rcv.sb_flags |= SB_AIO;
+				so->so_rcv.ssb_flags |= SSB_AIO;
 			else
-				so->so_snd.sb_flags |= SB_AIO;
+				so->so_snd.ssb_flags |= SSB_AIO;
 			aiocbe->jobstate = JOBST_JOBQGLOBAL; /* XXX */
 			ki->kaio_queue_count++;
 			num_queue_count++;

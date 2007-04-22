@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.25 2007/04/21 02:26:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.26 2007/04/22 01:13:14 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -274,7 +274,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 					/*
 					 * KAME NOTE: do not
 					 * m_copy(m, offset, ...) above.
-					 * sbappendaddr() expects M_PKTHDR,
+					 * ssb_appendaddr() expects M_PKTHDR,
 					 * and m_copy() will copy M_PKTHDR
 					 * only if offset is 0.
 					 */
@@ -284,7 +284,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 								ip6, n);
 								
 					m_adj(n, off + sizeof(struct udphdr));
-					if (sbappendaddr(&last->in6p_socket->so_rcv,
+					if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 							(struct sockaddr *)&udp_in6,
 							n, opts) == 0) {
 						m_freem(n);
@@ -342,7 +342,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			ip6_savecontrol(last, &opts, ip6, m);
 
 		m_adj(m, off + sizeof(struct udphdr));
-		if (sbappendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 				(struct sockaddr *)&udp_in6,
 				m, opts) == 0) {
 			udpstat.udps_fullsock++;
@@ -404,7 +404,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	    || in6p->in6p_socket->so_options & SO_TIMESTAMP)
 		ip6_savecontrol(in6p, &opts, ip6, m);
 	m_adj(m, off + sizeof(struct udphdr));
-	if (sbappendaddr(&in6p->in6p_socket->so_rcv,
+	if (ssb_appendaddr(&in6p->in6p_socket->so_rcv,
 			(struct sockaddr *)&udp_in6,
 			m, opts) == 0) {
 		udpstat.udps_fullsock++;
@@ -547,7 +547,7 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	if (inp != NULL)
 		return EINVAL;
 
-	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		error = soreserve(so, udp_sendspace, udp_recvspace,
 		    ai->sb_rlimit);
 		if (error)

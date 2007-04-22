@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.26 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.27 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -70,40 +70,97 @@ u_long	sb_max_adj =
 
 static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
 
+/************************************************************************
+ * signalsockbuf procedures						*
+ ************************************************************************/
+
 /*
- * Procedures to manipulate state flags of socket
- * and do appropriate wakeups.  Normal sequence from the
- * active (originating) side is that soisconnecting() is
- * called during processing of connect() call,
- * resulting in an eventual call to soisconnected() if/when the
- * connection is established.  When the connection is torn down
- * soisdisconnecting() is called during processing of disconnect() call,
- * and soisdisconnected() is called when the connection to the peer
- * is totally severed.  The semantics of these routines are such that
- * connectionless protocols can call soisconnected() and soisdisconnected()
- * only, bypassing the in-progress calls when setting up a ``connection''
- * takes no time.
+ * Wait for data to arrive at/drain from a socket buffer.
+ */
+int
+ssb_wait(struct signalsockbuf *ssb)
+{
+
+	ssb->ssb_flags |= SSB_WAIT;
+	return (tsleep((caddr_t)&ssb->ssb_cc,
+			((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
+			"sbwait",
+			ssb->ssb_timeo));
+}
+
+/*
+ * Lock a sockbuf already known to be locked;
+ * return any error returned from sleep (EINTR).
+ */
+int
+_ssb_lock(struct signalsockbuf *ssb)
+{
+	int error;
+
+	while (ssb->ssb_flags & SSB_LOCK) {
+		ssb->ssb_flags |= SSB_WANT;
+		error = tsleep((caddr_t)&ssb->ssb_flags,
+			    ((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
+			    "sblock", 0);
+		if (error)
+			return (error);
+	}
+	ssb->ssb_flags |= SSB_LOCK;
+	return (0);
+}
+
+/*
+ * This does the same for sockbufs.  Note that the xsockbuf structure,
+ * since it is always embedded in a socket, does not include a self
+ * pointer nor a length.  We make this entry point public in case
+ * some other mechanism needs it.
+ */
+void
+ssbtoxsockbuf(struct signalsockbuf *ssb, struct xsockbuf *xsb)
+{
+	xsb->sb_cc = ssb->ssb_cc;
+	xsb->sb_hiwat = ssb->ssb_hiwat;
+	xsb->sb_mbcnt = ssb->ssb_mbcnt;
+	xsb->sb_mbmax = ssb->ssb_mbmax;
+	xsb->sb_lowat = ssb->ssb_lowat;
+	xsb->sb_flags = ssb->ssb_flags;
+	xsb->sb_timeo = ssb->ssb_timeo;
+}
+
+
+/************************************************************************
+ * Procedures which manipulate socket state flags, wakeups, etc.	*
+ ************************************************************************
  *
- * From the passive side, a socket is created with
- * two queues of sockets: so_incomp for connections in progress
- * and so_comp for connections already made and awaiting user acceptance.
- * As a protocol is preparing incoming connections, it creates a socket
- * structure queued on so_incomp by calling sonewconn().  When the connection
- * is established, soisconnected() is called, and transfers the
- * socket structure to so_comp, making it available to accept().
+ * Normal sequence from the active (originating) side is that
+ * soisconnecting() is called during processing of connect() call, resulting
+ * in an eventual call to soisconnected() if/when the connection is
+ * established.  When the connection is torn down soisdisconnecting() is
+ * called during processing of disconnect() call, and soisdisconnected() is
+ * called when the connection to the peer is totally severed.
  *
- * If a socket is closed with sockets on either
- * so_incomp or so_comp, these sockets are dropped.
+ * The semantics of these routines are such that connectionless protocols
+ * can call soisconnected() and soisdisconnected() only, bypassing the
+ * in-progress calls when setting up a ``connection'' takes no time.
  *
- * If higher level protocols are implemented in
- * the kernel, the wakeups done here will sometimes
- * cause software-interrupt process scheduling.
+ * From the passive side, a socket is created with two queues of sockets:
+ * so_incomp for connections in progress and so_comp for connections
+ * already made and awaiting user acceptance.  As a protocol is preparing
+ * incoming connections, it creates a socket structure queued on so_incomp
+ * by calling sonewconn().  When the connection is established,
+ * soisconnected() is called, and transfers the socket structure to so_comp,
+ * making it available to accept().
+ *
+ * If a socket is closed with sockets on either so_incomp or so_comp, these
+ * sockets are dropped.
+ *
+ * If higher level protocols are implemented in the kernel, the wakeups
+ * done here will sometimes cause software-interrupt process scheduling.
  */
 
 void
 soisconnecting(struct socket *so)
 {
-
 	so->so_state &= ~(SS_ISCONNECTED|SS_ISDISCONNECTING);
 	so->so_state |= SS_ISCONNECTING;
 }
@@ -119,7 +176,7 @@ soisconnected(struct socket *so)
 		if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 			so->so_upcall = head->so_accf->so_accept_filter->accf_callback;
 			so->so_upcallarg = head->so_accf->so_accept_filter_arg;
-			so->so_rcv.sb_flags |= SB_UPCALL;
+			so->so_rcv.ssb_flags |= SSB_UPCALL;
 			so->so_options &= ~SO_ACCEPTFILTER;
 			so->so_upcall(so, so->so_upcallarg, 0);
 			return;
@@ -142,7 +199,6 @@ soisconnected(struct socket *so)
 void
 soisdisconnecting(struct socket *so)
 {
-
 	so->so_state &= ~SS_ISCONNECTING;
 	so->so_state |= (SS_ISDISCONNECTING|SS_CANTRCVMORE|SS_CANTSENDMORE);
 	wakeup((caddr_t)&so->so_timeo);
@@ -153,11 +209,10 @@ soisdisconnecting(struct socket *so)
 void
 soisdisconnected(struct socket *so)
 {
-
 	so->so_state &= ~(SS_ISCONNECTING|SS_ISCONNECTED|SS_ISDISCONNECTING);
 	so->so_state |= (SS_CANTRCVMORE|SS_CANTSENDMORE|SS_ISDISCONNECTED);
 	wakeup((caddr_t)&so->so_timeo);
-	sbdrop(&so->so_snd, so->so_snd.sb_cc);
+	sbdrop(&so->so_snd.sb, so->so_snd.ssb_cc);
 	sowwakeup(so);
 	sorwakeup(so);
 }
@@ -194,7 +249,7 @@ sonewconn(struct socket *head, int connstatus)
 	ai.sb_rlimit = NULL;
 	ai.p_ucred = NULL;
 	ai.fd_rdir = NULL;		/* jail code cruft XXX JH */
-	if (soreserve(so, head->so_snd.sb_hiwat, head->so_rcv.sb_hiwat, NULL) ||
+	if (soreserve(so, head->so_snd.ssb_hiwat, head->so_rcv.ssb_hiwat, NULL) ||
 	    /* Directly call function since we're already at protocol level. */
 	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
 		sodealloc(so);
@@ -232,11 +287,9 @@ sonewconn(struct socket *head, int connstatus)
  * protocol when it detects that the peer will send no more data.
  * Data queued for reading in the socket may yet be read.
  */
-
 void
 socantsendmore(struct socket *so)
 {
-
 	so->so_state |= SS_CANTSENDMORE;
 	sowwakeup(so);
 }
@@ -244,44 +297,8 @@ socantsendmore(struct socket *so)
 void
 socantrcvmore(struct socket *so)
 {
-
 	so->so_state |= SS_CANTRCVMORE;
 	sorwakeup(so);
-}
-
-/*
- * Wait for data to arrive at/drain from a socket buffer.
- */
-int
-sbwait(struct sockbuf *sb)
-{
-
-	sb->sb_flags |= SB_WAIT;
-	return (tsleep((caddr_t)&sb->sb_cc,
-			((sb->sb_flags & SB_NOINTR) ? 0 : PCATCH),
-			"sbwait",
-			sb->sb_timeo));
-}
-
-/*
- * Lock a sockbuf already known to be locked;
- * return any error returned from sleep (EINTR).
- */
-int
-sb_lock(struct sockbuf *sb)
-{
-	int error;
-
-	while (sb->sb_flags & SB_LOCK) {
-		sb->sb_flags |= SB_WANT;
-		error = tsleep((caddr_t)&sb->sb_flags,
-			    ((sb->sb_flags & SB_NOINTR) ? 0 : PCATCH),
-			    "sblock", 0);
-		if (error)
-			return (error);
-	}
-	sb->sb_flags |= SB_LOCK;
-	return (0);
 }
 
 /*
@@ -289,24 +306,24 @@ sb_lock(struct sockbuf *sb)
  * via SIGIO if the socket has the SS_ASYNC flag set.
  */
 void
-sowakeup(struct socket *so, struct sockbuf *sb)
+sowakeup(struct socket *so, struct signalsockbuf *ssb)
 {
-	struct selinfo *selinfo = &sb->sb_sel;
+	struct selinfo *selinfo = &ssb->ssb_sel;
 
 	selwakeup(selinfo);
-	sb->sb_flags &= ~SB_SEL;
-	if (sb->sb_flags & SB_WAIT) {
-		sb->sb_flags &= ~SB_WAIT;
-		wakeup((caddr_t)&sb->sb_cc);
+	ssb->ssb_flags &= ~SSB_SEL;
+	if (ssb->ssb_flags & SSB_WAIT) {
+		ssb->ssb_flags &= ~SSB_WAIT;
+		wakeup((caddr_t)&ssb->ssb_cc);
 	}
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
-	if (sb->sb_flags & SB_UPCALL)
+	if (ssb->ssb_flags & SSB_UPCALL)
 		(*so->so_upcall)(so, so->so_upcallarg, MB_DONTWAIT);
-	if (sb->sb_flags & SB_AIO)
-		aio_swake(so, sb);
+	if (ssb->ssb_flags & SSB_AIO)
+		aio_swake(so, ssb);
 	KNOTE(&selinfo->si_note, 0);
-	if (sb->sb_flags & SB_MEVENT) {
+	if (ssb->ssb_flags & SSB_MEVENT) {
 		struct netmsg_so_notify *msg, *nmsg;
 
 		TAILQ_FOREACH_MUTABLE(msg, &selinfo->si_mlist, nm_list, nmsg) {
@@ -316,13 +333,13 @@ sowakeup(struct socket *so, struct sockbuf *sb)
 						msg->nm_lmsg.ms_error);
 			}
 		}
-		if (TAILQ_EMPTY(&sb->sb_sel.si_mlist))
-			sb->sb_flags &= ~SB_MEVENT;
+		if (TAILQ_EMPTY(&ssb->ssb_sel.si_mlist))
+			ssb->ssb_flags &= ~SSB_MEVENT;
 	}
 }
 
 /*
- * Socket buffer (struct sockbuf) utility routines.
+ * Socket buffer (struct signalsockbuf) utility routines.
  *
  * Each socket contains two socket buffers: one for sending data and
  * one for receiving data.  Each buffer contains a queue of mbufs,
@@ -350,25 +367,24 @@ sowakeup(struct socket *so, struct sockbuf *sb)
  * buffer space to the socket, by calling sbreserve().  This should commit
  * some of the available buffer space in the system buffer pool for the
  * socket (currently, it does nothing but enforce limits).  The space
- * should be released by calling sbrelease() when the socket is destroyed.
+ * should be released by calling ssb_release() when the socket is destroyed.
  */
-
 int
 soreserve(struct socket *so, u_long sndcc, u_long rcvcc, struct rlimit *rl)
 {
-	if (sbreserve(&so->so_snd, sndcc, so, rl) == 0)
+	if (ssb_reserve(&so->so_snd, sndcc, so, rl) == 0)
 		goto bad;
-	if (sbreserve(&so->so_rcv, rcvcc, so, rl) == 0)
+	if (ssb_reserve(&so->so_rcv, rcvcc, so, rl) == 0)
 		goto bad2;
-	if (so->so_rcv.sb_lowat == 0)
-		so->so_rcv.sb_lowat = 1;
-	if (so->so_snd.sb_lowat == 0)
-		so->so_snd.sb_lowat = MCLBYTES;
-	if (so->so_snd.sb_lowat > so->so_snd.sb_hiwat)
-		so->so_snd.sb_lowat = so->so_snd.sb_hiwat;
+	if (so->so_rcv.ssb_lowat == 0)
+		so->so_rcv.ssb_lowat = 1;
+	if (so->so_snd.ssb_lowat == 0)
+		so->so_snd.ssb_lowat = MCLBYTES;
+	if (so->so_snd.ssb_lowat > so->so_snd.ssb_hiwat)
+		so->so_snd.ssb_lowat = so->so_snd.ssb_hiwat;
 	return (0);
 bad2:
-	sbrelease(&so->so_snd, so);
+	ssb_release(&so->so_snd, so);
 bad:
 	return (ENOBUFS);
 }
@@ -394,27 +410,27 @@ sysctl_handle_sb_max(SYSCTL_HANDLER_ARGS)
 }
 	
 /*
- * Allot mbufs to a sockbuf.
+ * Allot mbufs to a signalsockbuf.
  * Attempt to scale mbmax so that mbcnt doesn't become limiting
  * if buffering efficiency is near the normal case.
  */
 int
-sbreserve(struct sockbuf *sb, u_long cc, struct socket *so, struct rlimit *rl)
+ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
+	    struct rlimit *rl)
 {
-
 	/*
 	 * rl will only be NULL when we're in an interrupt (eg, in tcp_input)
 	 * or when called from netgraph (ie, ngd_attach)
 	 */
 	if (cc > sb_max_adj)
 		return (0);
-	if (!chgsbsize(so->so_cred->cr_uidinfo, &sb->sb_hiwat, cc,
+	if (!chgsbsize(so->so_cred->cr_uidinfo, &ssb->ssb_hiwat, cc,
 		       rl ? rl->rlim_cur : RLIM_INFINITY)) {
 		return (0);
 	}
-	sb->sb_mbmax = min(cc * sb_efficiency, sb_max);
-	if (sb->sb_lowat > sb->sb_hiwat)
-		sb->sb_lowat = sb->sb_hiwat;
+	ssb->ssb_mbmax = min(cc * sb_efficiency, sb_max);
+	if (ssb->ssb_lowat > ssb->ssb_hiwat)
+		ssb->ssb_lowat = ssb->ssb_hiwat;
 	return (1);
 }
 
@@ -422,568 +438,12 @@ sbreserve(struct sockbuf *sb, u_long cc, struct socket *so, struct rlimit *rl)
  * Free mbufs held by a socket, and reserved mbuf space.
  */
 void
-sbrelease(struct sockbuf *sb, struct socket *so)
+ssb_release(struct signalsockbuf *ssb, struct socket *so)
 {
-
-	sbflush(sb);
-	(void)chgsbsize(so->so_cred->cr_uidinfo, &sb->sb_hiwat, 0,
+	sbflush(&ssb->sb);
+	(void)chgsbsize(so->so_cred->cr_uidinfo, &ssb->ssb_hiwat, 0,
 	    RLIM_INFINITY);
-	sb->sb_mbmax = 0;
-}
-
-/*
- * Routines to add and remove
- * data from an mbuf queue.
- *
- * The routines sbappend() or sbappendrecord() are normally called to
- * append new mbufs to a socket buffer, after checking that adequate
- * space is available, comparing the function sbspace() with the amount
- * of data to be added.  sbappendrecord() differs from sbappend() in
- * that data supplied is treated as the beginning of a new record.
- * To place a sender's address, optional access rights, and data in a
- * socket receive buffer, sbappendaddr() should be used.  To place
- * access rights and data in a socket receive buffer, sbappendrights()
- * should be used.  In either case, the new data begins a new record.
- * Note that unlike sbappend() and sbappendrecord(), these routines check
- * for the caller that there will be enough space to store the data.
- * Each fails if there is not enough space, or if it cannot find mbufs
- * to store additional information in.
- *
- * Reliable protocols may use the socket send buffer to hold data
- * awaiting acknowledgement.  Data is normally copied from a socket
- * send buffer in a protocol with m_copy for output to a peer,
- * and then removing the data from the socket buffer with sbdrop()
- * or sbdroprecord() when the data is acknowledged by the peer.
- */
-
-/*
- * Append mbuf chain m to the last record in the
- * socket buffer sb.  The additional space associated
- * the mbuf chain is recorded in sb.  Empty mbufs are
- * discarded and mbufs are compacted where possible.
- */
-void
-sbappend(struct sockbuf *sb, struct mbuf *m)
-{
-	struct mbuf *n;
-
-	if (m) {
-		n = sb->sb_mb;
-		if (n) {
-			while (n->m_nextpkt)
-				n = n->m_nextpkt;
-			do {
-				if (n->m_flags & M_EOR) {
-					/* XXXXXX!!!! */
-					sbappendrecord(sb, m);
-					return;
-				}
-			} while (n->m_next && (n = n->m_next));
-		}
-		sbcompress(sb, m, n);
-	}
-}
-
-/*
- * sbappendstream() is an optimized form of sbappend() for protocols
- * such as TCP that only have one record in the socket buffer, are
- * not PR_ATOMIC, nor allow MT_CONTROL data.  A protocol that uses
- * sbappendstream() must use sbappendstream() exclusively.
- */
-void
-sbappendstream(struct sockbuf *sb, struct mbuf *m)
-{
-	KKASSERT(m->m_nextpkt == NULL);
-	sbcompress(sb, m, sb->sb_lastmbuf);
-}
-
-#ifdef SOCKBUF_DEBUG
-
-void
-_sbcheck(struct sockbuf *sb)
-{
-	struct mbuf *m;
-	struct mbuf *n = NULL;
-	u_long len = 0, mbcnt = 0;
-
-	for (m = sb->sb_mb; m; m = n) {
-	    n = m->m_nextpkt;
-	    if (n == NULL && sb->sb_lastrecord != m) {
-		    kprintf("sockbuf %p mismatched lastrecord %p vs %p\n", sb, sb->sb_lastrecord, m);
-		    panic("sbcheck1");
-		
-	    }
-	    for (; m; m = m->m_next) {
-		len += m->m_len;
-		mbcnt += MSIZE;
-		if (m->m_flags & M_EXT) /*XXX*/ /* pretty sure this is bogus */
-			mbcnt += m->m_ext.ext_size;
-		if (n == NULL && m->m_next == NULL) {
-			if (sb->sb_lastmbuf != m) {
-				kprintf("sockbuf %p mismatched lastmbuf %p vs %p\n", sb, sb->sb_lastmbuf, m);
-				panic("sbcheck2");
-			}
-		}
-	    }
-	}
-	if (sb->sb_mb == NULL) {
-	    if (sb->sb_lastrecord != NULL) {
-		kprintf("sockbuf %p is empty, lastrecord not NULL: %p\n",
-			sb, sb->sb_lastrecord);
-		panic("sbcheck3");
-	    }
-	    if (sb->sb_lastmbuf != NULL) {
-		kprintf("sockbuf %p is empty, lastmbuf not NULL: %p\n",
-			sb, sb->sb_lastmbuf);
-		panic("sbcheck4");
-	    }
-	}
-	if (len != sb->sb_cc || mbcnt != sb->sb_mbcnt) {
-		kprintf("sockbuf %p cc %ld != %ld || mbcnt %ld != %ld\n",
-		    sb, len, sb->sb_cc, mbcnt, sb->sb_mbcnt);
-		panic("sbcheck5");
-	}
-}
-
-#endif
-
-/*
- * Same as sbappend(), except the mbuf chain begins a new record.
- */
-void
-sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
-{
-	struct mbuf *firstmbuf;
-	struct mbuf *secondmbuf;
-
-	if (m0 == NULL)
-		return;
-
-	sbcheck(sb);
-
-	/*
-	 * Break the first mbuf off from the rest of the mbuf chain.
-	 */
-	firstmbuf = m0;
-	secondmbuf = m0->m_next;
-	m0->m_next = NULL;
-
-	/*
-	 * Insert the first mbuf of the m0 mbuf chain as the last record of
-	 * the sockbuf.  Note this permits zero length records!  Keep the
-	 * sockbuf state consistent.
-	 */
-	if (sb->sb_mb == NULL)
-		sb->sb_mb = firstmbuf;
-	else
-		sb->sb_lastrecord->m_nextpkt = firstmbuf;
-	sb->sb_lastrecord = firstmbuf;	/* update hint for new last record */
-	sb->sb_lastmbuf = firstmbuf;	/* update hint for new last mbuf */
-
-	if ((firstmbuf->m_flags & M_EOR) && (secondmbuf != NULL)) {
-		/* propagate the EOR flag */
-		firstmbuf->m_flags &= ~M_EOR;
-		secondmbuf->m_flags |= M_EOR;
-	}
-
-	/*
-	 * The succeeding call to sbcompress() omits accounting for
-	 * the first mbuf, so do it here.
-	 */
-	sballoc(sb, firstmbuf);
-
-	/* Compact the rest of the mbuf chain in after the first mbuf. */
-	sbcompress(sb, secondmbuf, firstmbuf);
-}
-
-#if 0
-/*
- * As above except that OOB data is inserted at the beginning of the sockbuf,
- * but after any other OOB data.
- */
-void
-sbinsertoob(struct sockbuf *sb, struct mbuf *m0)
-{
-	struct mbuf *m;
-	struct mbuf **mp;
-
-	if (m0 == NULL)
-		return;
-	for (mp = &sb->sb_mb; *mp ; mp = &((*mp)->m_nextpkt)) {
-	    m = *mp;
-	    again:
-		switch (m->m_type) {
-
-		case MT_OOBDATA:
-			continue;		/* WANT next train */
-
-		case MT_CONTROL:
-			m = m->m_next;
-			if (m)
-				goto again;	/* inspect THIS train further */
-		}
-		break;
-	}
-	/*
-	 * Put the first mbuf on the queue.
-	 * Note this permits zero length records.
-	 */
-	sballoc(sb, m0);
-	m0->m_nextpkt = *mp;
-	*mp = m0;
-	if (m0->m_nextpkt == NULL)
-		sb->sb_lastrecord = m0;
-
-	m = m0->m_next;
-	m0->m_next = NULL;
-	if (m && (m0->m_flags & M_EOR)) {
-		m0->m_flags &= ~M_EOR;
-		m->m_flags |= M_EOR;
-	}
-	sbcompress(sb, m, m0);
-}
-#endif
-
-/*
- * Append address and data, and optionally, control (ancillary) data
- * to the receive queue of a socket.  If present,
- * m0 must include a packet header with total length.
- * Returns 0 if no space in sockbuf or insufficient mbufs.
- */
-int
-sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
-	     struct mbuf *control)
-{
-	struct mbuf *m, *n;
-	int space = asa->sa_len;
-
-	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
-		panic("sbappendaddr");
-	sbcheck(sb);
-
-	if (m0)
-		space += m0->m_pkthdr.len;
-	for (n = control; n; n = n->m_next) {
-		space += n->m_len;
-		if (n->m_next == 0)	/* keep pointer to last control buf */
-			break;
-	}
-	if (space > sbspace(sb))
-		return (0);
-	if (asa->sa_len > MLEN)
-		return (0);
-	MGET(m, MB_DONTWAIT, MT_SONAME);
-	if (m == NULL)
-		return (0);
-	KKASSERT(m->m_nextpkt == NULL);
-	m->m_len = asa->sa_len;
-	bcopy(asa, mtod(m, caddr_t), asa->sa_len);
-	if (n)
-		n->m_next = m0;		/* concatenate data to control */
-	else
-		control = m0;
-	m->m_next = control;
-	for (n = m; n; n = n->m_next)
-		sballoc(sb, n);
-
-	if (sb->sb_mb == NULL)
-		sb->sb_mb = m;
-	else
-		sb->sb_lastrecord->m_nextpkt = m;
-	sb->sb_lastrecord = m;
-	while (m->m_next)
-		m = m->m_next;
-	sb->sb_lastmbuf = m;
-
-	return (1);
-}
-
-/*
- * Append control information followed by data.
- * control must be non-null.
- */
-int
-sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
-{
-	struct mbuf *n;
-	u_int length, cmbcnt, m0mbcnt;
-
-	KASSERT(control != NULL, ("sbappendcontrol"));
-	KKASSERT(control->m_nextpkt == NULL);
-	sbcheck(sb);
-
-	length = m_countm(control, &n, &cmbcnt) + m_countm(m0, NULL, &m0mbcnt);
-	if (length > sbspace(sb))
-		return (0);
-
-	n->m_next = m0;			/* concatenate data to control */
-
-	if (sb->sb_mb == NULL)
-		sb->sb_mb = control;
-	else
-		sb->sb_lastrecord->m_nextpkt = control;
-	sb->sb_lastrecord = control;
-	sb->sb_lastmbuf = m0;
-
-	sb->sb_cc += length;
-	sb->sb_mbcnt += cmbcnt + m0mbcnt;
-
-	return (1);
-}
-
-/*
- * Compress mbuf chain m into the socket buffer sb following mbuf tailm.
- * If tailm is null, the buffer is presumed empty.  Also, as a side-effect,
- * increment the sockbuf counts for each mbuf in the chain.
- */
-void
-sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
-{
-	int eor = 0;
-	struct mbuf *free_chain = NULL;
-
-	sbcheck(sb);
-	while (m) {
-		struct mbuf *o;
-
-		eor |= m->m_flags & M_EOR;
-		/*
-		 * Disregard empty mbufs as long as we don't encounter
-		 * an end-of-record or there is a trailing mbuf of
-		 * the same type to propagate the EOR flag to.
-		 *
-		 * Defer the m_free() call because it can block and break
-		 * the atomicy of the sockbuf.
-		 */
-		if (m->m_len == 0 &&
-		    (eor == 0 ||
-		     (((o = m->m_next) || (o = tailm)) &&
-		      o->m_type == m->m_type))) {
-			o = m->m_next;
-			m->m_next = free_chain;
-			free_chain = m;
-			m = o;
-			continue;
-		}
-
-		/* See if we can coalesce with preceding mbuf. */
-		if (tailm && !(tailm->m_flags & M_EOR) && M_WRITABLE(tailm) &&
-		    m->m_len <= MCLBYTES / 4 && /* XXX: Don't copy too much */
-		    m->m_len <= M_TRAILINGSPACE(tailm) &&
-		    tailm->m_type == m->m_type) {
-			bcopy(mtod(m, caddr_t),
-			      mtod(tailm, caddr_t) + tailm->m_len,
-			      (unsigned)m->m_len);
-			tailm->m_len += m->m_len;
-			sb->sb_cc += m->m_len;		/* update sb counter */
-			o = m->m_next;
-			m->m_next = free_chain;
-			free_chain = m;
-			m = o;
-			continue;
-		}
-
-		/* Insert whole mbuf. */
-		if (tailm == NULL) {
-			KASSERT(sb->sb_mb == NULL,
-				("sbcompress: sb_mb not NULL"));
-			sb->sb_mb = m;		/* only mbuf in sockbuf */
-			sb->sb_lastrecord = m;	/* new last record */
-		} else {
-			tailm->m_next = m;	/* tack m on following tailm */
-		}
-		sb->sb_lastmbuf = m;	/* update last mbuf hint */
-
-		tailm = m;	/* just inserted mbuf becomes the new tail */
-		m = m->m_next;		/* advance to next mbuf */
-		tailm->m_next = NULL;	/* split inserted mbuf off from chain */
-
-		/* update sb counters for just added mbuf */
-		sballoc(sb, tailm);
-
-		/* clear EOR on intermediate mbufs */
-		tailm->m_flags &= ~M_EOR;
-	}
-
-	/*
-	 * Propogate EOR to the last mbuf
-	 */
-	if (eor) {
-		if (tailm)
-			tailm->m_flags |= eor;
-		else
-			kprintf("semi-panic: sbcompress");
-	}
-
-	/*
-	 * Clean up any defered frees.
-	 */
-	while (free_chain)
-		free_chain = m_free(free_chain);
-
-	sbcheck(sb);
-}
-
-/*
- * Free all mbufs in a sockbuf.
- * Check that all resources are reclaimed.
- */
-void
-sbflush(struct sockbuf *sb)
-{
-
-	if (sb->sb_flags & SB_LOCK)
-		panic("sbflush: locked");
-	while (sb->sb_mbcnt) {
-		/*
-		 * Don't call sbdrop(sb, 0) if the leading mbuf is non-empty:
-		 * we would loop forever. Panic instead.
-		 */
-		if (!sb->sb_cc && (sb->sb_mb == NULL || sb->sb_mb->m_len))
-			break;
-		sbdrop(sb, (int)sb->sb_cc);
-	}
-	KASSERT(!(sb->sb_cc || sb->sb_mb || sb->sb_mbcnt || sb->sb_lastmbuf),
-	    ("sbflush: cc %ld || mb %p || mbcnt %ld || lastmbuf %p",
-	    sb->sb_cc, sb->sb_mb, sb->sb_mbcnt, sb->sb_lastmbuf));
-}
-
-/*
- * Drop data from (the front of) a sockbuf.
- */
-void
-sbdrop(struct sockbuf *sb, int len)
-{
-	struct mbuf *m;
-	struct mbuf *free_chain = NULL;
-
-	sbcheck(sb);
-	crit_enter();
-
-	/*
-	 * Remove mbufs from multiple records until the count is exhausted.
-	 */
-	m = sb->sb_mb;
-	while (m && len > 0) {
-		if (m->m_len > len) {
-			m->m_len -= len;
-			m->m_data += len;
-			sb->sb_cc -= len;
-			break;
-		}
-		len -= m->m_len;
-		m = sbunlinkmbuf(sb, m, &free_chain);
-		if (m == NULL && len)
-			m = sb->sb_mb;
-	}
-
-	/*
-	 * Remove any trailing 0-length mbufs in the current record.  If
-	 * the last record for which data was removed is now empty, m will be
-	 * NULL.
-	 */
-	while (m && m->m_len == 0) {
-		m = sbunlinkmbuf(sb, m, &free_chain);
-	}
-	crit_exit();
-	if (free_chain)
-		m_freem(free_chain);
-	sbcheck(sb);
-}
-
-/*
- * Drop a record off the front of a sockbuf and move the next record
- * to the front.
- *
- * Must be called while holding a critical section.
- */
-void
-sbdroprecord(struct sockbuf *sb)
-{
-	struct mbuf *m;
-	struct mbuf *n;
-
-	sbcheck(sb);
-	m = sb->sb_mb;
-	if (m) {
-		if ((sb->sb_mb = m->m_nextpkt) == NULL) {
-			sb->sb_lastrecord = NULL;
-			sb->sb_lastmbuf = NULL;
-		}
-		m->m_nextpkt = NULL;
-		for (n = m; n; n = n->m_next)
-			sbfree(sb, n);
-		m_freem(m);
-		sbcheck(sb);
-	}
-}
-
-/*
- * Drop the first mbuf off the sockbuf and move the next mbuf to the front.
- * Currently only the head mbuf of the sockbuf may be dropped this way.
- *
- * The next mbuf in the same record as the mbuf being removed is returned
- * or NULL if the record is exhausted.  Note that other records may remain
- * in the sockbuf when NULL is returned.
- *
- * Must be called while holding a critical section.
- */
-struct mbuf *
-sbunlinkmbuf(struct sockbuf *sb, struct mbuf *m, struct mbuf **free_chain)
-{
-	struct mbuf *n;
-
-	KKASSERT(sb->sb_mb == m);
-	sbfree(sb, m);
-	n = m->m_next;
-	if (n) {
-		sb->sb_mb = n;
-		if (sb->sb_lastrecord == m)
-			sb->sb_lastrecord = n;
-		KKASSERT(sb->sb_lastmbuf != m);
-		n->m_nextpkt = m->m_nextpkt;
-	} else {
-		sb->sb_mb = m->m_nextpkt;
-		if (sb->sb_lastrecord == m) {
-			KKASSERT(sb->sb_mb == NULL);
-			sb->sb_lastrecord = NULL;
-		}
-		if (sb->sb_mb == NULL)
-			sb->sb_lastmbuf = NULL;
-	}
-	m->m_nextpkt = NULL;
-	if (free_chain) {
-		m->m_next = *free_chain;
-		*free_chain = m;
-	} else {
-		m->m_next = NULL;
-	}
-	return(n);
-}
-
-/*
- * Create a "control" mbuf containing the specified data
- * with the specified type for presentation on a socket buffer.
- */
-struct mbuf *
-sbcreatecontrol(caddr_t p, int size, int type, int level)
-{
-	struct cmsghdr *cp;
-	struct mbuf *m;
-
-	if (CMSG_SPACE((u_int)size) > MCLBYTES)
-		return (NULL);
-	m = m_getl(CMSG_SPACE((u_int)size), MB_DONTWAIT, MT_CONTROL, 0, NULL);
-	if (m == NULL)
-		return (NULL);
-	m->m_len = CMSG_SPACE(size);
-	cp = mtod(m, struct cmsghdr *);
-	if (p != NULL)
-		memcpy(CMSG_DATA(cp), p, size);
-	cp->cmsg_len = CMSG_LEN(size);
-	cp->cmsg_level = level;
-	cp->cmsg_type = type;
-	return (m);
+	ssb->ssb_mbmax = 0;
 }
 
 /*
@@ -1040,7 +500,7 @@ pru_rcvoob_notsupp(struct socket *so, struct mbuf *m, int flags)
 int
 pru_sense_null(struct socket *so, struct stat *sb)
 {
-	sb->st_blksize = so->so_snd.sb_hiwat;
+	sb->st_blksize = so->so_snd.ssb_hiwat;
 	return 0;
 }
 
@@ -1086,27 +546,9 @@ sotoxsocket(struct socket *so, struct xsocket *xso)
 	xso->so_error = so->so_error;
 	xso->so_pgid = so->so_sigio ? so->so_sigio->sio_pgid : 0;
 	xso->so_oobmark = so->so_oobmark;
-	sbtoxsockbuf(&so->so_snd, &xso->so_snd);
-	sbtoxsockbuf(&so->so_rcv, &xso->so_rcv);
+	ssbtoxsockbuf(&so->so_snd, &xso->so_snd);
+	ssbtoxsockbuf(&so->so_rcv, &xso->so_rcv);
 	xso->so_uid = so->so_cred->cr_uid;
-}
-
-/*
- * This does the same for sockbufs.  Note that the xsockbuf structure,
- * since it is always embedded in a socket, does not include a self
- * pointer nor a length.  We make this entry point public in case
- * some other mechanism needs it.
- */
-void
-sbtoxsockbuf(struct sockbuf *sb, struct xsockbuf *xsb)
-{
-	xsb->sb_cc = sb->sb_cc;
-	xsb->sb_hiwat = sb->sb_hiwat;
-	xsb->sb_mbcnt = sb->sb_mbcnt;
-	xsb->sb_mbmax = sb->sb_mbmax;
-	xsb->sb_lowat = sb->sb_lowat;
-	xsb->sb_flags = sb->sb_flags;
-	xsb->sb_timeo = sb->sb_timeo;
 }
 
 /*

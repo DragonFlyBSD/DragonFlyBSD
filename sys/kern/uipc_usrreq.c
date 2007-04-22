@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.33 2007/04/21 02:26:46 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.34 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,13 +250,13 @@ uipc_rcvd(struct socket *so, int flags)
 		 * Adjust backpressure on sender
 		 * and wakeup any waiting to write.
 		 */
-		so2->so_snd.sb_mbmax += unp->unp_mbcnt - so->so_rcv.sb_mbcnt;
-		unp->unp_mbcnt = so->so_rcv.sb_mbcnt;
+		so2->so_snd.ssb_mbmax += unp->unp_mbcnt - so->so_rcv.ssb_mbcnt;
+		unp->unp_mbcnt = so->so_rcv.ssb_mbcnt;
 		newhiwat =
-		    so2->so_snd.sb_hiwat + unp->unp_cc - so->so_rcv.sb_cc;
-		chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.sb_hiwat,
+		    so2->so_snd.ssb_hiwat + unp->unp_cc - so->so_rcv.ssb_cc;
+		chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.ssb_hiwat,
 		    newhiwat, RLIM_INFINITY);
-		unp->unp_cc = so->so_rcv.sb_cc;
+		unp->unp_cc = so->so_rcv.ssb_cc;
 		sowwakeup(so2);
 		break;
 
@@ -313,12 +313,13 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			from = (struct sockaddr *)unp->unp_addr;
 		else
 			from = &sun_noname;
-		if (sbappendaddr(&so2->so_rcv, from, m, control)) {
+		if (ssb_appendaddr(&so2->so_rcv, from, m, control)) {
 			sorwakeup(so2);
 			m = NULL;
 			control = NULL;
-		} else
+		} else {
 			error = ENOBUFS;
+		}
 		if (nam)
 			unp_disconnect(unp);
 		break;
@@ -354,18 +355,19 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 * Wake up readers.
 		 */
 		if (control) {
-			if (sbappendcontrol(&so2->so_rcv, m, control))
+			if (ssb_appendcontrol(&so2->so_rcv, m, control))
 				control = NULL;
-		} else
-			sbappend(&so2->so_rcv, m);
-		so->so_snd.sb_mbmax -=
-			so2->so_rcv.sb_mbcnt - unp->unp_conn->unp_mbcnt;
-		unp->unp_conn->unp_mbcnt = so2->so_rcv.sb_mbcnt;
-		newhiwat = so->so_snd.sb_hiwat -
-		    (so2->so_rcv.sb_cc - unp->unp_conn->unp_cc);
-		chgsbsize(so->so_cred->cr_uidinfo, &so->so_snd.sb_hiwat,
+		} else {
+			sbappend(&so2->so_rcv.sb, m);
+		}
+		so->so_snd.ssb_mbmax -=
+			so2->so_rcv.ssb_mbcnt - unp->unp_conn->unp_mbcnt;
+		unp->unp_conn->unp_mbcnt = so2->so_rcv.ssb_mbcnt;
+		newhiwat = so->so_snd.ssb_hiwat -
+		    (so2->so_rcv.ssb_cc - unp->unp_conn->unp_cc);
+		chgsbsize(so->so_cred->cr_uidinfo, &so->so_snd.ssb_hiwat,
 		    newhiwat, RLIM_INFINITY);
-		unp->unp_conn->unp_cc = so2->so_rcv.sb_cc;
+		unp->unp_conn->unp_cc = so2->so_rcv.ssb_cc;
 		sorwakeup(so2);
 		m = NULL;
 		break;
@@ -401,10 +403,10 @@ uipc_sense(struct socket *so, struct stat *sb)
 
 	if (unp == NULL)
 		return EINVAL;
-	sb->st_blksize = so->so_snd.sb_hiwat;
+	sb->st_blksize = so->so_snd.ssb_hiwat;
 	if (so->so_type == SOCK_STREAM && unp->unp_conn != NULL) {
 		so2 = unp->unp_conn->unp_socket;
-		sb->st_blksize += so2->so_rcv.sb_cc;
+		sb->st_blksize += so2->so_rcv.ssb_cc;
 	}
 	sb->st_dev = NOUDEV;
 	if (unp->unp_ino == 0)		/* make up a non-zero inode number */
@@ -533,7 +535,7 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 	struct unpcb *unp;
 	int error;
 
-	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		switch (so->so_type) {
 
 		case SOCK_STREAM:
@@ -1335,7 +1337,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 */
 	info->locked_fp = fp;
 /*	spin_lock_wr(&so->so_rcv.sb_spin); */
-	unp_scan(so->so_rcv.sb_mb, unp_mark, info);
+	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
 /*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
 	return (0);
 }

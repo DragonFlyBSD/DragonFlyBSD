@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.h,v 1.1 1996/07/04 03:20:12 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.h,v 1.3 1999/12/29 04:46:14 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.5 2004/02/06 09:17:41 rob Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.6 2007/04/22 01:13:15 dillon Exp $ */
 
 /*
  *
@@ -99,7 +99,7 @@ struct natmpcb {
 
 /*
  * NPCB_RAWCC is a hack which applies to connections in 'raw' mode.   it 
- * is used to override the sbspace() macro when you *really* don't want 
+ * is used to override the ssb_space() macro when you *really* don't want 
  * to drop rcv data.   the recv socket buffer size is raised to this value.
  *
  * XXX: socket buffering needs to be looked at.

@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.36 2007/04/20 05:42:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.37 2007/04/22 01:13:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -195,7 +195,7 @@ fifo_open(struct vop_open_args *ap)
 			return (error);
 		}
 		fip->fi_readers = fip->fi_writers = 0;
-		wso->so_snd.sb_lowat = PIPE_BUF;
+		wso->so_snd.ssb_lowat = PIPE_BUF;
 		rso->so_state |= SS_CANTRCVMORE;
 	}
 	if (ap->a_mode & FREAD) {
@@ -361,18 +361,18 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct fifoinfo *fi = ap->a_vp->v_fifoinfo;
 	struct socket *so;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 
 	switch (ap->a_kn->kn_filter) {
 	case EVFILT_READ:
 		ap->a_kn->kn_fop = &fiforead_filtops;
 		so = fi->fi_readsock;
-		sb = &so->so_rcv;
+		ssb = &so->so_rcv;
 		break;
 	case EVFILT_WRITE:
 		ap->a_kn->kn_fop = &fifowrite_filtops;
 		so = fi->fi_writesock;
-		sb = &so->so_snd;
+		ssb = &so->so_snd;
 		break;
 	default:
 		return (1);
@@ -380,8 +380,7 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 
 	ap->a_kn->kn_hook = (caddr_t)so;
 
-	SLIST_INSERT_HEAD(&sb->sb_sel.si_note, ap->a_kn, kn_selnext);
-	sb->sb_flags |= SB_KNOTE;
+	ssb_insert_knote(ssb, ap->a_kn);
 
 	return (0);
 }
@@ -391,9 +390,7 @@ filt_fifordetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_hook;
 
-	SLIST_REMOVE(&so->so_rcv.sb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_rcv.sb_sel.si_note))
-		so->so_rcv.sb_flags &= ~SB_KNOTE;
+	ssb_remove_knote(&so->so_rcv, kn);
 }
 
 static int
@@ -401,7 +398,7 @@ filt_fiforead(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_hook;
 
-	kn->kn_data = so->so_rcv.sb_cc;
+	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF;
 		return (1);
@@ -415,9 +412,7 @@ filt_fifowdetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_hook;
 
-	SLIST_REMOVE(&so->so_snd.sb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_snd.sb_sel.si_note))
-		so->so_snd.sb_flags &= ~SB_KNOTE;
+	ssb_remove_knote(&so->so_snd, kn);
 }
 
 static int
@@ -425,13 +420,13 @@ filt_fifowrite(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_hook;
 
-	kn->kn_data = sbspace(&so->so_snd);
+	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_CANTSENDMORE) {
 		kn->kn_flags |= EV_EOF;
 		return (1);
 	}
 	kn->kn_flags &= ~EV_EOF;
-	return (kn->kn_data >= so->so_snd.sb_lowat);
+	return (kn->kn_data >= so->so_snd.ssb_lowat);
 }
 
 /*

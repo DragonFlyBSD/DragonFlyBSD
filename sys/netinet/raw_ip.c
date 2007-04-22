@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.25 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.26 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -194,7 +194,7 @@ rip_input(struct mbuf *m, ...)
 				if (last->inp_flags & INP_CONTROLOPTS ||
 				    last->inp_socket->so_options & SO_TIMESTAMP)
 				    ip_savecontrol(last, &opts, ip, n);
-				if (sbappendaddr(&last->inp_socket->so_rcv,
+				if (ssb_appendaddr(&last->inp_socket->so_rcv,
 				    (struct sockaddr *)&ripsrc, n,
 				    opts) == 0) {
 					/* should notify about lost packet */
@@ -233,7 +233,7 @@ rip_input(struct mbuf *m, ...)
 		if (last->inp_flags & INP_CONTROLOPTS ||
 		    last->inp_socket->so_options & SO_TIMESTAMP)
 			ip_savecontrol(last, &opts, ip, m);
-		if (sbappendaddr(&last->inp_socket->so_rcv,
+		if (ssb_appendaddr(&last->inp_socket->so_rcv,
 		    (struct sockaddr *)&ripsrc, m, opts) == 0) {
 			m_freem(m);
 			if (opts)

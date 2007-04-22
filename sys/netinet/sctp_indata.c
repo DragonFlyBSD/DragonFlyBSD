@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.6 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.7 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -125,11 +125,11 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INDATA4) {
 		kprintf("cc:%lu hiwat:%lu lowat:%lu mbcnt:%lu mbmax:%lu\n",
-		       (u_long)stcb->sctp_socket->so_rcv.sb_cc,
-		       (u_long)stcb->sctp_socket->so_rcv.sb_hiwat,
-		       (u_long)stcb->sctp_socket->so_rcv.sb_lowat,
-		       (u_long)stcb->sctp_socket->so_rcv.sb_mbcnt,
-		       (u_long)stcb->sctp_socket->so_rcv.sb_mbmax);
+		       (u_long)stcb->sctp_socket->so_rcv.ssb_cc,
+		       (u_long)stcb->sctp_socket->so_rcv.ssb_hiwat,
+		       (u_long)stcb->sctp_socket->so_rcv.ssb_lowat,
+		       (u_long)stcb->sctp_socket->so_rcv.ssb_mbcnt,
+		       (u_long)stcb->sctp_socket->so_rcv.ssb_mbmax);
 		kprintf("Setting rwnd to: sb:%ld - (del:%d + reasm:%d str:%d)\n",
 		       sctp_sbspace(&stcb->sctp_socket->so_rcv),
 		       asoc->size_on_delivery_queue,
@@ -137,12 +137,12 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 		       asoc->size_on_all_streams);
 	}
 #endif
-	if (stcb->sctp_socket->so_rcv.sb_cc == 0 &&
+	if (stcb->sctp_socket->so_rcv.ssb_cc == 0 &&
 	    asoc->size_on_delivery_queue == 0 &&
 	    asoc->size_on_reasm_queue == 0 &&
 	    asoc->size_on_all_streams == 0) {
 		/* Full rwnd granted */
-		asoc->my_rwnd = max(stcb->sctp_socket->so_rcv.sb_hiwat,
+		asoc->my_rwnd = max(stcb->sctp_socket->so_rcv.ssb_hiwat,
 				    SCTP_MINIMAL_RWND);
 		return;
 	}
@@ -382,7 +382,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		return (0);
 	}
 
-	if (stcb->sctp_socket->so_rcv.sb_cc >= stcb->sctp_socket->so_rcv.sb_hiwat) {
+	if (stcb->sctp_socket->so_rcv.ssb_cc >= stcb->sctp_socket->so_rcv.ssb_hiwat) {
 		/* Boy, there really is NO room */
 		if (hold_locks == 0)
 			SCTP_INP_WUNLOCK(stcb->sctp_ep);
@@ -459,7 +459,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			goto skip;
 		}
-		if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
+		if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 		    to, chk->data, control, stcb->asoc.my_vtag,
 		    stcb->sctp_ep)) {
 			/* Gak not enough room */
@@ -483,7 +483,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		/* append to a already started message. */
 		if (sctp_sbspace(&stcb->sctp_socket->so_rcv) >=
 		    (long)chk->send_size) {
-			sbappend(&stcb->sctp_socket->so_rcv, chk->data);
+			ssb_append(&stcb->sctp_socket->so_rcv, chk->data);
 			free_it = 1;
 		}
 	}
@@ -569,8 +569,8 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 		return;
 	}
 	do {
-		if (stcb->sctp_socket->so_rcv.sb_cc >=
-		    stcb->sctp_socket->so_rcv.sb_hiwat) {
+		if (stcb->sctp_socket->so_rcv.ssb_cc >=
+		    stcb->sctp_socket->so_rcv.ssb_hiwat) {
 			if (cntDel) {
 				sctp_sorwakeup(stcb->sctp_ep,
 					       stcb->sctp_socket);
@@ -684,7 +684,7 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 					SCTP_INP_WUNLOCK(stcb->sctp_ep);
 				return;
 			}
-			if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
+			if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 						  to, chk->data, control, stcb->asoc.my_vtag,
 						  stcb->sctp_ep)) {
 				/* Gak not enough room */
@@ -711,7 +711,7 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 		} else {
 			if (sctp_sbspace(&stcb->sctp_socket->so_rcv) >=
 			    (long)chk->send_size) {
-				sbappend(&stcb->sctp_socket->so_rcv, chk->data);
+				ssb_append(&stcb->sctp_socket->so_rcv, chk->data);
 				cntDel++;
 			} else {
 				/* out of space in the sb */
@@ -1592,7 +1592,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			if (TAILQ_EMPTY(&asoc->delivery_queue) &&
 			    (sctp_is_all_msg_on_reasm(asoc, &tsize) ||
 			     (asoc->size_on_reasm_queue >=
-			      (stcb->sctp_socket->so_rcv.sb_hiwat >> 2) &&
+			      (stcb->sctp_socket->so_rcv.ssb_hiwat >> 2) &&
 			      tsize))) {
 				/*
 				 * Yes, we setup to
@@ -1775,7 +1775,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 * When we have NO room in the rwnd we check
 		 * to make sure the reader is doing its job...
 		 */
-		if (stcb->sctp_socket->so_rcv.sb_cc) {
+		if (stcb->sctp_socket->so_rcv.ssb_cc) {
 			/* some to read, wake-up */
 			sctp_sorwakeup(stcb->sctp_ep, stcb->sctp_socket);
 		}
@@ -1909,8 +1909,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	    ((ch->ch.chunk_flags & SCTP_DATA_UNORDERED) ||
 	     ((asoc->strmin[strmno].last_sequence_delivered + 1) == strmseq &&
 	      TAILQ_EMPTY(&asoc->strmin[strmno].inqueue))) &&
-	    ((long)(stcb->sctp_socket->so_rcv.sb_hiwat -
-	            stcb->sctp_socket->so_rcv.sb_cc) >= (long)the_len)) {
+	    ((long)(stcb->sctp_socket->so_rcv.ssb_hiwat -
+	            stcb->sctp_socket->so_rcv.ssb_cc) >= (long)the_len)) {
 		/* Candidate for express delivery */
 		/*
 		 * Its not fragmented,
@@ -1996,7 +1996,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		SCTP_TCB_UNLOCK(stcb);
 		SCTP_INP_WLOCK(stcb->sctp_ep);
 		SCTP_TCB_LOCK(stcb);
-		if (!sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to, dmbuf,
+		if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to, dmbuf,
 		    control, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 			if (control) {
 				sctp_m_freem(control);
@@ -2463,7 +2463,7 @@ sctp_service_queues(struct sctp_tcb *stcb, struct sctp_association *asoc, int ho
 	 * have some on the sb hold queue.
 	 */
 	do {
-		if (stcb->sctp_socket->so_rcv.sb_cc >= stcb->sctp_socket->so_rcv.sb_hiwat) {
+		if (stcb->sctp_socket->so_rcv.ssb_cc >= stcb->sctp_socket->so_rcv.ssb_hiwat) {
 			if (cntDel == 0)
 				sctp_sorwakeup(stcb->sctp_ep, stcb->sctp_socket);
 			break;
@@ -2506,7 +2506,7 @@ sctp_service_queues(struct sctp_tcb *stcb, struct sctp_association *asoc, int ho
 		if (TAILQ_EMPTY(&asoc->delivery_queue) &&
 		    (sctp_is_all_msg_on_reasm(asoc, &tsize) ||
 		     (asoc->size_on_reasm_queue >=
-		      (stcb->sctp_socket->so_rcv.sb_hiwat >> 2) && tsize))) {
+		      (stcb->sctp_socket->so_rcv.ssb_hiwat >> 2) && tsize))) {
 			asoc->fragmented_delivery_inprogress = 1;
 			asoc->tsn_last_delivered = chk->rec.data.TSN_seq-1;
 			asoc->str_of_pdapi = chk->rec.data.stream_number;

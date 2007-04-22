@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.13 2007/04/22 01:13:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -370,7 +370,7 @@ ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
     /* 
      * If we found one, deliver th epacket to the socket
      */
-    if ( sbappendaddr( &ddp->ddp_socket->so_rcv, (struct sockaddr *)&from,
+    if (ssb_appendaddr( &ddp->ddp_socket->so_rcv, (struct sockaddr *)&from,
 	    m, (struct mbuf *)0 ) == 0 ) {
 	/* 
 	 * If the socket is full (or similar error) dump the packet.

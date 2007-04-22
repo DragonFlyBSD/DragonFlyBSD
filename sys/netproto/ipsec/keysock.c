@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.16 2007/04/21 02:26:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.17 2007/04/22 01:13:15 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -161,7 +161,7 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 		pfkeystat.in_msgtype[pmsg->sadb_msg_type]++;
 	}
 
-	if (!sbappendaddr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
+	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
 	    m, NULL)) {
 		pfkeystat.in_nomem++;
 		m_freem(m);
@@ -204,8 +204,8 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 	 * Get mbuf chain whenever possible (not clusters),
 	 * to save socket buffer.  We'll be generating many SADB_ACQUIRE
 	 * messages to listening key sockets.  If we simply allocate clusters,
-	 * sbappendaddr() will raise ENOBUFS due to too little sbspace().
-	 * sbspace() computes # of actual data bytes AND mbuf region.
+	 * ssb_appendaddr() will raise ENOBUFS due to too little ssb_space().
+	 * ssb_space() computes # of actual data bytes AND mbuf region.
 	 *
 	 * TODO: SADB_ACQUIRE filters should be implemented.
 	 */

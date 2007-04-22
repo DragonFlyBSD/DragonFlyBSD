@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/netinet/accf_http.c,v 1.1.2.4 2002/05/01 08:34:37 alfred Exp $
- *	$DragonFly: src/sys/net/accf_http/accf_http.c,v 1.3 2006/12/22 23:44:55 swildner Exp $
+ *	$DragonFly: src/sys/net/accf_http/accf_http.c,v 1.4 2007/04/22 01:13:13 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD
@@ -61,7 +61,7 @@ static int mbufstrcmp(struct mbuf *m, struct mbuf *npkt, int offset, char *cmp);
 static int mbufstrncmp(struct mbuf *m, struct mbuf *npkt, int offset,
 	int max, char *cmp);
 /* socketbuffer is full */
-static int sbfull(struct sockbuf *sb);
+static int sbfull(struct signalsockbuf *sb);
 
 static struct accept_filter accf_http_filter = {
 	"httpready",
@@ -96,13 +96,14 @@ SYSCTL_INT(_net_inet_accf_http, OID_AUTO, parsehttpversion, CTLFLAG_RW,
 #endif
 
 static int
-sbfull(struct sockbuf *sb)
+sbfull(struct signalsockbuf *ssb)
 {
 
 	DPRINT("sbfull, cc(%ld) >= hiwat(%ld): %d, mbcnt(%ld) >= mbmax(%ld): %d", 
-		sb->sb_cc, sb->sb_hiwat, sb->sb_cc >= sb->sb_hiwat,
-		sb->sb_mbcnt, sb->sb_mbmax, sb->sb_mbcnt >= sb->sb_mbmax);
-	return(sb->sb_cc >= sb->sb_hiwat || sb->sb_mbcnt >= sb->sb_mbmax);
+	    ssb->ssb_cc, ssb->ssb_hiwat, ssb->ssb_cc >= ssb->ssb_hiwat,
+	    ssb->ssb_mbcnt, ssb->ssb_mbmax, ssb->ssb_mbcnt >= ssb->ssb_mbmax);
+	return(ssb->ssb_cc >= ssb->ssb_hiwat ||
+	       ssb->ssb_mbcnt >= ssb->ssb_mbmax);
 }
 
 /*
@@ -179,8 +180,8 @@ sohashttpget(struct socket *so, void *arg, int waitflag)
 		char *cmp;
 		int	cmplen, cc;
 
-		m = so->so_rcv.sb_mb;
-		cc = so->so_rcv.sb_cc - 1;
+		m = so->so_rcv.ssb_mb;
+		cc = so->so_rcv.ssb_cc - 1;
 		if (cc < 1)
 			return;
 		switch (*mtod(m, char *)) {
@@ -216,7 +217,7 @@ sohashttpget(struct socket *so, void *arg, int waitflag)
 fallout:
 	DPRINT("fallout");
 	so->so_upcall = NULL;
-	so->so_rcv.sb_flags &= ~SB_UPCALL;
+	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);
 	return;
 }
@@ -230,10 +231,10 @@ soparsehttpvers(struct socket *so, void *arg, int waitflag)
 	if ((so->so_state & SS_CANTRCVMORE) != 0 || sbfull(&so->so_rcv))
 		goto fallout;
 
-	m = so->so_rcv.sb_mb;
-	cc = so->so_rcv.sb_cc;
+	m = so->so_rcv.ssb_mb;
+	cc = so->so_rcv.ssb_cc;
 	inspaces = spaces = 0;
-	for (m = so->so_rcv.sb_mb; m; m = n) {
+	for (m = so->so_rcv.ssb_mb; m; m = n) {
 		n = m->m_nextpkt;
 		for (; m; m = m->m_next) {
 			for (i = 0; i < m->m_len; i++, cc--) {
@@ -282,13 +283,13 @@ readmore:
 	 * we don't understand or a newline, so try again
 	 */
 	so->so_upcall = soparsehttpvers;
-	so->so_rcv.sb_flags |= SB_UPCALL;
+	so->so_rcv.ssb_flags |= SSB_UPCALL;
 	return;
 
 fallout:
 	DPRINT("fallout");
 	so->so_upcall = NULL;
-	so->so_rcv.sb_flags &= ~SB_UPCALL;
+	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);
 	return;
 }
@@ -315,11 +316,11 @@ soishttpconnected(struct socket *so, void *arg, int waitflag)
 	 * have NCHRS left
 	 */
 	copied = 0;
-	ccleft = so->so_rcv.sb_cc;
+	ccleft = so->so_rcv.ssb_cc;
 	if (ccleft < NCHRS)
 		goto readmore;
 	a = b = c = '\0';
-	for (m = so->so_rcv.sb_mb; m; m = n) {
+	for (m = so->so_rcv.ssb_mb; m; m = n) {
 		n = m->m_nextpkt;
 		for (; m; m = m->m_next) {
 			ccleft -= m->m_len;
@@ -353,12 +354,12 @@ soishttpconnected(struct socket *so, void *arg, int waitflag)
 
 readmore:
 	so->so_upcall = soishttpconnected;
-	so->so_rcv.sb_flags |= SB_UPCALL;
+	so->so_rcv.ssb_flags |= SSB_UPCALL;
 	return;
 
 gotit:
 	so->so_upcall = NULL;
-	so->so_rcv.sb_flags &= ~SB_UPCALL;
+	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);
 	return;
 }

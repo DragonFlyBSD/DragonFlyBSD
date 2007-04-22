@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.56 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.57 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -517,7 +517,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 
 	if (tp != NULL) {
 		if (!(flags & TH_RST)) {
-			win = sbspace(&tp->t_inpcb->inp_socket->so_rcv);
+			win = ssb_space(&tp->t_inpcb->inp_socket->so_rcv);
 			if (win > (long)TCP_MAXWIN << tp->rcv_scale)
 				win = (long)TCP_MAXWIN << tp->rcv_scale;
 		}
@@ -888,7 +888,7 @@ tcp_close(struct tcpcb *tp)
 		if (rt->rt_rmx.rmx_sendpipe != 0)
 			dosavessthresh = (i < rt->rt_rmx.rmx_sendpipe/2);
 		else
-			dosavessthresh = (i < so->so_snd.sb_hiwat/2);
+			dosavessthresh = (i < so->so_snd.ssb_hiwat/2);
 		if (dosavessthresh ||
 		    (!(rt->rt_rmx.rmx_locks & RTV_SSTHRESH) && (i != 0) &&
 		     (rt->rt_rmx.rmx_ssthresh != 0))) {
@@ -1633,8 +1633,8 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 		mss = (mss / MCLBYTES) * MCLBYTES;
 #endif
 
-	if (so->so_snd.sb_hiwat < mss)
-		mss = so->so_snd.sb_hiwat;
+	if (so->so_snd.ssb_hiwat < mss)
+		mss = so->so_snd.ssb_hiwat;
 
 	tp->t_maxseg = mss;
 	tp->t_rtttime = 0;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.27 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.28 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -226,7 +226,7 @@ divert_packet(struct mbuf *m, int incoming, int port)
 			sa = inp->inp_socket;
 	}
 	if (sa) {
-		if (sbappendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
+		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
 				 (struct mbuf *)NULL) == 0)
 			m_freem(m);
 		else

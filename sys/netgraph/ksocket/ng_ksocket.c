@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.13 2007/04/20 05:42:22 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.14 2007/04/22 01:13:13 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -613,8 +613,8 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 		/* Add our hook for incoming data and other events */
 		priv->so->so_upcallarg = (caddr_t)node;
 		priv->so->so_upcall = ng_ksocket_incoming;
-		priv->so->so_rcv.sb_flags |= SB_UPCALL;
-		priv->so->so_snd.sb_flags |= SB_UPCALL;
+		priv->so->so_rcv.ssb_flags |= SSB_UPCALL;
+		priv->so->so_snd.ssb_flags |= SSB_UPCALL;
 	}
 
 	/* OK */
@@ -937,8 +937,8 @@ ng_ksocket_rmnode(node_p node)
 	/* Close our socket (if any) */
 	if (priv->so != NULL) {
 		priv->so->so_upcall = NULL;
-		priv->so->so_rcv.sb_flags &= ~SB_UPCALL;
-		priv->so->so_snd.sb_flags &= ~SB_UPCALL;
+		priv->so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+		priv->so->so_snd.ssb_flags &= ~SSB_UPCALL;
 		soclose(priv->so, FNONBLOCK);
 		priv->so = NULL;
 	}
@@ -1051,12 +1051,12 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	/* Read and forward available mbuf's */
 	while (1) {
 		struct sockaddr *sa = NULL;
-		struct sorecv_direct sio;
+		struct sockbuf sio;
 		meta_p meta = NULL;
 		struct mbuf *n;
 		int flags;
 
-		sorecv_direct_init(&sio, 1000000000);
+		sbinit(&sio, 1000000000);
 		flags = MSG_DONTWAIT;
 
 		/* Try to get next packet from socket */
@@ -1067,7 +1067,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			break;
 
 		/* See if we got anything */
-		if (sio.m0 == NULL) {
+		if (sio.sb_mb == NULL) {
 			if (sa != NULL)
 				FREE(sa, M_SONAME);
 			break;
@@ -1075,9 +1075,9 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 
 		/* Don't trust the various socket layers to get the
 		   packet header and length correct (eg. kern/15175) */
-		sio.m0->m_pkthdr.len = 0;
-		for (n = sio.m0; n != NULL; n = n->m_next)
-			sio.m0->m_pkthdr.len += n->m_len;
+		sio.sb_mb->m_pkthdr.len = 0;
+		for (n = sio.sb_mb; n != NULL; n = n->m_next)
+			sio.sb_mb->m_pkthdr.len += n->m_len;
 
 		/* Put peer's socket address (if any) into a meta info blob */
 		if (sa != NULL) {
@@ -1102,7 +1102,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			FREE(sa, M_SONAME);
 		}
 sendit:		/* Forward data with optional peer sockaddr as meta info */
-		NG_SEND_DATA(error, priv->hook, sio.m0, meta);
+		NG_SEND_DATA(error, priv->hook, sio.sb_mb, meta);
 	}
 
 	/*
@@ -1167,7 +1167,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
 	head->so_qlen--;
 
-	/* XXX KNOTE(&head->so_rcv.sb_sel.si_note, 0); */
+	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
 
 	so->so_state &= ~SS_COMP;
 	so->so_head = NULL;
@@ -1207,8 +1207,8 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 
 	so->so_upcallarg = (caddr_t)node2;
 	so->so_upcall = ng_ksocket_incoming;
-	so->so_rcv.sb_flags |= SB_UPCALL;
-	so->so_snd.sb_flags |= SB_UPCALL;
+	so->so_rcv.ssb_flags |= SSB_UPCALL;
+	so->so_snd.ssb_flags |= SSB_UPCALL;
 
 	/* Fill in the response data and send it or return it to the caller */
 	resp_data = (struct ng_ksocket_accept *)resp->data;

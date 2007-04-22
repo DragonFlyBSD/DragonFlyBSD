@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.25 2006/12/29 18:02:56 victor Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.26 2007/04/22 01:13:14 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1889,7 +1889,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */
 				m_adj(n, off);
-				if (sbappendaddr(&last->in6p_socket->so_rcv,
+				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 						 (struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					/* should notify about lost packet */
@@ -1909,7 +1909,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 			ip6_savecontrol(last, &opts, ip6, m);
 		/* strip intermediate headers */
 		m_adj(m, off);
-		if (sbappendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
 				 (struct sockaddr *)&rip6src, m, opts) == 0) {
 			m_freem(m);
 			if (opts)

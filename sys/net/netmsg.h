@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.4 2007/04/20 05:42:21 dillon Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.5 2007/04/22 01:13:11 dillon Exp $
  */
 
 #ifndef _NET_NETMSG_H_
@@ -188,7 +188,7 @@ struct netmsg_pru_soreceive {
     struct socket	*nm_so;
     struct sockaddr	**nm_paddr;
     struct uio		*nm_uio;
-    struct sorecv_direct *nm_sio;
+    struct sockbuf	*nm_sio;
     struct mbuf		**nm_controlp;
     int			*nm_flagsp;
 };

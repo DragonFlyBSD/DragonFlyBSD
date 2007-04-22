@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.17 2007/04/20 05:42:23 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.18 2007/04/22 01:13:16 dillon Exp $
  *
  * Low level socket routines
  */
@@ -139,13 +139,11 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 }
 #endif
 int
-ncp_sock_recv(struct socket *so, struct sorecv_direct *sio)
+ncp_sock_recv(struct socket *so, struct sockbuf *sio)
 {
-	struct thread *td = curthread; /* XXX */
 	int error, flags;
 
-	sio->len = 1000000;	/* limit data returned (inexact, hint only) */
-	sio->m0 = NULL;
+	sbinit(sio, 1000000);	/* limit data returned (inexact, hint only) */
 	flags = MSG_DONTWAIT;
 
 	error = so_pru_soreceive(so, NULL, NULL, sio, NULL, &flags);
@@ -396,30 +394,30 @@ ncp_watchdog(struct ncp_conn *conn) {
 	int error, len, flags;
 	struct socket *so;
 	struct sockaddr *sa;
-	struct sorecv_direct sio;
+	struct sockbuf sio;
 
 	sa = NULL;
 	while (conn->wdg_so) { /* not a loop */
 		so = conn->wdg_so;
-		sorecv_direct_init(&sio, 1000000);
+		sbinit(&sio, 1000000);
 		flags = MSG_DONTWAIT;
 		error = so_pru_soreceive(so, (struct sockaddr**)&sa,
 					 NULL, &sio, NULL, &flags);
 		if (error)
 			break;
-		len = sio.len;
+		len = sio.sb_cc;
 		NCPSDEBUG("got watch dog %d\n",len);
 		if (len != 2) {
-			m_freem(sio.m0);
+			m_freem(sio.sb_mb);
 			break;
 		}
-		buf = mtod(sio.m0, char *);
+		buf = mtod(sio.sb_mb, char *);
 		if (buf[1] != '?') {
-			m_freem(sio.m0);
+			m_freem(sio.sb_mb);
 			break;
 		}
 		buf[1] = 'Y';
-		error = so_pru_sosend(so, sa, NULL, sio.m0, NULL, 0, curthread);
+		error = so_pru_sosend(so, sa, NULL, sio.sb_mb, NULL, 0, curthread);
 		NCPSDEBUG("send watch dog %d\n",error);
 		break;
 	}

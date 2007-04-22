@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.14 2007/04/20 05:42:23 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.15 2007/04/22 01:13:16 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -212,13 +212,13 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	 */
 	crit_enter();
 	while (1/*so->so_rcv.sb_cc*/) {
-		struct sorecv_direct sio;
+		struct sockbuf sio;
 
 		if (ncp_poll(so, POLLIN) == 0)
 			break;
 		if (ncp_sock_recv(so, &sio) != 0)	
 			break;
-		m_freem(sio.m0);
+		sbflush(&sio);
 	}
 	rq = mtod(rqp->rq,struct ncp_rqhdr *);
 	rq->seq = conn->seq;
@@ -276,14 +276,14 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 		gotpacket = 0;	/* nothing good found */
 		dosend = 1;	/* resend rq if error */
 		for (;;) {
-			struct sorecv_direct sio;
+			struct sockbuf sio;
 
 			error = 0;
 			if (ncp_poll(so,POLLIN) == 0) break;
 			error = ncp_sock_recv(so, &sio);
 			if (error) break; 		/* must be more checks !!! */
 
-			m = sio.m0;
+			m = sio.sb_mb;
 			if (m->m_len < sizeof(*rp)) {
 				m = m_pullup(m, sizeof(*rp));
 				if (m == NULL) {
@@ -292,7 +292,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 				}
 			}
 			rp = mtod(m, struct ncp_rphdr*);
-			if (sio.len == sizeof(*rp) && rp->type == NCP_POSITIVE_ACK) {
+			if (sio.sb_cc == sizeof(*rp) && rp->type == NCP_POSITIVE_ACK) {
 				NCPSDEBUG("got positive acknowledge\n");
 				m_freem(m);
 				rqp->rexmit = conn->li.retry_count;
@@ -317,7 +317,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 					} else {
 						gotpacket = 1;
 						mreply = m;
-						plen = sio.len;
+						plen = sio.sb_cc;
 					}
 					continue;	/* look up other for other packets */
 				}

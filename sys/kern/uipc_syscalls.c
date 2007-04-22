@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.79 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.80 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -307,7 +307,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	fflag = lfp->f_flag;
 
 	/* connection has been removed from the listen queue */
-	KNOTE(&head->so_rcv.sb_sel.si_note, 0);
+	KNOTE(&head->so_rcv.ssb_sel.si_note, 0);
 
 	so->so_state &= ~SS_COMP;
 	so->so_head = NULL;
@@ -1524,7 +1524,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	/*
 	 * Protect against multiple writers to the socket.
 	 */
-	(void) sblock(&so->so_snd, M_WAITOK);
+	ssb_lock(&so->so_snd, M_WAITOK);
 
 	/*
 	 * Loop through the pages in the file, starting with the requested
@@ -1556,12 +1556,12 @@ retry_lookup:
 		 * Optimize the non-blocking case by looking at the socket space
 		 * before going to the extra work of constituting the sf_buf.
 		 */
-		if ((fp->f_flag & FNONBLOCK) && sbspace(&so->so_snd) <= 0) {
+		if ((fp->f_flag & FNONBLOCK) && ssb_space(&so->so_snd) <= 0) {
 			if (so->so_state & SS_CANTSENDMORE)
 				error = EPIPE;
 			else
 				error = EAGAIN;
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			goto done;
 		}
 		/*
@@ -1630,7 +1630,7 @@ retry_lookup:
 				vm_page_unwire(pg, 0);
 				vm_page_try_to_free(pg);
 				crit_exit();
-				sbunlock(&so->so_snd);
+				ssb_unlock(&so->so_snd);
 				goto done;
 			}
 		}
@@ -1645,7 +1645,7 @@ retry_lookup:
 			vm_page_unwire(pg, 0);
 			vm_page_try_to_free(pg);
 			crit_exit();
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			error = EINTR;
 			goto done;
 		}
@@ -1657,7 +1657,7 @@ retry_lookup:
 		if (m == NULL) {
 			error = ENOBUFS;
 			sf_buf_free(sf);
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			goto done;
 		}
 
@@ -1712,32 +1712,32 @@ retry_space:
 				so->so_error = 0;
 			}
 			m_freem(m);
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			crit_exit();
 			goto done;
 		}
 		/*
 		 * Wait for socket space to become available. We do this just
 		 * after checking the connection state above in order to avoid
-		 * a race condition with sbwait().
+		 * a race condition with ssb_wait().
 		 */
-		if (sbspace(&so->so_snd) < so->so_snd.sb_lowat) {
+		if (ssb_space(&so->so_snd) < so->so_snd.ssb_lowat) {
 			if (fp->f_flag & FNONBLOCK) {
 				m_freem(m);
-				sbunlock(&so->so_snd);
+				ssb_unlock(&so->so_snd);
 				crit_exit();
 				error = EAGAIN;
 				goto done;
 			}
-			error = sbwait(&so->so_snd);
+			error = ssb_wait(&so->so_snd);
 			/*
-			 * An error from sbwait usually indicates that we've
+			 * An error from ssb_wait usually indicates that we've
 			 * been interrupted by a signal. If we've sent anything
 			 * then return bytes sent, otherwise return the error.
 			 */
 			if (error) {
 				m_freem(m);
-				sbunlock(&so->so_snd);
+				ssb_unlock(&so->so_snd);
 				crit_exit();
 				goto done;
 			}
@@ -1746,7 +1746,7 @@ retry_space:
 		error = so_pru_send(so, 0, m, NULL, NULL, td);
 		crit_exit();
 		if (error) {
-			sbunlock(&so->so_snd);
+			ssb_unlock(&so->so_snd);
 			goto done;
 		}
 	}
@@ -1755,7 +1755,7 @@ retry_space:
 		error = so_pru_send(so, 0, mheader, NULL, NULL, td);
 		mheader = NULL;
 	}
-	sbunlock(&so->so_snd);
+	ssb_unlock(&so->so_snd);
 
 done:
 	fdrop(fp);

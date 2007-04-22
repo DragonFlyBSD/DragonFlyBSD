@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/netinet/accf_data.c,v 1.1.2.2 2000/09/20 21:34:13 ps Exp $
- *	$DragonFly: src/sys/net/accf_data/accf_data.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ *	$DragonFly: src/sys/net/accf_data/accf_data.c,v 1.3 2007/04/22 01:13:12 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD
@@ -76,7 +76,7 @@ sohasdata(struct socket *so, void *arg, int waitflag)
 	}
 
 	so->so_upcall = NULL;
-	so->so_rcv.sb_flags &= ~SB_UPCALL;
+	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);
 	return;
 }

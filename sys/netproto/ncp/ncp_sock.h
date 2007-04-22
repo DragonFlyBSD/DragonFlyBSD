@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.h,v 1.3 2000/01/14 19:54:39 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.h,v 1.4 2007/04/20 05:42:23 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.h,v 1.5 2007/04/22 01:13:16 dillon Exp $
  */
 #ifndef _NETNCP_NCP_SOCK_H_
 #define _NETNCP_NCP_SOCK_H_
@@ -45,7 +45,7 @@ struct timeval;
 
 int  ncp_sock_connect_ipx(struct ncp_conn *);
 int  ncp_sock_connect_in(struct ncp_conn *);
-int  ncp_sock_recv(struct socket *so, struct sorecv_direct *sio);
+int  ncp_sock_recv(struct socket *so, struct sockbuf *sio);
 int  ncp_sock_send(struct socket *so, struct mbuf *data, struct ncp_rq *rqp);
 int  ncp_sock_disconnect(struct ncp_conn *conn);
 int  ncp_poll(struct socket *so, int events);

@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.13 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.14 2007/04/22 01:13:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,7 @@ idp_input(struct mbuf *m, ...)
 		m->m_pkthdr.len -= sizeof (struct idp);
 		m->m_data += sizeof (struct idp);
 	}
-	if (sbappendaddr(&nsp->nsp_socket->so_rcv, (struct sockaddr *)&idp_ns,
+	if (ssb_appendaddr(&nsp->nsp_socket->so_rcv, (struct sockaddr *)&idp_ns,
 	    m, (struct mbuf *)0) == 0)
 		goto bad;
 	sorwakeup(nsp->nsp_socket);

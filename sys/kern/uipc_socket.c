@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.44 2007/04/20 05:42:20 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.45 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -150,8 +150,8 @@ soalloc(int waitok)
 		/* XXX race condition for reentrant kernel */
 		bzero(so, sizeof *so);
 		TAILQ_INIT(&so->so_aiojobq);
-		TAILQ_INIT(&so->so_rcv.sb_sel.si_mlist);
-		TAILQ_INIT(&so->so_snd.sb_sel.si_mlist);
+		TAILQ_INIT(&so->so_rcv.ssb_sel.si_mlist);
+		TAILQ_INIT(&so->so_snd.ssb_sel.si_mlist);
 	}
 	return so;
 }
@@ -220,12 +220,12 @@ sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 void
 sodealloc(struct socket *so)
 {
-	if (so->so_rcv.sb_hiwat)
+	if (so->so_rcv.ssb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
-		    &so->so_rcv.sb_hiwat, 0, RLIM_INFINITY);
-	if (so->so_snd.sb_hiwat)
+		    &so->so_rcv.ssb_hiwat, 0, RLIM_INFINITY);
+	if (so->so_snd.ssb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
-		    &so->so_snd.sb_hiwat, 0, RLIM_INFINITY);
+		    &so->so_snd.ssb_hiwat, 0, RLIM_INFINITY);
 #ifdef INET
 	/* remove accept filter if present */
 	if (so->so_accf != NULL)
@@ -302,7 +302,7 @@ sofree(struct socket *so)
 		so->so_state &= ~SS_INCOMP;
 		so->so_head = NULL;
 	}
-	sbrelease(&so->so_snd, so);
+	ssb_release(&so->so_snd, so);
 	sorflush(so);
 	sodealloc(so);
 }
@@ -524,7 +524,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 #define	gotoerr(errcode)	{ error = errcode; crit_exit(); goto release; }
 
 restart:
-	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
+	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out;
 	do {
@@ -553,18 +553,18 @@ restart:
 			    gotoerr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
 				   ENOTCONN : EDESTADDRREQ);
 		}
-		space = sbspace(&so->so_snd);
+		space = ssb_space(&so->so_snd);
 		if (flags & MSG_OOB)
 			space += 1024;
-		if ((atomic && resid > so->so_snd.sb_hiwat) ||
-		    clen > so->so_snd.sb_hiwat)
+		if ((atomic && resid > so->so_snd.ssb_hiwat) ||
+		    clen > so->so_snd.ssb_hiwat)
 			gotoerr(EMSGSIZE);
 		if (space < resid + clen && uio &&
-		    (atomic || space < so->so_snd.sb_lowat || space < clen)) {
+		    (atomic || space < so->so_snd.ssb_lowat || space < clen)) {
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 				gotoerr(EWOULDBLOCK);
-			sbunlock(&so->so_snd);
-			error = sbwait(&so->so_snd);
+			ssb_unlock(&so->so_snd);
+			error = ssb_wait(&so->so_snd);
 			crit_exit();
 			if (error)
 				goto out;
@@ -655,7 +655,7 @@ restart:
 	} while (resid);
 
 release:
-	sbunlock(&so->so_snd);
+	ssb_unlock(&so->so_snd);
 out:
 	if (top)
 		m_freem(top);
@@ -692,7 +692,7 @@ sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	resid = uio ? uio->uio_resid : top->m_pkthdr.len;
 
 restart:
-	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
+	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out;
 
@@ -707,13 +707,13 @@ restart:
 	}
 	if (!(so->so_state & SS_ISCONNECTED) && addr == NULL)
 		gotoerr(EDESTADDRREQ);
-	if (resid > so->so_snd.sb_hiwat)
+	if (resid > so->so_snd.ssb_hiwat)
 		gotoerr(EMSGSIZE);
-	if (uio && sbspace(&so->so_snd) < resid) {
+	if (uio && ssb_space(&so->so_snd) < resid) {
 		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 			gotoerr(EWOULDBLOCK);
-		sbunlock(&so->so_snd);
-		error = sbwait(&so->so_snd);
+		ssb_unlock(&so->so_snd);
+		error = ssb_wait(&so->so_snd);
 		crit_exit();
 		if (error)
 			goto out;
@@ -738,7 +738,7 @@ restart:
 		so->so_options &= ~SO_DONTROUTE;
 
 release:
-	sbunlock(&so->so_snd);
+	ssb_unlock(&so->so_snd);
 out:
 	if (top)
 		m_freem(top);
@@ -747,15 +747,15 @@ out:
 
 /*
  * Implement receive operations on a socket.
- * We depend on the way that records are added to the sockbuf
+ * We depend on the way that records are added to the signalsockbuf
  * by sbappend*.  In particular, each record (mbufs linked through m_next)
  * must begin with an address if the protocol so specifies,
  * followed by an optional mbuf or mbufs containing ancillary data,
  * and then zero or more mbufs of data.
  * In order to avoid blocking network interrupts for the entire time here,
  * we exit the critical section while doing the actual copy to user space.
- * Although the sockbuf is locked, new data may still be appended,
- * and thus we must maintain consistency of the sockbuf during that time.
+ * Although the signalsockbuf is locked, new data may still be appended,
+ * and thus we must maintain consistency of the signalsockbuf during that time.
  *
  * The caller may receive the data as a single mbuf chain by supplying
  * an mbuf **mp0 for use in returning the chain.  The uio is then used
@@ -763,7 +763,7 @@ out:
  */
 int
 soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
-	  struct sorecv_direct *sio, struct mbuf **controlp, int *flagsp)
+	  struct sockbuf *sio, struct mbuf **controlp, int *flagsp)
 {
 	struct mbuf *m, *n;
 	struct mbuf *free_chain = NULL;
@@ -775,7 +775,7 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	if (uio)
 		resid = uio->uio_resid;
 	else
-		resid = sio->maxlen - sio->len;
+		resid = (int)(sio->sb_climit - sio->sb_cc);
 	orig_resid = resid;
 
 	if (psa)
@@ -795,12 +795,8 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 			goto bad;
 		if (sio) {
 			do {
-				*sio->mapp = m;
-				sio->mapp = &m->m_next;
-				m = m->m_next;
-				*sio->mapp = NULL;
+				sbappend(sio, m);
 				resid -= m->m_len;
-				sio->len += m->m_len;
 			} while (resid > 0 && m);
 		} else {
 			do {
@@ -821,11 +817,11 @@ bad:
 
 restart:
 	crit_enter();
-	error = sblock(&so->so_rcv, SBLOCKWAIT(flags));
+	error = ssb_lock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
 		goto done;
 
-	m = so->so_rcv.sb_mb;
+	m = so->so_rcv.ssb_mb;
 	/*
 	 * If we have less data than requested, block awaiting more
 	 * (subject to any timeout) if:
@@ -838,11 +834,11 @@ restart:
 	 * a short count if a timeout or signal occurs after we start.
 	 */
 	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
-	    so->so_rcv.sb_cc < resid) &&
-	    (so->so_rcv.sb_cc < so->so_rcv.sb_lowat ||
-	    ((flags & MSG_WAITALL) && resid <= so->so_rcv.sb_hiwat)) &&
+	    so->so_rcv.ssb_cc < resid) &&
+	    (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
+	    ((flags & MSG_WAITALL) && resid <= so->so_rcv.ssb_hiwat)) &&
 	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
-		KASSERT(m != NULL || !so->so_rcv.sb_cc, ("receive 1"));
+		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
 		if (so->so_error) {
 			if (m)
 				goto dontblock;
@@ -859,7 +855,7 @@ restart:
 		}
 		for (; m; m = m->m_next) {
 			if (m->m_type == MT_OOBDATA  || (m->m_flags & M_EOR)) {
-				m = so->so_rcv.sb_mb;
+				m = so->so_rcv.ssb_mb;
 				goto dontblock;
 			}
 		}
@@ -874,8 +870,8 @@ restart:
 			error = EWOULDBLOCK;
 			goto release;
 		}
-		sbunlock(&so->so_rcv);
-		error = sbwait(&so->so_rcv);
+		ssb_unlock(&so->so_rcv);
+		error = ssb_wait(&so->so_rcv);
 		if (error)
 			goto done;
 		crit_exit();
@@ -890,7 +886,7 @@ dontblock:
 	 * cleaning up.  Note that calling m_free*() will break out critical
 	 * section.
 	 */
-	KKASSERT(m == so->so_rcv.sb_mb);
+	KKASSERT(m == so->so_rcv.ssb_mb);
 
 	/*
 	 * Skip any address mbufs prepending the record.
@@ -903,7 +899,7 @@ dontblock:
 		if (flags & MSG_PEEK)
 			m = m->m_next;
 		else
-			m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
+			m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
 	}
 
 	/*
@@ -922,7 +918,7 @@ dontblock:
 			if (flags & MSG_PEEK)
 				m = m->m_next;
 			else
-				m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
+				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
 		}
 	}
 #endif /* SCTP */
@@ -933,7 +929,7 @@ dontblock:
 			m = m->m_next;	/* XXX race */
 		} else {
 			if (controlp) {
-				n = sbunlinkmbuf(&so->so_rcv, m, NULL);
+				n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
 				if (pr->pr_domain->dom_externalize &&
 				    mtod(m, struct cmsghdr *)->cmsg_type ==
 				    SCM_RIGHTS)
@@ -941,7 +937,7 @@ dontblock:
 				*controlp = m;
 				m = n;
 			} else {
-				m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
+				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
 			}
 		}
 		if (controlp && *controlp) {
@@ -1012,13 +1008,11 @@ dontblock:
 				moff = 0;
 			} else {
 				if (sio) {
-					n = sbunlinkmbuf(&so->so_rcv, m, NULL);
-					*sio->mapp = m;
-					sio->mapp = &m->m_next;
-					sio->len += m->m_len;
+					n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
+					sbappend(sio, m);
 					m = n;
 				} else {
-					m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
+					m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
 				}
 			}
 		} else {
@@ -1026,13 +1020,13 @@ dontblock:
 				moff += len;
 			} else {
 				if (sio) {
-					*sio->mapp= m_copym(m, 0, len, MB_WAIT);
-					sio->mapp = &m->m_next;
-					sio->len += len;
+					n = m_copym(m, 0, len, MB_WAIT);
+					if (n)
+						sbappend(sio, n);
 				}
 				m->m_data += len;
 				m->m_len -= len;
-				so->so_rcv.sb_cc -= len;
+				so->so_rcv.ssb_cc -= len;
 			}
 		}
 		if (so->so_oobmark) {
@@ -1055,11 +1049,11 @@ dontblock:
 		 * we must not quit until resid == 0 or an error
 		 * termination.  If a signal/timeout occurs, return
 		 * with a short count but without error.
-		 * Keep sockbuf locked against other readers.
+		 * Keep signalsockbuf locked against other readers.
 		 */
 		while ((flags & MSG_WAITALL) && m == NULL && 
 		       resid > 0 && !sosendallatonce(so) && 
-		       so->so_rcv.sb_mb == NULL) {
+		       so->so_rcv.ssb_mb == NULL) {
 			if (so->so_error || so->so_state & SS_CANTRCVMORE)
 				break;
 			/*
@@ -1070,13 +1064,13 @@ dontblock:
 			 */
 			if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
 				so_pru_rcvd(so, flags);
-			error = sbwait(&so->so_rcv);
+			error = ssb_wait(&so->so_rcv);
 			if (error) {
-				sbunlock(&so->so_rcv);
+				ssb_unlock(&so->so_rcv);
 				error = 0;
 				goto done;
 			}
-			m = so->so_rcv.sb_mb;
+			m = so->so_rcv.ssb_mb;
 		}
 	}
 
@@ -1092,14 +1086,14 @@ dontblock:
 	 */
 	if ((flags & MSG_PEEK) == 0) {
 		if (m && (pr->pr_flags & PR_ATOMIC))
-			sbdroprecord(&so->so_rcv);
+			sbdroprecord(&so->so_rcv.sb);
 		if ((pr->pr_flags & PR_WANTRCVD) && so->so_pcb)
 			so_pru_rcvd(so, flags);
 	}
 
 	if (orig_resid == resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
-		sbunlock(&so->so_rcv);
+		ssb_unlock(&so->so_rcv);
 		crit_exit();
 		goto restart;
 	}
@@ -1107,7 +1101,7 @@ dontblock:
 	if (flagsp)
 		*flagsp |= flags;
 release:
-	sbunlock(&so->so_rcv);
+	ssb_unlock(&so->so_rcv);
 done:
 	crit_exit();
 	if (free_chain)
@@ -1131,27 +1125,27 @@ soshutdown(struct socket *so, int how)
 void
 sorflush(struct socket *so)
 {
-	struct sockbuf *sb = &so->so_rcv;
+	struct signalsockbuf *ssb = &so->so_rcv;
 	struct protosw *pr = so->so_proto;
-	struct sockbuf asb;
+	struct signalsockbuf asb;
 
-	sb->sb_flags |= SB_NOINTR;
-	(void) sblock(sb, M_WAITOK);
+	ssb->ssb_flags |= SSB_NOINTR;
+	(void) ssb_lock(ssb, M_WAITOK);
 
 	crit_enter();
 	socantrcvmore(so);
-	sbunlock(sb);
-	asb = *sb;
-	bzero((caddr_t)sb, sizeof (*sb));
-	if (asb.sb_flags & SB_KNOTE) {
-		sb->sb_sel.si_note = asb.sb_sel.si_note;
-		sb->sb_flags = SB_KNOTE;
+	ssb_unlock(ssb);
+	asb = *ssb;
+	bzero((caddr_t)ssb, sizeof (*ssb));
+	if (asb.ssb_flags & SSB_KNOTE) {
+		ssb->ssb_sel.si_note = asb.ssb_sel.si_note;
+		ssb->ssb_flags = SSB_KNOTE;
 	}
 	crit_exit();
 
 	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
-		(*pr->pr_domain->dom_dispose)(asb.sb_mb);
-	sbrelease(&asb, so);
+		(*pr->pr_domain->dom_dispose)(asb.ssb_mb);
+	ssb_release(&asb, so);
 }
 
 #ifdef INET
@@ -1337,7 +1331,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 			switch (sopt->sopt_name) {
 			case SO_SNDBUF:
 			case SO_RCVBUF:
-				if (sbreserve(sopt->sopt_name == SO_SNDBUF ?
+				if (ssb_reserve(sopt->sopt_name == SO_SNDBUF ?
 				    &so->so_snd : &so->so_rcv, (u_long)optval,
 				    so,
 				    &curproc->p_rlimit[RLIMIT_SBSIZE]) == 0) {
@@ -1351,14 +1345,14 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 			 * the high-water.
 			 */
 			case SO_SNDLOWAT:
-				so->so_snd.sb_lowat =
-				    (optval > so->so_snd.sb_hiwat) ?
-				    so->so_snd.sb_hiwat : optval;
+				so->so_snd.ssb_lowat =
+				    (optval > so->so_snd.ssb_hiwat) ?
+				    so->so_snd.ssb_hiwat : optval;
 				break;
 			case SO_RCVLOWAT:
-				so->so_rcv.sb_lowat =
-				    (optval > so->so_rcv.sb_hiwat) ?
-				    so->so_rcv.sb_hiwat : optval;
+				so->so_rcv.ssb_lowat =
+				    (optval > so->so_rcv.ssb_hiwat) ?
+				    so->so_rcv.ssb_hiwat : optval;
 				break;
 			}
 			break;
@@ -1388,10 +1382,10 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 
 			switch (sopt->sopt_name) {
 			case SO_SNDTIMEO:
-				so->so_snd.sb_timeo = val;
+				so->so_snd.ssb_timeo = val;
 				break;
 			case SO_RCVTIMEO:
-				so->so_rcv.sb_timeo = val;
+				so->so_rcv.ssb_timeo = val;
 				break;
 			}
 			break;
@@ -1502,25 +1496,25 @@ integer:
 			goto integer;
 
 		case SO_SNDBUF:
-			optval = so->so_snd.sb_hiwat;
+			optval = so->so_snd.ssb_hiwat;
 			goto integer;
 
 		case SO_RCVBUF:
-			optval = so->so_rcv.sb_hiwat;
+			optval = so->so_rcv.ssb_hiwat;
 			goto integer;
 
 		case SO_SNDLOWAT:
-			optval = so->so_snd.sb_lowat;
+			optval = so->so_snd.ssb_lowat;
 			goto integer;
 
 		case SO_RCVLOWAT:
-			optval = so->so_rcv.sb_lowat;
+			optval = so->so_rcv.ssb_lowat;
 			goto integer;
 
 		case SO_SNDTIMEO:
 		case SO_RCVTIMEO:
 			optval = (sopt->sopt_name == SO_SNDTIMEO ?
-				  so->so_snd.sb_timeo : so->so_rcv.sb_timeo);
+				  so->so_snd.ssb_timeo : so->so_rcv.ssb_timeo);
 
 			tv.tv_sec = optval / hz;
 			tv.tv_usec = (optval % hz) * tick;
@@ -1635,7 +1629,7 @@ sohasoutofband(struct socket *so)
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);
-	selwakeup(&so->so_rcv.sb_sel);
+	selwakeup(&so->so_rcv.ssb_sel);
 }
 
 int
@@ -1650,7 +1644,7 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 			revents |= events & (POLLIN | POLLRDNORM);
 
 	if (events & POLLINIGNEOF)
-		if (so->so_rcv.sb_cc >= so->so_rcv.sb_lowat ||
+		if (so->so_rcv.ssb_cc >= so->so_rcv.ssb_lowat ||
 			!TAILQ_EMPTY(&so->so_comp) || so->so_error)
 			revents |= POLLINIGNEOF;
 
@@ -1666,13 +1660,13 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 		if (events &
 			(POLLIN | POLLINIGNEOF | POLLPRI | POLLRDNORM |
 			 POLLRDBAND)) {
-			selrecord(td, &so->so_rcv.sb_sel);
-			so->so_rcv.sb_flags |= SB_SEL;
+			selrecord(td, &so->so_rcv.ssb_sel);
+			so->so_rcv.ssb_flags |= SSB_SEL;
 		}
 
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(td, &so->so_snd.sb_sel);
-			so->so_snd.sb_flags |= SB_SEL;
+			selrecord(td, &so->so_snd.ssb_sel);
+			so->so_snd.ssb_flags |= SSB_SEL;
 		}
 	}
 
@@ -1684,7 +1678,7 @@ int
 sokqfilter(struct file *fp, struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -1692,19 +1686,19 @@ sokqfilter(struct file *fp, struct knote *kn)
 			kn->kn_fop = &solisten_filtops;
 		else
 			kn->kn_fop = &soread_filtops;
-		sb = &so->so_rcv;
+		ssb = &so->so_rcv;
 		break;
 	case EVFILT_WRITE:
 		kn->kn_fop = &sowrite_filtops;
-		sb = &so->so_snd;
+		ssb = &so->so_snd;
 		break;
 	default:
 		return (1);
 	}
 
 	crit_enter();
-	SLIST_INSERT_HEAD(&sb->sb_sel.si_note, kn, kn_selnext);
-	sb->sb_flags |= SB_KNOTE;
+	SLIST_INSERT_HEAD(&ssb->ssb_sel.si_note, kn, kn_selnext);
+	ssb->ssb_flags |= SSB_KNOTE;
 	crit_exit();
 	return (0);
 }
@@ -1715,9 +1709,9 @@ filt_sordetach(struct knote *kn)
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
 	crit_enter();
-	SLIST_REMOVE(&so->so_rcv.sb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_rcv.sb_sel.si_note))
-		so->so_rcv.sb_flags &= ~SB_KNOTE;
+	SLIST_REMOVE(&so->so_rcv.ssb_sel.si_note, kn, knote, kn_selnext);
+	if (SLIST_EMPTY(&so->so_rcv.ssb_sel.si_note))
+		so->so_rcv.ssb_flags &= ~SSB_KNOTE;
 	crit_exit();
 }
 
@@ -1727,7 +1721,7 @@ filt_soread(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	kn->kn_data = so->so_rcv.sb_cc;
+	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF; 
 		kn->kn_fflags = so->so_error;
@@ -1737,7 +1731,7 @@ filt_soread(struct knote *kn, long hint)
 		return (1);
 	if (kn->kn_sfflags & NOTE_LOWAT)
 		return (kn->kn_data >= kn->kn_sdata);
-	return (kn->kn_data >= so->so_rcv.sb_lowat);
+	return (kn->kn_data >= so->so_rcv.ssb_lowat);
 }
 
 static void
@@ -1746,9 +1740,9 @@ filt_sowdetach(struct knote *kn)
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
 	crit_enter();
-	SLIST_REMOVE(&so->so_snd.sb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_snd.sb_sel.si_note))
-		so->so_snd.sb_flags &= ~SB_KNOTE;
+	SLIST_REMOVE(&so->so_snd.ssb_sel.si_note, kn, knote, kn_selnext);
+	if (SLIST_EMPTY(&so->so_snd.ssb_sel.si_note))
+		so->so_snd.ssb_flags &= ~SSB_KNOTE;
 	crit_exit();
 }
 
@@ -1758,7 +1752,7 @@ filt_sowrite(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	kn->kn_data = sbspace(&so->so_snd);
+	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_CANTSENDMORE) {
 		kn->kn_flags |= EV_EOF; 
 		kn->kn_fflags = so->so_error;
@@ -1771,7 +1765,7 @@ filt_sowrite(struct knote *kn, long hint)
 		return (0);
 	if (kn->kn_sfflags & NOTE_LOWAT)
 		return (kn->kn_data >= kn->kn_sdata);
-	return (kn->kn_data >= so->so_snd.sb_lowat);
+	return (kn->kn_data >= so->so_snd.ssb_lowat);
 }
 
 /*ARGSUSED*/

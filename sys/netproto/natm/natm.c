@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.24 2007/04/21 02:26:48 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.25 2007/04/22 01:13:15 dillon Exp $ */
 
 /*
  *
@@ -104,7 +104,7 @@ natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	goto out;
     }
 
-    if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+    if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 	if (proto == PROTO_NATMAAL5) 
 	    error = soreserve(so, natm5_sendspace, natm5_recvspace,
 			      ai->sb_rlimit);
@@ -480,7 +480,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 	break;
       }
 
-      if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+      if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 	if (proto == PROTO_NATMAAL5) 
           error = soreserve(so, natm5_sendspace, natm5_recvspace);
 	else
@@ -808,13 +808,13 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
 #endif
 #endif
 
-  if (sbspace(&so->so_rcv) > m->m_pkthdr.len ||
-     ((npcb->npcb_flags & NPCB_RAW) != 0 && so->so_rcv.sb_cc < NPCB_RAWCC) ) {
+  if (ssb_space(&so->so_rcv) > m->m_pkthdr.len ||
+     ((npcb->npcb_flags & NPCB_RAW) != 0 && so->so_rcv.ssb_cc < NPCB_RAWCC) ) {
 #ifdef NATM_STAT
     natm_sookcnt++;
     natm_sookbytes += m->m_pkthdr.len;
 #endif
-    sbappendrecord(&so->so_rcv, m);
+    sbappendrecord(&so->so_rcv.sb, m);
     sorwakeup(so);
   } else {
 #ifdef NATM_STAT

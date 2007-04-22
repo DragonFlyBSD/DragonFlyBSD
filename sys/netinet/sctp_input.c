@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.10 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.11 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -683,8 +683,8 @@ sctp_handle_shutdown_ack(struct sctp_shutdown_ack_chunk *cp,
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
 		stcb->sctp_ep->sctp_flags &= ~SCTP_PCB_FLAGS_CONNECTED;
 		/* Set the connected flag to disconnected */
-		stcb->sctp_ep->sctp_socket->so_snd.sb_cc = 0;
-		stcb->sctp_ep->sctp_socket->so_snd.sb_mbcnt = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_cc = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_mbcnt = 0;
 		soisdisconnected(stcb->sctp_ep->sctp_socket);
 	}
 	/* free the TCB but first save off the ep */
@@ -2382,8 +2382,8 @@ sctp_handle_shutdown_complete(struct sctp_shutdown_complete_chunk *cp,
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) {
 		stcb->sctp_ep->sctp_flags &= ~SCTP_PCB_FLAGS_CONNECTED;
-		stcb->sctp_ep->sctp_socket->so_snd.sb_cc = 0;
-		stcb->sctp_ep->sctp_socket->so_snd.sb_mbcnt = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_cc = 0;
+		stcb->sctp_ep->sctp_socket->so_snd.ssb_mbcnt = 0;
 		soisdisconnected(stcb->sctp_ep->sctp_socket);
 	}
 	/* are the queues empty? they should be */

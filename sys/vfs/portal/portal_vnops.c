@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.34 2007/04/20 05:42:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.35 2007/04/22 01:13:17 dillon Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ portal_open(struct vop_open_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct uio auio;
 	struct iovec aiov[2];
-	struct sorecv_direct sio;
+	struct sockbuf sio;
 	int res;
 	struct mbuf *cm = 0;
 	struct cmsghdr *cmsg;
@@ -296,10 +296,10 @@ portal_open(struct vop_open_args *ap)
 	/*
 	 * Set miscellaneous flags
 	 */
-	so->so_rcv.sb_timeo = 0;
-	so->so_snd.sb_timeo = 0;
-	so->so_rcv.sb_flags |= SB_NOINTR;
-	so->so_snd.sb_flags |= SB_NOINTR;
+	so->so_rcv.ssb_timeo = 0;
+	so->so_snd.ssb_timeo = 0;
+	so->so_rcv.ssb_flags |= SSB_NOINTR;
+	so->so_snd.ssb_flags |= SSB_NOINTR;
 
 
 	pcred.pcr_flag = ap->a_mode;
@@ -324,7 +324,7 @@ portal_open(struct vop_open_args *ap)
 		goto bad;
 
 	len = sizeof(int);
-	sorecv_direct_init(&sio, len);
+	sbinit(&sio, len);
 	do {
 		struct mbuf *m;
 		int flags;
@@ -337,7 +337,7 @@ portal_open(struct vop_open_args *ap)
 		/*
 		 * Grab an error code from the mbuf.
 		 */
-		if ((m = sio.m0) != NULL) {
+		if ((m = sio.sb_mb) != NULL) {
 			m = m_pullup(m, sizeof(int));	/* Needed? */
 			if (m) {
 				error = *(mtod(m, int *));
@@ -353,7 +353,7 @@ portal_open(struct vop_open_args *ap)
 #endif
 			}
 		}
-	} while (cm == NULL && sio.len == 0 && !error);
+	} while (cm == NULL && sio.sb_cc == 0 && !error);
 
 	if (cm == NULL)
 		goto bad;

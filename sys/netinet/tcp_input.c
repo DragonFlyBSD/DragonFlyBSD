@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.66 2007/04/17 17:28:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.67 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -455,7 +455,7 @@ present:
 	if (so->so_state & SS_CANTRCVMORE)
 		m_freem(q->tqe_m);
 	else
-		sbappendstream(&so->so_rcv, q->tqe_m);
+		ssb_appendstream(&so->so_rcv, q->tqe_m);
 	kfree(q, M_TSEGQ);
 	tcp_reass_qsize--;
 	ND6_HINT(tp);
@@ -1184,7 +1184,7 @@ after_listen:
 				acked = th->th_ack - tp->snd_una;
 				tcpstat.tcps_rcvackpack++;
 				tcpstat.tcps_rcvackbyte += acked;
-				sbdrop(&so->so_snd, acked);
+				sbdrop(&so->so_snd.sb, acked);
 				tp->snd_recover = th->th_ack - 1;
 				tp->snd_una = th->th_ack;
 				tp->t_dupacks = 0;
@@ -1221,14 +1221,14 @@ after_listen:
 						      tp->t_rxtcur,
 						      tcp_timer_rexmt, tp);
 				sowwakeup(so);
-				if (so->so_snd.sb_cc > 0)
+				if (so->so_snd.ssb_cc > 0)
 					tcp_output(tp);
 				return;
 			}
 		} else if (tiwin == tp->snd_wnd &&
 		    th->th_ack == tp->snd_una &&
 		    LIST_EMPTY(&tp->t_segq) &&
-		    tlen <= sbspace(&so->so_rcv)) {
+		    tlen <= ssb_space(&so->so_rcv)) {
 			/*
 			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
@@ -1246,7 +1246,7 @@ after_listen:
 				m_freem(m);
 			} else {
 				m_adj(m, drop_hdrlen); /* delayed header drop */
-				sbappendstream(&so->so_rcv, m);
+				ssb_appendstream(&so->so_rcv, m);
 			}
 			sorwakeup(so);
 			/*
@@ -1298,7 +1298,7 @@ after_listen:
 	 * Receive window is amount of space in rcv queue,
 	 * but not less than advertised window.
 	 */
-	recvwin = sbspace(&so->so_rcv);
+	recvwin = ssb_space(&so->so_rcv);
 	if (recvwin < 0)
 		recvwin = 0;
 	tp->rcv_wnd = imax(recvwin, (int)(tp->rcv_adv - tp->rcv_nxt));
@@ -2140,12 +2140,12 @@ process_ACK:
 		/* Stop looking for an acceptable ACK since one was received. */
 		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
 
-		if (acked > so->so_snd.sb_cc) {
-			tp->snd_wnd -= so->so_snd.sb_cc;
-			sbdrop(&so->so_snd, (int)so->so_snd.sb_cc);
+		if (acked > so->so_snd.ssb_cc) {
+			tp->snd_wnd -= so->so_snd.ssb_cc;
+			sbdrop(&so->so_snd.sb, (int)so->so_snd.ssb_cc);
 			ourfinisacked = TRUE;
 		} else {
-			sbdrop(&so->so_snd, acked);
+			sbdrop(&so->so_snd.sb, acked);
 			tp->snd_wnd -= acked;
 			ourfinisacked = FALSE;
 		}
@@ -2355,7 +2355,7 @@ step6:
 		 * soreceive.  It's hard to imagine someone
 		 * actually wanting to send this much urgent data.
 		 */
-		if (th->th_urp + so->so_rcv.sb_cc > sb_max) {
+		if (th->th_urp + so->so_rcv.ssb_cc > sb_max) {
 			th->th_urp = 0;			/* XXX */
 			thflags &= ~TH_URG;		/* XXX */
 			goto dodata;			/* XXX */
@@ -2376,7 +2376,7 @@ step6:
 		 */
 		if (SEQ_GT(th->th_seq + th->th_urp, tp->rcv_up)) {
 			tp->rcv_up = th->th_seq + th->th_urp;
-			so->so_oobmark = so->so_rcv.sb_cc +
+			so->so_oobmark = so->so_rcv.ssb_cc +
 			    (tp->rcv_up - tp->rcv_nxt) - 1;
 			if (so->so_oobmark == 0)
 				so->so_state |= SS_RCVATMARK;
@@ -2443,7 +2443,7 @@ dodata:							/* XXX */
 			if (so->so_state & SS_CANTRCVMORE)
 				m_freem(m);
 			else
-				sbappendstream(&so->so_rcv, m);
+				ssb_appendstream(&so->so_rcv, m);
 			sorwakeup(so);
 		} else {
 			if (!(tp->t_flags & TF_DUPSEG)) {
@@ -2461,7 +2461,7 @@ dodata:							/* XXX */
 		 * our window, in order to estimate the sender's
 		 * buffer size.
 		 */
-		len = so->so_rcv.sb_hiwat - (tp->rcv_adv - tp->rcv_nxt);
+		len = so->so_rcv.ssb_hiwat - (tp->rcv_adv - tp->rcv_nxt);
 	} else {
 		m_freem(m);
 		thflags &= ~TH_FIN;
@@ -3030,28 +3030,28 @@ tcp_mss(struct tcpcb *tp, int offer)
 #ifdef RTV_SPIPE
 	if ((bufsize = rt->rt_rmx.rmx_sendpipe) == 0)
 #endif
-		bufsize = so->so_snd.sb_hiwat;
+		bufsize = so->so_snd.ssb_hiwat;
 	if (bufsize < mss)
 		mss = bufsize;
 	else {
 		bufsize = roundup(bufsize, mss);
 		if (bufsize > sb_max)
 			bufsize = sb_max;
-		if (bufsize > so->so_snd.sb_hiwat)
-			sbreserve(&so->so_snd, bufsize, so, NULL);
+		if (bufsize > so->so_snd.ssb_hiwat)
+			ssb_reserve(&so->so_snd, bufsize, so, NULL);
 	}
 	tp->t_maxseg = mss;
 
 #ifdef RTV_RPIPE
 	if ((bufsize = rt->rt_rmx.rmx_recvpipe) == 0)
 #endif
-		bufsize = so->so_rcv.sb_hiwat;
+		bufsize = so->so_rcv.ssb_hiwat;
 	if (bufsize > mss) {
 		bufsize = roundup(bufsize, mss);
 		if (bufsize > sb_max)
 			bufsize = sb_max;
-		if (bufsize > so->so_rcv.sb_hiwat)
-			sbreserve(&so->so_rcv, bufsize, so, NULL);
+		if (bufsize > so->so_rcv.ssb_hiwat)
+			ssb_reserve(&so->so_rcv, bufsize, so, NULL);
 	}
 
 	/*

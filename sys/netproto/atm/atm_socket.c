@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.9 2006/12/20 18:14:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.10 2007/04/22 01:13:15 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ atm_sock_attach(struct socket *so, u_long send, u_long recv, struct rlimit *rl)
 	/*
 	 * Reserve socket buffer space, if not already done
 	 */
-	if ((so->so_snd.sb_hiwat == 0) || (so->so_rcv.sb_hiwat == 0)) {
+	if ((so->so_snd.ssb_hiwat == 0) || (so->so_rcv.ssb_hiwat == 0)) {
 		err = soreserve(so, send, recv, rl);
 		if (err)
 			return (err);

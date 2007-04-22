@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.43 2007/04/20 05:42:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.44 2007/04/22 01:13:17 dillon Exp $
  */
 
 /*
@@ -299,8 +299,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 		}
 		crit_exit();
 	}
-	so->so_rcv.sb_timeo = (5 * hz);
-	so->so_snd.sb_timeo = (5 * hz);
+	so->so_rcv.ssb_timeo = (5 * hz);
+	so->so_snd.ssb_timeo = (5 * hz);
 
 	/*
 	 * Get buffer reservation size from sysctl, but impose reasonable
@@ -356,8 +356,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			  &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error)
 		goto bad;
-	so->so_rcv.sb_flags |= SB_NOINTR;
-	so->so_snd.sb_flags |= SB_NOINTR;
+	so->so_rcv.ssb_flags |= SSB_NOINTR;
+	so->so_snd.ssb_flags |= SSB_NOINTR;
 
 	/* Initialize other non-zero congestion variables */
 	nmp->nm_srtt[0] = nmp->nm_srtt[1] = nmp->nm_srtt[2] = 
@@ -531,7 +531,7 @@ static int
 nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 {
 	struct socket *so;
-	struct sorecv_direct sio;
+	struct sockbuf sio;
 	struct uio auio;
 	struct iovec aio;
 	struct mbuf *m;
@@ -651,22 +651,22 @@ tryagain:
 			/*
 			 * Get the rest of the packet as an mbuf chain
 			 */
-			sorecv_direct_init(&sio, len);
+			sbinit(&sio, len);
 			do {
 			    rcvflg = MSG_WAITALL;
 			    error = so_pru_soreceive(so, NULL, NULL, &sio,
 						     NULL, &rcvflg);
 			} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
-			if (error == 0 && sio.len != len) {
-			    if (sio.len != 0)
+			if (error == 0 && sio.sb_cc != len) {
+			    if (sio.sb_cc != 0)
 			    log(LOG_INFO,
 				"short receive (%d/%d) from nfs server %s\n",
 				len - auio.uio_resid, len,
 				rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}
-			*mp = sio.m0;
+			*mp = sio.sb_mb;
 		} else {
 			/*
 			 * Non-stream, so get the whole packet by not
@@ -677,7 +677,7 @@ tryagain:
 			 * and then throw them away so we know what is going
 			 * on.
 			 */
-			sorecv_direct_init(&sio, 100000000);
+			sbinit(&sio, 100000000);
 			do {
 			    rcvflg = 0;
 			    error =  so_pru_soreceive(so, NULL, NULL, &sio,
@@ -686,18 +686,18 @@ tryagain:
 				m_freem(control);
 			    if (error == EWOULDBLOCK && rep) {
 				if (rep->r_flags & R_SOFTTERM) {
-					m_freem(sio.m0);
+					m_freem(sio.sb_mb);
 					return (EINTR);
 				}
 			    }
 			} while (error == EWOULDBLOCK ||
-				 (error == 0 && sio.m0 == NULL && control));
+				 (error == 0 && sio.sb_mb == NULL && control));
 			if ((rcvflg & MSG_EOR) == 0)
 				kprintf("Egad!!\n");
-			if (error == 0 && sio.m0 == NULL)
+			if (error == 0 && sio.sb_mb == NULL)
 				error = EPIPE;
-			len = sio.len;
-			*mp = sio.m0;
+			len = sio.sb_cc;
+			*mp = sio.sb_mb;
 		}
 errout:
 		if (error && error != EINTR && error != ERESTART) {
@@ -725,19 +725,19 @@ errout:
 			getnam = NULL;
 		else
 			getnam = aname;
-		sorecv_direct_init(&sio, 100000000);
+		sbinit(&sio, 100000000);
 		do {
 			rcvflg = 0;
 			error =  so_pru_soreceive(so, getnam, NULL, &sio,
 						  NULL, &rcvflg);
 			if (error == EWOULDBLOCK &&
 			    (rep->r_flags & R_SOFTTERM)) {
-				m_freem(sio.m0);
+				m_freem(sio.sb_mb);
 				return (EINTR);
 			}
 		} while (error == EWOULDBLOCK);
-		len = sio.len;
-		*mp = sio.m0;
+		len = sio.sb_cc;
+		*mp = sio.sb_mb;
 	}
 	if (error) {
 		m_freem(*mp);
@@ -1428,7 +1428,7 @@ nfs_timer(void *arg /* never used */)
 		 * Set r_rtt to -1 in case we fail to send it now.
 		 */
 		rep->r_rtt = -1;
-		if (sbspace(&so->so_snd) >= rep->r_mreq->m_pkthdr.len &&
+		if (ssb_space(&so->so_snd) >= rep->r_mreq->m_pkthdr.len &&
 		   ((nmp->nm_flag & NFSMNT_DUMBTIMR) ||
 		    (rep->r_flags & R_SENT) ||
 		    nmp->nm_sent < nmp->nm_cwnd) &&
@@ -2039,7 +2039,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
 	struct mbuf *m;
 	struct sockaddr *nam;
-	struct sorecv_direct sio;
+	struct sockbuf sio;
 	int flags, error;
 	int nparallel_wakeup = 0;
 
@@ -2093,10 +2093,10 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * Do soreceive().  Pull out as much data as possible without
 		 * blocking.
 		 */
-		sorecv_direct_init(&sio, 1000000000);
+		sbinit(&sio, 1000000000);
 		flags = MSG_DONTWAIT;
 		error = so_pru_soreceive(so, &nam, NULL, &sio, NULL, &flags);
-		if (error || sio.m0 == NULL) {
+		if (error || sio.sb_mb == NULL) {
 			if (error == EWOULDBLOCK)
 				slp->ns_flag |= SLP_NEEDQ;
 			else
@@ -2104,13 +2104,13 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 			slp->ns_flag &= ~SLP_GETSTREAM;
 			goto dorecs;
 		}
-		m = sio.m0;
+		m = sio.sb_mb;
 		if (slp->ns_rawend) {
 			slp->ns_rawend->m_next = m;
-			slp->ns_cc += sio.len;
+			slp->ns_cc += sio.sb_cc;
 		} else {
 			slp->ns_raw = m;
-			slp->ns_cc = sio.len;
+			slp->ns_cc = sio.sb_cc;
 		}
 		while (m->m_next)
 			m = m->m_next;
@@ -2134,11 +2134,11 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * to get the whole batch.
 		 */
 		do {
-			sorecv_direct_init(&sio, 1000000000);
+			sbinit(&sio, 1000000000);
 			flags = MSG_DONTWAIT;
 			error = so_pru_soreceive(so, &nam, NULL, &sio,
 						 NULL, &flags);
-			if (sio.m0) {
+			if (sio.sb_mb) {
 				struct nfsrv_rec *rec;
 				int mf = (waitflag & MB_DONTWAIT) ?
 					    M_NOWAIT : M_WAITOK;
@@ -2147,12 +2147,12 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				if (!rec) {
 					if (nam)
 						FREE(nam, M_SONAME);
-					m_freem(sio.m0);
+					m_freem(sio.sb_mb);
 					continue;
 				}
-				nfs_realign(&sio.m0, 10 * NFSX_UNSIGNED);
+				nfs_realign(&sio.sb_mb, 10 * NFSX_UNSIGNED);
 				rec->nr_address = nam;
-				rec->nr_packet = sio.m0;
+				rec->nr_packet = sio.sb_mb;
 				STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 				++slp->ns_numrec;
 				++nparallel_wakeup;
@@ -2164,7 +2164,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 					goto dorecs;
 				}
 			}
-		} while (sio.m0);
+		} while (sio.sb_mb);
 	}
 
 	/*

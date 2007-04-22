@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.41 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.42 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -684,7 +684,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 		m_freem(control);	/* empty control, just free it */
 	}
 	if(!(flags & PRUS_OOB)) {
-		sbappendstream(&so->so_snd, m);
+		ssb_appendstream(&so->so_snd, m);
 		if (nam && tp->t_state < TCPS_SYN_SENT) {
 			/*
 			 * Do implied connect if not yet connected,
@@ -720,7 +720,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 				tp->t_flags &= ~TF_MORETOCOME;
 		}
 	} else {
-		if (sbspace(&so->so_snd) < -512) {
+		if (ssb_space(&so->so_snd) < -512) {
 			m_freem(m);
 			error = ENOBUFS;
 			goto out;
@@ -733,7 +733,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 		 * of data past the urgent section.
 		 * Otherwise, snd_up should be one lower.
 		 */
-		sbappendstream(&so->so_snd, m);
+		ssb_appendstream(&so->so_snd, m);
 		if (nam && tp->t_state < TCPS_SYN_SENT) {
 			/*
 			 * Do implied connect if not yet connected,
@@ -752,7 +752,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 			tp->snd_wnd = TTCP_CLIENT_SND_WND;
 			tcp_mss(tp, -1);
 		}
-		tp->snd_up = tp->snd_una + so->so_snd.sb_cc;
+		tp->snd_up = tp->snd_una + so->so_snd.ssb_cc;
 		tp->t_flags |= TF_FORCE;
 		error = tcp_output(tp);
 		tp->t_flags &= ~TF_FORCE;
@@ -887,7 +887,7 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
-	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.sb_hiwat)
+	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat)
 		tp->request_r_scale++;
 
 	soisconnecting(so);
@@ -1049,7 +1049,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
-	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.sb_hiwat)
+	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat)
 		tp->request_r_scale++;
 
 	soisconnecting(so);
@@ -1228,7 +1228,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	int isipv6 = INP_CHECK_SOCKAF(so, AF_INET6) != NULL;
 #endif
 
-	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		error = soreserve(so, tcp_sendspace, tcp_recvspace,
 				  ai->sb_rlimit);
 		if (error)
@@ -1284,7 +1284,7 @@ tcp_disconnect(struct tcpcb *tp)
 		tp = tcp_drop(tp, 0);
 	else {
 		soisdisconnecting(so);
-		sbflush(&so->so_rcv);
+		sbflush(&so->so_rcv.sb);
 		tp = tcp_usrclosed(tp);
 		if (tp)
 			tcp_output(tp);

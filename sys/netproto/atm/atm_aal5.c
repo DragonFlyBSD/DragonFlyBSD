@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.12 2007/04/21 02:26:48 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.13 2007/04/22 01:13:15 dillon Exp $
  */
 
 /*
@@ -352,7 +352,7 @@ atm_aal5_connect(struct socket *so, struct sockaddr *addr, thread_t td)
 
 		size = atp->atp_attr.aal.v.aal5.forward_max_SDU_size;
 		if (size != T_ATM_ABSENT)
-			if (!sbreserve(&so->so_snd, size, so,
+			if (!ssb_reserve(&so->so_snd, size, so,
 				       &td->td_proc->p_rlimit[RLIMIT_SBSIZE])) {
 				err = ENOBUFS;
 				ATM_OUTRO();
@@ -586,7 +586,7 @@ atm_aal5_sense(struct socket *so, struct stat *st)
 	/*
 	 * Just return the max sdu size for the connection
 	 */
-	st->st_blksize = so->so_snd.sb_hiwat;
+	st->st_blksize = so->so_snd.ssb_hiwat;
 
 	ATM_OUTRO();
 }
@@ -725,7 +725,7 @@ atm_aal5_cpcs_data(void *tok, KBuffer *m)
 	 */
 	if (((so->so_state & SS_ISCONNECTED) == 0) ||
 	    (so->so_state & SS_CANTRCVMORE) ||
-	    (len > sbspace(&so->so_rcv))) {
+	    (len > ssb_space(&so->so_rcv))) {
 		atm_sock_stat.as_indrop[atp->atp_type]++;
 		KB_FREEALL(m);
 		return;
@@ -734,7 +734,7 @@ atm_aal5_cpcs_data(void *tok, KBuffer *m)
 	/*
 	 * Queue the data and notify the user
 	 */
-	sbappendrecord(&so->so_rcv, m);
+	ssb_appendrecord(&so->so_rcv, m);
 	sorwakeup(so);
 
 	return;

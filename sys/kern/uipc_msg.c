@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.15 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.16 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -597,9 +597,9 @@ int
 netmsg_so_notify(lwkt_msg_t lmsg)
 {
 	struct netmsg_so_notify *msg = (void *)lmsg;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 
-	sb = (msg->nm_etype & NM_REVENT) ?
+	ssb = (msg->nm_etype & NM_REVENT) ?
 			&msg->nm_so->so_rcv :
 			&msg->nm_so->so_snd;
 
@@ -610,8 +610,8 @@ netmsg_so_notify(lwkt_msg_t lmsg)
 	if (msg->nm_predicate((struct netmsg *)msg)) {
 		lwkt_replymsg(lmsg, lmsg->ms_error);
 	} else {
-		TAILQ_INSERT_TAIL(&sb->sb_sel.si_mlist, msg, nm_list);
-		sb->sb_flags |= SB_MEVENT;
+		TAILQ_INSERT_TAIL(&ssb->ssb_sel.si_mlist, msg, nm_list);
+		ssb->ssb_flags |= SSB_MEVENT;
 	}
 	return(EASYNC);
 }
@@ -626,12 +626,12 @@ int
 netmsg_so_notify_abort(lwkt_msg_t lmsg)
 {
 	struct netmsg_so_notify *msg = (void *)lmsg;
-	struct sockbuf *sb;
+	struct signalsockbuf *ssb;
 
-	sb = (msg->nm_etype & NM_REVENT) ?
+	ssb = (msg->nm_etype & NM_REVENT) ?
 			&msg->nm_so->so_rcv :
 			&msg->nm_so->so_snd;
-	TAILQ_REMOVE(&sb->sb_sel.si_mlist, msg, nm_list);
+	TAILQ_REMOVE(&ssb->ssb_sel.si_mlist, msg, nm_list);
 	lwkt_replymsg(lmsg, EINTR);
 	return(EASYNC);
 }

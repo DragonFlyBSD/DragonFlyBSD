@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.9 2007/04/21 02:26:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.10 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -757,7 +757,7 @@ sctp6_attach(struct socket *so, int proto, struct proc *p)
 	if (inp != NULL)
 		return EINVAL;
 
-	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		error = soreserve(so, sctp_sendspace, sctp_recvspace, NULL);
 		if (error)
 			return error;
@@ -935,7 +935,7 @@ sctp6_detach(struct socket *so)
 		return EINVAL;
 	crit_enter();
 	if (((so->so_options & SO_LINGER) && (so->so_linger == 0)) ||
-	    (so->so_rcv.sb_cc > 0))
+	    (so->so_rcv.ssb_cc > 0))
 		sctp_inpcb_free(inp, 1);
 	else
 		sctp_inpcb_free(inp, 0);
