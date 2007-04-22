@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.5 2007/04/22 22:04:20 corecode Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.6 2007/04/22 23:03:48 corecode Exp $
  */
 
 /*
@@ -111,8 +111,10 @@ static const struct morsetab mtab[] = {
 	{',', "--..--"},
 	{'.', ".-.-.-"},
 	{'?', "..--.."},
+	{'!', "-.-.--"},	/* KW */
 	{'/', "-..-."},
 	{'-', "-....-"},
+	{'_', "..--.."},
 	{'=', "-...-"},		/* BT */
 	{':', "---..."},
 	{';', "-.-.-."},
@@ -120,13 +122,9 @@ static const struct morsetab mtab[] = {
 	{')', "-.--.-"},
 	{'$', "...-..-"},
 	{'+', ".-.-."},		/* AR */
-
-	/* prosigns without already assigned values */
-
-	{'#', ".-..."},		/* AS */
-	{'@', "...-.-"},	/* SK */
-	{'*', "...-."},		/* VE */
-	{'%', "-...-.-"},	/* BK */
+	{'\'', ".----."},
+	{'"', ".-..-."},
+	{'@', ".--.-."},	/* AC */
 
 	{'\0', ""}
 };
@@ -194,8 +192,10 @@ struct tone_data {
 };
 
 void		alloc_soundbuf(struct tone_data *, double, int);
-void            show(const char *), play(const char *), morse(char);
-void		ttyout(const char *);
+void		morse(char, int);
+void            show(const char *, int);
+void		play(const char *, int);
+void		ttyout(const char *, int);
 void		sighandler(int);
 
 #define GETOPTOPTS "d:ef:opP:sw:"
@@ -226,6 +226,7 @@ int
 main(int argc, char **argv)
 {
 	int    ch, lflags;
+	int    prosign;
 	char  *p, *codeset;
 
 	while ((ch = getopt(argc, argv, GETOPTOPTS)) != -1)
@@ -347,20 +348,41 @@ main(int argc, char **argv)
 
 	if (*argv) {
 		do {
+			prosign = 0;
 			for (p = *argv; *p; ++p) {
 				if (eflag)
 					putchar(*p);
-				morse(*p);
+				if (*p == '<' || *p == '>') {
+					prosign = *p == '<';
+					continue;
+				}
+				if (strchr("> \r\n", *(p + 1)) != NULL)
+					prosign = 0;
+				morse(*p, prosign);
 			}
 			if (eflag)
 				putchar(' ');
-			morse(' ');
+			morse(' ', 0);
 		} while (*++argv);
 	} else {
+		prosign = 0;
 		while ((ch = getchar()) != EOF) {
 			if (eflag)
 				putchar(ch);
-			morse(ch);
+			if (ch == '<') {
+				prosign = 1;
+				continue;
+			}
+			if (prosign) {
+				int tch;
+
+				tch = getchar();
+				if (strchr("> \r\n", tch) != NULL)
+					prosign = 0;
+				if (tch != '>')
+					ungetc(tch, stdin);
+			}
+			morse(ch, prosign);
 		}
 	}
 	if (device)
@@ -419,7 +441,7 @@ alloc_soundbuf(struct tone_data *tone, double len, int on)
 }
 
 void
-morse(char c)
+morse(char c, int prosign)
 {
 	const struct morsetab *m;
 
@@ -429,13 +451,13 @@ morse(char c)
 		c = ' ';
 	if (c == ' ') {
 		if (pflag) {
-			play(" ");
+			play(" ", 0);
 			return;
 		} else if (device) {
-			ttyout(" ");
+			ttyout(" ", 0);
 			return;
 		} else {
-			show("");
+			show("", 0);
 			return;
 		}
 	}
@@ -444,28 +466,29 @@ morse(char c)
 	     m++) {
 		if (m->inchar == c) {
 			if (pflag) {
-				play(m->morse);
+				play(m->morse, prosign);
 			} else if (device) {
-				ttyout(m->morse);
+				ttyout(m->morse, prosign);
 			} else
-				show(m->morse);
+				show(m->morse, prosign);
 		}
 	}
 }
 
 void
-show(const char *s)
+show(const char *s, int prosign)
 {
 	if (sflag)
 		printf(" %s", s);
 	else
 		for (; *s; ++s)
 			printf(" %s", *s == '.' ? "dit" : "dah");
-	printf("\n");
+	if (!prosign)
+		printf("\n");
 }
 
 void
-play(const char *s)
+play(const char *s, int prosign)
 {
 	const char *c;
 	int duration;
@@ -495,13 +518,15 @@ play(const char *s)
 			write(spkr, tone->data, tone->len);
 		write(spkr, tone_silence.data, tone_silence.len);
 	}
+	if (prosign)
+		return;
 	duration = CHAR_SPACE - 1;  /* we already waited 1 after the last symbol */
 	while (duration-- > 0)
 		write(spkr, tone_silence.data, tone_silence.len);
 }
 
 void
-ttyout(const char *s)
+ttyout(const char *s, int prosign)
 {
 	const char *c;
 	int duration, on, lflags;
@@ -538,8 +563,10 @@ ttyout(const char *s)
 		duration = dot_clock * 1000000;
 		usleep(duration);
 	}
-	duration = dot_clock * CHAR_SPACE * 1000000;
-	usleep(duration);
+	if (!prosign) {
+		duration = dot_clock * (CHAR_SPACE - 1) * 1000000;
+		usleep(duration);
+	}
 }
 
 void
