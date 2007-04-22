@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.5 2007/04/16 17:40:16 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.6 2007/04/22 00:59:27 dillon Exp $
  */
 
 /*
@@ -196,10 +196,13 @@ typedef int (*syslink_func_t)(struct syslink_generic_args *);
  * linkage.
  */
 struct syslink_info {
-	sysid_t	sysid;			/* route node sysid */
+	int version;			/* info control structure version */
+	int fd;				/* file descriptor (CMD_ADD) */
 	int linkid;			/* linkid (base physical address) */
 	int bits;			/* physical address bits if switched */
 	int flags;			/* message control/switch flags */
+	int reserved01;
+	sysid_t	sysid;			/* route node sysid */
 	char label[SYSLINK_LABEL_SIZE];	/* symbolic name */
 	char reserved[32];
 	union {
@@ -207,14 +210,17 @@ struct syslink_info {
 	} u;
 };
 
-#define SLIF_PACKET		0x0001	/* packetized, else stream */
-#define SLIF_SENDTO		0x0002	/* use sendto() */
+#define SLIF_PACKET	0x0001		/* packetized, else stream */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define SLIF_DESTROYED		0x4000
-#define SLIF_ERROR		0x8000
+#define SLIF_RQUIT	0x0400
+#define SLIF_WQUIT	0x0800
+#define SLIF_RDONE	0x1000
+#define SLIF_WDONE	0x2000
+#define SLIF_DESTROYED	0x4000
+#define SLIF_ERROR	0x8000
 #endif
 
-#define SLIF_USERFLAGS		(SLIF_PACKET|SLIF_SENDTO)
+#define SLIF_USERFLAGS		(SLIF_PACKET)
 
 
 /*
@@ -308,7 +314,7 @@ typedef struct syslink_proto *syslink_proto_t;
 typedef struct syslink_generic_args *syslink_generic_args_t;
 
 #if !defined(_KERNEL)
-int syslink(int, int, sysid_t, void *, size_t *);
+int syslink(int, struct syslink_info *, size_t);
 #endif
 
 #endif

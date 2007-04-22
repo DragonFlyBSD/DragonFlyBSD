@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.8 2007/04/16 17:40:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.9 2007/04/22 00:59:25 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -52,8 +52,13 @@
 #include <sys/tree.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
+#include <sys/mbuf.h>
+#include <sys/socket.h>
+#include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/syslink.h>
 #include <sys/syslink_msg.h>
+#include <netinet/in.h>
 
 #include <sys/thread2.h>
 
@@ -71,21 +76,8 @@ RB_PROTOTYPE2(slrouter_rb_tree, slrouter, rbnode,
 RB_PROTOTYPE2(sldata_rb_tree, sldata, rbnode,
               rb_sldata_compare, int);
 
-struct slrouter {
-	RB_ENTRY(slrouter) rbnode;		/* list of routers */
-	struct sldata_rb_tree sldata_rb_root;	/* connections to router */
-	sysid_t sysid;				/* logical sysid of router */
-	int flags;				/* flags passed on create */
-	int bits;				/* accomodate connections */
-	int count;				/* number of connections */
-	int refs;
-	alist_t bitmap;
-	char label[SYSLINK_LABEL_SIZE];
-};
-
 /*
- * fileops interface.  slbuf and sldata are also used in conjunction with a
- * normal file descriptor.
+ * Fifo used to buffer broadcast packets
  */
 struct slbuf {
 	char	*buf;
@@ -95,16 +87,36 @@ struct slbuf {
 	int	windex;
 };
 
+/*
+ * Syslink Router abstraction
+ */
+struct slrouter {
+	RB_ENTRY(slrouter) rbnode;		/* list of routers */
+	struct sldata_rb_tree sldata_rb_root;	/* connections to router */
+	sysid_t	sysid;				/* logical sysid of router */
+	int	flags;				/* flags passed on create */
+	int	bits;				/* accomodate connections */
+	int	count;				/* number of connections */
+	int	refs;
+	alist_t		bitmap;
+	struct slbuf	bbuf;			/* broadcast buffer */
+	char label[SYSLINK_LABEL_SIZE];
+};
+
+/*
+ * Syslink Connection abstraction
+ */
 struct sldata {
 	RB_ENTRY(sldata) rbnode;
 	struct slrouter	*router;	/* organizing router */
-	struct slbuf	rbuf;
-	struct slbuf	wbuf;
 	struct file	*xfp;		/* external file pointer */
+	struct socket	*xso;		/* external socket */
 	struct lock	rlock;		/* synchronizing lock */
 	struct lock	wlock;		/* synchronizing lock */
-	struct thread	*rthread;	/* xfp -> rbuf & process */
-	struct thread	*wthread;	/* wbuf -> xfp */
+	struct thread	*rthread;	/* helper thread */
+	struct thread	*wthread;	/* helper thread */
+	struct sockbuf	sio;		/* accumulate mbufs */
+	int	bindex;			/* broadcast index */
 	int	flags;			/* connection flags */
 	int	linkid;
 	int	bits;
@@ -112,22 +124,14 @@ struct sldata {
 	char	label[SYSLINK_LABEL_SIZE];
 };
 
-/*
- * syslink kernel thread support flags
- */
-#define SLF_RQUIT	0x0001
-#define SLF_WQUIT	0x0002
-#define SLF_RDONE	0x0004
-#define SLF_WDONE	0x0008
-#define SLF_DESTROYED	0x8000
-
-#define SYSLINK_BUFSIZE	(128*1024)
+#define SYSLINK_BBUFSIZE	(32*1024)
+#define SYSLINK_SIOBUFSIZE	(128*1024)
 
 static int rb_slrouter_compare(struct slrouter *r1, struct slrouter *r2);
 static int rb_sldata_compare(struct sldata *d1, struct sldata *d2);
 
 static int syslink_destroy(struct slrouter *slrouter);
-static int syslink_add(struct slrouter *slrouter, int fd,
+static int syslink_add(struct slrouter *slrouter,
 			struct syslink_info *info, int *result);
 static int syslink_rem(struct slrouter *slrouter, struct sldata *sldata,
 			struct syslink_info *info);
@@ -144,8 +148,13 @@ static int syslink_ioctl(struct file *fp, u_long cmd, caddr_t data,
 static int syslink_poll(struct file *fp, int events, struct ucred *cred);
 static int syslink_kqfilter(struct file *fp, struct knote *kn);
 
-static void syslink_rthread(void *arg);
-static void syslink_wthread(void *arg);
+static void syslink_rthread_so(void *arg);
+static void syslink_rthread_fp(void *arg);
+static void syslink_wthread_so(void *arg);
+static void syslink_wthread_fp(void *arg);
+static int syslink_getsubnet(struct sockaddr *sa);
+static struct mbuf *syslink_parse_stream(struct sockbuf *sio);
+static void syslink_route(struct slrouter *slrouter, int linkid, struct mbuf *m);
 static void slbuf_alloc(struct slbuf *buf, int bytes);
 static void slbuf_free(struct slbuf *buf);
 static void sldata_rels(struct sldata *sldata);
@@ -255,7 +264,7 @@ syslink_cmd_find_callback(struct sldata *sldata, void *data)
  * (typically a pipe or a connected socket) with a sysid namespace,
  * or create a direct link.
  *
- * syslink(int fd, int cmd, void *info, size_t *infosize)
+ * syslink(int cmd, struct syslink_info *info, size_t bytes)
  */
 int
 sys_syslink(struct syslink_args *uap)
@@ -277,7 +286,9 @@ sys_syslink(struct syslink_args *uap)
 		return (error);
 
 	/*
-	 * Load and validate the info structure.  Unloaded bytes are zerod out
+	 * Load and validate the info structure.  Unloaded bytes are zerod
+	 * out.  The label field must always be 0-filled, even if not used
+	 * for a command.
 	 */
 	bzero(&info, sizeof(info));
 	if ((unsigned)uap->bytes <= sizeof(info)) {
@@ -295,7 +306,6 @@ sys_syslink(struct syslink_args *uap)
 	/*
 	 * Process command
 	 */
-
 	switch(uap->cmd) {
 	case SYSLINK_CMD_CREATE:
 		/*
@@ -318,6 +328,7 @@ sys_syslink(struct syslink_args *uap)
 		slrouter->bits = info.bits;
 		slrouter->flags = info.flags & SLIF_USERFLAGS;
 		slrouter->bitmap = alist_create(1 << info.bits, M_SYSLINK);
+		slbuf_alloc(&slrouter->bbuf, SYSLINK_BBUFSIZE);
 		RB_INIT(&slrouter->sldata_rb_root);
 		RB_INSERT(slrouter_rb_tree, &slrouter_rb_root, slrouter);
 		break;
@@ -364,7 +375,7 @@ sys_syslink(struct syslink_args *uap)
 			error = EIO;
 		} else if (slrouter) {
 			++slrouter->refs;
-			error = syslink_add(slrouter, uap->fd, &info,
+			error = syslink_add(slrouter, &info,
 					    &uap->sysmsg_result);
 		} else {
 			error = EINVAL;
@@ -421,13 +432,13 @@ int
 syslink_destroy_callback(struct sldata *sldata, void *data __unused)
 {
 	++sldata->refs;
-	if ((sldata->flags & SLF_RQUIT) == 0) {
-		sldata->flags |= SLF_RQUIT;
-		wakeup(&sldata->rbuf);
+	if ((sldata->flags & SLIF_RQUIT) == 0) {
+		sldata->flags |= SLIF_RQUIT;
+		wakeup(&sldata->rthread);
 	}
-	if ((sldata->flags & SLF_WQUIT) == 0) {
-		sldata->flags |= SLF_WQUIT;
-		wakeup(&sldata->wbuf);
+	if ((sldata->flags & SLIF_WQUIT) == 0) {
+		sldata->flags |= SLIF_WQUIT;
+		wakeup(&sldata->wthread);
 	}
 	sldata_rels(sldata);
 	return(0);
@@ -459,7 +470,7 @@ syslink_destroy(struct slrouter *slrouter)
 
 static
 int
-syslink_add(struct slrouter *slrouter, int fd, struct syslink_info *info,
+syslink_add(struct slrouter *slrouter, struct syslink_info *info,
 	    int *result)
 {
 	struct sldata *sldata;
@@ -502,45 +513,52 @@ syslink_add(struct slrouter *slrouter, int fd, struct syslink_info *info,
 	 * Complete initialization of the physical route node.  Setting 
 	 * sldata->router activates the node.
 	 */
+	sbinit(&sldata->sio, SYSLINK_SIOBUFSIZE);
+	sldata->bindex = slrouter->bbuf.windex;
+	sldata->flags = info->flags & SLIF_USERFLAGS;
 	lockinit(&sldata->rlock, "slread", 0, 0);
 	lockinit(&sldata->wlock, "slwrite", 0, 0);
 
-	if (fd < 0) {
+	if (info->fd < 0) {
 		/*
-		 * We create a direct syslink descriptor.  Only the 
-		 * reader thread is needed.
+		 * We create a direct syslink descriptor.  No helper threads
+		 * are needed.
 		 */
-		error = falloc(curproc, &fp, &fd);
+		error = falloc(curproc, &fp, &info->fd);
 		if (error == 0) {
 			fp->f_type = DTYPE_SYSLINK;
 			fp->f_flag = FREAD | FWRITE;
 			fp->f_ops = &syslinkops;
 			fp->f_data = sldata;
-			slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
-			slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
-			/* two refs: reader thread and fp descriptor */
-			sldata->refs += 2;
-			sldata->flags = SLF_WQUIT | SLF_WDONE;
-			lwkt_create(syslink_rthread, sldata,
-				    &sldata->rthread, NULL,
-				    0, -1, "syslink_r");
-			fsetfd(curproc, fp, fd);
+			/* one ref: the fp descriptor */
+			sldata->refs += 1;
+			sldata->flags |= SLIF_WQUIT | SLIF_WDONE;
+			sldata->flags |= SLIF_RQUIT | SLIF_RDONE;
+			fsetfd(curproc, fp, info->fd);
 			fdrop(fp);
-			*result = fd;
+			*result = info->fd;
 		}
 	} else {
-		sldata->xfp = holdfp(curproc->p_fd, fd, -1);
+		sldata->xfp = holdfp(curproc->p_fd, info->fd, -1);
 		if (sldata->xfp != NULL) {
-			slbuf_alloc(&sldata->rbuf, SYSLINK_BUFSIZE);
-			slbuf_alloc(&sldata->wbuf, SYSLINK_BUFSIZE);
 			/* two refs: reader thread and writer thread */
 			sldata->refs += 2;
-			lwkt_create(syslink_rthread, sldata,
-				    &sldata->rthread, NULL,
-				    0, -1, "syslink_r");
-			lwkt_create(syslink_wthread, sldata,
-				    &sldata->wthread, NULL,
-				    0, -1, "syslink_w");
+			if (sldata->xfp->f_type == DTYPE_SOCKET) {
+				sldata->xso = (void *)sldata->xfp->f_data;
+				lwkt_create(syslink_rthread_so, sldata,
+					    &sldata->rthread, NULL,
+					    0, -1, "syslink_r");
+				lwkt_create(syslink_wthread_so, sldata,
+					    &sldata->wthread, NULL,
+					    0, -1, "syslink_w");
+			} else {
+				lwkt_create(syslink_rthread_fp, sldata,
+					    &sldata->rthread, NULL,
+					    0, -1, "syslink_r");
+				lwkt_create(syslink_wthread_fp, sldata,
+					    &sldata->wthread, NULL,
+					    0, -1, "syslink_w");
+			}
 		} else {
 			error = EBADF;
 		}
@@ -557,14 +575,14 @@ syslink_rem(struct slrouter *slrouter, struct sldata *sldata,
 {
 	int error = EINPROGRESS;
 
-	if ((sldata->flags & SLF_RQUIT) == 0) {
-		sldata->flags |= SLF_RQUIT;
-		wakeup(&sldata->rbuf);
+	if ((sldata->flags & SLIF_RQUIT) == 0) {
+		sldata->flags |= SLIF_RQUIT;
+		wakeup(&sldata->rthread);
 		error = 0;
 	}
-	if ((sldata->flags & SLF_WQUIT) == 0) {
-		sldata->flags |= SLF_WQUIT;
-		wakeup(&sldata->wbuf);
+	if ((sldata->flags & SLIF_WQUIT) == 0) {
+		sldata->flags |= SLIF_WQUIT;
+		wakeup(&sldata->wthread);
 		error = 0;
 	}
 	return(error);
@@ -576,14 +594,99 @@ syslink_rem(struct slrouter *slrouter, struct sldata *sldata,
  */
 static
 void
-syslink_rthread(void *arg)
+syslink_rthread_so(void *arg)
 {
 	struct sldata *sldata = arg;
-	struct slbuf *slbuf = &sldata->rbuf;
-	struct syslink_msg *head;
-	const int min_msg_size = SL_MIN_MESSAGE_SIZE;
+	struct sockaddr *sa;
+	struct mbuf *m;
+	int soflags;
+	int linkid;
+	int error;
 
-	while ((sldata->flags & SLF_RQUIT) == 0) {
+	while ((sldata->flags & SLIF_RQUIT) == 0) {
+		/*
+		 * Read some data.  This is easy if data is packetized,
+		 * otherwise we can still obtain an mbuf chain but we have
+		 * to parse out the syslink messages.
+		 */
+		soflags = 0;
+		sa = NULL;
+		error = so_pru_soreceive(sldata->xso,
+					 (sldata->bits ? &sa : NULL),
+					 NULL, &sldata->sio,
+					 NULL, &soflags);
+		linkid = sldata->linkid;
+		if (sldata->bits && sa) {
+			linkid += syslink_getsubnet(sa) &
+				  ((1 << sldata->bits) - 1);
+			FREE(sa, M_SONAME);
+		} 
+		if (error)
+			break;
+
+		if (sldata->flags & SLIF_PACKET) {
+			/*
+			 * Packetized data
+			 */
+			m = sldata->sio.sb_mb;
+			sbinit(&sldata->sio, SYSLINK_SIOBUFSIZE);
+			if (m)
+				syslink_route(sldata->router, linkid, m);
+		} else {
+			while ((m = syslink_parse_stream(&sldata->sio)) != NULL) {
+				syslink_route(sldata->router, linkid, m);
+			}
+		}
+	}
+
+	/*
+	 * Mark us as done and deref sldata.  Tell the writer to terminate as
+	 * well.
+	 */
+	sbflush(&sldata->sio);
+	sldata->flags |= SLIF_RDONE;
+	if ((sldata->flags & SLIF_WDONE) == 0) {
+		sldata->flags |= SLIF_WQUIT;
+		wakeup(&sldata->wthread);
+	}
+	wakeup(&sldata->rthread);
+	wakeup(&sldata->wthread);
+	sldata_rels(sldata);
+}
+
+static
+void
+syslink_rthread_fp(void *arg)
+{
+	struct sldata *sldata = arg;
+
+	sldata->flags |= SLIF_RDONE;
+	if ((sldata->flags & SLIF_WDONE) == 0) {
+		sldata->flags |= SLIF_WQUIT;
+		wakeup(&sldata->wthread);
+	}
+	wakeup(&sldata->rthread);
+	wakeup(&sldata->wthread);
+	sldata_rels(sldata);
+}
+
+static
+struct mbuf *
+syslink_parse_stream(struct sockbuf *sio)
+{
+	return(NULL);
+}
+
+static
+void
+syslink_route(struct slrouter *slrouter, int linkid, struct mbuf *m)
+{
+	m_freem(m);
+}
+
+#if 0
+
+
 		int count;
 		int used;
 		int error;
@@ -678,19 +781,9 @@ syslink_rthread(void *arg)
 			break;
 	}
 
-	/*
-	 * Mark us as done and deref sldata.  Tell the writer to terminate as
-	 * well.
-	 */
-	sldata->flags |= SLF_RDONE;
-	if ((sldata->flags & SLF_WDONE) == 0) {
-		sldata->flags |= SLF_WQUIT;
-		wakeup(&sldata->wbuf);
-	}
-	wakeup(&sldata->rbuf);
-	wakeup(&sldata->wbuf);
-	sldata_rels(sldata);
 }
+
+#endif
 
 /*
  * This thread takes outgoing syslink messages queued to wbuf and writes them
@@ -699,14 +792,15 @@ syslink_rthread(void *arg)
  */
 static
 void
-syslink_wthread(void *arg)
+syslink_wthread_so(void *arg)
 {
 	struct sldata *sldata = arg;
+#if 0
 	struct slbuf *slbuf = &sldata->wbuf;
 	struct syslink_msg *head;
 	int error;
 
-	while ((sldata->flags & SLF_WQUIT) == 0) {
+	while ((sldata->flags & SLIF_WQUIT) == 0) {
 		error = 0;
 		for (;;) {
 			int aligned_reclen;
@@ -761,7 +855,18 @@ syslink_wthread(void *arg)
 			break;
 		tsleep(slbuf, 0, "fifowt", 0);
 	}
-	sldata->flags |= SLF_WDONE;
+#endif
+	sldata->flags |= SLIF_WDONE;
+	sldata_rels(sldata);
+}
+
+static
+void
+syslink_wthread_fp(void *arg)
+{
+	struct sldata *sldata = arg;
+
+	sldata->flags |= SLIF_WDONE;
 	sldata_rels(sldata);
 }
 
@@ -796,8 +901,6 @@ sldata_rels(struct sldata *sldata)
 		RB_REMOVE(sldata_rb_tree, 
 			  &sldata->router->sldata_rb_root, sldata);
 		sldata->router = NULL;
-		slbuf_free(&sldata->rbuf);
-		slbuf_free(&sldata->wbuf);
 		kfree(sldata, M_SYSLINK);
 		slrouter_rels(slrouter);
 	}
@@ -812,8 +915,40 @@ slrouter_rels(struct slrouter *slrouter)
 		RB_REMOVE(slrouter_rb_tree, &slrouter_rb_root, slrouter);
 		alist_destroy(slrouter->bitmap, M_SYSLINK);
 		slrouter->bitmap = NULL;
+		slbuf_free(&slrouter->bbuf);
 		kfree(slrouter, M_SYSLINK);
 	}
+}
+
+/*
+ * A switched ethernet socket connected to a syslink router node may
+ * represent an entire subnet.  We need to generate a subnet id from
+ * the originating IP address which the caller can then incorporate into
+ * the base linkid assigned to the connection to form the actual linkid
+ * originating the message.
+ */
+static
+int
+syslink_getsubnet(struct sockaddr *sa)
+{
+	struct in_addr *i4;
+	struct in6_addr *i6;
+	int linkid;
+
+	switch(sa->sa_family) {
+	case AF_INET:
+		i4 = &((struct sockaddr_in *)sa)->sin_addr;
+		linkid = (int)ntohl(i4->s_addr);
+		break;
+	case AF_INET6:
+		i6 = &((struct sockaddr_in6 *)sa)->sin6_addr;
+		linkid = (int)ntohl(i6->s6_addr32[0]); /* XXX */
+		break;
+	default:
+		linkid = 0;
+		break;
+	}
+	return(linkid);
 }
 
 /*
@@ -833,10 +968,11 @@ int
 syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct sldata *sldata = fp->f_data;
-	struct slbuf *slbuf = &sldata->wbuf;
+#if 0
 	struct syslink_msg *head;
 	int bytes;
 	int contig;
+#endif
 	int error;
 	int nbio;
 
@@ -850,7 +986,9 @@ syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		nbio = 0;
 
 	lockmgr(&sldata->wlock, LK_EXCLUSIVE | LK_RETRY);
+	error = 0;
 
+#if 0
 	/*
 	 * Calculate the number of bytes we can transfer in one shot.  Transfers
 	 * do not wrap the FIFO.
@@ -860,7 +998,7 @@ syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		bytes = slbuf->windex - slbuf->rindex;
 		if (bytes)
 			break;
-		if (sldata->flags & SLF_RDONE) {
+		if (sldata->flags & SLIF_RDONE) {
 			error = EIO;
 			break;
 		}
@@ -893,6 +1031,7 @@ syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	 * Cleanup
 	 */
 done:
+#endif
 	lockmgr(&sldata->wlock, LK_RELEASE);
 	return (error);
 }
@@ -907,10 +1046,12 @@ int
 syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct sldata *sldata = fp->f_data;
+#if 0
 	struct slbuf *slbuf = &sldata->rbuf;
 	struct syslink_msg *head;
 	int bytes;
 	int contig;
+#endif
 	int nbio;
 	int error;
 
@@ -924,7 +1065,9 @@ syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		nbio = 0;
 
 	lockmgr(&sldata->rlock, LK_EXCLUSIVE | LK_RETRY);
+	error = 0;
 
+#if 0
 	/* 
 	 * Calculate the maximum number of contiguous bytes that may be
 	 * available.  Caller is required to not wrap our FIFO.
@@ -945,7 +1088,7 @@ syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			bytes = contig;
 		if (uio->uio_resid <= bytes)
 			break;
-		if (sldata->flags & SLF_RDONE) {
+		if (sldata->flags & SLIF_RDONE) {
 			error = EIO;
 			goto done;
 		}
@@ -965,6 +1108,7 @@ syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		wakeup(slbuf);
 	}
 done:
+#endif
 	lockmgr(&sldata->rlock, LK_RELEASE);
 	return(error);
 }
@@ -976,13 +1120,13 @@ syslink_close (struct file *fp)
 	struct sldata *sldata;
 
 	sldata = fp->f_data;
-	if ((sldata->flags & SLF_RQUIT) == 0) {
-		sldata->flags |= SLF_RQUIT;
-		wakeup(&sldata->rbuf);
+	if ((sldata->flags & SLIF_RQUIT) == 0) {
+		sldata->flags |= SLIF_RQUIT;
+		wakeup(&sldata->rthread);
 	}
-	if ((sldata->flags & SLF_WQUIT) == 0) {
-		sldata->flags |= SLF_WQUIT;
-		wakeup(&sldata->wbuf);
+	if ((sldata->flags & SLIF_WQUIT) == 0) {
+		sldata->flags |= SLIF_WQUIT;
+		wakeup(&sldata->wthread);
 	}
 	fp->f_data = NULL;
 	sldata_rels(sldata);
