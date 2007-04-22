@@ -33,7 +33,7 @@
  *
  * @(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_sockbuf.c,v 1.1 2007/04/22 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_sockbuf.c,v 1.2 2007/04/22 04:08:59 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -55,22 +55,17 @@
 #include <sys/msgport2.h>
 
 /*
- * Routines to add and remove
- * data from an mbuf queue.
+ * Routines to add and remove data from an mbuf queue.
  *
  * The routines sbappend() or sbappendrecord() are normally called to
- * append new mbufs to a socket buffer, after checking that adequate
- * space is available, comparing the function sbspace() with the amount
- * of data to be added.  sbappendrecord() differs from sbappend() in
- * that data supplied is treated as the beginning of a new record.
+ * append new mbufs to a socket buffer.  sbappendrecord() differs from
+ * sbappend() in that data supplied is treated as the beginning of a new
+ * record.  sbappend() only begins a new record if the last mbuf in the
+ * sockbuf is marked M_EOR.
+ *
  * To place a sender's address, optional access rights, and data in a
- * socket receive buffer, sbappendaddr() should be used.  To place
- * access rights and data in a socket receive buffer, sbappendrights()
- * should be used.  In either case, the new data begins a new record.
- * Note that unlike sbappend() and sbappendrecord(), these routines check
- * for the caller that there will be enough space to store the data.
- * Each fails if there is not enough space, or if it cannot find mbufs
- * to store additional information in.
+ * socket receive buffer, sbappendaddr() or sbappendcontrol() should be
+ * used.   These functions also begin a new record.
  *
  * Reliable protocols may use the socket send buffer to hold data
  * awaiting acknowledgement.  Data is normally copied from a socket
@@ -80,10 +75,15 @@
  */
 
 /*
- * Append mbuf chain m to the last record in the
- * socket buffer sb.  The additional space associated
- * the mbuf chain is recorded in sb.  Empty mbufs are
- * discarded and mbufs are compacted where possible.
+ * Append mbuf chain m to the last record in the socket buffer sb.
+ * The additional space associated the mbuf chain is recorded in sb.
+ * Empty mbufs are discarded and mbufs are compacted where possible.
+ *
+ * If M_EOR is set in the first or last mbuf of the last record, the
+ * mbuf chain is appended as a new record.  M_EOR is usually just set
+ * in the last mbuf of the last record's mbuf chain (see sbcompress()),
+ * but this may be changed in the future since there is no real need
+ * to propogate the flag any more.
  */
 void
 sbappend(struct sockbuf *sb, struct mbuf *m)
@@ -91,17 +91,19 @@ sbappend(struct sockbuf *sb, struct mbuf *m)
 	struct mbuf *n;
 
 	if (m) {
-		n = sb->sb_mb;
+		n = sb->sb_lastrecord;
 		if (n) {
-			while (n->m_nextpkt)
-				n = n->m_nextpkt;
-			do {
-				if (n->m_flags & M_EOR) {
-					/* XXXXXX!!!! */
-					sbappendrecord(sb, m);
-					return;
-				}
-			} while (n->m_next && (n = n->m_next));
+			if (n->m_flags & M_EOR) {
+				sbappendrecord(sb, m);
+				return;
+			}
+		}
+		n = sb->sb_lastmbuf;
+		if (n) {
+			if (n->m_flags & M_EOR) {
+				sbappendrecord(sb, m);
+				return;
+			}
 		}
 		sbcompress(sb, m, n);
 	}
@@ -203,8 +205,10 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 	sb->sb_lastrecord = firstmbuf;	/* update hint for new last record */
 	sb->sb_lastmbuf = firstmbuf;	/* update hint for new last mbuf */
 
+	/*
+	 * propagate the EOR flag so sbcompress() can pick it up
+	 */
 	if ((firstmbuf->m_flags & M_EOR) && (secondmbuf != NULL)) {
-		/* propagate the EOR flag */
 		firstmbuf->m_flags &= ~M_EOR;
 		secondmbuf->m_flags |= M_EOR;
 	}
@@ -223,30 +227,23 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
  * Append address and data, and optionally, control (ancillary) data
  * to the receive queue of a socket.  If present,
  * m0 must include a packet header with total length.
- * Returns 0 if no space in sockbuf or insufficient mbufs.
+ * Returns 0 if insufficient mbufs.
  */
 int
 sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
 	     struct mbuf *control)
 {
 	struct mbuf *m, *n;
-	int space = asa->sa_len;
+	int eor;
 
 	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
 		panic("sbappendaddr");
 	sbcheck(sb);
 
-	if (m0)
-		space += m0->m_pkthdr.len;
 	for (n = control; n; n = n->m_next) {
-		space += n->m_len;
-		if (n->m_next == 0)	/* keep pointer to last control buf */
+		if (n->m_next == NULL)	/* keep pointer to last control buf */
 			break;
 	}
-#if 0
-	if (space > sbspace(sb))
-		return (0);
-#endif
 	if (asa->sa_len > MLEN)
 		return (0);
 	MGET(m, MB_DONTWAIT, MT_SONAME);
@@ -268,32 +265,41 @@ sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
 	else
 		sb->sb_lastrecord->m_nextpkt = m;
 	sb->sb_lastrecord = m;
-	while (m->m_next)
+
+	/*
+	 * Propogate M_EOR to the last mbuf and calculate sb_lastmbuf
+	 * so sbappend() can find it.
+	 */
+	eor = m->m_flags;
+	while (m->m_next) {
+		m->m_flags &= ~M_EOR;
 		m = m->m_next;
+		eor |= m->m_flags;
+	}
+	m->m_flags |= eor & M_EOR;
 	sb->sb_lastmbuf = m;
 
 	return (1);
 }
 
 /*
- * Append control information followed by data.
- * control must be non-null.
+ * Append control information followed by data. Both the control and data
+ * must be non-null.
  */
 int
 sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 {
 	struct mbuf *n;
 	u_int length, cmbcnt, m0mbcnt;
+	int eor;
 
 	KASSERT(control != NULL, ("sbappendcontrol"));
 	KKASSERT(control->m_nextpkt == NULL);
 	sbcheck(sb);
 
 	length = m_countm(control, &n, &cmbcnt) + m_countm(m0, NULL, &m0mbcnt);
-#if 0
-	if (length > sbspace(sb))
-		return (0);
-#endif
+
+	KKASSERT(m0 != NULL);
 
 	n->m_next = m0;			/* concatenate data to control */
 
@@ -302,6 +308,18 @@ sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 	else
 		sb->sb_lastrecord->m_nextpkt = control;
 	sb->sb_lastrecord = control;
+
+	/*
+	 * Propogate M_EOR to the last mbuf and calculate sb_lastmbuf
+	 * so sbappend() can find it.
+	 */
+	eor = m0->m_flags;
+	while (m0->m_next) {
+		m0->m_flags &= ~M_EOR;
+		m0 = m0->m_next;
+		eor |= m0->m_flags;
+	}
+	m0->m_flags |= eor & M_EOR;
 	sb->sb_lastmbuf = m0;
 
 	sb->sb_cc += length;
@@ -425,7 +443,9 @@ sbflush(struct sockbuf *sb)
 }
 
 /*
- * Drop data from (the front of) a sockbuf.
+ * Drop data from (the front of) a sockbuf.  If the current record is
+ * exhausted this routine will move onto the next one and continue dropping
+ * data.
  */
 void
 sbdrop(struct sockbuf *sb, int len)
@@ -436,9 +456,6 @@ sbdrop(struct sockbuf *sb, int len)
 	sbcheck(sb);
 	crit_enter();
 
-	/*
-	 * Remove mbufs from multiple records until the count is exhausted.
-	 */
 	m = sb->sb_mb;
 	while (m && len > 0) {
 		if (m->m_len > len) {
