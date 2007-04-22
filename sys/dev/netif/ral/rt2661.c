@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.18 2007/04/22 09:14:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.19 2007/04/22 11:44:56 sephe Exp $
  */
 
 /*
@@ -217,7 +217,7 @@ rt2661_attach(device_t dev, int id)
 	struct rt2661_softc *sc = device_get_softc(dev);
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
-	uint32_t val;
+	uint32_t val, bbp_type;
 	const uint8_t *ucode = NULL;
 	int error, i, ac, ntries, size = 0;
 
@@ -243,11 +243,12 @@ rt2661_attach(device_t dev, int id)
 		error = EIO;
 		goto fail;
 	}
+	bbp_type = val;
 
 	/* retrieve RF rev. no and various other things from EEPROM */
 	rt2661_read_config(sc);
 
-	device_printf(dev, "MAC/BBP RT%X, RF %s\n", val,
+	device_printf(dev, "MAC/BBP RT%X, RF %s\n", bbp_type,
 	    rt2661_get_rf(sc->rf_rev));
 
 	/*
@@ -328,9 +329,14 @@ rt2661_attach(device_t dev, int id)
 	ic->ic_state = IEEE80211_S_INIT;
 	rt2661_led_newstate(sc, IEEE80211_S_INIT);
 
-	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE |
-					   IEEE80211_RATECTL_CAP_SAMPLE;
-	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_SAMPLE;
+	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
+	if (bbp_type == RT2661_BBP_2661D) {
+		ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
+	} else {
+		ic->ic_ratectl.rc_st_ratectl_cap |=
+			IEEE80211_RATECTL_CAP_SAMPLE;
+		ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_SAMPLE;
+	}
 
 	/* set device capabilities */
 	ic->ic_caps =

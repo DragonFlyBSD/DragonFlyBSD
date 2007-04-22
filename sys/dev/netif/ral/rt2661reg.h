@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.6 2007/04/22 09:14:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.7 2007/04/22 11:44:56 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -293,6 +293,8 @@ struct rt2661_rx_desc {
 /* single-band RF */
 #define RT2661_RF_2527	3
 #define RT2661_RF_2529	4
+
+#define RT2661_BBP_2661D	0x2661d
 
 #define RT2661_RX_DESC_BACK	4
 
