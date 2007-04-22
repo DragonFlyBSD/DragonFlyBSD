@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.10 2007/03/16 12:59:10 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.11 2007/04/22 04:35:12 sephe Exp $
  */
 
 /*
@@ -514,7 +514,8 @@ ieee80211_set_shortpreamble(struct ieee80211com *ic, int onoff)
  * NB: the rate set is assumed to be sorted.
  */
 int
-ieee80211_iserp_rateset(struct ieee80211com *ic, struct ieee80211_rateset *rs)
+ieee80211_iserp_rateset(struct ieee80211com *ic,
+			const struct ieee80211_rateset *rs)
 {
 #define N(a)	(sizeof(a) / sizeof(a[0]))
 	static const int rates[] = { 2, 4, 11, 22, 12, 24, 48 };
