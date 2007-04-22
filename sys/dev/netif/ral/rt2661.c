@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.16 2007/04/02 13:46:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.17 2007/04/22 05:18:38 sephe Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ static int		rt2661_tx_cmd(struct rt2661_softc *, uint8_t,
 static void		rt2661_select_antenna(struct rt2661_softc *);
 static void		rt2661_enable_mrr(struct rt2661_softc *);
 static void		rt2661_set_txpreamble(struct rt2661_softc *);
-static void		rt2661_set_basicrates(struct rt2661_softc *,
+static void		rt2661_set_ackrates(struct rt2661_softc *,
 			    const struct ieee80211_rateset *);
 static void		rt2661_select_band(struct rt2661_softc *,
 			    struct ieee80211_channel *);
@@ -884,7 +884,7 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			rt2661_enable_mrr(sc);
 			rt2661_set_txpreamble(sc);
-			rt2661_set_basicrates(sc, &ni->ni_rates);
+			rt2661_set_ackrates(sc, &ni->ni_rates);
 			rt2661_set_bssid(sc, ni->ni_bssid);
 		}
 
@@ -2030,10 +2030,10 @@ rt2661_set_txpreamble(struct rt2661_softc *sc)
 }
 
 static void
-rt2661_set_basicrates(struct rt2661_softc *sc,
-    const struct ieee80211_rateset *rs)
+rt2661_set_ackrates(struct rt2661_softc *sc, const struct ieee80211_rateset *rs)
 {
 #define RV(r)	((r) & IEEE80211_RATE_VAL)
+	struct ieee80211com *ic = &sc->sc_ic;
 	uint32_t mask = 0;
 	uint8_t rate;
 	int i, j;
@@ -2048,14 +2048,29 @@ rt2661_set_basicrates(struct rt2661_softc *sc,
 		 * Find h/w rate index.  We know it exists because the rate
 		 * set has already been negotiated.
 		 */
-		for (j = 0; rt2661_rateset_11g.rs_rates[j] != RV(rate); j++);
+		for (j = 0; rt2661_rateset_11g.rs_rates[j] != RV(rate); j++)
+			; /* EMPTY */
 
 		mask |= 1 << j;
 	}
 
+	if (IEEE80211_IS_CHAN_2GHZ(ic->ic_curchan) &&
+	    ic->ic_curmode != IEEE80211_MODE_11B &&
+	    ieee80211_iserp_rateset(ic, rs)) {
+		/*
+		 * Always set following rates as ACK rates to conform
+		 * IEEE Std 802.11g-2003 clause 9.6
+		 *
+		 * 24Mbits/s	0x100
+		 * 12Mbits/s	0x040
+		 *  6Mbits/s	0x010
+		 */
+		mask |= 0x150;
+	}
+
 	RAL_WRITE(sc, RT2661_TXRX_CSR5, mask);
 
-	DPRINTF(("Setting basic rate mask to 0x%x\n", mask));
+	DPRINTF(("Setting ack rate mask to 0x%x\n", mask));
 #undef RV
 }
 
