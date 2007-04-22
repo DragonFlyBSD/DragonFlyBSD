@@ -32,7 +32,7 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ns.c,v 1.1.1.1.14.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ns.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/ns.c,v 1.4 2007/04/22 01:25:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,8 +132,8 @@ nsprotopr(u_long off, char *name, int af __unused)
 		}
 		if (Aflag)
 			printf("%8x ", ppcb);
-		printf("%-5.5s %6d %6d ", name, sockb.so_rcv.sb_cc,
-			sockb.so_snd.sb_cc);
+		printf("%-5.5s %6d %6d ", name, sockb.so_rcv.ssb_cc,
+			sockb.so_snd.ssb_cc);
 		printf("  %-22.22s", ns_prpr(&nspcb.nsp_laddr));
 		printf(" %-22.22s", ns_prpr(&nspcb.nsp_faddr));
 		if (isspp) {

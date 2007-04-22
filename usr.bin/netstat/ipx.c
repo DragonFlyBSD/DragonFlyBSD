@@ -32,7 +32,7 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ipx.c,v 1.13.2.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.4 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.5 2007/04/22 01:25:04 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -131,8 +131,8 @@ ipxprotopr(u_long off, char *name, int af __unused)
 		}
 		if (Aflag)
 			printf("%8lx ", ppcb);
-		printf("%-5.5s %6ld %6ld ", name, sockb.so_rcv.sb_cc,
-			sockb.so_snd.sb_cc);
+		printf("%-5.5s %6ld %6ld ", name, sockb.so_rcv.ssb_cc,
+			sockb.so_snd.ssb_cc);
 		printf(Aflag?" %-18.18s":" %-22.22s", ipx_prpr(&ipxpcb.ipxp_laddr));
 		printf(Aflag?" %-18.18s":" %-22.22s", ipx_prpr(&ipxpcb.ipxp_faddr));
 		if (isspx) {

@@ -32,7 +32,7 @@
  *
  * @(#)atalk.c	1.1 (Whistle) 6/6/96
  * $FreeBSD: src/usr.bin/netstat/atalk.c,v 1.13.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/atalk.c,v 1.3 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/atalk.c,v 1.4 2007/04/22 01:25:04 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -241,8 +241,8 @@ atalkprotopr(u_long off __unused, char *name, int af __unused)
 		}
 		if (Aflag)
 			printf("%8lx ", (u_long) this);
-		printf("%-5.5s %6lu %6lu ", name, sockb.so_rcv.sb_cc,
-			sockb.so_snd.sb_cc);
+		printf("%-5.5s %6lu %6lu ", name, sockb.so_rcv.ssb_cc,
+			sockb.so_snd.ssb_cc);
 		printf(Aflag?" %-18.18s":" %-22.22s", atalk_print(
 					(struct sockaddr *)&ddpcb.ddp_lsat,7));
 		printf(Aflag?" %-18.18s":" %-22.22s", atalk_print(

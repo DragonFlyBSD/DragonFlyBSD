@@ -35,7 +35,7 @@
 
 /*
  * $FreeBSD: src/usr.bin/netstat/iso.c,v 1.4.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/iso.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/iso.c,v 1.5 2007/04/22 01:25:04 dillon Exp $
  */
 /*******************************************************************************
 	          Copyright IBM Corporation 1987
@@ -262,7 +262,7 @@ iso_protopr1(u_long kern_addr, int istp)
 	if (Aflag)
 			printf("%8x ",
 					(sockb.so_pcb ? (void *)sockb.so_pcb : (void *)kern_addr));
-	printf("%-5.5s %6d %6d ", "tp", sockb.so_rcv.sb_cc, sockb.so_snd.sb_cc);
+	printf("%-5.5s %6d %6d ", "tp", sockb.so_rcv.ssb_cc, sockb.so_snd.ssb_cc);
 	if (istp && tpcb.tp_lsuffixlen) {
 			hexprint(tpcb.tp_lsuffixlen, tpcb.tp_lsuffix, "()");
 			printf("\t");
@@ -345,7 +345,7 @@ tp_inproto(u_long pcb)
 	if (Aflag)
 		printf("%8x ", pcb);
 	printf("%-5.5s %6d %6d ", "tpip",
-	    sockb.so_rcv.sb_cc, sockb.so_snd.sb_cc);
+	    sockb.so_rcv.ssb_cc, sockb.so_snd.ssb_cc);
 	inetprint(&inpcb.inp_laddr, inpcb.inp_lport, "tp");
 	inetprint(&inpcb.inp_faddr, inpcb.inp_fport, "tp");
 }
@@ -493,8 +493,8 @@ x25_protopr(u_long off, char *name, int af __unused)
 				"Local Address", "Foreign Address", "(state)");
 			first = 0;
 		}
-		printf("%-5.5s %6d %6d ", name, sockb.so_rcv.sb_cc,
-			sockb.so_snd.sb_cc);
+		printf("%-5.5s %6d %6d ", name, sockb.so_rcv.ssb_cc,
+			sockb.so_snd.ssb_cc);
 		isonetprint(&xpcb.x_laddr.siso_addr, &xpcb.x_lport,
 			sizeof(xpcb.x_lport), 1);
 		isonetprint(&xpcb.x_faddr.siso_addr, &xpcb.x_fport,
