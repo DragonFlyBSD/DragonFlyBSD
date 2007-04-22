@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.17 2007/04/14 04:22:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.18 2007/04/22 04:16:26 sephe Exp $
  */
 
 /*
@@ -207,14 +207,22 @@
 #define BGE_PCIMISCCTL_INDIRECT_ACCESS	0x00000080
 #define BGE_PCIMISCCTL_ASICREV		0xFFFF0000
 
-#define BGE_BIGENDIAN_INIT						\
-	(BGE_BGE_PCIMISCCTL_ENDIAN_BYTESWAP|				\
-	BGE_PCIMISCCTL_ENDIAN_WORDSWAP|BGE_PCIMISCCTL_CLEAR_INTA|	\
-	BGE_PCIMISCCTL_INDIRECT_ACCESS|PCIMISCCTL_MASK_PCI_INTR)
+#if BYTE_ORDER == LITTLE_ENDIAN
+#define BGE_DMA_SWAP_OPTIONS		(BGE_MODECTL_WORDSWAP_NONFRAME |\
+					 BGE_MODECTL_BYTESWAP_DATA |	\
+					 BGE_MODECTL_WORDSWAP_DATA)
+#else
+#define BGE_DMA_SWAP_OPTIONS		(BGE_MODECTL_WORDSWAP_NONFRAME |\
+					 BGE_MODECTL_BYTESWAP_NONFRAME |\
+					 BGE_MODECTL_BYTESWAP_DATA |
+					 BGE_MODECTL_WORDSWAP_DATA)
+#endif
 
-#define BGE_LITTLEENDIAN_INIT						\
-	(BGE_PCIMISCCTL_CLEAR_INTA|BGE_PCIMISCCTL_MASK_PCI_INTR|	\
-	BGE_PCIMISCCTL_ENDIAN_WORDSWAP|BGE_PCIMISCCTL_INDIRECT_ACCESS)
+#define BGE_HIF_SWAP_OPTIONS		BGE_PCIMISCCTL_ENDIAN_WORDSWAP
+#define BGE_INIT			(BGE_HIF_SWAP_OPTIONS |		\
+					 BGE_PCIMISCCTL_CLEAR_INTA |	\
+					 BGE_PCIMISCCTL_MASK_PCI_INTR |	\
+					 BGE_PCIMISCCTL_INDIRECT_ACCESS)
 
 #define BGE_CHIPID_TIGON_I		0x40000000
 #define BGE_CHIPID_TIGON_II		0x60000000
@@ -1748,11 +1756,15 @@ typedef struct {
 	uint32_t		bge_addr_hi;
 	uint32_t		bge_addr_lo;
 } bge_hostaddr;
+
 #define BGE_HOSTADDR(x, y)						\
 	do {								\
 		(x).bge_addr_lo = ((uint64_t) (y) & 0xffffffff);	\
 		(x).bge_addr_hi = ((uint64_t) (y) >> 32);		\
 	} while(0)
+
+#define BGE_ADDR_LO(y)	((uint64_t) (y) & 0xFFFFFFFF)
+#define BGE_ADDR_HI(y)	((uint64_t) (y) >> 32)
 
 /* Ring control block structure */
 struct bge_rcb {
@@ -1761,16 +1773,26 @@ struct bge_rcb {
 	uint32_t		bge_nicaddr;
 };
 #define BGE_RCB_MAXLEN_FLAGS(maxlen, flags)	((maxlen) << 16 | (flags))
+#define RCB_WRITE_4(sc, rcb, offset, val)			\
+	bus_space_write_4(sc->bge_btag, sc->bge_bhandle,	\
+			  rcb + offsetof(struct bge_rcb, offset), val)
 
 #define BGE_RCB_FLAG_USE_EXT_RX_BD	0x0001
 #define BGE_RCB_FLAG_RING_DISABLED	0x0002
 
 struct bge_tx_bd {
 	bge_hostaddr		bge_addr;
+#if BYTE_ORDER == LITTLE_ENDIAN
 	uint16_t		bge_flags;
 	uint16_t		bge_len;
 	uint16_t		bge_vlan_tag;
 	uint16_t		bge_rsvd;
+#else
+	uint16_t		bge_len;
+	uint16_t		bge_flags;
+	uint16_t		bge_rsvd;
+	uint16_t		bge_vlan_tag;
+#endif
 };
 
 #define BGE_TXBDFLAG_TCP_UDP_CSUM	0x0001
@@ -1792,6 +1814,7 @@ struct bge_tx_bd {
 
 struct bge_rx_bd {
 	bge_hostaddr		bge_addr;
+#if BYTE_ORDER == LITTLE_ENDIAN
 	uint16_t		bge_len;
 	uint16_t		bge_idx;
 	uint16_t		bge_flags;
@@ -1800,6 +1823,16 @@ struct bge_rx_bd {
 	uint16_t		bge_ip_csum;
 	uint16_t		bge_vlan_tag;
 	uint16_t		bge_error_flag;
+#else
+	uint16_t		bge_idx;
+	uint16_t		bge_len;
+	uint16_t		bge_type;
+	uint16_t		bge_flags;
+	uint16_t		bge_ip_csum;
+	uint16_t		bge_tcp_udp_csum;
+	uint16_t		bge_error_flag;
+	uint16_t		bge_vlan_tag;
+#endif
 	uint32_t		bge_rsvd;
 	uint32_t		bge_opaque;
 };
@@ -1823,17 +1856,29 @@ struct bge_rx_bd {
 #define BGE_RXERRFLAG_GIANT		0x0080
 
 struct bge_sts_idx {
+#if BYTE_ORDER == LITTLE_ENDIAN
 	uint16_t		bge_rx_prod_idx;
 	uint16_t		bge_tx_cons_idx;
+#else
+	uint16_t		bge_tx_cons_idx;
+	uint16_t		bge_rx_prod_idx;
+#endif
 };
 
 struct bge_status_block {
 	uint32_t		bge_status;
 	uint32_t		bge_rsvd0;
+#if BYTE_ORDER == LITTLE_ENDIAN
 	uint16_t		bge_rx_jumbo_cons_idx;
 	uint16_t		bge_rx_std_cons_idx;
 	uint16_t		bge_rx_mini_cons_idx;
 	uint16_t		bge_rsvd1;
+#else
+	uint16_t		bge_rx_std_cons_idx;
+	uint16_t		bge_rx_jumbo_cons_idx;
+	uint16_t		bge_rsvd1;
+	uint16_t		bge_rx_mini_cons_idx;
+#endif
 	struct bge_sts_idx	bge_idx[16];
 };
 
@@ -2154,6 +2199,7 @@ struct bge_softc;
 struct bge_jslot {
 	struct bge_softc	*bge_sc;
 	void			*bge_buf;
+	bus_addr_t		bge_paddr;
 	int			bge_inuse;
 	int			bge_slot;
 	SLIST_ENTRY(bge_jslot)	jslot_link;
@@ -2166,15 +2212,34 @@ struct bge_jslot {
  * we access via the shared memory window.
  */
 struct bge_ring_data {
-	struct bge_rx_bd	bge_rx_std_ring[BGE_STD_RX_RING_CNT];
-	struct bge_rx_bd	bge_rx_jumbo_ring[BGE_JUMBO_RX_RING_CNT];
-	struct bge_rx_bd	bge_rx_return_ring[BGE_RETURN_RING_CNT];
-	struct bge_tx_bd	bge_tx_ring[BGE_TX_RING_CNT];
-	struct bge_status_block	bge_status_block;
-	struct bge_tx_desc	*bge_tx_ring_nic;/* pointer to shared mem */
-	struct bge_cmd_desc	*bge_cmd_ring;	/* pointer to shared mem */
+	struct bge_rx_bd	*bge_rx_std_ring;
+	bus_addr_t		bge_rx_std_ring_paddr;
+	struct bge_rx_bd	*bge_rx_jumbo_ring;
+	bus_addr_t		bge_rx_jumbo_ring_paddr;
+	struct bge_rx_bd	*bge_rx_return_ring;
+	bus_addr_t		bge_rx_return_ring_paddr;
+	struct bge_tx_bd	*bge_tx_ring;
+	bus_addr_t		bge_tx_ring_paddr;
+	struct bge_status_block	*bge_status_block;
+	bus_addr_t		bge_status_block_paddr;
+	struct bge_stats	*bge_stats;
+	bus_addr_t		bge_stats_paddr;
+	void			*bge_jumbo_buf;
 	struct bge_gib		bge_info;
 };
+
+#define BGE_STD_RX_RING_SZ	\
+	(sizeof(struct bge_rx_bd) * BGE_STD_RX_RING_CNT)
+#define BGE_JUMBO_RX_RING_SZ	\
+	(sizeof(struct bge_rx_bd) * BGE_JUMBO_RX_RING_CNT)
+#define BGE_TX_RING_SZ		\
+	(sizeof(struct bge_tx_bd) * BGE_TX_RING_CNT)
+#define BGE_RX_RTN_RING_SZ(x)	\
+	(sizeof(struct bge_rx_bd) * x->bge_return_ring_cnt)
+
+#define BGE_STATUS_BLK_SZ	sizeof (struct bge_status_block)
+
+#define BGE_STATS_SZ		sizeof (struct bge_stats)
 
 /*
  * Mbuf pointers. We need these to keep track of the virtual addresses
@@ -2182,13 +2247,34 @@ struct bge_ring_data {
  * not the other way around.
  */
 struct bge_chain_data {
+	bus_dma_tag_t		bge_parent_tag;
+	bus_dma_tag_t		bge_rx_std_ring_tag;
+	bus_dma_tag_t		bge_rx_jumbo_ring_tag;
+	bus_dma_tag_t		bge_rx_return_ring_tag;
+	bus_dma_tag_t		bge_tx_ring_tag;
+	bus_dma_tag_t		bge_status_tag;
+	bus_dma_tag_t		bge_stats_tag;
+	bus_dma_tag_t		bge_jumbo_tag;
+	bus_dma_tag_t		bge_mtag;	/* mbuf mapping tag */
+	bus_dmamap_t		bge_tx_dmamap[BGE_TX_RING_CNT];
+	bus_dmamap_t		bge_rx_std_dmamap[BGE_STD_RX_RING_CNT];
+	bus_dmamap_t		bge_rx_std_ring_map;
+	bus_dmamap_t		bge_rx_jumbo_ring_map;
+	bus_dmamap_t		bge_tx_ring_map;
+	bus_dmamap_t		bge_rx_return_ring_map;
+	bus_dmamap_t		bge_status_map;
+	bus_dmamap_t		bge_stats_map;
+	bus_dmamap_t		bge_jumbo_map;
 	struct mbuf		*bge_tx_chain[BGE_TX_RING_CNT];
 	struct mbuf		*bge_rx_std_chain[BGE_STD_RX_RING_CNT];
 	struct mbuf		*bge_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
-	struct mbuf		*bge_rx_mini_chain[BGE_MINI_RX_RING_CNT];
 	/* Stick the jumbo mem management stuff here too. */
 	struct bge_jslot	bge_jslots[BGE_JSLOTS];
-	void			*bge_jumbo_buf;
+};
+
+struct bge_dmamap_arg {
+	int			bge_maxsegs;
+	bus_dma_segment_t	*bge_segs;
 };
 
 struct bge_type {
@@ -2212,7 +2298,6 @@ struct bge_softc {
 	device_t		bge_dev;
 	device_t		bge_miibus;
 	bus_space_handle_t	bge_bhandle;
-	vm_offset_t		bge_vhandle;
 	bus_space_tag_t		bge_btag;
 	void			*bge_intrhand;
 	struct resource		*bge_irq;
@@ -2226,7 +2311,7 @@ struct bge_softc {
 	uint8_t			bge_chiprev;
 	uint8_t			bge_no_3_led;
 	uint8_t			bge_pcie;
-	struct bge_ring_data	*bge_rdata;	/* rings */
+	struct bge_ring_data	bge_ldata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
 	uint16_t		bge_tx_saved_considx;
 	uint16_t		bge_rx_saved_considx;
@@ -2250,3 +2335,7 @@ struct bge_softc {
 	char			*bge_vpd_prodname;
 	char			*bge_vpd_readonly;
 };
+
+#define BGE_NSEG_NEW		32
+#define BGE_NSEG_SPARE		5
+#define BGE_NSEG_RSVD		16
