@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.5 2007/04/02 13:46:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.6 2007/04/22 09:14:46 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -309,9 +309,10 @@ struct rt2661_rx_desc {
 #define RT2661_EEPROM_ANTENNA		0x10
 #define RT2661_EEPROM_CONFIG2		0x11
 #define RT2661_EEPROM_BBP_BASE		0x13
-#define RT2661_EEPROM_TXPOWER		0x23
+#define RT2661_EEPROM_TXPOWER_2GHZ	0x23
 #define RT2661_EEPROM_FREQ_OFFSET	0x2f
 #define RT2661_EEPROM_LED_OFFSET	0x30
+#define RT2661_EEPROM_TXPOWER_5GHZ	0x31
 #define RT2661_EEPROM_RSSI_2GHZ_OFFSET	0x4d
 #define RT2661_EEPROM_RSSI_5GHZ_OFFSET	0x4e
 
@@ -344,6 +345,9 @@ struct rt2661_rx_desc {
 	(RT2661_MCU_LED_GPIO0 | RT2661_MCU_LED_GPIO1 | RT2661_MCU_LED_GPIO2 | \
 	 RT2661_MCU_LED_GPIO3 | RT2661_MCU_LED_GPIO4 | RT2661_MCU_LED_ACT | \
 	 RT2661_MCU_LED_RDYG | RT2661_MCU_LED_RDYA)
+
+#define RT2661_TXPOWER_DEFAULT		5
+#define RT2661_TXPOWER_MAX		36
 
 /*
  * control and status registers access macros

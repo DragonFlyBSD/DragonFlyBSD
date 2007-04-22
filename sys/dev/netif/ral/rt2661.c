@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.17 2007/04/22 05:18:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.18 2007/04/22 09:14:46 sephe Exp $
  */
 
 /*
@@ -132,7 +132,9 @@ static void		rt2661_update_promisc(struct rt2661_softc *);
 static int		rt2661_wme_update(struct ieee80211com *) __unused;
 static void		rt2661_update_slot(struct ifnet *);
 static const char	*rt2661_get_rf(int);
-static void		rt2661_read_eeprom(struct rt2661_softc *);
+static void		rt2661_read_config(struct rt2661_softc *);
+static void		rt2661_read_txpower_config(struct rt2661_softc *,
+						   uint8_t, int, int *);
 static int		rt2661_bbp_init(struct rt2661_softc *);
 static void		rt2661_init(void *);
 static void		rt2661_stop(void *);
@@ -243,7 +245,7 @@ rt2661_attach(device_t dev, int id)
 	}
 
 	/* retrieve RF rev. no and various other things from EEPROM */
-	rt2661_read_eeprom(sc);
+	rt2661_read_config(sc);
 
 	device_printf(dev, "MAC/BBP RT%X, RF %s\n", val,
 	    rt2661_get_rf(sc->rf_rev));
@@ -2313,11 +2315,11 @@ rt2661_get_rf(int rev)
 }
 
 static void
-rt2661_read_eeprom(struct rt2661_softc *sc)
+rt2661_read_config(struct rt2661_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint16_t val;
-	int i;
+	int i, start_chan;
 
 	/* read MAC address */
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_MAC01);
@@ -2382,16 +2384,18 @@ rt2661_read_eeprom(struct rt2661_softc *sc)
 
 	DPRINTF(("RF prog=%d\nRF freq=%d\n", sc->rfprog, sc->rffreq));
 
-	/* read Tx power for all a/b/g channels */
-	for (i = 0; i < 19; i++) {
-		val = rt2661_eeprom_read(sc, RT2661_EEPROM_TXPOWER + i);
-		sc->txpow[i * 2] = (int8_t)(val >> 8);		/* signed */
-		DPRINTF(("Channel=%d Tx power=%d\n",
-		    rt2661_rf5225_1[i * 2].chan, sc->txpow[i * 2]));
-		sc->txpow[i * 2 + 1] = (int8_t)(val & 0xff);	/* signed */
-		DPRINTF(("Channel=%d Tx power=%d\n",
-		    rt2661_rf5225_1[i * 2 + 1].chan, sc->txpow[i * 2 + 1]));
-	}
+#define NCHAN_2GHZ	14
+#define NCHAN_5GHZ	24
+	/*
+	 * Read channel TX power
+	 */
+	start_chan = 0;
+	rt2661_read_txpower_config(sc, RT2661_EEPROM_TXPOWER_2GHZ,
+				   NCHAN_2GHZ, &start_chan);
+	rt2661_read_txpower_config(sc, RT2661_EEPROM_TXPOWER_5GHZ,
+				   NCHAN_5GHZ, &start_chan);
+#undef NCHAN_2GHZ
+#undef NCHAN_5GHZ
 
 	/* read vendor-specific BBP values */
 	for (i = 0; i < 16; i++) {
@@ -2951,4 +2955,40 @@ rt2661_led_newstate(struct rt2661_softc *sc, enum ieee80211_state nstate)
 	RAL_WRITE(sc, RT2661_H2M_MAILBOX_CSR,
 		  RT2661_H2M_BUSY | RT2661_TOKEN_NO_INTR << 16 | mail);
 	RAL_WRITE(sc, RT2661_HOST_CMD_CSR, RT2661_KICK_CMD | RT2661_MCU_SET_LED);
+}
+
+static void
+rt2661_read_txpower_config(struct rt2661_softc *sc, uint8_t txpwr_ofs,
+			   int nchan, int *start_chan0)
+{
+	int i, loop_max;
+	int start_chan = *start_chan0;
+
+	KASSERT(nchan % 2 == 0, ("number of channels %d is not even\n", nchan));
+	KASSERT(start_chan + nchan <= RT2661_NCHAN_MAX, ("too many channels"));
+
+	loop_max = nchan / 2;
+
+	for (i = 0; i < loop_max; i++) {
+		int chan_idx, j;
+		uint16_t val;
+
+		val = rt2661_eeprom_read(sc, txpwr_ofs + i);
+		chan_idx = i * 2 + start_chan;
+
+		for (j = 0; j < 2; ++j) {
+			int8_t tx_power;	/* signed */
+
+			tx_power = (int8_t)((val >> (8 * j)) & 0xff);
+			if (tx_power > RT2661_TXPOWER_MAX)
+				tx_power = RT2661_TXPOWER_DEFAULT;
+
+			sc->txpow[chan_idx] = tx_power;
+			DPRINTF(("Channel=%d Tx power=%d\n",
+			    rt2661_rf5225_1[chan_idx].chan, sc->txpow[chan_idx]));
+
+			++chan_idx;
+		}
+	}
+	*start_chan0 += nchan;
 }

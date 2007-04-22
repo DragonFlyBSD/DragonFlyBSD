@@ -15,8 +15,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.5 2007/04/02 13:46:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.6 2007/04/22 09:14:46 sephe Exp $
  */
+
+#define RT2661_NCHAN_MAX	38
 
 struct rt2661_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
@@ -115,7 +117,7 @@ struct rt2661_softc {
 	struct rt2661_rx_ring		rxq;
 
 	uint32_t			rf_regs[4];
-	int8_t				txpow[38];
+	int8_t				txpow[RT2661_NCHAN_MAX];
 
 	struct {
 		uint8_t	reg;
