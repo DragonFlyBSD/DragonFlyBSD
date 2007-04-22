@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.8 2007/04/22 10:43:00 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.9 2007/04/22 10:54:42 y0netan1 Exp $
  */
 
 #include "opt_kbd.h"
@@ -145,6 +145,7 @@ atkbdc_probe(device_t dev)
 	for (i = 65536; i != 0; --i) {
 		if ((bus_space_read_1(tag, ioh1, 0) & 0x2) == 0)
 			break;
+		DELAY(16);
 	}
 	if (i == 0) {
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, port0);

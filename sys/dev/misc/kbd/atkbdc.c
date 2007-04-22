@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.10 2007/04/22 10:43:00 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.11 2007/04/22 10:54:43 y0netan1 Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -179,6 +179,7 @@ atkbdc_configure(void)
 	for (i = 65536; i != 0; --i) {
 		if ((bus_space_read_1(tag, h1, 0) & 0x2) == 0)
 			break;
+		DELAY(16);
 	}
 	if (i == 0)
                 return ENXIO;
