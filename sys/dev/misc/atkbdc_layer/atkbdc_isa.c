@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.7 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.8 2007/04/22 10:43:00 y0netan1 Exp $
  */
 
 #include "opt_kbd.h"
@@ -101,6 +101,11 @@ atkbdc_probe(device_t dev)
 	struct resource	*port1;
 	int		error;
 	int		rid;
+#if defined(__i386__)
+	bus_space_tag_t	tag;
+	bus_space_handle_t ioh1;
+	volatile int	i;
+#endif
 
 	/* check PnP IDs */
 	if (ISA_PNP_PROBE(device_get_parent(dev), dev, atkbdc_ids) == ENXIO)
@@ -125,6 +130,28 @@ atkbdc_probe(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, port0);
 		return ENXIO;
 	}
+
+#if defined(__i386__)
+	/*
+	 * Check if we really have AT keyboard controller. Poll status
+	 * register until we get "all clear" indication. If no such
+	 * indication comes, it probably means that there is no AT
+	 * keyboard controller present. Give up in such case. Check relies
+	 * on the fact that reading from non-existing in/out port returns
+	 * 0xff on i386. May or may not be true on other platforms.
+	 */
+	tag = rman_get_bustag(port0);
+	ioh1 = rman_get_bushandle(port1);
+	for (i = 65536; i != 0; --i) {
+		if ((bus_space_read_1(tag, ioh1, 0) & 0x2) == 0)
+			break;
+	}
+	if (i == 0) {
+		bus_release_resource(dev, SYS_RES_IOPORT, 0, port0);
+		bus_release_resource(dev, SYS_RES_IOPORT, 1, port1);
+		return ENXIO;
+	}
+#endif
 
 	error = atkbdc_probe_unit(device_get_unit(dev), port0, port1);
 

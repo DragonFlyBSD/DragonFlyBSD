@@ -14,7 +14,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/pxeldr/pxeldr.s,v 1.9 2003/09/03 08:12:20 phk Exp $
- * $DragonFly: src/sys/boot/i386/pxeldr/Attic/pxeldr.S,v 1.4 2004/07/18 23:40:09 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/pxeldr/Attic/pxeldr.S,v 1.5 2007/04/22 10:43:00 y0netan1 Exp $
  */
 
 /*
@@ -234,10 +234,17 @@ putc:		movw $0x7,%bx			# attribute for output
 		jmp putstr			# keep looping
 
 		/*
-		 * Enable A20
+		 * Enable A20. Put upper limit on amount of time we wait for the
+		 * keyboard controller to get ready (65K x ISA access time). If
+		 * we wait more than that amount it's likely that the hardware
+		 * is legacy-free and simply doesn't have keyboard controller
+		 * and don't need enabling A20 at all.
 		 */
 seta20: 	cli				# Disable interrupts
-seta20.1:	inb $0x64,%al			# Get status
+		xor %cx,%cx			# Clear
+seta20.1:	inc %cx				# Increment, overflow?
+		jz seta20.3			# Yes
+		inb $0x64,%al			# Get status
 		testb $0x2,%al			# Busy?
 		jnz seta20.1			# Yes
 		movb $0xd1,%al			# Command: Write
@@ -247,7 +254,7 @@ seta20.2:	inb $0x64,%al			# Get status
 		jnz seta20.2			# Yes
 		movb $0xdf,%al			# Enable
 		outb %al,$0x60			#  A20
-		sti				# Enable interrupts
+seta20.3:	sti				# Enable interrupts
 		retw				# To caller
 
 		/*

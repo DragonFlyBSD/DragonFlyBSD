@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.9 2007/01/15 00:11:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.10 2007/04/22 10:43:00 y0netan1 Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -143,6 +143,9 @@ atkbdc_configure(void)
 	bus_space_handle_t h1;
 	int port0;
 	int port1;
+#if defined(__i386__)
+	volatile int i;
+#endif
 
 	port0 = IO_KBD;
 	resource_int_value("atkbdc", 0, "port", &port0);
@@ -163,6 +166,24 @@ atkbdc_configure(void)
 	h0 = (bus_space_handle_t)port0;
 	h1 = (bus_space_handle_t)port1;
 #endif
+
+#if defined(__i386__)
+	/*
+	 * Check if we really have AT keyboard controller. Poll status
+	 * register until we get "all clear" indication. If no such
+	 * indication comes, it probably means that there is no AT
+	 * keyboard controller present. Give up in such case. Check relies
+	 * on the fact that reading from non-existing in/out port returns
+	 * 0xff on i386. May or may not be true on other platforms.
+	 */
+	for (i = 65536; i != 0; --i) {
+		if ((bus_space_read_1(tag, h1, 0) & 0x2) == 0)
+			break;
+	}
+	if (i == 0)
+                return ENXIO;
+#endif
+
 	return atkbdc_setup(atkbdc_softc[0], tag, h0, h1);
 }
 

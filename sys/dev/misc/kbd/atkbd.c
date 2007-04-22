@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.13 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.14 2007/04/22 10:43:00 y0netan1 Exp $
  */
 
 #include "opt_kbd.h"
@@ -270,12 +270,12 @@ atkbd_configure(int flags)
 	int arg[2];
 	int i;
 
-	/* probe the keyboard controller */
-	atkbdc_configure();
-
-	/* if the driver is disabled, unregister the keyboard if any */
-	if ((resource_int_value("atkbd", ATKBD_DEFAULT, "disabled", &i) == 0)
-	    && i != 0) {
+	/*
+	 * Probe the keyboard controller, if not present or if the driver
+	 * is disabled, unregister the keyboard if any.
+	 */
+	if (atkbdc_configure() != 0 ||
+	    resource_disabled("atkbd", ATKBD_DEFAULT)) {
 		i = kbd_find_keyboard(ATKBD_DRIVER_NAME, ATKBD_DEFAULT);
 		if (i >= 0) {
 			kbd = kbd_get_keyboard(i);
