@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.3 2005/04/25 16:10:24 liamfoy Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.4 2007/04/22 10:22:32 corecode Exp $
  */
 
 /*
@@ -42,21 +42,20 @@
  */
 
 #include <sys/time.h>
+#include <sys/soundcard.h>
 
 #include <ctype.h>
+#include <err.h>
 #include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-
-#ifdef SPEAKER
-#include <machine/speaker.h>
-#endif
 
 struct morsetab {
 	char            inchar;
@@ -189,13 +188,19 @@ static const struct morsetab koi8rtab[] = {
 	{'\0', ""}
 };
 
+struct tone_data {
+	int16_t	*data;
+	size_t	len;
+};
+
+void		alloc_soundbuf(struct tone_data *, double, int);
 void            show(const char *), play(const char *), morse(char);
 void		ttyout(const char *);
 void		sighandler(int);
 
-#define GETOPTOPTS "d:ef:sw:"
+#define GETOPTOPTS "d:ef:pP:sw:"
 #define USAGE \
-"usage: morse [-s] [-e] [-d device] [-w speed] [-f frequency] [string ...]\n"
+"usage: morse [-s] [-e] [-p] [-P device] [-d device] [-w speed] [-f frequency] [string ...]\n"
 
 static int      pflag, sflag, eflag;
 static int      wpm = 20;	/* words per minute */
@@ -203,22 +208,17 @@ static int      wpm = 20;	/* words per minute */
 static int      freq = FREQUENCY;
 static char	*device;	/* for tty-controlled generator */
 
+static struct tone_data tone_dot, tone_dash, tone_silence;
+#define DSP_RATE 44100
+static const char *snddev = "/dev/dsp";
+
 #define DASH_LEN 3
 #define CHAR_SPACE 3
-#define WORD_SPACE (7 - CHAR_SPACE - 1)
+#define WORD_SPACE (7 - CHAR_SPACE)
 static float    dot_clock;
 int             spkr, line;
 struct termios	otty, ntty;
 int		olflags;
-
-#ifdef SPEAKER
-tone_t          sound;
-#undef GETOPTOPTS
-#define GETOPTOPTS "d:ef:psw:"
-#undef USAGE
-#define USAGE \
-"usage: morse [-s] [-p] [-e] [-d device] [-w speed] [-f frequency] [string ...]\n"
-#endif
 
 static const struct morsetab *hightab;
 
@@ -240,11 +240,12 @@ main(int argc, char **argv)
 		case 'f':
 			freq = atoi(optarg);
 			break;
-#ifdef SPEAKER
 		case 'p':
 			pflag = 1;
 			break;
-#endif
+		case 'P':
+			snddev = optarg;
+			break;
 		case 's':
 			sflag = 1;
 			break;
@@ -266,15 +267,28 @@ main(int argc, char **argv)
 	}
 	if ((pflag || device) && (freq == 0))
 		freq = FREQUENCY;
+	if (pflag || device) {
+		dot_clock = wpm / 2.4;		/* dots/sec */
+		dot_clock = 1 / dot_clock;	/* duration of a dot */
+		dot_clock = dot_clock / 2;	/* dot_clock runs at twice */
+						/* the dot rate */
+	}
 
-#ifdef SPEAKER
 	if (pflag) {
-		if ((spkr = open(SPEAKER, O_WRONLY, 0)) == -1) {
-			perror(SPEAKER);
-			exit(1);
-		}
+		snd_chan_param param;
+
+		if ((spkr = open(snddev, O_WRONLY, 0)) == -1)
+			err(1, "%s", snddev);
+		param.play_rate = DSP_RATE;
+		param.play_format = AFMT_S16_NE;
+		param.rec_rate = 0;
+		param.rec_format = 0;
+		if (ioctl(spkr, AIOSFMT, &param) != 0)
+			err(1, "%s: set format", snddev);
+		alloc_soundbuf(&tone_dot, dot_clock, 1);
+		alloc_soundbuf(&tone_dash, DASH_LEN * dot_clock, 1);
+		alloc_soundbuf(&tone_silence, dot_clock, 0);
 	} else
-#endif
 	if (device) {
 		if ((line = open(device, O_WRONLY | O_NONBLOCK)) == -1) {
 			perror("open tty line");
@@ -298,13 +312,6 @@ main(int argc, char **argv)
 		(void)signal(SIGINT, sighandler);
 		(void)signal(SIGQUIT, sighandler);
 		(void)signal(SIGTERM, sighandler);
-	}
-	if (pflag || device) {
-		dot_clock = wpm / 2.4;		/* dots/sec */
-		dot_clock = 1 / dot_clock;	/* duration of a dot */
-		dot_clock = dot_clock / 2;	/* dot_clock runs at twice */
-						/* the dot rate */
-		dot_clock = dot_clock * 100;	/* scale for ioctl */
 	}
 
 	argc -= optind;
@@ -340,6 +347,56 @@ main(int argc, char **argv)
 	if (device)
 		tcsetattr(line, TCSANOW, &otty);
 	exit(0);
+}
+
+void
+alloc_soundbuf(struct tone_data *tone, double len, int on)
+{
+	int samples, i;
+
+	samples = DSP_RATE * len;
+	tone->len = samples * sizeof(*tone->data);
+	tone->data = malloc(tone->len);
+	if (tone->data == NULL)
+		err(1, NULL);
+	if (!on) {
+		bzero(tone->data, tone->len);
+		return;
+	}
+
+	/*
+	 * We create a sinus with the specified frequency and smooth
+	 * the edges to reduce key clicks.
+	 */
+	for (i = 0; i < samples; i++) {
+		double filter = 1;
+
+#define FILTER_SAMPLES 100
+		if (i < FILTER_SAMPLES || i > samples - FILTER_SAMPLES) {
+			/*
+			 * Gauss window
+			 */
+#if 0
+			int fi = i;
+
+			if (i > FILTER_SAMPLES)
+				fi = samples - i;
+			filter = exp(-0.5 *
+				     pow((double)(fi - FILTER_SAMPLES) /
+					 (0.4 * FILTER_SAMPLES), 2));
+#else
+			/*
+			 * Triangle window
+			 */
+			if (i < FILTER_SAMPLES)
+				filter = (double)i / FILTER_SAMPLES;
+			else
+				filter = (double)(samples - i) / FILTER_SAMPLES;
+#endif
+		}
+		tone->data[i] = 32767 * sin((double)i / samples * len * freq * 2 * M_PI) *
+		    filter;
+	}
 }
 
 void
@@ -391,43 +448,37 @@ show(const char *s)
 void
 play(const char *s)
 {
-#ifdef SPEAKER
 	const char *c;
+	int duration;
+	struct tone_data *tone;
 
+	/*
+	 * We don't need to usleep() here, as the sound device blocks.
+	 */
 	for (c = s; *c != '\0'; c++) {
 		switch (*c) {
 		case '.':
-			sound.frequency = freq;
-			sound.duration = dot_clock;
+			duration = 1;
+			tone = &tone_dot;
 			break;
 		case '-':
-			sound.frequency = freq;
-			sound.duration = dot_clock * DASH_LEN;
+			duration = 1;
+			tone = &tone_dash;
 			break;
 		case ' ':
-			sound.frequency = 0;
-			sound.duration = dot_clock * WORD_SPACE;
+			duration = WORD_SPACE;
+			tone = &tone_silence;
 			break;
 		default:
-			sound.duration = 0;
+			errx(1, "invalid morse digit");
 		}
-		if (sound.duration) {
-			if (ioctl(spkr, SPKRTONE, &sound) == -1) {
-				perror("ioctl play");
-				exit(1);
-			}
-		}
-		sound.frequency = 0;
-		sound.duration = dot_clock;
-		if (ioctl(spkr, SPKRTONE, &sound) == -1) {
-			perror("ioctl rest");
-			exit(1);
-		}
+		while (duration-- > 0)
+			write(spkr, tone->data, tone->len);
+		write(spkr, tone_silence.data, tone_silence.len);
 	}
-	sound.frequency = 0;
-	sound.duration = dot_clock * CHAR_SPACE;
-	ioctl(spkr, SPKRTONE, &sound);
-#endif
+	duration = CHAR_SPACE - 1;  /* we already waited 1 after the last symbol */
+	while (duration-- > 0)
+		write(spkr, tone_silence.data, tone_silence.len);
 }
 
 void
@@ -459,16 +510,16 @@ ttyout(const char *s)
 			lflags |= TIOCM_RTS;
 			ioctl(line, TIOCMSET, &lflags);
 		}
-		duration *= 10000;
+		duration *= 1000000;
 		if (duration)
 			usleep(duration);
 		ioctl(line, TIOCMGET, &lflags);
 		lflags &= ~TIOCM_RTS;
 		ioctl(line, TIOCMSET, &lflags);
-		duration = dot_clock * 10000;
+		duration = dot_clock * 1000000;
 		usleep(duration);
 	}
-	duration = dot_clock * CHAR_SPACE * 10000;
+	duration = dot_clock * CHAR_SPACE * 1000000;
 	usleep(duration);
 }
 

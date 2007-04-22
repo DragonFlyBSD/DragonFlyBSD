@@ -32,9 +32,9 @@
 .\"
 .\"	@(#)bcd.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/morse/morse.6,v 1.4.2.7 2003/01/26 02:57:27 keramida Exp $
-.\" $DragonFly: src/games/morse/morse.6,v 1.3 2006/02/17 19:33:31 swildner Exp $
+.\" $DragonFly: src/games/morse/morse.6,v 1.4 2007/04/22 10:22:32 corecode Exp $
 .\"
-.Dd December 7, 2000
+.Dd April 22, 2007
 .Dt MORSE 6
 .Os
 .Sh NAME
@@ -43,6 +43,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl p
+.Op Fl P Ar dspdevice
 .Op Fl d Ar device
 .Op Fl e
 .Op Fl w Ar speed
@@ -63,8 +64,11 @@ The
 option produces dots and dashes rather than words.
 .It Fl p
 Send morse the real way. This only works if your system has
-.Xr speaker 4
+.Xr sound 4
 support.
+.It Fl P Ar dspdevice
+Select a different dsp device from the default
+.Pa /dev/dsp .
 .It Fl w Ar speed
 Set the sending speed in words per minute. If not specified the default
 speed of 20 WPM is used.
@@ -148,18 +152,17 @@ they are interpreted
 as belonging to the
 .Ql ISO-8859-1
 character set.
-.Sh FILES
-.Bl -tag -width /dev/speaker -compact
-.It Pa /dev/speaker
-speaker device file
-.El
 .Sh SEE ALSO
-.Xr speaker 4
+.Xr sound 4
 .Sh HISTORY
 Sound support for
 .Nm
 added by
-.An Lyndon Nerenberg (VE7TCP/VE6BBM) Aq lyndon@orthanc.com .
+.An Lyndon Nerenberg (VE7TCP/VE6BBM) Aq lyndon@orthanc.com
+and later converted to use
+.Xr sound
+by
+.An Simon 'corecode' Schubert Aq corecode@fs.ei.tum.de .
 .Pp
 Ability to key an external device added by
 .An J\(:org Wunsch
