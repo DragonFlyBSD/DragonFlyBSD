@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.68 2007/04/22 04:16:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.69 2007/04/23 15:14:37 sephe Exp $
  *
  */
 
@@ -115,6 +115,7 @@
 #include "if_bgereg.h"
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define BGE_MIN_FRAME		60
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
@@ -1151,7 +1152,7 @@ bge_chipinit(struct bge_softc *sc)
 	 */
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
-	    BGE_MODECTL_TX_NO_PHDR_CSUM|BGE_MODECTL_RX_NO_PHDR_CSUM);
+	    BGE_MODECTL_TX_NO_PHDR_CSUM);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
@@ -1744,11 +1745,18 @@ bge_attach(device_t dev)
 	ifp->if_watchdog = bge_watchdog;
 	ifp->if_init = bge_init;
 	ifp->if_mtu = ETHERMTU;
+	ifp->if_capabilities = IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
 	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
-	ifp->if_hwassist = BGE_CSUM_FEATURES;
-	ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_VLAN_HWTAGGING |
-	    IFCAP_VLAN_MTU;
+
+	/*
+	 * 5700 B0 chips do not support checksumming correctly due
+	 * to hardware bugs.
+	 */
+	if (sc->bge_chipid != BGE_CHIPID_BCM5700_B0) {
+		ifp->if_capabilities |= IFCAP_HWCSUM;
+		ifp->if_hwassist = BGE_CSUM_FEATURES;
+	}
 	ifp->if_capenable = ifp->if_capabilities;
 
 	/*
@@ -2123,18 +2131,20 @@ bge_rxeof(struct bge_softc *sc)
 		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
-#if 0 /* currently broken for some packets, possibly related to TCP options */
-		if (ifp->if_hwassist) {
-			m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
-			if ((cur_rx->bge_ip_csum ^ 0xffff) == 0)
-				m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
-			if (cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM) {
+		if (ifp->if_capenable & IFCAP_RXCSUM) {
+			if (cur_rx->bge_flags & BGE_RXBDFLAG_IP_CSUM) {
+				m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
+				if ((cur_rx->bge_ip_csum ^ 0xffff) == 0)
+					m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
+			}
+			if (cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM &&
+			    m->m_pkthdr.len >= BGE_MIN_FRAME) {
 				m->m_pkthdr.csum_data =
 				    cur_rx->bge_tcp_udp_csum;
-				m->m_pkthdr.csum_flags |= CSUM_DATA_VALID;
+				m->m_pkthdr.csum_flags |=
+					CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
 			}
 		}
-#endif
 
 		/*
 		 * If we received a packet with a vlan tag, pass it
@@ -2488,10 +2498,28 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	if (maxsegs > BGE_NSEG_NEW)
 		maxsegs = BGE_NSEG_NEW;
 
-	ctx.bge_segs = segs;
-	ctx.bge_maxsegs = maxsegs;
-	error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_mtag, map, m_head,
-				     bge_dma_map_mbuf, &ctx, BUS_DMA_NOWAIT);
+	/*
+	 * Pad outbound frame to BGE_MIN_FRAME for an unusual reason.
+	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAME,
+	 * but when such padded frames employ the bge IP/TCP checksum
+	 * offload, the hardware checksum assist gives incorrect results
+	 * (possibly from incorporating its own padding into the UDP/TCP
+	 * checksum; who knows).  If we pad such runts with zeros, the
+	 * onboard checksum comes out correct.  We do this by pretending
+	 * the mbuf chain has too many fragments so the coalescing code
+	 * below can assemble the packet into a single buffer that's
+	 * padded out to the mininum frame size.
+	 */
+	if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
+	    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
+		error = E2BIG;
+	} else {
+		ctx.bge_segs = segs;
+		ctx.bge_maxsegs = maxsegs;
+		error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_mtag, map,
+					     m_head, bge_dma_map_mbuf, &ctx,
+					     BUS_DMA_NOWAIT);
+	}
 	if (error == E2BIG || ctx.bge_maxsegs == 0) {
 		struct mbuf *m_new;
 
@@ -2503,6 +2531,20 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			goto back;
 		} else {
 			m_head = m_new;
+		}
+
+		/*
+		 * Manually pad short frames, and zero the pad space
+		 * to avoid leaking data.
+		 */
+		if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
+		    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
+			int pad_len = BGE_MIN_FRAME - m_head->m_pkthdr.len;
+
+			bzero(mtod(m_head, char *) + m_head->m_pkthdr.len,
+			      pad_len);
+			m_head->m_pkthdr.len += pad_len;
+			m_head->m_len = m_head->m_pkthdr.len;
 		}
 
 		ctx.bge_segs = segs;
@@ -2590,6 +2632,11 @@ bge_start(struct ifnet *ifp)
 			break;
 
 		/*
+		 * XXX
+		 * The code inside the if() block is never reached since we
+		 * must mark CSUM_IP_FRAGS in our if_hwassist to start getting
+		 * requests to checksum TCP/UDP in a fragmented packet.
+		 * 
 		 * XXX
 		 * safety overkill.  If this is a fragmented packet chain
 		 * with delayed TCP/UDP checksums, then only encapsulate
@@ -2912,10 +2959,11 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
         case SIOCSIFCAP:
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_HWCSUM) {
+			ifp->if_capenable ^= IFCAP_HWCSUM;
 			if (IFCAP_HWCSUM & ifp->if_capenable)
-				ifp->if_capenable &= ~IFCAP_HWCSUM;
+				ifp->if_hwassist = BGE_CSUM_FEATURES;
 			else
-				ifp->if_capenable |= IFCAP_HWCSUM;
+				ifp->if_hwassist = 0;
 		}
 		error = 0;
 		break;
