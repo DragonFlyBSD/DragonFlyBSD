@@ -14,7 +14,7 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ral.4,v 1.10 2006/03/13 21:24:28 damien Exp $
-.\" $DragonFly: src/share/man/man4/ral.4,v 1.2 2007/02/25 12:03:07 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ral.4,v 1.3 2007/04/23 13:15:57 sephe Exp $
 .\"
 .Dd May 20, 2006
 .Os
@@ -29,6 +29,8 @@ kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device ral"
 .Cd "device wlan"
+.Cd "device wlan_ratectl_onoe"
+.Cd "device wlan_ratectl_sample"
 .Ed
 .Pp
 Alternatively, to load the driver as a
