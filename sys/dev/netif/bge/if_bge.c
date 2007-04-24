@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.69 2007/04/23 15:14:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.70 2007/04/24 11:06:46 sephe Exp $
  *
  */
 
@@ -73,52 +73,42 @@
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
+#include <sys/bus.h>
 #include <sys/endian.h>
-#include <sys/sockio.h>
+#include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/rman.h>
 #include <sys/serialize.h>
-#include <sys/thread2.h>
-
-#include <net/if.h>
-#include <net/ifq_var.h>
-#include <net/if_arp.h>
-#include <net/ethernet.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
+#include <sys/socket.h>
+#include <sys/sockio.h>
 
 #include <net/bpf.h>
-
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <net/if_dl.h>
+#include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
-
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-
-#include <sys/bus.h>
-#include <sys/rman.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-#include <dev/netif/mii_layer/miidevs.h>
 #include <dev/netif/mii_layer/brgphyreg.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include "if_bgereg.h"
+#include <dev/netif/bge/if_bgereg.h>
+
+/* "device miibus" required.  See GENERIC if you get errors here. */
+#include "miibus_if.h"
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 #define BGE_MIN_FRAME		60
-
-/* "controller miibus0" required.  See GENERIC if you get errors here. */
-#include "miibus_if.h"
 
 /*
  * Various supported device vendors/types and their names. Note: the
@@ -223,7 +213,6 @@ static int	bge_read_eeprom(struct bge_softc *, caddr_t, uint32_t, size_t);
 static void	bge_setmulti(struct bge_softc *);
 static void	bge_setpromisc(struct bge_softc *);
 
-static void	bge_handle_events(struct bge_softc *);
 static int	bge_alloc_jumbo_mem(struct bge_softc *);
 static void	bge_free_jumbo_mem(struct bge_softc *);
 static struct bge_jslot
@@ -241,12 +230,6 @@ static int	bge_init_tx_ring(struct bge_softc *);
 
 static int	bge_chipinit(struct bge_softc *);
 static int	bge_blockinit(struct bge_softc *);
-
-#ifdef notdef
-static uint8_t	bge_vpd_readbyte(struct bge_softc *, uint32_t);
-static void	bge_vpd_read_res(struct bge_softc *, struct vpd_res *, uint32_t);
-static void	bge_vpd_read(struct bge_softc *);
-#endif
 
 static uint32_t	bge_readmem_ind(struct bge_softc *, uint32_t);
 static void	bge_writemem_ind(struct bge_softc *, uint32_t, uint32_t);
@@ -343,89 +326,6 @@ bge_writereg_ind(struct bge_softc *sc, uint32_t off, uint32_t val)
 	pci_write_config(dev, BGE_PCI_REG_BASEADDR, off, 4);
 	pci_write_config(dev, BGE_PCI_REG_DATA, val, 4);
 }
-
-#ifdef notdef
-static uint8_t
-bge_vpd_readbyte(struct bge_softc *sc, uint32_t addr)
-{
-	device_t dev = sc->bge_dev;
-	uint32_t val;
-	int i;
-
-	pci_write_config(dev, BGE_PCI_VPD_ADDR, addr, 2);
-	for (i = 0; i < BGE_TIMEOUT * 10; i++) {
-		DELAY(10);
-		if (pci_read_config(dev, BGE_PCI_VPD_ADDR, 2) & BGE_VPD_FLAG)
-			break;
-	}
-
-	if (i == BGE_TIMEOUT) {
-		device_printf(sc->bge_dev, "VPD read timed out\n");
-		return(0);
-	}
-
-	val = pci_read_config(dev, BGE_PCI_VPD_DATA, 4);
-
-	return((val >> ((addr % 4) * 8)) & 0xFF);
-}
-
-static void
-bge_vpd_read_res(struct bge_softc *sc, struct vpd_res *res, uint32_t addr)
-{
-	size_t i;
-	uint8_t *ptr;
-
-	ptr = (uint8_t *)res;
-	for (i = 0; i < sizeof(struct vpd_res); i++)
-		ptr[i] = bge_vpd_readbyte(sc, i + addr);
-
-	return;
-}
-
-static void
-bge_vpd_read(struct bge_softc *sc)
-{
-	int pos = 0, i;
-	struct vpd_res res;
-
-	if (sc->bge_vpd_prodname != NULL)
-		kfree(sc->bge_vpd_prodname, M_DEVBUF);
-	if (sc->bge_vpd_readonly != NULL)
-		kfree(sc->bge_vpd_readonly, M_DEVBUF);
-	sc->bge_vpd_prodname = NULL;
-	sc->bge_vpd_readonly = NULL;
-
-	bge_vpd_read_res(sc, &res, pos);
-
-	if (res.vr_id != VPD_RES_ID) {
-		device_printf(sc->bge_dev,
-			      "bad VPD resource id: expected %x got %x\n",
-			      VPD_RES_ID, res.vr_id);
-                return;
-        }
-
-	pos += sizeof(res);
-	sc->bge_vpd_prodname = kmalloc(res.vr_len + 1, M_DEVBUF, M_INTWAIT);
-	for (i = 0; i < res.vr_len; i++)
-		sc->bge_vpd_prodname[i] = bge_vpd_readbyte(sc, i + pos);
-	sc->bge_vpd_prodname[i] = '\0';
-	pos += i;
-
-	bge_vpd_read_res(sc, &res, pos);
-
-	if (res.vr_id != VPD_RES_READ) {
-		device_printf(sc->bge_dev,
-			      "bad VPD resource id: expected %x got %x\n",
-			      VPD_RES_READ, res.vr_id);
-		return;
-	}
-
-	pos += sizeof(res);
-	sc->bge_vpd_readonly = kmalloc(res.vr_len, M_DEVBUF, M_INTWAIT);
-	for (i = 0; i < res.vr_len + 1; i++)
-		sc->bge_vpd_readonly[i] = bge_vpd_readbyte(sc, i + pos);
-}
-#endif
 
 /*
  * Read a byte of data stored in the EEPROM at address 'addr.' The
@@ -610,14 +510,6 @@ bge_miibus_statchg(device_t dev)
 	} else {
 		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_MACMODE_HALF_DUPLEX);
 	}
-}
-
-/*
- * Handle events that have triggered interrupts.
- */
-static void
-bge_handle_events(struct bge_softc *sc)
-{
 }
 
 /*
@@ -1597,12 +1489,6 @@ bge_probe(device_t dev)
 		return(ENXIO);
 
 	sc = device_get_softc(dev);
-#ifdef notdef
-	sc->bge_dev = dev;
-
-	bge_vpd_read(sc);
-	device_set_desc(dev, sc->bge_vpd_prodname);
-#endif
 	descbuf = kmalloc(BGE_DEVDESC_MAX, M_TEMP, M_WAITOK);
 	ksnprintf(descbuf, BGE_DEVDESC_MAX, "%s, ASIC rev. %#04x", t->bge_name,
 	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);
@@ -1881,12 +1767,6 @@ bge_release_resources(struct bge_softc *sc)
         device_t dev;
 
         dev = sc->bge_dev;
-
-	if (sc->bge_vpd_prodname != NULL)
-		kfree(sc->bge_vpd_prodname, M_DEVBUF);
-
-	if (sc->bge_vpd_readonly != NULL)
-		kfree(sc->bge_vpd_readonly, M_DEVBUF);
 
         if (sc->bge_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bge_irq);
@@ -2329,8 +2209,6 @@ bge_intr(void *xsc)
 		/* Check TX ring producer/consumer */
 		bge_txeof(sc);
 	}
-
-	bge_handle_events(sc);
 
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);

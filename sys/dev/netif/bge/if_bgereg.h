@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.18 2007/04/22 04:16:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.19 2007/04/24 11:06:47 sephe Exp $
  */
 
 /*
@@ -2332,8 +2332,6 @@ struct bge_softc {
 	int			bge_txcnt;
 	int			bge_link;
 	struct callout		bge_stat_timer;
-	char			*bge_vpd_prodname;
-	char			*bge_vpd_readonly;
 };
 
 #define BGE_NSEG_NEW		32
