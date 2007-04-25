@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/bufcache.9,v 1.2 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bufcache.9,v 1.3 2007/04/25 08:13:36 swildner Exp $
 .\"
 .Dd July 29, 2005
 .Os
@@ -138,7 +138,7 @@ argument of
 Logical block number at which the buffer should be written.
 .It Va b_dev
 This can be set by using the
-.Xr vn_todev
+.Fn vn_todev
 function on the device vnode.
 .It Va b_vp
 This should be set to the vnode of the device to which the buffer
