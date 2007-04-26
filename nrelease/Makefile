@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.61 2007/04/25 09:22:06 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.62 2007/04/26 08:25:41 swildner Exp $
 #
 
 # compat target
@@ -141,7 +141,6 @@ buildiso:
 	done
 	ln -s kernel ${ISOROOT}/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
-	ln -s /usr/local/man ${ISOROOT}/usr/local/share/man
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
