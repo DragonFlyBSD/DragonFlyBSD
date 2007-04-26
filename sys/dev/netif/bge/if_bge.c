@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.70 2007/04/24 11:06:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.71 2007/04/26 11:58:10 sephe Exp $
  *
  */
 
@@ -2099,13 +2099,15 @@ bge_txeof(struct bge_softc *sc)
 		}
 		sc->bge_txcnt--;
 		BGE_INC(sc->bge_tx_saved_considx, BGE_TX_RING_CNT);
-		ifp->if_timer = 0;
 	}
 
 	if (cur_tx != NULL &&
 	    (BGE_TX_RING_CNT - sc->bge_txcnt) >=
 	    (BGE_NSEG_RSVD + BGE_NSEG_SPARE))
 		ifp->if_flags &= ~IFF_OACTIVE;
+
+	if (sc->bge_txcnt == 0)
+		ifp->if_timer = 0;
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		ifp->if_start(ifp);
@@ -2118,21 +2120,34 @@ bge_intr(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
  	uint32_t status, statusword, mimode;
 
+ 	/*
+	 * Ack the interrupt by writing something to BGE_MBX_IRQ0_LO.  Don't
+	 * disable interrupts by writing nonzero like we used to, since with
+	 * our current organization this just gives complications and
+	 * pessimizations for re-enabling interrupts.  We used to have races
+	 * instead of the necessary complications.  Disabling interrupts
+	 * would just reduce the chance of a status update while we are
+	 * running (by switching to the interrupt-mode coalescence
+	 * parameters), but this chance is already very low so it is more
+	 * efficient to get another interrupt than prevent it.
+	 *
+	 * We do the ack first to ensure another interrupt if there is a
+	 * status update after the ack.  We don't check for the status
+	 * changing later because it is more efficient to get another
+	 * interrupt than prevent it, not quite as above (not checking is
+	 * a smaller optimization than not toggling the interrupt enable,
+	 * since checking doesn't involve PCI accesses and toggling require
+	 * the status check).  So toggling would probably be a pessimization
+	 * even with MSI.  It would only be needed for using a task queue.
+	 */
+	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
+
 	bus_dmamap_sync(sc->bge_cdata.bge_status_tag,
 			sc->bge_cdata.bge_status_map,
 			BUS_DMASYNC_POSTREAD);
 
 	/* XXX */
 	statusword = loadandclear(&sc->bge_ldata.bge_status_block->bge_status);
-
-#ifdef notdef
-	/* Avoid this for now -- checking this register is expensive. */
-	/* Make sure this is really our interrupt. */
-	if (!(CSR_READ_4(sc, BGE_MISC_LOCAL_CTL) & BGE_MLC_INTR_STATE))
-		return;
-#endif
-	/* Ack interrupt and stop others from occuring. */
-	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 1);
 
 	/*
 	 * Process link state changes.
@@ -2209,9 +2224,6 @@ bge_intr(void *xsc)
 		/* Check TX ring producer/consumer */
 		bge_txeof(sc);
 	}
-
-	/* Re-enable interrupts. */
-	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
 }
 
 static void
