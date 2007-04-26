@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 #	$FreeBSD: src/share/man/man5/Makefile,v 1.27.2.12 2003/05/23 22:20:24 dwhite Exp $
-#	$DragonFly: src/share/man/man5/Makefile,v 1.10 2007/04/26 08:33:24 swildner Exp $
+#	$DragonFly: src/share/man/man5/Makefile,v 1.11 2007/04/26 08:35:52 swildner Exp $
 
 #MISSING: dump.5 plot.5
 MAN=	acct.5 \
@@ -31,6 +31,7 @@ MAN=	acct.5 \
 	linprocfs.5 \
 	mailer.conf.5 \
 	make.conf.5 \
+	manpath.config.5 \
 	motd.5 \
 	msdos.5 \
 	networks.5 \
