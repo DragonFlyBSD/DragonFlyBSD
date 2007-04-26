@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.h,v 1.11.2.5 2006/02/12 19:00:39 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.11 2007/04/22 04:35:12 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.12 2007/04/26 12:59:14 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -222,6 +222,7 @@ void	ieee80211_wme_updateparams(struct ieee80211com *);
 
 #define	ieee80211_new_state(_ic, _nstate, _arg) \
 	(((_ic)->ic_newstate)((_ic), (_nstate), (_arg)))
+void	ieee80211_reset_state(struct ieee80211com *, enum ieee80211_state);
 void	ieee80211_beacon_miss(struct ieee80211com *);
 void	ieee80211_print_essid(const uint8_t *, int);
 void	ieee80211_print_rateset(const struct ieee80211_rateset *);

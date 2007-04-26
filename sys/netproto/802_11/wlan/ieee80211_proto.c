@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.c,v 1.17.2.9 2006/03/13 03:10:31 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.11 2007/04/22 04:35:12 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_proto.c,v 1.12 2007/04/26 12:59:14 sephe Exp $
  */
 
 /*
@@ -954,7 +954,7 @@ back:
 }
 
 static void
-sta_disassoc(void *arg, struct ieee80211_node *ni)
+sta_disconnect(void *arg, struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = arg;
 
@@ -962,16 +962,77 @@ sta_disassoc(void *arg, struct ieee80211_node *ni)
 		IEEE80211_SEND_MGMT(ic, ni, IEEE80211_FC0_SUBTYPE_DISASSOC,
 			IEEE80211_REASON_ASSOC_LEAVE);
 		ieee80211_node_leave(ic, ni);
+	} else if (ni->ni_flags & IEEE80211_NODE_AREF) {
+		IEEE80211_SEND_MGMT(ic, ni, IEEE80211_FC0_SUBTYPE_DEAUTH,
+			IEEE80211_REASON_ASSOC_LEAVE);
+		ieee80211_node_leave(ic, ni);
 	}
 }
 
-static void
-sta_deauth(void *arg, struct ieee80211_node *ni)
+void
+ieee80211_reset_state(struct ieee80211com *ic,
+		      enum ieee80211_state cur_state)
 {
-	struct ieee80211com *ic = arg;
+	struct ieee80211_node *ni;
 
-	IEEE80211_SEND_MGMT(ic, ni, IEEE80211_FC0_SUBTYPE_DEAUTH,
-		IEEE80211_REASON_ASSOC_LEAVE);
+	IEEE80211_DPRINTF(ic, IEEE80211_MSG_STATE,
+			  "%s reset internal state machine (%s)\n",
+			  __func__, ieee80211_state_name[cur_state]);
+
+	ni = ic->ic_bss;
+	KASSERT(ni != NULL, ("empty ic_bss\n"));
+
+	switch (cur_state) {
+	case IEEE80211_S_INIT:
+		break;
+	case IEEE80211_S_RUN:
+		switch (ic->ic_opmode) {
+		case IEEE80211_M_STA:
+			/*
+			 * Avoid sending disassoc to self.  This could happen
+			 * when operational mode is switched directly from
+			 * HOSTAP/IBSS to STA.
+			 */
+			if (!IEEE80211_ADDR_EQ(ic->ic_myaddr, ni->ni_macaddr)) {
+				IEEE80211_SEND_MGMT(ic, ni,
+				    IEEE80211_FC0_SUBTYPE_DISASSOC,
+				    IEEE80211_REASON_ASSOC_LEAVE);
+				ieee80211_sta_leave(ic, ni);
+			}
+			break;
+		case IEEE80211_M_HOSTAP:
+			ieee80211_iterate_nodes(&ic->ic_sta,
+				sta_disconnect, ic);
+			break;
+		default:
+			break;
+		}
+		break;
+	case IEEE80211_S_ASSOC:
+		switch (ic->ic_opmode) {
+		case IEEE80211_M_STA:
+			/*
+			 * Avoid sending deauth to self.
+			 */
+			if (!IEEE80211_ADDR_EQ(ic->ic_myaddr, ni->ni_macaddr)) {
+				IEEE80211_SEND_MGMT(ic, ni,
+				    IEEE80211_FC0_SUBTYPE_DEAUTH,
+				    IEEE80211_REASON_AUTH_LEAVE);
+			}
+			break;
+		default:
+			break;
+		}
+		break;
+	case IEEE80211_S_SCAN:
+		ieee80211_cancel_scan(ic);
+		/* FALL THROUGH */
+	case IEEE80211_S_AUTH:
+		break;
+	}
+
+	ieee80211_drain_mgtq(&ic->ic_mgtq);
+	ieee80211_reset_bss(ic);
 }
 
 static int
@@ -989,62 +1050,14 @@ ieee80211_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg
 	if (ic->ic_flags_ext & IEEE80211_FEXT_SWBMISS)
 		callout_stop(&ic->ic_swbmiss);
 	switch (nstate) {
-	case IEEE80211_S_INIT: {
-		int reset = 1;
-
-		switch (ostate) {
-		case IEEE80211_S_INIT:
-			reset = 0;
-			break;
-		case IEEE80211_S_RUN:
-			switch (ic->ic_opmode) {
-			case IEEE80211_M_STA:
-				IEEE80211_SEND_MGMT(ic, ni,
-				    IEEE80211_FC0_SUBTYPE_DISASSOC,
-				    IEEE80211_REASON_ASSOC_LEAVE);
-				ieee80211_sta_leave(ic, ni);
-				break;
-			case IEEE80211_M_HOSTAP:
-				ieee80211_iterate_nodes(&ic->ic_sta,
-					sta_disassoc, ic);
-				break;
-			default:
-				break;
-			}
-			break;
-		case IEEE80211_S_ASSOC:
-			switch (ic->ic_opmode) {
-			case IEEE80211_M_STA:
-				IEEE80211_SEND_MGMT(ic, ni,
-				    IEEE80211_FC0_SUBTYPE_DEAUTH,
-				    IEEE80211_REASON_AUTH_LEAVE);
-				break;
-			case IEEE80211_M_HOSTAP:
-				ieee80211_iterate_nodes(&ic->ic_sta,
-					sta_deauth, ic);
-				break;
-			default:
-				break;
-			}
-			break;
-		case IEEE80211_S_SCAN:
-			ieee80211_cancel_scan(ic);
-			/* FALL THROUGH */
-		case IEEE80211_S_AUTH:
-			break;
-		}
-
-		if (reset) {
-			ic->ic_mgt_timer = 0;
-			ieee80211_drain_mgtq(&ic->ic_mgtq);
-			ieee80211_reset_bss(ic);
-		}
+	case IEEE80211_S_INIT:
+		ieee80211_reset_state(ic, ostate);
+		ic->ic_mgt_timer = 0;
 
 		if (ic->ic_auth->ia_detach != NULL)
 			ic->ic_auth->ia_detach(ic);
 		break;
-	}
-
+ 
 	case IEEE80211_S_SCAN:
 		switch (ostate) {
 		case IEEE80211_S_INIT:

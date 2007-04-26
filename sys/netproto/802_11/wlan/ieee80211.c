@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.14 2007/04/01 13:59:41 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.15 2007/04/26 12:59:14 sephe Exp $
  */
 
 /*
@@ -667,6 +667,16 @@ ieee80211_media_change(struct ifnet *ifp)
 	 * Handle operating mode change.
 	 */
 	if (ic->ic_opmode != newopmode) {
+		/*
+		 * Before committing operational mode change, we reset the
+		 * internal state machine here, so the resetting is performed
+		 * using the current operational mode instead of the new one.
+		 *
+		 * NB: It is safe to reset the internal state machine here,
+		 *     since all the parameters have been verified.
+		 */
+		ieee80211_reset_state(ic, ic->ic_state);
+
 		ic->ic_opmode = newopmode;
 		switch (newopmode) {
 		case IEEE80211_M_AHDEMO:
@@ -848,6 +858,17 @@ ieee80211_setmode(struct ieee80211com *ic, enum ieee80211_phymode mode)
 			"%s: no channels found for mode %u\n", __func__, mode);
 		return EINVAL;
 	}
+
+	/*
+	 * Before committing any changes according to the new phymode,
+	 * we reset the internal state machine first, so the resetting
+	 * will be based on the current phymode instead of the new one.
+	 *
+	 * NB: We have verified that phymode is acceptable, so it is
+	 *     safe to reset the internal state machine here.
+	 */
+	if (ic->ic_bss)		/* NB: can be called before lateattach */
+		ieee80211_reset_state(ic, ic->ic_state);
 
 	/*
 	 * Calculate the active channel set.
