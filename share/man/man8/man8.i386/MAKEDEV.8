@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)MAKEDEV.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.15.2.5 2002/05/11 06:15:16 dd Exp $
-.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.8 2006/03/21 04:24:28 swildner Exp $
+.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.9 2007/04/26 17:35:03 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt MAKEDEV 8 i386
@@ -119,8 +119,9 @@ finds overrides for a given special file in
 .Pa /etc/devices.conf ,
 it will use these settings when it creates the device node.
 .Pp
-Please see the devices.conf(5) manpage for more information on how to override the
-default settings.
+See
+.Xr devices.conf 5
+for more information on how to override the default settings.
 .Sh FILES
 .Bl -tag -width /dev/xxxx -compact
 .It Pa /dev

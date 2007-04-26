@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.2 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.3 2007/04/26 17:35:03 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -37,24 +37,34 @@
 .Sh DESCRIPTION
 The
 .Nm
-file is used by the MAKEDEV(8) shell script. Normally, MAKEDEV(8) creates any special
+file is used by the
+.Xr MAKEDEV 8
+shell script.
+Normally,
+.Xr MAKEDEV 8
+creates any special
 file (device node) with reasonable ownership and permissions. To override these default
 settings, you can put corresponding entries in your
 .Pa devices.conf
-file, so MAKEDEV(8) will use these when it creates the special file.
+file, so
+.Xr MAKEDEV 8
+will use these when it creates the special file.
 .Pp
 This feature comes in handy if you're using (e.g.) tape backup software like
 .Pa bacula
 in conjunction with a tape autochanger device. In this case, the
 .Dq bacula-sd
 storage daemon needs read/write access to /dev/pass?, which is not granted by default
-when MAKEDEV(8) creates the pass? device node.
+when
+.Xr MAKEDEV 8
+creates the pass? device node.
 .Pp
 So, instead of manually changing the permissions of /dev/pass? after each
 .Dq make upgrade ,
 you can simply put a local override entry into
 .Pa devices.conf ,
-so the device node will have the new permissions the next time MAKEDEV(8)
+so the device node will have the new permissions the next time
+.Xr MAKEDEV 8
 creates it.
 .Sh FILE FORMAT
 The contents of the
@@ -73,7 +83,9 @@ node to be overridden, the ownership in
 format and the new file permissions. The fourth field is optional and
 reserved for comments (or whatever).
 .Pp
-Due to the huge number of device nodes that MAKEDEV(8) can create,
+Due to the huge number of device nodes that
+.Xr MAKEDEV 8
+can create,
 the first field (the device node name) may contain the
 .Ql *
 wildcard character, if the new ownership/permissions should apply to an entire

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)syslog.conf.5	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/usr.sbin/syslogd/syslog.conf.5,v 1.35 2004/07/03 18:35:53 ru Exp $
-.\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.6 2006/08/18 01:42:58 swildner Exp $
+.\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.7 2007/04/26 17:35:03 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt SYSLOG.CONF 5
@@ -353,8 +353,10 @@ Selected messages are written to all logged-in users.
 A percent sign
 .Pq Dq \&% ,
 followed by a pathname (beginning with a leading slash).  Selected messages
-are written to a circular log file.  See clog(8) for a discussion of
-circular log files.
+are written to a circular log file.
+See
+.Xr clog 8
+for a discussion of circular log files.
 .It
 A vertical bar
 .Pq Dq \&| ,

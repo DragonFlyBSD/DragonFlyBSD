@@ -39,7 +39,7 @@
 .\"     @(#)boot_i386.8	8.2 (Berkeley) 4/19/94
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
-.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.8 2007/02/19 09:34:33 swildner Exp $
+.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.9 2007/04/26 17:35:03 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt BOOT 8 i386
@@ -199,7 +199,9 @@ as early as possible in kernel initialization.
 .It Fl g
 use the GDB remote debugging protocol.
 .It Fl n
-ignore key press to interrupt boot before loader(8) is invoked.
+ignore key press to interrupt boot before
+.Xr loader 8
+is invoked.
 .It Fl P
 probe the keyboard.  If no keyboard is found, the
 .Fl D
