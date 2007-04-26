@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.6 2007/04/22 00:59:27 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.7 2007/04/26 02:11:00 dillon Exp $
  */
 
 /*
@@ -189,6 +189,9 @@ typedef int (*syslink_func_t)(struct syslink_generic_args *);
 
 #define SYSLINK_LABEL_SIZE	32
 #define SYSLINK_ROUTER_MAXBITS	20
+
+enum syslink_type { SYSLINK_TYPE_ROUTER, SYSLINK_TYPE_MANAGER, SYSLINK_TYPE_SEED, SYSLINK_TYPE_TERMINAL };
+
 /*
  * syslink_info structure
  *
@@ -201,7 +204,7 @@ struct syslink_info {
 	int linkid;			/* linkid (base physical address) */
 	int bits;			/* physical address bits if switched */
 	int flags;			/* message control/switch flags */
-	int reserved01;
+	enum syslink_type type;
 	sysid_t	sysid;			/* route node sysid */
 	char label[SYSLINK_LABEL_SIZE];	/* symbolic name */
 	char reserved[32];
@@ -210,7 +213,26 @@ struct syslink_info {
 	} u;
 };
 
+/*
+ * SLIF_PACKET - specify when the descriptor represents packetized data,
+ *		 where a single read or write reads or writes whole packets.
+ *		 For example, a UDP socket.  Otherwise a stream is assumed.
+ *
+ * SLIF_XSWITCH- specify when the descriptor represents a switched message
+ *		 source where the target has no means of discerning the
+ *		 subnet address the message is being sent to.
+ *
+ *		 This case occurs when a stream connection is used to
+ *		 represented a switch instead of a single end-to-end
+ *		 connection.  Instead of trying to tag the stream
+ *		 messages with some kind of mac header, we instead require
+ *		 that the originator pre-adjust the syslink_msg header's
+ *		 src and dst fields based on the number of bits being
+ *		 switched.  The target will then renormalize the address
+ *		 fields to merge its own linkid base in.
+ */
 #define SLIF_PACKET	0x0001		/* packetized, else stream */
+#define SLIF_XSWITCH	0x0002		/* router must extract/gen IP addrs */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define SLIF_RQUIT	0x0400
 #define SLIF_WQUIT	0x0800
@@ -220,98 +242,7 @@ struct syslink_info {
 #define SLIF_ERROR	0x8000
 #endif
 
-#define SLIF_USERFLAGS		(SLIF_PACKET)
-
-
-/*
- * A syslink structure represents an end-point for communications.  System
- * structures such as vnodes are typically associated with end-points and
- * usually embed a syslink structure.  There is typically one master
- * structure (sl_remote_id == 0) and any number of slave structures at
- * remote locations (sl_remote_id on slaves point to master).
- *
- * A ref counter is integrated into the structure and used by SYSLINK to
- * keep track of sysid references sent to remote targets.  This counter
- * may also be used by the governing structure (e.g. vnode) so long as
- * the SYSLINK API is used to manipulate it.
- *
- * An operations vector implements the ABI for the numerous functions
- * associated with the system structure.  E.G. VOPs for vnodes.  The
- * ops structure also references the transport and protocol layers.  Using
- * vnodes as an example, the ops structure would be replicated from a
- * template on a per-mount basis.
- */
-struct syslink {
-	sysid_t		sl_source;
-	sysid_t		sl_target;
-	int		sl_refs;	/* track references */
-	struct syslink_ops *sl_ops;	/* operations vector */
-};
-
-/*
- * The syslink_ops structure is typically embedded as part of a larger system
- * structure.  It conatins a reference to the transport layer (if any),
- * protocol, and a structural offset range specifying the function vectors
- * in the larger system structure.
- *
- * For example, vnode operations (VOPs) embed this structure in the vop_ops
- * structure.
- *
- * The syslink_ops structure may be replaced as necessary.  The VFS subsystem
- * typically replicates syslink_ops on a per-mount basis and stores a pointer
- * to the mount point in the larger system structure (vop_ops).
- */
-struct syslink_ops {
-	struct syslink_proto *proto;
-	void *transport;	/* FUTURE USE (transport layer) */
-	int beg_offset;
-	int end_offset;
-};
-
-/*
- * The syslink_desc structure describes a function vector in the protocol.
- * This structure may be extended by the protocol to contain additional
- * information.
- */
-struct syslink_desc {
-	int sd_offset;		/* offset into ops structure */
-	const char *sd_name;	/* name for debugging */
-};
-
-/*
- * The syslink_proto structure describes a protocol.  The structure contains
- * templates for the various ops structures required to implement the
- * protocol.
- */
-struct syslink_proto {
- 	const char	*sp_name;	/* identifying name */
-	int		sp_flags;
-	int		sp_opssize;	/* structure embedding syslink_ops */
-	struct syslink_ops *sp_call_encode;	/* encode call */
-	struct syslink_ops *sp_call_decode;	/* decode call */
-	struct syslink_ops *sp_reply_encode;	/* encode reply */
-	struct syslink_ops *sp_reply_decode;	/* decode reply */
-	struct syslink_ops *sp_ops; 		/* direct ABI calls */
-};
-
-#define SPF_ALLOCATED	0x00000001
-
-/*
- * The syslink_generic_args structure contains the base data required in
- * the arguments structure passed to any given ops function.  This structure
- * is typically extended with the actual call arguments.
- */
-struct syslink_generic_args {
-	struct syslink_desc	*a_desc;	/* ABI method description */
-	struct syslink		*a_syslink;	/* original syslink */
-	/* extend arguments */
-};
-
-typedef struct syslink *syslink_t;
-typedef struct syslink_ops *syslink_ops_t;
-typedef struct syslink_desc *syslink_desc_t;
-typedef struct syslink_proto *syslink_proto_t;
-typedef struct syslink_generic_args *syslink_generic_args_t;
+#define SLIF_USERFLAGS		(SLIF_PACKET|SLIF_XSWITCH)
 
 #if !defined(_KERNEL)
 int syslink(int, struct syslink_info *, size_t);

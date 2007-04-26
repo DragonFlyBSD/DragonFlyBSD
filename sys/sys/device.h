@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.7 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.8 2007/04/26 02:11:00 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -40,8 +40,8 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _SYS_SYSLINK_H_
-#include <sys/syslink.h>
+#ifndef _SYS_SYSLINK_RPC_H_
+#include <sys/syslink_rpc.h>
 #endif
 
 struct cdev;

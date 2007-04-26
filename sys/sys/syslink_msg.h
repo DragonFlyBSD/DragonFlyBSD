@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.6 2007/04/03 20:21:19 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.7 2007/04/26 02:11:00 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -53,8 +53,9 @@
 #endif
 
 typedef u_int32_t	sl_msgid_t;	/* transaction sequencing */
+typedef u_int32_t	sl_auxdata_t;	/* auxillary data element */
 typedef u_int16_t	sl_cmd_t;	/* command or error */
-typedef sl_cmd_t	sl_error_t;	
+typedef u_int16_t	sl_error_t;	
 typedef u_int16_t	sl_itemid_t;	/* item id */
 typedef u_int16_t	sl_reclen_t;	/* item length */
 
@@ -62,109 +63,197 @@ typedef u_int16_t	sl_reclen_t;	/* item length */
 #define SL_ALIGNMASK	(SL_ALIGN - 1)
 
 /*
- * Stream or FIFO based messaging structures.
- * 
+ * The msgid is used to control transaction sequencing within a session, but
+ * also has a special meaning to the transport layer.  A msgid of 0 indicates
+ * a PAD syslink message, used to pad FIFO buffers to prevent messages from
+ * being bisected by the end of the buffer.  Since all structures are 8-byte
+ * aligned, 8-byte PAD messages are allowed.  All other messages must be
+ * at least sizeof(syslink_msg).
+ *
  * The reclen is the actual record length in bytes prior to alignment.
  * The reclen must be aligned to obtain the actual size of a syslink_msg
  * or syslink_item structure.  Note that the reclen includes structural
  * headers (i.e. it does not represent just the data payload, it represents
  * the entire structure).
  *
+ * Syslink messages allow special treatment for large data payloads, allowing
+ * the transport mechanism to separate the data payload into its own buffer
+ * or DMA area (for example, its own page), facilitating DMA and page-mapping
+ * operations at the end points while allowing the message to be maximally
+ * compressed during transport.  This is typically handled by special casing
+ * a readv() or writev().
+ *
  * Sessions are identified with a session id.  The session id is a rendezvous
  * id that associates physical and logical routing information with a single
  * sysid, allowing us to both avoid storing the source and target logical id
  * in the syslink message AND ALSO providing a unique session id and validator
- * which manages the abstracted connection between two entities.  Otherwise
- * the syslink message would become bloated with five sysid fields instead
- * of the three we have now.
- *
- * Link layer communications is accomplished by specifying a target physical
- * address of 0.
+ * which manages the abstracted 'connection' between two entities.  This
+ * reduces bloat.
  *
  * The target physical address is deconstructed as the message hops across
  * the mesh.  All 0's, or all 0's remaining indicates a link layer message
  * to be processed by the syslink route node itself.  All 1's indicates
  * a broadcast message.  Broadcast messages also require special attention.
  * Sending a message to a target address of 0 basically sends it to the
- * directly connected syslink node. 
+ * nearest route node as a link layer message.
  *
  * The source physical address normally starts out as 0 and is constructed
  * as the message hops across the mesh.  The target can use the constructed
  * source address to respond to the originator of the message (as it must
- * if it has not knowledge about the session id).  A target with knowledge
- * of the session id has the option of forging its own return both.
- */
-
-/*
- * Raw protocol structures
+ * if it has no knowledge about the session).  A target with knowledge
+ * of the session id has the option of forging its own return path.
+ *
+ * Checksums are the responsibility of higher layers but message checking
+ * elements can be negotiated or required as part of the syslink message's
+ * structured data.
  */
 struct syslink_msg {
-	sl_cmd_t	sm_cmd;         /* protocol command code */
-	sl_reclen_t	sm_bytes;       /* unaligned size of message */
-	sl_msgid_t	sm_msgid;	/* message transaction control */
+	sl_msgid_t	sh_msgid;	/* message transaction control */
+	sl_reclen_t	sh_payloadoff;	/* offset of payload as a DMA aid */
+	sl_reclen_t	sh_bytes;       /* unaligned size of message */
 	/* minimum syslink_msg size is 8 bytes (special PAD) */
-	sysid_t		sm_sessid;	/* session id */
-	sysid_t		sm_srcphysid;	/* originating physical id */
-	sysid_t		sm_dstphysid;	/* target physical id */
+	sysid_t		sh_sessid;	/* session id */
+	sysid_t		sh_srcphysid;	/* transit routing */
+	sysid_t		sh_dstphysid;	/* transit routing */
+	/* 8-byte aligned structure */
+	/* followed by structured data */
 };
 
-#define SL_MIN_MESSAGE_SIZE	offsetof(struct syslink_msg, sm_sessid)
-
-#define SL_MSGID_REPLY		0x80000000	/* command vs reply */
-#define SL_MSGID_ORIG		0x40000000	/* originator transaction */
-						/* (else target transaction) */
-#define SL_MSGID_BEG		0x20000000	/* first msg in transaction */
-#define SL_MSGID_END		0x10000000	/* last msg in transaction */
-#define SL_MSGID_STRUCTURED	0x08000000	/* contains structured data */
-#define SL_MSGID_COMPLETE	0x04000000	/* msg not under construction */
-#define SL_MSGID_TRANS_MASK	0x00FFFF00	/* transaction id */
-#define SL_MSGID_SEQ_MASK	0x000000FF	/* sequence no within trans */
-
-#define SLMSG_ALIGN(bytes)	(((bytes) + 7) & ~7)
-
 /*
- * Syslink message commands (16 bits, bit 15 must be 0)
+ * MSGID handling.  This controls message transactions and PAD.  Terminal
+ * nodes, such as filesystems, are state driven entities whos syslink
+ * message transactions are directly supported by the local on-machine route
+ * nodes they connect to.  The route nodes use various fields in the header,
+ * particularly sm_msgid, sm_sessid, and sm_payloadoff, to optimally present
+ * syslink messages to the terminal node.  In particular, a route node may
+ * present the payload for a syslink message or the message itself through
+ * some out-of-band means, such as by mapping it into memory.
  *
- * Commands 0x0000-0x001F are reserved for the universal link layer, but
- * except for 0x0000 (which is a PAD message), must still be properly
- * routed.
+ * These route nodes also handle timeout and retry processing, providing
+ * appropriate response messages to terminal nodes if the target never replies
+ * to a transaction or some other exceptional condition occurs.  The route
+ * node does not handle RETRY and other exceptional conditions itself..
+ * that is, the route node is not responsible for storing the message, only
+ * routing it.  The route node only tracks the related session(s).
  *
- * Commands 0x0020-0x002F are reserved for the universal protocol
- * identification layer.
+ * A route node only directly supports terminal nodes directly connected to
+ * it.  Intermediate route nodes ignore the MSGID (other then the all 0's PAD
+ * case) and do not track indirect sessions.  For example, a piece of
+ * hardware doing syslink message routing does not have to mess with
+ * any of this.
  *
- * Commands 0x0100-0x7FFF are protocol commands.
+ * A session id establishes a session between two entities.  One terminal node
+ * is considered to be the originator of the session, the other terminal node
+ * is the target.  However, once established, EITHER ENTITY may initiate
+ * a transaction (or both simulataniously).  SH_MSGID_CMD_ORIGINATOR is used
+ * in all messages and replies related to a transaction initiated by the
+ * session originator, and SH_MSGID_CMD_TARGET is used in all messages and
+ * replies related to a transaction initiated by the session target.
+ * Establishment of new sessions uses SH_MSGID_CMD_FORGE.
  *
- * The command field is the error return field with bit 15 set in the
- * reply.
+ * Parallel transactions are supported by using different transaction ids
+ * amoungst the parallel transactions.  Once a transaction id is used, it
+ * may not be reused until after the timeout period is exceeded.  With 23
+ * transaction id bits we have 8 million transaction ids, supporting around
+ * 26000 transactions per second with a 5 minute timeout.  Note that
+ * multiple sessions may be established between any two entities, giving us
+ * essentially an unlimited number of transactions per second.
+ *
+ * ENDIANESS - syslink messages may be transported with any endianess.  This
+ * includes all fields including the syslink header and syslink element
+ * header fields.  If upon reception SH_MSGID_ENDIAN_NORM is set in the msgid 
+ * both end-points will have the same endianess and no translation is
+ * required.  If SH_MSGID_ENDIAN_REV is set then the two end-points have
+ * different endianess and translation is required.   Only little endian and
+ * bit endian transport is supported (that is, a simple reversal of bytes for
+ * each field).
+ *
+ * Intermediate route nodes (i.e. those not tracking the session) may NOT
+ * translate the endianess of the message in any fashion.  The management
+ * node that talks to the actual resource is responsible for doing the
+ * endian translations for all the above fields... everything except the
+ * syslink_elm payload, which is described later.
  */
-#define SL_CMD_PAD		0x0000
-#define SL_CMD_LINK_MESH	0x0001	/* mesh construction */
-#define SL_CMD_LINK_REG		0x0002	/* register logical id */
-#define SL_CMD_LINK_DEREG	0x0003	/* unregister logical id */
-#define SL_CMD_LINK_ID		0x0004	/* link level identification */
+#define SL_MIN_MESSAGE_SIZE	offsetof(struct syslink_msg, sm_sessid)
+#define SL_MSG_ALIGN(bytes)	(((bytes) + 7) & ~7)
 
-#define SL_CMD_PROT_ID		0x0010	/* protocol & device ident */
+#define SH_MSGID_CMD_MASK	0xF0000000
+#define SH_MSGID_CMD_HEARTBEAT	0x60000000	/* seed heartbeat broadcast */
+#define SH_MSGID_CMD_TIMESYNC	0x50000000	/* timesync broadcast */
+#define SH_MSGID_CMD_ALLOCATE	0x40000000	/* allocate session id space */
+#define SH_MSGID_CMD_ORIGINATOR	0x30000000	/* origin initiated trans */
+#define SH_MSGID_CMD_TARGET	0x20000000	/* target initiated trans */
+#define SH_MSGID_CMD_ESTABLISH	0x10000000	/* establish session */
+#define SH_MSGID_CMD_PAD	0x00000000
+
+#define SH_MSGID_REPLY		0x08000000
+#define SH_MSGID_ENDIAN_NORM	0x01000000
+#define SH_MSGID_ENDIAN_REV	0x00000001
+#define SM_MSGID_TRANS_MASK	0x00FFFFFE	/* 23 bits */
 
 /*
- * Message elements for structured messages.  If SL_MSGID_STRUCTURED is
- * set the syslink message contains zero or more syslink_elm structures
- * laid side by side.  Each syslink_elm structure may or may not be 
- * structured (i.e. recursive).  
+ * A syslink message is broken up into three pieces: (1) The headers, (2) The
+ * message elements, and (3) DMA payload.
  *
- * Most of the same SL_MSGID_* bits apply.  The first structured element
- * will have SL_MSGID_BEG set, the last will have SL_MSGID_END set (if
- * there is only one element, both bits will be set in that element).  If
- * the payload is structured, SL_MSGID_STRUCTURED will be set.
+ * A non-PAD syslink message contains a single top-level message element.
+ * Unlike recursive message elements which can be iterated, the top level
+ * element is never iterated.  There is always only one.  The top level
+ * element is usually structured but does not have to be.  The top level
+ * element's aux field represents the RPC protocol id for the command.
  *
- * syslink_elm's may use the TRANS and SEQ bits in the msgid for other
- * purposes.   A syslink_elm is considered to be a PAD if se_cmd == 0.
+ * A PAD syslink message contains no message elements.  The entire syslink
+ * message is considered pad based on the header.
+ *
+ * A structured syslink message element may be specified by setting
+ * SE_CMDF_STRUCTURED.  The data payload for a structured message element
+ * is a sequence of ZERO or MORE message elements until the payload size is
+ * reached.  Each message element may be opaque or structured.  Fully
+ * recursive message elements are supported in this manner.
+ *
+ * A syslink message element with SE_CMDF_MASTERPAYLOAD set is associated
+ * with the master payload for the syslink message as a whole.  This field
+ * is only interpreted by terminal nodes and does not have to be used this
+ * way, but its a good idea to for debugging purposes.
+ *
+ * Syslink message elements are always 8-byte aligned.  In order to
+ * guarentee an 8-byte alignment for our extended data, a 32 bit auxillary
+ * field is always included as part of the official syslink_elm structure
+ * definition.  This field is actually part of the element command's data
+ * and its use, if any, depends on the element command.
+ *
+ * Syslink message elements do not have to be validated by intermediate
+ * route nodes but must ALWAYS be validated by the route node that connects
+ * to the terminal node intended to receive the syslink message.
+ *
+ * Only the header fields of a syslink_elm are translated for endianess
+ * by the management node.  If the management node does have to do an
+ * endian conversion it will also set SE_CMDF_UNTRANSLATED in se_cmd (all
+ * of them, recursively, since it has to validate and translate the entire
+ * hierarchy anyway) and the rpc mechanism will be responsible for doing
+ * the conversion and clearing the flag.  The seu_proto field IS always
+ * translated, which means that when used as aux data it must be referenced
+ * as a 32 bit field.
+ *
+ * As a fringe benefit, since the RPC command is the entire se_cmd field,
+ * flags and all, an untranslated element will wind up with an unrecognized
+ * command code and be reported as an error rather then being mis-executed.
  */
 struct syslink_elm {
 	sl_cmd_t	se_cmd;
 	sl_reclen_t	se_bytes;
-	sl_msgid_t	se_msgid;
+	union {
+		sl_auxdata_t	seu_aux;	/* aux data */
+		sl_auxdata_t	seu_proto;	/* protocol field */
+	} u;
 	/* extended by data */
 };
+
+#define SE_CMDF_STRUCTURED	0x8000		/* structured, else opaque */
+#define SE_CMDF_RESERVED4000	0x4000
+#define SE_CMDF_MASTERPAYLOAD	0x2000		/* DMA payload association */
+#define SE_CMDF_UNTRANSLATED	0x1000		/* needs endian translation */
+
+#define SE_CMD_PAD		0x0000		/* CMD 0 is always PAD */
 
 typedef struct syslink_msg	*syslink_msg_t;
 typedef struct syslink_elm	*syslink_elm_t;

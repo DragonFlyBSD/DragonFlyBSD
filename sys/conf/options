@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.63 2007/02/11 01:51:28 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.64 2007/04/26 02:10:57 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -538,3 +538,7 @@ SCTP_BLK_LOGGING	opt_sctp.h
 SCTP_STR_LOGGING	opt_sctp.h
 SCTP_FR_LOGGING		opt_sctp.h
 SCTP_MAP_LOGGING	opt_sctp.h
+
+# syslink kernel support
+#
+SYSLINK			opt_syslink.h

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.72 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.73 2007/04/26 02:11:00 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -73,8 +73,8 @@
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
-#ifndef _SYS_SYSLINK_H_
-#include <sys/syslink.h>
+#ifndef _SYS_SYSLINK_RPC_H_
+#include <sys/syslink_rpc.h>
 #endif
 #ifndef _SYS_CCMS_H_
 #include <sys/ccms.h>
