@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/manpath/manpath.c,v 1.11.2.2 2003/02/15 05:33:06 kris Exp $
- * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.3 2007/04/26 08:17:54 swildner Exp $
  */
 
 #define MANPATH_MAIN
@@ -413,6 +413,7 @@ get_manpath (perrs, path)
   register DIRLIST *dlp;
   void add_dir_to_list ();
   char *has_subdirs ();
+  int fnd = 0;
 
   tmppath = strdup (path);
 
@@ -439,12 +440,16 @@ get_manpath (perrs, path)
       for (dlp = list; dlp->mandir[0] != '\0'; dlp++)
 	if (dlp->bin[0] != '\0' && !strcmp (p, dlp->bin))
 	  {
-	    if (debug)
+	    if (debug && !fnd)
 	      fprintf (stderr, "is in the config file\n");
 
 	    add_dir_to_list (tmplist, dlp->mandir, perrs);
-	    goto found;
+	    fnd++;
 	  }
+      if (fnd) {
+	fnd = 0;
+	goto found;
+      }
 
       /*
        * The directory we're working on isn't in the config file.  See
