@@ -1,10 +1,10 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.8 2007/04/11 22:49:21 corecode Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.9 2007/04/27 22:56:18 pavalos Exp $
 
 LIB=	archive
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.0/libarchive
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.1/libarchive
 .PATH: ${CONTRIBDIR}
 
 VERSION!=	cat ${CONTRIBDIR}/../version
@@ -33,7 +33,9 @@ SRCS=	archive.h					\
 	archive_read_support_compression_compress.c	\
 	archive_read_support_compression_gzip.c		\
 	archive_read_support_compression_none.c		\
+	archive_read_support_compression_program.c	\
 	archive_read_support_format_all.c		\
+	archive_read_support_format_ar.c		\
 	archive_read_support_format_cpio.c		\
 	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
@@ -53,12 +55,15 @@ SRCS=	archive.h					\
 	archive_write_set_compression_bzip2.c		\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
+	archive_write_set_compression_program.c		\
 	archive_write_set_format.c			\
+	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
 	archive_write_set_format_pax.c			\
 	archive_write_set_format_shar.c			\
-	archive_write_set_format_ustar.c
+	archive_write_set_format_ustar.c		\
+	filter_fork.c
 
 SRCS+=	${PATCHES}
 
@@ -69,6 +74,7 @@ MAN=	archive_entry.3					\
 	archive_write_disk.3				\
 	libarchive.3					\
 	libarchive-formats.5				\
+	libarchive_internals.3				\
 	tar.5
 
 MLINKS+=	archive_entry.3 archive_entry_acl_add_entry.3
