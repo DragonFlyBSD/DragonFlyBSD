@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.66 2007/02/18 16:12:43 corecode Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.67 2007/04/27 23:27:15 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -89,6 +89,8 @@ extern int ncpus;		/* total number of cpus (real, hyper, virtual)*/
 extern int ncpus2;		/* ncpus rounded down to power of 2 */
 extern int ncpus2_shift;	/* log base 2 of ncpus2 */
 extern int ncpus2_mask;		/* ncpus2 - 1 */
+extern int ncpus_fit;		/* round up to a power of 2 */
+extern int ncpus_fit_mask;	/* ncpus_fit - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */
 
 /* XXX TGEN these don't belong here, they're MD on i386/amd64 */

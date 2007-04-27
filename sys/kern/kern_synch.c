@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.82 2007/03/12 21:08:15 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.83 2007/04/27 23:27:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -76,6 +76,7 @@ int	lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;
+int	ncpus_fit, ncpus_fit_mask;
 int	safepri;
 
 static struct callout loadav_callout;

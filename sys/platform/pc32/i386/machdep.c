@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.118 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.119 2007/04/27 23:27:16 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1880,11 +1880,12 @@ init386(int first)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
 
 	/*
-	 * start with one cpu.  Note: ncpus2_shift and ncpus2_mask are left
-	 * at 0.
+	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,
+	 * and ncpus_fit_mask remain 0.
 	 */
 	ncpus = 1;
 	ncpus2 = 1;
+	ncpus_fit = 1;
 	/* Init basic tunables, hz etc */
 	init_param1();
 

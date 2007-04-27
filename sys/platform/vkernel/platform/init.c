@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.34 2007/04/11 21:04:09 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.35 2007/04/27 23:27:18 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -523,7 +523,9 @@ init_vkernel(void)
 	gd->mi.gd_curthread = &thread0;
 	thread0.td_gd = &gd->mi;
 	ncpus = 1;
-	ncpus2 = 1;
+	ncpus2 = 1;	/* rounded down power of 2 */
+	ncpus_fit = 1;	/* rounded up power of 2 */
+	/* ncpus2_mask and ncpus_fit_mask are 0 */
 	init_param1();
 	gd->mi.gd_prvspace = &CPU_prvspace[0];
 	mi_gdinit(&gd->mi, 0);

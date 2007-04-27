@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.55 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.56 2007/04/27 23:27:16 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2034,7 +2034,8 @@ permanent_io_mapping(vm_paddr_t pa)
 static int
 start_all_aps(u_int boot_addr)
 {
-	int     x, i, pg, n;
+	int     x, i, pg;
+	int	shift;
 	u_char  mpbiosreason;
 	u_long  mpbioswarmvec;
 	struct mdglobaldata *gd;
@@ -2145,12 +2146,19 @@ start_all_aps(u_int boot_addr)
 	/* set ncpus to 1 + highest logical cpu.  Not all may have come up */
 	ncpus = x;
 
-	/* round ncpus down to power of 2 */
-	n = ncpus;
-	while (n >>= 1)
-		++ncpus2_shift;
-	ncpus2 = 1 << ncpus2_shift;
+	/* ncpus2 -- ncpus rounded down to the nearest power of 2 */
+	for (shift = 0; (1 << shift) <= ncpus; ++shift)
+		;
+	--shift;
+	ncpus2_shift = shift;
+	ncpus2 = 1 << shift;
 	ncpus2_mask = ncpus2 - 1;
+
+	/* ncpus_fit -- ncpus rounded up to the nearest power of 2 */
+	if ((1 << shift) < ncpus)
+		++shift;
+	ncpus_fit = 1 << shift;
+	ncpus_fit_mask = ncpus_fit - 1;
 
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
