@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.20 2007/04/13 12:12:27 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.21 2007/04/27 23:23:59 dillon Exp $
  */
 
 /*
@@ -71,6 +71,12 @@ static __inline void
 breakpoint(void)
 {
 	__asm __volatile("int $3");
+}
+
+static __inline void
+cpu_pause(void)
+{
+	__asm __volatile("pause");
 }
 
 /*
@@ -680,6 +686,7 @@ load_dr7(u_int sel)
 #else /* !__GNUC__ */
 
 int	breakpoint	(void);
+void	cpu_pause	(void);
 u_int	bsfl		(u_int mask);
 u_int	bsrl		(u_int mask);
 void	cpu_disable_intr (void);
