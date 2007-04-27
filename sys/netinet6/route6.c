@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/route6.c,v 1.1.2.5 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/route6.c,v 1.6 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/route6.c,v 1.6.2.1 2007/04/27 10:39:47 hasso Exp $	*/
 /*	$KAME: route6.c,v 1.24 2001/03/14 03:07:05 itojun Exp $	*/
 
 /*
@@ -75,32 +75,36 @@ route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 
 	switch (rh->ip6r_type) {
 	case IPV6_RTHDR_TYPE_0:
-		rhlen = (rh->ip6r_len + 1) << 3;
+		if ((ip6_forwarding && ip6_rht0 == 0) || ip6_rht0 > 0) {
+			rhlen = (rh->ip6r_len + 1) << 3;
 #ifndef PULLDOWN_TEST
-		/*
-		 * note on option length:
-		 * due to IP6_EXTHDR_CHECK assumption, we cannot handle
-		 * very big routing header (max rhlen == 2048).
-		 */
-		IP6_EXTHDR_CHECK(m, off, rhlen, IPPROTO_DONE);
+			/*
+			 * note on option length:
+			 * due to IP6_EXTHDR_CHECK assumption, we cannot handle
+			 * very big routing header (max rhlen == 2048).
+			 */
+			IP6_EXTHDR_CHECK(m, off, rhlen, IPPROTO_DONE);
 #else
-		/*
-		 * note on option length:
-		 * maximum rhlen: 2048
-		 * max mbuf m_pulldown can handle: MCLBYTES == usually 2048
-		 * so, here we are assuming that m_pulldown can handle
-		 * rhlen == 2048 case.  this may not be a good thing to
-		 * assume - we may want to avoid pulling it up altogether.
-		 */
-		IP6_EXTHDR_GET(rh, struct ip6_rthdr *, m, off, rhlen);
-		if (rh == NULL) {
-			ip6stat.ip6s_tooshort++;
-			return IPPROTO_DONE;
-		}
+			/*
+			 * note on option length:
+			 * maximum rhlen: 2048
+			 * max mbuf m_pulldown can handle: MCLBYTES == usually
+			 * 2048 so, here we are assuming that m_pulldown can
+			 * handle rhlen == 2048 case.  this may not be a good
+			 * thing to assume - we may want to avoid pulling it
+			 * up altogether.
+			 */
+			IP6_EXTHDR_GET(rh, struct ip6_rthdr *, m, off, rhlen);
+			if (rh == NULL) {
+				ip6stat.ip6s_tooshort++;
+				return IPPROTO_DONE;
+			}
 #endif
-		if (ip6_rthdr0(m, ip6, (struct ip6_rthdr0 *)rh))
-			return (IPPROTO_DONE);
-		break;
+			if (ip6_rthdr0(m, ip6, (struct ip6_rthdr0 *)rh))
+				return (IPPROTO_DONE);
+			break;
+		}
+		/* FALLTHROUGH */
 	default:
 		/* unknown routing type */
 		if (rh->ip6r_segleft == 0) {
