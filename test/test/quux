@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/quux,v 1.1 2006/12/03 21:46:17 tgen Exp $
+$DragonFly: src/test/test/quux,v 1.2 2007/04/27 06:56:36 hasso Exp $
 
 Peasant: "I didn't expect a kind of Spanish Inquisition."
 Cardinal Ximinez: "Nobody expects the Spanish Inquisition! Our chief weapon is
@@ -9,3 +9,9 @@ Pope.... Our *four*...no... *Amongst* our weapons.... Amongst our
 weaponry...are such elements as fear, surprise.... I'll come in again."
 
 / Quote from Monty Python's sketch on the Spanish Inquisition. /
+
+It should be recorded that the ratio of congenital fools does not vary as a
+function of time. It should be interesting to determine what is happening to
+the percentage of fools by conviction.
+
+ -- A. and B. Strugatski "The Final Circle of Paradise"
