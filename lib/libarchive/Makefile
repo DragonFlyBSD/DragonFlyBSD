@@ -1,9 +1,8 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.9 2007/04/27 22:56:18 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.10 2007/04/28 16:16:31 pavalos Exp $
 
 LIB=	archive
 
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.1/libarchive
 .PATH: ${CONTRIBDIR}
 
@@ -11,7 +10,7 @@ VERSION!=	cat ${CONTRIBDIR}/../version
 ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/\..*//'
 ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/[0-9]*\.//' -e 's/\..*//'
 SHLIB_MAJOR=	5
-CFLAGS+=	-DHAVE_CONFIG_H
+CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I-
 WARNS?=	6
 
@@ -64,8 +63,6 @@ SRCS=	archive.h					\
 	archive_write_set_format_shar.c			\
 	archive_write_set_format_ustar.c		\
 	filter_fork.c
-
-SRCS+=	${PATCHES}
 
 MAN=	archive_entry.3					\
 	archive_read.3					\
