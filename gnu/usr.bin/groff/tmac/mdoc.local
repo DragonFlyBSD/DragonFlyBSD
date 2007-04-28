@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.15 2007/01/25 18:57:48 dillon Exp $
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.16 2007/04/28 16:11:37 swildner Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -93,6 +93,7 @@
 .ds doc-operating-system-FreeBSD-5.5  5.5
 .ds doc-operating-system-FreeBSD-6.0  6.0
 .ds doc-operating-system-FreeBSD-6.1  6.1
+.ds doc-operating-system-FreeBSD-6.3  6.3
 .ds doc-operating-system-FreeBSD-7.0  7.0
 .
 .\" NetBSD releases not found in doc-common.
