@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.19 2007/04/22 11:44:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.20 2007/04/28 14:40:13 sephe Exp $
  */
 
 /*
@@ -1104,27 +1104,27 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 	    BUS_DMASYNC_POSTREAD);
 
 	for (;;) {
+		uint32_t flags;
 		int rssi;
 
 		desc = &sc->rxq.desc[sc->rxq.cur];
 		data = &sc->rxq.data[sc->rxq.cur];
+		flags = le32toh(desc->flags);
 
-		if (le32toh(desc->flags) & RT2661_RX_BUSY)
+		if (flags & RT2661_RX_BUSY)
 			break;
 
-		if ((le32toh(desc->flags) & RT2661_RX_PHY_ERROR) ||
-		    (le32toh(desc->flags) & RT2661_RX_CRC_ERROR)) {
+		if (flags & RT2661_RX_CRC_ERROR) {
 			/*
 			 * This should not happen since we did not request
 			 * to receive those frames when we filled TXRX_CSR0.
 			 */
-			DPRINTFN(5, ("PHY or CRC error flags 0x%08x\n",
-			    le32toh(desc->flags)));
+			DPRINTFN(5, ("CRC error flags 0x%08x\n", flags));
 			ifp->if_ierrors++;
 			goto skip;
 		}
 
-		if ((le32toh(desc->flags) & RT2661_RX_CIPHER_MASK) != 0) {
+		if (flags & RT2661_RX_CIPHER_MASK) {
 			ifp->if_ierrors++;
 			goto skip;
 		}
@@ -1175,8 +1175,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 
 		/* finalize mbuf */
 		m->m_pkthdr.rcvif = ifp;
-		m->m_pkthdr.len = m->m_len =
-		    (le32toh(desc->flags) >> 16) & 0xfff;
+		m->m_pkthdr.len = m->m_len = (flags >> 16) & 0xfff;
 
 		rssi = rt2661_get_rssi(sc, desc->rssi);
 

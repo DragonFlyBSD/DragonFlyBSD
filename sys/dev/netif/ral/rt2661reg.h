@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.7 2007/04/22 11:44:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.8 2007/04/28 14:40:13 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -268,8 +268,7 @@ struct rt2661_rx_desc {
 #define RT2661_RX_DROP		(1 << 1)
 #define RT2661_RX_CRC_ERROR	(1 << 6)
 #define RT2661_RX_OFDM		(1 << 7)
-#define RT2661_RX_PHY_ERROR	(1 << 8)
-#define RT2661_RX_CIPHER_MASK	0x00000600
+#define RT2661_RX_CIPHER_MASK	0x00000300
 
 	uint8_t		rate;
 	uint8_t		rssi;
