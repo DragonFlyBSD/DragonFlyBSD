@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.17 2006/12/05 23:14:55 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.18 2007/04/29 06:05:02 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -110,7 +110,7 @@ typedef	__uint32_t	uid_t;		/* user id */
 
 #ifndef __BOOLEAN_T_DEFINED__
 #define __BOOLEAN_T_DEFINED__
-typedef	int		boolean_t;
+typedef	__boolean_t	boolean_t;
 #endif
 
 typedef	u_int64_t	uoff_t;

@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.8 2007/04/29 01:26:45 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.9 2007/04/29 06:05:02 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -46,7 +46,7 @@
 
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
 
-typedef boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
+typedef __boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
 typedef void (objcache_dtor_fn)(void *obj, void *private);
 
 /*
@@ -77,7 +77,7 @@ void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);
 void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 				  int size);
-boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
+__boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
 void	 objcache_destroy(struct objcache *oc);
 
 #endif
