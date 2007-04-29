@@ -32,7 +32,7 @@
  *
  * @(#)kvm_file.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
+ * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.4 2007/04/29 01:36:04 dillon Exp $
  */
 
 /*
@@ -42,8 +42,8 @@
  * most other applications are interested only in open/close/read/nlist).
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #define _KERNEL
 #include <sys/file.h>

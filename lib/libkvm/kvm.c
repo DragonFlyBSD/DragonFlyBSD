@@ -36,11 +36,11 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.9 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.10 2007/04/29 01:36:04 dillon Exp $
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>

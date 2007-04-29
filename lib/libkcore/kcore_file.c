@@ -31,15 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.4 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.5 2007/04/29 01:36:03 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/kcore.h>
-#include <sys/user.h>
 
 #include <err.h>
 #include <errno.h>

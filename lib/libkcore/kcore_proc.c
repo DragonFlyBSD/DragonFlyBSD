@@ -31,12 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_proc.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_proc.c,v 1.2 2007/04/29 01:36:03 dillon Exp $
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
 #include <sys/sysctl.h>
-#include <sys/user.h>
 
 #include <err.h>
 #include <errno.h>

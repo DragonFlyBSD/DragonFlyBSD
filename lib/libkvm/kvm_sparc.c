@@ -36,7 +36,7 @@
  *
  * @(#)kvm_sparc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_sparc.c,v 1.3 1999/12/27 07:14:58 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_sparc.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
+ * $DragonFly: src/lib/libkvm/kvm_sparc.c,v 1.4 2007/04/29 01:36:04 dillon Exp $
  */
 
 /*
@@ -44,8 +44,8 @@
  * vm code will one day obsolete this module.
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
 #include <unistd.h>

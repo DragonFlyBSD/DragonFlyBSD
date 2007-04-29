@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.12 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.13 2007/04/29 01:36:04 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -47,7 +47,7 @@
  * most other applications are interested only in open/close/read/nlist).
  */
 
-#include <sys/user.h>
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/conf.h>
 #include <sys/param.h>
 #include <sys/proc.h>

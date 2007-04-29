@@ -36,7 +36,7 @@
  *
  * @(#)kvm_hp300.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_i386.c,v 1.11.2.1 2001/09/21 04:01:51 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_i386.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_i386.c,v 1.3 2007/04/29 01:36:04 dillon Exp $
  */
 
 /*
@@ -44,8 +44,8 @@
  * vm code will one day obsolete this module.
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
 #include <stdlib.h>
