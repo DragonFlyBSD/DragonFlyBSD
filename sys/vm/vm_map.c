@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.55 2007/01/07 08:37:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.56 2007/04/29 18:25:41 dillon Exp $
  */
 
 /*
@@ -71,6 +71,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/vmmeter.h>
@@ -79,6 +80,7 @@
 #include <sys/resourcevar.h>
 #include <sys/shm.h>
 #include <sys/tree.h>
+#include <sys/malloc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -93,6 +95,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 /*
  *	Virtual memory maps provide for the mapping, protection,
@@ -118,26 +121,29 @@
  *	another, and then marking both regions as copy-on-write.
  */
 
-/*
- *	vm_map_startup:
- *
- *	Initialize the vm_map module.  Must be called before
- *	any other vm_map routines.
- *
- *	Map and entry structures are allocated from the general
- *	purpose memory pool with some exceptions:
- *
- *	- The kernel map and kmem submap are allocated statically.
- *	- Kernel map entries are allocated out of a static pool.
- *
- *	These restrictions are necessary since malloc() uses the
- *	maps and requires map entries.
- */
+static void vmspace_terminate(struct vmspace *vm);
+static void vmspace_dtor(void *obj, void *private);
+
+MALLOC_DEFINE(M_VMSPACE, "vmspace", "vmspace objcache backingstore");
+
+struct sysref_class vmspace_sysref_class = {
+	.name =		"vmspace",
+	.mtype =	M_VMSPACE,
+	.proto =	SYSREF_PROTO_VMSPACE,
+	.offset =	offsetof(struct vmspace, vm_sysref),
+	.objsize =	sizeof(struct vmspace),
+	.mag_capacity =	32,
+	.flags = SRC_MANAGEDINIT,
+	.dtor = vmspace_dtor,
+	.ops = {
+		.terminate = (sysref_terminate_func_t)vmspace_terminate
+	}
+};
 
 #define VMEPERCPU	2
 
 static struct vm_zone mapentzone_store, mapzone_store;
-static vm_zone_t mapentzone, mapzone, vmspace_zone;
+static vm_zone_t mapentzone, mapzone;
 static struct vm_object mapentobj, mapobj;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
@@ -156,6 +162,21 @@ static void vm_map_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t,
 static void vm_map_split (vm_map_entry_t);
 static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int *count, int flags);
 
+/*
+ *	vm_map_startup:
+ *
+ *	Initialize the vm_map module.  Must be called before
+ *	any other vm_map routines.
+ *
+ *	Map and entry structures are allocated from the general
+ *	purpose memory pool with some exceptions:
+ *
+ *	- The kernel map and kmem submap are allocated statically.
+ *	- Kernel map entries are allocated out of a static pool.
+ *
+ *	These restrictions are necessary since malloc() uses the
+ *	maps and requires map entries.
+ */
 void
 vm_map_startup(void)
 {
@@ -166,6 +187,20 @@ vm_map_startup(void)
 	zbootinit(mapentzone, "MAP ENTRY", sizeof (struct vm_map_entry),
 		map_entry_init, MAX_MAPENT);
 }
+
+/*
+ *	vm_init2 - called prior to any vmspace allocations
+ */
+void
+vm_init2(void) 
+{
+	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
+		ZONE_USE_RESERVE | ZONE_SPECIAL, 1);
+	zinitna(mapzone, &mapobj, NULL, 0, 0, 0, 1);
+	pmap_init2();
+	vm_object_init2();
+}
+
 
 /*
  * Red black tree functions
@@ -185,44 +220,74 @@ rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b)
 }
 
 /*
- * Allocate a vmspace structure, including a vm_map and pmap,
- * and initialize those structures.  The refcnt is set to 1.
- * The remaining fields must be initialized by the caller.
+ * Allocate a vmspace structure, including a vm_map and pmap.
+ * Initialize numerous fields.  While the initial allocation is zerod,
+ * subsequence reuse from the objcache leaves elements of the structure
+ * intact (particularly the pmap), so portions must be zerod.
+ *
+ * The structure is not considered activated until we call sysref_activate().
  */
 struct vmspace *
 vmspace_alloc(vm_offset_t min, vm_offset_t max)
 {
 	struct vmspace *vm;
 
-	vm = zalloc(vmspace_zone);
+	vm = sysref_alloc(&vmspace_sysref_class);
 	bzero(&vm->vm_startcopy,
-		(char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
+	      (char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
 	vm_map_init(&vm->vm_map, min, max, NULL);
-	pmap_pinit(vmspace_pmap(vm));
+	pmap_pinit(vmspace_pmap(vm));		/* (some fields reused) */
 	vm->vm_map.pmap = vmspace_pmap(vm);		/* XXX */
-	vm->vm_refcnt = 1;
 	vm->vm_shm = NULL;
 	vm->vm_exitingcnt = 0;
 	cpu_vmspace_alloc(vm);
+	sysref_activate(&vm->vm_sysref);
 	return (vm);
 }
 
-void
-vm_init2(void) 
+/*
+ * dtor function - Some elements of the pmap are retained in the
+ * free-cached vmspaces to improve performance.  We have to clean them up
+ * here before returning the vmspace to the memory pool.
+ */
+static void
+vmspace_dtor(void *obj, void *private)
 {
-	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
-		ZONE_USE_RESERVE | ZONE_SPECIAL, 1);
-	zinitna(mapzone, &mapobj, NULL, 0, 0, 0, 1);
-	vmspace_zone = zinit("VMSPACE", sizeof (struct vmspace), 0, 0, 3);
-	pmap_init2();
-	vm_object_init2();
+	struct vmspace *vm = obj;
+
+	pmap_puninit(vmspace_pmap(vm));
 }
 
-static __inline void
-vmspace_dofree(struct vmspace *vm)
+/*
+ * Called in two cases: 
+ *
+ * (1) When the last sysref is dropped, but exitingcnt might still be
+ *     non-zero.
+ *
+ * (2) When there are no sysrefs (i.e. refcnt is negative) left and the
+ *     exitingcnt becomes zero
+ *
+ * sysref will not scrap the object until we call sysref_put() once more
+ * after the last ref has been dropped.
+ */
+static void
+vmspace_terminate(struct vmspace *vm)
 {
 	int count;
 
+	/*
+	 * If exitingcnt is non-zero we can't get rid of the entire vmspace
+	 * yet, but we can scrap user memory.
+	 */
+	if (vm->vm_exitingcnt) {
+		shmexit(vm);
+		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
+				  VM_MAX_USER_ADDRESS);
+		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
+			      VM_MAX_USER_ADDRESS);
+
+		return;
+	}
 	cpu_vmspace_free(vm);
 
 	/*
@@ -246,19 +311,13 @@ vmspace_dofree(struct vmspace *vm)
 	vm_map_entry_release(count);
 
 	pmap_release(vmspace_pmap(vm));
-	zfree(vmspace_zone, vm);
+	sysref_put(&vm->vm_sysref);
 }
 
-void
-vmspace_free(struct vmspace *vm)
-{
-	if (vm->vm_refcnt == 0)
-		panic("vmspace_free: attempt to free already freed vmspace");
-
-	if (--vm->vm_refcnt == 0 && vm->vm_exitingcnt == 0)
-		vmspace_dofree(vm);
-}
-
+/*
+ * This is called in the wait*() handling code.  The vmspace can be terminated
+ * after the last wait is finished using it.
+ */
 void
 vmspace_exitfree(struct proc *p)
 {
@@ -267,19 +326,8 @@ vmspace_exitfree(struct proc *p)
 	vm = p->p_vmspace;
 	p->p_vmspace = NULL;
 
-	/*
-	 * cleanup by parent process wait()ing on exiting child.  vm_refcnt
-	 * may not be 0 (e.g. fork() and child exits without exec()ing).
-	 * exitingcnt may increment above 0 and drop back down to zero
-	 * several times while vm_refcnt is held non-zero.  vm_refcnt
-	 * may also increment above 0 and drop back down to zero several
-	 * times while vm_exitingcnt is held non-zero.
-	 *
-	 * The last wait on the exiting child's vmspace will clean up
-	 * the remainder of the vmspace.
-	 */
-	if (--vm->vm_exitingcnt == 0 && vm->vm_refcnt == 0)
-		vmspace_dofree(vm);
+	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref))
+		vmspace_terminate(vm);
 }
 
 /*
@@ -3153,7 +3201,6 @@ done:
  * Unshare the specified VM space for exec.  If other processes are
  * mapped to it, then create a new one.  The new vmspace is null.
  */
-
 void
 vmspace_exec(struct proc *p, struct vmspace *vmcopy) 
 {
@@ -3176,17 +3223,13 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	}
 
 	/*
-	 * This code is written like this for prototype purposes.  The
-	 * goal is to avoid running down the vmspace here, but let the
-	 * other process's that are still using the vmspace to finally
-	 * run it down.  Even though there is little or no chance of blocking
-	 * here, it is a good idea to keep this form for future mods.
+	 * Finish initializing the vmspace before assigning it
+	 * to the process.  The vmspace will become the current vmspace
+	 * if p == curproc.
 	 */
-	p->p_vmspace = newvmspace;
 	pmap_pinit2(vmspace_pmap(newvmspace));
-	if (p == curproc)
-		pmap_activate(p);
-	vmspace_free(oldvmspace);
+	pmap_replacevm(p, newvmspace, 0);
+	sysref_put(&oldvmspace->vm_sysref);
 }
 
 /*
@@ -3203,14 +3246,12 @@ vmspace_unshare(struct proc *p)
 	struct vmspace *oldvmspace = p->p_vmspace;
 	struct vmspace *newvmspace;
 
-	if (oldvmspace->vm_refcnt == 1 && oldvmspace->vm_exitingcnt == 0)
+	if (oldvmspace->vm_sysref.refcnt == 1 && oldvmspace->vm_exitingcnt == 0)
 		return;
 	newvmspace = vmspace_fork(oldvmspace);
-	p->p_vmspace = newvmspace;
 	pmap_pinit2(vmspace_pmap(newvmspace));
-	if (p == curproc)
-		pmap_activate(p);
-	vmspace_free(oldvmspace);
+	pmap_replacevm(p, newvmspace, 0);
+	sysref_put(&oldvmspace->vm_sysref);
 }
 
 /*

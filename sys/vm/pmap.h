@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.24 2007/02/26 21:41:08 corecode Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.25 2007/04/29 18:25:41 dillon Exp $
  */
 
 /*
@@ -90,6 +90,7 @@
 struct proc;
 struct thread;
 struct vm_page;
+struct vmspace;
 
 /*
  * Most of these variables represent parameters set up by low level MD kernel
@@ -141,6 +142,7 @@ boolean_t	 pmap_page_exists_quick (pmap_t pmap, struct vm_page *m);
 void		 pmap_page_protect (struct vm_page *m, vm_prot_t prot);
 vm_paddr_t	 pmap_phys_address (int);
 void		 pmap_pinit (pmap_t);
+void		 pmap_puninit (pmap_t);
 void		 pmap_pinit0 (pmap_t);
 void		 pmap_pinit2 (pmap_t);
 void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t, vm_prot_t);
@@ -168,8 +170,7 @@ int		 pmap_mincore (pmap_t pmap, vm_offset_t addr);
 void		 pmap_init_proc (struct proc *);
 void		 pmap_init_thread (struct thread *td);
 void		 pmap_dispose_proc (struct proc *p);
-void		 pmap_activate (struct proc *p);
-void		 pmap_deactivate (struct proc *p);
+void		 pmap_replacevm (struct proc *, struct vmspace *, int);
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
 void		*pmap_kenter_temporary (vm_paddr_t pa, int i);
 void		 pmap_init2 (void);

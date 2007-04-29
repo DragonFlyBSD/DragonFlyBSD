@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.55 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.56 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -645,7 +645,8 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		vmspace = imgp->proc->p_vmspace;
 		pmap_remove_pages(vmspace_pmap(vmspace), stack_addr, USRSTACK);
 		map = &vmspace->vm_map;
-	} else if (vmspace->vm_refcnt == 1 && vmspace->vm_exitingcnt == 0) {
+	} else if (vmspace->vm_sysref.refcnt == 1 &&
+		   vmspace->vm_exitingcnt == 0) {
 		shmexit(vmspace);
 		if (vmspace->vm_upcalls)
 			upc_release(vmspace, ONLY_LWP_IN_PROC(imgp->proc));

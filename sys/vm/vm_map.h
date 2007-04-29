@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.29 2007/01/11 10:15:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.30 2007/04/29 18:25:41 dillon Exp $
  */
 
 /*
@@ -77,6 +77,9 @@
 #endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
+#endif
+#ifndef _SYS_SYSREF_H_
+#include <sys/sysref.h>
 #endif
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
@@ -237,13 +240,13 @@ struct vmupcall {
 
 /* 
  * Shareable process virtual address space.
- * May eventually be merged with vm_map.
- * Several fields are temporary (text, data stuff).
+ *
+ * Refd pointers from vmresident, proc
  */
 struct vmspace {
 	struct vm_map vm_map;	/* VM address map */
 	struct pmap vm_pmap;	/* private physical map */
-	int vm_refcnt;		/* number of references */
+	int vm_unused01;
 	caddr_t vm_shm;		/* SYS5 shared memory private data XXX */
 /* we copy from vm_startcopy to the end of the structure on fork */
 #define vm_startcopy vm_rssize
@@ -260,7 +263,8 @@ struct vmspace {
 	int	vm_exitingcnt;	/* several procsses zombied in exit1 */
 	int	vm_upccount;	/* number of registered upcalls */
 	int	vm_pagesupply;
-	struct vmupcall *vm_upcalls; /* registered upcalls */
+	struct vmupcall *vm_upcalls;	/* registered upcalls */
+	struct sysref vm_sysref;	/* sysref, refcnt, etc */
 };
 
 /*
@@ -420,6 +424,9 @@ vmspace_resident_count(struct vmspace *vmspace)
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 
 #ifdef _KERNEL
+
+extern struct sysref_class vmspace_sysref_class;
+
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
 struct pmap;
 struct globaldata;

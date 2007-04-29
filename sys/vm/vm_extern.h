@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.25 2007/02/26 21:41:08 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.26 2007/04/29 18:25:41 dillon Exp $
  */
 
 #ifndef _VM_VM_EXTERN_H_
@@ -104,7 +104,6 @@ struct vmspace *vmspace_alloc (vm_offset_t, vm_offset_t);
 struct vmspace *vmspace_fork (struct vmspace *);
 void vmspace_exec (struct proc *, struct vmspace *);
 void vmspace_unshare (struct proc *);
-void vmspace_free (struct vmspace *);
 void vmspace_exitfree (struct proc *);
 void vnode_pager_setsize (struct vnode *, vm_ooffset_t);
 void vslock (caddr_t, u_int);

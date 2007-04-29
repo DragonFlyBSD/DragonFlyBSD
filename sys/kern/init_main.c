@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.75 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.76 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -64,6 +64,7 @@
 #include <sys/malloc.h>
 #include <sys/file2.h>
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 #include <machine/cpu.h>
 
@@ -366,11 +367,12 @@ proc0_init(void *dummy __unused)
 	/* Allocate a prototype map so we have something to fork. */
 	pmap_pinit0(vmspace_pmap(&vmspace0));
 	p->p_vmspace = &vmspace0;
-	vmspace0.vm_refcnt = 1;
+	sysref_init(&vmspace0.vm_sysref, &vmspace_sysref_class);
 	vm_map_init(&vmspace0.vm_map,
 		    round_page(VM_MIN_USER_ADDRESS),
 		    trunc_page(VM_MAX_USER_ADDRESS),
 		    vmspace_pmap(&vmspace0));
+	sysref_activate(&vmspace0.vm_sysref);
 
 	/*
 	 * Charge root for one process.
@@ -631,11 +633,11 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 {
 	TAILQ_INIT(&gd->gd_tdfreeq);    /* for pmap_{new,dispose}_thread() */
 	TAILQ_INIT(&gd->gd_systimerq);
+	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;
 	gd->gd_cpumask = (cpumask_t)1 << cpuid;
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
 }
-
 

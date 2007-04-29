@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.44 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.45 2007/04/29 18:25:36 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -219,6 +219,18 @@ ENTRY(cpu_exit_switch)
 	movl	%ecx,%cr3
 1:
 	movl	PCPU(curthread),%ebx
+
+	/*
+	 * If this is a process/lwp, deactivate the pmap after we've
+	 * switched it out.
+	 */
+	movl	TD_PROC(%ebx),%ecx
+	testl	%ecx,%ecx
+	jz	2f
+	movl	PCPU(cpuid), %eax
+	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%ecx)
+2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
 	 * expects the new thread in EAX and the old in EBX.

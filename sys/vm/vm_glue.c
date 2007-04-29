@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.53 2007/02/26 21:41:08 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.54 2007/04/29 18:25:41 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -92,6 +92,7 @@
 #include <sys/user.h>
 #include <vm/vm_page2.h>
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 /*
  * System initialization
@@ -233,7 +234,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 		 * COW locally.
 		 */
 		if ((flags & RFMEM) == 0) {
-			if (p1->p_vmspace->vm_refcnt > 1) {
+			if (p1->p_vmspace->vm_sysref.refcnt > 1) {
 				vmspace_unshare(p1);
 			}
 		}
@@ -243,7 +244,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 
 	if (flags & RFMEM) {
 		p2->p_vmspace = p1->p_vmspace;
-		p1->p_vmspace->vm_refcnt++;
+		sysref_get(&p1->p_vmspace->vm_sysref);
 	}
 
 	while (vm_page_count_severe()) {
@@ -538,7 +539,7 @@ swapout_procs_callback(struct proc *p, void *data)
 			minslp = lp->lwp_slptime;
 	}
 
-	++vm->vm_refcnt;
+	sysref_get(&vm->vm_sysref);
 
 	/*
 	 * If the process has been asleep for awhile, swap
@@ -553,7 +554,7 @@ swapout_procs_callback(struct proc *p, void *data)
 	/*
 	 * cleanup our reference
 	 */
-	vmspace_free(vm);
+	sysref_put(&vm->vm_sysref);
 
 	return(0);
 }

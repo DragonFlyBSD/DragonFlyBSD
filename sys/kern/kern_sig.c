@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.76 2007/03/12 21:08:15 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.77 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -963,13 +963,20 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		action = SIG_DFL;
 	} else {
 		/*
-		 * If the signal is being ignored,
-		 * then we forget about it immediately.
-		 * (Note: we don't set SIGCONT in p_sigignore,
-		 * and if it is set to SIG_IGN,
-		 * action will be SIG_DFL here.)
+		 * Do not try to deliver signals to an exiting process or
+		 * exiting lwp.
 		 */
-		if (SIGISMEMBER(p->p_sigignore, sig) || (p->p_flag & P_WEXIT))
+		if (p->p_flag & P_WEXIT)
+			return;
+		if (lp && (lp->lwp_flag & LWP_WEXIT))
+			return;
+
+		/*
+		 * Ig the signal is being ignored, then we forget about
+		 * it immediately.  NOTE: We don't set SIGCONT in p_sigignore,
+		 * and if it is set to SIG_IGN, action will be SIG_DFL here.
+		 */
+		if (SIGISMEMBER(p->p_sigignore, sig))
 			return;
 		if (SIGISMEMBER(p->p_sigcatch, sig))
 			action = SIG_CATCH;

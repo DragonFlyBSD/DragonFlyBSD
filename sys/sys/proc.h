@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.106 2007/03/13 00:18:59 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.107 2007/04/29 18:25:33 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -317,7 +317,7 @@ struct	proc {
 #define	P_UNUSED2	0x00400	/* was: SIGSTOP status */
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
 #define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
-#define	P_WEXIT		0x02000	/* Working on exiting. */
+#define	P_WEXIT		0x02000	/* Working on exiting (master exit) */
 #define	P_EXEC		0x04000	/* Process called exec. */
 
 /* Should probably be changed into a hold count. */
@@ -482,7 +482,7 @@ void	cpu_lwkt_switch (struct thread *);
 
 void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
-void	lwp_exit (void) __dead2;
+void	lwp_exit (int masterexit) __dead2;
 void	lwp_dispose (struct lwp *);
 void	killlwps (struct lwp *);
 void	exit1 (int) __dead2;

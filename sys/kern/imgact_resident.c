@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.15 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.16 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,8 @@
 #include <vm/vm_map.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
+
+#include <sys/sysref2.h>
 
 static int exec_res_id = 0;
 
@@ -260,7 +262,7 @@ restart:
 		vmres->vr_vnode = NULL;
 	    }
 	    if (vmres->vr_vmspace) {
-		vmspace_free(vmres->vr_vmspace);
+		sysref_put(&vmres->vr_vmspace->vm_sysref);
 		vmres->vr_vmspace = NULL;
 	    }
 	    kfree(vmres, M_EXEC_RES);

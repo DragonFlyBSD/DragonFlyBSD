@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.67 2007/03/13 00:18:59 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.68 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -187,8 +187,10 @@ sys_lwp_create(struct lwp_create_args *uap)
 fail:
 	--p->p_nthreads;
 	LIST_REMOVE(lp, lwp_list);
-	/* lwp_dispose expects a exited lwp */
-	lp->lwp_thread->td_flags = TDF_EXITING;
+	/* lwp_dispose expects an exited lwp, and a held proc */
+	lp->lwp_flag |= LWP_WEXIT;
+	lp->lwp_thread->td_flags |= TDF_EXITING;
+	PHOLD(p);
 	lwp_dispose(lp);
 fail2:
 	return (error);
@@ -217,7 +219,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * certain parts of a process from itself.
 	 */
 	if ((flags & RFPROC) == 0) {
-
 		/*
 		 * This kind of stunt does not work anymore if
 		 * there are native threads (lwps) running

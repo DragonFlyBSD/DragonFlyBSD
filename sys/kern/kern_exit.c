@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.79 2007/03/12 21:05:48 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.80 2007/04/29 18:25:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -79,6 +79,9 @@
 #include <sys/user.h>
 
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
+
+static void reaplwps(void *context, int dummy);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
@@ -158,8 +161,10 @@ sys_extexit(struct extexit_args *uap)
 		 * later, otherwise the proc will be an UNDEAD and not even a
 		 * SZOMB!
 		 */
-		if (curproc->p_nthreads > 1)
-			lwp_exit();
+		if (curproc->p_nthreads > 1) {
+			lwp_exit(0);
+			/* NOT REACHED */
+		}
 		/* else last lwp in proc:  do the real thing */
 		/* FALLTHROUGH */
 
@@ -172,24 +177,34 @@ sys_extexit(struct extexit_args *uap)
 	/* NOTREACHED */
 }
 
+/*
+ * Kill all LWPs except the current one.  Do not try to signal
+ * LWPs which have exited on their own or have already been
+ * signaled.
+ */
 void
 killlwps(struct lwp *lp)
 {
 	struct proc *p = lp->lwp_proc;
 	struct lwp *tlp;
 
-	KKASSERT((lp->lwp_flag & LWP_WEXIT) == 0);
-
+	/*
+	 * Signal remaining LWPs, interlock with LWP_WEXIT.
+	 */
 	FOREACH_LWP_IN_PROC(tlp, p) {
-		if (tlp == lp)
-			continue;	/* don't kill the current lwp */
-		tlp->lwp_flag |= LWP_WEXIT;
-		lwp_signotify(tlp);
+		if ((tlp->lwp_flag & LWP_WEXIT) == 0) {
+			tlp->lwp_flag |= LWP_WEXIT;
+			lwp_signotify(tlp);
+		}
 	}
 
+	/*
+	 * Wait for everything to clear out.
+	 */
 	while (p->p_nthreads > 1) {
 		if (bootverbose)
-			kprintf("killlwps: waiting for %d lwps of pid %d to die\n",
+			kprintf("killlwps: waiting for %d lwps of pid "
+				"%d to die\n",
 				p->p_nthreads - 1, p->p_pid);
 		tsleep(&p->p_nthreads, 0, "killlwps", hz);
 	}
@@ -218,14 +233,19 @@ exit1(int rv)
 	}
 
 	/*
-	 * Kill all other threads if there are any.
-	 *
-	 * If some other thread initiated our exit, do so.
+	 * Interlock against P_WEXIT.  Only one of the process's thread
+	 * is allowed to do the master exit.
 	 */
-	if (lp->lwp_flag & LWP_WEXIT) {
-		KKASSERT(p->p_nthreads > 1);
-		lwp_exit();
+	if (p->p_flag & P_WEXIT) {
+		lwp_exit(0);
+		/* NOT REACHED */
 	}
+	p->p_flag |= P_WEXIT;
+
+	/*
+	 * Interlock with LWP_WEXIT and kill any remaining LWPs
+	 */
+	lp->lwp_flag |= LWP_WEXIT;
 	if (p->p_nthreads > 1)
 		killlwps(lp);
 
@@ -233,7 +253,7 @@ exit1(int rv)
 	aio_proc_rundown(p);
 
 	/* are we a task leader? */
-	if(p == p->p_leader) {
+	if (p == p->p_leader) {
         	struct kill_args killArgs;
 		killArgs.signum = SIGKILL;
 		q = p->p_peers;
@@ -248,7 +268,7 @@ exit1(int rv)
 			q = q->p_peers;
 		}
 		while (p->p_peers) 
-		  tsleep((caddr_t)p, 0, "exit1", 0);
+			tsleep((caddr_t)p, 0, "exit1", 0);
 	} 
 
 #ifdef PGINPROF
@@ -272,7 +292,6 @@ exit1(int rv)
 	 * P_PPWAIT is set; we will wakeup the parent below.
 	 */
 	p->p_flag &= ~(P_TRACED | P_PPWAIT);
-	p->p_flag |= P_WEXIT;
 	SIGEMPTYSET(p->p_siglist);
 	SIGEMPTYSET(lp->lwp_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
@@ -335,13 +354,7 @@ exit1(int rv)
 	 * remainder.
 	 */
 	++vm->vm_exitingcnt;
-	if (--vm->vm_refcnt == 0) {
-		shmexit(vm);
-		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
-				  VM_MAX_USER_ADDRESS);
-		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
-			      VM_MAX_USER_ADDRESS);
-	}
+	sysref_put(&vm->vm_sysref);
 
 	if (SESS_LEADER(p)) {
 		struct session *sp = p->p_session;
@@ -486,22 +499,23 @@ exit1(int rv)
 	p->p_usched->release_curproc(lp);
 
 	/*
-	 * Finally, call machine-dependent code to release the remaining
-	 * resources including address space, the kernel stack and pcb.
-	 * The address space is released by "vmspace_free(p->p_vmspace)";
-	 * This is machine-dependent, as we may have to change stacks
-	 * or ensure that the current one isn't reallocated before we
-	 * finish.  cpu_exit will end with a call to cpu_switch(), finishing
-	 * our execution (pun intended).
+	 * Finally, call machine-dependent code to release as many of the
+	 * lwp's resources as we can and halt execution of this thread.
 	 */
-	lwp_exit();
+	lwp_exit(1);
 }
 
 void
-lwp_exit(void)
+lwp_exit(int masterexit)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
+
+	/*
+	 * lwp_exit() may be called without setting LWP_WEXIT, so
+	 * make sure it is set here.
+	 */
+	lp->lwp_flag |= LWP_WEXIT;
 
 	/*
 	 * Nobody actually wakes us when the lock
@@ -513,11 +527,28 @@ lwp_exit(void)
 	/* Hand down resource usage to our proc */
 	ruadd(&p->p_ru, &lp->lwp_ru);
 
-	--p->p_nthreads;
-	LIST_REMOVE(lp, lwp_list);
-	wakeup(&p->p_nthreads);
-	LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, lwp_list);
-	taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
+	/*
+	 * If we don't hold the process until the LWP is reaped wait*()
+	 * may try to dispose of its vmspace before all the LWPs have
+	 * actually terminated.
+	 */
+	PHOLD(p);
+
+	/*
+	 * We have to use the reaper for all the LWPs except the one doing
+	 * the master exit.  The LWP doing the master exit can just be
+	 * left on p_lwps and the process reaper will deal with it
+	 * synchronously, which is much faster.
+	 */
+	if (masterexit == 0) {
+		LIST_REMOVE(lp, lwp_list);
+		--p->p_nthreads;
+		wakeup(&p->p_nthreads);
+		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, lwp_list);
+		taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
+	} else {
+		--p->p_nthreads;
+	}
 	cpu_lwp_exit();
 }
 
@@ -578,6 +609,8 @@ lwp_dispose(struct lwp *lp)
 	KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) ==
 		 TDF_EXITING);
 
+	PRELE(lp->lwp_proc);
+	lp->lwp_proc = NULL;
 	if (td != NULL) {
 		td->td_proc = NULL;
 		td->td_lwp = NULL;
@@ -661,11 +694,27 @@ loop:
 		nfound++;
 		if (p->p_stat == SZOMB) {
 			/*
-			 * Other kernel threads may be in the middle of 
-			 * accessing the proc.  For example, kern/kern_proc.c
-			 * could be blocked writing proc data to a sysctl.
-			 * At the moment, if this occurs, we are not woken
-			 * up and rely on a one-second retry.
+			 * Reap any LWPs left in p->p_lwps.  This is usually
+			 * just the last LWP.  This must be done before
+			 * we loop on p_lock since the lwps hold a ref on
+			 * it as a vmspace interlock.
+			 *
+			 * Once that is accomplished p_nthreads had better
+			 * be zero.
+			 */
+			reaplwps(&p->p_lwps, 0);
+			KKASSERT(p->p_nthreads == 0);
+
+			/*
+			 * Don't do anything really bad until all references
+			 * to the process go away.  This may include other
+			 * LWPs which are still in the process of being
+			 * reaped.  We can't just pull the rug out from under
+			 * them because they may still be using the VM space.
+			 *
+			 * Certain kernel facilities such as /proc will also
+			 * put a hold on the process for short periods of
+			 * time.
 			 */
 			while (p->p_lock)
 				tsleep(p, 0, "reap3", hz);
@@ -818,11 +867,9 @@ rm_at_exit(exitlist_fn function)
 	return (0);
 }
 
-
 /*
  * LWP reaper related code.
  */
-
 static void
 reaplwps(void *context, int dummy)
 {
@@ -830,9 +877,9 @@ reaplwps(void *context, int dummy)
 	struct lwp *lp;
 
 	while ((lp = LIST_FIRST(lwplist))) {
-		if (!lwp_wait(lp))
-			tsleep(lp, 0, "lwpreap", 1);
 		LIST_REMOVE(lp, lwp_list);
+		while (lwp_wait(lp) == 0)
+			tsleep(lp, 0, "lwpreap", 1);
 		lwp_dispose(lp);
 	}
 }

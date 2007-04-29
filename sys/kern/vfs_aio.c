@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.38 2007/04/22 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.39 2007/04/29 18:25:34 dillon Exp $
  */
 
 /*
@@ -623,10 +623,12 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	struct ucred *cr;
 
 	/*
-	 * Local copies of curproc (cp) and vmspace (myvm)
+	 * Local copies of curproc (cp) and vmspace (myvm).  Get extra
+	 * reference on myvm so we can use pmap_replacevm()
 	 */
 	mycp = curproc;
 	myvm = mycp->p_vmspace;
+	sysref_get(&myvm->vm_sysref);
 
 	if (mycp->p_textvp) {
 		vrele(mycp->p_textvp);
@@ -712,31 +714,7 @@ aio_daemon(void *uproc, struct trapframe *frame)
 			 * Connect to process address space for user program.
 			 */
 			if (userp != curcp) {
-				/*
-				 * Save the current address space that we are
-				 * connected to.
-				 */
-				tmpvm = mycp->p_vmspace;
-				
-				/*
-				 * Point to the new user address space, and
-				 * refer to it.
-				 */
-				mycp->p_vmspace = userp->p_vmspace;
-				mycp->p_vmspace->vm_refcnt++;
-				
-				/* Activate the new mapping. */
-				pmap_activate(mycp);
-				
-				/*
-				 * If the old address space wasn't the daemons
-				 * own address space, then we need to remove the
-				 * daemon's reference from the other process
-				 * that it was acting on behalf of.
-				 */
-				if (tmpvm != myvm) {
-					vmspace_free(tmpvm);
-				}
+				pmap_replacevm(mycp, userp->p_vmspace, 1);
 				curcp = userp;
 			}
 
@@ -803,23 +781,8 @@ aio_daemon(void *uproc, struct trapframe *frame)
 		 * Disconnect from user address space.
 		 */
 		if (curcp != mycp) {
-			/* Get the user address space to disconnect from. */
-			tmpvm = mycp->p_vmspace;
-			
-			/* Get original address space for daemon. */
-			mycp->p_vmspace = myvm;
-			
-			/* Activate the daemon's address space. */
-			pmap_activate(mycp);
-#ifdef DIAGNOSTIC
-			if (tmpvm == myvm) {
-				kprintf("AIOD: vmspace problem -- %d\n",
-				    mycp->p_pid);
-			}
-#endif
-			/* Remove our vmspace reference. */
-			vmspace_free(tmpvm);
-
+			/* swap our original address space back in */
+			pmap_replacevm(mycp, myvm, 1);
 			curcp = mycp;
 		}
 
@@ -850,12 +813,13 @@ aio_daemon(void *uproc, struct trapframe *frame)
 					zfree(aiop_zone, aiop);
 					num_aio_procs--;
 #ifdef DIAGNOSTIC
-					if (mycp->p_vmspace->vm_refcnt <= 1) {
+					if (mycp->p_vmspace->vm_sysref.refcnt <= 1) {
 						kprintf("AIOD: bad vm refcnt for"
 						    " exiting daemon: %d\n",
-						    mycp->p_vmspace->vm_refcnt);
+						    mycp->p_vmspace->vm_sysref.refcnt);
 					}
 #endif
+					sysref_put(&myvm->vm_sysref);
 					exit1(0);
 				}
 			}

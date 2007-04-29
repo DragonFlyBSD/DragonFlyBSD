@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.20 2007/02/26 21:41:08 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.21 2007/04/29 18:25:39 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -72,6 +72,8 @@
 #include <machine/pcb.h>
 #include <machine/pmap_inval.h>
 #include <machine/globaldata.h>
+
+#include <sys/sysref2.h>
 
 #include <assert.h>
 
@@ -228,6 +230,23 @@ pmap_pinit(struct pmap *pmap)
 	TAILQ_INIT(&pmap->pm_pvlist);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 }
+
+/*
+ * Clean up a pmap structure so it can be physically freed
+ */
+void
+pmap_puninit(pmap_t pmap)
+{
+	if (pmap->pm_pdir) {
+		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pdir, PAGE_SIZE);
+		pmap->pm_pdir = NULL;
+	}
+	if (pmap->pm_pteobj) {
+		vm_object_deallocate(pmap->pm_pteobj);
+		pmap->pm_pteobj = NULL;
+	}
+}
+
 
 /*
  * Wire in kernel global address entries.  To avoid a race condition
@@ -2948,42 +2967,43 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 }
 
 void
-pmap_activate(struct proc *p)
+pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 {
-	pmap_t	pmap;
+	struct pmap *pmap;
+	struct vmspace *oldvm;
 
-	pmap = vmspace_pmap(p->p_vmspace);
+	oldvm = p->p_vmspace;
+	if (oldvm != newvm) {
+		crit_enter();
+		p->p_vmspace = newvm;
+		if (p == curproc) {
+			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-	atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
+			atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
 #else
-	pmap->pm_active |= 1;
+			pmap->pm_active |= 1;
 #endif
 #if defined(SWTCH_OPTIM_STATS)
-	tlb_flush_count++;
+			tlb_flush_count++;
 #endif
 #if 0
-	KKASSERT((p == curproc));
-
-	curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
-	load_cr3(curthread->td_pcb->pcb_cr3);
+			curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
+			load_cr3(curthread->td_pcb->pcb_cr3);
 #endif
-}
-
-void
-pmap_deactivate(struct proc *p)
-{
-	pmap_t	pmap;
-
-	pmap = vmspace_pmap(p->p_vmspace);
+			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-	atomic_clear_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
+			atomic_clear_int(&pmap->pm_active,
+					  1 << mycpu->gd_cpuid);
 #else
-	pmap->pm_active &= ~1;
+			pmap->pm_active &= ~1;
 #endif
-	/*
-	 * XXX - note we do not adjust %cr3.  The caller is expected to
-	 * activate a new pmap or do a thread-exit.
-	 */
+		}
+		if (adjrefs) {
+			sysref_get(&newvm->vm_sysref);
+			sysref_put(&oldvm->vm_sysref);
+		}
+	}
+	crit_exit();
 }
 
 vm_offset_t

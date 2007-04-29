@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.10 2007/01/14 07:59:09 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.11 2007/04/29 18:25:41 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -46,13 +46,15 @@
 #include <sys/sysctl.h>
 #include <sys/vkernel.h>
 #include <sys/vmspace.h>
-#include <sys/spinlock2.h>
 
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
 #include <ddb/ddb.h>
 
 #include <machine/vmparam.h>
+
+#include <sys/spinlock2.h>
+#include <sys/sysref2.h>
 
 static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_common *vc,
 						  void *id);
@@ -198,9 +200,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			vk->vk_save_vmspace = NULL;
 			--ve->refs;
 		} else {
-			pmap_deactivate(p);
-			p->p_vmspace = ve->vmspace;
-			pmap_activate(p);
+			pmap_replacevm(p, ve->vmspace, 0);
 			set_user_TLS();
 			set_vkernel_fp(uap->sysmsg_frame);
 			error = EJUSTRETURN;
@@ -414,7 +414,7 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_common *vc)
 			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vm_map_remove(&ve->vmspace->vm_map,
 		      VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-	vmspace_free(ve->vmspace);
+	sysref_put(&ve->vmspace->vm_sysref);
 	kfree(ve, M_VKERNEL);
 }
 
@@ -477,9 +477,7 @@ vkernel_exit(struct proc *p)
 		db_print_backtrace();
 #endif
 		vk->vk_current = NULL;
-		pmap_deactivate(p);
-		p->p_vmspace = vk->vk_save_vmspace;
-		pmap_activate(p);
+		pmap_replacevm(p, vk->vk_save_vmspace, 0);
 		vk->vk_save_vmspace = NULL;
 		KKASSERT(ve->refs > 0);
 		--ve->refs;
@@ -524,9 +522,7 @@ vkernel_trap(struct proc *p, struct trapframe *frame)
 	/*
 	 * Switch the process context back to the virtual kernel's VM space.
 	 */
-	pmap_deactivate(p);
-	p->p_vmspace = vk->vk_save_vmspace;
-	pmap_activate(p);
+	pmap_replacevm(p, vk->vk_save_vmspace, 0);
 	vk->vk_save_vmspace = NULL;
 	KKASSERT(ve->refs > 0);
 	--ve->refs;

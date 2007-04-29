@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.15 2007/02/19 01:14:24 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.16 2007/04/29 18:25:40 dillon Exp $
  */
 
 /*
@@ -64,6 +64,7 @@
 #include <sys/ptrace.h>
 
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
@@ -80,14 +81,17 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	vm_offset_t kva;
 
 	/*
-	 * if the vmspace is in the midst of being deallocated or the
-	 * process is exiting, don't try to grab anything.  The page table
-	 * usage in that process can be messed up.
+	 * if the vmspace is in the midst of being allocated or deallocated,
+	 * or the process is exiting, don't try to grab anything.  The
+	 * page table usage in that process may be messed up.
 	 */
 	vm = p->p_vmspace;
-	if ((p->p_flag & P_WEXIT) || (vm->vm_refcnt < 1))
+	sysref_get(&vm->vm_sysref);
+	if ((p->p_flag & P_WEXIT) || sysref_isinactive(&vm->vm_sysref)) {
+		sysref_put(&vm->vm_sysref);
 		return EFAULT;
-	++vm->vm_refcnt;
+	}
+
 	/*
 	 * The map we want...
 	 */
@@ -151,7 +155,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	} while (error == 0 && uio->uio_resid > 0);
 
 	kmem_free(&kernel_map, kva, PAGE_SIZE);
-	vmspace_free(vm);
+	sysref_put(&vm->vm_sysref);
 	return (error);
 }
 
