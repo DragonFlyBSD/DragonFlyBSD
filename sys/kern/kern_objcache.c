@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.16 2007/01/07 04:06:51 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.17 2007/04/29 01:26:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -246,6 +246,27 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 			     margs);
 	return (oc);
 }
+
+struct objcache *
+objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
+			int cluster_limit, int mag_capacity,
+			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
+			void *private)
+{
+	struct objcache_malloc_args *margs;
+	struct objcache *oc;
+
+	margs = kmalloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
+	margs->objsize = objsize;
+	margs->mtype = mtype;
+	oc = objcache_create(mtype->ks_shortdesc,
+			     cluster_limit, mag_capacity,
+			     ctor, dtor, private,
+			     objcache_malloc_alloc, objcache_malloc_free,
+			     margs);
+	return(oc);
+}
+
 
 #define MAGAZINE_EMPTY(mag)	(mag->rounds == 0)
 #define MAGAZINE_NOTEMPTY(mag)	(mag->rounds != 0)

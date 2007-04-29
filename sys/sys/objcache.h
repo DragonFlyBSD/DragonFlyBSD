@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.7 2006/12/17 19:28:32 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.8 2007/04/29 01:26:45 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -67,6 +67,11 @@ struct objcache
 			 void *allocator_args);
 struct objcache
 	*objcache_create_simple(malloc_type_t mtype, size_t objsize);
+struct objcache
+	*objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
+			  int cluster_limit, int mag_capacity,
+			  objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
+			  void *private);
 void	*objcache_get(struct objcache *oc, int ocflags);
 void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);
