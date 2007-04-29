@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.12 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.12.4.1 2007/04/29 12:52:20 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -835,8 +835,10 @@ mly_immediate_command(struct mly_command *mc)
 
     /* spinning at splcam is ugly, but we're only used during controller init */
     crit_enter();
-    if ((error = mly_start(mc)))
+    if ((error = mly_start(mc))) {
+	crit_exit();
 	return(error);
+    }
 
     if (sc->mly_state & MLY_STATE_INTERRUPTS_ON) {
 	/* sleep on the command */
