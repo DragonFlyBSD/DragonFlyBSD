@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.1 2007/04/29 01:29:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysref.c,v 1.2 2007/04/29 06:11:19 dillon Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -51,7 +51,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/tree.h>
-#include <sys/syslink.h>
 #include <sys/spinlock.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>

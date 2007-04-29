@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.22 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.23 2007/04/29 06:11:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -42,7 +42,7 @@
 #include <sys/vnode.h>
 #include <sys/queue.h>
 #include <sys/device.h>
-#include <sys/syslink.h>
+#include <sys/syslink_rpc.h>
 #include <sys/proc.h>
 #include <machine/stdarg.h>
 #include <sys/thread2.h>
