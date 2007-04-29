@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.45 2006/06/07 03:02:11 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.46 2007/04/29 01:29:31 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -83,6 +83,9 @@
 #endif
 #ifndef _SYS_NCHSTATS_H_
 #include <sys/nchstats.h>
+#endif
+#ifndef _SYS_SYSID_H_
+#include <sys/sysid.h>	  /* sysid_t */
 #endif
 
 /*
@@ -157,8 +160,7 @@ struct globaldata {
 	struct pipe	*gd_pipeq;		/* cache pipe structures */
 	struct nchstats	*gd_nchstats;		/* namecache effectiveness */
 	int		gd_pipeqcount;		/* number of structures */
-	void 		*gd_unused04;
-	void		*gd_unused05;
+	sysid_t		gd_sysid_alloc;		/* allocate unique sysid */
 
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
 	struct spinlock	*gd_spinlock_rd;	/* Shared spinlock held */

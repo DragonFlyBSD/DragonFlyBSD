@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.7 2007/04/26 02:11:00 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.8 2007/04/29 01:29:31 dillon Exp $
  */
 
 /*
@@ -43,10 +43,6 @@
  * syslink 	- Implements a communications end-point and protocol.  A
  *		  syslink is typically directly embedded in a related
  *		  structure.
- *
- * syslink_proto- Specifies a set of RPC functions.
- *
- * syslink_desc - Specifies a single RPC function within a protocol.
  */
 
 #ifndef _SYS_SYSLINK_H_
@@ -55,30 +51,15 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_SYSID_H_
+#include <sys/sysid.h>
+#endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
 #ifndef _SYS_SOCKET_H_
 #include <sys/socket.h>
 #endif
-
-/*
- * SYSIDs are 64 bit entities and come in two varieties.  Physical SYSIDs
- * are used to efficiently route messages across the mesh, while Logical
- * SYSIDs are persistently assigned identifiers representing specific devices
- * or specific media or named filesystems.  That is, the logical SYSID
- * assigned to a filesystem or ANVIL partition can be stored in that
- * filesystem's superblock and allows the filesystem to migrate or
- * be multi-homed (have multiple physical SYSIDs representing the same
- * logical entity).
- *
- * Physical SYSIDs can be ever-changing, and any given logical SYSID could
- * in fact have multiple physical SYSIDs associated with it.  The mesh is
- * self-healing and the combination of the logical and physical sysid
- * basically validates the message at the target and determines whether
- * the physical SYSID must be recalculated (looked up again) or not.
- */
-typedef u_int64_t       sysid_t;
 
 /***************************************************************************
  *				PROTOCOL API/ABI			   *
@@ -89,9 +70,6 @@ typedef u_int64_t       sysid_t;
  */
 
 struct syslink;
-struct syslink_ops;
-struct syslink_proto;
-struct syslink_transport;
 struct syslink_desc;
 struct syslink_generic_args;
 
