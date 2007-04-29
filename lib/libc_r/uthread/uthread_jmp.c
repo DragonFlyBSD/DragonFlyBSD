@@ -29,13 +29,13 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_jmp.c,v 1.2.2.4 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_jmp.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_jmp.c,v 1.3 2007/04/29 01:10:33 dillon Exp $
  */
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <unistd.h>
 #include <setjmp.h>
 #include <sys/param.h>
-#include <sys/user.h>
 #include <machine/reg.h>
 #include <pthread.h>
 #include "pthread_private.h"

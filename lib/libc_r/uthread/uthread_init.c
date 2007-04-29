@@ -30,12 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.9 2005/05/11 19:47:00 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.10 2007/04/29 01:10:33 dillon Exp $
  */
 
 /* Allocate space for global thread variables here: */
 #define GLOBAL_PTHREAD_PRIVATE
 
+#include <sys/user.h>	/* MUST BE FIRST */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,7 +49,6 @@
 #include <sys/time.h>
 #include <sys/ttycom.h>
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/mman.h>
 #include <machine/reg.h>
 #include <pthread.h>
