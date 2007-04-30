@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.71 2007/04/26 11:58:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.72 2007/04/30 14:05:22 sephe Exp $
  *
  */
 
@@ -2118,7 +2118,7 @@ bge_intr(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
- 	uint32_t status, statusword, mimode;
+ 	uint32_t status, mimode;
 
  	/*
 	 * Ack the interrupt by writing something to BGE_MBX_IRQ0_LO.  Don't
@@ -2146,8 +2146,7 @@ bge_intr(void *xsc)
 			sc->bge_cdata.bge_status_map,
 			BUS_DMASYNC_POSTREAD);
 
-	/* XXX */
-	statusword = loadandclear(&sc->bge_ldata.bge_status_block->bge_status);
+	status = CSR_READ_4(sc, BGE_MAC_STS);
 
 	/*
 	 * Process link state changes.
@@ -2162,7 +2161,6 @@ bge_intr(void *xsc)
 	 */
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5700) {
-		status = CSR_READ_4(sc, BGE_MAC_STS);
 		if (status & BGE_MACSTAT_MI_INTERRUPT) {
 			sc->bge_link = 0;
 			callout_stop(&sc->bge_stat_timer);
@@ -2175,7 +2173,7 @@ bge_intr(void *xsc)
 			    BRGPHY_INTRS);
 		}
 	} else {
-		if (statusword & BGE_STATFLAG_LINKSTATE_CHANGED) {
+		if (status & BGE_MACSTAT_LINK_CHANGED) {
 			/*
 			 * Sometimes PCS encoding errors are detected in
 			 * TBI mode (on fiber NICs), and for some reason
@@ -2195,7 +2193,6 @@ bge_intr(void *xsc)
 			 * functions will often trigger a link status
 			 * interrupt for no reason.
 			 */
-			status = CSR_READ_4(sc, BGE_MAC_STS);
 			mimode = CSR_READ_4(sc, BGE_MI_MODE);
 			if (!(status & (BGE_MACSTAT_PORT_DECODE_ERROR |
 					BGE_MACSTAT_MI_COMPLETE)) &&
@@ -2211,9 +2208,6 @@ bge_intr(void *xsc)
 			CSR_WRITE_4(sc, BGE_MAC_STS, BGE_MACSTAT_SYNC_CHANGED|
 			    BGE_MACSTAT_CFG_CHANGED|BGE_MACSTAT_MI_COMPLETE|
 			    BGE_MACSTAT_LINK_CHANGED);
-
-			/* Force flush the status block cached by PCI bridge */
-			CSR_READ_4(sc, BGE_MBX_IRQ0_LO);
 		}
 	}
 
@@ -2516,7 +2510,7 @@ bge_start(struct ifnet *ifp)
 	prodidx = sc->bge_tx_prodidx;
 
 	need_trans = 0;
-	while(sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
+	while (sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
