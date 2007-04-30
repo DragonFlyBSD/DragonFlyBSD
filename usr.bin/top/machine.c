@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.23 2007/02/18 16:15:24 corecode Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.24 2007/04/30 22:48:26 hasso Exp $
  */
 
 
@@ -495,14 +495,14 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	 *  status field.  Processes with P_SYSTEM set are system
 	 *  processes---these get ignored unless show_sysprocs is set.
 	 */
-	if ((show_threads && (LP(pp, pid) == 0)) ||
+	if ((show_threads && (LP(pp, pid) == -1)) ||
 	    (!show_only_threads && (PP(pp, stat) != 0 &&
 	    (show_self != PP(pp, pid)) &&
 	    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0)))))
 	{
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, stat)]++;
-	    if ((show_threads && (LP(pp, pid) == 0)) ||
+	    if ((show_threads && (LP(pp, pid) == -1)) ||
 		(!show_only_threads && PP(pp, stat) != SZOMB &&
 		(show_idle || (LP(pp, pctcpu) != 0) ||
 		 (LP(pp, stat) == LSRUN)) &&
@@ -551,9 +551,9 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     /* set the wrapper for the process/thread name */
     if ((PP(pp, flags) & P_SWAPPEDOUT))
 	 wrapper = "[]"; /* swapped process [pname] */
-    else if (((PP(pp, flags) & P_SYSTEM) != 0) && (LP(pp, pid) != 0))
+    else if (((PP(pp, flags) & P_SYSTEM) != 0) && (LP(pp, pid) > 0))
 	 wrapper = "()"; /* system process (pname) */
-    else if (show_threads && (LP(pp, pid) == 0))
+    else if (show_threads && (LP(pp, pid) == -1))
 	 wrapper = "<>"; /* pure kernel threads <thread> */
     else
 	 wrapper = NULL;
@@ -636,7 +636,7 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
 	    PP(pp, pid),
 	    namelength, namelength,
 	    (*get_userid)(PP(pp, ruid)),
-	    (show_threads && (LP(pp, pid) == 0)) ? LP(pp, tdprio) :
+	    (show_threads && (LP(pp, pid) == -1)) ? LP(pp, tdprio) :
 	    	LP(pp, prio),
 	    nice,
 	    format_k2(PROCSIZE(pp)),
