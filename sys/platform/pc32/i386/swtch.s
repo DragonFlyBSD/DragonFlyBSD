@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.45 2007/04/29 18:25:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.46 2007/04/30 17:41:15 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -510,6 +510,10 @@ ENTRY(cpu_idle_restore)
 	call	ap_init
 1:
 #endif
+	/*
+	 * ap_init can decide to enable interrupts early, but otherwise, or if
+	 * we are UP, do it here.
+	 */
 	sti
 	jmp	cpu_idle
 

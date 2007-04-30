@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.57 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.58 2007/04/30 17:41:15 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2511,8 +2511,23 @@ ap_init(void)
 	 */
 	KKASSERT(curthread->td_mpcount == 1);
 	smp_active_mask |= 1 << mycpu->gd_cpuid;
+
+	/*
+	 * Enable interrupts here.  idle_restore will also do it, but
+	 * doing it here lets us clean up any strays that got posted to
+	 * the CPU during the AP boot while we are still in a critical
+	 * section.
+	 */
+	__asm __volatile("sti; pause; pause"::);
+	mdcpu->gd_fpending = 0;
+	mdcpu->gd_ipending = 0;
+
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();
+
+	/*
+	 * Releasing the mp lock lets the BSP finish up the SMP init
+	 */
 	rel_mplock();
 	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
 }
