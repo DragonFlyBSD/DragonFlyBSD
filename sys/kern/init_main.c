@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.77 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.78 2007/04/30 16:45:53 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -62,6 +62,7 @@
 #include <sys/vmmeter.h>
 #include <sys/unistd.h>
 #include <sys/malloc.h>
+#include <sys/machintr.h>
 #include <sys/file2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
@@ -273,6 +274,9 @@ SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 static void
 leavecrit(void *dummy __unused)
 {
+	MachIntrABI.finalize();
+	cpu_enable_intr();
+	MachIntrABI.cleanup();
 	crit_exit();
 	KKASSERT(!IN_CRITICAL_SECT(curthread));
 	if (bootverbose)

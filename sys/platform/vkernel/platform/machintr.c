@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.10 2007/01/15 01:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.11 2007/04/30 16:45:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -56,15 +56,17 @@ static int dummy_vectorctl(int, int, int);
 static int dummy_setvar(int, const void *);
 static int dummy_getvar(int, void *);
 static void dummy_finalize(void);
+static void dummy_intrcleanup(void);
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_GENERIC,
-	dummy_intrdis,
-	dummy_intren,
-	dummy_vectorctl,
-	dummy_setvar,
-	dummy_getvar,
-	dummy_finalize
+	.intrdis =	dummy_intrdis,
+	.intren =	dummy_intren,
+	.vectorctl =	dummy_vectorctl,
+	.setvar =	dummy_setvar,
+	.getvar =	dummy_getvar,
+	.finalize =	dummy_finalize,
+	.cleanup =	dummy_intrcleanup
 };
 
 static void
@@ -98,6 +100,11 @@ dummy_getvar(int varid, void *buf)
 
 static void
 dummy_finalize(void)
+{
+}
+
+static void
+dummy_intrcleanup(void)
 {
 }
 

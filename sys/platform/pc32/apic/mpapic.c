@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.20 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.21 2007/04/30 16:45:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,6 +126,14 @@ apic_initialize(void)
 	temp |= XSPURIOUSINT_OFFSET;
 
 	lapic.svr = temp;
+
+	/*
+	 * Pump out a few EOIs to clean out interrupts that got through
+	 * before we were able to set the TPR.
+	 */
+	lapic.eoi = 0;
+	lapic.eoi = 0;
+	lapic.eoi = 0;
 
 	if (bootverbose)
 		apic_dump("apic_initialize()");

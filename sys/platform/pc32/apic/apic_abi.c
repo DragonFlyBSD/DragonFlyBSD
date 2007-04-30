@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.12 2007/04/30 16:45:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,12 +46,17 @@
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
+
 #include <machine/smp.h>
 #include <machine/segments.h>
 #include <machine/md_var.h>
 #include <machine/clock.h>	/* apic_8254_intr */
 #include <machine_base/isa/intr_machdep.h>
 #include <machine_base/icu/icu.h>
+#include <machine/globaldata.h>
+
+#include <sys/thread2.h>
+
 #include "apic_ipl.h"
 
 #ifdef APIC_IO
@@ -105,6 +110,7 @@ static int apic_setvar(int, const void *);
 static int apic_getvar(int, void *);
 static int apic_vectorctl(int, int, int);
 static void apic_finalize(void);
+static void apic_cleanup(void);
 
 static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr0), &IDTVEC(apic_fastintr1),
@@ -155,12 +161,13 @@ static int apic_imcr_present;
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_APIC,
-	APIC_INTRDIS,
-	APIC_INTREN,
-	apic_vectorctl,
-	apic_setvar,
-	apic_getvar,
-	apic_finalize
+	.intrdis =	APIC_INTRDIS,
+	.intren =	APIC_INTREN,
+	.vectorctl =	apic_vectorctl,
+	.setvar =	apic_setvar,
+	.getvar =	apic_getvar,
+	.finalize =	apic_finalize,
+	.cleanup =	apic_cleanup
 };
 
 static int
@@ -196,7 +203,9 @@ apic_getvar(int varid, void *buf)
 }
 
 /*
- * Final configuration of the BSP's local APIC:
+ * Called before interrupts are physically enabled, this routine does the
+ * final configuration of the BSP's local APIC:
+ *
  *  - disable 'pic mode'.
  *  - disable 'virtual wire mode'.
  *  - enable NMI.
@@ -234,6 +243,18 @@ apic_finalize(void)
 
     if (bootverbose)
 	apic_dump("bsp_apic_configure()");
+}
+
+/*
+ * This routine is called after physical interrupts are enabled but before
+ * the critical section is released.  We need to clean out any interrupts
+ * that had already been posted to the cpu.
+ */
+static void
+apic_cleanup(void)
+{
+	mdcpu->gd_fpending = 0;
+	mdcpu->gd_ipending = 0;
 }
 
 static

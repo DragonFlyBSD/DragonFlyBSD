@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.47 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.48 2007/04/30 16:45:53 dillon Exp $
  *
  */
 
@@ -487,7 +487,8 @@ sched_ithd(int intr)
     ++info->i_count;
     if (info->i_state != ISTATE_NOTHREAD) {
 	if (info->i_reclist == NULL) {
-	    kprintf("sched_ithd: stray interrupt %d\n", intr);
+	    kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
+		    intr, mycpuid);
 	} else {
 #ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
@@ -509,7 +510,8 @@ sched_ithd(int intr)
 #endif
 	}
     } else {
-	kprintf("sched_ithd: stray interrupt %d\n", intr);
+	kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
+		intr, mycpuid);
     }
 }
 

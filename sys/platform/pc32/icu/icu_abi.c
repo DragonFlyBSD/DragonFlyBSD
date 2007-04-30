@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.12 2007/04/30 16:45:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,9 @@
 #include <machine/segments.h>
 #include <machine/md_var.h>
 #include <machine_base/isa/intr_machdep.h>
+#include <machine/globaldata.h>
+
+#include <sys/thread2.h>
 
 #include "icu.h"
 #include "icu_ipl.h"
@@ -82,6 +85,7 @@ static int icu_vectorctl(int, int, int);
 static int icu_setvar(int, const void *);
 static int icu_getvar(int, void *);
 static void icu_finalize(void);
+static void icu_cleanup(void);
 
 static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_fastintr0), &IDTVEC(icu_fastintr1),
@@ -107,12 +111,13 @@ static inthand_t *icu_slowintr[ICU_HWI_VECTORS] = {
 
 struct machintr_abi MachIntrABI = {
     MACHINTR_ICU,
-    ICU_INTRDIS,
-    ICU_INTREN,
-    icu_vectorctl,
-    icu_setvar,
-    icu_getvar,
-    icu_finalize
+    .intrdis =	ICU_INTRDIS,
+    .intren =	ICU_INTREN,
+    .vectorctl =icu_vectorctl,
+    .setvar =	icu_setvar,
+    .getvar =	icu_getvar,
+    .finalize =	icu_finalize,
+    .cleanup =	icu_cleanup
 };
 
 static int icu_imcr_present;
@@ -120,7 +125,6 @@ static int icu_imcr_present;
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
-
 static 
 int
 icu_setvar(int varid __unused, const void *buf __unused)
@@ -155,9 +159,17 @@ icu_getvar(int varid __unused, void *buf __unused)
     return (error);
 }
 
+/*
+ * Called before interrupts are physically enabled
+ */
 static void
 icu_finalize(void)
 {
+    int intr;
+
+    for (intr = 0; intr < ICU_HWI_VECTORS; ++intr) {
+	machintr_intrdis(intr);
+    }
     machintr_intren(ICU_IRQ_SLAVE);
 
     /*
@@ -176,6 +188,21 @@ icu_finalize(void)
 #endif
     }
 }
+
+/*
+ * Called after interrupts physically enabled but before the
+ * critical section is released.
+ */
+static
+void
+icu_cleanup(void)
+{
+	kprintf("fpending %08x ipending %08x\n",
+		mdcpu->gd_fpending, mdcpu->gd_ipending);
+	mdcpu->gd_fpending = 0;
+	mdcpu->gd_ipending = 0;
+}
+
 
 static
 int

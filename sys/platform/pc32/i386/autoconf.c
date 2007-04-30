@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.34 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.35 2007/04/30 16:45:56 dillon Exp $
  */
 
 /*
@@ -122,12 +122,6 @@ configure_first(void *dummy)
 static void
 configure(void *dummy)
 {
-        /*
-	 * Final interrupt support acviation, then enable hardware interrupts.
-	 */
-	MachIntrABI.finalize();
-	cpu_enable_intr();
-
 	/*
 	 * This will configure all devices, generally starting with the
 	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly

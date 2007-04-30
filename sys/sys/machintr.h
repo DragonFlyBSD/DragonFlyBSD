@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.6 2006/12/05 17:06:15 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.7 2007/04/30 16:46:01 dillon Exp $
  */
 /*
  * This module defines the ABI for the machine-independant cpu interrupt
@@ -63,6 +63,7 @@ struct machintr_abi {
     int		(*setvar)(int, const void *);	/* set miscellanious info */
     int		(*getvar)(int, void *);		/* get miscellanious info */
     void	(*finalize)(void);		/* final before ints enabled */
+    void	(*cleanup)(void);		/* cleanup */
 };
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)

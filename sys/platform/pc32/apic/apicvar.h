@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apicvar.h,v 1.5 2003/11/14 22:21:30 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.3 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.4 2007/04/30 16:45:55 dillon Exp $
  */
 
 #ifndef _MACHINE_APICVAR_H_
@@ -114,13 +114,6 @@ struct apic_enumerator {
 	int (*apic_setup_io)(void);
 	SLIST_ENTRY(apic_enumerator) apic_next;
 };
-
-#if 0
-inthand_t
-	IDTVEC(apic_isr1), IDTVEC(apic_isr2), IDTVEC(apic_isr3),
-	IDTVEC(apic_isr4), IDTVEC(apic_isr5), IDTVEC(apic_isr6),
-	IDTVEC(apic_isr7), IDTVEC(spuriousint);
-#endif
 
 u_int	apic_irq_to_idt(u_int irq);
 u_int	apic_idt_to_irq(u_int vector);
