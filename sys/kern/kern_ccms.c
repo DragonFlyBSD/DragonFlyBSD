@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_ccms.c,v 1.3 2007/01/06 19:35:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ccms.c,v 1.4 2007/04/30 07:18:53 dillon Exp $
  */
 /*
  * The Cache Coherency Management System (CCMS)
@@ -81,7 +81,7 @@ ccmsinit(void *dummy)
 {
     ccms_oc = objcache_create_simple(M_CCMS, sizeof(struct ccms_cst));
 }
-SYSINIT(ccms, SI_SUB_OBJCACHE, SI_ORDER_ANY, ccmsinit, NULL);
+SYSINIT(ccms, SI_BOOT2_MACHDEP, SI_ORDER_ANY, ccmsinit, NULL);
 
 /*
  * Initialize a new CCMS dataspace.  Create a new RB tree with a single

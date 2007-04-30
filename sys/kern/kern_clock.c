@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.56 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.57 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -113,7 +113,7 @@ static void do_pctrack(struct intrframe *frame, int which);
 #endif
 
 static void initclocks (void *dummy);
-SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
+SYSINIT(clocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.
@@ -229,7 +229,6 @@ int	ntp_leap_insert;	/* whether to insert or remove a second */
 static void
 initclocks(void *dummy)
 {
-	cpu_initclocks();
 #ifdef DEVICE_POLLING
 	init_device_poll();
 #endif

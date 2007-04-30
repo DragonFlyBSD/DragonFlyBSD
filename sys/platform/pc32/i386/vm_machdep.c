@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.58 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.59 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -499,7 +499,7 @@ swi_vm_setup(void *arg)
 	register_swi(SWI_VM, swi_vm, NULL, "swi_vm", NULL);
 }
 
-SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_vm_setup, NULL);
+SYSINIT(vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
 
 
 /*

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.17 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.18 2007/04/30 07:18:52 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -126,7 +126,7 @@ vid_malloc_init(void *arg)
 	vid_malloc = TRUE;
 }
 
-SYSINIT(vid_mem, SI_SUB_KMEM, SI_ORDER_ANY, vid_malloc_init, NULL);
+SYSINIT(vid_mem, SI_BOOT1_POST, SI_ORDER_ANY, vid_malloc_init, NULL);
 
 /*
  * Low-level frame buffer driver functions

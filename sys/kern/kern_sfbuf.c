@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.14 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.15 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 #include <sys/thread2.h>
 
 static void sf_buf_init(void *arg);
-SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
+SYSINIT(sock_sf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sf_buf_init, NULL)
 
 LIST_HEAD(sf_buf_list, sf_buf);
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.13 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.14 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,7 +331,7 @@ acpi_alloc_wakeup_handler(void)
 	}
 }
 
-SYSINIT(acpiwakeup, SI_SUB_KMEM, SI_ORDER_ANY, acpi_alloc_wakeup_handler, 0)
+SYSINIT(acpiwakeup, SI_BOOT1_POST, SI_ORDER_ANY, acpi_alloc_wakeup_handler, 0)
 
 static void
 acpi_realmodeinst(void *arg, bus_dma_segment_t *segs, int nsegs, int error)

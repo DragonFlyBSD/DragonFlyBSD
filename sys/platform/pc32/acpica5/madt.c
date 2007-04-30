@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.17 2004/06/10 20:03:46 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.8 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.9 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -401,13 +401,15 @@ madt_setup_io(void)
 	return (0);
 }
 
+/*
+ * Register an enumerator that the SMP startup code might use
+ */
 static void
 madt_register(void *dummy __unused)
 {
-
 	apic_register_enumerator(&madt_enumerator);
 }
-SYSINIT(madt_register, SI_SUB_CPU - 1, SI_ORDER_FIRST, madt_register, NULL)
+SYSINIT(madt_register, SI_BOOT2_PRESMP, SI_ORDER_FIRST, madt_register, NULL)
 
 /*
  * Call the handler routine for each entry in the MADT table.
@@ -746,7 +748,8 @@ madt_parse_ints(APIC_HEADER *entry, void *arg __unused)
 }
 
 /*
- * Setup per-CPU ACPI IDs.
+ * Setup per-CPU ACPI IDs.  This is done as part of the high-level BIOS
+ * setup (after SMP), but before MACHDEP systems are initialized.
  */
 static void
 madt_set_ids(void *dummy)
@@ -772,4 +775,4 @@ madt_set_ids(void *dummy)
 			    la->la_acpi_id);
 	}
 }
-SYSINIT(madt_set_ids, SI_SUB_CPU, SI_ORDER_ANY, madt_set_ids, NULL)
+SYSINIT(madt_set_ids, SI_BOOT2_BIOS, SI_ORDER_FIRST, madt_set_ids, NULL)

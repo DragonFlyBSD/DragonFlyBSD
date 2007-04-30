@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.17 2007/04/29 01:26:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.18 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -894,4 +894,4 @@ objcache_init(void)
 		      objcache_timer, NULL);
 #endif
 }
-SYSINIT(objcache, SI_SUB_CPU, SI_ORDER_ANY, objcache_init, 0);
+SYSINIT(objcache, SI_BOOT2_OBJCACHE, SI_ORDER_FIRST, objcache_init, 0);

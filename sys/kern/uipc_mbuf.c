@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.60 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.61 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -104,7 +104,7 @@ struct mbcluster {
 };
 
 static void mbinit(void *);
-SYSINIT(mbuf, SI_SUB_MBUF, SI_ORDER_FIRST, mbinit, NULL)
+SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL)
 
 static u_long	mbtypes[MT_NTYPES];
 
@@ -179,7 +179,6 @@ static void m_mclfree(void *arg);
 static void
 tunable_mbinit(void *dummy)
 {
-
 	/*
 	 * This has to be done before VM init.
 	 */
@@ -190,10 +189,9 @@ tunable_mbinit(void *dummy)
 	/* Sanity checks */
 	if (nmbufs < nmbclusters * 2)
 		nmbufs = nmbclusters * 2;
-
-	return;
 }
-SYSINIT(tunable_mbinit, SI_SUB_TUNABLES, SI_ORDER_ANY, tunable_mbinit, NULL);
+SYSINIT(tunable_mbinit, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
+	tunable_mbinit, NULL);
 
 /* "number of clusters of pages" */
 #define NCL_INIT	1

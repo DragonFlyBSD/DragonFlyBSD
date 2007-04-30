@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.49 2007/01/25 09:18:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.50 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -167,7 +167,7 @@ shutdown_conf(void *unused)
 	EVENTHANDLER_REGISTER(shutdown_final, shutdown_reset, NULL, SHUTDOWN_PRI_LAST + 200);
 }
 
-SYSINIT(shutdown_conf, SI_SUB_INTRINSIC, SI_ORDER_ANY, shutdown_conf, NULL)
+SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL)
 
 /* ARGSUSED */
 

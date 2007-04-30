@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.25 2007/04/22 01:13:15 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.26 2007/04/30 07:18:55 dillon Exp $ */
 
 /*
  *
@@ -748,10 +748,9 @@ static int natmintr(struct netmsg *);
 static void
 netisr_natm_setup(void *dummy __unused)
 {
-
 	netisr_register(NETISR_NATM, cpu0_portfn, natmintr);
 }
-SYSINIT(natm_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_natm_setup, NULL);
+SYSINIT(natm_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_natm_setup, NULL);
 #endif
 
 void

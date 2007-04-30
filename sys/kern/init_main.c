@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.76 2007/04/29 18:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.77 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -73,6 +73,7 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
+#include <vm/vm_extern.h>
 #include <sys/user.h>
 #include <sys/copyright.h>
 
@@ -97,10 +98,10 @@ SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0, "");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
- * symbol is not undefined.  A sybsystem ID of SI_SUB_DUMMY is never
+ * symbol is not undefined.  A sybsystem ID of SI_SPECIAL_DUMMY is never
  * executed.
  */
-SYSINIT(placeholder, SI_SUB_DUMMY, SI_ORDER_ANY, NULL, NULL)
+SYSINIT(placeholder, SI_SPECIAL_DUMMY, SI_ORDER_ANY, NULL, NULL)
 
 /*
  * The sysinit table itself.  Items are checked off as the are run.
@@ -221,17 +222,17 @@ restart:
 	 */
 	for (sipp = sysinit; sipp < sysinit_end; sipp++) {
 		sip = *sipp;
-		if (sip->subsystem == SI_SUB_DUMMY)
+		if (sip->subsystem == SI_SPECIAL_DUMMY)
 			continue;	/* skip dummy task(s)*/
 
-		if (sip->subsystem == SI_SUB_DONE)
+		if (sip->subsystem == SI_SPECIAL_DONE)
 			continue;
 
 		/* Call function */
 		(*(sip->func))(sip->udata);
 
 		/* Check off the one we're just done */
-		sip->subsystem = SI_SUB_DONE;
+		sip->subsystem = SI_SPECIAL_DONE;
 
 		/* Check if we've installed more sysinit items via KLD */
 		if (newsysinit != NULL) {
@@ -263,7 +264,7 @@ print_caddr_t(void *data __unused)
 {
 	kprintf("%s", (char *)data);
 }
-SYSINIT(announce, SI_SUB_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
+SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 
 /*
  * Leave the critical section that protected us from spurious interrupts
@@ -277,7 +278,7 @@ leavecrit(void *dummy __unused)
 	if (bootverbose)
 		kprintf("Leaving critical section, allowing interrupts\n");
 }
-SYSINIT(leavecrit, SI_SUB_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
+SYSINIT(leavecrit, SI_BOOT2_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
 
 /*
  ***************************************************************************
@@ -378,9 +379,9 @@ proc0_init(void *dummy __unused)
 	 * Charge root for one process.
 	 */
 	(void)chgproccnt(p->p_ucred->cr_uidinfo, 1, 0);
-
+	vm_init_limits(p);
 }
-SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)
+SYSINIT(p0init, SI_BOOT2_PROC0, SI_ORDER_FIRST, proc0_init, NULL)
 
 static int proc0_post_callback(struct proc *p, void *data __unused);
 
@@ -411,7 +412,7 @@ proc0_post_callback(struct proc *p, void *data __unused)
 	return(0);
 }
 
-SYSINIT(p0post, SI_SUB_INTRINSIC_POST, SI_ORDER_FIRST, proc0_post, NULL)
+SYSINIT(p0post, SI_SUB_PROC0_POST, SI_ORDER_FIRST, proc0_post, NULL)
 
 /*
  ***************************************************************************
@@ -611,7 +612,7 @@ create_init(const void *udata __unused)
 	cpu_set_fork_handler(lp, start_init, NULL);
 	crit_exit();
 }
-SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
+SYSINIT(init, SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
 
 /*
  * Make it runnable now.
@@ -621,7 +622,7 @@ kick_init(const void *udata __unused)
 {
 	start_forked_proc(&lwp0, initproc);
 }
-SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
+SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 
 /*
  * Machine independant globaldata initialization

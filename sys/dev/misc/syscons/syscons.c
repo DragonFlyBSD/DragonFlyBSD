@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.30 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.31 2007/04/30 07:18:49 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -419,8 +419,7 @@ scmeminit(void *arg)
 #endif
 }
 
-/* XXX */
-SYSINIT(sc_mem, SI_SUB_KMEM, SI_ORDER_ANY, scmeminit, NULL);
+SYSINIT(sc_mem, SI_BOOT1_POST, SI_ORDER_ANY, scmeminit, NULL);
 
 static int
 scdevtounit(cdev_t dev)

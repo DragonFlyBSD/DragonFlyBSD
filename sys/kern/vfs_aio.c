@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.39 2007/04/29 18:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.40 2007/04/30 07:18:54 dillon Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/aio.h>
 #include <sys/file2.h>
 #include <sys/buf2.h>
+#include <sys/sysref2.h>
 #include <sys/thread2.h>
 
 #include <machine/limits.h>
@@ -619,7 +620,7 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	struct aioproclist *aiop;
 	struct kaioinfo *ki;
 	struct proc *curcp, *mycp, *userp;
-	struct vmspace *myvm, *tmpvm;
+	struct vmspace *myvm;
 	struct ucred *cr;
 
 	/*

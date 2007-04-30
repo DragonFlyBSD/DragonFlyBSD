@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.19 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.20 2007/04/30 07:18:53 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -135,7 +135,7 @@ msf_buf_init(void *__dummy)
 		TAILQ_INSERT_TAIL(&msf_buf_freelist, &msf_bufs[i], free_list);
 	}
 }
-SYSINIT(msf_buf, SI_SUB_MBUF, SI_ORDER_ANY, msf_buf_init, NULL);
+SYSINIT(msf_buf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, msf_buf_init, NULL);
 
 /*
  * Get an msf_buf from the freelist; if none are available

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.33 2007/01/15 20:51:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.34 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -71,7 +71,7 @@ linker_init(void* arg)
     TAILQ_INIT(&linker_files);
 }
 
-SYSINIT(linker, SI_SUB_KLD, SI_ORDER_FIRST, linker_init, 0);
+SYSINIT(linker, SI_BOOT2_KLD, SI_ORDER_FIRST, linker_init, 0);
 
 int
 linker_add_class(const char* desc, void* priv,
@@ -146,7 +146,7 @@ linker_file_sysinit(linker_file_t lf)
      * Perform each task, and continue on to the next task.
      */
     for (sipp = start; sipp < stop; sipp++) {
-	if ((*sipp)->subsystem == SI_SUB_DUMMY)
+	if ((*sipp)->subsystem == SI_SPECIAL_DUMMY)
 	    continue;	/* skip dummy task(s)*/
 
 	/* Call function */
@@ -194,7 +194,7 @@ linker_file_sysuninit(linker_file_t lf)
      * Perform each task, and continue on to the next task.
      */
     for (sipp = start; sipp < stop; sipp++) {
-	if ((*sipp)->subsystem == SI_SUB_DUMMY)
+	if ((*sipp)->subsystem == SI_SPECIAL_DUMMY)
 	    continue;	/* skip dummy task(s)*/
 
 	/* Call function */
@@ -1062,7 +1062,7 @@ linker_preload(void* arg)
     }
 }
 
-SYSINIT(preload, SI_SUB_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
+SYSINIT(preload, SI_BOOT2_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
 
 /*
  * Search for a not-loaded module by name.

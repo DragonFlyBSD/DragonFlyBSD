@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.22 2004/04/14 17:58:19 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.4 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.5 2007/04/30 07:18:47 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -119,7 +119,8 @@ acpi_pwr_init(void *junk)
     TAILQ_INIT(&acpi_powerresources);
     TAILQ_INIT(&acpi_powerconsumers);
 }
-SYSINIT(acpi_powerresource, SI_SUB_TUNABLES, SI_ORDER_ANY, acpi_pwr_init, NULL);
+SYSINIT(acpi_powerresource, SI_BOOT1_LOCK, SI_ORDER_ANY,
+	acpi_pwr_init, NULL);
 
 /*
  * Register a power resource.

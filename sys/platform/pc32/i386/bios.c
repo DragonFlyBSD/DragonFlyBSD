@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.14 2006/12/28 18:29:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.15 2007/04/30 07:18:55 dillon Exp $
  */
 
 /*
@@ -53,7 +53,7 @@ static u_int			bios32_SDCI;
 
 /* start fairly early */
 static void			bios32_init(void *junk);
-SYSINIT(bios32, SI_SUB_CPU, SI_ORDER_ANY, bios32_init, NULL);
+SYSINIT(bios32, SI_BOOT2_BIOS, SI_ORDER_ANY, bios32_init, NULL);
 
 /*
  * bios32_init

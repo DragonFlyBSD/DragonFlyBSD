@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.22 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.23 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1292,7 +1292,7 @@ sys_linux_ioctl(struct linux_ioctl_args *args)
 	return (mapped_ioctl(args->fd, args->cmd, (caddr_t)args->arg, &linux_ioctl_map));
 }
 
-SYSINIT  (linux_ioctl_register, SI_SUB_KLD, SI_ORDER_MIDDLE,
+SYSINIT  (linux_ioctl_register, SI_BOOT2_KLD, SI_ORDER_MIDDLE,
 	  mapped_ioctl_register_handler, &linux_ioctl_base_handler);
-SYSUNINIT(linux_ioctl_register, SI_SUB_KLD, SI_ORDER_MIDDLE,
+SYSUNINIT(linux_ioctl_register, SI_BOOT2_KLD, SI_ORDER_MIDDLE,
 	  mapped_ioctl_unregister_handler, &linux_ioctl_base_handler);

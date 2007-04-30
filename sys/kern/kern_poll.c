@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.25 2007/01/05 22:16:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.26 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_polling.h"
@@ -211,7 +211,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 	crit_enter();
 	pollhz = phz;
 	if (polling_enabled)
-		gd0_pollclock.periodic = sys_cputimer->fromhz(phz);
+		systimer_adjust_periodic(&gd0_pollclock, phz);
 	crit_exit();
 	return 0;
 }
@@ -231,9 +231,9 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 		return error;
 	polling_enabled = enabled;
 	if (polling_enabled)
-		gd0_pollclock.periodic = sys_cputimer->fromhz(pollhz);
+		systimer_adjust_periodic(&gd0_pollclock, pollhz);
 	else
-		gd0_pollclock.periodic = sys_cputimer->fromhz(1);
+		systimer_adjust_periodic(&gd0_pollclock, 1);
 	return 0;
 }
 

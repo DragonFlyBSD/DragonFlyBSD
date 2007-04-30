@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.9 2007/04/30 07:18:54 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ varsym_sysinit(void *dummy)
 {
     varsymset_init(&varsymset_sys, NULL);
 }
-SYSINIT(announce, SI_SUB_INTRINSIC, SI_ORDER_FIRST, varsym_sysinit, NULL);
+SYSINIT(announce, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, varsym_sysinit, NULL);
 
 /*
  * varsymreplace() - called from namei

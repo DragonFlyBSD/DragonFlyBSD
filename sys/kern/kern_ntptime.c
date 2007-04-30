@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.13 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -572,7 +572,7 @@ ntp_init(void)
 #endif /* PPS_SYNC */	   
 }
 
-SYSINIT(ntpclocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, ntp_init, NULL)
+SYSINIT(ntpclocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, ntp_init, NULL)
 
 /*
  * hardupdate() - local clock update

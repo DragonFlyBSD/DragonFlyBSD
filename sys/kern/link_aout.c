@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.21 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.22 2007/04/30 07:18:54 dillon Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -134,7 +134,7 @@ link_aout_init(void* arg)
 #endif
 }
 
-SYSINIT(link_aout, SI_SUB_KLD, SI_ORDER_THIRD, link_aout_init, 0);
+SYSINIT(link_aout, SI_BOOT2_KLD, SI_ORDER_THIRD, link_aout_init, 0);
 
 static int
 link_aout_load_module(const char* filename, linker_file_t* result)

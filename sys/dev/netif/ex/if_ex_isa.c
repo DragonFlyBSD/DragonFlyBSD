@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.13 2006/12/22 23:26:19 swildner Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.14 2007/04/30 07:18:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,12 +53,6 @@ static int	ex_isa_identify	(driver_t *, device_t);
 static int	ex_isa_probe	(device_t);
 static int	ex_isa_attach	(device_t);
 
-#if 0
-static	void	ex_pnp_wakeup	(void *);
-
-SYSINIT(ex_pnpwakeup, SI_SUB_CPU, SI_ORDER_ANY, ex_pnp_wakeup, NULL);
-#endif
-
 /*
  * We need an identify function to 'probe' the ISA bus.
  */
@@ -86,31 +80,6 @@ static struct isa_pnp_id ex_ids[] = {
 	{ 0x3010d425,	NULL },	/* INT1030 */
 	{ 0,		NULL },
 };
-
-#if 0
-#define EX_PNP_WAKE		0x279
-
-static u_int8_t ex_pnp_wake_seq[] =
-			{ 0x6A, 0xB5, 0xDA, 0xED, 0xF6, 0xFB, 0x7D, 0xBE,
-			  0xDF, 0x6F, 0x37, 0x1B, 0x0D, 0x86, 0xC3, 0x61,
-			  0xB0, 0x58, 0x2C, 0x16, 0x8B, 0x45, 0xA2, 0xD1,
-			  0xE8, 0x74, 0x3A, 0x9D, 0xCE, 0xE7, 0x73, 0x43 };
-
-static void
-ex_pnp_wakeup (void * dummy)
-{
-	int	tmp;
-
-	if (bootverbose)
-		kprintf("ex_pnp_wakeup()\n");
-
-	outb(EX_PNP_WAKE, 0);
-	outb(EX_PNP_WAKE, 0);
-	for (tmp = 0; tmp < 32; tmp++) {
-		outb(EX_PNP_WAKE, ex_pnp_wake_seq[tmp]);
-	}
-}
-#endif
 
 /*
  * Non-destructive identify.

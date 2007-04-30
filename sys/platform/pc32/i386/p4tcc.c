@@ -37,7 +37,7 @@
  * Workarounds included below.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sys/i386/i386/p4tcc.c,v 1.3.2.1 2004/03/03 15:24:15 sobomax Exp $
- * $DragonFly: src/sys/platform/pc32/i386/p4tcc.c,v 1.2 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/p4tcc.c,v 1.3 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -248,4 +248,10 @@ setup_p4tcc(void *dummy __unused)
 	/* register performance profile change handler */
 	EVENTHANDLER_REGISTER(power_profile_change, p4tcc_power_profile, NULL, 0);
 }
-SYSINIT(setup_p4tcc, SI_SUB_CPU, SI_ORDER_ANY, setup_p4tcc, NULL);
+
+/*
+ * Set this is pre-smp to give us a chance to play nice in case
+ * SMP startup locks the system up.
+ */
+SYSINIT(setup_p4tcc, SI_BOOT2_PRESMP, SI_ORDER_ANY, setup_p4tcc, NULL);
+

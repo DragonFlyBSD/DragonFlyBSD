@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
- * $DragonFly: src/sys/kern/kern_environment.c,v 1.5 2007/01/27 14:14:13 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/kern_environment.c,v 1.6 2007/04/30 07:18:53 dillon Exp $
  */
 
 /*
@@ -413,4 +413,4 @@ kenv_init(void *dummy)
 	spin_init(&kenv_dynlock);
 	kenv_isdynamic = 1;
 }
-SYSINIT(kenv, SI_SUB_KMEM, SI_ORDER_ANY, kenv_init, NULL);
+SYSINIT(kenv, SI_BOOT1_POST, SI_ORDER_ANY, kenv_init, NULL);

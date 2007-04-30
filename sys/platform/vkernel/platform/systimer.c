@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.11 2007/01/15 19:08:10 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.12 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -87,12 +87,13 @@ static struct cputimer vkernel_cputimer = {
  * Initialize the systimer subsystem, called from MI code in early boot.
  */
 void
-cpu_initclocks(void)
+cpu_initclocks(void *arg __unused)
 {
 	kprintf("initclocks\n");
 	cputimer_register(&vkernel_cputimer);
 	cputimer_select(&vkernel_cputimer, 0);
 }
+SYSINIT(clocksvk, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
 
 /*
  * Constructor to initialize timer->base and get an initial count.

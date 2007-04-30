@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.50 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.51 2007/04/30 07:18:55 dillon Exp $
  */
 
 /*
@@ -955,7 +955,7 @@ resettodr(void)
  * interrupts.  statclock_disable is set by default.
  */
 void
-cpu_initclocks(void)
+cpu_initclocks(void *arg __unused)
 {
 	int diag;
 #ifdef APIC_IO
@@ -1099,6 +1099,7 @@ cpu_initclocks(void)
 #endif
 	callout_init(&sysbeepstop_ch);
 }
+SYSINIT(clocks8254, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
 
 #ifdef APIC_IO
 

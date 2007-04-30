@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.38 2007/04/29 18:25:41 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.39 2007/04/30 07:18:57 dillon Exp $
  */
 
 /*
@@ -95,7 +95,7 @@ SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
  */
 
 static void vmmapentry_rsrc_init (void *);
-SYSINIT(vmmersrc, SI_SUB_KVM_RSRC, SI_ORDER_FIRST, vmmapentry_rsrc_init, NULL)
+SYSINIT(vmmersrc, SI_BOOT1_POST, SI_ORDER_ANY, vmmapentry_rsrc_init, NULL)
 
 static void
 vmmapentry_rsrc_init(void *dummy)

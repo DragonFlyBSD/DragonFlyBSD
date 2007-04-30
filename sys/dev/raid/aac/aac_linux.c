@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.5 2004/08/15 14:15:00 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.6 2007/04/30 07:18:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,9 +80,9 @@ static struct ioctl_map_handler aac_linux_ioctl_handler = {
 	aac_linux_ioctl_cmds
 };
 
-SYSINIT  (aac_register,   SI_SUB_KLD, SI_ORDER_MIDDLE,
+SYSINIT  (aac_register,   SI_BOOT2_KLD, SI_ORDER_MIDDLE,
 	  mapped_ioctl_register_handler, &aac_linux_ioctl_handler);
-SYSUNINIT(aac_unregister, SI_SUB_KLD, SI_ORDER_MIDDLE,
+SYSUNINIT(aac_unregister, SI_BOOT2_KLD, SI_ORDER_MIDDLE,
 	  mapped_ioctl_unregister_handler, &aac_linux_ioctl_handler);
 
 static int

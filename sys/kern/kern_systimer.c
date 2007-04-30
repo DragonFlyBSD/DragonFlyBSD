@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.9 2007/04/30 06:57:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.10 2007/04/30 07:18:54 dillon Exp $
  */
 
 /*
@@ -111,7 +111,6 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 	    if (info->which != sys_cputimer) {
 		info->periodic = sys_cputimer->fromhz(info->freq);
 		info->which = sys_cputimer;
-		kprintf("readjusted systimer freq %p\n", info);
 	    }
 	    info->time += info->periodic;
 	    if ((info->flags & SYSTF_NONQUEUED) &&

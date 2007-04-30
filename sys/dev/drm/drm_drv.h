@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.15 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.16 2007/04/30 07:18:48 dillon Exp $
  */
 
 /*
@@ -1151,9 +1151,9 @@ static struct ioctl_map_handler DRM(ioctl_handler) = {
 	DRM(ioctl_cmds)
 };
 
-SYSINIT(DRM(register), SI_SUB_KLD, SI_ORDER_MIDDLE, 
+SYSINIT(DRM(register), SI_BOOT2_KLD, SI_ORDER_MIDDLE, 
     mapped_ioctl_register_handler, &DRM(ioctl_handler));
-SYSUNINIT(DRM(unregister), SI_SUB_KLD, SI_ORDER_MIDDLE, 
+SYSUNINIT(DRM(unregister), SI_BOOT2_KLD, SI_ORDER_MIDDLE, 
     mapped_ioctl_unregister_handler, &DRM(ioctl_handler));
 
 #endif /* DRM_LINUX */

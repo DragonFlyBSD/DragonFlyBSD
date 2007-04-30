@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.26 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.27 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -471,7 +471,7 @@ sysctl_register_all(void *arg)
 		sysctl_register_oid_int(*oidp);
 }
 
-SYSINIT(sysctl, SI_SUB_KMEM, SI_ORDER_ANY, sysctl_register_all, 0);
+SYSINIT(sysctl, SI_BOOT1_POST, SI_ORDER_ANY, sysctl_register_all, 0);
 
 /*
  * "Staff-functions"

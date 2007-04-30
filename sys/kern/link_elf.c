@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.25 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.26 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,7 +175,7 @@ link_elf_init(void* arg)
     }
 }
 
-SYSINIT(link_elf, SI_SUB_KLD, SI_ORDER_SECOND, link_elf_init, 0);
+SYSINIT(link_elf, SI_BOOT2_KLD, SI_ORDER_SECOND, link_elf_init, 0);
 
 static int
 parse_module_symbols(linker_file_t lf)

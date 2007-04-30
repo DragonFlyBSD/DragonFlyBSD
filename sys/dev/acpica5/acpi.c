@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.30 2007/01/28 06:33:49 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.31 2007/04/30 07:18:47 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -2773,10 +2773,14 @@ acpi_parse_debug(char *cp, struct debugtag *tag, UINT32 *flag)
     }
 }
 
+/*
+ * Warning: also called in early boot, before any allocators
+ * are working.
+ */
 static void
 acpi_set_debugging(void *junk)
 {
-    char	*layer, *level;
+    char *layer, *level;
 
     if (cold) {
 	AcpiDbgLayer = 0;
@@ -2803,8 +2807,8 @@ acpi_set_debugging(void *junk)
     }
     kprintf("\n");
 }
-SYSINIT(acpi_debugging, SI_SUB_TUNABLES, SI_ORDER_ANY, acpi_set_debugging,
-	NULL);
+SYSINIT(acpi_debugging, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
+	acpi_set_debugging, NULL);
 
 static int
 acpi_debug_sysctl(SYSCTL_HANDLER_ARGS)
@@ -2910,4 +2914,4 @@ acpi_pm_register(void *arg)
     power_pm_register(POWER_PM_TYPE_ACPI, acpi_pm_func, NULL);
 }
 
-SYSINIT(power, SI_SUB_KLD, SI_ORDER_ANY, acpi_pm_register, 0);
+SYSINIT(power, SI_BOOT2_KLD, SI_ORDER_ANY, acpi_pm_register, 0);

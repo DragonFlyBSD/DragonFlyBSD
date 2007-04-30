@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.9 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ kobj_init_token(void *arg)
 	lwkt_token_init(&kobj_token);
 }
 
-SYSINIT(kobj, SI_SUB_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
+SYSINIT(kobj, SI_BOOT1_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
 
 /*
  * This method structure is used to initialise new caches. Since the

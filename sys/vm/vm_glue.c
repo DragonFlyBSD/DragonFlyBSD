@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.54 2007/04/29 18:25:41 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.55 2007/04/30 07:18:57 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -93,15 +93,6 @@
 #include <vm/vm_page2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
-
-/*
- * System initialization
- *
- * Note: proc0 from proc.h
- */
-
-static void vm_init_limits (void *);
-SYSINIT(vm_limits, SI_SUB_VM_CONF, SI_ORDER_FIRST, vm_init_limits, &proc0)
 
 /*
  * THIS MUST BE THE LAST INITIALIZATION ITEM!!!
@@ -276,15 +267,11 @@ vm_waitproc(struct proc *p)
 }
 
 /*
- * Set default limits for VM system.
- * Called for proc 0, and then inherited by all others.
- *
- * XXX should probably act directly on proc0.
+ * Set default limits for VM system.  Call during proc0's initialization.
  */
-static void
-vm_init_limits(void *udata)
+void
+vm_init_limits(struct proc *p)
 {
-	struct proc *p = udata;
 	int rss_limit;
 
 	/*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.13 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.14 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ module_init(void* arg)
 			  SHUTDOWN_PRI_DEFAULT);
 }
 
-SYSINIT(module, SI_SUB_KLD, SI_ORDER_FIRST, module_init, 0);
+SYSINIT(module, SI_BOOT2_KLD, SI_ORDER_FIRST, module_init, 0);
 
 static void
 module_shutdown(void* arg1, int arg2)

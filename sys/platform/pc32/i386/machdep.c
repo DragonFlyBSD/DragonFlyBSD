@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.119 2007/04/27 23:27:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.120 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -137,7 +137,7 @@ extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
 static void init_locks(void);
 
-SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
+SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
 
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
@@ -2124,7 +2124,7 @@ globaldata_find(int cpu)
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 static void f00f_hack(void *unused);
-SYSINIT(f00f_hack, SI_SUB_INTRINSIC, SI_ORDER_FIRST, f00f_hack, NULL);
+SYSINIT(f00f_hack, SI_BOOT2_BIOS, SI_ORDER_ANY, f00f_hack, NULL);
 
 static void
 f00f_hack(void *unused) 

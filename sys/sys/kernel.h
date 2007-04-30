@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.25 2006/12/23 02:58:09 swildner Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.26 2007/04/30 07:18:56 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -99,35 +99,59 @@ extern int lbolt_syncer;		/* approx 1 hz but may be sped up */
  * for binary compatibility with inserted elements.
  *
  * The SI_SUB_RUN_SCHEDULER value must have the highest lexical value.
- *
- * The SI_SUB_CONSOLE and SI_SUB_SWAP values represent values used by
- * the BSD 4.4Lite but not by FreeBSD; they are maintained in dependent
- * order to support porting.
  */
 enum sysinit_sub_id {
-	SI_SUB_DUMMY		= 0x0000000,	/* not executed; for linker*/
-	SI_SUB_DONE		= 0x0000001,	/* processed*/
-	SI_SUB_TUNABLES		= 0x0700000,	/* establish tunable values */
-	SI_SUB_CONSOLE		= 0x0800000,	/* console*/
-	SI_SUB_COPYRIGHT	= 0x0800001,	/* first use of console*/
-	SI_SUB_LOCK		= 0x0900000,	/* lockmgr locks and tokens */
-	SI_SUB_VM		= 0x1000000,	/* virtual memory system init*/
-	SI_SUB_KMEM		= 0x1800000,	/* kernel memory*/
-	SI_SUB_KVM_RSRC		= 0x1A00000,	/* kvm operational limits*/
-	SI_SUB_CPU		= 0x1e00000,	/* CPU resource(s)*/
-	SI_SUB_OBJCACHE		= 0x1e80000,	/* inits w/ objcache/malloc */
-	SI_SUB_KLD		= 0x1f00000,	/* KLD and module setup */
-	SI_SUB_INTRINSIC	= 0x2000000,	/* proc 0*/
-	SI_SUB_VM_CONF		= 0x2100000,	/* config VM, set limits*/
-	SI_SUB_RUN_QUEUE	= 0x2200000,	/* the run queue*/
+	/*
+	 * Special cased
+	 */
+	SI_SPECIAL_DUMMY	= 0x0000000,	/* not executed; for linker*/
+	SI_SPECIAL_DONE		= 0x0000001,	/* flag sysinit completion */
+
+	/*
+	 * Memory management subsystems.
+	 */
+	SI_BOOT1_TUNABLES	= 0x0700000,	/* establish tunable values */
+	SI_BOOT1_COPYRIGHT	= 0x0800000,	/* first use of console*/
+	SI_BOOT1_LOCK		= 0x0900000,	/* lockmgr locks and tokens */
+	SI_BOOT1_VM		= 0x1000000,	/* virtual memory system init*/
+	SI_BOOT1_ALLOCATOR	= 0x1400000,	/* slab allocator */
+	SI_BOOT1_KMALLOC	= 0x1600000,	/* kmalloc inits */
+	SI_BOOT1_POST		= 0x1800000,	/* post boot1 inits */
+
+	/*
+	 * Fickle ordering.  objcache and softclock need to know what
+	 * ncpus is to initialize properly, clocks (e.g. hardclock)
+	 * need softclock to work, and we can't finish initializing
+	 * the APs until the system clock has been initialized.
+	 * Also, clock registration and smp configuration registration
+	 * must occur before SMP.  Messy messy.
+	 */
+	SI_BOOT2_LEAVE_CRIT	= 0x1900000,
+	SI_BOOT2_CLOCKREG	= 0x1980000,	/* register available clocks */
+	SI_BOOT2_PRESMP		= 0x1a00000,	/* register smp configs */
+	SI_BOOT2_SMP		= 0x1a80000,	/* SMP startup */
+	SI_BOOT2_OBJCACHE	= 0x1b00000,
+	SI_BOOT2_SOFTCLOCK	= 0x1b80000,
+	SI_BOOT2_CLOCKS		= 0x1c00000,	/* select & start clocks */
+	SI_BOOT2_FINISH_SMP	= 0x1c80000,	/* SMP go (& synch clocks) */
+
+	/*
+	 * Finish up core kernel initialization and set up the process
+	 * abstraction.
+	 */
+	SI_BOOT2_BIOS		= 0x1d00000,
+	SI_BOOT2_MACHDEP	= 0x1d80000,
+	SI_BOOT2_KLD		= 0x1e00000,
+	SI_BOOT2_USCHED		= 0x1e80000,
+	SI_BOOT2_PROC0		= 0x1f00000,
+
+	/*
+	 * Continue with miscellanious system initialization
+	 */
 	SI_SUB_CREATE_INIT	= 0x2300000,	/* create the init process */
-	SI_SUB_MBUF		= 0x2380000,	/* mbuf subsystem */
-	SI_SUB_LEAVE_CRIT	= 0x23c0000,	/* allow interrupt operation */
 	SI_SUB_DRIVERS		= 0x2400000,	/* Let Drivers initialize */
 	SI_SUB_CONFIGURE	= 0x3800000,	/* Configure devices */
 	SI_SUB_VFS		= 0x4000000,	/* virtual file system*/
-	SI_SUB_CLOCKS		= 0x4800000,	/* real time and stat clocks*/
-	SI_SUB_FINISH_SMP	= 0x5000000,	/* finish setting up cpus */
 	SI_SUB_HELPER_THREADS	= 0x5400000,	/* misc helper threads */
 	SI_SUB_CLIST		= 0x5800000,	/* clists*/
 	SI_SUB_SYSV_SHM		= 0x6400000,	/* System V shared memory*/
@@ -145,19 +169,22 @@ enum sysinit_sub_id {
 	SI_SUB_KPROF		= 0x9000000,	/* kernel profiling*/
 	SI_SUB_KICK_SCHEDULER	= 0xa000000,	/* start the timeout events*/
 	SI_SUB_INT_CONFIG_HOOKS	= 0xa800000,	/* Interrupts enabled config */
+
+	/*
+	 * Root filesystem setup, finish up with the major system
+	 * demons.
+	 */
 	SI_SUB_ROOT_CONF	= 0xb000000,	/* Find root devices */
 	SI_SUB_DUMP_CONF	= 0xb200000,	/* Find dump devices */
 	SI_SUB_RAID		= 0xb300000,	/* Configure vinum */
 	SI_SUB_MOUNT_ROOT	= 0xb400000,	/* root mount*/
-	SI_SUB_SWAP		= 0xc000000,	/* swap*/
-	SI_SUB_INTRINSIC_POST	= 0xd000000,	/* proc 0 cleanup*/
+	SI_SUB_PROC0_POST	= 0xd000000,	/* proc 0 cleanup*/
 	SI_SUB_KTHREAD_INIT	= 0xe000000,	/* init process*/
 	SI_SUB_KTHREAD_PAGE	= 0xe400000,	/* pageout daemon*/
 	SI_SUB_KTHREAD_VM	= 0xe800000,	/* vm daemon*/
 	SI_SUB_KTHREAD_BUF	= 0xea00000,	/* buffer daemon*/
 	SI_SUB_KTHREAD_UPDATE	= 0xec00000,	/* update daemon*/
 	SI_SUB_KTHREAD_IDLE	= 0xee00000,	/* idle procs*/
-	SI_SUB_SMP		= 0xf000000,	/* idle procs*/
 	SI_SUB_RUN_SCHEDULER	= 0xfffffff	/* scheduler: no return*/
 };
 
@@ -253,7 +280,7 @@ void	sysinit_add (struct sysinit **, struct sysinit **);
 /*
  * Infrastructure for tunable 'constants'.  Value may be specified at compile
  * time or kernel load time.  Rules relating tunables together can be placed
- * in a SYSINIT function at SI_SUB_TUNABLES with SI_ORDER_LAST.
+ * in a SYSINIT function at SI_BOOT1_TUNABLES with SI_ORDER_LAST.
  */
 
 extern void tunable_int_init(void *);
@@ -272,8 +299,9 @@ struct tunable_int {
 		path,						\
 		var,						\
 	};							\
-	SYSINIT(__Tunable_init_ ## line, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, \
-	     tunable_int_init, &__tunable_int_ ## line)
+	SYSINIT(__Tunable_init_ ## line, 			\
+		SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, 		\
+	        tunable_int_init, &__tunable_int_ ## line)
 
 #define	TUNABLE_INT_FETCH(path, var)	kgetenv_int((path), (var))
 
@@ -284,7 +312,8 @@ static void __Tunable_ ## var (void *ignored)	\
 	(var) = (defval);			\
 	TUNABLE_INT_FETCH((path), &(var));	\
 }						\
-SYSINIT(__Tunable_init_ ## var, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, __Tunable_ ## var , NULL);
+SYSINIT(__Tunable_init_ ## var, SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, \
+	__Tunable_ ## var , NULL);
 
 extern void tunable_quad_init(void *);
 struct tunable_quad {
@@ -301,8 +330,9 @@ struct tunable_quad {
 		path,						\
 		var,						\
 	};							\
-	SYSINIT(__Tunable_init_ ## line, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, \
-	    tunable_quad_init, &__tunable_quad_ ## line)
+	SYSINIT(__Tunable_init_ ## line, 			\
+		SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, 		\
+		tunable_quad_init, &__tunable_quad_ ## line)
 
 #define	TUNABLE_QUAD_FETCH(path, var)	kgetenv_quad((path), (var))
 
@@ -323,8 +353,9 @@ struct tunable_str {
 		var,						\
 		size,						\
 	};							\
-	SYSINIT(__Tunable_init_ ## line, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, \
-	     tunable_str_init, &__tunable_str_ ## line)
+	SYSINIT(__Tunable_init_ ## line, 			\
+		SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE,		\
+		tunable_str_init, &__tunable_str_ ## line)
 
 #define	TUNABLE_STR_FETCH(path, var, size)			\
 	kgetenv_string((path), (var), (size))

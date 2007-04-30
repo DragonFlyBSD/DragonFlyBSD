@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.2 2007/04/29 06:11:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysref.c,v 1.3 2007/04/30 07:18:54 dillon Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -85,7 +85,7 @@ sysrefbootinit(void *dummy __unused)
 	}
 }
 
-SYSINIT(sysref, SI_SUB_OBJCACHE, SI_ORDER_ANY, sysrefbootinit, NULL);
+SYSINIT(sysref, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sysrefbootinit, NULL);
 
 static
 int

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.21 2007/02/18 16:16:11 corecode Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.22 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -202,7 +202,7 @@ rqinit(void *dummy)
 	}
 	atomic_clear_int(&bsd4_curprocmask, 1);
 }
-SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
+SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, rqinit, NULL)
 
 /*
  * BSD4_ACQUIRE_CURPROC
@@ -1190,7 +1190,8 @@ sched_thread_cpu_init(void)
     if (bootverbose)
 	kprintf("\n");
 }
-SYSINIT(uschedtd, SI_SUB_FINISH_SMP, SI_ORDER_ANY, sched_thread_cpu_init, NULL)
+SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
+	sched_thread_cpu_init, NULL)
 
 #endif
 

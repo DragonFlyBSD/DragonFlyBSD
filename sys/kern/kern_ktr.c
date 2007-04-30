@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.20 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.21 2007/04/30 07:18:53 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -178,6 +178,8 @@ TUNABLE_INT("debug.ktr.verbose", &ktr_verbose);
 SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0, "");
 #endif
 
+static void ktr_resync_callback(void *dummy __unused);
+
 extern int64_t tsc_offsets[];
 
 static void
@@ -189,8 +191,10 @@ ktr_sysinit(void *dummy)
 		ktr_buf[i] = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
 				    M_KTR, M_WAITOK | M_ZERO);
 	}
+	callout_init(&ktr_resync_callout);
+	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
 }
-SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
+SYSINIT(ktr_sysinit, SI_BOOT2_KLD, SI_ORDER_ANY, ktr_sysinit, NULL);
 
 /*
  * Try to resynchronize the TSC's for all cpus.  This is really, really nasty.
@@ -201,19 +205,10 @@ SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
  *
  * This callback occurs on cpu0.
  */
-static void ktr_resync_callback(void *dummy);
 #if KTR_TESTLOG
 static void ktr_pingpong_remote(void *dummy);
 static void ktr_pipeline_remote(void *dummy);
 #endif
-
-static void
-ktr_resyncinit(void *dummy)
-{
-	callout_init(&ktr_resync_callout);
-	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
-}
-SYSINIT(ktr_resync, SI_SUB_FINISH_SMP+1, SI_ORDER_ANY, ktr_resyncinit, NULL);
 
 #if defined(SMP) && defined(_RDTSC_SUPPORTED_)
 

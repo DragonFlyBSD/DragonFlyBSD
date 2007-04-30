@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.6 2007/01/28 17:32:35 y0netan1 Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.7 2007/04/30 07:18:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -727,4 +727,4 @@ static moduledata_t est_mod = {
 	NULL,
 };
 
-DECLARE_MODULE(est, est_mod, SI_SUB_KLD, SI_ORDER_ANY);
+DECLARE_MODULE(est, est_mod, SI_BOOT2_BIOS, SI_ORDER_ANY);

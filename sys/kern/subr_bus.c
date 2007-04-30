@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.35 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.36 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1622,7 +1622,7 @@ resource_cfgload(void *dummy __unused)
 		}
 	}
 }
-SYSINIT(cfgload, SI_SUB_KMEM, SI_ORDER_ANY + 50, resource_cfgload, 0)
+SYSINIT(cfgload, SI_BOOT1_POST, SI_ORDER_ANY + 50, resource_cfgload, 0)
 
 
 /*======================================*/

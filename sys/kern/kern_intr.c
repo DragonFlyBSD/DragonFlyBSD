@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.46 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.47 2007/04/30 07:18:53 dillon Exp $
  *
  */
 
@@ -128,10 +128,10 @@ sysctl_emergency_enable(SYSCTL_HANDLER_ARGS)
 		return error;
 	emergency_intr_enable = enabled;
 	if (emergency_intr_enable) {
-		emergency_intr_timer.periodic = 
-			sys_cputimer->fromhz(emergency_intr_freq);
+		systimer_adjust_periodic(&emergency_intr_timer,
+					 emergency_intr_freq);
 	} else {
-		emergency_intr_timer.periodic = sys_cputimer->fromhz(1);
+		systimer_adjust_periodic(&emergency_intr_timer, 1);
 	}
 	return 0;
 }
@@ -152,10 +152,10 @@ sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
 
         emergency_intr_freq = phz;
 	if (emergency_intr_enable) {
-		emergency_intr_timer.periodic = 
-			sys_cputimer->fromhz(emergency_intr_freq);
+		systimer_adjust_periodic(&emergency_intr_timer,
+					 emergency_intr_freq);
 	} else {
-		emergency_intr_timer.periodic = sys_cputimer->fromhz(1);
+		systimer_adjust_periodic(&emergency_intr_timer, 1);
 	}
         return 0;
 }
