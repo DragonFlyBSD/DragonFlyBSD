@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.26 2007/04/30 19:33:08 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.27 2007/04/30 20:02:45 dillon Exp $
  */
 
 /*
@@ -317,22 +317,27 @@ getline(char *cp, int limit)
 
 	lp = cp;
 	for (;;) {
-		kprintf("%c", c = cngetc() & 0177);
+		c = cngetc();
+
 		switch (c) {
 		case -1:
 			return(-1);
 		case '\n':
 		case '\r':
+			kprintf("\n");
 			*lp++ = '\0';
 			return(0);
 		case '\b':
 		case '\177':
 			if (lp > cp) {
-				kprintf(" \b");
+				kprintf("\b \b");
 				lp--;
+			} else {
+				kprintf("%c", 7);
 			}
 			continue;
 		case '#':
+			kprintf("#");
 			lp--;
 			if (lp < cp)
 				lp = cp;
@@ -346,6 +351,7 @@ getline(char *cp, int limit)
 			if (lp - cp >= limit - 1) {
 				kprintf("%c", 7);
 			} else {
+				kprintf("%c", c);
 				*lp++ = c;
 			}
 			continue;
