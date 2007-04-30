@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.12 2007/01/07 00:44:33 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.13 2007/04/30 06:57:36 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -61,6 +61,8 @@ typedef struct systimer {
     systimer_func2_t		func;
     void			*data;
     int				flags;
+    int				freq;		/* frequency if periodic */
+    struct cputimer		*which;		/* which timer was used? */
     struct globaldata		*gd;		/* cpu owning structure */
 } *systimer_t;
 
@@ -73,7 +75,9 @@ void systimer_add(systimer_t);
 void systimer_del(systimer_t);
 void systimer_init_periodic(systimer_t, void *, void *, int);
 void systimer_init_periodic_nq(systimer_t, void *, void *, int);
+void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, void *, void *, int);
+void systimer_changed(void);
 
 /*
  * cputimer interface.  This provides a free-running (non-interrupt) 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.8 2005/10/25 17:26:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.9 2007/04/30 06:57:38 dillon Exp $
  */
 
 /*
@@ -42,6 +42,10 @@
  * ultimately based on a hardware timer.  The hardware timer abstraction
  * is sufficiently disconnected from this code to support both per-cpu
  * hardware timers or a single system-wide hardware timer.
+ *
+ * WARNING!  During early boot if a new system timer is selected, existing
+ * timeouts will not be effected and will thus occur slower or faster.
+ * periodic timers will be adjusted at the next periodic load.
  *
  * Notes on machine-dependant code (in arch/arch/systimer.c)
  *
@@ -104,6 +108,11 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 	 * multiples of the periodic rate.
 	 */
 	if (info->periodic) {
+	    if (info->which != sys_cputimer) {
+		info->periodic = sys_cputimer->fromhz(info->freq);
+		info->which = sys_cputimer;
+		kprintf("readjusted systimer freq %p\n", info);
+	    }
 	    info->time += info->periodic;
 	    if ((info->flags & SYSTF_NONQUEUED) &&
 		(int)(info->time - time) <= 0
@@ -205,6 +214,8 @@ systimer_init_periodic(systimer_t info, void *func, void *data, int hz)
     info->time = base_count + info->periodic;
     info->func = func;
     info->data = data;
+    info->freq = hz;
+    info->which = sys_cputimer;
     info->gd = mycpu;
     systimer_add(info);
 }
@@ -221,9 +232,25 @@ systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz)
     info->time = base_count + info->periodic;
     info->func = func;
     info->data = data;
+    info->freq = hz;
+    info->which = sys_cputimer;
     info->gd = mycpu;
     info->flags |= SYSTF_NONQUEUED;
     systimer_add(info);
+}
+
+/*
+ * Adjust the periodic interval for a periodic timer which is already
+ * running.  The current timeout is not effected.
+ */
+void
+systimer_adjust_periodic(systimer_t info, int hz)
+{
+    crit_enter();
+    info->periodic = sys_cputimer->fromhz(hz);
+    info->freq = hz;
+    info->which = sys_cputimer;
+    crit_exit();
 }
 
 /*
@@ -239,6 +266,7 @@ systimer_init_oneshot(systimer_t info, void *func, void *data, int us)
     info->time = sys_cputimer->count() + sys_cputimer->fromus(us);
     info->func = func;
     info->data = data;
+    info->which = sys_cputimer;
     info->gd = mycpu;
     systimer_add(info);
 }
