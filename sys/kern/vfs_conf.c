@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.25 2007/01/09 22:36:00 tgen Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.26 2007/04/30 19:33:08 dillon Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ static char *cdrom_rootdevnames[] = {
 static void	vfs_mountroot(void *junk);
 static int	vfs_mountroot_try(const char *mountfrom);
 static int	vfs_mountroot_ask(void);
-static void	gets(char *cp);
+static int	getline(char *cp, int limit);
 
 /* legacy find-root code */
 char		*rootdevnames[2] = {NULL, NULL};
@@ -274,19 +274,22 @@ vfs_mountroot_ask(void)
 {
 	char name[128];
 	int i;
+	int llimit = 100;
 	cdev_t dev;
 
-	for(;;) {
-		kprintf("\nManual root filesystem specification:\n");
-		kprintf("  <fstype>:<device>  Mount <device> using filesystem <fstype>\n");
-		kprintf("                       eg. ufs:da0s1a\n");
-		kprintf("  ?                  List valid disk boot devices\n");
-		kprintf("  <empty line>       Abort manual input\n");
+	kprintf("\nManual root filesystem specification:\n");
+	kprintf("  <fstype>:<device>  Specify root (e.g. ufs:da0s1a)\n");
+	kprintf("  ?                  List valid disk boot devices\n");
+	kprintf("  panic              Just panic\n");
+	kprintf("  abort              Abort manual input\n");
+	while (llimit--) {
 		kprintf("\nmountroot> ");
-		gets(name);
-		if (name[0] == 0)
-			return(1);
-		if (name[0] == '?') {
+
+		if (getline(name, 128) < 0)
+			break;
+		if (name[0] == 0) {
+			;
+		} else if (name[0] == '?') {
 			kprintf("Possibly valid devices for 'ufs' root:\n");
 			for (i = 0; i < NUMCDEVSW; i++) {
 				dev = udev2dev(makeudev(i, 0), 0);
@@ -295,14 +298,19 @@ vfs_mountroot_ask(void)
 			}
 			kprintf("\n");
 			continue;
-		}
-		if (!vfs_mountroot_try(name))
+		} else if (strcmp(name, "panic") == 0) {
+			panic("panic from console");
+		} else if (strcmp(name, "abort") == 0) {
+			break;
+		} else if (vfs_mountroot_try(name) == 0) {
 			return(0);
+		}
 	}
+	return(1);
 }
 
-static void
-gets(char *cp)
+static int
+getline(char *cp, int limit)
 {
 	char *lp;
 	int c;
@@ -312,10 +320,11 @@ gets(char *cp)
 		kprintf("%c", c = cngetc() & 0177);
 		switch (c) {
 		case -1:
+			return(-1);
 		case '\n':
 		case '\r':
 			*lp++ = '\0';
-			return;
+			return(0);
 		case '\b':
 		case '\177':
 			if (lp > cp) {
@@ -334,7 +343,12 @@ gets(char *cp)
 			kprintf("%c", '\n');
 			continue;
 		default:
-			*lp++ = c;
+			if (lp - cp >= limit - 1) {
+				kprintf("%c", 7);
+			} else {
+				*lp++ = c;
+			}
+			continue;
 		}
 	}
 }
