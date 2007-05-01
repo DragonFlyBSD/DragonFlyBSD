@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.48 2007/04/30 16:45:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.49 2007/05/01 23:53:51 dillon Exp $
  *
  */
 
@@ -69,6 +69,8 @@ struct intr_info {
 	int		i_fast;
 	int		i_slow;
 	int		i_state;
+	int		i_errorticks;
+	unsigned long	i_straycount;
 } intr_info_ary[MAX_INTS];
 
 int max_installed_hard_intr;
@@ -81,6 +83,7 @@ static int sysctl_emergency_enable(SYSCTL_HANDLER_ARGS);
 static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
 static void ithread_handler(void *arg);
 static void ithread_emergency(void *arg);
+static void report_stray_interrupt(int intr, struct intr_info *info);
 
 int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 
@@ -97,12 +100,15 @@ TUNABLE_INT("kern.intr_mpsafe", &intr_mpsafe);
 SYSCTL_INT(_kern, OID_AUTO, intr_mpsafe,
         CTLFLAG_RW, &intr_mpsafe, 0, "Run INTR_MPSAFE handlers without the BGL");
 #endif
-static int livelock_limit = 50000;
+static int livelock_limit = 40000;
 static int livelock_lowater = 20000;
+static int livelock_debug = -1;
 SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
 SYSCTL_INT(_kern, OID_AUTO, livelock_lowater,
         CTLFLAG_RW, &livelock_lowater, 0, "Livelock low-water mark restore");
+SYSCTL_INT(_kern, OID_AUTO, livelock_debug,
+        CTLFLAG_RW, &livelock_debug, 0, "Livelock debug intr#");
 
 static int emergency_intr_enable = 0;	/* emergency interrupt polling */
 TUNABLE_INT("kern.emergency_intr_enable", &emergency_intr_enable);
@@ -487,8 +493,7 @@ sched_ithd(int intr)
     ++info->i_count;
     if (info->i_state != ISTATE_NOTHREAD) {
 	if (info->i_reclist == NULL) {
-	    kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
-		    intr, mycpuid);
+	    report_stray_interrupt(intr, info);
 	} else {
 #ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
@@ -510,9 +515,31 @@ sched_ithd(int intr)
 #endif
 	}
     } else {
-	kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
-		intr, mycpuid);
+	report_stray_interrupt(intr, info);
     }
+}
+
+static void
+report_stray_interrupt(int intr, struct intr_info *info)
+{
+	++info->i_straycount;
+	if (info->i_straycount < 10) {
+		if (info->i_errorticks == ticks)
+			return;
+		info->i_errorticks = ticks;
+		kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
+			intr, mycpuid);
+	} else if (info->i_straycount < 100) {
+		if (info->i_errorticks == ticks)
+			return;
+		info->i_errorticks = ticks;
+		kprintf("sched_ithd: %ld stray interrupts %d on cpu %d\n",
+			info->i_straycount, intr, mycpuid);
+	} else if (info->i_straycount == 100) {
+		kprintf("sched_ithd: %ld stray interrupts %d on cpu %d - "
+			"there will be no further reports\n",
+			info->i_straycount, intr, mycpuid);
+	}
 }
 
 /*
@@ -697,8 +724,7 @@ ithread_handler(void *arg)
 {
     struct intr_info *info;
     int use_limit;
-    int lticks;
-    int lcount;
+    __uint32_t lseconds;
     int intr;
     int mpheld;
     struct intrec **list;
@@ -708,12 +734,11 @@ ithread_handler(void *arg)
     u_int ill_count;		/* interrupt livelock counter */
 
     ill_count = 0;
-    lticks = ticks;
-    lcount = 0;
     intr = (int)arg;
     info = &intr_info_ary[intr];
     list = &info->i_reclist;
     gd = mycpu;
+    lseconds = gd->gd_time_seconds;
 
     /*
      * The loop must be entered with one critical section held.  The thread
@@ -758,6 +783,9 @@ ithread_handler(void *arg)
 	if (info->i_running) {
 	    ++ill_count;
 	    info->i_running = 0;
+
+	    if (*list == NULL)
+		report_stray_interrupt(intr, info);
 
 	    for (rec = *list; rec; rec = nrec) {
 		nrec = rec->next;
@@ -805,11 +833,11 @@ ithread_handler(void *arg)
 	switch(info->i_state) {
 	case ISTATE_NORMAL:
 	    /*
-	     * Calculate a running average every tick.
+	     * Reset the count each second.
 	     */
-	    if (lticks != ticks) {
-		lticks = ticks;
-		ill_count -= ill_count / hz;
+	    if (lseconds != gd->gd_time_seconds) {
+		lseconds = gd->gd_time_seconds;
+		ill_count = 0;
 	    }
 
 	    /*
@@ -828,7 +856,7 @@ ithread_handler(void *arg)
 	     * Otherwise we are livelocked.  Set up a periodic systimer
 	     * to wake the thread up at the limit frequency.
 	     */
-	    kprintf("intr %d at %d > %d hz, livelocked limit engaged!\n",
+	    kprintf("intr %d at %d/%d hz, livelocked limit engaged!\n",
 		   intr, ill_count, livelock_limit);
 	    info->i_state = ISTATE_LIVELOCKED;
 	    if ((use_limit = livelock_limit) < 100)
@@ -837,7 +865,6 @@ ithread_handler(void *arg)
 		use_limit = 500000;
 	    systimer_init_periodic(&ill_timer, ithread_livelock_wakeup,
 				   (void *)intr, use_limit);
-	    lcount = 0;
 	    /* fall through */
 	case ISTATE_LIVELOCKED:
 	    /*
@@ -849,23 +876,22 @@ ithread_handler(void *arg)
 	    lwkt_switch();
 
 	    /*
-	     * Check to see if the livelock condition no longer applies.
-	     * The interrupt must be able to operate normally for one
-	     * full second before we restore normal operation.
+	     * Check once a second to see if the livelock condition no
+	     * longer applies.
 	     */
-	    if (lticks != ticks) {
-		lticks = ticks;
+	    if (lseconds != gd->gd_time_seconds) {
+		lseconds = gd->gd_time_seconds;
 		if (ill_count < livelock_lowater) {
-		    if (++lcount >= hz) {
-			info->i_state = ISTATE_NORMAL;
-			systimer_del(&ill_timer);
-			kprintf("intr %d at %d < %d hz, livelock removed\n",
-			       intr, ill_count, livelock_lowater);
-		    }
-		} else {
-		    lcount = 0;
+		    info->i_state = ISTATE_NORMAL;
+		    systimer_del(&ill_timer);
+		    kprintf("intr %d at %d/%d hz, livelock removed\n",
+			   intr, ill_count, livelock_lowater);
+		} else if (livelock_debug == intr ||
+			   (bootverbose && cold)) {
+		    kprintf("intr %d at %d/%d hz, in livelock\n",
+			   intr, ill_count, livelock_lowater);
 		}
-		ill_count -= ill_count / hz;
+		ill_count = 0;
 	    }
 	    break;
 	}
