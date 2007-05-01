@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.8 2007/05/01 00:05:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.9 2007/05/01 23:48:03 dillon Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1276,13 +1276,21 @@ nfe_init(void *xsc)
 	tmp = NFE_READ(sc, NFE_PWR_STATE);
 	NFE_WRITE(sc, NFE_PWR_STATE, tmp | NFE_PWR_VALID);
 
-#if 1
-	/* configure interrupts coalescing/mitigation */
+	/*
+	 * NFE_IMTIMER generates a periodic interrupt via NFE_IRQ_TIMER.
+	 * It is unclear how wide the timer is.  Base programming does
+	 * not seem to effect NFE_IRQ_TX_DONE or NFE_IRQ_RX_DONE so
+	 * we don't get any interrupt moderation.  TX moderation is
+	 * possible by using the timer interrupt instead of TX_DONE.
+	 *
+	 * It is unclear whether there are other bits that can be
+	 * set to make the NFE device actually do interrupt moderation
+	 * on the RX side.
+	 *
+	 * For now set a 128uS interval as a placemark, but don't use
+	 * the timer.
+	 */
 	NFE_WRITE(sc, NFE_IMTIMER, NFE_IM_DEFAULT);
-#else
-	/* no interrupt mitigation: one interrupt per packet */
-	NFE_WRITE(sc, NFE_IMTIMER, 970);
-#endif
 
 	NFE_WRITE(sc, NFE_SETUP_R1, NFE_R1_MAGIC);
 	NFE_WRITE(sc, NFE_SETUP_R2, NFE_R2_MAGIC);
