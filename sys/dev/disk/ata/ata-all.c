@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.36 2007/05/01 00:05:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.37 2007/05/01 17:07:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -233,6 +233,7 @@ ata_attach(device_t dev)
 #if NATAPICAM > 0
     atapi_cam_attach_bus(ch);
 #endif
+    crit_exit();
     return 0;
 }
 
