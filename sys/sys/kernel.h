@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.27 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.28 2007/05/01 02:29:31 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -127,9 +127,9 @@ enum sysinit_sub_id {
 	 * must occur before SMP.  Messy messy.
 	 */
 	SI_BOOT2_LEAVE_CRIT	= 0x1900000,
-	SI_BOOT2_CLOCKREG	= 0x1980000,	/* register available clocks */
 	SI_BOOT2_PRESMP		= 0x1a00000,	/* register smp configs */
 	SI_BOOT2_SMP		= 0x1a80000,	/* SMP startup */
+	SI_BOOT2_CLOCKREG	= 0x1ac0000,	/* register available clocks */
 	SI_BOOT2_OBJCACHE	= 0x1b00000,
 	SI_BOOT2_SOFTCLOCK	= 0x1b80000,
 	SI_BOOT2_CLOCKS		= 0x1c00000,	/* select & start clocks */
