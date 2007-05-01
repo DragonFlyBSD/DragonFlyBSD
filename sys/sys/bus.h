@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.24 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.25 2007/05/01 00:05:18 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -90,6 +90,7 @@ typedef int (*devop_t)(void);
 typedef enum device_state {
     DS_NOTPRESENT,			/* not probed or probe failed */
     DS_ALIVE,				/* probe succeeded */
+    DS_INPROGRESS,			/* attach in progress */
     DS_ATTACHED,			/* attach method called */
     DS_BUSY				/* device is open */
 } device_state_t;
@@ -323,6 +324,7 @@ int	device_set_devclass(device_t dev, const char *classname);
 int	device_set_driver(device_t dev, driver_t *driver);
 void	device_set_flags(device_t dev, u_int32_t flags);
 void	device_set_softc(device_t dev, void *softc);
+void	device_set_async_attach(device_t dev, int enable);
 int	device_set_unit(device_t dev, int unit);	/* XXX DONT USE XXX */
 int	device_shutdown(device_t dev);
 void	device_unbusy(device_t dev);

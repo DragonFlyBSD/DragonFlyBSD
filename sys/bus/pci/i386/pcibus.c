@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.17 2006/12/31 20:34:04 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.18 2007/05/01 00:05:16 dillon Exp $
  *
  */
 
@@ -280,6 +280,8 @@ nexus_legacypci_identify(driver_t *driver, device_t parent)
 	 * on rescan.
 	 */
 	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+	if (device_get_state(parent) == DS_INPROGRESS)
 		return (0);
 
 	if (pci_cfgregopen() == 0)

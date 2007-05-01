@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.35 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.36 2007/05/01 00:05:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -98,7 +98,6 @@ SYSCTL_INT(_hw_ata, OID_AUTO, mpipe_size, CTLFLAG_RW, &ata_mpipe_size, 0,
 devclass_t ata_devclass;
 
 /* local vars */
-static struct intr_config_hook *ata_delayed_attach = NULL;
 static MALLOC_DEFINE(M_ATA, "ATA generic", "ATA driver generic layer");
 
 /* misc defines */
@@ -205,38 +204,35 @@ ata_attach(device_t dev)
      * when interrupts are enabled by a hook into the boot process.
      * otherwise attach what the probe has found in ch->devices.
      */
-    if (!ata_delayed_attach) {
-	crit_enter();
+    crit_enter();
 
-	if (ch->devices & ATA_ATA_SLAVE)
-	    if (ata_getparam(&ch->device[SLAVE], ATA_C_ATA_IDENTIFY))
-		ch->devices &= ~ATA_ATA_SLAVE;
-	if (ch->devices & ATA_ATAPI_SLAVE)
-	    if (ata_getparam(&ch->device[SLAVE], ATA_C_ATAPI_IDENTIFY))
-		ch->devices &= ~ATA_ATAPI_SLAVE;
-	if (ch->devices & ATA_ATA_MASTER)
-	    if (ata_getparam(&ch->device[MASTER], ATA_C_ATA_IDENTIFY))
-		ch->devices &= ~ATA_ATA_MASTER;
-	if (ch->devices & ATA_ATAPI_MASTER)
-	    if (ata_getparam(&ch->device[MASTER], ATA_C_ATAPI_IDENTIFY))
-		ch->devices &= ~ATA_ATAPI_MASTER;
+    if (ch->devices & ATA_ATA_SLAVE)
+	if (ata_getparam(&ch->device[SLAVE], ATA_C_ATA_IDENTIFY))
+	    ch->devices &= ~ATA_ATA_SLAVE;
+    if (ch->devices & ATA_ATAPI_SLAVE)
+	if (ata_getparam(&ch->device[SLAVE], ATA_C_ATAPI_IDENTIFY))
+	    ch->devices &= ~ATA_ATAPI_SLAVE;
+    if (ch->devices & ATA_ATA_MASTER)
+	if (ata_getparam(&ch->device[MASTER], ATA_C_ATA_IDENTIFY))
+	    ch->devices &= ~ATA_ATA_MASTER;
+    if (ch->devices & ATA_ATAPI_MASTER)
+	if (ata_getparam(&ch->device[MASTER], ATA_C_ATAPI_IDENTIFY))
+	    ch->devices &= ~ATA_ATAPI_MASTER;
 #if NATADISK > 0
-	if (ch->devices & ATA_ATA_MASTER)
-	    ad_attach(&ch->device[MASTER], 0);
-	if (ch->devices & ATA_ATA_SLAVE)
-	    ad_attach(&ch->device[SLAVE], 0);
+    if (ch->devices & ATA_ATA_MASTER)
+	ad_attach(&ch->device[MASTER], 0);
+    if (ch->devices & ATA_ATA_SLAVE)
+	ad_attach(&ch->device[SLAVE], 0);
 #endif
 #if DEV_ATAPIALL
-	if (ch->devices & ATA_ATAPI_MASTER)
-	    atapi_attach(&ch->device[MASTER], 0);
-	if (ch->devices & ATA_ATAPI_SLAVE)
-	    atapi_attach(&ch->device[SLAVE], 0);
+    if (ch->devices & ATA_ATAPI_MASTER)
+	atapi_attach(&ch->device[MASTER], 0);
+    if (ch->devices & ATA_ATAPI_SLAVE)
+	atapi_attach(&ch->device[SLAVE], 0);
 #endif
 #if NATAPICAM > 0
-	atapi_cam_attach_bus(ch);
+    atapi_cam_attach_bus(ch);
 #endif
-	crit_exit();
-    }
     return 0;
 }
 
@@ -551,11 +547,6 @@ ata_boot_attach(void)
     struct ata_channel *ch;
     int ctlr;
 
-    if (ata_delayed_attach) {
-	config_intrhook_disestablish(ata_delayed_attach);
-	kfree(ata_delayed_attach, M_TEMP);
-	ata_delayed_attach = NULL;
-    }
     crit_enter();
 
     /*
@@ -789,9 +780,9 @@ ata_reset(struct ata_channel *ch)
     ATA_OUTB(ch->r_io, ATA_DRIVE, ATA_D_IBM | ATA_MASTER);
     DELAY(10);
     ATA_OUTB(ch->r_altio, ATA_ALTSTAT, ATA_A_IDS | ATA_A_RESET);
-    DELAY(10000); 
+    DRIVERSLEEP(10000); 
     ATA_OUTB(ch->r_altio, ATA_ALTSTAT, ATA_A_IDS);
-    DELAY(100000);
+    DRIVERSLEEP(100000);
     ATA_INB(ch->r_io, ATA_ERROR);
 
     /* wait for BUSY to go inactive */
@@ -835,14 +826,14 @@ ata_reset(struct ata_channel *ch)
 	if (mask == 0x03)      /* wait for both master & slave */
 	    if (!(stat0 & ATA_S_BUSY) && !(stat1 & ATA_S_BUSY))
 		break;
-	DELAY(10000);
+	DRIVERSLEEP(10000);
     }	
     /*
      * some devices release BUSY before they are ready to accept commands.
      * We must wait at least 50ms before attempting to issue a command after
      * BUSY is released.
      */
-    DELAY(50000);
+    DRIVERSLEEP(50000);
     ATA_OUTB(ch->r_altio, ATA_ALTSTAT, ATA_A_4BIT);
 
     if (stat0 & ATA_S_BUSY)
@@ -1600,16 +1591,5 @@ ata_init(void)
     /* register controlling device */
     dev_ops_add(&ata_ops, 0, 0);
     make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
-
-    /* register boot attach to be run when interrupts are enabled */
-    ata_delayed_attach = kmalloc(sizeof(struct intr_config_hook),
-				      M_TEMP, M_WAITOK | M_ZERO);
-
-    ata_delayed_attach->ich_func = (void*)ata_boot_attach;
-    ata_delayed_attach->ich_desc = "ata";
-    if (config_intrhook_establish(ata_delayed_attach) != 0) {
-	kprintf("ata: config_intrhook_establish failed\n");
-	kfree(ata_delayed_attach, M_TEMP);
-    }
 }
 SYSINIT(atadev, SI_SUB_DRIVERS, SI_ORDER_SECOND, ata_init, NULL)

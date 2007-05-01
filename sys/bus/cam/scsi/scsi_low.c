@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.19 2007/05/01 00:05:12 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -873,8 +873,11 @@ scsi_low_attach_cam(struct scsi_low_softc *slp)
 static int
 scsi_low_world_start_cam(struct scsi_low_softc *slp)
 {
+#if 0
 	if (!cold)
 		scsi_low_rescan_bus_cam(slp);
+#endif
+	scsi_low_rescan_bus_cam(slp);
 	return 0;
 }
 

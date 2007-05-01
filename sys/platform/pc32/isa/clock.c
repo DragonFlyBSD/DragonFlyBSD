@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.51 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.52 2007/05/01 00:05:18 dillon Exp $
  */
 
 /*
@@ -363,12 +363,15 @@ cputimer_intr_reload(sysclock_t reload)
 }
 
 /*
- * Wait "n" microseconds.
+ * DELAY(usec)	     - Spin for the specified number of microseconds.
+ * DRIVERSLEEP(usec) - Spin for the specified number of microseconds,
+ *		       but do a thread switch in the loop
+ *
  * Relies on timer 1 counting down from (cputimer_freq / hz)
  * Note: timer had better have been programmed before this is first used!
  */
-void
-DELAY(int n)
+static void
+DODELAY(int n, int doswitch)
 {
 	int delta, prev_tick, tick, ticks_left;
 
@@ -416,12 +419,34 @@ DELAY(int n)
 		if (delta < 0)
 			delta = 0;
 		ticks_left -= delta;
+		if (doswitch && ticks_left > 0)
+			lwkt_switch();
 	}
 #ifdef DELAYDEBUG
 	if (state == 1)
 		kprintf(" %d calls to getit() at %d usec each\n",
 		       getit_calls, (n + 5) / getit_calls);
 #endif
+}
+
+void
+DELAY(int n)
+{
+	DODELAY(n, 0);
+}
+
+void
+DRIVERSLEEP(int usec)
+{
+	globaldata_t gd = mycpu;
+
+	if (gd->gd_intr_nesting_level || 
+	    gd->gd_spinlock_rd ||
+	    gd->gd_spinlocks_wr) {
+		DODELAY(usec, 0);
+	} else {
+		DODELAY(usec, 1);
+	}
 }
 
 static void

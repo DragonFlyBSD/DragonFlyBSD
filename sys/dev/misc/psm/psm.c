@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.23 2007/01/08 12:21:50 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.24 2007/05/01 00:05:17 dillon Exp $
  */
 
 /*
@@ -430,7 +430,7 @@ get_aux_id(KBDC kbdc)
 	return (-1);
 
     /* 10ms delay */
-    DELAY(10000);
+    DRIVERSLEEP(10000);
 
     id = read_aux_data(kbdc);
     if (verbose >= 2)

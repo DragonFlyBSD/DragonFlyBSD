@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.83 2007/04/27 23:27:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.84 2007/05/01 00:05:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -78,6 +78,7 @@ int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;
 int	ncpus_fit, ncpus_fit_mask;
 int	safepri;
+int	tsleep_now_works;
 
 static struct callout loadav_callout;
 static struct callout schedcpu_callout;
@@ -350,10 +351,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
-	if (cold || panicstr) {
+	if (tsleep_now_works == 0 || panicstr) {
 		/*
-		 * After a panic, or during autoconfiguration,
-		 * just give interrupts a chance, then just return;
+		 * After a panic, or before we actually have an operational
+		 * softclock, just give interrupts a chance, then just return;
+		 *
 		 * don't run any other procs or panic below,
 		 * in case this is the idle process and already asleep.
 		 */

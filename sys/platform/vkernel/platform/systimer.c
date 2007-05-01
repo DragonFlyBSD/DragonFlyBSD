@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.12 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.13 2007/05/01 00:05:18 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -212,5 +212,16 @@ void
 DELAY(int usec)
 {
 	usleep(usec);
+}
+
+void
+DRIVERSLEEP(int usec)
+{
+        if (mycpu->gd_intr_nesting_level)
+		DELAY(usec);
+	else if (1000000 / usec >= hz)
+		tsleep(DRIVERSLEEP, 0, "DELAY", 1000000 / usec / hz + 1);
+	else
+		usleep(usec);
 }
 

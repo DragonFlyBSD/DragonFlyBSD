@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.22 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.23 2007/05/01 00:05:17 dillon Exp $
  *
  */
 
@@ -103,7 +103,9 @@ static char *orb_fun_name[] = {
 static int debug = 0;
 static int auto_login = 1;
 static int max_speed = -1;
+#if 0
 static int sbp_cold = 1;
+#endif
 static int ex_login = 1;
 static int login_delay = 1000;	/* msec */
 static int scan_delay = 500;	/* msec */
@@ -759,10 +761,12 @@ sbp_post_explore(void *arg)
 	int i, alive;
 
 SBP_DEBUG(0)
-	kprintf("sbp_post_explore (sbp_cold=%d)\n", sbp_cold);
+	kprintf("sbp_post_explore\n");
 END_DEBUG
+#if 0
 	if (sbp_cold > 0)
 		sbp_cold --;
+#endif
 
 #if 0
 	/*
@@ -1017,6 +1021,7 @@ END_DEBUG
 			cam_sim_path(target->sbp->sim),
 			target->target_id, sdev->lun_id);
 
+#if 0
 	/*
 	 * Let CAM scan the bus if we are in the boot process.
 	 * XXX xpt_scan_bus cannot detect LUN larger than 0
@@ -1026,6 +1031,7 @@ END_DEBUG
 		sdev->status = SBP_DEV_ATTACHED;
 		return;
 	}
+#endif
 
 	sbp_scan_dev(sdev);
 	return;
@@ -1835,8 +1841,10 @@ SBP_DEBUG(0)
 	kprintf("sbp_attach (cold=%d)\n", cold);
 END_DEBUG
 
+#if 0
 	if (cold)
 		sbp_cold ++;
+#endif
 	sbp = ((struct sbp_softc *)device_get_softc(dev));
 	bzero(sbp, sizeof(struct sbp_softc));
 	sbp->fd.dev = dev;

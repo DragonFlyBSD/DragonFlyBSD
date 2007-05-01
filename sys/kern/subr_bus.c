@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.36 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.37 2007/05/01 00:05:18 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -44,6 +44,8 @@
 #include <sys/rman.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
+
+#include <sys/thread2.h>
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
@@ -94,6 +96,13 @@ void		print_devclass_list(void);
 static void	device_register_oids(device_t dev);
 static void	device_unregister_oids(device_t dev);
 #endif
+static void	device_attach_async(device_t dev);
+static void	device_attach_thread(void *arg);
+static int	device_doattach(device_t dev);
+
+static int do_async_attach = 0;
+static int numasyncthreads;
+TUNABLE_INT("kern.do_async_attach", &do_async_attach);
 
 kobj_method_t null_methods[] = {
 	{ 0, 0 }
@@ -891,6 +900,15 @@ device_set_softc(device_t dev, void *softc)
 		dev->flags &= ~DF_EXTERNALSOFTC;
 }
 
+void
+device_set_async_attach(device_t dev, int enable)
+{
+	if (enable)
+		dev->flags |= DF_ASYNCPROBE;
+	else
+		dev->flags &= ~DF_ASYNCPROBE;
+}
+
 void *
 device_get_ivars(device_t dev)
 {
@@ -1050,7 +1068,6 @@ device_probe_and_attach(device_t dev)
 {
 	device_t bus = dev->parent;
 	int error = 0;
-	int hasclass = (dev->devclass != 0);
 
 	if (dev->state >= DS_ALIVE)
 		return(0);
@@ -1087,6 +1104,53 @@ device_probe_and_attach(device_t dev)
 	}
 	if (!device_is_quiet(dev))
 		device_print_child(bus, dev);
+	if ((dev->flags & DF_ASYNCPROBE) && do_async_attach) {
+		kprintf("%s: probing asynchronously\n",
+			device_get_nameunit(dev));
+		dev->state = DS_INPROGRESS;
+		device_attach_async(dev);
+		error = 0;
+	} else {
+		error = device_doattach(dev);
+	}
+	return(error);
+}
+
+/*
+ * Device is known to be alive, do the attach asynchronously.
+ *
+ * The MP lock is held by all threads.
+ */
+static void
+device_attach_async(device_t dev)
+{
+	thread_t td;
+
+	atomic_add_int(&numasyncthreads, 1);
+	lwkt_create(device_attach_thread, dev, &td, NULL,
+		    0, 0, (dev->desc ? dev->desc : "devattach"));
+}
+
+static void
+device_attach_thread(void *arg)
+{
+	device_t dev = arg;
+
+	(void)device_doattach(dev);
+	atomic_subtract_int(&numasyncthreads, 1);
+	wakeup(&numasyncthreads);
+}
+
+/*
+ * Device is known to be alive, do the attach (synchronous or asynchronous)
+ */
+static int
+device_doattach(device_t dev)
+{
+	device_t bus = dev->parent;
+	int hasclass = (dev->devclass != 0);
+	int error;
+
 	error = DEVICE_ATTACH(dev);
 	if (error == 0) {
 		dev->state = DS_ATTACHED;
@@ -1101,7 +1165,6 @@ device_probe_and_attach(device_t dev)
 		device_set_driver(dev, NULL);
 		dev->state = DS_NOTPRESENT;
 	}
-
 	return(error);
 }
 
@@ -1201,6 +1264,8 @@ sysctl_handle_state(SYSCTL_HANDLER_ARGS)
 		return SYSCTL_OUT(req, "notpresent", sizeof("notpresent"));
 	case DS_ALIVE:
 		return SYSCTL_OUT(req, "alive", sizeof("alive"));
+	case DS_INPROGRESS:
+		return SYSCTL_OUT(req, "in-progress", sizeof("in-progress"));
 	case DS_ATTACHED:
 		return SYSCTL_OUT(req, "attached", sizeof("attached"));
 	case DS_BUSY:
@@ -2495,6 +2560,7 @@ DECLARE_MODULE(rootbus, root_bus_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
 void
 root_bus_configure(void)
 {
+	int warncount;
 	device_t dev;
 
 	PDEBUG(("."));
@@ -2510,6 +2576,26 @@ root_bus_configure(void)
 	 */
 	TAILQ_FOREACH(dev, &root_bus->children, link) {
 		device_probe_and_attach(dev);
+	}
+
+	/*
+	 * Wait for all asynchronous attaches to complete.  If we don't
+	 * our legacy ISA bus scan could steal device unit numbers or
+	 * even I/O ports.
+	 */
+	warncount = 10;
+	if (numasyncthreads)
+		kprintf("Waiting for async drivers to attach\n");
+	while (numasyncthreads > 0) {
+		if (tsleep(&numasyncthreads, 0, "rootbus", hz) == EWOULDBLOCK)
+			--warncount;
+		if (warncount == 0) {
+			kprintf("Warning: Still waiting for %d "
+				"drivers to attach\n", numasyncthreads);
+		} else if (warncount == -30) {
+			kprintf("Giving up on %d drivers\n", numasyncthreads);
+			break;
+		}
 	}
 	root_bus->state = DS_ATTACHED;
 }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.28 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.29 2007/05/01 00:05:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -412,10 +412,11 @@ ata_pci_probe(device_t dev)
     
     if (desc) {
 	device_set_desc(dev, desc);
+	device_set_async_attach(dev, TRUE);
 	return 0;
-    } 
-    else
+    } else {
 	return ENXIO;
+    }
 }
 
 static int

@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.12 2007/04/30 16:45:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.13 2007/05/01 00:05:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -197,8 +197,6 @@ static
 void
 icu_cleanup(void)
 {
-	kprintf("fpending %08x ipending %08x\n",
-		mdcpu->gd_fpending, mdcpu->gd_ipending);
 	mdcpu->gd_fpending = 0;
 	mdcpu->gd_ipending = 0;
 }

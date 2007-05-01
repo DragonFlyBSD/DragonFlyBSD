@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.9 2007/05/01 00:05:18 dillon Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -125,6 +125,7 @@ struct device {
 #define DF_QUIET	0x0010		/* don't print verbose attach message */
 #define DF_DONENOMATCH	0x0020		/* don't execute DEVICE_NOMATCH again */
 #define DF_EXTERNALSOFTC 0x0040		/* softc not allocated by us */
+#define DF_ASYNCPROBE	0x0080		/* can be probed with its own thread */
 	u_char		order;		/* order from device_add_child_ordered() */
 	u_char		pad;
 #ifdef DEVICE_SYSCTLS

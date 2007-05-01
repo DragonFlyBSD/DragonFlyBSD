@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.25 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.26 2007/05/01 00:05:16 dillon Exp $	*/
 
 /* Also already merged from NetBSD:
  *	$NetBSD: usb.c,v 1.70 2002/05/09 21:54:32 augustss Exp $
@@ -256,9 +256,11 @@ USB_ATTACH(usb)
 	}
 	kprintf("\n");
 
+#if 0
 	/* Make sure not to use tsleep() if we are cold booting. */
 	if (cold)
 		sc->sc_bus->use_polling++;
+#endif
 
 	ue.u.ue_ctrlr.ue_bus = USBDEVUNIT(sc->sc_dev);
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
@@ -314,8 +316,10 @@ USB_ATTACH(usb)
 		       USBDEVNAME(sc->sc_dev), err);
 		sc->sc_dying = 1;
 	}
+#if 0
 	if (cold)
 		sc->sc_bus->use_polling--;
+#endif
 
 	config_pending_incr();
 #if defined(__NetBSD__) || defined(__OpenBSD__)

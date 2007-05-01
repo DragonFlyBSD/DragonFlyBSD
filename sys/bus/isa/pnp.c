@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.13 2007/05/01 00:05:15 dillon Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -773,6 +773,8 @@ pnp_identify(driver_t *driver, device_t parent)
 	 * success (leave the previously scanned devices intact).
 	 */
 	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+	if (device_get_state(parent) == DS_INPROGRESS)
 		return (0);
 
 #if 0

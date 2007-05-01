@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.78 2007/04/30 16:45:53 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.79 2007/05/01 00:05:17 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -279,10 +279,33 @@ leavecrit(void *dummy __unused)
 	MachIntrABI.cleanup();
 	crit_exit();
 	KKASSERT(!IN_CRITICAL_SECT(curthread));
+
 	if (bootverbose)
 		kprintf("Leaving critical section, allowing interrupts\n");
 }
 SYSINIT(leavecrit, SI_BOOT2_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
+
+/*
+ * This is called after the threading system is up and running,
+ * including the softclock, clock interrupts, and SMP.
+ */
+static void
+tsleepworks(void *dummy __unused)
+{
+	tsleep_now_works = 1;
+}
+SYSINIT(tsleepworks, SI_BOOT2_FINISH_SMP, SI_ORDER_SECOND, tsleepworks, NULL)
+
+/*
+ * This is called after devices have configured.  Tell the kernel we are
+ * no longer in cold boot.
+ */
+static void
+endofcoldboot(void *dummy __unused)
+{
+	cold = 0;
+}
+SYSINIT(endofcoldboot, SI_SUB_ISWARM, SI_ORDER_ANY, endofcoldboot, NULL)
 
 /*
  ***************************************************************************

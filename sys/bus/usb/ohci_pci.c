@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.44.2.1 2006/01/29 01:26:46 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.7 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.8 2007/05/01 00:05:16 dillon Exp $
  */
 
 /*
@@ -217,6 +217,7 @@ ohci_pci_probe(device_t self)
 
 	if (desc) {
 		device_set_desc(self, desc);
+		device_set_async_attach(self, TRUE);
 		return 0;
 	} else {
 		return ENXIO;

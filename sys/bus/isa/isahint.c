@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.7 2006/12/20 18:14:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.8 2007/05/01 00:05:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,6 +95,8 @@ isahint_identify(driver_t *driver, device_t parent)
 	 * success.
 	 */
 	if (device_get_state(parent) == DS_ATTACHED)
+		return(0);
+	if (device_get_state(parent) == DS_INPROGRESS)
 		return(0);
 
 	/*

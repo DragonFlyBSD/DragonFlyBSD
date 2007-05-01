@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.35 2007/04/30 16:45:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.36 2007/05/01 00:05:18 dillon Exp $
  */
 
 /*
@@ -193,7 +193,6 @@ configure_final(void *dummy)
 
 		kprintf("Device configuration finished.\n");
 	}
-	cold = 0;
 }
 
 #ifdef BOOTP

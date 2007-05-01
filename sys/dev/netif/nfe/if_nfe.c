@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.7 2006/12/24 04:58:27 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.8 2007/05/01 00:05:17 dillon Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -363,6 +363,7 @@ nfe_probe(device_t dev)
 				sc->sc_flags |= NFE_USE_JUMBO;
 
 			device_set_desc(dev, n->desc);
+			device_set_async_attach(dev, TRUE);
 			return 0;
 		}
 	}

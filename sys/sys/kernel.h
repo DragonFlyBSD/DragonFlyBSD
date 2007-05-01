@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.26 2007/04/30 07:18:56 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.27 2007/05/01 00:05:18 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -151,6 +151,7 @@ enum sysinit_sub_id {
 	SI_SUB_CREATE_INIT	= 0x2300000,	/* create the init process */
 	SI_SUB_DRIVERS		= 0x2400000,	/* Let Drivers initialize */
 	SI_SUB_CONFIGURE	= 0x3800000,	/* Configure devices */
+	SI_SUB_ISWARM		= 0x3c00000,	/* No longer in cold boot */
 	SI_SUB_VFS		= 0x4000000,	/* virtual file system*/
 	SI_SUB_HELPER_THREADS	= 0x5400000,	/* misc helper threads */
 	SI_SUB_CLIST		= 0x5800000,	/* clists*/

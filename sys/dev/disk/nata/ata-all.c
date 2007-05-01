@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.7 2007/01/09 21:17:00 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.8 2007/05/01 00:05:17 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -71,7 +71,6 @@ static void bpack(int8_t *, int8_t *, int);
 /* global vars */
 MALLOC_DEFINE(M_ATA, "ata_generic", "ATA driver generic layer");
 int (*ata_raid_ioctl_func)(u_long cmd, caddr_t data) = NULL;
-struct intr_config_hook *ata_delayed_attach = NULL;
 devclass_t ata_devclass;
 struct objcache *ata_request_cache;
 struct objcache *ata_composite_cache;
@@ -145,8 +144,7 @@ ata_attach(device_t dev)
     }
 
     /* probe and attach devices on this channel unless we are in early boot */
-    if (!ata_delayed_attach)
-	ata_identify(dev);
+    ata_identify(dev);
     return 0;
 }
 
@@ -551,13 +549,6 @@ ata_boot_attach(void)
 	}
     }
 
-    /* release the hook that got us here, we are only needed once during boot */
-    if (ata_delayed_attach) {
-	config_intrhook_disestablish(ata_delayed_attach);
-	kfree(ata_delayed_attach, M_TEMP);
-	ata_delayed_attach = NULL;
-    }
-
     rel_mplock();
 }
 
@@ -838,7 +829,8 @@ void
 ata_udelay(int interval)
 {
     /* for now just use DELAY, the timer/sleep subsytems are not there yet */
-    if (1 || interval < (1000000/hz) || ata_delayed_attach)
+    /* XXX use DRIVERSLEEP if possible */
+    if (1 || interval < (1000000/hz))
 	DELAY(interval);
     else
 	tsleep(&interval, 0, "ataslp", interval/(1000000/hz));
@@ -1015,21 +1007,6 @@ ata_module_event_handler(module_t mod, int what, void *arg)
 	dev_ops_add(&ata_ops, 0, 0);
 	atacdev = make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 	reference_dev(atacdev);
-
-	if (cold) {
-	    /* register boot attach to be run when interrupts are enabled */
-	    if (!(ata_delayed_attach = (struct intr_config_hook *)
-				       kmalloc(sizeof(struct intr_config_hook),
-					      M_TEMP, M_NOWAIT | M_ZERO))) {
-		kprintf("ata: kmalloc of delayed attach hook failed\n");
-		return EIO;
-	    }
-	    ata_delayed_attach->ich_func = (void*)ata_boot_attach;
-	    if (config_intrhook_establish(ata_delayed_attach) != 0) {
-		kprintf("ata: config_intrhook_establish failed\n");
-		kfree(ata_delayed_attach, M_TEMP);
-	    }
-	}
 	return 0;
 
     case MOD_UNLOAD:

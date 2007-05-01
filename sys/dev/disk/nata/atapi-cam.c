@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.5 2007/05/01 00:05:17 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -89,7 +89,7 @@ struct atapi_hcb {
     TAILQ_ENTRY(atapi_hcb) chain;
 };
 
-enum reinit_reason { BOOT_ATTACH, ATTACH, RESET };
+enum reinit_reason { ATTACH, RESET };
 
 /* Device methods */
 static void atapi_cam_identify(device_t *dev, device_t parent);
@@ -237,7 +237,7 @@ atapi_cam_attach(device_t dev)
     CAM_DEBUG(path, CAM_DEBUG_TRACE, ("Registered SIM for ata%d\n", unit));
 
     setup_async_cb(scp, AC_LOST_DEVICE);
-    reinit_bus(scp, cold ? BOOT_ATTACH : ATTACH);
+    reinit_bus(scp, ATTACH);
     error = 0;
 
 out:
@@ -307,8 +307,6 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
     kfree(children, M_TEMP);
 
     switch (reason) {
-	case BOOT_ATTACH:
-	    break;
 	case RESET:
 	    xpt_async(AC_BUS_RESET, scp->path, NULL);
 	    /*FALLTHROUGH*/

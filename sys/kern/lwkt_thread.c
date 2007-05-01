@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.106 2007/02/18 16:16:11 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.107 2007/05/01 00:05:18 dillon Exp $
  */
 
 /*
@@ -1266,7 +1266,7 @@ lwkt_create(void (*func)(void *), void *arg,
     __va_list ap;
 
     td = lwkt_alloc_thread(template, LWKT_THREAD_STACK, cpu,
-			   tdflags | TDF_VERBOSE);
+			   tdflags);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, lwkt_exit, func, arg);

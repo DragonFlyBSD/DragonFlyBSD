@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.68 2007/04/30 07:18:56 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.69 2007/05/01 00:05:18 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -61,6 +61,7 @@ extern int securelevel;		/* system security level (see init(8)) */
 extern int kernel_mem_readonly;	/* disable writes to kernel memory */
 
 extern int cold;		/* nonzero if we are doing a cold boot */
+extern int tsleep_now_works;	/* tsleep won't just return any more */
 extern const char *panicstr;	/* panic message */
 extern int dumping;		/* system is dumping */
 extern int safepri;		/* safe ipl when cold or panicing */
@@ -215,6 +216,7 @@ int	susword (void *base, int word);
 
 void	realitexpire (void *);
 void	DELAY(int usec);
+void	DRIVERSLEEP(int usec);
 
 void	startprofclock (struct proc *);
 void	stopprofclock (struct proc *);

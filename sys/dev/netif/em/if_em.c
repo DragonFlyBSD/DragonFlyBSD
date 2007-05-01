@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.57 2007/04/15 12:50:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.58 2007/05/01 00:05:17 dillon Exp $
  * $FreeBSD$
  */
 /*
@@ -432,6 +432,7 @@ em_probe(device_t dev)
 				 "%s, Version - %s",  em_strings[ent->index], 
 				 em_driver_version);
 			device_set_desc_copy(dev, adapter_name);
+			device_set_async_attach(dev, TRUE);
 			return (0);
 		}
 		ent++;
