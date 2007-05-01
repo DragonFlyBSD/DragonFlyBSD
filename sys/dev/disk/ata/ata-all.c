@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.37 2007/05/01 17:07:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.38 2007/05/01 17:16:23 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -74,7 +74,9 @@ static struct dev_ops ata_ops = {
 };
 
 /* prototypes */
+#if 0
 static void ata_boot_attach(void);
+#endif
 static void ata_intr(void *);
 static int ata_getparam(struct ata_device *, u_int8_t);
 static int ata_service(struct ata_channel *);
@@ -542,6 +544,8 @@ ata_getparam(struct ata_device *atadev, u_int8_t command)
     return 0;
 }
 
+#if 0
+
 static void 
 ata_boot_attach(void)
 {
@@ -600,6 +604,8 @@ ata_boot_attach(void)
 #endif
     crit_exit();
 }
+
+#endif
 
 static void
 ata_intr(void *data)
