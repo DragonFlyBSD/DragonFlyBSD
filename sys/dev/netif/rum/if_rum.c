@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.11 2007/04/08 09:41:41 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.12 2007/05/02 11:29:27 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -1572,8 +1572,9 @@ rum_set_chan(struct rum_softc *sc, struct ieee80211_channel *c)
 	/* enable smart mode for MIMO-capable RFs */
 	bbp3 = rum_bbp_read(sc, 3);
 
-	bbp3 &= ~RT2573_SMART_MODE;
 	if (sc->rf_rev == RT2573_RF_5225 || sc->rf_rev == RT2573_RF_2527)
+		bbp3 &= ~RT2573_SMART_MODE;
+	else
 		bbp3 |= RT2573_SMART_MODE;
 
 	rum_bbp_write(sc, 3, bbp3);
