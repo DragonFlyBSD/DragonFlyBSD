@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.79 2007/05/01 00:05:17 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.80 2007/05/02 05:55:35 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -171,6 +171,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	thread0.td_proc = &proc0;
 	thread0.td_lwp = &lwp0;
 	thread0.td_switch = cpu_heavy_switch;   /* YYY eventually LWKT */
+	lwkt_schedule_self(curthread);
 }
 
 /*
