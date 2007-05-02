@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.19 2007/04/24 11:06:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.20 2007/05/02 14:34:10 sephe Exp $
  */
 
 /*
@@ -227,8 +227,8 @@
 #define BGE_CHIPID_TIGON_I		0x40000000
 #define BGE_CHIPID_TIGON_II		0x60000000
 #define BGE_CHIPID_BCM5700_B0		0x71000000
-#define BGE_CHIPID_BCM5700_B1		0x71020000
-#define BGE_CHIPID_BCM5700_B2		0x71030000
+#define BGE_CHIPID_BCM5700_B1		0x71010000
+#define BGE_CHIPID_BCM5700_B2		0x71020000
 #define BGE_CHIPID_BCM5700_ALTIMA	0x71040000
 #define BGE_CHIPID_BCM5700_C0		0x72000000
 #define BGE_CHIPID_BCM5701_A0		0x00000000	/* grrrr */
@@ -2331,7 +2331,11 @@ struct bge_softc {
 	int			bge_if_flags;
 	int			bge_txcnt;
 	int			bge_link;
+	int			bge_link_evt;
 	struct callout		bge_stat_timer;
+
+	void			(*bge_link_upd)(struct bge_softc *, uint32_t);
+	uint32_t		bge_link_chg;
 };
 
 #define BGE_NSEG_NEW		32

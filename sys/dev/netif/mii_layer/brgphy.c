@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.15 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.16 2007/05/02 14:34:10 sephe Exp $
  */
 
 /*
@@ -109,7 +109,7 @@ DRIVER_MODULE(brgphy, miibus, brgphy_driver, brgphy_devclass, 0, 0);
 
 static int	brgphy_service(struct mii_softc *, struct mii_data *, int);
 static void 	brgphy_status(struct mii_softc *);
-static int	brgphy_mii_phy_auto(struct mii_softc *, int);
+static void	brgphy_mii_phy_auto(struct mii_softc *);
 static void	brgphy_reset(struct mii_softc *);
 static void	brgphy_loop(struct mii_softc *);
 
@@ -230,7 +230,7 @@ brgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			if (PHY_READ(sc, BRGPHY_MII_BMCR) & BRGPHY_BMCR_AUTOEN)
 				return (0);
 #endif
-			brgphy_mii_phy_auto(sc, 1);
+			brgphy_mii_phy_auto(sc);
 			break;
 		case IFM_1000_T:
 			speed = BRGPHY_S1000;
@@ -325,8 +325,7 @@ setit:
 			break;
 		
 		sc->mii_ticks = 0;
-		if (brgphy_mii_phy_auto(sc, 0) == EJUSTRETURN)
-			return (0);
+		brgphy_mii_phy_auto(sc);
 		break;
 	}
 
@@ -356,30 +355,27 @@ static void
 brgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
-	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
-	int bmsr, bmcr;
+	int bmcr, aux;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
 
-	bmsr = PHY_READ(sc, BRGPHY_MII_BMSR);
-	if (PHY_READ(sc, BRGPHY_MII_AUXSTS) & BRGPHY_AUXSTS_LINK)
+	aux = PHY_READ(sc, BRGPHY_MII_AUXSTS);
+	if (aux & BRGPHY_AUXSTS_LINK)
 		mii->mii_media_status |= IFM_ACTIVE;
 
 	bmcr = PHY_READ(sc, BRGPHY_MII_BMCR);
-
 	if (bmcr & BRGPHY_BMCR_LOOP)
 		mii->mii_media_active |= IFM_LOOP;
 
 	if (bmcr & BRGPHY_BMCR_AUTOEN) {
-		if ((bmsr & BRGPHY_BMSR_ACOMP) == 0) {
+		if ((PHY_READ(sc, BRGPHY_MII_BMSR) & BRGPHY_BMSR_ACOMP) == 0) {
 			/* Erg, still trying, I guess... */
 			mii->mii_media_active |= IFM_NONE;
 			return;
 		}
 
-		switch (PHY_READ(sc, BRGPHY_MII_AUXSTS) &
-		    BRGPHY_AUXSTS_AN_RES) {
+		switch (aux & BRGPHY_AUXSTS_AN_RES) {
 		case BRGPHY_RES_1000FD:
 			mii->mii_media_active |= IFM_1000_T | IFM_FDX;
 			break;
@@ -405,64 +401,31 @@ brgphy_status(struct mii_softc *sc)
 			mii->mii_media_active |= IFM_NONE;
 			break;
 		}
-		return;
+	} else {
+		mii->mii_media_active = mii->mii_media.ifm_cur->ifm_media;
 	}
-
-	mii->mii_media_active = ife->ifm_media;
 }
 
 
-static int
-brgphy_mii_phy_auto(struct mii_softc *sc, int waitfor)
+static void
+brgphy_mii_phy_auto(struct mii_softc *sc)
 {
-	int bmsr, ktcr = 0, i;
+	int ktcr = 0;
 
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		brgphy_loop(sc);
-		brgphy_reset(sc);
-		ktcr = BRGPHY_1000CTL_AFD|BRGPHY_1000CTL_AHD;
-		if (sc->mii_model == MII_MODEL_xxBROADCOM_BCM5701)
-			ktcr |= BRGPHY_1000CTL_MSE|BRGPHY_1000CTL_MSC;
-		PHY_WRITE(sc, BRGPHY_MII_1000CTL, ktcr);
-		ktcr = PHY_READ(sc, BRGPHY_MII_1000CTL);
-		DELAY(1000);
-		PHY_WRITE(sc, BRGPHY_MII_ANAR,
-		    BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
-		DELAY(1000);
-		PHY_WRITE(sc, BRGPHY_MII_BMCR,
-		    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);
-		PHY_WRITE(sc, BRGPHY_MII_IMR, 0xFF00);
-	}
-
-	if (waitfor) {
-		/* Wait 500ms for it to complete. */
-		for (i = 0; i < 500; i++) {
-			if ((bmsr = PHY_READ(sc, BRGPHY_MII_BMSR)) &
-			    BRGPHY_BMSR_ACOMP)
-				return (0);
-			DELAY(1000);
-		}
-
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag.
-		 */
-		return (EIO);
-	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&sc->mii_auto_ch, hz >> 1,
-			      mii_phy_auto_timeout, sc);
-	}
-
-	return (EJUSTRETURN);
+	brgphy_loop(sc);
+	brgphy_reset(sc);
+	ktcr = BRGPHY_1000CTL_AFD|BRGPHY_1000CTL_AHD;
+	if (sc->mii_model == MII_MODEL_xxBROADCOM_BCM5701)
+		ktcr |= BRGPHY_1000CTL_MSE|BRGPHY_1000CTL_MSC;
+	PHY_WRITE(sc, BRGPHY_MII_1000CTL, ktcr);
+	ktcr = PHY_READ(sc, BRGPHY_MII_1000CTL);
+	DELAY(1000);
+	PHY_WRITE(sc, BRGPHY_MII_ANAR,
+	    BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
+	DELAY(1000);
+	PHY_WRITE(sc, BRGPHY_MII_BMCR,
+	    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);
+	PHY_WRITE(sc, BRGPHY_MII_IMR, 0xFF00);
 }
 
 static void
