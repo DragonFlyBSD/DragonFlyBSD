@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rtprio.h,v 1.9 1999/12/29 04:24:46 peter Exp $
- * $DragonFly: src/sys/sys/rtprio.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/rtprio.h,v 1.6 2007/05/03 23:04:36 dillon Exp $
  */
 
 #ifndef _SYS_RTPRIO_H_
@@ -81,6 +81,7 @@ struct rtprio {
 
 __BEGIN_DECLS
 int	rtprio (int, pid_t, struct rtprio *);
+int	lwp_rtprio (int, pid_t, lwpid_t, struct rtprio *);
 __END_DECLS
 #endif	/* !_KERNEL */
 #endif	/* !_SYS_RTPRIO_H_ */

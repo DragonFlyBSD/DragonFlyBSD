@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.31 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.32 2007/05/03 23:04:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -259,6 +259,98 @@ donice(struct proc *chgp, int n)
 	FOREACH_LWP_IN_PROC(lp, chgp)
 		chgp->p_usched->resetpriority(lp);
 	return (0);
+}
+
+int
+sys_lwp_rtprio(struct lwp_rtprio_args *uap)
+{
+	struct proc *p = curproc;
+	struct lwp *lp;
+	struct rtprio rtp;
+	struct ucred *cr = p->p_ucred;
+	int error;
+
+	error = copyin(uap->rtp, &rtp, sizeof(struct rtprio));
+	if (error)
+		return error;
+
+	if (uap->pid < 0) {
+		return EINVAL;
+	} else if (uap->pid == 0) {
+		/* curproc already loaded on p */
+	} else {
+		p = pfind(uap->pid);
+	}
+
+	if (p == 0) {
+		return ESRCH;
+	}
+
+	if (uap->tid < -1) {
+		return EINVAL;
+	} else if (uap->tid == -1) {
+		/*
+		 * sadly, tid can be 0 so we can't use 0 here
+		 * like sys_rtprio()
+		 */
+		lp = curthread->td_lwp;
+	} else {
+		FOREACH_LWP_IN_PROC(lp, p) {
+			if (lp->lwp_tid == uap->tid) {
+				break;
+			}
+		}
+		if (!lp) {
+			return ESRCH;
+		}
+	}
+
+	switch (uap->function) {
+	case RTP_LOOKUP:
+		return (copyout(&lp->lwp_rtprio, uap->rtp,
+				sizeof(struct rtprio)));
+	case RTP_SET:
+		if (cr->cr_uid && cr->cr_ruid &&
+		    cr->cr_uid != p->p_ucred->cr_uid &&
+		    cr->cr_ruid != p->p_ucred->cr_uid) {
+			return EPERM;
+		}
+		/* disallow setting rtprio in most cases if not superuser */
+		if (suser_cred(cr, 0)) {
+			/* can't set someone else's */
+			if (uap->pid) { /* XXX */
+				return EPERM;
+			}
+			/* can't set realtime priority */
+/*
+ * Realtime priority has to be restricted for reasons which should be
+ * obvious. However, for idle priority, there is a potential for
+ * system deadlock if an idleprio process gains a lock on a resource
+ * that other processes need (and the idleprio process can't run
+ * due to a CPU-bound normal process). Fix me! XXX
+ */
+ 			if (RTP_PRIO_IS_REALTIME(rtp.type)) {
+				return EPERM;
+			}
+		}
+		switch (rtp.type) {
+#ifdef RTP_PRIO_FIFO
+		case RTP_PRIO_FIFO:
+#endif
+		case RTP_PRIO_REALTIME:
+		case RTP_PRIO_NORMAL:
+		case RTP_PRIO_IDLE:
+			if (rtp.prio > RTP_PRIO_MAX)
+				return EINVAL;
+			lp->lwp_rtprio = rtp;
+			return 0;
+		default:
+			return EINVAL;
+		}
+	default:
+		return EINVAL;
+	}
+	panic("can't get here");
 }
 
 /*
