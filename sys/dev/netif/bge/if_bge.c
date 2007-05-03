@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.73 2007/05/02 14:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.74 2007/05/03 14:09:22 sephe Exp $
  *
  */
 
@@ -2213,7 +2213,7 @@ bge_tick(void *xsc)
 		 */
 		sc->bge_link_evt++;
 		BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
-	} else {
+	} else if (!sc->bge_link) {
 		mii_tick(device_get_softc(sc->bge_miibus));
 	}
 
@@ -2669,6 +2669,7 @@ bge_ifmedia_upd(struct ifnet *ifp)
 		struct mii_data *mii = device_get_softc(sc->bge_miibus);
 
 		sc->bge_link_evt++;
+		sc->bge_link = 0;
 		if (mii->mii_instance) {
 			struct mii_softc *miisc;
 
