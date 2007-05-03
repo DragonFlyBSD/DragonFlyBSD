@@ -23,12 +23,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.2 2007/03/13 00:19:29 corecode Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.3 2007/05/03 23:08:34 dillon Exp $
  */
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/signalvar.h>
+#include <sys/rtprio.h>
 #include <pthread.h>
 #include "thr_private.h"
 
@@ -102,4 +103,115 @@ int
 _thr_get_tid()
 {
 	return (lwp_gettid());
+}
+
+/*
+ * We don't use the priority for SCHED_OTHER, but
+ * some programs may depend on getting an error when
+ * setting a priority that is out of the range returned
+ * by sched_get_priority_{min,max}. Not sure if this
+ * falls into implementation defined behavior or not.
+ */
+int
+_thr_set_sched_other_prio(struct pthread *pth, int prio)
+{
+	static int max, min, init_status;
+
+	/*
+	 * switch (init_status) {
+	 * case 0: need initialization
+	 * case 1: initialization successful
+	 * case 2: initialization failed. can't happen, but if
+	 * 	   it does, accept all and hope for the best.
+	 * 	   It's not like we use it anyway.
+	 */
+	if (!init_status) {
+		int tmp = errno;
+
+		errno = 0;
+		init_status = 1;
+		if (((min = sched_get_priority_min(SCHED_OTHER)) == -1) &&
+								(errno != 0))
+			init_status = 2;
+		if (((max = sched_get_priority_max(SCHED_OTHER)) == -1) &&
+								(errno != 0))
+			init_status = 2;
+		errno = tmp;
+	}
+	if ((init_status == 2) || ((prio >= min) && (prio <= max))) {
+		return 0;
+	}
+	errno = EINVAL;
+	return -1;
+}
+
+int
+_rtp_to_schedparam(const struct rtprio *rtp, int *policy,
+	struct sched_param *param)
+{
+	switch(rtp->type) {
+	case RTP_PRIO_REALTIME:
+		*policy = SCHED_RR;
+		param->sched_priority = RTP_PRIO_MAX - rtp->prio;
+		break;
+	case RTP_PRIO_FIFO:
+		*policy = SCHED_FIFO;
+		param->sched_priority = RTP_PRIO_MAX - rtp->prio;
+		break;
+	default:
+		*policy = SCHED_OTHER;
+		param->sched_priority = 0;
+		break;
+	}
+	return (0);
+}
+
+int
+_schedparam_to_rtp(int policy, const struct sched_param *param,
+	struct rtprio *rtp)
+{
+	switch(policy) {
+	case SCHED_RR:
+		rtp->type = RTP_PRIO_REALTIME;
+		rtp->prio = RTP_PRIO_MAX - param->sched_priority;
+		break;
+	case SCHED_FIFO:
+		rtp->type = RTP_PRIO_FIFO;
+		rtp->prio = RTP_PRIO_MAX - param->sched_priority;
+		break;
+	case SCHED_OTHER:
+	default:
+		rtp->type = RTP_PRIO_NORMAL;
+		rtp->prio = 0;
+		break;
+	}
+	return (0);
+}
+
+int
+_thr_getscheduler(lwpid_t lwpid, int *policy, struct sched_param *param)
+{
+	struct pthread *curthread = tls_get_curthread();
+	struct rtprio rtp;
+	int ret;
+
+	if (lwpid == curthread->tid)
+		lwpid = -1;
+	ret = lwp_rtprio(RTP_LOOKUP, 0, lwpid, &rtp);
+	if (ret == -1)
+		return (ret);
+	_rtp_to_schedparam(&rtp, policy, param);
+	return (0);
+}
+
+int
+_thr_setscheduler(lwpid_t lwpid, int policy, const struct sched_param *param)
+{
+	struct pthread *curthread = tls_get_curthread();
+	struct rtprio rtp;
+
+	if (lwpid == curthread->tid)
+		lwpid = -1;
+	_schedparam_to_rtp(policy, param, &rtp);
+	return (lwp_rtprio(RTP_SET, 0, lwpid, &rtp));
 }

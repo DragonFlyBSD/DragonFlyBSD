@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.15 2006/04/13 11:48:01 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.16 2007/05/03 23:08:34 dillon Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -236,7 +236,6 @@ struct pthread_atfork {
 struct pthread_attr {
 	int	sched_policy;
 	int	sched_inherit;
-	int	sched_interval;
 	int	prio;
 	int	suspend;
 #define	THR_STACK_USER		0x100	/* 0xFF reserved for <pthread.h> */
@@ -691,6 +690,9 @@ void	_thr_report_creation(struct pthread *curthread,
 void	_thr_report_death(struct pthread *curthread);
 void	_thread_bp_create(void);
 void	_thread_bp_death(void);
+int	_thr_getscheduler(lwpid_t, int *, struct sched_param *);
+int	_thr_setscheduler(lwpid_t, int, const struct sched_param *);
+int	_thr_set_sched_other_prio(struct pthread *, int);
 
 /* #include <sys/aio.h> */
 #ifdef _SYS_AIO_H_

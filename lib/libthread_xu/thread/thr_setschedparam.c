@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.6 2007/05/03 23:08:34 dillon Exp $
  */
 
 #include "namespace.h"
@@ -49,49 +49,47 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 	struct pthread *curthread = tls_get_curthread();
 	int	ret = 0;
 
-	if ((param == NULL) || (policy < SCHED_FIFO) || (policy > SCHED_RR)) {
-		/* Return an invalid argument error: */
-		ret = EINVAL;
-	} else if ((param->sched_priority < THR_MIN_PRIORITY) ||
-	    (param->sched_priority > THR_MAX_PRIORITY)) {
-		/* Return an unsupported value error. */
-		ret = ENOTSUP;
-
-	/* Find the thread in the list of active threads: */
-	} else if ((ret = _thr_ref_add(curthread, pthread, /*include dead*/0))
-	    == 0) {
-		/*
-		 * Lock the threads scheduling queue while we change
-		 * its priority:
-		 */
-		THR_THREAD_LOCK(curthread, pthread);
-		if (pthread->state == PS_DEAD) {
-			THR_THREAD_UNLOCK(curthread, pthread);
-			_thr_ref_delete(curthread, pthread);
-			return (ESRCH);
+	if (pthread == curthread) {
+		THR_LOCK(curthread);
+		if (curthread->attr.sched_policy == policy &&
+		     curthread->attr.prio == param->sched_priority) {
+			THR_UNLOCK(curthread);
+			return (0);
 		}
-
-		/* Set the scheduling policy: */
-		pthread->attr.sched_policy = policy;
-
-		if (param->sched_priority ==
-		    THR_BASE_PRIORITY(pthread->base_priority))
-			/*
-			 * There is nothing to do; unlock the threads
-			 * scheduling queue.
-			 */
-			THR_THREAD_UNLOCK(curthread, pthread);
+		if (policy == SCHED_OTHER) {
+			ret = _thr_set_sched_other_prio(curthread,
+						param->sched_priority);
+		} else {
+			ret = _thr_setscheduler(curthread->tid, policy, param);
+		}
+		if (ret == -1)
+			ret = errno;
 		else {
-			/* Set the thread base priority: */
-			pthread->base_priority = param->sched_priority;
-
-			/* Recalculate the active priority: */
-			pthread->active_priority = MAX(pthread->base_priority,
-			    pthread->inherited_priority);
-
-			/* Unlock the threads scheduling queue: */
-			THR_THREAD_UNLOCK(curthread, pthread);
+			curthread->attr.sched_policy = policy;
+			curthread->attr.prio = param->sched_priority;
 		}
+		THR_UNLOCK(curthread);
+	} else if ((ret = _thr_ref_add(curthread, pthread, /*include dead*/0))
+		== 0) {
+		THR_THREAD_LOCK(curthread, pthread);
+		if (pthread->attr.sched_policy == policy &&
+		     pthread->attr.prio == param->sched_priority) {
+			THR_THREAD_UNLOCK(curthread, pthread);
+			return (0);
+		}
+		if (policy == SCHED_OTHER) {
+			ret = _thr_set_sched_other_prio(curthread,
+						param->sched_priority);
+		} else {
+			ret = _thr_setscheduler(curthread->tid, policy, param);
+		}
+		if (ret == -1)
+			ret = errno;
+		else {
+			pthread->attr.sched_policy = policy;
+			pthread->attr.prio = param->sched_priority;
+		}
+		THR_THREAD_UNLOCK(curthread, pthread);
 		_thr_ref_delete(curthread, pthread);
 	}
 	return (ret);

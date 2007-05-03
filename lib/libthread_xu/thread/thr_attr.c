@@ -30,7 +30,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.8 2007/05/03 23:08:34 dillon Exp $
  */
 
 #include "namespace.h"
@@ -49,7 +49,6 @@
 struct pthread_attr _pthread_attr_default = {
 	.sched_policy = SCHED_OTHER,
 	.sched_inherit = 0,
-	.sched_interval = TIMESLICE_USEC,
 	.prio = THR_DEFAULT_PRIORITY,
 	.suspend = THR_CREATE_RUNNING,
 	.flags = 0,
