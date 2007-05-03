@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.9 2006/11/16 13:37:43 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.10 2007/05/03 08:32:24 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.8 2006/08/06 10:32:23 sephe Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.9 2006/11/16 13:37:21 sephe Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -101,6 +101,7 @@
 
 /* Don't know what's going on here. */
 #define	MII_OUI_xxDAVICOM	0x006040	/* Davicom Semiconductor */
+#define	MII_OUI_xxBROADCOM2	0x0050ef	/* Broadcom Corporation */
 
 /* This is the OUI of the gigE PHY in the RealTek 8169S/8110S chips */
 #define	MII_OUI_xxREALTEK	0x000732	/*  */
@@ -186,6 +187,10 @@
 #define	MII_STR_xxBROADCOM_BCM5780	"BCM5780 10/100/1000baseT PHY"
 #define	MII_MODEL_xxBROADCOM_BCM5708C	0x0036
 #define	MII_STR_xxBROADCOM_BCM5708C	"BCM5708C 10/100/1000baseT PHY"
+#define	MII_MODEL_xxBROADCOM2_BCM5755	0x000c
+#define	MII_STR_xxBROADCOM2_BCM5755	"BCM5755 10/100/1000baseT PHY"
+#define	MII_MODEL_xxBROADCOM2_BCM5787	0x000e
+#define	MII_STR_xxBROADCOM2_BCM5787	"BCM5787 10/100/1000baseT PHY"
 
 /* Cicada Semiconductor PHYs (now owned by Vitesse?) */
 #define	MII_MODEL_CICADA_CS8201	0x0001
