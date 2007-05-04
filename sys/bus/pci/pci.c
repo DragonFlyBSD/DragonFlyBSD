@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.37 2007/02/11 01:51:28 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.38 2007/05/04 17:25:04 dillon Exp $
  *
  */
 
@@ -1970,13 +1970,11 @@ pci_delete_resource(device_t dev, device_t child, int type, int rid)
 struct resource_list *
 pci_get_resource_list (device_t dev, device_t child)
 {
-	struct pci_devinfo *    dinfo = device_get_ivars(child); 
-	struct resource_list *  rl = &dinfo->resources;
+	struct pci_devinfo *dinfo = device_get_ivars(child); 
 
-	if (!rl)
+	if (dinfo == NULL)
 		return (NULL);
-
-	return (rl);
+	return (&dinfo->resources);
 }
 
 u_int32_t
