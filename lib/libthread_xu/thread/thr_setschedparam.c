@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.6 2007/05/03 23:08:34 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.7 2007/05/04 17:18:55 dillon Exp $
  */
 
 #include "namespace.h"
@@ -78,10 +78,10 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 			return (0);
 		}
 		if (policy == SCHED_OTHER) {
-			ret = _thr_set_sched_other_prio(curthread,
+			ret = _thr_set_sched_other_prio(pthread,
 						param->sched_priority);
 		} else {
-			ret = _thr_setscheduler(curthread->tid, policy, param);
+			ret = _thr_setscheduler(pthread->tid, policy, param);
 		}
 		if (ret == -1)
 			ret = errno;
