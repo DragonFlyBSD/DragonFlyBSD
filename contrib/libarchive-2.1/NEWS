@@ -1,4 +1,7 @@
 
+Apr 30, 2007: libarchive 2.1.10 released
+Apr 31, 2007: Minor code cleanup.
+
 Apr 24, 2007: libarchive 2.1.9 released
 Apr 24, 2007: Fix some recently-introduced problems with libraries
 	(Just let automake handle it and it all works much better.)
