@@ -25,14 +25,14 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vnode.9,v 1.10.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vnode.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
+.\" $DragonFly: src/share/man/man9/vnode.9,v 1.6 2007/05/05 06:26:57 dillon Exp $
 .\"
 .Dd June 28, 2003
 .Os
 .Dt VNODE 9
 .Sh NAME
 .Nm vnode
-.Nd internal representation of a file or directory
+.Nd internal representation of a file, directory, or other VFS entity
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
@@ -47,57 +47,61 @@ There is a
 unique vnode allocated for each active file, each current directory,
 each mounted-on file, text file, and the root.
 .Pp
-Each vnode has three reference counts,
-.Va v_usecount ,
-.Va v_holdcnt
+Each vnode has numerous reference counts,
+.Va v_sysref ,
+.Va v_auxrefs ,
+.Va v_opencount ,
 and
 .Va v_writecount .
-The first is the number of clients within the kernel which are
-using this vnode.  This count is maintained by
-.Xr vref 9 ,
-.Xr vrele 9
+.Pp
+.Va v_sysref
+represents the number of primary references to the vnode.  It is actually
+a structure which utilizes the SYSREF API and also manages allocation and
+deallocation of the vnode.
+Primary references keep a vnode ready for I/O and prevent it from being
+deactivated.
+Primary references are managed by
+.Xr vref 9
 and
-.Xr vput 9 .
-The second is the number of clients within the kernel who veto
-the recycling of this vnode.  This count is
-maintained by
+.Xr vrele 9 .
+.Pp
+.Va v_auxrefs
+represents the number of auxiliary references to a vnode.  Auxiliary
+references prevent a vnode from being reclaimed (if not already being
+reclaimed), reused for other purposes, or otherwise destroyed, but
+do not activate or deactivate the vnode.
+Auxiliary references are managed by
 .Xr vhold 9
 and
 .Xr vdrop 9 .
-When both the
-.Va v_usecount
-and the
-.Va v_holdcnt
-of a vnode reaches zero then the vnode will be put on the freelist
-and may be reused for another file, possibly in another filesystem.
-The transition to and from the freelist is handled by
-.Xr getnewvnode 9 ,
-.Xr vfree 9
-and
-.Xr vbusy 9 .
-The third is a count of the number of clients which are writing into
-the file.  It is maintained by the
-.Xr open 2
-and
-.Xr close 2
-system calls.
 .Pp
-Any call which returns a vnode (e.g.\&
-.Xr vget 9 ,
-.Xr VOP_LOOKUP 9
-etc.)
-will increase the
-.Va v_usecount
-of the vnode by one.  When the caller is finished with the vnode, it
-should release this reference by calling
-.Xr vrele 9
-(or
-.Xr vput 9
-if the vnode is locked).
+.Va v_opencount
+represents the number of discrete
+.Fn open
+calls made on the vnode (reading or writing).
+.Va v_writecount
+represents the number of descrete
+.Fn open
+calls made on the vnode for the purpose of writing.  This field
+will be a subset of
+.Va v_opencount .
+These fields are managed primarily by calls to
+.Xr vn_open 9
+and
+.Xr vn_close 9 .
+.Pp
+A deactivated vnode or a vnode in an unknown state accessed from an
+Auxiliary data structure can be reactivated, referenced, and locked using
+.Xr vget 9
+and
+.Xr vput 9 .
+.Pp
+An actively referenced and possibly locked vnode must be passed
+to most kernel procedures taking a vnode as an argument.
+Most kernel procedures returning a vnode will return one that is actively
+referenced.
 .Pp
 Other commonly used members of the vnode structure are
-.Va v_id
-which is used to maintain consistency in the name cache,
 .Va v_mount
 which points at the filesystem which owns the vnode,
 .Va v_type
@@ -106,7 +110,7 @@ which contains the type of object the vnode represents and
 which is used by filesystems to store filesystem specific data with
 the vnode.
 The
-.Va v_op
+.Va v_ops
 field is used by the
 .Dv VOP_*
 macros to call functions in the filesystem which implement the vnode's

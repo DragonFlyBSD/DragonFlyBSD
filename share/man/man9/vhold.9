@@ -25,14 +25,14 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vhold.9,v 1.4 2005/07/22 00:28:22 rodrigc Exp $
-.\" $DragonFly: src/share/man/man9/vhold.9,v 1.2 2007/05/05 06:09:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vhold.9,v 1.3 2007/05/05 06:26:57 dillon Exp $
 .\"
 .Dd March 4, 2007
 .Dt VHOLD 9
 .Os
 .Sh NAME
 .Nm vhold , vdrop
-.Nd "Acquire/release an auxillary reference on a vnode"
+.Nd "Acquire/release an auxiliary reference on a vnode"
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
@@ -43,16 +43,16 @@
 .Sh DESCRIPTION
 The
 .Fn vhold
-function acquires an auxillary reference on a vnode by incrementing the
+function acquires an auxiliary reference on a vnode by incrementing the
 .Va v_auxrefs
 field.
-Auxillary references do not reactivate a vnode or move it to the cache
+Auxiliary references do not reactivate a vnode or move it to the cache
 if it resides on the free list, but they will prevent the vnode from
 being recycled (if not already being recycled), or reused.
-Auxillary references are used to associate auxillary structures such as
+Auxiliary references are used to associate auxiliary structures such as
 namecache records with the vnode for those cases where the intent is to
 not allow the vnode to be immediately recycled.
-Auxillary references are also used to access a vnode via an auxillary
+Auxiliary references are also used to access a vnode via an auxiliary
 structure without having to hold a deep stack of locks that might
 create deadlock issues for the caller.
 .Pp

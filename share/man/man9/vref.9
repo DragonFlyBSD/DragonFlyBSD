@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vref.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vref.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vref.9,v 1.7 2007/05/05 06:26:57 dillon Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -52,9 +52,9 @@ on an inactive vnode will result in a panic.
 The vnode being referenced.
 .El
 .Pp
-Each vnode maintains a Primary and Auxillary reference count.
+Each vnode maintains a Primary and Auxiliary reference count.
 The primary reference count prevents the vnode from being deactivated
-while the auxillary reference count keeps track of auxillary structures,
+while the auxiliary reference count keeps track of auxiliary structures,
 such as namecache and VM object structures, which are typically kept
 associated with the vnode for caching purposes even after the vnode
 has been deactivated.

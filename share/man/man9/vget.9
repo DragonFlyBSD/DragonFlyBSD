@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vget.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vget.9,v 1.7 2007/05/05 06:26:57 dillon Exp $
 .\"
 .Dd March 4, 2007
 .Os
@@ -57,10 +57,10 @@ additional error codes that might be returned.
 When not in use, vnodes are kept on a free list or marked as being cached.
 The vnodes still reference valid files but may be reused to refer to a
 new file at any time.
-Often, references to these vnodes are present in auxillary structures
+Often, references to these vnodes are present in auxiliary structures
 related to the vnode, such as namecache entries and VM objects.
 .Pp
-When acquiring a vnode pointer from these auxillary structures the
+When acquiring a vnode pointer from these auxiliary structures the
 .Nm
 function must be used to both reference and, if necessary, reactivate
 the vnode.  The vnode will also be locked accordingly.
