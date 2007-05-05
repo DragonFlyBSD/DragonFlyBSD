@@ -25,14 +25,14 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vhold.9,v 1.4 2005/07/22 00:28:22 rodrigc Exp $
-.\" $DragonFly: src/share/man/man9/vhold.9,v 1.1 2007/03/04 02:45:08 swildner Exp $
+.\" $DragonFly: src/share/man/man9/vhold.9,v 1.2 2007/05/05 06:09:01 dillon Exp $
 .\"
 .Dd March 4, 2007
 .Dt VHOLD 9
 .Os
 .Sh NAME
 .Nm vhold , vdrop
-.Nd "acquire/release a hold on a vnode"
+.Nd "Acquire/release an auxillary reference on a vnode"
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
@@ -43,24 +43,35 @@
 .Sh DESCRIPTION
 The
 .Fn vhold
-function increments the
-.Va v_holdcnt
-of the given vnode.
-If the vnode has already been added to the free list and is still referenced,
-it will be removed.
+function acquires an auxillary reference on a vnode by incrementing the
+.Va v_auxrefs
+field.
+Auxillary references do not reactivate a vnode or move it to the cache
+if it resides on the free list, but they will prevent the vnode from
+being recycled (if not already being recycled), or reused.
+Auxillary references are used to associate auxillary structures such as
+namecache records with the vnode for those cases where the intent is to
+not allow the vnode to be immediately recycled.
+Auxillary references are also used to access a vnode via an auxillary
+structure without having to hold a deep stack of locks that might
+create deadlock issues for the caller.
 .Pp
 The
 .Fn vdrop
 function decrements the
-.Va v_holdcnt
-of the vnode.
-If the holdcount is less than or equal to zero prior to calling
-.Fn vdrop ,
-the system will panic.
-If the vnode is no longer referenced, it will be freed.
+.Va v_auxrefs
+field.  If the vnode has been deactivated and resides in the cache,
+it will be moved to the free list when
+.Va v_auxrefs
+drops to 0.
 .Sh SEE ALSO
-.Xr vbusy 9 ,
-.Xr vfree 9
+.Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
+.Xr vget 9 ,
+.Xr vput 9 ,
+.Xr vref 9 ,
+.Xr vrele 9
 .Sh AUTHORS
 This manual page was written by
 .An Chad David Aq davidc@acns.ab.ca .

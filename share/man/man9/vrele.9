@@ -25,39 +25,45 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vrele.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vrele.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
+.\" $DragonFly: src/share/man/man9/vrele.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
 .\"
 .Dd July 24, 1996
 .Os
 .Dt VRELE 9
 .Sh NAME
 .Nm vrele
-.Nd decrement the use count for a vnode
+.Nd Release a previously obtained primary reference for a vnode
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
 .Ft void
 .Fn vrele "struct vnode *vp"
 .Sh DESCRIPTION
-Decrement the
-.Va v_usecount
-field of a vnode.
+The caller is holding a primary reference to the vnode and wishes to
+release it.
 .Bl -tag -width ".Fa vp"
 .It Fa vp
-The vnode to decrement.
+The vnode being released.
 .El
 .Pp
-Any code in the system which is using a vnode should call
+Any code in the system which obtains a primary reference to a vnode
+via
+.Fn vref
+typically releases that reference with
 .Fn vrele
-when it is finished with the vnode.
-If the
-.Va v_usecount
-field of the vnode reaches zero, then it will be placed on the free list.
+when it is finished with the vnode.  Upon release of the last primary
+reference, the vnode will be deactivated and either moved to the free
+list for later reuse or marked as being cache.  The vnode can be reactivated
+at any time prior to the system reusing it.
 .Sh SEE ALSO
-.Xr vget 9 ,
 .Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
+.Xr vget 9 ,
 .Xr vput 9 ,
-.Xr vref 9
+.Xr vref 9 ,
+.Xr vhold 9 ,
+.Xr vdrop 9
 .Sh AUTHORS
 This manual page was written by
 .An Doug Rabson .

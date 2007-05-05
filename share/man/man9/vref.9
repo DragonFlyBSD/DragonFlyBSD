@@ -25,41 +25,55 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vref.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vref.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
+.\" $DragonFly: src/share/man/man9/vref.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
 .\"
 .Dd July 24, 1996
 .Os
 .Dt VREF 9
 .Sh NAME
 .Nm vref
-.Nd increment the use count for a vnode
+.Nd Increment the primary reference count for an active vnode
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
 .Ft void
 .Fn vref "struct vnode *vp"
 .Sh DESCRIPTION
-Increment the
-.Va v_usecount
-field of a vnode.
+The primary reference count for an active vnode is incremented.  The
+vnode must already have active references to it, usually acquired
+prior to the vnode pointer being passed to the code making this call
+or when vnode pointers are obtained from structures, such as file pointers,
+which hold an active reference to the vnode.
+Any attempt to use
+.Nm
+on an inactive vnode will result in a panic.
 .Bl -tag -width ".Fa vp"
 .It Fa vp
-The vnode to increment.
+The vnode being referenced.
 .El
 .Pp
-Each vnode maintains a reference count of how many parts of the system
-are using the vnode.  This allows the system to detect when a vnode is
-no longer being used and can be safely recycled for a different file.
+Each vnode maintains a Primary and Auxillary reference count.
+The primary reference count prevents the vnode from being deactivated
+while the auxillary reference count keeps track of auxillary structures,
+such as namecache and VM object structures, which are typically kept
+associated with the vnode for caching purposes even after the vnode
+has been deactivated.
 .Pp
-Any code in the system which is using a vnode (e.g. during the
-operation of some algorithm or to store in a data structure) should
-call
-.Fn vref .
+A procedure will often acquire its own primary reference to a vnode
+to prevent the vnode from getting ripped out from under it during
+an operation due to the destruction of the parent data structure.
+For example, one thread may be blocked on a vnode operation related
+to a file descriptor that another thread then closes.
+.Pp
 .Sh SEE ALSO
-.Xr vget 9 ,
 .Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
+.Xr vget 9 ,
 .Xr vput 9 ,
-.Xr vrele 9
+.Xr vrele 9 ,
+.Xr vhold 9 ,
+.Xr vdrop 9
 .Sh AUTHORS
 This manual page was written by
 .An Doug Rabson .

@@ -25,44 +25,62 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vget.9,v 1.5 2007/03/04 02:45:08 swildner Exp $
+.\" $DragonFly: src/share/man/man9/vget.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
 .\"
 .Dd March 4, 2007
 .Os
 .Dt VGET 9
 .Sh NAME
 .Nm vget
-.Nd get a vnode from the free list
+.Nd Acquire a primary reference, lock, and reactivate a vnode
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
 .Fn vget "struct vnode *vp" "int lockflag"
 .Sh DESCRIPTION
-Get a vnode from the free list and increment its reference count.
+Acquire a primary reference to vnode and lock it, reactivating the vnode
+from the cache or free list if necessary.
+This kernel function must be used if the vnode in hand is
+not already known to be actively referenced, such as when obtaining
+the vnode pointer from a namecache or VM object structure.
 .Bl -tag -width ".Fa lockflag"
 .It Fa vp
-The vnode to remove from the free list.
+The vnode being acquired, typically obtained from some other system
+structure.
 .It Fa lockflag
-If non-zero, the vnode will also be locked.
+Must be LK_SHARED or LK_EXCLUSIVE.  Passing 0 is illegal.  LK_NOWAIT may
+be logically ORd in if you do not wish to block and can handle the
+additional error codes that might be returned.
 .El
 .Pp
-When not in use, vnodes are kept on a free list.  The vnodes still
-reference valid files but may be reused to refer to a new file at any
-time.  Often, these vnodes are also held in caches in the system, such
-as the name cache.
+When not in use, vnodes are kept on a free list or marked as being cached.
+The vnodes still reference valid files but may be reused to refer to a
+new file at any time.
+Often, references to these vnodes are present in auxillary structures
+related to the vnode, such as namecache entries and VM objects.
 .Pp
-When a vnode which is on the free list is used again, for instance if
-the vnode was found in the name cache as a result of a call to
-.Xr VOP_LOOKUP 9
-then the new user must call
-.Fn vget
-to increment the reference count and remove it from the free list.
+When acquiring a vnode pointer from these auxillary structures the
+.Nm
+function must be used to both reference and, if necessary, reactivate
+the vnode.  The vnode will also be locked accordingly.
+.Sh RETURN VALUES
+0 is returned on success, ENOENT is returned if the vnode becomes unusable
+while
+.Nm
+is blocked trying to lock it, and other errors may be returned as well.
+ENOENT is not typically considered to be a fatal error but simply an
+indication that the caller needs to relookup the vnode as related
+structures may be in the midst of being destroyed.
 .Sh SEE ALSO
 .Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
 .Xr vput 9 ,
 .Xr vref 9 ,
-.Xr vrele 9
+.Xr vrele 9 ,
+.Xr vhold 9 ,
+.Xr vdrop 9
 .Sh AUTHORS
 This manual page was written by
 .An Doug Rabson .
