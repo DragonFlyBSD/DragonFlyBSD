@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.37 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.38 2007/05/05 16:52:55 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -2075,16 +2075,13 @@ bus_generic_write_ivar(device_t dev, device_t child, int index,
 	return (error);
 }
 
+/*
+ * Resource list are used for iterations, do not recurse.
+ */
 struct resource_list *
 bus_generic_get_resource_list(device_t dev, device_t child)
 {
-	struct resource_list *rl;
-
-	if (dev->parent)
-		rl = BUS_GET_RESOURCE_LIST(dev->parent, child);
-	else
-		rl = NULL;
-	return (rl);
+	return (NULL);
 }
 
 void
