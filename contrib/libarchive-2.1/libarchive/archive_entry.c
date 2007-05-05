@@ -444,8 +444,14 @@ archive_entry_atime(struct archive_entry *entry)
 long
 archive_entry_atime_nsec(struct archive_entry *entry)
 {
-	(void)entry; /* entry can be unused here. */
-	return (ARCHIVE_STAT_ATIME_NANOS(&entry->ae_stat));
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	return (entry->ae_stat.st_atimespec.tv_nsec);
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	return (entry->ae_stat.st_atim.tv_nsec);
+#else
+	(void)entry; /* UNUSED */
+	return (0);
+#endif
 }
 
 time_t
@@ -457,8 +463,14 @@ archive_entry_ctime(struct archive_entry *entry)
 long
 archive_entry_ctime_nsec(struct archive_entry *entry)
 {
-	(void)entry; /* entry can be unused here. */
-	return (ARCHIVE_STAT_CTIME_NANOS(&entry->ae_stat));
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	return (entry->ae_stat.st_ctimespec.tv_nsec);
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	return (entry->ae_stat.st_ctim.tv_nsec);
+#else
+	(void)entry; /* UNUSED */
+	return (0);
+#endif
 }
 
 dev_t
@@ -564,8 +576,14 @@ archive_entry_mtime(struct archive_entry *entry)
 long
 archive_entry_mtime_nsec(struct archive_entry *entry)
 {
-	(void)entry; /* entry can be unused here. */
-	return (ARCHIVE_STAT_MTIME_NANOS(&entry->ae_stat));
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	return (entry->ae_stat.st_mtimespec.tv_nsec);
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	return (entry->ae_stat.st_mtim.tv_nsec);
+#else
+	(void)entry; /* UNUSED */
+	return (0);
+#endif
 }
 
 unsigned int
@@ -731,14 +749,26 @@ void
 archive_entry_set_atime(struct archive_entry *entry, time_t t, long ns)
 {
 	entry->ae_stat.st_atime = t;
-	ARCHIVE_STAT_SET_ATIME_NANOS(&entry->ae_stat, ns);
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	entry->ae_stat.st_atimespec.tv_nsec = ns;
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	entry->ae_stat.st_atim.tv_nsec = ns;
+#else
+	(void)ns; /* UNUSED */
+#endif
 }
 
 void
 archive_entry_set_ctime(struct archive_entry *entry, time_t t, long ns)
 {
 	entry->ae_stat.st_ctime = t;
-	ARCHIVE_STAT_SET_CTIME_NANOS(&entry->ae_stat, ns);
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	entry->ae_stat.st_ctimespec.tv_nsec = ns;
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	entry->ae_stat.st_ctim.tv_nsec = ns;
+#else
+	(void)ns; /* UNUSED */
+#endif
 }
 
 void
@@ -786,7 +816,13 @@ void
 archive_entry_set_mtime(struct archive_entry *entry, time_t m, long ns)
 {
 	entry->ae_stat.st_mtime = m;
-	ARCHIVE_STAT_SET_MTIME_NANOS(&entry->ae_stat, ns);
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	entry->ae_stat.st_mtimespec.tv_nsec = ns;
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	entry->ae_stat.st_mtim.tv_nsec = ns;
+#else
+	(void)ns; /* UNUSED */
+#endif
 }
 
 void

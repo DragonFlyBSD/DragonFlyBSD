@@ -26,6 +26,9 @@
 #include "archive_platform.h"
 __FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk_set_standard_lookup.c,v 1.2 2007/04/20 15:32:13 kientzle Exp $");
 
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
 #endif
