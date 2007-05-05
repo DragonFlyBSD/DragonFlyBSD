@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.10 2007/04/28 16:16:31 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.11 2007/05/05 21:16:57 pavalos Exp $
 
 LIB=	archive
 
@@ -11,6 +11,9 @@ ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/\..*//'
 ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/[0-9]*\.//' -e 's/\..*//'
 SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
+CFLAGS+=	-DPACKAGE_STRING=\"libarchive\ ${VERSION}\"
+CFLAGS+=	-DPACKAGE_VERSION=\"${VERSION}\"
+CFLAGS+=	-DVERSION=\"${VERSION}\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I-
 WARNS?=	6
 

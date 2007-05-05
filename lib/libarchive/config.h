@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.6 2007/04/27 22:56:18 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.7 2007/05/05 21:16:57 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -374,13 +374,13 @@
 #define PACKAGE_NAME "libarchive"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libarchive 2.1.9"
+/* #undef PACKAGE_STRING */
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libarchive"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.1.9"
+/* #undef PACKAGE_VERSION */
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -392,7 +392,7 @@
 #define TIME_WITH_SYS_TIME 1
 
 /* Version number of package */
-#define VERSION "2.1.9"
+/* #undef VERSION */
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */
