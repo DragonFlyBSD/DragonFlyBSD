@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)tty.c	8.1 (Berkeley) 6/4/93
- * $NetBSD: tty.c,v 1.23 2005/06/01 11:37:52 lukem Exp $
- * $DragonFly: src/lib/libedit/tty.c,v 1.4 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: tty.c,v 1.25 2006/03/18 09:09:41 christos Exp $
+ * $DragonFly: src/lib/libedit/tty.c,v 1.5 2007/05/05 00:27:40 pavalos Exp $
  */
 
 #include "config.h"
@@ -524,8 +524,11 @@ tty_setup(EditLine *el)
 #endif /* DEBUG_TTY */
 			return (-1);
 		}
-	} else
+	}
+#ifdef notdef
+	else
 		tty__setchar(&el->el_tty.t_ex, el->el_tty.t_c[EX_IO]);
+#endif
 
 	el->el_tty.t_ed.c_iflag &= ~el->el_tty.t_t[ED_IO][MD_INP].t_clrmask;
 	el->el_tty.t_ed.c_iflag |= el->el_tty.t_t[ED_IO][MD_INP].t_setmask;
@@ -1195,10 +1198,14 @@ tty_stty(EditLine *el, int argc __attribute__((__unused__)), const char **argv)
 				st = len =
 				    strlen(el->el_tty.t_t[z][m->m_type].t_name);
 			}
-			x = (el->el_tty.t_t[z][i].t_setmask & m->m_value)
-			    ?  '+' : '\0';
-			x = (el->el_tty.t_t[z][i].t_clrmask & m->m_value)
-			    ? '-' : x;
+			if (i != -1) {
+			    x = (el->el_tty.t_t[z][i].t_setmask & m->m_value)
+				?  '+' : '\0';
+			    x = (el->el_tty.t_t[z][i].t_clrmask & m->m_value)
+				? '-' : x;
+			} else {
+			    x = '\0';
+			}
 
 			if (x != '\0' || aflag) {
 

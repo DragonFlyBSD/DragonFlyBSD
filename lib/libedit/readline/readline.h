@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the NetBSD
- *	Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
+ * 3. Neither the name of The NetBSD Foundation nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -33,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.h,v 1.16 2005/06/11 18:18:59 christos Exp $
- * $DragonFly: src/lib/libedit/readline/readline.h,v 1.1 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: readline.h,v 1.19 2006/11/24 00:01:17 christos Exp $
+ * $DragonFly: src/lib/libedit/readline/readline.h,v 1.2 2007/05/05 00:27:40 pavalos Exp $
  */
 #ifndef _READLINE_H_
 #define _READLINE_H_
@@ -128,6 +124,8 @@ extern VFunction	*rl_redisplay_function;
 extern VFunction	*rl_completion_display_matches_hook;
 extern VFunction	*rl_prep_term_function;
 extern VFunction	*rl_deprep_term_function;
+extern int		readline_echoing_p;
+extern int		_rl_print_completions_horizontally;
 
 /* supported functions */
 char		*readline(const char *);
@@ -142,6 +140,7 @@ int		 history_is_stifled(void);
 int		 where_history(void);
 HIST_ENTRY	*current_history(void);
 HIST_ENTRY	*history_get(int);
+HIST_ENTRY	*remove_history(int);
 int		 history_total_bytes(void);
 int		 history_set_pos(int);
 HIST_ENTRY	*previous_history(void);
@@ -180,11 +179,18 @@ int		 rl_parse_and_bind(const char *);
 int		 rl_variable_bind(const char *, const char *);
 void		 rl_stuff_char(int);
 int		 rl_add_defun(const char *, Function *, int);
+void		 rl_get_screen_size(int *, int *);
+void		 rl_set_screen_size(int, int);
+char 		*rl_filename_completion_function (const char *, int);
+int		 _rl_abort_internal(void);
+int		 _rl_qsort_string_compare(char **, char **);
 
 /*
  * The following are not implemented
  */
+int		 rl_kill_text(int, int);
 Keymap		 rl_get_keymap(void);
+void		 rl_set_keymap(Keymap);
 Keymap		 rl_make_bare_keymap(void);
 int		 rl_generic_bind(int, const char *, const char *, Keymap);
 int		 rl_bind_key_in_map(int, Function *, Keymap);

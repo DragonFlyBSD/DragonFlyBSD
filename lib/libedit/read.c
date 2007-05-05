@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)read.c	8.1 (Berkeley) 6/4/93
- * $NetBSD: read.c,v 1.36 2005/06/01 11:37:52 lukem Exp $
- * $DragonFly: src/lib/libedit/read.c,v 1.4 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: read.c,v 1.40 2007/03/01 21:41:45 christos Exp $
+ * $DragonFly: src/lib/libedit/read.c,v 1.5 2007/05/05 00:27:39 pavalos Exp $
  */
 
 #include "config.h"
@@ -52,6 +52,7 @@ private int	read__fixio(int, int);
 private int	read_preread(EditLine *);
 private int	read_char(EditLine *, char *);
 private int	read_getcmd(EditLine *, el_action_t *, char *);
+private void	read_pop(c_macro_t *);
 
 /* read_init():
  *	Initialize the read stuff
@@ -296,6 +297,19 @@ read_char(EditLine *el, char *cp)
 	return (num_read);
 }
 
+/* read_pop():
+ *	Pop a macro from the stack
+ */
+private void
+read_pop(c_macro_t *ma)
+{
+	int i;
+
+	el_free(ma->macro[0]);
+	for (i = ma->level--; i > 0; i--)
+		ma->macro[i - 1] = ma->macro[i];
+	ma->offset = 0;
+}
 
 /* el_getc():
  *	Read a character
@@ -312,20 +326,22 @@ el_getc(EditLine *el, char *cp)
 			if (!read_preread(el))
 				break;
 		}
+
 		if (ma->level < 0)
 			break;
 
-		if (ma->macro[ma->level][ma->offset] == '\0') {
-			el_free(ma->macro[ma->level--]);
-			ma->offset = 0;
+		if (ma->macro[0][ma->offset] == '\0') {
+			read_pop(ma);
 			continue;
 		}
-		*cp = ma->macro[ma->level][ma->offset++] & 0377;
-		if (ma->macro[ma->level][ma->offset] == '\0') {
+
+		*cp = ma->macro[0][ma->offset++] & 0377;
+
+		if (ma->macro[0][ma->offset] == '\0') {
 			/* Needed for QuoteMode On */
-			el_free(ma->macro[ma->level--]);
-			ma->offset = 0;
+			read_pop(ma);
 		}
+
 		return (1);
 	}
 
@@ -359,7 +375,7 @@ read_prepare(EditLine *el)
 	   we have the wrong size. */
 	el_resize(el);
 	re_clear_display(el);	/* reset the display stuff */
-	ch_reset(el);
+	ch_reset(el, 0);
 	re_refresh(el);		/* print the prompt */
 
 	if (el->el_flags & UNBUFFERED)
@@ -572,7 +588,7 @@ el_gets(EditLine *el, int *nread)
 #endif /* DEBUG_READ */
 			/* put (real) cursor in a known place */
 			re_clear_display(el);	/* reset the display stuff */
-			ch_reset(el);	/* reset the input pointers */
+			ch_reset(el, 1);	/* reset the input pointers */
 			re_refresh(el);	/* print the prompt again */
 			break;
 

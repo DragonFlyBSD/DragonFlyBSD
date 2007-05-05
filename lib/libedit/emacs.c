@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)emacs.c  8.1 (Berkeley) 6/4/93
- * $NetBSD: emacs.c,v 1.19 2004/10/28 21:14:52 dsl Exp $
- * $DragonFly: src/lib/libedit/emacs.c,v 1.5 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: emacs.c,v 1.21 2006/03/06 21:11:56 christos Exp $
+ * $DragonFly: src/lib/libedit/emacs.c,v 1.6 2007/05/05 00:27:39 pavalos Exp $
  */
 
 #include "config.h"
@@ -47,15 +47,14 @@
  */
 protected el_action_t
 /*ARGSUSED*/
-em_delete_or_list(EditLine *el, int c __attribute__((__unused__)))
+em_delete_or_list(EditLine *el, int c)
 {
 
 	if (el->el_line.cursor == el->el_line.lastchar) {
 					/* if I'm at the end */
 		if (el->el_line.cursor == el->el_line.buffer) {
 					/* and the beginning */
-			term_overwrite(el, STReof, 4);	/* then do a EOF */
-			term__flush();
+			term_writec(el, c);	/* then do an EOF */
 			return (CC_EOF);
 		} else {
 			/*

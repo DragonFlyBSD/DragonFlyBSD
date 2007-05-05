@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the NetBSD
- *	Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
+ * 3. Neither the name of The NetBSD Foundation nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -33,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.c,v 1.57 2005/06/11 18:18:59 christos Exp $
- * $DragonFly: src/lib/libedit/readline.c,v 1.1 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: readline.c,v 1.70 2006/11/24 00:01:17 christos Exp $
+ * $DragonFly: src/lib/libedit/readline.c,v 1.2 2007/05/05 00:27:39 pavalos Exp $
  */
 
 #include "config.h"
@@ -51,6 +47,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <setjmp.h>
 #ifdef HAVE_VIS_H
 #include <vis.h>
 #else
@@ -64,6 +61,9 @@
 #include "histedit.h"
 #include "readline/readline.h"
 #include "filecomplete.h"
+
+void rl_prep_terminal(int);
+void rl_deprep_terminal(void);
 
 /* for rl_complete() */
 #define TAB		'\r'
@@ -87,6 +87,9 @@ char *rl_line_buffer = NULL;
 VCPFunction *rl_linefunc = NULL;
 int rl_done = 0;
 VFunction *rl_event_hook = NULL;
+KEYMAP_ENTRY_ARRAY emacs_standard_keymap,
+    emacs_meta_keymap,
+    emacs_ctlx_keymap;
 
 int history_base = 1;		/* probably never subject to change */
 int history_length = 0;
@@ -112,11 +115,13 @@ int rl_already_prompted = 0;
 int rl_filename_completion_desired = 0;
 int rl_ignore_completion_duplicates = 0;
 int rl_catch_signals = 1;
+int readline_echoing_p = 1;
+int _rl_print_completions_horizontally = 0;
 VFunction *rl_redisplay_function = NULL;
 Function *rl_startup_hook = NULL;
 VFunction *rl_completion_display_matches_hook = NULL;
-VFunction *rl_prep_term_function = NULL;
-VFunction *rl_deprep_term_function = NULL;
+VFunction *rl_prep_term_function = (VFunction *)rl_prep_terminal;
+VFunction *rl_deprep_term_function = (VFunction *)rl_deprep_terminal;
 
 /*
  * The current prompt string.
@@ -153,11 +158,13 @@ int rl_completion_append_character = ' ';
 static History *h = NULL;
 static EditLine *e = NULL;
 static Function *map[256];
+static jmp_buf topbuf;
 
 /* internal functions */
 static unsigned char	 _el_rl_complete(EditLine *, int);
 static unsigned char	 _el_rl_tstp(EditLine *, int);
 static char		*_get_prompt(EditLine *);
+static int		 _getc_function(EditLine *, char *);
 static HIST_ENTRY	*_move_history(int);
 static int		 _history_expand_command(const char *, size_t, size_t,
     char **);
@@ -192,6 +199,23 @@ _move_history(int op)
 	rl_he.data = NULL;
 
 	return (&rl_he);
+}
+
+
+/*
+ * read one key from user defined input function
+ */
+static int
+/*ARGSUSED*/
+_getc_function(EditLine *el, char *c)
+{
+	int i;
+
+	i = (*rl_getc_function)(NULL, 0);
+	if (i == -1)
+		return 0;
+	*c = i;
+	return 1;
 }
 
 
@@ -239,6 +263,10 @@ rl_initialize(void)
 	history_length = 0;
 	max_input_history = INT_MAX;
 	el_set(e, EL_HIST, history, h);
+
+	/* setup getc function if valid */
+	if (rl_getc_function)
+		el_set(e, EL_GETCFN, _getc_function);
 
 	/* for proper prompt printing in readline() */
 	rl_prompt = strdup("");
@@ -299,9 +327,10 @@ rl_initialize(void)
  * trailing newline (if there is any)
  */
 char *
-readline(const char *prompt)
+readline(const char *p)
 {
 	HistEvent ev;
+	const char * volatile prompt = p;
 	int count;
 	const char *ret;
 	char *buf;
@@ -311,6 +340,8 @@ readline(const char *prompt)
 		rl_initialize();
 
 	rl_done = 0;
+
+	(void)setjmp(topbuf);
 
 	/* update prompt accordingly to what has been passed */
 	if (!prompt)
@@ -704,6 +735,7 @@ _history_expand_command(const char *command, size_t offs, size_t cmdlen,
 				what = realloc(from, size);
 				if (what == NULL) {
 					free(from);
+					free(tmp);
 					return 0;
 				}
 				len = 0;
@@ -716,6 +748,7 @@ _history_expand_command(const char *command, size_t offs, size_t cmdlen,
 								(size <<= 1));
 						if (nwhat == NULL) {
 							free(what);
+							free(tmp);
 							return 0;
 						}
 						what = nwhat;
@@ -728,10 +761,13 @@ _history_expand_command(const char *command, size_t offs, size_t cmdlen,
 					free(what);
 					if (search) {
 						from = strdup(search);
-						if (from == NULL)
+						if (from == NULL) {
+							free(tmp);
 							return 0;
+						}
 					} else {
 						from = NULL;
+						free(tmp);
 						return (-1);
 					}
 				}
@@ -743,6 +779,7 @@ _history_expand_command(const char *command, size_t offs, size_t cmdlen,
 				with = realloc(to, size);
 				if (with == NULL) {
 					free(to);
+					free(tmp);
 					return -1;
 				}
 				len = 0;
@@ -754,6 +791,7 @@ _history_expand_command(const char *command, size_t offs, size_t cmdlen,
 						nwith = realloc(with, size);
 						if (nwith == NULL) {
 							free(with);
+							free(tmp);
 							return -1;
 						}
 						with = nwith;
@@ -822,12 +860,14 @@ history_expand(char *str, char **output)
 			return 0;
 	}
 
-#define ADD_STRING(what, len)						\
+#define ADD_STRING(what, len, fr)					\
 	{								\
 		if (idx + len + 1 > size) {				\
 			char *nresult = realloc(result, (size += len + 1));\
 			if (nresult == NULL) {				\
 				free(*output);				\
+				if (/*CONSTCOND*/fr)			\
+					free(tmp);			\
 				return 0;				\
 			}						\
 			result = nresult;				\
@@ -839,6 +879,7 @@ history_expand(char *str, char **output)
 
 	result = NULL;
 	size = idx = 0;
+	tmp = NULL;
 	for (i = 0; str[i];) {
 		int qchar, loop_again;
 		size_t len, start, j;
@@ -876,13 +917,11 @@ loop:
 			goto loop;
 		}
 		len = i - start;
-		tmp = &str[start];
-		ADD_STRING(tmp, len);
+		ADD_STRING(&str[start], len, 0);
 
 		if (str[i] == '\0' || str[i] != history_expansion_char) {
 			len = j - i;
-			tmp = &str[i];
-			ADD_STRING(tmp, len);
+			ADD_STRING(&str[i], len, 0);
 			if (start == 0)
 				ret = 0;
 			else
@@ -892,8 +931,11 @@ loop:
 		ret = _history_expand_command (str, i, (j - i), &tmp);
 		if (ret > 0 && tmp) {
 			len = strlen(tmp);
-			ADD_STRING(tmp, len);
+			ADD_STRING(tmp, len, 1);
+		}
+		if (tmp) {
 			free(tmp);
+			tmp = NULL;
 		}
 		i = j;
 	}
@@ -1081,7 +1123,7 @@ read_history(const char *filename)
 
 	if (h == NULL || e == NULL)
 		rl_initialize();
-	return (history(h, &ev, H_LOAD, filename));
+	return (history(h, &ev, H_LOAD, filename) == -1);
 }
 
 
@@ -1095,7 +1137,7 @@ write_history(const char *filename)
 
 	if (h == NULL || e == NULL)
 		rl_initialize();
-	return (history(h, &ev, H_SAVE, filename));
+	return (history(h, &ev, H_SAVE, filename) == -1);
 }
 
 
@@ -1153,6 +1195,28 @@ add_history(const char *line)
 		history_length = ev.num;
 
 	return (!(history_length > 0)); /* return 0 if all is okay */
+}
+
+
+/*
+ * remove the specified entry from the history list and return it.
+ */
+HIST_ENTRY *
+remove_history(int num)
+{
+	static HIST_ENTRY she;
+	HistEvent ev;
+
+	if (h == NULL || e == NULL)
+		rl_initialize();
+
+	if (history(h, &ev, H_DEL, num) != 0)
+		return NULL;
+
+	she.line = ev.str;
+	she.data = NULL;
+
+	return &she;
 }
 
 
@@ -1605,7 +1669,7 @@ rl_callback_read_char()
 
 	if (buf == NULL || count-- <= 0)
 		return;
-	if (count == 0 && buf[0] == CTRL('d'))
+	if (count == 0 && buf[0] == e->el_tty.t_c[TS_IO][C_EOF])
 		done = 1;
 	if (buf[count] == '\n' || buf[count] == '\r')
 		done = 2;
@@ -1645,7 +1709,7 @@ void
 rl_redisplay(void)
 {
 	char a[2];
-	a[0] = CTRL('r');
+	a[0] = e->el_tty.t_c[TS_IO][C_REPRINT];
 	a[1] = '\0';
 	el_push(e, a);
 }
@@ -1669,7 +1733,7 @@ rl_prep_terminal(int meta_flag)
 }
 
 void
-rl_deprep_terminal()
+rl_deprep_terminal(void)
 {
 	el_set(e, EL_PREP_TERM, 0);
 }
@@ -1764,3 +1828,82 @@ _rl_update_pos(void)
 	rl_point = li->cursor - li->buffer;
 	rl_end = li->lastchar - li->buffer;
 }
+
+void
+rl_get_screen_size(int *rows, int *cols)
+{
+	if (rows)
+		el_get(e, EL_GETTC, "li", rows);
+	if (cols)
+		el_get(e, EL_GETTC, "co", cols);
+}
+
+void
+rl_set_screen_size(int rows, int cols)
+{
+	char buf[64];
+	(void)snprintf(buf, sizeof(buf), "%d", rows);
+	el_set(e, EL_SETTC, "li", buf);
+	(void)snprintf(buf, sizeof(buf), "%d", cols);
+	el_set(e, EL_SETTC, "co", buf);
+}
+
+char *
+rl_filename_completion_function (const char *text, int state)
+{
+	return fn_filename_completion_function(text, state);
+}
+
+int
+_rl_abort_internal(void)
+{
+	el_beep(e);
+	longjmp(topbuf, 1);
+	/*NOTREACHED*/
+}
+
+int
+_rl_qsort_string_compare(char **s1, char **s2)
+{
+	return strcoll(*s1, *s2);
+}
+
+int
+/*ARGSUSED*/
+rl_kill_text(int from, int to)
+{
+	return 0;
+}
+
+Keymap
+rl_make_bare_keymap(void)
+{
+	return NULL;
+}
+
+Keymap
+rl_get_keymap(void)
+{
+	return NULL;
+}
+
+void
+/*ARGSUSED*/
+rl_set_keymap(Keymap k)
+{
+}
+
+int
+/*ARGSUSED*/
+rl_generic_bind(int type, const char * keyseq, const char * data, Keymap k)
+{
+	return 0;
+}
+
+int
+/*ARGSUSED*/
+rl_bind_key_in_map(int key, Function *fun, Keymap k)
+{
+	return 0;
+}
+

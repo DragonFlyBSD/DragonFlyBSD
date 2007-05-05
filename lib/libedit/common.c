@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)common.c 8.1 (Berkeley) 6/4/93
- * $NetBSD: common.c,v 1.16 2003/08/07 16:44:30 agc Exp $
- * $DragonFly: src/lib/libedit/common.c,v 1.5 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: common.c,v 1.19 2006/03/06 21:11:56 christos Exp $
+ * $DragonFly: src/lib/libedit/common.c,v 1.6 2007/05/05 00:27:39 pavalos Exp $
  */
 
 #include "config.h"
@@ -132,7 +132,7 @@ ed_delete_prev_word(EditLine *el, int c __attribute__((__unused__)))
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_delete_next_char(EditLine *el, int c __attribute__((__unused__)))
+ed_delete_next_char(EditLine *el, int c)
 {
 #ifdef notdef			/* XXX */
 #define	EL	el->el_line
@@ -149,9 +149,8 @@ ed_delete_next_char(EditLine *el, int c __attribute__((__unused__)))
 #ifdef KSHVI
 				return (CC_ERROR);
 #else
-				term_overwrite(el, STReof, 4);
-					/* then do a EOF */
-				term__flush();
+				/* then do an EOF */
+				term_writechar(el, c);
 				return (CC_EOF);
 #endif
 			} else {
@@ -611,7 +610,7 @@ protected el_action_t
 ed_start_over(EditLine *el, int c __attribute__((__unused__)))
 {
 
-	ch_reset(el);
+	ch_reset(el, 0);
 	return (CC_REFRESH);
 }
 

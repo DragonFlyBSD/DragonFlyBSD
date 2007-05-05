@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)vi.c	8.1 (Berkeley) 6/4/93
- * $NetBSD: vi.c,v 1.21 2005/04/25 01:06:03 matt Exp $
- * $DragonFly: src/lib/libedit/vi.c,v 1.6 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: vi.c,v 1.27 2006/10/22 07:48:13 mrg Exp $$
+ * $DragonFly: src/lib/libedit/vi.c,v 1.7 2007/05/05 00:27:40 pavalos Exp $
  */
 
 #include "config.h"
@@ -65,8 +65,10 @@ cv_action(EditLine *el, int c)
 			    el->el_line.lastchar - el->el_line.buffer);
 		el->el_chared.c_vcmd.action = NOP;
 		el->el_chared.c_vcmd.pos = 0;
-		el->el_line.lastchar = el->el_line.buffer;
-		el->el_line.cursor = el->el_line.buffer;
+		if (!(c & YANK)) {
+			el->el_line.lastchar = el->el_line.buffer;
+			el->el_line.cursor = el->el_line.buffer;
+		}
 		if (c & INSERT)
 			el->el_map.current = el->el_map.key;
 
@@ -83,7 +85,6 @@ cv_action(EditLine *el, int c)
 private el_action_t
 cv_paste(EditLine *el, int c)
 {
-	char *ptr;
 	c_kill_t *k = &el->el_chared.c_kill;
 	int len = k->last - k->buf;
 
@@ -97,12 +98,12 @@ cv_paste(EditLine *el, int c)
 
 	if (!c && el->el_line.cursor < el->el_line.lastchar)
 		el->el_line.cursor++;
-	ptr = el->el_line.cursor;
 
 	c_insert(el, len);
 	if (el->el_line.cursor + len > el->el_line.lastchar)
 		return (CC_ERROR);
-	(void) memcpy(ptr, k->buf, len +0u);
+	(void) memcpy(el->el_line.cursor, k->buf, len +0u);
+
 	return (CC_REFRESH);
 }
 
@@ -593,13 +594,12 @@ vi_delete_prev_char(EditLine *el, int c __attribute__((__unused__)))
  */
 protected el_action_t
 /*ARGSUSED*/
-vi_list_or_eof(EditLine *el, int c __attribute__((__unused__)))
+vi_list_or_eof(EditLine *el, int c)
 {
 
 	if (el->el_line.cursor == el->el_line.lastchar) {
 		if (el->el_line.cursor == el->el_line.buffer) {
-			term_overwrite(el, STReof, 4);	/* then do a EOF */
-			term__flush();
+			term_writec(el, c);	/* then do a EOF */
 			return (CC_EOF);
 		} else {
 			/*
@@ -889,7 +889,7 @@ vi_yank(EditLine *el, int c)
 
 /* vi_comment_out():
  *	Vi comment out current command
- *	[c]
+ *	[#]
  */
 protected el_action_t
 /*ARGSUSED*/
@@ -906,9 +906,12 @@ vi_comment_out(EditLine *el, int c)
 /* vi_alias():
  *	Vi include shell alias
  *	[@]
- * NB: posix impiles that we should enter insert mode, however
+ * NB: posix implies that we should enter insert mode, however
  * this is against historical precedent...
  */
+#ifdef __weak_extern
+extern char *get_alias_text(const char *) __weak_extern(get_alias_text);
+#endif
 protected el_action_t
 /*ARGSUSED*/
 vi_alias(EditLine *el, int c)
@@ -916,8 +919,6 @@ vi_alias(EditLine *el, int c)
 #ifdef __weak_extern
 	char alias_name[3];
 	char *alias_text;
-	extern char *get_alias_text(const char *);
-	__weak_extern(get_alias_text);
 
 	if (get_alias_text == 0) {
 		return CC_ERROR;

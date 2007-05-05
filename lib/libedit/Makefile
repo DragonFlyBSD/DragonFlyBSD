@@ -1,6 +1,6 @@
 # @(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libedit/Makefile,v 1.18.2.2 2002/07/23 10:20:19 ru Exp $
-# $DragonFly: src/lib/libedit/Makefile,v 1.4 2005/11/13 11:58:30 corecode Exp $
+# $DragonFly: src/lib/libedit/Makefile,v 1.5 2007/05/05 00:27:39 pavalos Exp $
 
 LIB=	edit
 SHLIB_MAJOR=	5
@@ -53,7 +53,7 @@ common.h: common.c makelist
 fcns.h: ${AHDR} makelist
 	sh ${.CURDIR}/makelist -fh ${AHDR} > ${.TARGET}
 
-fcns.c: ${AHDR} fcns.h makelist
+fcns.c: ${AHDR} fcns.h help.h makelist
 	sh ${.CURDIR}/makelist -fc ${AHDR} > ${.TARGET}
 
 help.c: ${ASRC} makelist
@@ -62,7 +62,7 @@ help.c: ${ASRC} makelist
 help.h: ${ASRC} makelist
 	sh ${.CURDIR}/makelist -bh ${ASRC} > ${.TARGET}
 
-editline.c:
+editline.c: ${OSRCS} makelist
 	sh ${.CURDIR}/makelist -e ${OSRCS} > ${.TARGET}
 
 beforedepend editline.o editline.po editline.So: \

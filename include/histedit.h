@@ -1,5 +1,5 @@
-/* $DragonFly: src/include/histedit.h,v 1.4 2005/11/13 11:58:30 corecode Exp $ */
-/*	$NetBSD: histedit.h,v 1.27 2005/06/12 06:58:21 christos Exp $	*/
+/* $DragonFly: src/include/histedit.h,v 1.5 2007/05/05 00:27:39 pavalos Exp $ */
+/*	$NetBSD: histedit.h,v 1.31 2006/12/15 22:13:33 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -107,7 +107,7 @@ int		 el_parse(EditLine *, int, const char **);
  * Low level editline access functions
  */
 int		 el_set(EditLine *, int, ...);
-int		 el_get(EditLine *, int, void *);
+int		 el_get(EditLine *, int, ...);
 unsigned char	_el_fn_complete(EditLine *, int);
 
 /*
@@ -131,6 +131,9 @@ unsigned char	_el_fn_complete(EditLine *, int);
 #define	EL_CLIENTDATA	14	/* , void *);			*/
 #define	EL_UNBUFFERED	15	/* , int);			*/
 #define	EL_PREP_TERM    16      /* , int);                      */
+#define	EL_GETTC	17	/* , const char *, ..., NULL);	*/
+#define EL_GETFP	18	/* , int, FILE **)		*/
+#define EL_SETFP	19	/* , int, FILE *)		*/
 
 #define EL_BUILTIN_GETCFN	(NULL)
 
@@ -195,6 +198,7 @@ int		history(History *, HistEvent *, int, ...);
 #define	H_CLEAR		19	/* , void);		*/
 #define	H_SETUNIQUE	20	/* , int);		*/
 #define	H_GETUNIQUE	21	/* , void);		*/
+#define	H_DEL		22	/* , int);		*/
 
 
 /*

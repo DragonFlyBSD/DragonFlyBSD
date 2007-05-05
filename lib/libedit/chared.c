@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)chared.c 8.1 (Berkeley) 6/4/93
- * $NetBSD: chared.c,v 1.23 2005/06/01 11:37:52 lukem Exp $
- * $DragonFly: src/lib/libedit/chared.c,v 1.7 2005/11/13 11:58:30 corecode Exp $
+ * $NetBSD: chared.c,v 1.25 2005/08/08 01:41:30 christos Exp $
+ * $DragonFly: src/lib/libedit/chared.c,v 1.8 2007/05/05 00:27:39 pavalos Exp $
  */
 
 #include "config.h"
@@ -41,6 +41,8 @@
  */
 #include <stdlib.h>
 #include "el.h"
+
+private void ch__clearmacro(EditLine *);
 
 /* value to leave unused in line buffer */
 #define	EL_LEAVE	2
@@ -441,6 +443,8 @@ cv__endword(char *p, char *high, int n, int (*wtest)(int))
 protected int
 ch_init(EditLine *el)
 {
+	c_macro_t *ma = &el->el_chared.c_macro;
+
 	el->el_line.buffer		= (char *) el_malloc(EL_BUFSIZ);
 	if (el->el_line.buffer == NULL)
 		return (-1);
@@ -481,11 +485,10 @@ ch_init(EditLine *el)
 	el->el_state.argument		= 1;
 	el->el_state.lastcmd		= ED_UNASSIGNED;
 
-	el->el_chared.c_macro.level	= -1;
-	el->el_chared.c_macro.offset	= 0;
-	el->el_chared.c_macro.macro	= (char **) el_malloc(EL_MAXMACRO *
-	    sizeof(char *));
-	if (el->el_chared.c_macro.macro == NULL)
+	ma->level	= -1;
+	ma->offset	= 0;
+	ma->macro	= (char **) el_malloc(EL_MAXMACRO * sizeof(char *));
+	if (ma->macro == NULL)
 		return (-1);
 	return (0);
 }
@@ -494,7 +497,7 @@ ch_init(EditLine *el)
  *	Reset the character editor
  */
 protected void
-ch_reset(EditLine *el)
+ch_reset(EditLine *el, int mclear)
 {
 	el->el_line.cursor		= el->el_line.buffer;
 	el->el_line.lastchar		= el->el_line.buffer;
@@ -515,9 +518,19 @@ ch_reset(EditLine *el)
 	el->el_state.argument		= 1;
 	el->el_state.lastcmd		= ED_UNASSIGNED;
 
-	el->el_chared.c_macro.level	= -1;
-
 	el->el_history.eventno		= 0;
+
+	if (mclear)
+		ch__clearmacro(el);
+}
+
+private void
+ch__clearmacro(el)
+	EditLine *el;
+{
+	c_macro_t *ma = &el->el_chared.c_macro;
+	while (ma->level >= 0)
+		el_free((ptr_t)ma->macro[ma->level--]);
 }
 
 /* ch_enlargebufs():
@@ -625,9 +638,9 @@ ch_end(EditLine *el)
 	el->el_chared.c_redo.cmd = ED_UNASSIGNED;
 	el_free((ptr_t) el->el_chared.c_kill.buf);
 	el->el_chared.c_kill.buf = NULL;
+	ch_reset(el, 1);
 	el_free((ptr_t) el->el_chared.c_macro.macro);
 	el->el_chared.c_macro.macro = NULL;
-	ch_reset(el);
 }
 
 
