@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.34 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.35 2007/05/05 16:13:53 y0netan1 Exp $
  */
 
 #include "opt_ddb.h"
@@ -1083,6 +1083,7 @@ static char linker_path[MAXPATHLEN] = "/;/boot/;/modules/";
 
 SYSCTL_STRING(_kern, OID_AUTO, module_path, CTLFLAG_RW, linker_path,
 	      sizeof(linker_path), "module load search path");
+TUNABLE_STR("module_path", linker_path, sizeof(linker_path));
 
 static char *
 linker_strdup(const char *str)
