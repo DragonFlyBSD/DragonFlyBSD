@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.12 2006/07/28 02:11:53 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.13 2007/05/06 20:45:01 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -213,8 +213,8 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 
     kkread(kd, (u_long)vp, &vn, sizeof(vn));
 
-    printf("    vnode %p usecnt %d holdcnt %d type=%s flags %08x",
-	vp, vn.v_usecount, vn.v_holdcnt, vtype(vn.v_type), vn.v_flag);
+    printf("    vnode %p usecnt %08x holdcnt %d type=%s flags %08x",
+	vp, vn.v_sysref.refcnt, vn.v_auxrefs, vtype(vn.v_type), vn.v_flag);
 
     if ((vn.v_flag & VOBJBUF) && vn.v_object) {
 	int npages = getobjpages(kd, vn.v_object);
@@ -257,6 +257,8 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 #endif
     if (vn.v_flag & VFREE)
 	printf(" VFREE");
+    if (vn.v_flag & VCACHED)
+	printf(" VCACHED");
 #ifdef VINFREE
     if (vn.v_flag & VINFREE)
 	printf(" VINFREE");

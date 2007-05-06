@@ -42,7 +42,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/ncptrace.c,v 1.6 2005/03/24 20:15:11 dillon Exp $
+ * $DragonFly: src/test/debug/ncptrace.c,v 1.7 2007/05/06 20:45:01 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -52,6 +52,7 @@
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/namecache.h>
+#include <sys/mount.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -68,21 +69,31 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_rootncp" },
+    { "_rootnch" },
+    { "_mountlist" },
     { NULL }
 };
 
-void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
-void dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path);
+static char *getncppath(kvm_t *kd, struct nchandle *nch, char *buf, int bytes);
+static void printvfc(kvm_t *kd, struct vfsconf *vfc);
+static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
+static void dumpncp(kvm_t *kd, int tab, struct namecache *, const char *);
 
+int
 main(int ac, char **av)
 {
-    struct namecache *ncptr;
+    struct nchandle nch;
+    struct mount mntinfo;
+    struct mount *mntptr;
+    struct mntlist list;
     kvm_t *kd;
     const char *corefile = NULL;
     const char *sysfile = NULL;
+    const char *path;
     int ch;
     int i;
+    int n;
+    char mntpath[1024];
 
     while ((ch = getopt(ac, av, "M:N:")) != -1) {
 	switch(ch) {
@@ -108,19 +119,36 @@ main(int ac, char **av)
 	perror("kvm_nlist");
 	exit(1);
     }
-    kkread(kd, Nl[0].n_value, &ncptr, sizeof(ncptr));
-    if (ac == 0) {
-	dumpncp(kd, 0, ncptr, NULL);
-    } else {
-	for (i = 0; i < ac; ++i) {
-	    if (av[i][0] != '/')
-		fprintf(stderr, "%s: path must start at the root\n", av[i]);
-	    dumpncp(kd, 0, ncptr, av[i]);
+    kkread(kd, Nl[0].n_value, &nch, sizeof(nch));
+    kkread(kd, Nl[1].n_value, &list, sizeof(list));
+
+    mntptr = TAILQ_FIRST(&list);
+    while (mntptr) {
+	kkread(kd, (long)mntptr, &mntinfo, sizeof(mntinfo));
+	printf("MOUNT %p ", mntptr);
+	if (mntinfo.mnt_vfc) {
+	    printvfc(kd, mntinfo.mnt_vfc);
+	    printf(" ");
 	}
+	mntpath[sizeof(mntpath)-1] = 0;
+	path = getncppath(kd, &mntinfo.mnt_ncmounton,
+			  mntpath, sizeof(mntpath) - 1);
+	printf("ON %s\n", path);
+	if (ac == 0) {
+	    dumpncp(kd, 0, mntinfo.mnt_ncmountpt.ncp, NULL);
+	} else {
+	    n = strlen(path);
+	    for (i = 0; i < ac; ++i) {
+		if (strncmp(path, av[i], n) == 0) {
+		    dumpncp(kd, 0, mntinfo.mnt_ncmountpt.ncp, av[i] + n);
+		}
+	    }
+	}
+	mntptr = TAILQ_NEXT(&mntinfo, mnt_list);
     }
 }
 
-void
+static void
 dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 {
     struct namecache ncp;
@@ -137,11 +165,9 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	name[0] = 0;
     }
     if (tab == 0) {
-	strcpy(name, "ROOT");
-	if (path)
+	strcpy(name, "FSROOT");
+	if (path && *path == '/')
 	    ++path;
-    } else if (ncp.nc_flag & NCF_MOUNTPT) {
-	strcpy(name, "MOUNTGLUE");
     } else if (name[0] == 0) {
 	strcpy(name, "?");
 	if (path)
@@ -157,9 +183,9 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	path = ptr;
 	if (*path == '/')
 	    ++path;
-	if (*path == 0)
-	    path = NULL;
     }
+    if (path && *path == 0)
+	path = NULL;
 
     if (ncp.nc_list.tqh_first)
 	haschildren = 1;
@@ -178,6 +204,8 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	printf(" refs=%d", ncp.nc_refs);
     if ((ncp.nc_flag & NCF_UNRESOLVED) == 0 && ncp.nc_error)
 	printf(" error=%d", ncp.nc_error);
+    if (ncp.nc_flag & NCF_ISMOUNTPT)
+	printf(" MAYBEMOUNT");
     if (ncp.nc_exlocks)
 	printf(" LOCKED(%d,td=%p)", ncp.nc_exlocks, ncp.nc_locktd);
     printf("]");
@@ -195,7 +223,48 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	printf("%*.*s}\n", tab, tab, "");
 }
 
+static
+char *
+getncppath(kvm_t *kd, struct nchandle *nch, char *base, int bytes)
+{
+    struct mount mntinfo;
+    struct mount *mntptr;
+    struct namecache ncp;
+    struct namecache *ncpptr;
+
+    ncpptr = nch->ncp;
+    while (ncpptr) {
+	kkread(kd, (long)ncpptr, &ncp, sizeof(ncp));
+	if (ncp.nc_nlen >= bytes)
+	    break;
+	kkread(kd, (long)ncp.nc_name, base + bytes - ncp.nc_nlen, ncp.nc_nlen);
+	bytes -= ncp.nc_nlen;
+	if (ncp.nc_parent) {
+	    base[--bytes] = '/';
+	}
+	ncpptr = ncp.nc_parent;
+    }
+    if (nch->mount) {
+	kkread(kd, (long)nch->mount, &mntinfo, sizeof(mntinfo));
+	if (mntinfo.mnt_ncmounton.mount)
+	    return(getncppath(kd, &mntinfo.mnt_ncmounton, base, bytes));
+    } else if (base[bytes] == 0) {
+	base[--bytes] = '/';
+    }
+    return(base + bytes);
+}
+
+static
 void
+printvfc(kvm_t *kd, struct vfsconf *vfc)
+{
+    struct vfsconf vfcinfo;
+
+    kkread(kd, (long)vfc, &vfcinfo, sizeof(vfcinfo));
+    printf("%s [type %d]", vfcinfo.vfc_name, vfcinfo.vfc_typenum);
+}
+
+static void
 kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
 {
     if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
