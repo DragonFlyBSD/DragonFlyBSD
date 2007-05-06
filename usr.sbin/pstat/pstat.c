@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.19 2006/12/30 18:36:45 swildner Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.20 2007/05/06 19:38:48 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -378,6 +378,7 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	char flags[32];
 	char *fp = flags;
 	int flag;
+	int refs;
 
 	/*
 	 * set type
@@ -450,8 +451,15 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	if (flag == 0)
 		*fp++ = '-';
 	*fp = '\0';
+
+	/*
+	 * Convert SYSREF ref counts into something more
+	 * human readable for display.
+	 */
+	if ((refs = vp->v_sysref.refcnt) < 0)
+		refs = -(refs + 0x40000001);
 	printf("%8lx %s %5s %4d %4d",
-	    (u_long)(void *)avnode, type, flags, vp->v_usecount, vp->v_holdcnt);
+	    (u_long)(void *)avnode, type, flags, refs, vp->v_auxrefs);
 }
 
 void
