@@ -1,7 +1,7 @@
 # $FreeBSD: src/usr.bin/awk/Makefile,v 1.9.2.1 2002/06/21 20:12:08 obrien Exp $
-# $DragonFly: src/usr.bin/awk/Makefile,v 1.10 2006/11/01 22:33:47 pavalos Exp $
+# $DragonFly: src/usr.bin/awk/Makefile,v 1.11 2007/05/06 17:04:30 pavalos Exp $
 
-AWKSRC=	${.CURDIR}/../../contrib/awk20050424
+AWKSRC=	${.CURDIR}/../../contrib/awk20070501
 .PATH: ${AWKSRC}
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
