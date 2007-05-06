@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.32 2006/12/23 00:41:31 swildner Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.33 2007/05/06 19:23:36 dillon Exp $
  */
 
 /*
@@ -137,7 +137,7 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		tsleep(object, 0, "vadead", 0);
 	}
 
-	if (vp->v_usecount == 0)
+	if (vp->v_sysref.refcnt <= 0)
 		panic("vnode_pager_alloc: no vnode reference");
 
 	if (object == NULL) {
@@ -154,7 +154,7 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		if (vp->v_filesize != size)
 			kprintf("vnode_pager_alloc: Warning, filesize mismatch %lld/%lld\n", vp->v_filesize, size);
 	}
-	vp->v_usecount++;
+	vref(vp);
 
 	vp->v_flag &= ~VOLOCK;
 	if (vp->v_flag & VOWANT) {

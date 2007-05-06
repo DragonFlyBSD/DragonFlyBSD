@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.24 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.25 2007/05/06 19:23:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -101,8 +101,9 @@ nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS)
 		LIST_FOREACH(np, nhpp, n_hash) {
 			vp = NWTOV(np);
 			vprint(NULL, vp);
-			kprintf("%s:%d:%d:%d:%d\n",np->n_name,vp->v_usecount,vp->v_holdcnt,
-			    np->n_fid.f_id, np->n_fid.f_parent);
+			kprintf("%s:%d:%d:%d:%d\n",
+				np->n_name, vp->v_sysref.refcnt, vp->v_auxrefs,
+				np->n_fid.f_id, np->n_fid.f_parent);
 		}
 	}
 	return 0;
@@ -221,7 +222,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 	struct nwmount *nmp = VTONWFS(vp);
 	struct thread *td = curthread;	/* XXX */
 	
-	NCPVNDEBUG("%s,%d\n", (np ? np->n_name : "?"), vp->v_usecount);
+	NCPVNDEBUG("%s,%d\n", (np ? np->n_name : "?"), vp->v_sysref.refcnt);
 	if (np && np->n_refparent) {
 		np->n_refparent = 0;
 		if (nwfs_lookupnp(nmp, np->n_parent, td, &dnp) == 0) {
@@ -260,14 +261,14 @@ nwfs_inactive(struct vop_inactive_args *ap)
 	KKASSERT(td->td_proc);		/* XXX */
 	cred = td->td_proc->p_ucred;	/* XXX */
 
-	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_usecount);
+	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_sysref.refcnt);
 	if (np && np->opened) {
 		error = nwfs_vinvalbuf(vp, V_SAVE, 1);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}
 	if (np == NULL || (np->n_flag & NSHOULDFREE)) {
-		vgone(vp);
+		vgone_vxlocked(vp);
 	}
 	return (0);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.33 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.34 2007/05/06 19:23:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -357,9 +357,9 @@ mfs_close(struct vop_close_args *ap)
 	 * There should be no way to have any more uses of this
 	 * vnode, so if we find any other uses, it is a panic.
 	 */
-	if (vp->v_usecount > 1)
-		kprintf("mfs_close: ref count %d > 1\n", vp->v_usecount);
-	if (vp->v_usecount > 1 || (bioq_first(&mfsp->bio_queue) != NULL))
+	if (vp->v_sysref.refcnt > 1)
+		kprintf("mfs_close: ref count %d > 1\n", vp->v_sysref.refcnt);
+	if (vp->v_sysref.refcnt > 1 || (bioq_first(&mfsp->bio_queue) != NULL))
 		panic("mfs_close");
 	/*
 	 * Send a request to the filesystem server to exit.

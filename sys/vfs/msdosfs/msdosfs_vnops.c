@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.45 2007/02/22 15:50:50 corecode Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.46 2007/05/06 19:23:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -230,11 +230,9 @@ msdosfs_close(struct vop_close_args *ap)
 	struct denode *dep = VTODE(vp);
 	struct timespec ts;
 
-	if (vp->v_usecount > 1) {
+	if (vp->v_sysref.refcnt > 1) {
 		getnanotime(&ts);
-		if (vp->v_usecount > 1) {
-			DETIMES(dep, &ts, &ts, &ts);
-		}
+		DETIMES(dep, &ts, &ts, &ts);
 	}
 	return (vop_stdclose(ap));
 }
@@ -896,7 +894,8 @@ msdosfs_remove(struct vop_old_remove_args *ap)
 	else
 		error = removede(ddep, dep);
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_remove(), dep %p, v_usecount %d\n", dep, ap->a_vp->v_usecount);
+	kprintf("msdosfs_remove(), dep %p, v_sysrefs %d\n",
+		dep, ap->a_vp->v_sysref.refcnt);
 #endif
 	return (error);
 }

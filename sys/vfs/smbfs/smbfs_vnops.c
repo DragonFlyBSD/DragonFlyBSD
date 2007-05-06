@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.37 2007/01/29 06:10:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.38 2007/05/06 19:23:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -516,7 +516,7 @@ smbfs_remove(struct vop_old_remove_args *ap)
 	struct smb_cred scred;
 	int error;
 
-	if (vp->v_type == VDIR || np->n_opencount || vp->v_usecount != 1)
+	if (vp->v_type == VDIR || np->n_opencount || vp->v_sysref.refcnt > 1)
 		return EPERM;
 	smb_makescred(&scred, cnp->cn_td, cnp->cn_cred);
 	error = smbfs_smb_delete(np, &scred);
@@ -550,7 +550,7 @@ smbfs_rename(struct vop_old_rename_args *ap)
 		goto out;
 	}
 
-	if (tvp && tvp->v_usecount > 1) {
+	if (tvp && tvp->v_sysref.refcnt > 1) {
 		error = EBUSY;
 		goto out;
 	}
@@ -600,9 +600,9 @@ out:
 	vrele(fvp);
 #ifdef possible_mistake
 #error x
-	vgone(fvp);
+	vgone_vxlocked(fvp);
 	if (tvp)
-		vgone(tvp);
+		vgone_vxlocked(tvp);
 #endif
 	return error;
 }

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.27 2006/12/23 00:41:29 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.28 2007/05/06 19:23:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -659,7 +659,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	    dep, dep ? dep->de_Name : "?", dep ? dep->de_refcnt : -1);
 #endif
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("msdosfs_reclaim(): pushing active", vp);
 	/*
 	 * Remove the denode from its hash chain.
@@ -690,7 +690,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	kprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n", dep, dep->de_Name[0]);
 #endif
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("msdosfs_inactive(): pushing active", vp);
 
 	/*
@@ -721,8 +721,8 @@ out:
 	 * so that it can be reused immediately.
 	 */
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): v_usecount %d, de_Name[0] %x\n", vp->v_usecount,
-	       dep->de_Name[0]);
+	kprintf("msdosfs_inactive(): v_sysrefs %d, de_Name[0] %x\n",
+		vp->v_sysref.refcnt, dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
 		vrecycle(vp);

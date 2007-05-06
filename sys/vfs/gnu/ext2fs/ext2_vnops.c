@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.37 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.38 2007/05/06 19:23:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -306,7 +306,7 @@ ext2_mknod(struct vop_old_mknod_args *ap)
 	 */
 	(*vpp)->v_type = VNON;
 	ino = ip->i_number;	/* Save this before vgone() invalidates ip. */
-	vgone(*vpp);
+	vgone_vxlocked(*vpp);
 	vput(*vpp);
 	error = VFS_VGET(ap->a_dvp->v_mount, ino, vpp);
 	if (error) {
@@ -1331,7 +1331,7 @@ ext2_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_usecount > 1)
+	if (vp->v_sysref.refcnt > 1)
 		ext2_itimes(vp);
 	return (vop_stdclose(ap));
 }
@@ -1886,7 +1886,7 @@ ext2spec_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_usecount > 1)
+	if (vp->v_sysref.refcnt > 1)
 		ext2_itimes(vp);
 	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
@@ -1951,7 +1951,7 @@ ext2fifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_usecount > 1)
+	if (vp->v_sysref.refcnt > 1)
 		ext2_itimes(vp);
 	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }

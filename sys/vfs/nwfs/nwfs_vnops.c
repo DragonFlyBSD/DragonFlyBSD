@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.34 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.35 2007/05/06 19:23:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -454,7 +454,7 @@ nwfs_remove(struct vop_old_remove_args *ap)
 	struct nwmount *nmp = VTONWFS(vp);
 	int error;
 
-	if (vp->v_type == VDIR || np->opened || vp->v_usecount != 1) {
+	if (vp->v_type == VDIR || np->opened || vp->v_sysref.refcnt > 1) {
 		error = EPERM;
 	} else if (!ncp_conn_valid(NWFSTOCONN(nmp))) {
 		error = EIO;
@@ -496,7 +496,7 @@ nwfs_rename(struct vop_old_rename_args *ap)
 		goto out;
 	}
 
-	if (tvp && tvp->v_usecount > 1) {
+	if (tvp && tvp->v_sysref.refcnt > 1) {
 		error = EBUSY;
 		goto out;
 	}
@@ -537,9 +537,9 @@ out:
 	 * Need to get rid of old vnodes, because netware will change
 	 * file id on rename
 	 */
-	vgone(fvp);
+	vgone_vxlocked(fvp);
 	if (tvp)
-		vgone(tvp);
+		vgone_vxlocked(tvp);
 	/*
 	 * Kludge: Map ENOENT => 0 assuming that it is a reply to a retry.
 	 */

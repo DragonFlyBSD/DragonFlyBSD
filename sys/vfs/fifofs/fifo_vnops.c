@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.37 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.38 2007/05/06 19:23:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -529,7 +529,7 @@ fifo_close(struct vop_close_args *ap)
 		if (fip->fi_writers == 0)
 			socantrcvmore(fip->fi_readsock);
 	}
-	if (vp->v_usecount > 1) {
+	if (vp->v_sysref.refcnt > 1) {
 		vop_stdclose(ap);
 		return (0);
 	}

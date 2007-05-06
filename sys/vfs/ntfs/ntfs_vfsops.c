@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.44 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.45 2007/05/06 19:23:34 dillon Exp $
  */
 
 
@@ -636,7 +636,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 	/* Check if only system vnodes are rest */
 	for(i=0;i<NTFS_SYSNODESNUM;i++)
 		 if((ntmp->ntm_sysvn[i]) && 
-		    (ntmp->ntm_sysvn[i]->v_usecount > 1)) return (EBUSY);
+		    (ntmp->ntm_sysvn[i]->v_sysref.refcnt > 1)) return (EBUSY);
 
 	/* Dereference all system vnodes */
 	for(i=0;i<NTFS_SYSNODESNUM;i++)

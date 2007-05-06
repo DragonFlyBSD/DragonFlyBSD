@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.73 2007/04/26 02:11:00 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.74 2007/05/06 19:23:33 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -75,6 +75,9 @@
 #endif
 #ifndef _SYS_SYSLINK_RPC_H_
 #include <sys/syslink_rpc.h>
+#endif
+#ifndef _SYS_SYSREF_H_
+#include <sys/sysref.h>
 #endif
 #ifndef _SYS_CCMS_H_
 #include <sys/ccms.h>
@@ -188,10 +191,10 @@ RB_HEAD(buf_rb_hash, buf);
 
 struct vnode {
 	int	v_flag;				/* vnode flags (see below) */
-	int	v_usecount;			/* reference count of users */
 	int	v_writecount;
-	int	v_holdcnt;			/* page & buffer references */
 	int	v_opencount;			/* number of explicit opens */
+	int	v_auxrefs;			/* auxiliary references */
+	struct sysref v_sysref;			/* normal references */
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
 	struct mount *v_mount;			/* ptr to vfs we are in */
@@ -266,9 +269,9 @@ struct vnode {
 /* open for business    0x00200 */
 /* open for business	0x00400 */
 /* open for business    0x00800 */
-/* open for business    0x01000 */
+#define VCACHED		0x01000	/* No active references but has cache value */
 #define	VOBJBUF		0x02000	/* Allocate buffers in VM object */
-#define	VINACTIVE	0x04000	/* The vnode is inactive */
+#define	VINACTIVE	0x04000	/* The vnode is inactive (did VOP_INACTIVE) */
 #define	VAGE		0x08000	/* Insert vnode at head of free list */
 #define	VOLOCK		0x10000	/* vnode is locked waiting for an object */
 #define	VOWANT		0x20000	/* a process is waiting for VOLOCK */
@@ -446,6 +449,7 @@ int	v_associate_rdev(struct vnode *vp, cdev_t dev);
 void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (cdev_t dev, struct vnode **vpp);
 struct vnode *allocvnode(int lktimeout, int lkflags);
+int	freesomevnodes(int count);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);
 int	getspecialvnode (enum vtagtype tag, struct mount *mp, 
@@ -467,9 +471,8 @@ int	vmntvnodescan(struct mount *mp, int flags,
 	    void *data);
 void	insmntque(struct vnode *vp, struct mount *mp);
 
-void	vclean_interlocked (struct vnode *vp, int flags);
-void	vgone (struct vnode *vp);
-void	vgone_interlocked (struct vnode *vp);
+void	vclean_vxlocked (struct vnode *vp, int flags);
+void	vgone_vxlocked (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
@@ -547,7 +550,6 @@ void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
-void	vref_initial (struct vnode *vp, int reactivate);
 void	vrele (struct vnode *vp);
 void	vsetflags (struct vnode *vp, int flags);
 void	vclrflags (struct vnode *vp, int flags);

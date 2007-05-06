@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.20 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.21 2007/05/06 19:23:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -198,7 +198,7 @@ cd9660_inactive(struct vop_inactive_args *ap)
 	struct iso_node *ip = VTOI(vp);
 	int error = 0;
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("cd9660_inactive: pushing active", vp);
 
 	if (ip)
@@ -223,7 +223,7 @@ cd9660_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip = VTOI(vp);
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("cd9660_reclaim: pushing active", vp);
 	/*
 	 * Remove the inode from its hash chain.

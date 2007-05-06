@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.42 2007/02/19 01:14:24 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.43 2007/05/06 19:23:35 dillon Exp $
  */
 
 /*
@@ -222,14 +222,8 @@ procfs_close(struct vop_close_args *ap)
 		if ((ap->a_fflag & FWRITE) && (pfs->pfs_flags & O_EXCL))
 			pfs->pfs_flags &= ~(FWRITE|O_EXCL);
 		/*
-		 * This rather complicated-looking code is trying to
-		 * determine if this was the last close on this particular
-		 * vnode.  While one would expect v_usecount to be 1 at
-		 * that point, it seems that (according to John Dyson)
-		 * the VM system will bump up the usecount.  So:  if the
-		 * usecount is 2, and VOBJBUF is set, then this is really
-		 * the last close.  Otherwise, if the usecount is < 2
-		 * then it is definitely the last close.
+		 * v_opencount determines the last real close on the vnode.
+		 *
 		 * If this is the last close, then it checks to see if
 		 * the target process has PF_LINGER set in p_pfsflags,
 		 * if this is *not* the case, then the process' stop flags
@@ -238,7 +232,7 @@ procfs_close(struct vop_close_args *ap)
 		 * told to stop on an event, but then the requesting process
 		 * has gone away or forgotten about it.
 		 */
-		if ((ap->a_vp->v_usecount < 2)
+		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			p->p_stops = 0;

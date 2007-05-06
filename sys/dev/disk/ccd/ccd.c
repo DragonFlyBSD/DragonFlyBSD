@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.38 2006/12/22 23:26:16 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.39 2007/05/06 19:23:21 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1575,7 +1575,7 @@ ccdlookup(char *path, struct vnode **vpp)
 	}
 	vp = nd.nl_open_vp;
 
-	if (vp->v_usecount > 1) {
+	if (vp->v_opencount > 1) {
 		error = EBUSY;
 		goto done;
 	}

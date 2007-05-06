@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.38 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.39 2007/05/06 19:23:34 dillon Exp $
  */
 
 
@@ -345,7 +345,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * the self reference between vnode and object.
 	 */
 	vnode_pager_alloc(devvp, args.size, 0, 0);
-	--devvp->v_usecount;
+	vrele(devvp);
 	--devvp->v_object->ref_count;
 
 	/* Save "mounted from" info for mount point (NULL pad)*/

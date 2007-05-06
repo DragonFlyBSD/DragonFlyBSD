@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.101 2006/12/28 18:29:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.102 2007/05/06 19:23:31 dillon Exp $
  */
 
 /*
@@ -83,6 +83,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
@@ -152,9 +153,9 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
  * Returns non-zero if the vnode is a candidate for lazy msyncing.
  */
 static __inline int
-vshouldmsync(struct vnode *vp, int usecount)
+vshouldmsync(struct vnode *vp)
 {
-	if (vp->v_holdcnt != 0 || vp->v_usecount != usecount)
+	if (vp->v_auxrefs != 0 || vp->v_sysref.refcnt > 0)
 		return (0);		/* other holders */
 	if (vp->v_object &&
 	    (vp->v_object->ref_count || vp->v_object->resident_page_count)) {
@@ -1041,14 +1042,13 @@ addaliasu(struct vnode *nvp, udev_t nvp_udev)
 /*
  * Disassociate a vnode from its underlying filesystem. 
  *
- * The vnode must be VX locked, referenced, and v_spinlock must be held.
- * This routine releases v_spinlock.
- *
- * If there are v_usecount references to the vnode other then ours we have
- * to VOP_CLOSE the vnode before we can deactivate and reclaim it.
+ * The vnode must be VX locked and referenced.  In all normal situations
+ * there are no active references.  If vclean_vxlocked() is called while
+ * there are active references, the vnode is being ripped out and we have
+ * to call VOP_CLOSE() as appropriate before we can reclaim it.
  */
 void
-vclean_interlocked(struct vnode *vp, int flags)
+vclean_vxlocked(struct vnode *vp, int flags)
 {
 	int active;
 	int n;
@@ -1056,14 +1056,10 @@ vclean_interlocked(struct vnode *vp, int flags)
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
-	 * VRECLAIMED must be interlocked with the vnode's spinlock.
 	 */
-	if (vp->v_flag & VRECLAIMED) {
-		spin_unlock_wr(&vp->v_spinlock);
+	if (vp->v_flag & VRECLAIMED)
 		return;
-	}
 	vp->v_flag |= VRECLAIMED;
-	spin_unlock_wr(&vp->v_spinlock);
 
 	/*
 	 * Scrap the vfs cache
@@ -1078,7 +1074,7 @@ vclean_interlocked(struct vnode *vp, int flags)
 	 * before we clean it out so that its count cannot fall to zero and
 	 * generate a race against ourselves to recycle it.
 	 */
-	active = (vp->v_usecount > 1);
+	active = sysref_isactive(&vp->v_sysref);
 
 	/*
 	 * Clean out any buffers associated with the vnode and destroy its
@@ -1196,7 +1192,7 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 		if (vp != vq)
 			vx_get(vq);
 		if (vq == SLIST_FIRST(&dev->si_hlist))
-			vgone(vq);
+			vgone_vxlocked(vq);
 		if (vp != vq)
 			vx_put(vq);
 	}
@@ -1206,16 +1202,15 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 }
 
 /*
- * Recycle an unused vnode to the front of the free list.
- *
- * Returns 1 if we were successfully able to recycle the vnode, 
- * 0 otherwise.
+ * This is called when the object underlying a vnode is being destroyed,
+ * such as in a remove().  Try to recycle the vnode immediately if the
+ * only active reference is our reference.
  */
 int
 vrecycle(struct vnode *vp)
 {
-	if (vp->v_usecount == 1) {
-		vgone(vp);
+	if (vp->v_sysref.refcnt == 1) {
+		vgone_vxlocked(vp);
 		return (1);
 	}
 	return (0);
@@ -1238,19 +1233,13 @@ vrecycle(struct vnode *vp)
  * Instead, it happens automatically when the caller releases the VX lock
  * (assuming there aren't any other references).
  */
-void
-vgone(struct vnode *vp)
-{
-	spin_lock_wr(&vp->v_spinlock);
-	vgone_interlocked(vp);
-}
 
 void
-vgone_interlocked(struct vnode *vp)
+vgone_vxlocked(struct vnode *vp)
 {
 	/*
 	 * assert that the VX lock is held.  This is an absolute requirement
-	 * now for vgone() to be called.
+	 * now for vgone_vxlocked() to be called.
 	 */
 	KKASSERT(vp->v_lock.lk_exclusivecount == 1);
 
@@ -1258,8 +1247,7 @@ vgone_interlocked(struct vnode *vp)
 	 * Clean out the filesystem specific data and set the VRECLAIMED
 	 * bit.  Also deactivate the vnode if necessary. 
 	 */
-	vclean_interlocked(vp, DOCLOSE);
-	/* spinlock unlocked */
+	vclean_vxlocked(vp, DOCLOSE);
 
 	/*
 	 * Delete from old mount point vnode list, if on one.
@@ -1320,7 +1308,8 @@ count_dev(cdev_t dev)
 	if (SLIST_FIRST(&dev->si_hlist)) {
 		lwkt_gettoken(&ilock, &spechash_token);
 		SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
-			count += vp->v_usecount;
+			if (vp->v_sysref.refcnt > 0)
+				count += vp->v_sysref.refcnt;
 		}
 		lwkt_reltoken(&ilock);
 	}
@@ -1364,7 +1353,7 @@ retry:
 		 * that the object is associated with the vp.
 		 */
 		object->ref_count--;
-		vp->v_usecount--;
+		vrele(vp);
 	} else {
 		if (object->flags & OBJ_DEAD) {
 			vn_unlock(vp);
@@ -1394,9 +1383,9 @@ vprint(char *label, struct vnode *vp)
 		kprintf("%s: %p: ", label, (void *)vp);
 	else
 		kprintf("%p: ", (void *)vp);
-	kprintf("type %s, usecount %d, writecount %d, refcount %d,",
-	    typename[vp->v_type], vp->v_usecount, vp->v_writecount,
-	    vp->v_holdcnt);
+	kprintf("type %s, sysrefs %d, writecount %d, holdcnt %d,",
+		typename[vp->v_type],
+		vp->v_sysref.refcnt, vp->v_writecount, vp->v_auxrefs);
 	buf[0] = '\0';
 	if (vp->v_flag & VROOT)
 		strcat(buf, "|VROOT");
@@ -1867,7 +1856,7 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	int flags = (int)data;
 
 	if ((vp->v_flag & VRECLAIMED) == 0) {
-		if (vshouldmsync(vp, 0))
+		if (vshouldmsync(vp))
 			return(0);	/* call scan2 */
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
 		    (vp->v_flag & VOBJDIRTY) &&

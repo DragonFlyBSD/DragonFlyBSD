@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.25 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.26 2007/05/06 19:23:31 dillon Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/sysref2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -393,9 +394,6 @@ vfs_getnewfsid(struct mount *mp)
  * This is a quick non-blocking check to determine if the vnode is a good
  * candidate for being (eventually) vgone()'d.  Returns 0 if the vnode is
  * not a good candidate, 1 if it is.
- *
- * Note that a vnode can be marked VFREE without really being free, so
- * we don't use the flag for any tests.
  */
 static __inline int 
 vmightfree(struct vnode *vp, int page_count)
@@ -406,7 +404,7 @@ vmightfree(struct vnode *vp, int page_count)
 	if ((vp->v_flag & VFREE) && TAILQ_EMPTY(&vp->v_namecache))
 		return (0);
 #endif
-	if (vp->v_usecount != 0)
+	if (sysref_isactive(&vp->v_sysref))
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
@@ -419,14 +417,14 @@ vmightfree(struct vnode *vp, int page_count)
  * vgone()able, doing some cleanups in the process.  Returns 1 if the vnode
  * can be vgone()'d, 0 otherwise.
  *
- * Note that v_holdcnt may be non-zero because (A) this vnode is not a leaf
+ * Note that v_auxrefs may be non-zero because (A) this vnode is not a leaf
  * in the namecache topology and (B) this vnode has buffer cache bufs.
  * We cannot remove vnodes with non-leaf namecache associations.  We do a
  * tentitive leaf check prior to attempting to flush out any buffers but the
- * 'real' test when all is said in done is that v_holdcnt must become 0 for
+ * 'real' test when all is said in done is that v_auxrefs must become 0 for
  * the vnode to be freeable.
  *
- * We could theoretically just unconditionally flush when v_holdcnt != 0,
+ * We could theoretically just unconditionally flush when v_auxrefs != 0,
  * but flushing data associated with non-leaf nodes (which are always
  * directories), just throws it away for no benefit.  It is the buffer 
  * cache's responsibility to choose buffers to recycle from the cached
@@ -457,20 +455,20 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 {
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
-	if (vp->v_usecount != 1)
+	if (vp->v_sysref.refcnt > 1)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
-	if (vp->v_holdcnt && visleaf(vp)) {
+	if (vp->v_auxrefs && visleaf(vp)) {
 		vinvalbuf(vp, V_SAVE, 0, 0);
 #if 0	/* DEBUG */
-		kprintf((vp->v_holdcnt ? "vrecycle: vp %p failed: %s\n" :
+		kprintf((vp->v_auxrefs ? "vrecycle: vp %p failed: %s\n" :
 			"vrecycle: vp %p succeeded: %s\n"), vp,
 			(TAILQ_FIRST(&vp->v_namecache) ? 
 			    TAILQ_FIRST(&vp->v_namecache)->nc_name : "?"));
 #endif
 	}
-	return(vp->v_usecount == 1 && vp->v_holdcnt == 0);
+	return(vp->v_sysref.refcnt <= 1 && vp->v_auxrefs == 0);
 }
 
 /*
@@ -571,7 +569,7 @@ vlrureclaim(struct mount *mp, void *data)
 		 */
 		KKASSERT(vp->v_mount == mp);
 		vmovevnodetoend(mp, vp);
-		vgone(vp);
+		vgone_vxlocked(vp);
 		vx_put(vp);
 		++done;
 		--count;
@@ -610,6 +608,25 @@ vnlru_proc(void)
 	crit_enter();
 	for (;;) {
 		kproc_suspend_loop();
+
+		/*
+		 * Try to free some vnodes if we have too many
+		 */
+		if (numvnodes > desiredvnodes &&
+		    freevnodes > desiredvnodes * 2 / 10) {
+			int count = numvnodes - desiredvnodes;
+
+			if (count > freevnodes / 100)
+				count = freevnodes / 100;
+			if (count < 5)
+				count = 5;
+			freesomevnodes(count);
+		}
+
+		/*
+		 * Nothing to do if most of our vnodes are already on
+		 * the free list.
+		 */
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
@@ -980,7 +997,7 @@ next:
  *
  * `rootrefs' specifies the base reference count for the root vnode
  * of this filesystem. The root vnode is considered busy if its
- * v_usecount exceeds this value. On a successful return, vflush()
+ * v_sysref.refcnt exceeds this value. On a successful return, vflush()
  * will call vrele() on the root vnode exactly rootrefs times.
  * If the SKIPSYSTEM or WRITECLOSE flags are specified, rootrefs must
  * be zero.
@@ -1029,10 +1046,10 @@ vflush(struct mount *mp, int rootrefs, int flags)
 		 * is equal to `rootrefs', then go ahead and kill it.
 		 */
 		KASSERT(vflush_info.busy > 0, ("vflush: not busy"));
-		KASSERT(rootvp->v_usecount >= rootrefs, ("vflush: rootrefs"));
-		if (vflush_info.busy == 1 && rootvp->v_usecount == rootrefs) {
+		KASSERT(rootvp->v_sysref.refcnt >= rootrefs, ("vflush: rootrefs"));
+		if (vflush_info.busy == 1 && rootvp->v_sysref.refcnt == rootrefs) {
 			vx_lock(rootvp);
-			vgone(rootvp);
+			vgone_vxlocked(rootvp);
 			vx_unlock(rootvp);
 			vflush_info.busy = 0;
 		}
@@ -1074,11 +1091,11 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	}
 
 	/*
-	 * With v_usecount == 0, all we need to do is clear out the
-	 * vnode data structures and we are done.
+	 * If we are the only holder (refcnt of 1) or the vnode is in
+	 * termination (refcnt < 0), we can vgone the vnode.
 	 */
-	if (vp->v_usecount == 1) {
-		vgone(vp);
+	if (vp->v_sysref.refcnt <= 1) {
+		vgone_vxlocked(vp);
 		return(0);
 	}
 
@@ -1089,11 +1106,9 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	if (info->flags & FORCECLOSE) {
 		if (vp->v_type != VBLK && vp->v_type != VCHR) {
-			vgone(vp);
+			vgone_vxlocked(vp);
 		} else {
-			spin_lock_wr(&vp->v_spinlock);
-			vclean_interlocked(vp, 0);
-			/* spinlock unlocked */
+			vclean_vxlocked(vp, 0);
 			vp->v_ops = &spec_vnode_vops_p;
 			insmntque(vp, NULL);
 		}

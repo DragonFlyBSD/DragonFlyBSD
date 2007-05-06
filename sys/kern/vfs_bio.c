@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.89 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.90 2007/05/06 19:23:31 dillon Exp $
  */
 
 /*
@@ -2882,7 +2882,7 @@ biodone(struct bio *bio)
 		obj = vp->v_object;
 
 #if defined(VFS_BIO_DEBUG)
-		if (vp->v_holdcnt == 0)
+		if (vp->v_auxrefs == 0)
 			panic("biodone: zero vnode hold count");
 		if ((vp->v_flag & VOBJBUF) == 0)
 			panic("biodone: vnode is not setup for merged cache");

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.3 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysref.c,v 1.4 2007/05/06 19:23:30 dillon Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -274,7 +274,8 @@ sysref_activate(struct sysref *sr)
 
 	for (;;) {
 		count = sr->refcnt;
-		KKASSERT(count < 0 && count + 0x40000001 > 0);
+		KASSERT(count < 0 && count + 0x40000001 > 0,
+			("sysref_activate: bad count %08x", count));
 		if (atomic_cmpset_int(&sr->refcnt, count, count + 0x40000001))
 			break;
 		cpu_pause();

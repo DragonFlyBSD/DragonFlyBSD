@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.27 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.28 2007/05/06 19:23:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -464,16 +464,16 @@ loop:
 		 */
 		UDEBUG(("Modify existing un %p vn %p upper %p(refs %d) -> %p(refs %d)\n",
 			un, un->un_vnode, un->un_uppervp, 
-			(un->un_uppervp ? un->un_uppervp->v_usecount : -99),
+			(un->un_uppervp ? un->un_uppervp->v_sysref.refcnt : -99),
 			uppervp,
-			(uppervp ? uppervp->v_usecount : -99)
+			(uppervp ? uppervp->v_sysref.refcnt : -99)
 		));
 
 		if (uppervp != un->un_uppervp) {
-			KASSERT(uppervp == NULL || uppervp->v_usecount > 0, ("union_allocvp: too few refs %d (at least 1 required) on uppervp", uppervp->v_usecount));
+			KASSERT(uppervp == NULL || uppervp->v_sysref.refcnt > 0, ("union_allocvp: too few refs %d (at least 1 required) on uppervp", uppervp->v_sysref.refcnt));
 			union_newupper(un, uppervp);
 		} else if (uppervp) {
-			KASSERT(uppervp->v_usecount > 1, ("union_allocvp: too few refs %d (at least 2 required) on uppervp", uppervp->v_usecount));
+			KASSERT(uppervp->v_sysref.refcnt > 1, ("union_allocvp: too few refs %d (at least 2 required) on uppervp", uppervp->v_sysref.refcnt));
 			vrele(uppervp);
 		}
 
@@ -736,7 +736,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 
 	lvp = un->un_lowervp;
 
-	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
+	KASSERT(uvp->v_sysref.refcnt > 0, ("copy: uvp refcount 0: %d", uvp->v_sysref.refcnt));
 	if (docopy) {
 		/*
 		 * XX - should not ignore errors
@@ -755,9 +755,9 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 	}
 	vn_unlock(uvp);
 	union_newupper(un, uvp);
-	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
+	KASSERT(uvp->v_sysref.refcnt > 0, ("copy: uvp refcount 0: %d", uvp->v_sysref.refcnt));
 	union_vn_close(uvp, FWRITE, cred);
-	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
+	KASSERT(uvp->v_sysref.refcnt > 0, ("copy: uvp refcount 0: %d", uvp->v_sysref.refcnt));
 	/*
 	 * Subsequent IOs will go to the top layer, so
 	 * call close on the lower vnode and open on the
@@ -1161,10 +1161,10 @@ union_dircache(struct vnode *vp, struct thread *td)
 		goto out;
 
 	/*vn_lock(*vpp, LK_EXCLUSIVE | LK_RETRY);*/
-	UDEBUG(("ALLOCVP-3 %p ref %d\n", *vpp, (*vpp ? (*vpp)->v_usecount : -99)));
+	UDEBUG(("ALLOCVP-3 %p ref %d\n", *vpp, (*vpp ? (*vpp)->v_sysref.refcnt : -99)));
 	vref(*vpp);
 	error = union_allocvp(&nvp, vp->v_mount, NULLVP, NULLVP, NULL, *vpp, NULLVP, 0);
-	UDEBUG(("ALLOCVP-3B %p ref %d\n", nvp, (*vpp ? (*vpp)->v_usecount : -99)));
+	UDEBUG(("ALLOCVP-3B %p ref %d\n", nvp, (*vpp ? (*vpp)->v_sysref.refcnt : -99)));
 	if (error)
 		goto out;
 

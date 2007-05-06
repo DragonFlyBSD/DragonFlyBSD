@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.39 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.40 2007/05/06 19:23:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -612,7 +612,7 @@ hpfs_inactive(struct vop_inactive_args *ap)
 			return (error);
 	}
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("hpfs_inactive: pushing active", vp);
 
 	if (hp->h_flag & H_INVAL) {

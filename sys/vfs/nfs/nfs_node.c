@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.25 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.26 2007/05/06 19:23:34 dillon Exp $
  */
 
 
@@ -211,7 +211,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 	struct sillyrename *sp;
 
 	np = VTONFS(ap->a_vp);
-	if (prtactive && ap->a_vp->v_usecount != 0)
+	if (prtactive && ap->a_vp->v_sysref.refcnt > 1)
 		vprint("nfs_inactive: pushing active", ap->a_vp);
 	if (ap->a_vp->v_type != VDIR) {
 		sp = np->n_sillyrename;
@@ -227,13 +227,6 @@ nfs_inactive(struct vop_inactive_args *ap)
 		 * is already locked.
 		 */
 		nfs_vinvalbuf(ap->a_vp, 0, 1);
-
-		/*
-		 * Either we have the only ref or we were vgone()'d via
-		 * revoke and might have more.
-		 */
-		KKASSERT(ap->a_vp->v_usecount == 1 || 
-			(ap->a_vp->v_flag & VRECLAIMED));
 
 		/*
 		 * Remove the silly file that was rename'd earlier
@@ -261,7 +254,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsdmap *dp, *dp2;
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("nfs_reclaim: pushing active", vp);
 
 	if (np->n_hash.le_prev != NULL)

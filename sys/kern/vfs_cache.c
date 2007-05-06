@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.80 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.81 2007/05/06 19:23:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,6 +87,8 @@
 #include <sys/kern_syscall.h>
 #include <sys/dirent.h>
 #include <ddb/ddb.h>
+
+#include <sys/sysref2.h>
 
 #define MAX_RECURSION_DEPTH	64
 
@@ -603,7 +605,7 @@ _cache_setvp(struct namecache *ncp, struct vnode *vp)
 			vhold(vp);
 
 		/*
-		 * Set auxillary flags
+		 * Set auxiliary flags
 		 */
 		switch(vp->v_type) {
 		case VDIR:
@@ -1064,14 +1066,19 @@ again:
 		 * we must lock and unresolve the cache, then loop
 		 * to retry.
 		 */
-		if (vp->v_flag & VRECLAIMED) {
-			kprintf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
-			_cache_lock(ncp);
-			_cache_setunresolved(ncp);
-			_cache_unlock(ncp);
-			goto again;
+		if ((error = vget(vp, LK_SHARED)) != 0) {
+			if (error == ENOENT) {
+				kprintf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
+				_cache_lock(ncp);
+				_cache_setunresolved(ncp);
+				_cache_unlock(ncp);
+				goto again;
+			}
+			/* fatal error */
+		} else {
+			/* caller does not want a lock */
+			vn_unlock(vp);
 		}
-		vref_initial(vp, 1);
 	}
 	if (error == 0 && vp == NULL)
 		error = ENOENT;

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.114 2007/02/18 07:12:19 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.115 2007/05/06 19:23:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -430,7 +430,7 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	 * being held as a descriptor anywhere.
 	 */
 	olddp = old_nch->ncp->nc_vp;
-	if (olddp == NULL || olddp->v_usecount == 1)
+	if (olddp == NULL || olddp->v_sysref.refcnt == 1)
 		return;
 
 	/*

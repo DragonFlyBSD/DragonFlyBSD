@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.39 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.40 2007/05/06 19:23:29 dillon Exp $
  */
 
 /*
@@ -213,7 +213,7 @@ linprocfs_close(struct vop_close_args *ap)
 		 * told to stop on an event, but then the requesting process
 		 * has gone away or forgotten about it.
 		 */
-		if ((ap->a_vp->v_usecount < 2)
+		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			p->p_stops = 0;

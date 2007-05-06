@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.69 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.70 2007/05/06 19:23:34 dillon Exp $
  */
 
 
@@ -1574,7 +1574,7 @@ nfsmout:
  * To try and make nfs semantics closer to ufs semantics, a file that has
  * other processes using the vnode is renamed instead of removed and then
  * removed later on the last close.
- * - If v_usecount > 1
+ * - If v_sysref.refcnt > 1
  *	  If a rename is not already in the works
  *	     call nfs_sillyrename() to set it up
  *     else
@@ -1594,12 +1594,12 @@ nfs_remove(struct vop_old_remove_args *ap)
 	struct vattr vattr;
 
 #ifndef DIAGNOSTIC
-	if (vp->v_usecount < 1)
-		panic("nfs_remove: bad v_usecount");
+	if (vp->v_sysref.refcnt < 1)
+		panic("nfs_remove: bad v_sysref.refcnt");
 #endif
 	if (vp->v_type == VDIR)
 		error = EPERM;
-	else if (vp->v_usecount == 1 || (np->n_sillyrename &&
+	else if (vp->v_sysref.refcnt == 1 || (np->n_sillyrename &&
 	    VOP_GETATTR(vp, &vattr) == 0 &&
 	    vattr.va_nlink > 1)) {
 		/*
@@ -1715,7 +1715,7 @@ nfs_rename(struct vop_old_rename_args *ap)
 	 * routine.  The new API compat functions have access to the actual
 	 * namecache structures and will do it for us.
 	 */
-	if (tvp && tvp->v_usecount > 1 && !VTONFS(tvp)->n_sillyrename &&
+	if (tvp && tvp->v_sysref.refcnt > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
 		vput(tvp);
 		tvp = NULL;
@@ -3336,7 +3336,7 @@ nfsspec_close(struct vop_close_args *ap)
 
 	if (np->n_flag & (NACC | NUPD)) {
 		np->n_flag |= NCHG;
-		if (vp->v_usecount == 1 &&
+		if (vp->v_sysref.refcnt == 1 &&
 		    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 			VATTR_NULL(&vattr);
 			if (np->n_flag & NACC)
@@ -3409,7 +3409,7 @@ nfsfifo_close(struct vop_close_args *ap)
 		if (np->n_flag & NUPD)
 			np->n_mtim = ts;
 		np->n_flag |= NCHG;
-		if (vp->v_usecount == 1 &&
+		if (vp->v_sysref.refcnt == 1 &&
 		    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 			VATTR_NULL(&vattr);
 			if (np->n_flag & NACC)

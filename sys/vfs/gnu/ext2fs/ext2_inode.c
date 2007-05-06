@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.20 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.21 2007/05/06 19:23:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -477,7 +477,7 @@ ext2_inactive(struct vop_inactive_args *ap)
 	int mode, error = 0;
 
 	ext2_discard_prealloc(ip);
-	if (prtactive && vp->v_usecount != 1)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("ext2_inactive: pushing active", vp);
 
 	/*
@@ -523,7 +523,7 @@ ext2_reclaim(struct vop_reclaim_args *ap)
 	int i;
 #endif
 
-	if (prtactive && vp->v_usecount != 1)
+	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("ext2_reclaim: pushing active", vp);
 	ip = VTOI(vp);
 

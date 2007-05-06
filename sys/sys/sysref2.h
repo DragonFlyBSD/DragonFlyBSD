@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/sysref2.h,v 1.1 2007/04/29 01:29:31 dillon Exp $
+ * $DragonFly: src/sys/sys/sysref2.h,v 1.2 2007/05/06 19:23:33 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -85,6 +85,9 @@ sysref_put(struct sysref *sr)
 		_sysref_put(sr);
 }
 
+/*
+ * Return true of the object is fully active
+ */
 static __inline
 int
 sysref_isactive(struct sysref *sr)
@@ -92,11 +95,24 @@ sysref_isactive(struct sysref *sr)
 	return(sr->refcnt > 0);
 }
 
+/*
+ * Return true of the object is being deactivated
+ */
 static __inline
 int
 sysref_isinactive(struct sysref *sr)
 {
 	return(sr->refcnt <= 0);
+}
+
+/*
+ * Return true if we control the last deactivation ref on the object
+ */
+static __inline
+int
+sysref_islastdeactivation(struct sysref *sr)
+{
+	return(sr->refcnt == -0x40000000);
 }
 
 #ifdef _KERNEL

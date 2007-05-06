@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.14 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.15 2007/05/06 19:23:31 dillon Exp $
  */
 
 /*
@@ -413,14 +413,14 @@ sync_fsync(struct vop_fsync_args *ap)
 }
 
 /*
- * The syncer vnode is no referenced.
+ * The syncer vnode is no longer referenced.
  *
  * sync_inactive { struct vnode *a_vp, struct proc *a_p }
  */
 static int
 sync_inactive(struct vop_inactive_args *ap)
 {
-	vgone(ap->a_vp);
+	vgone_vxlocked(ap->a_vp);
 	return (0);
 }
 
