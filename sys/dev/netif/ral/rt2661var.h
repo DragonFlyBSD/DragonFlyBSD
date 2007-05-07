@@ -15,10 +15,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.6 2007/04/22 09:14:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.7 2007/05/07 14:14:21 sephe Exp $
  */
 
 #define RT2661_NCHAN_MAX	38
+#define RT2661_KEY_MAX		64
 
 struct rt2661_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
@@ -97,8 +98,23 @@ struct rt2661_softc {
 	struct resource			*sc_irq;
 	void				*sc_ih;
 
-	int				(*sc_newstate)(struct ieee80211com *,
-					    enum ieee80211_state, int);
+	int				(*sc_newstate)
+					(struct ieee80211com *,
+					 enum ieee80211_state, int);
+
+	int				(*sc_key_alloc)
+					(struct ieee80211com *,
+					 const struct ieee80211_key *,
+					 ieee80211_keyix *, ieee80211_keyix *);
+
+	int				(*sc_key_delete)
+					(struct ieee80211com *,
+					 const struct ieee80211_key *);
+
+	int				(*sc_key_set)
+					(struct ieee80211com *,
+					 const struct ieee80211_key *,
+					 const uint8_t[IEEE80211_ADDR_LEN]);
 
 	struct callout			scan_ch;
 
@@ -163,7 +179,27 @@ struct rt2661_softc {
 
 	struct sysctl_ctx_list		sysctl_ctx;
 	struct sysctl_oid		*sysctl_tree;
+
+	uint32_t			sc_keymap[2];
 };
+
+#define RT2661_KEY_ASSERT(keyix) \
+	KASSERT((keyix) < RT2661_KEY_MAX, ("invalid keyix %d\n", (keyix)))
+
+#define RT2661_KEY_SET(sc, keyix) \
+do { \
+	RT2661_KEY_ASSERT((keyix)); \
+	(sc)->sc_keymap[(keyix) / 32] |= (1 << ((keyix) % 32)); \
+} while (0)
+
+#define RT2661_KEY_CLR(sc, keyix) \
+do { \
+	RT2661_KEY_ASSERT((keyix)); \
+	(sc)->sc_keymap[(keyix) / 32] &= ~(1 << ((keyix) % 32)); \
+} while (0)
+
+#define RT2661_KEY_ISSET(sc, keyix) \
+	((sc)->sc_keymap[(keyix) / 32] & (1 << ((keyix) % 32)))
 
 int	rt2661_attach(device_t, int);
 int	rt2661_detach(void *);

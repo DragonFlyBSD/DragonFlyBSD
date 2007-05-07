@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.20 2007/04/28 14:40:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.21 2007/05/07 14:14:21 sephe Exp $
  */
 
 /*
@@ -96,7 +96,9 @@ static uint8_t		rt2661_rxrate(struct rt2661_rx_desc *);
 static uint8_t		rt2661_plcp_signal(int);
 static void		rt2661_setup_tx_desc(struct rt2661_softc *,
 			    struct rt2661_tx_desc *, uint32_t, uint16_t, int,
-			    int, const bus_dma_segment_t *, int, int, int);
+			    int, const bus_dma_segment_t *, int, int, int,
+			    const struct ieee80211_key *, void *,
+			    const struct ieee80211_crypto_iv *);
 static struct mbuf *	rt2661_get_rts(struct rt2661_softc *,
 			    struct ieee80211_frame *, uint16_t);
 static int		rt2661_tx_data(struct rt2661_softc *, struct mbuf *,
@@ -151,6 +153,14 @@ static void		rt2661_enable_tsf_sync(struct rt2661_softc *);
 static int		rt2661_get_rssi(struct rt2661_softc *, uint8_t);
 static void		rt2661_led_newstate(struct rt2661_softc *,
 					    enum ieee80211_state);
+static int		rt2661_key_alloc(struct ieee80211com *,
+					 const struct ieee80211_key *,
+					 ieee80211_keyix *, ieee80211_keyix *);
+static int		rt2661_key_delete(struct ieee80211com *,
+					  const struct ieee80211_key *);
+static int		rt2661_key_set(struct ieee80211com *,
+				       const struct ieee80211_key *,
+				       const uint8_t mac[IEEE80211_ADDR_LEN]);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -210,6 +220,24 @@ struct rt2661_dmamap {
 	bus_dma_segment_t	segs[RT2661_MAX_SCATTER];
 	int			nseg;
 };
+
+static __inline int
+rt2661_cipher(const struct ieee80211_key *k)
+{
+	switch (k->wk_cipher->ic_cipher) {
+	case IEEE80211_CIPHER_WEP:
+		if (k->wk_keylen == (40 / NBBY))
+			return RT2661_CIPHER_WEP40;
+		else
+			return RT2661_CIPHER_WEP104;
+	case IEEE80211_CIPHER_TKIP:
+		return RT2661_CIPHER_TKIP;
+	case IEEE80211_CIPHER_AES_CCM:
+		return RT2661_CIPHER_AES;
+	default:
+		return RT2661_CIPHER_NONE;
+	}
+}
 
 int
 rt2661_attach(device_t dev, int id)
@@ -349,8 +377,16 @@ rt2661_attach(device_t dev, int id)
 #ifdef notyet
 	    IEEE80211_C_WME |		/* 802.11e */
 #endif
-	    IEEE80211_C_WEP |		/* WEP */
 	    IEEE80211_C_WPA;		/* 802.11i */
+
+	/* Set hardware crypto capabilities. */
+	ic->ic_caps |= IEEE80211_C_WEP |
+		       IEEE80211_C_TKIP |
+		       IEEE80211_C_TKIPMIC |
+		       IEEE80211_C_AES_CCM;
+
+	ic->ic_caps_ext = IEEE80211_CEXT_CRYPTO_HDR |
+			  IEEE80211_CEXT_STRIP_MIC;
 
 	if (sc->rf_rev == RT2661_RF_5225 || sc->rf_rev == RT2661_RF_5325) {
 		/* set supported .11a rates */
@@ -395,6 +431,15 @@ rt2661_attach(device_t dev, int id)
 	ic->ic_reset = rt2661_reset;
 	/* enable s/w bmiss handling in sta mode */
 	ic->ic_flags_ext |= IEEE80211_FEXT_SWBMISS;
+
+	sc->sc_key_alloc = ic->ic_crypto.cs_key_alloc;
+	sc->sc_key_delete = ic->ic_crypto.cs_key_delete;
+	sc->sc_key_set = ic->ic_crypto.cs_key_set;
+
+	ic->ic_crypto.cs_max_keyix = RT2661_KEY_MAX;
+	ic->ic_crypto.cs_key_alloc = rt2661_key_alloc;
+	ic->ic_crypto.cs_key_delete = rt2661_key_delete;
+	ic->ic_crypto.cs_key_set = rt2661_key_set;
 
 	/* override state transition machine */
 	sc->sc_newstate = ic->ic_newstate;
@@ -1125,6 +1170,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		}
 
 		if (flags & RT2661_RX_CIPHER_MASK) {
+			DPRINTFN(5, ("cipher error 0x%08x\n", flags));
 			ifp->if_ierrors++;
 			goto skip;
 		}
@@ -1180,6 +1226,9 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		rssi = rt2661_get_rssi(sc, desc->rssi);
 
 		wh = mtod(m, struct ieee80211_frame_min *);
+		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+			DPRINTFN(5, ("keyix %d\n", RT2661_RX_KEYIX(flags)));
+
 		ni = ieee80211_find_rxnode(ic, wh);
 
 		/* Error happened during RSSI conversion. */
@@ -1206,7 +1255,15 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		}
 
 		/* send the frame to the 802.11 layer */
-		ieee80211_input(ic, m, ni, rssi, 0);
+		if (RT2661_RX_CIPHER(flags) != RT2661_CIPHER_NONE) {
+			struct ieee80211_crypto_iv iv;
+
+			memcpy(iv.ic_iv, desc->iv, sizeof(iv.ic_iv));
+			memcpy(iv.ic_eiv, desc->eiv, sizeof(iv.ic_eiv));
+			ieee80211_input_withiv(ic, m, ni, rssi, 0, &iv);
+		} else {
+			ieee80211_input(ic, m, ni, rssi, 0);
+		}
 
 		/* node is no longer needed */
 		ieee80211_free_node(ni);
@@ -1371,24 +1428,52 @@ rt2661_plcp_signal(int rate)
 static void
 rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
     uint32_t flags, uint16_t xflags, int len, int rate,
-    const bus_dma_segment_t *segs, int nsegs, int ac, int ratectl)
+    const bus_dma_segment_t *segs, int nsegs, int ac, int ratectl,
+    const struct ieee80211_key *key, void *buf,
+    const struct ieee80211_crypto_iv *iv)
 {
+	const struct ieee80211_cipher *cip = NULL;
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint16_t plcp_length;
 	int i, remainder;
 
+	if (key != NULL)
+		cip = key->wk_cipher;
+
 	desc->flags = htole32(flags);
 	desc->flags |= htole32(len << 16);
 	desc->flags |= htole32(RT2661_TX_VALID);
+	if (key != NULL) {
+		int cipher = rt2661_cipher(key);
+
+		desc->flags |= htole32(cipher << 29);
+		desc->flags |= htole32(key->wk_keyix << 10);
+		if (key->wk_keyix >= IEEE80211_WEP_NKID)
+			desc->flags |= htole32(RT2661_TX_PAIRWISE_KEY);
+
+		/* XXX fragmentation */
+		desc->flags |= htole32(RT2661_TX_HWMIC);
+	}
 
 	desc->xflags = htole16(xflags);
 	desc->xflags |= htole16(nsegs << 13);
+	if (key != NULL) {
+		int hdrsize;
+
+		hdrsize = ieee80211_hdrspace(ic, buf);
+		desc->xflags |= htole16(hdrsize);
+	}
 
 	desc->wme = htole16(
 	    RT2661_QID(ac) |
 	    RT2661_AIFSN(2) |
 	    RT2661_LOGCWMIN(4) |
 	    RT2661_LOGCWMAX(10));
+
+	if (key != NULL && iv != NULL) {
+		memcpy(desc->iv, iv->ic_iv, sizeof(desc->iv));
+		memcpy(desc->eiv, iv->ic_eiv, sizeof(desc->eiv));
+	}
 
 	/*
 	 * Remember whether TX rate control information should be gathered.
@@ -1402,6 +1487,13 @@ rt2661_setup_tx_desc(struct rt2661_softc *sc, struct rt2661_tx_desc *desc,
 	desc->plcp_service = 4;
 
 	len += IEEE80211_CRC_LEN;
+	if (cip != NULL) {
+		len += cip->ic_header + cip->ic_trailer;
+
+		/* XXX fragmentation */
+		len += cip->ic_miclen;
+	}
+
 	if (RAL_RATE_IS_OFDM(rate)) {
 		desc->flags |= htole32(RT2661_TX_OFDM);
 
@@ -1490,7 +1582,7 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	rt2661_setup_tx_desc(sc, desc, flags, 0 /* XXX HWSEQ */,
-	    m0->m_pkthdr.len, rate, map.segs, map.nseg, RT2661_QID_MGT, 0);
+	    m0->m_pkthdr.len, rate, map.segs, map.nseg, RT2661_QID_MGT, 0, NULL, NULL, NULL);
 
 	bus_dmamap_sync(sc->mgtq.data_dmat, data->map, BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(sc->mgtq.desc_dmat, sc->mgtq.desc_map,
@@ -1550,13 +1642,14 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	struct rt2661_data *data;
 	struct rt2661_tx_ratectl *rctl;
 	struct ieee80211_frame *wh;
-	struct ieee80211_key *k;
+	struct ieee80211_key *k = NULL;
 	const struct chanAccParams *cap;
 	struct mbuf *mnew;
 	struct rt2661_dmamap map;
 	uint16_t dur;
 	uint32_t flags = 0;
 	int error, rate, ackrate, noack = 0, rateidx;
+	struct ieee80211_crypto_iv iv, *ivp = NULL;
 
 	wh = mtod(m0, struct ieee80211_frame *);
 	if (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_QOS) {
@@ -1565,11 +1658,25 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
-		k = ieee80211_crypto_encap(ic, ni, m0);
+		k = ieee80211_crypto_findkey(ic, ni, m0);
 		if (k == NULL) {
 			m_freem(m0);
 			return ENOBUFS;
 		}
+
+		if (k->wk_flags & IEEE80211_KEY_SWCRYPT) {
+			k = ieee80211_crypto_encap_withkey(ic, m0, k);
+		} else {
+			k = ieee80211_crypto_getiv(ic, &iv, k);
+			ivp = &iv;
+		}
+		if (k == NULL) {
+			m_freem(m0);
+			return ENOBUFS;
+		}
+
+		if (ivp == NULL)
+			k = NULL;
 
 		/* packet header may have moved, reset our local pointer */
 		wh = mtod(m0, struct ieee80211_frame *);
@@ -1619,7 +1726,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 
 		rt2661_setup_tx_desc(sc, desc, RT2661_TX_NEED_ACK |
 				     RT2661_TX_MORE_FRAG, 0, m->m_pkthdr.len,
-				     rtsrate, map.segs, map.nseg, ac, 0);
+				     rtsrate, map.segs, map.nseg, ac, 0, NULL, NULL, NULL);
 
 		bus_dmamap_sync(txq->data_dmat, data->map,
 		    BUS_DMASYNC_PREWRITE);
@@ -1699,7 +1806,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	rt2661_setup_tx_desc(sc, desc, flags, 0, m0->m_pkthdr.len, rate,
-			     map.segs, map.nseg, ac, rctl != NULL);
+			     map.segs, map.nseg, ac, rctl != NULL, k, wh, ivp);
 
 	bus_dmamap_sync(txq->data_dmat, data->map, BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_PREWRITE);
@@ -2587,6 +2694,14 @@ rt2661_init(void *priv)
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_flags |= IFF_RUNNING;
 
+	for (i = 0; i < IEEE80211_WEP_NKID; ++i) {
+		uint8_t mac[IEEE80211_ADDR_LEN];
+		const struct ieee80211_key *k = &ic->ic_nw_keys[i];
+
+		if (k->wk_keyix != IEEE80211_KEYIX_NONE)
+			rt2661_key_set(ic, k, mac);
+	}
+
 	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
@@ -2643,6 +2758,9 @@ rt2661_stop(void *priv)
 	rt2661_reset_tx_ring(sc, &sc->txq[3]);
 	rt2661_reset_tx_ring(sc, &sc->mgtq);
 	rt2661_reset_rx_ring(sc, &sc->rxq);
+
+	/* Clear key map. */
+	bzero(sc->sc_keymap, sizeof(sc->sc_keymap));
 }
 
 static int
@@ -2817,7 +2935,7 @@ rt2661_prepare_beacon(struct rt2661_softc *sc)
 	rate = IEEE80211_IS_CHAN_5GHZ(ic->ic_bss->ni_chan) ? 12 : 2;
 
 	rt2661_setup_tx_desc(sc, &desc, RT2661_TX_TIMESTAMP, RT2661_TX_HWSEQ,
-	    m0->m_pkthdr.len, rate, NULL, 0, RT2661_QID_MGT, 0);
+	    m0->m_pkthdr.len, rate, NULL, 0, RT2661_QID_MGT, 0, NULL, NULL, NULL);
 
 	/* copy the first 24 bytes of Tx descriptor into NIC memory */
 	RAL_WRITE_REGION_1(sc, RT2661_HW_BEACON_BASE0, (uint8_t *)&desc, 24);
@@ -2996,4 +3114,173 @@ rt2661_read_txpower_config(struct rt2661_softc *sc, uint8_t txpwr_ofs,
 		}
 	}
 	*start_chan0 += nchan;
+}
+
+static int
+rt2661_key_alloc(struct ieee80211com *ic, const struct ieee80211_key *key,
+		 ieee80211_keyix *keyix, ieee80211_keyix *rxkeyix)
+{
+	struct rt2661_softc *sc = ic->ic_if.if_softc;
+
+	DPRINTF(("%s: ", __func__));
+
+	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
+		DPRINTF(("alloc sw key\n"));
+		return sc->sc_key_alloc(ic, key, keyix, rxkeyix);
+	}
+
+	if (key->wk_flags & IEEE80211_KEY_GROUP) {	/* Global key */
+		DPRINTF(("alloc group key\n"));
+
+		KASSERT(key >= &ic->ic_nw_keys[0] &&
+			key < &ic->ic_nw_keys[IEEE80211_WEP_NKID],
+			("bogus group key\n"));
+
+		*keyix = *rxkeyix = key - ic->ic_nw_keys;
+		return 1;
+	} else {					/* Pairwise key */
+		int i;
+
+		DPRINTF(("alloc pairwise key\n"));
+
+		for (i = IEEE80211_WEP_NKID; i < RT2661_KEY_MAX; ++i) {
+			if (!RT2661_KEY_ISSET(sc, i))
+				break;
+		}
+#ifndef MIXED_KEY_TEST
+		if (i == RT2661_KEY_MAX)
+			return 0;
+#else
+		if (i != IEEE80211_WEP_NKID)
+			return 0;
+#endif
+
+		RT2661_KEY_SET(sc, i);
+		*keyix = *rxkeyix = i;
+		return 1;
+	}
+}
+
+static int
+rt2661_key_delete(struct ieee80211com *ic, const struct ieee80211_key *key)
+{
+	struct rt2661_softc *sc = ic->ic_if.if_softc;
+	uint32_t val;
+
+	DPRINTF(("%s: keyix %d, rxkeyix %d, ", __func__,
+		 key->wk_keyix, key->wk_rxkeyix));
+
+	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
+		DPRINTF(("delete sw key\n"));
+		return sc->sc_key_delete(ic, key);
+	}
+
+	if (key->wk_keyix < IEEE80211_WEP_NKID) {	/* Global key */
+		DPRINTF(("delete global key\n"));
+		val = RAL_READ(sc, RT2661_SEC_CSR0);
+		val &= ~(1 << key->wk_keyix);
+		RAL_WRITE(sc, RT2661_SEC_CSR0, val);
+	} else {					/* Pairwise key */
+		DPRINTF(("delete pairwise key\n"));
+
+		RT2661_KEY_CLR(sc, key->wk_keyix);
+		if (key->wk_keyix < 32) {
+			val = RAL_READ(sc, RT2661_SEC_CSR2);
+			val &= ~(1 << key->wk_keyix);
+			RAL_WRITE(sc, RT2661_SEC_CSR2, val);
+		} else {
+			val = RAL_READ(sc, RT2661_SEC_CSR3);
+			val &= ~(1 << (key->wk_keyix - 32));
+			RAL_WRITE(sc, RT2661_SEC_CSR3, val);
+		}
+	}
+	return 1;
+}
+
+static int
+rt2661_key_set(struct ieee80211com *ic, const struct ieee80211_key *key,
+	       const uint8_t mac[IEEE80211_ADDR_LEN])
+{
+	struct rt2661_softc *sc = ic->ic_if.if_softc;
+	uint32_t addr, val;
+
+	DPRINTF(("%s: keyix %d, rxkeyix %d, flags 0x%04x, ", __func__,
+		 key->wk_keyix, key->wk_rxkeyix, key->wk_flags));
+
+	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
+		DPRINTF(("set sw key\n"));
+		return sc->sc_key_set(ic, key, mac);
+	}
+
+	if (key->wk_keyix < IEEE80211_WEP_NKID) {	/* Global Key */
+		int cipher, keyix_shift;
+
+		DPRINTF(("set global key\n"));
+
+		/*
+		 * Install key content.
+		 */
+		addr = RT2661_GLOBAL_KEY_BASE +
+		       (key->wk_keyix * sizeof(key->wk_key));
+		RAL_WRITE_REGION_1(sc, addr, key->wk_key, sizeof(key->wk_key));
+
+		/*
+		 * Set key cipher.
+		 */
+		cipher = rt2661_cipher(key);
+		keyix_shift = key->wk_keyix * 4;
+
+		val = RAL_READ(sc, RT2661_SEC_CSR1);
+		val &= ~(0xf << keyix_shift);
+		val |= cipher << keyix_shift;
+		RAL_WRITE(sc, RT2661_SEC_CSR1, val);
+
+		/*
+		 * Enable key slot.
+		 */
+		val = RAL_READ(sc, RT2661_SEC_CSR0);
+		val |= 1 << key->wk_keyix;
+		RAL_WRITE(sc, RT2661_SEC_CSR0, val);
+	} else {					/* Pairwise key */
+		uint8_t mac_cipher[IEEE80211_ADDR_LEN + 1];
+
+		DPRINTF(("set pairwise key\n"));
+
+		/*
+		 * Install key content.
+		 */
+		addr = RT2661_PAIRWISE_KEY_BASE +
+		       (key->wk_keyix * sizeof(key->wk_key));
+		RAL_WRITE_REGION_1(sc, addr, key->wk_key, sizeof(key->wk_key));
+
+		/*
+		 * Set target address and key cipher.
+		 */
+		memcpy(mac_cipher, mac, IEEE80211_ADDR_LEN);
+		mac_cipher[IEEE80211_ADDR_LEN] = rt2661_cipher(key);
+
+		/* XXX Actually slot size is 1 byte bigger than mac_cipher */
+		addr = RT2661_TARGET_ADDR_BASE +
+		       (key->wk_keyix * (IEEE80211_ADDR_LEN + 2));
+		RAL_WRITE_REGION_1(sc, addr, mac_cipher, sizeof(mac_cipher));
+
+		/*
+		 * Enable key slot.
+		 */
+		if (key->wk_keyix < 32) {
+			val = RAL_READ(sc, RT2661_SEC_CSR2);
+			val |= 1 << key->wk_keyix;
+			RAL_WRITE(sc, RT2661_SEC_CSR2, val);
+		} else {
+			val = RAL_READ(sc, RT2661_SEC_CSR3);
+			val |= 1 << (key->wk_keyix - 32);
+			RAL_WRITE(sc, RT2661_SEC_CSR3, val);
+		}
+
+		/*
+		 * Enable pairwise key looking up when RX.
+		 */
+		RAL_WRITE(sc, RT2661_SEC_CSR4, 1);
+	}
+	return 1;
 }

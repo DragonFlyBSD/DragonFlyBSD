@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.8 2007/04/28 14:40:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.9 2007/05/07 14:14:21 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -23,6 +23,12 @@
 #define RT2661_TX_RING_COUNT	32
 #define RT2661_MGT_RING_COUNT	32
 #define RT2661_RX_RING_COUNT	64
+
+#define RT2661_CIPHER_NONE	0
+#define RT2661_CIPHER_WEP40	1
+#define RT2661_CIPHER_WEP104	2
+#define RT2661_CIPHER_TKIP	3
+#define RT2661_CIPHER_AES	4
 
 #define RT2661_TX_DESC_SIZE	(sizeof (struct rt2661_tx_desc))
 #define RT2661_TX_DESC_WSIZE	(RT2661_TX_DESC_SIZE / 4)
@@ -40,6 +46,9 @@
 #define RT2661_MCU_INT_SOURCE_CSR	0x0014
 #define RT2661_MCU_INT_MASK_CSR		0x0018
 #define RT2661_PCI_USEC_CSR		0x001c
+#define RT2661_GLOBAL_KEY_BASE		0x1000
+#define RT2661_PAIRWISE_KEY_BASE	0x1200
+#define RT2661_TARGET_ADDR_BASE		0x1a00
 #define RT2661_H2M_MAILBOX_CSR		0x2100
 #define RT2661_M2H_CMD_DONE_CSR		0x2104
 #define RT2661_HW_BEACON_BASE0		0x2c00
@@ -225,6 +234,8 @@ struct rt2661_tx_desc {
 #define RT2661_TX_OFDM		(1 << 5)
 #define RT2661_TX_IFS		(1 << 6)
 #define RT2661_TX_LONG_RETRY	(1 << 7)
+#define RT2661_TX_HWMIC		(1 << 8)
+#define RT2661_TX_PAIRWISE_KEY	(1 << 9)
 #define RT2661_TX_BURST		(1 << 28)
 
 	uint16_t	wme;
@@ -243,8 +254,8 @@ struct rt2661_tx_desc {
 	uint8_t		plcp_length_lo;
 	uint8_t		plcp_length_hi;
 
-	uint32_t	iv;
-	uint32_t	eiv;
+	uint8_t		iv[4];
+	uint8_t		eiv[4];
 
 	uint8_t		offset;
 	uint8_t		qid;
@@ -269,13 +280,15 @@ struct rt2661_rx_desc {
 #define RT2661_RX_CRC_ERROR	(1 << 6)
 #define RT2661_RX_OFDM		(1 << 7)
 #define RT2661_RX_CIPHER_MASK	0x00000300
+#define RT2661_RX_KEYIX(f)	(((f) >> 10) & 0x3f)
+#define RT2661_RX_CIPHER(f)	(((f) >> 29) & 0x7)
 
 	uint8_t		rate;
 	uint8_t		rssi;
 	uint8_t		reserved1;
 	uint8_t		offset;
-	uint32_t	iv;
-	uint32_t	eiv;
+	uint8_t		iv[4];
+	uint8_t		eiv[4];
 	uint32_t	reserved2;
 	uint32_t	physaddr;
 	uint32_t	reserved3[10];
@@ -393,6 +406,9 @@ struct rt2661_rx_desc {
 	{ RT2661_MAC_CSR13,        0x0000e000 },	\
 	{ RT2661_SEC_CSR0,         0x00000000 },	\
 	{ RT2661_SEC_CSR1,         0x00000000 },	\
+	{ RT2661_SEC_CSR2,         0x00000000 },	\
+	{ RT2661_SEC_CSR3,         0x00000000 },	\
+	{ RT2661_SEC_CSR4,         0x00000000 },	\
 	{ RT2661_SEC_CSR5,         0x00000000 },	\
 	{ RT2661_PHY_CSR1,         0x000023b0 },	\
 	{ RT2661_PHY_CSR5,         0x060a100c },	\
