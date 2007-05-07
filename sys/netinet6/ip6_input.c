@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.28 2006/05/20 06:32:41 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.28.2.1 2007/05/07 13:47:53 hasso Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -245,7 +245,7 @@ ip6_input(struct netmsg *msg)
 	int off = sizeof(struct ip6_hdr), nest;
 	u_int32_t plen;
 	u_int32_t rtalert = ~0;
-	int nxt, ours = 0;
+	int nxt, ours = 0, rh_present = 0;
 	struct ifnet *deliverifp = NULL;
 	struct in6_addr odst;
 	int srcrt = 0;
@@ -785,9 +785,11 @@ ip6_input(struct netmsg *msg)
 	in6_ifstat_inc(deliverifp, ifs6_in_deliver);
 	nest = 0;
 
+	rh_present = 0;
 	while (nxt != IPPROTO_DONE) {
 		if (ip6_hdrnestlimit && (++nest > ip6_hdrnestlimit)) {
 			ip6stat.ip6s_toomanyhdr++;
+			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_hdrerr);
 			goto bad;
 		}
 
@@ -816,6 +818,15 @@ ip6_input(struct netmsg *msg)
 			goto bad;
 		}
 #endif
+
+		if (nxt == IPPROTO_ROUTING) {
+			if (rh_present++) {
+				in6_ifstat_inc(m->m_pkthdr.rcvif,
+				    ifs6_in_hdrerr);
+				ip6stat.ip6s_badoptions++;
+				goto bad;
+			}
+		}
 
 #ifdef IPSEC
 		/*
