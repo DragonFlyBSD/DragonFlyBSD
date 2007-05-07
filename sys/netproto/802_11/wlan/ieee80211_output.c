@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.20 2007/04/01 13:59:41 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.21 2007/05/07 14:12:16 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -383,7 +383,8 @@ ieee80211_mbuf_adjust(struct ieee80211com *ic, int hdrsize,
 
 	if (key != NULL) {
 		/* XXX belongs in crypto code? */
-		needed_space += key->wk_cipher->ic_header;
+		if ((key->wk_flags & IEEE80211_KEY_NOHDR) == 0)
+			needed_space += key->wk_cipher->ic_header;
 		/* XXX frags */
 		/*
 		 * When crypto is being done in the host we must insure

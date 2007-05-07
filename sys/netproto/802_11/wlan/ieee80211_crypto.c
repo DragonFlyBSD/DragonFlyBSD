@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.c,v 1.10.2.2 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.5 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.6 2007/05/07 14:12:16 sephe Exp $
  */
 
 /*
@@ -230,6 +230,27 @@ ieee80211_crypto_cipher(u_int cipher)
 	return cipher < IEEE80211_CIPHER_MAX ? ciphers[cipher] : NULL;
 }
 
+/* 
+ * Reset key state to an unused state.  The crypto
+ * key allocation mechanism insures other state (e.g.
+ * key data) is properly setup before a key is used.
+ */
+void
+ieee80211_crypto_resetkey(struct ieee80211com *ic,
+	struct ieee80211_key *k, ieee80211_keyix ix)
+{
+	if (k < &ic->ic_nw_keys[IEEE80211_WEP_NKID] &&
+	    k >= &ic->ic_nw_keys[0])
+		k->wk_keyid = k - ic->ic_nw_keys;
+	else
+		k->wk_keyid = 0;
+
+	k->wk_cipher = &ieee80211_cipher_none;
+	k->wk_private = k->wk_cipher->ic_attach(ic, k);
+	k->wk_keyix = k->wk_rxkeyix = ix;
+	k->wk_flags = IEEE80211_KEY_XMIT | IEEE80211_KEY_RECV;
+}
+
 /* XXX well-known names! */
 static const char *cipher_modnames[] = {
 	"wlan_wep",	/* IEEE80211_CIPHER_WEP */
@@ -313,6 +334,8 @@ ieee80211_crypto_newkey(struct ieee80211com *ic,
 		    "%s: no h/w support for cipher %s, falling back to s/w\n",
 		    __func__, cip->ic_name);
 		flags |= IEEE80211_KEY_SWCRYPT;
+	} else if (ic->ic_caps_ext & IEEE80211_CEXT_CRYPTO_HDR) {
+		flags |= IEEE80211_KEY_NOHDR;
 	}
 	/*
 	 * Hardware TKIP with software MIC is an important
@@ -325,6 +348,8 @@ ieee80211_crypto_newkey(struct ieee80211com *ic,
 		    "%s: no h/w support for TKIP MIC, falling back to s/w\n",
 		    __func__);
 		flags |= IEEE80211_KEY_SWMIC;
+	} else if (ic->ic_caps_ext & IEEE80211_CEXT_STRIP_MIC) {
+		flags |= IEEE80211_KEY_NOMIC;
 	}
 
 	/*
@@ -388,6 +413,7 @@ again:
 				    "falling back to s/w\n", __func__,
 				    cip->ic_name);
 				oflags = key->wk_flags;
+				flags &= IEEE80211_KEY_COMMON;
 				flags |= IEEE80211_KEY_SWCRYPT;
 				if (cipher == IEEE80211_CIPHER_TKIP)
 					flags |= IEEE80211_KEY_SWMIC;
@@ -521,9 +547,19 @@ ieee80211_crypto_encap(struct ieee80211com *ic,
 	struct ieee80211_node *ni, struct mbuf *m)
 {
 	struct ieee80211_key *k;
+
+	k = ieee80211_crypto_findkey(ic, ni, m);
+	if (k != NULL)
+		k = ieee80211_crypto_encap_withkey(ic, m, k);
+	return k;
+}
+
+struct ieee80211_key *
+ieee80211_crypto_findkey(struct ieee80211com *ic,
+	struct ieee80211_node *ni, struct mbuf *m)
+{
 	struct ieee80211_frame *wh;
-	const struct ieee80211_cipher *cip;
-	uint8_t keyid;
+	struct ieee80211_key *k;
 
 	/*
 	 * Multicast traffic always uses the multicast key.
@@ -542,14 +578,30 @@ ieee80211_crypto_encap(struct ieee80211com *ic,
 			ic->ic_stats.is_tx_nodefkey++;
 			return NULL;
 		}
-		keyid = ic->ic_def_txkey;
 		k = &ic->ic_nw_keys[ic->ic_def_txkey];
+		KASSERT(k->wk_keyid == ic->ic_def_txkey,
+			("keyid mismatch: wk_keyid %d, def_txkey %d\n",
+			 k->wk_keyid, ic->ic_def_txkey));
 	} else {
-		keyid = 0;
 		k = &ni->ni_ucastkey;
+		KASSERT(k->wk_keyid == 0, ("unicast key keyid is not zero\n"));
 	}
-	cip = k->wk_cipher;
-	return (cip->ic_encap(k, m, keyid<<6) ? k : NULL);
+	return k;
+}
+
+struct ieee80211_key *
+ieee80211_crypto_encap_withkey(struct ieee80211com *ic,
+	struct mbuf *m, struct ieee80211_key *k)
+{
+	return (k->wk_cipher->ic_encap(k, m, k->wk_keyid << 6) ? k : NULL);
+}
+
+struct ieee80211_key *
+ieee80211_crypto_getiv(struct ieee80211com *ic, struct ieee80211_crypto_iv *iv,
+		       struct ieee80211_key *k)
+{
+	memset(iv, 0, sizeof(*iv));
+	return (k->wk_cipher->ic_getiv(k, iv, k->wk_keyid << 6) ? k : NULL);
 }
 
 /*
@@ -610,4 +662,30 @@ ieee80211_crypto_decap(struct ieee80211com *ic,
 	return (cip->ic_decap(k, m, hdrlen) ? k : NULL);
 #undef IEEE80211_WEP_MINLEN
 #undef IEEE80211_WEP_HDRLEN
+}
+
+struct ieee80211_key *
+ieee80211_crypto_update(struct ieee80211com *ic, struct ieee80211_node *ni,
+	const struct ieee80211_crypto_iv *iv, const struct ieee80211_frame *wh)
+{
+	struct ieee80211_key *k;
+
+	/*
+	 * Locate the key. If unicast and there is no unicast
+	 * key then we fall back to the key id in the header.
+	 * This assumes unicast keys are only configured when
+	 * the key id in the header is meaningless (typically 0).
+	 */
+	if (IEEE80211_IS_MULTICAST(wh->i_addr1) ||
+	    ni->ni_ucastkey.wk_cipher == &ieee80211_cipher_none) {
+		const uint8_t *ivp;
+		uint8_t keyid;
+
+		ivp = (const uint8_t *)iv;
+		keyid = ivp[IEEE80211_WEP_IVLEN];
+		k = &ic->ic_nw_keys[keyid >> 6];
+	} else {
+		k = &ni->ni_ucastkey;
+	}
+	return (k->wk_cipher->ic_update(k, iv, wh) ? k : NULL);
 }

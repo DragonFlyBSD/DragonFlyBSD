@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_ccmp.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.4 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
  */
 
 /*
@@ -71,6 +71,11 @@ static	int ccmp_encap(struct ieee80211_key *k, struct mbuf *, uint8_t keyid);
 static	int ccmp_decap(struct ieee80211_key *, struct mbuf *, int);
 static	int ccmp_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int ccmp_demic(struct ieee80211_key *, struct mbuf *, int);
+static	int ccmp_getiv(struct ieee80211_key *, struct ieee80211_crypto_iv *,
+		uint8_t);
+static	int ccmp_update(struct ieee80211_key *,
+		const struct ieee80211_crypto_iv *,
+		const struct ieee80211_frame *);
 
 static const struct ieee80211_cipher ccmp = {
 	.ic_name	= "AES-CCM",
@@ -86,6 +91,8 @@ static const struct ieee80211_cipher ccmp = {
 	.ic_decap	= ccmp_decap,
 	.ic_enmic	= ccmp_enmic,
 	.ic_demic	= ccmp_demic,
+	.ic_getiv	= ccmp_getiv,
+	.ic_update	= ccmp_update
 };
 
 static	int ccmp_encrypt(struct ieee80211_key *, struct mbuf *, int hdrlen);
@@ -181,6 +188,25 @@ ccmp_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	return 1;
 }
 
+static int
+ccmp_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
+	uint8_t keyid)
+{
+	uint8_t *ivp = (uint8_t *)iv;
+
+	k->wk_keytsc++;		/* XXX wrap at 48 bits */
+	ivp[0] = k->wk_keytsc >> 0;		/* PN0 */
+	ivp[1] = k->wk_keytsc >> 8;		/* PN1 */
+	ivp[2] = 0;				/* Reserved */
+	ivp[3] = keyid | IEEE80211_WEP_EXTIV;	/* KeyID | ExtID */
+	ivp[4] = k->wk_keytsc >> 16;		/* PN2 */
+	ivp[5] = k->wk_keytsc >> 24;		/* PN3 */
+	ivp[6] = k->wk_keytsc >> 32;		/* PN4 */
+	ivp[7] = k->wk_keytsc >> 40;		/* PN5 */
+
+	return 1;
+}
+
 /*
  * Add MIC to the frame as needed.
  */
@@ -260,6 +286,45 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	 */
 	k->wk_keyrsc = pn;
 
+	return 1;
+}
+
+static int
+ccmp_update(struct ieee80211_key *k, const struct ieee80211_crypto_iv *iv,
+	const struct ieee80211_frame *wh)
+{
+	struct ccmp_ctx *ctx = k->wk_private;
+	const uint8_t *ivp = (const uint8_t *)iv;
+	uint64_t pn;
+
+	/*
+	 * Header should have extended IV and sequence number;
+	 * verify the former and validate the latter.
+	 */
+	if ((ivp[IEEE80211_WEP_IVLEN] & IEEE80211_WEP_EXTIV) == 0) {
+		/*
+		 * No extended IV; discard frame.
+		 */
+		IEEE80211_DPRINTF(ctx->cc_ic, IEEE80211_MSG_CRYPTO,
+			"[%6D] Missing ExtIV for AES-CCM cipher\n",
+			wh->i_addr2, ":");
+		ctx->cc_ic->ic_stats.is_rx_ccmpformat++;
+		return 0;
+	}
+	pn = READ_6(ivp[0], ivp[1], ivp[4], ivp[5], ivp[6], ivp[7]);
+	if (pn <= k->wk_keyrsc) {
+		/*
+		 * Replay violation.
+		 */
+		ieee80211_notify_replay_failure(ctx->cc_ic, wh, k, pn);
+		ctx->cc_ic->ic_stats.is_rx_ccmpreplay++;
+		return 0;
+	}
+
+	/*
+	 * Ok to update rsc now.
+	 */
+	k->wk_keyrsc = pn;
 	return 1;
 }
 

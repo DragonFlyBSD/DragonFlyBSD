@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_wep.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_wep/ieee80211_crypto_wep.c,v 1.4 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_wep/ieee80211_crypto_wep.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
  */
 
 /*
@@ -59,6 +59,11 @@ static	int wep_encap(struct ieee80211_key *, struct mbuf *, uint8_t keyid);
 static	int wep_decap(struct ieee80211_key *, struct mbuf *, int hdrlen);
 static	int wep_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int wep_demic(struct ieee80211_key *, struct mbuf *, int);
+static	int wep_getiv(struct ieee80211_key *, struct ieee80211_crypto_iv *,
+		uint8_t);
+static	int wep_update(struct ieee80211_key *,
+		const struct ieee80211_crypto_iv *,
+		const struct ieee80211_frame *);
 
 static const struct ieee80211_cipher wep = {
 	.ic_name	= "WEP",
@@ -73,6 +78,8 @@ static const struct ieee80211_cipher wep = {
 	.ic_decap	= wep_decap,
 	.ic_enmic	= wep_enmic,
 	.ic_demic	= wep_demic,
+	.ic_getiv	= wep_getiv,
+	.ic_update	= wep_update
 };
 
 static	int wep_encrypt(struct ieee80211_key *, struct mbuf *, int hdrlen);
@@ -241,12 +248,56 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	return 1;
 }
 
+static int
+wep_update(struct ieee80211_key *k, const struct ieee80211_crypto_iv *iv,
+	   const struct ieee80211_frame *wh)
+{
+	return 1;
+}
+
 /*
  * Verify and strip MIC from the frame.
  */
 static int
 wep_demic(struct ieee80211_key *k, struct mbuf *skb, int force)
 {
+	return 1;
+}
+
+static int
+wep_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *ivp,
+	uint8_t keyid)
+{
+	struct wep_ctx *ctx = k->wk_private;
+	uint32_t iv;
+
+	/*
+	 * Skip 'bad' IVs from Fluhrer/Mantin/Shamir:
+	 * (B, 255, N) with 3 <= B < 16 and 0 <= N <= 255
+	 */
+	iv = ctx->wc_iv;
+	if ((iv & 0xff00) == 0xff00) {
+		int B = (iv & 0xff0000) >> 16;
+		if (3 <= B && B < 16)
+			iv += 0x0100;
+	}
+	ctx->wc_iv = iv + 1;
+
+	/*
+	 * NB: Preserve byte order of IV for packet
+	 *     sniffers; it doesn't matter otherwise.
+	 */
+#if _BYTE_ORDER == _BIG_ENDIAN
+	ivp->ic_iv[0] = iv >> 0;
+	ivp->ic_iv[1] = iv >> 8;
+	ivp->ic_iv[2] = iv >> 16;
+#else
+	ivp->ic_iv[2] = iv >> 0;
+	ivp->ic_iv[1] = iv >> 8;
+	ivp->ic_iv[0] = iv >> 16;
+#endif
+	ivp->ic_iv[3] = keyid;
+
 	return 1;
 }
 

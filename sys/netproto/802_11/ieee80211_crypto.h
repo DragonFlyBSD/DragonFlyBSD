@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.h,v 1.9.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_crypto.h,v 1.3 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_crypto.h,v 1.4 2007/05/07 14:12:16 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_CRYPTO_H_
 #define _NET80211_IEEE80211_CRYPTO_H_
@@ -71,13 +71,15 @@ typedef uint16_t ieee80211_keyix;	/* h/w key index */
 
 struct ieee80211_key {
 	uint8_t		wk_keylen;	/* key length in bytes */
-	uint8_t		wk_pad;
+	uint8_t		wk_keyid;	/* key id */
 	uint16_t	wk_flags;
 #define	IEEE80211_KEY_XMIT	0x01	/* key used for xmit */
 #define	IEEE80211_KEY_RECV	0x02	/* key used for recv */
 #define	IEEE80211_KEY_GROUP	0x04	/* key used for WPA group operation */
 #define	IEEE80211_KEY_SWCRYPT	0x10	/* host-based encrypt/decrypt */
 #define	IEEE80211_KEY_SWMIC	0x20	/* host-based enmic/demic */
+#define IEEE80211_KEY_NOHDR	0x40	/* driver appends crypto header */
+#define IEEE80211_KEY_NOMIC	0x80	/* driver strips TKIP MIC */
 	ieee80211_keyix	wk_keyix;	/* h/w key index */
 	ieee80211_keyix	wk_rxkeyix;	/* optional h/w rx key index */
 	uint8_t		wk_key[IEEE80211_KEYBUF_SIZE+IEEE80211_MICBUF_SIZE];
@@ -147,6 +149,15 @@ int	ieee80211_crypto_setkey(struct ieee80211com *,
 		struct ieee80211_key *, const uint8_t macaddr[IEEE80211_ADDR_LEN]);
 void	ieee80211_crypto_delglobalkeys(struct ieee80211com *);
 
+struct ieee80211_crypto_iv {
+	/*
+	 * Keep this layout!
+	 * Crypto modules will assume that ic_iv and ic_eiv are contiguous.
+	 */
+	uint8_t	ic_iv[4];
+	uint8_t	ic_eiv[4];
+};
+
 /*
  * Template for a supported cipher.  Ciphers register with the
  * crypto code and are typically loaded as separate modules
@@ -167,6 +178,11 @@ struct ieee80211_cipher {
 	int	(*ic_decap)(struct ieee80211_key *, struct mbuf *, int);
 	int	(*ic_enmic)(struct ieee80211_key *, struct mbuf *, int);
 	int	(*ic_demic)(struct ieee80211_key *, struct mbuf *, int);
+	int	(*ic_getiv)(struct ieee80211_key *,
+			struct ieee80211_crypto_iv *, uint8_t);
+	int	(*ic_update)(struct ieee80211_key *,
+			const struct ieee80211_crypto_iv *,
+			const struct ieee80211_frame *);
 };
 extern	const struct ieee80211_cipher ieee80211_cipher_none;
 
@@ -175,10 +191,23 @@ void	ieee80211_crypto_unregister(const struct ieee80211_cipher *);
 int	ieee80211_crypto_available(u_int cipher);
 const struct ieee80211_cipher *ieee80211_crypto_cipher(u_int cipher);
 
+void	ieee80211_crypto_resetkey(struct ieee80211com *,
+		struct ieee80211_key *, ieee80211_keyix);
+
 struct ieee80211_key *ieee80211_crypto_encap(struct ieee80211com *,
 		struct ieee80211_node *, struct mbuf *);
 struct ieee80211_key *ieee80211_crypto_decap(struct ieee80211com *,
 		struct ieee80211_node *, struct mbuf *, int);
+struct ieee80211_key *ieee80211_crypto_findkey(struct ieee80211com *,
+		struct ieee80211_node *, struct mbuf *);
+struct ieee80211_key *ieee80211_crypto_encap_withkey(struct ieee80211com *,
+		struct mbuf *, struct ieee80211_key *);
+
+struct ieee80211_key *ieee80211_crypto_update(struct ieee80211com *,
+		struct ieee80211_node *, const struct ieee80211_crypto_iv *,
+		const struct ieee80211_frame *);
+struct ieee80211_key *ieee80211_crypto_getiv(struct ieee80211com *,
+		struct ieee80211_crypto_iv *, struct ieee80211_key *);
 
 /*
  * Check and remove any MIC.
@@ -200,21 +229,6 @@ ieee80211_crypto_enmic(struct ieee80211com *ic,
 {
 	const struct ieee80211_cipher *cip = k->wk_cipher;
 	return (cip->ic_miclen > 0 ? cip->ic_enmic(k, m, force) : 1);
-}
-
-/* 
- * Reset key state to an unused state.  The crypto
- * key allocation mechanism insures other state (e.g.
- * key data) is properly setup before a key is used.
- */
-static __inline void
-ieee80211_crypto_resetkey(struct ieee80211com *ic,
-	struct ieee80211_key *k, ieee80211_keyix ix)
-{
-	k->wk_cipher = &ieee80211_cipher_none;
-	k->wk_private = k->wk_cipher->ic_attach(ic, k);
-	k->wk_keyix = k->wk_rxkeyix = ix;
-	k->wk_flags = IEEE80211_KEY_XMIT | IEEE80211_KEY_RECV;
 }
 
 /*

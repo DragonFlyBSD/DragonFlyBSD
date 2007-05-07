@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.15 2007/04/01 13:59:40 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.16 2007/05/07 14:12:16 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -301,6 +301,12 @@ struct ieee80211com {
 
 /* ic_caps_ext */
 #define IEEE80211_CEXT_PBCC	0x00000001	/* CAPABILITY: PBCC modulation */
+#define IEEE80211_CEXT_CRYPTO_HDR 0x00000002	/* CAPABILITY:
+						 * driver appends crypto header
+						 */
+#define IEEE80211_CEXT_STRIP_MIC 0x00000004	/* CAPABILITY:
+						 * driver strips TKIP MIC
+						 */
 
 void	ieee80211_ifattach(struct ieee80211com *);
 void	ieee80211_ifdetach(struct ieee80211com *);

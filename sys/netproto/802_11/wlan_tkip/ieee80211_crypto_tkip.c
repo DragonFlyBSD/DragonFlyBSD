@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_tkip.c,v 1.9.2.2 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.4 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
  */
 
 /*
@@ -63,6 +63,11 @@ static	int tkip_encap(struct ieee80211_key *, struct mbuf *m, uint8_t keyid);
 static	int tkip_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int tkip_decap(struct ieee80211_key *, struct mbuf *, int);
 static	int tkip_demic(struct ieee80211_key *, struct mbuf *, int);
+static	int tkip_getiv(struct ieee80211_key *, struct ieee80211_crypto_iv *,
+		uint8_t);
+static	int tkip_update(struct ieee80211_key *,
+		const struct ieee80211_crypto_iv *,
+		const struct ieee80211_frame *);
 
 static const struct ieee80211_cipher tkip  = {
 	.ic_name	= "TKIP",
@@ -78,6 +83,8 @@ static const struct ieee80211_cipher tkip  = {
 	.ic_decap	= tkip_decap,
 	.ic_enmic	= tkip_enmic,
 	.ic_demic	= tkip_demic,
+	.ic_getiv	= tkip_getiv,
+	.ic_update	= tkip_update
 };
 
 #define	memmove(dst, src, n)	ovbcopy(src, dst, n)
@@ -207,6 +214,38 @@ tkip_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	return 1;
 }
 
+static int
+tkip_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
+	uint8_t keyid)
+{
+	struct tkip_ctx *ctx = k->wk_private;
+	struct ieee80211com *ic = ctx->tc_ic;
+	uint8_t *ivp = (uint8_t *)iv;
+
+	/*
+	 * Handle TKIP counter measures requirement.
+	 */
+	if (ic->ic_flags & IEEE80211_F_COUNTERM) {
+		IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
+			"Discard frame due to countermeasures (%s)\n",
+			__func__);
+		ic->ic_stats.is_crypto_tkipcm++;
+		return 0;
+	}
+
+	ivp[0] = k->wk_keytsc >> 8;		/* TSC1 */
+	ivp[1] = (ivp[0] | 0x20) & 0x7f;	/* WEP seed */
+	ivp[2] = k->wk_keytsc >> 0;		/* TSC0 */
+	ivp[3] = keyid | IEEE80211_WEP_EXTIV;	/* KeyID | ExtID */
+	ivp[4] = k->wk_keytsc >> 16;		/* TSC2 */
+	ivp[5] = k->wk_keytsc >> 24;		/* TSC3 */
+	ivp[6] = k->wk_keytsc >> 32;		/* TSC4 */
+	ivp[7] = k->wk_keytsc >> 40;		/* TSC5 */
+
+	k->wk_keytsc++;
+	return 1;
+}
+
 /*
  * Add MIC to the frame as needed.
  */
@@ -317,6 +356,60 @@ tkip_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	return 1;
 }
 
+static int
+tkip_update(struct ieee80211_key *k, const struct ieee80211_crypto_iv *iv,
+	const struct ieee80211_frame *wh)
+{
+	struct tkip_ctx *ctx = k->wk_private;
+	struct ieee80211com *ic = ctx->tc_ic;
+	const uint8_t *ivp = (const uint8_t *)iv;
+
+	/*
+	 * Header should have extended IV and sequence number;
+	 * verify the former and validate the latter.
+	 */
+	if ((ivp[IEEE80211_WEP_IVLEN] & IEEE80211_WEP_EXTIV) == 0) {
+		/*
+		 * No extended IV; discard frame.
+		 */
+		IEEE80211_DPRINTF(ctx->tc_ic, IEEE80211_MSG_CRYPTO,
+			"[%6D] missing ExtIV for TKIP cipher\n",
+			wh->i_addr2, ":");
+		ctx->tc_ic->ic_stats.is_rx_tkipformat++;
+		return 0;
+	}
+	/*
+	 * Handle TKIP counter measures requirement.
+	 */
+	if (ic->ic_flags & IEEE80211_F_COUNTERM) {
+		IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
+			"[%6D] discard frame due to countermeasures (%s)\n",
+			wh->i_addr2, ":", __func__);
+		ic->ic_stats.is_crypto_tkipcm++;
+		return 0;
+	}
+
+	ctx->rx_rsc = READ_6(ivp[2], ivp[0], ivp[4], ivp[5], ivp[6], ivp[7]);
+	if (ctx->rx_rsc <= k->wk_keyrsc) {
+		/*
+		 * Replay violation; notify upper layer.
+		 */
+		ieee80211_notify_replay_failure(ctx->tc_ic, wh, k, ctx->rx_rsc);
+		ctx->tc_ic->ic_stats.is_rx_tkipreplay++;
+		return 0;
+	}
+
+	/*
+	 * NB: We can't update the rsc in the key until MIC is verified.
+	 *
+	 * We assume we are not preempted between doing the check above
+	 * and updating wk_keyrsc when stripping the MIC in tkip_demic.
+	 * Otherwise we might process another packet and discard it as
+	 * a replay.
+	 */
+	return 1;
+}
+
 /*
  * Verify and strip MIC from the frame.
  */
@@ -347,10 +440,13 @@ tkip_demic(struct ieee80211_key *k, struct mbuf *m, int force)
 			return 0;
 		}
 	}
-	/*
-	 * Strip MIC from the tail.
-	 */
-	m_adj(m, -tkip.ic_miclen);
+
+	if (force || (k->wk_flags & IEEE80211_KEY_NOMIC) == 0) {
+		/*
+		 * Strip MIC from the tail.
+		 */
+		m_adj(m, -tkip.ic_miclen);
+	}
 
 	/*
 	 * Ok to update rsc now that MIC has been verified.

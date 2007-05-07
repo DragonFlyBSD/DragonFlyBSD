@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_none.c,v 1.5 2005/06/10 16:11:24 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto_none.c,v 1.2 2006/08/05 03:18:27 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto_none.c,v 1.3 2007/05/07 14:12:16 sephe Exp $
  */
 
 /*
@@ -56,6 +56,11 @@ static	int none_crypto_encap(struct ieee80211_key *, struct mbuf *, uint8_t);
 static	int none_crypto_decap(struct ieee80211_key *, struct mbuf *, int);
 static	int none_crypto_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int none_crypto_demic(struct ieee80211_key *, struct mbuf *, int);
+static	int none_crypto_getiv(struct ieee80211_key *,
+		struct ieee80211_crypto_iv *, uint8_t);
+static	int none_crypto_update(struct ieee80211_key *,
+		const struct ieee80211_crypto_iv *,
+		const struct ieee80211_frame *);
 
 const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_name	= "NONE",
@@ -70,6 +75,8 @@ const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_decap	= none_crypto_decap,
 	.ic_enmic	= none_crypto_enmic,
 	.ic_demic	= none_crypto_demic,
+	.ic_getiv	= none_crypto_getiv,
+	.ic_update	= none_crypto_update
 };
 
 static void *
@@ -132,6 +139,25 @@ none_crypto_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 }
 
 static int
+none_crypto_update(struct ieee80211_key *k,
+		   const struct ieee80211_crypto_iv *iv,
+		   const struct ieee80211_frame *wh)
+{
+	struct ieee80211com *ic = k->wk_private;
+	const uint8_t *ivp = (const uint8_t *)iv;
+
+	/*
+	 * The specified key is not setup; this can
+	 * happen, at least, when changing keys.
+	 */
+	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
+		"[%6D] key id %u is not set (update)\n",
+		wh->i_addr2, ":", ivp[IEEE80211_WEP_IVLEN] >> 6);
+	ic->ic_stats.is_rx_badkeyid++;
+	return 0;
+}
+
+static int
 none_crypto_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
 	struct ieee80211com *ic = k->wk_private;
@@ -146,5 +172,21 @@ none_crypto_demic(struct ieee80211_key *k, struct mbuf *m, int force)
 	struct ieee80211com *ic = k->wk_private;
 
 	ic->ic_stats.is_rx_badkeyid++;
+	return 0;
+}
+
+static int
+none_crypto_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
+		  uint8_t keyid)
+{
+	struct ieee80211com *ic = k->wk_private;
+
+	/*
+	 * The specified key is not setup; this can
+	 * happen, at least, when changing keys.
+	 */
+	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
+		"key id %u is not set (getiv)\n", keyid>>6);
+	ic->ic_stats.is_tx_badcipher++;
 	return 0;
 }

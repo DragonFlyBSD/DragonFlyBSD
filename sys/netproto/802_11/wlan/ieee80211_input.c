@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.19 2007/03/26 11:08:30 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.20 2007/05/07 14:12:16 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -134,6 +134,14 @@ static void ieee80211_recv_pspoll(struct ieee80211com *,
 int
 ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 	struct ieee80211_node *ni, int rssi, uint32_t rstamp)
+{
+	return ieee80211_input_withiv(ic, m, ni, rssi, rstamp, NULL);
+}
+
+int
+ieee80211_input_withiv(struct ieee80211com *ic, struct mbuf *m,
+	struct ieee80211_node *ni, int rssi, uint32_t rstamp,
+	const struct ieee80211_crypto_iv *iv)
 {
 #define	SEQ_LEQ(a,b)	((int)((a)-(b)) <= 0)
 #define	HAS_SEQ(type)	((type & 0x4) == 0)
@@ -388,7 +396,12 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 				IEEE80211_NODE_STAT(ni, rx_noprivacy);
 				goto out;
 			}
-			key = ieee80211_crypto_decap(ic, ni, m, hdrspace);
+			if (iv == NULL) {
+				key = ieee80211_crypto_decap(ic, ni, m,
+							     hdrspace);
+			} else {
+				key = ieee80211_crypto_update(ic, ni, iv, wh);
+			}
 			if (key == NULL) {
 				/* NB: stats+msgs handled in crypto_decap */
 				IEEE80211_NODE_STAT(ni, rx_wepfail);
@@ -527,8 +540,13 @@ ieee80211_input(struct ieee80211com *ic, struct mbuf *m,
 				ic->ic_stats.is_rx_noprivacy++;
 				goto out;
 			}
-			hdrspace = ieee80211_hdrspace(ic, wh);
-			key = ieee80211_crypto_decap(ic, ni, m, hdrspace);
+			if (iv == NULL) {
+				hdrspace = ieee80211_hdrspace(ic, wh);
+				key = ieee80211_crypto_decap(ic, ni, m,
+							     hdrspace);
+			} else {
+				key = ieee80211_crypto_update(ic, ni, iv, wh);
+			}
 			if (key == NULL) {
 				/* NB: stats+msgs handled in crypto_decap */
 				goto out;

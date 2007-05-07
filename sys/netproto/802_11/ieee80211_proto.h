@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_proto.h,v 1.11.2.5 2006/02/12 19:00:39 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.12 2007/04/26 12:59:14 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_proto.h,v 1.13 2007/05/07 14:12:16 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -58,8 +58,12 @@ void	ieee80211_proto_attach(struct ieee80211com *);
 void	ieee80211_proto_detach(struct ieee80211com *);
 
 struct ieee80211_node;
+struct ieee80211_crypto_iv;
 int	ieee80211_input(struct ieee80211com *, struct mbuf *,
 		struct ieee80211_node *, int, uint32_t);
+int	ieee80211_input_withiv(struct ieee80211com *, struct mbuf *,
+		struct ieee80211_node *, int, uint32_t,
+		const struct ieee80211_crypto_iv *);
 int	ieee80211_setup_rates(struct ieee80211_node *ni,
 		const uint8_t *rates, const uint8_t *xrates,
 		int flags, int join);
