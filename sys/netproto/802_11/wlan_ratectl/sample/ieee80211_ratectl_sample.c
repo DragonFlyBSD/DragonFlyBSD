@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.1 2007/04/01 13:59:41 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.2 2007/05/07 10:45:42 sephe Exp $
  */
 
 /*
@@ -362,12 +362,23 @@ sample_findrate(void *arg, struct ieee80211_node *ni, int frame_len,
 	int ndx, size_bin, best_ndx, change_rates, ack_before, cur_ndx, i;
 	unsigned average_tx_time;
 
-	for (i = 0; i < NUM_PACKET_SIZE_BINS; ++i) {
-		if (sd->current_rate[i] >= ni->ni_rates.rs_nrates) {
-			DPRINTF(ssc, 5, "%s: number of rates changed, "
-				"restart\n", __func__);
-			sample_start(ssc, ni);
-			break;
+	if (sd == NULL) {
+		/*
+		 * XXX
+		 * This could happen on a "reclaimed" node, which will
+		 * vanish soon, so don't bother to call sample_start()
+		 * here.
+		 */
+		rateidx[0] = 0;
+		return 1;
+	} else {
+		for (i = 0; i < NUM_PACKET_SIZE_BINS; ++i) {
+			if (sd->current_rate[i] >= ni->ni_rates.rs_nrates) {
+				DPRINTF(ssc, 5, "%s: number of rates changed, "
+					"restart\n", __func__);
+				sample_start(ssc, ni);
+				break;
+			}
 		}
 	}
 
