@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.16 2007/05/02 14:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.17 2007/05/07 04:54:32 sephe Exp $
  */
 
 /*
@@ -46,8 +46,7 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 
-#include <machine/clock.h>
-
+#include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_arp.h>
@@ -80,7 +79,9 @@ static const struct mii_phydesc brgphys[] = {
 	MII_PHYDESC(xxBROADCOM,	BCM5714),
 	MII_PHYDESC(xxBROADCOM,	BCM5750),
 	MII_PHYDESC(xxBROADCOM,	BCM5752),
+	MII_PHYDESC(xxBROADCOM2,BCM5755),
 	MII_PHYDESC(xxBROADCOM,	BCM5780),
+	MII_PHYDESC(xxBROADCOM2,BCM5787),
 
 	MII_PHYDESC(xxBROADCOM,	BCM5706C),
 	MII_PHYDESC(xxBROADCOM,	BCM5708C),
@@ -113,14 +114,18 @@ static void	brgphy_mii_phy_auto(struct mii_softc *);
 static void	brgphy_reset(struct mii_softc *);
 static void	brgphy_loop(struct mii_softc *);
 
-static void	brgphy_load_dspcode(struct mii_softc *);
 static void	brgphy_bcm5401_dspcode(struct mii_softc *);
 static void	brgphy_bcm5411_dspcode(struct mii_softc *);
 static void	brgphy_bcm5421_dspcode(struct mii_softc *);
 static void	brgphy_bcm54k2_dspcode(struct mii_softc *);
-static void	brgphy_bcm5703_dspcode(struct mii_softc *);
-static void	brgphy_bcm5704_dspcode(struct mii_softc *);
-static void	brgphy_bcm5750_dspcode(struct mii_softc *);
+
+static void	brgphy_adc_bug(struct mii_softc *);
+static void	brgphy_5704_a0_bug(struct mii_softc *);
+static void	brgphy_ber_bug(struct mii_softc *);
+static void	brgphy_crc_bug(struct mii_softc *);
+
+static void	brgphy_jumbo_settings(struct mii_softc *, u_long);
+static void	brgphy_eth_wirespeed(struct mii_softc *);
 
 static int
 brgphy_probe(device_t dev)
@@ -340,10 +345,15 @@ setit:
 	    sc->mii_media_status != mii->mii_media_status ||
 	    cmd == MII_MEDIACHG) {
 		switch (sc->mii_model) {
-		case MII_MODEL_BROADCOM_BCM5400:
+		case MII_MODEL_xxBROADCOM_BCM5400:
+			brgphy_bcm5401_dspcode(sc);
+			break;
 		case MII_MODEL_xxBROADCOM_BCM5401:
+			if (sc->mii_rev == 1 || sc->mii_rev == 3)
+				brgphy_bcm5401_dspcode(sc);
+			break;
 		case MII_MODEL_xxBROADCOM_BCM5411:
-			brgphy_load_dspcode(sc);
+			brgphy_bcm5411_dspcode(sc);
 			break;
 		}
 	}
@@ -446,40 +456,69 @@ brgphy_loop(struct mii_softc *sc)
 static void
 brgphy_reset(struct mii_softc *sc)
 {
-	u_int32_t	val;
-	struct ifnet	*ifp;
-	struct bge_softc	*bge_sc;
+	struct ifnet *ifp;
 
 	mii_phy_reset(sc);
 
+	switch (sc->mii_model) {
+	case MII_MODEL_xxBROADCOM_BCM5400:
+		brgphy_bcm5401_dspcode(sc);
+			break;
+	case MII_MODEL_xxBROADCOM_BCM5401:
+		if (sc->mii_rev == 1 || sc->mii_rev == 3)
+			brgphy_bcm5401_dspcode(sc);
+		break;
+	case MII_MODEL_xxBROADCOM_BCM5411:
+		brgphy_bcm5411_dspcode(sc);
+		break;
+	case MII_MODEL_xxBROADCOM_BCM5421:
+		brgphy_bcm5421_dspcode(sc);
+		break;
+	case MII_MODEL_xxBROADCOM_BCM54K2:
+		brgphy_bcm54k2_dspcode(sc);
+		break;
+	}
+
 	ifp = sc->mii_pdata->mii_ifp;
-	bge_sc = ifp->if_softc;
+	if (strncmp(ifp->if_xname, "bge", 3) == 0) {
+		struct bge_softc *bge_sc = ifp->if_softc;
 
-	brgphy_load_dspcode(sc);
+		if (bge_sc->bge_flags & BGE_FLAG_ADC_BUG)
+			brgphy_adc_bug(sc);
+		if (bge_sc->bge_flags & BGE_FLAG_5704_A0_BUG)
+			brgphy_5704_a0_bug(sc);
+		if (bge_sc->bge_flags & BGE_FLAG_BER_BUG) {
+			brgphy_ber_bug(sc);
+		} else if (bge_sc->bge_flags & BGE_FLAG_JITTER_BUG) {
+			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0c00);
+			PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0x000a);
 
-	/*
-	 * Don't enable Ethernet@WireSpeed for the 5700 or 5705
-	 * other than A0 and A1 chips. Make sure we only do this
-	 * test on "bge" NICs, since other drivers may use this
-	 * same PHY subdriver.
-	 */
-	if (strncmp(ifp->if_xname, "bge", 3) == 0 &&
-	    (bge_sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
-	     (bge_sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
-	      (bge_sc->bge_chipid != BGE_CHIPID_BCM5705_A0 &&
-	       bge_sc->bge_chipid != BGE_CHIPID_BCM5705_A1))))
-		return;
+			if (bge_sc->bge_flags & BGE_FLAG_ADJUST_TRIM) {
+				PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x110b);
+				PHY_WRITE(sc, BRGPHY_TEST1,
+				    BRGPHY_TEST1_TRIM_EN | 0x4);
+			} else {
+				PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x010b);
+			}
 
-	/* Enable Ethernet@WireSpeed. */
-	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
-	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
-	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, val | (1 << 15) | (1 << 4));
+			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0400);
+		}
+		if (bge_sc->bge_flags & BGE_FLAG_CRC_BUG)
+			brgphy_crc_bug(sc);
 
-	/* Enable Link LED on Dell boxes */
-	if (bge_sc->bge_no_3_led) {
-		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
-		    PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
-		    & ~BRGPHY_PHY_EXTCTL_3_LED);
+		/* Set Jumbo frame settings in the PHY. */
+		brgphy_jumbo_settings(sc, ifp->if_mtu);
+
+		/* Enable Ethernet@Wirespeed */
+		if (bge_sc->bge_flags & BGE_FLAG_ETH_WIRESPEED)
+			brgphy_eth_wirespeed(sc);
+
+		/* Enable Link LED on Dell boxes */
+		if (bge_sc->bge_flags & BGE_FLAG_NO_3LED) {
+			PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
+			PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
+				& ~BRGPHY_PHY_EXTCTL_3_LED);
+		}
 	}
 }
 
@@ -567,7 +606,7 @@ brgphy_bcm54k2_dspcode(struct mii_softc *sc)
 }
 
 static void
-brgphy_bcm5703_dspcode(struct mii_softc *sc)
+brgphy_adc_bug(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
@@ -576,6 +615,9 @@ brgphy_bcm5703_dspcode(struct mii_softc *sc)
 		{ BRGPHY_MII_AUXCTL,		0x0c00 },
 		{ BRGPHY_MII_DSP_ADDR_REG,	0x201f },
 		{ BRGPHY_MII_DSP_RW_PORT,	0x2aaa },
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x000a },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x0323 },
+		{ BRGPHY_MII_AUXCTL,		0x0400 },
 		{ 0,				0 },
 	};
 	int i;
@@ -585,18 +627,12 @@ brgphy_bcm5703_dspcode(struct mii_softc *sc)
 }
 
 static void
-brgphy_bcm5704_dspcode(struct mii_softc *sc)
+brgphy_5704_a0_bug(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
 		u_int16_t	val;
 	} dspcode[] = {
-		{ BRGPHY_MII_AUXCTL,		0x0c00 },
-		{ BRGPHY_MII_DSP_ADDR_REG, 	0x201f },
-		{ BRGPHY_MII_DSP_RW_PORT,	0x2aaa },
-		{ BRGPHY_MII_DSP_ADDR_REG,	0x000a },
-		{ BRGPHY_MII_DSP_RW_PORT,	0x0323 },
-		{ BRGPHY_MII_AUXCTL,		0x0400 },
 		{ 0x1c,				0x8d68 },
 		{ 0x1c,				0x8d68 },
 		{ 0,				0 },
@@ -608,7 +644,7 @@ brgphy_bcm5704_dspcode(struct mii_softc *sc)
 }
 
 static void
-brgphy_bcm5750_dspcode(struct mii_softc *sc)
+brgphy_ber_bug(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
@@ -631,39 +667,63 @@ brgphy_bcm5750_dspcode(struct mii_softc *sc)
 }
 
 static void
-brgphy_load_dspcode(struct mii_softc *sc)
+brgphy_crc_bug(struct mii_softc *sc)
 {
-	switch (sc->mii_model) {
-	case MII_MODEL_BROADCOM_BCM5400:
-		brgphy_bcm5401_dspcode(sc);
-		break;
-	case MII_MODEL_BROADCOM_BCM5401:
-		if (sc->mii_rev == 1 || sc->mii_rev == 3)
-			brgphy_bcm5401_dspcode(sc);
-		break;
-	case MII_MODEL_BROADCOM_BCM5411:
-		brgphy_bcm5411_dspcode(sc);
-		break;
-	case MII_MODEL_xxBROADCOM_BCM5421:
-		brgphy_bcm5421_dspcode(sc);
-		break;
-	case MII_MODEL_xxBROADCOM_BCM54K2:
-		brgphy_bcm54k2_dspcode(sc);
-		break;
-	case MII_MODEL_xxBROADCOM_BCM5703:
-		brgphy_bcm5703_dspcode(sc);
-		break;
-	case MII_MODEL_xxBROADCOM_BCM5704:
-		brgphy_bcm5704_dspcode(sc);
-		break;
-	case MII_MODEL_xxBROADCOM_BCM5705:
-	case MII_MODEL_xxBROADCOM_BCM5750:
-	case MII_MODEL_xxBROADCOM_BCM5714:
-	case MII_MODEL_xxBROADCOM_BCM5780:
-	case MII_MODEL_xxBROADCOM_BCM5752:
-	case MII_MODEL_xxBROADCOM_BCM5706C:
-	case MII_MODEL_xxBROADCOM_BCM5708C:
-		brgphy_bcm5750_dspcode(sc);
-		break;
+	static const struct {
+		int		reg;
+		uint16_t	val;
+	} dspcode[] = {
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x0a75 },
+		{ 0x1c,				0x8c68 },
+		{ 0x1c,				0x8d68 },
+		{ 0x1c,				0x8c68 },
+		{ 0,				0 },
+	};
+	int i;
+
+	for (i = 0; dspcode[i].reg != 0; i++)
+		PHY_WRITE(sc, dspcode[i].reg, dspcode[i].val);
+}
+
+static void
+brgphy_jumbo_settings(struct mii_softc *sc, u_long mtu)
+{
+	uint32_t val;
+
+	/* Set or clear jumbo frame settings in the PHY. */
+	if (mtu > ETHER_MAX_LEN) {
+		if (sc->mii_model == MII_MODEL_xxBROADCOM_BCM5401) {
+			/* BCM5401 PHY cannot read-modify-write. */
+			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x4c20);
+		} else {
+			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7);
+			val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+			PHY_WRITE(sc, BRGPHY_MII_AUXCTL,
+			    val | BRGPHY_AUXCTL_LONG_PKT);
+		}
+
+		val = PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL);
+		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL,
+		    val | BRGPHY_PHY_EXTCTL_HIGH_LA);
+	} else {
+		PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7);
+		val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+		PHY_WRITE(sc, BRGPHY_MII_AUXCTL,
+		    val & ~(BRGPHY_AUXCTL_LONG_PKT | 0x7));
+
+		val = PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL);
+		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL,
+		    val & ~BRGPHY_PHY_EXTCTL_HIGH_LA);
 	}
+}
+
+static void
+brgphy_eth_wirespeed(struct mii_softc *sc)
+{
+	u_int32_t val;
+
+	/* Enable Ethernet@Wirespeed */
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
+	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, (val | (1 << 15) | (1 << 4)));
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphyreg.h,v 1.1.2.2 2001/10/01 18:31:08 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphyreg.h,v 1.3 2004/02/10 21:14:14 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphyreg.h,v 1.4 2007/05/07 04:54:32 sephe Exp $
  */
 
 #ifndef _DEV_MII_BRGPHYREG_H_
@@ -261,6 +261,9 @@
 #define BRGPHY_IMR_LSP_CHG	0x0004	/* Link speed changed */
 #define BRGPHY_IMR_LNK_CHG	0x0002	/* Link status change */
 #define BRGPHY_IMR_CRCERR	0x0001	/* CEC error */
+
+#define BRGPHY_TEST1		0x1E
+#define BRGPHY_TEST1_TRIM_EN	0x0010
 
 #define BRGPHY_INTRS	\
 	~(BRGPHY_IMR_LNK_CHG|BRGPHY_IMR_LSP_CHG|BRGPHY_IMR_DUP_CHG)

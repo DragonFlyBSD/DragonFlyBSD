@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.20 2007/05/02 14:34:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.21 2007/05/07 04:54:32 sephe Exp $
  */
 
 /*
@@ -170,8 +170,9 @@
 #define BGE_PCI_MSI_ADDR_LO		0x60
 #define BGE_PCI_MSI_DATA		0x64
 
-#define BGE_PCIE_MSI_CAPID		0xD0
-#define BGE_PCIE_MSI_CAPID_VAL		0x10
+/* PCI MSI. ??? */
+#define BGE_PCIE_CAPID_REG		0xD0
+#define BGE_PCIE_CAPID			0x10
 
 /*
  * PCI registers specific to the BCM570x family.
@@ -226,9 +227,12 @@
 
 #define BGE_CHIPID_TIGON_I		0x40000000
 #define BGE_CHIPID_TIGON_II		0x60000000
+#define BGE_CHIPID_BCM5700_A0		0x70000000
+#define BGE_CHIPID_BCM5700_A1		0x70010000
 #define BGE_CHIPID_BCM5700_B0		0x71000000
 #define BGE_CHIPID_BCM5700_B1		0x71010000
 #define BGE_CHIPID_BCM5700_B2		0x71020000
+#define BGE_CHIPID_BCM5700_B3		0x71030000
 #define BGE_CHIPID_BCM5700_ALTIMA	0x71040000
 #define BGE_CHIPID_BCM5700_C0		0x72000000
 #define BGE_CHIPID_BCM5701_A0		0x00000000	/* grrrr */
@@ -238,27 +242,60 @@
 #define BGE_CHIPID_BCM5703_A0		0x10000000
 #define BGE_CHIPID_BCM5703_A1		0x10010000
 #define BGE_CHIPID_BCM5703_A2		0x10020000
+#define BGE_CHIPID_BCM5703_A3		0x10030000
+#define BGE_CHIPID_BCM5703_B0		0x11000000
 #define BGE_CHIPID_BCM5704_A0		0x20000000
 #define BGE_CHIPID_BCM5704_A1		0x20010000
 #define BGE_CHIPID_BCM5704_A2		0x20020000
+#define BGE_CHIPID_BCM5704_A3		0x20030000
+#define BGE_CHIPID_BCM5704_B0		0x21000000
 #define BGE_CHIPID_BCM5705_A0		0x30000000
 #define BGE_CHIPID_BCM5705_A1		0x30010000
 #define BGE_CHIPID_BCM5705_A2		0x30020000
 #define BGE_CHIPID_BCM5705_A3		0x30030000
 #define BGE_CHIPID_BCM5750_A0		0x40000000
 #define BGE_CHIPID_BCM5750_A1		0x40010000
+#define BGE_CHIPID_BCM5750_A3		0x40030000
+#define BGE_CHIPID_BCM5750_B0		0x41000000
+#define BGE_CHIPID_BCM5750_B1		0x41010000
+#define BGE_CHIPID_BCM5750_C0		0x42000000
+#define BGE_CHIPID_BCM5750_C1		0x42010000
+#define BGE_CHIPID_BCM5750_C2		0x42020000
 #define BGE_CHIPID_BCM5714_A0		0x50000000
+#define BGE_CHIPID_BCM5752_A0		0x60000000
+#define BGE_CHIPID_BCM5752_A1		0x60010000
+#define BGE_CHIPID_BCM5752_A2		0x60020000
+#define BGE_CHIPID_BCM5714_B0		0x80000000
+#define BGE_CHIPID_BCM5714_B3		0x80030000
+#define BGE_CHIPID_BCM5715_A0		0x90000000
+#define BGE_CHIPID_BCM5715_A1		0x90010000
+#define	BGE_CHIPID_BCM5715_A3		0x90030000
+#define BGE_CHIPID_BCM5755_A0		0xa0000000
+#define BGE_CHIPID_BCM5755_A1		0xa0010000
+#define BGE_CHIPID_BCM5755_A2		0xa0020000
+#define BGE_CHIPID_BCM5754_A0		0xb0000000
+#define BGE_CHIPID_BCM5754_A1		0xb0010000
+#define BGE_CHIPID_BCM5754_A2		0xb0020000
+#define BGE_CHIPID_BCM5787_A0		0xb0000000
+#define BGE_CHIPID_BCM5787_A1		0xb0010000
+#define BGE_CHIPID_BCM5787_A2		0xb0020000
 
 /* shorthand one */
 #define BGE_ASICREV(x)			((x) >> 28)
-#define BGE_ASICREV_BCM5700		0x07
 #define BGE_ASICREV_BCM5701		0x00
 #define BGE_ASICREV_BCM5703		0x01
 #define BGE_ASICREV_BCM5704		0x02
 #define BGE_ASICREV_BCM5705		0x03
 #define BGE_ASICREV_BCM5750		0x04
-#define BGE_ASICREV_BCM5714		0x05
+#define BGE_ASICREV_BCM5714_A0		0x05
 #define BGE_ASICREV_BCM5752		0x06
+#define BGE_ASICREV_BCM5700		0x07
+#define BGE_ASICREV_BCM5780		0x08
+#define BGE_ASICREV_BCM5714		0x09
+#define BGE_ASICREV_BCM5755		0x0a
+#define BGE_ASICREV_BCM5754		0x0b
+#define BGE_ASICREV_BCM5787		0x0b
+#define BGE_ASICREV_BCM5906		0x0c
 
 /* chip revisions */
 #define BGE_CHIPREV(x)			((x) >> 24)
@@ -266,6 +303,9 @@
 #define BGE_CHIPREV_5700_BX		0x71
 #define BGE_CHIPREV_5700_CX		0x72
 #define BGE_CHIPREV_5701_AX		0x00
+#define BGE_CHIPREV_5703_AX		0x10
+#define BGE_CHIPREV_5704_AX		0x20
+#define BGE_CHIPREV_5704_BX		0x21
 
 /* PCI DMA Read/Write Control register */
 #define BGE_PCIDMARWCTL_MINDMA		0x000000FF
@@ -309,7 +349,7 @@
 #define BGE_PCISTATE_FORCE_RESET	0x00000001
 #define BGE_PCISTATE_INTR_STATE		0x00000002
 #define BGE_PCISTATE_PCI_BUSMODE	0x00000004 /* 1 = PCI, 0 = PCI-X */
-#define BGE_PCISTATE_PCI_BUSSPEED	0x00000008 /* 1 = 33/66, 0 = 66/133 */
+#define BGE_PCISTATE_PCI_BUSSPEED	0x00000008 /* 1 = 66/133, 0 = 33/66 */
 #define BGE_PCISTATE_32BIT_BUS		0x00000010 /* 1 = 32bit, 0 = 64bit */
 #define BGE_PCISTATE_WANT_EXPROM	0x00000020
 #define BGE_PCISTATE_EXPROM_RETRY	0x00000040
@@ -1633,6 +1673,7 @@
 #define BGE_EE_CTL			0x6840
 #define BGE_MDI_CTL			0x6844
 #define BGE_EE_DELAY			0x6848
+#define BGE_FASTBOOT_PC			0x6894
 
 /* Mode control register */
 #define BGE_MODECTL_INT_SNDCOAL_ONLY	0x00000001
@@ -1745,10 +1786,11 @@
 	} while(0)
 
 /*
- * This magic number is used to prevent PXE restart when we
- * issue a software reset. We write this magic number to the
- * firmware mailbox at 0xB50 in order to prevent the PXE boot
- * code from running.
+ * This magic number is written to the firmware mailbox at 0xb50
+ * before a software reset is issued.  After the internal firmware
+ * has completed its initialization it will write the opposite of 
+ * this value, ~BGE_MAGIC_NUMBER, to the same location, allowing the
+ * driver to synchronize with the firmware.
  */
 #define BGE_MAGIC_NUMBER                0x4B657654
 
@@ -2303,14 +2345,28 @@ struct bge_softc {
 	struct resource		*bge_irq;
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
-	uint8_t			bge_extram;	/* has external SSRAM */
-	uint8_t			bge_tbi;
-	uint8_t			bge_rx_alignment_bug;
+	uint32_t		bge_flags;
+#define BGE_FLAG_TBI		0x00000001
+#define BGE_FLAG_JUMBO		0x00000002
+#define BGE_FLAG_ETH_WIRESPEED	0x00000004
+#define BGE_FLAG_MSI		0x00000100	/* unused */
+#define BGE_FLAG_PCIX		0x00000200
+#define BGE_FLAG_PCIE		0x00000400
+#define BGE_FLAG_5700_FAMILY	0x00001000
+#define BGE_FLAG_5705_PLUS	0x00002000
+#define BGE_FLAG_5714_FAMILY	0x00004000
+#define BGE_FLAG_575X_PLUS	0x00008000
+#define BGE_FLAG_RX_ALIGNBUG	0x00100000
+#define BGE_FLAG_NO_3LED	0x00200000
+#define BGE_FLAG_ADC_BUG	0x00400000
+#define BGE_FLAG_5704_A0_BUG	0x00800000
+#define BGE_FLAG_JITTER_BUG	0x01000000
+#define BGE_FLAG_BER_BUG	0x02000000
+#define BGE_FLAG_ADJUST_TRIM	0x04000000
+#define	BGE_FLAG_CRC_BUG	0x08000000
 	uint32_t		bge_chipid;
 	uint8_t			bge_asicrev;
 	uint8_t			bge_chiprev;
-	uint8_t			bge_no_3_led;
-	uint8_t			bge_pcie;
 	struct bge_ring_data	bge_ldata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
 	uint16_t		bge_tx_saved_considx;
