@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/route6.c,v 1.1.2.5 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/route6.c,v 1.6.2.2 2007/05/07 13:38:33 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/route6.c,v 1.6.2.3 2007/05/07 13:42:56 hasso Exp $	*/
 /*	$KAME: route6.c,v 1.24 2001/03/14 03:07:05 itojun Exp $	*/
 
 /*
@@ -49,8 +49,10 @@
 
 #include <netinet/icmp6.h>
 
+#if 0
 static int ip6_rthdr0 (struct mbuf *, struct ip6_hdr *,
     struct ip6_rthdr0 *);
+#endif
 
 int
 route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
@@ -74,6 +76,22 @@ route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 #endif
 
 	switch (rh->ip6r_type) {
+#if 0
+	/*
+	 * See http://www.secdev.org/conf/IPv6_RH_security-csw07.pdf
+	 * for why IPV6_RTHDR_TYPE_0 is baned here.
+	 *
+	 * We return ICMPv6 parameter problem so that innocent people
+	 * (not an attacker) would notice about the use of IPV6_RTHDR_TYPE_0.
+	 * Since there's no amplification, and ICMPv6 error will be rate-
+	 * controlled, it shouldn't cause any problem.
+	 * If you are concerned about this, you may want to use the following
+	 * code fragment:
+	 *
+	 * case IPV6_RTHDR_TYPE_0:
+	 *	m_freem(m);
+	 *	return (IPPROTO_DONE);
+	 */
 	case IPV6_RTHDR_TYPE_0:
 		rhlen = (rh->ip6r_len + 1) << 3;
 #ifndef PULLDOWN_TEST
@@ -101,6 +119,7 @@ route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 		if (ip6_rthdr0(m, ip6, (struct ip6_rthdr0 *)rh))
 			return (IPPROTO_DONE);
 		break;
+#endif
 	default:
 		/* unknown routing type */
 		if (rh->ip6r_segleft == 0) {
@@ -117,6 +136,7 @@ route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 	return (rh->ip6r_nxt);
 }
 
+#if 0
 /*
  * Type0 routing header processing
  *
@@ -204,3 +224,4 @@ ip6_rthdr0(struct mbuf *m, struct ip6_hdr *ip6, struct ip6_rthdr0 *rh0)
 
 	return (-1);			/* m would be freed in ip6_forward() */
 }
+#endif
