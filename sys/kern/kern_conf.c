@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.20 2006/12/23 00:35:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.21 2007/05/07 15:43:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,12 +57,7 @@ MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
  */
 #define DEVT_HASH 83
 
-/* The number of cdev_t's we can create before malloc(9) kick in.  */
-#define DEVT_STASH 50
-
-static struct cdev devt_stash[DEVT_STASH];
 static LIST_HEAD(, cdev) dev_hash[DEVT_HASH];
-static LIST_HEAD(, cdev) dev_free_list;
 
 static int free_devt;
 SYSCTL_INT(_debug, OID_AUTO, free_devt, CTLFLAG_RW, &free_devt, 0, "");
@@ -127,7 +122,6 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	struct cdev *si;
 	udev_t	udev;
 	int hash;
-	static int stashed;
 
 	udev = makeudev(x, y);
 	hash = udev % DEVT_HASH;
@@ -139,16 +133,7 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 				return (si);
 		}
 	}
-	if (stashed >= DEVT_STASH) {
-		MALLOC(si, struct cdev *, sizeof(*si), M_DEVT,
-		    M_WAITOK|M_USE_RESERVE|M_ZERO);
-	} else if (LIST_FIRST(&dev_free_list)) {
-		si = LIST_FIRST(&dev_free_list);
-		LIST_REMOVE(si, si_hash);
-	} else {
-		si = devt_stash + stashed++;
-		si->si_flags |= SI_STASHED;
-	}
+	si = kmalloc(sizeof(*si), M_DEVT, M_WAITOK | M_USE_RESERVE | M_ZERO);
 	si->si_ops = ops;
 	si->si_flags |= SI_HASHED | SI_ADHOC;
 	si->si_udev = udev;
@@ -469,12 +454,7 @@ release_dev(cdev_t dev)
 			dev->si_ops = NULL;
 		}
 		if (free_devt) {
-			if (dev->si_flags & SI_STASHED) {
-				bzero(dev, sizeof(*dev));
-				LIST_INSERT_HEAD(&dev_free_list, dev, si_hash);
-			} else {
-				FREE(dev, M_DEVT);
-			}
+			FREE(dev, M_DEVT);
 		}
 	}
 }

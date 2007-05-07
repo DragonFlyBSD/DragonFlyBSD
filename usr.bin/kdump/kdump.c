@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.7 2006/07/20 22:57:47 corecode Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.8 2007/05/07 15:43:31 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -56,6 +56,7 @@
 #include "ktrace.h"
 
 int timestamp, decimal, fancy = 1, tail, maxdata = 64;
+int fixedformat;
 char *tracefile = DEF_TRACEFILE;
 struct ktr_header ktr_header;
 
@@ -71,10 +72,13 @@ main(int argc, char **argv)
 
 	(void) setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc,argv,"f:dlm:np:RTt:")) != -1)
+	while ((ch = getopt(argc,argv,"f:djlm:np:RTt:")) != -1)
 		switch((char)ch) {
 		case 'f':
 			tracefile = optarg;
+			break;
+		case 'j':
+			fixedformat = 1;
 			break;
 		case 'd':
 			decimal = 1;
@@ -209,7 +213,11 @@ dumpheader(struct ktr_header *kth)
 		type = unknown;
 	}
 
-	col = printf("%6d %-8.*s ", kth->ktr_pid, MAXCOMLEN, kth->ktr_comm);
+	if (kth->ktr_tid || (kth->ktr_flags & KTRH_THREADED) || fixedformat)
+		col = printf("%5d:%-4d", kth->ktr_pid, kth->ktr_tid);
+	else
+		col = printf("%5d", kth->ktr_pid);
+	col += printf(" %-8.*s ", MAXCOMLEN, kth->ktr_comm);
 	if (timestamp) {
 		if (timestamp == 2) {
 			temp = kth->ktr_time;

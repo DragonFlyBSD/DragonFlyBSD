@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.28 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.29 2007/05/07 15:43:30 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -66,12 +66,16 @@ ktrgetheader(int type)
 {
 	struct ktr_header *kth;
 	struct proc *p = curproc;	/* XXX */
+	struct lwp *lp = curthread->td_lwp;
 
 	MALLOC(kth, struct ktr_header *, sizeof (struct ktr_header),
 		M_KTRACE, M_WAITOK);
 	kth->ktr_type = type;
+	/* XXX threaded flag is a hack at the moment */
+	kth->ktr_flags = (p->p_nthreads > 1) ? KTRH_THREADED : 0;
 	microtime(&kth->ktr_time);
 	kth->ktr_pid = p->p_pid;
+	kth->ktr_tid = lp->lwp_tid;
 	bcopy(p->p_comm, kth->ktr_comm, MAXCOMLEN + 1);
 	return (kth);
 }

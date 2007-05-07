@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)kdump.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/kdump/kdump.1,v 1.5.2.2 2001/08/16 13:16:51 ru Exp $
-.\" $DragonFly: src/usr.bin/kdump/kdump.1,v 1.4 2006/07/20 22:57:47 corecode Exp $
+.\" $DragonFly: src/usr.bin/kdump/kdump.1,v 1.5 2007/05/07 15:43:31 dillon Exp $
 .\"
 .Dd June 6, 1993
 .Dt KDUMP 1
@@ -41,7 +41,7 @@
 .Nd display kernel trace data
 .Sh SYNOPSIS
 .Nm
-.Op Fl dnlRT
+.Op Fl djnlRT
 .Op Fl f Ar file
 .Op Fl m Ar maxdata
 .Op Fl t Op cnisuw
@@ -60,6 +60,8 @@ The options are as follows:
 .Bl -tag -width Fl
 .It Fl d
 Display all numbers in decimal.
+.It Fl j
+Use a fixed format output, otherwise a more human readable output is used.
 .It Fl f Ar file
 Display the specified file instead of
 .Pa ktrace.out .

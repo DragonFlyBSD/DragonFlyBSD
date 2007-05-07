@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.9 2007/05/07 15:43:29 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -79,11 +79,15 @@ typedef struct ktrace_node *ktrace_node_t;
 struct ktr_header {
 	int	ktr_len;		/* length of buf */
 	short	ktr_type;		/* trace record type */
+	short	ktr_flags;		/* reserved for future use */
 	pid_t	ktr_pid;		/* process id */
+	lwpid_t ktr_tid;		/* lwp id */
 	char	ktr_comm[MAXCOMLEN+1];	/* command name */
 	struct	timeval ktr_time;	/* timestamp */
 	caddr_t	ktr_buf;
 };
+
+#define KTRH_THREADED	0x0001		/* multiple threads present */
 
 /*
  * Test for kernel trace point (MP SAFE)
