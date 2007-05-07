@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.35 2007/05/05 16:13:53 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.36 2007/05/07 02:11:33 y0netan1 Exp $
  */
 
 #include "opt_ddb.h"
@@ -1079,7 +1079,7 @@ SYSINIT(preload, SI_BOOT2_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
  * character as a separator to be consistent with the bootloader.
  */
 
-static char linker_path[MAXPATHLEN] = "/;/boot/;/modules/";
+static char linker_path[MAXPATHLEN] = "/;/boot;/modules";
 
 SYSCTL_STRING(_kern, OID_AUTO, module_path, CTLFLAG_RW, linker_path,
 	      sizeof(linker_path), "module load search path");
@@ -1100,6 +1100,8 @@ linker_search_path(const char *name)
 {
     struct nlookupdata	nd;
     char		*cp, *ep, *result;
+    size_t		name_len, prefix_len;
+    int			sep;
     int			error;
     enum vtype		type;
 
@@ -1109,17 +1111,27 @@ linker_search_path(const char *name)
 
     /* traverse the linker path */
     cp = linker_path;
+    name_len = strlen(name);
     for (;;) {
 
 	/* find the end of this component */
 	for (ep = cp; (*ep != 0) && (*ep != ';'); ep++)
 	    ;
-	result = kmalloc((strlen(name) + (ep - cp) + 1), M_LINKER, M_WAITOK);
+	prefix_len = ep - cp;
+	/* if this component doesn't end with a slash, add one */
+	if (ep == cp || *(ep - 1) != '/')
+	    sep = 1;
+	else
+	    sep = 0;
+
+	result = kmalloc(prefix_len + name_len + 1, M_LINKER, M_WAITOK);
 	if (result == NULL)	/* actually ENOMEM */
 	    return(NULL);
 
-	strncpy(result, cp, ep - cp);
-	strcpy(result + (ep - cp), name);
+	strncpy(result, cp, prefix_len);
+	if (sep)
+	    result[prefix_len++] = '/';
+	strcpy(result + prefix_len, name);
 
 	/*
 	 * Attempt to open the file, and return the path if we succeed and it's
