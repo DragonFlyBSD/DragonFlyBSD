@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/sys/cons.h,v 1.24 2000/01/11 14:54:01 yokota Exp $
- * $DragonFly: src/sys/sys/cons.h,v 1.6 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/cons.h,v 1.7 2007/05/07 05:21:42 dillon Exp $
  */
 
 #ifndef _MACHINE_CONS_H_
@@ -51,30 +51,28 @@ struct consdev;
 
 typedef	void	cn_probe_t (struct consdev *);
 typedef	void	cn_init_t (struct consdev *);
+typedef	void	cn_init_fini_t (struct consdev *);
 typedef	void	cn_term_t (struct consdev *);
-typedef	int	cn_getc_t (cdev_t);
-typedef	int	cn_checkc_t (cdev_t);
-typedef	void	cn_putc_t (cdev_t, int);
-typedef	void	cn_dbctl_t (cdev_t, int);
+typedef	int	cn_getc_t (void *);
+typedef	int	cn_checkc_t (void *);
+typedef	void	cn_putc_t (void *, int);
+typedef	void	cn_dbctl_t (void *, int);
 
 struct consdev {
-	cn_probe_t	*cn_probe;
-				/* probe hardware and fill in consdev info */
-	cn_init_t	*cn_init;
-				/* turn on as console */
-	cn_term_t	*cn_term;
-				/* turn off as console */
-	cn_getc_t	*cn_getc;
-				/* kernel getchar interface */
-	cn_checkc_t	*cn_checkc;
-				/* kernel "return char if available" interface */
-	cn_putc_t	*cn_putc;
-				/* kernel putchar interface */
-	cn_dbctl_t	*cn_dbctl;
-				/* debugger control interface */
+	cn_probe_t	*cn_probe;	/* probe hardware */
+	cn_init_t	*cn_init;	/* initialize for use */
+	cn_init_fini_t	*cn_init_fini;	/* tie in cdev_t */
+	cn_term_t	*cn_term;	/* terminate use as console */
+	cn_getc_t	*cn_getc;	/* kernel getchar interface */
+	cn_checkc_t	*cn_checkc;	/* kernel test char ready */
+	cn_putc_t	*cn_putc;	/* kernel putchar interface */
+	cn_dbctl_t	*cn_dbctl;	/* debugger control interface */
 	struct	tty *cn_tp;	/* tty structure for console device */
-	cdev_t	cn_dev;		/* major/minor of device */
+	cdev_t	cn_dev;		/* device after cn_init_fini tie-in */
 	short	cn_pri;		/* pecking order; the higher the better */
+	short	cn_probegood;	/* probe routine must set to non-zero */
+	void	*cn_private;	/* private data for get/check/put/dbctl */
+	void	*cn_gdbprivate;	/* private data for gdb */
 };
 
 /* values for cn_pri - reflect our policy for console selection */
@@ -85,11 +83,12 @@ struct consdev {
 
 #ifdef _KERNEL
 extern	int cons_unavail;
-extern	struct consdev *cn_tab;
+extern	struct consdev *cn_tab;	/* console device */
+extern  struct consdev *gdb_tab;/* gdb debugger device */
 
-#define CONS_DRIVER(name, probe, init, term, getc, checkc, putc, dbctl)	\
+#define CONS_DRIVER(name, probe, init, initfini, term, getc, checkc, putc, dbctl)	\
 	static struct consdev name##_consdev = {			\
-		probe, init, term, getc, checkc, putc, dbctl		\
+		probe, init, initfini, term, getc, checkc, putc, dbctl	\
 	};								\
 	DATA_SET(cons_set, name##_consdev)
 

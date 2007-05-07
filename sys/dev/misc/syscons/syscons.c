@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.31 2007/04/30 07:18:49 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.32 2007/05/07 05:21:40 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -181,14 +181,15 @@ static timeout_t blink_screen;
 
 static cn_probe_t	sccnprobe;
 static cn_init_t	sccninit;
+static cn_init_t	sccninit_fini;
 static cn_getc_t	sccngetc;
 static cn_checkc_t	sccncheckc;
 static cn_putc_t	sccnputc;
 static cn_dbctl_t	sccndbctl;
 static cn_term_t	sccnterm;
 
-CONS_DRIVER(sc, sccnprobe, sccninit, sccnterm, sccngetc, sccncheckc, sccnputc,
-	    sccndbctl);
+CONS_DRIVER(sc, sccnprobe, sccninit, sccninit_fini, sccnterm,
+	    sccngetc, sccncheckc, sccnputc, sccndbctl);
 
 static	d_open_t	scopen;
 static	d_close_t	scclose;
@@ -311,6 +312,24 @@ sc_attach_unit(int unit, int flags)
     }
 
     sc = sc_get_softc(unit, flags & SC_KERNEL_CONSOLE);
+
+    /*
+     * If this is the console we couldn't setup sc->dev before because
+     * malloc wasn't working.  Set it up now.
+     */
+    if (flags & SC_KERNEL_CONSOLE) {
+	KKASSERT(sc->dev == NULL);
+	sc->dev = kmalloc(sizeof(cdev_t)*sc->vtys, M_SYSCONS, M_WAITOK|M_ZERO);
+	sc->dev[0] = make_dev(&sc_ops, sc_console_unit*MAXCONS, UID_ROOT, 
+			      GID_WHEEL, 0600, 
+			      "ttyv%r", sc_console_unit*MAXCONS);
+	sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
+	sc->dev[0]->si_drv1 = sc_console;
+    }
+
+    /*
+     * Finish up the standard attach
+     */
     sc->config = flags;
     callout_init(&sc->scrn_timer_ch);
     scp = SC_STAT(sc->dev[0]);
@@ -1334,8 +1353,7 @@ sccnprobe(struct consdev *cp)
 	return;
 
     /* initialize required fields */
-    cp->cn_dev = make_dev(&sc_ops, SC_CONSOLECTL,
-		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
+    cp->cn_probegood = 1;
 }
 
 static void
@@ -1347,7 +1365,14 @@ sccninit(struct consdev *cp)
     sc_get_cons_priority(&unit, &flags);
     scinit(unit, flags | SC_KERNEL_CONSOLE);
     sc_console_unit = unit;
-    sc_console = SC_STAT(sc_get_softc(unit, SC_KERNEL_CONSOLE)->dev[0]);
+    sc_console = sc_get_softc(unit, SC_KERNEL_CONSOLE)->console_scp;
+}
+
+static void
+sccninit_fini(struct consdev *cp)
+{
+    cp->cn_dev = make_dev(&sc_ops, SC_CONSOLECTL,
+			  UID_ROOT, GID_WHEEL, 0600, "consolectl");
 }
 
 static void
@@ -1368,7 +1393,7 @@ sccnterm(struct consdev *cp)
 }
 
 static void
-sccnputc(cdev_t dev, int c)
+sccnputc(void *private, int c)
 {
     u_char buf[1];
     scr_stat *scp = sc_console;
@@ -1409,19 +1434,19 @@ sccnputc(cdev_t dev, int c)
 }
 
 static int
-sccngetc(cdev_t dev)
+sccngetc(void *private)
 {
     return sccngetch(0);
 }
 
 static int
-sccncheckc(cdev_t dev)
+sccncheckc(void *private)
 {
     return sccngetch(SCGETC_NONBLOCK);
 }
 
 static void
-sccndbctl(cdev_t dev, int on)
+sccndbctl(void *private, int on)
 {
     /* assert(sc_console_unit >= 0) */
     /* try to switch to the kernel console screen */
@@ -2440,8 +2465,6 @@ scinit(int unit, int flags)
      * but is necessry evil for the time being.  XXX
      */
     static scr_stat main_console;
-    static cdev_t main_devs[MAXCONS];
-    static struct tty main_tty;
     static u_short sc_buffer[ROW*COL];	/* XXX */
 #ifndef SC_NO_FONT_LOADING
     static u_char font_8[256*8];
@@ -2520,12 +2543,8 @@ scinit(int unit, int flags)
 	sc->first_vty = unit*MAXCONS;
 	sc->vtys = MAXCONS;		/* XXX: should be configurable */
 	if (flags & SC_KERNEL_CONSOLE) {
-	    sc->dev = main_devs;
-	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
-				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
-	    sc->dev[0]->si_tty = &main_tty;
-	    ttyregister(&main_tty);
 	    scp = &main_console;
+	    sc->console_scp = scp;
 	    init_scp(sc, sc->first_vty, scp);
 	    sc_vtb_init(&scp->vtb, VTB_MEMORY, scp->xsize, scp->ysize,
 			(void *)sc_buffer, FALSE);
@@ -2541,8 +2560,8 @@ scinit(int unit, int flags)
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
+	    sc->dev[0]->si_drv1 = scp;
 	}
-	sc->dev[0]->si_drv1 = scp;
 	sc->cur_scp = scp;
 
 	/* copy screen to temporary buffer */
@@ -2659,8 +2678,14 @@ scterm(int unit, int flags)
     if (sc->adapter >= 0)
 	vid_release(sc->adp, &sc->adapter);
 
-    /* stop the terminal emulator, if any */
-    scp = SC_STAT(sc->dev[0]);
+    /* 
+     * Stop the terminal emulator, if any.  If operating on the
+     * kernel console sc->dev may not be setup yet.
+     */
+    if (flags & SC_KERNEL_CONSOLE)
+	scp = sc->console_scp;
+    else
+	scp = SC_STAT(sc->dev[0]);
     if (scp->tsw)
 	(*scp->tsw->te_term)(scp, &scp->ts);
     if (scp->ts != NULL)

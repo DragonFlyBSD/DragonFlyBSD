@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.20 2007/01/08 03:33:41 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.21 2007/05/07 05:21:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -104,12 +104,14 @@ static u_char cn_is_open;		/* nonzero if logical console is open */
 static int openmode, openflag;		/* how /dev/console was openned */
 static cdev_t cn_devfsdev;		/* represents the device private info */
 static u_char cn_phys_is_open;		/* nonzero if physical device is open */
-       struct consdev *cn_tab;		/* physical console device info */
 static u_char console_pausing;		/* pause after each line during probe */
 static char *console_pausestr=
 "<pause; press any key to proceed to next line or '.' to end pause mode>";
 
-CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+struct consdev *cn_tab;		/* physical console device info */
+struct consdev *gdb_tab;	/* physical gdb debugger device info */
+
+CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
 
 void
@@ -126,7 +128,7 @@ cninit(void)
 		if (cp->cn_probe == NULL)
 			continue;
 		(*cp->cn_probe)(cp);
-		if (cp->cn_pri > CN_DEAD &&
+		if (cp->cn_pri > CN_DEAD && cp->cn_probegood &&
 		    (best_cp == NULL || cp->cn_pri > best_cp->cn_pri))
 			best_cp = cp;
 	}
@@ -176,6 +178,15 @@ cninit_finish(void)
 {
 	if ((cn_tab == NULL) || cn_mute)
 		return;
+
+	if (cn_tab->cn_dev == NULL) {
+		cn_tab->cn_init_fini(cn_tab);
+	}
+	if (cn_tab->cn_dev == NULL) {
+		kprintf("Unable to hook console open and close! cn_tab %p\n",
+			cn_tab);
+		return;
+	}
 
 	/*
 	 * Hook the open and close functions.  XXX bad hack.

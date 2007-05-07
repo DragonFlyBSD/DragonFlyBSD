@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.39 2007/04/12 18:35:09 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.40 2007/05/07 05:21:40 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2731,13 +2731,14 @@ static void siocntxwait	(Port_t iobase);
 
 static cn_probe_t siocnprobe;
 static cn_init_t siocninit;
+static cn_init_fini_t siocninit_fini;
 static cn_checkc_t siocncheckc;
 static cn_getc_t siocngetc;
 static cn_putc_t siocnputc;
 
 #ifdef __i386__
-CONS_DRIVER(sio, siocnprobe, siocninit, NULL, siocngetc, siocncheckc,
-	    siocnputc, NULL);
+CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
+	    NULL, siocngetc, siocncheckc, siocnputc, NULL);
 #endif
 
 /* To get the GDB related variables */
@@ -2925,25 +2926,21 @@ siocnprobe(struct consdev *cp)
 
 			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
-				cp->cn_dev = make_dev(&sio_ops, unit,
-						UID_ROOT, GID_WHEEL, 0600,
-						"ttyd%r", unit);
+				cp->cn_probegood = 1;
+				cp->cn_private = (void *)unit;
 				cp->cn_pri = COM_FORCECONSOLE(flags)
 					     || boothowto & RB_SERIAL
 					     ? CN_REMOTE : CN_NORMAL;
 				siocniobase = iobase;
 				siocnunit = unit;
 			}
-			if (COM_DEBUGGER(flags)) {
+			if (COM_DEBUGGER(flags) && gdb_tab == NULL) {
 				kprintf("sio%d: gdb debugging port\n", unit);
 				siogdbiobase = iobase;
 				siogdbunit = unit;
 #if DDB > 0
-				gdbdev = make_dev(&sio_ops, unit,
-						UID_ROOT, GID_WHEEL, 0600,
-						"ttyd%r", unit);
-				gdb_getc = siocngetc;
-				gdb_putc = siocnputc;
+				cp->cn_gdbprivate = (void *)unit;
+				gdb_tab = cp;
 #endif
 			}
 		}
@@ -2955,18 +2952,15 @@ siocnprobe(struct consdev *cp)
 	 * If no gdb port has been specified, set it to be the console
 	 * as some configuration files don't specify the gdb port.
 	 */
-	if (gdbdev == NOCDEV && (boothowto & RB_GDB)) {
+	if (gdb_tab == NULL && (boothowto & RB_GDB)) {
 		kprintf("Warning: no GDB port specified. Defaulting to sio%d.\n",
 			siocnunit);
 		kprintf("Set flag 0x80 on desired GDB port in your\n");
 		kprintf("configuration file (currently sio only).\n");
 		siogdbiobase = siocniobase;
 		siogdbunit = siocnunit;
-		gdbdev = make_dev(&sio_ops, siocnunit,
-				UID_ROOT, GID_WHEEL, 0600,
-				"ttyd%r", siocnunit);
-		gdb_getc = siocngetc;
-		gdb_putc = siocnputc;
+		cp->cn_gdbprivate = (void *)siocnunit;
+		gdb_tab = cp;
 	}
 #endif
 #endif
@@ -2975,17 +2969,32 @@ siocnprobe(struct consdev *cp)
 static void
 siocninit(struct consdev *cp)
 {
-	comconsole = DEV_TO_UNIT(cp->cn_dev);
+	comconsole = (int)(intptr_t)cp->cn_private;
+}
+
+static void
+siocninit_fini(struct consdev *cp)
+{
+	int unit;
+
+	kprintf("CP %d\n", cp->cn_probegood);
+	if (cp->cn_probegood) {
+		unit = (int)(intptr_t)cp->cn_private;
+		cp->cn_dev = make_dev(&sio_ops, unit,
+				      UID_ROOT, GID_WHEEL, 0600,
+				      "ttyd%r", unit);
+	}
 }
 
 static int
-siocncheckc(cdev_t dev)
+siocncheckc(void *private)
 {
 	int	c;
+	int	unit = (int)(intptr_t)private;
 	Port_t	iobase;
 	struct siocnstate	sp;
 
-	if (minor(dev) == siogdbunit)
+	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
@@ -3002,13 +3011,14 @@ siocncheckc(cdev_t dev)
 
 
 int
-siocngetc(cdev_t dev)
+siocngetc(void *private)
 {
 	int	c;
+	int	unit = (int)(intptr_t)private;
 	Port_t	iobase;
 	struct siocnstate	sp;
 
-	if (minor(dev) == siogdbunit)
+	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
@@ -3023,12 +3033,13 @@ siocngetc(cdev_t dev)
 }
 
 void
-siocnputc(cdev_t dev, int c)
+siocnputc(void *private, int c)
 {
+	int	unit = (int)(intptr_t)private;
 	struct siocnstate	sp;
 	Port_t	iobase;
 
-	if (minor(dev) == siogdbunit)
+	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;

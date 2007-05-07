@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.15 2006/09/26 18:57:14 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.16 2007/05/07 05:21:42 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -46,6 +46,9 @@
 #include <sys/queue.h>
 #include <sys/time.h>
 #include <sys/biotrack.h>
+#ifndef _SYS_SYSREF_H_
+#include <sys/sysref.h>
+#endif
 
 #define SPECNAMELEN	15
 
@@ -65,6 +68,7 @@ struct cdev {
 	struct dev_ops	*si_ops;	/* device operations vector */
 	int		si_iosize_max;	/* maximum I/O size (for physio &al) */
 	int		si_refs;
+	struct sysref	si_sysref;
 	union {
 		struct {
 			struct tty *__sit_tty;

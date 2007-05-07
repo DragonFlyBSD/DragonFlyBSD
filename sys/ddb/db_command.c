@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.11 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.12 2007/05/07 05:21:38 dillon Exp $
  */
 
 /*
@@ -545,15 +545,10 @@ db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 /* Enter GDB remote protocol debugger on the next trap. */
 
-cdev_t	   gdbdev = NOCDEV;
-cn_getc_t *gdb_getc;
-cn_putc_t *gdb_putc;
-
 static void
 db_gdb(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
-
-	if (gdbdev == NOCDEV) {
+	if (gdb_tab == NULL) {
 		db_printf("No gdb port enabled. Set flag 0x80 on desired port\n");
 		db_printf("in your configuration file (currently sio only).\n");
 		return;

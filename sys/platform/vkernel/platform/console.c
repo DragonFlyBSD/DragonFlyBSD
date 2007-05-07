@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.12 2007/02/01 20:53:19 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.13 2007/05/07 05:21:42 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -220,12 +220,13 @@ vcons_intr(void *tpx, struct intrframe *frame __unused)
  */
 static cn_probe_t	vconsprobe;
 static cn_init_t	vconsinit;
+static cn_init_fini_t	vconsinit_fini;
 static cn_term_t	vconsterm;
 static cn_getc_t	vconsgetc;
 static cn_checkc_t	vconscheckc;
 static cn_putc_t	vconsputc;
 
-CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsterm, vconsgetc, 
+CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsinit_fini, vconsterm, vconsgetc, 
 		vconscheckc, vconsputc, NULL);
 
 static struct termios init_tio;
@@ -235,8 +236,7 @@ static void
 vconsprobe(struct consdev *cp)
 {
 	cp->cn_pri = CN_NORMAL;
-	cp->cn_dev = make_dev(&vcons_ops, 255,
-			      UID_ROOT, GID_WHEEL, 0600, "vconsolectl");
+	cp->cn_probegood = 1;
 }
 
 /*
@@ -315,6 +315,14 @@ vconsinit(struct consdev *cp)
 }
 
 static void
+vconsinit_fini(struct consdev *cp)
+{
+	cp->cn_dev = make_dev(&vcons_ops, 255,
+			      UID_ROOT, GID_WHEEL,
+			      0600, "vconsolectl");
+}
+
+static void
 vconsterm(struct consdev *vp)
 {
 	vconsole = NULL;
@@ -322,7 +330,7 @@ vconsterm(struct consdev *vp)
 }
 
 static int
-vconsgetc(cdev_t dev)
+vconsgetc(void *private)
 {
 	unsigned char c;
 	ssize_t n;
@@ -340,7 +348,7 @@ vconsgetc(cdev_t dev)
 }
 
 static int
-vconscheckc(cdev_t dev)
+vconscheckc(void *private)
 {
 	unsigned char c;
 
@@ -350,7 +358,7 @@ vconscheckc(cdev_t dev)
 }
 
 static void
-vconsputc(cdev_t dev, int c)
+vconsputc(void *private, int c)
 {
 	char cc = c;
 

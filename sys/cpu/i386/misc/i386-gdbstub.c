@@ -92,7 +92,7 @@
  *
  ****************************************************************************/
 /* $FreeBSD: src/sys/i386/i386/i386-gdbstub.c,v 1.13.2.1 2000/08/03 00:54:41 peter Exp $ */
-/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.6 2007/01/06 03:34:39 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/misc/i386-gdbstub.c,v 1.7 2007/05/07 05:21:37 dillon Exp $ */
 
 #include "opt_ddb.h"
 
@@ -146,18 +146,18 @@ strcpy (char *dst, const char *src)
 static int
 putDebugChar (int c)		/* write a single character      */
 {
-  if (gdbdev == NOCDEV)
+  if (gdb_tab == NULL)
 	return 0;
-  (*gdb_putc)(gdbdev, c);
+  gdb_tab->cn_putc(gdb_tab->cn_gdbprivate, c);
   return 1;
 }
 
 static int
 getDebugChar (void)		/* read and return a single char */
 {
-  if (gdbdev == NOCDEV)
+  if (gdb_tab == NULL)
 	return -1;
-  return (*gdb_getc)(gdbdev);
+  return gdb_tab->cn_getc(gdb_tab->cn_gdbprivate);
 }
 
 static const char hexchars[]="0123456789abcdef";

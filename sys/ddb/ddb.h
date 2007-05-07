@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.11 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.12 2007/05/07 05:21:38 dillon Exp $
  */
 
 /*
@@ -161,15 +161,5 @@ struct command {
 #define	CS_SET_DOT	0x100	/* set dot after command */
 	struct command *more;	/* another level of command */
 };
-
-/* XXX: UGLY hack */
-#ifdef CN_DEAD
-/*
- * Routines to support GDB on an sio port.
- */
-extern cdev_t	   gdbdev;
-extern cn_getc_t *gdb_getc;
-extern cn_putc_t *gdb_putc;
-#endif
 
 #endif /* !_DDB_DDB_H_ */

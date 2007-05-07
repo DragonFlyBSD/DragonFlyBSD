@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.10 2007/01/06 08:34:51 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.11 2007/05/07 05:21:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,13 +84,6 @@
 
 #ifndef DCONS_FORCE_GDB
 #define DCONS_FORCE_GDB	1
-#endif
-
-#if __FreeBSD_version >= 500101
-#define CONS_NODEV	1
-#if __FreeBSD_version < 502122
-static struct consdev gdbconsdev;
-#endif
 #endif
 
 #define CDEV_MAJOR      184
@@ -147,12 +140,13 @@ static int	dcons_drv_init(int);
 
 static cn_probe_t	dcons_cnprobe;
 static cn_init_t	dcons_cninit;
+static cn_init_fini_t	dcons_cninit_fini;
 static cn_getc_t	dcons_cngetc;
 static cn_checkc_t 	dcons_cncheckc;
 static cn_putc_t	dcons_cnputc;
 
-CONS_DRIVER(dcons, dcons_cnprobe, dcons_cninit, NULL, dcons_cngetc,
-    dcons_cncheckc, dcons_cnputc, NULL);
+CONS_DRIVER(dcons, dcons_cnprobe, dcons_cninit, dcons_cninit_fini,
+	    NULL, dcons_cngetc, dcons_cncheckc, dcons_cnputc, NULL);
 
 #if __FreeBSD_version >= 502122
 static gdb_probe_f dcons_dbg_probe;
@@ -395,8 +389,7 @@ static void
 dcons_cnprobe(struct consdev *cp)
 {
 #ifdef __DragonFly__
-	cp->cn_dev = make_dev(&dcons_ops, DCONS_CON,
-	    UID_ROOT, GID_WHEEL, 0600, "dcons");
+	cp->cn_probegood = 1;
 #elif __FreeBSD_version >= 501109
 	ksprintf(cp->cn_name, "dcons");
 #else
@@ -416,9 +409,16 @@ dcons_cninit(struct consdev *cp)
 #if CONS_NODEV
 	cp->cn_arg
 #else
-	cp->cn_dev->si_drv1
+	cp->cn_private
 #endif
 		= (void *)&sc[DCONS_CON]; /* share port0 with unit0 */
+}
+
+static void
+dcons_cninit_fini(struct consdev *cp)
+{
+	cp->cn_dev = make_dev(&dcons_ops, DCONS_CON,
+			      UID_ROOT, GID_WHEEL, 0600, "dcons");
 }
 
 #if CONS_NODEV
@@ -442,21 +442,21 @@ dcons_cnputc(struct consdev *cp, int c)
 }
 #else
 static int
-dcons_cngetc(DEV dev)
+dcons_cngetc(void *private)
 {
-	struct dcons_softc *dc = (struct dcons_softc *)dev->si_drv1;
+	struct dcons_softc *dc = (struct dcons_softc *)private;
 	return (dcons_os_getc(dc));
 }
 static int
-dcons_cncheckc(DEV dev)
+dcons_cncheckc(void *private)
 {
-	struct dcons_softc *dc = (struct dcons_softc *)dev->si_drv1;
+	struct dcons_softc *dc = (struct dcons_softc *)private;
 	return (dcons_os_checkc(dc));
 }
 static void
-dcons_cnputc(DEV dev, int c)
+dcons_cnputc(void *private, int c)
 {
-	struct dcons_softc *dc = (struct dcons_softc *)dev->si_drv1;
+	struct dcons_softc *dc = (struct dcons_softc *)private;
 	dcons_os_putc(dc, c);
 }
 #endif
@@ -523,23 +523,11 @@ dcons_drv_init(int stage)
 ok:
 	dcons_buf = dg.buf;
 
-#if __FreeBSD_version < 502122
 #if DDB && DCONS_FORCE_GDB
-#if CONS_NODEV
-	gdbconsdev.cn_arg = (void *)&sc[DCONS_GDB];
-#if __FreeBSD_version >= 501109
-	ksprintf(gdbconsdev.cn_name, "dgdb");
-#endif
-	gdb_arg = &gdbconsdev;
-#elif defined(__DragonFly__)
-	gdbdev = make_dev(&dcons_ops, DCONS_GDB,
-	    UID_ROOT, GID_WHEEL, 0600, "dgdb");
-#else
-	gdbdev = makedev(CDEV_MAJOR, DCONS_GDB);
-#endif
-	gdb_getc = dcons_cngetc;
-	gdb_putc = dcons_cnputc;
-#endif
+	if (gdb_tab == NULL) {
+		gdb_tab = &dcons_consdev;
+		dcons_consdev.cn_gdbprivate = &sc[DCONS_GDB];
+	}
 #endif
 	drv_init = 1;
 
@@ -657,7 +645,8 @@ dcons_modevent(module_t mode, int type, void *data)
 #if CONS_NODEV
 		gdb_arg = NULL;
 #else
-		gdbdev = NULL;
+		if (gdb_tab == &dcons_consdev)
+			gdb_tab = NULL;
 #endif
 #endif
 #endif
