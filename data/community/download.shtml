@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.8 2007/03/18 19:35:17 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.9 2007/05/07 20:52:15 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -305,7 +305,7 @@ rsync
 </TR>
 
 <TR>
-<TD>Hasso Tepper (Estonia)</TD>
+<TD>Elion Enterprises Ltd (Estonia)</TD>
 <TD>Daily Snapshots, Official ISOs</TD>
 <TD>
 <a href="http://ftp.estpak.ee/pub/DragonFly">HTTP</a>,
@@ -322,21 +322,21 @@ rsync
 <TR><TD CLASS="mirrorsection" COLSPAN="3">pkgsrc binary mirrors</TD></TR>
 
 <TR>
-<TD>packages.stura.uni-rostock.de (Germany)</TD>
+<TD>www.pkgsrc-box.org (Germany)</TD>
 <TD>Master site for binary pkgsrc packages</TD>
-<TD><a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/">i386 packages</a>,
-<a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
+<TD><a href="http://www.pkgsrc-box.org/packages/stable/DragonFly-1.8/All/">i386 packages</a>
 </TD>
 </TR>
 
 <TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>binary pkgsrc packages </TD>
-<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>, 
-<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/bootstrap/">bootstrap kits</a>
+<TD>binary pkgsrc packages<br>(mirror from here)</TD>
+<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a> 
 </TD>
 </TR>
 
+
+<!--
 <TR>
 <TD>ftp.pvv.ntnu.no (Norway)</TD>
 <TD>binary pkgsrc packages </TD>
@@ -370,6 +370,8 @@ rsync
 <a href="ftp://ftp.duth.gr/pub/DragonflyBSD/packages/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
+-->
+
 
 <!-- source only after this -->
 
