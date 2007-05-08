@@ -37,15 +37,23 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.16 2007/05/07 05:21:42 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.17 2007/05/08 02:31:43 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
 #define	_SYS_CONF_H_
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_TIME_H_
 #include <sys/time.h>
+#endif
+#ifndef _SYS_BIOTRACK_H_
 #include <sys/biotrack.h>
+#endif
 #ifndef _SYS_SYSREF_H_
 #include <sys/sysref.h>
 #endif
@@ -67,7 +75,6 @@ struct cdev {
 	void		*si_drv2;
 	struct dev_ops	*si_ops;	/* device operations vector */
 	int		si_iosize_max;	/* maximum I/O size (for physio &al) */
-	int		si_refs;
 	struct sysref	si_sysref;
 	union {
 		struct {
@@ -86,7 +93,7 @@ struct cdev {
 	time_t		si_lastwrite;		/* time_second */
 };
 
-#define SI_STASHED	0x0001	/* created in stashed storage */
+#define SI_UNUSED01	0x0001
 #define SI_HASHED	0x0002	/* in (maj,min) hash table */
 #define SI_ADHOC	0x0004	/* created via make_adhoc_dev() or udev2dev() */
 #define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
@@ -222,5 +229,6 @@ int	dev_is_good(cdev_t dev);
 #define		GID_DIALER	68
 
 #endif /* _KERNEL */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 #endif /* !_SYS_CONF_H_ */

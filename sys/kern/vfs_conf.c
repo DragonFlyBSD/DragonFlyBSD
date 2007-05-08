@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.27 2007/04/30 20:02:45 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.28 2007/05/08 02:31:42 dillon Exp $
  */
 
 /*
@@ -157,7 +157,7 @@ vfs_mountroot(void *junk)
 	/*
 	 * If a vfs set rootdev, try it (XXX VINUM HACK!)
 	 */
-	if (save_rootdev != NOCDEV) {
+	if (save_rootdev != NULL) {
 		rootdev = save_rootdev;
 		if (!vfs_mountroot_try(""))
 			return;
@@ -237,7 +237,7 @@ vfs_mountroot_try(const char *mountfrom)
 		kprintf("setrootbyname failed\n");
 
 	/* If the root device is a type "memory disk", mount RW */
-	if (rootdev != NOCDEV && dev_is_good(rootdev) &&
+	if (rootdev != NULL && dev_is_good(rootdev) &&
 	    (dev_dflags(rootdev) & D_MEMDISK)) {
 		mp->mnt_flag &= ~MNT_RDONLY;
 	}
@@ -384,7 +384,7 @@ kgetdiskbyname(const char *name)
 		++cp;
 	if (cp == name) {
 		kprintf("missing device name\n");
-		return (NOCDEV);
+		return (NULL);
 	}
 	nlen = cp - name;
 
@@ -394,7 +394,7 @@ kgetdiskbyname(const char *name)
 	unit = strtol(cp, &cp, 10);
 	if (name + nlen == (const char *)cp || unit < 0 || unit > DKMAXUNIT) {
 		kprintf("bad unit: %d\n", unit);
-		return (NOCDEV);
+		return (NULL);
 	}
 
 	/*
@@ -407,7 +407,7 @@ kgetdiskbyname(const char *name)
 		slice = cp[1] - '0';
 		if (slice < 1 || slice > 9) {
 			kprintf("bad slice number\n");
-			return(NOCDEV);
+			return(NULL);
 		}
 		++slice;	/* slice #1 starts at 2 */
 		cp += 2;
@@ -427,7 +427,7 @@ kgetdiskbyname(const char *name)
 
 	if (*cp != '\0') {
 		kprintf("junk after name\n");
-		return (NOCDEV);
+		return (NULL);
 	}
 
 	/*
@@ -446,7 +446,7 @@ kgetdiskbyname(const char *name)
 	}
 	if (cd == NUMCDEVSW) {
 		kprintf("no such device '%*.*s'\n", nlen, nlen, name);
-		return (NOCDEV);
+		return (NULL);
 	}
 
 	/*
@@ -466,7 +466,7 @@ setrootbyname(char *name)
 	cdev_t diskdev;
 
 	diskdev = kgetdiskbyname(name);
-	if (diskdev != NOCDEV) {
+	if (diskdev != NULL) {
 		rootdev = diskdev;
 		return (0);
 	}
@@ -484,7 +484,7 @@ DB_SHOW_COMMAND(disk, db_getdiskbyname)
 		return;
 	}
 	dev = kgetdiskbyname(modif);
-	if (dev != NOCDEV)
+	if (dev != NULL)
 		db_printf("cdev_t = %p\n", dev);
 	else
 		db_printf("No disk device matched.\n");

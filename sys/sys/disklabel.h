@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.15 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.16 2007/05/08 02:31:43 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -47,8 +47,8 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
-#ifndef _SYS_CONF_H_
-#include <sys/conf.h>
+#if defined(_KERNEL) && !defined(_SYS_CONF_H_)
+#include <sys/conf.h>		/* for make_sub_dev() */
 #endif
 
 /*

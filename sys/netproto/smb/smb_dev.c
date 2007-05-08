@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.17 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.18 2007/05/08 02:31:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -388,7 +388,7 @@ smb_dev2share(int fd, int mode, struct smb_cred *scred,
 		goto done;
 	}
 	dev = vn_todev(vp);
-	if (dev == NOCDEV) {
+	if (dev == NULL) {
 		error = EBADF;
 		goto done;
 	}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/sysref.h,v 1.1 2007/04/29 01:29:31 dillon Exp $
+ * $DragonFly: src/sys/sys/sysref.h,v 1.2 2007/05/08 02:31:43 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -57,6 +57,11 @@
 #ifndef _SYS_OBJCACHE_H_
 #include <sys/objcache.h>
 #endif
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * Register a resource structure type.  Note that the destroy function
@@ -110,6 +115,8 @@ struct sysref {
 
 RB_HEAD(sysref_rb_tree, sysref);
 RB_PROTOTYPE2(sysref_rb_tree, sysref, rbnode, rb_sysref_compare, sysid_t);
+
+#endif
 
 /*
  * Protocol numbers

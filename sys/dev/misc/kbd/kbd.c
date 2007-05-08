@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.22 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.23 2007/05/08 02:31:39 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -492,7 +492,7 @@ kbd_detach(keyboard_t *kbd)
 	 * Deal with refs properly.  The KBD driver really ought to have
 	 * recorded the cdev_t separately.
 	 */
-	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NOCDEV) {
+	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NULL) {
 		if (dev->si_drv1) {
 			kfree(dev->si_drv1, M_DEVBUF);
 			dev->si_drv1 = NULL;

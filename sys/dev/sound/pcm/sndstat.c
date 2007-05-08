@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.20.2.2 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.11 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.12 2007/05/08 02:31:42 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 #include <sys/lock.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.11 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.12 2007/05/08 02:31:42 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -345,7 +345,7 @@ sndstat_init(void)
 {
 	lockinit(&sndstat_lock, "sndstat", 0, 0);
 	if (make_dev(&sndstat_cdevsw, SND_DEV_STATUS,
-		     UID_ROOT, GID_WHEEL, 0444, "sndstat") == NOCDEV)
+		     UID_ROOT, GID_WHEEL, 0444, "sndstat") == NULL)
 		return ENXIO;
 	dev_ops_add(&sndstat_cdevsw, -1, SND_DEV_STATUS);
 

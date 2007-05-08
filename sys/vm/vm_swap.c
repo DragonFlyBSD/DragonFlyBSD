@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.33 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.34 2007/05/08 02:31:43 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -271,9 +271,9 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	if (vp->v_type == VCHR)
 		dev = vp->v_rdev;
 	else
-		dev = NOCDEV;
+		dev = NULL;
 
-	if (nblks == 0 && dev != NOCDEV && ((nblks = dev_dpsize(dev)) == -1)) {
+	if (nblks == 0 && dev != NULL && ((nblks = dev_dpsize(dev)) == -1)) {
 		VOP_CLOSE(vp, FREAD | FWRITE);
 		return (ENXIO);
 	}

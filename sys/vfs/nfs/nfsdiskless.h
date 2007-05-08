@@ -35,7 +35,7 @@
  *
  *	@(#)nfsdiskless.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsdiskless.h,v 1.11 1999/08/28 00:50:02 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsdiskless.h,v 1.3 2006/09/09 19:34:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsdiskless.h,v 1.4 2007/05/08 02:31:43 dillon Exp $
  */
 
 
@@ -49,7 +49,7 @@
  * interface can communicate with the server.
  * The primary bootstrap is expected to fill in the appropriate fields before
  * starting the kernel. Whether or not the swap area is nfs mounted is
- * determined by the value in swdevt[0]. (equal to NOCDEV --> swap over nfs)
+ * determined by the value in swdevt[0]. (equal to NULL --> swap over nfs)
  * Currently only works for AF_INET protocols.
  * NB: All fields are stored in net byte order to avoid hassles with
  * client/server byte ordering differences.

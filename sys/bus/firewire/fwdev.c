@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.18 2006/12/06 11:50:06 corecode Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.19 2007/05/08 02:31:37 dillon Exp $
  *
  */
 
@@ -806,7 +806,7 @@ fwdev_clone(void *arg, char *name, int namelen, cdev_t *dev)
 	int devflag[NDEVTYPE] = {0, FWMEM_FLAG};
 	int i, unit = 0, sub = 0;
 
-	if (*dev != NOCDEV)
+	if (*dev != NULL)
 		return;
 
 	for (i = 0; i < NDEVTYPE; i++)

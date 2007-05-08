@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.18 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.19 2007/05/08 02:31:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -387,7 +387,7 @@ snpopen(struct dev_open_args *ap)
 	 * snp_tty == NULL  is for inactive snoop devices.
 	 */
 	snp->snp_tty = NULL;
-	snp->snp_target = NOCDEV;
+	snp->snp_target = NULL;
 
 	LIST_INSERT_HEAD(&snp_sclist, snp, snp_list);
 	return (0);
@@ -419,7 +419,7 @@ snp_detach(struct snoop *snp)
 		kprintf("Snoop: bad attached tty data.\n");
 
 	snp->snp_tty = NULL;
-	snp->snp_target = NOCDEV;
+	snp->snp_target = NULL;
 
 detach_notty:
 	selwakeup(&snp->snp_sel);
@@ -472,7 +472,7 @@ snpioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 	case SNPSTTY:
 		tdev = udev2dev(*((udev_t *)ap->a_data), 0);
-		if (tdev == NOCDEV)
+		if (tdev == NULL)
 			return (snp_down(snp));
 
 		tp = snpdevtotty(tdev);
@@ -483,7 +483,7 @@ snpioctl(struct dev_ioctl_args *ap)
 
 		crit_enter();
 
-		if (snp->snp_target == NOCDEV) {
+		if (snp->snp_target == NULL) {
 			tpo = snp->snp_tty;
 			if (tpo)
 				tpo->t_state &= ~TS_SNOOP;

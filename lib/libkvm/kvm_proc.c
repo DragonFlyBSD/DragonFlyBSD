@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.13 2007/04/29 01:36:04 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.14 2007/05/08 02:31:36 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -192,9 +192,9 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 				return (-1);
 			}
 			sess.s_ttyp = &tty;
-			if (tty.t_dev && tty.t_dev != NOCDEV) {
+			if (tty.t_dev && tty.t_dev != NULL) {
 				if (KREAD(kd, (u_long)tty.t_dev, &cdev))
-					tty.t_dev = NOCDEV;
+					tty.t_dev = NULL;
 				else
 					tty.t_dev = &cdev;
 			}

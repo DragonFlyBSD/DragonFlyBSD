@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.50 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.51 2007/05/08 02:31:42 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -550,7 +550,7 @@ setdumpdev(cdev_t dev)
 	int psize;
 	long newdumplo;
 
-	if (dev == NOCDEV) {
+	if (dev == NULL) {
 		dumpdev = dev;
 		return (0);
 	}
@@ -580,12 +580,12 @@ dump_conf(void *dummy)
 	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
 		dev = kgetdiskbyname(path);
-		if (dev != NOCDEV)
+		if (dev != NULL)
 			dumpdev = dev;
 	}
 	kfree(path, M_TEMP);
 	if (setdumpdev(dumpdev) != 0)
-		dumpdev = NOCDEV;
+		dumpdev = NULL;
 }
 
 SYSINIT(dump_conf, SI_SUB_DUMP_CONF, SI_ORDER_FIRST, dump_conf, NULL)
@@ -624,7 +624,7 @@ dumpsys(void)
 	}
 	if (!dodump)
 		return;
-	if (dumpdev == NOCDEV)
+	if (dumpdev == NULL)
 		return;
 	dumpsize = Maxmem;
 	kprintf("\ndumping to dev %s, offset %ld\n", devtoname(dumpdev), dumplo);

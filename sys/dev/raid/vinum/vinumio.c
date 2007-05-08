@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.21 2007/03/12 12:10:13 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.22 2007/05/08 02:31:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -139,7 +139,7 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 
     drive->dev = udev2dev(makeudev(devmajor, devminor), 0);
 
-    if (drive->dev == NOCDEV)
+    if (drive->dev == NULL)
 	return ENODEV;
 
     drive->dev->si_iosize_max = DFLTPHYS;

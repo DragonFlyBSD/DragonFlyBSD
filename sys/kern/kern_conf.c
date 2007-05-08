@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.21 2007/05/07 15:43:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.22 2007/05/08 02:31:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,9 +46,30 @@
 #include <sys/device.h>
 #include <machine/stdarg.h>
 
+#include <sys/sysref2.h>
+
 #define cdevsw_ALLOCSTART	(NUMCDEVSW/2)
 
+static void cdev_terminate(struct cdev *dev);
+
 MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
+
+/*
+ * SYSREF Integration - reference counting, allocation,
+ * sysid and syslink integration.
+ */
+static struct sysref_class     cdev_sysref_class = {
+	.name =         "cdev",
+	.mtype =        M_DEVT,
+	.proto =        SYSREF_PROTO_DEV,
+	.offset =       offsetof(struct cdev, si_sysref),
+	.objsize =      sizeof(struct cdev),
+	.mag_capacity = 32,
+	.flags =        0,
+	.ops =  {
+		.terminate = (sysref_terminate_func_t)cdev_terminate
+	}
+};
 
 /*
  * This is the number of hash-buckets.  Experiements with 'real-life'
@@ -56,7 +77,6 @@ MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
  * best.
  */
 #define DEVT_HASH 83
-
 static LIST_HEAD(, cdev) dev_hash[DEVT_HASH];
 
 static int free_devt;
@@ -70,29 +90,29 @@ SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0, "");
  * when a device is destroyed.
  */
 int
-major(cdev_t x)
+major(cdev_t dev)
 {
-	if (x == NOCDEV)
+	if (dev == NULL)
 		return NOUDEV;
-	return((x->si_udev >> 8) & 0xff);
+	return((dev->si_udev >> 8) & 0xff);
 }
 
 int
-minor(cdev_t x)
+minor(cdev_t dev)
 {
-	if (x == NOCDEV)
+	if (dev == NULL)
 		return NOUDEV;
-	return(x->si_udev & 0xffff00ff);
+	return(dev->si_udev & 0xffff00ff);
 }
 
 int
-lminor(cdev_t x)
+lminor(cdev_t dev)
 {
 	int i;
 
-	if (x == NOCDEV)
+	if (dev == NULL)
 		return NOUDEV;
-	i = minor(x);
+	i = minor(dev);
 	return ((i & 0xff) | (i >> 8));
 }
 
@@ -133,12 +153,12 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 				return (si);
 		}
 	}
-	si = kmalloc(sizeof(*si), M_DEVT, M_WAITOK | M_USE_RESERVE | M_ZERO);
+	si = sysref_alloc(&cdev_sysref_class);
 	si->si_ops = ops;
 	si->si_flags |= SI_HASHED | SI_ADHOC;
 	si->si_udev = udev;
-	si->si_refs = 1;
 	LIST_INSERT_HEAD(&dev_hash[hash], si, si_hash);
+	sysref_activate(&si->si_sysref);
 
 	dev_dclone(si);
 	if (ops != &dead_dev_ops)
@@ -146,7 +166,7 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	if (dev_ref_debug) {
 		kprintf("create    dev %p %s(minor=%08x) refs=%d\n", 
 			si, devtoname(si), uminor(si->si_udev),
-			si->si_refs);
+			si->si_sysref.refcnt);
 	}
         return (si);
 }
@@ -155,11 +175,11 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
  * Convert a device pointer to a device number
  */
 udev_t
-dev2udev(cdev_t x)
+dev2udev(cdev_t dev)
 {
-	if (x == NOCDEV)
+	if (dev == NULL)
 		return NOUDEV;
-	return (x->si_udev);
+	return (dev->si_udev);
 }
 
 /*
@@ -168,7 +188,7 @@ dev2udev(cdev_t x)
  * to keep ahold of the returned structure long term.
  *
  * The returned device is associated with the currently installed cdevsw
- * for the requested major number.  NOCDEV is returned if the major number
+ * for the requested major number.  NULL is returned if the major number
  * has not been registered.
  */
 cdev_t
@@ -178,10 +198,10 @@ udev2dev(udev_t x, int b)
 	struct dev_ops *ops;
 
 	if (x == NOUDEV || b != 0)
-		return(NOCDEV);
+		return(NULL);
 	ops = dev_ops_get(umajor(x), uminor(x));
 	if (ops == NULL)
-		return(NOCDEV);
+		return(NULL);
 	dev = hashdev(ops, umajor(x), uminor(x), TRUE);
 	return(dev);
 }
@@ -189,7 +209,7 @@ udev2dev(udev_t x, int b)
 int
 dev_is_good(cdev_t dev)
 {
-	if (dev != NOCDEV && dev->si_ops != &dead_dev_ops)
+	if (dev != NULL && dev->si_ops != &dead_dev_ops)
 		return(1);
 	return(0);
 }
@@ -303,7 +323,7 @@ destroy_dev(cdev_t dev)
 {
 	int hash;
 
-	if (dev == NOCDEV)
+	if (dev == NULL)
 		return;
 	if ((dev->si_flags & SI_ADHOC) == 0) {
 		release_dev(dev);
@@ -312,13 +332,13 @@ destroy_dev(cdev_t dev)
 	if (dev_ref_debug) {
 		kprintf("destroy   dev %p %s(minor=%08x) refs=%d\n", 
 			dev, devtoname(dev), uminor(dev->si_udev),
-			dev->si_refs);
+			dev->si_sysref.refcnt);
 	}
-	if (dev->si_refs < 2) {
+	if (dev->si_sysref.refcnt < 2) {
 		kprintf("destroy_dev(): too few references on device! "
 			"%p %s(minor=%08x) refs=%d\n",
 		    dev, devtoname(dev), uminor(dev->si_udev),
-		    dev->si_refs);
+		    dev->si_sysref.refcnt);
 	}
 	dev->si_flags &= ~SI_ADHOC;
 	if (dev->si_flags & SI_HASHED) {
@@ -338,8 +358,8 @@ destroy_dev(cdev_t dev)
 	dev->si_drv1 = NULL;
 	dev->si_drv2 = NULL;
 	dev->si_ops = &dead_dev_ops;
-	--dev->si_refs;		/* release adhoc association reference */
-	release_dev(dev);	/* release callers reference */
+	sysref_put(&dev->si_sysref);	/* release adhoc association */
+	release_dev(dev);		/* release callers reference */
 }
 
 /*
@@ -371,7 +391,7 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 		    if (dev->si_ops == ops && 
 			(dev->si_udev & mask) == match
 		    ) {
-			++dev->si_refs;
+			reference_dev(dev);
 			destroy_dev(dev);
 		    }
 		}
@@ -390,20 +410,20 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 cdev_t
 reference_dev(cdev_t dev)
 {
-	if (dev != NOCDEV) {
-		++dev->si_refs;
+	if (dev != NULL) {
+		sysref_get(&dev->si_sysref);
 		if (dev_ref_debug) {
 			kprintf("reference dev %p %s(minor=%08x) refs=%d\n", 
 			    dev, devtoname(dev), uminor(dev->si_udev),
-			    dev->si_refs);
+			    dev->si_sysref.refcnt);
 		}
 	}
 	return(dev);
 }
 
 /*
- * release a reference on a device.  The device will be freed when the last
- * reference has been released.
+ * release a reference on a device.  The device will be terminated when the
+ * last reference has been released.
  *
  * NOTE: we must use si_udev to figure out the original (major, minor),
  * because si_ops could already be pointing at dead_dev_ops.
@@ -411,52 +431,49 @@ reference_dev(cdev_t dev)
 void
 release_dev(cdev_t dev)
 {
-	if (dev == NOCDEV)
+	if (dev == NULL)
 		return;
-	if (free_devt) {
-		KKASSERT(dev->si_refs > 0);
-	} else {
-		if (dev->si_refs <= 0) {
-			kprintf("Warning: extra release of dev %p(%s)\n",
-			    dev, devtoname(dev));
-			free_devt = 0;	/* prevent bad things from occuring */
-		}
-	}
-	--dev->si_refs;
+	sysref_put(&dev->si_sysref);
+}
+
+static
+void
+cdev_terminate(struct cdev *dev)
+{
+	int messedup = 0;
+
 	if (dev_ref_debug) {
 		kprintf("release   dev %p %s(minor=%08x) refs=%d\n", 
 			dev, devtoname(dev), uminor(dev->si_udev),
-			dev->si_refs);
+			dev->si_sysref.refcnt);
 	}
-	if (dev->si_refs == 0) {
-		if (dev->si_flags & SI_ADHOC) {
-			kprintf("Warning: illegal final release on ADHOC"
-				" device %p(%s), the device was never"
-				" destroyed!\n",
-				dev, devtoname(dev));
-		}
-		if (dev->si_flags & SI_HASHED) {
-			kprintf("Warning: last release on device, no call"
-				" to destroy_dev() was made! dev %p(%s)\n",
-				dev, devtoname(dev));
-			dev->si_refs = 3;
-			destroy_dev(dev);
-			dev->si_refs = 0;
-		}
-		if (SLIST_FIRST(&dev->si_hlist) != NULL) {
-			kprintf("Warning: last release on device, vnode"
-				" associations still exist! dev %p(%s)\n",
-				dev, devtoname(dev));
-			free_devt = 0;	/* prevent bad things from occuring */
-		}
-		if (dev->si_ops && dev->si_ops != &dead_dev_ops) {
-			dev_ops_release(dev->si_ops);
-			dev->si_ops = NULL;
-		}
-		if (free_devt) {
-			FREE(dev, M_DEVT);
-		}
+	if (dev->si_flags & SI_ADHOC) {
+		kprintf("Warning: illegal final release on ADHOC"
+			" device %p(%s), the device was never"
+			" destroyed!\n",
+			dev, devtoname(dev));
+		messedup = 1;
 	}
+	if (dev->si_flags & SI_HASHED) {
+		kprintf("Warning: last release on device, no call"
+			" to destroy_dev() was made! dev %p(%s)\n",
+			dev, devtoname(dev));
+		reference_dev(dev);
+		destroy_dev(dev);
+		messedup = 1;
+	}
+	if (SLIST_FIRST(&dev->si_hlist) != NULL) {
+		kprintf("Warning: last release on device, vnode"
+			" associations still exist! dev %p(%s)\n",
+			dev, devtoname(dev));
+		messedup = 1;
+	}
+	if (dev->si_ops && dev->si_ops != &dead_dev_ops) {
+		dev_ops_release(dev->si_ops);
+		dev->si_ops = NULL;
+	}
+	if (messedup == 0) 
+		sysref_put(&dev->si_sysref);
 }
 
 const char *
@@ -467,7 +484,7 @@ devtoname(cdev_t dev)
 	char *p;
 	const char *dname;
 
-	if (dev == NOCDEV)
+	if (dev == NULL)
 		return("#nodev");
 	if (dev->si_name[0] == '#' || dev->si_name[0] == '\0') {
 		p = dev->si_name;

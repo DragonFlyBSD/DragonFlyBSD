@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.9 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.10 2007/05/08 02:31:43 dillon Exp $
  */
 
 /*
@@ -114,8 +114,8 @@ SYSINIT(configure2, SI_SUB_CONFIGURE, SI_ORDER_THIRD, configure, NULL);
 /* SI_ORDER_MIDDLE is hookable */
 SYSINIT(configure3, SI_SUB_CONFIGURE, SI_ORDER_ANY, configure_final, NULL);
 
-cdev_t	rootdev = NOCDEV;
-cdev_t	dumpdev = NOCDEV;
+cdev_t	rootdev = NULL;
+cdev_t	dumpdev = NULL;
 
 /*
  * 
