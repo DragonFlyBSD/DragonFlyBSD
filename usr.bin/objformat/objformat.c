@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.20 2007/04/13 12:26:56 corecode Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.21 2007/05/08 20:59:37 swildner Exp $
  */
 
 #include <err.h>
@@ -90,9 +90,9 @@ main(int argc, char **argv)
 	char objformat[32];
 	char *path, *chunk;
 	char *cmd, *newcmd = NULL;
-	char *objformat_path;
-	char *ccver;
-	char *buver;
+	const char *objformat_path;
+	const char *ccver;
+	const char *buver;
 	const char *env_value = NULL;
 	const char *base_path = NULL;
 	int use_objformat = 0;
