@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.43 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.44 2007/05/09 00:53:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -290,7 +290,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return error;
-	if (count_udev(devvp->v_udev) > 0)
+	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
 		return EBUSY;
 	if ((error = vinvalbuf(devvp, V_SAVE, 0, 0)))
 		return (error);
@@ -842,7 +842,8 @@ again:
 	case VCHR:
 	case VBLK:
 		vp->v_ops = &mp->mnt_vn_spec_ops;
-		addaliasu(vp, ip->inode.iso_rdev);
+		addaliasu(vp, umajor(ip->inode.iso_rdev),
+			  uminor(ip->inode.iso_rdev));
 		break;
 	case VREG:
 	case VDIR:

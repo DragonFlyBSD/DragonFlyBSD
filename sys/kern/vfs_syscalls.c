@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.115 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.116 2007/05/09 00:53:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1607,7 +1607,7 @@ sys_open(struct open_args *uap)
 }
 
 int
-kern_mknod(struct nlookupdata *nd, int mode, int dev)
+kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1641,7 +1641,8 @@ kern_mknod(struct nlookupdata *nd, int mode, int dev)
 
 	VATTR_NULL(&vattr);
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
-	vattr.va_rdev = dev;
+	vattr.va_rmajor = rmajor;
+	vattr.va_rminor = rminor;
 	whiteout = 0;
 
 	switch (mode & S_IFMT) {
@@ -1686,8 +1687,10 @@ sys_mknod(struct mknod_args *uap)
 	int error;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-	if (error == 0)
-		error = kern_mknod(&nd, uap->mode, uap->dev);
+	if (error == 0) {
+		error = kern_mknod(&nd, uap->mode,
+				   umajor(uap->dev), uminor(uap->dev));
+	}
 	nlookup_done(&nd);
 	return (error);
 }
@@ -3263,7 +3266,7 @@ sys_revoke(struct revoke_args *uap)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
 			error = suser_cred(cred, PRISON_ROOT);
-		if (error == 0 && count_udev(vp->v_udev) > 0) {
+		if (error == 0 && count_udev(vp->v_umajor, vp->v_uminor) > 0) {
 			error = 0;
 			vx_lock(vp);
 			VOP_REVOKE(vp, REVOKEALL);

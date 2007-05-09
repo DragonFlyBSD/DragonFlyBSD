@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.42 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.43 2007/05/09 00:53:35 dillon Exp $
  */
 
 /*
@@ -1540,7 +1540,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nlookupdata nd;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdev, len, tsize, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, tsize, dirfor_ret = 1, diraft_ret = 1;
+	udev_t rdev = NOUDEV;
 	int v3 = (nfsd->nd_flag & ND_NFSV3), how, exclusive_flag = 0;
 	caddr_t cp;
 	char *cp2;
@@ -1554,9 +1555,6 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_char cverf[NFSX_V3CREATEVERF];
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	rdev = 0;
-#endif
 	nlookup_zero(&nd);
 	dirp = NULL;
 	dvp = NULL;
@@ -1688,7 +1686,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
                             (error = suser_cred(cred, 0))) {
 				goto nfsmreply0;
                         }
-			vap->va_rdev = rdev;
+			vap->va_rmajor = umajor(rdev);
+			vap->va_rminor = uminor(rdev);
 
 			vput(dvp);
 			dvp = NULL;
@@ -1864,9 +1863,8 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvsattr(vap);
 	if (vtyp == VCHR || vtyp == VBLK) {
 		nfsm_dissect(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
-		major = fxdr_unsigned(u_int32_t, *tl++);
-		minor = fxdr_unsigned(u_int32_t, *tl);
-		vap->va_rdev = makeudev(major, minor);
+		vap->va_rmajor = fxdr_unsigned(u_int32_t, *tl++);
+		vap->va_rminor = fxdr_unsigned(u_int32_t, *tl);
 	}
 
 	/*

@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.35 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.36 2007/05/09 00:53:36 dillon Exp $
  */
 
 /*
@@ -455,7 +455,8 @@ portal_getattr(struct vop_getattr_args *ap)
 	vap->va_ctime = vap->va_mtime;
 	vap->va_gen = 0;
 	vap->va_flags = 0;
-	vap->va_rdev = 0;
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	/* vap->va_qbytes = 0; */
 	vap->va_bytes = 0;
 	/* vap->va_qsize = 0; */

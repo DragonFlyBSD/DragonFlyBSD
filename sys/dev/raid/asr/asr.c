@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.28 2006/12/22 23:26:23 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.29 2007/05/09 00:53:34 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -466,9 +466,8 @@ DRIVER_MODULE(mode0, pci, mode0_driver, mode0_devclass, 0, 0);
  *
  * only ioctl is used. the sd driver provides all other access.
  */
-#define CDEV_MAJOR 154   /* prefered default character major */
 STATIC struct dev_ops asr_ops = {
-	{ "asr", CDEV_MAJOR, 0 },
+	{ "asr", -1, 0 },
         .d_open =	asr_open,
         .d_close =	asr_close, 
         .d_ioctl =	asr_ioctl,
@@ -486,35 +485,15 @@ asr_drvinit (void * unused)
                 return;
         }
         asr_devsw_installed++;
-        /*
-         * Find a free spot (the report during driver load used by
-         * osd layer in engine to generate the controlling nodes).
-	 *
-	 * XXX this is garbage code, store a unit number in asr_ops
-	 * and iterate through that instead?
-         */
-        while (asr_ops.head.maj < NUMCDEVSW &&
-		dev_ops_get(asr_ops.head.maj, -1) != NULL
-	) {
-                ++asr_ops.head.maj;
-        }
-        if (asr_ops.head.maj >= NUMCDEVSW) {
-		asr_ops.head.maj = 0;
-		while (asr_ops.head.maj < CDEV_MAJOR &&
-			dev_ops_get(asr_ops.head.maj, -1) != NULL
-		) {
-			++asr_ops.head.maj;
-		}
-	}
 
         /*
-         *      Come to papa
+	 * Adding the ops will dynamically assign a major number.
          */
         dev_ops_add(&asr_ops, 0, 0);
 } /* asr_drvinit */
 
-/* Must initialize before CAM layer picks up our HBA driver */
-SYSINIT(asrdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,asr_drvinit,NULL)
+/* XXX Must initialize before CAM layer picks up our HBA driver */
+SYSINIT(asrdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE,asr_drvinit,NULL)
 
 /* I2O support routines */
 #define defAlignLong(STRUCT,NAME) char NAME[sizeof(STRUCT)]

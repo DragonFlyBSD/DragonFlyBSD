@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.17 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.18 2007/05/09 00:53:35 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -67,7 +67,8 @@ struct dev_ops;
 
 struct cdev {
 	u_int		si_flags;
-	udev_t		si_udev;
+	int		si_uminor;
+	int		si_umajor;
 	LIST_ENTRY(cdev)	si_hash;
 	SLIST_HEAD(, vnode) si_hlist;
 	char		si_name[SPECNAMELEN + 1];
@@ -175,8 +176,6 @@ struct swdevt {
 
 #ifdef _KERNEL
 
-#define NUMCDEVSW 256
-
 l_ioctl_t	l_nullioctl;
 l_read_t	l_noread;
 l_write_t	l_nowrite;
@@ -198,9 +197,10 @@ static moduledata_t name##_mod = {					\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
 int	count_dev (cdev_t dev);
-int	count_udev (udev_t dev);
+int	count_udev (int x, int y);
 void	destroy_dev (cdev_t dev);
 void	release_dev (cdev_t dev);
+cdev_t	get_dev (int x, int y);
 cdev_t	reference_dev (cdev_t dev);
 struct dev_ops *devsw (cdev_t dev);
 const char *devtoname (cdev_t dev);

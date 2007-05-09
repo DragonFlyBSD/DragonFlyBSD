@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.10 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.11 2007/05/09 00:53:34 dillon Exp $
  */
 
 /*
@@ -107,9 +107,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	if (SESS_LEADER(p))
 		kp->kp_auxflags |= KI_SLEADER;
 	if (((p->p_flag & P_CONTROLT) != 0) && (sess->s_ttyp != NULL)) {
-		kp->kp_tdev = (sess->s_ttyp->t_dev != NULL) ?
-					sess->s_ttyp->t_dev->si_udev :
-					NOUDEV;
+		kp->kp_tdev = dev2udev(sess->s_ttyp->t_dev);
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
 		else

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.29 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.30 2007/05/09 00:53:36 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -378,7 +378,8 @@ udf_getattr(struct vop_getattr_args *a)
 	udf_timetotimespec(&fentry->atime, &vap->va_atime);
 	udf_timetotimespec(&fentry->mtime, &vap->va_mtime);
 	vap->va_ctime = vap->va_mtime; /* XXX Stored as an Extended Attribute */
-	vap->va_rdev = 0; /* XXX */
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	if (vp->v_type & VDIR) {
 		/*
 		 * Directories that are recorded within their ICB will show

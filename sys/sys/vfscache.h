@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.8 2007/05/09 00:53:35 dillon Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -130,7 +130,8 @@ struct vattr {
 	struct timespec	va_ctime;	/* time file changed */
 	u_long		va_gen;		/* generation number of file */
 	u_long		va_flags;	/* flags defined for file */
-	udev_t		va_rdev;	/* device the special file represents */
+	int		va_rmajor;	/* device the special file represents */
+	int		va_rminor;
 	u_quad_t	va_bytes;	/* bytes of disk space held by file */
 	u_quad_t	va_filerev;	/* file modification number */
 	u_int		va_vaflags;	/* operations flags, see below */

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.22 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.23 2007/05/09 00:53:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +47,6 @@
 #include <machine/stdarg.h>
 
 #include <sys/sysref2.h>
-
-#define cdevsw_ALLOCSTART	(NUMCDEVSW/2)
 
 static void cdev_terminate(struct cdev *dev);
 
@@ -76,7 +74,7 @@ static struct sysref_class     cdev_sysref_class = {
  * udev_t's show that a prime halfway between two powers of two works
  * best.
  */
-#define DEVT_HASH 83
+#define DEVT_HASH 128	/* must be power of 2 */
 static LIST_HEAD(, cdev) dev_hash[DEVT_HASH];
 
 static int free_devt;
@@ -86,7 +84,7 @@ SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0, "");
 
 /*
  * cdev_t and u_dev_t primitives.  Note that the major number is always
- * extracted from si_udev, not from si_devsw, because si_devsw is replaced
+ * extracted from si_umajor, not from si_devsw, because si_devsw is replaced
  * when a device is destroyed.
  */
 int
@@ -94,7 +92,7 @@ major(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
-	return((dev->si_udev >> 8) & 0xff);
+	return(dev->si_umajor);
 }
 
 int
@@ -102,18 +100,24 @@ minor(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
-	return(dev->si_udev & 0xffff00ff);
+	return(dev->si_uminor);
 }
 
+/*
+ * Compatibility function with old udev_t format to convert the
+ * non-consecutive minor space into a consecutive minor space.
+ */
 int
 lminor(cdev_t dev)
 {
-	int i;
+	int y;
 
 	if (dev == NULL)
 		return NOUDEV;
-	i = minor(dev);
-	return ((i & 0xff) | (i >> 8));
+	y = dev->si_uminor;
+	if (y & 0x0000ff00)
+		return NOUDEV;
+	return ((y & 0xff) | (y >> 8));
 }
 
 /*
@@ -136,17 +140,22 @@ lminor(cdev_t dev)
  * otherwise would not match.
  */
 static
+int
+__devthash(int x, int y)
+{
+	return(((x << 2) ^ y) & (DEVT_HASH - 1));
+}
+
+static
 cdev_t
 hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 {
 	struct cdev *si;
-	udev_t	udev;
 	int hash;
 
-	udev = makeudev(x, y);
-	hash = udev % DEVT_HASH;
+	hash = __devthash(x, y);
 	LIST_FOREACH(si, &dev_hash[hash], si_hash) {
-		if (si->si_udev == udev) {
+		if (si->si_umajor == x && si->si_uminor == y) {
 			if (si->si_ops == ops)
 				return (si);
 			if (allow_intercept && (si->si_flags & SI_INTERCEPTED))
@@ -156,7 +165,8 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	si = sysref_alloc(&cdev_sysref_class);
 	si->si_ops = ops;
 	si->si_flags |= SI_HASHED | SI_ADHOC;
-	si->si_udev = udev;
+	si->si_umajor = x;
+	si->si_uminor = y;
 	LIST_INSERT_HEAD(&dev_hash[hash], si, si_hash);
 	sysref_activate(&si->si_sysref);
 
@@ -165,21 +175,27 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 		++ops->head.refs;
 	if (dev_ref_debug) {
 		kprintf("create    dev %p %s(minor=%08x) refs=%d\n", 
-			si, devtoname(si), uminor(si->si_udev),
+			si, devtoname(si), y,
 			si->si_sysref.refcnt);
 	}
         return (si);
 }
 
 /*
- * Convert a device pointer to a device number
+ * Convert a device pointer to an old style device number.  Return NOUDEV
+ * if the device is invalid or if the device (maj,min) cannot be converted
+ * to an old style udev_t.
  */
 udev_t
 dev2udev(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
-	return (dev->si_udev);
+	if ((dev->si_umajor & 0xffffff00) ||
+	    (dev->si_uminor & 0x0000ff00)) {
+		return NOUDEV;
+	}
+	return((dev->si_umajor << 8) | dev->si_uminor);
 }
 
 /*
@@ -220,18 +236,24 @@ dev_is_good(cdev_t dev)
 int
 uminor(udev_t dev)
 {
+	if (dev == NOUDEV)
+		return(-1);
 	return(dev & 0xffff00ff);
 }
 
 int
 umajor(udev_t dev)
 {
+	if (dev == NOUDEV)
+		return(-1);
 	return((dev & 0xff00) >> 8);
 }
 
 udev_t
 makeudev(int x, int y)
 {
+	if ((x & 0xffffff00) || (y & 0x0000ff00))
+		return NOUDEV;
         return ((x << 8) | y);
 }
 
@@ -297,7 +319,7 @@ make_sub_dev(cdev_t odev, int minor)
 {
 	cdev_t	dev;
 
-	dev = hashdev(odev->si_ops, umajor(odev->si_udev), minor, FALSE);
+	dev = hashdev(odev->si_ops, odev->si_umajor, minor, FALSE);
 
 	/*
 	 * Copy cred requirements and name info XXX DEVFS.
@@ -305,6 +327,21 @@ make_sub_dev(cdev_t odev, int minor)
 	if (dev->si_name[0] == 0 && odev->si_name[0])
 		bcopy(odev->si_name, dev->si_name, sizeof(dev->si_name));
 	return (dev);
+}
+
+cdev_t
+get_dev(int x, int y)
+{
+	cdev_t dev;
+	struct dev_ops *ops;
+
+	if (x == NOUDEV)
+		return(NULL);
+	ops = dev_ops_get(x, y);
+	if (ops == NULL)
+		return(NULL);
+	dev = hashdev(ops, x, y, TRUE);
+	return(dev);
 }
 
 /*
@@ -331,18 +368,18 @@ destroy_dev(cdev_t dev)
 	}
 	if (dev_ref_debug) {
 		kprintf("destroy   dev %p %s(minor=%08x) refs=%d\n", 
-			dev, devtoname(dev), uminor(dev->si_udev),
+			dev, devtoname(dev), dev->si_uminor,
 			dev->si_sysref.refcnt);
 	}
 	if (dev->si_sysref.refcnt < 2) {
 		kprintf("destroy_dev(): too few references on device! "
 			"%p %s(minor=%08x) refs=%d\n",
-		    dev, devtoname(dev), uminor(dev->si_udev),
+		    dev, devtoname(dev), dev->si_uminor,
 		    dev->si_sysref.refcnt);
 	}
 	dev->si_flags &= ~SI_ADHOC;
 	if (dev->si_flags & SI_HASHED) {
-		hash = dev->si_udev % DEVT_HASH;
+		hash = __devthash(dev->si_umajor, dev->si_uminor);
 		LIST_REMOVE(dev, si_hash);
 		dev->si_flags &= ~SI_HASHED;
 	}
@@ -368,10 +405,8 @@ destroy_dev(cdev_t dev)
  * values. 
  *
  * Unlike the ops functions whos link structures do not contain
- * any major bits, this function scans through the dev list via si_udev
- * which is a 32 bit field that contains both major and minor bits.
- * Because of this, we must mask the minor bits in the passed mask variable
- * to allow -1 to be specified generically.
+ * any major bits, this function scans through the dev list via
+ * si_umajor/si_uminor.
  *
  * The caller must not include any major bits in the match value.
  */
@@ -382,14 +417,13 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 	cdev_t dev;
 	cdev_t ndev;
 
-	mask = uminor(mask);
 	for (i = 0; i < DEVT_HASH; ++i) {
 		ndev = LIST_FIRST(&dev_hash[i]);
 		while ((dev = ndev) != NULL) {
 		    ndev = LIST_NEXT(dev, si_hash);
 		    KKASSERT(dev->si_flags & SI_ADHOC);
 		    if (dev->si_ops == ops && 
-			(dev->si_udev & mask) == match
+			((u_int)dev->si_uminor & mask) == match
 		    ) {
 			reference_dev(dev);
 			destroy_dev(dev);
@@ -414,7 +448,7 @@ reference_dev(cdev_t dev)
 		sysref_get(&dev->si_sysref);
 		if (dev_ref_debug) {
 			kprintf("reference dev %p %s(minor=%08x) refs=%d\n", 
-			    dev, devtoname(dev), uminor(dev->si_udev),
+			    dev, devtoname(dev), dev->si_uminor,
 			    dev->si_sysref.refcnt);
 		}
 	}
@@ -425,7 +459,7 @@ reference_dev(cdev_t dev)
  * release a reference on a device.  The device will be terminated when the
  * last reference has been released.
  *
- * NOTE: we must use si_udev to figure out the original (major, minor),
+ * NOTE: we must use si_umajor to figure out the original major number,
  * because si_ops could already be pointing at dead_dev_ops.
  */
 void
@@ -444,7 +478,7 @@ cdev_terminate(struct cdev *dev)
 
 	if (dev_ref_debug) {
 		kprintf("release   dev %p %s(minor=%08x) refs=%d\n", 
-			dev, devtoname(dev), uminor(dev->si_udev),
+			dev, devtoname(dev), dev->si_uminor,
 			dev->si_sysref.refcnt);
 	}
 	if (dev->si_flags & SI_ADHOC) {

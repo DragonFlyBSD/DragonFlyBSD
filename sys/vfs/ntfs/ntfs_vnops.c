@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.39 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.40 2007/05/09 00:53:36 dillon Exp $
  *
  */
 
@@ -238,7 +238,8 @@ ntfs_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = ip->i_nlink;
 	vap->va_uid = ip->i_mp->ntm_uid;
 	vap->va_gid = ip->i_mp->ntm_gid;
-	vap->va_rdev = 0;				/* XXX UNODEV ? */
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	vap->va_size = fp->f_size;
 	vap->va_bytes = fp->f_allocated;
 	vap->va_atime = ntfs_nttimetounix(fp->f_times.t_access);

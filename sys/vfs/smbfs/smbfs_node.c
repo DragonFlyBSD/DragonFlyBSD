@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.23 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.24 2007/05/09 00:53:36 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -410,7 +410,8 @@ smbfs_attr_cachelookup(struct vnode *vp, struct vattr *va)
 	va->va_atime = va->va_ctime = va->va_mtime;	/* time file changed */
 	va->va_gen = VNOVAL;		/* generation number of file */
 	va->va_flags = 0;		/* flags defined for file */
-	va->va_rdev = VNOVAL;		/* device the special file represents */
+	va->va_rmajor = VNOVAL;		/* device the special file represents */
+	va->va_rminor = VNOVAL;
 	va->va_bytes = va->va_size;	/* bytes of disk space held by file */
 	va->va_filerev = 0;		/* file modification number */
 	va->va_vaflags = 0;		/* operations flags */

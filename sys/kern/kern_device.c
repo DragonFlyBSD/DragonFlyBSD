@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.23 2007/04/29 06:11:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.24 2007/05/09 00:53:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -42,6 +42,7 @@
 #include <sys/vnode.h>
 #include <sys/queue.h>
 #include <sys/device.h>
+#include <sys/tree.h>
 #include <sys/syslink_rpc.h>
 #include <sys/proc.h>
 #include <machine/stdarg.h>
@@ -94,11 +95,6 @@ struct dev_ops default_dev_ops = {
 	.d_clone = noclone
 };
     
-/*
- * This is used to look-up devices
- */
-static struct dev_ops_link *dev_ops_array[NUMCDEVSW];
-
 /************************************************************************
  *			GENERAL DEVICE API FUNCTIONS			*
  ************************************************************************/
@@ -380,11 +376,13 @@ compile_dev_ops(struct dev_ops *ops)
 /*
  * This makes a dev_ops entry visible to userland (e.g /dev/<blah>).
  *
- * The kernel can overload a major number by making multiple dev_ops_add()
- * calls, but only the most recent one (the first one in the dev_ops_array[]
- * list matching the mask/match) will be visible to userland.  make_dev() does
- * not automatically call dev_ops_add() (nor do we want it to, since 
- * partition-managed disk devices are overloaded on top of the raw device).
+ * The kernel can overload a data space by making multiple dev_ops_add()
+ * calls, but only the most recent one in the list matching the mask/match
+ * will be visible to userland.
+ *
+ * make_dev() does not automatically call dev_ops_add() (nor do we want it
+ * to, since partition-managed disk devices are overloaded on top of the
+ * raw device).
  *
  * Disk devices typically register their major, e.g. 'ad0', and then call
  * into the disk label management code which overloads its own onto e.g. 'ad0'
@@ -397,20 +395,44 @@ compile_dev_ops(struct dev_ops *ops)
  * may be conveniently specified as -1 without creating any major number
  * interference.
  */
+
+static
+int
+rb_dev_ops_compare(struct dev_ops_maj *a, struct dev_ops_maj *b)
+{
+    if (a->maj < b->maj)
+	return(-1);
+    else if (a->maj > b->maj)
+	return(1);
+    return(0);
+}
+
+RB_GENERATE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int, maj);
+
+struct dev_ops_rb_tree dev_ops_rbhead = RB_INITIALIZER(dev_ops_rbhead);
+
 int
 dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 {
-    int maj;
+    static int next_maj = 256;		/* first dynamic major number */
+    struct dev_ops_maj *rbmaj;
     struct dev_ops_link *link;
 
     compile_dev_ops(ops);
-    maj = ops->head.maj;
-    if (maj < 0 || maj >= NUMCDEVSW) {
-	    kprintf("%s: ERROR: driver has bogus dev_ops->head.maj = %d\n",
-		   ops->head.name, maj);
-	    return (EINVAL);
+    if (ops->head.maj < 0) {
+	while (dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, next_maj) != NULL) {
+		if (++next_maj <= 0)
+			next_maj = 256;
+	}
+	ops->head.maj = next_maj;
     }
-    for (link = dev_ops_array[maj]; link; link = link->next) {
+    rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, ops->head.maj);
+    if (rbmaj == NULL) {
+	rbmaj = kmalloc(sizeof(*rbmaj), M_DEVBUF, M_INTWAIT | M_ZERO);
+	rbmaj->maj = ops->head.maj;
+	dev_ops_rb_tree_RB_INSERT(&dev_ops_rbhead, rbmaj);
+    }
+    for (link = rbmaj->link; link; link = link->next) {
 	    /*
 	     * If we get an exact match we usurp the target, but we only print
 	     * a warning message if a different device switch is installed.
@@ -418,7 +440,7 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 	    if (link->mask == mask && link->match == match) {
 		    if (link->ops != ops) {
 			    kprintf("WARNING: \"%s\" (%p) is usurping \"%s\"'s"
-				" (%p) dev_ops_array[]\n",
+				" (%p)\n",
 				ops->head.name, ops, 
 				link->ops->head.name, link->ops);
 			    link->ops = ops;
@@ -435,8 +457,8 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
     link->mask = mask;
     link->match = match;
     link->ops = ops;
-    link->next = dev_ops_array[maj];
-    dev_ops_array[maj] = link;
+    link->next = rbmaj->link;
+    rbmaj->link = link;
     ++ops->head.refs;
     return(0);
 }
@@ -456,11 +478,13 @@ dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 struct dev_ops *
 dev_ops_get(int x, int y)
 {
+	struct dev_ops_maj *rbmaj;
 	struct dev_ops_link *link;
 
-	if (x < 0 || x >= NUMCDEVSW)
+	rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, x);
+	if (rbmaj == NULL)
 		return(NULL);
-	for (link = dev_ops_array[x]; link; link = link->next) {
+	for (link = rbmaj->link; link; link = link->next) {
 		if (y == -1 || (link->mask & y) == link->match)
 			return(link->ops);
 	}
@@ -502,25 +526,27 @@ dev_ops_add_override(cdev_t backing_dev, struct dev_ops *template,
 int
 dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 {
-	int maj = ops->head.maj;
+	struct dev_ops_maj *rbmaj;
 	struct dev_ops_link *link;
 	struct dev_ops_link **plink;
      
-	if (maj < 0 || maj >= NUMCDEVSW) {
-		kprintf("%s: ERROR: driver has bogus ops->d_maj = %d\n",
-			ops->head.name, maj);
-		return EINVAL;
-	}
 	if (ops != &dead_dev_ops)
 		destroy_all_devs(ops, mask, match);
-	for (plink = &dev_ops_array[maj]; (link = *plink) != NULL;
+
+	rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, ops->head.maj);
+	if (rbmaj == NULL) {
+		kprintf("double-remove of dev_ops %p for %s(%d)\n",
+			ops, ops->head.name, ops->head.maj);
+		return(0);
+	}
+	for (plink = &rbmaj->link; (link = *plink) != NULL;
 	     plink = &link->next) {
 		if (link->mask == mask && link->match == match) {
 			if (link->ops == ops)
 				break;
-			kprintf("%s: ERROR: cannot remove from dev_ops_array[], "
+			kprintf("%s: ERROR: cannot remove dev_ops, "
 			       "its major number %d was stolen by %s\n",
-				ops->head.name, maj,
+				ops->head.name, ops->head.maj,
 				link->ops->head.name
 			);
 		}
@@ -528,21 +554,71 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 	if (link == NULL) {
 		kprintf("%s(%d)[%08x/%08x]: WARNING: ops removed "
 		       "multiple times!\n",
-		       ops->head.name, maj, mask, match);
+		       ops->head.name, ops->head.maj, mask, match);
 	} else {
 		*plink = link->next;
 		--ops->head.refs; /* XXX ops_release() / record refs */
 		kfree(link, M_DEVBUF);
 	}
-	if (dev_ops_array[maj] == NULL && ops->head.refs != 0) {
+
+	/*
+	 * Scrap the RB tree node for the major number if no ops are
+	 * installed any longer.
+	 */
+	if (rbmaj->link == NULL) {
+		dev_ops_rb_tree_RB_REMOVE(&dev_ops_rbhead, rbmaj);
+		kfree(rbmaj, M_DEVBUF);
+	}
+
+	if (ops->head.refs != 0) {
 		kprintf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
 			"while %d device refs still exist!\n", 
-			ops->head.name, maj, mask, match, ops->head.refs);
+			ops->head.name, ops->head.maj, mask, match,
+			ops->head.refs);
 	} else {
-		kprintf("%s: ops removed\n", ops->head.name);
+		if (bootverbose)
+			kprintf("%s: ops removed\n", ops->head.name);
 	}
 	return 0;
 }
+
+/*
+ * dev_ops_scan() - Issue a callback for all installed dev_ops structures.
+ *
+ * The scan will terminate if a callback returns a negative number.
+ */
+struct dev_ops_scan_info {
+	int	(*callback)(struct dev_ops *, void *);
+	void	*arg;
+};
+
+static
+int
+dev_ops_scan_callback(struct dev_ops_maj *rbmaj, void *arg)
+{
+	struct dev_ops_scan_info *info = arg;
+	struct dev_ops_link *link;
+	int count = 0;
+	int r;
+
+	for (link = rbmaj->link; link; link = link->next) {
+		r = info->callback(link->ops, info->arg);
+		if (r < 0)
+			return(r);
+		count += r;
+	}
+	return(count);
+}
+
+int
+dev_ops_scan(int (*callback)(struct dev_ops *, void *), void *arg)
+{
+	struct dev_ops_scan_info info = { callback, arg };
+
+	return (dev_ops_rb_tree_RB_SCAN(&dev_ops_rbhead, NULL,
+					dev_ops_scan_callback, &info));
+}
+
 
 /*
  * Release a ops entry.  When the ref count reaches zero, recurse
@@ -551,10 +627,10 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 void
 dev_ops_release(struct dev_ops *ops)
 {
-    --ops->head.refs;
-    if (ops->head.refs == 0) {
-	/* XXX */
-    }
+	--ops->head.refs;
+	if (ops->head.refs == 0) {
+		/* XXX */
+	}
 }
 
 struct dev_ops *

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.36 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.37 2007/05/09 00:53:35 dillon Exp $
  */
 
 /*
@@ -297,7 +297,8 @@ fdesc_getattr(struct vop_getattr_args *ap)
 		vap->va_ctime = vap->va_mtime;
 		vap->va_gen = 0;
 		vap->va_flags = 0;
-		vap->va_rdev = 0;
+		vap->va_rmajor = VNOVAL;
+		vap->va_rminor = VNOVAL;
 		vap->va_bytes = 0;
 		break;
 
@@ -326,7 +327,8 @@ fdesc_getattr(struct vop_getattr_args *ap)
 			vap->va_fileid = VTOFDESC(vp)->fd_ix;
 			vap->va_size = stb.st_size;
 			vap->va_blocksize = stb.st_blksize;
-			vap->va_rdev = stb.st_rdev;
+			vap->va_rmajor = umajor(stb.st_rdev);
+			vap->va_rminor = uminor(stb.st_rdev);
 
 			/*
 			 * If no time data is provided, use the current time.

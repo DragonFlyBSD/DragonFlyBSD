@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.40 2007/05/07 05:21:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.41 2007/05/09 00:53:34 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2977,7 +2977,6 @@ siocninit_fini(struct consdev *cp)
 {
 	int unit;
 
-	kprintf("CP %d\n", cp->cn_probegood);
 	if (cp->cn_probegood) {
 		unit = (int)(intptr_t)cp->cn_private;
 		cp->cn_dev = make_dev(&sio_ops, unit,

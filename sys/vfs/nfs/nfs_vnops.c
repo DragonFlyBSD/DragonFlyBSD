@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.70 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.71 2007/05/09 00:53:35 dillon Exp $
  */
 
 
@@ -1363,14 +1363,16 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 	caddr_t bpos, dpos;
 	int error = 0, wccflag = NFSV3_WCCRATTR, gotvp = 0;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
-	u_int32_t rdev;
+	int rmajor, rminor;
 	int v3 = NFS_ISV3(dvp);
 
-	if (vap->va_type == VCHR || vap->va_type == VBLK)
-		rdev = txdr_unsigned(vap->va_rdev);
-	else if (vap->va_type == VFIFO || vap->va_type == VSOCK)
-		rdev = nfs_xdrneg1;
-	else {
+	if (vap->va_type == VCHR || vap->va_type == VBLK) {
+		rmajor = txdr_unsigned(vap->va_rmajor);
+		rminor = txdr_unsigned(vap->va_rminor);
+	} else if (vap->va_type == VFIFO || vap->va_type == VSOCK) {
+		rmajor = nfs_xdrneg1;
+		rminor = nfs_xdrneg1;
+	} else {
 		return (EOPNOTSUPP);
 	}
 	if ((error = VOP_GETATTR(dvp, &vattr)) != 0) {
@@ -1387,15 +1389,15 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 		nfsm_v3attrbuild(vap, FALSE);
 		if (vap->va_type == VCHR || vap->va_type == VBLK) {
 			nfsm_build(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
-			*tl++ = txdr_unsigned(umajor(vap->va_rdev));
-			*tl = txdr_unsigned(uminor(vap->va_rdev));
+			*tl++ = txdr_unsigned(vap->va_rmajor);
+			*tl = txdr_unsigned(vap->va_rminor);
 		}
 	} else {
 		nfsm_build(sp, struct nfsv2_sattr *, NFSX_V2SATTR);
 		sp->sa_mode = vtonfsv2_mode(vap->va_type, vap->va_mode);
 		sp->sa_uid = nfs_xdrneg1;
 		sp->sa_gid = nfs_xdrneg1;
-		sp->sa_size = rdev;
+		sp->sa_size = makeudev(rmajor, rminor);
 		txdr_nfsv2time(&vap->va_atime, &sp->sa_atime);
 		txdr_nfsv2time(&vap->va_mtime, &sp->sa_mtime);
 	}

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.37 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.38 2007/05/09 00:53:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -857,7 +857,9 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		if (args->mode & S_IFIFO) {
 			error = kern_mkfifo(&nd, args->mode);
 		} else {
-			error = kern_mknod(&nd, args->mode, args->dev);
+			error = kern_mknod(&nd, args->mode,
+					   umajor(args->dev),
+					   uminor(args->dev));
 		}
 	}
 	nlookup_done(&nd);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.32 2007/01/25 18:19:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.33 2007/05/09 00:53:34 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -1229,8 +1229,12 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
 	jrecord_leaf(jrec, JLEAF_GEN, &vat->va_gen, sizeof(vat->va_gen));
     if (vat->va_flags != VNOVAL)
 	jrecord_leaf(jrec, JLEAF_FLAGS, &vat->va_flags, sizeof(vat->va_flags));
-    if (vat->va_rdev != VNOVAL)
-	jrecord_leaf(jrec, JLEAF_UDEV, &vat->va_rdev, sizeof(vat->va_rdev));
+    if (vat->va_rmajor != VNOVAL) {
+	udev_t rdev = makeudev(vat->va_rmajor, vat->va_rminor);
+	jrecord_leaf(jrec, JLEAF_UDEV, &rdev, sizeof(rdev));
+	jrecord_leaf(jrec, JLEAF_UMAJOR, &vat->va_rmajor, sizeof(vat->va_rmajor));
+	jrecord_leaf(jrec, JLEAF_UMINOR, &vat->va_rminor, sizeof(vat->va_rminor));
+    }
 #if 0
     if (vat->va_filerev != VNOVAL)
 	jrecord_leaf(jrec, JLEAF_FILEREV, &vat->va_filerev, sizeof(vat->va_filerev));

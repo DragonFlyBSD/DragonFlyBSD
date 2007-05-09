@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.7 2007/02/25 23:17:12 corecode Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.8 2007/05/09 00:53:34 dillon Exp $
 set remotebaud 38400
 set remotetimeout 1
 set complaints 1
@@ -229,9 +229,10 @@ end
 define bpp
 set $bp = (struct buf *) $arg0
     if $bp->b_dev
-      printf "  Buffer at 0x%x: dev 0x%x  data 0x%x  bcount 0x%x  doffset 0x%llx resid 0x%x\n", \
+      printf "  Buffer at 0x%x: dev 0x%x:0x%x  data 0x%x  bcount 0x%x  doffset 0x%llx resid 0x%x\n", \
         $bp, \
-        $bp->b_dev->si_udev, \
+        $bp->b_dev->si_umajor, \
+        $bp->b_dev->si_uminor, \
         $bp->b_data, \
         $bp->b_bcount, \
         $bp->b_bio_array[1].bio_offset, \

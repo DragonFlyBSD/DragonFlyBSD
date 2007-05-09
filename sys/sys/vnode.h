@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.74 2007/05/06 19:23:33 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.75 2007/05/09 00:53:35 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -209,7 +209,8 @@ struct vnode {
 	union {
 		struct socket	*vu_socket;	/* unix ipc (VSOCK) */
 		struct {
-			udev_t	vu_udev;	/* device number for attach */
+			int	vu_umajor;	/* device number for attach */
+			int	vu_uminor;
 			struct cdev	*vu_cdevinfo; /* device (VCHR, VBLK) */
 			SLIST_ENTRY(vnode) vu_cdevnext;
 		} vu_cdev;
@@ -242,7 +243,8 @@ struct vnode {
 	void	*v_xaddr;
 };
 #define	v_socket	v_un.vu_socket
-#define v_udev		v_un.vu_cdev.vu_udev
+#define v_umajor	v_un.vu_cdev.vu_umajor
+#define v_uminor	v_un.vu_cdev.vu_uminor
 #define	v_rdev		v_un.vu_cdev.vu_cdevinfo
 #define	v_cdevnext	v_un.vu_cdev.vu_cdevnext
 #define	v_fifoinfo	v_un.vu_fifoinfo
@@ -444,7 +446,7 @@ struct uio;
 struct vattr;
 struct vnode;
 
-void	addaliasu (struct vnode *vp, udev_t nvp_udev);
+void	addaliasu (struct vnode *vp, int x, int y);
 int	v_associate_rdev(struct vnode *vp, cdev_t dev);
 void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (cdev_t dev, struct vnode **vpp);

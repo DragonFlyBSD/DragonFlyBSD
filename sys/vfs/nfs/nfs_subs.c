@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.45 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.46 2007/05/09 00:53:35 dillon Exp $
  */
 
 /*
@@ -1124,6 +1124,7 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	int32_t t1;
 	caddr_t cp2;
 	int error = 0;
+	int rmajor, rminor;
 	udev_t rdev;
 	struct mbuf *md;
 	enum vtype vtyp;
@@ -1139,8 +1140,8 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	if (v3) {
 		vtyp = nfsv3tov_type(fp->fa_type);
 		vmode = fxdr_unsigned(u_short, fp->fa_mode);
-		rdev = makeudev(fxdr_unsigned(int, fp->fa3_rdev.specdata1),
-			fxdr_unsigned(int, fp->fa3_rdev.specdata2));
+		rmajor = (int)fxdr_unsigned(int, fp->fa3_rdev.specdata1);
+		rminor = (int)fxdr_unsigned(int, fp->fa3_rdev.specdata2);
 		fxdr_nfsv3time(&fp->fa3_mtime, &mtime);
 	} else {
 		vtyp = nfsv2tov_type(fp->fa_type);
@@ -1167,6 +1168,8 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 		if (vtyp == VNON || (vtyp == VREG && (vmode & S_IFMT) != 0))
 			vtyp = IFTOVT(vmode);
 		rdev = fxdr_unsigned(int32_t, fp->fa2_rdev);
+		rmajor = umajor(rdev);
+		rminor = uminor(rdev);
 		fxdr_nfsv2time(&fp->fa2_mtime, &mtime);
 
 		/*
@@ -1190,7 +1193,7 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 			vp->v_ops = &vp->v_mount->mnt_vn_fifo_ops;
 		} else if (vp->v_type == VCHR || vp->v_type == VBLK) {
 			vp->v_ops = &vp->v_mount->mnt_vn_spec_ops;
-			addaliasu(vp, rdev);
+			addaliasu(vp, rmajor, rminor);
 		} else {
 			vp->v_ops = &vp->v_mount->mnt_vn_use_ops;
 		}
@@ -1217,7 +1220,8 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	vap = &np->n_vattr;
 	vap->va_type = vtyp;
 	vap->va_mode = (vmode & 07777);
-	vap->va_rdev = rdev;
+	vap->va_rmajor = rmajor;
+	vap->va_rminor = rminor;
 	vap->va_mtime = mtime;
 	vap->va_fsid = vp->v_mount->mnt_stat.f_fsid.val[0];
 	if (v3) {
@@ -1763,8 +1767,8 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 		fp->fa_mode = vtonfsv3_mode(vap->va_mode);
 		txdr_hyper(vap->va_size, &fp->fa3_size);
 		txdr_hyper(vap->va_bytes, &fp->fa3_used);
-		fp->fa3_rdev.specdata1 = txdr_unsigned(umajor(vap->va_rdev));
-		fp->fa3_rdev.specdata2 = txdr_unsigned(uminor(vap->va_rdev));
+		fp->fa3_rdev.specdata1 = txdr_unsigned(vap->va_rmajor);
+		fp->fa3_rdev.specdata2 = txdr_unsigned(vap->va_rminor);
 		fp->fa3_fsid.nfsuquad[0] = 0;
 		fp->fa3_fsid.nfsuquad[1] = txdr_unsigned(vap->va_fsid);
 		fp->fa3_fileid.nfsuquad[0] = 0;
@@ -1780,7 +1784,7 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 		if (vap->va_type == VFIFO)
 			fp->fa2_rdev = 0xffffffff;
 		else
-			fp->fa2_rdev = txdr_unsigned(vap->va_rdev);
+			fp->fa2_rdev = txdr_unsigned(makeudev(vap->va_rmajor, vap->va_rminor));
 		fp->fa2_blocks = txdr_unsigned(vap->va_bytes / NFS_FABLKSIZE);
 		fp->fa2_fsid = txdr_unsigned(vap->va_fsid);
 		fp->fa2_fileid = txdr_unsigned(vap->va_fileid);

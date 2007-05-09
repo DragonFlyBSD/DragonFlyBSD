@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.59 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.60 2007/05/09 00:53:36 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -220,6 +220,15 @@ ufs_mknod(struct vop_old_mknod_args *ap)
 	ino_t ino;
 	int error;
 
+	/*
+	 * UFS cannot represent the entire major/minor range supported by
+	 * the kernel.
+	 */
+	if (vap->va_rmajor != VNOVAL &&
+	    makeudev(vap->va_rmajor, vap->va_rminor) == NOUDEV) {
+		return(EINVAL);
+	}
+
 	error = ufs_makeinode(MAKEIMODE(vap->va_type, vap->va_mode),
 	    ap->a_dvp, vpp, ap->a_cnp);
 	if (error)
@@ -227,12 +236,12 @@ ufs_mknod(struct vop_old_mknod_args *ap)
 	VN_KNOTE(ap->a_dvp, NOTE_WRITE);
 	ip = VTOI(*vpp);
 	ip->i_flag |= IN_ACCESS | IN_CHANGE | IN_UPDATE;
-	if (vap->va_rdev != VNOVAL) {
+	if (vap->va_rmajor != VNOVAL) {
 		/*
 		 * Want to be able to use this to make badblock
 		 * inodes, so don't truncate the dev number.
 		 */
-		ip->i_rdev = vap->va_rdev;
+		ip->i_rdev = makeudev(vap->va_rmajor, vap->va_rminor);
 	}
 	/*
 	 * Remove inode, then reload it through VFS_VGET so it is
@@ -415,7 +424,8 @@ ufs_getattr(struct vop_getattr_args *ap)
 	    ip->i_effnlink : ip->i_nlink;
 	vap->va_uid = ip->i_uid;
 	vap->va_gid = ip->i_gid;
-	vap->va_rdev = ip->i_rdev;
+	vap->va_rmajor = umajor(ip->i_rdev);
+	vap->va_rminor = uminor(ip->i_rdev);
 	vap->va_size = ip->i_din.di_size;
 	vap->va_atime.tv_sec = ip->i_atime;
 	vap->va_atime.tv_nsec = ip->i_atimensec;
@@ -454,7 +464,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rdev != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
 	    ((int)vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 		return (EINVAL);
 	}
@@ -2100,7 +2110,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 	case VCHR:
 	case VBLK:
 		vp->v_ops = &mntp->mnt_vn_spec_ops;
-		addaliasu(vp, ip->i_rdev);
+		addaliasu(vp, umajor(ip->i_rdev), uminor(ip->i_rdev));
 		break;
 	case VFIFO:
 		vp->v_ops = &mntp->mnt_vn_fifo_ops;

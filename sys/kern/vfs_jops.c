@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.33 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.34 2007/05/09 00:53:34 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -703,8 +703,12 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
 	    jrecord_leaf(jrec, JLEAF_GEN, &attr.va_gen, sizeof(attr.va_gen));
 	if ((jrflags & JRUNDO_FLAGS) && attr.va_flags != VNOVAL)
 	    jrecord_leaf(jrec, JLEAF_FLAGS, &attr.va_flags, sizeof(attr.va_flags));
-	if ((jrflags & JRUNDO_UDEV) && attr.va_rdev != VNOVAL)
-	    jrecord_leaf(jrec, JLEAF_UDEV, &attr.va_rdev, sizeof(attr.va_rdev));
+	if ((jrflags & JRUNDO_UDEV) && attr.va_rmajor != VNOVAL) {
+	    udev_t rdev = makeudev(attr.va_rmajor, attr.va_rminor);
+	    jrecord_leaf(jrec, JLEAF_UDEV, &rdev, sizeof(rdev));
+	    jrecord_leaf(jrec, JLEAF_UMAJOR, &attr.va_rmajor, sizeof(attr.va_rmajor));
+	    jrecord_leaf(jrec, JLEAF_UMINOR, &attr.va_rminor, sizeof(attr.va_rminor));
+	}
 	jrecord_pop(jrec, save2);
     }
 

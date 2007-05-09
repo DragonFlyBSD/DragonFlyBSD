@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.25 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.26 2007/05/09 00:53:36 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -314,7 +314,8 @@ nwfs_attr_cacheenter(struct vnode *vp, const struct nw_entry_info *fi)
 	va->va_ctime = va->va_mtime;	/* time file changed */
 	va->va_gen = VNOVAL;		/* generation number of file */
 	va->va_flags = 0;		/* flags defined for file */
-	va->va_rdev = VNOVAL;		/* device the special file represents */
+	va->va_rmajor = VNOVAL;		/* device the special file represents */
+	va->va_rminor = VNOVAL;
 	va->va_bytes = va->va_size;	/* bytes of disk space held by file */
 	va->va_filerev = 0;		/* file modification number */
 	va->va_vaflags = 0;		/* operations flags */

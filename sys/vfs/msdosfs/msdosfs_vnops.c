@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.46 2007/05/06 19:23:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.47 2007/05/09 00:53:35 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -355,7 +355,8 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	vap->va_uid = pmp->pm_uid;
 	vap->va_gid = pmp->pm_gid;
 	vap->va_nlink = 1;
-	vap->va_rdev = 0;
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	vap->va_size = dep->de_FileSize;
 	dos2unixtime(dep->de_MDate, dep->de_MTime, 0, &vap->va_mtime);
 	if (pmp->pm_flags & MSDOSFSMNT_LONGNAME) {
@@ -401,14 +402,14 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rdev != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 #ifdef MSDOSFS_DEBUG
 		kprintf("msdosfs_setattr(): returning EINVAL\n");
 		kprintf("    va_type %d, va_nlink %x, va_fsid %lx, va_fileid %lx\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
-		kprintf("    va_blocksize %lx, va_rdev %x, va_bytes %qx, va_gen %lx\n",
-		    vap->va_blocksize, vap->va_rdev, vap->va_bytes, vap->va_gen);
+		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %qx, va_gen %lx\n",
+		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes, vap->va_gen);
 		kprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
 #endif

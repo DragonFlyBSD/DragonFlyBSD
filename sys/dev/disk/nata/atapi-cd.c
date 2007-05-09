@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.4 2007/01/09 20:56:16 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.5 2007/05/09 00:53:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -818,7 +818,7 @@ acd_start(device_t dev, struct bio *bp)
     bzero(ccb, sizeof(ccb));
 
     /* AND the unit number out of the minor, and shift the tracknumber back */
-    track = (cdev->si_udev & 0x00ff0000) >> 16;
+    track = (cdev->si_uminor & 0x00ff0000) >> 16;
 
     if (track) {
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;

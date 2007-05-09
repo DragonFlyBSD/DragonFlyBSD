@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.45 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.46 2007/05/09 00:53:35 dillon Exp $
  */
 
 
@@ -310,7 +310,7 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		error = ENOTBLK;
 		goto error_2;
 	}
-	if (umajor(devvp->v_udev) >= nblkdev) {
+	if (devvp->v_umajor >= nblkdev) {
 		error = ENXIO;
 		goto error_2;
 	}
@@ -406,7 +406,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = count_udev(devvp->v_udev);
+	ncount = count_udev(devvp->v_umajor, devvp->v_uminor);
 #if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;

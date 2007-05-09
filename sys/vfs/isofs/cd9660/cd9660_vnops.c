@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.33 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.34 2007/05/09 00:53:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -214,7 +214,8 @@ cd9660_getattr(struct vop_getattr_args *ap)
 	vap->va_atime	= ip->inode.iso_atime;
 	vap->va_mtime	= ip->inode.iso_mtime;
 	vap->va_ctime	= ip->inode.iso_ctime;
-	vap->va_rdev	= ip->inode.iso_rdev;
+	vap->va_rmajor	= umajor(ip->inode.iso_rdev);
+	vap->va_rminor	= uminor(ip->inode.iso_rdev);
 
 	vap->va_size	= (u_quad_t)(unsigned long)ip->i_size;
 	if (ip->i_size == 0 && (vap->va_mode & S_IFMT) == S_IFLNK) {

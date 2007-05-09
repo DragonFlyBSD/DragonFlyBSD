@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.49 2006/10/27 04:56:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.50 2007/05/09 00:53:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -847,7 +847,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	sb->st_nlink = vap->va_nlink;
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
-	sb->st_rdev = vap->va_rdev;
+	sb->st_rdev = makeudev(vap->va_rmajor, vap->va_rminor);
 	sb->st_size = vap->va_size;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;
@@ -889,8 +889,10 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 */
 		cdev_t dev;
 
-		if ((dev = vp->v_rdev) == NULL)
-			dev = udev2dev(vp->v_udev, vp->v_type == VBLK);
+		if ((dev = vp->v_rdev) == NULL) {
+			if (vp->v_type == VCHR)
+				dev = get_dev(vp->v_umajor, vp->v_uminor);
+		}
 		sb->st_blksize = dev->si_bsize_best;
 		if (sb->st_blksize < dev->si_bsize_phys)
 			sb->st_blksize = dev->si_bsize_phys;

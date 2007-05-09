@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.50 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.51 2007/05/09 00:53:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -140,13 +140,14 @@ spec_open(struct vop_open_args *ap)
 	struct vnode *vp = ap->a_vp;
 	cdev_t dev;
 	int error;
-	int isblk = (vp->v_type == VBLK) ? 1 : 0;
 	const char *cp;
 
 	/*
 	 * Don't allow open if fs is mounted -nodev.
 	 */
 	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_NODEV))
+		return (ENXIO);
+	if (vp->v_type == VBLK)
 		return (ENXIO);
 
 	/*
@@ -157,7 +158,7 @@ spec_open(struct vop_open_args *ap)
 	 * it when replacing the rdev reference.
 	 */
 	if (vp->v_rdev != NULL) {
-		dev = udev2dev(vp->v_udev, isblk);
+		dev = get_dev(vp->v_umajor, vp->v_uminor);
 		if (dev != vp->v_rdev) {
 			int oc = vp->v_opencount;
 			kprintf(
@@ -165,7 +166,7 @@ spec_open(struct vop_open_args *ap)
 			    vp->v_rdev->si_name);
 			v_release_rdev(vp);
 			error = v_associate_rdev(vp, 
-					udev2dev(vp->v_udev, isblk));
+					get_dev(vp->v_umajor, vp->v_uminor));
 			if (error) {
 				kprintf(", reacquisition failed\n");
 			} else {
@@ -176,7 +177,7 @@ spec_open(struct vop_open_args *ap)
 			error = 0;
 		}
 	} else {
-		error = v_associate_rdev(vp, udev2dev(vp->v_udev, isblk));
+		error = v_associate_rdev(vp, get_dev(vp->v_umajor, vp->v_uminor));
 	}
 	if (error)
 		return(error);

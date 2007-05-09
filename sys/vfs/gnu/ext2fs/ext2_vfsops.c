@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.52 2006/12/23 00:41:29 swildner Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.53 2007/05/09 00:53:35 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -711,7 +711,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	 */
 	if ((error = vfs_mountedon(devvp)) != 0)
 		return (error);
-	if (count_udev(devvp->v_udev) > 0)
+	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
 		return (EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, 0, 0)) != 0)
 		return (error);

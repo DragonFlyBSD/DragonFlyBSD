@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.28 2007/05/08 02:31:42 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.29 2007/05/09 00:53:34 dillon Exp $
  */
 
 /*
@@ -269,13 +269,13 @@ done:
 /*
  * Spin prompting on the console for a suitable root filesystem
  */
+static int vfs_mountroot_ask_callback(struct dev_ops *ops, void *arg);
+
 static int
 vfs_mountroot_ask(void)
 {
 	char name[128];
-	int i;
 	int llimit = 100;
-	cdev_t dev;
 
 	kprintf("\nManual root filesystem specification:\n");
 	kprintf("  <fstype>:<device>  Specify root (e.g. ufs:da0s1a)\n");
@@ -291,11 +291,7 @@ vfs_mountroot_ask(void)
 			;
 		} else if (name[0] == '?') {
 			kprintf("Possibly valid devices for 'ufs' root:\n");
-			for (i = 0; i < NUMCDEVSW; i++) {
-				dev = udev2dev(makeudev(i, 0), 0);
-				if (dev_is_good(dev))
-					kprintf(" \"%s\"", dev_dname(dev));
-			}
+			dev_ops_scan(vfs_mountroot_ask_callback, NULL);
 			kprintf("\n");
 			continue;
 		} else if (strcmp(name, "panic") == 0) {
@@ -307,6 +303,18 @@ vfs_mountroot_ask(void)
 		}
 	}
 	return(1);
+}
+
+static
+int
+vfs_mountroot_ask_callback(struct dev_ops *ops, void *arg __unused)
+{
+	cdev_t dev;
+
+	dev = get_dev(ops->head.maj, 0);
+	if (dev_is_good(dev))
+		kprintf(" \"%s\"", dev_dname(dev));
+	return(0);
 }
 
 static int
@@ -363,14 +371,23 @@ getline(char *cp, int limit)
  * Convert a given name to the cdev_t of the disk-like device
  * it refers to.
  */
+struct kdbn_info {
+	const char *name;
+	int nlen;
+	int minor;
+	cdev_t dev;
+};
+
+static int kgetdiskbyname_callback(struct dev_ops *ops, void *arg);
+
 cdev_t
 kgetdiskbyname(const char *name) 
 {
 	char *cp;
 	int nlen;
-	int cd, unit, slice, part;
-	cdev_t dev;
+	int unit, slice, part;
 	cdev_t rdev;
+	struct kdbn_info info;
 
 	/*
 	 * Get the base name of the device
@@ -433,18 +450,12 @@ kgetdiskbyname(const char *name)
 	/*
 	 * Locate the device
 	 */
-	for (cd = 0; cd < NUMCDEVSW; cd++) {
-		const char *dname;
-
-		dev = udev2dev(makeudev(cd, dkmakeminor(unit, slice, part)), 0);
-		if (dev_is_good(dev) && (dname = dev_dname(dev)) != NULL) {
-			if (strlen(dname) == nlen &&
-			    strncmp(dname, name, nlen) == 0) {
-				break;
-			}
-		}
-	}
-	if (cd == NUMCDEVSW) {
+	bzero(&info, sizeof(info));
+	info.nlen = nlen;
+	info.name = name;
+	info.minor = dkmakeminor(unit, slice, part);
+	dev_ops_scan(kgetdiskbyname_callback, &info);
+	if (info.dev == NULL) {
 		kprintf("no such device '%*.*s'\n", nlen, nlen, name);
 		return (NULL);
 	}
@@ -452,8 +463,27 @@ kgetdiskbyname(const char *name)
 	/*
 	 * FOUND DEVICE
 	 */
-	rdev = make_sub_dev(dev, dkmakeminor(unit, slice, part));
+	rdev = make_sub_dev(info.dev, info.minor);
 	return(rdev);
+}
+
+static
+int
+kgetdiskbyname_callback(struct dev_ops *ops, void *arg)
+{
+	struct kdbn_info *info = arg;
+	cdev_t dev;
+	const char *dname;
+
+	dev = get_dev(ops->head.maj, info->minor);
+	if (dev_is_good(dev) && (dname = dev_dname(dev)) != NULL) {
+		if (strlen(dname) == info->nlen &&
+		    strncmp(dname, info->name, info->nlen) == 0) {
+			info->dev = dev;
+			return(-1);
+		}
+	}
+	return(0);
 }
 
 /*

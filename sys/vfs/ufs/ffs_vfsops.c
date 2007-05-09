@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.53 2007/04/20 22:20:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.54 2007/05/09 00:53:36 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -319,13 +319,16 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		 * um_devvp, so continue using um_devvp and throw away devvp.
 		 */
 		if (devvp != ump->um_devvp) {
-			if (devvp->v_udev == ump->um_devvp->v_udev) {
+			if (devvp->v_umajor == ump->um_devvp->v_umajor &&
+			    devvp->v_uminor == ump->um_devvp->v_uminor) {
 				vrele(devvp);
 				devvp = ump->um_devvp;
 			} else {
 				kprintf("cannot update mount, udev does"
-					" not match %08x vs %08x\n",
-					devvp->v_udev, ump->um_devvp->v_udev);
+					" not match %08x:%08x vs %08x:%08x\n",
+					devvp->v_umajor, devvp->v_uminor,
+					ump->um_devvp->v_umajor,
+					ump->um_devvp->v_uminor);
 				error = EINVAL;	/* needs translation */
 			}
 		} else {
@@ -612,7 +615,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	if (count_udev(devvp->v_udev) > 0)
+	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);

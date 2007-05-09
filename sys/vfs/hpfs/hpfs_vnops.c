@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.40 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.41 2007/05/09 00:53:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -460,7 +460,8 @@ hpfs_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = 1;
 	vap->va_uid = hp->h_uid;
 	vap->va_gid = hp->h_gid;
-	vap->va_rdev = 0;				/* XXX UNODEV ? */
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	vap->va_size = hp->h_fn.fn_size;
 	vap->va_bytes = ((hp->h_fn.fn_size + DEV_BSIZE-1) & ~(DEV_BSIZE-1)) +
 			DEV_BSIZE;
@@ -505,7 +506,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rdev != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 		dprintf(("hpfs_setattr: changing nonsettable attr\n"));
 		return (EINVAL);

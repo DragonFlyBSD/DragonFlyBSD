@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.25 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.26 2007/05/09 00:53:36 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -244,7 +244,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return(error);
-	if (count_udev(devvp->v_udev) > 0)
+	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
 		return(EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, 0, 0)))
 		return(error);

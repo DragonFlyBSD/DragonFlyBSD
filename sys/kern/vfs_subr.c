@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.103 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.104 2007/05/09 00:53:34 dillon Exp $
  */
 
 /*
@@ -244,7 +244,8 @@ vattr_null(struct vattr *vap)
 	vap->va_fsid = VNOVAL;
 	vap->va_fileid = VNOVAL;
 	vap->va_blocksize = VNOVAL;
-	vap->va_rdev = VNOVAL;
+	vap->va_rmajor = VNOVAL;
+	vap->va_rminor = VNOVAL;
 	vap->va_atime.tv_sec = VNOVAL;
 	vap->va_atime.tv_nsec = VNOVAL;
 	vap->va_mtime.tv_sec = VNOVAL;
@@ -985,7 +986,8 @@ bdevvp(cdev_t dev, struct vnode **vpp)
 	}
 	vp = nvp;
 	vp->v_type = VCHR;
-	vp->v_udev = dev->si_udev;
+	vp->v_umajor = dev->si_umajor;
+	vp->v_uminor = dev->si_uminor;
 	vx_unlock(vp);
 	*vpp = vp;
 	return (0);
@@ -996,7 +998,7 @@ v_associate_rdev(struct vnode *vp, cdev_t dev)
 {
 	lwkt_tokref ilock;
 
-	if (dev == NULL || dev == NULL)
+	if (dev == NULL)
 		return(ENXIO);
 	if (dev_is_good(dev) == 0)
 		return(ENXIO);
@@ -1032,11 +1034,12 @@ v_release_rdev(struct vnode *vp)
  * disassociated on last close.
  */
 void
-addaliasu(struct vnode *nvp, udev_t nvp_udev)
+addaliasu(struct vnode *nvp, int x, int y)
 {
 	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
 		panic("addaliasu on non-special vnode");
-	nvp->v_udev = nvp_udev;
+	nvp->v_umajor = x;
+	nvp->v_uminor = y;
 }
 
 /*
@@ -1180,10 +1183,10 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	 * The passed vp will probably show up in the list, do not VX lock
 	 * it twice!
 	 */
-	if (vp->v_type != VCHR && vp->v_type != VBLK)
+	if (vp->v_type != VCHR)
 		return(0);
 	if ((dev = vp->v_rdev) == NULL) {
-		if ((dev = udev2dev(vp->v_udev, vp->v_type == VBLK)) == NULL)
+		if ((dev = get_dev(vp->v_umajor, vp->v_uminor)) == NULL)
 			return(0);
 	}
 	reference_dev(dev);
@@ -1317,11 +1320,11 @@ count_dev(cdev_t dev)
 }
 
 int
-count_udev(udev_t udev)
+count_udev(int x, int y)
 {
 	cdev_t dev;
 
-	if ((dev = udev2dev(udev, 0)) == NULL)
+	if ((dev = get_dev(x, y)) == NULL)
 		return(0);
 	return(count_dev(dev));
 }
@@ -1522,8 +1525,10 @@ vfs_mountedon(struct vnode *vp)
 {
 	cdev_t dev;
 
-	if ((dev = vp->v_rdev) == NULL)
-		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
+	if ((dev = vp->v_rdev) == NULL) {
+		if (vp->v_type != VBLK)
+			dev = get_dev(vp->v_uminor, vp->v_umajor);
+	}
 	if (dev != NULL && dev->si_mountpoint)
 		return (EBUSY);
 	return (0);
@@ -2000,14 +2005,15 @@ vn_isdisk(struct vnode *vp, int *errp)
 {
 	cdev_t dev;
 
-	if (vp->v_type != VBLK && vp->v_type != VCHR) {
+	if (vp->v_type != VCHR) {
 		if (errp != NULL)
 			*errp = ENOTBLK;
 		return (0);
 	}
 
 	if ((dev = vp->v_rdev) == NULL)
-		dev = udev2dev(vp->v_udev, (vp->v_type == VBLK));
+		dev = get_dev(vp->v_umajor, vp->v_uminor);
+
 	if (dev == NULL) {
 		if (errp != NULL)
 			*errp = ENXIO;

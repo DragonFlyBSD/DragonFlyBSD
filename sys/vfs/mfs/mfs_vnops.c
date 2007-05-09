@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.34 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.35 2007/05/09 00:53:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ mfs_open(struct vop_open_args *ap)
 
 	if (vp->v_type != VCHR)
 		panic("mfs_open not VCHR");
-	v_associate_rdev(vp, udev2dev(vp->v_udev, 0));
+	v_associate_rdev(vp, get_dev(vp->v_umajor, vp->v_uminor));
 	return (vop_stdopen(ap));
 }
 

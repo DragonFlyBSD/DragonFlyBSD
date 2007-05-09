@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.39 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.40 2007/05/09 00:53:35 dillon Exp $
  */
 
 
@@ -85,10 +85,8 @@ d_open_t	mfsopen;
 d_close_t	mfsclose;
 d_strategy_t	mfsstrategy;
 
-#define MFS_CDEV_MAJOR	253
-
 static struct dev_ops mfs_ops = {
-	{ "MFS", MFS_CDEV_MAJOR, D_DISK },
+	{ "MFS", -1, D_DISK },
 	.d_open =	mfsopen,
 	.d_close =	mfsclose,
 	.d_read =	physread,
@@ -323,7 +321,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	dev->si_bsize_phys = DEV_BSIZE;
 	dev->si_iosize_max = DFLTPHYS;
 	dev->si_drv1 = mfsp;
-	addaliasu(devvp, makeudev(MFS_CDEV_MAJOR, minnum));
+	addaliasu(devvp, mfs_ops.head.maj, minnum);
 	devvp->v_data = mfsp;
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;

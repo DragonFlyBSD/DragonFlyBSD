@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.8 2007/04/26 02:11:00 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.9 2007/05/09 00:53:35 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -39,6 +39,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
 #endif
 #ifndef _SYS_SYSLINK_RPC_H_
 #include <sys/syslink_rpc.h>
@@ -259,6 +262,15 @@ struct dev_ops_link {
 	struct dev_ops	*ops;
 };
 
+struct dev_ops_maj {
+	RB_ENTRY(dev_ops_maj) rbnode; /* red-black tree of major nums */
+	struct dev_ops_link *link;
+	int		maj;
+};
+
+RB_HEAD(dev_ops_rb_tree, dev_ops_maj);
+RB_PROTOTYPE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int);
+
 #ifdef _KERNEL
 
 extern struct dev_ops dead_dev_ops;
@@ -318,6 +330,7 @@ extern struct syslink_desc dev_kqfilter_desc;
 extern struct syslink_desc dev_clone_desc;
 
 void compile_dev_ops(struct dev_ops *);
+int dev_ops_scan(int (*callback)(struct dev_ops *, void *), void *arg);
 int dev_ops_add(struct dev_ops *, u_int mask, u_int match);
 int dev_ops_remove(struct dev_ops *, u_int mask, u_int match);
 void dev_ops_release(struct dev_ops *);

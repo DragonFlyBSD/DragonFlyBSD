@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.28 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.29 2007/05/09 00:53:32 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1157,7 +1157,7 @@ acd_start(struct ata_device *atadev)
 
     bzero(ccb, sizeof(ccb));
 
-    track = (dev->si_udev & 0x00ff0000) >> 16;
+    track = (dev->si_uminor & 0x00ff0000) >> 16;
 
     if (track) {
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
