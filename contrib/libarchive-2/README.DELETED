@@ -1,0 +1,14 @@
+INSTALL
+Makefile.am
+Makefile.in
+aclocal.m4
+config.aux/
+config.h.in
+configure
+configure.ac
+examples/
+libarchive/config_freebsd.h
+libarchive/config_windows.h
+libarchive/test/
+tar/getdate.c
+tar/test/
