@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.21 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.22 2007/05/09 05:12:45 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -386,7 +386,7 @@ nlookup(struct nlookupdata *nd)
 		 */
 		nch = nd->nl_nch;
 		while (nch.ncp == nch.mount->mnt_ncmountpt.ncp)
-			nch = nd->nl_nch.mount->mnt_ncmounton;
+			nch = nch.mount->mnt_ncmounton;
 		nch.ncp = nch.ncp->nc_parent;
 		KKASSERT(nch.ncp != NULL);
 		cache_get(&nch, &nch);
