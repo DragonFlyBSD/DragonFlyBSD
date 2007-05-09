@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.bin/tar/Makefile,v 1.10 2007/05/05 21:16:57 pavalos Exp $
+# $DragonFly: src/usr.bin/tar/Makefile,v 1.11 2007/05/09 19:39:24 pavalos Exp $
 
 PROG=	bsdtar
 SRCS=	bsdtar.c getdate.y matching.c read.c tree.c util.c write.c
@@ -7,7 +7,7 @@ DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
 LDADD=	-larchive -lbz2 -lz
 NOSHARED?=	yes
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.1/tar
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/tar
 .PATH: ${CONTRIBDIR}
 VERSION!=	cat ${CONTRIBDIR}/../version
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I-

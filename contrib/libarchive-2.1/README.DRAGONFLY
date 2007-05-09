@@ -1,8 +1,0 @@
-Original source can be downloaded from:
-http://people.freebsd.org/~kientzle/libarchive/src/
-
-A list of deleted files is in README.DELETED.
-
-This source is used in:
-	lib/libarchive
-	usr.bin/tar

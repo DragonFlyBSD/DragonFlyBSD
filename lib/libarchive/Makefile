@@ -1,9 +1,9 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.11 2007/05/05 21:16:57 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.12 2007/05/09 19:39:23 pavalos Exp $
 
 LIB=	archive
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2.1/libarchive
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/libarchive
 .PATH: ${CONTRIBDIR}
 
 VERSION!=	cat ${CONTRIBDIR}/../version
@@ -23,6 +23,8 @@ INCS=	archive.h archive_entry.h
 SRCS=	archive.h					\
 	archive_check_magic.c				\
 	archive_entry.c					\
+	archive_entry_copy_stat.c			\
+	archive_entry_stat.c				\
 	archive_read.c					\
 	archive_read_data_into_fd.c			\
 	archive_read_extract.c				\
@@ -208,7 +210,7 @@ MLINKS+=	libarchive.3 archive.3
 # Build archive.h from archive.h.in
 archive.h:	archive.h.in Makefile
 	cat ${CONTRIBDIR}/archive.h.in |				\
-		sed 's/@VERSION@/${VERSION}/g' | 			\
+		sed 's/@ARCHIVE_VERSION@/${VERSION}/g' |		\
 		sed 's/@SHLIB_MAJOR@/${SHLIB_MAJOR}/g' |		\
 		sed 's/@ARCHIVE_API_MAJOR@/${ARCHIVE_API_MAJOR}/g' |	\
 		sed 's/@ARCHIVE_API_MINOR@/${ARCHIVE_API_MINOR}/g' |	\
