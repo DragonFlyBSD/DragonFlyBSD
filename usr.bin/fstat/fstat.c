@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.24 2007/02/18 16:15:24 corecode Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.25 2007/05/09 04:33:51 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -595,7 +595,8 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->fsid = nfsnode.n_vattr.va_fsid;
 	fsp->fileid = nfsnode.n_vattr.va_fileid;
 	fsp->size = nfsnode.n_size;
-	fsp->rdev = nfsnode.n_vattr.va_rdev;
+	fsp->rdev = makeudev(nfsnode.n_vattr.va_rmajor,
+			     nfsnode.n_vattr.va_rminor);
 	mode = (mode_t)nfsnode.n_vattr.va_mode;
 	switch (vp->v_type) {
 	case VREG:
@@ -884,11 +885,23 @@ dev2udev(void *dev)
 	struct cdev si;
 
 	if (kread(dev, &si, sizeof si)) {
-		return si.si_udev;
+		if ((si.si_umajor & 0xffffff00) ||
+		    (si.si_uminor & 0x0000ff00)) {
+			return NOUDEV;
+		}
+		return((si.si_umajor << 8) | si.si_uminor);
 	} else {
 		dprintf(stderr, "can't convert dev_t %p to a udev_t\n", dev);
-		return -1;
+		return NOUDEV;
 	}
+}
+
+udev_t
+makeudev(int x, int y)
+{
+        if ((x & 0xffffff00) || (y & 0x0000ff00))
+		return NOUDEV;
+	return ((x << 8) | y);
 }
 
 /*

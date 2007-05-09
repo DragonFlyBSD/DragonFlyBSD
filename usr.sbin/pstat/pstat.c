@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.20 2007/05/06 19:38:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.21 2007/05/09 04:33:52 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -561,9 +561,9 @@ nfs_print(struct vnode *vp)
 	printf(" %6ld %5s", VT.va_fileid, flagbuf);
 	type = VT.va_mode & S_IFMT;
 	if (S_ISCHR(VT.va_mode) || S_ISBLK(VT.va_mode))
-		if (usenumflag || ((name = devname(VT.va_rdev, type)) == NULL))
+		if (usenumflag || ((name = devname((VT.va_rmajor << 8) | VT.va_rminor, type)) == NULL))
 			printf("   %2d,%-2d",
-			    major(VT.va_rdev), minor(VT.va_rdev));
+			    VT.va_rmajor, VT.va_rminor);
 		else
 			printf(" %7s", name);
 	else

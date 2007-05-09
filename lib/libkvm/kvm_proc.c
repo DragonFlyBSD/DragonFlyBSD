@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.14 2007/05/08 02:31:36 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.15 2007/05/09 04:33:50 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -111,6 +111,23 @@ kinfo_resize_proc(kvm_t *kd, struct kinfo_proc *bp)
 	bp = kd->procbase + pos;
 	return bp;
 }
+
+/*
+ * note: this function is also used by /usr/src/sys/kern/kern_kinfo.c as
+ * compiled by userland.
+ */
+dev_t
+dev2udev(cdev_t dev)
+{
+	if (dev == NULL)
+		return NOUDEV;
+	if ((dev->si_umajor & 0xffffff00) ||
+	    (dev->si_uminor & 0x0000ff00)) {
+		return NOUDEV;
+	}
+	return((dev->si_umajor << 8) | dev->si_uminor);
+}
+
 
 /*
  * Read proc's from memory file into buffer bp, which has space to hold
@@ -234,7 +251,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 
 		case KERN_PROC_TTY:
 			if ((proc.p_flag & P_CONTROLT) == 0 ||
-			    proc.p_pgrp->pg_session->s_ttyp->t_dev->si_udev
+			    dev2udev(proc.p_pgrp->pg_session->s_ttyp->t_dev)
 					!= (dev_t)arg)
 				continue;
 			break;

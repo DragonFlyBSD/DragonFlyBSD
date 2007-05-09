@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.6 2006/04/25 16:37:44 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.7 2007/05/09 04:33:51 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__
@@ -60,6 +60,7 @@ extern int vflg;
 extern int Pid;
 
 udev_t dev2udev(void *dev);
+udev_t makeudev(int x, int y);
 
 /* Additional filesystem types */
 int isofs_filestat(struct vnode *vp, struct filestat *fsp);
