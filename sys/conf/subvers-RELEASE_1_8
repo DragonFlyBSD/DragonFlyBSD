@@ -1,4 +1,5 @@
 # Subversion control for DragonFly 1.8.X-RELEASE
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_8,v 1.1.2.2 2007/03/25 17:12:19 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_8,v 1.1.2.3 2007/05/09 17:57:43 corecode Exp $
 0	-
 1	mid-release updates, fixes, including bind & file security fixes
+2	build system, drivers, double mount panic, IPv6 RH0 security fix
