@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Images" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/about/images.shtml,v 1.1 2006/11/17 03:41:05 justin Exp $ -->
+<!-- $DragonFly: site/data/about/images.shtml,v 1.2 2007/05/11 01:00:24 dillon Exp $ -->
 
 <p>
 The images on this page are only to be used with the DragonFly BSD Project.  
@@ -55,6 +55,15 @@ mailing list before using any of these files.
 <td>	
 	Alternate, vector-based formats of the Joe Angrisano logo.<br />
 	Created by Devon H. O'Dell.
+</td>
+</tr>
+
+<tr>
+<td>
+	<a href="images/dfly_1024.jpg">dfly_1024.jpg</a><br />
+</td>
+<td>
+	Wallpaper, generated from our base logos.  By Brendan Kosowski
 </td>
 </tr>
 
