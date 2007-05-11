@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.6 2006/10/12 04:19:37 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.2 2007/01/06 08:34:52 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 01:03:06 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define HDA_DRV_TEST_REV	"20061009_0031"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.2 2007/01/06 08:34:52 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 01:03:06 dillon Exp $");
 
 #undef HDA_DEBUG_ENABLED
 #define HDA_DEBUG_ENABLED	1
@@ -347,6 +347,7 @@ static const struct {
 #define REALTEK_VENDORID	0x10ec
 #define HDA_CODEC_ALC260	HDA_CODEC_CONSTRUCT(REALTEK, 0x0260)
 #define HDA_CODEC_ALC861	HDA_CODEC_CONSTRUCT(REALTEK, 0x0861)
+#define HDA_CODEC_ALC862	HDA_CODEC_CONSTRUCT(REALTEK, 0x0862)
 #define HDA_CODEC_ALC880	HDA_CODEC_CONSTRUCT(REALTEK, 0x0880)
 #define HDA_CODEC_ALC882	HDA_CODEC_CONSTRUCT(REALTEK, 0x0882)
 #define HDA_CODEC_ALC883	HDA_CODEC_CONSTRUCT(REALTEK, 0x0883)
@@ -395,6 +396,7 @@ static const struct {
 } hdac_codecs[] = {
 	{ HDA_CODEC_ALC260,    "Realtek ALC260" },
 	{ HDA_CODEC_ALC861,    "Realtek ALC861" },
+	{ HDA_CODEC_ALC862,    "Realtek ALC862" },
 	{ HDA_CODEC_ALC880,    "Realtek ALC880" },
 	{ HDA_CODEC_ALC882,    "Realtek ALC882" },
 	{ HDA_CODEC_ALC883,    "Realtek ALC883" },
