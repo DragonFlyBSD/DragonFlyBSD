@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/i386/Makefile,v 1.8 2000/01/27 01:22:06 mckusick Exp $
-# $DragonFly: src/sys/platform/pc32/Makefile,v 1.6 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/sys/platform/pc32/Makefile,v 1.7 2007/05/11 00:10:10 dillon Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 # Makefile for i386 links, tags file
@@ -9,7 +9,7 @@
 
 TAGDIR=	i386
 
-.include "../kern/Make.tags.inc"
+.include "../../kern/Make.tags.inc"
 
 all:
 	@echo "make links or tags only"
