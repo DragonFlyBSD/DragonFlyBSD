@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vrele.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vrele.9,v 1.6 2007/05/05 06:09:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vrele.9,v 1.7 2007/05/11 08:25:24 swildner Exp $
 .\"
-.Dd July 24, 1996
+.Dd May 5, 2007
 .Os
 .Dt VRELE 9
 .Sh NAME
@@ -46,15 +46,15 @@ release it.
 The vnode being released.
 .El
 .Pp
-Any code in the system which obtains a primary reference to a vnode
-via
-.Fn vref
+Any code in the system which obtains a primary reference to a vnode via
+.Xr vref 9
 typically releases that reference with
 .Fn vrele
-when it is finished with the vnode.  Upon release of the last primary
+when it is finished with the vnode.
+Upon release of the last primary
 reference, the vnode will be deactivated and either moved to the free
-list for later reuse or marked as being cache.  The vnode can be reactivated
-at any time prior to the system reusing it.
+list for later reuse or marked as being cache.
+The vnode can be reactivated at any time prior to the system reusing it.
 .Sh SEE ALSO
 .Xr vnode 9 ,
 .Xr vn_lock 9 ,

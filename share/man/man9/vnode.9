@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vnode.9,v 1.10.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vnode.9,v 1.6 2007/05/05 06:26:57 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vnode.9,v 1.7 2007/05/11 08:25:24 swildner Exp $
 .\"
-.Dd June 28, 2003
+.Dd May 5, 2007
 .Os
 .Dt VNODE 9
 .Sh NAME
@@ -48,14 +48,15 @@ unique vnode allocated for each active file, each current directory,
 each mounted-on file, text file, and the root.
 .Pp
 Each vnode has numerous reference counts,
-.Va v_sysref ,
-.Va v_auxrefs ,
-.Va v_opencount ,
+.Fa v_sysref ,
+.Fa v_auxrefs ,
+.Fa v_opencount ,
 and
-.Va v_writecount .
+.Fa v_writecount .
 .Pp
-.Va v_sysref
-represents the number of primary references to the vnode.  It is actually
+.Fa v_sysref
+represents the number of primary references to the vnode.
+It is actually
 a structure which utilizes the SYSREF API and also manages allocation and
 deallocation of the vnode.
 Primary references keep a vnode ready for I/O and prevent it from being
@@ -65,9 +66,9 @@ Primary references are managed by
 and
 .Xr vrele 9 .
 .Pp
-.Va v_auxrefs
-represents the number of auxiliary references to a vnode.  Auxiliary
-references prevent a vnode from being reclaimed (if not already being
+.Fa v_auxrefs
+represents the number of auxiliary references to a vnode.
+Auxiliary references prevent a vnode from being reclaimed (if not already being
 reclaimed), reused for other purposes, or otherwise destroyed, but
 do not activate or deactivate the vnode.
 Auxiliary references are managed by
@@ -75,16 +76,16 @@ Auxiliary references are managed by
 and
 .Xr vdrop 9 .
 .Pp
-.Va v_opencount
+.Fa v_opencount
 represents the number of discrete
 .Fn open
 calls made on the vnode (reading or writing).
-.Va v_writecount
+.Fa v_writecount
 represents the number of descrete
 .Fn open
-calls made on the vnode for the purpose of writing.  This field
-will be a subset of
-.Va v_opencount .
+calls made on the vnode for the purpose of writing.
+This field will be a subset of
+.Fa v_opencount .
 These fields are managed primarily by calls to
 .Xr vn_open 9
 and
@@ -102,54 +103,62 @@ Most kernel procedures returning a vnode will return one that is actively
 referenced.
 .Pp
 Other commonly used members of the vnode structure are
-.Va v_mount
+.Fa v_mount
 which points at the filesystem which owns the vnode,
-.Va v_type
+.Fa v_type
 which contains the type of object the vnode represents and
-.Va v_data
+.Fa v_data
 which is used by filesystems to store filesystem specific data with
 the vnode.
 The
-.Va v_ops
+.Fa v_ops
 field is used by the
 .Dv VOP_*
 macros to call functions in the filesystem which implement the vnode's
 functionality.
 .Sh VNODE TYPES
-.Bl -tag -width ".Fa VSOCK"
+.Bl -tag -width ".Dv VSOCK"
 .It Dv VNON
 No type.
 .It Dv VREG
-A regular file; may be with or without VM object backing.  If you want
-to make sure this get a backing object, call
+A regular file; may be with or without VM object backing.
+If you want to make sure this get a backing object, call
 .Xr vfs_object_create 9 .
 .It Dv VDIR
 A directory.
 .It Dv VBLK
-A block device; may be with or without VM object backing.  If you want
-to make sure this get a backing object, call
+A block device; may be with or without VM object backing.
+If you want to make sure this get a backing object, call
 .Xr vfs_object_create 9 .
 .It Dv VCHR
 A character device.
 .It Dv VLNK
 A symbolic link.
 .It Dv VSOCK
-A socket.  Advisory locking won't work on this.
+A socket.
+Advisory locking won't work on this.
 .It Dv VFIFO
-A FIFO (named pipe).  Advisory locking won't work on this.
+A FIFO (named pipe).
+Advisory locking won't work on this.
 .It Dv VBAD
-An old style bad sector map
+An old style bad sector map.
 .El
 .Sh IMPLEMENTATION NOTES
-VFIFO uses the "struct fileops" from
+.Dv VFIFO
+uses the
+.Vt struct fileops
+from
 .Pa /sys/kern/sys_pipe.c .
-VSOCK uses the "struct fileops" from
+.Dv VSOCK
+uses the
+.Vt struct fileops
+from
 .Pa /sys/kern/sys_socket.c .
 Everything else uses the one from
 .Pa /sys/kern/vfs_vnops.c .
 .Pp
 The VFIFO/VSOCK code, which is why
-.Vt "struct fileops"
+.Vt struct fileops
 is used at all, is an artifact of an incomplete integration of
 the VFS code into the kernel.
 .Sh SEE ALSO

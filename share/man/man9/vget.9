@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vget.9,v 1.7 2007/05/05 06:26:57 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vget.9,v 1.8 2007/05/11 08:25:24 swildner Exp $
 .\"
-.Dd March 4, 2007
+.Dd May 5, 2007
 .Os
 .Dt VGET 9
 .Sh NAME
@@ -49,8 +49,13 @@ the vnode pointer from a namecache or VM object structure.
 The vnode being acquired, typically obtained from some other system
 structure.
 .It Fa lockflag
-Must be LK_SHARED or LK_EXCLUSIVE.  Passing 0 is illegal.  LK_NOWAIT may
-be logically ORd in if you do not wish to block and can handle the
+Must be
+.Dv LK_SHARED
+or
+.Dv LK_EXCLUSIVE .
+Passing 0 is illegal.
+.Dv LK_NOWAIT
+may be logically ORd in if you do not wish to block and can handle the
 additional error codes that might be returned.
 .El
 .Pp
@@ -65,11 +70,13 @@ When acquiring a vnode pointer from these auxiliary structures the
 function must be used to both reference and, if necessary, reactivate
 the vnode.  The vnode will also be locked accordingly.
 .Sh RETURN VALUES
-0 is returned on success, ENOENT is returned if the vnode becomes unusable
-while
+0 is returned on success,
+.Er ENOENT
+is returned if the vnode becomes unusable while
 .Nm
 is blocked trying to lock it, and other errors may be returned as well.
-ENOENT is not typically considered to be a fatal error but simply an
+.Er ENOENT
+is not typically considered to be a fatal error but simply an
 indication that the caller needs to relookup the vnode as related
 structures may be in the midst of being destroyed.
 .Sh SEE ALSO

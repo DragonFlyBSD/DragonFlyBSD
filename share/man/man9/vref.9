@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vref.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vref.9,v 1.7 2007/05/05 06:26:57 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vref.9,v 1.8 2007/05/11 08:25:24 swildner Exp $
 .\"
-.Dd July 24, 1996
+.Dd May 5, 2007
 .Os
 .Dt VREF 9
 .Sh NAME
@@ -39,8 +39,8 @@
 .Ft void
 .Fn vref "struct vnode *vp"
 .Sh DESCRIPTION
-The primary reference count for an active vnode is incremented.  The
-vnode must already have active references to it, usually acquired
+The primary reference count for an active vnode is incremented.
+The vnode must already have active references to it, usually acquired
 prior to the vnode pointer being passed to the code making this call
 or when vnode pointers are obtained from structures, such as file pointers,
 which hold an active reference to the vnode.
@@ -64,7 +64,6 @@ to prevent the vnode from getting ripped out from under it during
 an operation due to the destruction of the parent data structure.
 For example, one thread may be blocked on a vnode operation related
 to a file descriptor that another thread then closes.
-.Pp
 .Sh SEE ALSO
 .Xr vnode 9 ,
 .Xr vn_lock 9 ,
