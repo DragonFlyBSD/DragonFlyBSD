@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.75 2007/05/07 04:54:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.76 2007/05/12 04:05:35 sephe Exp $
  *
  */
 
@@ -255,7 +255,6 @@ static struct bge_type bge_devs[] = {
 static int	bge_probe(device_t);
 static int	bge_attach(device_t);
 static int	bge_detach(device_t);
-static void	bge_release_resources(struct bge_softc *);
 static void	bge_txeof(struct bge_softc *);
 static void	bge_rxeof(struct bge_softc *);
 
@@ -1612,8 +1611,7 @@ bge_attach(device_t dev)
 
 	if (sc->bge_res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
-		error = ENXIO;
-		return(error);
+		return ENXIO;
 	}
 
 	sc->bge_btag = rman_get_bustag(sc->bge_res);
@@ -1888,9 +1886,10 @@ static int
 bge_detach(device_t dev)
 {
 	struct bge_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	if (device_is_attached(dev)) {
+		struct ifnet *ifp = &sc->arpcom.ac_if;
+
 		lwkt_serialize_enter(ifp->if_serializer);
 		bge_stop(sc);
 		bge_reset(sc);
@@ -1899,24 +1898,12 @@ bge_detach(device_t dev)
 
 		ether_ifdetach(ifp);
 	}
+
 	if (sc->bge_flags & BGE_FLAG_TBI)
 		ifmedia_removeall(&sc->bge_ifmedia);
 	if (sc->bge_miibus)
 		device_delete_child(dev, sc->bge_miibus);
 	bus_generic_detach(dev);
-
-	bge_release_resources(sc);
-	bge_dma_free(sc);
-
-	return 0;
-}
-
-static void
-bge_release_resources(struct bge_softc *sc)
-{
-        device_t dev;
-
-        dev = sc->bge_dev;
 
         if (sc->bge_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bge_irq);
@@ -1924,6 +1911,10 @@ bge_release_resources(struct bge_softc *sc)
         if (sc->bge_res != NULL)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    BGE_PCI_BAR0, sc->bge_res);
+
+	bge_dma_free(sc);
+
+	return 0;
 }
 
 static void
