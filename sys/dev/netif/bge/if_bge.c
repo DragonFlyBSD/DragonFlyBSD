@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.76 2007/05/12 04:05:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.77 2007/05/12 08:39:56 sephe Exp $
  *
  */
 
@@ -3067,6 +3067,7 @@ bge_stop(struct bge_softc *sc)
 	sc->bge_tx_saved_considx = BGE_TXCONS_UNSET;
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_timer = 0;
 }
 
 /*
