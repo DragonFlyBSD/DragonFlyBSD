@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/manpath/manpath.c,v 1.11.2.2 2003/02/15 05:33:06 kris Exp $
- * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.3 2007/04/26 08:17:54 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.4 2007/05/12 09:18:52 swildner Exp $
  */
 
 #define MANPATH_MAIN
@@ -446,10 +446,11 @@ get_manpath (perrs, path)
 	    add_dir_to_list (tmplist, dlp->mandir, perrs);
 	    fnd++;
 	  }
-      if (fnd) {
-	fnd = 0;
-	goto found;
-      }
+      if (fnd)
+	{
+	  fnd = 0;
+	  goto found;
+	}
 
       /*
        * The directory we're working on isn't in the config file.  See
