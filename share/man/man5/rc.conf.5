@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.26 2007/04/11 18:00:06 swildner Exp $
-.Dd March 3, 2002
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.27 2007/05/12 07:38:01 swildner Exp $
+.Dd May 11, 2007
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -203,10 +203,23 @@ manpage for a description of the command line options available.
 .Pq Vt bool
 Set to
 .Dq Li YES
-to start the dhcp client in background.
+to start the DHCP client in background.
 This can cause trouble with applications depending on
 a working network, but it will provide a faster startup
 in many cases.
+.It Va dhcpd_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to run
+.Xr dhcpd 8
+at system boot time.
+.It Va dhcrelay_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to run
+.Xr dhcrelay 8
 .It Va firewall_enable
 .Pq Vt bool
 Set to
@@ -1119,6 +1132,15 @@ will not be updated.
 If set to
 .Dq Li YES ,
 run the NFS client daemons at boot time.
+.It Va nfs_client_flags
+.Pq Vt str
+If
+.Va nfs_client_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr nfsiod 8
+daemon.
 .It Va nfs_access_cache
 .Pq Vt int
 If
@@ -1277,12 +1299,10 @@ If set to
 run the
 .Xr pppoed 8
 daemon at boot time to provide PPP over Ethernet services.
-.It Va pppoed_ Ns Ar provider
+.It Va pppoed_provider
 .Pq Vt str
 .Xr pppoed 8
-listens to requests to this
-.Ar provider
-and ultimately runs
+listens to requests to this provider and ultimately runs
 .Xr ppp 8
 with a
 .Ar system
@@ -1353,6 +1373,28 @@ from doing this, set
 .Va ntpd_flags
 to
 .Dq Li -S .
+.It Va dntpd_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run
+.Xr dntpd 8
+at system boot time.
+.It Va dntpd_program
+.Pq Vt str
+Path to
+.Xr dntpd 8
+(default
+.Pa /usr/sbin/dntpd ) .
+.It Va dntpd_flags
+.Pq Vt str
+If
+.Va dntpd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr dntpd 8
+daemon.
 .It Va nis_client_enable
 .Pq Vt bool
 If set to
@@ -2056,6 +2098,9 @@ to
 character, see
 .Xr vidcontrol 1 .
 Use if the default range is occupied in the language code table.
+.It Va vidhistory
+.Pq Vt int
+Set the size of the history (scrollback) buffer in lines.
 .It Va allscreens_flags
 .Pq Vt str
 If set,
@@ -2123,6 +2168,13 @@ is set to
 these are the flags to pass to the
 .Xr lpd 8
 daemon.
+.It Va mixer_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+preserve
+.Xr mixer 8
+settings across reboots.
 .It Va mta_start_script
 .Pq Vt str
 This variable specifies the full path to the script to run to start
@@ -2265,11 +2317,6 @@ Set to
 to start
 .Xr vinum 8
 at system boot time.
-.It Va sshd_program
-.Pq Vt str
-Path to the SSH server program
-.Pa ( /usr/sbin/sshd
-is the default).
 .It Va sshd_enable
 .Pq Vt bool
 Set to
@@ -2277,6 +2324,11 @@ Set to
 to start
 .Xr sshd 8
 at system boot time.
+.It Va sshd_program
+.Pq Vt str
+Path to the SSH server program
+.Pa ( /usr/sbin/sshd
+is the default).
 .It Va sshd_flags
 .Pq Vt str
 If
@@ -2285,6 +2337,22 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to the
 .Xr sshd 8
+daemon.
+.It Va ftpd_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to start
+.Xr ftpd 8
+at system boot time.
+.It Va ftpd_flags
+.Pq Vt str
+If
+.Va ftpd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr ftpd 8
 daemon.
 .It Va usbd_enable
 .Pq Vt bool
@@ -2354,12 +2422,32 @@ to be used within a jail.
 If set to
 .Dq Li YES ,
 allow applications within a jail to use System V IPC.
+.It Va resident_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+make the dynamic binaries listed in
+.Pa /etc/resident.conf
+resident.
+.It Va varsym_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+process
+.Pa /etc/varsym.conf
+to set system-wide variables for variant symlinks.
 .It Va unaligned_print
 .Pq Vt bool
 If set to
 .Dq Li NO ,
 unaligned access warnings will not be printed.
 (alpha)
+.It Va rand_irq
+.Pq Vt str
+Set either to
+.Dq Li NO
+or a whitespace separated list of IRQ numbers which will be used as a source of
+randomness.
 .\" ----- isdn settings ---------------------------------
 .It Va isdn_enable
 .Pq Vt bool
@@ -2522,6 +2610,7 @@ has not completed within the specified time (in seconds).
 .Xr gdb 1 ,
 .Xr info 1 ,
 .Xr kbdcontrol 1 ,
+.Xr varsym 1 ,
 .Xr vidcontrol 1 ,
 .Xr ip 4 ,
 .Xr kld 4 ,
@@ -2529,12 +2618,17 @@ has not completed within the specified time (in seconds).
 .Xr udp 4 ,
 .Xr exports 5 ,
 .Xr motd 5 ,
+.Xr resident.conf 5 ,
+.Xr varsym.conf 5 ,
 .Xr accton 8 ,
 .Xr amd 8 ,
 .Xr apm 8 ,
 .Xr atm 8 ,
 .Xr cron 8 ,
 .Xr dhclient 8 ,
+.Xr dhcpd 8 ,
+.Xr dhcrelay 8 ,
+.Xr ftpd 8 ,
 .Xr ifconfig 8 ,
 .Xr inetd 8 ,
 .Xr isdnd 8 ,
@@ -2543,6 +2637,7 @@ has not completed within the specified time (in seconds).
 .Xr lpd 8 ,
 .Xr makewhatis 8 ,
 .Xr mdconfig 8 ,
+.Xr mixer 8 ,
 .Xr mountd 8 ,
 .Xr moused 8 ,
 .Xr mrouted 8 ,
@@ -2554,6 +2649,8 @@ has not completed within the specified time (in seconds).
 .Xr quotaon 8 ,
 .Xr rc 8 ,
 .Xr rc.sendmail 8 ,
+.Xr resident 8 ,
+.Xr rndcontrol 8 ,
 .Xr route 8 ,
 .Xr routed 8 ,
 .Xr rpc.lockd 8 ,
