@@ -30,7 +30,7 @@
  * http://oss.sgi.com/projects/GenInfo/SGIGPLNoticeExplan/
  */
 /*
- * $DragonFly: src/test/stress/fsstress/global.h,v 1.1 2004/05/07 17:51:02 dillon Exp $
+ * $DragonFly: src/test/stress/fsstress/global.h,v 1.2 2007/05/12 21:46:49 swildner Exp $
  */
  
 #ifndef GLOBAL_H
@@ -47,18 +47,18 @@
 
 /* libc includes */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <sys/types.h>
 #include <sys/param.h>
 #endif
 #include <sys/stat.h>
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #include <sys/statvfs.h>
 #endif
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #include <malloc.h>
 #endif
 #include <dirent.h>
@@ -72,7 +72,7 @@
 #define O_DIRECT        040000
 #endif
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 typedef off_t	off64_t;
 #define stat64	stat
 #define lseek64	lseek
