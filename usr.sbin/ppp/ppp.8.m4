@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.5 2006/03/26 22:56:58 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.6 2007/05/12 21:16:23 swildner Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -5778,9 +5778,9 @@ to get online information about what's available.
 The following URLs contain useful information:
 .Bl -bullet -compact
 .It
-http://www.FreeBSD.org/doc/en_US.ISO8859-1/books/faq/ppp.html
+.Pa http://www.FreeBSD.org/doc/en_US.ISO8859-1/books/faq/ppp.html
 .It
-http://www.FreeBSD.org/doc/handbook/userppp.html
+.Pa http://www.FreeBSD.org/doc/handbook/userppp.html
 .El
 .El
 .Sh FILES
