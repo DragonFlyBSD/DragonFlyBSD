@@ -1,3 +1,33 @@
+/*-
+ * ------+---------+---------+-------- + --------+---------+---------+---------*
+ * This file includes significant modifications done by:
+ * Copyright (c) 2003, 2004  - Garance Alistair Drosehn <gad@FreeBSD.org>.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *   1. Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * ------+---------+---------+-------- + --------+---------+---------+---------*
+ */
+
 /*
  * This file contains changes from the Open Software Foundation.
  */
@@ -16,8 +46,8 @@
  * for any purpose.  It is provided "as is" without express or implied
  * warranty.
  *
- * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.5 2005/03/02 06:08:29 joerg Exp $
+ * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.106 2006/07/21 22:13:06 sobomax Exp $
+ * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.6 2007/05/12 08:52:00 swildner Exp $
  */
 
 /*
@@ -25,15 +55,16 @@
  * specified number of backup files around.
  */
 
-#define OSF
+#define	OSF
 #ifndef COMPRESS_POSTFIX
-#define COMPRESS_POSTFIX ".gz"
+#define	COMPRESS_POSTFIX ".gz"
 #endif
 #ifndef	BZCOMPRESS_POSTFIX
 #define	BZCOMPRESS_POSTFIX ".bz2"
 #endif
 
 #include <sys/param.h>
+#include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -54,28 +85,31 @@
 #include <unistd.h>
 
 #include "pathnames.h"
+#include "extern.h"
 
 /*
  * Bit-values for the 'flags' parsed from a config-file entry.
  */
-#define CE_COMPACT	0x0001	/* Compact the achived log files with gzip. */
-#define CE_BZCOMPACT	0x0002	/* Compact the achived log files with bzip2. */
-#define CE_COMPACTWAIT	0x0004	/* wait until compressing one file finishes */
-				/*    before starting the next step. */
-#define CE_BINARY	0x0008	/* Logfile is in binary, do not add status */
+#define	CE_COMPACT	0x0001	/* Compact the achived log files with gzip. */
+#define	CE_BZCOMPACT	0x0002	/* Compact the achived log files with bzip2. */
+#define	CE_BINARY	0x0008	/* Logfile is in binary, do not add status */
 				/*    messages to logfile(s) when rotating. */
-#define CE_NOSIGNAL	0x0010	/* There is no process to signal when */
+#define	CE_NOSIGNAL	0x0010	/* There is no process to signal when */
 				/*    trimming this file. */
-#define CE_TRIMAT	0x0020	/* trim file at a specific time. */
-#define CE_GLOB		0x0040	/* name of the log is file name pattern. */
-#define CE_SIGNALGROUP	0x0080	/* Signal a process-group instead of a single */
+#define	CE_TRIMAT	0x0020	/* trim file at a specific time. */
+#define	CE_GLOB		0x0040	/* name of the log is file name pattern. */
+#define	CE_SIGNALGROUP	0x0080	/* Signal a process-group instead of a single */
 				/*    process when trimming this file. */
-#define CE_CREATE	0x0100	/* Create the log file if it does not exist. */
+#define	CE_CREATE	0x0100	/* Create the log file if it does not exist. */
+#define	CE_NODUMP	0x0200	/* Set 'nodump' on newly created log file. */
 
-#define MIN_PID         5	/* Don't touch pids lower than this */
-#define MAX_PID		99999	/* was lower, see /usr/include/sys/proc.h */
+#define	MIN_PID         5	/* Don't touch pids lower than this */
+#define	MAX_PID		99999	/* was lower, see /usr/include/sys/proc.h */
 
-#define kbytes(size)  (((size) + 1023) >> 10)
+#define	kbytes(size)  (((size) + 1023) >> 10)
+
+#define	DEFAULT_MARKER	"<default>"
+#define	DEBUG_MARKER	"<debug>"
 
 struct conf_entry {
 	char *log;		/* Name of the log */
@@ -83,20 +117,45 @@ struct conf_entry {
 	char *r_reason;		/* The reason this file is being rotated */
 	int firstcreate;	/* Creating log for the first time (-C). */
 	int rotate;		/* Non-zero if this file should be rotated */
+	int fsize;		/* size found for the log file */
 	uid_t uid;		/* Owner of log */
 	gid_t gid;		/* Group of log */
 	int numlogs;		/* Number of logs to keep */
-	int size;		/* Size cutoff to trigger trimming the log */
+	int trsize;		/* Size cutoff to trigger trimming the log */
 	int hours;		/* Hours between log trimming */
-	time_t trim_at;		/* Specific time to do trimming */
-	int permissions;	/* File permissions on the log */
+	struct ptime_data *trim_at;	/* Specific time to do trimming */
+	unsigned int permissions;	/* File permissions on the log */
 	int flags;		/* CE_COMPACT, CE_BZCOMPACT, CE_BINARY */
 	int sig;		/* Signal to send */
 	int def_cfg;		/* Using the <default> rule for this file */
 	struct conf_entry *next;/* Linked list pointer */
 };
 
-#define DEFAULT_MARKER "<default>"
+struct sigwork_entry {
+	SLIST_ENTRY(sigwork_entry) sw_nextp;
+	int	 sw_signum;		/* the signal to send */
+	int	 sw_pidok;		/* true if pid value is valid */
+	pid_t	 sw_pid;		/* the process id from the PID file */
+	const char *sw_pidtype;		/* "daemon" or "process group" */
+	char	 sw_fname[1];		/* file the PID was read from */
+};
+
+struct zipwork_entry {
+	SLIST_ENTRY(zipwork_entry) zw_nextp;
+	const struct conf_entry *zw_conf;	/* for chown/perm/flag info */
+	const struct sigwork_entry *zw_swork;	/* to know success of signal */
+	int	 zw_fsize;		/* size of the file to compress */
+	char	 zw_fname[1];		/* the file to compress */
+};
+
+typedef enum {
+	FREE_ENT, KEEP_ENT
+}	fk_entry;
+
+SLIST_HEAD(swlisthead, sigwork_entry) swhead = SLIST_HEAD_INITIALIZER(swhead);
+SLIST_HEAD(zwlisthead, zipwork_entry) zwhead = SLIST_HEAD_INITIALIZER(zwhead);
+
+int dbg_at_times;		/* -D Show details of 'trim_at' code */
 
 int archtodir = 0;		/* Archive old logfiles to other directory */
 int createlogs;			/* Create (non-GLOB) logfiles which do not */
@@ -105,6 +164,7 @@ int createlogs;			/* Create (non-GLOB) logfiles which do not */
 int verbose = 0;		/* Print out what's going on */
 int needroot = 1;		/* Root privs are necessary */
 int noaction = 0;		/* Don't do anything, just show it */
+int norotate = 0;		/* Don't rotate */
 int nosignal;			/* Do not send any signals */
 int force = 0;			/* Force the trim no matter what */
 int rotatereq = 0;		/* -R = Always rotate the file(s) as given */
@@ -113,19 +173,36 @@ int rotatereq = 0;		/* -R = Always rotate the file(s) as given */
 				/*    the run command). */
 char *requestor;		/* The name given on a -R request */
 char *archdirname;		/* Directory path to old logfiles archive */
+char *destdir = NULL;		/* Directory to treat at root for logs */
 const char *conf;		/* Configuration file to use */
-time_t timenow;
 
+struct ptime_data *dbg_timenow;	/* A "timenow" value set via -D option */
+struct ptime_data *timenow;	/* The time to use for checking at-fields */
+
+#define	DAYTIME_LEN	16
+char daytime[DAYTIME_LEN];	/* The current time in human readable form,
+				 * used for rotation-tracking messages. */
 char hostname[MAXHOSTNAMELEN];	/* hostname */
-char daytime[16];		/* timenow in human readable form */
 
 static struct conf_entry *get_worklist(char **files);
 static void parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 		struct conf_entry **glob_p, struct conf_entry **defconf_p);
 static char *sob(char *p);
 static char *son(char *p);
+static int isnumberstr(const char *);
 static char *missing_field(char *p, char *errline);
-static void do_entry(struct conf_entry * ent);
+static void	 change_attrs(const char *, const struct conf_entry *);
+static fk_entry	 do_entry(struct conf_entry *);
+static fk_entry	 do_rotate(const struct conf_entry *);
+static void	 do_sigwork(struct sigwork_entry *);
+static void	 do_zipwork(struct zipwork_entry *);
+static struct sigwork_entry *
+		 save_sigwork(const struct conf_entry *);
+static struct zipwork_entry *
+		 save_zipwork(const struct conf_entry *, const struct
+		    sigwork_entry *, int, const char *);
+static void	 set_swpid(struct sigwork_entry *, const struct conf_entry *);
+static int	 sizefile(const char *);
 static void expand_globs(struct conf_entry **work_p,
 		struct conf_entry **glob_p);
 static void free_clist(struct conf_entry **firstent);
@@ -133,36 +210,34 @@ static void free_entry(struct conf_entry *ent);
 static struct conf_entry *init_entry(const char *fname,
 		struct conf_entry *src_entry);
 static void parse_args(int argc, char **argv);
+static int parse_doption(const char *doption);
 static void usage(void);
-static void dotrim(const struct conf_entry *ent, char *log,
-		int numdays, int flags);
-static int log_trim(const char *log, const struct conf_entry *log_ent);
-static void compress_log(char *log, int dowait);
-static void bzcompress_log(char *log, int dowait);
-static int sizefile(char *file);
+static int log_trim(const char *logname, const struct conf_entry *log_ent);
 static int age_old_log(char *file);
-static int send_signal(const struct conf_entry *ent);
-static time_t parse8601(char *s, char *errline);
-static void movefile(char *from, char *to, int perm, uid_t owner_uid,
-		gid_t group_gid);
+static void savelog(char *from, char *to);
 static void createdir(const struct conf_entry *ent, char *dirpart);
 static void createlog(const struct conf_entry *ent);
-static time_t parseDWM(char *s, char *errline);
 
 /*
- * All the following are defined to work on an 'int', in the
- * range 0 to 255, plus EOF.  Define wrappers which can take
- * values of type 'char', either signed or unsigned.
+ * All the following take a parameter of 'int', but expect values in the
+ * range of unsigned char.  Define wrappers which take values of type 'char',
+ * whether signed or unsigned, and ensure they end up in the right range.
  */
-#define isdigitch(Anychar)    isdigit(((int) Anychar) & 255)
-#define isprintch(Anychar)    isprint(((int) Anychar) & 255)
-#define isspacech(Anychar)    isspace(((int) Anychar) & 255)
-#define tolowerch(Anychar)    tolower(((int) Anychar) & 255)
+#define	isdigitch(Anychar) isdigit((u_char)(Anychar))
+#define	isprintch(Anychar) isprint((u_char)(Anychar))
+#define	isspacech(Anychar) isspace((u_char)(Anychar))
+#define	tolowerch(Anychar) tolower((u_char)(Anychar))
 
 int
 main(int argc, char **argv)
 {
+	fk_entry free_or_keep;
 	struct conf_entry *p, *q;
+	struct sigwork_entry *stmp;
+	struct zipwork_entry *ztmp;
+
+	SLIST_INIT(&swhead);
+	SLIST_INIT(&zwhead);
 
 	parse_args(argc, argv);
 	argc -= optind;
@@ -172,12 +247,60 @@ main(int argc, char **argv)
 		errx(1, "must have root privs");
 	p = q = get_worklist(argv);
 
+	/*
+	 * Rotate all the files which need to be rotated.  Note that
+	 * some users have *hundreds* of entries in newsyslog.conf!
+	 */
 	while (p) {
-		do_entry(p);
+		free_or_keep = do_entry(p);
 		p = p->next;
-		free_entry(q);
+		if (free_or_keep == FREE_ENT)
+			free_entry(q);
 		q = p;
 	}
+
+	/*
+	 * Send signals to any processes which need a signal to tell
+	 * them to close and re-open the log file(s) we have rotated.
+	 * Note that zipwork_entries include pointers to these
+	 * sigwork_entry's, so we can not free the entries here.
+	 */
+	if (!SLIST_EMPTY(&swhead)) {
+		if (noaction || verbose)
+			printf("Signal all daemon process(es)...\n");
+		SLIST_FOREACH(stmp, &swhead, sw_nextp)
+			do_sigwork(stmp);
+		if (noaction)
+			printf("\tsleep 10\n");
+		else {
+			if (verbose)
+				printf("Pause 10 seconds to allow daemon(s)"
+				    " to close log file(s)\n");
+			sleep(10);
+		}
+	}
+	/*
+	 * Compress all files that we're expected to compress, now
+	 * that all processes should have closed the files which
+	 * have been rotated.
+	 */
+	if (!SLIST_EMPTY(&zwhead)) {
+		if (noaction || verbose)
+			printf("Compress all rotated log file(s)...\n");
+		while (!SLIST_EMPTY(&zwhead)) {
+			ztmp = SLIST_FIRST(&zwhead);
+			do_zipwork(ztmp);
+			SLIST_REMOVE_HEAD(&zwhead, zw_nextp);
+			free(ztmp);
+		}
+	}
+	/* Now free all the sigwork entries. */
+	while (!SLIST_EMPTY(&swhead)) {
+		stmp = SLIST_FIRST(&swhead);
+		SLIST_REMOVE_HEAD(&swhead, sw_nextp);
+		free(stmp);
+	}
+
 	while (wait(NULL) > 0 || errno == EINTR)
 		;
 	return (0);
@@ -195,7 +318,10 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 	if (tempwork == NULL)
 		err(1, "malloc of conf_entry for %s", fname);
 
-	tempwork->log = strdup(fname);
+	if (destdir == NULL || fname[0] != '/')
+		tempwork->log = strdup(fname);
+	else
+		asprintf(&tempwork->log, "%s%s", destdir, fname);
 	if (tempwork->log == NULL)
 		err(1, "strdup for %s", fname);
 
@@ -206,12 +332,15 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 		tempwork->r_reason = NULL;
 		tempwork->firstcreate = 0;
 		tempwork->rotate = 0;
+		tempwork->fsize = -1;
 		tempwork->uid = src_entry->uid;
 		tempwork->gid = src_entry->gid;
 		tempwork->numlogs = src_entry->numlogs;
-		tempwork->size = src_entry->size;
+		tempwork->trsize = src_entry->trsize;
 		tempwork->hours = src_entry->hours;
-		tempwork->trim_at = src_entry->trim_at;
+		tempwork->trim_at = NULL;
+		if (src_entry->trim_at != NULL)
+			tempwork->trim_at = ptime_init(src_entry->trim_at);
 		tempwork->permissions = src_entry->permissions;
 		tempwork->flags = src_entry->flags;
 		tempwork->sig = src_entry->sig;
@@ -222,12 +351,13 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 		tempwork->r_reason = NULL;
 		tempwork->firstcreate = 0;
 		tempwork->rotate = 0;
+		tempwork->fsize = -1;
 		tempwork->uid = (uid_t)-1;
 		tempwork->gid = (gid_t)-1;
 		tempwork->numlogs = 1;
-		tempwork->size = -1;
+		tempwork->trsize = -1;
 		tempwork->hours = -1;
-		tempwork->trim_at = (time_t)0;
+		tempwork->trim_at = NULL;
 		tempwork->permissions = 0;
 		tempwork->flags = 0;
 		tempwork->sig = SIGHUP;
@@ -262,6 +392,11 @@ free_entry(struct conf_entry *ent)
 		ent->r_reason = NULL;
 	}
 
+	if (ent->trim_at != NULL) {
+		ptime_free(ent->trim_at);
+		ent->trim_at = NULL;
+	}
+
 	free(ent);
 }
 
@@ -283,13 +418,16 @@ free_clist(struct conf_entry **firstent)
 	}
 }
 
-static void
+static fk_entry
 do_entry(struct conf_entry * ent)
 {
-#define REASON_MAX	80
-	int size, modtime;
+#define	REASON_MAX	80
+	int modtime;
+	fk_entry free_or_keep;
+	double diffsecs;
 	char temp_reason[REASON_MAX];
 
+	free_or_keep = FREE_ENT;
 	if (verbose) {
 		if (ent->flags & CE_COMPACT)
 			printf("%s <%dZ>: ", ent->log, ent->numlogs);
@@ -298,11 +436,11 @@ do_entry(struct conf_entry * ent)
 		else
 			printf("%s <%d>: ", ent->log, ent->numlogs);
 	}
-	size = sizefile(ent->log);
+	ent->fsize = sizefile(ent->log);
 	modtime = age_old_log(ent->log);
 	ent->rotate = 0;
 	ent->firstcreate = 0;
-	if (size < 0) {
+	if (ent->fsize < 0) {
 		/*
 		 * If either the C flag or the -C option was specified,
 		 * and if we won't be creating the file, then have the
@@ -315,9 +453,9 @@ do_entry(struct conf_entry * ent)
 		else if ((ent->flags & CE_CREATE) && createlogs)
 			ent->firstcreate = 1;
 		else if (ent->flags & CE_CREATE)
-			strncpy(temp_reason, " (no -C option)", REASON_MAX);
+			strlcpy(temp_reason, " (no -C option)", REASON_MAX);
 		else if (createlogs)
-			strncpy(temp_reason, " (no C flag)", REASON_MAX);
+			strlcpy(temp_reason, " (no C flag)", REASON_MAX);
 
 		if (ent->firstcreate) {
 			if (verbose)
@@ -328,18 +466,47 @@ do_entry(struct conf_entry * ent)
 		}
 	} else {
 		if (ent->flags & CE_TRIMAT && !force && !rotatereq) {
-			if (timenow < ent->trim_at
-			    || difftime(timenow, ent->trim_at) >= 60 * 60) {
-				if (verbose)
+			diffsecs = ptimeget_diff(timenow, ent->trim_at);
+			if (diffsecs < 0.0) {
+				/* trim_at is some time in the future. */
+				if (verbose) {
+					ptime_adjust4dst(ent->trim_at,
+					    timenow);
 					printf("--> will trim at %s",
-					    ctime(&ent->trim_at));
-				return;
+					    ptimeget_ctime(ent->trim_at));
+				}
+				return (free_or_keep);
+			} else if (diffsecs >= 3600.0) {
+				/*
+				 * trim_at is more than an hour in the past,
+				 * so find the next valid trim_at time, and
+				 * tell the user what that will be.
+				 */
+				if (verbose && dbg_at_times)
+					printf("\n\t--> prev trim at %s\t",
+					    ptimeget_ctime(ent->trim_at));
+				if (verbose) {
+					ptimeset_nxtime(ent->trim_at);
+					printf("--> will trim at %s",
+					    ptimeget_ctime(ent->trim_at));
+				}
+				return (free_or_keep);
+			} else if (verbose && noaction && dbg_at_times) {
+				/*
+				 * If we are just debugging at-times, then
+				 * a detailed message is helpful.  Also
+				 * skip "doing" any commands, since they
+				 * would all be turned off by no-action.
+				 */
+				printf("\n\t--> timematch at %s",
+				    ptimeget_ctime(ent->trim_at));
+				return (free_or_keep);
 			} else if (verbose && ent->hours <= 0) {
 				printf("--> time is up\n");
 			}
 		}
-		if (verbose && (ent->size > 0))
-			printf("size (Kb): %d [%d] ", size, ent->size);
+		if (verbose && (ent->trsize > 0))
+			printf("size (Kb): %d [%d] ", ent->fsize, ent->trsize);
 		if (verbose && (ent->hours > 0))
 			printf(" age (hr): %d [%d] ", modtime, ent->hours);
 
@@ -354,10 +521,10 @@ do_entry(struct conf_entry * ent)
 		} else if (force) {
 			ent->rotate = 1;
 			snprintf(temp_reason, REASON_MAX, " due to -F request");
-		} else if ((ent->size > 0) && (size >= ent->size)) {
+		} else if ((ent->trsize > 0) && (ent->fsize >= ent->trsize)) {
 			ent->rotate = 1;
 			snprintf(temp_reason, REASON_MAX, " due to size>%dK",
-			    ent->size);
+			    ent->trsize);
 		} else if (ent->hours <= 0 && (ent->flags & CE_TRIMAT)) {
 			ent->rotate = 1;
 		} else if ((ent->hours > 0) && ((modtime >= ent->hours) ||
@@ -368,7 +535,7 @@ do_entry(struct conf_entry * ent)
 		/*
 		 * If the file needs to be rotated, then rotate it.
 		 */
-		if (ent->rotate) {
+		if (ent->rotate && !norotate) {
 			if (temp_reason[0] != '\0')
 				ent->r_reason = strdup(temp_reason);
 			if (verbose)
@@ -384,109 +551,14 @@ do_entry(struct conf_entry * ent)
 					printf("%s <%d>: trimming\n",
 					    ent->log, ent->numlogs);
 			}
-			dotrim(ent, ent->log, ent->numlogs, ent->flags);
+			free_or_keep = do_rotate(ent);
 		} else {
 			if (verbose)
 				printf("--> skipping\n");
 		}
 	}
+	return (free_or_keep);
 #undef REASON_MAX
-}
-
-/* Send a signal to the pid specified by pidfile */
-static int
-send_signal(const struct conf_entry *ent)
-{
-	pid_t target_pid;
-	int did_notify;
-	FILE *f;
-	long minok, maxok, rval;
-	const char *target_name;
-	char *endp, *linep, line[BUFSIZ];
-
-	did_notify = 0;
-	f = fopen(ent->pid_file, "r");
-	if (f == NULL) {
-		warn("can't open pid file: %s", ent->pid_file);
-		return (did_notify);
-		/* NOTREACHED */
-	}
-
-	if (fgets(line, BUFSIZ, f) == NULL) {
-		/*
-		 * XXX - If the pid file is empty, is that really a
-		 *	problem?  Wouldn't that mean that the process
-		 *	has shut down?  In that case there would be no
-		 *	problem with compressing the rotated log file.
-		 */
-		if (feof(f))
-			warnx("pid file is empty: %s",  ent->pid_file);
-		else
-			warn("can't read from pid file: %s", ent->pid_file);
-		fclose(f);
-		return (did_notify);
-		/* NOTREACHED */
-	}
-	fclose(f);
-
-	target_name = "daemon";
-	minok = MIN_PID;
-	maxok = MAX_PID;
-	if (ent->flags & CE_SIGNALGROUP) {
-		/*
-		 * If we are expected to signal a process-group when
-		 * rotating this logfile, then the value read in should
-		 * be the negative of a valid process ID.
-		 */
-		target_name = "process-group";
-		minok = -MAX_PID;
-		maxok = -MIN_PID;
-	}
-
-	errno = 0;
-	linep = line;
-	while (*linep == ' ')
-		linep++;
-	rval = strtol(linep, &endp, 10);
-	if (*endp != '\0' && !isspacech(*endp)) {
-		warnx("pid file does not start with a valid number: %s",
-		    ent->pid_file);
-		rval = 0;
-	} else if (rval < minok || rval > maxok) {
-		warnx("bad value '%ld' for process number in %s",
-		    rval, ent->pid_file);
-		if (verbose)
-			warnx("\t(expecting value between %ld and %ld)",
-			    minok, maxok);
-		rval = 0;
-	}
-	if (rval == 0) {
-		return (did_notify);
-		/* NOTREACHED */
-	}
-
-	target_pid = rval;
-
-	if (noaction) {
-		did_notify = 1;
-		printf("\tkill -%d %d\n", ent->sig, (int) target_pid);
-	} else if (kill(target_pid, ent->sig)) {
-		/*
-		 * XXX - Iff the error was "no such process", should that
-		 *	really be an error for us?  Perhaps the process
-		 *	is already gone, in which case there would be no
-		 *	problem with compressing the rotated log file.
-		 */
-		warn("can't notify %s, pid %d", target_name,
-		    (int) target_pid);
-	} else {
-		did_notify = 1;
-		if (verbose)
-			printf("%s pid %d notified\n", target_name,
-			    (int) target_pid);
-	}
-
-	return (did_notify);
 }
 
 static void
@@ -495,9 +567,9 @@ parse_args(int argc, char **argv)
 	int ch;
 	char *p;
 
-	timenow = time(NULL);
-	strncpy(daytime, ctime(&timenow) + 4, 15);
-	daytime[15] = '\0';
+	timenow = ptime_init(NULL);
+	ptimeset_time(timenow, time(NULL));
+	strlcpy(daytime, ptimeget_ctime(timenow) + 4, DAYTIME_LEN);
 
 	/* Let's get our hostname */
 	gethostname(hostname, sizeof(hostname));
@@ -507,11 +579,14 @@ parse_args(int argc, char **argv)
 		*p = '\0';
 
 	/* Parse command line options. */
-	while ((ch = getopt(argc, argv, "a:f:nrsvCFR:")) != -1)
+	while ((ch = getopt(argc, argv, "a:d:f:nrsvCD:FNR:")) != -1)
 		switch (ch) {
 		case 'a':
 			archtodir++;
 			archdirname = optarg;
+			break;
+		case 'd':
+			destdir = optarg;
 			break;
 		case 'f':
 			conf = optarg;
@@ -532,8 +607,21 @@ parse_args(int argc, char **argv)
 			/* Useful for things like rc.diskless... */
 			createlogs++;
 			break;
+		case 'D':
+			/*
+			 * Set some debugging option.  The specific option
+			 * depends on the value of optarg.  These options
+			 * may come and go without notice or documentation.
+			 */
+			if (parse_doption(optarg))
+				break;
+			usage();
+			/* NOTREACHED */
 		case 'F':
 			force++;
+			break;
+		case 'N':
+			norotate++;
 			break;
 		case 'R':
 			rotatereq++;
@@ -544,6 +632,12 @@ parse_args(int argc, char **argv)
 			usage();
 			/* NOTREACHED */
 		}
+
+	if (force && norotate) {
+		warnx("Only one of -F and -N may be specified.");
+		usage();
+		/* NOTREACHED */
+	}
 
 	if (rotatereq) {
 		if (optind == argc) {
@@ -557,6 +651,66 @@ parse_args(int argc, char **argv)
 				*p = '.';
 		}
 	}
+
+	if (dbg_timenow) {
+		/*
+		 * Note that the 'daytime' variable is not changed.
+		 * That is only used in messages that track when a
+		 * logfile is rotated, and if a file *is* rotated,
+		 * then it will still rotated at the "real now" time.
+		 */
+		ptime_free(timenow);
+		timenow = dbg_timenow;
+		fprintf(stderr, "Debug: Running as if TimeNow is %s",
+		    ptimeget_ctime(dbg_timenow));
+	}
+
+}
+
+/*
+ * These debugging options are mainly meant for developer use, such
+ * as writing regression-tests.  They would not be needed by users
+ * during normal operation of newsyslog...
+ */
+static int
+parse_doption(const char *doption)
+{
+	const char TN[] = "TN=";
+	int res;
+
+	if (strncmp(doption, TN, sizeof(TN) - 1) == 0) {
+		/*
+		 * The "TimeNow" debugging option.  This might be off
+		 * by an hour when crossing a timezone change.
+		 */
+		dbg_timenow = ptime_init(NULL);
+		res = ptime_relparse(dbg_timenow, PTM_PARSE_ISO8601,
+		    time(NULL), doption + sizeof(TN) - 1);
+		if (res == -2) {
+			warnx("Non-existent time specified on -D %s", doption);
+			return (0);			/* failure */
+		} else if (res < 0) {
+			warnx("Malformed time given on -D %s", doption);
+			return (0);			/* failure */
+		}
+		return (1);			/* successfully parsed */
+
+	}
+
+	if (strcmp(doption, "ats") == 0) {
+		dbg_at_times++;
+		return (1);			/* successfully parsed */
+	}
+
+	/* XXX - This check could probably be dropped. */
+	if ((strcmp(doption, "neworder") == 0) || (strcmp(doption, "oldorder")
+	    == 0)) {
+		warnx("NOTE: newsyslog always uses 'neworder'.");
+		return (1);			/* successfully parsed */
+	}
+
+	warnx("Unknown -D (debug) option: '%s'", doption);
+	return (0);				/* failure */
 }
 
 static void
@@ -564,7 +718,7 @@ usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: newsyslog [-CFnrsv] [-a directory] [-f config-file]\n"
+	    "usage: newsyslog [-CFNnrsv] [-a directory] [-d directory] [-f config-file]\n"
 	    "                 [ [-R requestor] filename ... ]\n");
 	exit(1);
 }
@@ -596,7 +750,7 @@ get_worklist(char **files)
 		fname = "<stdin>";
 	}
 	if (!f)
-		err(1, "%s", conf);
+		err(1, "%s", fname);
 
 	parse_file(f, fname, &worklist, &globlist, &defconf);
 	fclose(f);
@@ -627,7 +781,7 @@ get_worklist(char **files)
 	if (defconf == NULL) {
 		defconf = init_entry(DEFAULT_MARKER, NULL);
 		defconf->numlogs = 3;
-		defconf->size = 50;
+		defconf->trsize = 50;
 		defconf->permissions = S_IRUSR|S_IWUSR;
 	}
 
@@ -835,7 +989,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 	struct conf_entry *lastglob, *lastwork, *working;
 	struct passwd *pwd;
 	struct group *grp;
-	int eol, special;
+	int eol, ptm_opts, res, special;
 
 	/*
 	 * XXX - for now, assume that only one config file will be read,
@@ -843,10 +997,13 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 	 */
 	lastglob = lastwork = NULL;
 
+	errline = NULL;
 	while (fgets(line, BUFSIZ, cf)) {
 		if ((line[0] == '\n') || (line[0] == '#') ||
 		    (strlen(line) == 0))
 			continue;
+		if (errline != NULL)
+			free(errline);
 		errline = strdup(line);
 		for (cp = line + 1; *cp != '\0'; cp++) {
 			if (*cp != '#')
@@ -866,6 +1023,24 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 			errx(1, "malformed line (missing fields):\n%s",
 			    errline);
 		*parse = '\0';
+
+		/*
+		 * Allow people to set debug options via the config file.
+		 * (NOTE: debug optons are undocumented, and may disappear
+		 * at any time, etc).
+		 */
+		if (strcasecmp(DEBUG_MARKER, q) == 0) {
+			q = parse = missing_field(sob(++parse), errline);
+			parse = son(parse);
+			if (!*parse)
+				warnx("debug line specifies no option:\n%s",
+				    errline);
+			else {
+				*parse = '\0';
+				parse_doption(q);
+			}
+			continue;
+		}
 
 		special = 0;
 		working = init_entry(q, NULL);
@@ -894,7 +1069,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 		    (group = strrchr(q, '.')) != NULL) {
 			*group++ = '\0';
 			if (*q) {
-				if (!isdigit(*q)) {
+				if (!(isnumberstr(q))) {
 					if ((pwd = getpwnam(q)) == NULL)
 						errx(1,
 				     "error in config file; unknown user:\n%s",
@@ -907,7 +1082,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 
 			q = group;
 			if (*q) {
-				if (!isdigit(*q)) {
+				if (!(isnumberstr(q))) {
 					if ((grp = getgrnam(q)) == NULL)
 						errx(1,
 				    "error in config file; unknown group:\n%s",
@@ -950,13 +1125,13 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 			    errline);
 		*parse = '\0';
 		if (isdigitch(*q))
-			working->size = atoi(q);
-		else if (strcmp(q,"*") == 0)
-			working->size = -1;
+			working->trsize = atoi(q);
+		else if (strcmp(q, "*") == 0)
+			working->trsize = -1;
 		else {
 			warnx("Invalid value of '%s' for 'size' in line:\n%s",
 			    q, errline);
-			working->size = -1;
+			working->trsize = -1;
 		}
 
 		working->flags = 0;
@@ -978,21 +1153,26 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 			else
 				working->hours = ul;
 
-			if (*ep != '\0' && *ep != '@' && *ep != '*' &&
-			    *ep != '$')
+			if (*ep == '\0' || strcmp(ep, "*") == 0)
+				goto no_trimat;
+			if (*ep != '@' && *ep != '$')
 				errx(1, "malformed interval/at:\n%s", errline);
-			if (*ep == '@') {
-				if ((working->trim_at = parse8601(ep + 1, errline))
-				    == (time_t) - 1)
-					errx(1, "malformed at:\n%s", errline);
-				working->flags |= CE_TRIMAT;
-			} else if (*ep == '$') {
-				if ((working->trim_at = parseDWM(ep + 1, errline))
-				    == (time_t) - 1)
-					errx(1, "malformed at:\n%s", errline);
-				working->flags |= CE_TRIMAT;
-			}
+
+			working->flags |= CE_TRIMAT;
+			working->trim_at = ptime_init(NULL);
+			ptm_opts = PTM_PARSE_ISO8601;
+			if (*ep == '$')
+				ptm_opts = PTM_PARSE_DWM;
+			ptm_opts |= PTM_PARSE_MATCHDOM;
+			res = ptime_relparse(working->trim_at, ptm_opts,
+			    ptimeget_secs(timenow), ep + 1);
+			if (res == -2)
+				errx(1, "nonexistent time for 'at' value:\n%s",
+				    errline);
+			else if (res < 0)
+				errx(1, "malformed 'at' value:\n%s", errline);
 		}
+no_trimat:
 
 		if (eol)
 			q = NULL;
@@ -1026,6 +1206,9 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 				}
 				working->flags |= CE_CREATE;
 				break;
+			case 'd':
+				working->flags |= CE_NODUMP;
+				break;
 			case 'g':
 				working->flags |= CE_GLOB;
 				break;
@@ -1039,7 +1222,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 				working->flags |= CE_SIGNALGROUP;
 				break;
 			case 'w':
-				working->flags |= CE_COMPACTWAIT;
+				/* Deprecated flag - keep for compatibility purposes */
 				break;
 			case 'z':
 				working->flags |= CE_COMPACT;
@@ -1151,10 +1334,9 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 				lastwork->next = working;
 			lastwork = working;
 		}
-
-		free(errline);
-		errline = NULL;
 	}
+	if (errline != NULL)
+		free(errline);
 }
 
 static char *
@@ -1166,16 +1348,20 @@ missing_field(char *p, char *errline)
 	return (p);
 }
 
-static void
-dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
+static fk_entry
+do_rotate(const struct conf_entry *ent)
 {
 	char dirpart[MAXPATHLEN], namepart[MAXPATHLEN];
 	char file1[MAXPATHLEN], file2[MAXPATHLEN];
 	char zfile1[MAXPATHLEN], zfile2[MAXPATHLEN];
 	char jfile1[MAXPATHLEN];
-	char tfile[MAXPATHLEN];
-	int notified, need_notification, fd, _numdays;
+	int flags, numlogs_c;
+	fk_entry free_or_keep;
+	struct sigwork_entry *swork;
 	struct stat st;
+
+	flags = ent->flags;
+	free_or_keep = FREE_ENT;
 
 	if (archtodir) {
 		char *p;
@@ -1185,7 +1371,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 			strlcpy(dirpart, archdirname, sizeof(dirpart));
 		} else {	/* relative */
 			/* get directory part of logfile */
-			strlcpy(dirpart, log, sizeof(dirpart));
+			strlcpy(dirpart, ent->log, sizeof(dirpart));
 			if ((p = strrchr(dirpart, '/')) == NULL)
 				dirpart[0] = '\0';
 			else
@@ -1198,21 +1384,22 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 			createdir(ent, dirpart);
 
 		/* get filename part of logfile */
-		if ((p = strrchr(log, '/')) == NULL)
-			strlcpy(namepart, log, sizeof(namepart));
+		if ((p = strrchr(ent->log, '/')) == NULL)
+			strlcpy(namepart, ent->log, sizeof(namepart));
 		else
 			strlcpy(namepart, p + 1, sizeof(namepart));
 
 		/* name of oldest log */
 		snprintf(file1, sizeof(file1), "%s/%s.%d", dirpart,
-		    namepart, numdays);
+		    namepart, ent->numlogs);
 		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
 		    COMPRESS_POSTFIX);
 		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
 		    BZCOMPRESS_POSTFIX);
 	} else {
 		/* name of oldest log */
-		snprintf(file1, sizeof(file1), "%s.%d", log, numdays);
+		snprintf(file1, sizeof(file1), "%s.%d", ent->log,
+		    ent->numlogs);
 		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
 		    COMPRESS_POSTFIX);
 		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
@@ -1230,17 +1417,17 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 	}
 
 	/* Move down log files */
-	_numdays = numdays;	/* preserve */
-	while (numdays--) {
+	numlogs_c = ent->numlogs;		/* copy for countdown */
+	while (numlogs_c--) {
 
 		strlcpy(file2, file1, sizeof(file2));
 
 		if (archtodir)
 			snprintf(file1, sizeof(file1), "%s/%s.%d",
-			    dirpart, namepart, numdays);
+			    dirpart, namepart, numlogs_c);
 		else
-			snprintf(file1, sizeof(file1), "%s.%d", log,
-			    numdays);
+			snprintf(file1, sizeof(file1), "%s.%d", ent->log,
+			    numlogs_c);
 
 		strlcpy(zfile1, file1, sizeof(zfile1));
 		strlcpy(zfile2, file2, sizeof(zfile2));
@@ -1260,141 +1447,387 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 					continue;
 			}
 		}
-		if (noaction) {
+		if (noaction)
 			printf("\tmv %s %s\n", zfile1, zfile2);
-			printf("\tchmod %o %s\n", ent->permissions, zfile2);
-			if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
-				printf("\tchown %u:%u %s\n",
-				    ent->uid, ent->gid, zfile2);
-		} else {
-			rename(zfile1, zfile2);
-			if (chmod(zfile2, ent->permissions))
-				warn("can't chmod %s", file2);
-			if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
-				if (chown(zfile2, ent->uid, ent->gid))
-					warn("can't chown %s", zfile2);
-		}
-	}
-	if (!noaction && !(flags & CE_BINARY)) {
-		/* Report the trimming to the old log */
-		log_trim(log, ent);
-	}
-
-	if (!_numdays) {
-		if (noaction)
-			printf("\trm %s\n", log);
-		else
-			unlink(log);
-	} else {
-		if (noaction)
-			printf("\tmv %s to %s\n", log, file1);
 		else {
-			if (archtodir)
-				movefile(log, file1, ent->permissions, ent->uid,
-				    ent->gid);
-			else
-				rename(log, file1);
+			/* XXX - Ought to be checking for failure! */
+			rename(zfile1, zfile2);
 		}
+		change_attrs(zfile2, ent);
 	}
 
-	/* Now move the new log file into place */
-	/* XXX - We should replace the above 'rename' with 'link(log, file1)'
-	 *	then replace the following with 'createfile(ent)' */
-	strlcpy(tfile, log, sizeof(tfile));
-	strlcat(tfile, ".XXXXXX", sizeof(tfile));
-	if (noaction) {
-		printf("Start new log...\n");
-		printf("\tmktemp %s\n", tfile);
-	} else {
-		mkstemp(tfile);
-		fd = creat(tfile, ent->permissions);
-		if (fd < 0)
-			err(1, "can't start new log");
-		if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
-			if (fchown(fd, ent->uid, ent->gid))
-			    err(1, "can't chown new log file");
-		close(fd);
-		if (!(flags & CE_BINARY)) {
-			/* Add status message to new log file */
-			if (log_trim(tfile, ent))
-				err(1, "can't add status message to log");
+	if (ent->numlogs > 0) {
+		if (noaction) {
+			/*
+			 * Note that savelog() may succeed with using link()
+			 * for the archtodir case, but there is no good way
+			 * of knowing if it will when doing "noaction", so
+			 * here we claim that it will have to do a copy...
+			 */
+			if (archtodir)
+				printf("\tcp %s %s\n", ent->log, file1);
+			else
+				printf("\tln %s %s\n", ent->log, file1);
+		} else {
+			if (!(flags & CE_BINARY)) {
+				/* Report the trimming to the old log */
+				log_trim(ent->log, ent);
+			}
+			savelog(ent->log, file1);
 		}
+		change_attrs(file1, ent);
 	}
-	if (noaction) {
-		printf("\tchmod %o %s\n", ent->permissions, tfile);
-		printf("\tmv %s %s\n", tfile, log);
-	} else {
-		chmod(tfile, ent->permissions);
-		if (rename(tfile, log) < 0) {
-			err(1, "can't start new log");
-			unlink(tfile);
-		}
+
+	/* Create the new log file and move it into place */
+	if (noaction)
+		printf("Start new log...\n");
+	createlog(ent);
+
+	/*
+	 * Save all signalling and file-compression to be done after log
+	 * files from all entries have been rotated.  This way any one
+	 * process will not be sent the same signal multiple times when
+	 * multiple log files had to be rotated.
+	 */
+	swork = NULL;
+	if (ent->pid_file != NULL)
+		swork = save_sigwork(ent);
+	if (ent->numlogs > 0 && (flags & (CE_COMPACT | CE_BZCOMPACT))) {
+		/*
+		 * The zipwork_entry will include a pointer to this
+		 * conf_entry, so the conf_entry should not be freed.
+		 */
+		free_or_keep = KEEP_ENT;
+		save_zipwork(ent, swork, ent->fsize, file1);
+	}
+
+	return (free_or_keep);
+}
+
+static void
+do_sigwork(struct sigwork_entry *swork)
+{
+	struct sigwork_entry *nextsig;
+	int kres, secs;
+
+	if (!(swork->sw_pidok) || swork->sw_pid == 0)
+		return;			/* no work to do... */
+
+	/*
+	 * If nosignal (-s) was specified, then do not signal any process.
+	 * Note that a nosignal request triggers a warning message if the
+	 * rotated logfile needs to be compressed, *unless* -R was also
+	 * specified.  We assume that an `-sR' request came from a process
+	 * which writes to the logfile, and as such, we assume that process
+	 * has already made sure the logfile is not presently in use.  This
+	 * just sets swork->sw_pidok to a special value, and do_zipwork
+	 * will print any necessary warning(s).
+	 */
+	if (nosignal) {
+		if (!rotatereq)
+			swork->sw_pidok = -1;
+		return;
 	}
 
 	/*
-	 * Find out if there is a process to signal.  If nosignal (-s) was
-	 * specified, then do not signal any process.  Note that nosignal
-	 * will trigger a warning message if the rotated logfile needs to
-	 * be compressed, *unless* -R was specified.  This is because there
-	 * presumably still are process(es) writing to the old logfile, but
-	 * we assume that a -sR request comes from a process which writes 
-	 * to the logfile, and as such, that process has already made sure
-	 * that the logfile is not presently in use.
+	 * Compute the pause between consecutive signals.  Use a longer
+	 * sleep time if we will be sending two signals to the same
+	 * deamon or process-group.
 	 */
-	need_notification = notified = 0;
-	if (ent->pid_file != NULL) {
-		need_notification = 1;
-		if (!nosignal)
-			notified = send_signal(ent);	/* the normal case! */
-		else if (rotatereq)
-			need_notification = 0;
+	secs = 0;
+	nextsig = SLIST_NEXT(swork, sw_nextp);
+	if (nextsig != NULL) {
+		if (swork->sw_pid == nextsig->sw_pid)
+			secs = 10;
+		else
+			secs = 1;
 	}
 
-	if ((flags & CE_COMPACT) || (flags & CE_BZCOMPACT)) {
-		if (need_notification && !notified)
-			warnx(
-			    "log %s.0 not compressed because daemon(s) not notified",
-			    log);
-		else if (noaction)
-			if (flags & CE_COMPACT)
-				printf("\tgzip %s.0\n", log);
-			else
-				printf("\tbzip2 %s.0\n", log);
-		else {
-			if (notified) {
-				if (verbose)
-					printf("small pause to allow daemon(s) to close log\n");
-				sleep(10);
-			}
-			if (archtodir) {
-				snprintf(file1, sizeof(file1), "%s/%s",
-				    dirpart, namepart);
-				if (flags & CE_COMPACT)
-					compress_log(file1,
-					    flags & CE_COMPACTWAIT);
-				else if (flags & CE_BZCOMPACT)
-					bzcompress_log(file1,
-					    flags & CE_COMPACTWAIT);
-			} else {
-				if (flags & CE_COMPACT)
-					compress_log(log,
-					    flags & CE_COMPACTWAIT);
-				else if (flags & CE_BZCOMPACT)
-					bzcompress_log(log,
-					    flags & CE_COMPACTWAIT);
-			}
+	if (noaction) {
+		printf("\tkill -%d %d \t\t# %s\n", swork->sw_signum,
+		    (int)swork->sw_pid, swork->sw_fname);
+		if (secs > 0)
+			printf("\tsleep %d\n", secs);
+		return;
+	}
+
+	kres = kill(swork->sw_pid, swork->sw_signum);
+	if (kres != 0) {
+		/*
+		 * Assume that "no such process" (ESRCH) is something
+		 * to warn about, but is not an error.  Presumably the
+		 * process which writes to the rotated log file(s) is
+		 * gone, in which case we should have no problem with
+		 * compressing the rotated log file(s).
+		 */
+		if (errno != ESRCH)
+			swork->sw_pidok = 0;
+		warn("can't notify %s, pid %d", swork->sw_pidtype,
+		    (int)swork->sw_pid);
+	} else {
+		if (verbose)
+			printf("Notified %s pid %d = %s\n", swork->sw_pidtype,
+			    (int)swork->sw_pid, swork->sw_fname);
+		if (secs > 0) {
+			if (verbose)
+				printf("Pause %d second(s) between signals\n",
+				    secs);
+			sleep(secs);
 		}
 	}
 }
 
+static void
+do_zipwork(struct zipwork_entry *zwork)
+{
+	const char *pgm_name, *pgm_path;
+	int errsav, fcount, zstatus;
+	pid_t pidzip, wpid;
+	char zresult[MAXPATHLEN];
+
+	pgm_path = NULL;
+	strlcpy(zresult, zwork->zw_fname, sizeof(zresult));
+	if (zwork != NULL && zwork->zw_conf != NULL) {
+		if (zwork->zw_conf->flags & CE_COMPACT) {
+			pgm_path = _PATH_GZIP;
+			strlcat(zresult, COMPRESS_POSTFIX, sizeof(zresult));
+		} else if (zwork->zw_conf->flags & CE_BZCOMPACT) {
+			pgm_path = _PATH_BZIP2;
+			strlcat(zresult, BZCOMPRESS_POSTFIX, sizeof(zresult));
+		}
+	}
+	if (pgm_path == NULL) {
+		warnx("invalid entry for %s in do_zipwork", zwork->zw_fname);
+		return;
+	}
+	pgm_name = strrchr(pgm_path, '/');
+	if (pgm_name == NULL)
+		pgm_name = pgm_path;
+	else
+		pgm_name++;
+
+	if (zwork->zw_swork != NULL && zwork->zw_swork->sw_pidok <= 0) {
+		warnx(
+		    "log %s not compressed because daemon(s) not notified",
+		    zwork->zw_fname);
+		change_attrs(zwork->zw_fname, zwork->zw_conf);
+		return;
+	}
+
+	if (noaction) {
+		printf("\t%s %s\n", pgm_name, zwork->zw_fname);
+		change_attrs(zresult, zwork->zw_conf);
+		return;
+	}
+
+	fcount = 1;
+	pidzip = fork();
+	while (pidzip < 0) {
+		/*
+		 * The fork failed.  If the failure was due to a temporary
+		 * problem, then wait a short time and try it again.
+		 */
+		errsav = errno;
+		warn("fork() for `%s %s'", pgm_name, zwork->zw_fname);
+		if (errsav != EAGAIN || fcount > 5)
+			errx(1, "Exiting...");
+		sleep(fcount * 12);
+		fcount++;
+		pidzip = fork();
+	}
+	if (!pidzip) {
+		/* The child process executes the compression command */
+		execl(pgm_path, pgm_path, "-f", zwork->zw_fname, (char *)0);
+		err(1, "execl(`%s -f %s')", pgm_path, zwork->zw_fname);
+	}
+
+	wpid = waitpid(pidzip, &zstatus, 0);
+	if (wpid == -1) {
+		/* XXX - should this be a fatal error? */
+		warn("%s: waitpid(%d)", pgm_path, pidzip);
+		return;
+	}
+	if (!WIFEXITED(zstatus)) {
+		warnx("`%s -f %s' did not terminate normally", pgm_name,
+		    zwork->zw_fname);
+		return;
+	}
+	if (WEXITSTATUS(zstatus)) {
+		warnx("`%s -f %s' terminated with a non-zero status (%d)",
+		    pgm_name, zwork->zw_fname, WEXITSTATUS(zstatus));
+		return;
+	}
+
+	/* Compression was successful, set file attributes on the result. */
+	change_attrs(zresult, zwork->zw_conf);
+}
+
+/*
+ * Save information on any process we need to signal.  Any single
+ * process may need to be sent different signal-values for different
+ * log files, but usually a single signal-value will cause the process
+ * to close and re-open all of it's log files.
+ */
+static struct sigwork_entry *
+save_sigwork(const struct conf_entry *ent)
+{
+	struct sigwork_entry *sprev, *stmp;
+	int ndiff;
+	size_t tmpsiz;
+
+	sprev = NULL;
+	ndiff = 1;
+	SLIST_FOREACH(stmp, &swhead, sw_nextp) {
+		ndiff = strcmp(ent->pid_file, stmp->sw_fname);
+		if (ndiff > 0)
+			break;
+		if (ndiff == 0) {
+			if (ent->sig == stmp->sw_signum)
+				break;
+			if (ent->sig > stmp->sw_signum) {
+				ndiff = 1;
+				break;
+			}
+		}
+		sprev = stmp;
+	}
+	if (stmp != NULL && ndiff == 0)
+		return (stmp);
+
+	tmpsiz = sizeof(struct sigwork_entry) + strlen(ent->pid_file) + 1;
+	stmp = malloc(tmpsiz);
+	set_swpid(stmp, ent);
+	stmp->sw_signum = ent->sig;
+	strcpy(stmp->sw_fname, ent->pid_file);
+	if (sprev == NULL)
+		SLIST_INSERT_HEAD(&swhead, stmp, sw_nextp);
+	else
+		SLIST_INSERT_AFTER(sprev, stmp, sw_nextp);
+	return (stmp);
+}
+
+/*
+ * Save information on any file we need to compress.  We may see the same
+ * file multiple times, so check the full list to avoid duplicates.  The
+ * list itself is sorted smallest-to-largest, because that's the order we
+ * want to compress the files.  If the partition is very low on disk space,
+ * then the smallest files are the most likely to compress, and compressing
+ * them first will free up more space for the larger files.
+ */
+static struct zipwork_entry *
+save_zipwork(const struct conf_entry *ent, const struct sigwork_entry *swork,
+    int zsize, const char *zipfname)
+{
+	struct zipwork_entry *zprev, *ztmp;
+	int ndiff;
+	size_t tmpsiz;
+
+	/* Compute the size if the caller did not know it. */
+	if (zsize < 0)
+		zsize = sizefile(zipfname);
+
+	zprev = NULL;
+	ndiff = 1;
+	SLIST_FOREACH(ztmp, &zwhead, zw_nextp) {
+		ndiff = strcmp(zipfname, ztmp->zw_fname);
+		if (ndiff == 0)
+			break;
+		if (zsize > ztmp->zw_fsize)
+			zprev = ztmp;
+	}
+	if (ztmp != NULL && ndiff == 0)
+		return (ztmp);
+
+	tmpsiz = sizeof(struct zipwork_entry) + strlen(zipfname) + 1;
+	ztmp = malloc(tmpsiz);
+	ztmp->zw_conf = ent;
+	ztmp->zw_swork = swork;
+	ztmp->zw_fsize = zsize;
+	strcpy(ztmp->zw_fname, zipfname);
+	if (zprev == NULL)
+		SLIST_INSERT_HEAD(&zwhead, ztmp, zw_nextp);
+	else
+		SLIST_INSERT_AFTER(zprev, ztmp, zw_nextp);
+	return (ztmp);
+}
+
+/* Send a signal to the pid specified by pidfile */
+static void
+set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
+{
+	FILE *f;
+	long minok, maxok, rval;
+	char *endp, *linep, line[BUFSIZ];
+
+	minok = MIN_PID;
+	maxok = MAX_PID;
+	swork->sw_pidok = 0;
+	swork->sw_pid = 0;
+	swork->sw_pidtype = "daemon";
+	if (ent->flags & CE_SIGNALGROUP) {
+		/*
+		 * If we are expected to signal a process-group when
+		 * rotating this logfile, then the value read in should
+		 * be the negative of a valid process ID.
+		 */
+		minok = -MAX_PID;
+		maxok = -MIN_PID;
+		swork->sw_pidtype = "process-group";
+	}
+
+	f = fopen(ent->pid_file, "r");
+	if (f == NULL) {
+		warn("can't open pid file: %s", ent->pid_file);
+		return;
+	}
+
+	if (fgets(line, BUFSIZ, f) == NULL) {
+		/*
+		 * Warn if the PID file is empty, but do not consider
+		 * it an error.  Most likely it means the process has
+		 * has terminated, so it should be safe to rotate any
+		 * log files that the process would have been using.
+		 */
+		if (feof(f)) {
+			swork->sw_pidok = 1;
+			warnx("pid file is empty: %s", ent->pid_file);
+		} else
+			warn("can't read from pid file: %s", ent->pid_file);
+		fclose(f);
+		return;
+	}
+	fclose(f);
+
+	errno = 0;
+	linep = line;
+	while (*linep == ' ')
+		linep++;
+	rval = strtol(linep, &endp, 10);
+	if (*endp != '\0' && !isspacech(*endp)) {
+		warnx("pid file does not start with a valid number: %s",
+		    ent->pid_file);
+	} else if (rval < minok || rval > maxok) {
+		warnx("bad value '%ld' for process number in %s",
+		    rval, ent->pid_file);
+		if (verbose)
+			warnx("\t(expecting value between %ld and %ld)",
+			    minok, maxok);
+	} else {
+		swork->sw_pidok = 1;
+		swork->sw_pid = rval;
+	}
+
+	return;
+}
+
 /* Log the fact that the logs were turned over */
 static int
-log_trim(const char *log, const struct conf_entry *log_ent)
+log_trim(const char *logname, const struct conf_entry *log_ent)
 {
 	FILE *f;
 	const char *xtra;
 
-	if ((f = fopen(log, "a")) == NULL)
+	if ((f = fopen(logname, "a")) == NULL)
 		return (-1);
 	xtra = "";
 	if (log_ent->def_cfg)
@@ -1409,51 +1842,13 @@ log_trim(const char *log, const struct conf_entry *log_ent)
 		fprintf(f, "%s %s newsyslog[%d]: logfile turned over%s\n",
 		    daytime, hostname, (int) getpid(), xtra);
 	if (fclose(f) == EOF)
-		err(1, "log_trim: fclose:");
+		err(1, "log_trim: fclose");
 	return (0);
-}
-
-/* Fork of gzip to compress the old log file */
-static void
-compress_log(char *log, int dowait)
-{
-	pid_t pid;
-	char tmp[MAXPATHLEN];
-
-	while (dowait && (wait(NULL) > 0 || errno == EINTR))
-		;
-	snprintf(tmp, sizeof(tmp), "%s.0", log);
-	pid = fork();
-	if (pid < 0)
-		err(1, "gzip fork");
-	else if (!pid) {
-		execl(_PATH_GZIP, _PATH_GZIP, "-f", tmp, (char *)0);
-		err(1, _PATH_GZIP);
-	}
-}
-
-/* Fork of bzip2 to compress the old log file */
-static void
-bzcompress_log(char *log, int dowait)
-{
-	pid_t pid;
-	char tmp[MAXPATHLEN];
-
-	while (dowait && (wait(NULL) > 0 || errno == EINTR))
-		;
-	snprintf(tmp, sizeof(tmp), "%s.0", log);
-	pid = fork();
-	if (pid < 0)
-		err(1, "bzip2 fork");
-	else if (!pid) {
-		execl(_PATH_BZIP2, _PATH_BZIP2, "-f", tmp, (char *)0);
-		err(1, _PATH_BZIP2);
-	}
 }
 
 /* Return size in kilobytes of a file */
 static int
-sizefile(char *file)
+sizefile(const char *file)
 {
 	struct stat sb;
 
@@ -1514,7 +1909,7 @@ age_old_log(char *file)
 				return (-1);
 		}
 	}
-	return ((int)(timenow - sb.st_mtime + 1800) / 3600);
+	return ((int)(ptimeget_secs(timenow) - sb.st_mtime + 1800) / 3600);
 }
 
 /* Skip Over Blanks */
@@ -1535,108 +1930,37 @@ son(char *p)
 	return (p);
 }
 
-/*
- * Parse a limited subset of ISO 8601. The specific format is as follows:
- *
- * [CC[YY[MM[DD]]]][THH[MM[SS]]]	(where `T' is the literal letter)
- *
- * We don't accept a timezone specification; missing fields (including timezone)
- * are defaulted to the current date but time zero.
- */
-static time_t
-parse8601(char *s, char *errline)
+/* Check if string is actually a number */
+static int
+isnumberstr(const char *string)
 {
-	char *t;
-	time_t tsecs;
-	struct tm tm, *tmp;
-	u_long ul;
-
-	tmp = localtime(&timenow);
-	tm = *tmp;
-
-	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
-
-	ul = strtoul(s, &t, 10);
-	if (*t != '\0' && *t != 'T')
-		return (-1);
-
-	/*
-	 * Now t points either to the end of the string (if no time was
-	 * provided) or to the letter `T' which separates date and time in
-	 * ISO 8601.  The pointer arithmetic is the same for either case.
-	 */
-	switch (t - s) {
-	case 8:
-		tm.tm_year = ((ul / 1000000) - 19) * 100;
-		ul = ul % 1000000;
-	case 6:
-		tm.tm_year -= tm.tm_year % 100;
-		tm.tm_year += ul / 10000;
-		ul = ul % 10000;
-	case 4:
-		tm.tm_mon = (ul / 100) - 1;
-		ul = ul % 100;
-	case 2:
-		tm.tm_mday = ul;
-	case 0:
-		break;
-	default:
-		return (-1);
+	while (*string) {
+		if (!isdigitch(*string++))
+			return (0);
 	}
-
-	/* sanity check */
-	if (tm.tm_year < 70 || tm.tm_mon < 0 || tm.tm_mon > 12
-	    || tm.tm_mday < 1 || tm.tm_mday > 31)
-		return (-1);
-
-	if (*t != '\0') {
-		s = ++t;
-		ul = strtoul(s, &t, 10);
-		if (*t != '\0' && !isspace(*t))
-			return (-1);
-
-		switch (t - s) {
-		case 6:
-			tm.tm_sec = ul % 100;
-			ul /= 100;
-		case 4:
-			tm.tm_min = ul % 100;
-			ul /= 100;
-		case 2:
-			tm.tm_hour = ul;
-		case 0:
-			break;
-		default:
-			return (-1);
-		}
-
-		/* sanity check */
-		if (tm.tm_sec < 0 || tm.tm_sec > 60 || tm.tm_min < 0
-		    || tm.tm_min > 59 || tm.tm_hour < 0 || tm.tm_hour > 23)
-			return (-1);
-	}
-	if ((tsecs = mktime(&tm)) == -1)
-		errx(1, "nonexistent time:\n%s", errline);
-	return (tsecs);
+	return (1);
 }
 
-/* physically move file */
+/*
+ * Save the active log file under a new name.  A link to the new name
+ * is the quick-and-easy way to do this.  If that fails (which it will
+ * if the destination is on another partition), then make a copy of
+ * the file to the new location.
+ */
 static void
-movefile(char *from, char *to, int perm, uid_t owner_uid, gid_t group_gid)
+savelog(char *from, char *to)
 {
 	FILE *src, *dst;
-	int c;
+	int c, res;
+
+	res = link(from, to);
+	if (res == 0)
+		return;
 
 	if ((src = fopen(from, "r")) == NULL)
 		err(1, "can't fopen %s for reading", from);
 	if ((dst = fopen(to, "w")) == NULL)
 		err(1, "can't fopen %s for writing", to);
-	if (owner_uid != (uid_t)-1 || group_gid != (gid_t)-1) {
-		if (fchown(fileno(dst), owner_uid, group_gid))
-			err(1, "can't fchown %s", to);
-	}
-	if (fchmod(fileno(dst), perm))
-		err(1, "can't fchmod %s", to);
 
 	while ((c = getc(src)) != EOF) {
 		if ((putc(c, dst)) == EOF)
@@ -1649,8 +1973,6 @@ movefile(char *from, char *to, int perm, uid_t owner_uid, gid_t group_gid)
 		err(1, "can't fclose %s", to);
 	if ((fclose(dst)) != 0)
 		err(1, "can't fclose %s", from);
-	if ((unlink(from)) != 0)
-		err(1, "can't unlink %s", from);
 }
 
 /* create one or more directory components of a path */
@@ -1719,9 +2041,9 @@ createlog(const struct conf_entry *ent)
 		slash = strrchr(tempfile, '/');
 		if (slash != NULL) {
 			*slash = '\0';
-			failed = lstat(tempfile, &st);
+			failed = stat(tempfile, &st);
 			if (failed && errno != ENOENT)
-				err(1, "Error on lstat(%s)", tempfile);
+				err(1, "Error on stat(%s)", tempfile);
 			if (failed)
 				createdir(ent, tempfile);
 			else if (!S_ISDIR(st.st_mode))
@@ -1763,7 +2085,18 @@ createlog(const struct conf_entry *ent)
 			failed = fchown(fd, ent->uid, ent->gid);
 			if (failed)
 				err(1, "can't fchown temp file %s", tempfile);
-			close(fd);
+		}
+	}
+
+	/* Turn on NODUMP if it was requested in the config-file. */
+	if (ent->flags & CE_NODUMP) {
+		if (noaction)
+			printf("\tchflags nodump %s\n", tempfile);
+		else {
+			failed = fchflags(fd, UF_NODUMP);
+			if (failed) {
+				warn("log_trim: fchflags(NODUMP)");
+			}
 		}
 	}
 
@@ -1793,119 +2126,45 @@ createlog(const struct conf_entry *ent)
 		close(fd);
 }
 
-/*-
- * Parse a cyclic time specification, the format is as follows:
- *
- *	[Dhh] or [Wd[Dhh]] or [Mdd[Dhh]]
- *
- * to rotate a logfile cyclic at
- *
- *	- every day (D) within a specific hour (hh)	(hh = 0...23)
- *	- once a week (W) at a specific day (d)     OR	(d = 0..6, 0 = Sunday)
- *	- once a month (M) at a specific day (d)	(d = 1..31,l|L)
- *
- * We don't accept a timezone specification; missing fields
- * are defaulted to the current date but time zero.
+/*
+ * Change the attributes of a given filename to what was specified in
+ * the newsyslog.conf entry.  This routine is only called for files
+ * that newsyslog expects that it has created, and thus it is a fatal
+ * error if this routine finds that the file does not exist.
  */
-static time_t
-parseDWM(char *s, char *errline)
+static void
+change_attrs(const char *fname, const struct conf_entry *ent)
 {
-	char *t;
-	time_t tsecs;
-	struct tm tm, *tmp;
-	long l;
-	int nd;
-	static int mtab[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	int WMseen = 0;
-	int Dseen = 0;
+	int failed;
 
-	tmp = localtime(&timenow);
-	tm = *tmp;
+	if (noaction) {
+		printf("\tchmod %o %s\n", ent->permissions, fname);
 
-	/* set no. of days per month */
+		if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
+			printf("\tchown %u:%u %s\n",
+			    ent->uid, ent->gid, fname);
 
-	nd = mtab[tm.tm_mon];
-
-	if (tm.tm_mon == 1) {
-		if (((tm.tm_year + 1900) % 4 == 0) &&
-		    ((tm.tm_year + 1900) % 100 != 0) &&
-		    ((tm.tm_year + 1900) % 400 == 0)) {
-			nd++;	/* leap year, 29 days in february */
-		}
+		if (ent->flags & CE_NODUMP)
+			printf("\tchflags nodump %s\n", fname);
+		return;
 	}
-	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 
-	for (;;) {
-		switch (*s) {
-		case 'D':
-			if (Dseen)
-				return (-1);
-			Dseen++;
-			s++;
-			l = strtol(s, &t, 10);
-			if (l < 0 || l > 23)
-				return (-1);
-			tm.tm_hour = l;
-			break;
-
-		case 'W':
-			if (WMseen)
-				return (-1);
-			WMseen++;
-			s++;
-			l = strtol(s, &t, 10);
-			if (l < 0 || l > 6)
-				return (-1);
-			if (l != tm.tm_wday) {
-				int save;
-
-				if (l < tm.tm_wday) {
-					save = 6 - tm.tm_wday;
-					save += (l + 1);
-				} else {
-					save = l - tm.tm_wday;
-				}
-
-				tm.tm_mday += save;
-
-				if (tm.tm_mday > nd) {
-					tm.tm_mon++;
-					tm.tm_mday = tm.tm_mday - nd;
-				}
-			}
-			break;
-
-		case 'M':
-			if (WMseen)
-				return (-1);
-			WMseen++;
-			s++;
-			if (tolower(*s) == 'l') {
-				tm.tm_mday = nd;
-				s++;
-				t = s;
-			} else {
-				l = strtol(s, &t, 10);
-				if (l < 1 || l > 31)
-					return (-1);
-
-				if (l > nd)
-					return (-1);
-				tm.tm_mday = l;
-			}
-			break;
-
-		default:
-			return (-1);
-			break;
-		}
-
-		if (*t == '\0' || isspace(*t))
-			break;
-		else
-			s = t;
+	failed = chmod(fname, ent->permissions);
+	if (failed) {
+		if (errno != EPERM)
+			err(1, "chmod(%s) in change_attrs", fname);
+		warn("change_attrs couldn't chmod(%s)", fname);
 	}
-	if ((tsecs = mktime(&tm)) == -1)
-		errx(1, "nonexistent time:\n%s", errline);
-	return (tsecs);
+
+	if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1) {
+		failed = chown(fname, ent->uid, ent->gid);
+		if (failed)
+			warn("can't chown %s", fname);
+	}
+
+	if (ent->flags & CE_NODUMP) {
+		failed = chflags(fname, UF_NODUMP);
+		if (failed)
+			warn("can't chflags %s NODUMP", fname);
+	}
 }
