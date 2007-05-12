@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.6 2006/08/18 01:42:58 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.7 2007/05/12 21:22:11 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -1893,17 +1893,23 @@ upon.
 The fingerprints may be specified by operating system class, by
 version, or by subtype/patchlevel.
 The class of an operating system is typically the vendor or genre
-and would be OpenBSD for the
+and would be
+.Ox
+for the
 .Xr pf 4
 firewall itself.
-The version of the oldest available OpenBSD release on the main ftp site
+The version of the oldest available
+.Ox
+release on the main ftp site
 would be 2.6 and the fingerprint would be written
 .Pp
 .Dl \&"OpenBSD 2.6\&"
 .Pp
 The subtype of an operating system is typically used to describe the
 patchlevel if that patch led to changes in the TCP stack behavior.
-In the case of OpenBSD, the only subtype is for a fingerprint that was
+In the case of
+.Ox ,
+the only subtype is for a fingerprint that was
 normalized by the
 .Ar no-df
 scrub option and would be specified as

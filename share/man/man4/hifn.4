@@ -1,6 +1,6 @@
 .\"	$OpenBSD: hifn.4,v 1.32 2002/09/26 07:55:40 miod Exp $
 .\"	$FreeBSD: src/share/man/man4/hifn.4,v 1.1.2.1 2002/11/21 23:57:24 sam Exp $
-.\"	$DragonFly: src/share/man/man4/hifn.4,v 1.4 2007/04/22 20:40:20 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/hifn.4,v 1.5 2007/05/12 21:22:10 swildner Exp $
 .\"
 .\" Copyright (c) 2000 Theo de Raadt
 .\" All rights reserved.
@@ -99,10 +99,12 @@ compression, the 9751-based cards are not useful.
 The
 .Nm
 device driver appeared in
-OpenBSD 2.7.
+.Ox 2.7 .
 The
 .Nm
-device driver was imported to FreeBSD in 5.0.
+device driver was imported to
+.Fx
+in 5.0.
 .Sh BUGS
 The 7751 chip starts out at initialization by only supporting compression.
 A proprietary algorithm, which has been reverse engineered, is required to

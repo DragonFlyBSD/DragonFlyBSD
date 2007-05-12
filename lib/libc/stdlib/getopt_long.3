@@ -1,5 +1,5 @@
 .\"	$NetBSD: getopt_long.3,v 1.14 2003/08/07 16:43:40 agc Exp $
-.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.5 2007/03/14 14:50:07 swildner Exp $
+.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.6 2007/05/12 21:22:10 swildner Exp $
 .\"
 .\" Copyright (c) 1988, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -191,7 +191,9 @@ honors POSIXLY_CORRECT and stops at the first non-option.
 handling of :: in options string in presence of POSIXLY_CORRECT:
 .Bl -tag -width "NetBSD"
 .It Li Both
-GNU and NetBSD ignore POSIXLY_CORRECT here and take :: to
+GNU and
+.Nx
+ignore POSIXLY_CORRECT here and take :: to
 mean the preceding option takes an optional argument.
 .El
 .It Li o
@@ -201,7 +203,9 @@ return value in case of missing argument if first character
 .It Li GNU
 returns '?'
 .It NetBSD
-returns ':' (since NetBSD's getopt does).
+returns ':' (since
+.Nx Ap s
+getopt does).
 .El
 .It Li o
 handling of --a in getopt:
@@ -258,7 +262,8 @@ optopt set to 0 and optarg set to
 .It Li o
 The error messages are different.
 .It Li o
-NetBSD does not permute the argument vector at the same points in
+.Nx
+does not permute the argument vector at the same points in
 the calling sequence as GNU does.
 The aspects normally used by the caller
 (ordering after \-1 is returned, value of optind relative
