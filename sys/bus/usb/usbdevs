@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.21 2007/02/10 05:43:08 sephe Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.22 2007/05/13 18:33:56 swildner Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -133,7 +133,7 @@ vendor MEGATRENDS	0x046b	American Megatrends
 vendor LOGITECH		0x046d	Logitech
 vendor BTC		0x046e	Behavior Tech. Computer
 vendor PHILIPS		0x0471	Philips
-vendor SUN		0x0472	Sun Microsystems (offical)
+vendor SUN		0x0472	Sun Microsystems (official)
 vendor SANYO		0x0474	Sanyo Electric
 vendor SEAGATE		0x0477	Seagate Technology
 vendor CONNECTIX	0x0478	Connectix

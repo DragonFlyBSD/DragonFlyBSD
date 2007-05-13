@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.12 2006/12/22 23:26:23 swildner Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.13 2007/05/13 18:33:57 swildner Exp $"
 
 #define _DPT_C_
 
@@ -709,7 +709,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			kprintf("dpt%d: Unexepected error 0x%x returned from "
+			kprintf("dpt%d: Unexpected error 0x%x returned from "
 			       "bus_dmamap_load\n", dpt->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);

@@ -30,7 +30,7 @@
  *	$Id: layer3_subr.c,v 1.8 2000/02/21 15:17:17 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndecode/layer3_subr.c,v 1.6.2.2 2001/08/01 17:45:05 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdndecode/layer3_subr.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndecode/layer3_subr.c,v 1.3 2007/05/13 18:33:59 swildner Exp $
  *
  *      last edit-date: [Mon Feb 21 15:45:16 2000]
  *
@@ -280,7 +280,7 @@ f_progi(char *pbuf, unsigned char *buf, int off)
 			strcpy(buffer, "Call has returned to the ISDN");
 			break;
 		case 5:
-			strcpy(buffer, "Interworking occured, Service change");
+			strcpy(buffer, "Interworking occurred, Service change");
 			break;
 		case 8:
 			strcpy(buffer, "In-band info or appropriate pattern now available");

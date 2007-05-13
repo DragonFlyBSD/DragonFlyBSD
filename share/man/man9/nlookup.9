@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.7 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.8 2007/05/13 18:33:56 swildner Exp $
 .\"
 .Dd August 6, 2005
 .Os
@@ -150,7 +150,7 @@ structure.
 .Fn nlookup_simple
 is a simple all-in-one nlookup.
 It returns a locked namecache structure or NULL if an error
-occured.
+occurred.
 Note that the returned ncp
 is not checked for permissions,
 though
@@ -166,7 +166,7 @@ is used to resolve a mount point's glue ncp.
 It creates the illusion of continuity in the namecache tree
 by connecting the ncp related to the vnode under the mount
 to the ncp related to the mount's root vnode.
-If no error occured a locked, ref'd ncp is stored in
+If no error occurred a locked, ref'd ncp is stored in
 .Fa *ncpp .
 .Pp
 .Fn nreadsymlink

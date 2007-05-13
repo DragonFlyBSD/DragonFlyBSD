@@ -30,7 +30,7 @@
  *	$Id: pcause_1tr6.c,v 1.6 1999/12/13 21:25:26 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntrace/pcause_1tr6.c,v 1.6.2.1 2001/08/01 17:45:08 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntrace/pcause_1tr6.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntrace/pcause_1tr6.c,v 1.3 2007/05/13 18:33:59 swildner Exp $
  *
  *	last edit-date: [Mon Dec 13 21:56:03 1999]
  *
@@ -152,11 +152,11 @@ print_cause_1tr6(unsigned char code)
 			break;
 
 		case CAUSE_1TR6_UIDL:
-			e = "user info discharded locally";
+			e = "user info discarded locally";
 			break;
 
 		default:
-			e = "UNKNOWN error occured";
+			e = "UNKNOWN error occurred";
 			break;
 	}
 

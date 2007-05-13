@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.11 2006/12/22 23:44:57 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.12 2007/05/13 18:33:58 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -969,7 +969,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			error = hook_pf();
 			if (error) {
 				DPFPRINTF(PF_DEBUG_MISC,
-				    ("pf: pfil registeration fail\n"));
+				    ("pf: pfil registration fail\n"));
 				break;
 			}
 			pf_status.running = 1;
@@ -991,7 +991,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			if (error) {
 				pf_status.running = 1;
 				DPFPRINTF(PF_DEBUG_MISC,
-					("pf: pfil unregisteration failed\n"));
+					("pf: pfil unregistration failed\n"));
 			}
 			pf_status.since = time_second;
 			DPFPRINTF(PF_DEBUG_MISC, ("pf: stopped\n"));
@@ -3094,7 +3094,7 @@ pf_unload(void)
 		 * XXX Due to error code ESRCH, kldunload will show
 		 * a message like 'No such process'.
 		 */
-		kprintf("pfil unregisteration fail\n");
+		kprintf("pfil unregistration fail\n");
 		return error;
 	}
 	shutdown_pf();

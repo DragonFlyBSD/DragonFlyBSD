@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.4 2007/04/03 03:09:28 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.5 2007/05/13 18:33:56 swildner Exp $
 .\"
 .Dd March 13, 2007
 .Dt SYSLINK 2
@@ -219,7 +219,6 @@ no session or logical id overlaps occur.
 Once you have a session prefix in hand you can allocate session and logical
 ids by combining your prefix with your sequence index and global timestamp
 to create session and logical ids that are good for 500 years.
-.Pp
 .Sh SYSLINK PROTOCOL - REGISTRATION OF LOGICAL IDS
 A logical sysid represents a particular resource and must be registered
 with a registration entity along with the fully qualified name for that
@@ -262,7 +261,7 @@ to convert these addresses into a physical sysid that can be used by the
 originator to talk directly to the target.
 .Pp
 This may seem complex but it all comes down to a very simple messaging
-format and protocol.  The retraining protocol also serves to validate 
+format and protocol.  The retraining protocol also serves to validate
 communications links between entities and to allow massive changes in
 mesh topology to occur without disrupting the cluster.  For example, if
 the physical sysid of a node changes it will set off a chain of events
@@ -336,7 +335,7 @@ back over to the beginning).  All transmitters must adhere to the FIFO
 size supplied in the initial message traffic by generating a PAD message
 when necessary.  Larger FIFO sizes are usually better since they result
 in smaller PADs.  I/O transactions containing data are typically broken up
-into smaller messages not only to accomodate limitations in transport
+into smaller messages not only to accommodate limitations in transport
 protocols (such as UDP), but also to reduce the dead space created by PADs.
 On the bright side, these requirements allow very optimal hardware and
 software buffering of syslink message traffic.
@@ -358,7 +357,7 @@ end-transaction bit.
 A transaction can be aborted.  Normally aborted transactions still
 required an acknowledgement (since the abort may race completion).
 If the target completes the transaction before receiving the abort
-request, it is as if the abort never occured.
+request, it is as if the abort never occurred.
 .Sh ASYNCHRONOUS PUSH TRANSACTIONS
 Most syslink transactions require an acknowledgement to terminate the
 transaction.  The acknowledgement is typically a single message in the
@@ -376,7 +375,7 @@ transaction with another node, and the target node is capable of read-ahead
 and detemines that read-ahead is useful, the target node can initiate the
 read-ahead and push the data to the originating node in a separate
 asyncnronous transaction.  Read-aheads are typically not directly adjacent
-to the read that just occured in order to allow the originator to initiate
+to the read that just occurred in order to allow the originator to initiate
 the next synchronous transaction without it crossing paths with the
 asynchronous read-ahead push (resulting in the same data being returned to
 the originator twice).

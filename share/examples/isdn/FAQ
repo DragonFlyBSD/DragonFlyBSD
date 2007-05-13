@@ -6,7 +6,7 @@
                 last edit-date: [Wed Nov  1 15:08:03 2000]
 
  $FreeBSD: src/share/examples/isdn/FAQ,v 1.6.2.2 2002/08/07 10:47:48 blackend Exp $
- $DragonFly: src/share/examples/isdn/FAQ,v 1.2 2003/06/17 04:36:57 dillon Exp $
+ $DragonFly: src/share/examples/isdn/FAQ,v 1.3 2007/05/13 18:33:56 swildner Exp $
 
 --------------------------------------------------------------------------------
 
@@ -614,7 +614,7 @@ the Netherlands:
    code... in general you can say that KPN only accepts the shortest
    possible notation where it would still be clear who you want to call.
 
-3. numbers for incomming call recognition:
+3. numbers for incoming call recognition:
    KPN always specifies incoming caller ids with city code, but without
    leading 0. so 0201234567 will be displayed as 201234567
 
@@ -1045,7 +1045,7 @@ From: Joost Mulders <dhcp@j-mulders.demon.nl>
 >
 > i4b-L2 i4b_rxd_ack: ((N(R)-1)=35) != (UA=36) !!!
 
-A layer 2 error occured. These types of errors are automatically
+A layer 2 error occurred. These types of errors are automatically
 corrected by the layer 2 protocol.
 
 

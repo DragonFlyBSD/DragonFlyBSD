@@ -32,7 +32,7 @@
  *
  * @(#)warp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/warp.c,v 1.4 1999/11/30 03:49:56 billf Exp $
- * $DragonFly: src/games/trek/warp.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
+ * $DragonFly: src/games/trek/warp.c,v 1.4 2007/05/13 18:33:55 swildner Exp $
  */
 
 # include	"getpar.h"
@@ -173,7 +173,7 @@ warp(int fl, int c, double d)
 	/* test for just a lot of damage */
 	if (percent < 80)
 		lose(L_TOOFAST);
-	printf("Equilibrium restored -- extreme damage occured to ship systems\n");
+	printf("Equilibrium restored -- extreme damage occurred to ship systems\n");
 	for (i = 0; i < NDEV; i++)
 		damage(i, (3.0 * (franf() + franf()) + 1.0) * Param.damfac[i]);
 	Ship.shldup = 0;

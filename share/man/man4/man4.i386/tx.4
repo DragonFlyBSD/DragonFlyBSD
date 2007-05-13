@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/tx.4,v 1.11.2.10 2003/02/17 21:20:40 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/tx.4,v 1.4 2007/02/25 12:03:07 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/tx.4,v 1.5 2007/05/13 18:33:56 swildner Exp $
 .\"
 .Dd February 8, 2001
 .Dt TX 4 i386
@@ -73,13 +73,15 @@ Refer to the
 .Xr ifconfig 8
 man page on setting the interface's MTU.
 .Pp
-The old ``ifconfig tx0 linkN'' method of configuration is not supported.
+The old
+.Dq ifconfig tx0 linkN
+method of configuration is not supported.
 .Ss "VLAN (IEEE 802.1Q) support"
 The
 .Nm
-driver supports the VLAN operation (using
+driver supports the VLAN operation (using the
 .Xr vlan 4
-inteface) without decreasing the MTU on the
+interface) without decreasing the MTU on the
 .Xr vlan 4
 interfaces.
 .Sh DIAGNOSTICS
@@ -87,8 +89,8 @@ interfaces.
 .It "tx%d: device timeout %d packets"
 The device stops responding.
 Device and driver reset follows this error.
-.It "tx%d: PCI fatal error occured (%s)"
-One of following errors occured: PCI Target Abort, PCI Master Abort, Data
+.It "tx%d: PCI fatal error occurred (%s)"
+One of following errors occurred: PCI Target Abort, PCI Master Abort, Data
 Parity Error or Address Parity Error.
 Device and driver reset follows this error.
 .It "tx%d: cannot allocate mbuf header/cluster"

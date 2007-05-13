@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.16 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.17 2007/05/13 18:33:57 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1097,7 +1097,7 @@ ahaexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	if (error != 0) {
 		if (error != EFBIG)
 			device_printf(aha->dev,
-			    "Unexepected error 0x%x returned from "
+			    "Unexpected error 0x%x returned from "
 			    "bus_dmamap_load\n", error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);

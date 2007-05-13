@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.15 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.16 2007/05/13 18:33:57 swildner Exp $
  */
 /*
  * Ported from:
@@ -235,7 +235,7 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			kprintf("%s: Unexepected error 0x%x returned from "
+			kprintf("%s: Unexpected error 0x%x returned from "
 			       "bus_dmamap_load\n", adw_name(adw), error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);

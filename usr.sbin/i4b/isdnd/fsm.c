@@ -28,7 +28,7 @@
  *	-------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/fsm.c,v 1.6.2.2 2001/08/10 23:11:14 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/fsm.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/fsm.c,v 1.3 2007/05/13 18:33:59 swildner Exp $
  *
  *      last edit-date: [Sat Jul 21 18:25:48 2001]
  *
@@ -136,7 +136,7 @@ F_MCAI(cfg_entry_t *cep)
 static void
 F_TIMO(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_TIMO: Timout occured!")));
+	DBGL(DL_STATE, (log(LL_DBG, "F_TIMO: Timeout occurred!")));
 	sendm_disconnect_req(cep, (CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
 	cep->cdid = CDID_UNUSED;	
 }

@@ -28,7 +28,7 @@
  *	---------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntrace/q931.c,v 1.6.2.2 2001/12/10 09:34:39 hm Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntrace/q931.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntrace/q931.c,v 1.3 2007/05/13 18:33:59 swildner Exp $
  *
  *      last edit-date: [Mon Dec 10 10:32:33 2001]
  *
@@ -556,7 +556,7 @@ decode_q931(char *pbuf, int n, int off, unsigned char *buf, int raw)
 								sprintf((pbuf+strlen(pbuf)), "Call has returned to the ISDN");
 								break;
 							case 5:
-								sprintf((pbuf+strlen(pbuf)), "Interworking occured, Service change");
+								sprintf((pbuf+strlen(pbuf)), "Interworking occurred, Service change");
 								break;
 							case 8:
 								sprintf((pbuf+strlen(pbuf)), "In-band info or appropriate pattern now available");

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.28 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.29 2007/05/13 18:33:58 swildner Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -160,7 +160,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 	error = ncp_conn_getbyref(args.connRef,curthread,cred,NCPM_EXECUTE,&conn);
 	if (error) {
-		nwfs_printf("invalid connection refernce %d\n",args.connRef);
+		nwfs_printf("invalid connection reference %d\n",args.connRef);
 		return (error);
 	}
 	error = ncp_conn_gethandle(conn, NULL, &handle);

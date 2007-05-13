@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.22 2006/12/22 23:26:23 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -2233,7 +2233,7 @@ ciss_cam_action(struct cam_sim *sim, union ccb *ccb)
     }
 
     default:		/* we can't do this */
-	debug(1, "unspported func_code = 0x%x", ccb->ccb_h.func_code);
+	debug(1, "unsupported func_code = 0x%x", ccb->ccb_h.func_code);
 	ccb->ccb_h.status = CAM_REQ_INVALID;
 	break;
     }

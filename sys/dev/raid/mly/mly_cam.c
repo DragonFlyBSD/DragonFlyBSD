@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.8 2007/05/13 18:33:57 swildner Exp $
  */
 /*
  * CAM interface for FreeBSD
@@ -391,7 +391,7 @@ mly_cam_action(struct cam_sim *sim, union ccb *ccb)
     }
 
     default:		/* we can't do this */
-	debug(2, "unspported func_code = 0x%x", ccb->ccb_h.func_code);
+	debug(2, "unsupported func_code = 0x%x", ccb->ccb_h.func_code);
 	ccb->ccb_h.status = CAM_REQ_INVALID;
 	break;
     }

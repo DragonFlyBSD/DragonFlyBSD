@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.13 2006/12/22 23:12:17 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.14 2007/05/13 18:33:56 swildner Exp $
  *
  */
 
@@ -271,7 +271,7 @@ pci_compat_attach(device_t dev)
 		*dvp->pd_count = unit;
 	if (dvp->pd_attach)
 		dvp->pd_attach(cfg, unit);
-	device_printf(dev, "driver is using old-style compatability shims\n");
+	device_printf(dev, "driver is using old-style compatibility shims\n");
 	return 0;
 }
 

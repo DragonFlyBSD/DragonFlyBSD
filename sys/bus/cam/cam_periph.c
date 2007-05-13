@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.19 2007/05/13 18:33:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1415,7 +1415,7 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 				/* no point in decrementing the retry count */
 				panic("cam_periph_error: scsi status of "
 				      "CHECK COND returned but no sense "
-				      "information is availible.  "
+				      "information is available.  "
 				      "Controller should have returned "
 				      "CAM_AUTOSENSE_FAILED");
 				/* NOTREACHED */

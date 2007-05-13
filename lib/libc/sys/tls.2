@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.8 2007/04/13 12:12:27 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.9 2007/05/13 18:33:56 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt TLS 2
@@ -55,12 +55,12 @@ system call creates an entry for the TLS facility
 representing thread local storage as specified by the
 .Fa info
 structure.  A descriptor representing the facility is returned, or -1 if
-an error occured.  The facility may be cleared by specifying a NULL pointer
+an error occurred.  The facility may be cleared by specifying a NULL pointer
 and an infosize of 0.
 The
 .Fn get_tls_area
 system call retrieves the requested TLS facility.  A descriptor representing
-the facility is returned, or -1 if an error occured.  If you simply want the
+the facility is returned, or -1 if an error occurred.  If you simply want the
 descriptor you may specify a NULL pointer and an infosize of 0.
 .Pp
 The returned descriptor and the TLS mechanism is machine-dependant.  On IA32
@@ -82,8 +82,8 @@ struct tls_info {
 .Ed
 .Pp
 The actual implementation of the area is machine-dependant.  If the kernel
-is unable to accomodate the supplied size it may create a larger area.
-If the kernel is unable to accomodate the supplied base address an error
+is unable to accommodate the supplied size it may create a larger area.
+If the kernel is unable to accommodate the supplied base address an error
 will be returned.
 .Sh RETURN VALUES
 A return value of 0 is returned on success, -1 on error.

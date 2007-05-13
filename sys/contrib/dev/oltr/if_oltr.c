@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.25 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.26 2007/05/13 18:33:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1182,7 +1182,7 @@ DriverStatistics(void *DriverHandle, TRlldStatistics_t *statistics)
 		kprintf("oltr%d: Receive CRC Errors %lu\n", sc->unit,
 		    statistics->ReceiveCRCErrors);
 	if (sc->statistics.ReceiveOverflow != statistics->ReceiveOverflow)
-		kprintf("oltr%d: Recieve overflows %lu\n", sc->unit,
+		kprintf("oltr%d: Receive overflows %lu\n", sc->unit,
 		    statistics->ReceiveOverflow);
 	if (sc->statistics.TransmitUnderrun != statistics->TransmitUnderrun)
 		kprintf("oltr%d: Frequency Errors %lu\n", sc->unit,

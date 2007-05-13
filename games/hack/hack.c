@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
+/* $DragonFly: src/games/hack/hack.c,v 1.6 2007/05/13 18:33:55 swildner Exp $ */
 
 #include "hack.h"
 
@@ -433,7 +433,7 @@ pickup(int all)
 		}
 	lift_some:
 		if(inv_cnt() >= 52) {
-		    pline("Your knapsack cannot accomodate anymore items.");
+		    pline("Your knapsack cannot accommodate anymore items.");
 		    break;
 		}
 		if(wt > -5) pline("You have a little trouble lifting");

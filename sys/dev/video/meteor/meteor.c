@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.21 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.22 2007/05/13 18:33:58 swildner Exp $
  */
 
 /*		Change History:
@@ -502,7 +502,7 @@ int		err = 0;
 	if(mtr->base->i2c_read & SAA7116_IIC_DIRECT_TRANSFER_ABORTED){
 		mtr->base->i2c_read |= SAA7116_IIC_DIRECT_TRANSFER_ABORTED;
 		if(i2c_print_err)
-			kprintf("meteor%d: 0x%x i2c %s tranfer aborted",
+			kprintf("meteor%d: 0x%x i2c %s transfer aborted",
 				METEOR_NUM(mtr), slave,
 				rw ? "read" : "write" );
 		err= 1;

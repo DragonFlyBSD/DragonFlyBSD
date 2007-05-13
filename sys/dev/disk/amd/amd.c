@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.12 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.13 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -289,7 +289,7 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			kprintf("amd%d: Unexepected error 0x%x returned from "
+			kprintf("amd%d: Unexpected error 0x%x returned from "
 			       "bus_dmamap_load\n", amd->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.19 2006/12/22 23:26:23 swildner Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.20 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -1047,11 +1047,11 @@ cbb_intr(void *arg)
 			wakeup(sc);
 		}
 		if (sockevent & CBB_SOCKET_EVENT_CSTS) {
-			DPRINTF((" cstsevent occured: 0x%08x\n",
+			DPRINTF((" cstsevent occurred: 0x%08x\n",
 			    cbb_get(sc, CBB_SOCKET_STATE)));
 		}
 		if (sockevent & CBB_SOCKET_EVENT_POWER) {
-			DPRINTF((" pwrevent occured: 0x%08x\n",
+			DPRINTF((" pwrevent occurred: 0x%08x\n",
 			    cbb_get(sc, CBB_SOCKET_STATE)));
 		}
 		/* Other bits? */

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.8 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.9 2007/05/13 18:33:56 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -110,7 +110,7 @@ camq_resize(struct camq *queue, int new_size)
 
 #ifdef DIAGNOSTIC
 	if (new_size < queue->entries)
-		panic("camq_resize: New queue size can't accomodate "
+		panic("camq_resize: New queue size can't accommodate "
 		      "queued entries.");
 #endif
 	new_array = kmalloc(new_size * sizeof(cam_pinfo *), M_DEVBUF, M_INTWAIT);

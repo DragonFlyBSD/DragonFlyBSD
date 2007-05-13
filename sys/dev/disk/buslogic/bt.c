@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.15 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.16 2007/05/13 18:33:57 swildner Exp $
  */
 
  /*
@@ -1359,7 +1359,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	if (error != 0) {
 		if (error != EFBIG)
 			device_printf(bt->dev,
-				      "Unexepected error 0x%x returned from "
+				      "Unexpected error 0x%x returned from "
 				      "bus_dmamap_load\n", error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
@@ -1576,7 +1576,7 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 	case BMBI_ABORT:
 	case BMBI_ERROR:
 		if (bootverbose) {
-			kprintf("bt: ccb %p - error %x occured.  "
+			kprintf("bt: ccb %p - error %x occurred.  "
 			       "btstat = %x, sdstat = %x\n",
 			       (void *)bccb, comp_code, bccb->hccb.btstat,
 			       bccb->hccb.sdstat);

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq.c,v 1.5 1999/08/28 00:42:19 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.7 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.8 2007/05/13 18:33:57 swildner Exp $
  *
  */
 
@@ -1440,7 +1440,7 @@ pdq_initialize(
     pdq->pdq_host_smt_info.rx_buffers = (void *) pdq->pdq_dbp->pdqdb_host_smt_buffers;
 
     PDQ_PRINTF(("\nPDQ Descriptor Block = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp));
-    PDQ_PRINTF(("    Recieve Queue          = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp->pdqdb_receives));
+    PDQ_PRINTF(("    Receive Queue          = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp->pdqdb_receives));
     PDQ_PRINTF(("    Transmit Queue         = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp->pdqdb_transmits));
     PDQ_PRINTF(("    Host SMT Queue         = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp->pdqdb_host_smt));
     PDQ_PRINTF(("    Command Response Queue = " PDQ_OS_PTR_FMT "\n", pdq->pdq_dbp->pdqdb_command_responses));

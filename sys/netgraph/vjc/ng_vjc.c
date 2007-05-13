@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.9.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.6 2006/08/25 22:37:08 swildner Exp $
+ * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.7 2007/05/13 18:33:58 swildner Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -111,7 +111,7 @@ static const struct ng_parse_type ng_vjc_config_type = {
 #if _MACHINE_ARCH == i386
 #define NG_VJC_TSTATE_PTR_TYPE	&ng_parse_uint32_type
 #else
-#error Unspported _MACHINE_ARCH
+#error Unsupported _MACHINE_ARCH
 #endif
 
 /* Parse type for the 'cs_hdr' field in a struct cstate. Ideally we would

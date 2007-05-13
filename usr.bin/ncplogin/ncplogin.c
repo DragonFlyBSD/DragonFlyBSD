@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplogin/ncplogin.c,v 1.1 1999/10/31 02:14:59 bp Exp $
- * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.4 2007/05/13 18:33:58 swildner Exp $
  */
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -186,7 +186,7 @@ main(int argc, char *argv[]) {
 		} while(0);
 		if (error)
 			errx(EX_DATAERR, 
-			    "an error occured while parsing '%s'",
+			    "an error occurred while parsing '%s'",
 			    argv[argc - 1]);
 	}
 

@@ -35,7 +35,7 @@
  * @(#) Copyright (c) 1985 Sun Microsystems, Inc. @(#) Copyright (c) 1976 Board of Trustees of the University of Illinois. @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)indent.c	5.17 (Berkeley) 6/7/93
  * $FreeBSD: src/usr.bin/indent/indent.c,v 1.5.2.6 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/indent.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/indent/indent.c,v 1.4 2007/05/13 18:33:58 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1093,7 +1093,7 @@ check_type:
 		     */
 		    if (match_state[ifdef_level].tos >= 0
 			  && bcmp(&ps, &match_state[ifdef_level], sizeof ps))
-			diag2(0, "Syntactically inconsistant #ifdef alternatives.");
+			diag2(0, "Syntactically inconsistent #ifdef alternatives.");
 #endif
 		}
 		if (blanklines_around_conditional_compilation) {

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/libiconv/iconv.c,v 1.6 2007/03/08 16:42:34 dillon Exp $
+ * $DragonFly: src/sys/libiconv/iconv.c,v 1.7 2007/05/13 18:33:58 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -127,7 +127,7 @@ static int
 iconv_unregister_converter(struct iconv_converter_class *dcp)
 {
 	if (dcp->refs != 1) {
-		ICDEBUG("converter have %d referenses left\n", dcp->refs);
+		ICDEBUG("converter has %d references left\n", dcp->refs);
 		return EBUSY;
 	}
 	TAILQ_REMOVE(&iconv_converters, dcp, cc_link);

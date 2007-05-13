@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.24 2006/12/22 23:57:54 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.25 2007/05/13 18:33:58 swildner Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -2145,7 +2145,7 @@ key_spdacquire(struct secpolicy *sp)
 	if (sp->req != NULL)
 		panic("key_spdacquire: called but there is request.\n");
 	if (sp->policy != IPSEC_POLICY_IPSEC)
-		panic("key_spdacquire: policy mismathed. IPsec is expected.\n");
+		panic("key_spdacquire: policy mismatched. IPsec is expected.\n");
 
 	/* Get an entry to check whether sent message or not. */
 	if ((newspacq = key_getspacq(&sp->spidx)) != NULL) {

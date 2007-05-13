@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.90 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.91 2007/05/13 18:33:58 swildner Exp $
  */
 
 /*
@@ -1639,7 +1639,7 @@ restart:
 		/*
 		 * Sanity Checks
 		 */
-		KASSERT(bp->b_qindex == qindex, ("getnewbuf: inconsistant queue %d bp %p", qindex, bp));
+		KASSERT(bp->b_qindex == qindex, ("getnewbuf: inconsistent queue %d bp %p", qindex, bp));
 
 		/*
 		 * Note: we no longer distinguish between VMIO and non-VMIO

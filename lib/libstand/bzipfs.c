@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/bzipfs.c,v 1.2.2.3 2002/04/08 13:50:09 sobomax Exp $
- * $DragonFly: src/lib/libstand/bzipfs.c,v 1.3 2005/06/30 15:55:17 corecode Exp $
+ * $DragonFly: src/lib/libstand/bzipfs.c,v 1.4 2007/05/13 18:33:56 swildner Exp $
  *
  */
 
@@ -294,5 +294,5 @@ bzf_stat(struct open_file *f, struct stat *sb)
 void
 bz_internal_error(int errorcode)
 {
-    panic("bzipfs: critical error %d in bzip2 library occured\n", errorcode);
+    panic("bzipfs: critical error %d in bzip2 library occurred\n", errorcode);
 }

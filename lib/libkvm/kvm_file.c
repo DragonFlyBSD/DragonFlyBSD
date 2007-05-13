@@ -32,7 +32,7 @@
  *
  * @(#)kvm_file.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.4 2007/04/29 01:36:04 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.5 2007/05/13 18:33:56 swildner Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ kvm_deadfiles(kvm_t *kd, int op, int arg, long filehead_o, int nfiles)
 		}
 	}
 	if (n != nfiles) {
-		_kvm_err(kd, kd->program, "inconsistant nfiles");
+		_kvm_err(kd, kd->program, "inconsistent nfiles");
 		return (0);
 	}
 	return (nfiles);

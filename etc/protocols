@@ -2,7 +2,7 @@
 # Internet protocols
 #
 # $FreeBSD: src/etc/protocols,v 1.13.2.3 2002/02/27 03:39:00 dd Exp $
-# $DragonFly: src/etc/protocols,v 1.5 2005/01/06 08:43:35 asmodai Exp $
+# $DragonFly: src/etc/protocols,v 1.6 2007/05/13 18:33:55 swildner Exp $
 #	from: @(#)protocols	5.1 (Berkeley) 4/17/89
 #
 # See also http://www.iana.org/assignments/protocol-numbers
@@ -44,7 +44,7 @@ merit-inp	32	MERIT-INP	# MERIT Internodal Protocol
 sep	33	SEP		# Sequential Exchange Protocol
 3pc	34	3PC		# Third Party Connect Protocol
 idpr	35	IDPR		# Inter-Domain Policy Routing Protocol
-xtp	36	XTP		# Xpress Tranfer Protocol
+xtp	36	XTP		# Xpress Transfer Protocol
 ddp	37	DDP		# Datagram Delivery Protocol
 idpr-cmtp	38	IDPR-CMTP	# IDPR Control Message Transport Proto
 tp++	39	TP++		# TP++ Transport Protocol

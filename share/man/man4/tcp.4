@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)tcp.4	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man4/tcp.4,v 1.11.2.14 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/tcp.4,v 1.6 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/tcp.4,v 1.7 2007/05/13 18:33:56 swildner Exp $
 .\"
 .Dd February 14, 1995
 .Dt TCP 4
@@ -302,7 +302,7 @@ recycling for a few minutes.
 Adjust the retransmit timer calculation for TCP.  The slop is
 typically added to the raw calculation to take into account
 occasional variances that the SRTT (smoothed round trip time)
-is unable to accomodate, while the minimum specifies an
+is unable to accommodate, while the minimum specifies an
 absolute minimum.  While a number of TCP RFCs suggest a 1
 second minimum these RFCs tend to focus on streaming behavior
 and fail to deal with the fact that a 1 second minimum has severe
@@ -321,7 +321,7 @@ the amount of inflight data being transmitted to avoid building up
 unnecessary packets in the network.  This option is recommended if you
 are serving a lot of data over connections with high bandwidth-delay
 products, such as modems, GigE links, and fast long-haul WANs, and/or
-you have configured your machine to accomodate large TCP windows.  In such
+you have configured your machine to accommodate large TCP windows.  In such
 situations, without this option, you may experience high interactive
 latencies or packet loss due to the overloading of intermediate routers
 and switches.  Note that bandwidth delay product limiting only effects

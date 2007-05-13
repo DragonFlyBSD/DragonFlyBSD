@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.11 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.12 2007/05/13 18:33:58 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -707,7 +707,7 @@ sctp_process_unrecog_chunk(struct sctp_tcb *stcb, struct sctp_paramhdr *phdr,
 	case SCTP_ASCONF_ACK:
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_INPUT2) {
-			kprintf("Strange peer, snds ASCONF but does not recongnize asconf-ack?\n");
+			kprintf("Strange peer, snds ASCONF but does not recognize asconf-ack?\n");
 		}
 #endif
 	case SCTP_ASCONF:

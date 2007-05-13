@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.9 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.10 2007/05/13 18:33:56 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -461,9 +461,9 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 	len = strlen(buf);
 	if (len > MAX_TEXT) {
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf("text(%d) trancated to %d.\n", len, MAX_TEXT);
+		kprintf("text(%d) truncated to %d.\n", len, MAX_TEXT);
 #else
-		kprintf("text(%d) trancated to %td.\n", len, MAX_TEXT);
+		kprintf("text(%d) truncated to %td.\n", len, MAX_TEXT);
 #endif
 		len = MAX_TEXT;
 	}

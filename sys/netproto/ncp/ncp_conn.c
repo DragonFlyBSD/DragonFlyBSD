@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.14 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.15 2007/05/13 18:33:58 swildner Exp $
  *
  * Connection tables
  */
@@ -238,7 +238,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 	if (error)
 		return error;
 	if (ncp->ref_cnt) {
-		NCPFATAL("there are %d referenses left\n",ncp->ref_cnt);
+		NCPFATAL("there are %d references left\n",ncp->ref_cnt);
 		return(EBUSY);
 	}
 

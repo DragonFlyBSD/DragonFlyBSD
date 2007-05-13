@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.2.2.1 2002/08/23 06:59:05 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.5 2006/12/22 23:26:16 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_debug.c,v 1.6 2007/05/13 18:33:57 swildner Exp $ */
 /*
  * Debug routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -54,7 +54,7 @@ static const struct Error_Map IOC_Status[] = {
 { MPI_IOCSTATUS_CONFIG_INVALID_DATA,      "Invalid Data" },
 { MPI_IOCSTATUS_CONFIG_NO_DEFAULTS,       "No Defaults" },
 { MPI_IOCSTATUS_CONFIG_CANT_COMMIT,       "Can't Commit" },
-{ MPI_IOCSTATUS_SCSI_RECOVERED_ERROR,     "SCSI: Recoverd Error" },
+{ MPI_IOCSTATUS_SCSI_RECOVERED_ERROR,     "SCSI: Recovered Error" },
 { MPI_IOCSTATUS_SCSI_INVALID_BUS,         "SCSI: Invalid Bus" },
 { MPI_IOCSTATUS_SCSI_INVALID_TARGETID,    "SCSI: Invalid Target ID" },
 { MPI_IOCSTATUS_SCSI_DEVICE_NOT_THERE,    "SCSI: Device Not There" },
@@ -75,15 +75,15 @@ static const struct Error_Map IOC_Status[] = {
 { MPI_IOCSTATUS_TARGET_NO_CONNECTION,     "SCSI Target: No Connection" },
 { MPI_IOCSTATUS_TARGET_XFER_COUNT_MISMATCH,"SCSI Target: Transfer Count Mismatch" },
 { MPI_IOCSTATUS_TARGET_FC_ABORTED,        "FC: Aborted" },
-{ MPI_IOCSTATUS_TARGET_FC_RX_ID_INVALID,  "FC: Recieve ID Invalid" },
-{ MPI_IOCSTATUS_TARGET_FC_DID_INVALID,    "FC: Recieve DID Invalid" },
+{ MPI_IOCSTATUS_TARGET_FC_RX_ID_INVALID,  "FC: Receive ID Invalid" },
+{ MPI_IOCSTATUS_TARGET_FC_DID_INVALID,    "FC: Receive DID Invalid" },
 { MPI_IOCSTATUS_TARGET_FC_NODE_LOGGED_OUT,"FC: Node Logged Out" },
 { MPI_IOCSTATUS_LAN_DEVICE_NOT_FOUND,     "LAN: Device Not Found" },
 { MPI_IOCSTATUS_LAN_DEVICE_FAILURE,       "LAN: Device Not Failure" },
 { MPI_IOCSTATUS_LAN_TRANSMIT_ERROR,       "LAN: Transmit Error" },
 { MPI_IOCSTATUS_LAN_TRANSMIT_ABORTED,     "LAN: Transmit Aborted" },
-{ MPI_IOCSTATUS_LAN_RECEIVE_ERROR,        "LAN: Recieve Error" },
-{ MPI_IOCSTATUS_LAN_RECEIVE_ABORTED,      "LAN: Recieve Aborted" },
+{ MPI_IOCSTATUS_LAN_RECEIVE_ERROR,        "LAN: Receive Error" },
+{ MPI_IOCSTATUS_LAN_RECEIVE_ABORTED,      "LAN: Receive Aborted" },
 { MPI_IOCSTATUS_LAN_PARTIAL_PACKET,       "LAN: Partial Packet" },
 { MPI_IOCSTATUS_LAN_CANCELED,             "LAN: Canceled" },
 { -1, 0},
@@ -108,7 +108,7 @@ static const struct Error_Map IOC_Func[] = {
 { MPI_FUNCTION_TARGET_FC_EX_SEND_LINK_SRVC,  "FC: Send Extended Link Service" },
 { MPI_FUNCTION_TARGET_FC_ABORT,              "FC: Abort" },
 { MPI_FUNCTION_LAN_SEND,                     "LAN Send" },
-{ MPI_FUNCTION_LAN_RECEIVE,                  "LAN Recieve" },
+{ MPI_FUNCTION_LAN_RECEIVE,                  "LAN Receive" },
 { MPI_FUNCTION_LAN_RESET,                    "LAN Reset" },
 { -1, 0},
 };

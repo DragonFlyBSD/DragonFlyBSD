@@ -32,7 +32,7 @@
  *	$Id: i4b_ihfc_drv.h,v 1.7 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.h,v 1.3 2007/05/13 18:33:58 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 #ifndef	I4B_IHFC_DRV_H_
@@ -104,7 +104,7 @@ const struct ihfc_FSMtable { u_char state, *string; }
 	{ 0x00 ,"Deactivated"				},
 	{ 0x01 ,"Awaiting signal"			},
 	{ 0x01 ,"Identifying input"			},
-	{ 0x02 ,"Syncronized"				},
+	{ 0x02 ,"Synchronized"				},
 	{ 0x03 ,"Activated"				},
 	{ 0x04 ,"Lost framing"				},
 	{ 0xff , 0 					},

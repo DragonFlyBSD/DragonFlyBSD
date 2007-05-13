@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.19 2007/05/01 00:05:12 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.20 2007/05/13 18:33:56 swildner Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -1799,7 +1799,7 @@ scsi_low_start(struct scsi_low_softc *slp)
 #ifdef	SCSI_LOW_DIAGNOSTIC
 	if (slp->sl_Tnexus || slp->sl_Lnexus || slp->sl_Qnexus)
 	{
-		scsi_low_info(slp, NULL, "NEXUS INCOSISTENT");
+		scsi_low_info(slp, NULL, "NEXUS INCONSISTENT");
 		panic("%s: inconsistent", slp->sl_xname);
 	}
 #endif	/* SCSI_LOW_DIAGNOSTIC */

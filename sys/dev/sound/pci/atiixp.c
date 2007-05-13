@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.5 2006/11/14 13:08:11 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.2 2007/01/08 01:38:02 swildner Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.3 2007/05/13 18:33:58 swildner Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 
 #include <dev/sound/pci/atiixp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.2 2007/01/08 01:38:02 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.3 2007/05/13 18:33:58 swildner Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -671,11 +671,11 @@ atiixp_intr(void *p)
 #if 0
 	if (status & ATI_REG_ISR_IN_XRUN) {
 		device_printf(sc->dev,
-			"Recieve IN XRUN interrupt\n");
+			"Receive IN XRUN interrupt\n");
 	}
 	if (status & ATI_REG_ISR_OUT_XRUN) {
 		device_printf(sc->dev,
-			"Recieve OUT XRUN interrupt\n");
+			"Receive OUT XRUN interrupt\n");
 	}
 #endif
 

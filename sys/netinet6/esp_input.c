@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.14 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.15 2007/05/13 18:33:58 swildner Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -182,7 +182,7 @@ esp4_input(struct mbuf *m, ...)
 	/* check if we have proper ivlen information */
 	ivlen = sav->ivlen;
 	if (ivlen < 0) {
-		ipseclog((LOG_ERR, "inproper ivlen in IPv4 ESP input: %s %s\n",
+		ipseclog((LOG_ERR, "improper ivlen in IPv4 ESP input: %s %s\n",
 		    ipsec4_logpacketstr(ip, spi), ipsec_logsastr(sav)));
 		ipsecstat.in_inval++;
 		goto bad;
@@ -542,7 +542,7 @@ esp6_input(struct mbuf **mp, int *offp, int proto)
 	/* check if we have proper ivlen information */
 	ivlen = sav->ivlen;
 	if (ivlen < 0) {
-		ipseclog((LOG_ERR, "inproper ivlen in IPv6 ESP input: %s %s\n",
+		ipseclog((LOG_ERR, "improper ivlen in IPv6 ESP input: %s %s\n",
 		    ipsec6_logpacketstr(ip6, spi), ipsec_logsastr(sav)));
 		ipsec6stat.in_badspi++;
 		goto bad;

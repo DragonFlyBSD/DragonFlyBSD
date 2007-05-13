@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.14 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.15 2007/05/13 18:33:57 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -603,7 +603,7 @@ ahbhandleimmed(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 	} else if (target_id == ahb->scsi_id)
 		kprintf("ahb%ld: SCSI Bus Reset Delivered\n", ahb->unit);
 	else
-		kprintf("ahb%ld:  Bus Device Reset Delibered to target %d\n",
+		kprintf("ahb%ld:  Bus Device Reset Delivered to target %d\n",
 		       ahb->unit, target_id);
 
 	ahb->immed_cmd = 0;
@@ -846,7 +846,7 @@ ahbintr(void *arg)
 				xpt_async(AC_BUS_RESET, ahb->path, NULL);
 				break;
 			}
-			kprintf("Unsupported initiator selection AEN occured\n");
+			kprintf("Unsupported initiator selection AEN occurred\n");
 			break;
 		case INTSTAT_IMMED_OK:
 		case INTSTAT_IMMED_ERR:
@@ -872,7 +872,7 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	if (error != 0) {
 		if (error != EFBIG)
-			kprintf("ahb%ld: Unexepected error 0x%x returned from "
+			kprintf("ahb%ld: Unexpected error 0x%x returned from "
 			       "bus_dmamap_load\n", ahb->unit, error);
 		if (ccb->ccb_h.status == CAM_REQ_INPROG) {
 			xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);

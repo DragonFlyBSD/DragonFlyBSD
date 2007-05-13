@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_globals.c,v 1.1 2004/04/16 20:13:17 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_globals.c,v 1.2 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -41,7 +41,7 @@ struct twa_message	twa_aen_table[] = {
 	{0x0000, "AEN queue empty"},
 	{0x0001, "Controller reset occurred"},
 	{0x0002, "Degraded unit detected"},
-	{0x0003, "Controller error occured"},
+	{0x0003, "Controller error occurred"},
 	{0x0004, "Background rebuild failed"},
 	{0x0005, "Background rebuild done"},
 	{0x0006, "Incomplete unit detected"},

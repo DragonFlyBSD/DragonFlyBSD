@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.50 2007/03/24 05:57:49 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.51 2007/05/13 18:33:58 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -1940,7 +1940,7 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 		IF_DRAIN(ifq);
 		break;
 	default:
-		panic("unspported ALTQ request: %d", req);
+		panic("unsupported ALTQ request: %d", req);
 	}
 	crit_exit();
 	return(0);

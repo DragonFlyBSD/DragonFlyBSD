@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.13 2007/01/27 15:03:25 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.14 2007/05/13 18:33:57 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -80,7 +80,7 @@ struct ahc_hard_error_entry {
 
 static struct ahc_hard_error_entry ahc_hard_errors[] = {
 	{ ILLHADDR,	"Illegal Host Access" },
-	{ ILLSADDR,	"Illegal Sequencer Address referrenced" },
+	{ ILLSADDR,	"Illegal Sequencer Address referenced" },
 	{ ILLOPCODE,	"Illegal Opcode in sequencer program" },
 	{ SQPARERR,	"Sequencer Parity Error" },
 	{ DPARERR,	"Data-path Parity Error" },
@@ -1086,7 +1086,7 @@ ahc_handle_scsiint(struct ahc_softc *ahc, u_int intstat)
 					kprintf("\tCRC Value Mismatch\n");
 				if ((sstat2 & CRCENDERR) != 0)
 					kprintf("\tNo terminal CRC packet "
-					       "recevied\n");
+					       "received\n");
 				if ((sstat2 & CRCREQERR) != 0)
 					kprintf("\tIllegal CRC packet "
 					       "request\n");

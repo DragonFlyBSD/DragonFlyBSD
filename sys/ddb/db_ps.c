@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.22 2007/02/19 01:14:23 corecode Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -122,7 +122,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("      INCOMMING IPIQS:");
+	    db_printf("      INCOMING IPIQS:");
 	    for (j = 0; j < ncpus; ++j) {
 		lwkt_ipiq_t ip = globaldata_find(j)->gd_ipiq;
 		if (ip != NULL) {

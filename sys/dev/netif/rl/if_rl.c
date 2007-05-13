@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.34 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.35 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -150,7 +150,7 @@ static struct rl_type {
 	{ PCI_VENDOR_DELTA, PCI_PRODUCT_DELTA_8139,
 		"Delta Electronics 8139 10/100BaseTX" },
 	{ PCI_VENDOR_ADDTRON, PCI_PRODUCT_ADDTRON_8139,
-		"Addtron Technolgy 8139 10/100BaseTX" },
+		"Addtron Technology 8139 10/100BaseTX" },
 	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DFE530TXPLUS,
 		"D-Link DFE-530TX+ 10/100BaseTX" },
 	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DFE690TXD,

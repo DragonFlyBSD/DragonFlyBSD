@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.22 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -3190,7 +3190,7 @@ int unit, level;
 	(u_long)MID_DTQ_REG2A(EN_READ(sc, MID_DMA_WRTX)),
 	sc->dtq_chip, sc->dtq_us);
 
-      kprintf("  unusal txspeeds: ");
+      kprintf("  unusual txspeeds: ");
       for (cnt = 0 ; cnt < MID_N_VC ; cnt++)
 	if (sc->txspeed[cnt])
 	  kprintf(" vci%d=0x%x", cnt, sc->txspeed[cnt]);

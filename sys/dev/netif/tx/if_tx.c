@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.39 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.40 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -689,7 +689,7 @@ epic_intr(void *arg)
 		      INTSTAT_APE|INTSTAT_DPE|INTSTAT_TXU|INTSTAT_RXE)) {
     	    if (status & (INTSTAT_FATAL|INTSTAT_PMA|INTSTAT_PTA|
 			  INTSTAT_APE|INTSTAT_DPE)) {
-		if_printf(&sc->sc_if, "PCI fatal errors occured: %s%s%s%s\n",
+		if_printf(&sc->sc_if, "PCI fatal errors occurred: %s%s%s%s\n",
 		    (status&INTSTAT_PMA)?"PMA ":"",
 		    (status&INTSTAT_PTA)?"PTA ":"",
 		    (status&INTSTAT_APE)?"APE ":"",

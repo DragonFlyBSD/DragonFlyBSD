@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.109 2007/04/01 13:59:41 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.110 2007/05/13 18:33:56 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1733,7 +1733,7 @@ options 	AHD_REG_PRETTY_PRINT
 # adapter chip as found on devices such as the Tekram DC-390(T).
 #
 # The `bge' device provides support for gigabit ethernet adapters
-# based on the Broadcom BCM570x familiy of controllers, including the
+# based on the Broadcom BCM570x family of controllers, including the
 # 3Com 3c996-T, the Netgear GA302T, the SysKonnect SK-9D21 and SK-9D41,
 # and the embedded gigE NICs on Dell PowerEdge 2550 servers.
 #
@@ -1958,7 +1958,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 
 # MII bus support is required for some PCI 10/100 ethernet NICs,
 # namely those which use MII-compliant transceivers or implement
-# tranceiver control interfaces that operate like an MII. Adding
+# transceiver control interfaces that operate like an MII. Adding
 # "device miibus0" to the kernel config pulls in support for
 # the generic miibus API and all of the PHY drivers, including a
 # generic one for PHYs that aren't specifically handled by an
@@ -2247,7 +2247,7 @@ device  "ifpi2"
 device  iwic
 #
 #---------------------------------------------------------------------------
-#       itjc driver for Simens ISAC / TJNet Tiger300/320 chipset
+#       itjc driver for Siemens ISAC / TJNet Tiger300/320 chipset
 #---------------------------------------------------------------------------
 #
 # Traverse Technologies NETjet-S

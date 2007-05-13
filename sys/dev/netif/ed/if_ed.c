@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.33 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.34 2007/05/13 18:33:57 swildner Exp $
  */
 
 /*
@@ -1737,7 +1737,7 @@ ed_attach(device_t dev)
 
 	kprintf("%s\n", (((sc->vendor == ED_VENDOR_3COM) ||
 			 (sc->vendor == ED_VENDOR_HP)) &&
-		(ifp->if_flags & IFF_ALTPHYS)) ? " tranceiver disabled" : "");
+		(ifp->if_flags & IFF_ALTPHYS)) ? " transceiver disabled" : "");
 
 	return (0);
 }
