@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.43 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.44 2007/05/13 01:32:28 dillon Exp $
  */
 
 /*
@@ -1816,7 +1816,6 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int32_t t1;
 	caddr_t bpos;
 	int error = 0, len, dirfor_ret = 1, diraft_ret = 1;
-	u_int32_t major, minor;
 	enum vtype vtyp;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
