@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.28 2007/05/12 08:08:29 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.29 2007/05/13 20:29:48 hasso Exp $
 .Dd May 11, 2007
 .Dt RC.CONF 5
 .Os
@@ -1154,7 +1154,7 @@ NFS ACCESS
 results should be cached.
 A value of 2-10 seconds will substantially reduce network traffic for
 many NFS operations.  The default is 5 seconds.  Note that the attribute
-cache holds stat information only.  The NFS data cache is independant
+cache holds stat information only.  The NFS data cache is independent
 of the attribute cache and is only invalidated when the client detects that
 the server has modified the underlying file.  This value specifies a
 maximum timeout.  The NFS client will automatically use a shorter timeout

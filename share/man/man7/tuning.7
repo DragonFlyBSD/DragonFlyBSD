@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.11 2007/03/04 20:10:34 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.12 2007/05/13 20:29:48 hasso Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -413,7 +413,7 @@ usually sufficient but on machines with lots of disks you may want to bump
 it up to four or five megabytes.  Note that setting too high a value
 (exceeding the buffer cache's write threshold) can lead to extremely
 bad clustering performance.  Do not set this value arbitrarily high!  Also,
-higher write queueing values may add latency to reads occuring at the same
+higher write queueing values may add latency to reads occurring at the same
 time.
 .Pp
 There are various other buffer-cache and VM page cache related sysctls.

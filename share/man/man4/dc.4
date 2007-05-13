@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/dc.4,v 1.6.2.9 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/dc.4,v 1.7 2007/02/25 12:03:07 swildner Exp $
+.\" $DragonFly: src/share/man/man4/dc.4,v 1.8 2007/05/13 20:29:48 hasso Exp $
 .\"
 .Dd November 20, 1999
 .Dt DC 4
@@ -356,7 +356,7 @@ queues a sequence of frames which cause it to wrap from the end of the
 transmit descriptor ring back to the beginning.
 The
 .Nm
-driver attempts to avoid this condition by not queing any frames past
+driver attempts to avoid this condition by not queueing any frames past
 the end of the transmit ring during a single invocation of the
 .Fn dc_start
 routine.

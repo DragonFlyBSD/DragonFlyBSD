@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.1 2006/07/05 18:32:20 swildner Exp $
+.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.2 2007/05/13 20:29:48 hasso Exp $
 .\"
 .Dd July 5, 2006
 .Dt CRIT_ENTER 9
@@ -77,7 +77,7 @@ may be used to reduce the amount of generated code.
 .Pp
 Critical sections are per-CPU entities.
 A critical section on one CPU will not prevent an interrupt or IPI from
-occuring on some other CPU.
+occurring on some other CPU.
 If cross-CPU interlocks are required the more heavy weight
 .Xr spinlock 9
 or
