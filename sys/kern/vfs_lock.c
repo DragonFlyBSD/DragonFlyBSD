@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.26 2007/05/13 02:34:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.27 2007/05/13 04:34:47 dillon Exp $
  */
 
 /*
@@ -505,12 +505,24 @@ allocfreevnode(void)
 		__vbusy(vp);
 
 		/*
-		 * Ok.  Holding the VX lock on an inactive vnode
-		 * prevents it from being reactivated.  We can
-		 * safely reclaim the vnode.
+		 * Holding the VX lock on an inactive vnode prevents it
+		 * from being reactivated or reused.  New namecache
+		 * associations can only be made using active vnodes.
+		 *
+		 * Another thread may be blocked on our vnode lock while
+		 * holding a namecache lock.  We can only reuse this vnode
+		 * if we can clear all namecache associations without
+		 * blocking.
 		 */
-		if ((vp->v_flag & VRECLAIMED) == 0)
+		if ((vp->v_flag & VRECLAIMED) == 0) {
+			if (cache_inval_vp_nonblock(vp)) {
+				__vfreetail(vp);
+				vx_unlock(vp);
+				continue;
+			}
 			vgone_vxlocked(vp);
+			/* vnode is still VX locked */
+		}
 
 		/*
 		 * We can reuse the vnode if no primary or auxiliary
@@ -520,33 +532,22 @@ allocfreevnode(void)
 		 * Either the free list inherits the last reference
 		 * or we fall through and sysref_activate() the last
 		 * reference.
+		 *
+		 * Since the vnode is in a VRECLAIMED state, no new
+		 * namecache associations could have been made.
 		 */
+		KKASSERT(TAILQ_EMPTY(&vp->v_namecache));
 		if (vp->v_auxrefs ||
 		    !sysref_islastdeactivation(&vp->v_sysref)) {
 			__vfreetail(vp);
+			vx_unlock(vp);
 			continue;
 		}
 
 		/*
-		 * Try to clean up vnode<->namecache references.   This has
-		 * to be done now because vgone() can deadlock when it
-		 * does it fully blocking.
+		 * Return a VX locked vnode suitable for reuse.  The caller
+		 * inherits the sysref.
 		 */
-		if (cache_inval_vp_nonblock(vp)) {
-			__vfreetail(vp);
-			continue;
-		}
-
-		/*
-		 * One last check before we return A-OK, in case we raced
-		 * the namecache.
-		 */
-		if (vp->v_auxrefs ||
-		    !sysref_islastdeactivation(&vp->v_sysref)) {
-			__vfreetail(vp);
-			continue;
-		}
-
 		return(vp);
 	}
 	return(NULL);
