@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.25 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.26 2007/05/13 02:34:21 dillon Exp $
  */
 
 /*
@@ -526,6 +526,27 @@ allocfreevnode(void)
 			__vfreetail(vp);
 			continue;
 		}
+
+		/*
+		 * Try to clean up vnode<->namecache references.   This has
+		 * to be done now because vgone() can deadlock when it
+		 * does it fully blocking.
+		 */
+		if (cache_inval_vp_nonblock(vp)) {
+			__vfreetail(vp);
+			continue;
+		}
+
+		/*
+		 * One last check before we return A-OK, in case we raced
+		 * the namecache.
+		 */
+		if (vp->v_auxrefs ||
+		    !sysref_islastdeactivation(&vp->v_sysref)) {
+			__vfreetail(vp);
+			continue;
+		}
+
 		return(vp);
 	}
 	return(NULL);

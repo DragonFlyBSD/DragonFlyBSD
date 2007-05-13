@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.26 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.27 2007/05/13 02:34:21 dillon Exp $
  */
 
 /*
@@ -468,7 +468,21 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 			    TAILQ_FIRST(&vp->v_namecache)->nc_name : "?"));
 #endif
 	}
-	return(vp->v_sysref.refcnt <= 1 && vp->v_auxrefs == 0);
+
+	/*
+	 * This sequence may seem a little strange, but we need to optimize
+	 * the critical path a bit.  We can't recycle vnodes with other
+	 * references and because we are trying to recycle an otherwise
+	 * perfectly fine vnode we have to invalidate the namecache in a
+	 * way that avoids possible deadlocks (since the vnode lock is being
+	 * held here).  Finally, we have to check for other references one
+	 * last time in case something snuck in during the inval.
+	 */
+	if (vp->v_sysref.refcnt > 1 || vp->v_auxrefs != 0)
+		return (0);
+	if (cache_inval_vp_nonblock(vp))
+		return (0);
+	return (vp->v_sysref.refcnt <= 1 && vp->v_auxrefs == 0);
 }
 
 /*

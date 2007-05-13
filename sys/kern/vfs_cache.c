@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.81 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.82 2007/05/13 02:34:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -921,6 +921,53 @@ restart:
 				"%s\n", ncp->nc_name);
 			_cache_drop(ncp);
 			goto restart;
+		}
+	}
+	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
+}
+
+/*
+ * This routine is used instead of the normal cache_inval_vp() when we
+ * are trying to recycle otherwise good vnodes.
+ *
+ * Return 0 on success, non-zero if not all namecache records could be
+ * disassociated from the vnode (for various reasons).
+ */
+int
+cache_inval_vp_nonblock(struct vnode *vp)
+{
+	struct namecache *ncp;
+	struct namecache *next;
+
+	ncp = TAILQ_FIRST(&vp->v_namecache);
+	if (ncp)
+		_cache_hold(ncp);
+	while (ncp) {
+		/* loop entered with ncp held */
+		if ((next = TAILQ_NEXT(ncp, nc_vnode)) != NULL)
+			_cache_hold(next);
+		if (_cache_lock_nonblock(ncp)) {
+			_cache_drop(ncp);
+			if (next)
+				_cache_drop(next);
+			break;
+		}
+		if (ncp->nc_vp != vp) {
+			kprintf("Warning: cache_inval_vp: race-A detected on "
+				"%s\n", ncp->nc_name);
+			_cache_put(ncp);
+			if (next)
+				_cache_drop(next);
+			break;
+		}
+		_cache_inval(ncp, 0);
+		_cache_put(ncp);		/* also releases reference */
+		ncp = next;
+		if (ncp && ncp->nc_vp != vp) {
+			kprintf("Warning: cache_inval_vp: race-B detected on "
+				"%s\n", ncp->nc_name);
+			_cache_drop(ncp);
+			break;
 		}
 	}
 	return(TAILQ_FIRST(&vp->v_namecache) != NULL);

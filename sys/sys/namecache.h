@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.28 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.29 2007/05/13 02:34:22 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -174,6 +174,7 @@ void	cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp);
 struct mount *cache_findmount(struct nchandle *nch);
 int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
+int	cache_inval_vp_nonblock(struct vnode *vp);
 void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
