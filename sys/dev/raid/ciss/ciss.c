@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.24 2007/05/13 22:25:42 swildner Exp $
  */
 
 /*
@@ -3319,7 +3319,7 @@ ciss_name_ldrive_org(int org)
     case CISS_LDRIVE_RAID5:
 	return("RAID 5");
     }
-    return("unkown");
+    return("unknown");
 }
 
 /************************************************************************

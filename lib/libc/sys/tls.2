@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.9 2007/05/13 18:33:56 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.10 2007/05/13 22:25:41 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt TLS 2
@@ -63,7 +63,7 @@ system call retrieves the requested TLS facility.  A descriptor representing
 the facility is returned, or -1 if an error occurred.  If you simply want the
 descriptor you may specify a NULL pointer and an infosize of 0.
 .Pp
-The returned descriptor and the TLS mechanism is machine-dependant.  On IA32
+The returned descriptor and the TLS mechanism is machine-dependent.  On IA32
 three global segment descriptors are supported  (0, 1, and 2) and the %gs
 load value is returned.
 .Pp
@@ -81,7 +81,7 @@ struct tls_info {
 };
 .Ed
 .Pp
-The actual implementation of the area is machine-dependant.  If the kernel
+The actual implementation of the area is machine-dependent.  If the kernel
 is unable to accommodate the supplied size it may create a larger area.
 If the kernel is unable to accommodate the supplied base address an error
 will be returned.

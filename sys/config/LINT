@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.110 2007/05/13 18:33:56 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.111 2007/05/13 22:25:42 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -82,7 +82,7 @@ options 	DFLDSIZ="(256*1024*1024)"
 
 #
 # BLKDEV_IOSIZE sets the default block size used in user block
-# device I/O.  Note that this value will be overriden by the label
+# device I/O.  Note that this value will be overridden by the label
 # when specifying a block device from a label with a non-0
 # partition blocksize.  The default is PAGE_SIZE.
 #
@@ -1789,7 +1789,7 @@ options 	AHD_REG_PRETTY_PRINT
 #
 # Te 're' device provides support for PCI GigaBit ethernet adapters based
 # on the RealTek 8169 chipset. It also supports the 8139C+ and is the
-# prefered driver for that chip.
+# preferred driver for that chip.
 #
 # The 'rl' device provides support for PCI fast ethernet adapters based
 # on the RealTek 8129/8139 chipset. Note that the RealTek driver defaults

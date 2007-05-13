@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.8 2007/02/19 11:10:12 swildner Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.9 2007/05/13 22:25:42 swildner Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -106,12 +106,12 @@ via the
 sysctl will impose additional system overheads and will generally only be
 accurate to within 100ns or so (and perhaps not even that good).
 Resynchronization only occurs 10 times a second and serious drift will
-cause a great deal of measurement noise when trying to compare events occuring
+cause a great deal of measurement noise when trying to compare events occurring
 on two different cpus.
 .Pp
 Users using the
 .Fl s
-option should be aware that events for each cpu are independantly logged
+option should be aware that events for each cpu are independently logged
 and one cpu might have more events logged then another, causing earlier
 events to be discarded sooner then other cpus.  The beginning portion of
 the sorted output may thus show MP related events for one cpu with no

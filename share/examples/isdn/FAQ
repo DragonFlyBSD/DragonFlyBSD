@@ -6,7 +6,7 @@
                 last edit-date: [Wed Nov  1 15:08:03 2000]
 
  $FreeBSD: src/share/examples/isdn/FAQ,v 1.6.2.2 2002/08/07 10:47:48 blackend Exp $
- $DragonFly: src/share/examples/isdn/FAQ,v 1.3 2007/05/13 18:33:56 swildner Exp $
+ $DragonFly: src/share/examples/isdn/FAQ,v 1.4 2007/05/13 22:25:41 swildner Exp $
 
 --------------------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ Contents:
   					he agrees to use pap ___|^^^^^
 
   so, if you have problems in the lcp phase, check which authentication method
-  your ISP wants to use. Usually chap is prefered, but pap will be accepted.
+  your ISP wants to use. Usually chap is preferred, but pap will be accepted.
 
   B. How to figure out the ISP's IP address
   -----------------------------------------
@@ -603,7 +603,7 @@ List of number configurations that I have found to almost always work in
 the Netherlands:
 
 1. Local phone number:
-   usually your prefered msn without city code works here.
+   usually your preferred msn without city code works here.
    (ie, 1234567 if you would like to use 0201234567 for outgoing calls)
    on some locations leaving it blank or defining it with the city code,
    but without the leading 0 works as well here.

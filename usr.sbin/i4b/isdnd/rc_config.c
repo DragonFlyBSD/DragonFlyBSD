@@ -28,7 +28,7 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.6.2.3 2002/04/24 18:50:07 joerg Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.4 2007/05/13 22:25:42 swildner Exp $
  *
  *      last edit-date: [Fri Jul 20 19:16:27 2001]
  *
@@ -794,7 +794,7 @@ cfg_setval(int keyword)
 			if (yylval.booln && inhibit_monitor)
 			{
 				do_monitor = 0;
-				DBGL(DL_RCCF, (log(LL_DBG, "system: monitor-enable overriden by command line flag")));
+				DBGL(DL_RCCF, (log(LL_DBG, "system: monitor-enable overridden by command line flag")));
 			}
 			else
 			{

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.24 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.7 2007/02/23 01:18:00 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.8 2007/05/13 22:25:42 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -208,12 +208,12 @@ acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
 			 res->Data.Dma.ChannelCount);
 	    break;
 	case ACPI_RESOURCE_TYPE_START_DEPENDENT:
-	    ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "start dependant functions\n"));
+	    ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "start dependent functions\n"));
 	    set->set_start_dependant(dev, context,
 				     res->Data.StartDpf.CompatibilityPriority);
 	    break;
 	case ACPI_RESOURCE_TYPE_END_DEPENDENT:
-	    ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "end dependant functions\n"));
+	    ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "end dependent functions\n"));
 	    set->set_end_dependant(dev, context);
 	    break;
 	case ACPI_RESOURCE_TYPE_ADDRESS32:
@@ -547,7 +547,7 @@ acpi_res_set_start_dependant(device_t dev, void *context, int preference)
 
     if (cp == NULL)
 	return;
-    device_printf(dev, "dependant functions not supported\n");
+    device_printf(dev, "dependent functions not supported\n");
 }
 
 static void
@@ -557,7 +557,7 @@ acpi_res_set_end_dependant(device_t dev, void *context)
 
     if (cp == NULL)
 	return;
-    device_printf(dev, "dependant functions not supported\n");
+    device_printf(dev, "dependent functions not supported\n");
 }
 
 /*

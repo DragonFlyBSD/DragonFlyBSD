@@ -32,7 +32,7 @@
  *
  * @(#)snova.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/snova.c,v 1.4 1999/11/30 03:49:54 billf Exp $
- * $DragonFly: src/games/trek/snova.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
+ * $DragonFly: src/games/trek/snova.c,v 1.4 2007/05/13 22:25:41 swildner Exp $
  */
 
 # include	"trek.h"
@@ -109,7 +109,7 @@ snova(int x, int y)
 	if (f)
 	{
 		/* supernova is in same quadrant as Enterprise */
-		printf("\nRED ALERT: supernova occuring at %d,%d\n", ix, iy);
+		printf("\nRED ALERT: supernova occurring at %d,%d\n", ix, iy);
 		dx = ix - Ship.sectx;
 		dy = iy - Ship.secty;
 		if (dx * dx + dy * dy <= 2)

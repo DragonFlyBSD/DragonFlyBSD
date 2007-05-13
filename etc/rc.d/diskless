@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/diskless,v 1.25 2003/02/15 16:34:14 jhay Exp $
-# $DragonFly: src/etc/rc.d/diskless,v 1.6 2007/04/26 23:34:27 dillon Exp $
+# $DragonFly: src/etc/rc.d/diskless,v 1.7 2007/05/13 22:25:41 swildner Exp $
 #
 
 # PROVIDE: diskless
@@ -108,7 +108,7 @@ echo "+++ create lastlog"
 /usr/bin/touch /var/log/lastlog
 
 # Make sure our aliases database is uptodate, the aliases may have
-# been overriden in /conf.
+# been overridden in /conf.
 #
 /usr/bin/newaliases
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp.c,v 1.41.2.23 2002/10/11 17:34:28 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.4 2004/02/13 01:04:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.5 2007/05/13 22:25:42 swildner Exp $ */
 /*
  * Machine and OS Independent (well, as best as possible)
  * code for the Qlogic ISP SCSI adapters.
@@ -6525,7 +6525,7 @@ isp2200_fw_dump(struct ispsoftc *isp)
 	}
 	ptr = isp->isp_mbxworkp;	/* finish fetch of final word */
 	*ptr++ = isp->isp_mboxtmp[2];
-	isp_prt(isp, ISP_LOGALL, "isp_fw_dump: SRAM dumped succesfully");
+	isp_prt(isp, ISP_LOGALL, "isp_fw_dump: SRAM dumped successfully");
 	FCPARAM(isp)->isp_dump_data[0] = isp->isp_type; /* now used */
 	(void) isp_async(isp, ISPASYNC_FW_DUMPED, 0);
 }
@@ -6688,7 +6688,7 @@ isp2300_fw_dump(struct ispsoftc *isp)
 	}
 	ptr = isp->isp_mbxworkp;	/* finish final word */
 	*ptr++ = mbs.param[2];
-	isp_prt(isp, ISP_LOGALL, "isp_fw_dump: SRAM dumped succesfully");
+	isp_prt(isp, ISP_LOGALL, "isp_fw_dump: SRAM dumped successfully");
 	FCPARAM(isp)->isp_dump_data[0] = isp->isp_type; /* now used */
 	(void) isp_async(isp, ISPASYNC_FW_DUMPED, 0);
 }

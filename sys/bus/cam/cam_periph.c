@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.19 2007/05/13 18:33:56 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.20 2007/05/13 22:25:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -180,7 +180,7 @@ failure:
 		/* No cleanup to perform. */
 		break;
 	default:
-		panic("cam_periph_alloc: Unkown init level");
+		panic("cam_periph_alloc: Unknown init level");
 	}
 	return(status);
 }

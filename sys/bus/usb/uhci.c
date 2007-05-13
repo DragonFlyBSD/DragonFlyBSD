@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.20 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.21 2007/05/13 22:25:42 swildner Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -2693,7 +2693,7 @@ uhci_device_intr_done(usbd_xfer_handle xfer)
 	if (xfer->pipe->repeat) {
 		uhci_soft_td_t *data, *dataend;
 
-		DPRINTFN(5,("uhci_device_intr_done: requeing\n"));
+		DPRINTFN(5,("uhci_device_intr_done: requeueing\n"));
 
 		/* This alloc cannot fail since we freed the chain above. */
 		uhci_alloc_std_chain(upipe, sc, xfer->length,

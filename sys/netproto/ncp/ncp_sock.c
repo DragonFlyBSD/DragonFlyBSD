@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.18 2007/04/22 01:13:16 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.19 2007/05/13 22:25:42 swildner Exp $
  *
  * Low level socket routines
  */
@@ -39,7 +39,7 @@
 #include "opt_ipx.h"
 
 #if !defined(INET) && !defined(IPX)
-#error "NCP requeires either INET of IPX protocol family"
+#error "NCP requires either INET of IPX protocol family"
 #endif
 
 #include <sys/param.h>

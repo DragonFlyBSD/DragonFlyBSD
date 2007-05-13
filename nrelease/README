@@ -1,4 +1,4 @@
-$DragonFly: src/nrelease/Attic/README,v 1.2 2006/07/16 23:06:56 dillon Exp $
+$DragonFly: src/nrelease/Attic/README,v 1.3 2007/05/13 22:25:41 swildner Exp $
 
 The DragonFly framework for building ISO image (nrelease)
 =========================================================
@@ -46,7 +46,7 @@ have to specify PKGSRC_PKG_ADD in make.conf.
 If you want to have any packages install in the ISO (the default), run
 ``make fetch'' first, to get them and the bootstrap kit used in the ISO.
 By default, the current directory is used, the location can and should
-be overriden by PKGSRC_PKG_PATH in make.conf.
+be overridden by PKGSRC_PKG_PATH in make.conf.
 
 RELEASE ENGINEERING
 --------------------------------

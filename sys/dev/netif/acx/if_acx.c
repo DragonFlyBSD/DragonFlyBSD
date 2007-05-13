@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.21 2007/03/30 12:44:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.22 2007/05/13 22:25:42 swildner Exp $
  */
 
 /*
@@ -1350,7 +1350,7 @@ acx_txerr(struct acx_softc *sc, uint8_t err)
 		stats->err_abort++;
 		break;
 	case DESC_ERR_PARAM:
-		kprintf("wrong paramters in descriptor\n");
+		kprintf("wrong parameters in descriptor\n");
 		stats->err_param++;
 		break;
 	case DESC_ERR_NO_WEPKEY:
