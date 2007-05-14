@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.33 2007/01/19 07:23:43 dillon Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.34 2007/05/14 19:28:39 dillon Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -32,7 +32,6 @@ SUBDIR= 802_11 \
 	daemon \
 	dconschat \
 	dev_mkdb \
-	diskpart \
 	dntpd \
 	edquota \
 	faithd \

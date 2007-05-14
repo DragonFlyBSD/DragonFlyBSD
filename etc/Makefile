@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.168 2007/04/20 11:00:56 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.169 2007/05/14 19:28:38 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -332,6 +332,7 @@ upgrade_etc:	preupgrade
 .endif
 	rm -f ${DESTDIR}/usr/share/info/cpp2.info.gz
 	rm -f ${DESTDIR}/usr/share/info/gcc2.info.gz
+	rm -f ${DESTDIR}/usr/sbin/diskpart
 	rm -f ${DESTDIR}/usr/sbin/ibcs2
 	rm -f ${DESTDIR}/usr/sbin/linux
 	rm -f ${DESTDIR}/usr/sbin/ntp-genkeys
