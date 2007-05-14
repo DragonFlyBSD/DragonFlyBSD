@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.58 2007/05/01 00:05:17 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.59 2007/05/14 12:31:41 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2771,7 +2771,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	}
 
 	for (i = 0; i < adapter->num_rx_desc; i++) {
-		error = em_get_buf(i, adapter, NULL, MB_WAIT);
+		error = em_get_buf(i, adapter, NULL, MB_DONTWAIT);
 		if (error)
 			goto fail;
 	}
