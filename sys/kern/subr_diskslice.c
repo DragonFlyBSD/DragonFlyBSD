@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.26 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.27 2007/05/14 20:02:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -782,12 +782,6 @@ dsopen(cdev_t dev, int mode, u_int flags,
 			if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
 				log(LOG_WARNING, "%s: cannot find label (%s)\n",
 				    sname, msg);
-			kfree(lp1, M_DEVBUF);
-			continue;
-		}
-		if (lp1->d_flags & D_BADSECT) {
-			log(LOG_ERR, "%s: bad sector table not supported\n",
-			    sname);
 			kfree(lp1, M_DEVBUF);
 			continue;
 		}

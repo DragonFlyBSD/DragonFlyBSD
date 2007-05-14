@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.27 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.28 2007/05/14 20:02:44 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -2791,7 +2791,7 @@ cdcheckmedia(struct cam_periph *periph)
 	strncpy(label->d_packname, cgd.inq_data.product,
 		min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
 		
-	label->d_flags = D_REMOVABLE;
+	label->d_flags = 0;
 	/*
 	 * Make partition 'a' cover the whole disk.  This is a temporary
 	 * compatibility hack.  The 'a' partition should not exist, so

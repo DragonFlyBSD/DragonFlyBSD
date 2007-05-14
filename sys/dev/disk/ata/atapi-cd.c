@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.29 2007/05/09 00:53:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.30 2007/05/14 20:02:44 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1311,7 +1311,7 @@ acd_read_toc(struct acd_softc *cdp)
     cdp->disklabel.d_secperunit = cdp->disk_size;
     cdp->disklabel.d_rpm = 300;
     cdp->disklabel.d_interleave = 1;
-    cdp->disklabel.d_flags = D_REMOVABLE;
+    cdp->disklabel.d_flags = 0;
     cdp->disklabel.d_npartitions = 1;
     cdp->disklabel.d_partitions[0].p_offset = 0;
     cdp->disklabel.d_partitions[0].p_size = cdp->disk_size;

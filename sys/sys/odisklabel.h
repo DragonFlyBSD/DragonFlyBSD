@@ -32,11 +32,11 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.16 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.17 2007/05/14 20:02:45 dillon Exp $
  */
 
-#ifndef _SYS_DISKLABEL_H_
-#define	_SYS_DISKLABEL_H_
+#ifndef _SYS_ODISKLABEL_H_
+#define	_SYS_ODISKLABEL_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -50,12 +50,6 @@
 #if defined(_KERNEL) && !defined(_SYS_CONF_H_)
 #include <sys/conf.h>		/* for make_sub_dev() */
 #endif
-
-/*
- * Disk description table, see disktab(5)
- */
-#define	_PATH_DISKTAB	"/etc/disktab"
-#define	DISKTAB		"/etc/disktab"		/* deprecated */
 
 /*
  * Each disk has a label which includes information about the hardware
@@ -88,7 +82,7 @@
 #define	SWAP_PART	1		/* partition normally containing swap */
 
 #ifndef LOCORE
-struct disklabel {
+struct odisklabel {
 	u_int32_t d_magic;		/* the magic number */
 	u_int16_t d_type;		/* drive type */
 	u_int16_t d_subtype;		/* controller/d_type specific */
@@ -170,7 +164,7 @@ struct disklabel {
 	u_int16_t d_npartitions;	/* number of partitions in following */
 	u_int32_t d_bbsize;		/* size of boot area at sn0, bytes */
 	u_int32_t d_sbsize;		/* max size of fs superblock, bytes */
-	struct	partition {		/* the partition table */
+	struct	opartition {		/* the partition table */
 		u_int32_t p_size;	/* number of sectors in partition */
 		u_int32_t p_offset;	/* starting sector */
 		u_int32_t p_fsize;	/* filesystem basic fragment size */
@@ -185,10 +179,10 @@ struct disklabel {
 	} d_partitions[MAXPARTITIONS];	/* actually may be more */
 };
 
-static u_int16_t dkcksum(struct disklabel *lp);
+static u_int16_t odkcksum(struct odisklabel *lp);
 
 static __inline u_int16_t
-dkcksum(struct disklabel *lp)
+odkcksum(struct odisklabel *lp)
 {
 	u_int16_t *start, *end;
 	u_int16_t sum = 0;
@@ -291,167 +285,17 @@ static const char *fstypenames[] = {
 #define FSMAXTYPES	(sizeof(fstypenames) / sizeof(fstypenames[0]) - 1)
 #endif
 
-/*
- * flags shared by various drives:
- */
-#define		D_REMOVABLE	0x01		/* removable media */
-#define		D_ECC		0x02		/* supports ECC */
-#define		D_BADSECT	0x04		/* supports bad sector forw. */
-#define		D_RAMDISK	0x08		/* disk emulator */
-#define		D_CHAIN		0x10		/* can do back-back transfers */
-
-/*
- * Drive data for SMD.
- */
-#define	d_smdflags	d_drivedata[0]
-#define		D_SSE		0x1		/* supports skip sectoring */
-#define	d_mindist	d_drivedata[1]
-#define	d_maxdist	d_drivedata[2]
-#define	d_sdist		d_drivedata[3]
-
-/*
- * Drive data for ST506.
- */
-#define d_precompcyl	d_drivedata[0]
-#define d_gap3		d_drivedata[1]		/* used only when formatting */
-
-/*
- * Drive data for SCSI.
- */
-#define	d_blind		d_drivedata[0]
-
 #ifndef LOCORE
-/*
- * Structure used to perform a format or other raw operation, returning
- * data and/or register values.  Register identification and format
- * are device- and driver-dependent.
- */
-struct format_op {
-	char	*df_buf;
-	int	 df_count;		/* value-result */
-	daddr_t	 df_startblk;
-	int	 df_reg[8];		/* result */
-};
-
-/*
- * Structure used internally to retrieve information about a partition
- * on a disk.
- */
-struct partinfo {
-	struct disklabel *disklab;
-	struct partition *part;
-};
 
 /*
  * Disk-specific ioctls.
  */
 		/* get and set disklabel; DIOCGPART used internally */
-#define DIOCGDINFO	_IOR('d', 101, struct disklabel)/* get */
-#define DIOCSDINFO	_IOW('d', 102, struct disklabel)/* set */
-#define DIOCWDINFO	_IOW('d', 103, struct disklabel)/* set, update disk */
-#define DIOCGPART	_IOW('d', 104, struct partinfo)	/* get partition */
-#define DIOCGDVIRGIN	_IOR('d', 105, struct disklabel) /* get virgin label */
-
-#define DIOCWLABEL	_IOW('d', 109, int)	/* write en/disable label */
-
-#ifdef _KERNEL
-
-/*
- * XXX encoding of disk minor numbers, should be elsewhere.
- *
- * See <sys/reboot.h> for a possibly better encoding.
- *
- * "cpio -H newc" can be used to back up device files with large minor
- * numbers (but not ones >= 2^31).  Old cpio formats and all tar formats
- * don't have enough bits, and cpio and tar don't notice the lossage.
- * There are also some sign extension bugs.
- */
-
-/*
-       3                   2                   1                   0
-     1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
-    _________________________________________________________________
-    | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
-    -----------------------------------------------------------------
-    |    TYPE     |UNIT_2 |P| SLICE |  MAJOR?       |  UNIT   |PART |
-    -----------------------------------------------------------------
-*/
-
-#define DKMAXUNIT 0x1ff		/* Highest disk unit number */
-
-#define	dkmakeminor(unit, slice, part) \
-				(((slice) << 16) | (((unit) & 0x1e0) << 16) | \
-				(((unit) & 0x1f) << 3) | (part & 7) | \
-				((part & 0x08) << 17))
-
-static __inline u_int
-dkunitmask(void)
-{
-	return (0x01e000f8);
-}
-
-static __inline u_int
-dkmakeunit(int unit)
-{
-	return(dkmakeminor(unit, 0, 0));
-}
-
-static __inline cdev_t
-dkmodpart(cdev_t dev, int part)
-{
-	int val;
-
-	if (part < 8)
-		val = (part & 7);
-	else
-		val = (part & 7) | 0x100000;
-	return (make_sub_dev(dev, (minor(dev) & ~0x100007) | val));
-}
-
-static __inline cdev_t
-dkmodslice(cdev_t dev, int slice)
-{
-	return (make_sub_dev(dev, (minor(dev) & ~0x0f0000) | (slice << 16)));
-}
-
-static __inline int
-dkpart(cdev_t dev)
-{
-	return (((minor(dev) >> 17) & 0x08) | (minor(dev) & 7));
-}
-
-#define	dkslice(dev)		((minor(dev) >> 16) & 0x0f)
-#define	dktype(dev)       	((minor(dev) >> 25) & 0x7f)
-
-static __inline u_int
-dkunit(cdev_t dev)
-{
-	return (((minor(dev) >> 16) & 0x1e0) | ((minor(dev) >> 3) & 0x1f));
-}
-
-struct	buf;
-struct	bio;
-struct	bio_queue_head;
-
-struct bio *bounds_check_with_label (cdev_t dev, struct bio *bio,
-				     struct disklabel *lp, int wlabel);
-void	diskerr (struct bio *bio, cdev_t dev, const char *what, int pri,
-		     int donecnt, struct disklabel *lp);
-void	disksort (struct buf *ap, struct buf *bp);
-char	*readdisklabel (cdev_t dev, struct disklabel *lp);
-void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
-int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
-			  u_long openmask);
-int	writedisklabel (cdev_t dev, struct disklabel *lp);
-
-#endif /* _KERNEL */
+#define ODIOCGDINFO	_IOR('d', 101, struct odisklabel)/* get */
+#define ODIOCSDINFO	_IOW('d', 102, struct odisklabel)/* set */
+#define ODIOCWDINFO	_IOW('d', 103, struct odisklabel)/* set, update disk */
+#define ODIOCGDVIRGIN	_IOR('d', 105, struct odisklabel) /* get virgin label */
 
 #endif /* LOCORE */
 
-#ifndef _KERNEL
-__BEGIN_DECLS
-struct disklabel *getdiskbyname (const char *);
-__END_DECLS
-#endif
-
-#endif /* !_SYS_DISKLABEL_H_ */
+#endif /* !_SYS_ODISKLABEL_H_ */

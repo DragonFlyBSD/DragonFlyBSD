@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.16 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.17 2007/05/14 20:02:45 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -158,7 +158,7 @@ struct disklabel {
 	u_int16_t d_cylskew;		/* sector 0 skew, per cylinder */
 	u_int32_t d_headswitch;		/* head switch time, usec */
 	u_int32_t d_trkseek;		/* track-to-track seek, usec */
-	u_int32_t d_flags;		/* generic flags */
+	u_int32_t d_flags;		/* generic flags (now unused) */
 #define NDDATA 5
 	u_int32_t d_drivedata[NDDATA];	/* drive-type specific information */
 #define NSPARE 5
@@ -291,51 +291,11 @@ static const char *fstypenames[] = {
 #define FSMAXTYPES	(sizeof(fstypenames) / sizeof(fstypenames[0]) - 1)
 #endif
 
-/*
- * flags shared by various drives:
- */
-#define		D_REMOVABLE	0x01		/* removable media */
-#define		D_ECC		0x02		/* supports ECC */
-#define		D_BADSECT	0x04		/* supports bad sector forw. */
-#define		D_RAMDISK	0x08		/* disk emulator */
-#define		D_CHAIN		0x10		/* can do back-back transfers */
-
-/*
- * Drive data for SMD.
- */
-#define	d_smdflags	d_drivedata[0]
-#define		D_SSE		0x1		/* supports skip sectoring */
-#define	d_mindist	d_drivedata[1]
-#define	d_maxdist	d_drivedata[2]
-#define	d_sdist		d_drivedata[3]
-
-/*
- * Drive data for ST506.
- */
-#define d_precompcyl	d_drivedata[0]
-#define d_gap3		d_drivedata[1]		/* used only when formatting */
-
-/*
- * Drive data for SCSI.
- */
-#define	d_blind		d_drivedata[0]
-
 #ifndef LOCORE
-/*
- * Structure used to perform a format or other raw operation, returning
- * data and/or register values.  Register identification and format
- * are device- and driver-dependent.
- */
-struct format_op {
-	char	*df_buf;
-	int	 df_count;		/* value-result */
-	daddr_t	 df_startblk;
-	int	 df_reg[8];		/* result */
-};
 
 /*
  * Structure used internally to retrieve information about a partition
- * on a disk.
+ * or disk.
  */
 struct partinfo {
 	struct disklabel *disklab;

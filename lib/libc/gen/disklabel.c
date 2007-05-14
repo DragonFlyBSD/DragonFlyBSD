@@ -32,7 +32,7 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.8 2005/11/19 22:32:53 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.9 2007/05/14 20:02:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ getdiskbyname(const char *name)
 	struct	disklabel *dp = &disk;
 	struct partition *pp;
 	char	*buf;
-	char  	*db_array[2] = { _PATH_DISKTAB, 0 };
+	char  	*db_array[2] = { DISKTAB, 0 };
 	char	*cp, *cq;	/* can't be register */
 	char	p, max, psize[3], pbsize[3],
 		pfsize[3], poffset[3], ptype[3];
@@ -81,13 +81,6 @@ getdiskbyname(const char *name)
 	 */
 	cgetstr(buf, "b0", &dp->d_boot0);
 	cgetstr(buf, "b1", &dp->d_boot1);
-
-	if (cgetstr(buf, "ty", &cq) > 0 && strcmp(cq, "removable") == 0)
-		dp->d_flags |= D_REMOVABLE;
-	else  if (cq && strcmp(cq, "simulated") == 0)
-		dp->d_flags |= D_RAMDISK;
-	if (cgetcap(buf, "sf", ':') != NULL)
-		dp->d_flags |= D_BADSECT;
 
 #define getnumdflt(field, dname, dflt) \
         { long f; (field) = (cgetnum(buf, dname, &f) == -1) ? (dflt) : f; }

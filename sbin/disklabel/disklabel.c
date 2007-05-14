@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.12 2006/10/17 02:18:51 pavalos Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.13 2007/05/14 20:02:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -679,12 +679,6 @@ display(FILE *f, const struct disklabel *lp)
 	fprintf(f, "label: %.*s\n", (int)sizeof(lp->d_packname),
 		lp->d_packname);
 	fprintf(f, "flags:");
-	if (lp->d_flags & D_REMOVABLE)
-		fprintf(f, " removeable");
-	if (lp->d_flags & D_ECC)
-		fprintf(f, " ecc");
-	if (lp->d_flags & D_BADSECT)
-		fprintf(f, " badsect");
 	fprintf(f, "\n");
 	fprintf(f, "bytes/sector: %lu\n", (u_long)lp->d_secsize);
 	fprintf(f, "sectors/track: %lu\n", (u_long)lp->d_nsectors);
@@ -928,11 +922,11 @@ getasciilabel(FILE *f, struct disklabel *lp)
 			for (v = 0; (cp = tp) && *cp != '\0';) {
 				tp = word(cp);
 				if (streq(cp, "removeable"))
-					v |= D_REMOVABLE;
+					v |= 0;	/* obsolete */
 				else if (streq(cp, "ecc"))
-					v |= D_ECC;
+					v |= 0;	/* obsolete */
 				else if (streq(cp, "badsect"))
-					v |= D_BADSECT;
+					v |= 0;	/* obsolete */
 				else {
 					fprintf(stderr,
 					    "line %d: %s: bad flag\n",

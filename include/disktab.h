@@ -30,7 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)disktab.h	8.1 (Berkeley) 6/2/93
+ * @(#)disktab.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/disktab.h,v 1.2 2007/05/14 20:02:40 dillon Exp $
  */
 
 #ifndef	_DISKTAB_H_
@@ -39,7 +40,9 @@
 /*
  * Disk description table, see disktab(5)
  */
+#ifndef DISKTAB
 #define	DISKTAB		"/etc/disktab"
+#endif
 
 struct	disktab {
 	char	*d_name;		/* drive name */
@@ -51,7 +54,7 @@ struct	disktab {
 	int	d_rpm;			/* revolutions/minute */
 	int	d_badsectforw;		/* supports DEC bad144 std */
 	int	d_sectoffset;		/* use sect rather than cyl offsets */
-	struct	partition {
+	struct	dt_partition {
 		int	p_size;		/* #sectors in partition */
 		short	p_bsize;	/* block size in bytes */
 		short	p_fsize;	/* frag size in bytes */

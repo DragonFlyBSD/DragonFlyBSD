@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.20 2006/12/22 23:26:17 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.21 2007/05/14 20:02:44 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -1253,7 +1253,7 @@ read_toc(unsigned unit)
 	cd->dlabel.d_secperunit	= cd->disksize;
 	cd->dlabel.d_rpm	= 300;
 	cd->dlabel.d_interleave	= 1;
-	cd->dlabel.d_flags	= D_REMOVABLE;
+	cd->dlabel.d_flags	= 0;
 	cd->dlabel.d_npartitions= 1;
 	cd->dlabel.d_partitions[0].p_offset = 0;
 	cd->dlabel.d_partitions[0].p_size = cd->disksize;

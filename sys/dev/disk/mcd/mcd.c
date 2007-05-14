@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.21 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.22 2007/05/14 20:02:44 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -662,7 +662,7 @@ static int mcd_getdisklabel(int unit)
 	cd->dlabel.d_secperunit	= cd->disksize;
 	cd->dlabel.d_rpm	= 300;
 	cd->dlabel.d_interleave	= 1;
-	cd->dlabel.d_flags	= D_REMOVABLE;
+	cd->dlabel.d_flags	= 0;
 	cd->dlabel.d_npartitions= 1;
 	cd->dlabel.d_partitions[0].p_offset = 0;
 	cd->dlabel.d_partitions[0].p_size = cd->disksize;
