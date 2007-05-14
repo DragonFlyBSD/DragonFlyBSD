@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.169 2007/05/14 19:28:38 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.170 2007/05/14 21:26:56 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -363,7 +363,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
 .endfor
 .for man in ibcs2 joy linux ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace \
-	    picobsd svr4 sysinstall cvsbug
+	    picobsd svr4 sysinstall cvsbug diskpart
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_xxx.9.gz"
