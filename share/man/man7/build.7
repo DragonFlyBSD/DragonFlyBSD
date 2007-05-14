@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.12 2007/01/07 01:28:51 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.13 2007/05/14 14:28:47 swildner Exp $
 .\"
 .Dd January 6, 2007
 .Dt BUILD 7
@@ -43,13 +43,11 @@ the system to a useful state.
 It also contains the source for the system documentation, including
 manual pages.
 Third party applications have to be built using the
-.Em pkgsrc
+.Xr pkgsrc 7
 system.
 The file
 .Pa /usr/src/UPDATING
-gives specifics on how to obtain the tree for building packages while
-.Xr packages 7
-describes the variables and targets that are available.
+gives specifics on how to obtain the tree for building packages.
 .Pp
 The
 .Xr make 1
@@ -218,7 +216,7 @@ functioning correctly.
 .Xr make 1 ,
 .Xr wmake 1 ,
 .Xr make.conf 5 ,
-.Xr packages 7 ,
+.Xr pkgsrc 7 ,
 .Xr release 7 ,
 .Xr config 8 ,
 .Xr reboot 8 ,
