@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.22 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.23 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,6 +127,7 @@ pst_attach(device_t dev)
     struct pst_softc *psc = device_get_softc(dev);
     struct i2o_get_param_reply *reply;
     struct i2o_device_identity *ident;
+    struct disk_info info;
     int lun = device_get_unit(dev);
     int8_t name [32];
 
@@ -159,19 +160,21 @@ pst_attach(device_t dev)
 
     bioq_init(&psc->bio_queue);
 
-    psc->device = disk_create(lun, &psc->disk, 0, &pst_ops);
+    psc->device = disk_create(lun, &psc->disk, &pst_ops);
     psc->device->si_drv1 = psc;
     psc->device->si_iosize_max = 64 * 1024; /*I2O_SGL_MAX_SEGS * PAGE_SIZE;*/
 
-    bzero(&psc->disk.d_label, sizeof(struct disklabel));
-    psc->disk.d_label.d_secsize = psc->info->block_size;
-    psc->disk.d_label.d_nsectors = 63;
-    psc->disk.d_label.d_ntracks = 255;
-    psc->disk.d_label.d_ncylinders =
-	(psc->info->capacity / psc->info->block_size) / (255 * 63);
-    psc->disk.d_label.d_secpercyl = 255 * 63;
-    psc->disk.d_label.d_secperunit =
-	psc->info->capacity / psc->info->block_size;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = psc->info->block_size;	/* mandatory */
+    info.d_media_size = psc->info->capacity;		/* (in bytes) */
+
+    info.d_secpertrack = 63;				/* optional */
+    info.d_nheads = 255;
+    info.d_secpercyl = info.d_nheads * info.d_secpertrack;
+    info.d_ncylinders =
+	(psc->info->capacity / psc->info->block_size) / info.d_secpercyl;
+
+    disk_setdiskinfo(&psc->disk, &info);
 
     devstat_add_entry(&psc->stats, "pst", lun, psc->info->block_size,
 		      DEVSTAT_NO_ORDERED_TAGS,
@@ -179,8 +182,8 @@ pst_attach(device_t dev)
 		      DEVSTAT_PRIORITY_DISK);
 
     kprintf("pst%d: %lluMB <%.40s> [%d/%d/%d] on %.16s\n", lun,
-	   (unsigned long long)psc->disk.d_label.d_secperunit / (1024 * 2),
-	   name, psc->disk.d_label.d_ncylinders, 255, 63,
+	   info.d_media_size / (1024 * 1024), name,
+	   info.d_ncylinders , info.d_nheads, info.d_secpertrack,
 	   device_get_nameunit(psc->iop->dev));
 #if 0
     EVENTHANDLER_REGISTER(shutdown_post_sync, pst_shutdown,

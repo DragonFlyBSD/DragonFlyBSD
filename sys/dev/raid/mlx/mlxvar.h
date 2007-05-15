@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.10 2006/12/22 23:26:24 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.11 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -230,7 +230,6 @@ struct mlxd_softc
     struct mlx_sysdrive	*mlxd_drive;
     struct disk		mlxd_disk;
     struct devstat	mlxd_stats;
-    struct disklabel	mlxd_label;
     int			mlxd_unit;
     int			mlxd_flags;
 #define MLXD_OPEN	(1<<0)		/* drive is open (can't shut down) */

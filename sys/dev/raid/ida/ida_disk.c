@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.14 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.15 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -106,21 +106,23 @@ idad_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
-	struct disklabel *label;
+	struct disk_info info;
 
 	drv = idad_getsoftc(dev);
 	if (drv == NULL)
 		return (ENXIO);
 
-	label = &drv->disk.d_label;
-	bzero(label, sizeof(*label));
-	label->d_type = DTYPE_SCSI;
-	label->d_secsize = drv->secsize;
-	label->d_nsectors = drv->sectors;
-	label->d_ntracks = drv->heads;
-	label->d_ncylinders = drv->cylinders;
-	label->d_secpercyl = drv->sectors * drv->heads;
-	label->d_secperunit = drv->secperunit;
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = drv->secsize;		/* mandatory */
+	info.d_media_blocks = drv->secperunit;
+
+	info.d_secpertrack = drv->sectors;		/* optional */
+	info.d_type = DTYPE_SCSI;
+	info.d_nheads = drv->heads;
+	info.d_ncylinders = drv->cylinders;
+	info.d_secpercyl = drv->sectors * drv->heads;
+
+	disk_setdiskinfo(&drv->disk, &info);
 
 	return (0);
 }
@@ -299,7 +301,7 @@ idad_attach(device_t dev)
 	    DEVSTAT_TYPE_STORARRAY| DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_ARRAY);
 
-	dsk = disk_create(drv->unit, &drv->disk, 0, &id_ops);
+	dsk = disk_create(drv->unit, &drv->disk, &id_ops);
 
 	dsk->si_drv1 = drv;
 	dsk->si_iosize_max = DFLTPHYS;		/* XXX guess? */

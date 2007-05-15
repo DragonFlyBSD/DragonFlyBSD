@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.36 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.37 2007/05/15 00:01:03 dillon Exp $
  *
  */
 
@@ -2116,7 +2116,7 @@ retrier(struct fdc_data *fdc)
 				    (FDUNIT(minor(dev))<<3)|RAW_PART);
 				diskerr(bio, subdev,
 					"hard error", LOG_PRINTF,
-					fdc->fd->skip, NULL);
+					fdc->fd->skip);
 			}
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)

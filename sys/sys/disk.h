@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.10 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.11 2007/05/15 00:01:04 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -57,24 +57,71 @@
 #include <sys/disklabel.h>
 #endif
 
+/*
+ * Media information structure - filled in by the media driver.
+ */
+struct disk_info {
+	/*
+	 * These fields are required.  Most drivers will load a disk_info
+	 * structure in the device open function with the media parameters
+	 * and call disk_setdiskinfo().
+	 *
+	 * Note that only one of d_media_size or d_media_blocks should be
+	 * filled in.
+	 *
+	 * d_media_size		media size in bytes
+	 * d_media_blocks	media size in blocks (e.g. total sectors)
+	 * d_media_blksize	media block size / sector size
+	 * d_dsflags		disklabel management flags
+	 */
+	u_int64_t		d_media_size;
+	u_int64_t		d_media_blocks;
+	int			d_media_blksize;
+	u_int			d_dsflags;
+
+	/*
+	 * Optional fields, leave 0 if not known
+	 */
+	u_int			d_type;		/* DTYPE_xxx */
+	u_int			d_nheads;
+	u_int			d_ncylinders;
+	u_int			d_secpertrack;
+	u_int			d_secpercyl;
+};
+
+/*
+ * d_dsflags, also used for dsopen() - control disklabel processing
+ */
+#define DSO_NOLABELS		0x0001
+#define DSO_ONESLICE		0x0002
+#define DSO_COMPATLABEL		0x0004
+#define DSO_COMPATPARTA		0x0008
+
+/*
+ * Disk management structure - automated disklabel support.
+ */
 struct disk {
 	struct dev_ops		*d_dev_ops;	/* our device switch */
 	struct dev_ops		*d_raw_ops;	/* the raw device switch */
 	u_int			d_flags;
-	u_int			d_dsflags;
 	cdev_t			d_rawdev;	/* backing raw device */
 	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
+	struct disk_info	d_info;		/* info structure for media */
 	struct disklabel	d_label;
 	LIST_ENTRY(disk)	d_list;
 };
 
+/*
+ * d_flags
+ */
 #define DISKFLAG_LOCK		0x1
 #define DISKFLAG_WANTED		0x2
 
 #ifdef _KERNEL
-cdev_t disk_create (int unit, struct disk *disk, int flags, struct dev_ops *raw_ops);
+cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
 void disk_destroy (struct disk *disk);
+void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int *count, u_int *blkno, u_int *secsize);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);

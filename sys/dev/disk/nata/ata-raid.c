@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.5 2007/02/08 21:48:24 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.6 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -133,6 +133,7 @@ static int testing = 0;
 static void
 ata_raid_attach(struct ar_softc *rdp, int writeback)
 {
+    struct disk_info info;
     cdev_t cdev;
     char buffer[32];
     int disk;
@@ -151,17 +152,19 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     else
 	buffer[0] = '\0';
     /* XXX TGEN add devstats? */
-    cdev = disk_create(rdp->lun, &rdp->disk, 0, &ar_ops);
+    cdev = disk_create(rdp->lun, &rdp->disk, &ar_ops);
     cdev->si_drv1 = rdp;
     cdev->si_iosize_max = 128 * DEV_BSIZE;
     rdp->cdev = cdev;
-    bzero(&rdp->disk.d_label, sizeof(struct disklabel));
-    rdp->disk.d_label.d_secsize = DEV_BSIZE;
-    rdp->disk.d_label.d_nsectors = rdp->sectors;
-    rdp->disk.d_label.d_ntracks = rdp->heads;
-    rdp->disk.d_label.d_ncylinders = rdp->total_sectors/(rdp->heads*rdp->sectors);
-    rdp->disk.d_label.d_secpercyl = rdp->sectors * rdp->heads;
-    rdp->disk.d_label.d_secperunit = rdp->total_sectors;
+
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = DEV_BSIZE;		/* mandatory */
+    info.d_media_blocks = rdp->total_sectors;
+
+    info.d_secpertrack = rdp->sectors;		/* optional */
+    info.d_nheads = rdp->heads;
+    info.d_ncylinders = rdp->total_sectors/(rdp->heads*rdp->sectors);
+    info.d_secpercyl = rdp->sectors * rdp->heads;
 
     kprintf("ar%d: %juMB <%s %s%s> status: %s\n", rdp->lun,
 	   rdp->total_sectors / ((1024L * 1024L) / DEV_BSIZE),
@@ -211,6 +214,8 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
 	else
 	    kprintf("DOWN no device found for this subdisk\n");
     }
+
+    disk_setdiskinfo(&rdp->disk, &info);
 }
 
 /*

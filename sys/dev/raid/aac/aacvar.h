@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.15 2006/12/22 23:26:23 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.16 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -123,7 +123,6 @@ struct aac_disk
 	struct aac_container		*ad_container;
 	struct disk			ad_disk;
 	struct devstat			ad_stats;
-	struct disklabel		ad_label;
 	int				ad_flags;
 #define AAC_DISK_OPEN	(1<<0)
 	int				ad_cylinders;

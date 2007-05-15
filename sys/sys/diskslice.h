@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.8 2006/09/10 01:26:40 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.9 2007/05/15 00:01:04 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -75,11 +75,6 @@ struct diskslices {
 };
 
 #ifdef _KERNEL
-
-/* Flags for dsopen(). */
-#define	DSO_NOLABELS	1
-#define	DSO_ONESLICE	2
-#define	DSO_COMPATLABEL	4
 
 #define	dsgetlabel(dev, ssp)	(ssp->dss_slices[dkslice(dev)].ds_label)
 

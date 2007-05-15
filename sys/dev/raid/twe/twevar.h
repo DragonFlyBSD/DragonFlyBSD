@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.8 2006/12/22 23:26:24 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.9 2007/05/15 00:01:04 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -83,7 +83,6 @@ struct twed_softc
     struct twe_drive	*twed_drive;		/* drive data in parent softc */
     struct disk		twed_disk;		/* generic disk handle */
     struct devstat	twed_stats;		/* accounting */
-    struct disklabel	twed_label;		/* synthetic label */
     int			twed_flags;
 #define TWED_OPEN	(1<<0)			/* drive is open (can't shut down) */
 };

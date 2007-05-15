@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.11 2006/12/22 23:26:23 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.12 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -158,7 +158,7 @@ ipsd_attach(device_t dev)
 {
 	device_t adapter;
 	ipsdisk_softc_t *dsc;
-	struct	disklabel *label;
+	struct disk_info info;
 	u_int totalsectors;
 	u_int nheads, nsectors;
 
@@ -183,18 +183,22 @@ ipsd_attach(device_t dev)
 			  DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_DISK);
-	dsc->ipsd_dev_t = disk_create(dsc->unit, &dsc->ipsd_disk, 0, &ipsd_ops);
+	dsc->ipsd_dev_t = disk_create(dsc->unit, &dsc->ipsd_disk, &ipsd_ops);
 	dsc->ipsd_dev_t->si_drv1 = dsc;
 	dsc->ipsd_dev_t->si_iosize_max = IPS_MAX_IO_SIZE;
-	label = &dsc->ipsd_disk.d_label;
-	bzero(label, sizeof(*label));
-	label->d_ntracks    = nheads;
-	label->d_nsectors   = nsectors;
-	label->d_type       = DTYPE_ESDI;
-	label->d_secsize    = IPS_BLKSIZE;
-	label->d_ncylinders = totalsectors / nheads / nsectors;
-	label->d_secpercyl  = nsectors / nheads;
-	label->d_secperunit = totalsectors;
+
+	bzero(&info, sizeof(info));
+	info.d_media_blksize	= IPS_BLKSIZE;		/* mandatory */
+	info.d_media_blocks	= totalsectors;
+
+	info.d_type		= DTYPE_ESDI;		/* optional */
+	info.d_nheads		= nheads;
+	info.d_secpertrack	= nsectors;
+	info.d_ncylinders	= totalsectors / nheads / nsectors;
+	info.d_secpercyl	= nsectors / nheads;
+
+	disk_setdiskinfo(&dsc->ipsd_disk, &info);
+
 	device_printf(dev, "Logical Drive  (%dMB)\n",
 	    dsc->sc->drives[dsc->disk_number].sector_count >> 11);
 	return 0;

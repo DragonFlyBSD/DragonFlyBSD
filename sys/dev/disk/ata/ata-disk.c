@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.33 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.34 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -108,6 +108,7 @@ void
 ad_attach(struct ata_device *atadev, int alreadylocked)
 {
     struct ad_softc *adp;
+    struct disk_info info;
     cdev_t dev;
 
     adp = kmalloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO);
@@ -197,19 +198,21 @@ ad_attach(struct ata_device *atadev, int alreadylocked)
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
 
-    dev = disk_create(adp->lun, &adp->disk, 0, &ad_ops);
+    dev = disk_create(adp->lun, &adp->disk, &ad_ops);
     dev->si_drv1 = adp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     adp->dev = dev;
 
-    /* construct the disklabel */
-    bzero(&adp->disk.d_label, sizeof(struct disklabel));
-    adp->disk.d_label.d_secsize = DEV_BSIZE;
-    adp->disk.d_label.d_nsectors = adp->sectors;
-    adp->disk.d_label.d_ntracks = adp->heads;
-    adp->disk.d_label.d_ncylinders = adp->total_secs/(adp->heads*adp->sectors);
-    adp->disk.d_label.d_secpercyl = adp->sectors * adp->heads;
-    adp->disk.d_label.d_secperunit = adp->total_secs;
+    /* construct the disk_info */
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = DEV_BSIZE;
+    info.d_media_blocks = adp->total_secs;
+    info.d_nheads = adp->heads;
+    info.d_secpertrack = adp->sectors;
+    info.d_ncylinders = adp->total_secs / 
+			 (info.d_nheads * info.d_secpertrack);
+    info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+    disk_setdiskinfo(&adp->disk, &info);
 
     atadev->driver = adp;
     atadev->flags = 0;
@@ -643,7 +646,7 @@ ad_interrupt(struct ad_request *request)
     if (adp->device->channel->status & ATA_S_CORR)
 	diskerr(request->bio, dev,
 		"soft error (ECC corrected)", LOG_PRINTF,
-		request->donecount, &adp->disk.d_label);
+		request->donecount);
 
     /* did any real errors happen ? */
     if ((adp->device->channel->status & ATA_S_ERROR) ||
@@ -653,7 +656,7 @@ ad_interrupt(struct ad_request *request)
 	diskerr(request->bio, dev,
 		(adp->device->channel->error & ATA_E_ICRC) ?
 		"UDMA ICRC error" : "hard error", LOG_PRINTF,
-		request->donecount, &adp->disk.d_label);
+		request->donecount);
 
 	/* if this is a UDMA CRC error, reinject request */
 	if (request->flags & ADR_F_DMA_USED &&

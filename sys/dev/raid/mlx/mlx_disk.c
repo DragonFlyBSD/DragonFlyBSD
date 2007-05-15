@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.11 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.12 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -90,7 +90,7 @@ mlxd_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
-    struct disklabel	*label;
+    struct disk_info info;
 
     debug_called(1);
 	
@@ -101,15 +101,17 @@ mlxd_open(struct dev_open_args *ap)
     if (sc->mlxd_controller->mlx_state & MLX_STATE_SHUTDOWN)
 	return(ENXIO);
 
-    label = &sc->mlxd_disk.d_label;
-    bzero(label, sizeof(*label));
-    label->d_type = DTYPE_SCSI;
-    label->d_secsize    = MLX_BLKSIZE;
-    label->d_nsectors   = sc->mlxd_drive->ms_sectors;
-    label->d_ntracks    = sc->mlxd_drive->ms_heads;
-    label->d_ncylinders = sc->mlxd_drive->ms_cylinders;
-    label->d_secpercyl  = sc->mlxd_drive->ms_sectors * sc->mlxd_drive->ms_heads;
-    label->d_secperunit = sc->mlxd_drive->ms_size;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize= MLX_BLKSIZE;		/* mandatory */
+    info.d_media_blocks	= sc->mlxd_drive->ms_size;
+
+    info.d_type		= DTYPE_SCSI;		/* optional */
+    info.d_secpertrack	= sc->mlxd_drive->ms_sectors;
+    info.d_nheads	= sc->mlxd_drive->ms_heads;
+    info.d_ncylinders	= sc->mlxd_drive->ms_cylinders;
+    info.d_secpercyl	= sc->mlxd_drive->ms_sectors * sc->mlxd_drive->ms_heads;
+
+    disk_setdiskinfo(&sc->mlxd_disk, &info);
 
     sc->mlxd_flags |= MLXD_OPEN;
     return (0);
@@ -256,7 +258,7 @@ mlxd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, 0, &mlxd_ops);
+    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, &mlxd_ops);
     dsk->si_drv1 = sc;
     sc->mlxd_dev_t = dsk;
 

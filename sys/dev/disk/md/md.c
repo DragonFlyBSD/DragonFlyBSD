@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.15 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.16 2007/05/15 00:01:03 dillon Exp $
  *
  */
 
@@ -91,7 +91,7 @@ mdopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
-	struct disklabel *dl;
+	struct disk_info info;
 
 	if (md_debug)
 		kprintf("mdopen(%s %x %x)\n",
@@ -101,14 +101,16 @@ mdopen(struct dev_open_args *ap)
 	if (sc->unit + 1 == mdunits)
 		mdcreate_malloc();
 
-	dl = &sc->disk.d_label;
-	bzero(dl, sizeof(*dl));
-	dl->d_secsize = DEV_BSIZE;
-	dl->d_nsectors = 1024;
-	dl->d_ntracks = 1;
-	dl->d_secpercyl = dl->d_nsectors * dl->d_ntracks;
-	dl->d_secperunit = sc->nsect;
-	dl->d_ncylinders = dl->d_secperunit / dl->d_secpercyl;
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = DEV_BSIZE;	/* mandatory */
+	info.d_media_blocks = sc->nsect;
+
+	info.d_secpertrack = 1024;		/* optional */
+	info.d_nheads = 1;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders = (u_int)(info.d_media_blocks / info.d_secpercyl);
+	disk_setdiskinfo(&sc->disk, &info);
+
 	return (0);
 }
 
@@ -367,7 +369,7 @@ mdcreate(void)
 		DEVSTAT_NO_ORDERED_TAGS, 
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_OTHER);
-	sc->dev = disk_create(sc->unit, &sc->disk, 0, &md_ops);
+	sc->dev = disk_create(sc->unit, &sc->disk, &md_ops);
 	sc->dev->si_drv1 = sc;
 	return (sc);
 }

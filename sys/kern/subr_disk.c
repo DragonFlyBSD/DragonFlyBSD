@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.28 2006/12/26 11:01:07 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.29 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ static struct dev_ops disk_ops = {
  * it also uses it internally when passing (modified) commands through.
  */
 cdev_t
-disk_create(int unit, struct disk *dp, int flags, struct dev_ops *raw_ops)
+disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 {
 	cdev_t rawdev;
 	struct dev_ops *dev_ops;
@@ -169,9 +169,46 @@ disk_create(int unit, struct disk *dp, int flags, struct dev_ops *raw_ops)
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", dev_ops->head.name, unit);
 
-	dp->d_dsflags = flags;
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	return (dp->d_rawdev);
+}
+
+/*
+ * Disk drivers must call this routine when media parameters are available
+ * or have changed.
+ */
+void
+disk_setdiskinfo(struct disk *disk, struct disk_info *info)
+{
+	struct disklabel *label = &disk->d_label;
+
+	bzero(label, sizeof(*label));
+	bcopy(info, &disk->d_info, sizeof(disk->d_info));
+	info = &disk->d_info;
+
+	KKASSERT(info->d_media_size == 0 || info->d_media_blksize == 0);
+	if (info->d_media_size == 0 && info->d_media_blocks) {
+		info->d_media_size = (u_int64_t)info->d_media_blocks * 
+				     info->d_media_blksize;
+	} else if (info->d_media_size && info->d_media_blocks == 0 && 
+		   info->d_media_blksize) {
+		info->d_media_blocks = info->d_media_size / 
+				       info->d_media_blksize;
+	}
+
+	label->d_secsize = info->d_media_blksize;
+	label->d_secperunit = (u_int)info->d_media_blocks;
+	KKASSERT(info->d_media_blocks < 0x100000000LLU);
+
+	if (info->d_dsflags & DSO_COMPATPARTA) {
+		label->d_partitions[0].p_size = label->d_secperunit;
+		label->d_partitions[0].p_fstype = FS_OTHER;
+	}
+
+	label->d_nsectors = info->d_secpertrack;
+	label->d_ntracks = info->d_nheads;
+	label->d_ncylinders = info->d_ncylinders;
+	label->d_secpercyl = info->d_secpercyl;
 }
 
 /*
@@ -318,7 +355,7 @@ diskopen(struct dev_open_args *ap)
 	if (error)
 		goto out;
 	
-	error = dsopen(dev, ap->a_devtype, dp->d_dsflags,
+	error = dsopen(dev, ap->a_devtype, dp->d_info.d_dsflags,
 		       &dp->d_slice, &dp->d_label);
 
 	if (!dsisopen(dp->d_slice)) 
@@ -756,8 +793,7 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * or log(-1, ...), respectively.  There is no trailing space.
  */
 void
-diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, 
-	int donecnt, struct disklabel *lp)
+diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 {
 	struct buf *bp = bio->bio_buf;
 	int unit = dkunit(dev);

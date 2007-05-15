@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.3 2007/03/16 13:41:40 swildner Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.4 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -105,20 +105,9 @@ vkdinit(void *dummy __unused)
 				  DEVSTAT_NO_ORDERED_TAGS,
 				  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 				  DEVSTAT_PRIORITY_DISK);
-		sc->dev = disk_create(sc->unit, &sc->disk, 0, &vkd_ops);
+		sc->dev = disk_create(sc->unit, &sc->disk, &vkd_ops);
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = 256 * 1024;
-
-#if 0
-		dl = &sc->disk.d_label;
-		bzero(dl, sizeof(*dl));
-		dl->d_secsize = DEV_BSIZE;
-		dl->d_nsectors = st.st_size / dl->d_secsize;
-		dl->d_ntracks = 1;
-		dl->d_secpercyl = dl->d_nsectors;
-		dl->d_ncylinders = 1;
-#endif
-
 	}
 }
 
@@ -128,7 +117,7 @@ static int
 vkdopen(struct dev_open_args *ap)
 {
 	struct vkd_softc *sc;
-	struct disklabel *dl;
+	struct disk_info info;
 	struct stat st;
 	cdev_t dev;
 
@@ -137,14 +126,16 @@ vkdopen(struct dev_open_args *ap)
 	if (fstat(sc->fd, &st) < 0 || st.st_size == 0)
 		return(ENXIO);
 
-	dl = &sc->disk.d_label;
-	bzero(dl, sizeof(*dl));
-	dl->d_secsize = DEV_BSIZE;
-	dl->d_nsectors = st.st_size / dl->d_secsize;
-	dl->d_ntracks = 1;
-	dl->d_secpercyl = dl->d_nsectors;
-	dl->d_ncylinders = 1;
-	dl->d_secperunit = dl->d_nsectors;
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = DEV_BSIZE;
+	info.d_media_blocks = st.st_size / info.d_media_blksize;
+
+	info.d_nheads = 1;
+	info.d_ncylinders = 1;
+	info.d_secpertrack = info.d_media_blocks;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+
+	disk_setdiskinfo(&sc->disk, &info);
 	return(0);
 }
 

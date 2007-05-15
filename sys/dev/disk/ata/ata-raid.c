@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.25 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.26 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -176,7 +176,7 @@ ar_attach_raid(struct ar_softc *rdp, int update)
     int disk;
 
     ar_config_changed(rdp, update);
-    dev = disk_create(rdp->lun, &rdp->disk, 0, &ar_ops);
+    dev = disk_create(rdp->lun, &rdp->disk, &ar_ops);
     dev->si_drv1 = rdp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     rdp->dev = dev;
@@ -457,16 +457,17 @@ static int
 aropen(struct dev_open_args *ap)
 {
     struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
-    struct disklabel *dl;
-	
-    dl = &rdp->disk.d_label;
-    bzero(dl, sizeof *dl);
-    dl->d_secsize = DEV_BSIZE;
-    dl->d_nsectors = rdp->sectors;
-    dl->d_ntracks = rdp->heads;
-    dl->d_ncylinders = rdp->cylinders;
-    dl->d_secpercyl = rdp->sectors * rdp->heads;
-    dl->d_secperunit = rdp->total_sectors;
+    struct disk_info info;
+
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = DEV_BSIZE;		/* mandatory */
+    info.d_media_blocks = rdp->total_sectors;
+
+    info.d_secpertrack = rdp->sectors;		/* optional */
+    info.d_nheads = rdp->heads;
+    info.d_ncylinders = rdp->cylinders;
+    info.d_secpercyl = rdp->sectors * rdp->heads;
+    disk_setdiskinfo(&rdp->disk, &info);
     return 0;
 }
 

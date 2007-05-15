@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.197 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.2 2007/02/05 18:10:14 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.3 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -94,6 +94,7 @@ ad_attach(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
+    struct disk_info info;
     struct ad_softc *adp;
     cdev_t cdev;
     u_int32_t lbasize;
@@ -152,25 +153,31 @@ ad_attach(device_t dev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
-    cdev = disk_create(device_get_unit(dev), &adp->disk, 0, &ad_ops);
+    cdev = disk_create(device_get_unit(dev), &adp->disk, &ad_ops);
     cdev->si_drv1 = dev;
     if (ch->dma)
         cdev->si_iosize_max = ch->dma->max_iosize;
     else
         cdev->si_iosize_max = DFLTPHYS;
     adp->cdev = cdev;
-    bzero(&adp->disk.d_label, sizeof(struct disklabel));
-    adp->disk.d_label.d_secsize = DEV_BSIZE;
-    adp->disk.d_label.d_nsectors = adp->sectors;
-    adp->disk.d_label.d_ntracks = adp->heads;
-    adp->disk.d_label.d_ncylinders = adp->total_secs/(adp->heads*adp->sectors);
-    adp->disk.d_label.d_secpercyl = adp->sectors * adp->heads;
-    adp->disk.d_label.d_secperunit = adp->total_secs;
+
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = DEV_BSIZE;		/* mandatory */
+    info.d_media_blocks = adp->total_secs;
+
+    info.d_secpertrack = adp->sectors;		/* optional */
+    info.d_nheads = adp->heads;
+    info.d_ncylinders = adp->total_secs/(adp->heads*adp->sectors);
+    info.d_secpercyl = adp->sectors * adp->heads;
+
     device_add_child(dev, "subdisk", device_get_unit(dev));
     bus_generic_attach(dev);
 
     /* announce we are here */
     ad_describe(dev);
+
+    disk_setdiskinfo(&adp->disk, &info);
+
     return 0;
 }
 

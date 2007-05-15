@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.17 2006/12/23 00:27:02 swildner Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.18 2007/05/15 00:01:03 dillon Exp $ 
  *
  */
 
@@ -124,7 +124,11 @@ flaopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct fla_s *sc;
 	int error;
-	struct disklabel *dl;
+	struct disk_info info;
+	u_int secperunit = 0;
+	u_int secpertrack = 0;
+	u_int ncylinders = 0;
+	u_int nheads = 0;
 
 	if (fla_debug)
 		kprintf("flaopen(%s %x %x)\n",
@@ -139,13 +143,19 @@ flaopen(struct dev_open_args *ap)
 		return (EIO);
 	}
 
-	dl = &sc->disk.d_label;
-	bzero(dl, sizeof(*dl));
-	error = doc2k_size(sc->unit, &dl->d_secperunit,
-	    &dl->d_ncylinders, &dl->d_ntracks, &dl->d_nsectors);
-	dl->d_secsize = DEV_BSIZE;
-	dl->d_secpercyl = dl->d_ntracks * dl->d_nsectors; /* XXX */
-
+	bzero(&info, sizeof(info));
+	error = doc2k_size(sc->unit, &secperunit, &ncylinders,
+			   &nheads, &secpertrack);
+	info.d_media_blksize = DEV_BSIZE;
+	if (error == 0) {
+		info.d_media_blocks = secperunit;
+		info.d_media_size = 0;
+		info.d_nheads = nheads;
+		info.d_ncylinders = ncylinders;
+		info.d_secpertrack = secpertrack;
+		info.d_secpercyl = nheads * secpertrack; /* XXX */
+	}
+	disk_setdiskinfo(&sc->disk, &info);
 	return (0);
 }
 
@@ -338,7 +348,7 @@ flaattach (device_t dev)
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_DISK);
 
-	sc->dev = disk_create(unit, &sc->disk, 0, &fla_ops);
+	sc->dev = disk_create(unit, &sc->disk, &fla_ops);
 	sc->dev->si_drv1 = sc;
 	sc->unit = unit;
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.16 2006/12/22 23:26:23 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.17 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -118,7 +118,7 @@ aac_disk_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
-	struct disklabel *label;
+	struct disk_info info;
 
 	debug_called(0);
 
@@ -137,16 +137,17 @@ aac_disk_open(struct dev_open_args *ap)
 	}
 
 	/* build synthetic label */
-	label = &sc->ad_disk.d_label;
-	bzero(label, sizeof(*label));
-	label->d_type = DTYPE_ESDI;
-	label->d_secsize	= AAC_BLOCK_SIZE;
-	label->d_nsectors   = sc->ad_sectors;
-	label->d_ntracks	= sc->ad_heads;
-	label->d_ncylinders = sc->ad_cylinders;
-	label->d_secpercyl  = sc->ad_sectors * sc->ad_heads;
-	label->d_secperunit = sc->ad_size;
+	bzero(&info, sizeof(info));
+	info.d_media_blksize= AAC_BLOCK_SIZE;		/* mandatory */
+	info.d_media_blocks = sc->ad_size;
 
+	info.d_type = DTYPE_ESDI;			/* optional */
+	info.d_secpertrack   = sc->ad_sectors;
+	info.d_nheads	= sc->ad_heads;
+	info.d_ncylinders = sc->ad_cylinders;
+	info.d_secpercyl  = sc->ad_sectors * sc->ad_heads;
+
+	disk_setdiskinfo(&sc->ad_disk, &info);
 	sc->ad_flags |= AAC_DISK_OPEN;
 	return (0);
 }
@@ -302,7 +303,7 @@ aac_biodone(struct bio *bio, const char *code)
 	devstat_end_transaction_buf(&sc->ad_stats, bp);
 	if (bp->b_flags & B_ERROR) {
 		diskerr(bio, sc->ad_dev_t,
-			code, 0, 0, &sc->ad_label);
+			code, 0, 0);
 	}
 	biodone(bio);
 }
@@ -364,7 +365,7 @@ aac_disk_attach(device_t dev)
 			  DEVSTAT_PRIORITY_ARRAY);
 
 	/* attach a generic disk device to ourselves */
-	sc->ad_dev_t = disk_create(device_get_unit(dev), &sc->ad_disk, 0,
+	sc->ad_dev_t = disk_create(device_get_unit(dev), &sc->ad_disk,
 				   &aac_disk_ops);
 	sc->ad_dev_t->si_drv1 = sc;
 

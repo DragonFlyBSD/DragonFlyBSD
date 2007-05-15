@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.34 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.35 2007/05/15 00:01:00 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -518,7 +518,7 @@ daopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct da_softc *softc;
-	struct disklabel *label;	
+	struct disk_info info;
 	int unit;
 	int part;
 	int error;
@@ -585,10 +585,9 @@ daopen(struct dev_open_args *ap)
 	if (error == 0) {
 		struct ccb_getdev cgd;
 
-		/* Build label for whole disk. */
-		label = &softc->disk.d_label;
-		bzero(label, sizeof(*label));
-		label->d_type = DTYPE_SCSI;
+		/* Build disk information structure */
+		bzero(&info, sizeof(info));
+		info.d_type = DTYPE_SCSI;
 
 		/*
 		 * Grab the inquiry data to get the vendor and product names.
@@ -598,18 +597,29 @@ daopen(struct dev_open_args *ap)
 		cgd.ccb_h.func_code = XPT_GDEV_TYPE;
 		xpt_action((union ccb *)&cgd);
 
+#if 0
 		strncpy(label->d_typename, cgd.inq_data.vendor,
 			min(SID_VENDOR_SIZE, sizeof(label->d_typename)));
 		strncpy(label->d_packname, cgd.inq_data.product,
 			min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
+#endif
 		
-		label->d_secsize = softc->params.secsize;
-		label->d_nsectors = softc->params.secs_per_track;
-		label->d_ntracks = softc->params.heads;
-		label->d_ncylinders = softc->params.cylinders;
-		label->d_secpercyl = softc->params.heads
-				  * softc->params.secs_per_track;
-		label->d_secperunit = softc->params.sectors;
+		/*
+		 * Mandatory fields
+		 */
+		info.d_media_blksize = softc->params.secsize;
+		info.d_media_blocks = softc->params.sectors;
+		info.d_media_size = 0;
+
+		/*
+		 * Optional fields
+		 */
+		info.d_secpertrack = softc->params.secs_per_track;
+		info.d_nheads = softc->params.heads;
+		info.d_ncylinders = softc->params.cylinders;
+		info.d_secpercyl = softc->params.heads *
+				   softc->params.secs_per_track;
+		disk_setdiskinfo(&softc->disk, &info);
 
 		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
 		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
@@ -1317,7 +1327,7 @@ daregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Register this media as a disk
 	 */
-	disk_create(periph->unit_number, &softc->disk, 0, &da_ops);
+	disk_create(periph->unit_number, &softc->disk, &da_ops);
 
 	/*
 	 * Add async callbacks for bus reset and

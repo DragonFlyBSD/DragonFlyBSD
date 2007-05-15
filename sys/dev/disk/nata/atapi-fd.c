@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.109 2006/03/30 05:29:57 marcel Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.3 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ afd_attach(device_t dev)
     devstat_add_entry(&fdp->stats, "afd", device_get_unit(dev), DEV_BSIZE,
 		      DEVSTAT_NO_ORDERED_TAGS, DEVSTAT_TYPE_DIRECT |
 		      DEVSTAT_TYPE_IF_IDE, DEVSTAT_PRIORITY_WFD);
-    cdev = disk_create(device_get_unit(dev), &fdp->disk, 0, &afd_ops);
+    cdev = disk_create(device_get_unit(dev), &fdp->disk, &afd_ops);
     cdev->si_drv1 = dev;
     if (ch->dma)
 	cdev->si_iosize_max = ch->dma->max_iosize;
@@ -180,7 +180,7 @@ afd_open(struct dev_open_args *ap)
     device_t dev = ap->a_head.a_dev->si_drv1;
     struct ata_device *atadev = device_get_softc(dev);
     struct afd_softc *fdp = device_get_ivars(dev);
-    struct disklabel *label = &fdp->disk.d_label;
+    struct disk_info info;
 
     if (!fdp) 
 	return ENXIO;
@@ -197,14 +197,17 @@ afd_open(struct dev_open_args *ap)
     if (!fdp->mediasize)
 	return ENXIO;
 
-    bzero(label, sizeof(*label));
-    label->d_secsize = fdp->sectorsize;
-    label->d_nsectors = fdp->sectors;
-    label->d_ntracks = fdp->heads;
-    label->d_ncylinders =
-       ((fdp->mediasize/fdp->sectorsize)/fdp->sectors)/fdp->heads;
-    label->d_secpercyl = fdp->sectors * fdp->heads;
-    label->d_secperunit = fdp->mediasize/fdp->sectorsize;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = fdp->sectorsize;	/* mandatory */
+    info.d_media_size = fdp->mediasize;		/* (this is in bytes) */
+
+    info.d_secpertrack = fdp->sectors;		/* optional */
+    info.d_nheads = fdp->heads;
+    info.d_ncylinders =
+	   ((fdp->mediasize/fdp->sectorsize)/fdp->sectors)/fdp->heads;
+    info.d_secpercyl = fdp->sectors * fdp->heads;
+
+    disk_setdiskinfo(&fdp->disk, &info);
     return 0;
 }
 

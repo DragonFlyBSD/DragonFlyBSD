@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.20 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.21 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ afdattach(struct ata_device *atadev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_WFD);
-    dev = disk_create(fdp->lun, &fdp->disk, 0, &afd_ops);
+    dev = disk_create(fdp->lun, &fdp->disk, &afd_ops);
     dev->si_drv1 = fdp;
     fdp->dev = dev;
 
@@ -232,7 +232,7 @@ afdopen(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
-    struct disklabel *label = &fdp->disk.d_label;
+    struct disk_info info;
 
     atapi_test_ready(fdp->device);
 
@@ -244,13 +244,17 @@ afdopen(struct dev_open_args *ap)
 
     fdp->device->flags &= ~ATA_D_MEDIA_CHANGED;
 
-    bzero(label, sizeof *label);
-    label->d_secsize = fdp->cap.sector_size;
-    label->d_nsectors = fdp->cap.sectors;  
-    label->d_ntracks = fdp->cap.heads;
-    label->d_ncylinders = fdp->cap.cylinders;
-    label->d_secpercyl = fdp->cap.sectors * fdp->cap.heads;
-    label->d_secperunit = label->d_secpercyl * fdp->cap.cylinders;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = fdp->cap.sector_size;	/* mandatory */
+    info.d_media_blocks = fdp->cap.sectors * fdp->cap.heads * 
+			  fdp->cap.cylinders;
+
+    info.d_secpertrack = fdp->cap.sectors; 	 	/* optional */
+    info.d_nheads = fdp->cap.heads;
+    info.d_ncylinders = fdp->cap.cylinders;
+    info.d_secpercyl = fdp->cap.sectors * fdp->cap.heads;
+
+    disk_setdiskinfo(&fdp->disk, &info);
     return 0;
 }
 

@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.27 2007/05/14 20:02:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.28 2007/05/15 00:01:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,7 @@
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
+#include <sys/disk.h>
 #include <sys/diskmbr.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>

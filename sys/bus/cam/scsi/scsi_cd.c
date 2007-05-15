@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.28 2007/05/14 20:02:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.29 2007/05/15 00:01:00 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -767,8 +767,8 @@ cdregister(struct cam_periph *periph, void *arg)
 	  		  DEVSTAT_BS_UNAVAILABLE,
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
-	disk_create(periph->unit_number, &softc->disk,
-		    DSO_ONESLICE | DSO_COMPATLABEL, &cd_ops);
+	disk_create(periph->unit_number, &softc->disk, &cd_ops);
+	softc->disk.d_info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL;
 
 	/*
 	 * Add an async callback so that we get
@@ -1057,6 +1057,7 @@ cdclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;
+	struct  disk_info *info;
 	int	unit, error;
 
 	unit = dkunit(dev);
@@ -1076,8 +1077,9 @@ cdclose(struct dev_close_args *ap)
 	 * Unconditionally set the dsopen() flags back to their default
 	 * state.
 	 */
-	softc->disk.d_dsflags &= ~DSO_NOLABELS;
-	softc->disk.d_dsflags |= DSO_COMPATLABEL;
+	info = &softc->disk.d_info;
+	info->d_dsflags &= ~DSO_NOLABELS;
+	info->d_dsflags |= DSO_COMPATLABEL;
 
 	/*
 	 * Since we're closing this CD, mark the blocksize as unavailable.
@@ -2760,7 +2762,7 @@ cdcheckmedia(struct cam_periph *periph)
 	u_int32_t size, toclen;
 	int error, num_entries, cdindex;
 	int first_track_audio;
-	struct disklabel *label;
+	struct disk_info info;
 
 	softc = (struct cd_softc *)periph->softc;
 
@@ -2770,13 +2772,13 @@ cdcheckmedia(struct cam_periph *periph)
 	cdprevent(periph, PR_PREVENT);
 
 	/*
-	 * Build prototype label for whole disk.
-	 * Should take information about different data tracks from the
-	 * TOC and put it in the partition table.
+	 * Set up disk info fields and tell the disk subsystem to reset
+	 * its internal copy of the label.
 	 */
-	label = &softc->disk.d_label;
-	bzero(label, sizeof(*label));
-	label->d_type = DTYPE_SCSI;
+	bzero(&info, sizeof(info));
+	info.d_type = DTYPE_SCSI;
+	info.d_dsflags &= ~DSO_COMPATLABEL;
+	info.d_dsflags |= DSO_NOLABELS | DSO_COMPATPARTA;
 
 	/*
 	 * Grab the inquiry data to get the vendor and product names.
@@ -2786,31 +2788,12 @@ cdcheckmedia(struct cam_periph *periph)
 	cgd.ccb_h.func_code = XPT_GDEV_TYPE;
 	xpt_action((union ccb *)&cgd);
 
+#if 0
 	strncpy(label->d_typename, cgd.inq_data.vendor,
 		min(SID_VENDOR_SIZE, sizeof(label->d_typename)));
 	strncpy(label->d_packname, cgd.inq_data.product,
 		min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
-		
-	label->d_flags = 0;
-	/*
-	 * Make partition 'a' cover the whole disk.  This is a temporary
-	 * compatibility hack.  The 'a' partition should not exist, so
-	 * the slice code won't create it.  The slice code will make
-	 * partition (RAW_PART + 'a') cover the whole disk and fill in
-	 * some more defaults.
-	 */
-	label->d_partitions[0].p_size = label->d_secperunit;
-	label->d_partitions[0].p_fstype = FS_OTHER;
-
-	/*
-	 * Default to not reading the disklabel off the disk, until we can
-	 * verify that we have media, that we have a table of contents, and
-	 * that the first track is a data track (which could theoretically
-	 * contain a disklabel).
-	 */
-	softc->disk.d_dsflags &= ~DSO_COMPATLABEL;
-	softc->disk.d_dsflags |= DSO_NOLABELS;
-
+#endif
 	/*
 	 * Clear the valid media and TOC flags until we've verified that we
 	 * have both.
@@ -2826,9 +2809,8 @@ cdcheckmedia(struct cam_periph *periph)
 		 * Set a bogus sector size, so the slice code won't try to
 		 * divide by 0 and panic the kernel.
 		 */
-		label->d_secsize = 2048;
-
-		label->d_secperunit = 0;
+		info.d_media_blksize = 2048;
+		disk_setdiskinfo(&softc->disk, &info);
 
 		/*
 		 * XXX KDM is this a good idea?  Seems to cause more
@@ -2857,9 +2839,9 @@ cdcheckmedia(struct cam_periph *periph)
 
 		return (error);
 	} else {
-
-		label->d_secsize = softc->params.blksize;
-		label->d_secperunit = softc->params.disksize;
+		info.d_media_blksize = softc->params.blksize;
+		info.d_media_blocks = softc->params.disksize;
+		disk_setdiskinfo(&softc->disk, &info);
 
 		/*
 		 * Force a re-sync of slice information, like the blocksize,
@@ -2883,9 +2865,10 @@ cdcheckmedia(struct cam_periph *periph)
 				 * won't try to divide by 0 and panic the
 				 * kernel.
 				 */
-				label->d_secsize = 2048;
-
-				label->d_secperunit = 0;
+				info.d_media_blksize = 2048;
+				info.d_media_blocks = 0;
+				info.d_media_size = 0;
+				disk_setdiskinfo(&softc->disk, &info);
 
 				/*
 				 * Tell devstat(9) we don't have a blocksize.
@@ -3022,8 +3005,9 @@ cdcheckmedia(struct cam_periph *periph)
 	 * disklabel off the media, just in case the user put one there.
 	 */
 	if (first_track_audio == 0) {
-		softc->disk.d_dsflags |= DSO_COMPATLABEL;
-		softc->disk.d_dsflags &= ~DSO_NOLABELS;
+		info.d_dsflags |= DSO_COMPATLABEL;
+		info.d_dsflags &= ~DSO_NOLABELS;
+		disk_setdiskinfo(&softc->disk, &info);
 	}
 	softc->flags |= CD_FLAG_VALID_TOC;
 

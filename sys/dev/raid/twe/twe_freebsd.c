@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.25 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.26 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -628,7 +628,7 @@ twed_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
-    struct disklabel	*label;
+    struct disk_info info;
 
     debug_called(4);
 	
@@ -639,16 +639,18 @@ twed_open(struct dev_open_args *ap)
     if (sc->twed_controller->twe_state & TWE_STATE_SHUTDOWN)
 	return(ENXIO);
 
-    /* build synthetic label */
-    label = &sc->twed_disk.d_label;
-    bzero(label, sizeof(*label));
-    label->d_type = DTYPE_ESDI;
-    label->d_secsize    = TWE_BLOCK_SIZE;
-    label->d_nsectors   = sc->twed_drive->td_sectors;
-    label->d_ntracks    = sc->twed_drive->td_heads;
-    label->d_ncylinders = sc->twed_drive->td_cylinders;
-    label->d_secpercyl  = sc->twed_drive->td_sectors * sc->twed_drive->td_heads;
-    label->d_secperunit = sc->twed_drive->td_size;
+    /* build disk info */
+    bzero(&info, sizeof(info));
+    info.d_media_blksize    = TWE_BLOCK_SIZE;	/* mandatory */
+    info.d_media_blocks	    = sc->twed_drive->td_size;
+
+    info.d_type		= DTYPE_ESDI;		/* optional */
+    info.d_secpertrack	= sc->twed_drive->td_sectors;
+    info.d_nheads	= sc->twed_drive->td_heads;
+    info.d_ncylinders	= sc->twed_drive->td_cylinders;
+    info.d_secpercyl	= sc->twed_drive->td_sectors * sc->twed_drive->td_heads;
+
+    disk_setdiskinfo(&sc->twed_disk, &info);
 
     sc->twed_flags |= TWED_OPEN;
     return (0);
@@ -818,8 +820,7 @@ twed_attach(device_t dev)
 			DEVSTAT_PRIORITY_ARRAY);
 
     /* attach a generic disk device to ourselves */
-    dsk = disk_create(sc->twed_drive->td_sys_unit, &sc->twed_disk,
-			0, &twed_ops);
+    dsk = disk_create(sc->twed_drive->td_sys_unit, &sc->twed_disk, &twed_ops);
     dsk->si_drv1 = sc;
 /*    dsk->si_drv2 = sc->twed_drive;*/
     sc->twed_dev_t = dsk;

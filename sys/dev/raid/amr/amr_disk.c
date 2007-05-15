@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.13 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.14 2007/05/15 00:01:04 dillon Exp $
  */
 
 /*
@@ -128,9 +128,7 @@ amrd_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
-    struct disklabel    *label;
-#endif
+    struct disk_info info;
 
     debug_called(1);
 
@@ -141,22 +139,17 @@ amrd_open(struct dev_open_args *ap)
     if (sc->amrd_controller->amr_state & AMR_STATE_SHUTDOWN)
 	return(ENXIO);
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
-    label = &sc->amrd_disk.d_label;
-    bzero(label, sizeof(*label));
-    label->d_type       = DTYPE_SCSI;
-    label->d_secsize    = AMR_BLKSIZE;
-    label->d_nsectors   = sc->amrd_drive->al_sectors;
-    label->d_ntracks    = sc->amrd_drive->al_heads;
-    label->d_ncylinders = sc->amrd_drive->al_cylinders;
-    label->d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
-    label->d_secperunit = sc->amrd_drive->al_size;
-#else
-    sc->amrd_disk.d_sectorsize = AMR_BLKSIZE;
-    sc->amrd_disk.d_mediasize = (off_t)sc->amrd_drive->al_size * AMR_BLKSIZE;
-    sc->amrd_disk.d_fwsectors = sc->amrd_drive->al_sectors;
-    sc->amrd_disk.d_fwheads = sc->amrd_drive->al_heads;
-#endif
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = AMR_BLKSIZE;			/* optional */
+    info.d_media_blocks	= sc->amrd_drive->al_size;
+
+    info.d_type       = DTYPE_SCSI;			/* mandatory */
+    info.d_secpertrack = sc->amrd_drive->al_sectors;
+    info.d_nheads	= sc->amrd_drive->al_heads;
+    info.d_ncylinders = sc->amrd_drive->al_cylinders;
+    info.d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
+
+    disk_setdiskinfo(&sc->amrd_disk, &info);
 
     sc->amrd_flags |= AMRD_OPEN;
     return (0);
@@ -323,7 +316,7 @@ amrd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, 0, &amrd_ops);
+    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, &amrd_ops);
     sc->amrd_dev_t->si_drv1 = sc;
 
     /* set maximum I/O size to match the maximum s/g size */
