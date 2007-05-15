@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.9 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.10 2007/05/15 22:44:19 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -139,8 +139,8 @@ struct dev_strategy_args {
  */
 struct dev_dump_args {
 	struct dev_generic_args a_head;
-	u_int		a_count;
-	u_int		a_blkno;
+	u_int64_t	a_count;
+	u_int64_t	a_blkno;
 	u_int		a_secsize;
 };
 
@@ -149,7 +149,7 @@ struct dev_dump_args {
  */
 struct dev_psize_args {
 	struct dev_generic_args	a_head;
-	int		a_result;
+	int64_t		a_result;
 };
 
 /*
@@ -284,7 +284,7 @@ void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
 int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
 		struct ucred *cred);
 int dev_ddump(cdev_t dev);
-int dev_dpsize(cdev_t dev);
+int64_t dev_dpsize(cdev_t dev);
 int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dpoll(cdev_t dev, int events);

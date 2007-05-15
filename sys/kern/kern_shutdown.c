@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.51 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.52 2007/05/15 22:44:14 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -143,7 +143,8 @@ globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 
 int bootverbose = 0;			/* note: assignment to force non-bss */
 int cold = 1;				/* note: assignment to force non-bss */
-long dumplo;
+int dumplo;				/* OBSOLETE - savecore compat */
+u_int64_t dumplo64;
 
 static void boot (int) __dead2;
 static void dumpsys (void);
@@ -547,15 +548,15 @@ SYSCTL_INT(_machdep, OID_AUTO, do_dump, CTLFLAG_RW, &dodump, 0,
 static int
 setdumpdev(cdev_t dev)
 {
-	int psize;
-	long newdumplo;
+	u_int64_t psize;
+	u_int64_t newdumplo;
 
 	if (dev == NULL) {
 		dumpdev = dev;
 		return (0);
 	}
-	psize = dev_dpsize(dev);
-	if (psize == -1)
+	psize = (u_int64_t)dev_dpsize(dev);
+	if (psize == (u_int64_t)-1)
 		return (ENXIO);
 	/*
 	 * XXX should clean up checking in dumpsys() to be more like this.
@@ -564,7 +565,11 @@ setdumpdev(cdev_t dev)
 	if (newdumplo <= LABELSECTOR)
 		return (ENOSPC);
 	dumpdev = dev;
-	dumplo = newdumplo;
+	if (newdumplo < 0x80000000ULL)
+		dumplo = (int)newdumplo;
+	else
+		dumplo = LABELSECTOR;	/* bleh XXX */
+	dumplo64 = newdumplo;
 	return (0);
 }
 
@@ -627,7 +632,8 @@ dumpsys(void)
 	if (dumpdev == NULL)
 		return;
 	dumpsize = Maxmem;
-	kprintf("\ndumping to dev %s, offset %ld\n", devtoname(dumpdev), dumplo);
+	kprintf("\ndumping to dev %s, blockno %lld\n",
+		devtoname(dumpdev), dumplo64);
 	kprintf("dump ");
 	error = dev_ddump(dumpdev);
 	if (error == 0) {

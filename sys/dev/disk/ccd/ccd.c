@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.40 2007/05/15 17:50:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.41 2007/05/15 22:44:04 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1531,7 +1531,8 @@ ccdsize(struct dev_psize_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct ccd_softc *cs;
-	int part, size;
+	int part;
+	int64_t size;
 
 	if (dev_dopen(dev, 0, S_IFCHR, proc0.p_ucred))
 		return (-1);
@@ -1545,7 +1546,7 @@ ccdsize(struct dev_psize_args *ap)
 	if (cs->sc_label.d_partitions[part].p_fstype != FS_SWAP)
 		size = -1;
 	else
-		size = cs->sc_label.d_partitions[part].p_size;
+		size = (int64_t)cs->sc_label.d_partitions[part].p_size;
 
 	if (dev_dclose(dev, 0, S_IFCHR))
 		return (-1);

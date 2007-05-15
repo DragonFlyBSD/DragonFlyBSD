@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.17 2006/12/20 18:14:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.18 2007/05/15 22:44:11 dillon Exp $
  */
 
 /*
@@ -424,6 +424,7 @@ twe_startio(struct twe_softc *sc)
 	    cmd->io.unit = ((struct twed_softc *)bio->bio_driver_info)->twed_drive->td_twe_unit;
 	    cmd->io.block_count = (tr->tr_length + TWE_BLOCK_SIZE - 1) / TWE_BLOCK_SIZE;
 	    cmd->io.lba = (u_int32_t)(bio->bio_offset / TWE_BLOCK_SIZE);
+	    KKASSERT(bio->bio_offset < 0x100000000ULL * TWE_BLOCK_SIZE);
 	}
 	
 	/* did we find something to do? */
@@ -454,7 +455,7 @@ twe_startio(struct twe_softc *sc)
  * Write blocks from memory to disk, for system crash dumps.
  */
 int
-twe_dump_blocks(struct twe_softc *sc, int unit,	u_int32_t lba, void *data, int nblks)
+twe_dump_blocks(struct twe_softc *sc, int unit,	u_int64_t lba, void *data, int nblks)
 {
     struct twe_request	*tr;
     TWE_Command		*cmd;
@@ -462,6 +463,8 @@ twe_dump_blocks(struct twe_softc *sc, int unit,	u_int32_t lba, void *data, int n
 
     if (twe_get_request(sc, &tr))
 	return(ENOMEM);
+
+    KKASSERT(lba < 0x100000000ULL);
 
     tr->tr_data = data;
     tr->tr_status = TWE_CMD_SETUP;

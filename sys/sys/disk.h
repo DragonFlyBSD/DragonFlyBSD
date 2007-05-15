@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.12 2007/05/15 05:37:39 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.13 2007/05/15 22:44:19 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -121,7 +121,7 @@ struct disk {
 cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
-int disk_dumpcheck (cdev_t dev, u_int *count, u_int *blkno, u_int *secsize);
+int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);
 #endif /* _KERNEL */

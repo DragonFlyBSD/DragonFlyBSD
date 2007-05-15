@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.10 2007/05/15 05:37:39 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.11 2007/05/15 22:44:19 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -44,12 +44,6 @@
 #define	MAX_SLICES		16
 #define	WHOLE_DISK_SLICE	1
 
-struct	diskslice {
-	u_long	ds_offset;		/* starting sector */
-	u_long	ds_size;		/* number of sectors */
-	int	ds_type;		/* (foreign) slice type */
-	struct disklabel *ds_label;	/* BSD label, if any */
-	void	*ds_dev;		/* devfs token for raw whole slice */
 #ifdef MAXPARTITIONS			/* XXX don't depend on disklabel.h */
 #if MAXPARTITIONS !=	16		/* but check consistency if possible */
 #error "inconsistent MAXPARTITIONS"
@@ -57,9 +51,16 @@ struct	diskslice {
 #else
 #define	MAXPARTITIONS	16
 #endif
-	void	*ds_devs[MAXPARTITIONS];	/* XXX s.b. in label */
-	u_char	ds_openmask;		/* devs open */
-	u_char	ds_wlabel;		/* nonzero if label is writable */
+
+struct diskslice {
+	u_int64_t	ds_offset;	/* starting sector */
+	u_int64_t	ds_size;	/* number of sectors */
+	int		ds_type;	/* (foreign) slice type */
+	struct disklabel *ds_label;	/* BSD label, if any */
+	void		*ds_dev;	/* devfs token for raw whole slice */
+	void		*ds_devs[MAXPARTITIONS]; /* XXX s.b. in label */
+	u_char		ds_openmask;	/* devs open */
+	u_char		ds_wlabel;	/* nonzero if label is writable */
 };
 
 struct diskslices {
@@ -96,7 +97,7 @@ char	*dsname (cdev_t dev, int unit, int slice, int part,
 		     char *partname);
 int	dsopen (cdev_t dev, int mode, u_int flags,
 		    struct diskslices **sspp, struct disk_info *info);
-int	dssize (cdev_t dev, struct diskslices **sspp);
+int64_t	dssize (cdev_t dev, struct diskslices **sspp);
 
 #endif /* _KERNEL */
 

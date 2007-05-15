@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.20 2007/05/15 05:37:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.21 2007/05/15 22:44:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,16 +83,16 @@ static struct dos_partition historical_bogus_partition_table_fixed[NDOSPART] = {
 };
 
 static int check_part (char *sname, struct dos_partition *dp,
-			   u_long offset, int nsectors, int ntracks,
-			   u_long mbr_offset);
+			   u_int64_t offset, int nsectors, int ntracks,
+			   u_int64_t mbr_offset);
 static void mbr_extended (cdev_t dev, struct disk_info *info,
-			      struct diskslices *ssp, u_long ext_offset,
-			      u_long ext_size, u_long base_ext_offset,
-			      int nsectors, int ntracks, u_long mbr_offset,
+			      struct diskslices *ssp, u_int64_t ext_offset,
+			      u_int64_t ext_size, u_int64_t base_ext_offset,
+			      int nsectors, int ntracks, u_int64_t mbr_offset,
 			      int level);
 static int mbr_setslice (char *sname, struct disk_info *info,
 			     struct diskslice *sp, struct dos_partition *dp,
-			     u_long br_offset);
+			     u_int64_t br_offset);
 
 
 int
@@ -108,7 +108,7 @@ mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	int	max_ncyls;
 	int	max_nsectors;
 	int	max_ntracks;
-	u_long	mbr_offset;
+	u_int64_t mbr_offset;
 	char	partname[2];
 	u_long	secpercyl;
 	char	*sname;
@@ -301,19 +301,19 @@ done:
 }
 
 static int
-check_part(char *sname, struct dos_partition *dp, u_long offset,
-	    int nsectors, int ntracks, u_long mbr_offset)
+check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
+	    int nsectors, int ntracks, u_int64_t mbr_offset)
 {
 	int	chs_ecyl;
 	int	chs_esect;
 	int	chs_scyl;
 	int	chs_ssect;
 	int	error;
-	u_long	esector;
-	u_long	esector1;
 	u_long	secpercyl;
-	u_long	ssector;
-	u_long	ssector1;
+	u_int64_t esector;
+	u_int64_t esector1;
+	u_int64_t ssector;
+	u_int64_t ssector1;
 
 	secpercyl = (u_long)nsectors * ntracks;
 	chs_scyl = DPCYL(dp->dp_scyl, dp->dp_ssect);
@@ -336,7 +336,7 @@ check_part(char *sname, struct dos_partition *dp, u_long offset,
 		     && (ssector1 - ssector) % (1024 * secpercyl) == 0)))
 	    || (dp->dp_scyl == 255 && dp->dp_shd == 255
 		&& dp->dp_ssect == 255)) {
-		TRACE(("%s: C/H/S start %d/%d/%d, start %lu: allow\n",
+		TRACE(("%s: C/H/S start %d/%d/%d, start %llu: allow\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect, ssector1));
 		ssector = ssector1;
 	}
@@ -360,22 +360,22 @@ check_part(char *sname, struct dos_partition *dp, u_long offset,
 		     && (esector1 - esector) % (1024 * secpercyl) == 0)))
 	    || (dp->dp_ecyl == 255 && dp->dp_ehd == 255
 		&& dp->dp_esect == 255)) {
-		TRACE(("%s: C/H/S end %d/%d/%d, end %lu: allow\n",
+		TRACE(("%s: C/H/S end %d/%d/%d, end %llu: allow\n",
 		       sname, chs_ecyl, dp->dp_ehd, chs_esect, esector1));
 		esector = esector1;
 	}
 
 	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
 	if (bootverbose)
-		kprintf("%s: type 0x%x, start %lu, end = %lu, size %lu %s\n",
+		kprintf("%s: type 0x%x, start %llu, end = %llu, size %lu %s\n",
 		       sname, dp->dp_typ, ssector1, esector1,
 		       (u_long)dp->dp_size, error ? "" : ": OK");
 	if (ssector != ssector1 && bootverbose)
-		kprintf("%s: C/H/S start %d/%d/%d (%lu) != start %lu: invalid\n",
+		kprintf("%s: C/H/S start %d/%d/%d (%llu) != start %llu: invalid\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect,
 		       ssector, ssector1);
 	if (esector != esector1 && bootverbose)
-		kprintf("%s: C/H/S end %d/%d/%d (%lu) != end %lu: invalid\n",
+		kprintf("%s: C/H/S end %d/%d/%d (%llu) != end %llu: invalid\n",
 		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
 		       esector, esector1);
 	return (error);
@@ -384,16 +384,16 @@ check_part(char *sname, struct dos_partition *dp, u_long offset,
 static
 void
 mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
-	    u_long ext_offset, u_long ext_size, u_long base_ext_offset,
-	    int nsectors, int ntracks, u_long mbr_offset, int level)
+	    u_int64_t ext_offset, u_int64_t ext_size, u_int64_t base_ext_offset,
+	    int nsectors, int ntracks, u_int64_t mbr_offset, int level)
 {
 	struct buf *bp;
 	u_char	*cp;
 	int	dospart;
 	struct dos_partition *dp;
 	struct dos_partition dpcopy[NDOSPART];
-	u_long	ext_offsets[NDOSPART];
-	u_long	ext_sizes[NDOSPART];
+	u_int64_t ext_offsets[NDOSPART];
+	u_int64_t ext_sizes[NDOSPART];
 	char	partname[2];
 	int	slice;
 	char	*sname;
@@ -488,10 +488,10 @@ done:
 
 static int
 mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
-	    struct dos_partition *dp, u_long br_offset)
+	    struct dos_partition *dp, u_int64_t br_offset)
 {
-	u_long	offset;
-	u_long	size;
+	u_int64_t	offset;
+	u_int64_t	size;
 
 	offset = br_offset + dp->dp_start;
 	if (offset > info->d_media_blocks || offset < br_offset) {
@@ -505,7 +505,7 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 		size = dp->dp_size;
 	else
 		kprintf(
-"%s: slice extends beyond end of disk: truncating from %lu to %lu sectors\n",
+"%s: slice extends beyond end of disk: truncating from %lu to %llu sectors\n",
 		       sname, (u_long)dp->dp_size, size);
 	sp->ds_offset = offset;
 	sp->ds_size = size;

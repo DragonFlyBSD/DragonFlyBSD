@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.29 2007/01/06 19:37:17 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.30 2007/05/15 22:44:08 dillon Exp $
  */
 
 /*
@@ -1003,7 +1003,7 @@ aac_bio_complete(struct aac_command *cm)
  * caller to hold off and wait for the queue to drain.
  */
 int
-aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba, void *data, int dumppages)
+aac_dump_enqueue(struct aac_disk *ad, u_int64_t lba, void *data, int dumppages)
 {
 	struct aac_softc *sc;
 	struct aac_command *cm;
@@ -1012,6 +1012,8 @@ aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba, void *data, int dumppages)
 
 	sc = ad->ad_controller;
 	cm = NULL;
+
+	KKASSERT(lba <= 0x100000000ULL);
 
 	if (aac_alloc_command(sc, &cm))
 		return (EBUSY);

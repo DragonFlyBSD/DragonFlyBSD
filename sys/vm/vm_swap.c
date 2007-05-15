@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.34 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.35 2007/05/15 22:44:21 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -228,6 +228,7 @@ int
 swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 {
 	u_long aligned_nblks;
+	int64_t dpsize;
 	struct ucred *cred;
 	struct swdevt *sp;
 	swblk_t vsbase;
@@ -273,9 +274,16 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	else
 		dev = NULL;
 
-	if (nblks == 0 && dev != NULL && ((nblks = dev_dpsize(dev)) == -1)) {
-		VOP_CLOSE(vp, FREAD | FWRITE);
-		return (ENXIO);
+	if (nblks == 0 && dev != NULL) {
+		dpsize = dev_dpsize(dev);
+		if (dpsize == -1) {
+			VOP_CLOSE(vp, FREAD | FWRITE);
+			return (ENXIO);
+		}
+		if ((u_int64_t)dpsize < 0x100000000ULL)
+			nblks = (u_long)dpsize;
+		else
+			nblks = 0xffffffffU;
 	}
 	if (nblks == 0) {
 		VOP_CLOSE(vp, FREAD | FWRITE);

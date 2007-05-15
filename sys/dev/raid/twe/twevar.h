@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.9 2007/05/15 00:01:04 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.10 2007/05/15 22:44:11 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -167,7 +167,7 @@ extern void	twe_intr(struct twe_softc *sc);			/* hardware interrupt signalled */
 extern void	twe_startio(struct twe_softc *sc);
 extern int	twe_start(struct twe_request *tr);
 extern int	twe_dump_blocks(struct twe_softc *sc, int unit,	/* crashdump block write */
-				u_int32_t lba, void *data, int nblks);
+				u_int64_t lba, void *data, int nblks);
 extern int	twe_ioctl(struct twe_softc *sc, int cmd,
 				  void *addr);			/* handle user request */
 extern void	twe_describe_controller(struct twe_softc *sc);	/* print controller info */

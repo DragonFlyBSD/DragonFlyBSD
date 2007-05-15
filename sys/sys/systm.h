@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.69 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.70 2007/05/15 22:44:19 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -75,7 +75,8 @@ extern u_char curpriority;	/* priority of current process */
 extern int physmem;		/* physical memory */
 
 extern cdev_t dumpdev;		/* dump device */
-extern long dumplo;		/* offset into dumpdev */
+extern int dumplo;		/* OBSOLETE */
+extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
 
 extern cdev_t rootdev;		/* root device */
 extern cdev_t rootdevs[2];	/* possible root devices */

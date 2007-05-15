@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.16 2007/05/15 00:01:04 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.17 2007/05/15 22:44:08 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -387,7 +387,7 @@ extern void		aac_intr(void *arg);
 extern devclass_t	aac_devclass;
 extern void		aac_submit_bio(struct aac_disk *ad, struct bio *bio);
 extern void		aac_biodone(struct bio *bio, const char *code);
-extern int		aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba,
+extern int		aac_dump_enqueue(struct aac_disk *ad, u_int64_t lba,
 					 void *data, int nblks);
 extern void		aac_dump_complete(struct aac_softc *sc);
 extern void		aac_startio(struct aac_softc *sc);

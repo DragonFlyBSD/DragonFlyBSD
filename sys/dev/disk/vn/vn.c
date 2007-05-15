@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.31 2007/05/15 05:37:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.32 2007/05/15 22:44:05 dillon Exp $
  */
 
 /*
@@ -114,7 +114,7 @@ static struct dev_ops vn_ops = {
 struct vn_softc {
 	int		sc_unit;
 	int		sc_flags;	/* flags 			*/
-	int		sc_size;	/* size of vn, sc_secsize scale	*/
+	u_int64_t	sc_size;	/* size of vn, sc_secsize scale	*/
 	int		sc_secsize;	/* sector size			*/
 	struct diskslices *sc_slices;	/* XXX fields from struct disk  */
 	struct disk_info sc_info;	/* XXX fields from struct disk  */
@@ -316,7 +316,7 @@ vnstrategy(struct dev_strategy_args *ap)
 			goto done;
 		}
 	} else {
-		int pbn;	/* in sc_secsize chunks */
+		int64_t pbn;	/* in sc_secsize chunks */
 		long sz;	/* in sc_secsize chunks */
 
 		/*
@@ -347,7 +347,7 @@ vnstrategy(struct dev_strategy_args *ap)
 			bp->b_bcount = (vn->sc_size - pbn) * vn->sc_secsize;
 		}
 		nbio = push_bio(bio);
-		nbio->bio_offset = (off_t)pbn * vn->sc_secsize;
+		nbio->bio_offset = pbn * vn->sc_secsize;
 	}
 
 	/*
@@ -583,7 +583,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	 * the vn_size argument is in PAGE_SIZE sized blocks.
 	 */
 	if (vio->vn_size)
-		vn->sc_size = (quad_t)vio->vn_size * PAGE_SIZE / vn->sc_secsize;
+		vn->sc_size = vio->vn_size * PAGE_SIZE / vn->sc_secsize;
 	else
 		vn->sc_size = vattr.va_size / vn->sc_secsize;
 	error = vnsetcred(vn, cred);
@@ -608,7 +608,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 			vnclear(vn);
 	}
 	IFOPT(vn, VN_FOLLOW)
-		kprintf("vnioctl: SET vp %p size %x blks\n",
+		kprintf("vnioctl: SET vp %p size %llx blks\n",
 		       vn->sc_vp, vn->sc_size);
 done:
 	nlookup_done(&nd);
@@ -675,7 +675,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	}
 	if (error == 0) {
 		IFOPT(vn, VN_FOLLOW) {
-			kprintf("vnioctl: SET vp %p size %x\n",
+			kprintf("vnioctl: SET vp %p size %llx\n",
 			       vn->sc_vp, vn->sc_size);
 		}
 	}
@@ -767,7 +767,7 @@ vnsize(struct dev_psize_args *ap)
 		return(ENXIO);
 	if ((vn->sc_flags & VNF_INITED) == 0)
 		return(ENXIO);
-	ap->a_result = vn->sc_size;
+	ap->a_result = (int64_t)vn->sc_size;
 	return(0);
 }
 

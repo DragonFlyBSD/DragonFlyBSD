@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/idavar.h,v 1.3.2.4 2001/07/30 20:29:58 jlemon Exp $
- * $DragonFly: src/sys/dev/raid/ida/idavar.h,v 1.3 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/idavar.h,v 1.4 2007/05/15 22:44:10 dillon Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ extern void ida_free(struct ida_softc *ida);
 extern int ida_init(struct ida_softc *ida);
 extern void ida_attach(struct ida_softc *ida); 
 extern int ida_command(struct ida_softc *ida, int command, void *data,
-	int datasize, int drive, u_int32_t pblkno, int flags);
+	int datasize, int drive, u_int64_t pblkno, int flags);
 extern void ida_submit_buf(struct ida_softc *ida, struct bio *bio);
 extern void ida_intr(void *data);
 

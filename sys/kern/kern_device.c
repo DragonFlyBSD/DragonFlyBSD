@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.24 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.25 2007/05/15 22:44:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -267,7 +267,7 @@ dev_ddump(cdev_t dev)
 	return(dev->si_ops->d_dump(&ap));
 }
 
-int
+int64_t
 dev_dpsize(cdev_t dev)
 {
 	struct dev_psize_args ap;

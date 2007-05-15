@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.9 2006/12/22 23:26:23 swildner Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.10 2007/05/15 22:44:09 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -267,7 +267,7 @@ struct amrd_softc
  */
 extern int	amr_submit_bio(struct amr_softc *sc, struct bio *bio);
 extern void	amrd_intr(struct bio *bio);
-extern int	amr_dump_blocks(struct amr_softc *sc, int unit, u_int32_t lba, void *data, int blks);
+extern int	amr_dump_blocks(struct amr_softc *sc, int unit, u_int64_t lba, void *data, int blks);
 
 /********************************************************************************
  * Enqueue/dequeue functions

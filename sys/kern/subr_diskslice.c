@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.30 2007/05/15 17:50:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.31 2007/05/15 22:44:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -167,14 +167,14 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 {
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
-	u_long	endsecno;
-	daddr_t	labelsect;
 	struct disklabel *lp;
 	char *msg;
 	long nsec;
 	struct partition *pp;
-	daddr_t	secno;
-	daddr_t	slicerel_secno;
+	u_int64_t secno;
+	u_int64_t endsecno;
+	u_int64_t labelsect;
+	u_int64_t slicerel_secno;
 	struct diskslice *sp;
 	int shift;
 	int mask;
@@ -198,14 +198,14 @@ doshift:
 			goto bad_bcount;
 		if ((int)bio->bio_offset & mask)
 			goto bad_blkno;
-		secno = (daddr_t)(bio->bio_offset >> shift);
+		secno = bio->bio_offset >> shift;
 		nsec = bp->b_bcount >> shift;
 	} else {
 		if (bp->b_bcount % ssp->dss_secsize)
 			goto bad_bcount;
 		if (bio->bio_offset % ssp->dss_secsize)
 			goto bad_blkno;
-		secno = (daddr_t)(bio->bio_offset / ssp->dss_secsize);
+		secno = bio->bio_offset / ssp->dss_secsize;
 		nsec = bp->b_bcount / ssp->dss_secsize;
 	}
 	if (lp == NULL) {
@@ -286,8 +286,9 @@ doshift:
 	    && sp->ds_offset != 0) {
 		nbio->bio_done = dsiodone;
 		nbio->bio_caller_info1.ptr = sp;
-		nbio->bio_caller_info2.offset = (off_t)(LABELSECTOR + labelsect -
-					 slicerel_secno) * ssp->dss_secsize;
+		nbio->bio_caller_info2.offset = 
+			(off_t)(LABELSECTOR + labelsect - slicerel_secno) *
+			ssp->dss_secsize;
 		if (bp->b_cmd != BUF_CMD_READ) {
 			/*
 			 * XXX even disklabel(8) writes directly so we need
@@ -850,7 +851,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	return (0);
 }
 
-int
+int64_t
 dssize(cdev_t dev, struct diskslices **sspp)
 {
 	struct disklabel *lp;
@@ -871,7 +872,7 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	lp = ssp->dss_slices[slice].ds_label;
 	if (lp == NULL)
 		return (-1);
-	return ((int)lp->d_partitions[part].p_size);
+	return ((int64_t)lp->d_partitions[part].p_size);
 }
 
 static void
@@ -891,11 +892,11 @@ free_ds_label(struct diskslices *ssp, int slice)
 static char *
 fixlabel(char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
 {
-	u_long end;
-	u_long offset;
+	u_int64_t start;
+	u_int64_t end;
+	u_int64_t offset;
 	int part;
 	struct partition *pp;
-	u_long start;
 	bool_t warned;
 
 	/* These errors "can't happen" so don't bother reporting details. */
@@ -981,7 +982,7 @@ partition_info(char *sname, int part, struct partition *pp)
 static void
 slice_info(char *sname, struct diskslice *sp)
 {
-	kprintf("%s: start %lu, end %lu, size %lu\n", sname,
+	kprintf("%s: start %llu, end %llu, size %llu\n", sname,
 	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
 }
 

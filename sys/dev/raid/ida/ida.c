@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.15 2006/12/22 23:26:23 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.16 2007/05/15 22:44:10 dillon Exp $
  */
 
 /*
@@ -322,7 +322,7 @@ ida_setup_dmamap(void *arg, bus_dma_segment_t *segs, int nsegments, int error)
 
 int
 ida_command(struct ida_softc *ida, int command, void *data, int datasize,
-	int drive, u_int32_t pblkno, int flags)
+	int drive, u_int64_t pblkno, int flags)
 {
 	struct ida_hardware_qcb *hwqcb;
 	struct ida_qcb *qcb;
@@ -351,6 +351,8 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 	hwqcb->req.blkno = pblkno;
 	hwqcb->req.bcount = howmany(datasize, DEV_BSIZE);
 	hwqcb->req.command = command;
+
+	KKASSERT(pblkno < 0x100000000ULL);
 
 	qcb->flags = flags | IDA_COMMAND;
 
@@ -415,6 +417,8 @@ ida_construct_qcb(struct ida_softc *ida)
 	hwqcb->req.blkno = bio->bio_offset >> DEV_BSHIFT;
 	hwqcb->req.bcount = howmany(bp->b_bcount, DEV_BSIZE);
 	hwqcb->req.command = (bp->b_cmd == BUF_CMD_READ) ? CMD_READ : CMD_WRITE;
+
+	KKASSERT(bio->bio_offset < 0x100000000ULL * DEV_BSIZE);
 
 	STAILQ_INSERT_TAIL(&ida->qcb_queue, qcb, link.stqe);
 }

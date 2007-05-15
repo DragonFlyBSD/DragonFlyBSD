@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.7 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.8 2007/05/15 22:44:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2793,11 +2793,13 @@ void
 scsi_read_write(struct ccb_scsiio *csio, u_int32_t retries,
 		void (*cbfcnp)(struct cam_periph *, union ccb *),
 		u_int8_t tag_action, int readop, u_int8_t byte2,
-		int minimum_cmd_size, u_int32_t lba, u_int32_t block_count,
+		int minimum_cmd_size, u_int64_t lba, u_int32_t block_count,
 		u_int8_t *data_ptr, u_int32_t dxfer_len, u_int8_t sense_len,
 		u_int32_t timeout)
 {
 	u_int8_t cdb_len;
+
+	KKASSERT(lba < 0x100000000ULL);
 	/*
 	 * Use the smallest possible command to perform the operation
 	 * as some legacy hardware does not support the 10 byte
