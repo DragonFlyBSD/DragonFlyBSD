@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.22 2007/05/14 20:02:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.23 2007/05/15 17:50:53 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -588,9 +588,17 @@ MCD_TRACE("ioctl called 0x%lx\n", ap->a_cmd);
 		*(struct disklabel *) addr = cd->dlabel;
 		return 0;
 	case DIOCGPART:
-		((struct partinfo *) addr)->disklab = &cd->dlabel;
-		((struct partinfo *) addr)->part =
-		    &cd->dlabel.d_partitions[mcd_part(dev)];
+		{
+			struct partinfo *dpart = (void *)addr;
+
+			bzero(dpart, sizeof(*dpart));
+			dpart->media_offset = 0;
+			dpart->media_size = (u_int64_t)cd->disksize * 
+					    cd->blksize;
+			dpart->media_blocks = cd->disksize;
+			dpart->media_blksize = cd->blksize;
+			dpart->fstype = FS_BSDFFS;
+		}
 		return 0;
 
 		/*
@@ -599,13 +607,12 @@ MCD_TRACE("ioctl called 0x%lx\n", ap->a_cmd);
 		 */
 	case DIOCWDINFO:
 	case DIOCSDINFO:
-		if ((ap->a_fflag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0) {
 			return EBADF;
-		else {
-			return setdisklabel(&cd->dlabel,
-			    (struct disklabel *) addr,
-			    0);
+		} else {
+			return setdisklabel(&cd->dlabel, (void *)addr, 0);
 		}
+		/* NOT REACHED */
 	case DIOCWLABEL:
 		return EBADF;
 	case CDIOCPLAYTRACKS:
@@ -666,7 +673,7 @@ static int mcd_getdisklabel(int unit)
 	cd->dlabel.d_npartitions= 1;
 	cd->dlabel.d_partitions[0].p_offset = 0;
 	cd->dlabel.d_partitions[0].p_size = cd->disksize;
-	cd->dlabel.d_partitions[0].p_fstype = 9;
+	cd->dlabel.d_partitions[0].p_fstype = FS_BSDFFS;
 	cd->dlabel.d_magic	= DISKMAGIC;
 	cd->dlabel.d_magic2	= DISKMAGIC;
 	cd->dlabel.d_checksum	= dkcksum(&cd->dlabel);

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.45 2007/05/09 00:53:35 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.46 2007/05/15 17:51:03 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -298,10 +298,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	struct msdosfsmount *pmp;
 	struct buf *bp;
 	cdev_t dev;
-#ifndef __DragonFly__
-	struct partinfo dpart;
-	int bsize = 0, dtype = 0, tmp;
-#endif
 	union bootsector *bsp;
 	struct byte_bpb33 *b33;
 	struct byte_bpb50 *b50;
@@ -335,31 +331,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	dev = devvp->v_rdev;
 	bp  = NULL; /* both used in error_exit */
 	pmp = NULL;
-
-#ifndef __DragonFly__
-	if (argp->flags & MSDOSFSMNT_GEMDOSFS) {
-		/*
-	 	 * We need the disklabel to calculate the size of a FAT entry
-		 * later on. Also make sure the partition contains a filesystem
-		 * of type FS_MSDOS. This doesn't work for floppies, so we have
-		 * to check for them too.
-	 	 *
-	 	 * At least some parts of the msdos fs driver seem to assume
-		 * that the size of a disk block will always be 512 bytes.
-		 * Let's check it...
-		 */
-		error = VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD);
-		if (error)
-			goto error_exit;
-		tmp   = dpart.part->p_fstype;
-		dtype = dpart.disklab->d_type;
-		bsize = dpart.disklab->d_secsize;
-		if (bsize != 512 || (dtype!=DTYPE_FLOPPY && tmp!=FS_MSDOS)) {
-			error = EINVAL;
-			goto error_exit;
-		}
-	}
-#endif
 
 	/*
 	 * Read the boot sector of the filesystem, and then check the

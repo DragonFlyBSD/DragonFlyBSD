@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.30 2007/05/14 20:02:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.31 2007/05/15 17:50:51 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1069,8 +1069,18 @@ acdioctl(struct dev_ioctl_args *ap)
 	break;
 
     case DIOCGPART:
-	((struct partinfo *)ap->a_data)->disklab = &cdp->disklabel;
-	((struct partinfo *)ap->a_data)->part = &cdp->disklabel.d_partitions[0];
+	{
+	    struct partinfo *dpart = (void *)ap->a_data;
+
+	    bzero(dpart, sizeof(*dpart));
+	    dpart->media_offset  = 0;
+	    dpart->media_size	 = (u_int64_t)cdp->disk_size * cdp->block_size;
+	    dpart->media_blocks  = cdp->disk_size;
+	    dpart->media_blksize = cdp->block_size;
+	    dpart->fstype	 = FS_BSDFFS;
+	    ksnprintf(dpart->fstypestr, sizeof(dpart->fstypestr),
+		     "4.2BSD");
+	}
 	break;
 
     default:

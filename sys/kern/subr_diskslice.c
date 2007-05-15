@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.29 2007/05/15 05:37:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.30 2007/05/15 17:50:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -441,11 +441,27 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 #endif
 
 	case DIOCGPART:
-		if (lp == NULL)
-			return (EINVAL);
-		((struct partinfo *)data)->disklab = lp;
-		((struct partinfo *)data)->part
-			= &lp->d_partitions[dkpart(dev)];
+		{
+			struct partinfo *dpart = (void *)data;
+
+			bzero(dpart, sizeof(*dpart));
+			dpart->media_offset   = (u_int64_t)sp->ds_offset *
+						info->d_media_blksize;
+			dpart->media_size     = (u_int64_t)sp->ds_size *
+						info->d_media_blksize;
+			dpart->media_blocks   = sp->ds_size;
+			dpart->media_blksize  = info->d_media_blksize;
+			if (lp && slice != WHOLE_DISK_SLICE) {
+				struct partition *p;
+
+				p = &lp->d_partitions[dkpart(dev)];
+				dpart->fstype = p->p_fstype;
+				dpart->media_offset += (u_int64_t)p->p_offset *
+						       info->d_media_blksize;
+				dpart->media_size = (u_int64_t)p->p_size *
+						    info->d_media_blksize;
+			}
+		}
 		return (0);
 
 	case DIOCGSLICEINFO:

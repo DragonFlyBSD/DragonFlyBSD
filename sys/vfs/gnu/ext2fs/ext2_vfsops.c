@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.53 2007/05/09 00:53:35 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.54 2007/05/15 17:51:03 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -699,7 +699,6 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	struct ext2_super_block * es;
 	cdev_t dev;
 	struct partinfo dpart;
-	int havepart = 0;
 	int error, i, size;
 	int ronly;
 
@@ -731,11 +730,10 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred) != 0)
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred) != 0) {
 		size = DEV_BSIZE;
-	else {
-		havepart = 1;
-		size = dpart.disklab->d_secsize;
+	} else {
+		size = dpart.media_blksize;
 	}
 
 	bp = NULL;

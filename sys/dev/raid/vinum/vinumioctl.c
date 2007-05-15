@@ -43,7 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.7 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.8 2007/05/15 17:50:56 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -387,15 +387,17 @@ vinumioctl(struct dev_ioctl_args *ap)
 	    get_volume_label(vol->name, vol->plexes, vol->size, (struct disklabel *) data);
 	    break;
 
-	    /*
-	     * Care!  DIOCGPART returns *pointers* to
-	     * the caller, so we need to store this crap
-	     * as well.  And yes, we need it.
-	     */
 	case DIOCGPART:					    /* get partition information */
-	    get_volume_label(vol->name, vol->plexes, vol->size, &vol->label);
-	    ((struct partinfo *) data)->disklab = &vol->label;
-	    ((struct partinfo *) data)->part = &vol->label.d_partitions[0];
+	    {
+		struct partinfo *dpart = (void *)data;
+
+		bzero(dpart, sizeof(*dpart));
+		dpart->media_offset  = 0;
+		dpart->media_size    = (u_int64_t)vol->size * DEV_BSIZE;
+		dpart->media_blocks  = vol->size;
+		dpart->media_blksize = DEV_BSIZE;
+		dpart->fstype = FS_BSDFFS;
+	    }
 	    break;
 
 	    /*

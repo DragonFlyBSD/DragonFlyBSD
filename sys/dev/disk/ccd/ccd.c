@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.39 2007/05/06 19:23:21 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.40 2007/05/15 17:50:52 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -397,8 +397,8 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		/*
 		 * Get partition information for the component.
 		 */
-		if ((error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart,
-				       FREAD, cred)) != 0) {
+		error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart, FREAD, cred);
+		if (error) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
 				 kprintf("ccd%d: %s: ioctl failed, error = %d\n",
@@ -406,11 +406,11 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 #endif
 			goto fail;
 		}
-		if (dpart.part->p_fstype == FS_BSDFFS) {
-			maxsecsize =
-			    ((dpart.disklab->d_secsize > maxsecsize) ?
-			    dpart.disklab->d_secsize : maxsecsize);
-			size = dpart.part->p_size - CCD_OFFSET;
+		if (dpart.fstype == FS_BSDFFS ||
+		    strcmp(dpart.fstypestr, "4.2BSD") == 0) {
+			if (maxsecsize < dpart.media_blksize)
+				maxsecsize = dpart.media_blksize;
+			size = dpart.media_blocks - CCD_OFFSET;
 		} else {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
@@ -1459,10 +1459,22 @@ ccdioctl(struct dev_ioctl_args *ap)
 	case DIOCGPART:
 		if ((cs->sc_flags & CCDF_INITED) == 0)
 			return (ENXIO);
+		{
+			struct partinfo *dpart;
+			struct partition *part;
 
-		((struct partinfo *)ap->a_data)->disklab = &cs->sc_label;
-		((struct partinfo *)ap->a_data)->part =
-		    &cs->sc_label.d_partitions[ccdpart(dev)];
+			part = &cs->sc_label.d_partitions[ccdpart(dev)];
+			dpart = (void *)ap->a_data;
+
+			bzero(dpart, sizeof(*dpart));
+			dpart->media_offset  = (u_int64_t)part->p_offset *
+					       cs->sc_geom.ccg_secsize;
+			dpart->media_size    = (u_int64_t)part->p_size *
+					       cs->sc_geom.ccg_secsize;
+			dpart->media_blocks  = part->p_size;
+			dpart->media_blksize = cs->sc_geom.ccg_secsize;
+			dpart->fstype        = part->p_fstype;
+		}
 		break;
 
 	case DIOCWDINFO:

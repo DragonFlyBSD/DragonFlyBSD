@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.22 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.23 2007/05/15 17:50:56 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -169,13 +169,12 @@ set_drive_parms(struct drive *drive)
 {
     drive->blocksize = BLKDEV_IOSIZE;			    /* do we need this? */
     drive->secsperblock = drive->blocksize		    /* number of sectors per block */
-	/ drive->partinfo.disklab->d_secsize;
+	/ drive->partinfo.media_blksize;
 
     /* Now update the label part */
     bcopy(hostname, drive->label.sysname, VINUMHOSTNAMELEN); /* put in host name */
     getmicrotime(&drive->label.date_of_birth);		    /* and current time */
-    drive->label.drive_size = ((u_int64_t) drive->partinfo.part->p_size) /* size of the drive in bytes */
-    *((u_int64_t) drive->partinfo.disklab->d_secsize);
+    drive->label.drive_size = drive->partinfo.media_size;
 #if VINUMDEBUG
     if (debug & DEBUG_BIGDRIVE)				    /* pretend we're 100 times as big */
 	drive->label.drive_size *= 100;
@@ -239,7 +238,9 @@ init_drive(struct drive *drive, int verbose)
 	close_drive(drive);
 	return drive->lasterror;
     }
-    if (drive->partinfo.part->p_fstype != FS_VINUM) {	    /* not Vinum */
+    if (drive->partinfo.fstype != FS_VINUM &&
+	strcmp(drive->partinfo.fstypestr, "vinum") != 0
+    ) {	 
 	drive->lasterror = EFTYPE;
 	if (verbose)
 	    log(LOG_WARNING,

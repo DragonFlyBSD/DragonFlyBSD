@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.54 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.55 2007/05/15 17:51:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -485,7 +485,7 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred) != 0)
 		size = DEV_BSIZE;
 	else
-		size = dpart.disklab->d_secsize;
+		size = dpart.media_blksize;
 	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
 		brelse(bp);
 		return (error);
@@ -652,7 +652,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred) != 0)
 		size = DEV_BSIZE;
 	else
-		size = dpart.disklab->d_secsize;
+		size = dpart.media_blksize;
 
 	bp = NULL;
 	ump = NULL;

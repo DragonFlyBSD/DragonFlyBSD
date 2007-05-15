@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/Attic/ndisklabel.h,v 1.1 2007/05/14 20:02:45 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/ndisklabel.h,v 1.2 2007/05/15 17:51:02 dillon Exp $
  */
 
 /*
@@ -58,16 +58,16 @@
  *
  * Disklabels are stored in native-endian format and are portable as long
  * as the code checks for and properly converts the label.  Only big-endian
- * and little-endian formats are supported.  
+ * and little-endian formats are supported.  All fields are structuralized.
  */
-#define DFLY_DISKMAGIC		((u_int64_t)0xc4466c7942534430)
-#define DFLY_DISKMAGIC_OTHER	((u_int64_t)0x30445342796c46c4)
-#define DFLY_MAXPARTITIONS	26
+#define DFLY_DISKMAGIC		((u_int64_t)0xc4466c7942534430ULL)
+#define DFLY_DISKMAGIC_OTHER	((u_int64_t)0x30445342796c46c4ULL)
+#define DFLY_MAXPARTITIONS	16
 
 #ifndef LOCORE
 
 /*
- * The disk label and partitions a-z.  All offsets and sizes are in bytes
+ * The disk label and partitions a-p.  All offsets and sizes are in bytes
  * but must be sector-aligned.  Other then the alignment requirement, the
  * disklabel doesn't care what the physical sector size of the media is.
  *
