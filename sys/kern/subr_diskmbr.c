@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.19 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.20 2007/05/15 05:37:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,7 @@
 #define	DOSPTYP_ONTRACK		84
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
+#include <sys/disk.h>
 #include <sys/malloc.h>
 #include <sys/syslog.h>
 #include <sys/device.h>
@@ -84,98 +85,18 @@ static struct dos_partition historical_bogus_partition_table_fixed[NDOSPART] = {
 static int check_part (char *sname, struct dos_partition *dp,
 			   u_long offset, int nsectors, int ntracks,
 			   u_long mbr_offset);
-static void mbr_extended (cdev_t dev, struct disklabel *lp,
+static void mbr_extended (cdev_t dev, struct disk_info *info,
 			      struct diskslices *ssp, u_long ext_offset,
 			      u_long ext_size, u_long base_ext_offset,
 			      int nsectors, int ntracks, u_long mbr_offset,
 			      int level);
-static int mbr_setslice (char *sname, struct disklabel *lp,
+static int mbr_setslice (char *sname, struct disk_info *info,
 			     struct diskslice *sp, struct dos_partition *dp,
 			     u_long br_offset);
 
-static int
-check_part(char *sname, struct dos_partition *dp, u_long offset,
-	    int nsectors, int ntracks, u_long mbr_offset)
-{
-	int	chs_ecyl;
-	int	chs_esect;
-	int	chs_scyl;
-	int	chs_ssect;
-	int	error;
-	u_long	esector;
-	u_long	esector1;
-	u_long	secpercyl;
-	u_long	ssector;
-	u_long	ssector1;
-
-	secpercyl = (u_long)nsectors * ntracks;
-	chs_scyl = DPCYL(dp->dp_scyl, dp->dp_ssect);
-	chs_ssect = DPSECT(dp->dp_ssect);
-	ssector = chs_ssect - 1 + dp->dp_shd * nsectors + chs_scyl * secpercyl
-		  + mbr_offset;
-	ssector1 = offset + dp->dp_start;
-
-	/*
-	 * If ssector1 is on a cylinder >= 1024, then ssector can't be right.
-	 * Allow the C/H/S for it to be 1023/ntracks-1/nsectors, or correct
-	 * apart from the cylinder being reduced modulo 1024.  Always allow
-	 * 1023/255/63, because this is the official way to represent
-	 * pure-LBA for the starting position.
-	 */
-	if ((ssector < ssector1
-	     && ((chs_ssect == nsectors && dp->dp_shd == ntracks - 1
-		  && chs_scyl == 1023)
-		 || (secpercyl != 0
-		     && (ssector1 - ssector) % (1024 * secpercyl) == 0)))
-	    || (dp->dp_scyl == 255 && dp->dp_shd == 255
-		&& dp->dp_ssect == 255)) {
-		TRACE(("%s: C/H/S start %d/%d/%d, start %lu: allow\n",
-		       sname, chs_scyl, dp->dp_shd, chs_ssect, ssector1));
-		ssector = ssector1;
-	}
-
-	chs_ecyl = DPCYL(dp->dp_ecyl, dp->dp_esect);
-	chs_esect = DPSECT(dp->dp_esect);
-	esector = chs_esect - 1 + dp->dp_ehd * nsectors + chs_ecyl * secpercyl
-		  + mbr_offset;
-	esector1 = ssector1 + dp->dp_size - 1;
-
-	/*
-	 * Allow certain bogus C/H/S values for esector, as above. However,
-	 * heads == 255 isn't really legal and causes some BIOS crashes. The
-	 * correct value to indicate a pure-LBA end is 1023/heads-1/sectors -
-	 * usually 1023/254/63. "heads" is base 0, "sectors" is base 1.
-	 */
-	if ((esector < esector1
-	     && ((chs_esect == nsectors && dp->dp_ehd == ntracks - 1
-		  && chs_ecyl == 1023)
-		 || (secpercyl != 0
-		     && (esector1 - esector) % (1024 * secpercyl) == 0)))
-	    || (dp->dp_ecyl == 255 && dp->dp_ehd == 255
-		&& dp->dp_esect == 255)) {
-		TRACE(("%s: C/H/S end %d/%d/%d, end %lu: allow\n",
-		       sname, chs_ecyl, dp->dp_ehd, chs_esect, esector1));
-		esector = esector1;
-	}
-
-	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
-	if (bootverbose)
-		kprintf("%s: type 0x%x, start %lu, end = %lu, size %lu %s\n",
-		       sname, dp->dp_typ, ssector1, esector1,
-		       (u_long)dp->dp_size, error ? "" : ": OK");
-	if (ssector != ssector1 && bootverbose)
-		kprintf("%s: C/H/S start %d/%d/%d (%lu) != start %lu: invalid\n",
-		       sname, chs_scyl, dp->dp_shd, chs_ssect,
-		       ssector, ssector1);
-	if (esector != esector1 && bootverbose)
-		kprintf("%s: C/H/S end %d/%d/%d (%lu) != end %lu: invalid\n",
-		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
-		       esector, esector1);
-	return (error);
-}
 
 int
-dsinit(cdev_t dev, struct disklabel *lp, struct diskslices **sspp)
+mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 {
 	struct buf *bp;
 	u_char	*cp;
@@ -199,9 +120,9 @@ dsinit(cdev_t dev, struct disklabel *lp, struct diskslices **sspp)
 reread_mbr:
 	/* Read master boot record. */
 	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), RAW_PART);
-	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)mbr_offset * lp->d_secsize;
-	bp->b_bcount = lp->d_secsize;
+	bp = geteblk((int)info->d_media_blksize);
+	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
+	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp->b_bio1);
 	if (biowait(bp) != 0) {
@@ -316,32 +237,20 @@ reread_mbr:
 
 	/*
 	 * Accept the DOS partition table.
-	 * First adjust the label (we have been careful not to change it
-	 * before we can guarantee success).
+	 *
+	 * Adjust the disk information structure with updated CHS
+	 * conversion parameters, but only use values extracted from
+	 * the primary partition table.
+	 *
+	 * NOTE!  Regardless of our having to deal with this old cruft,
+	 * we do not screw around with the info->d_media* parameters.
 	 */
 	secpercyl = (u_long)max_nsectors * max_ntracks;
-	if (secpercyl != 0) {
-#if 0
-		u_long	secperunit;
-#endif
-
-		lp->d_nsectors = max_nsectors;
-		lp->d_ntracks = max_ntracks;
-		lp->d_secpercyl = secpercyl;
-		/*
-		 * Temporarily, don't even consider adjusting the drive's
-		 * size, since the adjusted size may exceed the hardware's
-		 * addressing capabilities.  The adjustment helped mainly
-		 * for ancient MFM drives with > 1024 cylinders, but now
-		 * breaks at least IDE drives with 63*16*65536 sectors if
-		 * they are controlled by the wd driver in CHS mode.
-		 */
-#if 0
-		secperunit = secpercyl * max_ncyls;
-		if (lp->d_secperunit < secperunit)
-			lp->d_secperunit = secperunit;
-#endif
-		lp->d_ncylinders = lp->d_secperunit / secpercyl;
+	if (secpercyl != 0 && mbr_offset == DOSBBSECTOR) {
+		info->d_secpertrack = max_nsectors;
+		info->d_nheads = max_ntracks;
+		info->d_secpercyl = secpercyl;
+		info->d_ncylinders = info->d_media_blocks / secpercyl;
 	}
 
 	/*
@@ -352,7 +261,7 @@ reread_mbr:
 	 * inconvenient.
 	 */
 	kfree(*sspp, M_DEVBUF);
-	ssp = dsmakeslicestruct(MAX_SLICES, lp);
+	ssp = dsmakeslicestruct(MAX_SLICES, info);
 	*sspp = ssp;
 
 	/* Initialize normal slices. */
@@ -360,7 +269,7 @@ reread_mbr:
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++, sp++) {
 		sname = dsname(dev, dkunit(dev), BASE_SLICE + dospart,
 			       RAW_PART, partname);
-		(void)mbr_setslice(sname, lp, sp, dp, mbr_offset);
+		(void)mbr_setslice(sname, info, sp, dp, mbr_offset);
 	}
 	ssp->dss_nslices = BASE_SLICE + NDOSPART;
 
@@ -369,7 +278,7 @@ reread_mbr:
 	for (dospart = 0; dospart < NDOSPART; dospart++, sp++) {
 		if (sp->ds_type == DOSPTYP_EXTENDED ||
 		    sp->ds_type == DOSPTYP_EXTENDEDX) {
-			mbr_extended(wdev, lp, ssp,
+			mbr_extended(wdev, info, ssp,
 				     sp->ds_offset, sp->ds_size, sp->ds_offset,
 				     max_nsectors, max_ntracks, mbr_offset, 1);
 		}
@@ -391,8 +300,90 @@ done:
 	return (error);
 }
 
+static int
+check_part(char *sname, struct dos_partition *dp, u_long offset,
+	    int nsectors, int ntracks, u_long mbr_offset)
+{
+	int	chs_ecyl;
+	int	chs_esect;
+	int	chs_scyl;
+	int	chs_ssect;
+	int	error;
+	u_long	esector;
+	u_long	esector1;
+	u_long	secpercyl;
+	u_long	ssector;
+	u_long	ssector1;
+
+	secpercyl = (u_long)nsectors * ntracks;
+	chs_scyl = DPCYL(dp->dp_scyl, dp->dp_ssect);
+	chs_ssect = DPSECT(dp->dp_ssect);
+	ssector = chs_ssect - 1 + dp->dp_shd * nsectors + chs_scyl * secpercyl
+		  + mbr_offset;
+	ssector1 = offset + dp->dp_start;
+
+	/*
+	 * If ssector1 is on a cylinder >= 1024, then ssector can't be right.
+	 * Allow the C/H/S for it to be 1023/ntracks-1/nsectors, or correct
+	 * apart from the cylinder being reduced modulo 1024.  Always allow
+	 * 1023/255/63, because this is the official way to represent
+	 * pure-LBA for the starting position.
+	 */
+	if ((ssector < ssector1
+	     && ((chs_ssect == nsectors && dp->dp_shd == ntracks - 1
+		  && chs_scyl == 1023)
+		 || (secpercyl != 0
+		     && (ssector1 - ssector) % (1024 * secpercyl) == 0)))
+	    || (dp->dp_scyl == 255 && dp->dp_shd == 255
+		&& dp->dp_ssect == 255)) {
+		TRACE(("%s: C/H/S start %d/%d/%d, start %lu: allow\n",
+		       sname, chs_scyl, dp->dp_shd, chs_ssect, ssector1));
+		ssector = ssector1;
+	}
+
+	chs_ecyl = DPCYL(dp->dp_ecyl, dp->dp_esect);
+	chs_esect = DPSECT(dp->dp_esect);
+	esector = chs_esect - 1 + dp->dp_ehd * nsectors + chs_ecyl * secpercyl
+		  + mbr_offset;
+	esector1 = ssector1 + dp->dp_size - 1;
+
+	/*
+	 * Allow certain bogus C/H/S values for esector, as above. However,
+	 * heads == 255 isn't really legal and causes some BIOS crashes. The
+	 * correct value to indicate a pure-LBA end is 1023/heads-1/sectors -
+	 * usually 1023/254/63. "heads" is base 0, "sectors" is base 1.
+	 */
+	if ((esector < esector1
+	     && ((chs_esect == nsectors && dp->dp_ehd == ntracks - 1
+		  && chs_ecyl == 1023)
+		 || (secpercyl != 0
+		     && (esector1 - esector) % (1024 * secpercyl) == 0)))
+	    || (dp->dp_ecyl == 255 && dp->dp_ehd == 255
+		&& dp->dp_esect == 255)) {
+		TRACE(("%s: C/H/S end %d/%d/%d, end %lu: allow\n",
+		       sname, chs_ecyl, dp->dp_ehd, chs_esect, esector1));
+		esector = esector1;
+	}
+
+	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
+	if (bootverbose)
+		kprintf("%s: type 0x%x, start %lu, end = %lu, size %lu %s\n",
+		       sname, dp->dp_typ, ssector1, esector1,
+		       (u_long)dp->dp_size, error ? "" : ": OK");
+	if (ssector != ssector1 && bootverbose)
+		kprintf("%s: C/H/S start %d/%d/%d (%lu) != start %lu: invalid\n",
+		       sname, chs_scyl, dp->dp_shd, chs_ssect,
+		       ssector, ssector1);
+	if (esector != esector1 && bootverbose)
+		kprintf("%s: C/H/S end %d/%d/%d (%lu) != end %lu: invalid\n",
+		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
+		       esector, esector1);
+	return (error);
+}
+
+static
 void
-mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
+mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	    u_long ext_offset, u_long ext_size, u_long base_ext_offset,
 	    int nsectors, int ntracks, u_long mbr_offset, int level)
 {
@@ -416,9 +407,9 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	}
 
 	/* Read extended boot record. */
-	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)ext_offset * lp->d_secsize;
-	bp->b_bcount = lp->d_secsize;
+	bp = geteblk((int)info->d_media_blksize);
+	bp->b_bio1.bio_offset = (off_t)ext_offset * info->d_media_blksize;
+	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(bp) != 0) {
@@ -474,7 +465,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 				continue;
 			}
 			sp = &ssp->dss_slices[slice];
-			if (mbr_setslice(sname, lp, sp, dp, ext_offset) != 0)
+			if (mbr_setslice(sname, info, sp, dp, ext_offset) != 0)
 				continue;
 			slice++;
 		}
@@ -484,7 +475,7 @@ mbr_extended(cdev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	/* If we found any more slices, recursively find all the subslices. */
 	for (dospart = 0; dospart < NDOSPART; dospart++) {
 		if (ext_sizes[dospart] != 0) {
-			mbr_extended(dev, lp, ssp, ext_offsets[dospart],
+			mbr_extended(dev, info, ssp, ext_offsets[dospart],
 				     ext_sizes[dospart], base_ext_offset,
 				     nsectors, ntracks, mbr_offset, ++level);
 		}
@@ -496,20 +487,20 @@ done:
 }
 
 static int
-mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
+mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 	    struct dos_partition *dp, u_long br_offset)
 {
 	u_long	offset;
 	u_long	size;
 
 	offset = br_offset + dp->dp_start;
-	if (offset > lp->d_secperunit || offset < br_offset) {
+	if (offset > info->d_media_blocks || offset < br_offset) {
 		kprintf(
 		"%s: slice starts beyond end of the disk: rejecting it\n",
 		       sname);
 		return (1);
 	}
-	size = lp->d_secperunit - offset;
+	size = info->d_media_blocks - offset;
 	if (size >= dp->dp_size)
 		size = dp->dp_size;
 	else
@@ -519,8 +510,5 @@ mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
 	sp->ds_offset = offset;
 	sp->ds_size = size;
 	sp->ds_type = dp->dp_typ;
-#if 0
-	lp->d_subtype |= (lp->d_subtype & 3) | dospart | DSTYPE_INDOSPART;
-#endif
 	return (0);
 }

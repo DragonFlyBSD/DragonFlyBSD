@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.29 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.30 2007/05/15 05:37:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -180,9 +180,6 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 void
 disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
-	struct disklabel *label = &disk->d_label;
-
-	bzero(label, sizeof(*label));
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
 
@@ -195,20 +192,6 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 		info->d_media_blocks = info->d_media_size / 
 				       info->d_media_blksize;
 	}
-
-	label->d_secsize = info->d_media_blksize;
-	label->d_secperunit = (u_int)info->d_media_blocks;
-	KKASSERT(info->d_media_blocks < 0x100000000LLU);
-
-	if (info->d_dsflags & DSO_COMPATPARTA) {
-		label->d_partitions[0].p_size = label->d_secperunit;
-		label->d_partitions[0].p_fstype = FS_OTHER;
-	}
-
-	label->d_nsectors = info->d_secpertrack;
-	label->d_ntracks = info->d_nheads;
-	label->d_ncylinders = info->d_ncylinders;
-	label->d_secpercyl = info->d_secpercyl;
 }
 
 /*
@@ -356,7 +339,7 @@ diskopen(struct dev_open_args *ap)
 		goto out;
 	
 	error = dsopen(dev, ap->a_devtype, dp->d_info.d_dsflags,
-		       &dp->d_slice, &dp->d_label);
+		       &dp->d_slice, &dp->d_info);
 
 	if (!dsisopen(dp->d_slice)) 
 		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype);
@@ -405,7 +388,8 @@ diskioctl(struct dev_ioctl_args *ap)
 	dp = dev->si_disk;
 	if (dp == NULL)
 		return (ENXIO);
-	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag, &dp->d_slice);
+	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
+			&dp->d_slice, &dp->d_info);
 	if (error == ENOIOCTL) {
 		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
 				   ap->a_fflag, ap->a_cred);

@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.11 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.12 2007/05/15 05:37:39 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -108,7 +108,6 @@ struct disk {
 	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
 	struct disk_info	d_info;		/* info structure for media */
-	struct disklabel	d_label;
 	LIST_ENTRY(disk)	d_list;
 };
 

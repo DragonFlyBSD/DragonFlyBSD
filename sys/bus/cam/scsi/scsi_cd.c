@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.29 2007/05/15 00:01:00 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.30 2007/05/15 05:37:36 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -2827,7 +2827,7 @@ cdcheckmedia(struct cam_periph *periph)
 			 */
 			dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
 				/*data*/(caddr_t)&force, /*flags*/ 0,
-				&softc->disk.d_slice);
+				&softc->disk.d_slice, &softc->disk.d_info);
 		}
 
 		/*
@@ -2858,7 +2858,8 @@ cdcheckmedia(struct cam_periph *periph)
 
 			error = dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
 					/*data*/(caddr_t)&force, /*flags*/ 0,
-					&softc->disk.d_slice);
+					&softc->disk.d_slice,
+					&softc->disk.d_info);
 			if (error != 0) {
 				/*
 				 * Set a bogus sector size, so the slice code

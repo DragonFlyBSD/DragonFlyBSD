@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.28 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.29 2007/05/15 05:37:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,8 @@ typedef	u_char	bool_t;
 
 static volatile bool_t ds_debug;
 
-static struct disklabel *clone_label (struct disklabel *lp);
+static struct disklabel *clone_label (struct disk_info *info,
+					struct diskslice *sp);
 static void dsiodone (struct bio *bio);
 static char *fixlabel (char *sname, struct diskslice *sp,
 			   struct disklabel *lp, int writeflag);
@@ -85,19 +86,40 @@ static void set_ds_label (struct diskslices *ssp, int slice,
 static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
 
 /*
- * Duplicate a label for the whole disk, and initialize defaults in the
- * copy for fields that are not already initialized.  The caller only
- * needs to initialize d_secsize and d_secperunit, and zero the fields
- * that are to be defaulted.
+ * Create a disklabel based on a disk_info structure, initializing
+ * the appropriate fields and creating a raw partition that covers the
+ * whole disk.
+ *
+ * If a diskslice is passed, the label is truncated to the slice
  */
 static struct disklabel *
-clone_label(struct disklabel *lp)
+clone_label(struct disk_info *info, struct diskslice *sp)
 {
 	struct disklabel *lp1;
 
-	lp1 = kmalloc(sizeof *lp1, M_DEVBUF, M_WAITOK);
-	*lp1 = *lp;
-	lp = NULL;
+	lp1 = kmalloc(sizeof *lp1, M_DEVBUF, M_WAITOK | M_ZERO);
+	lp1->d_nsectors = info->d_secpertrack;
+	lp1->d_ntracks = info->d_nheads;
+	lp1->d_secpercyl = info->d_secpercyl;
+	lp1->d_secsize = info->d_media_blksize;
+
+	if (sp) {
+		lp1->d_secperunit = (u_int)sp->ds_size;
+		lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
+	} else {
+		lp1->d_secperunit = (u_int)info->d_media_blocks;
+		lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
+	}
+
+	/*
+	 * Used by the CD driver to create a compatibility slice which
+	 * allows us to mount root from the CD.
+	 */
+	if (info->d_dsflags & DSO_COMPATPARTA) {
+		lp1->d_partitions[0].p_size = lp1->d_secperunit;
+		lp1->d_partitions[0].p_fstype = FS_OTHER;
+	}
+
 	if (lp1->d_typename[0] == '\0')
 		strncpy(lp1->d_typename, "amnesiac", sizeof(lp1->d_typename));
 	if (lp1->d_packname[0] == '\0')
@@ -352,8 +374,8 @@ dsgone(struct diskslices **sspp)
  * is subject to the same restriction as dsopen().
  */
 int
-dsioctl(cdev_t dev, u_long cmd, caddr_t data, 
-	int flags, struct diskslices **sspp)
+dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
+	struct diskslices **sspp, struct disk_info *info)
 {
 	int error;
 	struct disklabel *lp;
@@ -475,25 +497,30 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data,
 	case DIOCSYNCSLICEINFO:
 		if (slice != WHOLE_DISK_SLICE || dkpart(dev) != RAW_PART)
 			return (EINVAL);
-		if (!*(int *)data)
+		if (*(int *)data == 0) {
 			for (slice = 0; slice < ssp->dss_nslices; slice++) {
 				openmask = ssp->dss_slices[slice].ds_openmask;
-				if (openmask
-				    && (slice != WHOLE_DISK_SLICE
-					|| openmask & ~(1 << RAW_PART)))
+				if (openmask &&
+				    (slice != WHOLE_DISK_SLICE || 
+				     openmask & ~(1 << RAW_PART))) {
 					return (EBUSY);
+				}
 			}
+		}
 
 		/*
 		 * Temporarily forget the current slices struct and read
 		 * the current one.
+		 *
+		 * NOTE:
+		 *
 		 * XXX should wait for current accesses on this disk to
 		 * complete, then lock out future accesses and opens.
 		 */
 		*sspp = NULL;
 		lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK);
 		*lp = *ssp->dss_slices[WHOLE_DISK_SLICE].ds_label;
-		error = dsopen(dev, S_IFCHR, ssp->dss_oflags, sspp, lp);
+		error = dsopen(dev, S_IFCHR, ssp->dss_oflags, sspp, info);
 		if (error != 0) {
 			kfree(lp, M_DEVBUF);
 			*sspp = ssp;
@@ -513,7 +540,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data,
 				error = dsopen(dkmodslice(dkmodpart(dev, part),
 							  slice),
 					       S_IFCHR, ssp->dss_oflags, sspp,
-					       lp);
+					       info);
 				if (error != 0) {
 					kfree(lp, M_DEVBUF);
 					*sspp = ssp;
@@ -527,7 +554,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data,
 		return (0);
 
 	case DIOCWDINFO:
-		error = dsioctl(dev, DIOCSDINFO, data, flags, &ssp);
+		error = dsioctl(dev, DIOCSDINFO, data, flags, &ssp, info);
 		if (error != 0)
 			return (error);
 		/*
@@ -596,7 +623,7 @@ dsisopen(struct diskslices *ssp)
  * slices beginning at BASE_SLICE.
  */
 struct diskslices *
-dsmakeslicestruct(int nslices, struct disklabel *lp)
+dsmakeslicestruct(int nslices, struct disk_info *info)
 {
 	struct diskslice *sp;
 	struct diskslices *ssp;
@@ -606,15 +633,15 @@ dsmakeslicestruct(int nslices, struct disklabel *lp)
 	ssp->dss_first_bsd_slice = COMPATIBILITY_SLICE;
 	ssp->dss_nslices = nslices;
 	ssp->dss_oflags = 0;
-	ssp->dss_secmult = lp->d_secsize / DEV_BSIZE;
+	ssp->dss_secmult = info->d_media_blksize / DEV_BSIZE;
 	if (ssp->dss_secmult & (ssp->dss_secmult - 1))
 		ssp->dss_secshift = -1;
 	else
 		ssp->dss_secshift = ffs(ssp->dss_secmult) - 1;
-	ssp->dss_secsize = lp->d_secsize;
+	ssp->dss_secsize = info->d_media_blksize;
 	sp = &ssp->dss_slices[0];
 	bzero(sp, nslices * sizeof *sp);
-	sp[WHOLE_DISK_SLICE].ds_size = lp->d_secperunit;
+	sp[WHOLE_DISK_SLICE].ds_size = info->d_media_blocks;
 	return (ssp);
 }
 
@@ -647,7 +674,7 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
  */
 int
 dsopen(cdev_t dev, int mode, u_int flags, 
-	struct diskslices **sspp, struct disklabel *lp)
+	struct diskslices **sspp, struct disk_info *info)
 {
 	cdev_t dev1;
 	int error;
@@ -663,12 +690,12 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	struct diskslices *ssp;
 	int unit;
 
-	dev->si_bsize_phys = lp->d_secsize;
+	dev->si_bsize_phys = info->d_media_blksize;
 
 	unit = dkunit(dev);
-	if (lp->d_secsize % DEV_BSIZE) {
+	if (info->d_media_blksize % DEV_BSIZE) {
 		kprintf("%s: invalid sector size %lu\n", devtoname(dev),
-		    (u_long)lp->d_secsize);
+		    (u_long)info->d_media_blksize);
 		return (EINVAL);
 	}
 
@@ -694,11 +721,11 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * the final slices "struct" if we don't want real slices
 		 * or if we can't find any real slices.
 		 */
-		*sspp = dsmakeslicestruct(BASE_SLICE, lp);
+		*sspp = dsmakeslicestruct(BASE_SLICE, info);
 
 		if (!(flags & DSO_ONESLICE)) {
-			TRACE(("dsinit\n"));
-			error = dsinit(dev, lp, sspp);
+			TRACE(("mbrinit\n"));
+			error = mbrinit(dev, info, sspp);
 			if (error != 0) {
 				dsgone(sspp);
 				return (error);
@@ -711,9 +738,10 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * If there are no real slices, then make the compatiblity
 		 * slice cover the whole disk.
 		 */
-		if (ssp->dss_nslices == BASE_SLICE)
+		if (ssp->dss_nslices == BASE_SLICE) {
 			ssp->dss_slices[COMPATIBILITY_SLICE].ds_size
-				= lp->d_secperunit;
+				= info->d_media_blocks;
+		}
 
 		/* Point the compatibility slice at the BSD slice, if any. */
 		for (slice = BASE_SLICE; slice < ssp->dss_nslices; slice++) {
@@ -729,14 +757,17 @@ dsopen(cdev_t dev, int mode, u_int flags,
 				break;
 			}
 		}
-
-		ssp->dss_slices[WHOLE_DISK_SLICE].ds_label = clone_label(lp);
-		ssp->dss_slices[WHOLE_DISK_SLICE].ds_wlabel = TRUE;
+		sp = &ssp->dss_slices[WHOLE_DISK_SLICE];
+		sp->ds_label = clone_label(info, NULL);
+		sp->ds_wlabel = TRUE;
 	}
 
 	/*
 	 * Initialize secondary info for all slices.  It is needed for more
 	 * than the current slice in the DEVFS case.  XXX DEVFS is no more.
+	 *
+	 * Attempt to read the disklabel for each slice, creating a virgin
+	 * label if a slice does not have one.
 	 */
 	for (slice = 0; slice < ssp->dss_nslices; slice++) {
 		sp = &ssp->dss_slices[slice];
@@ -749,11 +780,11 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * case, but there may be a problem with DIOCSYNCSLICEINFO.
 		 */
 		set_ds_wlabel(ssp, slice, TRUE);	/* XXX invert */
-		lp1 = clone_label(lp);
+		lp1 = clone_label(info, sp);
 		TRACE(("readdisklabel\n"));
-		if (flags & DSO_NOLABELS)
+		if (flags & DSO_NOLABELS) {
 			msg = NULL;
-		else {
+		} else {
 			msg = readdisklabel(dev1, lp1);
 
 			/*
@@ -772,7 +803,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 			if (msg != NULL && (flags & DSO_COMPATLABEL)) {
 				msg = NULL;
 				kfree(lp1, M_DEVBUF);
-				lp1 = clone_label(lp);
+				lp1 = clone_label(info, sp);
 			}
 		}
 		if (msg == NULL)

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.30 2007/01/21 10:37:29 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.31 2007/05/15 05:37:37 dillon Exp $
  */
 
 /*
@@ -70,6 +70,7 @@
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
+#include <sys/disk.h>
 #include <sys/stat.h>
 #include <sys/module.h>
 #include <sys/vnioctl.h>
@@ -115,7 +116,8 @@ struct vn_softc {
 	int		sc_flags;	/* flags 			*/
 	int		sc_size;	/* size of vn, sc_secsize scale	*/
 	int		sc_secsize;	/* sector size			*/
-	struct diskslices *sc_slices;
+	struct diskslices *sc_slices;	/* XXX fields from struct disk  */
+	struct disk_info sc_info;	/* XXX fields from struct disk  */
 	struct vnode	*sc_vp;		/* vnode if not NULL		*/
 	vm_object_t	sc_object;	/* backing object if not NULL	*/
 	struct ucred	*sc_cred;	/* credentials 			*/
@@ -202,6 +204,7 @@ vnopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
+	struct disk_info *info;
 
 	/*
 	 * Locate preexisting device
@@ -236,19 +239,19 @@ vnopen(struct dev_open_args *ap)
 
 	IFOPT(vn, VN_LABELS) {
 		if (vn->sc_flags & VNF_INITED) {
-			struct disklabel label;
+			info = &vn->sc_info;
+			bzero(info, sizeof(*info));
+			info->d_media_blksize = vn->sc_secsize;
+			info->d_media_blocks = vn->sc_size;
 
-			/* Build label for whole disk. */
-			bzero(&label, sizeof label);
-			label.d_secsize = vn->sc_secsize;
-			label.d_nsectors = 32;
-			label.d_ntracks = 64 / (vn->sc_secsize / DEV_BSIZE);
-			label.d_secpercyl = label.d_nsectors * label.d_ntracks;
-			label.d_ncylinders = vn->sc_size / label.d_secpercyl;
-			label.d_secperunit = vn->sc_size;
-			label.d_partitions[RAW_PART].p_size = vn->sc_size;
+			info->d_secpertrack = 32;
+			info->d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
+			info->d_secpercyl = info->d_secpertrack *
+					    info->d_nheads;
+			info->d_ncylinders = vn->sc_size / info->d_secpercyl;
 
-			return (dsopen(dev, ap->a_devtype, 0, &vn->sc_slices, &label));
+			return (dsopen(dev, ap->a_devtype, 0,
+					&vn->sc_slices, info));
 		}
 		if (dkslice(dev) != WHOLE_DISK_SLICE ||
 		    dkpart(dev) != RAW_PART ||
@@ -458,7 +461,8 @@ vnioctl(struct dev_ioctl_args *ap)
 	IFOPT(vn,VN_LABELS) {
 		if (vn->sc_slices != NULL) {
 			error = dsioctl(dev, ap->a_cmd, ap->a_data,
-					ap->a_fflag, &vn->sc_slices);
+					ap->a_fflag,
+					&vn->sc_slices, &vn->sc_info);
 			if (error != ENOIOCTL)
 				return (error);
 		}
