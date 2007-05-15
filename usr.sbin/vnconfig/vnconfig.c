@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.10 2005/12/05 01:23:23 swildner Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.11 2007/05/15 22:45:10 dillon Exp $
  */
 
 #include <ctype.h>
@@ -68,7 +68,7 @@ struct vndisk {
 	char	*file;
 	char	*autolabel;
 	int	flags;
-	int	size;
+	int64_t	size;
 	char	*oarg;
 } *vndisks;
 
@@ -99,7 +99,7 @@ void getoptions(struct vndisk *, char *);
 char *rawdevice(char *);
 void readconfig(int);
 static void usage(void);
-static int getsize(const char *arg);
+static int64_t getsize(const char *arg);
 static void do_autolabel(const char *dev, const char *label);
 int what_opt(char *, u_long *);
 
@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 {
 	int i, rv;
 	int flags = 0;
-	int size = 0;
+	int64_t size = 0;
 	char *autolabel = NULL;
 	char *s;
 
@@ -282,10 +282,10 @@ config(struct vndisk *vnp)
 		else
 			fd = open(file, O_RDWR);
 		if (fd >= 0 && fstat(fd, &st) == 0 && S_ISREG(st.st_mode)) {
-			if (st.st_size < (off_t)vnp->size * pgsize)
-				ftruncate(fd, (off_t)vnp->size * pgsize);
+			if (st.st_size < vnp->size * pgsize)
+				ftruncate(fd, vnp->size * pgsize);
 			if (vnp->size != 0)
-				st.st_size = (off_t)vnp->size * pgsize;
+				st.st_size = vnp->size * pgsize;
 
 			if (flags & VN_ZERO) {
 				char *buf = malloc(ZBUFSIZE);
@@ -393,7 +393,7 @@ config(struct vndisk *vnp)
 			if (verbose) {
 				printf("%s: %s, ", dev, file);
 				if (vnp->size != 0) {
-				    printf("%d bytes mapped\n", vnio.vn_size);
+				    printf("%lld bytes mapped\n", vnio.vn_size);
 				} else {
 				    printf("complete file mapped\n");
 				}
@@ -603,12 +603,12 @@ usage(void)
 	exit(1);
 }
 
-static int
+static int64_t
 getsize(const char *arg)
 {
 	char *ptr;
 	int pgsize = getpagesize();
-	quad_t size = strtoq(arg, &ptr, 0);
+	int64_t size = strtoq(arg, &ptr, 0);
 
 	switch(tolower(*ptr)) {
 	case 't':
@@ -633,7 +633,7 @@ getsize(const char *arg)
 		break;
 	}
 	size = (size + pgsize - 1) / pgsize;
-	return((int)size);
+	return(size);
 }
 
 /*
