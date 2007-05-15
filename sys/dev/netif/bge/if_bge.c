@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.77 2007/05/12 08:39:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.78 2007/05/15 12:58:45 sephe Exp $
  *
  */
 
@@ -2871,13 +2871,12 @@ static int
 bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct bge_softc *sc = ifp->if_softc;
-	struct ifreq *ifr = (struct ifreq *) data;
+	struct ifreq *ifr = (struct ifreq *)data;
 	int mask, error = 0;
-	struct mii_data *mii;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch(command) {
+	switch (command) {
 	case SIOCSIFMTU:
 		if ((!BGE_IS_JUMBO_CAPABLE(sc) && ifr->ifr_mtu > ETHERMTU) ||
 		    (BGE_IS_JUMBO_CAPABLE(sc) &&
@@ -2892,7 +2891,7 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING) {
-				int flags = ifp->if_flags & sc->bge_if_flags;
+				mask = ifp->if_flags ^ sc->bge_if_flags;
 
 				/*
 				 * If only the state of the PROMISC flag
@@ -2903,9 +2902,9 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				 * for it to start up, which may take a
 				 * second or two.  Similarly for ALLMULTI.
 				 */
-				if (flags & IFF_PROMISC)
+				if (mask & IFF_PROMISC)
 					bge_setpromisc(sc);
-				if (flags & IFF_ALLMULTI)
+				if (mask & IFF_ALLMULTI)
 					bge_setmulti(sc);
 			} else {
 				bge_init(sc);
@@ -2915,14 +2914,11 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				bge_stop(sc);
 		}
 		sc->bge_if_flags = ifp->if_flags;
-		error = 0;
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if (ifp->if_flags & IFF_RUNNING) {
+		if (ifp->if_flags & IFF_RUNNING)
 			bge_setmulti(sc);
-			error = 0;
-		}
 		break;
 	case SIOCSIFMEDIA:
 	case SIOCGIFMEDIA:
@@ -2930,9 +2926,11 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			error = ifmedia_ioctl(ifp, ifr,
 			    &sc->bge_ifmedia, command);
 		} else {
+			struct mii_data *mii;
+
 			mii = device_get_softc(sc->bge_miibus);
 			error = ifmedia_ioctl(ifp, ifr,
-			    &mii->mii_media, command);
+					      &mii->mii_media, command);
 		}
 		break;
         case SIOCSIFCAP:
@@ -2944,13 +2942,12 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			else
 				ifp->if_hwassist = 0;
 		}
-		error = 0;
 		break;
 	default:
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	return(error);
+	return error;
 }
 
 static void
