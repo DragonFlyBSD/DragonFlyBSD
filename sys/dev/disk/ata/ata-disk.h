@@ -26,13 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.22.2.7 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.7 2006/09/10 01:26:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.8 2007/05/15 20:29:16 dillon Exp $
  */
 
 /* structure describing an ATA disk request */
 struct ad_request {
     struct ad_softc		*softc;		/* ptr to parent device */
-    u_int32_t			blockaddr;	/* block number */
+    u_int64_t			blockaddr;	/* block number */
     u_int32_t			bytecount;	/* bytes to transfer */
     u_int32_t			donecount;	/* bytes transferred */
     u_int32_t			currentsize;	/* size of current transfer */

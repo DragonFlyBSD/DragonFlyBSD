@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.34 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.35 2007/05/15 20:29:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -427,7 +427,7 @@ ad_start(struct ata_device *atadev)
     /* setup request */
     request->softc = adp;
     request->bio = bio;
-    request->blockaddr = (u_int32_t)(bio->bio_offset >> DEV_BSHIFT);
+    request->blockaddr = (u_int64_t)(bio->bio_offset >> DEV_BSHIFT);
     request->bytecount = bp->b_bcount;
     request->data = bp->b_data;
     request->tag = tag;
