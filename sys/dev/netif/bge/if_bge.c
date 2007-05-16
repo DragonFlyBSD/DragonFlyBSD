@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.78 2007/05/15 12:58:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.79 2007/05/16 14:37:55 sephe Exp $
  *
  */
 
@@ -2486,7 +2486,7 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	 */
 	if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
 	    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
-		error = E2BIG;
+		error = EFBIG;
 	} else {
 		ctx.bge_segs = segs;
 		ctx.bge_maxsegs = maxsegs;
@@ -2494,7 +2494,7 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 					     m_head, bge_dma_map_mbuf, &ctx,
 					     BUS_DMA_NOWAIT);
 	}
-	if (error == E2BIG || ctx.bge_maxsegs == 0) {
+	if (error == EFBIG || ctx.bge_maxsegs == 0) {
 		struct mbuf *m_new;
 
 		m_new = m_defrag(m_head, MB_DONTWAIT);
@@ -2530,7 +2530,7 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			if_printf(&sc->arpcom.ac_if,
 				  "could not defrag TX mbuf\n");
 			if (error == 0)
-				error = E2BIG;
+				error = EFBIG;
 			goto back;
 		}
 	} else if (error) {
