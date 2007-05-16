@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.5 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.5.2.1 2007/05/16 14:31:01 sephe Exp $
  */
 
 /*
@@ -3050,7 +3050,7 @@ rtw_load_txbuf(struct rtw_softc *sc, struct rtw_txsoft *ts,
 
 	error = bus_dmamap_load_mbuf(sc->sc_txsoft_dmat, ts->ts_dmamap, m,
 				     rtw_txbuf_dma_map, segs, BUS_DMA_NOWAIT);
-	if (error && error != E2BIG) {
+	if (error && error != EFBIG) {
 		if_printf(&sc->sc_ic.ic_if, "can't load tx mbuf1\n");
 		goto back;
 	}
@@ -3078,7 +3078,7 @@ rtw_load_txbuf(struct rtw_softc *sc, struct rtw_txsoft *ts,
 		}
 		unload = 1;
 
-		error = E2BIG;
+		error = EFBIG;
 		if (segs->nseg > ndesc_free) {
 			if_printf(&sc->sc_ic.ic_if, "not enough free txdesc\n");
 			goto back;
@@ -3093,7 +3093,7 @@ rtw_load_txbuf(struct rtw_softc *sc, struct rtw_txsoft *ts,
 	if (rtw_txsegs_too_long(segs)) {
 		if_printf(&sc->sc_ic.ic_if, "segment too long\n");
 		unload = 1;
-		error = E2BIG;
+		error = EFBIG;
 	}
 
 back:
